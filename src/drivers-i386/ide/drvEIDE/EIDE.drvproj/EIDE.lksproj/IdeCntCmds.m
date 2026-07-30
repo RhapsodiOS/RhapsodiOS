@@ -52,6 +52,7 @@
 //#define DEBUG
 
 #import "IdeCnt.h"
+#import "IdeCntCmds.h"
 #import "IdeCntInit.h"
 #import "IdePIIX.h"
 #import <kern/assert.h>
@@ -108,6 +109,79 @@
     rv.drHead |= (_driveNum ? SEL_DRIVE1 : SEL_DRIVE0);
 	    
     return rv;
+}
+
+- (ide_return_t)buildTaskfile:(ideTaskfile_t *)taskfile
+	block:(unsigned int)block count:(unsigned int)count
+	drive:(unsigned int)drive
+{
+    int rtn;
+
+    rtn = IDEBuildTaskfile(taskfile,
+	_drives[drive].addressMode == ADDRESS_MODE_CHS ?
+	    IDE_ADDRESS_CHS : IDE_ADDRESS_LBA,
+	(unsigned char)drive, block, count,
+	_drives[drive].addressableSectors,
+	_drives[drive].lba48Supported ? 1 : 0,
+	_drives[drive].ideInfo.heads,
+	_drives[drive].ideInfo.sectors_per_trk);
+
+    return (rtn == IDE_ADDRESS_OK) ? IDER_SUCCESS : IDER_REJECT;
+}
+
+- (void)writeTaskfile:(const ideTaskfile_t *)taskfile
+	errorRegisters:(ideRegsVal_t *)errorRegisters
+{
+    ideTaskWrite_t writes[11];
+    unsigned int count;
+    unsigned int i;
+    unsigned int port;
+
+    count = IDETaskfileWriteSequence(taskfile, writes);
+    bzero((unsigned char *)errorRegisters, sizeof(*errorRegisters));
+    errorRegisters->sectCnt = taskfile->sectorCount;
+    errorRegisters->sectNum = taskfile->lbaLow;
+    errorRegisters->cylLow = taskfile->lbaMid;
+    errorRegisters->cylHigh = taskfile->lbaHigh;
+    errorRegisters->drHead = taskfile->deviceHead;
+
+    for (i = 0; i < count; i++) {
+	switch (writes[i].reg) {
+	  case IDE_TASK_DEVICE:
+	    port = _ideRegsAddrs.drHead;
+	    break;
+	  case IDE_TASK_FEATURES:
+	    port = _ideRegsAddrs.features;
+	    break;
+	  case IDE_TASK_COUNT:
+	    port = _ideRegsAddrs.sectCnt;
+	    break;
+	  case IDE_TASK_LBA_LOW:
+	    port = _ideRegsAddrs.sectNum;
+	    break;
+	  case IDE_TASK_LBA_MID:
+	    port = _ideRegsAddrs.cylLow;
+	    break;
+	  case IDE_TASK_LBA_HIGH:
+	    port = _ideRegsAddrs.cylHigh;
+	    break;
+	  default:
+	    return;
+	}
+	outb(port, writes[i].value);
+    }
+}
+
+static void taskfileFromLegacyRegisters(ideTaskfile_t *taskfile,
+	const ideRegsVal_t *ideRegs)
+{
+    bzero((unsigned char *)taskfile, sizeof(*taskfile));
+    taskfile->features = ideRegs->features;
+    taskfile->sectorCount = ideRegs->sectCnt;
+    taskfile->lbaLow = ideRegs->sectNum;
+    taskfile->lbaMid = ideRegs->cylLow;
+    taskfile->lbaHigh = ideRegs->cylHigh;
+    taskfile->deviceHead = ideRegs->drHead;
 }
 
 /*
@@ -292,21 +366,19 @@
     return (rtn);
 }
 
-- (ide_return_t)ideReadGetInfoCommon:(ideRegsVal_t *)ideRegs
+- (ide_return_t)ideReadGetInfoCommon:(const ideTaskfile_t *)taskfile
+			    errorRegisters:(ideRegsVal_t *)ideRegs
 			    client:(struct vm_map *)client
 			    addr:(caddr_t)xferAddr
 			    command:(unsigned int)cmd
 {
     ide_return_t rtn;
-    unsigned int sec_cnt = ideRegs->sectCnt;
+    unsigned int sec_cnt;
     int i;
     unsigned char *taddr;
     unsigned char status;
     unsigned char dh = _drives[_driveNum].addressMode;
 
-    if (sec_cnt == 0)
-	sec_cnt = MAX_BLOCKS_PER_XFER;
-	
     taddr = xferAddr;
 
     /*
@@ -315,14 +387,13 @@
     if (cmd == IDE_IDENTIFY_DRIVE)	{
 	ideRegs->sectCnt = 1;
 	sec_cnt = 1;
+	dh |= (_driveNum ? SEL_DRIVE1 : SEL_DRIVE0);
+	outb(_ideRegsAddrs.drHead, dh);
+    } else {
+	sec_cnt = taskfile->sectorCount;
+	if (sec_cnt == 0)
+	    sec_cnt = MAX_BLOCKS_PER_XFER;
     }
-
-    /*
-     * Select the drive first. This routine is invoked by the initialization
-     * code as well (-resetAndInit) so it is necessary to do this here. 
-     */
-    dh |= (_driveNum ? SEL_DRIVE1 : SEL_DRIVE0);
-    outb(_ideRegsAddrs.drHead, dh);
 
     
     rtn = [self waitForDeviceReady];
@@ -334,16 +405,12 @@
 	return (rtn);
     }
     
-    if (cmd == IDE_READ) {
-	outb(_ideRegsAddrs.drHead, ideRegs->drHead);
-	outb(_ideRegsAddrs.sectNum, ideRegs->sectNum);
-	outb(_ideRegsAddrs.sectCnt, ideRegs->sectCnt);
-	outb(_ideRegsAddrs.cylLow, ideRegs->cylLow);
-	outb(_ideRegsAddrs.cylHigh, ideRegs->cylHigh);
-    } else {
+    if (cmd == IDE_IDENTIFY_DRIVE) {
         /* probably unnecessary */
 	outb(_ideRegsAddrs.drHead, dh);
 	outb(_ideRegsAddrs.sectCnt, ideRegs->sectCnt);
+    } else {
+	[self writeTaskfile:taskfile errorRegisters:ideRegs];
     }
         
     [self enableInterrupts];
@@ -386,12 +453,30 @@
     return rtn;
 }
 
-- (ide_return_t)ideWrite:(ideRegsVal_t *)ideRegs
+- (ide_return_t)ideReadGetInfoCommon:(ideRegsVal_t *)ideRegs
+			    client:(struct vm_map *)client
+			    addr:(caddr_t)xferAddr
+			    command:(unsigned int)cmd
+{
+    ideTaskfile_t taskfile;
+
+    if (cmd == IDE_IDENTIFY_DRIVE)
+	return [self ideReadGetInfoCommon:NULL errorRegisters:ideRegs
+		client:client addr:xferAddr command:cmd];
+
+    taskfileFromLegacyRegisters(&taskfile, ideRegs);
+    return [self ideReadGetInfoCommon:&taskfile errorRegisters:ideRegs
+	client:client addr:xferAddr command:cmd];
+}
+
+- (ide_return_t)ideWrite:(const ideTaskfile_t *)taskfile
+		    errorRegisters:(ideRegsVal_t *)ideRegs
 		    client:(struct vm_map *)client
 		    addr:(caddr_t)xferAddr
+		    command:(unsigned int)cmd
 {
     ide_return_t rtn;
-    unsigned int sec_cnt = ideRegs->sectCnt;
+    unsigned int sec_cnt = taskfile->sectorCount;
     int i;
     unsigned char *taddr;
     unsigned char status;
@@ -406,14 +491,10 @@
 	return (rtn);
     }
     
-    outb(_ideRegsAddrs.drHead, ideRegs->drHead);
-    outb(_ideRegsAddrs.sectNum, ideRegs->sectNum);
-    outb(_ideRegsAddrs.sectCnt, ideRegs->sectCnt);
-    outb(_ideRegsAddrs.cylLow, ideRegs->cylLow);
-    outb(_ideRegsAddrs.cylHigh, ideRegs->cylHigh);
+    [self writeTaskfile:taskfile errorRegisters:ideRegs];
     
     [self enableInterrupts];
-    outb(_ideRegsAddrs.command, IDE_WRITE);
+    outb(_ideRegsAddrs.command, cmd);
 
     for (i = 0; i < sec_cnt; i++)	{
 
@@ -425,7 +506,7 @@
 	[self xferData:taddr read:NO client:client length:IDE_SECTOR_SIZE];
 	taddr += IDE_SECTOR_SIZE;
 
-	rtn = [self ideWaitForInterrupt:IDE_WRITE ideStatus:&status];
+	rtn = [self ideWaitForInterrupt:cmd ideStatus:&status];
     
 	if (rtn != IDER_SUCCESS) {
 	    [self getIdeRegisters:ideRegs Print:"Write"];
@@ -442,7 +523,8 @@
     return (rtn);
 }
 
-- (ide_return_t)ideReadVerifySeekCommon:(ideRegsVal_t *)ideRegs
+- (ide_return_t)ideReadVerifySeekCommon:(const ideTaskfile_t *)taskfile
+			    errorRegisters:(ideRegsVal_t *)ideRegs
 			    command:(unsigned int)cmd
 {
     ide_return_t rtn;
@@ -453,12 +535,7 @@
 	return (rtn);
     }
     
-    outb(_ideRegsAddrs.drHead, ideRegs->drHead);
-    outb(_ideRegsAddrs.sectNum, ideRegs->sectNum);
-    if (cmd == IDE_READ_VERIFY)
-	outb(_ideRegsAddrs.sectCnt, ideRegs->sectCnt);
-    outb(_ideRegsAddrs.cylLow, ideRegs->cylLow);
-    outb(_ideRegsAddrs.cylHigh, ideRegs->cylHigh);
+    [self writeTaskfile:taskfile errorRegisters:ideRegs];
 
     [self enableInterrupts];
     outb(_ideRegsAddrs.command, cmd);
@@ -477,6 +554,16 @@
     }
 
     return (rtn);
+}
+
+- (ide_return_t)ideReadVerifySeekCommon:(ideRegsVal_t *)ideRegs
+			    command:(unsigned int)cmd
+{
+    ideTaskfile_t taskfile;
+
+    taskfileFromLegacyRegisters(&taskfile, ideRegs);
+    return [self ideReadVerifySeekCommon:&taskfile errorRegisters:ideRegs
+	command:cmd];
 }
 
 - (ide_return_t)ideSetMultiSectorMode:(ideRegsVal_t *)ideRegs
@@ -520,13 +607,15 @@
  * clobber the next interrupt from the drive. If it is necessary to get
  * status use the alternate status register. 
  */
-- (ide_return_t)ideReadMultiple:(ideRegsVal_t *)ideRegs
+- (ide_return_t)ideReadMultiple:(const ideTaskfile_t *)taskfile
+	errorRegisters:(ideRegsVal_t *)ideRegs
 	client:(struct vm_map *)client
 	addr:(caddr_t)xferAddr
+	command:(unsigned int)cmd
 {
     ide_return_t rtn;
     unsigned char status;
-    unsigned sec_cnt = ideRegs->sectCnt;
+    unsigned sec_cnt = taskfile->sectorCount;
     unsigned int nSectors;
     unsigned char *taddr;
     unsigned int length;
@@ -548,21 +637,17 @@
 	return (rtn);
     }
 
-    outb(_ideRegsAddrs.drHead, ideRegs->drHead);
-    outb(_ideRegsAddrs.sectNum, ideRegs->sectNum);
-    outb(_ideRegsAddrs.sectCnt, ideRegs->sectCnt);
-    outb(_ideRegsAddrs.cylLow, ideRegs->cylLow);
-    outb(_ideRegsAddrs.cylHigh, ideRegs->cylHigh);
+    [self writeTaskfile:taskfile errorRegisters:ideRegs];
 
     [self enableInterrupts];
-    outb(_ideRegsAddrs.command, IDE_READ_MULTIPLE);
+    outb(_ideRegsAddrs.command, cmd);
 
     ddm_ide_cmd("ideReadMultiple: sec_cnt %d sectors\n", sec_cnt, 2,3,4,5);
     
     while (sec_cnt > 0) {
 
 	ddm_ide_cmd("ideReadMultiple: waiting for interrupt\n",1,2,3,4,5);
-	rtn = [self ideWaitForInterrupt:IDE_READ_MULTIPLE
+	rtn = [self ideWaitForInterrupt:cmd
 			ideStatus: &status];
 	ddm_ide_cmd("ideReadMultiple: received interrupt\n",1,2,3,4,5);
 
@@ -631,13 +716,26 @@
     return (rtn);
 }
 
-- (ide_return_t)ideWriteMultiple:(ideRegsVal_t *)ideRegs
+- (ide_return_t)ideReadMultiple:(ideRegsVal_t *)ideRegs
+	client:(struct vm_map *)client
+	addr:(caddr_t)xferAddr
+{
+    ideTaskfile_t taskfile;
+
+    taskfileFromLegacyRegisters(&taskfile, ideRegs);
+    return [self ideReadMultiple:&taskfile errorRegisters:ideRegs
+	client:client addr:xferAddr command:IDE_READ_MULTIPLE];
+}
+
+- (ide_return_t)ideWriteMultiple:(const ideTaskfile_t *)taskfile
+	errorRegisters:(ideRegsVal_t *)ideRegs
 	client:(struct vm_map *)client 
 	addr:(caddr_t)xferAddr
+	command:(unsigned int)cmd
 {
     ide_return_t rtn;
     unsigned char status;
-    unsigned sec_cnt = ideRegs->sectCnt;
+    unsigned sec_cnt = taskfile->sectorCount;
     unsigned int nSectors;
     unsigned char *taddr;
     unsigned int length;
@@ -659,14 +757,10 @@
 	return (rtn);
     }
 
-    outb(_ideRegsAddrs.drHead, ideRegs->drHead);
-    outb(_ideRegsAddrs.sectNum, ideRegs->sectNum);
-    outb(_ideRegsAddrs.sectCnt, ideRegs->sectCnt);
-    outb(_ideRegsAddrs.cylLow, ideRegs->cylLow);
-    outb(_ideRegsAddrs.cylHigh, ideRegs->cylHigh);
+    [self writeTaskfile:taskfile errorRegisters:ideRegs];
 
     [self enableInterrupts];
-    outb(_ideRegsAddrs.command, IDE_WRITE_MULTIPLE);
+    outb(_ideRegsAddrs.command, cmd);
 
     ddm_ide_cmd("ideWriteMultiple: sec_cnt %d sectors\n", sec_cnt, 2,3,4,5);
 
@@ -701,7 +795,7 @@
 	ddm_ide_cmd("ideWriteMultiple: data transfer done\n",1,2,3,4,5);
 
 	ddm_ide_cmd("ideWriteMultiple: waiting for interrupt\n",1,2,3,4,5);
-	rtn = [self ideWaitForInterrupt:IDE_WRITE_MULTIPLE 
+	rtn = [self ideWaitForInterrupt:cmd
 				ideStatus:&status];
 	ddm_ide_cmd("ideWriteMultiple: received interrupt\n",1,2,3,4,5);
 
@@ -740,6 +834,7 @@
 {
     ideIoReq_t	ideIoReq;
     ide_return_t status;
+    ideTaskfile_t taskfile;
     vm_offset_t tempDmaBuf;
 	vm_offset_t alignBuf;
 	unsigned int currentTimeout;
@@ -767,6 +862,13 @@
     ideIoReq.addr = (caddr_t)alignBuf;
     ideIoReq.timeout = 5000;
     ideIoReq.map = (struct vm_map *)IOVmTaskSelf();
+
+	status = [self buildTaskfile:&taskfile block:ideIoReq.block
+		count:ideIoReq.blkcnt drive:_driveNum];
+	if (status != IDER_SUCCESS) {
+		IOFree((void *)tempDmaBuf, PAGE_SIZE);
+		return status;
+	}
 	
 	/*
 	 * Select the drive first.
@@ -805,7 +907,8 @@
 	/*
 	 * Perform test.
 	 */
-	if (([self performDMA:(ideIoReq_t *)&ideIoReq]) == IDER_SUCCESS) {
+	if (([self performDMA:(ideIoReq_t *)&ideIoReq taskfile:&taskfile
+		command:IDE_READ_DMA]) == IDER_SUCCESS) {
 		status = IDER_SUCCESS;
 //		IOLog("%s: Drive %d: DMA test PASSED\n", [self name], _driveNum);
 	}
@@ -850,6 +953,14 @@ static unsigned char unaligned_warnings;
     unsigned 		error;
     unsigned int 	maxSectors;
     unsigned char 	dh;
+    unsigned int	command;
+    unsigned int	dispatchCommand;
+    unsigned int	extendedCommand;
+    ideTaskfile_t	taskfile;
+    BOOL		addressCommand;
+    BOOL		validAddressTaskfile;
+    BOOL		nativeDMA;
+    int			requiredLBA48;
 
     ddm_ide_cmd("ideExecuteCmd: executing %x\n", ideIoReq->cmd,2,3,4,5);
 
@@ -884,29 +995,11 @@ static unsigned char unaligned_warnings;
     _driveNum = drive;		/* used by IDE command methods. */
 	
     for  (retry = 0; retry < MAX_COMMAND_RETRY; retry++) {
-    
-    /*
-     * Select the drive first. We don't know the head number at this time so
-     * this register will be rewritten by the specific routine later.
-	 *
-	 * The Device Selection protocol is defined as follows:
-	 * HOST: Read Status or AltStatus register
-	 * HOST: Continue reading until BSY = 0, and DRQ = 0
-	 * HOST: Write Device/Head register with appropriate DEV bit value
-	 * HOST: Wait 400ns
-	 * HOST: Read Status or AltStatus register
-	 * HOST: Continue reading until BSY = 0, and DRQ = 0
-	 *
-     */
-//	[self waitForDeviceIdle];	// Devices should be already in an idle state
-    dh = _drives[_driveNum].addressMode;
-    dh |= (_driveNum ? SEL_DRIVE1 : SEL_DRIVE0);
-    outb(_ideRegsAddrs.drHead, dh);
-	IODelay(1);
-//	[self waitForDeviceIdle];	// Each method below will do their own wait
 
     ideIoReq->status = IDER_CMD_ERROR;
     ideIoReq->blocks_xfered = 0;
+    command = ideIoReq->cmd;
+    validAddressTaskfile = NO;
 
 	/*
 	 * The disk object caches its preferred command when it is
@@ -916,139 +1009,228 @@ static unsigned char unaligned_warnings;
 	 * Read/Write Multiple with no block size configured would transfer
 	 * nothing and never complete.
 	 */
-	switch (ideIoReq->cmd) {
+	switch (command) {
 	  case IDE_READ_DMA:
 		if (_drives[drive].transferType == IDE_TRANSFER_PIO)
-			ideIoReq->cmd = _drives[drive].multiSector ?
+			command = _drives[drive].multiSector ?
 				IDE_READ_MULTIPLE : IDE_READ;
 		break;
 	  case IDE_WRITE_DMA:
 		if (_drives[drive].transferType == IDE_TRANSFER_PIO)
-			ideIoReq->cmd = _drives[drive].multiSector ?
+			command = _drives[drive].multiSector ?
 				IDE_WRITE_MULTIPLE : IDE_WRITE;
 		break;
 	  case IDE_READ_MULTIPLE:
 		if (_drives[drive].multiSector == 0)
-			ideIoReq->cmd = IDE_READ;
+			command = IDE_READ;
 		break;
 	  case IDE_WRITE_MULTIPLE:
 		if (_drives[drive].multiSector == 0)
-			ideIoReq->cmd = IDE_WRITE;
+			command = IDE_WRITE;
 		break;
 	  default:
 		break;
 	}
 
-	[self clearInterrupts];
+	dispatchCommand = command;
+	nativeDMA = (dispatchCommand == IDE_READ_DMA ||
+		dispatchCommand == IDE_WRITE_DMA) &&
+		(((vm_offset_t)ideIoReq->addr & 0x03) == 0);
 
-	switch (ideIoReq->cmd) {
-
-	  case IDE_READ_DMA:
-		if (((vm_offset_t)ideIoReq->addr & 0x03) == 0) {
+	if (nativeDMA) {
 	    block = ideIoReq->block;
 	    cnt = ideIoReq->blkcnt;
-		ddm_ide_log("IDE_READ_DMA: %d\n", cnt, 2, 3, 4, 5);
 	    if (cnt > MAX_BLOCKS_PER_XFER) {
-			ideIoReq->status = IDER_REJECT;
-			break;
+		ideIoReq->status = IDER_REJECT;
+		break;
+	    }
+	    requiredLBA48 = -1;
+	    if (cnt != 0 &&
+		block < _drives[drive].addressableSectors &&
+		cnt <= _drives[drive].addressableSectors - block &&
+		_drives[drive].addressMode != ADDRESS_MODE_CHS)
+		requiredLBA48 =
+		    (block >= IDE_LBA28_SECTORS ||
+		     cnt > IDE_LBA28_SECTORS - block);
+	    ideIoReq->status = [self buildTaskfile:&taskfile
+		block:ideIoReq->block count:ideIoReq->blkcnt drive:drive];
+	    if (ideIoReq->status != IDER_SUCCESS) {
+		IOLog("%s: taskfile reject: base cmd %x selected cmd %x "
+		    "block %x count %x required LBA48 %d (-1 unknown) "
+		    "selected unknown\n",
+		    [self name], ideIoReq->cmd, dispatchCommand,
+		    block, cnt, requiredLBA48);
+		break;
+	    }
+	    validAddressTaskfile = YES;
+	    command = dispatchCommand;
+	    if (taskfile.useLBA48) {
+		extendedCommand = IDEExtendedCommand(command);
+		if (extendedCommand == 0) {
+		    IOLog("%s: EXT opcode reject: base cmd %x selected cmd %x "
+			"block %x count %x required LBA48 %d selected LBA48 %d\n",
+			[self name], ideIoReq->cmd, command, block, cnt,
+			requiredLBA48, taskfile.useLBA48);
+		    ideIoReq->status = IDER_REJECT;
+		    break;
+		}
+		command = extendedCommand;
 	    }
 
-		ideIoReq->status = [self performDMA:ideIoReq];
-		if (ideIoReq->status == IDER_SUCCESS)
+	    dh = _drives[_driveNum].addressMode;
+	    dh |= (_driveNum ? SEL_DRIVE1 : SEL_DRIVE0);
+	    outb(_ideRegsAddrs.drHead, dh);
+	    IODelay(1);
+	    [self clearInterrupts];
+
+	    if (dispatchCommand == IDE_READ_DMA)
+		ddm_ide_log("IDE_READ_DMA: %d\n", cnt, 2, 3, 4, 5);
+	    else
+		ddm_ide_log("IDE_WRITE_DMA: %d\n", cnt, 2, 3, 4, 5);
+
+	    ideIoReq->status = [self performDMA:ideIoReq
+		taskfile:&taskfile command:command];
+	    if (ideIoReq->status == IDER_SUCCESS)
 		ideIoReq->blocks_xfered = ideIoReq->blkcnt;
-	    break;
-		}
-		
-		/*
-		 * If we reached here, it means that the buffer is not 4-byte
-		 * aligned. This should not happen.
-		 */
+	} else {
+	    if (dispatchCommand == IDE_READ_DMA) {
 		if (unaligned_warnings < UNALIGNED_WARNINGS_MAX) {
-			IOLog("%s: READ DMA: buffer not 4-byte aligned\n", [self name]);
-			unaligned_warnings++;
+		    IOLog("%s: READ DMA: buffer not 4-byte aligned\n",
+			[self name]);
+		    unaligned_warnings++;
 		}
+		command = _drives[drive].multiSector ?
+		    IDE_READ_MULTIPLE : IDE_READ;
+		dispatchCommand = command;
+	    } else if (dispatchCommand == IDE_WRITE_DMA) {
+		if (unaligned_warnings < UNALIGNED_WARNINGS_MAX) {
+		    IOLog("%s: WRITE DMA: buffer not 4-byte aligned\n",
+			[self name]);
+		    unaligned_warnings++;
+		}
+		command = _drives[drive].multiSector ?
+		    IDE_WRITE_MULTIPLE : IDE_WRITE;
+		dispatchCommand = command;
+	    }
+
+	addressCommand = NO;
+	switch (dispatchCommand) {
+	  case IDE_READ:
+	  case IDE_READ_MULTIPLE:
+	  case IDE_WRITE:
+	  case IDE_WRITE_MULTIPLE:
+	  case IDE_READ_VERIFY:
+		block = ideIoReq->block;
+		cnt = ideIoReq->blkcnt;
+		addressCommand = YES;
+		break;
+	  case IDE_SEEK:
+		block = ideIoReq->block;
+		cnt = 1;
+		addressCommand = YES;
+		break;
+	  default:
+		break;
+	}
+
+	if (addressCommand) {
+	    if (cnt > MAX_BLOCKS_PER_XFER) {
+		ideIoReq->status = IDER_REJECT;
+		break;
+	    }
+	    requiredLBA48 = -1;
+	    if (cnt != 0 &&
+		block < _drives[drive].addressableSectors &&
+		cnt <= _drives[drive].addressableSectors - block &&
+		_drives[drive].addressMode != ADDRESS_MODE_CHS)
+		requiredLBA48 =
+		    (block >= IDE_LBA28_SECTORS ||
+		     cnt > IDE_LBA28_SECTORS - block);
+	    ideIoReq->status = [self buildTaskfile:&taskfile
+		block:block count:cnt drive:drive];
+	    if (ideIoReq->status != IDER_SUCCESS) {
+		IOLog("%s: taskfile reject: base cmd %x selected cmd %x "
+		    "block %x count %x required LBA48 %d (-1 unknown) "
+		    "selected unknown\n",
+		    [self name], ideIoReq->cmd, command, block, cnt,
+		    requiredLBA48);
+		break;
+	    }
+	    validAddressTaskfile = YES;
+	    if (taskfile.useLBA48) {
+		extendedCommand = IDEExtendedCommand(command);
+		if (extendedCommand == 0) {
+		    IOLog("%s: EXT opcode reject: base cmd %x selected cmd %x "
+			"block %x count %x required LBA48 %d selected LBA48 %d\n",
+			[self name], ideIoReq->cmd, command, block, cnt,
+			requiredLBA48, taskfile.useLBA48);
+		    ideIoReq->status = IDER_REJECT;
+		    break;
+		}
+		command = extendedCommand;
+	    }
+	}
+
+    /*
+     * Select the drive after validating address-bearing requests. The
+     * command routine will rewrite the complete taskfile before issue.
+     */
+    dh = _drives[_driveNum].addressMode;
+    dh |= (_driveNum ? SEL_DRIVE1 : SEL_DRIVE0);
+    outb(_ideRegsAddrs.drHead, dh);
+	IODelay(1);
+
+	[self clearInterrupts];
+
+	switch (dispatchCommand) {
 
 	  case IDE_READ:
 	  case IDE_READ_MULTIPLE:
 
-	    block = ideIoReq->block;
-	    cnt = ideIoReq->blkcnt;
 		ddm_ide_log("IDE_READ: %d\n", cnt, 2, 3, 4, 5);
-	    if (cnt > MAX_BLOCKS_PER_XFER)	{
-			ideIoReq->status = IDER_REJECT;
-			break;
-	    }
-	    ideIoReq->regValues = [self logToPhys:block numOfBlocks:cnt];
-	    if (ideIoReq->cmd == IDE_READ)
+	    if (dispatchCommand == IDE_READ)
 		ideIoReq->status = 
-			[self ideReadGetInfoCommon:&(ideIoReq->regValues) 
+			[self ideReadGetInfoCommon:&taskfile
+			errorRegisters:&(ideIoReq->regValues)
 			client:(ideIoReq->map) 
-			addr:(ideIoReq->addr) command:IDE_READ];
+			addr:(ideIoReq->addr) command:command];
 	    else
 		ideIoReq->status =
-		    [self ideReadMultiple:&(ideIoReq->regValues)
-		     client:(ideIoReq->map) addr:(ideIoReq->addr)];
+		    [self ideReadMultiple:&taskfile
+		     errorRegisters:&(ideIoReq->regValues)
+		     client:(ideIoReq->map) addr:(ideIoReq->addr)
+		     command:command];
 
 	    if (ideIoReq->status == IDER_SUCCESS)
 		ideIoReq->blocks_xfered = ideIoReq->blkcnt;
 	    break;
 
-	  case IDE_WRITE_DMA:
-		if (((vm_offset_t)ideIoReq->addr & 0x03) == 0) {
-	    block = ideIoReq->block;
-	    cnt = ideIoReq->blkcnt;
-		ddm_ide_log("IDE_WRITE_DMA: %d\n", cnt, 2, 3, 4, 5);
-	    if (cnt > MAX_BLOCKS_PER_XFER) {
-			ideIoReq->status = IDER_REJECT;
-			break;
-	    }
-
-		ideIoReq->status = [self performDMA:ideIoReq];
-		if (ideIoReq->status == IDER_SUCCESS)
-		ideIoReq->blocks_xfered = ideIoReq->blkcnt;
-	    break;
-		}
-
-		/*
-		 * If we reached here, it means that the buffer is not 4-byte
-		 * aligned. This should not happen.
-		 */
-		if (unaligned_warnings < UNALIGNED_WARNINGS_MAX) {
-			IOLog("%s: WRITE DMA: buffer not 4-byte aligned\n", [self name]);
-			unaligned_warnings++;
-		}
-
 	  case IDE_WRITE:
 	  case IDE_WRITE_MULTIPLE:
 
-	    block = ideIoReq->block;
-	    cnt = ideIoReq->blkcnt;
 		ddm_ide_log("IDE_WRITE: %d\n", cnt, 2, 3, 4, 5);
-	    if (cnt > MAX_BLOCKS_PER_XFER) {
-			ideIoReq->status = IDER_REJECT;
-			break;
-	    }
-	    ideIoReq->regValues = [self logToPhys:block numOfBlocks:cnt];
-	    if (ideIoReq->cmd == IDE_WRITE)
-		ideIoReq->status = [self ideWrite:&(ideIoReq->regValues)
+	    if (dispatchCommand == IDE_WRITE)
+		ideIoReq->status = [self ideWrite:&taskfile
+				errorRegisters:&(ideIoReq->regValues)
 					client:(ideIoReq->map)
-					addr:(ideIoReq->addr)];
+					addr:(ideIoReq->addr)
+					command:command];
 	    else
 		ideIoReq->status = 
-			[self ideWriteMultiple:&(ideIoReq->regValues)
-			client:(ideIoReq->map) addr:(ideIoReq->addr)];
+			[self ideWriteMultiple:&taskfile
+			errorRegisters:&(ideIoReq->regValues)
+			client:(ideIoReq->map) addr:(ideIoReq->addr)
+			command:command];
 
 	    if (ideIoReq->status == IDER_SUCCESS)
 		ideIoReq->blocks_xfered = ideIoReq->blkcnt;
 	    break;
 
 	  case IDE_SEEK:
-	    block = ideIoReq->block;
-	    cnt = 1;
-	    ideIoReq->regValues = [self logToPhys:block numOfBlocks:cnt];
 	    ideIoReq->status = 
-	    		[self ideReadVerifySeekCommon:&(ideIoReq->regValues) 
-				command:IDE_SEEK];
+		[self ideReadVerifySeekCommon:&taskfile
+			errorRegisters:&(ideIoReq->regValues)
+			command:command];
 	    break;
 
 	  case IDE_RESTORE:
@@ -1056,17 +1238,11 @@ static unsigned char unaligned_warnings;
 	    break;
 
 	  case IDE_READ_VERIFY:
-	    block = ideIoReq->block;
-	    cnt = ideIoReq->blkcnt;
 		ddm_ide_log("IDE_READ_VERIFY: %d\n", cnt, 2, 3, 4, 5);
-	    if (cnt > MAX_BLOCKS_PER_XFER) {
-		ideIoReq->status = IDER_REJECT;
-		break;
-	    }
-	    ideIoReq->regValues = [self logToPhys:block numOfBlocks:cnt];
 	    ideIoReq->status = 
-	    	[self ideReadVerifySeekCommon:&(ideIoReq->regValues)
-				command:IDE_READ_VERIFY];
+		[self ideReadVerifySeekCommon:&taskfile
+			errorRegisters:&(ideIoReq->regValues)
+			command:command];
 	    break;
 
 	  case IDE_DIAGNOSE:
@@ -1083,7 +1259,8 @@ static unsigned char unaligned_warnings;
 
 	  case IDE_IDENTIFY_DRIVE:
 	    ideIoReq->status = 
-	    		[self ideReadGetInfoCommon:&(ideIoReq->regValues)
+		[self ideReadGetInfoCommon:NULL
+			errorRegisters:&(ideIoReq->regValues)
 			client :(ideIoReq->map) addr :(ideIoReq->addr)
 			command:IDE_IDENTIFY_DRIVE];
 
@@ -1113,6 +1290,7 @@ static unsigned char unaligned_warnings;
 	    [self ideCntrlrUnLock];
 	    return (IDER_REJECT);
 	}
+	}
 
 	/*
 	 * Return if command has been executed successfully or summarily
@@ -1134,8 +1312,16 @@ static unsigned char unaligned_warnings;
 	 * The command failed to exceute properly but was accepted by the
 	 * drive. Reset the drives and try again. 
 	 */
-	IOLog("%s: ATA command %x failed. Retrying...\n", [self name],
-		ideIoReq->cmd);
+	if (validAddressTaskfile)
+	    IOLog("%s: ATA command failed: base cmd %x selected cmd %x "
+		"block %x count %x mode %s. Retrying...\n",
+		[self name], ideIoReq->cmd, command, ideIoReq->block,
+		ideIoReq->blkcnt,
+		_drives[drive].addressMode == ADDRESS_MODE_CHS ? "CHS" :
+		    (taskfile.useLBA48 ? "LBA48" : "LBA28"));
+	else
+	    IOLog("%s: ATA command %x failed. Retrying...\n", [self name],
+		command);
 	[self getIdeRegisters:NULL Print:"ATA Command"];
 
 	/*

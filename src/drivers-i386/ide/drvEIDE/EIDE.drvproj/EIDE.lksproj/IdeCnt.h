@@ -131,6 +131,8 @@ typedef struct {
 	u_short				multiSector;
 	BOOL				multiSectorDisabled;	/* test failed on this drive */
 	u_char				addressMode;	/* LBA or CHS */
+	unsigned int		addressableSectors;
+	BOOL				lba48Supported;
 	txferModes_t		driveModes;		/* supported modes */
 	txferModes_t		driveMasks;		/* masks */
 	ideTransferType_t	transferType;	/* selected type */

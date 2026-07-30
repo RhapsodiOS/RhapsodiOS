@@ -45,6 +45,7 @@
 #import <driverkit/driverTypes.h>
 #import "PIIX.h"
 #import "AtapiCntCmds.h"
+#import "IDEAddressing.h"
 
 @interface IdeController(PIIX)
 
@@ -60,7 +61,8 @@
 
 - (ideTransferWidth_t) getPIOTransferWidth;
 
-- (ide_return_t) performDMA:(ideIoReq_t *)ideIoReq;
+- (ide_return_t)performDMA:(ideIoReq_t *)ideIoReq
+    taskfile:(const ideTaskfile_t *)taskfile command:(unsigned int)command;
 
 - (sc_status_t) performATAPIDMA:(atapiIoReq_t *)atapiIoReq
 	buffer:(void *)buffer
@@ -94,4 +96,3 @@
 #endif	/* _BSD_DEV_IDEPIIX_H */
 
 #endif	/* DRIVER_PRIVATE */
-

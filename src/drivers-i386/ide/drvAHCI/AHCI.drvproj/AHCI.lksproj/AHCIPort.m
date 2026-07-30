@@ -13,8 +13,9 @@ extern unsigned int vm_page_size;
 - (void)timeoutFired;
 - (void)recoverCommand;
 - (void)finishDeferredFree;
-- (BOOL)validateRecoveredKind:(AHCIDeviceKind)kind
-                  matchesKind:(BOOL)sameKind;
+- (AHCIU32)snapshotCommandState:(AHCIU32)status;
+- (AHCIPortResult)validateRecoveredKind:(AHCIDeviceKind)kind
+                            matchesKind:(BOOL)sameKind;
 @end
 
 @interface Object(AHCIControllerRecovery)
@@ -235,8 +236,8 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     controller = owner;
 }
 
-- (BOOL)validateRecoveredKind:(AHCIDeviceKind)kind
-                  matchesKind:(BOOL)sameKind
+- (AHCIPortResult)validateRecoveredKind:(AHCIDeviceKind)kind
+                            matchesKind:(BOOL)sameKind
 {
     AHCIPortOps ops;
     AHCICommandHeader *commandList;
@@ -244,7 +245,7 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     unsigned short *identifyData;
 
     if (!sameKind || destroying)
-        return NO;
+        return AHCI_PORT_COMMAND_ERROR;
     AHCIPortFillOps(&ops, mmio);
     commandList = (AHCICommandHeader *)
                   (arena.virtualBase + arena.commandListOffset);
@@ -253,14 +254,14 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     identifyData = (unsigned short *)
                    (arena.virtualBase + arena.identifyOffset);
     return AHCIPortRecoveryIdentify(&ops, portNumber, &arena, commandList,
-                                    commandTable, identifyData, kind) ==
-           AHCI_PORT_SUCCESS;
+                                    commandTable, identifyData, kind);
 }
 
 - (BOOL)controllerDidReset
 {
     AHCIPortOps ops;
     AHCIPortResult result;
+    AHCIPortResult validationResult;
     AHCIDeviceKind previousKind;
     AHCIDeviceKind recoveredKind;
 
@@ -274,10 +275,13 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     result = AHCIPortInitializeHardware(&ops, portNumber, portCapabilities,
                                         &arena, &recoveredKind);
     controllerResetting = NO;
+    validationResult = result == AHCI_PORT_SUCCESS ?
+        [self validateRecoveredKind:recoveredKind
+                         matchesKind:AHCIRecoveredKindValid(
+                             previousKind, recoveredKind)] :
+        AHCI_PORT_COMMAND_ERROR;
     online = result == AHCI_PORT_SUCCESS &&
-             [self validateRecoveredKind:recoveredKind
-                              matchesKind:AHCIRecoveredKindValid(
-                                  previousKind, recoveredKind)];
+             validationResult == AHCI_PORT_SUCCESS;
     AHCIPortMMIOWrite(mmio, AHCI_PORT_BASE(portNumber) + AHCI_PX_IE,
                       online ? AHCI_PORT_INITIAL_IE_MASK : 0);
     AHCIPortMMIOBarrier(mmio);
@@ -330,12 +334,47 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
          AHCI_LOCK_IDLE : AHCI_LOCK_DONE)];
 }
 
+- (AHCIU32)snapshotCommandState:(AHCIU32)status
+{
+    AHCIU32 base;
+    AHCIU32 linkStatus;
+    AHCICommandHeader *commandList;
+    volatile AHCICommandHeader *volatileCommandList;
+    volatile unsigned char *receivedFIS;
+
+    base = AHCI_PORT_BASE(portNumber);
+    commandList = (AHCICommandHeader *)
+                  (arena.virtualBase + arena.commandListOffset);
+    completionSnapshot.portIS = status;
+    completionSnapshot.taskFile =
+        AHCIPortMMIORead(mmio, base + AHCI_PX_TFD);
+    completionSnapshot.serr =
+        AHCIPortMMIORead(mmio, base + AHCI_PX_SERR);
+    completionSnapshot.commandIssue =
+        AHCIPortMMIORead(mmio, base + AHCI_PX_CI);
+    completionSnapshot.portIS |=
+        AHCIPortMMIORead(mmio, base + AHCI_PX_IS);
+    completionSnapshot.serr |=
+        AHCIPortMMIORead(mmio, base + AHCI_PX_SERR);
+    linkStatus = AHCIPortMMIORead(mmio, base + AHCI_PX_SSTS);
+    AHCIPortMMIOBarrier(mmio);
+    volatileCommandList = (volatile AHCICommandHeader *)commandList;
+    completionSnapshot.transferred = volatileCommandList[0].prdbc;
+    receivedFIS = (volatile unsigned char *)
+                  (arena.virtualBase + arena.receivedFISOffset);
+    AHCICopyVolatileBytes(receivedFISSnapshot, receivedFIS,
+                          sizeof(receivedFISSnapshot));
+    return linkStatus;
+}
+
 - (void)timeoutFired
 {
     int condition;
     ns_time_t now;
     unsigned long nowSeconds;
     AHCITimeoutAction timeoutAction;
+    AHCIU32 base;
+    AHCIU32 status;
 
     [commandLock lock];
     if (destroying) {
@@ -373,12 +412,18 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
         [commandLock unlockWith:AHCI_LOCK_PENDING];
         return;
     }
+    if (timeoutAction == AHCI_TIMEOUT_EXPIRE) {
+        if (mmio != 0 && mmio->base != 0) {
+            base = AHCI_PORT_BASE(portNumber);
+            AHCIPortMMIOWrite(mmio, base + AHCI_PX_IE, 0);
+            AHCIPortMMIOBarrier(mmio);
+            status = AHCIPortMMIORead(mmio, base + AHCI_PX_IS);
+            (void)[self snapshotCommandState:status];
+        }
+    }
     if (timeoutAction == AHCI_TIMEOUT_EXPIRE &&
         AHCICommandFinishTimeout(&commandArbiter,
                                  timeoutChain.armedGeneration)) {
-        if (mmio != 0 && mmio->base != 0)
-            AHCIPortMMIOWrite(mmio, AHCI_PORT_BASE(portNumber) +
-                              AHCI_PX_IE, 0);
         timeoutArmed = NO;
         AHCITimeoutChainInit(&timeoutChain);
         commandResult = IO_R_TIMEOUT;
@@ -403,11 +448,12 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
 {
     AHCIPortOps ops;
     AHCIPortResult result;
+    AHCIPortResult validationResult;
     AHCIDeviceKind previousKind;
     AHCIDeviceKind recoveredKind;
 
     [commandLock lock];
-    if (destroying) {
+    if (!AHCILocalRecoveryAllowed(destroying, controllerResetting)) {
         [commandLock unlockWith:AHCI_LOCK_DONE];
         return;
     }
@@ -430,10 +476,13 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
                          AHCIPortMMIORead(mmio,
                          AHCI_PORT_BASE(portNumber) + AHCI_PX_SIG)) :
         AHCI_DEVICE_NONE;
-    if (result == AHCI_PORT_SUCCESS &&
+    validationResult = result == AHCI_PORT_SUCCESS ?
         [self validateRecoveredKind:recoveredKind
                          matchesKind:AHCIRecoveredKindValid(
-                             previousKind, recoveredKind)]) {
+                             previousKind, recoveredKind)] :
+        AHCI_PORT_COMMAND_ERROR;
+    if (result == AHCI_PORT_SUCCESS &&
+        validationResult == AHCI_PORT_SUCCESS) {
         deviceKind = recoveredKind;
         online = YES;
         AHCIPortMMIOWrite(mmio, AHCI_PORT_BASE(portNumber) + AHCI_PX_IE,
@@ -446,7 +495,8 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     AHCIPortMMIOWrite(mmio, AHCI_PORT_BASE(portNumber) + AHCI_PX_IE, 0);
     AHCIPortMMIOBarrier(mmio);
     [commandLock unlockWith:AHCI_LOCK_DONE];
-    if (result == AHCI_PORT_ENGINE_TIMEOUT && controller != nil)
+    if ((result == AHCI_PORT_ENGINE_TIMEOUT ||
+         validationResult == AHCI_PORT_ENGINE_TIMEOUT) && controller != nil)
         [controller recoverController];
 }
 
@@ -512,8 +562,9 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     if ((AHCIPortMMIORead(mmio, base + AHCI_PX_TFD) &
          (AHCI_TFD_BSY | AHCI_TFD_DRQ)) != 0) {
         AHCIPortMMIOWrite(mmio, base + AHCI_PX_IE, 0);
-        completionSnapshot.portIS = AHCI_PXIS_TFES;
-        completionSnapshot.serr = 0;
+        AHCIPortMMIOBarrier(mmio);
+        stale = AHCIPortMMIORead(mmio, base + AHCI_PX_IS);
+        (void)[self snapshotCommandState:stale];
         if (submissionEntered)
             [controller endSubmission];
         ++activeExecutors;
@@ -622,9 +673,6 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     AHCIU32 status;
     AHCIU32 error;
     AHCIU32 linkStatus;
-    AHCICommandHeader *commandList;
-    volatile AHCICommandHeader *volatileCommandList;
-    volatile unsigned char *receivedFIS;
     AHCICompletionResult completion;
     AHCIAsyncAction asyncAction;
     int condition;
@@ -639,30 +687,14 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
         [commandLock unlockWith:condition];
         return;
     }
-    activeAtInterrupt = commandArbiter.state == AHCI_COMMAND_PENDING;
+    activeAtInterrupt = activeExecutors != 0;
     base = AHCI_PORT_BASE(portNumber);
     status = AHCIPortMMIORead(mmio, base + AHCI_PX_IS);
     if ((status & AHCI_PORT_INITIAL_IE_MASK) == 0) {
         [commandLock unlockWith:condition];
         return;
     }
-    commandList = (AHCICommandHeader *)
-                  (arena.virtualBase + arena.commandListOffset);
-    completionSnapshot.portIS = status;
-    completionSnapshot.taskFile =
-        AHCIPortMMIORead(mmio, base + AHCI_PX_TFD);
-    completionSnapshot.serr =
-        AHCIPortMMIORead(mmio, base + AHCI_PX_SERR);
-    completionSnapshot.commandIssue =
-        AHCIPortMMIORead(mmio, base + AHCI_PX_CI);
-    linkStatus = AHCIPortMMIORead(mmio, base + AHCI_PX_SSTS);
-    AHCIPortMMIOBarrier(mmio);
-    volatileCommandList = (volatile AHCICommandHeader *)commandList;
-    completionSnapshot.transferred = volatileCommandList[0].prdbc;
-    receivedFIS = (volatile unsigned char *)
-                  (arena.virtualBase + arena.receivedFISOffset);
-    AHCICopyVolatileBytes(receivedFISSnapshot, receivedFIS,
-                          sizeof(receivedFISSnapshot));
+    linkStatus = [self snapshotCommandState:status];
     error = completionSnapshot.serr;
     AHCIPortMMIOWrite(mmio, base + AHCI_PX_IS,
                       status & AHCI_PORT_INITIAL_IE_MASK);

@@ -785,6 +785,20 @@ static void test_recovery_identify_is_polling_only_and_validates_data(void)
 
     memset(&storage, 0, sizeof(storage));
     init_active_fake(&fake, AHCI_SIG_ATA);
+    fake.fisStuck = 1;
+    fake.identifyHeader = (AHCICommandHeader *)storage.bytes;
+    fake.identifyData = (unsigned short *)(storage.bytes +
+                                           AHCI_PORT_IDENTIFY_OFFSET);
+    CHECK(AHCIPortRecoveryIdentify(&ops, 0U, &arena,
+                                   (AHCICommandHeader *)storage.bytes,
+                                   table, fake.identifyData,
+                                   AHCI_DEVICE_SATA) ==
+          AHCI_PORT_ENGINE_TIMEOUT);
+    CHECK(fake.delayedMilliseconds ==
+          AHCI_RECOVERY_IDENTIFY_TIMEOUT_MS + AHCI_ENGINE_TIMEOUT_MS);
+
+    memset(&storage, 0, sizeof(storage));
+    init_active_fake(&fake, AHCI_SIG_ATA);
     fake.registers[AHCI_PX_TFD / 4U] = AHCI_TFD_BSY;
     fake.identifyCompleteAtMilliseconds = 1U;
     fake.identifyHeader = (AHCICommandHeader *)storage.bytes;

@@ -196,6 +196,14 @@ static void test_controller_recovery_gate(void)
     CHECK(!AHCIRecoveryGateBeginSubmission(&gate));
 }
 
+static void test_controller_reset_owns_recovery_after_flag_is_set(void)
+{
+    CHECK(AHCILocalRecoveryAllowed(0, 0));
+    CHECK(!AHCILocalRecoveryAllowed(1, 0));
+    CHECK(!AHCILocalRecoveryAllowed(0, 1));
+    CHECK(!AHCILocalRecoveryAllowed(1, 1));
+}
+
 static void test_destroy_aborts_active_request_once(void)
 {
     AHCICommandArbiter arbiter;
@@ -246,6 +254,7 @@ int main(void)
     test_dequeued_timeout_cannot_expire_new_deadline();
     test_stale_timeout_after_new_deadline_only_rearms();
     test_controller_recovery_gate();
+    test_controller_reset_owns_recovery_after_flag_is_set();
     test_destroy_aborts_active_request_once();
     test_recovery_requires_same_supported_kind();
     test_async_interrupt_actions();

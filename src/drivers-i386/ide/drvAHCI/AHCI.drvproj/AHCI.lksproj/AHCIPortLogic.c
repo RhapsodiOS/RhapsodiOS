@@ -378,7 +378,8 @@ AHCIPortResult AHCIPortRecoveryIdentify(
         waited += AHCI_POLL_INTERVAL_MS;
     }
     if ((ahci_port_read(ops, port, AHCI_PX_CI) & 1U) != 0) {
-        (void)AHCIPortStopHardware(ops, port);
+        if (AHCIPortStopHardware(ops, port) == AHCI_PORT_ENGINE_TIMEOUT)
+            return AHCI_PORT_ENGINE_TIMEOUT;
         return AHCI_PORT_COMMAND_TIMEOUT;
     }
     portIS = ahci_port_read(ops, port, AHCI_PX_IS);

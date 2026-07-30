@@ -1,8 +1,11 @@
 # drvAHCI: Bootable AHCI Core for i386
 
-**Date:** 2026-07-29  
-**Status:** Approved design, pending written-spec review  
-**Components:** `src/drivers-i386/ide/drvAHCI`, `src/kernel-7/bsd/dev`, `src/drivers-i386/ide/drvEIDE`, `src/kernel-7/machdep/i386/swapgeneric.m`  
+**Date:** 2026-07-29
+
+**Status:** Approved design, pending written-spec review
+
+**Components:** `src/drivers-i386/ide/drvAHCI`, `src/kernel-7/bsd/dev`, `src/drivers-i386/ide/drvEIDE`, `src/kernel-7/machdep/i386/swapgeneric.m`
+
 **Primary reference:** [Serial ATA AHCI 1.3.1 specification](https://www.intel.com/content/dam/www/public/us/en/documents/technical-specifications/serial-ata-ahci-spec-rev1-3-1.pdf)
 
 ## Problem
@@ -167,10 +170,14 @@ Initialization uses bounded waits at every hardware state transition:
 
 1. Match `8086:2922`, verify class `01:06:01`, enable PCI memory and bus-master
    decoding, and map BAR5 as the ABAR.
-2. Read VS, CAP, CAP2, and PI. Reject a missing/invalid ABAR or an invalid PI
-   value before allocating per-port resources.
-3. If `CAP2.BOH` is set, set OS ownership in BOHC and wait for BIOS ownership and
-   BIOS-busy state to clear. A timeout fails attach rather than racing firmware.
+2. Read VS, CAP, CAP2, and PI. Reject a missing/invalid ABAR, a zero PI bitmap,
+   or a PI bit above the highest port described by `CAP.NP` before allocating
+   per-port resources.
+3. If `CAP2.BOH` is set, set BOHC.OOS and follow AHCI 1.3.1 section 10.6: observe
+   BOHC.BB for 25 ms; if BIOS sets BB, provide a full two seconds for BIOS
+   cleanup. If BIOS still reports ownership or busy state after that interval,
+   fail attach rather than racing firmware. If BB is not set within 25 ms,
+   assume ownership and proceed with HBA cleanup as the specification permits.
 4. Enter AHCI mode, request `GHC.HR`, wait for reset completion, and reassert
    `GHC.AE` because reset state may clear it.
 5. Disable global interrupts and clear stale global interrupt state.
@@ -179,8 +186,10 @@ Initialization uses bounded waits at every hardware state transition:
    clear.
 7. Allocate and validate the port DMA arena, then program PxCLB/PxCLBU and
    PxFB/PxFBU with zero upper addresses.
-8. Clear PxIS and PxSERR with write-one-to-clear writes. If staggered spin-up is
-   advertised, request spin-up for the implemented port.
+8. Clear PxIS and PxSERR with write-one-to-clear writes. If cold-presence power
+   control is advertised for the port, set PxCMD.POD. If staggered spin-up is
+   advertised, set PxCMD.SUD. Preserve a nonzero firmware-selected PxSCTL.SPD
+   limit across reset operations.
 9. Enable FIS reception before starting command processing.
 10. Require an active, present link (`PxSSTS.DET = 3`) before classification.
     Use COMRESET only when the initial link state requires recovery.
@@ -191,6 +200,21 @@ Initialization uses bounded waits at every hardware state transition:
 
 Empty ports remain allocated but stopped and unpublished. Holes in `PI` are
 never accessed.
+
+### Timeout policy
+
+Timeouts are named constants, not call-site literals:
+
+- BIOS handoff: 25 ms initial BB observation, then two seconds when BB is set.
+- HBA reset: one second, matching AHCI 1.3.1 section 10.4.3.
+- Command-list or FIS-engine stop: 500 ms for CR or FR to clear.
+- COMRESET assertion: at least 1 ms before PxSCTL.DET is cleared.
+- Link establishment and IDENTIFY: 10 seconds.
+- Normal disk commands: 10 seconds.
+- Cache flush and ATAPI packet commands: 30 seconds.
+
+A timeout expires the operation once, captures diagnostics, and enters the
+defined recovery ladder. It never restarts the same wait indefinitely.
 
 ## DMA Memory Model
 
@@ -220,11 +244,13 @@ state.
 ## Command Construction and Submission
 
 `AHCICommand.c` contains DriverKit-independent builders for hardware structures.
-For every command it:
+Its PRDT builder consumes an already translated physical-segment list, keeping
+VM and DriverKit dependencies in `AHCIPort`. For every command it:
 
 1. Waits with a deadline for PxTFD BSY and DRQ to clear.
 2. Zeroes the slot-0 command header and table.
-3. Builds a 20-byte Register H2D FIS with the command bit set.
+3. Builds a 20-byte Register H2D FIS with the command bit set and device-control
+   NIEN clear, as AHCI interrupt masking is performed only through PxIE.
 4. Selects LBA28 or LBA48 from the requested ending LBA and device capability.
 5. Builds the PRDT and sets command-header CFL, W, A, PRDTL, and CTBA fields.
 6. For ATAPI, copies the 12- or 16-byte packet into ACMD and sets the header's

@@ -4,9 +4,12 @@
 #import <objc/Object.h>
 #import <driverkit/return.h>
 #import <driverkit/driverTypes.h>
+#import <driverkit/IODeviceDescription.h>
 #import <machkit/NXConditionLock.h>
 #import "AHCIShared.h"
 #import "AHCIPortLogic.h"
+
+@class AHCIDisk;
 
 @interface AHCIPort : Object
 {
@@ -35,6 +38,7 @@
     BOOL online;
     BOOL controllerResetting;
     BOOL skipCommandRecovery;
+    AHCIDisk *disk;
 }
 
 - initWithMMIO:(AHCIMMIOContext *)context
@@ -43,6 +47,10 @@
 - free;
 - (unsigned int)portNumber;
 - (AHCIDeviceKind)deviceKind;
+- (void *)identifyBuffer;
+- (BOOL)publishDiskFromDeviceDescription:
+    (IODeviceDescription *)deviceDescription;
+- (BOOL)unpublishDisk;
 - (void)handleInterrupt;
 - (void)setController:(id)owner;
 - (BOOL)controllerDidReset;
@@ -54,6 +62,7 @@
                 buffer:(void *)buffer
                 length:(unsigned int)length
                  write:(BOOL)write
+                client:(vm_task_t)client
                timeout:(unsigned int)seconds
            transferred:(unsigned int *)actual;
 

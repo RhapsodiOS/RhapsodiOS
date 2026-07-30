@@ -1,10 +1,15 @@
 #import "AHCIPort.h"
+#import "AHCIDisk.h"
 #import <driverkit/generalFuncs.h>
 #import <driverkit/i386/kernelDriver.h>
 #import <mach/mach_interface.h>
 #import <string.h>
 
 extern unsigned int vm_page_size;
+
+typedef struct {
+    vm_task_t task;
+} AHCIPortTranslationContext;
 
 #define AHCI_LOCK_IDLE       0
 #define AHCI_LOCK_PENDING    1
@@ -79,10 +84,13 @@ static int AHCIPortTranslateAddress(void *context,
                                     AHCIU32 *physicalAddress)
 {
     vm_offset_t physical;
+    AHCIPortTranslationContext *translation;
 
-    (void)context;
+    translation = (AHCIPortTranslationContext *)context;
     if (physicalAddress == 0 ||
-        IOPhysicalFromVirtual(IOVmTaskSelf(), (vm_address_t)virtualAddress,
+        IOPhysicalFromVirtual(translation == 0 ? IOVmTaskSelf() :
+                              translation->task,
+                              (vm_address_t)virtualAddress,
                               &physical) != IO_R_SUCCESS)
         return 0;
     *physicalAddress = (AHCIU32)physical;
@@ -164,6 +172,8 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     AHCIPortResult stopResult;
     BOOL defer;
 
+    if (![self unpublishDisk])
+        return self;
     defer = NO;
     if (commandLock != nil) {
         [commandLock lock];
@@ -253,8 +263,17 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
                    (arena.virtualBase + arena.commandTableOffset);
     identifyData = (unsigned short *)
                    (arena.virtualBase + arena.identifyOffset);
-    return AHCIPortRecoveryIdentify(&ops, portNumber, &arena, commandList,
-                                    commandTable, identifyData, kind);
+    {
+        AHCIPortResult result;
+
+        result = AHCIPortRecoveryIdentify(&ops, portNumber, &arena,
+                                           commandList, commandTable,
+                                           identifyData, kind);
+        if (result == AHCI_PORT_SUCCESS && disk != nil &&
+            ![disk reidentifyFromWords:identifyData])
+            return AHCI_PORT_COMMAND_ERROR;
+        return result;
+    }
 }
 
 - (BOOL)controllerDidReset
@@ -506,6 +525,7 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
                 buffer:(void *)buffer
                 length:(unsigned int)length
                  write:(BOOL)write
+                client:(vm_task_t)client
                timeout:(unsigned int)seconds
            transferred:(unsigned int *)actual
 {
@@ -523,6 +543,7 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     BOOL finishFree;
     BOOL submissionEntered;
     ns_time_t now;
+    AHCIPortTranslationContext translation;
 
     if (fis == 0 || actual == 0 || seconds == 0 ||
         length > AHCI_MAX_TRANSFER_BYTES ||
@@ -539,9 +560,11 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
         return IO_R_OFFLINE;
     }
     segmentCount = 0;
+    translation.task = client;
     if (length != 0 &&
         AHCIPortBuildSegments((unsigned long)buffer, length, vm_page_size,
-                              AHCIPortTranslateAddress, 0, segments, 32U,
+                              AHCIPortTranslateAddress, &translation,
+                              segments, 32U,
                               &segmentCount) != AHCI_PORT_SUCCESS) {
         [commandLock unlockWith:AHCI_LOCK_IDLE];
         return IO_R_INVALID_ARG;
@@ -665,6 +688,33 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
 - (AHCIDeviceKind)deviceKind
 {
     return deviceKind;
+}
+
+- (void *)identifyBuffer
+{
+    if (rawArena == 0)
+        return 0;
+    return (void *)(arena.virtualBase + arena.identifyOffset);
+}
+
+- (BOOL)publishDiskFromDeviceDescription:
+    (IODeviceDescription *)deviceDescription
+{
+    if (deviceKind != AHCI_DEVICE_SATA || disk != nil)
+        return disk != nil;
+    disk = [AHCIDisk publishForPort:self
+                 deviceDescription:deviceDescription];
+    return disk != nil;
+}
+
+- (BOOL)unpublishDisk
+{
+    if (disk == nil)
+        return YES;
+    if ([disk free] != nil)
+        return NO;
+    disk = nil;
+    return YES;
 }
 
 - (void)handleInterrupt

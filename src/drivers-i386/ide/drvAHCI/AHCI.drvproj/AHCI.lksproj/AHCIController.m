@@ -6,6 +6,8 @@
 #import "AHCIShared.h"
 #import "AHCIPort.h"
 #import "AHCIState.h"
+#import "AHCIDisk.h"
+#import <bsd/dev/ata_hd_registry.h>
 
 #define AHCI_SUBMISSION_DRAIN_TIMEOUT_MS 11000U
 
@@ -73,6 +75,10 @@ static int AHCIVersionIsCommon(AHCIU32 version)
 {
     AHCIController *controller;
 
+    if (!ata_hd_devsw_init([AHCIDisk class], deviceDescription)) {
+        IOLog("AHCI: failed to initialize shared hd devsw tables.\n");
+        return NO;
+    }
     controller = [[self alloc]
         initFromDeviceDescription:deviceDescription];
     if (controller == nil)
@@ -265,6 +271,15 @@ static int AHCIVersionIsCommon(AHCIU32 version)
                   ghc | AHCI_GHC_AE | AHCI_GHC_IE);
     AHCIMMIOBarrier(&mmio);
 
+    for (portIndex = 0; portIndex < implementedCount; ++portIndex) {
+        port = (int)implementedPorts[portIndex];
+        if ([ports[port] deviceKind] == AHCI_DEVICE_SATA &&
+            ![ports[port]
+                publishDiskFromDeviceDescription:deviceDescription])
+            IOLog("%s: port %d SATA disk was not published\n",
+                  [self name], port);
+    }
+
     if (!AHCIVersionIsCommon(hbaInfo.version))
         IOLog("%s: AHCI version %x is newer or unknown; using common register subset\n",
               [self name], hbaInfo.version);
@@ -280,6 +295,14 @@ static int AHCIVersionIsCommon(AHCIU32 version)
     IOReturn restoreResult;
     AHCIU32 ghc;
     unsigned int port;
+
+    for (port = 0; port < AHCI_MAX_PORTS; ++port) {
+        if (ports[port] != nil && ![ports[port] unpublishDisk]) {
+            IOLog("%s: retaining controller while hd registry is busy\n",
+                  [self name]);
+            return self;
+        }
+    }
 
     if (globalInterruptsEnabled && mmio.base != 0) {
         ghc = AHCIMMIORead(&mmio, AHCI_REG_GHC);

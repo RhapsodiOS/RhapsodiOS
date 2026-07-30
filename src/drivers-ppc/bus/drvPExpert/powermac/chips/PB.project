@@ -2,8 +2,8 @@
     DYNAMIC_CODE_GEN = YES; 
     FILESTABLE = {
         HEADERSEARCH = (..); 
-        H_FILES = (grand_central.h, heathrow.h, mpic.h, ohare.h); 
-        OTHER_LINKED = (grand_central.c, heathrow.c, mpic.c, ohare.c); 
+        H_FILES = (grand_central.h, heathrow.h, keylargo.h, keylargo_audio.h, keylargo_discovery.h, mpic.h, ohare.h);
+        OTHER_LINKED = (grand_central.c, heathrow.c, keylargo.c, keylargo_audio.c, mpic.c, ohare.c);
         OTHER_SOURCES = (Makefile, Makefile.preamble); 
     }; 
     LANGUAGE = English; 

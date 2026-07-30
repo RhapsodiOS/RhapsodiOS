@@ -12,9 +12,19 @@ pe_keylargo_test: pe_keylargo_test.c ../powermac/chips/keylargo_audio.c
 	    -I../../../../kernel-7 \
 	    -o $@ pe_keylargo_test.c ../powermac/chips/keylargo_audio.c
 
-test: mpic_direct_test pe_keylargo_test
+interrupt_depth_test: interrupt_depth_test.c
+	$(HOST_CC) $(HOST_CFLAGS) -o $@ interrupt_depth_test.c
+
+keylargo_discovery_test: keylargo_discovery_test.c
+	$(HOST_CC) $(HOST_CFLAGS) -o $@ keylargo_discovery_test.c
+
+test: mpic_direct_test pe_keylargo_test interrupt_depth_test \
+    keylargo_discovery_test
 	./mpic_direct_test
 	./pe_keylargo_test
+	./interrupt_depth_test
+	./keylargo_discovery_test
 
 clean:
-	rm -f mpic_direct_test pe_keylargo_test
+	rm -f mpic_direct_test pe_keylargo_test interrupt_depth_test \
+	    keylargo_discovery_test

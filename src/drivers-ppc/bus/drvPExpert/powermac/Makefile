@@ -13,7 +13,7 @@ PROJECTVERSION = 2.7
 PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
-HFILES = boot.h interrupts.h powermac_exceptions.h powermac_gestalt.h\
+HFILES = boot.h interrupt_depth.h interrupts.h powermac_exceptions.h powermac_gestalt.h\
          powermac.h proc_reg.h IOProperties.h
 
 OTHERLINKED = clock_speed_asm.s

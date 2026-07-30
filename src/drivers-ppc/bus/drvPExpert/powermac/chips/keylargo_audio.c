@@ -1,13 +1,24 @@
 #include "keylargo_audio.h"
 
+static const PEKeyLargoTransport *keylargo_transport;
+
 static boolean_t
 keylargo_transport_valid(const PEKeyLargoTransport *transport)
 {
     return transport != 0 && transport->read8 != 0 &&
-        transport->write8 != 0 && transport->readFCR1LE != 0 &&
+        transport->write8 != 0 && transport->readGPIO8 != 0 &&
+        transport->writeGPIO8 != 0 && transport->readFCR1LE != 0 &&
         transport->writeFCR1LE != 0 && transport->getTime != 0 &&
         transport->compareTime != 0 && transport->transferStatus != 0 &&
-        transport->lock != 0 && transport->unlock != 0;
+        transport->lock != 0 && transport->unlock != 0 &&
+        transport->inInterruptContext != 0 &&
+        transport->validOffset != 0;
+}
+
+void
+PEKeyLargoBindTransport(const PEKeyLargoTransport *transport)
+{
+    keylargo_transport = keylargo_transport_valid(transport) ? transport : 0;
 }
 
 static boolean_t
@@ -183,7 +194,7 @@ PEAudioGPIOReadCore(const PEKeyLargoTransport *transport,
     if (!keylargo_transport_valid(transport) || gpio == 0 || active == 0)
         return KERN_INVALID_ARGUMENT;
     transport->lock(transport->context);
-    value = transport->read8(transport->context, gpio->offset);
+    value = transport->readGPIO8(transport->context, gpio->offset);
     high = (value & kPEAudioGPIOInputData) != 0;
     *active = gpio->activeHigh ? high : !high;
     transport->unlock(transport->context);
@@ -200,14 +211,14 @@ PEAudioGPIOWriteCore(const PEKeyLargoTransport *transport,
     if (!keylargo_transport_valid(transport) || gpio == 0)
         return KERN_INVALID_ARGUMENT;
     transport->lock(transport->context);
-    value = transport->read8(transport->context, gpio->offset);
+    value = transport->readGPIO8(transport->context, gpio->offset);
     high = gpio->activeHigh ? active : !active;
     if (high)
         value |= kPEAudioGPIOOutputData;
     else
         value &= (unsigned char)~kPEAudioGPIOOutputData;
     value |= kPEAudioGPIOOutputEnable;
-    transport->write8(transport->context, gpio->offset, value);
+    transport->writeGPIO8(transport->context, gpio->offset, value);
     transport->unlock(transport->context);
     return KERN_SUCCESS;
 }
@@ -266,30 +277,63 @@ PEI2SSetCellStateCore(const PEKeyLargoTransport *transport,
 kern_return_t
 PEKeyWestI2CTransfer(const PEKeyWestI2CRequest *request)
 {
-    (void)request;
-    return KERN_PE_KEYLARGO_NOT_READY;
+    if (request == 0 || request->buffer == 0 || request->length == 0 ||
+        request->address > 0x7f || request->port > 0x0f ||
+        (request->direction != kPEKeyWestWrite &&
+        request->direction != kPEKeyWestRead) ||
+        BAD_TVALSPEC(&request->deadline))
+        return KERN_INVALID_ARGUMENT;
+    if (keylargo_transport == 0)
+        return KERN_PE_KEYLARGO_NOT_READY;
+    if (keylargo_transport->inInterruptContext(
+        keylargo_transport->context))
+        return KERN_INVALID_ARGUMENT;
+    return PEKeyWestI2CTransferCore(keylargo_transport, request);
 }
 
 kern_return_t
 PEAudioGPIORead(const PEAudioGPIO *gpio, boolean_t *active)
 {
-    (void)gpio;
-    (void)active;
-    return KERN_PE_KEYLARGO_NOT_READY;
+    if (gpio == 0 || active == 0 ||
+        (gpio->activeHigh != FALSE && gpio->activeHigh != TRUE))
+        return KERN_INVALID_ARGUMENT;
+    if (keylargo_transport == 0)
+        return KERN_PE_KEYLARGO_NOT_READY;
+    if (keylargo_transport->inInterruptContext(
+        keylargo_transport->context) ||
+        !keylargo_transport->validOffset(keylargo_transport->context,
+        gpio->offset, 1))
+        return KERN_INVALID_ARGUMENT;
+    return PEAudioGPIOReadCore(keylargo_transport, gpio, active);
 }
 
 kern_return_t
 PEAudioGPIOWrite(const PEAudioGPIO *gpio, boolean_t active)
 {
-    (void)gpio;
-    (void)active;
-    return KERN_PE_KEYLARGO_NOT_READY;
+    if (gpio == 0 ||
+        (gpio->activeHigh != FALSE && gpio->activeHigh != TRUE) ||
+        (active != FALSE && active != TRUE))
+        return KERN_INVALID_ARGUMENT;
+    if (keylargo_transport == 0)
+        return KERN_PE_KEYLARGO_NOT_READY;
+    if (keylargo_transport->inInterruptContext(
+        keylargo_transport->context) ||
+        !keylargo_transport->validOffset(keylargo_transport->context,
+        gpio->offset, 1))
+        return KERN_INVALID_ARGUMENT;
+    return PEAudioGPIOWriteCore(keylargo_transport, gpio, active);
 }
 
 kern_return_t
 PEI2SSetCellState(unsigned int cell, PEI2SCellState state)
 {
-    (void)cell;
-    (void)state;
-    return KERN_PE_KEYLARGO_NOT_READY;
+    if (cell > 1 || state < kPEI2SCellDisabledReset ||
+        state > kPEI2SCellRunning)
+        return KERN_INVALID_ARGUMENT;
+    if (keylargo_transport == 0)
+        return KERN_PE_KEYLARGO_NOT_READY;
+    if (keylargo_transport->inInterruptContext(
+        keylargo_transport->context))
+        return KERN_INVALID_ARGUMENT;
+    return PEI2SSetCellStateCore(keylargo_transport, cell, state);
 }

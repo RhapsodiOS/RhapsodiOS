@@ -54,6 +54,8 @@ typedef struct {
     unsigned int traceCount;
     int lockDepth;
     int callbacksOutsideLock;
+    int interruptContext;
+    unsigned int maxOffset;
 } Fake;
 
 static int failures;
@@ -275,6 +277,22 @@ static void fake_unlock(void *context)
     fake->lockDepth--;
 }
 
+static boolean_t fake_in_interrupt(void *context)
+{
+    Fake *fake = (Fake *)context;
+
+    return fake->interruptContext ? TRUE : FALSE;
+}
+
+static boolean_t fake_valid_offset(void *context, unsigned int offset,
+    unsigned int length)
+{
+    Fake *fake = (Fake *)context;
+
+    return length != 0 && offset < fake->maxOffset &&
+        length <= fake->maxOffset - offset;
+}
+
 static PEKeyLargoTransport transport_for(Fake *fake)
 {
     PEKeyLargoTransport transport;
@@ -282,6 +300,8 @@ static PEKeyLargoTransport transport_for(Fake *fake)
     transport.context = fake;
     transport.read8 = fake_read8;
     transport.write8 = fake_write8;
+    transport.readGPIO8 = fake_read8;
+    transport.writeGPIO8 = fake_write8;
     transport.readFCR1LE = fake_read_fcr1;
     transport.writeFCR1LE = fake_write_fcr1;
     transport.getTime = fake_get_time;
@@ -289,6 +309,8 @@ static PEKeyLargoTransport transport_for(Fake *fake)
     transport.transferStatus = fake_transfer_status;
     transport.lock = fake_lock;
     transport.unlock = fake_unlock;
+    transport.inInterruptContext = fake_in_interrupt;
+    transport.validOffset = fake_valid_offset;
     return transport;
 }
 
@@ -297,6 +319,7 @@ static void init_fake(Fake *fake)
     memset(fake, 0, sizeof(*fake));
     fake->stallAt = -1;
     fake->arbitrationAt = -1;
+    fake->maxOffset = sizeof(fake->regs);
 }
 
 static PEKeyWestI2CRequest request_for(unsigned char *buffer,
@@ -875,6 +898,75 @@ static void test_public_wrappers_are_not_ready(void)
         KERN_PE_KEYLARGO_NOT_READY);
 }
 
+static void test_public_wrappers_validate_before_ready(void)
+{
+    PEKeyWestI2CRequest request;
+    PEAudioGPIO gpio;
+    boolean_t active;
+    unsigned char byte = 0;
+
+    request = request_for(&byte, 1, kPEKeyWestWrite);
+    gpio.offset = 0;
+    gpio.activeHigh = TRUE;
+    CHECK(PEKeyWestI2CTransfer(0) == KERN_INVALID_ARGUMENT);
+    request.port = 16;
+    CHECK(PEKeyWestI2CTransfer(&request) == KERN_INVALID_ARGUMENT);
+    request.port = 0;
+    request.address = 0x80;
+    CHECK(PEKeyWestI2CTransfer(&request) == KERN_INVALID_ARGUMENT);
+    request.address = 0x34;
+    request.buffer = 0;
+    CHECK(PEKeyWestI2CTransfer(&request) == KERN_INVALID_ARGUMENT);
+    request.buffer = &byte;
+    request.length = 0;
+    CHECK(PEKeyWestI2CTransfer(&request) == KERN_INVALID_ARGUMENT);
+    request.length = 1;
+    request.direction = (PEKeyWestDirection)2;
+    CHECK(PEKeyWestI2CTransfer(&request) == KERN_INVALID_ARGUMENT);
+    request.direction = kPEKeyWestWrite;
+    request.deadline.tv_nsec = NSEC_PER_SEC;
+    CHECK(PEKeyWestI2CTransfer(&request) == KERN_INVALID_ARGUMENT);
+    CHECK(PEAudioGPIORead(0, &active) == KERN_INVALID_ARGUMENT);
+    CHECK(PEAudioGPIORead(&gpio, 0) == KERN_INVALID_ARGUMENT);
+    gpio.activeHigh = (boolean_t)2;
+    CHECK(PEAudioGPIORead(&gpio, &active) == KERN_INVALID_ARGUMENT);
+    gpio.activeHigh = TRUE;
+    CHECK(PEAudioGPIOWrite(&gpio, (boolean_t)2) == KERN_INVALID_ARGUMENT);
+    CHECK(PEI2SSetCellState(2, kPEI2SCellRunning) ==
+        KERN_INVALID_ARGUMENT);
+    CHECK(PEI2SSetCellState(0, (PEI2SCellState)3) ==
+        KERN_INVALID_ARGUMENT);
+}
+
+static void test_public_binding_ranges_and_interrupt_context(void)
+{
+    Fake fake;
+    PEKeyLargoTransport transport;
+    PEKeyWestI2CRequest request;
+    PEAudioGPIO gpio;
+    boolean_t active;
+    unsigned char byte = 0;
+
+    init_fake(&fake);
+    transport = transport_for(&fake);
+    request = request_for(&byte, 1, kPEKeyWestWrite);
+    gpio.offset = 0x20;
+    gpio.activeHigh = TRUE;
+    PEKeyLargoBindTransport(&transport);
+    CHECK(PEAudioGPIORead(&gpio, &active) == KERN_SUCCESS);
+    gpio.offset = fake.maxOffset;
+    CHECK(PEAudioGPIORead(&gpio, &active) == KERN_INVALID_ARGUMENT);
+    gpio.offset = 0x20;
+    fake.interruptContext = 1;
+    CHECK(PEKeyWestI2CTransfer(&request) == KERN_INVALID_ARGUMENT);
+    CHECK(PEAudioGPIORead(&gpio, &active) == KERN_INVALID_ARGUMENT);
+    CHECK(PEAudioGPIOWrite(&gpio, TRUE) == KERN_INVALID_ARGUMENT);
+    CHECK(PEI2SSetCellState(0, kPEI2SCellRunning) ==
+        KERN_INVALID_ARGUMENT);
+    CHECK(fake.traceCount == 3);
+    PEKeyLargoBindTransport(0);
+}
+
 int main(void)
 {
     test_error_abi_values();
@@ -890,6 +982,8 @@ int main(void)
     test_gpio_polarities_and_semantics();
     test_i2s_states_preserve_bits_and_order();
     test_public_wrappers_are_not_ready();
+    test_public_wrappers_validate_before_ready();
+    test_public_binding_ranges_and_interrupt_context();
     if (failures != 0) {
         printf("pe_keylargo_test: %d failure(s)\n", failures);
         return 1;

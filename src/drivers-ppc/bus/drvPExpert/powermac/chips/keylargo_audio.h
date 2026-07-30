@@ -36,6 +36,9 @@ typedef struct {
     unsigned char (*read8)(void *context, unsigned int offset);
     void (*write8)(void *context, unsigned int offset,
         unsigned char value);
+    unsigned char (*readGPIO8)(void *context, unsigned int offset);
+    void (*writeGPIO8)(void *context, unsigned int offset,
+        unsigned char value);
     unsigned int (*readFCR1LE)(void *context);
     void (*writeFCR1LE)(void *context, unsigned int value);
     void (*getTime)(void *context, tvalspec_t *now);
@@ -44,7 +47,12 @@ typedef struct {
     kern_return_t (*transferStatus)(void *context);
     void (*lock)(void *context);
     void (*unlock)(void *context);
+    boolean_t (*inInterruptContext)(void *context);
+    boolean_t (*validOffset)(void *context, unsigned int offset,
+        unsigned int length);
 } PEKeyLargoTransport;
+
+void PEKeyLargoBindTransport(const PEKeyLargoTransport *transport);
 
 kern_return_t PEKeyWestI2CTransferCore(
     const PEKeyLargoTransport *transport,

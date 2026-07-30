@@ -34,6 +34,7 @@
 #include <families/powerstar.h>
 #include <families/yosemite.h>
 #include <families/sawtooth.h>
+#include <chips/keylargo.h>
 #include "IOProperties.h"
 
 /* Local declarations */
@@ -77,6 +78,9 @@ extern IOReturn ReadNVRAM( unsigned int offset, unsigned int length, unsigned ch
  */
 void identify_machine1()
 {
+	unsigned int macIOBase;
+	unsigned int macIOSize;
+
 	/* Everything starts out zeroed... */
 	bzero((void*) &powermac_info,           sizeof(powermac_info_t));
 
@@ -130,7 +134,11 @@ void identify_machine1()
 
 	case gestaltSawtooth:
 		powermac_info.class		= POWERMAC_CLASS_SAWTOOTH;
-		powermac_io_info.io_size	= HEATHROW_SIZE;
+		if (PEKeyLargoGetMacIOInfo(&macIOBase, &macIOSize))
+			powermac_io_info.io_size = macIOSize;
+		else
+			/* Legacy Sawtooth firmware historically used this span. */
+			powermac_io_info.io_size = HEATHROW_SIZE;
 		powermac_init_p = &sawtooth_init;
 		break;
 

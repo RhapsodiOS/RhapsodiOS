@@ -140,4 +140,6 @@ extern void	(*pmac_interrupt)(int type, struct ppc_saved_state *ssp,
 extern boolean_t (*pmac_enable_irq)(int irq);
 extern boolean_t (*pmac_disable_irq)(int irq);
 
+extern boolean_t PEIsInInterruptContext(void);
+
 #endif /* !POWERMAC_INTERRUPTS_H_ */

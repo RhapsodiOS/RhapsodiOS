@@ -4,6 +4,7 @@
         HEADERSEARCH = ("$(KERNEL_HEADERS)/machdep"); 
         H_FILES = (
             boot.h, 
+            interrupt_depth.h,
             interrupts.h, 
             powermac_exceptions.h, 
             powermac_gestalt.h, 

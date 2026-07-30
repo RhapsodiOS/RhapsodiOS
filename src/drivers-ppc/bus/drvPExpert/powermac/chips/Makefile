@@ -13,9 +13,10 @@ PROJECTVERSION = 2.7
 PROJECT_TYPE = Component
 LANGUAGE = English
 
-HFILES = grand_central.h heathrow.h keylargo.h mpic.h ohare.h
+HFILES = grand_central.h heathrow.h keylargo.h keylargo_audio.h\
+         keylargo_discovery.h mpic.h ohare.h
 
-CFILES = grand_central.c heathrow.c keylargo.c mpic.c ohare.c
+CFILES = grand_central.c heathrow.c keylargo.c keylargo_audio.c mpic.c ohare.c
 
 OTHERSRCS = Makefile Makefile.preamble
 

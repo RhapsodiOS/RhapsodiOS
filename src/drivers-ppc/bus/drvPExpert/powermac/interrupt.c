@@ -25,6 +25,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <interrupts.h>
+#include <interrupt_depth.h>
 #include <powermac.h>
 #include <kern/thread.h>
 #include <kern/assert.h>
@@ -63,6 +64,13 @@ spl_t splstatclock(void) { return set_priority_level(SPLSCLK); }
 spl_t splusclock(void) { return set_priority_level(SPLSCLK); }
 
 spl_t current_priority = SPLHIGH;	/* MEB 11/2/95  */
+static unsigned int pe_interrupt_depth[NCPUS];
+
+boolean_t
+PEIsInInterruptContext(void)
+{
+	return PEInterruptDepthActive(pe_interrupt_depth[cpu_number()]);
+}
 
 #if DEBUG
 vm_offset_t spl_addr;
@@ -269,9 +277,18 @@ struct ppc_saved_state * interrupt(
 #endif
 
 	case EXC_INTERRUPT:
+	{
+		int entered;
+
 		/* Call the pmac interrupt routine */
+		entered = PEInterruptDepthEnter(
+		    &pe_interrupt_depth[cpu_number()]);
 		(*pmac_interrupt)(type, ssp, dsisr, dar);
+		if (entered)
+			(void)PEInterruptDepthLeave(
+			    &pe_interrupt_depth[cpu_number()]);
 		break;
+	}
 
 	default:
 #ifdef DEBUG

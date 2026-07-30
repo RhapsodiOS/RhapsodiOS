@@ -1,6 +1,7 @@
 #define _CRT_SECURE_NO_WARNINGS 1
 
 #include "tas_fixtures.h"
+#include "TASCodec.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -10,6 +11,141 @@
         #expression); ++failures; } } while (0)
 
 static int failures;
+
+#define CODEC_EVENT_LIMIT 128
+
+typedef struct {
+    int kind;
+    unsigned long value;
+    unsigned char reg;
+    unsigned long length;
+    unsigned char data[TAS_CODEC_REGISTER_BYTES];
+} CodecEvent;
+
+typedef struct {
+    CodecEvent events[CODEC_EVENT_LIMIT];
+    unsigned long eventCount;
+    unsigned long writeCount;
+    unsigned long failWrite;
+    unsigned long partialLength;
+    unsigned long requiredMilliseconds;
+    unsigned long failMuteCount;
+} CodecMock;
+
+static void codec_event(CodecMock *mock, int kind, unsigned long value)
+{
+    CodecEvent *event;
+    event = &mock->events[mock->eventCount++];
+    memset(event, 0, sizeof(*event));
+    event->kind = kind;
+    event->value = value;
+}
+
+static TASStatus codec_write(void *context, unsigned char reg,
+    const unsigned char *bytes, unsigned long length,
+    unsigned long deadlineMilliseconds, unsigned long *written)
+{
+    CodecMock *mock;
+    CodecEvent *event;
+    unsigned long ordinal;
+    mock = (CodecMock *)context;
+    ordinal = mock->writeCount++;
+    event = &mock->events[mock->eventCount++];
+    memset(event, 0, sizeof(*event));
+    event->kind = 3;
+    event->reg = reg;
+    event->length = length;
+    memcpy(event->data, bytes, (size_t)length);
+    if (mock->requiredMilliseconds > deadlineMilliseconds) {
+        *written = 0;
+        return kTASStatusTimeout;
+    }
+    if (ordinal == mock->failWrite) {
+        *written = mock->partialLength;
+        return kTASStatusOK;
+    }
+    *written = length;
+    return kTASStatusOK;
+}
+
+static TASStatus codec_reset(void *context, int asserted)
+{
+    codec_event((CodecMock *)context, 1, (unsigned long)asserted);
+    return kTASStatusOK;
+}
+
+static TASStatus codec_delay(void *context, unsigned long microseconds)
+{
+    codec_event((CodecMock *)context, 2, microseconds);
+    return kTASStatusOK;
+}
+
+static void codec_fail_mute(void *context)
+{
+    CodecMock *mock;
+    mock = (CodecMock *)context;
+    ++mock->failMuteCount;
+    codec_event(mock, 4, 0UL);
+}
+
+static void codec_mock_init(CodecMock *mock)
+{
+    memset(mock, 0, sizeof(*mock));
+    mock->failWrite = ~0UL;
+}
+
+static TASCodecCallbacks codec_callbacks(CodecMock *mock)
+{
+    TASCodecCallbacks callbacks;
+    callbacks.context = mock;
+    callbacks.writeRegister = codec_write;
+    callbacks.setReset = codec_reset;
+    callbacks.delayMicroseconds = codec_delay;
+    callbacks.failMute = codec_fail_mute;
+    return callbacks;
+}
+
+static unsigned long codec_count_write(const CodecMock *mock,
+    unsigned char reg)
+{
+    unsigned long index;
+    unsigned long count;
+    count = 0;
+    for (index = 0; index < mock->eventCount; ++index) {
+        if (mock->events[index].kind == 3 && mock->events[index].reg == reg)
+            ++count;
+    }
+    return count;
+}
+
+static const unsigned char tas3001WriteOrder[] = {
+    0x01,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f,
+    0x13,0x14,0x15,0x16,0x17,0x18,0x01,
+    0x02,0x04,0x05,0x06,0x07,0x08,0x01
+};
+
+static const unsigned char tas3004WriteOrder[] = {
+    0x01,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f,0x10,0x21,
+    0x13,0x14,0x15,0x16,0x17,0x18,0x19,0x22,0x01,
+    0x02,0x04,0x05,0x06,0x07,0x08,0x23,0x24,0x40,0x43,0x01
+};
+
+static void codec_check_write_order(const CodecMock *mock,
+    const unsigned char *order, unsigned long count)
+{
+    unsigned long event;
+    unsigned long write;
+    write = 0;
+    for (event = 0; event < mock->eventCount; ++event) {
+        if (mock->events[event].kind == 3) {
+            CHECK(write < count);
+            if (write < count)
+                CHECK(mock->events[event].reg == order[write]);
+            ++write;
+        }
+    }
+    CHECK(write == count);
+}
 
 static TASStatus parse(TASFixture *fixture, TASMachineConfig *config)
 {
@@ -1061,6 +1197,246 @@ static void test_i2s_tokens_stale_after_shared_state_mutations(void)
         kTASStatusConflict);
 }
 
+static unsigned long expected_3001_width(unsigned long reg)
+{
+    if (reg == 0x01UL) return 1UL;
+    if (reg == 0x02UL) return 2UL;
+    if (reg == 0x04UL) return 6UL;
+    if (reg == 0x05UL || reg == 0x06UL) return 1UL;
+    if (reg == 0x07UL || reg == 0x08UL) return 3UL;
+    if ((reg >= 0x0aUL && reg <= 0x0fUL) ||
+        (reg >= 0x13UL && reg <= 0x18UL)) return 15UL;
+    return 0UL;
+}
+
+static unsigned long expected_3004_width(unsigned long reg)
+{
+    if (reg == 0x01UL || reg == 0x05UL || reg == 0x06UL ||
+        reg == 0x40UL || reg == 0x43UL) return 1UL;
+    if (reg == 0x02UL || reg == 0x04UL) return 6UL;
+    if (reg == 0x07UL || reg == 0x08UL) return 9UL;
+    if ((reg >= 0x0aUL && reg <= 0x10UL) ||
+        (reg >= 0x13UL && reg <= 0x19UL) || reg == 0x21UL ||
+        reg == 0x22UL) return 15UL;
+    if (reg == 0x23UL || reg == 0x24UL) return 3UL;
+    return 0UL;
+}
+
+static void test_codec_register_schemas(void)
+{
+    const TASCodecOps *tumbler;
+    const TASCodecOps *snapper;
+    unsigned long reg;
+    unsigned char bytes[6];
+    TASCodec codec;
+    TASCodecCallbacks callbacks;
+    CodecMock mock;
+    tumbler = TAS3001CCodecOps();
+    snapper = TAS3004CodecOps();
+    CHECK(strcmp(tumbler->name, "TAS3001C") == 0 && tumbler->supportsDRC);
+    CHECK(strcmp(snapper->name, "TAS3004") == 0 && snapper->supportsDRC);
+    for (reg = 0; reg <= 0x43UL; ++reg) {
+        CHECK(TASCodecRegisterWidth(tumbler, (unsigned char)reg) ==
+            expected_3001_width(reg));
+        CHECK(TASCodecRegisterWidth(snapper, (unsigned char)reg) ==
+            expected_3004_width(reg));
+    }
+    codec_mock_init(&mock);
+    callbacks = codec_callbacks(&mock);
+    CHECK(TASCodecBind(&codec, snapper, &callbacks) == kTASStatusOK);
+    memset(bytes, 0, sizeof(bytes));
+    CHECK(TASCodecWrite(&codec, 0x02, bytes, 5UL, 200UL) ==
+        kTASStatusMalformed);
+    CHECK(TASCodecWrite(&codec, 0x02, bytes, 6UL, 200UL) == kTASStatusOK);
+    CHECK(TASCodecWrite(&codec, 0x29, bytes, 6UL, 200UL) ==
+        kTASStatusUnsupported);
+}
+
+static void check_neutral_biquad(const CodecEvent *event)
+{
+    unsigned long index;
+    CHECK(event->length == 15UL);
+    CHECK(event->data[0] == 0x10);
+    for (index = 1; index < 15UL; ++index)
+        CHECK(event->data[index] == 0);
+}
+
+static void test_codec_golden_initialization(void)
+{
+    const TASCodecOps *ops[2];
+    unsigned long backend;
+    unsigned long event;
+    TASCodec codec;
+    TASCodecCallbacks callbacks;
+    CodecMock mock;
+    ops[0] = TAS3001CCodecOps();
+    ops[1] = TAS3004CodecOps();
+    for (backend = 0; backend < 2UL; ++backend) {
+        codec_mock_init(&mock);
+        callbacks = codec_callbacks(&mock);
+        CHECK(TASCodecBind(&codec, ops[backend], &callbacks) ==
+            kTASStatusOK);
+        CHECK(TASCodecInitialize(&codec, 0, 200UL) ==
+            kTASStatusMalformed);
+        CHECK(mock.eventCount == 0UL);
+        CHECK(TASCodecInitialize(&codec, 1, 200UL) == kTASStatusOK);
+        CHECK(codec.hardwareValid && codec.shadowComplete);
+        CHECK(codec_count_write(&mock, 0x01) == 3UL);
+        if (backend == 0) {
+            codec_check_write_order(&mock, tas3001WriteOrder,
+                sizeof(tas3001WriteOrder));
+            CHECK(mock.events[0].kind == 1 && mock.events[0].value == 1UL);
+            CHECK(mock.events[1].kind == 2 && mock.events[1].value >= 2UL);
+            CHECK(mock.events[2].kind == 1 && mock.events[2].value == 0UL);
+            CHECK(mock.events[3].kind == 2 && mock.events[3].value >= 5000UL);
+            for (event = 0x0aUL; event <= 0x0fUL; ++event)
+                CHECK(codec_count_write(&mock, (unsigned char)event) == 1UL);
+            for (event = 0x13UL; event <= 0x18UL; ++event)
+                CHECK(codec_count_write(&mock, (unsigned char)event) == 1UL);
+        } else {
+            codec_check_write_order(&mock, tas3004WriteOrder,
+                sizeof(tas3004WriteOrder));
+            CHECK(mock.events[0].kind == 2 && mock.events[0].value >= 5000UL);
+            CHECK(mock.events[1].kind == 1 && mock.events[1].value == 1UL);
+            CHECK(mock.events[2].kind == 2 && mock.events[2].value >= 20000UL);
+            CHECK(mock.events[3].kind == 1 && mock.events[3].value == 0UL);
+            CHECK(mock.events[4].kind == 2 && mock.events[4].value >= 10000UL);
+            for (event = 0x0aUL; event <= 0x10UL; ++event)
+                CHECK(codec_count_write(&mock, (unsigned char)event) == 1UL);
+            for (event = 0x13UL; event <= 0x19UL; ++event)
+                CHECK(codec_count_write(&mock, (unsigned char)event) == 1UL);
+            CHECK(codec_count_write(&mock, 0x21) == 1UL);
+            CHECK(codec_count_write(&mock, 0x22) == 1UL);
+            CHECK(codec.shadowLength[0x02] == 6UL);
+            CHECK(codec.shadow[0x02][0] == 1);
+        }
+        for (event = 0; event < mock.eventCount; ++event) {
+            if (mock.events[event].kind == 3 &&
+                expected_3001_width(mock.events[event].reg) == 15UL)
+                check_neutral_biquad(&mock.events[event]);
+            if (mock.events[event].kind == 3 &&
+                expected_3004_width(mock.events[event].reg) == 15UL)
+                check_neutral_biquad(&mock.events[event]);
+        }
+        CHECK(codec.shadow[0x01][0] == 0x6a);
+        CHECK(codec.shadowLength[0x04] == 6UL);
+    }
+}
+
+static void test_codec_shadow_failures_and_restore(void)
+{
+    const TASCodecOps *ops[2];
+    unsigned long backend;
+    unsigned long ordinal;
+    unsigned long partial;
+    unsigned long event;
+    unsigned long length;
+    unsigned char failedReg;
+    unsigned char previous[6];
+    TASCodec codec;
+    TASCodecCallbacks callbacks;
+    CodecMock golden;
+    CodecMock mock;
+    ops[0] = TAS3001CCodecOps();
+    ops[1] = TAS3004CodecOps();
+    for (backend = 0; backend < 2UL; ++backend) {
+        codec_mock_init(&golden);
+        callbacks = codec_callbacks(&golden);
+        CHECK(TASCodecBind(&codec, ops[backend], &callbacks) == kTASStatusOK);
+        CHECK(TASCodecInitialize(&codec, 1, 200UL) == kTASStatusOK);
+        for (ordinal = 0; ordinal < golden.writeCount; ++ordinal) {
+            length = 0;
+            failedReg = 0;
+            {
+                unsigned long seen;
+                seen = 0;
+                for (event = 0; event < golden.eventCount; ++event) {
+                    if (golden.events[event].kind == 3) {
+                        if (seen == ordinal) {
+                            length = golden.events[event].length;
+                            failedReg = golden.events[event].reg;
+                            break;
+                        }
+                        ++seen;
+                    }
+                }
+            }
+            for (partial = 0; partial < length; ++partial) {
+                codec_mock_init(&mock);
+                mock.failWrite = ordinal;
+                mock.partialLength = partial;
+                callbacks = codec_callbacks(&mock);
+                CHECK(TASCodecBind(&codec, ops[backend], &callbacks) ==
+                    kTASStatusOK);
+                CHECK(TASCodecInitialize(&codec, 1, 200UL) != kTASStatusOK);
+                CHECK(!codec.hardwareValid && mock.failMuteCount == 1UL);
+                CHECK(mock.writeCount == ordinal + 1UL);
+                CHECK(failedReg != 0);
+            }
+        }
+
+        codec_mock_init(&mock);
+        callbacks = codec_callbacks(&mock);
+        CHECK(TASCodecBind(&codec, ops[backend], &callbacks) == kTASStatusOK);
+        CHECK(TASCodecInitialize(&codec, 1, 200UL) == kTASStatusOK);
+        memcpy(previous, codec.shadow[0x04], 6);
+        mock.failWrite = mock.writeCount;
+        mock.partialLength = 3UL;
+        CHECK(TASCodecSetVolume(&codec, 0x010000UL, 0x008000UL, 200UL) !=
+            kTASStatusOK);
+        CHECK(memcmp(previous, codec.shadow[0x04], 6) == 0);
+        mock.failWrite = ~0UL;
+        CHECK(TASCodecSetVolume(&codec, 0x010000UL, 0x008000UL, 200UL) ==
+            kTASStatusOK);
+        CHECK(codec.shadow[0x04][0] == 1 && codec.shadow[0x04][1] == 0 &&
+            codec.shadow[0x04][2] == 0 && codec.shadow[0x04][3] == 0 &&
+            codec.shadow[0x04][4] == 0x80 && codec.shadow[0x04][5] == 0);
+        CHECK(TASCodecSetMute(&codec, 1, 200UL) == kTASStatusOK);
+        for (event = 0; event < 6UL; ++event)
+            CHECK(codec.shadow[0x04][event] == 0);
+        codec_mock_init(&mock);
+        codec.callbacks = codec_callbacks(&mock);
+        codec.hardwareValid = 0;
+        CHECK(TASCodecRestore(&codec, 200UL) == kTASStatusOK);
+        CHECK(mock.writeCount == ops[backend]->restoreCount);
+        codec_check_write_order(&mock, backend == 0 ? tas3001WriteOrder :
+            tas3004WriteOrder, backend == 0 ? sizeof(tas3001WriteOrder) :
+            sizeof(tas3004WriteOrder));
+        CHECK(codec.hardwareValid);
+    }
+}
+
+static void test_codec_clock_stretch_and_controls(void)
+{
+    TASCodec codec;
+    TASCodecCallbacks callbacks;
+    CodecMock mock;
+    codec_mock_init(&mock);
+    callbacks = codec_callbacks(&mock);
+    CHECK(TASCodecBind(&codec, TAS3004CodecOps(), &callbacks) ==
+        kTASStatusOK);
+    CHECK(TASCodecInitialize(&codec, 1, 200UL) == kTASStatusOK);
+    mock.requiredMilliseconds = 49UL;
+    CHECK(TASCodecSetVolume(&codec, 0x010000UL, 0x010000UL, 200UL) ==
+        kTASStatusOK);
+    mock.requiredMilliseconds = 167UL;
+    CHECK(TASCodecSetInputGain(&codec, 0x008000UL, 200UL) == kTASStatusOK);
+    CHECK(TASCodecSetInputSource(&codec, kTASCodecInputAnalog, 200UL) ==
+        kTASStatusOK);
+    mock.requiredMilliseconds = 201UL;
+    CHECK(TASCodecSetVolume(&codec, 0x010000UL, 0x010000UL, 200UL) ==
+        kTASStatusTimeout);
+    CHECK(!codec.hardwareValid && mock.failMuteCount == 1UL);
+
+    codec_mock_init(&mock);
+    callbacks = codec_callbacks(&mock);
+    CHECK(TASCodecBind(&codec, TAS3001CCodecOps(), &callbacks) ==
+        kTASStatusOK);
+    CHECK(TASCodecInitialize(&codec, 1, 200UL) == kTASStatusOK);
+    CHECK(TASCodecSetInputSource(&codec, kTASCodecInputAnalog, 200UL) ==
+        kTASStatusUnsupported);
+}
+
 int main(void)
 {
     test_tumbler_published_shape();
@@ -1095,6 +1471,10 @@ int main(void)
     test_i2s_transition_plans_and_stop_timeout();
     test_i2s_transition_generation_boundaries();
     test_i2s_tokens_stale_after_shared_state_mutations();
+    test_codec_register_schemas();
+    test_codec_golden_initialization();
+    test_codec_shadow_failures_and_restore();
+    test_codec_clock_stretch_and_controls();
     if (failures != 0) {
         fprintf(stderr, "%d TAS audio checks failed\n", failures);
         return 1;

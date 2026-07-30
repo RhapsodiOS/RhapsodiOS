@@ -1,8 +1,8 @@
 {
     DYNAMIC_CODE_GEN = NO;
     FILESTABLE = {
-        C_FILES = (TASCore.c);
-        H_FILES = (TASCore.h);
+        C_FILES = (TASCore.c, TAS3001C.c, TAS3004.c);
+        H_FILES = (TASCore.h, TASCodec.h);
         OTHER_LINKED = ();
         OTHER_SOURCES = (
             Makefile.preamble,

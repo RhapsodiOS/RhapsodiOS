@@ -10,7 +10,7 @@ GLOBAL_RESOURCES = Default.table
 LOCAL_RESOURCES = Localizable.strings DriverHelp
 TOOLS = PPCTASAudio.lksproj
 OTHERSRCS = Makefile.preamble Makefile Makefile.postamble DriverInfo \
-            English.lproj/DriverHelp/.keep
+            English.lproj/DriverHelp/README.txt
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC
 MAKEFILE = driver.make

@@ -1,5 +1,8 @@
 #
 # used by geninfo: DRIVER_NAME appears in the installer window
 #
+# Driver matching is intentionally broad (Matching = i2s).  The probe must
+# accept a device only after TASCore validates a unique tumbler/snapper chain.
+#
 DRIVER_NAME="PPCTASAudio"
 DEFAULT_DRIVER_VERSION="1.0";

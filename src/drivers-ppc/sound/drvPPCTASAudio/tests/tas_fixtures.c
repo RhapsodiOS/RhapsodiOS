@@ -206,6 +206,13 @@ static int fixture_get(void *context, TASNode nodeId, const char *name,
     TASFixture *fixture;
     unsigned long index;
     fixture = (TASFixture *)context;
+    if (fixture->nullSuccessProperty != 0 &&
+        fixture->nullSuccessNode == nodeId &&
+        strcmp(fixture->nullSuccessProperty, name) == 0) {
+        *bytes = 0;
+        *length = 4;
+        return 1;
+    }
     for (index = 0; index < fixture->propertyCount; ++index) {
         TASFixtureProperty *entry;
         entry = &fixture->properties[index];
@@ -235,6 +242,10 @@ static int fixture_find(void *context, const char *path, TASNode *nodeId)
         return 0;
     }
     after = *nodeId == 0;
+    if (fixture->stuckCursor) {
+        *nodeId = kFixtureMacIO;
+        return 1;
+    }
     for (index = 0; index < fixture->nodeCount; ++index) {
         if (!after) {
             if (fixture->nodes[index].node == *nodeId)
@@ -258,6 +269,8 @@ static unsigned long fixture_find_nodes(void *context, const char *name,
     unsigned long index;
     unsigned long count;
     fixture = (TASFixture *)context;
+    if (fixture->acceleratorOvercount)
+        return TAS_FIXTURE_MAX_NODES + 1UL;
     count = 0;
     for (index = 0; index < fixture->nodeCount; ++index) {
         if (strcmp(fixture->nodes[index].name, name) == 0) {
@@ -413,4 +426,22 @@ void TASFixtureAddSecondI2S(TASFixture *fixture)
     cells[0] = 31; cells[1] = 1; cells[2] = 26;
     cells[3] = 2; cells[4] = 27; cells[5] = 3;
     TASFixtureSetCells(fixture, 20, "interrupts", cells, 6);
+}
+
+void TASFixtureAddJunkNodes(TASFixture *fixture, unsigned long count)
+{
+    unsigned long index;
+    for (index = 0; index < count; ++index)
+        add_node(fixture, 100UL + index, "junk", "/junk", 0,
+            200UL + index);
+}
+
+void TASFixtureAddForeignReset(TASFixture *fixture)
+{
+    unsigned long cells[1];
+    add_node(fixture, 90, "mac-io", "/foreign/mac-io", 0, 0x90);
+    add_node(fixture, 91, "gpio", "/foreign/mac-io/gpio", 90, 0x91);
+    TASFixtureReparent(fixture, kFixtureHardwareReset, 91);
+    cells[0] = 0x90000000UL;
+    TASFixtureSetCells(fixture, 90, "AAPL,address", cells, 1);
 }

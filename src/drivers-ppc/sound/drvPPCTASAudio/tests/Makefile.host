@@ -2,12 +2,14 @@ CC ?= cc
 CFLAGS = -std=c89 -pedantic -Wall -Wextra -Werror
 CORE = ../PPCTASAudio.drvproj/PPCTASAudio.lksproj/TASCore.c
 
-.PHONY: all clean
+.PHONY: all test clean
 all: tas_audio_test
 
 tas_audio_test: tas_audio_test.c tas_fixtures.c tas_fixtures.h $(CORE)
 	$(CC) $(CFLAGS) -I../PPCTASAudio.drvproj/PPCTASAudio.lksproj \
 	    tas_audio_test.c tas_fixtures.c $(CORE) -o $@
+
+test: tas_audio_test
 	./tas_audio_test
 
 clean:

@@ -3,7 +3,7 @@
 
 #include "TASCore.h"
 
-#define TAS_FIXTURE_MAX_NODES 32
+#define TAS_FIXTURE_MAX_NODES 96
 #define TAS_FIXTURE_MAX_PROPERTIES 96
 #define TAS_FIXTURE_MAX_BYTES 96
 
@@ -45,6 +45,10 @@ typedef struct {
     unsigned long nodeCount;
     TASFixtureProperty properties[TAS_FIXTURE_MAX_PROPERTIES];
     unsigned long propertyCount;
+    int stuckCursor;
+    int acceleratorOvercount;
+    TASNode nullSuccessNode;
+    const char *nullSuccessProperty;
 } TASFixture;
 
 void TASFixtureTumbler(TASFixture *fixture);
@@ -62,5 +66,7 @@ void TASFixtureReparent(TASFixture *fixture, TASNode node, TASNode parent);
 void TASFixtureDuplicatePhandle(TASFixture *fixture, unsigned long phandle);
 void TASFixtureUseOldCodecFallback(TASFixture *fixture);
 void TASFixtureAddSecondI2S(TASFixture *fixture);
+void TASFixtureAddJunkNodes(TASFixture *fixture, unsigned long count);
+void TASFixtureAddForeignReset(TASFixture *fixture);
 
 #endif

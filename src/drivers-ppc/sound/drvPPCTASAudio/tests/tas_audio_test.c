@@ -255,6 +255,120 @@ static void test_interrupt_pairs_and_alias(void)
     CHECK(parse(&fixture, &config) == kTASStatusMalformed);
 }
 
+static void test_duplicate_interrupt_aliases(void)
+{
+    TASFixture fixture;
+    TASMachineConfig config;
+    unsigned long cells[6];
+    TASFixtureTumbler(&fixture);
+    cells[0] = 30; cells[1] = 1; cells[2] = 24;
+    cells[3] = 2; cells[4] = 25; cells[5] = 3;
+    TASFixtureSetCells(&fixture, kFixtureI2S, "AAPL,interrupts", cells, 6);
+    CHECK(parse(&fixture, &config) == kTASStatusOK);
+    cells[4] = 26;
+    TASFixtureSetCells(&fixture, kFixtureI2S, "AAPL,interrupts", cells, 6);
+    CHECK(parse(&fixture, &config) == kTASStatusConflict);
+}
+
+static void test_interrupt_numbers_are_distinct_and_nonzero(void)
+{
+    TASFixture fixture;
+    TASMachineConfig config;
+    unsigned long cells[6];
+    TASFixtureTumbler(&fixture);
+    cells[0] = 0; cells[1] = 1; cells[2] = 24;
+    cells[3] = 2; cells[4] = 25; cells[5] = 3;
+    TASFixtureSetCells(&fixture, kFixtureI2S, "interrupts", cells, 6);
+    CHECK(parse(&fixture, &config) == kTASStatusMalformed);
+    cells[0] = 24;
+    TASFixtureSetCells(&fixture, kFixtureI2S, "interrupts", cells, 6);
+    CHECK(parse(&fixture, &config) == kTASStatusConflict);
+}
+
+static void test_gpio_role_aliases_and_ownership(void)
+{
+    TASFixture fixture;
+    TASMachineConfig config;
+    unsigned long cells[1];
+    TASFixtureSnapper(&fixture);
+    cells[0] = 0x42;
+    TASFixtureSetCells(&fixture, kFixtureSoundChip, "platform-hw-reset",
+        cells, 1);
+    TASFixtureSetCells(&fixture, kFixtureSoundBus,
+        "platform-codec-input-data-mu", cells, 1);
+    cells[0] = 0x44;
+    TASFixtureSetCells(&fixture, kFixtureSoundBus,
+        "platform-codec-input-data-mu", cells, 1);
+    CHECK(parse(&fixture, &config) == kTASStatusOK);
+    cells[0] = 0x43;
+    TASFixtureSetCells(&fixture, kFixtureSoundChip, "platform-hw-reset",
+        cells, 1);
+    CHECK(parse(&fixture, &config) == kTASStatusConflict);
+    TASFixtureSnapper(&fixture);
+    cells[0] = 0x43;
+    TASFixtureSetCells(&fixture, kFixtureSoundBus,
+        "platform-codec-input-data-mu", cells, 1);
+    CHECK(parse(&fixture, &config) == kTASStatusConflict);
+    TASFixtureSnapper(&fixture);
+    TASFixtureAddForeignReset(&fixture);
+    CHECK(parse(&fixture, &config) == kTASStatusNotMatched);
+}
+
+static void test_ranges_do_not_overlap(void)
+{
+    TASFixture fixture;
+    TASMachineConfig config;
+    unsigned long cells[6];
+    TASFixtureTumbler(&fixture);
+    cells[0] = 0x10000; cells[1] = 0x1000;
+    cells[2] = 0x10800; cells[3] = 0x100;
+    cells[4] = 0x08100; cells[5] = 0x100;
+    TASFixtureSetCells(&fixture, kFixtureI2S, "reg", cells, 6);
+    CHECK(parse(&fixture, &config) == kTASStatusConflict);
+    cells[2] = 0x08000; cells[3] = 0x200;
+    cells[4] = 0x08100; cells[5] = 0x100;
+    TASFixtureSetCells(&fixture, kFixtureI2S, "reg", cells, 6);
+    CHECK(parse(&fixture, &config) == kTASStatusConflict);
+}
+
+static void test_hostile_readers_are_bounded_and_atomic(void)
+{
+    TASFixture fixture;
+    TASMachineConfig config;
+    TASMachineConfig before;
+    TASPropertyReader reader;
+    TASFixtureTumbler(&fixture);
+    memset(&config, 0xa5, sizeof(config));
+    before = config;
+    reader = TASFixtureReader(&fixture);
+    reader.findNodes = 0;
+    reader.findPropertyNodes = 0;
+    fixture.stuckCursor = 1;
+    CHECK(TASParseMachineConfig(&reader, &config) != kTASStatusOK);
+    CHECK(memcmp(&config, &before, sizeof(config)) == 0);
+    TASFixtureTumbler(&fixture);
+    TASFixtureAddJunkNodes(&fixture, 65);
+    reader = TASFixtureReader(&fixture);
+    reader.findNodes = 0;
+    reader.findPropertyNodes = 0;
+    config = before;
+    CHECK(TASParseMachineConfig(&reader, &config) != kTASStatusOK);
+    CHECK(memcmp(&config, &before, sizeof(config)) == 0);
+    TASFixtureTumbler(&fixture);
+    fixture.acceleratorOvercount = 1;
+    reader = TASFixtureReader(&fixture);
+    config = before;
+    CHECK(TASParseMachineConfig(&reader, &config) != kTASStatusOK);
+    CHECK(memcmp(&config, &before, sizeof(config)) == 0);
+    TASFixtureTumbler(&fixture);
+    fixture.nullSuccessNode = kFixtureI2S;
+    fixture.nullSuccessProperty = "reg";
+    reader = TASFixtureReader(&fixture);
+    config = before;
+    CHECK(TASParseMachineConfig(&reader, &config) != kTASStatusOK);
+    CHECK(memcmp(&config, &before, sizeof(config)) == 0);
+}
+
 static void test_gpio_exact_lengths_and_locations(void)
 {
     TASFixture fixture;
@@ -405,6 +519,7 @@ static void test_table_and_legacy_matches_are_disjoint(void)
     CHECK(file_contains(
         "../../drvPPCBurgundy/PPCBurgundy.drvproj/Default.table",
         "burgundy davbus"));
+    CHECK(file_contains("Makefile.host", ".PHONY: all test clean"));
 }
 
 static void test_non_tas_compatibles_never_match(void)
@@ -421,6 +536,9 @@ static void test_non_tas_compatibles_never_match(void)
             values[index]);
         CHECK(parse(&fixture, &config) == kTASStatusNotMatched);
     }
+    TASFixtureSnapper(&fixture);
+    TASFixtureSetString(&fixture, kFixtureCodec, "compatible", "onyx");
+    CHECK(parse(&fixture, &config) == kTASStatusNotMatched);
 }
 
 static void test_resources_addresses_and_policy(void)
@@ -480,6 +598,11 @@ int main(void)
     test_i2c_address_forms_and_conflict();
     test_codec_specific_address_matrix();
     test_interrupt_pairs_and_alias();
+    test_duplicate_interrupt_aliases();
+    test_interrupt_numbers_are_distinct_and_nonzero();
+    test_gpio_role_aliases_and_ownership();
+    test_ranges_do_not_overlap();
+    test_hostile_readers_are_bounded_and_atomic();
     test_gpio_exact_lengths_and_locations();
     test_required_gpio_roles();
     test_routes_and_published_anded_reset();

@@ -5,6 +5,7 @@
 #define TAS_CELL_MAX 0xffffffffUL
 #define TAS_KEYLARGO_WINDOW 0x00100000UL
 #define TAS_DISCOVERY_LIMIT 16UL
+#define TAS_TRAVERSAL_LIMIT 64UL
 
 typedef struct {
     TASNode macIO;
@@ -12,6 +13,7 @@ typedef struct {
     TASNode soundBus;
     TASNode soundChip;
     TASNode codec;
+    TASNode gpio;
     TASCodecKind kind;
     const char *compatible;
 } TASCandidate;
@@ -26,7 +28,16 @@ static unsigned long be32(const unsigned char *bytes)
 static int property(const TASPropertyReader *reader, TASNode node,
     const char *name, const unsigned char **bytes, unsigned long *length)
 {
-    return reader->getProperty(reader->context, node, name, bytes, length);
+    const unsigned char *foundBytes;
+    unsigned long foundLength;
+    foundBytes = 0;
+    foundLength = 0;
+    if (!reader->getProperty(reader->context, node, name, &foundBytes,
+        &foundLength) || (foundLength != 0 && foundBytes == 0))
+        return 0;
+    *bytes = foundBytes;
+    *length = foundLength;
+    return 1;
 }
 
 static TASStatus exact_cells(const TASPropertyReader *reader, TASNode node,
@@ -44,13 +55,28 @@ static TASStatus exact_cells_alias(const TASPropertyReader *reader,
     TASNode node, const char *first, const char *second, unsigned long count,
     const unsigned char **bytes)
 {
+    const unsigned char *firstBytes;
+    const unsigned char *secondBytes;
     unsigned long length;
-    if (property(reader, node, first, bytes, &length)) {
-        if (length != count * 4UL)
-            return kTASStatusMalformed;
+    unsigned long secondLength;
+    int haveFirst;
+    int haveSecond;
+    haveFirst = property(reader, node, first, &firstBytes, &length);
+    haveSecond = property(reader, node, second, &secondBytes, &secondLength);
+    if (!haveFirst && !haveSecond)
+        return kTASStatusMissing;
+    if ((haveFirst && length != count * 4UL) ||
+        (haveSecond && secondLength != count * 4UL))
+        return kTASStatusMalformed;
+    if (haveFirst && haveSecond && memcmp(firstBytes, secondBytes,
+        (size_t)(count * 4UL)) != 0)
+        return kTASStatusConflict;
+    if (haveFirst) {
+        *bytes = firstBytes;
         return kTASStatusOK;
     }
-    return exact_cells(reader, node, second, count, bytes);
+    *bytes = secondBytes;
+    return kTASStatusOK;
 }
 
 static TASStatus string_property(const TASPropertyReader *reader,
@@ -76,21 +102,44 @@ static TASStatus parse_range(const unsigned char *bytes, TASRange *range)
     return kTASStatusOK;
 }
 
+static int ranges_overlap(const TASRange *first, const TASRange *second)
+{
+    unsigned long firstEnd;
+    unsigned long secondEnd;
+    firstEnd = first->address + first->length - 1UL;
+    secondEnd = second->address + second->length - 1UL;
+    return first->address <= secondEnd && second->address <= firstEnd;
+}
+
 static unsigned long find_nodes(const TASPropertyReader *reader,
     const char *name, TASNode *nodes, unsigned long capacity)
 {
     TASNode cursor;
+    TASNode previous;
     unsigned long count;
-    if (reader->findNodes != 0)
-        return reader->findNodes(reader->context, name, nodes, capacity);
+    unsigned long traversed;
+    if (reader->findNodes != 0) {
+        count = reader->findNodes(reader->context, name, nodes, capacity);
+        return count > capacity ? capacity + 1UL : count;
+    }
     cursor = 0;
     count = 0;
-    while (count <= capacity &&
-        reader->findNode(reader->context, name, &cursor)) {
+    traversed = 0;
+    while (traversed < TAS_TRAVERSAL_LIMIT) {
+        previous = cursor;
+        if (!reader->findNode(reader->context, name, &cursor))
+            return count;
+        if (cursor == 0 || cursor == previous)
+            return capacity + 1UL;
+        ++traversed;
         if (count < capacity)
             nodes[count] = cursor;
         ++count;
+        if (count > capacity)
+            return capacity + 1UL;
     }
+    if (reader->findNode(reader->context, name, &cursor))
+        return capacity + 1UL;
     return count;
 }
 
@@ -102,13 +151,23 @@ static unsigned long find_property_nodes(const TASPropertyReader *reader,
     const unsigned char *bytes;
     unsigned long length;
     unsigned long count;
-    if (reader->findPropertyNodes != 0)
-        return reader->findPropertyNodes(reader->context, name, value, nodes,
-            capacity);
+    unsigned long traversed;
+    TASNode previous;
+    if (reader->findPropertyNodes != 0) {
+        count = reader->findPropertyNodes(reader->context, name, value,
+            nodes, capacity);
+        return count > capacity ? capacity + 1UL : count;
+    }
     cursor = 0;
     count = 0;
-    while (count <= capacity &&
-        reader->findNode(reader->context, "*", &cursor)) {
+    traversed = 0;
+    while (traversed < TAS_TRAVERSAL_LIMIT) {
+        previous = cursor;
+        if (!reader->findNode(reader->context, "*", &cursor))
+            return count;
+        if (cursor == 0 || cursor == previous)
+            return capacity + 1UL;
+        ++traversed;
         if (property(reader, cursor, name, &bytes, &length) && length != 0 &&
             bytes[length - 1UL] == 0 &&
             strlen((const char *)bytes) + 1UL == length &&
@@ -116,8 +175,12 @@ static unsigned long find_property_nodes(const TASPropertyReader *reader,
             if (count < capacity)
                 nodes[count] = cursor;
             ++count;
+            if (count > capacity)
+                return capacity + 1UL;
         }
     }
+    if (reader->findNode(reader->context, "*", &cursor))
+        return capacity + 1UL;
     return count;
 }
 
@@ -242,6 +305,32 @@ static TASStatus codec_for_chain(const TASPropertyReader *reader,
     return kTASStatusOK;
 }
 
+static TASStatus gpio_for_macio(const TASPropertyReader *reader,
+    TASNode macIO, TASNode *gpio)
+{
+    TASNode nodes[TAS_DISCOVERY_LIMIT];
+    TASNode parent;
+    unsigned long count;
+    unsigned long index;
+    unsigned long matches;
+    count = find_nodes(reader, "gpio", nodes, TAS_DISCOVERY_LIMIT);
+    if (count > TAS_DISCOVERY_LIMIT)
+        return kTASStatusAmbiguous;
+    matches = 0;
+    for (index = 0; index < count; ++index) {
+        if (reader->getParent(reader->context, nodes[index], &parent) &&
+            parent == macIO) {
+            *gpio = nodes[index];
+            ++matches;
+        }
+    }
+    if (matches == 0)
+        return kTASStatusNotMatched;
+    if (matches != 1UL)
+        return kTASStatusAmbiguous;
+    return kTASStatusOK;
+}
+
 static TASStatus discover_candidate(const TASPropertyReader *reader,
     TASCandidate *candidate)
 {
@@ -276,6 +365,11 @@ static TASStatus discover_candidate(const TASPropertyReader *reader,
         found.soundBus = soundBus;
         found.soundChip = sounds[index];
         status = codec_for_chain(reader, soundBus, sounds[index], &found);
+        if (status == kTASStatusNotMatched)
+            continue;
+        if (status != kTASStatusOK)
+            return status;
+        status = gpio_for_macio(reader, macIO, &found.gpio);
         if (status == kTASStatusNotMatched)
             continue;
         if (status != kTASStatusOK)
@@ -386,43 +480,82 @@ static TASStatus parse_codec_transport(const TASPropertyReader *reader,
     return parse_port_property(reader, parent, 1, &config->i2cPort);
 }
 
-static TASStatus resolve_gpio_role(const TASPropertyReader *reader,
-    TASNode soundBus, TASNode soundChip, const char *primary,
-    const char *primaryAlias, const char *legacy, TASNode *node, int *present)
+static int node_under_gpio(const TASPropertyReader *reader, TASNode node,
+    TASNode gpio)
 {
-    TASNode nodes[2];
+    TASNode parent;
+    unsigned long traversed;
+    traversed = 0;
+    while (node != gpio && traversed < TAS_TRAVERSAL_LIMIT) {
+        if (!reader->getParent(reader->context, node, &parent) ||
+            parent == 0 || parent == node)
+            return 0;
+        node = parent;
+        ++traversed;
+    }
+    return node == gpio;
+}
+
+static TASStatus merge_gpio_property(const TASPropertyReader *reader,
+    TASNode owner, const char *name, TASNode gpio, TASNode *node, int *present)
+{
     const unsigned char *bytes;
     unsigned long length;
     unsigned long count;
-    TASNode owner;
-    owner = soundBus;
-    *present = 0;
-    if (!property(reader, owner, primary, &bytes, &length) &&
-        (primaryAlias == 0 ||
-        !property(reader, owner, primaryAlias, &bytes, &length))) {
-        owner = soundChip;
-        if (!property(reader, owner, primary, &bytes, &length) &&
-            (primaryAlias == 0 ||
-            !property(reader, owner, primaryAlias, &bytes, &length))) {
-            count = find_property_nodes(reader, "audio-gpio", legacy, nodes,
-                2);
-            if (count == 0)
-                return kTASStatusOK;
-            if (count != 1UL)
-                return kTASStatusAmbiguous;
-            *node = nodes[0];
-            *present = 1;
-            return kTASStatusOK;
-        }
-    }
-    *present = 1;
+    TASNode resolved;
+    if (name == 0 || !property(reader, owner, name, &bytes, &length))
+        return kTASStatusOK;
     if (length != 4UL)
         return kTASStatusMalformed;
-    count = reader->resolvePhandle(reader->context, be32(bytes), node);
+    count = reader->resolvePhandle(reader->context, be32(bytes), &resolved);
     if (count == 0)
         return kTASStatusUnresolved;
     if (count != 1UL)
         return kTASStatusAmbiguous;
+    if (!node_under_gpio(reader, resolved, gpio))
+        return kTASStatusNotMatched;
+    if (*present && *node != resolved)
+        return kTASStatusConflict;
+    *node = resolved;
+    *present = 1;
+    return kTASStatusOK;
+}
+
+static TASStatus resolve_gpio_role(const TASPropertyReader *reader,
+    const TASCandidate *candidate, const char *primary,
+    const char *primaryAlias, const char *legacy, TASNode *node, int *present)
+{
+    TASNode nodes[2];
+    unsigned long count;
+    TASStatus status;
+    *present = 0;
+    status = merge_gpio_property(reader, candidate->soundBus, primary,
+        candidate->gpio, node, present);
+    if (status != kTASStatusOK)
+        return status;
+    status = merge_gpio_property(reader, candidate->soundBus, primaryAlias,
+        candidate->gpio, node, present);
+    if (status != kTASStatusOK)
+        return status;
+    status = merge_gpio_property(reader, candidate->soundChip, primary,
+        candidate->gpio, node, present);
+    if (status != kTASStatusOK)
+        return status;
+    status = merge_gpio_property(reader, candidate->soundChip, primaryAlias,
+        candidate->gpio, node, present);
+    if (status != kTASStatusOK)
+        return status;
+    count = find_property_nodes(reader, "audio-gpio", legacy, nodes, 2);
+    if (count > 1UL)
+        return kTASStatusConflict;
+    if (count == 1UL) {
+        if (!node_under_gpio(reader, nodes[0], candidate->gpio))
+            return kTASStatusNotMatched;
+        if (*present && *node != nodes[0])
+            return kTASStatusConflict;
+        *node = nodes[0];
+        *present = 1;
+    }
     return kTASStatusOK;
 }
 
@@ -501,8 +634,8 @@ static TASStatus parse_required_gpio(const TASPropertyReader *reader,
     TASNode node;
     TASStatus status;
     int present;
-    status = resolve_gpio_role(reader, candidate->soundBus,
-        candidate->soundChip, primary, primaryAlias, legacy, &node, &present);
+    status = resolve_gpio_role(reader, candidate, primary, primaryAlias,
+        legacy, &node, &present);
     if (status != kTASStatusOK)
         return status;
     if (!present)
@@ -531,13 +664,13 @@ static TASStatus parse_route(const TASPropertyReader *reader,
     TASStatus status;
     int haveMute;
     int haveDetect;
-    status = resolve_gpio_role(reader, candidate->soundBus,
-        candidate->soundChip, mutePrimary[kind], 0, muteLegacy[kind],
+    status = resolve_gpio_role(reader, candidate, mutePrimary[kind], 0,
+        muteLegacy[kind],
         &muteNode, &haveMute);
     if (status != kTASStatusOK)
         return status;
-    status = resolve_gpio_role(reader, candidate->soundBus,
-        candidate->soundChip, detectPrimary[kind], 0, detectLegacy[kind],
+    status = resolve_gpio_role(reader, candidate, detectPrimary[kind], 0,
+        detectLegacy[kind],
         &detectNode, &haveDetect);
     if (status != kTASStatusOK)
         return status;
@@ -651,6 +784,10 @@ static TASStatus parse_candidate(const TASPropertyReader *reader,
     status = parse_range(bytes + 16, &config->inputDBDMA);
     if (status != kTASStatusOK)
         return status;
+    if (ranges_overlap(&config->i2s, &config->outputDBDMA) ||
+        ranges_overlap(&config->i2s, &config->inputDBDMA) ||
+        ranges_overlap(&config->outputDBDMA, &config->inputDBDMA))
+        return kTASStatusConflict;
     status = exact_cells_alias(reader, candidate->i2s, "interrupts",
         "AAPL,interrupts", 6, &bytes);
     if (status != kTASStatusOK)
@@ -661,6 +798,14 @@ static TASStatus parse_candidate(const TASPropertyReader *reader,
     config->outputInterrupt.sense = be32(bytes + 12);
     config->inputInterrupt.number = be32(bytes + 16);
     config->inputInterrupt.sense = be32(bytes + 20);
+    if (config->codecInterrupt.number == 0 ||
+        config->outputInterrupt.number == 0 ||
+        config->inputInterrupt.number == 0)
+        return kTASStatusMalformed;
+    if (config->codecInterrupt.number == config->outputInterrupt.number ||
+        config->codecInterrupt.number == config->inputInterrupt.number ||
+        config->outputInterrupt.number == config->inputInterrupt.number)
+        return kTASStatusConflict;
     status = parse_codec_transport(reader, candidate, config);
     if (status != kTASStatusOK)
         return status;

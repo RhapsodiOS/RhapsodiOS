@@ -911,6 +911,19 @@ ata_hd_async_token(void *pending, ATAHDAsyncToken *tokenOut)
     return result == ATA_HD_REGISTRY_SUCCESS ? YES : NO;
 }
 
+BOOL
+ata_hd_async_claim(ATAHDAsyncToken token)
+{
+    int result;
+
+    if (!ata_hd_registry_ready || ata_hd_lock == nil)
+        return NO;
+    [ata_hd_lock lock];
+    result = ATAHDAsyncTokenClaim(&ata_hd_async_tokens, token);
+    [ata_hd_lock unlock];
+    return result == ATA_HD_REGISTRY_SUCCESS ? YES : NO;
+}
+
 void
 ata_hd_async_complete(ATAHDAsyncToken token)
 {

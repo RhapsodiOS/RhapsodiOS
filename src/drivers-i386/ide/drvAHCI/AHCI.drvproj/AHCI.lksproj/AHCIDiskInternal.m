@@ -172,8 +172,9 @@ IOReturn AHCIDiskTransportFlush(id disk)
         IOReturn status;
         unsigned int bytesTransferred;
 
-        pending = request->pending;
         registryToken = request->registryToken;
+        (void)ata_hd_async_claim(registryToken);
+        pending = request->pending;
         status = request->status;
         bytesTransferred = request->bytesTransferred;
         [self completeTransfer:pending withStatus:status

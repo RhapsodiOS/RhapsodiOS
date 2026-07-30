@@ -545,8 +545,9 @@ void *ideThreadPtr;
 	IOReturn status;
 	u_int bytesXfr;
 
-	pending = ideBuf->pending;
 	registryToken = ideBuf->registryToken;
+	(void)ata_hd_async_claim(registryToken);
+	pending = ideBuf->pending;
 	status = ideBuf->status;
 	bytesXfr = ideBuf->bytesXfr;
 	[self completeTransfer:pending

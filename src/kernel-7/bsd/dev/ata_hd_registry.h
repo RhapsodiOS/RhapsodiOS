@@ -23,6 +23,7 @@ int ata_hd_register(id disk, ata_hd_ioctl_fn transportIoctl,
 BOOL ata_hd_set_flush(unsigned int unit, id disk,
                       ata_hd_flush_fn transportFlush);
 BOOL ata_hd_async_token(void *pending, ATAHDAsyncToken *tokenOut);
+BOOL ata_hd_async_claim(ATAHDAsyncToken token);
 void ata_hd_async_complete(ATAHDAsyncToken token);
 BOOL ata_hd_activate_units(const unsigned int *units, id *disks,
                            unsigned int count);

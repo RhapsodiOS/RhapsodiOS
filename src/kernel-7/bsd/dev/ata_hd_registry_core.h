@@ -4,6 +4,9 @@
 #define ATA_HD_UNITS 32
 #define ATA_HD_PARTITIONS 8
 #define ATA_HD_ASYNC_PINS (ATA_HD_UNITS * 128)
+#define ATA_HD_ASYNC_PIN_FREE 0
+#define ATA_HD_ASYNC_PIN_RESERVED 1
+#define ATA_HD_ASYNC_PIN_CLAIMED 2
 
 #define ATA_HD_REGISTRY_SUCCESS 0
 #define ATA_HD_REGISTRY_INVALID -1
@@ -30,11 +33,12 @@ typedef struct ATAHDAsyncPin {
     unsigned int unit;
     unsigned int partition;
     unsigned int generation;
-    unsigned char active;
+    unsigned char state;
 } ATAHDAsyncPin;
 
 typedef struct ATAHDAsyncTokenCore {
     ATAHDAsyncPin pins[ATA_HD_ASYNC_PINS];
+    unsigned int nextGeneration;
 } ATAHDAsyncTokenCore;
 
 void ATAHDRegistryCoreInit(ATAHDRegistryCore *registry);
@@ -67,6 +71,8 @@ int ATAHDAsyncTokenReserve(ATAHDAsyncTokenCore *tokens, void *pending,
                            ATAHDAsyncToken *tokenOut);
 int ATAHDAsyncTokenForPending(const ATAHDAsyncTokenCore *tokens,
                               void *pending, ATAHDAsyncToken *tokenOut);
+int ATAHDAsyncTokenClaim(ATAHDAsyncTokenCore *tokens,
+                         ATAHDAsyncToken token);
 int ATAHDAsyncTokenRelease(ATAHDAsyncTokenCore *tokens,
                            ATAHDAsyncToken token, unsigned int *unitOut,
                            unsigned int *partitionOut);

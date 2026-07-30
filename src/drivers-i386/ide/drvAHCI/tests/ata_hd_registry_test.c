@@ -214,6 +214,41 @@ static void test_async_tokens_reject_stale_and_double_release(void)
           ATA_HD_REGISTRY_INVALID);
 }
 
+static void test_claim_allows_pending_pointer_reuse_before_release(void)
+{
+    ATAHDAsyncTokenCore tokens;
+    ATAHDAsyncToken oldToken;
+    ATAHDAsyncToken newToken;
+    ATAHDAsyncToken foundToken;
+    unsigned int unit;
+    unsigned int partition;
+    int pending;
+
+    ATAHDAsyncTokenCoreInit(&tokens);
+    CHECK(ATAHDAsyncTokenReserve(&tokens, &pending, 2, 3, &oldToken) ==
+          ATA_HD_REGISTRY_SUCCESS);
+    CHECK(ATAHDAsyncTokenClaim(&tokens, oldToken) ==
+          ATA_HD_REGISTRY_SUCCESS);
+    CHECK(ATAHDAsyncTokenClaim(&tokens, oldToken) ==
+          ATA_HD_REGISTRY_INVALID);
+    CHECK(ATAHDAsyncTokenForPending(&tokens, &pending, &foundToken) ==
+          ATA_HD_REGISTRY_NOT_FOUND);
+
+    CHECK(ATAHDAsyncTokenReserve(&tokens, &pending, 5, 6, &newToken) ==
+          ATA_HD_REGISTRY_SUCCESS);
+    CHECK(newToken.generation != oldToken.generation);
+    CHECK(ATAHDAsyncTokenRelease(&tokens, oldToken, &unit, &partition) ==
+          ATA_HD_REGISTRY_SUCCESS);
+    CHECK(unit == 2 && partition == 3);
+    CHECK(ATAHDAsyncTokenForPending(&tokens, &pending, &foundToken) ==
+          ATA_HD_REGISTRY_SUCCESS);
+    CHECK(foundToken.index == newToken.index);
+    CHECK(foundToken.generation == newToken.generation);
+    CHECK(ATAHDAsyncTokenRelease(&tokens, newToken, &unit, &partition) ==
+          ATA_HD_REGISTRY_SUCCESS);
+    CHECK(unit == 5 && partition == 6);
+}
+
 static void test_lowest_free_and_owner_lookup(void)
 {
     ATAHDRegistryCore registry;
@@ -458,6 +493,7 @@ int main(void)
     test_open_counts_and_busy_removal();
     test_vnode_presence_balances_core_transitions();
     test_async_tokens_reject_stale_and_double_release();
+    test_claim_allows_pending_pointer_reuse_before_release();
 
     if (failures != 0) {
         fprintf(stderr, "ata_hd_registry_test: %d failure(s)\n", failures);

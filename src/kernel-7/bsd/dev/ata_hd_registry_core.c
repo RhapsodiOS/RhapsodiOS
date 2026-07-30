@@ -183,12 +183,13 @@ void ATAHDAsyncTokenCoreInit(ATAHDAsyncTokenCore *tokens)
 
     if (tokens == 0)
         return;
+    tokens->nextGeneration = 0;
     for (index = 0; index < ATA_HD_ASYNC_PINS; ++index) {
         tokens->pins[index].pending = 0;
         tokens->pins[index].unit = 0;
         tokens->pins[index].partition = 0;
         tokens->pins[index].generation = 0;
-        tokens->pins[index].active = 0;
+        tokens->pins[index].state = ATA_HD_ASYNC_PIN_FREE;
     }
 }
 
@@ -209,24 +210,25 @@ int ATAHDAsyncTokenReserve(ATAHDAsyncTokenCore *tokens, void *pending,
         return ATA_HD_REGISTRY_INVALID;
     freeIndex = ATA_HD_ASYNC_PINS;
     for (index = 0; index < ATA_HD_ASYNC_PINS; ++index) {
-        if (tokens->pins[index].active != 0 &&
+        if (tokens->pins[index].state == ATA_HD_ASYNC_PIN_RESERVED &&
             tokens->pins[index].pending == pending)
             return ATA_HD_REGISTRY_DUPLICATE;
         if (freeIndex == ATA_HD_ASYNC_PINS &&
-            tokens->pins[index].active == 0)
+            tokens->pins[index].state == ATA_HD_ASYNC_PIN_FREE)
             freeIndex = index;
     }
     if (freeIndex == ATA_HD_ASYNC_PINS)
         return ATA_HD_BUSY;
 
     pin = &tokens->pins[freeIndex];
-    ++pin->generation;
-    if (pin->generation == 0)
-        ++pin->generation;
+    ++tokens->nextGeneration;
+    if (tokens->nextGeneration == 0)
+        ++tokens->nextGeneration;
+    pin->generation = tokens->nextGeneration;
     pin->pending = pending;
     pin->unit = unit;
     pin->partition = partition;
-    pin->active = 1;
+    pin->state = ATA_HD_ASYNC_PIN_RESERVED;
     tokenOut->index = freeIndex;
     tokenOut->generation = pin->generation;
     return ATA_HD_REGISTRY_SUCCESS;
@@ -244,7 +246,7 @@ int ATAHDAsyncTokenForPending(const ATAHDAsyncTokenCore *tokens,
     if (tokens == 0 || pending == 0 || tokenOut == 0)
         return ATA_HD_REGISTRY_INVALID;
     for (index = 0; index < ATA_HD_ASYNC_PINS; ++index) {
-        if (tokens->pins[index].active != 0 &&
+        if (tokens->pins[index].state == ATA_HD_ASYNC_PIN_RESERVED &&
             tokens->pins[index].pending == pending) {
             tokenOut->index = index;
             tokenOut->generation = tokens->pins[index].generation;
@@ -252,6 +254,23 @@ int ATAHDAsyncTokenForPending(const ATAHDAsyncTokenCore *tokens,
         }
     }
     return ATA_HD_REGISTRY_NOT_FOUND;
+}
+
+int ATAHDAsyncTokenClaim(ATAHDAsyncTokenCore *tokens,
+                         ATAHDAsyncToken token)
+{
+    ATAHDAsyncPin *pin;
+
+    if (tokens == 0 || token.index >= ATA_HD_ASYNC_PINS ||
+        token.generation == 0)
+        return ATA_HD_REGISTRY_INVALID;
+    pin = &tokens->pins[token.index];
+    if (pin->state != ATA_HD_ASYNC_PIN_RESERVED ||
+        pin->generation != token.generation)
+        return ATA_HD_REGISTRY_INVALID;
+    pin->pending = 0;
+    pin->state = ATA_HD_ASYNC_PIN_CLAIMED;
+    return ATA_HD_REGISTRY_SUCCESS;
 }
 
 int ATAHDAsyncTokenRelease(ATAHDAsyncTokenCore *tokens,
@@ -264,13 +283,14 @@ int ATAHDAsyncTokenRelease(ATAHDAsyncTokenCore *tokens,
         token.index >= ATA_HD_ASYNC_PINS || token.generation == 0)
         return ATA_HD_REGISTRY_INVALID;
     pin = &tokens->pins[token.index];
-    if (pin->active == 0 || pin->generation != token.generation)
+    if (pin->state == ATA_HD_ASYNC_PIN_FREE ||
+        pin->generation != token.generation)
         return ATA_HD_REGISTRY_INVALID;
     *unitOut = pin->unit;
     *partitionOut = pin->partition;
     pin->pending = 0;
     pin->unit = 0;
     pin->partition = 0;
-    pin->active = 0;
+    pin->state = ATA_HD_ASYNC_PIN_FREE;
     return ATA_HD_REGISTRY_SUCCESS;
 }

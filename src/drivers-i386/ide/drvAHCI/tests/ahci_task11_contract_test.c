@@ -74,6 +74,31 @@ static void require_order(const char *path, const char *first,
     free(text);
 }
 
+static void require_scoped_order(const char *path, const char *scopeStart,
+                                 const char *scopeEnd, const char *first,
+                                 const char *second)
+{
+    char *text;
+    char *scope;
+    char *end;
+    char *a;
+    char *b;
+
+    text = read_file(path);
+    scope = text == NULL ? NULL : strstr(text, scopeStart);
+    end = scope == NULL ? NULL :
+          strstr(scope + strlen(scopeStart), scopeEnd);
+    a = scope == NULL ? NULL : strstr(scope, first);
+    b = a == NULL ? NULL : strstr(a + strlen(first), second);
+    if (scope == NULL || end == NULL || a == NULL || b == NULL ||
+        a >= end || b >= end) {
+        fprintf(stderr, "%s: missing scoped order %s: %s -> %s\n",
+                path, scopeStart, first, second);
+        ++failures;
+    }
+    free(text);
+}
+
 int main(void)
 {
     const char *diskm =
@@ -103,19 +128,46 @@ int main(void)
     require_text(internalm, "ata_hd_unregister(_hdUnit)");
     require_text(diskm, "ata_hd_set_flush(_hdUnit,");
     require_text(internalm, "AHCIDiskTransportFlush");
-    require_order(internalm, "completeTransfer:pending",
-                  "freeRequest:request");
-    require_order(internalm, "freeRequest:request",
-                  "ata_hd_async_complete(registryToken)");
-    require_order(eideInternalm, "completeTransfer:pending",
-                  "freeIdeBuf:ideBuf");
-    require_order(eideInternalm, "freeIdeBuf:ideBuf",
-                  "ata_hd_async_complete(registryToken)");
+    require_scoped_order(internalm, "- (void)completeRequest:",
+                         "- (IOReturn)deviceRwCommon:",
+                         "ata_hd_async_claim(registryToken)",
+                         "pending = request->pending");
+    require_scoped_order(internalm, "- (void)completeRequest:",
+                         "- (IOReturn)deviceRwCommon:",
+                         "completeTransfer:pending", "freeRequest:request");
+    require_scoped_order(internalm, "- (void)completeRequest:",
+                         "- (IOReturn)deviceRwCommon:",
+                         "freeRequest:request",
+                         "ata_hd_async_complete(registryToken)");
+    require_scoped_order(eideInternalm, "- (void)ideIoComplete:",
+                         "- (void)ideCmdDispatch:",
+                         "completeTransfer:pending", "freeIdeBuf:ideBuf");
+    require_scoped_order(eideInternalm, "- (void)ideIoComplete:",
+                         "- (void)ideCmdDispatch:", "freeIdeBuf:ideBuf",
+                         "ata_hd_async_complete(registryToken)");
+    require_scoped_order(eideInternalm, "- (void)ideIoComplete:",
+                         "- (void)ideCmdDispatch:",
+                         "ata_hd_async_claim(registryToken)",
+                         "pending = ideBuf->pending");
     require_text(internalm, "portBecameNotReady");
     require_text(portm, "[disk portBecameNotReady]");
     require_text(portm, "notifyDiskOffline");
     require_text(portm, "activeDiskNotifications");
     require_text(portm, "while (activeDiskNotifications != 0)");
+    require_text(portm, "diskNotificationsBlocked = YES");
+    require_text(portm, "diskUnpublishing");
+    require_scoped_order(portm, "- (BOOL)unpublishDisk",
+                         "- (void)handleInterrupt", "diskToFree = disk",
+                         "disk = nil");
+    require_scoped_order(portm, "- (BOOL)unpublishDisk",
+                         "- (void)handleInterrupt", "disk = nil",
+                         "[commandLock unlockWith:condition]");
+    require_scoped_order(portm, "- (BOOL)unpublishDisk",
+                         "- (void)handleInterrupt",
+                         "[commandLock unlockWith:condition]",
+                         "[diskToFree free]");
+    require_order(portm, "if (disk != nil && !diskNotificationsBlocked)",
+                  "++activeDiskNotifications");
     require_order(portm, "++activeDiskNotifications",
                   "[commandLock unlockWith:condition]");
     require_order(portm, "[diskToNotify portBecameNotReady]",

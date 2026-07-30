@@ -39,6 +39,8 @@
     BOOL controllerResetting;
     BOOL skipCommandRecovery;
     unsigned int activeDiskNotifications;
+    BOOL diskNotificationsBlocked;
+    BOOL diskUnpublishing;
     AHCIDisk *disk;
 }
 

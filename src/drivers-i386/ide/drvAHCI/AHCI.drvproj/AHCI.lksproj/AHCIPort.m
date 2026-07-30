@@ -715,12 +715,35 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
 
 - (BOOL)unpublishDisk
 {
+    AHCIDisk *diskToFree;
     int condition;
     BOOL unpublished;
+    BOOL notifyDiskOffline;
 
     if (commandLock == nil)
         return disk == nil;
     [commandLock lock];
+    while (diskUnpublishing) {
+        condition = commandArbiter.state == AHCI_COMMAND_PENDING ?
+                    AHCI_LOCK_PENDING :
+                    (commandArbiter.state == AHCI_COMMAND_IDLE ?
+                     AHCI_LOCK_IDLE : AHCI_LOCK_DONE);
+        [commandLock unlockWith:condition];
+        IOSleep(1);
+        [commandLock lock];
+    }
+    if (disk == nil) {
+        condition = commandArbiter.state == AHCI_COMMAND_PENDING ?
+                    AHCI_LOCK_PENDING :
+                    (commandArbiter.state == AHCI_COMMAND_IDLE ?
+                     AHCI_LOCK_IDLE : AHCI_LOCK_DONE);
+        [commandLock unlockWith:condition];
+        return YES;
+    }
+    diskUnpublishing = YES;
+    diskNotificationsBlocked = YES;
+    diskToFree = disk;
+    disk = nil;
     while (activeDiskNotifications != 0) {
         condition = commandArbiter.state == AHCI_COMMAND_PENDING ?
                     AHCI_LOCK_PENDING :
@@ -730,18 +753,39 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
         IOSleep(1);
         [commandLock lock];
     }
-    unpublished = YES;
-    if (disk != nil) {
-        if ([disk free] != nil)
-            unpublished = NO;
-        else
-            disk = nil;
+    condition = commandArbiter.state == AHCI_COMMAND_PENDING ?
+                AHCI_LOCK_PENDING :
+                (commandArbiter.state == AHCI_COMMAND_IDLE ?
+                 AHCI_LOCK_IDLE : AHCI_LOCK_DONE);
+    [commandLock unlockWith:condition];
+
+    unpublished = [diskToFree free] == nil ? YES : NO;
+    notifyDiskOffline = NO;
+    [commandLock lock];
+    diskUnpublishing = NO;
+    if (!unpublished) {
+        disk = diskToFree;
+        diskNotificationsBlocked = NO;
+        if (!online) {
+            ++activeDiskNotifications;
+            notifyDiskOffline = YES;
+        }
     }
     condition = commandArbiter.state == AHCI_COMMAND_PENDING ?
                 AHCI_LOCK_PENDING :
                 (commandArbiter.state == AHCI_COMMAND_IDLE ?
                  AHCI_LOCK_IDLE : AHCI_LOCK_DONE);
     [commandLock unlockWith:condition];
+    if (notifyDiskOffline) {
+        [diskToFree portBecameNotReady];
+        [commandLock lock];
+        --activeDiskNotifications;
+        condition = commandArbiter.state == AHCI_COMMAND_PENDING ?
+                    AHCI_LOCK_PENDING :
+                    (commandArbiter.state == AHCI_COMMAND_IDLE ?
+                     AHCI_LOCK_IDLE : AHCI_LOCK_DONE);
+        [commandLock unlockWith:condition];
+    }
     return unpublished;
 }
 
@@ -793,7 +837,7 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
                                             linkStatus);
     if (asyncAction == AHCI_ASYNC_PORT_OFFLINE) {
         online = NO;
-        if (disk != nil) {
+        if (disk != nil && !diskNotificationsBlocked) {
             notifyDiskOffline = YES;
             diskToNotify = disk;
             ++activeDiskNotifications;

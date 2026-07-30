@@ -65,6 +65,9 @@ static void test_recovery_decisions(void)
     CHECK(AHCIRecoveryFor(AHCI_PXIS_HBFS, 0, 1, 0) == AHCI_RECOVERY_HBA);
     CHECK(AHCIRecoveryFor(AHCI_PXIS_HBFS, 0, 1, 1) ==
           AHCI_RECOVERY_OFFLINE);
+    CHECK(AHCIRecoveryFor(AHCI_PXIS_HBDS, 0, 1, 0) == AHCI_RECOVERY_HBA);
+    CHECK(AHCIRecoveryFor(AHCI_PXIS_HBDS, 0, 1, 1) ==
+          AHCI_RECOVERY_OFFLINE);
     CHECK(AHCIRecoveryFor(AHCI_PXIS_TFES, 0, 0, 1) ==
           AHCI_RECOVERY_OFFLINE);
 }

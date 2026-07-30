@@ -834,6 +834,7 @@ static void taskfileFromLegacyRegisters(ideTaskfile_t *taskfile,
 {
     ideIoReq_t	ideIoReq;
     ide_return_t status;
+    ideTaskfile_t taskfile;
     vm_offset_t tempDmaBuf;
 	vm_offset_t alignBuf;
 	unsigned int currentTimeout;
@@ -861,6 +862,13 @@ static void taskfileFromLegacyRegisters(ideTaskfile_t *taskfile,
     ideIoReq.addr = (caddr_t)alignBuf;
     ideIoReq.timeout = 5000;
     ideIoReq.map = (struct vm_map *)IOVmTaskSelf();
+
+	status = [self buildTaskfile:&taskfile block:ideIoReq.block
+		count:ideIoReq.blkcnt drive:_driveNum];
+	if (status != IDER_SUCCESS) {
+		IOFree((void *)tempDmaBuf, PAGE_SIZE);
+		return status;
+	}
 	
 	/*
 	 * Select the drive first.
@@ -899,7 +907,8 @@ static void taskfileFromLegacyRegisters(ideTaskfile_t *taskfile,
 	/*
 	 * Perform test.
 	 */
-	if (([self performDMA:(ideIoReq_t *)&ideIoReq]) == IDER_SUCCESS) {
+	if (([self performDMA:(ideIoReq_t *)&ideIoReq taskfile:&taskfile
+		command:IDE_READ_DMA]) == IDER_SUCCESS) {
 		status = IDER_SUCCESS;
 //		IOLog("%s: Drive %d: DMA test PASSED\n", [self name], _driveNum);
 	}
@@ -1025,44 +1034,38 @@ static unsigned char unaligned_warnings;
 		(((vm_offset_t)ideIoReq->addr & 0x03) == 0);
 
 	if (nativeDMA) {
+	    block = ideIoReq->block;
+	    cnt = ideIoReq->blkcnt;
+	    if (cnt > MAX_BLOCKS_PER_XFER) {
+		ideIoReq->status = IDER_REJECT;
+		break;
+	    }
+	    ideIoReq->status = [self buildTaskfile:&taskfile
+		block:ideIoReq->block count:ideIoReq->blkcnt drive:drive];
+	    if (ideIoReq->status != IDER_SUCCESS)
+		break;
+	    command = ideIoReq->cmd;
+	    if (taskfile.useLBA48 &&
+		(command = IDEExtendedCommand(command)) == 0) {
+		ideIoReq->status = IDER_REJECT;
+		break;
+	    }
+
 	    dh = _drives[_driveNum].addressMode;
 	    dh |= (_driveNum ? SEL_DRIVE1 : SEL_DRIVE0);
 	    outb(_ideRegsAddrs.drHead, dh);
 	    IODelay(1);
 	    [self clearInterrupts];
 
-	    switch (dispatchCommand) {
-	      case IDE_READ_DMA:
-		block = ideIoReq->block;
-		cnt = ideIoReq->blkcnt;
+	    if (dispatchCommand == IDE_READ_DMA)
 		ddm_ide_log("IDE_READ_DMA: %d\n", cnt, 2, 3, 4, 5);
-		if (cnt > MAX_BLOCKS_PER_XFER) {
-		    ideIoReq->status = IDER_REJECT;
-		    break;
-		}
-
-		ideIoReq->status = [self performDMA:ideIoReq];
-		if (ideIoReq->status == IDER_SUCCESS)
-		    ideIoReq->blocks_xfered = ideIoReq->blkcnt;
-		break;
-
-	      case IDE_WRITE_DMA:
-		block = ideIoReq->block;
-		cnt = ideIoReq->blkcnt;
+	    else
 		ddm_ide_log("IDE_WRITE_DMA: %d\n", cnt, 2, 3, 4, 5);
-		if (cnt > MAX_BLOCKS_PER_XFER) {
-		    ideIoReq->status = IDER_REJECT;
-		    break;
-		}
 
-		ideIoReq->status = [self performDMA:ideIoReq];
-		if (ideIoReq->status == IDER_SUCCESS)
-		    ideIoReq->blocks_xfered = ideIoReq->blkcnt;
-		break;
-
-	      default:
-		break;
-	    }
+	    ideIoReq->status = [self performDMA:ideIoReq
+		taskfile:&taskfile command:command];
+	    if (ideIoReq->status == IDER_SUCCESS)
+		ideIoReq->blocks_xfered = ideIoReq->blkcnt;
 	} else {
 	    if (dispatchCommand == IDE_READ_DMA) {
 		if (unaligned_warnings < UNALIGNED_WARNINGS_MAX) {

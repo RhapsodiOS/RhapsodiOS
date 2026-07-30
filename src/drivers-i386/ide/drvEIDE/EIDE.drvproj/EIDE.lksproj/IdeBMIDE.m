@@ -460,26 +460,28 @@ bmPrepareDMA(u_short piix_base, u_int tableAddr, BOOL isRead)
  * an invalid piece of memory. Perhaps due to an incorrect virtual
  * to physical map conversion.
  */
-- (ide_return_t) performDMA:(ideIoReq_t *)ideIoReq
+- (ide_return_t)performDMA:(ideIoReq_t *)ideIoReq
+    taskfile:(const ideTaskfile_t *)taskfile command:(unsigned int)command
 {
 	ideRegsVal_t	*ideRegs = &(ideIoReq->regValues);
 	ideRegsAddrs_t	*rp = &_ideRegsAddrs;
     unsigned char	status;
 	bmide_bmisx_u	piix_status;
 	ide_return_t	rtn = IDER_SUCCESS;
-	unsigned 		cmd = ideIoReq->cmd;
+	BOOL			read;
 
-	ddm_ide_dma("DMA block:%d count:%d read:%d map:%d rp:%x\n",
+	if (command != IDE_READ_DMA && command != IDE_WRITE_DMA &&
+	    command != IDE_READ_DMA_EXT && command != IDE_WRITE_DMA_EXT)
+		return IDER_REJECT;
+
+	read = (command == IDE_READ_DMA || command == IDE_READ_DMA_EXT);
+
+	ddm_ide_dma("DMA command:%x block:%d count:%d read:%d map:%d\n",
+		command,
 		ideIoReq->block,
 		ideIoReq->blkcnt,
-		(ideIoReq->cmd == IDE_READ_DMA),
-		ideIoReq->map,
-		rp->data);
-
-	if ((cmd != IDE_READ_DMA) && (cmd != IDE_WRITE_DMA)) {
-		IOLog("%s: ideDmaRwCommon: unknown command %d\n", [self name], cmd);
-		return IDER_REJECT;
-	}
+		read,
+		ideIoReq->map);
 
 	/*
 	 * wait for BSY = 0 and DRDY = 1
@@ -504,24 +506,15 @@ bmPrepareDMA(u_short piix_base, u_int tableAddr, BOOL isRead)
 	/*
 	 * Prepare the PIIX controller for the current transfer.
 	 */
-	if (bmPrepareDMA(_bmRegs, _tablePhyAddr,
-		(ideIoReq->cmd == IDE_READ_DMA)) == NO) {
+	if (bmPrepareDMA(_bmRegs, _tablePhyAddr, read) == NO) {
 		IOLog("%s: PIIXPrepareDMA error\n", [self name]);
 		return IDER_CMD_ERROR;
 	}
 
 	/*
 	 * Program the drive (task file).
-	 * Recall that _driveNum must be set prior to calling logToPhys.
-	 * This is already done in the method ideExecuteCmd which calls
-	 * this method. testDMA also calls this method with _driveNum set.
 	 */
-	*ideRegs = [self logToPhys:ideIoReq->block numOfBlocks:ideIoReq->blkcnt];
-    outb(rp->drHead,  ideRegs->drHead);
-    outb(rp->sectNum, ideRegs->sectNum);
-    outb(rp->sectCnt, ideRegs->sectCnt);
-    outb(rp->cylLow,  ideRegs->cylLow);
-    outb(rp->cylHigh, ideRegs->cylHigh);
+	[self writeTaskfile:taskfile errorRegisters:ideRegs];
 
 	ddm_ide_dma(
 		"DMA drHead:%02x sectNum:%02x sectCnt:%02x cylLow:%02x cylHigh:%02x\n",
@@ -534,9 +527,8 @@ bmPrepareDMA(u_short piix_base, u_int tableAddr, BOOL isRead)
 	/*
 	 * Issue DMA READ/WRITE command to drive.
 	 */
-//	[self enableInterrupts];
-//	[self clearInterrupts];
-    outb(rp->command, cmd);
+	[self enableInterrupts];
+    outb(rp->command, command);
 
 	/*
 	 * Start the PIIX bus master.
@@ -545,7 +537,7 @@ bmPrepareDMA(u_short piix_base, u_int tableAddr, BOOL isRead)
 
 	/* Wait for interrupt to signal the completion of the transfer.
 	 */
-    rtn = [self ideWaitForInterrupt:cmd ideStatus:&status];
+	rtn = [self ideWaitForInterrupt:command ideStatus:&status];
 	piix_status.byte = bmGetStatus(_bmRegs);
 	bmStopDMA(_bmRegs);
 

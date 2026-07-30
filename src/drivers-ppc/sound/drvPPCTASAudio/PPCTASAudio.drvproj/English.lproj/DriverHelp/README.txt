@@ -43,3 +43,5 @@ Only microphone and line-in are selectable.  The required firmware
 codec-input-data-mux GPIO selects microphone (inactive) or line-in (active),
 while both use one stable codec mixer input.  CD and auxiliary source tags
 are rejected, and jack/output routing never changes the input selection.
+The advertised IOAudio input-gain range 0..32768 maps monotonically to TAS
+4.20 coefficients 10 00 00 (unity/0 dB) through 20 00 00 (+6 dB).

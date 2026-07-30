@@ -41,7 +41,7 @@ TASStatus TASCodecBind(TASCodec *codec, const TASCodecOps *ops,
     memset(codec, 0, sizeof(*codec));
     codec->ops = ops;
     codec->callbacks = *callbacks;
-    codec->inputGain = 0x010000UL;
+    codec->inputGain = 0x100000UL;
     codec->inputSource = kTASCodecInputDigital1;
     TASCodecEncode24(0x010000UL, codec->shadow[0x04]);
     TASCodecEncode24(0x010000UL, codec->shadow[0x04] + 3);

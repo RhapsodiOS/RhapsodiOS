@@ -651,6 +651,7 @@ TASStatus TASRuntimeSetControls(TASRuntime *runtime,
 {
     TASStatus status;
     TASAudioState candidate;
+    int inputChanged;
     if (runtime == 0 || desired == 0)
         return kTASStatusMalformed;
     if (!runtime->initialized)
@@ -662,6 +663,9 @@ TASStatus TASRuntimeSetControls(TASRuntime *runtime,
     }
     runtime->ops.lockState(runtime->ops.context);
     candidate = runtime->audio;
+    inputChanged = desired->inputMuxActive !=
+        runtime->audio.desired.inputMuxActive ||
+        desired->inputSource != runtime->audio.desired.inputSource;
     status = TASAudioSetDesiredControls(&candidate, desired);
     runtime->ops.unlockState(runtime->ops.context);
     if (status != kTASStatusOK) {
@@ -671,7 +675,10 @@ TASStatus TASRuntimeSetControls(TASRuntime *runtime,
     status = runtime->ops.applyControls(runtime->ops.context, desired,
         deadline);
     if (status != kTASStatusOK) {
-        (void)fail_mute_and_invalidate(runtime, 0);
+        if (inputChanged)
+            record_dma_fault(runtime, kTASStreamInput, deadline);
+        else
+            (void)fail_mute_and_invalidate(runtime, 0);
         runtime->ops.unlockOperation(runtime->ops.context);
         return status;
     }
@@ -922,9 +929,10 @@ TASStatus TASRuntimeGainToCodec(int gain, unsigned long *coefficient)
         return kTASStatusMalformed;
     if (gain < 0)
         gain = 0;
-    else if (gain > 32768)
-        gain = 32768;
-    *coefficient = 0x010000UL +
-        (unsigned long)gain * 0x010000UL / 32768UL;
+    else if (gain > TAS_INPUT_GAIN_UI_MAX)
+        gain = TAS_INPUT_GAIN_UI_MAX;
+    *coefficient = TAS_INPUT_GAIN_UNITY +
+        (unsigned long)gain * ((TAS_INPUT_GAIN_PLUS_6DB -
+        TAS_INPUT_GAIN_UNITY) / TAS_INPUT_GAIN_UI_MAX);
     return kTASStatusOK;
 }

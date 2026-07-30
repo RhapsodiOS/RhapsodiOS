@@ -1557,6 +1557,7 @@ static void test_codec_golden_initialization(void)
         CHECK(mock.eventCount == 0UL);
         CHECK(TASCodecInitialize(&codec, 1, 200UL) == kTASStatusOK);
         CHECK(codec.hardwareValid && codec.shadowComplete);
+        CHECK(codec.inputGain == 0x100000UL);
         CHECK(codec_count_write(&mock, 0x01) == 3UL);
         if (backend == 0) {
             codec_check_write_order(&mock, tas3001WriteOrder,
@@ -1795,8 +1796,15 @@ static void test_codec_restore_and_volume_state_are_atomic(void)
             CHECK(mock.events[mock.eventCount - 1UL].data[event] == 0);
         CHECK(codec.shadow[0x04][1] == 0x80 &&
             codec.shadow[0x04][4] == 0x40);
-        CHECK(TASCodecSetInputGain(&codec, 0x002000UL,
+        CHECK(TASCodecSetInputGain(&codec, 0x200000UL,
             mock.currentMilliseconds + 200UL) == kTASStatusOK);
+        CHECK(codec_last_write(&mock, 0x07) != 0 &&
+            codec_last_write(&mock, 0x07)->data[0] == 0x20 &&
+            codec_last_write(&mock, 0x07)->data[1] == 0 &&
+            codec_last_write(&mock, 0x07)->data[2] == 0);
+        if (backend != 0UL)
+            CHECK(codec_last_write(&mock, 0x08) != 0 &&
+                codec_last_write(&mock, 0x08)->data[0] == 0x20);
         CHECK(TASCodecSetInputSource(&codec, kTASCodecInputDigital2,
             mock.currentMilliseconds + 200UL) == kTASStatusOK);
 

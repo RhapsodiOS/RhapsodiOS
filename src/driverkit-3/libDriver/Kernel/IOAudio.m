@@ -874,36 +874,55 @@ static int audio_first =0;
     _isOutputActive = isActive;
 }
 
-- (void) _setInputFor:(NXSoundParameterTag)ptag to:(BOOL)enable
+- (void) _setInputReportFor:(NXSoundParameterTag)ptag to:(BOOL)enable
 {
     switch (ptag) {
       case NX_SoundDeviceMicIn:
 	((_audioPrivateData *) _audioPrivate)->_enableMicIn = enable;
+	break;
+      case NX_SoundDeviceLineIn:
+	((_audioPrivateData *) _audioPrivate)->_enableLineIn = enable;
+	break;
+      case NX_SoundDeviceCDIn:
+	((_audioPrivateData *) _audioPrivate)->_enableCDIn = enable;
+	break;
+      case NX_SoundDeviceAux1In:
+	((_audioPrivateData *) _audioPrivate)->_enableAux1In = enable;
+	break;
+      case NX_SoundDeviceAux2In:
+	((_audioPrivateData *) _audioPrivate)->_enableAux2In = enable;
+	break;
+      default:
+        IOLog("Audio: unknown input source: %d\n", (int)ptag);
+	break;
+    }
+}
+
+- (void) _setInputFor:(NXSoundParameterTag)ptag to:(BOOL)enable
+{
+    [self _setInputReportFor:ptag to:enable];
+    switch (ptag) {
+      case NX_SoundDeviceMicIn:
 	[[self _audioCommand] send: (enable) ?
 	    setDeviceInputMicEnable : setDeviceInputMicDisable];
 	break;
       case NX_SoundDeviceLineIn:
-	((_audioPrivateData *) _audioPrivate)->_enableLineIn = enable;
 	[[self _audioCommand] send: (enable) ?
 	    setDeviceInputLineEnable : setDeviceInputLineDisable];
 	break;
       case NX_SoundDeviceCDIn:
-	((_audioPrivateData *) _audioPrivate)->_enableCDIn = enable;
 	[[self _audioCommand] send: (enable) ?
 	    setDeviceInputCDEnable : setDeviceInputCDDisable];
 	break;
       case NX_SoundDeviceAux1In:
-	((_audioPrivateData *) _audioPrivate)->_enableAux1In = enable;
 	[[self _audioCommand] send: (enable) ?
 	    setDeviceInputAux1Enable : setDeviceInputAux1Disable];
 	break;
       case NX_SoundDeviceAux2In:
-	((_audioPrivateData *) _audioPrivate)->_enableAux2In = enable;
 	[[self _audioCommand] send: (enable) ?
 	    setDeviceInputAux2Enable : setDeviceInputAux2Disable];
 	break;
       default:
-        IOLog("Audio: unknown input source: %d\n", (int)ptag);
 	break;
     }
 }
@@ -948,7 +967,7 @@ static int audio_first =0;
     if (((_audioPrivateData *) _audioPrivate)->_enableMicIn)
 	return NX_SoundDeviceMicIn;
     else if (((_audioPrivateData *) _audioPrivate)->_enableLineIn)
-	return NX_SoundDeviceAux1In;
+	return NX_SoundDeviceLineIn;
     else if (((_audioPrivateData *) _audioPrivate)->_enableCDIn)
 	return NX_SoundDeviceAux1In;
     else if (((_audioPrivateData *) _audioPrivate)->_enableAux1In)

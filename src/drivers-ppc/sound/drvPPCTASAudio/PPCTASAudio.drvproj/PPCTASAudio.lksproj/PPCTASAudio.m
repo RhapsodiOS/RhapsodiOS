@@ -1,6 +1,8 @@
 #import "PPCTASAudio.h"
 #import "TASTime.h"
 
+#import <driverkit/IOAudioPrivate.h>
+
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
 #import <driverkit/KernLock.h>
@@ -980,6 +982,7 @@ static TASStatus tas_controls(void *opaque,
     PPCTASAudio *self;
     PEAudioGPIO gpio;
     TASStatus status;
+    TASStatus rollbackStatus;
     int oldMuxActive;
     self = (PPCTASAudio *)opaque;
     oldMuxActive = self->desiredControls.inputMuxActive;
@@ -1003,8 +1006,12 @@ static TASStatus tas_controls(void *opaque,
         status = TASCodecSetMute(&self->runtime.codec,
             controls->userMuted, deadline);
     if (status != kTASStatusOK &&
-        oldMuxActive != controls->inputMuxActive)
-        (void)PEAudioGPIOWrite(&gpio, oldMuxActive ? TRUE : FALSE);
+        oldMuxActive != controls->inputMuxActive) {
+        rollbackStatus = tas_status(PEAudioGPIOWrite(&gpio,
+            oldMuxActive ? TRUE : FALSE));
+        if (rollbackStatus != kTASStatusOK)
+            status = rollbackStatus;
+    }
     return status;
 }
 
@@ -1183,6 +1190,7 @@ static void tas_initialize_dma_ops(PPCTASAudio *self)
     instance->desiredControls.rate = config.rates[0];
     instance->desiredControls.leftVolume = 0x8000UL;
     instance->desiredControls.rightVolume = 0x8000UL;
+    instance->desiredControls.inputGain = TAS_INPUT_GAIN_UNITY;
     ops = tas_runtime_ops(instance);
     if (TASRuntimeInit(&instance->runtime, &config,
         &instance->desiredControls, &ops) != kTASStatusOK) {
@@ -1411,6 +1419,9 @@ static void tas_initialize_dma_ops(PPCTASAudio *self)
 - (void)setInput:(NXSoundParameterTag)tag enable:(BOOL)enable
 {
     TASAudioDesiredControls candidate;
+    NXSoundParameterTag reportedSource;
+    NXSoundParameterTag runtimeSource;
+    TASStatus status;
     if (tas_is_closing(self))
         return;
     candidate = desiredControls;
@@ -1418,13 +1429,24 @@ static void tas_initialize_dma_ops(PPCTASAudio *self)
         return;
     if (tag != NX_SoundDeviceMicIn && tag != NX_SoundDeviceLineIn)
         return;
+    reportedSource = [self _analogInputSource];
+    runtimeSource = desiredControls.inputMuxActive ?
+        NX_SoundDeviceLineIn : NX_SoundDeviceMicIn;
     /* The required firmware input-data-mux proves the two external analog
      * positions.  Keep the TAS mixer on one stable I2S path: this GPIO,
      * never output-route state, selects microphone (inactive) or line
      * (active). */
     candidate.inputMuxActive = tag == NX_SoundDeviceLineIn;
     candidate.inputSource = kTASCodecInputDigital1;
-    (void)tas_update_controls(self, &candidate);
+    status = tas_update_controls(self, &candidate);
+    if (status != kTASStatusOK) {
+        if (reportedSource != runtimeSource)
+            reportedSource = runtimeSource;
+        [self _setInputReportFor:NX_SoundDeviceMicIn
+            to:reportedSource == NX_SoundDeviceMicIn];
+        [self _setInputReportFor:NX_SoundDeviceLineIn
+            to:reportedSource == NX_SoundDeviceLineIn];
+    }
 }
 - (void)setOutput:(NXSoundParameterTag)tag enable:(BOOL)enable
 {

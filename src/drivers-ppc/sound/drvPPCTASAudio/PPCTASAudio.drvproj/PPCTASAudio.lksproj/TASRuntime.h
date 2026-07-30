@@ -4,6 +4,10 @@
 #include "PPCDBDMAAudio.h"
 #include "TASCodec.h"
 
+#define TAS_INPUT_GAIN_UI_MAX       32768
+#define TAS_INPUT_GAIN_UNITY        0x100000UL
+#define TAS_INPUT_GAIN_PLUS_6DB     0x200000UL
+
 typedef enum {
     kTASRuntimePlatformReady = 0,
     kTASRuntimeMapI2S,

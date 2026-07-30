@@ -89,6 +89,9 @@ typedef struct {
     unsigned long failStopMask;
     TASStatus detectStatus;
     TASStatus failMuteStatus;
+    int failInputGPIO;
+    int failCodecAfterInput;
+    int failInputRollback;
     unsigned long operationDepth;
     unsigned long stateDepth;
     unsigned long interruptDepth;
@@ -265,6 +268,11 @@ static TASStatus runtime_controls(void *context,
     mock = (RuntimeMock *)context;
     runtime_hardware_boundary(mock);
     ++mock->hardwareCalls;
+    if (mock->failInputGPIO)
+        return kTASStatusTimeout;
+    if (mock->failCodecAfterInput)
+        return mock->failInputRollback ? kTASStatusUnresolved :
+            kTASStatusTimeout;
     return mock->failHardware == mock->hardwareCalls ?
         kTASStatusTimeout : kTASStatusOK;
 }
@@ -771,6 +779,7 @@ static void test_control_conversion_endpoints_and_monotonicity(void)
     unsigned long previous;
     unsigned long value;
     int attenuation;
+    int gain;
     CHECK(TASRuntimeAttenuationToCodec(0, &value) == kTASStatusOK &&
         value == 0x010000UL);
     CHECK(TASRuntimeAttenuationToCodec(-84, &value) == kTASStatusOK &&
@@ -787,13 +796,57 @@ static void test_control_conversion_endpoints_and_monotonicity(void)
         previous = value;
     }
     CHECK(TASRuntimeGainToCodec(0, &value) == kTASStatusOK &&
-        value == 0x010000UL);
+        value == 0x100000UL);
     CHECK(TASRuntimeGainToCodec(32768, &value) == kTASStatusOK &&
-        value == 0x020000UL);
+        value == 0x200000UL);
     CHECK(TASRuntimeGainToCodec(32769, &value) == kTASStatusOK &&
-        value == 0x020000UL);
+        value == 0x200000UL);
     CHECK(TASRuntimeGainToCodec(-1, &value) == kTASStatusOK &&
-        value == 0x010000UL);
+        value == 0x100000UL);
+    previous = 0UL;
+    for (gain = 0; gain <= TAS_INPUT_GAIN_UI_MAX; ++gain) {
+        CHECK(TASRuntimeGainToCodec(gain, &value) == kTASStatusOK);
+        CHECK(value >= previous && value >= TAS_INPUT_GAIN_UNITY &&
+            value <= TAS_INPUT_GAIN_PLUS_6DB);
+        previous = value;
+    }
+}
+
+static void test_input_control_failure_faults_capture(void)
+{
+    TASMachineConfig config;
+    TASRuntime runtime;
+    TASRuntimeOps ops;
+    RuntimeMock mock;
+    TASAudioDesiredControls desired;
+    unsigned char input[512];
+    unsigned long mode;
+    for (mode = 0UL; mode < 2UL; ++mode) {
+        config = tumbler_config();
+        memset(&desired, 0, sizeof(desired));
+        desired.rate = 44100UL;
+        desired.inputGain = TAS_INPUT_GAIN_UNITY;
+        memset(&mock, 0, sizeof(mock));
+        ops = runtime_ops(&mock);
+        CHECK(TASRuntimeInit(&runtime, &config, &desired, &ops) ==
+            kTASStatusOK);
+        CHECK(TASRuntimeReset(&runtime, 2000UL) == kTASStatusOK);
+        CHECK(TASRuntimeStartStream(&runtime, kTASStreamInput, input,
+            sizeof(input), 256UL, 44100UL, 2500UL) == kTASStatusOK);
+        desired.inputMuxActive = 1;
+        mock.failInputGPIO = mode == 0UL;
+        mock.failCodecAfterInput = mode != 0UL;
+        mock.failInputRollback = mode != 0UL;
+        CHECK(TASRuntimeSetControls(&runtime, &desired, 3000UL) ==
+            (mode == 0UL ? kTASStatusTimeout : kTASStatusUnresolved));
+        CHECK(runtime.audio.desired.inputMuxActive == 0);
+        CHECK(runtime.dmaFaultMask == kTASStreamMaskInput &&
+            runtime.clock.activeMask == 0UL && mock.stopCount[1] == 1UL);
+        CHECK(!runtime.audio.hardwareValid && !runtime.audio.routeValid &&
+            runtime.audio.outputsMuted && runtime.audio.outputsMuteKnown);
+        CHECK(TASRuntimeStartStream(&runtime, kTASStreamInput, input,
+            sizeof(input), 256UL, 44100UL, 3500UL) == kTASStatusConflict);
+    }
 }
 
 static void test_deadline_delay_is_wrap_safe(void)
@@ -1571,6 +1624,18 @@ static void test_driver_binds_runtime_controls_and_safe_irq_ordinals(void)
     CHECK(!driver_source_contains("NX_SoundDeviceCDIn"));
     CHECK(!driver_source_contains("NX_SoundDeviceAux1In"));
     CHECK(driver_source_contains("controls->inputMuxActive ? TRUE : FALSE"));
+    CHECK(driver_source_contains("_setInputReportFor"));
+    CHECK(driver_source_contains("reportedSource = [self _analogInputSource]"));
+    CHECK(driver_source_contains("rollbackStatus = tas_status"));
+    CHECK(source_file_contains(
+        "../../../../driverkit-3/driverkit/IOAudioPrivate.h",
+        "_setInputReportFor"));
+    CHECK(source_file_contains(
+        "../../../../driverkit-3/libDriver/Kernel/IOAudio.m",
+        "[self _setInputReportFor:ptag to:enable]"));
+    CHECK(source_file_contains(
+        "../PPCTASAudio.drvproj/PPCTASAudio.lksproj/TASRuntime.c",
+        "record_dma_fault(runtime, kTASStreamInput, deadline)"));
     CHECK(!driver_source_contains("tas_output_route"));
     CHECK(!source_file_contains(
         "../PPCTASAudio.drvproj/PPCTASAudio.lksproj/TASRuntime.h",
@@ -1655,6 +1720,7 @@ int main(void)
     test_delivered_resource_validation();
     test_codec_delay_is_deadline_bounded();
     test_control_conversion_endpoints_and_monotonicity();
+    test_input_control_failure_faults_capture();
     test_deadline_delay_is_wrap_safe();
     test_fail_mute_attempts_every_present_output();
     test_safe_output_stage_failure_attempts_every_output();

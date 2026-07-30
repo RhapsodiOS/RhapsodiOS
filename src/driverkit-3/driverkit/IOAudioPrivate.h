@@ -144,6 +144,7 @@ typedef struct {
 - (ns_time_t)_outputStartTime;
 
 - (void) _setInputFor:(NXSoundParameterTag)ptag to:(BOOL)enable;
+- (void) _setInputReportFor:(NXSoundParameterTag)ptag to:(BOOL)enable;
 - (void) _setOutputFor:(NXSoundParameterTag)ptag to:(BOOL)enable;
 
 // convenience methods

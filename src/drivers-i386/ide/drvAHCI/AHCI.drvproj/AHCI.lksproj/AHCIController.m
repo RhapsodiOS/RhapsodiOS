@@ -240,6 +240,10 @@ static int AHCIVersionIsCommon(AHCIU32 version)
         [self free];
         return nil;
     }
+    if ([self startIOThread] != IO_R_SUCCESS) {
+        [self free];
+        return nil;
+    }
     if ([self enableAllInterrupts] != IO_R_SUCCESS) {
         [self disableAllInterrupts];
         [self free];

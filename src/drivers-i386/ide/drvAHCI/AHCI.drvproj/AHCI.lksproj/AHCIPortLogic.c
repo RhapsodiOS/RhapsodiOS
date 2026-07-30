@@ -125,6 +125,13 @@ static AHCIPortResult ahci_stop_fis(const AHCIPortOps *ops,
         AHCI_PORT_SUCCESS : AHCI_PORT_ENGINE_TIMEOUT;
 }
 
+static void ahci_clear_port_errors(const AHCIPortOps *ops,
+                                   unsigned int port)
+{
+    ahci_port_write(ops, port, AHCI_PX_IS, 0xffffffffU);
+    ahci_port_write(ops, port, AHCI_PX_SERR, 0xffffffffU);
+}
+
 static int ahci_link_active(AHCIU32 ssts)
 {
     return (ssts & AHCI_SSTS_DET_MASK) == AHCI_SSTS_DET_PRESENT &&
@@ -173,8 +180,7 @@ AHCIPortResult AHCIPortInitializeHardware(const AHCIPortOps *ops,
     ahci_port_write(ops, port, AHCI_PX_FB,
                     arena->physicalBase + arena->receivedFISOffset);
     ahci_port_write(ops, port, AHCI_PX_FBU, 0);
-    ahci_port_write(ops, port, AHCI_PX_IS, 0xffffffffU);
-    ahci_port_write(ops, port, AHCI_PX_SERR, 0xffffffffU);
+    ahci_clear_port_errors(ops, port);
 
     command = ahci_port_read(ops, port, AHCI_PX_CMD);
     if ((command & AHCI_PXCMD_CPD) != 0)
@@ -198,10 +204,12 @@ AHCIPortResult AHCIPortInitializeHardware(const AHCIPortOps *ops,
         if (!ahci_wait_link(ops, port)) {
             if (ahci_stop_fis(ops, port) != AHCI_PORT_SUCCESS)
                 return AHCI_PORT_ENGINE_TIMEOUT;
+            ahci_clear_port_errors(ops, port);
             ahci_port_write(ops, port, AHCI_PX_IE,
                             AHCI_PORT_INITIAL_IE_MASK);
             return AHCI_PORT_SUCCESS;
         }
+        ahci_clear_port_errors(ops, port);
         ssts = ahci_port_read(ops, port, AHCI_PX_SSTS);
     }
     if (!ahci_link_active(ssts)) {
@@ -238,8 +246,7 @@ AHCIPortResult AHCIPortStopHardware(const AHCIPortOps *ops,
         return AHCI_PORT_ENGINE_TIMEOUT;
     if (ahci_stop_fis(ops, port) != AHCI_PORT_SUCCESS)
         return AHCI_PORT_ENGINE_TIMEOUT;
-    ahci_port_write(ops, port, AHCI_PX_IS, 0xffffffffU);
-    ahci_port_write(ops, port, AHCI_PX_SERR, 0xffffffffU);
+    ahci_clear_port_errors(ops, port);
     return AHCI_PORT_SUCCESS;
 }
 

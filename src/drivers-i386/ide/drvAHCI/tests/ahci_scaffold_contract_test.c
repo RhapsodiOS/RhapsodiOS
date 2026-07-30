@@ -469,6 +469,11 @@ static int valid_task9_interrupt_lifecycle(const char *text)
         "- initFromDeviceDescription:(IOPCIDeviceDescription *)deviceDescription";
 
     return has_scoped_ordered_pair(text, initializer, "- free",
+               "if ([self startIOThread] != IO_R_SUCCESS)",
+               "if ([self enableAllInterrupts] != IO_R_SUCCESS)") &&
+           has_scoped_expression(text, initializer, "- free",
+               "if ([self startIOThread] != IO_R_SUCCESS) { [self free]; return nil; }") &&
+           has_scoped_ordered_pair(text, initializer, "- free",
                "if ([self enableAllInterrupts] != IO_R_SUCCESS)",
                "ghc | AHCI_GHC_AE | AHCI_GHC_IE") &&
            has_scoped_expression(text, initializer, "- free",
@@ -973,10 +978,30 @@ static void test_controller_contract(void)
 
 static void test_task9_interrupt_mutations(void)
 {
+    char accepted[1024];
     char *source;
     char *mutation;
     size_t bytes;
 
+    strcpy(accepted,
+        "- initFromDeviceDescription:(IOPCIDeviceDescription *)deviceDescription {\n"
+        "if ([self startIOThread] != IO_R_SUCCESS) { [self free]; return nil; }\n"
+        "if ([self enableAllInterrupts] != IO_R_SUCCESS) { [self disableAllInterrupts]; [self free]; return nil; }\n");
+    strcat(accepted,
+        "driverKitInterruptsEnabled = YES; globalInterruptsEnabled = YES;\n"
+        "ghc | AHCI_GHC_AE | AHCI_GHC_IE;\n}\n"
+        "- free {\n"
+        "AHCIMMIOWrite(&mmio, AHCI_REG_GHC, ghc & ~AHCI_GHC_IE);\n"
+        "if (driverKitInterruptsEnabled) { [self disableAllInterrupts]; driverKitInterruptsEnabled = NO; }\n}\n");
+    strcat(accepted,
+        "- (void)interruptOccurred {\n"
+        "AHCIMMIOWrite(&mmio, AHCI_REG_IS, asserted);\n"
+        "if ([self enableAllInterrupts] == IO_R_SUCCESS) { driverKitInterruptsEnabled = YES; }\n"
+        "AHCIMMIOWrite(&mmio, AHCI_REG_GHC, ghc & ~AHCI_GHC_IE);\n}\n@end\n");
+    if (!valid_task9_interrupt_lifecycle(accepted)) {
+        fprintf(stderr, "valid Task 9 interrupt fixture rejected\n");
+        ++failures;
+    }
     source = read_file("AHCI.drvproj/AHCI.lksproj/AHCIController.m");
     if (source == NULL) {
         ++failures;
@@ -989,6 +1014,27 @@ static void test_task9_interrupt_mutations(void)
         ++failures;
         return;
     }
+    if (!replace_once(mutation, bytes, source,
+                      "if ([self startIOThread] != IO_R_SUCCESS)",
+                      "if (0)"))
+        ++failures;
+    else
+        expect_invalid("I/O thread start removed",
+                       valid_task9_interrupt_lifecycle, mutation);
+    if (!replace_once(mutation, bytes, source,
+                      "if ([self startIOThread] != IO_R_SUCCESS)",
+                      "if ([self startIOThread] == IO_R_SUCCESS)"))
+        ++failures;
+    else
+        expect_invalid("I/O thread failure check inverted",
+                       valid_task9_interrupt_lifecycle, mutation);
+    if (!replace_once(mutation, bytes, source,
+                      "if ([self startIOThread] != IO_R_SUCCESS) {\n        [self free];\n        return nil;\n    }\n    if ([self enableAllInterrupts] != IO_R_SUCCESS) {",
+                      "if ([self enableAllInterrupts] != IO_R_SUCCESS) {\n        [self free];\n        return nil;\n    }\n    if ([self startIOThread] != IO_R_SUCCESS) {"))
+        ++failures;
+    else
+        expect_invalid("I/O thread start moved after interrupt enable",
+                       valid_task9_interrupt_lifecycle, mutation);
     if (!replace_once(mutation, bytes, source,
                       "if ([self enableAllInterrupts] != IO_R_SUCCESS)",
                       "if (0)"))

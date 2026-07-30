@@ -104,6 +104,10 @@ typedef struct {
     unsigned int eventCount;
     unsigned int delayedMilliseconds;
     int fisStuck;
+    int comresetAsserted;
+    int comresetReleased;
+    unsigned int linkWaitedMilliseconds;
+    unsigned int linkUpAtMilliseconds;
 } PortFake;
 
 static AHCIU32 port_read(void *context, AHCIU32 offset)
@@ -111,6 +115,11 @@ static AHCIU32 port_read(void *context, AHCIU32 offset)
     PortFake *fake;
 
     fake = (PortFake *)context;
+    if (offset == AHCI_PORT_BASE(0) + AHCI_PX_SSTS &&
+        fake->linkUpAtMilliseconds != 0 &&
+        fake->linkWaitedMilliseconds >= fake->linkUpAtMilliseconds)
+        fake->registers[AHCI_PX_SSTS / 4U] =
+            AHCI_SSTS_DET_PRESENT | AHCI_SSTS_IPM_ACTIVE;
     return fake->registers[(offset - AHCI_PORT_BASE(0)) / 4U];
 }
 
@@ -133,6 +142,11 @@ static void port_write(void *context, AHCIU32 offset, AHCIU32 value)
     fake = (PortFake *)context;
     index = (offset - AHCI_PORT_BASE(0)) / 4U;
     record(fake, EVENT_WRITE, offset, value);
+    if (offset == AHCI_PORT_BASE(0) + AHCI_PX_IS ||
+        offset == AHCI_PORT_BASE(0) + AHCI_PX_SERR) {
+        fake->registers[index] &= ~value;
+        return;
+    }
     if (offset == AHCI_PORT_BASE(0) + AHCI_PX_CMD) {
         if ((value & AHCI_PXCMD_FRE) != 0)
             value |= AHCI_PXCMD_FR;
@@ -142,6 +156,14 @@ static void port_write(void *context, AHCIU32 offset, AHCIU32 value)
             value |= AHCI_PXCMD_CR;
         else
             value &= ~AHCI_PXCMD_CR;
+    } else if (offset == AHCI_PORT_BASE(0) + AHCI_PX_SCTL) {
+        if ((value & AHCI_SCTL_DET_MASK) == AHCI_SCTL_DET_COMRESET)
+            fake->comresetAsserted = 1;
+        else if (fake->comresetAsserted) {
+            fake->comresetReleased = 1;
+            fake->registers[AHCI_PX_IS / 4U] = AHCI_PXIS_PCS;
+            fake->registers[AHCI_PX_SERR / 4U] = 0x00010001U;
+        }
     }
     fake->registers[index] = value;
 }
@@ -152,7 +174,8 @@ static void port_delay(void *context, unsigned int milliseconds)
 
     fake = (PortFake *)context;
     fake->delayedMilliseconds += milliseconds;
-    record(fake, EVENT_DELAY, 0, milliseconds);
+    if (fake->comresetReleased)
+        fake->linkWaitedMilliseconds += milliseconds;
 }
 
 static void port_barrier(void *context)
@@ -173,6 +196,37 @@ static int write_position(const PortFake *fake, AHCIU32 registerOffset)
             return (int)i;
     }
     return -1;
+}
+
+static unsigned int write_count(const PortFake *fake,
+                                AHCIU32 registerOffset)
+{
+    unsigned int count;
+    unsigned int i;
+
+    count = 0;
+    for (i = 0; i < fake->eventCount; ++i) {
+        if (fake->eventType[i] == EVENT_WRITE &&
+            fake->eventOffset[i] == AHCI_PORT_BASE(0) + registerOffset)
+            ++count;
+    }
+    return count;
+}
+
+static int register_writes_have_barriers(const PortFake *fake,
+                                         AHCIU32 registerOffset)
+{
+    unsigned int i;
+
+    for (i = 0; i < fake->eventCount; ++i) {
+        if (fake->eventType[i] == EVENT_WRITE &&
+            fake->eventOffset[i] == AHCI_PORT_BASE(0) + registerOffset) {
+            if (i + 1U >= fake->eventCount ||
+                fake->eventType[i + 1U] != EVENT_BARRIER)
+                return 0;
+        }
+    }
+    return 1;
 }
 
 static void init_active_fake(PortFake *fake, AHCIU32 signature)
@@ -254,6 +308,12 @@ static void test_comreset_only_for_recoverable_link(void)
     CHECK(kind == AHCI_DEVICE_NONE);
     CHECK(fake.delayedMilliseconds >= AHCI_COMRESET_ASSERT_MS);
     CHECK(fake.registers[AHCI_PX_IE / 4U] == AHCI_PORT_INITIAL_IE_MASK);
+    CHECK(fake.registers[AHCI_PX_IS / 4U] == 0);
+    CHECK(fake.registers[AHCI_PX_SERR / 4U] == 0);
+    CHECK(write_count(&fake, AHCI_PX_IS) == 2U);
+    CHECK(write_count(&fake, AHCI_PX_SERR) == 2U);
+    CHECK(register_writes_have_barriers(&fake, AHCI_PX_IS));
+    CHECK(register_writes_have_barriers(&fake, AHCI_PX_SERR));
 
     init_active_fake(&fake, 0);
     fake.registers[AHCI_PX_SSTS / 4U] = 0;
@@ -264,6 +324,141 @@ static void test_comreset_only_for_recoverable_link(void)
     CHECK((fake.registers[AHCI_PX_CMD / 4U] &
            (AHCI_PXCMD_ST | AHCI_PXCMD_FRE |
             AHCI_PXCMD_CR | AHCI_PXCMD_FR)) == 0);
+}
+
+typedef struct {
+    AHCIU32 registers[32];
+    unsigned int delayedMilliseconds;
+    unsigned int crClearAt;
+    unsigned int frClearAt;
+} BoundaryFake;
+
+static AHCIU32 boundary_read(void *context, AHCIU32 offset)
+{
+    BoundaryFake *fake;
+    AHCIU32 value;
+
+    fake = (BoundaryFake *)context;
+    value = fake->registers[(offset - AHCI_PORT_BASE(0)) / 4U];
+    if (offset == AHCI_PORT_BASE(0) + AHCI_PX_CMD) {
+        if (fake->crClearAt != 0 &&
+            fake->delayedMilliseconds >= fake->crClearAt)
+            value &= ~AHCI_PXCMD_CR;
+        if (fake->frClearAt != 0 &&
+            fake->delayedMilliseconds >= fake->frClearAt)
+            value &= ~AHCI_PXCMD_FR;
+        fake->registers[AHCI_PX_CMD / 4U] = value;
+    }
+    return value;
+}
+
+static void boundary_write(void *context, AHCIU32 offset, AHCIU32 value)
+{
+    BoundaryFake *fake;
+    AHCIU32 index;
+    AHCIU32 old;
+
+    fake = (BoundaryFake *)context;
+    index = (offset - AHCI_PORT_BASE(0)) / 4U;
+    old = fake->registers[index];
+    if (offset == AHCI_PORT_BASE(0) + AHCI_PX_CMD)
+        value = (value & ~(AHCI_PXCMD_CR | AHCI_PXCMD_FR)) |
+                (old & (AHCI_PXCMD_CR | AHCI_PXCMD_FR));
+    fake->registers[index] = value;
+}
+
+static void boundary_delay(void *context, unsigned int milliseconds)
+{
+    BoundaryFake *fake;
+
+    fake = (BoundaryFake *)context;
+    fake->delayedMilliseconds += milliseconds;
+}
+
+static void boundary_barrier(void *context)
+{
+    (void)context;
+}
+
+static AHCIPortResult run_stop_boundary(unsigned int crClearAt,
+                                        unsigned int frClearAt,
+                                        unsigned int *delayed)
+{
+    AHCIPortOps ops;
+    BoundaryFake fake;
+    AHCIPortResult result;
+
+    memset(&fake, 0, sizeof(fake));
+    fake.registers[AHCI_PX_CMD / 4U] = AHCI_PXCMD_ST |
+        AHCI_PXCMD_FRE | AHCI_PXCMD_CR | AHCI_PXCMD_FR;
+    fake.crClearAt = crClearAt;
+    fake.frClearAt = frClearAt;
+    ops.context = &fake;
+    ops.read = boundary_read;
+    ops.write = boundary_write;
+    ops.delay = boundary_delay;
+    ops.barrier = boundary_barrier;
+    result = AHCIPortStopHardware(&ops, 0U);
+    *delayed = fake.delayedMilliseconds;
+    return result;
+}
+
+static void test_exact_engine_timeout_boundaries(void)
+{
+    unsigned int delayed;
+
+    CHECK(run_stop_boundary(500U, 500U, &delayed) == AHCI_PORT_SUCCESS);
+    CHECK(delayed == 500U);
+    CHECK(run_stop_boundary(501U, 0U, &delayed) ==
+          AHCI_PORT_ENGINE_TIMEOUT);
+    CHECK(delayed == 500U);
+    CHECK(run_stop_boundary(1U, 501U, &delayed) == AHCI_PORT_SUCCESS);
+    CHECK(delayed == 501U);
+    CHECK(run_stop_boundary(1U, 502U, &delayed) ==
+          AHCI_PORT_ENGINE_TIMEOUT);
+    CHECK(delayed == 501U);
+}
+
+static void test_exact_link_timeout_boundary(void)
+{
+    AHCIPortOps ops;
+    AHCIPortArena arena;
+    PortFake fake;
+    AHCIDeviceKind kind;
+
+    memset(&arena, 0, sizeof(arena));
+    arena.physicalBase = 0x10000U;
+    arena.commandListOffset = AHCI_PORT_COMMAND_LIST_OFFSET;
+    arena.receivedFISOffset = AHCI_PORT_RECEIVED_FIS_OFFSET;
+    arena.commandTableOffset = AHCI_PORT_COMMAND_TABLE_OFFSET;
+    ops.context = &fake;
+    ops.read = port_read;
+    ops.write = port_write;
+    ops.delay = port_delay;
+    ops.barrier = port_barrier;
+
+    init_active_fake(&fake, AHCI_SIG_ATAPI);
+    fake.registers[AHCI_PX_SSTS / 4U] = 1U;
+    fake.linkUpAtMilliseconds = AHCI_LINK_TIMEOUT_MS;
+    CHECK(AHCIPortInitializeHardware(&ops, 0U, 0, &arena, &kind) ==
+          AHCI_PORT_SUCCESS);
+    CHECK(kind == AHCI_DEVICE_ATAPI);
+    CHECK(fake.linkWaitedMilliseconds == AHCI_LINK_TIMEOUT_MS);
+
+    init_active_fake(&fake, AHCI_SIG_ATAPI);
+    fake.registers[AHCI_PX_SSTS / 4U] = 1U;
+    fake.linkUpAtMilliseconds = AHCI_LINK_TIMEOUT_MS + 1U;
+    CHECK(AHCIPortInitializeHardware(&ops, 0U, 0, &arena, &kind) ==
+          AHCI_PORT_SUCCESS);
+    CHECK(kind == AHCI_DEVICE_NONE);
+    CHECK(fake.linkWaitedMilliseconds == AHCI_LINK_TIMEOUT_MS);
+}
+
+static void test_port_31_register_window(void)
+{
+    CHECK(AHCI_PORT_BASE(31U) == 0x1080U);
+    CHECK(AHCI_PORT_BASE(31U) + 0x7cU == 0x10fcU);
+    CHECK(AHCI_PORT_BASE(31U) + 0x7cU < AHCI_ABAR_LENGTH);
 }
 
 static void test_stop_masks_interrupts_and_stops_both_engines(void)
@@ -349,6 +544,9 @@ int main(void)
     test_comreset_only_for_recoverable_link();
     test_stop_masks_interrupts_and_stops_both_engines();
     test_empty_port_refuses_release_when_fis_will_not_stop();
+    test_exact_engine_timeout_boundaries();
+    test_exact_link_timeout_boundary();
+    test_port_31_register_window();
     test_sparse_pi_includes_port_31();
     test_arena_release_requires_a_stopped_engine();
     if (failures != 0)

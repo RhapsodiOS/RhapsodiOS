@@ -16,7 +16,8 @@ typedef enum {
     kTASStatusAmbiguous,
     kTASStatusConflict,
     kTASStatusOverflow,
-    kTASStatusUnsupported
+    kTASStatusUnsupported,
+    kTASStatusTimeout
 } TASStatus;
 
 typedef enum {
@@ -96,7 +97,67 @@ typedef struct {
     int (*getParent)(void *, TASNode, TASNode *);
 } TASPropertyReader;
 
+typedef struct {
+    unsigned long rate;
+    unsigned long sourceHz;
+    unsigned long mclkDivisor;
+    unsigned long sclkDivisor;
+    unsigned long serialFormat;
+    unsigned long frameCount;
+    unsigned long dataWord;
+    unsigned long codecSlotBits;
+    unsigned long pcmBits;
+    unsigned long channels;
+} TASI2SClock;
+
+typedef enum {
+    kTASStreamOutput = 0,
+    kTASStreamInput = 1
+} TASStreamDirection;
+
+typedef struct {
+    unsigned long activeRate;
+    unsigned long referenceCount;
+    int outputActive;
+    int inputActive;
+} TASSharedClock;
+
+typedef enum {
+    kTASI2SRequestClockStop = 0,
+    kTASI2SAwaitClockStopped,
+    kTASI2SSetCellClockHeld,
+    kTASI2SWriteSerialFormat,
+    kTASI2SWriteFrameCount,
+    kTASI2SWriteDataWord,
+    kTASI2SBarrier,
+    kTASI2SSetCellRunning
+} TASI2SPlanOperation;
+
+typedef struct {
+    TASI2SPlanOperation operation;
+    unsigned long value;
+} TASI2SPlanStep;
+
+#define TAS_I2S_PLAN_MAX_STEPS 8
+
+typedef struct {
+    TASI2SPlanStep steps[TAS_I2S_PLAN_MAX_STEPS];
+    unsigned long count;
+} TASI2SRegisterPlan;
+
 TASStatus TASParseMachineConfig(const TASPropertyReader *reader,
     TASMachineConfig *configuration);
+TASStatus TASSelectI2SClock(const TASMachineConfig *configuration,
+    unsigned long rate, TASI2SClock *clock);
+void TASSharedClockInit(TASSharedClock *state);
+TASStatus TASAcquireI2SStream(const TASMachineConfig *configuration,
+    TASSharedClock *state, TASStreamDirection direction, unsigned long rate,
+    TASI2SClock *clock);
+TASStatus TASReleaseI2SStream(TASSharedClock *state,
+    TASStreamDirection direction);
+TASStatus TASBuildI2SRegisterPlan(const TASI2SClock *clock,
+    unsigned long stopDeadline, int clocksStopped, int liveRateChange,
+    int inputDMAQuiesced, int outputDMAQuiesced, int outputsMuted,
+    TASI2SRegisterPlan *plan);
 
 #endif

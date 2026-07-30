@@ -6,6 +6,21 @@
 #define TAS_KEYLARGO_WINDOW 0x00100000UL
 #define TAS_DISCOVERY_LIMIT 16UL
 #define TAS_TRAVERSAL_LIMIT 64UL
+#define TAS_I2S_DATA_WORD 0x02000200UL
+#define TAS_I2S_FRAME_COUNT 0UL
+#define TAS_I2S_MCLK_TO_FS 256UL
+#define TAS_I2S_SCLK_TO_FS 64UL
+
+/*
+ * Clock sources and divisor encodings follow Apple's AudioI2SControl.cpp and
+ * AudioI2SHardwareConstants.h from AppleOnboardAudio-184.2.5.  This codec
+ * policy can reach 32--48 kHz exactly with only divisors 4 and 6.
+ */
+static const unsigned long tasClockSources[] = {
+    18432000UL, 45158400UL, 49152000UL
+};
+
+static const unsigned long tasMclkDivisors[] = { 4UL, 6UL };
 
 typedef struct {
     TASNode macIO;
@@ -17,6 +32,57 @@ typedef struct {
     TASCodecKind kind;
     const char *compatible;
 } TASCandidate;
+
+static unsigned long serial_format(unsigned long source,
+    unsigned long mclkDivisor)
+{
+    unsigned long value;
+    value = 0UL;
+    if (source == 45158400UL)
+        value = 1UL << 30;
+    else if (source == 49152000UL)
+        value = 2UL << 30;
+    value |= ((mclkDivisor / 2UL) - 1UL) << 24;
+    value |= ((4UL / 2UL) - 1UL) << 20;
+    value |= 1UL << 19;
+    value |= 1UL << 16;
+    return value;
+}
+
+static TASStatus find_i2s_clock(unsigned long rate, TASI2SClock *clock)
+{
+    unsigned long sourceIndex;
+    unsigned long divisorIndex;
+    unsigned long source;
+    unsigned long divisor;
+    unsigned long product;
+    if (rate < 32000UL || rate > 48000UL)
+        return kTASStatusUnsupported;
+    for (sourceIndex = 0; sourceIndex < sizeof(tasClockSources) /
+        sizeof(tasClockSources[0]); ++sourceIndex) {
+        source = tasClockSources[sourceIndex];
+        for (divisorIndex = 0; divisorIndex < sizeof(tasMclkDivisors) /
+            sizeof(tasMclkDivisors[0]); ++divisorIndex) {
+            divisor = tasMclkDivisors[divisorIndex];
+            product = TAS_I2S_MCLK_TO_FS * divisor;
+            if (rate <= source / product && rate * product == source) {
+                clock->rate = rate;
+                clock->sourceHz = source;
+                clock->mclkDivisor = divisor;
+                clock->sclkDivisor = TAS_I2S_MCLK_TO_FS /
+                    TAS_I2S_SCLK_TO_FS;
+                clock->serialFormat = serial_format(source, divisor);
+                clock->frameCount = TAS_I2S_FRAME_COUNT;
+                clock->dataWord = TAS_I2S_DATA_WORD;
+                clock->codecSlotBits = 20UL;
+                clock->pcmBits = 16UL;
+                clock->channels = 2UL;
+                return kTASStatusOK;
+            }
+        }
+    }
+    return kTASStatusUnsupported;
+}
 
 static unsigned long be32(const unsigned char *bytes)
 {
@@ -720,6 +786,12 @@ static TASStatus parse_policy(const TASPropertyReader *reader,
     const unsigned char *bytes;
     unsigned long length;
     unsigned long index;
+    unsigned long accepted;
+    unsigned long previous;
+    unsigned long rate;
+    TASI2SClock clock;
+    int duplicate;
+    int have44100;
     TASStatus status;
     status = string_property(reader, soundChip, "model", &bytes, &length, 0);
     if (status != kTASStatusOK)
@@ -739,12 +811,29 @@ static TASStatus parse_policy(const TASPropertyReader *reader,
     if (length == 0 || (length & 3UL) != 0 ||
         length > TAS_MAX_RATES * 4UL)
         return kTASStatusMalformed;
-    config->rateCount = length / 4UL;
-    for (index = 0; index < config->rateCount; ++index) {
-        config->rates[index] = be32(bytes + index * 4UL);
-        if (config->rates[index] == 0)
+    accepted = 0;
+    have44100 = 0;
+    for (index = 0; index < length / 4UL; ++index) {
+        rate = be32(bytes + index * 4UL);
+        if (rate == 0)
             return kTASStatusMalformed;
+        if (find_i2s_clock(rate, &clock) != kTASStatusOK)
+            continue;
+        duplicate = 0;
+        for (previous = 0; previous < accepted; ++previous) {
+            if (config->rates[previous] == rate)
+                duplicate = 1;
+        }
+        if (!duplicate) {
+            config->rates[accepted] = rate;
+            ++accepted;
+        }
+        if (rate == 44100UL)
+            have44100 = 1;
     }
+    config->rateCount = accepted;
+    if (!have44100)
+        return kTASStatusUnsupported;
     return kTASStatusOK;
 }
 
@@ -877,4 +966,132 @@ TASStatus TASParseMachineConfig(const TASPropertyReader *reader,
     if (status == kTASStatusOK)
         *configuration = parsed;
     return status;
+}
+
+TASStatus TASSelectI2SClock(const TASMachineConfig *configuration,
+    unsigned long rate, TASI2SClock *clock)
+{
+    TASI2SClock selected;
+    unsigned long index;
+    int advertised;
+    TASStatus status;
+    if (configuration == 0 || clock == 0)
+        return kTASStatusMalformed;
+    advertised = 0;
+    for (index = 0; index < configuration->rateCount &&
+        index < TAS_MAX_RATES; ++index) {
+        if (configuration->rates[index] == rate)
+            advertised = 1;
+    }
+    if (!advertised)
+        return kTASStatusUnsupported;
+    status = find_i2s_clock(rate, &selected);
+    if (status == kTASStatusOK)
+        *clock = selected;
+    return status;
+}
+
+void TASSharedClockInit(TASSharedClock *state)
+{
+    if (state != 0)
+        memset(state, 0, sizeof(*state));
+}
+
+TASStatus TASAcquireI2SStream(const TASMachineConfig *configuration,
+    TASSharedClock *state, TASStreamDirection direction, unsigned long rate,
+    TASI2SClock *clock)
+{
+    TASSharedClock acquired;
+    TASI2SClock selected;
+    TASStatus status;
+    int *active;
+    if (state == 0 || clock == 0 || (direction != kTASStreamOutput &&
+        direction != kTASStreamInput))
+        return kTASStatusMalformed;
+    if (state->referenceCount > 2UL ||
+        state->referenceCount != (unsigned long)(state->outputActive != 0) +
+        (unsigned long)(state->inputActive != 0) ||
+        (state->referenceCount == 0UL) != (state->activeRate == 0UL))
+        return kTASStatusMalformed;
+    status = TASSelectI2SClock(configuration, rate, &selected);
+    if (status != kTASStatusOK)
+        return status;
+    if (state->referenceCount != 0UL && state->activeRate != rate)
+        return kTASStatusConflict;
+    acquired = *state;
+    active = direction == kTASStreamOutput ? &acquired.outputActive :
+        &acquired.inputActive;
+    if (*active)
+        return kTASStatusConflict;
+    *active = 1;
+    acquired.activeRate = rate;
+    ++acquired.referenceCount;
+    *state = acquired;
+    *clock = selected;
+    return kTASStatusOK;
+}
+
+TASStatus TASReleaseI2SStream(TASSharedClock *state,
+    TASStreamDirection direction)
+{
+    TASSharedClock released;
+    int *active;
+    if (state == 0 || (direction != kTASStreamOutput &&
+        direction != kTASStreamInput))
+        return kTASStatusMalformed;
+    if (state->referenceCount == 0UL || state->referenceCount > 2UL ||
+        state->referenceCount != (unsigned long)(state->outputActive != 0) +
+        (unsigned long)(state->inputActive != 0) || state->activeRate == 0UL)
+        return kTASStatusConflict;
+    released = *state;
+    active = direction == kTASStreamOutput ? &released.outputActive :
+        &released.inputActive;
+    if (!*active)
+        return kTASStatusConflict;
+    *active = 0;
+    --released.referenceCount;
+    if (released.referenceCount == 0UL)
+        released.activeRate = 0UL;
+    *state = released;
+    return kTASStatusOK;
+}
+
+static void plan_step(TASI2SRegisterPlan *plan,
+    TASI2SPlanOperation operation, unsigned long value)
+{
+    plan->steps[plan->count].operation = operation;
+    plan->steps[plan->count].value = value;
+    ++plan->count;
+}
+
+TASStatus TASBuildI2SRegisterPlan(const TASI2SClock *clock,
+    unsigned long stopDeadline, int clocksStopped, int liveRateChange,
+    int inputDMAQuiesced, int outputDMAQuiesced, int outputsMuted,
+    TASI2SRegisterPlan *plan)
+{
+    TASI2SClock expected;
+    TASI2SRegisterPlan built;
+    if (clock == 0 || plan == 0 || stopDeadline == 0UL)
+        return kTASStatusMalformed;
+    if (find_i2s_clock(clock->rate, &expected) != kTASStatusOK ||
+        memcmp(clock, &expected, sizeof(expected)) != 0)
+        return kTASStatusMalformed;
+    if (liveRateChange && (!inputDMAQuiesced || !outputDMAQuiesced ||
+        !outputsMuted))
+        return kTASStatusConflict;
+    memset(&built, 0, sizeof(built));
+    plan_step(&built, kTASI2SRequestClockStop, stopDeadline);
+    plan_step(&built, kTASI2SAwaitClockStopped, stopDeadline);
+    if (!clocksStopped) {
+        *plan = built;
+        return kTASStatusTimeout;
+    }
+    plan_step(&built, kTASI2SSetCellClockHeld, 0UL);
+    plan_step(&built, kTASI2SWriteSerialFormat, clock->serialFormat);
+    plan_step(&built, kTASI2SWriteFrameCount, clock->frameCount);
+    plan_step(&built, kTASI2SWriteDataWord, clock->dataWord);
+    plan_step(&built, kTASI2SBarrier, 0UL);
+    plan_step(&built, kTASI2SSetCellRunning, 0UL);
+    *plan = built;
+    return kTASStatusOK;
 }

@@ -22,6 +22,8 @@
     PPCDBDMAOps dmaOps[2];
     unsigned long pendingGeneration;
     PMPowerState currentPowerState;
+    id interruptLock;
+    id stateLock;
 }
 
 + (BOOL)probe:(IODeviceDescription *)deviceDescription;

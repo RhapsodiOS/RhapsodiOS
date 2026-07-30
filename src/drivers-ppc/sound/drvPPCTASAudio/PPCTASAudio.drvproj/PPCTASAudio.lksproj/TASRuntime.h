@@ -43,6 +43,11 @@ typedef struct {
     TASStatus (*serviceDMA)(void *, TASStreamDirection, PPCDBDMARing *,
         unsigned long *);
     TASStatus (*ackDMAInterrupt)(void *, TASStreamDirection);
+    TASStatus (*ackDetectInterrupt)(void *);
+    void (*lockInterrupt)(void *);
+    void (*unlockInterrupt)(void *);
+    void (*lockState)(void *);
+    void (*unlockState)(void *);
     TASStatus (*executeAction)(void *, const TASAudioAction *);
     TASStatus (*applyControls)(void *, const TASAudioDesiredControls *,
         unsigned long);
@@ -80,6 +85,7 @@ TASStatus TASRuntimeStopStream(TASRuntime *, TASStreamDirection,
     unsigned long);
 void TASRuntimeRecordISR(TASRuntime *, TASRuntimeIRQ);
 TASStatus TASRuntimeRecordDMAISR(TASRuntime *, TASStreamDirection);
+TASStatus TASRuntimeRecordDetectISR(TASRuntime *);
 TASStatus TASRuntimeServiceDeferred(TASRuntime *, unsigned long, int *, int *);
 TASStatus TASRuntimeSetControls(TASRuntime *,
     const TASAudioDesiredControls *, unsigned long);
@@ -90,5 +96,9 @@ TASStatus TASRuntimeBoundedDelay(void *, unsigned long, unsigned long,
     unsigned long (*)(void *), void (*)(void *, unsigned long));
 TASStatus TASRuntimeFailMuteOutputs(const TASMachineConfig *, void *,
     TASStatus (*)(void *, const TASGPIODescriptor *, int));
+TASStatus TASRuntimeApplyANDedReset(const TASMachineConfig *, int, void *,
+    TASStatus (*)(void *, const TASGPIODescriptor *, int));
+TASStatus TASRuntimeAttenuationToCodec(int, unsigned long *);
+TASStatus TASRuntimeGainToCodec(int, unsigned long *);
 
 #endif

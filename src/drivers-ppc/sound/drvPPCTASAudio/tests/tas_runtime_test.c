@@ -139,6 +139,14 @@ static TASStatus runtime_ack(void *context, TASStreamDirection direction)
         kTASStatusUnresolved : kTASStatusOK;
 }
 
+static TASStatus runtime_ack_detect(void *context)
+{
+    RuntimeMock *mock;
+    mock = (RuntimeMock *)context;
+    mock->trace[mock->traceCount++] = 150UL;
+    return kTASStatusOK;
+}
+
 static TASStatus runtime_action(void *context, const TASAudioAction *action)
 {
     RuntimeMock *mock;
@@ -220,6 +228,11 @@ static void runtime_signal(void *context)
     mock->trace[mock->traceCount++] = 300UL;
 }
 
+static void runtime_lock(void *context)
+{
+    (void)context;
+}
+
 static void runtime_fail_mute(void *context)
 {
     ++((RuntimeMock *)context)->failMuteCount;
@@ -270,6 +283,11 @@ static TASRuntimeOps runtime_ops(RuntimeMock *mock)
     ops.stopResetDMA = runtime_stop;
     ops.serviceDMA = runtime_service;
     ops.ackDMAInterrupt = runtime_ack;
+    ops.ackDetectInterrupt = runtime_ack_detect;
+    ops.lockInterrupt = runtime_lock;
+    ops.unlockInterrupt = runtime_lock;
+    ops.lockState = runtime_lock;
+    ops.unlockState = runtime_lock;
     ops.executeAction = runtime_action;
     ops.applyControls = runtime_controls;
     ops.applyOutputRoute = runtime_output_route;
@@ -280,7 +298,7 @@ static TASRuntimeOps runtime_ops(RuntimeMock *mock)
     return ops;
 }
 
-static void test_raw_dma_isr_only_acks_records_and_signals(void)
+static void test_raw_isr_only_acks_and_latches(void)
 {
     TASMachineConfig config;
     TASRuntime runtime;
@@ -294,8 +312,7 @@ static void test_raw_dma_isr_only_acks_records_and_signals(void)
     ops = runtime_ops(&mock);
     CHECK(TASRuntimeInit(&runtime, &config, &desired, &ops) == kTASStatusOK);
     CHECK(TASRuntimeRecordDMAISR(&runtime, kTASStreamOutput) == kTASStatusOK);
-    CHECK(mock.traceCount == 2UL && mock.trace[0] == 100UL &&
-        mock.trace[1] == 300UL);
+    CHECK(mock.traceCount == 1UL && mock.trace[0] == 100UL);
     CHECK(runtime.pendingIRQs == kTASRuntimeIRQOutput);
     CHECK(mock.serviceCount[0] == 0UL && mock.detectIndex == 0UL &&
         mock.hardwareCalls == 0UL);
@@ -304,6 +321,10 @@ static void test_raw_dma_isr_only_acks_records_and_signals(void)
         kTASStatusUnresolved);
     CHECK((runtime.pendingIRQs & kTASRuntimeIRQInput) != 0UL &&
         runtime.dmaFaultMask == kTASStreamMaskInput);
+    mock.traceCount = 0UL;
+    CHECK(TASRuntimeRecordDetectISR(&runtime) == kTASStatusOK);
+    CHECK(mock.traceCount == 1UL && mock.trace[0] == 150UL &&
+        (runtime.pendingIRQs & kTASRuntimeIRQDetect) != 0UL);
 }
 
 static void test_initial_detect_advances_without_another_edge(void)
@@ -535,10 +556,65 @@ static void test_codec_delay_is_deadline_bounded(void)
         delay_wait_overshoot) == kTASStatusTimeout);
 }
 
+static void test_control_conversion_endpoints_and_monotonicity(void)
+{
+    unsigned long previous;
+    unsigned long value;
+    int attenuation;
+    CHECK(TASRuntimeAttenuationToCodec(0, &value) == kTASStatusOK &&
+        value == 0x010000UL);
+    CHECK(TASRuntimeAttenuationToCodec(-42, &value) == kTASStatusOK &&
+        value == 0UL);
+    CHECK(TASRuntimeAttenuationToCodec(1, &value) == kTASStatusUnsupported);
+    CHECK(TASRuntimeAttenuationToCodec(-43, &value) ==
+        kTASStatusUnsupported);
+    previous = 0UL;
+    for (attenuation = -42; attenuation <= 0; ++attenuation) {
+        CHECK(TASRuntimeAttenuationToCodec(attenuation, &value) ==
+            kTASStatusOK);
+        CHECK(value >= previous);
+        previous = value;
+    }
+    CHECK(TASRuntimeGainToCodec(0, &value) == kTASStatusOK &&
+        value == 0x010000UL);
+    CHECK(TASRuntimeGainToCodec(24, &value) == kTASStatusOK &&
+        value == 0x020000UL);
+    CHECK(TASRuntimeGainToCodec(25, &value) == kTASStatusUnsupported);
+}
+
+static void test_deadline_delay_is_wrap_safe(void)
+{
+    DelayMock mock;
+    memset(&mock, 0, sizeof(mock));
+    mock.now = 0xfffffffeUL;
+    CHECK(TASRuntimeBoundedDelay(&mock, 2000UL, 0UL, delay_now,
+        delay_wait) == kTASStatusOK);
+    CHECK((mock.now & 0xffffffffUL) == 0UL);
+}
+
 typedef struct {
     unsigned long calls;
     unsigned long failCall;
 } MuteMock;
+
+typedef struct {
+    unsigned long offsets[4];
+    int active[4];
+    unsigned long calls;
+    unsigned long failCall;
+} GPIOTrace;
+
+static TASStatus trace_gpio(void *context, const TASGPIODescriptor *gpio,
+    int active)
+{
+    GPIOTrace *trace;
+    trace = (GPIOTrace *)context;
+    trace->offsets[trace->calls] = gpio->offset;
+    trace->active[trace->calls] = active;
+    ++trace->calls;
+    return trace->calls == trace->failCall ? kTASStatusTimeout :
+        kTASStatusOK;
+}
 
 static TASStatus mute_gpio(void *context, const TASGPIODescriptor *gpio,
     int active)
@@ -599,6 +675,28 @@ static void test_safe_output_stage_failure_attempts_every_output(void)
         CHECK(TASRuntimeReset(&runtime, 2000UL) == kTASStatusTimeout);
         CHECK(mock.safeMuteCalls == 3UL && runtime.acquiredMask == 0UL);
     }
+}
+
+static void test_anded_reset_uses_mute_constituents(void)
+{
+    TASMachineConfig config;
+    GPIOTrace trace;
+    config = tumbler_config();
+    config.quirks |= kTASQuirkANDedReset;
+    memset(&config.hardwareReset, 0, sizeof(config.hardwareReset));
+    memset(&trace, 0, sizeof(trace));
+    trace.failCall = 1UL;
+    CHECK(TASRuntimeApplyANDedReset(&config, 1, &trace, trace_gpio) ==
+        kTASStatusTimeout);
+    CHECK(trace.calls == 2UL && trace.active[0] && trace.active[1] &&
+        trace.offsets[0] == config.amplifierMute.offset &&
+        trace.offsets[1] == config.routes[kTASRouteHeadphone].mute.offset);
+    memset(&trace, 0, sizeof(trace));
+    CHECK(TASRuntimeApplyANDedReset(&config, 0, &trace, trace_gpio) ==
+        kTASStatusOK);
+    CHECK(trace.calls == 2UL && !trace.active[0] && !trace.active[1] &&
+        trace.offsets[0] == config.routes[kTASRouteHeadphone].mute.offset &&
+        trace.offsets[1] == config.amplifierMute.offset);
 }
 
 static void test_runtime_binds_both_reviewed_codecs(void)
@@ -766,8 +864,7 @@ static void test_full_duplex_controls_isr_and_power(void)
     TASRuntimeRecordISR(&runtime, kTASRuntimeIRQOutput);
     TASRuntimeRecordISR(&runtime, kTASRuntimeIRQInput);
     TASRuntimeRecordISR(&runtime, kTASRuntimeIRQDetect);
-    CHECK(mock.hardwareCalls == before &&
-        mock.signalCount == signalBefore + 3UL);
+    CHECK(mock.hardwareCalls == before && mock.signalCount == signalBefore);
     CHECK(TASRuntimeServiceDeferred(&runtime, 300UL, &notifyInput,
         &notifyOutput) == kTASStatusOK);
     CHECK(notifyInput && notifyOutput && mock.serviceCount[0] == 1UL &&
@@ -852,15 +949,18 @@ static void test_dma_fault_is_isolated_to_one_direction(void)
 
 int main(void)
 {
-    test_raw_dma_isr_only_acks_records_and_signals();
+    test_raw_isr_only_acks_and_latches();
     test_initial_detect_advances_without_another_edge();
     test_bounce_and_wake_continue_without_external_edges();
     test_edge_during_route_rolls_back_safely();
     test_route_action_failure_rolls_back_muted();
     test_probe_is_narrow();
     test_codec_delay_is_deadline_bounded();
+    test_control_conversion_endpoints_and_monotonicity();
+    test_deadline_delay_is_wrap_safe();
     test_fail_mute_attempts_every_present_output();
     test_safe_output_stage_failure_attempts_every_output();
+    test_anded_reset_uses_mute_constituents();
     test_runtime_binds_both_reviewed_codecs();
     test_acquisition_unwinds_every_stage();
     test_initial_route_failure_unwinds_muted();

@@ -2,6 +2,7 @@
 
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
+#import <driverkit/KernLock.h>
 #import <driverkit/ppc/IODBDMA.h>
 #import <driverkit/ppc/IOTreeDevice.h>
 #import <driverkit/ppc/IOPropertyTable.h>
@@ -27,6 +28,34 @@ typedef struct {
 static unsigned long tas_detects(void *opaque);
 static unsigned long tas_now(void *opaque);
 static void tas_wait_microseconds(void *opaque, unsigned long usec);
+
+static void tas_lock_interrupt(void *opaque)
+{
+    [((PPCTASAudio *)opaque)->interruptLock acquire];
+}
+
+static void tas_unlock_interrupt(void *opaque)
+{
+    [((PPCTASAudio *)opaque)->interruptLock release];
+}
+
+static void tas_lock_state(void *opaque)
+{
+    [((PPCTASAudio *)opaque)->stateLock acquire];
+}
+
+static void tas_unlock_state(void *opaque)
+{
+    [((PPCTASAudio *)opaque)->stateLock release];
+}
+
+static void tas_signal(void *opaque)
+{
+    PPCTASAudio *self;
+    self = (PPCTASAudio *)opaque;
+    ++self->pendingGeneration;
+    [self _interruptOccurred];
+}
 
 static int tas_get_property(void *opaque, TASNode node, const char *name,
     const unsigned char **bytes, unsigned long *length)
@@ -335,7 +364,7 @@ static TASStatus tas_acquire(void *opaque, TASRuntimeStage stage,
 {
     PPCTASAudio *self;
     unsigned long index;
-    vm_offset_t physical;
+    IOPhysicalAddress physical;
     self = (PPCTASAudio *)opaque;
     switch (stage) {
     case kTASRuntimePlatformReady:
@@ -375,23 +404,36 @@ static TASStatus tas_acquire(void *opaque, TASRuntimeStage stage,
     case kTASRuntimeAllocateInputRing:
         index = (unsigned long)stage -
             (unsigned long)kTASRuntimeAllocateOutputRing;
-        self->ringAllocations[index * 2UL] =
-            IOMalloc(PPC_DBDMA_MAX_RING_BYTES + 15UL);
+        if (PPC_DBDMA_MAX_RING_BYTES > 4096UL)
+            return kTASStatusUnsupported;
+        if (IOAllocatePhysicallyContiguousMemory(
+            (unsigned int)PPC_DBDMA_MAX_RING_BYTES, 0,
+            (IOVirtualAddress *)&self->ringAllocations[index * 2UL],
+            &physical) != IO_R_SUCCESS)
+            return kTASStatusMissing;
+        if ((((unsigned long)self->ringAllocations[index * 2UL] |
+            (unsigned long)physical) & 15UL) != 0UL ||
+            (unsigned long)physical > ~0UL - PPC_DBDMA_MAX_RING_BYTES) {
+            (void)IOFreePhysicallyContiguousMemory(
+                (IOVirtualAddress *)self->ringAllocations[index * 2UL],
+                (unsigned int)PPC_DBDMA_MAX_RING_BYTES);
+            self->ringAllocations[index * 2UL] = 0;
+            return kTASStatusUnresolved;
+        }
         self->ringAllocations[index * 2UL + 1UL] =
             IOMalloc(PPC_DBDMA_MAX_RING_BYTES + 15UL);
-        if (self->ringAllocations[index * 2UL] == 0 ||
-            self->ringAllocations[index * 2UL + 1UL] == 0)
+        if (self->ringAllocations[index * 2UL + 1UL] == 0) {
+            (void)IOFreePhysicallyContiguousMemory(
+                (IOVirtualAddress *)self->ringAllocations[index * 2UL],
+                (unsigned int)PPC_DBDMA_MAX_RING_BYTES);
+            self->ringAllocations[index * 2UL] = 0;
             return kTASStatusMissing;
-        self->ringStorage[index].logical = (void *)
-            (((unsigned long)self->ringAllocations[index * 2UL] + 15UL) &
-            ~15UL);
+        }
+        self->ringStorage[index].logical =
+            self->ringAllocations[index * 2UL];
         self->ringStorage[index].scratch = (void *)
             (((unsigned long)self->ringAllocations[index * 2UL + 1UL] +
             15UL) & ~15UL);
-        if (IOPhysicalFromVirtual(IOVmTaskSelf(),
-            (vm_offset_t)self->ringStorage[index].logical, &physical) !=
-            IO_R_SUCCESS)
-            return kTASStatusUnresolved;
         self->ringStorage[index].physical = (unsigned long)physical;
         self->ringStorage[index].bytes = PPC_DBDMA_MAX_RING_BYTES;
         self->ringStorage[index].scratchBytes = PPC_DBDMA_MAX_RING_BYTES;
@@ -438,8 +480,9 @@ static void tas_release(void *opaque, TASRuntimeStage stage)
         index = (unsigned long)stage -
             (unsigned long)kTASRuntimeAllocateOutputRing;
         if (self->ringAllocations[index * 2UL] != 0)
-            IOFree(self->ringAllocations[index * 2UL],
-                PPC_DBDMA_MAX_RING_BYTES + 15UL);
+            (void)IOFreePhysicallyContiguousMemory(
+                (IOVirtualAddress *)self->ringAllocations[index * 2UL],
+                (unsigned int)PPC_DBDMA_MAX_RING_BYTES);
         if (self->ringAllocations[index * 2UL + 1UL] != 0)
             IOFree(self->ringAllocations[index * 2UL + 1UL],
                 PPC_DBDMA_MAX_RING_BYTES + 15UL);
@@ -517,6 +560,14 @@ static TASStatus tas_ack_dma_interrupt(void *opaque,
     return kTASStatusOK;
 }
 
+static TASStatus tas_ack_detect_interrupt(void *opaque)
+{
+    (void)opaque;
+    /* mpic_interrupt writes MPIC_P0_EOI before invoking this handler. */
+    eieio();
+    return kTASStatusOK;
+}
+
 static TASStatus tas_action(void *opaque, const TASAudioAction *action)
 {
     PPCTASAudio *self;
@@ -558,11 +609,13 @@ static TASStatus tas_action(void *opaque, const TASAudioAction *action)
             action->deadline);
     case kTASAudioAssertReset:
     case kTASAudioReleaseReset:
+        return tas_codec_reset(self,
+            action->operation == kTASAudioAssertReset);
     case kTASAudioAssertAndedReset:
     case kTASAudioReleaseAndedReset:
-        return tas_codec_reset(self,
-            action->operation == kTASAudioAssertReset ||
-            action->operation == kTASAudioAssertAndedReset);
+        return TASRuntimeApplyANDedReset(&self->machineConfig,
+            action->operation == kTASAudioAssertAndedReset, self,
+            tas_write_mute_gpio);
     case kTASAudioSetResetAmpConstituent:
         gpio.offset = self->machineConfig.amplifierMute.offset;
         gpio.activeHigh = self->machineConfig.amplifierMute.activeHigh;
@@ -688,14 +741,6 @@ static unsigned long tas_detects(void *opaque)
     return detects;
 }
 
-static void tas_signal(void *opaque)
-{
-    PPCTASAudio *self;
-    self = (PPCTASAudio *)opaque;
-    ++self->pendingGeneration;
-    [self _interruptOccurred];
-}
-
 static TASRuntimeOps tas_runtime_ops(PPCTASAudio *self)
 {
     TASRuntimeOps ops;
@@ -713,6 +758,11 @@ static TASRuntimeOps tas_runtime_ops(PPCTASAudio *self)
     ops.stopResetDMA = tas_stop_dma;
     ops.serviceDMA = tas_service_dma;
     ops.ackDMAInterrupt = tas_ack_dma_interrupt;
+    ops.ackDetectInterrupt = tas_ack_detect_interrupt;
+    ops.lockInterrupt = tas_lock_interrupt;
+    ops.unlockInterrupt = tas_unlock_interrupt;
+    ops.lockState = tas_lock_state;
+    ops.unlockState = tas_unlock_state;
     ops.executeAction = tas_action;
     ops.applyControls = tas_controls;
     ops.applyOutputRoute = tas_output_route;
@@ -725,26 +775,22 @@ static TASRuntimeOps tas_runtime_ops(PPCTASAudio *self)
 
 static void tas_output_interrupt(void *identity, void *state, void *argument)
 {
-    (void)identity;
-    (void)state;
     (void)TASRuntimeRecordDMAISR(&((PPCTASAudio *)argument)->runtime,
         kTASStreamOutput);
+    IOSendInterrupt(identity, state, IO_DEVICE_INTERRUPT_MSG);
 }
 
 static void tas_input_interrupt(void *identity, void *state, void *argument)
 {
-    (void)identity;
-    (void)state;
     (void)TASRuntimeRecordDMAISR(&((PPCTASAudio *)argument)->runtime,
         kTASStreamInput);
+    IOSendInterrupt(identity, state, IO_DEVICE_INTERRUPT_MSG);
 }
 
 static void tas_detect_interrupt(void *identity, void *state, void *argument)
 {
-    (void)identity;
-    (void)state;
-    TASRuntimeRecordISR(&((PPCTASAudio *)argument)->runtime,
-        kTASRuntimeIRQDetect);
+    (void)TASRuntimeRecordDetectISR(&((PPCTASAudio *)argument)->runtime);
+    IOSendInterrupt(identity, state, IO_DEVICE_INTERRUPT_MSG);
 }
 
 static TASStatus tas_update_controls(PPCTASAudio *self,
@@ -775,6 +821,12 @@ static TASStatus tas_update_controls(PPCTASAudio *self,
         return NO;
     instance->machineConfig = config;
     instance->tasDeviceDescription = deviceDescription;
+    instance->interruptLock = [[KernLock alloc] initWithLevel:7];
+    instance->stateLock = [[KernLock alloc] initWithLevel:7];
+    if (instance->interruptLock == nil || instance->stateLock == nil) {
+        [instance free];
+        return NO;
+    }
     memset(&instance->desiredControls, 0,
         sizeof(instance->desiredControls));
     instance->desiredControls.rate = config.rates[0];
@@ -820,6 +872,10 @@ static TASStatus tas_update_controls(PPCTASAudio *self,
 - free
 {
     TASRuntimeUnwind(&runtime);
+    [interruptLock free];
+    interruptLock = nil;
+    [stateLock free];
+    stateLock = nil;
     return [super free];
 }
 

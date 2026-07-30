@@ -43,9 +43,9 @@ static AHCIHBAResult ahci_bios_handoff(const AHCIHBAOps *ops,
             waited += AHCI_POLL_INTERVAL_MS;
             bohc = ops->read(ops->context, AHCI_REG_BOHC);
         }
+        if ((bohc & (AHCI_BOHC_BOS | AHCI_BOHC_BB)) != 0)
+            return AHCI_HBA_BOHC_TIMEOUT;
     }
-    if ((bohc & (AHCI_BOHC_BOS | AHCI_BOHC_BB)) != 0)
-        return AHCI_HBA_BOHC_TIMEOUT;
     return AHCI_HBA_SUCCESS;
 }
 

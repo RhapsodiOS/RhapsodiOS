@@ -162,6 +162,26 @@ static unsigned int delay_total(const FakeHBA *fake, unsigned int value)
     return total;
 }
 
+static int has_single_delay_between(const FakeHBA *fake, int first,
+                                    int last, unsigned int milliseconds)
+{
+    unsigned int index;
+    unsigned int count;
+
+    if (first < 0 || last <= first)
+        return 0;
+    count = 0;
+    for (index = (unsigned int)(first + 1); index < (unsigned int)last;
+         ++index) {
+        if (fake->events[index].kind == EVENT_DELAY) {
+            if (fake->events[index].value != (AHCIU32)milliseconds)
+                return 0;
+            ++count;
+        }
+    }
+    return count == 1U;
+}
+
 static unsigned int write_count(const FakeHBA *fake)
 {
     unsigned int index;
@@ -241,11 +261,13 @@ static void test_bohc_busy_handoff(void)
 static void test_bohc_timeouts(void)
 {
     static const char busyName[] = "BOHC busy timeout";
-    static const char ownerName[] = "BOHC ownership timeout";
+    static const char noBusyName[] = "BOHC no-busy observation";
     FakeHBA fake;
     AHCIHBAOps ops;
     AHCIHBAInfo info;
     AHCIHBAResult result;
+    int ownership;
+    int firstAE;
 
     initialize_fake(&fake, &ops);
     fake.registers[AHCI_REG_CAP2 / 4U] = AHCI_CAP2_BOH;
@@ -261,10 +283,15 @@ static void test_bohc_timeouts(void)
     fake.registers[AHCI_REG_CAP2 / 4U] = AHCI_CAP2_BOH;
     fake.registers[AHCI_REG_BOHC / 4U] = AHCI_BOHC_BOS;
     result = AHCIHBAInitialize(&ops, &info);
-    if (result != AHCI_HBA_BOHC_TIMEOUT)
-        fail(ownerName, "persistent BOS was accepted");
-    if (fake.elapsed != AHCI_BOHC_BB_OBSERVE_MS)
-        fail(ownerName, "BOS-only failure was not bounded");
+    if (result != AHCI_HBA_SUCCESS)
+        fail(noBusyName, "persistent BOS without observed BB was rejected");
+    ownership = nth_write(&fake, AHCI_REG_BOHC,
+                          AHCI_BOHC_BOS | AHCI_BOHC_OOS, 1);
+    firstAE = nth_write(&fake, AHCI_REG_GHC,
+                        AHCI_GHC_AE | AHCI_GHC_IE, 1);
+    if (!has_single_delay_between(&fake, ownership, firstAE,
+                                  AHCI_BOHC_BB_OBSERVE_MS))
+        fail(noBusyName, "BB observation was not exactly one bounded wait");
 }
 
 static void test_reset_timeout(void)

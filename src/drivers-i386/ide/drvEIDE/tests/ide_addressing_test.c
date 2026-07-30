@@ -195,6 +195,21 @@ static void test_taskfile_write_sequence(void)
     CHECK(writes[2].reg == IDE_TASK_COUNT);
     CHECK(writes[3].reg == IDE_TASK_LBA_MID);
     CHECK(writes[4].reg == IDE_TASK_LBA_HIGH);
+
+    CHECK(IDEBuildTaskfile(&taskfile, IDE_ADDRESS_LBA, 0,
+        0x01234567UL, 2, 0xffffffffUL, 1, 0, 0) == IDE_ADDRESS_OK);
+    count = IDETaskfileWriteSequence(&taskfile, writes);
+    CHECK(count == 5);
+    CHECK(writes[0].reg == IDE_TASK_DEVICE);
+    CHECK(writes[0].value == 0xe1);
+    CHECK(writes[1].reg == IDE_TASK_LBA_LOW);
+    CHECK(writes[1].value == 0x67);
+    CHECK(writes[2].reg == IDE_TASK_COUNT);
+    CHECK(writes[2].value == 2);
+    CHECK(writes[3].reg == IDE_TASK_LBA_MID);
+    CHECK(writes[3].value == 0x45);
+    CHECK(writes[4].reg == IDE_TASK_LBA_HIGH);
+    CHECK(writes[4].value == 0x23);
 }
 
 int main(void)

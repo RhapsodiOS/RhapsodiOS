@@ -13,7 +13,7 @@ PROJECTVERSION = 2.6
 PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
-CFILES = VIATiming.c
+CFILES = VIATiming.c EIDEIoctlValidation.c
 
 CLASSES = AtapiCnt.m AtapiCntCmds.m AtapiCntInternal.m DualEide.m\
           IdeCnt.m IdeCntCmds.m IdeCntInit.m\
@@ -23,7 +23,8 @@ HFILES = AtapiCnt.h AtapiCntCmds.h AtapiCntInternal.h AtapiCntPublic.h\
          atapi_extern.h ata_extern.h DualEide.h IdeCnt.h IdeCntCmds.h\
          IdeCntInit.h IdePIIX.h IdeCntInline.h IdeBMIDE.h\
          IdeCntPublic.h IdeDDM.h IdeDisk.h IdeDiskInternal.h\
-         IdeKernel.h IdeShared.h PIIXTiming.h PIIX.h IdeVIA.h VIATiming.h IdeModeUtils.h
+         IdeKernel.h IdeShared.h PIIXTiming.h PIIX.h IdeVIA.h VIATiming.h IdeModeUtils.h\
+         EIDEIoctlValidation.h
 
 OTHERSRCS = Load_Commands.sect Makefile Makefile.preamble
 

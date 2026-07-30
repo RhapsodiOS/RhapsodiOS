@@ -88,8 +88,12 @@ static void test_registry_integration_source_contract(void)
     CHECK(strstr(header, "BOOL ata_hd_registry_init(void);") != NULL);
     CHECK(strstr(header, "ata_hd_map_set_live") != NULL);
     CHECK(strstr(header, "ata_hd_map_clear_partition") != NULL);
+    CHECK(strstr(header, "ata_hd_activate_units") != NULL);
     CHECK(strstr(registry, "*mapOut = NULL;") != NULL);
     CHECK(strstr(registry, "if (ata_hd_lock == nil)") == NULL);
+    CHECK(strstr(registry,
+                 "ATAHDRegistryIsActive(&ata_hd_core, unit)") != NULL);
+    CHECK(strstr(registry, "return map->liveId;") != NULL);
     CHECK(strstr(diskMethods, "ata_hd_map_set_live") != NULL);
     CHECK(strstr(diskMethods, "ata_hd_map_clear_live") != NULL);
     CHECK(strstr(diskMethods, "ata_hd_map_set_partition") != NULL);
@@ -149,8 +153,68 @@ static void test_duplicate_and_invalid_inputs(void)
     CHECK(ATAHDRegistryOpen(&registry, 0, ATA_HD_PARTITIONS) ==
           ATA_HD_REGISTRY_INVALID);
     CHECK(ATAHDRegistryOpen(&registry, 1, 0) == ATA_HD_REGISTRY_NOT_FOUND);
+    CHECK(ATAHDRegistryActivate(NULL, 0, &owner) ==
+          ATA_HD_REGISTRY_INVALID);
+    CHECK(ATAHDRegistryActivate(&registry, 0, NULL) ==
+          ATA_HD_REGISTRY_INVALID);
     CHECK(ATAHDRegistryClose(&registry, 0, 0) == ATA_HD_REGISTRY_INVALID);
     CHECK(ATAHDRegistryRemove(NULL, 0) == ATA_HD_REGISTRY_INVALID);
+}
+
+static void test_reserved_units_are_inactive_until_activation(void)
+{
+    ATAHDRegistryCore registry;
+    int owner;
+
+    ATAHDRegistryCoreInit(&registry);
+    CHECK(ATAHDRegistryAllocate(&registry, &owner) == 0);
+    CHECK(ATAHDRegistryIsActive(&registry, 0) == 0);
+    CHECK(ATAHDRegistryOpen(&registry, 0, 0) == ATA_HD_REGISTRY_INACTIVE);
+    CHECK(ATAHDRegistryActivate(&registry, 0, &owner) ==
+          ATA_HD_REGISTRY_SUCCESS);
+    CHECK(ATAHDRegistryIsActive(&registry, 0) == 1);
+    CHECK(ATAHDRegistryActivate(&registry, 0, &owner) ==
+          ATA_HD_REGISTRY_INVALID);
+    CHECK(ATAHDRegistryOpen(&registry, 0, 0) ==
+          ATA_HD_REGISTRY_SUCCESS);
+    CHECK(ATAHDRegistryClose(&registry, 0, 0) ==
+          ATA_HD_REGISTRY_SUCCESS);
+    CHECK(ATAHDRegistryRemove(&registry, 0) == ATA_HD_REGISTRY_SUCCESS);
+
+    CHECK(ATAHDRegistryAllocate(&registry, &owner) == 0);
+    CHECK(ATAHDRegistryRemove(&registry, 0) == ATA_HD_REGISTRY_SUCCESS);
+}
+
+static void test_batch_activation_is_all_or_none(void)
+{
+    ATAHDRegistryCore registry;
+    int firstOwner;
+    int secondOwner;
+    int wrongOwner;
+    unsigned int units[2];
+    void *owners[2];
+
+    ATAHDRegistryCoreInit(&registry);
+    CHECK(ATAHDRegistryAllocate(&registry, &firstOwner) == 0);
+    CHECK(ATAHDRegistryAllocate(&registry, &secondOwner) == 1);
+    units[0] = 0;
+    units[1] = 1;
+    owners[0] = &firstOwner;
+    owners[1] = &wrongOwner;
+    CHECK(ATAHDRegistryActivateBatch(&registry, units, owners, 2) ==
+          ATA_HD_REGISTRY_INVALID);
+    CHECK(ATAHDRegistryIsActive(&registry, 0) == 0);
+    CHECK(ATAHDRegistryIsActive(&registry, 1) == 0);
+
+    owners[1] = &secondOwner;
+    CHECK(ATAHDRegistryActivateBatch(&registry, units, owners, 2) ==
+          ATA_HD_REGISTRY_SUCCESS);
+    CHECK(ATAHDRegistryIsActive(&registry, 0) == 1);
+    CHECK(ATAHDRegistryIsActive(&registry, 1) == 1);
+
+    units[1] = 0;
+    CHECK(ATAHDRegistryActivateBatch(&registry, units, owners, 2) ==
+          ATA_HD_REGISTRY_INVALID);
 }
 
 static void test_capacity_and_reuse(void)
@@ -176,6 +240,8 @@ static void test_open_counts_and_busy_removal(void)
 
     ATAHDRegistryCoreInit(&registry);
     CHECK(ATAHDRegistryAllocate(&registry, &owner) == 0);
+    CHECK(ATAHDRegistryActivate(&registry, 0, &owner) ==
+          ATA_HD_REGISTRY_SUCCESS);
     CHECK(ATAHDRegistryOpen(&registry, 0, 0) == ATA_HD_REGISTRY_SUCCESS);
     CHECK(ATAHDRegistryOpen(&registry, 0, 0) == ATA_HD_REGISTRY_SUCCESS);
     CHECK(ATAHDRegistryOpen(&registry, 0, 1) == ATA_HD_REGISTRY_SUCCESS);
@@ -189,6 +255,8 @@ static void test_open_counts_and_busy_removal(void)
     CHECK(ATAHDRegistryRemove(&registry, 0) == ATA_HD_REGISTRY_SUCCESS);
 
     CHECK(ATAHDRegistryAllocate(&registry, &owner) == 0);
+    CHECK(ATAHDRegistryActivate(&registry, 0, &owner) ==
+          ATA_HD_REGISTRY_SUCCESS);
     registry.openCounts[0][2] = UINT_MAX;
     CHECK(ATAHDRegistryOpen(&registry, 0, 2) == ATA_HD_REGISTRY_OVERFLOW);
 }
@@ -202,6 +270,8 @@ static void test_vnode_presence_balances_core_transitions(void)
 
     ATAHDRegistryCoreInit(&registry);
     CHECK(ATAHDRegistryAllocate(&registry, &owner) == 0);
+    CHECK(ATAHDRegistryActivate(&registry, 0, &owner) ==
+          ATA_HD_REGISTRY_SUCCESS);
     blockOpen = 0;
     rawOpen = 0;
 
@@ -240,6 +310,8 @@ int main(void)
     test_registry_integration_source_contract();
     test_lowest_free_and_owner_lookup();
     test_duplicate_and_invalid_inputs();
+    test_reserved_units_are_inactive_until_activation();
+    test_batch_activation_is_all_or_none();
     test_capacity_and_reuse();
     test_open_counts_and_busy_removal();
     test_vnode_presence_balances_core_transitions();

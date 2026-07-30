@@ -138,6 +138,7 @@ typedef  struct {
 
     ideDriveInfo_t	_ideInfo;
     unsigned		_driveNum;
+    int _hdUnit;
     unsigned char   	_ideDriveName[32];
 }
 

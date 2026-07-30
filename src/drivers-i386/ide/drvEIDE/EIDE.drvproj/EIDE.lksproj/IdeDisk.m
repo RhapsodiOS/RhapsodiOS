@@ -57,6 +57,15 @@
 static int probedControllerCount = 0;
 static id probedControllers[MAX_IDE_CONTROLLERS];
 
+static void
+IdeDiskRollbackPrepared(id *disks, unsigned int count)
+{
+    while (count != 0) {
+	--count;
+	[disks[count] free];
+    }
+}
+
 @implementation IdeDisk
 
 static Protocol *protocols[] = {
@@ -84,7 +93,10 @@ static Protocol *protocols[] = {
 
 + (BOOL)probe : deviceDescription
 {
-    id diskId;
+    IdeDisk *diskId;
+    id preparedDisks[MAX_IDE_DRIVES];
+    unsigned int preparedUnits[MAX_IDE_DRIVES];
+    unsigned int preparedCount = 0;
     IODevAndIdInfo *idMap;
     int globalUnit;
     int unit, i;
@@ -105,26 +117,33 @@ static Protocol *protocols[] = {
 	    return YES;
 	}
     }
-    probedControllers[probedControllerCount++] = controllerId;
+    if (probedControllerCount >= MAX_IDE_CONTROLLERS) {
+	IOLog("IDEDisk: too many controllers to probe.\n");
+	return NO;
+    }
 //  IOLog("IdeDisk probing for controller %x\n", controllerId);
 	
     for (unit = 0; unit < MAX_IDE_DRIVES; unit++) {
     
 	diskId = [[IdeDisk alloc] initFromDeviceDescription:deviceDescription];
-	[diskId initResources:controllerId];
+	if (diskId == nil) {
+	    IdeDiskRollbackPrepared(preparedDisks, preparedCount);
+	    return NO;
+	}
+	diskId->_hdUnit = -1;
 
 	globalUnit = ata_hd_register(diskId, IdeDiskTransportIoctl, &idMap);
 	if (globalUnit < 0) {
 	    [diskId free];
+	    IdeDiskRollbackPrepared(preparedDisks, preparedCount);
 	    IOLog("IDEDisk: failed to allocate shared hd unit.\n");
 	    return NO;
 	}
+	[diskId initResources:controllerId];
+	diskId->_hdUnit = globalUnit;
 	[diskId setDevAndIdInfo:idMap];
 
 	if ([diskId ideDiskInit:(unsigned int)globalUnit target:unit] == NO) {
-	    if (ata_hd_unregister(globalUnit) != IO_R_SUCCESS)
-		IOLog("IDEDisk: failed to release shared hd unit %d.\n",
-		      globalUnit);
 	    [diskId free];
 	    continue;
 	}
@@ -136,16 +155,24 @@ static Protocol *protocols[] = {
 	[diskId setDeviceKind:"IDEDisk"];
 	[diskId setIsPhysical:YES];
 	if ([diskId registerDevice] == nil) {
-	    if (ata_hd_unregister(globalUnit) != IO_R_SUCCESS)
-		IOLog("IDEDisk: failed to release shared hd unit %d.\n",
-		      globalUnit);
 	    [diskId free];
+	    IdeDiskRollbackPrepared(preparedDisks, preparedCount);
 	    IOLog("IDEDisk: failed to publish shared hd unit %d.\n",
 		  globalUnit);
 	    return NO;
 	}
+	preparedDisks[preparedCount] = diskId;
+	preparedUnits[preparedCount] = (unsigned int)globalUnit;
+	++preparedCount;
     }
-    
+
+    if (ata_hd_activate_units(preparedUnits, preparedDisks,
+			      preparedCount) == NO) {
+	IdeDiskRollbackPrepared(preparedDisks, preparedCount);
+	IOLog("IDEDisk: failed to activate shared hd units.\n");
+	return NO;
+    }
+    probedControllers[probedControllerCount++] = controllerId;
     return YES;
 }
 

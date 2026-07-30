@@ -11,9 +11,11 @@
 #define ATA_HD_BUSY -4
 #define ATA_HD_REGISTRY_FULL -5
 #define ATA_HD_REGISTRY_OVERFLOW -6
+#define ATA_HD_REGISTRY_INACTIVE -7
 
 typedef struct ATAHDRegistryCore {
     void *owners[ATA_HD_UNITS];
+    unsigned char active[ATA_HD_UNITS];
     unsigned int openCounts[ATA_HD_UNITS][ATA_HD_PARTITIONS];
 } ATAHDRegistryCore;
 
@@ -21,6 +23,14 @@ void ATAHDRegistryCoreInit(ATAHDRegistryCore *registry);
 int ATAHDRegistryAllocate(ATAHDRegistryCore *registry, void *owner);
 void *ATAHDRegistryOwner(const ATAHDRegistryCore *registry,
                          unsigned int unit);
+int ATAHDRegistryIsActive(const ATAHDRegistryCore *registry,
+                          unsigned int unit);
+int ATAHDRegistryActivate(ATAHDRegistryCore *registry, unsigned int unit,
+                          void *owner);
+int ATAHDRegistryActivateBatch(ATAHDRegistryCore *registry,
+                               const unsigned int *units,
+                               void *const *owners,
+                               unsigned int count);
 int ATAHDRegistryOpen(ATAHDRegistryCore *registry, unsigned int unit,
                       unsigned int partition);
 int ATAHDRegistryClose(ATAHDRegistryCore *registry, unsigned int unit,

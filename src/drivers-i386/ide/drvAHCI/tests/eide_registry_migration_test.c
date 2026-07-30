@@ -49,18 +49,15 @@ static char *read_source(const char *path)
     return text;
 }
 
-static unsigned int count_occurrences(const char *text, const char *needle)
+static int section_contains(const char *start, const char *end,
+                            const char *needle)
 {
-    unsigned int count;
-    size_t length;
+    const char *found;
 
-    count = 0;
-    length = strlen(needle);
-    while ((text = strstr(text, needle)) != NULL) {
-        ++count;
-        text += length;
-    }
-    return count;
+    if (start == NULL || end == NULL || start >= end)
+        return 0;
+    found = strstr(start, needle);
+    return found != NULL && found < end;
 }
 
 static void test_private_namespace_is_removed(const char *kernelHeader,
@@ -96,47 +93,126 @@ static void test_private_namespace_is_removed(const char *kernelHeader,
     CHECK(strstr(internalHeader, "ide_idmap") == NULL);
 }
 
-static void test_shared_registration_and_unwind(const char *diskSource)
+static void test_transactional_registration(const char *diskSource,
+                                            const char *diskHeader)
 {
+    const char *probe;
+    const char *probeEnd;
     const char *devsw;
     const char *registration;
     const char *initialization;
+    const char *publication;
+    const char *activation;
+    const char *probed;
+    const char *bounds;
 
-    devsw = strstr(diskSource,
+    probe = strstr(diskSource, "+ (BOOL)probe");
+    probeEnd = strstr(probe, "Common read/write methods");
+    CHECK(probe != NULL);
+    CHECK(probeEnd != NULL);
+    if (probe == NULL || probeEnd == NULL)
+        return;
+
+    devsw = strstr(probe,
                    "ata_hd_devsw_init(self, deviceDescription)");
-    registration = strstr(diskSource,
+    registration = strstr(probe,
                           "ata_hd_register(diskId, "
                           "IdeDiskTransportIoctl, &idMap)");
-    initialization = strstr(diskSource,
+    initialization = strstr(probe,
                             "ideDiskInit:(unsigned int)globalUnit "
                             "target:unit");
+    publication = strstr(probe, "[diskId registerDevice]");
+    activation = strstr(probe, "ata_hd_activate_units");
+    probed = strstr(probe, "probedControllers[probedControllerCount++]");
+    bounds = strstr(probe,
+                    "probedControllerCount >= MAX_IDE_CONTROLLERS");
     CHECK(devsw != NULL);
     CHECK(registration != NULL);
     CHECK(initialization != NULL);
-    if (devsw != NULL && registration != NULL)
-        CHECK(devsw < registration);
-    if (registration != NULL && initialization != NULL)
-        CHECK(registration < initialization);
+    CHECK(publication != NULL);
+    CHECK(activation != NULL);
+    CHECK(probed != NULL);
+    CHECK(bounds != NULL);
+    if (publication != NULL && activation != NULL)
+        CHECK(publication < activation);
+    if (activation != NULL && probed != NULL)
+        CHECK(activation < probed);
+    if (bounds != NULL && probed != NULL)
+        CHECK(bounds < probed);
 
-    CHECK(strstr(diskSource, "[diskId setDevAndIdInfo:idMap]") != NULL);
-    CHECK(strstr(diskSource, "[diskId registerDevice] == nil") != NULL);
-    CHECK(count_occurrences(diskSource, "ata_hd_unregister(globalUnit)") >= 2);
+    CHECK(section_contains(probe, probeEnd,
+                           "[diskId setDevAndIdInfo:idMap]"));
+    CHECK(section_contains(probe, probeEnd,
+                           "IdeDiskRollbackPrepared"));
+    CHECK(strstr(diskHeader, "int\t\t\t_hdUnit") != NULL ||
+          strstr(diskHeader, "int _hdUnit") != NULL);
+}
+
+static void test_safe_teardown(const char *internalSource)
+{
+    const char *resources;
+    const char *resourcesEnd;
+    const char *freeMethod;
+    const char *freeEnd;
+    const char *unregisterCall;
+    const char *threadAbort;
+
+    resources = strstr(internalSource, "- initResources");
+    resourcesEnd = strstr(resources, "Free up local resources");
+    freeMethod = strstr(resourcesEnd, "- free");
+    freeEnd = strstr(freeMethod, "Allocate and free IdeBuf");
+    CHECK(section_contains(resources, resourcesEnd, "_hdUnit = -1"));
+    CHECK(freeMethod != NULL);
+    CHECK(freeEnd != NULL);
+    if (freeMethod == NULL || freeEnd == NULL)
+        return;
+    unregisterCall = strstr(freeMethod, "ata_hd_unregister(_hdUnit)");
+    threadAbort = strstr(freeMethod, "IDEC_THREAD_ABORT");
+    CHECK(unregisterCall != NULL && unregisterCall < freeEnd);
+    CHECK(threadAbort != NULL && threadAbort < freeEnd);
+    if (unregisterCall != NULL && threadAbort != NULL)
+        CHECK(unregisterCall < threadAbort);
+    CHECK(section_contains(freeMethod, freeEnd, "return self"));
+    CHECK(section_contains(freeMethod, freeEnd, "_hdUnit = -1"));
 }
 
 static void test_transport_ioctl_only(const char *kernelSource)
 {
     const char *callback;
+    const char *callbackEnd;
+    const char *validation;
+    const char *allocation;
+    const char *completion;
+    const char *copyoutCall;
 
     callback = strstr(kernelSource, "IdeDiskTransportIoctl(id disk");
+    callbackEnd = strstr(callback, "end of IdeKern.m");
     CHECK(callback != NULL);
-    if (callback == NULL)
+    CHECK(callbackEnd != NULL);
+    if (callback == NULL || callbackEnd == NULL)
         return;
 
-    CHECK(strstr(callback, "case IDEDIOCREQ:") != NULL);
-    CHECK(strstr(callback, "case IDEDIOCINFO:") != NULL);
-    CHECK(strstr(callback, "case DKIOC") == NULL);
-    CHECK(strstr(callback, "return (EINVAL);") != NULL);
-    CHECK(strstr(callback, "return (ENOMEM);") != NULL);
+    CHECK(section_contains(callback, callbackEnd, "case IDEDIOCREQ:"));
+    CHECK(section_contains(callback, callbackEnd, "case IDEDIOCINFO:"));
+    CHECK(!section_contains(callback, callbackEnd, "case DKIOC"));
+    CHECK(section_contains(callback, callbackEnd, "proc == NULL"));
+    CHECK(section_contains(callback, callbackEnd,
+                           "suser(proc->p_ucred, &proc->p_acflag)"));
+    CHECK(!section_contains(callback, callbackEnd, "!suser"));
+    CHECK(!section_contains(callback, callbackEnd, "struct ucred cred"));
+
+    validation = strstr(callback, "EIDEIoctlPrepareTransfer");
+    allocation = strstr(callback, "IOMalloc(");
+    completion = strstr(callback, "EIDEIoctlValidateCompletion");
+    copyoutCall = strstr(callback, "copyout(");
+    CHECK(validation != NULL);
+    CHECK(allocation != NULL);
+    CHECK(completion != NULL);
+    CHECK(copyoutCall != NULL);
+    if (validation != NULL && allocation != NULL)
+        CHECK(validation < allocation);
+    if (completion != NULL && copyoutCall != NULL)
+        CHECK(completion < copyoutCall);
 }
 
 static void test_global_unit_naming(const char *internalSource)
@@ -172,6 +248,7 @@ int main(void)
     char *kernelHeader;
     char *kernelSource;
     char *diskSource;
+    char *diskHeader;
     char *internalHeader;
     char *internalSource;
     char *postloadSource;
@@ -182,6 +259,8 @@ int main(void)
     kernelSource = read_source(path);
     sprintf(path, "%sIdeDisk.m", eide);
     diskSource = read_source(path);
+    sprintf(path, "%sIdeDisk.h", eide);
+    diskHeader = read_source(path);
     sprintf(path, "%sIdeDiskInternal.h", eide);
     internalHeader = read_source(path);
     sprintf(path, "%sIdeDiskInternal.m", eide);
@@ -192,15 +271,17 @@ int main(void)
     CHECK(kernelHeader != NULL);
     CHECK(kernelSource != NULL);
     CHECK(diskSource != NULL);
+    CHECK(diskHeader != NULL);
     CHECK(internalHeader != NULL);
     CHECK(internalSource != NULL);
     CHECK(postloadSource != NULL);
     if (kernelHeader != NULL && kernelSource != NULL && diskSource != NULL &&
-        internalHeader != NULL && internalSource != NULL &&
+        diskHeader != NULL && internalHeader != NULL && internalSource != NULL &&
         postloadSource != NULL) {
         test_private_namespace_is_removed(kernelHeader, kernelSource,
                                           diskSource, internalHeader);
-        test_shared_registration_and_unwind(diskSource);
+        test_transactional_registration(diskSource, diskHeader);
+        test_safe_teardown(internalSource);
         test_transport_ioctl_only(kernelSource);
         test_global_unit_naming(internalSource);
         test_postload_global_namespace(postloadSource);
@@ -209,6 +290,7 @@ int main(void)
     free(kernelHeader);
     free(kernelSource);
     free(diskSource);
+    free(diskHeader);
     free(internalHeader);
     free(internalSource);
     free(postloadSource);

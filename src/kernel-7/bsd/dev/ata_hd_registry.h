@@ -18,6 +18,8 @@ BOOL ata_hd_devsw_init(Class diskClass,
                        IODeviceDescription *deviceDescription);
 int ata_hd_register(id disk, ata_hd_ioctl_fn transportIoctl,
                     IODevAndIdInfo **mapOut);
+BOOL ata_hd_activate_units(const unsigned int *units, id *disks,
+                           unsigned int count);
 IOReturn ata_hd_unregister(unsigned int unit);
 IODevAndIdInfo *ata_hd_lookup(dev_t dev);
 

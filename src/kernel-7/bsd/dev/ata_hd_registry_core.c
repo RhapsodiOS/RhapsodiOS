@@ -12,6 +12,7 @@ void ATAHDRegistryCoreInit(ATAHDRegistryCore *registry)
 
     for (unit = 0; unit < ATA_HD_UNITS; ++unit) {
         registry->owners[unit] = 0;
+        registry->active[unit] = 0;
         for (partition = 0; partition < ATA_HD_PARTITIONS; ++partition)
             registry->openCounts[unit][partition] = 0;
     }
@@ -32,11 +33,57 @@ int ATAHDRegistryAllocate(ATAHDRegistryCore *registry, void *owner)
     for (unit = 0; unit < ATA_HD_UNITS; ++unit) {
         if (registry->owners[unit] == 0) {
             registry->owners[unit] = owner;
+            registry->active[unit] = 0;
             return (int)unit;
         }
     }
 
     return ATA_HD_REGISTRY_FULL;
+}
+
+int ATAHDRegistryIsActive(const ATAHDRegistryCore *registry,
+                          unsigned int unit)
+{
+    if (registry == 0 || unit >= ATA_HD_UNITS)
+        return 0;
+    return registry->active[unit] != 0;
+}
+
+int ATAHDRegistryActivateBatch(ATAHDRegistryCore *registry,
+                               const unsigned int *units,
+                               void *const *owners,
+                               unsigned int count)
+{
+    unsigned int index;
+    unsigned int previous;
+
+    if (registry == 0 || count > ATA_HD_UNITS)
+        return ATA_HD_REGISTRY_INVALID;
+    if (count == 0)
+        return ATA_HD_REGISTRY_SUCCESS;
+    if (units == 0 || owners == 0)
+        return ATA_HD_REGISTRY_INVALID;
+
+    for (index = 0; index < count; ++index) {
+        if (units[index] >= ATA_HD_UNITS || owners[index] == 0 ||
+            registry->owners[units[index]] != owners[index] ||
+            registry->active[units[index]] != 0)
+            return ATA_HD_REGISTRY_INVALID;
+        for (previous = 0; previous < index; ++previous) {
+            if (units[previous] == units[index])
+                return ATA_HD_REGISTRY_INVALID;
+        }
+    }
+
+    for (index = 0; index < count; ++index)
+        registry->active[units[index]] = 1;
+    return ATA_HD_REGISTRY_SUCCESS;
+}
+
+int ATAHDRegistryActivate(ATAHDRegistryCore *registry, unsigned int unit,
+                          void *owner)
+{
+    return ATAHDRegistryActivateBatch(registry, &unit, &owner, 1);
 }
 
 void *ATAHDRegistryOwner(const ATAHDRegistryCore *registry, unsigned int unit)
@@ -54,6 +101,8 @@ int ATAHDRegistryOpen(ATAHDRegistryCore *registry, unsigned int unit,
         return ATA_HD_REGISTRY_INVALID;
     if (registry->owners[unit] == 0)
         return ATA_HD_REGISTRY_NOT_FOUND;
+    if (registry->active[unit] == 0)
+        return ATA_HD_REGISTRY_INACTIVE;
     if (registry->openCounts[unit][partition] == UINT_MAX)
         return ATA_HD_REGISTRY_OVERFLOW;
     ++registry->openCounts[unit][partition];
@@ -122,6 +171,7 @@ int ATAHDRegistryRemove(ATAHDRegistryCore *registry, unsigned int unit)
     }
 
     registry->owners[unit] = 0;
+    registry->active[unit] = 0;
     for (partition = 0; partition < ATA_HD_PARTITIONS; ++partition)
         registry->openCounts[unit][partition] = 0;
     return ATA_HD_REGISTRY_SUCCESS;

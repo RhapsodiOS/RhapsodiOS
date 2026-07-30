@@ -52,6 +52,7 @@
 #import <sys/proc.h>
 #import <sys/systm.h>
 #import "IdeKernel.h"
+#import "EIDEIoctlValidation.h"
 
 IONamedValue iderValues[] = {
 
@@ -76,19 +77,19 @@ __private_extern__ int
 IdeDiskTransportIoctl(id disk, dev_t dev, unsigned int cmd, caddr_t data,
 		      int flag, struct proc *proc)
 {
-    struct ucred cred;
-    u_short acflags;
     ideIoReq_t *ideIoReq;
     int error;
     void *userPtr;
     BOOL wrFlag = NO;
+    BOOL readFlag = NO;
     unsigned bSize = 0;
+    unsigned allocationBytes = 0;
+    unsigned copyBytes = 0;
+    unsigned requestedBlocks = 0;
     unsigned char *alignedPtr;
 
     (void)dev;
     (void)flag;
-    (void)proc;
-
     if (disk == nil)
 	return (ENXIO);
 
@@ -99,47 +100,53 @@ IdeDiskTransportIoctl(id disk, dev_t dev, unsigned int cmd, caddr_t data,
 	 * Perform specified I/O.
 	 */
 	ideIoReq = (ideIoReq_t *)data;
-	if (!suser(&cred, &acflags) &&
-	    (ideIoReq->cmd != IDE_IDENTIFY_DRIVE)) {
-	    return (EINVAL);
+	if (ideIoReq->cmd != IDE_IDENTIFY_DRIVE) {
+	    if (proc == NULL)
+		return (EPERM);
+	    error = suser(proc->p_ucred, &proc->p_acflag);
+	    if (error)
+		return (error);
 	}
+
+	bSize = [disk blockSize];
+	error = EIDEIoctlPrepareTransfer(ideIoReq->cmd, ideIoReq->block,
+		ideIoReq->blkcnt, bSize, [disk diskSize],
+		&allocationBytes);
+	if (error)
+	    return (error);
 
 	if ((ideIoReq->cmd == IDE_WRITE_DMA) ||
 	    (ideIoReq->cmd == IDE_READ_DMA)) {
 	    if ([[disk cntrlr] isDmaSupported:[disk driveNum]] != TRUE)
 		return (EINVAL);
 	}
-	if (ideIoReq->cmd == IDE_IDENTIFY_DRIVE)
+	if (ideIoReq->cmd == IDE_IDENTIFY_DRIVE) {
 	    ideIoReq->blkcnt = 1;
+	    bSize = EIDE_IOCTL_IDENTIFY_BYTES;
+	}
+	requestedBlocks = ideIoReq->blkcnt;
 
 	userPtr = (void *)ideIoReq->addr;
-	alignedPtr = ideIoReq->addr;
-	if ((ideIoReq->cmd == IDE_WRITE) ||
-	    (ideIoReq->cmd == IDE_READ) ||
-	    (ideIoReq->cmd == IDE_READ_MULTIPLE) ||
-	    (ideIoReq->cmd == IDE_WRITE_MULTIPLE) ||
-	    (ideIoReq->cmd == IDE_READ_DMA) ||
-	    (ideIoReq->cmd == IDE_WRITE_DMA) ||
-	    (ideIoReq->cmd == IDE_IDENTIFY_DRIVE)) {
-	    if (ideIoReq->blkcnt != 0) {
-		bSize = [disk blockSize];
-		wrFlag = ((ideIoReq->cmd == IDE_WRITE) ||
-			  (ideIoReq->cmd == IDE_WRITE_MULTIPLE) ||
-			  (ideIoReq->cmd == IDE_WRITE_DMA));
-
-		alignedPtr = (unsigned char *)
-		    IOMalloc(ideIoReq->blkcnt * bSize);
-		if (alignedPtr == 0) {
-		    ideIoReq->status = IDER_MEMALLOC;
-		    return (ENOMEM);
-		}
-		if (wrFlag) {
-		    error = copyin(ideIoReq->addr, alignedPtr,
-				   ideIoReq->blkcnt * bSize);
-		    if (error) {
-			ideIoReq->status = IDER_MEMFAIL;
-			goto err_exit;
-		    }
+	alignedPtr = NULL;
+	wrFlag = ((ideIoReq->cmd == IDE_WRITE) ||
+		  (ideIoReq->cmd == IDE_WRITE_MULTIPLE) ||
+		  (ideIoReq->cmd == IDE_WRITE_DMA));
+	readFlag = ((ideIoReq->cmd == IDE_READ) ||
+		    (ideIoReq->cmd == IDE_READ_MULTIPLE) ||
+		    (ideIoReq->cmd == IDE_READ_DMA) ||
+		    (ideIoReq->cmd == IDE_IDENTIFY_DRIVE));
+	if (allocationBytes != 0) {
+	    alignedPtr = (unsigned char *)IOMalloc(allocationBytes);
+	    if (alignedPtr == NULL) {
+		ideIoReq->status = IDER_MEMALLOC;
+		return (ENOMEM);
+	    }
+	    if (wrFlag) {
+		error = copyin(ideIoReq->addr, alignedPtr, allocationBytes);
+		if (error) {
+		    ideIoReq->status = IDER_MEMFAIL;
+		    IOFree(alignedPtr, allocationBytes);
+		    return (error);
 		}
 	    }
 	    ideIoReq->addr = (caddr_t)alignedPtr;
@@ -147,33 +154,25 @@ IdeDiskTransportIoctl(id disk, dev_t dev, unsigned int cmd, caddr_t data,
 	}
 
 	[disk ideXfrIoReq:ideIoReq];
-
-	/*
-	 * Note if we got this far, we'll return 0; any errors are in
-	 * ideIoReq->status.
-	 */
-	if ((ideIoReq->cmd == IDE_WRITE) ||
-	    (ideIoReq->cmd == IDE_READ) ||
-	    (ideIoReq->cmd == IDE_READ_MULTIPLE) ||
-	    (ideIoReq->cmd == IDE_WRITE_MULTIPLE) ||
-	    (ideIoReq->cmd == IDE_READ_DMA) ||
-	    (ideIoReq->cmd == IDE_WRITE_DMA) ||
-	    (ideIoReq->cmd == IDE_IDENTIFY_DRIVE)) {
+	if (allocationBytes != 0)
 	    ideIoReq->addr = userPtr;
-	    if (((ideIoReq->cmd == IDE_READ) ||
-		 (ideIoReq->cmd == IDE_READ_MULTIPLE) ||
-		 (ideIoReq->cmd == IDE_IDENTIFY_DRIVE) ||
-		 (ideIoReq->cmd == IDE_READ_DMA)) &&
-		(ideIoReq->blocks_xfered != 0)) {
-		error = copyout(alignedPtr, userPtr,
-				ideIoReq->blocks_xfered * bSize);
-		if (error)
-		    ideIoReq->status = IDER_MEMFAIL;
-	    }
-err_exit:
-	    if (ideIoReq->blkcnt != 0)
-		IOFree(alignedPtr, ideIoReq->blkcnt * bSize);
+	error = EIDEIoctlValidateCompletion(ideIoReq->cmd, requestedBlocks,
+		ideIoReq->blocks_xfered, bSize, &copyBytes);
+	if (error) {
+	    ideIoReq->status = IDER_MEMFAIL;
+	    if (alignedPtr != NULL)
+		IOFree(alignedPtr, allocationBytes);
+	    return (error);
 	}
+	if (readFlag && copyBytes != 0) {
+	    error = copyout(alignedPtr, userPtr, copyBytes);
+	    if (error)
+		ideIoReq->status = IDER_MEMFAIL;
+	}
+	if (alignedPtr != NULL)
+	    IOFree(alignedPtr, allocationBytes);
+	if (error)
+	    return (error);
 	break;
 
       case IDEDIOCINFO:

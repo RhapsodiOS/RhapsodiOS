@@ -307,6 +307,43 @@ ata_hd_register(id disk, ata_hd_ioctl_fn transportIoctl,
     return unit;
 }
 
+BOOL
+ata_hd_activate_units(const unsigned int *units, id *disks,
+                      unsigned int count)
+{
+    void *owners[ATA_HD_UNITS];
+    unsigned int index;
+    unsigned int unit;
+    int result;
+
+    if (!ata_hd_registry_ready || ata_hd_lock == nil ||
+        count > ATA_HD_UNITS)
+        return NO;
+    if (count == 0)
+        return YES;
+    if (units == NULL || disks == NULL)
+        return NO;
+
+    [ata_hd_lock lock];
+    if (ata_hd_devsw_state != ATA_HD_DEVSW_READY) {
+        [ata_hd_lock unlock];
+        return NO;
+    }
+    for (index = 0; index < count; ++index) {
+        unit = units[index];
+        if (unit >= ATA_HD_UNITS || disks[index] == nil ||
+            ATAHDRegistryOwner(&ata_hd_core, unit) != disks[index] ||
+            ata_hd_maps[unit].liveId != disks[index]) {
+            [ata_hd_lock unlock];
+            return NO;
+        }
+        owners[index] = disks[index];
+    }
+    result = ATAHDRegistryActivateBatch(&ata_hd_core, units, owners, count);
+    [ata_hd_lock unlock];
+    return (result == ATA_HD_REGISTRY_SUCCESS) ? YES : NO;
+}
+
 IOReturn
 ata_hd_unregister(unsigned int unit)
 {
@@ -500,7 +537,7 @@ ata_hd_valid_dev_locked(dev_t dev)
     if (deviceMajor != ata_hd_block_major &&
         deviceMajor != ata_hd_raw_major)
         return NO;
-    return (ATAHDRegistryOwner(&ata_hd_core, unit) != NULL);
+    return ATAHDRegistryIsActive(&ata_hd_core, unit);
 }
 
 static id
@@ -519,7 +556,7 @@ ata_hd_disk_for_dev_locked(dev_t dev)
     if (partition == ATA_HD_LIVE_PART) {
         if (major(dev) == ata_hd_block_major)
             return nil;
-        return (id)ATAHDRegistryOwner(&ata_hd_core, unit);
+        return map->liveId;
     }
     return map->partitionId[partition];
 }
@@ -545,6 +582,7 @@ ata_hd_core_error_to_errno(int error)
     if (error == ATA_HD_BUSY || error == ATA_HD_REGISTRY_OVERFLOW)
         return EBUSY;
     if (error == ATA_HD_REGISTRY_NOT_FOUND ||
+        error == ATA_HD_REGISTRY_INACTIVE ||
         error == ATA_HD_REGISTRY_INVALID)
         return ENXIO;
     return EINVAL;

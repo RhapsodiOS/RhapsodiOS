@@ -49,6 +49,7 @@
 #import <driverkit/align.h>
 #import <bsd/stdio.h>
 #import <bsd/string.h>
+#import <bsd/dev/ata_hd_registry.h>
 
 IOReturn iderToIo(ide_return_t);
 
@@ -258,6 +259,7 @@ void *ideThreadPtr;
 
 - initResources	: controller
 {
+    _hdUnit = -1;
     _cntrlr = controller;
     _ioQLock = [NXConditionLock alloc];
     [_ioQLock initWith:NO_WORK_AVAILABLE];
@@ -279,6 +281,19 @@ void *ideThreadPtr;
      */
     ideBuf_t *ideBuf;
     int i;
+    IOReturn unregisterResult;
+
+    if (_hdUnit >= 0) {
+	unregisterResult = ata_hd_unregister(_hdUnit);
+	if (unregisterResult != IO_R_SUCCESS) {
+	    IOLog("IDEDisk: failed to release shared hd unit %d (%s).\n",
+		  _hdUnit, [self stringFromReturn:unregisterResult]);
+	    return self;
+	}
+	_hdUnit = -1;
+    }
+    if (_ioQLock == nil)
+	return ([super free]);
 
     ideBuf = [self allocIdeBuf:NULL];
     ideBuf->command = IDEC_THREAD_ABORT;
@@ -868,4 +883,3 @@ IOReturn iderToIo(ide_return_t ider)
 }
 
 @end
-

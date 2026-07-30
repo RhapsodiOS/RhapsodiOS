@@ -1,5 +1,6 @@
 #include "AHCIDiskLogic.h"
 #include <limits.h>
+#include <string.h>
 
 static void AHCIDiskCopyIdentifyString(char *destination,
                                        unsigned int destinationBytes,
@@ -65,6 +66,17 @@ int AHCIDiskParseIdentify(const unsigned short words[256],
     return 1;
 }
 
+int AHCIDiskIdentifyMatches(const AHCIDiskIdentify *first,
+                            const AHCIDiskIdentify *second)
+{
+    if (first == 0 || second == 0)
+        return 0;
+    return first->capacity == second->capacity &&
+           first->lba48 == second->lba48 &&
+           strcmp(first->model, second->model) == 0 &&
+           strcmp(first->serial, second->serial) == 0;
+}
+
 int AHCIDiskClipRequest(unsigned int capacity, unsigned int block,
                         unsigned int length, unsigned int *blocks)
 {
@@ -82,14 +94,26 @@ int AHCIDiskClipRequest(unsigned int capacity, unsigned int block,
 
 int AHCIDiskPlanSegment(unsigned int block, unsigned int remaining,
                         int write, int lba48,
+                        unsigned int pageOffset,
+                        unsigned int pageBytes,
                         AHCIDiskSegment *segment)
 {
     int extended;
+    unsigned int maxBytes;
+    unsigned int maxBlocks;
 
-    if (remaining == 0 || segment == 0)
+    if (remaining == 0 || segment == 0 ||
+        pageBytes < AHCI_DISK_SECTOR_BYTES || pageOffset >= pageBytes ||
+        pageBytes > UINT_MAX / 32U)
         return 0;
     segment->blocks = remaining > AHCI_DISK_MAX_SECTORS ?
                       AHCI_DISK_MAX_SECTORS : remaining;
+    maxBytes = 32U * pageBytes - pageOffset;
+    maxBlocks = maxBytes / AHCI_DISK_SECTOR_BYTES;
+    if (maxBlocks == 0)
+        return 0;
+    if (segment->blocks > maxBlocks)
+        segment->blocks = maxBlocks;
     segment->bytes = segment->blocks * AHCI_DISK_SECTOR_BYTES;
     extended = block >= AHCI_DISK_LBA28_LIMIT ||
                segment->blocks > AHCI_DISK_LBA28_LIMIT - block;

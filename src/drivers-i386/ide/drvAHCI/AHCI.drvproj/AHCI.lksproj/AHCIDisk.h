@@ -44,11 +44,15 @@ typedef struct {
     id _poolLock;
     AHCIDiskRequest _requests[AHCI_DISK_REQUEST_COUNT];
     BOOL _workerStarted;
+    BOOL _deviceRegistered;
+    BOOL _publicationPinned;
 }
 
 + (AHCIDisk *)publishForPort:(AHCIPort *)port
            deviceDescription:(IODeviceDescription *)description;
 - (BOOL)reidentifyFromWords:(const unsigned short *)words;
+- (void)portBecameNotReady;
+- (void)portBecameReady;
 
 @end
 

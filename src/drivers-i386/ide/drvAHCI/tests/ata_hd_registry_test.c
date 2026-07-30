@@ -66,6 +66,8 @@ static void test_registry_integration_source_contract(void)
     char *registry;
     char *autoconf;
     char *diskMethods;
+    char *eideInternal;
+    char *ahciInternal;
     char *probe;
     char *initCall;
     char *bootInitCall;
@@ -81,17 +83,24 @@ static void test_registry_integration_source_contract(void)
         "../../../../kernel-7/driverkit/i386/autoconf_i386.m");
     diskMethods = read_source(
         "../../../../driverkit-3/libDriver/Kernel/kernelDiskMethods.m");
+    eideInternal = read_source(
+        "../../drvEIDE/EIDE.drvproj/EIDE.lksproj/IdeDiskInternal.m");
+    ahciInternal = read_source(
+        "../AHCI.drvproj/AHCI.lksproj/AHCIDiskInternal.m");
     CHECK(header != NULL);
     CHECK(registry != NULL);
     CHECK(autoconf != NULL);
     CHECK(diskMethods != NULL);
+    CHECK(eideInternal != NULL);
+    CHECK(ahciInternal != NULL);
     if (header == NULL || registry == NULL || autoconf == NULL ||
-        diskMethods == NULL)
+        diskMethods == NULL || eideInternal == NULL || ahciInternal == NULL)
         goto done;
 
     CHECK(strstr(header, "typedef int (*ata_hd_ioctl_fn)") != NULL);
     CHECK(strstr(header, "typedef IOReturn (*ata_hd_flush_fn)") != NULL);
     CHECK(strstr(header, "ata_hd_set_flush") != NULL);
+    CHECK(strstr(header, "ata_hd_async_complete") != NULL);
     CHECK(strstr(header, "BOOL ata_hd_registry_init(void);") != NULL);
     CHECK(strstr(header, "ata_hd_map_set_live") != NULL);
     CHECK(strstr(header, "ata_hd_map_clear_partition") != NULL);
@@ -102,6 +111,14 @@ static void test_registry_integration_source_contract(void)
                  "ATAHDRegistryIsActive(&ata_hd_core, unit)") != NULL);
     CHECK(strstr(registry, "return map->liveId;") != NULL);
     CHECK(strstr(registry, "flushResult = flush(disk);") != NULL);
+    CHECK(strstr(registry, "ioCount") != NULL);
+    CHECK(strstr(registry, "ata_hd_async_complete(bp);") != NULL);
+    CHECK(strstr(registry, "while (ata_hd_units[unit].ioCount != 0)") !=
+          NULL);
+    CHECK(strstr(eideInternal, "ata_hd_async_complete(ideBuf->pending)") !=
+          NULL);
+    CHECK(strstr(ahciInternal,
+                 "ata_hd_async_complete(request->pending)") != NULL);
     CHECK(strstr(registry,
                  "[ata_hd_lock unlock];\n    if (flush != NULL)") != NULL);
     CHECK(strstr(registry, "[disk errnoFromReturn:flushResult]") != NULL);
@@ -142,6 +159,8 @@ done:
     free(registry);
     free(autoconf);
     free(diskMethods);
+    free(eideInternal);
+    free(ahciInternal);
 }
 
 static void test_lowest_free_and_owner_lookup(void)

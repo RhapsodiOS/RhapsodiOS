@@ -30,10 +30,14 @@ typedef struct {
 
 int AHCIDiskParseIdentify(const unsigned short words[256],
                           AHCIDiskIdentify *result);
+int AHCIDiskIdentifyMatches(const AHCIDiskIdentify *first,
+                            const AHCIDiskIdentify *second);
 int AHCIDiskClipRequest(unsigned int capacity, unsigned int block,
                         unsigned int length, unsigned int *blocks);
 int AHCIDiskPlanSegment(unsigned int block, unsigned int remaining,
                         int write, int lba48,
+                        unsigned int pageOffset,
+                        unsigned int pageBytes,
                         AHCIDiskSegment *segment);
 
 #endif

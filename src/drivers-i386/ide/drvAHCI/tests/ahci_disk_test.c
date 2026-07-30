@@ -122,18 +122,42 @@ static void test_segment_and_command_selection(void)
 {
     AHCIDiskSegment segment;
 
-    CHECK(AHCIDiskPlanSegment(1U, 300U, 0, 0, &segment));
+    CHECK(AHCIDiskPlanSegment(1U, 300U, 0, 0, 0U, 4096U,
+                              &segment));
     CHECK(segment.blocks == 256U);
     CHECK(segment.bytes == 128U * 1024U);
     CHECK(segment.command == AHCI_ATA_READ_DMA);
 
-    CHECK(!AHCIDiskPlanSegment(0x0fffffffU, 2U, 1, 0, &segment));
-    CHECK(AHCIDiskPlanSegment(0x0fffffffU, 2U, 1, 1, &segment));
+    CHECK(!AHCIDiskPlanSegment(0x0fffffffU, 2U, 1, 0, 0U, 4096U,
+                               &segment));
+    CHECK(AHCIDiskPlanSegment(0x0fffffffU, 2U, 1, 1, 0U, 4096U,
+                              &segment));
     CHECK(segment.blocks == 2U);
     CHECK(segment.command == AHCI_ATA_WRITE_DMA_EXT);
 
-    CHECK(AHCIDiskPlanSegment(0x10000000U, 1U, 0, 1, &segment));
+    CHECK(AHCIDiskPlanSegment(0x10000000U, 1U, 0, 1, 0U, 4096U,
+                              &segment));
     CHECK(segment.command == AHCI_ATA_READ_DMA_EXT);
+
+    CHECK(AHCIDiskPlanSegment(1U, 256U, 0, 0, 4095U, 4096U,
+                              &segment));
+    CHECK(segment.blocks == 248U);
+    CHECK(segment.bytes == 248U * 512U);
+}
+
+static void test_reidentify_requires_same_media(void)
+{
+    unsigned short words[256];
+    AHCIDiskIdentify first;
+    AHCIDiskIdentify second;
+
+    base_identify(words);
+    CHECK(AHCIDiskParseIdentify(words, &first));
+    CHECK(AHCIDiskParseIdentify(words, &second));
+    CHECK(AHCIDiskIdentifyMatches(&first, &second));
+    put_string(words, 10U, 10U, "DIFFERENT");
+    CHECK(AHCIDiskParseIdentify(words, &second));
+    CHECK(!AHCIDiskIdentifyMatches(&first, &second));
 }
 
 int main(void)
@@ -144,6 +168,7 @@ int main(void)
     test_unsupported_sector_sizes_and_empty_media();
     test_request_boundaries();
     test_segment_and_command_selection();
+    test_reidentify_requires_same_media();
     if (failures != 0)
         return 1;
     puts("ahci disk tests passed");

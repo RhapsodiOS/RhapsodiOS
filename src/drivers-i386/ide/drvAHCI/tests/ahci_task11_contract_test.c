@@ -95,18 +95,27 @@ int main(void)
     require_text(internalm, "AHCI_ATA_FLUSH_CACHE_EXT");
     require_text(internalm, "completeTransfer:");
     require_text(internalm, "client:request->client");
-    require_text(internalm, "_identify.lba48, &segment");
+    require_text(internalm, "_identify.lba48,");
+    require_text(internalm, "vm_page_size, &segment");
     require_text(internalm, "client:IOVmTaskSelf()");
     require_text(internalm, "ata_hd_unregister(_hdUnit)");
     require_text(diskm, "ata_hd_set_flush(_hdUnit,");
     require_text(internalm, "AHCIDiskTransportFlush");
+    require_order(internalm, "ata_hd_async_complete(request->pending)",
+                  "completeTransfer:request->pending");
+    require_text(internalm, "portBecameNotReady");
+    require_text(portm, "[disk portBecameNotReady]");
+    require_text(diskm, "publication state is uncertain; retaining hd");
+    require_text(diskm, "activation failed; retaining hd");
+    require_order(diskm, "activation failed; retaining hd",
+                  "[self portBecameNotReady]");
+    require_order(internalm, "if (_publicationPinned)",
+                  "ata_hd_unregister(_hdUnit)");
     require_text(portm, "translation.task = client;");
     require_text(portm, "AHCIPortTranslateAddress, &translation");
     require_text(portm, "- (BOOL)unpublishDisk");
     require_order(controllerm, "unpublishDisk",
                   "ghc & ~AHCI_GHC_IE");
-    require_order(diskm, "if (!ata_hd_activate_units",
-                          "return NO;");
     require_absent(diskm, "addToBdevsw");
     require_absent(diskm, "addToCdevsw");
     require_absent(internalm, "addToBdevsw");

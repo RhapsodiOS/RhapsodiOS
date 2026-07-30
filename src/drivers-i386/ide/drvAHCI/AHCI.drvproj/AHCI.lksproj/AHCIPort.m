@@ -323,6 +323,8 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
 {
     [commandLock lock];
     online = NO;
+    if (disk != nil)
+        [disk portBecameNotReady];
     if (commandArbiter.state == AHCI_COMMAND_PENDING &&
         AHCICommandFinishIRQ(&commandArbiter, commandArbiter.generation)) {
         controllerResetting = NO;
@@ -342,6 +344,8 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     [commandLock lock];
     controllerResetting = YES;
     online = NO;
+    if (disk != nil)
+        [disk portBecameNotReady];
     if (commandArbiter.state == AHCI_COMMAND_PENDING) {
         skipCommandRecovery = YES;
         commandResult = IO_R_IO;
@@ -476,6 +480,8 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
         [commandLock unlockWith:AHCI_LOCK_DONE];
         return;
     }
+    if (disk != nil)
+        [disk portBecameNotReady];
     if (AHCIRecoveryFor(completionSnapshot.portIS,
                         completionSnapshot.serr, 1, 0) ==
         AHCI_RECOVERY_HBA) {

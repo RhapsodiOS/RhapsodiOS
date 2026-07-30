@@ -6,6 +6,8 @@
 #import <machkit/NXLock.h>
 #import <bsd/string.h>
 
+extern unsigned int vm_page_size;
+
 @implementation AHCIDisk(Internal)
 
 - (BOOL)initResourcesForPort:(AHCIPort *)port
@@ -69,12 +71,35 @@
 
     if (!AHCIDiskParseIdentify(words, &identified))
         return NO;
+    if (_hdUnit >= 0 && !AHCIDiskIdentifyMatches(&_identify, &identified))
+        return NO;
     _identify = identified;
     if (_hdUnit >= 0) {
         [self setDiskSize:_identify.capacity];
         [self setDriveName:_identify.model];
+        [self portBecameReady];
     }
     return YES;
+}
+
+- (void)portBecameReady
+{
+    if (_queueLock == nil)
+        return;
+    [_queueLock lock];
+    [self setLastReadyState:IO_Ready];
+    [_queueLock unlockWith:queue_empty(&_requestQueue) ?
+        AHCI_DISK_NO_WORK : AHCI_DISK_WORK_AVAILABLE];
+}
+
+- (void)portBecameNotReady
+{
+    if (_queueLock == nil)
+        return;
+    [_queueLock lock];
+    [self setLastReadyState:IO_NotReady];
+    [_queueLock unlockWith:queue_empty(&_requestQueue) ?
+        AHCI_DISK_NO_WORK : AHCI_DISK_WORK_AVAILABLE];
 }
 
 - (IOReturn)flushCache
@@ -140,6 +165,7 @@ IOReturn AHCIDiskTransportFlush(id disk)
 - (void)completeRequest:(AHCIDiskRequest *)request
 {
     if (request->pending != 0) {
+        ata_hd_async_complete(request->pending);
         [self completeTransfer:request->pending withStatus:request->status
                   actualLength:request->bytesTransferred];
         [self freeRequest:request];
@@ -218,7 +244,10 @@ static void AHCIDiskBuildFIS(unsigned char fis[20], unsigned int block,
     while (remaining != 0) {
         if (!AHCIDiskPlanSegment(block, remaining,
                                  request->command == AHCI_DISK_WRITE,
-                                 _identify.lba48, &segment))
+                                 _identify.lba48,
+                                 (unsigned int)((unsigned long)buffer &
+                                     (vm_page_size - 1U)),
+                                 vm_page_size, &segment))
             return IO_R_INVALID_ARG;
         extended = segment.command == AHCI_ATA_READ_DMA_EXT ||
                    segment.command == AHCI_ATA_WRITE_DMA_EXT;
@@ -246,7 +275,10 @@ static void AHCIDiskBuildFIS(unsigned char fis[20], unsigned int block,
 
     if (request->command == AHCI_DISK_READ ||
         request->command == AHCI_DISK_WRITE) {
-        request->status = [self executeReadWrite:request];
+        if ([self isDiskReady:NO] != IO_R_SUCCESS)
+            request->status = IO_R_NO_DISK;
+        else
+            request->status = [self executeReadWrite:request];
     } else if (request->command == AHCI_DISK_FLUSH) {
         bzero(fis, sizeof(fis));
         fis[0] = 0x27U;
@@ -290,6 +322,15 @@ volatile void AHCIDiskWorker(AHCIDisk *disk)
     IOReturn result;
     unsigned int index;
 
+    if (_publicationPinned) {
+        IOLog("AHCIDisk: retaining uncertain publication hd%d.\n",
+              _hdUnit);
+        return self;
+    }
+    if (_deviceRegistered) {
+        [self unregisterDevice];
+        _deviceRegistered = NO;
+    }
     if (_hdUnit >= 0) {
         result = ata_hd_unregister(_hdUnit);
         if (result != IO_R_SUCCESS) {

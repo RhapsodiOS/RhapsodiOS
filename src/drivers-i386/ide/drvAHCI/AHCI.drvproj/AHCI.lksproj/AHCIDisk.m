@@ -58,14 +58,23 @@
     [self setDriveName:_identify.model];
     [self setFormattedInternal:YES];
     [self setLastReadyState:IO_Ready];
-    if ([self registerDevice] == nil)
-        return NO;
+    if ([self registerDevice] == nil) {
+        _deviceRegistered = YES;
+        _publicationPinned = YES;
+        IOLog("AHCIDisk: publication state is uncertain; retaining hd%u.\n",
+              unit);
+        [self portBecameNotReady];
+        return YES;
+    }
+    _deviceRegistered = YES;
     disks[0] = self;
     units[0] = unit;
     if (!ata_hd_activate_units(units, disks, 1U)) {
-        IOLog("AHCIDisk: hd%u could not be activated.\n",
+        _publicationPinned = YES;
+        IOLog("AHCIDisk: activation failed; retaining hd%u inactive.\n",
               unit);
-        return NO;
+        [self portBecameNotReady];
+        return YES;
     }
     return YES;
 }

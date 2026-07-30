@@ -20,14 +20,22 @@
 #define ATA_HD_RAW_MAJOR 15
 #define ATA_HD_LIVE_PART (ATA_HD_PARTITIONS - 1)
 #define ATA_HD_MAX_PHYS_IO (256 * 512)
+#define ATA_HD_ASYNC_PINS (ATA_HD_UNITS * 128)
 
 typedef struct ATAHDUnitState {
     struct buf *physbuf;
     ata_hd_ioctl_fn transportIoctl;
     ata_hd_flush_fn transportFlush;
+    unsigned int ioCount;
     unsigned char blockOpen[ATA_HD_PARTITIONS];
     unsigned char rawOpen[ATA_HD_PARTITIONS];
 } ATAHDUnitState;
+
+typedef struct ATAHDAsyncPin {
+    void *pending;
+    unsigned int unit;
+    unsigned int partition;
+} ATAHDAsyncPin;
 
 typedef enum ATAHDDevswState {
     ATA_HD_DEVSW_NONE,
@@ -38,6 +46,7 @@ typedef enum ATAHDDevswState {
 static ATAHDRegistryCore ata_hd_core;
 static IODevAndIdInfo ata_hd_maps[ATA_HD_UNITS];
 static ATAHDUnitState ata_hd_units[ATA_HD_UNITS];
+static ATAHDAsyncPin ata_hd_async_pins[ATA_HD_ASYNC_PINS];
 
 /*
  * Initialized before i386 DriverKit probing starts. The registry lock protects
@@ -72,6 +81,8 @@ static int ata_hd_map_unit_locked(IODevAndIdInfo *map);
 static int ata_hd_core_error_to_errno(int error);
 static void ata_hd_free_physbufs(struct buf **physbufs,
                                  unsigned int count);
+static int ata_hd_pin_io_locked(void *pending, unsigned int unit,
+                                unsigned int partition);
 
 BOOL
 ata_hd_registry_init(void)
@@ -88,6 +99,7 @@ ata_hd_registry_init(void)
     ATAHDRegistryCoreInit(&ata_hd_core);
     bzero((char *)ata_hd_maps, sizeof(ata_hd_maps));
     bzero((char *)ata_hd_units, sizeof(ata_hd_units));
+    bzero((char *)ata_hd_async_pins, sizeof(ata_hd_async_pins));
     ata_hd_devsw_state = ATA_HD_DEVSW_NONE;
     ata_hd_block_major = -1;
     ata_hd_raw_major = -1;
@@ -299,6 +311,7 @@ ata_hd_register(id disk, ata_hd_ioctl_fn transportIoctl,
     map->blockDev = makedev(ata_hd_block_major, (unit << 3));
     ata_hd_units[unit].transportIoctl = transportIoctl;
     ata_hd_units[unit].transportFlush = NULL;
+    ata_hd_units[unit].ioCount = 0;
     bzero((char *)ata_hd_units[unit].blockOpen,
           sizeof(ata_hd_units[unit].blockOpen));
     bzero((char *)ata_hd_units[unit].rawOpen,
@@ -395,6 +408,7 @@ ata_hd_unregister(unsigned int unit)
     bzero((char *)&ata_hd_maps[unit], sizeof(ata_hd_maps[unit]));
     ata_hd_units[unit].transportIoctl = NULL;
     ata_hd_units[unit].transportFlush = NULL;
+    ata_hd_units[unit].ioCount = 0;
     bzero((char *)ata_hd_units[unit].blockOpen,
           sizeof(ata_hd_units[unit].blockOpen));
     bzero((char *)ata_hd_units[unit].rawOpen,
@@ -682,16 +696,25 @@ ata_hd_close(dev_t dev, int flag, int devtype, struct proc *proc)
     partition = IO_DISK_PART(dev);
     flush = ata_hd_units[unit].transportFlush;
     result = ATAHDRegistryOpen(&ata_hd_core, unit, partition);
-    if (result == ATA_HD_REGISTRY_SUCCESS)
+    if (result == ATA_HD_REGISTRY_SUCCESS) {
         result = ATAHDRegistryCloseIfPresent(&ata_hd_core, unit, partition,
                                              openState);
+        if (result != ATA_HD_REGISTRY_SUCCESS)
+            (void)ATAHDRegistryClose(&ata_hd_core, unit, partition);
+    }
+    [ata_hd_lock unlock];
+    if (result != ATA_HD_REGISTRY_SUCCESS)
+        return ata_hd_core_error_to_errno(result);
+    [ata_hd_lock lock];
+    while (ata_hd_units[unit].ioCount != 0) {
+        [ata_hd_lock unlock];
+        IOSleep(1);
+        [ata_hd_lock lock];
+    }
     [ata_hd_lock unlock];
     if (flush != NULL) {
         if (result == ATA_HD_REGISTRY_SUCCESS)
             flushResult = flush(disk);
-    }
-    if (result != ATA_HD_REGISTRY_SUCCESS) {
-        return ata_hd_core_error_to_errno(result);
     }
     if (flushResult != IO_R_SUCCESS)
         flushError = [disk errnoFromReturn:flushResult];
@@ -717,6 +740,10 @@ ata_hd_read(dev_t dev, struct uio *uiop, int ioflag)
     id disk;
     struct buf *physbuf;
     unsigned int blockSize;
+    unsigned int unit;
+    unsigned int partition;
+    int pinResult;
+    int result;
 
     [ata_hd_lock lock];
     disk = ata_hd_disk_for_dev_locked(dev);
@@ -725,12 +752,25 @@ ata_hd_read(dev_t dev, struct uio *uiop, int ioflag)
         [ata_hd_lock unlock];
         return ENXIO;
     }
-    physbuf = ata_hd_units[IO_DISK_UNIT(dev)].physbuf;
+    unit = IO_DISK_UNIT(dev);
+    partition = IO_DISK_PART(dev);
+    pinResult = ATAHDRegistryOpen(&ata_hd_core, unit, partition);
+    if (pinResult != ATA_HD_REGISTRY_SUCCESS) {
+        [ata_hd_lock unlock];
+        return ata_hd_core_error_to_errno(pinResult);
+    }
+    physbuf = ata_hd_units[unit].physbuf;
     [ata_hd_lock unlock];
     blockSize = [disk blockSize];
 
-    return physio((int (*)())ata_hd_strategy, physbuf, dev, B_READ,
-                  ata_hd_minphys, uiop, blockSize);
+    result = physio((int (*)())ata_hd_strategy, physbuf, dev, B_READ,
+                    ata_hd_minphys, uiop, blockSize);
+    [ata_hd_lock lock];
+    pinResult = ATAHDRegistryClose(&ata_hd_core, unit, partition);
+    [ata_hd_lock unlock];
+    return result != 0 ? result :
+           (pinResult == ATA_HD_REGISTRY_SUCCESS ? 0 :
+            ata_hd_core_error_to_errno(pinResult));
 }
 
 static int
@@ -739,6 +779,10 @@ ata_hd_write(dev_t dev, struct uio *uiop, int ioflag)
     id disk;
     struct buf *physbuf;
     unsigned int blockSize;
+    unsigned int unit;
+    unsigned int partition;
+    int pinResult;
+    int result;
 
     [ata_hd_lock lock];
     disk = ata_hd_disk_for_dev_locked(dev);
@@ -747,12 +791,25 @@ ata_hd_write(dev_t dev, struct uio *uiop, int ioflag)
         [ata_hd_lock unlock];
         return ENXIO;
     }
-    physbuf = ata_hd_units[IO_DISK_UNIT(dev)].physbuf;
+    unit = IO_DISK_UNIT(dev);
+    partition = IO_DISK_PART(dev);
+    pinResult = ATAHDRegistryOpen(&ata_hd_core, unit, partition);
+    if (pinResult != ATA_HD_REGISTRY_SUCCESS) {
+        [ata_hd_lock unlock];
+        return ata_hd_core_error_to_errno(pinResult);
+    }
+    physbuf = ata_hd_units[unit].physbuf;
     [ata_hd_lock unlock];
     blockSize = [disk blockSize];
 
-    return physio((int (*)())ata_hd_strategy, physbuf, dev, B_WRITE,
-                  ata_hd_minphys, uiop, blockSize);
+    result = physio((int (*)())ata_hd_strategy, physbuf, dev, B_WRITE,
+                    ata_hd_minphys, uiop, blockSize);
+    [ata_hd_lock lock];
+    pinResult = ATAHDRegistryClose(&ata_hd_core, unit, partition);
+    [ata_hd_lock unlock];
+    return result != 0 ? result :
+           (pinResult == ATA_HD_REGISTRY_SUCCESS ? 0 :
+            ata_hd_core_error_to_errno(pinResult));
 }
 
 static void
@@ -761,6 +818,9 @@ ata_hd_strategy(struct buf *bp)
     id disk;
     IOReturn result;
     vm_task_t client;
+    unsigned int unit;
+    unsigned int partition;
+    int pinResult;
 
     [ata_hd_lock lock];
     disk = ata_hd_disk_for_dev_locked(bp->b_dev);
@@ -768,6 +828,14 @@ ata_hd_strategy(struct buf *bp)
         *ata_hd_presence_for_dev_locked(bp->b_dev) == 0) {
         [ata_hd_lock unlock];
         bp->b_error = ENXIO;
+        goto bad;
+    }
+    unit = IO_DISK_UNIT(bp->b_dev);
+    partition = IO_DISK_PART(bp->b_dev);
+    pinResult = ata_hd_pin_io_locked(bp, unit, partition);
+    if (pinResult != ATA_HD_REGISTRY_SUCCESS) {
+        [ata_hd_lock unlock];
+        bp->b_error = ata_hd_core_error_to_errno(pinResult);
         goto bad;
     }
     [ata_hd_lock unlock];
@@ -779,6 +847,7 @@ ata_hd_strategy(struct buf *bp)
 
     if ([disk blockSize] == 0) {
         bp->b_error = ENXIO;
+        ata_hd_async_complete(bp);
         goto bad;
     }
 
@@ -798,6 +867,7 @@ ata_hd_strategy(struct buf *bp)
 
     if (result != IO_R_SUCCESS) {
         bp->b_error = [disk errnoFromReturn:result];
+        ata_hd_async_complete(bp);
         goto bad;
     }
 
@@ -806,6 +876,61 @@ ata_hd_strategy(struct buf *bp)
 bad:
     bp->b_flags |= B_ERROR;
     biodone(bp);
+}
+
+static int
+ata_hd_pin_io_locked(void *pending, unsigned int unit,
+                     unsigned int partition)
+{
+    unsigned int index;
+    unsigned int freeIndex;
+    int result;
+
+    if (pending == NULL || unit >= ATA_HD_UNITS ||
+        partition >= ATA_HD_PARTITIONS ||
+        ata_hd_units[unit].ioCount == ~0U)
+        return ATA_HD_REGISTRY_INVALID;
+    freeIndex = ATA_HD_ASYNC_PINS;
+    for (index = 0; index < ATA_HD_ASYNC_PINS; ++index) {
+        if (ata_hd_async_pins[index].pending == pending)
+            return ATA_HD_REGISTRY_INVALID;
+        if (freeIndex == ATA_HD_ASYNC_PINS &&
+            ata_hd_async_pins[index].pending == NULL)
+            freeIndex = index;
+    }
+    if (freeIndex == ATA_HD_ASYNC_PINS)
+        return ATA_HD_BUSY;
+    result = ATAHDRegistryOpen(&ata_hd_core, unit, partition);
+    if (result != ATA_HD_REGISTRY_SUCCESS)
+        return result;
+    ata_hd_async_pins[freeIndex].pending = pending;
+    ata_hd_async_pins[freeIndex].unit = unit;
+    ata_hd_async_pins[freeIndex].partition = partition;
+    ++ata_hd_units[unit].ioCount;
+    return ATA_HD_REGISTRY_SUCCESS;
+}
+
+void
+ata_hd_async_complete(void *pending)
+{
+    unsigned int index;
+    unsigned int unit;
+    unsigned int partition;
+
+    if (pending == NULL || !ata_hd_registry_ready || ata_hd_lock == nil)
+        return;
+    [ata_hd_lock lock];
+    for (index = 0; index < ATA_HD_ASYNC_PINS; ++index) {
+        if (ata_hd_async_pins[index].pending == pending) {
+            unit = ata_hd_async_pins[index].unit;
+            partition = ata_hd_async_pins[index].partition;
+            ata_hd_async_pins[index].pending = NULL;
+            --ata_hd_units[unit].ioCount;
+            (void)ATAHDRegistryClose(&ata_hd_core, unit, partition);
+            break;
+        }
+    }
+    [ata_hd_lock unlock];
 }
 
 static int

@@ -536,6 +536,7 @@ void *ideThreadPtr;
 - (void)ideIoComplete:(ideBuf_t *) ideBuf
 {
     if (ideBuf->pending) {
+	ata_hd_async_complete(ideBuf->pending);
 	[self completeTransfer:ideBuf->pending
 		    withStatus:ideBuf->status
 		    actualLength:ideBuf->bytesXfr];

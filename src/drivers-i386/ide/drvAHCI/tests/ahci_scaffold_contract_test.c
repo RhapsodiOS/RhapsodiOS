@@ -458,13 +458,9 @@ static void test_validator_mutations(void)
         "@interface AHCIController : IODirectDevice\n"
         "+ (BOOL)probe:(IOPCIDeviceDescription *)deviceDescription;\n"
         "- initFromDeviceDescription:(IOPCIDeviceDescription *)deviceDescription;\n";
-    static const char postload_31_devices[] =
-        "#define N_AHCI_PARTITIONS 8\n#define N_AHCI_DEVICES 31\n"
-        "#define AHCI_BLOCK_MAJOR 3\n#define AHCI_CHARACTER_MAJOR 15\n";
-    static const char postload_7_partitions[] =
-        "#define N_AHCI_PARTITIONS 7\n#define N_AHCI_DEVICES 32\n"
-        "#define AHCI_BLOCK_MAJOR 3\n#define AHCI_CHARACTER_MAJOR 15\n";
     char postload_ok[2048];
+    char postload_31_devices[2048];
+    char postload_7_partitions[2048];
     char controller_ok[4096];
     char mutation[4096];
     char long_root[600];
@@ -519,8 +515,23 @@ static void test_validator_mutations(void)
                    default_commented_boot);
     expect_invalid("interrupt declaration removed", valid_controller_header,
                    header_no_interrupt);
-    expect_invalid("31 devices", valid_postload, postload_31_devices);
-    expect_invalid("7 partitions", valid_postload, postload_7_partitions);
+    if (!replace_once(postload_31_devices, sizeof(postload_31_devices),
+                      postload_ok, "#define N_AHCI_DEVICES 32",
+                      "#define N_AHCI_DEVICES 31")) {
+        fprintf(stderr, "device-count mutation replacement failed\n");
+        ++failures;
+    } else {
+        expect_invalid("31 devices", valid_postload, postload_31_devices);
+    }
+    if (!replace_once(postload_7_partitions, sizeof(postload_7_partitions),
+                      postload_ok, "#define N_AHCI_PARTITIONS 8",
+                      "#define N_AHCI_PARTITIONS 7")) {
+        fprintf(stderr, "partition-count mutation replacement failed\n");
+        ++failures;
+    } else {
+        expect_invalid("7 partitions", valid_postload,
+                       postload_7_partitions);
+    }
 
     if (!replace_once(mutation, sizeof(mutation), controller_ok,
                       "0x010601", "0x010600"))

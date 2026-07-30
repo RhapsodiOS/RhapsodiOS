@@ -463,13 +463,17 @@ static TASStatus tas_codec_write(void *opaque, unsigned char reg,
     PEKeyWestI2CRequest request;
     ns_time_t absolute;
     unsigned long remaining;
+    unsigned long serialNow;
     self = (PPCTASAudio *)opaque;
-    if (!TASTimeRemaining(tas_now(self), deadline, &remaining) ||
+    IOGetTimestamp(&absolute);
+    serialNow = TASTimeNormalize(
+        (unsigned long)(absolute / TAS_NSEC_PER_MS));
+    if (!TASTimeRemaining(serialNow, deadline, &remaining) ||
         remaining == 0UL) {
         *written = 0UL;
         return kTASStatusTimeout;
     }
-    IOGetTimestamp(&absolute);
+    absolute -= absolute % TAS_NSEC_PER_MS;
     absolute += (ns_time_t)remaining * TAS_NSEC_PER_MS;
     memset(&request, 0, sizeof(request));
     request.port = self->machineConfig.i2cPort;

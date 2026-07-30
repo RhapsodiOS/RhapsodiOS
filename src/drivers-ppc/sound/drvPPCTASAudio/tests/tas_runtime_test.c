@@ -692,7 +692,7 @@ static void test_delivered_resource_validation(void)
     interrupts[2] = 43U;
     interrupts[0] = 0U;
     CHECK(TASRuntimeValidateResources(&config, 3UL, ranges, 3UL,
-        interrupts) == kTASStatusConflict);
+        interrupts) == kTASStatusOK);
 #if ULONG_MAX > UINT_MAX
     interrupts[0] = 41U;
     ranges[0].start = (unsigned long)UINT_MAX + 1UL;

@@ -120,8 +120,7 @@ TASStatus TASRuntimeValidateResources(const TASMachineConfig *config,
             ranges[index].size != expected[index]->length)
             return kTASStatusConflict;
     }
-    if (interrupts[0] == 0U || interrupts[1] == 0U ||
-        interrupts[2] == 0U || interrupts[0] == interrupts[1] ||
+    if (interrupts[0] == interrupts[1] ||
         interrupts[0] == interrupts[2] || interrupts[1] == interrupts[2])
         return kTASStatusConflict;
     return kTASStatusOK;

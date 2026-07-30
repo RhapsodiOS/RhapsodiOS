@@ -1288,9 +1288,7 @@ ata_mode_to_mask(ata_mode_t mode)
 
     _drives[unit].ideIdentifyInfoSupported = YES;
     _drives[unit].lba48Supported = NO;
-    _drives[unit].addressableSectors =
-		_drives[unit].ideInfo.sectors_per_trk *
-		_drives[unit].ideInfo.heads * _drives[unit].ideInfo.cylinders;
+    _drives[unit].addressableSectors = 0;
     bzero(infoPtr, sizeof(ideIdentifyInfo_t));
 
     _driveNum = unit;
@@ -1311,6 +1309,11 @@ ata_mode_to_mask(ata_mode_t mode)
 		 * master device will lose its configuration state.
 		 */
 		[self ideReset];	/* necessary */
+		_drives[unit].addressMode = ADDRESS_MODE_CHS;
+		_drives[unit].lba48Supported = NO;
+		_drives[unit].addressableSectors =
+			(unsigned int)_drives[unit].ideInfo.sectors_per_trk *
+			_drives[unit].ideInfo.heads * _drives[unit].ideInfo.cylinders;
         return IDER_CMD_ERROR;
     }
 
@@ -1336,22 +1339,25 @@ ata_mode_to_mask(ata_mode_t mode)
     }
 
     /*
-     * Set address mode. The only case in which we need to override user
-     * selection if the user chooses LBA and the drive supports only CHS. 
+     * Set address mode. Override LBA selection if the drive supports only
+     * CHS or reports no addressable LBA sectors.
      */
-    if (((infoPtr->capabilities & IDE_CAP_LBA_SUPPORTED) == 0x0) &&
-		(_drives[unit].addressMode == ADDRESS_MODE_LBA)) {
+    if ((_drives[unit].addressMode == ADDRESS_MODE_LBA) &&
+		(((infoPtr->capabilities & IDE_CAP_LBA_SUPPORTED) == 0x0) ||
+		(capacity.sectors == 0))) {
 #ifdef DEBUG
-		IOLog("%s: WARNING: LBA mode is not supported by drive %d.\n",
-		    [self name], unit);
+		if ((infoPtr->capabilities & IDE_CAP_LBA_SUPPORTED) == 0x0)
+			IOLog("%s: WARNING: LBA mode is not supported by drive %d.\n",
+			    [self name], unit);
 #endif DEBUG
 		_drives[unit].addressMode = ADDRESS_MODE_CHS;
+		_drives[unit].lba48Supported = NO;
 	}
 
     if (biosInfo == NO) {
 		ideDriveInfo_t *ip = &(_drives[unit].ideInfo);
-		unsigned int chsSectors = ip->sectors_per_trk * ip->heads *
-			ip->cylinders;
+		unsigned int chsSectors =
+			(unsigned int)ip->sectors_per_trk * ip->heads * ip->cylinders;
 
 		if ([IODevice driverKitVersion] > 410) {
 			ip->total_sectors = chsSectors;
@@ -1367,7 +1373,7 @@ ata_mode_to_mask(ata_mode_t mode)
 
     if (_drives[unit].addressMode == ADDRESS_MODE_CHS) {
 		_drives[unit].addressableSectors =
-			_drives[unit].ideInfo.sectors_per_trk *
+			(unsigned int)_drives[unit].ideInfo.sectors_per_trk *
 			_drives[unit].ideInfo.heads * _drives[unit].ideInfo.cylinders;
 	}
 

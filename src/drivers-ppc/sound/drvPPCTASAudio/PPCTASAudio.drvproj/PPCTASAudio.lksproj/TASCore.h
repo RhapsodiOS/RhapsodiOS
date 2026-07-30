@@ -261,13 +261,16 @@ typedef struct {
     TASAudioTokenKind kind;
     unsigned long generation;
     unsigned long detectGeneration;
+    unsigned long sourceDesiredDetects;
     unsigned long actionCount;
     unsigned long deadline;
     unsigned long nextAction;
     unsigned long completedCount;
     unsigned long targetRoutes;
     TASPowerState targetPower;
+    TASPowerState sourcePower;
     int actionInFlight;
+    int sourceStartsBlocked;
 } TASAudioToken;
 
 typedef enum {
@@ -352,6 +355,7 @@ TASStatus TASAudioAuthorizeAction(const TASAudioState *, TASAudioToken *,
 TASStatus TASAudioCompleteAction(const TASAudioState *, TASAudioToken *,
     unsigned long);
 TASStatus TASAudioCommitTransition(TASAudioState *, TASAudioToken *);
+TASStatus TASAudioCancelTransition(TASAudioState *, TASAudioToken *);
 TASStatus TASAudioFailTransition(TASAudioState *, TASAudioToken *,
     unsigned long, TASAudioActionPlan *, TASAudioToken *);
 TASStatus TASAudioPrepareRollback(TASAudioState *, unsigned long,

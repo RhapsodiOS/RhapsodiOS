@@ -1321,11 +1321,8 @@ static TASStatus audio_mute_all(const TASAudioState *state,
     TASAudioActionPlan *plan)
 {
     TASStatus status;
-    if ((state->quirks & kTASQuirkANDedReset) != 0UL) {
-        status = audio_action(plan, kTASAudioCodecDigitalMute, 1UL, 0UL);
-        if (status != kTASStatusOK) return status;
+    if ((state->quirks & kTASQuirkANDedReset) != 0UL)
         return audio_action(plan, kTASAudioAssertAndedReset, 1UL, 0UL);
-    }
     if ((state->availableRoutes & kTASAudioRouteSpeaker) != 0UL) {
         status = audio_action(plan, kTASAudioMuteSpeaker, 1UL, 0UL);
         if (status != kTASStatusOK) return status;
@@ -1387,6 +1384,9 @@ static TASStatus audio_reserve(TASAudioState *state, TASAudioTokenKind kind,
     token->kind = kind;
     token->generation = state->generation;
     token->detectGeneration = state->detectGeneration;
+    token->sourceDesiredDetects = state->desiredDetects;
+    token->sourcePower = state->powerState;
+    token->sourceStartsBlocked = state->startsBlocked;
     return kTASStatusOK;
 }
 
@@ -1647,10 +1647,12 @@ static TASStatus audio_build_sleep(TASAudioState *state,
     if (status != kTASStatusOK) return status;
     status = audio_action(plan, kTASAudioResetInputDMA, 0UL, deadline);
     if (status != kTASStatusOK) return status;
-    status = audio_action(plan, state->codecKind == kTASCodecTAS3004 ?
-        kTASAudioCodecAnalogLowPower : kTASAudioCodecMuteLowPower,
-        1UL, deadline);
-    if (status != kTASStatusOK) return status;
+    if ((state->quirks & kTASQuirkANDedReset) == 0UL) {
+        status = audio_action(plan, state->codecKind == kTASCodecTAS3004 ?
+            kTASAudioCodecAnalogLowPower : kTASAudioCodecMuteLowPower,
+            1UL, deadline);
+        if (status != kTASStatusOK) return status;
+    }
     status = audio_action(plan, kTASAudioDisableDetectIRQs, 1UL, 0UL);
     if (status != kTASStatusOK) return status;
     if ((state->quirks & kTASQuirkANDedReset) == 0UL) {
@@ -1666,8 +1668,10 @@ static TASStatus audio_build_wake(TASAudioState *state,
 {
     TASAudioAction *volume;
     TASStatus status;
-    status = audio_mute_all(state, plan);
-    if (status != kTASStatusOK) return status;
+    if ((state->quirks & kTASQuirkANDedReset) == 0UL) {
+        status = audio_mute_all(state, plan);
+        if (status != kTASStatusOK) return status;
+    }
     status = audio_action(plan, kTASAudioEnableI2SCellClock, 1UL, deadline);
     if (status != kTASStatusOK) return status;
     if ((state->quirks & kTASQuirkANDedReset) != 0UL) {
@@ -1736,6 +1740,9 @@ TASStatus TASAudioPreparePower(TASAudioState *state, TASPowerState power,
     status = audio_reserve(&changed, kTASAudioTokenPower, token);
     if (status != kTASStatusOK)
         return status;
+    token->sourceDesiredDetects = state->desiredDetects;
+    token->sourcePower = state->powerState;
+    token->sourceStartsBlocked = state->startsBlocked;
     token->targetRoutes = 0UL;
     token->targetPower = power;
     token->actionCount = built.count;
@@ -1822,6 +1829,9 @@ TASStatus TASAudioCommitTransition(TASAudioState *state,
         state->routeValid = 0;
         state->outputsMuted = 1;
         state->outputsMuteKnown = 1;
+        if ((state->quirks & kTASQuirkANDedReset) != 0UL)
+            state->andedResetState = token->targetPower == kTASPowerReady ?
+                kTASAndedResetReleased : kTASAndedResetAsserted;
         if (token->targetPower == kTASPowerReady) {
             state->powerState = kTASPowerWaking;
             state->hardwareValid = 1;
@@ -1833,6 +1843,32 @@ TASStatus TASAudioCommitTransition(TASAudioState *state,
         }
     } else
         return kTASStatusMalformed;
+    state->transitionPending = 0;
+    state->transitionDeadline = 0UL;
+    memset(&consumed, 0, sizeof(consumed));
+    *token = consumed;
+    return kTASStatusOK;
+}
+
+TASStatus TASAudioCancelTransition(TASAudioState *state,
+    TASAudioToken *token)
+{
+    TASAudioToken consumed;
+    if (!valid_audio_state(state) || token == 0)
+        return kTASStatusMalformed;
+    if (!audio_token_current(state, token, 1) ||
+        token->kind == kTASAudioTokenRollback || token->actionInFlight ||
+        token->nextAction != 0UL || token->completedCount != 0UL)
+        return kTASStatusConflict;
+    if (state->generation == ~0UL)
+        return kTASStatusOverflow;
+    if (token->kind == kTASAudioTokenPower) {
+        state->powerState = token->sourcePower;
+        state->startsBlocked = token->sourceStartsBlocked;
+    }
+    if (token->detectGeneration == state->detectGeneration)
+        state->desiredDetects = token->sourceDesiredDetects;
+    ++state->generation;
     state->transitionPending = 0;
     state->transitionDeadline = 0UL;
     memset(&consumed, 0, sizeof(consumed));

@@ -1860,6 +1860,11 @@ TASStatus TASAudioCancelTransition(TASAudioState *state,
         token->kind == kTASAudioTokenRollback || token->actionInFlight ||
         token->nextAction != 0UL || token->completedCount != 0UL)
         return kTASStatusConflict;
+    if (token->kind == kTASAudioTokenWakeRoute &&
+        (token->detectGeneration == state->detectGeneration ||
+        !state->debouncePending ||
+        state->powerState != kTASPowerWaking || !state->startsBlocked))
+        return kTASStatusConflict;
     if (state->generation == ~0UL)
         return kTASStatusOverflow;
     if (token->kind == kTASAudioTokenPower) {

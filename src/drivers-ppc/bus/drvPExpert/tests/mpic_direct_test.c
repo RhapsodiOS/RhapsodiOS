@@ -40,5 +40,45 @@ main(void)
 	expect_equal("negative source", PEMPIClogicalForSource(map, 64, -1), -1);
 	expect_equal("source at count", PEMPIClogicalForSource(map, 64, 64), -1);
 
+	expect_equal("legacy OF conversion",
+	    PEMPICsourceForInterrupt(map, 64, 64, 8 ^ 0x18), 8);
+	expect_equal("direct conversion",
+	    PEMPICsourceForInterrupt(map, 64, 64,
+	    PMAC_DEV_MPIC_DIRECT_BASE + 47), 47);
+	expect_equal("direct conversion mapped alias",
+	    PEMPICsourceForInterrupt(map, 64, 64,
+	    PMAC_DEV_MPIC_DIRECT_BASE + 8), -1);
+
+	expect_equal("legacy registration source",
+	    PEMPICsourceForDevice(map, 64, 17), 40);
+	expect_equal("direct registration source",
+	    PEMPICsourceForDevice(map, 64,
+	    PMAC_DEV_MPIC_DIRECT_BASE + 47), 47);
+	expect_equal("direct registration callback identity",
+	    PEMPIClogicalForSource(map, 64,
+	    PEMPICsourceForDevice(map, 64,
+	    PMAC_DEV_MPIC_DIRECT_BASE + 47)),
+	    PMAC_DEV_MPIC_DIRECT_BASE + 47);
+	map[47].i_device = PMAC_DEV_MPIC_DIRECT_BASE + 47;
+	expect_equal("existing direct registration source",
+	    PEMPICsourceForDevice(map, 64,
+	    PMAC_DEV_MPIC_DIRECT_BASE + 47), 47);
+	expect_equal("direct registration mapped alias",
+	    PEMPICsourceForDevice(map, 64,
+	    PMAC_DEV_MPIC_DIRECT_BASE + 8), -1);
+
+	expect_equal("enable direct base",
+	    PEMPICsourceForInterrupt(map, 64, 64,
+	    PMAC_DEV_MPIC_DIRECT_BASE), 0);
+	expect_equal("enable last direct source",
+	    PEMPICsourceForInterrupt(map, 64, 64,
+	    PMAC_DEV_MPIC_DIRECT_BASE + 63), 63);
+	expect_equal("enable first invalid direct source",
+	    PEMPICsourceForInterrupt(map, 64, 64,
+	    PMAC_DEV_MPIC_DIRECT_BASE + 64), -1);
+	expect_equal("disable mapped direct alias",
+	    PEMPICsourceForInterrupt(map, 64, 64,
+	    PMAC_DEV_MPIC_DIRECT_BASE + 9), -1);
+
 	return EXIT_SUCCESS;
 }

@@ -123,6 +123,10 @@ struct powermac_interrupt {
 
 extern int PEMPIClogicalForSource(struct powermac_interrupt *map,
 				  int count, int source);
+extern int PEMPICsourceForInterrupt(struct powermac_interrupt *map,
+				   int count, int totalCount, int identity);
+extern int PEMPICsourceForDevice(struct powermac_interrupt *map,
+				int count, int device);
 
 extern unsigned int (*pmac_int_to_number)(int index);
 

@@ -1,4 +1,7 @@
 #include "TASRuntime.h"
+#include "TASTime.h"
+
+#include <limits.h>
 
 #include <string.h>
 
@@ -11,9 +14,10 @@ static TASStatus fail_mute_and_invalidate(TASRuntime *, int);
 static unsigned long runtime_deadline_after(unsigned long now,
     unsigned long interval)
 {
-    if (now > ~0UL - interval)
-        return ~0UL;
-    return now + interval;
+    unsigned long deadline;
+    if (!TASTimeAdd(now, interval, &deadline))
+        return TASTimeNormalize(now);
+    return deadline;
 }
 
 static void record_dma_fault(TASRuntime *runtime,
@@ -92,6 +96,35 @@ TASStatus TASRuntimeProbe(const TASPropertyReader *reader,
         config->i2s.length == 0UL || config->outputDBDMA.length == 0UL ||
         config->inputDBDMA.length == 0UL)
         return kTASStatusNotMatched;
+    return kTASStatusOK;
+}
+
+TASStatus TASRuntimeValidateResources(const TASMachineConfig *config,
+    unsigned long rangeCount, const TASDeliveredRange *ranges,
+    unsigned long interruptCount, const unsigned int *interrupts)
+{
+    const TASRange *expected[3];
+    unsigned long index;
+    if (config == 0 || rangeCount != 3UL || ranges == 0 ||
+        interruptCount != 3UL || interrupts == 0)
+        return kTASStatusMalformed;
+    expected[0] = &config->i2s;
+    expected[1] = &config->outputDBDMA;
+    expected[2] = &config->inputDBDMA;
+    for (index = 0UL; index < 3UL; ++index) {
+        if (expected[index]->address > (unsigned long)UINT_MAX ||
+            expected[index]->length > (unsigned long)UINT_MAX ||
+            ranges[index].start > (unsigned long)UINT_MAX ||
+            ranges[index].size > (unsigned long)UINT_MAX)
+            return kTASStatusOverflow;
+        if (ranges[index].start != expected[index]->address ||
+            ranges[index].size != expected[index]->length)
+            return kTASStatusConflict;
+    }
+    if (interrupts[0] == 0U || interrupts[1] == 0U ||
+        interrupts[2] == 0U || interrupts[0] == interrupts[1] ||
+        interrupts[0] == interrupts[2] || interrupts[1] == interrupts[2])
+        return kTASStatusConflict;
     return kTASStatusOK;
 }
 
@@ -257,7 +290,7 @@ TASStatus TASRuntimeReset(TASRuntime *runtime, unsigned long deadline)
         debounceDeadline = runtime->audio.debounceDeadline;
         runtime->ops.unlockState(runtime->ops.context);
         now = runtime->ops.now(runtime->ops.context);
-        if (detectPending && now >= debounceDeadline)
+        if (detectPending && TASTimeDue(now, debounceDeadline))
             status = service_detect(runtime, 0, deadline);
     }
     if (status == kTASStatusOK) {
@@ -266,7 +299,7 @@ TASStatus TASRuntimeReset(TASRuntime *runtime, unsigned long deadline)
         debounceDeadline = runtime->audio.debounceDeadline;
         runtime->ops.unlockState(runtime->ops.context);
         now = runtime->ops.now(runtime->ops.context);
-        if (detectPending && now >= debounceDeadline)
+        if (detectPending && TASTimeDue(now, debounceDeadline))
             status = service_detect(runtime, 0, deadline);
     }
     runtime->ops.lockState(runtime->ops.context);
@@ -475,6 +508,7 @@ static TASStatus service_detect(TASRuntime *runtime, int newEdge,
     unsigned long generation;
     unsigned long now;
     unsigned long detects;
+    unsigned long debounceDeadline;
     int debouncePending;
     now = runtime->ops.now(runtime->ops.context);
     if (newEdge) {
@@ -485,11 +519,12 @@ static TASStatus service_detect(TASRuntime *runtime, int newEdge,
         runtime->ops.unlockState(runtime->ops.context);
         if (status != kTASStatusOK)
             return status;
-        if (now > ~0UL - TAS_AUDIO_DEBOUNCE_CONFIRM_MS)
+        if (!TASTimeAdd(now, TAS_AUDIO_DEBOUNCE_CONFIRM_MS,
+            &debounceDeadline))
             return kTASStatusOverflow;
         runtime->ops.lockState(runtime->ops.context);
         status = TASAudioBuildDebounceSchedule(&runtime->audio, generation,
-            now + TAS_AUDIO_DEBOUNCE_CONFIRM_MS, &plan);
+            debounceDeadline, &plan);
         runtime->ops.unlockState(runtime->ops.context);
         if (status != kTASStatusOK)
             return status;
@@ -713,9 +748,8 @@ static TASStatus execute_plan(TASRuntime *runtime,
     }
     failureStatus = status;
     (void)runtime->ops.failMuteOutputs(runtime->ops.context);
-    rollbackDeadline = runtime->ops.now(runtime->ops.context) + 100UL;
-    if (rollbackDeadline < 100UL)
-        rollbackDeadline = ~0UL;
+    rollbackDeadline = runtime_deadline_after(
+        runtime->ops.now(runtime->ops.context), 100UL);
     runtime->ops.lockState(runtime->ops.context);
     status = TASAudioFailTransition(&runtime->audio, token, rollbackDeadline,
         &rollbackPlan, &rollback);
@@ -824,16 +858,16 @@ TASStatus TASRuntimeBoundedDelay(void *context, unsigned long usec,
     unsigned long after;
     if (now == 0 || wait == 0)
         return kTASStatusMalformed;
-    current = now(context) & 0xffffffffUL;
-    deadline &= 0xffffffffUL;
+    current = TASTimeNormalize(now(context));
+    deadline = TASTimeNormalize(deadline);
     required = usec / 1000UL + ((usec % 1000UL) != 0UL ? 1UL : 0UL);
-    remaining = (deadline - current) & 0xffffffffUL;
-    if (remaining >= 0x80000000UL || required > remaining)
+    if (!TASTimeRemaining(current, deadline, &remaining) ||
+        required > remaining)
         return kTASStatusTimeout;
     wait(context, usec);
-    after = now(context) & 0xffffffffUL;
-    remaining = (deadline - after) & 0xffffffffUL;
-    return remaining >= 0x80000000UL ? kTASStatusTimeout : kTASStatusOK;
+    after = TASTimeNormalize(now(context));
+    return TASTimeRemaining(after, deadline, &remaining) ?
+        kTASStatusOK : kTASStatusTimeout;
 }
 
 TASStatus TASRuntimeFailMuteOutputs(const TASMachineConfig *config,

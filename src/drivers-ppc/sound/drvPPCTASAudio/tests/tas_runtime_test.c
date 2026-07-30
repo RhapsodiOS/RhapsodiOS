@@ -2,9 +2,11 @@
 
 #include "tas_fixtures.h"
 #include "TASRuntime.h"
+#include "TASTime.h"
 
 #include <stdio.h>
 #include <string.h>
+#include <limits.h>
 
 static int failures;
 static TASMachineConfig tumbler_config(void);
@@ -240,7 +242,7 @@ static TASStatus runtime_action(void *context, const TASAudioAction *action)
         mock->actionOps[mock->actionCount++] = action->operation;
     ++mock->hardwareCalls;
     if (action->operation == kTASAudioScheduleDebounce &&
-        !mock->deferSchedule && mock->nowValue < action->deadline)
+        !mock->deferSchedule && TASTimeBefore(mock->nowValue, action->deadline))
         mock->nowValue = action->deadline;
     if (!mock->injected && mock->runtime != 0 &&
         action->operation == mock->injectOperation) {
@@ -681,6 +683,46 @@ static TASMachineConfig tumbler_config(void)
     memset(&config, 0, sizeof(config));
     CHECK(TASRuntimeProbe(&reader, &config) == kTASStatusOK);
     return config;
+}
+
+static void test_delivered_resource_validation(void)
+{
+    TASMachineConfig config;
+    TASDeliveredRange ranges[3];
+    unsigned int interrupts[3];
+    config = tumbler_config();
+    ranges[0].start = config.i2s.address;
+    ranges[0].size = config.i2s.length;
+    ranges[1].start = config.outputDBDMA.address;
+    ranges[1].size = config.outputDBDMA.length;
+    ranges[2].start = config.inputDBDMA.address;
+    ranges[2].size = config.inputDBDMA.length;
+    interrupts[0] = 41U;
+    interrupts[1] = 42U;
+    interrupts[2] = 43U;
+    CHECK(TASRuntimeValidateResources(&config, 3UL, ranges, 3UL,
+        interrupts) == kTASStatusOK);
+    CHECK(TASRuntimeValidateResources(&config, 2UL, ranges, 3UL,
+        interrupts) == kTASStatusMalformed);
+    CHECK(TASRuntimeValidateResources(&config, 3UL, ranges, 2UL,
+        interrupts) == kTASStatusMalformed);
+    ranges[1].size += 1UL;
+    CHECK(TASRuntimeValidateResources(&config, 3UL, ranges, 3UL,
+        interrupts) == kTASStatusConflict);
+    ranges[1].size = config.outputDBDMA.length;
+    interrupts[2] = interrupts[0];
+    CHECK(TASRuntimeValidateResources(&config, 3UL, ranges, 3UL,
+        interrupts) == kTASStatusConflict);
+    interrupts[2] = 43U;
+    interrupts[0] = 0U;
+    CHECK(TASRuntimeValidateResources(&config, 3UL, ranges, 3UL,
+        interrupts) == kTASStatusConflict);
+#if ULONG_MAX > UINT_MAX
+    interrupts[0] = 41U;
+    ranges[0].start = (unsigned long)UINT_MAX + 1UL;
+    CHECK(TASRuntimeValidateResources(&config, 3UL, ranges, 3UL,
+        interrupts) == kTASStatusOverflow);
+#endif
 }
 
 static void test_probe_is_narrow(void)
@@ -1365,7 +1407,7 @@ static void test_unwind_failure_preserves_dma_resources_and_mute_truth(void)
     CHECK(runtime.pendingIRQs == 0UL && runtime.dmaFaultMask == 0UL);
 }
 
-static void test_unwind_deadline_saturates_at_clock_wrap(void)
+static void test_unwind_deadline_wraps_with_clock(void)
 {
     TASMachineConfig config;
     TASRuntime runtime;
@@ -1384,7 +1426,7 @@ static void test_unwind_deadline_saturates_at_clock_wrap(void)
         sizeof(output), 256UL, 44100UL, 2500UL) == kTASStatusOK);
     mock.nowValue = ~0UL - 50UL;
     CHECK(TASRuntimeUnwind(&runtime) == kTASStatusOK);
-    CHECK(mock.lastStopDeadline == ~0UL);
+    CHECK(mock.lastStopDeadline == 49UL);
 }
 
 static void test_runtime_commands_reject_after_unwind(void)
@@ -1625,6 +1667,7 @@ int main(void)
     test_edge_during_route_rolls_back_safely();
     test_route_action_failure_rolls_back_muted();
     test_probe_is_narrow();
+    test_delivered_resource_validation();
     test_codec_delay_is_deadline_bounded();
     test_control_conversion_endpoints_and_monotonicity();
     test_deadline_delay_is_wrap_safe();
@@ -1644,7 +1687,7 @@ int main(void)
     test_failed_controls_invalidate_truth_from_mute_result();
     test_unwind_disables_irqs_before_dma_and_clears_latches();
     test_unwind_failure_preserves_dma_resources_and_mute_truth();
-    test_unwind_deadline_saturates_at_clock_wrap();
+    test_unwind_deadline_wraps_with_clock();
     test_runtime_commands_reject_after_unwind();
     test_interrupt_close_drains_and_skips_mmio();
     test_begin_close_serializes_against_reset_and_commands();

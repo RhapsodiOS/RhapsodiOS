@@ -277,6 +277,7 @@ typedef struct {
     int actionInFlight;
     int sourceStartsBlocked;
     int sourceDebouncePending;
+    int sourceDebounceScheduled;
     int sourceCandidateValid;
     int sourceDetectBlocked;
 } TASAudioToken;
@@ -308,6 +309,7 @@ typedef struct {
     int startsBlocked;
     int transitionPending;
     int debouncePending;
+    int debounceScheduled;
     int candidateValid;
     int detectBlocked;
     int transitionBlocked;

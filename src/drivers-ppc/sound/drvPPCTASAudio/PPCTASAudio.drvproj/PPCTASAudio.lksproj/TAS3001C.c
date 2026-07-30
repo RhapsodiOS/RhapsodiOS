@@ -59,7 +59,7 @@ TASStatus TASCodecTransportWrite(TASCodec *codec, unsigned char reg,
     TASStatus status;
     if (codec == 0 || codec->ops == 0 ||
         codec->callbacks.writeRegister == 0 || bytes == 0 ||
-        length == 0UL || deadlineMilliseconds == 0UL)
+        length == 0UL)
         return kTASStatusMalformed;
     width = TASCodecRegisterWidth(codec->ops, reg);
     if (width == 0UL)
@@ -106,8 +106,7 @@ TASStatus TASCodecDelay(TASCodec *codec, unsigned long microseconds,
     unsigned long deadlineMilliseconds)
 {
     TASStatus status;
-    if (codec == 0 || codec->callbacks.delayMicroseconds == 0 ||
-        deadlineMilliseconds == 0UL)
+    if (codec == 0 || codec->callbacks.delayMicroseconds == 0)
         return kTASStatusMalformed;
     status = codec->callbacks.delayMicroseconds(codec->callbacks.context,
         microseconds, deadlineMilliseconds);
@@ -128,8 +127,7 @@ TASStatus TASCodecInitialize(TASCodec *codec, int clocksRunning,
 {
     TASStatus status;
     if (codec == 0 || codec->ops == 0 ||
-        (clocksRunning != 0 && clocksRunning != 1) ||
-        deadlineMilliseconds == 0UL)
+        (clocksRunning != 0 && clocksRunning != 1))
         return kTASStatusMalformed;
     if (!clocksRunning)
         return kTASStatusMalformed;
@@ -147,8 +145,7 @@ TASStatus TASCodecInitialize(TASCodec *codec, int clocksRunning,
 TASStatus TASCodecRestore(TASCodec *codec, unsigned long deadlineMilliseconds)
 {
     TASStatus status;
-    if (codec == 0 || codec->ops == 0 || !codec->shadowComplete ||
-        deadlineMilliseconds == 0UL)
+    if (codec == 0 || codec->ops == 0 || !codec->shadowComplete)
         return kTASStatusMalformed;
     codec->hardwareValid = 0;
     status = codec->ops->restore(codec, deadlineMilliseconds);
@@ -163,7 +160,7 @@ TASStatus TASCodecSetVolume(TASCodec *codec, unsigned long left,
     unsigned char bytes[6];
     TASStatus status;
     if (codec == 0 || codec->ops == 0 || left > 0xffffffUL ||
-        right > 0xffffffUL || deadlineMilliseconds == 0UL)
+        right > 0xffffffUL)
         return kTASStatusMalformed;
     TASCodecEncode24(left, bytes);
     TASCodecEncode24(right, bytes + 3);
@@ -185,7 +182,7 @@ TASStatus TASCodecSetMute(TASCodec *codec, int muted,
     const unsigned char *bytes;
     TASStatus status;
     if (codec == 0 || codec->ops == 0 ||
-        (muted != 0 && muted != 1) || deadlineMilliseconds == 0UL)
+        (muted != 0 && muted != 1))
         return kTASStatusMalformed;
     if (muted == codec->muted)
         return kTASStatusOK;
@@ -202,8 +199,7 @@ TASStatus TASCodecSetInputGain(TASCodec *codec, unsigned long gain,
     unsigned long deadlineMilliseconds)
 {
     TASStatus status;
-    if (codec == 0 || codec->ops == 0 || gain > 0xffffffUL ||
-        deadlineMilliseconds == 0UL)
+    if (codec == 0 || codec->ops == 0 || gain > 0xffffffUL)
         return kTASStatusMalformed;
     status = codec->ops->setInputGain(codec, gain, deadlineMilliseconds);
     if (status == kTASStatusOK)
@@ -216,7 +212,7 @@ TASStatus TASCodecSetInputSource(TASCodec *codec, TASCodecInputSource source,
 {
     TASStatus status;
     if (codec == 0 || codec->ops == 0 || source < kTASCodecInputDigital1 ||
-        source > kTASCodecInputAnalog || deadlineMilliseconds == 0UL)
+        source > kTASCodecInputAnalog)
         return kTASStatusMalformed;
     status = codec->ops->setInputSource(codec, source,
         deadlineMilliseconds);

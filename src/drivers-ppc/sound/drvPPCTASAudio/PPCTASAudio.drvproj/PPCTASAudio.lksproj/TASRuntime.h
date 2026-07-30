@@ -61,6 +61,11 @@ typedef struct {
 } TASRuntimeOps;
 
 typedef struct {
+    unsigned long start;
+    unsigned long size;
+} TASDeliveredRange;
+
+typedef struct {
     TASMachineConfig config;
     TASCodec codec;
     TASSharedClock clock;
@@ -78,6 +83,9 @@ typedef struct {
 } TASRuntime;
 
 TASStatus TASRuntimeProbe(const TASPropertyReader *, TASMachineConfig *);
+TASStatus TASRuntimeValidateResources(const TASMachineConfig *,
+    unsigned long, const TASDeliveredRange *, unsigned long,
+    const unsigned int *);
 TASStatus TASRuntimeInit(TASRuntime *, const TASMachineConfig *,
     const TASAudioDesiredControls *, const TASRuntimeOps *);
 TASStatus TASRuntimeReset(TASRuntime *, unsigned long);

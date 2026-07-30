@@ -6,9 +6,9 @@ NAME = drvPPCTASAudio
 PROJECTVERSION = 1.0
 PROJECT_TYPE = Kernel Server
 LANGUAGE = English
-CFILES = TASCore.c TAS3001C.c TAS3004.c PPCDBDMAAudio.c TASRuntime.c
+CFILES = TASCore.c TASTime.c TAS3001C.c TAS3004.c PPCDBDMAAudio.c TASRuntime.c
 CLASSES = PPCTASAudio.m
-HFILES = PPCTASAudio.h TASCore.h TASCodec.h PPCDBDMAAudio.h TASRuntime.h
+HFILES = PPCTASAudio.h TASCore.h TASCodec.h TASTime.h PPCDBDMAAudio.h TASRuntime.h
 OTHERSRCS = Makefile.preamble Makefile Makefile.postamble Load_Commands.sect \
             ../../tests/Makefile.host ../../tests/tas_audio_test.c \
             ../../tests/tas_runtime_test.c \

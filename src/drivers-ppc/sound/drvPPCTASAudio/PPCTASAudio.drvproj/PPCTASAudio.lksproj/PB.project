@@ -2,8 +2,8 @@
     DYNAMIC_CODE_GEN = NO;
     FILESTABLE = {
         CLASSES = (PPCTASAudio.m);
-        C_FILES = (TASCore.c, TAS3001C.c, TAS3004.c, PPCDBDMAAudio.c, TASRuntime.c);
-        H_FILES = (PPCTASAudio.h, TASCore.h, TASCodec.h, PPCDBDMAAudio.h, TASRuntime.h);
+        C_FILES = (TASCore.c, TASTime.c, TAS3001C.c, TAS3004.c, PPCDBDMAAudio.c, TASRuntime.c);
+        H_FILES = (PPCTASAudio.h, TASCore.h, TASCodec.h, TASTime.h, PPCDBDMAAudio.h, TASRuntime.h);
         OTHER_LINKED = ();
         OTHER_SOURCES = (
             Makefile.preamble,

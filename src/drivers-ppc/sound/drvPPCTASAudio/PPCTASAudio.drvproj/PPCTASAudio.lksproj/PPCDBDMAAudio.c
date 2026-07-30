@@ -1,4 +1,5 @@
 #include "PPCDBDMAAudio.h"
+#include "TASTime.h"
 
 #include <limits.h>
 #include <stddef.h>
@@ -257,8 +258,7 @@ static int valid_register_ops(const PPCDBDMAOps *ops)
 
 static int deadline_expired(const PPCDBDMAOps *ops, unsigned long deadline)
 {
-    return deadline == 0UL ||
-        ops->now(ops->registerContext) >= deadline;
+    return TASTimeDue(ops->now(ops->registerContext), deadline);
 }
 
 static PPCDBDMATransition transition_result(PPCDBDMAStatus status,

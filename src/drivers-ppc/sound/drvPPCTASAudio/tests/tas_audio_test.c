@@ -3,6 +3,7 @@
 #include "tas_fixtures.h"
 #include "TASCodec.h"
 #include "PPCDBDMAAudio.h"
+#include "TASTime.h"
 
 #include <stdio.h>
 #include <stddef.h>
@@ -13,6 +14,26 @@
         #expression); ++failures; } } while (0)
 
 static int failures;
+
+static void test_time_wrap_matrix(void)
+{
+    unsigned long value;
+    CHECK(TASTimeNormalize(~0UL) == 0xffffffffUL);
+    CHECK(TASTimeAdd(0xfffffff0UL, 0x20UL, &value) && value == 0x10UL);
+    CHECK(!TASTimeAdd(1UL, 0x80000000UL, &value));
+    CHECK(TASTimeBefore(0xfffffff0UL, 0x10UL));
+    CHECK(TASTimeAfter(0x10UL, 0xfffffff0UL));
+    CHECK(!TASTimeBefore(0UL, 0x80000000UL));
+    CHECK(!TASTimeAfter(0UL, 0x80000000UL));
+    CHECK(TASTimeDue(0x10UL, 0xfffffff0UL));
+    CHECK(TASTimeDue(0UL, 0UL));
+    CHECK(!TASTimeDue(0UL, 0x80000000UL));
+    CHECK(TASTimeRemaining(0xfffffff0UL, 0x10UL, &value) &&
+        value == 0x20UL);
+    CHECK(TASTimeRemaining(0UL, 0UL, &value) && value == 0UL);
+    CHECK(!TASTimeRemaining(0x10UL, 0xfffffff0UL, &value));
+    CHECK(!TASTimeRemaining(0UL, 0x80000000UL, &value));
+}
 
 #define DMA_BUFFER_BYTES 70000UL
 
@@ -261,6 +282,7 @@ static TASStatus codec_write(void *context, unsigned char reg,
 {
     CodecMock *mock;
     CodecEvent *event;
+    unsigned long complete;
     unsigned long ordinal;
     mock = (CodecMock *)context;
     ordinal = mock->writeCount++;
@@ -270,13 +292,13 @@ static TASStatus codec_write(void *context, unsigned char reg,
     event->reg = reg;
     event->length = length;
     memcpy(event->data, bytes, (size_t)length);
-    if (mock->currentMilliseconds + mock->requiredMilliseconds >
-        deadlineMilliseconds) {
+    if (!TASTimeAdd(mock->currentMilliseconds, mock->requiredMilliseconds,
+        &complete) || TASTimeAfter(complete, deadlineMilliseconds)) {
         mock->currentMilliseconds = deadlineMilliseconds;
         *written = 0;
         return kTASStatusTimeout;
     }
-    mock->currentMilliseconds += mock->requiredMilliseconds;
+    mock->currentMilliseconds = complete;
     if (ordinal == mock->failWrite) {
         *written = mock->partialLength;
         return kTASStatusOK;
@@ -295,15 +317,17 @@ static TASStatus codec_delay(void *context, unsigned long microseconds,
     unsigned long deadlineMilliseconds)
 {
     CodecMock *mock;
+    unsigned long complete;
     unsigned long milliseconds;
     mock = (CodecMock *)context;
     milliseconds = (microseconds + 999UL) / 1000UL;
     codec_event(mock, 2, microseconds);
-    if (mock->currentMilliseconds + milliseconds > deadlineMilliseconds) {
+    if (!TASTimeAdd(mock->currentMilliseconds, milliseconds, &complete) ||
+        TASTimeAfter(complete, deadlineMilliseconds)) {
         mock->currentMilliseconds = deadlineMilliseconds;
         return kTASStatusTimeout;
     }
-    mock->currentMilliseconds += milliseconds;
+    mock->currentMilliseconds = complete;
     return kTASStatusOK;
 }
 
@@ -1688,8 +1712,6 @@ static void test_codec_restore_and_volume_state_are_atomic(void)
     unsigned long ordinal;
     unsigned long event;
     int sawMutedVolume;
-    unsigned long writesBefore;
-    unsigned long eventsBefore;
     unsigned char shadowBefore[TAS_CODEC_REGISTER_COUNT]
         [TAS_CODEC_REGISTER_BYTES];
     unsigned long lengthsBefore[TAS_CODEC_REGISTER_COUNT];
@@ -1704,10 +1726,12 @@ static void test_codec_restore_and_volume_state_are_atomic(void)
         callbacks = codec_callbacks(&mock);
         CHECK(TASCodecBind(&codec, ops[backend], &callbacks) ==
             kTASStatusOK);
-        before = codec;
-        CHECK(TASCodecInitialize(&codec, 1, 0UL) == kTASStatusMalformed);
-        CHECK(memcmp(&codec, &before, sizeof(codec)) == 0);
-        CHECK(mock.writeCount == 0UL && mock.eventCount == 0UL);
+        mock.currentMilliseconds = backend == 0UL ?
+            0xfffffffaUL : 0xffffffddUL;
+        CHECK(TASCodecInitialize(&codec, 1, 0UL) == kTASStatusOK);
+        CHECK(mock.currentMilliseconds == 0UL);
+        codec_mock_init(&mock);
+        codec.callbacks = codec_callbacks(&mock);
         CHECK(TASCodecInitialize(&codec, 1, 200UL) == kTASStatusOK);
         CHECK(codec.muted == 1);
         CHECK(TASCodecSetVolume(&codec, 0x008000UL, 0x004000UL,
@@ -1774,21 +1798,19 @@ static void test_codec_restore_and_volume_state_are_atomic(void)
         }
         CHECK(sawMutedVolume);
 
-        before = codec;
-        writesBefore = mock.writeCount;
-        eventsBefore = mock.eventCount;
+        codec_mock_init(&mock);
+        codec.callbacks = codec_callbacks(&mock);
         CHECK(TASCodecSetVolume(&codec, 0x010000UL, 0x010000UL, 0UL) ==
-            kTASStatusMalformed);
-        CHECK(TASCodecSetMute(&codec, 0, 0UL) == kTASStatusMalformed);
+            kTASStatusOK);
+        CHECK(TASCodecSetMute(&codec, 0, 0UL) == kTASStatusOK);
         CHECK(TASCodecSetInputGain(&codec, 0x010000UL, 0UL) ==
-            kTASStatusMalformed);
+            kTASStatusOK);
         CHECK(TASCodecSetInputSource(&codec, kTASCodecInputDigital1, 0UL) ==
-            kTASStatusMalformed);
+            kTASStatusOK);
         CHECK(TASCodecWrite(&codec, 0x05, codec.shadow[0x05], 1UL, 0UL) ==
-            kTASStatusMalformed);
-        CHECK(TASCodecRestore(&codec, 0UL) == kTASStatusMalformed);
-        CHECK(memcmp(&codec, &before, sizeof(codec)) == 0);
-        CHECK(mock.writeCount == writesBefore && mock.eventCount == eventsBefore);
+            kTASStatusOK);
+        mock.currentMilliseconds = 0xffffffffUL;
+        CHECK(TASCodecRestore(&codec, 0UL) == kTASStatusOK);
     }
     CHECK(TASCodecFailOperation(0, kTASStatusTimeout) ==
         kTASStatusMalformed);
@@ -2819,9 +2841,6 @@ static void test_audio_detect_debounce(void)
     TASAudioToken sample;
     TASAudioToken staleSample;
     TASAudioToken route;
-    TASAudioState before;
-    TASAudioActionPlan beforePlan;
-    TASAudioToken beforeRoute;
     unsigned long first;
     unsigned long latest;
     audio_controls(&controls, 0);
@@ -2880,17 +2899,11 @@ static void test_audio_detect_debounce(void)
         &plan) == kTASStatusOK);
     CHECK(TASAudioPrepareDebounceSample(&state, latest, ~0UL - 3UL, &plan,
         &sample) == kTASStatusOK);
-    before = state;
-    memset(&routePlan, 0x5a, sizeof(routePlan));
-    memset(&route, 0x5a, sizeof(route));
-    beforePlan = routePlan;
-    beforeRoute = route;
     CHECK(TASAudioApplyDetectSample(&state, &sample, 2UL, ~0UL - 3UL,
         &routePlan,
-        &route) == kTASStatusOverflow);
-    CHECK(memcmp(&state, &before, sizeof(state)) == 0);
-    CHECK(memcmp(&routePlan, &beforePlan, sizeof(routePlan)) == 0);
-    CHECK(memcmp(&route, &beforeRoute, sizeof(route)) == 0);
+        &route) == kTASStatusUnresolved);
+    CHECK(routePlan.count == 1UL &&
+        routePlan.actions[0].deadline == 1UL);
 
     state.detectGeneration = ~0UL;
     first = state.desiredDetects;
@@ -3214,6 +3227,7 @@ static void test_audio_power_state_machine(void)
 
 int main(void)
 {
+    test_time_wrap_matrix();
     test_tumbler_published_shape();
     test_snapper_primary_phandles_and_relative_gpio();
     test_discovers_roles_without_fixed_paths();

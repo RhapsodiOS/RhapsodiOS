@@ -1,6 +1,7 @@
 CC ?= cc
 CFLAGS = -std=c89 -pedantic -Wall -Wextra -Werror
 CORE = ../PPCTASAudio.drvproj/PPCTASAudio.lksproj/TASCore.c \
+	../PPCTASAudio.drvproj/PPCTASAudio.lksproj/TASTime.c \
 	../PPCTASAudio.drvproj/PPCTASAudio.lksproj/TAS3001C.c \
 	../PPCTASAudio.drvproj/PPCTASAudio.lksproj/TAS3004.c \
 	../PPCTASAudio.drvproj/PPCTASAudio.lksproj/PPCDBDMAAudio.c \

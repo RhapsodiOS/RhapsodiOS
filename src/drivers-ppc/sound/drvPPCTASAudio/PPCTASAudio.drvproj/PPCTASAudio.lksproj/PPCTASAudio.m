@@ -1,4 +1,5 @@
 #import "PPCTASAudio.h"
+#import "TASTime.h"
 
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
@@ -41,6 +42,17 @@ static void tas_worker_retry_callout(void *opaque);
 static NXLock *tasCalloutLock;
 static PPCTASAudio *tasCalloutOwner;
 static unsigned long tasNextCalloutToken;
+
+static unsigned long tas_deadline_after(PPCTASAudio *self,
+    unsigned long interval)
+{
+    unsigned long now;
+    unsigned long deadline;
+    now = tas_now(self);
+    if (!TASTimeAdd(now, interval, &deadline))
+        return now;
+    return deadline;
+}
 
 static int tas_is_closing(PPCTASAudio *self)
 {
@@ -224,6 +236,7 @@ static void tas_debounce_callout(void *opaque)
     unsigned long generation;
     unsigned long deadline;
     unsigned long now;
+    unsigned long remaining;
     int valid;
     token = (unsigned long)opaque;
     [tasCalloutLock lock];
@@ -236,11 +249,12 @@ static void tas_debounce_callout(void *opaque)
     generation = self->debounceCalloutGeneration;
     deadline = self->debounceCalloutDeadline;
     now = tas_now(self);
-    if (now < deadline) {
+    if (!TASTimeDue(now, deadline)) {
         self->debounceCalloutPending = 0;
         self->debounceCalloutToken = 0UL;
-        (void)tas_schedule_debounce_locked(self,
-            (ns_time_t)(deadline - now) * TAS_NSEC_PER_MS);
+        if (TASTimeRemaining(now, deadline, &remaining))
+            (void)tas_schedule_debounce_locked(self,
+                (ns_time_t)remaining * TAS_NSEC_PER_MS);
         [tasCalloutLock unlock];
         return;
     }
@@ -447,7 +461,16 @@ static TASStatus tas_codec_write(void *opaque, unsigned char reg,
 {
     PPCTASAudio *self;
     PEKeyWestI2CRequest request;
+    ns_time_t absolute;
+    unsigned long remaining;
     self = (PPCTASAudio *)opaque;
+    if (!TASTimeRemaining(tas_now(self), deadline, &remaining) ||
+        remaining == 0UL) {
+        *written = 0UL;
+        return kTASStatusTimeout;
+    }
+    IOGetTimestamp(&absolute);
+    absolute += (ns_time_t)remaining * TAS_NSEC_PER_MS;
     memset(&request, 0, sizeof(request));
     request.port = self->machineConfig.i2cPort;
     request.address = (unsigned char)self->machineConfig.i2cAddress;
@@ -455,8 +478,8 @@ static TASStatus tas_codec_write(void *opaque, unsigned char reg,
     request.direction = kPEKeyWestWrite;
     request.buffer = (unsigned char *)bytes;
     request.length = (unsigned int)length;
-    request.deadline.tv_sec = deadline / 1000UL;
-    request.deadline.tv_nsec = (deadline % 1000UL) * 1000000UL;
+    request.deadline.tv_sec = absolute / 1000000000ULL;
+    request.deadline.tv_nsec = absolute % 1000000000ULL;
     if (PEKeyWestI2CTransfer(&request) != KERN_SUCCESS) {
         *written = 0UL;
         return kTASStatusTimeout;
@@ -552,7 +575,7 @@ static unsigned long tas_now(void *opaque)
     ns_time_t now;
     (void)opaque;
     IOGetTimestamp(&now);
-    return (unsigned long)(now / 1000000ULL);
+    return TASTimeNormalize((unsigned long)(now / 1000000ULL));
 }
 
 static PPCDBDMAStatus tas_publish(void *opaque, void *address,
@@ -579,12 +602,12 @@ static TASStatus tas_apply_i2s(PPCTASAudio *self, unsigned long rate,
     format.value = clock.dataWord;
     if (TASRuntimeEncodeI2S(&format, &serial, &dataWord) != kTASStatusOK)
         return kTASStatusUnsupported;
-    if (tas_now(self) >= deadline)
+    if (TASTimeDue(tas_now(self), deadline))
         return kTASStatusTimeout;
     if (PEI2SSetCellState((unsigned int)self->machineConfig.i2sCell,
         kPEI2SCellEnabledClockHeld) != KERN_SUCCESS)
         return kTASStatusUnresolved;
-    if (tas_now(self) >= deadline)
+    if (TASTimeDue(tas_now(self), deadline))
         return kTASStatusTimeout; /* Held clock; no partial tuple write. */
     /* Apple I2S semantic tuple: source, MCLK divisor, SCLK divisor, word. */
     *(volatile unsigned long *)((unsigned char *)self->i2sRegisters +
@@ -608,22 +631,11 @@ static TASStatus tas_acquire(void *opaque, TASRuntimeStage stage,
 {
     PPCTASAudio *self;
     unsigned long index;
-    unsigned int *interrupts;
     IOPhysicalAddress physical;
     self = (PPCTASAudio *)opaque;
     switch (stage) {
     case kTASRuntimePlatformReady:
-        if ([self deviceDescription] == nil ||
-            [[self deviceDescription] numInterrupts] != 3U)
-            return kTASStatusMissing;
-        interrupts = [[self deviceDescription] interruptList];
-        if (interrupts == 0 || interrupts[0] == interrupts[1] ||
-            interrupts[0] == interrupts[2] ||
-            interrupts[1] == interrupts[2] ||
-            interrupts[0] != (unsigned int)config->codecInterrupt.number ||
-            interrupts[1] != (unsigned int)config->outputInterrupt.number ||
-            interrupts[2] != (unsigned int)config->inputInterrupt.number)
-            return kTASStatusConflict;
+        (void)config;
         return kTASStatusOK;
     case kTASRuntimeMapI2S:
     case kTASRuntimeMapOutputDBDMA:
@@ -1090,7 +1102,7 @@ static TASStatus tas_update_controls(PPCTASAudio *self,
     if (tas_is_closing(self))
         return kTASStatusConflict;
     status = TASRuntimeSetControls(&self->runtime, candidate,
-        tas_now(self) + 100UL);
+        tas_deadline_after(self, 100UL));
     if (status == kTASStatusOK)
         self->desiredControls = *candidate;
     return status;
@@ -1129,9 +1141,30 @@ static void tas_initialize_dma_ops(PPCTASAudio *self)
     TASPropertyReader reader;
     TASMachineConfig config;
     TASRuntimeOps ops;
+    TASDeliveredRange deliveredRanges[3];
+    IORange *memoryRanges;
+    unsigned int *interrupts;
+    unsigned long index;
     PPCTASAudio *instance;
     if (!tas_make_reader(&reader, &propertyContext, deviceDescription) ||
         TASRuntimeProbe(&reader, &config) != kTASStatusOK)
+        return NO;
+    if (deviceDescription == nil ||
+        [deviceDescription numMemoryRanges] != 3U ||
+        [deviceDescription numInterrupts] != 3U)
+        return NO;
+    memoryRanges = [deviceDescription memoryRangeList];
+    interrupts = [deviceDescription interruptList];
+    if (memoryRanges == 0 || interrupts == 0)
+        return NO;
+    for (index = 0UL; index < 3UL; ++index) {
+        deliveredRanges[index].start =
+            (unsigned long)memoryRanges[index].start;
+        deliveredRanges[index].size =
+            (unsigned long)memoryRanges[index].size;
+    }
+    if (TASRuntimeValidateResources(&config, 3UL, deliveredRanges, 3UL,
+        interrupts) != kTASStatusOK)
         return NO;
     instance = [self alloc];
     if (instance == nil)
@@ -1177,7 +1210,8 @@ static void tas_initialize_dma_ops(PPCTASAudio *self)
     [self setUnit:0];
     [self setName:"PPCTASAudio0"];
     tas_initialize_dma_ops(self);
-    if (TASRuntimeReset(&runtime, tas_now(self) + 1000UL) != kTASStatusOK)
+    if (TASRuntimeReset(&runtime, tas_deadline_after(self, 1000UL)) !=
+        kTASStatusOK)
         return NO;
     tas_arm_poll(self);
     return YES;
@@ -1230,7 +1264,7 @@ static void tas_initialize_dma_ops(PPCTASAudio *self)
     return TASRuntimeStartStream(&runtime,
         isRead ? kTASStreamInput : kTASStreamOutput, buffer,
         (unsigned long)channelBytes,
-        bufferSize, [self sampleRate], tas_now(self) + 1000UL) ==
+        bufferSize, [self sampleRate], tas_deadline_after(self, 1000UL)) ==
         kTASStatusOK ? YES : NO;
 }
 
@@ -1241,7 +1275,7 @@ static void tas_initialize_dma_ops(PPCTASAudio *self)
         return;
     (void)TASRuntimeStopStream(&runtime,
         isRead ? kTASStreamInput : kTASStreamOutput,
-        tas_now(self) + 1000UL);
+        tas_deadline_after(self, 1000UL));
 }
 
 - (void)interruptOccurredForInput:(BOOL *)serviceInput
@@ -1251,7 +1285,8 @@ static void tas_initialize_dma_ops(PPCTASAudio *self)
     *serviceOutput = NO;
     if (tas_is_closing(self))
         return;
-    (void)TASRuntimeServiceDeferred(&runtime, tas_now(self) + 100UL,
+    (void)TASRuntimeServiceDeferred(&runtime,
+        tas_deadline_after(self, 100UL),
         serviceInput, serviceOutput);
 }
 
@@ -1433,7 +1468,8 @@ static void tas_initialize_dma_ops(PPCTASAudio *self)
     target = state == PM_OFF ? kTASPowerOff :
         (state == PM_SUSPENDED ? kTASPowerSuspended :
         (state == PM_STANDBY ? kTASPowerStandby : kTASPowerReady));
-    if (TASRuntimeSetPower(&runtime, target, tas_now(self) + 1000UL) !=
+    if (TASRuntimeSetPower(&runtime, target,
+        tas_deadline_after(self, 1000UL)) !=
         kTASStatusOK)
         return IO_R_IO;
     if (target == kTASPowerReady)

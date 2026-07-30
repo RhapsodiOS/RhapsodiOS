@@ -103,12 +103,62 @@ static void test_open_counts_and_busy_removal(void)
     CHECK(ATAHDRegistryOpen(&registry, 0, 2) == ATA_HD_REGISTRY_OVERFLOW);
 }
 
+static void test_vnode_presence_balances_core_transitions(void)
+{
+    ATAHDRegistryCore registry;
+    int owner;
+    int blockOpen;
+    int rawOpen;
+
+    ATAHDRegistryCoreInit(&registry);
+    CHECK(ATAHDRegistryAllocate(&registry, &owner) == 0);
+    blockOpen = 0;
+    rawOpen = 0;
+
+    if (!blockOpen) {
+        CHECK(ATAHDRegistryOpen(&registry, 0, 0) ==
+              ATA_HD_REGISTRY_SUCCESS);
+        blockOpen = 1;
+    }
+    if (!blockOpen) {
+        CHECK(ATAHDRegistryOpen(&registry, 0, 0) ==
+              ATA_HD_REGISTRY_SUCCESS);
+        blockOpen = 1;
+    }
+    CHECK(registry.openCounts[0][0] == 1);
+
+    if (!rawOpen) {
+        CHECK(ATAHDRegistryOpen(&registry, 0, 0) ==
+              ATA_HD_REGISTRY_SUCCESS);
+        rawOpen = 1;
+    }
+    CHECK(registry.openCounts[0][0] == 2);
+    CHECK(ATAHDRegistryRemove(&registry, 0) == ATA_HD_BUSY);
+
+    if (rawOpen) {
+        CHECK(ATAHDRegistryClose(&registry, 0, 0) ==
+              ATA_HD_REGISTRY_SUCCESS);
+        rawOpen = 0;
+    }
+    CHECK(registry.openCounts[0][0] == 1);
+    CHECK(blockOpen == 1);
+
+    if (blockOpen) {
+        CHECK(ATAHDRegistryClose(&registry, 0, 0) ==
+              ATA_HD_REGISTRY_SUCCESS);
+        blockOpen = 0;
+    }
+    CHECK(registry.openCounts[0][0] == 0);
+    CHECK(ATAHDRegistryRemove(&registry, 0) == ATA_HD_REGISTRY_SUCCESS);
+}
+
 int main(void)
 {
     test_lowest_free_and_owner_lookup();
     test_duplicate_and_invalid_inputs();
     test_capacity_and_reuse();
     test_open_counts_and_busy_removal();
+    test_vnode_presence_balances_core_transitions();
 
     if (failures != 0) {
         fprintf(stderr, "ata_hd_registry_test: %d failure(s)\n", failures);

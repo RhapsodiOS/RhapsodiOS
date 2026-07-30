@@ -24,6 +24,8 @@
 typedef struct ATAHDUnitState {
     struct buf *physbuf;
     ata_hd_ioctl_fn transportIoctl;
+    BOOL blockOpen[ATA_HD_PARTITIONS];
+    BOOL rawOpen[ATA_HD_PARTITIONS];
 } ATAHDUnitState;
 
 static ATAHDRegistryCore ata_hd_core;
@@ -244,6 +246,10 @@ ata_hd_register(id disk, ata_hd_ioctl_fn transportIoctl,
     map->rawDev = makedev(ata_hd_raw_major, (unit << 3));
     map->blockDev = makedev(ata_hd_block_major, (unit << 3));
     ata_hd_units[unit].transportIoctl = transportIoctl;
+    bzero((char *)ata_hd_units[unit].blockOpen,
+          sizeof(ata_hd_units[unit].blockOpen));
+    bzero((char *)ata_hd_units[unit].rawOpen,
+          sizeof(ata_hd_units[unit].rawOpen));
     *mapOut = map;
 
     [ata_hd_lock unlock];
@@ -280,6 +286,10 @@ ata_hd_unregister(unsigned int unit)
 
     bzero((char *)&ata_hd_maps[unit], sizeof(ata_hd_maps[unit]));
     ata_hd_units[unit].transportIoctl = NULL;
+    bzero((char *)ata_hd_units[unit].blockOpen,
+          sizeof(ata_hd_units[unit].blockOpen));
+    bzero((char *)ata_hd_units[unit].rawOpen,
+          sizeof(ata_hd_units[unit].rawOpen));
     [ata_hd_lock unlock];
     return IO_R_SUCCESS;
 }
@@ -359,6 +369,9 @@ static int
 ata_hd_open(dev_t dev, int flag, int devtype, struct proc *proc)
 {
     id disk;
+    BOOL *openState;
+    unsigned int partition;
+    unsigned int unit;
     int result;
 
     [ata_hd_lock lock];
@@ -372,14 +385,26 @@ ata_hd_open(dev_t dev, int flag, int devtype, struct proc *proc)
         return ENXIO;
     }
 
-    result = ATAHDRegistryOpen(&ata_hd_core, IO_DISK_UNIT(dev),
-                               IO_DISK_PART(dev));
+    unit = IO_DISK_UNIT(dev);
+    partition = IO_DISK_PART(dev);
+    if (major(dev) == ata_hd_block_major)
+        openState = &ata_hd_units[unit].blockOpen[partition];
+    else
+        openState = &ata_hd_units[unit].rawOpen[partition];
+
+    if (*openState) {
+        [ata_hd_lock unlock];
+        return 0;
+    }
+
+    result = ATAHDRegistryOpen(&ata_hd_core, unit, partition);
     if (result != ATA_HD_REGISTRY_SUCCESS) {
         [ata_hd_lock unlock];
         return ata_hd_core_error_to_errno(result);
     }
+    *openState = YES;
 
-    if (IO_DISK_PART(dev) != ATA_HD_LIVE_PART) {
+    if (partition != ATA_HD_LIVE_PART) {
         if (major(dev) == ata_hd_block_major)
             [disk setBlockDeviceOpen:YES];
         else
@@ -394,6 +419,9 @@ static int
 ata_hd_close(dev_t dev, int flag, int devtype, struct proc *proc)
 {
     id disk;
+    BOOL *openState;
+    unsigned int partition;
+    unsigned int unit;
     int result;
 
     [ata_hd_lock lock];
@@ -402,20 +430,26 @@ ata_hd_close(dev_t dev, int flag, int devtype, struct proc *proc)
         [ata_hd_lock unlock];
         return ENXIO;
     }
-    if (IO_DISK_PART(dev) != ATA_HD_LIVE_PART &&
-        ![disk isInstanceOpen]) {
+    unit = IO_DISK_UNIT(dev);
+    partition = IO_DISK_PART(dev);
+    if (major(dev) == ata_hd_block_major)
+        openState = &ata_hd_units[unit].blockOpen[partition];
+    else
+        openState = &ata_hd_units[unit].rawOpen[partition];
+
+    if (!*openState) {
         [ata_hd_lock unlock];
         return ENXIO;
     }
 
-    result = ATAHDRegistryClose(&ata_hd_core, IO_DISK_UNIT(dev),
-                                IO_DISK_PART(dev));
+    result = ATAHDRegistryClose(&ata_hd_core, unit, partition);
     if (result != ATA_HD_REGISTRY_SUCCESS) {
         [ata_hd_lock unlock];
         return ata_hd_core_error_to_errno(result);
     }
+    *openState = NO;
 
-    if (IO_DISK_PART(dev) != ATA_HD_LIVE_PART) {
+    if (partition != ATA_HD_LIVE_PART) {
         if (major(dev) == ata_hd_block_major)
             [disk setBlockDeviceOpen:NO];
         else

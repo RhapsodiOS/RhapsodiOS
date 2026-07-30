@@ -191,13 +191,22 @@ PPCDBDMAStatus PPCDBDMAServiceCompletions(PPCDBDMARing *ring,
             return kPPCDBDMAInvalid;
         status = descriptor.result >> 16;
         residual = descriptor.result & 0xffffUL;
+        if ((status & kPPCDBDMADead) != 0UL) {
+            captured.lastStatus = status;
+            captured.lastResidual = residual;
+            ++captured.descriptors;
+            captured.fault = 1;
+            ring->faultStatus = status;
+            ring->state = kPPCDBDMAFaulted;
+            break;
+        }
         if ((status & kPPCDBDMAActive) == 0UL)
             break;
         requested = descriptor.operation & 0xffffUL;
         captured.lastStatus = status;
         captured.lastResidual = residual;
         ++captured.descriptors;
-        if (residual > requested || (status & kPPCDBDMADead) != 0UL) {
+        if (residual > requested) {
             captured.fault = 1;
             ring->faultStatus = status;
             ring->state = kPPCDBDMAFaulted;
@@ -212,6 +221,13 @@ PPCDBDMAStatus PPCDBDMAServiceCompletions(PPCDBDMARing *ring,
         if (coherencyStatus != kPPCDBDMAOK) {
             store_le32(result, originalResult);
             ring->state = kPPCDBDMAFaulted;
+            ring->faultStatus = status;
+            return coherencyStatus;
+        }
+        coherencyStatus = ops->barrier(ops->coherencyContext);
+        if (coherencyStatus != kPPCDBDMAOK) {
+            ring->state = kPPCDBDMAFaulted;
+            ring->faultStatus = status;
             return coherencyStatus;
         }
         ++ring->consumer;
@@ -263,6 +279,8 @@ static PPCDBDMAStatus wait_clear(const PPCDBDMAOps *ops,
             return kPPCDBDMATimeout;
         status = ops->readRegister(ops->registerContext,
             kPPCDBDMARegStatus);
+        if (deadline_expired(ops, deadline))
+            return kPPCDBDMATimeout;
         if ((status & mask) == 0UL)
             return kPPCDBDMAOK;
     }
@@ -292,8 +310,16 @@ PPCDBDMATransition PPCDBDMAStartRing(PPCDBDMARing *ring,
         ring->state = kPPCDBDMAFaulted;
         return transition_result(status, 0);
     }
+    if (deadline_expired(ops, deadline)) {
+        ring->state = kPPCDBDMAFaulted;
+        return transition_result(kPPCDBDMATimeout, 0);
+    }
     ops->writeRegister(ops->registerContext, kPPCDBDMARegCommandPtr,
         ring->descriptorPhysical);
+    if (deadline_expired(ops, deadline)) {
+        ring->state = kPPCDBDMAFaulted;
+        return transition_result(kPPCDBDMATimeout, 0);
+    }
     ops->writeRegister(ops->registerContext, kPPCDBDMARegControl,
         PPCDBDMASetControl(kPPCDBDMARun | kPPCDBDMAWake));
     ring->state = kPPCDBDMARunning;
@@ -318,7 +344,7 @@ PPCDBDMATransition PPCDBDMAStopRing(PPCDBDMARing *ring,
         ring->state = kPPCDBDMAFaulted;
         return transition_result(status, 0);
     }
-    ring->state = kPPCDBDMAReady;
+    ring->state = kPPCDBDMAStopped;
     return transition_result(kPPCDBDMAOK, 0);
 }
 
@@ -346,7 +372,7 @@ PPCDBDMATransition PPCDBDMAResetRing(PPCDBDMARing *ring,
 {
     PPCDBDMAStatus status;
     unsigned long index;
-    if (ring == 0 || (ring->state != kPPCDBDMARunning &&
+    if (ring == 0 || (ring->state != kPPCDBDMAStopped &&
         ring->state != kPPCDBDMAFaulted) || !valid_register_ops(ops) ||
         !valid_coherency_ops(ops))
         return transition_result(kPPCDBDMAInvalid, 0);

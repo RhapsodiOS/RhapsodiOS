@@ -45,6 +45,8 @@ typedef struct {
     unsigned long failPublish;
     unsigned long failInvalidate;
     unsigned long failBarrier;
+    unsigned long readAdvance;
+    int publishedAckWasZero;
     void *lastAddress;
     unsigned long lastBytes;
 } DMARegisterMock;
@@ -82,6 +84,7 @@ static unsigned long dma_read_register(void *context, unsigned long reg)
     DMARegisterMock *mock;
     mock = (DMARegisterMock *)context;
     mock->events[mock->eventCount++] = 4UL;
+    mock->now += mock->readAdvance;
     if (reg != kPPCDBDMARegStatus || mock->statusIndex >= mock->statusCount)
         return 0UL;
     return mock->status[mock->statusIndex++];
@@ -119,6 +122,12 @@ static PPCDBDMAStatus dma_publish(void *context, void *address,
     mock->events[mock->eventCount++] = 1UL;
     mock->lastAddress = address;
     mock->lastBytes = bytes;
+    if (bytes == 4UL) {
+        const unsigned char *value;
+        value = (const unsigned char *)address;
+        mock->publishedAckWasZero = value[0] == 0 && value[1] == 0 &&
+            value[2] == 0 && value[3] == 0;
+    }
     if (mock->failPublish != 0UL) {
         --mock->failPublish;
         if (mock->failPublish == 0UL)
@@ -2091,13 +2100,14 @@ static void test_dbdma_completion_progression_and_fault_isolation(void)
     CHECK(completion.lastStatus == 0x0400UL &&
         completion.lastResidual == 0UL && input.consumer == 0UL);
     CHECK(output.consumer == 0UL && output.state == kPPCDBDMAReady);
-    CHECK(coherency.eventCount == 4UL && coherency.events[0] == 5UL &&
+    CHECK(coherency.eventCount == 6UL && coherency.events[0] == 5UL &&
         coherency.events[1] == 2UL && coherency.events[2] == 1UL &&
-        coherency.events[3] == 1UL);
+        coherency.events[3] == 2UL && coherency.events[4] == 1UL &&
+        coherency.events[5] == 2UL && coherency.publishedAckWasZero);
     CHECK(input.descriptors[12] == 0 && input.descriptors[13] == 0 &&
         input.descriptors[14] == 0 && input.descriptors[15] == 0);
     memset(&coherency, 0, sizeof(coherency));
-    dma_store_result(&output, 0UL, 0x0c00UL, 1UL);
+    dma_store_result(&output, 0UL, kPPCDBDMADead, 1UL);
     CHECK(PPCDBDMAServiceCompletions(&output, &ops, &completion) ==
         kPPCDBDMAFault);
     CHECK(completion.descriptors == 1UL && completion.fault);
@@ -2146,8 +2156,8 @@ static void test_dbdma_bounded_transitions(void)
     registers.statusCount = 3UL;
     ops = dma_ops(&translate, &registers);
     transition = PPCDBDMAStopRing(&ring, &ops, 10UL);
-    CHECK(transition.status == kPPCDBDMAOK && ring.state == kPPCDBDMAReady);
-    CHECK(registers.timeCalls == 4UL);
+    CHECK(transition.status == kPPCDBDMAOK && ring.state == kPPCDBDMAStopped);
+    CHECK(registers.timeCalls == 7UL);
 
     ring.state = kPPCDBDMARunning;
     memset(&registers, 0, sizeof(registers));
@@ -2159,8 +2169,9 @@ static void test_dbdma_bounded_transitions(void)
     transition = PPCDBDMAFlushRing(&ring, &ops, 10UL);
     CHECK(transition.status == kPPCDBDMAOK &&
         ring.state == kPPCDBDMARunning);
-    CHECK(registers.writeCount == 1UL && registers.timeCalls == 3UL);
+    CHECK(registers.writeCount == 1UL && registers.timeCalls == 5UL);
 
+    ring.state = kPPCDBDMAStopped;
     memset(&registers, 0, sizeof(registers));
     registers.tick = 1UL;
     registers.status[0] = kPPCDBDMAActive;
@@ -2169,7 +2180,7 @@ static void test_dbdma_bounded_transitions(void)
     ops = dma_ops(&translate, &registers);
     transition = PPCDBDMAResetRing(&ring, &ops, 10UL);
     CHECK(transition.status == kPPCDBDMAOK && ring.state == kPPCDBDMAReady);
-    CHECK(registers.writeCount == 1UL && registers.timeCalls == 3UL);
+    CHECK(registers.writeCount == 1UL && registers.timeCalls == 5UL);
 
     ring.state = kPPCDBDMARunning;
     memset(&registers, 0, sizeof(registers));
@@ -2235,6 +2246,21 @@ static void test_dbdma_coherency_deadlines_and_reset_restart(void)
     ring.state = kPPCDBDMAReady;
 
     memset(&registers, 0, sizeof(registers));
+    registers.readAdvance = 10UL;
+    ops = dma_ops(&translate, &registers);
+    transition = PPCDBDMAStartRing(&ring, &ops, 10UL);
+    CHECK(transition.status == kPPCDBDMATimeout &&
+        ring.state == kPPCDBDMAFaulted && registers.writeCount == 1UL);
+    ring.state = kPPCDBDMAReady;
+    memset(&registers, 0, sizeof(registers));
+    registers.tick = 1UL;
+    ops = dma_ops(&translate, &registers);
+    transition = PPCDBDMAStartRing(&ring, &ops, 4UL);
+    CHECK(transition.status == kPPCDBDMATimeout &&
+        ring.state == kPPCDBDMAFaulted && registers.writeCount == 1UL);
+    ring.state = kPPCDBDMAReady;
+
+    memset(&registers, 0, sizeof(registers));
     ops = dma_ops(&translate, &registers);
     registers.failInvalidate = 1UL;
     dma_store_result(&ring, 0UL, kPPCDBDMAActive, 0UL);
@@ -2266,6 +2292,21 @@ static void test_dbdma_coherency_deadlines_and_reset_restart(void)
     CHECK(ring.descriptors[44] == 0 && ring.descriptors[47] == 0);
 
     dma_store_result(&ring, 0UL, kPPCDBDMAActive, 0UL);
+    memset(&registers, 0, sizeof(registers));
+    registers.failBarrier = 2UL;
+    ops = dma_ops(&translate, &registers);
+    CHECK(PPCDBDMAServiceCompletions(&ring, &ops, &completion) ==
+        kPPCDBDMACoherency);
+    CHECK(ring.consumer == 0UL && ring.state == kPPCDBDMAFaulted &&
+        registers.eventCount == 4UL && registers.events[0] == 5UL &&
+        registers.events[1] == 2UL && registers.events[2] == 1UL &&
+        registers.events[3] == 2UL && registers.publishedAckWasZero);
+    memset(&registers, 0, sizeof(registers));
+    ops = dma_ops(&translate, &registers);
+    transition = PPCDBDMAResetRing(&ring, &ops, 10UL);
+    CHECK(transition.status == kPPCDBDMAOK && ring.consumer == 0UL);
+
+    dma_store_result(&ring, 0UL, kPPCDBDMAActive, 0UL);
     CHECK(PPCDBDMAServiceCompletions(&ring, &ops, &completion) ==
         kPPCDBDMAOK && ring.consumer == 1UL);
     dma_store_result(&ring, 1UL, kPPCDBDMAActive | kPPCDBDMADead, 0UL);
@@ -2281,6 +2322,28 @@ static void test_dbdma_coherency_deadlines_and_reset_restart(void)
     ops = dma_ops(&translate, &registers);
     transition = PPCDBDMAStartRing(&ring, &ops, 10UL);
     CHECK(transition.status == kPPCDBDMAOK && registers.writeCount == 3UL &&
+        registers.writes[1][1] == ring.descriptorPhysical);
+
+    dma_store_result(&ring, 0UL, kPPCDBDMAActive, 0UL);
+    CHECK(PPCDBDMAServiceCompletions(&ring, &ops, &completion) ==
+        kPPCDBDMAOK && ring.consumer == 1UL);
+    memset(&registers, 0, sizeof(registers));
+    ops = dma_ops(&translate, &registers);
+    transition = PPCDBDMAStopRing(&ring, &ops, 10UL);
+    CHECK(transition.status == kPPCDBDMAOK &&
+        ring.state == kPPCDBDMAStopped && ring.consumer == 1UL);
+    transition = PPCDBDMAStartRing(&ring, &ops, 10UL);
+    CHECK(transition.status == kPPCDBDMAInvalid &&
+        ring.state == kPPCDBDMAStopped && registers.writeCount == 1UL);
+    memset(&registers, 0, sizeof(registers));
+    ops = dma_ops(&translate, &registers);
+    transition = PPCDBDMAResetRing(&ring, &ops, 10UL);
+    CHECK(transition.status == kPPCDBDMAOK && ring.consumer == 0UL &&
+        ring.state == kPPCDBDMAReady && ring.descriptors[12] == 0UL);
+    memset(&registers, 0, sizeof(registers));
+    ops = dma_ops(&translate, &registers);
+    transition = PPCDBDMAStartRing(&ring, &ops, 10UL);
+    CHECK(transition.status == kPPCDBDMAOK &&
         registers.writes[1][1] == ring.descriptorPhysical);
 }
 

@@ -26,6 +26,7 @@ typedef enum {
     kPPCDBDMAEmpty = 0,
     kPPCDBDMAReady,
     kPPCDBDMARunning,
+    kPPCDBDMAStopped,
     kPPCDBDMAFaulted
 } PPCDBDMAState;
 

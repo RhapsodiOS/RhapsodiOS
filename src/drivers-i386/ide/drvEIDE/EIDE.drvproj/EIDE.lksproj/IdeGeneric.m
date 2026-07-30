@@ -9,9 +9,11 @@
 #import "IdeBMIDE.h"
 #import <driverkit/generalFuncs.h>
 
-static BOOL genericMatch(unsigned long pciID, unsigned char progIf,
+static BOOL genericMatch(id deviceDescription, unsigned long pciID, unsigned char progIf,
     ideChipCaps_t *out)
 {
+    (void)deviceDescription;
+    (void)pciID;
     /* Only claim bus-master-capable controllers; pure-legacy parts fall
      * through to the driver's legacy PIO path. */
     if (!(progIf & PCI_IDE_BUSMASTER))
@@ -20,6 +22,7 @@ static BOOL genericMatch(unsigned long pciID, unsigned char progIf,
     out->maxMWDMA = 2;
     out->maxUDMA  = ATA_MODE_NUM_NONE;
     out->flags    = CHIP_FLAG_BUSMASTER;
+    out->privateData = 0;
     return YES;
 }
 

@@ -10,12 +10,14 @@
             IdeCntCmds.m, 
             IdeCntInit.m, 
             IdePIIX.m,
+            IdeVIA.m,
             IdeBMIDE.m,
             IdeGeneric.m,
             IdeDisk.m,
             IdeDiskInternal.m, 
             IdeKernel.m
         ); 
+        C_FILES = (VIATiming.c);
         H_FILES = (
             AtapiCnt.h, 
             AtapiCntCmds.h, 
@@ -28,6 +30,7 @@
             IdeCntCmds.h, 
             IdeCntInit.h, 
             IdePIIX.h, 
+            IdeVIA.h,
             IdeCntInline.h, 
             IdeBMIDE.h, 
             IdeCntPublic.h, 
@@ -37,7 +40,9 @@
             IdeKernel.h,
 			IdeShared.h,
 			PIIXTiming.h,
-			PIIX.h
+			PIIX.h,
+			VIATiming.h,
+			IdeModeUtils.h
         ); 
         OTHER_SOURCES = (Load_Commands.sect, Makefile, Makefile.preamble); 
         PUBLIC_HEADERS = (atapi_extern.h, ata_extern.h); 

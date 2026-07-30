@@ -25,6 +25,7 @@ typedef struct {
     unsigned char maxMWDMA;     /* highest multiword DMA mode, or ATA_MODE_NUM_NONE */
     unsigned char maxUDMA;      /* highest ultra DMA mode, or ATA_MODE_NUM_NONE */
     unsigned int  flags;
+    unsigned int  privateData;  /* selected back-end's per-controller value */
 } ideChipCaps_t;
 
 #define CHIP_FLAG_BUSMASTER      0x01   /* controller is bus-master capable */
@@ -34,7 +35,8 @@ typedef struct {
 typedef struct {
     const char *name;
     /* Claim the device by PCI id / prog-if; fill *out on success. */
-    BOOL (*match)(unsigned long pciID, unsigned char progIf, ideChipCaps_t *out);
+    BOOL (*match)(id deviceDescription, unsigned long pciID,
+        unsigned char progIf, ideChipCaps_t *out);
     /* Program the chip's timing registers for the negotiated drive modes. */
     void (*setTiming)(id self, void *drives);      /* driveInfo_t * */
     /* Revert the chip to compatible/default timing. */

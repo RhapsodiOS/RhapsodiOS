@@ -49,6 +49,7 @@
 #import "PIIXTiming.h"
 #import "IdeShared.h"
 #import "IdeBMIDE.h"
+#import "IdeVIA.h"
 
 //#define DEBUG
 
@@ -95,15 +96,17 @@ static const intelChip_t *intelLookup(unsigned long id)
 	return NULL;
 }
 
-static BOOL intelMatch(unsigned long pciID, unsigned char progIf,
+static BOOL intelMatch(id deviceDescription, unsigned long pciID, unsigned char progIf,
 	ideChipCaps_t *out)
 {
 	const intelChip_t *c = intelLookup(pciID);
+	(void)deviceDescription;
 	if (c == NULL) return NO;
 	out->maxPIO   = c->maxPIO;
 	out->maxMWDMA = c->maxMWDMA;
 	out->maxUDMA  = c->maxUDMA;
 	out->flags    = c->flags | ((progIf & PCI_IDE_BUSMASTER) ? CHIP_FLAG_BUSMASTER : 0);
+	out->privateData = 0;
 	return YES;
 }
 
@@ -215,9 +218,11 @@ static __inline__ unsigned char ichDriveNum(int channel, int unit)
 			[self name], baseClass, subClass);
 		return NO;
 	}
-	if (intelMatch(_controllerID, progIf, &_chipCaps)) {
+	if (ideIntelOps.match(devDesc, _controllerID, progIf, &_chipCaps)) {
 		_chipsetOps = &ideIntelOps;
-	} else if (ideGenericOps.match(_controllerID, progIf, &_chipCaps)) {
+	} else if (ideVIAOps.match(devDesc, _controllerID, progIf, &_chipCaps)) {
+		_chipsetOps = &ideVIAOps;
+	} else if (ideGenericOps.match(devDesc, _controllerID, progIf, &_chipCaps)) {
 		_chipsetOps = &ideGenericOps;
 		IOLog("%s: Unlisted PCI IDE (0x%08lx); using generic driver\n",
 			[self name], _controllerID);

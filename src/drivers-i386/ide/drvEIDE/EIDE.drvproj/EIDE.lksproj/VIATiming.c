@@ -195,6 +195,18 @@ void VIAComputeConfig(viaConfig_t *config, viaChip_t chip,
     unsigned char unit;
     unsigned char dn;
 
+    if (chip <= VIA_CHIP_NONE || chip > VIA_CHIP_686A ||
+        channel > VIA_CHANNEL_SECONDARY)
+        return;
+    for (unit = 0; unit < 2; ++unit) {
+        if (!drives[unit].present)
+            continue;
+        if (drives[unit].pioMode > 4 ||
+            (drives[unit].transferType == VIA_XFER_MWDMA &&
+             drives[unit].transferMode > 2))
+            return;
+    }
+
     VIAConfigureEarlyFIFO(config, chip);
     VIAClearHalfClock(config, chip, channel);
     commandActive = 0;

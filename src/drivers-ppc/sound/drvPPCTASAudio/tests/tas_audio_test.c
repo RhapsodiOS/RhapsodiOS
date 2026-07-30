@@ -2347,6 +2347,293 @@ static void test_dbdma_coherency_deadlines_and_reset_restart(void)
         registers.writes[1][1] == ring.descriptorPhysical);
 }
 
+static int audio_plan_has_unmute_before(const TASAudioActionPlan *plan,
+    unsigned long limit)
+{
+    unsigned long index;
+    for (index = 0UL; index < limit && index < plan->count; ++index) {
+        if (plan->actions[index].operation == kTASAudioUnmuteSpeaker ||
+            plan->actions[index].operation == kTASAudioUnmuteHeadphone ||
+            plan->actions[index].operation == kTASAudioUnmuteLineOut)
+            return 1;
+    }
+    return 0;
+}
+
+static void audio_controls(TASAudioDesiredControls *controls, int muted)
+{
+    memset(controls, 0, sizeof(*controls));
+    controls->rate = 44100UL;
+    controls->leftVolume = 0x008000UL;
+    controls->rightVolume = 0x004000UL;
+    controls->inputGain = 0x002000UL;
+    controls->inputSource = 1UL;
+    controls->userMuted = muted;
+}
+
+static void test_audio_route_state_machine(void)
+{
+    static const unsigned long detects[] = { 0UL,1UL,2UL,3UL };
+    static const unsigned long routes[] = {
+        kTASAudioRouteSpeaker, kTASAudioRouteHeadphone,
+        kTASAudioRouteLineOut,
+        kTASAudioRouteHeadphone | kTASAudioRouteLineOut
+    };
+    TASAudioDesiredControls controls;
+    TASAudioState state;
+    TASAudioActionPlan plan;
+    TASAudioActionPlan failSafe;
+    TASAudioToken token;
+    TASAudioToken stale;
+    unsigned long index;
+    unsigned long ordinal;
+    audio_controls(&controls, 0);
+    for (index = 0UL; index < 4UL; ++index) {
+        CHECK(TASAudioStateInit(&state, kTASAudioRouteSpeaker |
+            kTASAudioRouteHeadphone | kTASAudioRouteLineOut,
+            kTASCodecTAS3004, kTASQuirkNone, &controls) == kTASStatusOK);
+        CHECK(TASAudioPrepareRoute(&state, detects[index], &plan, &token) ==
+            kTASStatusOK);
+        CHECK(token.targetRoutes == routes[index]);
+        CHECK(plan.actions[0].operation == kTASAudioMuteSpeaker);
+        CHECK(plan.actions[1].operation == kTASAudioMuteHeadphone);
+        CHECK(plan.actions[2].operation == kTASAudioMuteLineOut);
+        CHECK(!audio_plan_has_unmute_before(&plan, 5UL));
+        CHECK(TASAudioCommitTransition(&state, &token) == kTASStatusOK);
+        CHECK(state.routeValid && state.hardwareValid &&
+            state.currentRoutes == routes[index]);
+    }
+    controls.userMuted = 1;
+    CHECK(TASAudioStateInit(&state, kTASAudioRouteSpeaker |
+        kTASAudioRouteHeadphone | kTASAudioRouteLineOut,
+        kTASCodecTAS3004, kTASQuirkNone, &controls) == kTASStatusOK);
+    CHECK(TASAudioPrepareRoute(&state, 3UL, &plan, &token) == kTASStatusOK);
+    CHECK(token.targetRoutes == 0UL && !audio_plan_has_unmute_before(&plan,
+        plan.count));
+
+    controls.userMuted = 0;
+    for (ordinal = 0UL; ordinal < 7UL; ++ordinal) {
+        CHECK(TASAudioStateInit(&state, kTASAudioRouteSpeaker |
+            kTASAudioRouteHeadphone | kTASAudioRouteLineOut,
+            kTASCodecTAS3004, kTASQuirkNone, &controls) == kTASStatusOK);
+        CHECK(TASAudioPrepareRoute(&state, 3UL, &plan, &token) ==
+            kTASStatusOK);
+        CHECK(ordinal < plan.count);
+        CHECK(TASAudioAuthorizeAction(&state, &token, ordinal) ==
+            kTASStatusOK);
+        CHECK(TASAudioFailTransition(&state, &token, &failSafe) ==
+            kTASStatusOK);
+        CHECK(!state.routeValid && !state.hardwareValid &&
+            state.currentRoutes == 0UL && state.outputsMuted);
+        CHECK(state.desiredDetects == 3UL && !state.desired.userMuted);
+        CHECK(failSafe.count == 3UL &&
+            !audio_plan_has_unmute_before(&failSafe, failSafe.count));
+    }
+
+    CHECK(TASAudioStateInit(&state, kTASAudioRouteSpeaker |
+        kTASAudioRouteHeadphone, kTASCodecTAS3001C,
+        kTASQuirkANDedReset, &controls) == kTASStatusOK);
+    CHECK(TASAudioPrepareRoute(&state, 1UL, &plan, &token) == kTASStatusOK);
+    for (index = 0UL; index < plan.count; ++index)
+        CHECK(plan.actions[index].operation != kTASAudioAssertReset &&
+            plan.actions[index].operation != kTASAudioSetResetAmpConstituent &&
+            plan.actions[index].operation !=
+            kTASAudioSetResetHeadphoneConstituent);
+    CHECK(TASAudioStateInit(&state, kTASAudioRouteSpeaker |
+        kTASAudioRouteLineOut, kTASCodecTAS3001C,
+        kTASQuirkANDedReset, &controls) == kTASStatusUnsupported);
+
+    stale = token;
+    controls.leftVolume = 0x001000UL;
+    CHECK(TASAudioSetDesiredControls(&state, &controls) == kTASStatusOK);
+    CHECK(TASAudioAuthorizeAction(&state, &stale, 0UL) ==
+        kTASStatusConflict);
+    CHECK(TASAudioCommitTransition(&state, &stale) == kTASStatusConflict);
+}
+
+static void test_audio_detect_debounce(void)
+{
+    TASAudioDesiredControls controls;
+    TASAudioState state;
+    TASAudioActionPlan plan;
+    TASAudioActionPlan routePlan;
+    TASAudioToken sample;
+    TASAudioToken route;
+    unsigned long first;
+    unsigned long latest;
+    audio_controls(&controls, 0);
+    CHECK(TASAudioStateInit(&state, kTASAudioRouteSpeaker |
+        kTASAudioRouteHeadphone | kTASAudioRouteLineOut,
+        kTASCodecTAS3004, kTASQuirkNone, &controls) == kTASStatusOK);
+    CHECK(TASAudioRecordDetectISR(&state, 0x81UL, &first) == kTASStatusOK);
+    CHECK(state.currentRoutes == 0UL && !state.hardwareValid);
+    CHECK(TASAudioBuildDebounceSchedule(&state, first, 110UL, &plan) ==
+        kTASStatusOK && plan.count == 1UL &&
+        plan.actions[0].operation == kTASAudioScheduleDebounce);
+    CHECK(TASAudioRecordDetectISR(&state, 2UL, &latest) == kTASStatusOK);
+    CHECK(TASAudioPrepareDebounceSample(&state, first, 110UL, &plan,
+        &sample) == kTASStatusConflict);
+    CHECK(TASAudioPrepareDebounceSample(&state, latest, 109UL, &plan,
+        &sample) == kTASStatusTimeout);
+    CHECK(TASAudioBuildDebounceSchedule(&state, latest, 120UL, &plan) ==
+        kTASStatusOK);
+    CHECK(TASAudioPrepareDebounceSample(&state, latest, 120UL, &plan,
+        &sample) == kTASStatusOK && plan.count == 1UL &&
+        plan.actions[0].operation == kTASAudioSampleDetects);
+    CHECK(TASAudioApplyDetectSample(&state, &sample, 3UL, &routePlan,
+        &route) == kTASStatusOK);
+    CHECK(route.targetRoutes == (kTASAudioRouteHeadphone |
+        kTASAudioRouteLineOut));
+    CHECK(TASAudioCommitTransition(&state, &route) == kTASStatusOK);
+
+    state.detectGeneration = ~0UL;
+    first = state.desiredDetects;
+    CHECK(TASAudioRecordDetectISR(&state, 0UL, &latest) ==
+        kTASStatusOverflow);
+    CHECK(state.detectBlocked && state.desiredDetects == first);
+}
+
+static void test_audio_power_state_machine(void)
+{
+    static const TASPowerState sleeps[] = {
+        kTASPowerStandby, kTASPowerSuspended, kTASPowerOff
+    };
+    TASAudioDesiredControls controls;
+    TASAudioDesiredControls changed;
+    TASAudioState state;
+    TASAudioActionPlan plan;
+    TASAudioActionPlan failSafe;
+    TASAudioToken token;
+    unsigned long sleepIndex;
+    unsigned long ordinal;
+    unsigned long index;
+    audio_controls(&controls, 0);
+    for (sleepIndex = 0UL; sleepIndex < 3UL; ++sleepIndex) {
+        CHECK(TASAudioStateInit(&state, kTASAudioRouteSpeaker |
+            kTASAudioRouteHeadphone | kTASAudioRouteLineOut,
+            kTASCodecTAS3004, kTASQuirkNone, &controls) == kTASStatusOK);
+        state.streamsRunning = 1;
+        CHECK(TASAudioPreparePower(&state, sleeps[sleepIndex], 200UL,
+            &plan, &token) == kTASStatusOK);
+        CHECK(plan.actions[0].operation == kTASAudioBlockStarts);
+        CHECK(plan.actions[1].operation == kTASAudioMuteSpeaker);
+        CHECK(plan.actions[4].operation == kTASAudioStopOutputDMA);
+        CHECK(plan.actions[5].operation == kTASAudioResetOutputDMA);
+        CHECK(plan.actions[6].operation == kTASAudioStopInputDMA);
+        CHECK(plan.actions[7].operation == kTASAudioResetInputDMA);
+        CHECK(plan.actions[8].operation == kTASAudioCodecAnalogLowPower);
+        CHECK(plan.actions[9].operation == kTASAudioDisableDetectIRQs);
+        CHECK(plan.actions[plan.count - 1UL].operation ==
+            kTASAudioGateI2SCell);
+        CHECK(TASAudioCommitTransition(&state, &token) == kTASStatusOK);
+        CHECK(state.powerState == sleeps[sleepIndex] && state.startsBlocked &&
+            !state.streamsRunning && state.outputsMuted);
+
+        changed = controls;
+        changed.leftVolume = 0x001000UL + sleepIndex;
+        changed.inputGain = 0x003000UL + sleepIndex;
+        CHECK(TASAudioSetDesiredControls(&state, &changed) == kTASStatusOK);
+        CHECK(TASAudioPreparePower(&state, kTASPowerReady, 400UL, &plan,
+            &token) == kTASStatusOK);
+        CHECK(plan.actions[0].operation == kTASAudioMuteSpeaker);
+        CHECK(plan.actions[3].operation == kTASAudioEnableI2SCellClock);
+        CHECK(plan.actions[4].operation == kTASAudioReleaseReset);
+        CHECK(plan.actions[5].operation == kTASAudioApplyI2SRate &&
+            plan.actions[5].value == 44100UL);
+        CHECK(plan.actions[6].operation == kTASAudioCodecReset);
+        CHECK(plan.actions[7].operation == kTASAudioCodecRestore);
+        CHECK(plan.actions[8].operation == kTASAudioRebuildOutputDMA);
+        CHECK(plan.actions[9].operation == kTASAudioRebuildInputDMA);
+        CHECK(TASAudioCommitTransition(&state, &token) == kTASStatusOK);
+        CHECK(state.powerState == kTASPowerReady && !state.startsBlocked &&
+            !state.streamsRunning && state.desired.leftVolume ==
+            changed.leftVolume && state.desired.inputGain == changed.inputGain);
+    }
+
+    CHECK(TASAudioStateInit(&state, kTASAudioRouteSpeaker |
+        kTASAudioRouteHeadphone, kTASCodecTAS3001C, kTASQuirkANDedReset,
+        &controls) == kTASStatusOK);
+    CHECK(TASAudioPreparePower(&state, kTASPowerSuspended, 200UL, &plan,
+        &token) == kTASStatusOK);
+    CHECK(plan.actions[7].operation == kTASAudioCodecMuteLowPower);
+    CHECK(plan.actions[9].operation == kTASAudioSetResetAmpConstituent);
+    CHECK(plan.actions[10].operation ==
+        kTASAudioSetResetHeadphoneConstituent);
+
+    for (ordinal = 0UL; ordinal < plan.count; ++ordinal) {
+        CHECK(TASAudioStateInit(&state, kTASAudioRouteSpeaker |
+            kTASAudioRouteHeadphone, kTASCodecTAS3001C,
+            kTASQuirkANDedReset, &controls) == kTASStatusOK);
+        state.streamsRunning = 1;
+        CHECK(TASAudioPreparePower(&state, kTASPowerSuspended, 200UL,
+            &plan, &token) == kTASStatusOK);
+        CHECK(TASAudioAuthorizeAction(&state, &token, ordinal) ==
+            kTASStatusOK);
+        CHECK(TASAudioFailTransition(&state, &token, &failSafe) ==
+            kTASStatusOK);
+        CHECK(state.powerState == kTASPowerFault && state.startsBlocked &&
+            !state.streamsRunning && state.outputsMuted &&
+            !state.hardwareValid && state.desired.leftVolume ==
+            controls.leftVolume);
+        for (index = 0UL; index < failSafe.count; ++index)
+            CHECK(failSafe.actions[index].operation !=
+                kTASAudioUnmuteSpeaker);
+    }
+
+    CHECK(TASAudioStateInit(&state, kTASAudioRouteSpeaker |
+        kTASAudioRouteHeadphone | kTASAudioRouteLineOut,
+        kTASCodecTAS3004, kTASQuirkNone, &controls) == kTASStatusOK);
+    CHECK(TASAudioRecordDetectISR(&state, 1UL, &index) == kTASStatusOK);
+    CHECK(TASAudioBuildDebounceSchedule(&state, index, 100UL, &plan) ==
+        kTASStatusOK);
+    CHECK(TASAudioPreparePower(&state, kTASPowerSuspended, 200UL, &plan,
+        &token) == kTASStatusOK);
+    CHECK(state.startsBlocked && !state.debouncePending);
+    CHECK(TASAudioPrepareDebounceSample(&state, index, 200UL, &plan,
+        &token) == kTASStatusConflict);
+    CHECK(TASAudioPrepareRoute(&state, 1UL, &plan, &token) ==
+        kTASStatusConflict);
+
+    CHECK(TASAudioStateInit(&state, kTASAudioRouteSpeaker |
+        kTASAudioRouteHeadphone | kTASAudioRouteLineOut,
+        kTASCodecTAS3004, kTASQuirkNone, &controls) == kTASStatusOK);
+    CHECK(TASAudioPreparePower(&state, kTASPowerOff, 200UL, &plan,
+        &token) == kTASStatusOK);
+    CHECK(TASAudioCommitTransition(&state, &token) == kTASStatusOK);
+    CHECK(TASAudioPreparePower(&state, kTASPowerReady, 400UL, &plan,
+        &token) == kTASStatusOK);
+    for (ordinal = 0UL; ordinal < plan.count; ++ordinal) {
+        TASAudioState wakeState;
+        TASAudioActionPlan wakePlan;
+        TASAudioToken wakeToken;
+        CHECK(TASAudioStateInit(&wakeState, kTASAudioRouteSpeaker |
+            kTASAudioRouteHeadphone | kTASAudioRouteLineOut,
+            kTASCodecTAS3004, kTASQuirkNone, &controls) == kTASStatusOK);
+        CHECK(TASAudioPreparePower(&wakeState, kTASPowerOff, 200UL,
+            &wakePlan, &wakeToken) == kTASStatusOK);
+        CHECK(TASAudioCommitTransition(&wakeState, &wakeToken) ==
+            kTASStatusOK);
+        CHECK(TASAudioPreparePower(&wakeState, kTASPowerReady, 400UL,
+            &wakePlan, &wakeToken) == kTASStatusOK);
+        CHECK(ordinal < wakePlan.count);
+        CHECK(TASAudioAuthorizeAction(&wakeState, &wakeToken, ordinal) ==
+            kTASStatusOK);
+        CHECK(TASAudioFailTransition(&wakeState, &wakeToken, &failSafe) ==
+            kTASStatusOK);
+        CHECK(wakeState.powerState == kTASPowerFault &&
+            wakeState.outputsMuted && !wakeState.streamsRunning &&
+            !wakeState.debouncePending && !wakeState.hardwareValid);
+        CHECK(!audio_plan_has_unmute_before(&failSafe, failSafe.count));
+    }
+
+    CHECK(TASAudioStateInit(&state, kTASAudioRouteSpeaker,
+        kTASCodecTAS3004, kTASQuirkNone, &controls) == kTASStatusOK);
+    state.generation = ~0UL;
+    CHECK(TASAudioPrepareRoute(&state, 0UL, &plan, &token) ==
+        kTASStatusOverflow);
+    CHECK(state.transitionBlocked);
+}
+
 int main(void)
 {
     test_tumbler_published_shape();
@@ -2394,6 +2681,9 @@ int main(void)
     test_dbdma_completion_progression_and_fault_isolation();
     test_dbdma_bounded_transitions();
     test_dbdma_coherency_deadlines_and_reset_restart();
+    test_audio_route_state_machine();
+    test_audio_detect_debounce();
+    test_audio_power_state_machine();
     if (failures != 0) {
         fprintf(stderr, "%d TAS audio checks failed\n", failures);
         return 1;

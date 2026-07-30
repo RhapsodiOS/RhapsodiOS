@@ -170,6 +170,117 @@ typedef struct {
     unsigned long count;
 } TASI2SRegisterPlan;
 
+enum {
+    kTASAudioRouteSpeaker = 1,
+    kTASAudioRouteHeadphone = 2,
+    kTASAudioRouteLineOut = 4
+};
+
+typedef enum {
+    kTASPowerReady = 0,
+    kTASPowerStandby,
+    kTASPowerSuspended,
+    kTASPowerOff,
+    kTASPowerFault
+} TASPowerState;
+
+typedef struct {
+    unsigned long rate;
+    unsigned long leftVolume;
+    unsigned long rightVolume;
+    unsigned long inputGain;
+    unsigned long inputSource;
+    int userMuted;
+} TASAudioDesiredControls;
+
+typedef enum {
+    kTASAudioBlockStarts = 0,
+    kTASAudioMuteSpeaker,
+    kTASAudioMuteHeadphone,
+    kTASAudioMuteLineOut,
+    kTASAudioSetOutputMux,
+    kTASAudioSetCodecRoute,
+    kTASAudioUnmuteSpeaker,
+    kTASAudioUnmuteHeadphone,
+    kTASAudioUnmuteLineOut,
+    kTASAudioScheduleDebounce,
+    kTASAudioSampleDetects,
+    kTASAudioStopOutputDMA,
+    kTASAudioResetOutputDMA,
+    kTASAudioStopInputDMA,
+    kTASAudioResetInputDMA,
+    kTASAudioCodecAnalogLowPower,
+    kTASAudioCodecMuteLowPower,
+    kTASAudioDisableDetectIRQs,
+    kTASAudioAssertReset,
+    kTASAudioSetResetAmpConstituent,
+    kTASAudioSetResetHeadphoneConstituent,
+    kTASAudioGateI2SCell,
+    kTASAudioEnableI2SCellClock,
+    kTASAudioReleaseReset,
+    kTASAudioApplyI2SRate,
+    kTASAudioCodecReset,
+    kTASAudioCodecRestore,
+    kTASAudioRebuildOutputDMA,
+    kTASAudioRebuildInputDMA,
+    kTASAudioEnableDetectIRQs,
+    kTASAudioRestoreVolume,
+    kTASAudioRestoreInputSource,
+    kTASAudioRestoreInputGain
+} TASAudioActionOperation;
+
+typedef struct {
+    TASAudioActionOperation operation;
+    unsigned long value;
+    unsigned long value2;
+    unsigned long deadline;
+} TASAudioAction;
+
+#define TAS_AUDIO_ACTION_MAX 32
+
+typedef struct {
+    TASAudioAction actions[TAS_AUDIO_ACTION_MAX];
+    unsigned long count;
+} TASAudioActionPlan;
+
+typedef enum {
+    kTASAudioTokenNone = 0,
+    kTASAudioTokenRoute,
+    kTASAudioTokenPower,
+    kTASAudioTokenDebounce
+} TASAudioTokenKind;
+
+typedef struct {
+    TASAudioTokenKind kind;
+    unsigned long generation;
+    unsigned long detectGeneration;
+    unsigned long actionCount;
+    unsigned long targetRoutes;
+    TASPowerState targetPower;
+} TASAudioToken;
+
+typedef struct {
+    TASAudioDesiredControls desired;
+    unsigned long availableRoutes;
+    unsigned long desiredDetects;
+    unsigned long currentRoutes;
+    unsigned long generation;
+    unsigned long detectGeneration;
+    unsigned long debounceDeadline;
+    TASCodecKind codecKind;
+    unsigned long quirks;
+    TASPowerState powerState;
+    int hardwareValid;
+    int routeValid;
+    int outputsMuted;
+    int streamsRunning;
+    int startsBlocked;
+    int transitionPending;
+    int debouncePending;
+    int detectBlocked;
+    int transitionBlocked;
+} TASAudioState;
+
 TASStatus TASParseMachineConfig(const TASPropertyReader *reader,
     TASMachineConfig *configuration);
 TASStatus TASSelectI2SClock(const TASMachineConfig *configuration,
@@ -196,5 +307,26 @@ TASStatus TASBuildI2SFormatPlan(const TASSharedClock *state,
     const TASI2SStoppedToken *stopped, TASI2SRegisterPlan *plan);
 TASStatus TASCommitI2STransition(TASSharedClock *state,
     TASI2SStoppedToken *stopped);
+TASStatus TASAudioStateInit(TASAudioState *, unsigned long, TASCodecKind,
+    unsigned long, const TASAudioDesiredControls *);
+TASStatus TASAudioSetDesiredControls(TASAudioState *,
+    const TASAudioDesiredControls *);
+TASStatus TASAudioPrepareRoute(TASAudioState *, unsigned long,
+    TASAudioActionPlan *, TASAudioToken *);
+TASStatus TASAudioRecordDetectISR(TASAudioState *, unsigned long,
+    unsigned long *);
+TASStatus TASAudioBuildDebounceSchedule(TASAudioState *, unsigned long,
+    unsigned long, TASAudioActionPlan *);
+TASStatus TASAudioPrepareDebounceSample(TASAudioState *, unsigned long,
+    unsigned long, TASAudioActionPlan *, TASAudioToken *);
+TASStatus TASAudioApplyDetectSample(TASAudioState *, const TASAudioToken *,
+    unsigned long, TASAudioActionPlan *, TASAudioToken *);
+TASStatus TASAudioPreparePower(TASAudioState *, TASPowerState,
+    unsigned long, TASAudioActionPlan *, TASAudioToken *);
+TASStatus TASAudioAuthorizeAction(const TASAudioState *,
+    const TASAudioToken *, unsigned long);
+TASStatus TASAudioCommitTransition(TASAudioState *, TASAudioToken *);
+TASStatus TASAudioFailTransition(TASAudioState *, TASAudioToken *,
+    TASAudioActionPlan *);
 
 #endif

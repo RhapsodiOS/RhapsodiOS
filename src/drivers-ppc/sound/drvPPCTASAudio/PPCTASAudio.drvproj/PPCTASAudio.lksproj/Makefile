@@ -6,8 +6,8 @@ NAME = drvPPCTASAudio
 PROJECTVERSION = 1.0
 PROJECT_TYPE = Kernel Server
 LANGUAGE = English
-CFILES = TASCore.c TAS3001C.c TAS3004.c
-HFILES = TASCore.h TASCodec.h
+CFILES = TASCore.c TAS3001C.c TAS3004.c PPCDBDMAAudio.c
+HFILES = TASCore.h TASCodec.h PPCDBDMAAudio.h
 OTHERSRCS = Makefile.preamble Makefile Makefile.postamble Load_Commands.sect \
             ../../tests/Makefile.host ../../tests/tas_audio_test.c \
             ../../tests/tas_fixtures.c ../../tests/tas_fixtures.h

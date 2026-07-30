@@ -226,12 +226,17 @@ static TASStatus tas_write_mute_gpio(void *opaque,
     return tas_status(PEAudioGPIOWrite(&gpio, active ? TRUE : FALSE));
 }
 
+static TASStatus tas_fail_mute_outputs(PPCTASAudio *self)
+{
+    return TASRuntimeFailMuteOutputs(&self->machineConfig, self,
+        tas_write_mute_gpio);
+}
+
 static void tas_fail_mute(void *opaque)
 {
     PPCTASAudio *self;
     self = (PPCTASAudio *)opaque;
-    (void)TASRuntimeFailMuteOutputs(&self->machineConfig, self,
-        tas_write_mute_gpio);
+    (void)tas_fail_mute_outputs(self);
 }
 
 static TASStatus tas_translate(void *opaque, const void *address,
@@ -330,7 +335,6 @@ static TASStatus tas_acquire(void *opaque, TASRuntimeStage stage,
 {
     PPCTASAudio *self;
     unsigned long index;
-    PEAudioGPIO gpio;
     vm_offset_t physical;
     self = (PPCTASAudio *)opaque;
     switch (stage) {
@@ -363,9 +367,7 @@ static TASStatus tas_acquire(void *opaque, TASRuntimeStage stage,
         return tas_apply_i2s(self, self->desiredControls.rate,
             self->runtime.operationDeadline);
     case kTASRuntimeSafeOutputs:
-        gpio.offset = config->amplifierMute.offset;
-        gpio.activeHigh = config->amplifierMute.activeHigh;
-        return tas_status(PEAudioGPIOWrite(&gpio, TRUE));
+        return tas_fail_mute_outputs(self);
     case kTASRuntimeInitializeCodec:
         return TASCodecInitialize(&self->runtime.codec, 1,
             self->runtime.operationDeadline);
@@ -976,7 +978,8 @@ static TASStatus tas_update_controls(PPCTASAudio *self,
 {
     TASPowerState target;
     target = state == PM_OFF ? kTASPowerOff :
-        (state == PM_SUSPENDED ? kTASPowerSuspended : kTASPowerReady);
+        (state == PM_SUSPENDED ? kTASPowerSuspended :
+        (state == PM_STANDBY ? kTASPowerStandby : kTASPowerReady));
     if (TASRuntimeSetPower(&runtime, target, tas_now(self) + 1000UL) !=
         kTASStatusOK)
         return IO_R_IO;

@@ -35,10 +35,24 @@ typedef struct {
     int injected;
     unsigned long outputRouteCalls;
     unsigned long lastOutputRoute;
+    unsigned long safeMuteFailCall;
+    unsigned long safeMuteCalls;
     unsigned long prepareCount;
     const void *lastBuffer;
     unsigned long lastRate;
 } RuntimeMock;
+
+static TASStatus runtime_safe_mute_gpio(void *context,
+    const TASGPIODescriptor *gpio, int active)
+{
+    RuntimeMock *mock;
+    (void)gpio;
+    (void)active;
+    mock = (RuntimeMock *)context;
+    ++mock->safeMuteCalls;
+    return mock->safeMuteCalls == mock->safeMuteFailCall ?
+        kTASStatusTimeout : kTASStatusOK;
+}
 
 static TASStatus runtime_acquire(void *context, TASRuntimeStage stage,
     const TASMachineConfig *config)
@@ -47,6 +61,9 @@ static TASStatus runtime_acquire(void *context, TASRuntimeStage stage,
     (void)config;
     mock = (RuntimeMock *)context;
     mock->events[mock->eventCount++] = (long)stage + 1L;
+    if (stage == kTASRuntimeSafeOutputs && mock->safeMuteFailCall != 0UL)
+        return TASRuntimeFailMuteOutputs(config, mock,
+            runtime_safe_mute_gpio);
     return mock->failAcquire == (unsigned long)stage + 1UL ?
         kTASStatusTimeout : kTASStatusOK;
 }
@@ -546,11 +563,42 @@ static void test_fail_mute_attempts_every_present_output(void)
     config.routes[kTASRouteLineOut].present = 1;
     config.routes[kTASRouteLineOut].mute =
         config.routes[kTASRouteHeadphone].mute;
-    memset(&mock, 0, sizeof(mock));
-    mock.failCall = 1UL;
-    CHECK(TASRuntimeFailMuteOutputs(&config, &mock, mute_gpio) ==
-        kTASStatusTimeout);
-    CHECK(mock.calls == 3UL);
+    config.quirks |= kTASQuirkANDedReset;
+    for (mock.failCall = 1UL; mock.failCall <= 3UL; ++mock.failCall) {
+        mock.calls = 0UL;
+        CHECK(TASRuntimeFailMuteOutputs(&config, &mock, mute_gpio) ==
+            kTASStatusTimeout);
+        CHECK(mock.calls == 3UL);
+    }
+}
+
+static void test_safe_output_stage_failure_attempts_every_output(void)
+{
+    TASFixture fixture;
+    TASPropertyReader reader;
+    TASMachineConfig config;
+    TASRuntime runtime;
+    TASRuntimeOps ops;
+    RuntimeMock mock;
+    TASAudioDesiredControls desired;
+    unsigned long fail;
+    TASFixtureSnapper(&fixture);
+    reader = TASFixtureReader(&fixture);
+    CHECK(TASRuntimeProbe(&reader, &config) == kTASStatusOK);
+    config.routes[kTASRouteLineOut].present = 1;
+    config.routes[kTASRouteLineOut].mute =
+        config.routes[kTASRouteHeadphone].mute;
+    memset(&desired, 0, sizeof(desired));
+    desired.rate = 44100UL;
+    for (fail = 1UL; fail <= 3UL; ++fail) {
+        memset(&mock, 0, sizeof(mock));
+        mock.safeMuteFailCall = fail;
+        ops = runtime_ops(&mock);
+        CHECK(TASRuntimeInit(&runtime, &config, &desired, &ops) ==
+            kTASStatusOK);
+        CHECK(TASRuntimeReset(&runtime, 2000UL) == kTASStatusTimeout);
+        CHECK(mock.safeMuteCalls == 3UL && runtime.acquiredMask == 0UL);
+    }
 }
 
 static void test_runtime_binds_both_reviewed_codecs(void)
@@ -812,6 +860,7 @@ int main(void)
     test_probe_is_narrow();
     test_codec_delay_is_deadline_bounded();
     test_fail_mute_attempts_every_present_output();
+    test_safe_output_stage_failure_attempts_every_output();
     test_runtime_binds_both_reviewed_codecs();
     test_acquisition_unwinds_every_stage();
     test_initial_route_failure_unwinds_muted();

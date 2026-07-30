@@ -1055,16 +1055,32 @@ static TASRuntimeOps tas_runtime_ops(PPCTASAudio *self)
 
 static void tas_output_interrupt(void *identity, void *state, void *argument)
 {
-    (void)TASRuntimeRecordDMAISR(&((PPCTASAudio *)argument)->runtime,
-        kTASStreamOutput);
-    IOSendInterrupt(identity, state, IO_DEVICE_INTERRUPT_MSG);
+    PPCTASAudio *self;
+    int handled;
+    self = (PPCTASAudio *)argument;
+    [self->interruptLock acquire];
+    handled = !self->interruptClosing;
+    if (!self->interruptClosing)
+        (void)TASRuntimeRecordDMAISRLocked(&self->runtime,
+            kTASStreamOutput);
+    [self->interruptLock release];
+    if (handled)
+        IOSendInterrupt(identity, state, IO_DEVICE_INTERRUPT_MSG);
 }
 
 static void tas_input_interrupt(void *identity, void *state, void *argument)
 {
-    (void)TASRuntimeRecordDMAISR(&((PPCTASAudio *)argument)->runtime,
-        kTASStreamInput);
-    IOSendInterrupt(identity, state, IO_DEVICE_INTERRUPT_MSG);
+    PPCTASAudio *self;
+    int handled;
+    self = (PPCTASAudio *)argument;
+    [self->interruptLock acquire];
+    handled = !self->interruptClosing;
+    if (!self->interruptClosing)
+        (void)TASRuntimeRecordDMAISRLocked(&self->runtime,
+            kTASStreamInput);
+    [self->interruptLock release];
+    if (handled)
+        IOSendInterrupt(identity, state, IO_DEVICE_INTERRUPT_MSG);
 }
 
 static TASStatus tas_update_controls(PPCTASAudio *self,
@@ -1170,9 +1186,15 @@ static void tas_initialize_dma_ops(PPCTASAudio *self)
 - free
 {
     TASStatus status;
+    [interruptLock acquire];
+    self->interruptClosing = 1;
+    [interruptLock release];
     tas_cancel_callouts(self, 1);
-    status = runtime.initialized ? TASRuntimeUnwind(&runtime) :
-        kTASStatusOK;
+    if (runtime.initialized) {
+        (void)TASRuntimeBeginClose(&runtime);
+        status = TASRuntimeUnwind(&runtime);
+    } else
+        status = kTASStatusOK;
     if (status != kTASStatusOK) {
         IOLog("PPCTASAudio: DMA cleanup failed; preserving resources\n");
         return self;

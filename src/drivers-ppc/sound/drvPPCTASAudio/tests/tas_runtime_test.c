@@ -70,6 +70,7 @@ typedef struct {
     unsigned long trace[128];
     unsigned long traceCount;
     unsigned long ackFailMask;
+    unsigned long ackOutsideInterrupt;
     unsigned long nowValue;
     unsigned long detectValues[8];
     unsigned long detectCount;
@@ -213,6 +214,8 @@ static TASStatus runtime_ack(void *context, TASStreamDirection direction)
 {
     RuntimeMock *mock;
     mock = (RuntimeMock *)context;
+    if (mock->interruptDepth == 0UL)
+        ++mock->ackOutsideInterrupt;
     mock->trace[mock->traceCount++] = 100UL + (unsigned long)direction;
     return (mock->ackFailMask & (1UL << (unsigned long)direction)) != 0UL ?
         kTASStatusUnresolved : kTASStatusOK;
@@ -222,6 +225,8 @@ static TASStatus runtime_ack_detect(void *context)
 {
     RuntimeMock *mock;
     mock = (RuntimeMock *)context;
+    if (mock->interruptDepth == 0UL)
+        ++mock->ackOutsideInterrupt;
     mock->trace[mock->traceCount++] = 150UL;
     return kTASStatusOK;
 }
@@ -315,9 +320,22 @@ static void runtime_signal(void *context)
     mock->trace[mock->traceCount++] = 300UL;
 }
 
-static void runtime_lock(void *context)
+static void runtime_lock_interrupt(void *context)
 {
-    (void)context;
+    RuntimeMock *mock;
+    mock = (RuntimeMock *)context;
+    if (mock->interruptDepth != 0UL)
+        ++mock->lockViolations;
+    ++mock->interruptDepth;
+}
+
+static void runtime_unlock_interrupt(void *context)
+{
+    RuntimeMock *mock;
+    mock = (RuntimeMock *)context;
+    if (mock->interruptDepth != 1UL)
+        ++mock->lockViolations;
+    --mock->interruptDepth;
 }
 
 static void runtime_lock_operation(void *context)
@@ -421,8 +439,8 @@ static TASRuntimeOps runtime_ops(RuntimeMock *mock)
     ops.serviceDMA = runtime_service;
     ops.ackDMAInterrupt = runtime_ack;
     ops.ackDetectInterrupt = runtime_ack_detect;
-    ops.lockInterrupt = runtime_lock;
-    ops.unlockInterrupt = runtime_lock;
+    ops.lockInterrupt = runtime_lock_interrupt;
+    ops.unlockInterrupt = runtime_unlock_interrupt;
     ops.lockOperation = runtime_lock_operation;
     ops.unlockOperation = runtime_unlock_operation;
     ops.lockState = runtime_lock_state;
@@ -1407,6 +1425,94 @@ static void test_runtime_commands_reject_after_unwind(void)
         mock.signalCount == signalCount);
 }
 
+static void test_interrupt_close_drains_and_skips_mmio(void)
+{
+    TASMachineConfig config;
+    TASRuntime runtime;
+    TASRuntimeOps ops;
+    RuntimeMock mock;
+    TASAudioDesiredControls desired;
+    unsigned long traceCount;
+    int interruptClosing;
+    config = tumbler_config();
+    memset(&desired, 0, sizeof(desired));
+    desired.rate = 44100UL;
+    memset(&mock, 0, sizeof(mock));
+    ops = runtime_ops(&mock);
+    CHECK(TASRuntimeInit(&runtime, &config, &desired, &ops) == kTASStatusOK);
+    interruptClosing = 0;
+    runtime_lock_interrupt(&mock);
+    if (!interruptClosing)
+        CHECK(TASRuntimeRecordDMAISRLocked(&runtime,
+            kTASStreamOutput) == kTASStatusOK);
+    runtime_unlock_interrupt(&mock);
+    CHECK(mock.ackOutsideInterrupt == 0UL &&
+        runtime.pendingIRQs == kTASRuntimeIRQOutput);
+    runtime_lock_interrupt(&mock);
+    if (!interruptClosing)
+        CHECK(TASRuntimeRecordDetectISRLocked(&runtime) == kTASStatusOK);
+    runtime_unlock_interrupt(&mock);
+    CHECK(mock.ackOutsideInterrupt == 0UL &&
+        (runtime.pendingIRQs & kTASRuntimeIRQDetect) != 0UL);
+    runtime_lock_interrupt(&mock);
+    interruptClosing = 1;
+    runtime_unlock_interrupt(&mock);
+    traceCount = mock.traceCount;
+    runtime_lock_interrupt(&mock);
+    if (!interruptClosing)
+        (void)TASRuntimeRecordDMAISRLocked(&runtime, kTASStreamInput);
+    runtime_unlock_interrupt(&mock);
+    CHECK(mock.traceCount == traceCount &&
+        (runtime.pendingIRQs & kTASRuntimeIRQInput) == 0UL);
+}
+
+static void test_begin_close_serializes_against_reset_and_commands(void)
+{
+    TASMachineConfig config;
+    TASRuntime runtime;
+    TASRuntimeOps ops;
+    RuntimeMock mock;
+    TASAudioDesiredControls desired;
+    unsigned char output[512];
+    unsigned long hardwareCalls;
+    int notifyInput;
+    int notifyOutput;
+    config = tumbler_config();
+    memset(&desired, 0, sizeof(desired));
+    desired.rate = 44100UL;
+    memset(&mock, 0, sizeof(mock));
+    ops = runtime_ops(&mock);
+    CHECK(TASRuntimeInit(&runtime, &config, &desired, &ops) == kTASStatusOK);
+    CHECK(TASRuntimeBeginClose(&runtime) == kTASStatusOK);
+    CHECK(TASRuntimeReset(&runtime, 2000UL) == kTASStatusConflict);
+    CHECK(mock.eventCount == 0UL);
+
+    memset(&mock, 0, sizeof(mock));
+    ops = runtime_ops(&mock);
+    CHECK(TASRuntimeInit(&runtime, &config, &desired, &ops) == kTASStatusOK);
+    CHECK(TASRuntimeReset(&runtime, 2000UL) == kTASStatusOK);
+    CHECK(TASRuntimeStartStream(&runtime, kTASStreamOutput, output,
+        sizeof(output), 256UL, 44100UL, 2500UL) == kTASStatusOK);
+    CHECK(TASRuntimeBeginClose(&runtime) == kTASStatusOK);
+    hardwareCalls = mock.hardwareCalls;
+    CHECK(TASRuntimeStartStream(&runtime, kTASStreamInput, output,
+        sizeof(output), 256UL, 44100UL, 3000UL) == kTASStatusConflict);
+    CHECK(TASRuntimeStopStream(&runtime, kTASStreamOutput, 3000UL) ==
+        kTASStatusConflict);
+    CHECK(TASRuntimeSetControls(&runtime, &desired, 3000UL) ==
+        kTASStatusConflict);
+    CHECK(TASRuntimeSetPower(&runtime, kTASPowerOff, 3000UL) ==
+        kTASStatusConflict);
+    notifyInput = 1;
+    notifyOutput = 1;
+    CHECK(TASRuntimeServiceDeferred(&runtime, 3000UL, &notifyInput,
+        &notifyOutput) == kTASStatusConflict);
+    CHECK(!notifyInput && !notifyOutput &&
+        mock.hardwareCalls == hardwareCalls);
+    CHECK(TASRuntimeUnwind(&runtime) == kTASStatusOK);
+    CHECK(TASRuntimeReset(&runtime, 4000UL) == kTASStatusConflict);
+}
+
 static void test_controls_preserve_prior_serialized_route_commit(void)
 {
     TASMachineConfig config;
@@ -1481,6 +1587,13 @@ static void test_driver_uses_async_debounce_and_bounded_polling(void)
     CHECK(driver_source_contains("static int tas_is_closing"));
     CHECK(driver_source_contains("closing = self->closing"));
     CHECK(driver_source_count("tas_is_closing(self)") >= 16UL);
+    CHECK(driver_source_contains("self->interruptClosing = 1"));
+    CHECK(driver_source_contains("TASRuntimeBeginClose(&runtime)"));
+    CHECK(driver_source_contains("if (!self->interruptClosing)"));
+    CHECK(driver_source_contains("TASRuntimeRecordDMAISRLocked"));
+    CHECK(source_file_contains(
+        "../PPCTASAudio.drvproj/PPCTASAudio.lksproj/TASRuntime.c",
+        "TASRuntimeRecordDetectISRLocked"));
     CHECK(driver_source_contains(
         "    }\n    tas_arm_poll_locked(self);\n"
         "    [tasCalloutLock unlock];"));
@@ -1533,6 +1646,8 @@ int main(void)
     test_unwind_failure_preserves_dma_resources_and_mute_truth();
     test_unwind_deadline_saturates_at_clock_wrap();
     test_runtime_commands_reject_after_unwind();
+    test_interrupt_close_drains_and_skips_mmio();
+    test_begin_close_serializes_against_reset_and_commands();
     test_controls_preserve_prior_serialized_route_commit();
     test_driver_binds_runtime_controls_and_safe_irq_ordinals();
     test_driver_uses_async_debounce_and_bounded_polling();

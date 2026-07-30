@@ -209,6 +209,16 @@ TASStatus TASRuntimeUnwind(TASRuntime *runtime)
     return status;
 }
 
+TASStatus TASRuntimeBeginClose(TASRuntime *runtime)
+{
+    if (runtime == 0 || !runtime->initialized)
+        return kTASStatusConflict;
+    runtime->ops.lockOperation(runtime->ops.context);
+    runtime->closing = 1;
+    runtime->ops.unlockOperation(runtime->ops.context);
+    return kTASStatusOK;
+}
+
 TASStatus TASRuntimeReset(TASRuntime *runtime, unsigned long deadline)
 {
     TASRuntimeStage stage;
@@ -221,7 +231,7 @@ TASStatus TASRuntimeReset(TASRuntime *runtime, unsigned long deadline)
     if (runtime == 0 || !runtime->initialized)
         return kTASStatusConflict;
     runtime->ops.lockOperation(runtime->ops.context);
-    if (runtime->acquiredMask != 0UL) {
+    if (runtime->closing || runtime->acquiredMask != 0UL) {
         runtime->ops.unlockOperation(runtime->ops.context);
         return kTASStatusConflict;
     }
@@ -289,6 +299,10 @@ TASStatus TASRuntimeStartStream(TASRuntime *runtime,
         direction > kTASStreamInput)
         return kTASStatusConflict;
     runtime->ops.lockOperation(runtime->ops.context);
+    if (runtime->closing) {
+        runtime->ops.unlockOperation(runtime->ops.context);
+        return kTASStatusConflict;
+    }
     runtime->ops.lockInterrupt(runtime->ops.context);
     faults = runtime->dmaFaultMask;
     runtime->ops.unlockInterrupt(runtime->ops.context);
@@ -338,6 +352,10 @@ TASStatus TASRuntimeStopStream(TASRuntime *runtime,
     if (runtime == 0 || direction > kTASStreamInput)
         return kTASStatusMalformed;
     runtime->ops.lockOperation(runtime->ops.context);
+    if (runtime->closing) {
+        runtime->ops.unlockOperation(runtime->ops.context);
+        return kTASStatusConflict;
+    }
     if ((runtime->clock.activeMask &
         (1UL << (unsigned long)direction)) == 0UL) {
         runtime->ops.unlockOperation(runtime->ops.context);
@@ -372,7 +390,7 @@ void TASRuntimeRecordISR(TASRuntime *runtime, TASRuntimeIRQ irq)
     runtime->ops.unlockInterrupt(runtime->ops.context);
 }
 
-TASStatus TASRuntimeRecordDMAISR(TASRuntime *runtime,
+TASStatus TASRuntimeRecordDMAISRLocked(TASRuntime *runtime,
     TASStreamDirection direction)
 {
     TASStatus status;
@@ -383,11 +401,35 @@ TASStatus TASRuntimeRecordDMAISR(TASRuntime *runtime,
     status = runtime->ops.ackDMAInterrupt(runtime->ops.context, direction);
     irq = direction == kTASStreamOutput ? kTASRuntimeIRQOutput :
         kTASRuntimeIRQInput;
-    runtime->ops.lockInterrupt(runtime->ops.context);
     runtime->pendingIRQs |= (unsigned long)irq;
     if (status != kTASStatusOK)
         runtime->dmaFaultMask |= 1UL << (unsigned long)direction;
+    return status;
+}
+
+TASStatus TASRuntimeRecordDMAISR(TASRuntime *runtime,
+    TASStreamDirection direction)
+{
+    TASStatus status;
+    if (runtime == 0 || !runtime->initialized ||
+        (direction != kTASStreamOutput && direction != kTASStreamInput))
+        return kTASStatusMalformed;
+    runtime->ops.lockInterrupt(runtime->ops.context);
+    status = TASRuntimeRecordDMAISRLocked(runtime, direction);
     runtime->ops.unlockInterrupt(runtime->ops.context);
+    return status;
+}
+
+TASStatus TASRuntimeRecordDetectISRLocked(TASRuntime *runtime)
+{
+    TASStatus status;
+    if (runtime == 0 || !runtime->initialized)
+        return kTASStatusMalformed;
+    status = runtime->ops.ackDetectInterrupt(runtime->ops.context);
+    ++runtime->detectISREdges;
+    runtime->pendingIRQs |= kTASRuntimeIRQDetect;
+    if (status != kTASStatusOK)
+        runtime->detectFaultPending = 1;
     return status;
 }
 
@@ -396,12 +438,8 @@ TASStatus TASRuntimeRecordDetectISR(TASRuntime *runtime)
     TASStatus status;
     if (runtime == 0 || !runtime->initialized)
         return kTASStatusMalformed;
-    status = runtime->ops.ackDetectInterrupt(runtime->ops.context);
     runtime->ops.lockInterrupt(runtime->ops.context);
-    ++runtime->detectISREdges;
-    runtime->pendingIRQs |= kTASRuntimeIRQDetect;
-    if (status != kTASStatusOK)
-        runtime->detectFaultPending = 1;
+    status = TASRuntimeRecordDetectISRLocked(runtime);
     runtime->ops.unlockInterrupt(runtime->ops.context);
     return status;
 }
@@ -512,7 +550,7 @@ TASStatus TASRuntimeServiceDeferred(TASRuntime *runtime,
     if (!runtime->initialized)
         return kTASStatusConflict;
     runtime->ops.lockOperation(runtime->ops.context);
-    if (runtime->acquiredMask != TAS_ALL_STAGES) {
+    if (runtime->closing || runtime->acquiredMask != TAS_ALL_STAGES) {
         runtime->ops.unlockOperation(runtime->ops.context);
         return kTASStatusConflict;
     }
@@ -585,7 +623,7 @@ TASStatus TASRuntimeSetControls(TASRuntime *runtime,
     if (!runtime->initialized)
         return kTASStatusConflict;
     runtime->ops.lockOperation(runtime->ops.context);
-    if (runtime->acquiredMask != TAS_ALL_STAGES) {
+    if (runtime->closing || runtime->acquiredMask != TAS_ALL_STAGES) {
         runtime->ops.unlockOperation(runtime->ops.context);
         return kTASStatusConflict;
     }
@@ -724,7 +762,7 @@ TASStatus TASRuntimeSetPower(TASRuntime *runtime, TASPowerState power,
     if (!runtime->initialized)
         return kTASStatusConflict;
     runtime->ops.lockOperation(runtime->ops.context);
-    if (runtime->acquiredMask != TAS_ALL_STAGES) {
+    if (runtime->closing || runtime->acquiredMask != TAS_ALL_STAGES) {
         runtime->ops.unlockOperation(runtime->ops.context);
         return kTASStatusConflict;
     }

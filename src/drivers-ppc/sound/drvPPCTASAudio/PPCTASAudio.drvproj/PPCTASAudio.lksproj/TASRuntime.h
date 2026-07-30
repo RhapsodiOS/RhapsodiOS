@@ -73,6 +73,7 @@ typedef struct {
     unsigned long dmaFaultMask;
     unsigned long operationDeadline;
     int detectFaultPending;
+    int closing;
     int initialized;
 } TASRuntime;
 
@@ -80,6 +81,7 @@ TASStatus TASRuntimeProbe(const TASPropertyReader *, TASMachineConfig *);
 TASStatus TASRuntimeInit(TASRuntime *, const TASMachineConfig *,
     const TASAudioDesiredControls *, const TASRuntimeOps *);
 TASStatus TASRuntimeReset(TASRuntime *, unsigned long);
+TASStatus TASRuntimeBeginClose(TASRuntime *);
 TASStatus TASRuntimeUnwind(TASRuntime *);
 TASStatus TASRuntimeStartStream(TASRuntime *, TASStreamDirection,
     const void *, unsigned long, unsigned long, unsigned long,
@@ -89,6 +91,8 @@ TASStatus TASRuntimeStopStream(TASRuntime *, TASStreamDirection,
 void TASRuntimeRecordISR(TASRuntime *, TASRuntimeIRQ);
 TASStatus TASRuntimeRecordDMAISR(TASRuntime *, TASStreamDirection);
 TASStatus TASRuntimeRecordDetectISR(TASRuntime *);
+TASStatus TASRuntimeRecordDMAISRLocked(TASRuntime *, TASStreamDirection);
+TASStatus TASRuntimeRecordDetectISRLocked(TASRuntime *);
 TASStatus TASRuntimeServiceDeferred(TASRuntime *, unsigned long, int *, int *);
 TASStatus TASRuntimeSetControls(TASRuntime *,
     const TASAudioDesiredControls *, unsigned long);

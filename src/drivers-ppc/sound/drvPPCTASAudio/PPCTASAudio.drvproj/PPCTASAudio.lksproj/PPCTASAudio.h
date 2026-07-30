@@ -27,6 +27,7 @@
     unsigned long workerRetryCalloutToken;
     PMPowerState currentPowerState;
     int closing;
+    int interruptClosing;
     int ioAudioInitialized;
     int debounceCalloutPending;
     int pollCalloutPending;

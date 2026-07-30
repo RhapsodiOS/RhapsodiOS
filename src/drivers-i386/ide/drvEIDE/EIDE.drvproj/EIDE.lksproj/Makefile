@@ -13,17 +13,17 @@ PROJECTVERSION = 2.6
 PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
-CFILES = VIATiming.c IDEAddressing.c
+CFILES = VIATiming.c IDEAddressing.c AMDTiming.c
 
 CLASSES = AtapiCnt.m AtapiCntCmds.m AtapiCntInternal.m DualEide.m\
           IdeCnt.m IdeCntCmds.m IdeCntInit.m\
-          IdePIIX.m IdeVIA.m IdeBMIDE.m IdeGeneric.m IdeDisk.m IdeDiskInternal.m IdeKernel.m
+          IdePIIX.m IdeVIA.m IdeAMD.m IdeBMIDE.m IdeGeneric.m IdeDisk.m IdeDiskInternal.m IdeKernel.m
 
 HFILES = AtapiCnt.h AtapiCntCmds.h AtapiCntInternal.h AtapiCntPublic.h\
          atapi_extern.h ata_extern.h DualEide.h IdeCnt.h IdeCntCmds.h\
          IdeCntInit.h IdePIIX.h IdeCntInline.h IdeBMIDE.h\
          IdeCntPublic.h IdeDDM.h IdeDisk.h IdeDiskInternal.h\
-         IdeKernel.h IdeShared.h PIIXTiming.h PIIX.h IdeVIA.h VIATiming.h IdeModeUtils.h IDEAddressing.h
+         IdeKernel.h IdeShared.h PIIXTiming.h PIIX.h IdeVIA.h VIATiming.h IdeAMD.h AMDTiming.h IdeModeUtils.h IDEAddressing.h
 
 OTHERSRCS = Load_Commands.sect Makefile Makefile.preamble
 

@@ -11,13 +11,14 @@
             IdeCntInit.m, 
             IdePIIX.m,
             IdeVIA.m,
+            IdeAMD.m,
             IdeBMIDE.m,
             IdeGeneric.m,
             IdeDisk.m,
             IdeDiskInternal.m, 
             IdeKernel.m
         ); 
-        C_FILES = (VIATiming.c, IDEAddressing.c);
+        C_FILES = (VIATiming.c, IDEAddressing.c, AMDTiming.c);
         H_FILES = (
             AtapiCnt.h, 
             AtapiCntCmds.h, 
@@ -31,6 +32,7 @@
             IdeCntInit.h, 
             IdePIIX.h, 
             IdeVIA.h,
+            IdeAMD.h,
             IdeCntInline.h, 
             IdeBMIDE.h, 
             IdeCntPublic.h, 
@@ -42,6 +44,7 @@
 			PIIXTiming.h,
 			PIIX.h,
 			VIATiming.h,
+			AMDTiming.h,
 			IdeModeUtils.h,
 			IDEAddressing.h
         ); 

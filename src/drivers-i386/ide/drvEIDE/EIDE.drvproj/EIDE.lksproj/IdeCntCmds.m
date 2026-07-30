@@ -1317,7 +1317,8 @@ static unsigned char unaligned_warnings;
 		"block %x count %x mode %s. Retrying...\n",
 		[self name], ideIoReq->cmd, command, ideIoReq->block,
 		ideIoReq->blkcnt,
-		taskfile.useLBA48 ? "LBA48" : "LBA28");
+		_drives[drive].addressMode == ADDRESS_MODE_CHS ? "CHS" :
+		    (taskfile.useLBA48 ? "LBA48" : "LBA28"));
 	else
 	    IOLog("%s: ATA command %x failed. Retrying...\n", [self name],
 		command);

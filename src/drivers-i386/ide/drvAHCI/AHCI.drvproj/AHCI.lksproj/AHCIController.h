@@ -5,12 +5,19 @@
 #import <driverkit/i386/IOPCIDeviceDescription.h>
 #import <driverkit/i386/IOPCIDirectDevice.h>
 #import "AHCIHBA.h"
+#import "AHCIPCI.h"
+#import "AHCIShared.h"
 
 @interface AHCIController : IODirectDevice
 {
     vm_address_t abarAddress;
-    volatile unsigned char *abar;
     BOOL abarMapped;
+    IOPCIDeviceDescription *pciDeviceDescription;
+    AHCIU32 originalPCIConfig;
+    AHCIU32 pciCommandRestore;
+    BOOL pciCommandWriteAttempted;
+    BOOL pciCommandChanged;
+    AHCIMMIOContext mmio;
     AHCIHBAInfo hbaInfo;
 }
 

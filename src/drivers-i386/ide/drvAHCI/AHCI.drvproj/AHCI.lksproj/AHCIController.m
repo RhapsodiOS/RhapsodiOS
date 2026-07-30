@@ -2,35 +2,45 @@
 #import <driverkit/generalFuncs.h>
 #import <driverkit/i386/IOPCIDirectDevice.h>
 #import "AHCIHBA.h"
+#import "AHCIPCI.h"
 #import "AHCIShared.h"
+
+static int AHCIMMIOOffsetValid(AHCIMMIOContext *mmio, AHCIU32 offset)
+{
+    return !(mmio == 0 || mmio->base == 0 ||
+             mmio->length < sizeof(AHCIU32) || (offset & 3U) != 0 ||
+             offset > mmio->length - sizeof(AHCIU32));
+}
 
 static AHCIU32 AHCIMMIORead(void *context, AHCIU32 offset)
 {
-    volatile unsigned char *base;
+    AHCIMMIOContext *mmio;
     volatile AHCIU32 *reg;
 
-    base = (volatile unsigned char *)context;
-    reg = (volatile AHCIU32 *)(base + offset);
+    mmio = (AHCIMMIOContext *)context;
+    if (!AHCIMMIOOffsetValid(mmio, offset))
+        return 0xffffffffU;
+    reg = (volatile AHCIU32 *)(mmio->base + offset);
     return *reg;
 }
 
 static void AHCIMMIOWrite(void *context, AHCIU32 offset, AHCIU32 value)
 {
-    volatile unsigned char *base;
+    AHCIMMIOContext *mmio;
     volatile AHCIU32 *reg;
 
-    base = (volatile unsigned char *)context;
-    reg = (volatile AHCIU32 *)(base + offset);
+    mmio = (AHCIMMIOContext *)context;
+    if (!AHCIMMIOOffsetValid(mmio, offset))
+        return;
+    reg = (volatile AHCIU32 *)(mmio->base + offset);
     *reg = value;
 }
 
 static void AHCIMMIOBarrier(void *context)
 {
-    volatile unsigned char *base;
     volatile AHCIU32 readback;
 
-    base = (volatile unsigned char *)context;
-    readback = *(volatile AHCIU32 *)(base + AHCI_REG_GHC);
+    readback = AHCIMMIORead(context, AHCI_REG_GHC);
     (void)readback;
 }
 
@@ -75,14 +85,16 @@ static int AHCIVersionIsCommon(AHCIU32 version)
     unsigned long pciID;
     unsigned long classRevision;
     unsigned long bar5;
-    unsigned long abarPhysical;
     unsigned long command;
-    unsigned long enabledCommand;
     unsigned long commandReadback;
+    AHCIU32 abarPhysical;
+    AHCIU32 enabledCommand;
+    unsigned char commandChanged;
     IORange memoryRange;
     IOReturn mapResult;
     AHCIHBAOps ops;
 
+    pciDeviceDescription = deviceDescription;
     if ([IODirectDevice getPCIConfigData:&pciID
               atRegister:AHCI_PCI_ID_REGISTER
               withDeviceDescription:deviceDescription] != IO_R_SUCCESS ||
@@ -98,17 +110,8 @@ static int AHCIVersionIsCommon(AHCIU32 version)
     if ([IODirectDevice getPCIConfigData:&bar5
               atRegister:AHCI_PCI_BAR5_REGISTER
               withDeviceDescription:deviceDescription] != IO_R_SUCCESS ||
-        bar5 == 0 || bar5 == 0xffffffffU ||
-        (bar5 & AHCI_PCI_BAR_IO) != 0 ||
-        (bar5 & AHCI_PCI_BAR_TYPE_MASK) != AHCI_PCI_BAR_TYPE_32 ||
-        (bar5 & AHCI_PCI_BAR_PREFETCH) != 0) {
-        [self free];
-        return nil;
-    }
-    abarPhysical = bar5 & AHCI_PCI_BAR_MEMORY_MASK;
-    if (abarPhysical == 0 ||
-        abarPhysical == AHCI_PCI_BAR_MEMORY_MASK ||
-        abarPhysical > 0xffffffffU - (AHCI_ABAR_LENGTH - 1U)) {
+        AHCIPCIValidateBAR5((AHCIU32)bar5, AHCI_ABAR_LENGTH,
+                            &abarPhysical) != AHCI_PCI_SUCCESS) {
         [self free];
         return nil;
     }
@@ -119,17 +122,28 @@ static int AHCIVersionIsCommon(AHCIU32 version)
         [self free];
         return nil;
     }
-    enabledCommand = command | AHCI_PCI_COMMAND_MEMORY |
-                     AHCI_PCI_COMMAND_MASTER;
-    if ([IODirectDevice setPCIConfigData:enabledCommand
+    originalPCIConfig = (AHCIU32)command;
+    if (AHCIPCIPlanCommand(originalPCIConfig, &enabledCommand,
+                           &pciCommandRestore, &commandChanged) !=
+        AHCI_PCI_SUCCESS) {
+        [self free];
+        return nil;
+    }
+    pciCommandChanged = commandChanged ? YES : NO;
+    if (pciCommandChanged) {
+        pciCommandWriteAttempted = YES;
+        if ([IODirectDevice setPCIConfigData:enabledCommand
+                  atRegister:AHCI_PCI_COMMAND_REGISTER
+                  withDeviceDescription:deviceDescription] != IO_R_SUCCESS) {
+            [self free];
+            return nil;
+        }
+    }
+    if ([IODirectDevice getPCIConfigData:&commandReadback
               atRegister:AHCI_PCI_COMMAND_REGISTER
               withDeviceDescription:deviceDescription] != IO_R_SUCCESS ||
-        [IODirectDevice getPCIConfigData:&commandReadback
-              atRegister:AHCI_PCI_COMMAND_REGISTER
-              withDeviceDescription:deviceDescription] != IO_R_SUCCESS ||
-        (commandReadback & (AHCI_PCI_COMMAND_MEMORY |
-                            AHCI_PCI_COMMAND_MASTER)) !=
-            (AHCI_PCI_COMMAND_MEMORY | AHCI_PCI_COMMAND_MASTER)) {
+        AHCIPCIValidateCommandReadback((AHCIU32)commandReadback) !=
+            AHCI_PCI_SUCCESS) {
         [self free];
         return nil;
     }
@@ -160,9 +174,9 @@ static int AHCIVersionIsCommon(AHCIU32 version)
         [self free];
         return nil;
     }
-    abar = (volatile unsigned char *)abarAddress;
-
-    ops.context = (void *)abar;
+    mmio.base = (volatile unsigned char *)abarAddress;
+    mmio.length = AHCI_ABAR_LENGTH;
+    ops.context = &mmio;
     ops.read = AHCIMMIORead;
     ops.write = AHCIMMIOWrite;
     ops.delay = AHCIDelayMilliseconds;
@@ -184,11 +198,23 @@ static int AHCIVersionIsCommon(AHCIU32 version)
 
 - free
 {
+    IOReturn restoreResult;
+
     if (abarMapped) {
         [self unmapMemoryRange:0 from:abarAddress];
         abarMapped = NO;
         abarAddress = 0;
-        abar = 0;
+        mmio.base = 0;
+        mmio.length = 0;
+    }
+    if (pciCommandWriteAttempted && pciCommandChanged) {
+        restoreResult = [IODirectDevice setPCIConfigData:pciCommandRestore
+              atRegister:AHCI_PCI_COMMAND_REGISTER
+              withDeviceDescription:pciDeviceDescription];
+        if (restoreResult != IO_R_SUCCESS)
+            IOLog("AHCI: failed to restore PCI command register\n");
+        pciCommandWriteAttempted = NO;
+        pciCommandChanged = NO;
     }
     return [super free];
 }

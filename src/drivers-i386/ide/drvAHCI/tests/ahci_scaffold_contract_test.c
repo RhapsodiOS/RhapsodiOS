@@ -285,6 +285,58 @@ static int has_scoped_expression(const char *text, const char *scope_begin,
     return found;
 }
 
+static int has_scoped_ordered_pair(const char *text, const char *scope_begin,
+                                   const char *scope_end,
+                                   const char *first_expression,
+                                   const char *second_expression)
+{
+    char *clean;
+    char *begin;
+    char *end;
+    char *scope;
+    char *normalized_scope;
+    char *normalized_first;
+    char *normalized_second;
+    char *first_match;
+    size_t scope_length;
+    int found;
+
+    clean = without_comments(text, 0);
+    if (clean == NULL)
+        return 0;
+    begin = strstr(clean, scope_begin);
+    end = begin == NULL ? NULL : strstr(begin + strlen(scope_begin), scope_end);
+    if (begin == NULL || end == NULL) {
+        free(clean);
+        return 0;
+    }
+    scope_length = (size_t)(end - begin);
+    scope = (char *)malloc(scope_length + 1U);
+    if (scope == NULL) {
+        free(clean);
+        return 0;
+    }
+    memcpy(scope, begin, scope_length);
+    scope[scope_length] = '\0';
+    normalized_scope = without_whitespace(scope);
+    normalized_first = without_whitespace(first_expression);
+    normalized_second = without_whitespace(second_expression);
+    found = 0;
+    if (normalized_scope != NULL && normalized_first != NULL &&
+        normalized_second != NULL) {
+        first_match = strstr(normalized_scope, normalized_first);
+        found = first_match != NULL &&
+            strstr(first_match + strlen(normalized_first),
+                   normalized_second) != NULL;
+    }
+    free(normalized_second);
+    free(normalized_first);
+    free(normalized_scope);
+    free(scope);
+    free(clean);
+    return found;
+}
+
 static int has_identifier(const char *text, const char *identifier)
 {
     char *clean;
@@ -340,8 +392,12 @@ static int valid_controller_source(const char *text)
 
     return has_exact_line(text, "#import <driverkit/i386/IOPCIDirectDevice.h>", 0) &&
            has_exact_line(text, "#import \"AHCIHBA.h\"", 0) &&
+           has_exact_line(text, "#import \"AHCIPCI.h\"", 0) &&
            has_exact_line(text, "#import \"AHCIShared.h\"", 0) &&
            has_exact_line(text, "@implementation AHCIController", 0) &&
+           has_scoped_expression(text, "static int AHCIMMIOOffsetValid",
+               "static AHCIU32 AHCIMMIORead",
+               "mmio == 0 || mmio->base == 0 || mmio->length < sizeof(AHCIU32) || (offset & 3U) != 0 || offset > mmio->length - sizeof(AHCIU32)") &&
            has_scoped_expression(text, probe, initializer,
                "AHCIController *controller;") &&
            has_scoped_expression(text, probe, initializer,
@@ -351,6 +407,8 @@ static int valid_controller_source(const char *text)
            has_scoped_expression(text, probe, initializer,
                "if ([controller registerDevice] == nil) { [controller free]; return NO; }") &&
            has_scoped_expression(text, probe, initializer, "return YES;") &&
+           has_scoped_expression(text, initializer, "- free",
+               "pciDeviceDescription = deviceDescription;") &&
            has_scoped_expression(text, initializer, "- free",
                "[IODirectDevice getPCIConfigData:&pciID atRegister:AHCI_PCI_ID_REGISTER withDeviceDescription:deviceDescription] != IO_R_SUCCESS") &&
            has_scoped_expression(text, initializer, "- free",
@@ -362,19 +420,15 @@ static int valid_controller_source(const char *text)
            has_scoped_expression(text, initializer, "- free",
                "[IODirectDevice getPCIConfigData:&bar5 atRegister:AHCI_PCI_BAR5_REGISTER withDeviceDescription:deviceDescription] != IO_R_SUCCESS") &&
            has_scoped_expression(text, initializer, "- free",
-               "(bar5 & AHCI_PCI_BAR_IO) != 0") &&
+               "AHCIPCIValidateBAR5((AHCIU32)bar5, AHCI_ABAR_LENGTH, &abarPhysical) != AHCI_PCI_SUCCESS") &&
            has_scoped_expression(text, initializer, "- free",
-               "(bar5 & AHCI_PCI_BAR_TYPE_MASK) != AHCI_PCI_BAR_TYPE_32") &&
+               "originalPCIConfig = (AHCIU32)command;") &&
            has_scoped_expression(text, initializer, "- free",
-               "(bar5 & AHCI_PCI_BAR_PREFETCH) != 0") &&
+               "AHCIPCIPlanCommand(originalPCIConfig, &enabledCommand, &pciCommandRestore, &commandChanged) != AHCI_PCI_SUCCESS") &&
            has_scoped_expression(text, initializer, "- free",
-               "abarPhysical = bar5 & AHCI_PCI_BAR_MEMORY_MASK;") &&
+               "if (pciCommandChanged) { pciCommandWriteAttempted = YES; if ([IODirectDevice setPCIConfigData:enabledCommand atRegister:AHCI_PCI_COMMAND_REGISTER withDeviceDescription:deviceDescription] != IO_R_SUCCESS) { [self free]; return nil; } }") &&
            has_scoped_expression(text, initializer, "- free",
-               "enabledCommand = command | AHCI_PCI_COMMAND_MEMORY | AHCI_PCI_COMMAND_MASTER;") &&
-           has_scoped_expression(text, initializer, "- free",
-               "[IODirectDevice setPCIConfigData:enabledCommand atRegister:AHCI_PCI_COMMAND_REGISTER withDeviceDescription:deviceDescription] != IO_R_SUCCESS") &&
-           has_scoped_expression(text, initializer, "- free",
-               "(commandReadback & (AHCI_PCI_COMMAND_MEMORY | AHCI_PCI_COMMAND_MASTER)) != (AHCI_PCI_COMMAND_MEMORY | AHCI_PCI_COMMAND_MASTER)") &&
+               "if ([IODirectDevice getPCIConfigData:&commandReadback atRegister:AHCI_PCI_COMMAND_REGISTER withDeviceDescription:deviceDescription] != IO_R_SUCCESS || AHCIPCIValidateCommandReadback((AHCIU32)commandReadback) != AHCI_PCI_SUCCESS) { [self free]; return nil; }") &&
            has_scoped_expression(text, initializer, "- free",
                "memoryRange.start = abarPhysical;") &&
            has_scoped_expression(text, initializer, "- free",
@@ -386,12 +440,24 @@ static int valid_controller_source(const char *text)
            has_scoped_expression(text, initializer, "- free",
                "mapResult = [self mapMemoryRange:0 to:&abarAddress findSpace:YES cache:IO_CacheOff]; if (mapResult != IO_R_SUCCESS) { [self free]; return nil; } abarMapped = YES; if (abarAddress == 0 || (abarAddress & 3U) != 0) { [self free]; return nil; }") &&
            has_scoped_expression(text, initializer, "- free",
-               "AHCIHBAInitialize(&ops, &hbaInfo) != AHCI_HBA_SUCCESS") &&
+               "if (AHCIHBAInitialize(&ops, &hbaInfo) != AHCI_HBA_SUCCESS) { [self free]; return nil; }") &&
+           has_scoped_expression(text, initializer, "- free",
+               "mmio.base = (volatile unsigned char *)abarAddress; mmio.length = AHCI_ABAR_LENGTH; ops.context = &mmio; ops.read = AHCIMMIORead; ops.write = AHCIMMIOWrite; ops.delay = AHCIDelayMilliseconds; ops.barrier = AHCIMMIOBarrier;") &&
            has_scoped_expression(text, initializer, "- free",
                "IOLog(\"%s: Intel AHCI 8086:2922 class 01:06:01 version %x CAP %08x CAP2 %08x PI %08x attached\\n\", [self name], hbaInfo.version, hbaInfo.capabilities, hbaInfo.capabilities2, hbaInfo.portsImplemented);") &&
            has_scoped_expression(text, initializer, "- free", "return self;") &&
            has_scoped_expression(text, "- free", "@end",
                "[self unmapMemoryRange:0 from:abarAddress]") &&
+           has_scoped_expression(text, "- free", "@end",
+               "if (pciCommandWriteAttempted && pciCommandChanged)") &&
+           has_scoped_expression(text, "- free", "@end",
+               "[IODirectDevice setPCIConfigData:pciCommandRestore atRegister:AHCI_PCI_COMMAND_REGISTER withDeviceDescription:pciDeviceDescription]") &&
+           has_scoped_ordered_pair(text, "- free", "@end",
+               "[self unmapMemoryRange:0 from:abarAddress]",
+               "[IODirectDevice setPCIConfigData:pciCommandRestore atRegister:AHCI_PCI_COMMAND_REGISTER withDeviceDescription:pciDeviceDescription]") &&
+           has_scoped_ordered_pair(text, "- free", "@end",
+               "[IODirectDevice setPCIConfigData:pciCommandRestore atRegister:AHCI_PCI_COMMAND_REGISTER withDeviceDescription:pciDeviceDescription]",
+               "return [super free];") &&
            !has_identifier(text, "IdeController") &&
            !has_identifier(text, "AtapiController") &&
            !has_identifier(text, "IdeDisk") &&
@@ -403,10 +469,10 @@ static int valid_controller_source(const char *text)
 static int valid_link_makefile(const char *text)
 {
     return has_exact_line(text,
-        "CFILES = AHCICommand.c AHCIState.c AHCIHBA.c", 1) &&
+        "CFILES = AHCICommand.c AHCIState.c AHCIHBA.c AHCIPCI.c", 1) &&
         has_exact_line(text, "CLASSES = AHCIController.m", 1) &&
         has_exact_line(text,
-        "HFILES = AHCIController.h AHCIRegs.h AHCICommand.h AHCIState.h AHCIHBA.h AHCIShared.h",
+        "HFILES = AHCIController.h AHCIRegs.h AHCICommand.h AHCIState.h AHCIHBA.h AHCIPCI.h AHCIShared.h",
         1) &&
         !has_identifier(text, "AHCIPort");
 }
@@ -414,10 +480,10 @@ static int valid_link_makefile(const char *text)
 static int valid_link_project(const char *text)
 {
     return has_exact_line(text,
-        "C_FILES = (AHCICommand.c, AHCIState.c, AHCIHBA.c);", 0) &&
+        "C_FILES = (AHCICommand.c, AHCIState.c, AHCIHBA.c, AHCIPCI.c);", 0) &&
         has_exact_line(text, "CLASSES = (AHCIController.m);", 0) &&
         has_exact_line(text,
-        "H_FILES = (AHCIController.h, AHCIRegs.h, AHCICommand.h, AHCIState.h, AHCIHBA.h, AHCIShared.h);",
+        "H_FILES = (AHCIController.h, AHCIRegs.h, AHCICommand.h, AHCIState.h, AHCIHBA.h, AHCIPCI.h, AHCIShared.h);",
         0) &&
         !has_identifier(text, "AHCIPort");
 }
@@ -559,7 +625,11 @@ static void test_validator_mutations(void)
 
     strcpy(controller_ok,
         "#import <driverkit/i386/IOPCIDirectDevice.h>\n"
-        "#import \"AHCIHBA.h\"\n#import \"AHCIShared.h\"\n"
+        "#import \"AHCIHBA.h\"\n#import \"AHCIPCI.h\"\n"
+        "#import \"AHCIShared.h\"\n"
+        "static int AHCIMMIOOffsetValid(AHCIMMIOContext *mmio, AHCIU32 offset) {\n"
+        "return !(mmio == 0 || mmio->base == 0 || mmio->length < sizeof(AHCIU32) || (offset & 3U) != 0 || offset > mmio->length - sizeof(AHCIU32));\n}\n"
+        "static AHCIU32 AHCIMMIORead(void *context, AHCIU32 offset) { return 0; }\n"
         "@implementation AHCIController\n");
     strcat(controller_ok,
         "+ (BOOL)probe:(IOPCIDeviceDescription *)deviceDescription {\n"
@@ -570,6 +640,7 @@ static void test_validator_mutations(void)
         "return YES;\n}\n");
     strcat(controller_ok,
         "- initFromDeviceDescription:(IOPCIDeviceDescription *)deviceDescription {\n"
+        "pciDeviceDescription = deviceDescription;\n"
         "if ([IODirectDevice getPCIConfigData:&pciID atRegister:AHCI_PCI_ID_REGISTER withDeviceDescription:deviceDescription] != IO_R_SUCCESS ||\n"
         "pciID != AHCI_ICH9_PCI_ID ||\n");
     strcat(controller_ok,
@@ -577,14 +648,15 @@ static void test_validator_mutations(void)
         "((classRevision >> 8) & 0x00ffffff) != AHCI_PCI_CLASS_CODE) return nil;\n");
     strcat(controller_ok,
         "if ([IODirectDevice getPCIConfigData:&bar5 atRegister:AHCI_PCI_BAR5_REGISTER withDeviceDescription:deviceDescription] != IO_R_SUCCESS ||\n"
-        "(bar5 & AHCI_PCI_BAR_IO) != 0 ||\n"
-        "(bar5 & AHCI_PCI_BAR_TYPE_MASK) != AHCI_PCI_BAR_TYPE_32 ||\n"
-        "(bar5 & AHCI_PCI_BAR_PREFETCH) != 0) return nil;\n"
-        "abarPhysical = bar5 & AHCI_PCI_BAR_MEMORY_MASK;\n");
+        "AHCIPCIValidateBAR5((AHCIU32)bar5, AHCI_ABAR_LENGTH, &abarPhysical) != AHCI_PCI_SUCCESS) return nil;\n");
     strcat(controller_ok,
-        "enabledCommand = command | AHCI_PCI_COMMAND_MEMORY | AHCI_PCI_COMMAND_MASTER;\n"
-        "if ([IODirectDevice setPCIConfigData:enabledCommand atRegister:AHCI_PCI_COMMAND_REGISTER withDeviceDescription:deviceDescription] != IO_R_SUCCESS) return nil;\n"
-        "if ((commandReadback & (AHCI_PCI_COMMAND_MEMORY | AHCI_PCI_COMMAND_MASTER)) != (AHCI_PCI_COMMAND_MEMORY | AHCI_PCI_COMMAND_MASTER)) return nil;\n");
+        "originalPCIConfig = (AHCIU32)command;\n"
+        "if (AHCIPCIPlanCommand(originalPCIConfig, &enabledCommand, &pciCommandRestore, &commandChanged) != AHCI_PCI_SUCCESS) return nil;\n"
+        "if (pciCommandChanged) { pciCommandWriteAttempted = YES;\n"
+        "if ([IODirectDevice setPCIConfigData:enabledCommand atRegister:AHCI_PCI_COMMAND_REGISTER withDeviceDescription:deviceDescription] != IO_R_SUCCESS) { [self free]; return nil; } }\n");
+    strcat(controller_ok,
+        "if ([IODirectDevice getPCIConfigData:&commandReadback atRegister:AHCI_PCI_COMMAND_REGISTER withDeviceDescription:deviceDescription] != IO_R_SUCCESS ||\n"
+        "AHCIPCIValidateCommandReadback((AHCIU32)commandReadback) != AHCI_PCI_SUCCESS) { [self free]; return nil; }\n");
     strcat(controller_ok,
         "memoryRange.start = abarPhysical;\nmemoryRange.size = AHCI_ABAR_LENGTH;\n"
         "if ([deviceDescription setMemoryRangeList:&memoryRange num:1] != IO_R_SUCCESS) return nil;\n"
@@ -593,16 +665,23 @@ static void test_validator_mutations(void)
         "mapResult = [self mapMemoryRange:0 to:&abarAddress findSpace:YES cache:IO_CacheOff];\n"
         "if (mapResult != IO_R_SUCCESS) { [self free]; return nil; }\n"
         "abarMapped = YES;\n"
-        "if (abarAddress == 0 || (abarAddress & 3U) != 0) { [self free]; return nil; }\n"
-        "if (AHCIHBAInitialize(&ops, &hbaInfo) != AHCI_HBA_SUCCESS) return nil;\n");
+        "if (abarAddress == 0 || (abarAddress & 3U) != 0) { [self free]; return nil; }\n");
+    strcat(controller_ok,
+        "mmio.base = (volatile unsigned char *)abarAddress; mmio.length = AHCI_ABAR_LENGTH;\n"
+        "ops.context = &mmio; ops.read = AHCIMMIORead; ops.write = AHCIMMIOWrite;\n"
+        "ops.delay = AHCIDelayMilliseconds; ops.barrier = AHCIMMIOBarrier;\n"
+        "if (AHCIHBAInitialize(&ops, &hbaInfo) != AHCI_HBA_SUCCESS) { [self free]; return nil; }\n");
     strcat(controller_ok,
         "IOLog(\"%s: Intel AHCI 8086:2922 class 01:06:01 version %x CAP %08x CAP2 %08x PI %08x attached\\n\", [self name], hbaInfo.version, hbaInfo.capabilities, hbaInfo.capabilities2, hbaInfo.portsImplemented);\n"
-        "return self;\n}\n- free { [self unmapMemoryRange:0 from:abarAddress]; return [super free]; }\n@end\n");
+        "return self;\n}\n- free { if (abarMapped) { [self unmapMemoryRange:0 from:abarAddress]; }\n"
+        "if (pciCommandWriteAttempted && pciCommandChanged) {\n"
+        "[IODirectDevice setPCIConfigData:pciCommandRestore atRegister:AHCI_PCI_COMMAND_REGISTER withDeviceDescription:pciDeviceDescription]; }\n"
+        "return [super free]; }\n@end\n");
 
     strcpy(link_makefile_ok,
-        "CFILES = AHCICommand.c AHCIState.c AHCIHBA.c\n"
+        "CFILES = AHCICommand.c AHCIState.c AHCIHBA.c AHCIPCI.c\n"
         "CLASSES = AHCIController.m\n"
-        "HFILES = AHCIController.h AHCIRegs.h AHCICommand.h AHCIState.h AHCIHBA.h AHCIShared.h\n");
+        "HFILES = AHCIController.h AHCIRegs.h AHCICommand.h AHCIState.h AHCIHBA.h AHCIPCI.h AHCIShared.h\n");
     strcpy(hba_source_ok,
         "#include \"AHCIHBA.h\"\n"
         "static void ahci_disable_interrupts(const AHCIHBAOps *ops) {\n"
@@ -671,14 +750,22 @@ static void test_validator_mutations(void)
         ++failures;
     expect_invalid("BAR5 read removed", valid_controller_source, mutation);
     if (!replace_once(mutation, sizeof(mutation), controller_ok,
-                      "bar5 & AHCI_PCI_BAR_MEMORY_MASK", "bar5"))
+                      "AHCIPCIValidateBAR5((AHCIU32)bar5, AHCI_ABAR_LENGTH, &abarPhysical)",
+                      "AHCI_PCI_SUCCESS"))
         ++failures;
-    expect_invalid("BAR5 mask removed", valid_controller_source, mutation);
+    expect_invalid("PCI BAR helper removed", valid_controller_source,
+                   mutation);
     if (!replace_once(mutation, sizeof(mutation), controller_ok,
-                      "AHCI_PCI_COMMAND_MEMORY | AHCI_PCI_COMMAND_MASTER",
-                      "AHCI_PCI_COMMAND_MEMORY"))
+                      "AHCIPCIPlanCommand(originalPCIConfig, &enabledCommand, &pciCommandRestore, &commandChanged)",
+                      "AHCI_PCI_SUCCESS"))
         ++failures;
-    expect_invalid("bus master enable removed", valid_controller_source,
+    expect_invalid("PCI command helper removed", valid_controller_source,
+                   mutation);
+    if (!replace_once(mutation, sizeof(mutation), controller_ok,
+                      "AHCIPCIValidateCommandReadback((AHCIU32)commandReadback)",
+                      "AHCI_PCI_SUCCESS"))
+        ++failures;
+    expect_invalid("PCI readback helper removed", valid_controller_source,
                    mutation);
     if (!replace_once(mutation, sizeof(mutation), controller_ok,
                       "memoryRange.size = AHCI_ABAR_LENGTH;",
@@ -702,6 +789,21 @@ static void test_validator_mutations(void)
     expect_invalid("production HBA call removed", valid_controller_source,
                    mutation);
     if (!replace_once(mutation, sizeof(mutation), controller_ok,
+                      "ops.context = &mmio;", "ops.context = abar;"))
+        ++failures;
+    expect_invalid("unguarded MMIO context wired", valid_controller_source,
+                   mutation);
+    if (!replace_once(mutation, sizeof(mutation), controller_ok,
+                      "if (pciCommandWriteAttempted && pciCommandChanged)",
+                      "if (0)"))
+        ++failures;
+    expect_invalid("PCI rollback removed", valid_controller_source,
+                   mutation);
+    if (!replace_once(mutation, sizeof(mutation), controller_ok,
+                      "return [super free];", "return self;"))
+        ++failures;
+    expect_invalid("super free removed", valid_controller_source, mutation);
+    if (!replace_once(mutation, sizeof(mutation), controller_ok,
                       "return self;\n}\n- free",
                       "IOMalloc(1); return self;\n}\n- free"))
         ++failures;
@@ -712,6 +814,11 @@ static void test_validator_mutations(void)
                       "CFILES = AHCICommand.c AHCIState.c"))
         ++failures;
     expect_invalid("HBA production source removed", valid_link_makefile,
+                   mutation);
+    if (!replace_once(mutation, sizeof(mutation), link_makefile_ok,
+                      " AHCIPCI.c", ""))
+        ++failures;
+    expect_invalid("PCI production source removed", valid_link_makefile,
                    mutation);
     if (!replace_once(mutation, sizeof(mutation), hba_source_ok,
                       "(ghc | AHCI_GHC_AE) & ~AHCI_GHC_IE",

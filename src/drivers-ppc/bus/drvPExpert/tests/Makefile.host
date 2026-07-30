@@ -1,12 +1,20 @@
 HOST_CC ?= cc
 HOST_CFLAGS ?= -std=c89 -pedantic -Wall -Wextra -Werror
+HOST_CPPFLAGS ?= -D__ppc__
 
 mpic_direct_test: mpic_direct_test.c ../powermac/chips/mpic.c
 	$(HOST_CC) $(HOST_CFLAGS) -DMPIC_DIRECT_HOST_TEST \
 	    -I../powermac -o $@ mpic_direct_test.c ../powermac/chips/mpic.c
 
-test: mpic_direct_test
+pe_keylargo_test: pe_keylargo_test.c ../powermac/chips/keylargo_audio.c
+	$(HOST_CC) $(HOST_CFLAGS) \
+	    -Wno-import-preprocessor-directive-pedantic $(HOST_CPPFLAGS) \
+	    -I../../../../kernel-7 \
+	    -o $@ pe_keylargo_test.c ../powermac/chips/keylargo_audio.c
+
+test: mpic_direct_test pe_keylargo_test
 	./mpic_direct_test
+	./pe_keylargo_test
 
 clean:
-	rm -f mpic_direct_test
+	rm -f mpic_direct_test pe_keylargo_test

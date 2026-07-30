@@ -33,6 +33,22 @@ static void test_capacity(void)
     CHECK(capacity.clamped == 0);
 
     memset(identify, 0, sizeof(identify));
+    identify[IDE_IDENTIFY_CAPABILITIES] = IDE_CAP_LBA;
+    identify[IDE_IDENTIFY_LBA28_LOW] = 0x0001;
+    identify[IDE_IDENTIFY_LBA28_HIGH] = 0x1000;
+    IDEParseIdentifyCapacity(identify, &capacity);
+    CHECK(capacity.lba28Sectors == IDE_LBA28_SECTORS);
+    CHECK(capacity.sectors == IDE_LBA28_SECTORS);
+
+    memset(identify, 0, sizeof(identify));
+    identify[IDE_IDENTIFY_LBA28_LOW] = 0x5678;
+    identify[IDE_IDENTIFY_LBA28_HIGH] = 0x0123;
+    IDEParseIdentifyCapacity(identify, &capacity);
+    CHECK(capacity.lbaSupported == 0);
+    CHECK(capacity.lba28Sectors == 0);
+    CHECK(capacity.sectors == 0);
+
+    memset(identify, 0, sizeof(identify));
     identify[IDE_IDENTIFY_COMMAND_SET_ENABLED_2] = IDE_CAP_LBA48;
     identify[100] = 0x5678;
     identify[101] = 0x1234;
@@ -41,6 +57,25 @@ static void test_capacity(void)
     CHECK(capacity.sectors == 0x12345678UL);
     CHECK(capacity.clamped == 0);
 
+    identify[102] = 1;
+    IDEParseIdentifyCapacity(identify, &capacity);
+    CHECK(capacity.lba48Supported == 1);
+    CHECK(capacity.sectors == IDE_MAX_ADDRESSABLE_SECTORS);
+    CHECK(capacity.clamped == 1);
+
+    memset(identify, 0, sizeof(identify));
+    identify[IDE_IDENTIFY_CAPABILITIES] = IDE_CAP_LBA;
+    identify[IDE_IDENTIFY_LBA28_LOW] = 0x5678;
+    identify[IDE_IDENTIFY_LBA28_HIGH] = 0x0123;
+    identify[100] = 0x4321;
+    identify[101] = 0x8765;
+    IDEParseIdentifyCapacity(identify, &capacity);
+    CHECK(capacity.lba48Supported == 0);
+    CHECK(capacity.lba28Sectors == 0x01235678UL);
+    CHECK(capacity.sectors == 0x01235678UL);
+
+    memset(identify, 0, sizeof(identify));
+    identify[IDE_IDENTIFY_COMMAND_SET_ENABLED_2] = IDE_CAP_LBA48;
     identify[102] = 1;
     IDEParseIdentifyCapacity(identify, &capacity);
     CHECK(capacity.lba48Supported == 1);

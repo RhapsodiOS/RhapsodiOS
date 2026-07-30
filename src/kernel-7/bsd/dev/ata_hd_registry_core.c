@@ -86,7 +86,7 @@ int ATAHDRegistryRemove(ATAHDRegistryCore *registry, unsigned int unit)
 
     for (partition = 0; partition < ATA_HD_PARTITIONS; ++partition) {
         if (registry->openCounts[unit][partition] != 0)
-            return ATA_HD_REGISTRY_BUSY;
+            return ATA_HD_BUSY;
     }
 
     registry->owners[unit] = 0;

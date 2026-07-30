@@ -6,6 +6,14 @@
 
 static int failures;
 
+typedef struct EIDEMockOwner {
+    unsigned int channel;
+} EIDEMockOwner;
+
+typedef struct AHCIMockOwner {
+    unsigned int port;
+} AHCIMockOwner;
+
 #define CHECK(expression)                                                     \
     do {                                                                      \
         if (!(expression)) {                                                  \
@@ -18,14 +26,22 @@ static int failures;
 static void test_lowest_free_and_owner_lookup(void)
 {
     ATAHDRegistryCore registry;
-    int eideOwner;
-    int ahciOwner;
+    EIDEMockOwner eideOwner;
+    AHCIMockOwner ahciOwner;
 
+    eideOwner.channel = 1;
+    ahciOwner.port = 7;
     ATAHDRegistryCoreInit(&registry);
     CHECK(ATAHDRegistryAllocate(&registry, &eideOwner) == 0);
     CHECK(ATAHDRegistryAllocate(&registry, &ahciOwner) == 1);
+    CHECK(ATAHDRegistryAllocate(&registry, &eideOwner) ==
+          ATA_HD_REGISTRY_DUPLICATE);
+    CHECK(ATAHDRegistryAllocate(&registry, &ahciOwner) ==
+          ATA_HD_REGISTRY_DUPLICATE);
     CHECK(ATAHDRegistryOwner(&registry, 0) == &eideOwner);
     CHECK(ATAHDRegistryOwner(&registry, 1) == &ahciOwner);
+    CHECK(eideOwner.channel == 1);
+    CHECK(ahciOwner.port == 7);
     CHECK(ATAHDRegistryOwner(&registry, ATA_HD_UNITS) == NULL);
 }
 
@@ -73,11 +89,11 @@ static void test_open_counts_and_busy_removal(void)
     CHECK(ATAHDRegistryOpen(&registry, 0, 0) == ATA_HD_REGISTRY_SUCCESS);
     CHECK(ATAHDRegistryOpen(&registry, 0, 0) == ATA_HD_REGISTRY_SUCCESS);
     CHECK(ATAHDRegistryOpen(&registry, 0, 1) == ATA_HD_REGISTRY_SUCCESS);
-    CHECK(ATAHDRegistryRemove(&registry, 0) == ATA_HD_REGISTRY_BUSY);
+    CHECK(ATAHDRegistryRemove(&registry, 0) == ATA_HD_BUSY);
     CHECK(ATAHDRegistryClose(&registry, 0, 0) == ATA_HD_REGISTRY_SUCCESS);
-    CHECK(ATAHDRegistryRemove(&registry, 0) == ATA_HD_REGISTRY_BUSY);
+    CHECK(ATAHDRegistryRemove(&registry, 0) == ATA_HD_BUSY);
     CHECK(ATAHDRegistryClose(&registry, 0, 1) == ATA_HD_REGISTRY_SUCCESS);
-    CHECK(ATAHDRegistryRemove(&registry, 0) == ATA_HD_REGISTRY_BUSY);
+    CHECK(ATAHDRegistryRemove(&registry, 0) == ATA_HD_BUSY);
     CHECK(ATAHDRegistryClose(&registry, 0, 0) == ATA_HD_REGISTRY_SUCCESS);
     CHECK(ATAHDRegistryClose(&registry, 0, 0) == ATA_HD_REGISTRY_INVALID);
     CHECK(ATAHDRegistryRemove(&registry, 0) == ATA_HD_REGISTRY_SUCCESS);

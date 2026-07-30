@@ -125,6 +125,8 @@ int AHCIBuildPRDT(AHCIPRDTEntry *prd, unsigned int maxPrds,
     total = 0;
     for (index = 0; index < segmentCount; ++index) {
         if (segments[index].length == 0 ||
+            (segments[index].address & 1) != 0 ||
+            (segments[index].length & 1) != 0 ||
             segments[index].address > 0xffffffffU -
                                       (segments[index].length - 1) ||
             segments[index].length > transferBytes - total)
@@ -156,6 +158,10 @@ int AHCIBuildPRDT(AHCIPRDTEntry *prd, unsigned int maxPrds,
 
     if (total != transferBytes)
         return -1;
+    for (index = 0; index < count; ++index) {
+        if ((prd[index].dba & 1) != 0 || (prd[index].dbc_ioc & 1) == 0)
+            return -1;
+    }
     prd[count - 1].dbc_ioc |= 0x80000000U;
     return (int)count;
 }
@@ -165,7 +171,10 @@ void AHCIInitCommandHeader(AHCICommandHeader *header, unsigned int tablePA,
                            unsigned char atapi)
 {
     memset(header, 0, sizeof(*header));
-    header->flags = 5 | (write ? 0x40 : 0) | (atapi ? 0x20 : 0);
-    header->prdtl = prdtCount;
+    if (prdtCount > 32)
+        return;
+    header->flags = (unsigned short)(5U | (write ? 0x40U : 0U) |
+                                     (atapi ? 0x20U : 0U));
+    header->prdtl = (unsigned short)prdtCount;
     header->ctba = tablePA;
 }

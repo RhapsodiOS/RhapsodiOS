@@ -217,6 +217,20 @@ static void test_prdt_builder(void)
     CHECK((prd[1].dbc_ioc & 0x003fffffU) == 4095U);
     CHECK((prd[1].dbc_ioc & 0x80000000U) != 0);
 
+    seg[0].address = 1;
+    seg[0].length = 2;
+    CHECK(AHCIBuildPRDT(prd, 32, seg, 1, 2) == -1);
+    seg[0].address = 0;
+    seg[0].length = 1;
+    CHECK(AHCIBuildPRDT(prd, 32, seg, 1, 1) == -1);
+
+    seg[0].address = 0x00400000;
+    seg[0].length = 131072;
+    CHECK(AHCIBuildPRDT(prd, 32, seg, 1, 131072) == 1);
+    CHECK((prd[0].dbc_ioc & 0x003fffffU) == 131071U);
+    seg[0].length = 131073;
+    CHECK(AHCIBuildPRDT(prd, 32, seg, 1, 131073) != 0);
+
     CHECK(AHCIBuildPRDT(prd, 32, seg, 2, 0) != 0);
     seg[1].length = 0;
     CHECK(AHCIBuildPRDT(prd, 32, seg, 2, 4096) != 0);
@@ -232,6 +246,9 @@ static void test_prdt_builder(void)
         seg[index].address = index * 1024;
         seg[index].length = 512;
     }
+    CHECK(AHCIBuildPRDT(prd, 32, seg, 32, 32 * 512) == 32);
+    CHECK((prd[0].dbc_ioc & 0x80000000U) == 0);
+    CHECK((prd[31].dbc_ioc & 0x80000000U) != 0);
     CHECK(AHCIBuildPRDT(prd, 32, seg, 33, 33 * 512) != 0);
 }
 
@@ -245,6 +262,11 @@ static void test_command_header(void)
     CHECK(header.prdtl == 2 && header.prdbc == 0);
     CHECK(header.ctba == 0x12345000 && header.ctbau == 0);
     CHECK(header.reserved[0] == 0 && header.reserved[3] == 0);
+
+    AHCIInitCommandHeader(&header, 0x12345000, 32, 0, 0);
+    CHECK(header.flags == 5 && header.prdtl == 32);
+    AHCIInitCommandHeader(&header, 0x12345000, 33, 1, 1);
+    CHECK(header.flags == 0 && header.prdtl == 0 && header.ctba == 0);
 }
 
 int main(void)

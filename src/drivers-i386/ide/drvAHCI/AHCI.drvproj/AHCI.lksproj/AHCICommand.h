@@ -21,6 +21,7 @@ int AHCIBuildDMAFIS(unsigned char fis[20], unsigned int lba,
                     unsigned char lba48);
 void AHCIBuildFlushFIS(unsigned char fis[20], unsigned char lba48);
 void AHCIBuildPacketFIS(unsigned char fis[20]);
+/* Status-returning APIs may leave outputs partially written on error. */
 int AHCIParseIdentify(const unsigned short id[256], AHCICapacity *out);
 int AHCISelectDMACommand(unsigned int lba, unsigned int sectors,
                          unsigned char write, unsigned char lba48,
@@ -28,6 +29,7 @@ int AHCISelectDMACommand(unsigned int lba, unsigned int sectors,
 int AHCIBuildPRDT(AHCIPRDTEntry *prd, unsigned int maxPrds,
                   const AHCISegment *segments, unsigned int segmentCount,
                   unsigned int transferBytes);
+/* AHCIInitCommandHeader leaves header zeroed when prdtCount exceeds 32. */
 void AHCIInitCommandHeader(AHCICommandHeader *header, unsigned int tablePA,
                            unsigned int prdtCount, unsigned char write,
                            unsigned char atapi);

@@ -1,0 +1,12 @@
+"Title" = "AHCI Controller";
+"Class Names" = "AHCIController";
+"Family" = "Disk";
+"Instance" = "0";
+"Version" = "1.00";
+"Server Name" = "AHCI";
+"Bus Type" = "PCI";
+"Location" = "";
+"Auto Detect IDs" = "0x29228086";
+"Block Major" = "3";
+"Character Major" = "15";
+"Post-Load" = "PostLoad";

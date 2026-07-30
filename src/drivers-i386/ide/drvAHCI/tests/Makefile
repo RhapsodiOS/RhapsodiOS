@@ -6,13 +6,16 @@ INCLUDES = -I../AHCI.drvproj/AHCI.lksproj \
 
 .PHONY: all check test clean
 
-all: ahci_command_test ahci_state_test ata_hd_registry_test ata_hd_root_test eide_registry_migration_test eide_ioctl_validation_test
+all: ahci_command_test ahci_state_test ahci_scaffold_contract_test ata_hd_registry_test ata_hd_root_test eide_registry_migration_test eide_ioctl_validation_test
 
 ahci_command_test: ahci_command_test.c ../AHCI.drvproj/AHCI.lksproj/AHCICommand.c ../AHCI.drvproj/AHCI.lksproj/AHCICommand.h ../AHCI.drvproj/AHCI.lksproj/AHCIRegs.h
 	$(CC) $(CFLAGS) $(INCLUDES) -o $@ ahci_command_test.c ../AHCI.drvproj/AHCI.lksproj/AHCICommand.c
 
 ahci_state_test: ahci_state_test.c ../AHCI.drvproj/AHCI.lksproj/AHCIState.c ../AHCI.drvproj/AHCI.lksproj/AHCIState.h
 	$(CC) $(CFLAGS) $(INCLUDES) -o $@ ahci_state_test.c ../AHCI.drvproj/AHCI.lksproj/AHCIState.c
+
+ahci_scaffold_contract_test: ahci_scaffold_contract_test.c
+	$(CC) $(CFLAGS) -o $@ ahci_scaffold_contract_test.c
 
 ata_hd_registry_test: ata_hd_registry_test.c ../../../../kernel-7/bsd/dev/ata_hd_registry_core.c ../../../../kernel-7/bsd/dev/ata_hd_registry_core.h
 	$(CC) $(CFLAGS) $(INCLUDES) -o $@ ata_hd_registry_test.c ../../../../kernel-7/bsd/dev/ata_hd_registry_core.c
@@ -31,10 +34,11 @@ check: test
 test: all
 	./ahci_command_test
 	./ahci_state_test
+	./ahci_scaffold_contract_test
 	./ata_hd_registry_test
 	./ata_hd_root_test
 	./eide_registry_migration_test
 	./eide_ioctl_validation_test
 
 clean:
-	rm -f ahci_command_test ahci_state_test ata_hd_registry_test ata_hd_root_test eide_registry_migration_test eide_ioctl_validation_test
+	rm -f ahci_command_test ahci_state_test ahci_scaffold_contract_test ata_hd_registry_test ata_hd_root_test eide_registry_migration_test eide_ioctl_validation_test

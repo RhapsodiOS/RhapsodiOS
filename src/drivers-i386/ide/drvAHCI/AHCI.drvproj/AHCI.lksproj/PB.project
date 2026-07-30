@@ -1,0 +1,18 @@
+{
+    DYNAMIC_CODE_GEN = NO;
+    FILESTABLE = {
+        C_FILES = (AHCICommand.c, AHCIState.c);
+        CLASSES = (AHCIController.m);
+        H_FILES = (AHCIController.h, AHCIRegs.h, AHCICommand.h, AHCIState.h);
+        OTHER_SOURCES = (Load_Commands.sect, Makefile, Makefile.preamble);
+    };
+    LANGUAGE = English;
+    LOCALIZABLE_FILES = {};
+    MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles";
+    NEXTSTEP_BUILDTOOL = /bin/gnumake;
+    NEXTSTEP_COMPILEROPTIONS = "-Wno-format -DDRIVER_PRIVATE";
+    NEXTSTEP_INSTALLDIR = "$(NEXT_ROOT)/private/Drivers";
+    PROJECTNAME = AHCI;
+    PROJECTTYPE = "Kernel Server";
+    PROJECTVERSION = 2.6;
+}

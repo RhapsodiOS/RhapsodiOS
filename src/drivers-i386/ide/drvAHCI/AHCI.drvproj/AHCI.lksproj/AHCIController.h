@@ -4,6 +4,7 @@
 #import <driverkit/IODirectDevice.h>
 #import <driverkit/i386/IOPCIDeviceDescription.h>
 #import <driverkit/i386/IOPCIDirectDevice.h>
+#import <machkit/NXLock.h>
 #import "AHCIHBA.h"
 #import "AHCIPCI.h"
 #import "AHCIShared.h"
@@ -24,12 +25,17 @@
     unsigned int portCount;
     BOOL driverKitInterruptsEnabled;
     BOOL globalInterruptsEnabled;
+    NXLock *recoveryLock;
+    BOOL hbaResetAlreadyTried;
+    BOOL controllerOffline;
+    BOOL controllerRecovering;
 }
 
 + (BOOL)probe:(IOPCIDeviceDescription *)deviceDescription;
 - initFromDeviceDescription:(IOPCIDeviceDescription *)deviceDescription;
 - free;
 - (void)interruptOccurred;
+- (void)recoverController;
 
 @end
 

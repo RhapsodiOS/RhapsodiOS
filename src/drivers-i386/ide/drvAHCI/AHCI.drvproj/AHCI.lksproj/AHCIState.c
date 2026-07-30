@@ -63,3 +63,101 @@ AHCIRecovery AHCIRecoveryFor(unsigned int portIS, unsigned int serr,
         return AHCI_RECOVERY_PORT;
     return AHCI_RECOVERY_NONE;
 }
+
+void AHCICommandArbiterInit(AHCICommandArbiter *arbiter)
+{
+    if (arbiter == 0)
+        return;
+    arbiter->state = AHCI_COMMAND_IDLE;
+    arbiter->generation = 0;
+    arbiter->completions = 0;
+}
+
+unsigned int AHCICommandBegin(AHCICommandArbiter *arbiter)
+{
+    if (arbiter == 0 || arbiter->state == AHCI_COMMAND_PENDING)
+        return 0;
+    ++arbiter->generation;
+    if (arbiter->generation == 0)
+        ++arbiter->generation;
+    arbiter->state = AHCI_COMMAND_PENDING;
+    return arbiter->generation;
+}
+
+static int ahci_command_finish(AHCICommandArbiter *arbiter,
+                               unsigned int generation,
+                               AHCICommandState state)
+{
+    if (arbiter == 0 || arbiter->state != AHCI_COMMAND_PENDING ||
+        generation == 0 || generation != arbiter->generation)
+        return 0;
+    arbiter->state = state;
+    ++arbiter->completions;
+    return 1;
+}
+
+int AHCICommandFinishIRQ(AHCICommandArbiter *arbiter,
+                         unsigned int generation)
+{
+    return ahci_command_finish(arbiter, generation, AHCI_COMMAND_COMPLETE);
+}
+
+int AHCICommandFinishTimeout(AHCICommandArbiter *arbiter,
+                             unsigned int generation)
+{
+    return ahci_command_finish(arbiter, generation,
+                               AHCI_COMMAND_TIMED_OUT);
+}
+
+int AHCICommandAbort(AHCICommandArbiter *arbiter)
+{
+    if (arbiter == 0)
+        return 0;
+    return ahci_command_finish(arbiter, arbiter->generation,
+                               AHCI_COMMAND_TIMED_OUT);
+}
+
+AHCICompletionResult AHCIClassifyCompletion(AHCICompletionSnapshot *snapshot,
+                                             unsigned int requested)
+{
+    if (snapshot == 0)
+        return AHCI_COMPLETION_ERROR;
+    if (snapshot->transferred > requested)
+        snapshot->transferred = requested;
+    if ((snapshot->portIS & (AHCI_PXIS_RECOVERABLE_MASK |
+                             AHCI_PXIS_FATAL_MASK)) != 0 ||
+        (snapshot->serr & AHCI_PXSERR_ERROR_MASK) != 0 ||
+        (snapshot->taskFile & 1U) != 0)
+        return AHCI_COMPLETION_ERROR;
+    if ((snapshot->commandIssue & 1U) != 0)
+        return AHCI_COMPLETION_PENDING;
+    return AHCI_COMPLETION_OK;
+}
+
+int AHCICommandTimeoutDue(const AHCICommandArbiter *arbiter,
+                          unsigned long deadline, unsigned long now)
+{
+    if (arbiter == 0 || deadline == 0)
+        return 0;
+    return arbiter->state == AHCI_COMMAND_PENDING && now >= deadline;
+}
+
+int AHCIRecoveredKindValid(AHCIDeviceKind before, AHCIDeviceKind after)
+{
+    return before == after &&
+           (after == AHCI_DEVICE_SATA || after == AHCI_DEVICE_ATAPI);
+}
+
+AHCIAsyncAction AHCIAsyncInterruptAction(unsigned int portIS,
+                                         unsigned int serr,
+                                         unsigned int ssts)
+{
+    (void)serr;
+    if ((portIS & AHCI_PXIS_FATAL_MASK) != 0)
+        return AHCI_ASYNC_HBA_RECOVERY;
+    if ((portIS & (AHCI_PXIS_PCS | AHCI_PXIS_PRCS)) != 0 &&
+        ((ssts & 0x0000000fU) != 3U ||
+         ((ssts >> 8) & 0x0000000fU) != 1U))
+        return AHCI_ASYNC_PORT_OFFLINE;
+    return AHCI_ASYNC_NONE;
+}

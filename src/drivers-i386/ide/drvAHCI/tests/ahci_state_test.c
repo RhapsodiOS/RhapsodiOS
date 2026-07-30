@@ -74,6 +74,118 @@ static void test_recovery_decisions(void)
           AHCI_RECOVERY_OFFLINE);
 }
 
+static void test_completion_races(void)
+{
+    AHCICommandArbiter arbiter;
+    unsigned int generation;
+
+    AHCICommandArbiterInit(&arbiter);
+    generation = AHCICommandBegin(&arbiter);
+    CHECK(generation != 0);
+    CHECK(AHCICommandFinishIRQ(&arbiter, generation));
+    CHECK(!AHCICommandFinishTimeout(&arbiter, generation));
+    CHECK(arbiter.state == AHCI_COMMAND_COMPLETE);
+    CHECK(arbiter.completions == 1U);
+
+    generation = AHCICommandBegin(&arbiter);
+    CHECK(AHCICommandFinishTimeout(&arbiter, generation));
+    CHECK(!AHCICommandFinishIRQ(&arbiter, generation));
+    CHECK(arbiter.state == AHCI_COMMAND_TIMED_OUT);
+    CHECK(arbiter.completions == 2U);
+}
+
+static void test_stale_and_spurious_completion(void)
+{
+    AHCICommandArbiter arbiter;
+    unsigned int oldGeneration;
+    unsigned int generation;
+
+    AHCICommandArbiterInit(&arbiter);
+    CHECK(!AHCICommandFinishIRQ(&arbiter, 0));
+    CHECK(arbiter.completions == 0U);
+    oldGeneration = AHCICommandBegin(&arbiter);
+    CHECK(AHCICommandFinishIRQ(&arbiter, oldGeneration));
+    generation = AHCICommandBegin(&arbiter);
+    CHECK(generation != oldGeneration);
+    CHECK(!AHCICommandFinishTimeout(&arbiter, oldGeneration));
+    CHECK(arbiter.state == AHCI_COMMAND_PENDING);
+    CHECK(AHCICommandFinishIRQ(&arbiter, generation));
+    CHECK(arbiter.completions == 2U);
+}
+
+static void test_completion_snapshot_classification(void)
+{
+    AHCICompletionSnapshot snapshot;
+
+    snapshot.portIS = 0;
+    snapshot.taskFile = 0;
+    snapshot.serr = 0;
+    snapshot.commandIssue = 0;
+    snapshot.transferred = 8192U;
+    CHECK(AHCIClassifyCompletion(&snapshot, 4096U) == AHCI_COMPLETION_OK);
+    CHECK(snapshot.transferred == 4096U);
+    snapshot.commandIssue = 1U;
+    CHECK(AHCIClassifyCompletion(&snapshot, 4096U) ==
+          AHCI_COMPLETION_PENDING);
+    snapshot.portIS = AHCI_PXIS_TFES;
+    CHECK(AHCIClassifyCompletion(&snapshot, 4096U) ==
+          AHCI_COMPLETION_ERROR);
+}
+
+static void test_dequeued_timeout_cannot_expire_new_deadline(void)
+{
+    AHCICommandArbiter arbiter;
+    unsigned int oldGeneration;
+    unsigned int newGeneration;
+
+    AHCICommandArbiterInit(&arbiter);
+    oldGeneration = AHCICommandBegin(&arbiter);
+    CHECK(AHCICommandFinishIRQ(&arbiter, oldGeneration));
+    newGeneration = AHCICommandBegin(&arbiter);
+    CHECK(!AHCICommandTimeoutDue(&arbiter, 200U, 100U));
+    CHECK(!AHCICommandFinishTimeout(&arbiter, oldGeneration));
+    CHECK(arbiter.state == AHCI_COMMAND_PENDING);
+    CHECK(AHCICommandTimeoutDue(&arbiter, 200U, 200U));
+    CHECK(AHCICommandFinishTimeout(&arbiter, newGeneration));
+}
+
+static void test_destroy_aborts_active_request_once(void)
+{
+    AHCICommandArbiter arbiter;
+    unsigned int generation;
+
+    AHCICommandArbiterInit(&arbiter);
+    CHECK(!AHCICommandAbort(&arbiter));
+    generation = AHCICommandBegin(&arbiter);
+    CHECK(AHCICommandAbort(&arbiter));
+    CHECK(arbiter.state == AHCI_COMMAND_TIMED_OUT);
+    CHECK(!AHCICommandFinishIRQ(&arbiter, generation));
+    CHECK(!AHCICommandAbort(&arbiter));
+    CHECK(arbiter.completions == 1U);
+}
+
+static void test_recovery_requires_same_supported_kind(void)
+{
+    CHECK(AHCIRecoveredKindValid(AHCI_DEVICE_SATA, AHCI_DEVICE_SATA));
+    CHECK(AHCIRecoveredKindValid(AHCI_DEVICE_ATAPI, AHCI_DEVICE_ATAPI));
+    CHECK(!AHCIRecoveredKindValid(AHCI_DEVICE_SATA, AHCI_DEVICE_ATAPI));
+    CHECK(!AHCIRecoveredKindValid(AHCI_DEVICE_ATAPI, AHCI_DEVICE_NONE));
+    CHECK(!AHCIRecoveredKindValid(AHCI_DEVICE_UNSUPPORTED,
+                                  AHCI_DEVICE_UNSUPPORTED));
+}
+
+static void test_async_interrupt_actions(void)
+{
+    CHECK(AHCIAsyncInterruptAction(0, 0, 0x00000103U) ==
+          AHCI_ASYNC_NONE);
+    CHECK(AHCIAsyncInterruptAction(AHCI_PXIS_HBFS, 0, 0x00000103U) ==
+          AHCI_ASYNC_HBA_RECOVERY);
+    CHECK(AHCIAsyncInterruptAction(AHCI_PXIS_PCS, 0, 0) ==
+          AHCI_ASYNC_PORT_OFFLINE);
+    CHECK(AHCIAsyncInterruptAction(AHCI_PXIS_PRCS, 0, 0x00000103U) ==
+          AHCI_ASYNC_NONE);
+}
+
 int main(void)
 {
     test_pi_validation();
@@ -81,6 +193,13 @@ int main(void)
     test_port_classification();
     test_command_completion_requires_ci_clear();
     test_recovery_decisions();
+    test_completion_races();
+    test_stale_and_spurious_completion();
+    test_completion_snapshot_classification();
+    test_dequeued_timeout_cannot_expire_new_deadline();
+    test_destroy_aborts_active_request_once();
+    test_recovery_requires_same_supported_kind();
+    test_async_interrupt_actions();
 
     if (failures != 0) {
         fprintf(stderr, "ahci_state_test: %d failure(s)\n", failures);

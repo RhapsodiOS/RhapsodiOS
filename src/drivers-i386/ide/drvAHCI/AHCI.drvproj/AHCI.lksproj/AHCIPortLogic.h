@@ -3,6 +3,7 @@
 
 #include "AHCIRegs.h"
 #include "AHCIState.h"
+#include "AHCICommand.h"
 
 #define AHCI_PORT_COMMAND_LIST_OFFSET       0U
 #define AHCI_PORT_COMMAND_LIST_BYTES        1024U
@@ -21,9 +22,13 @@
 #define AHCI_ENGINE_TIMEOUT_MS              500U
 #define AHCI_COMRESET_ASSERT_MS             1U
 #define AHCI_LINK_TIMEOUT_MS                10000U
+#define AHCI_TFD_TIMEOUT_MS                 10000U
+#define AHCI_MAX_TRANSFER_BYTES             (128U * 1024U)
 
 #define AHCI_PORT_INITIAL_IE_MASK \
-    (AHCI_PXIS_UFS | AHCI_PXIS_PCS | AHCI_PXIS_PRCS | AHCI_PXIS_IPMS | \
+    (AHCI_PXIS_DHRS | AHCI_PXIS_PSS | AHCI_PXIS_DSS | AHCI_PXIS_SDBS | \
+     AHCI_PXIS_DPS | AHCI_PXIS_UFS | AHCI_PXIS_PCS | AHCI_PXIS_PRCS | \
+     AHCI_PXIS_IPMS | \
      AHCI_PXIS_OFS | AHCI_PXIS_INFS | AHCI_PXIS_IFS | AHCI_PXIS_HBDS | \
      AHCI_PXIS_HBFS | AHCI_PXIS_TFES)
 
@@ -78,10 +83,29 @@ AHCIPortResult AHCIPortInitializeHardware(const AHCIPortOps *ops,
                                           AHCIDeviceKind *kind);
 AHCIPortResult AHCIPortStopHardware(const AHCIPortOps *ops,
                                     unsigned int port);
+AHCIPortResult AHCIPortRecoverHardware(const AHCIPortOps *ops,
+                                       unsigned int port,
+                                       const AHCIPortArena *arena);
 unsigned int AHCIPortCountImplemented(AHCIU32 pi);
 int AHCIPortImplemented(AHCIU32 pi, unsigned int port);
 unsigned int AHCIPortCollectImplemented(AHCIU32 pi, unsigned char *ports,
                                         unsigned int capacity);
 int AHCIPortArenaMayRelease(AHCIPortResult stopResult);
+AHCIPortResult AHCIPortBuildSegments(unsigned long virtualAddress,
+                                     unsigned int length,
+                                     unsigned int pageBytes,
+                                     AHCIPortTranslate translate,
+                                     void *translateContext,
+                                     AHCISegment *segments,
+                                     unsigned int capacity,
+                                     unsigned int *segmentCount);
+int AHCIPortBuildSlot(AHCICommandHeader *header, unsigned char *table,
+                      AHCIU32 tablePhysical, const unsigned char fis[20],
+                      const unsigned char *packet,
+                      unsigned int packetLength,
+                      const AHCISegment *segments,
+                      unsigned int segmentCount,
+                      unsigned int transferBytes,
+                      unsigned char write, unsigned char atapi);
 
 #endif

@@ -34,6 +34,21 @@ static int translate(void *context, unsigned long virtualAddress,
     return 1;
 }
 
+static int translate_fragmented(void *context,
+                                unsigned long virtualAddress,
+                                AHCIU32 *physicalAddress)
+{
+    TranslateFake *fake;
+    unsigned long offset;
+
+    fake = (TranslateFake *)context;
+    offset = virtualAddress - fake->virtualBase;
+    *physicalAddress = fake->physicalBase +
+                       (AHCIU32)((offset / 4096U) * 8192U) +
+                       (AHCIU32)(offset & 4095U);
+    return 1;
+}
+
 static void test_arena_layout(void)
 {
     AHCIPortArena arena;
@@ -536,6 +551,127 @@ static void test_arena_release_requires_a_stopped_engine(void)
     CHECK(!AHCIPortArenaMayRelease(AHCI_PORT_BAD_ARGUMENT));
 }
 
+static void test_buffer_translation_coalesces_pages(void)
+{
+    TranslateFake fake;
+    AHCISegment segments[32];
+    unsigned int count;
+
+    fake.virtualBase = 0x10003UL;
+    fake.physicalBase = 0x20003U;
+    fake.discontinuity = 0;
+    fake.failure = 0;
+    CHECK(AHCIPortBuildSegments(0x10003UL, 8192U, 4096U, translate, &fake,
+                                segments, 32U, &count) ==
+          AHCI_PORT_SUCCESS);
+    CHECK(count == 1U);
+    CHECK(segments[0].address == 0x20003U);
+    CHECK(segments[0].length == 8192U);
+
+    fake.discontinuity = 0x11000UL;
+    CHECK(AHCIPortBuildSegments(0x10003UL, 8192U, 4096U, translate, &fake,
+                                segments, 32U, &count) ==
+          AHCI_PORT_SUCCESS);
+    CHECK(count == 2U);
+}
+
+static void test_buffer_translation_rejects_unsafe_requests(void)
+{
+    TranslateFake fake;
+    AHCISegment segments[32];
+    unsigned int count;
+
+    fake.virtualBase = 0x1000UL;
+    fake.physicalBase = 0xfffff800U;
+    fake.discontinuity = 0;
+    fake.failure = 0;
+    CHECK(AHCIPortBuildSegments(0x1000UL, 8192U, 4096U, translate, &fake,
+                                segments, 32U, &count) ==
+          AHCI_PORT_ADDRESS_ERROR);
+    fake.physicalBase = 0x2000U;
+    CHECK(AHCIPortBuildSegments(0x1000UL, 0, 4096U, translate, &fake,
+                                segments, 32U, &count) ==
+          AHCI_PORT_BAD_ARGUMENT);
+    CHECK(AHCIPortBuildSegments(0x1000UL, AHCI_MAX_TRANSFER_BYTES + 1U,
+                                4096U, translate, &fake, segments, 32U,
+                                &count) == AHCI_PORT_BAD_ARGUMENT);
+    fake.virtualBase = 0x1000UL;
+    fake.physicalBase = 0x2000U;
+    CHECK(AHCIPortBuildSegments(0x1000UL, AHCI_MAX_TRANSFER_BYTES,
+                                4096U, translate_fragmented, &fake,
+                                segments, 31U, &count) ==
+          AHCI_PORT_ADDRESS_ERROR);
+    CHECK(AHCIPortBuildSegments(0x1000UL, AHCI_MAX_TRANSFER_BYTES,
+                                4096U, translate_fragmented, &fake,
+                                segments, 32U, &count) ==
+          AHCI_PORT_SUCCESS);
+    CHECK(count == 32U);
+}
+
+static void test_slot_zero_command_layout(void)
+{
+    unsigned char table[AHCI_PORT_COMMAND_TABLE_BYTES];
+    AHCICommandHeader header;
+    AHCISegment segment;
+    unsigned char fis[20];
+    unsigned char packet[12];
+
+    memset(fis, 0x5a, sizeof(fis));
+    memset(packet, 0xa5, sizeof(packet));
+    segment.address = 0x3000U;
+    segment.length = 4096U;
+    CHECK(AHCIPortBuildSlot(&header, table, 0x9000U, fis, packet, 12U,
+                            &segment, 1U, 4096U, 0, 1));
+    CHECK(header.ctba == 0x9000U);
+    CHECK(header.ctbau == 0);
+    CHECK(header.prdtl == 1U);
+    CHECK((header.flags & 0x1fU) == 5U);
+    CHECK((header.flags & (1U << 5)) != 0);
+    CHECK(memcmp(table, fis, sizeof(fis)) == 0);
+    CHECK(memcmp(table + 64U, packet, sizeof(packet)) == 0);
+    CHECK(((AHCIPRDTEntry *)(table + 128U))[0].dba == 0x3000U);
+}
+
+static void test_recovery_is_port_local_and_bounded(void)
+{
+    AHCIPortOps ops;
+    AHCIPortArena arena;
+    PortFake fake;
+
+    init_active_fake(&fake, AHCI_SIG_ATA);
+    memset(&arena, 0, sizeof(arena));
+    arena.physicalBase = 0xc000U;
+    arena.commandListOffset = AHCI_PORT_COMMAND_LIST_OFFSET;
+    arena.receivedFISOffset = AHCI_PORT_RECEIVED_FIS_OFFSET;
+    arena.commandTableOffset = AHCI_PORT_COMMAND_TABLE_OFFSET;
+    ops.context = &fake;
+    ops.read = port_read;
+    ops.write = port_write;
+    ops.delay = port_delay;
+    ops.barrier = port_barrier;
+    CHECK(AHCIPortRecoverHardware(&ops, 0U, &arena) ==
+          AHCI_PORT_SUCCESS);
+    CHECK(fake.comresetAsserted);
+    CHECK(fake.comresetReleased);
+    CHECK(fake.registers[AHCI_PX_CLB / 4U] == 0xc000U);
+    CHECK(fake.registers[AHCI_PX_IE / 4U] == AHCI_PORT_INITIAL_IE_MASK);
+
+    init_active_fake(&fake, AHCI_SIG_ATA);
+    fake.fisStuck = 1;
+    CHECK(AHCIPortRecoverHardware(&ops, 0U, &arena) ==
+          AHCI_PORT_ENGINE_TIMEOUT);
+    CHECK(fake.delayedMilliseconds == AHCI_ENGINE_TIMEOUT_MS);
+}
+
+static void test_completion_interrupts_are_enabled(void)
+{
+    CHECK((AHCI_PORT_INITIAL_IE_MASK & AHCI_PXIS_DHRS) != 0);
+    CHECK((AHCI_PORT_INITIAL_IE_MASK & AHCI_PXIS_PSS) != 0);
+    CHECK((AHCI_PORT_INITIAL_IE_MASK & AHCI_PXIS_DSS) != 0);
+    CHECK((AHCI_PORT_INITIAL_IE_MASK & AHCI_PXIS_SDBS) != 0);
+    CHECK((AHCI_PORT_INITIAL_IE_MASK & AHCI_PXIS_DPS) != 0);
+}
+
 int main(void)
 {
     test_arena_layout();
@@ -549,6 +685,11 @@ int main(void)
     test_port_31_register_window();
     test_sparse_pi_includes_port_31();
     test_arena_release_requires_a_stopped_engine();
+    test_buffer_translation_coalesces_pages();
+    test_buffer_translation_rejects_unsafe_requests();
+    test_slot_zero_command_layout();
+    test_recovery_is_port_local_and_bounded();
+    test_completion_interrupts_are_enabled();
     if (failures != 0)
         return 1;
     printf("ahci_port_test: all tests passed\n");

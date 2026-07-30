@@ -184,6 +184,11 @@ static int AHCIVersionIsCommon(AHCIU32 version)
         [self free];
         return nil;
     }
+    recoveryLock = [[NXLock alloc] init];
+    if (recoveryLock == nil) {
+        [self free];
+        return nil;
+    }
     [self setName:"AHCI"];
     [self setDeviceKind:"Other"];
     abarAddress = 0;
@@ -225,6 +230,7 @@ static int AHCIVersionIsCommon(AHCIU32 version)
             [self free];
             return nil;
         }
+        [ports[port] setController:self];
         ++portCount;
         kind = [ports[port] deviceKind];
         if (kind == AHCI_DEVICE_SATA)
@@ -290,6 +296,11 @@ static int AHCIVersionIsCommon(AHCIU32 version)
     }
     portCount = 0;
 
+    if (recoveryLock != nil) {
+        [recoveryLock free];
+        recoveryLock = nil;
+    }
+
     if (abarMapped) {
         [self unmapMemoryRange:0 from:abarAddress];
         abarMapped = NO;
@@ -307,6 +318,69 @@ static int AHCIVersionIsCommon(AHCIU32 version)
         pciCommandChanged = NO;
     }
     return [super free];
+}
+
+- (void)recoverController
+{
+    AHCIHBAOps ops;
+    AHCIHBAResult resetResult;
+    AHCIU32 ghc;
+    unsigned int port;
+
+    if (recoveryLock == nil)
+        return;
+    [recoveryLock lock];
+    if (controllerOffline) {
+        [recoveryLock unlock];
+        return;
+    }
+    if (hbaResetAlreadyTried) {
+        controllerOffline = YES;
+        ghc = AHCIMMIORead(&mmio, AHCI_REG_GHC);
+        AHCIMMIOWrite(&mmio, AHCI_REG_GHC, ghc & ~AHCI_GHC_IE);
+        AHCIMMIOBarrier(&mmio);
+        globalInterruptsEnabled = NO;
+        [recoveryLock unlock];
+        return;
+    }
+    controllerRecovering = YES;
+    hbaResetAlreadyTried = YES;
+    globalInterruptsEnabled = NO;
+    ghc = AHCIMMIORead(&mmio, AHCI_REG_GHC);
+    AHCIMMIOWrite(&mmio, AHCI_REG_GHC, ghc & ~AHCI_GHC_IE);
+    AHCIMMIOBarrier(&mmio);
+    for (port = 0; port < AHCI_MAX_PORTS; ++port) {
+        if (ports[port] != nil)
+            [ports[port] controllerWillReset];
+    }
+    ops.context = &mmio;
+    ops.read = AHCIMMIORead;
+    ops.write = AHCIMMIOWrite;
+    ops.delay = AHCIDelayMilliseconds;
+    ops.barrier = AHCIMMIOBarrier;
+    resetResult = AHCIHBAInitialize(&ops, &hbaInfo);
+    if (resetResult != AHCI_HBA_SUCCESS) {
+        controllerOffline = YES;
+        controllerRecovering = NO;
+        for (port = 0; port < AHCI_MAX_PORTS; ++port) {
+            if (ports[port] != nil)
+                [ports[port] controllerResetFailed];
+        }
+        [recoveryLock unlock];
+        return;
+    }
+    for (port = 0; port < AHCI_MAX_PORTS; ++port) {
+        if (ports[port] != nil)
+            [ports[port] controllerDidReset];
+    }
+    ghc = AHCIMMIORead(&mmio, AHCI_REG_GHC);
+    AHCIMMIOWrite(&mmio, AHCI_REG_GHC,
+                  ghc | AHCI_GHC_AE | AHCI_GHC_IE);
+    AHCIMMIOBarrier(&mmio);
+    globalInterruptsEnabled = YES;
+    hbaResetAlreadyTried = NO;
+    controllerRecovering = NO;
+    [recoveryLock unlock];
 }
 
 - (void)interruptOccurred

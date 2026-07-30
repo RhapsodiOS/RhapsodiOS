@@ -12,34 +12,29 @@
 
 typedef char PPCDBDMAWordMustBe32Bits[(sizeof(unsigned int) == 4) ? 1 : -1];
 
-typedef struct {
-    unsigned long physical;
-    unsigned long count;
-    unsigned long interrupt;
-} PPCDBDMAChunk;
-
-static void store_be32(unsigned char *bytes, unsigned long value)
+static void store_le32(unsigned char *bytes, unsigned long value)
 {
-    bytes[0] = (unsigned char)(value >> 24);
-    bytes[1] = (unsigned char)(value >> 16);
-    bytes[2] = (unsigned char)(value >> 8);
-    bytes[3] = (unsigned char)value;
+    bytes[0] = (unsigned char)value;
+    bytes[1] = (unsigned char)(value >> 8);
+    bytes[2] = (unsigned char)(value >> 16);
+    bytes[3] = (unsigned char)(value >> 24);
 }
 
-static unsigned long load_be32(const unsigned char *bytes)
+static unsigned long load_le32(const unsigned char *bytes)
 {
-    return ((unsigned long)bytes[0] << 24) |
-        ((unsigned long)bytes[1] << 16) |
-        ((unsigned long)bytes[2] << 8) | (unsigned long)bytes[3];
+    return (unsigned long)bytes[0] |
+        ((unsigned long)bytes[1] << 8) |
+        ((unsigned long)bytes[2] << 16) |
+        ((unsigned long)bytes[3] << 24);
 }
 
 static void store_descriptor(unsigned char *bytes, unsigned long operation,
     unsigned long address, unsigned long dependency, unsigned long result)
 {
-    store_be32(bytes, operation);
-    store_be32(bytes + 4, address);
-    store_be32(bytes + 8, dependency);
-    store_be32(bytes + 12, result);
+    store_le32(bytes, operation);
+    store_le32(bytes + 4, address);
+    store_le32(bytes + 8, dependency);
+    store_le32(bytes + 12, result);
 }
 
 static int aligned_16(const void *pointer)
@@ -47,23 +42,57 @@ static int aligned_16(const void *pointer)
     return (((size_t)pointer & 15U) == 0U);
 }
 
-static PPCDBDMAStatus collect_chunks(PPCDBDMAChunk *chunks,
-    unsigned long *chunkCount, PPCDBDMADirection direction,
-    const unsigned char *buffer, unsigned long bufferBytes,
+static int ranges_overlap(const void *first, unsigned long firstBytes,
+    const void *second, unsigned long secondBytes)
+{
+    size_t a;
+    size_t b;
+    a = (size_t)first;
+    b = (size_t)second;
+    if (a <= b)
+        return b - a < (size_t)firstBytes;
+    return a - b < (size_t)secondBytes;
+}
+
+PPCDBDMAStatus PPCDBDMABuildRing(PPCDBDMARing *ring,
+    const PPCDBDMAStorage *storage, PPCDBDMADirection direction,
+    const void *buffer, unsigned long bufferBytes,
     unsigned long periodBytes, const PPCDBDMAOps *ops)
 {
+    PPCDBDMARing built;
+    unsigned char *encoded;
+    unsigned long chunkCount;
     unsigned long offset;
     unsigned long periodRemaining;
     unsigned long physical;
     unsigned long contiguous;
     unsigned long count;
+    unsigned long command;
+    unsigned long operation;
+    unsigned long needed;
     PPCDBDMAStatus status;
-    (void)direction;
+    if (ring == 0 || storage == 0 || buffer == 0 || ops == 0 ||
+        ops->translate == 0 || bufferBytes == 0UL || periodBytes == 0UL ||
+        periodBytes > bufferBytes || bufferBytes % periodBytes != 0UL ||
+        (direction != kPPCDBDMAInput && direction != kPPCDBDMAOutput))
+        return kPPCDBDMAInvalid;
+    if (storage->logical == 0 || storage->scratch == 0)
+        return kPPCDBDMAInvalid;
+    if (!aligned_16(storage->logical) || !aligned_16(storage->scratch) ||
+        (storage->physical & 15UL) != 0UL)
+        return kPPCDBDMAMisaligned;
+    if (storage->bytes > PPC_DBDMA_MAX_RING_BYTES)
+        return kPPCDBDMAOversized;
+    if (ranges_overlap(storage->logical, storage->bytes, storage->scratch,
+        storage->scratchBytes))
+        return kPPCDBDMAInvalid;
+    encoded = (unsigned char *)storage->scratch;
+    chunkCount = 0UL;
     offset = 0UL;
-    *chunkCount = 0UL;
+    command = direction == kPPCDBDMAInput ? 2UL : 0UL;
     while (offset < bufferBytes) {
-        status = ops->translate(ops->context, buffer + offset, &physical,
-            &contiguous);
+        status = ops->translate(ops->context,
+            (const unsigned char *)buffer + offset, &physical, &contiguous);
         if (status != kPPCDBDMAOK || contiguous == 0UL)
             return status == kPPCDBDMAOK ? kPPCDBDMAUnmappable : status;
         count = bufferBytes - offset;
@@ -77,63 +106,25 @@ static PPCDBDMAStatus collect_chunks(PPCDBDMAChunk *chunks,
         if (physical > 0xffffffffUL ||
             count - 1UL > 0xffffffffUL - physical)
             return kPPCDBDMAOverflow;
-        if (*chunkCount >= PPC_DBDMA_MAX_DESCRIPTORS - 1UL)
+        needed = (chunkCount + 2UL) * PPC_DBDMA_DESCRIPTOR_BYTES;
+        if (needed > storage->bytes || needed > storage->scratchBytes ||
+            chunkCount >= PPC_DBDMA_MAX_DESCRIPTORS - 1UL)
             return kPPCDBDMAOversized;
-        chunks[*chunkCount].physical = physical;
-        chunks[*chunkCount].count = count;
-        chunks[*chunkCount].interrupt =
-            ((offset + count) % periodBytes == 0UL) ? 3UL : 0UL;
-        ++*chunkCount;
+        operation = (command << 28) |
+            ((((offset + count) % periodBytes == 0UL) ? 3UL : 0UL) << 20) |
+            count;
+        store_descriptor(encoded + chunkCount * PPC_DBDMA_DESCRIPTOR_BYTES,
+            operation, physical, 0UL, 0UL);
+        ++chunkCount;
         offset += count;
     }
-    return kPPCDBDMAOK;
-}
-
-PPCDBDMAStatus PPCDBDMABuildRing(PPCDBDMARing *ring,
-    const PPCDBDMAStorage *storage, PPCDBDMADirection direction,
-    const void *buffer, unsigned long bufferBytes,
-    unsigned long periodBytes, const PPCDBDMAOps *ops)
-{
-    PPCDBDMAChunk chunks[PPC_DBDMA_MAX_DESCRIPTORS - 1UL];
-    PPCDBDMARing built;
-    unsigned char encoded[PPC_DBDMA_MAX_RING_BYTES];
-    unsigned long chunkCount;
-    unsigned long index;
-    unsigned long command;
-    unsigned long operation;
-    unsigned long needed;
-    PPCDBDMAStatus status;
-    if (ring == 0 || storage == 0 || buffer == 0 || ops == 0 ||
-        ops->translate == 0 || bufferBytes == 0UL || periodBytes == 0UL ||
-        periodBytes > bufferBytes || bufferBytes % periodBytes != 0UL ||
-        (direction != kPPCDBDMAInput && direction != kPPCDBDMAOutput))
-        return kPPCDBDMAInvalid;
-    if (storage->logical == 0 || !aligned_16(storage->logical) ||
-        (storage->physical & 15UL) != 0UL)
-        return kPPCDBDMAMisaligned;
-    if (storage->bytes > PPC_DBDMA_MAX_RING_BYTES)
-        return kPPCDBDMAOversized;
-    status = collect_chunks(chunks, &chunkCount, direction,
-        (const unsigned char *)buffer, bufferBytes, periodBytes, ops);
-    if (status != kPPCDBDMAOK)
-        return status;
     needed = (chunkCount + 1UL) * PPC_DBDMA_DESCRIPTOR_BYTES;
-    if (needed > storage->bytes)
-        return kPPCDBDMAOversized;
 #if ULONG_MAX > 0xffffffffUL
     if (storage->physical > 0xffffffffUL)
         return kPPCDBDMAOverflow;
 #endif
     if (needed - 1UL > 0xffffffffUL - storage->physical)
         return kPPCDBDMAOverflow;
-    memset(encoded, 0, sizeof(encoded));
-    command = direction == kPPCDBDMAInput ? 2UL : 0UL;
-    for (index = 0UL; index < chunkCount; ++index) {
-        operation = (command << 28) | (chunks[index].interrupt << 20) |
-            chunks[index].count;
-        store_descriptor(encoded + index * PPC_DBDMA_DESCRIPTOR_BYTES,
-            operation, chunks[index].physical, 0UL, 0UL);
-    }
     operation = (6UL << 28) | (3UL << 18);
     store_descriptor(encoded + chunkCount * PPC_DBDMA_DESCRIPTOR_BYTES,
         operation, 0UL, storage->physical, 0UL);
@@ -158,15 +149,21 @@ PPCDBDMAStatus PPCDBDMALoadDescriptor(const PPCDBDMARing *ring,
         index >= ring->descriptorCount)
         return kPPCDBDMAInvalid;
     bytes = ring->descriptors + index * PPC_DBDMA_DESCRIPTOR_BYTES;
-    descriptor->operation = load_be32(bytes);
-    descriptor->address = load_be32(bytes + 4);
-    descriptor->dependency = load_be32(bytes + 8);
-    descriptor->result = load_be32(bytes + 12);
+    descriptor->operation = load_le32(bytes);
+    descriptor->address = load_le32(bytes + 4);
+    descriptor->dependency = load_le32(bytes + 8);
+    descriptor->result = load_le32(bytes + 12);
     return kPPCDBDMAOK;
 }
 
+static int valid_coherency_ops(const PPCDBDMAOps *ops)
+{
+    return ops != 0 && ops->publish != 0 && ops->invalidate != 0 &&
+        ops->barrier != 0;
+}
+
 PPCDBDMAStatus PPCDBDMAServiceCompletions(PPCDBDMARing *ring,
-    PPCDBDMACompletion *completion)
+    const PPCDBDMAOps *ops, PPCDBDMACompletion *completion)
 {
     PPCDBDMACompletion captured;
     PPCDBDMADescriptor descriptor;
@@ -174,17 +171,27 @@ PPCDBDMAStatus PPCDBDMAServiceCompletions(PPCDBDMARing *ring,
     unsigned long residual;
     unsigned long requested;
     unsigned char *result;
+    unsigned long originalResult;
+    PPCDBDMAStatus coherencyStatus;
     if (ring == 0 || completion == 0 || ring->descriptors == 0 ||
-        ring->dataDescriptorCount == 0UL)
+        ring->dataDescriptorCount == 0UL || !valid_coherency_ops(ops))
         return kPPCDBDMAInvalid;
     memset(&captured, 0, sizeof(captured));
+    coherencyStatus = ops->invalidate(ops->coherencyContext,
+        ring->descriptors,
+        ring->descriptorCount * PPC_DBDMA_DESCRIPTOR_BYTES);
+    if (coherencyStatus != kPPCDBDMAOK)
+        return coherencyStatus;
+    coherencyStatus = ops->barrier(ops->coherencyContext);
+    if (coherencyStatus != kPPCDBDMAOK)
+        return coherencyStatus;
     while (captured.descriptors < ring->dataDescriptorCount) {
         if (PPCDBDMALoadDescriptor(ring, ring->consumer, &descriptor) !=
             kPPCDBDMAOK)
             return kPPCDBDMAInvalid;
         status = descriptor.result >> 16;
         residual = descriptor.result & 0xffffUL;
-        if (status == 0UL)
+        if ((status & kPPCDBDMAActive) == 0UL)
             break;
         requested = descriptor.operation & 0xffffUL;
         captured.lastStatus = status;
@@ -194,17 +201,22 @@ PPCDBDMAStatus PPCDBDMAServiceCompletions(PPCDBDMARing *ring,
             captured.fault = 1;
             ring->faultStatus = status;
             ring->state = kPPCDBDMAFaulted;
-        } else {
-            captured.bytes += requested - residual;
+            break;
         }
+        captured.bytes += requested - residual;
         result = ring->descriptors +
             ring->consumer * PPC_DBDMA_DESCRIPTOR_BYTES + 12;
-        store_be32(result, 0UL);
+        originalResult = descriptor.result;
+        store_le32(result, 0UL);
+        coherencyStatus = ops->publish(ops->coherencyContext, result, 4UL);
+        if (coherencyStatus != kPPCDBDMAOK) {
+            store_le32(result, originalResult);
+            ring->state = kPPCDBDMAFaulted;
+            return coherencyStatus;
+        }
         ++ring->consumer;
         if (ring->consumer == ring->dataDescriptorCount)
             ring->consumer = 0UL;
-        if (captured.fault)
-            break;
     }
     captured.spurious = captured.descriptors == 0UL;
     *completion = captured;
@@ -227,6 +239,12 @@ static int valid_register_ops(const PPCDBDMAOps *ops)
         ops->writeRegister != 0 && ops->now != 0;
 }
 
+static int deadline_expired(const PPCDBDMAOps *ops, unsigned long deadline)
+{
+    return deadline == 0UL ||
+        ops->now(ops->registerContext) >= deadline;
+}
+
 static PPCDBDMATransition transition_result(PPCDBDMAStatus status,
     int sharedClockInvalidated)
 {
@@ -241,7 +259,7 @@ static PPCDBDMAStatus wait_clear(const PPCDBDMAOps *ops,
 {
     unsigned long status;
     for (;;) {
-        if (ops->now(ops->registerContext) >= deadline)
+        if (deadline_expired(ops, deadline))
             return kPPCDBDMATimeout;
         status = ops->readRegister(ops->registerContext,
             kPPCDBDMARegStatus);
@@ -255,14 +273,24 @@ PPCDBDMATransition PPCDBDMAStartRing(PPCDBDMARing *ring,
 {
     PPCDBDMAStatus status;
     if (ring == 0 || ring->state != kPPCDBDMAReady ||
-        !valid_register_ops(ops))
+        !valid_register_ops(ops) || !valid_coherency_ops(ops))
         return transition_result(kPPCDBDMAInvalid, 0);
+    if (deadline_expired(ops, deadline))
+        return transition_result(kPPCDBDMATimeout, 0);
+    status = ops->publish(ops->coherencyContext, ring->descriptors,
+        ring->descriptorCount * PPC_DBDMA_DESCRIPTOR_BYTES);
+    if (status == kPPCDBDMAOK)
+        status = ops->barrier(ops->coherencyContext);
+    if (status != kPPCDBDMAOK)
+        return transition_result(status, 0);
+    if (deadline_expired(ops, deadline))
+        return transition_result(kPPCDBDMATimeout, 0);
     ops->writeRegister(ops->registerContext, kPPCDBDMARegControl,
         PPCDBDMAClearControl(PPC_DBDMA_ALL_CONTROL));
     status = wait_clear(ops, kPPCDBDMAActive, deadline);
     if (status != kPPCDBDMAOK) {
         ring->state = kPPCDBDMAFaulted;
-        return transition_result(status, 1);
+        return transition_result(status, 0);
     }
     ops->writeRegister(ops->registerContext, kPPCDBDMARegCommandPtr,
         ring->descriptorPhysical);
@@ -279,6 +307,8 @@ PPCDBDMATransition PPCDBDMAStopRing(PPCDBDMARing *ring,
     if (ring == 0 || ring->state != kPPCDBDMARunning ||
         !valid_register_ops(ops))
         return transition_result(kPPCDBDMAInvalid, 0);
+    if (deadline_expired(ops, deadline))
+        return transition_result(kPPCDBDMATimeout, 0);
     ops->writeRegister(ops->registerContext, kPPCDBDMARegControl,
         PPCDBDMAClearControl(kPPCDBDMARun) |
         PPCDBDMASetControl(kPPCDBDMAFlushBit));
@@ -286,7 +316,7 @@ PPCDBDMATransition PPCDBDMAStopRing(PPCDBDMARing *ring,
         deadline);
     if (status != kPPCDBDMAOK) {
         ring->state = kPPCDBDMAFaulted;
-        return transition_result(status, 1);
+        return transition_result(status, 0);
     }
     ring->state = kPPCDBDMAReady;
     return transition_result(kPPCDBDMAOK, 0);
@@ -299,12 +329,14 @@ PPCDBDMATransition PPCDBDMAFlushRing(PPCDBDMARing *ring,
     if (ring == 0 || ring->state != kPPCDBDMARunning ||
         !valid_register_ops(ops))
         return transition_result(kPPCDBDMAInvalid, 0);
+    if (deadline_expired(ops, deadline))
+        return transition_result(kPPCDBDMATimeout, 0);
     ops->writeRegister(ops->registerContext, kPPCDBDMARegControl,
         PPCDBDMASetControl(kPPCDBDMAFlushBit));
     status = wait_clear(ops, kPPCDBDMAFlushBit, deadline);
     if (status != kPPCDBDMAOK) {
         ring->state = kPPCDBDMAFaulted;
-        return transition_result(status, 1);
+        return transition_result(status, 0);
     }
     return transition_result(kPPCDBDMAOK, 0);
 }
@@ -313,17 +345,33 @@ PPCDBDMATransition PPCDBDMAResetRing(PPCDBDMARing *ring,
     const PPCDBDMAOps *ops, unsigned long deadline)
 {
     PPCDBDMAStatus status;
+    unsigned long index;
     if (ring == 0 || (ring->state != kPPCDBDMARunning &&
-        ring->state != kPPCDBDMAFaulted) || !valid_register_ops(ops))
+        ring->state != kPPCDBDMAFaulted) || !valid_register_ops(ops) ||
+        !valid_coherency_ops(ops))
         return transition_result(kPPCDBDMAInvalid, 0);
+    if (deadline_expired(ops, deadline))
+        return transition_result(kPPCDBDMATimeout, 0);
     ops->writeRegister(ops->registerContext, kPPCDBDMARegControl,
         PPCDBDMAClearControl(PPC_DBDMA_ALL_CONTROL));
     status = wait_clear(ops, kPPCDBDMAActive, deadline);
     if (status != kPPCDBDMAOK) {
         ring->state = kPPCDBDMAFaulted;
-        return transition_result(status, 1);
+        return transition_result(status, 0);
+    }
+    for (index = 0UL; index < ring->descriptorCount; ++index)
+        store_le32(ring->descriptors +
+            index * PPC_DBDMA_DESCRIPTOR_BYTES + 12UL, 0UL);
+    status = ops->publish(ops->coherencyContext, ring->descriptors,
+        ring->descriptorCount * PPC_DBDMA_DESCRIPTOR_BYTES);
+    if (status == kPPCDBDMAOK)
+        status = ops->barrier(ops->coherencyContext);
+    if (status != kPPCDBDMAOK) {
+        ring->state = kPPCDBDMAFaulted;
+        return transition_result(status, 0);
     }
     ring->state = kPPCDBDMAReady;
     ring->faultStatus = 0UL;
+    ring->consumer = 0UL;
     return transition_result(kPPCDBDMAOK, 0);
 }

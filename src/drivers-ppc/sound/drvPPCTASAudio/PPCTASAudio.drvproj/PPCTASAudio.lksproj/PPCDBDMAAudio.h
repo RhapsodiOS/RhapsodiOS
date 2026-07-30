@@ -13,7 +13,8 @@ typedef enum {
     kPPCDBDMAOverflow,
     kPPCDBDMAOversized,
     kPPCDBDMATimeout,
-    kPPCDBDMAFault
+    kPPCDBDMAFault,
+    kPPCDBDMACoherency
 } PPCDBDMAStatus;
 
 typedef enum {
@@ -54,6 +55,13 @@ typedef struct {
     void *logical;
     unsigned long physical;
     unsigned long bytes;
+    /*
+     * Caller-owned ordinary memory used only while building the ring.
+     * It must be 16-byte aligned, large enough for the completed ring, and
+     * must not overlap the published logical storage.
+     */
+    void *scratch;
+    unsigned long scratchBytes;
 } PPCDBDMAStorage;
 
 typedef PPCDBDMAStatus (*PPCDBDMATranslate)(void *context,
@@ -64,6 +72,9 @@ typedef unsigned long (*PPCDBDMARegisterRead)(void *context,
 typedef void (*PPCDBDMARegisterWrite)(void *context, unsigned long reg,
     unsigned long value);
 typedef unsigned long (*PPCDBDMANow)(void *context);
+typedef PPCDBDMAStatus (*PPCDBDMARangeOperation)(void *context,
+    void *address, unsigned long bytes);
+typedef PPCDBDMAStatus (*PPCDBDMABarrier)(void *context);
 
 typedef struct {
     void *context;
@@ -72,6 +83,10 @@ typedef struct {
     PPCDBDMARegisterRead readRegister;
     PPCDBDMARegisterWrite writeRegister;
     PPCDBDMANow now;
+    void *coherencyContext;
+    PPCDBDMARangeOperation publish;
+    PPCDBDMARangeOperation invalidate;
+    PPCDBDMABarrier barrier;
 } PPCDBDMAOps;
 
 typedef struct {
@@ -107,7 +122,7 @@ PPCDBDMAStatus PPCDBDMABuildRing(PPCDBDMARing *ring,
 PPCDBDMAStatus PPCDBDMALoadDescriptor(const PPCDBDMARing *ring,
     unsigned long index, PPCDBDMADescriptor *descriptor);
 PPCDBDMAStatus PPCDBDMAServiceCompletions(PPCDBDMARing *ring,
-    PPCDBDMACompletion *completion);
+    const PPCDBDMAOps *ops, PPCDBDMACompletion *completion);
 
 unsigned long PPCDBDMASetControl(unsigned long mask);
 unsigned long PPCDBDMAClearControl(unsigned long mask);

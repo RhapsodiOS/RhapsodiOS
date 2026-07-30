@@ -18,6 +18,7 @@ static int failures;
 
 typedef struct {
     unsigned char bytes[PPC_DBDMA_MAX_RING_BYTES + 15UL];
+    unsigned char scratch[PPC_DBDMA_MAX_RING_BYTES + 15UL];
 } DMARingBytes;
 
 typedef struct {
@@ -39,6 +40,13 @@ typedef struct {
     unsigned long now;
     unsigned long tick;
     unsigned long timeCalls;
+    unsigned long events[64];
+    unsigned long eventCount;
+    unsigned long failPublish;
+    unsigned long failInvalidate;
+    unsigned long failBarrier;
+    void *lastAddress;
+    unsigned long lastBytes;
 } DMARegisterMock;
 
 static unsigned char dmaBuffer[DMA_BUFFER_BYTES];
@@ -73,6 +81,7 @@ static unsigned long dma_read_register(void *context, unsigned long reg)
 {
     DMARegisterMock *mock;
     mock = (DMARegisterMock *)context;
+    mock->events[mock->eventCount++] = 4UL;
     if (reg != kPPCDBDMARegStatus || mock->statusIndex >= mock->statusCount)
         return 0UL;
     return mock->status[mock->statusIndex++];
@@ -83,6 +92,7 @@ static void dma_write_register(void *context, unsigned long reg,
 {
     DMARegisterMock *mock;
     mock = (DMARegisterMock *)context;
+    mock->events[mock->eventCount++] = 3UL;
     if (mock->writeCount < 16UL) {
         mock->writes[mock->writeCount][0] = reg;
         mock->writes[mock->writeCount][1] = value;
@@ -99,6 +109,51 @@ static unsigned long dma_now(void *context)
     mock->now += mock->tick;
     ++mock->timeCalls;
     return result;
+}
+
+static PPCDBDMAStatus dma_publish(void *context, void *address,
+    unsigned long bytes)
+{
+    DMARegisterMock *mock;
+    mock = (DMARegisterMock *)context;
+    mock->events[mock->eventCount++] = 1UL;
+    mock->lastAddress = address;
+    mock->lastBytes = bytes;
+    if (mock->failPublish != 0UL) {
+        --mock->failPublish;
+        if (mock->failPublish == 0UL)
+            return kPPCDBDMACoherency;
+    }
+    return kPPCDBDMAOK;
+}
+
+static PPCDBDMAStatus dma_invalidate(void *context, void *address,
+    unsigned long bytes)
+{
+    DMARegisterMock *mock;
+    mock = (DMARegisterMock *)context;
+    mock->events[mock->eventCount++] = 5UL;
+    mock->lastAddress = address;
+    mock->lastBytes = bytes;
+    if (mock->failInvalidate != 0UL) {
+        --mock->failInvalidate;
+        if (mock->failInvalidate == 0UL)
+            return kPPCDBDMACoherency;
+    }
+    return kPPCDBDMAOK;
+}
+
+static PPCDBDMAStatus dma_barrier(void *context)
+{
+    DMARegisterMock *mock;
+    mock = (DMARegisterMock *)context;
+    mock->events[mock->eventCount++] = 2UL;
+    if (mock->failBarrier != 0UL) {
+        --mock->failBarrier;
+        if (mock->failBarrier == 0UL)
+            return kPPCDBDMACoherency;
+    }
+    return kPPCDBDMAOK;
 }
 
 static void dma_translate_mock(DMATranslateMock *mock, unsigned long length,
@@ -122,6 +177,9 @@ static PPCDBDMAStorage dma_storage(DMARingBytes *bytes,
     storage.logical = bytes->bytes + ((16U - (address & 15U)) & 15U);
     storage.physical = physical;
     storage.bytes = PPC_DBDMA_MAX_RING_BYTES;
+    address = (size_t)bytes->scratch;
+    storage.scratch = bytes->scratch + ((16U - (address & 15U)) & 15U);
+    storage.scratchBytes = PPC_DBDMA_MAX_RING_BYTES;
     return storage;
 }
 
@@ -137,6 +195,10 @@ static PPCDBDMAOps dma_ops(DMATranslateMock *translate,
         ops.readRegister = dma_read_register;
         ops.writeRegister = dma_write_register;
         ops.now = dma_now;
+        ops.coherencyContext = registers;
+        ops.publish = dma_publish;
+        ops.invalidate = dma_invalidate;
+        ops.barrier = dma_barrier;
     }
     return ops;
 }
@@ -148,10 +210,10 @@ static void dma_store_result(PPCDBDMARing *ring, unsigned long index,
     unsigned char *bytes;
     value = (status << 16) | residual;
     bytes = ring->descriptors + index * PPC_DBDMA_DESCRIPTOR_BYTES + 12UL;
-    bytes[0] = (unsigned char)(value >> 24);
-    bytes[1] = (unsigned char)(value >> 16);
-    bytes[2] = (unsigned char)(value >> 8);
-    bytes[3] = (unsigned char)value;
+    bytes[0] = (unsigned char)value;
+    bytes[1] = (unsigned char)(value >> 8);
+    bytes[2] = (unsigned char)(value >> 16);
+    bytes[3] = (unsigned char)(value >> 24);
 }
 
 #define CODEC_EVENT_LIMIT 128
@@ -1803,12 +1865,22 @@ static void test_dbdma_descriptor_words_and_directions(void)
     CHECK(descriptor.operation == 0x00300100UL);
     CHECK(descriptor.address == 0x12345000UL);
     CHECK(descriptor.dependency == 0UL && descriptor.result == 0UL);
-    CHECK(output.descriptors[0] == 0x00 && output.descriptors[1] == 0x30 &&
-        output.descriptors[2] == 0x01 && output.descriptors[3] == 0x00);
+    CHECK(output.descriptors[0] == 0x00 && output.descriptors[1] == 0x01 &&
+        output.descriptors[2] == 0x30 && output.descriptors[3] == 0x00);
+    CHECK(output.descriptors[4] == 0x00 && output.descriptors[5] == 0x50 &&
+        output.descriptors[6] == 0x34 && output.descriptors[7] == 0x12);
+    CHECK(output.descriptors[8] == 0x00 && output.descriptors[9] == 0x00 &&
+        output.descriptors[10] == 0x00 && output.descriptors[11] == 0x00);
+    CHECK(output.descriptors[12] == 0x00 && output.descriptors[13] == 0x00 &&
+        output.descriptors[14] == 0x00 && output.descriptors[15] == 0x00);
     CHECK(PPCDBDMALoadDescriptor(&output, 1UL, &descriptor) ==
         kPPCDBDMAOK);
     CHECK(descriptor.operation == 0x600c0000UL);
     CHECK(descriptor.dependency == 0x00100000UL);
+    CHECK(output.descriptors[16] == 0x00 && output.descriptors[17] == 0x00 &&
+        output.descriptors[18] == 0x0c && output.descriptors[19] == 0x60);
+    CHECK(output.descriptors[24] == 0x00 && output.descriptors[25] == 0x00 &&
+        output.descriptors[26] == 0x10 && output.descriptors[27] == 0x00);
 
     translate.calls = 0UL;
     storage = dma_storage(&inputBytes, 0x00200000UL);
@@ -1903,6 +1975,30 @@ static void test_dbdma_rejects_invalid_and_is_atomic(void)
     CHECK(PPCDBDMABuildRing(&ring, &storage, kPPCDBDMAOutput, dmaBuffer,
         16UL, 16UL, &ops) == kPPCDBDMAOversized);
     storage.bytes = PPC_DBDMA_MAX_RING_BYTES;
+    storage.scratch = 0;
+    CHECK(PPCDBDMABuildRing(&ring, &storage, kPPCDBDMAOutput, dmaBuffer,
+        16UL, 16UL, &ops) == kPPCDBDMAInvalid);
+    CHECK(memcmp(&ring, &before, sizeof(ring)) == 0);
+    CHECK(memcmp(bytes.bytes, bytesBefore, sizeof(bytesBefore)) == 0);
+    storage = dma_storage(&bytes, 0x00400000UL);
+    storage.scratchBytes = PPC_DBDMA_DESCRIPTOR_BYTES;
+    CHECK(PPCDBDMABuildRing(&ring, &storage, kPPCDBDMAOutput, dmaBuffer,
+        16UL, 16UL, &ops) == kPPCDBDMAOversized);
+    CHECK(memcmp(&ring, &before, sizeof(ring)) == 0);
+    CHECK(memcmp(bytes.bytes, bytesBefore, sizeof(bytesBefore)) == 0);
+    storage = dma_storage(&bytes, 0x00400000UL);
+    storage.scratch = (unsigned char *)storage.scratch + 1;
+    CHECK(PPCDBDMABuildRing(&ring, &storage, kPPCDBDMAOutput, dmaBuffer,
+        16UL, 16UL, &ops) == kPPCDBDMAMisaligned);
+    CHECK(memcmp(&ring, &before, sizeof(ring)) == 0);
+    CHECK(memcmp(bytes.bytes, bytesBefore, sizeof(bytesBefore)) == 0);
+    storage = dma_storage(&bytes, 0x00400000UL);
+    storage.scratch = storage.logical;
+    CHECK(PPCDBDMABuildRing(&ring, &storage, kPPCDBDMAOutput, dmaBuffer,
+        16UL, 16UL, &ops) == kPPCDBDMAInvalid);
+    CHECK(memcmp(&ring, &before, sizeof(ring)) == 0);
+    CHECK(memcmp(bytes.bytes, bytesBefore, sizeof(bytesBefore)) == 0);
+    storage = dma_storage(&bytes, 0x00400000UL);
     dma_translate_mock(&translate, 32UL, 32UL, 0xfffffff0UL, 0UL);
     ops = dma_ops(&translate, 0);
     CHECK(PPCDBDMABuildRing(&ring, &storage, kPPCDBDMAOutput, dmaBuffer,
@@ -1963,9 +2059,11 @@ static void test_dbdma_completion_progression_and_fault_isolation(void)
     PPCDBDMARing output;
     PPCDBDMAStorage storage;
     PPCDBDMACompletion completion;
+    DMARegisterMock coherency;
     dma_translate_mock(&translate, 512UL, 512UL, 0x61000000UL,
         0x61000200UL);
-    ops = dma_ops(&translate, 0);
+    memset(&coherency, 0, sizeof(coherency));
+    ops = dma_ops(&translate, &coherency);
     storage = dma_storage(&inputBytes, 0x00500000UL);
     CHECK(PPCDBDMABuildRing(&input, &storage, kPPCDBDMAInput,
         dmaBuffer, 512UL, 256UL, &ops) == kPPCDBDMAOK);
@@ -1973,20 +2071,38 @@ static void test_dbdma_completion_progression_and_fault_isolation(void)
     storage = dma_storage(&outputBytes, 0x00600000UL);
     CHECK(PPCDBDMABuildRing(&output, &storage, kPPCDBDMAOutput,
         dmaBuffer, 512UL, 256UL, &ops) == kPPCDBDMAOK);
-    CHECK(PPCDBDMAServiceCompletions(&input, &completion) == kPPCDBDMAOK);
+    CHECK(PPCDBDMAServiceCompletions(&input, &ops, &completion) ==
+        kPPCDBDMAOK);
     CHECK(completion.descriptors == 0UL && completion.spurious);
+    CHECK(coherency.eventCount == 2UL && coherency.events[0] == 5UL &&
+        coherency.events[1] == 2UL);
+    memset(&coherency, 0, sizeof(coherency));
+    dma_store_result(&input, 0UL, 0x0001UL, 4UL);
+    CHECK(PPCDBDMAServiceCompletions(&input, &ops, &completion) ==
+        kPPCDBDMAOK);
+    CHECK(completion.spurious && input.consumer == 0UL);
+    CHECK(input.descriptors[12] == 0x04 && input.descriptors[14] == 0x01);
+    memset(&coherency, 0, sizeof(coherency));
     dma_store_result(&input, 0UL, 0x0400UL, 4UL);
     dma_store_result(&input, 1UL, 0x0400UL, 0UL);
-    CHECK(PPCDBDMAServiceCompletions(&input, &completion) == kPPCDBDMAOK);
+    CHECK(PPCDBDMAServiceCompletions(&input, &ops, &completion) ==
+        kPPCDBDMAOK);
     CHECK(completion.descriptors == 2UL && completion.bytes == 508UL);
     CHECK(completion.lastStatus == 0x0400UL &&
         completion.lastResidual == 0UL && input.consumer == 0UL);
     CHECK(output.consumer == 0UL && output.state == kPPCDBDMAReady);
-    dma_store_result(&output, 0UL, 0x0800UL, 1UL);
-    CHECK(PPCDBDMAServiceCompletions(&output, &completion) ==
+    CHECK(coherency.eventCount == 4UL && coherency.events[0] == 5UL &&
+        coherency.events[1] == 2UL && coherency.events[2] == 1UL &&
+        coherency.events[3] == 1UL);
+    CHECK(input.descriptors[12] == 0 && input.descriptors[13] == 0 &&
+        input.descriptors[14] == 0 && input.descriptors[15] == 0);
+    memset(&coherency, 0, sizeof(coherency));
+    dma_store_result(&output, 0UL, 0x0c00UL, 1UL);
+    CHECK(PPCDBDMAServiceCompletions(&output, &ops, &completion) ==
         kPPCDBDMAFault);
     CHECK(completion.descriptors == 1UL && completion.fault);
     CHECK(output.state == kPPCDBDMAFaulted);
+    CHECK(output.consumer == 0UL);
     CHECK(input.state == kPPCDBDMAReady && input.faultStatus == 0UL);
 }
 
@@ -2019,6 +2135,8 @@ static void test_dbdma_bounded_transitions(void)
         registers.writes[1][1] == 0x00700000UL);
     CHECK(registers.writes[2][1] ==
         PPCDBDMASetControl(kPPCDBDMARun | kPPCDBDMAWake));
+    CHECK(registers.events[0] == 1UL && registers.events[1] == 2UL &&
+        registers.events[2] == 3UL);
 
     memset(&registers, 0, sizeof(registers));
     registers.tick = 1UL;
@@ -2029,7 +2147,7 @@ static void test_dbdma_bounded_transitions(void)
     ops = dma_ops(&translate, &registers);
     transition = PPCDBDMAStopRing(&ring, &ops, 10UL);
     CHECK(transition.status == kPPCDBDMAOK && ring.state == kPPCDBDMAReady);
-    CHECK(registers.timeCalls == 3UL);
+    CHECK(registers.timeCalls == 4UL);
 
     ring.state = kPPCDBDMARunning;
     memset(&registers, 0, sizeof(registers));
@@ -2041,7 +2159,7 @@ static void test_dbdma_bounded_transitions(void)
     transition = PPCDBDMAFlushRing(&ring, &ops, 10UL);
     CHECK(transition.status == kPPCDBDMAOK &&
         ring.state == kPPCDBDMARunning);
-    CHECK(registers.writeCount == 1UL && registers.timeCalls == 2UL);
+    CHECK(registers.writeCount == 1UL && registers.timeCalls == 3UL);
 
     memset(&registers, 0, sizeof(registers));
     registers.tick = 1UL;
@@ -2051,7 +2169,7 @@ static void test_dbdma_bounded_transitions(void)
     ops = dma_ops(&translate, &registers);
     transition = PPCDBDMAResetRing(&ring, &ops, 10UL);
     CHECK(transition.status == kPPCDBDMAOK && ring.state == kPPCDBDMAReady);
-    CHECK(registers.writeCount == 1UL && registers.timeCalls == 2UL);
+    CHECK(registers.writeCount == 1UL && registers.timeCalls == 3UL);
 
     ring.state = kPPCDBDMARunning;
     memset(&registers, 0, sizeof(registers));
@@ -2063,9 +2181,107 @@ static void test_dbdma_bounded_transitions(void)
     ops = dma_ops(&translate, &registers);
     transition = PPCDBDMAStopRing(&ring, &ops, 3UL);
     CHECK(transition.status == kPPCDBDMATimeout);
-    CHECK(transition.sharedClockInvalidated && ring.state ==
+    CHECK(!transition.sharedClockInvalidated && ring.state ==
         kPPCDBDMAFaulted);
-    CHECK(registers.timeCalls == 3UL);
+    CHECK(registers.timeCalls != 0UL);
+}
+
+static void test_dbdma_coherency_deadlines_and_reset_restart(void)
+{
+    DMARingBytes bytes;
+    DMATranslateMock translate;
+    DMARegisterMock registers;
+    PPCDBDMAOps ops;
+    PPCDBDMARing ring;
+    PPCDBDMAStorage storage;
+    PPCDBDMACompletion completion;
+    PPCDBDMATransition transition;
+    unsigned long siblingConsumer;
+
+    dma_translate_mock(&translate, 512UL, 512UL, 0x71000000UL,
+        0x71000200UL);
+    memset(&registers, 0, sizeof(registers));
+    ops = dma_ops(&translate, &registers);
+    storage = dma_storage(&bytes, 0x00710000UL);
+    CHECK(PPCDBDMABuildRing(&ring, &storage, kPPCDBDMAOutput,
+        dmaBuffer, 512UL, 256UL, &ops) == kPPCDBDMAOK);
+
+    registers.failPublish = 1UL;
+    transition = PPCDBDMAStartRing(&ring, &ops, 10UL);
+    CHECK(transition.status == kPPCDBDMACoherency &&
+        ring.state == kPPCDBDMAReady && registers.writeCount == 0UL);
+
+    memset(&registers, 0, sizeof(registers));
+    registers.now = 10UL;
+    ops = dma_ops(&translate, &registers);
+    transition = PPCDBDMAStartRing(&ring, &ops, 10UL);
+    CHECK(transition.status == kPPCDBDMATimeout &&
+        !transition.sharedClockInvalidated && ring.state == kPPCDBDMAReady &&
+        registers.writeCount == 0UL && registers.eventCount == 0UL);
+    transition = PPCDBDMAStartRing(&ring, &ops, 0UL);
+    CHECK(transition.status == kPPCDBDMATimeout &&
+        ring.state == kPPCDBDMAReady && registers.writeCount == 0UL);
+    ring.state = kPPCDBDMARunning;
+    transition = PPCDBDMAStopRing(&ring, &ops, 10UL);
+    CHECK(transition.status == kPPCDBDMATimeout &&
+        ring.state == kPPCDBDMARunning && registers.writeCount == 0UL);
+    transition = PPCDBDMAFlushRing(&ring, &ops, 10UL);
+    CHECK(transition.status == kPPCDBDMATimeout &&
+        ring.state == kPPCDBDMARunning && registers.writeCount == 0UL);
+    ring.state = kPPCDBDMAFaulted;
+    transition = PPCDBDMAResetRing(&ring, &ops, 10UL);
+    CHECK(transition.status == kPPCDBDMATimeout &&
+        ring.state == kPPCDBDMAFaulted && registers.writeCount == 0UL);
+    ring.state = kPPCDBDMAReady;
+
+    memset(&registers, 0, sizeof(registers));
+    ops = dma_ops(&translate, &registers);
+    registers.failInvalidate = 1UL;
+    dma_store_result(&ring, 0UL, kPPCDBDMAActive, 0UL);
+    CHECK(PPCDBDMAServiceCompletions(&ring, &ops, &completion) ==
+        kPPCDBDMACoherency);
+    CHECK(ring.consumer == 0UL && ring.state == kPPCDBDMAReady);
+
+    memset(&registers, 0, sizeof(registers));
+    ops = dma_ops(&translate, &registers);
+    registers.failPublish = 1UL;
+    CHECK(PPCDBDMAServiceCompletions(&ring, &ops, &completion) ==
+        kPPCDBDMACoherency);
+    CHECK(ring.consumer == 0UL && ring.state == kPPCDBDMAFaulted);
+    CHECK(ring.descriptors[15] == 0x04);
+    dma_store_result(&ring, ring.dataDescriptorCount, 0x1234UL, 7UL);
+
+    memset(&registers, 0, sizeof(registers));
+    ops = dma_ops(&translate, &registers);
+    registers.status[0] = 0UL;
+    registers.statusCount = 1UL;
+    transition = PPCDBDMAResetRing(&ring, &ops, 10UL);
+    CHECK(transition.status == kPPCDBDMAOK && ring.consumer == 0UL &&
+        ring.state == kPPCDBDMAReady && ring.faultStatus == 0UL);
+    CHECK(registers.eventCount == 4UL && registers.events[0] == 3UL &&
+        registers.events[1] == 4UL && registers.events[2] == 1UL &&
+        registers.events[3] == 2UL);
+    CHECK(ring.descriptors[12] == 0 && ring.descriptors[14] == 0 &&
+        ring.descriptors[28] == 0 && ring.descriptors[30] == 0);
+    CHECK(ring.descriptors[44] == 0 && ring.descriptors[47] == 0);
+
+    dma_store_result(&ring, 0UL, kPPCDBDMAActive, 0UL);
+    CHECK(PPCDBDMAServiceCompletions(&ring, &ops, &completion) ==
+        kPPCDBDMAOK && ring.consumer == 1UL);
+    dma_store_result(&ring, 1UL, kPPCDBDMAActive | kPPCDBDMADead, 0UL);
+    CHECK(PPCDBDMAServiceCompletions(&ring, &ops, &completion) ==
+        kPPCDBDMAFault && ring.consumer == 1UL);
+    siblingConsumer = ring.consumer;
+    memset(&registers, 0, sizeof(registers));
+    ops = dma_ops(&translate, &registers);
+    transition = PPCDBDMAResetRing(&ring, &ops, 10UL);
+    CHECK(transition.status == kPPCDBDMAOK && siblingConsumer == 1UL &&
+        ring.consumer == 0UL);
+    memset(&registers, 0, sizeof(registers));
+    ops = dma_ops(&translate, &registers);
+    transition = PPCDBDMAStartRing(&ring, &ops, 10UL);
+    CHECK(transition.status == kPPCDBDMAOK && registers.writeCount == 3UL &&
+        registers.writes[1][1] == ring.descriptorPhysical);
 }
 
 int main(void)
@@ -2114,6 +2330,7 @@ int main(void)
     test_dbdma_ring_physical_range_is_exact_and_atomic();
     test_dbdma_completion_progression_and_fault_isolation();
     test_dbdma_bounded_transitions();
+    test_dbdma_coherency_deadlines_and_reset_restart();
     if (failures != 0) {
         fprintf(stderr, "%d TAS audio checks failed\n", failures);
         return 1;

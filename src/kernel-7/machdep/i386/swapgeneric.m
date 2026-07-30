@@ -70,6 +70,7 @@
 #undef IO_UNIT
 #import <driverkit/IODeviceParams.h>
 #import <driverkit/SCSIDisk.h>
+#import <machdep/i386/ata_hd_root.h>
 
 extern int ffs_mountroot();
 
@@ -118,6 +119,8 @@ setconf()
 	int		devmajor, devminor;
 	int unit=0;
 	int slice = 0;
+	unsigned int hdUnit;
+	unsigned int hdPartition;
 	char *name, root_name[128];
 	KERNBOOTSTRUCT *kernBootStruct = (KERNBOOTSTRUCT *)KERNSTRUCT_ADDR;
 	char scsiName[10];
@@ -182,6 +185,15 @@ name_found:
 gotit:
 		if (gc->gc_root == NODEV) {
 			goto found;
+		}
+		if (gc->gc_name[0] == 'h' && gc->gc_name[1] == 'd') {
+			if (ATAHDParseRoot(name, &hdUnit, &hdPartition) == 0) {
+				unit = (int)hdUnit;
+				slice = (int)hdPartition;
+				goto found;
+			}
+			printf("bad/missing unit number\n");
+			goto bad;
 		}
 		if (name[2] >= '0' && name[2] <= '7') {
 			if (name[3] >= 'a' && name[3] <= 'h') {

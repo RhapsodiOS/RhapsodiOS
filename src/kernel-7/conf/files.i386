@@ -6,6 +6,8 @@ OPTIONS/fp_emul			optional fp_emul
 OPTIONS/pc_support		optional pc_support
 
 bsd/dev/vol.c			optional vol
+bsd/dev/ata_hd_registry_core.c	standard
+bsd/dev/ata_hd_registry.m	standard
 
 machdep/i386/kdp_machdep.c	standard
 
@@ -38,6 +40,7 @@ machdep/i386/machine_clock.c	standard
 machdep/i386/pcb.c		standard
 machdep/i386/pmap.c		standard
 machdep/i386/serial_dbg.c	standard
+machdep/i386/ata_hd_root.c	standard
 machdep/i386/swapgeneric.m	standard
 machdep/i386/sys_machdep.c	standard
 machdep/i386/trap.c		standard

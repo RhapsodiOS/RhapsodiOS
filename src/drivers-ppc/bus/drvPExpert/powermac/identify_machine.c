@@ -35,6 +35,7 @@
 #include <families/yosemite.h>
 #include <families/sawtooth.h>
 #include <chips/keylargo.h>
+#include <chips/keylargo_model.h>
 #include "IOProperties.h"
 
 /* Local declarations */
@@ -136,9 +137,11 @@ void identify_machine1()
 		powermac_info.class		= POWERMAC_CLASS_SAWTOOTH;
 		if (PEKeyLargoGetMacIOInfo(&macIOBase, &macIOSize))
 			powermac_io_info.io_size = macIOSize;
-		else
-			/* Legacy Sawtooth firmware historically used this span. */
+		else if (PEKeyLargoUsesLegacyMacIOSpan(cpu_model))
+			/* PowerMac3,1 used the original Sawtooth layout. */
 			powermac_io_info.io_size = HEATHROW_SIZE;
+		else
+			powermac_io_info.io_size = 0;
 		powermac_init_p = &sawtooth_init;
 		break;
 

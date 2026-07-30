@@ -14,7 +14,7 @@ PROJECT_TYPE = Component
 LANGUAGE = English
 
 HFILES = grand_central.h heathrow.h keylargo.h keylargo_audio.h\
-         keylargo_discovery.h mpic.h ohare.h
+         keylargo_discovery.h keylargo_model.h mpic.h ohare.h
 
 CFILES = grand_central.c heathrow.c keylargo.c keylargo_audio.c mpic.c ohare.c
 

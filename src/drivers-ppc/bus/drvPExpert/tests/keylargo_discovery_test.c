@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "../powermac/chips/keylargo_discovery.h"
+#include "../powermac/chips/keylargo_model.h"
 
 static int failures;
 
@@ -138,12 +139,28 @@ test_mac_io_size_properties(void)
         property(assigned, 20), property(0, 0), &base, &size));
 }
 
+static void
+test_legacy_mac_io_fallback_model(void)
+{
+    CHECK(PEKeyLargoUsesLegacyMacIOSpan("PowerMac3,1"));
+    CHECK(!PEKeyLargoUsesLegacyMacIOSpan("PowerMac3,2"));
+    CHECK(!PEKeyLargoUsesLegacyMacIOSpan("PowerMac3,3"));
+    CHECK(!PEKeyLargoUsesLegacyMacIOSpan("PowerMac5,1"));
+    CHECK(!PEKeyLargoUsesLegacyMacIOSpan("PowerBook2,1"));
+    CHECK(!PEKeyLargoUsesLegacyMacIOSpan("PowerMac4,1"));
+    CHECK(!PEKeyLargoUsesLegacyMacIOSpan("PowerMac7,2"));
+    CHECK(!PEKeyLargoUsesLegacyMacIOSpan("PowerMac3,10"));
+    CHECK(!PEKeyLargoUsesLegacyMacIOSpan(""));
+    CHECK(!PEKeyLargoUsesLegacyMacIOSpan(0));
+}
+
 int
 main(void)
 {
     test_relative_and_absolute_i2c();
     test_exact_sizes_and_ranges();
     test_mac_io_size_properties();
+    test_legacy_mac_io_fallback_model();
     if (failures != 0)
         return 1;
     printf("KeyLargo discovery tests passed\n");

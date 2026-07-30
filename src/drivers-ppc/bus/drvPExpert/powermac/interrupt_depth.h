@@ -25,4 +25,25 @@ PEInterruptDepthLeave(unsigned int *depth)
     return 1;
 }
 
+static int
+PEInterruptDepthEnterException(unsigned int *depth, int exception,
+    int externalInterrupt, int decrementer)
+{
+    if (exception != externalInterrupt && exception != decrementer)
+        return 0;
+    return PEInterruptDepthEnter(depth);
+}
+
+static unsigned int
+PEInterruptDepthMark(unsigned int depth)
+{
+    return depth;
+}
+
+static void
+PEInterruptDepthRecover(unsigned int *depth, unsigned int mark)
+{
+    *depth = mark;
+}
+
 #endif /* _POWERMAC_INTERRUPT_DEPTH_H_ */

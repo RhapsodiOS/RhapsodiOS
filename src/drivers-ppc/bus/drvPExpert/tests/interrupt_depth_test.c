@@ -15,6 +15,9 @@ int
 main(void)
 {
     unsigned int depth = 0;
+    unsigned int mark;
+    const int external = 0x500;
+    const int decrementer = 0x900;
 
     CHECK(!PEInterruptDepthActive(depth));
     CHECK(PEInterruptDepthEnter(&depth));
@@ -30,6 +33,33 @@ main(void)
     depth = ~0u;
     CHECK(!PEInterruptDepthEnter(&depth));
     CHECK(depth == ~0u);
+
+    depth = 0;
+    CHECK(!PEInterruptDepthEnterException(&depth, 0x300,
+        external, decrementer));
+    CHECK(!PEInterruptDepthActive(depth));
+    CHECK(PEInterruptDepthEnterException(&depth, external,
+        external, decrementer));
+    CHECK(PEInterruptDepthActive(depth));
+    CHECK(PEInterruptDepthLeave(&depth));
+    CHECK(PEInterruptDepthEnterException(&depth, decrementer,
+        external, decrementer));
+    CHECK(PEInterruptDepthActive(depth));
+    CHECK(PEInterruptDepthLeave(&depth));
+
+    mark = PEInterruptDepthMark(depth);
+    CHECK(PEInterruptDepthEnterException(&depth, external,
+        external, decrementer));
+    PEInterruptDepthRecover(&depth, mark);
+    CHECK(!PEInterruptDepthActive(depth));
+    CHECK(PEInterruptDepthEnter(&depth));
+    mark = PEInterruptDepthMark(depth);
+    CHECK(PEInterruptDepthEnterException(&depth, decrementer,
+        external, decrementer));
+    PEInterruptDepthRecover(&depth, mark);
+    CHECK(PEInterruptDepthActive(depth));
+    CHECK(depth == 1);
+    CHECK(PEInterruptDepthLeave(&depth));
 
     if (failures != 0)
         return 1;

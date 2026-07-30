@@ -72,6 +72,18 @@ PEIsInInterruptContext(void)
 	return PEInterruptDepthActive(pe_interrupt_depth[cpu_number()]);
 }
 
+unsigned int
+PEInterruptRecoveryMark(void)
+{
+	return PEInterruptDepthMark(pe_interrupt_depth[cpu_number()]);
+}
+
+void
+PEInterruptRecoveryRestore(unsigned int mark)
+{
+	PEInterruptDepthRecover(&pe_interrupt_depth[cpu_number()], mark);
+}
+
 #if DEBUG
 vm_offset_t spl_addr;
 #endif /* MACH_DEBUG */
@@ -201,10 +213,15 @@ struct ppc_saved_state * interrupt(
 	unsigned int dar)
 {
 	int irq;
+	int entered;
+	int cpu;
 	spl_t		old_spl = current_priority;
 	thread_t th;
 
 	current_priority = SPLHIGH;
+	cpu = cpu_number();
+	entered = PEInterruptDepthEnterException(&pe_interrupt_depth[cpu], type,
+	    EXC_INTERRUPT, EXC_DECREMENTER);
 
 #ifdef notdef_next
 #if DEBUG
@@ -278,15 +295,8 @@ struct ppc_saved_state * interrupt(
 
 	case EXC_INTERRUPT:
 	{
-		int entered;
-
 		/* Call the pmac interrupt routine */
-		entered = PEInterruptDepthEnter(
-		    &pe_interrupt_depth[cpu_number()]);
 		(*pmac_interrupt)(type, ssp, dsisr, dar);
-		if (entered)
-			(void)PEInterruptDepthLeave(
-			    &pe_interrupt_depth[cpu_number()]);
 		break;
 	}
 
@@ -298,6 +308,8 @@ struct ppc_saved_state * interrupt(
 #endif /* DEBUG */
 		break;
 	}
+	if (entered)
+		(void)PEInterruptDepthLeave(&pe_interrupt_depth[cpu]);
 
 	current_priority = old_spl;
 	return ssp;

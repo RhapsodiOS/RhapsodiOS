@@ -68,6 +68,8 @@ typedef struct {
   unsigned int macIOSize;
   unsigned int i2cOffset;
   unsigned int addressStep;
+  unsigned int i2cRate;
+  unsigned char i2cSpeed;
   lock_data_t lock;
   PEKeyLargoTransport transport;
 } keylargo_audio_state_t;
@@ -301,8 +303,11 @@ PEKeyLargoInitialize(void)
   keylargo_audio_state.macIOSize = size;
   keylargo_audio_state.i2cOffset = discovery.i2cOffset;
   keylargo_audio_state.addressStep = discovery.addressStep;
+  keylargo_audio_state.i2cRate = discovery.rate;
+  keylargo_audio_state.i2cSpeed = (unsigned char)discovery.speed;
   lock_init(&keylargo_audio_state.lock, TRUE);
   keylargo_audio_state.transport.context = &keylargo_audio_state;
+  keylargo_audio_state.transport.speed = keylargo_audio_state.i2cSpeed;
   keylargo_audio_state.transport.read8 = keylargo_read8;
   keylargo_audio_state.transport.write8 = keylargo_write8;
   keylargo_audio_state.transport.readGPIO8 = keylargo_read_gpio8;

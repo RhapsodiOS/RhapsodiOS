@@ -297,6 +297,7 @@ static PEKeyLargoTransport transport_for(Fake *fake)
 {
     PEKeyLargoTransport transport;
 
+    transport.speed = kPEKeyWestSpeed100kHz;
     transport.context = fake;
     transport.read8 = fake_read8;
     transport.write8 = fake_write8;
@@ -641,11 +642,98 @@ static void test_keywest_initial_busy(void)
 
     init_fake(&fake);
     fake.regs[kPEKeyWestRegStatus] = kPEKeyWestStatusBusy;
+    fake.controllerStarted = 1;
+    fake.events[0] = kPEKeyWestInterruptStop;
+    fake.eventCount = 1;
     transport = transport_for(&fake);
     request = request_for(&byte, 1, kPEKeyWestRead);
     CHECK(PEKeyWestI2CTransferCore(&transport, &request) ==
         KERN_PE_KEYWEST_BUSY);
+    CHECK(fake.eventIndex == 1);
     expect_serialized_and_clean(&fake);
+}
+
+static void test_keywest_initial_busy_recovery_timeout(void)
+{
+    Fake fake;
+    PEKeyLargoTransport transport;
+    PEKeyWestI2CRequest request;
+    unsigned char byte = 0;
+
+    init_fake(&fake);
+    fake.regs[kPEKeyWestRegStatus] = kPEKeyWestStatusBusy;
+    fake.controllerStarted = 1;
+    transport = transport_for(&fake);
+    request = request_for(&byte, 1, kPEKeyWestRead);
+    request.deadline.tv_nsec = 3;
+    CHECK(PEKeyWestI2CTransferCore(&transport, &request) ==
+        KERN_PE_KEYWEST_TIMEOUT);
+    CHECK(fake.timeReads == 4);
+    expect_serialized_and_clean(&fake);
+
+    init_fake(&fake);
+    fake.regs[kPEKeyWestRegStatus] = kPEKeyWestStatusBusy;
+    fake.controllerStarted = 1;
+    fake.arbitrationAt = 0;
+    transport = transport_for(&fake);
+    request = request_for(&byte, 1, kPEKeyWestRead);
+    CHECK(PEKeyWestI2CTransferCore(&transport, &request) ==
+        KERN_PE_KEYWEST_TIMEOUT);
+    expect_serialized_and_clean(&fake);
+}
+
+static void test_keywest_bus_speeds(void)
+{
+    static const unsigned char speeds[] = {
+        kPEKeyWestSpeed100kHz,
+        kPEKeyWestSpeed50kHz,
+        kPEKeyWestSpeed25kHz
+    };
+    unsigned int index;
+
+    for (index = 0; index < ARRAY_COUNT(speeds); index++) {
+        Fake fake;
+        PEKeyLargoTransport transport;
+        PEKeyWestI2CRequest request;
+        unsigned char byte = 0x5a;
+
+        init_fake(&fake);
+        fake.events[0] = kPEKeyWestInterruptAddress;
+        fake.events[1] = kPEKeyWestInterruptData;
+        fake.events[2] = kPEKeyWestInterruptStop;
+        fake.acks[0] = kPEKeyWestStatusLastACK;
+        fake.acks[1] = kPEKeyWestStatusLastACK;
+        fake.eventCount = 3;
+        transport = transport_for(&fake);
+        transport.speed = speeds[index];
+        request = request_for(&byte, 1, kPEKeyWestWrite);
+        CHECK(PEKeyWestI2CTransferCore(&transport, &request) ==
+            KERN_SUCCESS);
+        CHECK(saw_write(&fake, kPEKeyWestRegMode,
+            (request.port << 4) | kPEKeyWestModeStandardSubaddress |
+            speeds[index]));
+    }
+}
+
+static void test_keywest_rejects_reserved_addresses_before_mmio(void)
+{
+    static const unsigned char addresses[] = { 0x00, 0x07, 0x78, 0x7f };
+    unsigned int index;
+
+    for (index = 0; index < ARRAY_COUNT(addresses); index++) {
+        Fake fake;
+        PEKeyLargoTransport transport;
+        PEKeyWestI2CRequest request;
+        unsigned char byte = 0;
+
+        init_fake(&fake);
+        transport = transport_for(&fake);
+        request = request_for(&byte, 1, kPEKeyWestWrite);
+        request.address = addresses[index];
+        CHECK(PEKeyWestI2CTransferCore(&transport, &request) ==
+            KERN_INVALID_ARGUMENT);
+        CHECK(fake.traceCount == 0);
+    }
 }
 
 static void test_keywest_timeout_at_every_phase(void)
@@ -912,6 +1000,10 @@ static void test_public_wrappers_validate_before_ready(void)
     request.port = 16;
     CHECK(PEKeyWestI2CTransfer(&request) == KERN_INVALID_ARGUMENT);
     request.port = 0;
+    request.address = 0x07;
+    CHECK(PEKeyWestI2CTransfer(&request) == KERN_INVALID_ARGUMENT);
+    request.address = 0x78;
+    CHECK(PEKeyWestI2CTransfer(&request) == KERN_INVALID_ARGUMENT);
     request.address = 0x80;
     CHECK(PEKeyWestI2CTransfer(&request) == KERN_INVALID_ARGUMENT);
     request.address = 0x34;
@@ -976,6 +1068,9 @@ int main(void)
     test_keywest_nacks();
     test_keywest_arbitration_loss();
     test_keywest_initial_busy();
+    test_keywest_initial_busy_recovery_timeout();
+    test_keywest_bus_speeds();
+    test_keywest_rejects_reserved_addresses_before_mmio();
     test_keywest_timeout_at_every_phase();
     test_keywest_deadline_edges();
     test_keywest_read_timeouts_around_ack();

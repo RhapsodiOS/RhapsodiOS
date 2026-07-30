@@ -40,14 +40,18 @@ CallTVector_NoRecover(
     void * p1, void * p2, void * p3, void * p4, void * p5, void * p6,
     void * entry );
 
+extern unsigned int PEInterruptRecoveryMark(void);
+extern void PEInterruptRecoveryRestore(unsigned int mark);
+
 int
 CallTVector(
     void * p1, void * p2, void * p3, void * p4, void * p5, void * p6,
     void * entry )
 {
     label_t	jmpbuf;
-    int		err;
+	int		err;
 	vm_offset_t tmpbuf = current_thread()->recover;
+	unsigned int interruptDepth = PEInterruptRecoveryMark();
 
 #if DIAGNOSTIC
 	if(tmpbuf)
@@ -62,6 +66,6 @@ CallTVector(
         err = CallTVector_NoRecover( p1, p2, p3, p4, p5, p6, entry);
     }
     current_thread()->recover = (vm_offset_t)tmpbuf;
+    PEInterruptRecoveryRestore(interruptDepth);
     return( err);
 }
-

@@ -5,7 +5,8 @@ static const PEKeyLargoTransport *keylargo_transport;
 static boolean_t
 keylargo_transport_valid(const PEKeyLargoTransport *transport)
 {
-    return transport != 0 && transport->read8 != 0 &&
+    return transport != 0 && transport->speed <= kPEKeyWestSpeed25kHz &&
+        transport->read8 != 0 &&
         transport->write8 != 0 && transport->readGPIO8 != 0 &&
         transport->writeGPIO8 != 0 && transport->readFCR1LE != 0 &&
         transport->writeFCR1LE != 0 && transport->getTime != 0 &&
@@ -84,7 +85,8 @@ PEKeyWestI2CTransferCore(const PEKeyLargoTransport *transport,
 
     if (!keylargo_transport_valid(transport) || request == 0 ||
         request->buffer == 0 || request->length == 0 ||
-        request->address > 0x7f || request->port > 0x0f ||
+        request->address < 0x08 || request->address > 0x77 ||
+        request->port > 0x0f ||
         (request->direction != kPEKeyWestWrite &&
         request->direction != kPEKeyWestRead))
         return KERN_INVALID_ARGUMENT;
@@ -98,12 +100,21 @@ PEKeyWestI2CTransferCore(const PEKeyLargoTransport *transport,
     if ((status & kPEKeyWestStatusBusy) != 0) {
         result = KERN_PE_KEYWEST_BUSY;
         keywest_issue_stop(transport);
+        stopResult = keywest_wait_interrupt(transport,
+            kPEKeyWestInterruptStop, &request->deadline);
+        if (stopResult == KERN_SUCCESS)
+            transport->write8(transport->context, kPEKeyWestRegISR,
+                kPEKeyWestInterruptStop);
+        else
+            /* Unsafe recovery takes precedence over reporting BUSY. */
+            result = KERN_PE_KEYWEST_TIMEOUT;
         goto out;
     }
 
     mode = request->direction == kPEKeyWestRead ?
         kPEKeyWestModeCombined : kPEKeyWestModeStandardSubaddress;
-    mode = (unsigned char)(mode | (request->port << 4));
+    mode = (unsigned char)(mode | (request->port << 4) |
+        transport->speed);
     transport->write8(transport->context, kPEKeyWestRegMode, mode);
     transport->write8(transport->context, kPEKeyWestRegStatus, 0);
     status = transport->read8(transport->context, kPEKeyWestRegISR);
@@ -278,7 +289,8 @@ kern_return_t
 PEKeyWestI2CTransfer(const PEKeyWestI2CRequest *request)
 {
     if (request == 0 || request->buffer == 0 || request->length == 0 ||
-        request->address > 0x7f || request->port > 0x0f ||
+        request->address < 0x08 || request->address > 0x77 ||
+        request->port > 0x0f ||
         (request->direction != kPEKeyWestWrite &&
         request->direction != kPEKeyWestRead) ||
         BAD_TVALSPEC(&request->deadline))

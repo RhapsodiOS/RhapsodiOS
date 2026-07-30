@@ -16,6 +16,10 @@ enum {
 
 #define kPEKeyWestModeStandardSubaddress 0x08
 #define kPEKeyWestModeCombined           0x0c
+#define kPEKeyWestSpeedMask              0x03
+#define kPEKeyWestSpeed100kHz            0x00
+#define kPEKeyWestSpeed50kHz             0x01
+#define kPEKeyWestSpeed25kHz             0x02
 #define kPEKeyWestControlSendACK         0x01
 #define kPEKeyWestControlTransferAddress 0x02
 #define kPEKeyWestControlStop            0x04
@@ -32,6 +36,7 @@ enum {
 #define kPEAudioGPIOOutputEnable 0x04
 
 typedef struct {
+    unsigned char speed;
     void *context;
     unsigned char (*read8)(void *context, unsigned int offset);
     void (*write8)(void *context, unsigned int offset,

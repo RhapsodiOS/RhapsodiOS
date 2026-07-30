@@ -19,7 +19,24 @@ typedef struct {
     unsigned int i2cOffset;
     unsigned int addressStep;
     unsigned int rate;
+    unsigned int speed;
 } PEKeyLargoDiscovery;
+
+static int
+PEKeyLargoRateToSpeed(unsigned int rate, unsigned int *speed)
+{
+    if (speed == 0)
+        return 0;
+    if (rate == 100)
+        *speed = 0;
+    else if (rate == 50)
+        *speed = 1;
+    else if (rate == 25)
+        *speed = 2;
+    else
+        return 0;
+    return 1;
+}
 
 static unsigned int
 PEKeyLargoCell(const unsigned char *bytes)
@@ -81,7 +98,7 @@ PEKeyLargoParseDiscovery(const PEKeyLargoDiscoveryInput *input,
     if (!PEKeyLargoCellProperty(input->addressStep,
         &result->addressStep) || result->addressStep == 0 ||
         !PEKeyLargoCellProperty(input->rate, &result->rate) ||
-        result->rate == 0)
+        !PEKeyLargoRateToSpeed(result->rate, &result->speed))
         return 0;
     if (result->addressStep > (~0u - relative) / 7)
         return 0;

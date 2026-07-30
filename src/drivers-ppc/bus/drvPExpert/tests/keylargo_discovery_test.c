@@ -53,11 +53,42 @@ test_relative_and_absolute_i2c(void)
     CHECK(result.i2cOffset == 0x18000);
     CHECK(result.addressStep == 0x10);
     CHECK(result.rate == 100);
+    CHECK(result.speed == 0);
 
     input.reg = property(0, 0);
     input.absoluteAddress = property(absolute, sizeof(absolute));
     CHECK(PEKeyLargoParseDiscovery(&input, &result));
     CHECK(result.i2cOffset == 0x18000);
+}
+
+static void
+test_supported_i2c_rates(void)
+{
+    unsigned char reg[4], step[4], rate[4];
+    PEKeyLargoDiscoveryInput input;
+    PEKeyLargoDiscovery result;
+    static const unsigned int rates[] = { 100, 50, 25 };
+    static const unsigned int speeds[] = { 0, 1, 2 };
+    unsigned int index;
+
+    put_cell(reg, 0x18000);
+    put_cell(step, 0x10);
+    memset(&input, 0, sizeof(input));
+    input.macIOBase = 0x80000000;
+    input.macIOSize = 0x80000;
+    input.reg = property(reg, sizeof(reg));
+    input.addressStep = property(step, sizeof(step));
+    input.rate = property(rate, sizeof(rate));
+    for (index = 0; index < sizeof(rates) / sizeof(rates[0]); index++) {
+        put_cell(rate, rates[index]);
+        CHECK(PEKeyLargoParseDiscovery(&input, &result));
+        CHECK(result.rate == rates[index]);
+        CHECK(result.speed == speeds[index]);
+    }
+    put_cell(rate, 75);
+    CHECK(!PEKeyLargoParseDiscovery(&input, &result));
+    put_cell(rate, 400);
+    CHECK(!PEKeyLargoParseDiscovery(&input, &result));
 }
 
 static void
@@ -158,6 +189,7 @@ int
 main(void)
 {
     test_relative_and_absolute_i2c();
+    test_supported_i2c_rates();
     test_exact_sizes_and_ranges();
     test_mac_io_size_properties();
     test_legacy_mac_io_fallback_model();

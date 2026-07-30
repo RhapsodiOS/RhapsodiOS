@@ -141,5 +141,7 @@ extern boolean_t (*pmac_enable_irq)(int irq);
 extern boolean_t (*pmac_disable_irq)(int irq);
 
 extern boolean_t PEIsInInterruptContext(void);
+extern unsigned int PEInterruptRecoveryMark(void);
+extern void PEInterruptRecoveryRestore(unsigned int mark);
 
 #endif /* !POWERMAC_INTERRUPTS_H_ */

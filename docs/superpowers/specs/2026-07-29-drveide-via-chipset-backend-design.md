@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-29
 
-**Status:** Design approved, pending spec review
+**Status:** Approved
 
 **Component:** `src/drivers-i386/ide/drvEIDE`
 

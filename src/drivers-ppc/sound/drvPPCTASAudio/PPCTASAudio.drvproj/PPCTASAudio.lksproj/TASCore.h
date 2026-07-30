@@ -114,12 +114,31 @@ typedef enum {
     kTASStreamInput = 1
 } TASStreamDirection;
 
+enum {
+    kTASStreamMaskOutput = 1,
+    kTASStreamMaskInput = 2
+};
+
 typedef struct {
     unsigned long activeRate;
     unsigned long referenceCount;
-    int outputActive;
-    int inputActive;
+    unsigned long activeMask;
+    unsigned long quiescedMask;
+    unsigned long generation;
+    int outputsMuted;
 } TASSharedClock;
+
+typedef struct {
+    TASI2SClock clock;
+    unsigned long generation;
+    unsigned long activeRate;
+    unsigned long activeMask;
+} TASI2STransition;
+
+typedef struct {
+    TASI2STransition transition;
+    int observedStopped;
+} TASI2SStoppedToken;
 
 typedef enum {
     kTASI2SRequestClockStop = 0,
@@ -160,9 +179,19 @@ TASStatus TASAcquireI2SStream(const TASMachineConfig *configuration,
     TASI2SClock *clock);
 TASStatus TASReleaseI2SStream(TASSharedClock *state,
     TASStreamDirection direction);
-TASStatus TASBuildI2SRegisterPlan(const TASI2SClock *clock,
-    unsigned long stopDeadline, int clocksStopped, int liveRateChange,
-    int inputDMAQuiesced, int outputDMAQuiesced, int outputsMuted,
+TASStatus TASSetI2SStreamQuiesced(TASSharedClock *state,
+    TASStreamDirection direction, int quiesced);
+TASStatus TASSetI2SOutputsMuted(TASSharedClock *state, int muted);
+TASStatus TASPrepareI2STransition(const TASMachineConfig *configuration,
+    const TASSharedClock *state, unsigned long rate,
+    TASI2STransition *transition);
+TASStatus TASBuildI2SStopPlan(const TASSharedClock *state,
+    const TASI2STransition *transition, unsigned long stopDeadline,
     TASI2SRegisterPlan *plan);
+TASStatus TASObserveI2SClockStopped(const TASSharedClock *state,
+    const TASI2STransition *transition, int clocksStopped,
+    TASI2SStoppedToken *stopped);
+TASStatus TASBuildI2SFormatPlan(const TASSharedClock *state,
+    const TASI2SStoppedToken *stopped, TASI2SRegisterPlan *plan);
 
 #endif

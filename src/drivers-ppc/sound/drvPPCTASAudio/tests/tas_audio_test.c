@@ -648,34 +648,48 @@ static void test_exact_i2s_clock_vectors_and_rate_policy(void)
     TASMachineConfig configBefore;
     TASI2SClock clock;
     TASI2SClock before;
-    unsigned long rates[] = { 32000UL, 44100UL, 48000UL, 36000UL,
-        31999UL, 48001UL };
+    unsigned long rates[] = { 32000UL, 35280UL, 36000UL, 38400UL,
+        44100UL, 48000UL, 35999UL, 38401UL };
     TASFixtureTumbler(&fixture);
     TASFixtureSetCells(&fixture, kFixtureSoundChip, "sample-rates", rates,
         sizeof(rates) / sizeof(rates[0]));
     CHECK(parse(&fixture, &config) == kTASStatusOK);
-    CHECK(config.rateCount == 3UL);
+    CHECK(config.rateCount == 6UL);
     CHECK(config.rates[0] == 32000UL);
-    CHECK(config.rates[1] == 44100UL);
-    CHECK(config.rates[2] == 48000UL);
+    CHECK(config.rates[1] == 35280UL);
+    CHECK(config.rates[2] == 36000UL);
+    CHECK(config.rates[3] == 38400UL);
+    CHECK(config.rates[4] == 44100UL);
+    CHECK(config.rates[5] == 48000UL);
     check_clock(&config, 32000UL, 49152000UL, 6UL);
+    check_clock(&config, 35280UL, 45158400UL, 5UL);
+    check_clock(&config, 36000UL, 18432000UL, 2UL);
+    check_clock(&config, 38400UL, 49152000UL, 5UL);
     check_clock(&config, 44100UL, 45158400UL, 4UL);
     check_clock(&config, 48000UL, 49152000UL, 4UL);
 
     memset(&clock, 0xa5, sizeof(clock));
     before = clock;
-    CHECK(TASSelectI2SClock(&config, 36000UL, &clock) ==
+    CHECK(TASSelectI2SClock(&config, 35999UL, &clock) ==
+        kTASStatusUnsupported);
+    CHECK(memcmp(&clock, &before, sizeof(clock)) == 0);
+    CHECK(TASSelectI2SClock(&config, 38401UL, &clock) ==
         kTASStatusUnsupported);
     CHECK(memcmp(&clock, &before, sizeof(clock)) == 0);
     CHECK(TASSelectI2SClock(&config, 31999UL, &clock) ==
         kTASStatusUnsupported);
     CHECK(memcmp(&clock, &before, sizeof(clock)) == 0);
-    CHECK(TASSelectI2SClock(&config, 48001UL, &clock) ==
-        kTASStatusUnsupported);
-    CHECK(memcmp(&clock, &before, sizeof(clock)) == 0);
     CHECK(TASSelectI2SClock(&config, 0xffffffffUL, &clock) ==
         kTASStatusUnsupported);
     CHECK(memcmp(&clock, &before, sizeof(clock)) == 0);
+
+    rates[0] = 44100UL; rates[1] = 35999UL; rates[2] = 36001UL;
+    rates[3] = 35279UL; rates[4] = 35281UL; rates[5] = 38399UL;
+    rates[6] = 38401UL;
+    TASFixtureTumbler(&fixture);
+    TASFixtureSetCells(&fixture, kFixtureSoundChip, "sample-rates", rates, 7);
+    CHECK(parse(&fixture, &config) == kTASStatusOK);
+    CHECK(config.rateCount == 1UL && config.rates[0] == 44100UL);
 
     rates[0] = 44100UL; rates[1] = 44100UL; rates[2] = 48000UL;
     TASFixtureTumbler(&fixture);
@@ -686,6 +700,10 @@ static void test_exact_i2s_clock_vectors_and_rate_policy(void)
     before = clock;
     CHECK(TASSelectI2SClock(&config, 32000UL, &clock) ==
         kTASStatusUnsupported);
+    CHECK(memcmp(&clock, &before, sizeof(clock)) == 0);
+    config.rateCount = TAS_MAX_RATES + 1UL;
+    CHECK(TASSelectI2SClock(&config, 44100UL, &clock) ==
+        kTASStatusMalformed);
     CHECK(memcmp(&clock, &before, sizeof(clock)) == 0);
 
     rates[0] = 32000UL; rates[1] = 48000UL;
@@ -712,13 +730,11 @@ static void test_shared_i2s_clock_acquisition(void)
     TASFixtureTumbler(&fixture);
     CHECK(parse(&fixture, &config) == kTASStatusOK);
     TASSharedClockInit(&state);
+    CHECK(state.generation == 1UL && state.activeMask == 0UL);
     CHECK(TASAcquireI2SStream(&config, &state, kTASStreamOutput,
         44100UL, &clock) == kTASStatusOK);
     CHECK(state.activeRate == 44100UL && state.referenceCount == 1UL);
-    CHECK(state.outputActive == 1 && state.inputActive == 0);
-    CHECK(TASAcquireI2SStream(&config, &state, kTASStreamInput,
-        44100UL, &clock) == kTASStatusOK);
-    CHECK(state.activeRate == 44100UL && state.referenceCount == 2UL);
+    CHECK(state.activeMask == kTASStreamMaskOutput);
     before = state;
     memset(&clock, 0xa5, sizeof(clock));
     {
@@ -729,12 +745,51 @@ static void test_shared_i2s_clock_acquisition(void)
         CHECK(memcmp(&state, &before, sizeof(state)) == 0);
         CHECK(memcmp(&clock, &clockBefore, sizeof(clock)) == 0);
     }
+    CHECK(TASAcquireI2SStream(&config, &state, kTASStreamInput,
+        44100UL, &clock) == kTASStatusOK);
+    CHECK(state.activeRate == 44100UL && state.referenceCount == 2UL);
+    CHECK(state.activeMask == (kTASStreamMaskOutput | kTASStreamMaskInput));
+    before = state;
+    state.referenceCount = 1UL;
+    {
+        TASSharedClock malformed;
+        malformed = state;
+        CHECK(TASReleaseI2SStream(&state, kTASStreamOutput) ==
+            kTASStatusMalformed);
+        CHECK(memcmp(&state, &malformed, sizeof(state)) == 0);
+    }
+    state = before;
     CHECK(TASReleaseI2SStream(&state, kTASStreamOutput) == kTASStatusOK);
     CHECK(state.activeRate == 44100UL && state.referenceCount == 1UL);
+    CHECK(state.activeMask == kTASStreamMaskInput);
+    before = state;
     CHECK(TASReleaseI2SStream(&state, kTASStreamOutput) ==
         kTASStatusConflict);
+    CHECK(memcmp(&state, &before, sizeof(state)) == 0);
     CHECK(TASReleaseI2SStream(&state, kTASStreamInput) == kTASStatusOK);
     CHECK(state.activeRate == 0UL && state.referenceCount == 0UL);
+    CHECK(state.activeMask == 0UL);
+    CHECK(TASAcquireI2SStream(&config, &state, kTASStreamOutput,
+        48000UL, &clock) == kTASStatusOK);
+    CHECK(state.activeRate == 48000UL);
+
+    before = state;
+    state.activeMask = 4UL;
+    {
+        TASSharedClock malformed;
+        TASI2SClock clockBefore;
+        malformed = state;
+        clockBefore = clock;
+        CHECK(TASAcquireI2SStream(&config, &state, kTASStreamInput,
+            48000UL, &clock) == kTASStatusMalformed);
+        CHECK(memcmp(&state, &malformed, sizeof(state)) == 0);
+        CHECK(memcmp(&clock, &clockBefore, sizeof(clock)) == 0);
+        CHECK(TASReleaseI2SStream(&state, kTASStreamOutput) ==
+            kTASStatusMalformed);
+        CHECK(memcmp(&state, &malformed, sizeof(state)) == 0);
+    }
+    state = before;
+    CHECK(TASReleaseI2SStream(&state, kTASStreamOutput) == kTASStatusOK);
 }
 
 static unsigned long count_plan_operation(const TASI2SRegisterPlan *plan,
@@ -750,48 +805,90 @@ static unsigned long count_plan_operation(const TASI2SRegisterPlan *plan,
     return count;
 }
 
-static void test_i2s_register_plan_order_and_stop_timeout(void)
+static void test_i2s_transition_plans_and_stop_timeout(void)
 {
     TASFixture fixture;
     TASMachineConfig config;
     TASI2SClock clock;
+    TASSharedClock state;
+    TASI2STransition transition;
+    TASI2SStoppedToken stopped;
+    TASI2SStoppedToken stoppedBefore;
     TASI2SRegisterPlan plan;
     TASI2SRegisterPlan before;
     TASFixtureTumbler(&fixture);
     CHECK(parse(&fixture, &config) == kTASStatusOK);
     CHECK(TASSelectI2SClock(&config, 44100UL, &clock) == kTASStatusOK);
-    CHECK(TASBuildI2SRegisterPlan(&clock, 25UL, 0, 0, 0, 0, 0,
-        &plan) == kTASStatusTimeout);
+    TASSharedClockInit(&state);
+    CHECK(TASAcquireI2SStream(&config, &state, kTASStreamOutput,
+        44100UL, &clock) == kTASStatusOK);
+    CHECK(TASAcquireI2SStream(&config, &state, kTASStreamInput,
+        44100UL, &clock) == kTASStatusOK);
+    CHECK(TASPrepareI2STransition(&config, &state, 44100UL,
+        &transition) == kTASStatusOK);
+    CHECK(TASPrepareI2STransition(&config, &state, 48000UL,
+        &transition) == kTASStatusConflict);
+    CHECK(TASSetI2SStreamQuiesced(&state, kTASStreamOutput, 1) ==
+        kTASStatusOK);
+    CHECK(TASPrepareI2STransition(&config, &state, 48000UL,
+        &transition) == kTASStatusConflict);
+    CHECK(TASSetI2SStreamQuiesced(&state, kTASStreamInput, 1) ==
+        kTASStatusOK);
+    CHECK(TASPrepareI2STransition(&config, &state, 48000UL,
+        &transition) == kTASStatusConflict);
+    CHECK(TASSetI2SOutputsMuted(&state, 1) == kTASStatusOK);
+    CHECK(TASPrepareI2STransition(&config, &state, 48000UL,
+        &transition) == kTASStatusOK);
+    CHECK(state.activeRate == 44100UL);
+    CHECK(transition.clock.rate == 48000UL);
+    CHECK(TASBuildI2SStopPlan(&state, &transition, 25UL, &plan) ==
+        kTASStatusOK);
     CHECK(plan.count == 2UL);
     CHECK(plan.steps[0].operation == kTASI2SRequestClockStop);
-    CHECK(plan.steps[0].value == 25UL);
+    CHECK(plan.steps[0].value == 0UL);
     CHECK(plan.steps[1].operation == kTASI2SAwaitClockStopped);
+    CHECK(plan.steps[1].value == 25UL);
     CHECK(count_plan_operation(&plan, kTASI2SConfigureFormat) == 0UL);
     CHECK(count_plan_operation(&plan, kTASI2SWriteDataWord) == 0UL);
 
+    memset(&stopped, 0xa5, sizeof(stopped));
+    stoppedBefore = stopped;
+    CHECK(TASObserveI2SClockStopped(&state, &transition, 0, &stopped) ==
+        kTASStatusTimeout);
+    CHECK(memcmp(&stopped, &stoppedBefore, sizeof(stopped)) == 0);
     memset(&plan, 0xa5, sizeof(plan));
     before = plan;
-    CHECK(TASBuildI2SRegisterPlan(&clock, 25UL, 1, 1, 0, 1, 1,
-        &plan) == kTASStatusConflict);
+    CHECK(TASBuildI2SFormatPlan(&state, &stopped, &plan) ==
+        kTASStatusMalformed);
     CHECK(memcmp(&plan, &before, sizeof(plan)) == 0);
-    CHECK(TASBuildI2SRegisterPlan(&clock, 25UL, 1, 1, 1, 1, 1,
-        &plan) == kTASStatusOK);
-    CHECK(plan.count == 7UL);
-    CHECK(plan.steps[0].operation == kTASI2SRequestClockStop);
-    CHECK(plan.steps[1].operation == kTASI2SAwaitClockStopped);
-    CHECK(plan.steps[2].operation == kTASI2SSetCellClockHeld);
-    CHECK(plan.steps[3].operation == kTASI2SConfigureFormat);
-    CHECK(plan.steps[3].sourceHz == 45158400UL);
-    CHECK(plan.steps[3].mclkDivisor == 4UL);
-    CHECK(plan.steps[3].sclkDivisor == 4UL);
-    CHECK(plan.steps[3].frameRatio == 64UL);
-    CHECK(plan.steps[3].codecSlotBits == 20UL);
-    CHECK(plan.steps[3].pcmBits == 16UL);
-    CHECK(plan.steps[3].channels == 2UL);
-    CHECK(plan.steps[4].operation == kTASI2SWriteDataWord);
-    CHECK(plan.steps[4].value == 0x02000200UL);
-    CHECK(plan.steps[5].operation == kTASI2SBarrier);
-    CHECK(plan.steps[6].operation == kTASI2SSetCellRunning);
+    CHECK(TASObserveI2SClockStopped(&state, &transition, 1, &stopped) ==
+        kTASStatusOK);
+    CHECK(TASSetI2SOutputsMuted(&state, 0) == kTASStatusOK);
+    CHECK(TASBuildI2SFormatPlan(&state, &stopped, &plan) ==
+        kTASStatusConflict);
+    CHECK(memcmp(&plan, &before, sizeof(plan)) == 0);
+
+    CHECK(TASSetI2SOutputsMuted(&state, 1) == kTASStatusOK);
+    CHECK(TASPrepareI2STransition(&config, &state, 48000UL,
+        &transition) == kTASStatusOK);
+    CHECK(TASObserveI2SClockStopped(&state, &transition, 1, &stopped) ==
+        kTASStatusOK);
+    CHECK(TASBuildI2SFormatPlan(&state, &stopped, &plan) == kTASStatusOK);
+    CHECK(plan.count == 5UL);
+    CHECK(plan.steps[0].operation == kTASI2SSetCellClockHeld);
+    CHECK(plan.steps[1].operation == kTASI2SConfigureFormat);
+    CHECK(plan.steps[1].sourceHz == 49152000UL);
+    CHECK(plan.steps[1].mclkDivisor == 4UL);
+    CHECK(plan.steps[1].sclkDivisor == 4UL);
+    CHECK(plan.steps[1].frameRatio == 64UL);
+    CHECK(plan.steps[1].codecSlotBits == 20UL);
+    CHECK(plan.steps[1].pcmBits == 16UL);
+    CHECK(plan.steps[1].channels == 2UL);
+    CHECK(plan.steps[2].operation == kTASI2SWriteDataWord);
+    CHECK(plan.steps[2].value == 0x02000200UL);
+    CHECK(plan.steps[3].operation == kTASI2SBarrier);
+    CHECK(plan.steps[4].operation == kTASI2SSetCellRunning);
+    CHECK(state.activeRate == 44100UL);
 }
 
 int main(void)
@@ -825,7 +922,7 @@ int main(void)
     test_config_is_atomic_on_new_errors();
     test_exact_i2s_clock_vectors_and_rate_policy();
     test_shared_i2s_clock_acquisition();
-    test_i2s_register_plan_order_and_stop_timeout();
+    test_i2s_transition_plans_and_stop_timeout();
     if (failures != 0) {
         fprintf(stderr, "%d TAS audio checks failed\n", failures);
         return 1;

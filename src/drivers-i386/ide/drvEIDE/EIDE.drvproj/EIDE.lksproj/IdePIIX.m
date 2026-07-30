@@ -50,6 +50,7 @@
 #import "IdeShared.h"
 #import "IdeBMIDE.h"
 #import "IdeVIA.h"
+#import "IdeAMD.h"
 
 //#define DEBUG
 
@@ -96,11 +97,12 @@ static const intelChip_t *intelLookup(unsigned long id)
 	return NULL;
 }
 
-static BOOL intelMatch(id deviceDescription, unsigned long pciID, unsigned char progIf,
-	ideChipCaps_t *out)
+static BOOL intelMatch(id deviceDescription, unsigned long pciID,
+	unsigned char revision, unsigned char progIf, ideChipCaps_t *out)
 {
 	const intelChip_t *c = intelLookup(pciID);
 	(void)deviceDescription;
+	(void)revision;
 	if (c == NULL) return NO;
 	out->maxPIO   = c->maxPIO;
 	out->maxMWDMA = c->maxMWDMA;
@@ -201,7 +203,7 @@ static __inline__ unsigned char ichDriveNum(int channel, int unit)
 
 	{
 	unsigned long classReg;
-	unsigned char progIf, subClass, baseClass;
+	unsigned char revision, progIf, subClass, baseClass;
 
 	rtn = [self_class getPCIConfigData:&classReg atRegister:0x08
 		withDeviceDescription:devDesc];
@@ -209,6 +211,7 @@ static __inline__ unsigned char ichDriveNum(int channel, int unit)
 		IOLog("%s: PCI config space access error %d\n", [self name], rtn);
 		return NO;
 	}
+	revision  = classReg & 0xff;
 	progIf    = (classReg >>  8) & 0xff;
 	subClass  = (classReg >> 16) & 0xff;
 	baseClass = (classReg >> 24) & 0xff;
@@ -218,11 +221,17 @@ static __inline__ unsigned char ichDriveNum(int channel, int unit)
 			[self name], baseClass, subClass);
 		return NO;
 	}
-	if (ideIntelOps.match(devDesc, _controllerID, progIf, &_chipCaps)) {
+	if (ideIntelOps.match(devDesc, _controllerID, revision, progIf,
+			&_chipCaps)) {
 		_chipsetOps = &ideIntelOps;
-	} else if (ideVIAOps.match(devDesc, _controllerID, progIf, &_chipCaps)) {
+	} else if (ideVIAOps.match(devDesc, _controllerID, revision, progIf,
+				   &_chipCaps)) {
 		_chipsetOps = &ideVIAOps;
-	} else if (ideGenericOps.match(devDesc, _controllerID, progIf, &_chipCaps)) {
+	} else if (ideAMDOperations.match(devDesc, _controllerID, revision,
+					  progIf, &_chipCaps)) {
+		_chipsetOps = &ideAMDOperations;
+	} else if (ideGenericOps.match(devDesc, _controllerID, revision, progIf,
+					   &_chipCaps)) {
 		_chipsetOps = &ideGenericOps;
 		IOLog("%s: Unlisted PCI IDE (0x%08lx); using generic driver\n",
 			[self name], _controllerID);

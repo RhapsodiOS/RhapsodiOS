@@ -19,7 +19,7 @@
 @end
 
 static BOOL viaMatch(id deviceDescription, unsigned long pciID,
-	unsigned char progIf, ideChipCaps_t *out)
+	unsigned char revision, unsigned char progIf, ideChipCaps_t *out)
 {
 	unsigned char dev;
 	unsigned char fun;
@@ -30,6 +30,7 @@ static BOOL viaMatch(id deviceDescription, unsigned long pciID,
 	id pci;
 	IOReturn rtn;
 
+	(void)revision;
 	rtn = [deviceDescription getPCIdevice:&dev function:&fun bus:&bus];
 	if (rtn != IO_R_SUCCESS || fun != 1)
 		return NO;

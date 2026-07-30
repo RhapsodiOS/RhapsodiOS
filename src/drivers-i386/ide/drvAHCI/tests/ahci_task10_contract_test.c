@@ -130,9 +130,6 @@ static int valid_port_lifecycle(const char *text)
            scoped_order(text, "- (void)handleInterrupt", "@end",
                         "[commandLock lock];",
                         "status = AHCIPortMMIORead(mmio, base + AHCI_PX_IS)") &&
-           scoped_order(text, "- (void)handleInterrupt", "@end",
-                        "activeAtInterrupt = activeExecutors != 0",
-                        "status = AHCIPortMMIORead(mmio, base + AHCI_PX_IS)") &&
            scoped_order(text,
                         "- (AHCIU32)snapshotCommandState:(AHCIU32)status\n{",
                         "- (void)timeoutFired",
@@ -158,6 +155,12 @@ static int valid_port_lifecycle(const char *text)
                         "AHCIPortMMIOWrite(mmio, base + AHCI_PX_IS") &&
            scoped_order(text, "- (void)handleInterrupt", "@end",
                         "AHCIAsyncInterruptAction(",
+                        "[commandLock unlockWith:condition]") &&
+           scoped_order(text, "- (void)handleInterrupt", "@end",
+                        "AHCICommandFinishIRQ(&commandArbiter",
+                        "deferHBARecovery = AHCIAsyncHBARecoveryDeferred(") &&
+           scoped_order(text, "- (void)handleInterrupt", "@end",
+                        "commandResult != IO_R_SUCCESS",
                         "[commandLock unlockWith:condition]") &&
            scoped_order(text, "- (void)handleInterrupt", "@end",
                         "[commandLock unlockWith:condition]",

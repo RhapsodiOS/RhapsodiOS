@@ -676,7 +676,7 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     AHCICompletionResult completion;
     AHCIAsyncAction asyncAction;
     int condition;
-    BOOL activeAtInterrupt;
+    BOOL deferHBARecovery;
 
     [commandLock lock];
     condition = commandArbiter.state == AHCI_COMMAND_PENDING ?
@@ -687,7 +687,6 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
         [commandLock unlockWith:condition];
         return;
     }
-    activeAtInterrupt = activeExecutors != 0;
     base = AHCI_PORT_BASE(portNumber);
     status = AHCIPortMMIORead(mmio, base + AHCI_PX_IS);
     if ((status & AHCI_PORT_INITIAL_IE_MASK) == 0) {
@@ -725,8 +724,11 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
                     (commandArbiter.state == AHCI_COMMAND_IDLE ?
                      AHCI_LOCK_IDLE : AHCI_LOCK_DONE);
     }
+    deferHBARecovery = AHCIAsyncHBARecoveryDeferred(
+        commandArbiter.state, activeExecutors != 0,
+        commandResult != IO_R_SUCCESS) ? YES : NO;
     [commandLock unlockWith:condition];
-    if (asyncAction == AHCI_ASYNC_HBA_RECOVERY && !activeAtInterrupt &&
+    if (asyncAction == AHCI_ASYNC_HBA_RECOVERY && !deferHBARecovery &&
         controller != nil)
         [controller recoverController];
 }

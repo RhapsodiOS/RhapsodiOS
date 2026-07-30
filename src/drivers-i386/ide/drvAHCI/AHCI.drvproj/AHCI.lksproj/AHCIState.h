@@ -133,5 +133,7 @@ int AHCITimeoutChainCallbackMayEvaluate(AHCITimeoutChain *chain);
 AHCIAsyncAction AHCIAsyncInterruptAction(unsigned int portIS,
                                          unsigned int serr,
                                          unsigned int ssts);
+int AHCIAsyncHBARecoveryDeferred(AHCICommandState state,
+                                 int executorActive, int commandFailed);
 
 #endif

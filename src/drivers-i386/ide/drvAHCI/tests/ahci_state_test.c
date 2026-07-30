@@ -241,6 +241,16 @@ static void test_async_interrupt_actions(void)
           AHCI_ASYNC_NONE);
 }
 
+static void test_async_hba_recovery_ownership(void)
+{
+    CHECK(AHCIAsyncHBARecoveryDeferred(AHCI_COMMAND_PENDING, 1, 0));
+    CHECK(AHCIAsyncHBARecoveryDeferred(AHCI_COMMAND_COMPLETE, 1, 1));
+    CHECK(AHCIAsyncHBARecoveryDeferred(AHCI_COMMAND_TIMED_OUT, 1, 1));
+    CHECK(!AHCIAsyncHBARecoveryDeferred(AHCI_COMMAND_COMPLETE, 1, 0));
+    CHECK(!AHCIAsyncHBARecoveryDeferred(AHCI_COMMAND_IDLE, 0, 0));
+    CHECK(!AHCIAsyncHBARecoveryDeferred(AHCI_COMMAND_COMPLETE, 0, 1));
+}
+
 int main(void)
 {
     test_pi_validation();
@@ -258,6 +268,7 @@ int main(void)
     test_destroy_aborts_active_request_once();
     test_recovery_requires_same_supported_kind();
     test_async_interrupt_actions();
+    test_async_hba_recovery_ownership();
 
     if (failures != 0) {
         fprintf(stderr, "ahci_state_test: %d failure(s)\n", failures);

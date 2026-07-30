@@ -268,3 +268,13 @@ AHCIAsyncAction AHCIAsyncInterruptAction(unsigned int portIS,
         return AHCI_ASYNC_PORT_OFFLINE;
     return AHCI_ASYNC_NONE;
 }
+
+int AHCIAsyncHBARecoveryDeferred(AHCICommandState state,
+                                 int executorActive, int commandFailed)
+{
+    if (!executorActive)
+        return 0;
+    if (state == AHCI_COMMAND_PENDING || state == AHCI_COMMAND_TIMED_OUT)
+        return 1;
+    return state == AHCI_COMMAND_COMPLETE && commandFailed;
+}

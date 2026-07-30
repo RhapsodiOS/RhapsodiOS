@@ -500,7 +500,7 @@ bmPrepareDMA(u_short piix_base, u_int tableAddr, BOOL isRead)
 		(vm_offset_t)ideIoReq->addr,
 		ideIoReq->blkcnt * IDE_SECTOR_SIZE,
 		(struct vm_map *)ideIoReq->map) == NO) {
-		return NO;
+		return IDER_MEMFAIL;
 	}
 
 	/*

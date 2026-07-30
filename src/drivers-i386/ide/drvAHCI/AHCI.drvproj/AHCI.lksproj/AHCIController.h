@@ -29,6 +29,7 @@
     BOOL hbaResetAlreadyTried;
     BOOL controllerOffline;
     BOOL controllerRecovering;
+    AHCIRecoveryGate recoveryGate;
 }
 
 + (BOOL)probe:(IOPCIDeviceDescription *)deviceDescription;
@@ -36,6 +37,10 @@
 - free;
 - (void)interruptOccurred;
 - (void)recoverController;
+- (BOOL)beginSubmission;
+- (void)endSubmission;
+- (BOOL)commitSubmission;
+- (void)finishSubmissionCommit;
 
 @end
 

@@ -7,6 +7,8 @@
 #import "AHCIPort.h"
 #import "AHCIState.h"
 
+#define AHCI_SUBMISSION_DRAIN_TIMEOUT_MS 11000U
+
 static int AHCIMMIOOffsetValid(AHCIMMIOContext *mmio, AHCIU32 offset)
 {
     return !(mmio == 0 || mmio->base == 0 ||
@@ -189,6 +191,7 @@ static int AHCIVersionIsCommon(AHCIU32 version)
         [self free];
         return nil;
     }
+    AHCIRecoveryGateInit(&recoveryGate);
     [self setName:"AHCI"];
     [self setDeviceKind:"Other"];
     abarAddress = 0;
@@ -326,25 +329,39 @@ static int AHCIVersionIsCommon(AHCIU32 version)
     AHCIHBAResult resetResult;
     AHCIU32 ghc;
     unsigned int port;
+    unsigned int waited;
+    int drained;
 
     if (recoveryLock == nil)
         return;
     [recoveryLock lock];
-    if (controllerOffline) {
-        [recoveryLock unlock];
-        return;
-    }
-    if (hbaResetAlreadyTried) {
-        controllerOffline = YES;
-        ghc = AHCIMMIORead(&mmio, AHCI_REG_GHC);
-        AHCIMMIOWrite(&mmio, AHCI_REG_GHC, ghc & ~AHCI_GHC_IE);
-        AHCIMMIOBarrier(&mmio);
-        globalInterruptsEnabled = NO;
+    if (!AHCIRecoveryGateStart(&recoveryGate)) {
         [recoveryLock unlock];
         return;
     }
     controllerRecovering = YES;
     hbaResetAlreadyTried = YES;
+    [recoveryLock unlock];
+
+    waited = 0;
+    drained = 0;
+    for (;;) {
+        [recoveryLock lock];
+        drained = AHCIRecoveryGateDrained(&recoveryGate);
+        [recoveryLock unlock];
+        if (drained || waited >= AHCI_SUBMISSION_DRAIN_TIMEOUT_MS)
+            break;
+        IOSleep(AHCI_POLL_INTERVAL_MS);
+        waited += AHCI_POLL_INTERVAL_MS;
+    }
+    if (!drained) {
+        [recoveryLock lock];
+        AHCIRecoveryGateComplete(&recoveryGate, 0);
+        controllerOffline = YES;
+        controllerRecovering = NO;
+        [recoveryLock unlock];
+        return;
+    }
     globalInterruptsEnabled = NO;
     ghc = AHCIMMIORead(&mmio, AHCI_REG_GHC);
     AHCIMMIOWrite(&mmio, AHCI_REG_GHC, ghc & ~AHCI_GHC_IE);
@@ -366,20 +383,57 @@ static int AHCIVersionIsCommon(AHCIU32 version)
             if (ports[port] != nil)
                 [ports[port] controllerResetFailed];
         }
+        [recoveryLock lock];
+        AHCIRecoveryGateComplete(&recoveryGate, 0);
         [recoveryLock unlock];
         return;
-    }
-    for (port = 0; port < AHCI_MAX_PORTS; ++port) {
-        if (ports[port] != nil)
-            [ports[port] controllerDidReset];
     }
     ghc = AHCIMMIORead(&mmio, AHCI_REG_GHC);
     AHCIMMIOWrite(&mmio, AHCI_REG_GHC,
                   ghc | AHCI_GHC_AE | AHCI_GHC_IE);
     AHCIMMIOBarrier(&mmio);
     globalInterruptsEnabled = YES;
+    for (port = 0; port < AHCI_MAX_PORTS; ++port) {
+        if (ports[port] != nil)
+            [ports[port] controllerDidReset];
+    }
     hbaResetAlreadyTried = NO;
     controllerRecovering = NO;
+    [recoveryLock lock];
+    AHCIRecoveryGateComplete(&recoveryGate, 1);
+    [recoveryLock unlock];
+}
+
+- (BOOL)beginSubmission
+{
+    BOOL allowed;
+
+    [recoveryLock lock];
+    allowed = AHCIRecoveryGateBeginSubmission(&recoveryGate) ? YES : NO;
+    [recoveryLock unlock];
+    return allowed;
+}
+
+- (void)endSubmission
+{
+    [recoveryLock lock];
+    AHCIRecoveryGateEndSubmission(&recoveryGate);
+    [recoveryLock unlock];
+}
+
+- (BOOL)commitSubmission
+{
+    BOOL allowed;
+
+    [recoveryLock lock];
+    allowed = AHCIRecoveryGateCommitSubmission(&recoveryGate) ? YES : NO;
+    if (!allowed)
+        [recoveryLock unlock];
+    return allowed;
+}
+
+- (void)finishSubmissionCommit
+{
     [recoveryLock unlock];
 }
 

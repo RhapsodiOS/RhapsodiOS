@@ -48,6 +48,25 @@ typedef enum {
     AHCI_ASYNC_HBA_RECOVERY
 } AHCIAsyncAction;
 
+typedef enum {
+    AHCI_TIMEOUT_WAIT,
+    AHCI_TIMEOUT_REARM,
+    AHCI_TIMEOUT_EXPIRE
+} AHCITimeoutAction;
+
+typedef struct {
+    unsigned int setupCount;
+    unsigned int resetAttempts;
+    unsigned char recovering;
+    unsigned char offline;
+} AHCIRecoveryGate;
+
+typedef struct {
+    unsigned int armedGeneration;
+    unsigned int pendingGeneration;
+    unsigned char handoffPending;
+} AHCITimeoutChain;
+
 /* AHCI 1.3.1 PxIS bits used by the recovery decision. */
 #define AHCI_PXIS_DHRS            0x00000001U
 #define AHCI_PXIS_PSS             0x00000002U
@@ -96,7 +115,22 @@ AHCICompletionResult AHCIClassifyCompletion(AHCICompletionSnapshot *snapshot,
                                              unsigned int requested);
 int AHCICommandTimeoutDue(const AHCICommandArbiter *arbiter,
                           unsigned long deadline, unsigned long now);
+AHCITimeoutAction AHCICommandTimeoutAction(
+    const AHCICommandArbiter *arbiter, unsigned int armedGeneration,
+    unsigned long deadline, unsigned long now);
 int AHCIRecoveredKindValid(AHCIDeviceKind before, AHCIDeviceKind after);
+int AHCIRecoveryValidated(int sameKind, int validatorInstalled,
+                          int validatorPassed);
+void AHCIRecoveryGateInit(AHCIRecoveryGate *gate);
+int AHCIRecoveryGateBeginSubmission(AHCIRecoveryGate *gate);
+void AHCIRecoveryGateEndSubmission(AHCIRecoveryGate *gate);
+int AHCIRecoveryGateCommitSubmission(AHCIRecoveryGate *gate);
+int AHCIRecoveryGateStart(AHCIRecoveryGate *gate);
+int AHCIRecoveryGateDrained(const AHCIRecoveryGate *gate);
+void AHCIRecoveryGateComplete(AHCIRecoveryGate *gate, int success);
+void AHCITimeoutChainInit(AHCITimeoutChain *chain);
+int AHCITimeoutChainArm(AHCITimeoutChain *chain, unsigned int generation);
+int AHCITimeoutChainCallbackMayEvaluate(AHCITimeoutChain *chain);
 AHCIAsyncAction AHCIAsyncInterruptAction(unsigned int portIS,
                                          unsigned int serr,
                                          unsigned int ssts);

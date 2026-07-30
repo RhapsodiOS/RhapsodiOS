@@ -142,10 +142,118 @@ int AHCICommandTimeoutDue(const AHCICommandArbiter *arbiter,
     return arbiter->state == AHCI_COMMAND_PENDING && now >= deadline;
 }
 
+AHCITimeoutAction AHCICommandTimeoutAction(
+    const AHCICommandArbiter *arbiter, unsigned int armedGeneration,
+    unsigned long deadline, unsigned long now)
+{
+    if (arbiter == 0 || arbiter->state != AHCI_COMMAND_PENDING)
+        return AHCI_TIMEOUT_WAIT;
+    if (armedGeneration != arbiter->generation)
+        return AHCI_TIMEOUT_REARM;
+    return AHCICommandTimeoutDue(arbiter, deadline, now) ?
+           AHCI_TIMEOUT_EXPIRE : AHCI_TIMEOUT_WAIT;
+}
+
 int AHCIRecoveredKindValid(AHCIDeviceKind before, AHCIDeviceKind after)
 {
     return before == after &&
            (after == AHCI_DEVICE_SATA || after == AHCI_DEVICE_ATAPI);
+}
+
+int AHCIRecoveryValidated(int sameKind, int validatorInstalled,
+                          int validatorPassed)
+{
+    return sameKind && (!validatorInstalled || validatorPassed);
+}
+
+void AHCIRecoveryGateInit(AHCIRecoveryGate *gate)
+{
+    if (gate == 0)
+        return;
+    gate->setupCount = 0;
+    gate->resetAttempts = 0;
+    gate->recovering = 0;
+    gate->offline = 0;
+}
+
+int AHCIRecoveryGateBeginSubmission(AHCIRecoveryGate *gate)
+{
+    if (gate == 0 || gate->recovering || gate->offline)
+        return 0;
+    ++gate->setupCount;
+    return 1;
+}
+
+void AHCIRecoveryGateEndSubmission(AHCIRecoveryGate *gate)
+{
+    if (gate != 0 && gate->setupCount != 0)
+        --gate->setupCount;
+}
+
+int AHCIRecoveryGateCommitSubmission(AHCIRecoveryGate *gate)
+{
+    if (gate == 0 || gate->setupCount == 0)
+        return 0;
+    --gate->setupCount;
+    return !gate->recovering && !gate->offline;
+}
+
+int AHCIRecoveryGateStart(AHCIRecoveryGate *gate)
+{
+    if (gate == 0 || gate->recovering || gate->offline)
+        return 0;
+    gate->recovering = 1;
+    ++gate->resetAttempts;
+    return 1;
+}
+
+int AHCIRecoveryGateDrained(const AHCIRecoveryGate *gate)
+{
+    return gate != 0 && gate->setupCount == 0;
+}
+
+void AHCIRecoveryGateComplete(AHCIRecoveryGate *gate, int success)
+{
+    if (gate == 0)
+        return;
+    gate->recovering = 0;
+    if (!success)
+        gate->offline = 1;
+}
+
+void AHCITimeoutChainInit(AHCITimeoutChain *chain)
+{
+    if (chain == 0)
+        return;
+    chain->armedGeneration = 0;
+    chain->pendingGeneration = 0;
+    chain->handoffPending = 0;
+}
+
+int AHCITimeoutChainArm(AHCITimeoutChain *chain, unsigned int generation)
+{
+    if (chain == 0 || generation == 0)
+        return 0;
+    if (chain->armedGeneration == 0) {
+        chain->armedGeneration = generation;
+        return 1;
+    }
+    chain->pendingGeneration = generation;
+    chain->handoffPending = 1;
+    return 0;
+}
+
+int AHCITimeoutChainCallbackMayEvaluate(AHCITimeoutChain *chain)
+{
+    if (chain == 0 || chain->armedGeneration == 0)
+        return 0;
+    if (chain->handoffPending) {
+        chain->armedGeneration = chain->pendingGeneration;
+        chain->pendingGeneration = 0;
+        chain->handoffPending = 0;
+        return 0;
+    }
+    return 1;
 }
 
 AHCIAsyncAction AHCIAsyncInterruptAction(unsigned int portIS,

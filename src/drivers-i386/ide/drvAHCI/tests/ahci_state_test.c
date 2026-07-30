@@ -149,6 +149,61 @@ static void test_dequeued_timeout_cannot_expire_new_deadline(void)
     CHECK(AHCICommandFinishTimeout(&arbiter, newGeneration));
 }
 
+static void test_stale_timeout_after_new_deadline_only_rearms(void)
+{
+    AHCICommandArbiter arbiter;
+    AHCITimeoutChain chain;
+    unsigned int oldGeneration;
+    unsigned int newGeneration;
+
+    AHCICommandArbiterInit(&arbiter);
+    AHCITimeoutChainInit(&chain);
+    oldGeneration = AHCICommandBegin(&arbiter);
+    CHECK(AHCITimeoutChainArm(&chain, oldGeneration));
+    CHECK(AHCICommandFinishIRQ(&arbiter, oldGeneration));
+    newGeneration = AHCICommandBegin(&arbiter);
+    CHECK(!AHCITimeoutChainArm(&chain, newGeneration));
+    CHECK(!AHCITimeoutChainCallbackMayEvaluate(&chain));
+    CHECK(chain.armedGeneration == newGeneration);
+    CHECK(arbiter.state == AHCI_COMMAND_PENDING);
+    CHECK(AHCICommandTimeoutAction(&arbiter, oldGeneration, 200U, 250U) ==
+          AHCI_TIMEOUT_REARM);
+    CHECK(arbiter.state == AHCI_COMMAND_PENDING);
+    CHECK(AHCITimeoutChainCallbackMayEvaluate(&chain));
+    CHECK(AHCICommandTimeoutAction(&arbiter, newGeneration, 200U, 250U) ==
+          AHCI_TIMEOUT_EXPIRE);
+}
+
+static void test_controller_recovery_gate(void)
+{
+    AHCIRecoveryGate gate;
+
+    AHCIRecoveryGateInit(&gate);
+    CHECK(AHCIRecoveryGateBeginSubmission(&gate));
+    CHECK(gate.setupCount == 1U);
+    CHECK(AHCIRecoveryGateStart(&gate));
+    CHECK(!AHCIRecoveryGateStart(&gate));
+    CHECK(!AHCIRecoveryGateBeginSubmission(&gate));
+    CHECK(!AHCIRecoveryGateDrained(&gate));
+    CHECK(!AHCIRecoveryGateCommitSubmission(&gate));
+    CHECK(AHCIRecoveryGateDrained(&gate));
+    AHCIRecoveryGateComplete(&gate, 1);
+    CHECK(!gate.recovering && !gate.offline);
+    CHECK(gate.resetAttempts == 1U);
+    CHECK(AHCIRecoveryGateStart(&gate));
+    AHCIRecoveryGateComplete(&gate, 0);
+    CHECK(gate.offline && !gate.recovering);
+    CHECK(!AHCIRecoveryGateBeginSubmission(&gate));
+}
+
+static void test_recovery_validator_policy(void)
+{
+    CHECK(AHCIRecoveryValidated(1, 0, 0));
+    CHECK(AHCIRecoveryValidated(1, 1, 1));
+    CHECK(!AHCIRecoveryValidated(1, 1, 0));
+    CHECK(!AHCIRecoveryValidated(0, 0, 1));
+}
+
 static void test_destroy_aborts_active_request_once(void)
 {
     AHCICommandArbiter arbiter;
@@ -197,6 +252,9 @@ int main(void)
     test_stale_and_spurious_completion();
     test_completion_snapshot_classification();
     test_dequeued_timeout_cannot_expire_new_deadline();
+    test_stale_timeout_after_new_deadline_only_rearms();
+    test_controller_recovery_gate();
+    test_recovery_validator_policy();
     test_destroy_aborts_active_request_once();
     test_recovery_requires_same_supported_kind();
     test_async_interrupt_actions();

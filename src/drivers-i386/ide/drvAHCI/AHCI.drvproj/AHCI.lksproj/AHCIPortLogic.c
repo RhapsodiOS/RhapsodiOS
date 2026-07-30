@@ -416,3 +416,15 @@ int AHCIPortBuildSlot(AHCICommandHeader *header, unsigned char *table,
                           (unsigned int)prdtCount, write, atapi);
     return header->ctba == tablePhysical && header->ctbau == 0;
 }
+
+void AHCICopyVolatileBytes(unsigned char *destination,
+                           const volatile unsigned char *source,
+                           unsigned int count)
+{
+    unsigned int index;
+
+    if (destination == 0 || source == 0)
+        return;
+    for (index = 0; index < count; ++index)
+        destination[index] = source[index];
+}

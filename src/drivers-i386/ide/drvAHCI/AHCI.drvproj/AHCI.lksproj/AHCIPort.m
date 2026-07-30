@@ -16,10 +16,16 @@ extern unsigned int vm_page_size;
 - (void)timeoutFired;
 - (void)recoverCommand;
 - (void)finishDeferredFree;
+- (BOOL)validateRecoveredKind:(AHCIDeviceKind)kind
+                  matchesKind:(BOOL)sameKind;
 @end
 
 @interface Object(AHCIControllerRecovery)
 - (void)recoverController;
+- (BOOL)beginSubmission;
+- (void)endSubmission;
+- (BOOL)commitSubmission;
+- (void)finishSubmissionCommit;
 @end
 
 static void AHCIPortTimeout(void *argument)
@@ -121,6 +127,7 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
         return nil;
     }
     AHCICommandArbiterInit(&commandArbiter);
+    AHCITimeoutChainInit(&timeoutChain);
     rawArenaBytes = AHCI_PORT_ARENA_USABLE_BYTES + vm_page_size - 1U;
     rawArena = IOMallocLow(rawArenaBytes);
     if (rawArena == 0) {
@@ -231,6 +238,66 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     controller = owner;
 }
 
+- (BOOL)setRecoveryValidator:(AHCIRecoveryValidator)validator
+                      context:(void *)context
+{
+    BOOL installed;
+
+    if (validator == 0)
+        return NO;
+    [commandLock lock];
+    installed = recoveryValidator == 0 ? YES : NO;
+    if (installed) {
+        recoveryValidator = validator;
+        recoveryValidatorContext = context;
+    }
+    [commandLock unlockWith:
+        commandArbiter.state == AHCI_COMMAND_PENDING ?
+        AHCI_LOCK_PENDING :
+        (commandArbiter.state == AHCI_COMMAND_IDLE ?
+         AHCI_LOCK_IDLE : AHCI_LOCK_DONE)];
+    return installed;
+}
+
+- (BOOL)validateRecoveredKind:(AHCIDeviceKind)kind
+                  matchesKind:(BOOL)sameKind
+{
+    AHCIRecoveryValidator validator;
+    void *validatorContext;
+    AHCICommandState savedState;
+    AHCICompletionSnapshot savedCompletion;
+    IOReturn savedResult;
+    unsigned int savedRequestedBytes;
+    BOOL savedSkipCommandRecovery;
+    BOOL passed;
+
+    validator = recoveryValidator;
+    validatorContext = recoveryValidatorContext;
+    if (!sameKind)
+        return NO;
+    if (validator == 0)
+        return YES;
+    savedState = commandArbiter.state;
+    savedCompletion = completionSnapshot;
+    savedResult = commandResult;
+    savedRequestedBytes = requestedBytes;
+    savedSkipCommandRecovery = skipCommandRecovery;
+    recoveryValidationInProgress = YES;
+    commandArbiter.state = AHCI_COMMAND_IDLE;
+    [commandLock unlockWith:AHCI_LOCK_IDLE];
+    passed = validator(validatorContext, self, kind);
+    [commandLock lock];
+    recoveryValidationInProgress = NO;
+    commandArbiter.state = savedState;
+    completionSnapshot = savedCompletion;
+    commandResult = savedResult;
+    requestedBytes = savedRequestedBytes;
+    skipCommandRecovery = savedSkipCommandRecovery;
+    if (destroying)
+        passed = NO;
+    return AHCIRecoveryValidated(1, 1, passed);
+}
+
 - (BOOL)controllerDidReset
 {
     AHCIPortOps ops;
@@ -247,18 +314,19 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     AHCIPortFillOps(&ops, mmio);
     result = AHCIPortInitializeHardware(&ops, portNumber, portCapabilities,
                                         &arena, &recoveredKind);
+    controllerResetting = NO;
     online = result == AHCI_PORT_SUCCESS &&
-             AHCIRecoveredKindValid(previousKind, recoveredKind);
+             [self validateRecoveredKind:recoveredKind
+                              matchesKind:AHCIRecoveredKindValid(
+                                  previousKind, recoveredKind)];
     if (online)
         deviceKind = recoveredKind;
     if (commandArbiter.state == AHCI_COMMAND_PENDING &&
         AHCICommandFinishIRQ(&commandArbiter, commandArbiter.generation)) {
-        controllerResetting = NO;
         [commandLock unlockWith:AHCI_LOCK_DONE];
     } else {
         int condition;
 
-        controllerResetting = NO;
         condition = commandArbiter.state == AHCI_COMMAND_IDLE ?
                     AHCI_LOCK_IDLE : AHCI_LOCK_DONE;
         [commandLock unlockWith:condition];
@@ -305,6 +373,7 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     int condition;
     ns_time_t now;
     unsigned long nowSeconds;
+    AHCITimeoutAction timeoutAction;
 
     [commandLock lock];
     if (destroying) {
@@ -315,6 +384,7 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
             return;
         }
         timeoutArmed = NO;
+        AHCITimeoutChainInit(&timeoutChain);
         [commandLock unlockWith:AHCI_LOCK_DONE];
         [self finishDeferredFree];
         return;
@@ -327,24 +397,39 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     }
     IOGetTimestamp(&now);
     nowSeconds = (unsigned long)(now / 1000000000ULL);
-    if (commandArbiter.state == AHCI_COMMAND_PENDING &&
-        armedGeneration != commandArbiter.generation)
-        armedGeneration = commandArbiter.generation;
-    if (AHCICommandTimeoutDue(&commandArbiter, timeoutDeadlineSeconds,
-                              nowSeconds) &&
-        AHCICommandFinishTimeout(&commandArbiter, armedGeneration)) {
+    if (!AHCITimeoutChainCallbackMayEvaluate(&timeoutChain)) {
+        IOScheduleFunc(AHCIPortTimeout, self, 1);
+        [commandLock unlockWith:AHCI_LOCK_PENDING];
+        return;
+    }
+    timeoutAction = AHCICommandTimeoutAction(
+        &commandArbiter, timeoutChain.armedGeneration,
+        timeoutDeadlineSeconds,
+        nowSeconds);
+    if (timeoutAction == AHCI_TIMEOUT_REARM) {
+        IOScheduleFunc(AHCIPortTimeout, self, 1);
+        [commandLock unlockWith:AHCI_LOCK_PENDING];
+        return;
+    }
+    if (timeoutAction == AHCI_TIMEOUT_EXPIRE &&
+        AHCICommandFinishTimeout(&commandArbiter,
+                                 timeoutChain.armedGeneration)) {
+        if (mmio != 0 && mmio->base != 0)
+            AHCIPortMMIOWrite(mmio, AHCI_PORT_BASE(portNumber) +
+                              AHCI_PX_IE, 0);
         timeoutArmed = NO;
+        AHCITimeoutChainInit(&timeoutChain);
         commandResult = IO_R_TIMEOUT;
         [commandLock unlockWith:AHCI_LOCK_DONE];
         return;
     }
     if (commandArbiter.state == AHCI_COMMAND_PENDING) {
-        armedGeneration = commandArbiter.generation;
         IOScheduleFunc(AHCIPortTimeout, self, 1);
         [commandLock unlockWith:AHCI_LOCK_PENDING];
         return;
     }
     timeoutArmed = NO;
+    AHCITimeoutChainInit(&timeoutChain);
     condition = commandArbiter.state == AHCI_COMMAND_PENDING ?
                 AHCI_LOCK_PENDING :
                 (commandArbiter.state == AHCI_COMMAND_IDLE ?
@@ -384,7 +469,9 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
                          AHCI_PORT_BASE(portNumber) + AHCI_PX_SIG)) :
         AHCI_DEVICE_NONE;
     if (result == AHCI_PORT_SUCCESS &&
-        AHCIRecoveredKindValid(previousKind, recoveredKind)) {
+        [self validateRecoveredKind:recoveredKind
+                         matchesKind:AHCIRecoveredKindValid(
+                             previousKind, recoveredKind)]) {
         deviceKind = recoveredKind;
         online = YES;
         [commandLock unlockWith:AHCI_LOCK_DONE];
@@ -396,14 +483,15 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
         [controller recoverController];
 }
 
-- (IOReturn)executeATA:(unsigned char)command
-                   fis:(const unsigned char *)fis
-                packet:(const unsigned char *)packet
-                buffer:(void *)buffer
-                length:(unsigned int)length
-                 write:(BOOL)write
-               timeout:(unsigned int)seconds
-           transferred:(unsigned int *)actual
+- (IOReturn)executeATAInternal:(unsigned char)command
+                            fis:(const unsigned char *)fis
+                         packet:(const unsigned char *)packet
+                         buffer:(void *)buffer
+                         length:(unsigned int)length
+                          write:(BOOL)write
+                        timeout:(unsigned int)seconds
+                    transferred:(unsigned int *)actual
+                       recovery:(BOOL)recovery
 {
     AHCISegment segments[32];
     unsigned int segmentCount;
@@ -417,6 +505,7 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     IOReturn result;
     BOOL recover;
     BOOL finishFree;
+    BOOL submissionEntered;
     ns_time_t now;
 
     if (fis == 0 || actual == 0 || seconds == 0 ||
@@ -425,7 +514,16 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
         return IO_R_INVALID_ARG;
     *actual = 0;
     [commandLock lockWhen:AHCI_LOCK_IDLE];
-    if (!online || mmio == 0 || mmio->base == 0) {
+    if (destroying) {
+        [commandLock unlockWith:AHCI_LOCK_IDLE];
+        return IO_R_OFFLINE;
+    }
+    if ((recovery && !recoveryValidationInProgress) ||
+        (!recovery && recoveryValidationInProgress)) {
+        [commandLock unlockWith:AHCI_LOCK_IDLE];
+        return IO_R_BUSY;
+    }
+    if ((!online && !recovery) || mmio == 0 || mmio->base == 0) {
         [commandLock unlockWith:AHCI_LOCK_IDLE];
         return IO_R_OFFLINE;
     }
@@ -437,6 +535,12 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
         [commandLock unlockWith:AHCI_LOCK_IDLE];
         return IO_R_INVALID_ARG;
     }
+    submissionEntered = recovery ? NO :
+        (controller != nil && [controller beginSubmission]);
+    if (!recovery && !submissionEntered) {
+        [commandLock unlockWith:AHCI_LOCK_IDLE];
+        return IO_R_BUSY;
+    }
     base = AHCI_PORT_BASE(portNumber);
     waited = 0;
     while ((AHCIPortMMIORead(mmio, base + AHCI_PX_TFD) &
@@ -447,8 +551,15 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     }
     if ((AHCIPortMMIORead(mmio, base + AHCI_PX_TFD) &
          (AHCI_TFD_BSY | AHCI_TFD_DRQ)) != 0) {
+        AHCIPortMMIOWrite(mmio, base + AHCI_PX_IE, 0);
         completionSnapshot.portIS = AHCI_PXIS_TFES;
         completionSnapshot.serr = 0;
+        if (submissionEntered)
+            [controller endSubmission];
+        if (recovery) {
+            [commandLock unlockWith:AHCI_LOCK_IDLE];
+            return IO_R_TIMEOUT;
+        }
         ++activeExecutors;
         [commandLock unlockWith:AHCI_LOCK_DONE];
         [self recoverCommand];
@@ -472,11 +583,21 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
                            commandFIS, packet, packet == 0 ? 0U : 16U,
                            segments, segmentCount, length, write,
                            packet != 0)) {
+        if (submissionEntered)
+            [controller endSubmission];
         [commandLock unlockWith:AHCI_LOCK_IDLE];
         return IO_R_INVALID_ARG;
     }
+    if (submissionEntered && ![controller commitSubmission]) {
+        submissionEntered = NO;
+        [commandLock unlockWith:AHCI_LOCK_IDLE];
+        return IO_R_BUSY;
+    }
+    submissionEntered = NO;
     generation = AHCICommandBegin(&commandArbiter);
     if (generation == 0) {
+        if (!recovery)
+            [controller finishSubmissionCommit];
         [commandLock unlockWith:AHCI_LOCK_IDLE];
         return IO_R_BUSY;
     }
@@ -496,18 +617,22 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
         (unsigned long)(now / 1000000000ULL) + seconds;
     if (!timeoutArmed) {
         timeoutArmed = YES;
-        armedGeneration = generation;
-        IOScheduleFunc(AHCIPortTimeout, self, 1);
+        if (AHCITimeoutChainArm(&timeoutChain, generation))
+            IOScheduleFunc(AHCIPortTimeout, self, 1);
+    } else {
+        (void)AHCITimeoutChainArm(&timeoutChain, generation);
     }
     AHCIPortMMIOBarrier(mmio);
     AHCIPortMMIOWrite(mmio, base + AHCI_PX_CI, 1U);
+    if (!recovery)
+        [controller finishSubmissionCommit];
     [commandLock unlockWith:AHCI_LOCK_PENDING];
 
     [commandLock lockWhen:AHCI_LOCK_DONE];
     result = commandResult;
     if (result == IO_R_SUCCESS)
         *actual = completionSnapshot.transferred;
-    recover = result != IO_R_SUCCESS && !skipCommandRecovery;
+    recover = result != IO_R_SUCCESS && !skipCommandRecovery && !recovery;
     skipCommandRecovery = NO;
     if (recover) {
         [commandLock unlockWith:AHCI_LOCK_DONE];
@@ -525,6 +650,34 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
         return result;
     }
     return result;
+}
+
+- (IOReturn)executeATA:(unsigned char)command
+                   fis:(const unsigned char *)fis
+                packet:(const unsigned char *)packet
+                buffer:(void *)buffer
+                length:(unsigned int)length
+                 write:(BOOL)write
+               timeout:(unsigned int)seconds
+           transferred:(unsigned int *)actual
+{
+    return [self executeATAInternal:command fis:fis packet:packet
+                             buffer:buffer length:length write:write
+                            timeout:seconds transferred:actual recovery:NO];
+}
+
+- (IOReturn)executeRecoveryATA:(unsigned char)command
+                           fis:(const unsigned char *)fis
+                        packet:(const unsigned char *)packet
+                        buffer:(void *)buffer
+                        length:(unsigned int)length
+                         write:(BOOL)write
+                       timeout:(unsigned int)seconds
+                   transferred:(unsigned int *)actual
+{
+    return [self executeATAInternal:command fis:fis packet:packet
+                             buffer:buffer length:length write:write
+                            timeout:seconds transferred:actual recovery:YES];
 }
 
 - (unsigned int)portNumber
@@ -546,20 +699,27 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     AHCICommandHeader *commandList;
     volatile AHCICommandHeader *volatileCommandList;
     volatile unsigned char *receivedFIS;
-    unsigned int fisIndex;
     AHCICompletionResult completion;
     AHCIAsyncAction asyncAction;
     int condition;
     BOOL activeAtInterrupt;
 
-    if (mmio == 0 || mmio->base == 0)
+    [commandLock lock];
+    condition = commandArbiter.state == AHCI_COMMAND_PENDING ?
+                AHCI_LOCK_PENDING :
+                (commandArbiter.state == AHCI_COMMAND_IDLE ?
+                 AHCI_LOCK_IDLE : AHCI_LOCK_DONE);
+    if (mmio == 0 || mmio->base == 0) {
+        [commandLock unlockWith:condition];
         return;
+    }
+    activeAtInterrupt = commandArbiter.state == AHCI_COMMAND_PENDING;
     base = AHCI_PORT_BASE(portNumber);
     status = AHCIPortMMIORead(mmio, base + AHCI_PX_IS);
-    if ((status & AHCI_PORT_INITIAL_IE_MASK) == 0)
+    if ((status & AHCI_PORT_INITIAL_IE_MASK) == 0) {
+        [commandLock unlockWith:condition];
         return;
-    [commandLock lock];
-    activeAtInterrupt = commandArbiter.state == AHCI_COMMAND_PENDING;
+    }
     commandList = (AHCICommandHeader *)
                   (arena.virtualBase + arena.commandListOffset);
     completionSnapshot.portIS = status;
@@ -575,8 +735,8 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     completionSnapshot.transferred = volatileCommandList[0].prdbc;
     receivedFIS = (volatile unsigned char *)
                   (arena.virtualBase + arena.receivedFISOffset);
-    for (fisIndex = 0; fisIndex < sizeof(receivedFISSnapshot); ++fisIndex)
-        receivedFISSnapshot[fisIndex] = receivedFIS[fisIndex];
+    AHCICopyVolatileBytes(receivedFISSnapshot, receivedFIS,
+                          sizeof(receivedFISSnapshot));
     error = completionSnapshot.serr;
     AHCIPortMMIOWrite(mmio, base + AHCI_PX_IS,
                       status & AHCI_PORT_INITIAL_IE_MASK);
@@ -585,6 +745,10 @@ static void AHCIPortFillOps(AHCIPortOps *ops, AHCIMMIOContext *context)
     AHCIPortMMIOBarrier(mmio);
     completion = AHCIClassifyCompletion(&completionSnapshot,
                                          requestedBytes);
+    if (completion == AHCI_COMPLETION_ERROR) {
+        AHCIPortMMIOWrite(mmio, base + AHCI_PX_IE, 0);
+        AHCIPortMMIOBarrier(mmio);
+    }
     asyncAction = AHCIAsyncInterruptAction(completionSnapshot.portIS,
                                             completionSnapshot.serr,
                                             linkStatus);

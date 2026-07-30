@@ -672,6 +672,22 @@ static void test_completion_interrupts_are_enabled(void)
     CHECK((AHCI_PORT_INITIAL_IE_MASK & AHCI_PXIS_DPS) != 0);
 }
 
+static void test_received_fis_snapshot_covers_d2h_and_pio(void)
+{
+    volatile unsigned char source[256];
+    unsigned char snapshot[256];
+
+    memset((void *)source, 0, sizeof(source));
+    memset(snapshot, 0, sizeof(snapshot));
+    source[0x20] = 0x5f;
+    source[0x40] = 0x34;
+    source[0xff] = 0xa5;
+    AHCICopyVolatileBytes(snapshot, source, sizeof(snapshot));
+    CHECK(snapshot[0x20] == 0x5f);
+    CHECK(snapshot[0x40] == 0x34);
+    CHECK(snapshot[0xff] == 0xa5);
+}
+
 int main(void)
 {
     test_arena_layout();
@@ -690,6 +706,7 @@ int main(void)
     test_slot_zero_command_layout();
     test_recovery_is_port_local_and_bounded();
     test_completion_interrupts_are_enabled();
+    test_received_fis_snapshot_covers_d2h_and_pio();
     if (failures != 0)
         return 1;
     printf("ahci_port_test: all tests passed\n");

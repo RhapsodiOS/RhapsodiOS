@@ -103,18 +103,21 @@ static int valid_port_lifecycle(const char *text)
            scoped_order(text, "- free", "- (void)finishDeferredFree",
                         "AHCIPortStopHardware(&ops, portNumber)",
                         "quiesceComplete = YES;") &&
-           scoped_order(text, "- (IOReturn)executeATA:",
-                        "- (unsigned int)portNumber",
+           scoped_order(text, "- (IOReturn)executeATAInternal:",
+                        "- (IOReturn)executeATA:",
                         "generation = AHCICommandBegin(&commandArbiter)",
                         "IOScheduleFunc(AHCIPortTimeout, self, 1)") &&
-           scoped_order(text, "- (IOReturn)executeATA:",
-                        "- (unsigned int)portNumber",
+           scoped_order(text, "- (IOReturn)executeATAInternal:",
+                        "- (IOReturn)executeATA:",
                         "IOScheduleFunc(AHCIPortTimeout, self, 1)",
                         "AHCIPortMMIOBarrier(mmio);") &&
-           scoped_order(text, "- (IOReturn)executeATA:",
-                        "- (unsigned int)portNumber",
+           scoped_order(text, "- (IOReturn)executeATAInternal:",
+                        "- (IOReturn)executeATA:",
                         "AHCIPortMMIOBarrier(mmio);",
                         "AHCIPortMMIOWrite(mmio, base + AHCI_PX_CI, 1U)") &&
+           scoped_order(text, "- (void)handleInterrupt", "@end",
+                        "[commandLock lock];",
+                        "status = AHCIPortMMIORead(mmio, base + AHCI_PX_IS)") &&
            scoped_order(text, "- (void)handleInterrupt", "@end",
                         "completionSnapshot.commandIssue =",
                         "AHCIPortMMIOBarrier(mmio);") &&
@@ -123,6 +126,9 @@ static int valid_port_lifecycle(const char *text)
                         "completionSnapshot.transferred =") &&
            scoped_order(text, "- (void)handleInterrupt", "@end",
                         "completionSnapshot.transferred =",
+                        "AHCIPortMMIOWrite(mmio, base + AHCI_PX_IS") &&
+           scoped_order(text, "- (void)handleInterrupt", "@end",
+                        "AHCICopyVolatileBytes(receivedFISSnapshot",
                         "AHCIPortMMIOWrite(mmio, base + AHCI_PX_IS") &&
            scoped_order(text, "- (void)handleInterrupt", "@end",
                         "AHCIAsyncInterruptAction(",
@@ -136,10 +142,93 @@ static int valid_port_lifecycle(const char *text)
            scoped_order(text, "- (BOOL)controllerDidReset",
                         "- (void)controllerResetFailed",
                         "AHCIPortInitializeHardware(&ops",
+                        "controllerResetting = NO;") &&
+           scoped_order(text, "- (BOOL)controllerDidReset",
+                        "- (void)controllerResetFailed",
+                        "controllerResetting = NO;",
+                        "[self validateRecoveredKind:recoveredKind") &&
+           scoped_order(text, "- (BOOL)controllerDidReset",
+                        "- (void)controllerResetFailed",
+                        "[self validateRecoveredKind:recoveredKind",
+                        "AHCICommandFinishIRQ(&commandArbiter") &&
+           scoped_order(text, "- (void)timeoutFired\n{",
+                        "- (void)recoverCommand",
+                        "AHCITimeoutChainCallbackMayEvaluate(&timeoutChain)",
+                        "AHCICommandTimeoutAction(") &&
+           scoped_absent(text, "- (void)timeoutFired\n{",
+                         "- (void)recoverCommand",
+                         "timeoutChain.armedGeneration =") &&
+           scoped_order(text, "- (IOReturn)executeATAInternal:",
+                        "- (IOReturn)executeATA:",
+                        "if (destroying) {",
+                        "if ((recovery && !recoveryValidationInProgress)") &&
+           scoped_order(text, "- (IOReturn)executeATAInternal:",
+                        "- (IOReturn)executeATA:",
+                        "[controller beginSubmission]",
+                        "[controller commitSubmission]") &&
+           scoped_order(text, "- (IOReturn)executeATAInternal:",
+                        "- (IOReturn)executeATA:",
+                        "if (recovery) {", "++activeExecutors;") &&
+           scoped_order(text, "- (IOReturn)executeATAInternal:",
+                        "- (IOReturn)executeATA:",
+                        "[controller commitSubmission]",
+                        "AHCIPortMMIOWrite(mmio, base + AHCI_PX_CI, 1U)") &&
+           scoped_order(text, "- (IOReturn)executeATAInternal:",
+                        "- (IOReturn)executeATA:",
+                        "AHCIPortMMIOWrite(mmio, base + AHCI_PX_CI, 1U)",
+                        "[controller finishSubmissionCommit]") &&
+           scoped_order(text, "- (BOOL)validateRecoveredKind:",
+                        "- (BOOL)controllerDidReset",
+                        "savedResult = commandResult;",
+                        "passed = validator(validatorContext, self, kind)") &&
+           scoped_order(text, "- (BOOL)validateRecoveredKind:",
+                        "- (BOOL)controllerDidReset",
+                        "passed = validator(validatorContext, self, kind)",
+                        "commandResult = savedResult;") &&
+           scoped_order(text, "- (void)handleInterrupt", "@end",
+                        "AHCIPortMMIOWrite(mmio, base + AHCI_PX_IE, 0)",
                         "AHCICommandFinishIRQ(&commandArbiter") &&
            scoped_order(text, "- (void)recoverCommand",
-                        "- (IOReturn)executeATA:",
+                        "- (IOReturn)executeATAInternal:",
                         "AHCI_RECOVERY_HBA", "[controller recoverController]");
+}
+
+static int valid_controller_recovery(const char *text)
+{
+    return scoped_order(text, "- (void)recoverController",
+                        "- (BOOL)beginSubmission",
+                        "AHCIRecoveryGateStart(&recoveryGate)",
+                        "AHCIRecoveryGateDrained(&recoveryGate)") &&
+           scoped_order(text, "- (void)recoverController",
+                        "- (BOOL)beginSubmission",
+                        "AHCIRecoveryGateDrained(&recoveryGate)",
+                        "ghc = AHCIMMIORead(&mmio, AHCI_REG_GHC)") &&
+           scoped_order(text, "- (void)recoverController",
+                        "- (BOOL)beginSubmission",
+                        "[ports[port] controllerWillReset]",
+                        "resetResult = AHCIHBAInitialize(&ops, &hbaInfo)") &&
+           scoped_order(text, "- (void)recoverController",
+                        "- (BOOL)beginSubmission",
+                        "if (resetResult != AHCI_HBA_SUCCESS)",
+                        "[ports[port] controllerResetFailed]") &&
+           scoped_order(text, "- (void)recoverController",
+                        "- (BOOL)beginSubmission",
+                        "globalInterruptsEnabled = YES;",
+                        "[ports[port] controllerDidReset]") &&
+           scoped_order(text, "- (void)recoverController",
+                        "- (BOOL)beginSubmission",
+                        "[ports[port] controllerDidReset]",
+                        "AHCIRecoveryGateComplete(&recoveryGate, 1)") &&
+           scoped_order(text, "- (BOOL)commitSubmission",
+                        "- (void)finishSubmissionCommit",
+                        "AHCIRecoveryGateCommitSubmission(&recoveryGate)",
+                        "if (!allowed)") &&
+           scoped_order(text, "- (BOOL)commitSubmission",
+                        "- (void)finishSubmissionCommit",
+                        "if (!allowed)", "[recoveryLock unlock]") &&
+           scoped_order(text, "- (void)finishSubmissionCommit",
+                        "- (void)interruptOccurred",
+                        "[recoveryLock unlock]", "}");
 }
 
 static int replace_once(char *out, size_t capacity, const char *source,
@@ -207,6 +296,18 @@ static void test_lifecycle_mutations(const char *portm)
     free(source);
 }
 
+static void test_controller_recovery(const char *ctrlm)
+{
+    char *source;
+
+    source = read_file(ctrlm);
+    if (source == NULL || !valid_controller_recovery(source)) {
+        fprintf(stderr, "production controller recovery lifecycle rejected\n");
+        ++failures;
+    }
+    free(source);
+}
+
 int main(void)
 {
     const char *porth = "../AHCI.drvproj/AHCI.lksproj/AHCIPort.h";
@@ -216,6 +317,8 @@ int main(void)
 
     require_text(porth, "- (IOReturn)executeATA:(unsigned char)command");
     require_text(porth, "transferred:(unsigned int *)actual;");
+    require_text(porth, "executeRecoveryATA:(unsigned char)command");
+    require_text(porth, "setRecoveryValidator:(AHCIRecoveryValidator)validator");
     require_text(portm, "AHCIPortBuildSegments(");
     require_text(portm, "AHCIPortBuildSlot(");
     require_text(portm, "AHCI_TFD_TIMEOUT_MS");
@@ -230,7 +333,7 @@ int main(void)
     require_order(portm, "AHCIPortMMIOBarrier(mmio);", "AHCIPortMMIOWrite(mmio, base + AHCI_PX_CI, 1U)");
     require_text(portm, "AHCIPortRecoverHardware(&ops, portNumber, &arena)");
     require_text(portm, "AHCIRecoveryFor(completionSnapshot.portIS");
-    require_text(portm, "AHCIRecoveredKindValid(previousKind, recoveredKind)");
+    require_text(portm, "AHCIRecoveredKindValid(");
     require_text(portm, "portCapabilities");
     require_order(ctrlm, "resetResult = AHCIHBAInitialize(&ops, &hbaInfo)",
                   "[ports[port] controllerDidReset]");
@@ -238,12 +341,23 @@ int main(void)
                   "[ports[port] controllerResetFailed]");
     require_text(portm, "[commandLock unlockWith:AHCI_LOCK_PENDING]");
     require_text(portm, "if (controllerResetting)");
+    require_text(portm, "AHCICommandTimeoutAction(");
+    require_text(portm, "AHCITimeoutChainArm(&timeoutChain, generation)");
+    require_text(portm, "AHCITimeoutChainInit(&timeoutChain);");
+    require_text(portm, "[controller beginSubmission]");
+    require_text(portm, "[controller commitSubmission]");
+    require_text(portm, "[controller finishSubmissionCommit]");
+    require_text(portm, "[self validateRecoveredKind:recoveredKind");
+    require_text(portm, "AHCICopyVolatileBytes(receivedFISSnapshot");
+    require_text(ctrlm, "AHCIRecoveryGateStart(&recoveryGate)");
+    require_text(ctrlm, "AHCIRecoveryGateDrained(&recoveryGate)");
     require_text(ctrlh, "NXLock *recoveryLock;");
     require_text(ctrlm, "[recoveryLock lock]");
     require_text(ctrlm, "AHCIHBAInitialize(&ops, &hbaInfo)");
     require_text(ctrlm, "hbaResetAlreadyTried = YES");
     require_text(ctrlm, "controllerOffline = YES");
     test_lifecycle_mutations(portm);
+    test_controller_recovery(ctrlm);
     if (failures != 0)
         return EXIT_FAILURE;
     printf("ahci_task10_contract_test: all tests passed\n");

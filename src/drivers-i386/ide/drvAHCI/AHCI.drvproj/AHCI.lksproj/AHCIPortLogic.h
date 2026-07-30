@@ -107,5 +107,8 @@ int AHCIPortBuildSlot(AHCICommandHeader *header, unsigned char *table,
                       unsigned int segmentCount,
                       unsigned int transferBytes,
                       unsigned char write, unsigned char atapi);
+void AHCICopyVolatileBytes(unsigned char *destination,
+                           const volatile unsigned char *source,
+                           unsigned int count);
 
 #endif

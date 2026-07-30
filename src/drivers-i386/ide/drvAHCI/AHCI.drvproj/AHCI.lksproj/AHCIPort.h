@@ -8,6 +8,10 @@
 #import "AHCIShared.h"
 #import "AHCIPortLogic.h"
 
+@class AHCIPort;
+typedef BOOL (*AHCIRecoveryValidator)(void *context, AHCIPort *port,
+                                      AHCIDeviceKind kind);
+
 @interface AHCIPort : Object
 {
     AHCIMMIOContext *mmio;
@@ -21,10 +25,10 @@
     NXConditionLock *commandLock;
     AHCICommandArbiter commandArbiter;
     AHCICompletionSnapshot completionSnapshot;
-    unsigned char receivedFISSnapshot[64];
+    unsigned char receivedFISSnapshot[AHCI_PORT_RECEIVED_FIS_BYTES];
     unsigned int requestedBytes;
     unsigned long timeoutDeadlineSeconds;
-    unsigned int armedGeneration;
+    AHCITimeoutChain timeoutChain;
     BOOL timeoutArmed;
     BOOL destroying;
     BOOL deferredArenaRelease;
@@ -35,6 +39,9 @@
     BOOL online;
     BOOL controllerResetting;
     BOOL skipCommandRecovery;
+    AHCIRecoveryValidator recoveryValidator;
+    void *recoveryValidatorContext;
+    BOOL recoveryValidationInProgress;
 }
 
 - initWithMMIO:(AHCIMMIOContext *)context
@@ -48,6 +55,8 @@
 - (BOOL)controllerDidReset;
 - (void)controllerResetFailed;
 - (void)controllerWillReset;
+- (BOOL)setRecoveryValidator:(AHCIRecoveryValidator)validator
+                      context:(void *)context;
 - (IOReturn)executeATA:(unsigned char)command
                    fis:(const unsigned char *)fis
                 packet:(const unsigned char *)packet
@@ -56,6 +65,14 @@
                  write:(BOOL)write
                timeout:(unsigned int)seconds
            transferred:(unsigned int *)actual;
+- (IOReturn)executeRecoveryATA:(unsigned char)command
+                           fis:(const unsigned char *)fis
+                        packet:(const unsigned char *)packet
+                        buffer:(void *)buffer
+                        length:(unsigned int)length
+                         write:(BOOL)write
+                       timeout:(unsigned int)seconds
+                   transferred:(unsigned int *)actual;
 
 @end
 

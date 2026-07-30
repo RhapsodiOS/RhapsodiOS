@@ -7,7 +7,6 @@
 #define TAS_DISCOVERY_LIMIT 16UL
 #define TAS_TRAVERSAL_LIMIT 64UL
 #define TAS_I2S_DATA_WORD 0x02000200UL
-#define TAS_I2S_FRAME_COUNT 0UL
 #define TAS_I2S_MCLK_TO_FS 256UL
 #define TAS_I2S_SCLK_TO_FS 64UL
 
@@ -33,22 +32,6 @@ typedef struct {
     const char *compatible;
 } TASCandidate;
 
-static unsigned long serial_format(unsigned long source,
-    unsigned long mclkDivisor)
-{
-    unsigned long value;
-    value = 0UL;
-    if (source == 45158400UL)
-        value = 1UL << 30;
-    else if (source == 49152000UL)
-        value = 2UL << 30;
-    value |= ((mclkDivisor / 2UL) - 1UL) << 24;
-    value |= ((4UL / 2UL) - 1UL) << 20;
-    value |= 1UL << 19;
-    value |= 1UL << 16;
-    return value;
-}
-
 static TASStatus find_i2s_clock(unsigned long rate, TASI2SClock *clock)
 {
     unsigned long sourceIndex;
@@ -71,8 +54,7 @@ static TASStatus find_i2s_clock(unsigned long rate, TASI2SClock *clock)
                 clock->mclkDivisor = divisor;
                 clock->sclkDivisor = TAS_I2S_MCLK_TO_FS /
                     TAS_I2S_SCLK_TO_FS;
-                clock->serialFormat = serial_format(source, divisor);
-                clock->frameCount = TAS_I2S_FRAME_COUNT;
+                clock->frameRatio = TAS_I2S_SCLK_TO_FS;
                 clock->dataWord = TAS_I2S_DATA_WORD;
                 clock->codecSlotBits = 20UL;
                 clock->pcmBits = 16UL;
@@ -1064,6 +1046,20 @@ static void plan_step(TASI2SRegisterPlan *plan,
     ++plan->count;
 }
 
+static void plan_format(TASI2SRegisterPlan *plan, const TASI2SClock *clock)
+{
+    TASI2SPlanStep *step;
+    plan_step(plan, kTASI2SConfigureFormat, 0UL);
+    step = &plan->steps[plan->count - 1UL];
+    step->sourceHz = clock->sourceHz;
+    step->mclkDivisor = clock->mclkDivisor;
+    step->sclkDivisor = clock->sclkDivisor;
+    step->frameRatio = clock->frameRatio;
+    step->codecSlotBits = clock->codecSlotBits;
+    step->pcmBits = clock->pcmBits;
+    step->channels = clock->channels;
+}
+
 TASStatus TASBuildI2SRegisterPlan(const TASI2SClock *clock,
     unsigned long stopDeadline, int clocksStopped, int liveRateChange,
     int inputDMAQuiesced, int outputDMAQuiesced, int outputsMuted,
@@ -1087,8 +1083,7 @@ TASStatus TASBuildI2SRegisterPlan(const TASI2SClock *clock,
         return kTASStatusTimeout;
     }
     plan_step(&built, kTASI2SSetCellClockHeld, 0UL);
-    plan_step(&built, kTASI2SWriteSerialFormat, clock->serialFormat);
-    plan_step(&built, kTASI2SWriteFrameCount, clock->frameCount);
+    plan_format(&built, clock);
     plan_step(&built, kTASI2SWriteDataWord, clock->dataWord);
     plan_step(&built, kTASI2SBarrier, 0UL);
     plan_step(&built, kTASI2SSetCellRunning, 0UL);

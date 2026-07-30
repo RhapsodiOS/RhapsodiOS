@@ -102,8 +102,7 @@ typedef struct {
     unsigned long sourceHz;
     unsigned long mclkDivisor;
     unsigned long sclkDivisor;
-    unsigned long serialFormat;
-    unsigned long frameCount;
+    unsigned long frameRatio;
     unsigned long dataWord;
     unsigned long codecSlotBits;
     unsigned long pcmBits;
@@ -126,8 +125,7 @@ typedef enum {
     kTASI2SRequestClockStop = 0,
     kTASI2SAwaitClockStopped,
     kTASI2SSetCellClockHeld,
-    kTASI2SWriteSerialFormat,
-    kTASI2SWriteFrameCount,
+    kTASI2SConfigureFormat,
     kTASI2SWriteDataWord,
     kTASI2SBarrier,
     kTASI2SSetCellRunning
@@ -136,9 +134,16 @@ typedef enum {
 typedef struct {
     TASI2SPlanOperation operation;
     unsigned long value;
+    unsigned long sourceHz;
+    unsigned long mclkDivisor;
+    unsigned long sclkDivisor;
+    unsigned long frameRatio;
+    unsigned long codecSlotBits;
+    unsigned long pcmBits;
+    unsigned long channels;
 } TASI2SPlanStep;
 
-#define TAS_I2S_PLAN_MAX_STEPS 8
+#define TAS_I2S_PLAN_MAX_STEPS 7
 
 typedef struct {
     TASI2SPlanStep steps[TAS_I2S_PLAN_MAX_STEPS];

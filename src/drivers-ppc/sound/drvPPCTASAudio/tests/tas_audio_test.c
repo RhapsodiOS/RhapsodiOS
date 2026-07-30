@@ -625,8 +625,7 @@ static void test_config_is_atomic_on_new_errors(void)
 }
 
 static void check_clock(const TASMachineConfig *config, unsigned long rate,
-    unsigned long source, unsigned long mclkDivisor,
-    unsigned long serialFormat)
+    unsigned long source, unsigned long mclkDivisor)
 {
     TASI2SClock clock;
     memset(&clock, 0xa5, sizeof(clock));
@@ -635,8 +634,7 @@ static void check_clock(const TASMachineConfig *config, unsigned long rate,
     CHECK(clock.sourceHz == source);
     CHECK(clock.mclkDivisor == mclkDivisor);
     CHECK(clock.sclkDivisor == 4UL);
-    CHECK(clock.serialFormat == serialFormat);
-    CHECK(clock.frameCount == 0UL);
+    CHECK(clock.frameRatio == 64UL);
     CHECK(clock.dataWord == 0x02000200UL);
     CHECK(clock.codecSlotBits == 20UL);
     CHECK(clock.pcmBits == 16UL);
@@ -660,9 +658,9 @@ static void test_exact_i2s_clock_vectors_and_rate_policy(void)
     CHECK(config.rates[0] == 32000UL);
     CHECK(config.rates[1] == 44100UL);
     CHECK(config.rates[2] == 48000UL);
-    check_clock(&config, 32000UL, 49152000UL, 6UL, 0x82190000UL);
-    check_clock(&config, 44100UL, 45158400UL, 4UL, 0x41190000UL);
-    check_clock(&config, 48000UL, 49152000UL, 4UL, 0x81190000UL);
+    check_clock(&config, 32000UL, 49152000UL, 6UL);
+    check_clock(&config, 44100UL, 45158400UL, 4UL);
+    check_clock(&config, 48000UL, 49152000UL, 4UL);
 
     memset(&clock, 0xa5, sizeof(clock));
     before = clock;
@@ -768,7 +766,7 @@ static void test_i2s_register_plan_order_and_stop_timeout(void)
     CHECK(plan.steps[0].operation == kTASI2SRequestClockStop);
     CHECK(plan.steps[0].value == 25UL);
     CHECK(plan.steps[1].operation == kTASI2SAwaitClockStopped);
-    CHECK(count_plan_operation(&plan, kTASI2SWriteSerialFormat) == 0UL);
+    CHECK(count_plan_operation(&plan, kTASI2SConfigureFormat) == 0UL);
     CHECK(count_plan_operation(&plan, kTASI2SWriteDataWord) == 0UL);
 
     memset(&plan, 0xa5, sizeof(plan));
@@ -778,17 +776,22 @@ static void test_i2s_register_plan_order_and_stop_timeout(void)
     CHECK(memcmp(&plan, &before, sizeof(plan)) == 0);
     CHECK(TASBuildI2SRegisterPlan(&clock, 25UL, 1, 1, 1, 1, 1,
         &plan) == kTASStatusOK);
-    CHECK(plan.count == 8UL);
+    CHECK(plan.count == 7UL);
     CHECK(plan.steps[0].operation == kTASI2SRequestClockStop);
     CHECK(plan.steps[1].operation == kTASI2SAwaitClockStopped);
     CHECK(plan.steps[2].operation == kTASI2SSetCellClockHeld);
-    CHECK(plan.steps[3].operation == kTASI2SWriteSerialFormat);
-    CHECK(plan.steps[3].value == 0x41190000UL);
-    CHECK(plan.steps[4].operation == kTASI2SWriteFrameCount);
-    CHECK(plan.steps[5].operation == kTASI2SWriteDataWord);
-    CHECK(plan.steps[5].value == 0x02000200UL);
-    CHECK(plan.steps[6].operation == kTASI2SBarrier);
-    CHECK(plan.steps[7].operation == kTASI2SSetCellRunning);
+    CHECK(plan.steps[3].operation == kTASI2SConfigureFormat);
+    CHECK(plan.steps[3].sourceHz == 45158400UL);
+    CHECK(plan.steps[3].mclkDivisor == 4UL);
+    CHECK(plan.steps[3].sclkDivisor == 4UL);
+    CHECK(plan.steps[3].frameRatio == 64UL);
+    CHECK(plan.steps[3].codecSlotBits == 20UL);
+    CHECK(plan.steps[3].pcmBits == 16UL);
+    CHECK(plan.steps[3].channels == 2UL);
+    CHECK(plan.steps[4].operation == kTASI2SWriteDataWord);
+    CHECK(plan.steps[4].value == 0x02000200UL);
+    CHECK(plan.steps[5].operation == kTASI2SBarrier);
+    CHECK(plan.steps[6].operation == kTASI2SSetCellRunning);
 }
 
 int main(void)

@@ -7,6 +7,7 @@
 #import "AHCIHBA.h"
 #import "AHCIPCI.h"
 #import "AHCIShared.h"
+#import "AHCIPort.h"
 
 @interface AHCIController : IODirectDevice
 {
@@ -19,6 +20,9 @@
     BOOL pciCommandChanged;
     AHCIMMIOContext mmio;
     AHCIHBAInfo hbaInfo;
+    AHCIPort *ports[AHCI_MAX_PORTS];
+    unsigned int portCount;
+    BOOL globalInterruptsEnabled;
 }
 
 + (BOOL)probe:(IOPCIDeviceDescription *)deviceDescription;

@@ -23,6 +23,7 @@ typedef char AHCIU32MustBe4Bytes[(sizeof(AHCIU32) == 4) ? 1 : -1];
 #define AHCI_GHC_AE              0x80000000U
 
 #define AHCI_CAP_NP_MASK         0x0000001fU
+#define AHCI_CAP_SSS             0x08000000U
 #define AHCI_CAP2_BOH            0x00000001U
 
 #define AHCI_BOHC_BOS            0x00000001U
@@ -35,6 +36,41 @@ typedef char AHCIU32MustBe4Bytes[(sizeof(AHCIU32) == 4) ? 1 : -1];
 #define AHCI_BOHC_BB_OBSERVE_MS     25U
 #define AHCI_BOHC_HANDOFF_TIMEOUT_MS 2000U
 #define AHCI_HBA_RESET_TIMEOUT_MS   1000U
+
+/* Per-port registers from AHCI 1.3.1 section 3.3. */
+#define AHCI_PORT_BASE(port)     (0x100U + ((AHCIU32)(port) * 0x80U))
+#define AHCI_PX_CLB              0x00U
+#define AHCI_PX_CLBU             0x04U
+#define AHCI_PX_FB               0x08U
+#define AHCI_PX_FBU              0x0cU
+#define AHCI_PX_IS               0x10U
+#define AHCI_PX_IE               0x14U
+#define AHCI_PX_CMD              0x18U
+#define AHCI_PX_TFD              0x20U
+#define AHCI_PX_SIG              0x24U
+#define AHCI_PX_SSTS             0x28U
+#define AHCI_PX_SCTL             0x2cU
+#define AHCI_PX_SERR             0x30U
+#define AHCI_PX_CI               0x38U
+
+#define AHCI_PXCMD_ST            0x00000001U
+#define AHCI_PXCMD_SUD           0x00000002U
+#define AHCI_PXCMD_POD           0x00000004U
+#define AHCI_PXCMD_FRE           0x00000010U
+#define AHCI_PXCMD_FR            0x00004000U
+#define AHCI_PXCMD_CR            0x00008000U
+#define AHCI_PXCMD_CPD           0x00100000U
+
+#define AHCI_SSTS_DET_MASK       0x0000000fU
+#define AHCI_SSTS_DET_PRESENT    0x00000003U
+#define AHCI_SSTS_IPM_MASK       0x00000f00U
+#define AHCI_SSTS_IPM_ACTIVE     0x00000100U
+#define AHCI_SCTL_DET_MASK       0x0000000fU
+#define AHCI_SCTL_DET_COMRESET   0x00000001U
+#define AHCI_SCTL_SPD_MASK       0x000000f0U
+
+#define AHCI_SIG_ATA             0x00000101U
+#define AHCI_SIG_ATAPI           0xeb140101U
 
 typedef struct {
     unsigned short flags;

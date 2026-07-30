@@ -460,32 +460,27 @@ static int valid_controller_source(const char *text)
                "return [super free];") &&
            !has_identifier(text, "IdeController") &&
            !has_identifier(text, "AtapiController") &&
-           !has_identifier(text, "IdeDisk") &&
-           !has_identifier(text, "AHCIPort") &&
-           !has_identifier(text, "IOMalloc") &&
-           !has_identifier(text, "IOMallocLow");
+           !has_identifier(text, "IdeDisk");
 }
 
 static int valid_link_makefile(const char *text)
 {
     return has_exact_line(text,
-        "CFILES = AHCICommand.c AHCIState.c AHCIHBA.c AHCIPCI.c", 1) &&
-        has_exact_line(text, "CLASSES = AHCIController.m", 1) &&
+        "CFILES = AHCICommand.c AHCIState.c AHCIHBA.c AHCIPCI.c AHCIPortLogic.c", 1) &&
+        has_exact_line(text, "CLASSES = AHCIController.m AHCIPort.m", 1) &&
         has_exact_line(text,
-        "HFILES = AHCIController.h AHCIRegs.h AHCICommand.h AHCIState.h AHCIHBA.h AHCIPCI.h AHCIShared.h",
-        1) &&
-        !has_identifier(text, "AHCIPort");
+        "HFILES = AHCIController.h AHCIRegs.h AHCICommand.h AHCIState.h AHCIHBA.h AHCIPCI.h AHCIShared.h AHCIPort.h AHCIPortLogic.h",
+        1);
 }
 
 static int valid_link_project(const char *text)
 {
     return has_exact_line(text,
-        "C_FILES = (AHCICommand.c, AHCIState.c, AHCIHBA.c, AHCIPCI.c);", 0) &&
-        has_exact_line(text, "CLASSES = (AHCIController.m);", 0) &&
+        "C_FILES = (AHCICommand.c, AHCIState.c, AHCIHBA.c, AHCIPCI.c, AHCIPortLogic.c);", 0) &&
+        has_exact_line(text, "CLASSES = (AHCIController.m, AHCIPort.m);", 0) &&
         has_exact_line(text,
-        "H_FILES = (AHCIController.h, AHCIRegs.h, AHCICommand.h, AHCIState.h, AHCIHBA.h, AHCIPCI.h, AHCIShared.h);",
-        0) &&
-        !has_identifier(text, "AHCIPort");
+        "H_FILES = (AHCIController.h, AHCIRegs.h, AHCICommand.h, AHCIState.h, AHCIHBA.h, AHCIPCI.h, AHCIShared.h, AHCIPort.h, AHCIPortLogic.h);",
+        0);
 }
 
 static int valid_hba_source(const char *text)
@@ -686,9 +681,9 @@ static void test_validator_mutations(void)
         "return [super free]; }\n@end\n");
 
     strcpy(link_makefile_ok,
-        "CFILES = AHCICommand.c AHCIState.c AHCIHBA.c AHCIPCI.c\n"
-        "CLASSES = AHCIController.m\n"
-        "HFILES = AHCIController.h AHCIRegs.h AHCICommand.h AHCIState.h AHCIHBA.h AHCIPCI.h AHCIShared.h\n");
+        "CFILES = AHCICommand.c AHCIState.c AHCIHBA.c AHCIPCI.c AHCIPortLogic.c\n"
+        "CLASSES = AHCIController.m AHCIPort.m\n"
+        "HFILES = AHCIController.h AHCIRegs.h AHCICommand.h AHCIState.h AHCIHBA.h AHCIPCI.h AHCIShared.h AHCIPort.h AHCIPortLogic.h\n");
     strcpy(hba_source_ok,
         "#include \"AHCIHBA.h\"\n"
         "static void ahci_write(const AHCIHBAOps *ops, AHCIU32 offset, AHCIU32 value) {\n"
@@ -818,12 +813,6 @@ static void test_validator_mutations(void)
                       "return [super free];", "return self;"))
         ++failures;
     expect_invalid("super free removed", valid_controller_source, mutation);
-    if (!replace_once(mutation, sizeof(mutation), controller_ok,
-                      "return self;\n}\n- free",
-                      "IOMalloc(1); return self;\n}\n- free"))
-        ++failures;
-    expect_invalid("port allocation introduced", valid_controller_source,
-                   mutation);
     if (!replace_once(mutation, sizeof(mutation), link_makefile_ok,
                       "CFILES = AHCICommand.c AHCIState.c AHCIHBA.c",
                       "CFILES = AHCICommand.c AHCIState.c"))
@@ -892,11 +881,35 @@ static void test_bundle_contract(void)
     require_valid_file("AHCI.drvproj/AHCI.lksproj/Makefile",
                        valid_link_makefile);
     require_line_file("AHCI.drvproj/AHCI.lksproj/Makefile",
-                      "CLASSES = AHCIController.m", 1);
+                      "CLASSES = AHCIController.m AHCIPort.m", 1);
     require_valid_file("AHCI.drvproj/AHCI.lksproj/PB.project",
                        valid_link_project);
     require_line_file("AHCI.drvproj/AHCI.lksproj/PB.project",
-                      "CLASSES = (AHCIController.m);", 0);
+                      "CLASSES = (AHCIController.m, AHCIPort.m);", 0);
+    require_line_file("AHCI.drvproj/AHCI.lksproj/AHCIPort.h",
+                      "@interface AHCIPort : Object", 0);
+    require_line_file("AHCI.drvproj/AHCI.lksproj/AHCIShared.h",
+                      "#define AHCI_MAX_PORTS 32U", 0);
+    require_line_file("AHCI.drvproj/AHCI.lksproj/AHCIController.h",
+                      "AHCIPort *ports[AHCI_MAX_PORTS];", 0);
+    require_line_file("AHCI.drvproj/AHCI.lksproj/AHCIPort.m",
+                      "rawArena = IOMallocLow(rawArenaBytes);", 0);
+    require_line_file("AHCI.drvproj/AHCI.lksproj/AHCIPort.m",
+                      "IOFreeLow(rawArena, rawArenaBytes);", 0);
+    require_line_file("AHCI.drvproj/AHCI.lksproj/AHCIPort.m",
+                      "commandList[0].ctba = arena.physicalBase + arena.commandTableOffset;", 0);
+    require_line_file("AHCI.drvproj/AHCI.lksproj/AHCIController.m",
+                      "for (port = AHCINextPort(hbaInfo.portsImplemented, -1);", 0);
+    require_line_file("AHCI.drvproj/AHCI.lksproj/AHCIController.m",
+                      "ghc | AHCI_GHC_AE | AHCI_GHC_IE);", 0);
+    require_line_file("AHCI.drvproj/AHCI.lksproj/AHCIController.m",
+                      "[deviceDescription setInterruptList:&interruptLine num:1] !=", 0);
+    require_line_file("AHCI.drvproj/AHCI.lksproj/AHCIPort.m",
+                      "stopResult = AHCIPortStopHardware(&ops, portNumber);", 0);
+    require_line_file("AHCI.drvproj/AHCI.lksproj/AHCIPort.m",
+                      "if (stopResult == AHCI_PORT_SUCCESS && rawArena != 0) {", 0);
+    require_line_file("AHCI.drvproj/AHCI.lksproj/AHCIController.m",
+                      "AHCIMMIOWrite(&mmio, AHCI_REG_IS, asserted);", 0);
     require_line_file("AHCI.drvproj/AHCI.lksproj/Load_Commands.sect",
                       "WIRE", 1);
     require_absent_identifier("AHCI.drvproj/Default.table", "IdeController");

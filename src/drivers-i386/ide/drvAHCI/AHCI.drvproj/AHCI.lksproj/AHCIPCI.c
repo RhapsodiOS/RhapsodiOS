@@ -46,3 +46,17 @@ AHCIPCIResult AHCIPCIValidateCommandReadback(AHCIU32 readback)
     return (readback & required) == required ?
         AHCI_PCI_SUCCESS : AHCI_PCI_COMMAND_NOT_ENABLED;
 }
+
+AHCIPCIResult AHCIPCIInterruptLine(AHCIU32 interruptConfig,
+                                   unsigned int *interruptLine)
+{
+    unsigned int line;
+
+    if (interruptLine == 0)
+        return AHCI_PCI_BAD_ARGUMENT;
+    line = interruptConfig & 0xffU;
+    if (line < 2U || line > 15U)
+        return AHCI_PCI_INVALID_INTERRUPT;
+    *interruptLine = line;
+    return AHCI_PCI_SUCCESS;
+}

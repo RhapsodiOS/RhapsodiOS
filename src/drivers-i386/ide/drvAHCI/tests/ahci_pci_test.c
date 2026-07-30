@@ -115,6 +115,26 @@ static void test_command_plan_arguments(void)
         fail(name, "missing output was accepted");
 }
 
+static void test_legacy_interrupt_line(void)
+{
+    static const char name[] = "legacy interrupt line";
+    unsigned int line;
+
+    if (AHCIPCIInterruptLine(0xabcd010bU, &line) != AHCI_PCI_SUCCESS ||
+        line != 11U)
+        fail(name, "valid interrupt line was not extracted");
+    if (AHCIPCIInterruptLine(0x00000100U, &line) !=
+            AHCI_PCI_INVALID_INTERRUPT ||
+        AHCIPCIInterruptLine(0x00000101U, &line) !=
+            AHCI_PCI_INVALID_INTERRUPT ||
+        AHCIPCIInterruptLine(0x00000110U, &line) !=
+            AHCI_PCI_INVALID_INTERRUPT ||
+        AHCIPCIInterruptLine(0x000001ffU, &line) !=
+            AHCI_PCI_INVALID_INTERRUPT ||
+        AHCIPCIInterruptLine(0x0000010bU, 0) != AHCI_PCI_BAD_ARGUMENT)
+        fail(name, "invalid interrupt line was accepted");
+}
+
 int main(void)
 {
     test_valid_bar5();
@@ -123,6 +143,7 @@ int main(void)
     test_already_enabled_command_plan();
     test_command_readback();
     test_command_plan_arguments();
+    test_legacy_interrupt_line();
     if (failures != 0) {
         fprintf(stderr, "ahci_pci_test: %d failure(s)\n", failures);
         return EXIT_FAILURE;

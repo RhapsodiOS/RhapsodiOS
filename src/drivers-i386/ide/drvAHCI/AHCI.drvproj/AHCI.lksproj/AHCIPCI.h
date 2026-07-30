@@ -10,6 +10,7 @@
 #define AHCI_PCI_COMMAND_REGISTER    0x04U
 #define AHCI_PCI_CLASS_REGISTER      0x08U
 #define AHCI_PCI_BAR5_REGISTER       0x24U
+#define AHCI_PCI_INTERRUPT_REGISTER  0x3cU
 
 #define AHCI_PCI_COMMAND_MASK        0x0000ffffU
 #define AHCI_PCI_COMMAND_MEMORY      0x00000002U
@@ -25,6 +26,7 @@ typedef enum {
     AHCI_PCI_SUCCESS = 0,
     AHCI_PCI_BAD_ARGUMENT,
     AHCI_PCI_INVALID_BAR,
+    AHCI_PCI_INVALID_INTERRUPT,
     AHCI_PCI_COMMAND_NOT_ENABLED
 } AHCIPCIResult;
 
@@ -35,5 +37,7 @@ AHCIPCIResult AHCIPCIPlanCommand(AHCIU32 originalConfig,
                                  AHCIU32 *restoreWrite,
                                  unsigned char *changed);
 AHCIPCIResult AHCIPCIValidateCommandReadback(AHCIU32 readback);
+AHCIPCIResult AHCIPCIInterruptLine(AHCIU32 interruptConfig,
+                                   unsigned int *interruptLine);
 
 #endif

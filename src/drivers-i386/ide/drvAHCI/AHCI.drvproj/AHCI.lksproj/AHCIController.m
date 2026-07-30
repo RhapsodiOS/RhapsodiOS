@@ -4,6 +4,8 @@
 #import "AHCIHBA.h"
 #import "AHCIPCI.h"
 #import "AHCIShared.h"
+#import "AHCIPort.h"
+#import "AHCIState.h"
 
 static int AHCIMMIOOffsetValid(AHCIMMIOContext *mmio, AHCIU32 offset)
 {
@@ -87,12 +89,17 @@ static int AHCIVersionIsCommon(AHCIU32 version)
     unsigned long bar5;
     unsigned long command;
     unsigned long commandReadback;
+    unsigned long interruptConfig;
     AHCIU32 abarPhysical;
     AHCIU32 enabledCommand;
     unsigned char commandChanged;
     IORange memoryRange;
     IOReturn mapResult;
     AHCIHBAOps ops;
+    unsigned int interruptLine;
+    int port;
+    AHCIDeviceKind kind;
+    AHCIU32 ghc;
 
     pciDeviceDescription = deviceDescription;
     if ([IODirectDevice getPCIConfigData:&pciID
@@ -148,6 +155,20 @@ static int AHCIVersionIsCommon(AHCIU32 version)
         return nil;
     }
 
+    if ([IODirectDevice getPCIConfigData:&interruptConfig
+              atRegister:AHCI_PCI_INTERRUPT_REGISTER
+              withDeviceDescription:deviceDescription] != IO_R_SUCCESS) {
+        [self free];
+        return nil;
+    }
+    if (AHCIPCIInterruptLine((AHCIU32)interruptConfig, &interruptLine) !=
+            AHCI_PCI_SUCCESS ||
+        [deviceDescription setInterruptList:&interruptLine num:1] !=
+            IO_R_SUCCESS) {
+        [self free];
+        return nil;
+    }
+
     memoryRange.start = abarPhysical;
     memoryRange.size = AHCI_ABAR_LENGTH;
     if ([deviceDescription setMemoryRangeList:&memoryRange num:1] !=
@@ -186,6 +207,37 @@ static int AHCIVersionIsCommon(AHCIU32 version)
         return nil;
     }
 
+    for (port = AHCINextPort(hbaInfo.portsImplemented, -1);
+         port >= 0;
+         port = AHCINextPort(hbaInfo.portsImplemented, port)) {
+        ports[port] = [[AHCIPort alloc] initWithMMIO:&mmio
+                                                port:(unsigned int)port
+                                        capabilities:hbaInfo.capabilities];
+        if (ports[port] == nil) {
+            [self free];
+            return nil;
+        }
+        ++portCount;
+        kind = [ports[port] deviceKind];
+        if (kind == AHCI_DEVICE_SATA)
+            IOLog("%s: port %d SATA device detected\n", [self name], port);
+        else if (kind == AHCI_DEVICE_ATAPI)
+            IOLog("%s: port %d ATAPI device detected\n", [self name], port);
+        else if (kind == AHCI_DEVICE_UNSUPPORTED)
+            IOLog("%s: port %d unsupported signature\n", [self name], port);
+        else
+            IOLog("%s: port %d empty\n", [self name], port);
+    }
+    if (portCount != AHCIPortCountImplemented(hbaInfo.portsImplemented)) {
+        [self free];
+        return nil;
+    }
+    ghc = AHCIMMIORead(&mmio, AHCI_REG_GHC);
+    AHCIMMIOWrite(&mmio, AHCI_REG_GHC,
+                  ghc | AHCI_GHC_AE | AHCI_GHC_IE);
+    AHCIMMIOBarrier(&mmio);
+    globalInterruptsEnabled = YES;
+
     if (!AHCIVersionIsCommon(hbaInfo.version))
         IOLog("%s: AHCI version %x is newer or unknown; using common register subset\n",
               [self name], hbaInfo.version);
@@ -199,6 +251,22 @@ static int AHCIVersionIsCommon(AHCIU32 version)
 - free
 {
     IOReturn restoreResult;
+    AHCIU32 ghc;
+    unsigned int port;
+
+    if (globalInterruptsEnabled && mmio.base != 0) {
+        ghc = AHCIMMIORead(&mmio, AHCI_REG_GHC);
+        AHCIMMIOWrite(&mmio, AHCI_REG_GHC, ghc & ~AHCI_GHC_IE);
+        AHCIMMIOBarrier(&mmio);
+        globalInterruptsEnabled = NO;
+    }
+    for (port = 0; port < AHCI_MAX_PORTS; ++port) {
+        if (ports[port] != nil) {
+            [ports[port] free];
+            ports[port] = nil;
+        }
+    }
+    portCount = 0;
 
     if (abarMapped) {
         [self unmapMemoryRange:0 from:abarAddress];
@@ -221,7 +289,23 @@ static int AHCIVersionIsCommon(AHCIU32 version)
 
 - (void)interruptOccurred
 {
-    /* Task 9 installs per-port interrupt masks before global IE is enabled. */
+    AHCIU32 asserted;
+    int port;
+
+    if (!globalInterruptsEnabled || mmio.base == 0)
+        return;
+    asserted = AHCIMMIORead(&mmio, AHCI_REG_IS) &
+               hbaInfo.portsImplemented;
+    for (port = AHCINextPort(asserted, -1);
+         port >= 0;
+         port = AHCINextPort(asserted, port)) {
+        if (ports[port] != nil)
+            [ports[port] handleInterrupt];
+    }
+    if (asserted != 0) {
+        AHCIMMIOWrite(&mmio, AHCI_REG_IS, asserted);
+        AHCIMMIOBarrier(&mmio);
+    }
 }
 
 @end

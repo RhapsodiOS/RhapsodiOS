@@ -4,6 +4,7 @@
 #include "AHCIRegs.h"
 
 #define AHCI_ABAR_LENGTH             0x1100U
+#define AHCI_MAX_PORTS 32U
 
 typedef struct {
     volatile unsigned char *base;

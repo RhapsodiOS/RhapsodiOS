@@ -8,11 +8,11 @@ PROJECTVERSION = 2.6
 PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
-CFILES = AHCICommand.c AHCIState.c AHCIHBA.c AHCIPCI.c
+CFILES = AHCICommand.c AHCIState.c AHCIHBA.c AHCIPCI.c AHCIPortLogic.c
 
-CLASSES = AHCIController.m
+CLASSES = AHCIController.m AHCIPort.m
 
-HFILES = AHCIController.h AHCIRegs.h AHCICommand.h AHCIState.h AHCIHBA.h AHCIPCI.h AHCIShared.h
+HFILES = AHCIController.h AHCIRegs.h AHCICommand.h AHCIState.h AHCIHBA.h AHCIPCI.h AHCIShared.h AHCIPort.h AHCIPortLogic.h
 
 OTHERSRCS = Load_Commands.sect Makefile Makefile.preamble
 

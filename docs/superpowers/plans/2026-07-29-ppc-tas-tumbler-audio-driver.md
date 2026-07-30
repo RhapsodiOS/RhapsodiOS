@@ -188,6 +188,8 @@ Discover the mac-io-local KeyWest controller and expose the tested engines throu
 - Modify: `src/drivers-ppc/bus/drvPExpert/powermac/chips/PB.project`
 - Modify: `src/drivers-ppc/bus/drvPExpert/powermac/families/sawtooth.c`
 - Modify: `src/drivers-ppc/bus/drvPExpert/powermac/identify_machine.c`
+- Modify: `src/drivers-ppc/bus/drvPExpert/powermac/interrupt.c`
+- Modify: `src/drivers-ppc/bus/drvPExpert/powermac/interrupts.h`
 - Modify: `src/drivers-ppc/bus/drvPExpert/tests/pe_keylargo_test.c`
 
 - [ ] **Step 1: Add failing DT/range validation tests**
@@ -198,7 +200,7 @@ Cover relative `reg`, absolute `AAPL,address`, non-unit `AAPL,address-step`, mal
 
 Initialize a singleton from the `device_type=mac-io` node and its relative `i2c` child, not a global first-match `i2c`. Validate every property cell and computed address against the discovered mac-io size. Use the existing BAT/identity `POWERMAC_IO` mapping, byte access for KeyWest/GPIO, and `lwbrx`/`stwbrx` plus `eieio()`/`sync()` for FCR.
 
-Use a sleepable `lock_data_t` across the complete I2C transaction and locked FCR read-modify-write. Do not hold a spin lock through I2C. Reject interrupt-context calls. Leave FCR3 oscillator selection at its firmware setting in this release.
+Use a sleepable `lock_data_t` across the complete I2C transaction and locked FCR read-modify-write. Do not hold a spin lock through I2C. Add a small kernel-maintained, nesting-safe PowerPC interrupt-depth predicate at the common interrupt dispatch boundary and reject I2C calls while it is true; do not infer interrupt context from SPL or stack addresses. Leave FCR3 oscillator selection at its firmware setting in this release.
 
 - [ ] **Step 3: Make initialization nonfatal**
 

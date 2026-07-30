@@ -60,6 +60,11 @@ static int section_contains(const char *start, const char *end,
     return found != NULL && found < end;
 }
 
+static const char *find_after(const char *start, const char *needle)
+{
+    return start == NULL ? NULL : strstr(start, needle);
+}
+
 static void test_private_namespace_is_removed(const char *kernelHeader,
                                               const char *kernelSource,
                                               const char *diskSource,
@@ -102,12 +107,16 @@ static void test_transactional_registration(const char *diskSource,
     const char *registration;
     const char *initialization;
     const char *publication;
+    const char *publishLoop;
     const char *activation;
+    const char *releaseUntouched;
     const char *probed;
     const char *bounds;
+    const char *preparedStore;
+    const char *properties;
 
     probe = strstr(diskSource, "+ (BOOL)probe");
-    probeEnd = strstr(probe, "Common read/write methods");
+    probeEnd = find_after(probe, "Common read/write methods");
     CHECK(probe != NULL);
     CHECK(probeEnd != NULL);
     if (probe == NULL || probeEnd == NULL)
@@ -122,23 +131,63 @@ static void test_transactional_registration(const char *diskSource,
                             "ideDiskInit:(unsigned int)globalUnit "
                             "target:unit");
     publication = strstr(probe, "[diskId registerDevice]");
+    publishLoop = strstr(probe,
+                         "for (attemptedCount = 0; "
+                         "attemptedCount < preparedCount;");
     activation = strstr(probe, "ata_hd_activate_units");
+    releaseUntouched = strstr(probe, "IdeDiskReleaseUntouched");
     probed = strstr(probe, "probedControllers[probedControllerCount++]");
     bounds = strstr(probe,
                     "probedControllerCount >= MAX_IDE_CONTROLLERS");
+    preparedStore = strstr(probe, "preparedDisks[preparedCount]");
+    properties = strstr(probe, "[diskId setIsPhysical:YES]");
     CHECK(devsw != NULL);
     CHECK(registration != NULL);
     CHECK(initialization != NULL);
     CHECK(publication != NULL);
+    CHECK(publishLoop != NULL);
     CHECK(activation != NULL);
+    CHECK(releaseUntouched != NULL);
     CHECK(probed != NULL);
     CHECK(bounds != NULL);
+    CHECK(preparedStore != NULL);
+    CHECK(properties != NULL);
+    if (registration != NULL && publishLoop != NULL)
+        CHECK(registration < publishLoop);
+    if (initialization != NULL && publishLoop != NULL)
+        CHECK(initialization < publishLoop);
+    if (properties != NULL && publishLoop != NULL)
+        CHECK(properties < publishLoop);
+    if (preparedStore != NULL && publishLoop != NULL)
+        CHECK(preparedStore < publishLoop);
+    if (publication != NULL && publishLoop != NULL)
+        CHECK(publishLoop < publication);
     if (publication != NULL && activation != NULL)
         CHECK(publication < activation);
     if (activation != NULL && probed != NULL)
         CHECK(activation < probed);
     if (bounds != NULL && probed != NULL)
         CHECK(bounds < probed);
+    if (preparedStore != NULL) {
+        const char *preparedBounds;
+
+        preparedBounds = strstr(probe,
+                                "preparedCount >= MAX_IDE_DRIVES");
+        CHECK(preparedBounds != NULL && preparedBounds < preparedStore);
+    }
+
+    if (publishLoop != NULL) {
+        CHECK(!section_contains(publishLoop, probeEnd,
+                                "IdeDiskRollbackPrepared"));
+        CHECK(!section_contains(publishLoop, probeEnd, "[diskId free]"));
+        CHECK(section_contains(publishLoop, probeEnd,
+                               "attemptedCount + 1"));
+        CHECK(section_contains(publishLoop, probeEnd,
+                               "publishedCount) == NO"));
+        CHECK(section_contains(publishLoop, probeEnd,
+                               "probedControllers[probedControllerCount++]"));
+        CHECK(section_contains(publishLoop, probeEnd, "return YES"));
+    }
 
     CHECK(section_contains(probe, probeEnd,
                            "[diskId setDevAndIdInfo:idMap]"));
@@ -207,9 +256,9 @@ static void test_safe_teardown(const char *internalSource)
     const char *threadAbort;
 
     resources = strstr(internalSource, "- initResources");
-    resourcesEnd = strstr(resources, "Free up local resources");
-    freeMethod = strstr(resourcesEnd, "- free");
-    freeEnd = strstr(freeMethod, "Allocate and free IdeBuf");
+    resourcesEnd = find_after(resources, "Free up local resources");
+    freeMethod = find_after(resourcesEnd, "- free");
+    freeEnd = find_after(freeMethod, "Allocate and free IdeBuf");
     CHECK(section_contains(resources, resourcesEnd, "_hdUnit = -1"));
     CHECK(freeMethod != NULL);
     CHECK(freeEnd != NULL);
@@ -235,7 +284,7 @@ static void test_transport_ioctl_only(const char *kernelSource)
     const char *copyoutCall;
 
     callback = strstr(kernelSource, "IdeDiskTransportIoctl(id disk");
-    callbackEnd = strstr(callback, "end of IdeKern.m");
+    callbackEnd = find_after(callback, "end of IdeKern.m");
     CHECK(callback != NULL);
     CHECK(callbackEnd != NULL);
     if (callback == NULL || callbackEnd == NULL)
@@ -274,18 +323,43 @@ static void test_global_unit_naming(const char *internalSource)
 
 static void test_postload_global_namespace(const char *postloadSource)
 {
-    CHECK(strstr(postloadSource, "#define NIDE_DEVICES") != NULL);
-    CHECK(strstr(postloadSource, "32") != NULL);
-    CHECK(strstr(postloadSource, "#define NIDE_PARTITIONS") != NULL);
-    CHECK(strstr(postloadSource, "8") != NULL);
-    CHECK(strstr(postloadSource, "iUnit = 0") != NULL);
-    CHECK(strstr(postloadSource, "iUnit < NIDE_DEVICES") != NULL);
-    CHECK(strstr(postloadSource, "IDE_BLOCK_MAJOR") != NULL);
-    CHECK(strstr(postloadSource, "IDE_CHARACTER_MAJOR") != NULL);
-    CHECK(strstr(postloadSource, "stat(path") != NULL);
-    CHECK(strstr(postloadSource, "st_rdev") != NULL);
-    CHECK(strstr(postloadSource, "unlink(path)") != NULL);
-    CHECK(strstr(postloadSource, "mknod(path") != NULL);
+    const char *mainFunction;
+    const char *makeNodeFunction;
+    const char *sourceEnd;
+    const char *deviceDefine;
+    const char *deviceDefineEnd;
+    const char *partitionDefine;
+    const char *partitionDefineEnd;
+
+    mainFunction = strstr(postloadSource, "int main(");
+    makeNodeFunction = find_after(mainFunction, "static int makeNode(");
+    sourceEnd = postloadSource + strlen(postloadSource);
+    CHECK(mainFunction != NULL);
+    CHECK(makeNodeFunction != NULL);
+    if (mainFunction == NULL || makeNodeFunction == NULL)
+        return;
+
+    CHECK(section_contains(postloadSource, mainFunction,
+                           "#define NIDE_DEVICES"));
+    CHECK(section_contains(postloadSource, mainFunction,
+                           "#define NIDE_PARTITIONS"));
+    deviceDefine = strstr(postloadSource, "#define NIDE_DEVICES");
+    deviceDefineEnd = find_after(deviceDefine, "\n");
+    partitionDefine = strstr(postloadSource, "#define NIDE_PARTITIONS");
+    partitionDefineEnd = find_after(partitionDefine, "\n");
+    CHECK(section_contains(deviceDefine, deviceDefineEnd, "32"));
+    CHECK(section_contains(partitionDefine, partitionDefineEnd, "8"));
+    CHECK(section_contains(mainFunction, makeNodeFunction, "iUnit = 0"));
+    CHECK(section_contains(mainFunction, makeNodeFunction,
+                           "iUnit < NIDE_DEVICES"));
+    CHECK(section_contains(mainFunction, makeNodeFunction,
+                           "IDE_BLOCK_MAJOR"));
+    CHECK(section_contains(mainFunction, makeNodeFunction,
+                           "IDE_CHARACTER_MAJOR"));
+    CHECK(section_contains(makeNodeFunction, sourceEnd, "lstat(path"));
+    CHECK(section_contains(makeNodeFunction, sourceEnd, "st_rdev"));
+    CHECK(section_contains(makeNodeFunction, sourceEnd, "unlink(path)"));
+    CHECK(section_contains(makeNodeFunction, sourceEnd, "mknod(path"));
     CHECK(strstr(postloadSource, "lookUpByDeviceName") == NULL);
 }
 

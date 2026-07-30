@@ -54,6 +54,10 @@
  * Instance table lists IdeDisk as well as IdeController classes. And we need
  * to create instances of disks attached to each controller only once. 
  */
+/*
+ * IODevice probe dispatch is assumed serialized for a given controller.
+ * These statics prevent sequential duplicate probes; they are not a lock.
+ */
 static int probedControllerCount = 0;
 static id probedControllers[MAX_IDE_CONTROLLERS];
 
@@ -61,6 +65,15 @@ static void
 IdeDiskRollbackPrepared(id *disks, unsigned int count)
 {
     while (count != 0) {
+	--count;
+	[disks[count] free];
+    }
+}
+
+static void
+IdeDiskReleaseUntouched(id *disks, unsigned int first, unsigned int count)
+{
+    while (count > first) {
 	--count;
 	[disks[count] free];
     }
@@ -97,6 +110,8 @@ static Protocol *protocols[] = {
     id preparedDisks[MAX_IDE_DRIVES];
     unsigned int preparedUnits[MAX_IDE_DRIVES];
     unsigned int preparedCount = 0;
+    unsigned int attemptedCount;
+    unsigned int publishedCount;
     ideDriveInfo_t candidateInfo;
     IODevAndIdInfo *idMap;
     int globalUnit;
@@ -160,11 +175,10 @@ static Protocol *protocols[] = {
 	 */
 	[diskId setDeviceKind:"IDEDisk"];
 	[diskId setIsPhysical:YES];
-	if ([diskId registerDevice] == nil) {
+	if (preparedCount >= MAX_IDE_DRIVES) {
 	    [diskId free];
 	    IdeDiskRollbackPrepared(preparedDisks, preparedCount);
-	    IOLog("IDEDisk: failed to publish shared hd unit %d.\n",
-		  globalUnit);
+	    IOLog("IDEDisk: too many prepared ATA disks.\n");
 	    return NO;
 	}
 	preparedDisks[preparedCount] = diskId;
@@ -172,11 +186,34 @@ static Protocol *protocols[] = {
 	++preparedCount;
     }
 
+    publishedCount = 0;
+    for (attemptedCount = 0; attemptedCount < preparedCount;
+	 ++attemptedCount) {
+	diskId = preparedDisks[attemptedCount];
+	if ([diskId registerDevice] == nil) {
+	    if (publishedCount != 0 &&
+		ata_hd_activate_units(preparedUnits, preparedDisks,
+				      publishedCount) == NO) {
+		IOLog("IDEDisk: failed to activate published hd units; "
+		      "retaining them inactive.\n");
+	    }
+	    IdeDiskReleaseUntouched(preparedDisks, attemptedCount + 1,
+				     preparedCount);
+	    probedControllers[probedControllerCount++] = controllerId;
+	    IOLog("IDEDisk: shared hd unit %d publication state is "
+		  "uncertain; retaining it and suppressing retry.\n",
+		  preparedUnits[attemptedCount]);
+	    return YES;
+	}
+	++publishedCount;
+    }
+
     if (ata_hd_activate_units(preparedUnits, preparedDisks,
 			      preparedCount) == NO) {
-	IdeDiskRollbackPrepared(preparedDisks, preparedCount);
-	IOLog("IDEDisk: failed to activate shared hd units.\n");
-	return NO;
+	probedControllers[probedControllerCount++] = controllerId;
+	IOLog("IDEDisk: failed to activate published shared hd units; "
+	      "retaining them inactive and suppressing retry.\n");
+	return YES;
     }
     probedControllers[probedControllerCount++] = controllerId;
     return YES;

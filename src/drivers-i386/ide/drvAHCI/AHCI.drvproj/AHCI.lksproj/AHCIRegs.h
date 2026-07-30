@@ -1,5 +1,5 @@
-#ifndef _AHCI_REGS_H_
-#define _AHCI_REGS_H_
+#ifndef RHAPSODIOS_AHCI_REGS_H
+#define RHAPSODIOS_AHCI_REGS_H
 
 typedef struct {
     unsigned short flags;

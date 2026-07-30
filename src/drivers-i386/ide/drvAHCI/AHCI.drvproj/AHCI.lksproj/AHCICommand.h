@@ -1,5 +1,5 @@
-#ifndef _AHCI_COMMAND_H_
-#define _AHCI_COMMAND_H_
+#ifndef RHAPSODIOS_AHCI_COMMAND_H
+#define RHAPSODIOS_AHCI_COMMAND_H
 
 #include "AHCIRegs.h"
 

@@ -81,6 +81,7 @@ static void test_lba28_read_dma_fis(void)
     };
     unsigned char fis[20];
 
+    memset(fis, 0xff, sizeof(fis));
     CHECK(AHCIBuildDMAFIS(fis, 0x01234567, 0x23, 0, 0) == 0);
     check_fis(fis, expected);
 }
@@ -93,6 +94,7 @@ static void test_lba48_write_dma_fis(void)
     };
     unsigned char fis[20];
 
+    memset(fis, 0xff, sizeof(fis));
     CHECK(AHCIBuildDMAFIS(fis, 0x89abcdef, 256, 1, 1) == 0);
     check_fis(fis, expected);
 }
@@ -120,8 +122,10 @@ static void test_flush_fis(void)
     };
     unsigned char fis[20];
 
+    memset(fis, 0xff, sizeof(fis));
     AHCIBuildFlushFIS(fis, 0);
     check_fis(fis, flush);
+    memset(fis, 0xff, sizeof(fis));
     AHCIBuildFlushFIS(fis, 1);
     check_fis(fis, flushExt);
 }

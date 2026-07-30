@@ -48,3 +48,122 @@ void AHCIBuildFlushFIS(unsigned char fis[20], unsigned char lba48)
 {
     AHCIBuildH2DFIS(fis, lba48 ? 0xea : 0xe7);
 }
+
+int AHCIParseIdentify(const unsigned short id[256], AHCICapacity *out)
+{
+    unsigned int lba28;
+    unsigned int lba48;
+
+    if (id == 0 || out == 0 || (id[49] & 0x0200) == 0)
+        return -1;
+
+    lba28 = (unsigned int)id[60] | ((unsigned int)id[61] << 16);
+    if (lba28 == 0)
+        return -1;
+
+    out->sectors = lba28;
+    out->lba48 = 0;
+    out->clamped = 0;
+    out->logicalSectorIs512 = 1;
+
+    if ((id[106] & 0xc000) == 0x4000 && (id[106] & 0x1000) != 0) {
+        if (id[117] != 256 || id[118] != 0)
+            return -1;
+    }
+
+    if ((id[86] & 0x0400) == 0)
+        return 0;
+    out->lba48 = 1;
+    if (id[100] == 0 && id[101] == 0 && id[102] == 0 && id[103] == 0)
+        return 0;
+
+    if (id[102] != 0 || id[103] != 0) {
+        out->sectors = 0xffffffffU;
+        out->clamped = 1;
+        return 0;
+    }
+
+    lba48 = (unsigned int)id[100] | ((unsigned int)id[101] << 16);
+    if (lba48 != 0)
+        out->sectors = lba48;
+    return 0;
+}
+
+int AHCISelectDMACommand(unsigned int lba, unsigned int sectors,
+                         unsigned char write, unsigned char lba48,
+                         unsigned char *command, unsigned char *useLba48)
+{
+    if (command == 0 || useLba48 == 0 || sectors == 0 || sectors > 256)
+        return -1;
+    if (!lba48 && lba > 0x0fffffffU - (sectors - 1))
+        return -1;
+
+    *useLba48 = lba48 ? 1 : 0;
+    if (*useLba48)
+        *command = write ? 0x35 : 0x25;
+    else
+        *command = write ? 0xca : 0xc8;
+    return 0;
+}
+
+int AHCIBuildPRDT(AHCIPRDTEntry *prd, unsigned int maxPrds,
+                  const AHCISegment *segments, unsigned int segmentCount,
+                  unsigned int transferBytes)
+{
+    unsigned int index;
+    unsigned int count;
+    unsigned int length;
+    unsigned int total;
+
+    if (prd == 0 || segments == 0 || maxPrds == 0 || maxPrds > 32 ||
+        segmentCount == 0 || transferBytes == 0 || transferBytes > 131072)
+        return -1;
+
+    count = 0;
+    total = 0;
+    for (index = 0; index < segmentCount; ++index) {
+        if (segments[index].length == 0 ||
+            segments[index].address > 0xffffffffU -
+                                      (segments[index].length - 1) ||
+            segments[index].length > transferBytes - total)
+            return -1;
+        total += segments[index].length;
+
+        if (count != 0 &&
+            prd[count - 1].dba < 0xffffffffU -
+                                      (prd[count - 1].dbc_ioc & 0x003fffffU) &&
+            prd[count - 1].dba +
+                    (prd[count - 1].dbc_ioc & 0x003fffffU) + 1 ==
+                segments[index].address) {
+            length = (prd[count - 1].dbc_ioc & 0x003fffffU) + 1;
+            if (length <= 0x00400000U - segments[index].length) {
+                prd[count - 1].dbc_ioc =
+                    (length + segments[index].length - 1) & 0x003fffffU;
+                continue;
+            }
+        }
+
+        if (count == maxPrds)
+            return -1;
+        prd[count].dba = segments[index].address;
+        prd[count].dbau = 0;
+        prd[count].reserved = 0;
+        prd[count].dbc_ioc = (segments[index].length - 1) & 0x003fffffU;
+        ++count;
+    }
+
+    if (total != transferBytes)
+        return -1;
+    prd[count - 1].dbc_ioc |= 0x80000000U;
+    return (int)count;
+}
+
+void AHCIInitCommandHeader(AHCICommandHeader *header, unsigned int tablePA,
+                           unsigned int prdtCount, unsigned char write,
+                           unsigned char atapi)
+{
+    memset(header, 0, sizeof(*header));
+    header->flags = 5 | (write ? 0x40 : 0) | (atapi ? 0x20 : 0);
+    header->prdtl = prdtCount;
+    header->ctba = tablePA;
+}

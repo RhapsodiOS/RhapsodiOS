@@ -130,6 +130,118 @@ static void test_flush_fis(void)
     check_fis(fis, flushExt);
 }
 
+static void test_identify_capacity(void)
+{
+    unsigned short id[256];
+    AHCICapacity capacity;
+
+    memset(id, 0, sizeof(id));
+    id[49] = 0x0200;
+    id[60] = 0xffff;
+    id[61] = 0x0fff;
+    CHECK(AHCIParseIdentify(id, &capacity) == 0);
+    CHECK(capacity.sectors == 0x0fffffffU);
+    CHECK(capacity.lba48 == 0 && capacity.clamped == 0);
+    CHECK(capacity.logicalSectorIs512 == 1);
+
+    id[86] = 0x0400;
+    CHECK(AHCIParseIdentify(id, &capacity) == 0);
+    CHECK(capacity.sectors == 0x0fffffffU && capacity.lba48 == 1);
+    id[100] = 0x0001;
+    id[101] = 0x0002;
+    CHECK(AHCIParseIdentify(id, &capacity) == 0);
+    CHECK(capacity.sectors == 0x00020001U);
+    CHECK(capacity.lba48 == 1 && capacity.clamped == 0);
+
+    id[102] = 1;
+    CHECK(AHCIParseIdentify(id, &capacity) == 0);
+    CHECK(capacity.sectors == 0xffffffffU && capacity.clamped == 1);
+
+    id[102] = 0;
+    id[106] = 0x5000;
+    id[117] = 255;
+    id[118] = 0;
+    CHECK(AHCIParseIdentify(id, &capacity) != 0);
+    id[117] = 256;
+    CHECK(AHCIParseIdentify(id, &capacity) == 0);
+
+    id[49] = 0;
+    CHECK(AHCIParseIdentify(id, &capacity) != 0);
+}
+
+static void test_dma_command_selection(void)
+{
+    unsigned char command;
+    unsigned char useLba48;
+
+    CHECK(AHCISelectDMACommand(0x0fffffffU, 1, 0, 0,
+                               &command, &useLba48) == 0);
+    CHECK(command == 0xc8 && useLba48 == 0);
+    CHECK(AHCISelectDMACommand(0, 256, 1, 0, &command, &useLba48) == 0);
+    CHECK(command == 0xca && useLba48 == 0);
+    CHECK(AHCISelectDMACommand(0x0fffffffU, 2, 0, 1,
+                               &command, &useLba48) == 0);
+    CHECK(command == 0x25 && useLba48 == 1);
+    CHECK(AHCISelectDMACommand(0, 1, 1, 1, &command, &useLba48) == 0);
+    CHECK(command == 0x35 && useLba48 == 1);
+    CHECK(AHCISelectDMACommand(0x0fffffffU, 2, 0, 0,
+                               &command, &useLba48) != 0);
+    CHECK(AHCISelectDMACommand(0, 0, 0, 0, &command, &useLba48) != 0);
+    CHECK(AHCISelectDMACommand(0, 257, 0, 1, &command, &useLba48) != 0);
+}
+
+static void test_prdt_builder(void)
+{
+    AHCIPRDTEntry prd[32];
+    AHCISegment seg[33];
+    unsigned int index;
+
+    seg[0].address = 0x00100000;
+    seg[0].length = 4096;
+    seg[1].address = 0x00101000;
+    seg[1].length = 4096;
+    CHECK(AHCIBuildPRDT(prd, 32, seg, 2, 8192) == 1);
+    CHECK(prd[0].dba == 0x00100000 && prd[0].dbau == 0);
+    CHECK(prd[0].reserved == 0);
+    CHECK((prd[0].dbc_ioc & 0x003fffffU) == 8191U);
+    CHECK((prd[0].dbc_ioc & 0x80000000U) != 0);
+
+    seg[1].address = 0x00200000;
+    CHECK(AHCIBuildPRDT(prd, 32, seg, 2, 8192) == 2);
+    CHECK((prd[0].dbc_ioc & 0x80000000U) == 0);
+    CHECK((prd[1].dbc_ioc & 0x003fffffU) == 4095U);
+    CHECK((prd[1].dbc_ioc & 0x80000000U) != 0);
+
+    CHECK(AHCIBuildPRDT(prd, 32, seg, 2, 0) != 0);
+    seg[1].length = 0;
+    CHECK(AHCIBuildPRDT(prd, 32, seg, 2, 4096) != 0);
+    seg[1].length = 4096;
+    seg[0].address = 0xfffff000U;
+    seg[0].length = 8192;
+    CHECK(AHCIBuildPRDT(prd, 32, seg, 1, 8192) != 0);
+    seg[0].address = 0;
+    seg[0].length = 0xfffff000U;
+    CHECK(AHCIBuildPRDT(prd, 32, seg, 1, 8192) != 0);
+
+    for (index = 0; index < 33; ++index) {
+        seg[index].address = index * 1024;
+        seg[index].length = 512;
+    }
+    CHECK(AHCIBuildPRDT(prd, 32, seg, 33, 33 * 512) != 0);
+}
+
+static void test_command_header(void)
+{
+    AHCICommandHeader header;
+
+    memset(&header, 0xff, sizeof(header));
+    AHCIInitCommandHeader(&header, 0x12345000, 2, 1, 1);
+    CHECK(header.flags == 0x00000065U);
+    CHECK(header.prdtl == 2 && header.prdbc == 0);
+    CHECK(header.ctba == 0x12345000 && header.ctbau == 0);
+    CHECK(header.reserved[0] == 0 && header.reserved[3] == 0);
+}
+
 int main(void)
 {
     test_command_layouts();
@@ -140,6 +252,10 @@ int main(void)
     test_lba48_write_dma_fis();
     test_invalid_dma_fis();
     test_flush_fis();
+    test_identify_capacity();
+    test_dma_command_selection();
+    test_prdt_builder();
+    test_command_header();
 
     if (failures != 0) {
         fprintf(stderr, "ahci_command_test: %d failure(s)\n", failures);

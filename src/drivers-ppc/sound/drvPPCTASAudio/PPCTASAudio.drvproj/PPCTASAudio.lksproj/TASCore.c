@@ -1422,7 +1422,7 @@ TASStatus TASAudioSetDesiredControls(TASAudioState *state,
 {
     if (!valid_audio_state(state) || !valid_audio_controls(controls))
         return kTASStatusMalformed;
-    if (state->transitionPending)
+    if (state->transitionPending || state->powerState == kTASPowerWaking)
         return kTASStatusConflict;
     if (state->transitionBlocked || state->generation == ~0UL) {
         state->transitionBlocked = 1;

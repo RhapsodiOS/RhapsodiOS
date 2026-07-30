@@ -3,6 +3,7 @@
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
 #import <driverkit/KernLock.h>
+#import <machkit/NXLock.h>
 #import <driverkit/ppc/IODBDMA.h>
 #import <driverkit/ppc/IOTreeDevice.h>
 #import <driverkit/ppc/IOPropertyTable.h>
@@ -25,7 +26,7 @@ typedef struct {
     unsigned long count;
 } PPCTASPropertyContext;
 
-static unsigned long tas_detects(void *opaque);
+static TASStatus tas_detects(void *opaque, unsigned long *result);
 static unsigned long tas_now(void *opaque);
 static void tas_wait_microseconds(void *opaque, unsigned long usec);
 
@@ -37,6 +38,17 @@ static void tas_lock_interrupt(void *opaque)
 static void tas_unlock_interrupt(void *opaque)
 {
     [((PPCTASAudio *)opaque)->interruptLock release];
+}
+
+/* Task lock order is operation -> state; raw ISRs use interrupt only. */
+static void tas_lock_operation(void *opaque)
+{
+    [((PPCTASAudio *)opaque)->operationLock lock];
+}
+
+static void tas_unlock_operation(void *opaque)
+{
+    [((PPCTASAudio *)opaque)->operationLock unlock];
 }
 
 static void tas_lock_state(void *opaque)
@@ -364,12 +376,23 @@ static TASStatus tas_acquire(void *opaque, TASRuntimeStage stage,
 {
     PPCTASAudio *self;
     unsigned long index;
+    unsigned int *interrupts;
     IOPhysicalAddress physical;
     self = (PPCTASAudio *)opaque;
     switch (stage) {
     case kTASRuntimePlatformReady:
-        return [self deviceDescription] != nil ? kTASStatusOK :
-            kTASStatusMissing;
+        if ([self deviceDescription] == nil ||
+            [[self deviceDescription] numInterrupts] != 3U)
+            return kTASStatusMissing;
+        interrupts = [[self deviceDescription] interruptList];
+        if (interrupts == 0 || interrupts[0] == interrupts[1] ||
+            interrupts[0] == interrupts[2] ||
+            interrupts[1] == interrupts[2] ||
+            interrupts[0] != (unsigned int)config->codecInterrupt.number ||
+            interrupts[1] != (unsigned int)config->outputInterrupt.number ||
+            interrupts[2] != (unsigned int)config->inputInterrupt.number)
+            return kTASStatusConflict;
+        return kTASStatusOK;
     case kTASRuntimeMapI2S:
     case kTASRuntimeMapOutputDBDMA:
     case kTASRuntimeMapInputDBDMA:
@@ -380,17 +403,20 @@ static TASStatus tas_acquire(void *opaque, TASRuntimeStage stage,
             &self->inputDBDMARegisters)) findSpace:YES cache:IO_CacheOff] !=
             IO_R_SUCCESS)
             return kTASStatusMissing;
+        if (index == 1UL)
+            self->dmaOps[0].registerContext = self->outputDBDMARegisters;
+        else if (index == 2UL)
+            self->dmaOps[1].registerContext = self->inputDBDMARegisters;
         return kTASStatusOK;
     case kTASRuntimeInstallOutputIRQ:
     case kTASRuntimeInstallInputIRQ:
-        [self enableInterrupt:(unsigned int)stage -
-            (unsigned int)kTASRuntimeInstallOutputIRQ];
+        if (stage == kTASRuntimeInstallOutputIRQ)
+            [self enableInterrupt:1U];
+        else
+            [self enableInterrupt:2U];
         return kTASStatusOK;
     case kTASRuntimeInstallDetectIRQs:
-        for (index = 2UL;
-            index < (unsigned long)[[self deviceDescription] numInterrupts];
-            ++index)
-            [self enableInterrupt:(unsigned int)index];
+        /* GPIO detects are child resources, not main interrupt ordinals. */
         return kTASStatusOK;
     case kTASRuntimeEnableI2S:
         return tas_apply_i2s(self, self->desiredControls.rate,
@@ -454,13 +480,10 @@ static void tas_release(void *opaque, TASRuntimeStage stage)
     self = (PPCTASAudio *)opaque;
     if (stage == kTASRuntimeInstallOutputIRQ ||
         stage == kTASRuntimeInstallInputIRQ) {
-        [self disableInterrupt:(unsigned int)stage -
-            (unsigned int)kTASRuntimeInstallOutputIRQ];
+        [self disableInterrupt:stage == kTASRuntimeInstallOutputIRQ ?
+            1U : 2U];
     } else if (stage == kTASRuntimeInstallDetectIRQs) {
-        for (index = 2UL;
-            index < (unsigned long)[[self deviceDescription] numInterrupts];
-            ++index)
-            [self disableInterrupt:(unsigned int)index];
+        /* No main-description detect interrupt was installed. */
     } else if (stage == kTASRuntimeEnableI2S) {
         (void)PEI2SSetCellState((unsigned int)self->machineConfig.i2sCell,
             kPEI2SCellDisabledReset);
@@ -573,8 +596,11 @@ static TASStatus tas_action(void *opaque, const TASAudioAction *action)
     PPCTASAudio *self;
     PEAudioGPIO gpio;
     TASStreamDirection direction;
-    unsigned long index;
+    TASAudioDesiredControls desired;
     self = (PPCTASAudio *)opaque;
+    [self->stateLock acquire];
+    desired = self->runtime.audio.desired;
+    [self->stateLock release];
     switch (action->operation) {
     case kTASAudioBlockStarts:
         return kTASStatusOK;
@@ -627,7 +653,7 @@ static TASStatus tas_action(void *opaque, const TASAudioAction *action)
         return tas_status(PEAudioGPIOWrite(&gpio, action->value != 0UL));
     case kTASAudioRestoreInputSource:
         return TASCodecSetInputSource(&self->runtime.codec,
-            (TASCodecInputSource)self->runtime.audio.desired.inputSource,
+            (TASCodecInputSource)desired.inputSource,
             action->deadline);
     case kTASAudioCodecRestore:
         return TASCodecRestore(&self->runtime.codec, action->deadline);
@@ -635,11 +661,10 @@ static TASStatus tas_action(void *opaque, const TASAudioAction *action)
         return TASCodecInitialize(&self->runtime.codec, 1, action->deadline);
     case kTASAudioRestoreVolume:
         return TASCodecSetVolume(&self->runtime.codec,
-            self->runtime.audio.desired.leftVolume,
-            self->runtime.audio.desired.rightVolume, action->deadline);
+            desired.leftVolume, desired.rightVolume, action->deadline);
     case kTASAudioRestoreInputGain:
         return TASCodecSetInputGain(&self->runtime.codec,
-            self->runtime.audio.desired.inputGain, action->deadline);
+            desired.inputGain, action->deadline);
     case kTASAudioStopOutputDMA:
     case kTASAudioResetOutputDMA:
     case kTASAudioRebuildOutputDMA:
@@ -665,19 +690,11 @@ static TASStatus tas_action(void *opaque, const TASAudioAction *action)
             (unsigned int)self->machineConfig.i2sCell,
             kPEI2SCellEnabledClockHeld));
     case kTASAudioApplyI2SRate:
-        return tas_apply_i2s(self, self->runtime.audio.desired.rate,
+        return tas_apply_i2s(self, desired.rate,
             action->deadline);
     case kTASAudioDisableDetectIRQs:
-        for (index = 2UL;
-            index < (unsigned long)[[self deviceDescription] numInterrupts];
-            ++index)
-            [self disableInterrupt:(unsigned int)index];
-        return kTASStatusOK;
     case kTASAudioEnableDetectIRQs:
-        for (index = 2UL;
-            index < (unsigned long)[[self deviceDescription] numInterrupts];
-            ++index)
-            [self enableInterrupt:(unsigned int)index];
+        /* Detect GPIO IRQs are not main-description interrupt ordinals. */
         return kTASStatusOK;
     case kTASAudioCodecAnalogLowPower:
     case kTASAudioCodecMuteLowPower:
@@ -713,15 +730,19 @@ static TASStatus tas_output_route(void *opaque, unsigned long routes,
     unsigned long deadline)
 {
     PPCTASAudio *self;
+    unsigned long availableRoutes;
     (void)deadline;
     self = (PPCTASAudio *)opaque;
-    if ((routes & ~self->runtime.audio.availableRoutes) != 0UL)
+    [self->stateLock acquire];
+    availableRoutes = self->runtime.audio.availableRoutes;
+    [self->stateLock release];
+    if ((routes & ~availableRoutes) != 0UL)
         return kTASStatusMalformed;
     /* External output mute GPIOs are authoritative on reviewed machines. */
     return kTASStatusOK;
 }
 
-static unsigned long tas_detects(void *opaque)
+static TASStatus tas_detects(void *opaque, unsigned long *result)
 {
     PPCTASAudio *self;
     PEAudioGPIO gpio;
@@ -735,10 +756,13 @@ static unsigned long tas_detects(void *opaque)
             continue;
         gpio.offset = self->machineConfig.routes[route].detect.offset;
         gpio.activeHigh = self->machineConfig.routes[route].detect.activeHigh;
-        if (PEAudioGPIORead(&gpio, &active) == KERN_SUCCESS && active)
+        if (PEAudioGPIORead(&gpio, &active) != KERN_SUCCESS)
+            return kTASStatusTimeout;
+        if (active)
             detects |= 1UL << route;
     }
-    return detects;
+    *result = detects;
+    return kTASStatusOK;
 }
 
 static TASRuntimeOps tas_runtime_ops(PPCTASAudio *self)
@@ -761,6 +785,8 @@ static TASRuntimeOps tas_runtime_ops(PPCTASAudio *self)
     ops.ackDetectInterrupt = tas_ack_detect_interrupt;
     ops.lockInterrupt = tas_lock_interrupt;
     ops.unlockInterrupt = tas_unlock_interrupt;
+    ops.lockOperation = tas_lock_operation;
+    ops.unlockOperation = tas_unlock_operation;
     ops.lockState = tas_lock_state;
     ops.unlockState = tas_unlock_state;
     ops.executeAction = tas_action;
@@ -769,7 +795,7 @@ static TASRuntimeOps tas_runtime_ops(PPCTASAudio *self)
     ops.sampleDetects = tas_detects;
     ops.now = tas_now;
     ops.signalDeferred = tas_signal;
-    ops.failMute = tas_fail_mute;
+    ops.failMuteOutputs = tas_fail_mute_outputs;
     return ops;
 }
 
@@ -787,12 +813,6 @@ static void tas_input_interrupt(void *identity, void *state, void *argument)
     IOSendInterrupt(identity, state, IO_DEVICE_INTERRUPT_MSG);
 }
 
-static void tas_detect_interrupt(void *identity, void *state, void *argument)
-{
-    (void)TASRuntimeRecordDetectISR(&((PPCTASAudio *)argument)->runtime);
-    IOSendInterrupt(identity, state, IO_DEVICE_INTERRUPT_MSG);
-}
-
 static TASStatus tas_update_controls(PPCTASAudio *self,
     const TASAudioDesiredControls *candidate)
 {
@@ -802,6 +822,23 @@ static TASStatus tas_update_controls(PPCTASAudio *self,
     if (status == kTASStatusOK)
         self->desiredControls = *candidate;
     return status;
+}
+
+static void tas_initialize_dma_ops(PPCTASAudio *self)
+{
+    unsigned long direction;
+    for (direction = 0UL; direction < 2UL; ++direction) {
+        memset(&self->dmaOps[direction], 0, sizeof(self->dmaOps[direction]));
+        self->dmaOps[direction].context = self;
+        self->dmaOps[direction].translate = tas_translate;
+        self->dmaOps[direction].readRegister = tas_dma_read;
+        self->dmaOps[direction].writeRegister = tas_dma_write;
+        self->dmaOps[direction].now = tas_now;
+        self->dmaOps[direction].coherencyContext = self;
+        self->dmaOps[direction].publish = tas_publish;
+        self->dmaOps[direction].invalidate = tas_publish;
+        self->dmaOps[direction].barrier = tas_barrier;
+    }
 }
 
 @implementation PPCTASAudio
@@ -822,8 +859,10 @@ static TASStatus tas_update_controls(PPCTASAudio *self,
     instance->machineConfig = config;
     instance->tasDeviceDescription = deviceDescription;
     instance->interruptLock = [[KernLock alloc] initWithLevel:7];
+    instance->operationLock = [NXLock new];
     instance->stateLock = [[KernLock alloc] initWithLevel:7];
-    if (instance->interruptLock == nil || instance->stateLock == nil) {
+    if (instance->interruptLock == nil || instance->operationLock == nil ||
+        instance->stateLock == nil) {
         [instance free];
         return NO;
     }
@@ -844,28 +883,12 @@ static TASStatus tas_update_controls(PPCTASAudio *self,
 
 - (BOOL)reset
 {
-    unsigned long direction;
-    void *registers;
     [self setDeviceKind:"PPCTASAudio"];
     [self setUnit:0];
     [self setName:"PPCTASAudio0"];
+    tas_initialize_dma_ops(self);
     if (TASRuntimeReset(&runtime, tas_now(self) + 1000UL) != kTASStatusOK)
         return NO;
-    for (direction = 0UL; direction < 2UL; ++direction) {
-        registers = direction == 0UL ? outputDBDMARegisters :
-            inputDBDMARegisters;
-        memset(&dmaOps[direction], 0, sizeof(dmaOps[direction]));
-        dmaOps[direction].context = self;
-        dmaOps[direction].translate = tas_translate;
-        dmaOps[direction].registerContext = registers;
-        dmaOps[direction].readRegister = tas_dma_read;
-        dmaOps[direction].writeRegister = tas_dma_write;
-        dmaOps[direction].now = tas_now;
-        dmaOps[direction].coherencyContext = self;
-        dmaOps[direction].publish = tas_publish;
-        dmaOps[direction].invalidate = tas_publish;
-        dmaOps[direction].barrier = tas_barrier;
-    }
     return YES;
 }
 
@@ -874,6 +897,8 @@ static TASStatus tas_update_controls(PPCTASAudio *self,
     TASRuntimeUnwind(&runtime);
     [interruptLock free];
     interruptLock = nil;
+    [operationLock free];
+    operationLock = nil;
     [stateLock free];
     stateLock = nil;
     return [super free];
@@ -916,12 +941,10 @@ static TASStatus tas_update_controls(PPCTASAudio *self,
 - (BOOL)getHandler:(IOInterruptHandler *)handler level:(unsigned int *)ipl
     argument:(void **)argument forInterrupt:(unsigned int)localInterrupt
 {
-    if (localInterrupt == 0U)
+    if (localInterrupt == 1U)
         *handler = (IOInterruptHandler)tas_output_interrupt;
-    else if (localInterrupt == 1U)
+    else if (localInterrupt == 2U)
         *handler = (IOInterruptHandler)tas_input_interrupt;
-    else if (localInterrupt < [tasDeviceDescription numInterrupts])
-        *handler = (IOInterruptHandler)tas_detect_interrupt;
     else
         return NO;
     *ipl = IPLDEVICE;
@@ -954,25 +977,41 @@ static TASStatus tas_update_controls(PPCTASAudio *self,
 }
 - (BOOL)isInputActive
 {
-    return (runtime.clock.activeMask & kTASStreamMaskInput) != 0UL;
+    BOOL active;
+    [operationLock lock];
+    active = (runtime.clock.activeMask & kTASStreamMaskInput) != 0UL;
+    [operationLock unlock];
+    return active;
 }
 - (BOOL)isOutputActive
 {
-    return (runtime.clock.activeMask & kTASStreamMaskOutput) != 0UL;
+    BOOL active;
+    [operationLock lock];
+    active = (runtime.clock.activeMask & kTASStreamMaskOutput) != 0UL;
+    [operationLock unlock];
+    return active;
 }
 
 - (void)updateInputGainLeft
 {
     TASAudioDesiredControls candidate;
+    unsigned long coefficient;
+    if (TASRuntimeGainToCodec((int)[self inputGainLeft], &coefficient) !=
+        kTASStatusOK)
+        return;
     candidate = desiredControls;
-    candidate.inputGain = [self inputGainLeft];
+    candidate.inputGain = coefficient;
     (void)tas_update_controls(self, &candidate);
 }
 - (void)updateInputGainRight
 {
     TASAudioDesiredControls candidate;
+    unsigned long coefficient;
+    if (TASRuntimeGainToCodec((int)[self inputGainRight], &coefficient) !=
+        kTASStatusOK)
+        return;
     candidate = desiredControls;
-    candidate.inputGain = [self inputGainRight];
+    candidate.inputGain = coefficient;
     (void)tas_update_controls(self, &candidate);
 }
 - (void)updateOutputMute
@@ -985,24 +1024,40 @@ static TASStatus tas_update_controls(PPCTASAudio *self,
 - (void)updateOutputAttenuationLeft
 {
     TASAudioDesiredControls candidate;
+    unsigned long coefficient;
+    if (TASRuntimeAttenuationToCodec([self outputAttenuationLeft],
+        &coefficient) != kTASStatusOK)
+        return;
     candidate = desiredControls;
-    candidate.leftVolume = (unsigned long)[self outputAttenuationLeft];
+    candidate.leftVolume = coefficient;
     (void)tas_update_controls(self, &candidate);
 }
 - (void)updateOutputAttenuationRight
 {
     TASAudioDesiredControls candidate;
+    unsigned long coefficient;
+    if (TASRuntimeAttenuationToCodec([self outputAttenuationRight],
+        &coefficient) != kTASStatusOK)
+        return;
     candidate = desiredControls;
-    candidate.rightVolume = (unsigned long)[self outputAttenuationRight];
+    candidate.rightVolume = coefficient;
     (void)tas_update_controls(self, &candidate);
 }
 - (void)setInput:(NXSoundParameterTag)tag enable:(BOOL)enable
 {
     TASAudioDesiredControls candidate;
     candidate = desiredControls;
-    if (enable)
-        candidate.inputSource = tag == NX_SoundDeviceMicIn ?
-            kTASCodecInputAnalog : kTASCodecInputDigital1;
+    if (!enable)
+        return;
+    if (tag != NX_SoundDeviceMicIn && tag != NX_SoundDeviceLineIn &&
+        tag != NX_SoundDeviceCDIn && tag != NX_SoundDeviceAux1In)
+        return;
+    if (tag == NX_SoundDeviceMicIn || tag == NX_SoundDeviceLineIn)
+        candidate.inputSource = kTASCodecInputAnalog;
+    else if (tag == NX_SoundDeviceCDIn)
+        candidate.inputSource = kTASCodecInputDigital1;
+    else
+        candidate.inputSource = kTASCodecInputDigital2;
     (void)tas_update_controls(self, &candidate);
 }
 - (void)setOutput:(NXSoundParameterTag)tag enable:(BOOL)enable
@@ -1015,7 +1070,10 @@ static TASStatus tas_update_controls(PPCTASAudio *self,
 }
 - (void)setAnalogInputSource:(NXSoundParameterTag)tag
 {
-    [self setInput:tag enable:YES];
+    if (tag == NX_SoundDeviceAnalogInputSource_Microphone)
+        [self setInput:NX_SoundDeviceMicIn enable:YES];
+    else if (tag == NX_SoundDeviceAnalogInputSource_LineIn)
+        [self setInput:NX_SoundDeviceLineIn enable:YES];
 }
 - (IOAudioInterruptClearFunc)interruptClearFunc
 {

@@ -23,6 +23,7 @@
     unsigned long pendingGeneration;
     PMPowerState currentPowerState;
     id interruptLock;
+    id operationLock;
     id stateLock;
 }
 

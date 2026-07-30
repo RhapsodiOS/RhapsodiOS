@@ -1,3 +1,5 @@
+#define _CRT_SECURE_NO_WARNINGS 1
+
 #include "tas_fixtures.h"
 #include "TASRuntime.h"
 
@@ -9,6 +11,21 @@ static TASMachineConfig tumbler_config(void);
 #define CHECK(expression) do { if (!(expression)) { \
     fprintf(stderr, "%s:%d: check failed: %s\n", __FILE__, __LINE__, \
         #expression); ++failures; } } while (0)
+
+static int driver_source_contains(const char *text)
+{
+    FILE *file;
+    static char source[65536];
+    size_t count;
+    file = fopen("../PPCTASAudio.drvproj/PPCTASAudio.lksproj/PPCTASAudio.m",
+        "rb");
+    if (file == 0)
+        return 0;
+    count = fread(source, 1, sizeof(source) - 1U, file);
+    fclose(file);
+    source[count] = 0;
+    return strstr(source, text) != 0;
+}
 
 typedef struct {
     long events[128];
@@ -38,9 +55,24 @@ typedef struct {
     unsigned long safeMuteFailCall;
     unsigned long safeMuteCalls;
     unsigned long prepareCount;
+    unsigned long failPrepare;
+    unsigned long stopCount[2];
+    TASStatus detectStatus;
+    TASStatus failMuteStatus;
+    unsigned long operationDepth;
+    unsigned long stateDepth;
+    unsigned long interruptDepth;
+    unsigned long lockViolations;
+    int mutateRouteBeforeOperation;
     const void *lastBuffer;
     unsigned long lastRate;
 } RuntimeMock;
+
+static void runtime_hardware_boundary(RuntimeMock *mock)
+{
+    if (mock->stateDepth != 0UL || mock->operationDepth != 1UL)
+        ++mock->lockViolations;
+}
 
 static TASStatus runtime_safe_mute_gpio(void *context,
     const TASGPIODescriptor *gpio, int active)
@@ -49,6 +81,7 @@ static TASStatus runtime_safe_mute_gpio(void *context,
     (void)gpio;
     (void)active;
     mock = (RuntimeMock *)context;
+    runtime_hardware_boundary(mock);
     ++mock->safeMuteCalls;
     return mock->safeMuteCalls == mock->safeMuteFailCall ?
         kTASStatusTimeout : kTASStatusOK;
@@ -60,6 +93,7 @@ static TASStatus runtime_acquire(void *context, TASRuntimeStage stage,
     RuntimeMock *mock;
     (void)config;
     mock = (RuntimeMock *)context;
+    runtime_hardware_boundary(mock);
     mock->events[mock->eventCount++] = (long)stage + 1L;
     if (stage == kTASRuntimeSafeOutputs && mock->safeMuteFailCall != 0UL)
         return TASRuntimeFailMuteOutputs(config, mock,
@@ -72,6 +106,7 @@ static void runtime_release(void *context, TASRuntimeStage stage)
 {
     RuntimeMock *mock;
     mock = (RuntimeMock *)context;
+    runtime_hardware_boundary(mock);
     mock->events[mock->eventCount++] = -((long)stage + 1L);
 }
 
@@ -84,8 +119,11 @@ static TASStatus runtime_prepare(void *context, TASStreamDirection direction,
     (void)bytes;
     (void)period;
     mock = (RuntimeMock *)context;
+    runtime_hardware_boundary(mock);
     ++mock->prepareCount;
     mock->lastBuffer = buffer;
+    if (mock->failPrepare != 0UL)
+        return kTASStatusTimeout;
     ring->state = kPPCDBDMAReady;
     return kTASStatusOK;
 }
@@ -97,6 +135,7 @@ static TASStatus runtime_start(void *context, TASStreamDirection direction,
     (void)direction;
     (void)deadline;
     mock = (RuntimeMock *)context;
+    runtime_hardware_boundary(mock);
     ++mock->hardwareCalls;
     if (mock->failHardware == mock->hardwareCalls)
         return kTASStatusTimeout;
@@ -111,7 +150,9 @@ static TASStatus runtime_stop(void *context, TASStreamDirection direction,
     (void)direction;
     (void)deadline;
     mock = (RuntimeMock *)context;
+    runtime_hardware_boundary(mock);
     ++mock->hardwareCalls;
+    ++mock->stopCount[(unsigned long)direction];
     ring->state = kPPCDBDMAReady;
     return kTASStatusOK;
 }
@@ -122,6 +163,7 @@ static TASStatus runtime_service(void *context, TASStreamDirection direction,
     RuntimeMock *mock;
     (void)ring;
     mock = (RuntimeMock *)context;
+    runtime_hardware_boundary(mock);
     mock->trace[mock->traceCount++] = 400UL + (unsigned long)direction;
     ++mock->serviceCount[(unsigned long)direction];
     *completed = 1UL;
@@ -151,6 +193,7 @@ static TASStatus runtime_action(void *context, const TASAudioAction *action)
 {
     RuntimeMock *mock;
     mock = (RuntimeMock *)context;
+    runtime_hardware_boundary(mock);
     if (mock->actionCount < 64UL)
         mock->actionOps[mock->actionCount++] = action->operation;
     ++mock->hardwareCalls;
@@ -178,6 +221,7 @@ static TASStatus runtime_controls(void *context,
     (void)controls;
     (void)deadline;
     mock = (RuntimeMock *)context;
+    runtime_hardware_boundary(mock);
     ++mock->hardwareCalls;
     return mock->failHardware == mock->hardwareCalls ?
         kTASStatusTimeout : kTASStatusOK;
@@ -189,6 +233,7 @@ static TASStatus runtime_output_route(void *context, unsigned long routes,
     RuntimeMock *mock;
     (void)deadline;
     mock = (RuntimeMock *)context;
+    runtime_hardware_boundary(mock);
     ++mock->outputRouteCalls;
     mock->lastOutputRoute = routes;
     if (!mock->injected && mock->runtime != 0 &&
@@ -203,14 +248,19 @@ static TASStatus runtime_output_route(void *context, unsigned long routes,
     return kTASStatusOK;
 }
 
-static unsigned long runtime_detects(void *context)
+static TASStatus runtime_detects(void *context, unsigned long *detects)
 {
     RuntimeMock *mock;
     mock = (RuntimeMock *)context;
+    runtime_hardware_boundary(mock);
     mock->trace[mock->traceCount++] = 200UL;
+    if (mock->detectStatus != kTASStatusOK)
+        return mock->detectStatus;
     if (mock->detectIndex < mock->detectCount)
-        return mock->detectValues[mock->detectIndex++];
-    return 1UL;
+        *detects = mock->detectValues[mock->detectIndex++];
+    else
+        *detects = 1UL;
+    return kTASStatusOK;
 }
 
 static unsigned long runtime_now(void *context)
@@ -233,9 +283,59 @@ static void runtime_lock(void *context)
     (void)context;
 }
 
+static void runtime_lock_operation(void *context)
+{
+    RuntimeMock *mock;
+    mock = (RuntimeMock *)context;
+    if (mock->operationDepth != 0UL)
+        ++mock->lockViolations;
+    if (mock->mutateRouteBeforeOperation && mock->runtime != 0) {
+        mock->runtime->audio.currentRoutes = kTASAudioRouteHeadphone;
+        mock->runtime->audio.desiredDetects = kTASAudioRouteHeadphone;
+        mock->mutateRouteBeforeOperation = 0;
+    }
+    ++mock->operationDepth;
+}
+
+static void runtime_unlock_operation(void *context)
+{
+    RuntimeMock *mock;
+    mock = (RuntimeMock *)context;
+    if (mock->operationDepth != 1UL || mock->stateDepth != 0UL)
+        ++mock->lockViolations;
+    --mock->operationDepth;
+}
+
+static void runtime_lock_state(void *context)
+{
+    RuntimeMock *mock;
+    mock = (RuntimeMock *)context;
+    if (mock->operationDepth != 1UL || mock->stateDepth != 0UL)
+        ++mock->lockViolations;
+    ++mock->stateDepth;
+}
+
+static void runtime_unlock_state(void *context)
+{
+    RuntimeMock *mock;
+    mock = (RuntimeMock *)context;
+    if (mock->stateDepth != 1UL)
+        ++mock->lockViolations;
+    --mock->stateDepth;
+}
+
 static void runtime_fail_mute(void *context)
 {
     ++((RuntimeMock *)context)->failMuteCount;
+}
+
+static TASStatus runtime_fail_mute_outputs(void *context)
+{
+    RuntimeMock *mock;
+    mock = (RuntimeMock *)context;
+    runtime_hardware_boundary(mock);
+    ++mock->failMuteCount;
+    return mock->failMuteStatus;
 }
 
 static TASStatus runtime_codec_write(void *context, unsigned char reg,
@@ -286,15 +386,17 @@ static TASRuntimeOps runtime_ops(RuntimeMock *mock)
     ops.ackDetectInterrupt = runtime_ack_detect;
     ops.lockInterrupt = runtime_lock;
     ops.unlockInterrupt = runtime_lock;
-    ops.lockState = runtime_lock;
-    ops.unlockState = runtime_lock;
+    ops.lockOperation = runtime_lock_operation;
+    ops.unlockOperation = runtime_unlock_operation;
+    ops.lockState = runtime_lock_state;
+    ops.unlockState = runtime_unlock_state;
     ops.executeAction = runtime_action;
     ops.applyControls = runtime_controls;
     ops.applyOutputRoute = runtime_output_route;
     ops.sampleDetects = runtime_detects;
     ops.now = runtime_now;
     ops.signalDeferred = runtime_signal;
-    ops.failMute = runtime_fail_mute;
+    ops.failMuteOutputs = runtime_fail_mute_outputs;
     return ops;
 }
 
@@ -388,6 +490,7 @@ static void test_bounce_and_wake_continue_without_external_edges(void)
     }
     CHECK(runtime.audio.routeValid && !runtime.audio.debouncePending &&
         mock.detectIndex == 5UL);
+    runtime.dmaFaultMask = kTASStreamMaskOutput;
     CHECK(TASRuntimeSetPower(&runtime, kTASPowerOff, 3000UL) ==
         kTASStatusOK);
     CHECK(TASRuntimeSetPower(&runtime, kTASPowerReady, 4000UL) ==
@@ -402,7 +505,7 @@ static void test_bounce_and_wake_continue_without_external_edges(void)
     }
     CHECK(runtime.audio.powerState == kTASPowerReady &&
         !runtime.audio.startsBlocked && runtime.audio.routeValid &&
-        mock.detectIndex == 7UL);
+        mock.detectIndex == 7UL && runtime.dmaFaultMask == 0UL);
 }
 
 static void test_edge_during_route_rolls_back_safely(void)
@@ -563,13 +666,14 @@ static void test_control_conversion_endpoints_and_monotonicity(void)
     int attenuation;
     CHECK(TASRuntimeAttenuationToCodec(0, &value) == kTASStatusOK &&
         value == 0x010000UL);
-    CHECK(TASRuntimeAttenuationToCodec(-42, &value) == kTASStatusOK &&
+    CHECK(TASRuntimeAttenuationToCodec(-84, &value) == kTASStatusOK &&
         value == 0UL);
-    CHECK(TASRuntimeAttenuationToCodec(1, &value) == kTASStatusUnsupported);
-    CHECK(TASRuntimeAttenuationToCodec(-43, &value) ==
-        kTASStatusUnsupported);
+    CHECK(TASRuntimeAttenuationToCodec(1, &value) == kTASStatusOK &&
+        value == 0x010000UL);
+    CHECK(TASRuntimeAttenuationToCodec(-85, &value) == kTASStatusOK &&
+        value == 0UL);
     previous = 0UL;
-    for (attenuation = -42; attenuation <= 0; ++attenuation) {
+    for (attenuation = -84; attenuation <= 0; ++attenuation) {
         CHECK(TASRuntimeAttenuationToCodec(attenuation, &value) ==
             kTASStatusOK);
         CHECK(value >= previous);
@@ -577,9 +681,12 @@ static void test_control_conversion_endpoints_and_monotonicity(void)
     }
     CHECK(TASRuntimeGainToCodec(0, &value) == kTASStatusOK &&
         value == 0x010000UL);
-    CHECK(TASRuntimeGainToCodec(24, &value) == kTASStatusOK &&
+    CHECK(TASRuntimeGainToCodec(32768, &value) == kTASStatusOK &&
         value == 0x020000UL);
-    CHECK(TASRuntimeGainToCodec(25, &value) == kTASStatusUnsupported);
+    CHECK(TASRuntimeGainToCodec(32769, &value) == kTASStatusOK &&
+        value == 0x020000UL);
+    CHECK(TASRuntimeGainToCodec(-1, &value) == kTASStatusOK &&
+        value == 0x010000UL);
 }
 
 static void test_deadline_delay_is_wrap_safe(void)
@@ -903,6 +1010,7 @@ static void test_full_duplex_controls_isr_and_power(void)
     }
     CHECK(enableIndex < releaseIndex && releaseIndex < applyIndex);
     CHECK(runtime.audio.startsBlocked && runtime.audio.debouncePending);
+    CHECK(mock.lockViolations == 0UL);
 }
 
 static void test_i2s_adapter_uses_apple_raw_fields(void)
@@ -929,6 +1037,8 @@ static void test_dma_fault_is_isolated_to_one_direction(void)
     TASRuntimeOps ops;
     RuntimeMock mock;
     TASAudioDesiredControls desired;
+    unsigned char output[512];
+    unsigned char input[512];
     int notifyInput;
     int notifyOutput;
     config = tumbler_config();
@@ -938,6 +1048,11 @@ static void test_dma_fault_is_isolated_to_one_direction(void)
     mock.failServiceMask = kTASStreamMaskOutput;
     ops = runtime_ops(&mock);
     CHECK(TASRuntimeInit(&runtime, &config, &desired, &ops) == kTASStatusOK);
+    CHECK(TASRuntimeReset(&runtime, 2000UL) == kTASStatusOK);
+    CHECK(TASRuntimeStartStream(&runtime, kTASStreamOutput, output,
+        sizeof(output), 256UL, 44100UL, 2500UL) == kTASStatusOK);
+    CHECK(TASRuntimeStartStream(&runtime, kTASStreamInput, input,
+        sizeof(input), 256UL, 44100UL, 2500UL) == kTASStatusOK);
     TASRuntimeRecordISR(&runtime, kTASRuntimeIRQOutput);
     TASRuntimeRecordISR(&runtime, kTASRuntimeIRQInput);
     CHECK(TASRuntimeServiceDeferred(&runtime, 300UL, &notifyInput,
@@ -945,6 +1060,185 @@ static void test_dma_fault_is_isolated_to_one_direction(void)
     CHECK(mock.serviceCount[0] == 1UL && mock.serviceCount[1] == 1UL);
     CHECK(runtime.dmaFaultMask == kTASStreamMaskOutput);
     CHECK(notifyInput && !notifyOutput);
+    CHECK(mock.stopCount[0] == 1UL && mock.stopCount[1] == 0UL);
+    CHECK(runtime.clock.activeMask == kTASStreamMaskInput);
+    CHECK(TASRuntimeStartStream(&runtime, kTASStreamOutput, output,
+        sizeof(output), 256UL, 44100UL, 400UL) == kTASStatusConflict);
+    TASRuntimeUnwind(&runtime);
+    mock.failServiceMask = 0UL;
+    CHECK(TASRuntimeReset(&runtime, 4000UL) == kTASStatusOK);
+    CHECK(runtime.dmaFaultMask == 0UL);
+    CHECK(TASRuntimeStartStream(&runtime, kTASStreamOutput, output,
+        sizeof(output), 256UL, 44100UL, 4500UL) == kTASStatusOK);
+}
+
+static void test_start_requires_ready_valid_fully_acquired_state(void)
+{
+    TASMachineConfig config;
+    TASRuntime runtime;
+    TASRuntimeOps ops;
+    RuntimeMock mock;
+    TASAudioDesiredControls desired;
+    unsigned char output[512];
+    unsigned long fullMask;
+    unsigned long before;
+    config = tumbler_config();
+    memset(&desired, 0, sizeof(desired));
+    desired.rate = 44100UL;
+    memset(&mock, 0, sizeof(mock));
+    ops = runtime_ops(&mock);
+    CHECK(TASRuntimeInit(&runtime, &config, &desired, &ops) == kTASStatusOK);
+    CHECK(TASRuntimeReset(&runtime, 2000UL) == kTASStatusOK);
+    fullMask = runtime.acquiredMask;
+    before = mock.prepareCount;
+    runtime.acquiredMask &= ~1UL;
+    CHECK(TASRuntimeStartStream(&runtime, kTASStreamOutput, output,
+        sizeof(output), 256UL, 44100UL, 3000UL) == kTASStatusConflict);
+    runtime.acquiredMask = fullMask;
+    runtime.audio.powerState = kTASPowerOff;
+    CHECK(TASRuntimeStartStream(&runtime, kTASStreamOutput, output,
+        sizeof(output), 256UL, 44100UL, 3000UL) == kTASStatusConflict);
+    runtime.audio.powerState = kTASPowerReady;
+    runtime.audio.hardwareValid = 0;
+    CHECK(TASRuntimeStartStream(&runtime, kTASStreamOutput, output,
+        sizeof(output), 256UL, 44100UL, 3000UL) == kTASStatusConflict);
+    runtime.audio.hardwareValid = 1;
+    runtime.audio.routeValid = 0;
+    CHECK(TASRuntimeStartStream(&runtime, kTASStreamOutput, output,
+        sizeof(output), 256UL, 44100UL, 3000UL) == kTASStatusConflict);
+    runtime.audio.routeValid = 1;
+    runtime.audio.startsBlocked = 1;
+    CHECK(TASRuntimeStartStream(&runtime, kTASStreamOutput, output,
+        sizeof(output), 256UL, 44100UL, 3000UL) == kTASStatusConflict);
+    runtime.audio.startsBlocked = 0;
+    runtime.dmaFaultMask = kTASStreamMaskOutput;
+    CHECK(TASRuntimeStartStream(&runtime, kTASStreamOutput, output,
+        sizeof(output), 256UL, 44100UL, 3000UL) == kTASStatusConflict);
+    CHECK(mock.prepareCount == before);
+}
+
+static void test_stop_after_failed_prepare_is_harmless(void)
+{
+    TASMachineConfig config;
+    TASRuntime runtime;
+    TASRuntimeOps ops;
+    RuntimeMock mock;
+    TASAudioDesiredControls desired;
+    unsigned char output[512];
+    config = tumbler_config();
+    memset(&desired, 0, sizeof(desired));
+    desired.rate = 44100UL;
+    memset(&mock, 0, sizeof(mock));
+    mock.failPrepare = 1UL;
+    ops = runtime_ops(&mock);
+    CHECK(TASRuntimeInit(&runtime, &config, &desired, &ops) == kTASStatusOK);
+    CHECK(TASRuntimeReset(&runtime, 2000UL) == kTASStatusOK);
+    CHECK(TASRuntimeStartStream(&runtime, kTASStreamOutput, output,
+        sizeof(output), 256UL, 44100UL, 3000UL) == kTASStatusTimeout);
+    CHECK(TASRuntimeStopStream(&runtime, kTASStreamOutput, 3000UL) ==
+        kTASStatusOK);
+    CHECK(mock.stopCount[0] == 0UL && runtime.clock.activeMask == 0UL);
+}
+
+static void test_detect_read_failure_propagates_and_fail_mutes(void)
+{
+    TASMachineConfig config;
+    TASRuntime runtime;
+    TASRuntimeOps ops;
+    RuntimeMock mock;
+    TASAudioDesiredControls desired;
+    int notifyInput;
+    int notifyOutput;
+    config = tumbler_config();
+    memset(&desired, 0, sizeof(desired));
+    desired.rate = 44100UL;
+    memset(&mock, 0, sizeof(mock));
+    ops = runtime_ops(&mock);
+    CHECK(TASRuntimeInit(&runtime, &config, &desired, &ops) == kTASStatusOK);
+    CHECK(TASRuntimeReset(&runtime, 2000UL) == kTASStatusOK);
+    mock.detectStatus = kTASStatusTimeout;
+    TASRuntimeRecordISR(&runtime, kTASRuntimeIRQDetect);
+    CHECK(TASRuntimeServiceDeferred(&runtime, 3000UL, &notifyInput,
+        &notifyOutput) == kTASStatusOK);
+    mock.nowValue = runtime.audio.debounceDeadline;
+    CHECK(TASRuntimeServiceDeferred(&runtime, 3000UL, &notifyInput,
+        &notifyOutput) == kTASStatusTimeout);
+    CHECK(mock.failMuteCount != 0UL && runtime.audio.detectBlocked);
+}
+
+static void test_failed_controls_invalidate_truth_from_mute_result(void)
+{
+    TASMachineConfig config;
+    TASRuntime runtime;
+    TASRuntimeOps ops;
+    RuntimeMock mock;
+    TASAudioDesiredControls desired;
+    config = tumbler_config();
+    memset(&desired, 0, sizeof(desired));
+    desired.rate = 44100UL;
+    desired.leftVolume = 10UL;
+    memset(&mock, 0, sizeof(mock));
+    ops = runtime_ops(&mock);
+    CHECK(TASRuntimeInit(&runtime, &config, &desired, &ops) == kTASStatusOK);
+    CHECK(TASRuntimeReset(&runtime, 2000UL) == kTASStatusOK);
+    desired.leftVolume = 20UL;
+    mock.failHardware = mock.hardwareCalls + 1UL;
+    CHECK(TASRuntimeSetControls(&runtime, &desired, 3000UL) ==
+        kTASStatusTimeout);
+    CHECK(runtime.audio.desired.leftVolume == 10UL &&
+        !runtime.audio.hardwareValid && !runtime.audio.routeValid &&
+        runtime.audio.outputsMuted && runtime.audio.outputsMuteKnown);
+
+    memset(&mock, 0, sizeof(mock));
+    mock.failMuteStatus = kTASStatusTimeout;
+    ops = runtime_ops(&mock);
+    CHECK(TASRuntimeInit(&runtime, &config, &desired, &ops) == kTASStatusOK);
+    CHECK(TASRuntimeReset(&runtime, 2000UL) == kTASStatusOK);
+    desired.leftVolume = 30UL;
+    mock.failHardware = mock.hardwareCalls + 1UL;
+    CHECK(TASRuntimeSetControls(&runtime, &desired, 3000UL) ==
+        kTASStatusTimeout);
+    CHECK(!runtime.audio.outputsMuted && !runtime.audio.outputsMuteKnown);
+}
+
+static void test_controls_preserve_prior_serialized_route_commit(void)
+{
+    TASMachineConfig config;
+    TASRuntime runtime;
+    TASRuntimeOps ops;
+    RuntimeMock mock;
+    TASAudioDesiredControls desired;
+    config = tumbler_config();
+    memset(&desired, 0, sizeof(desired));
+    desired.rate = 44100UL;
+    memset(&mock, 0, sizeof(mock));
+    ops = runtime_ops(&mock);
+    CHECK(TASRuntimeInit(&runtime, &config, &desired, &ops) == kTASStatusOK);
+    CHECK(TASRuntimeReset(&runtime, 2000UL) == kTASStatusOK);
+    mock.runtime = &runtime;
+    mock.mutateRouteBeforeOperation = 1;
+    desired.leftVolume = 0x8000UL;
+    CHECK(TASRuntimeSetControls(&runtime, &desired, 3000UL) == kTASStatusOK);
+    CHECK(runtime.audio.currentRoutes == kTASAudioRouteHeadphone &&
+        runtime.audio.desiredDetects == kTASAudioRouteHeadphone &&
+        mock.lockViolations == 0UL);
+}
+
+static void test_driver_binds_runtime_controls_and_safe_irq_ordinals(void)
+{
+    CHECK(driver_source_contains(
+        "TASRuntimeAttenuationToCodec([self outputAttenuationLeft]"));
+    CHECK(driver_source_contains(
+        "TASRuntimeGainToCodec((int)[self inputGainLeft]"));
+    CHECK(driver_source_contains("ops.lockOperation = tas_lock_operation"));
+    CHECK(driver_source_contains("ops.failMuteOutputs = "
+        "tas_fail_mute_outputs"));
+    CHECK(driver_source_contains("[self enableInterrupt:1U]"));
+    CHECK(driver_source_contains("[self enableInterrupt:2U]"));
+    CHECK(!driver_source_contains("index = 2UL"));
+    CHECK(driver_source_contains("localInterrupt == 1U"));
+    CHECK(driver_source_contains("localInterrupt == 2U"));
+    CHECK(driver_source_contains("tag != NX_SoundDeviceMicIn"));
 }
 
 int main(void)
@@ -968,6 +1262,12 @@ int main(void)
     test_route_uses_output_op_and_preserves_input_state();
     test_full_duplex_controls_isr_and_power();
     test_dma_fault_is_isolated_to_one_direction();
+    test_start_requires_ready_valid_fully_acquired_state();
+    test_stop_after_failed_prepare_is_harmless();
+    test_detect_read_failure_propagates_and_fail_mutes();
+    test_failed_controls_invalidate_truth_from_mute_result();
+    test_controls_preserve_prior_serialized_route_commit();
+    test_driver_binds_runtime_controls_and_safe_irq_ordinals();
     test_i2s_adapter_uses_apple_raw_fields();
     if (failures != 0) {
         fprintf(stderr, "%d TAS runtime checks failed\n", failures);

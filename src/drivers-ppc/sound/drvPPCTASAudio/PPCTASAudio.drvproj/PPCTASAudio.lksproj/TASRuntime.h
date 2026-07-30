@@ -46,16 +46,18 @@ typedef struct {
     TASStatus (*ackDetectInterrupt)(void *);
     void (*lockInterrupt)(void *);
     void (*unlockInterrupt)(void *);
+    void (*lockOperation)(void *);
+    void (*unlockOperation)(void *);
     void (*lockState)(void *);
     void (*unlockState)(void *);
     TASStatus (*executeAction)(void *, const TASAudioAction *);
     TASStatus (*applyControls)(void *, const TASAudioDesiredControls *,
         unsigned long);
     TASStatus (*applyOutputRoute)(void *, unsigned long, unsigned long);
-    unsigned long (*sampleDetects)(void *);
+    TASStatus (*sampleDetects)(void *, unsigned long *);
     unsigned long (*now)(void *);
     void (*signalDeferred)(void *);
-    void (*failMute)(void *);
+    TASStatus (*failMuteOutputs)(void *);
 } TASRuntimeOps;
 
 typedef struct {
@@ -70,6 +72,7 @@ typedef struct {
     unsigned long detectISREdges;
     unsigned long dmaFaultMask;
     unsigned long operationDeadline;
+    int detectFaultPending;
     int initialized;
 } TASRuntime;
 

@@ -46,6 +46,7 @@ typedef struct {
     TASStatus (*executeAction)(void *, const TASAudioAction *);
     TASStatus (*applyControls)(void *, const TASAudioDesiredControls *,
         unsigned long);
+    TASStatus (*applyOutputRoute)(void *, unsigned long, unsigned long);
     unsigned long (*sampleDetects)(void *);
     unsigned long (*now)(void *);
     void (*signalDeferred)(void *);
@@ -85,5 +86,9 @@ TASStatus TASRuntimeSetControls(TASRuntime *,
 TASStatus TASRuntimeSetPower(TASRuntime *, TASPowerState, unsigned long);
 TASStatus TASRuntimeEncodeI2S(const TASI2SPlanStep *, unsigned long *,
     unsigned long *);
+TASStatus TASRuntimeBoundedDelay(void *, unsigned long, unsigned long,
+    unsigned long (*)(void *), void (*)(void *, unsigned long));
+TASStatus TASRuntimeFailMuteOutputs(const TASMachineConfig *, void *,
+    TASStatus (*)(void *, const TASGPIODescriptor *, int));
 
 #endif

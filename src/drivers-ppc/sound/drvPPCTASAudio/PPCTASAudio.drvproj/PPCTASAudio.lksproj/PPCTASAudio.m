@@ -25,6 +25,8 @@ typedef struct {
 } PPCTASPropertyContext;
 
 static unsigned long tas_detects(void *opaque);
+static unsigned long tas_now(void *opaque);
+static void tas_wait_microseconds(void *opaque, unsigned long usec);
 
 static int tas_get_property(void *opaque, TASNode node, const char *name,
     const unsigned char **bytes, unsigned long *length)
@@ -86,11 +88,53 @@ static int tas_get_parent(void *opaque, TASNode node, TASNode *parent)
     return 0;
 }
 
+static unsigned long tas_resolve_phandle(void *opaque,
+    unsigned long phandle, TASNode *node)
+{
+    PPCTASPropertyContext *context;
+    static const char *names[] = { "AAPL,phandle", "phandle",
+        "linux,phandle" };
+    const unsigned char *bytes;
+    unsigned long length;
+    unsigned long index;
+    unsigned long name;
+    unsigned long value;
+    unsigned long matches;
+    context = (PPCTASPropertyContext *)opaque;
+    matches = 0UL;
+    for (index = 0UL; index < context->count; ++index) {
+        for (name = 0UL; name < sizeof(names) / sizeof(names[0]); ++name) {
+            if (!tas_get_property(context, index + 1UL, names[name],
+                &bytes, &length) || length != 4UL)
+                continue;
+            value = ((unsigned long)bytes[0] << 24) |
+                ((unsigned long)bytes[1] << 16) |
+                ((unsigned long)bytes[2] << 8) | bytes[3];
+            if (value == phandle) {
+                *node = index + 1UL;
+                ++matches;
+            }
+            break;
+        }
+    }
+    return matches;
+}
+
 static int tas_make_reader(TASPropertyReader *reader,
-    PPCTASPropertyContext *context)
+    PPCTASPropertyContext *context, IODeviceDescription *description)
 {
     unsigned long index;
+    unsigned long matches;
     id node;
+    char candidatePath[256];
+    char nodePath[256];
+    if (description == nil)
+        return 0;
+    candidatePath[0] = '\0';
+    [description getDevicePath:candidatePath maxLength:sizeof(candidatePath)
+        useAlias:NO];
+    if (candidatePath[0] == '\0')
+        return 0;
     memset(context, 0, sizeof(*context));
     for (index = 0UL; index < TAS_TREE_NODES; ++index) {
         node = [IOTreeDevice findForIndex:(UInt32)index];
@@ -104,8 +148,19 @@ static int tas_make_reader(TASPropertyReader *reader,
     reader->context = context;
     reader->getProperty = tas_get_property;
     reader->findNode = tas_find_node;
+    reader->resolvePhandle = tas_resolve_phandle;
     reader->getParent = tas_get_parent;
-    return 1;
+    matches = 0UL;
+    for (index = 0UL; index < context->count; ++index) {
+        nodePath[0] = '\0';
+        [context->nodes[index] getDevicePath:nodePath
+            maxLength:sizeof(nodePath) useAlias:NO];
+        if (strcmp(candidatePath, nodePath) == 0) {
+            reader->candidateNode = index + 1UL;
+            ++matches;
+        }
+    }
+    return matches == 1UL;
 }
 
 static TASStatus tas_status(IOReturn result)
@@ -151,20 +206,32 @@ static TASStatus tas_codec_reset(void *opaque, int asserted)
 static TASStatus tas_codec_delay(void *opaque, unsigned long usec,
     unsigned long deadline)
 {
+    return TASRuntimeBoundedDelay(opaque, usec, deadline, tas_now,
+        tas_wait_microseconds);
+}
+
+static void tas_wait_microseconds(void *opaque, unsigned long usec)
+{
     (void)opaque;
-    (void)deadline;
     IODelay(usec);
-    return kTASStatusOK;
+}
+
+static TASStatus tas_write_mute_gpio(void *opaque,
+    const TASGPIODescriptor *descriptor, int active)
+{
+    PEAudioGPIO gpio;
+    (void)opaque;
+    gpio.offset = descriptor->offset;
+    gpio.activeHigh = descriptor->activeHigh;
+    return tas_status(PEAudioGPIOWrite(&gpio, active ? TRUE : FALSE));
 }
 
 static void tas_fail_mute(void *opaque)
 {
     PPCTASAudio *self;
-    PEAudioGPIO gpio;
     self = (PPCTASAudio *)opaque;
-    gpio.offset = self->machineConfig.amplifierMute.offset;
-    gpio.activeHigh = self->machineConfig.amplifierMute.activeHigh;
-    (void)PEAudioGPIOWrite(&gpio, TRUE);
+    (void)TASRuntimeFailMuteOutputs(&self->machineConfig, self,
+        tas_write_mute_gpio);
 }
 
 static TASStatus tas_translate(void *opaque, const void *address,
@@ -462,7 +529,7 @@ static TASStatus tas_action(void *opaque, const TASAudioAction *action)
         IODelay(TAS_AUDIO_DEBOUNCE_CONFIRM_MS * 1000UL);
         return kTASStatusOK;
     case kTASAudioSampleDetects:
-        (void)tas_detects(self);
+        /* TASRuntime performs the single injected physical sample. */
         return kTASStatusOK;
     case kTASAudioMuteSpeaker:
     case kTASAudioUnmuteSpeaker:
@@ -503,11 +570,6 @@ static TASStatus tas_action(void *opaque, const TASAudioAction *action)
         gpio.activeHigh =
             self->machineConfig.routes[kTASRouteHeadphone].mute.activeHigh;
         return tas_status(PEAudioGPIOWrite(&gpio, action->value != 0UL));
-    case kTASAudioSetOutputMux:
-        gpio.offset = self->machineConfig.inputMux.offset;
-        gpio.activeHigh = self->machineConfig.inputMux.activeHigh;
-        return tas_status(PEAudioGPIOWrite(&gpio, action->value != 0UL));
-    case kTASAudioSetCodecRoute:
     case kTASAudioRestoreInputSource:
         return TASCodecSetInputSource(&self->runtime.codec,
             (TASCodecInputSource)self->runtime.audio.desired.inputSource,
@@ -592,6 +654,18 @@ static TASStatus tas_controls(void *opaque,
     return status;
 }
 
+static TASStatus tas_output_route(void *opaque, unsigned long routes,
+    unsigned long deadline)
+{
+    PPCTASAudio *self;
+    (void)deadline;
+    self = (PPCTASAudio *)opaque;
+    if ((routes & ~self->runtime.audio.availableRoutes) != 0UL)
+        return kTASStatusMalformed;
+    /* External output mute GPIOs are authoritative on reviewed machines. */
+    return kTASStatusOK;
+}
+
 static unsigned long tas_detects(void *opaque)
 {
     PPCTASAudio *self;
@@ -639,6 +713,7 @@ static TASRuntimeOps tas_runtime_ops(PPCTASAudio *self)
     ops.ackDMAInterrupt = tas_ack_dma_interrupt;
     ops.executeAction = tas_action;
     ops.applyControls = tas_controls;
+    ops.applyOutputRoute = tas_output_route;
     ops.sampleDetects = tas_detects;
     ops.now = tas_now;
     ops.signalDeferred = tas_signal;
@@ -670,6 +745,17 @@ static void tas_detect_interrupt(void *identity, void *state, void *argument)
         kTASRuntimeIRQDetect);
 }
 
+static TASStatus tas_update_controls(PPCTASAudio *self,
+    const TASAudioDesiredControls *candidate)
+{
+    TASStatus status;
+    status = TASRuntimeSetControls(&self->runtime, candidate,
+        tas_now(self) + 100UL);
+    if (status == kTASStatusOK)
+        self->desiredControls = *candidate;
+    return status;
+}
+
 @implementation PPCTASAudio
 
 + (BOOL)probe:(IODeviceDescription *)deviceDescription
@@ -679,7 +765,7 @@ static void tas_detect_interrupt(void *identity, void *state, void *argument)
     TASMachineConfig config;
     TASRuntimeOps ops;
     PPCTASAudio *instance;
-    if (!tas_make_reader(&reader, &propertyContext) ||
+    if (!tas_make_reader(&reader, &propertyContext, deviceDescription) ||
         TASRuntimeProbe(&reader, &config) != kTASStatusOK)
         return NO;
     instance = [self alloc];
@@ -819,48 +905,55 @@ static void tas_detect_interrupt(void *identity, void *state, void *argument)
 
 - (void)updateInputGainLeft
 {
-    desiredControls.inputGain = [self inputGainLeft];
-    (void)TASRuntimeSetControls(&runtime, &desiredControls,
-        tas_now(self) + 100UL);
+    TASAudioDesiredControls candidate;
+    candidate = desiredControls;
+    candidate.inputGain = [self inputGainLeft];
+    (void)tas_update_controls(self, &candidate);
 }
 - (void)updateInputGainRight
 {
-    desiredControls.inputGain = [self inputGainRight];
-    (void)TASRuntimeSetControls(&runtime, &desiredControls,
-        tas_now(self) + 100UL);
+    TASAudioDesiredControls candidate;
+    candidate = desiredControls;
+    candidate.inputGain = [self inputGainRight];
+    (void)tas_update_controls(self, &candidate);
 }
 - (void)updateOutputMute
 {
-    desiredControls.userMuted = [self isOutputMuted];
-    (void)TASRuntimeSetControls(&runtime, &desiredControls,
-        tas_now(self) + 100UL);
+    TASAudioDesiredControls candidate;
+    candidate = desiredControls;
+    candidate.userMuted = [self isOutputMuted];
+    (void)tas_update_controls(self, &candidate);
 }
 - (void)updateOutputAttenuationLeft
 {
-    desiredControls.leftVolume = (unsigned long)[self outputAttenuationLeft];
-    (void)TASRuntimeSetControls(&runtime, &desiredControls,
-        tas_now(self) + 100UL);
+    TASAudioDesiredControls candidate;
+    candidate = desiredControls;
+    candidate.leftVolume = (unsigned long)[self outputAttenuationLeft];
+    (void)tas_update_controls(self, &candidate);
 }
 - (void)updateOutputAttenuationRight
 {
-    desiredControls.rightVolume = (unsigned long)[self outputAttenuationRight];
-    (void)TASRuntimeSetControls(&runtime, &desiredControls,
-        tas_now(self) + 100UL);
+    TASAudioDesiredControls candidate;
+    candidate = desiredControls;
+    candidate.rightVolume = (unsigned long)[self outputAttenuationRight];
+    (void)tas_update_controls(self, &candidate);
 }
 - (void)setInput:(NXSoundParameterTag)tag enable:(BOOL)enable
 {
+    TASAudioDesiredControls candidate;
+    candidate = desiredControls;
     if (enable)
-        desiredControls.inputSource = tag == NX_SoundDeviceMicIn ?
+        candidate.inputSource = tag == NX_SoundDeviceMicIn ?
             kTASCodecInputAnalog : kTASCodecInputDigital1;
-    (void)TASRuntimeSetControls(&runtime, &desiredControls,
-        tas_now(self) + 100UL);
+    (void)tas_update_controls(self, &candidate);
 }
 - (void)setOutput:(NXSoundParameterTag)tag enable:(BOOL)enable
 {
+    TASAudioDesiredControls candidate;
     (void)tag;
-    desiredControls.userMuted = !enable;
-    (void)TASRuntimeSetControls(&runtime, &desiredControls,
-        tas_now(self) + 100UL);
+    candidate = desiredControls;
+    candidate.userMuted = !enable;
+    (void)tas_update_controls(self, &candidate);
 }
 - (void)setAnalogInputSource:(NXSoundParameterTag)tag
 {

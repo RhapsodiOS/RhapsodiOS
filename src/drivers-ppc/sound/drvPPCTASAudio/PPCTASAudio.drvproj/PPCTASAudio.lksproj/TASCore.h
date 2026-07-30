@@ -95,6 +95,8 @@ typedef struct {
         TASNode *, unsigned long);
     unsigned long (*resolvePhandle)(void *, unsigned long, TASNode *);
     int (*getParent)(void *, TASNode, TASNode *);
+    /* Optional exact i2s controller selected by the probed description. */
+    TASNode candidateNode;
 } TASPropertyReader;
 
 typedef struct {

@@ -4,6 +4,8 @@
 
 #define TAS_STAGE_BIT(stage) (1UL << (unsigned long)(stage))
 
+static TASStatus service_detect(TASRuntime *, int, unsigned long);
+
 static unsigned long route_mask(const TASMachineConfig *config)
 {
     unsigned long routes;
@@ -22,6 +24,7 @@ static int valid_ops(const TASRuntimeOps *ops)
         ops->stopResetDMA != 0 && ops->serviceDMA != 0 &&
         ops->ackDMAInterrupt != 0 &&
         ops->executeAction != 0 && ops->applyControls != 0 &&
+        ops->applyOutputRoute != 0 &&
         ops->sampleDetects != 0 && ops->now != 0 &&
         ops->signalDeferred != 0 &&
         ops->failMute != 0;
@@ -106,7 +109,17 @@ TASStatus TASRuntimeReset(TASRuntime *runtime, unsigned long deadline)
         }
         runtime->acquiredMask |= TAS_STAGE_BIT(stage);
     }
-    TASRuntimeRecordISR(runtime, kTASRuntimeIRQDetect);
+    status = service_detect(runtime, 1, deadline);
+    if (status == kTASStatusOK)
+        status = service_detect(runtime, 0, deadline);
+    if (status == kTASStatusOK)
+        status = service_detect(runtime, 0, deadline);
+    if (status != kTASStatusOK || runtime->audio.debouncePending ||
+        !runtime->audio.routeValid) {
+        runtime->ops.failMute(runtime->ops.context);
+        TASRuntimeUnwind(runtime);
+        return status == kTASStatusOK ? kTASStatusUnresolved : status;
+    }
     return kTASStatusOK;
 }
 
@@ -219,8 +232,8 @@ static TASStatus service_detect(TASRuntime *runtime, int newEdge,
     unsigned long detects;
     now = runtime->ops.now(runtime->ops.context);
     if (newEdge) {
-        detects = runtime->ops.sampleDetects(runtime->ops.context);
-        status = TASAudioRecordDetectISR(&runtime->audio, detects,
+        status = TASAudioRecordDetectISR(&runtime->audio,
+            runtime->audio.desiredDetects,
             &generation);
         if (status != kTASStatusOK)
             return status;
@@ -304,8 +317,13 @@ TASStatus TASRuntimeSetControls(TASRuntime *runtime,
     const TASAudioDesiredControls *desired, unsigned long deadline)
 {
     TASStatus status;
+    TASAudioState candidate;
     if (runtime == 0 || desired == 0)
         return kTASStatusMalformed;
+    candidate = runtime->audio;
+    status = TASAudioSetDesiredControls(&candidate, desired);
+    if (status != kTASStatusOK)
+        return status;
     status = runtime->ops.applyControls(runtime->ops.context, desired,
         deadline);
     if (status != kTASStatusOK) {
@@ -313,7 +331,8 @@ TASStatus TASRuntimeSetControls(TASRuntime *runtime,
         runtime->audio.outputsMuted = 1;
         return status;
     }
-    return TASAudioSetDesiredControls(&runtime->audio, desired);
+    runtime->audio = candidate;
+    return kTASStatusOK;
 }
 
 static TASStatus execute_plan(TASRuntime *runtime,
@@ -332,8 +351,14 @@ static TASStatus execute_plan(TASRuntime *runtime,
         if (status != kTASStatusOK)
             break;
         plan->actions[index].deadline = deadline;
-        status = runtime->ops.executeAction(runtime->ops.context,
-            &plan->actions[index]);
+        if (plan->actions[index].operation == kTASAudioSetOutputMux)
+            status = kTASStatusOK;
+        else if (plan->actions[index].operation == kTASAudioSetCodecRoute)
+            status = runtime->ops.applyOutputRoute(runtime->ops.context,
+                plan->actions[index].value, deadline);
+        else
+            status = runtime->ops.executeAction(runtime->ops.context,
+                &plan->actions[index]);
         if (status != kTASStatusOK)
             break;
         if (runtime->detectISREdges != detectEdges) {
@@ -419,4 +444,40 @@ TASStatus TASRuntimeEncodeI2S(const TASI2SPlanStep *step,
         ((sclk & 0xfUL) << 20);
     *dataWord = step->value;
     return kTASStatusOK;
+}
+
+TASStatus TASRuntimeBoundedDelay(void *context, unsigned long usec,
+    unsigned long deadline, unsigned long (*now)(void *),
+    void (*wait)(void *, unsigned long))
+{
+    unsigned long current;
+    unsigned long required;
+    if (now == 0 || wait == 0 || deadline == 0UL)
+        return kTASStatusMalformed;
+    current = now(context);
+    required = usec / 1000UL + ((usec % 1000UL) != 0UL ? 1UL : 0UL);
+    if (current >= deadline || required > deadline - current)
+        return kTASStatusTimeout;
+    wait(context, usec);
+    return now(context) > deadline ? kTASStatusTimeout : kTASStatusOK;
+}
+
+TASStatus TASRuntimeFailMuteOutputs(const TASMachineConfig *config,
+    void *context,
+    TASStatus (*writeGPIO)(void *, const TASGPIODescriptor *, int))
+{
+    TASStatus first;
+    TASStatus status;
+    unsigned long route;
+    if (config == 0 || writeGPIO == 0)
+        return kTASStatusMalformed;
+    first = writeGPIO(context, &config->amplifierMute, 1);
+    for (route = 0UL; route < kTASRouteCount; ++route) {
+        if (!config->routes[route].present)
+            continue;
+        status = writeGPIO(context, &config->routes[route].mute, 1);
+        if (first == kTASStatusOK && status != kTASStatusOK)
+            first = status;
+    }
+    return first;
 }

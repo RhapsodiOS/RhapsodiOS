@@ -406,6 +406,8 @@ static TASStatus discover_candidate(const TASPropertyReader *reader,
             is_sound_bus(reader, soundBus) != 1 ||
             !reader->getParent(reader->context, soundBus, &controller) ||
             !node_in(controllers, controllerCount, controller) ||
+            (reader->candidateNode != 0UL &&
+            controller != reader->candidateNode) ||
             !reader->getParent(reader->context, controller, &macIO))
             continue;
         memset(&found, 0, sizeof(found));

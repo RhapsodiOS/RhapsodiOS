@@ -339,6 +339,7 @@ static int fixture_parent(void *context, TASNode nodeId, TASNode *parent)
 TASPropertyReader TASFixtureReader(TASFixture *fixture)
 {
     TASPropertyReader reader;
+    memset(&reader, 0, sizeof(reader));
     reader.context = fixture;
     reader.getProperty = fixture_get;
     reader.findNode = fixture_find;

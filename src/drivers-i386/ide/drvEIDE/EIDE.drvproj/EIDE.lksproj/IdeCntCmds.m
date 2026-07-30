@@ -958,6 +958,7 @@ static unsigned char unaligned_warnings;
     unsigned int	extendedCommand;
     ideTaskfile_t	taskfile;
     BOOL		addressCommand;
+    BOOL		validAddressTaskfile;
     BOOL		nativeDMA;
     int			requiredLBA48;
 
@@ -998,6 +999,7 @@ static unsigned char unaligned_warnings;
     ideIoReq->status = IDER_CMD_ERROR;
     ideIoReq->blocks_xfered = 0;
     command = ideIoReq->cmd;
+    validAddressTaskfile = NO;
 
 	/*
 	 * The disk object caches its preferred command when it is
@@ -1060,6 +1062,7 @@ static unsigned char unaligned_warnings;
 		    block, cnt, requiredLBA48);
 		break;
 	    }
+	    validAddressTaskfile = YES;
 	    command = dispatchCommand;
 	    if (taskfile.useLBA48) {
 		extendedCommand = IDEExtendedCommand(command);
@@ -1153,6 +1156,7 @@ static unsigned char unaligned_warnings;
 		    requiredLBA48);
 		break;
 	    }
+	    validAddressTaskfile = YES;
 	    if (taskfile.useLBA48) {
 		extendedCommand = IDEExtendedCommand(command);
 		if (extendedCommand == 0) {
@@ -1308,7 +1312,14 @@ static unsigned char unaligned_warnings;
 	 * The command failed to exceute properly but was accepted by the
 	 * drive. Reset the drives and try again. 
 	 */
-	IOLog("%s: ATA command %x failed. Retrying...\n", [self name],
+	if (validAddressTaskfile)
+	    IOLog("%s: ATA command failed: base cmd %x selected cmd %x "
+		"block %x count %x mode %s. Retrying...\n",
+		[self name], ideIoReq->cmd, command, ideIoReq->block,
+		ideIoReq->blkcnt,
+		taskfile.useLBA48 ? "LBA48" : "LBA28");
+	else
+	    IOLog("%s: ATA command %x failed. Retrying...\n", [self name],
 		command);
 	[self getIdeRegisters:NULL Print:"ATA Command"];
 

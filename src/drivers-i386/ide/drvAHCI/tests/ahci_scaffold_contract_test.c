@@ -94,6 +94,8 @@ static void test_bundle_contract(void)
     require_text("AHCI.drvproj/PostLoad.tproj/Makefile", "NAME = PostLoad");
     require_text("AHCI.drvproj/PostLoad.tproj/Makefile.preamble", "INCLUDED_ARCHS = i386");
     require_text("AHCI.drvproj/PostLoad.tproj/PB.project", "PROJECTNAME = PostLoad");
+    require_text("AHCI.drvproj/PostLoad.tproj/PB.project", "PDO_UNIX_BUILDTOOL = $NEXT_ROOT/Developer/bin/make;");
+    require_text("AHCI.drvproj/PostLoad.tproj/PB.project", "WINDOWS_BUILDTOOL = $NEXT_ROOT/Developer/Executables/make;");
     require_text("AHCI.drvproj/PostLoad.tproj/PostLoad.m", "N_AHCI_DEVICES");
     require_text("AHCI.drvproj/PostLoad.tproj/PostLoad.m", "32");
     require_text("AHCI.drvproj/PostLoad.tproj/PostLoad.m", "N_AHCI_PARTITIONS");

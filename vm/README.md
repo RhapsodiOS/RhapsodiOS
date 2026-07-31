@@ -52,6 +52,11 @@ powershell -File vm\sync-src.ps1 -Path drivers-i386/bus/drvPCMCIABus
 Exactly one of `-All` or `-Path` is required. `-Path` creates the remote parent
 directory first, then extracts the leaf under `RemoteRoot/src/<rel>`.
 
+After extract, the script restores execute bits on `configure`,
+`config.guess`/`config.sub`, common autotools helpers, `build_gcc`, and `*.sh` /
+`*.pl` under the synced tree (Windows tar drops Unix `+x`, which breaks
+bootstrap `./configure`).
+
 This script only syncs `src/`. Broader uploads (e.g. whatever `SyncPaths` lists
 in `vm.conf`) still go through `rhap-vm.ps1 sync` (PuTTY-based; same crypto
 caveat applies until that tool is updated).

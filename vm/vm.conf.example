@@ -7,5 +7,10 @@ RemoteRoot=/build/source
 # LocalRoot=   (empty = parent directory of vm/)
 Plink=plink.exe
 Pscp=pscp.exe
+# OpenSSH tools used by sync-src.ps1 / build-src.ps1 (legacy crypto to the PPC guest)
+Ssh=ssh.exe
+Tar=tar.exe
 Make=gnumake
+RepoDir=/build/repo
+BuiltDir=/build/built
 SyncPaths=src

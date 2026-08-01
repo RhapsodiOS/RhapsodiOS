@@ -124,8 +124,9 @@ TEST(test_buildflags) {
     builder_buildflags(&p, "install", &f, 0);
     CHECK(list_has(&f, "SRCROOT=/s"));
     CHECK(list_has(&f, "DSTROOT=/d"));
-    CHECK(list_has(&f, "RC_ARCHS=i386 ppc"));
-    CHECK(list_has(&f, "RC_i386=YES"));
+    /* Host-arch only for both native and chroot (single-arch guest seed). */
+    CHECK(!list_has(&f, "RC_ARCHS=i386 ppc"));
+    CHECK(list_has(&f, "RC_ARCHS=ppc") || list_has(&f, "RC_ARCHS=i386"));
     strlist_free(&f);
 
     strlist_init(&f);
@@ -133,7 +134,7 @@ TEST(test_buildflags) {
     CHECK(list_has(&f, "DSTROOT=/h"));   /* headers target uses HDRROOT */
     strlist_free(&f);
 
-    /* native: host-arch only (compile-time RBUILD_HOST_ARCH) */
+    /* native: host-arch only + HFS LN wrapper */
     strlist_init(&f);
     builder_buildflags(&p, "install", &f, 1);
     CHECK(!list_has(&f, "RC_ARCHS=i386 ppc"));

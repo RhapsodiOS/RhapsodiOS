@@ -249,8 +249,10 @@ static void push_kv(strlist *out, const char *k, const char *v) {
 
 /*
  * Stage-0 native builds link against the host root, which only has the
- * host architecture's crt/System. Fat i386+ppc links fail there. Chroot
- * (stage 1+) builds keep the fat default once the seed provides both.
+ * host architecture's crt/System. Fat i386+ppc links fail there.
+ * Chroot builds on a single-arch guest also SIGILL/miscompile when the
+ * seed has no working opposite-arch toolchain, so keep host-arch-only
+ * until a fat sysroot is intentionally introduced.
  */
 #if defined(__i386__) || defined(i386)
 #define RBUILD_HOST_ARCH "i386"
@@ -285,13 +287,9 @@ void builder_buildflags(const Params *params, const char *target, strlist *out,
     else
         push_kv(out, "DSTROOT", params->DSTROOT);
 
-    if (native) {
-        arch_cflags = "-arch " RBUILD_HOST_ARCH " ";
-        archs = RBUILD_HOST_ARCH;
-    } else {
-        arch_cflags = "-arch i386 -arch ppc ";
-        archs = "i386 ppc";
-    }
+    (void)native;
+    arch_cflags = "-arch " RBUILD_HOST_ARCH " ";
+    archs = RBUILD_HOST_ARCH;
 
     /* RC_CFLAGS = "-arch ..." + " -D..." for each cflag. */
     sbuf_init(&s);
@@ -303,18 +301,15 @@ void builder_buildflags(const Params *params, const char *target, strlist *out,
     free(rc_cflags);
 
     push_kv(out, "RC_ARCHS", archs);
+    if (strcmp(RBUILD_HOST_ARCH, "i386") == 0)
+        push_kv(out, "RC_i386", "YES");
+    else
+        push_kv(out, "RC_ppc", "YES");
     if (native) {
-        if (strcmp(RBUILD_HOST_ARCH, "i386") == 0)
-            push_kv(out, "RC_i386", "YES");
-        else
-            push_kv(out, "RC_ppc", "YES");
         /* HFS /build has no hard links; prefer the /build/bin/ln fallback. */
         push_kv(out, "LN", "/build/bin/ln");
         /* cctools dyld needs static libc; host only has System.framework dylib. */
         push_kv(out, "BOOTSTRAP_SKIP_DYLD", "YES");
-    } else {
-        push_kv(out, "RC_i386", "YES");
-        push_kv(out, "RC_ppc", "YES");
     }
 }
 
@@ -470,10 +465,18 @@ static char *deb_to_name(const char *path) {
 
 /* Apk analog of "dpkg-deb -x <debfile> <buildroot>": an .apk is a gzipped
    tar, so extract its payload (including the harmless .PKGINFO member)
-   directly into buildroot. */
+   directly into buildroot. Prefer gnutar; treat exit status 1 as success
+   (warnings such as Unable to set file uid/gid on device nodes in files.apk). */
 static int apk_extract(const char *apkfile, const char *buildroot) {
-    char *cmd = str_cats("gzip -dc '", apkfile, "' | tar -C '",
-                         buildroot, "' -xf -", (char *)0);
+    /* Prefer gnutar when present. Exit status 1 is treated as success:
+       files.apk trips "Unable to set file uid/gid" warnings on device nodes. */
+    char *cmd = str_cats(
+        "gzip -dc '", apkfile,
+        "' | (if command -v gnutar >/dev/null 2>&1; then "
+        "gnutar -C '", buildroot, "' -xf -; else "
+        "tar -C '", buildroot, "' -xf -; fi); "
+        "ec=$?; if [ \"$ec\" -gt 1 ]; then exit \"$ec\"; fi; exit 0",
+        (char *)0);
     char *argv[4];
     int rc;
     argv[0] = "sh"; argv[1] = "-c"; argv[2] = cmd; argv[3] = 0;
@@ -579,6 +582,26 @@ int builder_makeroot(const Package *pkg, const char *buildroot,
         fprintf(f, "%s\n", depnames.items[i]);
     fclose(f);
     free(listpath);
+
+    /* Stage-0 skipped cctools dyld (needs static libc). Without /usr/lib/dyld
+       in the build root, chroot exec of dynamic Mach-Os dies with SIGILL. */
+    {
+        char *dstdir = str_cats(buildroot, "/usr/lib", (char *)0);
+        char *dst = str_cats(buildroot, "/usr/lib/dyld", (char *)0);
+        struct stat st;
+        if (stat("/usr/lib/dyld", &st) == 0 && stat(dst, &st) != 0) {
+            printf("\tseeding /usr/lib/dyld from host\n");
+            fflush(stdout);
+            if (exec_runv("mkdir", "-p", dstdir, (char *)0) != 0 ||
+                exec_runv("cp", "-p", "/usr/lib/dyld", dst, (char *)0) != 0) {
+                fprintf(stderr, "rbuild: unable to seed /usr/lib/dyld into build root\n");
+                rc = 1;
+            }
+        }
+        free(dstdir);
+        free(dst);
+        if (rc) goto cleanup;
+    }
 
 cleanup:
     strlist_free(&deps);

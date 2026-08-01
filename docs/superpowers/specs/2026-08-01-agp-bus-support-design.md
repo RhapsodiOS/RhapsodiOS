@@ -1,7 +1,7 @@
 # AGP Bus Support Design
 
-**Date:** 2026-08-01  
-**Status:** Approved design  
+**Date:** 2026-08-01
+**Status:** Approved design
 **Scope:** Shared DriverKit/kernel AGP infrastructure with UniNorth support on PPC and Intel 440BX support on i386
 
 ## Summary
@@ -178,7 +178,7 @@ Only one session may own a master at a time. Reentrant acquisition by the same t
 
 1. The client supplies a maximum aperture length and zero options.
 2. The broker validates host and master capabilities and asks the backend for the largest supported aperture not exceeding the request.
-3. The broker allocates a page-aligned, physically suitable, wired, zeroed GART and initializes every entry as invalid.
+3. The broker allocates a page-aligned, physically contiguous, backend-addressable, wired, zeroed GART and initializes every entry as invalid.
 4. The backend programs the aperture and GART while AGP traffic remains disabled.
 5. The broker intersects target/master queue depth, rate, SBA, and addressing capabilities.
 6. It selects 2x if mutual, otherwise 1x; it enables SBA only if mutual; it clears 4x, fast-write, and unsupported addressing bits.

@@ -10,4 +10,5 @@
 "Boot Driver";
 "Block Major" = "3";
 "Character Major" = "15";
+"Debug" = "No";
 "Post-Load" = "PostLoad";

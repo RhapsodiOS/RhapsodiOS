@@ -120,7 +120,7 @@ static void test_mode_sense_translation(void)
     CHECK(cdb10[7] == 1 && cdb10[8] == 3 && transfer == 259U);
 
     memset(atapiData, 0, sizeof(atapiData));
-    atapiData[1] = 14;
+    atapiData[1] = 10;
     atapiData[2] = 1;
     atapiData[8] = 0x2a;
     atapiData[9] = 2;
@@ -136,6 +136,7 @@ static void test_mode_sense_translation(void)
                                     sizeof(scsiData), &actual) == 0);
 
     memset(atapiData, 0, sizeof(atapiData));
+    atapiData[1] = 14;
     atapiData[6] = 0;
     atapiData[7] = 4;
     atapiData[8] = 0xde;
@@ -148,11 +149,22 @@ static void test_mode_sense_translation(void)
     atapiData[15] = 0xbb;
     CHECK(AHCIATAPIRemapModeSense10(atapiData, 16, scsiData,
                                     sizeof(scsiData), &actual) == 1);
-    CHECK(actual == 8U && scsiData[0] == 7 && scsiData[3] == 0);
-    CHECK(scsiData[4] == 0x2a && scsiData[7] == 0xbb);
-    atapiData[7] = 9;
-    CHECK(AHCIATAPIRemapModeSense10(atapiData, 16, scsiData,
+    CHECK(actual == 12U && scsiData[0] == 11 && scsiData[3] == 4);
+    CHECK(scsiData[4] == 0xde && scsiData[7] == 0xef);
+    CHECK(scsiData[8] == 0x2a && scsiData[11] == 0xbb);
+    CHECK(AHCIATAPIRemapModeSense10(atapiData, 12, scsiData,
+                                    sizeof(scsiData), &actual) == 1);
+    CHECK(actual == 8U && scsiData[0] == 11 && scsiData[3] == 4);
+    atapiData[1] = 10;
+    atapiData[7] = 5;
+    CHECK(AHCIATAPIRemapModeSense10(atapiData, 12, scsiData,
                                     sizeof(scsiData), &actual) == 0);
+    atapiData[1] = 14;
+    atapiData[7] = 4;
+    CHECK(AHCIATAPIRemapModeSense10(atapiData, 16, scsiData,
+                                    6, &actual) == 1);
+    CHECK(actual == 6U && scsiData[0] == 11 && scsiData[3] == 4);
+    CHECK(scsiData[4] == 0xde && scsiData[5] == 0xad);
 }
 
 static void test_mode_sense_page_two_emulation(void)
@@ -168,9 +180,9 @@ static void test_mode_sense_page_two_emulation(void)
     memset(data, 0xff, sizeof(data));
     CHECK(AHCIATAPIEmulateModeSensePage2(cdb6, data, sizeof(data),
                                          &actual) == 1);
-    CHECK(actual == sizeof(data));
+    CHECK(actual == 3U);
     CHECK(data[0] == 2 && data[1] == sizeof(data) && data[2] == 1);
-    CHECK(data[3] == 0 && data[15] == 0);
+    CHECK(data[3] == 0xff && data[15] == 0xff);
     cdb6[2] = 3;
     CHECK(AHCIATAPIEmulateModeSensePage2(cdb6, data, sizeof(data),
                                          &actual) == 0);

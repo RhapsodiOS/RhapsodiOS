@@ -93,6 +93,20 @@ static void AHCIATAPISetSense(esense_reply_t *sense, unsigned char key,
     return allowed;
 }
 
+- (BOOL)beginReset:(AHCIPort **)port
+{
+    BOOL allowed;
+
+    [_stateLock lock];
+    allowed = !_destroying && _port != nil;
+    if (allowed) {
+        ++_activeRequests;
+        *port = _port;
+    }
+    [_stateLock unlock];
+    return allowed;
+}
+
 - (void)endRequest
 {
     [_stateLock lock];
@@ -415,7 +429,14 @@ finish:
 
 - (sc_status_t)resetSCSIBus
 {
-    return [_port resetATAPIDevice:self] ? SR_IOST_GOOD : SR_IOST_HW;
+    AHCIPort *port;
+    BOOL success;
+
+    if (![self beginReset:&port])
+        return SR_IOST_HW;
+    success = [port resetATAPIDevice:self];
+    [self endRequest];
+    return success ? SR_IOST_GOOD : SR_IOST_HW;
 }
 
 - free

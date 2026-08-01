@@ -129,29 +129,43 @@ int AHCIATAPIRemapModeSense10(const unsigned char *atapiData,
                                unsigned int scsiCapacity,
                                unsigned int *scsiBytes)
 {
+    unsigned int declaredLength;
+    unsigned int declaredTotal;
     unsigned int descriptorBytes;
-    unsigned int pageOffset;
-    unsigned int pageBytes;
+    unsigned int availableTotal;
+    unsigned int payloadBytes;
     unsigned int resultBytes;
 
     if (atapiData == 0 || scsiData == 0 || scsiBytes == 0 ||
         atapiBytes < 8U)
         return 0;
+    declaredLength = ((unsigned int)atapiData[0] << 8) |
+                     atapiData[1];
+    declaredTotal = declaredLength + 2U;
+    if (declaredTotal < 8U || declaredTotal > 260U)
+        return 0;
     descriptorBytes = ((unsigned int)atapiData[6] << 8) |
                       atapiData[7];
-    if (descriptorBytes > atapiBytes - 8U)
+    if (descriptorBytes > 255U ||
+        descriptorBytes > declaredTotal - 8U)
         return 0;
-    pageOffset = 8U + descriptorBytes;
-    pageBytes = atapiBytes - pageOffset;
-    resultBytes = 4U + pageBytes;
-    if (resultBytes > scsiCapacity || resultBytes > 256U)
+    availableTotal = atapiBytes < declaredTotal ? atapiBytes : declaredTotal;
+    if (descriptorBytes > availableTotal - 8U)
         return 0;
-    scsiData[0] = (unsigned char)(resultBytes - 1U);
-    scsiData[1] = atapiData[2];
-    scsiData[2] = atapiData[3];
-    scsiData[3] = 0;
-    if (pageBytes != 0)
-        memcpy(scsiData + 4, atapiData + pageOffset, pageBytes);
+    payloadBytes = availableTotal - 8U;
+    resultBytes = 4U + payloadBytes;
+    if (resultBytes > scsiCapacity)
+        resultBytes = scsiCapacity;
+    if (resultBytes > 0U)
+        scsiData[0] = (unsigned char)(declaredTotal - 5U);
+    if (resultBytes > 1U)
+        scsiData[1] = atapiData[2];
+    if (resultBytes > 2U)
+        scsiData[2] = atapiData[3];
+    if (resultBytes > 3U)
+        scsiData[3] = (unsigned char)descriptorBytes;
+    if (resultBytes > 4U)
+        memcpy(scsiData + 4, atapiData + 8, resultBytes - 4U);
     *scsiBytes = resultBytes;
     return 1;
 }
@@ -169,10 +183,9 @@ int AHCIATAPIEmulateModeSensePage2(const unsigned char cdb6[6],
     allocation = cdb6[4];
     if (allocation < 3U || allocation > capacity)
         return 0;
-    memset(data, 0, allocation);
     data[0] = 2;
     data[1] = (unsigned char)allocation;
     data[2] = 1;
-    *actual = allocation;
+    *actual = 3U;
     return 1;
 }

@@ -103,6 +103,19 @@ int main(void)
     require_text(source, "AHCIATAPIEmulateModeSensePage2");
     require_text(source, "writeToClient");
     require_text(source, "resetATAPIDevice:self");
+    require_text(source, "allowed = !_destroying && _port != nil;");
+    require_order(source, "- (BOOL)beginReset:(AHCIPort **)port",
+                  "[_stateLock lock];");
+    require_order(source, "allowed = !_destroying && _port != nil;",
+                  "++_activeRequests;");
+    require_order(source, "++_activeRequests;", "*port = _port;");
+    require_order(source, "*port = _port;", "[_stateLock unlock];");
+    require_order(source, "if (![self beginReset:&port])",
+                  "success = [port resetATAPIDevice:self];");
+    require_order(source, "success = [port resetATAPIDevice:self];",
+                  "[self endRequest];");
+    require_order(source, "[self endRequest];",
+                  "return success ? SR_IOST_GOOD : SR_IOST_HW;");
     require_text(source, "AHCIATAPIParseIdentity");
     require_text(source, "AHCIATAPIIdentityMatches");
     require_text(source, "_identity.dmaDirSupported");

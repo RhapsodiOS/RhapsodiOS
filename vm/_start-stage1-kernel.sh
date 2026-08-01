@@ -3,7 +3,7 @@
 export PATH=/build/bin:/usr/bin:/bin:/usr/local/bin:/sbin:/usr/sbin
 SRC="${1:-/build/src}"
 REPO="${2:-/build/repo}"
-BUILT="${3:-/build/built}"
+BUILT="${3:-/build/repo}"
 TIME_ARG="$4"
 
 if [ -n "$TIME_ARG" ]; then date "$TIME_ARG" || true; fi

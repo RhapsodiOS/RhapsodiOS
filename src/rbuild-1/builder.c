@@ -468,13 +468,10 @@ static char *deb_to_name(const char *path) {
    directly into buildroot. Prefer gnutar; treat exit status 1 as success
    (warnings such as Unable to set file uid/gid on device nodes in files.apk). */
 static int apk_extract(const char *apkfile, const char *buildroot) {
-    /* Prefer gnutar when present. Exit status 1 is treated as success:
-       files.apk trips "Unable to set file uid/gid" warnings on device nodes. */
+    /* Exit status 1 is treated as success: files.apk trips
+       "Unable to set file uid/gid" warnings on device nodes. */
     char *cmd = str_cats(
-        "gzip -dc '", apkfile,
-        "' | (if command -v gnutar >/dev/null 2>&1; then "
-        "gnutar -C '", buildroot, "' -xf -; else "
-        "tar -C '", buildroot, "' -xf -; fi); "
+        "gzip -dc '", apkfile, "' | tar -C '", buildroot, "' -xf -; "
         "ec=$?; if [ \"$ec\" -gt 1 ]; then exit \"$ec\"; fi; exit 0",
         (char *)0);
     char *argv[4];
@@ -601,6 +598,28 @@ int builder_makeroot(const Package *pkg, const char *buildroot,
         free(dstdir);
         free(dst);
         if (rc) goto cleanup;
+    }
+
+    /* cctools apk overwrites /usr/bin/strip with a strict binary that fails
+       "install -s" on some newly linked tools. Seed the host bootstrap wrapper. */
+    {
+        char *bindir = str_cats(buildroot, "/usr/bin", (char *)0);
+        char *dst = str_cats(buildroot, "/usr/bin/strip", (char *)0);
+        char *dstreal = str_cats(buildroot, "/usr/bin/strip.real", (char *)0);
+        struct stat st;
+        if (stat("/usr/bin/strip", &st) == 0 &&
+            stat("/usr/bin/strip.real", &st) == 0) {
+            printf("\tseeding strip wrapper into build root\n");
+            fflush(stdout);
+            if (exec_runv("mkdir", "-p", bindir, (char *)0) != 0 ||
+                exec_runv("cp", "-p", "/usr/bin/strip.real", dstreal, (char *)0) != 0 ||
+                exec_runv("cp", "-p", "/usr/bin/strip", dst, (char *)0) != 0) {
+                fprintf(stderr, "rbuild: warning: could not seed strip wrapper\n");
+            }
+        }
+        free(bindir);
+        free(dst);
+        free(dstreal);
     }
 
 cleanup:

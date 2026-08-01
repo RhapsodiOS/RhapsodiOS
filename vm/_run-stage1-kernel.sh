@@ -6,12 +6,16 @@ export PATH=/build/bin:/usr/bin:/bin:/usr/local/bin:/sbin:/usr/sbin
 
 SRC="${1:-/build/src}"
 REPO="${2:-/build/repo}"
-BUILT="${3:-/build/built}"
+# Keep dstdir == seeddir so new apks are visible to later makeroots.
+BUILT="${3:-/build/repo}"
 LOG=/tmp/stage1-kernel.log
 
 mkdir -p "$REPO" "$BUILT"
 # Do not wipe stage1-kernel.pid — starter owns it.
-rm -f "$LOG"
+# Preserve log across restarts by rotating once.
+if [ -f "$LOG" ]; then
+  mv "$LOG" "$LOG.prev" 2>/dev/null || rm -f "$LOG"
+fi
 
 build_one() {
   pkg="$1"
@@ -61,12 +65,23 @@ seed_stub() {
 
   cd "$SRC" || exit 1
 
+  # Promote apks from a prior /build/built dstdir into the seed repo.
+  if [ -d /build/built ]; then
+    for f in /build/built/*.apk; do
+      [ -f "$f" ] || continue
+      base=`basename "$f"`
+      if [ ! -f "$REPO/$base" ]; then
+        cp -p "$f" "$REPO/$base"
+        echo "promoted $base -> $REPO"
+      fi
+    done
+  fi
+
   # Order derived from Build-Depends of kernel + its transitive deps.
   build_one machkit-1 headers || exit 1
   build_one machkit-1 all || exit 1
 
-  build_one yacc-1 all || exit 1
-  build_one perl-1 all || exit 1
+  build_one yacc-1 all || exit 1  build_one perl-1 all || exit 1
   build_one flex-1 all || exit 1
   build_one Commands/adv_cmds all || exit 1
 

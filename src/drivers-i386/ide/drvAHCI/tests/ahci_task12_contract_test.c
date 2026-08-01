@@ -102,6 +102,13 @@ int main(void)
     require_text(source, "AHCIATAPIRemapModeSense10");
     require_text(source, "AHCIATAPIEmulateModeSensePage2");
     require_text(source, "writeToClient");
+    require_text(source, "AHCIATAPITransportLength");
+    require_text(source, "AHCIATAPIClipTransfer");
+    require_text(source, "IOMallocLow(transportBytes)");
+    require_text(source, "bzero(oddReadBuffer, transportBytes)");
+    require_text(source, "IOFreeLow(oddReadBuffer, transportBytes)");
+    require_order(source, "actual = AHCIATAPIClipTransfer(actual, packetBytes);",
+                  "copyKernelBuffer:oddReadBuffer length:actual");
     require_text(source, "resetATAPIDevice:self");
     require_text(source, "allowed = !_destroying && _port != nil;");
     require_order(source, "- (BOOL)beginReset:(AHCIPort **)port",

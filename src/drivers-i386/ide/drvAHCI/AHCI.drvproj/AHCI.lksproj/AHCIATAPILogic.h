@@ -16,6 +16,11 @@ unsigned int AHCIATAPIValidateCDBLength(unsigned char opcode,
                                          unsigned int suppliedLength,
                                          unsigned int cdbCapacity);
 unsigned int AHCIATAPIPacketTimeout(int requestedSeconds);
+int AHCIATAPITransportLength(unsigned int requestedBytes, int write,
+                             unsigned int maximumBytes,
+                             unsigned int *transportBytes);
+unsigned int AHCIATAPIClipTransfer(unsigned int actualBytes,
+                                    unsigned int requestedBytes);
 int AHCIATAPIParseIdentity(const unsigned short words[256],
                            AHCIATAPIIdentity *identity);
 int AHCIATAPIIdentityMatches(const AHCIATAPIIdentity *first,

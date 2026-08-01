@@ -11,8 +11,8 @@ all: ahci_command_test ahci_atapi_test ahci_state_test ahci_hba_test ahci_pci_te
 ahci_command_test: ahci_command_test.c ../AHCI.drvproj/AHCI.lksproj/AHCICommand.c ../AHCI.drvproj/AHCI.lksproj/AHCICommand.h ../AHCI.drvproj/AHCI.lksproj/AHCIRegs.h
 	$(CC) $(CFLAGS) $(INCLUDES) -o $@ ahci_command_test.c ../AHCI.drvproj/AHCI.lksproj/AHCICommand.c
 
-ahci_atapi_test: ahci_atapi_test.c ../AHCI.drvproj/AHCI.lksproj/AHCIATAPILogic.c ../AHCI.drvproj/AHCI.lksproj/AHCIATAPILogic.h
-	$(CC) $(CFLAGS) $(INCLUDES) -o $@ ahci_atapi_test.c ../AHCI.drvproj/AHCI.lksproj/AHCIATAPILogic.c
+ahci_atapi_test: ahci_atapi_test.c ../AHCI.drvproj/AHCI.lksproj/AHCIATAPILogic.c ../AHCI.drvproj/AHCI.lksproj/AHCIATAPILogic.h ../AHCI.drvproj/AHCI.lksproj/AHCICommand.c
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ ahci_atapi_test.c ../AHCI.drvproj/AHCI.lksproj/AHCIATAPILogic.c ../AHCI.drvproj/AHCI.lksproj/AHCICommand.c
 
 ahci_state_test: ahci_state_test.c ../AHCI.drvproj/AHCI.lksproj/AHCIState.c ../AHCI.drvproj/AHCI.lksproj/AHCIState.h
 	$(CC) $(CFLAGS) $(INCLUDES) -o $@ ahci_state_test.c ../AHCI.drvproj/AHCI.lksproj/AHCIState.c

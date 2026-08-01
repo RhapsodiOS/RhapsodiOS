@@ -178,9 +178,11 @@ static void AHCIATAPISetSense(esense_reply_t *sense, unsigned char key,
     unsigned int packetBytes;
     unsigned int packetCDBLength;
     unsigned int packetTimeout;
+    unsigned int transportBytes;
     unsigned int modeBytes;
     const unsigned char *packetCDB;
     void *packetBuffer;
+    void *oddReadBuffer;
     vm_task_t packetClient;
     BOOL modeSense;
     BOOL emulatePageTwo;
@@ -230,6 +232,7 @@ static void AHCIATAPISetSense(esense_reply_t *sense, unsigned char key,
     packetCDBLength = request->cdbLength;
     packetBytes = (unsigned int)request->maxTransfer;
     packetBuffer = buffer;
+    oddReadBuffer = 0;
     packetClient = client;
     modeSense = request->cdb[0] == C6OP_MODESENSE;
     emulatePageTwo = modeSense &&
@@ -247,6 +250,10 @@ static void AHCIATAPISetSense(esense_reply_t *sense, unsigned char key,
     if (emulatePageTwo &&
         !AHCIATAPIEmulateModeSensePage2(request->cdb, scsiModeData,
                                         packetBytes, &modeBytes))
+        return SR_IOST_CMDREJ;
+    if (!AHCIATAPITransportLength(packetBytes, request->read ? 0 : 1,
+                                  AHCI_ATAPI_MAX_TRANSFER_BYTES,
+                                  &transportBytes))
         return SR_IOST_CMDREJ;
 
     if (![self beginRequest]) {
@@ -266,15 +273,32 @@ static void AHCIATAPISetSense(esense_reply_t *sense, unsigned char key,
         request->driverStatus = SR_IOST_GOOD;
         goto finish;
     }
+    if (transportBytes != packetBytes) {
+        oddReadBuffer = IOMallocLow(transportBytes);
+        if (oddReadBuffer == 0) {
+            request->driverStatus = SR_IOST_HW;
+            goto finish;
+        }
+        bzero(oddReadBuffer, transportBytes);
+        packetBuffer = oddReadBuffer;
+        packetClient = IOVmTaskSelf();
+    }
 
     actual = 0;
     packetTimeout = AHCIATAPIPacketTimeout(request->timeoutLength);
     result = [self performPacket:packetCDB length:packetCDBLength
-                          buffer:packetBuffer byteLength:packetBytes
+                          buffer:packetBuffer byteLength:transportBytes
                            write:NO client:packetClient
                          timeout:packetTimeout transferred:&actual];
+    actual = AHCIATAPIClipTransfer(actual, packetBytes);
+    if (oddReadBuffer != 0 && !modeSense && actual != 0 &&
+        ![self copyKernelBuffer:oddReadBuffer length:actual
+                       toBuffer:buffer client:client]) {
+        request->driverStatus = SR_IOST_HW;
+        goto finish;
+    }
     if (result == IO_R_SUCCESS && modeSense) {
-        if (!AHCIATAPIRemapModeSense10(atapiModeData, actual,
+        if (!AHCIATAPIRemapModeSense10(packetBuffer, actual,
                                         scsiModeData,
                                         (unsigned int)request->maxTransfer,
                                         &modeBytes) ||
@@ -326,6 +350,8 @@ static void AHCIATAPISetSense(esense_reply_t *sense, unsigned char key,
     }
 
 finish:
+    if (oddReadBuffer != 0)
+        IOFreeLow(oddReadBuffer, transportBytes);
     [self endRequest];
     return request->driverStatus;
 }

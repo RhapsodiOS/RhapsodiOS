@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "AHCICommand.h"
 #include "AHCIATAPILogic.h"
 
 static int failures;
@@ -40,6 +41,59 @@ static void test_packet_timeout_selection(void)
     CHECK(AHCIATAPIPacketTimeout(30) == 30U);
     CHECK(AHCIATAPIPacketTimeout(31) == 31U);
     CHECK(AHCIATAPIPacketTimeout(120) == 120U);
+}
+
+static void test_odd_read_transport_padding(void)
+{
+    unsigned char cdb6[6];
+    unsigned char cdb[12];
+    unsigned char cdb10[12];
+    unsigned char fis[20];
+    unsigned char acmd[16];
+    unsigned char guarded[37];
+    AHCIPRDTEntry prd;
+    AHCISegment segment;
+    unsigned int requested;
+    unsigned int transport;
+    unsigned int clipped;
+
+    memset(cdb6, 0, sizeof(cdb6));
+    cdb6[0] = 0x1a;
+    cdb6[4] = 255;
+    CHECK(AHCIATAPITranslateModeSense6(cdb6, 255, cdb10,
+                                       &requested) == 1);
+    CHECK(requested == 259U);
+    CHECK(AHCIATAPITransportLength(requested, 0, 131072U,
+                                   &transport) == 1);
+    CHECK(transport == 260U && cdb10[7] == 1 && cdb10[8] == 3);
+    CHECK(AHCIBuildPacketCommand(fis, acmd, cdb10, 12, transport,
+                                 0, 1) == 0);
+    segment.address = 0x1000U;
+    segment.length = transport;
+    CHECK(AHCIBuildPRDT(&prd, 1, &segment, 1, transport) == 1);
+
+    memset(cdb, 0, sizeof(cdb));
+    cdb[0] = 0x12;
+    cdb[4] = 35;
+    CHECK(AHCIATAPITransportLength(35U, 0, 131072U, &transport) == 1);
+    CHECK(transport == 36U && cdb[4] == 35);
+    CHECK(AHCIBuildPacketCommand(fis, acmd, cdb, 12, transport,
+                                 0, 1) == 0);
+    segment.length = transport;
+    CHECK(AHCIBuildPRDT(&prd, 1, &segment, 1, transport) == 1);
+    memset(guarded, 0x5a, sizeof(guarded));
+    clipped = AHCIATAPIClipTransfer(36U, 35U);
+    memset(guarded, 0xa5, clipped);
+    CHECK(clipped == 35U && guarded[35] == 0x5a && guarded[36] == 0x5a);
+    CHECK(AHCIATAPIClipTransfer(34U, 35U) == 34U);
+
+    CHECK(AHCIATAPITransportLength(0U, 0, 131072U, &transport) == 1);
+    CHECK(transport == 0U);
+    CHECK(AHCIBuildPacketCommand(fis, acmd, cdb, 12, transport,
+                                 0, 1) == 0);
+    CHECK(AHCIATAPITransportLength(36U, 0, 131072U, &transport) == 1);
+    CHECK(transport == 36U);
+    CHECK(AHCIATAPITransportLength(35U, 1, 131072U, &transport) == 0);
 }
 
 static void set_identify_string(unsigned short *words, unsigned int count,
@@ -228,6 +282,7 @@ int main(void)
 {
     test_cdb_length_validation();
     test_packet_timeout_selection();
+    test_odd_read_transport_padding();
     test_identify_identity_matching();
     test_mode_sense_translation();
     test_mode_sense_page_two_emulation();

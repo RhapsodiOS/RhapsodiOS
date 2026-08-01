@@ -63,6 +63,27 @@ unsigned int AHCIATAPIPacketTimeout(int requestedSeconds)
     return requestedSeconds > 30 ? (unsigned int)requestedSeconds : 30U;
 }
 
+int AHCIATAPITransportLength(unsigned int requestedBytes, int write,
+                             unsigned int maximumBytes,
+                             unsigned int *transportBytes)
+{
+    if (transportBytes == 0 || requestedBytes > maximumBytes)
+        return 0;
+    if ((requestedBytes & 1U) != 0) {
+        if (write || requestedBytes == maximumBytes)
+            return 0;
+        ++requestedBytes;
+    }
+    *transportBytes = requestedBytes;
+    return 1;
+}
+
+unsigned int AHCIATAPIClipTransfer(unsigned int actualBytes,
+                                    unsigned int requestedBytes)
+{
+    return actualBytes < requestedBytes ? actualBytes : requestedBytes;
+}
+
 int AHCIATAPIParseIdentity(const unsigned short words[256],
                            AHCIATAPIIdentity *identity)
 {

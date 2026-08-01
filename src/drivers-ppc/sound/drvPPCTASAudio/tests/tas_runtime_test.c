@@ -69,6 +69,9 @@ typedef struct {
     unsigned long failServiceMask;
     TASAudioActionOperation actionOps[64];
     unsigned long actionCount;
+    unsigned long controlCalls;
+    unsigned long controlsAtActionCount;
+    TASAudioDesiredControls lastControls;
     unsigned long trace[128];
     unsigned long traceCount;
     unsigned long ackFailMask;
@@ -263,11 +266,13 @@ static TASStatus runtime_controls(void *context,
     const TASAudioDesiredControls *controls, unsigned long deadline)
 {
     RuntimeMock *mock;
-    (void)controls;
     (void)deadline;
     mock = (RuntimeMock *)context;
     runtime_hardware_boundary(mock);
     ++mock->hardwareCalls;
+    ++mock->controlCalls;
+    mock->controlsAtActionCount = mock->actionCount;
+    mock->lastControls = *controls;
     if (mock->failInputGPIO)
         return kTASStatusTimeout;
     if (mock->failCodecAfterInput)
@@ -530,6 +535,52 @@ static void test_reset_leaves_async_debounce_to_worker(void)
         mock.detectIndex == 2UL && mock.signalCount == 0UL);
 }
 
+static void test_reset_applies_controls_before_initial_unmute(void)
+{
+    TASMachineConfig config;
+    TASRuntime runtime;
+    TASRuntimeOps ops;
+    RuntimeMock mock;
+    TASAudioDesiredControls desired;
+    unsigned long index;
+    unsigned long firstUnmute;
+    config = tumbler_config();
+    memset(&desired, 0, sizeof(desired));
+    desired.rate = 44100UL;
+    desired.leftVolume = 0x012345UL;
+    desired.rightVolume = 0x023456UL;
+    desired.inputGain = TAS_INPUT_GAIN_PLUS_6DB;
+    desired.inputSource = kTASCodecInputDigital1;
+    desired.inputMuxActive = 1;
+    memset(&mock, 0, sizeof(mock));
+    ops = runtime_ops(&mock);
+    CHECK(TASRuntimeInit(&runtime, &config, &desired, &ops) == kTASStatusOK);
+    CHECK(TASRuntimeReset(&runtime, 2000UL) == kTASStatusOK);
+    CHECK(mock.controlCalls == 1UL &&
+        memcmp(&mock.lastControls, &desired, sizeof(desired)) == 0);
+    firstUnmute = mock.actionCount;
+    for (index = 0UL; index < mock.actionCount; ++index) {
+        if (mock.actionOps[index] == kTASAudioUnmuteSpeaker ||
+            mock.actionOps[index] == kTASAudioUnmuteHeadphone ||
+            mock.actionOps[index] == kTASAudioUnmuteLineOut) {
+            firstUnmute = index;
+            break;
+        }
+    }
+    CHECK(firstUnmute < mock.actionCount &&
+        mock.controlsAtActionCount <= firstUnmute);
+
+    memset(&mock, 0, sizeof(mock));
+    mock.failHardware = 1UL;
+    ops = runtime_ops(&mock);
+    CHECK(TASRuntimeInit(&runtime, &config, &desired, &ops) == kTASStatusOK);
+    CHECK(TASRuntimeReset(&runtime, 2000UL) == kTASStatusTimeout);
+    CHECK(mock.controlCalls == 1UL && mock.actionCount == 0UL);
+    CHECK(runtime.acquiredMask == 0UL && !runtime.audio.hardwareValid &&
+        !runtime.audio.routeValid && runtime.audio.outputsMuted &&
+        runtime.audio.outputsMuteKnown && mock.failMuteCount != 0UL);
+}
+
 static void test_bounce_and_wake_continue_without_external_edges(void)
 {
     TASMachineConfig config;
@@ -784,6 +835,12 @@ static void test_control_conversion_endpoints_and_monotonicity(void)
         value == 0x010000UL);
     CHECK(TASRuntimeAttenuationToCodec(-84, &value) == kTASStatusOK &&
         value == 0UL);
+    CHECK(TASRuntimeAttenuationToCodec(-57, &value) == kTASStatusOK &&
+        value == 0UL);
+    CHECK(TASRuntimeAttenuationToCodec(-56, &value) == kTASStatusOK &&
+        value == 0x68UL);
+    CHECK(TASRuntimeAttenuationToCodec(-42, &value) == kTASStatusOK &&
+        value == 0x209UL);
     CHECK(TASRuntimeAttenuationToCodec(1, &value) == kTASStatusOK &&
         value == 0x010000UL);
     CHECK(TASRuntimeAttenuationToCodec(-85, &value) == kTASStatusOK &&
@@ -1621,11 +1678,17 @@ static void test_driver_binds_runtime_controls_and_safe_irq_ordinals(void)
     CHECK(driver_source_contains("localInterrupt == 1U"));
     CHECK(driver_source_contains("localInterrupt == 2U"));
     CHECK(driver_source_contains("tag != NX_SoundDeviceMicIn"));
-    CHECK(!driver_source_contains("NX_SoundDeviceCDIn"));
-    CHECK(!driver_source_contains("NX_SoundDeviceAux1In"));
     CHECK(driver_source_contains("controls->inputMuxActive ? TRUE : FALSE"));
     CHECK(driver_source_contains("_setInputReportFor"));
-    CHECK(driver_source_contains("reportedSource = [self _analogInputSource]"));
+    CHECK(driver_source_contains("if (!enable ||"));
+    CHECK(driver_source_contains(
+        "tas_restore_input_report(self, runtimeSource)"));
+    CHECK(driver_source_contains(
+        "status == kTASStatusOK ? tag : runtimeSource"));
+    CHECK(driver_source_contains(
+        "_setInputReportFor:NX_SoundDeviceCDIn to:NO"));
+    CHECK(driver_source_contains(
+        "_setInputReportFor:NX_SoundDeviceAux2In to:NO"));
     CHECK(driver_source_contains("rollbackStatus = tas_status"));
     CHECK(source_file_contains(
         "../../../../driverkit-3/driverkit/IOAudioPrivate.h",
@@ -1636,6 +1699,12 @@ static void test_driver_binds_runtime_controls_and_safe_irq_ordinals(void)
     CHECK(source_file_contains(
         "../PPCTASAudio.drvproj/PPCTASAudio.lksproj/TASRuntime.c",
         "record_dma_fault(runtime, kTASStreamInput, deadline)"));
+    CHECK(source_file_contains(
+        "../PPCTASAudio.drvproj/PPCTASAudio.lksproj/TASRuntime.c",
+        "runtime->ops.applyControls(runtime->ops.context, &desired,"));
+    CHECK(source_file_contains(
+        "../PPCTASAudio.drvproj/English.lproj/DriverHelp/README.txt",
+        "Output VOLUME is a distinct 8.16"));
     CHECK(!driver_source_contains("tas_output_route"));
     CHECK(!source_file_contains(
         "../PPCTASAudio.drvproj/PPCTASAudio.lksproj/TASRuntime.h",
@@ -1713,6 +1782,7 @@ int main(void)
     test_raw_isr_only_acks_and_latches();
     test_initial_detect_advances_without_another_edge();
     test_reset_leaves_async_debounce_to_worker();
+    test_reset_applies_controls_before_initial_unmute();
     test_bounce_and_wake_continue_without_external_edges();
     test_edge_during_route_rolls_back_safely();
     test_route_action_failure_rolls_back_muted();

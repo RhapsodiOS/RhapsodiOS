@@ -1114,6 +1114,18 @@ static TASStatus tas_update_controls(PPCTASAudio *self,
     return status;
 }
 
+static void tas_restore_input_report(PPCTASAudio *self,
+    NXSoundParameterTag source)
+{
+    [self _setInputReportFor:NX_SoundDeviceMicIn
+        to:source == NX_SoundDeviceMicIn];
+    [self _setInputReportFor:NX_SoundDeviceLineIn
+        to:source == NX_SoundDeviceLineIn];
+    [self _setInputReportFor:NX_SoundDeviceCDIn to:NO];
+    [self _setInputReportFor:NX_SoundDeviceAux1In to:NO];
+    [self _setInputReportFor:NX_SoundDeviceAux2In to:NO];
+}
+
 static void tas_initialize_dma_ops(PPCTASAudio *self)
 {
     unsigned long direction;
@@ -1419,19 +1431,18 @@ static void tas_initialize_dma_ops(PPCTASAudio *self)
 - (void)setInput:(NXSoundParameterTag)tag enable:(BOOL)enable
 {
     TASAudioDesiredControls candidate;
-    NXSoundParameterTag reportedSource;
     NXSoundParameterTag runtimeSource;
     TASStatus status;
     if (tas_is_closing(self))
         return;
     candidate = desiredControls;
-    if (!enable)
-        return;
-    if (tag != NX_SoundDeviceMicIn && tag != NX_SoundDeviceLineIn)
-        return;
-    reportedSource = [self _analogInputSource];
     runtimeSource = desiredControls.inputMuxActive ?
         NX_SoundDeviceLineIn : NX_SoundDeviceMicIn;
+    if (!enable ||
+        (tag != NX_SoundDeviceMicIn && tag != NX_SoundDeviceLineIn)) {
+        tas_restore_input_report(self, runtimeSource);
+        return;
+    }
     /* The required firmware input-data-mux proves the two external analog
      * positions.  Keep the TAS mixer on one stable I2S path: this GPIO,
      * never output-route state, selects microphone (inactive) or line
@@ -1439,14 +1450,8 @@ static void tas_initialize_dma_ops(PPCTASAudio *self)
     candidate.inputMuxActive = tag == NX_SoundDeviceLineIn;
     candidate.inputSource = kTASCodecInputDigital1;
     status = tas_update_controls(self, &candidate);
-    if (status != kTASStatusOK) {
-        if (reportedSource != runtimeSource)
-            reportedSource = runtimeSource;
-        [self _setInputReportFor:NX_SoundDeviceMicIn
-            to:reportedSource == NX_SoundDeviceMicIn];
-        [self _setInputReportFor:NX_SoundDeviceLineIn
-            to:reportedSource == NX_SoundDeviceLineIn];
-    }
+    tas_restore_input_report(self,
+        status == kTASStatusOK ? tag : runtimeSource);
 }
 - (void)setOutput:(NXSoundParameterTag)tag enable:(BOOL)enable
 {

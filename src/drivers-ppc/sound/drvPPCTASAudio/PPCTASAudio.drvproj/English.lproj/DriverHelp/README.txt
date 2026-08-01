@@ -45,3 +45,6 @@ while both use one stable codec mixer input.  CD and auxiliary source tags
 are rejected, and jack/output routing never changes the input selection.
 The advertised IOAudio input-gain range 0..32768 maps monotonically to TAS
 4.20 coefficients 10 00 00 (unity/0 dB) through 20 00 00 (+6 dB).
+Output VOLUME is a distinct 8.16 register: the pinned OpenBSD integer-dB
+table supplies -56..0 dB (00 00 68 through 01 00 00), while -57..-84 dB
+is the table's hard mute.  Mixer/input gain remains 4.20 as described above.

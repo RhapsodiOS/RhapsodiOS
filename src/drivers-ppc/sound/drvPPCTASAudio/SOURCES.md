@@ -45,8 +45,9 @@ tree, not OpenBSD kernel interfaces or copied OpenBSD routines.
 ## Texas Instruments documentation
 
 - [TAS3001C digital audio processor, SLAS226B](https://media.digikey.com/pdf/Data%20Sheets/Texas%20Instruments%20PDFs/TAS3001C.pdf)
-  defines the TAS3001C register map, I2S format, 4.20 mixer and volume
-  coefficients, reset defaults, soft-volume behavior, and initialization
+  defines the TAS3001C register map, I2S format, 4.20 mixer coefficients,
+  8.16 volume coefficients, reset defaults, soft-volume behavior, and
+  initialization
   sequencing. This surviving distributor mirror contains the TI data manual;
   the [canonical TI TAS3001C URL](https://www.ti.com/lit/ds/symlink/tas3001c.pdf)
   now returns 404. The still-live TI
@@ -68,6 +69,12 @@ length: Appendix Table A-1 reports a width of five, while section 4.10 and
 Table A-9 show an eight-byte I2C instruction consisting of device address,
 subaddress, and **six data bytes**. The driver uses six data bytes, matching
 the detailed field table and the pinned OpenBSD `snapper.c` implementation.
+
+The output attenuation conversion uses the pinned OpenBSD integer-dB volume
+table: 0 dB is `01 00 00`, -42 dB is `00 02 09`, and values below the
+table's -56 dB floor are hard mute. This 8.16 volume format is intentionally
+distinct from the 4.20 mixer/input-gain format, whose unity value is
+`10 00 00`.
 
 The codec initialization code also writes each left/right biquad register in
 its actual sequential register slot. It does not reproduce published sample

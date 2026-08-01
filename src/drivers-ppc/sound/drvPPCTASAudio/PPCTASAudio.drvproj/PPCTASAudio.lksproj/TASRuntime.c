@@ -256,6 +256,7 @@ TASStatus TASRuntimeReset(TASRuntime *runtime, unsigned long deadline)
     TASStatus status;
     unsigned long debounceDeadline;
     unsigned long now;
+    TASAudioDesiredControls desired;
     int detectPending;
     int routeValid;
     (void)deadline;
@@ -280,6 +281,17 @@ TASStatus TASRuntimeReset(TASRuntime *runtime, unsigned long deadline)
             return status;
         }
         runtime->acquiredMask |= TAS_STAGE_BIT(stage);
+    }
+    runtime->ops.lockState(runtime->ops.context);
+    desired = runtime->audio.desired;
+    runtime->ops.unlockState(runtime->ops.context);
+    status = runtime->ops.applyControls(runtime->ops.context, &desired,
+        deadline);
+    if (status != kTASStatusOK) {
+        (void)fail_mute_and_invalidate(runtime, 0);
+        (void)unwind_locked(runtime, deadline);
+        runtime->ops.unlockOperation(runtime->ops.context);
+        return status;
     }
     status = service_detect(runtime, 1, deadline);
     if (status == kTASStatusOK) {
@@ -892,13 +904,31 @@ TASStatus TASRuntimeFailMuteOutputs(const TASMachineConfig *config,
 TASStatus TASRuntimeAttenuationToCodec(int attenuation,
     unsigned long *coefficient)
 {
+    /* Integer-dB TAS VOLUME values from the pinned BSD/TI references in
+     * SOURCES.md.  VOLUME is 8.16; mixer/input gain is separately 4.20. */
+    static const unsigned long table[57] = {
+        0x000068UL,0x000075UL,0x000083UL,0x000093UL,0x0000a5UL,
+        0x0000b9UL,0x0000cfUL,0x0000e9UL,0x000105UL,0x000125UL,
+        0x000148UL,0x000171UL,0x00019eUL,0x0001d0UL,0x000209UL,
+        0x000248UL,0x00028fUL,0x0002dfUL,0x000339UL,0x00039eUL,
+        0x00040fUL,0x00048dUL,0x00051cUL,0x0005bbUL,0x00066eUL,
+        0x000737UL,0x000818UL,0x000915UL,0x000a31UL,0x000b6fUL,
+        0x000cd5UL,0x000e65UL,0x001027UL,0x001220UL,0x001456UL,
+        0x0016d1UL,0x00199aUL,0x001cb9UL,0x00203aUL,0x002429UL,
+        0x002893UL,0x002d86UL,0x003314UL,0x003950UL,0x00404eUL,
+        0x004827UL,0x0050f4UL,0x005ad5UL,0x0065eaUL,0x00725aUL,
+        0x00804eUL,0x008ff6UL,0x00a186UL,0x00b53cUL,0x00cb59UL,
+        0x00e429UL,0x010000UL
+    };
     if (coefficient == 0)
         return kTASStatusMalformed;
-    if (attenuation < -84)
-        attenuation = -84;
-    else if (attenuation > 0)
+    if (attenuation <= -57) {
+        *coefficient = 0UL;
+        return kTASStatusOK;
+    }
+    if (attenuation > 0)
         attenuation = 0;
-    *coefficient = (unsigned long)(attenuation + 84) * 0x010000UL / 84UL;
+    *coefficient = table[attenuation + 56];
     return kTASStatusOK;
 }
 

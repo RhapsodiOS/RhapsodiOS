@@ -13,10 +13,6 @@ repo_root=`CDPATH= cd "$script_dir/.." && pwd -P`
 source_root=${AHCI_SOURCE_ROOT:-$repo_root}
 install_dir=${AHCI_INSTALL_DIR:-$repo_root/vm/install}
 make_cmd=${AHCI_MAKE:-gnumake}
-kernel_dir=$source_root/src/kernel-7
-eide_dir=$source_root/src/drivers-i386/ide/drvEIDE
-ahci_dir=$source_root/src/drivers-i386/ide/drvAHCI
-tests_dir=$ahci_dir/tests
 tmp_root=${TMPDIR:-/tmp}/rhapsodios-ahci-build-$$
 marker=$tmp_root/build-started
 export AHCI_BUILD_STARTED_MARKER=$marker
@@ -43,16 +39,29 @@ require_fresh()
 {
     artifact=$1
     [ -f "$artifact" ] || die "missing build output: $artifact"
-    [ "$artifact" -nt "$marker" ] ||
+    newer=`find "$artifact" -prune -newer "$marker" -print`
+    [ -n "$newer" ] ||
         die "stale build output (not newer than build start): $artifact"
 }
 
+source_root=`CDPATH= cd "$source_root" && pwd -P` ||
+    die "source root not found: $source_root"
+install_name=${install_dir##*/}
+install_parent=${install_dir%/*}
+[ "$install_parent" != "$install_dir" ] || install_parent=.
+install_parent=`CDPATH= cd "$install_parent" && pwd -P` ||
+    die "staging parent not found: $install_parent"
+install_dir=$install_parent/$install_name
+expected_install=$source_root/vm/install
+[ "$install_dir" = "$expected_install" ] ||
+    die "staging directory must be exactly $expected_install"
+kernel_dir=$source_root/src/kernel-7
+eide_dir=$source_root/src/drivers-i386/ide/drvEIDE
+ahci_dir=$source_root/src/drivers-i386/ide/drvAHCI
+tests_dir=$ahci_dir/tests
+
 command -v "$make_cmd" >/dev/null 2>&1 ||
     die "required target build tool not found: $make_cmd"
-case "$install_dir" in
-    */install) ;;
-    *) die "staging directory must end in /install: $install_dir" ;;
-esac
 require_dir "$kernel_dir"
 require_dir "$eide_dir"
 require_dir "$ahci_dir"
@@ -110,8 +119,6 @@ cp -p "$tmp_root/AHCI-dst/private/Drivers/i386/AHCI.config/Default.table" \
     "$stage_tmp/AHCI.config/Default.table"
 
 rm -rf "$install_dir"
-install_parent=${install_dir%/*}
-[ "$install_parent" != "$install_dir" ] || install_parent=.
 mkdir -p "$install_parent" "$install_dir"
 cp -Rp "$stage_tmp/." "$install_dir/"
 

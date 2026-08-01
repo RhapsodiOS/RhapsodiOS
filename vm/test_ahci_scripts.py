@@ -4,16 +4,21 @@
 import os
 import pathlib
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
+import json
 
 
 VM = pathlib.Path(__file__).resolve().parent
 ROOT = VM.parent
 BUILD = VM / "build-i386-kernel-ahci.sh"
 RUN = VM / "run-q35-ahci.sh"
+if str(VM) not in sys.path:
+    sys.path.insert(0, str(VM))
 
 
 class AHCIScriptTests(unittest.TestCase):
@@ -44,7 +49,7 @@ class AHCIScriptTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             td = pathlib.Path(td)
             source = td / "source"
-            install = td / "install"
+            install = source / "vm" / "install"
             log = td / "make.log"
             fake_make = td / "gnumake"
             for rel in (
@@ -52,6 +57,7 @@ class AHCIScriptTests(unittest.TestCase):
                 "src/drivers-i386/ide/drvEIDE",
                 "src/drivers-i386/ide/drvAHCI",
                 "src/drivers-i386/ide/drvAHCI/tests",
+                "vm",
             ):
                 (source / rel).mkdir(parents=True)
             fake_make.write_text(
@@ -73,6 +79,20 @@ class AHCIScriptTests(unittest.TestCase):
                 encoding="utf-8",
             )
             fake_make.chmod(0o755)
+            fake_find = td / "find"
+            fake_find.write_text(
+                "#!/bin/sh\n"
+                "artifact=$1; shift\n"
+                "while [ $# -gt 0 ]; do\n"
+                "  if [ \"$1\" = -newer ]; then marker=$2; shift 2; else shift; fi\n"
+                "done\n"
+                "\"$AHCI_PYTHON\" -c 'import os,sys; "
+                "c=lambda s: (s[1].upper()+\":/\"+s[3:]) if len(s)>3 and s[0]==\"/\" and s[2]==\"/\" else s; "
+                "print(sys.argv[1]) if os.path.getmtime(c(sys.argv[1])) > os.path.getmtime(c(sys.argv[2])) else None' "
+                "\"$artifact\" \"$marker\"\n",
+                encoding="utf-8",
+            )
+            fake_find.chmod(0o755)
             result = self.run_sh(
                 BUILD,
                 env={
@@ -80,6 +100,7 @@ class AHCIScriptTests(unittest.TestCase):
                     "AHCI_INSTALL_DIR": self.sh_path(install),
                     "AHCI_MAKE": self.sh_path(fake_make),
                     "AHCI_TEST_LOG": self.sh_path(log),
+                    "PATH": self.sh_path(td) + ":" + os.environ["PATH"],
                 },
             )
             self.assertEqual(result.returncode, 0, result.stdout)
@@ -121,10 +142,38 @@ class AHCIScriptTests(unittest.TestCase):
                     "AHCI_MAKE": self.sh_path(stale_make),
                     "AHCI_TEST_LOG": self.sh_path(log),
                     "AHCI_TEST_STALE": "1",
+                    "PATH": self.sh_path(td) + ":" + os.environ["PATH"],
                 },
             )
             self.assertNotEqual(stale.returncode, 0, stale.stdout)
             self.assertIn("stale build output", stale.stdout)
+
+            (td / "unrelated").mkdir()
+            unsafe = self.run_sh(
+                BUILD,
+                env={
+                    "AHCI_SOURCE_ROOT": self.sh_path(source),
+                    "AHCI_INSTALL_DIR": self.sh_path(td / "unrelated" / "install"),
+                    "AHCI_MAKE": self.sh_path(fake_make),
+                    "AHCI_TEST_LOG": self.sh_path(log),
+                    "PATH": self.sh_path(td) + ":" + os.environ["PATH"],
+                },
+            )
+            self.assertNotEqual(unsafe.returncode, 0, unsafe.stdout)
+            self.assertIn("exactly", unsafe.stdout)
+            root_install = self.run_sh(
+                BUILD,
+                env={
+                    "AHCI_SOURCE_ROOT": self.sh_path(source),
+                    "AHCI_INSTALL_DIR": "/install",
+                    "AHCI_MAKE": self.sh_path(fake_make),
+                    "AHCI_TEST_LOG": self.sh_path(log),
+                    "PATH": self.sh_path(td) + ":" + os.environ["PATH"],
+                },
+            )
+            self.assertNotEqual(root_install.returncode, 0, root_install.stdout)
+            self.assertIn("exactly", root_install.stdout)
+            self.assertNotIn(" -nt ", BUILD.read_text(encoding="utf-8"))
 
     def test_launcher_dry_run_has_q35_ports_root_keys_and_logs(self):
         work_dir = VM / "work" / "script-test"
@@ -141,7 +190,7 @@ class AHCIScriptTests(unittest.TestCase):
                              "--second-disk", self.sh_path(second),
                              self.sh_path(source), self.sh_path(target))
         self.assertEqual(result.returncode, 0, result.stdout)
-        self.assertIn("-M q35", result.stdout)
+        self.assertIn("\n  -M\n  q35\n", result.stdout)
         self.assertIn("bus=ide.0", result.stdout)
         self.assertIn("bus=ide.1", result.stdout)
         self.assertIn("bus=ide.2", result.stdout)
@@ -181,6 +230,74 @@ class AHCIScriptTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertIn("distinct", result.stdout)
 
+        source = work_dir / "source-under-work.img"
+        target = work_dir / "different.img"
+        source.write_bytes(b"source")
+        target.write_bytes(b"old work")
+        same_source = self.run_sh(
+            RUN, "--dry-run", "--second-disk", self.sh_path(source),
+            self.sh_path(source), self.sh_path(target))
+        self.assertNotEqual(same_source.returncode, 0, same_source.stdout)
+        self.assertIn("second disk must be distinct", same_source.stdout)
+        same_work = self.run_sh(
+            RUN, "--dry-run", "--second-disk", self.sh_path(target),
+            self.sh_path(source), self.sh_path(target))
+        self.assertNotEqual(same_work.returncode, 0, same_work.stdout)
+        self.assertIn("second disk must be distinct", same_work.stdout)
+
+    def test_qmp_helper_skips_events_and_unrelated_replies(self):
+        import ahci_qmp_sendkeys
+
+        server = socket.socket()
+        server.bind(("127.0.0.1", 0))
+        server.listen(1)
+        port = server.getsockname()[1]
+
+        def serve():
+            conn, _ = server.accept()
+            stream = conn.makefile("rwb", buffering=0)
+            stream.write(b'{"QMP":{"version":{},"capabilities":[]}}\n')
+            for _ in range(2):
+                request = json.loads(stream.readline())
+                stream.write(b'{"event":"RESET"}\n')
+                stream.write(b'{"return":{},"id":999}\n')
+                stream.write(json.dumps({"return": {}, "id": request["id"]}).encode() + b"\n")
+            conn.close()
+            server.close()
+
+        thread = threading.Thread(target=serve)
+        thread.start()
+        ahci_qmp_sendkeys.send_keys("127.0.0.1", port, 0, "a", timeout=2)
+        thread.join(2)
+        self.assertFalse(thread.is_alive())
+
+    def test_qmp_helper_rejects_error_reply(self):
+        import ahci_qmp_sendkeys
+
+        server = socket.socket()
+        server.bind(("127.0.0.1", 0))
+        server.listen(1)
+        port = server.getsockname()[1]
+
+        def serve():
+            conn, _ = server.accept()
+            stream = conn.makefile("rwb", buffering=0)
+            stream.write(b'{"QMP":{"version":{},"capabilities":[]}}\n')
+            request = json.loads(stream.readline())
+            stream.write(json.dumps({"return": {}, "id": request["id"]}).encode() + b"\n")
+            request = json.loads(stream.readline())
+            stream.write(json.dumps({"error": {"class": "GenericError", "desc": "bad key"},
+                                     "id": request["id"]}).encode() + b"\n")
+            conn.close()
+            server.close()
+
+        thread = threading.Thread(target=serve)
+        thread.start()
+        with self.assertRaisesRegex(ahci_qmp_sendkeys.QMPError, "bad key"):
+            ahci_qmp_sendkeys.send_keys("127.0.0.1", port, 0, "a", timeout=2)
+        thread.join(2)
+        self.assertFalse(thread.is_alive())
+
     def test_launcher_propagates_boot_key_helper_failure(self):
         work_dir = VM / "work" / "script-test-helper"
         shutil.rmtree(work_dir, ignore_errors=True)
@@ -197,7 +314,7 @@ class AHCIScriptTests(unittest.TestCase):
             real_python = self.sh_path(pathlib.Path(sys.executable))
             fake_python.write_text(
                 "#!/bin/sh\n"
-                "if [ \"$1\" = - ]; then exit 7; fi\n"
+                "case \"$1\" in */ahci_qmp_sendkeys.py) exit 7;; esac\n"
                 f'exec "{real_python}" "$@"\n', encoding="utf-8")
             fake_qemu.write_text(
                 "#!/bin/sh\ntrap 'exit 0' 15\nwhile :; do sleep 1; done\n",
@@ -233,7 +350,7 @@ class AHCIScriptTests(unittest.TestCase):
             real_python = self.sh_path(pathlib.Path(sys.executable))
             fake_python.write_text(
                 "#!/bin/sh\n"
-                "if [ \"$1\" = - ]; then exit 7; fi\n"
+                "case \"$1\" in */ahci_qmp_sendkeys.py) exit 7;; esac\n"
                 f'exec "{real_python}" "$@"\n', encoding="utf-8")
             fake_qemu.write_text("#!/bin/sh\nexit 23\n", encoding="utf-8")
             fake_mv.write_text(

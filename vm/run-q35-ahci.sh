@@ -89,6 +89,9 @@ esac
 [ -z "$iso_image" ] || [ -f "$iso_image" ] || die "ISO not found: $iso_image"
 if [ -n "$second_disk" ]; then
     [ -f "$second_disk" ] || die "second disk not found: $second_disk"
+    [ "$second_disk" != "$source_image" ] &&
+        [ "$second_disk" != "$work_image" ] ||
+        die "second disk must be distinct from source and working images"
     case "$second_disk" in
         "$work_root"/*) ;;
         *) die "second disk must be disposable and under vm/work: $second_disk" ;;
@@ -120,7 +123,8 @@ echo "serial log: $serial_log"
 echo "boot prompt keys: mach_kernel rootdev=hd0a -v"
 if [ "$dry_run" -eq 1 ]; then
     echo "copy: $source_image -> $work_image"
-    echo "$qemu $*"
+    echo "QEMU argv (one argument per line):"
+    printf '  %s\n' "$qemu" "$@"
     [ "${AHCI_DEBUG:-0}" = 1 ] && echo "AHCI QEMU trace: $trace_log"
     exit 0
 fi
@@ -169,42 +173,8 @@ mv -f "$copy_tmp" "$work_image" || die "could not install working image"
     exit "$child_status"
 ) &
 qemu_pid=$!
-"$python" - "$qmp_port" "$keys_delay" "$boot_keys" <<'PY' &
-import json
-import socket
-import sys
-import time
-
-port = int(sys.argv[1])
-delay = float(sys.argv[2])
-text = sys.argv[3]
-mapping = {c: [c] for c in "abcdefghijklmnopqrstuvwxyz0123456789"}
-mapping.update({"-": ["minus"], "_": ["shift", "minus"],
-                "=": ["equal"], " ": ["spc"], "\n": ["ret"]})
-deadline = time.time() + 30
-sock = None
-while time.time() < deadline:
-    try:
-        sock = socket.create_connection(("127.0.0.1", port), 1)
-        break
-    except OSError:
-        time.sleep(.1)
-if sock is None:
-    raise SystemExit("could not connect to QEMU QMP")
-stream = sock.makefile("rwb", buffering=0)
-stream.readline()
-stream.write(b'{"execute":"qmp_capabilities"}\n')
-stream.readline()
-time.sleep(delay)
-for char in text:
-    for code in mapping[char]:
-        command = {"execute": "send-key", "arguments": {"keys": [
-            {"type": "qcode", "data": code}]}}
-        stream.write(json.dumps(command).encode("ascii") + b"\n")
-        stream.readline()
-        time.sleep(.05)
-sock.close()
-PY
+"$python" "$script_dir/ahci_qmp_sendkeys.py" \
+    127.0.0.1 "$qmp_port" "$keys_delay" "$boot_keys" &
 keys_pid=$!
 
 set +e

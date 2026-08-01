@@ -8,6 +8,7 @@
 @class AHCIPort;
 
 #define AHCI_ATAPI_IDENTIFY_PACKET_DEVICE 0xa1
+#define AHCI_ATAPI_IDENTIFY_TIMEOUT_SECONDS 10U
 #define AHCI_ATAPI_PACKET_TIMEOUT_SECONDS 30U
 
 @interface AHCIATAPIController : IOSCSIController
@@ -20,7 +21,6 @@
     BOOL _online;
     BOOL _destroying;
     BOOL _deviceRegistered;
-    BOOL _publicationPinned;
 }
 
 + (AHCIATAPIController *)publishForPort:(AHCIPort *)port

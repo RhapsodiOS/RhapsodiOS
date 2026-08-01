@@ -86,6 +86,7 @@ int main(void)
 
     require_text(header, "AHCIATAPIController : IOSCSIController");
     require_text(header, "AHCI_ATAPI_IDENTIFY_PACKET_DEVICE");
+    require_text(header, "AHCI_ATAPI_IDENTIFY_TIMEOUT_SECONDS 10U");
     require_text(header, "AHCI_ATAPI_PACKET_TIMEOUT_SECONDS");
     require_text(source, "#import <driverkit/kernelDriver.h>");
     require_text(source, "target != 0 || scsiReq->lun != 0");
@@ -105,6 +106,12 @@ int main(void)
     require_text(source, "SENSE_NOTREADY");
     require_text(source, "SENSE_UNITATTENTION");
     require_text(source, "SR_IOST_CHKSV");
+    require_text(source, "AHCIATAPIShouldRequestSense(cdb[0],");
+    require_text(source, "scsiReq->ignoreChkcond))");
+    require_text(source, "AHCIATAPISenseDataValid(");
+    require_order(source, "senseActual = 0;",
+                  "transferred:&senseActual");
+    require_text(source, "scsiReq->driverStatus = SR_IOST_CHKSNV;");
     require_text(source, "if (senseResult == IO_R_OFFLINE)");
     require_text(source, "result = IO_R_OFFLINE;");
     require_absent(source, "[device setName:");
@@ -112,13 +119,18 @@ int main(void)
     require_text(source, "+ (IODeviceStyle)deviceStyle");
     require_text(source, "return IO_IndirectDevice;");
     require_text(source, "registerDevice");
-    require_text(source, "publication state is uncertain; retaining");
-    require_text(source, "if (_publicationPinned || [self numReserved] != 0)");
-    require_text(header, "_publicationPinned");
-    require_absent(source, "if ([device registerDevice] == nil) {\n"
-                           "        [device free];");
+    require_absent(source, "publication state is uncertain; retaining");
+    require_absent(source, "_publicationPinned");
+    require_absent(header, "_publicationPinned");
+    require_text(source, "if ([device registerDevice] == nil) {\n"
+                         "        [device free];\n"
+                         "        return nil;\n"
+                         "    }");
+    require_absent(source, "device->_deviceRegistered = YES;\n"
+                           "        [device portBecameNotReady]");
     require_absent(source, "ata_hd_register");
     require_text(port, "publishATAPIFromDeviceDescription");
+    require_text(port, "timeout:AHCI_ATAPI_IDENTIFY_TIMEOUT_SECONDS");
     require_text(port, "AHCIPortPacketCheckCondition");
     require_text(port, "== AHCI_PXIS_TFES");
     require_text(port, "[atapi portBecameNotReady]");

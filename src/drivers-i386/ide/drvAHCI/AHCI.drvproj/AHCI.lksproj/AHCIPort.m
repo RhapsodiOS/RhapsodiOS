@@ -770,7 +770,7 @@ static int AHCIPortPacketCheckCondition(
     if ([self executeATA:AHCI_ATAPI_IDENTIFY_PACKET_DEVICE
                      fis:fis packet:0 buffer:identifyData
                    length:512 write:NO client:IOVmTaskSelf()
-                  timeout:AHCI_ATAPI_PACKET_TIMEOUT_SECONDS
+                  timeout:AHCI_ATAPI_IDENTIFY_TIMEOUT_SECONDS
               transferred:&actual] != IO_R_SUCCESS ||
         actual != 512U)
         return NO;

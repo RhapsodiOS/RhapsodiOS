@@ -119,6 +119,16 @@ static void test_packet_command(void)
                                  131073, 0) != 0);
 }
 
+static void test_atapi_autosense_decisions(void)
+{
+    CHECK(AHCIATAPIShouldRequestSense(0x28, 0) == 1);
+    CHECK(AHCIATAPIShouldRequestSense(0x28, 1) == 0);
+    CHECK(AHCIATAPIShouldRequestSense(0x03, 0) == 0);
+    CHECK(AHCIATAPISenseDataValid(1, 14) == 1);
+    CHECK(AHCIATAPISenseDataValid(1, 13) == 0);
+    CHECK(AHCIATAPISenseDataValid(0, 14) == 0);
+}
+
 static void test_lba28_read_dma_fis(void)
 {
     static const unsigned char expected[20] = {
@@ -322,6 +332,7 @@ int main(void)
     test_identify_packet_fis();
     test_packet_fis();
     test_packet_command();
+    test_atapi_autosense_decisions();
     test_lba28_read_dma_fis();
     test_lba48_write_dma_fis();
     test_invalid_dma_fis();

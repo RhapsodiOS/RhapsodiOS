@@ -90,12 +90,8 @@ static void AHCIATAPISetSense(esense_reply_t *sense, unsigned char key,
     }
     device->_online = YES;
     if ([device registerDevice] == nil) {
-        device->_deviceRegistered = YES;
-        device->_publicationPinned = YES;
-        [device portBecameNotReady];
-        IOLog("%s: publication state is uncertain; retaining offline\n",
-              [device name]);
-        return device;
+        [device free];
+        return nil;
     }
     device->_deviceRegistered = YES;
     IOLog("%s: ATAPI optical device, %u-byte packets, target 0 lun 0\n",
@@ -212,16 +208,20 @@ static void AHCIATAPISetSense(esense_reply_t *sense, unsigned char key,
         [self endRequest];
         return SR_IOST_GOOD;
     }
-    if (result == IO_R_IO && cdb[0] != C6OP_REQSENSE) {
+    if (result == IO_R_IO &&
+        AHCIATAPIShouldRequestSense(cdb[0],
+                                    scsiReq->ignoreChkcond)) {
         bzero(senseCDB, sizeof(senseCDB));
         senseCDB[0] = C6OP_REQSENSE;
         senseCDB[4] = (unsigned char)sizeof(sense);
         bzero(&sense, sizeof(sense));
+        senseActual = 0;
         senseResult = [self performPacket:senseCDB length:6 buffer:&sense
                                byteLength:sizeof(sense) write:NO
                                     client:IOVmTaskSelf()
                                transferred:&senseActual];
-        if (senseResult == IO_R_SUCCESS && senseActual >= 14U) {
+        if (AHCIATAPISenseDataValid(senseResult == IO_R_SUCCESS,
+                                    senseActual)) {
             scsiReq->senseData = sense;
             if (sense.er_sensekey == SENSE_NOTREADY ||
                 sense.er_sensekey == SENSE_UNITATTENTION)
@@ -239,6 +239,8 @@ static void AHCIATAPISetSense(esense_reply_t *sense, unsigned char key,
         scsiReq->driverStatus = SR_IOST_CHKSV;
     } else if (result == IO_R_TIMEOUT) {
         scsiReq->driverStatus = SR_IOST_IOTO;
+    } else if (result == IO_R_IO) {
+        scsiReq->driverStatus = SR_IOST_CHKSNV;
     } else {
         scsiReq->driverStatus = SR_IOST_HW;
     }
@@ -293,7 +295,7 @@ static void AHCIATAPISetSense(esense_reply_t *sense, unsigned char key,
 {
     unsigned int active;
 
-    if (_publicationPinned || [self numReserved] != 0)
+    if ([self numReserved] != 0)
         return self;
     if (_stateLock != nil) {
         [_stateLock lock];

@@ -44,6 +44,17 @@ int AHCIBuildPacketCommand(unsigned char fis[20], unsigned char acmd[16],
     return 0;
 }
 
+int AHCIATAPIShouldRequestSense(unsigned char opcode,
+                                unsigned char ignoreChkcond)
+{
+    return opcode != 0x03 && !ignoreChkcond;
+}
+
+int AHCIATAPISenseDataValid(int succeeded, unsigned int transferred)
+{
+    return succeeded && transferred >= 14U;
+}
+
 int AHCIBuildDMAFIS(unsigned char fis[20], unsigned int lba,
                     unsigned int sectors, unsigned char write,
                     unsigned char lba48)

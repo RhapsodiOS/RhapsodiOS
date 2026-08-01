@@ -26,6 +26,9 @@ int AHCIBuildPacketCommand(unsigned char fis[20], unsigned char acmd[16],
                            unsigned int cdbLength,
                            unsigned int transferBytes,
                            unsigned char write);
+int AHCIATAPIShouldRequestSense(unsigned char opcode,
+                                unsigned char ignoreChkcond);
+int AHCIATAPISenseDataValid(int succeeded, unsigned int transferred);
 /* Status-returning APIs may leave outputs partially written on error. */
 int AHCIParseIdentify(const unsigned short id[256], AHCICapacity *out);
 int AHCISelectDMACommand(unsigned int lba, unsigned int sectors,

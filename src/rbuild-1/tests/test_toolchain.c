@@ -3,7 +3,8 @@
 
 #include <stdio.h>
 
-static void write_profile(const char *path, int include_target_cc) {
+static void write_profile(const char *path, int include_target_cc,
+                          int include_tar_create_flags) {
     FILE *fp = fopen(path, "w");
     CHECK(fp != 0);
     if (fp == 0) return;
@@ -15,6 +16,8 @@ static void write_profile(const char *path, int include_target_cc) {
     fputs("make=/usr/bin/make\n", fp);
     fputs("shell=/bin/sh\n", fp);
     fputs("tar=/usr/bin/tar\n", fp);
+    if (include_tar_create_flags)
+        fputs("tar_create_flags=--format portable\n", fp);
     fputs("gzip=/usr/bin/gzip\n", fp);
     fputs("rsync=/usr/bin/rsync\n", fp);
     fputs("path=/opt/cross/bin:/usr/bin:/bin\n", fp);
@@ -38,11 +41,12 @@ TEST(test_loads_and_expands_profile) {
     Toolchain tc;
     strlist words;
 
-    write_profile(path, 1);
+    write_profile(path, 1, 1);
     toolchain_init(&tc);
     CHECK_INT(toolchain_load(&tc, path), 0);
     CHECK_INT(toolchain_validate(&tc), 0);
     CHECK_STR(tc.target_cc, "/opt/cross/bin/gcc");
+    CHECK_STR(tc.tar_create_flags, "--format portable");
 
     strlist_init(&words);
     toolchain_expand_words("-nostdinc -I@SYSROOT@/System/Headers",
@@ -59,7 +63,19 @@ TEST(test_validation_rejects_missing_target_cc) {
     const char *path = "/tmp/rbuild-toolchain.conf";
     Toolchain tc;
 
-    write_profile(path, 0);
+    write_profile(path, 0, 1);
+    toolchain_init(&tc);
+    CHECK_INT(toolchain_load(&tc, path), 0);
+    CHECK_INT(toolchain_validate(&tc), 1);
+    toolchain_free(&tc);
+    remove(path);
+}
+
+TEST(test_validation_rejects_missing_tar_create_capability) {
+    const char *path = "/tmp/rbuild-toolchain.conf";
+    Toolchain tc;
+
+    write_profile(path, 1, 0);
     toolchain_init(&tc);
     CHECK_INT(toolchain_load(&tc, path), 0);
     CHECK_INT(toolchain_validate(&tc), 1);
@@ -112,6 +128,7 @@ TEST(test_duplicate_key_fails) {
 static void run_all(void) {
     RUN(test_loads_and_expands_profile);
     RUN(test_validation_rejects_missing_target_cc);
+    RUN(test_validation_rejects_missing_tar_create_capability);
     RUN(test_expand_null_value_is_empty);
     RUN(test_malformed_line_fails);
     RUN(test_unknown_key_fails);

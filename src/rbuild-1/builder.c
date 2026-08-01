@@ -786,7 +786,7 @@ static int file_exists(const char *path) {
 }
 
 int builder_buildpackage(const Package *spkg, const Params *params,
-                         const char *target) {
+                         const char *target, const BuildOptions *opt) {
     Package pkg;
     const char *dstroot;
     char *pname;
@@ -891,7 +891,8 @@ int builder_buildpackage(const Package *spkg, const Params *params,
     /* Assemble <PACKAGEDIR>/<canon_name>.apk */
     canon = package_canon_name(&pkg);
     apk_path = str_cats(params->PACKAGEDIR, "/", canon, ".apk", (char *)0);
-    rc = pkginfo_build_apk(dstroot, apk_path);
+    rc = pkginfo_build_apk(dstroot, apk_path,
+                           opt != 0 ? opt->toolchain : 0);
     free(canon);
     free(apk_path);
 
@@ -1166,12 +1167,20 @@ int builder_build(const char *srctype, const char *srcname,
     }
 
     if (do_hdr) {
-        if (builder_buildpackage(&pkg, &params, "headers") != 0) { rc = 1; goto done; }
+        if (builder_buildpackage(&pkg, &params, "headers", opt) != 0) {
+            rc = 1; goto done;
+        }
     }
     if (do_bin) {
-        if (builder_buildpackage(&pkg, &params, "binary") != 0) { rc = 1; goto done; }
-        if (builder_buildpackage(&pkg, &params, "objects") != 0) { rc = 1; goto done; }
-        if (builder_buildpackage(&pkg, &params, "local") != 0) { rc = 1; goto done; }
+        if (builder_buildpackage(&pkg, &params, "binary", opt) != 0) {
+            rc = 1; goto done;
+        }
+        if (builder_buildpackage(&pkg, &params, "objects", opt) != 0) {
+            rc = 1; goto done;
+        }
+        if (builder_buildpackage(&pkg, &params, "local", opt) != 0) {
+            rc = 1; goto done;
+        }
     }
 
     /* No chroot BUILDROOT to remove in bootstrap mode (it is empty). */

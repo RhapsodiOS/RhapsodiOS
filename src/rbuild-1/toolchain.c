@@ -21,6 +21,7 @@ static const ToolchainField fields[] = {
     FIELD(make),
     FIELD(shell),
     FIELD(tar),
+    FIELD(tar_create_flags),
     FIELD(gzip),
     FIELD(rsync),
     FIELD(path),

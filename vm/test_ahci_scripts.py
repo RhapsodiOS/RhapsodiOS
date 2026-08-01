@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import unittest
 import json
 
@@ -295,6 +296,40 @@ class AHCIScriptTests(unittest.TestCase):
         thread.start()
         with self.assertRaisesRegex(ahci_qmp_sendkeys.QMPError, "bad key"):
             ahci_qmp_sendkeys.send_keys("127.0.0.1", port, 0, "a", timeout=2)
+        thread.join(2)
+        self.assertFalse(thread.is_alive())
+
+    def test_qmp_helper_has_absolute_deadline_during_event_trickle(self):
+        import ahci_qmp_sendkeys
+
+        server = socket.socket()
+        server.bind(("127.0.0.1", 0))
+        server.listen(1)
+        port = server.getsockname()[1]
+
+        def serve():
+            conn, _ = server.accept()
+            stream = conn.makefile("rwb", buffering=0)
+            stream.write(b'{"QMP":{"version":{},"capabilities":[]}}\n')
+            stream.readline()
+            deadline = time.monotonic() + 0.6
+            try:
+                while time.monotonic() < deadline:
+                    stream.write(b'{"event":"TICK"}\n')
+                    time.sleep(0.02)
+            except OSError:
+                pass
+            conn.close()
+            server.close()
+
+        thread = threading.Thread(target=serve)
+        thread.start()
+        started = time.monotonic()
+        with self.assertRaisesRegex(ahci_qmp_sendkeys.QMPError, "deadline"):
+            ahci_qmp_sendkeys.send_keys(
+                "127.0.0.1", port, 0, "a", timeout=0.15)
+        elapsed = time.monotonic() - started
+        self.assertLess(elapsed, 0.45)
         thread.join(2)
         self.assertFalse(thread.is_alive())
 

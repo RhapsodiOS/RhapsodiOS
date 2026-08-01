@@ -23,24 +23,25 @@ KEY_MAP.update({
 
 
 class QMPClient:
-    def __init__(self, host, port, timeout):
-        deadline = time.monotonic() + timeout
+    def __init__(self, host, port, deadline):
+        self.deadline = deadline
         self.socket = None
         self.stream = None
         last_error = None
-        while time.monotonic() < deadline:
+        while time.monotonic() < self.deadline:
             try:
-                remaining = max(0.1, deadline - time.monotonic())
+                remaining = self._remaining()
                 self.socket = socket.create_connection(
                     (host, port), min(1, remaining))
                 break
             except OSError as error:
                 last_error = error
-                time.sleep(0.1)
+                remaining = self.deadline - time.monotonic()
+                if remaining > 0:
+                    time.sleep(min(0.1, remaining))
         if self.socket is None:
-            raise QMPError("QMP connection failed: %s" % last_error)
+            raise QMPError("QMP deadline expired while connecting: %s" % last_error)
         try:
-            self.socket.settimeout(timeout)
             self.stream = self.socket.makefile("rwb", buffering=0)
             greeting = self._read_message()
         except QMPError:
@@ -53,11 +54,24 @@ class QMPClient:
             self.close()
             raise QMPError("invalid QMP greeting")
         self.next_id = 1
-        self.execute("qmp_capabilities")
+        try:
+            self.execute("qmp_capabilities")
+        except Exception:
+            self.close()
+            raise
+
+    def _remaining(self):
+        remaining = self.deadline - time.monotonic()
+        if remaining <= 0:
+            raise QMPError("QMP deadline expired")
+        return remaining
 
     def _read_message(self):
         try:
+            self.socket.settimeout(self._remaining())
             line = self.stream.readline()
+        except socket.timeout:
+            raise QMPError("QMP deadline expired while reading")
         except (OSError, socket.timeout) as error:
             raise QMPError("QMP read failed: %s" % error)
         if not line:
@@ -77,7 +91,10 @@ class QMPClient:
         if arguments:
             request["arguments"] = arguments
         try:
+            self.socket.settimeout(self._remaining())
             self.socket.sendall(json.dumps(request).encode("ascii") + b"\n")
+        except socket.timeout:
+            raise QMPError("QMP deadline expired while writing")
         except (OSError, socket.timeout) as error:
             raise QMPError("QMP write failed: %s" % error)
         while True:
@@ -109,15 +126,24 @@ class QMPClient:
 
 
 def send_keys(host, port, delay, text, timeout=30):
+    deadline = time.monotonic() + timeout
     for char in text:
         if char not in KEY_MAP:
             raise QMPError("no QMP key mapping for %r" % char)
-    client = QMPClient(host, port, timeout)
+    client = QMPClient(host, port, deadline)
     try:
+        remaining = client._remaining()
+        if delay >= remaining:
+            time.sleep(remaining)
+            raise QMPError("QMP deadline expired during key delay")
         time.sleep(delay)
         for char in text:
             for code in KEY_MAP[char]:
                 client.execute("send-key", keys=[{"type": "qcode", "data": code}])
+                remaining = client._remaining()
+                if remaining <= 0.05:
+                    time.sleep(remaining)
+                    raise QMPError("QMP deadline expired between keys")
                 time.sleep(0.05)
     finally:
         client.close()

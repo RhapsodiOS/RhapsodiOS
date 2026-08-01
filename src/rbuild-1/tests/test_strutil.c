@@ -26,6 +26,24 @@ TEST(test_strlist_push) {
     strlist_free(&l);
 }
 
+TEST(test_strlist_join) {
+    strlist l;
+    char *joined;
+
+    strlist_init(&l);
+    joined = strlist_join(&l, " ");
+    CHECK_STR(joined, "");
+    free(joined);
+
+    strlist_push(&l, "one");
+    strlist_push(&l, "two");
+    strlist_push(&l, "three");
+    joined = strlist_join(&l, " ");
+    CHECK_STR(joined, "one two three");
+    free(joined);
+    strlist_free(&l);
+}
+
 TEST(test_str_ops) {
     char a[] = "line\n";
     char b[] = "MixEd";
@@ -69,6 +87,7 @@ TEST(test_str_cats_pathjoin) {
 static void run_all(void) {
     RUN(test_sbuf_appends);
     RUN(test_strlist_push);
+    RUN(test_strlist_join);
     RUN(test_str_ops);
     RUN(test_str_split);
     RUN(test_str_cats_pathjoin);

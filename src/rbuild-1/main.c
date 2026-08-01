@@ -29,6 +29,7 @@ static int cmd_buildpackage(int argc, char **argv) {
     const char *target = "all";
     const char *source, *seeddir, *dstdir;
     strlist repo;
+    BuildOptions opt;
     int i = 0;
     int rc;
 
@@ -50,21 +51,26 @@ static int cmd_buildpackage(int argc, char **argv) {
     source = argv[i]; seeddir = argv[i + 1]; dstdir = argv[i + 2];
 
     make_repo(dstdir, seeddir, &repo);
-    rc = builder_build(type, source, &repo, target, dstdir, 0, 0);
+    build_options_init(&opt);
+    rc = builder_build(type, source, &repo, target, dstdir, &opt);
     strlist_free(&repo);
     return rc;
 }
 
-static int run_manifest(int argc, char **argv, int native) {
+static int run_manifest(int argc, char **argv, int bootstrap) {
     const char *srclist, *seeddir, *dstdir;
     strlist repo;
     Manifest m;
     size_t i;
+    BuildOptions opt;
 
     if (argc != 3) { usage(); return 1; }
     srclist = argv[0]; seeddir = argv[1]; dstdir = argv[2];
 
     make_repo(dstdir, seeddir, &repo);
+    build_options_init(&opt);
+    opt.clean = !bootstrap;
+    opt.bootstrap = bootstrap;
     manifest_init(&m);
     if (manifest_read(&m, srclist) != 0) {
         manifest_free(&m); strlist_free(&repo); return 1;
@@ -88,8 +94,7 @@ static int run_manifest(int argc, char **argv, int native) {
             printf("must build %s.apk using %s %s\n", canon, type, source);
             fflush(stdout);
             free(canon);
-            if (builder_build(type, source, &repo, targets, dstdir,
-                              !native, native) != 0)
+            if (builder_build(type, source, &repo, targets, dstdir, &opt) != 0)
                 fprintf(stderr, "rbuild: build of \"%s\" failed; continuing\n",
                         source);
         } else {

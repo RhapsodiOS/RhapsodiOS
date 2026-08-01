@@ -247,8 +247,30 @@ static void push_kv(strlist *out, const char *k, const char *v) {
     strlist_push_owned(out, s);
 }
 
+void build_options_init(BuildOptions *opt) {
+    memset(opt, 0, sizeof(*opt));
+}
+
+static void expand_toolchain_words(const char *value, const char *sysroot,
+                                   strlist *out) {
+    static const char marker[] = "@SYSROOT@";
+    const char *p = value ? value : "";
+    const char *match;
+    sbuf expanded;
+
+    sbuf_init(&expanded);
+    while ((match = strstr(p, marker)) != 0) {
+        sbuf_putn(&expanded, p, (size_t)(match - p));
+        sbuf_puts(&expanded, sysroot ? sysroot : "");
+        p = match + sizeof(marker) - 1;
+    }
+    sbuf_puts(&expanded, p);
+    str_split_ws(expanded.buf, out);
+    sbuf_free(&expanded);
+}
+
 /*
- * Stage-0 native builds link against the host root, which only has the
+ * Stage-0 bootstrap builds link against the host root, which only has the
  * host architecture's crt/System. Fat i386+ppc links fail there.
  * Chroot builds on a single-arch guest also SIGILL/miscompile when the
  * seed has no working opposite-arch toolchain, so keep host-arch-only
@@ -261,18 +283,22 @@ static void push_kv(strlist *out, const char *k, const char *v) {
 #endif
 
 void builder_buildflags(const Params *params, const char *target, strlist *out,
-                        int native) {
+                        const BuildOptions *opt) {
     int i;
     char *rc_cflags;
     sbuf s;
     const char *arch_cflags;
+    char *expanded_cflags = 0;
     const char *archs;
+    int bootstrap = opt && opt->bootstrap;
+    const Toolchain *tc = opt ? opt->toolchain : 0;
 
     /* Fixed base flags, but skip the ones we override below. */
     for (i = 0; baseflags[i][0]; i++) {
         const char *k = baseflags[i][0];
         if (strcmp(k, "RC_CFLAGS") == 0 || strcmp(k, "RC_ARCHS") == 0 ||
-            strcmp(k, "RC_i386") == 0 || strcmp(k, "RC_ppc") == 0)
+            strcmp(k, "RC_i386") == 0 || strcmp(k, "RC_ppc") == 0 ||
+            (bootstrap && strcmp(k, "NEXT_ROOT") == 0))
             continue;
         push_kv(out, k, baseflags[i][1]);
     }
@@ -287,9 +313,19 @@ void builder_buildflags(const Params *params, const char *target, strlist *out,
     else
         push_kv(out, "DSTROOT", params->DSTROOT);
 
-    (void)native;
-    arch_cflags = "-arch " RBUILD_HOST_ARCH " ";
-    archs = RBUILD_HOST_ARCH;
+    if (bootstrap && tc) {
+        strlist words;
+        strlist_init(&words);
+        expand_toolchain_words(tc->arch_flags, opt->sysroot, &words);
+        expand_toolchain_words(tc->cpp_flags, opt->sysroot, &words);
+        expanded_cflags = strlist_join(&words, " ");
+        arch_cflags = expanded_cflags;
+        archs = "ppc";
+        strlist_free(&words);
+    } else {
+        arch_cflags = "-arch " RBUILD_HOST_ARCH " ";
+        archs = RBUILD_HOST_ARCH;
+    }
 
     /* RC_CFLAGS = "-arch ..." + " -D..." for each cflag. */
     sbuf_init(&s);
@@ -301,32 +337,52 @@ void builder_buildflags(const Params *params, const char *target, strlist *out,
     free(rc_cflags);
 
     push_kv(out, "RC_ARCHS", archs);
-    if (strcmp(RBUILD_HOST_ARCH, "i386") == 0)
+    if (bootstrap && tc)
+        push_kv(out, "RC_ppc", "YES");
+    else if (strcmp(RBUILD_HOST_ARCH, "i386") == 0)
         push_kv(out, "RC_i386", "YES");
     else
         push_kv(out, "RC_ppc", "YES");
-    if (native) {
+    if (bootstrap && tc) {
+        strlist ld_words;
+        char *ld_flags;
+        if (opt->sysroot) push_kv(out, "NEXT_ROOT", opt->sysroot);
+        if (tc->target_cc) push_kv(out, "CC", tc->target_cc);
+        if (tc->target_ar) push_kv(out, "AR", tc->target_ar);
+        if (tc->target_ranlib) push_kv(out, "RANLIB", tc->target_ranlib);
+        if (tc->ln) push_kv(out, "LN", tc->ln);
+        strlist_init(&ld_words);
+        expand_toolchain_words(tc->ld_flags, opt->sysroot, &ld_words);
+        ld_flags = strlist_join(&ld_words, " ");
+        push_kv(out, "OTHER_LDFLAGS", ld_flags);
+        free(ld_flags);
+        strlist_free(&ld_words);
+        free(expanded_cflags);
+    } else if (bootstrap) {
         /* HFS /build has no hard links; prefer the /build/bin/ln fallback. */
         push_kv(out, "LN", "/build/bin/ln");
-        /* cctools dyld needs static libc; host only has System.framework dylib. */
-        push_kv(out, "BOOTSTRAP_SKIP_DYLD", "YES");
     }
 }
 
 void builder_buildcmd(const Params *chroot_params, const Params *build_params,
-                      const char *target, strlist *out, int native) {
+                      const char *target, strlist *out,
+                      const BuildOptions *opt) {
     size_t i;
     strlist flags;
-    if (!native) {
+    int bootstrap = opt && opt->bootstrap;
+    if (!bootstrap) {
         strlist_push(out, "chroot");
         strlist_push(out, chroot_params->BUILDROOT);
     }
-    strlist_push(out, "make");
+    if (bootstrap && opt->toolchain && opt->toolchain->make)
+        strlist_push(out, opt->toolchain->make);
+    else
+        strlist_push(out, "make");
     strlist_push(out, "-w");
     strlist_push(out, "-C");
     strlist_push(out, build_params->SRCROOT);
     strlist_init(&flags);
-    builder_buildflags(build_params, target, &flags, native);
+    builder_buildflags(build_params, target, &flags, opt);
     for (i = 0; i < flags.count; i++) strlist_push(out, flags.items[i]);
     strlist_free(&flags);
     strlist_push(out, target);
@@ -670,7 +726,8 @@ static int mkdirp(const char *path) {
 
 int builder_setupdirs(const Package *pkg, const Params *params,
                       const char *srcname, const char *srctype,
-                      const strlist *repository, int native) {
+                      const strlist *repository, const BuildOptions *opt) {
+    int bootstrap = opt && opt->bootstrap;
     (void) srcname;   /* only used by the dropped cvs branch */
 
     if (exec_check(mkdirp(params->OBJROOT))) return 1;
@@ -679,24 +736,27 @@ int builder_setupdirs(const Package *pkg, const Params *params,
     if (exec_check(mkdirp(params->HDRROOT))) return 1;
     if (exec_check(mkdirp(params->PACKAGEROOT))) return 1;
 
-    /* Native builds run on the host root: no chroot to create or populate. */
-    if (!native) {
+    /* Bootstrap builds run on the host root: no chroot to create or populate. */
+    if (!bootstrap) {
         if (exec_check(mkdirp(params->BUILDROOT))) return 1;
         if (builder_makeroot(pkg, params->BUILDROOT, repository) != 0) return 1;
     }
 
     if (strcmp(srctype, "dir") == 0) {
-        char *cmd;
-        char *argv[4];
+        char *source;
+        char *argv[8];
+        const char *rsync = "rsync";
         int rc;
         if (exec_check(mkdirp(params->SRCROOT))) return 1;
-        cmd = str_cats("(cd '", params->SRCDIR,
-                       "' && rsync -avr . --exclude=CVS/ --exclude=.svn/ "
-                       "--exclude=.git/ '", params->SRCROOT, "')", (char *)0);
-        argv[0] = "sh"; argv[1] = "-c"; argv[2] = cmd; argv[3] = 0;
+        if (opt && opt->toolchain && opt->toolchain->rsync)
+            rsync = opt->toolchain->rsync;
+        source = str_cats(params->SRCDIR, "/", (char *)0);
+        argv[0] = (char *)rsync; argv[1] = "-avr"; argv[2] = source;
+        argv[3] = "--exclude=CVS/"; argv[4] = "--exclude=.svn/";
+        argv[5] = "--exclude=.git/"; argv[6] = params->SRCROOT; argv[7] = 0;
         exec_printcmd(argv);
         rc = exec_run_checked(argv);
-        free(cmd);
+        free(source);
         if (rc) return 1;
     } else {
         fprintf(stderr, "rbuild: unknown source type %s\n", srctype);
@@ -922,7 +982,7 @@ static void harvest_walk(const char *objroot_abs, const char *rel,
 }
 
 int builder_harvest_objects(const Package *pkg, const Params *params,
-                            const Params *bparams, int native) {
+                            const Params *bparams, const BuildOptions *opt) {
     obj_match *head = 0;
     obj_match *node;
     int rc = 0;
@@ -947,15 +1007,17 @@ int builder_harvest_objects(const Package *pkg, const Params *params,
         {
             char *argv[9];
             int a = 0;
-            if (!native) { argv[a++] = "chroot"; argv[a++] = params->BUILDROOT; }
+            if (!(opt && opt->bootstrap)) {
+                argv[a++] = "chroot"; argv[a++] = params->BUILDROOT;
+            }
             argv[a++] = "cp"; argv[a++] = "-rp";
             argv[a++] = srcpath; argv[a++] = cobjpath; argv[a] = 0;
             exec_printcmd(argv);
             if (exec_run_checked(argv)) rc = 1;
         }
-        /* Native builds have no makeroot; also install into live SUBLIBROOTS
+        /* Bootstrap builds have no makeroot; also install into live SUBLIBROOTS
            so later packages (Libsystem make_links) see the ofiles. */
-        if (native && params->SUBLIBROOTS) {
+        if (opt && opt->bootstrap && params->SUBLIBROOTS) {
             char *live = str_cats(params->SUBLIBROOTS, "/",
                                   pkg->source ? pkg->source : "", "/",
                                   file, (char *)0);
@@ -995,7 +1057,7 @@ static int file_apk_exists(const char *dstdir, const char *canon) {
     return ok;
 }
 
-static int run_make(strlist *cmd) {
+static int run_make(strlist *cmd, const BuildOptions *opt) {
     char **argv;
     size_t i;
     int rc;
@@ -1003,9 +1065,13 @@ static int run_make(strlist *cmd) {
     for (i = 0; i < cmd->count; i++) argv[i] = cmd->items[i];
     argv[cmd->count] = 0;
     setenv("UNAME_SYSNAME", "Rhapsody", 1);
-    /* /build/bin first: HFS-safe ln wrapper (hard link -> cp fallback). */
-    setenv("PATH", "/build/bin:/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin", 1);
-    printf("UNAME_SYSNAME=Rhapsody PATH=/build/bin:/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin ");
+    {
+        const char *path = "/build/bin:/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin";
+        if (opt && opt->toolchain && opt->toolchain->path)
+            path = opt->toolchain->path;
+        setenv("PATH", path, 1);
+        printf("UNAME_SYSNAME=Rhapsody PATH=%s ", path);
+    }
     exec_printcmd(argv);
     rc = exec_run_checked(argv);
     free(argv);
@@ -1014,7 +1080,7 @@ static int run_make(strlist *cmd) {
 
 int builder_build(const char *srctype, const char *srcname,
                   const strlist *repository, const char *target,
-                  const char *dstdir, int clean, int native) {
+                  const char *dstdir, const BuildOptions *opt) {
     Package pkg, hdrpkg;
     Params bparams, params;
     char *hdrfilename, *filename;
@@ -1055,13 +1121,14 @@ int builder_build(const char *srctype, const char *srcname,
 
     /* params = chrootparams(bparams, bparams.BUILDROOT) */
     params_init(&params);
-    /* Native: prefix with "/" so params paths equal the (host) bparams paths.
-       There is no chroot in native mode, so params.BUILDROOT is unused: every
+    /* Bootstrap: prefix with "/" so params paths equal the host bparams paths.
+       There is no chroot in bootstrap mode, so params.BUILDROOT is unused: every
        site that would touch it (setupdirs mkdir/makeroot, buildcmd chroot,
-       harvest_objects chroot, the clean teardown) is gated on !native. Do not
-       rely on its value under native -- builder_canonparams below rewrites the
+       harvest_objects chroot, the clean teardown) is gated on !bootstrap. Do not
+       rely on its value under bootstrap -- builder_canonparams below rewrites the
        empty string to "<cwd>/". */
-    builder_chrootparams(&bparams, native ? "/" : bparams.BUILDROOT, &params);
+    builder_chrootparams(&bparams, opt && opt->bootstrap ? "/" : bparams.BUILDROOT,
+                         &params);
 
     /* SRCDIR */
     if (strcmp(srctype, "dir") == 0) params.SRCDIR = xstrdup(srcname);
@@ -1075,26 +1142,26 @@ int builder_build(const char *srctype, const char *srcname,
 
     printf("building %s from %s:\n\n", filename, params.SRCDIR);
 
-    if (builder_setupdirs(&pkg, &params, srcname, srctype, repository, native) != 0) {
+    if (builder_setupdirs(&pkg, &params, srcname, srctype, repository, opt) != 0) {
         rc = 1; goto done;
     }
 
     if (do_hdr) {
         strlist cmd; strlist_init(&cmd);
-        builder_buildcmd(&params, &bparams, "installhdrs", &cmd, native);
-        if (run_make(&cmd)) { strlist_free(&cmd); rc = 1; goto done; }
+        builder_buildcmd(&params, &bparams, "installhdrs", &cmd, opt);
+        if (run_make(&cmd, opt)) { strlist_free(&cmd); rc = 1; goto done; }
         strlist_free(&cmd);
         printf("\n");
     }
 
     if (do_bin) {
         strlist cmd; strlist_init(&cmd);
-        builder_buildcmd(&params, &bparams, "install", &cmd, native);
-        if (run_make(&cmd)) { strlist_free(&cmd); rc = 1; goto done; }
+        builder_buildcmd(&params, &bparams, "install", &cmd, opt);
+        if (run_make(&cmd, opt)) { strlist_free(&cmd); rc = 1; goto done; }
         strlist_free(&cmd);
         printf("\n");
 
-        if (builder_harvest_objects(&pkg, &params, &bparams, native) != 0) { rc = 1; goto done; }
+        if (builder_harvest_objects(&pkg, &params, &bparams, opt) != 0) { rc = 1; goto done; }
         printf("\n");
     }
 
@@ -1107,8 +1174,8 @@ int builder_build(const char *srctype, const char *srcname,
         if (builder_buildpackage(&pkg, &params, "local") != 0) { rc = 1; goto done; }
     }
 
-    /* No chroot BUILDROOT to remove in native mode (it is empty). */
-    if (clean && !native) {
+    /* No chroot BUILDROOT to remove in bootstrap mode (it is empty). */
+    if (opt && opt->clean && !opt->bootstrap) {
         if (exec_runv("rm", "-rf", params.BUILDROOT, (char *)0) != 0) { rc = 1; goto done; }
     }
 

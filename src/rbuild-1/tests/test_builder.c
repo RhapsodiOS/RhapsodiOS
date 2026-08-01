@@ -3,6 +3,7 @@
 #include "exec.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 TEST(test_dir2name) {
     char *base = 0, *name = 0, *rev = 0;
@@ -113,30 +114,117 @@ static int list_has(const strlist *l, const char *s) {
     return 0;
 }
 
+static const char *list_has_prefix(const strlist *l, const char *prefix) {
+    size_t i;
+    for (i = 0; i < l->count; i++)
+        if (str_has_prefix(l->items[i], prefix)) return l->items[i];
+    return 0;
+}
+
+static void toolchain_fixture(Toolchain *tc) {
+    memset(tc, 0, sizeof(*tc));
+    tc->target_cc = "/tools/target-cc";
+    tc->target_ar = "/tools/target-ar";
+    tc->target_ranlib = "/tools/target-ranlib";
+    tc->make = "/tools/make";
+    tc->shell = "/bin/sh";
+    tc->tar = "/tools/tar";
+    tc->gzip = "/tools/gzip";
+    tc->rsync = "/tools/rsync";
+    tc->path = "/tools:/usr/bin:/bin";
+    tc->arch_flags = "-arch ppc";
+    tc->cpp_flags = "-nostdinc -I@SYSROOT@/System/Headers";
+    tc->ld_flags = "-Wl,-syslibroot,@SYSROOT@";
+    tc->ln = "/tools/ln";
+}
+
+TEST(test_bootstrap_flags_use_target_sysroot) {
+    static const char *defines[] = {
+        "-Dunix", "-D__unix", "-D__unix__",
+        "-DNX_COMPILER_RELEASE_3_0=300", "-DNX_COMPILER_RELEASE_3_1=310",
+        "-DNX_COMPILER_RELEASE_3_2=320", "-DNX_COMPILER_RELEASE_3_3=330",
+        "-DNX_CURRENT_COMPILER_RELEASE=520",
+        "-DNS_TARGET=52", "-DNS_TARGET_MAJOR=5", "-DNS_TARGET_MINOR=2",
+        "-DNeXT", "-D__NeXT", "-D__NeXT__", "-D_NEXT_SOURCE", 0
+    };
+    Params p;
+    BuildOptions opt;
+    Toolchain tc;
+    strlist f;
+    const char *rc_cflags;
+    int i;
+
+    params_init(&p);
+    build_options_init(&opt);
+    toolchain_fixture(&tc);
+    opt.bootstrap = 1;
+    opt.sysroot = "/target";
+    opt.toolchain = &tc;
+    p.SRCROOT = xstrdup("/s"); p.OBJROOT = xstrdup("/o");
+    p.SYMROOT = xstrdup("/y"); p.DSTROOT = xstrdup("/d");
+    p.HDRROOT = xstrdup("/h"); p.SUBLIBROOTS = xstrdup("/objs");
+
+    strlist_init(&f);
+    builder_buildflags(&p, "install", &f, &opt);
+    CHECK(list_has(&f, "NEXT_ROOT=/target"));
+    CHECK(list_has(&f, "CC=/tools/target-cc"));
+    CHECK(list_has(&f, "AR=/tools/target-ar"));
+    CHECK(list_has(&f, "RANLIB=/tools/target-ranlib"));
+    CHECK(list_has(&f, "LN=/tools/ln"));
+    CHECK(list_has(&f, "RC_ARCHS=ppc"));
+    CHECK(list_has(&f, "RC_ppc=YES"));
+    rc_cflags = list_has_prefix(&f, "RC_CFLAGS=");
+    CHECK(rc_cflags != 0);
+    CHECK(str_has_prefix(rc_cflags,
+          "RC_CFLAGS=-arch ppc -nostdinc -I/target/System/Headers"));
+    for (i = 0; defines[i]; i++) CHECK(strstr(rc_cflags, defines[i]) != 0);
+    CHECK(list_has(&f, "OTHER_LDFLAGS=-Wl,-syslibroot,/target"));
+    CHECK(!list_has_prefix(&f, "BOOTSTRAP_SKIP_DYLD="));
+    strlist_free(&f);
+    params_free(&p);
+}
+
 TEST(test_buildflags) {
     Params p;
+    BuildOptions opt;
     strlist f;
     params_init(&p);
+    build_options_init(&opt);
     p.SRCROOT = xstrdup("/s"); p.OBJROOT = xstrdup("/o");
     p.SYMROOT = xstrdup("/y"); p.DSTROOT = xstrdup("/d");
     p.HDRROOT = xstrdup("/h"); p.SUBLIBROOTS = xstrdup("/objs");
     strlist_init(&f);
-    builder_buildflags(&p, "install", &f, 0);
+    builder_buildflags(&p, "install", &f, &opt);
     CHECK(list_has(&f, "SRCROOT=/s"));
     CHECK(list_has(&f, "DSTROOT=/d"));
-    /* Host-arch only for both native and chroot (single-arch guest seed). */
+    /* Host-arch only for both bootstrap and chroot (single-arch guest seed). */
     CHECK(!list_has(&f, "RC_ARCHS=i386 ppc"));
     CHECK(list_has(&f, "RC_ARCHS=ppc") || list_has(&f, "RC_ARCHS=i386"));
+    CHECK(list_has(&f,
+          "RC_CFLAGS=-arch ppc  -Dunix -D__unix -D__unix__ "
+          "-DNX_COMPILER_RELEASE_3_0=300 -DNX_COMPILER_RELEASE_3_1=310 "
+          "-DNX_COMPILER_RELEASE_3_2=320 -DNX_COMPILER_RELEASE_3_3=330 "
+          "-DNX_CURRENT_COMPILER_RELEASE=520 -DNS_TARGET=52 "
+          "-DNS_TARGET_MAJOR=5 -DNS_TARGET_MINOR=2 -DNeXT -D__NeXT "
+          "-D__NeXT__ -D_NEXT_SOURCE") ||
+          list_has(&f,
+          "RC_CFLAGS=-arch i386  -Dunix -D__unix -D__unix__ "
+          "-DNX_COMPILER_RELEASE_3_0=300 -DNX_COMPILER_RELEASE_3_1=310 "
+          "-DNX_COMPILER_RELEASE_3_2=320 -DNX_COMPILER_RELEASE_3_3=330 "
+          "-DNX_CURRENT_COMPILER_RELEASE=520 -DNS_TARGET=52 "
+          "-DNS_TARGET_MAJOR=5 -DNS_TARGET_MINOR=2 -DNeXT -D__NeXT "
+          "-D__NeXT__ -D_NEXT_SOURCE"));
     strlist_free(&f);
 
     strlist_init(&f);
-    builder_buildflags(&p, "installhdrs", &f, 0);
+    builder_buildflags(&p, "installhdrs", &f, &opt);
     CHECK(list_has(&f, "DSTROOT=/h"));   /* headers target uses HDRROOT */
     strlist_free(&f);
 
-    /* native: host-arch only + HFS LN wrapper */
+    /* legacy bootstrap: host-arch only + HFS LN wrapper */
     strlist_init(&f);
-    builder_buildflags(&p, "install", &f, 1);
+    opt.bootstrap = 1;
+    builder_buildflags(&p, "install", &f, &opt);
     CHECK(!list_has(&f, "RC_ARCHS=i386 ppc"));
     CHECK(list_has(&f, "RC_ARCHS=ppc") || list_has(&f, "RC_ARCHS=i386"));
     CHECK(list_has(&f, "LN=/build/bin/ln"));
@@ -144,46 +232,63 @@ TEST(test_buildflags) {
     params_free(&p);
 }
 
-TEST(test_buildcmd_native) {
+TEST(test_buildcmd_bootstrap) {
     Params cp, bp;
+    BuildOptions opt;
+    Toolchain tc;
     strlist cmd;
     params_init(&cp); params_init(&bp);
+    build_options_init(&opt);
     cp.BUILDROOT = xstrdup("/br");
     bp.SRCROOT = xstrdup("/s"); bp.OBJROOT = xstrdup("/o");
     bp.SYMROOT = xstrdup("/y"); bp.DSTROOT = xstrdup("/d");
     bp.HDRROOT = xstrdup("/h"); bp.SUBLIBROOTS = xstrdup("/objs");
 
-    /* native: no chroot wrapper, make is first token, -C uses SRCROOT */
+    /* bootstrap: no chroot wrapper, make is first token, -C uses SRCROOT */
     strlist_init(&cmd);
-    builder_buildcmd(&cp, &bp, "install", &cmd, 1);
+    opt.bootstrap = 1;
+    builder_buildcmd(&cp, &bp, "install", &cmd, &opt);
     CHECK_STR(cmd.items[0], "make");
     CHECK(!list_has(&cmd, "chroot"));
     CHECK(!list_has(&cmd, "/br"));
     CHECK(list_has(&cmd, "/s"));         /* -C <SRCROOT> */
     strlist_free(&cmd);
 
-    /* non-native: chroot wrapper present */
+    /* non-bootstrap: chroot wrapper present */
     strlist_init(&cmd);
-    builder_buildcmd(&cp, &bp, "install", &cmd, 0);
+    opt.bootstrap = 0;
+    builder_buildcmd(&cp, &bp, "install", &cmd, &opt);
     CHECK_STR(cmd.items[0], "chroot");
     CHECK_STR(cmd.items[1], "/br");
     CHECK_STR(cmd.items[2], "make");
     strlist_free(&cmd);
 
+    toolchain_fixture(&tc);
+    opt.bootstrap = 1;
+    opt.sysroot = "/target";
+    opt.toolchain = &tc;
+    strlist_init(&cmd);
+    builder_buildcmd(&cp, &bp, "install", &cmd, &opt);
+    CHECK_STR(cmd.items[0], "/tools/make");
+    CHECK(!list_has(&cmd, "chroot"));
+    strlist_free(&cmd);
+
     params_free(&cp); params_free(&bp);
 }
 
-TEST(test_setupdirs_native_skips_makeroot) {
+TEST(test_setupdirs_bootstrap_skips_makeroot) {
     Package pkg;
     Params p;
     strlist repo;               /* empty repository */
-    int rc_native, rc_normal;
+    int rc_bootstrap, rc_normal;
+    BuildOptions opt;
 
     exec_dry_run = 1;           /* mkdir/rsync become no-ops */
     package_init(&pkg);         /* no build_depends -> basedeps fallback */
     strlist_init(&repo);        /* nothing resolves */
 
     params_init(&p);
+    build_options_init(&opt);
     p.BUILDROOT = xstrdup("/tmp/rb_nat/br");
     p.OBJROOT = xstrdup("/tmp/rb_nat/obj");
     p.SYMROOT = xstrdup("/tmp/rb_nat/sym");
@@ -193,12 +298,14 @@ TEST(test_setupdirs_native_skips_makeroot) {
     p.SRCROOT = xstrdup("/tmp/rb_nat/src");
     p.SRCDIR = xstrdup("/tmp/rb_nat/srcdir");
 
-    /* native: makeroot skipped -> empty repo is fine -> success */
-    rc_native = builder_setupdirs(&pkg, &p, "foo", "dir", &repo, 1);
-    CHECK_INT(rc_native, 0);
+    /* bootstrap: makeroot skipped -> empty repo is fine -> success */
+    opt.bootstrap = 1;
+    rc_bootstrap = builder_setupdirs(&pkg, &p, "foo", "dir", &repo, &opt);
+    CHECK_INT(rc_bootstrap, 0);
 
-    /* non-native: makeroot runs -> cannot resolve "cc" in empty repo -> fail */
-    rc_normal = builder_setupdirs(&pkg, &p, "foo", "dir", &repo, 0);
+    /* non-bootstrap: makeroot runs -> empty repo cannot resolve "cc" -> fail */
+    opt.bootstrap = 0;
+    rc_normal = builder_setupdirs(&pkg, &p, "foo", "dir", &repo, &opt);
     CHECK_INT(rc_normal, 1);
 
     exec_dry_run = 0;
@@ -240,9 +347,10 @@ static void run_all(void) {
     RUN(test_getparams_defaults);
     RUN(test_canonparams);
     RUN(test_chrootparams);
+    RUN(test_bootstrap_flags_use_target_sysroot);
     RUN(test_buildflags);
-    RUN(test_buildcmd_native);
-    RUN(test_setupdirs_native_skips_makeroot);
+    RUN(test_buildcmd_bootstrap);
+    RUN(test_setupdirs_bootstrap_skips_makeroot);
     RUN(test_scan_dir);
 }
 

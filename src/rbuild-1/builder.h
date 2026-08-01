@@ -3,6 +3,17 @@
 
 #include "strutil.h"
 #include "package.h"
+#include "toolchain.h"
+
+typedef struct {
+    int clean;
+    int bootstrap;
+    const char *sysroot;
+    const char *state_dir;
+    const Toolchain *toolchain;
+} BuildOptions;
+
+void build_options_init(BuildOptions *opt);
 
 typedef struct {
     char *BUILDROOT;
@@ -34,9 +45,10 @@ void builder_canonparams(Params *p, const char *cwd);
 void builder_chrootparams(const Params *in, const char *buildroot, Params *out);
 
 void builder_buildflags(const Params *params, const char *target, strlist *out,
-                        int native);
+                        const BuildOptions *opt);
 void builder_buildcmd(const Params *chroot_params, const Params *build_params,
-                      const char *target, strlist *out, int native);
+                      const char *target, strlist *out,
+                      const BuildOptions *opt);
 
 int builder_scan_dir(const char *source, Package *pkg, Params *params);
 int builder_scan(const char *type, const char *source, Package *pkg, Params *params);
@@ -46,15 +58,15 @@ int builder_makeroot(const Package *pkg, const char *buildroot,
 
 int builder_setupdirs(const Package *pkg, const Params *params,
                       const char *srcname, const char *srctype,
-                      const strlist *repository, int native);
+                      const strlist *repository, const BuildOptions *opt);
 
 int builder_buildpackage(const Package *spkg, const Params *params,
                          const char *target);
 int builder_harvest_objects(const Package *pkg, const Params *params,
-                            const Params *bparams, int native);
+                            const Params *bparams, const BuildOptions *opt);
 
 int builder_build(const char *srctype, const char *srcname,
                   const strlist *repository, const char *target,
-                  const char *dstdir, int clean, int native);
+                  const char *dstdir, const BuildOptions *opt);
 
 #endif

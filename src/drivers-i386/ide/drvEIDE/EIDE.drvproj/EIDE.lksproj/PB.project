@@ -18,7 +18,7 @@
             IdeDiskInternal.m, 
             IdeKernel.m
         ); 
-        C_FILES = (VIATiming.c, IDEAddressing.c, AMDTiming.c);
+        C_FILES = (VIATiming.c, IDEAddressing.c, AMDTiming.c, EIDEIoctlValidation.c);
         H_FILES = (
             AtapiCnt.h, 
             AtapiCntCmds.h, 
@@ -46,7 +46,8 @@
 			VIATiming.h,
 			AMDTiming.h,
 			IdeModeUtils.h,
-			IDEAddressing.h
+			IDEAddressing.h,
+			EIDEIoctlValidation.h
         ); 
         OTHER_SOURCES = (Load_Commands.sect, Makefile, Makefile.preamble); 
         PUBLIC_HEADERS = (atapi_extern.h, ata_extern.h); 

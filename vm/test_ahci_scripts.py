@@ -48,7 +48,7 @@ class AHCIScriptTests(unittest.TestCase):
             log = td / "make.log"
             fake_make = td / "gnumake"
             for rel in (
-                "src/kernel-7",
+                "src/kernel-7/conf",
                 "src/drivers-i386/ide/drvEIDE",
                 "src/drivers-i386/ide/drvAHCI",
                 "src/drivers-i386/ide/drvAHCI/tests",
@@ -59,9 +59,9 @@ class AHCIScriptTests(unittest.TestCase):
                 "echo \"$PWD:$*\" >> \"$AHCI_TEST_LOG\"\n"
                 "case \"$PWD\" in\n"
                 "*/tests) exit 0 ;;\n"
-                "*/kernel-7)\n"
-                "  case \" $* \" in *' kernels '*) mkdir -p BUILD/RELEASE_I386; "
-                "printf kernel > BUILD/RELEASE_I386/mach_kernel;; esac ;;\n"
+                "*/kernel-7/conf)\n"
+                "  case \" $* \" in *' I386 '*) mkdir -p ../BUILD/RELEASE_I386; "
+                "printf kernel > ../BUILD/RELEASE_I386/mach_kernel;; esac ;;\n"
                 "*/drvEIDE|*/drvAHCI)\n"
                 "  case \" $* \" in *' install '*)\n"
                 "    dst=; for a in \"$@\"; do case \"$a\" in DSTROOT=*) dst=${a#DSTROOT=};; esac; done\n"
@@ -95,7 +95,10 @@ class AHCIScriptTests(unittest.TestCase):
             )
             calls = log.read_text(encoding="utf-8").splitlines()
             self.assertTrue(calls[0].endswith("/tests:clean all check"), calls)
-            self.assertLess(next(i for i, x in enumerate(calls) if "/kernel-7:" in x),
+            kernel_call = next(x for x in calls if "/kernel-7/conf:" in x)
+            self.assertIn("I386 OBJROOT=../BUILD SYMROOT=../BUILD", kernel_call)
+            self.assertNotIn("kernels", kernel_call)
+            self.assertLess(next(i for i, x in enumerate(calls) if "/kernel-7/conf:" in x),
                             next(i for i, x in enumerate(calls) if "/drvEIDE:" in x))
             self.assertLess(next(i for i, x in enumerate(calls) if "/drvEIDE:" in x),
                             next(i for i, x in enumerate(calls) if "/drvAHCI:" in x))
@@ -104,8 +107,8 @@ class AHCIScriptTests(unittest.TestCase):
             stale_make.write_text(
                 fake_make.read_text(encoding="utf-8")
                 + "\nif [ \"${AHCI_TEST_STALE:-0}\" = 1 ]; then\n"
-                  "  \"$AHCI_PYTHON\" -c 'import os,pathlib,sys; "
-                  "[(os.utime(str(p), (1, 1))) for p in pathlib.Path(sys.argv[1]).rglob(\"*\") if p.is_file()]' \"$PWD\"\n"
+                  "  sleep 1\n"
+                  "  echo newer >> \"$AHCI_BUILD_STARTED_MARKER\"\n"
                   "fi\n",
                 encoding="utf-8",
             )
@@ -134,9 +137,9 @@ class AHCIScriptTests(unittest.TestCase):
         iso = work_dir / "test.iso"
         for path in (source, second, iso):
             path.write_bytes(b"test")
-        result = self.run_sh(RUN, "--dry-run", self.sh_path(source),
-                             self.sh_path(target), self.sh_path(iso),
-                             self.sh_path(second))
+        result = self.run_sh(RUN, "--dry-run", "--iso", self.sh_path(iso),
+                             "--second-disk", self.sh_path(second),
+                             self.sh_path(source), self.sh_path(target))
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertIn("-M q35", result.stdout)
         self.assertIn("bus=ide.0", result.stdout)
@@ -145,6 +148,18 @@ class AHCIScriptTests(unittest.TestCase):
         self.assertIn("mach_kernel rootdev=hd0a", result.stdout)
         self.assertIn("vm/logs/ahci-serial.log", result.stdout.replace("\\", "/"))
         self.assertFalse(target.exists(), "dry-run must not create a working image")
+
+        iso_only = self.run_sh(RUN, "--dry-run", "--iso", self.sh_path(iso),
+                               self.sh_path(source), self.sh_path(target))
+        self.assertEqual(iso_only.returncode, 0, iso_only.stdout)
+        self.assertIn("bus=ide.2", iso_only.stdout)
+        self.assertNotIn("bus=ide.1", iso_only.stdout)
+        second_only = self.run_sh(
+            RUN, "--dry-run", "--second-disk", self.sh_path(second),
+            self.sh_path(source), self.sh_path(target))
+        self.assertEqual(second_only.returncode, 0, second_only.stdout)
+        self.assertIn("bus=ide.1", second_only.stdout)
+        self.assertNotIn("bus=ide.2", second_only.stdout)
 
     def test_launcher_rejects_non_disposable_and_identical_targets(self):
         with tempfile.TemporaryDirectory() as td:
@@ -165,6 +180,42 @@ class AHCIScriptTests(unittest.TestCase):
                              self.sh_path(image))
         self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertIn("distinct", result.stdout)
+
+    def test_launcher_propagates_boot_key_helper_failure(self):
+        work_dir = VM / "work" / "script-test-helper"
+        shutil.rmtree(work_dir, ignore_errors=True)
+        work_dir.mkdir(parents=True)
+        self.addCleanup(lambda: shutil.rmtree(work_dir, ignore_errors=True))
+        source = work_dir / "source.img"
+        target = work_dir / "boot.img"
+        source.write_bytes(b"source")
+        with tempfile.TemporaryDirectory() as td:
+            td = pathlib.Path(td)
+            fake_python = td / "python"
+            fake_qemu = td / "qemu"
+            fake_mv = td / "mv"
+            real_python = self.sh_path(pathlib.Path(sys.executable))
+            fake_python.write_text(
+                "#!/bin/sh\n"
+                "if [ \"$1\" = - ]; then exit 7; fi\n"
+                f'exec "{real_python}" "$@"\n', encoding="utf-8")
+            fake_qemu.write_text(
+                "#!/bin/sh\ntrap 'exit 0' 15\nwhile :; do sleep 1; done\n",
+                encoding="utf-8")
+            fake_mv.write_text(
+                "#!/bin/sh\ncp \"$2\" \"$3\" && rm -f \"$2\"\n",
+                encoding="utf-8")
+            for path in (fake_python, fake_qemu, fake_mv):
+                path.chmod(0o755)
+            env = {
+                "AHCI_PYTHON": self.sh_path(fake_python),
+                "AHCI_QEMU": self.sh_path(fake_qemu),
+                "PATH": self.sh_path(td) + ":" + os.environ["PATH"],
+            }
+            result = self.run_sh(RUN, self.sh_path(source),
+                                 self.sh_path(target), env=env)
+            self.assertEqual(result.returncode, 7, result.stdout)
+            self.assertIn("boot-key injection failed", result.stdout)
 
 
 if __name__ == "__main__":

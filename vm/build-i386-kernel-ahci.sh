@@ -19,6 +19,7 @@ ahci_dir=$source_root/src/drivers-i386/ide/drvAHCI
 tests_dir=$ahci_dir/tests
 tmp_root=${TMPDIR:-/tmp}/rhapsodios-ahci-build-$$
 marker=$tmp_root/build-started
+export AHCI_BUILD_STARTED_MARKER=$marker
 
 die()
 {
@@ -68,9 +69,13 @@ echo "== portable AHCI tests =="
     die "portable AHCI tests failed"
 
 kernel=$kernel_dir/BUILD/RELEASE_I386/mach_kernel
-rm -f "$kernel"
+rm -rf "$kernel_dir/BUILD/RELEASE_I386" \
+    "$kernel_dir/BUILD/config.RELEASE_I386" \
+    "$kernel_dir/BUILD/config.RELEASE_I386.old"
+rm -f "$kernel_dir/conf/RELEASE_I386" "$kernel_dir/conf/RELEASE_I386.old"
 echo "== i386 kernel =="
-(cd "$kernel_dir" && "$make_cmd" clean && "$make_cmd" kernels) ||
+(cd "$kernel_dir/conf" &&
+    "$make_cmd" I386 OBJROOT=../BUILD SYMROOT=../BUILD) ||
     die "i386 kernel build failed"
 require_fresh "$kernel"
 

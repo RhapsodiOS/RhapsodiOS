@@ -34,7 +34,7 @@ die()
 
 usage()
 {
-    echo "usage: $0 [--dry-run] SOURCE_ROOT_IMAGE vm/work/IMAGE [ISO] [SECOND_DISK]" >&2
+    echo "usage: $0 [--dry-run] [--iso PATH] [--second-disk PATH] SOURCE_ROOT_IMAGE vm/work/IMAGE" >&2
     exit 2
 }
 
@@ -43,16 +43,41 @@ canonical()
     "$python" -c 'import os,sys; print(os.path.realpath(sys.argv[1]).replace(os.sep, "/"))' "$1"
 }
 
-[ "${1:-}" = "--dry-run" ] && { dry_run=1; shift; }
-[ $# -ge 2 ] && [ $# -le 4 ] || usage
+iso_arg=
+second_arg=
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --dry-run)
+            dry_run=1
+            shift
+            ;;
+        --iso)
+            [ $# -ge 2 ] || usage
+            iso_arg=$2
+            shift 2
+            ;;
+        --second-disk)
+            [ $# -ge 2 ] || usage
+            second_arg=$2
+            shift 2
+            ;;
+        --)
+            shift
+            break
+            ;;
+        -*) usage ;;
+        *) break ;;
+    esac
+done
+[ $# -eq 2 ] || usage
 
 command -v "$python" >/dev/null 2>&1 || die "python3 is required for path and QMP handling"
 source_image=`canonical "$1"`
 work_image=`canonical "$2"`
 iso_image=
 second_disk=
-[ $# -ge 3 ] && iso_image=`canonical "$3"`
-[ $# -ge 4 ] && second_disk=`canonical "$4"`
+[ -z "$iso_arg" ] || iso_image=`canonical "$iso_arg"`
+[ -z "$second_arg" ] || second_disk=`canonical "$second_arg"`
 work_root=`canonical "$work_root"`
 
 [ -f "$source_image" ] || die "source root image not found: $source_image"
@@ -105,12 +130,22 @@ work_parent=${work_image%/*}
 [ "$work_parent" != "$work_image" ] || work_parent=.
 mkdir -p "$work_parent" "$logs_dir"
 copy_tmp=$work_image.copying.$$
-trap 'rm -f "$copy_tmp"' 0 1 2 3 15
+qemu_pid=
+keys_pid=
+cleanup()
+{
+    [ -z "$keys_pid" ] || kill "$keys_pid" >/dev/null 2>&1 || true
+    [ -z "$qemu_pid" ] || kill "$qemu_pid" >/dev/null 2>&1 || true
+    rm -f "$copy_tmp"
+}
+trap cleanup 0 1 2 3 15
 cp -p "$source_image" "$copy_tmp" || die "could not copy source root image"
 mv -f "$copy_tmp" "$work_image" || die "could not install working image"
 
 # The Rhapsody boot loader accepts kernel/root arguments at its VGA boot
 # prompt. Send the same keystrokes used by vm/qemu-shot.py over QMP.
+"$qemu" "$@" &
+qemu_pid=$!
 "$python" - "$qmp_port" "$keys_delay" "$boot_keys" <<'PY' &
 import json
 import socket
@@ -150,9 +185,21 @@ PY
 keys_pid=$!
 
 set +e
-"$qemu" "$@"
-status=$?
+wait "$keys_pid"
+keys_status=$?
 set -e
-kill "$keys_pid" >/dev/null 2>&1 || true
-wait "$keys_pid" >/dev/null 2>&1 || true
-exit "$status"
+keys_pid=
+if [ "$keys_status" -ne 0 ]; then
+    echo "run-q35-ahci: boot-key injection failed (exit $keys_status)" >&2
+    kill "$qemu_pid" >/dev/null 2>&1 || true
+    wait "$qemu_pid" >/dev/null 2>&1 || true
+    qemu_pid=
+    exit "$keys_status"
+fi
+
+set +e
+wait "$qemu_pid"
+qemu_status=$?
+set -e
+qemu_pid=
+exit "$qemu_status"

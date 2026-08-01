@@ -26,7 +26,7 @@ typedef struct {
 @end
 
 @interface Object(AHCIControllerRecovery)
-- (void)recoverController;
+- (BOOL)recoverController;
 - (BOOL)beginSubmission;
 - (void)endSubmission;
 - (BOOL)commitSubmission;
@@ -826,6 +826,24 @@ static int AHCIPortPacketCheckCondition(
                  AHCI_LOCK_IDLE : AHCI_LOCK_DONE);
     [commandLock unlockWith:condition];
     return YES;
+}
+
+- (BOOL)resetATAPIDevice:(AHCIATAPIController *)device
+{
+    BOOL ready;
+    int condition;
+
+    if (device == nil || controller == nil ||
+        ![controller recoverController])
+        return NO;
+    [commandLock lock];
+    ready = !destroying && online && !atapiUnpublishing && atapi == device;
+    condition = commandArbiter.state == AHCI_COMMAND_PENDING ?
+                AHCI_LOCK_PENDING :
+                (commandArbiter.state == AHCI_COMMAND_IDLE ?
+                 AHCI_LOCK_IDLE : AHCI_LOCK_DONE);
+    [commandLock unlockWith:condition];
+    return ready;
 }
 
 - (BOOL)unpublishDisk

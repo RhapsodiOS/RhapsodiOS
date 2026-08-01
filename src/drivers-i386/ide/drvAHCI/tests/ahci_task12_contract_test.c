@@ -83,35 +83,49 @@ int main(void)
         "../AHCI.drvproj/AHCI.lksproj/AHCIController.m";
     const char *project = "../AHCI.drvproj/AHCI.lksproj/PB.project";
     const char *makefile = "../AHCI.drvproj/AHCI.lksproj/Makefile";
+    const char *logic =
+        "../AHCI.drvproj/AHCI.lksproj/AHCIATAPILogic.c";
+    const char *logicHeader =
+        "../AHCI.drvproj/AHCI.lksproj/AHCIATAPILogic.h";
 
     require_text(header, "AHCIATAPIController : IOSCSIController");
     require_text(header, "AHCI_ATAPI_IDENTIFY_PACKET_DEVICE");
     require_text(header, "AHCI_ATAPI_IDENTIFY_TIMEOUT_SECONDS 10U");
     require_text(header, "AHCI_ATAPI_PACKET_TIMEOUT_SECONDS");
     require_text(source, "#import <driverkit/kernelDriver.h>");
-    require_text(source, "target != 0 || scsiReq->lun != 0");
+    require_text(source, "executeSCSI3Request:(IOSCSI3Request *)scsiReq");
+    require_text(source, "AHCIATAPIValidateCDBLength");
+    require_text(source, "sizeof(scsiReq->cdb)");
+    require_text(source, "AHCIATAPIPacketTimeout");
+    require_text(source, "AHCIATAPITranslateModeSense6");
+    require_text(source, "packetCDBLength = 10;");
+    require_text(source, "AHCIATAPIRemapModeSense10");
+    require_text(source, "AHCIATAPIEmulateModeSensePage2");
+    require_text(source, "writeToClient");
+    require_text(source, "resetATAPIDevice:self");
+    require_text(source, "AHCIATAPIParseIdentity");
+    require_text(source, "AHCIATAPIIdentityMatches");
+    require_text(source, "_identity.dmaDirSupported");
+    require_text(source, "request->target != 0 || request->lun != 0");
     require_text(source, "AHCIBuildPacketCommand");
     require_text(source, "client:client");
     require_text(source, "AHCI_ATAPI_SECTOR_BYTES");
-    require_text(source, "if (scsiReq->maxTransfer != 0 && !scsiReq->read)");
+    require_text(source, "if (request->maxTransfer != 0 && !request->read)");
     require_text(source, "blocks * AHCI_ATAPI_SECTOR_BYTES");
-    require_text(source, "C6OP_INQUIRY");
     require_text(source, "C6OP_TESTRDY");
     require_text(source, "C6OP_REQSENSE");
-    require_text(source, "C10OP_READCAPACITY");
     require_text(source, "C10OP_READEXTENDED");
     require_text(source, "C6OP_MODESENSE");
     require_text(source, "AHCI_SCSI_START_STOP_UNIT");
     require_text(source, "AHCI_SCSI_PREVENT_ALLOW");
     require_text(source, "SENSE_NOTREADY");
-    require_text(source, "SENSE_UNITATTENTION");
     require_text(source, "SR_IOST_CHKSV");
-    require_text(source, "AHCIATAPIShouldRequestSense(cdb[0],");
-    require_text(source, "scsiReq->ignoreChkcond))");
+    require_text(source, "AHCIATAPIShouldRequestSense(request->cdb[0],");
+    require_text(source, "request->ignoreChkcond))");
     require_text(source, "AHCIATAPISenseDataValid(");
     require_order(source, "senseActual = 0;",
                   "transferred:&senseActual");
-    require_text(source, "scsiReq->driverStatus = SR_IOST_CHKSNV;");
+    require_text(source, "request->driverStatus = SR_IOST_CHKSNV;");
     require_text(source, "if (senseResult == IO_R_OFFLINE)");
     require_text(source, "result = IO_R_OFFLINE;");
     require_absent(source, "[device setName:");
@@ -130,6 +144,8 @@ int main(void)
                            "        [device portBecameNotReady]");
     require_absent(source, "ata_hd_register");
     require_text(port, "publishATAPIFromDeviceDescription");
+    require_text(port, "@interface Object(AHCIControllerRecovery)\n"
+                       "- (BOOL)recoverController;");
     require_text(port, "timeout:AHCI_ATAPI_IDENTIFY_TIMEOUT_SECONDS");
     require_text(port, "AHCIPortPacketCheckCondition");
     require_text(port, "== AHCI_PXIS_TFES");
@@ -140,8 +156,8 @@ int main(void)
     require_absent(port, "if (result == IO_R_SUCCESS)\n"
                          "        *actual = completionSnapshot.transferred;");
     require_order(source, "result = [self performPacket:",
-                  "scsiReq->bytesTransferred = (int)actual;");
-    require_order(source, "scsiReq->bytesTransferred = (int)actual;",
+                  "request->bytesTransferred = (int)actual;");
+    require_order(source, "request->bytesTransferred = (int)actual;",
                   "if (result == IO_R_SUCCESS)");
     require_order(port, "atapi = nil;", "[commandLock unlockWith:condition]");
     require_order(port, "[commandLock unlockWith:condition]",
@@ -149,8 +165,14 @@ int main(void)
     require_text(controller, "publishATAPIFromDeviceDescription");
     require_text(project, "AHCIATAPI.m");
     require_text(project, "AHCIATAPI.h");
+    require_text(project, "AHCIATAPILogic.c");
+    require_text(project, "AHCIATAPILogic.h");
     require_text(makefile, "AHCIATAPI.m");
     require_text(makefile, "AHCIATAPI.h");
+    require_text(makefile, "AHCIATAPILogic.c");
+    require_text(makefile, "AHCIATAPILogic.h");
+    require_text(logicHeader, "AHCI_ATAPI_READ_16");
+    require_text(logic, "case AHCI_ATAPI_READ_16:");
 
     if (failures != 0)
         return EXIT_FAILURE;

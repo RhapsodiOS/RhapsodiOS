@@ -25,7 +25,8 @@ int AHCIBuildPacketCommand(unsigned char fis[20], unsigned char acmd[16],
                            const unsigned char *cdb,
                            unsigned int cdbLength,
                            unsigned int transferBytes,
-                           unsigned char write);
+                           unsigned char write,
+                           unsigned char dmaDirSupported);
 int AHCIATAPIShouldRequestSense(unsigned char opcode,
                                 unsigned char ignoreChkcond);
 int AHCIATAPISenseDataValid(int succeeded, unsigned int transferred);

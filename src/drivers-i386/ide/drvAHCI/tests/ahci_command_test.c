@@ -93,7 +93,7 @@ static void test_packet_command(void)
     memset(fis, 0xff, sizeof(fis));
     memset(acmd, 0xff, sizeof(acmd));
     CHECK(AHCIBuildPacketCommand(fis, acmd, testUnitReady, 12,
-                                 0, 0) == 0);
+                                 0, 0, 1) == 0);
     CHECK(fis[2] == 0xa0 && fis[3] == 0x00);
     CHECK(fis[5] == 0x00 && fis[6] == 0x00);
     CHECK(memcmp(acmd, testUnitReady, 12) == 0);
@@ -101,22 +101,26 @@ static void test_packet_command(void)
 
     memset(acmd, 0xff, sizeof(acmd));
     CHECK(AHCIBuildPacketCommand(fis, acmd, read10, 12,
-                                 2048, 0) == 0);
+                                 2048, 0, 1) == 0);
     CHECK(fis[3] == 0x05);
     CHECK(fis[5] == 0x00 && fis[6] == 0x08);
     CHECK(memcmp(acmd, read10, 12) == 0);
     CHECK(acmd[12] == 0 && acmd[15] == 0);
 
+    CHECK(AHCIBuildPacketCommand(fis, acmd, read10, 12,
+                                 2048, 0, 0) == 0);
+    CHECK(fis[3] == 0x01);
+
     CHECK(AHCIBuildPacketCommand(fis, acmd, command16, 16,
-                                 4096, 1) == 0);
+                                 4096, 1, 1) == 0);
     CHECK(fis[3] == 0x01);
     CHECK(fis[5] == 0x00 && fis[6] == 0x10);
     CHECK(memcmp(acmd, command16, 16) == 0);
 
     CHECK(AHCIBuildPacketCommand(fis, acmd, read10, 10,
-                                 2048, 0) != 0);
+                                 2048, 0, 1) != 0);
     CHECK(AHCIBuildPacketCommand(fis, acmd, read10, 12,
-                                 131073, 0) != 0);
+                                 131073, 0, 1) != 0);
 }
 
 static void test_atapi_autosense_decisions(void)

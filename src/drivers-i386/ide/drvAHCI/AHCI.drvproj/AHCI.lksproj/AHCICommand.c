@@ -24,7 +24,8 @@ int AHCIBuildPacketCommand(unsigned char fis[20], unsigned char acmd[16],
                            const unsigned char *cdb,
                            unsigned int cdbLength,
                            unsigned int transferBytes,
-                           unsigned char write)
+                           unsigned char write,
+                           unsigned char dmaDirSupported)
 {
     unsigned int byteCount;
 
@@ -37,7 +38,8 @@ int AHCIBuildPacketCommand(unsigned char fis[20], unsigned char acmd[16],
     memcpy(acmd, cdb, cdbLength);
     if (transferBytes == 0)
         return 0;
-    fis[3] = (unsigned char)(0x01U | (write ? 0U : 0x04U));
+    fis[3] = (unsigned char)(0x01U |
+                             (!write && dmaDirSupported ? 0x04U : 0U));
     byteCount = transferBytes > 0xffffU ? 0xffffU : transferBytes;
     fis[5] = (unsigned char)byteCount;
     fis[6] = (unsigned char)(byteCount >> 8);

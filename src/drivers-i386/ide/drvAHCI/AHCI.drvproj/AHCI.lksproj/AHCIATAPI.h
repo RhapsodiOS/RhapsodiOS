@@ -4,6 +4,7 @@
 #import <driverkit/IOSCSIController.h>
 #import <driverkit/IODeviceDescription.h>
 #import <machkit/NXLock.h>
+#import "AHCIATAPILogic.h"
 
 @class AHCIPort;
 
@@ -17,6 +18,7 @@
     AHCIPort *_port;
     NXLock *_stateLock;
     unsigned int _packetLength;
+    AHCIATAPIIdentity _identity;
     unsigned int _activeRequests;
     BOOL _online;
     BOOL _destroying;

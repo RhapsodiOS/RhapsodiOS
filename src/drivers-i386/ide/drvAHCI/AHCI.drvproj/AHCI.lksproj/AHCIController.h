@@ -36,7 +36,7 @@
 - initFromDeviceDescription:(IOPCIDeviceDescription *)deviceDescription;
 - free;
 - (void)interruptOccurred;
-- (void)recoverController;
+- (BOOL)recoverController;
 - (BOOL)beginSubmission;
 - (void)endSubmission;
 - (BOOL)commitSubmission;

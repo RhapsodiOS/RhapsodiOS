@@ -61,6 +61,7 @@
 - (BOOL)publishATAPIFromDeviceDescription:
     (IODeviceDescription *)deviceDescription;
 - (BOOL)unpublishATAPI;
+- (BOOL)resetATAPIDevice:(AHCIATAPIController *)device;
 - (void)handleInterrupt;
 - (void)setController:(id)owner;
 - (BOOL)controllerDidReset;

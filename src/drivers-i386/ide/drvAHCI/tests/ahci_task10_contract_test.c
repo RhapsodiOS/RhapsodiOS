@@ -242,27 +242,27 @@ static int valid_port_lifecycle(const char *text)
 
 static int valid_controller_recovery(const char *text)
 {
-    return scoped_order(text, "- (void)recoverController",
+    return scoped_order(text, "- (BOOL)recoverController",
                         "- (BOOL)beginSubmission",
                         "AHCIRecoveryGateStart(&recoveryGate)",
                         "AHCIRecoveryGateDrained(&recoveryGate)") &&
-           scoped_order(text, "- (void)recoverController",
+           scoped_order(text, "- (BOOL)recoverController",
                         "- (BOOL)beginSubmission",
                         "AHCIRecoveryGateDrained(&recoveryGate)",
                         "ghc = AHCIMMIORead(&mmio, AHCI_REG_GHC)") &&
-           scoped_order(text, "- (void)recoverController",
+           scoped_order(text, "- (BOOL)recoverController",
                         "- (BOOL)beginSubmission",
                         "[ports[port] controllerWillReset]",
                         "resetResult = AHCIHBAInitialize(&ops, &hbaInfo)") &&
-           scoped_order(text, "- (void)recoverController",
+           scoped_order(text, "- (BOOL)recoverController",
                         "- (BOOL)beginSubmission",
                         "if (resetResult != AHCI_HBA_SUCCESS)",
                         "[ports[port] controllerResetFailed]") &&
-           scoped_order(text, "- (void)recoverController",
+           scoped_order(text, "- (BOOL)recoverController",
                         "- (BOOL)beginSubmission",
                         "[ports[port] controllerDidReset]",
                         "globalInterruptsEnabled = YES;") &&
-           scoped_order(text, "- (void)recoverController",
+           scoped_order(text, "- (BOOL)recoverController",
                         "- (BOOL)beginSubmission",
                         "[ports[port] controllerDidReset]",
                         "AHCIRecoveryGateComplete(&recoveryGate, 1)") &&

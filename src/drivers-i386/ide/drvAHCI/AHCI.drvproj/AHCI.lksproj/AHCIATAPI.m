@@ -1,7 +1,9 @@
 #import "AHCIATAPI.h"
 #import "AHCIPort.h"
 #import "AHCICommand.h"
+#import "AHCIATAPILogic.h"
 #import <driverkit/generalFuncs.h>
+#import <driverkit/IOMemoryDescriptor.h>
 #import <driverkit/kernelDriver.h>
 #import <bsd/dev/scsireg.h>
 #import <bsd/string.h>
@@ -10,37 +12,22 @@
 #define AHCI_ATAPI_SECTOR_BYTES           2048U
 #define AHCI_SCSI_START_STOP_UNIT         0x1b
 #define AHCI_SCSI_PREVENT_ALLOW           0x1e
+#define AHCI_ATAPI_MODE_SENSE_MAX_BYTES   259U
 
-static unsigned int AHCIATAPICDBLength(const IOSCSIRequest *request)
-{
-    unsigned char opcode;
-
-    if (request->cdbLength != 0)
-        return request->cdbLength;
-    opcode = request->cdb.cdb_opcode;
-    switch (opcode & 0xe0) {
-    case 0x00:
-    case 0xc0:
-        return 6;
-    case 0x20:
-    case 0x40:
-    case 0xe0:
-        return 10;
-    case 0xa0:
-        return 12;
-    default:
-        return 0;
-    }
-}
-
-static int AHCIATAPISupportedOpcode(unsigned char opcode)
-{
-    return opcode == C6OP_INQUIRY || opcode == C6OP_TESTRDY ||
-           opcode == C6OP_REQSENSE || opcode == C10OP_READCAPACITY ||
-           opcode == C10OP_READEXTENDED || opcode == C6OP_MODESENSE ||
-           opcode == AHCI_SCSI_START_STOP_UNIT ||
-           opcode == AHCI_SCSI_PREVENT_ALLOW;
-}
+typedef struct {
+    const unsigned char *cdb;
+    unsigned int cdbLength;
+    unsigned long long target;
+    unsigned long long lun;
+    char read;
+    int maxTransfer;
+    int timeoutLength;
+    int ignoreChkcond;
+    sc_status_t driverStatus;
+    unsigned char scsiStatus;
+    int bytesTransferred;
+    esense_reply_t senseData;
+} AHCIATAPIRequest;
 
 static void AHCIATAPISetSense(esense_reply_t *sense, unsigned char key,
                               unsigned char asc, unsigned char ascq)
@@ -68,21 +55,16 @@ static void AHCIATAPISetSense(esense_reply_t *sense, unsigned char key,
                  deviceDescription:(IODeviceDescription *)description
 {
     AHCIATAPIController *device;
-    unsigned int packetLength;
-    unsigned int peripheralType;
+    AHCIATAPIIdentity identity;
 
-    if (port == nil || words == 0)
-        return nil;
-    peripheralType = (words[0] >> 8) & 0x1fU;
-    packetLength = (words[0] & 3U) == 1U ? 16U : 12U;
-    if ((peripheralType != 5U && peripheralType != 7U) ||
-        ((words[0] & 3U) != 0U && (words[0] & 3U) != 1U))
+    if (port == nil || !AHCIATAPIParseIdentity(words, &identity))
         return nil;
     device = [[self alloc] initFromDeviceDescription:description];
     if (device == nil)
         return nil;
     device->_port = port;
-    device->_packetLength = packetLength;
+    device->_identity = identity;
+    device->_packetLength = identity.packetLength;
     device->_stateLock = [NXLock new];
     if (device->_stateLock == nil) {
         [device free];
@@ -95,7 +77,7 @@ static void AHCIATAPISetSense(esense_reply_t *sense, unsigned char key,
     }
     device->_deviceRegistered = YES;
     IOLog("%s: ATAPI optical device, %u-byte packets, target 0 lun 0\n",
-          [device name], packetLength);
+          [device name], device->_packetLength);
     return device;
 }
 
@@ -125,6 +107,7 @@ static void AHCIATAPISetSense(esense_reply_t *sense, unsigned char key,
               byteLength:(unsigned int)byteLength
                     write:(BOOL)write
                    client:(vm_task_t)client
+                  timeout:(unsigned int)timeout
               transferred:(unsigned int *)actual
 {
     unsigned char packetCDB[16];
@@ -137,80 +120,166 @@ static void AHCIATAPISetSense(esense_reply_t *sense, unsigned char key,
     bcopy(cdb, packetCDB, cdbLength);
     if (AHCIBuildPacketCommand(commandFIS, acmd, packetCDB,
                                _packetLength, byteLength,
-                               write ? 1 : 0) != 0)
+                               write ? 1 : 0,
+                               _identity.dmaDirSupported ? 1 : 0) != 0)
         return IO_R_INVALID_ARG;
     return [_port executeATA:0xa0 fis:commandFIS packet:acmd
                        buffer:buffer length:byteLength write:write
                        client:client
-                      timeout:AHCI_ATAPI_PACKET_TIMEOUT_SECONDS
+                      timeout:timeout
                   transferred:actual];
 }
 
-- (sc_status_t)executeRequest:(IOSCSIRequest *)scsiReq
-                       buffer:(void *)buffer
-                       client:(vm_task_t)client
+- (BOOL)copyKernelBuffer:(void *)source
+                  length:(unsigned int)length
+                toBuffer:(void *)buffer
+                  client:(vm_task_t)client
 {
-    unsigned char *cdb;
+    IOMemoryDescriptor *descriptor;
+    unsigned int copied;
+
+    if (length == 0)
+        return YES;
+    descriptor = [[IOMemoryDescriptor alloc] initWithAddress:buffer
+                                                     length:length];
+    if (descriptor == nil)
+        return NO;
+    [descriptor setClient:client];
+    copied = [descriptor writeToClient:source count:length];
+    [descriptor release];
+    return copied == length;
+}
+
+- (sc_status_t)executeCommonRequest:(AHCIATAPIRequest *)request
+                             buffer:(void *)buffer
+                             client:(vm_task_t)client
+{
     unsigned char senseCDB[12];
-    esense_reply_t sense;
-    unsigned int cdbLength;
+    unsigned char translatedCDB[12];
+    unsigned char atapiModeData[AHCI_ATAPI_MODE_SENSE_MAX_BYTES];
+    unsigned char scsiModeData[255];
     unsigned int blocks;
     unsigned int actual;
     unsigned int senseActual;
+    unsigned int packetBytes;
+    unsigned int packetCDBLength;
+    unsigned int packetTimeout;
+    unsigned int modeBytes;
+    const unsigned char *packetCDB;
+    void *packetBuffer;
+    vm_task_t packetClient;
+    BOOL modeSense;
+    BOOL emulatePageTwo;
     IOReturn result;
     IOReturn senseResult;
+    esense_reply_t sense;
 
-    if (scsiReq == 0)
-        return SR_IOST_CMDREJ;
-    scsiReq->bytesTransferred = 0;
-    scsiReq->scsiStatus = STAT_CHECK;
-    scsiReq->driverStatus = SR_IOST_CMDREJ;
-    if (scsiReq->target != 0 || scsiReq->lun != 0 ||
-        scsiReq->maxTransfer < 0 ||
-        (unsigned int)scsiReq->maxTransfer >
+    request->bytesTransferred = 0;
+    request->scsiStatus = STAT_CHECK;
+    request->driverStatus = SR_IOST_CMDREJ;
+    bzero(&request->senseData, sizeof(request->senseData));
+    if (request->target != 0 || request->lun != 0 ||
+        request->maxTransfer < 0 ||
+        (unsigned int)request->maxTransfer >
             AHCI_ATAPI_MAX_TRANSFER_BYTES ||
-        (scsiReq->maxTransfer != 0 && buffer == 0))
+        (request->maxTransfer != 0 && buffer == 0) ||
+        request->cdbLength == 0 || request->cdbLength > _packetLength)
         return SR_IOST_CMDREJ;
-    cdb = (unsigned char *)&scsiReq->cdb.cdb_opcode;
-    cdbLength = AHCIATAPICDBLength(scsiReq);
-    if (!AHCIATAPISupportedOpcode(cdb[0]) || cdbLength == 0 ||
-        cdbLength > _packetLength)
+    if (request->maxTransfer != 0 && !request->read)
         return SR_IOST_CMDREJ;
-    if (scsiReq->maxTransfer != 0 && !scsiReq->read)
+    if ((request->cdb[0] == C6OP_TESTRDY ||
+         request->cdb[0] == AHCI_SCSI_START_STOP_UNIT ||
+         request->cdb[0] == AHCI_SCSI_PREVENT_ALLOW) &&
+        request->maxTransfer != 0)
         return SR_IOST_CMDREJ;
-    if ((cdb[0] == C6OP_TESTRDY ||
-         cdb[0] == AHCI_SCSI_START_STOP_UNIT ||
-         cdb[0] == AHCI_SCSI_PREVENT_ALLOW) &&
-        scsiReq->maxTransfer != 0)
-        return SR_IOST_CMDREJ;
-    if (cdb[0] == C10OP_READEXTENDED) {
-        blocks = ((unsigned int)cdb[7] << 8) | cdb[8];
+    if (request->cdb[0] == C10OP_READEXTENDED) {
+        blocks = ((unsigned int)request->cdb[7] << 8) |
+                 request->cdb[8];
         if (blocks > AHCI_ATAPI_MAX_TRANSFER_BYTES /
                      AHCI_ATAPI_SECTOR_BYTES ||
-            (unsigned int)scsiReq->maxTransfer !=
+            (unsigned int)request->maxTransfer !=
                 blocks * AHCI_ATAPI_SECTOR_BYTES)
             return SR_IOST_CMDREJ;
     }
+    if (request->cdb[0] == AHCI_ATAPI_READ_16) {
+        blocks = ((unsigned int)request->cdb[12] << 8) |
+                 request->cdb[13];
+        if (request->cdb[10] != 0 || request->cdb[11] != 0 ||
+            blocks > AHCI_ATAPI_MAX_TRANSFER_BYTES /
+                     AHCI_ATAPI_SECTOR_BYTES ||
+            (unsigned int)request->maxTransfer !=
+                blocks * AHCI_ATAPI_SECTOR_BYTES)
+            return SR_IOST_CMDREJ;
+    }
+
+    packetCDB = request->cdb;
+    packetCDBLength = request->cdbLength;
+    packetBytes = (unsigned int)request->maxTransfer;
+    packetBuffer = buffer;
+    packetClient = client;
+    modeSense = request->cdb[0] == C6OP_MODESENSE;
+    emulatePageTwo = modeSense &&
+                     (request->cdb[2] & 0x3fU) == 2U;
+    if (modeSense && !emulatePageTwo) {
+        if (!AHCIATAPITranslateModeSense6(request->cdb,
+                                           packetBytes, translatedCDB,
+                                           &packetBytes))
+            return SR_IOST_CMDREJ;
+        packetCDB = translatedCDB;
+        packetCDBLength = 10;
+        packetBuffer = atapiModeData;
+        packetClient = IOVmTaskSelf();
+    }
+    if (emulatePageTwo &&
+        !AHCIATAPIEmulateModeSensePage2(request->cdb, scsiModeData,
+                                        packetBytes, &modeBytes))
+        return SR_IOST_CMDREJ;
+
     if (![self beginRequest]) {
-        AHCIATAPISetSense(&scsiReq->senseData, SENSE_NOTREADY,
+        AHCIATAPISetSense(&request->senseData, SENSE_NOTREADY,
                           0x3a, 0x00);
-        scsiReq->driverStatus = SR_IOST_CHKSV;
+        request->driverStatus = SR_IOST_CHKSV;
         return SR_IOST_CHKSV;
     }
-    result = [self performPacket:cdb length:cdbLength buffer:buffer
-                      byteLength:(unsigned int)scsiReq->maxTransfer
-                           write:NO client:client
-                     transferred:&actual];
-    scsiReq->bytesTransferred = (int)actual;
+    if (emulatePageTwo) {
+        if (![self copyKernelBuffer:scsiModeData length:modeBytes
+                           toBuffer:buffer client:client]) {
+            request->driverStatus = SR_IOST_HW;
+            goto finish;
+        }
+        request->bytesTransferred = (int)modeBytes;
+        request->scsiStatus = STAT_GOOD;
+        request->driverStatus = SR_IOST_GOOD;
+        goto finish;
+    }
+
+    actual = 0;
+    packetTimeout = AHCIATAPIPacketTimeout(request->timeoutLength);
+    result = [self performPacket:packetCDB length:packetCDBLength
+                          buffer:packetBuffer byteLength:packetBytes
+                           write:NO client:packetClient
+                         timeout:packetTimeout transferred:&actual];
+    if (result == IO_R_SUCCESS && modeSense) {
+        if (!AHCIATAPIRemapModeSense10(atapiModeData, actual,
+                                        scsiModeData,
+                                        (unsigned int)request->maxTransfer,
+                                        &modeBytes) ||
+            ![self copyKernelBuffer:scsiModeData length:modeBytes
+                           toBuffer:buffer client:client]) {
+            request->driverStatus = SR_IOST_HW;
+            goto finish;
+        }
+        actual = modeBytes;
+    }
+    request->bytesTransferred = (int)actual;
     if (result == IO_R_SUCCESS) {
-        scsiReq->scsiStatus = STAT_GOOD;
-        scsiReq->driverStatus = SR_IOST_GOOD;
-        [self endRequest];
-        return SR_IOST_GOOD;
+        request->scsiStatus = STAT_GOOD;
+        request->driverStatus = SR_IOST_GOOD;
+        goto finish;
     }
     if (result == IO_R_IO &&
-        AHCIATAPIShouldRequestSense(cdb[0],
-                                    scsiReq->ignoreChkcond)) {
+        AHCIATAPIShouldRequestSense(request->cdb[0],
+                                    request->ignoreChkcond)) {
         bzero(senseCDB, sizeof(senseCDB));
         senseCDB[0] = C6OP_REQSENSE;
         senseCDB[4] = (unsigned char)sizeof(sense);
@@ -219,46 +288,104 @@ static void AHCIATAPISetSense(esense_reply_t *sense, unsigned char key,
         senseResult = [self performPacket:senseCDB length:6 buffer:&sense
                                byteLength:sizeof(sense) write:NO
                                     client:IOVmTaskSelf()
+                                   timeout:AHCI_ATAPI_PACKET_TIMEOUT_SECONDS
                                transferred:&senseActual];
         if (AHCIATAPISenseDataValid(senseResult == IO_R_SUCCESS,
                                     senseActual)) {
-            scsiReq->senseData = sense;
-            if (sense.er_sensekey == SENSE_NOTREADY ||
-                sense.er_sensekey == SENSE_UNITATTENTION)
-                scsiReq->scsiStatus = STAT_CHECK;
-            scsiReq->driverStatus = SR_IOST_CHKSV;
-            [self endRequest];
-            return SR_IOST_CHKSV;
+            request->senseData = sense;
+            request->driverStatus = SR_IOST_CHKSV;
+            goto finish;
         }
         if (senseResult == IO_R_OFFLINE)
             result = IO_R_OFFLINE;
     }
     if (result == IO_R_OFFLINE) {
-        AHCIATAPISetSense(&scsiReq->senseData, SENSE_NOTREADY,
+        AHCIATAPISetSense(&request->senseData, SENSE_NOTREADY,
                           0x3a, 0x00);
-        scsiReq->driverStatus = SR_IOST_CHKSV;
+        request->driverStatus = SR_IOST_CHKSV;
     } else if (result == IO_R_TIMEOUT) {
-        scsiReq->driverStatus = SR_IOST_IOTO;
+        request->driverStatus = SR_IOST_IOTO;
     } else if (result == IO_R_IO) {
-        scsiReq->driverStatus = SR_IOST_CHKSNV;
+        request->driverStatus = SR_IOST_CHKSNV;
     } else {
-        scsiReq->driverStatus = SR_IOST_HW;
+        request->driverStatus = SR_IOST_HW;
     }
+
+finish:
     [self endRequest];
-    return scsiReq->driverStatus;
+    return request->driverStatus;
+}
+
+- (sc_status_t)executeRequest:(IOSCSIRequest *)scsiReq
+                       buffer:(void *)buffer
+                       client:(vm_task_t)client
+{
+    AHCIATAPIRequest request;
+    sc_status_t status;
+
+    if (scsiReq == 0)
+        return SR_IOST_CMDREJ;
+    scsiReq->bytesTransferred = 0;
+    scsiReq->scsiStatus = STAT_CHECK;
+    scsiReq->driverStatus = SR_IOST_CMDREJ;
+    bzero(&request, sizeof(request));
+    request.cdb = (const unsigned char *)&scsiReq->cdb.cdb_opcode;
+    request.cdbLength = AHCIATAPIValidateCDBLength(request.cdb[0],
+        scsiReq->cdbLength, sizeof(scsiReq->cdb));
+    if (request.cdbLength == 0)
+        return SR_IOST_CMDREJ;
+    request.target = scsiReq->target;
+    request.lun = scsiReq->lun;
+    request.read = scsiReq->read;
+    request.maxTransfer = scsiReq->maxTransfer;
+    request.timeoutLength = scsiReq->timeoutLength;
+    request.ignoreChkcond = scsiReq->ignoreChkcond;
+    status = [self executeCommonRequest:&request buffer:buffer client:client];
+    scsiReq->bytesTransferred = request.bytesTransferred;
+    scsiReq->scsiStatus = request.scsiStatus;
+    scsiReq->driverStatus = request.driverStatus;
+    scsiReq->senseData = request.senseData;
+    return status;
+}
+
+- (sc_status_t)executeSCSI3Request:(IOSCSI3Request *)scsiReq
+                            buffer:(void *)buffer
+                            client:(vm_task_t)client
+{
+    AHCIATAPIRequest request;
+    sc_status_t status;
+
+    if (scsiReq == 0)
+        return SR_IOST_CMDREJ;
+    scsiReq->bytesTransferred = 0;
+    scsiReq->scsiStatus = STAT_CHECK;
+    scsiReq->driverStatus = SR_IOST_CMDREJ;
+    bzero(&request, sizeof(request));
+    request.cdb = (const unsigned char *)&scsiReq->cdb.cdb_opcode;
+    request.cdbLength = AHCIATAPIValidateCDBLength(request.cdb[0],
+        scsiReq->cdbLength, sizeof(scsiReq->cdb));
+    if (request.cdbLength == 0)
+        return SR_IOST_CMDREJ;
+    request.target = scsiReq->target;
+    request.lun = scsiReq->lun;
+    request.read = scsiReq->read;
+    request.maxTransfer = scsiReq->maxTransfer;
+    request.timeoutLength = scsiReq->timeoutLength;
+    status = [self executeCommonRequest:&request buffer:buffer client:client];
+    scsiReq->bytesTransferred = request.bytesTransferred;
+    scsiReq->scsiStatus = request.scsiStatus;
+    scsiReq->driverStatus = request.driverStatus;
+    scsiReq->senseData = request.senseData;
+    return status;
 }
 
 - (BOOL)reidentifyFromWords:(const unsigned short *)words
 {
-    unsigned int packetLength;
-    unsigned int peripheralType;
+    AHCIATAPIIdentity identity;
 
-    if (words == 0)
+    if (!AHCIATAPIParseIdentity(words, &identity))
         return NO;
-    peripheralType = (words[0] >> 8) & 0x1fU;
-    packetLength = (words[0] & 3U) == 1U ? 16U : 12U;
-    return (peripheralType == 5U || peripheralType == 7U) &&
-           packetLength == _packetLength;
+    return AHCIATAPIIdentityMatches(&_identity, &identity) ? YES : NO;
 }
 
 - (void)portBecameNotReady
@@ -288,7 +415,7 @@ static void AHCIATAPISetSense(esense_reply_t *sense, unsigned char key,
 
 - (sc_status_t)resetSCSIBus
 {
-    return SR_IOST_GOOD;
+    return [_port resetATAPIDevice:self] ? SR_IOST_GOOD : SR_IOST_HW;
 }
 
 - free

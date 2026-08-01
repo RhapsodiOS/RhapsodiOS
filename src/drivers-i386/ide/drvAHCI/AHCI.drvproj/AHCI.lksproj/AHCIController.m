@@ -356,7 +356,7 @@ static int AHCIVersionIsCommon(AHCIU32 version)
     return [super free];
 }
 
-- (void)recoverController
+- (BOOL)recoverController
 {
     AHCIHBAOps ops;
     AHCIHBAResult resetResult;
@@ -366,11 +366,11 @@ static int AHCIVersionIsCommon(AHCIU32 version)
     int drained;
 
     if (recoveryLock == nil)
-        return;
+        return NO;
     [recoveryLock lock];
     if (!AHCIRecoveryGateStart(&recoveryGate)) {
         [recoveryLock unlock];
-        return;
+        return NO;
     }
     controllerRecovering = YES;
     hbaResetAlreadyTried = YES;
@@ -393,7 +393,7 @@ static int AHCIVersionIsCommon(AHCIU32 version)
         controllerOffline = YES;
         controllerRecovering = NO;
         [recoveryLock unlock];
-        return;
+        return NO;
     }
     globalInterruptsEnabled = NO;
     ghc = AHCIMMIORead(&mmio, AHCI_REG_GHC);
@@ -419,7 +419,7 @@ static int AHCIVersionIsCommon(AHCIU32 version)
         [recoveryLock lock];
         AHCIRecoveryGateComplete(&recoveryGate, 0);
         [recoveryLock unlock];
-        return;
+        return NO;
     }
     for (port = 0; port < AHCI_MAX_PORTS; ++port) {
         if (ports[port] != nil)
@@ -435,6 +435,7 @@ static int AHCIVersionIsCommon(AHCIU32 version)
     [recoveryLock lock];
     AHCIRecoveryGateComplete(&recoveryGate, 1);
     [recoveryLock unlock];
+    return YES;
 }
 
 - (BOOL)beginSubmission

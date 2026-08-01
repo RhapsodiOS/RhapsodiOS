@@ -46,6 +46,12 @@
  * MKLINUX-1.0DR2
  */
 
+#ifdef MPIC_DIRECT_HOST_TEST
+
+#include <interrupts.h>
+
+#else
+
 #include <mach/boolean.h>
 
 #ifndef NULL
@@ -69,6 +75,64 @@
 #include <powermac.h>
 #include <interrupts.h>
 #include <chips/mpic.h>
+
+#endif
+
+int
+PEMPIClogicalForSource(struct powermac_interrupt *map, int count, int source)
+{
+	if (source < 0 || source >= count)
+		return -1;
+	if (map[source].i_device != -1)
+		return map[source].i_device;
+	return PMAC_DEV_MPIC_DIRECT_BASE + source;
+}
+
+static int
+mpic_direct_source(struct powermac_interrupt *map, int count, int identity)
+{
+	int source;
+
+	if (identity < PMAC_DEV_MPIC_DIRECT_BASE)
+		return -1;
+	source = identity - PMAC_DEV_MPIC_DIRECT_BASE;
+	if (source >= count)
+		return -1;
+	if (map[source].i_device != -1 &&
+	    map[source].i_device != identity)
+		return -1;
+	return source;
+}
+
+int
+PEMPICsourceForInterrupt(struct powermac_interrupt *map, int count,
+	int totalCount, int identity)
+{
+	int source;
+
+	if (identity >= PMAC_DEV_MPIC_DIRECT_BASE)
+		return mpic_direct_source(map, count, identity);
+	/* DeviceTreeProbe reverses the legacy OF source for old tables. */
+	source = identity ^ 0x18;
+	if (source < 0 || source >= totalCount)
+		return -1;
+	return source;
+}
+
+int
+PEMPICsourceForDevice(struct powermac_interrupt *map, int count, int device)
+{
+	int source;
+
+	if (device >= PMAC_DEV_MPIC_DIRECT_BASE)
+		return mpic_direct_source(map, count, device);
+	for (source = 0; source < count; source++)
+		if (map[source].i_device == device)
+			return source;
+	return -1;
+}
+
+#ifndef MPIC_DIRECT_HOST_TEST
 
 /* Prototypes */
 
@@ -245,22 +309,21 @@ mpic_find_entry(int device,
 	return 0;
 }
 
-
 static unsigned int
 mpic_int_to_number(int index)
 {
+	int source;
 
 //kprintf("mpic_pmac_int_to_number: Int: %d\n", index);
 
-	// This is temporary. DeviceTreeProbe always bit reverses
-	// for compatibility with the existing config tables. Once
-	// GC and the driver config tables agree, remove this.
-	index ^= 0x18;
-
-	if (index >= 0 && index < nmpic_interrupts)
-	    return (mpic_interrupts[index].i_device);
-	if (index < (nmpic_interrupts + nmpic_via_interrupts))
-	    return (mpic_via1_interrupts[index - nmpic_interrupts].i_device);
+	source = PEMPICsourceForInterrupt(mpic_interrupts,
+	    nmpic_interrupts, nmpic_interrupts + nmpic_via_interrupts,
+	    index);
+	if (source >= 0 && source < nmpic_interrupts)
+	    return PEMPIClogicalForSource(mpic_interrupts,
+		nmpic_interrupts, source);
+	if (source >= nmpic_interrupts)
+	    return (mpic_via1_interrupts[source - nmpic_interrupts].i_device);
 	return (-1);
 }
 
@@ -277,8 +340,11 @@ mpic_register_int(int device,
 //kprintf("mpic_register_int: device: %d\n", device);
 
 	/* Check primary interrupts */
-	p = mpic_interrupts;
-	i = mpic_find_entry(device, &p, nmpic_interrupts);
+	i = PEMPICsourceForDevice(mpic_interrupts, nmpic_interrupts, device);
+	if (i >= 0)
+		p = &mpic_interrupts[i];
+	else
+		p = NULL;
 	if (p) {
 		if (p->i_handler) {
 			panic("mpic_register_int: "
@@ -364,10 +430,8 @@ mpic_enable_irq(int irq)
 {
   u_long    tmp;
 
-    // This is temporary. DeviceTreeProbe always bit reverses
-    // for compatibility with the existing config tables. Once
-    // GC and the driver config tables agree, remove this.
-    irq ^= 0x18;
+	irq = PEMPICsourceForInterrupt(mpic_interrupts,
+	    nmpic_interrupts, nmpic_interrupts, irq);
 
   /* make sure the irq is in the mpic table and not via-cuda */
   if ((irq < 0) || (irq >= nmpic_interrupts) || (irq == mpic_via_cascade))
@@ -387,10 +451,8 @@ mpic_disable_irq(int irq)
 {
   u_long    tmp;
 
-    // This is temporary. DeviceTreeProbe always bit reverses
-    // for compatibility with the existing config tables. Once
-    // GC and the driver config tables agree, remove this.
-    irq ^= 0x18;
+	irq = PEMPICsourceForInterrupt(mpic_interrupts,
+	    nmpic_interrupts, nmpic_interrupts, irq);
 
   /* make sure the irq is in the mpic table and not via-cuda */
   if ((irq < 0) || (irq >= nmpic_interrupts) || (irq == mpic_via_cascade))
@@ -433,7 +495,8 @@ mpic_interrupt(int type, struct ppc_saved_state *ssp,
 
             /* Handle the interrupt */
 	    if (handler->i_handler)
-	      handler->i_handler(handler->i_device, ssp, handler->i_arg);
+	      handler->i_handler(PEMPIClogicalForSource(mpic_interrupts,
+	          nmpic_interrupts, irq), ssp, handler->i_arg);
 	    else
 	      printf("{MPIC INT %d}", irq);
 
@@ -476,3 +539,5 @@ void mpic_via1_interrupt(int device, void *ssp, void *arg)
 	  irq &= ~(1<<bit);
 	}
 }
+
+#endif /* !MPIC_DIRECT_HOST_TEST */

@@ -1,0 +1,35 @@
+{
+    DYNAMIC_CODE_GEN = NO;
+    FILESTABLE = {
+        CLASSES = (PPCTASAudio.m);
+        C_FILES = (TASCore.c, TASTime.c, TAS3001C.c, TAS3004.c, PPCDBDMAAudio.c, TASRuntime.c);
+        H_FILES = (PPCTASAudio.h, TASCore.h, TASCodec.h, TASTime.h, PPCDBDMAAudio.h, TASRuntime.h);
+        OTHER_LINKED = ();
+        OTHER_SOURCES = (
+            Makefile.preamble,
+            Makefile,
+            Makefile.postamble,
+            Load_Commands.sect,
+            ../../tests/Makefile.host,
+            ../../tests/tas_audio_test.c,
+            ../../tests/tas_runtime_test.c,
+            ../../tests/tas_fixtures.c,
+            ../../tests/tas_fixtures.h
+        );
+        SUBPROJECTS = ();
+    };
+    LANGUAGE = English;
+    LOCALIZABLE_FILES = {};
+    MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles";
+    NEXTSTEP_BUILDTOOL = /bin/gnumake;
+    NEXTSTEP_COMPILEROPTIONS = "";
+    NEXTSTEP_JAVA_COMPILER = /usr/bin/javac;
+    NEXTSTEP_OBJCPLUS_COMPILER = /usr/bin/cc;
+    PDO_UNIX_JAVA_COMPILER = "$(NEXTDEV_BIN)/javac";
+    PDO_UNIX_OBJCPLUS_COMPILER = "$(NEXTDEV_BIN)/gcc";
+    PROJECTNAME = drvPPCTASAudio;
+    PROJECTTYPE = "Kernel Server";
+    PROJECTVERSION = 1.0;
+    WINDOWS_JAVA_COMPILER = "$(JDKBINDIR)/javac.exe";
+    WINDOWS_OBJCPLUS_COMPILER = "$(DEVDIR)/gcc";
+}

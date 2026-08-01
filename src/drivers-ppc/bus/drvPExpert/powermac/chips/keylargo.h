@@ -26,10 +26,21 @@
 #define _INTERRUPT_KEYLARGO_H_
 
 #include <ppc/spl.h>
+#include <mach/boolean.h>
 
 #include <machdep/ppc/dbdma.h>
+#include <mach/kern_return.h>
+
+#define KEYLARGO_FCR0_OFFSET 0x38
+#define KEYLARGO_FCR1_OFFSET 0x3c
+#define KEYLARGO_FCR2_OFFSET 0x40
+#define KEYLARGO_FCR3_OFFSET 0x44
+#define KEYLARGO_FCR4_OFFSET 0x48
 
 /* DBDMA Channel Map */
 extern powermac_dbdma_channels_t keylargo_dbdma_channels;
+extern boolean_t PEKeyLargoGetMacIOInfo(unsigned int *base,
+    unsigned int *size);
+extern kern_return_t PEKeyLargoInitialize(void);
 
 #endif /* _INTERRUPT_KEYLARGO_H_ */

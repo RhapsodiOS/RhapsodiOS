@@ -600,6 +600,25 @@ int builder_makeroot(const Package *pkg, const char *buildroot,
         if (rc) goto cleanup;
     }
 
+    /* csu.apk may predate the dyld_stub crt1 fix; without LC_LOAD_DYLINKER,
+       chroot-linked Configure probes exit 78 ("kernel support for the
+       dynamic linker is not present"). Always prefer the host's repaired crt1. */
+    {
+        char *libdir = str_cats(buildroot, "/lib", (char *)0);
+        char *dst = str_cats(buildroot, "/lib/crt1.o", (char *)0);
+        struct stat st;
+        if (stat("/lib/crt1.o", &st) == 0) {
+            printf("\tseeding /lib/crt1.o from host\n");
+            fflush(stdout);
+            if (exec_runv("mkdir", "-p", libdir, (char *)0) != 0 ||
+                exec_runv("cp", "-p", "/lib/crt1.o", dst, (char *)0) != 0) {
+                fprintf(stderr, "rbuild: warning: could not seed /lib/crt1.o\n");
+            }
+        }
+        free(libdir);
+        free(dst);
+    }
+
     /* cctools apk overwrites /usr/bin/strip with a strict binary that fails
        "install -s" on some newly linked tools. Seed the host bootstrap wrapper. */
     {

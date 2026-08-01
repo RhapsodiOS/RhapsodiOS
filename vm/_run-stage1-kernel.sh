@@ -81,7 +81,8 @@ seed_stub() {
   build_one machkit-1 headers || exit 1
   build_one machkit-1 all || exit 1
 
-  build_one yacc-1 all || exit 1  build_one perl-1 all || exit 1
+  build_one yacc-1 all || exit 1
+  build_one perl-1 all || exit 1
   build_one flex-1 all || exit 1
   build_one Commands/adv_cmds all || exit 1
 

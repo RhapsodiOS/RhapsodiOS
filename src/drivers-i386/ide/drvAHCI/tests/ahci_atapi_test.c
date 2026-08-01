@@ -165,6 +165,42 @@ static void test_mode_sense_translation(void)
                                     6, &actual) == 1);
     CHECK(actual == 6U && scsiData[0] == 11 && scsiData[3] == 4);
     CHECK(scsiData[4] == 0xde && scsiData[5] == 0xad);
+
+    atapiData[0] = 1;
+    atapiData[1] = 0xff;
+    atapiData[7] = 0;
+    CHECK(AHCIATAPIRemapModeSense10(atapiData, 12, scsiData,
+                                    sizeof(scsiData), &actual) == 1);
+    CHECK(actual == 8U && scsiData[0] == 0xff);
+
+    atapiData[0] = 0;
+    atapiData[1] = 14;
+    atapiData[7] = 4;
+    CHECK(AHCIATAPIRemapModeSense10(atapiData, 10, scsiData,
+                                    sizeof(scsiData), &actual) == 1);
+    CHECK(actual == 6U && scsiData[3] == 4);
+    CHECK(scsiData[4] == 0xde && scsiData[5] == 0xad);
+
+    memset(atapiData, 0, sizeof(atapiData));
+    atapiData[1] = 14;
+    atapiData[2] = 0x12;
+    atapiData[3] = 0x34;
+    CHECK(AHCIATAPIRemapModeSense10(atapiData, 2, scsiData,
+                                    1, &actual) == 1);
+    CHECK(actual == 1U && scsiData[0] == 11);
+    CHECK(AHCIATAPIRemapModeSense10(atapiData, 3, scsiData,
+                                    2, &actual) == 1);
+    CHECK(actual == 2U && scsiData[1] == 0x12);
+    CHECK(AHCIATAPIRemapModeSense10(atapiData, 4, scsiData,
+                                    3, &actual) == 1);
+    CHECK(actual == 3U && scsiData[2] == 0x34);
+
+    atapiData[1] = 10;
+    atapiData[7] = 5;
+    CHECK(AHCIATAPIRemapModeSense10(atapiData, 12, scsiData,
+                                    sizeof(scsiData), &actual) == 0);
+    CHECK(AHCIATAPIRemapModeSense10(atapiData, 12, scsiData,
+                                    1, &actual) == 0);
 }
 
 static void test_mode_sense_page_two_emulation(void)

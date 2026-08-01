@@ -133,37 +133,52 @@ int AHCIATAPIRemapModeSense10(const unsigned char *atapiData,
     unsigned int declaredTotal;
     unsigned int descriptorBytes;
     unsigned int availableTotal;
+    unsigned int headerBytes;
+    unsigned int requiredInput;
     unsigned int payloadBytes;
     unsigned int resultBytes;
+    unsigned int modeLength;
 
-    if (atapiData == 0 || scsiData == 0 || scsiBytes == 0 ||
-        atapiBytes < 8U)
+    if (atapiData == 0 || scsiData == 0 || scsiBytes == 0)
+        return 0;
+    headerBytes = scsiCapacity < 4U ? scsiCapacity : 4U;
+    requiredInput = headerBytes < 2U ? 2U : headerBytes + 1U;
+    if (headerBytes == 4U)
+        requiredInput = 8U;
+    if (atapiBytes < requiredInput)
         return 0;
     declaredLength = ((unsigned int)atapiData[0] << 8) |
                      atapiData[1];
     declaredTotal = declaredLength + 2U;
-    if (declaredTotal < 8U || declaredTotal > 260U)
+    if (declaredTotal < 8U)
         return 0;
-    descriptorBytes = ((unsigned int)atapiData[6] << 8) |
-                      atapiData[7];
-    if (descriptorBytes > 255U ||
-        descriptorBytes > declaredTotal - 8U)
-        return 0;
-    availableTotal = atapiBytes < declaredTotal ? atapiBytes : declaredTotal;
-    if (descriptorBytes > availableTotal - 8U)
-        return 0;
-    payloadBytes = availableTotal - 8U;
-    resultBytes = 4U + payloadBytes;
-    if (resultBytes > scsiCapacity)
-        resultBytes = scsiCapacity;
+    descriptorBytes = 0U;
+    payloadBytes = 0U;
+    if (atapiBytes >= 8U) {
+        descriptorBytes = ((unsigned int)atapiData[6] << 8) |
+                          atapiData[7];
+        if (descriptorBytes > declaredTotal - 8U)
+            return 0;
+    }
+    if (headerBytes == 4U) {
+        availableTotal = atapiBytes < declaredTotal ?
+                         atapiBytes : declaredTotal;
+        payloadBytes = availableTotal - 8U;
+        if (payloadBytes > scsiCapacity - 4U)
+            payloadBytes = scsiCapacity - 4U;
+    }
+    resultBytes = headerBytes + payloadBytes;
+    modeLength = declaredTotal - 5U;
     if (resultBytes > 0U)
-        scsiData[0] = (unsigned char)(declaredTotal - 5U);
+        scsiData[0] = modeLength > 255U ? 0xff :
+                      (unsigned char)modeLength;
     if (resultBytes > 1U)
         scsiData[1] = atapiData[2];
     if (resultBytes > 2U)
         scsiData[2] = atapiData[3];
     if (resultBytes > 3U)
-        scsiData[3] = (unsigned char)descriptorBytes;
+        scsiData[3] = descriptorBytes > 255U ? 0xff :
+                      (unsigned char)descriptorBytes;
     if (resultBytes > 4U)
         memcpy(scsiData + 4, atapiData + 8, resultBytes - 4U);
     *scsiBytes = resultBytes;

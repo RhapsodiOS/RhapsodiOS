@@ -65,6 +65,9 @@ seed_stub() {
 
   cd "$SRC" || exit 1
 
+  # Windows tar|ssh drops +x; perl and friends need Configure executable.
+  find "$SRC" -type f \( -name Configure -o -name configure \) -exec chmod a+x {} \; 2>/dev/null || true
+
   # Promote apks from a prior /build/built dstdir into the seed repo.
   if [ -d /build/built ]; then
     for f in /build/built/*.apk; do

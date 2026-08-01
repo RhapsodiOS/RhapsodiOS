@@ -132,11 +132,12 @@ mkdir -p "$work_parent" "$logs_dir"
 copy_tmp=$work_image.copying.$$
 qemu_pid=
 keys_pid=
+qemu_status_file=$work_image.qemu-status.$$
 cleanup()
 {
     [ -z "$keys_pid" ] || kill "$keys_pid" >/dev/null 2>&1 || true
     [ -z "$qemu_pid" ] || kill "$qemu_pid" >/dev/null 2>&1 || true
-    rm -f "$copy_tmp"
+    rm -f "$copy_tmp" "$qemu_status_file" "$qemu_status_file.tmp"
 }
 trap cleanup 0 1 2 3 15
 cp -p "$source_image" "$copy_tmp" || die "could not copy source root image"
@@ -144,7 +145,29 @@ mv -f "$copy_tmp" "$work_image" || die "could not install working image"
 
 # The Rhapsody boot loader accepts kernel/root arguments at its VGA boot
 # prompt. Send the same keystrokes used by vm/qemu-shot.py over QMP.
-"$qemu" "$@" &
+# A wrapper records QEMU's real exit before it terminates. This makes an early
+# emulator/configuration failure distinguishable from the QMP helper's later
+# inability to connect, without relying on kill -0 behavior for zombie children.
+(
+    qemu_child=
+    stop_qemu_child()
+    {
+        [ -z "$qemu_child" ] || kill "$qemu_child" >/dev/null 2>&1 || true
+        [ -z "$qemu_child" ] || wait "$qemu_child" >/dev/null 2>&1 || true
+        exit 143
+    }
+    trap stop_qemu_child 1 2 3 15
+    "$qemu" "$@" &
+    qemu_child=$!
+    set +e
+    wait "$qemu_child"
+    child_status=$?
+    set -e
+    qemu_child=
+    printf '%s\n' "$child_status" > "$qemu_status_file.tmp"
+    mv -f "$qemu_status_file.tmp" "$qemu_status_file"
+    exit "$child_status"
+) &
 qemu_pid=$!
 "$python" - "$qmp_port" "$keys_delay" "$boot_keys" <<'PY' &
 import json
@@ -190,6 +213,24 @@ keys_status=$?
 set -e
 keys_pid=
 if [ "$keys_status" -ne 0 ]; then
+    # Give an already-failing QEMU wrapper time to publish its status. The
+    # helper normally waits up to 30 seconds, so this path only adds a bounded
+    # delay to an error and never to a successful launch.
+    if [ ! -f "$qemu_status_file" ]; then
+        sleep 1
+    fi
+    if [ -f "$qemu_status_file" ]; then
+        qemu_status=
+        read qemu_status < "$qemu_status_file" || qemu_status=
+        wait "$qemu_pid" >/dev/null 2>&1 || true
+        qemu_pid=
+        if [ -n "$qemu_status" ] && [ "$qemu_status" -ne 0 ]; then
+            echo "run-q35-ahci: QEMU exited before boot-key injection (exit $qemu_status)" >&2
+            exit "$qemu_status"
+        fi
+        echo "run-q35-ahci: boot-key injection failed (exit $keys_status)" >&2
+        exit "$keys_status"
+    fi
     echo "run-q35-ahci: boot-key injection failed (exit $keys_status)" >&2
     kill "$qemu_pid" >/dev/null 2>&1 || true
     wait "$qemu_pid" >/dev/null 2>&1 || true

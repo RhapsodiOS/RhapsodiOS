@@ -217,6 +217,39 @@ class AHCIScriptTests(unittest.TestCase):
             self.assertEqual(result.returncode, 7, result.stdout)
             self.assertIn("boot-key injection failed", result.stdout)
 
+    def test_launcher_preserves_early_qemu_failure(self):
+        work_dir = VM / "work" / "script-test-qemu-failure"
+        shutil.rmtree(work_dir, ignore_errors=True)
+        work_dir.mkdir(parents=True)
+        self.addCleanup(lambda: shutil.rmtree(work_dir, ignore_errors=True))
+        source = work_dir / "source.img"
+        target = work_dir / "boot.img"
+        source.write_bytes(b"source")
+        with tempfile.TemporaryDirectory() as td:
+            td = pathlib.Path(td)
+            fake_python = td / "python"
+            fake_qemu = td / "qemu"
+            fake_mv = td / "mv"
+            real_python = self.sh_path(pathlib.Path(sys.executable))
+            fake_python.write_text(
+                "#!/bin/sh\n"
+                "if [ \"$1\" = - ]; then exit 7; fi\n"
+                f'exec "{real_python}" "$@"\n', encoding="utf-8")
+            fake_qemu.write_text("#!/bin/sh\nexit 23\n", encoding="utf-8")
+            fake_mv.write_text(
+                "#!/bin/sh\ncp \"$2\" \"$3\" && rm -f \"$2\"\n",
+                encoding="utf-8")
+            for path in (fake_python, fake_qemu, fake_mv):
+                path.chmod(0o755)
+            result = self.run_sh(
+                RUN, self.sh_path(source), self.sh_path(target), env={
+                    "AHCI_PYTHON": self.sh_path(fake_python),
+                    "AHCI_QEMU": self.sh_path(fake_qemu),
+                    "PATH": self.sh_path(td) + ":" + os.environ["PATH"],
+                })
+            self.assertEqual(result.returncode, 23, result.stdout)
+            self.assertIn("QEMU exited before boot-key injection", result.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

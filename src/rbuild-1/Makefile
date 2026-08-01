@@ -5,9 +5,9 @@ CFLAGS = -Wall -O
 d = $(DSTROOT)
 p = rbuild
 
-OBJS = strutil.o package.o manifest.o exec.o pkginfo.o builder.o main.o
+OBJS = strutil.o package.o manifest.o exec.o pkginfo.o builder.o toolchain.o main.o
 
-TESTS = tests/test_strutil tests/test_package tests/test_manifest tests/test_builder tests/test_exec tests/test_pkginfo
+TESTS = tests/test_strutil tests/test_package tests/test_manifest tests/test_builder tests/test_exec tests/test_pkginfo tests/test_toolchain
 
 .PHONY: all clean install installhdrs installsrc test trace-test
 
@@ -32,6 +32,7 @@ test_manifest_OBJS = strutil.o manifest.o
 test_builder_OBJS = strutil.o package.o exec.o pkginfo.o builder.o
 test_exec_OBJS = strutil.o exec.o
 test_pkginfo_OBJS = strutil.o package.o exec.o pkginfo.o
+test_toolchain_OBJS = strutil.o toolchain.o
 
 tests/test_strutil: tests/test_strutil.c $(test_strutil_OBJS)
 	$(CC) $(CFLAGS) -I. -o $@ tests/test_strutil.c $(test_strutil_OBJS)
@@ -45,6 +46,8 @@ tests/test_exec: tests/test_exec.c $(test_exec_OBJS)
 	$(CC) $(CFLAGS) -I. -o $@ tests/test_exec.c $(test_exec_OBJS)
 tests/test_pkginfo: tests/test_pkginfo.c $(test_pkginfo_OBJS)
 	$(CC) $(CFLAGS) -I. -o $@ tests/test_pkginfo.c $(test_pkginfo_OBJS)
+tests/test_toolchain: tests/test_toolchain.c $(test_toolchain_OBJS)
+	$(CC) $(CFLAGS) -I. -o $@ tests/test_toolchain.c $(test_toolchain_OBJS)
 
 trace-test: rbuild
 	sh tests/trace/run.sh

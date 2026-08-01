@@ -28,3 +28,8 @@ out/
 # binrecon ledger lock files: transient, never committed
 ledger.json.lock
 **/reconstruction/**/*.lock
+
+# Rhapsody DR2 install media
+/vm/install/rhapsody_dr2_x86.iso
+/vm/install/rhapsody_dr2_x86_DriverDisk.img
+/vm/install/rhapsody_dr2_x86_InstallationFloppy.img

@@ -641,6 +641,21 @@ int builder_makeroot(const Package *pkg, const char *buildroot,
         free(dstreal);
     }
 
+    /* coreosmakefiles.apk often ships texi2html as 0644 (Windows sync / tar
+       mode loss). flex and others exec it during install-strip docs. */
+    {
+        char *dst = str_cats(buildroot,
+            "/System/Developer/Makefiles/CoreOS/ReleaseControl/texi2html",
+            (char *)0);
+        struct stat st;
+        if (stat(dst, &st) == 0) {
+            printf("\tchmod +x texi2html in build root\n");
+            fflush(stdout);
+            exec_runv("chmod", "a+x", dst, (char *)0);
+        }
+        free(dst);
+    }
+
 cleanup:
     strlist_free(&deps);
     strlist_free(&depnames);

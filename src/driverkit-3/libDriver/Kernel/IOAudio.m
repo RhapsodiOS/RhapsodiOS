@@ -73,23 +73,6 @@ static void ioThread(IOAudio *audioDevice);
 static void keyThread(IOAudio *audioDevice);
 
 /*
- * FIXME: These tags should be incorporated in NXSoundParameterTags. 
- */
-typedef enum {
-    NX_SoundDeviceLineOut = NX_SoundDeviceParameterKeyBase + 25,
-    NX_SoundDeviceSpeakerOut,
-    NX_SoundDeviceCDOut,
-    NX_SoundDeviceAux1Out,
-    NX_SoundDeviceAux2Out,
-        
-    NX_SoundDeviceMicIn,
-    NX_SoundDeviceLineIn,
-    NX_SoundDeviceCDIn,
-    NX_SoundDeviceAux1In,
-    NX_SoundDeviceAux2In,
-} NXSoundParameterTagExtra;
-
-/*
  * NeXTTime relies on +_instance, so
  * these can be factory variables.
  */

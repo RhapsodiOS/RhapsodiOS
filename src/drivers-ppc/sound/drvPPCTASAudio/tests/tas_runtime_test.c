@@ -1694,6 +1694,12 @@ static void test_driver_binds_runtime_controls_and_safe_irq_ordinals(void)
         "../../../../driverkit-3/driverkit/IOAudioPrivate.h",
         "_setInputReportFor"));
     CHECK(source_file_contains(
+        "../../../../driverkit-3/driverkit/IOAudioPrivate.h",
+        "NX_SoundDeviceMicIn"));
+    CHECK(!source_file_contains(
+        "../PPCTASAudio.drvproj/PPCTASAudio.lksproj/PPCTASAudio.m",
+        "ULL"));
+    CHECK(source_file_contains(
         "../../../../driverkit-3/libDriver/Kernel/IOAudio.m",
         "[self _setInputReportFor:ptag to:enable]"));
     CHECK(source_file_contains(

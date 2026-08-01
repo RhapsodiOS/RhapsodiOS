@@ -20,7 +20,8 @@
 #define TAS_I2S_SERIAL_FORMAT 0x10
 #define TAS_I2S_DATA_WORD     0x18
 #define TAS_POLL_INTERVAL_MS 250UL
-#define TAS_NSEC_PER_MS      1000000ULL
+#define TAS_NSEC_PER_MS      1000000UL
+#define TAS_NSEC_PER_SEC     1000000000UL
 
 extern void flush_cache_v(vm_offset_t, unsigned int);
 
@@ -484,8 +485,8 @@ static TASStatus tas_codec_write(void *opaque, unsigned char reg,
     request.direction = kPEKeyWestWrite;
     request.buffer = (unsigned char *)bytes;
     request.length = (unsigned int)length;
-    request.deadline.tv_sec = absolute / 1000000000ULL;
-    request.deadline.tv_nsec = absolute % 1000000000ULL;
+    request.deadline.tv_sec = absolute / TAS_NSEC_PER_SEC;
+    request.deadline.tv_nsec = absolute % TAS_NSEC_PER_SEC;
     if (PEKeyWestI2CTransfer(&request) != KERN_SUCCESS) {
         *written = 0UL;
         return kTASStatusTimeout;
@@ -581,7 +582,7 @@ static unsigned long tas_now(void *opaque)
     ns_time_t now;
     (void)opaque;
     IOGetTimestamp(&now);
-    return TASTimeNormalize((unsigned long)(now / 1000000ULL));
+    return TASTimeNormalize((unsigned long)(now / TAS_NSEC_PER_MS));
 }
 
 static PPCDBDMAStatus tas_publish(void *opaque, void *address,

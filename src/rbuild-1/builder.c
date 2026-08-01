@@ -310,6 +310,8 @@ void builder_buildflags(const Params *params, const char *target, strlist *out,
             push_kv(out, "RC_ppc", "YES");
         /* HFS /build has no hard links; prefer the /build/bin/ln fallback. */
         push_kv(out, "LN", "/build/bin/ln");
+        /* cctools dyld needs static libc; host only has System.framework dylib. */
+        push_kv(out, "BOOTSTRAP_SKIP_DYLD", "YES");
     } else {
         push_kv(out, "RC_i386", "YES");
         push_kv(out, "RC_ppc", "YES");
@@ -874,6 +876,27 @@ int builder_harvest_objects(const Package *pkg, const Params *params,
             argv[a++] = srcpath; argv[a++] = cobjpath; argv[a] = 0;
             exec_printcmd(argv);
             if (exec_run_checked(argv)) rc = 1;
+        }
+        /* Native builds have no makeroot; also install into live SUBLIBROOTS
+           so later packages (Libsystem make_links) see the ofiles. */
+        if (native && params->SUBLIBROOTS) {
+            char *live = str_cats(params->SUBLIBROOTS, "/",
+                                  pkg->source ? pkg->source : "", "/",
+                                  file, (char *)0);
+            char *livedir = xstrdup(live);
+            char *slash = strrchr(livedir, '/');
+            if (slash) {
+                *slash = '\0';
+                exec_check(mkdirp(livedir));
+            }
+            {
+                char *argv[6];
+                argv[0] = "cp"; argv[1] = "-rp";
+                argv[2] = srcpath; argv[3] = live; argv[4] = 0;
+                exec_printcmd(argv);
+                if (exec_run_checked(argv)) rc = 1;
+            }
+            free(live); free(livedir);
         }
         free(objdest); free(dstdir); free(srcpath); free(cobjpath);
     }

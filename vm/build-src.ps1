@@ -111,6 +111,31 @@ if ($Bootstrap) {
     if ($ec -ne 0) {
         Write-Die "remote BootstrapManifest missing at $srcRemote/BootstrapManifest - sync with: sync-src.ps1 -Path BootstrapManifest"
     }
+    # Guest clock drifts; autoconf aborts when source mtimes (from Windows sync)
+    # are newer than "now". Rhapsody date(1) wants yyyymmddHHMM.SS.
+    $timeArg = (Get-Date).ToString('yyyyMMddHHmm') + '.00'
+    $ec = Invoke-BuildRemote "date $timeArg"
+    if ($ec -ne 0) {
+        Write-Host "build-src: warning: could not set guest date to $timeArg (continuing)"
+    }
+    # Native builds read live System.framework headers; seed ones this image lacks.
+    $seedLocal = Join-Path $VmDir '_seed-bootstrap-hdrs.sh'
+    if (-not (Test-Path -LiteralPath $seedLocal)) {
+        Write-Die "missing $seedLocal"
+    }
+    $tar = Resolve-RhapTool -NameOrPath $cfg.Tar -DiePrefix 'build-src'
+    Write-Host 'build-src: uploading seed-bootstrap-hdrs.sh'
+    $remote = "$($cfg.User)@$($cfg.Host)"
+    $opts = ($script:RhapLegacySshOptions -join ' ')
+    $cmdLine = " `"$tar`" --format ustar -cf - -C `"$VmDir`" `"_seed-bootstrap-hdrs.sh`" | `"$ssh`" $opts $remote `"cd /tmp && tar xf - && chmod a+x /tmp/_seed-bootstrap-hdrs.sh`" "
+    Invoke-RhapSshAskPass -Cfg $cfg -Action {
+        cmd.exe /c $cmdLine
+        if ($LASTEXITCODE -ne 0) {
+            Write-Die "seed script upload failed (exit $LASTEXITCODE)"
+        }
+    }
+    $ec = Invoke-BuildRemote "/tmp/_seed-bootstrap-hdrs.sh $srcRemote"
+    if ($ec -ne 0) { Write-Die "seed-bootstrap-hdrs failed (exit $ec)" }
     $prep = "mkdir -p $repo && cd $srcRemote && rbuild bootstrap BootstrapManifest $repo $repo"
     $ec = Invoke-BuildRemote $prep
     if ($ec -ne 0) { Write-Die "bootstrap failed (exit $ec)" }

@@ -53,13 +53,11 @@ function Invoke-FixExecBits {
         [string]$Ssh,
         [string]$RemoteTree
     )
-    # Windows ustar extract typically yields 0644; bootstrap dies on ./configure.
+    # Windows ustar extract typically yields 0644. Named helpers only — a
+    # full-tree shebang walk over Darwin sources is too slow on the guest.
     Write-Host "sync-src: restoring +x under $RemoteTree"
-    $cmd = @"
-find $RemoteTree -type f \( -name configure -o -name config.guess -o -name config.sub -o -name config.rpath -o -name install-sh -o -name mkinstalldirs -o -name missing -o -name ltmain.sh -o -name compile -o -name depcomp -o -name autogen.sh -o -name build_gcc -o -name '*.sh' -o -name '*.pl' \) -exec chmod a+x {} \;
-"@
-    $cmd = ($cmd -replace "`r`n", ' ' -replace "`n", ' ').Trim()
-    $ec = Invoke-RhapRemote -Cfg $Cfg -Ssh $Ssh -RemoteCommand $cmd
+    $named = "find $RemoteTree -type f \( -name configure -o -name config.guess -o -name config.sub -o -name config.rpath -o -name install-sh -o -name mkinstalldirs -o -name missing -o -name ltmain.sh -o -name compile -o -name depcomp -o -name autogen.sh -o -name build_gcc -o -name move-if-change -o -name ylwrap -o -name genmultilib -o -name '*.sh' -o -name '*.pl' \) -exec chmod a+x {} \;"
+    $ec = Invoke-RhapRemote -Cfg $Cfg -Ssh $Ssh -RemoteCommand $named
     if ($ec -ne 0) {
         Write-Host "sync-src: warning: chmod pass exited $ec (continuing)"
     }

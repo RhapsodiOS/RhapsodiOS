@@ -1,7 +1,7 @@
 #Requires -Version 5.0
 <#
 .SYNOPSIS
-  Sync local src/ to the Rhapsody guest build tree (RemoteRoot/src) via tar|ssh.
+  Sync local src/ to the Rhapsody guest build tree (RemoteRoot/src) via cpio over SSH.
 .EXAMPLE
   powershell -File vm\sync-src.ps1 -All
   powershell -File vm\sync-src.ps1 -Path drivers-i386/bus/drvPCMCIABus
@@ -10,7 +10,7 @@
   OpenSSH -o options documented in "SSH CONNECTION.md".
 
   Modern OpenSSH scp loses the connection against this guest even with -O, so
-  transfers use Windows tar piped into ssh (via cmd.exe for a binary-safe pipe).
+  transfers use a temporary cpio archive sent to ssh as a binary stream.
 
   After extract, restores +x on configure/scripts (Windows tar drops Unix mode bits).
 #>
@@ -26,6 +26,7 @@ $ErrorActionPreference = 'Stop'
 
 $VmDir = $PSScriptRoot
 . (Join-Path $VmDir 'rhap-remote.ps1')
+. (Join-Path $VmDir 'sync-src-lib.ps1')
 
 function Write-Die([string]$Message) {
     Write-RhapDie 'sync-src' $Message
@@ -42,7 +43,7 @@ Usage:
 
 Config: vm\vm.conf (Host, User, Password, RemoteRoot, LocalRoot, Ssh, Tar)
 Uses OpenSSH with legacy KEX/hostkey/cipher/MAC options (see vm\SSH CONNECTION.md).
-Transfers via tar|ssh (not scp). Post-sync restores +x on configure/scripts.
+Transfers via cpio over SSH (not scp). Post-sync restores +x on configure/scripts.
 Exactly one of -All or -Path is required.
 "@
 }
@@ -56,14 +57,18 @@ function Invoke-FixExecBits {
     # Windows ustar extract typically yields 0644. Named helpers only — a
     # full-tree shebang walk over Darwin sources is too slow on the guest.
     Write-Host "sync-src: restoring +x under $RemoteTree"
-    $named = "find $RemoteTree -type f \( -name configure -o -name Configure -o -name config.guess -o -name config.sub -o -name config.rpath -o -name install-sh -o -name mkinstalldirs -o -name missing -o -name ltmain.sh -o -name compile -o -name depcomp -o -name autogen.sh -o -name build_gcc -o -name move-if-change -o -name ylwrap -o -name genmultilib -o -name '*.sh' -o -name '*.pl' \) -exec chmod a+x {} \;"
+    $named = New-RhapFixExecBitsCommand -RemoteTree $RemoteTree
     $ec = Invoke-RhapRemote -Cfg $Cfg -Ssh $Ssh -RemoteCommand $named
     if ($ec -ne 0) {
         Write-Host "sync-src: warning: chmod pass exited $ec (continuing)"
     }
 }
 
-function Invoke-TarUpload {
+function ConvertTo-ProcessArgument([string]$Value) {
+    return '"' + $Value.Replace('"', '\"') + '"'
+}
+
+function Invoke-CpioUpload {
     param(
         [hashtable]$Cfg,
         [string]$Ssh,
@@ -78,22 +83,63 @@ function Invoke-TarUpload {
         Write-Die "path missing locally: $(Join-Path $LocalParent $LeafName)"
     }
 
-    $mkdirCmd = "mkdir -p $RemoteParent"
-    $ec = Invoke-RhapRemote -Cfg $Cfg -Ssh $Ssh -RemoteCommand $mkdirCmd
-    if ($ec -ne 0) { Write-Die "remote mkdir failed (exit $ec): $mkdirCmd" }
-
-    # cmd.exe pipe keeps the tar stream binary-safe (PowerShell 5.x pipes are not).
     $remote = "$($Cfg.User)@$($Cfg.Host)"
-    $remoteCmd = "cd $RemoteParent && tar xf -"
-    $opts = ($script:RhapLegacySshOptions -join ' ')
-    $cmdLine = " `"$Tar`" --format ustar -cf - -C `"$LocalParent`" `"$LeafName`" | `"$Ssh`" $opts $remote `"$remoteCmd`" "
-
-    Write-Host "sync-src: tar|ssh $Label -> ${remote}:$RemoteParent/"
-    Invoke-RhapSshAskPass -Cfg $Cfg -Action {
-        cmd.exe /c $cmdLine
-        if ($LASTEXITCODE -ne 0) {
-            Write-Die "tar|ssh failed (exit $LASTEXITCODE) for $Label"
+    $token = [guid]::NewGuid().ToString('n')
+    $remoteCmd = New-RhapSyncRemoteCommand -RemoteRoot $Cfg.RemoteRoot -RemoteParent $RemoteParent -LeafName $LeafName -Token $token
+    $producer = {
+        param($ArchivePath, $ArchiveParent, $ArchiveLeaf)
+        Write-Host "sync-src: creating cpio archive for $Label"
+        & $Tar --format cpio -cf $ArchivePath -C $ArchiveParent $ArchiveLeaf
+        return [int]$LASTEXITCODE
+    }
+    $consumer = {
+        param($ArchivePath)
+        $sshArgs = @('-T') + $script:RhapLegacySshOptions + @($remote, $remoteCmd)
+        $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+        $startInfo.FileName = $Ssh
+        $startInfo.Arguments = (($sshArgs | ForEach-Object { ConvertTo-ProcessArgument $_ }) -join ' ')
+        $startInfo.UseShellExecute = $false
+        $startInfo.CreateNoWindow = $true
+        $startInfo.RedirectStandardInput = $true
+        $startInfo.RedirectStandardOutput = $true
+        $startInfo.RedirectStandardError = $true
+        $process = New-Object System.Diagnostics.Process
+        $process.StartInfo = $startInfo
+        $result = [pscustomobject]@{ ExitCode = -1; Started = $false }
+        try {
+            Write-Host "sync-src: cpio over SSH $Label -> ${remote}:$RemoteParent/"
+            Invoke-RhapSshAskPass -Cfg $Cfg -Action {
+                if (-not $process.Start()) { throw "could not start SSH: $Ssh" }
+                $result.Started = $true
+                $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+                $stderrTask = $process.StandardError.ReadToEndAsync()
+                $input = [System.IO.File]::OpenRead($ArchivePath)
+                try {
+                    $input.CopyTo($process.StandardInput.BaseStream)
+                } finally {
+                    $input.Dispose()
+                    $process.StandardInput.Close()
+                }
+                $process.WaitForExit()
+                $stdout = [string]$stdoutTask.Result
+                $stderr = [string]$stderrTask.Result
+                if (-not [string]::IsNullOrWhiteSpace($stdout)) { Write-Host $stdout.TrimEnd("`r", "`n") }
+                if (-not [string]::IsNullOrWhiteSpace($stderr)) { Write-Host $stderr.TrimEnd("`r", "`n") }
+                $result.ExitCode = [int]$process.ExitCode
+            }
+            return [int]$result.ExitCode
+        } finally {
+            if ($result.Started) {
+                try { if (-not $process.HasExited) { $process.Kill() } } catch { }
+                try { $process.WaitForExit() } catch { }
+            }
+            $process.Dispose()
         }
+    }
+    try {
+        Invoke-RhapCpioTransfer -LocalParent $LocalParent -LeafName $LeafName -Producer $producer -Consumer $consumer
+    } catch {
+        Write-Die "$($_.Exception.Message) for $Label"
     }
 
     $remoteTree = "$RemoteParent/$LeafName"
@@ -118,11 +164,11 @@ if (-not (Test-Path -LiteralPath $localSrc)) {
 }
 
 if ($All) {
-    Invoke-TarUpload -Cfg $cfg -Ssh $ssh -Tar $tar `
+    Invoke-CpioUpload -Cfg $cfg -Ssh $ssh -Tar $tar `
         -LocalParent $cfg.LocalRoot -LeafName 'src' `
         -RemoteParent $cfg.RemoteRoot -Label 'src'
 } else {
-    $rel = $Path.Trim().TrimStart('/', '\').Replace('\', '/')
+    $rel = ConvertTo-RhapSyncRelativePath -Path $Path
     $local = Join-Path $localSrc ($rel -replace '/', [IO.Path]::DirectorySeparatorChar)
     if (-not (Test-Path -LiteralPath $local)) {
         Write-Die "path missing locally: $local"
@@ -138,7 +184,7 @@ if ($All) {
         $remoteParent = "$($cfg.RemoteRoot)/src/$($parentRel.Replace('\', '/'))"
     }
 
-    Invoke-TarUpload -Cfg $cfg -Ssh $ssh -Tar $tar `
+    Invoke-CpioUpload -Cfg $cfg -Ssh $ssh -Tar $tar `
         -LocalParent $localParent -LeafName $leaf `
         -RemoteParent $remoteParent -Label "src/$rel"
 }

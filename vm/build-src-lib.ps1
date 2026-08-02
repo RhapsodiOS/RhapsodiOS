@@ -31,6 +31,20 @@ function Test-RhapToolchainProfileText {
     return $true
 }
 
+function ConvertFrom-RhapToolchainProfileText {
+    param([Parameter(Mandatory = $true)][string]$Text)
+
+    [void](Test-RhapToolchainProfileText -Text $Text)
+    $values = @{}
+    foreach ($rawLine in ($Text -split "`r?`n")) {
+        $line = $rawLine.Trim()
+        if ($line -eq '' -or $line.StartsWith('#')) { continue }
+        $equals = $line.IndexOf('=')
+        $values[$line.Substring(0, $equals).Trim()] = $line.Substring($equals + 1).Trim()
+    }
+    return $values
+}
+
 function Assert-RhapSafeArchFlags {
     param([Parameter(Mandatory = $true)][string]$Value)
     if ([string]::IsNullOrWhiteSpace($Value) -or $Value -notmatch '^[A-Za-z0-9_./,+=\s-]+$') {
@@ -109,9 +123,59 @@ function Get-RhapBuildPhases {
     return @('world')
 }
 
+function Assert-RhapFreshMode {
+    param(
+        [switch]$All,
+        [switch]$Rbuild,
+        [switch]$Bootstrap,
+        [switch]$KernelDrivers,
+        [switch]$World,
+        [switch]$Fresh
+    )
+    if ($Fresh -and -not $All) {
+        throw '-Fresh is only valid with -All'
+    }
+    return $true
+}
+
+function Invoke-RhapBuildOrchestration {
+    param(
+        [Parameter(Mandatory = $true)][string[]]$Phases,
+        [Parameter(Mandatory = $true)][string]$PreflightBody,
+        [Parameter(Mandatory = $true)][string]$ProfileBody,
+        [string]$FreshBody,
+        [Parameter(Mandatory = $true)][scriptblock]$ParseProfile,
+        [Parameter(Mandatory = $true)][scriptblock]$PhaseFactory,
+        [Parameter(Mandatory = $true)][scriptblock]$ScriptInvoker,
+        [Parameter(Mandatory = $true)][scriptblock]$CaptureInvoker
+    )
+    $exitCode = [int](& $ScriptInvoker 'preflight' $PreflightBody $false)
+    if ($exitCode -ne 0) { throw "preflight failed (exit $exitCode)" }
+    $capture = & $CaptureInvoker $ProfileBody
+    if ($capture.ExitCode -ne 0) { throw "remote toolchain profile read failed (exit $($capture.ExitCode))" }
+    $profile = & $ParseProfile $capture.Stdout
+    if (-not [string]::IsNullOrEmpty($FreshBody)) {
+        $exitCode = [int](& $ScriptInvoker 'fresh output reset' $FreshBody $false)
+        if ($exitCode -ne 0) { throw "fresh output reset failed (exit $exitCode)" }
+    }
+    foreach ($phase in $Phases) {
+        $body = & $PhaseFactory $phase $profile
+        $exitCode = [int](& $ScriptInvoker $phase $body $true)
+        if ($exitCode -ne 0) { throw "$phase failed (exit $exitCode)" }
+    }
+    return $true
+}
+
 function ConvertTo-RhapShellDoubleQuoted {
     param([Parameter(Mandatory = $true)][string]$Value)
     return '"' + $Value + '"'
+}
+
+function ConvertTo-RhapShellLiteral {
+    param([Parameter(Mandatory = $true)][string]$Value)
+    if ($Value -match '^[A-Za-z0-9_./,+:=@-]+$') { return $Value }
+    if ($Value.Contains("'")) { throw 'shell value contains an unsupported quote' }
+    return "'$Value'"
 }
 
 function Assert-RhapSafeCommandPath {
@@ -120,6 +184,45 @@ function Assert-RhapSafeCommandPath {
         [string]$Name
     )
     [void](ConvertTo-RhapNormalizedRemotePath -Path $Path -Name $Name)
+}
+
+function New-RhapReadProfileCommand {
+    param([Parameter(Mandatory = $true)][string]$Profile)
+    Assert-RhapSafeCommandPath -Path $Profile -Name 'ToolchainProfile'
+    return "set -e; /bin/cat '$(ConvertTo-RhapNormalizedRemotePath -Path $Profile)'"
+}
+
+function Test-RhapPathOverlapIgnoreCase {
+    param([string]$Left, [string]$Right)
+    return [string]::Equals($Left, $Right, [System.StringComparison]::OrdinalIgnoreCase) -or
+        $Left.StartsWith($Right + '/', [System.StringComparison]::OrdinalIgnoreCase) -or
+        $Right.StartsWith($Left + '/', [System.StringComparison]::OrdinalIgnoreCase)
+}
+
+function Assert-RhapSafeBuildTopology {
+    param(
+        [Parameter(Mandatory = $true)][string]$RemoteRoot,
+        [Parameter(Mandatory = $true)][string]$SourceRoot,
+        [Parameter(Mandatory = $true)][string[]]$Outputs
+    )
+    $root = ConvertTo-RhapNormalizedRemotePath -Path $RemoteRoot -Name 'RemoteRoot'
+    $source = ConvertTo-RhapNormalizedRemotePath -Path $SourceRoot -Name 'SourceRoot'
+    [void](Assert-RhapSafeRemoteOutputPath -RemoteRoot $root -Path $source)
+    if ($Outputs.Count -ne 5) { throw 'exactly five build output roles are required' }
+    $safe = New-Object System.Collections.Generic.List[string]
+    foreach ($path in $Outputs) {
+        $output = Assert-RhapSafeRemoteOutputPath -RemoteRoot $root -Path $path
+        if (Test-RhapPathOverlapIgnoreCase -Left $output -Right $source) {
+            throw 'build output overlaps SourceRoot'
+        }
+        foreach ($other in $safe) {
+            if (Test-RhapPathOverlapIgnoreCase -Left $output -Right $other) {
+                throw 'build output roles must be disjoint'
+            }
+        }
+        $safe.Add($output)
+    }
+    return @($safe)
 }
 
 function New-RhapPreflightCommand {
@@ -173,6 +276,7 @@ function New-RhapPreflightCommand {
         'test -x /usr/bin/cc || fail "Developer Tools compiler missing: /usr/bin/cc"',
         'test -x /usr/bin/install || fail "Developer Tools install missing: /usr/bin/install"',
         'test -f /usr/bin/file && test -x /usr/bin/file || fail "object inspection tool missing: /usr/bin/file"',
+        'for helper in /usr/bin/tee /usr/bin/cksum /usr/bin/sed /bin/cat; do test -f "$helper" && test -x "$helper" || fail "build helper missing: $helper"; done',
         'nearest_parent() { rbuild_parent=$1; while :; do test -e "$rbuild_parent" && break; rbuild_next=${rbuild_parent%/*}; test -n "$rbuild_next" || rbuild_next=/; if test "$rbuild_next" = "$rbuild_parent"; then break; fi; rbuild_parent=$rbuild_next; done; printf "%s\n" "$rbuild_parent"; }',
         'check_space() { rbuild_parent=$(nearest_parent "$1"); df -k "$rbuild_parent" | awk ''{ fields=NF; available=$4 } END { if (fields < 4 || (available + 0) < 1) exit 1 }'' || fail "no usable free space below $1"; }',
         "check_space $qTools",
@@ -204,4 +308,162 @@ function New-RhapPreflightCommand {
     )
     $body = $parts -join '; '
     return $body
+}
+
+function New-RhapBuildPhaseCommand {
+    param(
+        [Parameter(Mandatory = $true)][ValidateSet('rbuild', 'bootstrap', 'kernel-drivers', 'world')][string]$Phase,
+        [Parameter(Mandatory = $true)][string]$SourceRoot,
+        [Parameter(Mandatory = $true)][string]$ToolsDir,
+        [Parameter(Mandatory = $true)][string]$BootstrapRoot,
+        [Parameter(Mandatory = $true)][string]$StateDir,
+        [Parameter(Mandatory = $true)][string]$Profile,
+        [Parameter(Mandatory = $true)][string]$RepoDir,
+        [Parameter(Mandatory = $true)][string]$BuiltDir,
+        [Parameter(Mandatory = $true)][string]$BuildCc,
+        [Parameter(Mandatory = $true)][string]$Make,
+        [Parameter(Mandatory = $true)][string]$ToolPath,
+        [string[]]$DriverProjects = @(),
+        [string[]]$MakeDriverProjects = @()
+    )
+
+    foreach ($item in @(
+        @($SourceRoot, 'SourceRoot'), @($ToolsDir, 'ToolsDir'),
+        @($BootstrapRoot, 'BootstrapRoot'), @($StateDir, 'StateDir'),
+        @($Profile, 'Profile'), @($RepoDir, 'RepoDir'), @($BuiltDir, 'BuiltDir'),
+        @($BuildCc, 'BuildCc'), @($Make, 'Make')
+    )) {
+        Assert-RhapSafeCommandPath -Path $item[0] -Name $item[1]
+    }
+
+    $source = ConvertTo-RhapShellLiteral $SourceRoot
+    $tools = ConvertTo-RhapShellLiteral $ToolsDir
+    $bootstrap = ConvertTo-RhapShellLiteral $BootstrapRoot
+    $state = ConvertTo-RhapShellLiteral $StateDir
+    $profilePath = ConvertTo-RhapShellLiteral $Profile
+    $repo = ConvertTo-RhapShellLiteral $RepoDir
+    $built = ConvertTo-RhapShellLiteral $BuiltDir
+    $cc = ConvertTo-RhapShellLiteral $BuildCc
+    $makeTool = ConvertTo-RhapShellLiteral $Make
+    if ($ToolPath -notmatch '^[A-Za-z0-9_./:+@=-]+$') { throw 'unsafe toolchain path' }
+    $toolPath = ConvertTo-RhapShellLiteral $ToolPath
+    $rbuild = "$tools/bin/rbuild"
+
+    if ($Phase -eq 'rbuild') {
+        return "set -e; cd $source/rbuild-1 && $makeTool CC=$cc clean test all && /usr/bin/install -d $tools/bin && /usr/bin/install -c -m 755 rbuild $rbuild && $cc -O -o $tools/bin/relpath $source/Commands/bootstrap_cmds/relpath.tproj/relpath.c"
+    }
+    if ($Phase -eq 'bootstrap') {
+        return "set -e; $rbuild bootstrap --sysroot $bootstrap --toolchain $profilePath --state $state $source/BootstrapManifest $repo $repo"
+    }
+    if ($Phase -eq 'world') {
+        return "set -e; cd $source && $rbuild buildall --state $state Manifest $repo $built"
+    }
+
+    $commands = New-Object System.Collections.Generic.List[string]
+    $commands.Add('set -e')
+    $commands.Add("cd $source")
+    foreach ($package in @('driverkit-3', 'driverTools-1', 'kernel-7')) {
+        $commands.Add("$rbuild buildpackage --state $state --dir $package $repo $built")
+        $commands.Add("echo 'build-src: ok $package'")
+    }
+    $commands.Add("mkdir -p $state/logs $state/drivers")
+    $commands.Add('set +e')
+    $commands.Add('rbuild_driver_passes=0')
+    $commands.Add('rbuild_driver_failures=0')
+    $commands.Add("rbuild_failed_projects=''")
+    foreach ($project in $DriverProjects) {
+        if ($project -notmatch '^[A-Za-z0-9_.+/-]+$' -or $project -match '(^|/)\.\.(/|$)') {
+            throw "unsafe driver project path: $project"
+        }
+        $commands.Add("$rbuild buildpackage --state $state --dir $project $repo $built")
+        $commands.Add('rbuild_status=$?')
+        $commands.Add("if test `$rbuild_status -eq 0; then echo 'build-src: ok $project'; rbuild_driver_passes=`$((rbuild_driver_passes + 1)); else echo 'build-src: FAIL $project' >&2; rbuild_driver_failures=`$((rbuild_driver_failures + 1)); rbuild_failed_projects=`"`$rbuild_failed_projects $project`"; fi")
+    }
+    foreach ($project in $MakeDriverProjects) {
+        if ($project -notmatch '^[A-Za-z0-9_.+/-]+$' -or $project -match '(^|/)\.\.(/|$)') {
+            throw "unsafe driver project path: $project"
+        }
+        $markerName = ($project -replace '/', '_') + '-all'
+        $marker = "$state/drivers/$markerName.done"
+        $log = "$state/logs/$markerName.log"
+        $driverCommand = "cd $source/$project && PATH=$toolPath $makeTool CC=$cc"
+        $commands.Add("rbuild_profile_cksum=`$(/usr/bin/cksum $profilePath) || exit 1")
+        $commands.Add("rbuild_driver_command='$driverCommand'")
+        $commands.Add("if test -f $marker; then rbuild_saved_profile=`$(/usr/bin/sed -n 's/^profile_cksum=//p' $marker); rbuild_saved_command=`$(/usr/bin/sed -n 's/^command=//p' $marker); if test `"`$rbuild_saved_profile`" != `"`$rbuild_profile_cksum`" || test `"`$rbuild_saved_command`" != `"`$rbuild_driver_command`"; then echo 'build-src: driver profile mismatch; rerun with -Fresh' >&2; exit 1; fi; echo 'build-src: resume $project'; rbuild_driver_passes=`$((rbuild_driver_passes + 1)); else rbuild_status_file=$marker.status.`$`$")
+        $commands.Add("rm -f `"`$rbuild_status_file`" $marker.tmp.`$`$")
+        $commands.Add("( (cd $source/$project && PATH=$toolPath $makeTool CC=$cc); echo `$? > `"`$rbuild_status_file`" ) 2>&1 | /usr/bin/tee $log; rbuild_tee_status=`$?")
+        $commands.Add("if test -f `"`$rbuild_status_file`"; then rbuild_status=`$(/bin/cat `"`$rbuild_status_file`"); else rbuild_status=1; fi; test `$rbuild_tee_status -eq 0 || rbuild_status=1; rm -f `"`$rbuild_status_file`"")
+        $commands.Add("if test `$rbuild_status -eq 0; then if printf 'profile_cksum=%s\ncommand=%s\n' `"`$rbuild_profile_cksum`" `"`$rbuild_driver_command`" > $marker.tmp.`$`$ && mv $marker.tmp.`$`$ $marker; then echo 'build-src: ok $project'; rbuild_driver_passes=`$((rbuild_driver_passes + 1)); else echo 'build-src: driver state write failed: $project' >&2; rbuild_driver_failures=`$((rbuild_driver_failures + 1)); rbuild_failed_projects=`"`$rbuild_failed_projects $project`"; fi; else echo 'build-src: FAIL $project' >&2; rbuild_driver_failures=`$((rbuild_driver_failures + 1)); rbuild_failed_projects=`"`$rbuild_failed_projects $project`"; fi")
+        $commands.Add('fi')
+    }
+    $commands.Add("echo '======== kernel/drivers summary ======== '")
+    $commands.Add("echo 'core: driverkit-3, driverTools-1, kernel-7 (required, all ok)'")
+    $commands.Add('echo "drivers ok: $rbuild_driver_passes"')
+    $commands.Add('echo "drivers fail: $rbuild_driver_failures"')
+    $commands.Add('for rbuild_failed_project in $rbuild_failed_projects; do echo "  FAIL $rbuild_failed_project"; done')
+    $commands.Add('if test $rbuild_driver_failures -ne 0; then echo "build-src: kernel/drivers finished with $rbuild_driver_failures driver failure(s)" >&2; exit 1; fi')
+    $commands.Add("echo 'build-src: kernel/drivers complete'")
+    return $commands -join "; `n"
+}
+
+function New-RhapFreshCommand {
+    param(
+        [Parameter(Mandatory = $true)][string]$RemoteRoot,
+        [Parameter(Mandatory = $true)][string]$SourceRoot,
+        [Parameter(Mandatory = $true)][string]$Profile,
+        [Parameter(Mandatory = $true)][string]$ToolsDir,
+        [Parameter(Mandatory = $true)][string]$BootstrapRoot,
+        [Parameter(Mandatory = $true)][string]$RepoDir,
+        [Parameter(Mandatory = $true)][string]$BuiltDir,
+        [Parameter(Mandatory = $true)][string]$StateDir
+    )
+
+    $root = ConvertTo-RhapNormalizedRemotePath -Path $RemoteRoot -Name 'RemoteRoot'
+    $source = ConvertTo-RhapNormalizedRemotePath -Path $SourceRoot -Name 'SourceRoot'
+    $profilePath = ConvertTo-RhapNormalizedRemotePath -Path $Profile -Name 'ToolchainProfile'
+    $targets = @(Assert-RhapSafeBuildTopology -RemoteRoot $root -SourceRoot $source -Outputs @($ToolsDir, $BootstrapRoot, $RepoDir, $BuiltDir, $StateDir))
+    foreach ($target in $targets) {
+        if (Test-RhapPathOverlapIgnoreCase -Left $profilePath -Right $target) {
+            throw 'ToolchainProfile overlaps a Fresh output role'
+        }
+    }
+    $quoted = @($targets | ForEach-Object { "'$_'" })
+    $parents = New-Object System.Collections.Generic.List[string]
+    foreach ($target in $targets) {
+        $lastSlash = $target.LastIndexOf('/')
+        $parent = if ($lastSlash -eq 0) { '/' } else { $target.Substring(0, $lastSlash) }
+        if (-not [string]::Equals($parent, $root, [System.StringComparison]::Ordinal)) {
+            [void](Assert-RhapSafeRemoteOutputPath -RemoteRoot $root -Path $parent)
+        }
+        $seen = $false
+        foreach ($existing in $parents) {
+            if ([string]::Equals($parent, $existing, [System.StringComparison]::Ordinal)) {
+                $seen = $true
+                break
+            }
+        }
+        if (-not $seen) { $parents.Add($parent) }
+    }
+    $quotedParents = @($parents | ForEach-Object { "'$_'" })
+    $checks = @(
+        'set -e',
+        "ROOT='$root'",
+        "SOURCE='$source'",
+        "PROFILE='$profilePath'",
+        'fail() { echo "build-src fresh: $*" >&2; exit 1; }',
+        'ROOT_PHYS=$(cd -P "$ROOT" 2>/dev/null && pwd -P) || fail "cannot resolve RemoteRoot"',
+        'SOURCE_PHYS=$(cd -P "$SOURCE" 2>/dev/null && pwd -P) || fail "cannot resolve SourceRoot"',
+        'test "$ROOT_PHYS" != / || fail "physical RemoteRoot may not be /"',
+        'case "$SOURCE_PHYS" in "$ROOT_PHYS"/*) ;; *) fail "SourceRoot escapes RemoteRoot" ;; esac',
+        'test -f "$PROFILE" || fail "ToolchainProfile is not a regular file"',
+        'test ! -L "$PROFILE" || fail "ToolchainProfile may not be a symlink for Fresh"',
+        'PROFILE_PARENT=${PROFILE%/*}; test -n "$PROFILE_PARENT" || PROFILE_PARENT=/',
+        'PROFILE_PARENT_PHYS=$(cd -P "$PROFILE_PARENT" 2>/dev/null && pwd -P) || fail "cannot resolve ToolchainProfile parent"',
+        'PROFILE_PHYS="$PROFILE_PARENT_PHYS/${PROFILE##*/}"',
+        'check_target() { target=$1; probe=$target; while test "$probe" != "$ROOT"; do if test -L "$probe"; then fail "symlink in output path: $probe"; fi; next=${probe%/*}; test -n "$next" || next=/; test "$next" != "$probe" || fail "invalid output path"; probe=$next; done; probe=$target; suffix=; while test ! -e "$probe"; do leaf=${probe##*/}; suffix=/$leaf$suffix; probe=${probe%/*}; test -n "$probe" || probe=/; done; if test -d "$probe"; then physical=$(cd -P "$probe" 2>/dev/null && pwd -P) || fail "cannot resolve $probe"; target_physical=$physical$suffix; else parent=${probe%/*}; test -n "$parent" || parent=/; physical=$(cd -P "$parent" 2>/dev/null && pwd -P) || fail "cannot resolve $parent"; target_physical=$physical/${probe##*/}$suffix; fi; case "$target_physical" in "$ROOT_PHYS"|"$ROOT_PHYS"/*) ;; *) fail "output escapes RemoteRoot: $target" ;; esac; case "$target_physical" in "$SOURCE_PHYS"|"$SOURCE_PHYS"/*) fail "output reaches SourceRoot: $target" ;; esac; case "$PROFILE_PHYS" in "$target_physical"|"$target_physical"/*) fail "ToolchainProfile physically overlaps Fresh output: $target" ;; esac; case "$target_physical" in "$PROFILE_PHYS"|"$PROFILE_PHYS"/*) fail "Fresh output physically overlaps ToolchainProfile: $target" ;; esac; }'
+    )
+    foreach ($target in $targets) { $checks += "check_target '$target'" }
+    $checks += "rm -rf $($quoted -join ' ')"
+    $checks += "mkdir -p $($quotedParents -join ' ')"
+    return $checks -join "`n"
 }

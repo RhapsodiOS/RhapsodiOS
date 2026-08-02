@@ -168,7 +168,9 @@ function Invoke-RhapSshScript {
         [hashtable]$Cfg,
         [string]$Ssh,
         [string]$ScriptBody,
-        [scriptblock]$Invoker
+        [scriptblock]$Invoker,
+        [switch]$Stream,
+        [scriptblock]$Observer
     )
 
     $payload = $ScriptBody.Replace("`r`n", "`n").Replace("`r", "`n").TrimEnd("`n") + "`n"
@@ -178,8 +180,18 @@ function Invoke-RhapSshScript {
     )
 
     Invoke-RhapSshAskPass -Cfg $Cfg -Action {
+        $emitStdout = {
+            param([string]$Line)
+            if ($Observer) { & $Observer 'stdout' $Line }
+            Write-Host $Line
+        }
+        $emitStderr = {
+            param([string]$Line)
+            if ($Observer) { & $Observer 'stderr' $Line }
+            Write-Host $Line
+        }
         if ($Invoker) {
-            $script:RhapLastSshExitCode = [int](& $Invoker $Ssh $sshArgs $payload)
+            $script:RhapLastSshExitCode = [int](& $Invoker $Ssh $sshArgs $payload ([bool]$Stream) $emitStdout $emitStderr)
             return
         }
 
@@ -196,6 +208,148 @@ function Invoke-RhapSshScript {
 
         $process = New-Object System.Diagnostics.Process
         $process.StartInfo = $startInfo
+        $processStarted = $false
+        $stdinClosed = $false
+        try {
+            if (-not $process.Start()) { throw "could not start SSH: $Ssh" }
+            $processStarted = $true
+            if ($Stream) {
+                $stdoutDone = $false
+                $stderrDone = $false
+                $stdoutTask = $process.StandardOutput.ReadLineAsync()
+                $stderrTask = $process.StandardError.ReadLineAsync()
+                $writeDone = $false
+                $writeError = $null
+                $readError = $null
+                $sinkError = $null
+                $sinkSuppressed = $false
+                try {
+                    $writeTask = $process.StandardInput.WriteAsync($payload)
+                } catch {
+                    $writeError = $_.Exception
+                    $writeDone = $true
+                    try { $process.StandardInput.Close() } catch { }
+                    $stdinClosed = $true
+                }
+                while (-not $writeDone -or -not $stdoutDone -or -not $stderrDone) {
+                    $waitTasks = New-Object 'System.Collections.Generic.List[System.Threading.Tasks.Task]'
+                    if (-not $writeDone) { $waitTasks.Add($writeTask) }
+                    if (-not $stdoutDone) { $waitTasks.Add($stdoutTask) }
+                    if (-not $stderrDone) { $waitTasks.Add($stderrTask) }
+                    [void][System.Threading.Tasks.Task]::WaitAny($waitTasks.ToArray())
+                    if (-not $writeDone -and $writeTask.IsCompleted) {
+                        try { [void]$writeTask.GetAwaiter().GetResult() } catch { $writeError = $_.Exception }
+                        $writeDone = $true
+                        try { $process.StandardInput.Close() } catch { if (-not $writeError) { $writeError = $_.Exception } }
+                        $stdinClosed = $true
+                    }
+                    if (-not $stdoutDone -and $stdoutTask.IsCompleted) {
+                        $line = $null
+                        $readFailed = $false
+                        try {
+                            $line = $stdoutTask.GetAwaiter().GetResult()
+                        } catch {
+                            if (-not $readError) { $readError = $_.Exception }
+                            $stdoutDone = $true
+                            $readFailed = $true
+                        }
+                        if (-not $readFailed) {
+                            if ($null -eq $line) {
+                                $stdoutDone = $true
+                            } else {
+                                $stdoutTask = $process.StandardOutput.ReadLineAsync()
+                                if (-not $sinkSuppressed) {
+                                    try { & $emitStdout $line } catch { if (-not $sinkError) { $sinkError = $_.Exception }; $sinkSuppressed = $true }
+                                }
+                            }
+                        }
+                    }
+                    if (-not $stderrDone -and $stderrTask.IsCompleted) {
+                        $line = $null
+                        $readFailed = $false
+                        try {
+                            $line = $stderrTask.GetAwaiter().GetResult()
+                        } catch {
+                            if (-not $readError) { $readError = $_.Exception }
+                            $stderrDone = $true
+                            $readFailed = $true
+                        }
+                        if (-not $readFailed) {
+                            if ($null -eq $line) {
+                                $stderrDone = $true
+                            } else {
+                                $stderrTask = $process.StandardError.ReadLineAsync()
+                                if (-not $sinkSuppressed) {
+                                    try { & $emitStderr $line } catch { if (-not $sinkError) { $sinkError = $_.Exception }; $sinkSuppressed = $true }
+                                }
+                            }
+                        }
+                    }
+                    if ($readError) {
+                        if (-not $stdinClosed) { try { $process.StandardInput.Close() } catch { }; $stdinClosed = $true }
+                        try { if (-not $process.HasExited) { $process.Kill() } } catch { }
+                        try { $process.WaitForExit() } catch { }
+                        if (-not $writeDone) { try { [void]$writeTask.GetAwaiter().GetResult() } catch { }; $writeDone = $true }
+                        if (-not $stdoutDone) { try { [void]$stdoutTask.GetAwaiter().GetResult() } catch { }; $stdoutDone = $true }
+                        if (-not $stderrDone) { try { [void]$stderrTask.GetAwaiter().GetResult() } catch { }; $stderrDone = $true }
+                        throw $readError
+                    }
+                }
+                if (-not $stdinClosed) { $process.StandardInput.Close(); $stdinClosed = $true }
+                $process.WaitForExit()
+                $script:RhapLastSshExitCode = [int]$process.ExitCode
+                if ($writeError) { throw $writeError }
+                if ($sinkError) { throw $sinkError }
+            } else {
+                $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+                $stderrTask = $process.StandardError.ReadToEndAsync()
+                $process.StandardInput.Write($payload)
+                $process.StandardInput.Close()
+                $process.WaitForExit()
+                $stdout = $stdoutTask.Result
+                $stderr = $stderrTask.Result
+                if (-not [string]::IsNullOrEmpty($stdout)) { & $emitStdout ($stdout.TrimEnd("`r", "`n")) }
+                if (-not [string]::IsNullOrEmpty($stderr)) { & $emitStderr ($stderr.TrimEnd("`r", "`n")) }
+                $script:RhapLastSshExitCode = [int]$process.ExitCode
+            }
+        } finally {
+            if ($Stream -and $processStarted -and -not $stdinClosed) {
+                try { $process.StandardInput.Close() } catch { }
+            }
+            if ($Stream -and $processStarted) {
+                try { if (-not $process.HasExited) { $process.Kill() } } catch { }
+                try { $process.WaitForExit() } catch { }
+            }
+            $process.Dispose()
+        }
+    }
+    return ,[int]$script:RhapLastSshExitCode
+}
+
+function Invoke-RhapSshCapture {
+    param(
+        [hashtable]$Cfg,
+        [string]$Ssh,
+        [string]$ScriptBody,
+        [scriptblock]$Invoker
+    )
+    $payload = $ScriptBody.Replace("`r`n", "`n").Replace("`r", "`n").TrimEnd("`n") + "`n"
+    $sshArgs = @('-T') + $script:RhapLegacySshOptions + @("$($Cfg.User)@$($Cfg.Host)", '/bin/sh -s')
+    Invoke-RhapSshAskPass -Cfg $Cfg -Action {
+        if ($Invoker) {
+            $script:RhapLastSshCapture = & $Invoker $Ssh $sshArgs $payload
+            return
+        }
+        $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+        $startInfo.FileName = $Ssh
+        $startInfo.Arguments = (($sshArgs | ForEach-Object { '"' + $_.Replace('"', '\"') + '"' }) -join ' ')
+        $startInfo.UseShellExecute = $false
+        $startInfo.CreateNoWindow = $true
+        $startInfo.RedirectStandardInput = $true
+        $startInfo.RedirectStandardOutput = $true
+        $startInfo.RedirectStandardError = $true
+        $process = New-Object System.Diagnostics.Process
+        $process.StartInfo = $startInfo
         try {
             if (-not $process.Start()) { throw "could not start SSH: $Ssh" }
             $stdoutTask = $process.StandardOutput.ReadToEndAsync()
@@ -203,14 +357,14 @@ function Invoke-RhapSshScript {
             $process.StandardInput.Write($payload)
             $process.StandardInput.Close()
             $process.WaitForExit()
-            $stdout = $stdoutTask.Result
-            $stderr = $stderrTask.Result
-            if (-not [string]::IsNullOrEmpty($stdout)) { Write-Host ($stdout.TrimEnd("`r", "`n")) }
-            if (-not [string]::IsNullOrEmpty($stderr)) { Write-Host ($stderr.TrimEnd("`r", "`n")) }
-            $script:RhapLastSshExitCode = [int]$process.ExitCode
+            $script:RhapLastSshCapture = [pscustomobject]@{
+                ExitCode = [int]$process.ExitCode
+                Stdout = [string]$stdoutTask.Result
+                Stderr = [string]$stderrTask.Result
+            }
         } finally {
             $process.Dispose()
         }
     }
-    return ,[int]$script:RhapLastSshExitCode
+    return $script:RhapLastSshCapture
 }

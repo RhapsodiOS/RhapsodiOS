@@ -23,6 +23,20 @@ reject_newline()
     esac
 }
 
+require_operand()
+{
+    option=$1
+    operand=${2-}
+    if [ -z "$operand" ]; then
+	echo "mig: $option requires a nonempty operand" >&2
+	exit 1
+    fi
+    case $operand in
+	-* ) echo "mig: $option operand may not be another option: $operand" >&2; exit 1;;
+    esac
+    reject_newline "$operand"
+}
+
 append_cppflag()
 {
     reject_newline "$1"
@@ -60,16 +74,16 @@ until [ $# -eq 0 ]
 do
     case $1 in
 	-[qQvVtTrRsSPp] ) append_migflag "$1"; shift;;
-	-user   ) append_migflag "$1"; append_migflag "$2"; shift; shift;;
-	-server ) append_migflag "$1"; append_migflag "$2"; shift; shift;;
-	-header ) append_migflag "$1"; append_migflag "$2"; shift; shift;;
-	-sheader ) append_migflag "$1"; append_migflag "$2"; shift; shift;;
-	-handler ) append_migflag "$1"; append_migflag "$2"; shift; shift;;
+	-user   ) require_operand "$1" "${2-}"; append_migflag "$1"; append_migflag "$2"; shift; shift;;
+	-server ) require_operand "$1" "${2-}"; append_migflag "$1"; append_migflag "$2"; shift; shift;;
+	-header ) require_operand "$1" "${2-}"; append_migflag "$1"; append_migflag "$2"; shift; shift;;
+	-sheader ) require_operand "$1" "${2-}"; append_migflag "$1"; append_migflag "$2"; shift; shift;;
+	-handler ) require_operand "$1" "${2-}"; append_migflag "$1"; append_migflag "$2"; shift; shift;;
 	-i ) append_migflag "$1"; shift;
 		if [ $# -gt 0 ] && [ "${1#-}" = "$1" ]; then
 		    append_migflag "$1"; shift
 		fi;;
-	-arch ) reject_newline "$2"; arch=$2; shift; shift;;
+	-arch ) require_operand "$1" "${2-}"; arch=$2; shift; shift;;
 	-typed ) migcom=$MIGCOM_ROOT/migcom_typd; 	\
 		append_cppflag '-DMACH_IPC_FLAVOR=TYPED'; shift;;
 	-untyped ) migcom=$MIGCOM_ROOT/migcom_untypd; 	\
@@ -84,18 +98,72 @@ done
 old_ifs=$IFS
 IFS=$newline
 set -f
+mig_tmp=
+mig_sequence=x
+cleanup()
+{
+    if [ -n "$mig_tmp" ]; then
+	rm -f "$mig_tmp"
+	mig_tmp=
+    fi
+}
+finish()
+{
+    mig_status=$?
+    trap - 0
+    cleanup
+    exit $mig_status
+}
+trap finish 0
+trap 'exit 1' 1 2 3 15
+umask 077
 for file in $files
 do
     base=${file##*/}
     base=${base%.defs}
     rm -f "$base".d "$base".d~
+    mig_tmp="./.${base}.migcpp.$$.$mig_sequence"
+    mig_sequence=${mig_sequence}x
+    if [ -e "$mig_tmp" ]; then
+	echo "mig: private preprocessor staging path already exists: $mig_tmp" >&2
+	exit 1
+    fi
     if [ "${MIGCC-}" ]
     then
-	"$MIGCC" -E -x c -traditional-cpp $cppflags "$file"
+	if "$MIGCC" -E -x c -traditional-cpp $cppflags "$file" > "$mig_tmp"
+	then
+	    :
+	else
+	    mig_status=$?
+	    echo "mig: configured preprocessor failed for $file" >&2
+	    exit $mig_status
+	fi
     else
-	CPP="/usr/libexec/${arch-`/usr/bin/arch`}/2.7.2.1/cpp"
-	"$CPP" $cppflags "$file" - ${sawMD+"$base".d~}
-    fi | "$migcom" $migflags || exit
+	# MIGCPP is an optional compatibility override.  When it is unset,
+	# preserve the architecture-specific compiler-suite cpp location.
+	if [ "${MIGCPP-}" ]; then
+	    CPP=$MIGCPP
+	else
+	    CPP="/usr/libexec/${arch-`/usr/bin/arch`}/2.7.2.1/cpp"
+	fi
+	if "$CPP" $cppflags "$file" - ${sawMD+"$base".d~} > "$mig_tmp"
+	then
+	    :
+	else
+	    mig_status=$?
+	    echo "mig: default preprocessor failed for $file" >&2
+	    exit $mig_status
+	fi
+    fi
+    if "$migcom" $migflags < "$mig_tmp"
+    then
+	:
+    else
+	mig_status=$?
+	echo "mig: backend failed for $file" >&2
+	exit $mig_status
+    fi
+    cleanup
     if [ $sawMD ]
     then
 	sed 's/^'"$base"'.o/'"$base"'.h '"$base"'User.c '"$base"'Server.c/' \

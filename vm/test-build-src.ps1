@@ -59,7 +59,10 @@ Assert-Match $migWrapperText 'IFS=\$newline' 'MIG wrapper splits only its newlin
 Assert-Match $migWrapperText '(?m)^set -f$' 'MIG wrapper disables pathname expansion for controlled argument expansion'
 Assert-Match $migWrapperText 'argument contains a newline' 'MIG wrapper rejects unrepresentable newline arguments'
 Assert-NotMatch $migWrapperText '(?m)^\s*"?\$MIGCC"?[^\r\n]*"\$file"\s+-' 'configured GCC receives one input and writes preprocessed output to stdout'
-Assert-Match $migWrapperText '\| "\$migcom"' 'MIG wrapper preserves spaces in private libexec path'
+Assert-Match $migWrapperText '"\$migcom" \$migflags < "\$mig_tmp"' 'MIG wrapper preserves spaces in private libexec path and consumes staged preprocessing'
+Assert-Match $migWrapperText 'MIGCPP-' 'MIG wrapper supports an optional compatibility cpp override'
+Assert-Match $migWrapperText '/usr/libexec/\$\{arch-' 'MIG wrapper preserves architecture-specific historical cpp default'
+Assert-Match $migWrapperText 'trap finish 0' 'MIG wrapper cleans staged preprocessing on every exit'
 Assert-Match $migWrapperText '-sheader[ `t]+\)[^\r\n]*append_migflag "\$1"; append_migflag "\$2"' 'MIG wrapper forwards server-header output to backend'
 Assert-Match $migWrapperText '-handler[ `t]+\)[^\r\n]*append_migflag "\$1"; append_migflag "\$2"' 'MIG wrapper forwards handler output to backend'
 Assert-NotMatch $migWrapperText 'NEXT_ROOT' 'MIG wrapper never derives compiler location from a sysroot'
@@ -486,7 +489,8 @@ try {
     $captureDir = Join-Path $wrapperTestDir 'argument capture'
     $definitionDir = Join-Path $wrapperTestDir 'source definitions'
     $outputDir = Join-Path $wrapperTestDir 'generated output'
-    foreach ($dir in @($fakeBin, $fakeLibexec, $captureDir, $definitionDir, $outputDir)) {
+    $runDir = Join-Path $wrapperTestDir 'current build directory'
+    foreach ($dir in @($fakeBin, $fakeLibexec, $captureDir, $definitionDir, $outputDir, $runDir)) {
         New-Item -ItemType Directory -Path $dir | Out-Null
     }
     $fakeCompiler = Join-Path $fakeBin 'gcc'
@@ -504,8 +508,12 @@ while test $# -gt 0; do
     esac
     shift
 done
-test "$language" = c || exit 91
+if test -n "${MIGCC-}"; then test "$language" = c || exit 91; fi
 test -f "$input" || exit 92
+if test "${MIG_TEST_CPP_MODE-}" = fail; then
+    printf '%s\n' 'partial preprocessor output'
+    exit 42
+fi
 while IFS= read -r line || test -n "$line"; do printf '%s\n' "$line"; done < "$input"
 '@
     $fakeBackendBody = @'
@@ -522,6 +530,7 @@ while test $# -gt 0; do
     shift
 done
 test -n "$header" || exit 93
+if test "${MIG_TEST_BACKEND_MODE-}" = fail; then exit 94; fi
 while IFS= read -r line || test -n "$line"; do printf '%s\n' "$line"; done > "$header"
 test -z "$user" || printf '%s\n' 'generated user' > "$user"
 '@
@@ -548,7 +557,8 @@ test -z "$user" || printf '%s\n' 'generated user' > "$user"
         (ConvertTo-TestShPath $defsTwo)
     )
     $quotedWrapperArgs = ($wrapperArgs | ForEach-Object { ConvertTo-RhapShellLiteral $_ }) -join ' '
-    $invoke = 'MIGCC={0} MIGCOM_DIR={1} MIG_TEST_CAPTURE={2} sh {3} {4}' -f @(
+    $invoke = 'cd {0} && MIGCC={1} MIGCOM_DIR={2} MIG_TEST_CAPTURE={3} sh {4} {5}' -f @(
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $runDir)),
         (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeCompiler)),
         (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeLibexec)),
         (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $captureDir)),
@@ -578,6 +588,100 @@ test -z "$user" || printf '%s\n' 'generated user' > "$user"
     & $sh -c $newlineInvoke
     Assert-Equal $LASTEXITCODE 1 'MIG wrapper rejects embedded newlines before execution'
     Assert-Equal (@((Get-Content -LiteralPath (Join-Path $captureDir 'compiler.args')) | Where-Object { $_ -eq '--invocation--' }).Count) 2 'newline rejection does not invoke configured compiler'
+
+    $wrapperShPath = ConvertTo-TestShPath (Join-Path $PSScriptRoot '..\src\Commands\bootstrap_cmds\migcom.tproj\mig.sh')
+    $operandResults = Join-Path $captureDir 'operand.results'
+    $operandContractBody = @'
+status=0
+empty=
+: > "$MIG_OPERAND_RESULTS"
+for required_option in -user -server -header -sheader -handler -arch; do
+    if (set -- "$required_option"; . "$MIG_WRAPPER") 2>/dev/null; then result=FAIL; status=1; else result=PASS; fi
+    printf "%s missing %s\n" "$required_option" "$result" >> "$MIG_OPERAND_RESULTS"
+    if (set -- "$required_option" "$empty"; . "$MIG_WRAPPER") 2>/dev/null; then result=FAIL; status=1; else result=PASS; fi
+    printf "%s empty %s\n" "$required_option" "$result" >> "$MIG_OPERAND_RESULTS"
+    if (set -- "$required_option" -q "$MIG_DEFS"; . "$MIG_WRAPPER") 2>/dev/null; then result=FAIL; status=1; else result=PASS; fi
+    printf "%s option %s\n" "$required_option" "$result" >> "$MIG_OPERAND_RESULTS"
+done
+exit $status
+'@
+    $operandScript = Join-Path $wrapperTestDir 'operand contract.sh'
+    Set-Content -LiteralPath $operandScript -Encoding ASCII -NoNewline -Value ($operandContractBody -replace "`r`n", "`n")
+    $operandInvoke = 'cd {0} && MIGCC={1} MIGCOM_DIR={2} MIG_TEST_CAPTURE={3} MIG_WRAPPER={4} MIG_DEFS={5} MIG_OPERAND_RESULTS={6} sh {7}' -f @(
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $runDir)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeCompiler)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeLibexec)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $captureDir)),
+        (ConvertTo-RhapShellLiteral $wrapperShPath),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $defsOne)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $operandResults)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $operandScript))
+    )
+    & $sh -c $operandInvoke
+    Assert-Equal $LASTEXITCODE 0 'MIG wrapper rejects every invalid required operand form'
+    $operandResultLines = Get-Content -LiteralPath $operandResults
+    Assert-Equal $operandResultLines.Count 18 'MIG wrapper exercises missing, empty, and option operands for every required option'
+    Assert-Equal (@($operandResultLines | Where-Object { $_ -notmatch ' PASS$' }).Count) 0 'MIG wrapper invalid operand cases all return nonzero'
+    Assert-Equal (@((Get-Content -LiteralPath (Join-Path $captureDir 'compiler.args')) | Where-Object { $_ -eq '--invocation--' }).Count) 2 'invalid required operands do not invoke configured compiler'
+
+    $failedConfiguredOutput = Join-Path $outputDir 'configured failure header.h'
+    $configuredFailureInvoke = 'cd {0} && MIGCC={1} MIGCOM_DIR={2} MIG_TEST_CAPTURE={3} MIG_TEST_CPP_MODE=fail sh {4} -header {5} {6} 2>/dev/null' -f @(
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $runDir)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeCompiler)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeLibexec)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $captureDir)),
+        (ConvertTo-RhapShellLiteral $wrapperShPath),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $failedConfiguredOutput)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $defsOne))
+    )
+    & $sh -c $configuredFailureInvoke
+    Assert-Equal ($LASTEXITCODE -ne 0) $true 'MIG wrapper propagates configured compiler failure'
+    Assert-Equal (Test-Path -LiteralPath $failedConfiguredOutput) $false 'configured compiler partial output never reaches backend output'
+    Assert-Equal (@((Get-Content -LiteralPath (Join-Path $captureDir 'backend.args')) | Where-Object { $_ -eq '--invocation--' }).Count) 2 'configured compiler failure does not invoke backend'
+    Assert-Equal (@(Get-ChildItem -LiteralPath $runDir -Force | Where-Object { $_.Name -like '*.migcpp.*' }).Count) 0 'configured compiler failure removes staged preprocessing output'
+
+    $failedBackendOutput = Join-Path $outputDir 'backend failure header.h'
+    $backendFailureInvoke = 'cd {0} && MIGCC={1} MIGCOM_DIR={2} MIG_TEST_CAPTURE={3} MIG_TEST_BACKEND_MODE=fail sh {4} -header {5} {6} 2>/dev/null' -f @(
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $runDir)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeCompiler)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeLibexec)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $captureDir)),
+        (ConvertTo-RhapShellLiteral $wrapperShPath),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $failedBackendOutput)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $defsOne))
+    )
+    & $sh -c $backendFailureInvoke
+    Assert-Equal ($LASTEXITCODE -ne 0) $true 'MIG wrapper propagates backend failure'
+    Assert-Equal (Test-Path -LiteralPath $failedBackendOutput) $false 'backend failure does not report a generated output'
+    Assert-Equal (@(Get-ChildItem -LiteralPath $runDir -Force | Where-Object { $_.Name -like '*.migcpp.*' }).Count) 0 'backend failure removes staged preprocessing output'
+
+    $defaultOutput = Join-Path $outputDir 'default cpp header.h'
+    $defaultInvoke = 'unset MIGCC; cd {0} && MIGCPP={1} MIGCOM_DIR={2} MIG_TEST_CAPTURE={3} sh {4} -header {5} {6}' -f @(
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $runDir)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeCompiler)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeLibexec)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $captureDir)),
+        (ConvertTo-RhapShellLiteral $wrapperShPath),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $defaultOutput)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $defsOne))
+    )
+    & $sh -c $defaultInvoke
+    Assert-Equal $LASTEXITCODE 0 'MIG wrapper default cpp branch executes successfully'
+    Assert-Equal (Test-Path -LiteralPath $defaultOutput) $true 'MIG wrapper default cpp branch generates requested output'
+    $failedDefaultOutput = Join-Path $outputDir 'default failure header.h'
+    $defaultFailureInvoke = 'unset MIGCC; cd {0} && MIGCPP={1} MIGCOM_DIR={2} MIG_TEST_CAPTURE={3} MIG_TEST_CPP_MODE=fail sh {4} -header {5} {6} 2>/dev/null' -f @(
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $runDir)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeCompiler)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeLibexec)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $captureDir)),
+        (ConvertTo-RhapShellLiteral $wrapperShPath),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $failedDefaultOutput)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $defsOne))
+    )
+    & $sh -c $defaultFailureInvoke
+    Assert-Equal ($LASTEXITCODE -ne 0) $true 'MIG wrapper propagates default cpp failure'
+    Assert-Equal (Test-Path -LiteralPath $failedDefaultOutput) $false 'default cpp partial output never reaches backend output'
+    Assert-Equal (@(Get-ChildItem -LiteralPath $runDir -Force | Where-Object { $_.Name -like '*.migcpp.*' }).Count) 0 'default cpp failure removes staged preprocessing output'
 } finally {
     Remove-Item -LiteralPath $wrapperTestDir -Recurse -Force -ErrorAction SilentlyContinue
 }

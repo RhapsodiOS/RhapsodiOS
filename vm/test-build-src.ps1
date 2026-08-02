@@ -52,7 +52,8 @@ Assert-Match $migWrapperText '-i[ `t]+\)' 'MIG wrapper forwards -i and its argum
 Assert-Match $migWrapperText '\$\{1#-\}.*=.*\$1' 'MIG wrapper preserves a following option after optional -i prefix'
 Assert-Match $migWrapperText 'MIGCOM_ROOT/migcom_typd' 'MIG wrapper selects typed compiler below configured libexec'
 Assert-Match $migWrapperText 'MIGCOM_DIR-/usr/libexec' 'MIG wrapper preserves packaged target libexec default'
-Assert-Match $migWrapperText '"\$MIGCC" -E -traditional-cpp' 'configured GCC path is quoted and preserves historical MIG preprocessing semantics'
+Assert-Match $migWrapperText '"\$MIGCC" -E -x c -traditional-cpp' 'configured GCC forces C preprocessing for defs inputs while preserving historical semantics'
+Assert-Match $migWrapperText '"\$MIGCC" -E -x c -traditional-cpp[^\r\n]*"\$file"' 'configured GCC wrapper exercise accepts a defs filename as its single input'
 Assert-NotMatch $migWrapperText '(?m)^\s*"?\$MIGCC"?[^\r\n]*"\$file"\s+-' 'configured GCC receives one input and writes preprocessed output to stdout'
 Assert-Match $migWrapperText '\| "\$migcom"' 'MIG wrapper preserves spaces in private libexec path'
 Assert-Match $migWrapperText '-sheader[ `t]+\)[^\r\n]*migflags="\$migflags \$1 \$2"' 'MIG wrapper forwards server-header output to backend'
@@ -121,6 +122,7 @@ Assert-Match $rbuildCommand ([regex]::Escape('/usr/bin/cc -O -bsd -DNeXT=1 -I/bu
 Assert-Match $rbuildCommand ([regex]::Escape('/usr/bin/cc -O -bsd -DNeXT=1 -I/build/tools/mig-build/include -I/build/src/Commands/bootstrap_cmds/migcom_untypd.tproj -I/build/tools/mig-build/migcom_untypd -o /build/tools/libexec/migcom_untypd')) 'untyped MIG preserves historical platform flags'
 Assert-Match $rbuildCommand ([regex]::Escape('/migcom.tproj/handler.c')) 'classic MIG links the NeXT handler backend'
 Assert-Match $rbuildCommand ([regex]::Escape('/build/src/Commands/bootstrap_cmds/migcom_untypd.tproj/migcom_untypd_vers_stub.c')) 'untyped MIG compiler links its checked-in version stub'
+Assert-Match $rbuildCommand ([regex]::Escape('CONFIG_DIR=/build/tools/bin MIGCC=/usr/bin/cc MIGCOM_DIR=/build/tools/libexec /build/tools/bin/mig -I/build/src/kernel-7 -header mach_interface.h -i -server /dev/null /build/src/kernel-7/mach/mach.defs')) 'private MIG wrapper contract preprocesses a real defs filename with configured GCC'
 Assert-NotMatch $rbuildCommand '/usr/bin/mig|/usr/libexec/migcom|NEXT_ROOT|bootstrap-root/usr/libexec|DSTROOT=/|cp .*mig' 'stage zero never uses or copies live or sysroot MIG'
 $alternatePhaseArgs = $phaseArgs.Clone()
 $alternatePhaseArgs.BuildCc = '/opt/gcc/bin/gcc-4.2'

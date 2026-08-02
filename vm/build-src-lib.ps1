@@ -383,6 +383,7 @@ function New-RhapBuildPhaseCommand {
     $configBuild = "$tools/config-build"
     $migBuild = "$tools/mig-build"
     $migInclude = "$migBuild/include"
+    $migSmoke = "$migBuild/smoke"
 
     if ($Phase -eq 'rbuild') {
         $commands = New-Object System.Collections.Generic.List[string]
@@ -422,6 +423,10 @@ function New-RhapBuildPhaseCommand {
             $commands.Add("if /usr/bin/grep -F -e '/usr/include/mach/' -e $bootstrap/ $projectBuild/dependencies >/dev/null; then echo 'build-src: private MIG dependency escaped source-owned overlay: $name' >&2; exit 1; else mig_dependency_status=`$?; test `$mig_dependency_status -eq 1 || { echo 'build-src: private MIG dependency audit failed: $name' >&2; exit 1; }; fi")
             $commands.Add("$cc -O -bsd -DNeXT=1 -I$migInclude -I$migSource -I$projectBuild -o $tools/libexec/$name $compileInputs")
         }
+        $commands.Add("rm -rf $migSmoke")
+        $commands.Add("/usr/bin/install -d $migSmoke")
+        $commands.Add("cd $migSmoke")
+        $commands.Add("CONFIG_DIR=$tools/bin MIGCC=$cc MIGCOM_DIR=$tools/libexec $tools/bin/mig -I$source/kernel-7 -header mach_interface.h -i -server /dev/null $source/kernel-7/mach/mach.defs")
         return ($commands -join ' && ')
     }
     if ($Phase -eq 'bootstrap') {

@@ -3,6 +3,8 @@
 
 Set-StrictMode -Version Latest
 
+. (Join-Path $PSScriptRoot 'build-src-lib.ps1')
+
 if (-not (Get-Variable -Name RhapVmDir -Scope Script -ErrorAction SilentlyContinue) -or
     [string]::IsNullOrWhiteSpace($script:RhapVmDir)) {
     $script:RhapVmDir = $PSScriptRoot
@@ -45,13 +47,17 @@ function Get-RhapVmConfig {
         Host       = ''
         User       = ''
         Password   = ''
-        RemoteRoot = '/build/source'
+        RemoteRoot = '/build'
         LocalRoot  = ''
         Ssh        = 'ssh.exe'
         Tar        = 'tar.exe'
         Make       = 'gnumake'
         RepoDir    = '/build/repo'
         BuiltDir   = '/build/built'
+        ToolsDir   = '/build/tools'
+        BootstrapRoot = '/build/bootstrap-root'
+        StateDir   = '/build/state'
+        ToolchainProfile = 'rbuild-1/toolchains/gcc-darwin.conf'
     }
     foreach ($k in $ExtraDefaults.Keys) { $cfg[$k] = $ExtraDefaults[$k] }
 
@@ -72,9 +78,16 @@ function Get-RhapVmConfig {
     if ([string]::IsNullOrWhiteSpace($cfg.LocalRoot)) {
         $cfg.LocalRoot = Split-Path -Parent $script:RhapVmDir
     }
-    $cfg.RemoteRoot = $cfg.RemoteRoot.TrimEnd('/')
-    $cfg.RepoDir = $cfg.RepoDir.TrimEnd('/')
-    $cfg.BuiltDir = $cfg.BuiltDir.TrimEnd('/')
+    $cfg.RemoteRoot = ConvertTo-RhapNormalizedRemotePath -Path $cfg.RemoteRoot -Name 'RemoteRoot'
+    if ($cfg.RemoteRoot -eq '/') { throw 'RemoteRoot may not be the filesystem root' }
+    foreach ($key in @('RepoDir', 'BuiltDir', 'ToolsDir', 'BootstrapRoot', 'StateDir')) {
+        $cfg[$key] = ConvertTo-RhapNormalizedRemotePath -Path $cfg[$key] -Name $key
+        if ($cfg[$key] -eq '/') { Write-RhapDie $DiePrefix "$key may not be the filesystem root" }
+    }
+    if (-not $cfg.ToolchainProfile.StartsWith('/')) {
+        $cfg.ToolchainProfile = "$($cfg.RemoteRoot)/src/$($cfg.ToolchainProfile)"
+    }
+    $cfg.ToolchainProfile = ConvertTo-RhapNormalizedRemotePath -Path $cfg.ToolchainProfile -Name 'ToolchainProfile'
     if ([string]::IsNullOrWhiteSpace($cfg.Make)) { $cfg.Make = 'gnumake' }
     return $cfg
 }
@@ -145,6 +158,58 @@ function Invoke-RhapRemote {
             $script:RhapLastSshExitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
         } finally {
             $ErrorActionPreference = $prevEap
+        }
+    }
+    return ,[int]$script:RhapLastSshExitCode
+}
+
+function Invoke-RhapSshScript {
+    param(
+        [hashtable]$Cfg,
+        [string]$Ssh,
+        [string]$ScriptBody,
+        [scriptblock]$Invoker
+    )
+
+    $payload = $ScriptBody.Replace("`r`n", "`n").Replace("`r", "`n").TrimEnd("`n") + "`n"
+    $sshArgs = @('-T') + $script:RhapLegacySshOptions + @(
+        "$($Cfg.User)@$($Cfg.Host)",
+        '/bin/sh -s'
+    )
+
+    Invoke-RhapSshAskPass -Cfg $Cfg -Action {
+        if ($Invoker) {
+            $script:RhapLastSshExitCode = [int](& $Invoker $Ssh $sshArgs $payload)
+            return
+        }
+
+        $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+        $startInfo.FileName = $Ssh
+        $startInfo.Arguments = (($sshArgs | ForEach-Object {
+            '"' + $_.Replace('"', '\"') + '"'
+        }) -join ' ')
+        $startInfo.UseShellExecute = $false
+        $startInfo.CreateNoWindow = $true
+        $startInfo.RedirectStandardInput = $true
+        $startInfo.RedirectStandardOutput = $true
+        $startInfo.RedirectStandardError = $true
+
+        $process = New-Object System.Diagnostics.Process
+        $process.StartInfo = $startInfo
+        try {
+            if (-not $process.Start()) { throw "could not start SSH: $Ssh" }
+            $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+            $stderrTask = $process.StandardError.ReadToEndAsync()
+            $process.StandardInput.Write($payload)
+            $process.StandardInput.Close()
+            $process.WaitForExit()
+            $stdout = $stdoutTask.Result
+            $stderr = $stderrTask.Result
+            if (-not [string]::IsNullOrEmpty($stdout)) { Write-Host ($stdout.TrimEnd("`r", "`n")) }
+            if (-not [string]::IsNullOrEmpty($stderr)) { Write-Host ($stderr.TrimEnd("`r", "`n")) }
+            $script:RhapLastSshExitCode = [int]$process.ExitCode
+        } finally {
+            $process.Dispose()
         }
     }
     return ,[int]$script:RhapLastSshExitCode

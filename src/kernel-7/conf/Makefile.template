@@ -863,42 +863,42 @@ install_mi_hdrs: DSTROOT install_mi_std_hdrs
 install_mi_std_hdrs: DSTROOT $(MIG_HFILES_EXP) $(MACH_DEBUG_HFILE)
 	@for i in ${EXPORT}; 						\
 	do								\
-	    EXPDIR=`pwd`/exports;					\
-	    [ -d $$EXPDIR ] || $(MKDIRS) $$EXPDIR || exit 1;		\
-	    rm -f $$EXPDIR/* || exit 1;					\
-	    (cd $(SOURCE_DIR)/$$i;					\
+	    EXPDIR="`pwd`/exports";					\
+	    [ -d "$$EXPDIR" ] || $(MKDIRS) "$$EXPDIR" || exit 1;	\
+	    rm -f "$$EXPDIR"/* || exit 1;				\
+	    (cd "$(SOURCE_DIR)/$$i" || exit 1;				\
 		hdrs=`echo *.h`;					\
 		if [ "$$hdrs" = '*.h' ]; then				\
 		    echo No header files in $$i;			\
 		else							\
 		    for j in $$hdrs; 					\
 		    do							\
-			DSTDIR=$(DSTROOT)$(INCDIR)/$$i;			\
-			[ -d $$DSTDIR ] || $(MKDIRS) $$DSTDIR || exit 1;	\
-			echo garbage > $$EXPDIR/$$j.strip;		\
+			DSTDIR="$(DSTROOT)$(INCDIR)/$$i";		\
+			[ -d "$$DSTDIR" ] || $(MKDIRS) "$$DSTDIR" || exit 1; \
+			echo garbage > "$$EXPDIR/$$j.strip" || exit 1;	\
 			$(UNIFDEF) -UKERNEL_PRIVATE -UDRIVER_PRIVATE	\
-				$$j > $$EXPDIR/$$j;			\
+				"$$j" > "$$EXPDIR/$$j";		\
 			unifdef_status=$$?;				\
 			if [ $$unifdef_status -eq 1 ]; then		\
-				"$(DECOMMENT)" $$EXPDIR/$$j  r > 		\
-				$$EXPDIR/$$j.strip || exit 1; 		\
+				"$(DECOMMENT)" "$$EXPDIR/$$j"  r > 	\
+				"$$EXPDIR/$$j.strip" || exit 1; 	\
 			elif [ $$unifdef_status -ne 0 ]; then		\
 				exit 1;					\
 			fi;						\
-			if [ -s $$EXPDIR/$$j.strip ]; 			\
+			if [ -s "$$EXPDIR/$$j.strip" ]; 		\
 			then (						\
-			    cd $$EXPDIR;				\
-			    install $(INSTALL_FLAGS) $$j $$DSTDIR;	\
+			    cd "$$EXPDIR" || exit 1;			\
+			    install $(INSTALL_FLAGS) "$$j" "$$DSTDIR";	\
 			);						\
 			install_status=$$?;				\
 			if [ $$install_status -ne 0 ]; then		\
-			    rm -f $$EXPDIR/$$j.strip;			\
+			    rm -f "$$EXPDIR/$$j.strip";		\
 			    exit 1;					\
 			fi;						\
 			else 						\
 			    echo Header file $$i/$$j not exported;	\
 			fi;						\
-			rm -f $$EXPDIR/$$j.strip || exit 1;		\
+			rm -f "$$EXPDIR/$$j.strip" || exit 1;	\
 		    done;						\
 		fi;							\
 	    ) || exit 1;						\
@@ -969,40 +969,40 @@ install_md_hdrs: DSTROOT install_md_std_hdrs \
 install_md_std_hdrs: DSTROOT
 	@for i in `echo ${MACHINE_EXPORT}`; 				\
 	do								\
-	    EXPDIR=`pwd`/exports;					\
-	    [ -d $$EXPDIR ] || $(MKDIRS) $$EXPDIR || exit 1;		\
-	    rm -f $$EXPDIR/* || exit 1;					\
-	    (cd $(SOURCE_DIR)/$$i;					\
+	    EXPDIR="`pwd`/exports";					\
+	    [ -d "$$EXPDIR" ] || $(MKDIRS) "$$EXPDIR" || exit 1;	\
+	    rm -f "$$EXPDIR"/* || exit 1;				\
+	    (cd "$(SOURCE_DIR)/$$i" || exit 1;				\
 		hdrs=`echo *.h`;					\
 		if [ "$$hdrs" = '*.h' ]; then				\
 		    echo No header files in $$i;			\
 		else							\
 		    for j in $$hdrs; 					\
 		    do							\
-			DSTDIR=$(DSTROOT)$(INCDIR)/$$i;			\
-			[ -d $$DSTDIR ] || $(MKDIRS) $$DSTDIR || exit 1;	\
-			echo garbage > $$EXPDIR/$$j.strip;		\
-			$(UNIFDEF) -UKERNEL_PRIVATE -UDRIVER_PRIVATE $$j > $$EXPDIR/$$j; \
+			DSTDIR="$(DSTROOT)$(INCDIR)/$$i";		\
+			[ -d "$$DSTDIR" ] || $(MKDIRS) "$$DSTDIR" || exit 1; \
+			echo garbage > "$$EXPDIR/$$j.strip" || exit 1;	\
+			$(UNIFDEF) -UKERNEL_PRIVATE -UDRIVER_PRIVATE "$$j" > "$$EXPDIR/$$j"; \
 			unifdef_status=$$?;				\
 			if [ $$unifdef_status -eq 1 ]; then		\
-			"$(DECOMMENT)" $$EXPDIR/$$j  r > $$EXPDIR/$$j.strip || exit 1; \
+			"$(DECOMMENT)" "$$EXPDIR/$$j"  r > "$$EXPDIR/$$j.strip" || exit 1; \
 			elif [ $$unifdef_status -ne 0 ]; then		\
 				exit 1;					\
 			fi;						\
-			if [ -s $$EXPDIR/$$j.strip ]; 			\
+			if [ -s "$$EXPDIR/$$j.strip" ]; 		\
 			then (						\
-			    cd $$EXPDIR;				\
-			    install $(INSTALL_FLAGS) $$j $$DSTDIR;	\
+			    cd "$$EXPDIR" || exit 1;			\
+			    install $(INSTALL_FLAGS) "$$j" "$$DSTDIR";	\
 			);						\
 			install_status=$$?;				\
 			if [ $$install_status -ne 0 ]; then		\
-			    rm -f $$EXPDIR/$$j.strip;			\
+			    rm -f "$$EXPDIR/$$j.strip";		\
 			    exit 1;					\
 			fi;						\
 			else 						\
 			    echo Header file $$i/$$j not exported;	\
 			fi;						\
-			rm -f $$EXPDIR/$$j.strip || exit 1;		\
+			rm -f "$$EXPDIR/$$j.strip" || exit 1;	\
 		    done;						\
 		fi;							\
 	    ) || exit 1;						\

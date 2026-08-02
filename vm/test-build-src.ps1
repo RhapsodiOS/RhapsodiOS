@@ -90,13 +90,21 @@ Assert-NotMatch $kernelMakeTemplateText '(?m)^\s*@-for i in (?:\$\{EXPORT\}|`ech
 Assert-Equal ([regex]::Matches($kernelMakeTemplateText, 'unifdef_status=\$\$\?;').Count) 2 'both kernel export loops capture unifdef status immediately'
 Assert-Equal ([regex]::Matches($kernelMakeTemplateText, '\[ \$\$unifdef_status -eq 1 \]').Count) 2 'both kernel export loops reserve decomment fallback for unifdef status one'
 Assert-Equal ([regex]::Matches($kernelMakeTemplateText, '\[ \$\$unifdef_status -ne 0 \]').Count) 2 'both kernel export loops reject unexpected unifdef failure'
-Assert-Equal ([regex]::Matches($kernelMakeTemplateText, '"\$\(DECOMMENT\)"[^\r\n]*(?:\r?\n[^\r\n]*)?\.strip \|\| exit 1;').Count) 2 'both kernel export loops quote and hard-fail the decomment fallback'
-Assert-Equal ([regex]::Matches($kernelMakeTemplateText, '\[ -d \$\$EXPDIR \] \|\| \$\(MKDIRS\) \$\$EXPDIR \|\| exit 1;').Count) 2 'both kernel export loops reject export directory creation failure'
-Assert-Equal ([regex]::Matches($kernelMakeTemplateText, '\[ -d \$\$DSTDIR \] \|\| \$\(MKDIRS\) \$\$DSTDIR \|\| exit 1;').Count) 2 'both kernel export loops reject destination directory creation failure'
-Assert-Equal ([regex]::Matches($kernelMakeTemplateText, 'rm -f \$\$EXPDIR/\* \|\| exit 1;').Count) 2 'both kernel export loops reject export cleanup failure'
-Assert-Equal ([regex]::Matches($kernelMakeTemplateText, 'rm -f \$\$EXPDIR/\$\$j\.strip \|\| exit 1;').Count) 2 'both kernel export loops reject normal probe cleanup failure'
+Assert-Equal ([regex]::Matches($kernelMakeTemplateText, 'EXPDIR="`pwd`/exports";').Count) 2 'both kernel export loops preserve space-containing object paths'
+Assert-Equal ([regex]::Matches($kernelMakeTemplateText, '\(cd "\$\(SOURCE_DIR\)/\$\$i" \|\| exit 1;').Count) 2 'both kernel export loops quote and guard source directory changes'
+Assert-Equal ([regex]::Matches($kernelMakeTemplateText, 'DSTDIR="\$\(DSTROOT\)\$\(INCDIR\)/\$\$i";').Count) 2 'both kernel export loops preserve space-containing destination paths'
+Assert-Equal ([regex]::Matches($kernelMakeTemplateText, '"\$\(DECOMMENT\)" "\$\$EXPDIR/\$\$j"  r >\s*(?:\\\r?\n\s*)?"\$\$EXPDIR/\$\$j\.strip" \|\| exit 1;').Count) 2 'both kernel export loops quote and hard-fail the decomment fallback'
+Assert-Equal ([regex]::Matches($kernelMakeTemplateText, '\[ -d "\$\$EXPDIR" \] \|\| \$\(MKDIRS\) "\$\$EXPDIR" \|\| exit 1;').Count) 2 'both kernel export loops reject export directory creation failure'
+Assert-Equal ([regex]::Matches($kernelMakeTemplateText, '\[ -d "\$\$DSTDIR" \] \|\| \$\(MKDIRS\) "\$\$DSTDIR" \|\| exit 1;').Count) 2 'both kernel export loops reject destination directory creation failure'
+Assert-Equal ([regex]::Matches($kernelMakeTemplateText, 'rm -f "\$\$EXPDIR"/\* \|\| exit 1;').Count) 2 'both kernel export loops reject export cleanup failure'
+Assert-Equal ([regex]::Matches($kernelMakeTemplateText, 'echo garbage > "\$\$EXPDIR/\$\$j\.strip" \|\| exit 1;').Count) 2 'both kernel export loops reject sentinel write failure'
+Assert-Equal ([regex]::Matches($kernelMakeTemplateText, '"\$\$j" > "\$\$EXPDIR/\$\$j";').Count) 2 'both kernel export loops quote unifdef header paths and output'
+Assert-Equal ([regex]::Matches($kernelMakeTemplateText, '\[ -s "\$\$EXPDIR/\$\$j\.strip" \]').Count) 2 'both kernel export loops quote exported-header probes'
+Assert-Equal ([regex]::Matches($kernelMakeTemplateText, 'cd "\$\$EXPDIR" \|\| exit 1;').Count) 2 'both kernel export loops quote and guard export directory changes'
+Assert-Equal ([regex]::Matches($kernelMakeTemplateText, 'install \$\(INSTALL_FLAGS\) "\$\$j" "\$\$DSTDIR";').Count) 2 'both kernel export loops quote install source and destination paths'
+Assert-Equal ([regex]::Matches($kernelMakeTemplateText, 'rm -f "\$\$EXPDIR/\$\$j\.strip" \|\| exit 1;').Count) 2 'both kernel export loops reject normal probe cleanup failure'
 Assert-Equal ([regex]::Matches($kernelMakeTemplateText, 'install_status=\$\$\?;').Count) 2 'both kernel export loops capture install status immediately'
-Assert-Equal ([regex]::Matches($kernelMakeTemplateText, 'if \[ \$\$install_status -ne 0 \]; then[\s\S]*?rm -f \$\$EXPDIR/\$\$j\.strip;[\s\S]*?exit 1;').Count) 2 'both kernel export loops clean probes without masking install failure'
+Assert-Equal ([regex]::Matches($kernelMakeTemplateText, 'if \[ \$\$install_status -ne 0 \]; then[\s\S]*?rm -f "\$\$EXPDIR/\$\$j\.strip";[\s\S]*?exit 1;').Count) 2 'both kernel export loops clean probes without masking install failure'
 Assert-Equal ([regex]::Matches($kernelMakeTemplateText, '\) \|\| exit 1;\s*\\\r?\n\s*done').Count) 2 'both kernel export loops propagate header-directory subshell failure'
 Assert-Match $buildScriptText '(?s)param\(\s*\[switch\]\$All,\s*\[switch\]\$Rbuild,\s*\[switch\]\$Bootstrap,\s*\[switch\]\$KernelDrivers,\s*\[switch\]\$World,\s*\[switch\]\$Fresh\s*\)' 'canonical build-src parameters'
 Assert-Match $remoteScriptText ([regex]::Escape('StandardInput.WriteAsync($payload)')) 'stream stdin writer is asynchronous'
@@ -575,6 +583,7 @@ UNIFDEF=$4
 INPUT=$5
 ROOT=$6
 ACCEPTED=$7
+SENTINEL_MODE=$8
 (
     EXPDIR="$ROOT/exports"
     DSTDIR="$ROOT/include"
@@ -583,6 +592,8 @@ ACCEPTED=$7
     [ -d "$DSTDIR" ] || "$MKDIRS" "$DSTDIR" || exit 1
     RAW="$EXPDIR/input.h"
     STRIP="$RAW.strip"
+    if test "$SENTINEL_MODE" = fail; then /usr/bin/mkdir "$STRIP" || exit 1; fi
+    echo garbage > "$STRIP" || exit 1
     "$UNIFDEF" "$INPUT" > "$RAW"
     unifdef_status=$?
     if test "$unifdef_status" -eq 1; then
@@ -628,30 +639,49 @@ exit 9
     $installOkSh = ConvertTo-DecommentTestShPath $installOk
     $installFailSh = ConvertTo-DecommentTestShPath $installFail
     $spacedDecommentSh = ConvertTo-DecommentTestShPath $spacedDecomment
-    $successRoot = Join-Path $decommentContractDir 'success-root'
+    $spacedSourceDir = Join-Path $decommentContractDir 'source root with spaces'
+    New-Item -ItemType Directory -Path $spacedSourceDir | Out-Null
+    $spacedInput = Join-Path $spacedSourceDir 'input header.h'
+    Copy-Item -LiteralPath $inputHeader -Destination $spacedInput
+    $spacedInputSh = ConvertTo-DecommentTestShPath $spacedInput
+    $successRoot = Join-Path $decommentContractDir 'object root with spaces'
     $successRootSh = ConvertTo-DecommentTestShPath $successRoot
-    $successAccepted = Join-Path $decommentContractDir 'success-accepted'
+    $successAccepted = Join-Path $decommentContractDir 'success accepted'
     $successAcceptedSh = ConvertTo-DecommentTestShPath $successAccepted
-    & $boundarySh $recipeSh $mkdirOkSh $installOkSh $spacedDecommentSh $unifdefSh $inputSh $successRootSh $successAcceptedSh
-    Assert-Equal $LASTEXITCODE 0 'kernel export recipe executes a space-containing private decomment path'
+    & $boundarySh $recipeSh $mkdirOkSh $installOkSh $spacedDecommentSh $unifdefSh $spacedInputSh $successRootSh $successAcceptedSh ok
+    Assert-Equal $LASTEXITCODE 0 'kernel export recipe preserves spaced source, object, export, destination, and tool paths'
     Assert-Equal (Test-Path -LiteralPath $successAccepted) $true 'successful export recipe reaches acceptance marker'
     Assert-Equal (Test-Path -LiteralPath (Join-Path $successRoot 'include\output.h')) $true 'successful export recipe installs output'
 
-    $mkdirFailRoot = Join-Path $decommentContractDir 'mkdir-fail-root'
-    $mkdirFailAccepted = Join-Path $decommentContractDir 'mkdir-fail-accepted'
-    & $boundarySh $recipeSh $mkdirFailSh $installOkSh $spacedDecommentSh $unifdefSh $inputSh (ConvertTo-DecommentTestShPath $mkdirFailRoot) (ConvertTo-DecommentTestShPath $mkdirFailAccepted) 2>$null
+    $mkdirFailRoot = Join-Path $decommentContractDir 'mkdir fail root'
+    $mkdirFailAccepted = Join-Path $decommentContractDir 'mkdir fail accepted'
+    & $boundarySh $recipeSh $mkdirFailSh $installOkSh $spacedDecommentSh $unifdefSh $spacedInputSh (ConvertTo-DecommentTestShPath $mkdirFailRoot) (ConvertTo-DecommentTestShPath $mkdirFailAccepted) ok 2>$null
     $mkdirFailExit = $LASTEXITCODE
     Assert-Equal ($mkdirFailExit -ne 0) $true 'kernel export recipe propagates MKDIRS failure'
     Assert-Equal (Test-Path -LiteralPath $mkdirFailAccepted) $false 'MKDIRS failure cannot reach acceptance marker'
     Assert-Equal (Test-Path -LiteralPath (Join-Path $mkdirFailRoot 'include\output.h')) $false 'MKDIRS failure cannot install output'
 
-    $installFailRoot = Join-Path $decommentContractDir 'install-fail-root'
-    $installFailAccepted = Join-Path $decommentContractDir 'install-fail-accepted'
-    & $boundarySh $recipeSh $mkdirOkSh $installFailSh $spacedDecommentSh $unifdefSh $inputSh (ConvertTo-DecommentTestShPath $installFailRoot) (ConvertTo-DecommentTestShPath $installFailAccepted) 2>$null
+    $installFailRoot = Join-Path $decommentContractDir 'install fail root'
+    $installFailAccepted = Join-Path $decommentContractDir 'install fail accepted'
+    & $boundarySh $recipeSh $mkdirOkSh $installFailSh $spacedDecommentSh $unifdefSh $spacedInputSh (ConvertTo-DecommentTestShPath $installFailRoot) (ConvertTo-DecommentTestShPath $installFailAccepted) ok 2>$null
     $installFailExit = $LASTEXITCODE
     Assert-Equal ($installFailExit -ne 0) $true 'kernel export recipe propagates install failure'
     Assert-Equal (Test-Path -LiteralPath $installFailAccepted) $false 'install failure cannot reach acceptance marker'
     Assert-Equal (Test-Path -LiteralPath (Join-Path $installFailRoot 'include\output.h')) $false 'install failure cannot leave accepted output'
+
+    $sentinelFailRoot = Join-Path $decommentContractDir 'sentinel fail root'
+    $sentinelFailAccepted = Join-Path $decommentContractDir 'sentinel fail accepted'
+    $savedErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'SilentlyContinue'
+        & $boundarySh $recipeSh $mkdirOkSh $installOkSh $spacedDecommentSh $unifdefSh $spacedInputSh (ConvertTo-DecommentTestShPath $sentinelFailRoot) (ConvertTo-DecommentTestShPath $sentinelFailAccepted) fail 2>$null
+        $sentinelFailExit = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $savedErrorActionPreference
+    }
+    Assert-Equal ($sentinelFailExit -ne 0) $true 'kernel export recipe propagates sentinel write failure'
+    Assert-Equal (Test-Path -LiteralPath $sentinelFailAccepted) $false 'sentinel write failure cannot reach acceptance marker'
+    Assert-Equal (Test-Path -LiteralPath (Join-Path $sentinelFailRoot 'include\output.h')) $false 'sentinel write failure cannot install output'
 } finally {
     Remove-Item -LiteralPath $decommentContractDir -Recurse -Force -ErrorAction SilentlyContinue
 }

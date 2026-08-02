@@ -47,6 +47,9 @@ $classicUtilsText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\Commands\b
 $typedErrorText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\Commands\bootstrap_cmds\migcom_typd.tproj\error.c')
 $typedErrorHeaderText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\Commands\bootstrap_cmds\migcom_typd.tproj\error.h')
 Assert-Match $migWrapperText 'MIGCC' 'MIG wrapper supports configured compiler override'
+Assert-Match $migWrapperText 'MIGARCH' 'MIG wrapper supports configured architecture override'
+Assert-Match $migWrapperText 'append_cppflag "-D\$mig_arch"' 'configured GCC receives one preserved architecture definition'
+Assert-Match $migWrapperText 'mig_arch=\$\{arch-\$\{MIGARCH-\}\}' 'explicit -arch overrides configured MIGARCH'
 Assert-Match $migWrapperText 'MIGCOM_DIR' 'MIG wrapper supports private libexec override'
 Assert-Match $migWrapperText '-i[ `t]+\)' 'MIG wrapper forwards -i and its argument'
 Assert-Match $migWrapperText '\$\{1#-\}.*=.*\$1' 'MIG wrapper preserves a following option after optional -i prefix'
@@ -92,6 +95,7 @@ Assert-Match $remoteScriptText '\$process\.Kill\(\)' 'exceptional streaming clea
 Assert-Match $remoteScriptText '(?s)finally \{.*?WaitForExit\(\).*?Dispose\(\)' 'exceptional cleanup reaps before dispose'
 Assert-Equal ($buildScriptText.IndexOf('New-RhapFreshCommand') -lt $buildScriptText.IndexOf('New-RhapPreflightCommand')) $true 'fresh topology validates before preflight'
 Assert-Match $buildScriptText 'New-RhapFreshCommand[^\r\n]+-Profile \$cfg\.ToolchainProfile' 'fresh validates resolved configured profile'
+Assert-Match $buildScriptText ([regex]::Escape('-TargetArch $profileValues.target_arch')) 'phase generation consumes the selected profile architecture'
 
 $phaseArgs = @{
     SourceRoot = '/build/src'
@@ -102,6 +106,7 @@ $phaseArgs = @{
     RepoDir = '/build/repo'
     BuiltDir = '/build/built'
     BuildCc = '/usr/bin/cc'
+    TargetArch = 'ppc'
     Make = '/usr/bin/make'
     ToolPath = '/build/tools/bin:/usr/bin:/bin'
 }
@@ -135,15 +140,17 @@ Assert-Match $rbuildCommand ([regex]::Escape('/usr/bin/cc -O -bsd -DNeXT=1 -I/bu
 Assert-Match $rbuildCommand ([regex]::Escape('/usr/bin/cc -O -bsd -DNeXT=1 -I/build/tools/mig-build/include -I/build/src/Commands/bootstrap_cmds/migcom_untypd.tproj -I/build/tools/mig-build/migcom_untypd -o /build/tools/libexec/migcom_untypd')) 'untyped MIG preserves historical platform flags'
 Assert-Match $rbuildCommand ([regex]::Escape('/migcom.tproj/handler.c')) 'classic MIG links the NeXT handler backend'
 Assert-Match $rbuildCommand ([regex]::Escape('/build/src/Commands/bootstrap_cmds/migcom_untypd.tproj/migcom_untypd_vers_stub.c')) 'untyped MIG compiler links its checked-in version stub'
-Assert-Match $rbuildCommand ([regex]::Escape('CONFIG_DIR=/build/tools/bin MIGCC=/usr/bin/cc MIGCOM_DIR=/build/tools/libexec /build/tools/bin/mig -I/build/src/kernel-7 -header mach_interface.h -i -server /dev/null /build/src/kernel-7/mach/mach.defs')) 'private MIG wrapper contract preprocesses a real defs filename with configured GCC'
+Assert-Match $rbuildCommand ([regex]::Escape('CONFIG_DIR=/build/tools/bin MIGCC=/usr/bin/cc MIGARCH=ppc MIGCOM_DIR=/build/tools/libexec /build/tools/bin/mig -typed -I/build/src/kernel-7 -DKERNEL -DKERNEL_SERVER -header /dev/null -user /dev/null -server mach_server.c /build/src/kernel-7/mach/mach.defs')) 'private typed MIG wrapper contract preprocesses a real defs filename with configured GCC and profile architecture'
 Assert-NotMatch $rbuildCommand '/usr/bin/mig|/usr/libexec/migcom|NEXT_ROOT|bootstrap-root/usr/libexec|DSTROOT=/|cp .*mig' 'stage zero never uses or copies live or sysroot MIG'
 $alternatePhaseArgs = $phaseArgs.Clone()
 $alternatePhaseArgs.BuildCc = '/opt/gcc/bin/gcc-4.2'
+$alternatePhaseArgs.TargetArch = 'mips_safe'
 $alternatePhaseArgs.Make = '/opt/make/bin/gmake'
 $alternateRbuild = New-RhapBuildPhaseCommand -Phase 'rbuild' @alternatePhaseArgs
 Assert-Match $alternateRbuild ([regex]::Escape('/opt/make/bin/gmake CC=/opt/gcc/bin/gcc-4.2 clean test all')) 'alternate profile compiler builds rbuild'
 Assert-Match $alternateRbuild ([regex]::Escape('/opt/gcc/bin/gcc-4.2 -O -bsd -DCMU -DLOCALARCHITECTURE -DNeXT=1')) 'alternate profile compiler builds config with project flags'
 Assert-Match $alternateRbuild ([regex]::Escape('/opt/gcc/bin/gcc-4.2 -O -bsd -DNeXT=1 -I/build/tools/mig-build/include -I/build/src/Commands/bootstrap_cmds/migcom.tproj -I/build/tools/mig-build/migcom -o /build/tools/libexec/migcom')) 'alternate profile compiler builds MIG with historical platform flags'
+Assert-Match $alternateRbuild ([regex]::Escape('MIGCC=/opt/gcc/bin/gcc-4.2 MIGARCH=mips_safe MIGCOM_DIR=/build/tools/libexec')) 'alternate GCC profile selects its own safe MIG architecture'
 Assert-NotMatch $alternateRbuild ([regex]::Escape('/usr/bin/make CC=/usr/bin/cc')) 'alternate profile does not use default build tools'
 $spacedCompilerArgs = $phaseArgs.Clone()
 $spacedCompilerArgs.BuildCc = '/opt/gcc tools/bin/gcc'
@@ -160,9 +167,9 @@ $alternateToolBootstrap = New-RhapBuildPhaseCommand -Phase 'bootstrap' @alternat
 $spacedCompilerBootstrap = New-RhapBuildPhaseCommand -Phase 'bootstrap' @spacedCompilerArgs
 Assert-Match $bootstrapCommand ([regex]::Escape('/usr/bin/install -d /build/bootstrap-root /build/repo /build/state')) 'bootstrap creates owned output directories'
 Assert-Match $bootstrapCommand ([regex]::Escape('CONFIG_DIR=/build/tools/bin MIGCC=/usr/bin/cc')) 'bootstrap scopes private config tool directory'
-Assert-Match $bootstrapCommand ([regex]::Escape('CONFIG_DIR=/build/tools/bin MIGCC=/usr/bin/cc MIGCOM_DIR=/build/tools/libexec /build/tools/bin/rbuild bootstrap')) 'bootstrap explicitly binds private MIG compiler and libexec tools'
-Assert-Match $alternateToolBootstrap ([regex]::Escape('MIGCC=/opt/gcc/bin/gcc-4.2 MIGCOM_DIR=/build/tools/libexec')) 'bootstrap binds alternate configured GCC to private MIG'
-Assert-Match $spacedCompilerBootstrap ([regex]::Escape("MIGCC='/opt/gcc tools/bin/gcc' MIGCOM_DIR=/build/tools/libexec")) 'bootstrap quotes space-containing configured GCC for MIG wrapper'
+Assert-Match $bootstrapCommand ([regex]::Escape('CONFIG_DIR=/build/tools/bin MIGCC=/usr/bin/cc MIGARCH=ppc MIGCOM_DIR=/build/tools/libexec /build/tools/bin/rbuild bootstrap')) 'bootstrap explicitly binds private MIG compiler, architecture, and libexec tools'
+Assert-Match $alternateToolBootstrap ([regex]::Escape('MIGCC=/opt/gcc/bin/gcc-4.2 MIGARCH=mips_safe MIGCOM_DIR=/build/tools/libexec')) 'bootstrap binds alternate configured GCC and architecture to private MIG'
+Assert-Match $spacedCompilerBootstrap ([regex]::Escape("MIGCC='/opt/gcc tools/bin/gcc' MIGARCH=ppc MIGCOM_DIR=/build/tools/libexec")) 'bootstrap quotes space-containing configured GCC for MIG wrapper'
 Assert-NotMatch $bootstrapCommand '/usr/bin/mig|/usr/libexec/migcom|NEXT_ROOT|bootstrap-root/usr/libexec' 'bootstrap never selects live or sysroot MIG'
 Assert-Equal ($bootstrapCommand.IndexOf('/usr/bin/install -d') -lt $bootstrapCommand.IndexOf('/build/tools/bin/rbuild bootstrap')) $true 'bootstrap creates outputs before rbuild'
 Assert-Match $bootstrapCommand ([regex]::Escape('&& cd /build/src && CONFIG_DIR=/build/tools/bin')) 'bootstrap starts from synced source root'
@@ -186,11 +193,11 @@ Assert-Match $spacedRbuild ([regex]::Escape("rm -rf '/srv/build tree/tools'/conf
 Assert-Match $spacedRbuild ([regex]::Escape("-I'/srv/build tree/src'/Commands/bootstrap_cmds/config.tproj -I'/srv/build tree/tools'/config-build -o '/srv/build tree/tools'/bin/config")) 'config safely quotes alternate source and tools paths'
 Assert-Match $spacedRbuild ([regex]::Escape("rm -rf '/srv/build tree/tools'/mig-build")) 'MIG safely quotes alternate private build root'
 Assert-Match $spacedRbuild ([regex]::Escape("-O -bsd -DNeXT=1 -I'/srv/build tree/tools'/mig-build/include -I'/srv/build tree/src'/Commands/bootstrap_cmds/migcom_typd.tproj -I'/srv/build tree/tools'/mig-build/migcom_typd -o '/srv/build tree/tools'/libexec/migcom_typd")) 'MIG preserves platform flags and safely quotes alternate paths'
-Assert-Match $spacedRbuild ([regex]::Escape("CONFIG_DIR='/srv/build tree/tools'/bin MIGCC=/usr/bin/cc MIGCOM_DIR='/srv/build tree/tools'/libexec '/srv/build tree/tools'/bin/mig -I'/srv/build tree/src'/kernel-7 -header mach_interface.h -i -server /dev/null '/srv/build tree/src'/kernel-7/mach/mach.defs")) 'MIG smoke generation safely quotes alternate source and private tool paths'
+Assert-Match $spacedRbuild ([regex]::Escape("CONFIG_DIR='/srv/build tree/tools'/bin MIGCC=/usr/bin/cc MIGARCH=ppc MIGCOM_DIR='/srv/build tree/tools'/libexec '/srv/build tree/tools'/bin/mig -typed -I'/srv/build tree/src'/kernel-7 -DKERNEL -DKERNEL_SERVER -header /dev/null -user /dev/null -server mach_server.c '/srv/build tree/src'/kernel-7/mach/mach.defs")) 'typed MIG smoke generation safely quotes alternate source and private tool paths'
 $spacedBootstrap = New-RhapBuildPhaseCommand -Phase 'bootstrap' @spacedPhaseArgs
 Assert-Match $spacedBootstrap ([regex]::Escape("/usr/bin/install -d '/srv/build tree/bootstrap root' '/srv/build tree/repo' '/srv/build tree/state'")) 'bootstrap safely quotes owned outputs'
 Assert-Match $spacedBootstrap ([regex]::Escape("CONFIG_DIR='/srv/build tree/tools'/bin MIGCC=/usr/bin/cc")) 'bootstrap safely quotes private config directory'
-Assert-Match $spacedBootstrap ([regex]::Escape("MIGCC=/usr/bin/cc MIGCOM_DIR='/srv/build tree/tools'/libexec '/srv/build tree/tools'/bin/rbuild bootstrap")) 'bootstrap safely quotes private MIG bindings'
+Assert-Match $spacedBootstrap ([regex]::Escape("MIGCC=/usr/bin/cc MIGARCH=ppc MIGCOM_DIR='/srv/build tree/tools'/libexec '/srv/build tree/tools'/bin/rbuild bootstrap")) 'bootstrap safely quotes private MIG bindings and profile architecture'
 $kernelCommand = New-RhapBuildPhaseCommand -Phase 'kernel-drivers' @phaseArgs -DriverProjects @('drivers-ppc/storage/drvExample') -MakeDriverProjects @('drvBPF')
 Assert-Match $kernelCommand ([regex]::Escape('test -d /build/repo')) 'kernel requires existing repository input'
 Assert-Match $kernelCommand ([regex]::Escape('/usr/bin/install -d /build/built /build/state')) 'kernel creates owned output directories'
@@ -274,20 +281,29 @@ Assert-Equal ($failureEvents -join ',') 'preflight,rbuild,bootstrap' 'orchestrat
 
 $profileValues = ConvertFrom-RhapToolchainProfileText -Text $realProfile
 Assert-Equal $profileValues.build_cc '/usr/bin/cc' 'profile build compiler value'
+Assert-Equal $profileValues.target_arch 'ppc' 'profile target architecture value'
 Assert-Equal $profileValues.make '/usr/bin/make' 'profile make value'
 
 Assert-Equal (Test-RhapToolchainProfileText -Text $realProfile) $true 'real toolchain profile contract'
 Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile + "unknown_key=value`n") } 'reject unknown profile key'
 Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile + "build_cc=/bin/false`n") } 'reject duplicate profile key'
+Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile + "target_arch=i386`n") } 'reject duplicate target_arch profile key'
 Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile -replace '(?m)^ld_flags=.*\r?\n?', '') } 'reject missing profile key'
+Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile -replace '(?m)^target_arch=.*\r?\n?', '') } 'reject missing target_arch profile key'
+Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile -replace '(?m)^target_arch=.*$', 'target_arch=ppc;touch_bad') } 'reject unsafe target_arch profile value'
 Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile -replace '(?m)^profile=', 'profile ') } 'reject malformed profile line'
+Assert-Equal (Assert-RhapSafeIdentifier -Value 'mips_safe' -Name 'target_arch') 'mips_safe' 'accept alternate safe architecture identifier'
+Assert-Throws { Assert-RhapSafeIdentifier -Value '9ppc' -Name 'target_arch' } 'reject digit-leading architecture identifier'
+Assert-Throws { Assert-RhapSafeIdentifier -Value 'ppc;touch_bad' -Name 'target_arch' } 'reject architecture injection'
+Assert-Throws { $p=$phaseArgs.Clone(); $p.TargetArch='ppc other'; New-RhapBuildPhaseCommand -Phase 'rbuild' @p } 'phase rejects unsafe target architecture'
 Assert-Equal (Assert-RhapSafeArchFlags -Value '-arch ppc -mcpu=G4') '-arch ppc -mcpu=G4' 'accept gcc-style flag operands'
 Assert-Throws { Assert-RhapSafeArchFlags -Value '-arch *' } 'reject glob star in arch flags'
 Assert-Throws { Assert-RhapSafeArchFlags -Value '-arch ppc?' } 'reject glob question in arch flags'
 Assert-Throws { Assert-RhapSafeArchFlags -Value '-I[abc]' } 'reject glob bracket in arch flags'
-Assert-Equal (Test-RhapPpcMachOFileOutput -Text '/tmp/probe.o: Mach-O object ppc') $true 'accept PPC Mach-O object description'
-Assert-Throws { Test-RhapPpcMachOFileOutput -Text '/tmp/probe.o: Mach-O object i386' } 'reject wrong object architecture'
-Assert-Throws { Test-RhapPpcMachOFileOutput -Text '/tmp/probe.o: ELF 32-bit MSB relocatable, PowerPC' } 'reject non-Mach-O object'
+Assert-Equal (Test-RhapMachOFileOutput -Text '/tmp/probe.o: Mach-O object ppc' -TargetArch ppc) $true 'accept profile Mach-O object description'
+Assert-Equal (Test-RhapMachOFileOutput -Text '/tmp/probe.o: Mach-O object mips_safe' -TargetArch mips_safe) $true 'accept alternate profile Mach-O object description'
+Assert-Throws { Test-RhapMachOFileOutput -Text '/tmp/probe.o: Mach-O object i386' -TargetArch ppc } 'reject wrong object architecture'
+Assert-Throws { Test-RhapMachOFileOutput -Text '/tmp/probe.o: ELF 32-bit MSB relocatable, PowerPC' -TargetArch ppc } 'reject non-Mach-O object'
 
 Assert-Equal (Assert-RhapSafeRemoteOutputPath -RemoteRoot '/build' -Path '/build/repo') '/build/repo' 'accept descendant'
 Assert-Equal (Assert-RhapSafeRemoteOutputPath -RemoteRoot '//build//' -Path '//build///state//') '/build/state' 'normalize slashes'
@@ -337,6 +353,7 @@ Assert-Match $cmd '/usr/bin/cc -arch ppc -c' 'target compiler evidence'
 Assert-Match $cmd 'case-sensitive filesystem required' 'case sensitivity error'
 Assert-Match $cmd 'BUILD_CC' 'build compiler parsed'
 Assert-Match $cmd 'TARGET_CC' 'target compiler parsed'
+Assert-Match $cmd 'TARGET_ARCH' 'target architecture parsed'
 Assert-Match $cmd 'ARCH_FLAGS' 'architecture flags parsed'
 Assert-NotMatch $cmd ([regex]::Escape('case "$rbuild_flag" in -*')) 'arch flag operands such as ppc are accepted'
 Assert-Match $cmd 'set -f' 'disable pathname expansion before flags split'
@@ -376,7 +393,7 @@ Assert-Match $cmd ([regex]::Escape("awk -v wanted=`"`$1`" 'BEGIN")) 'profile awk
 Assert-Match $cmd 'trap' 'probe cleanup trap'
 Assert-Match $cmd 'PROBE_PARENT=\$\(nearest_parent "\$BOOTSTRAP_ROOT"\)' 'case probe uses planned filesystem'
 Assert-Match $cmd '/usr/bin/file "\$PROBE/target\.o"' 'target object architecture inspection'
-Assert-Match $cmd 'Mach-O object ppc' 'target object PPC Mach-O requirement'
+Assert-Match $cmd 'Mach-O object \$TARGET_ARCH' 'target object profile architecture Mach-O requirement'
 Assert-NotMatch $cmd '(?m)(^|[;&|] *)mkdir +-p +/build/(tools|bootstrap-root|state)' 'does not create output roots'
 Assert-NotMatch $cmd '(?m)(^|[;&|]\s*)(eval|source)\s' 'does not execute profile as code'
 Assert-NotMatch $cmd '^sh -c ' 'does not nest through the login shell'
@@ -481,6 +498,8 @@ try {
 
 $wrapperTestDir = Join-Path $env:TEMP ("mig wrapper test {0}" -f [guid]::NewGuid().ToString('n'))
 New-Item -ItemType Directory -Path $wrapperTestDir | Out-Null
+$previousMigArch = $env:MIGARCH
+$env:MIGARCH = 'ppc'
 try {
     function ConvertTo-TestShPath([string]$Path) {
         $resolved = [System.IO.Path]::GetFullPath($Path) -replace '\\', '/'
@@ -507,15 +526,25 @@ for arg do printf '%s\n' "$arg" >> "$MIG_TEST_CAPTURE/compiler.args"; done
 printf '%s\n' '--invocation--' >> "$MIG_TEST_CAPTURE/compiler.args"
 language=
 input=
+target_arch=
+typed=
 while test $# -gt 0; do
     case $1 in
         -x) shift; language=$1 ;;
+        -Dppc|-Dalternate_safe) target_arch=$1 ;;
+        -DMACH_IPC_FLAVOR=TYPED) typed=yes ;;
         *.defs) input=$1 ;;
     esac
     shift
 done
 if test -n "${MIGCC-}"; then test "$language" = c || exit 91; fi
 test -f "$input" || exit 92
+case $input in
+    */kernel-7/mach/mach.defs)
+        test "$target_arch" = -Dppc || exit 95
+        test "$typed" = yes || exit 96
+        ;;
+esac
 if test "${MIG_TEST_CPP_MODE-}" = fail; then
     printf '%s\n' 'partial preprocessor output'
     exit 42
@@ -547,6 +576,8 @@ test -z "$user" || printf '%s\n' 'generated user' > "$user"
 '@
     Set-Content -LiteralPath $fakeCompiler -Encoding ASCII -NoNewline -Value ($fakeCompilerBody -replace "`r`n", "`n")
     Set-Content -LiteralPath $fakeBackend -Encoding ASCII -NoNewline -Value ($fakeBackendBody -replace "`r`n", "`n")
+    Copy-Item -LiteralPath $fakeBackend -Destination (Join-Path $fakeLibexec 'migcom_typd')
+    Copy-Item -LiteralPath $fakeBackend -Destination (Join-Path $fakeLibexec 'migcom_untypd')
     $fakeMkdir = Join-Path $fakeBin 'mkdir'
     $fakeMkdirBody = @'
 #!/bin/sh
@@ -592,6 +623,7 @@ exit 0
     $compilerArgs = Get-Content -LiteralPath (Join-Path $captureDir 'compiler.args')
     $backendArgs = Get-Content -LiteralPath (Join-Path $captureDir 'backend.args')
     Assert-Equal (@($compilerArgs | Where-Object { $_ -eq '-DVALUE=two words' }).Count) 2 'MIG wrapper preserves spaced cpp flag for multiple definitions'
+    Assert-Equal (@($compilerArgs | Where-Object { $_ -eq '-Dppc' }).Count) 2 'MIG wrapper adds one configured architecture definition per compiler invocation'
     Assert-Equal (@($compilerArgs | Where-Object { $_ -eq '--invocation--' }).Count) 2 'MIG wrapper preprocesses multiple definitions'
     Assert-Equal (@($backendArgs | Where-Object { $_ -eq (ConvertTo-TestShPath $headerOutput) }).Count) 2 'MIG wrapper preserves spaced backend header value'
     Assert-Equal (@($backendArgs | Where-Object { $_ -eq (ConvertTo-TestShPath $prefix) }).Count) 2 'MIG wrapper preserves spaced optional -i prefix'
@@ -784,6 +816,7 @@ exit $status
     Assert-Equal (Test-Path -LiteralPath $signalOutput) $false 'owned-stage signal never reaches backend output'
     Assert-Equal (@(Get-ChildItem -LiteralPath $runDir -Force | Where-Object { $_.Name -like '*.migcpp.*' }).Count) 0 'owned-stage signal cleanup leaves no staged directory'
 
+    $archCountBeforeDefault = @((Get-Content -LiteralPath (Join-Path $captureDir 'compiler.args')) | Where-Object { $_ -eq '-Dppc' }).Count
     $defaultOutput = Join-Path $outputDir 'default cpp header.h'
     $defaultInvoke = 'unset MIGCC; cd {0} && MIGCPP={1} MIGCOM_DIR={2} MIG_TEST_CAPTURE={3} sh {4} -header {5} {6}' -f @(
         (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $runDir)),
@@ -811,7 +844,84 @@ exit $status
     Assert-Equal ($LASTEXITCODE -ne 0) $true 'MIG wrapper propagates default cpp failure'
     Assert-Equal (Test-Path -LiteralPath $failedDefaultOutput) $false 'default cpp partial output never reaches backend output'
     Assert-Equal (@(Get-ChildItem -LiteralPath $runDir -Force | Where-Object { $_.Name -like '*.migcpp.*' }).Count) 0 'default cpp failure removes staged preprocessing output'
+    $archCountAfterDefault = @((Get-Content -LiteralPath (Join-Path $captureDir 'compiler.args')) | Where-Object { $_ -eq '-Dppc' }).Count
+    Assert-Equal $archCountAfterDefault $archCountBeforeDefault 'historical no-MIGCC cpp branch ignores configured MIGARCH'
+
+    $compilerCountBeforeInvalidArch = @((Get-Content -LiteralPath (Join-Path $captureDir 'compiler.args')) | Where-Object { $_ -eq '--invocation--' }).Count
+    foreach ($badArch in @('ppc;touch_bad', '9ppc', 'ppc other')) {
+        $invalidArchInvoke = 'cd {0} && MIGCC={1} MIGARCH={2} MIGCOM_DIR={3} MIG_TEST_CAPTURE={4} sh {5} -header {6} {7} 2>/dev/null' -f @(
+            (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $runDir)),
+            (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeCompiler)),
+            (ConvertTo-RhapShellLiteral $badArch),
+            (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeLibexec)),
+            (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $captureDir)),
+            (ConvertTo-RhapShellLiteral $wrapperShPath),
+            (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath (Join-Path $outputDir 'invalid arch.h'))),
+            (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $defsOne))
+        )
+        & $sh -c $invalidArchInvoke
+        Assert-Equal ($LASTEXITCODE -ne 0) $true "MIG wrapper rejects invalid configured architecture: $badArch"
+    }
+    $missingArchInvoke = 'cd {0} && unset MIGARCH && MIGCC={1} MIGCOM_DIR={2} MIG_TEST_CAPTURE={3} sh {4} -header {5} {6} 2>/dev/null' -f @(
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $runDir)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeCompiler)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeLibexec)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $captureDir)),
+        (ConvertTo-RhapShellLiteral $wrapperShPath),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath (Join-Path $outputDir 'missing arch.h'))),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $defsOne))
+    )
+    & $sh -c $missingArchInvoke
+    Assert-Equal ($LASTEXITCODE -ne 0) $true 'configured MIG compiler requires an architecture contract'
+    $invalidExplicitArchInvoke = 'cd {0} && MIGCC={1} MIGARCH=ppc MIGCOM_DIR={2} MIG_TEST_CAPTURE={3} sh {4} -arch {5} -header {6} {7} 2>/dev/null' -f @(
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $runDir)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeCompiler)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeLibexec)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $captureDir)),
+        (ConvertTo-RhapShellLiteral $wrapperShPath),
+        (ConvertTo-RhapShellLiteral 'ppc;touch_bad'),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath (Join-Path $outputDir 'invalid explicit arch.h'))),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $defsOne))
+    )
+    & $sh -c $invalidExplicitArchInvoke
+    Assert-Equal ($LASTEXITCODE -ne 0) $true 'MIG wrapper validates and rejects unsafe explicit -arch'
+    Assert-Equal (@((Get-Content -LiteralPath (Join-Path $captureDir 'compiler.args')) | Where-Object { $_ -eq '--invocation--' }).Count) $compilerCountBeforeInvalidArch 'invalid or missing architectures never invoke configured compiler'
+
+    $overrideOutput = Join-Path $outputDir 'alternate architecture header.h'
+    $overrideInvoke = 'cd {0} && MIGCC={1} MIGARCH=ppc MIGCOM_DIR={2} MIG_TEST_CAPTURE={3} sh {4} -arch alternate_safe -header {5} {6}' -f @(
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $runDir)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeCompiler)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeLibexec)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $captureDir)),
+        (ConvertTo-RhapShellLiteral $wrapperShPath),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $overrideOutput)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $defsOne))
+    )
+    & $sh -c $overrideInvoke
+    Assert-Equal $LASTEXITCODE 0 'explicit safe -arch overrides configured MIGARCH'
+    $compilerArgsAfterOverride = Get-Content -LiteralPath (Join-Path $captureDir 'compiler.args')
+    Assert-Equal (@($compilerArgsAfterOverride | Where-Object { $_ -eq '-Dalternate_safe' }).Count) 1 'explicit alternate architecture is preserved as one cpp argument'
+
+    $typedOutput = Join-Path $outputDir 'typed mach server.h'
+    $actualMachDefs = Join-Path $PSScriptRoot '..\src\kernel-7\mach\mach.defs'
+    $typedInvoke = 'cd {0} && MIGCC={1} MIGARCH=ppc MIGCOM_DIR={2} MIG_TEST_CAPTURE={3} sh {4} -typed -I{5} -DKERNEL -DKERNEL_SERVER -header {6} -user /dev/null -server /dev/null {7}' -f @(
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $runDir)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeCompiler)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeLibexec)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $captureDir)),
+        (ConvertTo-RhapShellLiteral $wrapperShPath),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath (Join-Path $PSScriptRoot '..\src\kernel-7'))),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $typedOutput)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $actualMachDefs))
+    )
+    & $sh -c $typedInvoke
+    Assert-Equal $LASTEXITCODE 0 'typed wrapper contract accepts the actual kernel mach.defs with configured architecture'
+    Assert-Equal (Test-Path -LiteralPath $typedOutput) $true 'typed actual mach.defs reaches private typed backend'
+    $typedCompilerArgs = Get-Content -LiteralPath (Join-Path $captureDir 'compiler.args')
+    Assert-Equal (@($typedCompilerArgs | Where-Object { $_ -eq '-DMACH_IPC_FLAVOR=TYPED' }).Count -ge 1) $true 'typed actual mach.defs selects typed preprocessing'
+    Assert-Equal (@($typedCompilerArgs | Where-Object { $_ -eq (ConvertTo-TestShPath $actualMachDefs) }).Count) 1 'typed wrapper passes the actual mach.defs as one input'
 } finally {
+    $env:MIGARCH = $previousMigArch
     Remove-Item -LiteralPath $wrapperTestDir -Recurse -Force -ErrorAction SilentlyContinue
 }
 

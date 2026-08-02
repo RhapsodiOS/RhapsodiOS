@@ -119,6 +119,7 @@ $parseProfile = {
     param($text)
     $values = ConvertFrom-RhapToolchainProfileText -Text $text
     [void](Assert-RhapSafeCommandPath -Path $values.build_cc -Name 'build_cc')
+    [void](Assert-RhapSafeIdentifier -Value $values.target_arch -Name 'target_arch')
     [void](Assert-RhapSafeCommandPath -Path $values.make -Name 'make')
     return $values
 }
@@ -136,7 +137,7 @@ $phaseFactory = {
         $extra.MakeDriverProjects = $drivers.MakeOnly
         Write-Host "build-src: $($drivers.Packaged.Count + $drivers.MakeOnly.Count) optional driver projects"
     }
-    return New-RhapBuildPhaseCommand -Phase $phase -SourceRoot $sourceRoot -ToolsDir $cfg.ToolsDir -BootstrapRoot $cfg.BootstrapRoot -StateDir $cfg.StateDir -Profile $cfg.ToolchainProfile -RepoDir $cfg.RepoDir -BuiltDir $cfg.BuiltDir -BuildCc $profileValues.build_cc -Make $profileValues.make -ToolPath $profileValues.path @extra
+    return New-RhapBuildPhaseCommand -Phase $phase -SourceRoot $sourceRoot -ToolsDir $cfg.ToolsDir -BootstrapRoot $cfg.BootstrapRoot -StateDir $cfg.StateDir -Profile $cfg.ToolchainProfile -RepoDir $cfg.RepoDir -BuiltDir $cfg.BuiltDir -BuildCc $profileValues.build_cc -TargetArch $profileValues.target_arch -Make $profileValues.make -ToolPath $profileValues.path @extra
 }
 try {
     [void](Invoke-RhapBuildOrchestration -Phases $phases -PreflightBody $preflight -ProfileBody $profileBody -FreshBody $freshCommand -ParseProfile $parseProfile -PhaseFactory $phaseFactory -ScriptInvoker $scriptInvoker -CaptureInvoker $captureInvoker)

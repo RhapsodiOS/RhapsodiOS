@@ -3,7 +3,7 @@
 Set-StrictMode -Version Latest
 
 $script:RhapToolchainKeys = @(
-    'profile', 'build_cc', 'target_cc', 'target_ar', 'target_ranlib',
+    'profile', 'build_cc', 'target_cc', 'target_arch', 'target_ar', 'target_ranlib',
     'make', 'shell', 'tar', 'tar_create_flags', 'gzip', 'rsync', 'path',
     'arch_flags', 'cpp_flags', 'ld_flags', 'ln'
 )
@@ -44,7 +44,16 @@ function Test-RhapToolchainProfileText {
             throw "toolchain profile missing $key"
         }
     }
+    if ($seen.ContainsKey('target_arch') -and $seen['target_arch'] -notmatch '^[A-Za-z_][A-Za-z0-9_]*$') {
+        throw 'invalid toolchain target_arch'
+    }
     return $true
+}
+
+function Assert-RhapSafeIdentifier {
+    param([Parameter(Mandatory = $true)][string]$Value, [string]$Name = 'identifier')
+    if ($Value -notmatch '^[A-Za-z_][A-Za-z0-9_]*$') { throw "invalid $Name" }
+    return $Value
 }
 
 function ConvertFrom-RhapToolchainProfileText {
@@ -69,10 +78,14 @@ function Assert-RhapSafeArchFlags {
     return $Value
 }
 
-function Test-RhapPpcMachOFileOutput {
-    param([Parameter(Mandatory = $true)][string]$Text)
-    if ($Text -notmatch '(^|:\s*)Mach-O object ppc($|[ ,])') {
-        throw 'TARGET_CC did not produce a PPC Mach-O object'
+function Test-RhapMachOFileOutput {
+    param(
+        [Parameter(Mandatory = $true)][string]$Text,
+        [Parameter(Mandatory = $true)][string]$TargetArch
+    )
+    $arch = [regex]::Escape((Assert-RhapSafeIdentifier -Value $TargetArch -Name 'TargetArch'))
+    if ($Text -notmatch "(^|:\s*)Mach-O object $arch($|[ ,])") {
+        throw "TARGET_CC did not produce a $TargetArch Mach-O object"
     }
     return $true
 }
@@ -290,6 +303,7 @@ function New-RhapPreflightCommand {
         "profile_value() { awk -v wanted=`"`$1`" 'BEGIN { found=0 } /^[ `t]*#/ { next } { line=`$0; sub(/^[ `t]*/, `"`", line); eq=index(line, `"=`"); if (eq < 2) next; key=substr(line, 1, eq-1); value=substr(line, eq+1); sub(/[ `t]*`$/, `"`", key); sub(/^[ `t]*/, `"`", value); sub(/[ `t]*`$/, `"`", value); if (key == wanted) { print value; found=1; exit } } END { if (found == 0) exit 1 }' `"`$PROFILE`"; }",
         'BUILD_CC=$(profile_value build_cc) || fail "profile missing build_cc"',
         'TARGET_CC=$(profile_value target_cc) || fail "profile missing target_cc"',
+        'TARGET_ARCH=$(profile_value target_arch) || fail "profile missing target_arch"',
         'TARGET_AR=$(profile_value target_ar) || fail "profile missing target_ar"',
         'TARGET_RANLIB=$(profile_value target_ranlib) || fail "profile missing target_ranlib"',
         'MAKE_TOOL=$(profile_value make) || fail "profile missing make"',
@@ -300,6 +314,7 @@ function New-RhapPreflightCommand {
         'LN_TOOL=$(profile_value ln) || fail "profile missing ln"',
         'TOOL_PATH=$(profile_value path) || fail "profile missing path"',
         'ARCH_FLAGS=$(profile_value arch_flags) || fail "profile missing arch_flags"',
+        'expr "$TARGET_ARCH" : "[A-Za-z_][A-Za-z0-9_]*\$" >/dev/null || fail "invalid target_arch: $TARGET_ARCH"',
         'case "$TOOL_PATH" in "$TOOLS_DIR/bin"|"$TOOLS_DIR/bin":*) ;; *) fail "profile PATH must select private MIG wrapper first: $TOOLS_DIR/bin" ;; esac',
         'for tool in "$BUILD_CC" "$TARGET_CC" "$TARGET_AR" "$TARGET_RANLIB" "$MAKE_TOOL" "$SHELL_TOOL" "$TAR_TOOL" "$GZIP_TOOL" "$RSYNC_TOOL" "$LN_TOOL"; do case "$tool" in /*) ;; *) fail "configured executable is not absolute: $tool" ;; esac; expr "$tool" : "/[-A-Za-z0-9_./+]*\$" >/dev/null || fail "configured executable contains unsafe characters: $tool"; test -f "$tool" && test -x "$tool" || fail "configured executable is not an executable file: $tool"; done',
         'test -x /usr/bin/cc || fail "Developer Tools compiler missing: /usr/bin/cc"',
@@ -335,7 +350,7 @@ function New-RhapPreflightCommand {
         '"$TARGET_CC" "$@" -c "$PROBE/probe.c" -o "$PROBE/target.o" || fail "TARGET_CC compile failed"',
         'test -s "$PROBE/target.o" || fail "TARGET_CC produced an empty object"',
         'TARGET_FILE=$(/usr/bin/file "$PROBE/target.o") || fail "could not inspect TARGET_CC object"',
-        'case "$TARGET_FILE" in *"Mach-O object ppc"*) ;; *) fail "TARGET_CC did not produce a PPC Mach-O object: $TARGET_FILE" ;; esac',
+        'case "$TARGET_FILE" in *"Mach-O object $TARGET_ARCH"*) ;; *) fail "TARGET_CC did not produce a $TARGET_ARCH Mach-O object: $TARGET_FILE" ;; esac',
         'echo "build-src preflight: ok"'
     )
     $body = $parts -join '; '
@@ -353,6 +368,7 @@ function New-RhapBuildPhaseCommand {
         [Parameter(Mandatory = $true)][string]$RepoDir,
         [Parameter(Mandatory = $true)][string]$BuiltDir,
         [Parameter(Mandatory = $true)][string]$BuildCc,
+        [Parameter(Mandatory = $true)][string]$TargetArch,
         [Parameter(Mandatory = $true)][string]$Make,
         [Parameter(Mandatory = $true)][string]$ToolPath,
         [string[]]$DriverProjects = @(),
@@ -376,6 +392,8 @@ function New-RhapBuildPhaseCommand {
     $repo = ConvertTo-RhapShellLiteral $RepoDir
     $built = ConvertTo-RhapShellLiteral $BuiltDir
     $cc = ConvertTo-RhapShellLiteral $BuildCc
+    $targetArchValue = Assert-RhapSafeIdentifier -Value $TargetArch -Name 'TargetArch'
+    $targetArch = ConvertTo-RhapShellLiteral $targetArchValue
     $makeTool = ConvertTo-RhapShellLiteral $Make
     if ($ToolPath -notmatch '^[A-Za-z0-9_./:+@=-]+$') { throw 'unsafe toolchain path' }
     $toolPath = ConvertTo-RhapShellLiteral $ToolPath
@@ -427,11 +445,11 @@ function New-RhapBuildPhaseCommand {
         $commands.Add("rm -rf $migSmoke")
         $commands.Add("/usr/bin/install -d $migSmoke")
         $commands.Add("cd $migSmoke")
-        $commands.Add("CONFIG_DIR=$tools/bin MIGCC=$cc MIGCOM_DIR=$tools/libexec $tools/bin/mig -I$source/kernel-7 -header mach_interface.h -i -server /dev/null $source/kernel-7/mach/mach.defs")
+        $commands.Add("CONFIG_DIR=$tools/bin MIGCC=$cc MIGARCH=$targetArch MIGCOM_DIR=$tools/libexec $tools/bin/mig -typed -I$source/kernel-7 -DKERNEL -DKERNEL_SERVER -header /dev/null -user /dev/null -server mach_server.c $source/kernel-7/mach/mach.defs")
         return ($commands -join ' && ')
     }
     if ($Phase -eq 'bootstrap') {
-        return "set -e; /usr/bin/install -d $bootstrap $repo $state && cd $source && CONFIG_DIR=$tools/bin MIGCC=$cc MIGCOM_DIR=$tools/libexec $rbuild bootstrap --sysroot $bootstrap --toolchain $profilePath --state $state $source/BootstrapManifest $repo $repo"
+        return "set -e; /usr/bin/install -d $bootstrap $repo $state && cd $source && CONFIG_DIR=$tools/bin MIGCC=$cc MIGARCH=$targetArch MIGCOM_DIR=$tools/libexec $rbuild bootstrap --sysroot $bootstrap --toolchain $profilePath --state $state $source/BootstrapManifest $repo $repo"
     }
     if ($Phase -eq 'world') {
         return "set -e; test -d $repo || { echo 'build-src: repository missing: $RepoDir' >&2; exit 1; }; /usr/bin/install -d $built $state && cd $source && $rbuild buildall --state $state Manifest $repo $built"

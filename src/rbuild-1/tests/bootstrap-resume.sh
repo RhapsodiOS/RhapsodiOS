@@ -59,6 +59,7 @@ write_profile() {
 profile=test-gcc
 build_cc=/usr/bin/cc
 target_cc=/usr/bin/cc
+target_arch=ppc
 target_ar=/usr/bin/ar
 target_ranlib=/usr/bin/ranlib
 make=/usr/bin/gnumake

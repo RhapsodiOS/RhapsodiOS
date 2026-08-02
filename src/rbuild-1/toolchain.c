@@ -16,6 +16,7 @@ static const ToolchainField fields[] = {
     FIELD(profile),
     FIELD(build_cc),
     FIELD(target_cc),
+    FIELD(target_arch),
     FIELD(target_ar),
     FIELD(target_ranlib),
     FIELD(make),
@@ -32,6 +33,15 @@ static const ToolchainField fields[] = {
 };
 
 #define FIELD_COUNT (sizeof(fields) / sizeof(fields[0]))
+
+static int identifier_start(unsigned char ch) {
+    return (ch >= 'A' && ch <= 'Z') ||
+           (ch >= 'a' && ch <= 'z') || ch == '_';
+}
+
+static int identifier_continue(unsigned char ch) {
+    return identifier_start(ch) || (ch >= '0' && ch <= '9');
+}
 
 static char **field_slot(Toolchain *tc, size_t offset) {
     return (char **)((char *)tc + offset);
@@ -128,6 +138,21 @@ int toolchain_validate(const Toolchain *tc) {
             fprintf(stderr, "rbuild: toolchain profile missing %s\n",
                     fields[i].key);
             return 1;
+        }
+    }
+    {
+        const unsigned char *p = (const unsigned char *)tc->target_arch;
+        if (!identifier_start(*p)) {
+            fprintf(stderr, "rbuild: invalid toolchain target_arch %s\n",
+                    tc->target_arch);
+            return 1;
+        }
+        for (p++; *p != '\0'; p++) {
+            if (!identifier_continue(*p)) {
+                fprintf(stderr, "rbuild: invalid toolchain target_arch %s\n",
+                        tc->target_arch);
+                return 1;
+            }
         }
     }
     return 0;

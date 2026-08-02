@@ -7,6 +7,7 @@ typedef struct {
     char *profile;
     char *build_cc;
     char *target_cc;
+    char *target_arch;
     char *target_ar;
     char *target_ranlib;
     char *make;

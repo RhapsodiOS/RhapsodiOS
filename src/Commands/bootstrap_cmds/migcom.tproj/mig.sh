@@ -37,6 +37,14 @@ require_operand()
     reject_newline "$operand"
 }
 
+valid_arch()
+{
+    case $1 in
+	''|[!A-Za-z_]*|*[!A-Za-z0-9_]* ) return 1;;
+    esac
+    return 0
+}
+
 append_cppflag()
 {
     reject_newline "$1"
@@ -83,7 +91,12 @@ do
 		if [ $# -gt 0 ] && [ "${1#-}" = "$1" ]; then
 		    append_migflag "$1"; shift
 		fi;;
-	-arch ) require_operand "$1" "${2-}"; arch=$2; shift; shift;;
+	-arch ) require_operand "$1" "${2-}"
+		if ! valid_arch "$2"; then
+		    echo "mig: invalid architecture identifier: $2" >&2
+		    exit 1
+		fi
+		arch=$2; shift; shift;;
 	-typed ) migcom=$MIGCOM_ROOT/migcom_typd; 	\
 		append_cppflag '-DMACH_IPC_FLAVOR=TYPED'; shift;;
 	-untyped ) migcom=$MIGCOM_ROOT/migcom_untypd; 	\
@@ -94,6 +107,15 @@ do
 	* ) append_file "$1"; shift;;
     esac
 done
+
+if [ "${MIGCC-}" ]; then
+    mig_arch=${arch-${MIGARCH-}}
+    if ! valid_arch "$mig_arch"; then
+	echo "mig: MIGCC requires a valid MIGARCH or -arch identifier" >&2
+	exit 1
+    fi
+    append_cppflag "-D$mig_arch"
+fi
 
 old_ifs=$IFS
 IFS=$newline

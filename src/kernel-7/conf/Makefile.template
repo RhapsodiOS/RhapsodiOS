@@ -863,7 +863,8 @@ install_mi_hdrs: DSTROOT install_mi_std_hdrs
 install_mi_std_hdrs: DSTROOT $(MIG_HFILES_EXP) $(MACH_DEBUG_HFILE)
 	@for i in ${EXPORT}; 						\
 	do								\
-	    EXPDIR="`pwd`/exports";					\
+	    object_dir=`pwd` || exit 1;					\
+	    EXPDIR="$$object_dir/exports";				\
 	    [ -d "$$EXPDIR" ] || $(MKDIRS) "$$EXPDIR" || exit 1;	\
 	    rm -f "$$EXPDIR"/* || exit 1;				\
 	    (cd "$(SOURCE_DIR)/$$i" || exit 1;				\
@@ -969,7 +970,8 @@ install_md_hdrs: DSTROOT install_md_std_hdrs \
 install_md_std_hdrs: DSTROOT
 	@for i in `echo ${MACHINE_EXPORT}`; 				\
 	do								\
-	    EXPDIR="`pwd`/exports";					\
+	    object_dir=`pwd` || exit 1;					\
+	    EXPDIR="$$object_dir/exports";				\
 	    [ -d "$$EXPDIR" ] || $(MKDIRS) "$$EXPDIR" || exit 1;	\
 	    rm -f "$$EXPDIR"/* || exit 1;				\
 	    (cd "$(SOURCE_DIR)/$$i" || exit 1;				\

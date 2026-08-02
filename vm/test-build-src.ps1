@@ -90,7 +90,8 @@ Assert-NotMatch $kernelMakeTemplateText '(?m)^\s*@-for i in (?:\$\{EXPORT\}|`ech
 Assert-Equal ([regex]::Matches($kernelMakeTemplateText, 'unifdef_status=\$\$\?;').Count) 2 'both kernel export loops capture unifdef status immediately'
 Assert-Equal ([regex]::Matches($kernelMakeTemplateText, '\[ \$\$unifdef_status -eq 1 \]').Count) 2 'both kernel export loops reserve decomment fallback for unifdef status one'
 Assert-Equal ([regex]::Matches($kernelMakeTemplateText, '\[ \$\$unifdef_status -ne 0 \]').Count) 2 'both kernel export loops reject unexpected unifdef failure'
-Assert-Equal ([regex]::Matches($kernelMakeTemplateText, 'EXPDIR="`pwd`/exports";').Count) 2 'both kernel export loops preserve space-containing object paths'
+Assert-Equal ([regex]::Matches($kernelMakeTemplateText, 'object_dir=`pwd` \|\| exit 1;').Count) 2 'both kernel export loops reject failed object directory capture'
+Assert-Equal ([regex]::Matches($kernelMakeTemplateText, 'EXPDIR="\$\$object_dir/exports";').Count) 2 'both kernel export loops preserve the guarded object directory'
 Assert-Equal ([regex]::Matches($kernelMakeTemplateText, '\(cd "\$\(SOURCE_DIR\)/\$\$i" \|\| exit 1;').Count) 2 'both kernel export loops quote and guard source directory changes'
 Assert-Equal ([regex]::Matches($kernelMakeTemplateText, 'DSTDIR="\$\(DSTROOT\)\$\(INCDIR\)/\$\$i";').Count) 2 'both kernel export loops preserve space-containing destination paths'
 Assert-Equal ([regex]::Matches($kernelMakeTemplateText, '"\$\(DECOMMENT\)" "\$\$EXPDIR/\$\$j"  r >\s*(?:\\\r?\n\s*)?"\$\$EXPDIR/\$\$j\.strip" \|\| exit 1;').Count) 2 'both kernel export loops quote and hard-fail the decomment fallback'
@@ -571,6 +572,8 @@ exit 7
     $mkdirFail = Join-Path $decommentContractDir 'mkdir-fail'
     $installOk = Join-Path $decommentContractDir 'install-ok'
     $installFail = Join-Path $decommentContractDir 'install-fail'
+    $pwdOk = Join-Path $decommentContractDir 'pwd-ok'
+    $pwdFail = Join-Path $decommentContractDir 'pwd-fail'
     $spacedToolDir = Join-Path $decommentContractDir 'private tools'
     New-Item -ItemType Directory -Path $spacedToolDir | Out-Null
     $spacedDecomment = Join-Path $spacedToolDir 'decomment'
@@ -584,9 +587,11 @@ INPUT=$5
 ROOT=$6
 ACCEPTED=$7
 SENTINEL_MODE=$8
+PWD_TOOL=$9
 (
-    EXPDIR="$ROOT/exports"
-    DSTDIR="$ROOT/include"
+    object_dir=`"$PWD_TOOL" "$ROOT"` || exit 1
+    EXPDIR="$object_dir/exports"
+    DSTDIR="$object_dir/include"
     [ -d "$EXPDIR" ] || "$MKDIRS" "$EXPDIR" || exit 1
     rm -f "$EXPDIR"/* || exit 1
     [ -d "$DSTDIR" ] || "$MKDIRS" "$DSTDIR" || exit 1
@@ -627,17 +632,29 @@ exit 8
 #!/bin/sh
 exit 9
 '@
+    $pwdOkBody = @'
+#!/bin/sh
+printf '%s\n' "$1"
+'@
+    $pwdFailBody = @'
+#!/bin/sh
+exit 10
+'@
     Set-Content -LiteralPath $recipeScript -Encoding ASCII -NoNewline -Value ($recipeBody -replace "`r`n", "`n")
     Set-Content -LiteralPath $mkdirOk -Encoding ASCII -NoNewline -Value ($mkdirOkBody -replace "`r`n", "`n")
     Set-Content -LiteralPath $mkdirFail -Encoding ASCII -NoNewline -Value ($mkdirFailBody -replace "`r`n", "`n")
     Set-Content -LiteralPath $installOk -Encoding ASCII -NoNewline -Value ($installOkBody -replace "`r`n", "`n")
     Set-Content -LiteralPath $installFail -Encoding ASCII -NoNewline -Value ($installFailBody -replace "`r`n", "`n")
+    Set-Content -LiteralPath $pwdOk -Encoding ASCII -NoNewline -Value ($pwdOkBody -replace "`r`n", "`n")
+    Set-Content -LiteralPath $pwdFail -Encoding ASCII -NoNewline -Value ($pwdFailBody -replace "`r`n", "`n")
     Copy-Item -LiteralPath $fakeDecomment -Destination $spacedDecomment
     $recipeSh = ConvertTo-DecommentTestShPath $recipeScript
     $mkdirOkSh = ConvertTo-DecommentTestShPath $mkdirOk
     $mkdirFailSh = ConvertTo-DecommentTestShPath $mkdirFail
     $installOkSh = ConvertTo-DecommentTestShPath $installOk
     $installFailSh = ConvertTo-DecommentTestShPath $installFail
+    $pwdOkSh = ConvertTo-DecommentTestShPath $pwdOk
+    $pwdFailSh = ConvertTo-DecommentTestShPath $pwdFail
     $spacedDecommentSh = ConvertTo-DecommentTestShPath $spacedDecomment
     $spacedSourceDir = Join-Path $decommentContractDir 'source root with spaces'
     New-Item -ItemType Directory -Path $spacedSourceDir | Out-Null
@@ -648,14 +665,14 @@ exit 9
     $successRootSh = ConvertTo-DecommentTestShPath $successRoot
     $successAccepted = Join-Path $decommentContractDir 'success accepted'
     $successAcceptedSh = ConvertTo-DecommentTestShPath $successAccepted
-    & $boundarySh $recipeSh $mkdirOkSh $installOkSh $spacedDecommentSh $unifdefSh $spacedInputSh $successRootSh $successAcceptedSh ok
+    & $boundarySh $recipeSh $mkdirOkSh $installOkSh $spacedDecommentSh $unifdefSh $spacedInputSh $successRootSh $successAcceptedSh ok $pwdOkSh
     Assert-Equal $LASTEXITCODE 0 'kernel export recipe preserves spaced source, object, export, destination, and tool paths'
     Assert-Equal (Test-Path -LiteralPath $successAccepted) $true 'successful export recipe reaches acceptance marker'
     Assert-Equal (Test-Path -LiteralPath (Join-Path $successRoot 'include\output.h')) $true 'successful export recipe installs output'
 
     $mkdirFailRoot = Join-Path $decommentContractDir 'mkdir fail root'
     $mkdirFailAccepted = Join-Path $decommentContractDir 'mkdir fail accepted'
-    & $boundarySh $recipeSh $mkdirFailSh $installOkSh $spacedDecommentSh $unifdefSh $spacedInputSh (ConvertTo-DecommentTestShPath $mkdirFailRoot) (ConvertTo-DecommentTestShPath $mkdirFailAccepted) ok 2>$null
+    & $boundarySh $recipeSh $mkdirFailSh $installOkSh $spacedDecommentSh $unifdefSh $spacedInputSh (ConvertTo-DecommentTestShPath $mkdirFailRoot) (ConvertTo-DecommentTestShPath $mkdirFailAccepted) ok $pwdOkSh 2>$null
     $mkdirFailExit = $LASTEXITCODE
     Assert-Equal ($mkdirFailExit -ne 0) $true 'kernel export recipe propagates MKDIRS failure'
     Assert-Equal (Test-Path -LiteralPath $mkdirFailAccepted) $false 'MKDIRS failure cannot reach acceptance marker'
@@ -663,7 +680,7 @@ exit 9
 
     $installFailRoot = Join-Path $decommentContractDir 'install fail root'
     $installFailAccepted = Join-Path $decommentContractDir 'install fail accepted'
-    & $boundarySh $recipeSh $mkdirOkSh $installFailSh $spacedDecommentSh $unifdefSh $spacedInputSh (ConvertTo-DecommentTestShPath $installFailRoot) (ConvertTo-DecommentTestShPath $installFailAccepted) ok 2>$null
+    & $boundarySh $recipeSh $mkdirOkSh $installFailSh $spacedDecommentSh $unifdefSh $spacedInputSh (ConvertTo-DecommentTestShPath $installFailRoot) (ConvertTo-DecommentTestShPath $installFailAccepted) ok $pwdOkSh 2>$null
     $installFailExit = $LASTEXITCODE
     Assert-Equal ($installFailExit -ne 0) $true 'kernel export recipe propagates install failure'
     Assert-Equal (Test-Path -LiteralPath $installFailAccepted) $false 'install failure cannot reach acceptance marker'
@@ -674,7 +691,7 @@ exit 9
     $savedErrorActionPreference = $ErrorActionPreference
     try {
         $ErrorActionPreference = 'SilentlyContinue'
-        & $boundarySh $recipeSh $mkdirOkSh $installOkSh $spacedDecommentSh $unifdefSh $spacedInputSh (ConvertTo-DecommentTestShPath $sentinelFailRoot) (ConvertTo-DecommentTestShPath $sentinelFailAccepted) fail 2>$null
+        & $boundarySh $recipeSh $mkdirOkSh $installOkSh $spacedDecommentSh $unifdefSh $spacedInputSh (ConvertTo-DecommentTestShPath $sentinelFailRoot) (ConvertTo-DecommentTestShPath $sentinelFailAccepted) fail $pwdOkSh 2>$null
         $sentinelFailExit = $LASTEXITCODE
     } finally {
         $ErrorActionPreference = $savedErrorActionPreference
@@ -682,6 +699,14 @@ exit 9
     Assert-Equal ($sentinelFailExit -ne 0) $true 'kernel export recipe propagates sentinel write failure'
     Assert-Equal (Test-Path -LiteralPath $sentinelFailAccepted) $false 'sentinel write failure cannot reach acceptance marker'
     Assert-Equal (Test-Path -LiteralPath (Join-Path $sentinelFailRoot 'include\output.h')) $false 'sentinel write failure cannot install output'
+
+    $pwdFailRoot = Join-Path $decommentContractDir 'pwd fail root'
+    $pwdFailAccepted = Join-Path $decommentContractDir 'pwd fail accepted'
+    & $boundarySh $recipeSh $mkdirOkSh $installOkSh $spacedDecommentSh $unifdefSh $spacedInputSh (ConvertTo-DecommentTestShPath $pwdFailRoot) (ConvertTo-DecommentTestShPath $pwdFailAccepted) ok $pwdFailSh 2>$null
+    $pwdFailExit = $LASTEXITCODE
+    Assert-Equal ($pwdFailExit -ne 0) $true 'kernel export recipe propagates failed pwd capture'
+    Assert-Equal (Test-Path -LiteralPath $pwdFailAccepted) $false 'failed pwd capture cannot reach acceptance marker'
+    Assert-Equal (Test-Path -LiteralPath (Join-Path $pwdFailRoot 'exports')) $false 'failed pwd capture cannot create an export directory'
 } finally {
     Remove-Item -LiteralPath $decommentContractDir -Recurse -Force -ErrorAction SilentlyContinue
 }

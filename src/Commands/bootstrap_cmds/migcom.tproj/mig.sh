@@ -45,7 +45,7 @@ do
     rm -f "$base".d "$base".d~
     if [ "${MIGCC-}" ]
     then
-	$MIGCC -E -traditional-cpp $cppflags "$file"
+	"$MIGCC" -E -traditional-cpp $cppflags "$file"
     else
 	CPP="/usr/libexec/${arch-`/usr/bin/arch`}/2.7.2.1/cpp"
 	$CPP $cppflags "$file" - ${sawMD+"$base".d~}

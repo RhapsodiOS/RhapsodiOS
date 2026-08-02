@@ -251,6 +251,7 @@ function New-RhapPreflightCommand {
         'set -e',
         "SOURCE_ROOT=$qSource",
         "PROFILE=$qProfile",
+        "TOOLS_DIR=$qTools",
         "BOOTSTRAP_ROOT=$qBootstrap",
         'fail() { echo "build-src preflight: $*" >&2; exit 1; }',
         'test -d "$SOURCE_ROOT" || fail "source root missing: $SOURCE_ROOT"',
@@ -262,6 +263,9 @@ function New-RhapPreflightCommand {
         'test -f "$SOURCE_ROOT/Commands/bootstrap_cmds/config.tproj/lexer.l" || fail "kernel config lexer source missing"',
         'test -f "$SOURCE_ROOT/Commands/bootstrap_cmds/config.tproj/config.h" || fail "kernel config header source missing"',
         'for config_source in externs.c main.c mkglue.c mkheaders.c mkioconf.c mkmakefile.c mkswapconf.c openp.c searchp.c; do test -f "$SOURCE_ROOT/Commands/bootstrap_cmds/config.tproj/$config_source" || fail "kernel config source missing: $config_source"; done',
+        'for mig_source in error.c global.c handler.c header.c mig.c routine.c server.c statement.c string.c type.c user.c utils.c parser.y lexxer.l mig.sh routine.h type.h utils.h lexxer.h global.h statement.h write.h error.h string.h alloc.h mig_errors.h; do test -f "$SOURCE_ROOT/Commands/bootstrap_cmds/migcom.tproj/$mig_source" || fail "classic MIG source missing: $mig_source"; done',
+        'for mig_source in error.c global.c header.c migcom.c routine.c server.c statement.c string.c type.c user.c utils.c parser.y lexxer.l alloc.h cross64.h error.h global.h lexxer.h statement.h string.h type.h utils.h write.h routine.h; do test -f "$SOURCE_ROOT/Commands/bootstrap_cmds/migcom_typd.tproj/$mig_source" || fail "typed MIG source missing: $mig_source"; done',
+        'for mig_source in error.c global.c header.c mig.c routine.c server.c statement.c string.c test.c type.c user.c utils.c parser.y lexxer.l migcom_untypd_vers_stub.c alloc.h error.h global.h lexxer.h routine.h statement.h strdefs.h type.h utils.h write.h; do test -f "$SOURCE_ROOT/Commands/bootstrap_cmds/migcom_untypd.tproj/$mig_source" || fail "untyped MIG source missing: $mig_source"; done',
         'test -f "$PROFILE" || fail "toolchain profile missing: $PROFILE"',
         "awk 'BEGIN { $requiredKeys } function trim(value) { sub(/^[ `t]*/, `"`", value); sub(/[ `t]*`$/, `"`", value); return value } { text=trim(`$0); if (text == `"`" || substr(text, 1, 1) == `"#`") next; equals=index(text, `"=`"); if (equals < 2) exit 1; key=trim(substr(text, 1, equals-1)); value=trim(substr(text, equals+1)); if (!(key in required) || (key in seen) || value == `"`") exit 1; seen[key]=1 } END { for (key in required) if (!(key in seen)) exit 1 }' `"`$PROFILE`" || fail `"invalid toolchain profile`"",
         "profile_value() { awk -v wanted=`"`$1`" 'BEGIN { found=0 } /^[ `t]*#/ { next } { line=`$0; sub(/^[ `t]*/, `"`", line); eq=index(line, `"=`"); if (eq < 2) next; key=substr(line, 1, eq-1); value=substr(line, eq+1); sub(/[ `t]*`$/, `"`", key); sub(/^[ `t]*/, `"`", value); sub(/[ `t]*`$/, `"`", value); if (key == wanted) { print value; found=1; exit } } END { if (found == 0) exit 1 }' `"`$PROFILE`"; }",
@@ -275,12 +279,15 @@ function New-RhapPreflightCommand {
         'GZIP_TOOL=$(profile_value gzip) || fail "profile missing gzip"',
         'RSYNC_TOOL=$(profile_value rsync) || fail "profile missing rsync"',
         'LN_TOOL=$(profile_value ln) || fail "profile missing ln"',
+        'TOOL_PATH=$(profile_value path) || fail "profile missing path"',
         'ARCH_FLAGS=$(profile_value arch_flags) || fail "profile missing arch_flags"',
+        'case "$TOOL_PATH" in "$TOOLS_DIR/bin"|"$TOOLS_DIR/bin":*) ;; *) fail "profile PATH must select private MIG wrapper first: $TOOLS_DIR/bin" ;; esac',
         'for tool in "$BUILD_CC" "$TARGET_CC" "$TARGET_AR" "$TARGET_RANLIB" "$MAKE_TOOL" "$SHELL_TOOL" "$TAR_TOOL" "$GZIP_TOOL" "$RSYNC_TOOL" "$LN_TOOL"; do case "$tool" in /*) ;; *) fail "configured executable is not absolute: $tool" ;; esac; expr "$tool" : "/[-A-Za-z0-9_./+]*\$" >/dev/null || fail "configured executable contains unsafe characters: $tool"; test -f "$tool" && test -x "$tool" || fail "configured executable is not an executable file: $tool"; done',
         'test -x /usr/bin/cc || fail "Developer Tools compiler missing: /usr/bin/cc"',
         'test -x /usr/bin/install || fail "Developer Tools install missing: /usr/bin/install"',
         'test -f /usr/bin/yacc && test -x /usr/bin/yacc || fail "Developer Tools yacc missing: /usr/bin/yacc"',
         'test -f /usr/bin/lex && test -x /usr/bin/lex || fail "Developer Tools lex missing: /usr/bin/lex"',
+        'test -f /bin/mv && test -x /bin/mv || fail "generated source rename tool missing: /bin/mv"',
         'test -f /usr/bin/file && test -x /usr/bin/file || fail "object inspection tool missing: /usr/bin/file"',
         'for helper in /usr/bin/tee /usr/bin/cksum /usr/bin/sed /bin/cat; do test -f "$helper" && test -x "$helper" || fail "build helper missing: $helper"; done',
         'nearest_parent() { rbuild_parent=$1; while :; do test -e "$rbuild_parent" && break; rbuild_next=${rbuild_parent%/*}; test -n "$rbuild_next" || rbuild_next=/; if test "$rbuild_next" = "$rbuild_parent"; then break; fi; rbuild_parent=$rbuild_next; done; printf "%s\n" "$rbuild_parent"; }',
@@ -356,12 +363,44 @@ function New-RhapBuildPhaseCommand {
     $rbuild = "$tools/bin/rbuild"
     $configSource = "$source/Commands/bootstrap_cmds/config.tproj"
     $configBuild = "$tools/config-build"
+    $migBuild = "$tools/mig-build"
 
     if ($Phase -eq 'rbuild') {
-        return "set -e; cd $source/rbuild-1 && $makeTool CC=$cc clean test all && /usr/bin/install -d $tools/bin && /usr/bin/install -c -m 755 rbuild $rbuild && $cc -O -o $tools/bin/relpath $source/Commands/bootstrap_cmds/relpath.tproj/relpath.c && rm -rf $configBuild && /usr/bin/install -d $configBuild && cd $configBuild && /usr/bin/yacc -d $configSource/parser.y && /usr/bin/lex $configSource/lexer.l && $cc -O -bsd -DCMU -DLOCALARCHITECTURE -DNeXT=1 -I$configSource -I$configBuild -o $tools/bin/config $configSource/externs.c $configSource/main.c $configSource/mkglue.c $configSource/mkheaders.c $configSource/mkioconf.c $configSource/mkmakefile.c $configSource/mkswapconf.c $configSource/openp.c $configSource/searchp.c $configBuild/y.tab.c $configBuild/lex.yy.c"
+        $commands = New-Object System.Collections.Generic.List[string]
+        $commands.Add('set -e')
+        $commands.Add("cd $source/rbuild-1")
+        $commands.Add("$makeTool CC=$cc clean test all")
+        $commands.Add("/usr/bin/install -d $tools/bin")
+        $commands.Add("/usr/bin/install -c -m 755 rbuild $rbuild")
+        $commands.Add("$cc -O -o $tools/bin/relpath $source/Commands/bootstrap_cmds/relpath.tproj/relpath.c")
+        $commands.Add("rm -rf $configBuild")
+        $commands.Add("/usr/bin/install -d $configBuild")
+        $commands.Add("cd $configBuild")
+        $commands.Add("/usr/bin/yacc -d $configSource/parser.y")
+        $commands.Add("/usr/bin/lex $configSource/lexer.l")
+        $commands.Add("$cc -O -bsd -DCMU -DLOCALARCHITECTURE -DNeXT=1 -I$configSource -I$configBuild -o $tools/bin/config $configSource/externs.c $configSource/main.c $configSource/mkglue.c $configSource/mkheaders.c $configSource/mkioconf.c $configSource/mkmakefile.c $configSource/mkswapconf.c $configSource/openp.c $configSource/searchp.c $configBuild/y.tab.c $configBuild/lex.yy.c")
+        $commands.Add("rm -rf $migBuild")
+        $commands.Add("/usr/bin/install -d $tools/bin $tools/libexec $migBuild/migcom $migBuild/migcom_typd $migBuild/migcom_untypd")
+        $commands.Add("/usr/bin/install -c -m 755 $source/Commands/bootstrap_cmds/migcom.tproj/mig.sh $tools/bin/mig")
+        foreach ($project in @(
+            @('migcom', 'error.c global.c handler.c header.c mig.c routine.c server.c statement.c string.c type.c user.c utils.c'),
+            @('migcom_typd', 'error.c global.c header.c migcom.c routine.c server.c statement.c string.c type.c user.c utils.c'),
+            @('migcom_untypd', 'error.c global.c header.c mig.c routine.c server.c statement.c string.c test.c type.c user.c utils.c migcom_untypd_vers_stub.c')
+        )) {
+            $name = $project[0]
+            $migSource = "$source/Commands/bootstrap_cmds/$name.tproj"
+            $projectBuild = "$migBuild/$name"
+            $compileSources = (($project[1] -split ' ') | ForEach-Object { "$migSource/$_" }) -join ' '
+            $commands.Add("cd $projectBuild")
+            $commands.Add("/usr/bin/yacc -d $migSource/parser.y")
+            $commands.Add('/bin/mv y.tab.h parser.h')
+            $commands.Add("/usr/bin/lex $migSource/lexxer.l")
+            $commands.Add("$cc -O -I$migSource -I$projectBuild -o $tools/libexec/$name $compileSources $projectBuild/y.tab.c $projectBuild/lex.yy.c")
+        }
+        return ($commands -join ' && ')
     }
     if ($Phase -eq 'bootstrap') {
-        return "set -e; /usr/bin/install -d $bootstrap $repo $state && cd $source && CONFIG_DIR=$tools/bin $rbuild bootstrap --sysroot $bootstrap --toolchain $profilePath --state $state $source/BootstrapManifest $repo $repo"
+        return "set -e; /usr/bin/install -d $bootstrap $repo $state && cd $source && CONFIG_DIR=$tools/bin MIGCC=$cc MIGCOM_DIR=$tools/libexec $rbuild bootstrap --sysroot $bootstrap --toolchain $profilePath --state $state $source/BootstrapManifest $repo $repo"
     }
     if ($Phase -eq 'world') {
         return "set -e; test -d $repo || { echo 'build-src: repository missing: $RepoDir' >&2; exit 1; }; /usr/bin/install -d $built $state && cd $source && $rbuild buildall --state $state Manifest $repo $built"

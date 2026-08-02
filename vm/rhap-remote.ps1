@@ -163,6 +163,47 @@ function Invoke-RhapRemote {
     return ,[int]$script:RhapLastSshExitCode
 }
 
+function New-RhapSshStandardInputEncoding {
+    return New-Object System.Text.UTF8Encoding($false, $true)
+}
+
+function ConvertTo-RhapSshPayload {
+    param([string]$ScriptBody)
+
+    $payload = $ScriptBody.Replace("`r`n", "`n").Replace("`r", "`n").TrimEnd("`n") + "`n"
+    [void](New-RhapSshStandardInputEncoding).GetByteCount($payload)
+    return $payload
+}
+
+function Start-RhapSshProcess {
+    param(
+        [System.Diagnostics.Process]$Process,
+        [string]$Ssh
+    )
+
+    $started = $false
+    [System.Threading.Monitor]::Enter([Console])
+    try {
+        $previousEncoding = [Console]::InputEncoding
+        try {
+            [Console]::InputEncoding = New-RhapSshStandardInputEncoding
+            if (-not $Process.Start()) { throw "could not start SSH: $Ssh" }
+            $started = $true
+            return $Process.StandardInput
+        } catch {
+            if ($started) {
+                try { if (-not $Process.HasExited) { $Process.Kill() } } catch { }
+                try { $Process.WaitForExit() } catch { }
+            }
+            throw
+        } finally {
+            [Console]::InputEncoding = $previousEncoding
+        }
+    } finally {
+        [System.Threading.Monitor]::Exit([Console])
+    }
+}
+
 function Invoke-RhapSshScript {
     param(
         [hashtable]$Cfg,
@@ -173,7 +214,7 @@ function Invoke-RhapSshScript {
         [scriptblock]$Observer
     )
 
-    $payload = $ScriptBody.Replace("`r`n", "`n").Replace("`r", "`n").TrimEnd("`n") + "`n"
+    $payload = ConvertTo-RhapSshPayload -ScriptBody $ScriptBody
     $sshArgs = @('-T') + $script:RhapLegacySshOptions + @(
         "$($Cfg.User)@$($Cfg.Host)",
         '/bin/sh -s'
@@ -210,8 +251,9 @@ function Invoke-RhapSshScript {
         $process.StartInfo = $startInfo
         $processStarted = $false
         $stdinClosed = $false
+        $stdinWriter = $null
         try {
-            if (-not $process.Start()) { throw "could not start SSH: $Ssh" }
+            $stdinWriter = Start-RhapSshProcess -Process $process -Ssh $Ssh
             $processStarted = $true
             if ($Stream) {
                 $stdoutDone = $false
@@ -224,11 +266,11 @@ function Invoke-RhapSshScript {
                 $sinkError = $null
                 $sinkSuppressed = $false
                 try {
-                    $writeTask = $process.StandardInput.WriteAsync($payload)
+                    $writeTask = $stdinWriter.WriteAsync($payload)
                 } catch {
                     $writeError = $_.Exception
                     $writeDone = $true
-                    try { $process.StandardInput.Close() } catch { }
+                    try { $stdinWriter.Close() } catch { }
                     $stdinClosed = $true
                 }
                 while (-not $writeDone -or -not $stdoutDone -or -not $stderrDone) {
@@ -240,7 +282,7 @@ function Invoke-RhapSshScript {
                     if (-not $writeDone -and $writeTask.IsCompleted) {
                         try { [void]$writeTask.GetAwaiter().GetResult() } catch { $writeError = $_.Exception }
                         $writeDone = $true
-                        try { $process.StandardInput.Close() } catch { if (-not $writeError) { $writeError = $_.Exception } }
+                        try { $stdinWriter.Close() } catch { if (-not $writeError) { $writeError = $_.Exception } }
                         $stdinClosed = $true
                     }
                     if (-not $stdoutDone -and $stdoutTask.IsCompleted) {
@@ -286,7 +328,7 @@ function Invoke-RhapSshScript {
                         }
                     }
                     if ($readError) {
-                        if (-not $stdinClosed) { try { $process.StandardInput.Close() } catch { }; $stdinClosed = $true }
+                        if (-not $stdinClosed) { try { $stdinWriter.Close() } catch { }; $stdinClosed = $true }
                         try { if (-not $process.HasExited) { $process.Kill() } } catch { }
                         try { $process.WaitForExit() } catch { }
                         if (-not $writeDone) { try { [void]$writeTask.GetAwaiter().GetResult() } catch { }; $writeDone = $true }
@@ -295,7 +337,7 @@ function Invoke-RhapSshScript {
                         throw $readError
                     }
                 }
-                if (-not $stdinClosed) { $process.StandardInput.Close(); $stdinClosed = $true }
+                if (-not $stdinClosed) { $stdinWriter.Close(); $stdinClosed = $true }
                 $process.WaitForExit()
                 $script:RhapLastSshExitCode = [int]$process.ExitCode
                 if ($writeError) { throw $writeError }
@@ -303,8 +345,9 @@ function Invoke-RhapSshScript {
             } else {
                 $stdoutTask = $process.StandardOutput.ReadToEndAsync()
                 $stderrTask = $process.StandardError.ReadToEndAsync()
-                $process.StandardInput.Write($payload)
-                $process.StandardInput.Close()
+                $stdinWriter.Write($payload)
+                $stdinWriter.Close()
+                $stdinClosed = $true
                 $process.WaitForExit()
                 $stdout = $stdoutTask.Result
                 $stderr = $stderrTask.Result
@@ -313,8 +356,8 @@ function Invoke-RhapSshScript {
                 $script:RhapLastSshExitCode = [int]$process.ExitCode
             }
         } finally {
-            if ($Stream -and $processStarted -and -not $stdinClosed) {
-                try { $process.StandardInput.Close() } catch { }
+            if ($processStarted -and $stdinWriter -and -not $stdinClosed) {
+                try { $stdinWriter.Close() } catch { }
             }
             if ($Stream -and $processStarted) {
                 try { if (-not $process.HasExited) { $process.Kill() } } catch { }
@@ -333,7 +376,7 @@ function Invoke-RhapSshCapture {
         [string]$ScriptBody,
         [scriptblock]$Invoker
     )
-    $payload = $ScriptBody.Replace("`r`n", "`n").Replace("`r", "`n").TrimEnd("`n") + "`n"
+    $payload = ConvertTo-RhapSshPayload -ScriptBody $ScriptBody
     $sshArgs = @('-T') + $script:RhapLegacySshOptions + @("$($Cfg.User)@$($Cfg.Host)", '/bin/sh -s')
     Invoke-RhapSshAskPass -Cfg $Cfg -Action {
         if ($Invoker) {
@@ -350,12 +393,15 @@ function Invoke-RhapSshCapture {
         $startInfo.RedirectStandardError = $true
         $process = New-Object System.Diagnostics.Process
         $process.StartInfo = $startInfo
+        $stdinWriter = $null
+        $stdinClosed = $false
         try {
-            if (-not $process.Start()) { throw "could not start SSH: $Ssh" }
+            $stdinWriter = Start-RhapSshProcess -Process $process -Ssh $Ssh
             $stdoutTask = $process.StandardOutput.ReadToEndAsync()
             $stderrTask = $process.StandardError.ReadToEndAsync()
-            $process.StandardInput.Write($payload)
-            $process.StandardInput.Close()
+            $stdinWriter.Write($payload)
+            $stdinWriter.Close()
+            $stdinClosed = $true
             $process.WaitForExit()
             $script:RhapLastSshCapture = [pscustomobject]@{
                 ExitCode = [int]$process.ExitCode
@@ -363,6 +409,9 @@ function Invoke-RhapSshCapture {
                 Stderr = [string]$stderrTask.Result
             }
         } finally {
+            if ($stdinWriter -and -not $stdinClosed) {
+                try { $stdinWriter.Close() } catch { }
+            }
             $process.Dispose()
         }
     }

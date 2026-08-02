@@ -35,6 +35,16 @@ function Assert-Throws([scriptblock]$Action, [string]$Name) {
     throw "$Name`: expected an exception"
 }
 
+function Assert-RemotePayloadBytes([string]$Path, [string]$ScriptBody, [string]$Name) {
+    $actual = [System.IO.File]::ReadAllBytes($Path)
+    $normalized = $ScriptBody.Replace("`r`n", "`n").Replace("`r", "`n").TrimEnd("`n") + "`n"
+    $strictUtf8 = New-Object System.Text.UTF8Encoding($false, $true)
+    $expected = $strictUtf8.GetBytes($normalized)
+    $hasBom = $actual.Length -ge 3 -and $actual[0] -eq 0xEF -and $actual[1] -eq 0xBB -and $actual[2] -eq 0xBF
+    Assert-Equal $hasBom $false "$Name has no UTF-8 BOM"
+    Assert-Equal ([Convert]::ToBase64String($actual)) ([Convert]::ToBase64String($expected)) "$Name exact strict UTF-8 bytes"
+}
+
 . (Join-Path $PSScriptRoot 'build-src-lib.ps1')
 $realProfile = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\rbuild-1\toolchains\gcc-darwin.conf')
 
@@ -168,11 +178,11 @@ try {
     Remove-Item -LiteralPath $decommentRuntimeDir -Recurse -Force -ErrorAction SilentlyContinue
 }
 Assert-Match $buildScriptText '(?s)param\(\s*\[switch\]\$All,\s*\[switch\]\$Rbuild,\s*\[switch\]\$Bootstrap,\s*\[switch\]\$KernelDrivers,\s*\[switch\]\$World,\s*\[switch\]\$Fresh\s*\)' 'canonical build-src parameters'
-Assert-Match $remoteScriptText ([regex]::Escape('StandardInput.WriteAsync($payload)')) 'stream stdin writer is asynchronous'
+Assert-Match $remoteScriptText ([regex]::Escape('$stdinWriter.WriteAsync($payload)')) 'stream stdin writer is asynchronous'
 Assert-Match $remoteScriptText 'Task\]::WaitAny' 'stream writer and readers share a blocking task loop'
 Assert-Match $remoteScriptText '\[void\]\$writeTask\.GetAwaiter\(\)\.GetResult\(\)' 'stream writer task result cannot pollute exit status'
 Assert-Equal ([regex]::Matches($remoteScriptText, 'ReadLineAsync\(\)').Count -ge 4) $true 'stream readers are continuously renewed'
-Assert-Equal ($remoteScriptText.IndexOf('ReadLineAsync()') -lt $remoteScriptText.IndexOf('StandardInput.WriteAsync($payload)')) $true 'stream readers are armed with async stdin writer'
+Assert-Equal ($remoteScriptText.IndexOf('ReadLineAsync()') -lt $remoteScriptText.IndexOf('$stdinWriter.WriteAsync($payload)')) $true 'stream readers are armed with async stdin writer'
 Assert-Match $remoteScriptText '(?s)\$stdoutTask = \$process\.StandardOutput\.ReadLineAsync\(\).*?\$sinkError.*?& \$emitStdout' 'stdout renews before deferred sink handling'
 Assert-Match $remoteScriptText '(?s)\$stderrTask = \$process\.StandardError\.ReadLineAsync\(\).*?\$sinkError.*?& \$emitStderr' 'stderr renews before deferred sink handling'
 Assert-Match $remoteScriptText '\$process\.Kill\(\)' 'exceptional streaming cleanup terminates exact child'
@@ -817,6 +827,128 @@ try {
         'Password=test',
         'RemoteRoot=/build'
     )
+
+    $transportDir = Join-Path $env:TEMP ("rhap-transport-test-{0}" -f [guid]::NewGuid().ToString('n'))
+    $originalConsoleInputPreamble = [Convert]::ToBase64String([Console]::InputEncoding.GetPreamble())
+    New-Item -ItemType Directory -Path $transportDir | Out-Null
+    try {
+        $captureSource = Join-Path $transportDir 'capture-stdin.c'
+        $captureExe = Join-Path $transportDir 'capture-stdin.exe'
+        Set-Content -LiteralPath $captureSource -Encoding ASCII -Value @(
+            '#include <fcntl.h>',
+            '#include <io.h>',
+            '#include <stdio.h>',
+            '#include <stdlib.h>',
+            'int main(void) {',
+            '    const char *path = getenv("RHAP_STDIN_CAPTURE");',
+            '    const char *stdout_path = getenv("RHAP_STDIN_STDOUT_FILE");',
+            '    const char *stdout_marker = getenv("RHAP_STDIN_STDOUT_MARKER");',
+            '    unsigned char buffer[4096];',
+            '    size_t count;',
+            '    size_t i;',
+            '    size_t position = 0;',
+            '    int is_profile = 1;',
+            '    const char profile_prefix[] = "set -e; /bin/cat ";',
+            '    FILE *out;',
+            '    FILE *in;',
+            '    FILE *marker;',
+            '    if (path == NULL || _setmode(_fileno(stdin), _O_BINARY) == -1) return 125;',
+            '    out = fopen(path, "wb");',
+            '    if (out == NULL) return 125;',
+            '    while ((count = fread(buffer, 1, sizeof(buffer), stdin)) != 0) {',
+            '        for (i = 0; i < count && position < sizeof(profile_prefix) - 1; ++i, ++position) {',
+            '            if (buffer[i] != (unsigned char)profile_prefix[position]) is_profile = 0;',
+            '        }',
+            '        if (fwrite(buffer, 1, count, out) != count) return 125;',
+            '    }',
+            '    if (fclose(out) != 0) return 125;',
+            '    if (is_profile && position == sizeof(profile_prefix) - 1 && stdout_path != NULL && stdout_marker != NULL) {',
+            '        marker = fopen(stdout_marker, "rb");',
+            '        if (marker == NULL) {',
+            '            marker = fopen(stdout_marker, "wb");',
+            '            if (marker == NULL || fclose(marker) != 0) return 125;',
+            '            in = fopen(stdout_path, "rb");',
+            '            if (in == NULL) return 125;',
+            '            while ((count = fread(buffer, 1, sizeof(buffer), in)) != 0) {',
+            '                if (fwrite(buffer, 1, count, stdout) != count) return 125;',
+            '            }',
+            '            if (fclose(in) != 0) return 125;',
+            '        } else if (fclose(marker) != 0) return 125;',
+            '    }',
+            '    return 0;',
+            '}'
+        )
+        & $clang -std=c89 -Wall -Wextra -Werror -D_CRT_SECURE_NO_WARNINGS -o $captureExe $captureSource
+        Assert-Equal $LASTEXITCODE 0 'LLVM compiles remote stdin byte-capture fixture'
+
+        foreach ($transportCase in @(
+            [pscustomobject]@{ Name='preflight buffered transport'; Body=$cmd; Stream=$false },
+            [pscustomobject]@{ Name='fresh streaming transport'; Body=$freshCommand; Stream=$true },
+            [pscustomobject]@{ Name='phase streaming transport'; Body=$rbuildCommand; Stream=$true }
+        )) {
+            $capturePath = Join-Path $transportDir (($transportCase.Name -replace ' ', '-') + '.bin')
+            $env:RHAP_STDIN_CAPTURE = $capturePath
+            $transportExit = Invoke-RhapSshScript -Cfg $cfg -Ssh $captureExe -ScriptBody $transportCase.Body -Stream:$transportCase.Stream
+            Assert-Equal $transportExit 0 "$($transportCase.Name) exit"
+            Assert-RemotePayloadBytes -Path $capturePath -ScriptBody $transportCase.Body -Name $transportCase.Name
+            $bytes = [System.IO.File]::ReadAllBytes($capturePath)
+            Assert-Equal ([System.Text.Encoding]::ASCII.GetString($bytes, 0, 3)) 'set' "$($transportCase.Name) begins with set"
+        }
+
+        $profileTransportBody = New-RhapReadProfileCommand -Profile '/build/src/rbuild-1/toolchains/gcc-darwin.conf'
+        $profileCapturePath = Join-Path $transportDir 'profile-capture.bin'
+        $env:RHAP_STDIN_CAPTURE = $profileCapturePath
+        $profileTransport = Invoke-RhapSshCapture -Cfg $cfg -Ssh $captureExe -ScriptBody $profileTransportBody
+        Assert-Equal $profileTransport.ExitCode 0 'profile capture byte transport exit'
+        Assert-RemotePayloadBytes -Path $profileCapturePath -ScriptBody $profileTransportBody -Name 'profile capture transport'
+
+        $childCapturePath = Join-Path $transportDir 'child-file.bin'
+        $childHarness = Join-Path $transportDir 'invoke-transport.ps1'
+        $escapedRemote = (Join-Path $PSScriptRoot 'rhap-remote.ps1').Replace("'", "''")
+        $escapedCaptureExe = $captureExe.Replace("'", "''")
+        Set-Content -LiteralPath $childHarness -Encoding ASCII -Value @(
+            "`$ErrorActionPreference = 'Stop'",
+            ". '$escapedRemote'",
+            "`$cfg = @{ User='root'; Host='example.invalid'; Password='test' }",
+            ('$exitCode = Invoke-RhapSshScript -Cfg $cfg -Ssh ''{0}'' -ScriptBody "set -e`nprintf ''child''" -Stream' -f $escapedCaptureExe),
+            "if (`$exitCode -ne 0) { exit `$exitCode }"
+        )
+        $env:RHAP_STDIN_CAPTURE = $childCapturePath
+        & powershell -NoProfile -File $childHarness
+        Assert-Equal $LASTEXITCODE 0 'no-profile file transport child exit'
+        Assert-RemotePayloadBytes -Path $childCapturePath -ScriptBody "set -e`nprintf 'child'" -Name 'no-profile file transport'
+
+        $canonicalVmDir = Join-Path $transportDir 'canonical-vm'
+        New-Item -ItemType Directory -Path $canonicalVmDir | Out-Null
+        foreach ($canonicalFile in @('build-src.ps1', 'build-src-lib.ps1', 'rhap-remote.ps1')) {
+            Copy-Item -LiteralPath (Join-Path $PSScriptRoot $canonicalFile) -Destination $canonicalVmDir
+        }
+        Set-Content -LiteralPath (Join-Path $canonicalVmDir 'vm.conf') -Encoding ASCII -Value @(
+            'Host=example.invalid',
+            'User=root',
+            'Password=test',
+            'RemoteRoot=/build',
+            "LocalRoot=$((Split-Path -Parent $PSScriptRoot))",
+            "Ssh=$captureExe"
+        )
+        $canonicalCapturePath = Join-Path $transportDir 'canonical-rbuild.bin'
+        $env:RHAP_STDIN_CAPTURE = $canonicalCapturePath
+        $env:RHAP_STDIN_STDOUT_FILE = Join-Path $PSScriptRoot '..\src\rbuild-1\toolchains\gcc-darwin.conf'
+        $env:RHAP_STDIN_STDOUT_MARKER = Join-Path $transportDir 'canonical-profile-emitted'
+        $canonicalOutput = & powershell -NoProfile -File (Join-Path $canonicalVmDir 'build-src.ps1') -Rbuild 2>&1
+        Assert-Equal $LASTEXITCODE 0 "canonical build-src -Rbuild transport exit: $($canonicalOutput -join ' | ')"
+        Assert-RemotePayloadBytes -Path $canonicalCapturePath -ScriptBody $rbuildCommand -Name 'canonical build-src rbuild phase transport'
+        Assert-Equal ([Convert]::ToBase64String([Console]::InputEncoding.GetPreamble())) $originalConsoleInputPreamble 'remote transport restores host console input encoding'
+
+        $badPayload = 'set -e' + "`n# " + [char]0xD800
+        $env:RHAP_STDIN_CAPTURE = Join-Path $transportDir 'malformed.bin'
+        Assert-Throws { Invoke-RhapSshScript -Cfg $cfg -Ssh $captureExe -ScriptBody $badPayload } 'remote transport rejects malformed UTF-16'
+    } finally {
+        Remove-Item Env:RHAP_STDIN_CAPTURE -ErrorAction SilentlyContinue
+        Remove-Item Env:RHAP_STDIN_STDOUT_FILE -ErrorAction SilentlyContinue
+        Remove-Item Env:RHAP_STDIN_STDOUT_MARKER -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $transportDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
 
     $capture = @{}
     $fakeSsh = {

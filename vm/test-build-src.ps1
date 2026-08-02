@@ -78,7 +78,14 @@ Assert-Match $alternateRbuild ([regex]::Escape('/opt/make/bin/gmake CC=/opt/gcc/
 Assert-NotMatch $alternateRbuild ([regex]::Escape('/usr/bin/make CC=/usr/bin/cc')) 'alternate profile does not use default build tools'
 
 $bootstrapCommand = New-RhapBuildPhaseCommand -Phase 'bootstrap' @phaseArgs
+Assert-Match $bootstrapCommand ([regex]::Escape('set -e; cd /build/src && /build/tools/bin/rbuild bootstrap')) 'bootstrap starts from synced source root'
 Assert-Match $bootstrapCommand ([regex]::Escape('/build/tools/bin/rbuild bootstrap --sysroot /build/bootstrap-root --toolchain /build/src/rbuild-1/toolchains/gcc-darwin.conf --state /build/state /build/src/BootstrapManifest /build/repo /build/repo')) 'bootstrap uses resumable CLI'
+$alternateSourceArgs = $phaseArgs.Clone()
+$alternateSourceArgs.SourceRoot = '/srv/synced source'
+$alternateBootstrap = New-RhapBuildPhaseCommand -Phase 'bootstrap' @alternateSourceArgs
+Assert-Match $alternateBootstrap ([regex]::Escape("set -e; cd '/srv/synced source' && /build/tools/bin/rbuild bootstrap")) 'bootstrap quotes and uses alternate source cwd'
+Assert-Match $alternateBootstrap ([regex]::Escape("'/srv/synced source'/BootstrapManifest")) 'bootstrap manifest follows alternate source root'
+Assert-NotMatch $alternateBootstrap '/var/root|cd +~' 'bootstrap never inherits login cwd'
 $kernelCommand = New-RhapBuildPhaseCommand -Phase 'kernel-drivers' @phaseArgs -DriverProjects @('drivers-ppc/storage/drvExample') -MakeDriverProjects @('drvBPF')
 Assert-Match $kernelCommand ([regex]::Escape('cd /build/src')) 'kernel package paths resolve beneath source root'
 Assert-Match $kernelCommand ([regex]::Escape('/build/tools/bin/rbuild buildpackage --state /build/state --dir kernel-7 /build/repo /build/built')) 'kernel uses persistent state'

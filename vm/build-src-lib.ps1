@@ -353,7 +353,7 @@ function New-RhapBuildPhaseCommand {
         return "set -e; cd $source/rbuild-1 && $makeTool CC=$cc clean test all && /usr/bin/install -d $tools/bin && /usr/bin/install -c -m 755 rbuild $rbuild && $cc -O -o $tools/bin/relpath $source/Commands/bootstrap_cmds/relpath.tproj/relpath.c"
     }
     if ($Phase -eq 'bootstrap') {
-        return "set -e; $rbuild bootstrap --sysroot $bootstrap --toolchain $profilePath --state $state $source/BootstrapManifest $repo $repo"
+        return "set -e; cd $source && $rbuild bootstrap --sysroot $bootstrap --toolchain $profilePath --state $state $source/BootstrapManifest $repo $repo"
     }
     if ($Phase -eq 'world') {
         return "set -e; cd $source && $rbuild buildall --state $state Manifest $repo $built"

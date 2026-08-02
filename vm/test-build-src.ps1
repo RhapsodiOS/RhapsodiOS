@@ -41,6 +41,11 @@ $realProfile = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\rbuild-1\toolch
 $buildScriptText = Get-Content -Raw (Join-Path $PSScriptRoot 'build-src.ps1')
 $remoteScriptText = Get-Content -Raw (Join-Path $PSScriptRoot 'rhap-remote.ps1')
 $migWrapperText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\Commands\bootstrap_cmds\migcom.tproj\mig.sh')
+$classicErrorText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\Commands\bootstrap_cmds\migcom.tproj\error.c')
+$classicErrorHeaderText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\Commands\bootstrap_cmds\migcom.tproj\error.h')
+$classicUtilsText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\Commands\bootstrap_cmds\migcom.tproj\utils.c')
+$typedErrorText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\Commands\bootstrap_cmds\migcom_typd.tproj\error.c')
+$typedErrorHeaderText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\Commands\bootstrap_cmds\migcom_typd.tproj\error.h')
 Assert-Match $migWrapperText 'MIGCC' 'MIG wrapper supports configured compiler override'
 Assert-Match $migWrapperText 'MIGCOM_DIR' 'MIG wrapper supports private libexec override'
 Assert-Match $migWrapperText '-i[ `t]+\)' 'MIG wrapper forwards -i and its argument'
@@ -53,6 +58,14 @@ Assert-Match $migWrapperText '\| "\$migcom"' 'MIG wrapper preserves spaces in pr
 Assert-Match $migWrapperText '-sheader[ `t]+\)[^\r\n]*migflags="\$migflags \$1 \$2"' 'MIG wrapper forwards server-header output to backend'
 Assert-Match $migWrapperText '-handler[ `t]+\)[^\r\n]*migflags="\$migflags \$1 \$2"' 'MIG wrapper forwards handler output to backend'
 Assert-NotMatch $migWrapperText 'NEXT_ROOT' 'MIG wrapper never derives compiler location from a sysroot'
+Assert-Match $classicErrorText '#include <stdarg\.h>' 'classic MIG errors use GCC-compatible standard varargs'
+Assert-Match $classicUtilsText '#include <stdarg\.h>' 'classic MIG writers use GCC-compatible standard varargs'
+Assert-Equal ([regex]::Matches($classicUtilsText, '#include <stdarg\.h>').Count) 1 'classic MIG writers include standard varargs once'
+Assert-NotMatch ($classicErrorText + $classicUtilsText) '<varargs\.h>|\bva_dcl\b|va_start\([^,\r\n]+\)' 'classic MIG has no obsolete varargs interface'
+Assert-Match $classicErrorText 'strerror\(error_num\)' 'classic MIG uses the host-supported error string interface'
+Assert-NotMatch $classicErrorHeaderText '<mach/mach_error\.h>' 'classic MIG does not import an unused live-only Mach error header'
+Assert-Match $typedErrorText 'strerror\(error_num\)' 'typed MIG uses the host-supported error string interface'
+Assert-NotMatch ($classicErrorText + $typedErrorText + $typedErrorHeaderText) '(?m)^\s*extern[^\r\n]*\b(sys_nerr|sys_errlist)\b|\b(sys_nerr|sys_errlist)\s*\[' 'private MIG sources do not depend on obsolete libc error tables'
 Assert-Match $buildScriptText '(?s)param\(\s*\[switch\]\$All,\s*\[switch\]\$Rbuild,\s*\[switch\]\$Bootstrap,\s*\[switch\]\$KernelDrivers,\s*\[switch\]\$World,\s*\[switch\]\$Fresh\s*\)' 'canonical build-src parameters'
 Assert-Match $remoteScriptText ([regex]::Escape('StandardInput.WriteAsync($payload)')) 'stream stdin writer is asynchronous'
 Assert-Match $remoteScriptText 'Task\]::WaitAny' 'stream writer and readers share a blocking task loop'
@@ -90,15 +103,22 @@ Assert-Match $rbuildCommand ([regex]::Escape('/usr/bin/lex /build/src/Commands/b
 Assert-Match $rbuildCommand ([regex]::Escape('/usr/bin/cc -O -bsd -DCMU -DLOCALARCHITECTURE -DNeXT=1 -I/build/src/Commands/bootstrap_cmds/config.tproj -I/build/tools/config-build -o /build/tools/bin/config')) 'config preserves project compiler flags and builds privately with profile compiler'
 Assert-NotMatch $rbuildCommand '/usr/local/bin/config|cp .*config|DSTROOT=/' 'config never copies or installs to live host'
 Assert-Match $rbuildCommand ([regex]::Escape('rm -rf /build/tools/mig-build')) 'MIG private build root is recreated exactly'
-Assert-Match $rbuildCommand ([regex]::Escape('/usr/bin/install -d /build/tools/bin /build/tools/libexec /build/tools/mig-build/migcom /build/tools/mig-build/migcom_typd /build/tools/mig-build/migcom_untypd')) 'MIG private product and build directories are created'
+Assert-Match $rbuildCommand ([regex]::Escape('/usr/bin/install -d /build/tools/bin /build/tools/libexec /build/tools/mig-build/include/mach/machine /build/tools/mig-build/include/mach/ppc /build/tools/mig-build/migcom /build/tools/mig-build/migcom_typd /build/tools/mig-build/migcom_untypd')) 'MIG private product, overlay, and build directories are created'
 Assert-Match $rbuildCommand ([regex]::Escape('/usr/bin/install -c -m 755 /build/src/Commands/bootstrap_cmds/migcom.tproj/mig.sh /build/tools/bin/mig')) 'repository MIG wrapper is installed privately'
+Assert-Match $rbuildCommand ([regex]::Escape('/build/tools/mig-build/include/mach/message.h')) 'MIG build creates a private source-owned Mach header overlay'
+Assert-Match $rbuildCommand ([regex]::Escape('/bin/ln -s /build/src/kernel-7/mach/ndr.h /build/tools/mig-build/include/mach/ndr.h')) 'MIG overlay includes the untyped backend NDR dependency'
+Assert-Match $rbuildCommand ([regex]::Escape('/bin/ln -s /build/src/kernel-7/mach/ppc/simple_lock.h /build/tools/mig-build/include/mach/ppc/simple_lock.h')) 'MIG overlay declares its complete verified PPC header closure'
+Assert-Match $rbuildCommand ([regex]::Escape('-I/build/tools/mig-build/include')) 'MIG compilers search the private header overlay first'
+Assert-Match $rbuildCommand ([regex]::Escape('-M -O -bsd -DNeXT=1 -I/build/tools/mig-build/include')) 'MIG dependency audit uses the real private compile flags'
+Assert-Match $rbuildCommand ([regex]::Escape('/usr/include/mach/')) 'MIG dependency audit rejects live host Mach headers'
+Assert-Match $rbuildCommand ([regex]::Escape('/build/bootstrap-root/')) 'MIG dependency audit rejects bootstrap sysroot headers'
 Assert-Match $rbuildCommand ([regex]::Escape('/usr/bin/yacc -d /build/src/Commands/bootstrap_cmds/migcom.tproj/parser.y && /bin/mv y.tab.h parser.h && /usr/bin/lex /build/src/Commands/bootstrap_cmds/migcom.tproj/lexxer.l')) 'classic MIG parser and lexer are generated privately'
 Assert-Match $rbuildCommand ([regex]::Escape('-o /build/tools/libexec/migcom ')) 'classic MIG compiler is private'
 Assert-Match $rbuildCommand ([regex]::Escape('-o /build/tools/libexec/migcom_typd ')) 'typed MIG compiler is private'
 Assert-Match $rbuildCommand ([regex]::Escape('-o /build/tools/libexec/migcom_untypd ')) 'untyped MIG compiler is private'
-Assert-Match $rbuildCommand ([regex]::Escape('/usr/bin/cc -O -bsd -DNeXT=1 -I/build/src/Commands/bootstrap_cmds/migcom.tproj -I/build/tools/mig-build/migcom -o /build/tools/libexec/migcom')) 'classic MIG enables Rhapsody handler and padding support'
-Assert-Match $rbuildCommand ([regex]::Escape('/usr/bin/cc -O -bsd -DNeXT=1 -I/build/src/Commands/bootstrap_cmds/migcom_typd.tproj -I/build/tools/mig-build/migcom_typd -o /build/tools/libexec/migcom_typd')) 'typed MIG preserves historical platform flags'
-Assert-Match $rbuildCommand ([regex]::Escape('/usr/bin/cc -O -bsd -DNeXT=1 -I/build/src/Commands/bootstrap_cmds/migcom_untypd.tproj -I/build/tools/mig-build/migcom_untypd -o /build/tools/libexec/migcom_untypd')) 'untyped MIG preserves historical platform flags'
+Assert-Match $rbuildCommand ([regex]::Escape('/usr/bin/cc -O -bsd -DNeXT=1 -I/build/tools/mig-build/include -I/build/src/Commands/bootstrap_cmds/migcom.tproj -I/build/tools/mig-build/migcom -o /build/tools/libexec/migcom')) 'classic MIG enables Rhapsody handler and padding support'
+Assert-Match $rbuildCommand ([regex]::Escape('/usr/bin/cc -O -bsd -DNeXT=1 -I/build/tools/mig-build/include -I/build/src/Commands/bootstrap_cmds/migcom_typd.tproj -I/build/tools/mig-build/migcom_typd -o /build/tools/libexec/migcom_typd')) 'typed MIG preserves historical platform flags'
+Assert-Match $rbuildCommand ([regex]::Escape('/usr/bin/cc -O -bsd -DNeXT=1 -I/build/tools/mig-build/include -I/build/src/Commands/bootstrap_cmds/migcom_untypd.tproj -I/build/tools/mig-build/migcom_untypd -o /build/tools/libexec/migcom_untypd')) 'untyped MIG preserves historical platform flags'
 Assert-Match $rbuildCommand ([regex]::Escape('/migcom.tproj/handler.c')) 'classic MIG links the NeXT handler backend'
 Assert-Match $rbuildCommand ([regex]::Escape('/build/src/Commands/bootstrap_cmds/migcom_untypd.tproj/migcom_untypd_vers_stub.c')) 'untyped MIG compiler links its checked-in version stub'
 Assert-NotMatch $rbuildCommand '/usr/bin/mig|/usr/libexec/migcom|NEXT_ROOT|bootstrap-root/usr/libexec|DSTROOT=/|cp .*mig' 'stage zero never uses or copies live or sysroot MIG'
@@ -108,12 +128,17 @@ $alternatePhaseArgs.Make = '/opt/make/bin/gmake'
 $alternateRbuild = New-RhapBuildPhaseCommand -Phase 'rbuild' @alternatePhaseArgs
 Assert-Match $alternateRbuild ([regex]::Escape('/opt/make/bin/gmake CC=/opt/gcc/bin/gcc-4.2 clean test all')) 'alternate profile compiler builds rbuild'
 Assert-Match $alternateRbuild ([regex]::Escape('/opt/gcc/bin/gcc-4.2 -O -bsd -DCMU -DLOCALARCHITECTURE -DNeXT=1')) 'alternate profile compiler builds config with project flags'
-Assert-Match $alternateRbuild ([regex]::Escape('/opt/gcc/bin/gcc-4.2 -O -bsd -DNeXT=1 -I/build/src/Commands/bootstrap_cmds/migcom.tproj -I/build/tools/mig-build/migcom -o /build/tools/libexec/migcom')) 'alternate profile compiler builds MIG with historical platform flags'
+Assert-Match $alternateRbuild ([regex]::Escape('/opt/gcc/bin/gcc-4.2 -O -bsd -DNeXT=1 -I/build/tools/mig-build/include -I/build/src/Commands/bootstrap_cmds/migcom.tproj -I/build/tools/mig-build/migcom -o /build/tools/libexec/migcom')) 'alternate profile compiler builds MIG with historical platform flags'
 Assert-NotMatch $alternateRbuild ([regex]::Escape('/usr/bin/make CC=/usr/bin/cc')) 'alternate profile does not use default build tools'
 $spacedCompilerArgs = $phaseArgs.Clone()
 $spacedCompilerArgs.BuildCc = '/opt/gcc tools/bin/gcc'
 $spacedCompilerRbuild = New-RhapBuildPhaseCommand -Phase 'rbuild' @spacedCompilerArgs
-Assert-Match $spacedCompilerRbuild ([regex]::Escape("'/opt/gcc tools/bin/gcc' -O -bsd -DNeXT=1 -I/build/src/Commands/bootstrap_cmds/migcom.tproj")) 'space-containing configured GCC builds private MIG as one executable path'
+Assert-Match $spacedCompilerRbuild ([regex]::Escape("'/opt/gcc tools/bin/gcc' -O -bsd -DNeXT=1 -I/build/tools/mig-build/include -I/build/src/Commands/bootstrap_cmds/migcom.tproj")) 'space-containing configured GCC builds private MIG as one executable path'
+$metacharRootArgs = $phaseArgs.Clone()
+$metacharRootArgs.BootstrapRoot = '/build/root[1].*'
+$metacharRootRbuild = New-RhapBuildPhaseCommand -Phase 'rbuild' @metacharRootArgs
+Assert-Match $metacharRootRbuild ([regex]::Escape("/usr/bin/grep -F -e '/usr/include/mach/' -e '/build/root[1].*'/")) 'MIG dependency audit treats metacharacter sysroot as a literal path'
+Assert-Match $metacharRootRbuild ([regex]::Escape("else mig_dependency_status=`$?; test `$mig_dependency_status -eq 1 || { echo 'build-src: private MIG dependency audit failed: migcom'")) 'MIG dependency audit distinguishes grep errors from no matches'
 
 $bootstrapCommand = New-RhapBuildPhaseCommand -Phase 'bootstrap' @phaseArgs
 $alternateToolBootstrap = New-RhapBuildPhaseCommand -Phase 'bootstrap' @alternatePhaseArgs
@@ -145,7 +170,7 @@ $spacedRbuild = New-RhapBuildPhaseCommand -Phase 'rbuild' @spacedPhaseArgs
 Assert-Match $spacedRbuild ([regex]::Escape("rm -rf '/srv/build tree/tools'/config-build")) 'config safely quotes alternate private build directory'
 Assert-Match $spacedRbuild ([regex]::Escape("-I'/srv/build tree/src'/Commands/bootstrap_cmds/config.tproj -I'/srv/build tree/tools'/config-build -o '/srv/build tree/tools'/bin/config")) 'config safely quotes alternate source and tools paths'
 Assert-Match $spacedRbuild ([regex]::Escape("rm -rf '/srv/build tree/tools'/mig-build")) 'MIG safely quotes alternate private build root'
-Assert-Match $spacedRbuild ([regex]::Escape("-O -bsd -DNeXT=1 -I'/srv/build tree/src'/Commands/bootstrap_cmds/migcom_typd.tproj -I'/srv/build tree/tools'/mig-build/migcom_typd -o '/srv/build tree/tools'/libexec/migcom_typd")) 'MIG preserves platform flags and safely quotes alternate paths'
+Assert-Match $spacedRbuild ([regex]::Escape("-O -bsd -DNeXT=1 -I'/srv/build tree/tools'/mig-build/include -I'/srv/build tree/src'/Commands/bootstrap_cmds/migcom_typd.tproj -I'/srv/build tree/tools'/mig-build/migcom_typd -o '/srv/build tree/tools'/libexec/migcom_typd")) 'MIG preserves platform flags and safely quotes alternate paths'
 $spacedBootstrap = New-RhapBuildPhaseCommand -Phase 'bootstrap' @spacedPhaseArgs
 Assert-Match $spacedBootstrap ([regex]::Escape("/usr/bin/install -d '/srv/build tree/bootstrap root' '/srv/build tree/repo' '/srv/build tree/state'")) 'bootstrap safely quotes owned outputs'
 Assert-Match $spacedBootstrap ([regex]::Escape("CONFIG_DIR='/srv/build tree/tools'/bin MIGCC=/usr/bin/cc")) 'bootstrap safely quotes private config directory'
@@ -318,6 +343,8 @@ Assert-Match $cmd 'handler\.c' 'classic MIG unique source requirement'
 Assert-Match $cmd 'migcom\.c' 'typed MIG unique source requirement'
 Assert-Match $cmd 'test\.c' 'untyped MIG unique source requirement'
 Assert-Match $cmd 'migcom_untypd_vers_stub\.c' 'untyped MIG version source requirement'
+Assert-Match $cmd 'kernel-7/\$mig_header' 'MIG overlay preflight checks source-owned headers'
+Assert-Match $cmd 'mach/message\.h.*mach/ppc/simple_lock\.h' 'MIG overlay preflight declares the verified header closure'
 Assert-Match $cmd 'test -x /bin/mv' 'MIG generated header rename tool requirement'
 Assert-Match $cmd 'TOOLS_DIR=' 'preflight binds configured private tools directory'
 Assert-Match $cmd 'TOOL_PATH=\$\(profile_value path\)' 'preflight reads configured build PATH'

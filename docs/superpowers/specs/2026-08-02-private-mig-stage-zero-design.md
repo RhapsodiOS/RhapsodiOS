@@ -22,11 +22,24 @@ Generated yacc, lex, and object inputs live only below
 `ToolsDir/mig-build`; it does not use `/tmp`, a live install root, or the
 bootstrap sysroot.
 
+The build also creates `ToolsDir/mig-build/include`, an explicit symlink
+overlay containing only the source-owned Mach headers reached by the three MIG
+compilers.  Every overlay input is preflighted and every link is declared by
+name.  This avoids both a host header manifest and a broad `-I kernel-7`, which
+would shadow 67 live `mach`/`mach_debug` headers on the verified Xserve.  The
+overlay is recreated only as part of the already-scoped `mig-build` reset.
+
 Each compiler executable comes from the configured `build_cc`.  Each project
 uses its checked-in C source list, `/usr/bin/yacc`, `/usr/bin/lex`, and private
 generated sources.  The untyped compiler also links its checked-in version
 stub.  The repository wrapper is installed from `migcom.tproj/mig.sh`; no live
 MIG artifact is copied.
+
+The classic sources use standard C varargs so GCC 3 and later can compile
+them.  Classic and typed diagnostic formatting uses `strerror` instead of the
+obsolete `sys_errlist`/`sys_nerr` tables.  These are build-host portability
+updates only; generated interface behavior and error text shape remain
+unchanged.
 
 ## Wrapper binding
 
@@ -55,3 +68,9 @@ forbid `/usr/bin/mig`, live `/usr/libexec` selection in stage zero,
 Preflight checks every required project source plus yacc and lex.  Local tests,
 PowerShell parsing/import, POSIX shell syntax, and `git diff --check` complete
 the focused verification.  The full bootstrap is intentionally not run.
+
+Each backend also emits a dependency file using its real compile flags.  The
+rbuild phase rejects dependencies beneath live `/usr/include/mach` or the
+bootstrap sysroot, proving that target protocol definitions came only through
+the private source-owned overlay while normal host libc headers remain host
+headers.

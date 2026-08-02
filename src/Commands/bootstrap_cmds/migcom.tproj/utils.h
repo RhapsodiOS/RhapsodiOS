@@ -77,11 +77,11 @@ extern void WriteStaticDecl(/* FILE *file, ipc_type_t *it,
 			       boolean_t dealloc, boolean_t longform,
 			       identifier_t name */);
 
-extern void WriteCopyType(/* FILE *file, ipc_type_t *it,
-			     char *left, char *right, ... */);
+extern void WriteCopyType(FILE *file, ipc_type_t *it,
+			  char *left, char *right, ...);
 
-extern void WritePackMsgType(/* FILE *file, ipc_type_t *it,
-				boolean_t dealloc, boolean_t longform,
-				char *left, char *right, ... */);
+extern void WritePackMsgType(FILE *file, ipc_type_t *it,
+	boolean_t dealloc, boolean_t longform,
+	char *left, char *right, ...);
 
 #endif	_UTILS_H

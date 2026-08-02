@@ -8,6 +8,22 @@ $script:RhapToolchainKeys = @(
     'arch_flags', 'cpp_flags', 'ld_flags', 'ln'
 )
 
+$script:RhapMigMachHeaders = @(
+    'mach/message.h',
+    'mach/ndr.h',
+    'mach/kern_return.h',
+    'mach/machine/kern_return.h',
+    'mach/ppc/kern_return.h',
+    'mach/port.h',
+    'mach/boolean.h',
+    'mach/machine/boolean.h',
+    'mach/ppc/boolean.h',
+    'mach/machine/vm_types.h',
+    'mach/ppc/vm_types.h',
+    'mach/machine/simple_lock.h',
+    'mach/ppc/simple_lock.h'
+)
+
 function Test-RhapToolchainProfileText {
     param([Parameter(Mandatory = $true)][string]$Text)
 
@@ -246,6 +262,7 @@ function New-RhapPreflightCommand {
     $qState = ConvertTo-RhapShellDoubleQuoted $StateDir
     $qSource = ConvertTo-RhapShellDoubleQuoted $SourceRoot
     $requiredKeys = ($script:RhapToolchainKeys | ForEach-Object { "required[`"$_`"] = 1" }) -join '; '
+    $migMachHeaders = $script:RhapMigMachHeaders -join ' '
 
     $parts = @(
         'set -e',
@@ -266,6 +283,7 @@ function New-RhapPreflightCommand {
         'for mig_source in error.c global.c handler.c header.c mig.c routine.c server.c statement.c string.c type.c user.c utils.c parser.y lexxer.l mig.sh routine.h type.h utils.h lexxer.h global.h statement.h write.h error.h string.h alloc.h mig_errors.h; do test -f "$SOURCE_ROOT/Commands/bootstrap_cmds/migcom.tproj/$mig_source" || fail "classic MIG source missing: $mig_source"; done',
         'for mig_source in error.c global.c header.c migcom.c routine.c server.c statement.c string.c type.c user.c utils.c parser.y lexxer.l alloc.h cross64.h error.h global.h lexxer.h statement.h string.h type.h utils.h write.h routine.h; do test -f "$SOURCE_ROOT/Commands/bootstrap_cmds/migcom_typd.tproj/$mig_source" || fail "typed MIG source missing: $mig_source"; done',
         'for mig_source in error.c global.c header.c mig.c routine.c server.c statement.c string.c test.c type.c user.c utils.c parser.y lexxer.l migcom_untypd_vers_stub.c alloc.h error.h global.h lexxer.h routine.h statement.h strdefs.h type.h utils.h write.h; do test -f "$SOURCE_ROOT/Commands/bootstrap_cmds/migcom_untypd.tproj/$mig_source" || fail "untyped MIG source missing: $mig_source"; done',
+        "for mig_header in $migMachHeaders; do test -f `"`$SOURCE_ROOT/kernel-7/`$mig_header`" || fail `"MIG compatibility header missing: `$mig_header`"; done",
         'test -f "$PROFILE" || fail "toolchain profile missing: $PROFILE"',
         "awk 'BEGIN { $requiredKeys } function trim(value) { sub(/^[ `t]*/, `"`", value); sub(/[ `t]*`$/, `"`", value); return value } { text=trim(`$0); if (text == `"`" || substr(text, 1, 1) == `"#`") next; equals=index(text, `"=`"); if (equals < 2) exit 1; key=trim(substr(text, 1, equals-1)); value=trim(substr(text, equals+1)); if (!(key in required) || (key in seen) || value == `"`") exit 1; seen[key]=1 } END { for (key in required) if (!(key in seen)) exit 1 }' `"`$PROFILE`" || fail `"invalid toolchain profile`"",
         "profile_value() { awk -v wanted=`"`$1`" 'BEGIN { found=0 } /^[ `t]*#/ { next } { line=`$0; sub(/^[ `t]*/, `"`", line); eq=index(line, `"=`"); if (eq < 2) next; key=substr(line, 1, eq-1); value=substr(line, eq+1); sub(/[ `t]*`$/, `"`", key); sub(/^[ `t]*/, `"`", value); sub(/[ `t]*`$/, `"`", value); if (key == wanted) { print value; found=1; exit } } END { if (found == 0) exit 1 }' `"`$PROFILE`"; }",
@@ -289,7 +307,7 @@ function New-RhapPreflightCommand {
         'test -f /usr/bin/lex && test -x /usr/bin/lex || fail "Developer Tools lex missing: /usr/bin/lex"',
         'test -f /bin/mv && test -x /bin/mv || fail "generated source rename tool missing: /bin/mv"',
         'test -f /usr/bin/file && test -x /usr/bin/file || fail "object inspection tool missing: /usr/bin/file"',
-        'for helper in /usr/bin/tee /usr/bin/cksum /usr/bin/sed /bin/cat; do test -f "$helper" && test -x "$helper" || fail "build helper missing: $helper"; done',
+        'for helper in /usr/bin/tee /usr/bin/cksum /usr/bin/sed /usr/bin/grep /bin/cat /bin/ln; do test -f "$helper" && test -x "$helper" || fail "build helper missing: $helper"; done',
         'nearest_parent() { rbuild_parent=$1; while :; do test -e "$rbuild_parent" && break; rbuild_next=${rbuild_parent%/*}; test -n "$rbuild_next" || rbuild_next=/; if test "$rbuild_next" = "$rbuild_parent"; then break; fi; rbuild_parent=$rbuild_next; done; printf "%s\n" "$rbuild_parent"; }',
         'check_space() { rbuild_parent=$(nearest_parent "$1"); df -k "$rbuild_parent" | awk ''{ fields=NF; available=$4 } END { if (fields < 4 || (available + 0) < 1) exit 1 }'' || fail "no usable free space below $1"; }',
         "check_space $qTools",
@@ -364,6 +382,7 @@ function New-RhapBuildPhaseCommand {
     $configSource = "$source/Commands/bootstrap_cmds/config.tproj"
     $configBuild = "$tools/config-build"
     $migBuild = "$tools/mig-build"
+    $migInclude = "$migBuild/include"
 
     if ($Phase -eq 'rbuild') {
         $commands = New-Object System.Collections.Generic.List[string]
@@ -380,7 +399,10 @@ function New-RhapBuildPhaseCommand {
         $commands.Add("/usr/bin/lex $configSource/lexer.l")
         $commands.Add("$cc -O -bsd -DCMU -DLOCALARCHITECTURE -DNeXT=1 -I$configSource -I$configBuild -o $tools/bin/config $configSource/externs.c $configSource/main.c $configSource/mkglue.c $configSource/mkheaders.c $configSource/mkioconf.c $configSource/mkmakefile.c $configSource/mkswapconf.c $configSource/openp.c $configSource/searchp.c $configBuild/y.tab.c $configBuild/lex.yy.c")
         $commands.Add("rm -rf $migBuild")
-        $commands.Add("/usr/bin/install -d $tools/bin $tools/libexec $migBuild/migcom $migBuild/migcom_typd $migBuild/migcom_untypd")
+        $commands.Add("/usr/bin/install -d $tools/bin $tools/libexec $migInclude/mach/machine $migInclude/mach/ppc $migBuild/migcom $migBuild/migcom_typd $migBuild/migcom_untypd")
+        foreach ($header in $script:RhapMigMachHeaders) {
+            $commands.Add("/bin/ln -s $source/kernel-7/$header $migInclude/$header")
+        }
         $commands.Add("/usr/bin/install -c -m 755 $source/Commands/bootstrap_cmds/migcom.tproj/mig.sh $tools/bin/mig")
         foreach ($project in @(
             @('migcom', 'error.c global.c handler.c header.c mig.c routine.c server.c statement.c string.c type.c user.c utils.c'),
@@ -395,7 +417,10 @@ function New-RhapBuildPhaseCommand {
             $commands.Add("/usr/bin/yacc -d $migSource/parser.y")
             $commands.Add('/bin/mv y.tab.h parser.h')
             $commands.Add("/usr/bin/lex $migSource/lexxer.l")
-            $commands.Add("$cc -O -bsd -DNeXT=1 -I$migSource -I$projectBuild -o $tools/libexec/$name $compileSources $projectBuild/y.tab.c $projectBuild/lex.yy.c")
+            $compileInputs = "$compileSources $projectBuild/y.tab.c $projectBuild/lex.yy.c"
+            $commands.Add("$cc -M -O -bsd -DNeXT=1 -I$migInclude -I$migSource -I$projectBuild $compileInputs > $projectBuild/dependencies")
+            $commands.Add("if /usr/bin/grep -F -e '/usr/include/mach/' -e $bootstrap/ $projectBuild/dependencies >/dev/null; then echo 'build-src: private MIG dependency escaped source-owned overlay: $name' >&2; exit 1; else mig_dependency_status=`$?; test `$mig_dependency_status -eq 1 || { echo 'build-src: private MIG dependency audit failed: $name' >&2; exit 1; }; fi")
+            $commands.Add("$cc -O -bsd -DNeXT=1 -I$migInclude -I$migSource -I$projectBuild -o $tools/libexec/$name $compileInputs")
         }
         return ($commands -join ' && ')
     }

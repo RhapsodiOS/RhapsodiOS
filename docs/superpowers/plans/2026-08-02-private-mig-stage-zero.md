@@ -181,3 +181,55 @@ Do not run the full bootstrap.
 git add -- src/Commands/bootstrap_cmds/migcom.tproj/mig.sh vm/build-src-lib.ps1 vm/test-build-src.ps1
 git commit -m "build: source private MIG toolchain"
 ```
+
+### Task 4: Make the private MIG sources build-host clean
+
+**Files:**
+- Modify: `vm/test-build-src.ps1`
+- Modify: `vm/build-src-lib.ps1`
+- Modify: `src/Commands/bootstrap_cmds/migcom.tproj/error.c`
+- Modify: `src/Commands/bootstrap_cmds/migcom.tproj/error.h`
+- Modify: `src/Commands/bootstrap_cmds/migcom.tproj/utils.c`
+- Modify: `src/Commands/bootstrap_cmds/migcom.tproj/utils.h`
+- Modify: `src/Commands/bootstrap_cmds/migcom_typd.tproj/error.c`
+- Modify: `src/Commands/bootstrap_cmds/migcom_typd.tproj/error.h`
+- Test: `vm/test-build-src.ps1`
+
+- [x] **Step 1: Reproduce the Xserve failure**
+
+Run canonical `vm/build-src.ps1 -Rbuild` on Darwin 6/GCC 3.1.  Expected RED:
+the live `mach/message.h` lacks classic `msg_*` definitions, classic varargs
+are rejected, and non-const `sys_nerr` declarations conflict with host stdio.
+
+- [x] **Step 2: Add failing local contracts**
+
+Require a ToolsDir-owned exact Mach-header overlay, source preflight for every
+overlay member, the overlay include on all three backend commands, dependency
+audits excluding live Mach/sysroot headers, standard varargs, and `strerror`.
+Run `powershell -NoProfile -File vm\test-build-src.ps1`; expect failure at the
+first missing standard-varargs assertion.
+
+- [x] **Step 3: Implement the minimal compatibility boundary**
+
+Create only `ToolsDir/mig-build/include/mach/{machine,ppc}` during the scoped
+MIG build reset and link the verified thirteen-file dependency closure there.
+Use that overlay for `-M` and compilation of all backends.  Fail if dependency
+output mentions `/usr/include/mach/` or the configured bootstrap root.  Do not
+add a host manifest or broad kernel include.
+
+- [x] **Step 4: Make source-level GCC portability updates**
+
+Convert classic variadic definitions and declarations to `stdarg.h`/ANSI
+prototypes.  Replace classic and typed `sys_errlist`/`sys_nerr` access with
+`strerror`, retaining the existing `"message (number)"` formatting.
+
+- [x] **Step 5: Run the local contract suite GREEN**
+
+Run `powershell -NoProfile -File vm\test-build-src.ps1`.  Expected: all 267
+checks pass.
+
+- [x] **Step 6: Verify syntax and diff hygiene before review**
+
+Parse and import both PowerShell files, syntax-check generated phase commands,
+run `git diff --check`, and inspect only the focused diff.  Do not run a remote
+rbuild or bootstrap before review.

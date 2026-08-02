@@ -43,4 +43,4 @@ SYMROOT=$(VERSDIR)/BUILD
 #
 # Include file for directory makefiles
 #
-findfile MakeInc.dir
+include ../MakeInc.dir

@@ -35,6 +35,8 @@ else
   MKDIRS = /bin/mkdir -p
 endif
 
+# Portable replacement for NeXT make's `.DEFTARGET: all`.
+all:
 
 install: $(DSTROOT)
 
@@ -49,4 +51,4 @@ $(DSTROOT):
 #
 # Include file for directory makefiles
 #
-findfile MakeInc.dir
+include MakeInc.dir

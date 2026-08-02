@@ -36,8 +36,6 @@ else
   MKDIRS = /bin/mkdir -p
 endif
 
-.DEFTARGET:	all
-
 all:
 
 remake:	clean all

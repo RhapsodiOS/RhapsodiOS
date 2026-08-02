@@ -26,6 +26,7 @@ test: rbuild $(TESTS)
 	@fail=0; for t in $(TESTS); do echo "== $$t =="; ./$$t || fail=1; done; \
 		[ $$fail -eq 0 ] && echo "ALL TESTS PASSED" || (echo "TESTS FAILED"; exit 1)
 	MAKE=$(MAKE) sh tests/bootstrap-resume.sh
+	MAKE=$(MAKE) sh tests/bootstrap-closure.sh
 
 test_strutil_OBJS = strutil.o
 test_package_OBJS = strutil.o package.o

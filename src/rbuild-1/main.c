@@ -122,6 +122,7 @@ static int cmd_missing(int argc, char **argv) {
     const char *srclist, *dstdir;
     Manifest m;
     size_t i;
+    int rc = 0;
 
     if (argc != 2) { usage(); return 1; }
     srclist = argv[0]; dstdir = argv[1];
@@ -132,13 +133,27 @@ static int cmd_missing(int argc, char **argv) {
     for (i = 0; i < m.count; i++) {
         const char *type = m.items[i].type;
         const char *source = m.items[i].source;
+        const char *target = m.items[i].targets ? m.items[i].targets : "all";
         Package pkg; Params params; char *found;
+
+        if (strcmp(target, "all") != 0 && strcmp(target, "headers") != 0) {
+            fprintf(stderr,
+                "rbuild: unsupported manifest target \"%s\" for missing\n",
+                target);
+            rc = 1;
+            continue;
+        }
 
         package_init(&pkg); params_init(&params);
         if (builder_scan(type, source, &pkg, &params) != 0) {
             fprintf(stderr, "rbuild: skipping \"%s\": scan failed\n", source);
             package_free(&pkg); params_free(&params);
             continue;
+        }
+        if (strcmp(target, "headers") == 0) {
+            char *header_package = str_cats(pkg.package, "-hdrs", (char *)0);
+            package_set(&pkg.package, header_package);
+            free(header_package);
         }
         found = builder_exists(&pkg, "any", dstdir);
         if (!found) {
@@ -152,7 +167,7 @@ static int cmd_missing(int argc, char **argv) {
     }
 
     manifest_free(&m);
-    return 0;
+    return rc;
 }
 
 int main(int argc, char **argv) {

@@ -1,43 +1,54 @@
-#       Project[-Version]     Target
-#------ --------------------- -------
-# Makefiles first
-dir     CoreOSMakefiles-1     all
-dir     pb_makefiles-1        all
-dir     project_makefiles-1   all
-# bootstrap_cmds provides relpath (kernel-7 installhdrs). Path is under Commands/.
+#       Project[-Version]       Target
+#------ ----------------------- -------
+# Build frameworks and target headers before their first consumers.
+dir     CoreOSMakefiles-1       all
+dir     pb_makefiles-1          headers
+dir     project_makefiles-1     headers
+dir     architecture-1          headers
+dir     kernel-7                headers
+dir     Libstreams-1            headers
+dir     objc4-1                 headers
+dir     driverkit-3             headers
+dir     cctools-2               headers
+
+# Target build tools.  cc's build requires bison first.
+dir     bison-1                 all
+dir     cc-1                    all
+dir     cctools-2               all
+dir     gnumake-1               all
+dir     gnutar-1                all
+dir     awk-1                   all
+dir     grep-1                  all
+dir     patch-1                 all
+
+# Complete the build frameworks and bootstrap command set.
+dir     pb_makefiles-1          all
+dir     project_makefiles-1     all
 dir     Commands/bootstrap_cmds all
-# Headers needed by Libc / cctools / objc before those packages build.
-dir     architecture-1        all
-dir     kernel-7              headers
-dir     Libstreams-1          all
-# Toolchain (bison before cc — cc's build looks for /usr/local/bin/bison)
-dir     bison-1               all
-dir     cc-1                  all
-dir     cctools-2             all
-dir     gnumake-1             all
-dir     gnutar-1              all
-dir     awk-1                 all
-dir     grep-1                all
-dir     patch-1               all
-# CRT + language runtime (Csu needs cctools' indr)
-dir     Csu-1                 all
-dir     objc4-1               all
-# Libsystem component libs (harvest into /usr/local/lib/objs)
-dir     Libc-1                all
-dir     Libcompat-1           all
-dir     Libcurses-1           all
-dir     Libedit-1             all
-dir     Libinfo-1             all
-dir     Libkvm-1              all
-dir     Libm-1                all
-dir     Libsystem-2           all
-# Files + commands (Commands/ layout on this tree)
-dir     files-5               all
-dir     Commands/basic_cmds   all
-dir     Commands/system_cmds  all
-dir     Commands/shell_cmds   all
-dir     Commands/file_cmds    all
-dir     Commands/text_cmds    all
+
+# CRT and language/runtime support.
+dir     Csu-1                   all
+dir     objc4-1                 all
+dir     Libstreams-1            all
+dir     driverkit-3             all
+
+# Libsystem component libraries.
+dir     Libc-1                  all
+dir     Libcompat-1             all
+dir     Libcurses-1             all
+dir     Libedit-1               all
+dir     Libinfo-1               all
+dir     Libkvm-1                all
+dir     Libm-1                  all
+dir     Libsystem-2             all
+
+# Files and commands in the build-base package closure.
+dir     files-5                 all
+dir     Commands/basic_cmds     all
+dir     Commands/system_cmds    all
+dir     Commands/shell_cmds     all
+dir     Commands/file_cmds      all
+dir     Commands/text_cmds      all
 dir     Commands/developer_cmds all
-dir     Commands/zsh          all
-dir     Commands/tcsh         all
+dir     Commands/zsh            all
+dir     Commands/tcsh           all

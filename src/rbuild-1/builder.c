@@ -626,14 +626,16 @@ int builder_makeroot(const Package *pkg, const char *buildroot,
     }
     free(admdir);
 
-    f = fopen(listpath, "w");
-    if (!f) {
-        fprintf(stderr, "rbuild: unable to open %s\n", listpath);
-        rc = 1; free(listpath); goto cleanup;
+    if (!exec_dry_run) {
+        f = fopen(listpath, "w");
+        if (!f) {
+            fprintf(stderr, "rbuild: unable to open %s\n", listpath);
+            rc = 1; free(listpath); goto cleanup;
+        }
+        for (i = 0; i < depnames.count; i++)
+            fprintf(f, "%s\n", depnames.items[i]);
+        fclose(f);
     }
-    for (i = 0; i < depnames.count; i++)
-        fprintf(f, "%s\n", depnames.items[i]);
-    fclose(f);
     free(listpath);
 
     /* Stage-0 skipped cctools dyld (needs static libc). Without /usr/lib/dyld
@@ -860,9 +862,13 @@ int builder_buildpackage(const Package *spkg, const Params *params,
     if (exec_check(mkdirp(dstroot))) { rc = 1; goto done; }
 
     /* Write .PKGINFO into dstroot. */
-    pkginfo_path = str_cats(dstroot, "/.PKGINFO", (char *)0);
-    if (pkginfo_write(&pkg, pkginfo_path) != 0) { free(pkginfo_path); rc = 1; goto done; }
-    free(pkginfo_path);
+    if (!exec_dry_run) {
+        pkginfo_path = str_cats(dstroot, "/.PKGINFO", (char *)0);
+        if (pkginfo_write(&pkg, pkginfo_path) != 0) {
+            free(pkginfo_path); rc = 1; goto done;
+        }
+        free(pkginfo_path);
+    }
 
     /* For binary, copy present maintainer scripts into dstroot. */
     if (strcmp(target, "binary") == 0 && params->SRCDIR) {
@@ -1003,6 +1009,7 @@ int builder_harvest_objects(const Package *pkg, const Params *params,
 
         printf("copying files from %s\n", file);
         fflush(stdout);
+        if (exec_runv("rm", "-rf", dstdir, (char *)0) != 0) rc = 1;
         exec_check(mkdirp(dstdir));
         exec_runv("rmdir", dstdir, (char *)0);
         {
@@ -1015,27 +1022,6 @@ int builder_harvest_objects(const Package *pkg, const Params *params,
             argv[a++] = srcpath; argv[a++] = cobjpath; argv[a] = 0;
             exec_printcmd(argv);
             if (exec_run_checked(argv)) rc = 1;
-        }
-        /* Bootstrap builds have no makeroot; also install into live SUBLIBROOTS
-           so later packages (Libsystem make_links) see the ofiles. */
-        if (opt && opt->bootstrap && params->SUBLIBROOTS) {
-            char *live = str_cats(params->SUBLIBROOTS, "/",
-                                  pkg->source ? pkg->source : "", "/",
-                                  file, (char *)0);
-            char *livedir = xstrdup(live);
-            char *slash = strrchr(livedir, '/');
-            if (slash) {
-                *slash = '\0';
-                exec_check(mkdirp(livedir));
-            }
-            {
-                char *argv[6];
-                argv[0] = "cp"; argv[1] = "-rp";
-                argv[2] = srcpath; argv[3] = live; argv[4] = 0;
-                exec_printcmd(argv);
-                if (exec_run_checked(argv)) rc = 1;
-            }
-            free(live); free(livedir);
         }
         free(objdest); free(dstdir); free(srcpath); free(cobjpath);
     }
@@ -1111,11 +1097,14 @@ int builder_build(const char *srctype, const char *srcname,
     hdrfilename = package_canon_name(&hdrpkg);
     filename = package_canon_name(&pkg);
 
-    if (strcmp(target, "headers") == 0 && file_apk_exists(dstdir, hdrfilename)) {
+    if (!(opt && (opt->bootstrap || opt->force)) &&
+        strcmp(target, "headers") == 0 &&
+        file_apk_exists(dstdir, hdrfilename)) {
         printf("package file for \"%s\" already exists; not building\n", hdrfilename);
         goto done_ok;
     }
-    if (file_apk_exists(dstdir, filename)) {
+    if (!(opt && (opt->bootstrap || opt->force)) &&
+        file_apk_exists(dstdir, filename)) {
         printf("package file for \"%s\" already exists; not building\n", filename);
         goto done_ok;
     }

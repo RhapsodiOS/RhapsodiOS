@@ -5,9 +5,9 @@ CFLAGS = -Wall -O
 d = $(DSTROOT)
 p = rbuild
 
-OBJS = strutil.o package.o manifest.o exec.o pkginfo.o builder.o toolchain.o apk.o main.o
+OBJS = strutil.o package.o manifest.o exec.o pkginfo.o builder.o toolchain.o apk.o runner.o main.o
 
-TESTS = tests/test_strutil tests/test_package tests/test_manifest tests/test_builder tests/test_exec tests/test_pkginfo tests/test_toolchain tests/test_apk
+TESTS = tests/test_strutil tests/test_package tests/test_manifest tests/test_builder tests/test_exec tests/test_pkginfo tests/test_toolchain tests/test_apk tests/test_runner
 
 .PHONY: all clean install installhdrs installsrc test trace-test
 
@@ -22,9 +22,10 @@ rbuild: $(OBJS)
 # Unit tests: each test binary links ONLY the module objects it needs, so a
 # test can be built as soon as its modules exist (incremental TDD). As a
 # module grows new dependencies, extend the matching object list below.
-test: $(TESTS)
+test: rbuild $(TESTS)
 	@fail=0; for t in $(TESTS); do echo "== $$t =="; ./$$t || fail=1; done; \
 		[ $$fail -eq 0 ] && echo "ALL TESTS PASSED" || (echo "TESTS FAILED"; exit 1)
+	MAKE=$(MAKE) sh tests/bootstrap-resume.sh
 
 test_strutil_OBJS = strutil.o
 test_package_OBJS = strutil.o package.o
@@ -34,9 +35,13 @@ test_exec_OBJS = strutil.o exec.o
 test_pkginfo_OBJS = strutil.o package.o exec.o toolchain.o apk.o pkginfo.o
 test_toolchain_OBJS = strutil.o toolchain.o
 test_apk_OBJS = strutil.o exec.o toolchain.o tests/apk_test.o
+test_runner_OBJS = strutil.o package.o manifest.o exec.o pkginfo.o builder.o toolchain.o apk.o tests/runner_test.o
 
 tests/apk_test.o: apk.c apk.h
 	$(CC) $(CFLAGS) -DRBUILD_APK_TESTING -c -o $@ apk.c
+
+tests/runner_test.o: runner.c runner.h
+	$(CC) $(CFLAGS) -DRBUILD_RUNNER_TESTING -c -o $@ runner.c
 
 tests/test_strutil: tests/test_strutil.c $(test_strutil_OBJS)
 	$(CC) $(CFLAGS) -I. -o $@ tests/test_strutil.c $(test_strutil_OBJS)
@@ -54,6 +59,8 @@ tests/test_toolchain: tests/test_toolchain.c $(test_toolchain_OBJS)
 	$(CC) $(CFLAGS) -I. -o $@ tests/test_toolchain.c $(test_toolchain_OBJS)
 tests/test_apk: tests/test_apk.c $(test_apk_OBJS)
 	$(CC) $(CFLAGS) -I. -o $@ tests/test_apk.c $(test_apk_OBJS)
+tests/test_runner: tests/test_runner.c $(test_runner_OBJS)
+	$(CC) $(CFLAGS) -DRBUILD_RUNNER_TESTING -I. -o $@ tests/test_runner.c $(test_runner_OBJS)
 
 trace-test: rbuild
 	sh tests/trace/run.sh

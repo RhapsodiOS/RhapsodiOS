@@ -291,7 +291,47 @@ static int descends_through_symlink(const char *name,
     return 0;
 }
 
-static int validate_tar_stream(int fd, strlist *explicit_dirs) {
+typedef struct {
+    char *pkgname;
+    char *pkgver;
+    char *architecture;
+} ApkIdentity;
+
+static void identity_free(ApkIdentity *identity) {
+    free(identity->pkgname); free(identity->pkgver); free(identity->architecture);
+    memset(identity, 0, sizeof(*identity));
+}
+
+static int parse_identity(char *data, ApkIdentity *identity) {
+    char *line = data;
+    while (line != 0 && *line != '\0') {
+        char *next = strchr(line, '\n');
+        char *equals;
+        char *key;
+        char *value;
+        char **slot = 0;
+        if (next != 0) *next++ = '\0';
+        line = str_trim(line);
+        if (*line == '\0') { line = next; continue; }
+        equals = strchr(line, '=');
+        if (equals == 0) { line = next; continue; }
+        *equals = '\0';
+        key = str_trim(line); value = str_trim(equals + 1);
+        if (strcmp(key, "pkgname") == 0) slot = &identity->pkgname;
+        else if (strcmp(key, "pkgver") == 0) slot = &identity->pkgver;
+        else if (strcmp(key, "arch") == 0) slot = &identity->architecture;
+        if (slot != 0) {
+            if (*slot != 0 || *value == '\0') return 1;
+            *slot = xstrdup(value);
+        }
+        line = next;
+    }
+    return identity->pkgname == 0 || identity->pkgver == 0 ||
+           identity->architecture == 0;
+}
+
+static int validate_tar_stream(int fd, strlist *explicit_dirs,
+                               ApkIdentity *identity) {
     char header[TAR_BLOCK_SIZE];
     strlist symlinks;
     int zero_blocks = 0;
@@ -307,6 +347,7 @@ static int validate_tar_stream(int fd, strlist *explicit_dirs) {
         char name[258];
         char linkname[101];
         char type;
+        int consumed = 0;
 
         if (read_result != 1) break;
         if (block_is_zero(header)) {
@@ -354,9 +395,24 @@ static int validate_tar_stream(int fd, strlist *explicit_dirs) {
         if (strcmp(name, ".PKGINFO") == 0) {
             metadata_count++;
             if ((type != '\0' && type != '0') || metadata_count != 1) break;
+            if (identity != 0) {
+                char *metadata;
+                if (size > 16384UL) break;
+                metadata = (char *)malloc((size_t)size + 1);
+                if (metadata == 0) break;
+                if (read_exact(fd, metadata, (size_t)size) != 1) {
+                    free(metadata); break;
+                }
+                metadata[size] = '\0';
+                consumed = 1;
+                if (parse_identity(metadata, identity) != 0) {
+                    free(metadata); break;
+                }
+                free(metadata);
+            }
         }
 
-        if (skip_exact(fd, size) != 0) break;
+        if (!consumed && skip_exact(fd, size) != 0) break;
         padding = (TAR_BLOCK_SIZE - (size % TAR_BLOCK_SIZE)) % TAR_BLOCK_SIZE;
         if (skip_exact(fd, padding) != 0) break;
     }
@@ -370,7 +426,7 @@ static int tar_pipeline(int artifact_fd, const char *root, int list_only,
 static int same_artifact(const struct stat *a, const struct stat *b);
 
 static int validate_artifact(int artifact_fd, const Toolchain *tc,
-                             strlist *explicit_dirs) {
+                             strlist *explicit_dirs, ApkIdentity *identity) {
     int stream_fd;
     pid_t gzip_pid;
     int parse_result;
@@ -381,7 +437,7 @@ static int validate_artifact(int artifact_fd, const Toolchain *tc,
     if (fstat(artifact_fd, &before) != 0 || !S_ISREG(before.st_mode)) return 1;
     if (lseek(artifact_fd, 0, SEEK_SET) < 0) return 1;
     if (start_gzip(artifact_fd, tc, &stream_fd, &gzip_pid) != 0) return 1;
-    parse_result = validate_tar_stream(stream_fd, explicit_dirs);
+    parse_result = validate_tar_stream(stream_fd, explicit_dirs, identity);
     close(stream_fd);
     gzip_result = wait_child(gzip_pid);
     if (parse_result != 0 || gzip_result != 0) return 1;
@@ -518,15 +574,18 @@ static int make_immutable_copy(const char *path, const char *private_dir,
     int source_fd;
     int destination_fd;
     int immutable_fd;
+    struct stat entry;
     struct stat current;
 
     if (strlen(private_dir) + sizeof("/archive.apk") > sizeof(copy_path))
         return 1;
     sprintf(copy_path, "%s/archive.apk", private_dir);
+    if (lstat(path, &entry) != 0 || !S_ISREG(entry.st_mode)) return 1;
     source_fd = open(path, O_RDONLY);
     if (source_fd < 0) return 1;
     if (fstat(source_fd, source_stat) != 0 ||
-        !S_ISREG(source_stat->st_mode)) {
+        !S_ISREG(source_stat->st_mode) ||
+        !same_artifact(&entry, source_stat)) {
         close(source_fd);
         return 1;
     }
@@ -830,16 +889,76 @@ int apk_validate(const char *path, const Toolchain *tc) {
         remove_private_dir(private_dir);
         return 1;
     }
-    result = validate_artifact(artifact_fd, tc, 0);
+    result = validate_artifact(artifact_fd, tc, 0, 0);
     if (result == 0 &&
-        (stat(path, &current) != 0 || !same_artifact(&source, &current)))
+        (lstat(path, &current) != 0 || !S_ISREG(current.st_mode) ||
+         !same_artifact(&source, &current)))
         result = 1;
     close(artifact_fd);
     if (remove_private_dir(private_dir) != 0) result = 1;
     return result;
 }
 
-int apk_extract(const char *path, const char *root, const Toolchain *tc) {
+int apk_validate_readonly(const char *path, const Toolchain *tc) {
+    int artifact_fd;
+    int result;
+    if (path == 0 || path[0] == '\0' || !valid_tools(tc)) return 1;
+    artifact_fd = open(path, O_RDONLY);
+    if (artifact_fd < 0) return 1;
+    result = validate_artifact(artifact_fd, tc, 0, 0);
+    close(artifact_fd);
+    return result;
+}
+
+static int identity_matches(const ApkIdentity *identity, const char *pkgname,
+                            const char *pkgver, const char *architecture) {
+    return identity->pkgname != 0 && identity->pkgver != 0 &&
+           identity->architecture != 0 &&
+           strcmp(identity->pkgname, pkgname) == 0 &&
+           strcmp(identity->pkgver, pkgver) == 0 &&
+           strcmp(identity->architecture, architecture) == 0;
+}
+
+int apk_validate_identity(const char *path, const Toolchain *tc,
+                          const char *pkgname, const char *pkgver,
+                          const char *architecture, int readonly) {
+    char private_dir[128];
+    int artifact_fd = -1;
+    int result;
+    struct stat source;
+    struct stat current;
+    ApkIdentity identity;
+    memset(&identity, 0, sizeof(identity));
+    if (path == 0 || pkgname == 0 || pkgver == 0 || architecture == 0 ||
+        !valid_tools(tc)) return 1;
+    if (readonly) {
+        artifact_fd = open(path, O_RDONLY);
+        if (artifact_fd < 0) return 1;
+        result = validate_artifact(artifact_fd, tc, 0, &identity);
+        close(artifact_fd);
+    } else {
+        if (make_private_dir(private_dir, sizeof(private_dir), "identity") != 0)
+            return 1;
+        if (make_immutable_copy(path, private_dir, &artifact_fd, &source) != 0) {
+            remove_private_dir(private_dir); return 1;
+        }
+        result = validate_artifact(artifact_fd, tc, 0, &identity);
+        if (result == 0 &&
+            (lstat(path, &current) != 0 || !S_ISREG(current.st_mode) ||
+             !same_artifact(&source, &current)))
+            result = 1;
+        close(artifact_fd);
+        if (remove_private_dir(private_dir) != 0) result = 1;
+    }
+    if (result == 0 && !identity_matches(&identity, pkgname, pkgver,
+                                         architecture)) result = 1;
+    identity_free(&identity);
+    return result;
+}
+
+int apk_extract_identity(const char *path, const char *root,
+                         const Toolchain *tc, const char *pkgname,
+                         const char *pkgver, const char *architecture) {
     char private_dir[128];
     char stage[160];
     int artifact_fd = -1;
@@ -847,8 +966,10 @@ int apk_extract(const char *path, const char *root, const Toolchain *tc) {
     struct stat source;
     struct stat current;
     strlist explicit_dirs;
+    ApkIdentity identity;
 
     strlist_init(&explicit_dirs);
+    memset(&identity, 0, sizeof(identity));
     if (path == 0 || path[0] == '\0' || root == 0 || root[0] == '\0' ||
         !valid_tools(tc)) {
         strlist_free(&explicit_dirs);
@@ -860,16 +981,21 @@ int apk_extract(const char *path, const char *root, const Toolchain *tc) {
     }
     sprintf(stage, "%s/root", private_dir);
     if (make_immutable_copy(path, private_dir, &artifact_fd, &source) != 0 ||
-        validate_artifact(artifact_fd, tc, &explicit_dirs) != 0 ||
+        validate_artifact(artifact_fd, tc, &explicit_dirs,
+                          pkgname != 0 ? &identity : 0) != 0 ||
+        (pkgname != 0 && !identity_matches(&identity, pkgname, pkgver,
+                                           architecture)) ||
         mkdir(stage, 0700) != 0) {
         if (artifact_fd >= 0) close(artifact_fd);
         remove_private_dir(private_dir);
         strlist_free(&explicit_dirs);
+        identity_free(&identity);
         return 1;
     }
     result = tar_pipeline(artifact_fd, stage, 0, tc);
     if (result == 0 &&
-        (stat(path, &current) != 0 || !same_artifact(&source, &current)))
+        (lstat(path, &current) != 0 || !S_ISREG(current.st_mode) ||
+         !same_artifact(&source, &current)))
         result = 1;
     if (result == 0 && merge_stage(stage, root, &explicit_dirs) != 0) {
         fprintf(stderr,
@@ -880,7 +1006,12 @@ int apk_extract(const char *path, const char *root, const Toolchain *tc) {
     close(artifact_fd);
     if (remove_private_dir(private_dir) != 0) result = 1;
     strlist_free(&explicit_dirs);
+    identity_free(&identity);
     return result;
+}
+
+int apk_extract(const char *path, const char *root, const Toolchain *tc) {
+    return apk_extract_identity(path, root, tc, 0, 0, 0);
 }
 
 static void remove_own_link(const char *path, const struct stat *source) {
@@ -908,6 +1039,78 @@ static int pin_quarantine_source(const char *path, char *temporary,
     }
     errno = EEXIST;
     return 1;
+}
+
+static int write_bytes(int fd, const char *data, size_t length) {
+    size_t offset = 0;
+    while (offset < length) {
+        ssize_t written = write(fd, data + offset, length - offset);
+        if (written < 0 && errno == EINTR) continue;
+        if (written <= 0) return 1;
+        offset += (size_t)written;
+    }
+    return 0;
+}
+
+static int quarantine_symlink(const char *path, const char *destination,
+                              const struct stat *source) {
+    char target[4097];
+    char *record_text;
+    ssize_t target_length;
+    int fd = -1;
+    int made_record = 0;
+    int record_valid = 0;
+    int write_failed = 0;
+    int result = 1;
+    struct stat record;
+    struct stat current;
+
+    target_length = readlink(path, target, sizeof(target) - 1);
+    if (target_length < 0 || target_length >= (ssize_t)(sizeof(target) - 1)) {
+        fprintf(stderr, "rbuild: cannot read APK symlink %s\n", path);
+        return 1;
+    }
+    target[target_length] = '\0';
+    record_text = str_cats("symlink -> ", target, "\n", (char *)0);
+    fd = open(destination, O_WRONLY | O_CREAT | O_EXCL, 0666);
+    if (fd >= 0) {
+        if (fstat(fd, &record) != 0) write_failed = 1;
+        else record_valid = 1;
+        if (write_bytes(fd, record_text, strlen(record_text)) != 0 ||
+            fsync(fd) != 0) write_failed = 1;
+        if (close(fd) != 0) write_failed = 1;
+        fd = -1;
+        if (write_failed) {
+            if (record_valid) remove_own_link(destination, &record);
+            free(record_text);
+            return 1;
+        }
+        made_record = 1;
+    } else if (errno != EEXIST) {
+        fprintf(stderr, "rbuild: cannot reserve quarantine file %s: %s\n",
+                destination, strerror(errno));
+        free(record_text);
+        return 1;
+    } else {
+        fprintf(stderr, "rbuild: preserving existing quarantine file %s\n",
+                destination);
+    }
+    if (lstat(path, &current) != 0 || !S_ISLNK(current.st_mode) ||
+        current.st_dev != source->st_dev || current.st_ino != source->st_ino) {
+        fprintf(stderr, "rbuild: quarantine source changed %s\n", path);
+        if (made_record) remove_own_link(destination, &record);
+        goto done;
+    }
+    if (unlink(path) != 0) {
+        fprintf(stderr, "rbuild: cannot remove quarantined APK symlink %s: %s\n",
+                path, strerror(errno));
+        if (made_record) remove_own_link(destination, &record);
+        goto done;
+    }
+    result = 0;
+done:
+    free(record_text);
+    return result;
 }
 
 int apk_quarantine(const char *path) {
@@ -941,6 +1144,12 @@ int apk_quarantine(const char *path) {
         free(temporary);
         free(destination);
         return 1;
+    }
+    if (S_ISLNK(source.st_mode)) {
+        int result = quarantine_symlink(path, destination, &source);
+        free(temporary);
+        free(destination);
+        return result;
     }
     if (!S_ISREG(source.st_mode)) {
         fprintf(stderr, "rbuild: cannot quarantine non-regular APK %s\n",

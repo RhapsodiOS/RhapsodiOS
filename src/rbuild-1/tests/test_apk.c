@@ -1173,6 +1173,38 @@ TEST(test_quarantine_crash_never_leaves_empty_destination) {
     CHECK_INT(exec_runv("/bin/rm", "-rf", scratch, (char *)0), 0);
 }
 
+TEST(test_quarantine_symlink_preserves_target) {
+    char scratch[128];
+    char target[160];
+    char source[160];
+    char destination[176];
+    char expected[352];
+    struct stat st;
+
+    make_scratch(scratch, sizeof(scratch), "symlink");
+    sprintf(target, "%s/target.apk", scratch);
+    sprintf(source, "%s/link.apk", scratch);
+    sprintf(destination, "%s.invalid", source);
+    write_text(target, "target-data");
+    CHECK_INT(symlink(target, source), 0);
+    CHECK_INT(apk_quarantine(source), 0);
+    CHECK(lstat(source, &st) != 0 && errno == ENOENT);
+    CHECK(file_equals(target, "target-data"));
+    CHECK(lstat(destination, &st) == 0 && S_ISREG(st.st_mode));
+    sprintf(expected, "symlink -> %s\n", target);
+    CHECK(file_equals(destination, expected));
+
+    /* A pre-existing quarantine record is a competitor, not a permanent
+       blocker: preserve it while removing only the newly recreated link. */
+    CHECK_INT(symlink(target, source), 0);
+    write_text(destination, "competitor");
+    CHECK_INT(apk_quarantine(source), 0);
+    CHECK(lstat(source, &st) != 0 && errno == ENOENT);
+    CHECK(file_equals(destination, "competitor"));
+    CHECK(file_equals(target, "target-data"));
+    CHECK_INT(exec_runv("/bin/rm", "-rf", scratch, (char *)0), 0);
+}
+
 static void run_all(void) {
     RUN(test_validate_extract_and_quarantine);
     RUN(test_configured_tools_are_used_without_tar_z);
@@ -1196,6 +1228,7 @@ static void run_all(void) {
     RUN(test_quarantine_replaced_destination_is_not_overwritten);
     RUN(test_quarantine_immediate_publish_replacement_is_preserved);
     RUN(test_quarantine_crash_never_leaves_empty_destination);
+    RUN(test_quarantine_symlink_preserves_target);
 }
 
 TEST_MAIN()

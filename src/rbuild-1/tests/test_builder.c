@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 TEST(test_dir2name) {
     char *base = 0, *name = 0, *rev = 0;
@@ -314,6 +315,42 @@ TEST(test_setupdirs_bootstrap_skips_makeroot) {
     package_free(&pkg);
 }
 
+TEST(test_makeroot_dry_run_preserves_package_list) {
+    Package pkg;
+    strlist repo;
+    char root[128];
+    char path[192];
+    char command[256];
+    char line[64];
+    FILE *f;
+
+    sprintf(root, "/tmp/rb-makeroot-dry-%ld", (long)getpid());
+    sprintf(path, "%s/var/adm/package-list", root);
+    sprintf(command, "rm -rf %s && mkdir -p %s/var/adm", root, root);
+    CHECK_INT(system(command), 0);
+    f = fopen(path, "w");
+    CHECK(f != 0);
+    if (f != 0) { fputs("sentinel-package\n", f); fclose(f); }
+
+    package_init(&pkg);
+    pkg.has_build_depends = 1; /* Explicitly empty: no APK extraction. */
+    strlist_init(&repo);
+    exec_dry_run = 1;
+    CHECK_INT(builder_makeroot(&pkg, root, &repo), 0);
+    exec_dry_run = 0;
+
+    f = fopen(path, "r");
+    CHECK(f != 0);
+    line[0] = '\0';
+    if (f != 0) { fgets(line, sizeof(line), f); fclose(f); }
+    CHECK_STR(line, "sentinel-package\n");
+
+    strlist_free(&repo);
+    package_free(&pkg);
+    sprintf(command, "rm -rf %s", root);
+    system(command);
+}
+
 TEST(test_scan_dir) {
     Package pkg;
     Params params;
@@ -351,6 +388,7 @@ static void run_all(void) {
     RUN(test_buildflags);
     RUN(test_buildcmd_bootstrap);
     RUN(test_setupdirs_bootstrap_skips_makeroot);
+    RUN(test_makeroot_dry_run_preserves_package_list);
     RUN(test_scan_dir);
 }
 

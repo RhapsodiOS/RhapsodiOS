@@ -45,6 +45,24 @@ function Assert-RemotePayloadBytes([string]$Path, [string]$ScriptBody, [string]$
     Assert-Equal ([Convert]::ToBase64String($actual)) ([Convert]::ToBase64String($expected)) "$Name exact strict UTF-8 bytes"
 }
 
+function Get-EncodingSignature([System.Text.Encoding]$Encoding) {
+    return [pscustomobject]@{
+        CodePage = $Encoding.CodePage
+        WebName = $Encoding.WebName
+        EncoderFallback = $Encoding.EncoderFallback.GetType().FullName
+        DecoderFallback = $Encoding.DecoderFallback.GetType().FullName
+        Preamble = [Convert]::ToBase64String($Encoding.GetPreamble())
+    }
+}
+
+function Assert-EncodingSignature($Actual, $Expected, [string]$Name) {
+    Assert-Equal $Actual.CodePage $Expected.CodePage "$Name code page"
+    Assert-Equal $Actual.WebName $Expected.WebName "$Name web name"
+    Assert-Equal $Actual.EncoderFallback $Expected.EncoderFallback "$Name encoder fallback"
+    Assert-Equal $Actual.DecoderFallback $Expected.DecoderFallback "$Name decoder fallback"
+    Assert-Equal $Actual.Preamble $Expected.Preamble "$Name preamble"
+}
+
 . (Join-Path $PSScriptRoot 'build-src-lib.ps1')
 $realProfile = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\rbuild-1\toolchains\gcc-darwin.conf')
 
@@ -829,7 +847,7 @@ try {
     )
 
     $transportDir = Join-Path $env:TEMP ("rhap-transport-test-{0}" -f [guid]::NewGuid().ToString('n'))
-    $originalConsoleInputPreamble = [Convert]::ToBase64String([Console]::InputEncoding.GetPreamble())
+    $originalConsoleInputEncoding = Get-EncodingSignature ([Console]::InputEncoding)
     New-Item -ItemType Directory -Path $transportDir | Out-Null
     try {
         $captureSource = Join-Path $transportDir 'capture-stdin.c'
@@ -938,7 +956,42 @@ try {
         $canonicalOutput = & powershell -NoProfile -File (Join-Path $canonicalVmDir 'build-src.ps1') -Rbuild 2>&1
         Assert-Equal $LASTEXITCODE 0 "canonical build-src -Rbuild transport exit: $($canonicalOutput -join ' | ')"
         Assert-RemotePayloadBytes -Path $canonicalCapturePath -ScriptBody $rbuildCommand -Name 'canonical build-src rbuild phase transport'
-        Assert-Equal ([Convert]::ToBase64String([Console]::InputEncoding.GetPreamble())) $originalConsoleInputPreamble 'remote transport restores host console input encoding'
+        Assert-EncodingSignature (Get-EncodingSignature ([Console]::InputEncoding)) $originalConsoleInputEncoding 'normal remote transport restores host console input encoding'
+
+        $startFailureProcess = New-Object System.Diagnostics.Process
+        $startFailureInfo = New-Object System.Diagnostics.ProcessStartInfo
+        $startFailureInfo.FileName = Join-Path $transportDir 'missing-ssh.exe'
+        $startFailureInfo.UseShellExecute = $false
+        $startFailureInfo.RedirectStandardInput = $true
+        $startFailureProcess.StartInfo = $startFailureInfo
+        try {
+            Assert-Throws { Start-RhapSshProcess -Process $startFailureProcess -Ssh $startFailureInfo.FileName } 'SSH start failure is reported'
+        } finally {
+            $startFailureProcess.Dispose()
+        }
+        Assert-EncodingSignature (Get-EncodingSignature ([Console]::InputEncoding)) $originalConsoleInputEncoding 'SSH start failure restores host console input encoding'
+
+        $acquisitionFailureProcess = New-Object System.Diagnostics.Process
+        $acquisitionFailureInfo = New-Object System.Diagnostics.ProcessStartInfo
+        $acquisitionFailureInfo.FileName = $captureExe
+        $acquisitionFailureInfo.UseShellExecute = $false
+        $acquisitionFailureInfo.RedirectStandardInput = $false
+        $acquisitionFailureProcess.StartInfo = $acquisitionFailureInfo
+        $acquisitionFailureMessage = $null
+        $acquisitionFailureExited = $false
+        try {
+            try {
+                [void](Start-RhapSshProcess -Process $acquisitionFailureProcess -Ssh $captureExe)
+            } catch {
+                $acquisitionFailureMessage = $_.Exception.Message
+            }
+            $acquisitionFailureExited = $acquisitionFailureProcess.HasExited
+        } finally {
+            $acquisitionFailureProcess.Dispose()
+        }
+        Assert-Match $acquisitionFailureMessage '^could not acquire SSH standard input:' 'stdin writer acquisition failure is reported clearly'
+        Assert-Equal $acquisitionFailureExited $true 'stdin writer acquisition failure reaps the started child'
+        Assert-EncodingSignature (Get-EncodingSignature ([Console]::InputEncoding)) $originalConsoleInputEncoding 'stdin writer acquisition failure restores host console input encoding'
 
         $badPayload = 'set -e' + "`n# " + [char]0xD800
         $env:RHAP_STDIN_CAPTURE = Join-Path $transportDir 'malformed.bin'

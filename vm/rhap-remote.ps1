@@ -189,7 +189,9 @@ function Start-RhapSshProcess {
             [Console]::InputEncoding = New-RhapSshStandardInputEncoding
             if (-not $Process.Start()) { throw "could not start SSH: $Ssh" }
             $started = $true
-            return $Process.StandardInput
+            $stdinWriter = $Process.StandardInput
+            if ($null -eq $stdinWriter) { throw "could not acquire SSH standard input: $Ssh" }
+            return $stdinWriter
         } catch {
             if ($started) {
                 try { if (-not $Process.HasExited) { $Process.Kill() } } catch { }

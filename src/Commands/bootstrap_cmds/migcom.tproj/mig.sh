@@ -15,6 +15,7 @@ newline='
 cppflags=
 migflags=
 files=
+mig_arch=${MIGARCH-}
 
 reject_newline()
 {
@@ -96,7 +97,7 @@ do
 		    echo "mig: invalid architecture identifier: $2" >&2
 		    exit 1
 		fi
-		arch=$2; shift; shift;;
+		arch=$2; mig_arch=$2; shift; shift;;
 	-typed ) migcom=$MIGCOM_ROOT/migcom_typd; 	\
 		append_cppflag '-DMACH_IPC_FLAVOR=TYPED'; shift;;
 	-untyped ) migcom=$MIGCOM_ROOT/migcom_untypd; 	\
@@ -109,7 +110,6 @@ do
 done
 
 if [ "${MIGCC-}" ]; then
-    mig_arch=${arch-${MIGARCH-}}
     if ! valid_arch "$mig_arch"; then
 	echo "mig: MIGCC requires a valid MIGARCH or -arch identifier" >&2
 	exit 1

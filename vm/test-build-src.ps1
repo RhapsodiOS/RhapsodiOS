@@ -49,7 +49,8 @@ $typedErrorHeaderText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\Comman
 Assert-Match $migWrapperText 'MIGCC' 'MIG wrapper supports configured compiler override'
 Assert-Match $migWrapperText 'MIGARCH' 'MIG wrapper supports configured architecture override'
 Assert-Match $migWrapperText 'append_cppflag "-D\$mig_arch"' 'configured GCC receives one preserved architecture definition'
-Assert-Match $migWrapperText 'mig_arch=\$\{arch-\$\{MIGARCH-\}\}' 'explicit -arch overrides configured MIGARCH'
+Assert-Match $migWrapperText 'mig_arch=\$\{MIGARCH-\}' 'configured architecture begins only from MIGARCH'
+Assert-Match $migWrapperText 'arch=\$2; mig_arch=\$2' 'explicit -arch overrides both configured and historical architecture state'
 Assert-Match $migWrapperText 'MIGCOM_DIR' 'MIG wrapper supports private libexec override'
 Assert-Match $migWrapperText '-i[ `t]+\)' 'MIG wrapper forwards -i and its argument'
 Assert-Match $migWrapperText '\$\{1#-\}.*=.*\$1' 'MIG wrapper preserves a following option after optional -i prefix'
@@ -916,8 +917,26 @@ exit $status
     Assert-Equal ($LASTEXITCODE -ne 0) $true 'MIG wrapper validates and rejects unsafe explicit -arch'
     Assert-Equal (@((Get-Content -LiteralPath (Join-Path $captureDir 'compiler.args')) | Where-Object { $_ -eq '--invocation--' }).Count) $compilerCountBeforeInvalidArch 'invalid or missing architectures never invoke configured compiler'
 
-    $overrideOutput = Join-Path $outputDir 'alternate architecture header.h'
-    $overrideInvoke = 'cd {0} && MIGCC={1} MIGARCH=ppc MIGCOM_DIR={2} MIG_TEST_CAPTURE={3} sh {4} -arch alternate_safe -header {5} {6}' -f @(
+    $ambientPpcBefore = @((Get-Content -LiteralPath (Join-Path $captureDir 'compiler.args')) | Where-Object { $_ -eq '-Dppc' }).Count
+    $ambientI386Before = @((Get-Content -LiteralPath (Join-Path $captureDir 'compiler.args')) | Where-Object { $_ -eq '-Di386' }).Count
+    $ambientConflictOutput = Join-Path $outputDir 'ambient architecture conflict header.h'
+    $ambientConflictInvoke = 'cd {0} && arch=i386 MIGCC={1} MIGARCH=ppc MIGCOM_DIR={2} MIG_TEST_CAPTURE={3} sh {4} -header {5} {6}' -f @(
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $runDir)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeCompiler)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeLibexec)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $captureDir)),
+        (ConvertTo-RhapShellLiteral $wrapperShPath),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $ambientConflictOutput)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $defsOne))
+    )
+    & $sh -c $ambientConflictInvoke
+    Assert-Equal $LASTEXITCODE 0 'ambient lowercase arch does not override configured MIGARCH'
+    $compilerArgsAfterAmbient = Get-Content -LiteralPath (Join-Path $captureDir 'compiler.args')
+    Assert-Equal (@($compilerArgsAfterAmbient | Where-Object { $_ -eq '-Dppc' }).Count) ($ambientPpcBefore + 1) 'configured branch emits profile MIGARCH despite ambient lowercase arch'
+    Assert-Equal (@($compilerArgsAfterAmbient | Where-Object { $_ -eq '-Di386' }).Count) $ambientI386Before 'configured branch never emits ambient lowercase arch'
+
+    $overrideOutput = Join-Path $outputDir 'explicit architecture header.h'
+    $overrideInvoke = 'cd {0} && arch=ambient_bad MIGCC={1} MIGARCH=ppc MIGCOM_DIR={2} MIG_TEST_CAPTURE={3} sh {4} -arch i386 -header {5} {6}' -f @(
         (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $runDir)),
         (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeCompiler)),
         (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeLibexec)),
@@ -929,7 +948,7 @@ exit $status
     & $sh -c $overrideInvoke
     Assert-Equal $LASTEXITCODE 0 'explicit safe -arch overrides configured MIGARCH'
     $compilerArgsAfterOverride = Get-Content -LiteralPath (Join-Path $captureDir 'compiler.args')
-    Assert-Equal (@($compilerArgsAfterOverride | Where-Object { $_ -eq '-Dalternate_safe' }).Count) 1 'explicit alternate architecture is preserved as one cpp argument'
+    Assert-Equal (@($compilerArgsAfterOverride | Where-Object { $_ -eq '-Di386' }).Count) ($ambientI386Before + 1) 'explicit i386 architecture is preserved as one cpp argument'
 
     $typedOutput = Join-Path $outputDir 'typed mach server.h'
     $actualMachDefs = Join-Path $PSScriptRoot '..\src\kernel-7\mach\mach.defs'

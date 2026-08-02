@@ -395,7 +395,7 @@ function New-RhapBuildPhaseCommand {
             $commands.Add("/usr/bin/yacc -d $migSource/parser.y")
             $commands.Add('/bin/mv y.tab.h parser.h')
             $commands.Add("/usr/bin/lex $migSource/lexxer.l")
-            $commands.Add("$cc -O -I$migSource -I$projectBuild -o $tools/libexec/$name $compileSources $projectBuild/y.tab.c $projectBuild/lex.yy.c")
+            $commands.Add("$cc -O -bsd -DNeXT=1 -I$migSource -I$projectBuild -o $tools/libexec/$name $compileSources $projectBuild/y.tab.c $projectBuild/lex.yy.c")
         }
         return ($commands -join ' && ')
     }

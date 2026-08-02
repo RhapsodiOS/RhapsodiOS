@@ -104,6 +104,17 @@ static int strict_ustar_types(const char *raw) {
     return 0;
 }
 
+static int physical_directory(const char *path, char *physical,
+                              size_t capacity) {
+    char saved[512];
+    int result = 1;
+    if (getcwd(saved, sizeof(saved)) == 0) return 1;
+    if (chdir(path) != 0) return 1;
+    if (getcwd(physical, capacity) != 0) result = 0;
+    if (chdir(saved) != 0) return 1;
+    return result;
+}
+
 TEST(test_pkginfo_write) {
     Package p;
     char *out;
@@ -132,6 +143,7 @@ TEST(test_pkginfo_write) {
 TEST(test_build_apk_is_posix_ustar_and_extracts) {
     char scratch[128];
     char root[160];
+    char root_alias[160];
     char output[160];
     char extracted[160];
     char wrapper[160];
@@ -145,6 +157,7 @@ TEST(test_build_apk_is_posix_ustar_and_extracts) {
     char raw_archive[192];
     char long_dir[512];
     char long_payload[560];
+    char physical_root[512];
     char closed_stdin_output[192];
     char closed_stdout_output[192];
     FILE *fp;
@@ -154,6 +167,7 @@ TEST(test_build_apk_is_posix_ustar_and_extracts) {
 
     make_scratch(scratch, sizeof(scratch));
     sprintf(root, "%s/root", scratch);
+    sprintf(root_alias, "%s/root-alias", scratch);
     sprintf(output, "%s/out.apk", scratch);
     sprintf(extracted, "%s/extracted", scratch);
     sprintf(wrapper, "%s/gnutar", scratch);
@@ -165,6 +179,7 @@ TEST(test_build_apk_is_posix_ustar_and_extracts) {
     sprintf(closed_stdout_output, "%s/closed-stdout.apk", scratch);
     sprintf(raw_archive, "%s/out.tar", scratch);
     CHECK_INT(mkdir(root, 0700), 0);
+    CHECK_INT(symlink(root, root_alias), 0);
     toolchain_init(&tc);
     CHECK_INT(toolchain_load(&tc, "toolchains/gcc-darwin.conf"), 0);
     CHECK_INT(toolchain_validate(&tc), 0);
@@ -195,8 +210,10 @@ TEST(test_build_apk_is_posix_ustar_and_extracts) {
     tc.archive_create = xstrdup(wrapper);
     free(tc.archive_create_flags);
     tc.archive_create_flags = xstrdup("-w -x ustar");
-    CHECK_INT(pkginfo_build_apk(root, output, &tc), 0);
-    sprintf(expected, "%s\n-w\n-x\nustar\n.\n", root);
+    CHECK_INT(pkginfo_build_apk(root_alias, output, &tc), 0);
+    CHECK_INT(physical_directory(root_alias, physical_root,
+                                 sizeof(physical_root)), 0);
+    sprintf(expected, "%s\n-w\n-x\nustar\n.\n", physical_root);
     CHECK_STR(slurp(log), expected);
     free(tc.archive_create);
     tc.archive_create = xstrdup(real_archive_create);

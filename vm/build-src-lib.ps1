@@ -258,6 +258,10 @@ function New-RhapPreflightCommand {
         'test -d "$SOURCE_ROOT/rbuild-1" || fail "rbuild source directory missing"',
         'test -f "$SOURCE_ROOT/rbuild-1/Makefile" || fail "rbuild Makefile missing"',
         'test -f "$SOURCE_ROOT/rbuild-1/toolchain.c" || fail "rbuild toolchain source missing"',
+        'test -f "$SOURCE_ROOT/Commands/bootstrap_cmds/config.tproj/parser.y" || fail "kernel config parser source missing"',
+        'test -f "$SOURCE_ROOT/Commands/bootstrap_cmds/config.tproj/lexer.l" || fail "kernel config lexer source missing"',
+        'test -f "$SOURCE_ROOT/Commands/bootstrap_cmds/config.tproj/config.h" || fail "kernel config header source missing"',
+        'for config_source in externs.c main.c mkglue.c mkheaders.c mkioconf.c mkmakefile.c mkswapconf.c openp.c searchp.c; do test -f "$SOURCE_ROOT/Commands/bootstrap_cmds/config.tproj/$config_source" || fail "kernel config source missing: $config_source"; done',
         'test -f "$PROFILE" || fail "toolchain profile missing: $PROFILE"',
         "awk 'BEGIN { $requiredKeys } function trim(value) { sub(/^[ `t]*/, `"`", value); sub(/[ `t]*`$/, `"`", value); return value } { text=trim(`$0); if (text == `"`" || substr(text, 1, 1) == `"#`") next; equals=index(text, `"=`"); if (equals < 2) exit 1; key=trim(substr(text, 1, equals-1)); value=trim(substr(text, equals+1)); if (!(key in required) || (key in seen) || value == `"`") exit 1; seen[key]=1 } END { for (key in required) if (!(key in seen)) exit 1 }' `"`$PROFILE`" || fail `"invalid toolchain profile`"",
         "profile_value() { awk -v wanted=`"`$1`" 'BEGIN { found=0 } /^[ `t]*#/ { next } { line=`$0; sub(/^[ `t]*/, `"`", line); eq=index(line, `"=`"); if (eq < 2) next; key=substr(line, 1, eq-1); value=substr(line, eq+1); sub(/[ `t]*`$/, `"`", key); sub(/^[ `t]*/, `"`", value); sub(/[ `t]*`$/, `"`", value); if (key == wanted) { print value; found=1; exit } } END { if (found == 0) exit 1 }' `"`$PROFILE`"; }",
@@ -275,6 +279,8 @@ function New-RhapPreflightCommand {
         'for tool in "$BUILD_CC" "$TARGET_CC" "$TARGET_AR" "$TARGET_RANLIB" "$MAKE_TOOL" "$SHELL_TOOL" "$TAR_TOOL" "$GZIP_TOOL" "$RSYNC_TOOL" "$LN_TOOL"; do case "$tool" in /*) ;; *) fail "configured executable is not absolute: $tool" ;; esac; expr "$tool" : "/[-A-Za-z0-9_./+]*\$" >/dev/null || fail "configured executable contains unsafe characters: $tool"; test -f "$tool" && test -x "$tool" || fail "configured executable is not an executable file: $tool"; done',
         'test -x /usr/bin/cc || fail "Developer Tools compiler missing: /usr/bin/cc"',
         'test -x /usr/bin/install || fail "Developer Tools install missing: /usr/bin/install"',
+        'test -f /usr/bin/yacc && test -x /usr/bin/yacc || fail "Developer Tools yacc missing: /usr/bin/yacc"',
+        'test -f /usr/bin/lex && test -x /usr/bin/lex || fail "Developer Tools lex missing: /usr/bin/lex"',
         'test -f /usr/bin/file && test -x /usr/bin/file || fail "object inspection tool missing: /usr/bin/file"',
         'for helper in /usr/bin/tee /usr/bin/cksum /usr/bin/sed /bin/cat; do test -f "$helper" && test -x "$helper" || fail "build helper missing: $helper"; done',
         'nearest_parent() { rbuild_parent=$1; while :; do test -e "$rbuild_parent" && break; rbuild_next=${rbuild_parent%/*}; test -n "$rbuild_next" || rbuild_next=/; if test "$rbuild_next" = "$rbuild_parent"; then break; fi; rbuild_parent=$rbuild_next; done; printf "%s\n" "$rbuild_parent"; }',
@@ -348,12 +354,14 @@ function New-RhapBuildPhaseCommand {
     if ($ToolPath -notmatch '^[A-Za-z0-9_./:+@=-]+$') { throw 'unsafe toolchain path' }
     $toolPath = ConvertTo-RhapShellLiteral $ToolPath
     $rbuild = "$tools/bin/rbuild"
+    $configSource = "$source/Commands/bootstrap_cmds/config.tproj"
+    $configBuild = "$tools/config-build"
 
     if ($Phase -eq 'rbuild') {
-        return "set -e; cd $source/rbuild-1 && $makeTool CC=$cc clean test all && /usr/bin/install -d $tools/bin && /usr/bin/install -c -m 755 rbuild $rbuild && $cc -O -o $tools/bin/relpath $source/Commands/bootstrap_cmds/relpath.tproj/relpath.c"
+        return "set -e; cd $source/rbuild-1 && $makeTool CC=$cc clean test all && /usr/bin/install -d $tools/bin && /usr/bin/install -c -m 755 rbuild $rbuild && $cc -O -o $tools/bin/relpath $source/Commands/bootstrap_cmds/relpath.tproj/relpath.c && rm -rf $configBuild && /usr/bin/install -d $configBuild && cd $configBuild && /usr/bin/yacc -d $configSource/parser.y && /usr/bin/lex $configSource/lexer.l && $cc -O -bsd -DCMU -DLOCALARCHITECTURE -DNeXT=1 -I$configSource -I$configBuild -o $tools/bin/config $configSource/externs.c $configSource/main.c $configSource/mkglue.c $configSource/mkheaders.c $configSource/mkioconf.c $configSource/mkmakefile.c $configSource/mkswapconf.c $configSource/openp.c $configSource/searchp.c $configBuild/y.tab.c $configBuild/lex.yy.c"
     }
     if ($Phase -eq 'bootstrap') {
-        return "set -e; /usr/bin/install -d $bootstrap $repo $state && cd $source && $rbuild bootstrap --sysroot $bootstrap --toolchain $profilePath --state $state $source/BootstrapManifest $repo $repo"
+        return "set -e; /usr/bin/install -d $bootstrap $repo $state && cd $source && CONFIG_DIR=$tools/bin $rbuild bootstrap --sysroot $bootstrap --toolchain $profilePath --state $state $source/BootstrapManifest $repo $repo"
     }
     if ($Phase -eq 'world') {
         return "set -e; test -d $repo || { echo 'build-src: repository missing: $RepoDir' >&2; exit 1; }; /usr/bin/install -d $built $state && cd $source && $rbuild buildall --state $state Manifest $repo $built"

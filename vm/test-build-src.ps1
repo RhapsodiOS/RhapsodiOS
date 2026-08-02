@@ -70,22 +70,30 @@ Assert-Match $rbuildCommand ([regex]::Escape('cd /build/src/rbuild-1 && /usr/bin
 Assert-Match $rbuildCommand ([regex]::Escape('/usr/bin/install -d /build/tools/bin')) 'rbuild creates private tool directory'
 Assert-Match $rbuildCommand ([regex]::Escape('/usr/bin/install -c -m 755 rbuild /build/tools/bin/rbuild')) 'rbuild installs privately'
 Assert-Match $rbuildCommand ([regex]::Escape('/usr/bin/cc -O -o /build/tools/bin/relpath /build/src/Commands/bootstrap_cmds/relpath.tproj/relpath.c')) 'relpath is source-built with profile compiler'
+Assert-Match $rbuildCommand ([regex]::Escape('rm -rf /build/tools/config-build')) 'config private build directory is recreated exactly'
+Assert-Match $rbuildCommand ([regex]::Escape('/usr/bin/install -d /build/tools/config-build')) 'config uses private build directory'
+Assert-Match $rbuildCommand ([regex]::Escape('/usr/bin/yacc -d /build/src/Commands/bootstrap_cmds/config.tproj/parser.y')) 'config parser is source-generated'
+Assert-Match $rbuildCommand ([regex]::Escape('/usr/bin/lex /build/src/Commands/bootstrap_cmds/config.tproj/lexer.l')) 'config lexer is source-generated'
+Assert-Match $rbuildCommand ([regex]::Escape('/usr/bin/cc -O -bsd -DCMU -DLOCALARCHITECTURE -DNeXT=1 -I/build/src/Commands/bootstrap_cmds/config.tproj -I/build/tools/config-build -o /build/tools/bin/config')) 'config preserves project compiler flags and builds privately with profile compiler'
+Assert-NotMatch $rbuildCommand '/usr/local/bin/config|cp .*config|DSTROOT=/' 'config never copies or installs to live host'
 $alternatePhaseArgs = $phaseArgs.Clone()
 $alternatePhaseArgs.BuildCc = '/opt/gcc/bin/gcc-4.2'
 $alternatePhaseArgs.Make = '/opt/make/bin/gmake'
 $alternateRbuild = New-RhapBuildPhaseCommand -Phase 'rbuild' @alternatePhaseArgs
 Assert-Match $alternateRbuild ([regex]::Escape('/opt/make/bin/gmake CC=/opt/gcc/bin/gcc-4.2 clean test all')) 'alternate profile compiler builds rbuild'
+Assert-Match $alternateRbuild ([regex]::Escape('/opt/gcc/bin/gcc-4.2 -O -bsd -DCMU -DLOCALARCHITECTURE -DNeXT=1')) 'alternate profile compiler builds config with project flags'
 Assert-NotMatch $alternateRbuild ([regex]::Escape('/usr/bin/make CC=/usr/bin/cc')) 'alternate profile does not use default build tools'
 
 $bootstrapCommand = New-RhapBuildPhaseCommand -Phase 'bootstrap' @phaseArgs
 Assert-Match $bootstrapCommand ([regex]::Escape('/usr/bin/install -d /build/bootstrap-root /build/repo /build/state')) 'bootstrap creates owned output directories'
+Assert-Match $bootstrapCommand ([regex]::Escape('CONFIG_DIR=/build/tools/bin /build/tools/bin/rbuild bootstrap')) 'bootstrap scopes private config tool directory'
 Assert-Equal ($bootstrapCommand.IndexOf('/usr/bin/install -d') -lt $bootstrapCommand.IndexOf('/build/tools/bin/rbuild bootstrap')) $true 'bootstrap creates outputs before rbuild'
-Assert-Match $bootstrapCommand ([regex]::Escape('&& cd /build/src && /build/tools/bin/rbuild bootstrap')) 'bootstrap starts from synced source root'
+Assert-Match $bootstrapCommand ([regex]::Escape('&& cd /build/src && CONFIG_DIR=/build/tools/bin')) 'bootstrap starts from synced source root'
 Assert-Match $bootstrapCommand ([regex]::Escape('/build/tools/bin/rbuild bootstrap --sysroot /build/bootstrap-root --toolchain /build/src/rbuild-1/toolchains/gcc-darwin.conf --state /build/state /build/src/BootstrapManifest /build/repo /build/repo')) 'bootstrap uses resumable CLI'
 $alternateSourceArgs = $phaseArgs.Clone()
 $alternateSourceArgs.SourceRoot = '/srv/synced source'
 $alternateBootstrap = New-RhapBuildPhaseCommand -Phase 'bootstrap' @alternateSourceArgs
-Assert-Match $alternateBootstrap ([regex]::Escape("cd '/srv/synced source' && /build/tools/bin/rbuild bootstrap")) 'bootstrap quotes and uses alternate source cwd'
+Assert-Match $alternateBootstrap ([regex]::Escape("cd '/srv/synced source' && CONFIG_DIR=/build/tools/bin")) 'bootstrap quotes and uses alternate source cwd'
 Assert-Match $alternateBootstrap ([regex]::Escape("'/srv/synced source'/BootstrapManifest")) 'bootstrap manifest follows alternate source root'
 Assert-NotMatch $alternateBootstrap '/var/root|cd +~' 'bootstrap never inherits login cwd'
 $spacedPhaseArgs = $phaseArgs.Clone()
@@ -96,8 +104,12 @@ $spacedPhaseArgs.RepoDir = '/srv/build tree/repo'
 $spacedPhaseArgs.BuiltDir = '/srv/build tree/built output'
 $spacedPhaseArgs.StateDir = '/srv/build tree/state'
 $spacedPhaseArgs.Profile = '/srv/build tree/profile.conf'
+$spacedRbuild = New-RhapBuildPhaseCommand -Phase 'rbuild' @spacedPhaseArgs
+Assert-Match $spacedRbuild ([regex]::Escape("rm -rf '/srv/build tree/tools'/config-build")) 'config safely quotes alternate private build directory'
+Assert-Match $spacedRbuild ([regex]::Escape("-I'/srv/build tree/src'/Commands/bootstrap_cmds/config.tproj -I'/srv/build tree/tools'/config-build -o '/srv/build tree/tools'/bin/config")) 'config safely quotes alternate source and tools paths'
 $spacedBootstrap = New-RhapBuildPhaseCommand -Phase 'bootstrap' @spacedPhaseArgs
 Assert-Match $spacedBootstrap ([regex]::Escape("/usr/bin/install -d '/srv/build tree/bootstrap root' '/srv/build tree/repo' '/srv/build tree/state'")) 'bootstrap safely quotes owned outputs'
+Assert-Match $spacedBootstrap ([regex]::Escape("CONFIG_DIR='/srv/build tree/tools'/bin '/srv/build tree/tools'/bin/rbuild bootstrap")) 'bootstrap safely quotes private config directory'
 $kernelCommand = New-RhapBuildPhaseCommand -Phase 'kernel-drivers' @phaseArgs -DriverProjects @('drivers-ppc/storage/drvExample') -MakeDriverProjects @('drvBPF')
 Assert-Match $kernelCommand ([regex]::Escape('test -d /build/repo')) 'kernel requires existing repository input'
 Assert-Match $kernelCommand ([regex]::Escape('/usr/bin/install -d /build/built /build/state')) 'kernel creates owned output directories'
@@ -253,6 +265,11 @@ Assert-Match $cmd 'tar' 'tar requirement'
 Assert-Match $cmd 'rsync' 'rsync requirement'
 Assert-Match $cmd 'make' 'make requirement'
 Assert-Match $cmd 'ln' 'ln requirement'
+Assert-Match $cmd 'test -x /usr/bin/yacc' 'kernel config yacc requirement'
+Assert-Match $cmd 'test -x /usr/bin/lex' 'kernel config lex requirement'
+Assert-Match $cmd 'config\.tproj/parser\.y' 'kernel config parser source requirement'
+Assert-Match $cmd 'config\.tproj/lexer\.l' 'kernel config lexer source requirement'
+Assert-Match $cmd 'config\.tproj/config\.h' 'kernel config header source requirement'
 Assert-Match $cmd '/usr/bin/tee' 'driver log streaming requirement'
 Assert-Match $cmd '/usr/bin/cksum' 'driver state fingerprint requirement'
 Assert-Match $cmd '/usr/bin/sed' 'driver state parser requirement'

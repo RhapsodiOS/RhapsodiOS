@@ -154,7 +154,7 @@ do_header(dev, hname, count)
 	int count;
 {
 	char *file, *name, *inw, *toheader(), *tomacro();
-	struct file_list *fl, *fl_head;
+	struct file_list *fl, *fl_head, *next;
 	FILE *inf, *outf;
 	int inc, oldcount;
 
@@ -210,8 +210,10 @@ do_header(dev, hname, count)
 	}
 	(void) fclose(inf);
 	if (count == oldcount) {
-		for (fl = fl_head; fl != 0; fl = fl->f_next)
+		for (fl = fl_head; fl != 0; fl = next) {
+			next = fl->f_next;
 			free((char *)fl);
+		}
 		return;
 	}
 	if (oldcount == -1) {
@@ -227,7 +229,8 @@ do_header(dev, hname, count)
 		perror(file);
 		exit(1);
 	}
-	for (fl = fl_head; fl != 0; fl = fl->f_next) {
+	for (fl = fl_head; fl != 0; fl = next) {
+		next = fl->f_next;
 		fprintf(outf, "#define %s %d\n",
 		    fl->f_fn, count ? fl->f_type : 0);
 		free((char *)fl);

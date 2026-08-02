@@ -10,45 +10,91 @@
 
 MIGCOM_ROOT=${MIGCOM_DIR-/usr/libexec}
 migcom=$MIGCOM_ROOT/migcom
-cppflags="-DTYPED='T' -DUNTYPED='U'"
+newline='
+'
+cppflags=
 migflags=
 files=
+
+reject_newline()
+{
+    case $1 in
+	*"$newline"* ) echo "mig: argument contains a newline" >&2; exit 1;;
+    esac
+}
+
+append_cppflag()
+{
+    reject_newline "$1"
+    if [ -n "$cppflags" ]; then
+	cppflags="${cppflags}${newline}$1"
+    else
+	cppflags=$1
+    fi
+}
+
+append_migflag()
+{
+    reject_newline "$1"
+    if [ -n "$migflags" ]; then
+	migflags="${migflags}${newline}$1"
+    else
+	migflags=$1
+    fi
+}
+
+append_file()
+{
+    reject_newline "$1"
+    if [ -n "$files" ]; then
+	files="${files}${newline}$1"
+    else
+	files=$1
+    fi
+}
+
+append_cppflag "-DTYPED='T'"
+append_cppflag "-DUNTYPED='U'"
 
 until [ $# -eq 0 ]
 do
     case $1 in
-	-[qQvVtTrRsSiPp] ) migflags="$migflags $1"; shift;;
-	-user   ) migflags="$migflags $1 $2"; shift; shift;;
-	-server ) migflags="$migflags $1 $2"; shift; shift;;
-	-header ) migflags="$migflags $1 $2"; shift; shift;;
-	-sheader ) migflags="$migflags $1 $2"; shift; shift;;
-	-handler ) migflags="$migflags $1 $2"; shift; shift;;
-	-i ) migflags="$migflags $1"; shift;
+	-[qQvVtTrRsSPp] ) append_migflag "$1"; shift;;
+	-user   ) append_migflag "$1"; append_migflag "$2"; shift; shift;;
+	-server ) append_migflag "$1"; append_migflag "$2"; shift; shift;;
+	-header ) append_migflag "$1"; append_migflag "$2"; shift; shift;;
+	-sheader ) append_migflag "$1"; append_migflag "$2"; shift; shift;;
+	-handler ) append_migflag "$1"; append_migflag "$2"; shift; shift;;
+	-i ) append_migflag "$1"; shift;
 		if [ $# -gt 0 ] && [ "${1#-}" = "$1" ]; then
-		    migflags="$migflags $1"; shift
+		    append_migflag "$1"; shift
 		fi;;
-	-arch ) arch=$2; shift; shift;;
+	-arch ) reject_newline "$2"; arch=$2; shift; shift;;
 	-typed ) migcom=$MIGCOM_ROOT/migcom_typd; 	\
-		cppflags="$cppflags -DMACH_IPC_FLAVOR=TYPED"; shift;;
+		append_cppflag '-DMACH_IPC_FLAVOR=TYPED'; shift;;
 	-untyped ) migcom=$MIGCOM_ROOT/migcom_untypd; 	\
-		cppflags="$cppflags -DMACH_IPC_FLAVOR=UNTYPED"; shift;;
-#	-MD ) sawMD=1; cppflags="$cppflags $1"; shift;;
+		append_cppflag '-DMACH_IPC_FLAVOR=UNTYPED'; shift;;
+#	-MD ) sawMD=1; append_cppflag "$1"; shift;;
 	-MD ) shift;;
-	-* ) cppflags="$cppflags $1"; shift;;
-	* ) files="$files $1"; shift;;
+	-* ) append_cppflag "$1"; shift;;
+	* ) append_file "$1"; shift;;
     esac
 done
 
+old_ifs=$IFS
+IFS=$newline
+set -f
 for file in $files
 do
-    base="`/usr/bin/basename "$file" .defs`"
+    base=${file##*/}
+    base=${base%.defs}
     rm -f "$base".d "$base".d~
     if [ "${MIGCC-}" ]
     then
 	"$MIGCC" -E -x c -traditional-cpp $cppflags "$file"
     else
 	CPP="/usr/libexec/${arch-`/usr/bin/arch`}/2.7.2.1/cpp"
-	$CPP $cppflags "$file" - ${sawMD+"$base".d~}
+	"$CPP" $cppflags "$file" - ${sawMD+"$base".d~}
     fi | "$migcom" $migflags || exit
     if [ $sawMD ]
     then
@@ -57,5 +103,6 @@ do
 	rm -f "$base".d~
     fi
 done
+IFS=$old_ifs
 
 exit 0

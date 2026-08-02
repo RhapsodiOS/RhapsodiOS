@@ -54,10 +54,14 @@ Assert-Match $migWrapperText 'MIGCOM_ROOT/migcom_typd' 'MIG wrapper selects type
 Assert-Match $migWrapperText 'MIGCOM_DIR-/usr/libexec' 'MIG wrapper preserves packaged target libexec default'
 Assert-Match $migWrapperText '"\$MIGCC" -E -x c -traditional-cpp' 'configured GCC forces C preprocessing for defs inputs while preserving historical semantics'
 Assert-Match $migWrapperText '"\$MIGCC" -E -x c -traditional-cpp[^\r\n]*"\$file"' 'configured GCC wrapper exercise accepts a defs filename as its single input'
+Assert-Match $migWrapperText '"\$CPP" \$cppflags "\$file" -' 'default compiler branch preserves historical cpp invocation'
+Assert-Match $migWrapperText 'IFS=\$newline' 'MIG wrapper splits only its newline-delimited argument lists'
+Assert-Match $migWrapperText '(?m)^set -f$' 'MIG wrapper disables pathname expansion for controlled argument expansion'
+Assert-Match $migWrapperText 'argument contains a newline' 'MIG wrapper rejects unrepresentable newline arguments'
 Assert-NotMatch $migWrapperText '(?m)^\s*"?\$MIGCC"?[^\r\n]*"\$file"\s+-' 'configured GCC receives one input and writes preprocessed output to stdout'
 Assert-Match $migWrapperText '\| "\$migcom"' 'MIG wrapper preserves spaces in private libexec path'
-Assert-Match $migWrapperText '-sheader[ `t]+\)[^\r\n]*migflags="\$migflags \$1 \$2"' 'MIG wrapper forwards server-header output to backend'
-Assert-Match $migWrapperText '-handler[ `t]+\)[^\r\n]*migflags="\$migflags \$1 \$2"' 'MIG wrapper forwards handler output to backend'
+Assert-Match $migWrapperText '-sheader[ `t]+\)[^\r\n]*append_migflag "\$1"; append_migflag "\$2"' 'MIG wrapper forwards server-header output to backend'
+Assert-Match $migWrapperText '-handler[ `t]+\)[^\r\n]*append_migflag "\$1"; append_migflag "\$2"' 'MIG wrapper forwards handler output to backend'
 Assert-NotMatch $migWrapperText 'NEXT_ROOT' 'MIG wrapper never derives compiler location from a sysroot'
 Assert-Match $classicErrorText '#include <stdarg\.h>' 'classic MIG errors use GCC-compatible standard varargs'
 Assert-Match $classicUtilsText '#include <stdarg\.h>' 'classic MIG writers use GCC-compatible standard varargs'
@@ -173,6 +177,7 @@ Assert-Match $spacedRbuild ([regex]::Escape("rm -rf '/srv/build tree/tools'/conf
 Assert-Match $spacedRbuild ([regex]::Escape("-I'/srv/build tree/src'/Commands/bootstrap_cmds/config.tproj -I'/srv/build tree/tools'/config-build -o '/srv/build tree/tools'/bin/config")) 'config safely quotes alternate source and tools paths'
 Assert-Match $spacedRbuild ([regex]::Escape("rm -rf '/srv/build tree/tools'/mig-build")) 'MIG safely quotes alternate private build root'
 Assert-Match $spacedRbuild ([regex]::Escape("-O -bsd -DNeXT=1 -I'/srv/build tree/tools'/mig-build/include -I'/srv/build tree/src'/Commands/bootstrap_cmds/migcom_typd.tproj -I'/srv/build tree/tools'/mig-build/migcom_typd -o '/srv/build tree/tools'/libexec/migcom_typd")) 'MIG preserves platform flags and safely quotes alternate paths'
+Assert-Match $spacedRbuild ([regex]::Escape("CONFIG_DIR='/srv/build tree/tools'/bin MIGCC=/usr/bin/cc MIGCOM_DIR='/srv/build tree/tools'/libexec '/srv/build tree/tools'/bin/mig -I'/srv/build tree/src'/kernel-7 -header mach_interface.h -i -server /dev/null '/srv/build tree/src'/kernel-7/mach/mach.defs")) 'MIG smoke generation safely quotes alternate source and private tool paths'
 $spacedBootstrap = New-RhapBuildPhaseCommand -Phase 'bootstrap' @spacedPhaseArgs
 Assert-Match $spacedBootstrap ([regex]::Escape("/usr/bin/install -d '/srv/build tree/bootstrap root' '/srv/build tree/repo' '/srv/build tree/state'")) 'bootstrap safely quotes owned outputs'
 Assert-Match $spacedBootstrap ([regex]::Escape("CONFIG_DIR='/srv/build tree/tools'/bin MIGCC=/usr/bin/cc")) 'bootstrap safely quotes private config directory'
@@ -463,6 +468,118 @@ try {
     Assert-Equal $cfg.ToolchainProfile '/opt/profiles/gcc.conf' 'absolute profile preserved'
 } finally {
     Remove-Item -LiteralPath $configDir -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+$wrapperTestDir = Join-Path $env:TEMP ("mig wrapper test {0}" -f [guid]::NewGuid().ToString('n'))
+New-Item -ItemType Directory -Path $wrapperTestDir | Out-Null
+try {
+    function ConvertTo-TestShPath([string]$Path) {
+        $resolved = [System.IO.Path]::GetFullPath($Path) -replace '\\', '/'
+        if ($resolved -match '^([A-Za-z]):') {
+            return '/' + $Matches[1].ToLowerInvariant() + $resolved.Substring(2)
+        }
+        return $resolved
+    }
+
+    $fakeBin = Join-Path $wrapperTestDir 'gcc tools'
+    $fakeLibexec = Join-Path $wrapperTestDir 'mig libexec'
+    $captureDir = Join-Path $wrapperTestDir 'argument capture'
+    $definitionDir = Join-Path $wrapperTestDir 'source definitions'
+    $outputDir = Join-Path $wrapperTestDir 'generated output'
+    foreach ($dir in @($fakeBin, $fakeLibexec, $captureDir, $definitionDir, $outputDir)) {
+        New-Item -ItemType Directory -Path $dir | Out-Null
+    }
+    $fakeCompiler = Join-Path $fakeBin 'gcc'
+    $fakeBackend = Join-Path $fakeLibexec 'migcom'
+    $fakeCompilerBody = @'
+#!/bin/sh
+for arg do printf '%s\n' "$arg" >> "$MIG_TEST_CAPTURE/compiler.args"; done
+printf '%s\n' '--invocation--' >> "$MIG_TEST_CAPTURE/compiler.args"
+language=
+input=
+while test $# -gt 0; do
+    case $1 in
+        -x) shift; language=$1 ;;
+        *.defs) input=$1 ;;
+    esac
+    shift
+done
+test "$language" = c || exit 91
+test -f "$input" || exit 92
+while IFS= read -r line || test -n "$line"; do printf '%s\n' "$line"; done < "$input"
+'@
+    $fakeBackendBody = @'
+#!/bin/sh
+for arg do printf '%s\n' "$arg" >> "$MIG_TEST_CAPTURE/backend.args"; done
+printf '%s\n' '--invocation--' >> "$MIG_TEST_CAPTURE/backend.args"
+header=
+user=
+while test $# -gt 0; do
+    case $1 in
+        -header) shift; header=$1 ;;
+        -user) shift; user=$1 ;;
+    esac
+    shift
+done
+test -n "$header" || exit 93
+while IFS= read -r line || test -n "$line"; do printf '%s\n' "$line"; done > "$header"
+test -z "$user" || printf '%s\n' 'generated user' > "$user"
+'@
+    Set-Content -LiteralPath $fakeCompiler -Encoding ASCII -NoNewline -Value ($fakeCompilerBody -replace "`r`n", "`n")
+    Set-Content -LiteralPath $fakeBackend -Encoding ASCII -NoNewline -Value ($fakeBackendBody -replace "`r`n", "`n")
+    $defsOne = Join-Path $definitionDir 'first interface.defs'
+    $defsTwo = Join-Path $definitionDir 'second interface.defs'
+    Set-Content -LiteralPath $defsOne -Encoding ASCII -Value 'subsystem first_contract 4100;'
+    Set-Content -LiteralPath $defsTwo -Encoding ASCII -Value 'subsystem second_contract 4101;'
+    $headerOutput = Join-Path $outputDir 'public header.h'
+    $userOutput = Join-Path $outputDir 'user source.c'
+    $serverHeader = Join-Path $outputDir 'server header.h'
+    $handlerOutput = Join-Path $outputDir 'handler source.c'
+    $prefix = Join-Path $outputDir 'routine prefix'
+    $sh = (Get-Command sh.exe -ErrorAction Stop).Source
+    $wrapperArgs = @(
+        '-header', (ConvertTo-TestShPath $headerOutput),
+        '-user', (ConvertTo-TestShPath $userOutput),
+        '-sheader', (ConvertTo-TestShPath $serverHeader),
+        '-handler', (ConvertTo-TestShPath $handlerOutput),
+        '-i', (ConvertTo-TestShPath $prefix),
+        '-DVALUE=two words',
+        (ConvertTo-TestShPath $defsOne),
+        (ConvertTo-TestShPath $defsTwo)
+    )
+    $quotedWrapperArgs = ($wrapperArgs | ForEach-Object { ConvertTo-RhapShellLiteral $_ }) -join ' '
+    $invoke = 'MIGCC={0} MIGCOM_DIR={1} MIG_TEST_CAPTURE={2} sh {3} {4}' -f @(
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeCompiler)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeLibexec)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $captureDir)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath (Join-Path $PSScriptRoot '..\src\Commands\bootstrap_cmds\migcom.tproj\mig.sh'))),
+        $quotedWrapperArgs
+    )
+    & $sh -c $invoke
+    Assert-Equal $LASTEXITCODE 0 'MIG wrapper executes configured GCC and backend with spaced paths'
+    Assert-Equal (Test-Path -LiteralPath $headerOutput) $true 'MIG wrapper generates requested spaced header output'
+    Assert-Equal (Test-Path -LiteralPath $userOutput) $true 'MIG wrapper generates requested spaced user output'
+    $compilerArgs = Get-Content -LiteralPath (Join-Path $captureDir 'compiler.args')
+    $backendArgs = Get-Content -LiteralPath (Join-Path $captureDir 'backend.args')
+    Assert-Equal (@($compilerArgs | Where-Object { $_ -eq '-DVALUE=two words' }).Count) 2 'MIG wrapper preserves spaced cpp flag for multiple definitions'
+    Assert-Equal (@($compilerArgs | Where-Object { $_ -eq '--invocation--' }).Count) 2 'MIG wrapper preprocesses multiple definitions'
+    Assert-Equal (@($backendArgs | Where-Object { $_ -eq (ConvertTo-TestShPath $headerOutput) }).Count) 2 'MIG wrapper preserves spaced backend header value'
+    Assert-Equal (@($backendArgs | Where-Object { $_ -eq (ConvertTo-TestShPath $prefix) }).Count) 2 'MIG wrapper preserves spaced optional -i prefix'
+    Assert-Equal (@($backendArgs | Where-Object { $_ -eq '--invocation--' }).Count) 2 'MIG wrapper invokes backend for multiple definitions'
+    $newlineFlag = "-DBAD=line one`nline two"
+    $newlineInvoke = 'MIGCC={0} MIGCOM_DIR={1} MIG_TEST_CAPTURE={2} sh {3} {4} {5} 2>/dev/null' -f @(
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeCompiler)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeLibexec)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $captureDir)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath (Join-Path $PSScriptRoot '..\src\Commands\bootstrap_cmds\migcom.tproj\mig.sh'))),
+        (ConvertTo-RhapShellLiteral $newlineFlag),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $defsOne))
+    )
+    & $sh -c $newlineInvoke
+    Assert-Equal $LASTEXITCODE 1 'MIG wrapper rejects embedded newlines before execution'
+    Assert-Equal (@((Get-Content -LiteralPath (Join-Path $captureDir 'compiler.args')) | Where-Object { $_ -eq '--invocation--' }).Count) 2 'newline rejection does not invoke configured compiler'
+} finally {
+    Remove-Item -LiteralPath $wrapperTestDir -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 Write-Host "build-src tests: PASS ($script:Checks checks)"

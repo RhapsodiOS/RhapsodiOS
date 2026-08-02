@@ -273,7 +273,7 @@ static void expand_toolchain_words(const char *value, const char *sysroot,
  * Stage-0 bootstrap builds link against the host root, which only has the
  * host architecture's crt/System. Fat i386+ppc links fail there.
  * Chroot builds on a single-arch guest also SIGILL/miscompile when the
- * seed has no working opposite-arch toolchain, so keep host-arch-only
+ * opposite-architecture toolchain is unavailable, so keep host-arch-only
  * until a fat sysroot is intentionally introduced.
  */
 #if defined(__i386__) || defined(i386)
@@ -358,9 +358,6 @@ void builder_buildflags(const Params *params, const char *target, strlist *out,
         free(ld_flags);
         strlist_free(&ld_words);
         free(expanded_cflags);
-    } else if (bootstrap) {
-        /* HFS /build has no hard links; prefer the /build/bin/ln fallback. */
-        push_kv(out, "LN", "/build/bin/ln");
     }
 }
 
@@ -637,67 +634,6 @@ int builder_makeroot(const Package *pkg, const char *buildroot,
         fclose(f);
     }
     free(listpath);
-
-    /* Stage-0 skipped cctools dyld (needs static libc). Without /usr/lib/dyld
-       in the build root, chroot exec of dynamic Mach-Os dies with SIGILL. */
-    {
-        char *dstdir = str_cats(buildroot, "/usr/lib", (char *)0);
-        char *dst = str_cats(buildroot, "/usr/lib/dyld", (char *)0);
-        struct stat st;
-        if (stat("/usr/lib/dyld", &st) == 0 && stat(dst, &st) != 0) {
-            printf("\tseeding /usr/lib/dyld from host\n");
-            fflush(stdout);
-            if (exec_runv("mkdir", "-p", dstdir, (char *)0) != 0 ||
-                exec_runv("cp", "-p", "/usr/lib/dyld", dst, (char *)0) != 0) {
-                fprintf(stderr, "rbuild: unable to seed /usr/lib/dyld into build root\n");
-                rc = 1;
-            }
-        }
-        free(dstdir);
-        free(dst);
-        if (rc) goto cleanup;
-    }
-
-    /* csu.apk may predate the dyld_stub crt1 fix; without LC_LOAD_DYLINKER,
-       chroot-linked Configure probes exit 78 ("kernel support for the
-       dynamic linker is not present"). Always prefer the host's repaired crt1. */
-    {
-        char *libdir = str_cats(buildroot, "/lib", (char *)0);
-        char *dst = str_cats(buildroot, "/lib/crt1.o", (char *)0);
-        struct stat st;
-        if (stat("/lib/crt1.o", &st) == 0) {
-            printf("\tseeding /lib/crt1.o from host\n");
-            fflush(stdout);
-            if (exec_runv("mkdir", "-p", libdir, (char *)0) != 0 ||
-                exec_runv("cp", "-p", "/lib/crt1.o", dst, (char *)0) != 0) {
-                fprintf(stderr, "rbuild: warning: could not seed /lib/crt1.o\n");
-            }
-        }
-        free(libdir);
-        free(dst);
-    }
-
-    /* cctools apk overwrites /usr/bin/strip with a strict binary that fails
-       "install -s" on some newly linked tools. Seed the host bootstrap wrapper. */
-    {
-        char *bindir = str_cats(buildroot, "/usr/bin", (char *)0);
-        char *dst = str_cats(buildroot, "/usr/bin/strip", (char *)0);
-        char *dstreal = str_cats(buildroot, "/usr/bin/strip.real", (char *)0);
-        struct stat st;
-        if (stat("/usr/bin/strip", &st) == 0 &&
-            stat("/usr/bin/strip.real", &st) == 0) {
-            printf("\tseeding strip wrapper into build root\n");
-            fflush(stdout);
-            if (exec_runv("mkdir", "-p", bindir, (char *)0) != 0 ||
-                exec_runv("cp", "-p", "/usr/bin/strip.real", dstreal, (char *)0) != 0 ||
-                exec_runv("cp", "-p", "/usr/bin/strip", dst, (char *)0) != 0) {
-                fprintf(stderr, "rbuild: warning: could not seed strip wrapper\n");
-            }
-        }
-        free(bindir);
-        free(dst);
-        free(dstreal);
-    }
 
     /* coreosmakefiles.apk often ships texi2html as 0644 (Windows sync / tar
        mode loss). flex and others exec it during install-strip docs. */
@@ -1053,7 +989,7 @@ static int run_make(strlist *cmd, const BuildOptions *opt) {
     argv[cmd->count] = 0;
     setenv("UNAME_SYSNAME", "Rhapsody", 1);
     {
-        const char *path = "/build/bin:/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin";
+        const char *path = "/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin";
         if (opt && opt->toolchain && opt->toolchain->path)
             path = opt->toolchain->path;
         setenv("PATH", path, 1);

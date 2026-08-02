@@ -65,7 +65,26 @@ rm -rf "$projroot"
 # into the same trace log alongside the shim-log lines from the earlier
 # (still-shimmed) steps.
 
-# --- rbuild trace ---
+# --- rbuild makeroot dry-run trace ---
+RBUILD_TRACE=/tmp/rb_trace_makeroot.log
+export RBUILD_TRACE
+: > "$RBUILD_TRACE"
+( cd "$here" && PATH="$shim:$PATH" "$proj/rbuild" -n buildpackage --dir "$src" "$seed" "$dst" ) 2>&1 \
+    | tee -a "$RBUILD_TRACE" >/dev/null || true
+
+# A package root is assembled only from repository artifacts. Neither the
+# command trace nor the configured execution environment may reach into
+# one-off host seed locations.
+for forbidden in /usr/lib/dyld /lib/crt1.o /usr/bin/strip.real /build/bin; do
+  if grep "$forbidden" "$RBUILD_TRACE" >/dev/null 2>&1; then
+    echo "TRACE ERROR: rbuild referenced live-host bootstrap seed: $forbidden"
+    exit 1
+  fi
+done
+
+rm -rf "$projroot"
+
+# --- rbuild comparison trace ---
 RBUILD_TRACE=/tmp/rb_trace_rbuild.log
 export RBUILD_TRACE
 : > "$RBUILD_TRACE"

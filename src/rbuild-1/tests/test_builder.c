@@ -222,15 +222,61 @@ TEST(test_buildflags) {
     CHECK(list_has(&f, "DSTROOT=/h"));   /* headers target uses HDRROOT */
     strlist_free(&f);
 
-    /* legacy bootstrap: host-arch only + HFS LN wrapper */
+    /* A bootstrap without a profile gets no implicit host-tool fallback. */
     strlist_init(&f);
     opt.bootstrap = 1;
     builder_buildflags(&p, "install", &f, &opt);
     CHECK(!list_has(&f, "RC_ARCHS=i386 ppc"));
     CHECK(list_has(&f, "RC_ARCHS=ppc") || list_has(&f, "RC_ARCHS=i386"));
-    CHECK(list_has(&f, "LN=/build/bin/ln"));
+    CHECK(!list_has_prefix(&f, "LN="));
     strlist_free(&f);
     params_free(&p);
+}
+
+TEST(test_bootstrap_harvest_stays_in_private_object_root) {
+    Package pkg;
+    Params params, bparams;
+    BuildOptions opt;
+    char base[128];
+    char command[1024];
+    char *private_obj;
+    char *live_obj;
+
+    sprintf(base, "/tmp/rb-harvest-%ld", (long)getpid());
+    sprintf(command,
+            "rm -rf %s && mkdir -p %s/obj/fixture %s/private %s/live && "
+            ": > %s/obj/fixture/dynamic_obj",
+            base, base, base, base, base);
+    CHECK_INT(system(command), 0);
+
+    package_init(&pkg);
+    package_set(&pkg.source, "foo");
+    params_init(&params);
+    params_init(&bparams);
+    build_options_init(&opt);
+    opt.bootstrap = 1;
+    params.OBJROOT = str_cats(base, "/obj", (char *)0);
+    params.LIBCOBJROOT = str_cats(base, "/private", (char *)0);
+    params.SUBLIBROOTS = str_cats(base, "/live", (char *)0);
+    params.BUILDROOT = str_cats(base, "/root", (char *)0);
+    bparams.OBJROOT = xstrdup(params.OBJROOT);
+    bparams.LIBCOBJROOT = xstrdup(params.LIBCOBJROOT);
+
+    CHECK_INT(builder_harvest_objects(&pkg, &params, &bparams, &opt), 0);
+    private_obj = str_cats(params.LIBCOBJROOT,
+        "/usr/local/lib/objs/foo/fixture/dynamic_obj", (char *)0);
+    live_obj = str_cats(params.SUBLIBROOTS,
+        "/foo/fixture/dynamic_obj", (char *)0);
+    CHECK(access(private_obj, F_OK) == 0);
+    CHECK(access(live_obj, F_OK) != 0);
+
+    free(private_obj);
+    free(live_obj);
+    params_free(&params);
+    params_free(&bparams);
+    package_free(&pkg);
+    sprintf(command, "rm -rf %s", base);
+    system(command);
 }
 
 TEST(test_buildcmd_bootstrap) {
@@ -387,6 +433,7 @@ static void run_all(void) {
     RUN(test_bootstrap_flags_use_target_sysroot);
     RUN(test_buildflags);
     RUN(test_buildcmd_bootstrap);
+    RUN(test_bootstrap_harvest_stays_in_private_object_root);
     RUN(test_setupdirs_bootstrap_skips_makeroot);
     RUN(test_makeroot_dry_run_preserves_package_list);
     RUN(test_scan_dir);

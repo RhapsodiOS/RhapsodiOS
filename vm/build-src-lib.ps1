@@ -90,6 +90,10 @@ function Test-RhapMachOFileOutput {
     return $true
 }
 
+function New-RhapMachOValidationCommand {
+    return 'case "$TARGET_FILE" in *"Mach-O object $TARGET_ARCH"|*"Mach-O object $TARGET_ARCH "*|*"Mach-O object $TARGET_ARCH,"*) ;; *) fail "TARGET_CC did not produce a $TARGET_ARCH Mach-O object: $TARGET_FILE" ;; esac'
+}
+
 function ConvertTo-RhapNormalizedRemotePath {
     param(
         [Parameter(Mandatory = $true)][string]$Path,
@@ -350,7 +354,7 @@ function New-RhapPreflightCommand {
         '"$TARGET_CC" "$@" -c "$PROBE/probe.c" -o "$PROBE/target.o" || fail "TARGET_CC compile failed"',
         'test -s "$PROBE/target.o" || fail "TARGET_CC produced an empty object"',
         'TARGET_FILE=$(/usr/bin/file "$PROBE/target.o") || fail "could not inspect TARGET_CC object"',
-        'case "$TARGET_FILE" in *"Mach-O object $TARGET_ARCH"*) ;; *) fail "TARGET_CC did not produce a $TARGET_ARCH Mach-O object: $TARGET_FILE" ;; esac',
+        (New-RhapMachOValidationCommand),
         'echo "build-src preflight: ok"'
     )
     $body = $parts -join '; '

@@ -303,6 +303,8 @@ Assert-Throws { Assert-RhapSafeArchFlags -Value '-I[abc]' } 'reject glob bracket
 Assert-Equal (Test-RhapMachOFileOutput -Text '/tmp/probe.o: Mach-O object ppc' -TargetArch ppc) $true 'accept profile Mach-O object description'
 Assert-Equal (Test-RhapMachOFileOutput -Text '/tmp/probe.o: Mach-O object mips_safe' -TargetArch mips_safe) $true 'accept alternate profile Mach-O object description'
 Assert-Throws { Test-RhapMachOFileOutput -Text '/tmp/probe.o: Mach-O object i386' -TargetArch ppc } 'reject wrong object architecture'
+Assert-Throws { Test-RhapMachOFileOutput -Text '/tmp/probe.o: Mach-O object ppc64' -TargetArch ppc } 'reject PPC architecture prefix collision'
+Assert-Throws { Test-RhapMachOFileOutput -Text '/tmp/probe.o: Mach-O object i386foo' -TargetArch i386 } 'reject i386 architecture prefix collision'
 Assert-Throws { Test-RhapMachOFileOutput -Text '/tmp/probe.o: ELF 32-bit MSB relocatable, PowerPC' -TargetArch ppc } 'reject non-Mach-O object'
 
 Assert-Equal (Assert-RhapSafeRemoteOutputPath -RemoteRoot '/build' -Path '/build/repo') '/build/repo' 'accept descendant'
@@ -394,6 +396,33 @@ Assert-Match $cmd 'trap' 'probe cleanup trap'
 Assert-Match $cmd 'PROBE_PARENT=\$\(nearest_parent "\$BOOTSTRAP_ROOT"\)' 'case probe uses planned filesystem'
 Assert-Match $cmd '/usr/bin/file "\$PROBE/target\.o"' 'target object architecture inspection'
 Assert-Match $cmd 'Mach-O object \$TARGET_ARCH' 'target object profile architecture Mach-O requirement'
+Assert-Match $cmd ([regex]::Escape('*"Mach-O object $TARGET_ARCH"|*"Mach-O object $TARGET_ARCH "*|*"Mach-O object $TARGET_ARCH,"*')) 'generated target object check requires an exact architecture token boundary'
+Assert-NotMatch $cmd ([regex]::Escape('*"Mach-O object $TARGET_ARCH"*')) 'generated target object check rejects arbitrary architecture suffixes'
+$machOBoundaryCommand = New-RhapMachOValidationCommand
+$boundarySh = (Get-Command sh.exe -ErrorAction Stop).Source
+$boundaryScript = Join-Path $env:TEMP ("rhap-macho-boundary-{0}.sh" -f [guid]::NewGuid().ToString('n'))
+$boundaryScriptSh = ([System.IO.Path]::GetFullPath($boundaryScript) -replace '\\', '/')
+if ($boundaryScriptSh -match '^([A-Za-z]):') { $boundaryScriptSh = '/' + $Matches[1].ToLowerInvariant() + $boundaryScriptSh.Substring(2) }
+Set-Content -LiteralPath $boundaryScript -Encoding ASCII -NoNewline -Value ((@"
+#!/bin/sh
+fail() { exit 1; }
+TARGET_FILE=`$1
+TARGET_ARCH=`$2
+$machOBoundaryCommand
+"@) -replace "`r`n", "`n")
+function Test-GeneratedMachOBoundary([string]$Text, [string]$Arch) {
+    & $boundarySh $boundaryScriptSh $Text $Arch 2>$null
+    return $LASTEXITCODE
+}
+try {
+    Assert-Equal (Test-GeneratedMachOBoundary -Text '/tmp/probe.o: Mach-O object ppc' -Arch ppc) 0 'generated object check accepts exact PPC token at end'
+    Assert-Equal (Test-GeneratedMachOBoundary -Text '/tmp/probe.o: Mach-O object ppc, flags' -Arch ppc) 0 'generated object check accepts comma-delimited PPC token'
+    Assert-Equal (Test-GeneratedMachOBoundary -Text '/tmp/probe.o: Mach-O object i386 flags' -Arch i386) 0 'generated object check accepts space-delimited i386 token'
+    Assert-Equal (Test-GeneratedMachOBoundary -Text '/tmp/probe.o: Mach-O object ppc64' -Arch ppc) 1 'generated object check rejects PPC prefix collision'
+    Assert-Equal (Test-GeneratedMachOBoundary -Text '/tmp/probe.o: Mach-O object i386foo' -Arch i386) 1 'generated object check rejects i386 prefix collision'
+} finally {
+    Remove-Item -LiteralPath $boundaryScript -Force -ErrorAction SilentlyContinue
+}
 Assert-NotMatch $cmd '(?m)(^|[;&|] *)mkdir +-p +/build/(tools|bootstrap-root|state)' 'does not create output roots'
 Assert-NotMatch $cmd '(?m)(^|[;&|]\s*)(eval|source)\s' 'does not execute profile as code'
 Assert-NotMatch $cmd '^sh -c ' 'does not nest through the login shell'

@@ -130,6 +130,8 @@ static void toolchain_fixture(Toolchain *tc) {
     tc->make = "/tools/make";
     tc->shell = "/bin/sh";
     tc->tar = "/tools/tar";
+    tc->archive_create = "/bin/pax";
+    tc->archive_create_flags = "-w -x ustar";
     tc->gzip = "/tools/gzip";
     tc->rsync = "/tools/rsync";
     tc->path = "/tools:/usr/bin:/bin";

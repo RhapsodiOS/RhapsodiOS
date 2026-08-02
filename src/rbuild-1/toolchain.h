@@ -13,7 +13,8 @@ typedef struct {
     char *make;
     char *shell;
     char *tar;
-    char *tar_create_flags;
+    char *archive_create;
+    char *archive_create_flags;
     char *gzip;
     char *rsync;
     char *path;

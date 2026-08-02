@@ -4,7 +4,7 @@ Set-StrictMode -Version Latest
 
 $script:RhapToolchainKeys = @(
     'profile', 'build_cc', 'target_cc', 'target_arch', 'target_ar', 'target_ranlib',
-    'make', 'shell', 'tar', 'tar_create_flags', 'gzip', 'rsync', 'path',
+    'make', 'shell', 'tar', 'archive_create', 'archive_create_flags', 'gzip', 'rsync', 'path',
     'arch_flags', 'cpp_flags', 'ld_flags', 'ln'
 )
 
@@ -314,6 +314,7 @@ function New-RhapPreflightCommand {
         'MAKE_TOOL=$(profile_value make) || fail "profile missing make"',
         'SHELL_TOOL=$(profile_value shell) || fail "profile missing shell"',
         'TAR_TOOL=$(profile_value tar) || fail "profile missing tar"',
+        'ARCHIVE_CREATE_TOOL=$(profile_value archive_create) || fail "profile missing archive_create"',
         'GZIP_TOOL=$(profile_value gzip) || fail "profile missing gzip"',
         'RSYNC_TOOL=$(profile_value rsync) || fail "profile missing rsync"',
         'LN_TOOL=$(profile_value ln) || fail "profile missing ln"',
@@ -321,7 +322,7 @@ function New-RhapPreflightCommand {
         'ARCH_FLAGS=$(profile_value arch_flags) || fail "profile missing arch_flags"',
         'expr "$TARGET_ARCH" : "[A-Za-z_][A-Za-z0-9_]*\$" >/dev/null || fail "invalid target_arch: $TARGET_ARCH"',
         'case "$TOOL_PATH" in "$TOOLS_DIR/bin"|"$TOOLS_DIR/bin":*) ;; *) fail "profile PATH must select private MIG wrapper first: $TOOLS_DIR/bin" ;; esac',
-        'for tool in "$BUILD_CC" "$TARGET_CC" "$TARGET_AR" "$TARGET_RANLIB" "$MAKE_TOOL" "$SHELL_TOOL" "$TAR_TOOL" "$GZIP_TOOL" "$RSYNC_TOOL" "$LN_TOOL"; do case "$tool" in /*) ;; *) fail "configured executable is not absolute: $tool" ;; esac; expr "$tool" : "/[-A-Za-z0-9_./+]*\$" >/dev/null || fail "configured executable contains unsafe characters: $tool"; test -f "$tool" && test -x "$tool" || fail "configured executable is not an executable file: $tool"; done',
+        'for tool in "$BUILD_CC" "$TARGET_CC" "$TARGET_AR" "$TARGET_RANLIB" "$MAKE_TOOL" "$SHELL_TOOL" "$TAR_TOOL" "$ARCHIVE_CREATE_TOOL" "$GZIP_TOOL" "$RSYNC_TOOL" "$LN_TOOL"; do case "$tool" in /*) ;; *) fail "configured executable is not absolute: $tool" ;; esac; expr "$tool" : "/[-A-Za-z0-9_./+]*\$" >/dev/null || fail "configured executable contains unsafe characters: $tool"; test -f "$tool" && test -x "$tool" || fail "configured executable is not an executable file: $tool"; done',
         'test -x /usr/bin/cc || fail "Developer Tools compiler missing: /usr/bin/cc"',
         'test -x /usr/bin/install || fail "Developer Tools install missing: /usr/bin/install"',
         'test -f /usr/bin/yacc && test -x /usr/bin/yacc || fail "Developer Tools yacc missing: /usr/bin/yacc"',

@@ -66,10 +66,10 @@ static int normalize_fd(int fd) {
 }
 
 static int run_apk_pipeline(const char *out_apk, const char *gzip_program,
-                            char **tar_argv) {
+                            const char *archive_cwd, char **archive_argv) {
     int fds[2];
     int output_fd;
-    pid_t tar_pid;
+    pid_t archive_pid;
     pid_t gzip_pid;
     int result;
     if (exec_dry_run) {
@@ -77,7 +77,7 @@ static int run_apk_pipeline(const char *out_apk, const char *gzip_program,
         gzip_argv[0] = (char *)gzip_program;
         gzip_argv[1] = "-9";
         gzip_argv[2] = 0;
-        exec_printcmd(tar_argv);
+        exec_printcmd(archive_argv);
         exec_printcmd(gzip_argv);
         return 0;
     }
@@ -103,23 +103,24 @@ static int run_apk_pipeline(const char *out_apk, const char *gzip_program,
         close(fds[0]); close(output_fd); unlink(out_apk);
         return 1;
     }
-    tar_pid = fork();
-    if (tar_pid < 0) {
+    archive_pid = fork();
+    if (archive_pid < 0) {
         close(fds[0]); close(fds[1]); close(output_fd); unlink(out_apk);
         return 1;
     }
-    if (tar_pid == 0) {
+    if (archive_pid == 0) {
         close(fds[0]);
         if (dup2(fds[1], STDOUT_FILENO) < 0) _exit(127);
         close(fds[1]);
         close(output_fd);
-        execvp(tar_argv[0], tar_argv);
+        if (archive_cwd != 0 && chdir(archive_cwd) != 0) _exit(127);
+        execvp(archive_argv[0], archive_argv);
         _exit(127);
     }
     gzip_pid = fork();
     if (gzip_pid < 0) {
         close(fds[0]); close(fds[1]); close(output_fd);
-        wait_for_child(tar_pid);
+        wait_for_child(archive_pid);
         unlink(out_apk);
         return 1;
     }
@@ -139,7 +140,7 @@ static int run_apk_pipeline(const char *out_apk, const char *gzip_program,
     close(fds[0]);
     close(fds[1]);
     result = close(output_fd) != 0;
-    if (wait_for_child(tar_pid) != 0) result = 1;
+    if (wait_for_child(archive_pid) != 0) result = 1;
     if (wait_for_child(gzip_pid) != 0) result = 1;
     if (result != 0) unlink(out_apk);
     return result;
@@ -147,42 +148,49 @@ static int run_apk_pipeline(const char *out_apk, const char *gzip_program,
 
 int pkginfo_build_apk(const char *root_dir, const char *out_apk,
                       const Toolchain *tc) {
-    strlist tar_args;
-    char **tar_argv;
+    strlist archive_args;
+    char **archive_argv;
     size_t i;
     int result;
-    const char *tar_program;
+    const char *archive_program;
+    const char *archive_cwd;
     const char *gzip_program;
 
     if (root_dir == 0 || out_apk == 0) return 1;
-    if (tc != 0 && (tc->tar == 0 || tc->gzip == 0 ||
-                    tc->tar_create_flags == 0 ||
-                    tc->tar_create_flags[0] == '\0')) {
+    if (tc != 0 && (tc->archive_create == 0 ||
+                    tc->archive_create[0] == '\0' || tc->gzip == 0 ||
+                    tc->archive_create_flags == 0 ||
+                    tc->archive_create_flags[0] == '\0')) {
         fprintf(stderr, "rbuild: missing configured APK archive-create "
                 "capability\n");
         return 1;
     }
-    tar_program = tc == 0 ? "tar" : tc->tar;
+    archive_program = tc == 0 ? "tar" : tc->archive_create;
+    archive_cwd = tc == 0 ? 0 : root_dir;
     gzip_program = tc == 0 ? "gzip" : tc->gzip;
-    strlist_init(&tar_args);
-    strlist_push(&tar_args, tar_program);
+    strlist_init(&archive_args);
+    strlist_push(&archive_args, archive_program);
     if (tc != 0)
-        toolchain_expand_words(tc->tar_create_flags, "", &tar_args);
-    if (tc != 0 && tar_args.count == 1) {
+        toolchain_expand_words(tc->archive_create_flags, "", &archive_args);
+    if (tc != 0 && archive_args.count == 1) {
         fprintf(stderr, "rbuild: empty configured APK archive-create flags\n");
-        strlist_free(&tar_args);
+        strlist_free(&archive_args);
         return 1;
     }
-    strlist_push(&tar_args, "-C");
-    strlist_push(&tar_args, root_dir);
-    strlist_push(&tar_args, "-cf");
-    strlist_push(&tar_args, "-");
-    strlist_push(&tar_args, ".");
-    tar_argv = (char **)xmalloc((tar_args.count + 1) * sizeof(char *));
-    for (i = 0; i < tar_args.count; i++) tar_argv[i] = tar_args.items[i];
-    tar_argv[tar_args.count] = 0;
-    result = run_apk_pipeline(out_apk, gzip_program, tar_argv);
-    free(tar_argv);
-    strlist_free(&tar_args);
+    if (tc == 0) {
+        strlist_push(&archive_args, "-C");
+        strlist_push(&archive_args, root_dir);
+        strlist_push(&archive_args, "-cf");
+        strlist_push(&archive_args, "-");
+    }
+    strlist_push(&archive_args, ".");
+    archive_argv = (char **)xmalloc((archive_args.count + 1) * sizeof(char *));
+    for (i = 0; i < archive_args.count; i++)
+        archive_argv[i] = archive_args.items[i];
+    archive_argv[archive_args.count] = 0;
+    result = run_apk_pipeline(out_apk, gzip_program, archive_cwd,
+                              archive_argv);
+    free(archive_argv);
+    strlist_free(&archive_args);
     return result;
 }

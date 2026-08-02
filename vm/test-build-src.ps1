@@ -47,6 +47,7 @@ $classicUtilsText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\Commands\b
 $typedErrorText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\Commands\bootstrap_cmds\migcom_typd.tproj\error.c')
 $typedErrorHeaderText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\Commands\bootstrap_cmds\migcom_typd.tproj\error.h')
 $kernelMakeTemplateText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\kernel-7\conf\Makefile.template')
+$pkginfoSourceText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\rbuild-1\pkginfo.c')
 Assert-Match $migWrapperText 'MIGCC' 'MIG wrapper supports configured compiler override'
 Assert-Match $migWrapperText 'MIGARCH' 'MIG wrapper supports configured architecture override'
 Assert-Match $migWrapperText 'append_cppflag "-D\$mig_arch"' 'configured GCC receives one preserved architecture definition'
@@ -107,6 +108,10 @@ Assert-Equal ([regex]::Matches($kernelMakeTemplateText, 'rm -f "\$\$EXPDIR/\$\$j
 Assert-Equal ([regex]::Matches($kernelMakeTemplateText, 'install_status=\$\$\?;').Count) 2 'both kernel export loops capture install status immediately'
 Assert-Equal ([regex]::Matches($kernelMakeTemplateText, 'if \[ \$\$install_status -ne 0 \]; then[\s\S]*?rm -f "\$\$EXPDIR/\$\$j\.strip";[\s\S]*?exit 1;').Count) 2 'both kernel export loops clean probes without masking install failure'
 Assert-Equal ([regex]::Matches($kernelMakeTemplateText, '\) \|\| exit 1;\s*\\\r?\n\s*done').Count) 2 'both kernel export loops propagate header-directory subshell failure'
+Assert-Match $pkginfoSourceText 'tc->archive_create' 'configured APK creation selects the generic archive creator'
+Assert-Match $pkginfoSourceText 'tc->archive_create_flags' 'configured APK creation expands generic creator flags'
+Assert-Match $pkginfoSourceText 'archive_cwd != 0 && chdir\(archive_cwd\) != 0' 'configured archive child enters the package root'
+Assert-NotMatch $pkginfoSourceText 'tc->tar_create_flags' 'APK creation has no tar-specific configured flags'
 Assert-Match $buildScriptText '(?s)param\(\s*\[switch\]\$All,\s*\[switch\]\$Rbuild,\s*\[switch\]\$Bootstrap,\s*\[switch\]\$KernelDrivers,\s*\[switch\]\$World,\s*\[switch\]\$Fresh\s*\)' 'canonical build-src parameters'
 Assert-Match $remoteScriptText ([regex]::Escape('StandardInput.WriteAsync($payload)')) 'stream stdin writer is asynchronous'
 Assert-Match $remoteScriptText 'Task\]::WaitAny' 'stream writer and readers share a blocking task loop'
@@ -316,6 +321,8 @@ $profileValues = ConvertFrom-RhapToolchainProfileText -Text $realProfile
 Assert-Equal $profileValues.build_cc '/usr/bin/cc' 'profile build compiler value'
 Assert-Equal $profileValues.target_arch 'ppc' 'profile target architecture value'
 Assert-Equal $profileValues.make '/usr/bin/make' 'profile make value'
+Assert-Equal $profileValues.archive_create '/bin/pax' 'profile archive creator value'
+Assert-Equal $profileValues.archive_create_flags '-w -x ustar' 'profile archive creator flags'
 
 Assert-Equal (Test-RhapToolchainProfileText -Text $realProfile) $true 'real toolchain profile contract'
 Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile + "unknown_key=value`n") } 'reject unknown profile key'
@@ -323,6 +330,9 @@ Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile + "build_cc=/b
 Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile + "target_arch=i386`n") } 'reject duplicate target_arch profile key'
 Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile -replace '(?m)^ld_flags=.*\r?\n?', '') } 'reject missing profile key'
 Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile -replace '(?m)^target_arch=.*\r?\n?', '') } 'reject missing target_arch profile key'
+Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile -replace '(?m)^archive_create=.*\r?\n?', '') } 'reject missing archive creator profile key'
+Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile -replace '(?m)^archive_create_flags=.*\r?\n?', '') } 'reject missing archive creator flags profile key'
+Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile + "tar_create_flags=--posix`n") } 'reject legacy tar-specific creation flags key'
 Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile -replace '(?m)^target_arch=.*$', 'target_arch=ppc;touch_bad') } 'reject unsafe target_arch profile value'
 Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile -replace '(?m)^profile=', 'profile ') } 'reject malformed profile line'
 Assert-Equal (Assert-RhapSafeIdentifier -Value 'mips_safe' -Name 'target_arch') 'mips_safe' 'accept alternate safe architecture identifier'
@@ -395,6 +405,8 @@ Assert-Match $cmd 'set -f' 'disable pathname expansion before flags split'
 Assert-Match $cmd 'unsafe arch_flags' 'reject unsafe raw architecture flags'
 Assert-Match $cmd 'gzip' 'gzip requirement'
 Assert-Match $cmd 'tar' 'tar requirement'
+Assert-Match $cmd 'ARCHIVE_CREATE_TOOL=\$\(profile_value archive_create\)' 'archive creator parsed for preflight'
+Assert-Match $cmd '"\$ARCHIVE_CREATE_TOOL"' 'archive creator included in executable preflight'
 Assert-Match $cmd 'rsync' 'rsync requirement'
 Assert-Match $cmd 'make' 'make requirement'
 Assert-Match $cmd 'ln' 'ln requirement'

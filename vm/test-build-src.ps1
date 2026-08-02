@@ -78,15 +78,30 @@ Assert-Match $alternateRbuild ([regex]::Escape('/opt/make/bin/gmake CC=/opt/gcc/
 Assert-NotMatch $alternateRbuild ([regex]::Escape('/usr/bin/make CC=/usr/bin/cc')) 'alternate profile does not use default build tools'
 
 $bootstrapCommand = New-RhapBuildPhaseCommand -Phase 'bootstrap' @phaseArgs
-Assert-Match $bootstrapCommand ([regex]::Escape('set -e; cd /build/src && /build/tools/bin/rbuild bootstrap')) 'bootstrap starts from synced source root'
+Assert-Match $bootstrapCommand ([regex]::Escape('/usr/bin/install -d /build/bootstrap-root /build/repo /build/state')) 'bootstrap creates owned output directories'
+Assert-Equal ($bootstrapCommand.IndexOf('/usr/bin/install -d') -lt $bootstrapCommand.IndexOf('/build/tools/bin/rbuild bootstrap')) $true 'bootstrap creates outputs before rbuild'
+Assert-Match $bootstrapCommand ([regex]::Escape('&& cd /build/src && /build/tools/bin/rbuild bootstrap')) 'bootstrap starts from synced source root'
 Assert-Match $bootstrapCommand ([regex]::Escape('/build/tools/bin/rbuild bootstrap --sysroot /build/bootstrap-root --toolchain /build/src/rbuild-1/toolchains/gcc-darwin.conf --state /build/state /build/src/BootstrapManifest /build/repo /build/repo')) 'bootstrap uses resumable CLI'
 $alternateSourceArgs = $phaseArgs.Clone()
 $alternateSourceArgs.SourceRoot = '/srv/synced source'
 $alternateBootstrap = New-RhapBuildPhaseCommand -Phase 'bootstrap' @alternateSourceArgs
-Assert-Match $alternateBootstrap ([regex]::Escape("set -e; cd '/srv/synced source' && /build/tools/bin/rbuild bootstrap")) 'bootstrap quotes and uses alternate source cwd'
+Assert-Match $alternateBootstrap ([regex]::Escape("cd '/srv/synced source' && /build/tools/bin/rbuild bootstrap")) 'bootstrap quotes and uses alternate source cwd'
 Assert-Match $alternateBootstrap ([regex]::Escape("'/srv/synced source'/BootstrapManifest")) 'bootstrap manifest follows alternate source root'
 Assert-NotMatch $alternateBootstrap '/var/root|cd +~' 'bootstrap never inherits login cwd'
+$spacedPhaseArgs = $phaseArgs.Clone()
+$spacedPhaseArgs.SourceRoot = '/srv/build tree/src'
+$spacedPhaseArgs.ToolsDir = '/srv/build tree/tools'
+$spacedPhaseArgs.BootstrapRoot = '/srv/build tree/bootstrap root'
+$spacedPhaseArgs.RepoDir = '/srv/build tree/repo'
+$spacedPhaseArgs.BuiltDir = '/srv/build tree/built output'
+$spacedPhaseArgs.StateDir = '/srv/build tree/state'
+$spacedPhaseArgs.Profile = '/srv/build tree/profile.conf'
+$spacedBootstrap = New-RhapBuildPhaseCommand -Phase 'bootstrap' @spacedPhaseArgs
+Assert-Match $spacedBootstrap ([regex]::Escape("/usr/bin/install -d '/srv/build tree/bootstrap root' '/srv/build tree/repo' '/srv/build tree/state'")) 'bootstrap safely quotes owned outputs'
 $kernelCommand = New-RhapBuildPhaseCommand -Phase 'kernel-drivers' @phaseArgs -DriverProjects @('drivers-ppc/storage/drvExample') -MakeDriverProjects @('drvBPF')
+Assert-Match $kernelCommand ([regex]::Escape('test -d /build/repo')) 'kernel requires existing repository input'
+Assert-Match $kernelCommand ([regex]::Escape('/usr/bin/install -d /build/built /build/state')) 'kernel creates owned output directories'
+Assert-Equal ($kernelCommand.IndexOf('/usr/bin/install -d /build/built') -lt $kernelCommand.IndexOf('--dir driverkit-3')) $true 'kernel creates outputs before core packages'
 Assert-Match $kernelCommand ([regex]::Escape('cd /build/src')) 'kernel package paths resolve beneath source root'
 Assert-Match $kernelCommand ([regex]::Escape('/build/tools/bin/rbuild buildpackage --state /build/state --dir kernel-7 /build/repo /build/built')) 'kernel uses persistent state'
 Assert-Match $kernelCommand ([regex]::Escape('--dir drivers-ppc/storage/drvExample /build/repo /build/built')) 'packaged driver uses rbuild'
@@ -103,6 +118,9 @@ Assert-Match $kernelCommand 'core: driverkit-3, driverTools-1, kernel-7 \(requir
 Assert-Match $kernelCommand 'drivers ok: \$rbuild_driver_passes' 'kernel summary reports optional successes'
 Assert-Match $kernelCommand 'drivers fail: \$rbuild_driver_failures' 'kernel summary reports optional failures'
 $worldCommand = New-RhapBuildPhaseCommand -Phase 'world' @phaseArgs
+Assert-Match $worldCommand ([regex]::Escape('test -d /build/repo')) 'world requires existing repository input'
+Assert-Match $worldCommand ([regex]::Escape('/usr/bin/install -d /build/built /build/state')) 'world creates owned output directories'
+Assert-Equal ($worldCommand.IndexOf('/usr/bin/install -d /build/built') -lt $worldCommand.IndexOf('rbuild buildall')) $true 'world creates outputs before buildall'
 Assert-Match $worldCommand ([regex]::Escape('cd /build/src && /build/tools/bin/rbuild buildall --state /build/state Manifest /build/repo /build/built')) 'world uses manifest and state'
 
 foreach ($generated in @($rbuildCommand, $bootstrapCommand, $kernelCommand, $worldCommand)) {

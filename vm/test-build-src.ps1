@@ -46,6 +46,7 @@ $classicErrorHeaderText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\Comm
 $classicUtilsText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\Commands\bootstrap_cmds\migcom.tproj\utils.c')
 $typedErrorText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\Commands\bootstrap_cmds\migcom_typd.tproj\error.c')
 $typedErrorHeaderText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\Commands\bootstrap_cmds\migcom_typd.tproj\error.h')
+$kernelMakeTemplateText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\kernel-7\conf\Makefile.template')
 Assert-Match $migWrapperText 'MIGCC' 'MIG wrapper supports configured compiler override'
 Assert-Match $migWrapperText 'MIGARCH' 'MIG wrapper supports configured architecture override'
 Assert-Match $migWrapperText 'append_cppflag "-D\$mig_arch"' 'configured GCC receives one preserved architecture definition'
@@ -84,6 +85,10 @@ Assert-Match $classicErrorText 'strerror\(error_num\)' 'classic MIG uses the hos
 Assert-NotMatch $classicErrorHeaderText '<mach/mach_error\.h>' 'classic MIG does not import an unused live-only Mach error header'
 Assert-Match $typedErrorText 'strerror\(error_num\)' 'typed MIG uses the host-supported error string interface'
 Assert-NotMatch ($classicErrorText + $typedErrorText + $typedErrorHeaderText) '(?m)^\s*extern[^\r\n]*\b(sys_nerr|sys_errlist)\b|\b(sys_nerr|sys_errlist)\s*\[' 'private MIG sources do not depend on obsolete libc error tables'
+Assert-Match $kernelMakeTemplateText '(?m)^DECOMMENT \?= /usr/local/bin/decomment$' 'kernel preserves an overrideable historical decomment default'
+Assert-NotMatch $kernelMakeTemplateText '(?m)^\s*@-for i in (?:\$\{EXPORT\}|`echo \$\{MACHINE_EXPORT\}`)' 'kernel header export recipes do not ignore loop failure'
+Assert-Equal ([regex]::Matches($kernelMakeTemplateText, '\$\(DECOMMENT\)[^\r\n]*(?:\r?\n[^\r\n]*)?\.strip \|\| exit 1;').Count) 2 'both kernel export loops hard-fail a failed decomment fallback'
+Assert-Equal ([regex]::Matches($kernelMakeTemplateText, '\) \|\| exit 1;\s*\\\r?\n\s*done').Count) 2 'both kernel export loops propagate header-directory subshell failure'
 Assert-Match $buildScriptText '(?s)param\(\s*\[switch\]\$All,\s*\[switch\]\$Rbuild,\s*\[switch\]\$Bootstrap,\s*\[switch\]\$KernelDrivers,\s*\[switch\]\$World,\s*\[switch\]\$Fresh\s*\)' 'canonical build-src parameters'
 Assert-Match $remoteScriptText ([regex]::Escape('StandardInput.WriteAsync($payload)')) 'stream stdin writer is asynchronous'
 Assert-Match $remoteScriptText 'Task\]::WaitAny' 'stream writer and readers share a blocking task loop'
@@ -116,6 +121,11 @@ Assert-Match $rbuildCommand ([regex]::Escape('cd /build/src/rbuild-1 && /usr/bin
 Assert-Match $rbuildCommand ([regex]::Escape('/usr/bin/install -d /build/tools/bin')) 'rbuild creates private tool directory'
 Assert-Match $rbuildCommand ([regex]::Escape('/usr/bin/install -c -m 755 rbuild /build/tools/bin/rbuild')) 'rbuild installs privately'
 Assert-Match $rbuildCommand ([regex]::Escape('/usr/bin/cc -O -o /build/tools/bin/relpath /build/src/Commands/bootstrap_cmds/relpath.tproj/relpath.c')) 'relpath is source-built with profile compiler'
+Assert-Match $rbuildCommand ([regex]::Escape('/usr/bin/cc -O -o /build/tools/bin/decomment /build/src/Commands/bootstrap_cmds/decomment.tproj/decomment.c')) 'decomment is source-built privately with profile compiler'
+Assert-Match $rbuildCommand ([regex]::Escape("printf '%s\n' 'alpha /* block */ beta // line' ' gamma' > /build/tools/decomment-build/input.h")) 'decomment smoke covers block, line, and whitespace removal'
+Assert-Match $rbuildCommand ([regex]::Escape('/build/tools/bin/decomment /build/tools/decomment-build/input.h r > /build/tools/decomment-build/output.h')) 'decomment smoke executes the private product'
+Assert-Match $rbuildCommand ([regex]::Escape('test "$(/bin/cat /build/tools/decomment-build/output.h)" = alphabetagamma')) 'decomment smoke validates meaningful exact output'
+Assert-NotMatch $rbuildCommand '/usr/local/bin/decomment|bootstrap-root/(usr/)?(?:local/)?bin/decomment|cp .*decomment' 'stage zero never copies or selects live or sysroot decomment'
 Assert-Match $rbuildCommand ([regex]::Escape('rm -rf /build/tools/config-build')) 'config private build directory is recreated exactly'
 Assert-Match $rbuildCommand ([regex]::Escape('/usr/bin/install -d /build/tools/config-build')) 'config uses private build directory'
 Assert-Match $rbuildCommand ([regex]::Escape('/usr/bin/yacc -d /build/src/Commands/bootstrap_cmds/config.tproj/parser.y')) 'config parser is source-generated'
@@ -151,12 +161,14 @@ $alternateRbuild = New-RhapBuildPhaseCommand -Phase 'rbuild' @alternatePhaseArgs
 Assert-Match $alternateRbuild ([regex]::Escape('/opt/make/bin/gmake CC=/opt/gcc/bin/gcc-4.2 clean test all')) 'alternate profile compiler builds rbuild'
 Assert-Match $alternateRbuild ([regex]::Escape('/opt/gcc/bin/gcc-4.2 -O -bsd -DCMU -DLOCALARCHITECTURE -DNeXT=1')) 'alternate profile compiler builds config with project flags'
 Assert-Match $alternateRbuild ([regex]::Escape('/opt/gcc/bin/gcc-4.2 -O -bsd -DNeXT=1 -I/build/tools/mig-build/include -I/build/src/Commands/bootstrap_cmds/migcom.tproj -I/build/tools/mig-build/migcom -o /build/tools/libexec/migcom')) 'alternate profile compiler builds MIG with historical platform flags'
+Assert-Match $alternateRbuild ([regex]::Escape('/opt/gcc/bin/gcc-4.2 -O -o /build/tools/bin/decomment /build/src/Commands/bootstrap_cmds/decomment.tproj/decomment.c')) 'alternate profile compiler builds private decomment'
 Assert-Match $alternateRbuild ([regex]::Escape('MIGCC=/opt/gcc/bin/gcc-4.2 MIGARCH=mips_safe MIGCOM_DIR=/build/tools/libexec')) 'alternate GCC profile selects its own safe MIG architecture'
 Assert-NotMatch $alternateRbuild ([regex]::Escape('/usr/bin/make CC=/usr/bin/cc')) 'alternate profile does not use default build tools'
 $spacedCompilerArgs = $phaseArgs.Clone()
 $spacedCompilerArgs.BuildCc = '/opt/gcc tools/bin/gcc'
 $spacedCompilerRbuild = New-RhapBuildPhaseCommand -Phase 'rbuild' @spacedCompilerArgs
 Assert-Match $spacedCompilerRbuild ([regex]::Escape("'/opt/gcc tools/bin/gcc' -O -bsd -DNeXT=1 -I/build/tools/mig-build/include -I/build/src/Commands/bootstrap_cmds/migcom.tproj")) 'space-containing configured GCC builds private MIG as one executable path'
+Assert-Match $spacedCompilerRbuild ([regex]::Escape("'/opt/gcc tools/bin/gcc' -O -o /build/tools/bin/decomment /build/src/Commands/bootstrap_cmds/decomment.tproj/decomment.c")) 'space-containing configured GCC builds private decomment as one executable path'
 $metacharRootArgs = $phaseArgs.Clone()
 $metacharRootArgs.BootstrapRoot = '/build/root[1].*'
 $metacharRootRbuild = New-RhapBuildPhaseCommand -Phase 'rbuild' @metacharRootArgs
@@ -167,8 +179,8 @@ $bootstrapCommand = New-RhapBuildPhaseCommand -Phase 'bootstrap' @phaseArgs
 $alternateToolBootstrap = New-RhapBuildPhaseCommand -Phase 'bootstrap' @alternatePhaseArgs
 $spacedCompilerBootstrap = New-RhapBuildPhaseCommand -Phase 'bootstrap' @spacedCompilerArgs
 Assert-Match $bootstrapCommand ([regex]::Escape('/usr/bin/install -d /build/bootstrap-root /build/repo /build/state')) 'bootstrap creates owned output directories'
-Assert-Match $bootstrapCommand ([regex]::Escape('CONFIG_DIR=/build/tools/bin MIGCC=/usr/bin/cc')) 'bootstrap scopes private config tool directory'
-Assert-Match $bootstrapCommand ([regex]::Escape('CONFIG_DIR=/build/tools/bin MIGCC=/usr/bin/cc MIGARCH=ppc MIGCOM_DIR=/build/tools/libexec /build/tools/bin/rbuild bootstrap')) 'bootstrap explicitly binds private MIG compiler, architecture, and libexec tools'
+Assert-Match $bootstrapCommand ([regex]::Escape('CONFIG_DIR=/build/tools/bin DECOMMENT=/build/tools/bin/decomment MIGCC=/usr/bin/cc')) 'bootstrap scopes private config and decomment tools'
+Assert-Match $bootstrapCommand ([regex]::Escape('CONFIG_DIR=/build/tools/bin DECOMMENT=/build/tools/bin/decomment MIGCC=/usr/bin/cc MIGARCH=ppc MIGCOM_DIR=/build/tools/libexec /build/tools/bin/rbuild bootstrap')) 'bootstrap explicitly binds private decomment, MIG compiler, architecture, and libexec tools'
 Assert-Match $alternateToolBootstrap ([regex]::Escape('MIGCC=/opt/gcc/bin/gcc-4.2 MIGARCH=mips_safe MIGCOM_DIR=/build/tools/libexec')) 'bootstrap binds alternate configured GCC and architecture to private MIG'
 Assert-Match $spacedCompilerBootstrap ([regex]::Escape("MIGCC='/opt/gcc tools/bin/gcc' MIGARCH=ppc MIGCOM_DIR=/build/tools/libexec")) 'bootstrap quotes space-containing configured GCC for MIG wrapper'
 Assert-NotMatch $bootstrapCommand '/usr/bin/mig|/usr/libexec/migcom|NEXT_ROOT|bootstrap-root/usr/libexec' 'bootstrap never selects live or sysroot MIG'
@@ -191,14 +203,16 @@ $spacedPhaseArgs.StateDir = '/srv/build tree/state'
 $spacedPhaseArgs.Profile = '/srv/build tree/profile.conf'
 $spacedRbuild = New-RhapBuildPhaseCommand -Phase 'rbuild' @spacedPhaseArgs
 Assert-Match $spacedRbuild ([regex]::Escape("rm -rf '/srv/build tree/tools'/config-build")) 'config safely quotes alternate private build directory'
+Assert-Match $spacedRbuild ([regex]::Escape("'/srv/build tree/tools'/bin/decomment '/srv/build tree/tools'/decomment-build/input.h r > '/srv/build tree/tools'/decomment-build/output.h")) 'decomment smoke safely quotes alternate private tool paths'
 Assert-Match $spacedRbuild ([regex]::Escape("-I'/srv/build tree/src'/Commands/bootstrap_cmds/config.tproj -I'/srv/build tree/tools'/config-build -o '/srv/build tree/tools'/bin/config")) 'config safely quotes alternate source and tools paths'
 Assert-Match $spacedRbuild ([regex]::Escape("rm -rf '/srv/build tree/tools'/mig-build")) 'MIG safely quotes alternate private build root'
 Assert-Match $spacedRbuild ([regex]::Escape("-O -bsd -DNeXT=1 -I'/srv/build tree/tools'/mig-build/include -I'/srv/build tree/src'/Commands/bootstrap_cmds/migcom_typd.tproj -I'/srv/build tree/tools'/mig-build/migcom_typd -o '/srv/build tree/tools'/libexec/migcom_typd")) 'MIG preserves platform flags and safely quotes alternate paths'
 Assert-Match $spacedRbuild ([regex]::Escape("CONFIG_DIR='/srv/build tree/tools'/bin MIGCC=/usr/bin/cc MIGARCH=ppc MIGCOM_DIR='/srv/build tree/tools'/libexec '/srv/build tree/tools'/bin/mig -typed -I'/srv/build tree/src'/kernel-7 -DKERNEL -DKERNEL_SERVER -header /dev/null -user /dev/null -server mach_server.c '/srv/build tree/src'/kernel-7/mach/mach.defs")) 'typed MIG smoke generation safely quotes alternate source and private tool paths'
 $spacedBootstrap = New-RhapBuildPhaseCommand -Phase 'bootstrap' @spacedPhaseArgs
 Assert-Match $spacedBootstrap ([regex]::Escape("/usr/bin/install -d '/srv/build tree/bootstrap root' '/srv/build tree/repo' '/srv/build tree/state'")) 'bootstrap safely quotes owned outputs'
-Assert-Match $spacedBootstrap ([regex]::Escape("CONFIG_DIR='/srv/build tree/tools'/bin MIGCC=/usr/bin/cc")) 'bootstrap safely quotes private config directory'
+Assert-Match $spacedBootstrap ([regex]::Escape("CONFIG_DIR='/srv/build tree/tools'/bin DECOMMENT='/srv/build tree/tools'/bin/decomment MIGCC=/usr/bin/cc")) 'bootstrap safely quotes private config and decomment tools'
 Assert-Match $spacedBootstrap ([regex]::Escape("MIGCC=/usr/bin/cc MIGARCH=ppc MIGCOM_DIR='/srv/build tree/tools'/libexec '/srv/build tree/tools'/bin/rbuild bootstrap")) 'bootstrap safely quotes private MIG bindings and profile architecture'
+Assert-Match $spacedBootstrap ([regex]::Escape("DECOMMENT='/srv/build tree/tools'/bin/decomment MIGCC=/usr/bin/cc")) 'bootstrap safely quotes private decomment binding'
 $kernelCommand = New-RhapBuildPhaseCommand -Phase 'kernel-drivers' @phaseArgs -DriverProjects @('drivers-ppc/storage/drvExample') -MakeDriverProjects @('drvBPF')
 Assert-Match $kernelCommand ([regex]::Escape('test -d /build/repo')) 'kernel requires existing repository input'
 Assert-Match $kernelCommand ([regex]::Escape('/usr/bin/install -d /build/built /build/state')) 'kernel creates owned output directories'
@@ -379,6 +393,7 @@ Assert-Match $cmd 'handler\.c' 'classic MIG unique source requirement'
 Assert-Match $cmd 'migcom\.c' 'typed MIG unique source requirement'
 Assert-Match $cmd 'test\.c' 'untyped MIG unique source requirement'
 Assert-Match $cmd 'migcom_untypd_vers_stub\.c' 'untyped MIG version source requirement'
+Assert-Match $cmd ([regex]::Escape('test -f "$SOURCE_ROOT/Commands/bootstrap_cmds/decomment.tproj/decomment.c" || fail "decomment source missing"')) 'preflight requires source-owned decomment implementation'
 Assert-Match $cmd ([regex]::Escape('test -f "$SOURCE_ROOT/kernel-7/mach/mach.defs" || fail "MIG wrapper smoke definition missing"')) 'MIG smoke definition source requirement'
 Assert-Match $cmd 'kernel-7/\$mig_header' 'MIG overlay preflight checks source-owned headers'
 Assert-Match $cmd 'mach/message\.h.*mach/ppc/simple_lock\.h' 'MIG overlay preflight declares the verified header closure'
@@ -423,6 +438,77 @@ try {
     Assert-Equal (Test-GeneratedMachOBoundary -Text '/tmp/probe.o: Mach-O object i386foo' -Arch i386) 1 'generated object check rejects i386 prefix collision'
 } finally {
     Remove-Item -LiteralPath $boundaryScript -Force -ErrorAction SilentlyContinue
+}
+
+$decommentContractDir = Join-Path $env:TEMP ("rhap-decomment-contract-{0}" -f [guid]::NewGuid().ToString('n'))
+New-Item -ItemType Directory -Path $decommentContractDir | Out-Null
+try {
+    $fallbackScript = Join-Path $decommentContractDir 'fallback.sh'
+    $fakeUnifdef = Join-Path $decommentContractDir 'unifdef'
+    $fakeDecomment = Join-Path $decommentContractDir 'decomment'
+    $failingDecomment = Join-Path $decommentContractDir 'decomment-fail'
+    $inputHeader = Join-Path $decommentContractDir 'input.h'
+    $fallbackBody = @'
+#!/bin/sh
+UNIFDEF=$1
+DECOMMENT=$2
+INPUT=$3
+OUT=$4
+(
+    RAW="$OUT.raw"
+    "$UNIFDEF" -UKERNEL_PRIVATE -UDRIVER_PRIVATE "$INPUT" > "$RAW" || {
+        "$DECOMMENT" "$RAW" r > "$OUT" || exit 1
+    }
+    test -s "$OUT" || exit 1
+) || exit 1
+'@
+    $unifdefBody = @'
+#!/bin/sh
+input=
+for arg do input=$arg; done
+/bin/cat "$input"
+exit 1
+'@
+    $decommentBody = @'
+#!/bin/sh
+/bin/cat "$1"
+'@
+    $failingBody = @'
+#!/bin/sh
+exit 7
+'@
+    Set-Content -LiteralPath $fallbackScript -Encoding ASCII -NoNewline -Value ($fallbackBody -replace "`r`n", "`n")
+    Set-Content -LiteralPath $fakeUnifdef -Encoding ASCII -NoNewline -Value ($unifdefBody -replace "`r`n", "`n")
+    Set-Content -LiteralPath $fakeDecomment -Encoding ASCII -NoNewline -Value ($decommentBody -replace "`r`n", "`n")
+    Set-Content -LiteralPath $failingDecomment -Encoding ASCII -NoNewline -Value ($failingBody -replace "`r`n", "`n")
+    Set-Content -LiteralPath $inputHeader -Encoding ASCII -Value 'int exported_header;'
+    function ConvertTo-DecommentTestShPath([string]$Path) {
+        $converted = ([System.IO.Path]::GetFullPath($Path) -replace '\\', '/')
+        if ($converted -match '^([A-Za-z]):') { return '/' + $Matches[1].ToLowerInvariant() + $converted.Substring(2) }
+        return $converted
+    }
+    $contractSh = ConvertTo-DecommentTestShPath $fallbackScript
+    $unifdefSh = ConvertTo-DecommentTestShPath $fakeUnifdef
+    $decommentSh = ConvertTo-DecommentTestShPath $fakeDecomment
+    $failingSh = ConvertTo-DecommentTestShPath $failingDecomment
+    $inputSh = ConvertTo-DecommentTestShPath $inputHeader
+    $outputSh = ConvertTo-DecommentTestShPath (Join-Path $decommentContractDir 'output.h')
+    & $boundarySh $contractSh $unifdefSh $decommentSh $inputSh $outputSh
+    Assert-Equal $LASTEXITCODE 0 'kernel export fallback accepts successful decomment output'
+    $savedErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'SilentlyContinue'
+        & $boundarySh $contractSh $unifdefSh '/no/such/private/decomment' $inputSh $outputSh 2>$null
+        $missingDecommentExit = $LASTEXITCODE
+        & $boundarySh $contractSh $unifdefSh $failingSh $inputSh $outputSh 2>$null
+        $failingDecommentExit = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $savedErrorActionPreference
+    }
+    Assert-Equal ($missingDecommentExit -ne 0) $true 'kernel export fallback rejects missing decomment tool'
+    Assert-Equal ($failingDecommentExit -ne 0) $true 'kernel export fallback propagates decomment failure'
+} finally {
+    Remove-Item -LiteralPath $decommentContractDir -Recurse -Force -ErrorAction SilentlyContinue
 }
 Assert-NotMatch $cmd '(?m)(^|[;&|] *)mkdir +-p +/build/(tools|bootstrap-root|state)' 'does not create output roots'
 Assert-NotMatch $cmd '(?m)(^|[;&|]\s*)(eval|source)\s' 'does not execute profile as code'

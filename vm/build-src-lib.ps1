@@ -293,6 +293,7 @@ function New-RhapPreflightCommand {
         'test -d "$SOURCE_ROOT/rbuild-1" || fail "rbuild source directory missing"',
         'test -f "$SOURCE_ROOT/rbuild-1/Makefile" || fail "rbuild Makefile missing"',
         'test -f "$SOURCE_ROOT/rbuild-1/toolchain.c" || fail "rbuild toolchain source missing"',
+        'test -f "$SOURCE_ROOT/Commands/bootstrap_cmds/decomment.tproj/decomment.c" || fail "decomment source missing"',
         'test -f "$SOURCE_ROOT/Commands/bootstrap_cmds/config.tproj/parser.y" || fail "kernel config parser source missing"',
         'test -f "$SOURCE_ROOT/Commands/bootstrap_cmds/config.tproj/lexer.l" || fail "kernel config lexer source missing"',
         'test -f "$SOURCE_ROOT/Commands/bootstrap_cmds/config.tproj/config.h" || fail "kernel config header source missing"',
@@ -402,6 +403,7 @@ function New-RhapBuildPhaseCommand {
     if ($ToolPath -notmatch '^[A-Za-z0-9_./:+@=-]+$') { throw 'unsafe toolchain path' }
     $toolPath = ConvertTo-RhapShellLiteral $ToolPath
     $rbuild = "$tools/bin/rbuild"
+    $decommentBuild = "$tools/decomment-build"
     $configSource = "$source/Commands/bootstrap_cmds/config.tproj"
     $configBuild = "$tools/config-build"
     $migBuild = "$tools/mig-build"
@@ -416,6 +418,12 @@ function New-RhapBuildPhaseCommand {
         $commands.Add("/usr/bin/install -d $tools/bin")
         $commands.Add("/usr/bin/install -c -m 755 rbuild $rbuild")
         $commands.Add("$cc -O -o $tools/bin/relpath $source/Commands/bootstrap_cmds/relpath.tproj/relpath.c")
+        $commands.Add("rm -rf $decommentBuild")
+        $commands.Add("/usr/bin/install -d $decommentBuild")
+        $commands.Add("$cc -O -o $tools/bin/decomment $source/Commands/bootstrap_cmds/decomment.tproj/decomment.c")
+        $commands.Add("printf '%s\n' 'alpha /* block */ beta // line' ' gamma' > $decommentBuild/input.h")
+        $commands.Add("$tools/bin/decomment $decommentBuild/input.h r > $decommentBuild/output.h")
+        $commands.Add("test `"`$(/bin/cat $decommentBuild/output.h)`" = alphabetagamma || { echo 'build-src: private decomment smoke failed' >&2; exit 1; }")
         $commands.Add("rm -rf $configBuild")
         $commands.Add("/usr/bin/install -d $configBuild")
         $commands.Add("cd $configBuild")
@@ -453,7 +461,7 @@ function New-RhapBuildPhaseCommand {
         return ($commands -join ' && ')
     }
     if ($Phase -eq 'bootstrap') {
-        return "set -e; /usr/bin/install -d $bootstrap $repo $state && cd $source && CONFIG_DIR=$tools/bin MIGCC=$cc MIGARCH=$targetArch MIGCOM_DIR=$tools/libexec $rbuild bootstrap --sysroot $bootstrap --toolchain $profilePath --state $state $source/BootstrapManifest $repo $repo"
+        return "set -e; /usr/bin/install -d $bootstrap $repo $state && cd $source && CONFIG_DIR=$tools/bin DECOMMENT=$tools/bin/decomment MIGCC=$cc MIGARCH=$targetArch MIGCOM_DIR=$tools/libexec $rbuild bootstrap --sysroot $bootstrap --toolchain $profilePath --state $state $source/BootstrapManifest $repo $repo"
     }
     if ($Phase -eq 'world') {
         return "set -e; test -d $repo || { echo 'build-src: repository missing: $RepoDir' >&2; exit 1; }; /usr/bin/install -d $built $state && cd $source && $rbuild buildall --state $state Manifest $repo $built"

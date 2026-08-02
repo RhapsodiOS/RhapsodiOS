@@ -113,7 +113,7 @@ cleanup()
 finish()
 {
     mig_status=$?
-    trap - 0
+    trap - 0 1 2 3 15
     cleanup
     exit $mig_status
 }
@@ -127,11 +127,16 @@ do
     rm -f "$base".d "$base".d~
     mig_tmp_candidate="./.${base}.migcpp.$$.$mig_sequence.d"
     mig_sequence=${mig_sequence}x
+    # Intentionally ignore (rather than replay) cleanup signals only while
+    # mkdir and the following assignments atomically establish ownership.
+    trap '' 1 2 3 15
     if mkdir "$mig_tmp_candidate"
     then
 	mig_tmp_dir=$mig_tmp_candidate
 	mig_tmp="$mig_tmp_dir/input"
+	trap 'exit 1' 1 2 3 15
     else
+	trap 'exit 1' 1 2 3 15
 	echo "mig: could not create private preprocessor staging directory: $mig_tmp_candidate" >&2
 	exit 1
     fi

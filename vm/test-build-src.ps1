@@ -66,6 +66,9 @@ Assert-Match $migWrapperText 'trap finish 0' 'MIG wrapper cleans staged preproce
 Assert-Match $migWrapperText '(?s)mig_tmp_candidate=.*?if mkdir "\$mig_tmp_candidate".*?mig_tmp_dir=\$mig_tmp_candidate' 'MIG wrapper claims staging ownership only after atomic directory creation'
 Assert-Match $migWrapperText 'rm -f "\$mig_tmp_dir/input"[\r\n]+\s*rmdir "\$mig_tmp_dir"' 'MIG wrapper cleans only its fixed file and owned directory non-recursively'
 Assert-NotMatch $migWrapperText 'rm -rf[^\r\n]*mig_tmp|test -e "\$mig_tmp_candidate"' 'MIG wrapper never recursively removes or prechecks an unowned staging candidate'
+Assert-Match $migWrapperText '(?s)trap ''{2} 1 2 3 15.*?mkdir "\$mig_tmp_candidate".*?mig_tmp_dir=\$mig_tmp_candidate.*?trap ''exit 1'' 1 2 3 15' 'MIG wrapper ignores cleanup signals only through atomic ownership assignment'
+Assert-Match $migWrapperText '(?s)else[\r\n\s]+trap ''exit 1'' 1 2 3 15[\r\n\s]+echo "mig: could not create private preprocessor staging directory' 'MIG wrapper restores signal handlers when staging mkdir fails'
+Assert-Match $migWrapperText '(?s)finish\(\).*?trap - 0 1 2 3 15.*?cleanup' 'MIG wrapper disables every trap before exit cleanup'
 Assert-Match $migWrapperText '-sheader[ `t]+\)[^\r\n]*append_migflag "\$1"; append_migflag "\$2"' 'MIG wrapper forwards server-header output to backend'
 Assert-Match $migWrapperText '-handler[ `t]+\)[^\r\n]*append_migflag "\$1"; append_migflag "\$2"' 'MIG wrapper forwards handler output to backend'
 Assert-NotMatch $migWrapperText 'NEXT_ROOT' 'MIG wrapper never derives compiler location from a sysroot'
@@ -517,6 +520,11 @@ if test "${MIG_TEST_CPP_MODE-}" = fail; then
     printf '%s\n' 'partial preprocessor output'
     exit 42
 fi
+if test "${MIG_TEST_CPP_MODE-}" = signal; then
+    kill -TERM "$PPID"
+    printf '%s\n' 'partial signaled output'
+    exit 0
+fi
 while IFS= read -r line || test -n "$line"; do printf '%s\n' "$line"; done < "$input"
 '@
     $fakeBackendBody = @'
@@ -539,6 +547,15 @@ test -z "$user" || printf '%s\n' 'generated user' > "$user"
 '@
     Set-Content -LiteralPath $fakeCompiler -Encoding ASCII -NoNewline -Value ($fakeCompilerBody -replace "`r`n", "`n")
     Set-Content -LiteralPath $fakeBackend -Encoding ASCII -NoNewline -Value ($fakeBackendBody -replace "`r`n", "`n")
+    $fakeMkdir = Join-Path $fakeBin 'mkdir'
+    $fakeMkdirBody = @'
+#!/bin/sh
+/usr/bin/mkdir "$@" || exit $?
+printf '%s\n' signaled > "$MIG_TEST_CAPTURE/mkdir.signal"
+kill -TERM "$PPID"
+exit 0
+'@
+    Set-Content -LiteralPath $fakeMkdir -Encoding ASCII -NoNewline -Value ($fakeMkdirBody -replace "`r`n", "`n")
     $defsOne = Join-Path $definitionDir 'first interface.defs'
     $defsTwo = Join-Path $definitionDir 'second interface.defs'
     Set-Content -LiteralPath $defsOne -Encoding ASCII -Value 'subsystem first_contract 4100;'
@@ -734,6 +751,38 @@ exit $status
     foreach ($collisionOutput in @($collisionFileOutput, $collisionDirOutput, $collisionDanglingOutput, $collisionLiveOutput)) {
         Assert-Equal (Test-Path -LiteralPath $collisionOutput) $false "MIG staging collision leaves output absent: $collisionOutput"
     }
+
+    $transitionOutput = Join-Path $outputDir 'ownership transition header.h'
+    $transitionInvoke = 'cd {0} && PATH={1}:/usr/bin:/bin MIGCC={2} MIGCOM_DIR={3} MIG_TEST_CAPTURE={4} sh {5} -header {6} {7} 2>/dev/null' -f @(
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $runDir)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeBin)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeCompiler)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeLibexec)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $captureDir)),
+        (ConvertTo-RhapShellLiteral $wrapperShPath),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $transitionOutput)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $defsOne))
+    )
+    & $sh -c $transitionInvoke
+    Assert-Equal $LASTEXITCODE 0 'MIG wrapper survives a signal during mkdir ownership transition'
+    Assert-Equal (Test-Path -LiteralPath (Join-Path $captureDir 'mkdir.signal')) $true 'MIG ownership transition test delivers its signal'
+    Assert-Equal (Test-Path -LiteralPath $transitionOutput) $true 'MIG wrapper generates output after protected ownership transition'
+    Assert-Equal (@(Get-ChildItem -LiteralPath $runDir -Force | Where-Object { $_.Name -like '*.migcpp.*' }).Count) 0 'ownership transition signal leaves no staged directory'
+
+    $signalOutput = Join-Path $outputDir 'owned signal header.h'
+    $signalInvoke = 'cd {0} && MIGCC={1} MIGCOM_DIR={2} MIG_TEST_CAPTURE={3} MIG_TEST_CPP_MODE=signal sh {4} -header {5} {6} 2>/dev/null' -f @(
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $runDir)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeCompiler)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeLibexec)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $captureDir)),
+        (ConvertTo-RhapShellLiteral $wrapperShPath),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $signalOutput)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $defsOne))
+    )
+    & $sh -c $signalInvoke
+    Assert-Equal ($LASTEXITCODE -ne 0) $true 'MIG wrapper propagates signal after staging ownership'
+    Assert-Equal (Test-Path -LiteralPath $signalOutput) $false 'owned-stage signal never reaches backend output'
+    Assert-Equal (@(Get-ChildItem -LiteralPath $runDir -Force | Where-Object { $_.Name -like '*.migcpp.*' }).Count) 0 'owned-stage signal cleanup leaves no staged directory'
 
     $defaultOutput = Join-Path $outputDir 'default cpp header.h'
     $defaultInvoke = 'unset MIGCC; cd {0} && MIGCPP={1} MIGCOM_DIR={2} MIG_TEST_CAPTURE={3} sh {4} -header {5} {6}' -f @(

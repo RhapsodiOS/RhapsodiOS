@@ -98,12 +98,15 @@ done
 old_ifs=$IFS
 IFS=$newline
 set -f
+mig_tmp_dir=
 mig_tmp=
 mig_sequence=x
 cleanup()
 {
-    if [ -n "$mig_tmp" ]; then
-	rm -f "$mig_tmp"
+    if [ -n "$mig_tmp_dir" ]; then
+	rm -f "$mig_tmp_dir/input"
+	rmdir "$mig_tmp_dir" 2>/dev/null || :
+	mig_tmp_dir=
 	mig_tmp=
     fi
 }
@@ -122,10 +125,14 @@ do
     base=${file##*/}
     base=${base%.defs}
     rm -f "$base".d "$base".d~
-    mig_tmp="./.${base}.migcpp.$$.$mig_sequence"
+    mig_tmp_candidate="./.${base}.migcpp.$$.$mig_sequence.d"
     mig_sequence=${mig_sequence}x
-    if [ -e "$mig_tmp" ]; then
-	echo "mig: private preprocessor staging path already exists: $mig_tmp" >&2
+    if mkdir "$mig_tmp_candidate"
+    then
+	mig_tmp_dir=$mig_tmp_candidate
+	mig_tmp="$mig_tmp_dir/input"
+    else
+	echo "mig: could not create private preprocessor staging directory: $mig_tmp_candidate" >&2
 	exit 1
     fi
     if [ "${MIGCC-}" ]

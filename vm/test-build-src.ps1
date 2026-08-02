@@ -63,6 +63,9 @@ Assert-Match $migWrapperText '"\$migcom" \$migflags < "\$mig_tmp"' 'MIG wrapper 
 Assert-Match $migWrapperText 'MIGCPP-' 'MIG wrapper supports an optional compatibility cpp override'
 Assert-Match $migWrapperText '/usr/libexec/\$\{arch-' 'MIG wrapper preserves architecture-specific historical cpp default'
 Assert-Match $migWrapperText 'trap finish 0' 'MIG wrapper cleans staged preprocessing on every exit'
+Assert-Match $migWrapperText '(?s)mig_tmp_candidate=.*?if mkdir "\$mig_tmp_candidate".*?mig_tmp_dir=\$mig_tmp_candidate' 'MIG wrapper claims staging ownership only after atomic directory creation'
+Assert-Match $migWrapperText 'rm -f "\$mig_tmp_dir/input"[\r\n]+\s*rmdir "\$mig_tmp_dir"' 'MIG wrapper cleans only its fixed file and owned directory non-recursively'
+Assert-NotMatch $migWrapperText 'rm -rf[^\r\n]*mig_tmp|test -e "\$mig_tmp_candidate"' 'MIG wrapper never recursively removes or prechecks an unowned staging candidate'
 Assert-Match $migWrapperText '-sheader[ `t]+\)[^\r\n]*append_migflag "\$1"; append_migflag "\$2"' 'MIG wrapper forwards server-header output to backend'
 Assert-Match $migWrapperText '-handler[ `t]+\)[^\r\n]*append_migflag "\$1"; append_migflag "\$2"' 'MIG wrapper forwards handler output to backend'
 Assert-NotMatch $migWrapperText 'NEXT_ROOT' 'MIG wrapper never derives compiler location from a sysroot'
@@ -654,6 +657,83 @@ exit $status
     Assert-Equal ($LASTEXITCODE -ne 0) $true 'MIG wrapper propagates backend failure'
     Assert-Equal (Test-Path -LiteralPath $failedBackendOutput) $false 'backend failure does not report a generated output'
     Assert-Equal (@(Get-ChildItem -LiteralPath $runDir -Force | Where-Object { $_.Name -like '*.migcpp.*' }).Count) 0 'backend failure removes staged preprocessing output'
+
+    $collisionResults = Join-Path $captureDir 'collision.results'
+    $collisionFileOutput = Join-Path $outputDir 'collision file header.h'
+    $collisionDirOutput = Join-Path $outputDir 'collision dir header.h'
+    $collisionDanglingOutput = Join-Path $outputDir 'collision dangling header.h'
+    $collisionLiveOutput = Join-Path $outputDir 'collision live header.h'
+    $backendCountBeforeCollision = @((Get-Content -LiteralPath (Join-Path $captureDir 'backend.args')) | Where-Object { $_ -eq '--invocation--' }).Count
+    $collisionContractBody = @'
+status=0
+: > "$MIG_COLLISION_RESULTS"
+candidate="./.first interface.migcpp.$$.$MIG_SEQUENCE.d"
+check_failure()
+{
+    if (set -- -header "$1" "$MIG_DEFS"; . "$MIG_WRAPPER") 2>/dev/null
+    then
+        printf "%s FAIL\n" "$2" >> "$MIG_COLLISION_RESULTS"
+        status=1
+    else
+        printf "%s PASS\n" "$2" >> "$MIG_COLLISION_RESULTS"
+    fi
+}
+
+printf "%s\n" original > "$candidate"
+check_failure "$MIG_FILE_OUTPUT" file
+test "$(/bin/cat "$candidate")" = original || status=1
+rm -f "$candidate"
+
+mkdir "$candidate"
+printf "%s\n" sentinel > "$candidate/sentinel"
+check_failure "$MIG_DIR_OUTPUT" dir
+test "$(/bin/cat "$candidate/sentinel")" = sentinel || status=1
+rm -f "$candidate/sentinel"
+rmdir "$candidate"
+
+mkdir dangling-target
+/c/Windows/System32/cmd.exe //d //c mklink //J "$candidate" dangling-target >/dev/null || exit 1
+rmdir dangling-target
+check_failure "$MIG_DANGLING_OUTPUT" dangling
+if mkdir "$candidate" 2>/dev/null; then status=1; rmdir "$candidate"; fi
+/c/Windows/System32/cmd.exe //d //c rmdir "$candidate" >/dev/null || status=1
+
+mkdir live-target
+printf "%s\n" live > live-target/sentinel
+/c/Windows/System32/cmd.exe //d //c mklink //J "$candidate" live-target >/dev/null || exit 1
+check_failure "$MIG_LIVE_OUTPUT" live
+test "$(/bin/cat live-target/sentinel)" = live || status=1
+if mkdir "$candidate" 2>/dev/null; then status=1; rmdir "$candidate"; fi
+/c/Windows/System32/cmd.exe //d //c rmdir "$candidate" >/dev/null || status=1
+rm -f live-target/sentinel
+rmdir live-target
+exit $status
+'@
+    $collisionScript = Join-Path $wrapperTestDir 'collision contract.sh'
+    Set-Content -LiteralPath $collisionScript -Encoding ASCII -NoNewline -Value ($collisionContractBody -replace "`r`n", "`n")
+    $collisionInvoke = 'cd {0} && MIGCC={1} MIGCOM_DIR={2} MIG_TEST_CAPTURE={3} MIG_WRAPPER={4} MIG_DEFS={5} MIG_SEQUENCE=x MIG_COLLISION_RESULTS={6} MIG_FILE_OUTPUT={7} MIG_DIR_OUTPUT={8} MIG_DANGLING_OUTPUT={9} MIG_LIVE_OUTPUT={10} sh {11}' -f @(
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $runDir)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeCompiler)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeLibexec)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $captureDir)),
+        (ConvertTo-RhapShellLiteral $wrapperShPath),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $defsOne)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $collisionResults)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $collisionFileOutput)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $collisionDirOutput)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $collisionDanglingOutput)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $collisionLiveOutput)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $collisionScript))
+    )
+    & $sh -c $collisionInvoke
+    Assert-Equal $LASTEXITCODE 0 'MIG wrapper preserves every unowned staging collision'
+    $collisionResultLines = Get-Content -LiteralPath $collisionResults
+    Assert-Equal $collisionResultLines.Count 4 'MIG wrapper exercises file, directory, dangling, and live link collisions'
+    Assert-Equal (@($collisionResultLines | Where-Object { $_ -notmatch ' PASS$' }).Count) 0 'MIG wrapper rejects every staging collision'
+    Assert-Equal (@((Get-Content -LiteralPath (Join-Path $captureDir 'backend.args')) | Where-Object { $_ -eq '--invocation--' }).Count) $backendCountBeforeCollision 'MIG staging collisions never invoke backend'
+    foreach ($collisionOutput in @($collisionFileOutput, $collisionDirOutput, $collisionDanglingOutput, $collisionLiveOutput)) {
+        Assert-Equal (Test-Path -LiteralPath $collisionOutput) $false "MIG staging collision leaves output absent: $collisionOutput"
+    }
 
     $defaultOutput = Join-Path $outputDir 'default cpp header.h'
     $defaultInvoke = 'unset MIGCC; cd {0} && MIGCPP={1} MIGCOM_DIR={2} MIG_TEST_CAPTURE={3} sh {4} -header {5} {6}' -f @(

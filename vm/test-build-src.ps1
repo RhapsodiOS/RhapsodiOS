@@ -48,6 +48,8 @@ $typedErrorText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\Commands\boo
 $typedErrorHeaderText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\Commands\bootstrap_cmds\migcom_typd.tproj\error.h')
 $kernelMakeTemplateText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\kernel-7\conf\Makefile.template')
 $pkginfoSourceText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\rbuild-1\pkginfo.c')
+$decommentSourcePath = Join-Path $PSScriptRoot '..\src\Commands\bootstrap_cmds\decomment.tproj\decomment.c'
+$decommentSourceText = Get-Content -Raw $decommentSourcePath
 Assert-Match $migWrapperText 'MIGCC' 'MIG wrapper supports configured compiler override'
 Assert-Match $migWrapperText 'MIGARCH' 'MIG wrapper supports configured architecture override'
 Assert-Match $migWrapperText 'append_cppflag "-D\$mig_arch"' 'configured GCC receives one preserved architecture definition'
@@ -112,6 +114,59 @@ Assert-Match $pkginfoSourceText 'tc->archive_create' 'configured APK creation se
 Assert-Match $pkginfoSourceText 'tc->archive_create_flags' 'configured APK creation expands generic creator flags'
 Assert-Match $pkginfoSourceText 'archive_cwd != 0 && chdir\(archive_cwd\) != 0' 'configured archive child enters the package root'
 Assert-NotMatch $pkginfoSourceText 'tc->tar_create_flags' 'APK creation has no tar-specific configured flags'
+foreach ($header in @('stdio.h', 'ctype.h', 'fcntl.h', 'stdlib.h', 'unistd.h')) {
+    Assert-Match $decommentSourceText ("#include <{0}>" -f [regex]::Escape($header)) "decomment declares precise $header dependency"
+}
+Assert-NotMatch $decommentSourceText '#import|bsd/libc\.h' 'decomment has no obsolete umbrella or import directive'
+Assert-Match $decommentSourceText 'if\(fd < 0\)' 'decomment accepts descriptor zero from open'
+Assert-NotMatch $decommentSourceText 'if\(fd <= 0\)' 'decomment does not reject descriptor zero'
+Assert-Equal ([regex]::Matches($decommentSourceText, 'isspace\(\(unsigned char\)bufchar\)').Count) 2 'decomment passes unsigned bytes to ctype'
+
+$decommentRuntimeDir = Join-Path $env:TEMP ("rhap-decomment-runtime-{0}" -f [guid]::NewGuid().ToString('n'))
+New-Item -ItemType Directory -Path $decommentRuntimeDir | Out-Null
+try {
+    $clangCommand = Get-Command clang.exe -ErrorAction SilentlyContinue
+    $clang = if ($null -eq $clangCommand) { $null } else { $clangCommand.Source }
+    if ([string]::IsNullOrWhiteSpace($clang)) {
+        $clang = Join-Path $env:ProgramFiles 'LLVM\bin\clang.exe'
+    }
+    Assert-Equal (Test-Path -LiteralPath $clang -PathType Leaf) $true 'LLVM compiler is available for decomment runtime contract'
+    $unistd = Join-Path $decommentRuntimeDir 'unistd.h'
+    $runnerSource = Join-Path $decommentRuntimeDir 'fd0-runner.c'
+    $decommentExe = Join-Path $decommentRuntimeDir 'decomment.exe'
+    $runnerExe = Join-Path $decommentRuntimeDir 'fd0-runner.exe'
+    $input = Join-Path $decommentRuntimeDir 'input.h'
+    Set-Content -LiteralPath $unistd -Encoding ASCII -Value @(
+        '#include <io.h>',
+        '#define read _read'
+    )
+    Set-Content -LiteralPath $runnerSource -Encoding ASCII -Value @(
+        '#include <io.h>',
+        '#include <process.h>',
+        'int main(int argc, char **argv) {',
+        '    if (argc != 3 || _close(0) != 0) return 125;',
+        '    return _spawnl(_P_WAIT, argv[1], argv[1], argv[2], "r", (char *)0);',
+        '}'
+    )
+    Set-Content -LiteralPath $input -Encoding ASCII -Value @(
+        'alpha /* block */ beta // line',
+        ' gamma'
+    )
+    & $clang -std=c89 -Wall -Wextra -Werror -Wno-deprecated-declarations `
+        -I $decommentRuntimeDir -Dopen=_open -o $decommentExe $decommentSourcePath
+    Assert-Equal $LASTEXITCODE 0 'LLVM compiles decomment with precise headers'
+    & $clang -std=c89 -Wall -Wextra -Werror -Wno-deprecated-declarations `
+        -o $runnerExe $runnerSource
+    Assert-Equal $LASTEXITCODE 0 'LLVM compiles descriptor-zero decomment runner'
+    $normalOutput = (& $decommentExe $input r) -join "`n"
+    Assert-Equal $LASTEXITCODE 0 'decomment runtime fixture succeeds normally'
+    Assert-Equal $normalOutput 'alphabetagamma' 'decomment strips block, line, and whitespace comments'
+    $fdZeroOutput = (& $runnerExe $decommentExe $input) -join "`n"
+    Assert-Equal $LASTEXITCODE 0 'decomment accepts its input file as descriptor zero'
+    Assert-Equal $fdZeroOutput 'alphabetagamma' 'descriptor-zero decomment preserves scanner behavior'
+} finally {
+    Remove-Item -LiteralPath $decommentRuntimeDir -Recurse -Force -ErrorAction SilentlyContinue
+}
 Assert-Match $buildScriptText '(?s)param\(\s*\[switch\]\$All,\s*\[switch\]\$Rbuild,\s*\[switch\]\$Bootstrap,\s*\[switch\]\$KernelDrivers,\s*\[switch\]\$World,\s*\[switch\]\$Fresh\s*\)' 'canonical build-src parameters'
 Assert-Match $remoteScriptText ([regex]::Escape('StandardInput.WriteAsync($payload)')) 'stream stdin writer is asynchronous'
 Assert-Match $remoteScriptText 'Task\]::WaitAny' 'stream writer and readers share a blocking task loop'

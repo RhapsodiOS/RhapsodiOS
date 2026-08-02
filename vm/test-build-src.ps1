@@ -87,6 +87,9 @@ Assert-Match $typedErrorText 'strerror\(error_num\)' 'typed MIG uses the host-su
 Assert-NotMatch ($classicErrorText + $typedErrorText + $typedErrorHeaderText) '(?m)^\s*extern[^\r\n]*\b(sys_nerr|sys_errlist)\b|\b(sys_nerr|sys_errlist)\s*\[' 'private MIG sources do not depend on obsolete libc error tables'
 Assert-Match $kernelMakeTemplateText '(?m)^DECOMMENT \?= /usr/local/bin/decomment$' 'kernel preserves an overrideable historical decomment default'
 Assert-NotMatch $kernelMakeTemplateText '(?m)^\s*@-for i in (?:\$\{EXPORT\}|`echo \$\{MACHINE_EXPORT\}`)' 'kernel header export recipes do not ignore loop failure'
+Assert-Equal ([regex]::Matches($kernelMakeTemplateText, 'unifdef_status=\$\$\?;').Count) 2 'both kernel export loops capture unifdef status immediately'
+Assert-Equal ([regex]::Matches($kernelMakeTemplateText, '\[ \$\$unifdef_status -eq 1 \]').Count) 2 'both kernel export loops reserve decomment fallback for unifdef status one'
+Assert-Equal ([regex]::Matches($kernelMakeTemplateText, '\[ \$\$unifdef_status -ne 0 \]').Count) 2 'both kernel export loops reject unexpected unifdef failure'
 Assert-Equal ([regex]::Matches($kernelMakeTemplateText, '\$\(DECOMMENT\)[^\r\n]*(?:\r?\n[^\r\n]*)?\.strip \|\| exit 1;').Count) 2 'both kernel export loops hard-fail a failed decomment fallback'
 Assert-Equal ([regex]::Matches($kernelMakeTemplateText, '\) \|\| exit 1;\s*\\\r?\n\s*done').Count) 2 'both kernel export loops propagate header-directory subshell failure'
 Assert-Match $buildScriptText '(?s)param\(\s*\[switch\]\$All,\s*\[switch\]\$Rbuild,\s*\[switch\]\$Bootstrap,\s*\[switch\]\$KernelDrivers,\s*\[switch\]\$World,\s*\[switch\]\$Fresh\s*\)' 'canonical build-src parameters'
@@ -445,21 +448,29 @@ New-Item -ItemType Directory -Path $decommentContractDir | Out-Null
 try {
     $fallbackScript = Join-Path $decommentContractDir 'fallback.sh'
     $fakeUnifdef = Join-Path $decommentContractDir 'unifdef'
+    $failingUnifdef = Join-Path $decommentContractDir 'unifdef-fail'
     $fakeDecomment = Join-Path $decommentContractDir 'decomment'
     $failingDecomment = Join-Path $decommentContractDir 'decomment-fail'
     $inputHeader = Join-Path $decommentContractDir 'input.h'
+    $installMarker = Join-Path $decommentContractDir 'installed'
     $fallbackBody = @'
 #!/bin/sh
 UNIFDEF=$1
 DECOMMENT=$2
 INPUT=$3
 OUT=$4
+INSTALL=$5
 (
     RAW="$OUT.raw"
-    "$UNIFDEF" -UKERNEL_PRIVATE -UDRIVER_PRIVATE "$INPUT" > "$RAW" || {
+    "$UNIFDEF" -UKERNEL_PRIVATE -UDRIVER_PRIVATE "$INPUT" > "$RAW"
+    unifdef_status=$?
+    if test "$unifdef_status" -eq 1; then
         "$DECOMMENT" "$RAW" r > "$OUT" || exit 1
-    }
+    elif test "$unifdef_status" -ne 0; then
+        exit 1
+    fi
     test -s "$OUT" || exit 1
+    : > "$INSTALL"
 ) || exit 1
 '@
     $unifdefBody = @'
@@ -469,9 +480,16 @@ for arg do input=$arg; done
 /bin/cat "$input"
 exit 1
 '@
+    $failingUnifdefBody = @'
+#!/bin/sh
+input=
+for arg do input=$arg; done
+/bin/cat "$input"
+exit 2
+'@
     $decommentBody = @'
 #!/bin/sh
-/bin/cat "$1"
+if test -s "$1"; then /bin/cat "$1"; else printf '%s\n' 'int synthesized_header;'; fi
 '@
     $failingBody = @'
 #!/bin/sh
@@ -479,6 +497,7 @@ exit 7
 '@
     Set-Content -LiteralPath $fallbackScript -Encoding ASCII -NoNewline -Value ($fallbackBody -replace "`r`n", "`n")
     Set-Content -LiteralPath $fakeUnifdef -Encoding ASCII -NoNewline -Value ($unifdefBody -replace "`r`n", "`n")
+    Set-Content -LiteralPath $failingUnifdef -Encoding ASCII -NoNewline -Value ($failingUnifdefBody -replace "`r`n", "`n")
     Set-Content -LiteralPath $fakeDecomment -Encoding ASCII -NoNewline -Value ($decommentBody -replace "`r`n", "`n")
     Set-Content -LiteralPath $failingDecomment -Encoding ASCII -NoNewline -Value ($failingBody -replace "`r`n", "`n")
     Set-Content -LiteralPath $inputHeader -Encoding ASCII -Value 'int exported_header;'
@@ -489,24 +508,49 @@ exit 7
     }
     $contractSh = ConvertTo-DecommentTestShPath $fallbackScript
     $unifdefSh = ConvertTo-DecommentTestShPath $fakeUnifdef
+    $failingUnifdefSh = ConvertTo-DecommentTestShPath $failingUnifdef
     $decommentSh = ConvertTo-DecommentTestShPath $fakeDecomment
     $failingSh = ConvertTo-DecommentTestShPath $failingDecomment
     $inputSh = ConvertTo-DecommentTestShPath $inputHeader
     $outputSh = ConvertTo-DecommentTestShPath (Join-Path $decommentContractDir 'output.h')
-    & $boundarySh $contractSh $unifdefSh $decommentSh $inputSh $outputSh
+    $installMarkerSh = ConvertTo-DecommentTestShPath $installMarker
+    & $boundarySh $contractSh $unifdefSh $decommentSh $inputSh $outputSh $installMarkerSh
     Assert-Equal $LASTEXITCODE 0 'kernel export fallback accepts successful decomment output'
+    Assert-Equal (Test-Path -LiteralPath $installMarker) $true 'kernel export fallback installs successful output'
     $savedErrorActionPreference = $ErrorActionPreference
     try {
         $ErrorActionPreference = 'SilentlyContinue'
-        & $boundarySh $contractSh $unifdefSh '/no/such/private/decomment' $inputSh $outputSh 2>$null
+        Remove-Item -LiteralPath $installMarker -Force -ErrorAction SilentlyContinue
+        & $boundarySh $contractSh $unifdefSh '/no/such/private/decomment' $inputSh $outputSh $installMarkerSh 2>$null
         $missingDecommentExit = $LASTEXITCODE
-        & $boundarySh $contractSh $unifdefSh $failingSh $inputSh $outputSh 2>$null
+        & $boundarySh $contractSh $unifdefSh $failingSh $inputSh $outputSh $installMarkerSh 2>$null
         $failingDecommentExit = $LASTEXITCODE
     } finally {
         $ErrorActionPreference = $savedErrorActionPreference
     }
     Assert-Equal ($missingDecommentExit -ne 0) $true 'kernel export fallback rejects missing decomment tool'
     Assert-Equal ($failingDecommentExit -ne 0) $true 'kernel export fallback propagates decomment failure'
+    Assert-Equal (Test-Path -LiteralPath $installMarker) $false 'failed decomment fallback cannot install a header'
+    $savedErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'SilentlyContinue'
+        & $boundarySh $contractSh $failingUnifdefSh $decommentSh $inputSh $outputSh $installMarkerSh 2>$null
+        $unexpectedUnifdefExit = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $savedErrorActionPreference
+    }
+    Assert-Equal ($unexpectedUnifdefExit -ne 0) $true 'kernel export rejects unifdef status two even with partial output'
+    Assert-Equal (Test-Path -LiteralPath $installMarker) $false 'unifdef status two cannot install a partial header'
+    $savedErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'SilentlyContinue'
+        & $boundarySh $contractSh '/no/such/private/unifdef' $decommentSh $inputSh $outputSh $installMarkerSh 2>$null
+        $missingUnifdefExit = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $savedErrorActionPreference
+    }
+    Assert-Equal ($missingUnifdefExit -ne 0) $true 'kernel export rejects missing unifdef status 127'
+    Assert-Equal (Test-Path -LiteralPath $installMarker) $false 'missing unifdef cannot install a synthesized header'
 } finally {
     Remove-Item -LiteralPath $decommentContractDir -Recurse -Force -ErrorAction SilentlyContinue
 }

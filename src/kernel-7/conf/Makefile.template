@@ -864,8 +864,8 @@ install_mi_std_hdrs: DSTROOT $(MIG_HFILES_EXP) $(MACH_DEBUG_HFILE)
 	@for i in ${EXPORT}; 						\
 	do								\
 	    EXPDIR=`pwd`/exports;					\
-	    [ -d $$EXPDIR ] || $(MKDIRS) $$EXPDIR;				\
-	    rm -f $$EXPDIR/*;						\
+	    [ -d $$EXPDIR ] || $(MKDIRS) $$EXPDIR || exit 1;		\
+	    rm -f $$EXPDIR/* || exit 1;					\
 	    (cd $(SOURCE_DIR)/$$i;					\
 		hdrs=`echo *.h`;					\
 		if [ "$$hdrs" = '*.h' ]; then				\
@@ -874,13 +874,13 @@ install_mi_std_hdrs: DSTROOT $(MIG_HFILES_EXP) $(MACH_DEBUG_HFILE)
 		    for j in $$hdrs; 					\
 		    do							\
 			DSTDIR=$(DSTROOT)$(INCDIR)/$$i;			\
-			[ -d $$DSTDIR ] || $(MKDIRS) $$DSTDIR;		\
+			[ -d $$DSTDIR ] || $(MKDIRS) $$DSTDIR || exit 1;	\
 			echo garbage > $$EXPDIR/$$j.strip;		\
 			$(UNIFDEF) -UKERNEL_PRIVATE -UDRIVER_PRIVATE	\
 				$$j > $$EXPDIR/$$j;			\
 			unifdef_status=$$?;				\
 			if [ $$unifdef_status -eq 1 ]; then		\
-				$(DECOMMENT) $$EXPDIR/$$j  r > 		\
+				"$(DECOMMENT)" $$EXPDIR/$$j  r > 		\
 				$$EXPDIR/$$j.strip || exit 1; 		\
 			elif [ $$unifdef_status -ne 0 ]; then		\
 				exit 1;					\
@@ -890,10 +890,15 @@ install_mi_std_hdrs: DSTROOT $(MIG_HFILES_EXP) $(MACH_DEBUG_HFILE)
 			    cd $$EXPDIR;				\
 			    install $(INSTALL_FLAGS) $$j $$DSTDIR;	\
 			);						\
+			install_status=$$?;				\
+			if [ $$install_status -ne 0 ]; then		\
+			    rm -f $$EXPDIR/$$j.strip;			\
+			    exit 1;					\
+			fi;						\
 			else 						\
 			    echo Header file $$i/$$j not exported;	\
 			fi;						\
-			rm -f $$EXPDIR/$$j.strip;			\
+			rm -f $$EXPDIR/$$j.strip || exit 1;		\
 		    done;						\
 		fi;							\
 	    ) || exit 1;						\
@@ -965,8 +970,8 @@ install_md_std_hdrs: DSTROOT
 	@for i in `echo ${MACHINE_EXPORT}`; 				\
 	do								\
 	    EXPDIR=`pwd`/exports;					\
-	    [ -d $$EXPDIR ] || $(MKDIRS) $$EXPDIR;				\
-	    rm -f $$EXPDIR/*;						\
+	    [ -d $$EXPDIR ] || $(MKDIRS) $$EXPDIR || exit 1;		\
+	    rm -f $$EXPDIR/* || exit 1;					\
 	    (cd $(SOURCE_DIR)/$$i;					\
 		hdrs=`echo *.h`;					\
 		if [ "$$hdrs" = '*.h' ]; then				\
@@ -975,12 +980,12 @@ install_md_std_hdrs: DSTROOT
 		    for j in $$hdrs; 					\
 		    do							\
 			DSTDIR=$(DSTROOT)$(INCDIR)/$$i;			\
-			[ -d $$DSTDIR ] || $(MKDIRS) $$DSTDIR;		\
+			[ -d $$DSTDIR ] || $(MKDIRS) $$DSTDIR || exit 1;	\
 			echo garbage > $$EXPDIR/$$j.strip;		\
 			$(UNIFDEF) -UKERNEL_PRIVATE -UDRIVER_PRIVATE $$j > $$EXPDIR/$$j; \
 			unifdef_status=$$?;				\
 			if [ $$unifdef_status -eq 1 ]; then		\
-			$(DECOMMENT) $$EXPDIR/$$j  r > $$EXPDIR/$$j.strip || exit 1; \
+			"$(DECOMMENT)" $$EXPDIR/$$j  r > $$EXPDIR/$$j.strip || exit 1; \
 			elif [ $$unifdef_status -ne 0 ]; then		\
 				exit 1;					\
 			fi;						\
@@ -989,10 +994,15 @@ install_md_std_hdrs: DSTROOT
 			    cd $$EXPDIR;				\
 			    install $(INSTALL_FLAGS) $$j $$DSTDIR;	\
 			);						\
+			install_status=$$?;				\
+			if [ $$install_status -ne 0 ]; then		\
+			    rm -f $$EXPDIR/$$j.strip;			\
+			    exit 1;					\
+			fi;						\
 			else 						\
 			    echo Header file $$i/$$j not exported;	\
 			fi;						\
-			rm -f $$EXPDIR/$$j.strip;			\
+			rm -f $$EXPDIR/$$j.strip || exit 1;		\
 		    done;						\
 		fi;							\
 	    ) || exit 1;						\

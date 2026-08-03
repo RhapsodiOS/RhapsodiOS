@@ -64,10 +64,6 @@ function Invoke-FixExecBits {
     }
 }
 
-function ConvertTo-ProcessArgument([string]$Value) {
-    return '"' + $Value.Replace('"', '\"') + '"'
-}
-
 function Invoke-CpioUpload {
     param(
         [hashtable]$Cfg,
@@ -85,7 +81,8 @@ function Invoke-CpioUpload {
 
     $remote = "$($Cfg.User)@$($Cfg.Host)"
     $token = [guid]::NewGuid().ToString('n')
-    $remoteCmd = New-RhapSyncRemoteCommand -RemoteRoot $Cfg.RemoteRoot -RemoteParent $RemoteParent -LeafName $LeafName -Token $token
+    $transactionBody = New-RhapSyncRemoteCommand -RemoteRoot $Cfg.RemoteRoot -RemoteParent $RemoteParent -LeafName $LeafName -Token $token
+    $remoteCmd = New-RhapArchiveSshCommand -ScriptBody $transactionBody
     $producer = {
         param($ArchivePath, $ArchiveParent, $ArchiveLeaf)
         Write-Host "sync-src: creating cpio archive for $Label"
@@ -95,46 +92,12 @@ function Invoke-CpioUpload {
     $consumer = {
         param($ArchivePath)
         $sshArgs = @('-T') + $script:RhapLegacySshOptions + @($remote, $remoteCmd)
-        $startInfo = New-Object System.Diagnostics.ProcessStartInfo
-        $startInfo.FileName = $Ssh
-        $startInfo.Arguments = (($sshArgs | ForEach-Object { ConvertTo-ProcessArgument $_ }) -join ' ')
-        $startInfo.UseShellExecute = $false
-        $startInfo.CreateNoWindow = $true
-        $startInfo.RedirectStandardInput = $true
-        $startInfo.RedirectStandardOutput = $true
-        $startInfo.RedirectStandardError = $true
-        $process = New-Object System.Diagnostics.Process
-        $process.StartInfo = $startInfo
-        $result = [pscustomobject]@{ ExitCode = -1; Started = $false }
-        try {
-            Write-Host "sync-src: cpio over SSH $Label -> ${remote}:$RemoteParent/"
-            Invoke-RhapSshAskPass -Cfg $Cfg -Action {
-                if (-not $process.Start()) { throw "could not start SSH: $Ssh" }
-                $result.Started = $true
-                $stdoutTask = $process.StandardOutput.ReadToEndAsync()
-                $stderrTask = $process.StandardError.ReadToEndAsync()
-                $input = [System.IO.File]::OpenRead($ArchivePath)
-                try {
-                    $input.CopyTo($process.StandardInput.BaseStream)
-                } finally {
-                    $input.Dispose()
-                    $process.StandardInput.Close()
-                }
-                $process.WaitForExit()
-                $stdout = [string]$stdoutTask.Result
-                $stderr = [string]$stderrTask.Result
-                if (-not [string]::IsNullOrWhiteSpace($stdout)) { Write-Host $stdout.TrimEnd("`r", "`n") }
-                if (-not [string]::IsNullOrWhiteSpace($stderr)) { Write-Host $stderr.TrimEnd("`r", "`n") }
-                $result.ExitCode = [int]$process.ExitCode
-            }
-            return [int]$result.ExitCode
-        } finally {
-            if ($result.Started) {
-                try { if (-not $process.HasExited) { $process.Kill() } } catch { }
-                try { $process.WaitForExit() } catch { }
-            }
-            $process.Dispose()
+        $result = [pscustomobject]@{ ExitCode = -1 }
+        Write-Host "sync-src: cpio over SSH $Label -> ${remote}:$RemoteParent/"
+        Invoke-RhapSshAskPass -Cfg $Cfg -Action {
+            $result.ExitCode = Invoke-RhapArchiveConsumerProcess -Executable $Ssh -Arguments $sshArgs -ArchivePath $ArchivePath
         }
+        return [int]$result.ExitCode
     }
     try {
         Invoke-RhapCpioTransfer -LocalParent $LocalParent -LeafName $LeafName -Producer $producer -Consumer $consumer

@@ -44,6 +44,93 @@ function New-RhapFixExecBitsCommand {
     return "find $tree -type f \( -name configure -o -name Configure -o -name config.guess -o -name config.sub -o -name config.rpath -o -name install-sh -o -name mkinstalldirs -o -name missing -o -name ltmain.sh -o -name compile -o -name depcomp -o -name autogen.sh -o -name build_gcc -o -name move-if-change -o -name ylwrap -o -name genmultilib -o -name '*.sh' -o -name '*.pl' \) -exec chmod a+x {} \;"
 }
 
+function ConvertTo-RhapShellDoubleQuotedAssignmentValue {
+    param([Parameter(Mandatory = $true)][string]$Value)
+
+    if ($Value.Contains("'")) { throw 'shell value contains an unsupported quote' }
+    $escaped = $Value.Replace('\', '\\').Replace('"', '\"').Replace('$', '\$').Replace('`', '\`')
+    return '"' + $escaped + '"'
+}
+
+function New-RhapArchiveSshCommand {
+    param([Parameter(Mandatory = $true)][string]$ScriptBody)
+
+    if ($ScriptBody.Contains("'")) { throw 'archive transaction body contains an unsupported quote' }
+    return "/bin/sh -c '$ScriptBody'"
+}
+
+function ConvertTo-RhapProcessArgument {
+    param([Parameter(Mandatory = $true)][string]$Value)
+    return '"' + $Value.Replace('"', '\"') + '"'
+}
+
+function Invoke-RhapArchiveConsumerProcess {
+    param(
+        [Parameter(Mandatory = $true)][string]$Executable,
+        [Parameter(Mandatory = $true)][string[]]$Arguments,
+        [Parameter(Mandatory = $true)][string]$ArchivePath,
+        [scriptblock]$Observer
+    )
+
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = $Executable
+    $startInfo.Arguments = (($Arguments | ForEach-Object { ConvertTo-RhapProcessArgument $_ }) -join ' ')
+    $startInfo.UseShellExecute = $false
+    $startInfo.CreateNoWindow = $true
+    $startInfo.RedirectStandardInput = $true
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $startInfo
+    $started = $false
+    $reaped = $false
+    $stdinClosed = $false
+    $transportError = $null
+    try {
+        if (-not $process.Start()) { throw "could not start archive consumer: $Executable" }
+        $started = $true
+        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+        $stderrTask = $process.StandardError.ReadToEndAsync()
+        $input = [System.IO.File]::OpenRead($ArchivePath)
+        try {
+            try { $input.CopyTo($process.StandardInput.BaseStream) } catch { $transportError = $_.Exception }
+        } finally {
+            $input.Dispose()
+            try { $process.StandardInput.Close() } catch { if (-not $transportError) { $transportError = $_.Exception } }
+            $stdinClosed = $true
+        }
+
+        $waitError = $null
+        try {
+            $process.WaitForExit()
+            $reaped = $true
+        } catch {
+            $waitError = $_.Exception
+        }
+        $stdout = [string]$stdoutTask.Result
+        $stderr = [string]$stderrTask.Result
+        if (-not [string]::IsNullOrWhiteSpace($stdout)) {
+            if ($Observer) { & $Observer 'stdout' $stdout }
+            Write-Host $stdout.TrimEnd("`r", "`n")
+        }
+        if (-not [string]::IsNullOrWhiteSpace($stderr)) {
+            if ($Observer) { & $Observer 'stderr' $stderr }
+            Write-Host $stderr.TrimEnd("`r", "`n")
+        }
+        if (-not $waitError -and $process.ExitCode -ne 0) { return [int]$process.ExitCode }
+        if ($transportError) { throw $transportError }
+        if ($waitError) { throw $waitError }
+        return 0
+    } finally {
+        if ($started -and -not $stdinClosed) { try { $process.StandardInput.Close() } catch { } }
+        if ($started -and -not $reaped) {
+            try { if (-not $process.HasExited) { $process.Kill() } } catch { }
+            try { $process.WaitForExit(); $reaped = $true } catch { }
+        }
+        $process.Dispose()
+    }
+}
+
 function New-RhapSyncRemoteCommand {
     param(
         [Parameter(Mandatory = $true)][string]$RemoteRoot,
@@ -69,11 +156,11 @@ function New-RhapSyncRemoteCommand {
     }
     if ($Token -notmatch '^[0-9a-f]{32}$') { throw 'Token must be 32 lowercase hexadecimal characters' }
 
-    $remoteRootLiteral = ConvertTo-RhapShellLiteral $root
-    $parent = ConvertTo-RhapShellLiteral $normalizedParent
-    $leaf = ConvertTo-RhapShellLiteral $LeafName
-    $cpioCommand = ConvertTo-RhapShellLiteral $Cpio
-    $suffix = ConvertTo-RhapShellLiteral $Token
+    $remoteRootLiteral = ConvertTo-RhapShellDoubleQuotedAssignmentValue $root
+    $parent = ConvertTo-RhapShellDoubleQuotedAssignmentValue $normalizedParent
+    $leaf = ConvertTo-RhapShellDoubleQuotedAssignmentValue $LeafName
+    $cpioCommand = ConvertTo-RhapShellDoubleQuotedAssignmentValue $Cpio
+    $suffix = ConvertTo-RhapShellDoubleQuotedAssignmentValue $Token
     return @"
 set -e
 root=$remoteRootLiteral
@@ -155,7 +242,7 @@ test ! -L "`$lock_root" || exit 74
 LOCK_ROOT_PHYS=`$(cd -P "`$lock_root" 2>/dev/null && pwd -P) || exit 74
 test "`$LOCK_ROOT_PHYS" = "`$PARENT_ACTUAL_PHYS/.rhap-sync-lock" || exit 74
 if test "`$namespace_created" -eq 1; then
-    if ! printf '%s\n' "`$lock_version" > "`$lock_version_file"; then
+    if ! printf "%s\n" "`$lock_version" > "`$lock_version_file"; then
         rm -f "`$lock_version_file" 2>/dev/null || :
         rmdir "`$lock_root" 2>/dev/null || :
         exit 76
@@ -176,7 +263,7 @@ if ! mkdir "`$lock" 2>/dev/null; then
     exit 75
 fi
 lock_owned=1
-if ! printf '%s\n' "`$suffix" > "`$lock/owner"; then
+if ! printf "%s\n" "`$suffix" > "`$lock/owner"; then
     rm -f "`$lock/owner" 2>/dev/null || :
     rmdir "`$lock" 2>/dev/null || :
     lock_owned=0

@@ -117,7 +117,9 @@ Assert-Match $syncScriptText ([regex]::Escape('--format cpio -cf $ArchivePath -C
 Assert-NotMatch $syncScriptText '--format ustar' 'sync archive no longer uses ustar'
 Assert-NotMatch $syncScriptText '\|\s*`?"?\$Ssh' 'producer and SSH are not joined by a masking pipeline'
 Assert-Match $syncScriptText 'New-RhapSyncRemoteCommand' 'sync uses the stage-and-replace command builder'
+Assert-Match $syncScriptText 'New-RhapArchiveSshCommand' 'production sync explicitly wraps transaction with sh'
 Assert-Match $syncScriptText 'Invoke-RhapCpioTransfer' 'production sync uses the tested producer-consumer transaction'
+Assert-Match $syncScriptText 'Invoke-RhapArchiveConsumerProcess' 'production sync uses diagnostic-preserving consumer process'
 
 . (Join-Path $PSScriptRoot 'build-src-lib.ps1')
 . (Join-Path $PSScriptRoot 'sync-src-lib.ps1')
@@ -125,6 +127,8 @@ Assert-Equal ($null -ne (Get-Command Start-TestRemoteCommand -ErrorAction Silent
 Assert-Equal ($null -ne (Get-Command Invoke-RhapCpioTransfer -ErrorAction SilentlyContinue)) $true 'sync exposes a testable producer-consumer transaction'
 Assert-Equal ($null -ne (Get-Command ConvertTo-RhapSyncRelativePath -ErrorAction SilentlyContinue)) $true 'sync exposes relative path validation'
 Assert-Equal ($null -ne (Get-Command New-RhapFixExecBitsCommand -ErrorAction SilentlyContinue)) $true 'sync exposes quoted chmod command construction'
+Assert-Equal ($null -ne (Get-Command New-RhapArchiveSshCommand -ErrorAction SilentlyContinue)) $true 'sync exposes explicit sh command wrapping'
+Assert-Equal ($null -ne (Get-Command Invoke-RhapArchiveConsumerProcess -ErrorAction SilentlyContinue)) $true 'sync exposes testable archive consumer process'
 
 $safeToken = '0123456789abcdef0123456789abcdef'
 $lockNamespaceVersion = 'rhapsodios-sync-lock-v1'
@@ -136,6 +140,8 @@ $quotedFixExec = New-RhapFixExecBitsCommand -RemoteTree '/build/src/project;touc
 Assert-Match $quotedFixExec ([regex]::Escape("find '/build/src/project;touch_pwn' -type f")) 'chmod pass shell-quotes metacharacter path'
 Assert-NotMatch $quotedFixExec 'find /build/src/project;touch_pwn' 'chmod pass never interpolates raw metacharacter path'
 $physicalCommand = New-RhapSyncRemoteCommand -RemoteRoot '/build' -RemoteParent '/build/src/project' -LeafName 'leaf' -Token $safeToken
+$spacedCommand = New-RhapSyncRemoteCommand -RemoteRoot '/build' -RemoteParent '/build/src' -LeafName 'DLL Files.fgl' -Token $safeToken
+Assert-NotMatch $spacedCommand "'" 'transaction body is outer-single-quote-safe for spaced leaf'
 Assert-Match $physicalCommand 'ROOT_PHYS=.*pwd -P' 'remote sync resolves physical RemoteRoot'
 Assert-Match $physicalCommand 'PARENT_BASE_PHYS=.*pwd -P' 'remote sync resolves nearest existing RemoteParent ancestor'
 Assert-Match $physicalCommand 'lock_root=.*\.rhap-sync-lock' 'remote sync defines a deterministic lock namespace'
@@ -194,6 +200,57 @@ try {
 
     $gitRoot = Split-Path (Split-Path (Get-Command git.exe).Source)
     $bash = Join-Path $gitRoot 'bin\bash.exe'
+    $wrappedSpacedCommand = New-RhapArchiveSshCommand -ScriptBody $spacedCommand
+    Assert-Match $wrappedSpacedCommand '^/bin/sh -c ''set -e' 'transaction explicitly invokes sh with one quoted body'
+    Assert-Equal $wrappedSpacedCommand.EndsWith("'") $true 'sh-wrapped transaction closes outer quote'
+    Assert-Match $wrappedSpacedCommand ([regex]::Escape('leaf="DLL Files.fgl"')) 'sh-wrapped transaction preserves spaced leaf assignment'
+
+    $argumentCapture = Join-Path $transactionRoot 'argument-capture.sh'
+    $argumentBase = Join-Path $transactionRoot 'ssh-argument'
+    $argumentScript = @'
+#!/bin/sh
+capture=$1
+shift
+printf "%s\n" "$#" > "$capture.count"
+index=0
+for argument do
+    printf "%s" "$argument" > "$capture.$index"
+    index=$((index + 1))
+done
+/bin/cat >/dev/null
+exit 0
+'@
+    [IO.File]::WriteAllText($argumentCapture, $argumentScript.Replace("`r`n", "`n"), (New-Object Text.UTF8Encoding($false)))
+    $argumentExit = Invoke-RhapArchiveConsumerProcess -Executable $bash `
+        -Arguments @((ConvertTo-TestPosixPath $argumentCapture), (ConvertTo-TestPosixPath $argumentBase), 'legacy-option', 'root@guest', $wrappedSpacedCommand) `
+        -ArchivePath $archivePath
+    Assert-Equal $argumentExit 0 'archive consumer argument fixture succeeds'
+    Assert-Equal ([IO.File]::ReadAllText("$argumentBase.count").Trim()) '3' 'SSH receives wrapper as one argument'
+    Assert-Equal ([IO.File]::ReadAllText("$argumentBase.2")) $wrappedSpacedCommand 'multiline function body survives process argument transport exactly'
+
+    $largeArchive = Join-Path $transactionRoot 'large-archive.cpio'
+    $largeStream = [IO.File]::Open($largeArchive, [IO.FileMode]::Create, [IO.FileAccess]::Write, [IO.FileShare]::None)
+    try { $largeStream.SetLength(16MB) } finally { $largeStream.Dispose() }
+    $brokenPipeChild = Join-Path $transactionRoot 'broken-pipe-child.cmd'
+    [IO.File]::WriteAllText($brokenPipeChild, "@echo off`r`necho known child stdout`r`necho known child stderr 1>&2`r`n%SystemRoot%\System32\ping.exe -n 2 127.0.0.1 >nul`r`nexit /b 37`r`n", [Text.Encoding]::ASCII)
+    $diagnostics = @{ stdout = ''; stderr = '' }
+    $brokenPipeExit = Invoke-RhapArchiveConsumerProcess -Executable (Join-Path $env:SystemRoot 'System32\cmd.exe') `
+        -Arguments @('/d', '/c', $brokenPipeChild) -ArchivePath $largeArchive `
+        -Observer { param($stream, $content) $diagnostics[$stream] += $content }
+    Assert-Equal $brokenPipeExit 37 'nonzero child exit wins over broken-pipe write error'
+    Assert-Match $diagnostics.stdout 'known child stdout' 'broken-pipe path preserves child stdout'
+    Assert-Match $diagnostics.stderr 'known child stderr' 'broken-pipe path preserves child stderr'
+
+    $zeroExitChild = Join-Path $transactionRoot 'zero-exit-child.cmd'
+    [IO.File]::WriteAllText($zeroExitChild, "@echo off`r`n%SystemRoot%\System32\ping.exe -n 2 127.0.0.1 >nul`r`nexit /b 0`r`n", [Text.Encoding]::ASCII)
+    $zeroExitWriteError = $null
+    try {
+        Invoke-RhapArchiveConsumerProcess -Executable (Join-Path $env:SystemRoot 'System32\cmd.exe') `
+            -Arguments @('/d', '/c', $zeroExitChild) -ArchivePath $largeArchive
+    } catch { $zeroExitWriteError = $_.Exception }
+    Assert-Equal ($null -ne $zeroExitWriteError) $true 'zero child exit propagates write error'
+    Assert-Match $zeroExitWriteError.Message 'pipe' 'zero child exit preserves broken-pipe diagnostic'
+
     $exceptionProcess = [pscustomobject]@{ Id = 0 }
     Assert-Throws {
         Start-TestRemoteCommand -Bash $bash -Command 'while :; do :; done' `

@@ -150,6 +150,7 @@ Assert-Throws { New-RhapSyncRemoteCommand -RemoteRoot '/build!' -RemoteParent '/
 $quotedFixExec = New-RhapFixExecBitsCommand -RemoteTree '/build/src/project;touch_pwn'
 Assert-Match $quotedFixExec ([regex]::Escape("find '/build/src/project;touch_pwn' -type f")) 'chmod pass shell-quotes metacharacter path'
 Assert-NotMatch $quotedFixExec 'find /build/src/project;touch_pwn' 'chmod pass never interpolates raw metacharacter path'
+Assert-Match $quotedFixExec '-name texi2html' 'chmod pass restores extensionless texi2html script'
 $physicalCommand = New-RhapSyncRemoteCommand -RemoteRoot '/build' -RemoteParent '/build/src/project' -LeafName 'leaf' -Token $safeToken
 $spacedCommand = New-RhapSyncRemoteCommand -RemoteRoot '/build' -RemoteParent '/build/src' -LeafName 'DLL Files.fgl' -Token $safeToken
 Assert-NotMatch $spacedCommand "'" 'transaction body is outer-single-quote-safe for spaced leaf'

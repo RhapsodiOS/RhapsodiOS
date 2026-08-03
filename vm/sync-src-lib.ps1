@@ -41,7 +41,7 @@ function New-RhapFixExecBitsCommand {
     param([Parameter(Mandatory = $true)][string]$RemoteTree)
 
     $tree = ConvertTo-RhapShellLiteral $RemoteTree
-    return "find $tree -type f \( -name configure -o -name Configure -o -name config.guess -o -name config.sub -o -name config.rpath -o -name install-sh -o -name mkinstalldirs -o -name missing -o -name ltmain.sh -o -name compile -o -name depcomp -o -name autogen.sh -o -name build_gcc -o -name move-if-change -o -name ylwrap -o -name genmultilib -o -name '*.sh' -o -name '*.pl' \) -exec chmod a+x {} \;"
+    return "find $tree -type f \( -name configure -o -name Configure -o -name config.guess -o -name config.sub -o -name config.rpath -o -name install-sh -o -name mkinstalldirs -o -name missing -o -name ltmain.sh -o -name compile -o -name depcomp -o -name autogen.sh -o -name build_gcc -o -name move-if-change -o -name ylwrap -o -name genmultilib -o -name texi2html -o -name '*.sh' -o -name '*.pl' \) -exec chmod a+x {} \;"
 }
 
 function ConvertTo-RhapShellDoubleQuotedAssignmentValue {

@@ -228,6 +228,21 @@ if ! (cd "$src_dir/pb_makefiles-1" && "$make_cmd" -s \
 elif ! grep 'clonehdrs\.c' "$tmp/pb-all.trace" >/dev/null 2>&1; then
     say_fail "pb_makefiles-1 normal install no longer builds its helpers"
 fi
+
+# cctools historically shipped its headers from a cctoolslib project, but the
+# bootstrap source and package are named cctools.  The header-only manifest
+# entry must install the owned Mach-O headers for that canonical source root.
+cctools_hdr="$tmp/cctools.hdr"
+cctools_srcroot="$tmp/cctools-295-2"
+if ! (cd "$src_dir/cctools-2" && "$make_cmd" -s RC_OS=teflon \
+        SRCROOT="$cctools_srcroot" DSTROOT="$cctools_hdr" installhdrs) \
+        >"$tmp/cctools-header.trace" 2>&1; then
+    cat "$tmp/cctools-header.trace" >&2
+    say_fail "cannot install cctools headers for canonical source root"
+elif test ! -f "$cctools_hdr/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders/mach-o/rld.h"; then
+    cat "$tmp/cctools-header.trace" >&2
+    say_fail "cctools installhdrs omits owned Mach-O headers"
+fi
 pb_multi_rc=0
 (cd "$src_dir/pb_makefiles-1" && "$make_cmd" -pn \
         OBJROOT="$tmp/pb-all.obj" SYMROOT="$tmp/pb-all.sym" \

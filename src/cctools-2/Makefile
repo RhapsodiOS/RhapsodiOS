@@ -288,8 +288,8 @@ installsrc installGNUsrc installMWsrc: SRCROOT
 installhdrs: $(DSTROOT)
 	@if [ $(SRCROOT) ];						\
 	then								\
-	    projName=`basename $(SRCROOT) | sed 's/-[0-9.]*//'`;	\
-	    if [ "$$projName" = cctoolslib ];				\
+	    projName=`basename $(SRCROOT) | sed 's/-[-0-9.]*//' | sed 's/\.cvs//'`; \
+	    if [ "$$projName" = cctools -o "$$projName" = cctoolslib ];	\
 	    then							\
 		cd include; $(MAKE) DSTROOT=$(DSTROOT) install;		\
 	    fi;								\

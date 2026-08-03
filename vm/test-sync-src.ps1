@@ -158,8 +158,11 @@ Assert-Match $physicalCommand 'PARENT_BASE_PHYS=.*pwd -P' 'remote sync resolves 
 Assert-Match $physicalCommand 'lock_root=.*\.rhap-sync-lock' 'remote sync defines a deterministic lock namespace'
 Assert-Match $physicalCommand 'lock="\$lock_targets/\$leaf"' 'remote sync keys its lock beneath target namespace'
 Assert-Match $physicalCommand 'if mkdir "\$lock"' 'remote sync atomically acquires its target lock'
-Assert-Equal ($physicalCommand.IndexOf('if mkdir "$lock"') -lt $physicalCommand.IndexOf('/bin/ls -d "$old"')) $true 'target lock precedes old-path inspection'
+Assert-Equal ($physicalCommand.IndexOf('if mkdir "$lock"') -lt $physicalCommand.IndexOf('if test -e "$old"')) $true 'target lock precedes old-path inspection'
 Assert-Equal ($physicalCommand.IndexOf('if mkdir "$lock"') -lt $physicalCommand.IndexOf('mkdir "$stage"')) $true 'target lock precedes stage creation'
+Assert-NotMatch $physicalCommand '/bin/ls -d' 'remote sync never uses Jaguar ls as an existence probe'
+Assert-Match $physicalCommand 'test -e "\$old" \|\| test -L "\$old"' 'old collision probe includes broken symlinks'
+Assert-Match $physicalCommand 'test -e "\$target" \|\| test -L "\$target"' 'target existence probe includes broken symlinks'
 Assert-Equal (ConvertTo-RhapSyncRelativePath 'drivers/project') 'drivers/project' 'relative sync path is preserved'
 foreach ($unsafePath in @('/absolute', 'C:\absolute', '../escape', 'drivers/../escape', 'drivers//project', './project')) {
     Assert-Throws { ConvertTo-RhapSyncRelativePath $unsafePath } "reject unsafe sync path $unsafePath"
@@ -211,6 +214,23 @@ try {
 
     $gitRoot = Split-Path (Split-Path (Get-Command git.exe).Source)
     $bash = Join-Path $gitRoot 'bin\bash.exe'
+    $existenceRoot = Join-Path $transactionRoot 'existence-fixture'
+    $regularPath = Join-Path $existenceRoot 'regular'
+    $missingPath = Join-Path $existenceRoot 'missing'
+    $brokenTarget = Join-Path $existenceRoot 'removed-target'
+    $brokenLink = Join-Path $existenceRoot 'broken-link'
+    New-Item -ItemType Directory -Path $regularPath -Force | Out-Null
+    New-Item -ItemType Directory -Path $brokenTarget | Out-Null
+    New-Item -ItemType Junction -Path $brokenLink -Target $brokenTarget | Out-Null
+    [IO.Directory]::Delete($brokenTarget)
+    try {
+        $existenceCommand = "test -e '$(ConvertTo-TestPosixPath $regularPath)' || exit 81; test -L '$(ConvertTo-TestPosixPath $regularPath)' && exit 82; test -e '$(ConvertTo-TestPosixPath $missingPath)' && exit 83; test -L '$(ConvertTo-TestPosixPath $missingPath)' && exit 84; test -e '$(ConvertTo-TestPosixPath $brokenLink)' && exit 85; test -L '$(ConvertTo-TestPosixPath $brokenLink)' || exit 86"
+        & $bash -c $existenceCommand
+        Assert-Equal $LASTEXITCODE 0 'shell tests distinguish regular, missing, and broken-symlink paths'
+    } finally {
+        try { [IO.Directory]::Delete($brokenLink) } catch { }
+        Remove-Item -LiteralPath $existenceRoot -Recurse -Force -ErrorAction SilentlyContinue
+    }
     $wrappedSpacedCommand = New-RhapArchiveSshCommand -ScriptBody $spacedCommand
     Assert-Match $wrappedSpacedCommand '^/bin/sh -c ''[^'']+'' sh ''C' 'transaction explicitly invokes short sh bootstrap with chunks'
     Assert-Equal $wrappedSpacedCommand.EndsWith("'") $true 'sh-wrapped transaction closes outer quote'

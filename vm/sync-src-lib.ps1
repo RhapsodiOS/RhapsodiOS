@@ -338,7 +338,7 @@ else
     lock_owned=0
     exit 76
 fi
-if /bin/ls -d "`$old" >/dev/null 2>&1; then
+if test -e "`$old" || test -L "`$old"; then
     exit 73
 fi
 mkdir "`$stage"
@@ -350,7 +350,7 @@ if test -f "`$stage/`$leaf" || test -d "`$stage/`$leaf"; then
 else
     exit 66
 fi
-if /bin/ls -d "`$target" >/dev/null 2>&1; then
+if test -e "`$target" || test -L "`$target"; then
     mv "`$target" "`$old"
     saved=1
 fi

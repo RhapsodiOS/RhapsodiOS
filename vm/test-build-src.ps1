@@ -65,8 +65,6 @@ function Assert-EncodingSignature($Actual, $Expected, [string]$Name) {
 
 . (Join-Path $PSScriptRoot 'build-src-lib.ps1')
 $realProfile = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\rbuild-1\toolchains\gcc-darwin.conf')
-Assert-Match $realProfile 'make_flags=.*BISON=@SYSROOT@/usr/bin/bison' 'toolchain profile selects the staged target bison executable'
-Assert-Match $realProfile 'make_flags=.*BISON_SIMPLE=@SYSROOT@/usr/share/bison\.simple' 'toolchain profile selects the staged target bison parser skeleton'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $texi2htmlIndex = (& git -C $repoRoot ls-files -s -- src/CoreOSMakefiles-1/ReleaseControl/texi2html) -join "`n"
 Assert-Match $texi2htmlIndex '^100755 ' 'CoreOS texi2html is tracked executable'
@@ -299,7 +297,8 @@ $alternateToolBootstrap = New-RhapBuildPhaseCommand -Phase 'bootstrap' @alternat
 $spacedCompilerBootstrap = New-RhapBuildPhaseCommand -Phase 'bootstrap' @spacedCompilerArgs
 Assert-Match $bootstrapCommand ([regex]::Escape('/usr/bin/install -d /build/bootstrap-root /build/repo /build/state')) 'bootstrap creates owned output directories'
 Assert-Match $bootstrapCommand ([regex]::Escape('CONFIG_DIR=/build/tools/bin DECOMMENT=/build/tools/bin/decomment MIGCC=/usr/bin/cc')) 'bootstrap scopes private config and decomment tools'
-Assert-Match $bootstrapCommand ([regex]::Escape('CONFIG_DIR=/build/tools/bin DECOMMENT=/build/tools/bin/decomment MIGCC=/usr/bin/cc MIGARCH=ppc MIGCOM_DIR=/build/tools/libexec /build/tools/bin/rbuild bootstrap')) 'bootstrap explicitly binds private decomment, MIG compiler, architecture, and libexec tools'
+Assert-Match $bootstrapCommand ([regex]::Escape('BISON=/build/bootstrap-root/usr/bin/bison BISON_SIMPLE=/build/bootstrap-root/usr/share/bison.simple')) 'bootstrap scopes the replayed bison executable and parser skeleton'
+Assert-Match $bootstrapCommand ([regex]::Escape('CONFIG_DIR=/build/tools/bin DECOMMENT=/build/tools/bin/decomment MIGCC=/usr/bin/cc MIGARCH=ppc MIGCOM_DIR=/build/tools/libexec BISON=/build/bootstrap-root/usr/bin/bison BISON_SIMPLE=/build/bootstrap-root/usr/share/bison.simple /build/tools/bin/rbuild bootstrap')) 'bootstrap explicitly binds private decomment, MIG, and staged parser-generator tools'
 Assert-Match $alternateToolBootstrap ([regex]::Escape('MIGCC=/opt/gcc/bin/gcc-4.2 MIGARCH=mips_safe MIGCOM_DIR=/build/tools/libexec')) 'bootstrap binds alternate configured GCC and architecture to private MIG'
 Assert-Match $spacedCompilerBootstrap ([regex]::Escape("MIGCC='/opt/gcc tools/bin/gcc' MIGARCH=ppc MIGCOM_DIR=/build/tools/libexec")) 'bootstrap quotes space-containing configured GCC for MIG wrapper'
 Assert-NotMatch $bootstrapCommand '/usr/bin/mig|/usr/libexec/migcom|NEXT_ROOT|bootstrap-root/usr/libexec' 'bootstrap never selects live or sysroot MIG'
@@ -330,7 +329,7 @@ Assert-Match $spacedRbuild ([regex]::Escape("CONFIG_DIR='/srv/build tree/tools'/
 $spacedBootstrap = New-RhapBuildPhaseCommand -Phase 'bootstrap' @spacedPhaseArgs
 Assert-Match $spacedBootstrap ([regex]::Escape("/usr/bin/install -d '/srv/build tree/bootstrap root' '/srv/build tree/repo' '/srv/build tree/state'")) 'bootstrap safely quotes owned outputs'
 Assert-Match $spacedBootstrap ([regex]::Escape("CONFIG_DIR='/srv/build tree/tools'/bin DECOMMENT='/srv/build tree/tools'/bin/decomment MIGCC=/usr/bin/cc")) 'bootstrap safely quotes private config and decomment tools'
-Assert-Match $spacedBootstrap ([regex]::Escape("MIGCC=/usr/bin/cc MIGARCH=ppc MIGCOM_DIR='/srv/build tree/tools'/libexec '/srv/build tree/tools'/bin/rbuild bootstrap")) 'bootstrap safely quotes private MIG bindings and profile architecture'
+Assert-Match $spacedBootstrap ([regex]::Escape("MIGCC=/usr/bin/cc MIGARCH=ppc MIGCOM_DIR='/srv/build tree/tools'/libexec BISON='/srv/build tree/bootstrap root'/usr/bin/bison BISON_SIMPLE='/srv/build tree/bootstrap root'/usr/share/bison.simple '/srv/build tree/tools'/bin/rbuild bootstrap")) 'bootstrap safely quotes private MIG, parser-generator, and profile architecture bindings'
 Assert-Match $spacedBootstrap ([regex]::Escape("DECOMMENT='/srv/build tree/tools'/bin/decomment MIGCC=/usr/bin/cc")) 'bootstrap safely quotes private decomment binding'
 $kernelCommand = New-RhapBuildPhaseCommand -Phase 'kernel-drivers' @phaseArgs -DriverProjects @('drivers-ppc/storage/drvExample') -MakeDriverProjects @('drvBPF')
 Assert-Match $kernelCommand ([regex]::Escape('test -d /build/repo')) 'kernel requires existing repository input'
@@ -417,7 +416,7 @@ $profileValues = ConvertFrom-RhapToolchainProfileText -Text $realProfile
 Assert-Equal $profileValues.build_cc '/usr/bin/cc' 'profile build compiler value'
 Assert-Equal $profileValues.target_arch 'ppc' 'profile target architecture value'
 Assert-Equal $profileValues.make '/usr/bin/make' 'profile make value'
-Assert-Equal $profileValues.make_flags 'MAKEFILEDIR=@SYSROOT@/System/Developer/Makefiles/project MAKEFILEPATH=@SYSROOT@/System/Developer/Makefiles BISON=@SYSROOT@/usr/bin/bison BISON_SIMPLE=@SYSROOT@/usr/share/bison.simple' 'profile bootstrap make flags'
+Assert-Equal $profileValues.make_flags 'MAKEFILEDIR=@SYSROOT@/System/Developer/Makefiles/project MAKEFILEPATH=@SYSROOT@/System/Developer/Makefiles' 'profile bootstrap make flags'
 Assert-Equal $profileValues.make_flags_ready '@SYSROOT@/System/Developer/Makefiles/project/platform.make' 'profile bootstrap make flags readiness path'
 Assert-Equal $profileValues.cpp_flags '-nostdinc -F@SYSROOT@/System/Library/Frameworks -I@SYSROOT@/System/Library/Frameworks/System.framework/Versions/B/Headers -I@SYSROOT@/System/Library/Frameworks/System.framework/Versions/B/Headers/bsd -I@SYSROOT@/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders' 'profile bootstrap isolated versioned BSD headers'
 Assert-Equal $profileValues.ld_flags_ready '@SYSROOT@/System/Library/Frameworks/System.framework/Versions/B/System' 'profile bootstrap linker flags readiness path'

@@ -473,7 +473,7 @@ function New-RhapBuildPhaseCommand {
         return ($commands -join ' && ')
     }
     if ($Phase -eq 'bootstrap') {
-        return "set -e; /usr/bin/install -d $bootstrap $repo $state && cd $source && CONFIG_DIR=$tools/bin DECOMMENT=$tools/bin/decomment MIGCC=$cc MIGARCH=$targetArch MIGCOM_DIR=$tools/libexec $rbuild bootstrap --sysroot $bootstrap --toolchain $profilePath --state $state $source/BootstrapManifest $repo $repo"
+        return "set -e; /usr/bin/install -d $bootstrap $repo $state && cd $source && CONFIG_DIR=$tools/bin DECOMMENT=$tools/bin/decomment MIGCC=$cc MIGARCH=$targetArch MIGCOM_DIR=$tools/libexec BISON=$bootstrap/usr/bin/bison BISON_SIMPLE=$bootstrap/usr/share/bison.simple $rbuild bootstrap --sysroot $bootstrap --toolchain $profilePath --state $state $source/BootstrapManifest $repo $repo"
     }
     if ($Phase -eq 'world') {
         return "set -e; test -d $repo || { echo 'build-src: repository missing: $RepoDir' >&2; exit 1; }; /usr/bin/install -d $built $state && cd $source && $rbuild buildall --state $state Manifest $repo $built"

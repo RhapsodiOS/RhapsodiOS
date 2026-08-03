@@ -329,6 +329,7 @@ void builder_buildflags(const Params *params, const char *target, strlist *out,
         char *coreos_makefiles = str_cats(
             opt->sysroot, "/System/Developer/Makefiles/CoreOS", (char *)0);
         push_kv(out, "CoreOSMakefiles", coreos_makefiles);
+        push_kv(out, "MKDIRS", "/bin/mkdir -p");
         free(coreos_makefiles);
     }
 

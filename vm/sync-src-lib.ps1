@@ -64,6 +64,9 @@ function New-RhapSyncRemoteCommand {
         $LeafName -match '[/\\\x00-\x1f\x7f]') {
         throw 'LeafName must be one safe path component'
     }
+    if ([string]::Equals($LeafName, '.rhap-sync-lock', [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw 'LeafName is reserved for sync locking'
+    }
     if ($Token -notmatch '^[0-9a-f]{32}$') { throw 'Token must be 32 lowercase hexadecimal characters' }
 
     $remoteRootLiteral = ConvertTo-RhapShellLiteral $root
@@ -81,7 +84,10 @@ stage="`$parent/.rhap-sync-`$suffix"
 old="`$parent/.rhap-old-`$suffix"
 target="`$parent/`$leaf"
 lock_root="`$parent/.rhap-sync-lock"
-lock="`$lock_root/`$leaf"
+lock_version_file="`$lock_root/version"
+lock_version=rhapsodios-sync-lock-v1
+lock_targets="`$lock_root/targets"
+lock="`$lock_targets/`$leaf"
 saved=0
 promoted=0
 stage_created=0
@@ -100,7 +106,6 @@ cleanup() {
         if test "`$owner" = "`$suffix"; then
             rm -f "`$lock/owner"
             rmdir "`$lock" 2>/dev/null || :
-            rmdir "`$lock_root" 2>/dev/null || :
         fi
         lock_owned=0
     fi
@@ -137,11 +142,36 @@ case "`$PARENT_ACTUAL_PHYS" in
 esac
 test ! -L "`$lock_root" || exit 74
 if test ! -d "`$lock_root"; then
-    mkdir "`$lock_root" 2>/dev/null || test -d "`$lock_root" || exit 76
+    if mkdir "`$lock_root" 2>/dev/null; then
+        namespace_created=1
+    else
+        test -d "`$lock_root" || exit 76
+        namespace_created=0
+    fi
+else
+    namespace_created=0
 fi
 test ! -L "`$lock_root" || exit 74
 LOCK_ROOT_PHYS=`$(cd -P "`$lock_root" 2>/dev/null && pwd -P) || exit 74
 test "`$LOCK_ROOT_PHYS" = "`$PARENT_ACTUAL_PHYS/.rhap-sync-lock" || exit 74
+if test "`$namespace_created" -eq 1; then
+    if ! printf '%s\n' "`$lock_version" > "`$lock_version_file"; then
+        rm -f "`$lock_version_file" 2>/dev/null || :
+        rmdir "`$lock_root" 2>/dev/null || :
+        exit 76
+    fi
+fi
+test ! -L "`$lock_version_file" || exit 77
+test -f "`$lock_version_file" || exit 77
+published_version=`$(/bin/cat "`$lock_version_file" 2>/dev/null || :)
+test "`$published_version" = "`$lock_version" || exit 77
+test ! -L "`$lock_targets" || exit 74
+if test ! -d "`$lock_targets"; then
+    mkdir "`$lock_targets" 2>/dev/null || test -d "`$lock_targets" || exit 76
+fi
+test ! -L "`$lock_targets" || exit 74
+LOCK_TARGETS_PHYS=`$(cd -P "`$lock_targets" 2>/dev/null && pwd -P) || exit 74
+test "`$LOCK_TARGETS_PHYS" = "`$LOCK_ROOT_PHYS/targets" || exit 74
 if ! mkdir "`$lock" 2>/dev/null; then
     exit 75
 fi
@@ -149,7 +179,6 @@ lock_owned=1
 if ! printf '%s\n' "`$suffix" > "`$lock/owner"; then
     rm -f "`$lock/owner" 2>/dev/null || :
     rmdir "`$lock" 2>/dev/null || :
-    rmdir "`$lock_root" 2>/dev/null || :
     lock_owned=0
     exit 76
 fi

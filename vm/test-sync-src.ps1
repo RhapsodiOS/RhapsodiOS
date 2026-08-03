@@ -127,8 +127,10 @@ Assert-Equal ($null -ne (Get-Command ConvertTo-RhapSyncRelativePath -ErrorAction
 Assert-Equal ($null -ne (Get-Command New-RhapFixExecBitsCommand -ErrorAction SilentlyContinue)) $true 'sync exposes quoted chmod command construction'
 
 $safeToken = '0123456789abcdef0123456789abcdef'
+$lockNamespaceVersion = 'rhapsodios-sync-lock-v1'
 Assert-Throws { New-RhapSyncRemoteCommand -RemoteRoot '/build' -RemoteParent '/outside' -LeafName 'src' -Token $safeToken } 'remote command rejects a parent outside RemoteRoot'
 Assert-Throws { New-RhapSyncRemoteCommand -RemoteRoot '/build' -RemoteParent '/build/src' -LeafName '..' -Token $safeToken } 'remote command rejects traversal leaf'
+Assert-Throws { New-RhapSyncRemoteCommand -RemoteRoot '/build' -RemoteParent '/build/src' -LeafName '.rhap-sync-lock' -Token $safeToken } 'remote command rejects reserved lock namespace leaf'
 Assert-Throws { New-RhapSyncRemoteCommand -RemoteRoot '/build' -RemoteParent '/build/src' -LeafName 'project' -Token 'unsafe' } 'remote command rejects unsafe token'
 $quotedFixExec = New-RhapFixExecBitsCommand -RemoteTree '/build/src/project;touch_pwn'
 Assert-Match $quotedFixExec ([regex]::Escape("find '/build/src/project;touch_pwn' -type f")) 'chmod pass shell-quotes metacharacter path'
@@ -137,7 +139,7 @@ $physicalCommand = New-RhapSyncRemoteCommand -RemoteRoot '/build' -RemoteParent 
 Assert-Match $physicalCommand 'ROOT_PHYS=.*pwd -P' 'remote sync resolves physical RemoteRoot'
 Assert-Match $physicalCommand 'PARENT_BASE_PHYS=.*pwd -P' 'remote sync resolves nearest existing RemoteParent ancestor'
 Assert-Match $physicalCommand 'lock_root=.*\.rhap-sync-lock' 'remote sync defines a deterministic lock namespace'
-Assert-Match $physicalCommand 'lock="\$lock_root/\$leaf"' 'remote sync keys its lock by target leaf'
+Assert-Match $physicalCommand 'lock="\$lock_targets/\$leaf"' 'remote sync keys its lock beneath target namespace'
 Assert-Match $physicalCommand 'if ! mkdir "\$lock"' 'remote sync atomically acquires its target lock'
 Assert-Equal ($physicalCommand.IndexOf('if ! mkdir "$lock"') -lt $physicalCommand.IndexOf('/bin/ls -d "$old"')) $true 'target lock precedes old-path inspection'
 Assert-Equal ($physicalCommand.IndexOf('if ! mkdir "$lock"') -lt $physicalCommand.IndexOf('mkdir "$stage"')) $true 'target lock precedes stage creation'
@@ -223,7 +225,32 @@ try {
         if (Test-Path -LiteralPath $escapeLink) { [IO.Directory]::Delete($escapeLink) }
     }
 
-    foreach ($leaf in @('src', 'project')) {
+    $markerFailureParent = Join-Path $remoteBase 'marker-failure-parent'
+    New-Item -ItemType Directory -Path $markerFailureParent | Out-Null
+    $markerFailureCommand = "printf() { return 1; }`n" +
+        (New-RhapSyncRemoteCommand -RemoteRoot $remoteRoot -RemoteParent (ConvertTo-TestPosixPath $markerFailureParent) -LeafName 'tree' -Token $safeToken -Cpio $cpioPath)
+    Assert-Equal (Invoke-TestRemoteCommand $bash $markerFailureCommand $archivePath $transactionRoot) 76 'namespace marker publication failure propagates'
+    Assert-Equal (Test-Path (Join-Path $markerFailureParent '.rhap-sync-lock')) $false 'failed creator removes only its unmarked namespace'
+    Assert-Equal (@(Get-ChildItem -LiteralPath $markerFailureParent).Count) 0 'namespace marker failure leaves parent unmodified'
+    Remove-Item -LiteralPath $markerFailureParent -Force
+
+    $unownedNamespace = Join-Path $remoteBase '.rhap-sync-lock'
+    New-Item -ItemType Directory -Path $unownedNamespace | Out-Null
+    [IO.File]::WriteAllText((Join-Path $unownedNamespace 'foreign'), 'foreign-content')
+    $nonemptyUnownedCommand = New-RhapSyncRemoteCommand -RemoteRoot $remoteRoot -RemoteParent $remoteRoot -LeafName 'tree' -Token '22222222222222222222222222222222' -Cpio $cpioPath
+    Assert-Equal (Invoke-TestRemoteCommand $bash $nonemptyUnownedCommand $archivePath $transactionRoot) 77 'pre-existing nonempty unowned lock namespace is rejected'
+    Assert-Equal ([IO.File]::ReadAllText((Join-Path $unownedNamespace 'foreign'))) 'foreign-content' 'nonempty unowned lock namespace content is preserved'
+    Assert-Equal (@(Get-ChildItem -LiteralPath $unownedNamespace).Count) 1 'nonempty unowned lock namespace remains unmodified'
+    Remove-Item -LiteralPath $unownedNamespace -Recurse -Force
+
+    New-Item -ItemType Directory -Path $unownedNamespace | Out-Null
+    $unownedCommand = New-RhapSyncRemoteCommand -RemoteRoot $remoteRoot -RemoteParent $remoteRoot -LeafName 'tree' -Token $safeToken -Cpio $cpioPath
+    Assert-Equal (Invoke-TestRemoteCommand $bash $unownedCommand $archivePath $transactionRoot) 77 'pre-existing empty unowned lock namespace is rejected'
+    Assert-Equal (Test-Path $unownedNamespace -PathType Container) $true 'empty unowned lock namespace is preserved'
+    Assert-Equal (@(Get-ChildItem -LiteralPath $unownedNamespace).Count) 0 'empty unowned lock namespace remains unmodified'
+    Remove-Item -LiteralPath $unownedNamespace -Force
+
+    foreach ($leaf in @('src', 'project', 'version')) {
         $leafFixture = Join-Path $transactionRoot "fixture-$leaf"
         $leafTree = Join-Path $leafFixture $leaf
         New-Item -ItemType Directory -Path $leafTree -Force | Out-Null
@@ -238,7 +265,7 @@ try {
         Assert-Equal (Invoke-TestRemoteCommand $bash $command $leafArchive $transactionRoot) 0 "$leaf stage promotion succeeds"
         Assert-Equal (Test-Path (Join-Path $prior 'wanted')) $true "$leaf installs expected content"
         Assert-Equal (Test-Path (Join-Path $prior 'stale-extra')) $false "$leaf removes stale extras"
-        Assert-Equal (@(Get-ChildItem $remoteBase -Filter '.rhap-sync-*').Count) 0 "$leaf cleans stage path"
+        Assert-Equal (@(Get-ChildItem $remoteBase -Filter '.rhap-sync-[0-9a-f]*').Count) 0 "$leaf cleans stage path"
         Assert-Equal (@(Get-ChildItem $remoteBase -Filter '.rhap-old-*').Count) 0 "$leaf cleans old path"
         Remove-Item -LiteralPath $prior -Recurse -Force
     }
@@ -271,7 +298,7 @@ try {
     try {
         for ($attempt = 0; $attempt -lt 100 -and -not (Test-Path $blockEntered); $attempt++) { Start-Sleep -Milliseconds 25 }
         Assert-Equal (Test-Path $blockEntered) $true 'first transaction reaches blocked extractor'
-        $lockOwner = Join-Path $remoteBase ".rhap-sync-lock\tree\owner"
+        $lockOwner = Join-Path $remoteBase ".rhap-sync-lock\targets\tree\owner"
         Assert-Equal ([IO.File]::ReadAllText($lockOwner).Trim()) $safeToken 'first transaction owns deterministic target lock'
 
         $otherCommand = New-RhapSyncRemoteCommand -RemoteRoot $remoteRoot -RemoteParent $remoteRoot -LeafName 'other' -Token $otherToken -Cpio $cpioPath
@@ -295,8 +322,10 @@ try {
     Assert-Equal (Test-Path (Join-Path $concurrentTarget $boundaryName)) $true 'lock owner promotes its exact archive'
     Assert-Equal (Test-Path (Join-Path $concurrentTarget 'second-only')) $false 'concurrent loser content is never installed'
     Assert-Equal (Test-Path (Join-Path $concurrentTarget 'tree')) $false 'concurrent sync never nests target inside target'
-    Assert-Equal (Test-Path (Join-Path $remoteBase '.rhap-sync-lock')) $false 'owner cleans lock namespace after completion'
-    Assert-Equal (@(Get-ChildItem $remoteBase -Filter '.rhap-sync-*').Count) 0 'concurrent transactions leave no stage paths'
+    Assert-Equal ([IO.File]::ReadAllText((Join-Path $remoteBase '.rhap-sync-lock\version')).Trim()) $lockNamespaceVersion 'owner retains authenticated lock namespace'
+    Assert-Equal (@(Get-ChildItem (Join-Path $remoteBase '.rhap-sync-lock')).Count) 2 'completed transactions retain marker and empty target namespace'
+    Assert-Equal (@(Get-ChildItem (Join-Path $remoteBase '.rhap-sync-lock\targets')).Count) 0 'completed transactions leave no target locks'
+    Assert-Equal (@(Get-ChildItem $remoteBase -Filter '.rhap-sync-[0-9a-f]*').Count) 0 'concurrent transactions leave no stage paths'
     Remove-Item -LiteralPath (Join-Path $remoteBase 'other') -Recurse -Force
     Remove-Item -LiteralPath $concurrentTarget -Recurse -Force
 
@@ -306,14 +335,15 @@ try {
     $ownerWriteFailureCommand = "printf() { return 1; }`n" +
         (New-RhapSyncRemoteCommand -RemoteRoot $remoteRoot -RemoteParent $remoteRoot -LeafName 'tree' -Token $safeToken -Cpio $cpioPath)
     Assert-Equal (Invoke-TestRemoteCommand $bash $ownerWriteFailureCommand $archivePath $transactionRoot) 76 'owner-marker write failure propagates'
-    Assert-Equal (Test-Path (Join-Path $remoteBase '.rhap-sync-lock')) $false 'owner-marker write failure removes exclusively acquired empty lock'
+    Assert-Equal ([IO.File]::ReadAllText((Join-Path $remoteBase '.rhap-sync-lock\version')).Trim()) $lockNamespaceVersion 'owner-marker write failure preserves authenticated namespace'
+    Assert-Equal (Test-Path (Join-Path $remoteBase '.rhap-sync-lock\targets\tree')) $false 'owner-marker write failure removes exclusively acquired target lock'
     Assert-Equal ([IO.File]::ReadAllText((Join-Path $failureTarget 'prior'))) 'prior-content' 'owner-marker write failure preserves prior target'
     $failingCpio = Join-Path $transactionRoot 'failing-cpio.sh'
     [IO.File]::WriteAllText($failingCpio, "#!/bin/sh`nexit 42`n", (New-Object Text.UTF8Encoding($false)))
     $failureCommand = New-RhapSyncRemoteCommand -RemoteRoot $remoteRoot -RemoteParent $remoteRoot -LeafName 'tree' -Token $safeToken -Cpio (ConvertTo-TestPosixPath $failingCpio)
     Assert-Equal (Invoke-TestRemoteCommand $bash $failureCommand $archivePath $transactionRoot) 42 'cpio extraction failure propagates'
     Assert-Equal ([IO.File]::ReadAllText((Join-Path $failureTarget 'prior'))) 'prior-content' 'cpio extraction failure preserves prior target'
-    Assert-Equal (@(Get-ChildItem $remoteBase -Filter '.rhap-sync-*').Count) 0 'cpio failure cleans stage path'
+    Assert-Equal (@(Get-ChildItem $remoteBase -Filter '.rhap-sync-[0-9a-f]*').Count) 0 'cpio failure cleans stage path'
     Assert-Equal (@(Get-ChildItem $remoteBase -Filter '.rhap-old-*').Count) 0 'cpio failure creates no old path'
 
     $collisionStage = Join-Path $remoteBase ".rhap-sync-$safeToken"
@@ -343,7 +373,7 @@ try {
         (New-RhapSyncRemoteCommand -RemoteRoot $remoteRoot -RemoteParent $remoteRoot -LeafName 'tree' -Token $safeToken -Cpio $cpioPath)
     Assert-Equal (Invoke-TestRemoteCommand $bash $rollbackCommand $archivePath $transactionRoot) 71 'promotion failure propagates'
     Assert-Equal ([IO.File]::ReadAllText((Join-Path $rollbackTarget 'prior'))) 'prior-content' 'promotion failure restores prior target'
-    Assert-Equal (@(Get-ChildItem $remoteBase -Filter '.rhap-sync-*').Count) 0 'rollback cleans stage path'
+    Assert-Equal (@(Get-ChildItem $remoteBase -Filter '.rhap-sync-[0-9a-f]*').Count) 0 'rollback cleans stage path'
     Assert-Equal (@(Get-ChildItem $remoteBase -Filter '.rhap-old-*').Count) 0 'rollback cleans old path'
 } finally {
     Remove-Item -LiteralPath $transactionRoot -Recurse -Force -ErrorAction SilentlyContinue

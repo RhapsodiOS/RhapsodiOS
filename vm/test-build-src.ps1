@@ -406,6 +406,7 @@ Assert-Equal $profileValues.target_arch 'ppc' 'profile target architecture value
 Assert-Equal $profileValues.make '/usr/bin/make' 'profile make value'
 Assert-Equal $profileValues.make_flags 'MAKEFILEDIR=@SYSROOT@/System/Developer/Makefiles/project MAKEFILEPATH=@SYSROOT@/System/Developer/Makefiles' 'profile bootstrap make flags'
 Assert-Equal $profileValues.make_flags_ready '@SYSROOT@/System/Developer/Makefiles/project/platform.make' 'profile bootstrap make flags readiness path'
+Assert-Equal $profileValues.cpp_flags '-nostdinc -F@SYSROOT@/System/Library/Frameworks -I@SYSROOT@/System/Library/Frameworks/System.framework/Versions/B/Headers -I@SYSROOT@/System/Library/Frameworks/System.framework/Versions/B/Headers/bsd -I@SYSROOT@/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders' 'profile bootstrap isolated versioned BSD headers'
 Assert-Equal $profileValues.ld_flags_ready '@SYSROOT@/System/Library/Frameworks/System.framework/Versions/B/System' 'profile bootstrap linker flags readiness path'
 Assert-Equal $profileValues.archive_create '/bin/pax' 'profile archive creator value'
 Assert-Equal $profileValues.archive_create_flags '-w -x ustar' 'profile archive creator flags'

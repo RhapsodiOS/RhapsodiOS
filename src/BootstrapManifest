@@ -11,8 +11,10 @@ dir     objc4-1                 headers
 dir     driverkit-3             headers
 dir     cctools-2               headers
 
-# cc consumes headers produced by its own installhdrs target.  Publish those
-# before building the compiler; the full cc build still requires bison first.
+# cc consumes public Mach interfaces exported by Libc as well as headers
+# produced by its own installhdrs target.  Publish both first; the full cc
+# build still requires bison.
+dir     Libc-1                  headers
 dir     cc-1                    headers
 
 # Target build tools.

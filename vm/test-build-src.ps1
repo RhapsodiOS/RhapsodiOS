@@ -72,7 +72,7 @@ $ccBuildGccText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\cc-1\build_g
 Assert-Match $ccBuildGccText '-print-prog-name=cc1' 'cc bootstrap discovers the configured GCC backend instead of assuming a host layout'
 Assert-NotMatch $ccBuildGccText 'if \[ -d /`if \[ "\$RHAPSODY" \]; then echo usr/libexec; else echo lib; fi`/\$host \]' 'cc bootstrap does not require the historical fixed compiler directory'
 $bootstrapManifestText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\BootstrapManifest')
-Assert-Match $bootstrapManifestText '(?s)dir\s+cc-1\s+headers.*dir\s+bison-1\s+all.*dir\s+cc-1\s+all' 'cc headers are replayed before bison and the full cc bootstrap'
+Assert-Match $bootstrapManifestText '(?s)dir\s+Libc-1\s+headers.*dir\s+cc-1\s+headers.*dir\s+bison-1\s+all.*dir\s+cc-1\s+all' 'libc and cc headers are replayed before bison and the full cc bootstrap'
 
 $buildScriptText = Get-Content -Raw (Join-Path $PSScriptRoot 'build-src.ps1')
 $remoteScriptText = Get-Content -Raw (Join-Path $PSScriptRoot 'rhap-remote.ps1')

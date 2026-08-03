@@ -80,9 +80,12 @@ suffix=$suffix
 stage="`$parent/.rhap-sync-`$suffix"
 old="`$parent/.rhap-old-`$suffix"
 target="`$parent/`$leaf"
+lock_root="`$parent/.rhap-sync-lock"
+lock="`$lock_root/`$leaf"
 saved=0
 promoted=0
 stage_created=0
+lock_owned=0
 cleanup() {
     status=`$?
     trap 0 1 2 15
@@ -92,6 +95,15 @@ cleanup() {
     fi
     if test "`$stage_created" -eq 1; then rm -rf "`$stage"; fi
     if test "`$promoted" -eq 1; then rm -rf "`$old"; fi
+    if test "`$lock_owned" -eq 1; then
+        owner=`$(/bin/cat "`$lock/owner" 2>/dev/null || :)
+        if test "`$owner" = "`$suffix"; then
+            rm -f "`$lock/owner"
+            rmdir "`$lock" 2>/dev/null || :
+            rmdir "`$lock_root" 2>/dev/null || :
+        fi
+        lock_owned=0
+    fi
     exit "`$status"
 }
 trap cleanup 0 1 2 15
@@ -118,6 +130,29 @@ case "`$PARENT_PHYS" in
     *) exit 74 ;;
 esac
 mkdir -p "`$parent"
+PARENT_ACTUAL_PHYS=`$(cd -P "`$parent" 2>/dev/null && pwd -P) || exit 74
+case "`$PARENT_ACTUAL_PHYS" in
+    "`$ROOT_PHYS"|"`$ROOT_PHYS"/*) ;;
+    *) exit 74 ;;
+esac
+test ! -L "`$lock_root" || exit 74
+if test ! -d "`$lock_root"; then
+    mkdir "`$lock_root" 2>/dev/null || test -d "`$lock_root" || exit 76
+fi
+test ! -L "`$lock_root" || exit 74
+LOCK_ROOT_PHYS=`$(cd -P "`$lock_root" 2>/dev/null && pwd -P) || exit 74
+test "`$LOCK_ROOT_PHYS" = "`$PARENT_ACTUAL_PHYS/.rhap-sync-lock" || exit 74
+if ! mkdir "`$lock" 2>/dev/null; then
+    exit 75
+fi
+lock_owned=1
+if ! printf '%s\n' "`$suffix" > "`$lock/owner"; then
+    rm -f "`$lock/owner" 2>/dev/null || :
+    rmdir "`$lock" 2>/dev/null || :
+    rmdir "`$lock_root" 2>/dev/null || :
+    lock_owned=0
+    exit 76
+fi
 if /bin/ls -d "`$old" >/dev/null 2>&1; then
     exit 73
 fi
@@ -137,7 +172,6 @@ promoted=1
 rm -rf "`$stage" "`$old"
 stage_created=0
 saved=0
-trap 0 1 2 15
 exit 0
 "@
 }

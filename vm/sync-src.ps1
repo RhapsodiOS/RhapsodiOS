@@ -89,7 +89,7 @@ function Invoke-CpioUpload {
     $producer = {
         param($ArchivePath, $ArchiveParent, $ArchiveLeaf)
         Write-Host "sync-src: creating cpio archive for $Label"
-        & $Tar --format cpio -cf $ArchivePath -C $ArchiveParent $ArchiveLeaf
+        & $Tar --format cpio -cf $ArchivePath -C $ArchiveParent -- $ArchiveLeaf
         return [int]$LASTEXITCODE
     }
     $consumer = {

@@ -47,7 +47,7 @@ function New-RhapFixExecBitsCommand {
 function ConvertTo-RhapShellDoubleQuotedAssignmentValue {
     param([Parameter(Mandatory = $true)][string]$Value)
 
-    if ($Value.Contains("'")) { throw 'shell value contains an unsupported quote' }
+    if ($Value -match '[!''"\x00-\x1f\x7f]') { throw 'shell value is unsafe for target csh' }
     $escaped = $Value.Replace('\', '\\').Replace('"', '\"').Replace('$', '\$').Replace('`', '\`')
     return '"' + $escaped + '"'
 }
@@ -55,13 +55,73 @@ function ConvertTo-RhapShellDoubleQuotedAssignmentValue {
 function New-RhapArchiveSshCommand {
     param([Parameter(Mandatory = $true)][string]$ScriptBody)
 
-    if ($ScriptBody.Contains("'")) { throw 'archive transaction body contains an unsupported quote' }
-    return "/bin/sh -c '$ScriptBody'"
+    if ($ScriptBody.Contains("'") -or $ScriptBody.Contains('!') -or $ScriptBody.Contains("`r")) {
+        throw 'archive transaction body is unsafe for target csh'
+    }
+
+    $chunkBytes = 699
+    $bootstrap = 'n=$(printf "\nX"); n=${n%X}; s=; for p do case "$p" in N) s="$s$n";; C*) s="$s${p#C}";; *) exit 78;; esac; done; eval "$s"'
+    $transportWords = New-Object 'System.Collections.Generic.List[string]'
+    $lines = $ScriptBody.Split([char]"`n")
+    for ($lineIndex = 0; $lineIndex -lt $lines.Length; $lineIndex++) {
+        $line = $lines[$lineIndex]
+        if ($line.Length -gt 0) {
+            $builder = New-Object System.Text.StringBuilder
+            $bytes = 0
+            $elements = [System.Globalization.StringInfo]::GetTextElementEnumerator($line)
+            while ($elements.MoveNext()) {
+                $element = [string]$elements.Current
+                $elementBytes = [Text.Encoding]::UTF8.GetByteCount($element)
+                if ($bytes -gt 0 -and $bytes + $elementBytes -gt $chunkBytes) {
+                    $transportWords.Add('C' + $builder.ToString())
+                    [void]$builder.Clear()
+                    $bytes = 0
+                }
+                [void]$builder.Append($element)
+                $bytes += $elementBytes
+            }
+            if ($builder.Length -gt 0) { $transportWords.Add('C' + $builder.ToString()) }
+        }
+        if ($lineIndex -lt $lines.Length - 1) { $transportWords.Add('N') }
+    }
+
+    $command = New-Object System.Text.StringBuilder
+    [void]$command.Append("/bin/sh -c '$bootstrap' sh")
+    foreach ($word in $transportWords) {
+        if ([Text.Encoding]::UTF8.GetByteCount($word) -gt 700) { throw 'archive transaction chunk exceeds target csh word limit' }
+        [void]$command.Append(" '$word'")
+    }
+    $result = $command.ToString()
+    if ([Text.Encoding]::UTF8.GetByteCount($result) -ge 10240) { throw 'archive transaction exceeds target csh argument limit' }
+    return $result
 }
 
 function ConvertTo-RhapProcessArgument {
     param([Parameter(Mandatory = $true)][string]$Value)
-    return '"' + $Value.Replace('"', '\"') + '"'
+
+    $quoted = New-Object System.Text.StringBuilder
+    [void]$quoted.Append('"')
+    $backslashes = 0
+    foreach ($character in $Value.ToCharArray()) {
+        if ($character -eq [char]'\') {
+            $backslashes++
+            continue
+        }
+        if ($character -eq [char]'"') {
+            [void]$quoted.Append(('\' * (2 * $backslashes + 1)))
+            [void]$quoted.Append('"')
+            $backslashes = 0
+            continue
+        }
+        if ($backslashes -gt 0) {
+            [void]$quoted.Append(('\' * $backslashes))
+            $backslashes = 0
+        }
+        [void]$quoted.Append($character)
+    }
+    if ($backslashes -gt 0) { [void]$quoted.Append(('\' * (2 * $backslashes))) }
+    [void]$quoted.Append('"')
+    return $quoted.ToString()
 }
 
 function Invoke-RhapArchiveConsumerProcess {
@@ -199,19 +259,20 @@ cleanup() {
     exit "`$status"
 }
 trap cleanup 0 1 2 15
-test ! -L "`$root" || exit 74
+if test -L "`$root"; then exit 74; fi
 ROOT_PHYS=`$(cd -P "`$root" 2>/dev/null && pwd -P) || exit 74
-test "`$ROOT_PHYS" != / || exit 74
+if test "`$ROOT_PHYS" = /; then exit 74; fi
 probe=`$parent
 suffix_path=
-while test "`$probe" != "`$root"; do
-    test ! -L "`$probe" || exit 74
+while :; do
+    if test "`$probe" = "`$root"; then break; fi
+    if test -L "`$probe"; then exit 74; fi
     if test -e "`$probe"; then break; fi
     component=`${probe##*/}
     suffix_path=/`$component`$suffix_path
     next=`${probe%/*}
     test -n "`$next" || next=/
-    test "`$next" != "`$probe" || exit 74
+    if test "`$next" = "`$probe"; then exit 74; fi
     probe=`$next
 done
 test -d "`$probe" || exit 74
@@ -227,43 +288,51 @@ case "`$PARENT_ACTUAL_PHYS" in
     "`$ROOT_PHYS"|"`$ROOT_PHYS"/*) ;;
     *) exit 74 ;;
 esac
-test ! -L "`$lock_root" || exit 74
-if test ! -d "`$lock_root"; then
+if test -L "`$lock_root"; then exit 74; fi
+if test -d "`$lock_root"; then
+    namespace_created=0
+else
     if mkdir "`$lock_root" 2>/dev/null; then
         namespace_created=1
     else
         test -d "`$lock_root" || exit 76
         namespace_created=0
     fi
-else
-    namespace_created=0
 fi
-test ! -L "`$lock_root" || exit 74
+if test -L "`$lock_root"; then exit 74; fi
 LOCK_ROOT_PHYS=`$(cd -P "`$lock_root" 2>/dev/null && pwd -P) || exit 74
 test "`$LOCK_ROOT_PHYS" = "`$PARENT_ACTUAL_PHYS/.rhap-sync-lock" || exit 74
 if test "`$namespace_created" -eq 1; then
-    if ! printf "%s\n" "`$lock_version" > "`$lock_version_file"; then
+    if printf "%s\n" "`$lock_version" > "`$lock_version_file"; then
+        :
+    else
         rm -f "`$lock_version_file" 2>/dev/null || :
         rmdir "`$lock_root" 2>/dev/null || :
         exit 76
     fi
 fi
-test ! -L "`$lock_version_file" || exit 77
+if test -L "`$lock_version_file"; then exit 77; fi
 test -f "`$lock_version_file" || exit 77
 published_version=`$(/bin/cat "`$lock_version_file" 2>/dev/null || :)
 test "`$published_version" = "`$lock_version" || exit 77
-test ! -L "`$lock_targets" || exit 74
-if test ! -d "`$lock_targets"; then
+if test -L "`$lock_targets"; then exit 74; fi
+if test -d "`$lock_targets"; then
+    :
+else
     mkdir "`$lock_targets" 2>/dev/null || test -d "`$lock_targets" || exit 76
 fi
-test ! -L "`$lock_targets" || exit 74
+if test -L "`$lock_targets"; then exit 74; fi
 LOCK_TARGETS_PHYS=`$(cd -P "`$lock_targets" 2>/dev/null && pwd -P) || exit 74
 test "`$LOCK_TARGETS_PHYS" = "`$LOCK_ROOT_PHYS/targets" || exit 74
-if ! mkdir "`$lock" 2>/dev/null; then
+if mkdir "`$lock" 2>/dev/null; then
+    :
+else
     exit 75
 fi
 lock_owned=1
-if ! printf "%s\n" "`$suffix" > "`$lock/owner"; then
+if printf "%s\n" "`$suffix" > "`$lock/owner"; then
+    :
+else
     rm -f "`$lock/owner" 2>/dev/null || :
     rmdir "`$lock" 2>/dev/null || :
     lock_owned=0
@@ -276,7 +345,9 @@ mkdir "`$stage"
 stage_created=1
 cd "`$stage"
 $cpioCommand -idum
-if ! test -f "`$stage/`$leaf" && ! test -d "`$stage/`$leaf"; then
+if test -f "`$stage/`$leaf" || test -d "`$stage/`$leaf"; then
+    :
+else
     exit 66
 fi
 if /bin/ls -d "`$target" >/dev/null 2>&1; then

@@ -111,6 +111,9 @@ function Invoke-TestRemoteCommand([string]$Bash, [string]$Command, [string]$Arch
 }
 
 $syncScriptText = Get-Content -Raw (Join-Path $PSScriptRoot 'sync-src.ps1')
+$targetCshHeaderText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\Commands\basic_cmds\csh.tproj\csh.h')
+$targetCshManualText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\Commands\basic_cmds\csh.tproj\csh.1')
+$targetCshLexText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\Commands\basic_cmds\csh.tproj\lex.c')
 
 Assert-Match $syncScriptText '--format cpio' 'sync archive uses portable cpio format'
 Assert-Match $syncScriptText ([regex]::Escape('--format cpio -cf $ArchivePath -C $ArchiveParent -- $ArchiveLeaf')) 'producer terminates options before archive leaf'
@@ -120,6 +123,9 @@ Assert-Match $syncScriptText 'New-RhapSyncRemoteCommand' 'sync uses the stage-an
 Assert-Match $syncScriptText 'New-RhapArchiveSshCommand' 'production sync explicitly wraps transaction with sh'
 Assert-Match $syncScriptText 'Invoke-RhapCpioTransfer' 'production sync uses the tested producer-consumer transaction'
 Assert-Match $syncScriptText 'Invoke-RhapArchiveConsumerProcess' 'production sync uses diagnostic-preserving consumer process'
+Assert-Match $targetCshHeaderText '#define\s+BUFSIZ\s+1024' 'target csh limits words to 1024-byte buffer'
+Assert-Match $targetCshManualText 'limits argument lists to 10240 characters' 'target csh documents 10240-character argument list'
+Assert-Match $targetCshLexText 'dolflg = c == ''"'' \? DOALL : DOEXCL' 'target csh single quotes retain history processing'
 
 . (Join-Path $PSScriptRoot 'build-src-lib.ps1')
 . (Join-Path $PSScriptRoot 'sync-src-lib.ps1')
@@ -136,6 +142,11 @@ Assert-Throws { New-RhapSyncRemoteCommand -RemoteRoot '/build' -RemoteParent '/o
 Assert-Throws { New-RhapSyncRemoteCommand -RemoteRoot '/build' -RemoteParent '/build/src' -LeafName '..' -Token $safeToken } 'remote command rejects traversal leaf'
 Assert-Throws { New-RhapSyncRemoteCommand -RemoteRoot '/build' -RemoteParent '/build/src' -LeafName '.rhap-sync-lock' -Token $safeToken } 'remote command rejects reserved lock namespace leaf'
 Assert-Throws { New-RhapSyncRemoteCommand -RemoteRoot '/build' -RemoteParent '/build/src' -LeafName 'project' -Token 'unsafe' } 'remote command rejects unsafe token'
+Assert-Throws { New-RhapSyncRemoteCommand -RemoteRoot '/build' -RemoteParent '/build/src' -LeafName 'bang!leaf' -Token $safeToken } 'remote command rejects leaf history expansion'
+Assert-Throws { New-RhapSyncRemoteCommand -RemoteRoot '/build' -RemoteParent '/build/src' -LeafName 'quote"leaf' -Token $safeToken } 'remote command rejects quoted leaf'
+Assert-Throws { New-RhapSyncRemoteCommand -RemoteRoot '/build' -RemoteParent '/build/src' -LeafName "single'leaf" -Token $safeToken } 'remote command rejects single-quoted leaf'
+Assert-Throws { New-RhapSyncRemoteCommand -RemoteRoot '/build' -RemoteParent '/build/src' -LeafName "line`nleaf" -Token $safeToken } 'remote command rejects control characters in leaf'
+Assert-Throws { New-RhapSyncRemoteCommand -RemoteRoot '/build!' -RemoteParent '/build!/src' -LeafName 'leaf' -Token $safeToken } 'remote command rejects path history expansion'
 $quotedFixExec = New-RhapFixExecBitsCommand -RemoteTree '/build/src/project;touch_pwn'
 Assert-Match $quotedFixExec ([regex]::Escape("find '/build/src/project;touch_pwn' -type f")) 'chmod pass shell-quotes metacharacter path'
 Assert-NotMatch $quotedFixExec 'find /build/src/project;touch_pwn' 'chmod pass never interpolates raw metacharacter path'
@@ -146,9 +157,9 @@ Assert-Match $physicalCommand 'ROOT_PHYS=.*pwd -P' 'remote sync resolves physica
 Assert-Match $physicalCommand 'PARENT_BASE_PHYS=.*pwd -P' 'remote sync resolves nearest existing RemoteParent ancestor'
 Assert-Match $physicalCommand 'lock_root=.*\.rhap-sync-lock' 'remote sync defines a deterministic lock namespace'
 Assert-Match $physicalCommand 'lock="\$lock_targets/\$leaf"' 'remote sync keys its lock beneath target namespace'
-Assert-Match $physicalCommand 'if ! mkdir "\$lock"' 'remote sync atomically acquires its target lock'
-Assert-Equal ($physicalCommand.IndexOf('if ! mkdir "$lock"') -lt $physicalCommand.IndexOf('/bin/ls -d "$old"')) $true 'target lock precedes old-path inspection'
-Assert-Equal ($physicalCommand.IndexOf('if ! mkdir "$lock"') -lt $physicalCommand.IndexOf('mkdir "$stage"')) $true 'target lock precedes stage creation'
+Assert-Match $physicalCommand 'if mkdir "\$lock"' 'remote sync atomically acquires its target lock'
+Assert-Equal ($physicalCommand.IndexOf('if mkdir "$lock"') -lt $physicalCommand.IndexOf('/bin/ls -d "$old"')) $true 'target lock precedes old-path inspection'
+Assert-Equal ($physicalCommand.IndexOf('if mkdir "$lock"') -lt $physicalCommand.IndexOf('mkdir "$stage"')) $true 'target lock precedes stage creation'
 Assert-Equal (ConvertTo-RhapSyncRelativePath 'drivers/project') 'drivers/project' 'relative sync path is preserved'
 foreach ($unsafePath in @('/absolute', 'C:\absolute', '../escape', 'drivers/../escape', 'drivers//project', './project')) {
     Assert-Throws { ConvertTo-RhapSyncRelativePath $unsafePath } "reject unsafe sync path $unsafePath"
@@ -201,9 +212,23 @@ try {
     $gitRoot = Split-Path (Split-Path (Get-Command git.exe).Source)
     $bash = Join-Path $gitRoot 'bin\bash.exe'
     $wrappedSpacedCommand = New-RhapArchiveSshCommand -ScriptBody $spacedCommand
-    Assert-Match $wrappedSpacedCommand '^/bin/sh -c ''set -e' 'transaction explicitly invokes sh with one quoted body'
+    Assert-Match $wrappedSpacedCommand '^/bin/sh -c ''[^'']+'' sh ''C' 'transaction explicitly invokes short sh bootstrap with chunks'
     Assert-Equal $wrappedSpacedCommand.EndsWith("'") $true 'sh-wrapped transaction closes outer quote'
     Assert-Match $wrappedSpacedCommand ([regex]::Escape('leaf="DLL Files.fgl"')) 'sh-wrapped transaction preserves spaced leaf assignment'
+    $cshQuotedWords = @([regex]::Matches($wrappedSpacedCommand, "'([^']*)'") | ForEach-Object { $_.Groups[1].Value })
+    $cshWordBytes = @($cshQuotedWords | ForEach-Object { [Text.Encoding]::UTF8.GetByteCount($_) })
+    Assert-Equal (($cshWordBytes | Measure-Object -Maximum).Maximum -le 800) $true 'every csh quoted word stays comfortably below BUFSIZ'
+    Assert-Equal (@($cshQuotedWords | Where-Object { $_ -match "[`r`n]" }).Count) 0 'csh quoted words contain no literal newline'
+    Assert-Equal ([Text.Encoding]::UTF8.GetByteCount($wrappedSpacedCommand) -lt 10240) $true 'remote command stays below target csh argument limit'
+    Assert-Throws { New-RhapArchiveSshCommand -ScriptBody ('x' * 11000) } 'csh wrapper rejects transaction above total argument limit'
+
+    $reconstructedOutput = Join-Path $transactionRoot 'reconstructed-body.txt'
+    $reconstructionBody = "write_probe() {`n    printf `"%s\n`" `"line one`"`n    printf `"%s\n`" `"line two`"`n}`nwrite_probe > `"$(ConvertTo-TestPosixPath $reconstructedOutput)`"`n"
+    $reconstructionCommand = New-RhapArchiveSshCommand -ScriptBody $reconstructionBody
+    $emptyArchive = Join-Path $transactionRoot 'empty-archive'
+    [IO.File]::WriteAllBytes($emptyArchive, (New-Object byte[] 0))
+    Assert-Equal (Invoke-RhapArchiveConsumerProcess -Executable $bash -Arguments @('-c', $reconstructionCommand) -ArchivePath $emptyArchive) 0 'chunk bootstrap reconstructs multiline function through sh'
+    Assert-Equal ([IO.File]::ReadAllText($reconstructedOutput).Replace("`r`n", "`n")) "line one`nline two`n" 'chunk bootstrap preserves newlines and arguments'
 
     $argumentCapture = Join-Path $transactionRoot 'argument-capture.sh'
     $argumentBase = Join-Path $transactionRoot 'ssh-argument'
@@ -227,6 +252,19 @@ exit 0
     Assert-Equal $argumentExit 0 'archive consumer argument fixture succeeds'
     Assert-Equal ([IO.File]::ReadAllText("$argumentBase.count").Trim()) '3' 'SSH receives wrapper as one argument'
     Assert-Equal ([IO.File]::ReadAllText("$argumentBase.2")) $wrappedSpacedCommand 'multiline function body survives process argument transport exactly'
+
+    $crtArgumentBase = Join-Path $transactionRoot 'crt-argument'
+    $trailingBackslash = 'trail\'
+    $quotedArgument = 'quote"inside'
+    $backslashQuoteArgument = 'slashes\\\"tail'
+    $crtExit = Invoke-RhapArchiveConsumerProcess -Executable $bash `
+        -Arguments @((ConvertTo-TestPosixPath $argumentCapture), (ConvertTo-TestPosixPath $crtArgumentBase), $trailingBackslash, $quotedArgument, $backslashQuoteArgument) `
+        -ArchivePath $archivePath
+    Assert-Equal $crtExit 0 'CRT argument quoting fixture succeeds'
+    Assert-Equal ([IO.File]::ReadAllText("$crtArgumentBase.count").Trim()) '3' 'CRT quoting preserves argument count'
+    Assert-Equal ([IO.File]::ReadAllText("$crtArgumentBase.0")) $trailingBackslash 'CRT quoting preserves trailing backslash'
+    Assert-Equal ([IO.File]::ReadAllText("$crtArgumentBase.1")) $quotedArgument 'CRT quoting preserves embedded quote'
+    Assert-Equal ([IO.File]::ReadAllText("$crtArgumentBase.2")) $backslashQuoteArgument 'CRT quoting preserves backslash run before quote'
 
     $largeArchive = Join-Path $transactionRoot 'large-archive.cpio'
     $largeStream = [IO.File]::Open($largeArchive, [IO.FileMode]::Create, [IO.FileAccess]::Write, [IO.FileShare]::None)

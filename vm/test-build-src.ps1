@@ -71,6 +71,8 @@ Assert-Match $texi2htmlIndex '^100755 ' 'CoreOS texi2html is tracked executable'
 $ccBuildGccText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\cc-1\build_gcc')
 Assert-Match $ccBuildGccText '-print-prog-name=cc1' 'cc bootstrap discovers the configured GCC backend instead of assuming a host layout'
 Assert-NotMatch $ccBuildGccText 'if \[ -d /`if \[ "\$RHAPSODY" \]; then echo usr/libexec; else echo lib; fi`/\$host \]' 'cc bootstrap does not require the historical fixed compiler directory'
+$ccMakefileText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\cc-1\cc\Makefile.in')
+Assert-Equal ([regex]::Matches($ccMakefileText, '\$\(MAKE\).*BISON="\$\(BISON\)"').Count) 6 'cc self-bootstrap propagates configured bison through every compiler-stage submake'
 $bootstrapManifestText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\BootstrapManifest')
 Assert-Match $bootstrapManifestText '(?s)dir\s+Libc-1\s+headers.*dir\s+cc-1\s+headers.*dir\s+bison-1\s+all.*dir\s+cc-1\s+all' 'libc and cc headers are replayed before bison and the full cc bootstrap'
 $libcMachPreambleText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\Libc-1\mach.subproj\Makefile.preamble')

@@ -27,11 +27,15 @@ Description: resume fixture
 Build-Depends:
 EOF
 cat > "$src/Makefile" <<'EOF'
+MAKEFILEDIR = source-selected
+
 installhdrs:
+	test "$(MAKEFILEDIR)" = source-selected
 	mkdir -p $(DSTROOT)/System/Headers
 	: > $(DSTROOT)/System/Headers/foo.h
 
 install:
+	test "$(MAKEFILEDIR)" = source-selected
 	mkdir -p $(DSTROOT)/usr/bin
 	: > $(DSTROOT)/usr/bin/foo
 	mkdir -p $(OBJROOT)/fixture
@@ -291,8 +295,10 @@ test ! -L "$repo/foo-1.0.apk"
 test -f "$repo/foo-1.0.apk"
 test -f "$repo/foo-1.0.apk.invalid"
 grep 'symlink' "$repo/foo-1.0.apk.invalid" > /dev/null
-grep "MAKEFILEDIR=$root/System/Developer/Makefiles/project" \
-    "$state/logs/foo-1.0-all.log" > /dev/null
+if grep 'MAKEFILEDIR=' "$state/logs/foo-1.0-all.log" > /dev/null; then
+    echo 'bootstrap-resume: MAKEFILEDIR command-line override escaped'
+    exit 1
+fi
 grep "MAKEFILEPATH=$root/System/Developer/Makefiles" \
     "$state/logs/foo-1.0-all.log" > /dev/null
 test "$outside_sum" = "`cksum "$base/outside.apk"`"

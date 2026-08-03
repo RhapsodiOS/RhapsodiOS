@@ -420,9 +420,18 @@ void builder_buildcmd(const Params *chroot_params, const Params *build_params,
             ready = access(path, F_OK) == 0;
             free(path);
         }
-        if (ready)
+        if (ready) {
+            strlist words;
+            strlist_init(&words);
             expand_toolchain_words(opt->toolchain->make_flags,
-                                   opt->sysroot, out);
+                                   opt->sysroot, &words);
+            for (i = 0; i < words.count; i++) {
+                /* Let a project select pb_makefiles over this weak default. */
+                if (!str_has_prefix(words.items[i], "MAKEFILEDIR="))
+                    strlist_push(out, words.items[i]);
+            }
+            strlist_free(&words);
+        }
     }
     strlist_init(&flags);
     builder_buildflags(build_params, target, &flags, opt);
@@ -1034,6 +1043,12 @@ static int run_make(strlist *cmd, const BuildOptions *opt) {
     for (i = 0; i < cmd->count; i++) argv[i] = cmd->items[i];
     argv[cmd->count] = 0;
     setenv("UNAME_SYSNAME", "Rhapsody", 1);
+    if (opt && opt->bootstrap && opt->sysroot) {
+        char *makefiledir = str_cats(
+            opt->sysroot, "/System/Developer/Makefiles/project", (char *)0);
+        setenv("MAKEFILEDIR", makefiledir, 1);
+        free(makefiledir);
+    }
     {
         const char *path = "/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin";
         if (opt && opt->toolchain && opt->toolchain->path)

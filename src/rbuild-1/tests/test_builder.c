@@ -334,8 +334,7 @@ TEST(test_buildcmd_bootstrap) {
     builder_buildcmd(&cp, &bp, "install", &cmd, &opt);
     CHECK_STR(cmd.items[0], "/tools/make");
     CHECK(!list_has(&cmd, "chroot"));
-    CHECK(list_has(&cmd,
-          "MAKEFILEDIR=/target/System/Developer/Makefiles/project"));
+    CHECK(!list_has_prefix(&cmd, "MAKEFILEDIR="));
     CHECK(list_has(&cmd,
           "MAKEFILEPATH=/target/System/Developer/Makefiles"));
     strlist_free(&cmd);
@@ -393,7 +392,7 @@ TEST(test_bootstrap_make_flags_wait_for_ready_path) {
     if (fp) fclose(fp);
     strlist_init(&cmd);
     builder_buildcmd(&cp, &bp, "install", &cmd, &opt);
-    CHECK(list_has(&cmd, expected_makefiledir));
+    CHECK(!list_has(&cmd, expected_makefiledir));
     CHECK(list_has(&cmd, expected_makefilepath));
     strlist_free(&cmd);
 

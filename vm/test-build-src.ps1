@@ -65,6 +65,9 @@ function Assert-EncodingSignature($Actual, $Expected, [string]$Name) {
 
 . (Join-Path $PSScriptRoot 'build-src-lib.ps1')
 $realProfile = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\rbuild-1\toolchains\gcc-darwin.conf')
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$texi2htmlIndex = (& git -C $repoRoot ls-files -s -- src/CoreOSMakefiles-1/ReleaseControl/texi2html) -join "`n"
+Assert-Match $texi2htmlIndex '^100755 ' 'CoreOS texi2html is tracked executable'
 
 $buildScriptText = Get-Content -Raw (Join-Path $PSScriptRoot 'build-src.ps1')
 $remoteScriptText = Get-Content -Raw (Join-Path $PSScriptRoot 'rhap-remote.ps1')

@@ -124,6 +124,7 @@ static const char *list_has_prefix(const strlist *l, const char *prefix) {
 
 static void toolchain_fixture(Toolchain *tc) {
     memset(tc, 0, sizeof(*tc));
+    tc->target_arch = "ppc";
     tc->target_cc = "/tools/target-cc";
     tc->target_ar = "/tools/target-ar";
     tc->target_ranlib = "/tools/target-ranlib";
@@ -177,6 +178,7 @@ TEST(test_bootstrap_flags_use_target_sysroot) {
     CHECK(list_has(&f, "LN=/tools/ln"));
     CHECK(list_has(&f, "RC_ARCHS=ppc"));
     CHECK(list_has(&f, "RC_ppc=YES"));
+    CHECK(list_has(&f, "TARGETS=ppc"));
     rc_cflags = list_has_prefix(&f, "RC_CFLAGS=");
     CHECK(rc_cflags != 0);
     CHECK(str_has_prefix(rc_cflags,
@@ -184,6 +186,14 @@ TEST(test_bootstrap_flags_use_target_sysroot) {
     for (i = 0; defines[i]; i++) CHECK(strstr(rc_cflags, defines[i]) != 0);
     CHECK(list_has(&f, "OTHER_LDFLAGS=-Wl,-syslibroot,/target"));
     CHECK(!list_has_prefix(&f, "BOOTSTRAP_SKIP_DYLD="));
+    strlist_free(&f);
+
+    tc.target_arch = "m68k";
+    strlist_init(&f);
+    builder_buildflags(&p, "install", &f, &opt);
+    CHECK(list_has(&f, "RC_ARCHS=m68k"));
+    CHECK(list_has(&f, "RC_m68k=YES"));
+    CHECK(list_has(&f, "TARGETS=m68k"));
     strlist_free(&f);
     params_free(&p);
 }

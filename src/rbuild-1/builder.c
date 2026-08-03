@@ -300,12 +300,17 @@ void builder_buildflags(const Params *params, const char *target, strlist *out,
     const char *archs;
     int bootstrap = opt && opt->bootstrap;
     const Toolchain *tc = opt ? opt->toolchain : 0;
+    char *rc_arch_key = 0;
+
+    if (bootstrap && tc && tc->target_arch)
+        rc_arch_key = str_cats("RC_", tc->target_arch, (char *)0);
 
     /* Fixed base flags, but skip the ones we override below. */
     for (i = 0; baseflags[i][0]; i++) {
         const char *k = baseflags[i][0];
         if (strcmp(k, "RC_CFLAGS") == 0 || strcmp(k, "RC_ARCHS") == 0 ||
             strcmp(k, "RC_i386") == 0 || strcmp(k, "RC_ppc") == 0 ||
+            (rc_arch_key && strcmp(k, rc_arch_key) == 0) ||
             (bootstrap && strcmp(k, "NEXT_ROOT") == 0))
             continue;
         push_kv(out, k, baseflags[i][1]);
@@ -328,7 +333,7 @@ void builder_buildflags(const Params *params, const char *target, strlist *out,
         expand_toolchain_words(tc->cpp_flags, opt->sysroot, &words);
         expanded_cflags = strlist_join(&words, " ");
         arch_cflags = expanded_cflags;
-        archs = "ppc";
+        archs = tc->target_arch;
         strlist_free(&words);
     } else {
         arch_cflags = "-arch " RBUILD_HOST_ARCH " ";
@@ -345,12 +350,16 @@ void builder_buildflags(const Params *params, const char *target, strlist *out,
     free(rc_cflags);
 
     push_kv(out, "RC_ARCHS", archs);
-    if (bootstrap && tc)
-        push_kv(out, "RC_ppc", "YES");
+    if (bootstrap && tc) {
+        push_kv(out, rc_arch_key, "YES");
+        /* Legacy projects often compute a separate default target list. */
+        push_kv(out, "TARGETS", tc->target_arch);
+    }
     else if (strcmp(RBUILD_HOST_ARCH, "i386") == 0)
         push_kv(out, "RC_i386", "YES");
     else
         push_kv(out, "RC_ppc", "YES");
+    free(rc_arch_key);
     if (bootstrap && tc) {
         strlist ld_words;
         char *ld_flags;

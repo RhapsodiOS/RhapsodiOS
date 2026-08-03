@@ -68,6 +68,9 @@ $realProfile = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\rbuild-1\toolch
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $texi2htmlIndex = (& git -C $repoRoot ls-files -s -- src/CoreOSMakefiles-1/ReleaseControl/texi2html) -join "`n"
 Assert-Match $texi2htmlIndex '^100755 ' 'CoreOS texi2html is tracked executable'
+$ccBuildGccText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\cc-1\build_gcc')
+Assert-Match $ccBuildGccText '-print-prog-name=cc1' 'cc bootstrap discovers the configured GCC backend instead of assuming a host layout'
+Assert-NotMatch $ccBuildGccText 'if \[ -d /`if \[ "\$RHAPSODY" \]; then echo usr/libexec; else echo lib; fi`/\$host \]' 'cc bootstrap does not require the historical fixed compiler directory'
 
 $buildScriptText = Get-Content -Raw (Join-Path $PSScriptRoot 'build-src.ps1')
 $remoteScriptText = Get-Content -Raw (Join-Path $PSScriptRoot 'rhap-remote.ps1')

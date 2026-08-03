@@ -63,7 +63,7 @@ target_arch=ppc
 target_ar=/usr/bin/ar
 target_ranlib=/usr/bin/ranlib
 make=/usr/bin/gnumake
-make_flags=MAKEFILEDIR=@SYSROOT@/System/Developer/Makefiles/project
+make_flags=MAKEFILEDIR=@SYSROOT@/System/Developer/Makefiles/project MAKEFILEPATH=@SYSROOT@/System/Developer/Makefiles
 shell=/bin/sh
 tar=/usr/bin/gnutar
 archive_create=/bin/pax
@@ -291,6 +291,10 @@ test ! -L "$repo/foo-1.0.apk"
 test -f "$repo/foo-1.0.apk"
 test -f "$repo/foo-1.0.apk.invalid"
 grep 'symlink' "$repo/foo-1.0.apk.invalid" > /dev/null
+grep "MAKEFILEDIR=$root/System/Developer/Makefiles/project" \
+    "$state/logs/foo-1.0-all.log" > /dev/null
+grep "MAKEFILEPATH=$root/System/Developer/Makefiles" \
+    "$state/logs/foo-1.0-all.log" > /dev/null
 test "$outside_sum" = "`cksum "$base/outside.apk"`"
 rm "$repo/foo-1.0.apk.invalid" "$repo/foo-1.0.apk"
 ln -s "$base/missing-outside.apk" "$repo/foo-1.0.apk"

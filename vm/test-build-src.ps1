@@ -404,7 +404,7 @@ $profileValues = ConvertFrom-RhapToolchainProfileText -Text $realProfile
 Assert-Equal $profileValues.build_cc '/usr/bin/cc' 'profile build compiler value'
 Assert-Equal $profileValues.target_arch 'ppc' 'profile target architecture value'
 Assert-Equal $profileValues.make '/usr/bin/make' 'profile make value'
-Assert-Equal $profileValues.make_flags 'MAKEFILEDIR=@SYSROOT@/System/Developer/Makefiles/project' 'profile bootstrap make flags'
+Assert-Equal $profileValues.make_flags 'MAKEFILEDIR=@SYSROOT@/System/Developer/Makefiles/project MAKEFILEPATH=@SYSROOT@/System/Developer/Makefiles' 'profile bootstrap make flags'
 Assert-Equal $profileValues.make_flags_ready '@SYSROOT@/System/Developer/Makefiles/project/platform.make' 'profile bootstrap make flags readiness path'
 Assert-Equal $profileValues.archive_create '/bin/pax' 'profile archive creator value'
 Assert-Equal $profileValues.archive_create_flags '-w -x ustar' 'profile archive creator flags'

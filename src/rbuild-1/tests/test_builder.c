@@ -128,7 +128,7 @@ static void toolchain_fixture(Toolchain *tc) {
     tc->target_ar = "/tools/target-ar";
     tc->target_ranlib = "/tools/target-ranlib";
     tc->make = "/tools/make";
-    tc->make_flags = "MAKEFILEDIR=@SYSROOT@/System/Developer/Makefiles/project EXTRA=@SYSROOT@/extra";
+    tc->make_flags = "MAKEFILEDIR=@SYSROOT@/System/Developer/Makefiles/project MAKEFILEPATH=@SYSROOT@/System/Developer/Makefiles";
     tc->shell = "/bin/sh";
     tc->tar = "/tools/tar";
     tc->archive_create = "/bin/pax";
@@ -323,14 +323,15 @@ TEST(test_buildcmd_bootstrap) {
     CHECK(!list_has(&cmd, "chroot"));
     CHECK(list_has(&cmd,
           "MAKEFILEDIR=/target/System/Developer/Makefiles/project"));
-    CHECK(list_has(&cmd, "EXTRA=/target/extra"));
+    CHECK(list_has(&cmd,
+          "MAKEFILEPATH=/target/System/Developer/Makefiles"));
     strlist_free(&cmd);
 
     opt.bootstrap = 0;
     strlist_init(&cmd);
     builder_buildcmd(&cp, &bp, "install", &cmd, &opt);
     CHECK(!list_has_prefix(&cmd, "MAKEFILEDIR="));
-    CHECK(!list_has_prefix(&cmd, "EXTRA="));
+    CHECK(!list_has_prefix(&cmd, "MAKEFILEPATH="));
     strlist_free(&cmd);
 
     params_free(&cp); params_free(&bp);
@@ -344,10 +345,16 @@ TEST(test_bootstrap_make_flags_wait_for_ready_path) {
     char base[128];
     char ready[160];
     char shell_cmd[256];
+    char expected_makefiledir[256];
+    char expected_makefilepath[256];
     FILE *fp;
 
     sprintf(base, "/tmp/rb-make-flags-%ld", (long)getpid());
     sprintf(ready, "%s/ready/platform.make", base);
+    sprintf(expected_makefiledir,
+            "MAKEFILEDIR=%s/System/Developer/Makefiles/project", base);
+    sprintf(expected_makefilepath,
+            "MAKEFILEPATH=%s/System/Developer/Makefiles", base);
     sprintf(shell_cmd, "rm -rf %s && mkdir -p %s/ready", base, base);
     CHECK_INT(system(shell_cmd), 0);
     params_init(&cp); params_init(&bp);
@@ -365,7 +372,7 @@ TEST(test_bootstrap_make_flags_wait_for_ready_path) {
     strlist_init(&cmd);
     builder_buildcmd(&cp, &bp, "install", &cmd, &opt);
     CHECK(!list_has_prefix(&cmd, "MAKEFILEDIR="));
-    CHECK(!list_has_prefix(&cmd, "EXTRA="));
+    CHECK(!list_has_prefix(&cmd, "MAKEFILEPATH="));
     strlist_free(&cmd);
 
     fp = fopen(ready, "w");
@@ -373,8 +380,8 @@ TEST(test_bootstrap_make_flags_wait_for_ready_path) {
     if (fp) fclose(fp);
     strlist_init(&cmd);
     builder_buildcmd(&cp, &bp, "install", &cmd, &opt);
-    CHECK(list_has_prefix(&cmd, "MAKEFILEDIR="));
-    CHECK(list_has_prefix(&cmd, "EXTRA="));
+    CHECK(list_has(&cmd, expected_makefiledir));
+    CHECK(list_has(&cmd, expected_makefilepath));
     strlist_free(&cmd);
 
     params_free(&cp); params_free(&bp);

@@ -20,7 +20,7 @@ static void write_profile(const char *path, int include_target_cc,
     fputs("target_ranlib=/opt/cross/bin/ranlib\n", fp);
     fputs("make=/usr/bin/make\n", fp);
     if (include_make_flags)
-        fputs("make_flags=MAKEFILEDIR=@SYSROOT@/System/Developer/Makefiles/project EXTRA=@SYSROOT@/extra\n", fp);
+        fputs("make_flags=MAKEFILEDIR=@SYSROOT@/System/Developer/Makefiles/project MAKEFILEPATH=@SYSROOT@/System/Developer/Makefiles\n", fp);
     fputs("shell=/bin/sh\n", fp);
     fputs("tar=/usr/bin/tar\n", fp);
     if (include_archive_create) fputs("archive_create=/bin/pax\n", fp);
@@ -66,7 +66,7 @@ TEST(test_loads_and_expands_profile) {
     CHECK_STR(tc.archive_create, "/bin/pax");
     CHECK_STR(tc.archive_create_flags, "-w -x ustar");
     CHECK_STR(tc.make_flags,
-              "MAKEFILEDIR=@SYSROOT@/System/Developer/Makefiles/project EXTRA=@SYSROOT@/extra");
+              "MAKEFILEDIR=@SYSROOT@/System/Developer/Makefiles/project MAKEFILEPATH=@SYSROOT@/System/Developer/Makefiles");
     CHECK(tc.make_flags_ready == 0);
 
     strlist_init(&words);
@@ -74,7 +74,8 @@ TEST(test_loads_and_expands_profile) {
     CHECK_INT(words.count, 2);
     CHECK_STR(words.items[0],
               "MAKEFILEDIR=/target/System/Developer/Makefiles/project");
-    CHECK_STR(words.items[1], "EXTRA=/target/extra");
+    CHECK_STR(words.items[1],
+              "MAKEFILEPATH=/target/System/Developer/Makefiles");
     strlist_free(&words);
     toolchain_free(&tc);
     remove(path);

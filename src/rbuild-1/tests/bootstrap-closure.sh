@@ -195,6 +195,15 @@ for header in architecture-hdrs kernel-hdrs libc-hdrs objc4-hdrs \
     echo "$header" >>"$tmp/required"
 done
 
+# GNU-source wrappers must honor the selected makefile root.  An absolute
+# /System include escapes the bootstrap sysroot and reintroduces host headers.
+hardcoded_makefiles=`find "$src_dir" -name Makefile -type f -exec \
+    grep -l '^include /System/Developer/Makefiles/' {} \;`
+if test -n "$hardcoded_makefiles"; then
+    echo "$hardcoded_makefiles" >&2
+    say_fail "source makefiles bypass MAKEFILEPATH"
+fi
+
 sort -u "$tmp/provided" >"$tmp/provided.sorted"
 sort -u "$tmp/required" >"$tmp/required.sorted"
 while read dependency; do

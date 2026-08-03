@@ -11,4 +11,4 @@ Configure             = $(Sources)/build/configure
 Extra_Configure_Flags = --disable-curses --disable-db --disable-re
 
 # It's a GNU Source project
-include /System/Developer/Makefiles/CoreOS/ReleaseControl/GNUSource.make
+include $(MAKEFILEPATH)/CoreOS/ReleaseControl/GNUSource.make

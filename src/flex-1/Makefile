@@ -12,7 +12,7 @@ Extra_Environment = FLEX=lex FLEXLIB=libl.a			\
                     includedir=$(DSTROOT)$(USRINCLUDEDIR)
 
 # It's a GNU Source project
-include /System/Developer/Makefiles/CoreOS/ReleaseControl/GNUSource.make
+include $(MAKEFILEPATH)/CoreOS/ReleaseControl/GNUSource.make
 
 after_install::
 	$(LN) -f $(RC_Install_Prefix)/bin/lex $(RC_Install_Prefix)/bin/flex

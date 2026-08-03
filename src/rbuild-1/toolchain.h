@@ -23,6 +23,7 @@ typedef struct {
     char *arch_flags;
     char *cpp_flags;
     char *ld_flags;
+    char *ld_flags_ready;
     char *ln;
 } Toolchain;
 

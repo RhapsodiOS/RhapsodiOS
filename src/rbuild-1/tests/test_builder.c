@@ -389,6 +389,56 @@ TEST(test_bootstrap_make_flags_wait_for_ready_path) {
     CHECK_INT(system(shell_cmd), 0);
 }
 
+TEST(test_bootstrap_ld_flags_wait_for_ready_path) {
+    Params p;
+    BuildOptions opt;
+    Toolchain tc;
+    strlist flags;
+    char base[128];
+    char ready[180];
+    char shell_cmd[256];
+    char expected[256];
+    char expected_root[256];
+    FILE *fp;
+
+    sprintf(base, "/tmp/rb-ld-flags-%ld", (long)getpid());
+    sprintf(ready, "%s/ready/System", base);
+    sprintf(expected, "OTHER_LDFLAGS=-Wl,-syslibroot,%s", base);
+    sprintf(expected_root, "NEXT_ROOT=%s", base);
+    sprintf(shell_cmd, "rm -rf %s && mkdir -p %s/ready", base, base);
+    CHECK_INT(system(shell_cmd), 0);
+    params_init(&p);
+    build_options_init(&opt);
+    toolchain_fixture(&tc);
+    tc.ld_flags_ready = "@SYSROOT@/ready/System";
+    opt.bootstrap = 1;
+    opt.sysroot = base;
+    opt.toolchain = &tc;
+    p.SRCROOT = xstrdup("/s"); p.OBJROOT = xstrdup("/o");
+    p.SYMROOT = xstrdup("/y"); p.DSTROOT = xstrdup("/d");
+    p.HDRROOT = xstrdup("/h"); p.SUBLIBROOTS = xstrdup("/objs");
+
+    strlist_init(&flags);
+    builder_buildflags(&p, "install", &flags, &opt);
+    CHECK(!list_has_prefix(&flags, "NEXT_ROOT="));
+    CHECK(list_has(&flags, "OTHER_LDFLAGS="));
+    CHECK(!list_has(&flags, expected));
+    strlist_free(&flags);
+
+    fp = fopen(ready, "w");
+    CHECK(fp != 0);
+    if (fp) fclose(fp);
+    strlist_init(&flags);
+    builder_buildflags(&p, "install", &flags, &opt);
+    CHECK(list_has(&flags, expected));
+    CHECK(list_has(&flags, expected_root));
+    strlist_free(&flags);
+
+    params_free(&p);
+    sprintf(shell_cmd, "rm -rf %s", base);
+    CHECK_INT(system(shell_cmd), 0);
+}
+
 TEST(test_setupdirs_bootstrap_skips_makeroot) {
     Package pkg;
     Params p;
@@ -500,6 +550,7 @@ static void run_all(void) {
     RUN(test_buildflags);
     RUN(test_buildcmd_bootstrap);
     RUN(test_bootstrap_make_flags_wait_for_ready_path);
+    RUN(test_bootstrap_ld_flags_wait_for_ready_path);
     RUN(test_bootstrap_harvest_stays_in_private_object_root);
     RUN(test_setupdirs_bootstrap_skips_makeroot);
     RUN(test_makeroot_dry_run_preserves_package_list);

@@ -354,13 +354,23 @@ void builder_buildflags(const Params *params, const char *target, strlist *out,
     if (bootstrap && tc) {
         strlist ld_words;
         char *ld_flags;
-        if (opt->sysroot) push_kv(out, "NEXT_ROOT", opt->sysroot);
+        int ld_ready = 1;
+        if (tc->ld_flags_ready) {
+            char *path = expand_toolchain_value(
+                tc->ld_flags_ready, opt->sysroot);
+            ld_ready = access(path, F_OK) == 0;
+            free(path);
+        }
+        /* NEXT_ROOT also redirects Darwin startup-object/library lookup. */
+        if (opt->sysroot && ld_ready)
+            push_kv(out, "NEXT_ROOT", opt->sysroot);
         if (tc->target_cc) push_kv(out, "CC", tc->target_cc);
         if (tc->target_ar) push_kv(out, "AR", tc->target_ar);
         if (tc->target_ranlib) push_kv(out, "RANLIB", tc->target_ranlib);
         if (tc->ln) push_kv(out, "LN", tc->ln);
         strlist_init(&ld_words);
-        expand_toolchain_words(tc->ld_flags, opt->sysroot, &ld_words);
+        if (ld_ready)
+            expand_toolchain_words(tc->ld_flags, opt->sysroot, &ld_words);
         ld_flags = strlist_join(&ld_words, " ");
         push_kv(out, "OTHER_LDFLAGS", ld_flags);
         free(ld_flags);

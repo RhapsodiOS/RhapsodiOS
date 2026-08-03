@@ -32,6 +32,7 @@ static const ToolchainField fields[] = {
     FIELD(arch_flags),
     FIELD(cpp_flags),
     FIELD(ld_flags),
+    FIELD(ld_flags_ready),
     FIELD(ln)
 };
 
@@ -138,7 +139,8 @@ int toolchain_validate(const Toolchain *tc) {
     for (i = 0; i < FIELD_COUNT; i++) {
         char *const *slot = (char *const *)((const char *)tc + fields[i].offset);
         if ((fields[i].offset == offsetof(Toolchain, make_flags) ||
-             fields[i].offset == offsetof(Toolchain, make_flags_ready)) &&
+             fields[i].offset == offsetof(Toolchain, make_flags_ready) ||
+             fields[i].offset == offsetof(Toolchain, ld_flags_ready)) &&
             *slot == 0)
             continue;
         if (*slot == 0 || **slot == '\0') {

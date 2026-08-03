@@ -7,7 +7,7 @@ $script:RhapRequiredToolchainKeys = @(
     'make', 'shell', 'tar', 'archive_create', 'archive_create_flags', 'gzip', 'rsync', 'path',
     'arch_flags', 'cpp_flags', 'ld_flags', 'ln'
 )
-$script:RhapToolchainKeys = @($script:RhapRequiredToolchainKeys) + @('make_flags', 'make_flags_ready')
+$script:RhapToolchainKeys = @($script:RhapRequiredToolchainKeys) + @('make_flags', 'make_flags_ready', 'ld_flags_ready')
 
 $script:RhapMigMachHeaders = @(
     'mach/message.h',

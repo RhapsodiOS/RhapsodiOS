@@ -378,6 +378,8 @@ void builder_buildcmd(const Params *chroot_params, const Params *build_params,
     strlist_push(out, "-w");
     strlist_push(out, "-C");
     strlist_push(out, build_params->SRCROOT);
+    if (bootstrap && opt->toolchain)
+        expand_toolchain_words(opt->toolchain->make_flags, opt->sysroot, out);
     strlist_init(&flags);
     builder_buildflags(build_params, target, &flags, opt);
     for (i = 0; i < flags.count; i++) strlist_push(out, flags.items[i]);

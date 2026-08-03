@@ -404,6 +404,7 @@ $profileValues = ConvertFrom-RhapToolchainProfileText -Text $realProfile
 Assert-Equal $profileValues.build_cc '/usr/bin/cc' 'profile build compiler value'
 Assert-Equal $profileValues.target_arch 'ppc' 'profile target architecture value'
 Assert-Equal $profileValues.make '/usr/bin/make' 'profile make value'
+Assert-Equal $profileValues.make_flags 'MAKEFILEDIR=@SYSROOT@/System/Developer/Makefiles/project' 'profile bootstrap make flags'
 Assert-Equal $profileValues.archive_create '/bin/pax' 'profile archive creator value'
 Assert-Equal $profileValues.archive_create_flags '-w -x ustar' 'profile archive creator flags'
 
@@ -415,6 +416,9 @@ Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile -replace '(?m)
 Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile -replace '(?m)^target_arch=.*\r?\n?', '') } 'reject missing target_arch profile key'
 Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile -replace '(?m)^archive_create=.*\r?\n?', '') } 'reject missing archive creator profile key'
 Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile -replace '(?m)^archive_create_flags=.*\r?\n?', '') } 'reject missing archive creator flags profile key'
+Assert-Equal (Test-RhapToolchainProfileText -Text ($realProfile -replace '(?m)^make_flags=.*\r?\n?', '')) $true 'accept profile without bootstrap make flags'
+Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile -replace '(?m)^make_flags=.*$', 'make_flags=') } 'reject empty bootstrap make flags'
+Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile -replace '(?m)^make_flags=.*$', 'make_flags=   ') } 'reject whitespace bootstrap make flags'
 Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile + "tar_create_flags=--posix`n") } 'reject legacy tar-specific creation flags key'
 Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile -replace '(?m)^target_arch=.*$', 'target_arch=ppc;touch_bad') } 'reject unsafe target_arch profile value'
 Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile -replace '(?m)^profile=', 'profile ') } 'reject malformed profile line'
@@ -469,6 +473,42 @@ Assert-Throws { Get-RhapBuildPhases -All -World } 'reject all plus phase'
 Assert-Throws { Get-RhapBuildPhases -Rbuild -Bootstrap } 'reject two phases'
 
 $cmd = New-RhapPreflightCommand -SourceRoot '/build/src' -ToolsDir '/build/tools' -BootstrapRoot '/build/bootstrap-root' -StateDir '/build/state' -Profile '/build/src/rbuild-1/toolchains/gcc-darwin.conf'
+$profileValidatorStart = $cmd.IndexOf("awk 'BEGIN {")
+$profileValidatorEndMarker = ' || fail "invalid toolchain profile"'
+$profileValidatorEnd = $cmd.IndexOf($profileValidatorEndMarker, $profileValidatorStart)
+Assert-Equal ($profileValidatorStart -ge 0) $true 'generated preflight contains profile validator'
+Assert-Equal ($profileValidatorEnd -gt $profileValidatorStart) $true 'generated preflight profile validator has a failure boundary'
+$profileValidator = $cmd.Substring($profileValidatorStart, $profileValidatorEnd - $profileValidatorStart)
+function Test-GeneratedProfileValidatorContract([string]$Validator, [string]$ProfileText) {
+    $allowed = @{}
+    $required = @{}
+    foreach ($match in [regex]::Matches($Validator, 'allowed\["([A-Za-z0-9_]+)"\] = 1')) {
+        $allowed[$match.Groups[1].Value] = $true
+    }
+    foreach ($match in [regex]::Matches($Validator, 'required\["([A-Za-z0-9_]+)"\] = 1')) {
+        $required[$match.Groups[1].Value] = $true
+    }
+    $seen = @{}
+    foreach ($rawLine in ($ProfileText -split "`r?`n")) {
+        $line = $rawLine.Trim()
+        if ($line -eq '' -or $line.StartsWith('#')) { continue }
+        $equals = $line.IndexOf('=')
+        if ($equals -lt 1) { return $false }
+        $key = $line.Substring(0, $equals).Trim()
+        $value = $line.Substring($equals + 1).Trim()
+        if (-not $allowed.ContainsKey($key) -or $seen.ContainsKey($key) -or $value -eq '') { return $false }
+        $seen[$key] = $true
+    }
+    foreach ($key in $required.Keys) {
+        if (-not $seen.ContainsKey($key)) { return $false }
+    }
+    return $true
+}
+Assert-Equal (Test-GeneratedProfileValidatorContract -Validator $profileValidator -ProfileText $realProfile) $true 'generated preflight accepts canonical profile with optional make flags'
+Assert-Equal (Test-GeneratedProfileValidatorContract -Validator $profileValidator -ProfileText ($realProfile -replace '(?m)^make_flags=.*\r?\n?', '')) $true 'generated preflight accepts profile omitting optional make flags'
+Assert-Equal (Test-GeneratedProfileValidatorContract -Validator $profileValidator -ProfileText ($realProfile -replace '(?m)^make_flags=.*$', 'make_flags=')) $false 'generated preflight rejects empty optional make flags'
+Assert-Equal (Test-GeneratedProfileValidatorContract -Validator $profileValidator -ProfileText ($realProfile -replace '(?m)^make_flags=.*$', 'make_flags=   ')) $false 'generated preflight rejects whitespace optional make flags'
+Assert-Equal (Test-GeneratedProfileValidatorContract -Validator $profileValidator -ProfileText ($realProfile + "unknown_key=value`n")) $false 'generated preflight rejects unknown profile key'
 Assert-Match $cmd '^set -e' 'literal POSIX script body'
 Assert-Match $cmd 'test -f ' 'profile existence check'
 Assert-Match $cmd 'test -d "\$SOURCE_ROOT"' 'source root directory check'

@@ -20,6 +20,7 @@ static const ToolchainField fields[] = {
     FIELD(target_ar),
     FIELD(target_ranlib),
     FIELD(make),
+    FIELD(make_flags),
     FIELD(shell),
     FIELD(tar),
     FIELD(archive_create),
@@ -135,6 +136,8 @@ int toolchain_validate(const Toolchain *tc) {
     size_t i;
     for (i = 0; i < FIELD_COUNT; i++) {
         char *const *slot = (char *const *)((const char *)tc + fields[i].offset);
+        if (fields[i].offset == offsetof(Toolchain, make_flags) && *slot == 0)
+            continue;
         if (*slot == 0 || **slot == '\0') {
             fprintf(stderr, "rbuild: toolchain profile missing %s\n",
                     fields[i].key);

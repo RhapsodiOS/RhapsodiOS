@@ -63,6 +63,7 @@ target_arch=ppc
 target_ar=/usr/bin/ar
 target_ranlib=/usr/bin/ranlib
 make=/usr/bin/gnumake
+make_flags=MAKEFILEDIR=@SYSROOT@/System/Developer/Makefiles/project
 shell=/bin/sh
 tar=/usr/bin/gnutar
 archive_create=/bin/pax

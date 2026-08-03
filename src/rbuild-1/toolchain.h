@@ -11,6 +11,7 @@ typedef struct {
     char *target_ar;
     char *target_ranlib;
     char *make;
+    char *make_flags;
     char *shell;
     char *tar;
     char *archive_create;

@@ -128,6 +128,7 @@ static void toolchain_fixture(Toolchain *tc) {
     tc->target_ar = "/tools/target-ar";
     tc->target_ranlib = "/tools/target-ranlib";
     tc->make = "/tools/make";
+    tc->make_flags = "MAKEFILEDIR=@SYSROOT@/System/Developer/Makefiles/project EXTRA=@SYSROOT@/extra";
     tc->shell = "/bin/sh";
     tc->tar = "/tools/tar";
     tc->archive_create = "/bin/pax";
@@ -320,6 +321,16 @@ TEST(test_buildcmd_bootstrap) {
     builder_buildcmd(&cp, &bp, "install", &cmd, &opt);
     CHECK_STR(cmd.items[0], "/tools/make");
     CHECK(!list_has(&cmd, "chroot"));
+    CHECK(list_has(&cmd,
+          "MAKEFILEDIR=/target/System/Developer/Makefiles/project"));
+    CHECK(list_has(&cmd, "EXTRA=/target/extra"));
+    strlist_free(&cmd);
+
+    opt.bootstrap = 0;
+    strlist_init(&cmd);
+    builder_buildcmd(&cp, &bp, "install", &cmd, &opt);
+    CHECK(!list_has_prefix(&cmd, "MAKEFILEDIR="));
+    CHECK(!list_has_prefix(&cmd, "EXTRA="));
     strlist_free(&cmd);
 
     params_free(&cp); params_free(&bp);

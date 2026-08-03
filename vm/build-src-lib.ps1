@@ -2,11 +2,12 @@
 
 Set-StrictMode -Version Latest
 
-$script:RhapToolchainKeys = @(
+$script:RhapRequiredToolchainKeys = @(
     'profile', 'build_cc', 'target_cc', 'target_arch', 'target_ar', 'target_ranlib',
     'make', 'shell', 'tar', 'archive_create', 'archive_create_flags', 'gzip', 'rsync', 'path',
     'arch_flags', 'cpp_flags', 'ld_flags', 'ln'
 )
+$script:RhapToolchainKeys = @($script:RhapRequiredToolchainKeys) + @('make_flags')
 
 $script:RhapMigMachHeaders = @(
     'mach/message.h',
@@ -39,8 +40,13 @@ function Test-RhapToolchainProfileText {
         if ($seen.ContainsKey($key)) { throw "duplicate toolchain profile key $key" }
         $seen.Add($key, $value)
     }
-    foreach ($key in $script:RhapToolchainKeys) {
+    foreach ($key in $script:RhapRequiredToolchainKeys) {
         if (-not $seen.ContainsKey($key) -or $seen[$key] -eq '') {
+            throw "toolchain profile missing $key"
+        }
+    }
+    foreach ($key in $script:RhapToolchainKeys) {
+        if ($seen.ContainsKey($key) -and $seen[$key] -eq '') {
             throw "toolchain profile missing $key"
         }
     }
@@ -278,7 +284,8 @@ function New-RhapPreflightCommand {
     $qBootstrap = ConvertTo-RhapShellDoubleQuoted $BootstrapRoot
     $qState = ConvertTo-RhapShellDoubleQuoted $StateDir
     $qSource = ConvertTo-RhapShellDoubleQuoted $SourceRoot
-    $requiredKeys = ($script:RhapToolchainKeys | ForEach-Object { "required[`"$_`"] = 1" }) -join '; '
+    $allowedKeys = ($script:RhapToolchainKeys | ForEach-Object { "allowed[`"$_`"] = 1" }) -join '; '
+    $requiredKeys = ($script:RhapRequiredToolchainKeys | ForEach-Object { "required[`"$_`"] = 1" }) -join '; '
     $migMachHeaders = $script:RhapMigMachHeaders -join ' '
 
     $parts = @(
@@ -304,7 +311,7 @@ function New-RhapPreflightCommand {
         'test -f "$SOURCE_ROOT/kernel-7/mach/mach.defs" || fail "MIG wrapper smoke definition missing"',
         "for mig_header in $migMachHeaders; do test -f `"`$SOURCE_ROOT/kernel-7/`$mig_header`" || fail `"MIG compatibility header missing: `$mig_header`"; done",
         'test -f "$PROFILE" || fail "toolchain profile missing: $PROFILE"',
-        "awk 'BEGIN { $requiredKeys } function trim(value) { sub(/^[ `t]*/, `"`", value); sub(/[ `t]*`$/, `"`", value); return value } { text=trim(`$0); if (text == `"`" || substr(text, 1, 1) == `"#`") next; equals=index(text, `"=`"); if (equals < 2) exit 1; key=trim(substr(text, 1, equals-1)); value=trim(substr(text, equals+1)); if (!(key in required) || (key in seen) || value == `"`") exit 1; seen[key]=1 } END { for (key in required) if (!(key in seen)) exit 1 }' `"`$PROFILE`" || fail `"invalid toolchain profile`"",
+        "awk 'BEGIN { $allowedKeys; $requiredKeys } function trim(value) { sub(/^[ `t]*/, `"`", value); sub(/[ `t]*`$/, `"`", value); return value } { text=trim(`$0); if (text == `"`" || substr(text, 1, 1) == `"#`") next; equals=index(text, `"=`"); if (equals < 2) exit 1; key=trim(substr(text, 1, equals-1)); value=trim(substr(text, equals+1)); if (!(key in allowed) || (key in seen) || value == `"`") exit 1; seen[key]=1 } END { for (key in required) if (!(key in seen)) exit 1 }' `"`$PROFILE`" || fail `"invalid toolchain profile`"",
         "profile_value() { awk -v wanted=`"`$1`" 'BEGIN { found=0 } /^[ `t]*#/ { next } { line=`$0; sub(/^[ `t]*/, `"`", line); eq=index(line, `"=`"); if (eq < 2) next; key=substr(line, 1, eq-1); value=substr(line, eq+1); sub(/[ `t]*`$/, `"`", key); sub(/^[ `t]*/, `"`", value); sub(/[ `t]*`$/, `"`", value); if (key == wanted) { print value; found=1; exit } } END { if (found == 0) exit 1 }' `"`$PROFILE`"; }",
         'BUILD_CC=$(profile_value build_cc) || fail "profile missing build_cc"',
         'TARGET_CC=$(profile_value target_cc) || fail "profile missing target_cc"',

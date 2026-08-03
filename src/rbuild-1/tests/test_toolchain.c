@@ -7,7 +7,8 @@
 static void write_profile(const char *path, int include_target_cc,
                           int include_target_arch,
                           int include_archive_create,
-                          int include_archive_create_flags) {
+                          int include_archive_create_flags,
+                          int include_make_flags) {
     FILE *fp = fopen(path, "w");
     CHECK(fp != 0);
     if (fp == 0) return;
@@ -18,6 +19,8 @@ static void write_profile(const char *path, int include_target_cc,
     fputs("target_ar=/opt/cross/bin/ar\n", fp);
     fputs("target_ranlib=/opt/cross/bin/ranlib\n", fp);
     fputs("make=/usr/bin/make\n", fp);
+    if (include_make_flags)
+        fputs("make_flags=MAKEFILEDIR=@SYSROOT@/System/Developer/Makefiles/project EXTRA=@SYSROOT@/extra\n", fp);
     fputs("shell=/bin/sh\n", fp);
     fputs("tar=/usr/bin/tar\n", fp);
     if (include_archive_create) fputs("archive_create=/bin/pax\n", fp);
@@ -41,12 +44,20 @@ static void write_text(const char *path, const char *text) {
     fclose(fp);
 }
 
+static void append_text(const char *path, const char *text) {
+    FILE *fp = fopen(path, "a");
+    CHECK(fp != 0);
+    if (fp == 0) return;
+    fputs(text, fp);
+    fclose(fp);
+}
+
 TEST(test_loads_and_expands_profile) {
     const char *path = "/tmp/rbuild-toolchain.conf";
     Toolchain tc;
     strlist words;
 
-    write_profile(path, 1, 1, 1, 1);
+    write_profile(path, 1, 1, 1, 1, 1);
     toolchain_init(&tc);
     CHECK_INT(toolchain_load(&tc, path), 0);
     CHECK_INT(toolchain_validate(&tc), 0);
@@ -54,13 +65,15 @@ TEST(test_loads_and_expands_profile) {
     CHECK_STR(tc.target_arch, "ppc");
     CHECK_STR(tc.archive_create, "/bin/pax");
     CHECK_STR(tc.archive_create_flags, "-w -x ustar");
+    CHECK_STR(tc.make_flags,
+              "MAKEFILEDIR=@SYSROOT@/System/Developer/Makefiles/project EXTRA=@SYSROOT@/extra");
 
     strlist_init(&words);
-    toolchain_expand_words("-nostdinc -I@SYSROOT@/System/Headers",
-                           "/target", &words);
+    toolchain_expand_words(tc.make_flags, "/target", &words);
     CHECK_INT(words.count, 2);
-    CHECK_STR(words.items[0], "-nostdinc");
-    CHECK_STR(words.items[1], "-I/target/System/Headers");
+    CHECK_STR(words.items[0],
+              "MAKEFILEDIR=/target/System/Developer/Makefiles/project");
+    CHECK_STR(words.items[1], "EXTRA=/target/extra");
     strlist_free(&words);
     toolchain_free(&tc);
     remove(path);
@@ -70,7 +83,7 @@ TEST(test_validation_rejects_missing_target_cc) {
     const char *path = "/tmp/rbuild-toolchain.conf";
     Toolchain tc;
 
-    write_profile(path, 0, 1, 1, 1);
+    write_profile(path, 0, 1, 1, 1, 1);
     toolchain_init(&tc);
     CHECK_INT(toolchain_load(&tc, path), 0);
     CHECK_INT(toolchain_validate(&tc), 1);
@@ -82,7 +95,7 @@ TEST(test_validation_rejects_missing_archive_creator) {
     const char *path = "/tmp/rbuild-toolchain.conf";
     Toolchain tc;
 
-    write_profile(path, 1, 1, 0, 1);
+    write_profile(path, 1, 1, 0, 1, 1);
     toolchain_init(&tc);
     CHECK_INT(toolchain_load(&tc, path), 0);
     CHECK_INT(toolchain_validate(&tc), 1);
@@ -94,7 +107,45 @@ TEST(test_validation_rejects_missing_archive_create_flags) {
     const char *path = "/tmp/rbuild-toolchain.conf";
     Toolchain tc;
 
-    write_profile(path, 1, 1, 1, 0);
+    write_profile(path, 1, 1, 1, 0, 1);
+    toolchain_init(&tc);
+    CHECK_INT(toolchain_load(&tc, path), 0);
+    CHECK_INT(toolchain_validate(&tc), 1);
+    toolchain_free(&tc);
+    remove(path);
+}
+
+TEST(test_validation_accepts_missing_make_flags) {
+    const char *path = "/tmp/rbuild-toolchain.conf";
+    Toolchain tc;
+
+    write_profile(path, 1, 1, 1, 1, 0);
+    toolchain_init(&tc);
+    CHECK_INT(toolchain_load(&tc, path), 0);
+    CHECK_INT(toolchain_validate(&tc), 0);
+    toolchain_free(&tc);
+    remove(path);
+}
+
+TEST(test_validation_rejects_empty_make_flags) {
+    const char *path = "/tmp/rbuild-toolchain.conf";
+    Toolchain tc;
+
+    write_profile(path, 1, 1, 1, 1, 0);
+    append_text(path, "make_flags=\n");
+    toolchain_init(&tc);
+    CHECK_INT(toolchain_load(&tc, path), 0);
+    CHECK_INT(toolchain_validate(&tc), 1);
+    toolchain_free(&tc);
+    remove(path);
+}
+
+TEST(test_validation_rejects_whitespace_make_flags) {
+    const char *path = "/tmp/rbuild-toolchain.conf";
+    Toolchain tc;
+
+    write_profile(path, 1, 1, 1, 1, 0);
+    append_text(path, "make_flags=   \t\n");
     toolchain_init(&tc);
     CHECK_INT(toolchain_load(&tc, path), 0);
     CHECK_INT(toolchain_validate(&tc), 1);
@@ -106,7 +157,7 @@ TEST(test_validation_rejects_missing_target_arch) {
     const char *path = "/tmp/rbuild-toolchain.conf";
     Toolchain tc;
 
-    write_profile(path, 1, 0, 1, 1);
+    write_profile(path, 1, 0, 1, 1, 1);
     toolchain_init(&tc);
     CHECK_INT(toolchain_load(&tc, path), 0);
     CHECK_INT(toolchain_validate(&tc), 1);
@@ -118,7 +169,7 @@ TEST(test_validation_rejects_unsafe_target_arch) {
     const char *path = "/tmp/rbuild-toolchain.conf";
     Toolchain tc;
 
-    write_profile(path, 1, 1, 1, 1);
+    write_profile(path, 1, 1, 1, 1, 1);
     toolchain_init(&tc);
     CHECK_INT(toolchain_load(&tc, path), 0);
     free(tc.target_arch);
@@ -132,7 +183,7 @@ TEST(test_validation_accepts_alternate_target_arch) {
     const char *path = "/tmp/rbuild-toolchain.conf";
     Toolchain tc;
 
-    write_profile(path, 1, 1, 1, 1);
+    write_profile(path, 1, 1, 1, 1, 1);
     toolchain_init(&tc);
     CHECK_INT(toolchain_load(&tc, path), 0);
     free(tc.target_arch);
@@ -146,7 +197,7 @@ TEST(test_validation_rejects_digit_leading_target_arch) {
     const char *path = "/tmp/rbuild-toolchain.conf";
     Toolchain tc;
 
-    write_profile(path, 1, 1, 1, 1);
+    write_profile(path, 1, 1, 1, 1, 1);
     toolchain_init(&tc);
     CHECK_INT(toolchain_load(&tc, path), 0);
     free(tc.target_arch);
@@ -207,6 +258,9 @@ static void run_all(void) {
     RUN(test_validation_rejects_digit_leading_target_arch);
     RUN(test_validation_rejects_missing_archive_creator);
     RUN(test_validation_rejects_missing_archive_create_flags);
+    RUN(test_validation_accepts_missing_make_flags);
+    RUN(test_validation_rejects_empty_make_flags);
+    RUN(test_validation_rejects_whitespace_make_flags);
     RUN(test_expand_null_value_is_empty);
     RUN(test_malformed_line_fails);
     RUN(test_unknown_key_fails);

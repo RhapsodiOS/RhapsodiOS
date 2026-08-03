@@ -325,6 +325,12 @@ void builder_buildflags(const Params *params, const char *target, strlist *out,
         push_kv(out, "DSTROOT", params->HDRROOT);
     else
         push_kv(out, "DSTROOT", params->DSTROOT);
+    if (bootstrap && tc && opt->sysroot) {
+        char *coreos_makefiles = str_cats(
+            opt->sysroot, "/System/Developer/Makefiles/CoreOS", (char *)0);
+        push_kv(out, "CoreOSMakefiles", coreos_makefiles);
+        free(coreos_makefiles);
+    }
 
     if (bootstrap && tc) {
         strlist words;

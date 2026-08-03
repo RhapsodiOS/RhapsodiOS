@@ -65,6 +65,8 @@ function Assert-EncodingSignature($Actual, $Expected, [string]$Name) {
 
 . (Join-Path $PSScriptRoot 'build-src-lib.ps1')
 $realProfile = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\rbuild-1\toolchains\gcc-darwin.conf')
+Assert-Match $realProfile 'make_flags=.*BISON=@SYSROOT@/usr/bin/bison' 'toolchain profile selects the staged target bison executable'
+Assert-Match $realProfile 'make_flags=.*BISON_SIMPLE=@SYSROOT@/usr/share/bison\.simple' 'toolchain profile selects the staged target bison parser skeleton'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $texi2htmlIndex = (& git -C $repoRoot ls-files -s -- src/CoreOSMakefiles-1/ReleaseControl/texi2html) -join "`n"
 Assert-Match $texi2htmlIndex '^100755 ' 'CoreOS texi2html is tracked executable'
@@ -415,7 +417,7 @@ $profileValues = ConvertFrom-RhapToolchainProfileText -Text $realProfile
 Assert-Equal $profileValues.build_cc '/usr/bin/cc' 'profile build compiler value'
 Assert-Equal $profileValues.target_arch 'ppc' 'profile target architecture value'
 Assert-Equal $profileValues.make '/usr/bin/make' 'profile make value'
-Assert-Equal $profileValues.make_flags 'MAKEFILEDIR=@SYSROOT@/System/Developer/Makefiles/project MAKEFILEPATH=@SYSROOT@/System/Developer/Makefiles' 'profile bootstrap make flags'
+Assert-Equal $profileValues.make_flags 'MAKEFILEDIR=@SYSROOT@/System/Developer/Makefiles/project MAKEFILEPATH=@SYSROOT@/System/Developer/Makefiles BISON=@SYSROOT@/usr/bin/bison BISON_SIMPLE=@SYSROOT@/usr/share/bison.simple' 'profile bootstrap make flags'
 Assert-Equal $profileValues.make_flags_ready '@SYSROOT@/System/Developer/Makefiles/project/platform.make' 'profile bootstrap make flags readiness path'
 Assert-Equal $profileValues.cpp_flags '-nostdinc -F@SYSROOT@/System/Library/Frameworks -I@SYSROOT@/System/Library/Frameworks/System.framework/Versions/B/Headers -I@SYSROOT@/System/Library/Frameworks/System.framework/Versions/B/Headers/bsd -I@SYSROOT@/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders' 'profile bootstrap isolated versioned BSD headers'
 Assert-Equal $profileValues.ld_flags_ready '@SYSROOT@/System/Library/Frameworks/System.framework/Versions/B/System' 'profile bootstrap linker flags readiness path'

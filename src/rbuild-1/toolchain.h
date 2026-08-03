@@ -12,6 +12,7 @@ typedef struct {
     char *target_ranlib;
     char *make;
     char *make_flags;
+    char *make_flags_ready;
     char *shell;
     char *tar;
     char *archive_create;

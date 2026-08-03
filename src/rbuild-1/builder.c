@@ -251,12 +251,12 @@ void build_options_init(BuildOptions *opt) {
     memset(opt, 0, sizeof(*opt));
 }
 
-static void expand_toolchain_words(const char *value, const char *sysroot,
-                                   strlist *out) {
+static char *expand_toolchain_value(const char *value, const char *sysroot) {
     static const char marker[] = "@SYSROOT@";
     const char *p = value ? value : "";
     const char *match;
     sbuf expanded;
+    char *out;
 
     sbuf_init(&expanded);
     while ((match = strstr(p, marker)) != 0) {
@@ -265,8 +265,16 @@ static void expand_toolchain_words(const char *value, const char *sysroot,
         p = match + sizeof(marker) - 1;
     }
     sbuf_puts(&expanded, p);
-    str_split_ws(expanded.buf, out);
+    out = sbuf_steal(&expanded);
     sbuf_free(&expanded);
+    return out;
+}
+
+static void expand_toolchain_words(const char *value, const char *sysroot,
+                                   strlist *out) {
+    char *expanded = expand_toolchain_value(value, sysroot);
+    str_split_ws(expanded, out);
+    free(expanded);
 }
 
 /*
@@ -378,8 +386,18 @@ void builder_buildcmd(const Params *chroot_params, const Params *build_params,
     strlist_push(out, "-w");
     strlist_push(out, "-C");
     strlist_push(out, build_params->SRCROOT);
-    if (bootstrap && opt->toolchain)
-        expand_toolchain_words(opt->toolchain->make_flags, opt->sysroot, out);
+    if (bootstrap && opt->toolchain && opt->toolchain->make_flags) {
+        int ready = 1;
+        if (opt->toolchain->make_flags_ready) {
+            char *path = expand_toolchain_value(
+                opt->toolchain->make_flags_ready, opt->sysroot);
+            ready = access(path, F_OK) == 0;
+            free(path);
+        }
+        if (ready)
+            expand_toolchain_words(opt->toolchain->make_flags,
+                                   opt->sysroot, out);
+    }
     strlist_init(&flags);
     builder_buildflags(build_params, target, &flags, opt);
     for (i = 0; i < flags.count; i++) strlist_push(out, flags.items[i]);

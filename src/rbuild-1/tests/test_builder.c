@@ -336,6 +336,52 @@ TEST(test_buildcmd_bootstrap) {
     params_free(&cp); params_free(&bp);
 }
 
+TEST(test_bootstrap_make_flags_wait_for_ready_path) {
+    Params cp, bp;
+    BuildOptions opt;
+    Toolchain tc;
+    strlist cmd;
+    char base[128];
+    char ready[160];
+    char shell_cmd[256];
+    FILE *fp;
+
+    sprintf(base, "/tmp/rb-make-flags-%ld", (long)getpid());
+    sprintf(ready, "%s/ready/platform.make", base);
+    sprintf(shell_cmd, "rm -rf %s && mkdir -p %s/ready", base, base);
+    CHECK_INT(system(shell_cmd), 0);
+    params_init(&cp); params_init(&bp);
+    build_options_init(&opt);
+    toolchain_fixture(&tc);
+    tc.make_flags_ready = "@SYSROOT@/ready/platform.make";
+    opt.bootstrap = 1;
+    opt.sysroot = base;
+    opt.toolchain = &tc;
+    cp.BUILDROOT = xstrdup("/br");
+    bp.SRCROOT = xstrdup("/s"); bp.OBJROOT = xstrdup("/o");
+    bp.SYMROOT = xstrdup("/y"); bp.DSTROOT = xstrdup("/d");
+    bp.HDRROOT = xstrdup("/h"); bp.SUBLIBROOTS = xstrdup("/objs");
+
+    strlist_init(&cmd);
+    builder_buildcmd(&cp, &bp, "install", &cmd, &opt);
+    CHECK(!list_has_prefix(&cmd, "MAKEFILEDIR="));
+    CHECK(!list_has_prefix(&cmd, "EXTRA="));
+    strlist_free(&cmd);
+
+    fp = fopen(ready, "w");
+    CHECK(fp != 0);
+    if (fp) fclose(fp);
+    strlist_init(&cmd);
+    builder_buildcmd(&cp, &bp, "install", &cmd, &opt);
+    CHECK(list_has_prefix(&cmd, "MAKEFILEDIR="));
+    CHECK(list_has_prefix(&cmd, "EXTRA="));
+    strlist_free(&cmd);
+
+    params_free(&cp); params_free(&bp);
+    sprintf(shell_cmd, "rm -rf %s", base);
+    CHECK_INT(system(shell_cmd), 0);
+}
+
 TEST(test_setupdirs_bootstrap_skips_makeroot) {
     Package pkg;
     Params p;
@@ -446,6 +492,7 @@ static void run_all(void) {
     RUN(test_bootstrap_flags_use_target_sysroot);
     RUN(test_buildflags);
     RUN(test_buildcmd_bootstrap);
+    RUN(test_bootstrap_make_flags_wait_for_ready_path);
     RUN(test_bootstrap_harvest_stays_in_private_object_root);
     RUN(test_setupdirs_bootstrap_skips_makeroot);
     RUN(test_makeroot_dry_run_preserves_package_list);

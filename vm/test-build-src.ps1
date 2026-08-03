@@ -405,6 +405,7 @@ Assert-Equal $profileValues.build_cc '/usr/bin/cc' 'profile build compiler value
 Assert-Equal $profileValues.target_arch 'ppc' 'profile target architecture value'
 Assert-Equal $profileValues.make '/usr/bin/make' 'profile make value'
 Assert-Equal $profileValues.make_flags 'MAKEFILEDIR=@SYSROOT@/System/Developer/Makefiles/project' 'profile bootstrap make flags'
+Assert-Equal $profileValues.make_flags_ready '@SYSROOT@/System/Developer/Makefiles/project/platform.make' 'profile bootstrap make flags readiness path'
 Assert-Equal $profileValues.archive_create '/bin/pax' 'profile archive creator value'
 Assert-Equal $profileValues.archive_create_flags '-w -x ustar' 'profile archive creator flags'
 
@@ -416,9 +417,14 @@ Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile -replace '(?m)
 Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile -replace '(?m)^target_arch=.*\r?\n?', '') } 'reject missing target_arch profile key'
 Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile -replace '(?m)^archive_create=.*\r?\n?', '') } 'reject missing archive creator profile key'
 Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile -replace '(?m)^archive_create_flags=.*\r?\n?', '') } 'reject missing archive creator flags profile key'
-Assert-Equal (Test-RhapToolchainProfileText -Text ($realProfile -replace '(?m)^make_flags=.*\r?\n?', '')) $true 'accept profile without bootstrap make flags'
+Assert-Equal (Test-RhapToolchainProfileText -Text ($realProfile -replace '(?m)^make_flags(?:_ready)?=.*\r?\n?', '')) $true 'accept profile without bootstrap make flags'
 Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile -replace '(?m)^make_flags=.*$', 'make_flags=') } 'reject empty bootstrap make flags'
 Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile -replace '(?m)^make_flags=.*$', 'make_flags=   ') } 'reject whitespace bootstrap make flags'
+Assert-Equal (Test-RhapToolchainProfileText -Text ($realProfile -replace '(?m)^make_flags_ready=.*\r?\n?', '')) $true 'accept bootstrap make flags without readiness gate'
+Assert-Equal (Test-RhapToolchainProfileText -Text ($realProfile -replace '(?m)^make_flags(?:_ready)?=.*\r?\n?', '')) $true 'accept profile omitting bootstrap make flags and gate'
+Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile -replace '(?m)^make_flags=.*\r?\n?', '') } 'reject readiness gate without bootstrap make flags'
+Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile -replace '(?m)^make_flags_ready=.*$', 'make_flags_ready=') } 'reject empty bootstrap make flags readiness gate'
+Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile -replace '(?m)^make_flags_ready=.*$', 'make_flags_ready=   ') } 'reject whitespace bootstrap make flags readiness gate'
 Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile + "tar_create_flags=--posix`n") } 'reject legacy tar-specific creation flags key'
 Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile -replace '(?m)^target_arch=.*$', 'target_arch=ppc;touch_bad') } 'reject unsafe target_arch profile value'
 Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile -replace '(?m)^profile=', 'profile ') } 'reject malformed profile line'
@@ -488,6 +494,10 @@ function Test-GeneratedProfileValidatorContract([string]$Validator, [string]$Pro
     foreach ($match in [regex]::Matches($Validator, 'required\["([A-Za-z0-9_]+)"\] = 1')) {
         $required[$match.Groups[1].Value] = $true
     }
+    $paired = @{}
+    foreach ($match in [regex]::Matches($Validator, 'paired\["([A-Za-z0-9_]+)"\] = "([A-Za-z0-9_]+)"')) {
+        $paired[$match.Groups[1].Value] = $match.Groups[2].Value
+    }
     $seen = @{}
     foreach ($rawLine in ($ProfileText -split "`r?`n")) {
         $line = $rawLine.Trim()
@@ -502,12 +512,20 @@ function Test-GeneratedProfileValidatorContract([string]$Validator, [string]$Pro
     foreach ($key in $required.Keys) {
         if (-not $seen.ContainsKey($key)) { return $false }
     }
+    foreach ($key in $paired.Keys) {
+        if ($seen.ContainsKey($key) -and -not $seen.ContainsKey($paired[$key])) { return $false }
+    }
     return $true
 }
 Assert-Equal (Test-GeneratedProfileValidatorContract -Validator $profileValidator -ProfileText $realProfile) $true 'generated preflight accepts canonical profile with optional make flags'
-Assert-Equal (Test-GeneratedProfileValidatorContract -Validator $profileValidator -ProfileText ($realProfile -replace '(?m)^make_flags=.*\r?\n?', '')) $true 'generated preflight accepts profile omitting optional make flags'
+Assert-Equal (Test-GeneratedProfileValidatorContract -Validator $profileValidator -ProfileText ($realProfile -replace '(?m)^make_flags(?:_ready)?=.*\r?\n?', '')) $true 'generated preflight accepts profile omitting optional make flags'
 Assert-Equal (Test-GeneratedProfileValidatorContract -Validator $profileValidator -ProfileText ($realProfile -replace '(?m)^make_flags=.*$', 'make_flags=')) $false 'generated preflight rejects empty optional make flags'
 Assert-Equal (Test-GeneratedProfileValidatorContract -Validator $profileValidator -ProfileText ($realProfile -replace '(?m)^make_flags=.*$', 'make_flags=   ')) $false 'generated preflight rejects whitespace optional make flags'
+Assert-Equal (Test-GeneratedProfileValidatorContract -Validator $profileValidator -ProfileText ($realProfile -replace '(?m)^make_flags_ready=.*\r?\n?', '')) $true 'generated preflight accepts bootstrap make flags without readiness gate'
+Assert-Equal (Test-GeneratedProfileValidatorContract -Validator $profileValidator -ProfileText ($realProfile -replace '(?m)^make_flags(?:_ready)?=.*\r?\n?', '')) $true 'generated preflight accepts omitted bootstrap make flags pair'
+Assert-Equal (Test-GeneratedProfileValidatorContract -Validator $profileValidator -ProfileText ($realProfile -replace '(?m)^make_flags=.*\r?\n?', '')) $false 'generated preflight rejects readiness gate without bootstrap make flags'
+Assert-Equal (Test-GeneratedProfileValidatorContract -Validator $profileValidator -ProfileText ($realProfile -replace '(?m)^make_flags_ready=.*$', 'make_flags_ready=')) $false 'generated preflight rejects empty readiness gate'
+Assert-Equal (Test-GeneratedProfileValidatorContract -Validator $profileValidator -ProfileText ($realProfile -replace '(?m)^make_flags_ready=.*$', 'make_flags_ready=   ')) $false 'generated preflight rejects whitespace readiness gate'
 Assert-Equal (Test-GeneratedProfileValidatorContract -Validator $profileValidator -ProfileText ($realProfile + "unknown_key=value`n")) $false 'generated preflight rejects unknown profile key'
 Assert-Match $cmd '^set -e' 'literal POSIX script body'
 Assert-Match $cmd 'test -f ' 'profile existence check'

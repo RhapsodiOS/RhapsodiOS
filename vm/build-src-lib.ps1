@@ -7,7 +7,7 @@ $script:RhapRequiredToolchainKeys = @(
     'make', 'shell', 'tar', 'archive_create', 'archive_create_flags', 'gzip', 'rsync', 'path',
     'arch_flags', 'cpp_flags', 'ld_flags', 'ln'
 )
-$script:RhapToolchainKeys = @($script:RhapRequiredToolchainKeys) + @('make_flags')
+$script:RhapToolchainKeys = @($script:RhapRequiredToolchainKeys) + @('make_flags', 'make_flags_ready')
 
 $script:RhapMigMachHeaders = @(
     'mach/message.h',
@@ -49,6 +49,9 @@ function Test-RhapToolchainProfileText {
         if ($seen.ContainsKey($key) -and $seen[$key] -eq '') {
             throw "toolchain profile missing $key"
         }
+    }
+    if ($seen.ContainsKey('make_flags_ready') -and -not $seen.ContainsKey('make_flags')) {
+        throw 'toolchain make_flags_ready requires make_flags'
     }
     if ($seen.ContainsKey('target_arch') -and $seen['target_arch'] -notmatch '^[A-Za-z_][A-Za-z0-9_]*$') {
         throw 'invalid toolchain target_arch'
@@ -286,6 +289,7 @@ function New-RhapPreflightCommand {
     $qSource = ConvertTo-RhapShellDoubleQuoted $SourceRoot
     $allowedKeys = ($script:RhapToolchainKeys | ForEach-Object { "allowed[`"$_`"] = 1" }) -join '; '
     $requiredKeys = ($script:RhapRequiredToolchainKeys | ForEach-Object { "required[`"$_`"] = 1" }) -join '; '
+    $pairedKeys = 'paired["make_flags_ready"] = "make_flags"'
     $migMachHeaders = $script:RhapMigMachHeaders -join ' '
 
     $parts = @(
@@ -311,7 +315,7 @@ function New-RhapPreflightCommand {
         'test -f "$SOURCE_ROOT/kernel-7/mach/mach.defs" || fail "MIG wrapper smoke definition missing"',
         "for mig_header in $migMachHeaders; do test -f `"`$SOURCE_ROOT/kernel-7/`$mig_header`" || fail `"MIG compatibility header missing: `$mig_header`"; done",
         'test -f "$PROFILE" || fail "toolchain profile missing: $PROFILE"',
-        "awk 'BEGIN { $allowedKeys; $requiredKeys } function trim(value) { sub(/^[ `t]*/, `"`", value); sub(/[ `t]*`$/, `"`", value); return value } { text=trim(`$0); if (text == `"`" || substr(text, 1, 1) == `"#`") next; equals=index(text, `"=`"); if (equals < 2) exit 1; key=trim(substr(text, 1, equals-1)); value=trim(substr(text, equals+1)); if (!(key in allowed) || (key in seen) || value == `"`") exit 1; seen[key]=1 } END { for (key in required) if (!(key in seen)) exit 1 }' `"`$PROFILE`" || fail `"invalid toolchain profile`"",
+        "awk 'BEGIN { $allowedKeys; $requiredKeys; $pairedKeys } function trim(value) { sub(/^[ `t]*/, `"`", value); sub(/[ `t]*`$/, `"`", value); return value } { text=trim(`$0); if (text == `"`" || substr(text, 1, 1) == `"#`") next; equals=index(text, `"=`"); if (equals < 2) exit 1; key=trim(substr(text, 1, equals-1)); value=trim(substr(text, equals+1)); if (!(key in allowed) || (key in seen) || value == `"`") exit 1; seen[key]=1 } END { for (key in required) if (!(key in seen)) exit 1; for (key in paired) if ((key in seen) && !(paired[key] in seen)) exit 1 }' `"`$PROFILE`" || fail `"invalid toolchain profile`"",
         "profile_value() { awk -v wanted=`"`$1`" 'BEGIN { found=0 } /^[ `t]*#/ { next } { line=`$0; sub(/^[ `t]*/, `"`", line); eq=index(line, `"=`"); if (eq < 2) next; key=substr(line, 1, eq-1); value=substr(line, eq+1); sub(/[ `t]*`$/, `"`", key); sub(/^[ `t]*/, `"`", value); sub(/[ `t]*`$/, `"`", value); if (key == wanted) { print value; found=1; exit } } END { if (found == 0) exit 1 }' `"`$PROFILE`"; }",
         'BUILD_CC=$(profile_value build_cc) || fail "profile missing build_cc"',
         'TARGET_CC=$(profile_value target_cc) || fail "profile missing target_cc"',

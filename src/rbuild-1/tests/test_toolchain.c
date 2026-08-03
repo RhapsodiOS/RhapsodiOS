@@ -67,6 +67,7 @@ TEST(test_loads_and_expands_profile) {
     CHECK_STR(tc.archive_create_flags, "-w -x ustar");
     CHECK_STR(tc.make_flags,
               "MAKEFILEDIR=@SYSROOT@/System/Developer/Makefiles/project EXTRA=@SYSROOT@/extra");
+    CHECK(tc.make_flags_ready == 0);
 
     strlist_init(&words);
     toolchain_expand_words(tc.make_flags, "/target", &words);
@@ -146,6 +147,46 @@ TEST(test_validation_rejects_whitespace_make_flags) {
 
     write_profile(path, 1, 1, 1, 1, 0);
     append_text(path, "make_flags=   \t\n");
+    toolchain_init(&tc);
+    CHECK_INT(toolchain_load(&tc, path), 0);
+    CHECK_INT(toolchain_validate(&tc), 1);
+    toolchain_free(&tc);
+    remove(path);
+}
+
+TEST(test_validation_rejects_gate_without_make_flags) {
+    const char *path = "/tmp/rbuild-toolchain.conf";
+    Toolchain tc;
+
+    write_profile(path, 1, 1, 1, 1, 0);
+    append_text(path, "make_flags_ready=@SYSROOT@/ready\n");
+    toolchain_init(&tc);
+    CHECK_INT(toolchain_load(&tc, path), 0);
+    CHECK_INT(toolchain_validate(&tc), 1);
+    toolchain_free(&tc);
+    remove(path);
+}
+
+TEST(test_validation_accepts_make_flags_with_gate) {
+    const char *path = "/tmp/rbuild-toolchain.conf";
+    Toolchain tc;
+
+    write_profile(path, 1, 1, 1, 1, 1);
+    append_text(path, "make_flags_ready=@SYSROOT@/ready\n");
+    toolchain_init(&tc);
+    CHECK_INT(toolchain_load(&tc, path), 0);
+    CHECK_INT(toolchain_validate(&tc), 0);
+    CHECK_STR(tc.make_flags_ready, "@SYSROOT@/ready");
+    toolchain_free(&tc);
+    remove(path);
+}
+
+TEST(test_validation_rejects_empty_make_flags_gate) {
+    const char *path = "/tmp/rbuild-toolchain.conf";
+    Toolchain tc;
+
+    write_profile(path, 1, 1, 1, 1, 1);
+    append_text(path, "make_flags_ready=   \t\n");
     toolchain_init(&tc);
     CHECK_INT(toolchain_load(&tc, path), 0);
     CHECK_INT(toolchain_validate(&tc), 1);
@@ -261,6 +302,9 @@ static void run_all(void) {
     RUN(test_validation_accepts_missing_make_flags);
     RUN(test_validation_rejects_empty_make_flags);
     RUN(test_validation_rejects_whitespace_make_flags);
+    RUN(test_validation_rejects_gate_without_make_flags);
+    RUN(test_validation_accepts_make_flags_with_gate);
+    RUN(test_validation_rejects_empty_make_flags_gate);
     RUN(test_expand_null_value_is_empty);
     RUN(test_malformed_line_fails);
     RUN(test_unknown_key_fails);

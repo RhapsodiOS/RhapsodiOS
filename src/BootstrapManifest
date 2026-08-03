@@ -11,7 +11,11 @@ dir     objc4-1                 headers
 dir     driverkit-3             headers
 dir     cctools-2               headers
 
-# Target build tools.  cc's build requires bison first.
+# cc consumes headers produced by its own installhdrs target.  Publish those
+# before building the compiler; the full cc build still requires bison first.
+dir     cc-1                    headers
+
+# Target build tools.
 dir     bison-1                 all
 dir     cc-1                    all
 dir     cctools-2               all

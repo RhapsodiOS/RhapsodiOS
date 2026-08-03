@@ -74,7 +74,7 @@ Assert-NotMatch $ccBuildGccText 'if \[ -d /`if \[ "\$RHAPSODY" \]; then echo usr
 $bootstrapManifestText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\BootstrapManifest')
 Assert-Match $bootstrapManifestText '(?s)dir\s+Libc-1\s+headers.*dir\s+cc-1\s+headers.*dir\s+bison-1\s+all.*dir\s+cc-1\s+all' 'libc and cc headers are replayed before bison and the full cc bootstrap'
 $libcMachPreambleText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\Libc-1\mach.subproj\Makefile.preamble')
-Assert-Match $libcMachPreambleText 'MIG\s*=\s*\$\(CONFIG_DIR\)/mig' 'libc Mach headers select the configured private MIG'
+Assert-Match $libcMachPreambleText 'override\s+MIG\s*=\s*\$\(CONFIG_DIR\)/mig' 'libc Mach headers override inherited host MIG with the configured private tool'
 Assert-Match $libcMachPreambleText 'MIGFLAGS\s*=\s*\$\(RC_CFLAGS\)' 'libc Mach MIG preprocessing uses the isolated target header flags'
 
 $buildScriptText = Get-Content -Raw (Join-Path $PSScriptRoot 'build-src.ps1')

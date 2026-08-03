@@ -106,7 +106,7 @@ DEFSFILES = $(MACHDEFSFILES) $(SERVERDEFSFILES)
 # Normal historical builds leave CONFIG_DIR unset and retain the platform
 # makefiles' defaults.
 ifneq ($(strip $(CONFIG_DIR)),)
-MIG = $(CONFIG_DIR)/mig
+override MIG = $(CONFIG_DIR)/mig
 MIGFLAGS = $(RC_CFLAGS)
 endif
 

@@ -182,6 +182,7 @@ TEST(test_bootstrap_flags_use_target_sysroot) {
     CHECK(list_has(&f,
           "CoreOSMakefiles=/target/System/Developer/Makefiles/CoreOS"));
     CHECK(list_has(&f, "MKDIRS=/bin/mkdir -p"));
+    CHECK(list_has(&f, "SFILE_DIR=/y/derived_src"));
     rc_cflags = list_has_prefix(&f, "RC_CFLAGS=");
     CHECK(rc_cflags != 0);
     CHECK(str_has_prefix(rc_cflags,

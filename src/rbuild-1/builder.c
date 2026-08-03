@@ -331,6 +331,12 @@ void builder_buildflags(const Params *params, const char *target, strlist *out,
         push_kv(out, "CoreOSMakefiles", coreos_makefiles);
         push_kv(out, "MKDIRS", "/bin/mkdir -p");
         free(coreos_makefiles);
+        {
+            char *sfile_dir = str_cats(
+                params->SYMROOT, "/derived_src", (char *)0);
+            push_kv(out, "SFILE_DIR", sfile_dir);
+            free(sfile_dir);
+        }
     }
 
     if (bootstrap && tc) {
@@ -725,6 +731,12 @@ int builder_setupdirs(const Package *pkg, const Params *params,
 
     if (exec_check(mkdirp(params->OBJROOT))) return 1;
     if (exec_check(mkdirp(params->SYMROOT))) return 1;
+    if (bootstrap) {
+        char *sfile_dir = str_cats(params->SYMROOT, "/derived_src", (char *)0);
+        int failed = exec_check(mkdirp(sfile_dir));
+        free(sfile_dir);
+        if (failed) return 1;
+    }
     if (exec_check(mkdirp(params->DSTROOT))) return 1;
     if (exec_check(mkdirp(params->HDRROOT))) return 1;
     if (exec_check(mkdirp(params->PACKAGEROOT))) return 1;

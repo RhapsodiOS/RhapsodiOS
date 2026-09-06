@@ -391,8 +391,10 @@ relocation table gives `_page_size`, `_kernel_map`, `_kernel_task`,
 | `fd_dev_to_id` | `0x5bac` | 200 | 1 (16) | 216 |
 | `OpenDBDMAChannel` | `0x68a8` | 300 | 5 (80) | 380 |
 
-Every span reconciles as `body + 16 * islands`, and every body ends at its
-`blr`. Nothing was compiled; no `make` was run.
+Every span reconciles as `body + 16 * islands`. Four of the five bodies end at
+a `blr`; `MediaScanTask` has none — it ends at `0xa29c b 0xa290`, the back-edge
+of its infinite loop, as 12.2 describes. Nothing was compiled; no `make` was
+run.
 
 ### 12.1 `fdminphys` (`0x5b84`)
 
@@ -450,12 +452,15 @@ dirty-bit-array base and length that `DumpTrackCache` already passes to
 `ResetBitArray` (`FloppyDisk.m`), and `0x46` is the same cached-drive field
 `TestTrackInCache` already reads, so no bare constant was invented.
 
-The reference loads the halfword with `lha` (signed). Our tree defines
-`DAT_0000fb88` as `unsigned short`, and `TestTrackInCache` already compares it
-unsigned. The two differ only in how `0xffff` is widened, and `0xffff` is the
-invalidation sentinel `DumpTrackCache` writes — never equal to a 0..255 drive
-byte under either widening. Kept `unsigned short` for consistency with the
-existing definition.
+**`intentional-mismatch` 2.** `0x9458` loads the cached drive number with
+`lha` — a **signed** halfword load. Our tree defines `DAT_0000fb88` as
+`unsigned short`, and `TestTrackInCache` (`FloppyDisk.m:7943`) already compares
+it unsigned, so the body written here does too. The two widenings differ only
+at `0xffff`, the invalidation sentinel `DumpTrackCache` writes, which equals no
+0..255 drive byte signed *or* unsigned; the comparison's result is therefore
+the same for every value the field can hold. Kept `unsigned short` for
+consistency with the definition and with `TestTrackInCache`. The divergence is
+recorded in the function's own comment, the same way 12.5's is.
 
 ### 12.4 `fd_dev_to_id` (`0x5bac`) — arity
 
@@ -493,10 +498,34 @@ declarations were wrong. All six now read
 `extern int fd_dev_to_id(unsigned int device);`, a matching prototype was added
 to `FloppyDisk.h`, and the five bare calls now pass their device number.
 
-`_fdsize` consequently gained the parameter it always had in the binary:
-`unsigned int fdsize(unsigned int param_1)`. Its three source declarations
-(the local in `fdsize` itself, `FloppyDisk.h:190`, and the local in `+probe:`)
-were all `(void)` and were all corrected.
+`_fdsize` consequently gained the parameter it always had in the binary. It has
+exactly **two** declarations plus the definition, not three: the block-scope
+declaration in `+probe:` (`FloppyDisk.m:253`), the file-scope one in
+`FloppyDisk.h:192`, and the definition at `FloppyDisk.m:2231`. An earlier draft
+of this section counted "the local in `fdsize` itself" as a third declaration;
+no such local exists — that is the definition. All three sites were `(void)`
+and all three were given the parameter.
+
+Their **return types** disagreed after that change: `FloppyDisk.m:253` read
+`int`, the other two `unsigned int`. The binary settles it. `_fdsize`
+(`0x5af8`) has two arms:
+
+```
+0x5b04 bl -> 0x5bac   _fd_dev_to_id
+0x5b08 or. r3,r3,r3 / beq 0x5b20
+  0x5b10 lis r4,1 ; lwz r4,0x294(r4)     __OBJC,__message_refs+0x9c
+  0x5b18 bl -> _objc_msgSend             ("blockSize"), result kept in r3
+  0x5b1c b 0x5b44
+0x5b20 lis/addi r3,"fdsize: bad unit\n"  (__TEXT,__cstring+0x1a50)
+  li r4..r8,1..5 ; bl -> 0x6f18 _donone
+0x5b40 li r3,-1                          the bad-unit return value
+0x5b44 epilogue
+```
+
+`li r3,-1` is a signed sentinel, so the settled type is **`int`**. All three
+sites now read `int fdsize(unsigned int)`, and the local that carried
+`0xffffffff` was retyped `int` and now carries `-1`, which is the same word.
+The `psize:` argument at `FloppyDisk.m:299` casts to `void *` and is unaffected.
 
 *Body.* Every branch:
 
@@ -587,10 +616,50 @@ reuses the register.
 
 Channel-area layout, confirmed against `PrepDBDMA` which already reads the same
 offsets: `+0x04` DBDMA register base, `+0x14` command-list logical address,
-`+0x18` command-list physical address. Our tree already models those three
-words as the separate globals `DAT_0000f500`, `DAT_0000f510`, `DAT_0000f514`,
-and that convention is followed here rather than widening
-`_PrivDBDMAChannelArea`.
+`+0x18` command-list physical address.
+
+**The area's bound, and the connection defect.** An earlier draft of this
+section followed the tree's existing convention and wrote those three words as
+the separate globals `DAT_0000f500`, `DAT_0000f510` and `DAT_0000f514` rather
+than widening `_PrivDBDMAChannelArea`. Both halves of that decision were wrong,
+and both are corrected here.
+
+*The bound.* `_PrivDBDMAChannelArea` was declared `unsigned char [4]`. The true
+size is derivable exactly as `_FloppyIdMap`'s was, from the symbol span: the
+symbol is at `0xf4fc`, the next symbol `_GRCFloppyDMARegs` is at `0xf528`, and
+the sorted symbol table has nothing in between, so the object is
+**`0x2c` = 44 bytes**. Both declarations were widened to `[0x2c]`.
+
+This was not cosmetic. Before this task nothing in the tree ever assigned
+`_GRCFloppyDMAChannel` — `FloppyDisk.m` initialises it to `0` and every other
+reference is a read — so no DBDMA function was reachable with a live channel.
+`OpenDBDMAChannel` stores `&_PrivDBDMAChannelArea` into `*channelPtr`, and
+`channelPtr` is `&_GRCFloppyDMAChannel`, so writing this function is what made
+`ResetDBDMA`, `ResetDMAChannel`, `PrepDBDMA`, `SetDBDMAPhysicalAddress`,
+`StartDBDMA` and `StopDBDMA` live. `ResetDBDMA`'s body writes offsets `0x0`,
+`0x4`, `0x8` and `0xc`; `PrepDBDMA` reads `+0x18` and dereferences `+0x04`;
+`SetDBDMAPhysicalAddress` dereferences `+0x04` and `+0x14`. Against a 4-byte
+declaration every one of those is out of bounds. Against `[0x2c]` — the
+binary's own size, and the largest offset any of them touches is `0x18` — none
+of them is.
+
+*The connection.* Modelling `+0x04`, `+0x14` and `+0x18` as standalone globals
+made the two halves of this function fail to meet. `ResetDBDMA` reads the
+register base from `channel + 4` (`0x6660 lwz r9,4(r3)`), so a store to a
+separate object named `DAT_0000f500` is not the word the callee reads, however
+the addresses happen to line up in the image. `OpenDBDMAChannel` would have
+armed the channel and then reset it through an uninitialised register pointer.
+The three offsets are now written as fields of the widened area, mirroring the
+binary's own `r30` addressing (`addi r4,r30,0x14`, `stw r3,0x18(r30)`,
+`stw r28,4(r30)`) and matching the byte-offset style `PrepDBDMA`,
+`StartDBDMA`, `StopDBDMA` and `SetDBDMAPhysicalAddress` already use. No
+resolved address, branch or store changed; only the spelling did.
+
+The three `DAT_0000f5xx` declarations and definitions were removed with that
+change. They had no callers left, they correspond to no symbol in the reference
+(the symbol table has nothing between `0xf4fc` and `0xf528`), and keeping them
+alongside `_PrivDBDMAChannelArea[0x2c]` would have left two spellings of one
+object — the hazard uncertainty 5 describes.
 
 `0x70` in word 0 of each 16-byte slot is a DBDMA STOP: the registers are
 little-endian, so the big-endian word `0x00000070` reads back as `0x70000000`,
@@ -614,12 +683,14 @@ The divergence is recorded in the function's own comment.
 | defect | site(s) | resolution |
 | --- | --- | --- |
 | `fd_dev_to_id` declared `(void)` | 5 sites in `FloppyDisk.m` | all six now `(unsigned int device)`; prototype added to `FloppyDisk.h` |
-| `fdsize` declared `(void)` | local in `fdsize`, local in `+probe:`, `FloppyDisk.h:190` | all three now `(unsigned int)` |
+| `fdsize` declared `(void)` | local in `+probe:` (`FloppyDisk.m:253`), `FloppyDisk.h:192`, the definition (`FloppyDisk.m:2231`) | all three now `int fdsize(unsigned int)` |
 | `extern unsigned int fdminphys;` (data) | `FloppyDisk.m`, twice | `extern unsigned int fdminphys(int bufPtr);`, prototype added to `FloppyDisk.h` |
 | `extern void *MediaScanTask;` (data) | `FloppyDisk.h:414` | `extern void MediaScanTask(void);` |
 | `OpenDBDMAChannel` declared `void` | `FloppyDisk.h:297` | `int` |
 | `CloseDBDMAChannel(void)` | `FloppyDisk.h:172` and its definition | takes and ignores an `int` channel |
 | `_FloppyIdMap[64]` | `FloppyDisk.h`, `FloppyDisk.m` | `[0x98]` |
+| `_PrivDBDMAChannelArea[4]` | `FloppyDisk.h`, `FloppyDisk.m` | `[0x2c]`; see 12.5 |
+| `fdsize` returns `unsigned int` | `FloppyDisk.h:192`, `FloppyDisk.m:2231` | `int` — `_fdsize` returns `-1`; see 12.4 |
 
 `TestCacheDirtyState`'s existing local declaration
 (`extern int TestCacheDirtyState(int driveStructure);`) already matched the body
@@ -628,12 +699,14 @@ written here and was left alone.
 Two of these go beyond the letter of the task brief and are called out
 deliberately:
 
-1. **`OpenDBDMAChannel`'s return type.** The brief says the declaration is
-   already function-shaped and to leave it alone. Its return type is `void`,
-   but the body returns three distinct values (`0`, `10`, `-0x32`) in `r3`, and
-   `mr r3,r31` at `0x69b0` is unambiguous. Keeping `void` would have required
-   discarding both error codes — reproducing a source defect rather than
-   Apple's form. Changed to `int` and reported.
+1. **`OpenDBDMAChannel`'s return type.** The brief said the declaration is
+   "already function-shaped" — i.e. that it is not an instance of the
+   data-declared-as-function defect the brief was about. It did not say to
+   leave the declaration alone, and an earlier draft of this section
+   overstated it that way. There was no contradiction to resolve: the return
+   type is `void`, the body returns three distinct values (`0`, `10`,
+   `-0x32`) in `r3`, and `mr r3,r31` at `0x69b0` is unambiguous. Keeping
+   `void` would have discarded both error codes. Changed to `int`.
 2. **`CloseDBDMAChannel`'s parameter.** `0x6998` loads `r3` from `*channelPtr`
    immediately before the `bl`, so the shipped call passes an argument, but our
    declaration was `(void)` — a constraint violation at the new call site. The
@@ -677,17 +750,43 @@ imports `FloppyDisk.h`, which already declares both, so no declaration was
 added. The now-orphaned `static BOOL _BusyFlag` was removed with them;
 `static int _DataSource` stays, it is still used at two sites.
 
-`getStatusName` has no binary counterpart, so the choice rests on the arrays
-each copy indexes. **The external body in `FloppyDisk.m` (bound 16) was kept**
-and the `static` in `FloppyDiskThread.m` (bound 20) deleted, because:
+`getStatusName` has no binary counterpart, so **no true bound is derivable**
+and the choice rests only on which of the two is less unsafe across the three
+call sites. **The external body in `FloppyDisk.m` (bound 16) was kept** and the
+`static` in `FloppyDiskThread.m` (bound 20) deleted, because 16 is strictly
+safer than 20 at all three:
 
-- 16 is exactly the length of `_fdCommandValues`, the only array passed at the
-  `FloppyDisk.m` call site;
-- both `FloppyDiskThread.m` call sites are safer under 16 than under 20 —
-  `_fdrValues` there has 20 entries (codes 16..19 now print `"Unknown"`, which
-  costs four debug labels and reads nothing out of range), and `_densityValues`
-  there has **4**, for which the deleted bound of 20 was already an
-  out-of-bounds read.
+- `FloppyDisk.m:747` passes `_fdCommandValues`;
+- `FloppyDiskThread.m:536` passes `_fdrValues`, which has 20 entries — codes
+  16..19 now print `"Unknown"`, which costs four debug labels and reads nothing
+  out of range;
+- `FloppyDiskThread.m:603` passes `_densityValues`, which has **4** entries,
+  for which the deleted bound of 20 was already an out-of-bounds read and 16
+  still is.
+
+An earlier draft justified 16 as "exactly the length of `_fdCommandValues`".
+The binary contradicts that. `_fdCommandValues` is at `0xf2a8` and the next
+symbol `_fcOpcodeValues` at `0xf2e0` — `0x38` = 56 bytes = **seven** eight-byte
+entries. That is the `LookupEntry _fdCommandValues[]` at `FloppyDisk.m:8595`,
+not the 16-element `const char *_fdCommandValues[]` at `FloppyDisk.m:77` the
+draft was counting. So bound 16 over-reads `_fdCommandValues` too, not only
+`_densityValues`: 16 four-byte reads span 64 bytes against the symbol's 56.
+The decision stands — it is still the safer of the two available bounds — but
+it is a safety choice, not a derived one, and the source comment on
+`_getStatusName` now says so.
+
+**Pre-existing defect exposed while checking this, recorded and not fixed.**
+`_fdCommandValues` is **defined twice, with incompatible types, in one
+translation unit**: `const char *_fdCommandValues[]` (16 entries) at
+`FloppyDisk.m:77` and `LookupEntry _fdCommandValues[]` (7 entries) at
+`FloppyDisk.m:8595`, with a third, block-scope `extern const char
+*_fdCommandValues[];` at `FloppyDisk.m:744` selecting the first spelling for
+the call site. Both definitions predate Task 5 (they are at lines 77 and 8374
+of the parent commit). This is a fourth duplicate definition, distinct from the
+three the task brief listed and from the two `duplicate_candidates` of
+section 7; the binary has one `_fdCommandValues`, the `LookupEntry` table.
+Settling it means deciding which table Apple's `FloppyDisk.m` really held and
+renaming the other, which needs evidence this task did not have.
 
 `FloppyDiskThread.m` imports `FloppyDisk.h`, which declares `_getStatusName` at
 line 118, so no declaration was added.
@@ -696,12 +795,14 @@ line 118, so no declaration was added.
 
 Numbered; none of these was resolved by picking a plausible option.
 
-1. **`_getStatusName` is still unsafe for `_densityValues`.** The surviving
-   bound of 16 is wrong for the 4-entry `_densityValues` array that
-   `FloppyDiskThread.m` passes at its second call site. There is no binary
-   counterpart to settle the real bound, and the two source copies disagreed, so
-   no bound is derivable from evidence. Settling it needs Apple's source, or a
-   decision to pass the array length.
+1. **`_getStatusName`'s bound of 16 still over-reads two of its three
+   arrays.** It is wrong for the 4-entry `_densityValues` that
+   `FloppyDiskThread.m:603` passes, and — see 12.8 — also for
+   `_fdCommandValues`, whose symbol in the reference spans 56 bytes, not the
+   64 that 16 pointer-sized reads cover. `_getStatusName` has no binary
+   counterpart, so no true bound is derivable; 16 was kept only because it is
+   strictly safer than the 20 of the deleted duplicate. Settling it needs
+   Apple's source, or a decision to pass the array length.
 2. **`fdstrategy` is declared three incompatible ways.** `extern int
    fdstrategy(void);` (local, in `+probe:`), `extern unsigned int fdstrategy;`
    (data, twice, in `fdread` and `fdwrite`), and `extern unsigned int
@@ -717,9 +818,22 @@ Numbered; none of these was resolved by picking a plausible option.
    error. Fixing it properly means typing those two local prototypes with
    function-pointer parameters, which also depends on uncertainty 2.
 4. **`donone` is declared `(void)` and called with arguments at 104 sites.**
-   Pre-existing and systemic. The three new `donone` calls in `fd_dev_to_id` and
-   the one in `OpenDBDMAChannel` follow the existing convention rather than
-   introducing a second one.
+   Pre-existing and systemic; those 104 are left alone. The four new calls —
+   three in `fd_dev_to_id`, one in `OpenDBDMAChannel` — no longer add to the
+   count: both functions now carry a block-scope
+   `extern void donone(const char *format, ...);`, the pattern the tree already
+   uses at `FloppyDisk.m:1584` for `FUN_00004940`. The residual is narrower but
+   real, and is not the same as `FUN_00004940`'s: `FUN_00004940` has no other
+   declaration in the translation unit, whereas `donone` also has a file-scope
+   `extern void donone(void);` (`FloppyDisk.h:179`) and a `(void)` definition
+   (`FloppyDisk.m:1313`), so the block-scope prototype is incompatible with
+   them across scopes (C99 6.2.7p2 — undefined, not a constraint violation, and
+   not necessarily diagnosed). The change therefore trades four diagnosable
+   too-many-arguments errors for one cross-scope incompatibility. The complete
+   fix is two lines — make `FloppyDisk.h:179` and `FloppyDisk.m:1313` variadic,
+   which would settle all 108 sites at once — and it is scoped out here because
+   the brief said to leave the 104 pre-existing sites alone. Nothing was
+   compiled, so no compiler diagnosis of either form was observed.
 5. **Data symbols still carry the spurious leading underscore.** Task 2
    corrected the 136 C *function* names and Task 4 the selectors, but globals are
    untouched: our `_FloppyIdMap` would emit `__FloppyIdMap` against the binary's
@@ -741,7 +855,11 @@ Numbered; none of these was resolved by picking a plausible option.
    writes through the DBDMA register base stored at `channel + 4`. Our source
    writes four words of the channel structure itself. This matters to
    `OpenDBDMAChannel` only because it confirms `+0x04` is the register base; the
-   discrepancy is in an existing function and was not touched.
+   discrepancy is in an existing function and was not touched. It does now
+   matter more than it did: before this task `_GRCFloppyDMAChannel` was never
+   assigned, so `ResetDBDMA` was unreachable with a live channel. Under the
+   `[0x2c]` bound its four writes are in range, but they still land in the
+   channel area rather than through the register base the shipped code uses.
 8. **`LaunchMediaScanTask`'s reconstruction uses placeholder names.**
    `_MediaScanTaskID = FUN_0000a300(_entry, &MediaScanTask)` is really
    `kernel_thread(kernel_task, MediaScanTask)`: the relocations at `0xa2cc` and
@@ -750,9 +868,21 @@ Numbered; none of these was resolved by picking a plausible option.
    expression and the two placeholder names were left as they were.
    `&MediaScanTask` is still the function's address, but passing it to
    `FUN_0000a300`'s `void *` parameter is now a pointer-conversion warning.
-9. **`_PrivDBDMAChannelArea` is declared `[4]` against 44 bytes in the binary**
-   (`0xf4fc`..`0xf528`). `OpenDBDMAChannel` only takes its address, so nothing
-   written here indexes out of range, and the array was left alone.
+9. **`_PrivDBDMAChannelArea`'s bound — resolved, not an uncertainty.** An
+   earlier draft left the array at `[4]` and reasoned that "`OpenDBDMAChannel`
+   only takes its address, so nothing written here indexes out of range." That
+   is factually wrong. `OpenDBDMAChannel` stores that address into
+   `*channelPtr` and then, eight lines later, hands the same value to
+   `ResetDBDMA`, whose body writes offsets `0x0`, `0x4`, `0x8` and `0xc` — 12
+   bytes past a 4-byte object — and the same store made `PrepDBDMA`,
+   `SetDBDMAPhysicalAddress`, `StartDBDMA`, `StopDBDMA` and `ResetDMAChannel`
+   reachable for the first time, reading `+0x18` and dereferencing `+0x04` and
+   `+0x14`. Writing this function is what armed the out-of-bounds access. The
+   bound is derivable exactly as `_FloppyIdMap`'s was — `0xf4fc` to the next
+   symbol `_GRCFloppyDMARegs` at `0xf528`, nothing in between, `0x2c` bytes —
+   and both declarations now say `[0x2c]`. See 12.5, which also covers the
+   `DAT_0000f5xx` offsets that were preventing the two halves of
+   `OpenDBDMAChannel` from connecting.
 
 ## 13. Gate results after Task 5
 

@@ -189,7 +189,7 @@ extern unsigned int fdioctl(unsigned int param_1, int param_2, unsigned int *par
 extern unsigned int Fdopen(unsigned int param_1, unsigned int param_2);
 extern unsigned int fdminphys(int bufPtr);
 extern unsigned int fdread(unsigned int param_1, int *param_2);
-extern unsigned int fdsize(unsigned int param_1);
+extern int fdsize(unsigned int param_1);
 extern unsigned int fdstrategy(int param_1);
 extern void fdTimer(int param_1);
 extern unsigned int fdwrite(unsigned int param_1, unsigned int param_2);
@@ -552,10 +552,10 @@ extern unsigned char _FloppyIdMap[0x98];
 
 // Drive status and DBDMA structures
 extern unsigned int _myDriveStatus;                  // Drive status
-extern unsigned char _PrivDBDMAChannelArea[4];       // DBDMA channel area
-extern unsigned int DAT_0000f500;                    // DBDMA descriptor pointer
-extern unsigned int DAT_0000f510;                    // DBDMA command buffer
-extern unsigned int DAT_0000f514;                    // DBDMA command buffer end
+// DBDMA channel area, 0x2c bytes: 0x0000f4fc up to _GRCFloppyDMARegs at
+// 0x0000f528, with no symbol in between. +0x04 is the DBDMA register base,
+// +0x14 the command-list logical address, +0x18 its physical address.
+extern unsigned char _PrivDBDMAChannelArea[0x2c];    // DBDMA channel area
 
 // DMA registers and command chain
 extern unsigned int _GRCFloppyDMARegs;               // DMA registers base

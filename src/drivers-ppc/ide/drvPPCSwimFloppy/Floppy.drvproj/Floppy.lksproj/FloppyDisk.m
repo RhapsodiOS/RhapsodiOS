@@ -133,9 +133,16 @@ IoctlEntry _fdIoctlValues[] = {
 };
 
 // Helper function to get status name from string array
+//
+// 16 is not a derived bound - _getStatusName has no counterpart in
+// Floppy_reloc, and the arrays its three call sites pass have 16, 20 and 4
+// entries.  It is strictly safer than the 20 the deleted duplicate used, but
+// it still over-reads _densityValues (4 entries) and, because the binary's
+// _fdCommandValues is the 0x38-byte LookupEntry table at 0x0000f2a8 and not
+// the 16-string array above, that symbol as well.  See
+// reconstruction/Floppy/findings.md, uncertainty 1.
 const char *_getStatusName(unsigned int statusCode, const char **values)
 {
-    // Assume reasonable bounds for command arrays
     if (statusCode < 16) {
         return values[statusCode];
     }
@@ -1465,6 +1472,7 @@ int fd_dev_to_id(unsigned int param_1)
     unsigned char *puVar4;
 
     extern int _fd_block_major;
+    extern void donone(const char *format, ...);
 
     // Unit number: minor bits 3-7
     uVar1 = param_1 >> 3 & 0x1f;
@@ -2226,12 +2234,14 @@ unsigned int fdread(unsigned int param_1, int *param_2)
  *   param_1 - Device number (major/minor encoded)
  *
  * Returns:
- *   Block size on success, -1 (0xffffffff) if no device
+ *   Block size on success, -1 if no device.  _fdsize (0x5af8) reaches its
+ *   epilogue with "li r3,-1" on the bad-unit arm, so the return type is
+ *   signed int, not unsigned.
  */
-unsigned int fdsize(unsigned int param_1)
+int fdsize(unsigned int param_1)
 {
     int iVar1;
-    unsigned int uVar2;
+    int uVar2;
 
     extern int fd_dev_to_id(unsigned int device);
     extern unsigned int FUN_00005b64(int obj, const char *selector);
@@ -2241,7 +2251,7 @@ unsigned int fdsize(unsigned int param_1)
 
     if (iVar1 == 0) {
         donone("fdsize: bad unit\n", 1, 2, 3, 4, 5);
-        uVar2 = 0xffffffff;
+        uVar2 = -1;
     }
     else {
         uVar2 = FUN_00005b64(iVar1, "blockSize");
@@ -5790,36 +5800,41 @@ int OpenDBDMAChannel(unsigned int dmaBase, void *channelPtr, int param3,
     unsigned int uVar1;
     unsigned int *puVar2;
     int iVar3;
+    unsigned char *area;
 
     extern unsigned int page_size;
     extern unsigned int kernel_map;
     extern int kmem_alloc_wired(unsigned int map, unsigned int *address,
                                 unsigned int size);
     extern unsigned int kvtophys(unsigned int logical);
+    extern void donone(const char *format, ...);
 
     iVar3 = 0;
 
     // The channel always lives in the driver's private area
-    *(unsigned int *)channelPtr = (unsigned int)_PrivDBDMAChannelArea;
+    area = _PrivDBDMAChannelArea;
+    *(unsigned int *)channelPtr = (unsigned int)area;
 
     if (param3 == 0) {
         return -0x32;  // -50: no commands requested
     }
 
-    // Round the command list (0x10 bytes per command) up to a page
-    kmem_alloc_wired(kernel_map, &DAT_0000f510,
+    // Round the command list (0x10 bytes per command) up to a page.
+    // Offset 0x14 of the channel area receives the logical address, the
+    // same word PrepDBDMA and SetDBDMAPhysicalAddress read back.
+    kmem_alloc_wired(kernel_map, (unsigned int *)(area + 0x14),
                      (param3 * 0x10 - 1 + page_size) & -page_size);
 
-    if (DAT_0000f510 == 0) {
+    if (*(unsigned int *)(area + 0x14) == 0) {
         donone("dbdmasupport.c:Unable to create DBDMA CCLs memory\n");
         iVar3 = 10;
     }
     else {
-        // Physical address the DBDMA engine will be pointed at
-        DAT_0000f514 = kvtophys(DAT_0000f510);
+        // Physical address the DBDMA engine will be pointed at (offset 0x18)
+        *(unsigned int *)(area + 0x18) = kvtophys(*(unsigned int *)(area + 0x14));
 
         // Pre-fill every command slot in the page with a DBDMA STOP
-        puVar2 = (unsigned int *)DAT_0000f510;
+        puVar2 = *(unsigned int **)(area + 0x14);
         for (uVar1 = 0; uVar1 < page_size >> 4; uVar1++) {
             puVar2[0] = 0x70;
             puVar2[1] = 0;
@@ -5833,8 +5848,10 @@ int OpenDBDMAChannel(unsigned int dmaBase, void *channelPtr, int param3,
         CloseDBDMAChannel(*(int *)channelPtr);
     }
     else {
-        // Record the DBDMA register base and reset the channel
-        DAT_0000f500 = dmaBase;
+        // Record the DBDMA register base at offset 0x04 - the word
+        // ResetDBDMA, PrepDBDMA, StartDBDMA and StopDBDMA dereference -
+        // and reset the channel
+        *(unsigned int *)(area + 4) = dmaBase;
         ResetDBDMA(*(int *)channelPtr);
     }
 
@@ -7900,6 +7917,13 @@ bool TestBitArray(int param_1, uint param_2)
  * is not this drive there is nothing dirty to report; otherwise the dirty
  * state is the OR of the 16-byte dirty-sector bit array at offset 0xa4.
  *
+ * Intentional mismatch: 0x9458 loads the cached drive number with lha, a
+ * signed halfword load; the tree's DAT_0000fb88 is unsigned short and
+ * TestTrackInCache already compares it unsigned. The two widenings differ
+ * only at the 0xffff invalidation sentinel DumpTrackCache writes, which
+ * equals no 0..255 drive byte either way. Kept unsigned for consistency
+ * with the definition. See reconstruction/Floppy/findings.md.
+ *
  * @param param_1: Drive structure pointer
  * @return: non-zero if the cache holds unwritten sectors for this drive
  */
@@ -8506,10 +8530,10 @@ unsigned char _FloppyIdMap[0x98] = {0};
 
 // Drive status and DBDMA structures
 unsigned int _myDriveStatus = 0;                 // Drive status (0x0000f4f8)
-unsigned char _PrivDBDMAChannelArea[4] = {0};    // DBDMA channel area (0x0000f4fc)
-unsigned int DAT_0000f500 = 0;                   // DBDMA descriptor pointer
-unsigned int DAT_0000f510 = 0;                   // DBDMA command buffer
-unsigned int DAT_0000f514 = 0;                   // DBDMA command buffer end
+// DBDMA channel area, 0x2c bytes: 0x0000f4fc up to _GRCFloppyDMARegs at
+// 0x0000f528, with no symbol in between. +0x04 register base, +0x14 the
+// command-list logical address, +0x18 its physical address.
+unsigned char _PrivDBDMAChannelArea[0x2c] = {0}; // DBDMA channel area (0x0000f4fc)
 
 // DMA registers and command chain
 unsigned int _GRCFloppyDMARegs = 0;              // DMA registers base (0x0000f528)

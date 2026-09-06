@@ -1,0 +1,1733 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [
+    {
+      "address": 19500,
+      "candidates": [
+        {
+          "source_line": 3608,
+          "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+        },
+        {
+          "source_line": 125,
+          "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDiskInt.m"
+        }
+      ],
+      "reasons": [
+        "symbol name resolves to multiple definitions"
+      ],
+      "reference_names": [
+        "_GetBusyFlag"
+      ],
+      "size": 120
+    },
+    {
+      "address": 23952,
+      "candidates": [
+        {
+          "source_line": 6447,
+          "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+        },
+        {
+          "source_line": 130,
+          "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDiskInt.m"
+        }
+      ],
+      "reasons": [
+        "symbol name resolves to multiple definitions"
+      ],
+      "reference_names": [
+        "_ResetBusyFlag"
+      ],
+      "size": 96
+    }
+  ],
+  "mapped": [
+    {
+      "address": 140,
+      "reference_names": [
+        "+[FloppyController probe:]"
+      ],
+      "size": 80,
+      "source_line": 189,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 252,
+      "reference_names": [
+        "+[FloppyDisk probe:]"
+      ],
+      "size": 1052,
+      "source_line": 222,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 1432,
+      "reference_names": [
+        "+[FloppyDisk requiredProtocols]"
+      ],
+      "size": 20,
+      "source_line": 213,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 1452,
+      "reference_names": [
+        "+[FloppyDisk deviceStyle]"
+      ],
+      "size": 16,
+      "source_line": 205,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 1484,
+      "reference_names": [
+        "-[FloppyDisk readAt:length:buffer:actualLength:client:]"
+      ],
+      "size": 272,
+      "source_line": 593,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 1788,
+      "reference_names": [
+        "-[FloppyDisk readAsyncAt:length:buffer:pending:client:]"
+      ],
+      "size": 260,
+      "source_line": 564,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 2080,
+      "reference_names": [
+        "-[FloppyDisk writeAt:length:buffer:actualLength:client:]"
+      ],
+      "size": 272,
+      "source_line": 697,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 2384,
+      "reference_names": [
+        "-[FloppyDisk writeAsyncAt:length:buffer:pending:client:]"
+      ],
+      "size": 260,
+      "source_line": 668,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 6100,
+      "reference_names": [
+        "_GetCurrentState"
+      ],
+      "size": 84,
+      "source_line": 3640,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 12664,
+      "reference_names": [
+        "_fdTimer"
+      ],
+      "size": 52,
+      "source_line": 2282,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 17168,
+      "reference_names": [
+        "_fdThread"
+      ],
+      "size": 488,
+      "source_line": 8683,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 17704,
+      "reference_names": [
+        "_fdGetSectSizeInfo"
+      ],
+      "size": 92,
+      "source_line": 102,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDiskThread.m"
+    },
+    {
+      "address": 17812,
+      "reference_names": [
+        "_fd_init_idmap"
+      ],
+      "size": 248,
+      "source_line": 1451,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 18108,
+      "reference_names": [
+        "_floppy_idmap"
+      ],
+      "size": 20,
+      "source_line": 2362,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 18128,
+      "reference_names": [
+        "_Fdopen"
+      ],
+      "size": 316,
+      "source_line": 2000,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 18492,
+      "reference_names": [
+        "_Fdclose"
+      ],
+      "size": 260,
+      "source_line": 1510,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 18800,
+      "reference_names": [
+        "_fdread"
+      ],
+      "size": 312,
+      "source_line": 2077,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 19176,
+      "reference_names": [
+        "_fdwrite"
+      ],
+      "size": 260,
+      "source_line": 2305,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 19668,
+      "reference_names": [
+        "_fdstrategy"
+      ],
+      "size": 616,
+      "source_line": 2173,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 20364,
+      "reference_names": [
+        "_fdioctl"
+      ],
+      "size": 2652,
+      "source_line": 1582,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 23288,
+      "reference_names": [
+        "_fdsize"
+      ],
+      "size": 92,
+      "source_line": 2139,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 23684,
+      "reference_names": [
+        "_floppyMalloc"
+      ],
+      "size": 104,
+      "source_line": 2503,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 23804,
+      "reference_names": [
+        "_SetBusyFlag"
+      ],
+      "size": 132,
+      "source_line": 6677,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 24064,
+      "reference_names": [
+        "_FloppyPluginInit"
+      ],
+      "size": 296,
+      "source_line": 2608,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 24456,
+      "reference_names": [
+        "_FloppyPluginIO"
+      ],
+      "size": 372,
+      "source_line": 2663,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 24940,
+      "reference_names": [
+        "_FloppyPluginFlush"
+      ],
+      "size": 100,
+      "source_line": 2533,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 25088,
+      "reference_names": [
+        "_FloppyPluginGotoState"
+      ],
+      "size": 100,
+      "source_line": 2573,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 25236,
+      "reference_names": [
+        "_FloppyRecalibrate"
+      ],
+      "size": 92,
+      "source_line": 2737,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 25392,
+      "reference_names": [
+        "_FloppyFormatInfo"
+      ],
+      "size": 276,
+      "source_line": 2420,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 25732,
+      "reference_names": [
+        "_FloppyFormatDisk"
+      ],
+      "size": 128,
+      "source_line": 2381,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 25924,
+      "reference_names": [
+        "_FloppyWriteProtected"
+      ],
+      "size": 48,
+      "source_line": 2805,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 25988,
+      "reference_names": [
+        "_drive_present"
+      ],
+      "size": 56,
+      "source_line": 1320,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 26044,
+      "reference_names": [
+        "_StartDBDMA"
+      ],
+      "size": 56,
+      "source_line": 7117,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 26100,
+      "reference_names": [
+        "_StopDBDMA"
+      ],
+      "size": 52,
+      "source_line": 7217,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 26152,
+      "reference_names": [
+        "_PrepDBDMA"
+      ],
+      "size": 52,
+      "source_line": 5920,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 26204,
+      "reference_names": [
+        "_ResetDBDMA"
+      ],
+      "size": 36,
+      "source_line": 6472,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 26240,
+      "reference_names": [
+        "_SetDBDMAPhysicalAddress"
+      ],
+      "size": 488,
+      "source_line": 6774,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 27172,
+      "reference_names": [
+        "_CloseDBDMAChannel"
+      ],
+      "size": 12,
+      "source_line": 1189,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 27184,
+      "reference_names": [
+        "_PrintDMA"
+      ],
+      "size": 12,
+      "source_line": 5946,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 27196,
+      "reference_names": [
+        "_CreateOSHardwareLockResources"
+      ],
+      "size": 16,
+      "source_line": 1209,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 27212,
+      "reference_names": [
+        "_CreateOSEventResources"
+      ],
+      "size": 16,
+      "source_line": 1199,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 27228,
+      "reference_names": [
+        "_BSMPINotifyFamilyStoreChangedState"
+      ],
+      "size": 28,
+      "source_line": 1008,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 27256,
+      "reference_names": [
+        "_FlushDMAedDataFromCPUCache"
+      ],
+      "size": 16,
+      "source_line": 2866,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 27272,
+      "reference_names": [
+        "_PrepareCPUCacheForDMAWrite"
+      ],
+      "size": 52,
+      "source_line": 5890,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 27340,
+      "reference_names": [
+        "_PrepareCPUCacheForDMARead"
+      ],
+      "size": 52,
+      "source_line": 5866,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 27408,
+      "reference_names": [
+        "_MemListDescriptorDataCopyToMemory"
+      ],
+      "size": 60,
+      "source_line": 5491,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 27500,
+      "reference_names": [
+        "_MemListDescriptorDataCopyFromMemory"
+      ],
+      "size": 60,
+      "source_line": 5460,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 27592,
+      "reference_names": [
+        "_MemListDescriptorDataCompare"
+      ],
+      "size": 16,
+      "source_line": 5426,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 27608,
+      "reference_names": [
+        "_MemListDescriptorDataCompareWithMemory"
+      ],
+      "size": 16,
+      "source_line": 5441,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 27624,
+      "reference_names": [
+        "_SynchronizeIO"
+      ],
+      "size": 16,
+      "source_line": 7658,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 27640,
+      "reference_names": [
+        "_FloppyTimedSleep"
+      ],
+      "size": 136,
+      "source_line": 2775,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 27824,
+      "reference_names": [
+        "_ExitHardwareLockSection"
+      ],
+      "size": 32,
+      "source_line": 1431,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 27872,
+      "reference_names": [
+        "_EnterHardwareLockSection"
+      ],
+      "size": 32,
+      "source_line": 1419,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 27920,
+      "reference_names": [
+        "_FlushProcessorCache"
+      ],
+      "size": 40,
+      "source_line": 2881,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 27976,
+      "reference_names": [
+        "_CurrentAddressSpaceID"
+      ],
+      "size": 16,
+      "source_line": 1219,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 27992,
+      "reference_names": [
+        "_SetOSEvent"
+      ],
+      "size": 120,
+      "source_line": 6958,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 28160,
+      "reference_names": [
+        "_CancelOSEvent"
+      ],
+      "size": 28,
+      "source_line": 1096,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 28188,
+      "reference_names": [
+        "_WaitForOSEvent"
+      ],
+      "size": 188,
+      "source_line": 7840,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 28408,
+      "reference_names": [
+        "_BSBlockListDescriptorGetExtent"
+      ],
+      "size": 32,
+      "source_line": 996,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 28440,
+      "reference_names": [
+        "_donone"
+      ],
+      "size": 44,
+      "source_line": 1310,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 28484,
+      "reference_names": [
+        "_ResetBitArray"
+      ],
+      "size": 48,
+      "source_line": 6410,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 28532,
+      "reference_names": [
+        "_TestBitArray"
+      ],
+      "size": 60,
+      "source_line": 7678,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 28592,
+      "reference_names": [
+        "_InitializeDrive"
+      ],
+      "size": 312,
+      "source_line": 5070,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 29048,
+      "reference_names": [
+        "_ScanForDisketteChange"
+      ],
+      "size": 408,
+      "source_line": 6520,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 29584,
+      "reference_names": [
+        "_FormatDisk"
+      ],
+      "size": 296,
+      "source_line": 2965,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 30056,
+      "reference_names": [
+        "_EjectDisk"
+      ],
+      "size": 164,
+      "source_line": 1371,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 30316,
+      "reference_names": [
+        "_InitFormatTable"
+      ],
+      "size": 484,
+      "source_line": 5177,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 30800,
+      "reference_names": [
+        "_AvailableFormats"
+      ],
+      "size": 216,
+      "source_line": 940,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 31032,
+      "reference_names": [
+        "_LookupFormatTable"
+      ],
+      "size": 340,
+      "source_line": 5340,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 31404,
+      "reference_names": [
+        "_CheckDriveOnLine"
+      ],
+      "size": 128,
+      "source_line": 1153,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 31564,
+      "reference_names": [
+        "_ReadDiskTrackToCache"
+      ],
+      "size": 428,
+      "source_line": 6123,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 32104,
+      "reference_names": [
+        "_WriteCacheToDiskTrack"
+      ],
+      "size": 492,
+      "source_line": 7992,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 32708,
+      "reference_names": [
+        "_ReadSectorFromCacheMemory"
+      ],
+      "size": 436,
+      "source_line": 6261,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 33272,
+      "reference_names": [
+        "_WriteSectorToCacheMemory"
+      ],
+      "size": 304,
+      "source_line": 8113,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 33624,
+      "reference_names": [
+        "_ReadBlocks"
+      ],
+      "size": 464,
+      "source_line": 5984,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 34232,
+      "reference_names": [
+        "_WriteBlocks"
+      ],
+      "size": 416,
+      "source_line": 7882,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 34792,
+      "reference_names": [
+        "_CheckDriveNumber"
+      ],
+      "size": 172,
+      "source_line": 1107,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 34980,
+      "reference_names": [
+        "_PowerDriveUp"
+      ],
+      "size": 336,
+      "source_line": 5774,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 35428,
+      "reference_names": [
+        "_PowerDriveDown"
+      ],
+      "size": 112,
+      "source_line": 5711,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 35588,
+      "reference_names": [
+        "_GetDisketteFormatType"
+      ],
+      "size": 172,
+      "source_line": 3782,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 35776,
+      "reference_names": [
+        "_SetDisketteFormat"
+      ],
+      "size": 204,
+      "source_line": 6890,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 36044,
+      "reference_names": [
+        "_GetDisketteFormat"
+      ],
+      "size": 416,
+      "source_line": 3676,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 36540,
+      "reference_names": [
+        "_BuildTrackInterleaveTable"
+      ],
+      "size": 180,
+      "source_line": 1019,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 36720,
+      "reference_names": [
+        "_SetCacheAddresses"
+      ],
+      "size": 184,
+      "source_line": 6719,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 36920,
+      "reference_names": [
+        "_SetSectorsPerTrack"
+      ],
+      "size": 84,
+      "source_line": 7035,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 37020,
+      "reference_names": [
+        "_SetSectorAddressBlocksize"
+      ],
+      "size": 96,
+      "source_line": 6993,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 37116,
+      "reference_names": [
+        "_GetSectorAddress"
+      ],
+      "size": 492,
+      "source_line": 3828,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 37624,
+      "reference_names": [
+        "_DumpTrackCache"
+      ],
+      "size": 112,
+      "source_line": 1332,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 37752,
+      "reference_names": [
+        "_FlushTrackCache"
+      ],
+      "size": 172,
+      "source_line": 2900,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 38044,
+      "reference_names": [
+        "_TestTrackInCache"
+      ],
+      "size": 80,
+      "source_line": 7715,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 38124,
+      "reference_names": [
+        "_AssignTrackInCache"
+      ],
+      "size": 44,
+      "source_line": 921,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 38168,
+      "reference_names": [
+        "_FPYComputeCacheDMAAddress"
+      ],
+      "size": 216,
+      "source_line": 3402,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 38384,
+      "reference_names": [
+        "_DenibblizeGCRData"
+      ],
+      "size": 312,
+      "source_line": 1245,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 38696,
+      "reference_names": [
+        "_DenibblizeGCRChecksum"
+      ],
+      "size": 80,
+      "source_line": 1229,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 38776,
+      "reference_names": [
+        "_FPYDenibblizeGCRSector"
+      ],
+      "size": 312,
+      "source_line": 3462,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 39136,
+      "reference_names": [
+        "_NibblizeGCRData"
+      ],
+      "size": 360,
+      "source_line": 5574,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 39496,
+      "reference_names": [
+        "_NibblizeGCRChecksum"
+      ],
+      "size": 80,
+      "source_line": 5533,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 39576,
+      "reference_names": [
+        "_FPYNibblizeGCRSector"
+      ],
+      "size": 292,
+      "source_line": 3539,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 39900,
+      "reference_names": [
+        "_RecalDrive"
+      ],
+      "size": 156,
+      "source_line": 6359,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 40136,
+      "reference_names": [
+        "_SeekDrive"
+      ],
+      "size": 200,
+      "source_line": 6622,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 40416,
+      "reference_names": [
+        "_FlushCacheAndSeek"
+      ],
+      "size": 112,
+      "source_line": 2828,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 40592,
+      "reference_names": [
+        "_ResetDMAChannel"
+      ],
+      "size": 60,
+      "source_line": 6499,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 40684,
+      "reference_names": [
+        "_StopDMAChannel"
+      ],
+      "size": 44,
+      "source_line": 7252,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 40744,
+      "reference_names": [
+        "_StartDMAChannel"
+      ],
+      "size": 216,
+      "source_line": 7158,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 41120,
+      "reference_names": [
+        "_HALReset"
+      ],
+      "size": 340,
+      "source_line": 4683,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 41492,
+      "reference_names": [
+        "_RecordError"
+      ],
+      "size": 16,
+      "source_line": 6394,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 41508,
+      "reference_names": [
+        "_PostDisketteEvent"
+      ],
+      "size": 80,
+      "source_line": 5674,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 41664,
+      "reference_names": [
+        "_LaunchMediaScanTask"
+      ],
+      "size": 64,
+      "source_line": 5294,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 41744,
+      "reference_names": [
+        "_KillMediaScanTask"
+      ],
+      "size": 16,
+      "source_line": 5277,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 41760,
+      "reference_names": [
+        "_SleepUntilReady"
+      ],
+      "size": 120,
+      "source_line": 7071,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 41928,
+      "reference_names": [
+        "_WaitForEvent"
+      ],
+      "size": 384,
+      "source_line": 7752,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 42344,
+      "reference_names": [
+        "_ByteMove"
+      ],
+      "size": 44,
+      "source_line": 1080,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 42388,
+      "reference_names": [
+        "_FormatGCRCacheSWIMIIIData"
+      ],
+      "size": 888,
+      "source_line": 3052,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 43308,
+      "reference_names": [
+        "_FormatMFMCacheSWIMIIIData"
+      ],
+      "size": 864,
+      "source_line": 3229,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 44188,
+      "reference_names": [
+        "_SwimIIISmallWait"
+      ],
+      "size": 100,
+      "source_line": 7530,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 44304,
+      "reference_names": [
+        "_SwimIIITimeOut"
+      ],
+      "size": 112,
+      "source_line": 7615,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 44432,
+      "reference_names": [
+        "_SwimIIIAddrSignal"
+      ],
+      "size": 120,
+      "source_line": 7271,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 44568,
+      "reference_names": [
+        "_SwimIIISenseSignal"
+      ],
+      "size": 64,
+      "source_line": 7395,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 44664,
+      "reference_names": [
+        "_SwimIIISetSignal"
+      ],
+      "size": 92,
+      "source_line": 7473,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 44804,
+      "reference_names": [
+        "_SwimIIIHeadSelect"
+      ],
+      "size": 68,
+      "source_line": 7364,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 44904,
+      "reference_names": [
+        "_SwimIIIDiskSelect"
+      ],
+      "size": 116,
+      "source_line": 7327,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 45036,
+      "reference_names": [
+        "_SwimIIIStepDrive"
+      ],
+      "size": 164,
+      "source_line": 7560,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 45296,
+      "reference_names": [
+        "_SwimIIIDisableRWMode"
+      ],
+      "size": 48,
+      "source_line": 7306,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 45360,
+      "reference_names": [
+        "_SwimIIISetReadMode"
+      ],
+      "size": 88,
+      "source_line": 7445,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 45480,
+      "reference_names": [
+        "_SwimIIISetWriteMode"
+      ],
+      "size": 88,
+      "source_line": 7502,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 45600,
+      "reference_names": [
+        "_SwimIIISetFormatMode"
+      ],
+      "size": 100,
+      "source_line": 7419,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 45716,
+      "reference_names": [
+        "_HALISR_DMA"
+      ],
+      "size": 12,
+      "source_line": 4353,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 45728,
+      "reference_names": [
+        "_HALISRHandler"
+      ],
+      "size": 168,
+      "source_line": 4382,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 45944,
+      "reference_names": [
+        "_HALSetFormatMode"
+      ],
+      "size": 384,
+      "source_line": 4830,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 46408,
+      "reference_names": [
+        "_HALDiskettePresence"
+      ],
+      "size": 92,
+      "source_line": 3941,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 46532,
+      "reference_names": [
+        "_HALGetMediaType"
+      ],
+      "size": 156,
+      "source_line": 4223,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 46720,
+      "reference_names": [
+        "_HALGetDriveType"
+      ],
+      "size": 144,
+      "source_line": 4150,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 46912,
+      "reference_names": [
+        "_HALPowerUpDrive"
+      ],
+      "size": 56,
+      "source_line": 4460,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 47000,
+      "reference_names": [
+        "_HALPowerDownDrive"
+      ],
+      "size": 40,
+      "source_line": 4431,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 47072,
+      "reference_names": [
+        "_HALSeekDrive"
+      ],
+      "size": 132,
+      "source_line": 4763,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 47268,
+      "reference_names": [
+        "_HALRecalDrive"
+      ],
+      "size": 220,
+      "source_line": 4578,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 47584,
+      "reference_names": [
+        "_HALEjectDiskette"
+      ],
+      "size": 100,
+      "source_line": 3983,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 47732,
+      "reference_names": [
+        "_HALGetNextAddressID"
+      ],
+      "size": 216,
+      "source_line": 4294,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 48076,
+      "reference_names": [
+        "_HALReadSector"
+      ],
+      "size": 196,
+      "source_line": 4509,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 48352,
+      "reference_names": [
+        "_HALWriteSector"
+      ],
+      "size": 324,
+      "source_line": 4956,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    },
+    {
+      "address": 48772,
+      "reference_names": [
+        "_HALFormatTrack"
+      ],
+      "size": 308,
+      "source_line": 4047,
+      "source_path": "src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj/FloppyDisk.m"
+    }
+  ],
+  "reference_sha256": "7CFD5E18A7CF4C5A8196BF7CC93113C6BE6AC90E770A03EDC58001C8D848BA8B",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 1468,
+      "reference_names": [
+        "-[FloppyDisk needsManualPolling]"
+      ],
+      "size": 16
+    },
+    {
+      "address": 2676,
+      "reference_names": [
+        "-[FloppyDisk fdCmdXfr:]"
+      ],
+      "size": 276
+    },
+    {
+      "address": 3000,
+      "reference_names": [
+        "-[FloppyDisk fdSetDensity:]"
+      ],
+      "size": 196
+    },
+    {
+      "address": 3244,
+      "reference_names": [
+        "-[FloppyDisk fdSetSectSize:]"
+      ],
+      "size": 180
+    },
+    {
+      "address": 3456,
+      "reference_names": [
+        "-[FloppyDisk fdSetGapLength:]"
+      ],
+      "size": 180
+    },
+    {
+      "address": 3668,
+      "reference_names": [
+        "-[FloppyDisk fdGetFormatInfo:]"
+      ],
+      "size": 180
+    },
+    {
+      "address": 3880,
+      "reference_names": [
+        "-[FloppyDisk fdSetInnerRetry:]"
+      ],
+      "size": 180
+    },
+    {
+      "address": 4092,
+      "reference_names": [
+        "-[FloppyDisk fdSetOuterRetry:]"
+      ],
+      "size": 180
+    },
+    {
+      "address": 4304,
+      "reference_names": [
+        "-[FloppyDisk innerRetry]"
+      ],
+      "size": 220
+    },
+    {
+      "address": 4556,
+      "reference_names": [
+        "-[FloppyDisk outerRetry]"
+      ],
+      "size": 220
+    },
+    {
+      "address": 4808,
+      "reference_names": [
+        "-[FloppyDisk fdMotorOff]"
+      ],
+      "size": 152
+    },
+    {
+      "address": 5008,
+      "reference_names": [
+        "-[FloppyDisk ejectPhysical]"
+      ],
+      "size": 176
+    },
+    {
+      "address": 5216,
+      "reference_names": [
+        "-[FloppyDisk updatePhysicalParameters]"
+      ],
+      "size": 176
+    },
+    {
+      "address": 5424,
+      "reference_names": [
+        "-[FloppyDisk deviceOpen:]"
+      ],
+      "size": 16
+    },
+    {
+      "address": 5440,
+      "reference_names": [
+        "-[FloppyDisk deviceClose]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 5452,
+      "reference_names": [
+        "-[FloppyDisk updateReadyState]"
+      ],
+      "size": 60
+    },
+    {
+      "address": 5576,
+      "reference_names": [
+        "-[FloppyDisk abortRequest]"
+      ],
+      "size": 100
+    },
+    {
+      "address": 5708,
+      "reference_names": [
+        "-[FloppyDisk diskBecameReady]"
+      ],
+      "size": 108
+    },
+    {
+      "address": 5848,
+      "reference_names": [
+        "-[FloppyDisk isDiskReady:]"
+      ],
+      "size": 220
+    },
+    {
+      "address": 6184,
+      "reference_names": [
+        "-[FloppyDisk property_IODeviceType:length:]"
+      ],
+      "size": 112
+    },
+    {
+      "address": 6328,
+      "reference_names": [
+        "-[FloppyDisk property_IOUnit:length:]"
+      ],
+      "size": 96
+    },
+    {
+      "address": 6456,
+      "reference_names": [
+        "-[FloppyDisk floppyInit:]"
+      ],
+      "size": 532
+    },
+    {
+      "address": 7084,
+      "reference_names": [
+        "-[FloppyDisk initResources:]"
+      ],
+      "size": 156
+    },
+    {
+      "address": 7288,
+      "reference_names": [
+        "-[FloppyDisk free]"
+      ],
+      "size": 164
+    },
+    {
+      "address": 7516,
+      "reference_names": [
+        "-[FloppyDisk allocFdBuf:]"
+      ],
+      "size": 128
+    },
+    {
+      "address": 7692,
+      "reference_names": [
+        "-[FloppyDisk freeFdBuf:]"
+      ],
+      "size": 76
+    },
+    {
+      "address": 7800,
+      "reference_names": [
+        "-[FloppyDisk fdSimpleCommand:buffer:needsDisk:]"
+      ],
+      "size": 192
+    },
+    {
+      "address": 8008,
+      "reference_names": [
+        "-[FloppyDisk fdSimpleIoReq:needsDisk:]"
+      ],
+      "size": 196
+    },
+    {
+      "address": 8236,
+      "reference_names": [
+        "-[FloppyDisk deviceRwCommon:block:length:buffer:client:pending:actualLength:]"
+      ],
+      "size": 616
+    },
+    {
+      "address": 8932,
+      "reference_names": [
+        "-[FloppyDisk timerEvent]"
+      ],
+      "size": 100
+    },
+    {
+      "address": 9048,
+      "reference_names": [
+        "-[FloppyDisk enqueueFdBuf:]"
+      ],
+      "size": 280
+    },
+    {
+      "address": 9360,
+      "reference_names": [
+        "-[FloppyDisk fdRecal]"
+      ],
+      "size": 244
+    },
+    {
+      "address": 9668,
+      "reference_names": [
+        "-[FloppyDisk fdSeek:head:]"
+      ],
+      "size": 300
+    },
+    {
+      "address": 10032,
+      "reference_names": [
+        "-[FloppyDisk fdGetStatus:]"
+      ],
+      "size": 216
+    },
+    {
+      "address": 10296,
+      "reference_names": [
+        "-[FloppyDisk fdReadId:statp:]"
+      ],
+      "size": 372
+    },
+    {
+      "address": 10732,
+      "reference_names": [
+        "-[FloppyDisk rawReadInt:sectCount:buffer:]"
+      ],
+      "size": 320
+    },
+    {
+      "address": 11116,
+      "reference_names": [
+        "-[FloppyDisk rwBlockCount:blockCount:]"
+      ],
+      "size": 156
+    },
+    {
+      "address": 11304,
+      "reference_names": [
+        "-[FloppyDisk fdGenRwCmd:blockCount:fdIoReq:readFlag:]"
+      ],
+      "size": 380
+    },
+    {
+      "address": 11732,
+      "reference_names": [
+        "-[FloppyDisk fdLogToPhys:cmdp:]"
+      ],
+      "size": 148
+    },
+    {
+      "address": 11880,
+      "reference_names": [
+        "-[FloppyDisk fdIoComplete:]"
+      ],
+      "size": 228
+    },
+    {
+      "address": 12140,
+      "reference_names": [
+        "-[FloppyDisk getCurrentDensity]"
+      ],
+      "size": 16
+    },
+    {
+      "address": 12156,
+      "reference_names": [
+        "-[FloppyDisk fdSendCmd:]"
+      ],
+      "size": 412
+    },
+    {
+      "address": 12732,
+      "reference_names": [
+        "-[FloppyDisk fdCmdDispatch:]"
+      ],
+      "size": 928
+    },
+    {
+      "address": 13756,
+      "reference_names": [
+        "-[FloppyDisk fdEjectInt]"
+      ],
+      "size": 392
+    },
+    {
+      "address": 14212,
+      "reference_names": [
+        "-[FloppyDisk fdRwCommon:]"
+      ],
+      "size": 1044
+    },
+    {
+      "address": 15320,
+      "reference_names": [
+        "-[FloppyDisk logRwErr:block:status:readFlag:]"
+      ],
+      "size": 172
+    },
+    {
+      "address": 15540,
+      "reference_names": [
+        "-[FloppyDisk setDensityInt:]"
+      ],
+      "size": 240
+    },
+    {
+      "address": 15828,
+      "reference_names": [
+        "-[FloppyDisk setSectSizeInt:]"
+      ],
+      "size": 340
+    },
+    {
+      "address": 16216,
+      "reference_names": [
+        "-[FloppyDisk setGapInt:]"
+      ],
+      "size": 100
+    },
+    {
+      "address": 16332,
+      "reference_names": [
+        "-[FloppyDisk updatePhysicalParametersInt]"
+      ],
+      "size": 252
+    },
+    {
+      "address": 16680,
+      "reference_names": [
+        "-[FloppyDisk unlockIoQLock]"
+      ],
+      "size": 120
+    },
+    {
+      "address": 16816,
+      "reference_names": [
+        "-[FloppyDisk motorOffCheck]"
+      ],
+      "size": 272
+    },
+    {
+      "address": 23428,
+      "reference_names": [
+        "_fdminphys"
+      ],
+      "size": 40
+    },
+    {
+      "address": 23468,
+      "reference_names": [
+        "_fd_dev_to_id"
+      ],
+      "size": 200
+    },
+    {
+      "address": 26792,
+      "reference_names": [
+        "_OpenDBDMAChannel"
+      ],
+      "size": 300
+    },
+    {
+      "address": 37956,
+      "reference_names": [
+        "_TestCacheDirtyState"
+      ],
+      "size": 72
+    },
+    {
+      "address": 41604,
+      "reference_names": [
+        "_MediaScanTask"
+      ],
+      "size": 28
+    },
+    {
+      "address": 49208,
+      "reference_names": [
+        "+[FloppyKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 20
+    },
+    {
+      "address": 49228,
+      "reference_names": [
+        "+[FloppyVersion driverKitVersionForFloppy]"
+      ],
+      "size": 16
+    }
+  ]
+}

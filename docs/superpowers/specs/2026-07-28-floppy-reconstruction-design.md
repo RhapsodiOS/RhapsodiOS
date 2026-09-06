@@ -22,9 +22,11 @@ wrong: `find src -iname "*Floppy*" | head -1` returned
 `src/driverkit-3/Examples/UnixDisk/FloppyDisk.m` — a 175-line DriverKit example —
 and the real tree at `src/drivers-ppc/ide/drvPPCSwimFloppy` was never seen.
 
-It holds **11,475 lines** across four `.m` files, untouched since the tree move
-and never measured. Its parameter names are `param_1`, `param_2`, so it came out
-of a decompiler in an earlier session and was never cleaned up.
+It holds **11,475 lines across its eight source files** — the four `.m` files hold
+**10,754** of them — untouched since the tree move and never measured. (An earlier
+draft attributed all 11,475 to the four `.m` files; §2.1's per-file figures below
+sum to 10,758, not 11,475.) Its parameter names are `param_1`, `param_2`, so it
+came out of a decompiler in an earlier session and was never cleaned up.
 
 This is the fifth ad-hoc survey error in this series, and the reason §4.4 gates
 on a tool rather than on a search.
@@ -119,6 +121,21 @@ functions, so a blanket prefix-strip was safe there. **That is not true here.**
   `_rwBlockCount:blockCount:` and `_timerEvent`. A blanket strip corrupts all 157.
   (52 of those selectors are themselves misnamed and are corrected separately in
   §3.2 — but not by the C rename, which must leave them alone.)
+
+  **That is a scoping rule, not a verdict on those 157 spellings.** The
+  one-underscore Mach-O rule is **not** function-specific. Of the binary's 306
+  symbols, **zero** carry a double underscore, and `_FloppyState`, `_Floppy_dev`,
+  `_FloppyIdMap`, `_busyflag`, `_slock`, `_ReadDataPresent`,
+  `_PrivDBDMAChannelArea` and `_GRCFloppyDMAChannel` are real **one-underscore
+  `__DATA` symbols** — so Apple's source spelled those globals bare too. Our tree
+  defines them with the underscore (`unsigned int _FloppyState = 0;`), which emits
+  `__FloppyState` and matches nothing. `symbol_name_check.py:46` filters on
+  `section == "__TEXT,__text"`, which is why the gate stays green over it.
+  Corroboration from the other direction: of the 48 undefined imports, 21 are
+  already referenced bare and correct, and exactly one (`_IOExitThread`) is not.
+  The data-symbol defect is pre-existing and outside this spec's edit set — it is
+  recorded as uncertainty 5 in `findings.md` and must be **scheduled, not
+  preserved**.
 - **Two prefix hazards**: `_GetDisketteFormat` is a prefix of
   `_GetDisketteFormatType`, and `_MemListDescriptorDataCompare` of
   `_MemListDescriptorDataCompareWithMemory`. Word-bounded `\b_Name\b` is safe
@@ -281,7 +298,7 @@ only one of the five that does; treat that as a hint to check, not as evidence.
 ### 6.1 Three redundant duplicates
 
 Three functions are defined twice — external in `FloppyDisk.m` and `static` in a
-second file:
+second file. **Line numbers below are pre-rename; locate them by name.**
 
 ```
 _getStatusName    FloppyDisk.m:136    (extern)   FloppyDiskThread.m:94   (static)
@@ -289,8 +306,17 @@ _GetBusyFlag      FloppyDisk.m:3608   (extern)   FloppyDiskInt.m:125     (static
 _ResetBusyFlag    FloppyDisk.m:6447   (extern)   FloppyDiskInt.m:130     (static)
 ```
 
-This is legal C — the `static` copy shadows within its own translation unit — so
-it compiles and links. But Apple's binary carries **one** symbol for each, and
+**This is not legal C.** An earlier draft of this section said the `static` copy
+merely shadows within its own translation unit, so it compiles and links. It does
+not. `FloppyDiskInt.m:7` imports `FloppyDisk.h`, and the `static` definitions at
+`FloppyDiskInt.m:125`/`:130` follow the file-scope `extern` prototypes in
+`FloppyDisk.h:217`/`:427` within the same translation unit — C99 6.2.2p7
+undefined behaviour, which GCC diagnoses. `FloppyDiskThread.m` imports the same
+header, where `FloppyDisk.h:118` declares `_getStatusName`, so the third
+duplicate has the same shape. Nothing is compiled here, so the period toolchain's
+exact behaviour is untested, and per §9 no claim of buildability may be made;
+which body the calls in the second file bind to is precisely what the conflict
+leaves undefined. Apple's binary also carries **one** symbol for each, and
 `static` functions do receive symbol-table entries in a `_reloc` output, so ours
 would emit two. The static copies are redundant additions from an earlier pass.
 
@@ -326,11 +352,15 @@ there:
 1. Two profiles created and `test_ppc_profile_inventory` updated; suite green.
 2. All 136 misnamed C functions renamed, with every call site updated, driven by
    the binary's exact name list and word-bounded.
-3. **No identifier outside those 136 was renamed** — in particular none of the 157
-   `_`-prefixed globals, types, or Objective-C selectors.
+3. **The C rename moved no identifier outside those 136** — in particular none of
+   the 157 `_`-prefixed globals, types, or Objective-C selectors. This item
+   scopes the C rename only: the 53 misnamed selectors among those 157 are
+   renamed under item 5, and the underscored data symbols are left alone because
+   correcting them is out of scope (§3.1), **not** because their spelling is
+   right.
 4. `symbol_name_check.py` reports 141 symbols, **0 missing**, exit 0.
-5. All 52 misnamed selectors renamed; `selector_check.py` reports **0 renames**,
-   0 duplicates, 2 missing (both build-generated), 0 extra.
+5. All **53** misnamed selectors renamed; `selector_check.py` reports **0
+   renames**, 0 duplicates, 2 missing (both build-generated), 0 extra.
 6. The source map covers **200** of the 201 hand-written functions. The 201st is
    `_fdrToIo`, excluded by construction per §4.1 — a known exclusion, not a gap.
 7. `duplicate_candidates` is 0, or every entry is enumerated with evidence.

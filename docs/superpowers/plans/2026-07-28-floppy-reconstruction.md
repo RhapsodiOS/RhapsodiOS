@@ -301,10 +301,20 @@ with `Name` across `FloppyDisk.m`, `FloppyDisk.h`, `FloppyDiskInt.m` and
 
 **A blanket transformation over `_[A-Za-z]\w*` is prohibited and will corrupt
 this source.** Unlike `PPCSerialPort`, this file has **157 `_`-prefixed
-identifiers that are not among the 141** and must not move — globals and types
-such as `_BusyFlag`, `_FloppyState`, `_FdBuffer`, `_Floppy_dev`,
-`_FloppySWIMIIIRegs`, and Objective-C selectors such as
+identifiers that are not among the 141** and must not move **in this step** —
+globals and types such as `_BusyFlag`, `_FloppyState`, `_FdBuffer`,
+`_Floppy_dev`, `_FloppySWIMIIIRegs`, and Objective-C selectors such as
 `_rwBlockCount:blockCount:` and `_timerEvent`.
+
+**"Must not move here" is not "is spelled right".** The one-underscore Mach-O
+rule is not function-specific: **zero** of the binary's 306 symbols carry a
+double underscore, and `_FloppyState`, `_Floppy_dev`, `_FloppyIdMap`,
+`_busyflag`, `_slock`, `_ReadDataPresent`, `_PrivDBDMAChannelArea` and
+`_GRCFloppyDMAChannel` are one-underscore `__DATA` symbols, so Apple spelled
+those globals bare too. Ours emit the double-underscore forms and match nothing.
+`symbol_name_check.py` measures `__TEXT,__text` only, so its gate cannot see it.
+That defect is out of scope for this plan and is recorded as uncertainty 5 in
+`findings.md` — the next driver must **schedule** it, not preserve it.
 
 **Two names are prefixes of others:**
 
@@ -542,12 +552,26 @@ matching `.h`, and at every `[receiver _name…]` call site.
 
 Distribution: 21 in `FloppyDisk.m` (`@implementation FloppyDisk`), 21 in
 `FloppyDiskInt.m` (`FloppyDisk(Internal)`), 10 in `FloppyDiskThread.m`
-(`FloppyDisk(Thread)`). **185 token occurrences** across the six files.
+(`FloppyDisk(Thread)`). **174 token occurrences** across the six files.
 
-**Eight source selectors are legitimately underscored and must not move** — the
-source defines 60 methods, 53 of which start with an underscore, and only 52 have
-a bare counterpart in the binary. Any selector whose bare form is absent from
-Step 1's list stays exactly as it is.
+**Corrected after the measurement (see the design spec §3.2).** This step first
+said "185 token occurrences" and "eight source selectors are legitimately
+underscored and must not move". Both are refuted:
+
+- The token figure is **174**, not 185. Eleven of the 185 were the `_innerRetry`
+  and `_outerRetry` ivars, not selectors; renaming them would have altered driver
+  state.
+- **No legitimately-underscored selector exists.** Apple's
+  `__OBJC,__meth_var_names` holds 130 names and **not one** begins with an
+  underscore. The "eight" are simply the eight source selectors that were already
+  written **bare** — they need no rename because they are already correct, not
+  because their underscore is legitimate.
+- The count of selectors to rename is **53**, not 52: `_fcCmdXfr:driveInfo:` is
+  a 53rd instance that is absent from Step 1's symbol-derived list because
+  `FloppyController`'s only `__TEXT,__text` method symbol is `+probe:`. It is
+  renamed in Task 5.
+
+Any selector whose bare form is absent from Step 1's list stays exactly as it is.
 
 **Do not touch C function names.** Task 2 already renamed those 141; they are a
 disjoint set. Do not rewrite string literals.
@@ -647,8 +671,12 @@ channel-structure layout first.
 - [ ] **Step 6: Remove the three redundant duplicate definitions**
 
 Each of these is defined twice — external in `FloppyDisk.m` and `static` in a
-second file. That is legal C, but Apple's binary carries **one** symbol each, and
-`static` functions do receive symbol-table entries in a `_reloc` output.
+second file. That is **not** legal C: both second files import `FloppyDisk.h`,
+which declares all three `extern` at file scope, so each `static` definition
+follows an external declaration of the same name **in the same translation
+unit** — C99 6.2.2p7, which GCC diagnoses. Apple's binary also carries **one**
+symbol each, and `static` functions do receive symbol-table entries in a `_reloc`
+output.
 
 Line numbers are pre-rename; locate them by name:
 

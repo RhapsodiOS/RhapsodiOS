@@ -2924,3 +2924,50 @@ the DAC ports the driver actually writes are `0x3C6`, `0x3C8` and `0x3C9`, and
 table reserves so the DAC can be reached while VGA I/O is disabled. This
 document records the ports the code uses; the table's aliasing is not something
 the code is aware of.
+
+## Resuming when the build guest returns
+
+The Rhapsody build guest (`10.10.0.113`, named in `vm/vm.conf`) went offline
+partway through the extent-closing pass, and everything below is queued behind
+it. This is the checklist, in order.
+
+**1. Rebuild, and keep the artifact.** No rebuilt ThinkPad `_reloc` exists
+anywhere in the tree — `out/i386/` holds only the Cirrus one, and this driver's
+`analysis-rebuilt-ida.json` is the placeholder generated from the reference
+against its own copy. That is precisely why five of the open divergences could
+not be diagnosed: every one is a question about what *our* build allocates, and
+no instruction stream existed to compare against. Copy the rebuilt `_reloc`
+back into `out/i386/` and leave it there for the whole session.
+
+**2. Check that commit `1cb44e28` compiles at all.** It edits
+`IBMThinkPad760ED.m` for four divergences and has never been through a
+compiler. If it does not build, fix that first; if it does, re-measure the
+extent table before anything else, because its four predictions are untested.
+
+**3. Apply the two high-confidence diagnoses**, both written out with exact
+source and a predicted extent in the "Function extents" section above:
+`unlockRegisters` and `lockRegisters` (the nested
+`outb(0x3C5, inb(0x3C5) | 0x80)` form, predicting 152 to 168 for both), and —
+in the sibling driver — `drvCirrusLogicGD5434`'s `strncmp(..., "PCI", 4)`
+becoming `strcmp(..., "PCI")`, predicting its call count drops from 8 to 7.
+
+**4. Settle the five unexplained deltas** with the rebuilt binary in hand:
+`setDisplayDeviceState:`, `getModeInfo:` and `revertToVGAMode` at -4 each,
+`setPCIConfiguration` at -12, and `reportSystemConfiguration` at +28. The
+"one extra callee-saved register" account of the first three has been refuted
+and should not be retried. `reportSystemConfiguration` reduces to a one-line
+check: does its rebuilt prologue contain a `sub esp`? The reference has none.
+
+**5. Diagnose the missing version bundle.** Neither driver's build emits its
+`_VERS_STRING`/`_VERS_NUM` stub and the cause is still unproven. The strongest
+in-repo account is that `src/pb_makefiles-1/next-sgs.make:36-45` generates
+`$(NAME)_vers.c`, but nothing links `$(VERS_OFILE)` unless
+`OTHER_GENERATED_OFILES` picks it up — which for a Kernel Server comes from
+`src/driverTools-1/KernelServerProjectType/kernelserver.make.preamble:8-10`
+through an optional `-include` that is silently skipped when that file is not
+installed on the guest. Checking whether it exists there settles it.
+
+**6. Only then advance the ledger.** All 40 entries are `unexamined` and must
+stay so until a real rebuilt binary is compared against the reference.
+`rebuilt_sha256` is still the placeholder described above and has to be
+regenerated from a genuine build at the same time.

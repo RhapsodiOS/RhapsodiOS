@@ -255,19 +255,20 @@ IODisplayInfo ThinkPad760EDModeTable[14] = {
  */
 - (void)updateModeTable
 {
-    IODisplayInfo *mode;
     int i;
 
     for (i = 0; i < modeTableCount; i++) {
-	mode = &ThinkPad760EDModeTable[i];
-	mode->memorySize = mode->rowBytes * mode->height;
-	mode->scanRate = 0;
-	mode->screenWidth = 0;
-	mode->screenHeight = 0;
-	mode->modeUnavailableFlag = 0;
+	ThinkPad760EDModeTable[i].memorySize =
+	    ThinkPad760EDModeTable[i].rowBytes *
+	    ThinkPad760EDModeTable[i].height;
+	ThinkPad760EDModeTable[i].scanRate = 0;
+	ThinkPad760EDModeTable[i].screenWidth = 0;
+	ThinkPad760EDModeTable[i].screenHeight = 0;
+	ThinkPad760EDModeTable[i].modeUnavailableFlag = 0;
 
-	if (displayMemorySize < mode->memorySize)
-	    mode->modeUnavailableFlag = IO_DISPLAY_MODE_NEEDS_MORE_MEMORY;
+	if (displayMemorySize < ThinkPad760EDModeTable[i].memorySize)
+	    ThinkPad760EDModeTable[i].modeUnavailableFlag =
+		IO_DISPLAY_MODE_NEEDS_MORE_MEMORY;
     }
 }
 
@@ -447,11 +448,12 @@ IODisplayInfo ThinkPad760EDModeTable[14] = {
 /* Identify the graphics chip and size its memory. The device description
  * is not needed for either.
  *
- * There are two detection protocols. Bit 7 of SR08 set means the chip is
- * already in new mode and is taken to be a Cyber938x without further
- * checking; clear means old mode, and then the chip identifier read out
- * of SR0B has to match. A chip that fails that test is still driven, but
- * through the VESA BIOS and with a conservative 1 MB.
+ * Bit 7 of SR08 says which sequencer protocol the chip was speaking. Clear
+ * means old mode, and the SR0B read above has just switched it to new mode,
+ * so SR0B is written back to restore it; set means the chip was already in
+ * new mode and nothing has to be undone. Either way the chip identifier
+ * read out of SR0B has to match. A chip that fails that test is still
+ * driven, but through the VESA BIOS and with a conservative 1 MB.
  */
 - (BOOL)determineConfiguration:deviceDescription
 {
@@ -464,17 +466,18 @@ IODisplayInfo ThinkPad760EDModeTable[14] = {
     outb(0x3C4, 0x0B);
     sr0b = inb(0x3C5);			/* the read switches to new mode */
 
-    if ((signed char)sr08 >= 0) {
+    if ((signed char)sr08 >= 0)
 	outw(0x3C4, (sr0b << 8) | 0x0B);
-	outw(0x3D4, 0x042A);
-	if (sr0b != 0xD3) {
-	    IOLog("%s: Trident Cyber938x not detected - trying anyway\n",
-		  [self name]);
-	    IOLog("%s: Chip ID=0x%02x, Revision=0x%02x\n", [self name],
-		  sr0b, sr09);
-	    displayMemorySize = 0x100000;
-	    goto report;
-	}
+
+    outw(0x3D4, 0x042A);
+
+    if (sr0b != 0xD3) {
+	IOLog("%s: Trident Cyber938x not detected - trying anyway\n",
+	      [self name]);
+	IOLog("%s: Chip ID=0x%02x, Revision=0x%02x\n", [self name],
+	      sr0b, sr09);
+	displayMemorySize = 0x100000;
+	goto report;
     }
 
     IOLog("%s: Detected Trident Cyber938x (rev 0x%02x)\n", [self name], sr09);
@@ -634,11 +637,19 @@ report:
 
     crtOnlyDisplay = crtOnly;
 
-    reg.ax.x = 0x5380;
-    reg.dx.x = smapiPort;
-    reg.bx.x = 0x100D;
-    reg.cx.x = crtOnly ? 0x0101 : viewportSize;
-    smapi_asm(&reg);
+    if (crtOnly) {
+	reg.ax.x = 0x5380;
+	reg.dx.x = smapiPort;
+	reg.bx.x = 0x100D;
+	reg.cx.x = 0x0101;
+	smapi_asm(&reg);
+    } else {
+	reg.ax.x = 0x5380;
+	reg.dx.x = smapiPort;
+	reg.bx.x = 0x100D;
+	reg.cx.x = viewportSize;
+	smapi_asm(&reg);
+    }
 
     reg.cx.x = parameters->panelSize;
     reg.ax.x = 0x5380;
@@ -926,9 +937,7 @@ report:
     const char *name;
 
     name = [super name];
-    if (name != 0 && *name != '\0')
-	return name;
-    return "Display0";
+    return (name == 0 || *name == '\0') ? "Display0" : name;
 }
 
 @end

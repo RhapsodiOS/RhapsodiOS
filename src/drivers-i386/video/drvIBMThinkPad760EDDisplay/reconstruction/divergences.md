@@ -2493,6 +2493,153 @@ in-scope `__text` span is 6464 bytes against the reference's 6552, 88 short.
 These twelve are the outstanding work for a byte-exact reconstruction. They are
 recorded here as measurement, not repaired: this task's gate was compilation.
 
+### Diagnosing the twelve: the toolchain is not the variable
+
+Before attributing any of the twelve to the compiler, the compiler was ruled
+out. `drvCirrusLogicGD5434` is built by the same project machinery at the same
+`OPTIMIZE_BUILD_CFLAGS = -O` (`src/pb_makefiles-1/flags.make:124`), and both its
+reference and a real rebuild of it are on hand. Its
+`(ProgramDAC) setGammaTable` and `(ProgramDAC) setTransferTable:count:` are
+**byte-identical, instruction for instruction**, between reference and rebuild —
+including a `256 / transferTableCount` division left unhoisted inside the inner
+loop and `movzx edx, byte ptr [esi + edx]` base-plus-index array reads with no
+induction-variable strength reduction. A `-O2` reference would have hoisted the
+division and strength-reduced the subscripts. **The reference was compiled at
+the same optimisation level we compile at**, so every one of the twelve deltas
+is a difference in the *source*, not in the flags.
+
+That makes the reference disassembly readable as a statement about what the
+source said, and the six functions below were diagnosed that way.
+
+### The four that the disassembly pins
+
+**`name`, −4 — the return is a ternary, not an `if`.** The reference's
+instruction stream is identical to `drvCirrusLogicGD5434`'s `name` except for
+the string address and one selector index: `mov edx, <default string>` is
+executed *unconditionally* right after the `[super name]` call, and the tests
+then either overwrite `edx` with the superclass's answer or fall past. That is
+the shape of `return (name == 0 || *name == '\0') ? "Display0" : name;`. The
+Cirrus source is written exactly that way and its rebuild is byte-exact at 60
+bytes; the `if (…) return name; return "Display0";` form the reconstruction had
+is 56.
+
+**`updateModeTable`, −12 — the loop subscripts the table, it does not take a
+pointer to the element.** The reference hoists `mov ecx, _ThinkPad760EDModeTable`
+out of the loop, recomputes a scaled index `edx = i * 136` each iteration, and
+addresses every field as `[ecx + edx + disp]`. That is precisely the idiom
+`defaultMode` and `selectMode` emit — both of which *match* their reference
+extent, and both of which subscript `ThinkPad760EDModeTable[i].field` directly.
+A `mode = &ThinkPad760EDModeTable[i]` local would have folded the table base
+into a single `lea` and addressed fields as `[edx + disp]`, one byte shorter at
+each of the nine references and with no `mov ecx, imm32`. The reference also
+*reloads* `memorySize` from memory at +86 for the comparison rather than reusing
+the product it just computed in `edi`, which is what a fresh subscript
+expression produces.
+
+**`determineConfiguration:`, +8 — the CR2A write and the chip-ID test are on
+the common path, not inside the SR08 test.** At +92 the reference's
+`jl` — taken when SR08 bit 7 is set — targets **+116, the `outw(0x3D4, 0x042A)`**,
+not the "Detected" arm. `cmp bl, 0xd3` at +135 is likewise reached from both
+sides. So the SR08 test guards *only* the `outw(0x3C4, (sr0b << 8) | 0x0B)` that
+puts the chip back the way the SR0B read found it; the CR2A write and the
+`sr0b != 0xD3` check always run. The reconstruction had both nested inside the
+SR08 block, which is a **behavioural** divergence and not merely a byte-count
+one: a chip already in new mode skipped its CR2A write and was accepted as a
+Cyber938x without its identifier ever being checked.
+
+**`setPendingDisplayMode:`, −60 — the 0x100D SMAPI call is written out twice.**
+The reference emits two *complete* four-store register blocks, one at +293 with
+`reg.cx.x = 0x0101` and one at +344 with `reg.cx.x = viewportSize`, each ending
+in its own `push` of its own copy of `&reg`; the two paths converge only at the
+`call _smapi_asm` at +397. Cross-jumping merged the identical
+`call _smapi_asm` / `add esp, 4` tail but could not merge the two `push`es
+because they use different registers — which is only possible if `smapi_asm(&reg)`
+appeared in **both** arms of the source's `if (crtOnly)`. A
+`reg.cx.x = crtOnly ? 0x0101 : viewportSize;` ternary, which is what the
+reconstruction had, branches on the value alone and emits the four stores once.
+This is also consistent with the rest of the file, where every SMAPI call is
+written as a fresh four-store block followed by `smapi_asm(&reg)`.
+
+### The six that it does not pin
+
+Each is recorded with the signature actually observed, so the next pass starts
+from evidence rather than from scratch.
+
+- **`unlockRegisters` / `lockRegisters`, −16 each.** In *both* arms of both
+  methods the reference materialises the SR data port into a callee-saved
+  register **before** the `inb` — `mov ebx, 0x3c5` at +67 and +131 — and then
+  spends `mov edx, ebx` to satisfy the `outb` asm's `"d"` constraint. That costs
+  7 bytes per arm over reusing `edx`, plus the 4 bytes of `push ebx` /
+  `mov ebx, [ebp-4]` the two methods would not otherwise need: 18 code bytes,
+  which is 16 of extent once each side's tail padding is counted. The
+  reconstruction's `value = inb(0x3C5); outb(0x3C5, value | 0x80);` makes gcc
+  reuse `edx`, and that is demonstrably right for this compiler — Cirrus's
+  `setMode:` contains the same idiom **and** the nested
+  `outb(0x3C5, (inb(0x3C5) & 0xF0) | …)` variant, and *both* reuse `edx` in a
+  region that is byte-exact against its reference. So the reference's source
+  forces the `outb`'s port operand to stay live across the `inb` by some
+  construct that neither form here reproduces. Not guessed at.
+- **`setDisplayDeviceState:`, −4.** The reference holds `&reg` in `ebx` — the
+  delta is exactly the `push ebx` (1) plus `mov ebx, [ebp-4]` (3) that buys.
+  `getDisplayDeviceState`, which *matches*, needs `ebx` genuinely (`self` is
+  live across the `smapi_asm` call); here nothing is live across the call and
+  the allocation looks like pressure from `state` and `smapiPort` both being
+  held. No source construct was found that reproduces it without contortion.
+- **`getModeInfo:`, −4** and **`revertToVGAMode`, −4.** Both keep one more
+  callee-saved register than the rebuild does (`edi`/`esi`/`ebx` and
+  `esi`/`ebx` respectively) and both carry a jump-target alignment `nop` the
+  rebuild's differing block boundaries would not place. Statement-for-statement
+  the reference matches the reconstruction; the residue is register allocation.
+- **`setPCIConfiguration`, −12.** Statement for statement the reference matches
+  the reconstruction, including `and dl, 0xfc` for `command & ~3`, the two
+  separate assignments that make up `physicalAddress = configSpace.BaseAddress[0];
+  physicalAddress &= ~0x0F;`, and both range-copy loops. Two reference
+  peculiarities are unexplained and point the wrong way for the sign: the first
+  copy loop at +326 has **no entry guard** (the second, at +419, does), and the
+  `%s: Error: Incorrect number of address ranges: %d.\n` arm is placed out of
+  line at +520. Both make the reference *shorter*, so something else in the
+  reconstruction is shorter still by more than 12. Unresolved.
+- **`reportSystemConfiguration`, +28.** Every one of the six SMAPI blocks, both
+  `switch`es, the `LCDWidth` assignment between them, and all thirteen `IOLog`s
+  line up with the reconstruction statement for statement. The reference uses no
+  stack frame at all beyond `push ebx` — `vendor`, `panelType` and `panelSize`
+  all live in registers — so a spill in the rebuild is the leading suspicion,
+  but it was not confirmed.
+
+`initFromDeviceDescription:`'s **+8** is accounted for by the documented
+tail merge and is not a source defect. The reference reaches the
+`%s: vidBIOS alloc failure` arm's `call _IOLog` by a 5-byte `jmp` into the
+`%s: Error: Unable to map frame buffer\n` arm at +655; both arms are
+`IOLog(fmt, [self name]); return [self free];` with two arguments, so their
+tails are identical and cross-jumping merged them. A build that does not find
+that merge pays a `call` where the reference pays a `jmp`, plus the alignment
+that follows. Per "How `IOLog` is counted" above, this is expected and is not
+chased.
+
+The `vidBIOS` `@class`-only question was checked and **costs nothing**.
+`[[vidBIOS alloc] init]` compiles at +226…+267 to `push` of the `init`
+selector, then the `alloc` selector and the class reference, one `objc_msgSend`,
+`add esp, 8`, `push eax`, a second `objc_msgSend` — the ordinary
+deferred-pop sequence for a nested send, with no varargs marshalling and no
+widening anywhere. The five `vidBIOS` sends elsewhere pass and return 32-bit
+values that are discarded or cast. No `vidBIOS` `@interface` is needed for
+byte parity, and none was added.
+
+### These four fixes are applied but **not** measured
+
+The Rhapsody build guest named by `vm/vm.conf` was unreachable for the whole of
+this pass — no ICMP reply and no TCP connect to port 22 — so
+`vm/build-i386-video-recon.sh` could not be run and **the extent table above is
+still the pre-change measurement**. The four source changes are committed on the
+strength of the reference disassembly alone. Three of them stand on their own
+terms regardless of byte count: `determineConfiguration:` is a control-flow
+correction, and `name` and `updateModeTable` adopt idioms this very toolchain is
+*proven* to reproduce byte-exactly elsewhere. None of them touches a symbol
+name, a definition order, an ivar, or a `__const`/`__data` table, and each is
+confined to one method body, so the 17 matching functions cannot be disturbed by
+them — but that is an argument, not a measurement. **The next pass must rebuild
+and re-measure all 29 before any of this is treated as closed.**
+
 ### Ledger status
 
 All 40 entries remain **`unexamined`**, which is the only defensible status. The

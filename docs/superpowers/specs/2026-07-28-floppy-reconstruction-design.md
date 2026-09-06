@@ -324,7 +324,8 @@ there:
    class methods accounted for.
 9. All five bodies written, each with an instruction-by-instruction account
    covering every branch.
-10. The two redundant `static` duplicates removed; the six source-only helpers retained and
+10. All three redundant `static` copies removed (`getStatusName`, `GetBusyFlag`,
+    `ResetBusyFlag`); the six source-only helpers retained and
    recorded.
 11. The binrecon suite stays green.
 

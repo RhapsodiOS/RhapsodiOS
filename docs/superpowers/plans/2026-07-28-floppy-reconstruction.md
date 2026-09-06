@@ -703,7 +703,10 @@ cd $REPO && git add $LKS $RECON/findings.md && \
 - [ ] **Step 1: Regenerate the map**
 
 Re-run Task 3 Steps 1–2 verbatim. All five new functions should now map, and
-`duplicate_candidates` should be 0 — Task 5 Step 6 removed the two redundant statics.
+`duplicate_candidates` should be 0 — Task 5 Step 6 removed all three redundant
+statics, two of which (`GetBusyFlag`, `ResetBusyFlag`) were the map's duplicate
+candidates. `getStatusName`'s static is removed too but never appeared as one,
+since it has no binary counterpart.
 If it is not 0, enumerate what remains with evidence.
 
 - [ ] **Step 2: Confirm coverage against acceptance**

@@ -278,6 +278,24 @@ def test_ledger_cli_rejects_incoherent_transition_flags(tmp_path, capsys):
     assert result == 1 and "--address and --status" in capsys.readouterr().err
 
 
+def test_ledger_cli_persists_reason_outside_intentional_mismatch(tmp_path, capsys):
+    from binrecon.ledger import new_ledger, write_ledger
+    from binrecon.profile import load_profile
+    profile_path, _, _ = _write_profile(tmp_path)
+    loaded = load_profile(profile_path, os.environ); path = tmp_path / "ledger.json"
+    value = {"address": 4096, "size": 4, "names": ["probe"], "source_path": None,
+             "source_line": None, "status": "unexamined",
+             "analyzer_agreement": {"status": "none", "analyzers": [], "reasons": []},
+             "artifacts": [], "reason": None, "reviewer": None}
+    write_ledger(path, new_ledger(loaded.reference_identity, loaded.rebuilt_identity, [value]),
+                 loaded.reference_identity, loaded.rebuilt_identity)
+    result = main(["ledger", "--profile", str(profile_path), "--ledger", str(path),
+                   "--address", "0x1000", "--status", "signature-confirmed",
+                   "--reason", "THIS SHOULD PERSIST"])
+    assert result == 0
+    assert json.loads(path.read_text())["entries"][0]["reason"] == "THIS SHOULD PERSIST"
+
+
 def test_ledger_module_entrypoint_validates_outside_repository_cwd(tmp_path):
     from binrecon.ledger import new_ledger, write_ledger
     from binrecon.profile import load_profile

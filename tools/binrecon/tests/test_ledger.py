@@ -44,6 +44,14 @@ def test_transition_matrix_and_human_exception(tmp_path):
         transition(intentional, 0x1000, "assembly-matched", reference, rebuilt)
 
 
+def test_transition_persists_reason_outside_intentional_mismatch(tmp_path):
+    reference, rebuilt = identities(tmp_path)
+    document = new_ledger(reference, rebuilt, [entry()])
+    document = transition(document, 0x1000, "signature-confirmed", reference, rebuilt,
+                          reason="THIS SHOULD PERSIST")
+    assert document["entries"][0]["reason"] == "THIS SHOULD PERSIST"
+
+
 def test_semantics_reject_overlap_bool_and_source_incoherence(tmp_path):
     reference, rebuilt = identities(tmp_path)
     with pytest.raises(LedgerError, match="overlap"):

@@ -105,7 +105,7 @@ extern void bzero(void *addr, int count);
  * that function's port_rename call).  That is why IODereferenceClientTask can
  * hand the same pointer straight to port_deallocate as a name.
  */
-static int _clientReferences[32] = {0};  /* Client reference array at 0x4008-0x4087 */
+static int clientReferences[32] = {0};  /* Client reference array at 0x4008-0x4087 */
 
 /*
  * The single client-death notification thread.
@@ -126,7 +126,7 @@ static int _clientReferences[32] = {0};  /* Client reference array at 0x4008-0x4
  * So Apple's source wrote &_clientReferences[32] for the bound and
  * _notifyThread for the thread; the two happen to be the same address.
  */
-static IOThread _notifyThread = 0;  /* Notification thread handle at 0x4088 */
+static IOThread notifyThread = 0;  /* Notification thread handle at 0x4088 */
 
 /* ========================================================================
  * Client Task Notification Management (data)
@@ -336,13 +336,13 @@ int IOReferenceClientTask(int **clientReferenceSlot)
      * Valid range is &_clientReferences[0] to &_clientReferences[31]
      * (0x4008 - 0x4087)
      */
-    if ((current_entry < &_clientReferences[0]) || (current_entry > &_clientReferences[31])) {
+    if ((current_entry < &clientReferences[0]) || (current_entry > &clientReferences[31])) {
         /* Entry not in valid range - need to find or allocate a slot */
 
         /* Start search at beginning of client references table
          * piVar2 = &_clientReferences
          */
-        search_ptr = _clientReferences;
+        search_ptr = clientReferences;
 
         /* Search for an empty slot (where *slot == 0)
          * Decompiled:
@@ -351,7 +351,7 @@ int IOReferenceClientTask(int **clientReferenceSlot)
          *   piVar2 = piVar2 + 1;
          * } while (piVar2 < &_notifyThread);
          */
-        while (search_ptr < (int *)&_notifyThread) {
+        while (search_ptr < (int *)&notifyThread) {
             if (*search_ptr == 0) {
                 /* Found empty slot */
                 break;
@@ -363,7 +363,7 @@ int IOReferenceClientTask(int **clientReferenceSlot)
          * Decompiled: if (&UNK_00004087 < piVar2)
          * This checks if search went past the last valid slot
          */
-        if (search_ptr > &_clientReferences[31]) {
+        if (search_ptr > &clientReferences[31]) {
             /* No empty slots available */
             return 6;  /* Error code 6: no slots */
         }
@@ -429,8 +429,8 @@ int IODereferenceClientTask(int *clientEntry)
      * (_clientReferences[i] is a bare int refcount, offset +0 is the
      * entire entry -- there is no offset +4 field here)
      */
-    if ((clientEntry < &_clientReferences[0]) ||
-        (clientEntry > &_clientReferences[31])) {
+    if ((clientEntry < &clientReferences[0]) ||
+        (clientEntry > &clientReferences[31])) {
         return 4;  /* Invalid pointer */
     }
 
@@ -711,7 +711,7 @@ teardown:
     if (notifyPort != 0) {
         IOTaskPortDeallocate(notifyPort);
     }
-    _notifyThread = 0;
+    notifyThread = 0;
     IOExitThread();
 }
 
@@ -813,10 +813,10 @@ int IORequestNotifyForClientTask(mach_port_t task, id session,
     notifClients[i * 2] = (int)*deathPort;
     notifClients[i * 2 + 1] = (int)session;
 
-    if (_notifyThread == 0) {
-        _notifyThread = IOForkThread((IOThreadFunc)_io_task_notification, NULL);
+    if (notifyThread == 0) {
+        notifyThread = IOForkThread((IOThreadFunc)_io_task_notification, NULL);
 
-        if (_notifyThread == 0) {
+        if (notifyThread == 0) {
             (void)ipc_object_copyin_compat(IOTask_kern->itk_space, *deathPort,
                                            MSG_TYPE_PORT, FALSE, (void **)&task);
             IODereferenceClientTask((int *)*deathPort);

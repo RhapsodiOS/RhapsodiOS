@@ -15,7 +15,7 @@
 static id _scsiServerLock = NULL;           /* Lock for SCSI server operations */
 static id _scsiControllerList = NULL;       /* List of registered SCSI controllers */
 static int _scsiServerMajor = 0;            /* Major device number for SCSI server */
-static id _server = NULL;                   /* Global SCSIServer instance */
+static id server = NULL;                   /* Global SCSIServer instance */
 
 @implementation SCSIServer
 
@@ -58,7 +58,7 @@ static id _server = NULL;                   /* Global SCSIServer instance */
     result = NO;
 
     /* Check if server instance already exists */
-    if (_server == NULL) {
+    if (server == NULL) {
         /* First probe - create the SCSIServer instance */
 
         /* Allocate SCSIServer: [[self class] alloc]
@@ -71,7 +71,7 @@ static id _server = NULL;                   /* Global SCSIServer instance */
         /* Initialize with device description
          * _server = FUN_000000d4(uVar1, s_initFromDeviceDescription:_000059c0, param_3)
          */
-        _server = objc_msgSend(allocatedServer,
+        server = objc_msgSend(allocatedServer,
                                @selector(initFromDeviceDescription:),
                                deviceDescription);
 
@@ -79,13 +79,13 @@ static id _server = NULL;                   /* Global SCSIServer instance */
          * If _server != NULL (success): return = 1 - 0 = 1 (YES)
          * If _server == NULL (failure): return = 1 - 1 = 0 (NO)
          */
-        result = (_server != NULL);
+        result = (server != NULL);
     }
     else {
         /* Server already exists - register this as a SCSI controller
          * FUN_000000d4(_server, s_registerSCSIController:_000059a8, param_3)
          */
-        objc_msgSend(_server, @selector(registerSCSIController:), deviceDescription);
+        objc_msgSend(server, @selector(registerSCSIController:), deviceDescription);
 
         /* Always return NO for subsequent probes (result already = NO)
          * This prevents multiple SCSIServer instances
@@ -192,7 +192,7 @@ static id _server = NULL;                   /* Global SCSIServer instance */
     /* Store this instance in global _server variable
      * _server = param_1
      */
-    _server = self;
+    server = self;
 
     return initResult;
 }

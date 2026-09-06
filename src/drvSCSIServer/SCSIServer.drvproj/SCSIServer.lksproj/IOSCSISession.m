@@ -19,7 +19,7 @@
 static void *_scsiSessionList = NULL;      /* Head of session list (circular linked list) */
 static void *_scsiSessionListTail = NULL;  /* Tail of session list */
 static id _scsiSessionListLock = NULL;     /* Lock protecting the session list */
-static int _sSessionIndex = 0;             /* Global session index counter */
+static int sSessionIndex = 0;             /* Global session index counter */
 
 /* Helper functions for managing SCSI reservations
  * These are C functions that manage the reservation list
@@ -304,8 +304,8 @@ static void serverThreadFunc(id session);
     }
 
     /* Assign and increment global session index */
-    *(int *)((char *)session_struct + 0x18) = _sSessionIndex;
-    _sSessionIndex++;
+    *(int *)((char *)session_struct + 0x18) = sSessionIndex;
+    sSessionIndex++;
 
     /* Set sendPort output parameter to self */
     *sendPort = (mach_port_t)self;

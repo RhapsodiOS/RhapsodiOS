@@ -1317,7 +1317,7 @@ void DenibblizeGCRData(unsigned char *nibbles, unsigned char *output,
  * Do nothing function
  * Placeholder for logging/debugging that's been compiled out
  */
-void donone(void)
+void donone(const char *format, ...)
 {
     // No operation
     return;

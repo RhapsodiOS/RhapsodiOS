@@ -176,7 +176,7 @@ extern unsigned int CurrentAddressSpaceID(void);
 extern void DenibblizeGCRChecksum(unsigned char *nibbles, unsigned int *checksum);
 extern void DenibblizeGCRData(unsigned char *nibbles, unsigned char *output,
                                short byteCount, unsigned int *checksum);
-extern void donone(void);
+extern void donone(const char *format, ...);
 extern BOOL drive_present(void);
 extern void DumpTrackCache(int driveStructure);
 extern int EjectDisk(int param_1);

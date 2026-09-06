@@ -250,7 +250,7 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
 
     // Block device operations
     extern int fdstrategy(void);
-    extern int fdsize(void);
+    extern int fdsize(unsigned int device);
 
     IOLog("Floppy Probed \n");
     IOLog("FloppyDisk probe\n");
@@ -1185,8 +1185,11 @@ unsigned int CheckDriveOnLine(int driveStructure)
 /*
  * Close DBDMA channel
  * Cleanup descriptor-based DMA channel
+ *
+ * The channel argument is accepted and ignored; the shipped body does
+ * nothing with it.
  */
-void CloseDBDMAChannel(void)
+void CloseDBDMAChannel(int dbdmaChannel)
 {
     // No operation - DBDMA cleanup handled elsewhere
     return;
@@ -1440,6 +1443,67 @@ void ExitHardwareLockSection(void)
 //==============================================================================
 
 /*
+ * fd_dev_to_id - Map a BSD device number to its device object id
+ *
+ * The minor number splits into a unit (bits 3-7) and a slot (bits 0-2).
+ * Units 16-31 are the same two drives addressed through slots 8-15, so
+ * they fold back onto units 0-1. Slot 1 is the live device and lives in
+ * word 0 of the unit's entry; every other slot is word (slot + 1).
+ *
+ * Parameters:
+ *   param_1 - Device number (major/minor encoded)
+ *
+ * Returns:
+ *   Device object id, or 0 for an out-of-range unit or a block-major
+ *   request for the live device
+ */
+int fd_dev_to_id(unsigned int param_1)
+{
+    unsigned int uVar1;
+    unsigned int uVar2;
+    unsigned int uVar3;
+    unsigned char *puVar4;
+
+    extern int _fd_block_major;
+
+    // Unit number: minor bits 3-7
+    uVar1 = param_1 >> 3 & 0x1f;
+
+    // Slot number: minor bits 0-2
+    uVar2 = param_1 & 7;
+
+    // Second bank of units is the same drive through the upper slots
+    if (0xf < uVar1) {
+        uVar1 = uVar1 - 0x10;
+        uVar2 = uVar2 + 8;
+    }
+
+    // Only units 0 and 1 exist
+    if (1 < uVar1) {
+        donone("fd_dev_to_id:ret nil\n");
+        return 0;
+    }
+
+    // Per-unit entry, 0x4c bytes each
+    puVar4 = _FloppyIdMap + uVar1 * 0x4c;
+
+    if (uVar2 == 1) {
+        uVar3 = param_1 >> 8 & 0xff;
+
+        // The live device is never reached through the block major
+        if (uVar3 == _fd_block_major) {
+            donone("fd_dev_to_id:fdblockmaj=%d\n", uVar3);
+            return 0;
+        }
+
+        donone("fd_dev_to_id:retlive=0x%x\n", *(int *)puVar4);
+        return *(int *)puVar4;
+    }
+
+    return *(int *)(puVar4 + uVar2 * 4 + 4);
+}
+
+/*
  * fd_init_idmap - Initialize floppy device ID map
  *
  * Sets up the device ID mapping structure for block and character devices.
@@ -1516,11 +1580,11 @@ unsigned int Fdclose(unsigned int param_1)
     unsigned int uVar5;
 
     extern int _fd_block_major;
-    extern int fd_dev_to_id(void);
+    extern int fd_dev_to_id(unsigned int device);
     extern unsigned int FUN_00004940(int, const char *, ...);
 
     // Get device ID from device number
-    iVar1 = fd_dev_to_id();
+    iVar1 = fd_dev_to_id(param_1);
 
     // Extract minor device (bits 0-2)
     uVar5 = param_1 & 7;
@@ -1985,6 +2049,31 @@ LAB_0000597c:
 }
 
 /*
+ * fdminphys - Clamp a physio transfer to one page
+ *
+ * minphys callback handed to physio() by fdread and fdwrite. Trims
+ * b_bcount (offset 0x30 of struct buf) to page_size and returns the
+ * resulting count.
+ *
+ * Parameters:
+ *   param_1 - Pointer to buf structure
+ *
+ * Returns:
+ *   The transfer size after clamping
+ */
+unsigned int fdminphys(int param_1)
+{
+    extern unsigned int page_size;
+
+    // b_bcount is at offset 0x30
+    if (page_size < *(unsigned int *)(param_1 + 0x30)) {
+        *(unsigned int *)(param_1 + 0x30) = page_size;
+    }
+
+    return *(unsigned int *)(param_1 + 0x30);
+}
+
+/*
  * Fdopen - Open floppy device
  *
  * Opens a floppy disk device, checks if disk is ready, and marks
@@ -2006,11 +2095,11 @@ unsigned int Fdopen(unsigned int param_1, unsigned int param_2)
     unsigned int uVar5;
 
     extern int _fd_block_major;
-    extern int fd_dev_to_id(void);
+    extern int fd_dev_to_id(unsigned int device);
     extern unsigned int FUN_0000480c(int obj, const char *selector, ...);
 
     // Get device object ID
-    iVar1 = fd_dev_to_id();
+    iVar1 = fd_dev_to_id(param_1);
 
     // Extract minor device number
     uVar5 = param_1 & 7;
@@ -2082,16 +2171,16 @@ unsigned int fdread(unsigned int param_1, int *param_2)
     unsigned int uVar4;
 
     extern int _Floppy_dev[2];
-    extern int fd_dev_to_id(void);
+    extern int fd_dev_to_id(unsigned int device);
     extern unsigned int fdstrategy;
-    extern unsigned int fdminphys;
+    extern unsigned int fdminphys(int bufPtr);
     extern unsigned int FUN_00004ac8(int obj, const char *selector, ...);
     extern unsigned int FUN_00004aa8(unsigned int strategy, int dev, unsigned int devnum,
                                      unsigned int flags, unsigned int minphys,
                                      int *uio, unsigned int blocksize);
 
     // Get device object ID
-    iVar1 = fd_dev_to_id();
+    iVar1 = fd_dev_to_id(param_1);
 
     // Extract drive number
     uVar4 = param_1 >> 3 & 0x1f;
@@ -2133,19 +2222,22 @@ unsigned int fdread(unsigned int param_1, int *param_2)
  *
  * Returns the block size of the floppy device.
  *
+ * Parameters:
+ *   param_1 - Device number (major/minor encoded)
+ *
  * Returns:
  *   Block size on success, -1 (0xffffffff) if no device
  */
-unsigned int fdsize(void)
+unsigned int fdsize(unsigned int param_1)
 {
     int iVar1;
     unsigned int uVar2;
 
-    extern int fd_dev_to_id(void);
+    extern int fd_dev_to_id(unsigned int device);
     extern unsigned int FUN_00005b64(int obj, const char *selector);
 
     // Get device object ID
-    iVar1 = fd_dev_to_id();
+    iVar1 = fd_dev_to_id(param_1);
 
     if (iVar1 == 0) {
         donone("fdsize: bad unit\n", 1, 2, 3, 4, 5);
@@ -2310,16 +2402,16 @@ unsigned int fdwrite(unsigned int param_1, unsigned int param_2)
     unsigned int uVar4;
 
     extern int _Floppy_dev[2];
-    extern int fd_dev_to_id(void);
+    extern int fd_dev_to_id(unsigned int device);
     extern unsigned int fdstrategy;
-    extern unsigned int fdminphys;
+    extern unsigned int fdminphys(int bufPtr);
     extern unsigned int FUN_00004c0c(int obj, const char *selector, ...);
     extern unsigned int FUN_00004bec(unsigned int strategy, int dev, unsigned int devnum,
                                      unsigned int flags, unsigned int minphys,
                                      unsigned int uio, unsigned int blocksize);
 
     // Get device object ID
-    iVar1 = fd_dev_to_id();
+    iVar1 = fd_dev_to_id(param_1);
 
     // Extract drive number
     uVar4 = param_1 >> 3 & 0x1f;
@@ -5415,6 +5507,22 @@ int LookupFormatTable(int param_1, short *param_2, short *param_3, short *param_
 
 
 /*
+ * MediaScanTask - Media scan thread entry point
+ *
+ * Body of the background thread started by LaunchMediaScanTask. Polls the
+ * drives for insertion and removal twice a second. The loop never exits;
+ * the thread is torn down from outside.
+ */
+void MediaScanTask(void)
+{
+    for (;;) {
+        ScanForDisketteChange();
+        FloppyTimedSleep(500);
+    }
+}
+
+
+/*
  * MemListDescriptorDataCompare - Compare memory list descriptor data
  *
  * This function compares data in memory list descriptors.
@@ -5648,6 +5756,89 @@ void NibblizeGCRData(unsigned char *param_1, unsigned char *param_2, short param
     *param_4 = (uVar11 << 8 | uVar5) << 8 | uVar7 & 0xff;
 
     return;
+}
+
+
+/*
+ * OpenDBDMAChannel - Open the floppy DBDMA channel and build its command list
+ *
+ * Points the caller's channel slot at the driver's private channel area,
+ * allocates a wired, page-rounded command list of param_3 DBDMA commands
+ * (0x10 bytes each), records its logical and physical addresses, and fills
+ * the whole page with STOP commands. On success the DMA register base is
+ * recorded in the channel area and the channel is reset; on allocation
+ * failure the channel is closed again and 10 is returned.
+ *
+ * Parameters:
+ *   dmaBase      - DBDMA register base address
+ *   channelPtr   - Slot that receives the channel pointer
+ *   param3       - Number of DBDMA commands to reserve
+ *   logicalAddr  - Unused; the channel area holds the logical address
+ *   physicalAddr - Unused; the channel area holds the physical address
+ *
+ * Returns:
+ *   0 on success, 10 if the command list could not be allocated,
+ *   -0x32 (-50) if no commands were requested
+ *
+ * Intentional mismatch: the shipped code runs kvtophys and the STOP fill
+ * unconditionally, so an allocation failure writes a page through a null
+ * pointer. The fill is guarded here. See reconstruction/Floppy/findings.md.
+ */
+int OpenDBDMAChannel(unsigned int dmaBase, void *channelPtr, int param3,
+                     unsigned int *logicalAddr, unsigned int *physicalAddr)
+{
+    unsigned int uVar1;
+    unsigned int *puVar2;
+    int iVar3;
+
+    extern unsigned int page_size;
+    extern unsigned int kernel_map;
+    extern int kmem_alloc_wired(unsigned int map, unsigned int *address,
+                                unsigned int size);
+    extern unsigned int kvtophys(unsigned int logical);
+
+    iVar3 = 0;
+
+    // The channel always lives in the driver's private area
+    *(unsigned int *)channelPtr = (unsigned int)_PrivDBDMAChannelArea;
+
+    if (param3 == 0) {
+        return -0x32;  // -50: no commands requested
+    }
+
+    // Round the command list (0x10 bytes per command) up to a page
+    kmem_alloc_wired(kernel_map, &DAT_0000f510,
+                     (param3 * 0x10 - 1 + page_size) & -page_size);
+
+    if (DAT_0000f510 == 0) {
+        donone("dbdmasupport.c:Unable to create DBDMA CCLs memory\n");
+        iVar3 = 10;
+    }
+    else {
+        // Physical address the DBDMA engine will be pointed at
+        DAT_0000f514 = kvtophys(DAT_0000f510);
+
+        // Pre-fill every command slot in the page with a DBDMA STOP
+        puVar2 = (unsigned int *)DAT_0000f510;
+        for (uVar1 = 0; uVar1 < page_size >> 4; uVar1++) {
+            puVar2[0] = 0x70;
+            puVar2[1] = 0;
+            puVar2[3] = 0;
+            puVar2[2] = 0;
+            puVar2 = puVar2 + 4;
+        }
+    }
+
+    if (iVar3 != 0) {
+        CloseDBDMAChannel(*(int *)channelPtr);
+    }
+    else {
+        // Record the DBDMA register base and reset the channel
+        DAT_0000f500 = dmaBase;
+        ResetDBDMA(*(int *)channelPtr);
+    }
+
+    return iVar3;
 }
 
 
@@ -7703,6 +7894,36 @@ bool TestBitArray(int param_1, uint param_2)
 
 
 /**
+ * TestCacheDirtyState - Test whether the track cache holds dirty sectors
+ *
+ * The cache holds one track for one drive at a time. If the cached drive
+ * is not this drive there is nothing dirty to report; otherwise the dirty
+ * state is the OR of the 16-byte dirty-sector bit array at offset 0xa4.
+ *
+ * @param param_1: Drive structure pointer
+ * @return: non-zero if the cache holds unwritten sectors for this drive
+ */
+int TestCacheDirtyState(int param_1)
+{
+    int iVar1;
+
+    extern unsigned short DAT_0000fb88;
+
+    // DAT_0000fb88 holds the cached drive number, offset 0x46 is this drive
+    if (DAT_0000fb88 == *(unsigned char *)(param_1 + 0x46)) {
+        // Dirty bit array for the cached track (16 bytes at offset 0xa4)
+        iVar1 = TestBitArray(param_1 + 0xa4, 0x10);
+    }
+    else {
+        // Cache belongs to another drive
+        iVar1 = 0;
+    }
+
+    return iVar1;
+}
+
+
+/**
  * TestTrackInCache - Test if a track is cached
  *
  * This function checks whether a specific track is currently cached
@@ -8280,8 +8501,8 @@ unsigned int _Floppy_dev[2] = {0, 0};            // Device structure (8 bytes at
 void *_trackBuffer = NULL;                       // Track buffer pointer (0x0000f450)
 unsigned int _FloppyState = 0;                   // Current floppy state (0x0000f454)
 
-// Floppy ID mapping structure (64 bytes at 0x0000f460)
-unsigned char _FloppyIdMap[64] = {0};
+// Floppy ID mapping structure (0x98 bytes at 0x0000f460: 2 entries of 0x4c)
+unsigned char _FloppyIdMap[0x98] = {0};
 
 // Drive status and DBDMA structures
 unsigned int _myDriveStatus = 0;                 // Drive status (0x0000f4f8)

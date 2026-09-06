@@ -169,7 +169,7 @@ extern void ByteMove(unsigned char *source, unsigned char *dest, int count);
 extern unsigned int CancelOSEvent(unsigned int *eventFlags, unsigned int eventMask);
 extern unsigned int CheckDriveNumber(short driveNum, unsigned int **drivePtr);
 extern unsigned int CheckDriveOnLine(int driveStructure);
-extern void CloseDBDMAChannel(void);
+extern void CloseDBDMAChannel(int dbdmaChannel);
 extern unsigned int CreateOSEventResources(void);
 extern unsigned int CreateOSHardwareLockResources(void);
 extern unsigned int CurrentAddressSpaceID(void);
@@ -182,12 +182,14 @@ extern void DumpTrackCache(int driveStructure);
 extern int EjectDisk(int param_1);
 extern void EnterHardwareLockSection(void);
 extern void ExitHardwareLockSection(void);
+extern int fd_dev_to_id(unsigned int device);
 extern void fd_init_idmap(unsigned int param_1);
 extern unsigned int Fdclose(unsigned int param_1);
 extern unsigned int fdioctl(unsigned int param_1, int param_2, unsigned int *param_3);
 extern unsigned int Fdopen(unsigned int param_1, unsigned int param_2);
+extern unsigned int fdminphys(int bufPtr);
 extern unsigned int fdread(unsigned int param_1, int *param_2);
-extern unsigned int fdsize(void);
+extern unsigned int fdsize(unsigned int param_1);
 extern unsigned int fdstrategy(int param_1);
 extern void fdTimer(int param_1);
 extern unsigned int fdwrite(unsigned int param_1, unsigned int param_2);
@@ -294,8 +296,8 @@ extern void PrepareCPUCacheForDMAWrite(void);
 extern short StartDMAChannel(int address, unsigned int length, int flags);
 extern void SynchronizeIO(void);
 extern void ResetDMAChannel(void);
-extern void OpenDBDMAChannel(unsigned int dmaBase, void *channelPtr, int param3,
-                              unsigned int *logicalAddr, unsigned int *physicalAddr);
+extern int OpenDBDMAChannel(unsigned int dmaBase, void *channelPtr, int param3,
+                             unsigned int *logicalAddr, unsigned int *physicalAddr);
 
 // OS event management functions
 extern short WaitForEvent(int timeout, int mask, int eventBit);
@@ -411,7 +413,7 @@ extern unsigned char DAT_0000fc06;           // Format 5: MFM gap 3
 
 // Media scan task globals
 extern unsigned int _MediaScanTaskID;        // Media scan task ID
-extern void *MediaScanTask;                 // Media scan task structure
+extern void MediaScanTask(void);             // Media scan thread entry point
 extern void *_entry;                         // Task entry point
 extern unsigned int FUN_0000a300(void *entry, void *task);  // Task launch function
 
@@ -545,8 +547,8 @@ extern unsigned int _Floppy_dev[2];                  // Device structure (8 byte
 extern void *_trackBuffer;                           // Track buffer pointer
 extern unsigned int _FloppyState;                    // Current floppy state
 
-// Floppy ID mapping structure (64 bytes)
-extern unsigned char _FloppyIdMap[64];
+// Floppy ID mapping structure (0x98 bytes: 2 entries of 0x4c)
+extern unsigned char _FloppyIdMap[0x98];
 
 // Drive status and DBDMA structures
 extern unsigned int _myDriveStatus;                  // Drive status

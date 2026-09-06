@@ -91,13 +91,8 @@ static const char *_getOpName(unsigned int opCode)
     return "FD_UNKNOWN";
 }
 
-static const char *_getStatusName(unsigned int statusCode, const char **values)
-{
-    if (statusCode < 20) {
-        return values[statusCode];
-    }
-    return "Unknown";
-}
+// _getStatusName is the external definition in FloppyDisk.m,
+// declared by FloppyDisk.h.
 
 static int *fdGetSectSizeInfo(unsigned int density)
 {

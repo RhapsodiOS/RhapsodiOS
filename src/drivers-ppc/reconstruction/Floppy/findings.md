@@ -371,3 +371,411 @@ Verified programmatically against the map:
 | redundant `static` duplicates to delete | 2 (+1 for `getStatusName`) | Task 4 |
 | source-only debug helpers | 6 | kept by design |
 | `_fdrToIo` | 1 | known exclusion, code present |
+
+---
+
+## 12. Task 5 — the five absent functions
+
+Written from the disassembly of `Floppy_reloc`. Every `bl` was resolved through
+the **island's** HI16/LO16 relocation pair in `read_macho`'s table, not through
+IDA's operand text: IDA's external names in this image are wrong (it prints
+`_fdrToIo@ha` for every undefined-symbol HA16 it cannot attribute). The
+relocation table gives `_page_size`, `_kernel_map`, `_kernel_task`,
+`_kmem_alloc_wired`, `_kvtophys` and `_kernel_thread` at those sites.
+
+| function | address | body | islands | span |
+| --- | --- | --- | --- | --- |
+| `fdminphys` | `0x5b84` | 40 | 0 | 40 |
+| `MediaScanTask` | `0xa284` | 28 | 2 (32) | 60 |
+| `TestCacheDirtyState` | `0x9444` | 72 | 1 (16) | 88 |
+| `fd_dev_to_id` | `0x5bac` | 200 | 1 (16) | 216 |
+| `OpenDBDMAChannel` | `0x68a8` | 300 | 5 (80) | 380 |
+
+Every span reconciles as `body + 16 * islands`, and every body ends at its
+`blr`. Nothing was compiled; no `make` was run.
+
+### 12.1 `fdminphys` (`0x5b84`)
+
+Ten instructions, straight-line with one forward branch.
+
+```
+stwu r1,-32(r1)          frame
+lis/lwz r9,_page_size    r9 = page_size          (reloc: _page_size, HA16+LO16)
+lwz r0,0x30(r3)          r0 = bp->b_bcount
+cmplw cr1,r0,r9          unsigned compare
+ble cr1,0x5ba0           b_bcount <= page_size -> skip the store
+stw r9,0x30(r3)          b_bcount = page_size
+lwz r3,0x30(r3)          return b_bcount
+addi r1,r1,0x20 / blr
+```
+
+The only branch is the `ble`, and both arms fall into the same `lwz r3`. The
+i386 `drvPCFloppy` sibling is `return bp->b_bcount;` with **no** clamp; the
+PowerPC driver clamps. The hint was checked and rejected — the body here is
+derived from this binary.
+
+### 12.2 `MediaScanTask` (`0xa284`)
+
+```
+mflr/stw/stwu            prologue; lr is saved and never restored
+0xa290: bl -> 0x7178     _ScanForDisketteChange   (island 0xa2b0)
+        li r3,0x1F4      500
+        bl -> 0x6bf8     _FloppyTimedSleep        (island 0xa2a0)
+        b 0xa290         unconditional back-edge
+```
+
+Both branches are covered: the `bl` pair and the `b` back to `0xa290`. There is
+no exit path — no `blr`, and the saved `lr` is never reloaded. It is a thread
+body, and `_LaunchMediaScanTask` (`0xa2c0`) confirms it: that function loads
+`_kernel_task`, takes `&MediaScanTask`, calls `_kernel_thread`, and stores the
+result in `_MediaScanTaskID`. Written as `for (;;) { ... }`.
+
+### 12.3 `TestCacheDirtyState` (`0x9444`)
+
+```
+lis/addi r9,_SonyVariables+0x650   scattered HA16/LO16 -> __DATA,__common+0x72c
+lha r9,0(r9)                       cached drive number (DAT_0000fb88)
+lbz r0,0x46(r3)                    this drive's number
+cmpw cr1,r9,r0
+bne cr1,0x9478                     different drive -> r3 = 0
+addi r3,r3,0xA4 ; li r4,0x10
+bl -> 0x6f74                       _TestBitArray (island 0x948c)
+b 0x947c
+0x9478: li r3,0                    the else arm
+0x947c: epilogue, return r3
+```
+
+Both arms of the single `bne` are accounted for. `0xa4`/`0x10` are the same
+dirty-bit-array base and length that `DumpTrackCache` already passes to
+`ResetBitArray` (`FloppyDisk.m`), and `0x46` is the same cached-drive field
+`TestTrackInCache` already reads, so no bare constant was invented.
+
+The reference loads the halfword with `lha` (signed). Our tree defines
+`DAT_0000fb88` as `unsigned short`, and `TestTrackInCache` already compares it
+unsigned. The two differ only in how `0xffff` is widened, and `0xffff` is the
+invalidation sentinel `DumpTrackCache` writes — never equal to a 0..255 drive
+byte under either widening. Kept `unsigned short` for consistency with the
+existing definition.
+
+### 12.4 `fd_dev_to_id` (`0x5bac`) — arity
+
+**Settled: one argument, `int fd_dev_to_id(unsigned int dev)`.**
+
+The evidence is on both sides of the call.
+
+*Callee.* The first three instructions after the prologue read `r3` before
+anything writes it:
+
+```
+extrwi r0,r3,5,24    r0 = (dev >> 3) & 0x1f     unit
+clrlwi r11,r3,29     r11 = dev & 7              slot
+...
+extrwi r4,r3,8,16    r4 = (dev >> 8) & 0xff     major
+```
+
+`r3` is live on entry, so it is a parameter. No other argument register is read.
+
+*Callers.* All six `bl` sites reach `0x5bac` through an island, and every one of
+them establishes `r3` first:
+
+```
+_Fdopen+0x28      mr r29,r3 ; mr r27,r4 ; bl      -> r3 = dev (param 1)
+_Fdclose+0x1c     mr r30,r3 ; bl                  -> r3 = dev (param 1)
+_fdread+0x28      mr r27,r3 ; mr r28,r4 ; bl      -> r3 = dev (param 1)
+_fdwrite+0x24     mr r29,r3 ; mr r28,r4 ; bl      -> r3 = dev (param 1)
+_fdstrategy+0x2c  lwz r3,0x38(r31) ; bl           -> r3 = bp->b_dev
+_fdsize+0xc       (r3 untouched) ; bl             -> r3 = dev (param 1)
+```
+
+The one source declaration that already carried an argument
+(`FloppyDisk.m:2184`, in `fdstrategy`) was the correct one; the five `(void)`
+declarations were wrong. All six now read
+`extern int fd_dev_to_id(unsigned int device);`, a matching prototype was added
+to `FloppyDisk.h`, and the five bare calls now pass their device number.
+
+`_fdsize` consequently gained the parameter it always had in the binary:
+`unsigned int fdsize(unsigned int param_1)`. Its three source declarations
+(the local in `fdsize` itself, `FloppyDisk.h:190`, and the local in `+probe:`)
+were all `(void)` and were all corrected.
+
+*Body.* Every branch:
+
+```
+cmpwi cr1,r0,0xF / ble          unit <= 15 -> keep it
+  addic r0,r0,-0x10             else unit -= 16
+  addi  r11,r11,8                    slot += 8
+cmpwi cr1,r0,1 / ble            unit <= 1 -> continue
+  lis/addi r3,"fd_dev_to_id:ret nil\n"   (__TEXT,__cstring+0x1a64 = 0xdc80)
+  bl -> 0x6f18  _donone         (island 0x5c74, shared by all three calls)
+  li r3,0 ; b epilogue
+3 x cror 0,0,0                  alignment no-ops, no source content
+mulli r0,r0,0x4C ; add r31,r0,&_FloppyIdMap      entry = map + unit*0x4c
+cmpwi cr1,r11,1 / bne -> 0x5c54
+  extrwi r4,r3,8,16 ; lwz r9,_fd_block_major ; cmpw / bne -> 0x5c3c
+    lis/addi r3,"fd_dev_to_id:fdblockmaj=%d\n"   (0xdc98); bl _donone
+      (r4 still holds the major - it is argument 2)
+    li r3,0 ; b epilogue
+  0x5c3c: lis/addi r3,"fd_dev_to_id:retlive=0x%x\n" (0xdcb4)
+    lwz r4,0(r31) ; bl _donone ; lwz r3,0(r31) ; b epilogue
+0x5c54: slwi r9,r11,2 ; add r9,r9,r31 ; lwz r3,4(r9)
+```
+
+Four branches, all covered. The `0x4c` stride is the one `fd_init_idmap`
+already walks (`puVar3 = puVar3 + 0x4c`), and the `0x98` it clears is exactly
+two such entries, which also settles the `_FloppyIdMap` array bound — see 12.6.
+
+Note the shape: slot 1 returns word 0 of the entry, not word 2 as the general
+`slot*4 + 4` formula would give. That is a deliberate special case in the
+binary (the "retlive" path), reproduced as written.
+
+### 12.5 `OpenDBDMAChannel` (`0x68a8`)
+
+Five parameters. The callee reads only `r3`, `r4`, `r5`, but the caller
+`_HALReset+0xec` sets `r3`..`r7`:
+
+```
+lwz  r3,_GRCFloppyDMARegs
+addi r4,&_GRCFloppyDMAChannel
+li   r5,1
+addi r6,&_ccCommandsLogicalAddr
+addi r7,&_ccCommandsPhysicalAddr
+bl -> 0x68a8
+```
+
+so the existing five-parameter declaration at `FloppyDisk.h:297` matches
+Apple's; the last two arguments are simply ignored by the body. Only the return
+type was corrected — see 12.6.
+
+Instruction account:
+
+```
+prologue saves r28-r31
+mr r28,r3 ; mr r29,r4 ; li r31,0                dmaBase, channelPtr, result = 0
+lis/addi r9,&_PrivDBDMAChannelArea
+stw r9,0(r29)                                   *channelPtr = &area
+mr r30,r9
+mr. r5,r5 / bne -> 0x68f0                       branch 1
+  li r3,-0x32 ; b 0x69b4                        return -50, bypassing "mr r3,r31"
+0x68f0: slwi r5,r5,4 ; addi r5,r5,-1
+        lwz r9,_page_size ; add r5,r5,r9
+        neg r9,r9 ; and r5,r5,r9                round up to a page
+        lwz r3,_kernel_map ; addi r4,r30,0x14
+        bl -> _kmem_alloc_wired  (island 0x6a14)   result in r3 ignored
+lwz r0,0x14(r30) ; cmpwi / bne -> 0x6938        branch 2
+  lis/addi r3,"dbdmasupport.c:Unable to create DBDMA CCLs memory\n" (0xdd80)
+  bl -> _donone (island 0x6a04) ; li r31,0xA
+0x6938: lwz r3,0x14(r30) ; bl -> _kvtophys (island 0x69f4) ; stw r3,0x18(r30)
+        lwz r11,0x14(r30) ; lwz r9,_page_size ; li r10,0
+        srwi. r0,r9,4 / beq -> 0x6990           branch 3 (loop-rotation guard)
+        li r7,0x70 ; li r9,0 ; lis r8,_page_size@ha
+  0x6968: stw r7,0(r11) ; stw r9,4(r11) ; stw r9,0xC(r11) ; stw r9,8(r11)
+          addi r11,r11,0x10 ; addi r10,r10,1
+          lwz r0,_page_size(r8) ; srwi r0,r0,4
+          cmplw cr1,r10,r0 / blt -> 0x6968      branch 4 (back-edge)
+0x6990: cmpwi cr1,r31,0 / beq -> 0x69a4         branch 5
+  lwz r3,0(r29) ; bl -> _CloseDBDMAChannel (island 0x69e4) ; b 0x69b0
+0x69a4: stw r28,4(r30) ; lwz r3,0(r29) ; bl -> _ResetDBDMA (island 0x69d4)
+0x69b0: mr r3,r31
+0x69b4: epilogue
+```
+
+Five branches, all covered. The reload of `page_size` inside the loop is what a
+`for (i = 0; i < page_size >> 4; i++)` over a non-`const` extern compiles to
+when the body stores through a pointer, so the loop is written in that form;
+`r9 = page_size` at `0x6948` is dead after the guard and `li r9,0` at `0x6960`
+reuses the register.
+
+Channel-area layout, confirmed against `PrepDBDMA` which already reads the same
+offsets: `+0x04` DBDMA register base, `+0x14` command-list logical address,
+`+0x18` command-list physical address. Our tree already models those three
+words as the separate globals `DAT_0000f500`, `DAT_0000f510`, `DAT_0000f514`,
+and that convention is followed here rather than widening
+`_PrivDBDMAChannelArea`.
+
+`0x70` in word 0 of each 16-byte slot is a DBDMA STOP: the registers are
+little-endian, so the big-endian word `0x00000070` reads back as `0x70000000`,
+whose top nibble (the `cmd` field) is 7 = STOP.
+
+The allocation is `round_page(param3 * 0x10)` but the fill runs
+`page_size / 0x10` slots, so a request larger than one page leaves the rest
+uninitialised. That is always within the allocation, never past it, so it is
+reproduced as written; the only caller passes `param3 = 1`.
+
+**`intentional-mismatch` 1.** The shipped body runs `kvtophys` and the STOP fill
+**unconditionally**: there is no branch between the `li r31,0xA` at `0x6934` and
+the loop, so a `kmem_alloc_wired` failure makes it call `kvtophys(0)` and then
+write `page_size` bytes starting at virtual address 0. Our body guards the
+`kvtophys` and the fill with the `else` of the null test and is otherwise
+identical, including the `iVar3 = 10` result and the `CloseDBDMAChannel` arm.
+The divergence is recorded in the function's own comment.
+
+### 12.6 Declaration defects settled
+
+| defect | site(s) | resolution |
+| --- | --- | --- |
+| `fd_dev_to_id` declared `(void)` | 5 sites in `FloppyDisk.m` | all six now `(unsigned int device)`; prototype added to `FloppyDisk.h` |
+| `fdsize` declared `(void)` | local in `fdsize`, local in `+probe:`, `FloppyDisk.h:190` | all three now `(unsigned int)` |
+| `extern unsigned int fdminphys;` (data) | `FloppyDisk.m`, twice | `extern unsigned int fdminphys(int bufPtr);`, prototype added to `FloppyDisk.h` |
+| `extern void *MediaScanTask;` (data) | `FloppyDisk.h:414` | `extern void MediaScanTask(void);` |
+| `OpenDBDMAChannel` declared `void` | `FloppyDisk.h:297` | `int` |
+| `CloseDBDMAChannel(void)` | `FloppyDisk.h:172` and its definition | takes and ignores an `int` channel |
+| `_FloppyIdMap[64]` | `FloppyDisk.h`, `FloppyDisk.m` | `[0x98]` |
+
+`TestCacheDirtyState`'s existing local declaration
+(`extern int TestCacheDirtyState(int driveStructure);`) already matched the body
+written here and was left alone.
+
+Two of these go beyond the letter of the task brief and are called out
+deliberately:
+
+1. **`OpenDBDMAChannel`'s return type.** The brief says the declaration is
+   already function-shaped and to leave it alone. Its return type is `void`,
+   but the body returns three distinct values (`0`, `10`, `-0x32`) in `r3`, and
+   `mr r3,r31` at `0x69b0` is unambiguous. Keeping `void` would have required
+   discarding both error codes — reproducing a source defect rather than
+   Apple's form. Changed to `int` and reported.
+2. **`CloseDBDMAChannel`'s parameter.** `0x6998` loads `r3` from `*channelPtr`
+   immediately before the `bl`, so the shipped call passes an argument, but our
+   declaration was `(void)` — a constraint violation at the new call site. The
+   callee's body (`stwu`/`addi`/`blr`) ignores `r3`, so an ignored `int`
+   parameter reproduces both sides exactly.
+
+The `_FloppyIdMap` bound was already provably wrong before this task
+(`fd_init_idmap` writes `+0x44`/`+0x48` of entry 1, offset 0x94, and clears
+`0x98` bytes), and `fd_dev_to_id` indexes as far as offset 0x8c, so the array
+was widened to the `0x98` the binary's symbol span shows (`0xf460`..`0xf4f8`).
+
+### 12.7 The 53rd selector
+
+`_fcCmdXfr:driveInfo:` was renamed to `fcCmdXfr:driveInfo:` at both sites in
+`FloppyDiskInt.m` (the `FloppyController` forward declaration and the send in
+`fdSendCmd`). Verified independently against the image: the
+`__OBJC,__meth_var_names` blob contains `fcCmdXfr:driveInfo:` bare, it is one of
+the 99 entries of `__OBJC,__message_refs`, and **none** of those 99 begins with
+an underscore. `selector_check.py` now reports 0 renames, 0 duplicates,
+0 extras, and the 2 build-generated methods missing.
+
+### 12.8 The three duplicate definitions
+
+All three `static` copies were deleted and the external definitions kept.
+
+`GetBusyFlag` (`0x4c2c`, 120 bytes) and `ResetBusyFlag` (`0x5d90`, 96 bytes)
+were checked against the disassembly rather than assumed. The external bodies in
+`FloppyDisk.m` are the structural match:
+
+- `_GetBusyFlag` spins on `_busyflag == 1` calling `_timeout(0, &_busyflag, 1)`
+  and `_sleep(&_busyflag, 0x16)`, then retries `_SetBusyFlag` (`0x5cfc`) until
+  it succeeds — the `do { while (busyflag == 1) {...} } while (!SetBusyFlag())`
+  shape the external body already has.
+- `_ResetBusyFlag` spins on `_test_and_set(0, slock)`, stores `0` to
+  `_busyflag`, then `sync` and releases the lock — the lock/clear/release shape
+  the external body already has.
+
+The `static` copies in `FloppyDiskInt.m` were one-line stubs (`_BusyFlag = YES;`
+and `_BusyFlag = NO;`) that match nothing in the binary. `FloppyDiskInt.m`
+imports `FloppyDisk.h`, which already declares both, so no declaration was
+added. The now-orphaned `static BOOL _BusyFlag` was removed with them;
+`static int _DataSource` stays, it is still used at two sites.
+
+`getStatusName` has no binary counterpart, so the choice rests on the arrays
+each copy indexes. **The external body in `FloppyDisk.m` (bound 16) was kept**
+and the `static` in `FloppyDiskThread.m` (bound 20) deleted, because:
+
+- 16 is exactly the length of `_fdCommandValues`, the only array passed at the
+  `FloppyDisk.m` call site;
+- both `FloppyDiskThread.m` call sites are safer under 16 than under 20 —
+  `_fdrValues` there has 20 entries (codes 16..19 now print `"Unknown"`, which
+  costs four debug labels and reads nothing out of range), and `_densityValues`
+  there has **4**, for which the deleted bound of 20 was already an
+  out-of-bounds read.
+
+`FloppyDiskThread.m` imports `FloppyDisk.h`, which declares `_getStatusName` at
+line 118, so no declaration was added.
+
+### 12.9 Uncertainties and pre-existing defects observed
+
+Numbered; none of these was resolved by picking a plausible option.
+
+1. **`_getStatusName` is still unsafe for `_densityValues`.** The surviving
+   bound of 16 is wrong for the 4-entry `_densityValues` array that
+   `FloppyDiskThread.m` passes at its second call site. There is no binary
+   counterpart to settle the real bound, and the two source copies disagreed, so
+   no bound is derivable from evidence. Settling it needs Apple's source, or a
+   decision to pass the array length.
+2. **`fdstrategy` is declared three incompatible ways.** `extern int
+   fdstrategy(void);` (local, in `+probe:`), `extern unsigned int fdstrategy;`
+   (data, twice, in `fdread` and `fdwrite`), and `extern unsigned int
+   fdstrategy(int param_1);` (`FloppyDisk.h:191`) against the definition
+   `unsigned int fdstrategy(int param_1)`. This is the same defect class as
+   `fdminphys`'s data declaration, at a symbol the task brief did not list. Not
+   fixed here; recorded for scheduling.
+3. **The `physio` call sites still pass function designators into `unsigned int`
+   parameters.** `FUN_00004aa8`/`FUN_00004bec` (physio) are locally declared
+   with `unsigned int strategy` and `unsigned int minphys`. Converting
+   `fdminphys`'s declaration from data to function turns what was an integer
+   argument into a function pointer, which GCC diagnoses as a warning, not an
+   error. Fixing it properly means typing those two local prototypes with
+   function-pointer parameters, which also depends on uncertainty 2.
+4. **`donone` is declared `(void)` and called with arguments at 104 sites.**
+   Pre-existing and systemic. The three new `donone` calls in `fd_dev_to_id` and
+   the one in `OpenDBDMAChannel` follow the existing convention rather than
+   introducing a second one.
+5. **Data symbols still carry the spurious leading underscore.** Task 2
+   corrected the 136 C *function* names and Task 4 the selectors, but globals are
+   untouched: our `_FloppyIdMap` would emit `__FloppyIdMap` against the binary's
+   `_FloppyIdMap`, and likewise `_fd_block_major`, `_PrivDBDMAChannelArea`,
+   `_GRCFloppyDMAChannel` and the rest. `symbol_name_check.py` measures
+   functions only, so this is invisible to the gate. New references written here
+   use the existing tree names, because introducing the correct name alongside
+   the wrong one would create two spellings of one object. External *kernel*
+   symbols are a separate case and were written correctly (`page_size`,
+   `kernel_map`, `kmem_alloc_wired`, `kvtophys`), matching how the tree already
+   writes `IOMalloc`/`IOLog`.
+6. **`DAT_0000fb88` is declared twice with different types.** `FloppyDisk.h:122`
+   says `unsigned short`, `FloppyDisk.h:506` says `unsigned char`; the definition
+   is `unsigned short` and the binary loads a halfword. A hard conflict,
+   pre-existing, not fixed here. Our `TestCacheDirtyState` declares the
+   `unsigned short` form locally, matching the definition and `DumpTrackCache`.
+7. **`ResetDBDMA`'s reconstructed body does not match `0x665c`.** The binary does
+   `r9 = *(channel + 4); *r9 = 0xC8; *(channel + 8) = 0; *(r9 + 0xC) = 0;` — it
+   writes through the DBDMA register base stored at `channel + 4`. Our source
+   writes four words of the channel structure itself. This matters to
+   `OpenDBDMAChannel` only because it confirms `+0x04` is the register base; the
+   discrepancy is in an existing function and was not touched.
+8. **`LaunchMediaScanTask`'s reconstruction uses placeholder names.**
+   `_MediaScanTaskID = FUN_0000a300(_entry, &MediaScanTask)` is really
+   `kernel_thread(kernel_task, MediaScanTask)`: the relocations at `0xa2cc` and
+   the island at `0xa300` name `_kernel_task` and `_kernel_thread`. The
+   `MediaScanTask` declaration was corrected to a function as required; the call
+   expression and the two placeholder names were left as they were.
+   `&MediaScanTask` is still the function's address, but passing it to
+   `FUN_0000a300`'s `void *` parameter is now a pointer-conversion warning.
+9. **`_PrivDBDMAChannelArea` is declared `[4]` against 44 bytes in the binary**
+   (`0xf4fc`..`0xf528`). `OpenDBDMAChannel` only takes its address, so nothing
+   written here indexes out of range, and the array was left alone.
+
+## 13. Gate results after Task 5
+
+```
+symbol_name_check.py --binary <ref> --source-dir <lks>
+  hand-written C symbols: 141
+  missing definitions   : 0
+  exit 0
+
+selector_check.py <ref> <lks>
+  reference selectors: 62
+  our definitions:     60
+  renames (0):  duplicates (0):  extra (0):
+  missing (2):  +[FloppyKernelServerInstance kernelServerInstance]
+                +[FloppyVersion driverKitVersionForFloppy]
+  exit 0
+
+pytest tools/binrecon/tests -q
+  866 passed, 4 skipped
+```
+
+The two "missing" selectors are the build-generated class methods of bucket 4.
+
+Section 11's table is now settled: 5 C functions written, 3 `static` duplicates
+deleted, the 53rd selector renamed. The map, ledger, profiles and checkers were
+not touched — Task 6 regenerates those.

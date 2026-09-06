@@ -15,7 +15,7 @@
 @class FloppyController;
 @interface FloppyController : NSObject
 - (void)lock;
-- (IOReturn)_fcCmdXfr:(void *)cmdBuf driveInfo:(const char *)driveInfo;
+- (IOReturn)fcCmdXfr:(void *)cmdBuf driveInfo:(const char *)driveInfo;
 @end
 
 /*
@@ -115,22 +115,14 @@ typedef struct _FdCmdBuf {
 
 // Global variables for FloppyPluginIO
 static int _DataSource = 0;
-static BOOL _BusyFlag = NO;
 extern int FloppyPluginIO(unsigned int *actualLength, unsigned int length, void *buffer,
                            unsigned int offset, BOOL isWrite, unsigned int param6);
 extern int floppyMalloc(unsigned int size, void *physAddr, void *virtAddr);
 extern void fdTimer(id disk);
 extern void fdThread(id disk);
 
-static void GetBusyFlag(void)
-{
-    _BusyFlag = YES;
-}
-
-static void ResetBusyFlag(void)
-{
-    _BusyFlag = NO;
-}
+// GetBusyFlag and ResetBusyFlag are the external definitions in FloppyDisk.m,
+// declared by FloppyDisk.h.
 
 // Command name lookup (simplified version)
 static const char *_fdCommandValues[] = {
@@ -665,7 +657,7 @@ static const char *_getResultName(unsigned int result)
     [_controller lock];
 
     // Call the controller's command transfer method
-    result = [_controller _fcCmdXfr:cmdBuf driveInfo:_driveInfo];
+    result = [_controller fcCmdXfr:cmdBuf driveInfo:_driveInfo];
 
     // Get result name for logging
     resultName = _getResultName(cmdBuf->status);

@@ -148,8 +148,22 @@ Objective-C method symbols.
 `[self _timerEvent]` and `[self timerEvent]` are different messages at runtime, so
 the current source would not respond to the selectors Apple's callers send.
 
-Eight source selectors are legitimately underscored — 53 of the 60 begin with an
-underscore and only 52 have a bare counterpart in the binary. Those eight stay.
+**Correction after Task 4.** This section first said "eight source selectors are
+legitimately underscored". That was wrong: the eight are the eight already-**bare**
+selectors, and **no** legitimately-underscored selector exists — Apple's
+`__OBJC,__meth_var_names` holds 130 names and not one begins with an underscore.
+
+The count 52 was also one short. `_fcCmdXfr:driveInfo:`
+(`FloppyDiskInt.m:18`, `:668`) is a 53rd instance: the selector table carries
+`fcCmdXfr:driveInfo:` bare and no underscored form. It escaped Task 4 because it
+belongs to `FloppyController`, whose only `__TEXT,__text` method symbol is
+`+probe:`, so it is absent from the symbol-derived list Task 4 worked from. It is
+corrected in Task 5.
+
+And the token figure 185 was wrong: **11 of those tokens are ivar references**
+(`_innerRetry`, `_outerRetry` — `FloppyDisk.h:25-26` plus nine uses), not
+selectors. Renaming them would have altered driver state. The true selector-token
+count is **174**.
 
 **How it was missed.** An earlier reading of `selector_check.py`'s output took its
 left-hand column for the binary's names when it was showing ours, so a list of

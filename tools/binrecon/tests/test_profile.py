@@ -367,6 +367,7 @@ def test_ppc_profile_inventory():
         "burgundy-bundle-ppc.json", "burgundy-ppc.json",
         "cuda-bundle-ppc.json", "cuda-ppc.json",
         "dec21040-bundle-ppc.json", "dec21040-ppc.json",
+        "floppy-bundle-ppc.json", "floppy-ppc.json",
         "gem-bundle-ppc.json", "gem-ppc.json",
         "gnic-bundle-ppc.json", "gnic-ppc.json",
         "ioadbdevice-ppc.json",

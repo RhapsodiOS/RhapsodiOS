@@ -8517,8 +8517,14 @@ unsigned char lastSectorsPerTrack = 0;
 // Drive OS event structure pointer for interrupt handling
 void *driveOSEventIDptr = NULL;
 
-// Floppy driver instance data
-unsigned int Floppy_instance = 0;
+// Floppy driver instance data.
+//
+// Stand-in only. The real `_Floppy_instance` is build-generated: the Kernel
+// Server project type runs CreateKLLDInstance.sh, which writes
+// Floppy_instance.m containing `kern_server_t Floppy_instance;`. Keeping the
+// extra underscore here emits `__Floppy_instance`, which collides with
+// nothing. Delete this stand-in once the driver actually builds.
+unsigned int _Floppy_instance = 0;
 
 // Device and buffer management
 unsigned int Floppy_dev[2] = {0, 0};            // Device structure (8 bytes at 0x0000f448)

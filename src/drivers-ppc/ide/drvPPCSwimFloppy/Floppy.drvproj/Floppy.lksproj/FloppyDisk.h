@@ -514,7 +514,7 @@ extern unsigned int track_offset;               // Track offset for format opera
 extern void *other_buffer_ptr;                  // Alternate buffer pointer
 extern void *FloppySWIMIIIRegs;                 // SWIM III controller register base
 extern unsigned char lastSectorsPerTrack;       // Last sectors per track for format
-extern unsigned int Floppy_instance;            // Floppy driver instance data
+extern unsigned int _Floppy_instance;           // Stand-in; real one is build-generated
 
 // SWIM III hardware register pointers (initialized by HALReset)
 extern unsigned char *DAT_0000fc20;              // SWIM III timer register

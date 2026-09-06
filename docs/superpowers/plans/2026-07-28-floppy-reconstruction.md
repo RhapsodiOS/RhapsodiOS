@@ -455,12 +455,12 @@ relocations, not less.
 
 ```bash
 cd $REPO && PYTHONPATH=tools/binrecon $VENVPY tools/binrecon/seed_ledger.py \
-  --source-map $RECON/source-map.json --output $RECON/ledger.json
+  $RECON/source-map.json "$REF" $RECON/ledger.json
 ```
 
-If `seed_ledger.py`'s flags differ, run it with `--help` and adapt. Then verify
-programmatically that every entry's `source_line` agrees with the map, and record
-the entry count.
+`seed_ledger.py` takes three **positional** arguments — source map, reference
+binary, output. Then verify programmatically that every entry's `source_line`
+agrees with the map, and record the entry count.
 
 - [ ] **Step 7: Write findings.md**
 
@@ -693,9 +693,7 @@ counts are quoted identically in Task 2 Steps 2/4 and Task 4 Step 7: 141 → 5 �
 parametrised profile cases → 866. Tasks 2, 4 and 5 expect 866; no task adds
 tests.
 
-**Known soft spots.** Task 3 Step 6 says to adapt if `seed_ledger.py`'s flags
-differ — its interface was not verified while writing this plan, and that is
-stated rather than guessed. Task 2 Step 5 writes scratch files under `/tmp`,
+**Known soft spot.** Task 2 Step 5 writes scratch files under `/tmp`,
 which is MSYS-local; if the verification snippet is run through the Windows
 Python it will not see them, so keep both halves in the same shell or use the
 scratchpad directory.

@@ -245,14 +245,19 @@ of when reading bucket 6's listing (every entry there prints as
 The map cannot pick a site, so it records both with the reason "symbol name
 resolves to multiple definitions" rather than guessing.
 
-This is legal C — the `static` copy shadows only within `FloppyDiskInt.m`, so it
-compiles and links. But Apple's binary carries **one** symbol for each, and
-`static` functions do get symbol-table entries in `_reloc` output, so our build
-would emit two where Apple emits one. The `static` copies are redundant
-additions from an earlier pass. Removing them, and verifying against the
-disassembly that the surviving body is the one matching Apple's rather than
-assuming the external one is right, is Task 4's work. They are enumerated here
-with evidence, not fixed.
+The `static` definitions at `FloppyDiskInt.m:125`/`:130` follow the file-scope
+`extern` prototypes in `FloppyDisk.h:217`/`:427` within the same translation
+unit — C99 6.2.2p7 undefined behaviour, which GCC diagnoses. Nothing was
+compiled here, so the period toolchain's exact behaviour is untested. Which
+body the calls at `FloppyDiskInt.m:248`/`:267` bind to is precisely what the
+conflict leaves undefined.
+
+Apple's binary carries **one** symbol for each, and `static` functions do get
+symbol-table entries in `_reloc` output, so the conflict must be resolved one
+way or another before this builds. Removing the redundant `static` copies, and
+verifying against the disassembly that the surviving body is the one matching
+Apple's rather than assuming the external one is right, is Task 4's work. They
+are enumerated here with evidence, not fixed.
 
 `getStatusName` is likewise defined twice — `FloppyDisk.m:136` (extern) and
 `FloppyDiskThread.m:94` (static) — but it **cannot** appear in
@@ -263,15 +268,18 @@ binary at all. It is one of the six source-only helpers in section 8.
 
 ### Six source-only debug helpers
 
-Defined in our source, absent from Apple's binary:
+Defined in our source, absent from Apple's binary. The source identifiers
+already carry a leading underscore, so their Mach-O symbols are the
+double-underscore forms below, and it is those double-underscore symbols that
+are absent from the binary:
 
 ```
-_getStatusName    FloppyDisk.m:136        (also FloppyDiskThread.m:94, static)
-_getDensityName   FloppyDisk.m:146
-_getIoctlName     FloppyDisk.m:158
-_getCommandName   FloppyDiskInt.m:147
-_getResultName    FloppyDiskInt.m:156
-_getOpName        FloppyDiskThread.m:86
+__getStatusName    FloppyDisk.m:136        (also FloppyDiskThread.m:94, static)
+__getDensityName   FloppyDisk.m:146
+__getIoctlName     FloppyDisk.m:158
+__getCommandName   FloppyDiskInt.m:147
+__getResultName    FloppyDiskInt.m:156
+__getOpName        FloppyDiskThread.m:86
 ```
 
 They map codes to strings for debug printing — roughly 100 lines Apple's driver

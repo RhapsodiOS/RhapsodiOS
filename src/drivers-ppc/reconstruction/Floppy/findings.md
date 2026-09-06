@@ -49,7 +49,7 @@ symbol: `_fdrToIo` — see section 5.
 
 ## 3. Four-category coverage of `source-map.json` (Task 3 snapshot)
 
-> **Sections 3, 4, 7, 8, 10 and 11 record the Task 3 measurement**, taken before
+> **Sections 3, 4, 6, 7, 8, 10 and 11 record the Task 3 measurement**, taken before
 > Task 4's selector rename and before Task 5 wrote the five absent bodies and
 > deleted the three duplicate statics. Their counts, and the source line numbers
 > they cite, describe the tree as it stood at commit `53da4375`. They are kept as
@@ -168,6 +168,11 @@ pairs reconstruct to agreeing values, which is what rules out a byte-order or
 HA16 sign-extension misread of this big-endian image.
 
 ## 6. The 52 Objective-C selectors
+
+> **Task 3 snapshot — superseded by 12.7 and 14.7.** This section is written in
+> the present tense about a tree that no longer exists: Task 4 renamed 52 of
+> these selectors and Task 5 the 53rd, so none of them fails to map today.
+> It is kept as the record of what was found.
 
 All 52 hand-written Objective-C methods in bucket 6 fail to map for **one
 reason**: the selector in our source carries a leading underscore that Apple's
@@ -662,6 +667,17 @@ binary's own `r30` addressing (`addi r4,r30,0x14`, `stw r3,0x18(r30)`,
 `StartDBDMA`, `StopDBDMA` and `SetDBDMAPhysicalAddress` already use. No
 resolved address, branch or store changed; only the spelling did.
 
+**The connection is made, but for one consumer it is undone again.** Naming one
+object rather than three is necessary and it holds. It is not sufficient:
+`ResetDBDMA`'s body in our tree diverges from `0x665c` and its
+`FloppyDisk.m:6690` write **zeroes** `area + 4` — the very register base
+`OpenDBDMAChannel` stores there eight lines earlier, and the word `PrepDBDMA`,
+`SetDBDMAPhysicalAddress`, `StartDBDMA` and `StopDBDMA` all dereference. So on
+the path this function creates, the register base survives exactly until the
+`ResetDBDMA` call at the end of it. `ResetDBDMA` is an existing function outside
+this task's edit set and was not touched; the defect is recorded in full as
+uncertainty 7.
+
 The three `DAT_0000f5xx` declarations and definitions were removed with that
 change. They had no callers left, they correspond to no symbol in the reference
 (the symbol table has nothing between `0xf4fc` and `0xf528`), and keeping them
@@ -824,7 +840,7 @@ Numbered; none of these was resolved by picking a plausible option.
    argument into a function pointer, which GCC diagnoses as a warning, not an
    error. Fixing it properly means typing those two local prototypes with
    function-pointer parameters, which also depends on uncertainty 2.
-4. **`donone` is declared `(void)` and called with arguments at 104 sites —
+4. **`donone` is declared `(void)` and called with arguments at 103 sites —
    settled in Task 6.** Task 5 gave `fd_dev_to_id` and `OpenDBDMAChannel` a
    block-scope `extern void donone(const char *format, ...);`
    (`FloppyDisk.m:1475`, `:5810`), the pattern the tree already uses at
@@ -846,14 +862,20 @@ Numbered; none of these was resolved by picking a plausible option.
    `FloppyDisk.h:179` is now `extern void donone(const char *format, ...);` and
    the definition at `FloppyDisk.m:1320` is now
    `void donone(const char *format, ...)`. That makes all four declarations and
-   the definition compatible, and makes every one of the 104 pre-existing
+   the definition compatible, and makes every one of the 103 pre-existing
    argument-passing call sites well-formed rather than ill-formed. None of the
-   104 call sites was edited; no call in the tree passes zero arguments (checked
+   103 call sites was edited; no call in the tree passes zero arguments (checked
    — there is no `donone()`), so the variadic form leaves every one of them
    valid. The two block-scope prototypes Task 5 added are now exact
    redeclarations of the file-scope one and were left in place. Nothing was
    compiled, so this is a reading of the standard and of documented GCC
    behaviour, not an observed diagnostic.
+
+   **The figure 104 was an occurrence count, not a call count.** `FloppyDisk.m`
+   at `f31c0693` contains 104 occurrences of the token `donone`, but one of them
+   is the definition at `FloppyDisk.m:1310` — so there are **103** calls. Commit
+   `f492103e`'s subject line ("…to match its 104 call sites") carries the same
+   mistake and cannot be amended now that it is published history.
 5. **Data symbols still carry the spurious leading underscore.** Task 2
    corrected the 136 C *function* names and Task 4 the selectors, but globals are
    untouched: our `_FloppyIdMap` would emit `__FloppyIdMap` against the binary's
@@ -865,21 +887,84 @@ Numbered; none of these was resolved by picking a plausible option.
    symbols are a separate case and were written correctly (`page_size`,
    `kernel_map`, `kmem_alloc_wired`, `kvtophys`), matching how the tree already
    writes `IOMalloc`/`IOLog`.
+
+   **The rule is not function-specific, and this is now measured rather than
+   inferred.** Of the reference's **306** symbols, **zero** carry a double
+   underscore. Eight of the names the spec listed among the "157 that must not
+   move" are real **one-underscore data symbols** in the binary:
+
+   ```
+   _FloppyState           __DATA,__data     0xf454
+   _Floppy_dev            __DATA,__data     0xf448
+   _busyflag              __DATA,__data     0xf444
+   _ReadDataPresent       __DATA,__data     0xf458
+   _FloppyIdMap           __DATA,__common   0xf460
+   _slock                 __DATA,__common   0xf45c
+   _PrivDBDMAChannelArea  __DATA,__common   0xf4fc
+   _GRCFloppyDMAChannel   __DATA,__common   0xf52c
+   ```
+
+   Apple's source therefore spelled those globals **bare**, exactly as it spelled
+   the 141 C functions bare. Ours defines them underscored
+   (`FloppyDisk.m:922 unsigned int _FloppyState = 0;`,
+   `:179 _busyflag`, `:8536 _PrivDBDMAChannelArea`), which emits `__FloppyState`
+   and matches nothing. `symbol_name_check.py:46` selects only symbols whose
+   `section == "__TEXT,__text"`, so the gate is structurally unable to see this
+   and stays green over it. Corroboration from the import side: the binary has
+   **48** undefined `_`-prefixed imports; **21** of them are already referenced
+   bare and correct in our source, and exactly one is not — see uncertainty 11.
+
+   **Consequence for the next driver.** The design spec's §3.1 and acceptance
+   item 3, and the plan's Task 2 Step 3, originally framed "none of the 157
+   `_`-prefixed globals was renamed" as a settled correctness result. It is not:
+   those 157 were left alone because correcting data symbols was **out of scope
+   for the C rename**, not because their spelling is right. All three passages
+   were reworded so the defect is scheduled rather than deliberately preserved.
 6. **`DAT_0000fb88` is declared twice with different types.** `FloppyDisk.h:123`
    says `unsigned short`, `FloppyDisk.h:508` says `unsigned char`; the definition
    is `unsigned short` and the binary loads a halfword. A hard conflict,
    pre-existing, not fixed here. Our `TestCacheDirtyState` declares the
    `unsigned short` form locally, matching the definition and `DumpTrackCache`.
-7. **`ResetDBDMA`'s reconstructed body does not match `0x665c`.** The binary does
-   `r9 = *(channel + 4); *r9 = 0xC8; *(channel + 8) = 0; *(r9 + 0xC) = 0;` — it
-   writes through the DBDMA register base stored at `channel + 4`. Our source
-   writes four words of the channel structure itself. This matters to
-   `OpenDBDMAChannel` only because it confirms `+0x04` is the register base; the
-   discrepancy is in an existing function and was not touched. It does now
-   matter more than it did: before this task `_GRCFloppyDMAChannel` was never
-   assigned, so `ResetDBDMA` was unreachable with a live channel. Under the
-   `[0x2c]` bound its four writes are in range, but they still land in the
-   channel area rather than through the register base the shipped code uses.
+7. **`ResetDBDMA`'s reconstructed body does not match `0x665c`, and one of its
+   writes erases the register base.** The binary is nine instructions:
+
+   ```
+   0x665c  9421ffe0  stwu r1,-32(r1)
+   0x6660  81230004  lwz  r9,4(r3)      r9 = *(channel + 4)   -- READ, as a pointer
+   0x6664  380000c8  li   r0,0xC8
+   0x6668  90090000  stw  r0,0(r9)      *r9 = 0xC8
+   0x666c  38000000  li   r0,0
+   0x6670  90030008  stw  r0,8(r3)      *(channel + 8) = 0
+   0x6674  9009000c  stw  r0,0xC(r9)    *(r9 + 0xC) = 0
+   0x6678  38210020  addi r1,r1,32
+   0x667c  4e800020  blr
+   ```
+
+   It **reads** `channel + 4` as the DBDMA register base and writes through it.
+   Our source (`FloppyDisk.m:6680`) instead writes four words of the channel
+   structure itself, and `FloppyDisk.m:6690` is
+   `*(unsigned int *)(param_1 + 4) = 0;` — it **zeroes the register base**.
+
+   This is worse than a spelling difference, and worse than an earlier draft of
+   this entry said. That draft concluded only that our writes "still land in the
+   channel area"; it did not say that one of them destroys the word every other
+   DBDMA consumer dereferences. `PrepDBDMA` (`FloppyDisk.m:6141`),
+   `SetDBDMAPhysicalAddress` (`:6995`), `StartDBDMA` (`:7347`) and `StopDBDMA`
+   (`:7446`) all dereference `channel + 4` as a pointer, correctly. So the
+   sequence `OpenDBDMAChannel` now creates is: store `dmaBase` at `area + 4`,
+   call `ResetDBDMA`, which sets that word to `0`; a later `PrepDBDMA` then
+   writes through address `0 + 0xc`.
+
+   **12.5's claim that the two halves now connect is therefore only half
+   realised.** Widening `_PrivDBDMAChannelArea` and writing the offsets as fields
+   of it did make `OpenDBDMAChannel`'s store and the consumers' reads name the
+   same object — that part stands. But for this one consumer the connection is
+   immediately broken again by `ResetDBDMA`'s divergent body. Fixing
+   `ResetDBDMA` is outside this task's edit set; it is a pre-existing defect in
+   an existing function, recorded here for scheduling. Before this branch it was
+   latent — `_GRCFloppyDMAChannel` was never assigned, so `ResetDBDMA` was
+   unreachable with a live channel — and writing `OpenDBDMAChannel` is what
+   armed it.
 8. **`LaunchMediaScanTask`'s reconstruction uses placeholder names.**
    `_MediaScanTaskID = FUN_0000a300(_entry, &MediaScanTask)` is really
    `kernel_thread(kernel_task, MediaScanTask)`: the relocations at `0xa2cc` and
@@ -903,8 +988,33 @@ Numbered; none of these was resolved by picking a plausible option.
    and both declarations now say `[0x2c]`. See 12.5, which also covers the
    `DAT_0000f5xx` offsets that were preventing the two halves of
    `OpenDBDMAChannel` from connecting.
-10. **`_GRCFloppyDMAChannel` is declared twice with incompatible types in one
-    header. Recorded, not fixed.** `FloppyDisk.h:337` says
+10. **Eight file-scope symbols are declared twice with incompatible types in one
+    header. Recorded, not fixed.** An earlier draft of this entry presented
+    `_GRCFloppyDMAChannel` as the only same-scope type conflict in
+    `FloppyDisk.h`. There are **seven more of identical shape** in that same
+    header — two file-scope `extern` declarations of one name with incompatible
+    types, C99 6.7p4, a constraint violation a conforming implementation must
+    diagnose:
+
+    ```
+    _myDriveStatus         :138  unsigned int *   :554  unsigned int
+    _trackBuffer           :139  unsigned int     :547  void *
+    _lastSectorsPerTrack   :141  char             :516  unsigned char
+    _track_offset          :142  int              :513  unsigned int
+    _driveOSEventIDptr     :305  unsigned int *   :504  void *
+    _lastErrorsPending     :312  unsigned char    :505  unsigned int
+    _FloppySWIMIIIRegs     :335  int              :515  void *
+    _GRCFloppyDMAChannel   :337  void *           :562  unsigned int
+    ```
+
+    (`char` and `unsigned char` are distinct types in C, so
+    `_lastSectorsPerTrack` is a conflict like the rest.) All eight are
+    pre-existing — none was introduced by this branch — and all eight are
+    outside its permitted edit set. Settling each one means deciding what the
+    object actually is, which needs evidence this task did not have; they are
+    left for scheduling as a group rather than one at a time.
+
+    The `_GRCFloppyDMAChannel` case in detail. `FloppyDisk.h:337` says
     `extern void *_GRCFloppyDMAChannel;` and `FloppyDisk.h:562` says
     `extern unsigned int _GRCFloppyDMAChannel;`. Both are at file scope in the
     same header, so unlike uncertainty 4 this one *is* a same-scope
@@ -923,6 +1033,64 @@ Numbered; none of these was resolved by picking a plausible option.
     `ResetDBDMA` and friends as `unsigned int`. Changing it touches eight call
     sites, which is outside this task's permitted edit set, and it is left for
     scheduling.
+11. **`_IOExitThread` is the one misspelled kernel import, and it is an
+    undefined symbol at link.** `FloppyDiskThread.m:111` declares
+    `extern void _IOExitThread(void);` and `FloppyDiskThread.m:237` calls
+    `_IOExitThread();`. The binary imports `_IOExitThread` — undefined, address
+    0, no section — so under the Mach-O rule (uncertainty 5) the source name must
+    be `IOExitThread`. As written, our source emits a reference to
+    `__IOExitThread`, which nothing defines.
+
+    It is the **only** one of the reference's 48 undefined `_`-prefixed imports
+    that is misspelled. Twenty-one of the 48 are already referenced bare and
+    correct in our source (`IOMalloc`, `IOFree`, `bcopy`, `sleep`, `timeout`,
+    `page_size`, `kernel_map`, `kmem_alloc_wired`, `kvtophys` among them); the
+    remaining 26 have no reference in the source under either spelling. So this
+    is a single-token defect, not a class of them.
+
+    `symbol_name_check.py` cannot see it: it gates *defined* `__TEXT,__text`
+    symbols (`:46`), and `_IOExitThread` is neither defined nor in `__text`.
+    Both sites are outside this task's edit set; recorded for scheduling, and it
+    should be fixed alongside uncertainty 5's data symbols, which have the same
+    cause.
+12. **Seven `static` data objects have the exact shape Task 5 deleted three
+    `static` functions for.** Task 5's three deletions (12.8) rested on C99
+    6.2.2p7: a `static` definition that follows a file-scope `extern`
+    declaration of the same name in the same translation unit. Seven data
+    objects in the same two files have that shape and were left in place:
+
+    ```
+    FloppyDiskInt.m:117    static int _DataSource            FloppyDisk.h:95   extern void *
+    FloppyDiskInt.m:128    static const char *_fdCommandValues[]  FloppyDisk.h:578  extern LookupEntry []
+    FloppyDiskInt.m:134    static const char *_fdrValues[]        FloppyDisk.h:576  extern LookupEntry []
+    FloppyDiskThread.m:36  static const char *_fdOpValues[]       FloppyDisk.h:577  extern LookupEntry []
+    FloppyDiskThread.m:45  static const char *_fdrValues[]        FloppyDisk.h:576  extern LookupEntry []
+    FloppyDiskThread.m:53  static const char *_densityValues[]    FloppyDisk.h:113  extern DensityEntry []
+    FloppyDiskThread.m:58  static int _fdDensityInfo[]            FloppyDisk.h:624  extern DensityInfoEntry []
+    ```
+
+    `FloppyDiskInt.m:7` and `FloppyDiskThread.m:7` both `#import "FloppyDisk.h"`,
+    so every one of these is **two** defects at once: a 6.2.2p7 linkage conflict
+    like the three functions, and a 6.7p4 incompatible-type conflict like
+    uncertainty 10's eight.
+
+    **Keeping them may well be right.** Five of the seven exist only to feed the
+    retained source-only debug helpers of section 8 — `_fdCommandValues` and
+    `_fdrValues` are read by `_getCommandName`/`_getResultName`
+    (`FloppyDiskInt.m:141`, `:150`), `_fdOpValues` by `_getOpName`
+    (`FloppyDiskThread.m:88`), and `FloppyDiskThread.m`'s `_fdrValues` and
+    `_densityValues` are the arrays passed to `_getStatusName` at `:536` and
+    `:603`. Those helpers have no counterpart in Apple's binary, so there is no
+    reference evidence for what the file-scope objects should be. The other two
+    are not debug-only: `_DataSource` is assigned at `FloppyDiskInt.m:246`/`:248`
+    and `_fdDensityInfo` is read at `FloppyDiskThread.m:615`. But neither the
+    decision to keep them nor
+    the defect itself was documented before now, and Task 5 gave the identical
+    shape the opposite treatment a few lines away in the same file — the
+    `static` `GetBusyFlag`/`ResetBusyFlag` it deleted stood at
+    `FloppyDiskInt.m:125`/`:130`, immediately below `_DataSource` at `:117`.
+    Recorded so the asymmetry is deliberate rather than accidental; settling it
+    is out of scope here.
 
 ## 13. Gate results after Task 5
 
@@ -1168,7 +1336,7 @@ plan added or removed a test.
    above) and `FloppyDiskInt.m:118` (where `static BOOL _BusyFlag` stood at
    commit `f31c0693`, before Task 5 deleted it).
 
-   Line citations inside sections 3, 4, 7, 8, 10 and 11 were **not** rewritten.
+   Line citations inside sections 3, 4, 6, 7, 8, 10 and 11 were **not** rewritten.
    Those sections describe a tree that no longer exists — they cite `static`
    definitions Task 5 deleted — so renumbering them would have made them look
    current while their content stayed historical. They carry a snapshot banner
@@ -1202,7 +1370,7 @@ exactly one underscore to a file-scope C identifier), reinforced by
 | 6 | The map covers 200 of the 201 hand-written functions; the 201st is `_fdrToIo`, a known exclusion | **pass** | 14.2 and 14.3: `mapped` 200, and the only hand-written function outside the map's universe is `_fdrToIo` |
 | 7 | `duplicate_candidates` is 0, or every entry enumerated with evidence | **pass** | 14.2: **0**. Nothing to enumerate |
 | 8 | `RECONCILES: yes`, with the two build-generated class methods accounted for | **pass** | 14.4: `RECONCILES: yes`, counted 202, bucket 4 holds exactly those two, by address |
-| 9 | All five bodies written, each with an instruction-by-instruction account covering every branch | **pass** | Sections 12.1–12.5. Definitions present at `FloppyDisk.m` `2072` (`fdminphys`), `1467` (`fd_dev_to_id`), `5797` (`OpenDBDMAChannel`), `7930` (`TestCacheDirtyState`), `5526` (`MediaScanTask`). Every span reconciles as `body + 16 × islands`; two divergences recorded as `intentional-mismatch` |
+| 9 | All five bodies written, each with an instruction-by-instruction account covering every branch | **pass** | Sections 12.1–12.5. Definitions present at `FloppyDisk.m` `2072` (`fdminphys`), `1467` (`fd_dev_to_id`), `5797` (`OpenDBDMAChannel`), `7930` (`TestCacheDirtyState`), `5526` (`MediaScanTask`). Every span reconciles as `body + 16 × islands`. Two bodies deliberately diverge from the reference and each says so in its own source comment, described in 12.3 and 12.5. These are prose records, **not** ledger statuses: no ledger entry carries an `intentional-mismatch` status, and all 202 are `status: unexamined` |
 | 10 | All three redundant `static` copies removed; the six source-only helpers retained and recorded | **pass** | 12.8. Verified again here: no `static` `GetBusyFlag`, `ResetBusyFlag` or `_getStatusName` remains anywhere in the source dir, and all six helpers are still defined (`_getStatusName`/`_getDensityName`/`_getIoctlName` in `FloppyDisk.m`, `_getCommandName`/`_getResultName` in `FloppyDiskInt.m`, `_getOpName` in `FloppyDiskThread.m`) and recorded in section 8 |
 | 11 | The binrecon suite stays green | **pass** | 14.8: 866 passed, 4 skipped |
 
@@ -1215,9 +1383,17 @@ defects in it:
   Task 5 for a documented reason. It is a removal, not a rename, so the item
   holds as written — but the item's spirit is "nothing outside the 136 moved",
   and one thing outside the 136 did go away.
+- Item 3 says the C rename touched none of the 157 `_`-prefixed identifiers.
+  That is true and it is what the item asks, but it is a **scoping** result, not
+  a correctness one: uncertainty 5 shows the binary spells those globals bare,
+  so leaving them underscored is a defect deferred, not a defect avoided. The
+  spec and plan were reworded so the next driver schedules it rather than
+  preserving it deliberately.
 
-Ten open uncertainties and pre-existing defects remain recorded in 12.9. None was
-closed by guessing, and none blocks acceptance; several — the `_fdCommandValues`
-double definition, the `fdstrategy` triple declaration, the
-`_GRCFloppyDMAChannel` type conflict, and the data symbols that still carry the
-spurious underscore — will have to be scheduled before this driver can be built.
+**Twelve** open uncertainties and pre-existing defects remain recorded in 12.9.
+None was closed by guessing, and none blocks acceptance; several — the
+`_fdCommandValues` double definition, the `fdstrategy` triple declaration, the
+**eight** incompatible double declarations in `FloppyDisk.h`, `ResetDBDMA`'s
+divergent body erasing the DBDMA register base, the misspelled `_IOExitThread`
+import, and the data symbols that still carry the spurious underscore — will
+have to be scheduled before this driver can be built.

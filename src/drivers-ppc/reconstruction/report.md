@@ -862,8 +862,10 @@ survey ran `find src -iname "*Floppy*" | head -1`, which returned
 `src/driverkit-3/Examples/UnixDisk/FloppyDisk.m` — a 175-line DriverKit example
 — and stopped there. The real tree,
 `src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj`, holds
-**11,475 lines** across four `.m` files and was never seen. It is the largest
-driver source in this series.
+**11,475 lines across its eight source files** — **10,754** of them in the four
+`.m` files — and was never seen. It is the largest driver source in this series.
+(Both this report and the Floppy spec originally attributed all 11,475 to the
+four `.m` files alone.)
 
 Two things went wrong, and both are structural rather than incidental. `head -1`
 discarded the rest of the match list before anything read it. And a name search
@@ -935,6 +937,16 @@ disassembly. Coverage is not correctness.
 As with the five drivers above, **nothing was compiled** — there is no PowerPC
 toolchain and no host C compiler here, and no `make` was run. That the renamed
 symbols would now match Apple's follows from the Mach-O naming rule, not from a
-build. Ten open uncertainties and pre-existing C defects are recorded in
+build. Twelve open uncertainties and pre-existing C defects are recorded in
 [Floppy/findings.md](Floppy/findings.md) §12.9, several of which must be settled
 before the driver can build.
+
+Two of them limit what the naming result above means, and are worth stating
+here. The one-underscore Mach-O rule is **not** function-specific — none of the
+binary's 306 symbols carries a double underscore, and `_FloppyState`,
+`_FloppyIdMap`, `_busyflag` and five more are one-underscore `__DATA` symbols —
+so the driver's **data** symbols still carry the same spurious underscore the
+141 functions were corrected for, and `_IOExitThread` is imported under the
+wrong spelling. `symbol_name_check.py` gates defined `__TEXT,__text` symbols
+only, so its clean result cannot speak to either. Both are pre-existing and were
+scheduled rather than fixed on this branch.

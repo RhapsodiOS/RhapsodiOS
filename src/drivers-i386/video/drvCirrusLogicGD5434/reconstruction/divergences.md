@@ -1600,8 +1600,100 @@ recorded for `setPendingDisplayMode:` above, and not a signedness question at
 all. Counting all conditional branches, the reference has 14 and so do we.
 
 Neither remaining difference changes behaviour: `chipType` only ever holds 0–4,
-and both `strncmp` forms compute the same result. The inline-`strncmp` form
-depends on compiler flags that are not recoverable from the binary.
+and both compare forms compute the same result.
+
+### The `repe cmpsb` is gcc's `strcmp` builtin: the source said `strcmp`
+
+**This supersedes the earlier note that the inline form "depends on compiler
+flags that are not recoverable from the binary." It is recoverable, and it is
+not a flag.** The construct is `strcmp`, not `strncmp`.
+
+**Observation — the reference's sequence.** At `determineConfiguration` +459…+480
+the reference reads
+
+```
+459  89C1        mov ecx, eax          ; the valueForStringKey: result
+461  89CB        mov ebx, ecx
+463  BF58120000  mov edi, 0x1258       ; -> "PCI"
+468  B904000000  mov ecx, 4
+473  89DE        mov esi, ebx
+475  FC          cld
+476  A800        test al, 0
+478  F3A6        repe cmpsb
+480  7512        jne …
+```
+
+The `cld` / `repz cmpsb` pair with the count in `ecx` and the two operands
+forced into `esi`/`edi` is the i386 `cmpstrsi` expander. In gcc 2.x that
+expander is reachable from three builtins — `memcmp`, `bcmp` and `strcmp` — and
+**`strncmp` is not a builtin at all**, which is why our `strncmp` call survives
+as a call.
+
+**Observation — the count is `strlen(literal) + 1`, corpus-wide.** Scanning
+every `_reloc` under `Drivers/i386` for `cmpsb` and correlating the `mov ecx,
+imm` that feeds it against the string constant loaded into `esi`/`edi` gives,
+among others:
+
+| Driver | count | literal | `strlen + 1` |
+| --- | --- | --- | --- |
+| `ATIRageDisplayDriver` | 16 | `IODisplayDoBlit` | 16 |
+| `ATIRageDisplayDriver` | 19 | `IOGetDisplaySynced` | 19 |
+| `Adaptec2940SCSI` | 15 | `A2940_CmdQueue` | 15 |
+| `Adaptec2940SCSI` | 11 | `A2940_Sync` | 11 |
+| `DEC21X4XNetwork` | 21 | `DEC21X4X_GETLOCATION` | 21 |
+| `Beep` | 10 | `Frequency` | 10 |
+| `BusMouse` | 11 | `Resolution` | 11 |
+| `CirrusLogicGD5434DisplayDriver` | 4 | `PCI` | 4 |
+
+Eight different literals of six different lengths, and in every case the count
+is exactly one more than the literal's length. A source-written length — which
+is what `memcmp`, `bcmp` and `strncmp` all take — would not track `strlen + 1`
+across unrelated drivers. **The compiler is computing the bound**, and
+computing it as `c_strlen(constant) + 1` is precisely what gcc 2.x's
+`BUILT_IN_STRCMP` case does before handing off to `cmpstrsi`. Our own `4` is
+`sizeof("PCI")` by coincidence of that string's length; the corpus is what
+distinguishes the two readings.
+
+**Inference — the source construct.** Apple wrote
+
+```c
+    if (strcmp([[[self deviceDescription] configTable]
+		valueForStringKey:"Bus Type"], "PCI") == 0)
+	busType = 1;
+    else
+	busType = 0;
+```
+
+**Proposed change**, at `CirrusLogicGD5434DisplayDriver.m:1077-1078`, replacing
+the `strncmp(…, "PCI", 4) == 0` test with
+
+```c
+    if (strcmp([[[self deviceDescription] configTable]
+		valueForStringKey:"Bus Type"], "PCI") == 0)
+```
+
+`strcmp` needs no header: gcc 2.x predeclares the builtin, and the builtin is
+what does the work. Behaviour is unchanged — both forms compare four bytes of a
+NUL-terminated string against `"PCI"`, and both fault identically if
+`valueForStringKey:` returns `NULL`.
+
+**Prediction.** The call-target list drops from 8 entries to 7 and matches the
+reference's, which is the whole of what holds this function at
+`signature-confirmed`; `determineConfiguration` should then reach
+`control-flow-confirmed`. **The extent gap will barely move**, and that is
+expected: measuring both sides, the reference's inline sequence costs 21 bytes
+(`mov ebx,ecx` 2, `mov edi,imm32` 5, `mov ecx,4` 5, `mov esi,ebx` 2, `cld` 1,
+`test al,0` 2, `repe cmpsb` 2, `jne` 2) and our call costs 21 as well
+(`push 4` 2, `push imm32` 5, `mov ecx,eax` 2, `push ecx` 1, `call` 5,
+`mov ecx,eax` 2, `test ecx,ecx` 2, `jne` 2). The 56-byte extent difference
+between the reference's 768 and our 712 is therefore **not** this; it lives in
+the block placement and the two `ja`/`jg` tests already recorded above, and
+closing it is a separate question. Confidence: **high** — the diagnosis rests on
+a corpus-wide numeric regularity, not on a single reading.
+
+Note also `test al, 0` at +476. It is a two-byte no-op emitted by the
+`cmpstrqi_1` pattern between `cld` and the string op; it carries no meaning for
+the source and should not be read as part of the comparison.
 
 **The obvious fix for the two `jg` was tried and does not work.** The hypothesis
 was that Apple declared `chipType` unsigned. The reference refutes it directly:

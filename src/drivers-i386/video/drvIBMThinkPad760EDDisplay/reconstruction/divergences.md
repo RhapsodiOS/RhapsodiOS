@@ -2486,6 +2486,13 @@ the eight deferred strings' lengths including their NULs. The in-scope
 > path. That correction stands on its own reading of the reference regardless
 > of the extent question, but it too is uncompiled.
 
+> **A later diagnosis-only pass added to this section and changed no source.**
+> "The six that it did not pin" below now closes `unlockRegisters` and
+> `lockRegisters` and reclassifies `initFromDeviceDescription:` as explained.
+> Those are **proposals with predicted extents**, deliberately not applied:
+> the point of that pass was to have a batch ready for one build, not to add a
+> fifth uncompiled edit to the four above.
+
 Name-level parity is not byte-level parity. Comparing each function's extent
 (next symbol's address minus its own, so padding is included on both sides):
 
@@ -2579,61 +2586,228 @@ reconstruction had, branches on the value alone and emits the four stores once.
 This is also consistent with the rest of the file, where every SMAPI call is
 written as a fresh four-store block followed by `smapi_asm(&reg)`.
 
-### The six that it does not pin
+### The six that it did not pin — two are now pinned
 
 Each is recorded with the signature actually observed, so the next pass starts
-from evidence rather than from scratch.
+from evidence rather than from scratch. Two of the six have since been closed;
+the other four are held open with what has been ruled out.
 
-- **`unlockRegisters` / `lockRegisters`, −16 each.** In *both* arms of both
-  methods the reference materialises the SR data port into a callee-saved
-  register **before** the `inb` — `mov ebx, 0x3c5` at +67 and +131 — and then
-  spends `mov edx, ebx` to satisfy the `outb` asm's `"d"` constraint. That costs
-  7 bytes per arm over reusing `edx`, plus the 4 bytes of `push ebx` /
-  `mov ebx, [ebp-4]` the two methods would not otherwise need: 18 code bytes,
-  which is 16 of extent once each side's tail padding is counted. The
-  reconstruction's `value = inb(0x3C5); outb(0x3C5, value | 0x80);` makes gcc
-  reuse `edx`, and that is demonstrably right for this compiler — Cirrus's
-  `setMode:` contains the same idiom **and** the nested
-  `outb(0x3C5, (inb(0x3C5) & 0xF0) | …)` variant, and *both* reuse `edx` in a
-  region that is byte-exact against its reference. So the reference's source
-  forces the `outb`'s port operand to stay live across the `inb` by some
-  construct that neither form here reproduces. Not guessed at.
-- **`setDisplayDeviceState:`, −4.** The reference holds `&reg` in `ebx` — the
-  delta is exactly the `push ebx` (1) plus `mov ebx, [ebp-4]` (3) that buys.
-  `getDisplayDeviceState`, which *matches*, needs `ebx` genuinely (`self` is
-  live across the `smapi_asm` call); here nothing is live across the call and
-  the allocation looks like pressure from `state` and `smapiPort` both being
-  held. No source construct was found that reproduces it without contortion.
+#### `unlockRegisters` / `lockRegisters`, −16 each — the read-modify-write is one nested expression
+
+**This closes both, and the earlier "Cirrus disproves it" note was wrong.**
+
+**Observation — the signature.** In *both* arms of both methods the reference
+materialises the SR data port into a callee-saved register **before** the `inb`
+— `mov ebx, 0x3c5` at +67 and +131 — and then spends `mov edx, ebx` to satisfy
+the `outb` asm's `"d"` constraint:
+
+```
+ 67  BBC5030000  mov ebx, 0x3c5
+ 72  BAC5030000  mov edx, 0x3c5
+ 77  EC          in  al, dx
+ 78  88C1        mov cl, al
+ 80  80C980      or  cl, 0x80
+ 83  89DA        mov edx, ebx
+ 85  88C8        mov al, cl
+ 87  EE          out dx, al
+```
+
+That is 7 bytes per arm over reusing `edx`, plus the 4 bytes of `push ebx` /
+`mov ebx, [ebp-4]` the two methods would not otherwise need: **18 code bytes**.
+The arithmetic checks: the reference is 166 code bytes padded to 168, ours is
+148 padded to 152, and 166 − 18 = 148 exactly.
+
+**Observation — this pattern occurs four times in the whole i386 driver corpus,
+and all four are here.** Disassembling every `_reloc` under `Drivers/i386` and
+looking for `mov <ebx|esi|edi>, <port>` followed within a few instructions by a
+port `in`/`out` *and* a later `mov edx, <that register>` finds exactly fifteen
+sites, in five drivers:
+
+| Driver / function | sites |
+| --- | --- |
+| `IBMThinkPad760ED` `unlockRegisters` / `lockRegisters` | 4 |
+| `Number9Motion771` `enterLinearMode` | 8 |
+| `Number9Motion331` `enterLinearMode` | 1 |
+| `S3Generic` `setupLinearAddressing` | 1 |
+| `DiamondStealth` `setupLinearAddressing` | 1 |
+
+`CirrusLogicGD5434DisplayDriver` has **none**.
+
+**Observation — Cirrus's negative sites are separated-form, and its nested-form
+sites are cross-jumped.** This is the point the earlier note got wrong.
+
+- `CirrusLogicGD5434DisplayDriver.m:1201-1203` is
+  `outb(0x3D4, 0x11); value = inb(0x3D5); outb(0x3D5, value & 0x7F);` — the
+  *separated* form. In the reference at `setMode:` +116…+130 it compiles to
+  `mov edx,0x3d5 / in al,dx / mov cl,al / and cl,0x7f / mov al,cl / out dx,al`:
+  one basic block, `edx` reused, no extra register. Our rebuild produces the
+  same shape at +117. **A known-source confirmation of the negative side.**
+- `CirrusLogicGD5434DisplayDriver.m:1233-1235` (SR0F) is separated as well, and
+  the reference at +385…+399 again reuses `edx`. **A second one.**
+- `CirrusLogicGD5434DisplayDriver.m:1252` and `:1255` (SR16) *are* the nested
+  `outb(0x3C5, (inb(0x3C5) & 0xF0) | …)` form — but in **both** the reference
+  (+589…+649) and our rebuild (+611…+637) the two arms cross-jump into a
+  shared tail that holds the single `out`, so there is only ever one port
+  operand and no second one to allocate. Those sites cannot show the pattern
+  either way, and so cannot disprove anything.
+
+The same split is visible inside one function: `Number9Motion771`
+`enterLinearMode` contains four RMWs whose `out` sits in its own block (+451,
++527, +607, +687 — all with `mov ebx, 0x3d5`) and four whose `out` sits in a
+cross-jumped tail at +0x6df (+494, +570, +650, +715 — none with it).
+
+**Inference — the source construct.** `outb` is
+`static __inline__ void outb(IOEISAPortAddress port, unsigned char data)`
+(`driverkit/i386/ioPorts.h`). Written nested, the outer call's **first**
+argument is expanded before the second, and the second contains the `inb`; the
+port operand is therefore materialised into a pseudo that is live across the
+`inb`'s own `"d"`-constrained operand. Two pseudos want `edx` at once, one loses
+and takes a callee-saved register, and the loser is copied back with
+`mov edx, ebx` at the `out`. Written separated, the `inb` has already been
+expanded as its own statement, so the `outb`'s port operand is materialised
+immediately at the `out` and simply lands in `edx` — which is already holding
+the same constant, so the load itself is elided.
+
+**Proposed change**, `IBMThinkPad760ED.m:697-735`, both methods, both arms —
+fold the read-modify-write into one expression and drop the now-unused local:
+
+```c
+- (void)unlockRegisters
+{
+    outb(0x3C4, 0x08);
+    if ((signed char)inb(0x3C5) >= 0) {
+	outb(0x3C4, 0x0B);
+	inb(0x3C5);
+	outb(0x3C4, 0x0E);
+	outb(0x3C5, inb(0x3C5) | 0x80);
+	outw(0x3C4, 0x000B);
+    } else {
+	outb(0x3C4, 0x0E);
+	outb(0x3C5, inb(0x3C5) | 0x80);
+    }
+}
+```
+
+and the same for `lockRegisters` with `inb(0x3C5) & 0x7F`. This is the shape
+this document's own reconstruction of finding 15 already records; only the
+implemented source diverged from it.
+
+**Prediction.** +7 code bytes in each of the four arms and +4 for `push ebx` /
+`mov ebx, [ebp-4]` in each method: 152 → **168** for both, matching the
+reference exactly, with the value landing in `cl` and the port in `ebx` as the
+reference has it. Confidence: **high** — mechanism, byte arithmetic and a
+corpus-wide occurrence split all agree, and the negative side is confirmed
+against Cirrus source we hold.
+
+#### `initFromDeviceDescription:`, +8 — explained, not a defect
+
+**Observation.** At +293 the reference is `E9 65 01 00 00`, `jmp 0x2c7`, and
+`0x2c7` is offset **+655 — the `call _IOLog` inside the
+`%s: Error: Unable to map frame buffer\n` arm**, not the head of a block. The
+arm at +274 pushes `[self name]` and its own format string `0x471c`, then jumps
+straight into the other arm's call. Both arms are
+`IOLog(fmt, [self name]); return [self free];` with two arguments, so from the
+`call _IOLog` onward — call, `[self free]` message send, `jmp` to the epilogue —
+their tails are identical and cross-jumping merged them.
+
+**Arithmetic.** The reference is 777 code bytes with 3 bytes of padding, extent
+780; ours is 788, and gcc pads to a 4-byte boundary, so our code is 785–788
+bytes and the true delta is 8–11. The merged tail costs the reference 5 bytes
+(`jmp rel32`). Un-merged it is `call _IOLog` (5) + `mov ecx,[…]` (6) +
+`push ecx` (1) + `push ebx` (1) + `call _objc_msgSend` (5) = 18, plus a branch
+to the epilogue: **+10 with a short `jmp`** (785–788 ✓, extent 788 ✓) or +13
+with a `jmp rel32` (790 → extent 792 ✗). Only the short-branch form fits, and it
+fits exactly.
+
+**So the documented merge accounts for the whole +8 and nothing else needs
+explaining.** Per "How `IOLog` is counted" above this is expected; treat
+`initFromDeviceDescription:` as **explained, not open**, and do not chase it.
+Confidence: **medium-high** — the reference side is observed and the arithmetic
+excludes the alternative, but the rebuilt instruction stream was not available
+to confirm which branch form our build actually emits.
+
+#### The four still open — and why they cannot be advanced right now
+
+**The blocking fact: there is no rebuilt ThinkPad binary to diff against.**
+`tools/binrecon/out/thinkpad760ed/published/analysis-rebuilt-ida.json` is the
+placeholder run — its `input.path` is a scratch `placeholder-rebuilt/` copy and
+its `input.sha256` is `47539E03…B5AEC`, the reference's own hash, the same
+placeholder the ledger caveat above records. `out/i386/` holds only
+`CirrusLogicGD5434DisplayDriver_reloc`. Every remaining item below is a question
+about *what our build allocates*, and that is exactly what no artifact in the
+tree states. The two items closed above were closable only because their
+evidence is entirely on the reference side plus a cross-driver corpus.
+**When the guest returns, the rebuilt `_reloc` must be kept, not discarded** —
+without it these four are guesswork.
+
+- **`setDisplayDeviceState:`, −4.** The reference holds `&reg` in `ebx`
+  (`lea ebx, [edx+0x25c]` at +26, `push ebx` at +67); the delta is exactly the
+  `push ebx` (1) plus `mov ebx, [ebp-4]` (3) that buys. Four pseudos are live
+  across the store sequence — `self` (edx), `&reg` (ebx), the `cx.x` value (ax)
+  and `smapiPort` (cx) — which is one more than the three caller-saved registers
+  available, so the fourth spills into `ebx`. **Ruled out:** a shared cause with
+  the two below. This method has no `biosRegs` local, no `bzero`, and nothing
+  live across its one call; the mechanism cannot be the same as theirs.
+  **Ruled out:** "the reference computes `&reg` early and we compute it late" —
+  `getDisplayDeviceState`, which *matches* our build byte for byte, also does
+  `lea edx, [ebx+0x25c]` at +14 ahead of its four stores, so our compiler does
+  compute it early given this source. The live value that differs must therefore
+  be the `cx.x` expression. The reference computes it as
+  `and ax,3 / shl ax,8 / … / or ah,0x80` — that is `((state & 3) << 8) | 0x8000`
+  — split across the stores, where the source has
+  `((state & 3) | 0x80) << 8`. Those are the same number but not the same
+  HImode instruction sequence, and re-associating it is the one cheap experiment
+  left. Not proposed as a change, because it was not possible to check whether
+  it changes the register count rather than just the byte count.
 - **`getModeInfo:`, −4** and **`revertToVGAMode`, −4.** Both keep one more
   callee-saved register than the rebuild does (`edi`/`esi`/`ebx` and
   `esi`/`ebx` respectively) and both carry a jump-target alignment `nop` the
-  rebuild's differing block boundaries would not place. Statement-for-statement
-  the reference matches the reconstruction; the residue is register allocation.
+  rebuild's differing block boundaries would not place. In both, the extra
+  register holds `&regs` across `call _bzero` — `lea edi, [ebp-0x40]` at
+  `getModeInfo:` +17 with reuse at +115/+116, `lea ebx, [ebp-0x40]` at
+  `revertToVGAMode` +126 with reuse at +154/+155. **Ruled out:** that this is
+  itself the −4. Costing it out, holding `&regs` in a callee-saved register
+  costs 8 bytes (`push`, `pop`, one `lea`, three 1-byte pushes) and
+  rematerialising it at each use costs 9, so dropping the register makes a build
+  *longer*, not 4 bytes shorter. Whatever our build does differently, it is not
+  simply declining that allocation. Statement for statement the reference
+  matches the reconstruction. Unresolved.
 - **`setPCIConfiguration`, −12.** Statement for statement the reference matches
   the reconstruction, including `and dl, 0xfc` for `command & ~3`, the two
   separate assignments that make up `physicalAddress = configSpace.BaseAddress[0];
   physicalAddress &= ~0x0F;`, and both range-copy loops. Two reference
-  peculiarities are unexplained and point the wrong way for the sign: the first
-  copy loop at +326 has **no entry guard** (the second, at +419, does), and the
+  peculiarities point the wrong way for the sign and are now partly explained:
+  the first copy loop at +326 has **no entry guard** because it is dominated by
+  `cmp ebx, 3 / jne` at +317, which proves `rangeCount == 3` and lets gcc drop
+  the `i < rangeCount` test on entry; the second copy loop at +419 sits after an
+  `IOLog` call and keeps its guard, gcc having lost the range fact across the
+  block boundary. The
   `%s: Error: Incorrect number of address ranges: %d.\n` arm is placed out of
   line at +520. Both make the reference *shorter*, so something else in the
-  reconstruction is shorter still by more than 12. Unresolved.
+  reconstruction is shorter still by more than 12, and identifying it needs the
+  rebuilt stream. The reference frame is `sub esp, 0x124`, i.e. `[ebp-0x124]`
+  for the config-table pointer, `[ebp-0x11b…-0x119]` for the three bus/device/
+  function bytes, `[ebp-0x118]` for the 256-byte config space and `[ebp-0x18]`
+  for `IORange range[3]` — a frame-layout comparison is the first thing to make
+  when a rebuilt binary exists, since the sister Cirrus driver's
+  `setPCIConfiguration` differs from its reference in exactly that way.
+  Unresolved.
 - **`reportSystemConfiguration`, +28.** Every one of the six SMAPI blocks, both
   `switch`es, the `LCDWidth` assignment between them, and all thirteen `IOLog`s
-  line up with the reconstruction statement for statement. The reference uses no
-  stack frame at all beyond `push ebx` — `vendor`, `panelType` and `panelSize`
-  all live in registers — so a spill in the rebuild is the leading suspicion,
-  but it was not confirmed.
-
-`initFromDeviceDescription:`'s **+8** is accounted for by the documented
-tail merge and is not a source defect. The reference reaches the
-`%s: vidBIOS alloc failure` arm's `call _IOLog` by a 5-byte `jmp` into the
-`%s: Error: Unable to map frame buffer\n` arm at +655; both arms are
-`IOLog(fmt, [self name]); return [self free];` with two arguments, so their
-tails are identical and cross-jumping merged them. A build that does not find
-that merge pays a `call` where the reference pays a `jmp`, plus the alignment
-that follows. Per "How `IOLog` is counted" above, this is expected and is not
-chased.
+  line up with the reconstruction statement for statement. **The reference has
+  no stack frame at all** — its prologue is `push ebp / mov ebp, esp /
+  push ebx` with **no `sub esp`**, and its epilogue is
+  `mov ebx, [ebp-4] / mov esp, ebp / pop ebp / ret`. `vendor`, `panelType` and
+  `panelSize` never touch memory: each `switch` arm writes its string straight
+  into the register that is then `push`ed as an `IOLog` argument — `edx` for
+  `panelType` at +974 and `eax` for `panelSize` at +973 — and because the
+  arguments are pushed before `[self name]` is evaluated, nothing has to survive
+  the intervening `objc_msgSend`. A spill in the rebuild therefore remains the
+  leading suspicion, and it is now a **one-line test**: if the rebuilt
+  function's prologue contains a `sub esp, N`, the spill hypothesis is confirmed
+  and `N` plus the spill/reload pairs should account for the 28; if it does not,
+  the hypothesis is refuted and the cause is elsewhere. Make that check first.
+  Unresolved.
 
 The `vidBIOS` `@class`-only question was checked and **costs nothing**.
 `[[vidBIOS alloc] init]` compiles at +226…+267 to `push` of the `init`

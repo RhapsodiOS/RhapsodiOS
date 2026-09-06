@@ -33,7 +33,7 @@ typedef struct _QueueHead {
 } QueueHead;
 
 // Command operation names for logging
-static const char *_fdOpValues[] = {
+static const char *fdOpValues[] = {
     "FD_SEND_CMD", "FD_READ", "FD_WRITE", "FD_UNKNOWN3", "FD_EJECT",
     "FD_ABORT_ALL", "FD_UNKNOWN6", "FD_SET_DENSITY", "FD_SET_SECT_SIZE",
     "FD_SET_GAP", "FD_SET_INNER_RETRY", "FD_SET_OUTER_RETRY", "FD_GET_INNER_RETRY",
@@ -42,7 +42,7 @@ static const char *_fdOpValues[] = {
 };
 
 // Floppy disk result status names
-static const char *_fdrValues[] = {
+static const char *fdrValues[] = {
     "Success", "Retry", "Reserved", "Reserved", "Fatal", "Reserved",
     "Partial", "Reserved", "Reserved", "Reserved", "Reserved", "Reserved",
     "Reserved", "Reserved", "Reserved", "Reserved", "Reserved", "Reserved",
@@ -50,12 +50,12 @@ static const char *_fdrValues[] = {
 };
 
 // Density value names
-static const char *_densityValues[] = {
+static const char *densityValues[] = {
     "Auto", "500kbps", "300kbps", "1Mbps"
 };
 
 // Density info table: {density, capacity, isFormatted}
-static int _fdDensityInfo[] = {
+static int fdDensityInfo[] = {
     1, 0xb4000, 1,   // 500kbps MFM: 720KB, formatted
     2, 0x168000, 1,  // 300kbps GCR: 1.44MB, formatted
     3, 0x168000, 1,  // 1Mbps MFM: 1.44MB, formatted
@@ -85,8 +85,8 @@ static int _fdSectSizeInfo_1Mbps[] = {
 
 static const char *_getOpName(unsigned int opCode)
 {
-    if (opCode < sizeof(_fdOpValues) / sizeof(_fdOpValues[0])) {
-        return _fdOpValues[opCode];
+    if (opCode < sizeof(fdOpValues) / sizeof(fdOpValues[0])) {
+        return fdOpValues[opCode];
     }
     return "FD_UNKNOWN";
 }
@@ -108,7 +108,7 @@ static int *fdGetSectSizeInfo(unsigned int density)
     }
 }
 
-extern void _IOExitThread(void);
+extern void IOExitThread(void);
 
 @implementation FloppyDisk(Thread)
 
@@ -234,7 +234,7 @@ extern void _IOExitThread(void);
         fdBuf->status = 0;
         IOLog("fdCmdDispatch: TERMINATING IO THREAD\n");
         [self fdIoComplete:fdBuf];
-        _IOExitThread();
+        IOExitThread();
         // Never returns
         break;
 
@@ -533,7 +533,7 @@ error_exit:
     const char *message = (const char *)ioReq;  // Error message like "RETRYING", "FATAL"
 
     driveName = [self name];
-    statusName = _getStatusName(status, _fdrValues);
+    statusName = _getStatusName(status, fdrValues);
     operation = isRead ? "Read" : "Write";
 
     IOLog("%s: Sector %d cmd = %s; %s: %s\n",
@@ -600,7 +600,7 @@ error_exit:
     int densityValue, capacityValue, formattedValue;
 
     // Get density name for logging
-    densityName = _getStatusName(density, _densityValues);
+    densityName = _getStatusName(density, densityValues);
     IOLog("setDensityInt: density %s\n", densityName);
 
     // Check if auto-density (0)
@@ -612,7 +612,7 @@ error_exit:
     }
 
     // Search density info table
-    densityInfo = _fdDensityInfo;
+    densityInfo = fdDensityInfo;
     while (*densityInfo != 0) {
         if (*densityInfo == density) {
             break;

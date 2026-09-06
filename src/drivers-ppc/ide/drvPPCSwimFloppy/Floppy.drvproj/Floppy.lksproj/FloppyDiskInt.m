@@ -114,7 +114,7 @@ typedef struct _FdCmdBuf {
 } FdCmdBuf;
 
 // Global variables for FloppyPluginIO
-static int _DataSource = 0;
+static int DataSource = 0;
 extern int FloppyPluginIO(unsigned int *actualLength, unsigned int length, void *buffer,
                            unsigned int offset, BOOL isWrite, unsigned int param6);
 extern int floppyMalloc(unsigned int size, void *physAddr, void *virtAddr);
@@ -125,21 +125,21 @@ extern void fdThread(id disk);
 // declared by FloppyDisk.h.
 
 // Command name lookup (simplified version)
-static const char *_fdCommandValues[] = {
+static const char *fdCommandValues[] = {
     "UNKNOWN", "UNKNOWN", "UNKNOWN", "UNKNOWN", "UNKNOWN",
     "SENSE_DRV_STATUS", "READ_DATA", "RECALIBRATE", "SENSE_INT_STATUS", "UNKNOWN",
     "READ_ID", "UNKNOWN", "UNKNOWN", "UNKNOWN", "UNKNOWN", "SEEK"
 };
 
-static const char *_fdrValues[] = {
+static const char *fdrValues[] = {
     "SUCCESS", "ERROR", "TIMEOUT", "INVALID"
 };
 
 // Helper to get command name
 static const char *_getCommandName(unsigned int cmdCode)
 {
-    if (cmdCode < sizeof(_fdCommandValues) / sizeof(_fdCommandValues[0])) {
-        return _fdCommandValues[cmdCode];
+    if (cmdCode < sizeof(fdCommandValues) / sizeof(fdCommandValues[0])) {
+        return fdCommandValues[cmdCode];
     }
     return "UNKNOWN";
 }
@@ -147,8 +147,8 @@ static const char *_getCommandName(unsigned int cmdCode)
 // Helper to get result name
 static const char *_getResultName(unsigned int result)
 {
-    if (result < sizeof(_fdrValues) / sizeof(_fdrValues[0])) {
-        return _fdrValues[result];
+    if (result < sizeof(fdrValues) / sizeof(fdrValues[0])) {
+        return fdrValues[result];
     }
     return "UNKNOWN";
 }
@@ -243,9 +243,9 @@ static const char *_getResultName(unsigned int result)
     // pending == VM_TASK_NULL means kernel space (data source 1)
     // otherwise user space (data source 2)
     if (pending == (void *)VM_TASK_NULL) {
-        _DataSource = 1;
+        DataSource = 1;
     } else {
-        _DataSource = 2;
+        DataSource = 2;
     }
 
     // Call the FloppyPluginIO function

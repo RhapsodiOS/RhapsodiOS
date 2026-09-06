@@ -92,10 +92,10 @@ typedef struct _QueueHead {
 #import "FloppyDiskKern.h"
 
 // Global variables
-extern void *_DataSource;                    // Data source tracker
-extern unsigned int _busyflag;               // Controller busy flag
-extern unsigned int _ccCommandsLogicalAddr;  // Command buffer logical address
-extern unsigned int _ccCommandsPhysicalAddr; // Command buffer physical address
+extern void *DataSource;                    // Data source tracker
+extern unsigned int busyflag;               // Controller busy flag
+extern unsigned int ccCommandsLogicalAddr;  // Command buffer logical address
+extern unsigned int ccCommandsPhysicalAddr; // Command buffer physical address
 
 // Table structures
 typedef struct {
@@ -110,9 +110,9 @@ typedef struct {
 } IoctlEntry;
 
 // Global tables
-extern DensityEntry _densityValues[];        // Density values table
-extern DensityEntry _midValues[];            // Media ID values table
-extern IoctlEntry _fdIoctlValues[];          // Ioctl commands table
+extern DensityEntry densityValues[];        // Density values table
+extern DensityEntry midValues[];            // Media ID values table
+extern IoctlEntry fdIoctlValues[];          // Ioctl commands table
 
 // Helper functions
 extern const char *_getStatusName(unsigned int statusCode, const char **values);
@@ -121,10 +121,10 @@ extern const char *_getIoctlName(unsigned int ioctlCmd);
 
 // Additional global variables
 extern unsigned short DAT_0000fb88;          // Track cache variable
-extern unsigned int _FloppyState;            // Floppy state variable
+extern unsigned int FloppyState;            // Floppy state variable
 extern char DAT_0000f25e;                    // Drive index storage
 extern volatile unsigned char DAT_418500ad;  // Hardware presence register
-extern unsigned char _ReadDataPresent;       // Read data present flag
+extern unsigned char ReadDataPresent;       // Read data present flag
 extern unsigned char DAT_0000f459;           // Additional cache flag
 
 // Format info tables
@@ -135,11 +135,11 @@ extern short DAT_0000fb96;                   // Format info table - sectors per 
 extern unsigned char DAT_0000fba1;           // Format info table - additional flags
 
 // Plugin globals
-extern unsigned int *_myDriveStatus;         // Current drive status pointer
-extern unsigned int _trackBuffer;            // Track cache buffer
+extern unsigned int *myDriveStatus;         // Current drive status pointer
+extern unsigned int trackBuffer;            // Track cache buffer
 extern int iRam9421ffe8;                     // RAM initialization value
-extern char _lastSectorsPerTrack;            // Last formatted sectors per track count
-extern int _track_offset;                    // Track offset in cache
+extern char lastSectorsPerTrack;            // Last formatted sectors per track count
+extern int track_offset;                    // Track offset in cache
 
 // GCR format data patterns
 extern unsigned char s_gap_0000e6e4[];       // Gap bytes pattern
@@ -302,14 +302,14 @@ extern int OpenDBDMAChannel(unsigned int dmaBase, void *channelPtr, int param3,
 // OS event management functions
 extern short WaitForEvent(int timeout, int mask, int eventBit);
 extern void SetOSEvent(unsigned int *eventPtr, unsigned char eventBits);
-extern unsigned int *_driveOSEventIDptr;     // Drive OS event ID pointer
+extern unsigned int *driveOSEventIDptr;     // Drive OS event ID pointer
 
 // Sleep/timing functions
 extern short SleepUntilReady(int milliseconds);
 
 // Error handling functions
 extern void RecordError(int errorCode);
-extern unsigned char _lastErrorsPending;     // Last error status from SWIM III
+extern unsigned char lastErrorsPending;     // Last error status from SWIM III
 
 // Drive power management
 extern void PowerDriveDown(int driveStructure, int param_2);
@@ -332,9 +332,9 @@ extern unsigned char *DAT_0000fc54;          // Read enable register
 extern unsigned char *DAT_0000fc58;          // Interrupt acknowledge register
 
 // SWIM III and DMA register bases
-extern int _FloppySWIMIIIRegs;               // SWIM III register base address
-extern unsigned int _GRCFloppyDMARegs;       // DMA register base address
-extern void *_GRCFloppyDMAChannel;           // DMA channel structure
+extern int FloppySWIMIIIRegs;               // SWIM III register base address
+extern unsigned int GRCFloppyDMARegs;       // DMA register base address
+extern void *GRCFloppyDMAChannel;           // DMA channel structure
 
 // Format table globals (20-byte entries starting at 0xfb90)
 extern unsigned int DAT_0000fb90;            // Format 0: Capacity
@@ -412,7 +412,7 @@ extern unsigned char DAT_0000fc05;           // Format 5: MFM gap 2
 extern unsigned char DAT_0000fc06;           // Format 5: MFM gap 3
 
 // Media scan task globals
-extern unsigned int _MediaScanTaskID;        // Media scan task ID
+extern unsigned int MediaScanTaskID;        // Media scan task ID
 extern void MediaScanTask(void);             // Media scan thread entry point
 extern void *_entry;                         // Task entry point
 extern unsigned int FUN_0000a300(void *entry, void *task);  // Task launch function
@@ -501,20 +501,20 @@ extern void FUN_00006ee8(int param_1, void *param_2, unsigned int param_3);  // 
 extern void FUN_00006ed8(void *param_1, unsigned int param_2);                // Event unlock
 
 // Global variables for DMA and events
-extern void *_driveOSEventIDptr;                 // Drive OS event structure pointer
-extern unsigned int _lastErrorsPending;          // Last error flags from hardware
+extern void *driveOSEventIDptr;                 // Drive OS event structure pointer
+extern unsigned int lastErrorsPending;          // Last error flags from hardware
 
 // Cache tracking globals
 extern unsigned char DAT_0000fb88;               // Cached drive number
-extern unsigned char _ReadDataPresent;           // Read data present flags (2-byte array, indexed by head)
+extern unsigned char ReadDataPresent;           // Read data present flags (2-byte array, indexed by head)
 
 // Driver global state variables
-extern unsigned int _theDefaultRefCon;           // Default reference constant
-extern unsigned int _track_offset;               // Track offset for format operations
-extern void *_other_buffer_ptr;                  // Alternate buffer pointer
-extern void *_FloppySWIMIIIRegs;                 // SWIM III controller register base
-extern unsigned char _lastSectorsPerTrack;       // Last sectors per track for format
-extern unsigned int _Floppy_instance;            // Floppy driver instance data
+extern unsigned int theDefaultRefCon;           // Default reference constant
+extern unsigned int track_offset;               // Track offset for format operations
+extern void *other_buffer_ptr;                  // Alternate buffer pointer
+extern void *FloppySWIMIIIRegs;                 // SWIM III controller register base
+extern unsigned char lastSectorsPerTrack;       // Last sectors per track for format
+extern unsigned int Floppy_instance;            // Floppy driver instance data
 
 // SWIM III hardware register pointers (initialized by HALReset)
 extern unsigned char *DAT_0000fc20;              // SWIM III timer register
@@ -538,33 +538,33 @@ extern void FUN_0000af58(unsigned int microseconds);  // Microsecond delay funct
 extern unsigned int FUN_00002710;                     // Timeout calculation value
 
 // Sector size information tables for different floppy formats
-extern unsigned int _ssi_1mb[12];                    // 1MB (1024KB) floppy format info
-extern unsigned int _ssi_2mb[12];                    // 2MB (2048KB) floppy format info
-extern unsigned int _ssi_4mb[12];                    // 4MB (4096KB) floppy format info
+extern unsigned int ssi_1mb[12];                    // 1MB (1024KB) floppy format info
+extern unsigned int ssi_2mb[12];                    // 2MB (2048KB) floppy format info
+extern unsigned int ssi_4mb[12];                    // 4MB (4096KB) floppy format info
 
 // Device and buffer management
-extern unsigned int _Floppy_dev[2];                  // Device structure (8 bytes)
-extern void *_trackBuffer;                           // Track buffer pointer
-extern unsigned int _FloppyState;                    // Current floppy state
+extern unsigned int Floppy_dev[2];                  // Device structure (8 bytes)
+extern void *trackBuffer;                           // Track buffer pointer
+extern unsigned int FloppyState;                    // Current floppy state
 
 // Floppy ID mapping structure (0x98 bytes: 2 entries of 0x4c)
-extern unsigned char _FloppyIdMap[0x98];
+extern unsigned char FloppyIdMap[0x98];
 
 // Drive status and DBDMA structures
-extern unsigned int _myDriveStatus;                  // Drive status
-// DBDMA channel area, 0x2c bytes: 0x0000f4fc up to _GRCFloppyDMARegs at
+extern unsigned int myDriveStatus;                  // Drive status
+// DBDMA channel area, 0x2c bytes: 0x0000f4fc up to GRCFloppyDMARegs at
 // 0x0000f528, with no symbol in between. +0x04 is the DBDMA register base,
 // +0x14 the command-list logical address, +0x18 its physical address.
-extern unsigned char _PrivDBDMAChannelArea[0x2c];    // DBDMA channel area
+extern unsigned char PrivDBDMAChannelArea[0x2c];    // DBDMA channel area
 
 // DMA registers and command chain
-extern unsigned int _GRCFloppyDMARegs;               // DMA registers base
-extern unsigned int _GRCFloppyDMAChannel;            // DMA channel descriptor
-extern unsigned int _ccCommandsLogicalAddr;          // Command chain logical address
-extern unsigned int _ccCommandsPhysicalAddr;         // Command chain physical address
+extern unsigned int GRCFloppyDMARegs;               // DMA registers base
+extern unsigned int GRCFloppyDMAChannel;            // DMA channel descriptor
+extern unsigned int ccCommandsLogicalAddr;          // Command chain logical address
+extern unsigned int ccCommandsPhysicalAddr;         // Command chain physical address
 
 // Sony drive variables
-extern unsigned char _SonyVariables[8];              // Sony drive variables
+extern unsigned char SonyVariables[8];              // Sony drive variables
 
 // Lookup table type definition
 typedef struct {
@@ -573,10 +573,10 @@ typedef struct {
 } LookupEntry;
 
 // Lookup tables for command dispatch
-extern LookupEntry _fdrValues[];                     // Floppy disk read/operation value table (24 entries)
-extern LookupEntry _fdOpValues[];                    // Floppy disk operation value table (18 entries)
-extern LookupEntry _fdCommandValues[];               // Floppy disk command value table (6 entries)
-extern LookupEntry _fcOpcodeValues[];                // Floppy controller opcode value table (17 entries)
+extern LookupEntry fdrValues[];                     // Floppy disk read/operation value table (24 entries)
+extern LookupEntry fdOpValues[];                    // Floppy disk operation value table (18 entries)
+extern LookupEntry fdCommandValues[];               // Floppy disk command value table (6 entries)
+extern LookupEntry fcOpcodeValues[];                // Floppy controller opcode value table (17 entries)
 
 // Error code mapping functions
 extern unsigned int fdrToIo(unsigned int fdrCode); // Convert floppy error code to IOKit error code
@@ -604,8 +604,8 @@ typedef struct {
 } DiskFormatInfo;
 
 // Drive and disk configuration data
-extern DriveInfo _fdDriveInfo;        // Sony MPX-111N drive information
-extern DiskFormatInfo _fdDiskInfo[];  // Disk format information array
+extern DriveInfo fdDriveInfo;        // Sony MPX-111N drive information
+extern DiskFormatInfo fdDiskInfo[];  // Disk format information array
 
 // Density and sector size mapping structures
 typedef struct {
@@ -620,8 +620,8 @@ typedef struct {
 } DensityInfoEntry;
 
 // Density lookup tables
-extern DensitySectSizeEntry _fdDensitySectsize[];  // Maps density to sector size info
-extern DensityInfoEntry _fdDensityInfo[];          // Density configuration parameters
+extern DensitySectSizeEntry fdDensitySectsize[];  // Maps density to sector size info
+extern DensityInfoEntry fdDensityInfo[];          // Density configuration parameters
 
 // Thread functions
 extern void fdThread(void *arg);                    // Main floppy I/O thread

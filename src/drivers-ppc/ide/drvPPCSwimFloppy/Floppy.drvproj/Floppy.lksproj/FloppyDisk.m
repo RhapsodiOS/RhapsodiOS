@@ -233,36 +233,36 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
     int pluginResult;
 
     // External function declarations
-    extern int _floppy_idmap(void);
-    extern int _drive_present(void);
-    extern void _fd_init_idmap(id classObj);
+    extern int floppy_idmap(void);
+    extern int drive_present(void);
+    extern void fd_init_idmap(id classObj);
     extern void *(*_entry)(int, int, void *, int);
-    extern void _HALISRHandler(void);
-    extern int _FloppyPluginInit(int);
+    extern void HALISRHandler(void);
+    extern int FloppyPluginInit(int);
     extern void *_slock;
 
     // Character device operations
-    extern int _Fdopen(void);
-    extern int _Fdclose(void);
-    extern int _fdread(void);
-    extern int _fdwrite(void);
-    extern int _fdioctl(void);
+    extern int Fdopen(void);
+    extern int Fdclose(void);
+    extern int fdread(void);
+    extern int fdwrite(void);
+    extern int fdioctl(void);
 
     // Block device operations
-    extern int _fdstrategy(void);
-    extern int _fdsize(void);
+    extern int fdstrategy(void);
+    extern int fdsize(void);
 
     IOLog("Floppy Probed \n");
     IOLog("FloppyDisk probe\n");
 
     // Get ID map
-    idMap = _floppy_idmap();
+    idMap = floppy_idmap();
 
     // Get direct device from device description
     directDevice = [deviceDescription directDevice];
 
     // Check if floppy drive is present
-    if (_drive_present() == 0) {
+    if (drive_present() == 0) {
         return NO;
     }
 
@@ -270,11 +270,11 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
 
     // Add character device to cdevsw table
     addedCdev = [self addToCdevswFromDescription:deviceDescription
-                                            open:(void *)_Fdopen
-                                           close:(void *)_Fdclose
-                                            read:(void *)_fdread
-                                           write:(void *)_fdwrite
-                                           ioctl:(void *)_fdioctl
+                                            open:(void *)Fdopen
+                                           close:(void *)Fdclose
+                                            read:(void *)fdread
+                                           write:(void *)fdwrite
+                                           ioctl:(void *)fdioctl
                                             stop:NULL
                                            reset:NULL
                                           select:NULL
@@ -291,12 +291,12 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
 
     // Add block device to bdevsw table
     addedBdev = [self addToBdevswFromDescription:deviceDescription
-                                            open:(void *)_Fdopen
-                                           close:(void *)_Fdclose
-                                        strategy:(void *)_fdstrategy
-                                           ioctl:(void *)_fdioctl
+                                            open:(void *)Fdopen
+                                           close:(void *)Fdclose
+                                        strategy:(void *)fdstrategy
+                                           ioctl:(void *)fdioctl
                                             dump:NULL
-                                          psize:(void *)_fdsize
+                                          psize:(void *)fdsize
                                            flags:0];
 
     if (!addedBdev) {
@@ -305,7 +305,7 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
     }
 
     IOLog("calling fd_init_idmap\n");
-    _fd_init_idmap(self);
+    fd_init_idmap(self);
 
     // Allocate and initialize lock structure
     lockPtr = IOMalloc(16);  // 4 ints = 16 bytes
@@ -315,10 +315,10 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
     IOLog("calling FloppyPluginInit\n");
 
     // Initialize interrupt handler
-    (*_entry)(0x88, 0x18, (void *)_HALISRHandler, 0);
+    (*_entry)(0x88, 0x18, (void *)HALISRHandler, 0);
 
     // Initialize floppy plugin
-    pluginResult = _FloppyPluginInit(0);
+    pluginResult = FloppyPluginInit(0);
     if (pluginResult != 0) {
         return NO;
     }
@@ -644,22 +644,22 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
     int state;
 
     // External functions for diskette state management
-    extern void _GetBusyFlag(void);
-    extern void _ScanForDisketteChange(void);
-    extern int _GetCurrentState(void);
-    extern void _ResetBusyFlag(void);
+    extern void GetBusyFlag(void);
+    extern void ScanForDisketteChange(void);
+    extern int GetCurrentState(void);
+    extern void ResetBusyFlag(void);
 
     // Lock controller
-    _GetBusyFlag();
+    GetBusyFlag();
 
     // Scan for disk insertion/removal
-    _ScanForDisketteChange();
+    ScanForDisketteChange();
 
     // Get current disk state
-    state = _GetCurrentState();
+    state = GetCurrentState();
 
     // Unlock controller
-    _ResetBusyFlag();
+    ResetBusyFlag();
 }
 
 /*
@@ -918,7 +918,7 @@ char DAT_0000f25e = 0;             // Drive index storage
 /*
  * Assign track to cache
  */
-void _AssignTrackInCache(int param_1)
+void AssignTrackInCache(int param_1)
 {
     unsigned char trackNum;
     unsigned char cacheIndex;
@@ -937,7 +937,7 @@ void _AssignTrackInCache(int param_1)
 /*
  * Determine available formats for diskette
  */
-void _AvailableFormats(int param_1, unsigned short *minFormat, unsigned short *maxFormat,
+void AvailableFormats(int param_1, unsigned short *minFormat, unsigned short *maxFormat,
                        short *formatType)
 {
     short diskFormatType;
@@ -963,8 +963,8 @@ void _AvailableFormats(int param_1, unsigned short *minFormat, unsigned short *m
         }
 
         // Get diskette format type from hardware
-        extern short _GetDisketteFormatType(void);
-        diskFormatType = _GetDisketteFormatType();
+        extern short GetDisketteFormatType(void);
+        diskFormatType = GetDisketteFormatType();
         *formatType = diskFormatType;
 
         if (diskFormatType == 3) {
@@ -993,7 +993,7 @@ void _AvailableFormats(int param_1, unsigned short *minFormat, unsigned short *m
 /*
  * Get block list descriptor extent
  */
-unsigned int _BSBlockListDescriptorGetExtent(unsigned int param_1, unsigned int param_2,
+unsigned int BSBlockListDescriptorGetExtent(unsigned int param_1, unsigned int param_2,
                                               unsigned int *startBlock, unsigned int *blockCount)
 {
     // Set default extent: start at 0, count 0x5000 blocks
@@ -1005,7 +1005,7 @@ unsigned int _BSBlockListDescriptorGetExtent(unsigned int param_1, unsigned int 
 /*
  * Notify family store changed state
  */
-unsigned int _BSMPINotifyFamilyStoreChangedState(unsigned int param_1, unsigned int newState)
+unsigned int BSMPINotifyFamilyStoreChangedState(unsigned int param_1, unsigned int newState)
 {
     // Update global floppy state
     _FloppyState = newState;
@@ -1016,7 +1016,7 @@ unsigned int _BSMPINotifyFamilyStoreChangedState(unsigned int param_1, unsigned 
  * Build track interleave table
  * Creates sector interleave pattern for optimal disk access
  */
-void _BuildTrackInterleaveTable(int param_1, unsigned int sectorCount)
+void BuildTrackInterleaveTable(int param_1, unsigned int sectorCount)
 {
     unsigned char firstSector;
     unsigned int interleave;
@@ -1077,7 +1077,7 @@ void _BuildTrackInterleaveTable(int param_1, unsigned int sectorCount)
  * Copy bytes from source to destination
  * Simple byte-by-byte memory copy
  */
-void _ByteMove(unsigned char *source, unsigned char *dest, int count)
+void ByteMove(unsigned char *source, unsigned char *dest, int count)
 {
     if (count > 0) {
         do {
@@ -1093,7 +1093,7 @@ void _ByteMove(unsigned char *source, unsigned char *dest, int count)
  * Cancel OS event flags
  * Clears specified event bits
  */
-unsigned int _CancelOSEvent(unsigned int *eventFlags, unsigned int eventMask)
+unsigned int CancelOSEvent(unsigned int *eventFlags, unsigned int eventMask)
 {
     // Clear event bits by ANDing with complement of mask
     *eventFlags = *eventFlags & ~eventMask;
@@ -1104,7 +1104,7 @@ unsigned int _CancelOSEvent(unsigned int *eventFlags, unsigned int eventMask)
  * Check drive number validity
  * Validates drive number and initializes drive structure
  */
-unsigned int _CheckDriveNumber(short driveNum, unsigned int **drivePtr)
+unsigned int CheckDriveNumber(short driveNum, unsigned int **drivePtr)
 {
     extern void *_slock;
     extern char _fdOpValues[];
@@ -1150,10 +1150,10 @@ unsigned int _CheckDriveNumber(short driveNum, unsigned int **drivePtr)
  * Check if drive is online
  * Verifies drive presence and media
  */
-unsigned int _CheckDriveOnLine(int driveStructure)
+unsigned int CheckDriveOnLine(int driveStructure)
 {
-    extern int _HALDiskettePresence(int);
-    extern void _HALGetMediaType(int);
+    extern int HALDiskettePresence(int);
+    extern void HALGetMediaType(int);
 
     int isPresent;
     unsigned int result = 0;
@@ -1163,14 +1163,14 @@ unsigned int _CheckDriveOnLine(int driveStructure)
         // Check if already marked online (offset 0x3c)
         if (*(char *)(driveStructure + 0x3c) == 0x00) {
             // Check physical disk presence
-            isPresent = _HALDiskettePresence(driveStructure);
+            isPresent = HALDiskettePresence(driveStructure);
 
             if (isPresent == 1) {
                 // Mark drive as online
                 *(unsigned char *)(driveStructure + 0x3c) = 1;
 
                 // Get media type from hardware
-                _HALGetMediaType(driveStructure);
+                HALGetMediaType(driveStructure);
             } else {
                 result = 0xffffffbf;  // -65: No disk present
             }
@@ -1186,7 +1186,7 @@ unsigned int _CheckDriveOnLine(int driveStructure)
  * Close DBDMA channel
  * Cleanup descriptor-based DMA channel
  */
-void _CloseDBDMAChannel(void)
+void CloseDBDMAChannel(void)
 {
     // No operation - DBDMA cleanup handled elsewhere
     return;
@@ -1196,7 +1196,7 @@ void _CloseDBDMAChannel(void)
  * Create OS event resources
  * Initialize event handling resources
  */
-unsigned int _CreateOSEventResources(void)
+unsigned int CreateOSEventResources(void)
 {
     // Resources created statically
     return 0;
@@ -1206,7 +1206,7 @@ unsigned int _CreateOSEventResources(void)
  * Create OS hardware lock resources
  * Initialize hardware locking resources
  */
-unsigned int _CreateOSHardwareLockResources(void)
+unsigned int CreateOSHardwareLockResources(void)
 {
     // Resources created statically
     return 0;
@@ -1216,7 +1216,7 @@ unsigned int _CreateOSHardwareLockResources(void)
  * Get current address space ID
  * Returns address space identifier
  */
-unsigned int _CurrentAddressSpaceID(void)
+unsigned int CurrentAddressSpaceID(void)
 {
     // Single address space
     return 0;
@@ -1226,7 +1226,7 @@ unsigned int _CurrentAddressSpaceID(void)
  * Denibblize GCR checksum
  * Converts nibblized GCR checksum to binary
  */
-void _DenibblizeGCRChecksum(unsigned char *nibbles, unsigned int *checksum)
+void DenibblizeGCRChecksum(unsigned char *nibbles, unsigned int *checksum)
 {
     unsigned int packed;
 
@@ -1242,7 +1242,7 @@ void _DenibblizeGCRChecksum(unsigned char *nibbles, unsigned int *checksum)
  * Denibblize GCR data
  * Converts nibblized GCR data to binary with checksum
  */
-void _DenibblizeGCRData(unsigned char *nibbles, unsigned char *output,
+void DenibblizeGCRData(unsigned char *nibbles, unsigned char *output,
                         short byteCount, unsigned int *checksum)
 {
     unsigned int byte0, byte1, byte2;
@@ -1307,7 +1307,7 @@ void _DenibblizeGCRData(unsigned char *nibbles, unsigned char *output,
  * Do nothing function
  * Placeholder for logging/debugging that's been compiled out
  */
-void _donone(void)
+void donone(void)
 {
     // No operation
     return;
@@ -1317,7 +1317,7 @@ void _donone(void)
  * Check if drive hardware is present
  * Reads hardware register to detect floppy controller
  */
-BOOL _drive_present(void)
+BOOL drive_present(void)
 {
     extern volatile unsigned char DAT_418500ad;  // Hardware register at 0x418500ad
 
@@ -1329,12 +1329,12 @@ BOOL _drive_present(void)
  * Dump track cache
  * Clears all cached track data
  */
-void _DumpTrackCache(int driveStructure)
+void DumpTrackCache(int driveStructure)
 {
     extern unsigned short DAT_0000fb88;
     extern unsigned char _ReadDataPresent;
     extern unsigned char DAT_0000f459;
-    extern void _ResetBitArray(int, int);
+    extern void ResetBitArray(int, int);
 
     // Invalidate cached track
     DAT_0000fb88 = 0xffff;
@@ -1344,8 +1344,8 @@ void _DumpTrackCache(int driveStructure)
     *(unsigned char *)(driveStructure + 0xb5) = 0xff;
 
     // Reset bit arrays (16 bytes each)
-    _ResetBitArray(driveStructure + 0xa4, 0x10);
-    _ResetBitArray(driveStructure + 0x94, 0x10);
+    ResetBitArray(driveStructure + 0xa4, 0x10);
+    ResetBitArray(driveStructure + 0x94, 0x10);
 
     // Clear read data flags
     _ReadDataPresent = 0;
@@ -1357,7 +1357,7 @@ void _DumpTrackCache(int driveStructure)
 //==============================================================================
 
 /*
- * _EjectDisk - Eject disk from drive
+ * EjectDisk - Eject disk from drive
  *
  * Powers up drive, flushes and dumps track cache, seeks to track 40,
  * and performs hardware eject operation.
@@ -1368,7 +1368,7 @@ void _DumpTrackCache(int driveStructure)
  * Returns:
  *   0 on success, error code on failure
  */
-int _EjectDisk(int param_1)
+int EjectDisk(int param_1)
 {
     short sVar1;
     int iVar2;
@@ -1378,45 +1378,45 @@ int _EjectDisk(int param_1)
     // Check if disk is present (offset 0x3c)
     if (*(char *)(param_1 + 0x3c) != '\0') {
         // Power up the drive
-        sVar1 = _PowerDriveUp();
+        sVar1 = PowerDriveUp();
         iVar2 = (int)sVar1;
 
         if (iVar2 == 0) {
             // Flush any pending writes and dump cache
-            _FlushTrackCache(param_1);
-            _DumpTrackCache(param_1);
+            FlushTrackCache(param_1);
+            DumpTrackCache(param_1);
 
             // Seek to track 40 (0x28)
             *(unsigned char *)(param_1 + 0x20) = 0x28;
-            iVar2 = _SeekDrive(param_1);
+            iVar2 = SeekDrive(param_1);
 
             // Retry seek if it failed
             if (iVar2 != 0) {
                 *(unsigned char *)(param_1 + 0x20) = 0x28;
-                _SeekDrive(param_1);
+                SeekDrive(param_1);
             }
 
             // Mark disk as ejected (0xff = not present)
             *(unsigned char *)(param_1 + 0x3c) = 0xff;
 
             // Perform hardware eject
-            sVar1 = _HALEjectDiskette(param_1);
+            sVar1 = HALEjectDiskette(param_1);
             iVar2 = (int)sVar1;
         }
 
         // Power down drive
-        _PowerDriveDown(param_1, 0);
+        PowerDriveDown(param_1, 0);
     }
 
     return iVar2;
 }
 
 /*
- * _EnterHardwareLockSection - Enter hardware lock critical section
+ * EnterHardwareLockSection - Enter hardware lock critical section
  *
  * Acquires spin lock for hardware access synchronization.
  */
-void _EnterHardwareLockSection(void)
+void EnterHardwareLockSection(void)
 {
     // TODO: FUN_00006d00 is likely a spin lock acquire function
     extern void FUN_00006d00(void);
@@ -1424,11 +1424,11 @@ void _EnterHardwareLockSection(void)
 }
 
 /*
- * _ExitHardwareLockSection - Exit hardware lock critical section
+ * ExitHardwareLockSection - Exit hardware lock critical section
  *
  * Releases spin lock for hardware access synchronization.
  */
-void _ExitHardwareLockSection(void)
+void ExitHardwareLockSection(void)
 {
     // TODO: FUN_00006cd0 is likely a spin lock release function
     extern void FUN_00006cd0(void);
@@ -1440,7 +1440,7 @@ void _ExitHardwareLockSection(void)
 //==============================================================================
 
 /*
- * _fd_init_idmap - Initialize floppy device ID map
+ * fd_init_idmap - Initialize floppy device ID map
  *
  * Sets up the device ID mapping structure for block and character devices.
  * Allocates device structures for up to 2 floppy drives.
@@ -1448,7 +1448,7 @@ void _ExitHardwareLockSection(void)
  * Parameters:
  *   param_1 - Configuration or device description
  */
-void _fd_init_idmap(unsigned int param_1)
+void fd_init_idmap(unsigned int param_1)
 {
     int iVar1;
     int *piVar2;
@@ -1497,7 +1497,7 @@ void _fd_init_idmap(unsigned int param_1)
 }
 
 /*
- * _Fdclose - Close floppy device
+ * Fdclose - Close floppy device
  *
  * Handles closing of block or character floppy device.
  *
@@ -1507,7 +1507,7 @@ void _fd_init_idmap(unsigned int param_1)
  * Returns:
  *   0 on success, error code (6) on failure
  */
-unsigned int _Fdclose(unsigned int param_1)
+unsigned int Fdclose(unsigned int param_1)
 {
     int iVar1;
     unsigned int uVar2;
@@ -1516,11 +1516,11 @@ unsigned int _Fdclose(unsigned int param_1)
     unsigned int uVar5;
 
     extern int _fd_block_major;
-    extern int _fd_dev_to_id(void);
+    extern int fd_dev_to_id(void);
     extern unsigned int FUN_00004940(int, const char *, ...);
 
     // Get device ID from device number
-    iVar1 = _fd_dev_to_id();
+    iVar1 = fd_dev_to_id();
 
     // Extract minor device (bits 0-2)
     uVar5 = param_1 & 7;
@@ -1530,7 +1530,7 @@ unsigned int _Fdclose(unsigned int param_1)
         uVar5 = uVar5 + 8;
     }
 
-    _donone("floppy close ,dev=%d\n", param_1);
+    donone("floppy close ,dev=%d\n", param_1);
 
     if (iVar1 == 0) {
 LAB_000048e0:
@@ -1539,7 +1539,7 @@ LAB_000048e0:
     else {
         // Get device name
         uVar2 = FUN_00004940(iVar1, "name");
-        _donone("%s:fd_close\n", uVar2, 2, 3, 4, 5);
+        donone("%s:fd_close\n", uVar2, 2, 3, 4, 5);
 
         // Don't close if minor device is 1
         if (uVar5 != 1) {
@@ -1565,7 +1565,7 @@ LAB_000048e0:
 }
 
 /*
- * _fdioctl - Handle floppy disk ioctl commands
+ * fdioctl - Handle floppy disk ioctl commands
  *
  * Main ioctl dispatcher for floppy disk operations. Handles a wide variety
  * of commands including density control, format operations, disk labels,
@@ -1579,7 +1579,7 @@ LAB_000048e0:
  * Returns:
  *   0 on success, error code on failure (6=no device, 0x16=bad command)
  */
-unsigned int _fdioctl(unsigned int param_1, int param_2, unsigned int *param_3)
+unsigned int fdioctl(unsigned int param_1, int param_2, unsigned int *param_3)
 {
     int iVar1;
     unsigned int uVar2;
@@ -1606,12 +1606,12 @@ unsigned int _fdioctl(unsigned int param_1, int param_2, unsigned int *param_3)
     extern unsigned int _entry;
     extern int _fd_block_major;
     extern const char *_getIoctlName(unsigned int ioctlCmd);
-    extern void _GetBusyFlag(void);
-    extern void _ResetBusyFlag(void);
-    extern int _FloppyPluginGotoState(int, int);
-    extern int _FloppyFormatDisk(unsigned char head, unsigned char track);
-    extern void _FloppyFormatInfo(unsigned int *param);
-    extern unsigned int _floppyMalloc(unsigned int size, unsigned int *param2, unsigned int *param3);
+    extern void GetBusyFlag(void);
+    extern void ResetBusyFlag(void);
+    extern int FloppyPluginGotoState(int, int);
+    extern int FloppyFormatDisk(unsigned char head, unsigned char track);
+    extern void FloppyFormatInfo(unsigned int *param);
+    extern unsigned int floppyMalloc(unsigned int size, unsigned int *param2, unsigned int *param3);
 
     extern unsigned int FUN_00005ae8(int cmd, void *table);
     extern int FUN_00005ab8(int obj, const char *selector, ...);
@@ -1631,7 +1631,7 @@ unsigned int _fdioctl(unsigned int param_1, int param_2, unsigned int *param_3)
 
     // Get ioctl command name for logging
     uVar2 = FUN_00005ae8(param_2, &_fdIoctlValues);
-    _donone("fd_ioctl: cmd = %s\n", uVar2, 2, 3, 4, 5);
+    donone("fd_ioctl: cmd = %s\n", uVar2, 2, 3, 4, 5);
 
     // Adjust drive number if needed
     if (0xf < uVar10) {
@@ -1683,7 +1683,7 @@ LAB_00005168:
 LAB_0000513c:
                     if (param_2 != iVar9) {
 LAB_00005178:
-                        _donone("fd_ioctl: BAD cmd (0x%x)\n", param_2, 2, 3, 4, 5);
+                        donone("fd_ioctl: BAD cmd (0x%x)\n", param_2, 2, 3, 4, 5);
                         return 0x16;
                     }
                 }
@@ -1705,21 +1705,21 @@ LAB_00005170:
 
     // Check if device exists
     if (iVar9 == 0) {
-        _donone("nodev case\n");
-        _donone("fd_ioctl: no such device (dev = 0x%x)\n", param_1, 2, 3, 4, 5);
+        donone("nodev case\n");
+        donone("fd_ioctl: no such device (dev = 0x%x)\n", param_1, 2, 3, 4, 5);
         return 6;
     }
 
     // Get busy flag for most commands (except format info and label ops)
     if ((param_2 != 0x5c5c6400) && (param_2 != -0x63a39bff)) {
-        _GetBusyFlag();
+        GetBusyFlag();
     }
 
     // DKIOCEJECT - Eject disk
     if (param_2 == 0x20006415) {
         iVar1 = FUN_00005ab8(iVar9, "eject");
         if (iVar1 == 0) {
-            _FloppyPluginGotoState(0, 1);
+            FloppyPluginGotoState(0, 1);
         }
         uVar2 = FUN_00005ab8(iVar9, "errnoFromReturn:", iVar1);
         goto LAB_0000597c;
@@ -1736,7 +1736,7 @@ LAB_00005170:
             // FDIOCSDENS - Set density
             if (param_2 == -0x7ffb99fe) {
                 uVar8 = *param_3;
-                _donone("   set density = %d\n", uVar8, 2, 3, 4, 5);
+                donone("   set density = %d\n", uVar8, 2, 3, 4, 5);
                 if (3 < uVar8) goto LAB_00005908;
 
                 FUN_00005ab8(iVar9, "fdSetDensity:", uVar8);
@@ -1747,7 +1747,7 @@ LAB_00005170:
                     uVar2 = FUN_00005ab8(*(unsigned int *)(&DAT_0000f464 + iVar1), "physicalDisk");
                     FUN_00005ab8(uVar2, "setFormattedInternal:", 0);
                 }
-                _donone("fdioctl:IOCSDENS returns\n");
+                donone("fdioctl:IOCSDENS returns\n");
             }
             // FDIOCSFORM - Set formatted flag
             else if (param_2 < -0x7ffb99fd) {
@@ -1772,7 +1772,7 @@ LAB_00005170:
             if (-0x7ffb99f8 < param_2) {
                 // DKIOCSLABEL - Set disk label
                 if (param_2 == -0x63a39bff) {
-                    _donone("IOCSLABEL case\n");
+                    donone("IOCSLABEL case\n");
                     uVar2 = FUN_00005aa8(0x1c5c);
                     FUN_00005a98(uVar2, param_3, 0x1c5c);
                     FUN_00005ab8(iVar9, "writeLabel:", uVar2);
@@ -1786,10 +1786,10 @@ LAB_000053f4:
 
                 iVar1 = FUN_00005a48(auStack_a8, auStack_2c);
                 if (iVar1 != 0) {
-                    _donone("FDIOCREQ:suser:error,ret=0 anyway\n");
+                    donone("FDIOCREQ:suser:error,ret=0 anyway\n");
                 }
 
-                _donone("cmdbytes=%d,statbytes=%d,bytecount=%d\n", param_3[7], param_3[0xe], param_3[9]);
+                donone("cmdbytes=%d,statbytes=%d,bytecount=%d\n", param_3[7], param_3[0xe], param_3[9]);
 
                 if (param_3[9] == 0) {
 LAB_00005628:
@@ -1798,13 +1798,13 @@ LAB_00005628:
                     param_3[0x16] = _entry;
                     iVar1 = 0;
 
-                    _donone("after cmdbytes=%d,statbytes=%d,bytecount=%d\n", param_3[7], param_3[0xe], param_3[9]);
+                    donone("after cmdbytes=%d,statbytes=%d,bytecount=%d\n", param_3[7], param_3[0xe], param_3[9]);
 
                     // Check if format command (0x0d)
                     if ((*(unsigned char *)(param_3 + 3) & 0x3f) == 0xd) {
                         puVar11 = (unsigned char *)param_3[8];
-                        _donone("head=%d,track=%d\n", puVar11[1], *puVar11);
-                        iVar1 = _FloppyFormatDisk(puVar11[1], *puVar11);
+                        donone("head=%d,track=%d\n", puVar11[1], *puVar11);
+                        iVar1 = FloppyFormatDisk(puVar11[1], *puVar11);
                     }
 
                     param_3[8] = uVar10;
@@ -1812,7 +1812,7 @@ LAB_00005628:
                     param_3[0x13] = param_3[0xe];
                     param_3[0x12] = param_3[9];
 
-                    _donone("after output cmdbytes=%d,statbytes=%d,bytecount=%d\n", param_3[0x11], param_3[0x13]);
+                    donone("after output cmdbytes=%d,statbytes=%d,bytecount=%d\n", param_3[0x11], param_3[0x13]);
 
                     if (iVar1 == 0) {
                         param_3[0x10] = 0;
@@ -1830,20 +1830,20 @@ LAB_00005628:
                 else {
                     // Allocate buffer for data transfer
                     uVar7 = param_3[0xf] >> 1 & 1;
-                    uVar8 = _floppyMalloc(param_3[9], &local_28, &local_24);
+                    uVar8 = floppyMalloc(param_3[9], &local_28, &local_24);
 
                     if (uVar8 == 0) {
-                        _donone(" ...floppyMalloc() failed\n", 1, 2, 3, 4, 5);
+                        donone(" ...floppyMalloc() failed\n", 1, 2, 3, 4, 5);
                         param_3[0x10] = 2;
-                        _donone("ioctl:FDIOCREQ:malloc err,returning 0 anyway\n");
-                        _ResetBusyFlag();
+                        donone("ioctl:FDIOCREQ:malloc err,returning 0 anyway\n");
+                        ResetBusyFlag();
                         return 0;
                     }
 
                     if ((uVar7 != 0) || (iVar1 = FUN_00005a18(param_3[8], uVar8, param_3[9]), iVar1 == 0))
                         goto LAB_00005628;
 
-                    _donone("   ...copyin() returned %d\n", iVar1, 2, 3, 4, 5);
+                    donone("   ...copyin() returned %d\n", iVar1, 2, 3, 4, 5);
                     param_3[0x10] = 3;
                 }
 
@@ -1851,7 +1851,7 @@ LAB_00005628:
                     FUN_00005a88(local_28, local_24);
                 }
 
-                _donone("at the end cmdbytes=%d,statbytes=%d,bytecount=%d\n", param_3[0x11], param_3[0x13],
+                donone("at the end cmdbytes=%d,statbytes=%d,bytecount=%d\n", param_3[0x11], param_3[0x13],
                         param_3[0x12]);
                 goto LAB_00005914;
             }
@@ -1872,7 +1872,7 @@ LAB_0000586c:
             if (0x40046609 < param_2) {
                 // DKIOCINFO - Get disk info
                 if (param_2 == 0x40306405) {
-                    _donone("IOCINFO case\n");
+                    donone("IOCINFO case\n");
                     FUN_00005a78(auStack_5c, 0x30);
                     uVar2 = FUN_00005ab8(iVar9, "driveName");
                     FUN_00005a68(auStack_5c, uVar2);
@@ -1888,7 +1888,7 @@ LAB_0000586c:
                         } while (iVar1 < 4);
                     }
 
-                    _donone("DKIOCINFO:blksize=%d,name=%s,labelblks=%d,%d,%d,%d\n", local_34, auStack_5c,
+                    donone("DKIOCINFO:blksize=%d,name=%s,labelblks=%d,%d,%d,%d\n", local_34, auStack_5c,
                             local_44[0], local_44[1], local_44[2], local_44[3]);
                     FUN_00005a98(param_3, auStack_5c, 0x30);
                 }
@@ -1896,9 +1896,9 @@ LAB_0000586c:
                     // DIOCGMEDIASIZE - Get media size in KB
                     if (param_2 != 0x4020660a) {
 LAB_000058e8:
-                        _donone("fd_ioctl: BAD cmd (0x%x)\n", param_2, 2, 3, 4, 5);
+                        donone("fd_ioctl: BAD cmd (0x%x)\n", param_2, 2, 3, 4, 5);
 LAB_00005908:
-                        _ResetBusyFlag();
+                        ResetBusyFlag();
                         return 0x16;
                     }
                     iVar1 = FUN_00005ab8(iVar9, "diskSize");
@@ -1913,10 +1913,10 @@ LAB_00005908:
                         if (param_2 == 0x5c5c6400) {
                             uVar2 = FUN_00005aa8(0x1c5c);
                             iVar1 = FUN_00005ab8(iVar9, "readLabel:", uVar2);
-                            _donone("read disk labelret=%d\n", iVar1);
+                            donone("read disk labelret=%d\n", iVar1);
 
                             if (iVar1 != 0) {
-                                _donone("read label failed,copying label anyway,irtn=%d\n", iVar1);
+                                donone("read label failed,copying label anyway,irtn=%d\n", iVar1);
                             }
 
                             FUN_00005a98(param_3, uVar2, 0x1c5c);
@@ -1925,9 +1925,9 @@ LAB_00005908:
                         goto LAB_000058e8;
                     }
 
-                    _donone("ioctl:calling fdGetFormatInfo\n");
+                    donone("ioctl:calling fdGetFormatInfo\n");
                     FUN_00005ab8(iVar9, "fdGetFormatInfo:", param_3);
-                    _FloppyFormatInfo(param_3);
+                    FloppyFormatInfo(param_3);
                     param_3[4] = param_3[4] | 1;
                     param_3[8] = 0x200;
                 }
@@ -1942,7 +1942,7 @@ LAB_00005908:
                 if (param_2 < 0x40046419) {
                     // DKIOCISGFORMAT - Check if formatted
                     if (param_2 == 0x40046417) {
-                        _donone("IOCGFORMAT\n");
+                        donone("IOCGFORMAT\n");
                         cVar5 = FUN_00005ab8(iVar9, "isFormatted");
                         *param_3 = (int)cVar5;
                         goto LAB_00005914;
@@ -1968,8 +1968,8 @@ LAB_00005908:
 LAB_00005914:
     uVar2 = 0;
     uVar4 = FUN_00005ab8(iVar9, "stringFromReturn:", 0);
-    _donone("fd_ioctl: returning %s (errno %d)\n", uVar4, 0, 3, 4, 5);
-    _donone("fdioctl:returning %d\n", 0);
+    donone("fd_ioctl: returning %s (errno %d)\n", uVar4, 0, 3, 4, 5);
+    donone("fdioctl:returning %d\n", 0);
 
     // Don't reset busy flag for label operations
     if (param_2 == 0x5c5c6400) {
@@ -1980,12 +1980,12 @@ LAB_00005914:
     }
 
 LAB_0000597c:
-    _ResetBusyFlag();
+    ResetBusyFlag();
     return uVar2;
 }
 
 /*
- * _Fdopen - Open floppy device
+ * Fdopen - Open floppy device
  *
  * Opens a floppy disk device, checks if disk is ready, and marks
  * the device as open (block or character).
@@ -1997,7 +1997,7 @@ LAB_0000597c:
  * Returns:
  *   0 on success, error code on failure (6=no device/not ready)
  */
-unsigned int _Fdopen(unsigned int param_1, unsigned int param_2)
+unsigned int Fdopen(unsigned int param_1, unsigned int param_2)
 {
     int iVar1;
     unsigned int uVar2;
@@ -2006,16 +2006,16 @@ unsigned int _Fdopen(unsigned int param_1, unsigned int param_2)
     unsigned int uVar5;
 
     extern int _fd_block_major;
-    extern int _fd_dev_to_id(void);
+    extern int fd_dev_to_id(void);
     extern unsigned int FUN_0000480c(int obj, const char *selector, ...);
 
     // Get device object ID
-    iVar1 = _fd_dev_to_id();
+    iVar1 = fd_dev_to_id();
 
     // Extract minor device number
     uVar5 = param_1 & 7;
 
-    _donone("floppy open ,dev=%d,flag=%d,diskobj=%d\n", param_1, param_2, iVar1);
+    donone("floppy open ,dev=%d,flag=%d,diskobj=%d\n", param_1, param_2, iVar1);
 
     // Adjust drive number if needed
     if (0xf < (param_1 >> 3 & 0x1f)) {
@@ -2028,7 +2028,7 @@ unsigned int _Fdopen(unsigned int param_1, unsigned int param_2)
     else {
         // Get device name
         uVar2 = FUN_0000480c(iVar1, "name");
-        _donone("%s: Fdopen\n", uVar2, 2, 3, 4, 5);
+        donone("%s: Fdopen\n", uVar2, 2, 3, 4, 5);
 
         // Check if disk is ready
         // Convert flag bit 2 (0x4) to parameter:
@@ -2053,7 +2053,7 @@ unsigned int _Fdopen(unsigned int param_1, unsigned int param_2)
         }
         else {
             // Disk not ready
-            _donone("fdopen:returning ENXIO\n");
+            donone("fdopen:returning ENXIO\n");
             uVar2 = 6;  // No such device or address
         }
     }
@@ -2062,7 +2062,7 @@ unsigned int _Fdopen(unsigned int param_1, unsigned int param_2)
 }
 
 /*
- * _fdread - Read from floppy device
+ * fdread - Read from floppy device
  *
  * Handles read operations from floppy disk through the strategy routine.
  * Checks if disk is formatted before allowing reads.
@@ -2074,7 +2074,7 @@ unsigned int _Fdopen(unsigned int param_1, unsigned int param_2)
  * Returns:
  *   0 on success, error code on failure (6=no device, 0x16=not formatted)
  */
-unsigned int _fdread(unsigned int param_1, int *param_2)
+unsigned int fdread(unsigned int param_1, int *param_2)
 {
     int iVar1;
     unsigned int uVar2;
@@ -2082,16 +2082,16 @@ unsigned int _fdread(unsigned int param_1, int *param_2)
     unsigned int uVar4;
 
     extern int _Floppy_dev[2];
-    extern int _fd_dev_to_id(void);
-    extern unsigned int _fdstrategy;
-    extern unsigned int _fdminphys;
+    extern int fd_dev_to_id(void);
+    extern unsigned int fdstrategy;
+    extern unsigned int fdminphys;
     extern unsigned int FUN_00004ac8(int obj, const char *selector, ...);
     extern unsigned int FUN_00004aa8(unsigned int strategy, int dev, unsigned int devnum,
                                      unsigned int flags, unsigned int minphys,
                                      int *uio, unsigned int blocksize);
 
     // Get device object ID
-    iVar1 = _fd_dev_to_id();
+    iVar1 = fd_dev_to_id();
 
     // Extract drive number
     uVar4 = param_1 >> 3 & 0x1f;
@@ -2105,7 +2105,7 @@ unsigned int _fdread(unsigned int param_1, int *param_2)
     else {
         // Get device name
         uVar2 = FUN_00004ac8(iVar1, "name");
-        _donone("fdread %s\n", uVar2, 2, 3, 4, 5);
+        donone("fdread %s\n", uVar2, 2, 3, 4, 5);
 
         // Check if disk is formatted
         cVar3 = FUN_00004ac8(iVar1, "isFormatted");
@@ -2115,13 +2115,13 @@ unsigned int _fdread(unsigned int param_1, int *param_2)
         else {
             // Get block size for logging
             uVar2 = FUN_00004ac8(iVar1, "blockSize");
-            _donone("fdread:offset=%ld,len=%d,veclen=%d,blksize=%d\n", param_2[3],
+            donone("fdread:offset=%ld,len=%d,veclen=%d,blksize=%d\n", param_2[3],
                    *(unsigned int *)(*param_2 + 4), param_2[1], uVar2);
 
             // Get block size and perform read via strategy routine
             uVar2 = FUN_00004ac8(iVar1, "blockSize");
-            uVar2 = FUN_00004aa8(_fdstrategy, _Floppy_dev[uVar4], param_1, 0x100000,
-                                _fdminphys, param_2, uVar2);
+            uVar2 = FUN_00004aa8(fdstrategy, _Floppy_dev[uVar4], param_1, 0x100000,
+                                fdminphys, param_2, uVar2);
         }
     }
 
@@ -2129,26 +2129,26 @@ unsigned int _fdread(unsigned int param_1, int *param_2)
 }
 
 /*
- * _fdsize - Get floppy disk block size
+ * fdsize - Get floppy disk block size
  *
  * Returns the block size of the floppy device.
  *
  * Returns:
  *   Block size on success, -1 (0xffffffff) if no device
  */
-unsigned int _fdsize(void)
+unsigned int fdsize(void)
 {
     int iVar1;
     unsigned int uVar2;
 
-    extern int _fd_dev_to_id(void);
+    extern int fd_dev_to_id(void);
     extern unsigned int FUN_00005b64(int obj, const char *selector);
 
     // Get device object ID
-    iVar1 = _fd_dev_to_id();
+    iVar1 = fd_dev_to_id();
 
     if (iVar1 == 0) {
-        _donone("fdsize: bad unit\n", 1, 2, 3, 4, 5);
+        donone("fdsize: bad unit\n", 1, 2, 3, 4, 5);
         uVar2 = 0xffffffff;
     }
     else {
@@ -2159,7 +2159,7 @@ unsigned int _fdsize(void)
 }
 
 /*
- * _fdstrategy - Block device strategy routine
+ * fdstrategy - Block device strategy routine
  *
  * Main I/O dispatcher for floppy disk operations. Handles both read
  * and write requests through the buffer structure.
@@ -2170,7 +2170,7 @@ unsigned int _fdsize(void)
  * Returns:
  *   0 on success, -1 (0xffffffff) on error
  */
-unsigned int _fdstrategy(int param_1)
+unsigned int fdstrategy(int param_1)
 {
     int iVar1;
     unsigned int uVar2;
@@ -2181,20 +2181,20 @@ unsigned int _fdstrategy(int param_1)
     int local_28[4];
 
     extern unsigned int _entry;
-    extern int _fd_dev_to_id(unsigned int device);
+    extern int fd_dev_to_id(unsigned int device);
     extern unsigned int FUN_00004f6c(int obj, const char *selector, ...);
     extern unsigned int FUN_00004f4c(int buf);
     extern void FUN_00004f3c(int buf);
 
     // Get device object from buf->b_dev (offset 0x38)
-    iVar1 = _fd_dev_to_id(*(unsigned int *)(param_1 + 0x38));
+    iVar1 = fd_dev_to_id(*(unsigned int *)(param_1 + 0x38));
 
     local_28[0] = 0;
     *(unsigned int *)(param_1 + 0x28) = 0;  // Clear b_error
     *(unsigned int *)(param_1 + 0x34) = *(unsigned int *)(param_1 + 0x30);  // b_resid = b_bcount
 
     uVar2 = FUN_00004f6c(iVar1, "name");
-    _donone("%s: fdstrategy\n", uVar2, 2, 3, 4, 5);
+    donone("%s: fdstrategy\n", uVar2, 2, 3, 4, 5);
 
     if (iVar1 == 0) {
         pcVar3 = "fdstrategy: bad unit\n";
@@ -2219,12 +2219,12 @@ unsigned int _fdstrategy(int param_1)
             // Check if read or write (B_READ flag 0x100000)
             if ((*(unsigned int *)(param_1 + 0x24) & 0x100000) == 0) {
                 // Write operation
-                _donone("calling writeAt offset(b_blkno)=%d,len=%d\n", uVar6, iVar4);
+                donone("calling writeAt offset(b_blkno)=%d,len=%d\n", uVar6, iVar4);
                 pcVar3 = "writeAt:length:buffer:actualLength:client:";
             }
             else {
                 // Read operation
-                _donone("calling readAt offset(b_blkno)=%d,len=%d\n", uVar6, iVar4);
+                donone("calling readAt offset(b_blkno)=%d,len=%d\n", uVar6, iVar4);
                 pcVar3 = "readAt:length:buffer:actualLength:client:";
             }
 
@@ -2244,7 +2244,7 @@ unsigned int _fdstrategy(int param_1)
             }
             else {
                 // Partial I/O or error
-                _donone("Floppy:partial IO rtn=%d,result=%d,req=%d,offset=%d\n", iVar1, local_28[0], iVar4,
+                donone("Floppy:partial IO rtn=%d,result=%d,req=%d,offset=%d\n", iVar1, local_28[0], iVar4,
                        uVar6);
                 *(int *)(param_1 + 0x34) = *(int *)(param_1 + 0x30) - local_28[0];
                 *(unsigned int *)(param_1 + 0x24) = *(unsigned int *)(param_1 + 0x24) | 0x800;  // Set B_ERROR
@@ -2262,16 +2262,16 @@ unsigned int _fdstrategy(int param_1)
     }
 
     // Error path
-    _donone(pcVar3, uVar2, 2, 3, 4, 5);
+    donone(pcVar3, uVar2, 2, 3, 4, 5);
     *(unsigned int *)(param_1 + 0x28) = 6;  // Set b_error = ENXIO
     *(unsigned int *)(param_1 + 0x24) = *(unsigned int *)(param_1 + 0x24) | 0x800;  // Set B_ERROR flag
     FUN_00004f3c(param_1);
-    _donone("fdstrategy: COMMAND REJECT\n", 1, 2, 3, 4, 5);
+    donone("fdstrategy: COMMAND REJECT\n", 1, 2, 3, 4, 5);
     return 0xffffffff;
 }
 
 /*
- * _fdTimer - Floppy timer callback
+ * fdTimer - Floppy timer callback
  *
  * Timer callback function that checks if timer event processing is needed.
  * Called periodically to handle delayed operations.
@@ -2279,7 +2279,7 @@ unsigned int _fdstrategy(int param_1)
  * Parameters:
  *   param_1 - Pointer to FloppyDisk object
  */
-void _fdTimer(int param_1)
+void fdTimer(int param_1)
 {
     extern void FUN_000031ac(int obj, const char *selector);
 
@@ -2290,7 +2290,7 @@ void _fdTimer(int param_1)
 }
 
 /*
- * _fdwrite - Write to floppy device
+ * fdwrite - Write to floppy device
  *
  * Handles write operations to floppy disk through the strategy routine.
  * Checks if disk is formatted before allowing writes.
@@ -2302,7 +2302,7 @@ void _fdTimer(int param_1)
  * Returns:
  *   0 on success, error code on failure (6=no device, 0x16=not formatted)
  */
-unsigned int _fdwrite(unsigned int param_1, unsigned int param_2)
+unsigned int fdwrite(unsigned int param_1, unsigned int param_2)
 {
     int iVar1;
     unsigned int uVar2;
@@ -2310,16 +2310,16 @@ unsigned int _fdwrite(unsigned int param_1, unsigned int param_2)
     unsigned int uVar4;
 
     extern int _Floppy_dev[2];
-    extern int _fd_dev_to_id(void);
-    extern unsigned int _fdstrategy;
-    extern unsigned int _fdminphys;
+    extern int fd_dev_to_id(void);
+    extern unsigned int fdstrategy;
+    extern unsigned int fdminphys;
     extern unsigned int FUN_00004c0c(int obj, const char *selector, ...);
     extern unsigned int FUN_00004bec(unsigned int strategy, int dev, unsigned int devnum,
                                      unsigned int flags, unsigned int minphys,
                                      unsigned int uio, unsigned int blocksize);
 
     // Get device object ID
-    iVar1 = _fd_dev_to_id();
+    iVar1 = fd_dev_to_id();
 
     // Extract drive number
     uVar4 = param_1 >> 3 & 0x1f;
@@ -2333,7 +2333,7 @@ unsigned int _fdwrite(unsigned int param_1, unsigned int param_2)
     else {
         // Get device name
         uVar2 = FUN_00004c0c(iVar1, "name");
-        _donone("fd_write %s\n", uVar2, 2, 3, 4, 5);
+        donone("fd_write %s\n", uVar2, 2, 3, 4, 5);
 
         // Check if disk is formatted
         cVar3 = FUN_00004c0c(iVar1, "isFormatted");
@@ -2343,8 +2343,8 @@ unsigned int _fdwrite(unsigned int param_1, unsigned int param_2)
         else {
             // Get block size and perform write via strategy routine
             uVar2 = FUN_00004c0c(iVar1, "blockSize");
-            uVar2 = FUN_00004bec(_fdstrategy, _Floppy_dev[uVar4], param_1, 0,
-                                _fdminphys, param_2, uVar2);
+            uVar2 = FUN_00004bec(fdstrategy, _Floppy_dev[uVar4], param_1, 0,
+                                fdminphys, param_2, uVar2);
         }
     }
 
@@ -2352,21 +2352,21 @@ unsigned int _fdwrite(unsigned int param_1, unsigned int param_2)
 }
 
 /*
- * _floppy_idmap - Get pointer to floppy ID map
+ * floppy_idmap - Get pointer to floppy ID map
  *
  * Returns pointer to the global floppy device ID map structure.
  *
  * Returns:
  *   Pointer to _FloppyIdMap
  */
-unsigned char *_floppy_idmap(void)
+unsigned char *floppy_idmap(void)
 {
     extern unsigned char _FloppyIdMap;
     return &_FloppyIdMap;
 }
 
 /*
- * _FloppyFormatDisk - Format a floppy disk
+ * FloppyFormatDisk - Format a floppy disk
  *
  * Formats a specific track/head on the floppy disk. Acquires hardware
  * lock before formatting.
@@ -2378,35 +2378,35 @@ unsigned char *_floppy_idmap(void)
  * Returns:
  *   0 on success, error code on failure
  */
-int _FloppyFormatDisk(unsigned int param_1, unsigned int param_2)
+int FloppyFormatDisk(unsigned int param_1, unsigned int param_2)
 {
     int iVar1;
     unsigned int uVar2;
     unsigned int *local_18[3];
 
-    extern int _FormatDisk(unsigned int head, unsigned int track, unsigned int *drivePtr, int param4);
-    extern short _GetDisketteFormatType(unsigned int *drivePtr);
+    extern int FormatDisk(unsigned int head, unsigned int track, unsigned int *drivePtr, int param4);
+    extern short GetDisketteFormatType(unsigned int *drivePtr);
 
     // Check if drive 1 is valid
-    iVar1 = _CheckDriveNumber(1, local_18);
+    iVar1 = CheckDriveNumber(1, local_18);
 
     if (iVar1 == 0) {
         // Enter hardware lock section
-        uVar2 = (unsigned int)_EnterHardwareLockSection();
+        uVar2 = (unsigned int)EnterHardwareLockSection();
         *local_18[0] = uVar2;
 
         // Format the disk
-        iVar1 = _FormatDisk(param_1, param_2, local_18[0], 0);
+        iVar1 = FormatDisk(param_1, param_2, local_18[0], 0);
 
         // Exit hardware lock section
-        _ExitHardwareLockSection(*local_18[0]);
+        ExitHardwareLockSection(*local_18[0]);
     }
 
     return iVar1;
 }
 
 /*
- * _FloppyFormatInfo - Get floppy format information
+ * FloppyFormatInfo - Get floppy format information
  *
  * Retrieves format information for the current disk format type and
  * populates a format info structure.
@@ -2417,7 +2417,7 @@ int _FloppyFormatDisk(unsigned int param_1, unsigned int param_2)
  * Returns:
  *   0 on success, error code on failure
  */
-int _FloppyFormatInfo(int param_1)
+int FloppyFormatInfo(int param_1)
 {
     int iVar1;
     unsigned int uVar2;
@@ -2430,18 +2430,18 @@ int _FloppyFormatInfo(int param_1)
     extern unsigned char DAT_0000fb95;  // Format info table - tracks per disk
     extern short DAT_0000fb96;          // Format info table - sectors per track (full)
     extern unsigned char DAT_0000fba1;  // Format info table - additional flags
-    extern short _GetDisketteFormatType(unsigned int *drivePtr);
+    extern short GetDisketteFormatType(unsigned int *drivePtr);
 
     // Check if drive 1 is valid
-    iVar1 = _CheckDriveNumber(1, local_18);
+    iVar1 = CheckDriveNumber(1, local_18);
 
     if (iVar1 == 0) {
         // Enter hardware lock section
-        uVar2 = (unsigned int)_EnterHardwareLockSection();
+        uVar2 = (unsigned int)EnterHardwareLockSection();
         *local_18[0] = uVar2;
 
         // Get diskette format type
-        sVar4 = _GetDisketteFormatType(local_18[0]);
+        sVar4 = GetDisketteFormatType(local_18[0]);
         iVar3 = (int)sVar4;
 
         // Populate format info structure from tables
@@ -2480,14 +2480,14 @@ int _FloppyFormatInfo(int param_1)
         *(unsigned char *)(param_1 + 0x2d) = (&DAT_0000fba1)[iVar3 * 0x14];
 
         // Exit hardware lock section
-        _ExitHardwareLockSection(*local_18[0]);
+        ExitHardwareLockSection(*local_18[0]);
     }
 
     return iVar1;
 }
 
 /*
- * _floppyMalloc - Allocate memory for floppy operations
+ * floppyMalloc - Allocate memory for floppy operations
  *
  * Allocates memory buffer with size checking. Doubles the requested size
  * and validates against _entry limit.
@@ -2500,7 +2500,7 @@ int _FloppyFormatInfo(int param_1)
  * Returns:
  *   Buffer address on success, 0 on failure
  */
-unsigned int _floppyMalloc(unsigned int param_1, unsigned int *param_2, int *param_3)
+unsigned int floppyMalloc(unsigned int param_1, unsigned int *param_2, int *param_3)
 {
     unsigned int uVar1;
 
@@ -2522,7 +2522,7 @@ unsigned int _floppyMalloc(unsigned int param_1, unsigned int *param_2, int *par
 }
 
 /*
- * _FloppyPluginFlush - Flush floppy track cache
+ * FloppyPluginFlush - Flush floppy track cache
  *
  * Flushes pending writes from the track cache to disk. Acquires
  * hardware lock during the operation.
@@ -2530,25 +2530,25 @@ unsigned int _floppyMalloc(unsigned int param_1, unsigned int *param_2, int *par
  * Returns:
  *   1 on success (or error)
  */
-int _FloppyPluginFlush(void)
+int FloppyPluginFlush(void)
 {
     unsigned int *puVar1;
     unsigned int uVar2;
     int iVar3;
 
     extern unsigned int *_myDriveStatus;
-    extern int _FlushTrackCache(unsigned int *drivePtr);
+    extern int FlushTrackCache(unsigned int *drivePtr);
 
     // Enter hardware lock section
-    uVar2 = (unsigned int)_EnterHardwareLockSection();
+    uVar2 = (unsigned int)EnterHardwareLockSection();
     puVar1 = _myDriveStatus;
     *_myDriveStatus = uVar2;
 
     // Flush the track cache
-    iVar3 = _FlushTrackCache(puVar1);
+    iVar3 = FlushTrackCache(puVar1);
 
     // Exit hardware lock section
-    _ExitHardwareLockSection(*_myDriveStatus);
+    ExitHardwareLockSection(*_myDriveStatus);
 
     // Return 1 regardless of result (non-zero return = success)
     if (iVar3 == 0) {
@@ -2559,7 +2559,7 @@ int _FloppyPluginFlush(void)
 }
 
 /*
- * _FloppyPluginGotoState - Change floppy plugin state
+ * FloppyPluginGotoState - Change floppy plugin state
  *
  * Changes the plugin state. When state is 0 or 1, ejects the disk.
  *
@@ -2570,7 +2570,7 @@ int _FloppyPluginFlush(void)
  * Returns:
  *   Result of eject operation, or 0 if no action taken
  */
-unsigned int _FloppyPluginGotoState(unsigned int param_1, unsigned int param_2)
+unsigned int FloppyPluginGotoState(unsigned int param_1, unsigned int param_2)
 {
     unsigned int *puVar1;
     unsigned int uVar2;
@@ -2582,22 +2582,22 @@ unsigned int _FloppyPluginGotoState(unsigned int param_1, unsigned int param_2)
     // Only eject if state < 2
     if (param_2 < 2) {
         // Enter hardware lock section
-        uVar2 = (unsigned int)_EnterHardwareLockSection();
+        uVar2 = (unsigned int)EnterHardwareLockSection();
         puVar1 = _myDriveStatus;
         *_myDriveStatus = uVar2;
 
         // Eject the disk
-        uVar2 = _EjectDisk((int)puVar1);
+        uVar2 = EjectDisk((int)puVar1);
 
         // Exit hardware lock section
-        _ExitHardwareLockSection(*_myDriveStatus);
+        ExitHardwareLockSection(*_myDriveStatus);
     }
 
     return uVar2;
 }
 
 /*
- * _FloppyPluginInit - Initialize floppy plugin
+ * FloppyPluginInit - Initialize floppy plugin
  *
  * Initializes the floppy plugin system including track buffer allocation,
  * format table initialization, and drive initialization.
@@ -2605,7 +2605,7 @@ unsigned int _FloppyPluginGotoState(unsigned int param_1, unsigned int param_2)
  * Parameters:
  *   param_1 - Plugin context or initialization parameter
  */
-void _FloppyPluginInit(unsigned int param_1)
+void FloppyPluginInit(unsigned int param_1)
 {
     unsigned int uVar1;
     int iVar2;
@@ -2616,8 +2616,8 @@ void _FloppyPluginInit(unsigned int param_1)
     extern void FUN_00005f78(unsigned int, unsigned int *, unsigned int);
     extern void FUN_00005f68(const char *);
     extern unsigned int FUN_00005f58(int);
-    extern void _InitFormatTable(void);
-    extern int _InitializeDrive(int drive, unsigned int param2, int param3, int param4,
+    extern void InitFormatTable(void);
+    extern int InitializeDrive(int drive, unsigned int param2, int param3, int param4,
                                 int param5, unsigned int param6, unsigned int param7,
                                 unsigned int **statusPtr);
 
@@ -2630,13 +2630,13 @@ void _FloppyPluginInit(unsigned int param_1)
 
     // Get physical address
     uVar1 = FUN_00005f58(0);
-    _donone("trackbuflogic=0x%x,phys=0x%x ", 0, uVar1);
+    donone("trackbuflogic=0x%x,phys=0x%x ", 0, uVar1);
 
     // Initialize format table
-    _InitFormatTable();
+    InitFormatTable();
 
     // Initialize drive 1
-    iVar2 = _InitializeDrive(1, 0x5162fda4, iVar2, iVar2, 0, uVar1, 0xb000, &_myDriveStatus);
+    iVar2 = InitializeDrive(1, 0x5162fda4, iVar2, iVar2, 0, uVar1, 0xb000, &_myDriveStatus);
 
     // Store plugin context in drive status if initialization succeeded
     if (iVar2 == 0) {
@@ -2645,7 +2645,7 @@ void _FloppyPluginInit(unsigned int param_1)
 }
 
 /*
- * _FloppyPluginIO - Perform floppy I/O operation
+ * FloppyPluginIO - Perform floppy I/O operation
  *
  * Main I/O handler for floppy plugin. Handles read and write operations
  * at the block level.
@@ -2660,7 +2660,7 @@ void _FloppyPluginInit(unsigned int param_1)
  * Returns:
  *   0 on success, error code on failure
  */
-int _FloppyPluginIO(unsigned int *param_1, int param_2, unsigned int param_3,
+int FloppyPluginIO(unsigned int *param_1, int param_2, unsigned int param_3,
                     unsigned int param_4, int param_5)
 {
     int iVar1;
@@ -2668,18 +2668,18 @@ int _FloppyPluginIO(unsigned int *param_1, int param_2, unsigned int param_3,
     unsigned int *local_28;
     unsigned int local_24[2];
 
-    extern int _ReadBlocks(unsigned int *ioReq, unsigned int *result);
-    extern int _WriteBlocks(unsigned int *ioReq, unsigned int *result);
-    extern int _RecordError(int errorCode);
+    extern int ReadBlocks(unsigned int *ioReq, unsigned int *result);
+    extern int WriteBlocks(unsigned int *ioReq, unsigned int *result);
+    extern int RecordError(int errorCode);
 
     local_24[0] = 0;
 
     // Check if drive 1 is valid
-    iVar1 = _CheckDriveNumber(1, &local_28);
+    iVar1 = CheckDriveNumber(1, &local_28);
 
     if (iVar1 == 0) {
         // Enter hardware lock section
-        uVar2 = (unsigned int)_EnterHardwareLockSection();
+        uVar2 = (unsigned int)EnterHardwareLockSection();
         *local_28 = uVar2;
 
         // Setup I/O request structure
@@ -2701,22 +2701,22 @@ int _FloppyPluginIO(unsigned int *param_1, int param_2, unsigned int param_3,
         // Perform the operation
         if (*(short *)((int)local_28 + 0xe) == 2) {
             // Read operation
-            _donone("read blk=%d,count=%d\n", local_28[5], local_28[6]);
-            iVar1 = _ReadBlocks(local_28, local_24);
+            donone("read blk=%d,count=%d\n", local_28[5], local_28[6]);
+            iVar1 = ReadBlocks(local_28, local_24);
         }
         else if (*(short *)((int)local_28 + 0xe) == 3) {
             // Write operation
             if (local_28[0xe] == 0) {
-                iVar1 = _WriteBlocks(local_28, local_24);
+                iVar1 = WriteBlocks(local_28, local_24);
             }
             else {
-                _donone("wrt:call record err ");
-                iVar1 = _RecordError(0xffffffd4);  // -44 error code
+                donone("wrt:call record err ");
+                iVar1 = RecordError(0xffffffd4);  // -44 error code
             }
         }
 
         // Exit hardware lock section
-        _ExitHardwareLockSection(*local_28);
+        ExitHardwareLockSection(*local_28);
     }
 
     // Return actual transfer count
@@ -2726,7 +2726,7 @@ int _FloppyPluginIO(unsigned int *param_1, int param_2, unsigned int param_3,
 }
 
 /*
- * _FloppyRecalibrate - Recalibrate floppy drive
+ * FloppyRecalibrate - Recalibrate floppy drive
  *
  * Performs a recalibration operation on the floppy drive, seeking
  * to track 0 to establish a known position.
@@ -2734,34 +2734,34 @@ int _FloppyPluginIO(unsigned int *param_1, int param_2, unsigned int param_3,
  * Returns:
  *   0 on success, error code on failure
  */
-int _FloppyRecalibrate(void)
+int FloppyRecalibrate(void)
 {
     int iVar1;
     unsigned int uVar2;
     unsigned int *local_18[5];
 
-    extern void _RecalDrive(unsigned int *drivePtr);
+    extern void RecalDrive(unsigned int *drivePtr);
 
     // Check if drive 1 is valid
-    iVar1 = _CheckDriveNumber(1, local_18);
+    iVar1 = CheckDriveNumber(1, local_18);
 
     if (iVar1 == 0) {
         // Enter hardware lock section
-        uVar2 = (unsigned int)_EnterHardwareLockSection();
+        uVar2 = (unsigned int)EnterHardwareLockSection();
         *local_18[0] = uVar2;
 
         // Recalibrate the drive
-        _RecalDrive(local_18[0]);
+        RecalDrive(local_18[0]);
 
         // Exit hardware lock section
-        _ExitHardwareLockSection(*local_18[0]);
+        ExitHardwareLockSection(*local_18[0]);
     }
 
     return iVar1;
 }
 
 /*
- * _FloppyTimedSleep - Sleep for specified milliseconds
+ * FloppyTimedSleep - Sleep for specified milliseconds
  *
  * Provides a timed delay. For delays < 10ms, uses busy wait.
  * For longer delays, uses system sleep function.
@@ -2772,7 +2772,7 @@ int _FloppyRecalibrate(void)
  * Returns:
  *   0 (always)
  */
-unsigned int _FloppyTimedSleep(int param_1)
+unsigned int FloppyTimedSleep(int param_1)
 {
     unsigned char auStack_8[8];
 
@@ -2795,26 +2795,26 @@ unsigned int _FloppyTimedSleep(int param_1)
 }
 
 /*
- * _FloppyWriteProtected - Check if floppy is write protected
+ * FloppyWriteProtected - Check if floppy is write protected
  *
  * Returns the write protection status of the floppy disk.
  *
  * Returns:
  *   Write protection flag from drive structure (offset 0x38)
  */
-unsigned int _FloppyWriteProtected(void)
+unsigned int FloppyWriteProtected(void)
 {
     int local_8[2];
 
     // Check drive 1 and get drive structure
-    _CheckDriveNumber(1, local_8);
+    CheckDriveNumber(1, local_8);
 
     // Return write protect flag at offset 0x38
     return *(unsigned int *)(local_8[0] + 0x38);
 }
 
 /*
- * _FlushCacheAndSeek - Flush cache and seek if track changed
+ * FlushCacheAndSeek - Flush cache and seek if track changed
  *
  * Checks if the current track differs from the target track. If so,
  * flushes any dirty cache data, dumps the cache, and seeks to the new track.
@@ -2825,29 +2825,29 @@ unsigned int _FloppyWriteProtected(void)
  * Returns:
  *   0 if no seek needed or seek succeeded, error code on failure
  */
-int _FlushCacheAndSeek(int param_1)
+int FlushCacheAndSeek(int param_1)
 {
     int iVar1;
     short sVar2;
 
-    extern int _TestCacheDirtyState(int driveStructure);
-    extern short _SeekDrive(int driveStructure);
+    extern int TestCacheDirtyState(int driveStructure);
+    extern short SeekDrive(int driveStructure);
 
     iVar1 = 0;
 
     // Check if current track (offset 0x1c) differs from target track (offset 0x20)
     if (*(char *)(param_1 + 0x1c) != *(char *)(param_1 + 0x20)) {
         // Check if cache has dirty data
-        iVar1 = _TestCacheDirtyState(param_1);
+        iVar1 = TestCacheDirtyState(param_1);
         if (iVar1 != 0) {
-            _FlushTrackCache(param_1);
+            FlushTrackCache(param_1);
         }
 
         // Dump (invalidate) the cache
-        _DumpTrackCache(param_1);
+        DumpTrackCache(param_1);
 
         // Seek to the new track
-        sVar2 = _SeekDrive(param_1);
+        sVar2 = SeekDrive(param_1);
         iVar1 = (int)sVar2;
     }
 
@@ -2855,7 +2855,7 @@ int _FlushCacheAndSeek(int param_1)
 }
 
 /*
- * _FlushDMAedDataFromCPUCache - Flush DMA data from CPU cache
+ * FlushDMAedDataFromCPUCache - Flush DMA data from CPU cache
  *
  * Placeholder function for flushing DMA'd data from CPU cache.
  * Currently a no-op.
@@ -2863,13 +2863,13 @@ int _FlushCacheAndSeek(int param_1)
  * Returns:
  *   0 (always)
  */
-unsigned int _FlushDMAedDataFromCPUCache(void)
+unsigned int FlushDMAedDataFromCPUCache(void)
 {
     return 0;
 }
 
 /*
- * _FlushProcessorCache - Flush processor cache range
+ * FlushProcessorCache - Flush processor cache range
  *
  * Flushes a range of addresses from the processor cache.
  *
@@ -2878,7 +2878,7 @@ unsigned int _FlushDMAedDataFromCPUCache(void)
  *   param_2 - Start address
  *   param_3 - Length
  */
-void _FlushProcessorCache(unsigned int param_1, unsigned int param_2, unsigned int param_3)
+void FlushProcessorCache(unsigned int param_1, unsigned int param_2, unsigned int param_3)
 {
     extern void FUN_00006d38(unsigned int addr, unsigned int length);
 
@@ -2886,7 +2886,7 @@ void _FlushProcessorCache(unsigned int param_1, unsigned int param_2, unsigned i
 }
 
 /*
- * _FlushTrackCache - Flush track cache to disk
+ * FlushTrackCache - Flush track cache to disk
  *
  * Writes dirty cache data for the current track to the physical disk.
  * Writes both head 0 and head 1 data if present.
@@ -2897,7 +2897,7 @@ void _FlushProcessorCache(unsigned int param_1, unsigned int param_2, unsigned i
  * Returns:
  *   0 on success, error code on failure
  */
-int _FlushTrackCache(int param_1)
+int FlushTrackCache(int param_1)
 {
     int iVar1;
     short sVar2;
@@ -2905,7 +2905,7 @@ int _FlushTrackCache(int param_1)
     int iVar4;
 
     extern int FUN_00009434(int param);
-    extern short _WriteCacheToDiskTrack(int driveStructure);
+    extern short WriteCacheToDiskTrack(int driveStructure);
 
     iVar4 = 0;
 
@@ -2924,7 +2924,7 @@ int _FlushTrackCache(int param_1)
         // Check if head 0 needs flushing
         iVar1 = FUN_00009434(param_1);
         if (iVar1 != 0) {
-            sVar2 = _WriteCacheToDiskTrack(param_1);
+            sVar2 = WriteCacheToDiskTrack(param_1);
             iVar4 = (int)sVar2;
         }
 
@@ -2935,7 +2935,7 @@ int _FlushTrackCache(int param_1)
         if (iVar4 == 0) {
             iVar1 = FUN_00009434(param_1);
             if (iVar1 != 0) {
-                sVar2 = _WriteCacheToDiskTrack(param_1);
+                sVar2 = WriteCacheToDiskTrack(param_1);
                 iVar4 = (int)sVar2;
             }
         }
@@ -2948,7 +2948,7 @@ int _FlushTrackCache(int param_1)
 }
 
 /*
- * _FormatDisk - Format a floppy disk track
+ * FormatDisk - Format a floppy disk track
  *
  * Formats a specific track/head on the floppy disk. Handles write protection,
  * power management, format selection, recalibration, seeking, and track formatting.
@@ -2962,7 +2962,7 @@ int _FlushTrackCache(int param_1)
  * Returns:
  *   0 on success, error code on failure
  */
-int _FormatDisk(unsigned char param_1, unsigned char param_2, int param_3, short param_4)
+int FormatDisk(unsigned char param_1, unsigned char param_2, int param_3, short param_4)
 {
     short sVar1;
     int iVar2;
@@ -2970,70 +2970,70 @@ int _FormatDisk(unsigned char param_1, unsigned char param_2, int param_3, short
     unsigned char auStack_26[2];
     unsigned short local_24[8];
 
-    extern short _PowerDriveUp(int driveStructure);
-    extern void _PowerDriveDown(int driveStructure, int delay);
-    extern void _SetDisketteFormat(int driveStructure, int format);
-    extern void _RecalDrive(int driveStructure);
-    extern void _GetSectorAddress(int driveStructure, int sector);
-    extern void _SetSectorsPerTrack(int driveStructure);
-    extern short _HALFormatTrack(int driveStructure);
+    extern short PowerDriveUp(int driveStructure);
+    extern void PowerDriveDown(int driveStructure, int delay);
+    extern void SetDisketteFormat(int driveStructure, int format);
+    extern void RecalDrive(int driveStructure);
+    extern void GetSectorAddress(int driveStructure, int sector);
+    extern void SetSectorsPerTrack(int driveStructure);
+    extern short HALFormatTrack(int driveStructure);
 
     // Check if disk is write protected (offset 0x38)
     if (*(int *)(param_3 + 0x38) == 0) {
         // Power up the drive
-        sVar1 = _PowerDriveUp(param_3);
+        sVar1 = PowerDriveUp(param_3);
         iVar2 = (int)sVar1;
 
         if (iVar2 == 0) {
             // Dump track cache
-            _DumpTrackCache(param_3);
+            DumpTrackCache(param_3);
 
             // Get available formats
-            _AvailableFormats(param_3, &local_28, auStack_26, local_24);
+            AvailableFormats(param_3, &local_28, auStack_26, local_24);
 
             // Set diskette format to default (first available format)
-            _SetDisketteFormat(param_3, local_24[0]);
+            SetDisketteFormat(param_3, local_24[0]);
 
             // If specific format requested, use it
             if (param_4 != 0) {
-                _SetDisketteFormat(param_3, (int)param_4 + (unsigned int)local_28 + -1);
+                SetDisketteFormat(param_3, (int)param_4 + (unsigned int)local_28 + -1);
             }
 
             // Set format fill byte (offset 0x34) to 0xf6
             *(unsigned char *)(param_3 + 0x34) = 0xf6;
 
             // Recalibrate drive
-            _RecalDrive(param_3);
+            RecalDrive(param_3);
 
             // Get sector address for sector 0
-            _GetSectorAddress(param_3, 0);
+            GetSectorAddress(param_3, 0);
 
             // Set target track and head
             *(unsigned char *)(param_3 + 0x20) = param_2;  // Track
             *(unsigned char *)(param_3 + 0x21) = param_1;  // Head
 
             // Seek to the track
-            sVar1 = _SeekDrive(param_3);
+            sVar1 = SeekDrive(param_3);
             iVar2 = (int)sVar1;
 
             if (iVar2 == 0) {
                 // Set sectors per track if needed (offset 0x5a check)
                 if (*(char *)(param_3 + 0x5a) != '\0') {
-                    _SetSectorsPerTrack(param_3);
+                    SetSectorsPerTrack(param_3);
                 }
 
                 // Perform hardware format operation
-                sVar1 = _HALFormatTrack(param_3);
+                sVar1 = HALFormatTrack(param_3);
                 iVar2 = (int)sVar1;
             }
 
             // Power down drive (6 second delay)
-            _PowerDriveDown(param_3, 6);
+            PowerDriveDown(param_3, 6);
         }
     }
     else {
         // Disk is write protected - return error
-        sVar1 = _RecordError(0xffffffd4);  // -44 error code
+        sVar1 = RecordError(0xffffffd4);  // -44 error code
         iVar2 = (int)sVar1;
     }
 
@@ -3041,7 +3041,7 @@ int _FormatDisk(unsigned char param_1, unsigned char param_2, int param_3, short
 }
 
 /*
- * _FormatGCRCacheSWIMIIIData - Format GCR cache data for SWIM III
+ * FormatGCRCacheSWIMIIIData - Format GCR cache data for SWIM III
  *
  * Initializes the track cache with properly formatted GCR data for SWIM III
  * controller. Handles sector address marks, gap bytes, and data fields.
@@ -3049,7 +3049,7 @@ int _FormatDisk(unsigned char param_1, unsigned char param_2, int param_3, short
  * Parameters:
  *   param_1 - Drive structure pointer
  */
-void _FormatGCRCacheSWIMIIIData(int param_1)
+void FormatGCRCacheSWIMIIIData(int param_1)
 {
     unsigned char bVar1;
     unsigned char bVar2;
@@ -3080,7 +3080,7 @@ void _FormatGCRCacheSWIMIIIData(int param_1)
         if (_lastSectorsPerTrack == *(char *)(param_1 + 0x51)) {
             // Quick format - just update sector headers
             _lastSectorsPerTrack = *(char *)(param_1 + 0x51);
-            _donone("Initializing %d sectors subsequent time\n", *(unsigned char *)(param_1 + 0x51));
+            donone("Initializing %d sectors subsequent time\n", *(unsigned char *)(param_1 + 0x51));
 
             uVar8 = 0;
             if (*(char *)(param_1 + 0x51) != '\0') {
@@ -3109,12 +3109,12 @@ void _FormatGCRCacheSWIMIIIData(int param_1)
             // Fill initial gap with pattern
             iVar5 = 0;
             do {
-                _ByteMove(s_gap_0000e6e4, puVar10, 0x30);  // 48 byte gap pattern
+                ByteMove(s_gap_0000e6e4, puVar10, 0x30);  // 48 byte gap pattern
                 puVar10 = puVar10 + 6;
                 iVar5 = iVar5 + 1;
             } while (iVar5 < 200);
 
-            _donone("Initializing %d sectors first time;setting to 12\n", *(unsigned char *)(param_1 + 0x51));
+            donone("Initializing %d sectors first time;setting to 12\n", *(unsigned char *)(param_1 + 0x51));
             *(unsigned char *)(param_1 + 0x51) = 0xc;  // Set to 12 sectors
 
             uVar8 = 0;
@@ -3129,12 +3129,12 @@ void _FormatGCRCacheSWIMIIIData(int param_1)
                 // Fill initial sector gap
                 iVar5 = 0;
                 do {
-                    _ByteMove(s_gap_0000e6e4, puVar10 + iVar5 * 6, 6);
+                    ByteMove(s_gap_0000e6e4, puVar10 + iVar5 * 6, 6);
                     iVar5 = iVar5 + 1;
                 } while (iVar5 < 8);
 
                 // Address mark prefix
-                _ByteMove(&DAT_0000c16c, puVar10 + 0x30, 3);
+                ByteMove(&DAT_0000c16c, puVar10 + 0x30, 3);
 
                 // Build sector address mark
                 bVar2 = *(unsigned char *)(param_1 + 0x20) & 0x3f;
@@ -3148,36 +3148,36 @@ void _FormatGCRCacheSWIMIIIData(int param_1)
                 puVar10[0x37] = bVar1 ^ bVar2 ^ bVar9 ^ bVar3;
 
                 // Sector mark
-                _ByteMove(s_mark_0000e720, puVar10 + 0x38, 2);
+                ByteMove(s_mark_0000e720, puVar10 + 0x38, 2);
 
                 // Gap before data
-                _ByteMove(s_gap_0000e6e4, puVar10 + 0x3a, 6);
+                ByteMove(s_gap_0000e6e4, puVar10 + 0x3a, 6);
 
                 // Copy gap with alignment padding
-                _ByteMove(puVar10 + 0x3a, puVar10 + 0x40, iVar7);
+                ByteMove(puVar10 + 0x3a, puVar10 + 0x40, iVar7);
 
                 // Gap after alignment
-                _ByteMove(s_gap_0000e6e4, puVar10 + iVar7 + 0x40, 6);
+                ByteMove(s_gap_0000e6e4, puVar10 + iVar7 + 0x40, 6);
 
                 // Data mark
-                _ByteMove(s_data_0000e724, puVar10 + iVar7 + 0x46, 3);
+                ByteMove(s_data_0000e724, puVar10 + iVar7 + 0x46, 3);
 
                 // Sector number in data field
                 puVar10[iVar7 + 0x49] = bVar9;
                 puVar10[iVar7 + 0x4a] = 0;
 
                 // Fill data field header
-                _ByteMove(puVar10 + iVar7 + 0x4a, puVar10 + iVar7 + 0x4b, 0xf);
+                ByteMove(puVar10 + iVar7 + 0x4a, puVar10 + iVar7 + 0x4b, 0xf);
 
                 // Format fill byte (offset 0x34)
                 puVar10[iVar7 + 0x5a] = *(unsigned char *)(param_1 + 0x34);
 
                 // Fill sector data (682 bytes = 0x2aa)
-                _ByteMove(puVar10 + iVar7 + 0x5a, puVar10 + iVar7 + 0x5b, 0x2aa);
+                ByteMove(puVar10 + iVar7 + 0x5a, puVar10 + iVar7 + 0x5b, 0x2aa);
 
                 // Data field trailer
-                _ByteMove(s_mark_0000e720, puVar10 + iVar7 + 0x309, 2);
-                _ByteMove(s_gap_0000e6e4, puVar10 + iVar7 + 0x30b, 1);
+                ByteMove(s_mark_0000e720, puVar10 + iVar7 + 0x309, 2);
+                ByteMove(s_gap_0000e6e4, puVar10 + iVar7 + 0x30b, 1);
 
                 puVar10 = puVar10 + 0x30c;  // Move to next sector
                 uVar8 = uVar8 + 1;
@@ -3192,14 +3192,14 @@ void _FormatGCRCacheSWIMIIIData(int param_1)
                 puVar10 = puVar11 + 1;
             } while (iVar5 < 4);
 
-            _ByteMove(s_tail_0000e728, puVar11 + 1, 2);
+            ByteMove(s_tail_0000e728, puVar11 + 1, 2);
             puVar10 = puVar11 + 3;
 
             iVar5 = *(int *)(param_1 + 0xb8);
             pcVar4 = "first pass track length =%d for side=%d\n";
         }
 
-        _donone(pcVar4, (int)puVar10 - iVar5, uVar6);
+        donone(pcVar4, (int)puVar10 - iVar5, uVar6);
 
         // Save track offset for side 0
         if (uVar6 == 0) {
@@ -3217,7 +3217,7 @@ void _FormatGCRCacheSWIMIIIData(int param_1)
 }
 
 /*
- * _FormatMFMCacheSWIMIIIData - Format MFM cache data for SWIM III
+ * FormatMFMCacheSWIMIIIData - Format MFM cache data for SWIM III
  *
  * Initializes the track cache with properly formatted MFM (Modified Frequency
  * Modulation) data for SWIM III controller. Similar to GCR version but uses
@@ -3226,7 +3226,7 @@ void _FormatGCRCacheSWIMIIIData(int param_1)
  * Parameters:
  *   param_1 - Drive structure pointer
  */
-void _FormatMFMCacheSWIMIIIData(int param_1)
+void FormatMFMCacheSWIMIIIData(int param_1)
 {
     char cVar1;
     unsigned char bVar2;
@@ -3285,20 +3285,20 @@ void _FormatMFMCacheSWIMIIIData(int param_1)
             // Full format - initialize entire track
             // Gap 4a (pre-index gap)
             *puVar7 = 0x4e;
-            _ByteMove(puVar7, puVar7 + 1, *(unsigned char *)(param_1 + 0x5e) - 1);
+            ByteMove(puVar7, puVar7 + 1, *(unsigned char *)(param_1 + 0x5e) - 1);
             puVar7 = puVar7 + *(unsigned char *)(param_1 + 0x5e);
 
             // Sync bytes (12 x 0x00)
             *puVar7 = 0;
-            _ByteMove(puVar7, puVar7 + 1, 0xb);
+            ByteMove(puVar7, puVar7 + 1, 0xb);
 
             // Index address mark
-            _ByteMove(s__0000e758, puVar7 + 0xc, 8);
+            ByteMove(s__0000e758, puVar7 + 0xc, 8);
 
             // Gap 1 (post-index gap)
             puVar8 = puVar7 + 0x14;
             *puVar8 = 0x4e;
-            _ByteMove(puVar8, puVar7 + 0x15, *(unsigned char *)(param_1 + 0x5b) - 1);
+            ByteMove(puVar8, puVar7 + 0x15, *(unsigned char *)(param_1 + 0x5b) - 1);
             puVar8 = puVar8 + *(unsigned char *)(param_1 + 0x5b);
 
             // Format each sector
@@ -3313,10 +3313,10 @@ void _FormatMFMCacheSWIMIIIData(int param_1)
 
                 // Sync bytes (12 x 0x00)
                 *puVar8 = 0;
-                _ByteMove(puVar8, puVar8 + 1, 0xb);
+                ByteMove(puVar8, puVar8 + 1, 0xb);
 
                 // ID address mark
-                _ByteMove(s__0000e764, puVar8 + 0xc, 8);
+                ByteMove(s__0000e764, puVar8 + 0xc, 8);
 
                 // ID field (C/H/S/N)
                 puVar8[0x14] = *(unsigned char *)(param_1 + 0x20);  // Cylinder
@@ -3325,49 +3325,49 @@ void _FormatMFMCacheSWIMIIIData(int param_1)
                 puVar8[0x17] = *(unsigned char *)(param_1 + 0x23);  // Size
 
                 // ID CRC
-                _ByteMove(s__0000e770, puVar8 + 0x18, 2);
+                ByteMove(s__0000e770, puVar8 + 0x18, 2);
 
                 // Gap 2 (ID to data gap)
                 puVar7 = puVar8 + 0x1a;
                 *puVar7 = 0x4e;
-                _ByteMove(puVar7, puVar8 + 0x1b,
+                ByteMove(puVar7, puVar8 + 0x1b,
                          (unsigned int)*(unsigned char *)(param_1 + 0x5c) + iVar5 + -1);
                 puVar7 = puVar7 + (unsigned int)*(unsigned char *)(param_1 + 0x5c) + iVar5;
 
                 // Data sync bytes (12 x 0x00)
                 *puVar7 = 0;
-                _ByteMove(puVar7, puVar7 + 1, 0xb);
+                ByteMove(puVar7, puVar7 + 1, 0xb);
 
                 // Data address mark
-                _ByteMove(s__0000e774, puVar7 + 0xc, 8);
+                ByteMove(s__0000e774, puVar7 + 0xc, 8);
 
                 // Data sync for DMA
-                _ByteMove(s__0000e780, puVar7 + 0x14, 2);
+                ByteMove(s__0000e780, puVar7 + 0x14, 2);
 
                 // Data field
                 puVar9 = puVar7 + 0x16;
                 *puVar9 = *(unsigned char *)(param_1 + 0x34);  // Fill byte
-                _ByteMove(puVar9, puVar7 + 0x17, *(short *)(param_1 + 0x54) + -1);
+                ByteMove(puVar9, puVar7 + 0x17, *(short *)(param_1 + 0x54) + -1);
                 puVar9 = puVar9 + *(short *)(param_1 + 0x54);
 
                 // Data CRC
-                _ByteMove(s__0000e770, puVar9, 2);
+                ByteMove(s__0000e770, puVar9, 2);
 
                 // Gap 3 (inter-sector gap)
                 puVar8 = puVar9 + 2;
                 *puVar8 = 0x4e;
-                _ByteMove(puVar8, puVar9 + 3,
+                ByteMove(puVar8, puVar9 + 3,
                          (unsigned int)*(unsigned char *)(param_1 + 0x5d) - (iVar5 + 1));
                 puVar8 = puVar8 + ((unsigned int)*(unsigned char *)(param_1 + 0x5d) - iVar5);
             }
 
             // Gap 4b (post-data gap)
             *puVar8 = 0x4e;
-            _ByteMove(puVar8, puVar8 + 1, *(unsigned char *)(param_1 + 0x5f) - 1);
+            ByteMove(puVar8, puVar8 + 1, *(unsigned char *)(param_1 + 0x5f) - 1);
             bVar2 = *(unsigned char *)(param_1 + 0x5f);
 
             // Track tail
-            _ByteMove(s__0000e728, puVar8 + bVar2, 2);
+            ByteMove(s__0000e728, puVar8 + bVar2, 2);
             puVar7 = puVar8 + bVar2 + 2;
 
             // Save track offset for side 0
@@ -3387,7 +3387,7 @@ void _FormatMFMCacheSWIMIIIData(int param_1)
 }
 
 /*
- * _FPYComputeCacheDMAAddress - Compute cache DMA addresses
+ * FPYComputeCacheDMAAddress - Compute cache DMA addresses
  *
  * Calculates logical and physical DMA addresses for cache operations,
  * taking into account track layout, sector positioning, and DMA alignment.
@@ -3399,7 +3399,7 @@ void _FormatMFMCacheSWIMIIIData(int param_1)
  *   param_4 - Additional offset
  *   param_5 - Pointer to array to receive [logical address, physical address]
  */
-void _FPYComputeCacheDMAAddress(int param_1, char param_2, unsigned int param_3,
+void FPYComputeCacheDMAAddress(int param_1, char param_2, unsigned int param_3,
                                 int param_4, int *param_5)
 {
     int iVar1;
@@ -3445,7 +3445,7 @@ void _FPYComputeCacheDMAAddress(int param_1, char param_2, unsigned int param_3,
 }
 
 /*
- * _FPYDenibblizeGCRSector - Denibblize GCR sector data
+ * FPYDenibblizeGCRSector - Denibblize GCR sector data
  *
  * Converts nibblized GCR sector data back to binary format. Checks if sector
  * is already denibblized using cache bit array, performs denibblization with
@@ -3459,7 +3459,7 @@ void _FPYComputeCacheDMAAddress(int param_1, char param_2, unsigned int param_3,
  * Returns:
  *   0 on success, error code on checksum failure
  */
-int _FPYDenibblizeGCRSector(int param_1, unsigned char *param_2, unsigned int param_3)
+int FPYDenibblizeGCRSector(int param_1, unsigned char *param_2, unsigned int param_3)
 {
     unsigned char bVar1;
     unsigned int uVar2;
@@ -3471,9 +3471,9 @@ int _FPYDenibblizeGCRSector(int param_1, unsigned char *param_2, unsigned int pa
     int local_28;
     int local_24[4];
 
-    extern unsigned int _DenibblizeGCRData(unsigned int *nibbles, unsigned char *output,
+    extern unsigned int DenibblizeGCRData(unsigned int *nibbles, unsigned char *output,
                                            short byteCount, int *checksum);
-    extern void _DenibblizeGCRChecksum(unsigned int *nibbles, int *checksum);
+    extern void DenibblizeGCRChecksum(unsigned int *nibbles, int *checksum);
 
     iVar6 = 0;
 
@@ -3490,15 +3490,15 @@ int _FPYDenibblizeGCRSector(int param_1, unsigned char *param_2, unsigned int pa
         local_28 = 0;
 
         // Denibblize sector header (12 bytes)
-        uVar2 = _DenibblizeGCRData(puVar7, puVar7, 0xc, &local_28);
+        uVar2 = DenibblizeGCRData(puVar7, puVar7, 0xc, &local_28);
 
         // Denibblize sector data
-        uVar2 = _DenibblizeGCRData(uVar2, param_3, *(unsigned short *)(param_1 + 0x54), &local_28);
+        uVar2 = DenibblizeGCRData(uVar2, param_3, *(unsigned short *)(param_1 + 0x54), &local_28);
 
         // Get and verify checksum
-        _DenibblizeGCRChecksum(uVar2, local_24);
+        DenibblizeGCRChecksum(uVar2, local_24);
         if (local_24[0] != local_28) {
-            sVar3 = _RecordError(0xffffffb8);  // -72 checksum error
+            sVar3 = RecordError(0xffffffb8);  // -72 checksum error
             iVar6 = (int)sVar3;
         }
 
@@ -3523,7 +3523,7 @@ int _FPYDenibblizeGCRSector(int param_1, unsigned char *param_2, unsigned int pa
 }
 
 /*
- * _FPYNibblizeGCRSector - Nibblize sector data to GCR format
+ * FPYNibblizeGCRSector - Nibblize sector data to GCR format
  *
  * Converts binary sector data to nibblized GCR format for writing to disk.
  * Only nibblizes if sector is marked as dirty (denibblized) in cache bit array.
@@ -3536,7 +3536,7 @@ int _FPYDenibblizeGCRSector(int param_1, unsigned char *param_2, unsigned int pa
  * Returns:
  *   0 (always)
  */
-unsigned int _FPYNibblizeGCRSector(int param_1, unsigned char *param_2, int param_3)
+unsigned int FPYNibblizeGCRSector(int param_1, unsigned char *param_2, int param_3)
 {
     unsigned char bVar1;
     short sVar3;
@@ -3547,9 +3547,9 @@ unsigned int _FPYNibblizeGCRSector(int param_1, unsigned char *param_2, int para
     unsigned char *pbVar7;
     unsigned int local_18[4];
 
-    extern unsigned int _NibblizeGCRData(unsigned char *input, unsigned char *output,
+    extern unsigned int NibblizeGCRData(unsigned char *input, unsigned char *output,
                                          short byteCount, unsigned int *checksum);
-    extern void _NibblizeGCRChecksum(unsigned int output, unsigned int checksum);
+    extern void NibblizeGCRChecksum(unsigned int output, unsigned int checksum);
 
     bVar1 = *(unsigned char *)(param_1 + 0x22);  // Sector number
 
@@ -3579,13 +3579,13 @@ unsigned int _FPYNibblizeGCRSector(int param_1, unsigned char *param_2, int para
         local_18[0] = 0;
 
         // Nibblize sector header (12 bytes)
-        uVar4 = _NibblizeGCRData(pbVar5, param_2 + 1, 0xc, local_18);
+        uVar4 = NibblizeGCRData(pbVar5, param_2 + 1, 0xc, local_18);
 
         // Nibblize sector data
-        uVar4 = _NibblizeGCRData(pbVar7 + 0xd, uVar4, *(unsigned short *)(param_1 + 0x54), local_18);
+        uVar4 = NibblizeGCRData(pbVar7 + 0xd, uVar4, *(unsigned short *)(param_1 + 0x54), local_18);
 
         // Nibblize checksum
-        _NibblizeGCRChecksum(uVar4, local_18[0]);
+        NibblizeGCRChecksum(uVar4, local_18[0]);
 
         // Clear dirty bit in cache bit array
         iVar6 = (unsigned int)*(unsigned char *)(param_1 + 0x21) * 8 + param_1 +
@@ -3600,17 +3600,17 @@ unsigned int _FPYNibblizeGCRSector(int param_1, unsigned char *param_2, int para
 }
 
 /*
- * _GetBusyFlag - Acquire busy flag with waiting
+ * GetBusyFlag - Acquire busy flag with waiting
  *
  * Waits until busy flag becomes available, then atomically sets it.
  * Uses spin-wait loop with sleep to avoid busy waiting.
  */
-void _GetBusyFlag(void)
+void GetBusyFlag(void)
 {
     int iVar1;
 
     extern unsigned int _busyflag;
-    extern int _SetBusyFlag(void);
+    extern int SetBusyFlag(void);
     extern void FUN_00004cc4(int, unsigned int *, int);
     extern void FUN_00004cb4(unsigned int *, int);
 
@@ -3622,12 +3622,12 @@ void _GetBusyFlag(void)
         }
 
         // Try to atomically set busy flag
-        iVar1 = _SetBusyFlag();
+        iVar1 = SetBusyFlag();
     } while (iVar1 == 0);  // Retry if set failed (race condition)
 }
 
 /*
- * _GetCurrentState - Get current floppy state
+ * GetCurrentState - Get current floppy state
  *
  * Returns the current state of the floppy subsystem.
  *
@@ -3637,7 +3637,7 @@ void _GetBusyFlag(void)
  *   2 - State 0 (uninitialized)
  *   3 - State 0xFF (error/unmounted)
  */
-unsigned int _GetCurrentState(void)
+unsigned int GetCurrentState(void)
 {
     unsigned int uVar1;
 
@@ -3662,7 +3662,7 @@ unsigned int _GetCurrentState(void)
 }
 
 /*
- * _GetDisketteFormat - Detect and set diskette format
+ * GetDisketteFormat - Detect and set diskette format
  *
  * Attempts to detect the diskette format by trying different configurations.
  * First tries double-sided format, then falls back to single-sided if needed.
@@ -3673,14 +3673,14 @@ unsigned int _GetCurrentState(void)
  * Returns:
  *   0 on success, error code on failure
  */
-int _GetDisketteFormat(int param_1)
+int GetDisketteFormat(int param_1)
 {
     unsigned int uVar1;
     short sVar2;
     int iVar3;
 
-    extern unsigned int _GetDisketteFormatType(int driveStructure);
-    extern short _HALGetNextAddressID(int driveStructure);
+    extern unsigned int GetDisketteFormatType(int driveStructure);
+    extern short HALGetNextAddressID(int driveStructure);
 
     // Check if disk is present (offset 0x47)
     if (*(char *)(param_1 + 0x47) != '\0') {
@@ -3688,19 +3688,19 @@ int _GetDisketteFormat(int param_1)
         *(unsigned char *)(param_1 + 0x48) = 0xff;  // Set format type marker
         *(unsigned int *)(param_1 + 0x40) = 1;       // Set double-sided flag
 
-        uVar1 = _GetDisketteFormatType();
-        sVar2 = _SetDisketteFormat(param_1, uVar1);
+        uVar1 = GetDisketteFormatType();
+        sVar2 = SetDisketteFormat(param_1, uVar1);
         iVar3 = (int)sVar2;
 
         if (iVar3 == 0) {
-            _donone("core:GetDisketteFormat:calling RecalDrive ");
-            sVar2 = _RecalDrive(param_1);
+            donone("core:GetDisketteFormat:calling RecalDrive ");
+            sVar2 = RecalDrive(param_1);
             iVar3 = (int)sVar2;
 
             if (iVar3 == 0) {
                 *(unsigned char *)(param_1 + 0x21) = 0;  // Head 0
-                _donone("core:GetDisketteFormat:calling HALGetNextAddressID ");
-                sVar2 = _HALGetNextAddressID(param_1);
+                donone("core:GetDisketteFormat:calling HALGetNextAddressID ");
+                sVar2 = HALGetNextAddressID(param_1);
                 iVar3 = (int)sVar2;
 
                 // If failed but format marker is set, treat as success
@@ -3725,36 +3725,36 @@ int _GetDisketteFormat(int param_1)
     *(unsigned char *)(param_1 + 0x48) = 0;      // Clear format type marker
     *(unsigned int *)(param_1 + 0x40) = 0;       // Clear double-sided flag
 
-    _donone("core:GetDisketteFormat:calling SetDisketteFormat ");
-    uVar1 = _GetDisketteFormatType(param_1);
-    sVar2 = _SetDisketteFormat(param_1, uVar1);
+    donone("core:GetDisketteFormat:calling SetDisketteFormat ");
+    uVar1 = GetDisketteFormatType(param_1);
+    sVar2 = SetDisketteFormat(param_1, uVar1);
     iVar3 = (int)sVar2;
 
     if (iVar3 == 0) {
-        _donone("core:GetDisketteFormat:calling RecalDrive again ");
-        sVar2 = _RecalDrive(param_1);
+        donone("core:GetDisketteFormat:calling RecalDrive again ");
+        sVar2 = RecalDrive(param_1);
         iVar3 = (int)sVar2;
 
         if (iVar3 == 0) {
             // Try head 0
             *(unsigned char *)(param_1 + 0x21) = 0;
-            _donone("core:GetDisketteFormat:calling HALGetNextAddressID again ");
-            sVar2 = _HALGetNextAddressID(param_1);
+            donone("core:GetDisketteFormat:calling HALGetNextAddressID again ");
+            sVar2 = HALGetNextAddressID(param_1);
             iVar3 = (int)sVar2;
 
             if (iVar3 == 0) {
                 // Try head 1
                 *(unsigned char *)(param_1 + 0x21) = 1;
-                _donone("core:GetDisketteFormat:calling HALGetNextAddressID 3rd again ");
-                sVar2 = _HALGetNextAddressID(param_1);
+                donone("core:GetDisketteFormat:calling HALGetNextAddressID 3rd again ");
+                sVar2 = HALGetNextAddressID(param_1);
                 iVar3 = (int)sVar2;
 
                 if (iVar3 == 0) {
                     // Successfully detected both heads - set double-sided
                     *(unsigned int *)(param_1 + 0x40) = 1;
-                    _donone("core:calling SetDisketteFormat ");
-                    uVar1 = _GetDisketteFormatType(param_1);
-                    _SetDisketteFormat(param_1, uVar1);
+                    donone("core:calling SetDisketteFormat ");
+                    uVar1 = GetDisketteFormatType(param_1);
+                    SetDisketteFormat(param_1, uVar1);
                 }
             }
         }
@@ -3764,7 +3764,7 @@ int _GetDisketteFormat(int param_1)
 }
 
 /*
- * _GetDisketteFormatType - Get diskette format type code
+ * GetDisketteFormatType - Get diskette format type code
  *
  * Returns the format type code based on drive structure parameters.
  *
@@ -3779,12 +3779,12 @@ int _GetDisketteFormat(int param_1)
  *     3 - 1.44MB MFM
  *     5 - 1.2MB MFM (5.25")
  */
-unsigned char _GetDisketteFormatType(int param_1)
+unsigned char GetDisketteFormatType(int param_1)
 {
     unsigned char bVar1;
     unsigned char bVar2;
 
-    _donone("core.c:GetDisketteFormatType: ");
+    donone("core.c:GetDisketteFormatType: ");
 
     // Check for high-density formats (offset 0x48 = -1)
     if (*(char *)(param_1 + 0x48) == -1) {
@@ -3816,7 +3816,7 @@ unsigned char _GetDisketteFormatType(int param_1)
 }
 
 /*
- * _GetSectorAddress - Convert logical block to physical address
+ * GetSectorAddress - Convert logical block to physical address
  *
  * Converts a logical block number to physical track/head/sector address.
  * Handles both standard formats and variable sectors per track (GCR).
@@ -3825,7 +3825,7 @@ unsigned char _GetDisketteFormatType(int param_1)
  *   param_1 - Drive structure pointer
  *   param_2 - Logical block number
  */
-void _GetSectorAddress(int param_1, short param_2)
+void GetSectorAddress(int param_1, short param_2)
 {
     unsigned char bVar1;
     unsigned char bVar2;
@@ -3874,7 +3874,7 @@ void _GetSectorAddress(int param_1, short param_2)
             iVar9 = 0x540;  // 1344 blocks
         }
 
-        _donone("GetSectoraddress:blk=%d ", iVar10);
+        donone("GetSectoraddress:blk=%d ", iVar10);
 
         // Determine which zone and adjust parameters
         if (iVar10 < iVar8) {
@@ -3916,14 +3916,14 @@ void _GetSectorAddress(int param_1, short param_2)
         uVar5 = iVar10 / iVar4 & 1;
         *(char *)(param_1 + 0x21) = (char)uVar5;
 
-        _donone("GCRRead %d:%d:%d\n", uVar5, (int)*(char *)(param_1 + 0x20),
+        donone("GCRRead %d:%d:%d\n", uVar5, (int)*(char *)(param_1 + 0x20),
                *(unsigned char *)(param_1 + 0x22));
     }
 }
 
 
 /*
- * _HALDiskettePresence - Check if diskette is present in drive
+ * HALDiskettePresence - Check if diskette is present in drive
  *
  * This function checks for diskette presence by sensing SWIM III signals.
  *
@@ -3938,25 +3938,25 @@ void _GetSectorAddress(int param_1, short param_2)
  *   0xf9 - Diskette presence sense (0 = present)
  *   0xf8 - Final presence confirmation (0 = present)
  */
-bool _HALDiskettePresence(int param_1)
+bool HALDiskettePresence(int param_1)
 {
     int iVar1;
 
     // Select the disk drive
-    _SwimIIIDiskSelect();
+    SwimIIIDiskSelect();
 
     // Initialize presence flag to 0 (not present)
     *(unsigned int *)(param_1 + 0x38) = 0;
 
     // Check first presence signal (0xf9)
-    iVar1 = _SwimIIISenseSignal(0xf9);
+    iVar1 = SwimIIISenseSignal(0xf9);
     if (iVar1 == 0) {
         // Signal low means diskette is present
         *(unsigned int *)(param_1 + 0x38) = 1;
     }
 
     // Check second presence signal (0xf8) for final confirmation
-    iVar1 = _SwimIIISenseSignal(0xf8);
+    iVar1 = SwimIIISenseSignal(0xf8);
 
     // Return true if signal is 0 (diskette present)
     return iVar1 == 0;
@@ -3964,7 +3964,7 @@ bool _HALDiskettePresence(int param_1)
 
 
 /*
- * _HALEjectDiskette - Eject diskette from drive
+ * HALEjectDiskette - Eject diskette from drive
  *
  * This function triggers the diskette eject mechanism and waits for
  * the eject operation to complete (or timeout after ~3 seconds).
@@ -3980,22 +3980,22 @@ bool _HALDiskettePresence(int param_1)
  *   - Maximum wait time: 30 iterations * 100ms = 3 seconds
  *   - Final settling delay: 1ms
  */
-unsigned int _HALEjectDiskette(void)
+unsigned int HALEjectDiskette(void)
 {
     short sVar1;
     int iVar2;
 
     // Start the eject mechanism by setting signal 0xf7
-    _SwimIIISetSignal(0xf7);
+    SwimIIISetSignal(0xf7);
 
     // Wait for eject to complete, with timeout
     sVar1 = 0x1d;  // 29 iterations (30 total with do-while)
     do {
         // Wait 100 milliseconds
-        _FloppyTimedSleep(100);
+        FloppyTimedSleep(100);
 
         // Check if eject is complete (signal 0xf8 goes high)
-        iVar2 = _SwimIIISenseSignal(0xf8);
+        iVar2 = SwimIIISenseSignal(0xf8);
         if (iVar2 != 0) {
             // Eject complete
             break;
@@ -4006,14 +4006,14 @@ unsigned int _HALEjectDiskette(void)
     } while (sVar1 != -1);
 
     // Allow time for mechanical settling
-    _FloppyTimedSleep(1);
+    FloppyTimedSleep(1);
 
     return 0;
 }
 
 
 /*
- * _HALFormatTrack - Format a single track on diskette
+ * HALFormatTrack - Format a single track on diskette
  *
  * This function formats a track by preparing the track data in cache,
  * then using DMA to write the formatted track to the diskette via the
@@ -4044,7 +4044,7 @@ unsigned int _HALEjectDiskette(void)
  *   - Head 0: base address
  *   - Head 1: base address + _track_offset
  */
-int _HALFormatTrack(int param_1)
+int HALFormatTrack(int param_1)
 {
     unsigned char uVar1;
     int iVar2;
@@ -4060,28 +4060,28 @@ int _HALFormatTrack(int param_1)
     // Format track data based on format type
     if (*(char *)(param_1 + 0x5a) == '\0') {
         // MFM format (PC-style: 720K, 1.44MB, 1.2MB)
-        _FormatMFMCacheSWIMIIIData(param_1);
+        FormatMFMCacheSWIMIIIData(param_1);
         _lastSectorsPerTrack = uVar1;
     }
     else {
         // GCR format (Mac-style: 400K, 800K)
-        _FormatGCRCacheSWIMIIIData();
+        FormatGCRCacheSWIMIIIData();
         _lastSectorsPerTrack = uVar1;
     }
 
     // Wait for index hole (start of track marker)
     // First wait until index signal goes low
     do {
-        iVar2 = _SwimIIISenseSignal(0xfb);
+        iVar2 = SwimIIISenseSignal(0xfb);
     } while (iVar2 != 0);
 
     // Then wait until it goes high (start of track)
     do {
-        iVar2 = _SwimIIISenseSignal(0xfb);
+        iVar2 = SwimIIISenseSignal(0xfb);
     } while (iVar2 == 0);
 
     // Select the head (side 0 or 1)
-    _SwimIIIHeadSelect(*(unsigned char *)(param_1 + 0x21));
+    SwimIIIHeadSelect(*(unsigned char *)(param_1 + 0x21));
 
     // Calculate DMA address based on head number
     if (*(char *)(param_1 + 0x21) == '\0') {
@@ -4094,21 +4094,21 @@ int _HALFormatTrack(int param_1)
     }
 
     // Prepare CPU cache for DMA write operation
-    _PrepareCPUCacheForDMAWrite();
+    PrepareCPUCacheForDMAWrite();
 
     // Start DMA channel to write track data (32KB)
-    sVar3 = _StartDMAChannel(iVar2, 0x8000, 0);
+    sVar3 = StartDMAChannel(iVar2, 0x8000, 0);
 
     // Write to SWIM III control register to start format
     *DAT_0000fc34 = 8;
-    _SynchronizeIO();
+    SynchronizeIO();
 
     // Trigger the actual format operation
     *DAT_0000fc34 = 0x40;
-    _SynchronizeIO();
+    SynchronizeIO();
 
     // Debug output
-    _donone("gcr=%d hd=%d,track=%d,trksize=%d,err=%d\n",
+    donone("gcr=%d hd=%d,track=%d,trksize=%d,err=%d\n",
            *(unsigned char *)(param_1 + 0x5a),
            *(unsigned char *)(param_1 + 0x21),
            (int)*(char *)(param_1 + 0x20),
@@ -4120,7 +4120,7 @@ int _HALFormatTrack(int param_1)
 
 
 /*
- * _HALGetDriveType - Detect drive type and capabilities
+ * HALGetDriveType - Detect drive type and capabilities
  *
  * This function determines the type of floppy drive by sensing various
  * SWIM III signals to identify drive capabilities.
@@ -4147,33 +4147,33 @@ int _HALFormatTrack(int param_1)
  *     - 0 = 1.44MB capable (0xfe)
  *     - 1 = 1.2MB/1.44MB capable (0xff)
  */
-bool _HALGetDriveType(int param_1)
+bool HALGetDriveType(int param_1)
 {
     unsigned char uVar1;
     int iVar2;
     int iVar3;
 
     // Select the disk drive
-    _SwimIIIDiskSelect();
+    SwimIIIDiskSelect();
 
     // Check if drive is present (signal 0xf7)
-    iVar2 = _SwimIIISenseSignal(0xf7);
+    iVar2 = SwimIIISenseSignal(0xf7);
 
     if (iVar2 == 0) {
         // Drive is present - initialize drive type to basic (0)
         *(unsigned char *)(param_1 + 0x47) = 0;
 
         // Check drive capabilities (signal 0xf5)
-        iVar3 = _SwimIIISenseSignal(0xf5);
+        iVar3 = SwimIIISenseSignal(0xf5);
 
         if (iVar3 != 0) {
             // Enhanced drive - perform further detection
 
             // Set signal 0xf6 to test drive response
-            _SwimIIISetSignal(0xf6);
+            SwimIIISetSignal(0xf6);
 
             // Read back signal 0xf6
-            iVar3 = _SwimIIISenseSignal(0xf6);
+            iVar3 = SwimIIISenseSignal(0xf6);
 
             if (iVar3 == 0) {
                 // Signal low = 1.44MB capable drive
@@ -4194,7 +4194,7 @@ bool _HALGetDriveType(int param_1)
 
 
 /*
- * _HALGetMediaType - Detect media type and density
+ * HALGetMediaType - Detect media type and density
  *
  * This function determines the type and density of the media (diskette)
  * inserted in the drive by sensing SWIM III signals.
@@ -4220,7 +4220,7 @@ bool _HALGetDriveType(int param_1)
  *       - 1 = 1.2MB (0x49 = 0xff)
  *   - Signal 0xff != 0: Double-density media (0x49 = 0)
  */
-void _HALGetMediaType(int param_1)
+void HALGetMediaType(int param_1)
 {
     int iVar1;
 
@@ -4229,19 +4229,19 @@ void _HALGetMediaType(int param_1)
     *(unsigned char *)(param_1 + 0x49) = 0;
 
     // Check if media type detection is available (signal 0xf5)
-    iVar1 = _SwimIIISenseSignal(0xf5);
+    iVar1 = SwimIIISenseSignal(0xf5);
 
     if (iVar1 != 0) {
         // Media detection available - check for media presence (signal 0xff)
-        iVar1 = _SwimIIISenseSignal(0xff);
+        iVar1 = SwimIIISenseSignal(0xff);
 
         if (iVar1 == 0) {
             // Media is present
             *(unsigned char *)(param_1 + 0x48) = 0xff;
 
             // Detect density by setting and reading signal 0xf6
-            _SwimIIISetSignal(0xf6);
-            iVar1 = _SwimIIISenseSignal(0xf6);
+            SwimIIISetSignal(0xf6);
+            iVar1 = SwimIIISenseSignal(0xf6);
 
             if (iVar1 == 0) {
                 // Signal low = 1.44MB high-density media
@@ -4264,7 +4264,7 @@ void _HALGetMediaType(int param_1)
 
 
 /*
- * _HALGetNextAddressID - Read next address mark from diskette
+ * HALGetNextAddressID - Read next address mark from diskette
  *
  * This function reads the next sector address mark (ID field) from the
  * diskette. It waits for the SWIM III controller to detect an address
@@ -4291,73 +4291,73 @@ void _HALGetMediaType(int param_1)
  *   0xfc48 - Sector number (bits 0-6)
  *   0xfc4c - Format byte (sector size code)
  */
-void _HALGetNextAddressID(int param_1)
+void HALGetNextAddressID(int param_1)
 {
     short sVar1;
 
     // Reset DMA channel to prepare for read operation
-    _ResetDMAChannel();
+    ResetDMAChannel();
 
     // Cancel any pending address mark events (event bit 2)
-    _CancelOSEvent(_driveOSEventIDptr, 4);
+    CancelOSEvent(_driveOSEventIDptr, 4);
 
     // Select the head (side) to read from
-    _SwimIIIHeadSelect(*(unsigned char *)(param_1 + 0x21));
+    SwimIIIHeadSelect(*(unsigned char *)(param_1 + 0x21));
 
     // Enable SWIM III read mode to detect address marks
-    _SwimIIISetReadMode();
+    SwimIIISetReadMode();
 
     // Wait for address mark event (timeout 400ms, event mask 8, event bit 2)
-    sVar1 = _WaitForEvent(400, 8, 4);
+    sVar1 = WaitForEvent(400, 8, 4);
 
     if (sVar1 == 0) {
         // Address mark detected successfully - read fields from SWIM III registers
 
         // Disable read mode before reading registers
-        _SwimIIIDisableRWMode();
+        SwimIIIDisableRWMode();
 
         // Read track number from register 0xfc44 (bits 0-6)
         *(unsigned char *)(param_1 + 0x1c) = *DAT_0000fc44 & 0x7f;
-        _SynchronizeIO();
+        SynchronizeIO();
 
         // Read head number from register 0xfc44 (bit 7)
         *(unsigned char *)(param_1 + 0x1d) = *DAT_0000fc44 >> 7;
-        _SynchronizeIO();
+        SynchronizeIO();
 
         // Read sector number from register 0xfc48 (bits 0-6)
         *(unsigned char *)(param_1 + 0x1e) = *DAT_0000fc48 & 0x7f;
-        _SynchronizeIO();
+        SynchronizeIO();
 
         // Read format byte from register 0xfc4c (sector size code)
         *(unsigned char *)(param_1 + 0x1f) = *DAT_0000fc4c;
-        _SynchronizeIO();
+        SynchronizeIO();
     }
 
     // Ensure read mode is disabled
-    _SwimIIIDisableRWMode();
+    SwimIIIDisableRWMode();
 
     // Record any error that occurred during the operation
-    _RecordError((int)sVar1);
+    RecordError((int)sVar1);
 
     return;
 }
 
 
 /*
- * _HALISR_DMA - DMA interrupt service routine
+ * HALISR_DMA - DMA interrupt service routine
  *
  * This is the interrupt service routine (ISR) for DMA operations.
  * Currently empty as DMA interrupts may be handled elsewhere or
  * not used in this driver implementation.
  */
-void _HALISR_DMA(void)
+void HALISR_DMA(void)
 {
     return;
 }
 
 
 /*
- * _HALISRHandler - Main SWIM III interrupt service routine
+ * HALISRHandler - Main SWIM III interrupt service routine
  *
  * This is the main interrupt service routine (ISR) for the SWIM III
  * floppy controller. It reads the interrupt status, clears the interrupt,
@@ -4379,34 +4379,34 @@ void _HALISR_DMA(void)
  *   0xfc34 - Control register (write 1 to reset)
  *   0xfc24 - Error status register (read when bit 5 is set)
  */
-void _HALISRHandler(void)
+void HALISRHandler(void)
 {
     unsigned char bVar1;
 
     // Read interrupt status register
     bVar1 = *DAT_0000fc3c;
-    _SynchronizeIO();
+    SynchronizeIO();
 
     if (bVar1 == 0) {
         // No interrupts pending - this should not happen
-        _donone("HALISR: Pending interrupt is ZERO ");
+        donone("HALISR: Pending interrupt is ZERO ");
     }
     else {
         // Clear interrupt by writing to acknowledge register
         *DAT_0000fc58 = 0;
-        _SynchronizeIO();
+        SynchronizeIO();
 
         // Reset controller state
         *DAT_0000fc34 = 1;
-        _SynchronizeIO();
+        SynchronizeIO();
 
         // Signal OS event with interrupt status bits
-        _SetOSEvent(_driveOSEventIDptr, bVar1);
+        SetOSEvent(_driveOSEventIDptr, bVar1);
 
         // If error bit is set (bit 5), read error status register
         if ((bVar1 & 0x20) != 0) {
             _lastErrorsPending = *DAT_0000fc24;
-            _SynchronizeIO();
+            SynchronizeIO();
         }
     }
 
@@ -4415,7 +4415,7 @@ void _HALISRHandler(void)
 
 
 /*
- * _HALPowerDownDrive - Power down the floppy drive
+ * HALPowerDownDrive - Power down the floppy drive
  *
  * This function powers down the floppy drive by selecting it and
  * setting the power-down signal.
@@ -4428,20 +4428,20 @@ void _HALISRHandler(void)
  *   - System is entering low-power mode
  *   - Driver is being unloaded
  */
-void _HALPowerDownDrive(void)
+void HALPowerDownDrive(void)
 {
     // Select the disk drive
-    _SwimIIIDiskSelect();
+    SwimIIIDiskSelect();
 
     // Set power-down signal
-    _SwimIIISetSignal(0xf6);
+    SwimIIISetSignal(0xf6);
 
     return;
 }
 
 
 /*
- * _HALPowerUpDrive - Power up the floppy drive
+ * HALPowerUpDrive - Power up the floppy drive
  *
  * This function powers up the floppy drive and waits for it to become ready.
  *
@@ -4457,25 +4457,25 @@ void _HALPowerDownDrive(void)
  *   2. Enable drive motor (0xf2)
  *   3. Wait for drive to become ready (1ms timeout)
  */
-int _HALPowerUpDrive(void)
+int HALPowerUpDrive(void)
 {
     short sVar1;
 
     // Set power-up signal
-    _SwimIIISetSignal(0xfd);
+    SwimIIISetSignal(0xfd);
 
     // Enable drive motor
-    _SwimIIISetSignal(0xf2);
+    SwimIIISetSignal(0xf2);
 
     // Wait for drive to become ready (1ms delay)
-    sVar1 = _SleepUntilReady(1);
+    sVar1 = SleepUntilReady(1);
 
     return (int)sVar1;
 }
 
 
 /*
- * _HALReadSector - Read a sector from diskette
+ * HALReadSector - Read a sector from diskette
  *
  * This function reads a single sector from the diskette using DMA.
  * It sets up the SWIM III controller registers and initiates a DMA
@@ -4506,51 +4506,51 @@ int _HALPowerUpDrive(void)
  *   6. Disable read/write mode
  *   7. Reset sector number register (0xff)
  */
-int _HALReadSector(int param_1)
+int HALReadSector(int param_1)
 {
     short sVar1;
 
     // Enable read mode
     *DAT_0000fc54 = 1;
-    _SynchronizeIO();
+    SynchronizeIO();
 
     // Set format control register to 0
     *DAT_0000fc4c = 0;
-    _SynchronizeIO();
+    SynchronizeIO();
 
     // Set target sector number
     *DAT_0000fc50 = *(unsigned char *)(param_1 + 0x22);
-    _SynchronizeIO();
+    SynchronizeIO();
 
     // Select the head (side)
-    _SwimIIIHeadSelect(*(unsigned char *)(param_1 + 0x21));
+    SwimIIIHeadSelect(*(unsigned char *)(param_1 + 0x21));
 
     // Start DMA channel to read sector (flag=1 for read)
-    sVar1 = _StartDMAChannel(*(unsigned int *)(param_1 + 0x28),
+    sVar1 = StartDMAChannel(*(unsigned int *)(param_1 + 0x28),
                              (int)*(short *)(param_1 + 0x56),
                              1);
 
     if (sVar1 != 0) {
         // DMA failed - log error
-        _donone("HALRead failed for %d:%d:%d ",
+        donone("HALRead failed for %d:%d:%d ",
                *(unsigned char *)(param_1 + 0x21),
                (int)*(char *)(param_1 + 0x20),
                *(unsigned char *)(param_1 + 0x22));
     }
 
     // Disable read/write mode
-    _SwimIIIDisableRWMode();
+    SwimIIIDisableRWMode();
 
     // Reset sector number register
     *DAT_0000fc50 = 0xff;
-    _SynchronizeIO();
+    SynchronizeIO();
 
     return (int)sVar1;
 }
 
 
 /*
- * _HALRecalDrive - Recalibrate drive to track 0
+ * HALRecalDrive - Recalibrate drive to track 0
  *
  * This function recalibrates the floppy drive by stepping backwards
  * until track 0 is detected, then formats the track cache.
@@ -4575,7 +4575,7 @@ int _HALReadSector(int param_1)
  * Error codes:
  *   0xffffffb4 (-76) - Failed to reach track 0
  */
-int _HALRecalDrive(int param_1)
+int HALRecalDrive(int param_1)
 {
     short sVar1;
     short sVar3;
@@ -4587,9 +4587,9 @@ int _HALRecalDrive(int param_1)
 
     // Step backwards until track 0 detected or max steps reached
     while ((sVar1 = sVar1 - 1, sVar1 != -1 &&
-           (iVar2 = _SwimIIISenseSignal(0xfa), iVar2 != 0))) {
+           (iVar2 = SwimIIISenseSignal(0xfa), iVar2 != 0))) {
         // Step one track inward (direction 0xffffffff = backwards)
-        sVar3 = _SwimIIIStepDrive(0xffffffff);
+        sVar3 = SwimIIIStepDrive(0xffffffff);
         iVar4 = (int)sVar3;
 
         if (iVar4 != 0) {
@@ -4603,7 +4603,7 @@ int _HALRecalDrive(int param_1)
     }
 
     // Allow mechanical settling (30ms)
-    sVar3 = _SleepUntilReady(0x1e);
+    sVar3 = SleepUntilReady(0x1e);
     if (sVar3 != 0) {
         return (int)sVar3;
     }
@@ -4611,9 +4611,9 @@ int _HALRecalDrive(int param_1)
     iVar4 = 0;
 
     // Verify track 0 was reached
-    if ((sVar1 == 0) && (iVar2 = _SwimIIISenseSignal(0xfa), iVar2 != 0)) {
+    if ((sVar1 == 0) && (iVar2 = SwimIIISenseSignal(0xfa), iVar2 != 0)) {
         // Track 0 not reached after maximum steps
-        sVar1 = _RecordError(0xffffffb4);
+        sVar1 = RecordError(0xffffffb4);
         iVar4 = (int)sVar1;
     }
 
@@ -4624,18 +4624,18 @@ int _HALRecalDrive(int param_1)
     // Format track cache based on format type
     if (*(char *)(param_1 + 0x5a) != '\0') {
         // GCR format (Mac-style: 400K, 800K)
-        _FormatGCRCacheSWIMIIIData(param_1);
+        FormatGCRCacheSWIMIIIData(param_1);
         return 0;
     }
 
     // MFM format (PC-style: 720K, 1.44MB, 1.2MB)
-    _FormatMFMCacheSWIMIIIData(param_1);
+    FormatMFMCacheSWIMIIIData(param_1);
     return 0;
 }
 
 
 /*
- * _HALReset - Reset and initialize SWIM III controller
+ * HALReset - Reset and initialize SWIM III controller
  *
  * This function performs a complete reset and initialization of the
  * SWIM III floppy controller. It sets up all hardware register pointers,
@@ -4680,7 +4680,7 @@ int _HALRecalDrive(int param_1)
  *   7. Reset SWIM III controller
  *   8. Set mode register to 0x20
  */
-unsigned int _HALReset(int param_1, int param_2, unsigned int param_3)
+unsigned int HALReset(int param_1, int param_2, unsigned int param_3)
 {
     // Initialize error status
     _lastErrorsPending = 0;
@@ -4715,7 +4715,7 @@ unsigned int _HALReset(int param_1, int param_2, unsigned int param_3)
     _GRCFloppyDMARegs = param_3;
 
     // Initialize DMA channel and allocate command buffers
-    _OpenDBDMAChannel(param_3, &_GRCFloppyDMAChannel, 1,
+    OpenDBDMAChannel(param_3, &_GRCFloppyDMAChannel, 1,
                      &_ccCommandsLogicalAddr, &_ccCommandsPhysicalAddr);
 
     // Initialize buffer pointers if NULL
@@ -4729,18 +4729,18 @@ unsigned int _HALReset(int param_1, int param_2, unsigned int param_3)
 
     // Reset SWIM III controller by toggling control register
     *DAT_0000fc34 = ~*DAT_0000fc34;
-    _SynchronizeIO();
+    SynchronizeIO();
 
     // Set mode register to 0x20
     *DAT_0000fc30 = 0x20;
-    _SynchronizeIO();
+    SynchronizeIO();
 
     return 0;
 }
 
 
 /*
- * _HALSeekDrive - Seek drive to target track
+ * HALSeekDrive - Seek drive to target track
  *
  * This function seeks the drive head to a target track and formats
  * the track cache for the new position.
@@ -4760,30 +4760,30 @@ unsigned int _HALReset(int param_1, int param_2, unsigned int param_3)
  *   3. Wait 30ms for mechanical settling
  *   4. Format track cache based on format type
  */
-int _HALSeekDrive(int param_1)
+int HALSeekDrive(int param_1)
 {
     short sVar1;
     int iVar2;
 
     // Calculate and execute step (target track - current track)
-    sVar1 = _SwimIIIStepDrive((int)*(char *)(param_1 + 0x20) -
+    sVar1 = SwimIIIStepDrive((int)*(char *)(param_1 + 0x20) -
                               (int)*(char *)(param_1 + 0x1c));
     iVar2 = (int)sVar1;
 
     if (iVar2 == 0) {
         // Step successful - wait for mechanical settling (30ms)
-        sVar1 = _SleepUntilReady(0x1e);
+        sVar1 = SleepUntilReady(0x1e);
         iVar2 = (int)sVar1;
 
         if (iVar2 == 0) {
             // Format track cache based on format type
             if (*(char *)(param_1 + 0x5a) == '\0') {
                 // MFM format (PC-style: 720K, 1.44MB, 1.2MB)
-                _FormatMFMCacheSWIMIIIData(param_1);
+                FormatMFMCacheSWIMIIIData(param_1);
             }
             else {
                 // GCR format (Mac-style: 400K, 800K)
-                _FormatGCRCacheSWIMIIIData(param_1);
+                FormatGCRCacheSWIMIIIData(param_1);
             }
         }
     }
@@ -4793,7 +4793,7 @@ int _HALSeekDrive(int param_1)
 
 
 /*
- * _HALSetFormatMode - Set SWIM III to format mode
+ * HALSetFormatMode - Set SWIM III to format mode
  *
  * This function configures the SWIM III controller for formatting
  * diskettes. It sets up timing parameters and mode registers based
@@ -4827,7 +4827,7 @@ int _HALSeekDrive(int param_1)
  *   4. Set SWIM III mode and status registers
  *   5. Set appropriate signal and wait 30ms
  */
-void _HALSetFormatMode(int param_1)
+void HALSetFormatMode(int param_1)
 {
     unsigned char uVar1;
     unsigned int uVar2;
@@ -4848,19 +4848,19 @@ void _HALSetFormatMode(int param_1)
 
         // Format track cache
         _lastSectorsPerTrack = 0xff;
-        _FormatGCRCacheSWIMIIIData();
+        FormatGCRCacheSWIMIIIData();
 
         // Set SWIM III mode register for GCR format
         *DAT_0000fc30 = 0x4c;
-        _SynchronizeIO();
+        SynchronizeIO();
 
         // Toggle control register
         *DAT_0000fc34 = ~*DAT_0000fc34;
-        _SynchronizeIO();
+        SynchronizeIO();
 
         // Set status register
         *DAT_0000fc28 = 0x88;
-        _SynchronizeIO();
+        SynchronizeIO();
 
         // Set GCR signal
         uVar2 = 0xfd;
@@ -4881,7 +4881,7 @@ void _HALSetFormatMode(int param_1)
 
         // Format track cache
         _lastSectorsPerTrack = 0xff;
-        _FormatMFMCacheSWIMIIIData(param_1);
+        FormatMFMCacheSWIMIIIData(param_1);
 
         // Set mode register based on media density
         if (*(char *)(param_1 + 0x49) == -2) {
@@ -4893,30 +4893,30 @@ void _HALSetFormatMode(int param_1)
             uVar1 = 0x28;
         }
         *DAT_0000fc30 = uVar1;
-        _SynchronizeIO();
+        SynchronizeIO();
 
         // Toggle control register
         *DAT_0000fc34 = ~*DAT_0000fc34;
-        _SynchronizeIO();
+        SynchronizeIO();
 
         // Set status register
         *DAT_0000fc28 = 0x95;
-        _SynchronizeIO();
+        SynchronizeIO();
 
         // Set MFM signal
         uVar2 = 0xf9;
     }
 
     // Set the signal and wait for settling
-    _SwimIIISetSignal(uVar2);
-    _SleepUntilReady(0x1e);
+    SwimIIISetSignal(uVar2);
+    SleepUntilReady(0x1e);
 
     return;
 }
 
 
 /*
- * _HALWriteSector - Write a sector to diskette
+ * HALWriteSector - Write a sector to diskette
  *
  * This function writes a single sector to the diskette using DMA.
  * It sets up the SWIM III controller registers, prepares the write
@@ -4953,7 +4953,7 @@ void _HALSetFormatMode(int param_1)
  *   8. Disable read/write mode
  *   9. Reset sector number register (0xff)
  */
-int _HALWriteSector(int param_1)
+int HALWriteSector(int param_1)
 {
     int iVar1;
     short sVar2;
@@ -4963,18 +4963,18 @@ int _HALWriteSector(int param_1)
 
     // Enable write mode
     *DAT_0000fc54 = 1;
-    _SynchronizeIO();
+    SynchronizeIO();
 
     // Set format control register to 0
     *DAT_0000fc4c = 0;
-    _SynchronizeIO();
+    SynchronizeIO();
 
     // Set target sector number
     *DAT_0000fc50 = *(unsigned char *)(param_1 + 0x22);
-    _SynchronizeIO();
+    SynchronizeIO();
 
     // Copy tail bytes after sector data (2 bytes from tail pattern)
-    _ByteMove((unsigned char *)s__0000e728,
+    ByteMove((unsigned char *)s__0000e728,
              (int)*(short *)(param_1 + 0x56) + *(int *)(param_1 + 0x28) + 6,
              2);
 
@@ -5002,35 +5002,35 @@ int _HALWriteSector(int param_1)
     sVar2 = *(short *)(param_1 + 0x56);  // Sector size
 
     // Select the head (side)
-    _SwimIIIHeadSelect(*(unsigned char *)(param_1 + 0x21));
+    SwimIIIHeadSelect(*(unsigned char *)(param_1 + 0x21));
 
     // Start DMA channel to write sector (flag=0 for write)
     // Total length: offset - padding + 8 + sector size
-    sVar2 = _StartDMAChannel(uVar4 + iVar1,
+    sVar2 = StartDMAChannel(uVar4 + iVar1,
                             (iVar5 - iVar1) + 8 + (int)sVar2,
                             0);
 
     if (sVar2 != 0) {
         // DMA failed - log error
-        _donone("HALWrite failed for %d:%d:%d ",
+        donone("HALWrite failed for %d:%d:%d ",
                *(unsigned char *)(param_1 + 0x21),
                (int)*(char *)(param_1 + 0x20),
                *(unsigned char *)(param_1 + 0x22));
     }
 
     // Disable read/write mode
-    _SwimIIIDisableRWMode();
+    SwimIIIDisableRWMode();
 
     // Reset sector number register
     *DAT_0000fc50 = 0xff;
-    _SynchronizeIO();
+    SynchronizeIO();
 
     return (int)sVar2;
 }
 
 
 /*
- * _InitializeDrive - Initialize drive structure and hardware
+ * InitializeDrive - Initialize drive structure and hardware
  *
  * This function performs complete initialization of the floppy drive,
  * including resource allocation, hardware setup, and drive detection.
@@ -5039,7 +5039,7 @@ int _HALWriteSector(int param_1)
  *   param_1 - Drive number (short)
  *   param_2 - SWIM III register base address
  *   param_3 - DMA register base address
- *   param_4 - Additional parameter (passed to _HALReset)
+ *   param_4 - Additional parameter (passed to HALReset)
  *   param_5 - Value stored at offset 0xb8
  *   param_6 - Value stored at offset 0xbc
  *   param_7 - Value stored at offset 0xc0
@@ -5067,7 +5067,7 @@ int _HALWriteSector(int param_1)
  *   offset 0x3d: Set to 2 (detecting), then 1 (idle) if drive found
  *   offset 0xb8-0xc0: Store buffer parameters
  */
-int _InitializeDrive(unsigned int param_1, unsigned int param_2, unsigned int param_3,
+int InitializeDrive(unsigned int param_1, unsigned int param_2, unsigned int param_3,
                     unsigned int param_4, unsigned int param_5, unsigned int param_6,
                     unsigned int param_7, unsigned int **param_8)
 {
@@ -5077,7 +5077,7 @@ int _InitializeDrive(unsigned int param_1, unsigned int param_2, unsigned int pa
     int iVar4;
 
     // Validate drive number and get drive structure pointer
-    sVar3 = _CheckDriveNumber(param_1, param_8);
+    sVar3 = CheckDriveNumber(param_1, param_8);
     iVar4 = (int)sVar3;
 
     if (iVar4 == 0) {
@@ -5085,17 +5085,17 @@ int _InitializeDrive(unsigned int param_1, unsigned int param_2, unsigned int pa
         param_8 = (unsigned int **)*param_8;
 
         // Create hardware lock resources for mutual exclusion
-        sVar3 = _CreateOSHardwareLockResources((unsigned int *)param_8);
+        sVar3 = CreateOSHardwareLockResources((unsigned int *)param_8);
         iVar4 = (int)sVar3;
 
         if (iVar4 == 0) {
             // Create OS event resources for interrupt handling
-            sVar3 = _CreateOSEventResources((unsigned int *)param_8 + 2);
+            sVar3 = CreateOSEventResources((unsigned int *)param_8 + 2);
             iVar4 = (int)sVar3;
 
             if (iVar4 == 0) {
                 // Enter hardware lock section
-                uVar1 = _EnterHardwareLockSection();
+                uVar1 = EnterHardwareLockSection();
                 *param_8 = (unsigned int *)uVar1;
 
                 // Store buffer parameters in drive structure
@@ -5104,7 +5104,7 @@ int _InitializeDrive(unsigned int param_1, unsigned int param_2, unsigned int pa
                 param_8[0x30] = (unsigned int *)param_7;  // offset 0xc0
 
                 // Reset and initialize SWIM III controller
-                sVar3 = _HALReset((int)param_8, param_2, param_3, param_4);
+                sVar3 = HALReset((int)param_8, param_2, param_3, param_4);
                 iVar4 = (int)sVar3;
 
                 if (iVar4 == 0) {
@@ -5115,11 +5115,11 @@ int _InitializeDrive(unsigned int param_1, unsigned int param_2, unsigned int pa
                     *(unsigned char *)((int)param_8 + 0x3d) = 2;
 
                     // Detect drive type
-                    iVar2 = _HALGetDriveType((int)param_8);
+                    iVar2 = HALGetDriveType((int)param_8);
 
                     if (iVar2 != 0) {
                         // Drive detected - initialize state
-                        _DumpTrackCache((int)param_8);
+                        DumpTrackCache((int)param_8);
 
                         // Set state to "idle" (1)
                         *(unsigned char *)((int)param_8 + 0x3d) = 1;
@@ -5134,12 +5134,12 @@ int _InitializeDrive(unsigned int param_1, unsigned int param_2, unsigned int pa
                         param_8[0xc] = 0;
 
                         // Power down drive (idle state)
-                        _PowerDriveDown((int)param_8, 0);
+                        PowerDriveDown((int)param_8, 0);
                     }
                 }
 
                 // Exit hardware lock section
-                _ExitHardwareLockSection((unsigned int)*param_8);
+                ExitHardwareLockSection((unsigned int)*param_8);
             }
         }
     }
@@ -5149,7 +5149,7 @@ int _InitializeDrive(unsigned int param_1, unsigned int param_2, unsigned int pa
 
 
 /*
- * _InitFormatTable - Initialize diskette format table
+ * InitFormatTable - Initialize diskette format table
  *
  * This function initializes a global table containing format descriptors
  * for all supported floppy disk formats. Each entry contains parameters
@@ -5174,7 +5174,7 @@ int _InitializeDrive(unsigned int param_1, unsigned int param_2, unsigned int pa
  *   +0x0e (1 byte):  Reserved/flags
  *   +0x0f-0x13:      MFM-specific parameters
  */
-void _InitFormatTable(void)
+void InitFormatTable(void)
 {
     // Entry 0: 400K Mac GCR (single-sided, 80 tracks, 9-12 sectors/track)
     DAT_0000fb90 = 800;        // Capacity: 800 blocks (400K)
@@ -5266,7 +5266,7 @@ void _InitFormatTable(void)
 
 
 /*
- * _KillMediaScanTask - Terminate media scan task
+ * KillMediaScanTask - Terminate media scan task
  *
  * This function terminates the background media scan task that
  * monitors for diskette insertion/removal.
@@ -5274,14 +5274,14 @@ void _InitFormatTable(void)
  * Returns:
  *   unsigned int - 0 on success
  */
-unsigned int _KillMediaScanTask(void)
+unsigned int KillMediaScanTask(void)
 {
     return 0;
 }
 
 
 /*
- * _LaunchMediaScanTask - Launch media scan background task
+ * LaunchMediaScanTask - Launch media scan background task
  *
  * This function launches a background task that periodically scans
  * for media insertion and removal events.
@@ -5291,20 +5291,20 @@ unsigned int _KillMediaScanTask(void)
  *
  * The task ID is stored in the global variable _MediaScanTaskID.
  */
-unsigned int _LaunchMediaScanTask(void)
+unsigned int LaunchMediaScanTask(void)
 {
     // Launch media scan task with entry point and task structure
-    _MediaScanTaskID = FUN_0000a300(_entry, &_MediaScanTask);
+    _MediaScanTaskID = FUN_0000a300(_entry, &MediaScanTask);
 
     return 0;
 }
 
 
 /*
- * _LookupFormatTable - Lookup disk format information
+ * LookupFormatTable - Lookup disk format information
  *
  * This function looks up disk format information from the global format
- * table initialized by _InitFormatTable(). It returns format descriptors
+ * table initialized by InitFormatTable(). It returns format descriptors
  * for the available formats based on the drive capabilities.
  *
  * Parameters:
@@ -5332,12 +5332,12 @@ unsigned int _LaunchMediaScanTask(void)
  * Process:
  *   1. Check drive capability (must be >= 2)
  *   2. Validate format count (must be > 0)
- *   3. Call _AvailableFormats to determine format range
+ *   3. Call AvailableFormats to determine format range
  *   4. Adjust count if necessary
  *   5. Copy format descriptors from global table
  *   6. Mark default format with bit 6 set
  */
-int _LookupFormatTable(int param_1, short *param_2, short *param_3, short *param_4,
+int LookupFormatTable(int param_1, short *param_2, short *param_3, short *param_4,
                       short *param_5, unsigned int *param_6)
 {
     unsigned char bVar1;
@@ -5354,7 +5354,7 @@ int _LookupFormatTable(int param_1, short *param_2, short *param_3, short *param
         // Validate requested format count
         if (0 < *param_2) {
             // Determine available format range for this drive
-            _AvailableFormats(param_1, param_3, param_4, param_5);
+            AvailableFormats(param_1, param_3, param_4, param_5);
 
             // Calculate actual number of formats available
             sVar3 = (*param_4 - *param_3) + 1;
@@ -5409,13 +5409,13 @@ int _LookupFormatTable(int param_1, short *param_2, short *param_3, short *param
     }
 
     // Record error and return
-    sVar3 = _RecordError(uVar2);
+    sVar3 = RecordError(uVar2);
     return (int)sVar3;
 }
 
 
 /*
- * _MemListDescriptorDataCompare - Compare memory list descriptor data
+ * MemListDescriptorDataCompare - Compare memory list descriptor data
  *
  * This function compares data in memory list descriptors.
  * Currently implemented as a stub.
@@ -5423,14 +5423,14 @@ int _LookupFormatTable(int param_1, short *param_2, short *param_3, short *param
  * Returns:
  *   unsigned int - 0 (always)
  */
-unsigned int _MemListDescriptorDataCompare(void)
+unsigned int MemListDescriptorDataCompare(void)
 {
     return 0;
 }
 
 
 /*
- * _MemListDescriptorDataCompareWithMemory - Compare descriptor with memory
+ * MemListDescriptorDataCompareWithMemory - Compare descriptor with memory
  *
  * This function compares memory list descriptor data with memory contents.
  * Currently implemented as a stub.
@@ -5438,14 +5438,14 @@ unsigned int _MemListDescriptorDataCompare(void)
  * Returns:
  *   unsigned int - 0 (always)
  */
-unsigned int _MemListDescriptorDataCompareWithMemory(void)
+unsigned int MemListDescriptorDataCompareWithMemory(void)
 {
     return 0;
 }
 
 
 /*
- * _MemListDescriptorDataCopyFromMemory - Copy descriptor data from memory
+ * MemListDescriptorDataCopyFromMemory - Copy descriptor data from memory
  *
  * This function copies data from memory into a memory list descriptor.
  * The operation depends on the data source type.
@@ -5457,7 +5457,7 @@ unsigned int _MemListDescriptorDataCompareWithMemory(void)
  *   2 - Special source requiring FUN_00006ba8
  *   Other - Standard source using FUN_00006bb8
  */
-unsigned int _MemListDescriptorDataCopyFromMemory(void)
+unsigned int MemListDescriptorDataCopyFromMemory(void)
 {
     unsigned int uVar1;
 
@@ -5476,7 +5476,7 @@ unsigned int _MemListDescriptorDataCopyFromMemory(void)
 
 
 /*
- * _MemListDescriptorDataCopyToMemory - Copy descriptor data to memory
+ * MemListDescriptorDataCopyToMemory - Copy descriptor data to memory
  *
  * This function copies data from a memory list descriptor to memory.
  * The operation depends on the data source type.
@@ -5488,7 +5488,7 @@ unsigned int _MemListDescriptorDataCopyFromMemory(void)
  *   2 - Special source requiring FUN_00006b4c
  *   Other - Standard source using FUN_00006b5c
  */
-unsigned int _MemListDescriptorDataCopyToMemory(void)
+unsigned int MemListDescriptorDataCopyToMemory(void)
 {
     unsigned int uVar1;
 
@@ -5507,7 +5507,7 @@ unsigned int _MemListDescriptorDataCopyToMemory(void)
 
 
 /*
- * _NibblizeGCRChecksum - Nibblize GCR checksum
+ * NibblizeGCRChecksum - Nibblize GCR checksum
  *
  * This function converts a 24-bit checksum value into GCR 6-and-2 encoded
  * format. Each 8-bit byte is split into 6 data bits and 2 overflow bits.
@@ -5530,7 +5530,7 @@ unsigned int _MemListDescriptorDataCopyToMemory(void)
  *
  * Each nibblized byte has only 6 bits set (0x00-0x3f range).
  */
-unsigned char *_NibblizeGCRChecksum(unsigned char *param_1, unsigned int param_2)
+unsigned char *NibblizeGCRChecksum(unsigned char *param_1, unsigned int param_2)
 {
     // Extract data bits (0-5) from each checksum byte
     param_1[1] = (unsigned char)(param_2 >> 0x10) & 0x3f;  // Byte 0 data bits
@@ -5547,7 +5547,7 @@ unsigned char *_NibblizeGCRChecksum(unsigned char *param_1, unsigned int param_2
 
 
 /*
- * _NibblizeGCRData - Nibblize data into GCR format
+ * NibblizeGCRData - Nibblize data into GCR format
  *
  * This function converts raw data bytes into GCR 6-and-2 encoded format
  * with checksum calculation. Each group of 3 input bytes produces 4 output
@@ -5571,7 +5571,7 @@ unsigned char *_NibblizeGCRChecksum(unsigned char *param_1, unsigned int param_2
  *   - Each input byte added to appropriate checksum byte with carry
  *   - Checksum bytes XORed with data before encoding
  */
-void _NibblizeGCRData(unsigned char *param_1, unsigned char *param_2, short param_3,
+void NibblizeGCRData(unsigned char *param_1, unsigned char *param_2, short param_3,
                       unsigned int *param_4)
 {
     unsigned char bVar1;
@@ -5652,7 +5652,7 @@ void _NibblizeGCRData(unsigned char *param_1, unsigned char *param_2, short para
 
 
 /*
- * _PostDisketteEvent - Post diskette state change event
+ * PostDisketteEvent - Post diskette state change event
  *
  * This function notifies the system of a diskette state change (insertion,
  * removal, or other media events) using the BSM (Block Storage Manager)
@@ -5671,11 +5671,11 @@ void _NibblizeGCRData(unsigned char *param_1, unsigned char *param_2, short para
  *   Entry size: 0x324 bytes
  *   Index: (drive_number - 1)
  */
-void _PostDisketteEvent(unsigned char param_1, short param_2)
+void PostDisketteEvent(unsigned char param_1, short param_2)
 {
     // Calculate drive structure offset: (drive_number - 1) * 0x324
     // Call BSM notification with drive's family store ID and new state
-    _BSMPINotifyFamilyStoreChangedState(
+    BSMPINotifyFamilyStoreChangedState(
         *(unsigned int *)(&DAT_0000f540 + (param_2 - 1) * 0x324),
         param_1);
 
@@ -5684,7 +5684,7 @@ void _PostDisketteEvent(unsigned char param_1, short param_2)
 
 
 /*
- * _PowerDriveDown - Power down floppy drive
+ * PowerDriveDown - Power down floppy drive
  *
  * This function powers down the floppy drive, either immediately or
  * deferred (queued for later execution).
@@ -5708,19 +5708,19 @@ void _PostDisketteEvent(unsigned char param_1, short param_2)
  *   2. Store drive structure in global DAT_0000fb8c
  *   3. Actual power down occurs later
  */
-void _PowerDriveDown(int param_1, int param_2)
+void PowerDriveDown(int param_1, int param_2)
 {
     if (param_2 == 0) {
         // Immediate power down
 
         // Flush any dirty track cache data to disk
-        _FlushTrackCache();
+        FlushTrackCache();
 
         // Dump (clear) the track cache
-        _DumpTrackCache(param_1);
+        DumpTrackCache(param_1);
 
         // Power down the drive hardware
-        _HALPowerDownDrive(param_1);
+        HALPowerDownDrive(param_1);
 
         // Clear power state flag in drive structure
         *(unsigned char *)(param_1 + 0x44) = 0;
@@ -5743,7 +5743,7 @@ void _PowerDriveDown(int param_1, int param_2)
 
 
 /*
- * _PowerDriveUp - Power up floppy drive
+ * PowerDriveUp - Power up floppy drive
  *
  * This function powers up the floppy drive and performs format detection
  * if necessary.
@@ -5759,8 +5759,8 @@ void _PowerDriveDown(int param_1, int param_2)
  *
  * Format detection states (offset 0x3c):
  *   0 - No format detection needed
- *   1 - Need to detect format (_GetDisketteFormat)
- *   2 - Format detected, need to set it (_SetDisketteFormat)
+ *   1 - Need to detect format (GetDisketteFormat)
+ *   2 - Format detected, need to set it (SetDisketteFormat)
  *
  * Process:
  *   1. Check for deferred power down of other drive
@@ -5771,7 +5771,7 @@ void _PowerDriveDown(int param_1, int param_2)
  *   6. Perform format detection based on state
  *   7. Update power state to 2 (powered up)
  */
-int _PowerDriveUp(int param_1)
+int PowerDriveUp(int param_1)
 {
     short sVar2;
     unsigned int uVar1;
@@ -5783,7 +5783,7 @@ int _PowerDriveUp(int param_1)
     // Check if another drive has deferred power down
     if ((DAT_0000fb8a != 0) && (DAT_0000fb8c != param_1)) {
         // Power down the other drive immediately
-        _PowerDriveDown(DAT_0000fb8c, 0);
+        PowerDriveDown(DAT_0000fb8c, 0);
     }
 
     // Clear global power state
@@ -5794,10 +5794,10 @@ int _PowerDriveUp(int param_1)
 
     // Check if drive is currently powered down (0)
     if (*(char *)(param_1 + 0x44) == '\0') {
-        _donone("core.c:PowerDriveUp:calling HALPowerUpDrive ");
+        donone("core.c:PowerDriveUp:calling HALPowerUpDrive ");
 
         // Power up the drive hardware
-        sVar2 = _HALPowerUpDrive(param_1);
+        sVar2 = HALPowerUpDrive(param_1);
         iVar4 = (int)sVar2;
 
         if (iVar4 == 0) {
@@ -5805,7 +5805,7 @@ int _PowerDriveUp(int param_1)
 
             // Wait for drive to stabilize (600ms), unless in special ready state
             if (*(int *)(param_1 + 0xc) != 0x10002) {
-                sVar2 = _FloppyTimedSleep(600);
+                sVar2 = FloppyTimedSleep(600);
                 iVar4 = (int)sVar2;
             }
 
@@ -5816,9 +5816,9 @@ int _PowerDriveUp(int param_1)
             if (*(char *)(param_1 + 0x3c) != '\0') {
                 if (*(char *)(param_1 + 0x3c) == '\x01') {
                     // State 1: Need to detect diskette format
-                    _donone("core.c:PowerDriveUp:calling GetDisketteFormat ");
+                    donone("core.c:PowerDriveUp:calling GetDisketteFormat ");
 
-                    sVar2 = _GetDisketteFormat(param_1);
+                    sVar2 = GetDisketteFormat(param_1);
                     iVar4 = (int)sVar2;
 
                     if (iVar4 == 0) {
@@ -5826,13 +5826,13 @@ int _PowerDriveUp(int param_1)
                         *(unsigned char *)(param_1 + 0x3c) = 2;
                     }
 
-                    _donone("core.c:PowerDriveUp:return code from GetdisketteFormat=%d ",
+                    donone("core.c:PowerDriveUp:return code from GetdisketteFormat=%d ",
                            iVar4);
                 }
                 else if (*(char *)(param_1 + 0x3c) == '\x02') {
                     // State 2: Format detected, now set it
-                    uVar1 = _GetDisketteFormatType(param_1);
-                    sVar2 = _SetDisketteFormat(param_1, uVar1);
+                    uVar1 = GetDisketteFormatType(param_1);
+                    sVar2 = SetDisketteFormat(param_1, uVar1);
                     iVar4 = (int)sVar2;
                 }
             }
@@ -5842,14 +5842,14 @@ int _PowerDriveUp(int param_1)
     // Update power state in drive structure
     *(unsigned char *)(param_1 + 0x44) = uVar3;
 
-    _donone("core.c:PowerDriveUp:return=%d ", iVar4);
+    donone("core.c:PowerDriveUp:return=%d ", iVar4);
 
     return iVar4;
 }
 
 
 /*
- * _PrepareCPUCacheForDMARead - Prepare CPU cache for DMA read operation
+ * PrepareCPUCacheForDMARead - Prepare CPU cache for DMA read operation
  *
  * This function prepares the CPU data cache for a DMA read operation by
  * invalidating cache lines in the DMA buffer region. This ensures that
@@ -5863,7 +5863,7 @@ int _PowerDriveUp(int param_1)
  *   Base: 0 (offset from buffer base)
  *   Size: 0xb000 (45056 bytes, ~44KB)
  */
-unsigned int _PrepareCPUCacheForDMARead(void)
+unsigned int PrepareCPUCacheForDMARead(void)
 {
     // Invalidate CPU cache lines for DMA buffer region
     FUN_00006b00(0, 0xb000);
@@ -5873,7 +5873,7 @@ unsigned int _PrepareCPUCacheForDMARead(void)
 
 
 /*
- * _PrepareCPUCacheForDMAWrite - Prepare CPU cache for DMA write operation
+ * PrepareCPUCacheForDMAWrite - Prepare CPU cache for DMA write operation
  *
  * This function prepares the CPU data cache for a DMA write operation by
  * flushing cache lines in the DMA buffer region. This ensures that any
@@ -5887,7 +5887,7 @@ unsigned int _PrepareCPUCacheForDMARead(void)
  *   Base: 0 (offset from buffer base)
  *   Size: 0xb000 (45056 bytes, ~44KB)
  */
-unsigned int _PrepareCPUCacheForDMAWrite(void)
+unsigned int PrepareCPUCacheForDMAWrite(void)
 {
     // Flush CPU cache lines for DMA buffer region
     FUN_00006abc(0, 0xb000);
@@ -5897,7 +5897,7 @@ unsigned int _PrepareCPUCacheForDMAWrite(void)
 
 
 /*
- * _PrepDBDMA - Prepare DBDMA channel descriptor
+ * PrepDBDMA - Prepare DBDMA channel descriptor
  *
  * This function prepares a DBDMA (Descriptor-Based DMA) channel descriptor
  * by byte-swapping the address field for big-endian PowerPC architecture.
@@ -5917,7 +5917,7 @@ unsigned int _PrepareCPUCacheForDMAWrite(void)
  *
  * The swapped address is written to offset +0x0c of the channel registers.
  */
-void _PrepDBDMA(int param_1)
+void PrepDBDMA(int param_1)
 {
     unsigned int uVar1;
 
@@ -5938,19 +5938,19 @@ void _PrepDBDMA(int param_1)
 
 
 /*
- * _PrintDMA - Print DMA debugging information
+ * PrintDMA - Print DMA debugging information
  *
  * This function is a placeholder for DMA debugging output.
  * Currently implemented as an empty stub.
  */
-void _PrintDMA(void)
+void PrintDMA(void)
 {
     return;
 }
 
 
 /*
- * _ReadBlocks - Read blocks from diskette
+ * ReadBlocks - Read blocks from diskette
  *
  * This function reads one or more logical blocks from the diskette with
  * retry logic and error handling.
@@ -5981,39 +5981,39 @@ void _PrintDMA(void)
  * Error codes:
  *   0xffffffb0 (-80) - Block number out of range
  */
-int _ReadBlocks(int param_1, int *param_2)
+int ReadBlocks(int param_1, int *param_2)
 {
     short sVar1;
     short sVar2;
     int iVar3;
     int iVar4;
 
-    _donone("floppycore.c:ReadBlock:calling CheckDriveOnLine ");
+    donone("floppycore.c:ReadBlock:calling CheckDriveOnLine ");
 
     // Check if drive is online
-    sVar1 = _CheckDriveOnLine(param_1);
+    sVar1 = CheckDriveOnLine(param_1);
     iVar4 = (int)sVar1;
 
     if (iVar4 == 0) {
-        _donone("floppycore.c:ReadBlock:calling powerdriveup ");
+        donone("floppycore.c:ReadBlock:calling powerdriveup ");
 
         // Power up the drive
-        sVar1 = _PowerDriveUp(param_1);
+        sVar1 = PowerDriveUp(param_1);
         iVar4 = (int)sVar1;
 
         if (iVar4 == 0) {
-            _donone("core.c:ReadBlock:PowerDriveUp returned SUCCESS ");
+            donone("core.c:ReadBlock:PowerDriveUp returned SUCCESS ");
 
             // Calculate last block number
             iVar3 = *(int *)(param_1 + 0x14) + *(int *)(param_1 + 0x18) - 1;
-            _donone("lastblk=%d,firstblk=%d,blkcount=%d\n", iVar3);
+            donone("lastblk=%d,firstblk=%d,blkcount=%d\n", iVar3);
 
             // Validate block range
             if (iVar3 < *(int *)(param_1 + 0x4c)) {
                 iVar4 = 0;
                 *param_2 = 0;
 
-                _donone("core.c:readblocks:firstblk=%d,lastblk=%d ",
+                donone("core.c:readblocks:firstblk=%d,lastblk=%d ",
                        *(unsigned int *)(param_1 + 0x14), iVar3);
 
                 // Read each block
@@ -6026,22 +6026,22 @@ int _ReadBlocks(int param_1, int *param_2)
                     // Retry loop (up to 2 retries)
                     sVar1 = 2;
                     do {
-                        _donone("floppycore.c:ReadBlock:calling Get Sectoraddr ");
+                        donone("floppycore.c:ReadBlock:calling Get Sectoraddr ");
 
                         // Convert block number to track/head/sector
-                        _GetSectorAddress(param_1, *(unsigned short *)(param_1 + 0x16));
+                        GetSectorAddress(param_1, *(unsigned short *)(param_1 + 0x16));
 
-                        _donone("core.c:ReadBlocks:call FlushCacheAndSeek ");
+                        donone("core.c:ReadBlocks:call FlushCacheAndSeek ");
 
                         // Seek to track if needed and flush cache
-                        sVar2 = _FlushCacheAndSeek(param_1);
+                        sVar2 = FlushCacheAndSeek(param_1);
                         iVar4 = (int)sVar2;
 
                         if (iVar4 == 0) {
-                            _donone("floppycore.c:ReadBlock:calling Readsector from cache ");
+                            donone("floppycore.c:ReadBlock:calling Readsector from cache ");
 
                             // Read sector from cache
-                            sVar2 = _ReadSectorFromCacheMemory(param_1);
+                            sVar2 = ReadSectorFromCacheMemory(param_1);
                             iVar4 = (int)sVar2;
 
                             if (iVar4 == 0) {
@@ -6053,8 +6053,8 @@ int _ReadBlocks(int param_1, int *param_2)
                         }
 
                         // Error occurred - recalibrate and retry
-                        _donone("Found error,recalibrating ");
-                        _RecalDrive(param_1);
+                        donone("Found error,recalibrating ");
+                        RecalDrive(param_1);
                         *(short *)(param_1 + 0x4a) = *(short *)(param_1 + 0x4a) + 1;
                         sVar1 = sVar1 - 1;
                     } while (sVar1 != 0);
@@ -6063,24 +6063,24 @@ int _ReadBlocks(int param_1, int *param_2)
             }
             else {
                 // Block number out of range
-                _donone("last block number more than MAX ");
-                sVar1 = _RecordError(0xffffffb0);
+                donone("last block number more than MAX ");
+                sVar1 = RecordError(0xffffffb0);
                 iVar4 = (int)sVar1;
             }
 
             // Power down drive (deferred, mode 6)
-            _donone("core.c:Powerdowning the drive ");
-            _PowerDriveDown(param_1, 6);
+            donone("core.c:Powerdowning the drive ");
+            PowerDriveDown(param_1, 6);
         }
     }
 
-    _donone("core.c:returning from ReadBlocks ");
+    donone("core.c:returning from ReadBlocks ");
     return iVar4;
 }
 
 
 /*
- * _ReadDiskTrackToCache - Read entire track from disk into cache
+ * ReadDiskTrackToCache - Read entire track from disk into cache
  *
  * This function reads all sectors of a track from the diskette into the
  * track cache using DMA. It skips sectors that are already in cache
@@ -6120,7 +6120,7 @@ int _ReadBlocks(int param_1, int *param_2)
  *   - Bit set = sector is dirty (in cache)
  *   - Bit clear = sector needs to be read
  */
-int _ReadDiskTrackToCache(int param_1)
+int ReadDiskTrackToCache(int param_1)
 {
     unsigned char bVar1;
     unsigned short uVar2;
@@ -6136,20 +6136,20 @@ int _ReadDiskTrackToCache(int param_1)
     // Save original track number
     uVar6 = *(unsigned int *)(param_1 + 0x20);
 
-    _donone("core.c:ReadDiskTrackToCache:calling HALGetNextAddressID ");
+    donone("core.c:ReadDiskTrackToCache:calling HALGetNextAddressID ");
 
     // Get next address mark to verify track
-    sVar3 = _HALGetNextAddressID(param_1);
+    sVar3 = HALGetNextAddressID(param_1);
     iVar7 = (int)sVar3;
 
     if (iVar7 == 0) {
         // Check if we're on the correct track
         if (*(char *)(param_1 + 0x20) == *(char *)(param_1 + 0x1c)) {
-            _donone("core.c:ReadDiskTrackToCache:calling PrepareCPUCacheForDMARead ");
+            donone("core.c:ReadDiskTrackToCache:calling PrepareCPUCacheForDMARead ");
 
             // Prepare CPU cache for DMA operations
-            _PrepareCPUCacheForDMAWrite();
-            _PrepareCPUCacheForDMARead();
+            PrepareCPUCacheForDMAWrite();
+            PrepareCPUCacheForDMARead();
 
             // Set track number
             *(unsigned int *)(param_1 + 0x20) = *(unsigned int *)(param_1 + 0x1c);
@@ -6183,13 +6183,13 @@ int _ReadDiskTrackToCache(int param_1)
                     *(unsigned int *)(param_1 + 0x28) = *(unsigned int *)(iVar7 + 200);
                     *(unsigned int *)(param_1 + 0x2c) = uVar5;
 
-                    _donone("core.c:ReadDiskTrackToCache:calling HALReadSector ");
+                    donone("core.c:ReadDiskTrackToCache:calling HALReadSector ");
 
                     // Read sector from disk
-                    sVar4 = _HALReadSector(param_1);
+                    sVar4 = HALReadSector(param_1);
                     iVar7 = (int)sVar4;
 
-                    _donone("core.c:ReadDiskTrackToCache:HALReadSector returns ");
+                    donone("core.c:ReadDiskTrackToCache:HALReadSector returns ");
                 }
 
                 if (iVar7 == 0) {
@@ -6208,12 +6208,12 @@ int _ReadDiskTrackToCache(int param_1)
             }
 
             // Flush DMA data from CPU cache
-            _FlushDMAedDataFromCPUCache();
+            FlushDMAedDataFromCPUCache();
         }
         else {
             // Seek error - not on correct track
-            _donone("ReadDiskTrackToCache:seek error--wanttrack=%d,actual=%d ");
-            sVar3 = _RecordError(0xffffffb0);
+            donone("ReadDiskTrackToCache:seek error--wanttrack=%d,actual=%d ");
+            sVar3 = RecordError(0xffffffb0);
             iVar7 = (int)sVar3;
         }
     }
@@ -6226,7 +6226,7 @@ int _ReadDiskTrackToCache(int param_1)
 
 
 /*
- * _ReadSectorFromCacheMemory - Read sector from cache memory
+ * ReadSectorFromCacheMemory - Read sector from cache memory
  *
  * This function reads a sector from the track cache. If the track is not
  * in cache, it reads the entire track from disk first.
@@ -6258,7 +6258,7 @@ int _ReadDiskTrackToCache(int param_1)
  * Error codes:
  *   0xffffffbc (-68) - Verify failed (data mismatch)
  */
-int _ReadSectorFromCacheMemory(int param_1)
+int ReadSectorFromCacheMemory(int param_1)
 {
     int iVar1;
     short sVar2;
@@ -6268,29 +6268,29 @@ int _ReadSectorFromCacheMemory(int param_1)
     unsigned char auStack_14[4];
 
     // Check if track is in cache
-    iVar1 = _TestTrackInCache();
+    iVar1 = TestTrackInCache();
 
     if (iVar1 == 0) {
         // Track not in cache - read from disk
-        _donone("floppycore.c:ReadSectorFromTheCache:calling ReadDiskTrackToCache ");
+        donone("floppycore.c:ReadSectorFromTheCache:calling ReadDiskTrackToCache ");
 
-        sVar2 = _ReadDiskTrackToCache(param_1);
+        sVar2 = ReadDiskTrackToCache(param_1);
         if (sVar2 != 0) {
             return (int)sVar2;
         }
 
         // Mark track as cached
-        _AssignTrackInCache(param_1);
+        AssignTrackInCache(param_1);
         (&_ReadDataPresent)[*(unsigned char *)(param_1 + 0x21)] = 1;
     }
     else if ((&_ReadDataPresent)[*(unsigned char *)(param_1 + 0x21)] == '\0') {
         // Track in cache but data not marked present - re-read
-        sVar2 = _ReadDiskTrackToCache(param_1);
+        sVar2 = ReadDiskTrackToCache(param_1);
         if (sVar2 != 0) {
             return (int)sVar2;
         }
 
-        _AssignTrackInCache(param_1);
+        AssignTrackInCache(param_1);
         (&_ReadDataPresent)[*(unsigned char *)(param_1 + 0x21)] = 1;
     }
 
@@ -6304,7 +6304,7 @@ int _ReadSectorFromCacheMemory(int param_1)
     // For GCR format, denibblize the sector data
     if (*(char *)(param_1 + 0x5a) != '\0') {
         iVar1 = iVar4 + 0xd;
-        sVar2 = _FPYDenibblizeGCRSector(param_1, iVar4, iVar1);
+        sVar2 = FPYDenibblizeGCRSector(param_1, iVar4, iVar1);
         iVar3 = (int)sVar2;
     }
 
@@ -6312,10 +6312,10 @@ int _ReadSectorFromCacheMemory(int param_1)
         // Check if verify mode (bit 6 of flags)
         if ((*(unsigned short *)(param_1 + 0x10) & 0x40) == 0) {
             // Normal read mode - copy data from cache to target buffer
-            _donone("floppycore.c:ReadSectorFromTheCache:copying the data srx=0x%x,tgt=0x%x size=%d ",
+            donone("floppycore.c:ReadSectorFromTheCache:copying the data srx=0x%x,tgt=0x%x size=%d ",
                    iVar1, *(unsigned int *)(param_1 + 0x24), (int)*(short *)(param_1 + 0x54));
 
-            sVar2 = _MemListDescriptorDataCopyFromMemory(
+            sVar2 = MemListDescriptorDataCopyFromMemory(
                 iVar1,
                 *(unsigned int *)(param_1 + 0x24),
                 (int)*(short *)(param_1 + 0x54));
@@ -6326,7 +6326,7 @@ int _ReadSectorFromCacheMemory(int param_1)
         }
         else {
             // Verify mode - compare cache data with target buffer
-            sVar2 = _MemListDescriptorDataCompareWithMemory(
+            sVar2 = MemListDescriptorDataCompareWithMemory(
                 *(unsigned int *)(param_1 + 0x24),
                 iVar1,
                 (int)*(short *)(param_1 + 0x54),
@@ -6336,7 +6336,7 @@ int _ReadSectorFromCacheMemory(int param_1)
 
             // If comparison failed and error count is non-zero, record error
             if ((iVar3 != 0) && (local_18 != 0)) {
-                sVar2 = _RecordError(0xffffffbc);
+                sVar2 = RecordError(0xffffffbc);
                 iVar3 = (int)sVar2;
             }
         }
@@ -6347,7 +6347,7 @@ int _ReadSectorFromCacheMemory(int param_1)
 
 
 /**
- * _RecalDrive - Recalibrate drive to track 0
+ * RecalDrive - Recalibrate drive to track 0
  *
  * This function recalibrates the floppy drive by moving the head to track 0.
  * It first dumps the track cache, then calls the HAL recalibrate function,
@@ -6356,13 +6356,13 @@ int _ReadSectorFromCacheMemory(int param_1)
  * @param param_1: Drive structure pointer
  * @return: IOReturn status code (0 on success, error code on failure)
  */
-short _RecalDrive(int param_1)
+short RecalDrive(int param_1)
 {
     short sVar1;
     unsigned int uVar2;
 
     // Dump the track cache to ensure no dirty data is lost
-    _DumpTrackCache(param_1);
+    DumpTrackCache(param_1);
 
     // Get the current density setting from drive structure (offset 0x34)
     uVar2 = *(unsigned int *)(param_1 + 0x34);
@@ -6372,7 +6372,7 @@ short _RecalDrive(int param_1)
     *(unsigned short *)(param_1 + 0x1a) = *(unsigned short *)(_fpySectorPerTrackTbl + uVar2 * 4);
 
     // Call HAL function to physically recalibrate the drive
-    sVar1 = _HALRecalDrive(param_1);
+    sVar1 = HALRecalDrive(param_1);
 
     // Update current track to 0 in drive structure (offset 0x10)
     *(unsigned short *)(param_1 + 0x10) = 0;
@@ -6382,7 +6382,7 @@ short _RecalDrive(int param_1)
 
 
 /**
- * _RecordError - Record and return error code
+ * RecordError - Record and return error code
  *
  * This is a simple passthrough function that records an error code
  * and returns it unchanged. It may be used for error tracking or
@@ -6391,14 +6391,14 @@ short _RecalDrive(int param_1)
  * @param param_1: Error code to record
  * @return: The same error code that was passed in
  */
-unsigned int _RecordError(unsigned int param_1)
+unsigned int RecordError(unsigned int param_1)
 {
     return param_1;
 }
 
 
 /**
- * _ResetBitArray - Clear a bit array to all zeros
+ * ResetBitArray - Clear a bit array to all zeros
  *
  * This function resets a bit array by writing zeros to it in 4-byte chunks.
  * The bit array is used to track sector states (cached, dirty, etc.).
@@ -6407,7 +6407,7 @@ unsigned int _RecordError(unsigned int param_1)
  * @param param_2: Size of the bit array in bytes
  * @return: void
  */
-void _ResetBitArray(int param_1, unsigned int param_2)
+void ResetBitArray(int param_1, unsigned int param_2)
 {
     unsigned int uVar1;
     unsigned int *puVar2;
@@ -6436,7 +6436,7 @@ void _ResetBitArray(int param_1, unsigned int param_2)
 
 
 /**
- * _ResetBusyFlag - Reset the global busy flag with proper synchronization
+ * ResetBusyFlag - Reset the global busy flag with proper synchronization
  *
  * This function safely resets the global busy flag by using a spin lock
  * to ensure thread-safe access. The busy flag is used to prevent concurrent
@@ -6444,7 +6444,7 @@ void _ResetBitArray(int param_1, unsigned int param_2)
  *
  * @return: void
  */
-void _ResetBusyFlag(void)
+void ResetBusyFlag(void)
 {
     // Acquire the spin lock for synchronization
     _simple_lock(&_slock);
@@ -6460,7 +6460,7 @@ void _ResetBusyFlag(void)
 
 
 /**
- * _ResetDBDMA - Reset a DBDMA channel descriptor
+ * ResetDBDMA - Reset a DBDMA channel descriptor
  *
  * This function resets a DBDMA (Descriptor-Based DMA) channel by
  * setting the control register and clearing various fields in the
@@ -6469,7 +6469,7 @@ void _ResetBusyFlag(void)
  * @param param_1: Pointer to DBDMA channel descriptor structure
  * @return: void
  */
-void _ResetDBDMA(int param_1)
+void ResetDBDMA(int param_1)
 {
     // Set DBDMA control register to 0x200 (bit 9 set - likely RESET bit)
     // Offset 0x08 is the control/status register
@@ -6489,27 +6489,27 @@ void _ResetDBDMA(int param_1)
 
 
 /**
- * _ResetDMAChannel - Reset and prepare the global floppy DMA channel
+ * ResetDMAChannel - Reset and prepare the global floppy DMA channel
  *
  * This function resets the global floppy DBDMA channel and then
  * prepares it for use by calling the prep function.
  *
  * @return: void
  */
-void _ResetDMAChannel(void)
+void ResetDMAChannel(void)
 {
     // Reset the global floppy DMA channel descriptor
-    _ResetDBDMA(_GRCFloppyDMAChannel);
+    ResetDBDMA(_GRCFloppyDMAChannel);
 
     // Prepare the DMA channel for operation
-    _PrepDBDMA(_GRCFloppyDMAChannel);
+    PrepDBDMA(_GRCFloppyDMAChannel);
 
     return;
 }
 
 
 /**
- * _ScanForDisketteChange - Scan for diskette insertion/removal events
+ * ScanForDisketteChange - Scan for diskette insertion/removal events
  *
  * This function is called periodically to check for diskette media changes.
  * It scans all configured drives and detects insertion or removal events,
@@ -6517,7 +6517,7 @@ void _ResetDMAChannel(void)
  *
  * @return: void
  */
-void _ScanForDisketteChange(void)
+void ScanForDisketteChange(void)
 {
     int iVar1;
     undefined4 uVar2;
@@ -6528,12 +6528,12 @@ void _ScanForDisketteChange(void)
     iVar3 = 1;
     do {
         // Check if this is a valid drive number and get drive structure
-        iVar1 = _CheckDriveNumber(iVar3, local_28);
+        iVar1 = CheckDriveNumber(iVar3, local_28);
 
         // If valid drive and media scanning is enabled (offset 0x3d)
         if ((iVar1 == 0) && (*(char *)(local_28[0] + 0x3d) == '\x01')) {
             // Enter critical section for hardware access
-            uVar2 = _EnterHardwareLockSection();
+            uVar2 = EnterHardwareLockSection();
 
             // Check if deferred power down timer is active
             if (DAT_0000fb8a < 1) {
@@ -6541,20 +6541,20 @@ void _ScanForDisketteChange(void)
 
                 if (*(char *)(local_28[0] + 0x3c) == '\0') {
                     // No diskette was present - check if one was inserted
-                    iVar1 = _HALDiskettePresence();
+                    iVar1 = HALDiskettePresence();
 
                     if (iVar1 == 1) {
                         // Diskette detected!
                         *(undefined *)(local_28[0] + 0x3c) = 1;
 
                         // Get media type (GCR/MFM, density, etc.)
-                        _HALGetMediaType(local_28[0]);
+                        HALGetMediaType(local_28[0]);
 
                         // Power up the drive
-                        _PowerDriveUp(local_28[0]);
+                        PowerDriveUp(local_28[0]);
 
                         // Post diskette insertion event (event type 1)
-                        iVar1 = _PostDisketteEvent(1, iVar3);
+                        iVar1 = PostDisketteEvent(1, iVar3);
 
                         // If event posting failed, mark as no diskette
                         if (iVar1 != 0) {
@@ -6564,11 +6564,11 @@ void _ScanForDisketteChange(void)
                 }
                 else {
                     // Diskette was present - check if it's still there
-                    iVar1 = _HALDiskettePresence(local_28[0]);
+                    iVar1 = HALDiskettePresence(local_28[0]);
 
                     if (iVar1 == 0) {
                         // Diskette was removed
-                        _PostDisketteEvent(0, iVar3);
+                        PostDisketteEvent(0, iVar3);
 
                         // Clear diskette present flag (offset 0x3c)
                         *(undefined *)(local_28[0] + 0x3c) = 0;
@@ -6583,7 +6583,7 @@ void _ScanForDisketteChange(void)
                     else if (*(char *)(local_28[0] + 0x3c) == -1) {
                         // Diskette marked as invalid - treat as ejected
                         *(undefined *)(local_28[0] + 0x3c) = 0;
-                        _PostDisketteEvent(0, iVar3);
+                        PostDisketteEvent(0, iVar3);
                     }
                 }
             }
@@ -6593,12 +6593,12 @@ void _ScanForDisketteChange(void)
 
                 // If timer expired, power down the drive
                 if (DAT_0000fb8a < 1) {
-                    _PowerDriveDown(DAT_0000fb8c, 0);
+                    PowerDriveDown(DAT_0000fb8c, 0);
                 }
             }
 
             // Exit critical section
-            _ExitHardwareLockSection(uVar2);
+            ExitHardwareLockSection(uVar2);
         }
 
         // Move to next drive
@@ -6610,7 +6610,7 @@ void _ScanForDisketteChange(void)
 
 
 /**
- * _SeekDrive - Seek drive to target track
+ * SeekDrive - Seek drive to target track
  *
  * This function seeks the floppy drive to a target track. If the current
  * track is unknown (-1), it first recalibrates the drive. After seeking,
@@ -6619,7 +6619,7 @@ void _ScanForDisketteChange(void)
  * @param param_1: Drive structure pointer
  * @return: IOReturn status code (0 on success, error code on failure)
  */
-int _SeekDrive(int param_1)
+int SeekDrive(int param_1)
 {
     short sVar1;
     int iVar2;
@@ -6627,24 +6627,24 @@ int _SeekDrive(int param_1)
     iVar2 = 0;
 
     // Debug output showing target track (offset 0x1c is current track)
-    _donone("core.c:SeekDrive:track=%d ", (int)*(char *)(param_1 + 0x1c));
+    donone("core.c:SeekDrive:track=%d ", (int)*(char *)(param_1 + 0x1c));
 
     // Check if current track is unknown (-1)
     if (*(char *)(param_1 + 0x1c) == -1) {
         // Recalibrate drive to establish known position
-        sVar1 = _RecalDrive(param_1);
+        sVar1 = RecalDrive(param_1);
         iVar2 = (int)sVar1;
     }
 
     // If no error and current track != target track (offset 0x20)
     if ((iVar2 == 0) && (*(char *)(param_1 + 0x1c) != *(char *)(param_1 + 0x20))) {
         // Set sectors per track for the target track
-        _SetSectorsPerTrack(param_1);
+        SetSectorsPerTrack(param_1);
 
-        _donone("SeekDrive:calling HALSeekDrive ");
+        donone("SeekDrive:calling HALSeekDrive ");
 
         // Call HAL to physically seek to target track
-        sVar1 = _HALSeekDrive(param_1);
+        sVar1 = HALSeekDrive(param_1);
         iVar2 = (int)sVar1;
 
         if (iVar2 == 0) {
@@ -6652,7 +6652,7 @@ int _SeekDrive(int param_1)
             *(undefined *)(param_1 + 0x1c) = *(undefined *)(param_1 + 0x20);
 
             // Update cache addresses for new track
-            _SetCacheAddresses(param_1);
+            SetCacheAddresses(param_1);
         }
         else {
             // Seek failed - mark current track as unknown
@@ -6665,7 +6665,7 @@ int _SeekDrive(int param_1)
 
 
 /**
- * _SetBusyFlag - Atomically set the busy flag
+ * SetBusyFlag - Atomically set the busy flag
  *
  * This function attempts to atomically set the busy flag. It uses
  * load-link/store-conditional operations to ensure thread safety.
@@ -6674,7 +6674,7 @@ int _SeekDrive(int param_1)
  *
  * @return: true if busy flag was acquired, false if already busy
  */
-bool _SetBusyFlag(void)
+bool SetBusyFlag(void)
 {
     bool bVar1;
     undefined4 *puVar2;
@@ -6707,7 +6707,7 @@ bool _SetBusyFlag(void)
 
 
 /**
- * _SetCacheAddresses - Set up DMA addresses for track cache
+ * SetCacheAddresses - Set up DMA addresses for track cache
  *
  * This function computes and sets the DMA addresses for all sectors
  * in the track cache. It loops through both heads and all sectors,
@@ -6716,7 +6716,7 @@ bool _SetBusyFlag(void)
  * @param param_1: Drive structure pointer
  * @return: void
  */
-void _SetCacheAddresses(int param_1)
+void SetCacheAddresses(int param_1)
 {
     int iVar1;
     int iVar2;
@@ -6739,7 +6739,7 @@ void _SetCacheAddresses(int param_1)
                 //     base: param_1 + 200
                 //     head offset: iVar1 * 0x128 (296 bytes per head)
                 //     sector offset: ((iVar2 + base_sector) * 8) bytes per sector
-                _FPYComputeCacheDMAAddress
+                FPYComputeCacheDMAAddress
                           (param_1, iVar1, (uint)*(byte *)(param_1 + 0x58) + iVar2, 0,
                            param_1 + iVar1 * 0x128 + 200 +
                            (iVar2 + (uint)*(byte *)(param_1 + 0x58)) * 8);
@@ -6758,7 +6758,7 @@ void _SetCacheAddresses(int param_1)
 
 
 /**
- * _SetDBDMAPhysicalAddress - Set up DBDMA descriptor chain
+ * SetDBDMAPhysicalAddress - Set up DBDMA descriptor chain
  *
  * This function creates a DBDMA descriptor chain for a DMA transfer.
  * It handles page boundary crossing by splitting the transfer into
@@ -6771,7 +6771,7 @@ void _SetCacheAddresses(int param_1)
  * @param param_4: Transfer size in bytes
  * @return: void
  */
-void _SetDBDMAPhysicalAddress(int param_1, uint param_2, uint param_3, uint param_4)
+void SetDBDMAPhysicalAddress(int param_1, uint param_2, uint param_3, uint param_4)
 {
     undefined4 uVar1;
     uint uVar2;
@@ -6804,7 +6804,7 @@ void _SetDBDMAPhysicalAddress(int param_1, uint param_2, uint param_3, uint para
     // Store command type (offset 8)
     *(undefined4 *)(param_1 + 8) = uVar1;
 
-    _donone("request = %d dmacounts=", param_4);
+    donone("request = %d dmacounts=", param_4);
 
     // Build descriptor chain, splitting at page boundaries
     if (param_4 != 0) {
@@ -6847,7 +6847,7 @@ void _SetDBDMAPhysicalAddress(int param_1, uint param_2, uint param_3, uint para
             puVar5[3] = 0;
             puVar5[2] = 0;
 
-            _donone("v=0x%x,p=0x%x:%d ", param_3, uVar1, uVar2);
+            donone("v=0x%x,p=0x%x:%d ", param_3, uVar1, uVar2);
 
             // Advance to next chunk
             param_3 = param_3 + uVar2;
@@ -6863,21 +6863,21 @@ void _SetDBDMAPhysicalAddress(int param_1, uint param_2, uint param_3, uint para
     puVar5[2] = 0;
 
     // Get current address space ID
-    uVar1 = _CurrentAddressSpaceID();
+    uVar1 = CurrentAddressSpaceID();
 
     // Flush processor cache for descriptor chain
-    _FlushProcessorCache
+    FlushProcessorCache
               (uVar1, *(int *)(param_1 + 0x14),
                (int)puVar5 + (0x10 - *(int *)(param_1 + 0x14)));
 
-    _donone("\n");
+    donone("\n");
 
     return;
 }
 
 
 /**
- * _SetDisketteFormat - Set diskette format parameters
+ * SetDisketteFormat - Set diskette format parameters
  *
  * This function sets the diskette format parameters in the drive structure
  * by copying values from the global format table. It then updates derived
@@ -6887,7 +6887,7 @@ void _SetDBDMAPhysicalAddress(int param_1, uint param_2, uint param_3, uint para
  * @param param_2: Format index (0-5) into format table
  * @return: void
  */
-void _SetDisketteFormat(int param_1, short param_2)
+void SetDisketteFormat(int param_1, short param_2)
 {
     int iVar1;
     undefined4 uVar2;
@@ -6897,7 +6897,7 @@ void _SetDisketteFormat(int param_1, short param_2)
 
     iVar5 = (int)param_2;
 
-    _donone("core.c:SetDisketteFormat: ");
+    donone("core.c:SetDisketteFormat: ");
 
     // Calculate offset into format table (each entry is 0x14 = 20 bytes)
     iVar1 = iVar5 * 0x14;
@@ -6923,30 +6923,30 @@ void _SetDisketteFormat(int param_1, short param_2)
     // Offset 0x5c: Fifth parameter (type/heads/MFM parameters)
     *(undefined4 *)(param_1 + 0x5c) = *(undefined4 *)(&DAT_0000fba0 + iVar1);
 
-    _donone("core.c:SetDisketteFormat:Calling SetSectorAddressBlocksize ");
+    donone("core.c:SetDisketteFormat:Calling SetSectorAddressBlocksize ");
 
     // Calculate and set sector address block size encoding
-    _SetSectorAddressBlocksize(param_1);
+    SetSectorAddressBlocksize(param_1);
 
     // Copy current track to target track (offset 0x20)
     *(undefined *)(param_1 + 0x20) = *(undefined *)(param_1 + 0x1c);
 
-    _donone("Core.c:SetDisketteFormat:Calling SetSectorPerTrack ");
+    donone("Core.c:SetDisketteFormat:Calling SetSectorPerTrack ");
 
     // Set sectors per track based on format and current track
-    _SetSectorsPerTrack(param_1);
+    SetSectorsPerTrack(param_1);
 
-    _donone("core.c:SetDisketteFormat:Calling HALSetFormatMode ");
+    donone("core.c:SetDisketteFormat:Calling HALSetFormatMode ");
 
     // Tell HAL to set the hardware format mode
-    _HALSetFormatMode(param_1);
+    HALSetFormatMode(param_1);
 
     return;
 }
 
 
 /**
- * _SetOSEvent - Set OS event flags and signal waiters
+ * SetOSEvent - Set OS event flags and signal waiters
  *
  * This function sets event flags using a bitwise OR operation and
  * then signals any threads waiting on the event.
@@ -6955,7 +6955,7 @@ void _SetDisketteFormat(int param_1, short param_2)
  * @param param_2: Event flags to set (OR mask)
  * @return: Always returns 0
  */
-undefined4 _SetOSEvent(uint *param_1, uint param_2)
+undefined4 SetOSEvent(uint *param_1, uint param_2)
 {
     int iVar1;
 
@@ -6968,7 +6968,7 @@ undefined4 _SetOSEvent(uint *param_1, uint param_2)
 
     if (iVar1 == 0) {
         // Timeout occurred
-        _donone("TIMEOUT 0x%x ", param_2);
+        donone("TIMEOUT 0x%x ", param_2);
     }
     else {
         // Success - call unlock/signal function
@@ -6981,7 +6981,7 @@ undefined4 _SetOSEvent(uint *param_1, uint param_2)
 
 
 /**
- * _SetSectorAddressBlocksize - Calculate sector address block size
+ * SetSectorAddressBlocksize - Calculate sector address block size
  *
  * This function calculates the block size encoding for sector addresses.
  * For MFM format, it computes log2 of the sector size. For GCR format,
@@ -6990,7 +6990,7 @@ undefined4 _SetOSEvent(uint *param_1, uint param_2)
  * @param param_1: Drive structure pointer
  * @return: void
  */
-void _SetSectorAddressBlocksize(int param_1)
+void SetSectorAddressBlocksize(int param_1)
 {
     uint uVar1;
     int iVar2;
@@ -7023,7 +7023,7 @@ void _SetSectorAddressBlocksize(int param_1)
 
 
 /**
- * _SetSectorsPerTrack - Set sectors per track for current position
+ * SetSectorsPerTrack - Set sectors per track for current position
  *
  * This function sets the number of sectors per track based on the
  * diskette format. For MFM, this is constant. For GCR, it varies
@@ -7032,7 +7032,7 @@ void _SetSectorAddressBlocksize(int param_1)
  * @param param_1: Drive structure pointer
  * @return: void
  */
-void _SetSectorsPerTrack(int param_1)
+void SetSectorsPerTrack(int param_1)
 {
     char cVar1;
 
@@ -7053,14 +7053,14 @@ void _SetSectorsPerTrack(int param_1)
     *(char *)(param_1 + 0x51) = cVar1;
 
     // Build the sector interleave table for this track
-    _BuildTrackInterleaveTable(param_1, *(undefined *)(param_1 + 0x51));
+    BuildTrackInterleaveTable(param_1, *(undefined *)(param_1 + 0x51));
 
     return;
 }
 
 
 /**
- * _SleepUntilReady - Wait for SWIM III controller to become ready
+ * SleepUntilReady - Wait for SWIM III controller to become ready
  *
  * This function polls the SWIM III controller status until it reports
  * ready, or times out after ~1000 attempts. It uses timed sleeps
@@ -7068,7 +7068,7 @@ void _SetSectorsPerTrack(int param_1)
  *
  * @return: 0 on success, 0xffffffff on timeout
  */
-undefined4 _SleepUntilReady(void)
+undefined4 SleepUntilReady(void)
 {
     short sVar1;
     int iVar2;
@@ -7077,19 +7077,19 @@ undefined4 _SleepUntilReady(void)
     uVar3 = 0;
 
     // Initial sleep
-    _FloppyTimedSleep();
+    FloppyTimedSleep();
 
     // Retry up to 1000 times
     sVar1 = 999;
     do {
         // Check SWIM III signal 0xfe (ready status)
-        iVar2 = _SwimIIISenseSignal(0xfe);
+        iVar2 = SwimIIISenseSignal(0xfe);
 
         // If signal is 0, controller is ready
         if (iVar2 == 0) break;
 
         // Sleep for 1 tick before retry
-        _FloppyTimedSleep(1);
+        FloppyTimedSleep(1);
 
         sVar1 = sVar1 + -1;
     } while (sVar1 != -1);
@@ -7097,7 +7097,7 @@ undefined4 _SleepUntilReady(void)
     // Check if we timed out
     if (sVar1 == 0) {
         // Timeout - record error
-        uVar3 = _RecordError(0xffffffff);
+        uVar3 = RecordError(0xffffffff);
     }
 
     return uVar3;
@@ -7105,7 +7105,7 @@ undefined4 _SleepUntilReady(void)
 
 
 /**
- * _StartDBDMA - Start DBDMA channel operation
+ * StartDBDMA - Start DBDMA channel operation
  *
  * This function starts a DBDMA channel by setting the RUN bit in the
  * control/status register. The bit position depends on whether the
@@ -7114,7 +7114,7 @@ undefined4 _SleepUntilReady(void)
  * @param param_1: DBDMA channel descriptor pointer
  * @return: void
  */
-void _StartDBDMA(int param_1)
+void StartDBDMA(int param_1)
 {
     uint uVar1;
 
@@ -7143,7 +7143,7 @@ void _StartDBDMA(int param_1)
 
 
 /**
- * _StartDMAChannel - Start DMA transfer with full setup
+ * StartDMAChannel - Start DMA transfer with full setup
  *
  * This is a high-level function that performs a complete DMA transfer.
  * It sets up the DBDMA descriptors, configures the SWIM III controller
@@ -7155,57 +7155,57 @@ void _StartDBDMA(int param_1)
  * @param param_3: Direction (1=read from device, 0=write to device)
  * @return: void
  */
-void _StartDMAChannel(undefined4 param_1, int param_2, short param_3)
+void StartDMAChannel(undefined4 param_1, int param_2, short param_3)
 {
     undefined4 uVar1;
 
     // Reset and prepare the DMA channel
-    _ResetDMAChannel();
+    ResetDMAChannel();
 
     // Check transfer direction
     if (param_3 == 1) {
         // READ from device (device -> memory)
         // Set up DBDMA descriptors for input (direction=1)
-        _SetDBDMAPhysicalAddress(_GRCFloppyDMAChannel, 1, param_1, param_2);
+        SetDBDMAPhysicalAddress(_GRCFloppyDMAChannel, 1, param_1, param_2);
 
         // Configure SWIM III controller for read mode
-        _SwimIIISetReadMode();
+        SwimIIISetReadMode();
     }
     else {
         // WRITE to device (memory -> device)
         // Set up DBDMA descriptors for output (direction=0)
-        _SetDBDMAPhysicalAddress(_GRCFloppyDMAChannel, 0, param_1, param_2);
+        SetDBDMAPhysicalAddress(_GRCFloppyDMAChannel, 0, param_1, param_2);
 
         // If transfer size is 0x8000 (32KB), set format mode
         if (param_2 == 0x8000) {
-            _SwimIIISetFormatMode();
+            SwimIIISetFormatMode();
         }
 
         // Configure SWIM III controller for write mode
-        _SwimIIISetWriteMode();
+        SwimIIISetWriteMode();
     }
 
     // Clear any pending DMA complete events (event flag 8)
-    _CancelOSEvent(_driveOSEventIDptr, 8);
+    CancelOSEvent(_driveOSEventIDptr, 8);
 
     // Start the DBDMA channel
-    _StartDBDMA(_GRCFloppyDMAChannel);
+    StartDBDMA(_GRCFloppyDMAChannel);
 
     // Wait for DMA completion event (timeout=1000ms, wait_mask=8, clear_mask=8)
-    uVar1 = _WaitForEvent(1000, 8, 8);
+    uVar1 = WaitForEvent(1000, 8, 8);
 
     // Stop the DMA channel
-    _StopDMAChannel();
+    StopDMAChannel();
 
     // Record the result (error code or success)
-    _RecordError(uVar1);
+    RecordError(uVar1);
 
     return;
 }
 
 
 /**
- * _StopDBDMA - Stop DBDMA channel operation
+ * StopDBDMA - Stop DBDMA channel operation
  *
  * This function stops a DBDMA channel by clearing the RUN bit in the
  * control/status register. The bit position depends on whether the
@@ -7214,7 +7214,7 @@ void _StartDMAChannel(undefined4 param_1, int param_2, short param_3)
  * @param param_1: DBDMA channel descriptor pointer
  * @return: void
  */
-void _StopDBDMA(int param_1)
+void StopDBDMA(int param_1)
 {
     uint uVar1;
 
@@ -7242,24 +7242,24 @@ void _StopDBDMA(int param_1)
 
 
 /**
- * _StopDMAChannel - Stop the global floppy DMA channel
+ * StopDMAChannel - Stop the global floppy DMA channel
  *
  * This is a simple wrapper function that stops the global floppy
  * DBDMA channel.
  *
  * @return: Always returns 0
  */
-undefined4 _StopDMAChannel(void)
+undefined4 StopDMAChannel(void)
 {
     // Stop the global floppy DMA channel
-    _StopDBDMA(_GRCFloppyDMAChannel);
+    StopDBDMA(_GRCFloppyDMAChannel);
 
     return 0;
 }
 
 
 /**
- * _SwimIIIAddrSignal - Send address signal to SWIM III controller
+ * SwimIIIAddrSignal - Send address signal to SWIM III controller
  *
  * This function sends an address/command signal to the SWIM III controller
  * by manipulating the hardware registers. It uses bit 3 of the parameter
@@ -7268,13 +7268,13 @@ undefined4 _StopDMAChannel(void)
  * @param param_1: Address/signal byte to send (bit 3 selects register)
  * @return: void
  */
-void _SwimIIIAddrSignal(byte param_1)
+void SwimIIIAddrSignal(byte param_1)
 {
     undefined *puVar1;
 
     // Write 0xf3 to SWIM III control register
     *DAT_0000fc2c = 0xf3;
-    _SynchronizeIO();
+    SynchronizeIO();
 
     // Select register based on bit 3 of parameter
     puVar1 = DAT_0000fc34;
@@ -7285,36 +7285,36 @@ void _SwimIIIAddrSignal(byte param_1)
 
     // Write 0x20 to selected register
     *puVar1 = 0x20;
-    _SynchronizeIO();
+    SynchronizeIO();
 
     // Write address signal with bit 3 cleared
     *DAT_0000fc2c = param_1 & 0xf7;
-    _SynchronizeIO();
+    SynchronizeIO();
 
     return;
 }
 
 
 /**
- * _SwimIIIDisableRWMode - Disable SWIM III read/write mode
+ * SwimIIIDisableRWMode - Disable SWIM III read/write mode
  *
  * This function disables the read/write mode in the SWIM III controller
  * by writing a command to the hardware register.
  *
  * @return: void
  */
-void _SwimIIIDisableRWMode(void)
+void SwimIIIDisableRWMode(void)
 {
     // Write 0x18 to SWIM III register to disable RW mode
     *DAT_0000fc34 = 0x18;
-    _SynchronizeIO();
+    SynchronizeIO();
 
     return;
 }
 
 
 /**
- * _SwimIIIDiskSelect - Select disk drive
+ * SwimIIIDiskSelect - Select disk drive
  *
  * This function selects which physical disk drive to use. The selection
  * is based on the drive select flag in the drive structure (offset 0x46).
@@ -7324,7 +7324,7 @@ void _SwimIIIDisableRWMode(void)
  * @param param_1: Drive structure pointer
  * @return: void
  */
-void _SwimIIIDiskSelect(int param_1)
+void SwimIIIDiskSelect(int param_1)
 {
     undefined uVar1;
 
@@ -7332,26 +7332,26 @@ void _SwimIIIDiskSelect(int param_1)
     if (*(char *)(param_1 + 0x46) == '\0') {
         // Drive 0 selected
         *DAT_0000fc34 = 4;
-        _SynchronizeIO();
+        SynchronizeIO();
         uVar1 = 2;
     }
     else {
         // Drive 1 selected
         *DAT_0000fc34 = 2;
-        _SynchronizeIO();
+        SynchronizeIO();
         uVar1 = 4;
     }
 
     // Write complementary value to second register
     *DAT_0000fc38 = uVar1;
-    _SynchronizeIO();
+    SynchronizeIO();
 
     return;
 }
 
 
 /**
- * _SwimIIIHeadSelect - Select disk head (side)
+ * SwimIIIHeadSelect - Select disk head (side)
  *
  * This function selects which head (side) of the diskette to use.
  * Side 0 is typically the top of the disk, side 1 is the bottom.
@@ -7361,7 +7361,7 @@ void _SwimIIIDiskSelect(int param_1)
  * @param param_1: Head number (0 or 1)
  * @return: void
  */
-void _SwimIIIHeadSelect(short param_1)
+void SwimIIIHeadSelect(short param_1)
 {
     undefined4 uVar1;
 
@@ -7376,14 +7376,14 @@ void _SwimIIIHeadSelect(short param_1)
     }
 
     // Send head select signal to SWIM III
-    _SwimIIISenseSignal(uVar1);
+    SwimIIISenseSignal(uVar1);
 
     return;
 }
 
 
 /**
- * _SwimIIISenseSignal - Read signal status from SWIM III controller
+ * SwimIIISenseSignal - Read signal status from SWIM III controller
  *
  * This function reads a status signal from the SWIM III controller.
  * It sends an address signal to select which status to read, then
@@ -7392,16 +7392,16 @@ void _SwimIIIHeadSelect(short param_1)
  * @param param_1: Signal address to read (e.g., 0xfe for ready status)
  * @return: Status bit value (0 or 1)
  */
-byte _SwimIIISenseSignal(byte param_1)
+byte SwimIIISenseSignal(byte param_1)
 {
     byte bVar1;
 
     // Send address signal to select status register
-    _SwimIIIAddrSignal(param_1);
+    SwimIIIAddrSignal(param_1);
 
     // Read status from SWIM III data register 2
     bVar1 = *DAT_0000fc38;
-    _SynchronizeIO();
+    SynchronizeIO();
 
     // Extract and return bit 3
     return bVar1 >> 3 & 1;
@@ -7409,32 +7409,32 @@ byte _SwimIIISenseSignal(byte param_1)
 
 
 /**
- * _SwimIIISetFormatMode - Set SWIM III to format mode
+ * SwimIIISetFormatMode - Set SWIM III to format mode
  *
  * This function configures the SWIM III controller for disk formatting
  * operations. Format mode is used when writing track format data.
  *
  * @return: void
  */
-void _SwimIIISetFormatMode(void)
+void SwimIIISetFormatMode(void)
 {
-    _SynchronizeIO();
+    SynchronizeIO();
 
     // Write 8 to data register 1 to set format mode
     *DAT_0000fc34 = 8;
-    _SynchronizeIO();
+    SynchronizeIO();
 
     // Write 0x40 to data register 2
     *DAT_0000fc38 = 0x40;
-    _SynchronizeIO();
-    _SynchronizeIO();
+    SynchronizeIO();
+    SynchronizeIO();
 
     return;
 }
 
 
 /**
- * _SwimIIISetReadMode - Set SWIM III to read mode
+ * SwimIIISetReadMode - Set SWIM III to read mode
  *
  * This function configures the SWIM III controller for reading data
  * from the diskette. It first disables any previous mode, then sets
@@ -7442,26 +7442,26 @@ void _SwimIIISetFormatMode(void)
  *
  * @return: void
  */
-void _SwimIIISetReadMode(void)
+void SwimIIISetReadMode(void)
 {
     // Disable current read/write mode
-    _SwimIIIDisableRWMode();
-    _SynchronizeIO();
+    SwimIIIDisableRWMode();
+    SynchronizeIO();
 
     // Disable again for safety
-    _SwimIIIDisableRWMode();
+    SwimIIIDisableRWMode();
 
     // Write 0x10 to data register 1 to enable read mode
     *DAT_0000fc34 = 0x10;
-    _SynchronizeIO();
-    _SynchronizeIO();
+    SynchronizeIO();
+    SynchronizeIO();
 
     return;
 }
 
 
 /**
- * _SwimIIISetSignal - Set signal on SWIM III controller
+ * SwimIIISetSignal - Set signal on SWIM III controller
  *
  * This function sets a signal on the SWIM III controller by sending
  * an address signal, setting bit 3, waiting briefly, then clearing bit 3.
@@ -7470,28 +7470,28 @@ void _SwimIIISetReadMode(void)
  * @param param_1: Signal address to pulse
  * @return: void
  */
-void _SwimIIISetSignal(byte param_1)
+void SwimIIISetSignal(byte param_1)
 {
     // Send address signal to select signal line
-    _SwimIIIAddrSignal(param_1);
+    SwimIIIAddrSignal(param_1);
 
     // Set bit 3 in control register (pulse high)
     *DAT_0000fc2c = *DAT_0000fc2c | 8;
-    _SynchronizeIO();
+    SynchronizeIO();
 
     // Brief delay (1 unit)
-    _SwimIIISmallWait(1);
+    SwimIIISmallWait(1);
 
     // Clear bit 3 in control register (pulse low)
     *DAT_0000fc2c = *DAT_0000fc2c & 0xf7;
-    _SynchronizeIO();
+    SynchronizeIO();
 
     return;
 }
 
 
 /**
- * _SwimIIISetWriteMode - Set SWIM III to write mode
+ * SwimIIISetWriteMode - Set SWIM III to write mode
  *
  * This function configures the SWIM III controller for writing data
  * to the diskette. It first disables any previous mode, then sets
@@ -7499,26 +7499,26 @@ void _SwimIIISetSignal(byte param_1)
  *
  * @return: void
  */
-void _SwimIIISetWriteMode(void)
+void SwimIIISetWriteMode(void)
 {
     // Disable current read/write mode
-    _SwimIIIDisableRWMode();
-    _SynchronizeIO();
+    SwimIIIDisableRWMode();
+    SynchronizeIO();
 
     // Disable again for safety
-    _SwimIIIDisableRWMode();
+    SwimIIIDisableRWMode();
 
     // Write 0x10 to data register 2 to enable write mode
     *DAT_0000fc38 = 0x10;
-    _SynchronizeIO();
-    _SynchronizeIO();
+    SynchronizeIO();
+    SynchronizeIO();
 
     return;
 }
 
 
 /**
- * _SwimIIISmallWait - Small delay using SWIM III timer
+ * SwimIIISmallWait - Small delay using SWIM III timer
  *
  * This function implements a small delay by programming the SWIM III
  * internal timer and polling until it expires. The delay is proportional
@@ -7527,18 +7527,18 @@ void _SwimIIISetWriteMode(void)
  * @param param_1: Wait duration (timer count value)
  * @return: void
  */
-void _SwimIIISmallWait(char param_1)
+void SwimIIISmallWait(char param_1)
 {
     char cVar1;
 
     // Write wait count + 1 to SWIM III timer register
     *DAT_0000fc20 = param_1 + '\x01';
-    _SynchronizeIO();
+    SynchronizeIO();
 
     // Poll timer register until it counts down to 0
     cVar1 = *DAT_0000fc20;
     while (cVar1 != '\0') {
-        _SynchronizeIO();
+        SynchronizeIO();
         cVar1 = *DAT_0000fc20;
     }
 
@@ -7547,7 +7547,7 @@ void _SwimIIISmallWait(char param_1)
 
 
 /**
- * _SwimIIIStepDrive - Step drive head in or out
+ * SwimIIIStepDrive - Step drive head in or out
  *
  * This function moves the drive head by the specified number of tracks.
  * Positive values step outward (toward higher track numbers), negative
@@ -7557,7 +7557,7 @@ void _SwimIIISmallWait(char param_1)
  * @param param_1: Number of tracks to step (negative = inward, positive = outward)
  * @return: 0 on success, -75 (0xffffffb5) on timeout
  */
-int _SwimIIIStepDrive(short param_1)
+int SwimIIIStepDrive(short param_1)
 {
     int iVar1;
 
@@ -7567,30 +7567,30 @@ int _SwimIIIStepDrive(short param_1)
     if (param_1 != 0) {
         if (param_1 < 0) {
             // Step inward (toward track 0) - signal 0xf4
-            _SwimIIISetSignal(0xf4);
+            SwimIIISetSignal(0xf4);
             param_1 = -param_1;  // Make positive for step count
         }
         else {
             // Step outward (away from track 0) - signal 0xf0
-            _SwimIIISetSignal(0xf0);
+            SwimIIISetSignal(0xf0);
         }
 
         // Brief delay before starting step sequence
-        _SwimIIISmallWait(1);
+        SwimIIISmallWait(1);
 
         // Clear any pending step complete events (event flag 2)
-        _CancelOSEvent(_driveOSEventIDptr, 2);
+        CancelOSEvent(_driveOSEventIDptr, 2);
 
         // Send step address signal
-        _SwimIIIAddrSignal(0xf1);
+        SwimIIIAddrSignal(0xf1);
 
         // Write step count to SWIM III step register
         *DAT_0000fc40 = (char)param_1;
-        _SynchronizeIO();
+        SynchronizeIO();
 
         // Wait for step complete event (wait_mask=0x80, clear_mask=2)
         // FUN_00002710 is likely a timeout calculation function
-        iVar1 = _WaitForEvent(FUN_00002710, 0x80, 2);
+        iVar1 = WaitForEvent(FUN_00002710, 0x80, 2);
 
         if (iVar1 != 0) {
             // Timeout occurred - return error code -75
@@ -7603,7 +7603,7 @@ int _SwimIIIStepDrive(short param_1)
 
 
 /**
- * _SwimIIITimeOut - Handle timeout with sleep
+ * SwimIIITimeOut - Handle timeout with sleep
  *
  * This function manages a timeout counter. If the counter reaches zero,
  * it returns timeout status. Otherwise, it decrements the counter by 5
@@ -7612,7 +7612,7 @@ int _SwimIIIStepDrive(short param_1)
  * @param param_1: Pointer to timeout counter (in milliseconds)
  * @return: 1 if timed out, 0 if still waiting
  */
-undefined4 _SwimIIITimeOut(uint *param_1)
+undefined4 SwimIIITimeOut(uint *param_1)
 {
     uint uVar1;
     undefined4 uVar2;
@@ -7626,12 +7626,12 @@ undefined4 _SwimIIITimeOut(uint *param_1)
         // Still time remaining
         if (*param_1 < 6) {
             // Less than 6ms remaining - sleep for remaining time
-            _FloppyTimedSleep(5);
+            FloppyTimedSleep(5);
             uVar1 = 0;
         }
         else {
             // More than 5ms remaining - sleep for 5ms and decrement
-            _FloppyTimedSleep(5);
+            FloppyTimedSleep(5);
             uVar1 = *param_1 - 5;
         }
 
@@ -7647,7 +7647,7 @@ undefined4 _SwimIIITimeOut(uint *param_1)
 
 
 /**
- * _SynchronizeIO - Enforce I/O ordering
+ * SynchronizeIO - Enforce I/O ordering
  *
  * This function ensures that all previous I/O operations complete before
  * any subsequent operations begin. On PowerPC, this is typically implemented
@@ -7655,7 +7655,7 @@ undefined4 _SwimIIITimeOut(uint *param_1)
  *
  * @return: void
  */
-void _SynchronizeIO(void)
+void SynchronizeIO(void)
 {
     // Call platform-specific I/O ordering enforcement
     enforceInOrderExecutionIO();
@@ -7665,7 +7665,7 @@ void _SynchronizeIO(void)
 
 
 /**
- * _TestBitArray - Test if any bits are set in array
+ * TestBitArray - Test if any bits are set in array
  *
  * This function tests whether any bits are set in a bit array by
  * OR-ing together all words in the array. It returns true if any
@@ -7675,7 +7675,7 @@ void _SynchronizeIO(void)
  * @param param_2: Size of bit array in bytes
  * @return: true if any bits are set, false if all zeros
  */
-bool _TestBitArray(int param_1, uint param_2)
+bool TestBitArray(int param_1, uint param_2)
 {
     uint uVar1;
     uint uVar2;
@@ -7703,7 +7703,7 @@ bool _TestBitArray(int param_1, uint param_2)
 
 
 /**
- * _TestTrackInCache - Test if a track is cached
+ * TestTrackInCache - Test if a track is cached
  *
  * This function checks whether a specific track is currently cached
  * by comparing the cached drive and track information with the current
@@ -7712,7 +7712,7 @@ bool _TestBitArray(int param_1, uint param_2)
  * @param param_1: Drive structure pointer
  * @return: true if track is cached, false otherwise
  */
-bool _TestTrackInCache(int param_1)
+bool TestTrackInCache(int param_1)
 {
     bool bVar1;
 
@@ -7737,7 +7737,7 @@ bool _TestTrackInCache(int param_1)
 
 
 /**
- * _WaitForEvent - Wait for hardware event with error handling
+ * WaitForEvent - Wait for hardware event with error handling
  *
  * This function waits for a hardware event from the SWIM III controller.
  * It configures the interrupt mask, waits for the event, and processes
@@ -7749,7 +7749,7 @@ bool _TestTrackInCache(int param_1)
  * @param param_3: Event wait mask (which events to wait for)
  * @return: 0 on success, error code on failure
  */
-undefined4 _WaitForEvent(undefined4 param_1, byte param_2, byte param_3)
+undefined4 WaitForEvent(undefined4 param_1, byte param_2, byte param_3)
 {
     int iVar1;
     undefined4 uVar2;
@@ -7763,23 +7763,23 @@ undefined4 _WaitForEvent(undefined4 param_1, byte param_2, byte param_3)
 
     // Read current SWIM III interrupt status register
     local_28[0] = (uint)*DAT_0000fc3c;
-    _SynchronizeIO();
+    SynchronizeIO();
 
     // Write event mask to SWIM III interrupt enable register
     *DAT_0000fc58 = param_3;
-    _SynchronizeIO();
+    SynchronizeIO();
 
     // Enable interrupts with event mask (set bit 0 to enable)
     *DAT_0000fc38 = param_2 | 1;
-    _SynchronizeIO();
+    SynchronizeIO();
 
     // Wait for OS event with specified timeout
-    iVar1 = _WaitForOSEvent(_driveOSEventIDptr, (uint)param_3, param_1, local_28);
+    iVar1 = WaitForOSEvent(_driveOSEventIDptr, (uint)param_3, param_1, local_28);
 
     if (iVar1 == 0) {
         // Timeout occurred - disable interrupts
         *DAT_0000fc34 = param_2;
-        _SynchronizeIO();
+        SynchronizeIO();
     }
     else if (local_28[0] != 0) {
         // Event or error occurred
@@ -7788,14 +7788,14 @@ undefined4 _WaitForEvent(undefined4 param_1, byte param_2, byte param_3)
             if ((param_3 & local_28[0]) != 0) {
                 // Desired event occurred - disable interrupts and return success
                 *DAT_0000fc34 = param_2;
-                _SynchronizeIO();
+                SynchronizeIO();
                 uVar2 = 0;
             }
         }
         else {
             // Error occurred - disable interrupts
             *DAT_0000fc34 = param_2;
-            _SynchronizeIO();
+            SynchronizeIO();
 
             // Decode error type
             if ((_lastErrorsPending & 0x40) == 0) {
@@ -7825,7 +7825,7 @@ undefined4 _WaitForEvent(undefined4 param_1, byte param_2, byte param_3)
 
 
 /**
- * _WaitForOSEvent - Low-level OS event wait
+ * WaitForOSEvent - Low-level OS event wait
  *
  * This function performs a low-level wait for OS events. If the desired
  * event flags are not already set, it waits with a timeout. It then
@@ -7837,7 +7837,7 @@ undefined4 _WaitForEvent(undefined4 param_1, byte param_2, byte param_3)
  * @param param_4: Pointer to receive final event flags
  * @return: true if event occurred, false if timeout
  */
-bool _WaitForOSEvent(uint *param_1, uint param_2, int param_3, uint *param_4)
+bool WaitForOSEvent(uint *param_1, uint param_2, int param_3, uint *param_4)
 {
     bool bVar1;
 
@@ -7869,7 +7869,7 @@ bool _WaitForOSEvent(uint *param_1, uint param_2, int param_3, uint *param_4)
 
 
 /**
- * _WriteBlocks - Write blocks to diskette
+ * WriteBlocks - Write blocks to diskette
  *
  * This is the main block write function. It validates the write request,
  * powers up the drive, and loops through each block writing them one at
@@ -7879,28 +7879,28 @@ bool _WaitForOSEvent(uint *param_1, uint param_2, int param_3, uint *param_4)
  * @param param_2: Pointer to receive actual bytes written
  * @return: 0 on success, error code on failure
  */
-int _WriteBlocks(int param_1, int *param_2)
+int WriteBlocks(int param_1, int *param_2)
 {
     short sVar1;
     short sVar2;
     int iVar3;
     int iVar4;
 
-    _donone("wrt:call checkdriveonline ");
+    donone("wrt:call checkdriveonline ");
 
     // Check if drive is online and has diskette
-    sVar1 = _CheckDriveOnLine(param_1);
+    sVar1 = CheckDriveOnLine(param_1);
     iVar4 = (int)sVar1;
 
     if (iVar4 == 0) {
-        _donone("wrt:call powerup drive ");
+        donone("wrt:call powerup drive ");
 
         // Power up the drive
-        sVar1 = _PowerDriveUp(param_1);
+        sVar1 = PowerDriveUp(param_1);
         iVar4 = (int)sVar1;
 
         if (iVar4 == 0) {
-            _donone("wrt:powerupdrive OK\n");
+            donone("wrt:powerupdrive OK\n");
 
             // Calculate last block number to write
             // Offset 0x16: starting block number
@@ -7923,22 +7923,22 @@ int _WriteBlocks(int param_1, int *param_2)
                     // Retry up to 2 times on error
                     sVar1 = 2;
                     do {
-                        _donone("wrtblks: call getsectoraddr ");
+                        donone("wrtblks: call getsectoraddr ");
 
                         // Convert block number to track/head/sector
-                        _GetSectorAddress(param_1, *(undefined2 *)(param_1 + 0x16));
+                        GetSectorAddress(param_1, *(undefined2 *)(param_1 + 0x16));
 
-                        _donone("core.c:write:calling FlushcacheAnd Seek\n");
+                        donone("core.c:write:calling FlushcacheAnd Seek\n");
 
                         // Flush cache if needed and seek to track
-                        sVar2 = _FlushCacheAndSeek(param_1);
+                        sVar2 = FlushCacheAndSeek(param_1);
                         iVar4 = (int)sVar2;
 
                         if (iVar4 == 0) {
-                            _donone("wrt:calling wrttocache ");
+                            donone("wrt:calling wrttocache ");
 
                             // Write sector to cache memory
-                            sVar2 = _WriteSectorToCacheMemory(param_1);
+                            sVar2 = WriteSectorToCacheMemory(param_1);
                             iVar4 = (int)sVar2;
 
                             if (iVar4 == 0) {
@@ -7950,8 +7950,8 @@ int _WriteBlocks(int param_1, int *param_2)
                         }
 
                         // Error occurred - recalibrate and retry
-                        _donone("wrtblks:call RecalDrive ");
-                        _RecalDrive(param_1);
+                        donone("wrtblks:call RecalDrive ");
+                        RecalDrive(param_1);
 
                         // Increment error count (offset 0x4a)
                         *(short *)(param_1 + 0x4a) = *(short *)(param_1 + 0x4a) + 1;
@@ -7964,14 +7964,14 @@ int _WriteBlocks(int param_1, int *param_2)
             }
             else {
                 // Block range out of bounds
-                _donone("core.c:Record error in write,firstblk=%d,lastblk=%d\n",
+                donone("core.c:Record error in write,firstblk=%d,lastblk=%d\n",
                         *(undefined4 *)(param_1 + 0x14), iVar3);
-                sVar1 = _RecordError(0xffffffb0);  // Error -80
+                sVar1 = RecordError(0xffffffb0);  // Error -80
                 iVar4 = (int)sVar1;
             }
 
             // Power down drive (deferred mode 6)
-            _PowerDriveDown(param_1, 6);
+            PowerDriveDown(param_1, 6);
         }
     }
 
@@ -7980,7 +7980,7 @@ int _WriteBlocks(int param_1, int *param_2)
 
 
 /**
- * _WriteCacheToDiskTrack - Write cached track to disk
+ * WriteCacheToDiskTrack - Write cached track to disk
  *
  * This function writes all dirty sectors from the track cache to the
  * physical diskette. It checks which sectors are dirty and writes
@@ -7989,7 +7989,7 @@ int _WriteBlocks(int param_1, int *param_2)
  * @param param_1: Drive structure pointer
  * @return: 0 on success, error code on failure
  */
-int _WriteCacheToDiskTrack(int param_1)
+int WriteCacheToDiskTrack(int param_1)
 {
     byte bVar1;
     ushort uVar2;
@@ -8004,17 +8004,17 @@ int _WriteCacheToDiskTrack(int param_1)
     bVar1 = *(byte *)(param_1 + 0x51);
     uVar7 = *(undefined4 *)(param_1 + 0x20);
 
-    _donone("wrt:cachetodisktrack:call getaddr ");
+    donone("wrt:cachetodisktrack:call getaddr ");
 
     // Verify we're on the correct track
-    sVar3 = _HALGetNextAddressID(param_1);
+    sVar3 = HALGetNextAddressID(param_1);
     iVar8 = (int)sVar3;
 
     if (iVar8 == 0) {
         // Check current track matches target track
         if (*(char *)(param_1 + 0x20) == *(char *)(param_1 + 0x1c)) {
             // Prepare CPU cache for DMA write operations
-            _PrepareCPUCacheForDMAWrite();
+            PrepareCPUCacheForDMAWrite();
 
             // Ensure target track matches current
             *(undefined4 *)(param_1 + 0x20) = *(undefined4 *)(param_1 + 0x1c);
@@ -8058,8 +8058,8 @@ LAB_00007eb8:
 
                         // If GCR format, nibblize sector data
                         if (*(char *)(param_1 + 0x5a) != '\0') {
-                            _donone("GCR Read\n");
-                            sVar4 = _FPYNibblizeGCRSector
+                            donone("GCR Read\n");
+                            sVar4 = FPYNibblizeGCRSector
                                           (param_1, *(int *)(param_1 + 0x28),
                                            *(int *)(param_1 + 0x28) + 0xd);
                             iVar8 = (int)sVar4;
@@ -8067,7 +8067,7 @@ LAB_00007eb8:
 
                         if (iVar8 == 0) {
                             // Write sector via HAL with DMA
-                            sVar4 = _HALWriteSector(param_1);
+                            sVar4 = HALWriteSector(param_1);
                             iVar8 = (int)sVar4;
                             goto LAB_00007eb8;
                         }
@@ -8084,11 +8084,11 @@ LAB_00007efc:
             }
 
             // Flush DMA data from CPU cache
-            _FlushDMAedDataFromCPUCache();
+            FlushDMAedDataFromCPUCache();
         }
         else {
             // Wrong track
-            sVar3 = _RecordError(0xffffffb0);  // Error -80
+            sVar3 = RecordError(0xffffffb0);  // Error -80
             iVar8 = (int)sVar3;
         }
     }
@@ -8101,7 +8101,7 @@ LAB_00007efc:
 
 
 /**
- * _WriteSectorToCacheMemory - Write sector to cache memory
+ * WriteSectorToCacheMemory - Write sector to cache memory
  *
  * This function writes a sector from the I/O buffer into the track cache.
  * It marks the sector as dirty so it will be written to disk when the
@@ -8110,7 +8110,7 @@ LAB_00007efc:
  * @param param_1: Drive structure pointer
  * @return: 0 on success, error code on failure
  */
-int _WriteSectorToCacheMemory(int param_1)
+int WriteSectorToCacheMemory(int param_1)
 {
     byte bVar1;
     int iVar2;
@@ -8118,11 +8118,11 @@ int _WriteSectorToCacheMemory(int param_1)
     int iVar4;
 
     // Test if this track is already cached
-    iVar2 = _TestTrackInCache();
+    iVar2 = TestTrackInCache();
 
     if (iVar2 == 0) {
         // Track not cached - assign it to cache
-        _AssignTrackInCache(param_1);
+        AssignTrackInCache(param_1);
 
         // Clear read data present flag for this head
         // _ReadDataPresent is a 2-byte array (one per head)
@@ -8151,7 +8151,7 @@ int _WriteSectorToCacheMemory(int param_1)
     // Copy data from buffer to cache memory
     // Offset 0x24: buffer pointer
     // Offset 0x54: sector size
-    sVar3 = _MemListDescriptorDataCopyToMemory
+    sVar3 = MemListDescriptorDataCopyToMemory
                       (*(undefined4 *)(param_1 + 0x24), iVar2, (int)*(short *)(param_1 + 0x54));
 
     if (sVar3 == 0) {
@@ -8234,7 +8234,7 @@ unsigned int _ssi_4mb[12] = {
 // Default reference constant (reserved for future use)
 unsigned int _theDefaultRefCon = 0x00000000;
 
-// Media scan task ID (set by _LaunchMediaScanTask)
+// Media scan task ID (set by LaunchMediaScanTask)
 unsigned int _MediaScanTaskID = 0x00000000;
 
 // Track offset for format operations
@@ -8246,7 +8246,7 @@ void *_other_buffer_ptr = NULL;
 // SWIM III controller register base pointer
 void *_FloppySWIMIIIRegs = NULL;
 
-// SWIM III hardware register pointers (initialized by _HALReset)
+// SWIM III hardware register pointers (initialized by HALReset)
 unsigned char *DAT_0000fc20 = NULL;  // Timer register
 unsigned char *DAT_0000fc24 = NULL;  // Status/control register
 unsigned char *DAT_0000fc28 = NULL;  // Format mode register
@@ -8407,7 +8407,7 @@ LookupEntry _fcOpcodeValues[] = {
 };
 
 /*****************************************************************************
- * _fdrToIo - Convert floppy disk error code to IOKit error code
+ * fdrToIo - Convert floppy disk error code to IOKit error code
  *
  * This function maps floppy disk hardware error codes (fdr codes) to
  * standard IOKit error codes that can be returned to higher layers.
@@ -8431,7 +8431,7 @@ LookupEntry _fcOpcodeValues[] = {
  *
  * Based on disassembly of error code mapping function
  *****************************************************************************/
-unsigned int _fdrToIo(unsigned int fdrCode)
+unsigned int fdrToIo(unsigned int fdrCode)
 {
     unsigned int ioError;
 
@@ -8612,7 +8612,7 @@ typedef struct {
 
 // _fdDensitySectsize - Maps density types to sector size information tables
 // Located at 0x0000f0f8
-// Used by _fdGetSectSizeInfo to determine sector layout for a given density
+// Used by fdGetSectSizeInfo to determine sector layout for a given density
 DensitySectSizeEntry _fdDensitySectsize[] = {
     {0x00000001, _ssi_1mb},       // Density 1: 1MB format (720KB/800KB)
     {0x00000002, _ssi_2mb},       // Density 2: 2MB format (1.44MB)
@@ -8659,7 +8659,7 @@ DensityInfoEntry _fdDensityInfo[] = {
 };
 
 /*****************************************************************************
- * _fdThread - Main floppy I/O thread
+ * fdThread - Main floppy I/O thread
  *
  * This is the main I/O processing thread for the floppy driver. It runs
  * continuously, waiting for I/O requests and events, then dispatches them
@@ -8680,7 +8680,7 @@ DensityInfoEntry _fdDensityInfo[] = {
  *
  * Based on disassembly at 0x00004310
  *****************************************************************************/
-void _fdThread(void *arg)
+void fdThread(void *arg)
 {
     void *context;
     unsigned int eventMask;
@@ -8711,7 +8711,7 @@ void _fdThread(void *arg)
     while (1) {
         // Wait for any event on the registered channels
         // This is a blocking call that sleeps until an event occurs
-        eventResult = _WaitForOSEvent(context, &eventMask, &channel);
+        eventResult = WaitForOSEvent(context, &eventMask, &channel);
 
         // Check which type of event occurred by examining the channel
         if (channel == 1) {
@@ -8770,7 +8770,7 @@ void _fdThread(void *arg)
             // Disk change detection event
 
             // Scan for diskette insertion/removal
-            _ScanForDisketteChange();
+            ScanForDisketteChange();
 
             // Update the media state
             _UpdateMediaState(context);
@@ -8785,7 +8785,7 @@ void _fdThread(void *arg)
                 // I/O operation timed out
 
                 // Stop any active DMA
-                _StopDMAChannel();
+                StopDMAChannel();
 
                 // Reset the controller
                 _ResetController(context);
@@ -8806,7 +8806,7 @@ void _fdThread(void *arg)
             status = _ReadErrorStatus();
 
             // Log the error
-            _RecordError(status);
+            RecordError(status);
 
             // Get the current I/O request
             ioRequest = _GetCurrentIORequest(context);
@@ -8822,7 +8822,7 @@ void _fdThread(void *arg)
                         _IncrementRetryCount(ioRequest);
 
                         // Recalibrate the drive before retry
-                        _RecalDrive();
+                        RecalDrive();
 
                         // Retry the operation
                         _RetryIORequest(ioRequest);

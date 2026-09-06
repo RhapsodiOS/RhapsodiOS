@@ -99,7 +99,7 @@ static const char *_getStatusName(unsigned int statusCode, const char **values)
     return "Unknown";
 }
 
-static int *_fdGetSectSizeInfo(unsigned int density)
+static int *fdGetSectSizeInfo(unsigned int density)
 {
     switch (density) {
     case 1:
@@ -583,8 +583,8 @@ error_exit:
         *(unsigned int *)((char *)self + 0x1ac) |= 0x80000000;
 
         // Schedule timer callback in 2 seconds
-        extern void _fdTimer(void *arg);
-        IOScheduleFunc((IOThreadFunc)_fdTimer, self, 2);
+        extern void fdTimer(void *arg);
+        IOScheduleFunc((IOThreadFunc)fdTimer, self, 2);
     } else {
         // Time to turn motor off - send motor off command
         bzero(cmdBuf, 96);
@@ -672,7 +672,7 @@ error_exit:
     IOLog("setSectSizeInt: sectSize %d\n", sectSize);
 
     // Get sector size info table for current density
-    sectSizeInfo = _fdGetSectSizeInfo(_density);
+    sectSizeInfo = fdGetSectSizeInfo(_density);
 
     // Check if table is valid
     if (*sectSizeInfo == 0) {
@@ -770,12 +770,12 @@ error_exit:
     objc_msgSend(self, sel_getUid("setFormattedInternal:"), 0);
 
     // Set busy flag in controller
-    extern void _GetBusyFlag(void);
-    _GetBusyFlag();
+    extern void GetBusyFlag(void);
+    GetBusyFlag();
 
     // Get format info from controller into our format buffer at offset 0x1b8
-    extern void _FloppyFormatInfo(void *formatInfo);
-    _FloppyFormatInfo((char *)self + 0x1b8);
+    extern void FloppyFormatInfo(void *formatInfo);
+    FloppyFormatInfo((char *)self + 0x1b8);
 
     // Copy detected density from offset 0x1c4 to current density at offset 0x1cc
     _density = *(unsigned int *)((char *)self + 0x1c4);
@@ -790,8 +790,8 @@ error_exit:
     *(unsigned int *)((char *)self + 0x1c8) |= 1;
 
     // Check write protection status
-    extern int _FloppyWriteProtected(void);
-    isWriteProtected = _FloppyWriteProtected();
+    extern int FloppyWriteProtected(void);
+    isWriteProtected = FloppyWriteProtected();
 
     // If 10 sectors per track, force write protected (special case)
     if (_sectorsPerTrack == 10) {
@@ -812,8 +812,8 @@ error_exit:
     *(unsigned int *)((char *)self + 0x1c8) = flags;
 
     // Clear busy flag in controller
-    extern void _ResetBusyFlag(void);
-    _ResetBusyFlag();
+    extern void ResetBusyFlag(void);
+    ResetBusyFlag();
 
     return IO_R_SUCCESS;
 }

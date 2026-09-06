@@ -156,116 +156,116 @@ extern unsigned char s__0000e774[];          // MFM data mark pattern
 extern unsigned char s__0000e780[];          // MFM data sync pattern
 
 // C Utility functions
-extern void _AssignTrackInCache(int param_1);
-extern void _AvailableFormats(int param_1, unsigned short *minFormat,
+extern void AssignTrackInCache(int param_1);
+extern void AvailableFormats(int param_1, unsigned short *minFormat,
                                unsigned short *maxFormat, short *formatType);
-extern unsigned int _BSBlockListDescriptorGetExtent(unsigned int param_1, unsigned int param_2,
+extern unsigned int BSBlockListDescriptorGetExtent(unsigned int param_1, unsigned int param_2,
                                                      unsigned int *startBlock,
                                                      unsigned int *blockCount);
-extern unsigned int _BSMPINotifyFamilyStoreChangedState(unsigned int param_1,
+extern unsigned int BSMPINotifyFamilyStoreChangedState(unsigned int param_1,
                                                          unsigned int newState);
-extern void _BuildTrackInterleaveTable(int param_1, unsigned int sectorCount);
-extern void _ByteMove(unsigned char *source, unsigned char *dest, int count);
-extern unsigned int _CancelOSEvent(unsigned int *eventFlags, unsigned int eventMask);
-extern unsigned int _CheckDriveNumber(short driveNum, unsigned int **drivePtr);
-extern unsigned int _CheckDriveOnLine(int driveStructure);
-extern void _CloseDBDMAChannel(void);
-extern unsigned int _CreateOSEventResources(void);
-extern unsigned int _CreateOSHardwareLockResources(void);
-extern unsigned int _CurrentAddressSpaceID(void);
-extern void _DenibblizeGCRChecksum(unsigned char *nibbles, unsigned int *checksum);
-extern void _DenibblizeGCRData(unsigned char *nibbles, unsigned char *output,
+extern void BuildTrackInterleaveTable(int param_1, unsigned int sectorCount);
+extern void ByteMove(unsigned char *source, unsigned char *dest, int count);
+extern unsigned int CancelOSEvent(unsigned int *eventFlags, unsigned int eventMask);
+extern unsigned int CheckDriveNumber(short driveNum, unsigned int **drivePtr);
+extern unsigned int CheckDriveOnLine(int driveStructure);
+extern void CloseDBDMAChannel(void);
+extern unsigned int CreateOSEventResources(void);
+extern unsigned int CreateOSHardwareLockResources(void);
+extern unsigned int CurrentAddressSpaceID(void);
+extern void DenibblizeGCRChecksum(unsigned char *nibbles, unsigned int *checksum);
+extern void DenibblizeGCRData(unsigned char *nibbles, unsigned char *output,
                                short byteCount, unsigned int *checksum);
-extern void _donone(void);
-extern BOOL _drive_present(void);
-extern void _DumpTrackCache(int driveStructure);
-extern int _EjectDisk(int param_1);
-extern void _EnterHardwareLockSection(void);
-extern void _ExitHardwareLockSection(void);
-extern void _fd_init_idmap(unsigned int param_1);
-extern unsigned int _Fdclose(unsigned int param_1);
-extern unsigned int _fdioctl(unsigned int param_1, int param_2, unsigned int *param_3);
-extern unsigned int _Fdopen(unsigned int param_1, unsigned int param_2);
-extern unsigned int _fdread(unsigned int param_1, int *param_2);
-extern unsigned int _fdsize(void);
-extern unsigned int _fdstrategy(int param_1);
-extern void _fdTimer(int param_1);
-extern unsigned int _fdwrite(unsigned int param_1, unsigned int param_2);
-extern unsigned char *_floppy_idmap(void);
-extern int _FloppyFormatDisk(unsigned int param_1, unsigned int param_2);
-extern int _FloppyFormatInfo(int param_1);
-extern unsigned int _floppyMalloc(unsigned int param_1, unsigned int *param_2, int *param_3);
-extern int _FloppyPluginFlush(void);
-extern unsigned int _FloppyPluginGotoState(unsigned int param_1, unsigned int param_2);
-extern void _FloppyPluginInit(unsigned int param_1);
-extern int _FloppyPluginIO(unsigned int *param_1, int param_2, unsigned int param_3,
+extern void donone(void);
+extern BOOL drive_present(void);
+extern void DumpTrackCache(int driveStructure);
+extern int EjectDisk(int param_1);
+extern void EnterHardwareLockSection(void);
+extern void ExitHardwareLockSection(void);
+extern void fd_init_idmap(unsigned int param_1);
+extern unsigned int Fdclose(unsigned int param_1);
+extern unsigned int fdioctl(unsigned int param_1, int param_2, unsigned int *param_3);
+extern unsigned int Fdopen(unsigned int param_1, unsigned int param_2);
+extern unsigned int fdread(unsigned int param_1, int *param_2);
+extern unsigned int fdsize(void);
+extern unsigned int fdstrategy(int param_1);
+extern void fdTimer(int param_1);
+extern unsigned int fdwrite(unsigned int param_1, unsigned int param_2);
+extern unsigned char *floppy_idmap(void);
+extern int FloppyFormatDisk(unsigned int param_1, unsigned int param_2);
+extern int FloppyFormatInfo(int param_1);
+extern unsigned int floppyMalloc(unsigned int param_1, unsigned int *param_2, int *param_3);
+extern int FloppyPluginFlush(void);
+extern unsigned int FloppyPluginGotoState(unsigned int param_1, unsigned int param_2);
+extern void FloppyPluginInit(unsigned int param_1);
+extern int FloppyPluginIO(unsigned int *param_1, int param_2, unsigned int param_3,
                            unsigned int param_4, int param_5);
-extern int _FloppyRecalibrate(void);
-extern unsigned int _FloppyTimedSleep(int param_1);
-extern unsigned int _FloppyWriteProtected(void);
-extern int _FlushCacheAndSeek(int param_1);
-extern unsigned int _FlushDMAedDataFromCPUCache(void);
-extern void _FlushProcessorCache(unsigned int param_1, unsigned int param_2, unsigned int param_3);
-extern int _FlushTrackCache(int param_1);
-extern int _FormatDisk(unsigned char param_1, unsigned char param_2, int param_3, short param_4);
-extern void _FormatGCRCacheSWIMIIIData(int param_1);
-extern void _FormatMFMCacheSWIMIIIData(int param_1);
-extern void _FPYComputeCacheDMAAddress(int param_1, char param_2, unsigned int param_3,
+extern int FloppyRecalibrate(void);
+extern unsigned int FloppyTimedSleep(int param_1);
+extern unsigned int FloppyWriteProtected(void);
+extern int FlushCacheAndSeek(int param_1);
+extern unsigned int FlushDMAedDataFromCPUCache(void);
+extern void FlushProcessorCache(unsigned int param_1, unsigned int param_2, unsigned int param_3);
+extern int FlushTrackCache(int param_1);
+extern int FormatDisk(unsigned char param_1, unsigned char param_2, int param_3, short param_4);
+extern void FormatGCRCacheSWIMIIIData(int param_1);
+extern void FormatMFMCacheSWIMIIIData(int param_1);
+extern void FPYComputeCacheDMAAddress(int param_1, char param_2, unsigned int param_3,
                                        int param_4, int *param_5);
-extern int _FPYDenibblizeGCRSector(int param_1, unsigned char *param_2, unsigned int param_3);
-extern unsigned int _FPYNibblizeGCRSector(int param_1, unsigned char *param_2, int param_3);
-extern void _GetBusyFlag(void);
-extern unsigned int _GetCurrentState(void);
-extern int _GetDisketteFormat(int param_1);
-extern unsigned char _GetDisketteFormatType(int param_1);
-extern void _GetSectorAddress(int param_1, short param_2);
-extern bool _HALDiskettePresence(int param_1);
-extern unsigned int _HALEjectDiskette(void);
-extern int _HALFormatTrack(int param_1);
-extern bool _HALGetDriveType(int param_1);
-extern void _HALGetMediaType(int param_1);
-extern void _HALGetNextAddressID(int param_1);
-extern void _HALISR_DMA(void);
-extern void _HALISRHandler(void);
-extern void _HALPowerDownDrive(void);
-extern int _HALPowerUpDrive(void);
-extern int _HALReadSector(int param_1);
-extern int _HALRecalDrive(int param_1);
-extern unsigned int _HALReset(int param_1, int param_2, unsigned int param_3);
-extern int _HALSeekDrive(int param_1);
-extern void _HALSetFormatMode(int param_1);
-extern int _HALWriteSector(int param_1);
-extern int _InitializeDrive(unsigned int param_1, unsigned int param_2, unsigned int param_3,
+extern int FPYDenibblizeGCRSector(int param_1, unsigned char *param_2, unsigned int param_3);
+extern unsigned int FPYNibblizeGCRSector(int param_1, unsigned char *param_2, int param_3);
+extern void GetBusyFlag(void);
+extern unsigned int GetCurrentState(void);
+extern int GetDisketteFormat(int param_1);
+extern unsigned char GetDisketteFormatType(int param_1);
+extern void GetSectorAddress(int param_1, short param_2);
+extern bool HALDiskettePresence(int param_1);
+extern unsigned int HALEjectDiskette(void);
+extern int HALFormatTrack(int param_1);
+extern bool HALGetDriveType(int param_1);
+extern void HALGetMediaType(int param_1);
+extern void HALGetNextAddressID(int param_1);
+extern void HALISR_DMA(void);
+extern void HALISRHandler(void);
+extern void HALPowerDownDrive(void);
+extern int HALPowerUpDrive(void);
+extern int HALReadSector(int param_1);
+extern int HALRecalDrive(int param_1);
+extern unsigned int HALReset(int param_1, int param_2, unsigned int param_3);
+extern int HALSeekDrive(int param_1);
+extern void HALSetFormatMode(int param_1);
+extern int HALWriteSector(int param_1);
+extern int InitializeDrive(unsigned int param_1, unsigned int param_2, unsigned int param_3,
                             unsigned int param_4, unsigned int param_5, unsigned int param_6,
                             unsigned int param_7, unsigned int **param_8);
-extern void _InitFormatTable(void);
-extern unsigned int _KillMediaScanTask(void);
-extern unsigned int _LaunchMediaScanTask(void);
-extern int _LookupFormatTable(int param_1, short *param_2, short *param_3, short *param_4,
+extern void InitFormatTable(void);
+extern unsigned int KillMediaScanTask(void);
+extern unsigned int LaunchMediaScanTask(void);
+extern int LookupFormatTable(int param_1, short *param_2, short *param_3, short *param_4,
                               short *param_5, unsigned int *param_6);
-extern unsigned int _MemListDescriptorDataCompare(void);
-extern unsigned int _MemListDescriptorDataCompareWithMemory(void);
-extern unsigned int _MemListDescriptorDataCopyFromMemory(void);
-extern unsigned int _MemListDescriptorDataCopyToMemory(void);
-extern unsigned char *_NibblizeGCRChecksum(unsigned char *param_1, unsigned int param_2);
-extern void _NibblizeGCRData(unsigned char *param_1, unsigned char *param_2, short param_3,
+extern unsigned int MemListDescriptorDataCompare(void);
+extern unsigned int MemListDescriptorDataCompareWithMemory(void);
+extern unsigned int MemListDescriptorDataCopyFromMemory(void);
+extern unsigned int MemListDescriptorDataCopyToMemory(void);
+extern unsigned char *NibblizeGCRChecksum(unsigned char *param_1, unsigned int param_2);
+extern void NibblizeGCRData(unsigned char *param_1, unsigned char *param_2, short param_3,
                              unsigned int *param_4);
-extern void _PostDisketteEvent(unsigned char param_1, short param_2);
-extern void _PowerDriveDown(int param_1, int param_2);
-extern int _PowerDriveUp(int param_1);
-extern unsigned int _PrepareCPUCacheForDMARead(void);
-extern unsigned int _PrepareCPUCacheForDMAWrite(void);
-extern void _PrepDBDMA(int param_1);
-extern void _PrintDMA(void);
-extern int _ReadBlocks(int param_1, int *param_2);
-extern int _ReadDiskTrackToCache(int param_1);
-extern int _ReadSectorFromCacheMemory(int param_1);
+extern void PostDisketteEvent(unsigned char param_1, short param_2);
+extern void PowerDriveDown(int param_1, int param_2);
+extern int PowerDriveUp(int param_1);
+extern unsigned int PrepareCPUCacheForDMARead(void);
+extern unsigned int PrepareCPUCacheForDMAWrite(void);
+extern void PrepDBDMA(int param_1);
+extern void PrintDMA(void);
+extern int ReadBlocks(int param_1, int *param_2);
+extern int ReadDiskTrackToCache(int param_1);
+extern int ReadSectorFromCacheMemory(int param_1);
 
 // Block and track cache helper functions
-extern short _CheckDriveOnLine(int driveStructure);
-extern short _RecalDrive(int driveStructure);
-extern int _TestTrackInCache(void);
-extern void _AssignTrackInCache(int driveStructure);
+extern short CheckDriveOnLine(int driveStructure);
+extern short RecalDrive(int driveStructure);
+extern int TestTrackInCache(void);
+extern void AssignTrackInCache(int driveStructure);
 
 // Memory descriptor helper functions
 extern unsigned int FUN_00006b4c(void);
@@ -278,39 +278,39 @@ extern void FUN_00006abc(int offset, int size);  // Flush cache
 extern void FUN_00006b00(int offset, int size);  // Invalidate cache
 
 // Format detection functions
-extern short _SetDisketteFormat(int driveStructure, unsigned int formatType);
+extern short SetDisketteFormat(int driveStructure, unsigned int formatType);
 
 // SWIM III controller functions
-extern void _SwimIIIDiskSelect(void);
-extern int _SwimIIISenseSignal(unsigned int signal);
-extern void _SwimIIISetSignal(unsigned int signal);
-extern void _SwimIIIHeadSelect(unsigned char head);
-extern void _SwimIIISetReadMode(void);
-extern void _SwimIIIDisableRWMode(void);
-extern short _SwimIIIStepDrive(unsigned int direction);
+extern void SwimIIIDiskSelect(void);
+extern int SwimIIISenseSignal(unsigned int signal);
+extern void SwimIIISetSignal(unsigned int signal);
+extern void SwimIIIHeadSelect(unsigned char head);
+extern void SwimIIISetReadMode(void);
+extern void SwimIIIDisableRWMode(void);
+extern short SwimIIIStepDrive(unsigned int direction);
 
 // DMA and cache management functions
-extern void _PrepareCPUCacheForDMAWrite(void);
-extern short _StartDMAChannel(int address, unsigned int length, int flags);
-extern void _SynchronizeIO(void);
-extern void _ResetDMAChannel(void);
-extern void _OpenDBDMAChannel(unsigned int dmaBase, void *channelPtr, int param3,
+extern void PrepareCPUCacheForDMAWrite(void);
+extern short StartDMAChannel(int address, unsigned int length, int flags);
+extern void SynchronizeIO(void);
+extern void ResetDMAChannel(void);
+extern void OpenDBDMAChannel(unsigned int dmaBase, void *channelPtr, int param3,
                               unsigned int *logicalAddr, unsigned int *physicalAddr);
 
 // OS event management functions
-extern short _WaitForEvent(int timeout, int mask, int eventBit);
-extern void _SetOSEvent(unsigned int *eventPtr, unsigned char eventBits);
+extern short WaitForEvent(int timeout, int mask, int eventBit);
+extern void SetOSEvent(unsigned int *eventPtr, unsigned char eventBits);
 extern unsigned int *_driveOSEventIDptr;     // Drive OS event ID pointer
 
 // Sleep/timing functions
-extern short _SleepUntilReady(int milliseconds);
+extern short SleepUntilReady(int milliseconds);
 
 // Error handling functions
-extern void _RecordError(int errorCode);
+extern void RecordError(int errorCode);
 extern unsigned char _lastErrorsPending;     // Last error status from SWIM III
 
 // Drive power management
-extern void _PowerDriveDown(int driveStructure, int param_2);
+extern void PowerDriveDown(int driveStructure, int param_2);
 
 // SWIM III hardware registers
 extern unsigned char *DAT_0000fc20;          // Command register
@@ -411,7 +411,7 @@ extern unsigned char DAT_0000fc06;           // Format 5: MFM gap 3
 
 // Media scan task globals
 extern unsigned int _MediaScanTaskID;        // Media scan task ID
-extern void *_MediaScanTask;                 // Media scan task structure
+extern void *MediaScanTask;                 // Media scan task structure
 extern void *_entry;                         // Task entry point
 extern unsigned int FUN_0000a300(void *entry, void *task);  // Task launch function
 
@@ -421,78 +421,78 @@ extern unsigned short DAT_0000fb8a;          // Power state/deferred power down 
 extern int DAT_0000fb8c;                     // Deferred power down drive structure
 
 // Block read and cache management functions
-extern short _RecalDrive(int driveStructure);
-extern unsigned int _RecordError(unsigned int errorCode);
-extern void _ResetBitArray(int bitArrayPtr, unsigned int arraySize);
-extern void _ResetBusyFlag(void);
-extern void _ResetDBDMA(int dbdmaDescriptor);
-extern void _ResetDMAChannel(void);
+extern short RecalDrive(int driveStructure);
+extern unsigned int RecordError(unsigned int errorCode);
+extern void ResetBitArray(int bitArrayPtr, unsigned int arraySize);
+extern void ResetBusyFlag(void);
+extern void ResetDBDMA(int dbdmaDescriptor);
+extern void ResetDMAChannel(void);
 
 // Media scan and drive control functions
-extern void _ScanForDisketteChange(void);
-extern int _SeekDrive(int driveStructure);
-extern bool _SetBusyFlag(void);
-extern void _SetCacheAddresses(int driveStructure);
-extern void _SetDBDMAPhysicalAddress(int dbdmaStructure, uint direction, uint bufferAddress, uint transferSize);
+extern void ScanForDisketteChange(void);
+extern int SeekDrive(int driveStructure);
+extern bool SetBusyFlag(void);
+extern void SetCacheAddresses(int driveStructure);
+extern void SetDBDMAPhysicalAddress(int dbdmaStructure, uint direction, uint bufferAddress, uint transferSize);
 
 // Helper functions referenced by the above
-extern int _CheckDriveNumber(int driveNumber, int *driveStructureOut);
-extern void _SetSectorsPerTrack(int driveStructure);
+extern int CheckDriveNumber(int driveNumber, int *driveStructureOut);
+extern void SetSectorsPerTrack(int driveStructure);
 
 // Format and configuration functions
-extern void _SetDisketteFormat(int driveStructure, short formatIndex);
-extern undefined4 _SetOSEvent(uint *eventFlags, uint eventMask);
-extern void _SetSectorAddressBlocksize(int driveStructure);
-extern undefined4 _SleepUntilReady(void);
+extern void SetDisketteFormat(int driveStructure, short formatIndex);
+extern undefined4 SetOSEvent(uint *eventFlags, uint eventMask);
+extern void SetSectorAddressBlocksize(int driveStructure);
+extern undefined4 SleepUntilReady(void);
 
 // Additional helper functions
-extern void _BuildTrackInterleaveTable(int driveStructure, unsigned char sectorsPerTrack);
+extern void BuildTrackInterleaveTable(int driveStructure, unsigned char sectorsPerTrack);
 extern int FUN_00006df0(int param_1, void *param_2);  // Event wait function
 extern void FUN_00006de0(void *param_1);               // Event signal function
 
 // DBDMA control functions
-extern void _StartDBDMA(int dbdmaDescriptor);
-extern void _StartDMAChannel(undefined4 bufferAddress, int transferSize, short direction);
-extern void _StopDBDMA(int dbdmaDescriptor);
-extern undefined4 _StopDMAChannel(void);
+extern void StartDBDMA(int dbdmaDescriptor);
+extern void StartDMAChannel(undefined4 bufferAddress, int transferSize, short direction);
+extern void StopDBDMA(int dbdmaDescriptor);
+extern undefined4 StopDMAChannel(void);
 
 // SWIM III mode control functions
-extern void _SwimIIISetReadMode(void);
-extern void _SwimIIISetFormatMode(void);
-extern void _SwimIIISetWriteMode(void);
+extern void SwimIIISetReadMode(void);
+extern void SwimIIISetFormatMode(void);
+extern void SwimIIISetWriteMode(void);
 
 // SWIM III controller hardware functions
-extern void _SwimIIIAddrSignal(byte addressSignal);
-extern void _SwimIIIDisableRWMode(void);
-extern void _SwimIIIDiskSelect(int driveStructure);
-extern void _SwimIIIHeadSelect(short headNumber);
-extern byte _SwimIIISenseSignal(byte signalAddress);
-extern void _SwimIIISetSignal(byte signalAddress);
+extern void SwimIIIAddrSignal(byte addressSignal);
+extern void SwimIIIDisableRWMode(void);
+extern void SwimIIIDiskSelect(int driveStructure);
+extern void SwimIIIHeadSelect(short headNumber);
+extern byte SwimIIISenseSignal(byte signalAddress);
+extern void SwimIIISetSignal(byte signalAddress);
 
 // SWIM III timing and control functions
-extern void _SwimIIISmallWait(char waitDuration);
-extern int _SwimIIIStepDrive(short stepCount);
-extern undefined4 _SwimIIITimeOut(uint *timeoutCounter);
+extern void SwimIIISmallWait(char waitDuration);
+extern int SwimIIIStepDrive(short stepCount);
+extern undefined4 SwimIIITimeOut(uint *timeoutCounter);
 
 // I/O synchronization
-extern void _SynchronizeIO(void);
+extern void SynchronizeIO(void);
 extern void enforceInOrderExecutionIO(void);
 
 // Bit array operations
-extern bool _TestBitArray(int bitArrayPtr, uint arraySize);
+extern bool TestBitArray(int bitArrayPtr, uint arraySize);
 
 // Event management functions
-extern void _CancelOSEvent(void *eventPtr, unsigned int eventMask);
-extern undefined4 _WaitForEvent(undefined4 timeoutMs, byte eventMask, byte waitMask);
-extern bool _WaitForOSEvent(uint *eventFlags, uint eventMask, int timeout, uint *resultFlags);
+extern void CancelOSEvent(void *eventPtr, unsigned int eventMask);
+extern undefined4 WaitForEvent(undefined4 timeoutMs, byte eventMask, byte waitMask);
+extern bool WaitForOSEvent(uint *eventFlags, uint eventMask, int timeout, uint *resultFlags);
 
 // Cache test functions
-extern bool _TestTrackInCache(int driveStructure);
+extern bool TestTrackInCache(int driveStructure);
 
 // Write operations
-extern int _WriteBlocks(int driveStructure, int *actualBytes);
-extern int _WriteCacheToDiskTrack(int driveStructure);
-extern int _WriteSectorToCacheMemory(int driveStructure);
+extern int WriteBlocks(int driveStructure, int *actualBytes);
+extern int WriteCacheToDiskTrack(int driveStructure);
+extern int WriteSectorToCacheMemory(int driveStructure);
 
 // Low-level OS event functions
 extern void FUN_00006ee8(int param_1, void *param_2, unsigned int param_3);  // Event lock/wait
@@ -577,7 +577,7 @@ extern LookupEntry _fdCommandValues[];               // Floppy disk command valu
 extern LookupEntry _fcOpcodeValues[];                // Floppy controller opcode value table (17 entries)
 
 // Error code mapping functions
-extern unsigned int _fdrToIo(unsigned int fdrCode); // Convert floppy error code to IOKit error code
+extern unsigned int fdrToIo(unsigned int fdrCode); // Convert floppy error code to IOKit error code
 
 // Drive information structures
 typedef struct {
@@ -622,11 +622,11 @@ extern DensitySectSizeEntry _fdDensitySectsize[];  // Maps density to sector siz
 extern DensityInfoEntry _fdDensityInfo[];          // Density configuration parameters
 
 // Thread functions
-extern void _fdThread(void *arg);                    // Main floppy I/O thread
+extern void fdThread(void *arg);                    // Main floppy I/O thread
 
-// Thread helper functions (called by _fdThread)
+// Thread helper functions (called by fdThread)
 extern void _InitializeEventChannel(void *context, unsigned int channelID);
-extern unsigned int _WaitForOSEvent(void *context, unsigned int *eventMask, unsigned int *channel);
+extern unsigned int WaitForOSEvent(void *context, unsigned int *eventMask, unsigned int *channel);
 extern void *_GetCurrentIORequest(void *context);
 extern unsigned int _GetIOStatus(void *ioRequest);
 extern void _CompleteIORequest(void *ioRequest, unsigned int status);

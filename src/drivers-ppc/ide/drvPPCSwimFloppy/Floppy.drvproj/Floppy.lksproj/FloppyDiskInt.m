@@ -116,18 +116,18 @@ typedef struct _FdCmdBuf {
 // Global variables for FloppyPluginIO
 static int _DataSource = 0;
 static BOOL _BusyFlag = NO;
-extern int _FloppyPluginIO(unsigned int *actualLength, unsigned int length, void *buffer,
+extern int FloppyPluginIO(unsigned int *actualLength, unsigned int length, void *buffer,
                            unsigned int offset, BOOL isWrite, unsigned int param6);
-extern int _floppyMalloc(unsigned int size, void *physAddr, void *virtAddr);
-extern void _fdTimer(id disk);
-extern void _fdThread(id disk);
+extern int floppyMalloc(unsigned int size, void *physAddr, void *virtAddr);
+extern void fdTimer(id disk);
+extern void fdThread(id disk);
 
-static void _GetBusyFlag(void)
+static void GetBusyFlag(void)
 {
     _BusyFlag = YES;
 }
 
-static void _ResetBusyFlag(void)
+static void ResetBusyFlag(void)
 {
     _BusyFlag = NO;
 }
@@ -245,7 +245,7 @@ static const char *_getResultName(unsigned int result)
     }
 
     // Set busy flag
-    _GetBusyFlag();
+    GetBusyFlag();
 
     // Determine data source based on pending parameter
     // pending == VM_TASK_NULL means kernel space (data source 1)
@@ -257,14 +257,14 @@ static const char *_getResultName(unsigned int result)
     }
 
     // Call the FloppyPluginIO function
-    status = _FloppyPluginIO(&localActualLength, length, buffer,
+    status = FloppyPluginIO(&localActualLength, length, buffer,
                              block * blockSize, isWrite, 0);
 
     // Store actual length transferred
     *actualLength = localActualLength;
 
     // Reset busy flag
-    _ResetBusyFlag();
+    ResetBusyFlag();
 
     return status;
 }
@@ -676,13 +676,13 @@ static const char *_getResultName(unsigned int result)
     if ((cmdBuf->resultLength & 0x20000000) == 0) {
         // Clear bit 31 of timer flags and cancel timer
         _timerFlags = _timerFlags & 0x7fffffff;
-        _fdTimer(self);  // Cancel timer
+        fdTimer(self);  // Cancel timer
     }
     // If bit 31 of timer flags is NOT set
     else if ((_timerFlags & 0x80000000) == 0) {
         // Set bit 31 and start timer with 2 second delay
         _timerFlags = _timerFlags | 0x80000000;
-        _fdTimer(self);  // Start timer with delay
+        fdTimer(self);  // Start timer with delay
     }
 
     IOLog("fdSendCmd:rtn=%d,setting to 0\n", result);
@@ -801,7 +801,7 @@ static const char *_getResultName(unsigned int result)
     _outerRetry = 3;
 
     // Allocate 1024 bytes for DMA buffer
-    result = _floppyMalloc(0x400, &physAddr, &virtAddr);
+    result = floppyMalloc(0x400, &physAddr, &virtAddr);
     _buffer = virtAddr;
     if (result == 0) {
         IOLog("floppyMalloc failed;but ignoring\n");
@@ -911,7 +911,7 @@ static const char *_getResultName(unsigned int result)
     }
 
     // Start the floppy thread
-    _fdThread(self);
+    fdThread(self);
 
     return IO_R_SUCCESS;
 }

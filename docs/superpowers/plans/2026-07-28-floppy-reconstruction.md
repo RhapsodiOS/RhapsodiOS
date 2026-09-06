@@ -312,7 +312,9 @@ double underscore, and `_FloppyState`, `_Floppy_dev`, `_FloppyIdMap`,
 `_busyflag`, `_slock`, `_ReadDataPresent`, `_PrivDBDMAChannelArea` and
 `_GRCFloppyDMAChannel` are one-underscore `__DATA` symbols, so Apple spelled
 those globals bare too. Ours emit the double-underscore forms and match nothing.
-`symbol_name_check.py` measures `__TEXT,__text` only, so its gate cannot see it.
+`symbol_name_check.py` measured `__TEXT,__text` only, so its gate could not see
+it; it now also checks `__DATA,*` under `--check-data`, and the names above were
+renamed to their bare spelling.
 That defect is out of scope for this plan and is recorded as uncertainty 5 in
 `findings.md` — the next driver must **schedule** it, not preserve it.
 

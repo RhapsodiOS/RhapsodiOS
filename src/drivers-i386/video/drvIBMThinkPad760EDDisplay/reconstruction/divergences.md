@@ -2467,6 +2467,25 @@ the eight deferred strings' lengths including their NULs. The in-scope
 
 ### Function extents: 17 of the 29 in-scope match, 12 do not
 
+> **Unverified changes are in the tree.** Commit `1cb44e28` edited
+> `IBMThinkPad760ED.m` intending to close four of the twelve divergences below
+> — `name`, `updateModeTable`, `determineConfiguration:` and
+> `setPendingDisplayMode:`. **Those edits have never been compiled.** The
+> Rhapsody build guest (`10.10.0.113`, named in `vm/vm.conf`) went offline
+> partway through that pass and stayed unreachable, and there is no local
+> cross-toolchain, so nothing could be rebuilt and nothing re-measured. The
+> table below is still the last *measured* state, from commit `fd0e7355`; it
+> does not reflect `1cb44e28`. Until the guest returns and the driver is
+> rebuilt, treat that commit as a hypothesis: the reasoning is recorded below
+> and is drawn from the reference disassembly, but **0 of the 12 are verified
+> closed**, and it is not known whether the edited file still compiles.
+>
+> One of those four is more than a byte-count fix. `determineConfiguration:`
+> was found to have a genuine control-flow error — the `jl` at +92 targets the
+> CR2A write, so that write and the `sr0b != 0xD3` test belong on the common
+> path. That correction stands on its own reading of the reference regardless
+> of the extent question, but it too is uncompiled.
+
 Name-level parity is not byte-level parity. Comparing each function's extent
 (next symbol's address minus its own, so padding is included on both sides):
 

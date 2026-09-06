@@ -47,7 +47,14 @@ The binary defines **203** `__TEXT,__text` symbols:
 203 defined symbols against 202 named functions. The difference is exactly one
 symbol: `_fdrToIo` — see section 5.
 
-## 3. Four-category coverage of `source-map.json`
+## 3. Four-category coverage of `source-map.json` (Task 3 snapshot)
+
+> **Sections 3, 4, 7, 8, 10 and 11 record the Task 3 measurement**, taken before
+> Task 4's selector rename and before Task 5 wrote the five absent bodies and
+> deleted the three duplicate statics. Their counts, and the source line numbers
+> they cite, describe the tree as it stood at commit `53da4375`. They are kept as
+> the record of what was found, not as a description of the tree today.
+> **Section 14 supersedes them** with the Task 6 remap.
 
 Built with `--objc-methods` and **without** `--scope-to-objc`. Scoping to
 Objective-C would have covered 60 of the 201 hand-written functions and reported
@@ -146,7 +153,7 @@ checker itself says so: "code is present".
 none of the four categories), and the map covers 200 of the 201 hand-written
 functions by construction, plus the 2 build-generated ones, for 202 entries.
 
-The function is present in our source at `FloppyDisk.m:8434` as
+The function is present in our source at `FloppyDisk.m:8679` as
 `unsigned int fdrToIo(unsigned int fdrCode)`, and `symbol_name_check.py` lists
 it as *not* missing — that checker works from definition sites, so it can
 confirm what IDA's function list cannot. Unlike every earlier driver in this
@@ -454,7 +461,7 @@ dirty-bit-array base and length that `DumpTrackCache` already passes to
 
 **`intentional-mismatch` 2.** `0x9458` loads the cached drive number with
 `lha` — a **signed** halfword load. Our tree defines `DAT_0000fb88` as
-`unsigned short`, and `TestTrackInCache` (`FloppyDisk.m:7943`) already compares
+`unsigned short`, and `TestTrackInCache` (`FloppyDisk.m:7967`) already compares
 it unsigned, so the body written here does too. The two widenings differ only
 at `0xffff`, the invalidation sentinel `DumpTrackCache` writes, which equals no
 0..255 drive byte signed *or* unsigned; the comparison's result is therefore
@@ -493,20 +500,20 @@ _fdsize+0xc       (r3 untouched) ; bl             -> r3 = dev (param 1)
 ```
 
 The one source declaration that already carried an argument
-(`FloppyDisk.m:2184`, in `fdstrategy`) was the correct one; the five `(void)`
+(now `FloppyDisk.m:2286`, in `fdstrategy`) was the correct one; the five `(void)`
 declarations were wrong. All six now read
 `extern int fd_dev_to_id(unsigned int device);`, a matching prototype was added
 to `FloppyDisk.h`, and the five bare calls now pass their device number.
 
 `_fdsize` consequently gained the parameter it always had in the binary. It has
 exactly **two** declarations plus the definition, not three: the block-scope
-declaration in `+probe:` (`FloppyDisk.m:253`), the file-scope one in
-`FloppyDisk.h:192`, and the definition at `FloppyDisk.m:2231`. An earlier draft
+declaration in `+probe:` (`FloppyDisk.m:260`), the file-scope one in
+`FloppyDisk.h:192`, and the definition at `FloppyDisk.m:2241`. An earlier draft
 of this section counted "the local in `fdsize` itself" as a third declaration;
 no such local exists — that is the definition. All three sites were `(void)`
 and all three were given the parameter.
 
-Their **return types** disagreed after that change: `FloppyDisk.m:253` read
+Their **return types** disagreed after that change: `FloppyDisk.m:260` read
 `int`, the other two `unsigned int`. The binary settles it. `_fdsize`
 (`0x5af8`) has two arms:
 
@@ -525,7 +532,7 @@ Their **return types** disagreed after that change: `FloppyDisk.m:253` read
 `li r3,-1` is a signed sentinel, so the settled type is **`int`**. All three
 sites now read `int fdsize(unsigned int)`, and the local that carried
 `0xffffffff` was retyped `int` and now carries `-1`, which is the same word.
-The `psize:` argument at `FloppyDisk.m:299` casts to `void *` and is unaffected.
+The `psize:` argument at `FloppyDisk.m:306` casts to `void *` and is unaffected.
 
 *Body.* Every branch:
 
@@ -571,7 +578,7 @@ addi r7,&_ccCommandsPhysicalAddr
 bl -> 0x68a8
 ```
 
-so the existing five-parameter declaration at `FloppyDisk.h:297` matches
+so the existing five-parameter declaration at `FloppyDisk.h:299` matches
 Apple's; the last two arguments are simply ignored by the body. Only the return
 type was corrected — see 12.6.
 
@@ -683,14 +690,14 @@ The divergence is recorded in the function's own comment.
 | defect | site(s) | resolution |
 | --- | --- | --- |
 | `fd_dev_to_id` declared `(void)` | 5 sites in `FloppyDisk.m` | all six now `(unsigned int device)`; prototype added to `FloppyDisk.h` |
-| `fdsize` declared `(void)` | local in `+probe:` (`FloppyDisk.m:253`), `FloppyDisk.h:192`, the definition (`FloppyDisk.m:2231`) | all three now `int fdsize(unsigned int)` |
+| `fdsize` declared `(void)` | local in `+probe:` (`FloppyDisk.m:260`), `FloppyDisk.h:192`, the definition (`FloppyDisk.m:2241`) | all three now `int fdsize(unsigned int)` |
 | `extern unsigned int fdminphys;` (data) | `FloppyDisk.m`, twice | `extern unsigned int fdminphys(int bufPtr);`, prototype added to `FloppyDisk.h` |
-| `extern void *MediaScanTask;` (data) | `FloppyDisk.h:414` | `extern void MediaScanTask(void);` |
-| `OpenDBDMAChannel` declared `void` | `FloppyDisk.h:297` | `int` |
+| `extern void *MediaScanTask;` (data) | `FloppyDisk.h:416` | `extern void MediaScanTask(void);` |
+| `OpenDBDMAChannel` declared `void` | `FloppyDisk.h:299` | `int` |
 | `CloseDBDMAChannel(void)` | `FloppyDisk.h:172` and its definition | takes and ignores an `int` channel |
 | `_FloppyIdMap[64]` | `FloppyDisk.h`, `FloppyDisk.m` | `[0x98]` |
 | `_PrivDBDMAChannelArea[4]` | `FloppyDisk.h`, `FloppyDisk.m` | `[0x2c]`; see 12.5 |
-| `fdsize` returns `unsigned int` | `FloppyDisk.h:192`, `FloppyDisk.m:2231` | `int` — `_fdsize` returns `-1`; see 12.4 |
+| `fdsize` returns `unsigned int` | `FloppyDisk.h:192`, `FloppyDisk.m:2241` | `int` — `_fdsize` returns `-1`; see 12.4 |
 
 `TestCacheDirtyState`'s existing local declaration
 (`extern int TestCacheDirtyState(int driveStructure);`) already matched the body
@@ -756,7 +763,7 @@ call sites. **The external body in `FloppyDisk.m` (bound 16) was kept** and the
 `static` in `FloppyDiskThread.m` (bound 20) deleted, because 16 is strictly
 safer than 20 at all three:
 
-- `FloppyDisk.m:747` passes `_fdCommandValues`;
+- `FloppyDisk.m:754` passes `_fdCommandValues`;
 - `FloppyDiskThread.m:536` passes `_fdrValues`, which has 20 entries — codes
   16..19 now print `"Unknown"`, which costs four debug labels and reads nothing
   out of range;
@@ -767,7 +774,7 @@ safer than 20 at all three:
 An earlier draft justified 16 as "exactly the length of `_fdCommandValues`".
 The binary contradicts that. `_fdCommandValues` is at `0xf2a8` and the next
 symbol `_fcOpcodeValues` at `0xf2e0` — `0x38` = 56 bytes = **seven** eight-byte
-entries. That is the `LookupEntry _fdCommandValues[]` at `FloppyDisk.m:8595`,
+entries. That is the `LookupEntry _fdCommandValues[]` at `FloppyDisk.m:8619`,
 not the 16-element `const char *_fdCommandValues[]` at `FloppyDisk.m:77` the
 draft was counting. So bound 16 over-reads `_fdCommandValues` too, not only
 `_densityValues`: 16 four-byte reads span 64 bytes against the symbol's 56.
@@ -779,8 +786,8 @@ it is a safety choice, not a derived one, and the source comment on
 `_fdCommandValues` is **defined twice, with incompatible types, in one
 translation unit**: `const char *_fdCommandValues[]` (16 entries) at
 `FloppyDisk.m:77` and `LookupEntry _fdCommandValues[]` (7 entries) at
-`FloppyDisk.m:8595`, with a third, block-scope `extern const char
-*_fdCommandValues[];` at `FloppyDisk.m:744` selecting the first spelling for
+`FloppyDisk.m:8619`, with a third, block-scope `extern const char
+*_fdCommandValues[];` at `FloppyDisk.m:751` selecting the first spelling for
 the call site. Both definitions predate Task 5 (they are at lines 77 and 8374
 of the parent commit). This is a fourth duplicate definition, distinct from the
 three the task brief listed and from the two `duplicate_candidates` of
@@ -806,7 +813,7 @@ Numbered; none of these was resolved by picking a plausible option.
 2. **`fdstrategy` is declared three incompatible ways.** `extern int
    fdstrategy(void);` (local, in `+probe:`), `extern unsigned int fdstrategy;`
    (data, twice, in `fdread` and `fdwrite`), and `extern unsigned int
-   fdstrategy(int param_1);` (`FloppyDisk.h:191`) against the definition
+   fdstrategy(int param_1);` (`FloppyDisk.h:193`) against the definition
    `unsigned int fdstrategy(int param_1)`. This is the same defect class as
    `fdminphys`'s data declaration, at a symbol the task brief did not list. Not
    fixed here; recorded for scheduling.
@@ -817,23 +824,36 @@ Numbered; none of these was resolved by picking a plausible option.
    argument into a function pointer, which GCC diagnoses as a warning, not an
    error. Fixing it properly means typing those two local prototypes with
    function-pointer parameters, which also depends on uncertainty 2.
-4. **`donone` is declared `(void)` and called with arguments at 104 sites.**
-   Pre-existing and systemic; those 104 are left alone. The four new calls —
-   three in `fd_dev_to_id`, one in `OpenDBDMAChannel` — no longer add to the
-   count: both functions now carry a block-scope
-   `extern void donone(const char *format, ...);`, the pattern the tree already
-   uses at `FloppyDisk.m:1584` for `FUN_00004940`. The residual is narrower but
-   real, and is not the same as `FUN_00004940`'s: `FUN_00004940` has no other
-   declaration in the translation unit, whereas `donone` also has a file-scope
+4. **`donone` is declared `(void)` and called with arguments at 104 sites —
+   settled in Task 6.** Task 5 gave `fd_dev_to_id` and `OpenDBDMAChannel` a
+   block-scope `extern void donone(const char *format, ...);`
+   (`FloppyDisk.m:1475`, `:5810`), the pattern the tree already uses at
+   `FloppyDisk.m:1592` for `FUN_00004940`. Unlike `FUN_00004940`, which has no
+   other declaration in the translation unit, `donone` also had a file-scope
    `extern void donone(void);` (`FloppyDisk.h:179`) and a `(void)` definition
-   (`FloppyDisk.m:1313`), so the block-scope prototype is incompatible with
-   them across scopes (C99 6.2.7p2 — undefined, not a constraint violation, and
-   not necessarily diagnosed). The change therefore trades four diagnosable
-   too-many-arguments errors for one cross-scope incompatibility. The complete
-   fix is two lines — make `FloppyDisk.h:179` and `FloppyDisk.m:1313` variadic,
-   which would settle all 108 sites at once — and it is scoped out here because
-   the brief said to leave the 104 pre-existing sites alone. Nothing was
-   compiled, so no compiler diagnosis of either form was observed.
+   (`FloppyDisk.m:1320`), both visible in the same translation unit. Two
+   declarations of one function with incompatible types is C99 6.2.7p2
+   undefined behaviour, and because the new ones are at block scope the
+   standard does not itself require a diagnostic. Task 5's write-up went one
+   step further and said the conflict is "not necessarily diagnosed". That part
+   was a claim about compiler behaviour made with no compiler available, and it
+   is wrong in practice: GCC rejects an incompatible redeclaration outright —
+   `error: conflicting types for 'donone'` — whether the redeclaration is at
+   file or block scope. So the two prototypes did not narrow the defect; they
+   substituted one hard error for four.
+
+   Task 6 takes the two-line completion Task 5 described and scoped out:
+   `FloppyDisk.h:179` is now `extern void donone(const char *format, ...);` and
+   the definition at `FloppyDisk.m:1320` is now
+   `void donone(const char *format, ...)`. That makes all four declarations and
+   the definition compatible, and makes every one of the 104 pre-existing
+   argument-passing call sites well-formed rather than ill-formed. None of the
+   104 call sites was edited; no call in the tree passes zero arguments (checked
+   — there is no `donone()`), so the variadic form leaves every one of them
+   valid. The two block-scope prototypes Task 5 added are now exact
+   redeclarations of the file-scope one and were left in place. Nothing was
+   compiled, so this is a reading of the standard and of documented GCC
+   behaviour, not an observed diagnostic.
 5. **Data symbols still carry the spurious leading underscore.** Task 2
    corrected the 136 C *function* names and Task 4 the selectors, but globals are
    untouched: our `_FloppyIdMap` would emit `__FloppyIdMap` against the binary's
@@ -845,8 +865,8 @@ Numbered; none of these was resolved by picking a plausible option.
    symbols are a separate case and were written correctly (`page_size`,
    `kernel_map`, `kmem_alloc_wired`, `kvtophys`), matching how the tree already
    writes `IOMalloc`/`IOLog`.
-6. **`DAT_0000fb88` is declared twice with different types.** `FloppyDisk.h:122`
-   says `unsigned short`, `FloppyDisk.h:506` says `unsigned char`; the definition
+6. **`DAT_0000fb88` is declared twice with different types.** `FloppyDisk.h:123`
+   says `unsigned short`, `FloppyDisk.h:508` says `unsigned char`; the definition
    is `unsigned short` and the binary loads a halfword. A hard conflict,
    pre-existing, not fixed here. Our `TestCacheDirtyState` declares the
    `unsigned short` form locally, matching the definition and `DumpTrackCache`.
@@ -883,6 +903,26 @@ Numbered; none of these was resolved by picking a plausible option.
    and both declarations now say `[0x2c]`. See 12.5, which also covers the
    `DAT_0000f5xx` offsets that were preventing the two halves of
    `OpenDBDMAChannel` from connecting.
+10. **`_GRCFloppyDMAChannel` is declared twice with incompatible types in one
+    header. Recorded, not fixed.** `FloppyDisk.h:337` says
+    `extern void *_GRCFloppyDMAChannel;` and `FloppyDisk.h:562` says
+    `extern unsigned int _GRCFloppyDMAChannel;`. Both are at file scope in the
+    same header, so unlike uncertainty 4 this one *is* a same-scope
+    redeclaration with an incompatible type — C99 6.7p4, a constraint
+    violation a conforming implementation must diagnose. The definition
+    (`FloppyDisk.m:8540`) is `unsigned int`, agreeing with `:562`.
+
+    This is the object `OpenDBDMAChannel` writes through: `HALReset` passes
+    `&_GRCFloppyDMAChannel` as `channelPtr` (`FloppyDisk.m:4820`), and the
+    function stores `&_PrivDBDMAChannelArea` into it — see 12.5. So the symbol
+    Task 5 made live for the first time is the one carrying the conflict. Both
+    spellings are pre-existing: they predate Task 5, which added no declaration
+    of this symbol. Settling it means deciding whether the channel handle is a
+    pointer or a word — the binary stores an address into it, which argues for
+    `void *`, but every existing use in the tree passes it by value to
+    `ResetDBDMA` and friends as `unsigned int`. Changing it touches eight call
+    sites, which is outside this task's permitted edit set, and it is left for
+    scheduling.
 
 ## 13. Gate results after Task 5
 
@@ -909,3 +949,275 @@ The two "missing" selectors are the build-generated class methods of bucket 4.
 Section 11's table is now settled: 5 C functions written, 3 `static` duplicates
 deleted, the 53rd selector renamed. The map, ledger, profiles and checkers were
 not touched — Task 6 regenerates those.
+
+---
+
+## 14. Task 6 — the remap, and the state of the reconstruction
+
+This section supersedes sections 3, 4, 7, 8, 10 and 11, which record the Task 3
+measurement taken before the selector rename and the five bodies.
+
+### 14.1 The analysis is unchanged
+
+`filter_named_functions.py` was re-run against
+`tools/binrecon/out/floppy-ppc/published/analysis-reference-ida.json` and
+produced the same `analysis-named.json`:
+
+```
+functions: 202
+unnamed  : 0
+lowest   : 0x8c
+sha256   : 7CFD5E18A7CF4C5A8196BF7CC93113C6BE6AC90E770A03EDC58001C8D848BA8B
+```
+
+Same binary, same 202 named functions, `lowest` still `0x8c`. Nothing in Tasks 4
+and 5 touched the reference side; only the source moved.
+
+### 14.2 Four-category coverage after the remap
+
+`binrecon source-map --objc-methods` (no `--scope-to-objc`), the same invocation
+as Task 3 Step 2:
+
+| category | Task 3 | **Task 6** |
+| --- | --- | --- |
+| `mapped` | 141 | **200** |
+| `unmapped` | 59 | **2** |
+| `duplicate_candidates` | 2 | **0** |
+| `boundary_disputed` | 0 | **0** |
+| **total** | **202** | **202** |
+
+200 + 2 + 0 + 0 = 202, the whole named-function set. The movement is +59 mapped,
+and it decomposes exactly:
+
+| what moved | count | fixed by |
+| --- | --- | --- |
+| Objective-C selectors carrying a spurious leading underscore | 52 | Task 4 |
+| C functions with no source definition (the five gaps) | 5 | Task 5 |
+| C functions with two source definitions (`GetBusyFlag`, `ResetBusyFlag`) | 2 | Task 5 |
+| **total** | **59** | |
+
+52 + 5 = 57 came out of Task 3's `unmapped` (59, of which 2 were and remain the
+build-generated methods), and 2 came out of `duplicate_candidates`.
+`duplicate_candidates` is now **0**: there is nothing left to enumerate.
+
+The 2 that stay `unmapped` are the build-generated class methods:
+
+```
+0xc038  +[FloppyKernelServerInstance kernelServerInstance]   20 bytes
+0xc04c  +[FloppyVersion driverKitVersionForFloppy]           16 bytes
+```
+
+They are emitted by the driver build machinery, have no hand-written source by
+definition, and are correctly outside the 201.
+
+### 14.3 Coverage against the 201 hand-written functions
+
+202 named functions = 200 hand-written + 2 build-generated. The binary defines
+**203** `__TEXT,__text` symbols; the 203rd is `_fdrToIo`, which has no entry in
+IDA's function list (the list's lowest address is `0x8c`) and therefore cannot
+appear in any of the map's four categories.
+
+So the map covers **200 of the 201 hand-written functions**, and the 201st is
+`_fdrToIo` — a known exclusion by construction, **not a gap and not a phantom**.
+Section 5 carries the byte evidence that the code at `__text+0` is real.
+
+`selector_check.py` cannot confirm `_fdrToIo`: unlike every prior driver in this
+series, the address-0 function here is a plain C function, not a `+probe:`
+method. The confirmation comes from `symbol_name_check.py`, which works from
+definition sites:
+
+```
+$ symbol_name_check.py --binary <ref> --source-dir <lks>
+hand-written C symbols: 141
+missing definitions   : 0
+exit 0
+```
+
+**0 missing** means every one of the 141 hand-written C symbols, `_fdrToIo`
+included, has a definition site. Independently: `fdrToIo` is defined at
+`FloppyDisk.m:8679` as `unsigned int fdrToIo(unsigned int fdrCode)` and declared
+at `FloppyDisk.h:582`.
+
+### 14.4 Buckets
+
+```
+$ bucket_functions.py analysis-named.json source-map.json
+total functions: 202
+  mapped: 200
+  1-crt-dyld: 0
+  2-picsymbol-stub: 0
+  3-unnamed-jump-island: 0
+  4-build-generated-class: 2
+      0xc038  +[FloppyKernelServerInstance kernelServerInstance]  (20 bytes)
+      0xc04c  +[FloppyVersion driverKitVersionForFloppy]  (16 bytes)
+  5-fn-with-source-site: 0
+  6-fn-no-source-site: 0
+counted: 202
+RECONCILES: yes
+```
+
+Bucket 6 is now empty — Task 3's 59 entries are gone, for the reasons tabulated
+in 14.2. Buckets 1 and 2 are empty as always for a `_reloc` kernel server
+(relocatable object output, no crt startup, no PIC symbol stubs); bucket 3 is
+empty because the 506 unnamed jump islands were filtered out before mapping.
+Bucket 4 holds exactly the two build-generated class methods. 200 + 2 = 202.
+
+### 14.5 PowerPC invariant check — unchanged
+
+```
+$ ppc_invariant_check.py --binary <ref> --analysis analysis-named.json
+symbol _fdrToIo at 0x0 has no function start in the analysis, but code is
+present: the bytes there are a function prologue, so the analysis omits a
+real function
+214 scattered/difference-form relocations (target section verified, field is a difference, not an address)
+71 HI16/HA16-LO16 pairs checked (reconstructed values must agree)
+3932 fused relocations, 1 violations
+exit 1
+```
+
+Byte-identical to Task 3's result, as it must be — the checker reads the binary
+and the analysis, neither of which changed. The single violation is the
+`_fdrToIo` line, and it reports **code present**. Exit 1 reflects that one
+violation; it is the known exclusion, not a regression.
+
+### 14.6 The ledger was regenerated
+
+`seed_ledger.py source-map.json <ref> ledger.json` was re-run against the **new**
+map and produced **202 entries**.
+
+This step is not optional. On the `PPCSerialPort` branch the ledger was left
+unregenerated after a remap and all 64 of its citations pointed at lines that had
+moved. Verified programmatically here, against the map and against the source:
+
+- the ledger's 202 addresses are **exactly** the union of the map's four
+  categories — set equality, not merely equal counts;
+- every entry's `names` and `size` equal the map's `reference_names` and `size`;
+- all **200** `mapped` entries carry a `source_path`/`source_line` identical to
+  the map's — **0 mismatches**;
+- all 200 cited lines are in range, and each one **textually names its own
+  symbol**: a C entry's line matches `\bname\s*\(`, a method entry's line begins
+  with `+`/`-` and contains the first selector keyword. **0 failures**;
+- the 2 entries drawn from `unmapped` carry no source citation at all — the
+  seeder invents nothing for a build-generated method.
+
+Task 3's ledger had 141 citations and 61 uncitable entries; this one has 200
+and 2.
+
+### 14.7 Objective-C surface
+
+```
+$ selector_check.py <ref> <lks>
+reference selectors: 62
+our definitions:     60
+renames (0):
+duplicates (0):
+missing (2):
+    +[FloppyKernelServerInstance kernelServerInstance]
+    +[FloppyVersion driverKitVersionForFloppy]
+extra (0):
+exit 0
+```
+
+The two missing are the build-generated class methods. 0 renames, 0 duplicates,
+0 extras.
+
+**What this proves, and what it does not.** `selector_check.py` compares the
+binary's method symbols with our `@implementation` definitions **by name**. It
+proves that every hand-written selector Apple shipped exists in our source under
+Apple's exact spelling, and that we define no selector Apple did not ship. It
+proves nothing whatever about the 60 bodies behind those names. Those bodies came
+out of a decompiler — their parameters are still called `param_1`, `param_2` —
+and not one has been compared instruction-by-instruction against the reference.
+**Coverage is not correctness.** The same caveat applies to the map's
+`mapped: 200`: a mapping is a name-to-definition-site correspondence, not a
+behavioural equivalence. The only bodies in this driver derived from the
+disassembly are the five of section 12.
+
+### 14.8 Suite
+
+```
+$ PYTHONPATH=tools/binrecon pytest tools/binrecon/tests -q
+866 passed, 4 skipped
+```
+
+Baseline 864 plus the 2 parametrised profile cases Task 1 added. No task in this
+plan added or removed a test.
+
+### 14.9 Carried-forward items settled here
+
+1. **Nine stale line citations** left in this document by Task 5's own fix wave
+   were corrected, each verified against the current file before it was written:
+   `FloppyDisk.m` `8595`→`8619` (2 places — `8595` is now `_fdOpValues`, a
+   different symbol), `744`→`751`, `747`→`754`, `253`→`260` (3 places),
+   `2231`→`2241` (3 places), `1313`→`1320` (2 places), `1584`→`1592`, and
+   `7943`→`7967` (`7943` is now inside `TestCacheDirtyState`). A tenth was found
+   while checking them: section 5 cited `FloppyDisk.m:8434` for `fdrToIo`, which
+   is now a padding word in a table; the definition is at `8679`. Fourteen
+   occurrences in all.
+
+   Checking those turned up **seven more** stale citations in section 12 that
+   the carried-forward list did not name, all corrected the same way:
+   `FloppyDisk.m` `2184`→`2286` (`fdstrategy`'s `fd_dev_to_id` declaration) and
+   `299`→`306` (the `psize:` argument); `FloppyDisk.h` `297`→`299`
+   (`OpenDBDMAChannel`, 2 places), `414`→`416` (`MediaScanTask`), `191`→`193`
+   (`fdstrategy`), `122`→`123` and `506`→`508` (`DAT_0000fb88`). Every citation
+   in sections 12 and 14 was then re-extracted mechanically and resolved against
+   the current files; all of them now land on a line that names the symbol they
+   claim, with two deliberate exceptions that are labelled as historical in the
+   text — `FloppyDisk.m:8434` (the stale `fdrToIo` citation being described just
+   above) and `FloppyDiskInt.m:118` (where `static BOOL _BusyFlag` stood at
+   commit `f31c0693`, before Task 5 deleted it).
+
+   Line citations inside sections 3, 4, 7, 8, 10 and 11 were **not** rewritten.
+   Those sections describe a tree that no longer exists — they cite `static`
+   definitions Task 5 deleted — so renumbering them would have made them look
+   current while their content stayed historical. They carry a snapshot banner
+   instead.
+
+2. **The `donone` conflict was completed**, not left as a residual. See
+   uncertainty 4 in 12.9 for the account, and for the correction to Task 5's
+   "not necessarily diagnosed" claim.
+
+3. **`_GRCFloppyDMAChannel`'s incompatible double declaration** is recorded as
+   uncertainty 10 in 12.9 and deliberately not fixed.
+
+### 14.10 Acceptance — the spec's eleven items
+
+**Standing constraint on every line below: nothing was compiled.** There is no
+PowerPC toolchain and no host C compiler in this environment, and no `make` was
+run. Every claim here is a claim of **correspondence to the binary** — its symbol
+table, IDA's function list, its relocations and its disassembly — never a claim
+of buildability. Where this document says the renamed symbols "would now match"
+Apple's, that is an argument from the Mach-O naming rule (the compiler prepends
+exactly one underscore to a file-scope C identifier), reinforced by
+`symbol_name_check.py`. It is not an observation of a build.
+
+| # | item | verdict | evidence |
+| --- | --- | --- | --- |
+| 1 | Two profiles created, `test_ppc_profile_inventory` updated, suite green | **pass** | Task 1, commit `ad5fa6ca`; suite 866/4 in 14.8 |
+| 2 | All 136 misnamed C functions renamed, every call site updated, driven by the binary's exact name list, word-bounded | **pass** | Task 2, commit `53da4375`: 997 insertions / 997 deletions across 4 files, one per token; the gate went 141 missing → 5 (section 9). The reviewer re-derived the whole rename from the parent commit plus the binary's own symbol list and got byte-identical files |
+| 3 | No identifier outside those 136 renamed — none of the 157 `_`-prefixed globals, types or selectors | **pass** | Same commit: insertions equal deletions and every changed token is one of the 141 names. Spot-checked again here — `_FloppyState`, `_FdBuffer`, `_Floppy_dev`, `_FloppySWIMIIIRegs`, `_FloppyIdMap`, `_fd_block_major`, `_PrivDBDMAChannelArea`, `_busyflag` all still present and still underscored. One of the 157, `static BOOL _BusyFlag` (`FloppyDiskInt.m:118` at `f31c0693`), no longer exists — it was **deleted**, not renamed, in Task 5 as the orphaned state of the two `static` duplicates (12.8). Deletion is outside what this item forbids, but it is recorded rather than glossed |
+| 4 | `symbol_name_check.py` reports 141 symbols, 0 missing, exit 0 | **pass** | 14.3, run in this task |
+| 5 | All 52 misnamed selectors renamed; `selector_check.py` 0 renames, 0 duplicates, 2 missing (both build-generated), 0 extra | **pass** | 14.7, run in this task. Task 4 renamed 52, Task 5 the 53rd (`fcCmdXfr:driveInfo:`, 12.7) |
+| 6 | The map covers 200 of the 201 hand-written functions; the 201st is `_fdrToIo`, a known exclusion | **pass** | 14.2 and 14.3: `mapped` 200, and the only hand-written function outside the map's universe is `_fdrToIo` |
+| 7 | `duplicate_candidates` is 0, or every entry enumerated with evidence | **pass** | 14.2: **0**. Nothing to enumerate |
+| 8 | `RECONCILES: yes`, with the two build-generated class methods accounted for | **pass** | 14.4: `RECONCILES: yes`, counted 202, bucket 4 holds exactly those two, by address |
+| 9 | All five bodies written, each with an instruction-by-instruction account covering every branch | **pass** | Sections 12.1–12.5. Definitions present at `FloppyDisk.m` `2072` (`fdminphys`), `1467` (`fd_dev_to_id`), `5797` (`OpenDBDMAChannel`), `7930` (`TestCacheDirtyState`), `5526` (`MediaScanTask`). Every span reconciles as `body + 16 × islands`; two divergences recorded as `intentional-mismatch` |
+| 10 | All three redundant `static` copies removed; the six source-only helpers retained and recorded | **pass** | 12.8. Verified again here: no `static` `GetBusyFlag`, `ResetBusyFlag` or `_getStatusName` remains anywhere in the source dir, and all six helpers are still defined (`_getStatusName`/`_getDensityName`/`_getIoctlName` in `FloppyDisk.m`, `_getCommandName`/`_getResultName` in `FloppyDiskInt.m`, `_getOpName` in `FloppyDiskThread.m`) and recorded in section 8 |
+| 11 | The binrecon suite stays green | **pass** | 14.8: 866 passed, 4 skipped |
+
+**Eleven of eleven pass.** Two qualifications travel with that result and are not
+defects in it:
+
+- Item 5 certifies **names**, not behaviour (14.7). The 60 Objective-C bodies
+  remain unverified against the reference.
+- Item 3's `_BusyFlag` deletion is a real change to one of the 157, made in
+  Task 5 for a documented reason. It is a removal, not a rename, so the item
+  holds as written — but the item's spirit is "nothing outside the 136 moved",
+  and one thing outside the 136 did go away.
+
+Ten open uncertainties and pre-existing defects remain recorded in 12.9. None was
+closed by guessing, and none blocks acceptance; several — the `_fdCommandValues`
+double definition, the `fdstrategy` triple declaration, the
+`_GRCFloppyDMAChannel` type conflict, and the data symbols that still carry the
+spurious underscore — will have to be scheduled before this driver can be built.

@@ -842,3 +842,99 @@ bucket-6 residue, and a drift-versus-different-version assessment.
   measured instead.
 - **The packaging gap is recorded, not closed** (§4.9).
 - **`-[Apple96_SCSI maxTransfer]` has no assigned cause** (§4.8).
+
+---
+
+## Addendum — `Floppy` (`drvPPCSwimFloppy`), reconstructed separately
+
+Added after this report was written. `Floppy` is outside the five drivers
+measured above; it was deferred to its own spec
+([2026-07-28-floppy-reconstruction-design.md](../../../docs/superpowers/specs/2026-07-28-floppy-reconstruction-design.md))
+and is recorded here so the series has one place that points at it.
+
+Full evidence: [Floppy/findings.md](Floppy/findings.md). Artifacts:
+`Floppy/source-map.json`, `Floppy/ledger.json`.
+
+### It was previously recorded as having no in-tree source. That was wrong.
+
+An earlier ad-hoc survey concluded this driver had **no in-tree source**. The
+survey ran `find src -iname "*Floppy*" | head -1`, which returned
+`src/driverkit-3/Examples/UnixDisk/FloppyDisk.m` — a 175-line DriverKit example
+— and stopped there. The real tree,
+`src/drivers-ppc/ide/drvPPCSwimFloppy/Floppy.drvproj/Floppy.lksproj`, holds
+**11,475 lines** across four `.m` files and was never seen. It is the largest
+driver source in this series.
+
+Two things went wrong, and both are structural rather than incidental. `head -1`
+discarded the rest of the match list before anything read it. And a name search
+was accepted as a measurement: nothing cross-checked the result against the
+binary's symbol table, which would have shown 203 `__TEXT,__text` symbols with
+no plausible relationship to a 175-line example. This was the fifth ad-hoc
+survey error in the series, and it is why the Floppy spec gates on
+`symbol_name_check.py` rather than on a search. `Floppy` appears in the earlier
+reports only as "not measured" or "deferred", so the false conclusion never
+propagated into a published count — it merely postponed the work.
+
+### Headline numbers
+
+`Floppy_reloc`, SHA-256
+`7CFD5E18A7CF4C5A8196BF7CC93113C6BE6AC90E770A03EDC58001C8D848BA8B`; `__text`
+`0x0`–`0xc05c`, 49,244 bytes — about 2.5× `PPCSerialPort`, the largest binary
+reconstructed in the series.
+
+| | |
+| --- | --- |
+| defined `__TEXT,__text` symbols | 203 |
+| build-generated class methods | 2 |
+| hand-written Objective-C methods | 60 |
+| hand-written C functions | 141 |
+| IDA named functions (map universe) | 202 |
+
+Source map, after the remap:
+
+```
+driver      total  mapped  unmap  dup  disp
+Floppy        202     200      2    0     0
+```
+
+Buckets: `RECONCILES: yes`, counted 202 — bucket 4 holds the two
+build-generated class methods (`+[FloppyKernelServerInstance
+kernelServerInstance]`, `+[FloppyVersion driverKitVersionForFloppy]`) and
+buckets 1, 2, 3, 5 and 6 are all 0. Ledger: 202 entries, 200 with a verified
+source citation, 2 uncitable by construction.
+
+The map covers **200 of the 201 hand-written functions**. The 201st is
+`_fdrToIo` at `__text+0`: the bytes there are real code (`9421ffe0`,
+`stwu r1,-32(r1)`) but IDA's function list has no entry at address 0, so the
+symbol cannot enter the map. A **known exclusion, not a gap and not a phantom**.
+Unlike every other driver in this series the address-0 function here is a plain
+C function rather than a `+probe:` method, so `selector_check.py` cannot confirm
+it; `symbol_name_check.py` reporting 0 missing is what does.
+
+### What was corrected
+
+| defect | scale | outcome |
+| --- | --- | --- |
+| C function names carried a spurious leading underscore | 136 of 141 | renamed; `symbol_name_check.py` 141 missing → 0 |
+| Objective-C **selectors** carried a spurious leading underscore | 53 | renamed; `selector_check.py` 52 renames → 0 |
+| C functions absent from the source | 5 | written from the disassembly, every branch accounted for |
+| C functions defined twice (`static` beside `extern`) | 3 | `static` copies removed |
+
+The selector defect was the more serious of the two naming faults: a leading
+underscore on a C identifier is a symbol decoration, but `[self _timerEvent]`
+and `[self timerEvent]` are different messages at runtime. It was found only by
+the map, after the C rename had already been reviewed and accepted.
+
+### What this does not establish
+
+`selector_check.py` and the source map match **by name**. The 60 Objective-C
+bodies came out of a decompiler and none has been compared against the
+reference; only the five C functions written in Task 5 are derived from the
+disassembly. Coverage is not correctness.
+
+As with the five drivers above, **nothing was compiled** — there is no PowerPC
+toolchain and no host C compiler here, and no `make` was run. That the renamed
+symbols would now match Apple's follows from the Mach-O naming rule, not from a
+build. Ten open uncertainties and pre-existing C defects are recorded in
+[Floppy/findings.md](Floppy/findings.md) §12.9, several of which must be settled
+before the driver can build.

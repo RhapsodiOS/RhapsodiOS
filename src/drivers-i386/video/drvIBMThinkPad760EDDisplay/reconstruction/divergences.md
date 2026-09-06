@@ -2671,10 +2671,15 @@ covering the deferred `vidBIOS`/`_emu486` region — were left untouched.
 
 Two caveats a reader must not misread:
 
-- **`--reason` is silently discarded.** `ledger.py:267-272` assigns `reason`
-  only on the `intentional-mismatch` branch; every other transition drops it. So
-  all 40 entries still have `reason: null` despite reasons being supplied. This
-  paragraph is where the reason lives instead.
+- **The `--reason`-discarding tool defect is fixed.** `ledger.py:267-272` used
+  to assign `reason` only on the `intentional-mismatch` branch, so every other
+  transition dropped it silently; `transition()` now persists `reason` for
+  every status. The 29 in-scope entries each carry `reason: "Held at
+  unexamined: rebuilt_sha256 is still the placeholder..."`, backfilled via
+  `binrecon ledger` from the caveat below. The eleven left-untouched entries —
+  the two generated objects and the nine covering the deferred
+  `vidBIOS`/`_emu486` region — keep `reason: null`, since no reason was ever
+  recorded for them.
 - **`rebuilt_sha256` is still the placeholder** documented above —
   `47539E03…B5AEC`, the reference's own hash. It was **left uncorrected**: the
   per-entry `comparison` artifacts were generated from that same

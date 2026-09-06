@@ -1671,16 +1671,17 @@ list does not match, so control flow was checked and *not* confirmed. The two
 `source-map.json` lists as unmapped: they have no reconstructed source to review,
 and are left untouched even though both are byte-identical to the reference.
 
-**The ledger's own `reason` field is `null` on every entry here because
-`--reason` is silently discarded, not because the schema reserves it.**
-`cli.py:113-119` *requires* `--address` and `--status` whenever `--reason` is
-given, and `cli.py:130` duly forwards it to `transition()`, but
-`ledger.py:267-272` assigns `reason` only on the `intentional-mismatch` branch;
-every other transition drops it, and the command still exits 0 with no warning.
-That is a tool defect, recorded identically on the ThinkPad track. So this
-section is where the reason for each status lives instead. Every reviewed entry
-carries the reviewer and the source path and line the status was granted
-against, and the ledger now also records `rebuilt_sha256`, so the artifact the
+**The tool defect that used to drop `--reason` outside `intentional-mismatch`
+is fixed.** `ledger.py:267-272` previously assigned `reason` only on the
+`intentional-mismatch` branch, so every other transition dropped it silently
+and the command still exited 0 with no warning — recorded identically on the
+ThinkPad track. `transition()` now persists `reason` for every status, so the
+19 reviewed entries here each carry their own machine-readable `reason` in
+`ledger.json`, backfilled from this section via `binrecon ledger`. The two
+`unexamined` glue entries are left with `reason: null`, since no reason was
+ever recorded for them — nothing about them was reviewed. Every reviewed entry
+also carries the reviewer and the source path and line the status was granted
+against, and the ledger now records `rebuilt_sha256`, so the artifact the
 `assembly-matched` claims were measured against is named rather than implied.
 
 ## What is not reconstructed

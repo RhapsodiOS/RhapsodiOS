@@ -37,7 +37,7 @@ symbols**, verified via `binrecon.macho.read_macho`.
 | Origin | Count | Disposition |
 | --- | --- | --- |
 | Build-generated (`FloppyVersion`, `FloppyKernelServerInstance`) | 2 | Recorded and excluded |
-| Hand-written Objective-C | 60 | All present in source |
+| Hand-written Objective-C | 60 | All present; **52 misnamed** — see §3.2 |
 | Hand-written C | 141 | 136 misnamed, 5 absent |
 
 `2 + 60 + 141 = 203`. **201 functions are hand-written** — 60 Objective-C and 141
@@ -113,10 +113,12 @@ This is the same defect corrected in `GemEnet` (`_mace_crc` → `mace_crc`) and 
 `PPCSerialPort` had **zero** `_`-prefixed identifiers that were not among its 55
 functions, so a blanket prefix-strip was safe there. **That is not true here.**
 
-- **157 `_`-prefixed identifiers must not be touched** — globals and types such as
-  `_BusyFlag`, `_FloppyState`, `_FdBuffer`, `_Floppy_dev`, `_FloppySWIMIIIRegs`,
-  and Objective-C selectors such as `_rwBlockCount:blockCount:` and `_timerEvent`,
-  which legitimately keep their underscores. A blanket strip corrupts all 157.
+- **157 `_`-prefixed identifiers must not be touched by the C rename** — globals
+  and types such as `_BusyFlag`, `_FloppyState`, `_FdBuffer`, `_Floppy_dev`,
+  `_FloppySWIMIIIRegs`, and Objective-C selectors such as
+  `_rwBlockCount:blockCount:` and `_timerEvent`. A blanket strip corrupts all 157.
+  (52 of those selectors are themselves misnamed and are corrected separately in
+  §3.2 — but not by the C rename, which must leave them alone.)
 - **Two prefix hazards**: `_GetDisketteFormat` is a prefix of
   `_GetDisketteFormatType`, and `_MemListDescriptorDataCompare` of
   `_MemListDescriptorDataCompareWithMemory`. Word-bounded `\b_Name\b` is safe
@@ -127,6 +129,35 @@ functions, so a blanket prefix-strip was safe there. **That is not true here.**
 **The rename must be driven by the exact 141-name list read from the binary's
 symbol table, word-bounded, one name at a time.** A blanket transformation over
 `_[A-Za-z]\w*` is prohibited.
+
+### 3.2 The same defect in the Objective-C half
+
+**Added after Task 3's measurement. §2's table originally read "All present in
+source" and §10 called the 60 methods "present but unverified". Both understated
+the problem.**
+
+**52 of the 60 Objective-C methods carry a spurious leading underscore on the
+selector** — the source declares `- (void)_timerEvent` where Apple's binary
+carries `-[FloppyDisk(Internal) timerEvent]`. Distribution: 21 in `FloppyDisk.m`,
+21 in `FloppyDiskInt.m`, 10 in `FloppyDiskThread.m`; 185 token occurrences.
+
+Apple's binary carries **zero** underscored selectors, verified across all 62
+Objective-C method symbols.
+
+**This is worse than the C defect.** A selector is not a symbol decoration:
+`[self _timerEvent]` and `[self timerEvent]` are different messages at runtime, so
+the current source would not respond to the selectors Apple's callers send.
+
+Eight source selectors are legitimately underscored — 53 of the 60 begin with an
+underscore and only 52 have a bare counterpart in the binary. Those eight stay.
+
+**How it was missed.** An earlier reading of `selector_check.py`'s output took its
+left-hand column for the binary's names when it was showing ours, so a list of
+underscored selectors looked like a clean match. The tool was right; the reading
+was wrong. That is the sixth time in this series an ad-hoc reading was recorded as
+measurement — and the reason §4.4 gates on tools re-run rather than on prose.
+
+The fix is Task 4 of the plan, added after the measurement exposed it.
 
 ## 4. Method
 
@@ -284,16 +315,18 @@ there:
 3. **No identifier outside those 136 was renamed** — in particular none of the 157
    `_`-prefixed globals, types, or Objective-C selectors.
 4. `symbol_name_check.py` reports 141 symbols, **0 missing**, exit 0.
-5. The source map covers **200** of the 201 hand-written functions. The 201st is
+5. All 52 misnamed selectors renamed; `selector_check.py` reports **0 renames**,
+   0 duplicates, 2 missing (both build-generated), 0 extra.
+6. The source map covers **200** of the 201 hand-written functions. The 201st is
    `_fdrToIo`, excluded by construction per §4.1 — a known exclusion, not a gap.
-6. `duplicate_candidates` is 0, or every entry is enumerated with evidence.
-7. Bucket reconciliation reports `RECONCILES: yes`, with the two build-generated
+7. `duplicate_candidates` is 0, or every entry is enumerated with evidence.
+8. Bucket reconciliation reports `RECONCILES: yes`, with the two build-generated
    class methods accounted for.
-8. All five bodies written, each with an instruction-by-instruction account
+9. All five bodies written, each with an instruction-by-instruction account
    covering every branch.
-9. The three `static` duplicates removed; the six source-only helpers retained and
+10. The two redundant `static` duplicates removed; the six source-only helpers retained and
    recorded.
-10. The binrecon suite stays green.
+11. The binrecon suite stays green.
 
 ## 9. Constraints
 
@@ -314,9 +347,10 @@ there:
 - **The rename is the main risk.** 136 names against 157 identifiers that must not
   move, in an 8,891-line file. §3.1's preconditions and §4.4's gate exist for
   this; a clean-looking `sed` is not evidence.
-- **The 60 Objective-C methods are present but unverified.** `selector_check.py`
-  matches by name, not behaviour, and this source came from a decompiler. This
-  spec measures naming and fills C gaps; it does not certify those 60 bodies.
-  Whatever the map reports about them is coverage, not correctness.
+- **The 60 Objective-C methods are present, and 52 were misnamed (§3.2).** Even
+  after Task 4 corrects the selectors, `selector_check.py` matches by name, not
+  behaviour, and this source came from a decompiler. This spec measures naming and
+  fills C gaps; it does not certify those 60 bodies. Whatever the map reports
+  about them is coverage, not correctness.
 - `_OpenDBDMAChannel` at 380 bytes is the largest of the five and sits in the
   DBDMA layer, which the i386 sibling does not constrain at all.

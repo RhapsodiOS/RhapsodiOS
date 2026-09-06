@@ -333,14 +333,14 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
             diskInstance = [FloppyDisk new];
 
             IOLog("calling initResources\n");
-            [diskInstance _initResources:directDevice];
+            [diskInstance initResources:directDevice];
 
             IOLog("calling setDevAndIdInfo\n");
             [diskInstance setDevAndIdInfo:(void *)(idMap + driveIndex * 0x4c)];
         }
 
         IOLog("calling floppyInit\n");
-        initResult = [diskInstance _floppyInit:driveIndex];
+        initResult = [diskInstance floppyInit:driveIndex];
         IOLog("FloppyDisk.m: floppyInit rtn=%d\n", initResult);
 
         if (initResult == 0) {
@@ -388,18 +388,18 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
 /*
  * Abort current request
  */
-- (IOReturn)_abortRequest
+- (IOReturn)abortRequest
 {
     IOLog("fd abortRequest\n");
 
     // Send abort command (5) with no buffer, disk not required
-    return [self _fdSimpleCommand:5 buffer:NULL needsDisk:NO];
+    return [self fdSimpleCommand:5 buffer:NULL needsDisk:NO];
 }
 
 /*
  * Close device
  */
-- (IOReturn)_deviceClose
+- (IOReturn)deviceClose
 {
     // Nothing to do on close
     return IO_R_SUCCESS;
@@ -408,7 +408,7 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
 /*
  * Open device
  */
-- (IOReturn)_deviceOpen:(BOOL)exclusive
+- (IOReturn)deviceOpen:(BOOL)exclusive
 {
     // Always succeeds
     return IO_R_SUCCESS;
@@ -417,7 +417,7 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
 /*
  * Disk became ready notification
  */
-- (void)_diskBecameReady
+- (void)diskBecameReady
 {
     IOLog(" fd diskBecameReady\n");
 
@@ -431,14 +431,14 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
 /*
  * Eject physical disk
  */
-- (IOReturn)_ejectPhysical
+- (IOReturn)ejectPhysical
 {
     IOReturn result;
 
     IOLog("fd ejectPhysical\n");
 
     // Send eject command (4) with no buffer, disk required
-    result = [self _fdSimpleCommand:4 buffer:NULL needsDisk:YES];
+    result = [self fdSimpleCommand:4 buffer:NULL needsDisk:YES];
 
     IOLog("ejectPhysical: returning %s\n", [self stringFromReturn:result]);
 
@@ -448,7 +448,7 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
 /*
  * Inner retry
  */
-- (IOReturn)_innerRetry
+- (IOReturn)innerRetry
 {
     int retryCount[3];
     IOReturn result;
@@ -456,7 +456,7 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
     IOLog("innerRetry\n");
 
     // Get inner retry count using command 0xc (12), disk not required
-    result = [self _fdSimpleCommand:0xc buffer:retryCount needsDisk:NO];
+    result = [self fdSimpleCommand:0xc buffer:retryCount needsDisk:NO];
 
     if (result != IO_R_SUCCESS) {
         IOLog("%s: FDC_GET_INNER_RETRY returned %s\n",
@@ -471,7 +471,7 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
 /*
  * Check if disk is ready
  */
-- (BOOL)_isDiskReady:(id)controller
+- (BOOL)isDiskReady:(id)controller
 {
     int readyState;
     IOReturn result;
@@ -489,7 +489,7 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
         return (IOReturn)0xfffffbb2;
     } else {
         // Check disk status with command 6, disk required
-        result = [self _fdSimpleCommand:6 buffer:NULL needsDisk:YES];
+        result = [self fdSimpleCommand:6 buffer:NULL needsDisk:YES];
         IOLog("fd isDiskReady: returning %s\n", [self stringFromReturn:result]);
         return result;
     }
@@ -498,7 +498,7 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
 /*
  * Check if needs manual polling
  */
-- (BOOL)_needsManualPolling
+- (BOOL)needsManualPolling
 {
     return NO;
 }
@@ -506,7 +506,7 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
 /*
  * Outer retry
  */
-- (IOReturn)_outerRetry
+- (IOReturn)outerRetry
 {
     int retryCount[3];
     IOReturn result;
@@ -514,7 +514,7 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
     IOLog("outerRetry\n");
 
     // Get outer retry count using command 0xd (13), disk not required
-    result = [self _fdSimpleCommand:0xd buffer:retryCount needsDisk:NO];
+    result = [self fdSimpleCommand:0xd buffer:retryCount needsDisk:NO];
 
     if (result != IO_R_SUCCESS) {
         IOLog("%s: FDC_GET_INNER_RETRY returned %s\n",
@@ -529,11 +529,11 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
 /*
  * Get IODeviceType property
  */
-- (IOReturn)_property_IODeviceType:(char *)types
+- (IOReturn)property_IODeviceType:(char *)types
                             length:(unsigned int *)maxLen
 {
     // Call superclass implementation first
-    [super _property_IODeviceType:types length:maxLen];
+    [super property_IODeviceType:types length:maxLen];
 
     // Append " IOFloppy" to the type string
     strcat(types, " IOFloppy");
@@ -544,7 +544,7 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
 /*
  * Get IOUnit property
  */
-- (IOReturn)_property_IOUnit:(unsigned int *)unit
+- (IOReturn)property_IOUnit:(unsigned int *)unit
                       length:(unsigned int *)length
 {
     unsigned int unitNum;
@@ -574,7 +574,7 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
 
     // Call common read/write handler
     // Parameters: isRead=1, block=offset, length, buffer, client, pending, actualLength=NULL
-    result = [self _deviceRwCommon:YES
+    result = [self deviceRwCommon:YES
                              block:offset
                             length:length
                             buffer:buffer
@@ -603,7 +603,7 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
 
     // Call common read/write handler
     // Parameters: isRead=1, block=offset, length, buffer, client, pending=NULL, actualLength
-    result = [self _deviceRwCommon:YES
+    result = [self deviceRwCommon:YES
                              block:offset
                             length:length
                             buffer:buffer
@@ -622,14 +622,14 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
 /*
  * Update physical parameters
  */
-- (IOReturn)_updatePhysicalParameters
+- (IOReturn)updatePhysicalParameters
 {
     IOReturn result;
 
     IOLog("fd updatePhysicalParameters\n");
 
     // Send update parameters command (0xf = 15), no buffer, disk not required
-    result = [self _fdSimpleCommand:0xf buffer:NULL needsDisk:NO];
+    result = [self fdSimpleCommand:0xf buffer:NULL needsDisk:NO];
 
     IOLog("updatePhysicalParameters: returning %s\n", [self stringFromReturn:result]);
 
@@ -639,7 +639,7 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
 /*
  * Update ready state
  */
-- (void)_updateReadyState
+- (void)updateReadyState
 {
     int state;
 
@@ -678,7 +678,7 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
 
     // Call common read/write handler
     // Parameters: isRead=NO (2), block=offset, length, buffer, client, pending, actualLength=NULL
-    result = [self _deviceRwCommon:NO
+    result = [self deviceRwCommon:NO
                              block:offset
                             length:length
                             buffer:buffer
@@ -709,7 +709,7 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
 
     // Call common read/write handler
     // Parameters: isRead=NO (2), block=offset, length, buffer, client, pending=NULL, actualLength
-    result = [self _deviceRwCommon:NO
+    result = [self deviceRwCommon:NO
                              block:offset
                             length:length
                             buffer:buffer
@@ -726,7 +726,7 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
 /*
  * Floppy command transfer
  */
-- (IOReturn)_fdCmdXfr:(void *)command
+- (IOReturn)fdCmdXfr:(void *)command
 {
     typedef struct {
         unsigned int field0;
@@ -748,7 +748,7 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
     IOLog("fdCmdXfr: command %s\n", cmdName);
 
     // Allocate FdBuffer with size 0 (synchronous operation)
-    fdBuf = (FdBuffer *)[self _allocFdBuf:0];
+    fdBuf = (FdBuffer *)[self allocFdBuf:0];
 
     // Set up buffer fields
     fdBuf->reserved1 = 0;                    // Command code 0 (FD_SEND_CMD)
@@ -761,7 +761,7 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
     fdBuf->flags = (fdBuf->flags & 0xdfffffff) | 0xc0000000;
 
     // Enqueue and wait for completion
-    [self _enqueueFdBuf:(id)fdBuf];
+    [self enqueueFdBuf:(id)fdBuf];
 
     // Get result from buffer status
     result = fdBuf->status;
@@ -769,7 +769,7 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
     IOLog("fdCmdXfr: returning %s\n", [self stringFromReturn:result]);
 
     // Free buffer
-    [self _freeFdBuf:(id)fdBuf];
+    [self freeFdBuf:(id)fdBuf];
 
     return result;
 }
@@ -777,14 +777,14 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
 /*
  * Get format information
  */
-- (IOReturn)_fdGetFormatInfo:(void *)formatInfo
+- (IOReturn)fdGetFormatInfo:(void *)formatInfo
 {
     IOReturn result;
 
     IOLog("fdGetFormatInfo\n");
 
     // Send get format info command (0xe = 14), disk not required
-    result = [self _fdSimpleCommand:0xe buffer:formatInfo needsDisk:NO];
+    result = [self fdSimpleCommand:0xe buffer:formatInfo needsDisk:NO];
 
     IOLog("fdGetFormatInfo: returning %s\n", [self stringFromReturn:result]);
 
@@ -794,7 +794,7 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
 /*
  * Turn motor off
  */
-- (IOReturn)_fdMotorOff
+- (IOReturn)fdMotorOff
 {
     unsigned char cmdBuf[96];
 
@@ -807,7 +807,7 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
     *(unsigned int *)(cmdBuf + 0x38) = 4;
 
     // Send command, disk not required
-    [self _fdSimpleIoReq:cmdBuf needsDisk:NO];
+    [self fdSimpleIoReq:cmdBuf needsDisk:NO];
 
     IOLog("fd fdMotorOff: done\n");
 
@@ -817,7 +817,7 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
 /*
  * Set density
  */
-- (IOReturn)_fdSetDensity:(unsigned)density
+- (IOReturn)fdSetDensity:(unsigned)density
 {
     IOReturn result;
     const char *densityName;
@@ -829,7 +829,7 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
     IOLog("fdSetDensity: density = %s\n", densityName);
 
     // Send set density command (7) with density value, disk required
-    result = [self _fdSimpleCommand:7 buffer:&density needsDisk:YES];
+    result = [self fdSimpleCommand:7 buffer:&density needsDisk:YES];
 
     IOLog("fdSetDensity: returning %s\n", [self stringFromReturn:result]);
 
@@ -839,14 +839,14 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
 /*
  * Set gap length
  */
-- (IOReturn)_fdSetGapLength:(unsigned)gap
+- (IOReturn)fdSetGapLength:(unsigned)gap
 {
     IOReturn result;
 
     IOLog("fdSetGapLength: sectSize = %d\n", gap);
 
     // Send set gap command (9) with gap value, disk required
-    result = [self _fdSimpleCommand:9 buffer:&gap needsDisk:YES];
+    result = [self fdSimpleCommand:9 buffer:&gap needsDisk:YES];
 
     IOLog("fdSetGapLength: returning %s\n", [self stringFromReturn:result]);
 
@@ -856,14 +856,14 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
 /*
  * Set inner retry count
  */
-- (IOReturn)_fdSetInnerRetry:(unsigned)retry
+- (IOReturn)fdSetInnerRetry:(unsigned)retry
 {
     IOReturn result;
 
     IOLog("fdSetInnerRetry: innerRetry = %d\n", retry);
 
     // Send set inner retry command (10) with retry value, disk not required
-    result = [self _fdSimpleCommand:10 buffer:&retry needsDisk:NO];
+    result = [self fdSimpleCommand:10 buffer:&retry needsDisk:NO];
 
     IOLog("fdSetInnerRetry: returning %s\n", [self stringFromReturn:result]);
 
@@ -873,14 +873,14 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
 /*
  * Set outer retry count
  */
-- (IOReturn)_fdSetOuterRetry:(unsigned)retry
+- (IOReturn)fdSetOuterRetry:(unsigned)retry
 {
     IOReturn result;
 
     IOLog("fdSetOuterRetry: outerRetry = %d\n", retry);
 
     // Send set outer retry command (0xb = 11) with retry value, disk not required
-    result = [self _fdSimpleCommand:0xb buffer:&retry needsDisk:NO];
+    result = [self fdSimpleCommand:0xb buffer:&retry needsDisk:NO];
 
     IOLog("fdSetOuterRetry: returning %s\n", [self stringFromReturn:result]);
 
@@ -890,14 +890,14 @@ unsigned int _ccCommandsPhysicalAddr = 0;        // Command buffer physical addr
 /*
  * Set sector size
  */
-- (IOReturn)_fdSetSectSize:(unsigned)sectSize
+- (IOReturn)fdSetSectSize:(unsigned)sectSize
 {
     IOReturn result;
 
     IOLog("fdSetSectSize: sectSize = %d\n", sectSize);
 
     // Send set sector size command (8) with size value, disk required
-    result = [self _fdSimpleCommand:8 buffer:&sectSize needsDisk:YES];
+    result = [self fdSimpleCommand:8 buffer:&sectSize needsDisk:YES];
 
     IOLog("fdSetSectSize: returning %s\n", [self stringFromReturn:result]);
 

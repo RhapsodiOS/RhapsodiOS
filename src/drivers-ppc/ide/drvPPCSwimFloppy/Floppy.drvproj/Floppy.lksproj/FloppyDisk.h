@@ -48,21 +48,21 @@ typedef struct _QueueHead {
 }
 
 // Public methods
-- (IOReturn)_abortRequest;
-- (IOReturn)_deviceClose;
-- (IOReturn)_deviceOpen:(BOOL)exclusive;
-- (void)_diskBecameReady;
-- (IOReturn)_ejectPhysical;
-- (IOReturn)_innerRetry;
-- (BOOL)_isDiskReady:(id)controller;
-- (BOOL)_needsManualPolling;
-- (IOReturn)_outerRetry;
-- (IOReturn)_property_IODeviceType:(char *)types length:(unsigned int *)maxLen;
-- (IOReturn)_property_IOUnit:(unsigned int *)unit length:(unsigned int *)length;
+- (IOReturn)abortRequest;
+- (IOReturn)deviceClose;
+- (IOReturn)deviceOpen:(BOOL)exclusive;
+- (void)diskBecameReady;
+- (IOReturn)ejectPhysical;
+- (IOReturn)innerRetry;
+- (BOOL)isDiskReady:(id)controller;
+- (BOOL)needsManualPolling;
+- (IOReturn)outerRetry;
+- (IOReturn)property_IODeviceType:(char *)types length:(unsigned int *)maxLen;
+- (IOReturn)property_IOUnit:(unsigned int *)unit length:(unsigned int *)length;
 - (IOReturn)readAsyncAt:(unsigned)offset length:(unsigned)length buffer:(void *)buffer pending:(void *)pending client:(vm_task_t)client;
 - (IOReturn)readAt:(unsigned)offset length:(unsigned)length buffer:(void *)buffer actualLength:(unsigned *)actualLength client:(vm_task_t)client;
-- (IOReturn)_updatePhysicalParameters;
-- (void)_updateReadyState;
+- (IOReturn)updatePhysicalParameters;
+- (void)updateReadyState;
 - (IOReturn)writeAsyncAt:(unsigned)offset length:(unsigned)length buffer:(void *)buffer pending:(void *)pending client:(vm_task_t)client;
 - (IOReturn)writeAt:(unsigned)offset length:(unsigned)length buffer:(void *)buffer actualLength:(unsigned *)actualLength client:(vm_task_t)client;
 
@@ -76,14 +76,14 @@ typedef struct _QueueHead {
 - (unsigned int)blockSize;
 - (unsigned int)diskSize;
 
-- (IOReturn)_fdCmdXfr:(void *)command;
-- (IOReturn)_fdGetFormatInfo:(void *)formatInfo;
-- (IOReturn)_fdMotorOff;
-- (IOReturn)_fdSetDensity:(unsigned)density;
-- (IOReturn)_fdSetGapLength:(unsigned)gap;
-- (IOReturn)_fdSetInnerRetry:(unsigned)retry;
-- (IOReturn)_fdSetOuterRetry:(unsigned)retry;
-- (IOReturn)_fdSetSectSize:(unsigned)sectSize;
+- (IOReturn)fdCmdXfr:(void *)command;
+- (IOReturn)fdGetFormatInfo:(void *)formatInfo;
+- (IOReturn)fdMotorOff;
+- (IOReturn)fdSetDensity:(unsigned)density;
+- (IOReturn)fdSetGapLength:(unsigned)gap;
+- (IOReturn)fdSetInnerRetry:(unsigned)retry;
+- (IOReturn)fdSetOuterRetry:(unsigned)retry;
+- (IOReturn)fdSetSectSize:(unsigned)sectSize;
 @end
 
 // Category headers

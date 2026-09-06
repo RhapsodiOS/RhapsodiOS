@@ -425,7 +425,9 @@ this series missed addresses that way. Every `duplicate_candidates` and
 `boundary_disputed` entry needs an explanation in `findings.md`.
 
 **Expect `duplicate_candidates` to be non-zero**: three functions are defined
-twice (§6.1 of the spec, and Task 4 Step 6 removes the redundant copies).
+twice — `GetBusyFlag` and `ResetBusyFlag` (§6.1 of the spec; Task 5 Step 6
+removes the redundant statics). `getStatusName` is defined twice too but has no
+binary counterpart, so it cannot appear here.
 
 - [ ] **Step 4: Bucket the functions**
 
@@ -467,7 +469,7 @@ agrees with the map, and record the entry count.
 Record: Task 1 Step 7's three analysis numbers; the four-category coverage; the
 bucket table; the invariant-check result; the `_fdrToIo` exclusion and why; the
 before/after `symbol_name_check.py` output from Task 2 Steps 2 and 4 as the
-evidence that the rename fixed 136 functions at once; the three duplicate
+evidence that the rename fixed 136 functions at once; the two duplicate
 definitions; the six source-only debug helpers; and the five remaining gaps.
 
 State plainly that nothing was compiled.
@@ -481,7 +483,120 @@ cd $REPO && git add $RECON && \
 
 ---
 
-## Task 4: The five absent functions and three duplicate removals
+## Task 4: The 52-selector rename
+
+**Files:**
+- Modify: `$LKS/FloppyDisk.m`, `$LKS/FloppyDisk.h`, `$LKS/FloppyDiskInt.m`, `$LKS/FloppyDiskInt.h`, `$LKS/FloppyDiskThread.m`, `$LKS/FloppyDiskThread.h`
+
+**Interfaces:**
+- Consumes: `tools/binrecon/selector_check.py`, already committed.
+- Produces: source whose Objective-C selectors match the binary's. Task 6's remap expects all 52 mapped.
+
+**This task was added after Task 3's measurement.** The spec and plan originally
+asserted all 60 Objective-C methods were present and correct. They are present,
+but **52 of the 60 carry a spurious leading underscore on the selector** —
+`- (void)_timerEvent` where Apple's binary has `-[FloppyDisk(Internal) timerEvent]`.
+
+This is the same defect class as Task 2's, in the other half of the language, and
+it is **worse than a naming mismatch**: a selector is not a symbol decoration.
+`[self _timerEvent]` and `[self timerEvent]` are different messages at runtime, so
+the current source would fail to respond to the selectors Apple's callers send.
+
+**Apple's binary carries zero underscored selectors** — verified across all 62
+Objective-C method symbols.
+
+- [ ] **Step 1: Read the exact selector list from the binary**
+
+```bash
+cd $REPO && PYTHONPATH=tools/binrecon $VENVPY -c "
+import re
+from binrecon.macho import read_macho
+d=read_macho(r'\$REF')
+s={re.split(r'[:\]]', x['name'][x['name'].index(' ')+1:])[0]
+   for x in d['symbols'] if x.get('section')=='__TEXT,__text'
+   and x['name'].startswith(('-[','+['))}
+print(len(s)); [print(n) for n in sorted(s)]"
+```
+
+Expected: 61 distinct selector base names. **This list is the only authority for
+what gets renamed.**
+
+- [ ] **Step 2: Record the before-state**
+
+```bash
+cd $REPO && PYTHONPATH=tools/binrecon $VENVPY tools/binrecon/selector_check.py \
+  "$REF" $LKS
+```
+
+Expected: 62 reference selectors, 60 our definitions, **52 renames**, 0
+duplicates, **2 missing** (`+[FloppyKernelServerInstance kernelServerInstance]`
+and `+[FloppyVersion driverKitVersionForFloppy]`, both build-generated), 0 extra.
+
+Save this output; Task 6's findings quote it as the baseline.
+
+- [ ] **Step 3: Rename the 52 selectors, one at a time, word-bounded**
+
+For each source selector `_name` whose bare form `name` appears in Step 1's list,
+replace `_name` with `name` — at its definition, in its declaration in the
+matching `.h`, and at every `[receiver _name…]` call site.
+
+Distribution: 21 in `FloppyDisk.m` (`@implementation FloppyDisk`), 21 in
+`FloppyDiskInt.m` (`FloppyDisk(Internal)`), 10 in `FloppyDiskThread.m`
+(`FloppyDisk(Thread)`). **185 token occurrences** across the six files.
+
+**Eight source selectors are legitimately underscored and must not move** — the
+source defines 60 methods, 53 of which start with an underscore, and only 52 have
+a bare counterpart in the binary. Any selector whose bare form is absent from
+Step 1's list stays exactly as it is.
+
+**Do not touch C function names.** Task 2 already renamed those 141; they are a
+disjoint set. Do not rewrite string literals.
+
+- [ ] **Step 4: Verify with the checker**
+
+```bash
+cd $REPO && PYTHONPATH=tools/binrecon $VENVPY tools/binrecon/selector_check.py \
+  "$REF" $LKS
+```
+
+Expected: **0 renames**, 0 duplicates, **2 missing** (the same two
+build-generated), 0 extra.
+
+- [ ] **Step 5: Verify nothing else moved**
+
+Confirm the C-function gate is unchanged — this task must not disturb Task 2's
+work:
+
+```bash
+cd $REPO && PYTHONPATH=tools/binrecon $VENVPY tools/binrecon/symbol_name_check.py \
+  --binary "$REF" --source-dir $LKS
+```
+
+Expected: 141 hand-written C symbols, **5 missing** — the same five as before
+(`_fdminphys`, `_fd_dev_to_id`, `_OpenDBDMAChannel`, `_TestCacheDirtyState`,
+`_MediaScanTask`). Any change here means the selector rename touched C functions.
+
+Then diff the changed-token multiset per file and confirm every changed token is
+one of the 52 selectors: `drop(_name) == rise(name)` for each, and no other
+identifier's count moved. A line-based check is not sufficient — Task 2's
+line-based verification produced seven false positives.
+
+- [ ] **Step 6: Full suite, then commit**
+
+```bash
+cd $REPO && PYTHONPATH=tools/binrecon $VENVPY -m pytest tools/binrecon/tests -q
+```
+
+Expected: `866 passed, 4 skipped`.
+
+```bash
+cd $REPO && git add $LKS && \
+  git commit -m "drivers-ppc: drop the spurious leading underscore from Floppy's selectors"
+```
+
+---
+
+## Task 5: The five absent functions and duplicate removals
 
 **Files:**
 - Modify: `$LKS/FloppyDisk.m`, `$LKS/FloppyDisk.h`, `$LKS/FloppyDiskInt.m`, `$LKS/FloppyDiskThread.m`, `$RECON/findings.md`
@@ -580,7 +695,7 @@ cd $REPO && git add $LKS $RECON/findings.md && \
 
 ---
 
-## Task 5: Remap and acceptance
+## Task 6: Remap and acceptance
 
 **Files:**
 - Modify: `$RECON/source-map.json`, `$RECON/ledger.json`, `$RECON/findings.md`, `src/drivers-ppc/reconstruction/report.md`
@@ -588,7 +703,7 @@ cd $REPO && git add $LKS $RECON/findings.md && \
 - [ ] **Step 1: Regenerate the map**
 
 Re-run Task 3 Steps 1–2 verbatim. All five new functions should now map, and
-`duplicate_candidates` should be 0 — Task 4 Step 6 removed the three duplicates.
+`duplicate_candidates` should be 0 — Task 5 Step 6 removed the two redundant statics.
 If it is not 0, enumerate what remains with evidence.
 
 - [ ] **Step 2: Confirm coverage against acceptance**
@@ -653,7 +768,7 @@ previously recorded as absent, and why that was wrong.
 
 - [ ] **Step 8: Final acceptance statement**
 
-In `$RECON/findings.md`, state against each of the spec's ten acceptance items
+In `$RECON/findings.md`, state against each of the spec's eleven acceptance items
 whether it passed, with the evidence. Include the standing constraint: **nothing
 was compiled**, so every claim is of correspondence to the binary, never of
 buildability — and "the renamed symbols would now match" follows from the Mach-O
@@ -670,19 +785,20 @@ cd $REPO && git add $RECON src/drivers-ppc/reconstruction/report.md && \
 
 ## Self-Review
 
-**Spec coverage.** §1 goal → Tasks 2, 4. §1.1 the missed source → Global
-Constraints disciplines, Task 5 Step 7. §2 partition → Task 3 Steps 3–4. §2.1
-classes → Task 5 Step 5. §2.2 C layers → Task 4 step ordering. §2.3 the i386
-sibling → Global Constraints, Task 4 Steps 1 and 5. §3 the defect → Task 2. §3.1
-why it is dangerous → Task 2 Steps 3 and 5. §4.1 address-0 → Global Constraints,
-Task 1 Step 7, Task 5 Step 2. §4.2 profiles → Task 1. §4.3 mapping → Task 3
-Steps 1–2, Task 5 Step 1. §4.4 the gate → Task 2 Steps 2/4, Task 4 Step 7. §4.5
-disciplines → Global Constraints. §5 the five → Task 4 Steps 1–5. §6.1
-duplicates → Task 4 Step 6. §6.2 the six helpers → Task 3 Step 7, and they are
-never renamed because no binary symbol matches them. §7 artifacts → Task 3. §8
-acceptance items 1–10 → Task 1 Step 5, Task 2 Steps 4–5, Task 3 Steps 3–4, Task 4
-Steps 6–7, Task 5 Steps 1–6/8. §9 constraints → Global Constraints. §10 risks →
-Task 2 Step 5, Task 4 Step 5, Task 5 Step 5.
+**Spec coverage.** §1 goal → Tasks 2, 4, 5. §1.1 the missed source → Global
+Constraints disciplines, Task 6 Step 7. §2 partition → Task 3 Steps 3–4. §2.1
+classes → Task 4, Task 6 Step 5. §2.2 C layers → Task 5 step ordering. §2.3 the
+i386 sibling → Global Constraints, Task 5 Steps 1 and 5. §3 the C defect → Task 2.
+§3.1 why it is dangerous → Task 2 Steps 3 and 5. §3.2 the selector defect → Task 4
+(added after Task 3's measurement). §4.1 address-0 → Global Constraints, Task 1
+Step 7, Task 6 Step 2. §4.2 profiles → Task 1. §4.3 mapping → Task 3 Steps 1–2,
+Task 6 Step 1. §4.4 the gate → Task 2 Steps 2/4, Task 4 Steps 2/4, Task 5 Step 7.
+§4.5 disciplines → Global Constraints. §5 the five → Task 5 Steps 1–5. §6.1
+duplicates → Task 5 Step 6. §6.2 the six helpers → Task 3 Step 7; never renamed,
+because no binary symbol matches them. §7 artifacts → Task 3. §8 acceptance items
+1–11 → Task 1 Step 5, Task 2 Steps 4–5, Task 3 Steps 3–4, Task 4 Steps 4–5, Task 5
+Steps 6–7, Task 6 Steps 1–6/8. §9 constraints → Global Constraints. §10 risks →
+Task 2 Step 5, Task 4 Step 5, Task 5 Step 5, Task 6 Step 5.
 
 **Naming consistency.** `analysis-named.json` is produced in Task 3 Step 1 and
 consumed in Steps 2, 4, 5 and Task 5 Steps 1, 3. `$RECON` is

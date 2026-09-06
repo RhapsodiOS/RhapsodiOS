@@ -22,13 +22,23 @@ COMPILER_RUNTIME = {"__udivdi3", "__umoddi3", "__divdi3", "__moddi3"}
 _DEFINITION = re.compile(r"^(?:static\s+)?[A-Za-z_][\w \t\*]*?([A-Za-z_]\w*)\s*\(")
 
 # A data definition: optional `static`, a type, a name, an optional array
-# bound, then `=` (initializer) or `;` (bare tentative definition). An
-# `extern` declaration never matches, so it is never mistaken for a
-# definition site.
+# bound, then `=` (initializer) or `;` (bare tentative definition). Neither an
+# `extern` declaration nor a `typedef` ever matches, so neither is mistaken
+# for a definition site.
 _DATA_DEFINITION = re.compile(
-    r"^(?!\s*extern\b)(?:static\s+)?[A-Za-z_][\w \t\*]*?\b([A-Za-z_]\w*)"
+    r"^(?!\s*(?:extern|typedef)\b)(?:static\s+)?[A-Za-z_][\w \t\*]*?\b([A-Za-z_]\w*)"
     r"\s*(?:\[[^\]]*\])?\s*(?:=|;)"
 )
+
+# The Kernel Server project type generates `<Name>_instance.m` at build time
+# (CreateKLLDInstance.sh, wired in by kernelserver.make), and that file names
+# the class whose selector appears below. It is the reference binary's own way
+# of telling us <Name>.
+_KERNEL_SERVER_INSTANCE = re.compile(r"^\+\[(\w+)KernelServerInstance kernelServerInstance\]$")
+
+# gcc appends `.NN` to a function-scope static's symbol to keep it distinct
+# from same-named statics elsewhere in the translation unit.
+_GCC_STATIC_SUFFIX = re.compile(r"\.\d+$")
 
 
 def source_definitions(source_dir):
@@ -48,7 +58,14 @@ def source_definitions(source_dir):
 
 
 def data_definitions(source_dir):
-    """Return the C data (variable/array) names defined in .m and .c files."""
+    """Return the C data (variable/array) names defined in .m and .c files.
+
+    Only file-scope definitions are recognised: the pattern is anchored at
+    column 0, so an indented line (a struct member, or a static inside a
+    function body) is never treated as a definition site. Multi-declarator
+    definitions such as `int fd_block_major, fd_raw_major;` are not recognised
+    either — the comma is outside the type pattern, so neither name is found.
+    """
     names = set()
     for path in sorted(Path(source_dir).rglob("*")):
         if path.suffix not in (".m", ".c"):
@@ -72,16 +89,45 @@ def hand_written_c_symbols(document):
     ]
 
 
+def build_generated_data_symbols(document):
+    """Return the __DATA symbols this driver's build generates rather than source.
+
+    A Kernel Server project's makefile runs CreateKLLDInstance.sh at build
+    time to write `<Name>_instance.m`, whose sole data definition is
+    `kern_server_t <Name>_instance;`. That same generated file defines
+    `+[<Name>KernelServerInstance kernelServerInstance]`, so the reference
+    binary's own symbol table supplies <Name> — no hard-coded driver list.
+    Such a symbol is correctly absent from hand-written source, so reporting
+    it missing would be a false positive on every Kernel Server driver.
+    """
+    names = set()
+    for symbol in document["symbols"]:
+        match = _KERNEL_SERVER_INSTANCE.match(symbol["name"])
+        if match:
+            names.add(f"_{match.group(1)}_instance")
+    return names
+
+
 def hand_written_data_symbols(document):
     """Return reference __DATA symbols that are hand-written C.
 
-    Objective-C metadata lives in __OBJC,* sections and is excluded simply by
-    not matching the __DATA, prefix.
+    Two kinds of symbol are excluded because no hand-written file-scope
+    definition can ever match them: the build-generated `_<Name>_instance`,
+    and gcc's `.NN`-suffixed function-scope statics (e.g. `_protocols.26`),
+    which are defined inside a method body and carry a suffix no source
+    identifier can spell.
+
+    Objective-C metadata in __OBJC,* sections also fails the __DATA, prefix
+    test, but that is incidental: no PPC reference binary in this corpus
+    carries an __OBJC symbol, so the exclusion is not load-bearing.
     """
+    generated = build_generated_data_symbols(document)
     return [
         symbol["name"]
         for symbol in document["symbols"]
         if (symbol.get("section") or "").startswith("__DATA,")
+        and symbol["name"] not in generated
+        and not _GCC_STATIC_SUFFIX.search(symbol["name"])
     ]
 
 

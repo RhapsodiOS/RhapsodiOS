@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from symbol_name_check import (
+    build_generated_data_symbols,
     data_definitions,
     hand_written_c_symbols,
     hand_written_data_symbols,
@@ -173,6 +174,100 @@ def test_main_check_data_flag_passes_when_definition_present(tmp_path, monkeypat
         "--binary", "unused", "--source-dir", str(tmp_path), "--check-data",
     ])
     assert exit_code == 0
+
+
+def test_data_definitions_ignores_a_typedef(tmp_path):
+    """A typedef names a type, not storage; treating it as one would mask a real gap."""
+    (tmp_path / "a.m").write_text("typedef struct foo_s FloppyState;\n")
+    assert data_definitions(tmp_path) == set()
+
+
+def test_data_definitions_only_matches_at_column_zero(tmp_path):
+    """File-scope only: an indented line is a struct member or a function-scope static."""
+    (tmp_path / "a.m").write_text("struct s {\n    unsigned int FloppyState;\n};\n")
+    assert "FloppyState" not in data_definitions(tmp_path)
+
+
+# -- build-generated and gcc-suffixed symbols ---------------------------------
+
+
+def test_build_generated_data_symbols_named_by_the_kernel_server_selector():
+    document = {
+        "symbols": [
+            {"name": "+[FloppyKernelServerInstance kernelServerInstance]",
+             "section": "__TEXT,__text"},
+            {"name": "_Floppy_instance", "section": "__DATA,__common"},
+        ]
+    }
+    assert build_generated_data_symbols(document) == {"_Floppy_instance"}
+
+
+def test_build_generated_data_symbols_is_empty_without_the_selector():
+    document = {"symbols": [{"name": "_Floppy_instance", "section": "__DATA,__common"}]}
+    assert build_generated_data_symbols(document) == set()
+
+
+def test_hand_written_data_symbols_excludes_the_generated_instance():
+    """CreateKLLDInstance.sh emits it, so source correctly never defines it."""
+    document = {
+        "symbols": [
+            {"name": "+[FloppyKernelServerInstance kernelServerInstance]",
+             "section": "__TEXT,__text"},
+            {"name": "_Floppy_instance", "section": "__DATA,__common"},
+            {"name": "_FloppyState", "section": "__DATA,__data"},
+        ]
+    }
+    assert hand_written_data_symbols(document) == ["_FloppyState"]
+
+
+def test_hand_written_data_symbols_excludes_gcc_suffixed_statics():
+    """`_protocols.26` is a function-scope static; no file-scope name can spell it."""
+    document = {
+        "symbols": [
+            {"name": "_protocols.26", "section": "__DATA,__data"},
+            {"name": "_FloppyState", "section": "__DATA,__data"},
+        ]
+    }
+    assert hand_written_data_symbols(document) == ["_FloppyState"]
+
+
+def test_main_check_data_flag_prints_the_data_counts(tmp_path, monkeypatch, capsys):
+    import symbol_name_check
+
+    (tmp_path / "a.m").write_text("/* no globals here */\n")
+
+    def fake_read_macho(path):
+        return {"symbols": [{"name": "_FloppyState", "section": "__DATA,__data"}]}
+
+    monkeypatch.setattr(symbol_name_check, "read_macho", fake_read_macho)
+    main(["--binary", "unused", "--source-dir", str(tmp_path), "--check-data"])
+    output = capsys.readouterr().out
+    assert "hand-written data symbols: 1" in output
+    assert "missing data definitions : 1" in output
+    assert "  _FloppyState" in output
+
+
+def test_main_check_data_flag_reports_a_text_miss_alongside_a_clean_data_side(
+    tmp_path, monkeypatch
+):
+    """Exit is 1 on `missing or data_missing`, so a text-only miss still fails."""
+    import symbol_name_check
+
+    (tmp_path / "a.m").write_text("unsigned int FloppyState = 0;\n")
+
+    def fake_read_macho(path):
+        return {
+            "symbols": [
+                {"name": "_changeState", "section": "__TEXT,__text"},
+                {"name": "_FloppyState", "section": "__DATA,__data"},
+            ]
+        }
+
+    monkeypatch.setattr(symbol_name_check, "read_macho", fake_read_macho)
+    exit_code = main([
+        "--binary", "unused", "--source-dir", str(tmp_path), "--check-data",
+    ])
+    assert exit_code == 1
 
 
 def test_main_without_check_data_flag_ignores_data_symbols(tmp_path, monkeypatch):

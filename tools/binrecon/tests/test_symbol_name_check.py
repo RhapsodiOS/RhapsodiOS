@@ -1,6 +1,13 @@
 from pathlib import Path
 
-from symbol_name_check import hand_written_c_symbols, main, missing_definitions, source_definitions
+from symbol_name_check import (
+    data_definitions,
+    hand_written_c_symbols,
+    hand_written_data_symbols,
+    main,
+    missing_definitions,
+    source_definitions,
+)
 
 REFERENCE_BINARY = Path(
     "C:/Users/raynorpat/Downloads/test/Drivers/ppc/PPCSerialPort.config/PPCSerialPort_reloc"
@@ -70,3 +77,117 @@ def test_main_exits_1_when_a_source_tree_has_no_definitions(tmp_path):
     empty_dir.mkdir()
     exit_code = main(["--binary", str(REFERENCE_BINARY), "--source-dir", str(empty_dir)])
     assert exit_code == 1
+
+
+# -- data symbol checking -----------------------------------------------------
+
+
+def test_hand_written_data_symbols_includes_data_bss_and_common():
+    document = {
+        "symbols": [
+            {"name": "_FloppyState", "section": "__DATA,__data"},
+            {"name": "_fd_block_major", "section": "__DATA,__bss"},
+            {"name": "_slock", "section": "__DATA,__common"},
+            {"name": "_changeState", "section": "__TEXT,__text"},
+            {"name": "_elsewhere", "section": None},
+        ]
+    }
+    assert hand_written_data_symbols(document) == [
+        "_FloppyState", "_fd_block_major", "_slock",
+    ]
+
+
+def test_hand_written_data_symbols_excludes_objc_metadata():
+    document = {
+        "symbols": [
+            {"name": "_OBJC_CLASS_NAME_Floppy", "section": "__OBJC,__class"},
+            {"name": "_FloppyState", "section": "__DATA,__data"},
+        ]
+    }
+    assert hand_written_data_symbols(document) == ["_FloppyState"]
+
+
+def test_data_definitions_finds_a_scalar_definition(tmp_path):
+    (tmp_path / "a.m").write_text("unsigned int FloppyState = 0;\n")
+    assert "FloppyState" in data_definitions(tmp_path)
+
+
+def test_data_definitions_finds_an_uninitialized_definition(tmp_path):
+    (tmp_path / "a.m").write_text("DriveInfo fdDriveInfo;\n")
+    assert "fdDriveInfo" in data_definitions(tmp_path)
+
+
+def test_data_definitions_finds_an_array_definition(tmp_path):
+    (tmp_path / "a.m").write_text("unsigned int ssi_1mb[12] = {\n    1, 2,\n};\n")
+    assert "ssi_1mb" in data_definitions(tmp_path)
+
+
+def test_data_definitions_ignores_an_extern_declaration(tmp_path):
+    (tmp_path / "a.m").write_text("extern unsigned int FloppyState;\n")
+    assert data_definitions(tmp_path) == set()
+
+
+def test_data_definitions_ignores_a_function_definition(tmp_path):
+    (tmp_path / "a.m").write_text("unsigned int foo(int x)\n{\n    return x;\n}\n")
+    assert data_definitions(tmp_path) == set()
+
+
+def test_data_definitions_ignores_only_headers(tmp_path):
+    (tmp_path / "a.h").write_text("unsigned int FloppyState = 0;\n")
+    assert data_definitions(tmp_path) == set()
+
+
+def test_main_check_data_flag_reports_missing_data_symbol(tmp_path, monkeypatch):
+    import symbol_name_check
+
+    (tmp_path / "a.m").write_text("/* no globals here */\n")
+
+    def fake_read_macho(path):
+        return {
+            "symbols": [
+                {"name": "_FloppyState", "section": "__DATA,__data"},
+            ]
+        }
+
+    monkeypatch.setattr(symbol_name_check, "read_macho", fake_read_macho)
+    exit_code = main([
+        "--binary", "unused", "--source-dir", str(tmp_path), "--check-data",
+    ])
+    assert exit_code == 1
+
+
+def test_main_check_data_flag_passes_when_definition_present(tmp_path, monkeypatch):
+    import symbol_name_check
+
+    (tmp_path / "a.m").write_text("unsigned int FloppyState = 0;\n")
+
+    def fake_read_macho(path):
+        return {
+            "symbols": [
+                {"name": "_FloppyState", "section": "__DATA,__data"},
+            ]
+        }
+
+    monkeypatch.setattr(symbol_name_check, "read_macho", fake_read_macho)
+    exit_code = main([
+        "--binary", "unused", "--source-dir", str(tmp_path), "--check-data",
+    ])
+    assert exit_code == 0
+
+
+def test_main_without_check_data_flag_ignores_data_symbols(tmp_path, monkeypatch):
+    """Callers that only want the text check keep their old, unaffected behavior."""
+    import symbol_name_check
+
+    (tmp_path / "a.m").write_text("/* no globals here */\n")
+
+    def fake_read_macho(path):
+        return {
+            "symbols": [
+                {"name": "_FloppyState", "section": "__DATA,__data"},
+            ]
+        }
+
+    monkeypatch.setattr(symbol_name_check, "read_macho", fake_read_macho)
+    exit_code = main(["--binary", "unused", "--source-dir", str(tmp_path)])
+    assert exit_code == 0

@@ -21,6 +21,15 @@ COMPILER_RUNTIME = {"__udivdi3", "__umoddi3", "__divdi3", "__moddi3"}
 
 _DEFINITION = re.compile(r"^(?:static\s+)?[A-Za-z_][\w \t\*]*?([A-Za-z_]\w*)\s*\(")
 
+# A data definition: optional `static`, a type, a name, an optional array
+# bound, then `=` (initializer) or `;` (bare tentative definition). An
+# `extern` declaration never matches, so it is never mistaken for a
+# definition site.
+_DATA_DEFINITION = re.compile(
+    r"^(?!\s*extern\b)(?:static\s+)?[A-Za-z_][\w \t\*]*?\b([A-Za-z_]\w*)"
+    r"\s*(?:\[[^\]]*\])?\s*(?:=|;)"
+)
+
 
 def source_definitions(source_dir):
     """Return the C function names defined in .m and .c files under source_dir."""
@@ -38,6 +47,20 @@ def source_definitions(source_dir):
     return names
 
 
+def data_definitions(source_dir):
+    """Return the C data (variable/array) names defined in .m and .c files."""
+    names = set()
+    for path in sorted(Path(source_dir).rglob("*")):
+        if path.suffix not in (".m", ".c"):
+            continue
+        lines = path.read_text(encoding="utf-8", errors="replace").split("\n")
+        for line in lines:
+            match = _DATA_DEFINITION.match(line)
+            if match:
+                names.add(match.group(1))
+    return names
+
+
 def hand_written_c_symbols(document):
     """Return reference __text symbols that are hand-written C."""
     return [
@@ -46,6 +69,19 @@ def hand_written_c_symbols(document):
         if symbol.get("section") == "__TEXT,__text"
         and not symbol["name"].startswith(("-[", "+["))
         and symbol["name"] not in COMPILER_RUNTIME
+    ]
+
+
+def hand_written_data_symbols(document):
+    """Return reference __DATA symbols that are hand-written C.
+
+    Objective-C metadata lives in __OBJC,* sections and is excluded simply by
+    not matching the __DATA, prefix.
+    """
+    return [
+        symbol["name"]
+        for symbol in document["symbols"]
+        if (symbol.get("section") or "").startswith("__DATA,")
     ]
 
 
@@ -64,20 +100,39 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--binary", required=True)
     parser.add_argument("--source-dir", required=True, action="append")
+    parser.add_argument(
+        "--check-data", action="store_true",
+        help="also check __DATA,* symbols against data definitions",
+    )
     arguments = parser.parse_args(argv)
 
     definitions = set()
+    data_defs = set()
     for source_dir in arguments.source_dir:
         definitions |= source_definitions(source_dir)
+        if arguments.check_data:
+            data_defs |= data_definitions(source_dir)
 
-    symbols = hand_written_c_symbols(read_macho(Path(arguments.binary)))
+    document = read_macho(Path(arguments.binary))
+
+    symbols = hand_written_c_symbols(document)
     missing = missing_definitions(symbols, definitions)
 
     print(f"hand-written C symbols: {len(symbols)}")
     print(f"missing definitions   : {len(missing)}")
     for name in missing:
         print(f"  {name}")
-    return 1 if missing else 0
+
+    data_missing = []
+    if arguments.check_data:
+        data_symbols = hand_written_data_symbols(document)
+        data_missing = missing_definitions(data_symbols, data_defs)
+        print(f"hand-written data symbols: {len(data_symbols)}")
+        print(f"missing data definitions : {len(data_missing)}")
+        for name in data_missing:
+            print(f"  {name}")
+
+    return 1 if missing or data_missing else 0
 
 
 if __name__ == "__main__":

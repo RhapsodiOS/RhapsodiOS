@@ -14,7 +14,6 @@
 /* Geometry.m tables / helpers */
 extern unsigned int fdDiskInfo[];
 extern unsigned int fdDensityInfo[];
-extern const IONamedValue fdrValues[];
 extern unsigned int *fdGetSectSizeInfo(unsigned int density);
 
 // External VM functions
@@ -541,6 +540,41 @@ transfer_done:
 	const char *statusString;
 	const char *operationType;
 	const char *driveName;
+
+	/*
+	 * fdrValues - fd_ioreq result code -> string map for
+	 * IOFindNameForValue, recovered byte-for-byte from the reference
+	 * binary's __DATA segment (_fdrValues). This is the sole consumer;
+	 * the reference exports no _fdrValues symbol, so the table is not
+	 * shared across translation units.
+	 */
+	static const IONamedValue fdrValues[] = {
+		{ 0x00, "Success" },
+		{ 0x01, "fd_ioreq.timeout exceeded" },
+		{ 0x02, "Couldn't allocate memory" },
+		{ 0x03, "Memory transfer error" },
+		{ 0x04, "Bad field in fd_ioreq" },
+		{ 0x05, "Drive not present" },
+		{ 0x06, "Media error - data CRC" },
+		{ 0x07, "Media error - header CRC" },
+		{ 0x08, "Misc. media error" },
+		{ 0x09, "seek error" },
+		{ 0x0a, "Unexpected controller phase change" },
+		{ 0x0b, "Basic Drive Failure" },
+		{ 0x0c, "Header Not Found" },
+		{ 0x0d, "Disk Write Protected" },
+		{ 0x0e, "Missing Address Mark" },
+		{ 0x0f, "Missing Control Mark" },
+		{ 0x10, "Missing Data Mark" },
+		{ 0x11, "Controller rejected command" },
+		{ 0x12, "Controller Handshake Error" },
+		{ 0x13, "DMA Over/underrun" },
+		{ 0x14, "Requested Volume not available" },
+		{ 0x15, "DMA Alignment Error" },
+		{ 0x16, "DMA Error" },
+		{ 0x17, "Spurious Interrupt" },
+		{ 0, (const char *)0 },
+	};
 
 	// Find name for FDC status value in fdrValues table
 	statusString = IOFindNameForValue(status, fdrValues);

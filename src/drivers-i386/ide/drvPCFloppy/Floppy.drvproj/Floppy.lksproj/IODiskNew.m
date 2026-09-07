@@ -10,6 +10,19 @@
 #import <machkit/NXLock.h>
 #import <driverkit/kernelDriver.h>
 
+/*
+ * Disk-specific IOReturn values table, read by -stringFromReturn: below.
+ * Format: { returnCode, stringPtr, terminatorFlag }
+ */
+static const struct {
+	IOReturn code;
+	const char *string;
+	int terminator;
+} diskIoReturnValues[] = {
+	// Add disk-specific return codes here if needed
+	{ 0, NULL, 1 }  // Terminator entry
+};
+
 @implementation IODiskNEW
 
 /*
@@ -299,17 +312,6 @@
  */
 - (const char *)stringFromReturn : (IOReturn)rtn
 {
-	// Disk-specific IOReturn values table
-	// Format: { returnCode, stringPtr, terminatorFlag }
-	static const struct {
-		IOReturn code;
-		const char *string;
-		int terminator;
-	} diskIoReturnValues[] = {
-		// Add disk-specific return codes here if needed
-		{ 0, NULL, 1 }  // Terminator entry
-	};
-	
 	// Search through disk-specific return values
 	const void *table = diskIoReturnValues;
 	const int *ptr = (const int *)table;

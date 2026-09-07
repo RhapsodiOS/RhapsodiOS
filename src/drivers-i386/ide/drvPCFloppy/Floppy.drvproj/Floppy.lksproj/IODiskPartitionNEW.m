@@ -29,6 +29,17 @@ static const IONamedValue diskLabelValues[] = {
 	{ 0, (const char *)0 },
 };
 
+/*
+ * protocols - required-protocol list for +requiredProtocols, recovered by
+ * resolving the two relocations in the reference binary's __OBJC,__protocol
+ * section (addends 40 and 20) to their protocol records.
+ */
+static Protocol *protocols[] = {
+	@protocol(IODiskPhysicalNEW),
+	@protocol(IODiskReadingAndWriting),
+	nil
+};
+
 @implementation IODiskPartitionNEW
 
 /*
@@ -42,14 +53,10 @@ static const IONamedValue diskLabelValues[] = {
 
 /*
  * Class method: requiredProtocols
- * From decompiled code: returns array of required protocol names.
+ * From decompiled code: returns array of required Protocol objects.
  */
-+ (const char **)requiredProtocols
++ (Protocol **)requiredProtocols
 {
-	static const char *protocols[] = {
-		"IOPhysicalDiskMethods",
-		NULL
-	};
 	return protocols;
 }
 

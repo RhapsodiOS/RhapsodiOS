@@ -186,10 +186,12 @@ fdGetSectSizeInfo(unsigned int density)
 /*
  * fdrValues - fd_ioreq result code -> string map for IOFindNameForValue,
  * recovered byte-for-byte from the reference binary's __DATA segment
- * (_fdrValues). Consumed by FloppyDriveInt2.m's
- * logRwErr:block:status:readFlag:.
+ * (_fdrValues). The reference exports no such symbol; the reader,
+ * FloppyDriveInt2.m's logRwErr:block:status:readFlag:, now carries its own
+ * copy. This copy has no reader in this file and is kept for string-table
+ * parity.
  */
-const IONamedValue fdrValues[] = {
+static const IONamedValue fdrValues[] = {
 	{ 0x00, "Success" },
 	{ 0x01, "fd_ioreq.timeout exceeded" },
 	{ 0x02, "Couldn't allocate memory" },
@@ -288,7 +290,7 @@ unsigned int fdIoctlValues[] = {
 // Maps opcode/command codes to FDC parameters
 // Structure: Array of pairs [value, commandCode]
 // Used for configuring FDC commands with appropriate timing or parameters
-unsigned int fcOpcodeValues[] = {
+static unsigned int fcOpcodeCodes[] = {
     0x00009982, 0x00000c06,  // Entry 0: Cmd 0x06, param 0x9982
     0x00009970, 0x0000050c,  // Entry 1: Cmd 0x0c, param 0x9970
     0x00009966, 0x00000905,  // Entry 2: Cmd 0x05, param 0x9966

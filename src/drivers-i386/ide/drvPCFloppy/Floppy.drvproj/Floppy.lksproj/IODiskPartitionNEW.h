@@ -31,7 +31,7 @@
  * Class methods.
  */
 + (int)deviceStyle;
-+ (const char **)requiredProtocols;
++ (Protocol **)requiredProtocols;
 + (BOOL)probe : deviceDescription;
 
 /*

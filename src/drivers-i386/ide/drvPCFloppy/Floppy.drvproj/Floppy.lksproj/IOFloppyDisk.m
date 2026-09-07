@@ -5,6 +5,7 @@
  */
 
 #import "IOFloppyDisk.h"
+#import "FloppyOperation.h"
 #import "IOFloppyDrive.h"
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
@@ -84,7 +85,7 @@ extern unsigned int _FloppyGeometry[];
 - free
 {
 	id drive;
-	unsigned *operation;
+	floppyOperation_t *operation;
 	id completionLock;
 	id mainQueue;
 	int *queueHead;
@@ -96,13 +97,13 @@ extern unsigned int _FloppyGeometry[];
 	// If operation thread is running, shut it down
 	if (_startedThread) {
 		// Allocate abort operation (type 4)
-		operation = (unsigned *)IOMalloc(0x28);
-		operation[0] = 4;  // Type 4: abort and exit thread
+		operation = (floppyOperation_t *)IOMalloc(sizeof(floppyOperation_t));
+		operation->type = 4;  // Type 4: abort and exit thread
 
 		// Allocate completion lock
 		completionLock = [NXConditionLock alloc];
 		[completionLock initWith:1];
-		operation[4] = (unsigned)completionLock;
+		operation->completionLock = completionLock;
 
 		// Lock queue and add operation
 		[_queueLock lock];
@@ -114,13 +115,13 @@ extern unsigned int _FloppyGeometry[];
 			// Queue is empty
 			_queueHead = (void *)operation;
 			_queueTail = (void *)operation;
-			operation[8] = (unsigned)queueHead;  // prev
-			operation[9] = (unsigned)queueHead;  // next
+			operation->link.next = (queue_entry_t)queueHead;
+			operation->link.prev = (queue_entry_t)queueHead;
 		} else {
 			// Append to end
 			int lastEntry = (int)_queueTail;
-			operation[9] = lastEntry;  // prev
-			operation[8] = (unsigned)queueHead;  // next
+			operation->link.prev = (queue_entry_t)lastEntry;
+			operation->link.next = (queue_entry_t)queueHead;
 			_queueTail = (void *)operation;
 			*(unsigned **)(lastEntry + 0x20) = operation;
 		}

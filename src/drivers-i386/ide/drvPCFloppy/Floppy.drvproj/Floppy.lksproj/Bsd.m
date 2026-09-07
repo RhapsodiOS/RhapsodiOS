@@ -97,30 +97,6 @@ static struct DriveEntry Drives[8];
 static int DrivesRegistered = 0;
 
 /*
- * fdIoctlNameValues - DKIOC/FDIOC ioctl code -> string map for
- * IOFindNameForValue, recovered byte-for-byte from the reference binary's
- * __DATA segment. Codes match the cases switched on in HandleBsdIoctl below.
- * No caller of IOFindNameForValue against this table could be found in the
- * reference disassembly; kept here for string-table parity.
- */
-static const IONamedValue fdIoctlNameValues[] = {
-	{ 0x80046417, "DKIOCSFORMAT" },
-	{ 0x40046417, "DKIOCGFORMAT" },
-	{ 0x5c5c6400, "DKIOCGLABEL" },
-	{ 0x9c5c6401, "DKIOCSLABEL" },
-	{ 0x20006415, "DKIOCEJECT" },
-	{ 0x40306405, "DKIOCINFO" },
-	{ 0x40046418, "DKIOBLKSIZE" },
-	{ 0x40046419, "DKIOCNUMBLKS" },
-	{ 0xc0606600, "FDIOCREQ" },
-	{ 0x80046602, "FDIOCSDENS" },
-	{ 0x80046603, "FDIOCSSIZE" },
-	{ 0x40346601, "FDIOCGFORM" },
-	{ 0x4020660a, "FDIOCGCAPLIST" },
-	{ 0, (const char *)0 },
-};
-
-/*
  * HandleBsdIoctl - BSD ioctl handler
  * From decompiled code: handles ioctl commands from BSD layer.
  *

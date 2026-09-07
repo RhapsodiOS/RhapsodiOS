@@ -183,88 +183,6 @@ fdGetSectSizeInfo(unsigned int density)
 	return 0;
 }
 
-/*
- * fdrValues - fd_ioreq result code -> string map for IOFindNameForValue,
- * recovered byte-for-byte from the reference binary's __DATA segment
- * (_fdrValues). The reference exports no such symbol; the reader,
- * FloppyDriveInt2.m's logRwErr:block:status:readFlag:, now carries its own
- * copy. This copy has no reader in this file and is kept for string-table
- * parity.
- */
-static const IONamedValue fdrValues[] = {
-	{ 0x00, "Success" },
-	{ 0x01, "fd_ioreq.timeout exceeded" },
-	{ 0x02, "Couldn't allocate memory" },
-	{ 0x03, "Memory transfer error" },
-	{ 0x04, "Bad field in fd_ioreq" },
-	{ 0x05, "Drive not present" },
-	{ 0x06, "Media error - data CRC" },
-	{ 0x07, "Media error - header CRC" },
-	{ 0x08, "Misc. media error" },
-	{ 0x09, "seek error" },
-	{ 0x0a, "Unexpected controller phase change" },
-	{ 0x0b, "Basic Drive Failure" },
-	{ 0x0c, "Header Not Found" },
-	{ 0x0d, "Disk Write Protected" },
-	{ 0x0e, "Missing Address Mark" },
-	{ 0x0f, "Missing Control Mark" },
-	{ 0x10, "Missing Data Mark" },
-	{ 0x11, "Controller rejected command" },
-	{ 0x12, "Controller Handshake Error" },
-	{ 0x13, "DMA Over/underrun" },
-	{ 0x14, "Requested Volume not available" },
-	{ 0x15, "DMA Alignment Error" },
-	{ 0x16, "DMA Error" },
-	{ 0x17, "Spurious Interrupt" },
-	{ 0, (const char *)0 },
-};
-
-/*
- * fdCommandValues - FDCMD_* drive command code -> string map for
- * IOFindNameForValue, recovered byte-for-byte from the reference binary's
- * __DATA segment (_fdCommandValues). Matches the cmdType values switched on
- * in FloppyCnt.m's fcCmdXfrExecute:. No caller of IOFindNameForValue against
- * this table could be found in the reference disassembly; kept here for
- * string-table parity.
- */
-static const IONamedValue fdCommandValues[] = {
-	{ 0x00, "FDCMD_BAD" },
-	{ 0x01, "FDCMD_CMD_XFR" },
-	{ 0x02, "FDCMD_EJECT" },
-	{ 0x03, "FDCMD_MOTOR_ON" },
-	{ 0x04, "FDCMD_MOTOR_OFF" },
-	{ 0x05, "FDCMD_GET_STATUS" },
-	{ 0, (const char *)0 },
-};
-
-/*
- * densityValues - FD_DENS_* density code -> string map for
- * IOFindNameForValue, recovered byte-for-byte from the reference binary's
- * __DATA segment. No caller of IOFindNameForValue against this table could
- * be found in the reference disassembly; kept here for string-table parity.
- */
-static const IONamedValue densityValues[] = {
-	{ 0x00, "FD_DENS_NONE" },
-	{ 0x01, "FD_DENS_1" },
-	{ 0x02, "FD_DENS_2" },
-	{ 0x03, "FD_DENS_4" },
-	{ 0, (const char *)0 },
-};
-
-/*
- * midValues - FD_MID_* media-ID code -> string map for
- * IOFindNameForValue, recovered byte-for-byte from the reference binary's
- * __DATA segment. No caller of IOFindNameForValue against this table could
- * be found in the reference disassembly; kept here for string-table parity.
- */
-static const IONamedValue midValues[] = {
-	{ 0x00, "FD_MID_NONE" },
-	{ 0x03, "FD_MID_1MB" },
-	{ 0x02, "FD_MID_2MB" },
-	{ 0x01, "FD_MID_4MB" },
-	{ 0, (const char *)0 },
-};
-
 // FDC ioctl handler mapping table
 // Maps ioctl command codes to handler function pointers
 // Structure: Array of pairs [ioctlCode, handlerAddress]
@@ -283,30 +201,6 @@ unsigned int fdIoctlValues[] = {
     0x80046603, 0x000099fe,  // Entry 10: DKIOCGLASTREADYSTATUS (0x80046603) -> handler at 0x99fe
     0x40346601, 0x000099f3,  // Entry 11: Unknown ioctl (0x40346601) -> handler at 0x99f3
     0x4020660a, 0x000099e5,  // Entry 12: DKIOCGETFORMATCAPACITIES (0x4020660a) -> handler at 0x99e5
-    0x00000000, 0x00000000,  // Terminator
-};
-
-// FDC opcode/command configuration values table
-// Maps opcode/command codes to FDC parameters
-// Structure: Array of pairs [value, commandCode]
-// Used for configuring FDC commands with appropriate timing or parameters
-static unsigned int fcOpcodeCodes[] = {
-    0x00009982, 0x00000c06,  // Entry 0: Cmd 0x06, param 0x9982
-    0x00009970, 0x0000050c,  // Entry 1: Cmd 0x0c, param 0x9970
-    0x00009966, 0x00000905,  // Entry 2: Cmd 0x05, param 0x9966
-    0x00009953, 0x00000209,  // Entry 3: Cmd 0x09, param 0x9953
-    0x00009942, 0x00001602,  // Entry 4: Cmd 0x02, param 0x9942
-    0x00009935, 0x00001016,  // Entry 5: Cmd 0x16, param 0x9935
-    0x0000991a, 0x00000d10,  // Entry 6: Cmd 0x10, param 0x991a
-    0x0000990e, 0x0000070d,  // Entry 7: Cmd 0x0d, param 0x990e
-    0x00009900, 0x00000308,  // Entry 8: Cmd 0x08, param 0x9900
-    0x000098f2, 0x00000403,  // Entry 9: Cmd 0x03, param 0x98f2
-    0x000098df, 0x00000f04,  // Entry 10: Cmd 0x04, param 0x98df
-    0x000098d4, 0x0000130f,  // Entry 11: Cmd 0x0f, param 0x98d4
-    0x000098c4, 0x00000e13,  // Entry 12: Cmd 0x13, param 0x98c4
-    0x000098b6, 0x00000a0e,  // Entry 13: Cmd 0x0e, param 0x98b6
-    0x000098a9, 0x0000120a,  // Entry 14: Cmd 0x0a, param 0x98a9
-    0x00009895, 0x00000012,  // Entry 15: Cmd 0x12, param 0x9895
     0x00000000, 0x00000000,  // Terminator
 };
 

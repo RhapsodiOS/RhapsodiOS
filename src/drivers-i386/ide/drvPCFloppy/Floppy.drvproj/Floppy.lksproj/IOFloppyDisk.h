@@ -47,7 +47,9 @@ void OperationThreadStartup(id self);
 	id _queueLock;                   // offset 0x158: queue lock
 
 	// Thread management (offset 0x15c)
-	int _operationThreadPort;        // offset 0x15c: operation thread port
+	// The reference declares this as a one-bit field, b1, and the code
+	// only ever tests, sets and clears bit 0 of it.
+	unsigned _startedThread:1;       // offset 0x15c: operation thread running
 
 	// Device info (offset 0x160)
 	id _deviceDescription;           // offset 0x160: device description

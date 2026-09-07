@@ -94,7 +94,7 @@ extern unsigned int _FloppyGeometry[];
 	[self detachBsdDiskInterfaceFromDrive:drive];
 
 	// If operation thread is running, shut it down
-	if ((*(unsigned char *)((char *)self + 0x15c) & 1) != 0) {
+	if (_startedThread) {
 		// Allocate abort operation (type 4)
 		operation = (unsigned *)IOMalloc(0x28);
 		operation[0] = 4;  // Type 4: abort and exit thread
@@ -107,8 +107,8 @@ extern unsigned int _FloppyGeometry[];
 		// Lock queue and add operation
 		[_queueLock lock];
 
-		mainQueue = (id)((char *)self + 0x150);
-		queueHead = (int *)((char *)self + 0x150);
+		mainQueue = (id)((char *)&_queueHead);
+		queueHead = (int *)((char *)&_queueHead);
 
 		if (_queueHead == mainQueue) {
 			// Queue is empty
@@ -177,8 +177,8 @@ extern unsigned int _FloppyGeometry[];
 	}
 
 	// Initialize operation queue (circular list pointing to itself)
-	_queueHead = (void *)((char *)self + 0x150);
-	_queueTail = (void *)((char *)self + 0x150);
+	_queueHead = (void *)((char *)&_queueHead);
+	_queueTail = (void *)((char *)&_queueHead);
 
 	// Clear cache pointers
 	_cacheBuffer = NULL;
@@ -199,8 +199,8 @@ extern unsigned int _FloppyGeometry[];
 	// Allocate queue lock (NXConditionLock)
 	_queueLock = [NXConditionLock alloc];
 
-	// Clear thread port flag (bit 0)
-	*(unsigned char *)((char *)self + 0x15c) &= 0xfe;
+	// Thread not started yet
+	_startedThread = 0;
 
 	// Store device description
 	_deviceDescription = deviceDescription;
@@ -261,14 +261,14 @@ extern unsigned int _FloppyGeometry[];
 	// Fork operation thread
 	threadResult = IOForkThread((IOThreadFunc)OperationThreadStartup, self);
 
-	// Set thread port flag based on result
-	*(unsigned char *)((char *)self + 0x15c) &= 0xfe;
+	// Set the started flag from the fork result
+	_startedThread = 0;
 	if (threadResult != 0) {
-		*(unsigned char *)((char *)self + 0x15c) |= 1;
+		_startedThread = 1;
 	}
 
 	// Register device if thread started successfully
-	if ((*(unsigned char *)((char *)self + 0x15c) & 1) != 0) {
+	if (_startedThread) {
 		if ([self registerDevice]) {
 			return self;
 		}

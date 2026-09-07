@@ -8,6 +8,7 @@
 #import "Thread.h"
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
+#import "FloppyOperation.h"
 
 /*
  * strlower - Convert string to lowercase in-place
@@ -68,11 +69,11 @@ static void strlower(char *str)
  *
  * Parameters:
  *   queueHead - Pointer to queue head (doubly-linked list)
- *   operation - Operation structure to insert (0x28 bytes)
- *               operation[0] = operation type
- *               operation[1] = cylinder number (sort key)
- *               operation[8] = next pointer (offset 0x20)
- *               operation[9] = prev pointer (offset 0x24)
+ *   operation - Operation structure to insert (floppyOperation_t)
+ *               operation->type = operation type
+ *               operation->cylinder = cylinder number (sort key)
+ *               operation->link.next = next pointer
+ *               operation->link.prev = prev pointer
  *
  * Returns:
  *   1 - Operation inserted successfully
@@ -84,9 +85,9 @@ static void strlower(char *str)
  *   - queueHead[1] = last element
  *   - Empty queue: queueHead[0] == queueHead
  */
-static BOOL queueOperationAscending(id *queueHead, unsigned int *operation)
+static BOOL queueOperationAscending(id *queueHead, floppyOperation_t *operation)
 {
-	id *current;
+	floppyOperation_t *current;
 	unsigned int *lastOp;
 
 	// Start at first element in queue
@@ -101,13 +102,13 @@ static BOOL queueOperationAscending(id *queueHead, unsigned int *operation)
 				// Empty queue - insert as first element
 				*queueHead = operation;
 				queueHead[1] = operation;
-				operation[8] = (unsigned int)queueHead;
-				operation[9] = (unsigned int)queueHead;
+				operation->link.next = (queue_entry_t)queueHead;
+				operation->link.prev = (queue_entry_t)queueHead;
 			} else {
 				// Non-empty queue - append to end
 				lastOp = (unsigned int *)queueHead[1];
-				operation[9] = (unsigned int)lastOp;
-				operation[8] = (unsigned int)queueHead;
+				operation->link.prev = (queue_entry_t)lastOp;
+				operation->link.next = (queue_entry_t)queueHead;
 				queueHead[1] = operation;
 				lastOp[8] = (unsigned int)operation;
 			}
@@ -115,27 +116,27 @@ static BOOL queueOperationAscending(id *queueHead, unsigned int *operation)
 		}
 
 		// Check for duplicate (same cylinder and operation type)
-		if ((current[1] == (id)operation[1]) && (*current == (id)*operation)) {
+		if ((current->cylinder == operation->cylinder) && (current->type == operation->type)) {
 			// Duplicate found - free the new operation and return 0
 			IOFree(operation, 0x28);
 			return NO;
 		}
 
 		// Check if new operation's cylinder is less than current
-		if (operation[1] < (unsigned int)current[1]) {
+		if (operation->cylinder < current->cylinder) {
 			// Found insertion point
 			if ((id *)*queueHead != queueHead) {
 				// Queue not empty
 				if ((id *)*queueHead == current) {
 					// Insert at head
-					operation[9] = (unsigned int)queueHead;
-					operation[8] = (unsigned int)current;
+					operation->link.prev = (queue_entry_t)queueHead;
+					operation->link.next = (queue_entry_t)current;
 					*queueHead = operation;
 				} else {
 					// Insert in middle
-					operation[8] = (unsigned int)current;
-					operation[9] = (unsigned int)current[9];
-					((unsigned int **)current[9])[8] = operation;
+					operation->link.next = (queue_entry_t)current;
+					operation->link.prev = current->link.prev;
+					((floppyOperation_t *)current->link.prev)->link.next = (queue_entry_t)operation;
 				}
 				((unsigned int **)current)[9] = operation;
 				return YES;
@@ -144,8 +145,8 @@ static BOOL queueOperationAscending(id *queueHead, unsigned int *operation)
 			// Queue is empty, insert as first element
 			*queueHead = operation;
 			queueHead[1] = operation;
-			operation[8] = (unsigned int)queueHead;
-			operation[9] = (unsigned int)queueHead;
+			operation->link.next = (queue_entry_t)queueHead;
+			operation->link.prev = (queue_entry_t)queueHead;
 			return YES;
 		}
 
@@ -164,22 +165,22 @@ static BOOL queueOperationAscending(id *queueHead, unsigned int *operation)
  *
  * Parameters:
  *   queueHead - Pointer to queue head (doubly-linked list)
- *   operation - Operation structure to insert (0x28 bytes)
- *               operation[0] = operation type
- *               operation[1] = cylinder number (sort key)
- *               operation[8] = next pointer (offset 0x20)
- *               operation[9] = prev pointer (offset 0x24)
+ *   operation - Operation structure to insert (floppyOperation_t)
+ *               operation->type = operation type
+ *               operation->cylinder = cylinder number (sort key)
+ *               operation->link.next = next pointer
+ *               operation->link.prev = prev pointer
  *
  * Returns:
  *   1 - Operation inserted successfully
  *   0 - Duplicate operation found and freed
  *
  * Note: Identical to queueOperationAscending except comparison is reversed
- *       (checks if current[1] < operation[1] instead of operation[1] < current[1])
+ *       (checks if current->cylinder < operation->cylinder instead of operation->cylinder < current->cylinder)
  */
-static BOOL queueOperationDecending(id *queueHead, unsigned int *operation)
+static BOOL queueOperationDecending(id *queueHead, floppyOperation_t *operation)
 {
-	id *current;
+	floppyOperation_t *current;
 	unsigned int *lastOp;
 
 	// Start at first element in queue
@@ -194,13 +195,13 @@ static BOOL queueOperationDecending(id *queueHead, unsigned int *operation)
 				// Empty queue - insert as first element
 				*queueHead = operation;
 				queueHead[1] = operation;
-				operation[8] = (unsigned int)queueHead;
-				operation[9] = (unsigned int)queueHead;
+				operation->link.next = (queue_entry_t)queueHead;
+				operation->link.prev = (queue_entry_t)queueHead;
 			} else {
 				// Non-empty queue - append to end
 				lastOp = (unsigned int *)queueHead[1];
-				operation[9] = (unsigned int)lastOp;
-				operation[8] = (unsigned int)queueHead;
+				operation->link.prev = (queue_entry_t)lastOp;
+				operation->link.next = (queue_entry_t)queueHead;
 				queueHead[1] = operation;
 				lastOp[8] = (unsigned int)operation;
 			}
@@ -208,27 +209,27 @@ static BOOL queueOperationDecending(id *queueHead, unsigned int *operation)
 		}
 
 		// Check for duplicate (same cylinder and operation type)
-		if ((current[1] == (id)operation[1]) && (*current == (id)*operation)) {
+		if ((current->cylinder == operation->cylinder) && (current->type == operation->type)) {
 			// Duplicate found - free the new operation and return 0
 			IOFree(operation, 0x28);
 			return NO;
 		}
 
 		// Check if current operation's cylinder is less than new (DESCENDING order)
-		if ((unsigned int)current[1] < operation[1]) {
+		if (current->cylinder < operation->cylinder) {
 			// Found insertion point
 			if ((id *)*queueHead != queueHead) {
 				// Queue not empty
 				if ((id *)*queueHead == current) {
 					// Insert at head
-					operation[9] = (unsigned int)queueHead;
-					operation[8] = (unsigned int)current;
+					operation->link.prev = (queue_entry_t)queueHead;
+					operation->link.next = (queue_entry_t)current;
 					*queueHead = operation;
 				} else {
 					// Insert in middle
-					operation[8] = (unsigned int)current;
-					operation[9] = (unsigned int)current[9];
-					((unsigned int **)current[9])[8] = operation;
+					operation->link.next = (queue_entry_t)current;
+					operation->link.prev = current->link.prev;
+					((floppyOperation_t *)current->link.prev)->link.next = (queue_entry_t)operation;
 				}
 				((unsigned int **)current)[9] = operation;
 				return YES;
@@ -237,8 +238,8 @@ static BOOL queueOperationDecending(id *queueHead, unsigned int *operation)
 			// Queue is empty, insert as first element
 			*queueHead = operation;
 			queueHead[1] = operation;
-			operation[8] = (unsigned int)queueHead;
-			operation[9] = (unsigned int)queueHead;
+			operation->link.next = (queue_entry_t)queueHead;
+			operation->link.prev = (queue_entry_t)queueHead;
 			return YES;
 		}
 
@@ -269,13 +270,13 @@ static BOOL queueOperationDecending(id *queueHead, unsigned int *operation)
  *     -> Insert into descending queue (will be processed on current/next downward sweep)
  */
 static void sweepQueueInsert(id *ascendingQueue, id *descendingQueue,
-                              unsigned int *operation, unsigned int currentCylinder,
+                              floppyOperation_t *operation, unsigned int currentCylinder,
                               int sweepDirection)
 {
 	unsigned int operationCylinder;
 
 	// Get cylinder number from operation
-	operationCylinder = operation[1];
+	operationCylinder = operation->cylinder;
 
 	// Determine which queue to insert into based on sweep direction and position
 	if ((operationCylinder < currentCylinder) ||
@@ -428,8 +429,8 @@ static unsigned int *dequeueOperation(id *queueHead)
 	unsigned int *prevOp;
 
 	operation = (unsigned int *)*queueHead;
-	nextOp = (unsigned int *)operation[8];
-	prevOp = (unsigned int *)operation[9];
+	nextOp = (unsigned int *)((floppyOperation_t *)operation)->link.next;
+	prevOp = (unsigned int *)((floppyOperation_t *)operation)->link.prev;
 
 	if ((id *)nextOp == queueHead) {
 		queueHead[1] = (id)prevOp;
@@ -461,12 +462,12 @@ static void appendOperationToQueue(id *queueHead, unsigned int *operation)
 	if (queueEmpty(queueHead)) {
 		*queueHead = (id)operation;
 		queueHead[1] = (id)operation;
-		operation[8] = (unsigned int)queueHead;
-		operation[9] = (unsigned int)queueHead;
+		((floppyOperation_t *)operation)->link.next = (queue_entry_t)queueHead;
+		((floppyOperation_t *)operation)->link.prev = (queue_entry_t)queueHead;
 	} else {
 		lastOp = (unsigned int *)queueHead[1];
-		operation[9] = (unsigned int)lastOp;
-		operation[8] = (unsigned int)queueHead;
+		((floppyOperation_t *)operation)->link.prev = (queue_entry_t)lastOp;
+		((floppyOperation_t *)operation)->link.next = (queue_entry_t)queueHead;
 		queueHead[1] = (id)operation;
 		lastOp[8] = (unsigned int)operation;
 	}
@@ -868,7 +869,7 @@ static void appendOperationToQueue(id *queueHead, unsigned int *operation)
 	id geometry;
 	unsigned numCylinders;
 	unsigned cylinderNumber;
-	unsigned *operation;
+	floppyOperation_t *operation;
 	unsigned operationType;
 	BOOL success;
 
@@ -923,7 +924,7 @@ static void appendOperationToQueue(id *queueHead, unsigned int *operation)
 		// the whole drain, exactly as in the reference.
 		while (*(void **)((char *)self + 0x150) != mainQueue) {
 			operation = dequeueOperation((id *)((char *)self + 0x150));
-			operationType = operation[0];
+			operationType = operation->type;
 
 			if (operationType == 0) {
 				// Read: always goes on the read/write-soon sweep pair.
@@ -1057,32 +1058,32 @@ static void appendOperationToQueue(id *queueHead, unsigned int *operation)
 
 		if (selectedQueue != 0) {
 			operation = dequeueOperation(selectedQueue);
-			operationType = operation[0];
+			operationType = operation->type;
 
 			switch (operationType) {
 			case 0:
 				// Read cylinder
-				cylinderNumber = operation[1];
+				cylinderNumber = operation->cylinder;
 				if (*(int *)(*(int *)((char *)self + 0x13c) + cylinderNumber * 0x14) == 3) {
 					[self bringCylinderOnline:cylinderNumber isFormatted:(formatPending == NO)];
-					currentCylinder = operation[1];
+					currentCylinder = operation->cylinder;
 				}
 				IOFree(operation, 0x28);
 				break;
 
 			case 1:
 				// Write cylinder
-				cylinderNumber = operation[1];
+				cylinderNumber = operation->cylinder;
 				if ((*(unsigned char *)(*(int *)((char *)self + 0x13c) + 0x10 + cylinderNumber * 0x14) & 2) != 0) {
 					[self commitDirtyCylinder:cylinderNumber];
-					currentCylinder = operation[1];
+					currentCylinder = operation->cylinder;
 				}
 				IOFree(operation, 0x28);
 				break;
 
 			case 2:
 				// Eject/format - flush all dirty cylinders
-				operation[2] = 1;
+				operation->flag2 = 1;
 				if (*(int *)((char *)self + 0x148) != 1) {
 					geometry = *(id *)((char *)self + 0x14c);
 					numCylinders = *(unsigned *)((char *)geometry + 0x0c);
@@ -1098,7 +1099,7 @@ static void appendOperationToQueue(id *queueHead, unsigned int *operation)
 							currentCylinder = cylinderNumber - 1;
 							flagsPtr = (unsigned char *)(*(int *)((char *)self + 0x13c) + 0x10 + offset);
 							if ((*flagsPtr & 1) != 0) {
-								operation[2] = 0;
+								operation->flag2 = 0;
 							}
 						}
 
@@ -1109,17 +1110,17 @@ static void appendOperationToQueue(id *queueHead, unsigned int *operation)
 							currentCylinder = cylinderNumber - 1;
 							flagsPtr = (unsigned char *)(*(int *)((char *)self + 0x13c) + 0x10 + offset);
 							if ((*flagsPtr & 2) != 0) {
-								operation[2] = 0;
+								operation->flag2 = 0;
 							}
 						}
 					}
 				}
-				[(id)operation[3] unlockWith:0];
+				[operation->lock3 unlockWith:0];
 				break;
 
 			case 3:
 				// Change capacity/format
-				operation[6] = 0;
+				operation->result = 0;
 
 				// Abort all pending requests
 				[operationLock lock];
@@ -1143,8 +1144,8 @@ static void appendOperationToQueue(id *queueHead, unsigned int *operation)
 				[self releaseCache];
 
 				// Set new capacity
-				*(unsigned *)((char *)self + 0x148) = operation[5];
-				geometry = [IOFloppyDisk geometryOfCapacity:operation[5]];
+				*(unsigned *)((char *)self + 0x148) = operation->capacity;
+				geometry = [IOFloppyDisk geometryOfCapacity:operation->capacity];
 				*(id *)((char *)self + 0x14c) = geometry;
 
 				[self setBlockSize:*(unsigned *)((char *)geometry + 0x14)];
@@ -1172,7 +1173,7 @@ static void appendOperationToQueue(id *queueHead, unsigned int *operation)
 					[self releaseCache];
 				}
 
-				operation[6] = success;
+				operation->result = success;
 
 				// Reset scheduler state for the new media: head back at
 				// cylinder 0 sweeping up, and formatPending mirrors whether
@@ -1183,10 +1184,10 @@ static void appendOperationToQueue(id *queueHead, unsigned int *operation)
 				readAheadEnabled = (readMode == 0 && *(int *)((char *)self + 0x148) != 1) ? YES : NO;
 				currentCylinder = 0;
 				sweepDirection = 1;
-				formatPending = (BOOL)operation[6];
+				formatPending = (BOOL)operation->result;
 				forceReorder = NO;
 
-				[(id)operation[7] unlockWith:0];
+				[operation->lock7 unlockWith:0];
 				break;
 
 			case 4:
@@ -1206,7 +1207,7 @@ static void appendOperationToQueue(id *queueHead, unsigned int *operation)
 				[self clearOperationsOnQueue:(id)wbDescQueue];
 
 				// Signal completion
-				[(id)operation[4] unlockWith:0];
+				[operation->completionLock unlockWith:0];
 				return;
 
 			default:

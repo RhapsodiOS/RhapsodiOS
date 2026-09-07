@@ -135,8 +135,10 @@ def source_sites(repo_root, source_path):
     # source_files() returns one suffix-mixed sorted list; a directory whose
     # source shares space with .c-prefixed names earlier in the alphabet
     # (e.g. Windows' case-insensitive path sort) would otherwise interleave
-    # .m and .c files instead of scanning all .m files before all .c files,
-    # which changes which duplicate definition wins. Restore that order.
+    # .m and .c files instead of scanning all .m files before all .c files.
+    # sites accumulates every definition site regardless of scan order, so
+    # this reorder changes nothing about the output; it costs nothing and
+    # keeps the call site faithful to what it replaced, so restore it anyway.
     found = source_files(source_path, {".m", ".c"}, recursive=False)
     paths = [p for p in found if p.suffix == ".m"] + [p for p in found if p.suffix == ".c"]
     for path in paths:

@@ -528,27 +528,46 @@ git commit -m "drvPCFloppy: use the Mach queue macros for the operation queue"
 
 All paths are in the driver directory.
 
-- [ ] **Step 1: Move `protocols[]` to file scope**
+- [ ] **Step 1: Move `protocols[]` to file scope and correct its type and contents**
 
 In `IODiskPartitionNEW.m`, the array is currently local to
-`+[IODiskPartitionNEW requiredProtocols]` at line 48. Move the declaration
-above the `@implementation`, leaving the method returning it:
+`+[IODiskPartitionNEW requiredProtocols]` at line 48, and it is wrong in three
+ways at once: its linkage, its element type, and its contents.
+
+The reference's `_protocols` is an array of **`Protocol` objects**, not name
+strings. Resolving the two relocations against it — `__OBJC,__protocol` with
+addends 40 and 20 — and reading the protocol records at those offsets gives
+`IODiskPhysicalNEW` and `IODiskReadingAndWriting` respectively. Our single
+entry, the string `"IOPhysicalDiskMethods"`, is the one string in the whole
+driver that the reference does not contain; it is invented.
+
+Replace the whole method. Above the `@implementation`, add:
 
 ```objc
-static const char *protocols[] = {
-	"IOPhysicalDiskMethods",
-	NULL
+static Protocol *protocols[] = {
+	@protocol(IODiskPhysicalNEW),
+	@protocol(IODiskReadingAndWriting),
+	nil
 };
 ```
 
-and the method body becomes:
+and the method becomes:
 
 ```objc
-+ (const char **)requiredProtocols
++ (Protocol **)requiredProtocols
 {
 	return protocols;
 }
 ```
+
+Update the declaration in `IODiskPartitionNEW.h` to match the new return type.
+Both protocols are already declared in `IODiskProtocols.h`, which
+`IODiskPartitionNEW.m` imports via `IOFloppyDisk.h`; confirm the import chain
+reaches it and add `#import "IODiskProtocols.h"` directly if it does not.
+
+**This step is wider than the spec's §2.1, which described only a linkage
+change.** The widening was approved before execution after the relocation
+evidence above was presented.
 
 - [ ] **Step 2: Move `diskIoReturnValues[]` to file scope**
 
@@ -798,7 +817,7 @@ Expected `__text`: `ours-only` is empty. `reference-only` contains
 `_Floppy_VERS_NUM`, `_Floppy_VERS_STRING`, and possibly `___clz_tab` and
 `__udivdi3`.
 
-Expected `__data`: `_protocols` and `_diskIoReturnValues` present on both sides;
+Expected `__data`: `_protocols` and `_diskIoReturnValues` present on both sides, with `_protocols` now holding two `Protocol *` entries rather than one string;
 `_protocols.82` and `_diskIoReturnValues.126` gone from ours. `reference-only`
 still contains `_fcUnitNum`, `_ssi_1mb`, `_ssi_2mb`, `_ssi_4mb`, which are out
 of scope and belong to Pieces B and C.

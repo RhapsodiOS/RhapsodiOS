@@ -30,17 +30,22 @@
 #ifndef _PCIRESOURCEDRIVER_H_
 #define _PCIRESOURCEDRIVER_H_
 
-#import <driverkit/IODevice.h>
+#import <driverkit/IODirectDevice.h>
 #import <driverkit/IODeviceDescription.h>
 
 /*
  * PCIResourceDriver - Manages PCI device resources
+ *
+ * IODirectDevice, not IODevice: that is what the reference names, and
+ * being 32 bytes larger it is what places the two ivars at +296 and
+ * +808 for an instance size of 812.
  */
-@interface PCIResourceDriver : IODevice
+
+@interface PCIResourceDriver : IODirectDevice
 {
     @private
-    char _nameBuffer[512];
-    unsigned int _nameBufferLen;
+    char autoDetectIDs[512];        /* +296 */
+    int  autoDetectIDindex;         /* +808 */
 }
 
 /*

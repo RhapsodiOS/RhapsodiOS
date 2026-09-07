@@ -161,8 +161,8 @@ static void Set_ConfigReg(unsigned int count, char *values, unsigned int reg,
 
     case 3:  /* PCI_Name( */
         /* Clear name buffer */
-        _nameBufferLen = 0;
-        bzero(_nameBuffer, sizeof(_nameBuffer));
+        autoDetectIDindex = 0;
+        bzero(autoDetectIDs, sizeof(autoDetectIDs));
 
         /* Parse closing parenthesis */
         parsedStr = PCIParsePrefix("PCI)", parsedStr);
@@ -175,22 +175,22 @@ static void Set_ConfigReg(unsigned int count, char *values, unsigned int reg,
         /* Copy name from parsedStr to buffer */
         while (parsedStr < (char *)parameterName + 64 &&
                *parsedStr != '\0' &&
-               _nameBufferLen < 511) {
-            _nameBuffer[_nameBufferLen++] = *parsedStr++;
+               autoDetectIDindex < 511) {
+            autoDetectIDs[autoDetectIDindex++] = *parsedStr++;
         }
-        _nameBuffer[_nameBufferLen] = '\0';
+        autoDetectIDs[autoDetectIDindex] = '\0';
 
         /* Copy to output */
-        strncpy(values, _nameBuffer, *count);
+        strncpy(values, autoDetectIDs, *count);
         return IO_R_SUCCESS;
 
     case 5:  /* PCI_ID( */
         if (*count >= 80) {
-            if (_nameBuffer[0] == '\0') {
+            if (autoDetectIDs[0] == '\0') {
                 return IO_R_NOT_ATTACHED;
             }
             idValue = strtoul(parsedStr, &parsedStr, 0);
-            return LookForID(idValue, _nameBuffer, values, count);
+            return LookForID(idValue, autoDetectIDs, values, count);
         }
         break;
 

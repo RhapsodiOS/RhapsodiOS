@@ -10,6 +10,7 @@
 #import <driverkit/kernelDriver.h>
 #import <machkit/NXLock.h>
 #import "FloppyVm.h"
+#import "FloppyOperation.h"
 
 // External references for VM functions
 extern unsigned int page_size;
@@ -217,7 +218,7 @@ static void docopy(vm_map_t sourceMap,
 	BOOL isWrite;
 	int cylinderState;
 	int cylinderOffset;
-	unsigned *readOperation;
+	floppyOperation_t *readOperation;
 	id mainQueue;
 	id queueLock;
 	int *queueHead;
@@ -239,13 +240,13 @@ static void docopy(vm_map_t sourceMap,
 	// Check if cylinder needs to be loaded (state == 3)
 	if (cylinderState == 3) {
 		// Allocate read operation (0x28 = 40 bytes)
-		readOperation = (unsigned *)IOMalloc(0x28);
-		
+		readOperation = (floppyOperation_t *)IOMalloc(sizeof(floppyOperation_t));
+
 		// Set operation type to 0 (read cylinder)
-		readOperation[0] = 0;
-		
+		readOperation->type = 0;
+
 		// Set cylinder number
-		readOperation[1] = cylinderNumber;
+		readOperation->cylinder = cylinderNumber;
 		
 		// Get queue lock
 		queueLock = *(id *)((char *)self + 0x158);
@@ -262,13 +263,13 @@ static void docopy(vm_map_t sourceMap,
 			// Queue is empty
 			*(unsigned **)((char *)self + 0x150) = readOperation;
 			*(unsigned **)((char *)self + 0x154) = readOperation;
-			readOperation[8] = (unsigned)queueHead;  // prev
-			readOperation[9] = (unsigned)queueHead;  // next
+			readOperation->link.next = (queue_entry_t)queueHead;
+			readOperation->link.prev = (queue_entry_t)queueHead;
 		} else {
 			// Queue has entries - append to end
 			int lastEntry = *(int *)((char *)self + 0x154);
-			readOperation[9] = lastEntry;  // prev
-			readOperation[8] = (unsigned)queueHead;  // next
+			readOperation->link.prev = (queue_entry_t)lastEntry;
+			readOperation->link.next = (queue_entry_t)queueHead;
 			*(unsigned **)((char *)self + 0x154) = readOperation;
 			*(unsigned **)(lastEntry + 0x20) = readOperation;
 		}
@@ -882,7 +883,7 @@ static void docopy(vm_map_t sourceMap,
 	BOOL isWrite;
 	int *refCountPtr;
 	unsigned char *flagsPtr;
-	unsigned *operation;
+	floppyOperation_t *operation;
 	id queueLock;
 	id mainQueue;
 	int *queueHead;
@@ -918,13 +919,13 @@ static void docopy(vm_map_t sourceMap,
 		*(int *)((char *)cacheMetadata + cylinderOffset) = 0;
 
 		// Allocate write operation structure (0x28 = 40 bytes)
-		operation = (unsigned *)IOMalloc(0x28);
+		operation = (floppyOperation_t *)IOMalloc(sizeof(floppyOperation_t));
 
 		// Set operation type to 1 (write cylinder)
-		operation[0] = 1;
+		operation->type = 1;
 
 		// Set cylinder number
-		operation[1] = cylinderNumber;
+		operation->cylinder = cylinderNumber;
 
 		// Get queue lock
 		queueLock = *(id *)((char *)self + 0x158);
@@ -941,13 +942,13 @@ static void docopy(vm_map_t sourceMap,
 			// Queue is empty
 			*(unsigned **)((char *)self + 0x150) = operation;
 			*(unsigned **)((char *)self + 0x154) = operation;
-			operation[8] = (unsigned)queueHead;  // prev
-			operation[9] = (unsigned)queueHead;  // next
+			operation->link.next = (queue_entry_t)queueHead;
+			operation->link.prev = (queue_entry_t)queueHead;
 		} else {
 			// Queue has entries - append to end
 			int lastEntry = *(int *)((char *)self + 0x154);
-			operation[9] = lastEntry;  // prev
-			operation[8] = (unsigned)queueHead;  // next
+			operation->link.prev = (queue_entry_t)lastEntry;
+			operation->link.next = (queue_entry_t)queueHead;
 			*(unsigned **)((char *)self + 0x154) = operation;
 			*(unsigned **)(lastEntry + 0x20) = operation;
 		}

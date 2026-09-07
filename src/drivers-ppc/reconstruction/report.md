@@ -950,3 +950,129 @@ so the driver's **data** symbols still carry the same spurious underscore the
 wrong spelling. `symbol_name_check.py` gates defined `__TEXT,__text` symbols
 only, so its clean result cannot speak to either. Both are pre-existing and were
 scheduled rather than fixed on this branch.
+
+---
+
+## Addendum — `IONDRVSupport`, measured separately
+
+Added after this report was written. `IONDRVSupport` is outside the five drivers
+measured above and outside the `Floppy` addendum; it was deferred to its own spec
+([2026-07-28-iondrvsupport-measurement-design.md](../../../docs/superpowers/specs/2026-07-28-iondrvsupport-measurement-design.md))
+and is recorded here so the series has one place that points at it.
+
+Full evidence: [IONDRVSupport/findings.md](IONDRVSupport/findings.md).
+Artifacts: `IONDRVSupport/source-map.json`, `IONDRVSupport/ledger.json`.
+
+### Its source is not a driver project, and an earlier survey said it had none
+
+`IONDRVSupport` is compiled from **`src/driverkit-3/libDriver/ppc/`**, the same
+`driverkit-3` framework directory that builds `IOApplePCIBus` and `IODisplay`
+(§3 and §4.5 above). There is no `IONDRVSupport.drvproj`. Its measurement
+artifacts live here rather than under `src/driverkit-3/libDriver/reconstruction/`
+so that all PowerPC measurement stays in one place.
+
+**An earlier ad-hoc survey recorded this driver as having no in-tree source at
+all** — the spec's §3.2 names it as one of six wrong answers that method
+produced in this series. The claim never reached a published count: this driver
+appears in the earlier reports only as "deferred", so the false conclusion
+postponed the work rather than corrupting a number. It is recorded here because
+the actual source is 5 files and 196 definitions, and because it is the same
+class of error as the `find | head -1` mistake documented in the `Floppy`
+addendum.
+
+**This is the first driver in the series whose source shares a directory with
+other binaries' sources.** That is what made a file-granularity scoping fix
+necessary: `selector_check.py`, `symbol_name_check.py` and `binrecon source-map`
+all returned **zero** for a file path instead of erroring, so a scoped gate would
+have read green while measuring nothing. `source_files(path, suffixes,
+recursive=True)` in `tools/binrecon/source_paths.py` now backs all four walkers,
+plus a fifth `is_dir()` guard in `cli.py` that the first conversion missed.
+
+### Headline numbers
+
+`IONDRVSupport_reloc`, SHA-256
+`C12688AE327660F69F16375E45E089673C9E0955FA6FFEDBB31F3B0C23CE85B1`; `__text`
+`0x0`–`0x97c4`, 38,852 bytes.
+
+| | |
+| --- | --- |
+| defined `__TEXT,__text` symbols | 192 |
+| Objective-C selectors | 68 |
+| C functions | 124 |
+| IDA named functions (map universe) | 191 |
+| scoped source files | 5 of the directory's 17 |
+
+Scoped in: `IONDRVFramebuffer.m` (8 C + 58 selectors), `IONDRVLibraries.m` (61
+C), `IONDRVInterface.m` (6 C), `IOPEFInternals.c` (26 C), `IOPEFLoader.c` (13 C).
+The other twelve files contribute **zero** matching definitions between them.
+
+Source map:
+
+```
+driver           total  mapped  unmap  dup  disp
+IONDRVSupport      191     165     23    3     0
+```
+
+Buckets: `RECONCILES: yes`, counted 191 — bucket 4 holds the two build-generated
+class methods and buckets 1, 2, 3 and 5 are all 0. Ledger: 191 entries, 165 with
+a verified source citation, 26 uncitable by construction.
+
+The map covers 165 of the 190 hand-written functions. The 191st symbol is
+`-[IONDRVFramebuffer doControl:params:]` at `__text+0`: the bytes there are real
+code (`7c0802a6`, `mflr r0`) but IDA's function list has no entry at address 0,
+so the symbol cannot enter the map. A **known exclusion, not a gap and not a
+phantom**. Unlike `Floppy`, this one *is* an Objective-C method, so
+`selector_check.py` confirms it — it is absent from that checker's `missing` list.
+
+### The spec's 45-function, 16,276-byte gap is one function
+
+Spec §1.1 sized this driver's gap at "16,276 bytes across 45 C functions — 42% of
+`__text`" in four clusters, and decomposed the reconstruction into four
+sub-projects on that basis. The figure reproduces exactly from
+`symbol_name_check.py`. It does not survive the map.
+
+| the 45 | n | what they are |
+| --- | ---: | --- |
+| mapped, with a verified definition site | 32 | `symbol_name_check.py` false positives — two scanner defects, `IONDRVSupport/findings.md` §11 |
+| defined but over-underscored | 12 | a **rename**, not bodies to write — §9 |
+| **genuinely absent** | **1** | `_eLMGetPowerMgrVars`, 104 bytes at `0x5fd8` |
+
+The PEF/PCode cluster — 25 functions and 12,060 bytes, the largest predicted gap
+and the whole argument for splitting the work — **is already implemented**: all
+39 PEF/PCode functions in `IOPEFInternals.c` and `IOPEFLoader.c` map, including
+`_PEF_OpenContainer`, `_UnpackPartialSection`, `_Instantiate` and
+`_SatisfyImports`. Zero are unmapped. **123 of the 124 C symbols have a
+definition site.**
+
+The outstanding work is therefore twelve renames, one class-hierarchy decision
+(`IOATIMACH64NDRV`/`IOATIRAGE128NDRV` against the binary's flat `IOATINDRV`),
+three duplicate-symbol removals (`_StdInt{Handler,Enabler,Disabler}`) and one
+function to write — not four sub-projects.
+
+### Both underscore cases occur in this one driver
+
+This is the **sixth** appearance of the spurious-leading-underscore defect in the
+series (after `e094b623`, `7ec48d4d`, `c365f6db` and the two scope refinements).
+Twelve `static` functions in `IONDRVFramebuffer.m` carry one underscore too many
+and emit symbols the binary never contained.
+
+**And the rule inverts for a larger family in the same binary.** 59 symbols
+begin `__e`; there the ABI's single prepended underscore means Apple's source
+legitimately wrote `_eRegistryEntryIterate`, and 58 of the 59 map on that
+spelling. Stripping a leading underscore from every C name — the reflex applied
+in five earlier specs — would turn 58 correct mappings into 58 false "missing"
+reports. A follow-on spec must keep the two straight.
+
+### What this does not establish
+
+**Nothing was compiled** — no PowerPC toolchain, no host C compiler, no `make`.
+This measurement wrote no bodies and renamed nothing; `src/driverkit-3/` is
+untouched.
+
+The twelve over-underscored bodies and the eight `IOATIMACH64NDRV` bodies trace
+by `git log -L` to commit `6f3d886c`, which is **prior in-repo reconstruction,
+not recovered Apple source**. Their fidelity to the reference is unverified — no
+disassembly comparison has been made at `0x21b8`–`0x38a8` or `0x2744`–`0x2c28` —
+so "a body exists" must not be read as "a body is correct". That is the largest
+open risk this measurement uncovered, and it is recorded in
+[IONDRVSupport/findings.md](IONDRVSupport/findings.md) §16.

@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-28
 **Reference:** `C:/Users/raynorpat/Downloads/test/Drivers/ppc/IONDRVSupport.config/IONDRVSupport_reloc`
-**Source:** `src/driverkit-3/libDriver/ppc/` — three files, see §3
+**Source:** `src/driverkit-3/libDriver/ppc/` — five files, see `IONDRVSupport/findings.md` §4
 
 ## 1. Goal
 
@@ -204,7 +204,7 @@ already there, even though the source lives under `driverkit-3`.
    disposition. **Amended after Task 3: "0 extra" is unachievable and was the
    wrong target.** 12 remain — 8 `IOATIMACH64NDRV` and 1 `IOATIRAGE128NDRV`
    methods, because our tree splits the binary's flat `IOATINDRV` into a base
-   class plus subclasses, and 3 methods newer than the binary. That is a
+   class plus subclasses, and 3 methods with no symbol-table counterpart. That is a
    class-hierarchy divergence to record, not a scoping failure to fix; the
    classes live in `IONDRVFramebuffer.m`, which is unambiguously in scope, so no
    file-level scoping can change the count.

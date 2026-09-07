@@ -286,3 +286,115 @@ def test_main_without_check_data_flag_ignores_data_symbols(tmp_path, monkeypatch
     monkeypatch.setattr(symbol_name_check, "read_macho", fake_read_macho)
     exit_code = main(["--binary", "unused", "--source-dir", str(tmp_path)])
     assert exit_code == 0
+
+
+# -- the name is read whole -----------------------------------------------------
+
+
+def test_source_definitions_keeps_the_whole_name_after_a_same_line_return_type(tmp_path):
+    """`void PCodeOpen(...)`: the return type is on the line, so the name is intact."""
+    (tmp_path / "a.c").write_text("void PCodeOpen(int a)\n{\n}\n")
+    assert source_definitions(tmp_path) == {"PCodeOpen"}
+
+
+def test_source_definitions_keeps_the_first_character_of_a_column_zero_name(tmp_path):
+    """`PCodeOpen(...)` under its return type once yielded `CodeOpen`: the leading
+    `[A-Za-z_]` meant for the return type ate the name's first character."""
+    (tmp_path / "a.c").write_text("OSStatus\nPCodeOpen(int a)\n{\n}\n")
+    assert source_definitions(tmp_path) == {"PCodeOpen"}
+
+
+def test_source_definitions_keeps_a_digit_bearing_column_zero_name(tmp_path):
+    """`m64Init(...)` under its return type once yielded `Init`: the lazy type
+    pattern matched empty and the name's `m64` was swallowed as the type."""
+    (tmp_path / "a.c").write_text("void\nm64Init(volatile UInt32 *b)\n{\n}\n")
+    assert source_definitions(tmp_path) == {"m64Init"}
+
+
+def test_source_definitions_keeps_a_digit_bearing_name_after_a_same_line_type(tmp_path):
+    (tmp_path / "a.c").write_text("void m64Init(volatile UInt32 *b)\n{\n}\n")
+    assert source_definitions(tmp_path) == {"m64Init"}
+
+
+def test_source_definitions_keeps_a_leading_underscore_in_the_source_name(tmp_path):
+    """`_m64Init` is what the source spells, so that is what the scanner records;
+    the over-underscored symbol it produces is a real gap, not a scanner miss."""
+    (tmp_path / "a.c").write_text("static void _m64Init(volatile UInt32 *b)\n{\n}\n")
+    assert source_definitions(tmp_path) == {"_m64Init"}
+
+
+def test_source_definitions_ignores_a_column_zero_call_with_no_return_type_above(tmp_path):
+    """A bare `name(args)` at column 0 is a definition only when a return type
+    sits above it; otherwise it is a function-like macro invocation."""
+    (tmp_path / "a.c").write_text(
+        "/* a table built by a macro, not a function */\n"
+        "DEFINE_TABLE(entries)\n"
+        "{\n"
+        "    1, 2,\n"
+        "};\n"
+    )
+    assert source_definitions(tmp_path) == set()
+
+
+def test_source_definitions_ignores_a_column_zero_call_under_a_closing_brace(tmp_path):
+    """A closing brace is not a return type, so the line below it is not a definition."""
+    (tmp_path / "a.c").write_text("void done(void)\n{\n}\n\nINVOKE_MACRO(x)\n{\n}\n")
+    assert source_definitions(tmp_path) == {"done"}
+
+
+# -- the body brace is found past a multi-line parameter list -------------------
+
+
+def test_source_definitions_finds_a_brace_past_a_multi_line_parameter_list(tmp_path):
+    """PEF_OpenContainer's parameter list spans ten lines, pushing its `{` well
+    past the four-line window the scanner used to look through."""
+    (tmp_path / "a.c").write_text(
+        "OSStatus    PEF_OpenContainer   ( LogicalAddress            mappedAddress,\n"
+        "                                  LogicalAddress            runningAddress,\n"
+        "                                  ByteCount                 containerLength,\n"
+        "                                  KernelProcessID           runningProcessID,\n"
+        "                                  const CFContHashedName *  cfragName,\n"
+        "                                  CFContOpenOptions         options,\n"
+        "                                  CFContAllocateMem         Allocate,\n"
+        "                                  CFContReleaseMem          Release,\n"
+        "                                  CFContHandlerRef *        containerRef,\n"
+        "                                  CFContHandlerProcsPtr *   handlerProcs )\n"
+        "{\n"
+        "    return -1;\n"
+        "}\n"
+    )
+    assert source_definitions(tmp_path) == {"PEF_OpenContainer"}
+
+
+def test_source_definitions_ignores_a_multi_line_prototype(tmp_path):
+    """The widened window must still reject a prototype: the `;` arrives first."""
+    (tmp_path / "a.c").write_text(
+        "extern OSStatus PEF_OpenContainer( LogicalAddress   mappedAddress,\n"
+        "                                   LogicalAddress   runningAddress,\n"
+        "                                   ByteCount        containerLength,\n"
+        "                                   CFContOpenOptions options,\n"
+        "                                   CFContAllocateMem Allocate );\n"
+        "\n"
+        "void other(void)\n"
+        "{\n"
+        "}\n"
+    )
+    assert source_definitions(tmp_path) == {"other"}
+
+
+def test_source_definitions_ignores_a_prototype_followed_by_a_definition(tmp_path):
+    """A prototype whose `;` precedes a later `{` must not borrow that brace."""
+    (tmp_path / "a.c").write_text(
+        "static void changeState(int x);\n"
+        "\n"
+        "static void other(int x)\n"
+        "{\n"
+        "}\n"
+    )
+    assert source_definitions(tmp_path) == {"other"}
+
+
+def test_source_definitions_ignores_a_column_zero_prototype_under_its_return_type(tmp_path):
+    """Return type above, name at column 0, but a `;` ends it: still a prototype."""
+    (tmp_path / "a.c").write_text("OSStatus\nPCodeOpen( int a );\n")
+    assert source_definitions(tmp_path) == set()

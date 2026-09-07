@@ -684,6 +684,23 @@ four sub-projects — **is already implemented.** All 39 PEF/PCode functions acr
 
 Zero PEF/PCode functions are unmapped.
 
+### 11.4 The scanner defects are latent elsewhere in the series, not yet realised
+
+A prior review of this series asserted that the scanner defects of 11.1 and
+11.2 had already degraded the published gate for `Floppy`, citing
+`Geometry.m:171` and "4 missing". That is wrong. `Geometry.m` belongs to
+`src/drivers-i386/ide/drvPCFloppy` — the **i386** floppy driver, which no task
+in this series has measured or gated. The PPC driver reconstructed and gated
+in this series is `src/drivers-ppc/ide/drvPPCSwimFloppy`, and its gate reports
+**141 hand-written C symbols, 0 missing** (`report.md`). `report.md`'s
+`Floppy` claims are accurate and need no correction.
+
+The defects themselves are real, but **latent, not yet realised**: no driver
+measured in this series contains a column-0 name-first definition, so no
+published gate result is affected by them. `drvPCFloppy` (i386) does contain
+one — `fdGetSectSizeInfo`, `Geometry.m:171` — and would be affected if that
+driver is ever gated.
+
 ## 12. `-[IONDRVFramebuffer doControl:params:]` at `__text+0` — a known exclusion
 
 `ppc_invariant_check.py`:
@@ -795,12 +812,18 @@ extras are exactly, name for name, the 8 `IOATINDRV` missing entries of 8.4:
 The 9th, `-[IOATIRAGE128NDRV moveCursor:frame:token:]`, is new code with no
 reference counterpart at all.
 
-Our in-tree source is a **later** revision than the shipped binary: it factored
-the flat class into a base plus a Mach64 subclass and added a Rage128 subclass
-the binary has never heard of. The one method our tree still keeps on the base
-class, `-[IOATINDRV getStartupMode:depth:]`, maps cleanly at `0x2018`.
+The base/Mach64 split is Apple's own, not ours: Darwin 0.3's
+`IONDRVFramebuffer.h` already declares `@interface IOATIMACH64NDRV:IOATINDRV`
+(empty, `19ffee9a`). `IOATIRAGE128NDRV` is not Apple's — it first appears in
+`6f3d886c`, an in-repo commit. And nothing was "factored": Apple's `.m`
+implements only `IOATINDRV`, with a single method
+(`getStartupMode:depth:`), and has no `@implementation IOATIMACH64NDRV` at
+all. The eight `IOATIMACH64NDRV` bodies were never in Apple's source under any
+class; `6f3d886c` wrote them (section 16). The one method our tree still keeps
+on the base class, `-[IOATINDRV getStartupMode:depth:]`, maps cleanly at
+`0x2018`.
 
-**(b) Three methods newer than the binary.**
+**(b) Three methods with no symbol-table counterpart.**
 `-[IONDRVFramebuffer getInterruptFunctionsTV:refCon:handler:enabler:disabler:]`,
 `-[IONDRVFramebuffer setInterruptFunctionsTV:refCon:handler:enabler:disabler:]`
 and `-[IONDRVFramebuffer(ProgramDAC) interruptOccurred]` exist in our

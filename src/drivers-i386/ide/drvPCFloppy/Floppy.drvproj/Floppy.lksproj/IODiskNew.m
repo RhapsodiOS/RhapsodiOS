@@ -36,7 +36,7 @@
  */
 - drive
 {
-	return _drive;
+	return _driveId;
 }
 
 /*
@@ -232,7 +232,7 @@
  */
 - (void)setDrive : driveId
 {
-	_drive = driveId;  // offset 0x120
+	_driveId = driveId;  // offset 0x120
 }
 
 /*

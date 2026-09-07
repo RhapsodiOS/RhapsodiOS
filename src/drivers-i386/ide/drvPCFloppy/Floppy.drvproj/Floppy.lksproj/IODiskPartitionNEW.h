@@ -24,10 +24,7 @@
 	BOOL		_labelValid;		// label is valid
 	BOOL		_blockDeviceOpen;	// block device is open
 	BOOL		_rawDeviceOpen;		// raw device is open
-	unsigned char	_physicalPartition;	// partition index in real map
-	ns_time_t	_probeTime;
-	id		_partitionWaitLock;	// condition lock to wait for probe of label
-	int		_IODiskPartitionNEW_reserved[4];
+	int		_IODiskPartition_reserved[4];
 }
 
 /*

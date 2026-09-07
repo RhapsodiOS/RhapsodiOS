@@ -19,7 +19,7 @@
 	unsigned	_partitionBase;		// base offset of partition
 	BOOL		_instanceOpen;		// instance open flag
 
-	int		_IOLogicalDiskNEW_reserved[4];
+	int		_IOLogicalDisk_reserved[4];
 }
 
 /*

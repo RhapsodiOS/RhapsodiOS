@@ -199,8 +199,15 @@ already there, even though the source lives under `driverkit-3`.
    map's `source_path` values.
 4. The source map built over the scoped files, with every `unmapped`,
    `duplicate_candidates` and `boundary_disputed` entry explained.
-5. `selector_check.py` reports **0 extra** once scoped, and its `missing` list is
-   enumerated with each entry's disposition.
+5. `selector_check.py`'s `extra` count falls from its unscoped 183 to the
+   irreducible remainder, and every remaining entry is enumerated with its
+   disposition. **Amended after Task 3: "0 extra" is unachievable and was the
+   wrong target.** 12 remain — 8 `IOATIMACH64NDRV` and 1 `IOATIRAGE128NDRV`
+   methods, because our tree splits the binary's flat `IOATINDRV` into a base
+   class plus subclasses, and 3 methods newer than the binary. That is a
+   class-hierarchy divergence to record, not a scoping failure to fix; the
+   classes live in `IONDRVFramebuffer.m`, which is unambiguously in scope, so no
+   file-level scoping can change the count.
 6. `-[IONDRVFramebuffer doControl:params:]` recorded as a known exclusion per §5 —
    not a gap, not a phantom — and confirmed present by `selector_check.py`.
 7. Bucket reconciliation reports `RECONCILES: yes`, with the two build-generated

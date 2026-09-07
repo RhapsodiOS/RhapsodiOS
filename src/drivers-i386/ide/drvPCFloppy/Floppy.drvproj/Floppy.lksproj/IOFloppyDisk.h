@@ -4,7 +4,7 @@
  * Main class for floppy disk devices with cylinder-based caching
  */
 
-#import "IODriveNEW.h"
+#import "IODiskNew.h"
 #import <driverkit/return.h>
 #import "FloppyVm.h"
 #import "IODiskProtocols.h"
@@ -18,10 +18,15 @@ void OperationThreadStartup(id self);
 /*
  * IOFloppyDisk - Floppy disk device with cylinder caching
  *
- * Extends IODriveNEW to provide cylinder-based caching for floppy disks.
+ * Extends IODiskNEW to provide cylinder-based caching for floppy disks.
  * Uses a background operation thread for read-ahead and write-behind operations.
+ *
+ * IODiskNEW, not IODriveNEW: the reference names IODiskNEW, this class
+ * sends only IODiskNEW methods, and IODiskNEW is 308 bytes where
+ * IODriveNEW is 352 -- which is what puts the ivars below at the 0x134
+ * offsets their own comments already claim.
  */
-@interface IOFloppyDisk : IODriveNEW <IODiskReadingAndWriting, IODiskPhysicalNEW>
+@interface IOFloppyDisk : IODiskNEW <IODiskReadingAndWriting, IODiskPhysicalNEW>
 {
 	// Cache management (offsets 0x134-0x140)
 	void *_cacheBuffer;              // offset 0x134: cache data buffer

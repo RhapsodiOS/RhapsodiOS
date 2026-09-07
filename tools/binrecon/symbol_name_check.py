@@ -66,6 +66,20 @@ def _opens_a_body(lines, index, start):
     closed by `;`. Whichever arrives first decides, so the scan can reach past a
     parameter list spanning many lines without ever admitting a prototype — a
     prototype's `;` is always encountered before any later definition's brace.
+
+    This also rejects a K&R-style definition outright, since its parameter
+    declarations each end in `;` before the body's `{` is ever reached, e.g.
+    `cpu_sysctl` in `drivers-ppc/bus/drvPExpert/powermac/powermac_init.c`
+    (`cpu_sysctl(name, namelen, ...)` followed by a run of `int *name;` /
+    `u_int namelen;` declarations). Not a regression — the old scanner recorded
+    a mangled name or nothing for every K&R definition in this corpus, and none
+    is inside a gated driver — but it is a real narrowing worth naming.
+
+    A further latent hazard: this reads raw text, so a `;` or `{` inside a
+    comment or string literal between the `(` and the body would decide
+    wrongly. Not realised in this corpus — `cpu_sysctl` is the only
+    non-prototype among the 251 semicolon-first rejections — so it is latent,
+    not actual.
     """
     for offset in range(index, min(index + _BODY_LOOKAHEAD, len(lines))):
         text = lines[offset][start:] if offset == index else lines[offset]
@@ -76,12 +90,17 @@ def _opens_a_body(lines, index, start):
 
 
 def _has_return_type_above(lines, index):
-    """Return True when the line above holds nothing but a return type.
+    """Return True when the line above, stripped, holds nothing but a return type.
 
     `name(args)` at column 0 is a definition only when its return type sits on
     the preceding line, as in `OSStatus` / `PCodeOpen( ... )`. Without one the
     line is a function-like macro invocation, not a definition site, so
     requiring the type keeps the relaxed pattern above from inventing names.
+    The match is against the preceding line *stripped*, not the line itself,
+    so an indented bare-identifier line could in principle vouch for a
+    column-0 `name(args)` line the same way a genuine column-0 return type
+    does. Not observed in this corpus — zero keywords and zero phantom names
+    are accepted — so this is a looseness in the guard, not a known failure.
     """
     return index > 0 and bool(_RETURN_TYPE_LINE.match(lines[index - 1].strip()))
 

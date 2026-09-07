@@ -1615,3 +1615,70 @@ disagreement between two conforming classes.
 Nothing in this document. The driver has not been exercised on hardware or in a
 guest — functional testing was scoped out of the spec from the start and is the
 natural next effort.
+
+## Addendum — an instance-size audit of every class
+
+Run after two heap overflows in `drvPCMCIABus` were traced to classes whose
+ivars had never been declared to match offsets the code already used. The check
+is cheap and catches a defect that instruction-level comparison cannot: compare
+`instance_size` and the ivar list of every class against the reference.
+
+**Every class is present and every class's method set matches the reference
+exactly** — all nine, no missing or extra selectors. The divergences are
+entirely in instance state.
+
+### Fixed
+
+| Class | Was | Now | What |
+| --- | --- | --- | --- |
+| `IOFloppyDisk` | `IODriveNEW`, 412 | `IODiskNEW`, 368 | wrong superclass |
+| `IODiskPartitionNEW` | 372, 8 ivars | 360, 5 | three invented ivars, all unused |
+| `IODiskNEW` | 308 | 308 | `_drive`→`_driveId`, reserved renamed |
+| `IODriveNEW` | 352 | 352 | `_diskObject`→`_diskId`, `_readCount`/`_writeCount`→`_readOps`/`_writeOps`, **14 statistics counters `int`→`unsigned`** |
+| `IOLogicalDiskNEW` | 336 | 336 | reserved renamed |
+
+`IOFloppyDisk` was the consequential one and is written up in the commit: it
+sends only `IODiskNEW` methods, its ivar comments already claimed the `0x134`
+offsets, and `IODriveNEW` is 44 bytes larger — so the raw accesses at `0x150`
+and `0x15c` were reading and writing `IODriveNEW`'s live fields. Its
+`_operationThreadPort` was a placeholder for `0x15c` that nothing referenced;
+the reference has `_startedThread`, a `b1` flag, which is exactly what the five
+bit-pokes there were maintaining. `IOFloppyDisk.m` now contains no raw
+`self`-offset arithmetic at all.
+
+The three base classes had **every offset already correct** — only names and,
+in `IODriveNEW`, signedness. The counters matter slightly beyond encoding:
+`_bytesRead` and friends are unsigned in the reference, so any comparison
+against zero behaves differently.
+
+### Not fixed — two classes whose internals were invented
+
+Neither has a wrong superclass, and neither uses raw offset access, so both are
+self-consistent and corrupt nothing. They are representation divergences.
+
+**`IOFloppyDrive`** — reference 444, ours 416; 11 ivars against our 22. Only
+`_deviceDescription` at +352 agrees. Apple holds per-drive geometry in one
+`formatInfo` struct (`{fd_format_info=...}`, +380..+432) where we flatten it
+into sixteen scalars, and carries a sector-buffer trio we lack entirely:
+
+```
++364  b1                     _registeredDrive        +432  *    floppySectorBuffer
++364  b1                     _registeredVolCheck     +436  ^v   floppySectorBufferFreePtr
++368  Q                      lastAccess              +440  I    floppySectorBufferFreeCnt
++376  b1                     timerRunning
++380  {fd_format_info=...}   formatInfo
+```
+
+`formatInfo`, `floppySectorBuffer`, `lastAccess` and `timerRunning` appear
+nowhere in our sources.
+
+**`FloppyController`** — reference 324, ours 388; 12 ivars against our 22, with
+no correspondence beyond position. Apple's is markedly simpler: a
+`NXConditionLock`, an 8-byte `_commandQueue` queue_entry, a mach port, five
+bitfields packed into one word at +312, `_lastDensity`, a two-byte
+`_atFloppyRegs`, an ISA buffer pointer and `_presentCylinder`. Ours invents
+`_drives[4]`, `_fdcRegsAddrs`, and a set of DMA fields.
+
+Both would be real reconstruction passes against the disassembly, not edits.
+Recorded here so the size mismatches are not later mistaken for the
+`IOFloppyDisk` class of defect, which they are not.

@@ -87,8 +87,6 @@ extern unsigned int _FloppyGeometry[];
 	id drive;
 	floppyOperation_t *operation;
 	id completionLock;
-	id mainQueue;
-	int *queueHead;
 
 	// Get drive and detach BSD interface
 	drive = [self drive];
@@ -108,23 +106,7 @@ extern unsigned int _FloppyGeometry[];
 		// Lock queue and add operation
 		[_queueLock lock];
 
-		mainQueue = (id)((char *)&_queueHead);
-		queueHead = (int *)((char *)&_queueHead);
-
-		if (_queueHead == mainQueue) {
-			// Queue is empty
-			_queueHead = (void *)operation;
-			_queueTail = (void *)operation;
-			operation->link.next = (queue_entry_t)queueHead;
-			operation->link.prev = (queue_entry_t)queueHead;
-		} else {
-			// Append to end
-			int lastEntry = (int)_queueTail;
-			operation->link.prev = (queue_entry_t)lastEntry;
-			operation->link.next = (queue_entry_t)queueHead;
-			_queueTail = (void *)operation;
-			*(unsigned **)(lastEntry + 0x20) = operation;
-		}
+		queue_enter(&_operationQueue, operation, floppyOperation_t *, link);
 
 		// Unlock with status 1 (wake operation thread)
 		[_queueLock unlockWith:1];
@@ -178,8 +160,7 @@ extern unsigned int _FloppyGeometry[];
 	}
 
 	// Initialize operation queue (circular list pointing to itself)
-	_queueHead = (void *)((char *)&_queueHead);
-	_queueTail = (void *)((char *)&_queueHead);
+	queue_init(&_operationQueue);
 
 	// Clear cache pointers
 	_cacheBuffer = NULL;

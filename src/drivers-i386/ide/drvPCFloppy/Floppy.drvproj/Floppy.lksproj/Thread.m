@@ -406,73 +406,6 @@ static void sweepQueueReorder(id *ascendingQueue, id *descendingQueue,
 	}
 }
 
-/*
- * queueEmpty - Test whether a circular queue head is empty.
- * A queue head is empty when its first-element slot still points at itself.
- */
-static BOOL queueEmpty(id *queueHead)
-{
-	return (id *)*queueHead == queueHead;
-}
-
-/*
- * dequeueOperation - Remove and return the first operation on a queue.
- * From decompiled code: shared unlink pattern used both for the main
- * (self+0x150) intake queue and for the five scheduler queues below -
- * it is the mirror image of queueOperationAscending/Decending's insert.
- * Caller must ensure the queue is non-empty (see queueEmpty above).
- */
-static unsigned int *dequeueOperation(id *queueHead)
-{
-	unsigned int *operation;
-	unsigned int *nextOp;
-	unsigned int *prevOp;
-
-	operation = (unsigned int *)*queueHead;
-	nextOp = (unsigned int *)((floppyOperation_t *)operation)->link.next;
-	prevOp = (unsigned int *)((floppyOperation_t *)operation)->link.prev;
-
-	if ((id *)nextOp == queueHead) {
-		queueHead[1] = (id)prevOp;
-	} else {
-		nextOp[9] = (unsigned int)prevOp;
-	}
-
-	if ((id *)prevOp == queueHead) {
-		queueHead[0] = (id)nextOp;
-	} else {
-		prevOp[8] = (unsigned int)nextOp;
-	}
-
-	return operation;
-}
-
-/*
- * appendOperationToQueue - Append an operation to the tail of a plain FIFO
- * queue (used for the control-operation queue: eject/format/abort).
- * From decompiled code: this is the "not sorted" queue-insert idiom used at
- * Thread.m operationThread's initial classification of operation types 2-4 -
- * it is textually identical to the empty/non-empty append branch inside
- * queueOperationAscending/Decending above, without any cylinder comparison.
- */
-static void appendOperationToQueue(id *queueHead, unsigned int *operation)
-{
-	unsigned int *lastOp;
-
-	if (queueEmpty(queueHead)) {
-		*queueHead = (id)operation;
-		queueHead[1] = (id)operation;
-		((floppyOperation_t *)operation)->link.next = (queue_entry_t)queueHead;
-		((floppyOperation_t *)operation)->link.prev = (queue_entry_t)queueHead;
-	} else {
-		lastOp = (unsigned int *)queueHead[1];
-		((floppyOperation_t *)operation)->link.prev = (queue_entry_t)lastOp;
-		((floppyOperation_t *)operation)->link.next = (queue_entry_t)queueHead;
-		queueHead[1] = (id)operation;
-		lastOp[8] = (unsigned int)operation;
-	}
-}
-
 @implementation IOFloppyDisk(OperationThreadLocal)
 
 /*
@@ -863,7 +796,6 @@ static void appendOperationToQueue(id *queueHead, unsigned int *operation)
 	id configTable;
 	int readMode;
 	int writeMode;
-	id mainQueue;
 	id queueLock;
 	id operationLock;
 	id geometry;
@@ -874,11 +806,11 @@ static void appendOperationToQueue(id *queueHead, unsigned int *operation)
 	BOOL success;
 
 	/* The five scheduler queues; see the block comment above. */
-	id ctlQueue[2];
-	id rwDescQueue[2];
-	id rwAscQueue[2];
-	id wbDescQueue[2];
-	id wbAscQueue[2];
+	queue_head_t ctlQueue;
+	queue_head_t rwDescQueue;
+	queue_head_t rwAscQueue;
+	queue_head_t wbDescQueue;
+	queue_head_t wbAscQueue;
 
 	unsigned currentCylinder;
 	int sweepDirection;
@@ -886,7 +818,7 @@ static void appendOperationToQueue(id *queueHead, unsigned int *operation)
 	BOOL forceReorder;
 	BOOL readAheadEnabled;
 
-	id *selectedQueue;
+	queue_head_t *selectedQueue;
 
 	// Get configuration
 	deviceDescription = *(id *)((char *)self + 0x160);
@@ -894,15 +826,14 @@ static void appendOperationToQueue(id *queueHead, unsigned int *operation)
 	readMode = [self getReadModeFromConfigTable:configTable];
 	writeMode = [self getWriteModeFromConfigTable:configTable];
 
-	mainQueue = (id)((char *)self + 0x150);
-	queueLock = *(id *)((char *)self + 0x158);
+	queueLock = self->_queueLock;
 	operationLock = *(id *)((char *)self + 0x144);
 
-	ctlQueue[0] = (id)ctlQueue;         ctlQueue[1] = (id)ctlQueue;
-	rwDescQueue[0] = (id)rwDescQueue;   rwDescQueue[1] = (id)rwDescQueue;
-	rwAscQueue[0] = (id)rwAscQueue;     rwAscQueue[1] = (id)rwAscQueue;
-	wbDescQueue[0] = (id)wbDescQueue;   wbDescQueue[1] = (id)wbDescQueue;
-	wbAscQueue[0] = (id)wbAscQueue;     wbAscQueue[1] = (id)wbAscQueue;
+	queue_init(&ctlQueue);
+	queue_init(&rwDescQueue);
+	queue_init(&rwAscQueue);
+	queue_init(&wbDescQueue);
+	queue_init(&wbAscQueue);
 
 	currentCylinder = 0;
 	sweepDirection = 1;
@@ -922,13 +853,13 @@ static void appendOperationToQueue(id *queueHead, unsigned int *operation)
 		// Drain the intake queue - classify and re-file every pending
 		// operation before doing any actual I/O. The queue lock is held for
 		// the whole drain, exactly as in the reference.
-		while (*(void **)((char *)self + 0x150) != mainQueue) {
-			operation = dequeueOperation((id *)((char *)self + 0x150));
+		while (!queue_empty(&self->_operationQueue)) {
+			queue_remove_first(&self->_operationQueue, operation, floppyOperation_t *, link);
 			operationType = operation->type;
 
 			if (operationType == 0) {
 				// Read: always goes on the read/write-soon sweep pair.
-				sweepQueueInsert(rwAscQueue, rwDescQueue, operation,
+				sweepQueueInsert((id *)&rwAscQueue, (id *)&rwDescQueue, operation,
 				                  currentCylinder, sweepDirection);
 				if (writeMode == 0) {
 					forceReorder = YES;
@@ -938,18 +869,18 @@ static void appendOperationToQueue(id *queueHead, unsigned int *operation)
 				switch (writeMode) {
 				case 0:
 					// "normal": write-behind pair.
-					sweepQueueInsert(wbAscQueue, wbDescQueue, operation,
+					sweepQueueInsert((id *)&wbAscQueue, (id *)&wbDescQueue, operation,
 					                  currentCylinder, sweepDirection);
 					break;
 				case 1:
 					// "soon": shares the read pair.
-					sweepQueueInsert(rwAscQueue, rwDescQueue, operation,
+					sweepQueueInsert((id *)&rwAscQueue, (id *)&rwDescQueue, operation,
 					                  currentCylinder, sweepDirection);
 					break;
 				case 2:
 					// "immediate": write-behind pair, but force a reorder
 					// so it is picked up promptly.
-					sweepQueueInsert(wbAscQueue, wbDescQueue, operation,
+					sweepQueueInsert((id *)&wbAscQueue, (id *)&wbDescQueue, operation,
 					                  currentCylinder, sweepDirection);
 					forceReorder = YES;
 					break;
@@ -962,7 +893,7 @@ static void appendOperationToQueue(id *queueHead, unsigned int *operation)
 				}
 			} else if (operationType <= 4) {
 				// Eject/format/abort: plain FIFO, always highest priority.
-				appendOperationToQueue(ctlQueue, operation);
+				queue_enter(&ctlQueue, operation, floppyOperation_t *, link);
 			} else {
 				panic("IOFloppyDisk: Unknown operation type.");
 			}
@@ -976,80 +907,80 @@ static void appendOperationToQueue(id *queueHead, unsigned int *operation)
 		// flips sweepDirection for next time.
 		selectedQueue = 0;
 
-		if (!queueEmpty(ctlQueue)) {
-			selectedQueue = ctlQueue;
+		if (!queue_empty(&ctlQueue)) {
+			selectedQueue = &ctlQueue;
 		} else if (writeMode == 2) {
 			if (sweepDirection == 1) {
-				if (!queueEmpty(wbAscQueue)) {
-					selectedQueue = wbAscQueue;
-				} else if (!queueEmpty(wbDescQueue)) {
-					selectedQueue = wbDescQueue;
+				if (!queue_empty(&wbAscQueue)) {
+					selectedQueue = &wbAscQueue;
+				} else if (!queue_empty(&wbDescQueue)) {
+					selectedQueue = &wbDescQueue;
 					sweepDirection = 0;
 				} else {
 					if (forceReorder) {
-						sweepQueueReorder(rwAscQueue, rwDescQueue, currentCylinder, sweepDirection);
+						sweepQueueReorder((id *)&rwAscQueue, (id *)&rwDescQueue, currentCylinder, sweepDirection);
 						forceReorder = NO;
 					}
-					if (!queueEmpty(rwAscQueue)) {
-						selectedQueue = rwAscQueue;
-					} else if (!queueEmpty(rwDescQueue)) {
-						selectedQueue = rwDescQueue;
+					if (!queue_empty(&rwAscQueue)) {
+						selectedQueue = &rwAscQueue;
+					} else if (!queue_empty(&rwDescQueue)) {
+						selectedQueue = &rwDescQueue;
 						sweepDirection = 0;
 					}
 				}
 			} else {
-				if (!queueEmpty(wbDescQueue)) {
-					selectedQueue = wbDescQueue;
-				} else if (!queueEmpty(wbAscQueue)) {
-					selectedQueue = wbAscQueue;
+				if (!queue_empty(&wbDescQueue)) {
+					selectedQueue = &wbDescQueue;
+				} else if (!queue_empty(&wbAscQueue)) {
+					selectedQueue = &wbAscQueue;
 					sweepDirection = 1;
 				} else {
 					if (forceReorder) {
-						sweepQueueReorder(rwAscQueue, rwDescQueue, currentCylinder, sweepDirection);
+						sweepQueueReorder((id *)&rwAscQueue, (id *)&rwDescQueue, currentCylinder, sweepDirection);
 						forceReorder = NO;
 					}
-					if (!queueEmpty(rwDescQueue)) {
-						selectedQueue = rwDescQueue;
-					} else if (!queueEmpty(rwAscQueue)) {
-						selectedQueue = rwAscQueue;
+					if (!queue_empty(&rwDescQueue)) {
+						selectedQueue = &rwDescQueue;
+					} else if (!queue_empty(&rwAscQueue)) {
+						selectedQueue = &rwAscQueue;
 						sweepDirection = 1;
 					}
 				}
 			}
 		} else {
 			if (sweepDirection == 1) {
-				if (!queueEmpty(rwAscQueue)) {
-					selectedQueue = rwAscQueue;
-				} else if (!queueEmpty(rwDescQueue)) {
-					selectedQueue = rwDescQueue;
+				if (!queue_empty(&rwAscQueue)) {
+					selectedQueue = &rwAscQueue;
+				} else if (!queue_empty(&rwDescQueue)) {
+					selectedQueue = &rwDescQueue;
 					sweepDirection = 0;
 				} else if (writeMode == 0 && !formatPending) {
 					if (forceReorder) {
-						sweepQueueReorder(wbAscQueue, wbDescQueue, currentCylinder, sweepDirection);
+						sweepQueueReorder((id *)&wbAscQueue, (id *)&wbDescQueue, currentCylinder, sweepDirection);
 						forceReorder = NO;
 					}
-					if (!queueEmpty(wbAscQueue)) {
-						selectedQueue = wbAscQueue;
-					} else if (!queueEmpty(wbDescQueue)) {
-						selectedQueue = wbDescQueue;
+					if (!queue_empty(&wbAscQueue)) {
+						selectedQueue = &wbAscQueue;
+					} else if (!queue_empty(&wbDescQueue)) {
+						selectedQueue = &wbDescQueue;
 						sweepDirection = 0;
 					}
 				}
 			} else {
-				if (!queueEmpty(rwDescQueue)) {
-					selectedQueue = rwDescQueue;
-				} else if (!queueEmpty(rwAscQueue)) {
-					selectedQueue = rwAscQueue;
+				if (!queue_empty(&rwDescQueue)) {
+					selectedQueue = &rwDescQueue;
+				} else if (!queue_empty(&rwAscQueue)) {
+					selectedQueue = &rwAscQueue;
 					sweepDirection = 1;
 				} else if (writeMode == 0 && !formatPending) {
 					if (forceReorder) {
-						sweepQueueReorder(wbAscQueue, wbDescQueue, currentCylinder, sweepDirection);
+						sweepQueueReorder((id *)&wbAscQueue, (id *)&wbDescQueue, currentCylinder, sweepDirection);
 						forceReorder = NO;
 					}
-					if (!queueEmpty(wbDescQueue)) {
-						selectedQueue = wbDescQueue;
-					} else if (!queueEmpty(wbAscQueue)) {
-						selectedQueue = wbAscQueue;
+					if (!queue_empty(&wbDescQueue)) {
+						selectedQueue = &wbDescQueue;
+					} else if (!queue_empty(&wbAscQueue)) {
+						selectedQueue = &wbAscQueue;
 						sweepDirection = 1;
 					}
 				}
@@ -1057,7 +988,7 @@ static void appendOperationToQueue(id *queueHead, unsigned int *operation)
 		}
 
 		if (selectedQueue != 0) {
-			operation = dequeueOperation(selectedQueue);
+			queue_remove_first(selectedQueue, operation, floppyOperation_t *, link);
 			operationType = operation->type;
 
 			switch (operationType) {
@@ -1134,11 +1065,11 @@ static void appendOperationToQueue(id *queueHead, unsigned int *operation)
 				// The old geometry is going away - every operation still
 				// queued against it (control queue and both sweep pairs)
 				// is now meaningless.
-				[self clearOperationsOnQueue:(id)ctlQueue];
-				[self clearOperationsOnQueue:(id)rwAscQueue];
-				[self clearOperationsOnQueue:(id)rwDescQueue];
-				[self clearOperationsOnQueue:(id)wbAscQueue];
-				[self clearOperationsOnQueue:(id)wbDescQueue];
+				[self clearOperationsOnQueue:(id)&ctlQueue];
+				[self clearOperationsOnQueue:(id)&rwAscQueue];
+				[self clearOperationsOnQueue:(id)&rwDescQueue];
+				[self clearOperationsOnQueue:(id)&wbAscQueue];
+				[self clearOperationsOnQueue:(id)&wbDescQueue];
 
 				// Release old cache
 				[self releaseCache];
@@ -1200,11 +1131,11 @@ static void appendOperationToQueue(id *queueHead, unsigned int *operation)
 				}
 				[operationLock unlock];
 
-				[self clearOperationsOnQueue:(id)ctlQueue];
-				[self clearOperationsOnQueue:(id)rwAscQueue];
-				[self clearOperationsOnQueue:(id)rwDescQueue];
-				[self clearOperationsOnQueue:(id)wbAscQueue];
-				[self clearOperationsOnQueue:(id)wbDescQueue];
+				[self clearOperationsOnQueue:(id)&ctlQueue];
+				[self clearOperationsOnQueue:(id)&rwAscQueue];
+				[self clearOperationsOnQueue:(id)&rwDescQueue];
+				[self clearOperationsOnQueue:(id)&wbAscQueue];
+				[self clearOperationsOnQueue:(id)&wbDescQueue];
 
 				// Signal completion
 				[operation->completionLock unlockWith:0];
@@ -1276,7 +1207,7 @@ static void appendOperationToQueue(id *queueHead, unsigned int *operation)
 
 		// Truly idle: block until new work is queued.
 		[queueLock lock];
-		if (*(void **)((char *)self + 0x150) == mainQueue) {
+		if (queue_empty(&self->_operationQueue)) {
 			[queueLock unlockWith:0];
 			[queueLock lockWhen:1];
 		}

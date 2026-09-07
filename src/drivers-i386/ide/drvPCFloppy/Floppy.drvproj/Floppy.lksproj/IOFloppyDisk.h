@@ -6,6 +6,7 @@
 
 #import "IODiskNew.h"
 #import <driverkit/return.h>
+#import <kernserv/queue.h>
 #import "FloppyVm.h"
 #import "IODiskProtocols.h"
 
@@ -42,8 +43,7 @@ void OperationThreadStartup(id self);
 	id _geometry;                    // offset 0x14c: geometry object
 
 	// Operation queue (offsets 0x150-0x158)
-	void *_queueHead;                // offset 0x150: operation queue head
-	void *_queueTail;                // offset 0x154: operation queue tail
+	queue_head_t _operationQueue;    // offset 0x150: next, prev
 	id _queueLock;                   // offset 0x158: queue lock
 
 	// Thread management (offset 0x15c)

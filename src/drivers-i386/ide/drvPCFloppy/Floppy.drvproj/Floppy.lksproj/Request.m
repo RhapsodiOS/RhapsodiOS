@@ -219,7 +219,6 @@ static void docopy(vm_map_t sourceMap,
 	int cylinderState;
 	int cylinderOffset;
 	floppyOperation_t *readOperation;
-	id mainQueue;
 	id queueLock;
 	int *queueHead;
 	BOOL ready;
@@ -249,31 +248,14 @@ static void docopy(vm_map_t sourceMap,
 		readOperation->cylinder = cylinderNumber;
 		
 		// Get queue lock
-		queueLock = *(id *)((char *)self + 0x158);
-		
+		queueLock = self->_queueLock;
+
 		// Lock the queue
 		[queueLock lock];
-		
-		// Get main operation queue head
-		mainQueue = (id)((char *)self + 0x150);
-		queueHead = (int *)((char *)self + 0x150);
-		
+
 		// Add operation to queue
-		if (*(void **)((char *)self + 0x150) == mainQueue) {
-			// Queue is empty
-			*(unsigned **)((char *)self + 0x150) = readOperation;
-			*(unsigned **)((char *)self + 0x154) = readOperation;
-			readOperation->link.next = (queue_entry_t)queueHead;
-			readOperation->link.prev = (queue_entry_t)queueHead;
-		} else {
-			// Queue has entries - append to end
-			int lastEntry = *(int *)((char *)self + 0x154);
-			readOperation->link.prev = (queue_entry_t)lastEntry;
-			readOperation->link.next = (queue_entry_t)queueHead;
-			*(unsigned **)((char *)self + 0x154) = readOperation;
-			*(unsigned **)(lastEntry + 0x20) = readOperation;
-		}
-		
+		queue_enter(&self->_operationQueue, readOperation, floppyOperation_t *, link);
+
 		// Unlock with status 1 (wake operation thread)
 		[queueLock unlockWith:1];
 		
@@ -885,8 +867,6 @@ static void docopy(vm_map_t sourceMap,
 	unsigned char *flagsPtr;
 	floppyOperation_t *operation;
 	id queueLock;
-	id mainQueue;
-	int *queueHead;
 	int cylinderState;
 
 	// Get cylinder number
@@ -928,30 +908,13 @@ static void docopy(vm_map_t sourceMap,
 		operation->cylinder = cylinderNumber;
 
 		// Get queue lock
-		queueLock = *(id *)((char *)self + 0x158);
+		queueLock = self->_queueLock;
 
 		// Lock the queue
 		[queueLock lock];
 
-		// Get main operation queue head (at offset 0x150)
-		mainQueue = (id)((char *)self + 0x150);
-		queueHead = (int *)((char *)self + 0x150);
-
 		// Add operation to queue
-		if (*(void **)((char *)self + 0x150) == mainQueue) {
-			// Queue is empty
-			*(unsigned **)((char *)self + 0x150) = operation;
-			*(unsigned **)((char *)self + 0x154) = operation;
-			operation->link.next = (queue_entry_t)queueHead;
-			operation->link.prev = (queue_entry_t)queueHead;
-		} else {
-			// Queue has entries - append to end
-			int lastEntry = *(int *)((char *)self + 0x154);
-			operation->link.prev = (queue_entry_t)lastEntry;
-			operation->link.next = (queue_entry_t)queueHead;
-			*(unsigned **)((char *)self + 0x154) = operation;
-			*(unsigned **)(lastEntry + 0x20) = operation;
-		}
+		queue_enter(&self->_operationQueue, operation, floppyOperation_t *, link);
 
 		// Unlock with status 1 (wake operation thread)
 		[queueLock unlockWith:1];

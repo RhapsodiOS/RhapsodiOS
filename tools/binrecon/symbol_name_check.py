@@ -20,7 +20,24 @@ from source_paths import source_files
 # libgcc helpers linked into the driver rather than written by hand.
 COMPILER_RUNTIME = {"__udivdi3", "__umoddi3", "__divdi3", "__moddi3"}
 
-_DEFINITION = re.compile(r"^(?:static\s+)?[A-Za-z_][\w \t\*]*?([A-Za-z_]\w*)\s*\(")
+# A function definition's opening line. The return type is optional *as a
+# whole* and, when present, must end in whitespace or a `*` — so it can never
+# be satisfied by a prefix of the name itself. An earlier pattern spelled the
+# type as a mandatory `[A-Za-z_]` plus a lazy remainder, which happily ate the
+# name's first character when the type sat on the previous line and the name
+# began at column 0 (`PCodeOpen` -> `CodeOpen`, `m64Init` -> `Init`).
+_DEFINITION = re.compile(
+    r"^(?P<lead>(?:static\s+)?(?:[A-Za-z_][\w \t\*]*?[\s\*])?)(?P<name>[A-Za-z_]\w*)\s*\("
+)
+
+# A line holding nothing but a return type, e.g. `OSStatus` or `static void *`.
+_RETURN_TYPE_LINE = re.compile(r"^(?:static\s+)?[A-Za-z_][\w \t\*]*$")
+
+# How far past the opening line to look for the body's `{`. The longest
+# parameter list in this corpus is PEF_OpenContainer's, which spans ten lines;
+# the cap only stops a runaway scan, since it is the `{`-before-`;` ordering
+# below that decides whether a line is a definition at all.
+_BODY_LOOKAHEAD = 16
 
 # A data definition: optional `static`, a type, a name, an optional array
 # bound, then `=` (initializer) or `;` (bare tentative definition). Neither an
@@ -42,6 +59,33 @@ _KERNEL_SERVER_INSTANCE = re.compile(r"^\+\[(\w+)KernelServerInstance kernelServ
 _GCC_STATIC_SUFFIX = re.compile(r"\.\d+$")
 
 
+def _opens_a_body(lines, index, start):
+    """Return True when the parameter list is followed by a body rather than a `;`.
+
+    A definition's parameter list is closed by its body's `{`; a prototype's is
+    closed by `;`. Whichever arrives first decides, so the scan can reach past a
+    parameter list spanning many lines without ever admitting a prototype — a
+    prototype's `;` is always encountered before any later definition's brace.
+    """
+    for offset in range(index, min(index + _BODY_LOOKAHEAD, len(lines))):
+        text = lines[offset][start:] if offset == index else lines[offset]
+        for character in text:
+            if character in "{;":
+                return character == "{"
+    return False
+
+
+def _has_return_type_above(lines, index):
+    """Return True when the line above holds nothing but a return type.
+
+    `name(args)` at column 0 is a definition only when its return type sits on
+    the preceding line, as in `OSStatus` / `PCodeOpen( ... )`. Without one the
+    line is a function-like macro invocation, not a definition site, so
+    requiring the type keeps the relaxed pattern above from inventing names.
+    """
+    return index > 0 and bool(_RETURN_TYPE_LINE.match(lines[index - 1].strip()))
+
+
 def source_definitions(source_path):
     """Return the C function names defined in .m and .c files under source_path."""
     names = set()
@@ -49,10 +93,12 @@ def source_definitions(source_path):
         lines = path.read_text(encoding="utf-8", errors="replace").split("\n")
         for index, line in enumerate(lines):
             match = _DEFINITION.match(line)
-            if not match or ";" in line:
+            if not match:
                 continue
-            if "{" in "".join(lines[index:index + 4]):
-                names.add(match.group(1))
+            if not match.group("lead") and not _has_return_type_above(lines, index):
+                continue
+            if _opens_a_body(lines, index, match.end()):
+                names.add(match.group("name"))
     return names
 
 

@@ -137,6 +137,5 @@
  * Check if any block device is open.
  */
 - (BOOL)isAnyBlockDevOpen;
-- (BOOL)isAnyOtherOpen;
 
 @end

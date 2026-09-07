@@ -960,28 +960,4 @@ cleanup:
 	}
 }
 
-/*
- * Check if any other partition has devices open.
- * Similar to isAnyBlockDevOpen but checks raw devices.
- */
-- (BOOL)isAnyOtherOpen
-{
-	id physicalDisk;
-	id partition;
-
-	// Get physical disk and iterate through all partitions
-	physicalDisk = [self physicalDisk];
-	partition = physicalDisk;
-
-	while (1) {
-		partition = [partition nextLogicalDisk];
-		if (partition == nil) {
-			return NO;
-		}
-		if ([partition isRawDeviceOpen]) {
-			return YES;
-		}
-	}
-}
-
 @end

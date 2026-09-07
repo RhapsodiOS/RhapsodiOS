@@ -8,8 +8,8 @@ directory containing no matching files is a legitimate empty result and is
 left to the caller to handle.
 
 File granularity matters because some drivers' sources share a directory with
-other binaries' sources — `IONDRVSupport` is three files out of eleven in
-`src/driverkit-3/libDriver/ppc`.
+other binaries' sources — `IONDRVSupport` is five files out of the seventeen
+`.m`/`.c` files in `src/driverkit-3/libDriver/ppc`.
 """
 
 from pathlib import Path

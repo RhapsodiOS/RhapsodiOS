@@ -32,7 +32,7 @@
 
 #import <driverkit/return.h>
 #import <driverkit/driverTypes.h>
-#import <driverkit/IODevice.h>
+#import <driverkit/IODirectDevice.h>
 #import <driverkit/generalFuncs.h>
 #import <driverkit/i386/IOEISADeviceDescription.h>
 #import <sys/types.h>
@@ -46,7 +46,14 @@
 #define IO_R_NO_PAPER (-737)
 #endif
 
-@interface ISASerialPort : IODevice
+/*
+ * IODirectDevice, not IODevice: the reference's class structure names
+ * IODirectDevice as the superclass, and it is 32 bytes larger.  That is
+ * what puts Port at 296 and port at 600, the offsets the raw accesses
+ * throughout ISASerialPort.m already assume.
+ */
+
+@interface ISASerialPort : IODirectDevice
 {
 @public
     Port  Port;         // all per-port state, at object offset 296

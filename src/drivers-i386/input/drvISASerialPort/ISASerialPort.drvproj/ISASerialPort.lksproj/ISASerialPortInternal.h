@@ -168,8 +168,8 @@ typedef struct {
     id              Self;               /*   0 */
     unsigned int    Instance;           /*   4 */
     char           *PortName;           /*   8 */
-    unsigned int    State;              /*  12 */
-    unsigned int    WatchStateMask;     /*  16 */
+    unsigned long   State;              /*  12 */
+    unsigned long   WatchStateMask;     /*  16 */
     struct { unsigned int locked; } WatchLock;   /* 20 */
     Queue           RX;                 /*  24 */
     Queue           TX;                 /*  80 */
@@ -181,13 +181,13 @@ typedef struct {
     unsigned int    TX_Parity;          /* 156 */
     unsigned int    RX_Parity;          /* 160 */
     unsigned int    BreakLength;        /* 164 */
-    unsigned int    BaudRate;           /* 168 - half-bits/s, 19200 == 9600 bps */
+    unsigned long   BaudRate;           /* 168 - half-bits/s, 19200 == 9600 bps */
     unsigned short  DLRimage;           /* 172 */
     unsigned char   LCRimage;           /* 174 */
     unsigned char   FCRimage;           /* 175 */
     unsigned char   IERmask;            /* 176 */
     unsigned char   RBRmask;            /* 177 */
-    unsigned int    MasterClock;        /* 180 */
+    unsigned long   MasterClock;        /* 180 */
     signed char     MinLatency;         /* 184 */
     signed char     WaitingForTXIdle;   /* 185 */
     signed char     JustDoneInterrupt;  /* 186 */
@@ -195,8 +195,8 @@ typedef struct {
     signed char     PCMCIA_yanked;      /* 188 */
     unsigned char   XONchar;            /* 189 */
     unsigned char   XOFFchar;           /* 190 */
-    unsigned int    SWspecial[8];       /* 192 - 256-bit character bitmap */
-    unsigned int    FlowControl;        /* 224 */
+    unsigned long   SWspecial[8];       /* 192 - 256-bit character bitmap */
+    unsigned long   FlowControl;        /* 224 */
     int             RXOstate;           /* 228 */
     void           *FrameTOEntry;       /* 232 */
     void           *DataLatTOEntry;     /* 236 */
@@ -207,12 +207,12 @@ typedef struct {
     tvalspec_t      CharLatInterval;    /* 264 */
     tvalspec_t      HeartBeatInterval;  /* 272 */
     struct {
-        unsigned int    ints;           /* 280 */
-        unsigned int    txInts;         /* 284 */
-        unsigned int    rxInts;         /* 288 */
-        unsigned int    mdmInts;        /* 292 */
-        unsigned int    txChars;        /* 296 */
-        unsigned int    rxChars;        /* 300 */
+        unsigned long   ints;           /* 280 */
+        unsigned long   txInts;         /* 284 */
+        unsigned long   rxInts;         /* 288 */
+        unsigned long   mdmInts;        /* 292 */
+        unsigned long   txChars;        /* 296 */
+        unsigned long   rxChars;        /* 300 */
     } Stats;
 } Port;                                 /* 304 */
 

@@ -618,9 +618,9 @@ transfer_done:
 	currentTimeLow = (unsigned)(currentTime & 0xFFFFFFFF);
 	currentTimeHigh = (unsigned)(currentTime >> 32);
 
-	// Get last operation timestamp from offset 0x170
-	lastTimeLow = *(unsigned *)((char *)self + 0x170);
-	lastTimeHigh = *(unsigned *)((char *)self + 0x174);
+	// Get last operation timestamp from lastAccess
+	lastTimeLow = (unsigned)lastAccess;
+	lastTimeHigh = (unsigned)(lastAccess >> 32);
 
 	// Calculate timeout time (last time + 2 seconds = 2000000000 ns)
 	// Add 2000000000 to low word, handle carry to high word

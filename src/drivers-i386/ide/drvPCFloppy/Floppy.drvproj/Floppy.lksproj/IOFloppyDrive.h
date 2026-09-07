@@ -46,6 +46,9 @@
 
 	// Disk object
 	id _nextLogicalDisk;                       // offset 0x108 (IOFloppyDisk object)
+
+	unsigned long long lastAccess;   /* reference: +368; placed at the end
+					  * until Piece C rebuilds this class */
 }
 
 /*

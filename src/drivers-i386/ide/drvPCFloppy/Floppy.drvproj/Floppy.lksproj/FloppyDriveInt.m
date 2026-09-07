@@ -665,8 +665,8 @@ IOReturn fdrToIo(unsigned int fdrCode)
 	unit = [self unit];
 	cmd[0x5c] = unit;
 	
-	// Get timestamp and store at offset 0x170
-	IOGetTimestamp((unsigned long long *)((char *)self + 0x170));
+	// Get timestamp and store in lastAccess
+	IOGetTimestamp(&lastAccess);
 	
 	// Call fcCmdXfr: method on FDC controller object (offset 0x164)
 	result = [_fdController fcCmdXfr:cmd];

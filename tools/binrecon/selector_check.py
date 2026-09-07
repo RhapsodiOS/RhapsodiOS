@@ -24,6 +24,7 @@ from pathlib import Path
 
 from binrecon.macho import read_macho
 from binrecon.source_map import read_selector
+from source_paths import source_files
 
 TEXT_SECTION = "__TEXT,__text"
 
@@ -61,9 +62,9 @@ def reference_selectors(path):
     }
 
 
-def source_methods(source_dir):
+def source_methods(source_path):
     """Yield (full_name, class_name, selector, path, line) per definition."""
-    for path in sorted(Path(source_dir).glob("*.m")):
+    for path in source_files(source_path, {".m"}, recursive=False):
         lines = path.read_text(errors="replace").splitlines()
         class_name = category = None
         index = 0

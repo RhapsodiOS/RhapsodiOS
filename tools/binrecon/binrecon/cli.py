@@ -216,10 +216,14 @@ def _source_map_command(arguments) -> int:
     if arguments.scope_to_objc and not arguments.objc_methods:
         raise ValueError("--scope-to-objc requires --objc-methods")
 
+    # A file is a legitimate argument: some drivers' sources share a directory
+    # with other binaries' sources, so scoping to a directory would silently
+    # measure the wrong thing. source_files() below rejects a wrong-suffix file,
+    # so only existence is checked here.
     source_dirs = [Path(value) for value in arguments.source_dir]
     for source_dir in source_dirs:
-        if not source_dir.is_dir():
-            raise ValueError(f"--source-dir {source_dir} is not an existing directory")
+        if not source_dir.exists():
+            raise ValueError(f"--source-dir {source_dir} does not exist")
 
     analysis = load_json(Path(arguments.reference_analysis))
     validate_document("analysis-v1", analysis)

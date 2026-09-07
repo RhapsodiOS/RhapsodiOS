@@ -15,6 +15,7 @@ import sys
 from pathlib import Path
 
 from binrecon.macho import read_macho
+from source_paths import source_files
 
 # libgcc helpers linked into the driver rather than written by hand.
 COMPILER_RUNTIME = {"__udivdi3", "__umoddi3", "__divdi3", "__moddi3"}
@@ -41,12 +42,10 @@ _KERNEL_SERVER_INSTANCE = re.compile(r"^\+\[(\w+)KernelServerInstance kernelServ
 _GCC_STATIC_SUFFIX = re.compile(r"\.\d+$")
 
 
-def source_definitions(source_dir):
-    """Return the C function names defined in .m and .c files under source_dir."""
+def source_definitions(source_path):
+    """Return the C function names defined in .m and .c files under source_path."""
     names = set()
-    for path in sorted(Path(source_dir).rglob("*")):
-        if path.suffix not in (".m", ".c"):
-            continue
+    for path in source_files(source_path, {".m", ".c"}):
         lines = path.read_text(encoding="utf-8", errors="replace").split("\n")
         for index, line in enumerate(lines):
             match = _DEFINITION.match(line)
@@ -57,7 +56,7 @@ def source_definitions(source_dir):
     return names
 
 
-def data_definitions(source_dir):
+def data_definitions(source_path):
     """Return the C data (variable/array) names defined in .m and .c files.
 
     Only file-scope definitions are recognised: the pattern is anchored at
@@ -67,9 +66,7 @@ def data_definitions(source_dir):
     either — the comma is outside the type pattern, so neither name is found.
     """
     names = set()
-    for path in sorted(Path(source_dir).rglob("*")):
-        if path.suffix not in (".m", ".c"):
-            continue
+    for path in source_files(source_path, {".m", ".c"}):
         lines = path.read_text(encoding="utf-8", errors="replace").split("\n")
         for line in lines:
             match = _DATA_DEFINITION.match(line)

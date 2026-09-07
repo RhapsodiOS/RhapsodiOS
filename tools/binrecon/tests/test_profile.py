@@ -372,6 +372,7 @@ def test_ppc_profile_inventory():
         "gnic-bundle-ppc.json", "gnic-ppc.json",
         "ioadbdevice-ppc.json",
         "iodisplay-bundle-ppc.json", "iodisplay-ppc.json",
+        "iondrvsupport-bundle-ppc.json", "iondrvsupport-ppc.json",
         "mace-bundle-ppc.json", "mace-ppc.json",
         "mesh-bundle-ppc.json", "mesh-ppc.json",
         "ohare-bundle-ppc.json", "ohare-ppc.json",

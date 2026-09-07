@@ -8,6 +8,8 @@ Objective-C implementations and C function definitions.
 from pathlib import Path
 import re
 
+from source_paths import source_files
+
 
 _IMPLEMENTATION = re.compile(r"^@implementation\s+(\w+)(?:\s*\(\s*(\w+)\s*\))?")
 _END = re.compile(r"^@end")
@@ -127,10 +129,18 @@ def _body_follows(lines, index):
     return False
 
 
-def source_sites(repo_root, source_dir):
+def source_sites(repo_root, source_path):
     """Map symbol names to the source locations that define them."""
     sites = {}
-    paths = sorted(Path(source_dir).glob("*.m")) + sorted(Path(source_dir).glob("*.c"))
+    # source_files() returns one suffix-mixed sorted list; a directory whose
+    # source shares space with .c-prefixed names earlier in the alphabet
+    # (e.g. Windows' case-insensitive path sort) would otherwise interleave
+    # .m and .c files instead of scanning all .m files before all .c files.
+    # sites accumulates every definition site regardless of scan order, so
+    # this reorder changes nothing about the output; it costs nothing and
+    # keeps the call site faithful to what it replaced, so restore it anyway.
+    found = source_files(source_path, {".m", ".c"}, recursive=False)
+    paths = [p for p in found if p.suffix == ".m"] + [p for p in found if p.suffix == ".c"]
     for path in paths:
         relative = _relative_posix(Path(repo_root), path)
         lines = path.read_text(encoding="utf-8", errors="replace").splitlines()

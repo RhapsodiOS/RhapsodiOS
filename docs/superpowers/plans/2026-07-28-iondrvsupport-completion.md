@@ -231,9 +231,10 @@ declaration, and every call site.
 **A blanket transformation over `_[A-Za-z]\w*` is prohibited.** It would strip the
 underscore from the 59 `__e*` functions and break 58 of them.
 
-Watch for prefix relationships among the twelve (`_ixDoBlit` versus
-`_ix3dDoBlit`) — word-bounded replacement handles them; substring replacement does
-not. Do not rewrite string literals.
+**No name among the twelve is a prefix of another** — I checked, so the prefix
+hazard that complicated the Floppy and PPCSerialPort renames does not apply here.
+Word-bounded replacement is still required, because the real hazard is the 59
+`__e*` functions, not these twelve. Do not rewrite string literals.
 
 - [ ] **Step 4: Verify with the gate**
 

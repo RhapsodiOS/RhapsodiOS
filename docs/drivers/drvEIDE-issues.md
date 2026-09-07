@@ -670,3 +670,48 @@ Full evidence and the fix are in
 This also explains why none of the driver-side experiments helped: disabling
 multi-sector transfers only moved which command was in flight when the PIC
 wedged, and the rebuilt driver could not fix an interrupt that never arrives.
+
+## 3. `IdeController` and `AtapiController` diverge from Apple's ivar layout (accepted)
+
+Found by an instance-size audit across every driver with a reference binary,
+run after two heap overflows in `drvPCMCIABus` traced to classes whose ivars
+were never declared to match offsets the code already used.
+
+| Class | Reference | Ours |
+| --- | --- | --- |
+| `IdeController` | 1528 | 552 — 976 short |
+| `AtapiController` | 3224 | 3272 — 48 over |
+
+**Neither is that bug, and neither is dangerous.** The distinguishing check is
+whether anything addresses ivars by raw byte offset: in `drvPCMCIABus` two
+classes did, against a layout that no longer matched, and wrote off the end of
+the object. **`drvEIDE` contains no `(char *)self + 0x…` access at all.** Every
+field is reached by name, so the object is internally consistent whatever its
+size, and the compiler places and reads each ivar in the same place.
+
+`IdeController`'s superclass is already right — `IODirectDevice` on both sides —
+and its first five ivars match exactly, `_ideCmdLock` at +296 through
+`_interruptTimeOut` at +360. The divergence is one of representation. Apple
+keeps per-drive state in flat parallel two-element arrays:
+
+```
++364   [2c]        _biosGeometry          +1444  [2c]   _dmaSupported
++368   [2{...}]    _ideInfo               +1446  [2S]   _dmaMode
++418   [2c]        _ideIdentifyInfoSupported
++420   [2{...}]    _ideIdentifyInfo       <- +420..+1444, 1024 bytes
+```
+
+thirty-four ivars in all, of which `_ideIdentifyInfo` alone is two 512-byte
+IDENTIFY DEVICE buffers held in the object. Ours groups the same state into a
+single `_drives[2]` array of a per-drive struct at +368, 128 bytes total, and
+does not retain the full IDENTIFY data — that is essentially the whole 976-byte
+difference.
+
+**Left as it is, deliberately.** Matching Apple would mean rewriting 182
+`_drives[…]` references and adding roughly a kilobyte of per-object storage, in
+a driver marked complete and working, to fix nothing. The value of the audit was
+separating this case from the two that were genuine corruption; recorded so the
+size mismatch is not rediscovered later and mistaken for one of those.
+
+`AtapiController` is the same call: identical superclass, the same seven ivar
+names, ours 48 bytes larger through a differently sized member. Not chased.

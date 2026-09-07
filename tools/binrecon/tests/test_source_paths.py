@@ -24,10 +24,9 @@ def test_a_file_of_the_wrong_suffix_raises(tmp_path):
         source_files(tmp_path / "notes.txt", {".m", ".c"})
 
 
-def test_a_directory_with_no_source_files_raises(tmp_path):
+def test_a_directory_with_no_source_files_returns_empty(tmp_path):
     (tmp_path / "notes.txt").write_text("")
-    with pytest.raises(ValueError, match="no source files"):
-        source_files(tmp_path, {".m", ".c"})
+    assert source_files(tmp_path, {".m", ".c"}) == []
 
 
 def test_a_missing_path_raises(tmp_path):

@@ -12,7 +12,10 @@
 
 ## Global Constraints
 
-- **This sub-piece changes no driver source.** It touches `tools/binrecon/` and one profile only.
+- **This sub-piece changes no driver source.** It touches `tools/binrecon/`, one
+  profile, and documentation under
+  `src/drivers-i386/ide/drvPCFloppy/reconstruction/`. No `.m`, `.h` or `.c` file
+  in any driver may be modified.
 - **You cannot build the driver.** The build runs on a Rhapsody guest and only the user can do it. Task 4 is the sole build gate. Never claim a driver-side result that a build has not produced.
 - **The binrecon suite must stay green.** It stands at **905 passed, 4 skipped**. Another agent adds tests concurrently, so judge the delta, not the absolute number.
 - Run tests with: `PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q`

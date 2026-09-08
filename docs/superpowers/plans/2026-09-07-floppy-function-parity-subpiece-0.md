@@ -55,7 +55,7 @@ Set `analyzers.angr.enabled` to `false`. Leave `ghidra` disabled. Leave IDA enab
 JSON has no comments and `profile-v1.json` sets `additionalProperties: false`, so a `_comment` key would fail validation. `name` is an unconstrained string and is the only free-text field, so change it from `"drvPCFloppy reconstruction"` to exactly:
 
 ```
-drvPCFloppy reconstruction (IDA only; see reconstruction/function-worklist.md)
+drvPCFloppy reconstruction (IDA only; see reconstruction/analyzer-notes.md)
 ```
 
 Then create `src/drivers-i386/ide/drvPCFloppy/reconstruction/analyzer-notes.md` holding the reasoning, so the next person does not re-derive it:

@@ -16,7 +16,7 @@
   profile, and documentation under
   `src/drivers-i386/ide/drvPCFloppy/reconstruction/`. No `.m`, `.h` or `.c` file
   in any driver may be modified.
-- **You cannot build the driver.** The build runs on a Rhapsody guest and only the user can do it. Task 4 is the sole build gate. Never claim a driver-side result that a build has not produced.
+- **You cannot build the driver.** The build runs on a Rhapsody guest and only the user can do it. Task 3 is the sole build gate. Never claim a driver-side result that a build has not produced.
 - **The binrecon suite must stay green.** It stands at **905 passed, 4 skipped**. Another agent adds tests concurrently, so judge the delta, not the absolute number.
 - Run tests with: `PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q`
 - **Another agent commits to this repository.** Stage only your own files by explicit path. Never `git add -A`, never `git commit -a`.
@@ -107,22 +107,24 @@ git commit -m "drvPCFloppy: run binrecon with IDA only, recording why the others
 
 ---
 
-### Task 2: `binrecon function --list`
+### Task 2: The `binrecon function` subcommand
+
+Delivers both modes together. `--list` ranks every compared function by how many instructions differ; `--name` prints one function's two instruction sequences side by side.
 
 **Files:**
 - Create: `tools/binrecon/binrecon/functions.py`
 - Modify: `tools/binrecon/binrecon/cli.py`
 - Test: `tools/binrecon/tests/test_functions.py`
 
-**Interfaces:**
-- Produces, for Task 3 to consume:
-  - `FunctionQueryError(ValueError)`
-  - `load_published(output_dir: Path, analyzer: str) -> tuple[dict, dict, dict]` returning `(reference_analysis, rebuilt_analysis, comparison)`
-  - `function_index(analysis: dict) -> dict[str, dict]` mapping every name in each function's `names` list to that function record
-  - `instruction_pairs(function: dict) -> list[tuple[str, str]]` returning `(mnemonic, normalized_operands)` per instruction
-  - `differing_count(reference_function: dict | None, rebuilt_function: dict | None) -> int | None`
-  - `worklist(reference: dict, rebuilt: dict, comparison: dict) -> list[dict]` with row keys `name`, `status`, `raw_equal`, `masked_equal`, `differing`, `reference_instructions`, `rebuilt_instructions`, `reasons`
-  - `render_worklist(rows: list[dict]) -> str`
+**Interfaces produced** (Task 3 reads the output, not the API):
+- `FunctionQueryError(ValueError)`
+- `load_published(output_dir: Path, analyzer: str) -> tuple[dict, dict, dict]` returning `(reference_analysis, rebuilt_analysis, comparison)`
+- `function_index(analysis: dict) -> dict[str, dict]` mapping every name in each function's `names` list to that function record
+- `instruction_pairs(function: dict) -> list[tuple[str, str]]` returning `(mnemonic, normalized_operands)` per instruction
+- `differing_count(reference_function: dict | None, rebuilt_function: dict | None) -> int | None`
+- `worklist(reference: dict, rebuilt: dict, comparison: dict) -> list[dict]` with row keys `name`, `status`, `raw_equal`, `masked_equal`, `differing`, `reference_instructions`, `rebuilt_instructions`, `reasons`
+- `render_worklist(rows: list[dict]) -> str`
+- `render_function(name: str, reference_function: dict | None, rebuilt_function: dict | None, record: dict | None) -> str`
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -264,6 +266,74 @@ def test_load_published_reports_a_missing_directory_by_path(tmp_path):
         load_published(tmp_path / "nowhere", "ida")
 
     assert str(tmp_path / "nowhere") in str(error.value)
+
+
+def test_render_function_marks_differing_rows_and_keeps_equal_ones_unmarked():
+    from binrecon.functions import render_function
+
+    left = _function("f", [("push", "ebp"), ("mov", "eax, 1"), ("ret", "")])
+    right = _function("f", [("push", "ebp"), ("mov", "eax, 2"), ("ret", "")])
+    record = {"status": "different", "raw_equal": False, "masked_equal": False,
+              "reasons": ["instruction shape differs"]}
+
+    text = render_function("f", left, right, record)
+
+    lines = [line for line in text.splitlines() if "mov" in line]
+    assert lines and all(line.startswith("*") for line in lines)
+    assert any(line.startswith(" ") and "push" in line for line in text.splitlines())
+    assert "eax, 1" in text and "eax, 2" in text
+
+
+def test_render_function_shows_the_verdict_and_reasons():
+    from binrecon.functions import render_function
+
+    fn = _function("f", [("ret", "")])
+    record = {"status": "different", "raw_equal": True, "masked_equal": True,
+              "reasons": ["cfg differs"]}
+
+    text = render_function("f", fn, fn, record)
+
+    assert "raw_equal=True" in text
+    assert "cfg differs" in text
+
+
+def test_render_function_handles_a_missing_side():
+    from binrecon.functions import render_function
+
+    fn = _function("f", [("ret", "")])
+    record = {"status": "missing-rebuilt", "raw_equal": False, "masked_equal": False,
+              "reasons": ["missing rebuilt function"]}
+
+    text = render_function("f", fn, None, record)
+
+    assert "missing" in text
+    assert "ret" in text
+
+
+def test_render_function_rejects_an_unknown_name():
+    from binrecon.functions import FunctionQueryError, render_function
+
+    with pytest.raises(FunctionQueryError) as error:
+        render_function("nope", None, None, None)
+
+    assert "nope" in str(error.value)
+
+
+def test_parser_accepts_function_list_and_name():
+    from binrecon.cli import build_parser
+
+    listed = build_parser().parse_args(["function", "--profile", "p.json", "--list"])
+    named = build_parser().parse_args(["function", "--profile", "p.json", "--name", "f"])
+
+    assert listed.list_functions is True and listed.name is None
+    assert named.list_functions is False and named.name == "f"
+    assert listed.analyzer == "ida"
+
+
+def test_help_lists_the_function_command():
+    from binrecon.cli import build_parser
+
+    assert "function" in build_parser().format_help()
 ```
 
 - [ ] **Step 2: Run the tests to verify they fail**
@@ -400,189 +470,8 @@ def render_worklist(rows: list[dict]) -> str:
     lines += ["", f"{len(rows)} functions: {identical} byte-identical, "
                   f"{len(rows) - identical - unpaired} differing, {unpaired} unpaired"]
     return "\n".join(lines)
-```
-
-- [ ] **Step 4: Run the tests to verify they pass**
-
-Run:
-
-```bash
-PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests/test_functions.py -q
-```
-
-Expected: `9 passed`.
-
-- [ ] **Step 5: Wire the subcommand into the CLI**
-
-In `tools/binrecon/binrecon/cli.py`, add `"function"` to the `COMMANDS` tuple so it reads:
-
-```python
-COMMANDS = ("validate", "analyze", "consensus", "compare", "ledger", "source-map", "function")
-```
-
-Add these imports beside the existing ones:
-
-```python
-from binrecon.functions import (
-    FunctionQueryError, load_published, render_worklist, worklist,
-)
-```
-
-In `build_parser()`, after the `source_map` block and before `return parser`:
-
-```python
-    function = subparsers.add_parser("function")
-    function.add_argument("--profile", required=True)
-    function.add_argument("--analyzer", default="ida")
-    function.add_argument("--list", action="store_true", dest="list_functions",
-                          help="print every compared function, cheapest difference first")
-    function.add_argument("--name", help="print one function's two instruction sequences")
-```
-
-In `main()`, before the final return, add:
-
-```python
-    if args.command == "function":
-        try:
-            profile = load_profile(Path(args.profile), os.environ)
-            reference, rebuilt, comparison = load_published(profile.output_dir, args.analyzer)
-            if args.list_functions == bool(args.name):
-                print("binrecon: give exactly one of --list or --name", file=sys.stderr)
-                return 1
-            rows = worklist(reference, rebuilt, comparison)
-            if args.list_functions:
-                print(render_worklist(rows))
-                return 0
-        except (OSError, ValueError, ValidationError, FunctionQueryError) as error:
-            print(f"binrecon: {error}", file=sys.stderr)
-            return 1
-```
-
-Task 3 extends this block to handle `--name`; for now `--name` falls through and returns `None`, which Task 3 fixes.
-
-- [ ] **Step 6: Add the CLI test**
-
-Append to `tools/binrecon/tests/test_functions.py`:
-
-```python
-def test_parser_accepts_function_list_and_name():
-    from binrecon.cli import build_parser
-
-    listed = build_parser().parse_args(["function", "--profile", "p.json", "--list"])
-    named = build_parser().parse_args(["function", "--profile", "p.json", "--name", "f"])
-
-    assert listed.list_functions is True and listed.name is None
-    assert named.list_functions is False and named.name == "f"
-    assert listed.analyzer == "ida"
 
 
-def test_help_lists_the_function_command():
-    from binrecon.cli import build_parser
-
-    assert "function" in build_parser().format_help()
-```
-
-- [ ] **Step 7: Run the whole suite**
-
-Run:
-
-```bash
-PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q
-```
-
-Expected: 11 more tests than the 905-passed baseline, nothing failing. If `test_cli.py`'s command lists fail, they assert on a fixed tuple of command names — read them and decide whether they should include `function`, rather than assuming.
-
-- [ ] **Step 8: Commit**
-
-```bash
-git add tools/binrecon/binrecon/functions.py tools/binrecon/binrecon/cli.py tools/binrecon/tests/test_functions.py
-git commit -m "binrecon: add a function worklist ranked by differing instructions"
-```
-
----
-
-### Task 3: `binrecon function --name`
-
-**Files:**
-- Modify: `tools/binrecon/binrecon/functions.py`
-- Modify: `tools/binrecon/binrecon/cli.py`
-- Test: `tools/binrecon/tests/test_functions.py`
-
-**Interfaces:**
-- Consumes from Task 2: `function_index`, `instruction_pairs`, `load_published`, `FunctionQueryError`.
-- Produces: `render_function(name: str, reference_function: dict | None, rebuilt_function: dict | None, record: dict | None) -> str`.
-
-- [ ] **Step 1: Write the failing tests**
-
-Append to `tools/binrecon/tests/test_functions.py`:
-
-```python
-def test_render_function_marks_differing_rows_and_keeps_equal_ones_unmarked():
-    from binrecon.functions import render_function
-
-    left = _function("f", [("push", "ebp"), ("mov", "eax, 1"), ("ret", "")])
-    right = _function("f", [("push", "ebp"), ("mov", "eax, 2"), ("ret", "")])
-    record = {"status": "different", "raw_equal": False, "masked_equal": False,
-              "reasons": ["instruction shape differs"]}
-
-    text = render_function("f", left, right, record)
-
-    lines = [line for line in text.splitlines() if "mov" in line]
-    assert lines and all(line.startswith("*") for line in lines)
-    assert any(line.startswith(" ") and "push" in line for line in text.splitlines())
-    assert "eax, 1" in text and "eax, 2" in text
-
-
-def test_render_function_shows_the_verdict_and_reasons():
-    from binrecon.functions import render_function
-
-    fn = _function("f", [("ret", "")])
-    record = {"status": "different", "raw_equal": True, "masked_equal": True,
-              "reasons": ["cfg differs"]}
-
-    text = render_function("f", fn, fn, record)
-
-    assert "raw_equal=True" in text
-    assert "cfg differs" in text
-
-
-def test_render_function_handles_a_missing_side():
-    from binrecon.functions import render_function
-
-    fn = _function("f", [("ret", "")])
-    record = {"status": "missing-rebuilt", "raw_equal": False, "masked_equal": False,
-              "reasons": ["missing rebuilt function"]}
-
-    text = render_function("f", fn, None, record)
-
-    assert "missing" in text
-    assert "ret" in text
-
-
-def test_render_function_rejects_an_unknown_name():
-    from binrecon.functions import FunctionQueryError, render_function
-
-    with pytest.raises(FunctionQueryError) as error:
-        render_function("nope", None, None, None)
-
-    assert "nope" in str(error.value)
-```
-
-- [ ] **Step 2: Run the tests to verify they fail**
-
-Run:
-
-```bash
-PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests/test_functions.py -q -k render_function
-```
-
-Expected: FAIL with `ImportError: cannot import name 'render_function'`.
-
-- [ ] **Step 3: Implement `render_function`**
-
-Append to `tools/binrecon/binrecon/functions.py`:
-
-```python
 def render_function(name: str, reference_function: dict | None,
                     rebuilt_function: dict | None, record: dict | None) -> str:
     if reference_function is None and rebuilt_function is None:
@@ -620,19 +509,25 @@ def render_function(name: str, reference_function: dict | None,
     return "\n".join(header + lines)
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [ ] **Step 4: Run the module tests to verify they pass**
 
 Run:
 
 ```bash
-PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests/test_functions.py -q -k render_function
+PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests/test_functions.py -q -k "not parser and not help"
 ```
 
-Expected: `4 passed`.
+Expected: `13 passed`.
 
-- [ ] **Step 5: Wire `--name` into the CLI**
+- [ ] **Step 5: Wire both modes into the CLI**
 
-In `tools/binrecon/binrecon/cli.py`, extend the imports to add `function_index` and `render_function`:
+In `tools/binrecon/binrecon/cli.py`, add `"function"` to the `COMMANDS` tuple so it reads:
+
+```python
+COMMANDS = ("validate", "analyze", "consensus", "compare", "ledger", "source-map", "function")
+```
+
+Add this import beside the existing ones:
 
 ```python
 from binrecon.functions import (
@@ -641,21 +536,42 @@ from binrecon.functions import (
 )
 ```
 
-In `main()`'s `function` block, replace the `if args.list_functions:` clause with:
+In `build_parser()`, after the `source_map` block and before `return parser`:
 
 ```python
+    function = subparsers.add_parser("function")
+    function.add_argument("--profile", required=True)
+    function.add_argument("--analyzer", default="ida")
+    function.add_argument("--list", action="store_true", dest="list_functions",
+                          help="print every compared function, cheapest difference first")
+    function.add_argument("--name", help="print one function's two instruction sequences")
+```
+
+In `main()`, before the final return, add the whole block — both modes, with no path that falls through silently:
+
+```python
+    if args.command == "function":
+        if args.list_functions == bool(args.name):
+            print("binrecon: give exactly one of --list or --name", file=sys.stderr)
+            return 1
+        try:
+            profile = load_profile(Path(args.profile), os.environ)
+            reference, rebuilt, comparison = load_published(profile.output_dir, args.analyzer)
             if args.list_functions:
-                print(render_worklist(rows))
+                print(render_worklist(worklist(reference, rebuilt, comparison)))
                 return 0
-            reference_index = function_index(reference)
-            rebuilt_index = function_index(rebuilt)
             record = next((item for item in comparison.get("functions") or []
                            if args.name in (item.get("reference_aliases") or [])
                            or args.name in (item.get("rebuilt_aliases") or [])), None)
-            print(render_function(args.name, reference_index.get(args.name),
-                                  rebuilt_index.get(args.name), record))
+            print(render_function(args.name, function_index(reference).get(args.name),
+                                  function_index(rebuilt).get(args.name), record))
             return 0
+        except (OSError, ValueError, ValidationError, FunctionQueryError) as error:
+            print(f"binrecon: {error}", file=sys.stderr)
+            return 1
 ```
+
+Note the mutual-exclusion check runs **before** the profile is loaded, so a malformed invocation is rejected on its own terms rather than after an unrelated failure.
 
 - [ ] **Step 6: Run the whole suite**
 
@@ -665,18 +581,18 @@ Run:
 PYTHONPATH=tools/binrecon ./.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q
 ```
 
-Expected: 15 more tests than the 905-passed baseline, nothing failing.
+Expected: 15 more tests than the 905-passed baseline, nothing failing. If `test_cli.py`'s command lists fail, they assert on a fixed tuple of command names — read them and decide whether they should include `function`, rather than assuming.
 
 - [ ] **Step 7: Commit**
 
 ```bash
 git add tools/binrecon/binrecon/functions.py tools/binrecon/binrecon/cli.py tools/binrecon/tests/test_functions.py
-git commit -m "binrecon: print a function's reference and rebuilt instructions side by side"
+git commit -m "binrecon: add a function subcommand for per-function worklists and diffs"
 ```
 
 ---
 
-### Task 4: Rebuild, re-baseline, and record the worklist
+### Task 3: Rebuild, re-baseline, and record the worklist
 
 **This task requires the user to build the driver.** Ask, and wait. Nothing in this task may be reported before the build completes.
 

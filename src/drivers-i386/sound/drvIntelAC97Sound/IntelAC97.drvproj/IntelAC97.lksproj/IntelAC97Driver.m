@@ -287,8 +287,10 @@ static void clearInt(void *identity, void *handlerState, unsigned int arg)
     if (state == nil)
         return;
 
-    ICHAC97StopPlayback(&state->controller);
-    outb((IOEISAPortAddress)(state->controller.nabmbar + ICH_REG_PI_CR), 0);
+    if (state->controller.nabmbar != 0) {
+        ICHAC97StopPlayback(&state->controller);
+        outb((IOEISAPortAddress)(state->controller.nabmbar + ICH_REG_PI_CR), 0);
+    }
 
     if (activeInterruptState == state)
         activeInterruptState = nil;

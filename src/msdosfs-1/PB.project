@@ -1,0 +1,15 @@
+{
+    DYNAMIC_CODE_GEN = YES;
+    FILESTABLE = {
+        H_FILES = ();
+        OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble);
+        SUBPROJECTS = (msdos_mount, msdos_newfs, msdos_fsck, msdos_util);
+    };
+    LANGUAGE = English;
+    MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles";
+    NEXTSTEP_BUILDTOOL = /bin/gnumake;
+    PROJECTNAME = msdosfs;
+    PROJECTTYPE = Aggregate;
+    PROJECTVERSION = 2.8;
+    TARGETS = ();
+}

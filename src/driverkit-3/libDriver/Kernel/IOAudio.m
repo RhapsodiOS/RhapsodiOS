@@ -1657,8 +1657,6 @@ static int audio_first =0;
     if ([self reset] == NO)
         return nil;
 
-    [self _initAudioHardwareSettings];
-    
     /*
      * Get the kernel server instance for the just-loaded reloc.
      */
@@ -1753,7 +1751,11 @@ static int audio_first =0;
     (void) IOSetThreadPolicy(thread, POLICY_FIXEDPRI);
     (void) IOSetThreadPriority(thread, 30);	/* XXX */
     (void)IOForkThread((IOThreadFunc)keyThread, (void *)self);
-    
+
+    /*
+     * Defaults go through _audioCommand, which needs ioThread running.
+     */
+    [self _initAudioHardwareSettings];
 
     /*
      * This should be after the ioThread fork to guarantee that

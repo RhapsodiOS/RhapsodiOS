@@ -191,6 +191,41 @@ set_parameter_sets_right_input_gain(const char *src)
         "[self _setInputGainRight:(unsigned int)value]");
 }
 
+static int
+init_runs_after_command_thread(const char *src)
+{
+    const char *body;
+    const char *end;
+    const char *settings;
+    const char *command;
+    const char *thread;
+
+    body = method_body(src, "- initFromDeviceDescription:_description");
+    end = matching_brace(body);
+    if (body == 0 || end == 0)
+        return 0;
+
+    settings = 0;
+    command = 0;
+    thread = 0;
+    {
+        const char *p;
+        for (p = body; p < end; p++) {
+            if (settings == 0 &&
+                strncmp(p, "[self _initAudioHardwareSettings]", 33) == 0)
+                settings = p;
+            if (command == 0 &&
+                strncmp(p, "_audioCommand = [[AudioCommand alloc]", 37) == 0)
+                command = p;
+            if (thread == 0 &&
+                strncmp(p, "IOForkThread((IOThreadFunc)ioThread", 35) == 0)
+                thread = p;
+        }
+    }
+    return settings != 0 && command != 0 && thread != 0 &&
+        settings > command && settings > thread;
+}
+
 int
 main(void)
 {
@@ -214,6 +249,7 @@ main(void)
         CHECK(strcmp(names[3], "_setOutputAttenuationRight") == 0);
     }
     CHECK(set_parameter_sets_right_input_gain(src));
+    CHECK(init_runs_after_command_thread(src));
 
     free(src);
     if (failures) {

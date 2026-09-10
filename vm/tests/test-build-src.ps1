@@ -63,37 +63,38 @@ function Assert-EncodingSignature($Actual, $Expected, [string]$Name) {
     Assert-Equal $Actual.Preamble $Expected.Preamble "$Name preamble"
 }
 
-. (Join-Path $PSScriptRoot 'build-src-lib.ps1')
-$realProfile = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\rbuild-1\toolchains\gcc-darwin.conf')
-$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$VmDir = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$repoRoot = (Resolve-Path (Join-Path $VmDir '..')).Path
+. (Join-Path $VmDir 'build-src-lib.ps1')
+$realProfile = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\toolchains\gcc-darwin.conf')
 $texi2htmlIndex = (& git -C $repoRoot ls-files -s -- src/CoreOSMakefiles-1/ReleaseControl/texi2html) -join "`n"
 Assert-Match $texi2htmlIndex '^100755 ' 'CoreOS texi2html is tracked executable'
-$ccBuildGccText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\cc-1\build_gcc')
+$ccBuildGccText = Get-Content -Raw (Join-Path $repoRoot 'src\cc-1\build_gcc')
 Assert-Match $ccBuildGccText '-print-prog-name=cc1' 'cc bootstrap discovers the configured GCC backend instead of assuming a host layout'
 Assert-NotMatch $ccBuildGccText 'if \[ -d /`if \[ "\$RHAPSODY" \]; then echo usr/libexec; else echo lib; fi`/\$host \]' 'cc bootstrap does not require the historical fixed compiler directory'
-$ccMakefileText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\cc-1\cc\Makefile.in')
+$ccMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\cc-1\cc\Makefile.in')
 Assert-Equal ([regex]::Matches($ccMakefileText, '\$\(MAKE\).*BISON="\$\(BISON\)"').Count) 6 'cc self-bootstrap propagates configured bison through every compiler-stage submake'
-$gnumakeMakefileText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\gnumake-1\Makefile')
+$gnumakeMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\gnumake-1\Makefile')
 Assert-Match $gnumakeMakefileText 'source_root="\$\(SRCROOT\)"' 'gnumake preserves its configured source root across the object-directory chdir'
 Assert-Match $gnumakeMakefileText '\$\$source_root/\$\(MAKE_SRC_DIR\)/configure' 'gnumake configures from the preserved source tree'
 Assert-NotMatch $gnumakeMakefileText 'PWD=`pwd`' 'gnumake does not repurpose the shell-maintained PWD variable for its source root'
-$bootstrapManifestText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\BootstrapManifest')
+$bootstrapManifestText = Get-Content -Raw (Join-Path $repoRoot 'src\BootstrapManifest')
 Assert-Match $bootstrapManifestText '(?s)dir\s+Libc-1\s+headers.*dir\s+cc-1\s+headers.*dir\s+bison-1\s+all.*dir\s+cc-1\s+all' 'libc and cc headers are replayed before bison and the full cc bootstrap'
-$libcMachPreambleText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\Libc-1\mach.subproj\Makefile.preamble')
+$libcMachPreambleText = Get-Content -Raw (Join-Path $repoRoot 'src\Libc-1\mach.subproj\Makefile.preamble')
 Assert-Match $libcMachPreambleText 'override\s+MIG\s*=\s*\$\(CONFIG_DIR\)/mig' 'libc Mach headers override inherited host MIG with the configured private tool'
 Assert-Match $libcMachPreambleText 'MIGFLAGS\s*=\s*\$\(RC_CFLAGS\)' 'libc Mach MIG preprocessing uses the isolated target header flags'
 
-$buildScriptText = Get-Content -Raw (Join-Path $PSScriptRoot 'build-src.ps1')
-$remoteScriptText = Get-Content -Raw (Join-Path $PSScriptRoot 'rhap-remote.ps1')
-$migWrapperText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\Commands\bootstrap_cmds\migcom.tproj\mig.sh')
-$classicErrorText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\Commands\bootstrap_cmds\migcom.tproj\error.c')
-$classicErrorHeaderText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\Commands\bootstrap_cmds\migcom.tproj\error.h')
-$classicUtilsText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\Commands\bootstrap_cmds\migcom.tproj\utils.c')
-$typedErrorText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\Commands\bootstrap_cmds\migcom_typd.tproj\error.c')
-$typedErrorHeaderText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\Commands\bootstrap_cmds\migcom_typd.tproj\error.h')
-$kernelMakeTemplateText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\kernel-7\conf\Makefile.template')
-$pkginfoSourceText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\rbuild-1\pkginfo.c')
-$decommentSourcePath = Join-Path $PSScriptRoot '..\src\Commands\bootstrap_cmds\decomment.tproj\decomment.c'
+$buildScriptText = Get-Content -Raw (Join-Path $VmDir 'build-src.ps1')
+$remoteScriptText = Get-Content -Raw (Join-Path $VmDir 'rhap-remote.ps1')
+$migWrapperText = Get-Content -Raw (Join-Path $repoRoot 'src\Commands\bootstrap_cmds\migcom.tproj\mig.sh')
+$classicErrorText = Get-Content -Raw (Join-Path $repoRoot 'src\Commands\bootstrap_cmds\migcom.tproj\error.c')
+$classicErrorHeaderText = Get-Content -Raw (Join-Path $repoRoot 'src\Commands\bootstrap_cmds\migcom.tproj\error.h')
+$classicUtilsText = Get-Content -Raw (Join-Path $repoRoot 'src\Commands\bootstrap_cmds\migcom.tproj\utils.c')
+$typedErrorText = Get-Content -Raw (Join-Path $repoRoot 'src\Commands\bootstrap_cmds\migcom_typd.tproj\error.c')
+$typedErrorHeaderText = Get-Content -Raw (Join-Path $repoRoot 'src\Commands\bootstrap_cmds\migcom_typd.tproj\error.h')
+$kernelMakeTemplateText = Get-Content -Raw (Join-Path $repoRoot 'src\kernel-7\conf\Makefile.template')
+$pkginfoSourceText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\pkginfo.c')
+$decommentSourcePath = Join-Path $repoRoot 'src\Commands\bootstrap_cmds\decomment.tproj\decomment.c'
 $decommentSourceText = Get-Content -Raw $decommentSourcePath
 Assert-Match $migWrapperText 'MIGCC' 'MIG wrapper supports configured compiler override'
 Assert-Match $migWrapperText 'MIGARCH' 'MIG wrapper supports configured architecture override'
@@ -908,7 +909,7 @@ try {
         'RemoteRoot=/build'
     )
     $script:RhapVmDir = $configDir
-    . (Join-Path $PSScriptRoot 'rhap-remote.ps1')
+    . (Join-Path $VmDir 'rhap-remote.ps1')
     $cfg = Get-RhapVmConfig -DiePrefix 'test-build-src'
     Assert-Equal $cfg.ToolsDir '/build/tools' 'default tools directory'
     Assert-Equal $cfg.BootstrapRoot '/build/bootstrap-root' 'default bootstrap root'
@@ -1006,7 +1007,7 @@ try {
 
         $childCapturePath = Join-Path $transportDir 'child-file.bin'
         $childHarness = Join-Path $transportDir 'invoke-transport.ps1'
-        $escapedRemote = (Join-Path $PSScriptRoot 'rhap-remote.ps1').Replace("'", "''")
+        $escapedRemote = (Join-Path $VmDir 'rhap-remote.ps1').Replace("'", "''")
         $escapedCaptureExe = $captureExe.Replace("'", "''")
         Set-Content -LiteralPath $childHarness -Encoding ASCII -Value @(
             "`$ErrorActionPreference = 'Stop'",
@@ -1023,19 +1024,19 @@ try {
         $canonicalVmDir = Join-Path $transportDir 'canonical-vm'
         New-Item -ItemType Directory -Path $canonicalVmDir | Out-Null
         foreach ($canonicalFile in @('build-src.ps1', 'build-src-lib.ps1', 'rhap-remote.ps1')) {
-            Copy-Item -LiteralPath (Join-Path $PSScriptRoot $canonicalFile) -Destination $canonicalVmDir
+            Copy-Item -LiteralPath (Join-Path $VmDir $canonicalFile) -Destination $canonicalVmDir
         }
         Set-Content -LiteralPath (Join-Path $canonicalVmDir 'vm.conf') -Encoding ASCII -Value @(
             'Host=example.invalid',
             'User=root',
             'Password=test',
             'RemoteRoot=/build',
-            "LocalRoot=$((Split-Path -Parent $PSScriptRoot))",
+            "LocalRoot=$repoRoot",
             "Ssh=$captureExe"
         )
         $canonicalCapturePath = Join-Path $transportDir 'canonical-rbuild.bin'
         $env:RHAP_STDIN_CAPTURE = $canonicalCapturePath
-        $env:RHAP_STDIN_STDOUT_FILE = Join-Path $PSScriptRoot '..\src\rbuild-1\toolchains\gcc-darwin.conf'
+        $env:RHAP_STDIN_STDOUT_FILE = Join-Path $repoRoot 'src\rbuild-1\toolchains\gcc-darwin.conf'
         $env:RHAP_STDIN_STDOUT_MARKER = Join-Path $transportDir 'canonical-profile-emitted'
         $canonicalOutput = & powershell -NoProfile -File (Join-Path $canonicalVmDir 'build-src.ps1') -Rbuild 2>&1
         Assert-Equal $LASTEXITCODE 0 "canonical build-src -Rbuild transport exit: $($canonicalOutput -join ' | ')"
@@ -1265,7 +1266,7 @@ exit 0
         (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeCompiler)),
         (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeLibexec)),
         (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $captureDir)),
-        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath (Join-Path $PSScriptRoot '..\src\Commands\bootstrap_cmds\migcom.tproj\mig.sh'))),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath (Join-Path $repoRoot 'src\Commands\bootstrap_cmds\migcom.tproj\mig.sh'))),
         $quotedWrapperArgs
     )
     & $sh -c $invoke
@@ -1285,7 +1286,7 @@ exit 0
         (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeCompiler)),
         (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeLibexec)),
         (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $captureDir)),
-        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath (Join-Path $PSScriptRoot '..\src\Commands\bootstrap_cmds\migcom.tproj\mig.sh'))),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath (Join-Path $repoRoot 'src\Commands\bootstrap_cmds\migcom.tproj\mig.sh'))),
         (ConvertTo-RhapShellLiteral $newlineFlag),
         (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $defsOne))
     )
@@ -1293,7 +1294,7 @@ exit 0
     Assert-Equal $LASTEXITCODE 1 'MIG wrapper rejects embedded newlines before execution'
     Assert-Equal (@((Get-Content -LiteralPath (Join-Path $captureDir 'compiler.args')) | Where-Object { $_ -eq '--invocation--' }).Count) 2 'newline rejection does not invoke configured compiler'
 
-    $wrapperShPath = ConvertTo-TestShPath (Join-Path $PSScriptRoot '..\src\Commands\bootstrap_cmds\migcom.tproj\mig.sh')
+    $wrapperShPath = ConvertTo-TestShPath (Join-Path $repoRoot 'src\Commands\bootstrap_cmds\migcom.tproj\mig.sh')
     $operandResults = Join-Path $captureDir 'operand.results'
     $operandContractBody = @'
 status=0
@@ -1573,14 +1574,14 @@ exit $status
     Assert-Equal (@($compilerArgsAfterOverride | Where-Object { $_ -eq '-Di386' }).Count) ($ambientI386Before + 1) 'explicit i386 architecture is preserved as one cpp argument'
 
     $typedOutput = Join-Path $outputDir 'typed mach server.h'
-    $actualMachDefs = Join-Path $PSScriptRoot '..\src\kernel-7\mach\mach.defs'
+    $actualMachDefs = Join-Path $repoRoot 'src\kernel-7\mach\mach.defs'
     $typedInvoke = 'cd {0} && MIGCC={1} MIGARCH=ppc MIGCOM_DIR={2} MIG_TEST_CAPTURE={3} sh {4} -typed -I{5} -DKERNEL -DKERNEL_SERVER -header {6} -user /dev/null -server /dev/null {7}' -f @(
         (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $runDir)),
         (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeCompiler)),
         (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeLibexec)),
         (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $captureDir)),
         (ConvertTo-RhapShellLiteral $wrapperShPath),
-        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath (Join-Path $PSScriptRoot '..\src\kernel-7'))),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath (Join-Path $repoRoot 'src\kernel-7'))),
         (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $typedOutput)),
         (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $actualMachDefs))
     )

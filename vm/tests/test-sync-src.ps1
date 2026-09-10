@@ -110,10 +110,12 @@ function Invoke-TestRemoteCommand([string]$Bash, [string]$Command, [string]$Arch
     return Complete-TestRemoteCommand $context
 }
 
-$syncScriptText = Get-Content -Raw (Join-Path $PSScriptRoot 'sync-src.ps1')
-$targetCshHeaderText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\Commands\basic_cmds\csh.tproj\csh.h')
-$targetCshManualText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\Commands\basic_cmds\csh.tproj\csh.1')
-$targetCshLexText = Get-Content -Raw (Join-Path $PSScriptRoot '..\src\Commands\basic_cmds\csh.tproj\lex.c')
+$VmDir = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$repoRoot = (Resolve-Path (Join-Path $VmDir '..')).Path
+$syncScriptText = Get-Content -Raw (Join-Path $VmDir 'sync-src.ps1')
+$targetCshHeaderText = Get-Content -Raw (Join-Path $repoRoot 'src\Commands\basic_cmds\csh.tproj\csh.h')
+$targetCshManualText = Get-Content -Raw (Join-Path $repoRoot 'src\Commands\basic_cmds\csh.tproj\csh.1')
+$targetCshLexText = Get-Content -Raw (Join-Path $repoRoot 'src\Commands\basic_cmds\csh.tproj\lex.c')
 
 Assert-Match $syncScriptText '--format cpio' 'sync archive uses portable cpio format'
 Assert-Match $syncScriptText ([regex]::Escape('--format cpio -cf $ArchivePath -C $ArchiveParent -- $ArchiveLeaf')) 'producer terminates options before archive leaf'
@@ -127,8 +129,8 @@ Assert-Match $targetCshHeaderText '#define\s+BUFSIZ\s+1024' 'target csh limits w
 Assert-Match $targetCshManualText 'limits argument lists to 10240 characters' 'target csh documents 10240-character argument list'
 Assert-Match $targetCshLexText 'dolflg = c == ''"'' \? DOALL : DOEXCL' 'target csh single quotes retain history processing'
 
-. (Join-Path $PSScriptRoot 'build-src-lib.ps1')
-. (Join-Path $PSScriptRoot 'sync-src-lib.ps1')
+. (Join-Path $VmDir 'build-src-lib.ps1')
+. (Join-Path $VmDir 'sync-src-lib.ps1')
 Assert-Equal ($null -ne (Get-Command Start-TestRemoteCommand -ErrorAction SilentlyContinue)) $true 'test harness exposes an asynchronous remote command starter'
 Assert-Equal ($null -ne (Get-Command Invoke-RhapCpioTransfer -ErrorAction SilentlyContinue)) $true 'sync exposes a testable producer-consumer transaction'
 Assert-Equal ($null -ne (Get-Command ConvertTo-RhapSyncRelativePath -ErrorAction SilentlyContinue)) $true 'sync exposes relative path validation'

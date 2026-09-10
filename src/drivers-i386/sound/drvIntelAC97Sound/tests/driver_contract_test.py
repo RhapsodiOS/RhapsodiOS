@@ -53,6 +53,58 @@ class DriverContractTests(unittest.TestCase):
         handler = source[source.index("static void clearInt"):]
         self.assertIn("IOEnableInterrupt(identity)", handler)
 
+    def test_accepts_continuous_sampling_rates_uses_vra_enabled(self):
+        source = (LINK / "IntelAC97Driver.m").read_text(encoding="utf-8")
+        body = source[
+            source.index("acceptsContinuousSamplingRates")
+            : source.index("getSamplingRatesLow:")
+        ]
+        self.assertIn("vra_enabled", body)
+        self.assertNotIn("vra_supported", body)
+
+    def test_get_sampling_rates_respects_vra(self):
+        source = (LINK / "IntelAC97Driver.m").read_text(encoding="utf-8")
+        low_high = source[
+            source.index("getSamplingRatesLow:")
+            : source.index("getSamplingRates:count:")
+        ]
+        rates = source[
+            source.index("getSamplingRates:count:")
+            : source.index("getDataEncodings:count:")
+        ]
+        self.assertIn("vra_enabled", low_high)
+        self.assertIn("vra_enabled", rates)
+        self.assertIn("48000", rates)
+        self.assertIn("*numRates = 1", rates)
+
+    def test_update_sample_rate_dac_only(self):
+        source = (LINK / "IntelAC97Driver.m").read_text(encoding="utf-8")
+        body = source[
+            source.index("updateSampleRate")
+            : source.index("acceptsContinuousSamplingRates")
+        ]
+        self.assertIn("ac97_set_rate", body)
+        self.assertIn("AC97_RATE_DAC", body)
+        self.assertNotIn("AC97_RATE_ADC", body)
+
+    def test_update_output_attenuation_left_uses_apply_output(self):
+        source = (LINK / "IntelAC97Driver.m").read_text(encoding="utf-8")
+        body = source[
+            source.index("updateOutputAttenuationLeft")
+            : source.index("updateOutputAttenuationRight")
+        ]
+        self.assertIn("ac97_apply_output", body)
+        self.assertNotIn("* 31) / 13", body)
+        self.assertNotIn("ac97_set_master_volume", body)
+
+    def test_update_input_gain_left_has_no_ac97_calls(self):
+        source = (LINK / "IntelAC97Driver.m").read_text(encoding="utf-8")
+        body = source[
+            source.index("updateInputGainLeft")
+            : source.index("updateInputGainRight")
+        ]
+        self.assertNotIn("ac97_", body)
+
 
 if __name__ == "__main__":
     unittest.main()

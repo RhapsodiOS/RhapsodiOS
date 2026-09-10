@@ -684,8 +684,8 @@ static void clearInt(void *identity, void *handlerState, unsigned int arg)
     unsigned int rate = [self sampleRate];
 
     if (state != nil && state->codecAttached) {
-        ac97_set_rate(&state->codec, AC97_RATE_DAC, rate);
-        ac97_set_rate(&state->codec, AC97_RATE_ADC, rate);
+        if (ac97_set_rate(&state->codec, AC97_RATE_DAC, rate) < 0)
+            IOLog("%s: Failed to set DAC sample rate to %u\n", DRV_TITLE, rate);
     }
 }
 
@@ -697,7 +697,7 @@ static void clearInt(void *identity, void *handlerState, unsigned int arg)
     if (state == nil || !state->codecAttached)
         return NO;
 
-    return state->codec.caps.vra_supported;
+    return state->codec.vra_enabled;
 }
 
 /*
@@ -705,8 +705,13 @@ static void clearInt(void *identity, void *handlerState, unsigned int arg)
  */
 - (void)getSamplingRatesLow:(int *)lowRate high:(int *)highRate
 {
-    *lowRate = AC97_RATE_MIN;
-    *highRate = AC97_RATE_MAX;
+    if (state != nil && state->codecAttached && state->codec.vra_enabled) {
+        *lowRate = AC97_RATE_MIN;
+        *highRate = AC97_RATE_MAX;
+    } else {
+        *lowRate = AC97_RATE_DEFAULT;
+        *highRate = AC97_RATE_DEFAULT;
+    }
 }
 
 /*
@@ -714,14 +719,19 @@ static void clearInt(void *identity, void *handlerState, unsigned int arg)
  */
 - (void)getSamplingRates:(int *)rates count:(unsigned int *)numRates
 {
-    rates[0] = 8000;
-    rates[1] = 11025;
-    rates[2] = 16000;
-    rates[3] = 22050;
-    rates[4] = 32000;
-    rates[5] = 44100;
-    rates[6] = 48000;
-    *numRates = 7;
+    if (state != nil && state->codecAttached && state->codec.vra_enabled) {
+        rates[0] = 8000;
+        rates[1] = 11025;
+        rates[2] = 16000;
+        rates[3] = 22050;
+        rates[4] = 32000;
+        rates[5] = 44100;
+        rates[6] = 48000;
+        *numRates = 7;
+    } else {
+        rates[0] = AC97_RATE_DEFAULT;
+        *numRates = 1;
+    }
 }
 
 /*
@@ -754,10 +764,10 @@ static void clearInt(void *identity, void *handlerState, unsigned int arg)
 
     mute = [self isOutputMuted] || !state->controller.playback.running;
 
-    ac97_set_master_volume(&state->codec,
-                          state->codec.master_vol_l,
-                          state->codec.master_vol_r,
-                          mute);
+    ac97_apply_output(&state->codec,
+                      [self outputAttenuationLeft],
+                      [self outputAttenuationRight],
+                      mute);
 }
 
 /*
@@ -765,17 +775,17 @@ static void clearInt(void *identity, void *handlerState, unsigned int arg)
  */
 - (void)updateOutputAttenuationLeft
 {
-    unsigned char left;
     BOOL mute;
 
     if (state == nil || !state->codecAttached)
         return;
 
-    left = ([self outputAttenuationLeft] * 31) / 13;
     mute = [self isOutputMuted] || !state->controller.playback.running;
 
-    ac97_set_master_volume(&state->codec, left, state->codec.master_vol_r,
-                          mute);
+    ac97_apply_output(&state->codec,
+                      [self outputAttenuationLeft],
+                      [self outputAttenuationRight],
+                      mute);
 }
 
 /*
@@ -783,17 +793,17 @@ static void clearInt(void *identity, void *handlerState, unsigned int arg)
  */
 - (void)updateOutputAttenuationRight
 {
-    unsigned char right;
     BOOL mute;
 
     if (state == nil || !state->codecAttached)
         return;
 
-    right = ([self outputAttenuationRight] * 31) / 13;
     mute = [self isOutputMuted] || !state->controller.playback.running;
 
-    ac97_set_master_volume(&state->codec, state->codec.master_vol_l, right,
-                          mute);
+    ac97_apply_output(&state->codec,
+                      [self outputAttenuationLeft],
+                      [self outputAttenuationRight],
+                      mute);
 }
 
 /*

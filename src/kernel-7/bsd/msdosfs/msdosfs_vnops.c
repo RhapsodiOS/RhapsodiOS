@@ -65,7 +65,6 @@
 
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
-#include <vm/vm_zone.h>
 #include <vm/vnode_pager.h>
 
 #include <msdosfs/bpb.h>
@@ -1977,7 +1976,5 @@ static struct vnodeopv_entry_desc msdosfs_vnodeop_entries[] = {
 	{ &vop_putpages_desc,		(vop_t *) msdosfs_putpages },
 	{ NULL, NULL }
 };
-static struct vnodeopv_desc msdosfs_vnodeop_opv_desc =
+struct vnodeopv_desc msdosfs_vnodeop_opv_desc =
 	{ &msdosfs_vnodeop_p, msdosfs_vnodeop_entries };
-
-VNODEOP_SET(msdosfs_vnodeop_opv_desc);

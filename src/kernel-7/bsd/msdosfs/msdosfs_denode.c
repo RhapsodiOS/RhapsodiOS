@@ -66,8 +66,6 @@
 #include <msdosfs/denode.h>
 #include <msdosfs/fat.h>
 
-static MALLOC_DEFINE(M_MSDOSFSNODE, "MSDOSFS node", "MSDOSFS vnode private part");
-
 static struct denode **dehashtbl;
 static u_long dehash;			/* size of hash table - 1 */
 #define	DEHASH(dev, dcl, doff)	(dehashtbl[(minor(dev) + (dcl) + (doff) / 	\
@@ -109,6 +107,7 @@ msdosfs_init(vfsp)
 	return (0);
 }
 
+#if 0
 int 
 msdosfs_uninit(vfsp)
 	struct vfsconf *vfsp;
@@ -118,6 +117,7 @@ msdosfs_uninit(vfsp)
 		free(dehashtbl, M_MSDOSFSMNT);
 	return (0);
 }
+#endif
 
 static struct denode *
 msdosfs_hashget(dev, dirclust, diroff)

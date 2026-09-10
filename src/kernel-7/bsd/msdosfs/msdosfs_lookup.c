@@ -78,7 +78,7 @@
  */
 int
 msdosfs_lookup(ap)
-	struct vop_cachedlookup_args /* {
+	struct vop_lookup_args /* {
 		struct vnode *a_dvp;
 		struct vnode **a_vpp;
 		struct componentname *a_cnp;

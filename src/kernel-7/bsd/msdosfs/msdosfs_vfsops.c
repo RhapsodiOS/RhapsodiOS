@@ -60,7 +60,6 @@
 #include <sys/fcntl.h>
 #include <sys/malloc.h>
 #include <sys/stat.h> 				/* defines ALLPERMS */
-#include <vm/vm_zone.h>
 
 #include <msdosfs/bpb.h>
 #include <msdosfs/bootsect.h>
@@ -82,15 +81,11 @@
 #define	MSDOSFS_NOCHECKSIG
 #endif
 
-MALLOC_DEFINE(M_MSDOSFSMNT, "MSDOSFS mount", "MSDOSFS mount structure");
-static MALLOC_DEFINE(M_MSDOSFSFAT, "MSDOSFS FAT", "MSDOSFS file allocation table");
-
 static int	update_mp __P((struct mount *mp, struct msdosfs_args *argp));
 static int	mountmsdosfs __P((struct vnode *devvp, struct mount *mp,
 				  struct proc *p, struct msdosfs_args *argp));
 static int	msdosfs_fhtovp __P((struct mount *, struct fid *,
-				    struct vnode **));
-static int	msdosfs_checkexp __P((struct mount *, struct sockaddr *, 
+				    struct mbuf *, struct vnode **,
 				    int *, struct ucred **));
 static int	msdosfs_mount __P((struct mount *, char *, caddr_t,
 				   struct nameidata *, struct proc *));
@@ -101,6 +96,12 @@ static int	msdosfs_sync __P((struct mount *, int, struct ucred *,
 				  struct proc *));
 static int	msdosfs_unmount __P((struct mount *, int, struct proc *));
 static int	msdosfs_vptofh __P((struct vnode *, struct fid *));
+static int	msdosfs_start __P((struct mount *, int, struct proc *));
+static int	msdosfs_quotactl __P((struct mount *, int, uid_t, caddr_t,
+				      struct proc *));
+static int	msdosfs_sysctl __P((int *, u_int, void *, size_t *, void *,
+				    size_t, struct proc *));
+static int	msdosfs_vget __P((struct mount *, void *, struct vnode **));
 
 static int
 update_mp(mp, argp)
@@ -177,7 +178,7 @@ msdosfs_mountroot()
 
 	mp = malloc((u_long)sizeof(struct mount), M_MOUNT, M_WAITOK);
 	bzero((char *)mp, (u_long)sizeof(struct mount));
-	mp->mnt_op = &msdosfs_vfsops;
+	mp->mnt_op = &msdos_vfsops;
 	mp->mnt_flag = 0;
 	TAILQ_INIT(&mp->mnt_nvnodelist);
 	TAILQ_INIT(&mp->mnt_reservedvnlist);
@@ -925,15 +926,24 @@ loop:
 }
 
 static int
-msdosfs_fhtovp(mp, fhp, vpp)
+msdosfs_fhtovp(mp, fhp, nam, vpp, exflagsp, credanonp)
 	struct mount *mp;
 	struct fid *fhp;
+	struct mbuf *nam;
 	struct vnode **vpp;
+	int *exflagsp;
+	struct ucred **credanonp;
 {
 	struct msdosfsmount *pmp = VFSTOMSDOSFS(mp);
 	struct defid *defhp = (struct defid *) fhp;
 	struct denode *dep;
 	int error;
+
+	/*
+	 * v1: local-only mounts. Network export via nam is unsupported.
+	 */
+	if (nam != NULL)
+		return (EOPNOTSUPP);
 
 	error = deget(pmp, defhp->defid_dirclust, defhp->defid_dirofs, &dep);
 	if (error) {
@@ -941,24 +951,6 @@ msdosfs_fhtovp(mp, fhp, vpp)
 		return (error);
 	}
 	*vpp = DETOV(dep);
-	return (0);
-}
-
-static int
-msdosfs_checkexp(mp, nam,  exflagsp, credanonp)
-	struct mount *mp;
-	struct sockaddr *nam;
-	int *exflagsp;
-	struct ucred **credanonp;
-{
-	struct msdosfsmount *pmp = VFSTOMSDOSFS(mp);
-	struct netcred *np;
-
-	np = vfs_export_lookup(mp, &pmp->pm_export, nam);
-	if (np == NULL)
-		return (EACCES);
-	*exflagsp = np->netc_exflags;
-	*credanonp = &np->netc_anon;
 	return (0);
 }
 
@@ -979,21 +971,59 @@ msdosfs_vptofh(vp, fhp)
 	return (0);
 }
 
-static struct vfsops msdosfs_vfsops = {
+static int
+msdosfs_start(mp, flags, p)
+	struct mount *mp;
+	int flags;
+	struct proc *p;
+{
+	return (0);
+}
+
+static int
+msdosfs_quotactl(mp, cmds, uid, arg, p)
+	struct mount *mp;
+	int cmds;
+	uid_t uid;
+	caddr_t arg;
+	struct proc *p;
+{
+	return (EOPNOTSUPP);
+}
+
+static int
+msdosfs_sysctl(name, namelen, oldp, oldlenp, newp, newlen, p)
+	int *name;
+	u_int namelen;
+	void *oldp;
+	size_t *oldlenp;
+	void *newp;
+	size_t newlen;
+	struct proc *p;
+{
+	return (EOPNOTSUPP);
+}
+
+static int
+msdosfs_vget(mp, ino, vpp)
+	struct mount *mp;
+	void *ino;
+	struct vnode **vpp;
+{
+	return (EOPNOTSUPP);
+}
+
+struct vfsops msdos_vfsops = {
 	msdosfs_mount,
-	vfs_stdstart,
+	msdosfs_start,
 	msdosfs_unmount,
 	msdosfs_root,
-	vfs_stdquotactl,
+	msdosfs_quotactl,
 	msdosfs_statfs,
 	msdosfs_sync,
-	vfs_stdvget,
+	msdosfs_vget,
 	msdosfs_fhtovp,
-	msdosfs_checkexp,
 	msdosfs_vptofh,
 	msdosfs_init,
-	msdosfs_uninit,
-	vfs_stdextattrctl,
+	msdosfs_sysctl
 };
-
-VFS_SET(msdosfs_vfsops, msdos, 0);

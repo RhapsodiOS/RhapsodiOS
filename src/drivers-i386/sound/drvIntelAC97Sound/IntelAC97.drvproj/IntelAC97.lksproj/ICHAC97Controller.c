@@ -53,9 +53,24 @@ int ICHAC97PrepareBDL(ICHAC97Playback *playback,
 int ICHAC97ResetPlayback(ICHAC97Controller *controller,
                           ICHAC97UInt32 pollCount)
 {
-    (void)controller;
-    (void)pollCount;
-    return kICHAC97NotPrepared;
+    ICHAC97IO *io;
+    ICHAC97UInt32 crPort;
+    ICHAC97UInt32 i;
+
+    if (controller == 0)
+        return kICHAC97InvalidArgument;
+
+    io = &controller->io;
+    crPort = controller->nabmbar + ICHAC97_REG_PO_CR;
+    io->write8(io->context, crPort, ICHAC97_CR_RR);
+
+    for (i = 0; i < pollCount; i++) {
+        if ((io->read8(io->context, crPort) & ICHAC97_CR_RR) == 0U)
+            return kICHAC97Success;
+        if (io->delayUS != 0)
+            io->delayUS(io->context, 10U);
+    }
+    return kICHAC97Timeout;
 }
 
 int ICHAC97ResetLink(ICHAC97Controller *controller,
@@ -68,13 +83,58 @@ int ICHAC97ResetLink(ICHAC97Controller *controller,
 
 int ICHAC97StartPlayback(ICHAC97Controller *controller)
 {
-    (void)controller;
-    return kICHAC97NotPrepared;
+    ICHAC97IO *io;
+    ICHAC97Playback *playback;
+    ICHAC97UInt32 base;
+    ICHAC97UInt8 sr;
+    int result;
+
+    if (controller == 0)
+        return kICHAC97InvalidArgument;
+
+    playback = &controller->playback;
+    if (playback->bdl == 0 || playback->bdlPhysical == 0U)
+        return kICHAC97NotPrepared;
+
+    result = ICHAC97ResetPlayback(controller, 100U);
+    if (result != kICHAC97Success)
+        return result;
+
+    io = &controller->io;
+    base = controller->nabmbar;
+    io->write32(io->context, base + ICHAC97_REG_PO_BDBAR, playback->bdlPhysical);
+    io->write8(io->context, base + ICHAC97_REG_PO_LVI,
+               (ICHAC97UInt8)(ICHAC97_BDL_COUNT - 1U));
+
+    sr = io->read8(io->context, base + ICHAC97_REG_PO_SR);
+    io->write8(io->context, base + ICHAC97_REG_PO_SR,
+               (ICHAC97UInt8)(sr & ICHAC97_SR_W1C));
+
+    io->write8(io->context, base + ICHAC97_REG_PO_CR,
+               (ICHAC97UInt8)(ICHAC97_CR_RPBM | ICHAC97_CR_FEIE |
+                              ICHAC97_CR_IOCE));
+    playback->running = 1U;
+    return kICHAC97Success;
 }
 
 void ICHAC97StopPlayback(ICHAC97Controller *controller)
 {
-    (void)controller;
+    ICHAC97IO *io;
+    ICHAC97UInt32 base;
+    ICHAC97UInt8 sr;
+
+    if (controller == 0)
+        return;
+
+    io = &controller->io;
+    base = controller->nabmbar;
+    io->write8(io->context, base + ICHAC97_REG_PO_CR, 0U);
+
+    sr = io->read8(io->context, base + ICHAC97_REG_PO_SR);
+    io->write8(io->context, base + ICHAC97_REG_PO_SR,
+               (ICHAC97UInt8)(sr & ICHAC97_SR_W1C));
+
+    controller->playback.running = 0U;
 }
 
 void ICHAC97ChaseLVI(ICHAC97Controller *controller)

@@ -211,6 +211,30 @@ class AHCIScriptTests(unittest.TestCase):
         self.assertIn("bus=ide.1", second_only.stdout)
         self.assertNotIn("bus=ide.2", second_only.stdout)
 
+    def test_launcher_dry_run_ac97_backend(self):
+        work_dir = VM / "work" / "script-test-ac97"
+        shutil.rmtree(work_dir, ignore_errors=True)
+        work_dir.mkdir(parents=True)
+        self.addCleanup(lambda: shutil.rmtree(work_dir, ignore_errors=True))
+        source = work_dir / "source.img"
+        target = work_dir / "boot.img"
+        source.write_bytes(b"test")
+        with_ac97 = self.run_sh(
+            RUN, "--dry-run", "--ac97", "dsound",
+            self.sh_path(source), self.sh_path(target))
+        self.assertEqual(with_ac97.returncode, 0, with_ac97.stdout)
+        self.assertIn("\n  -audiodev\n", with_ac97.stdout)
+        self.assertIn("\n  dsound,id=ac97\n", with_ac97.stdout)
+        self.assertIn("\n  -device\n", with_ac97.stdout)
+        self.assertIn("\n  AC97,audiodev=ac97\n", with_ac97.stdout)
+
+        without_ac97 = self.run_sh(
+            RUN, "--dry-run", self.sh_path(source), self.sh_path(target))
+        self.assertEqual(without_ac97.returncode, 0, without_ac97.stdout)
+        self.assertNotIn("-audiodev", without_ac97.stdout)
+        self.assertNotIn("dsound,id=ac97", without_ac97.stdout)
+        self.assertNotIn("AC97,audiodev=ac97", without_ac97.stdout)
+
     def test_launcher_rejects_non_disposable_and_identical_targets(self):
         with tempfile.TemporaryDirectory() as td:
             source = pathlib.Path(td) / "source.img"

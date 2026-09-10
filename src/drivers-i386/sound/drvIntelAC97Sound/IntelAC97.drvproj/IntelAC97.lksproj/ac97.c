@@ -107,9 +107,9 @@ ac97_write(struct ac97_codec_state *codec, unsigned char reg, unsigned short val
 
     codec->write_reg(codec->host_priv, reg, val);
 
-    /* Cache the value if not reading from hardware */
+    /* Refresh shadow from hardware when mixer reads are enabled */
     if ((codec->host_flags & AC97_HOST_DONT_READMIX) == 0)
-        codec->regs[reg >> 1] = val;
+        codec->regs[reg >> 1] = ac97_read(codec, reg);
 }
 
 /*

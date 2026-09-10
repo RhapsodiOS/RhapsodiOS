@@ -301,6 +301,9 @@ static void test_codec_id_vra_volume_and_muted_attach(void)
     init_fake_codec(&codec, &fake);
     CHECK(ac97_attach(&codec, AC97_CODEC_TYPE_AUDIO) == 0);
     CHECK(codec.vra_enabled == 0);
+    CHECK((codec.regs[AC97_REG_EXT_AUDIO_CTRL >> 1] & AC97_EXT_CTRL_VRA) == 0U);
+    CHECK(codec.regs[AC97_REG_EXT_AUDIO_CTRL >> 1] ==
+          ac97_read(&codec, AC97_REG_EXT_AUDIO_CTRL));
     CHECK(ac97_set_rate(&codec, AC97_RATE_DAC, 44100U) == -1);
     CHECK(ac97_set_rate(&codec, AC97_RATE_DAC, 48000U) == 0);
 }

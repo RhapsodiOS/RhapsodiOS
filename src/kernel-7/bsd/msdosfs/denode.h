@@ -259,9 +259,7 @@ struct defid {
 #endif
 };
 
-typedef int	vop_t __P((void *));
-
-extern vop_t **msdosfs_vnodeop_p;
+extern int (**msdosfs_vnodeop_p)();
 
 int msdosfs_lookup __P((struct vop_lookup_args *));
 int msdosfs_inactive __P((struct vop_inactive_args *));

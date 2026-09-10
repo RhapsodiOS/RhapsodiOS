@@ -55,7 +55,6 @@
 #include <sys/time.h>
 #include <sys/kernel.h>		/* defines tz */
 #include <sys/systm.h>
-#include <machine/clock.h>
 #include <sys/dirent.h>
 
 /*
@@ -112,8 +111,7 @@ unix2dostime(tsp, ddp, dtp, dhp)
 	 * If the time from the last conversion is the same as now, then
 	 * skip the computations and use the saved result.
 	 */
-	t = tsp->tv_sec - (tz.tz_minuteswest * 60)
-	    - (wall_cmos_clock ? adjkerntz : 0);
+	t = tsp->tv_sec - (tz.tz_minuteswest * 60);
 	    /* - daylight savings time correction */
 	t &= ~1;
 	if (lasttime != t) {
@@ -224,8 +222,7 @@ dos2unixtime(dd, dt, dh, tsp)
 		days += ((dd & DD_DAY_MASK) >> DD_DAY_SHIFT) - 1;
 		lastseconds = (days * 24 * 60 * 60) + SECONDSTO1980;
 	}
-	tsp->tv_sec = seconds + lastseconds + (tz.tz_minuteswest * 60)
-	     + adjkerntz;
+	tsp->tv_sec = seconds + lastseconds + (tz.tz_minuteswest * 60);
 	     /* + daylight savings time correction */
 	tsp->tv_nsec = (dh % 100) * 10000000;
 }

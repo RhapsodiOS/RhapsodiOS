@@ -62,10 +62,12 @@
 #include <sys/malloc.h>
 #include <sys/dirent.h>
 #include <sys/signalvar.h>
+#include <sys/lock.h>
 
 #include <vm/vm.h>
-#include <vm/vm_extern.h>
 #include <vm/vnode_pager.h>
+
+#include <vfs/vfs_support.h>
 
 #include <msdosfs/bpb.h>
 #include <msdosfs/direntry.h>
@@ -98,8 +100,11 @@ static int msdosfs_bmap __P((struct vop_bmap_args *));
 static int msdosfs_strategy __P((struct vop_strategy_args *));
 static int msdosfs_print __P((struct vop_print_args *));
 static int msdosfs_pathconf __P((struct vop_pathconf_args *ap));
-static int msdosfs_getpages __P((struct vop_getpages_args *));
-static int msdosfs_putpages __P((struct vop_putpages_args *));
+static int msdosfs_lock __P((struct vop_lock_args *));
+static int msdosfs_unlock __P((struct vop_unlock_args *));
+static int msdosfs_islocked __P((struct vop_islocked_args *));
+static int msdosfs_pagein __P((struct vop_pagein_args *));
+static int msdosfs_pageout __P((struct vop_pageout_args *));
 
 /*
  * Some general notes:
@@ -863,13 +868,14 @@ msdosfs_fsync(ap)
 	 */
 loop:
 	s = splbio();
-	for (bp = TAILQ_FIRST(&vp->v_dirtyblkhd); bp; bp = nbp) {
-		nbp = TAILQ_NEXT(bp, b_vnbufs);
-		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT))
+	for (bp = vp->v_dirtyblkhd.lh_first; bp; bp = nbp) {
+		nbp = bp->b_vnbufs.le_next;
+		if ((bp->b_flags & B_BUSY))
 			continue;
 		if ((bp->b_flags & B_DELWRI) == 0)
 			panic("msdosfs_fsync: not dirty");
 		bremfree(bp);
+		bp->b_flags |= B_BUSY;
 		splx(s);
 		(void) bwrite(bp);
 		goto loop;
@@ -879,7 +885,7 @@ loop:
 		(void) tsleep((caddr_t)&vp->v_numoutput, PRIBIO + 1, "msdosfsn", 0);
 	}
 #ifdef DIAGNOSTIC
-	if (!TAILQ_EMPTY(&vp->v_dirtyblkhd)) {
+	if (vp->v_dirtyblkhd.lh_first) {
 		vprint("msdosfs_fsync: dirty", vp);
 		goto loop;
 	}
@@ -1914,67 +1920,135 @@ msdosfs_pathconf(ap)
 }
 
 /*
- * get page routine
- *
- * XXX By default, wimp out... note that a_offset is ignored (and always
- * XXX has been).
+ * Lock a denode.
  */
-int
-msdosfs_getpages(ap)
-	struct vop_getpages_args *ap;
+static int
+msdosfs_lock(ap)
+	struct vop_lock_args /* {
+		struct vnode *a_vp;
+		int a_flags;
+		struct proc *a_p;
+	} */ *ap;
 {
-	return vnode_pager_generic_getpages(ap->a_vp, ap->a_m, ap->a_count,
-		ap->a_reqpage);
+	struct vnode *vp = ap->a_vp;
+
+	if (VTODE(vp) == (struct denode *)NULL)
+		panic("msdosfs_lock: denode in vnode is null\n");
+	return (lockmgr(&VTODE(vp)->de_lock, ap->a_flags, &vp->v_interlock,
+	    ap->a_p));
 }
 
 /*
- * put page routine
- *
- * XXX By default, wimp out... note that a_offset is ignored (and always
- * XXX has been).
+ * Unlock a denode.
  */
-int
-msdosfs_putpages(ap)
-	struct vop_putpages_args *ap;
+static int
+msdosfs_unlock(ap)
+	struct vop_unlock_args /* {
+		struct vnode *a_vp;
+		int a_flags;
+		struct proc *a_p;
+	} */ *ap;
 {
-	return vnode_pager_generic_putpages(ap->a_vp, ap->a_m, ap->a_count,
-		ap->a_sync, ap->a_rtvals);
+	struct vnode *vp = ap->a_vp;
+
+	return (lockmgr(&VTODE(vp)->de_lock, ap->a_flags | LK_RELEASE,
+	    &vp->v_interlock, ap->a_p));
 }
 
-/* Global vfs data structures for msdosfs */
-vop_t **msdosfs_vnodeop_p;
-static struct vnodeopv_entry_desc msdosfs_vnodeop_entries[] = {
-	{ &vop_default_desc,		(vop_t *) vop_defaultop },
-	{ &vop_access_desc,		(vop_t *) msdosfs_access },
-	{ &vop_bmap_desc,		(vop_t *) msdosfs_bmap },
-	{ &vop_cachedlookup_desc,	(vop_t *) msdosfs_lookup },
-	{ &vop_close_desc,		(vop_t *) msdosfs_close },
-	{ &vop_create_desc,		(vop_t *) msdosfs_create },
-	{ &vop_fsync_desc,		(vop_t *) msdosfs_fsync },
-	{ &vop_getattr_desc,		(vop_t *) msdosfs_getattr },
-	{ &vop_inactive_desc,		(vop_t *) msdosfs_inactive },
-	{ &vop_islocked_desc,		(vop_t *) vop_stdislocked },
-	{ &vop_link_desc,		(vop_t *) msdosfs_link },
-	{ &vop_lock_desc,		(vop_t *) vop_stdlock },
-	{ &vop_lookup_desc,		(vop_t *) vfs_cache_lookup },
-	{ &vop_mkdir_desc,		(vop_t *) msdosfs_mkdir },
-	{ &vop_mknod_desc,		(vop_t *) msdosfs_mknod },
-	{ &vop_pathconf_desc,		(vop_t *) msdosfs_pathconf },
-	{ &vop_print_desc,		(vop_t *) msdosfs_print },
-	{ &vop_read_desc,		(vop_t *) msdosfs_read },
-	{ &vop_readdir_desc,		(vop_t *) msdosfs_readdir },
-	{ &vop_reclaim_desc,		(vop_t *) msdosfs_reclaim },
-	{ &vop_remove_desc,		(vop_t *) msdosfs_remove },
-	{ &vop_rename_desc,		(vop_t *) msdosfs_rename },
-	{ &vop_rmdir_desc,		(vop_t *) msdosfs_rmdir },
-	{ &vop_setattr_desc,		(vop_t *) msdosfs_setattr },
-	{ &vop_strategy_desc,		(vop_t *) msdosfs_strategy },
-	{ &vop_symlink_desc,		(vop_t *) msdosfs_symlink },
-	{ &vop_unlock_desc,		(vop_t *) vop_stdunlock },
-	{ &vop_write_desc,		(vop_t *) msdosfs_write },
-	{ &vop_getpages_desc,		(vop_t *) msdosfs_getpages },
-	{ &vop_putpages_desc,		(vop_t *) msdosfs_putpages },
-	{ NULL, NULL }
+/*
+ * Check for a locked denode.
+ */
+static int
+msdosfs_islocked(ap)
+	struct vop_islocked_args /* {
+		struct vnode *a_vp;
+	} */ *ap;
+{
+
+	return (lockstatus(&VTODE(ap->a_vp)->de_lock));
+}
+
+/*
+ * Darwin pagein — pass through to read (buffer-cache path).
+ */
+static int
+msdosfs_pagein(ap)
+	struct vop_pagein_args /* {
+		struct vnode *a_vp;
+		struct uio *a_uio;
+		int a_ioflag;
+		struct ucred *a_cred;
+	} */ *ap;
+{
+	return (VOP_READ(ap->a_vp, ap->a_uio, ap->a_ioflag, ap->a_cred));
+}
+
+/*
+ * Darwin pageout — pass through to write.
+ */
+static int
+msdosfs_pageout(ap)
+	struct vop_pageout_args /* {
+		struct vnode *a_vp;
+		struct uio *a_uio;
+		int a_ioflag;
+		struct ucred *a_cred;
+	} */ *ap;
+{
+	return (VOP_WRITE(ap->a_vp, ap->a_uio, ap->a_ioflag, ap->a_cred));
+}
+
+/*
+ * Global vfs data structures for msdosfs (Darwin vnodeop style).
+ */
+int (**msdosfs_vnodeop_p)();
+struct vnodeopv_entry_desc msdosfs_vnodeop_entries[] = {
+	{ &vop_default_desc, vn_default_error },
+	{ &vop_lookup_desc, msdosfs_lookup },	/* lookup */
+	{ &vop_create_desc, msdosfs_create },	/* create */
+	{ &vop_mknod_desc, msdosfs_mknod },	/* mknod */
+	{ &vop_open_desc, nop_open },		/* open */
+	{ &vop_close_desc, msdosfs_close },	/* close */
+	{ &vop_access_desc, msdosfs_access },	/* access */
+	{ &vop_getattr_desc, msdosfs_getattr },	/* getattr */
+	{ &vop_setattr_desc, msdosfs_setattr },	/* setattr */
+	{ &vop_read_desc, msdosfs_read },	/* read */
+	{ &vop_write_desc, msdosfs_write },	/* write */
+	{ &vop_lease_desc, nop_lease },		/* lease */
+	{ &vop_ioctl_desc, err_ioctl },		/* ioctl */
+	{ &vop_select_desc, nop_select },	/* select */
+	{ &vop_mmap_desc, err_mmap },		/* mmap */
+	{ &vop_fsync_desc, msdosfs_fsync },	/* fsync */
+	{ &vop_seek_desc, nop_seek },		/* seek */
+	{ &vop_remove_desc, msdosfs_remove },	/* remove */
+	{ &vop_link_desc, msdosfs_link },	/* link */
+	{ &vop_rename_desc, msdosfs_rename },	/* rename */
+	{ &vop_mkdir_desc, msdosfs_mkdir },	/* mkdir */
+	{ &vop_rmdir_desc, msdosfs_rmdir },	/* rmdir */
+	{ &vop_symlink_desc, msdosfs_symlink },	/* symlink */
+	{ &vop_readdir_desc, msdosfs_readdir },	/* readdir */
+	{ &vop_readlink_desc, err_readlink },	/* readlink */
+	{ &vop_abortop_desc, nop_abortop },	/* abortop */
+	{ &vop_inactive_desc, msdosfs_inactive },/* inactive */
+	{ &vop_reclaim_desc, msdosfs_reclaim },	/* reclaim */
+	{ &vop_lock_desc, msdosfs_lock },	/* lock */
+	{ &vop_unlock_desc, msdosfs_unlock },	/* unlock */
+	{ &vop_bmap_desc, msdosfs_bmap },	/* bmap */
+	{ &vop_strategy_desc, msdosfs_strategy },/* strategy */
+	{ &vop_print_desc, msdosfs_print },	/* print */
+	{ &vop_islocked_desc, msdosfs_islocked },/* islocked */
+	{ &vop_pathconf_desc, msdosfs_pathconf },/* pathconf */
+	{ &vop_advlock_desc, err_advlock },	/* advlock */
+	{ &vop_blkatoff_desc, err_blkatoff },	/* blkatoff */
+	{ &vop_valloc_desc, err_valloc },	/* valloc */
+	{ &vop_vfree_desc, err_vfree },		/* vfree */
+	{ &vop_truncate_desc, err_truncate },	/* truncate */
+	{ &vop_update_desc, err_update },	/* update */
+	{ &vop_bwrite_desc, vn_bwrite },
+	{ &vop_pagein_desc, msdosfs_pagein },	/* Pagein */
+	{ &vop_pageout_desc, msdosfs_pageout },	/* Pageout */
+	{ &vop_getattrlist_desc, err_getattrlist },/* getattrlist */
+	{ (struct vnodeop_desc*)NULL, (int(*)())NULL }
 };
 struct vnodeopv_desc msdosfs_vnodeop_opv_desc =
 	{ &msdosfs_vnodeop_p, msdosfs_vnodeop_entries };

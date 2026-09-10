@@ -104,9 +104,22 @@ Assert-Match $projectCommonMakeText 'ALL_CFLAGS = .*\$\(LOCAL_CFLAGS\)' 'project
 $libcDriversPostambleText = Get-Content -Raw (Join-Path $repoRoot 'src\Libc-1\drivers.subproj\Makefile.postamble')
 Assert-Match $libcDriversPostambleText '(?m)^MIG_DIR=\$\(HDRROOT\)/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders/driverkit$' 'libc Event MIG reads driverkit defs from the bootstrap sysroot'
 Assert-NotMatch $libcDriversPostambleText 'MIG_DIR=/System/Library' 'libc Event MIG does not hardcode live host PrivateHeaders'
+Assert-Match $libcDriversPostambleText '\$\(OFILE_DIR\)/EventUser\.o' 'libc EventUser.o target lives under OFILE_DIR'
+Assert-Match $libcDriversPostambleText '-o \$\(OFILE_DIR\)/EventUser\.o' 'libc EventUser.o compile does not prefix OFILE_DIR onto \$@'
+Assert-NotMatch $libcDriversPostambleText '-o \$\(OFILE_DIR\)/\$@' 'libc EventUser.o compile does not double OFILE_DIR'
 $zprintPostambleText = Get-Content -Raw (Join-Path $repoRoot 'src\Commands\system_cmds\zprint.tproj\Makefile.postamble')
 Assert-Match $zprintPostambleText '(?m)^MACH_DEBUG_DEFS = \$\(HDRROOT\)/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders/mach_debug/mach_debug\.defs$' 'zprint MIG reads mach_debug.defs from the bootstrap sysroot'
 Assert-NotMatch $zprintPostambleText 'MACH_DEBUG_DEFS = \$\(SYSTEM_LIBRARY_DIR\)' 'zprint MIG does not hardcode live host PrivateHeaders'
+$cctoolsAsMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\cctools-2\as\Makefile')
+$cctoolsLdMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\cctools-2\ld\Makefile')
+$cctoolsGprofMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\cctools-2\gprof\Makefile')
+Assert-Match $cctoolsAsMakefileText '-I\$\(HDRROOT\)/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders' 'cctools as reads streams.h from the bootstrap sysroot'
+Assert-Match $cctoolsLdMakefileText '-I\$\(HDRROOT\)/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders' 'cctools ld reads PrivateHeaders from the bootstrap sysroot'
+Assert-Match $cctoolsGprofMakefileText '-I\$\(HDRROOT\)/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders' 'cctools gprof reads PrivateHeaders from the bootstrap sysroot'
+Assert-NotMatch $cctoolsAsMakefileText '-I\$\(NEXT_ROOT\)/System/Library/Frameworks/System.framework/PrivateHeaders' 'cctools as does not wait for NEXT_ROOT/System.framework'
+Assert-Match $cctoolsAsMakefileText '\$\(LOCAL_CFLAGS\)' 'cctools as compiles with bootstrap LOCAL_CFLAGS'
+Assert-Match $cctoolsLdMakefileText '\$\(LOCAL_CFLAGS\)' 'cctools ld compiles with bootstrap LOCAL_CFLAGS'
+Assert-Match $cctoolsGprofMakefileText '\$\(LOCAL_CFLAGS\)' 'cctools gprof compiles with bootstrap LOCAL_CFLAGS'
 $iondrvHeaderText = Get-Content -Raw (Join-Path $repoRoot 'src\driverkit-3\libDriver\ppc\IONDRVFramebuffer.h')
 $iondrvImplText = Get-Content -Raw (Join-Path $repoRoot 'src\driverkit-3\libDriver\ppc\IONDRVFramebuffer.m')
 Assert-Match $iondrvHeaderText '(?s)@interface IOATIMACH64NDRV:IOATINDRV\s*\{[^}]*engineInitialized' 'Mach64 NDRV declares engineInitialized in the class interface'

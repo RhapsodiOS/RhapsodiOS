@@ -3,8 +3,8 @@ ifneq "mwcc" "$(notdir $(CC))"
   GCC_FLAGS = -Wall -Wno-precomp
 endif
 CFLAGS = $(OFLAG) -g -I$(SRCROOT) -I$(SRCROOT)/../include -I$(OFILE_DIR) \
-	$(GCC_FLAGS) -DNeXT_MOD \
-	-I$(NEXT_ROOT)/System/Library/Frameworks/System.framework/PrivateHeaders
+	$(GCC_FLAGS) -DNeXT_MOD $(LOCAL_CFLAGS) \
+	-I$(HDRROOT)/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders
 
 LIBSTUFF = -L$(SYMROOT)/../../libstuff -lstuff
 

@@ -106,8 +106,8 @@
 
 MIG_DIR=$(HDRROOT)/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders/driverkit
 
-EventUser.o: $(OFILE_DIR)/EventUser.c $(OFILE_DIR)/Event.h
-	$(CC) -c $(ALL_CFLAGS) -DDRIVER_PRIVATE -o $(OFILE_DIR)/$@ $<
+$(OFILE_DIR)/EventUser.o EventUser.o: $(OFILE_DIR)/EventUser.c $(OFILE_DIR)/Event.h
+	$(CC) -c $(ALL_CFLAGS) -DDRIVER_PRIVATE -o $(OFILE_DIR)/EventUser.o $<
 
 $(OFILE_DIR)/EventUser.c $(OFILE_DIR)/Event.h: $(MIG_DIR)/Event.defs
 	mig -server /dev/null -user $(OFILE_DIR)/EventUser.c -header $(OFILE_DIR)/Event.h $(MIG_DIR)/Event.defs

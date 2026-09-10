@@ -1494,15 +1494,20 @@ static int audio_first =0;
 }
 
 /*
- * Initialize audio hardware with default values for gain, attenuation etc. 
+ * Initialize audio hardware with default values for gain, attenuation etc.
+ *
+ * OPENSTEP called _setInputGainRight: and _setOutputAttenuationLeft: twice,
+ * leaving inputGainLeft and outputAttenuationRight at allocation zero
+ * (right output at full volume). Found by onionmixer:
+ * https://github.com/onionmixer/openstep-ac97/blob/main/KERNEL-IOAUDIO-BUG.md
  */
 - (void) _initAudioHardwareSettings
 {
-    [self _setInputGainRight:32768/2];
+    [self _setInputGainLeft:32768/2];
     [self _setInputGainRight:32768/2];
     
     [self _setOutputAttenuationLeft:-42];
-    [self _setOutputAttenuationLeft:-42];
+    [self _setOutputAttenuationRight:-42];
     
     // add more generic ones here
 }

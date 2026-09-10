@@ -607,6 +607,9 @@ static void clearInt(void *identity, void *handlerState, unsigned int arg)
     if (state == nil)
         return;
 
+    if (isRead)
+        return;
+
     ICHAC97StopPlayback(&state->controller);
 }
 
@@ -633,8 +636,10 @@ static void clearInt(void *identity, void *handlerState, unsigned int arg)
         return;
     }
 
+    simple_lock(state->lock);
     service = ICHAC97ConsumeService(&state->controller);
     fifoErrors = state->controller.playback.fifoErrors;
+    simple_unlock(state->lock);
 
     if ((service & kICHAC97ServiceOutputFIFOError) != 0) {
         if (fifoErrors == 1 || (fifoErrors & 0xff) == 0)

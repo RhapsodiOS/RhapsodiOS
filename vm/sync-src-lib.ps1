@@ -60,7 +60,9 @@ function New-RhapArchiveSshCommand {
     }
 
     $chunkBytes = 699
-    $bootstrap = 'n=$(printf "\nX"); n=${n%X}; s=; for p do case "$p" in N) s="$s$n";; C*) s="$s${p#C}";; *) exit 78;; esac; done; eval "$s"'
+    # Target ash (Rhapsody /bin/sh) puts the POSIX $0 placeholder in $1; skip it.
+    # Target /usr/bin/printf drops backslash escapes, so printf "\nX" yields "nX".
+    $bootstrap = 'n=$(echo; echo X); n=${n%X}; s=; for p do case "$p" in sh) ;; N) s="$s$n";; C*) s="$s${p#C}";; *) exit 78;; esac; done; eval "$s"'
     $transportWords = New-Object 'System.Collections.Generic.List[string]'
     $lines = $ScriptBody.Split([char]"`n")
     for ($lineIndex = 0; $lineIndex -lt $lines.Length; $lineIndex++) {
@@ -239,8 +241,13 @@ saved=0
 promoted=0
 stage_created=0
 lock_owned=0
+exit_code=0
+die() {
+    exit_code=`$1
+    exit `$1
+}
 cleanup() {
-    status=`$?
+    status=`$exit_code
     trap 0 1 2 15
     if test "`$promoted" -ne 1 && test "`$saved" -eq 1; then
         rm -rf "`$target"
@@ -259,106 +266,106 @@ cleanup() {
     exit "`$status"
 }
 trap cleanup 0 1 2 15
-if test -L "`$root"; then exit 74; fi
-ROOT_PHYS=`$(cd -P "`$root" 2>/dev/null && pwd -P) || exit 74
-if test "`$ROOT_PHYS" = /; then exit 74; fi
+if test -L "`$root"; then die 74; fi
+ROOT_PHYS=`$(cd "`$root" && pwd) || die 74
+if test "`$ROOT_PHYS" = /; then die 74; fi
 probe=`$parent
 suffix_path=
 while :; do
     if test "`$probe" = "`$root"; then break; fi
-    if test -L "`$probe"; then exit 74; fi
+    if test -L "`$probe"; then die 74; fi
     if test -e "`$probe"; then break; fi
     component=`${probe##*/}
     suffix_path=/`$component`$suffix_path
     next=`${probe%/*}
     test -n "`$next" || next=/
-    if test "`$next" = "`$probe"; then exit 74; fi
+    if test "`$next" = "`$probe"; then die 74; fi
     probe=`$next
 done
-test -d "`$probe" || exit 74
-PARENT_BASE_PHYS=`$(cd -P "`$probe" 2>/dev/null && pwd -P) || exit 74
+test -d "`$probe" || die 74
+PARENT_BASE_PHYS=`$(cd "`$probe" && pwd) || die 74
 PARENT_PHYS=`$PARENT_BASE_PHYS`$suffix_path
 case "`$PARENT_PHYS" in
     "`$ROOT_PHYS"|"`$ROOT_PHYS"/*) ;;
-    *) exit 74 ;;
+    *) die 74 ;;
 esac
-mkdir -p "`$parent"
-PARENT_ACTUAL_PHYS=`$(cd -P "`$parent" 2>/dev/null && pwd -P) || exit 74
+mkdir -p "`$parent" || die `$?
+PARENT_ACTUAL_PHYS=`$(cd "`$parent" && pwd) || die 74
 case "`$PARENT_ACTUAL_PHYS" in
     "`$ROOT_PHYS"|"`$ROOT_PHYS"/*) ;;
-    *) exit 74 ;;
+    *) die 74 ;;
 esac
-if test -L "`$lock_root"; then exit 74; fi
+if test -L "`$lock_root"; then die 74; fi
 if test -d "`$lock_root"; then
     namespace_created=0
 else
     if mkdir "`$lock_root" 2>/dev/null; then
         namespace_created=1
     else
-        test -d "`$lock_root" || exit 76
+        test -d "`$lock_root" || die 76
         namespace_created=0
     fi
 fi
-if test -L "`$lock_root"; then exit 74; fi
-LOCK_ROOT_PHYS=`$(cd -P "`$lock_root" 2>/dev/null && pwd -P) || exit 74
-test "`$LOCK_ROOT_PHYS" = "`$PARENT_ACTUAL_PHYS/.rhap-sync-lock" || exit 74
+if test -L "`$lock_root"; then die 74; fi
+LOCK_ROOT_PHYS=`$(cd "`$lock_root" && pwd) || die 74
+test "`$LOCK_ROOT_PHYS" = "`$PARENT_ACTUAL_PHYS/.rhap-sync-lock" || die 74
 if test "`$namespace_created" -eq 1; then
-    if printf "%s\n" "`$lock_version" > "`$lock_version_file"; then
+    if echo "`$lock_version" > "`$lock_version_file"; then
         :
     else
         rm -f "`$lock_version_file" 2>/dev/null || :
         rmdir "`$lock_root" 2>/dev/null || :
-        exit 76
+        die 76
     fi
 fi
-if test -L "`$lock_version_file"; then exit 77; fi
-test -f "`$lock_version_file" || exit 77
+if test -L "`$lock_version_file"; then die 77; fi
+test -f "`$lock_version_file" || die 77
 published_version=`$(/bin/cat "`$lock_version_file" 2>/dev/null || :)
-test "`$published_version" = "`$lock_version" || exit 77
-if test -L "`$lock_targets"; then exit 74; fi
+test "`$published_version" = "`$lock_version" || die 77
+if test -L "`$lock_targets"; then die 74; fi
 if test -d "`$lock_targets"; then
     :
 else
-    mkdir "`$lock_targets" 2>/dev/null || test -d "`$lock_targets" || exit 76
+    mkdir "`$lock_targets" 2>/dev/null || test -d "`$lock_targets" || die 76
 fi
-if test -L "`$lock_targets"; then exit 74; fi
-LOCK_TARGETS_PHYS=`$(cd -P "`$lock_targets" 2>/dev/null && pwd -P) || exit 74
-test "`$LOCK_TARGETS_PHYS" = "`$LOCK_ROOT_PHYS/targets" || exit 74
+if test -L "`$lock_targets"; then die 74; fi
+LOCK_TARGETS_PHYS=`$(cd "`$lock_targets" && pwd) || die 74
+test "`$LOCK_TARGETS_PHYS" = "`$LOCK_ROOT_PHYS/targets" || die 74
 if mkdir "`$lock" 2>/dev/null; then
     :
 else
-    exit 75
+    die 75
 fi
 lock_owned=1
-if printf "%s\n" "`$suffix" > "`$lock/owner"; then
+if echo "`$suffix" > "`$lock/owner"; then
     :
 else
     rm -f "`$lock/owner" 2>/dev/null || :
     rmdir "`$lock" 2>/dev/null || :
     lock_owned=0
-    exit 76
+    die 76
 fi
 if test -e "`$old" || test -L "`$old"; then
-    exit 73
+    die 73
 fi
-mkdir "`$stage"
+mkdir "`$stage" || die `$?
 stage_created=1
-cd "`$stage"
-$cpioCommand -idum
+cd "`$stage" || die `$?
+$cpioCommand -idum || die `$?
 if test -f "`$stage/`$leaf" || test -d "`$stage/`$leaf"; then
     :
 else
-    exit 66
+    die 66
 fi
 if test -e "`$target" || test -L "`$target"; then
-    mv "`$target" "`$old"
+    mv "`$target" "`$old" || die `$?
     saved=1
 fi
-mv "`$stage/`$leaf" "`$target"
+mv "`$stage/`$leaf" "`$target" || die `$?
 promoted=1
 rm -rf "`$stage" "`$old"
 stage_created=0
 saved=0
-exit 0
+die 0
 "@
 }

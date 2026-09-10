@@ -154,8 +154,11 @@ Assert-Match $quotedFixExec '-name texi2html' 'chmod pass restores extensionless
 $physicalCommand = New-RhapSyncRemoteCommand -RemoteRoot '/build' -RemoteParent '/build/src/project' -LeafName 'leaf' -Token $safeToken
 $spacedCommand = New-RhapSyncRemoteCommand -RemoteRoot '/build' -RemoteParent '/build/src' -LeafName 'DLL Files.fgl' -Token $safeToken
 Assert-NotMatch $spacedCommand "'" 'transaction body is outer-single-quote-safe for spaced leaf'
-Assert-Match $physicalCommand 'ROOT_PHYS=.*pwd -P' 'remote sync resolves physical RemoteRoot'
-Assert-Match $physicalCommand 'PARENT_BASE_PHYS=.*pwd -P' 'remote sync resolves nearest existing RemoteParent ancestor'
+Assert-Match $physicalCommand 'ROOT_PHYS=\$\(cd "\$root" && pwd\)' 'remote sync resolves RemoteRoot without POSIX cd -P'
+Assert-Match $physicalCommand 'PARENT_BASE_PHYS=\$\(cd "\$probe" && pwd\)' 'remote sync resolves RemoteParent ancestor without POSIX cd -P'
+Assert-NotMatch $physicalCommand 'cd -P|pwd -P' 'remote sync never uses POSIX cd -P or pwd -P'
+Assert-Match $physicalCommand 'die\(\) \{' 'remote sync records exit status before EXIT trap'
+Assert-NotMatch $physicalCommand 'printf "%s\\n"' 'remote sync does not use printf backslash escapes'
 Assert-Match $physicalCommand 'lock_root=.*\.rhap-sync-lock' 'remote sync defines a deterministic lock namespace'
 Assert-Match $physicalCommand 'lock="\$lock_targets/\$leaf"' 'remote sync keys its lock beneath target namespace'
 Assert-Match $physicalCommand 'if mkdir "\$lock"' 'remote sync atomically acquires its target lock'
@@ -251,6 +254,20 @@ try {
     Assert-Equal (Invoke-RhapArchiveConsumerProcess -Executable $bash -Arguments @('-c', $reconstructionCommand) -ArchivePath $emptyArchive) 0 'chunk bootstrap reconstructs multiline function through sh'
     Assert-Equal ([IO.File]::ReadAllText($reconstructedOutput).Replace("`r`n", "`n")) "line one`nline two`n" 'chunk bootstrap preserves newlines and arguments'
 
+    # Rhapsody /bin/sh is 1996 Almquist: `sh -c SCRIPT sh C...` leaves $0 as argv[0]
+    # and puts the POSIX $0 placeholder in $1. Simulate that argv layout with bash.
+    $ashQuotedWords = @([regex]::Matches($reconstructionCommand, "'([^']*)'") | ForEach-Object { $_.Groups[1].Value })
+    Assert-Equal ($ashQuotedWords.Count -ge 2) $true 'wrapped reconstruction has bootstrap plus chunks'
+    $ashBootstrap = $ashQuotedWords[0]
+    $ashChunks = @($ashQuotedWords | Select-Object -Skip 1)
+    Remove-Item -LiteralPath $reconstructedOutput -Force
+    $ashExit = Invoke-RhapArchiveConsumerProcess -Executable $bash `
+        -Arguments (@('-c', $ashBootstrap, '/bin/sh', 'sh') + $ashChunks) `
+        -ArchivePath $emptyArchive
+    Assert-Equal $ashExit 0 'chunk bootstrap reconstructs through Rhapsody ash -c argv'
+    Assert-Equal ([IO.File]::ReadAllText($reconstructedOutput).Replace("`r`n", "`n")) "line one`nline two`n" 'ash-compatible bootstrap preserves reconstructed body'
+    Assert-Match $ashBootstrap 'n=\$\(echo; echo X\); n=\$\{n%X\}' 'bootstrap captures a newline without printf backslash escapes'
+
     $argumentCapture = Join-Path $transactionRoot 'argument-capture.sh'
     $argumentBase = Join-Path $transactionRoot 'ssh-argument'
     $argumentScript = @'
@@ -343,7 +360,7 @@ exit 0
 
     $markerFailureParent = Join-Path $remoteBase 'marker-failure-parent'
     New-Item -ItemType Directory -Path $markerFailureParent | Out-Null
-    $markerFailureCommand = "printf() { return 1; }`n" +
+    $markerFailureCommand = "echo() { return 1; }`n" +
         (New-RhapSyncRemoteCommand -RemoteRoot $remoteRoot -RemoteParent (ConvertTo-TestPosixPath $markerFailureParent) -LeafName 'tree' -Token $safeToken -Cpio $cpioPath)
     Assert-Equal (Invoke-TestRemoteCommand $bash $markerFailureCommand $archivePath $transactionRoot) 76 'namespace marker publication failure propagates'
     Assert-Equal (Test-Path (Join-Path $markerFailureParent '.rhap-sync-lock')) $false 'failed creator removes only its unmarked namespace'
@@ -448,7 +465,7 @@ exit 0
     $failureTarget = Join-Path $remoteBase 'tree'
     New-Item -ItemType Directory -Path $failureTarget -Force | Out-Null
     [IO.File]::WriteAllText((Join-Path $failureTarget 'prior'), 'prior-content')
-    $ownerWriteFailureCommand = "printf() { return 1; }`n" +
+    $ownerWriteFailureCommand = ('echo() { if test "$1" = "' + $lockNamespaceVersion + '"; then command echo "$1"; else return 1; fi; }' + "`n") +
         (New-RhapSyncRemoteCommand -RemoteRoot $remoteRoot -RemoteParent $remoteRoot -LeafName 'tree' -Token $safeToken -Cpio $cpioPath)
     Assert-Equal (Invoke-TestRemoteCommand $bash $ownerWriteFailureCommand $archivePath $transactionRoot) 76 'owner-marker write failure propagates'
     Assert-Equal ([IO.File]::ReadAllText((Join-Path $remoteBase '.rhap-sync-lock\version')).Trim()) $lockNamespaceVersion 'owner-marker write failure preserves authenticated namespace'

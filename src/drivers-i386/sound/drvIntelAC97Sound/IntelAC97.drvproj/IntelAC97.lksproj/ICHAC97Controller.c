@@ -139,19 +139,67 @@ void ICHAC97StopPlayback(ICHAC97Controller *controller)
 
 void ICHAC97ChaseLVI(ICHAC97Controller *controller)
 {
-    (void)controller;
+    ICHAC97IO *io;
+    ICHAC97UInt32 base;
+    ICHAC97UInt8 civ;
+
+    if (controller == 0)
+        return;
+
+    io = &controller->io;
+    base = controller->nabmbar;
+    civ = io->read8(io->context, base + ICHAC97_REG_PO_CIV);
+    io->write8(io->context, base + ICHAC97_REG_PO_LVI,
+               (ICHAC97UInt8)((civ - 1U) & (ICHAC97_BDL_COUNT - 1U)));
 }
 
 ICHAC97UInt32 ICHAC97ServiceInterrupt(ICHAC97Controller *controller)
 {
-    (void)controller;
-    return 0U;
+    ICHAC97IO *io;
+    ICHAC97UInt32 base;
+    ICHAC97UInt32 globSta;
+    ICHAC97UInt16 sr;
+    ICHAC97UInt32 service;
+
+    if (controller == 0)
+        return 0U;
+
+    io = &controller->io;
+    base = controller->nabmbar;
+    globSta = io->read32(io->context, base + ICHAC97_REG_GLOB_STA);
+    if ((globSta & ICHAC97_GLOB_STA_POINT) == 0U)
+        return 0U;
+
+    sr = io->read16(io->context, base + ICHAC97_REG_PO_SR);
+    io->write16(io->context, base + ICHAC97_REG_PO_SR,
+                sr & ICHAC97_SR_W1C);
+    io->write32(io->context, base + ICHAC97_REG_GLOB_STA,
+                ICHAC97_GLOB_STA_POINT);
+
+    service = 0U;
+    if ((sr & ICHAC97_SR_BCIS) != 0U) {
+        controller->playback.completions++;
+        ICHAC97ChaseLVI(controller);
+        service |= kICHAC97ServiceOutput;
+    }
+    if ((sr & ICHAC97_SR_FIFOE) != 0U) {
+        controller->playback.fifoErrors++;
+        service |= kICHAC97ServiceOutputFIFOError;
+    }
+    controller->pendingService |= service;
+    return service;
 }
 
 ICHAC97UInt32 ICHAC97ConsumeService(ICHAC97Controller *controller)
 {
-    (void)controller;
-    return 0U;
+    ICHAC97UInt32 service;
+
+    if (controller == 0)
+        return 0U;
+
+    service = controller->pendingService;
+    controller->pendingService = 0U;
+    return service;
 }
 
 ICHAC97UInt16 ICHAC97CodecRead(ICHAC97Controller *controller,

@@ -153,6 +153,42 @@ static void test_rr_clears_bdbar_and_start_rewrites_it(void)
     CHECK((fake.regs[ICHAC97_REG_PO_CR] & ICHAC97_CR_RPBM) == 0U);
 }
 
+static void test_lvi_chase_and_output_irq(void)
+{
+    FakeIO fake;
+    ICHAC97Controller controller;
+    ICHAC97BufferDescriptor bdl[32];
+    unsigned int service;
+
+    memset(&fake, 0, sizeof(fake));
+    controller = fake_controller(&fake);
+    CHECK(ICHAC97PrepareBDL(&controller.playback, bdl, 0x4000U,
+                            0x320000U, 32768U, 4096U) == kICHAC97Success);
+    CHECK(ICHAC97StartPlayback(&controller) == kICHAC97Success);
+
+    fake.regs[ICHAC97_REG_PO_CIV] = 4U;
+    ICHAC97ChaseLVI(&controller);
+    CHECK(fake.regs[ICHAC97_REG_PO_LVI] == 3U);
+
+    fake.regs[ICHAC97_REG_GLOB_STA] = (unsigned char)ICHAC97_GLOB_STA_POINT;
+    fake.regs[ICHAC97_REG_GLOB_STA + 1U] = 0;
+    fake.regs[ICHAC97_REG_PO_SR] = ICHAC97_SR_BCIS;
+    fake.regs[ICHAC97_REG_PO_CIV] = 5U;
+    service = ICHAC97ServiceInterrupt(&controller);
+    CHECK((service & kICHAC97ServiceOutput) != 0U);
+    CHECK(controller.playback.completions == 1U);
+    CHECK(fake.regs[ICHAC97_REG_PO_LVI] == 4U);
+    CHECK(fake.regs[ICHAC97_REG_PO_SR] == ICHAC97_SR_BCIS);
+    CHECK(ICHAC97ConsumeService(&controller) == service);
+    CHECK(ICHAC97ConsumeService(&controller) == 0U);
+
+    fake.regs[ICHAC97_REG_GLOB_STA] = (unsigned char)ICHAC97_GLOB_STA_POINT;
+    fake.regs[ICHAC97_REG_PO_SR] = ICHAC97_SR_FIFOE | ICHAC97_SR_BCIS;
+    service = ICHAC97ServiceInterrupt(&controller);
+    CHECK((service & kICHAC97ServiceOutputFIFOError) != 0U);
+    CHECK(controller.playback.fifoErrors == 1U);
+}
+
 static void test_bdl_64k_8k_and_rejects(void)
 {
     ICHAC97Playback playback;
@@ -177,6 +213,7 @@ int main(void)
     test_bdl_wraps_unique_fragments_into_32_slots();
     test_bdl_64k_8k_and_rejects();
     test_rr_clears_bdbar_and_start_rewrites_it();
+    test_lvi_chase_and_output_irq();
     if (failures != 0) {
         fprintf(stderr, "%d Intel AC97 checks failed\n", failures);
         return 1;

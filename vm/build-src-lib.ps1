@@ -573,16 +573,16 @@ function New-RhapFreshCommand {
         "SOURCE='$source'",
         "PROFILE='$profilePath'",
         'fail() { echo "build-src fresh: $*" >&2; exit 1; }',
-        'ROOT_PHYS=$(cd -P "$ROOT" 2>/dev/null && pwd -P) || fail "cannot resolve RemoteRoot"',
-        'SOURCE_PHYS=$(cd -P "$SOURCE" 2>/dev/null && pwd -P) || fail "cannot resolve SourceRoot"',
+        'ROOT_PHYS=$(cd "$ROOT" && pwd) || fail "cannot resolve RemoteRoot"',
+        'SOURCE_PHYS=$(cd "$SOURCE" && pwd) || fail "cannot resolve SourceRoot"',
         'test "$ROOT_PHYS" != / || fail "physical RemoteRoot may not be /"',
         'case "$SOURCE_PHYS" in "$ROOT_PHYS"/*) ;; *) fail "SourceRoot escapes RemoteRoot" ;; esac',
         'test -f "$PROFILE" || fail "ToolchainProfile is not a regular file"',
         'test ! -L "$PROFILE" || fail "ToolchainProfile may not be a symlink for Fresh"',
         'PROFILE_PARENT=${PROFILE%/*}; test -n "$PROFILE_PARENT" || PROFILE_PARENT=/',
-        'PROFILE_PARENT_PHYS=$(cd -P "$PROFILE_PARENT" 2>/dev/null && pwd -P) || fail "cannot resolve ToolchainProfile parent"',
+        'PROFILE_PARENT_PHYS=$(cd "$PROFILE_PARENT" 2>/dev/null && pwd) || fail "cannot resolve ToolchainProfile parent"',
         'PROFILE_PHYS="$PROFILE_PARENT_PHYS/${PROFILE##*/}"',
-        'check_target() { target=$1; probe=$target; while test "$probe" != "$ROOT"; do if test -L "$probe"; then fail "symlink in output path: $probe"; fi; next=${probe%/*}; test -n "$next" || next=/; test "$next" != "$probe" || fail "invalid output path"; probe=$next; done; probe=$target; suffix=; while test ! -e "$probe"; do leaf=${probe##*/}; suffix=/$leaf$suffix; probe=${probe%/*}; test -n "$probe" || probe=/; done; if test -d "$probe"; then physical=$(cd -P "$probe" 2>/dev/null && pwd -P) || fail "cannot resolve $probe"; target_physical=$physical$suffix; else parent=${probe%/*}; test -n "$parent" || parent=/; physical=$(cd -P "$parent" 2>/dev/null && pwd -P) || fail "cannot resolve $parent"; target_physical=$physical/${probe##*/}$suffix; fi; case "$target_physical" in "$ROOT_PHYS"|"$ROOT_PHYS"/*) ;; *) fail "output escapes RemoteRoot: $target" ;; esac; case "$target_physical" in "$SOURCE_PHYS"|"$SOURCE_PHYS"/*) fail "output reaches SourceRoot: $target" ;; esac; case "$PROFILE_PHYS" in "$target_physical"|"$target_physical"/*) fail "ToolchainProfile physically overlaps Fresh output: $target" ;; esac; case "$target_physical" in "$PROFILE_PHYS"|"$PROFILE_PHYS"/*) fail "Fresh output physically overlaps ToolchainProfile: $target" ;; esac; }'
+        'check_target() { target=$1; probe=$target; while test "$probe" != "$ROOT"; do if test -L "$probe"; then fail "symlink in output path: $probe"; fi; next=${probe%/*}; test -n "$next" || next=/; test "$next" != "$probe" || fail "invalid output path"; probe=$next; done; probe=$target; suffix=; while test ! -e "$probe"; do leaf=${probe##*/}; suffix=/$leaf$suffix; probe=${probe%/*}; test -n "$probe" || probe=/; done; if test -d "$probe"; then physical=$(cd "$probe" 2>/dev/null && pwd) || fail "cannot resolve $probe"; target_physical=$physical$suffix; else parent=${probe%/*}; test -n "$parent" || parent=/; physical=$(cd "$parent" 2>/dev/null && pwd) || fail "cannot resolve $parent"; target_physical=$physical/${probe##*/}$suffix; fi; case "$target_physical" in "$ROOT_PHYS"|"$ROOT_PHYS"/*) ;; *) fail "output escapes RemoteRoot: $target" ;; esac; case "$target_physical" in "$SOURCE_PHYS"|"$SOURCE_PHYS"/*) fail "output reaches SourceRoot: $target" ;; esac; case "$PROFILE_PHYS" in "$target_physical"|"$target_physical"/*) fail "ToolchainProfile physically overlaps Fresh output: $target" ;; esac; case "$target_physical" in "$PROFILE_PHYS"|"$PROFILE_PHYS"/*) fail "Fresh output physically overlaps ToolchainProfile: $target" ;; esac; }'
     )
     foreach ($target in $targets) { $checks += "check_target '$target'" }
     $checks += "rm -rf $($quoted -join ' ')"

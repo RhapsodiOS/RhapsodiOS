@@ -403,6 +403,8 @@ int foreignMountDevice(const char *fsName, const char *devName, const char *part
 	return [self mount_foreign];
     if (strcmp(fs_type, FS_TYPE_CD9660) == 0)
 	return [self mount_foreign];
+    if (strcmp(fs_type, FS_TYPE_MSDOS) == 0)
+	return [self mount_foreign];
     return (FALSE);
 }
 
@@ -670,6 +672,44 @@ int foreignMountDevice(const char *fsName, const char *devName, const char *part
 			    disk = [[DiskVolume alloc] init];
 			    [disk setDiskDeviceName:devName];
 			    [disk setFSType:FS_TYPE_CD9660];
+			    [disk setDiskName:volume_name];
+			    [disk setDeviceType:type];
+			    [disk setWritable:isWritable];
+			    [disk setRemovable:isRemovable];
+			    [disk setDeviceName:devPart];
+			    [list addObject:disk];
+			}
+#ifdef DEBUG
+			printf("ret for %s is %d\n", devPart, ret);
+#endif DEBUG
+		    }
+		}
+		/* check for msdos volume */
+		sprintf(devPart, "%sa", devName);
+		sprintf(specName, "/dev/%s", devPart);
+		fs_p = fsstat_lookup_spec(stat_p, stat_number, 
+					  specName, FS_TYPE_MSDOS);
+		if (fs_p) { /* already mounted */
+		    disk = [self getMountedVolume:devName Type:type
+			    FSSpec:fs_p Writable:isWritable
+			    Removable:isRemovable];
+		    if (disk != nil)
+			[list addObject:disk];
+		}
+		else { /* check if it's there */
+		    int fd = open(specName, O_NDELAY | O_RDONLY);
+		    if (fd <= 0)
+			;
+		    else {
+			close(fd);
+			ret = foreignProbe(FS_TYPE_MSDOS, devName, devName,
+					   isRemovable, isWritable, TRUE);
+			if (ret == FSUR_RECOGNIZED || ret == -9) {
+			    char * volume_name = foreignLabel(FS_TYPE_MSDOS);
+			    
+			    disk = [[DiskVolume alloc] init];
+			    [disk setDiskDeviceName:devName];
+			    [disk setFSType:FS_TYPE_MSDOS];
 			    [disk setDiskName:volume_name];
 			    [disk setDeviceType:type];
 			    [disk setWritable:isWritable];

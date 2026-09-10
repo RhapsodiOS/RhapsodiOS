@@ -137,11 +137,6 @@ struct ich97_driver_state {
 
 static struct ich97_driver_state *activeInterruptState;
 
-/* Legacy input DMA state (single active instance enforced at init) */
-static struct ich_buffer_desc *ich97_input_bdl;
-static unsigned int ich97_input_bdl_phys;
-static BOOL ich97_in_running;
-
 static unsigned char kernel_read8(void *context, unsigned int port)
 {
     (void)context;
@@ -214,50 +209,32 @@ static void ich97_apply_initial_output(IntelAC97Driver *self)
 static void clearInterrupts(void)
 {
     struct ich97_driver_state *st = activeInterruptState;
-    unsigned char sr;
-    unsigned int nabmbar;
 
     if (st == nil)
         return;
 
-    nabmbar = st->controller.nabmbar;
-
-    sr = inb((IOEISAPortAddress)(nabmbar + ICH_REG_PO_SR));
-    outb((IOEISAPortAddress)(nabmbar + ICH_REG_PO_SR), sr);
-
-    sr = inb((IOEISAPortAddress)(nabmbar + ICH_REG_PI_SR));
-    outb((IOEISAPortAddress)(nabmbar + ICH_REG_PI_SR), sr);
+    simple_lock(st->lock);
+    ICHAC97ServiceInterrupt(&st->controller);
+    simple_unlock(st->lock);
 }
 
 static void clearInt(void *identity, void *handlerState, unsigned int arg)
 {
     struct ich97_driver_state *st = activeInterruptState;
-    unsigned int glob_sta;
-    unsigned char sr;
-    unsigned int nabmbar;
+    unsigned int service;
 
-    if (st == nil)
+    if (st == nil) {
+        IOEnableInterrupt(identity);
         return;
-
-    nabmbar = st->controller.nabmbar;
-    glob_sta = inl((IOEISAPortAddress)(nabmbar + ICH_REG_GLOB_STA));
-
-    if (!(glob_sta & (ICH_GLOB_STA_POINT | ICH_GLOB_STA_PIINT)))
-        return;
-
-    if (glob_sta & ICH_GLOB_STA_POINT) {
-        sr = inb((IOEISAPortAddress)(nabmbar + ICH_REG_PO_SR));
-        outb((IOEISAPortAddress)(nabmbar + ICH_REG_PO_SR), sr);
-
-        if (sr & ICH_SR_BCIS) {
-            if (st->oldHandler)
-                (*st->oldHandler)(identity, handlerState, arg);
-        }
     }
 
-    if (glob_sta & ICH_GLOB_STA_PIINT) {
-        sr = inb((IOEISAPortAddress)(nabmbar + ICH_REG_PI_SR));
-        outb((IOEISAPortAddress)(nabmbar + ICH_REG_PI_SR), sr);
+    simple_lock(st->lock);
+    service = ICHAC97ServiceInterrupt(&st->controller);
+    simple_unlock(st->lock);
+
+    if (service & kICHAC97ServiceOutput) {
+        if (st->oldHandler)
+            (*st->oldHandler)(identity, handlerState, arg);
     }
 
     IOEnableInterrupt(identity);
@@ -287,10 +264,8 @@ static void clearInt(void *identity, void *handlerState, unsigned int arg)
     if (state == nil)
         return;
 
-    if (state->controller.nabmbar != 0) {
+    if (state->controller.nabmbar != 0)
         ICHAC97StopPlayback(&state->controller);
-        outb((IOEISAPortAddress)(state->controller.nabmbar + ICH_REG_PI_CR), 0);
-    }
 
     if (activeInterruptState == state)
         activeInterruptState = nil;
@@ -306,13 +281,6 @@ static void clearInt(void *identity, void *handlerState, unsigned int arg)
         IOFree(state->controller.playback.bdl, ICH_BD_SIZE);
         state->controller.playback.bdl = nil;
     }
-
-    if (ich97_input_bdl != nil) {
-        IOFree(ich97_input_bdl, ICH_BD_SIZE);
-        ich97_input_bdl = nil;
-        ich97_input_bdl_phys = 0;
-    }
-    ich97_in_running = NO;
 
     if (state->lock != nil)
         simple_lock_free(state->lock);
@@ -554,14 +522,12 @@ static void clearInt(void *identity, void *handlerState, unsigned int arg)
 {
     IOReturn        irtn;
     unsigned int    physAddr;
-    int             i;
-    unsigned int    fragment_size;
-    unsigned int    nabmbar;
 
     if (state == nil)
         return NULL;
 
-    nabmbar = state->controller.nabmbar;
+    if (isRead)
+        return NULL;
 
     irtn = IOPhysicalFromVirtual(IOVmTaskSelf(), *physicalAddress, &physAddr);
     if (irtn) {
@@ -569,40 +535,20 @@ static void clearInt(void *identity, void *handlerState, unsigned int arg)
         return NULL;
     }
 
-    fragment_size = numBytes / ICH_BD_COUNT;
+    state->bufVirt = *physicalAddress;
+    state->controller.playback.bufferPhysical = physAddr;
+    state->controller.playback.bufferBytes = numBytes;
 
-    if (isRead) {
-        if (ich97_input_bdl == nil) {
-            ich97_input_bdl = IOMalloc(ICH_BD_SIZE);
-            bzero(ich97_input_bdl, ICH_BD_SIZE);
-            IOPhysicalFromVirtual(IOVmTaskSelf(), (unsigned int)ich97_input_bdl,
-                                &ich97_input_bdl_phys);
-        }
-
-        for (i = 0; i < ICH_BD_COUNT; i++) {
-            ich97_input_bdl[i].buffer_addr = physAddr + (i * fragment_size);
-            ich97_input_bdl[i].control = fragment_size | ICH_BD_IOC;
-        }
-
-        outl((IOEISAPortAddress)(nabmbar + ICH_REG_PI_BDBAR), ich97_input_bdl_phys);
-    } else {
+    if (state->controller.playback.bdl == nil) {
+        state->controller.playback.bdl = IOMalloc(ICH_BD_SIZE);
         if (state->controller.playback.bdl == nil) {
-            state->controller.playback.bdl = IOMalloc(ICH_BD_SIZE);
-            bzero(state->controller.playback.bdl, ICH_BD_SIZE);
-            IOPhysicalFromVirtual(IOVmTaskSelf(),
-                                (unsigned int)state->controller.playback.bdl,
-                                &state->controller.playback.bdlPhysical);
+            IOLog("%s: Can't allocate BDL\n", DRV_TITLE);
+            return NULL;
         }
-
-        for (i = 0; i < ICH_BD_COUNT; i++) {
-            state->controller.playback.bdl[i].buffer_addr =
-                physAddr + (i * fragment_size);
-            state->controller.playback.bdl[i].control =
-                fragment_size | ICH_BD_IOC;
-        }
-
-        outl((IOEISAPortAddress)(nabmbar + ICH_REG_PO_BDBAR),
-             state->controller.playback.bdlPhysical);
+        bzero(state->controller.playback.bdl, ICH_BD_SIZE);
+        IOPhysicalFromVirtual(IOVmTaskSelf(),
+                            (unsigned int)state->controller.playback.bdl,
+                            &state->controller.playback.bdlPhysical);
     }
 
     return (IOEISADMABuffer)physAddr;
@@ -616,39 +562,37 @@ static void clearInt(void *identity, void *handlerState, unsigned int arg)
                     buffer:(IOEISADMABuffer)buffer
      bufferSizeForInterrupts:(unsigned int)bufferSize
 {
-    unsigned char   cr;
-    unsigned int    nabmbar;
+    int result;
 
     if (state == nil)
         return NO;
 
-    nabmbar = state->controller.nabmbar;
+    if (isRead)
+        return NO;
 
-    [self updateSampleRate];
-
-    if (isRead) {
-        outb((IOEISAPortAddress)(nabmbar + ICH_REG_PI_CR), ICH_CR_RR);
-        IODelay(10);
-        outb((IOEISAPortAddress)(nabmbar + ICH_REG_PI_CR), 0);
-
-        outb((IOEISAPortAddress)(nabmbar + ICH_REG_PI_LVI), ICH_BD_COUNT - 1);
-
-        cr = ICH_CR_RPBM | ICH_CR_LVBIE | ICH_CR_IOCE;
-        outb((IOEISAPortAddress)(nabmbar + ICH_REG_PI_CR), cr);
-
-        ich97_in_running = YES;
-    } else {
-        outb((IOEISAPortAddress)(nabmbar + ICH_REG_PO_CR), ICH_CR_RR);
-        IODelay(10);
-        outb((IOEISAPortAddress)(nabmbar + ICH_REG_PO_CR), 0);
-
-        outb((IOEISAPortAddress)(nabmbar + ICH_REG_PO_LVI), ICH_BD_COUNT - 1);
-
-        cr = ICH_CR_RPBM | ICH_CR_LVBIE | ICH_CR_IOCE;
-        outb((IOEISAPortAddress)(nabmbar + ICH_REG_PO_CR), cr);
-
-        state->controller.playback.running = 1;
+    result = ICHAC97PrepareBDL(&state->controller.playback,
+                               state->controller.playback.bdl,
+                               state->controller.playback.bdlPhysical,
+                               state->controller.playback.bufferPhysical,
+                               state->controller.playback.bufferBytes,
+                               bufferSize);
+    if (result != kICHAC97Success) {
+        IOLog("%s: Failed to prepare BDL (%d)\n", DRV_TITLE, result);
+        return NO;
     }
+
+    ac97_set_rate(&state->codec, AC97_RATE_DAC, [self sampleRate]);
+
+    result = ICHAC97StartPlayback(&state->controller);
+    if (result != kICHAC97Success) {
+        IOLog("%s: Failed to start playback (%d)\n", DRV_TITLE, result);
+        return NO;
+    }
+
+    ac97_apply_output(&state->codec,
+                      [self outputAttenuationLeft],
+                      [self outputAttenuationRight],
+                      [self isOutputMuted]);
 
     [self enableAllInterrupts];
 
@@ -660,22 +604,10 @@ static void clearInt(void *identity, void *handlerState, unsigned int arg)
  */
 - (void)stopDMAForChannel:(unsigned int)localChannel read:(BOOL)isRead
 {
-    unsigned int nabmbar;
-
     if (state == nil)
         return;
 
-    nabmbar = state->controller.nabmbar;
-
-    if (isRead) {
-        outb((IOEISAPortAddress)(nabmbar + ICH_REG_PI_CR), 0);
-        ich97_in_running = NO;
-    } else {
-        outb((IOEISAPortAddress)(nabmbar + ICH_REG_PO_CR), 0);
-        state->controller.playback.running = 0;
-    }
-
-    [self disableAllInterrupts];
+    ICHAC97StopPlayback(&state->controller);
 }
 
 /*
@@ -692,8 +624,25 @@ static void clearInt(void *identity, void *handlerState, unsigned int arg)
 - (void)interruptOccurredForInput:(BOOL *)serviceInput
                         forOutput:(BOOL *)serviceOutput
 {
+    unsigned int service;
+    unsigned int fifoErrors;
+
+    if (state == nil) {
+        *serviceInput = NO;
+        *serviceOutput = NO;
+        return;
+    }
+
+    service = ICHAC97ConsumeService(&state->controller);
+    fifoErrors = state->controller.playback.fifoErrors;
+
+    if ((service & kICHAC97ServiceOutputFIFOError) != 0) {
+        if (fifoErrors == 1 || (fifoErrors & 0xff) == 0)
+            IOLog("%s: FIFO error (count %u)\n", DRV_TITLE, fifoErrors);
+    }
+
     *serviceInput = NO;
-    *serviceOutput = (state != nil && state->controller.playback.running != 0);
+    *serviceOutput = (service & kICHAC97ServiceOutput) != 0;
 }
 
 /*

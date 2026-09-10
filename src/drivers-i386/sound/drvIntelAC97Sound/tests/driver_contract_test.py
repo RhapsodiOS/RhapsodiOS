@@ -36,6 +36,23 @@ class DriverContractTests(unittest.TestCase):
         self.assertIn("ICHAC97Controller controller;", source)
         self.assertNotIn("static struct ich_state", source)
 
+    def test_playback_dma_and_irq_paths(self):
+        source = (LINK / "IntelAC97Driver.m").read_text(encoding="utf-8")
+        create = source[source.index("createDMABufferFor:"):source.index("startDMAForChannel:")]
+        start = source[source.index("startDMAForChannel:"):source.index("stopDMAForChannel:")]
+        stop = source[source.index("stopDMAForChannel:"):source.index("interruptClearFunc")]
+        self.assertIn("return NULL", create)
+        self.assertNotIn("ICHAC97PrepareBDL", create)
+        self.assertIn("ICHAC97PrepareBDL", start)
+        self.assertIn("bufferSizeForInterrupts", start)
+        self.assertIn("ICHAC97StartPlayback", start)
+        self.assertIn("isRead", start)
+        self.assertIn("ICHAC97StopPlayback", stop)
+        self.assertNotIn("disableAllInterrupts", stop)
+        self.assertGreaterEqual(source.count("IOEnableInterrupt"), 2)
+        handler = source[source.index("static void clearInt"):]
+        self.assertIn("IOEnableInterrupt(identity)", handler)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -159,7 +159,7 @@ EXPORT= mach mach/machine kernserv kernserv/machine 	 		\
 LCLEXPORT= mach mach_debug kern ipc kernserv vm bsd/sys bsd/dev bsd/net	\
 	bsd/netiso bsd/netccitt bsd/netns bsd/dev/machine mach/machine	\
 	machdep/machine driverkit					\
-	bsd/ufs/mfs bsd/ufs/lfs bsd/isofs/cd9660			\
+	bsd/ufs/mfs bsd/ufs/lfs bsd/isofs/cd9660 bsd/msdosfs	\
 	bsd/netat/h bsd/netat/at					\
 	bsd/hfs/hfscommon/headers bsd/hfs/hfscommon/headers/system
 

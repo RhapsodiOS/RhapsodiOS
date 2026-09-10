@@ -288,6 +288,7 @@ static void clearInt(void *identity, void *handlerState, unsigned int arg)
         return;
 
     ICHAC97StopPlayback(&state->controller);
+    outb((IOEISAPortAddress)(state->controller.nabmbar + ICH_REG_PI_CR), 0);
 
     if (activeInterruptState == state)
         activeInterruptState = nil;
@@ -515,6 +516,7 @@ static void clearInt(void *identity, void *handlerState, unsigned int arg)
 
     IOLog("%s: Primary codec ready\n", DRV_TITLE);
 
+    state->codecAttached = NO;
     codec = &state->codec;
     bzero(codec, sizeof(*codec));
     codec->host_priv = &state->controller;
@@ -789,13 +791,17 @@ static void clearInt(void *identity, void *handlerState, unsigned int arg)
  */
 - (void)updateOutputMute
 {
+    BOOL mute;
+
     if (state == nil || !state->codecAttached)
         return;
+
+    mute = [self isOutputMuted] || !state->controller.playback.running;
 
     ac97_set_master_volume(&state->codec,
                           state->codec.master_vol_l,
                           state->codec.master_vol_r,
-                          [self isOutputMuted]);
+                          mute);
 }
 
 /*
@@ -804,14 +810,16 @@ static void clearInt(void *identity, void *handlerState, unsigned int arg)
 - (void)updateOutputAttenuationLeft
 {
     unsigned char left;
+    BOOL mute;
 
     if (state == nil || !state->codecAttached)
         return;
 
     left = ([self outputAttenuationLeft] * 31) / 13;
+    mute = [self isOutputMuted] || !state->controller.playback.running;
 
     ac97_set_master_volume(&state->codec, left, state->codec.master_vol_r,
-                          [self isOutputMuted]);
+                          mute);
 }
 
 /*
@@ -820,14 +828,16 @@ static void clearInt(void *identity, void *handlerState, unsigned int arg)
 - (void)updateOutputAttenuationRight
 {
     unsigned char right;
+    BOOL mute;
 
     if (state == nil || !state->codecAttached)
         return;
 
     right = ([self outputAttenuationRight] * 31) / 13;
+    mute = [self isOutputMuted] || !state->controller.playback.running;
 
     ac97_set_master_volume(&state->codec, state->codec.master_vol_l, right,
-                          [self isOutputMuted]);
+                          mute);
 }
 
 /*

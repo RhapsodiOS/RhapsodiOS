@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "ICHAC97Controller.h"
+#include "ac97var.h"
 
 static int failures;
 
@@ -229,6 +230,81 @@ static void test_codec_cas_rcs_and_link_reset(void)
     CHECK(ICHAC97ResetLink(&controller, 2U) == kICHAC97Timeout);
 }
 
+typedef struct {
+    unsigned short regs[64];
+    unsigned int delays;
+    int rejectVRA;
+} FakeCodec;
+
+static unsigned short fake_codec_read(void *context, unsigned char reg)
+{
+    return ((FakeCodec *)context)->regs[reg >> 1];
+}
+
+static void fake_codec_write(void *context, unsigned char reg,
+                             unsigned short value)
+{
+    FakeCodec *fake = (FakeCodec *)context;
+
+    if (reg == AC97_REG_EXT_AUDIO_CTRL && fake->rejectVRA)
+        return;
+    fake->regs[reg >> 1] = value;
+}
+
+static void fake_codec_delay(void *context, unsigned int microseconds)
+{
+    (void)microseconds;
+    ((FakeCodec *)context)->delays++;
+}
+
+static void init_fake_codec(struct ac97_codec_state *codec, FakeCodec *fake)
+{
+    memset(codec, 0, sizeof(*codec));
+    codec->host_priv = fake;
+    codec->read_reg = fake_codec_read;
+    codec->write_reg = fake_codec_write;
+    codec->delay_us = fake_codec_delay;
+    codec->delay_context = fake;
+}
+
+static void test_codec_id_vra_volume_and_muted_attach(void)
+{
+    struct ac97_codec_state codec;
+    FakeCodec fake;
+
+    CHECK(ac97_attenuation_field(0, 5) == 0U);
+    CHECK(ac97_attenuation_field(-42, 5) == 15U);
+    CHECK(ac97_attenuation_field(-84, 5) == 31U);
+    CHECK(ac97_attenuation_field(-42, 6) == 31U);
+    CHECK(ac97_attenuation_field(-84, 6) == 63U);
+
+    memset(&fake, 0, sizeof(fake));
+    fake.regs[AC97_REG_POWERDOWN >> 1] =
+        AC97_PWR_REF | AC97_PWR_ANL | AC97_PWR_DAC;
+    fake.regs[AC97_REG_VENDOR_ID1 >> 1] = 0x4144U;
+    fake.regs[AC97_REG_VENDOR_ID2 >> 1] = 0x5370U;
+    fake.regs[AC97_REG_EXT_AUDIO_ID >> 1] = AC97_EXT_AUDIO_VRA;
+    fake.regs[AC97_REG_MASTER_VOLUME >> 1] = 0x1f1fU;
+    init_fake_codec(&codec, &fake);
+    CHECK(ac97_attach(&codec, AC97_CODEC_TYPE_AUDIO) == 0);
+    CHECK(codec.vendor_id == 0x41445370U);
+    CHECK(strcmp(codec.codec_name, "AD1980") == 0);
+    CHECK(codec.vra_enabled == 1);
+    CHECK(codec.master_mute == 1);
+
+    memset(&codec, 0, sizeof(codec));
+    memset(&fake, 0, sizeof(fake));
+    fake.regs[AC97_REG_POWERDOWN >> 1] =
+        AC97_PWR_REF | AC97_PWR_ANL | AC97_PWR_DAC;
+    fake.regs[AC97_REG_EXT_AUDIO_ID >> 1] = AC97_EXT_AUDIO_VRA;
+    fake.rejectVRA = 1;
+    init_fake_codec(&codec, &fake);
+    CHECK(ac97_attach(&codec, AC97_CODEC_TYPE_AUDIO) == 0);
+    CHECK(codec.vra_enabled == 0);
+    CHECK(ac97_set_rate(&codec, AC97_RATE_DAC, 44100U) == -1);
+    CHECK(ac97_set_rate(&codec, AC97_RATE_DAC, 48000U) == 0);
+}
+
 static void test_bdl_64k_8k_and_rejects(void)
 {
     ICHAC97Playback playback;
@@ -255,6 +331,7 @@ int main(void)
     test_rr_clears_bdbar_and_start_rewrites_it();
     test_lvi_chase_and_output_irq();
     test_codec_cas_rcs_and_link_reset();
+    test_codec_id_vra_volume_and_muted_attach();
     if (failures != 0) {
         fprintf(stderr, "%d Intel AC97 checks failed\n", failures);
         return 1;

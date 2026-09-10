@@ -9,10 +9,14 @@ all: $(TESTS)
 
 intel_ac97_test: intel_ac97_test.c \
         $(LINKROOT)/ICHAC97Controller.c \
-        $(LINKROOT)/ICHAC97Controller.h
+        $(LINKROOT)/ICHAC97Controller.h \
+        $(LINKROOT)/ac97.c \
+        $(LINKROOT)/ac97var.h \
+        $(LINKROOT)/ac97reg.h
 	$(CC) $(CFLAGS) -I$(LINKROOT) -o $@ \
 		intel_ac97_test.c \
-		$(LINKROOT)/ICHAC97Controller.c
+		$(LINKROOT)/ICHAC97Controller.c \
+		$(LINKROOT)/ac97.c
 
 check: all
 	./intel_ac97_test

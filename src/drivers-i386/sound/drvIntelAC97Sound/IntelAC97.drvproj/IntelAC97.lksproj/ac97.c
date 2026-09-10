@@ -1,5 +1,5 @@
 /*
- * ac97.m
+ * ac97.c
  *
  * AC97 (Audio Codec '97) codec implementation
  * Based on NetBSD's ac97.c and Intel's Audio Codec '97 specification
@@ -12,12 +12,10 @@
  * the License, or (at your option) any later version.
  */
 
-#import <driverkit/generalFuncs.h>
-#import <driverkit/kernelDriver.h>
-#import <kernserv/prototypes.h>
+#include <stdio.h>
 
-#import "ac97var.h"
-#import "ac97reg.h"
+#include "ac97var.h"
+#include "ac97reg.h"
 
 /* Codec vendor/device identification table */
 struct ac97_codec_id {
@@ -63,13 +61,36 @@ static const struct ac97_codec_id ac97_codecs[] = {
     { 0x00000000, "Unknown",            "Unknown" }
 };
 
+static const unsigned char ac97_output_regs[3] = {
+    AC97_REG_MASTER_VOLUME,
+    AC97_REG_AUX_OUT_VOLUME,
+    AC97_REG_SURR_MASTER
+};
+
+static void
+ac97_delay(struct ac97_codec_state *codec, unsigned int us)
+{
+    if (codec != NULL && codec->delay_us != NULL)
+        codec->delay_us(codec->delay_context, us);
+}
+
+static void
+ac97_copy_name(char *dst, const char *src)
+{
+    int i;
+
+    for (i = 0; i < 31 && src[i] != '\0'; i++)
+        dst[i] = src[i];
+    dst[i] = '\0';
+}
+
 /*
  * ac97_read - Read AC97 register
  */
 unsigned short
 ac97_read(struct ac97_codec_state *codec, unsigned char reg)
 {
-    if (!codec || !codec->read_reg)
+    if (codec == NULL || codec->read_reg == NULL)
         return 0xffff;
 
     return codec->read_reg(codec->host_priv, reg);
@@ -81,13 +102,13 @@ ac97_read(struct ac97_codec_state *codec, unsigned char reg)
 void
 ac97_write(struct ac97_codec_state *codec, unsigned char reg, unsigned short val)
 {
-    if (!codec || !codec->write_reg)
+    if (codec == NULL || codec->write_reg == NULL)
         return;
 
     codec->write_reg(codec->host_priv, reg, val);
 
     /* Cache the value if not reading from hardware */
-    if (!(codec->host_flags & AC97_HOST_DONT_READMIX))
+    if ((codec->host_flags & AC97_HOST_DONT_READMIX) == 0)
         codec->regs[reg >> 1] = val;
 }
 
@@ -105,7 +126,7 @@ ac97_wait_ready(struct ac97_codec_state *codec, int timeout_ms)
         if ((status & (AC97_PWR_REF | AC97_PWR_ANL | AC97_PWR_DAC)) ==
             (AC97_PWR_REF | AC97_PWR_ANL | AC97_PWR_DAC))
             return 0;
-        IODelay(1000);  /* Wait 1ms */
+        ac97_delay(codec, 1000);  /* Wait 1ms */
     }
 
     return -1;  /* Timeout */
@@ -114,33 +135,33 @@ ac97_wait_ready(struct ac97_codec_state *codec, int timeout_ms)
 /*
  * ac97_reset - Reset the AC97 codec
  */
-void
+int
 ac97_reset(struct ac97_codec_state *codec)
 {
     int i;
 
-    if (!codec)
-        return;
+    if (codec == NULL)
+        return -1;
 
     /* Call host-specific reset if available */
-    if (codec->reset)
+    if (codec->reset != NULL)
         codec->reset(codec->host_priv);
 
     /* Write reset to codec */
     ac97_write(codec, AC97_REG_RESET, 0);
-    IODelay(1000);  /* Wait for reset to complete */
+    ac97_delay(codec, 1000);  /* Wait for reset to complete */
 
     /* Wait for codec to be ready */
-    if (ac97_wait_ready(codec, 100) < 0) {
-        IOLog("AC97: codec reset timeout\n");
-        return;
-    }
+    if (ac97_wait_ready(codec, 100) < 0)
+        return -1;
 
     /* Initialize cached register values */
     for (i = 0; i < AC97_REG_CNT; i++) {
-        if (!(codec->host_flags & AC97_HOST_DONT_READMIX))
-            codec->regs[i] = ac97_read(codec, i * 2);
+        if ((codec->host_flags & AC97_HOST_DONT_READMIX) == 0)
+            codec->regs[i] = ac97_read(codec, (unsigned char)(i * 2));
     }
+
+    return 0;
 }
 
 /*
@@ -154,7 +175,7 @@ ac97_identify_codec(struct ac97_codec_state *codec)
     unsigned short ext_id, reset_val;
     int i;
 
-    if (!codec)
+    if (codec == NULL)
         return;
 
     /* Read vendor IDs */
@@ -165,16 +186,16 @@ ac97_identify_codec(struct ac97_codec_state *codec)
 
     /* Find codec in table */
     for (i = 0; ac97_codecs[i].id != 0; i++) {
-        if ((vendor_id & AC97_VENDOR_ID_MASK) == ac97_codecs[i].id) {
-            strncpy(codec->vendor_name, ac97_codecs[i].vendor, 31);
-            strncpy(codec->codec_name, ac97_codecs[i].codec, 31);
+        if (vendor_id == ac97_codecs[i].id) {
+            ac97_copy_name(codec->vendor_name, ac97_codecs[i].vendor);
+            ac97_copy_name(codec->codec_name, ac97_codecs[i].codec);
             break;
         }
     }
 
     /* If not found, use unknown */
     if (ac97_codecs[i].id == 0) {
-        strncpy(codec->vendor_name, "Unknown", 31);
+        ac97_copy_name(codec->vendor_name, "Unknown");
         sprintf(codec->codec_name, "Unknown (0x%08x)", vendor_id);
     }
 
@@ -200,16 +221,6 @@ ac97_identify_codec(struct ac97_codec_state *codec)
         codec->caps.surround_dac = (ext_id & AC97_EXT_AUDIO_SDAC) ? 1 : 0;
         codec->caps.lfe_dac = (ext_id & AC97_EXT_AUDIO_LDAC) ? 1 : 0;
     }
-
-    IOLog("AC97: %s %s (0x%08x)\n", codec->vendor_name, codec->codec_name, vendor_id);
-    IOLog("AC97: Capabilities: %s%s%s%s%s%s%s\n",
-          codec->caps.vra_supported ? "VRA " : "",
-          codec->caps.dra_supported ? "DRA " : "",
-          codec->caps.spdif_supported ? "S/PDIF " : "",
-          codec->caps.surround_dac ? "Surround " : "",
-          codec->caps.center_dac ? "Center " : "",
-          codec->caps.lfe_dac ? "LFE " : "",
-          codec->caps.bit20_dac ? "20-bit-DAC " : "");
 }
 
 /*
@@ -219,15 +230,19 @@ int
 ac97_attach(struct ac97_codec_state *codec, int codec_type)
 {
     unsigned short ext_ctrl;
+    int i;
 
-    if (!codec)
+    if (codec == NULL)
         return -1;
+
+    (void)codec_type;
 
     /* Set magic number */
     codec->magic = AC97_MAGIC;
 
     /* Reset codec */
-    ac97_reset(codec);
+    if (ac97_reset(codec) < 0)
+        return -1;
 
     /* Identify codec */
     ac97_identify_codec(codec);
@@ -237,8 +252,8 @@ ac97_attach(struct ac97_codec_state *codec, int codec_type)
         ext_ctrl = ac97_read(codec, AC97_REG_EXT_AUDIO_CTRL);
         ext_ctrl |= AC97_EXT_CTRL_VRA;
         ac97_write(codec, AC97_REG_EXT_AUDIO_CTRL, ext_ctrl);
-        codec->vra_enabled = 1;
-        IOLog("AC97: Variable Rate Audio enabled\n");
+        ext_ctrl = ac97_read(codec, AC97_REG_EXT_AUDIO_CTRL);
+        codec->vra_enabled = (ext_ctrl & AC97_EXT_CTRL_VRA) ? 1 : 0;
     }
 
     /* Set default sample rates */
@@ -246,11 +261,20 @@ ac97_attach(struct ac97_codec_state *codec, int codec_type)
     codec->adc_rate = AC97_RATE_DEFAULT;
     codec->mic_rate = AC97_RATE_DEFAULT;
 
-    /* Initialize mixer to reasonable defaults */
-    ac97_set_master_volume(codec, 0, 0, 0);  /* 0dB, unmuted */
-    ac97_set_pcm_volume(codec, 0, 0, 0);     /* 0dB, unmuted */
-    ac97_set_record_source(codec, AC97_RECMUX_LINE);
-    ac97_set_record_gain(codec, 0, 0);
+    /* Initialize mixer to muted defaults */
+    ac97_set_master_volume(codec, 0, 0, 1);
+    ac97_set_pcm_volume(codec, 0, 0, 1);
+
+    /* Measure output volume bit widths */
+    for (i = 0; i < 3; i++) {
+        unsigned short probe;
+
+        probe = ac97_read(codec, ac97_output_regs[i]);
+        codec->out_present[i] = (probe != 0xffff) ? 1 : 0;
+        if (codec->out_present[i])
+            codec->out_bits[i] = ac97_measure_volume_bits(codec,
+                                                          ac97_output_regs[i]);
+    }
 
     /* Power up all sections */
     ac97_power_up(codec);
@@ -268,16 +292,18 @@ ac97_set_master_volume(struct ac97_codec_state *codec,
 {
     unsigned short val;
 
-    if (!codec)
+    if (codec == NULL)
         return;
 
     /* Clamp values */
-    if (left > 31) left = 31;
-    if (right > 31) right = 31;
+    if (left > 31)
+        left = 31;
+    if (right > 31)
+        right = 31;
 
     /* Build register value */
-    val = ((left & 0x1f) << AC97_LEFTVOL_SHIFT) |
-          ((right & 0x1f) << AC97_RIGHTVOL_SHIFT);
+    val = (unsigned short)(((left & 0x1f) << AC97_LEFTVOL_SHIFT) |
+          ((right & 0x1f) << AC97_RIGHTVOL_SHIFT));
 
     if (mute)
         val |= AC97_MUTE;
@@ -299,16 +325,16 @@ ac97_get_master_volume(struct ac97_codec_state *codec,
 {
     unsigned short val;
 
-    if (!codec)
+    if (codec == NULL)
         return;
 
     val = ac97_read(codec, AC97_REG_MASTER_VOLUME);
 
-    if (left)
-        *left = (val >> AC97_LEFTVOL_SHIFT) & 0x1f;
-    if (right)
-        *right = (val >> AC97_RIGHTVOL_SHIFT) & 0x1f;
-    if (mute)
+    if (left != NULL)
+        *left = (unsigned char)((val >> AC97_LEFTVOL_SHIFT) & 0x1f);
+    if (right != NULL)
+        *right = (unsigned char)((val >> AC97_RIGHTVOL_SHIFT) & 0x1f);
+    if (mute != NULL)
         *mute = (val & AC97_MUTE) ? 1 : 0;
 }
 
@@ -321,16 +347,18 @@ ac97_set_pcm_volume(struct ac97_codec_state *codec,
 {
     unsigned short val;
 
-    if (!codec)
+    if (codec == NULL)
         return;
 
     /* Clamp values */
-    if (left > 31) left = 31;
-    if (right > 31) right = 31;
+    if (left > 31)
+        left = 31;
+    if (right > 31)
+        right = 31;
 
     /* Build register value */
-    val = ((left & 0x1f) << AC97_LEFTVOL_SHIFT) |
-          ((right & 0x1f) << AC97_RIGHTVOL_SHIFT);
+    val = (unsigned short)(((left & 0x1f) << AC97_LEFTVOL_SHIFT) |
+          ((right & 0x1f) << AC97_RIGHTVOL_SHIFT));
 
     if (mute)
         val |= AC97_MUTE;
@@ -352,16 +380,16 @@ ac97_get_pcm_volume(struct ac97_codec_state *codec,
 {
     unsigned short val;
 
-    if (!codec)
+    if (codec == NULL)
         return;
 
     val = ac97_read(codec, AC97_REG_PCMOUT_VOLUME);
 
-    if (left)
-        *left = (val >> AC97_LEFTVOL_SHIFT) & 0x1f;
-    if (right)
-        *right = (val >> AC97_RIGHTVOL_SHIFT) & 0x1f;
-    if (mute)
+    if (left != NULL)
+        *left = (unsigned char)((val >> AC97_LEFTVOL_SHIFT) & 0x1f);
+    if (right != NULL)
+        *right = (unsigned char)((val >> AC97_RIGHTVOL_SHIFT) & 0x1f);
+    if (mute != NULL)
         *mute = (val & AC97_MUTE) ? 1 : 0;
 }
 
@@ -371,10 +399,10 @@ ac97_get_pcm_volume(struct ac97_codec_state *codec,
 void
 ac97_set_record_source(struct ac97_codec_state *codec, unsigned int source)
 {
-    if (!codec)
+    if (codec == NULL)
         return;
 
-    ac97_write(codec, AC97_REG_RECORD_SELECT, source);
+    ac97_write(codec, AC97_REG_RECORD_SELECT, (unsigned short)source);
 }
 
 /*
@@ -386,14 +414,16 @@ ac97_set_record_gain(struct ac97_codec_state *codec,
 {
     unsigned short val;
 
-    if (!codec)
+    if (codec == NULL)
         return;
 
     /* Clamp to 0-15 (0dB to +22.5dB) */
-    if (left > 15) left = 15;
-    if (right > 15) right = 15;
+    if (left > 15)
+        left = 15;
+    if (right > 15)
+        right = 15;
 
-    val = (left << 8) | right;
+    val = (unsigned short)((left << 8) | right);
     ac97_write(codec, AC97_REG_RECORD_GAIN, val);
 }
 
@@ -404,42 +434,44 @@ int
 ac97_set_rate(struct ac97_codec_state *codec, int which, unsigned int rate)
 {
     unsigned short reg;
+    unsigned short readback;
+    unsigned int *cache;
 
-    if (!codec)
+    if (codec == NULL)
         return -1;
 
-    /* Check if variable rate is supported */
-    if (!codec->caps.vra_supported && rate != AC97_RATE_DEFAULT)
+    if (rate < AC97_RATE_MIN || rate > AC97_RATE_MAX)
         return -1;
 
-    /* Clamp rate */
-    if (rate < AC97_RATE_MIN)
-        rate = AC97_RATE_MIN;
-    if (rate > AC97_RATE_MAX)
-        rate = AC97_RATE_MAX;
+    if (!codec->vra_enabled && rate != AC97_RATE_DEFAULT)
+        return -1;
 
     /* Select appropriate register */
     switch (which) {
     case AC97_RATE_DAC:
         reg = AC97_REG_PCM_FRONT_DAC_RATE;
-        codec->dac_rate = rate;
+        cache = &codec->dac_rate;
         break;
     case AC97_RATE_ADC:
         reg = AC97_REG_PCM_LR_ADC_RATE;
-        codec->adc_rate = rate;
+        cache = &codec->adc_rate;
         break;
     case AC97_RATE_MIC:
         if (!codec->caps.vrm_supported)
             return -1;
         reg = AC97_REG_PCM_MIC_ADC_RATE;
-        codec->mic_rate = rate;
+        cache = &codec->mic_rate;
         break;
     default:
         return -1;
     }
 
     ac97_write(codec, reg, (unsigned short)rate);
+    readback = ac97_read(codec, reg);
+    if (readback != (unsigned short)rate)
+        return -1;
 
+    *cache = rate;
     return 0;
 }
 
@@ -449,7 +481,7 @@ ac97_set_rate(struct ac97_codec_state *codec, int which, unsigned int rate)
 unsigned int
 ac97_get_rate(struct ac97_codec_state *codec, int which)
 {
-    if (!codec)
+    if (codec == NULL)
         return 0;
 
     switch (which) {
@@ -470,11 +502,11 @@ ac97_get_rate(struct ac97_codec_state *codec, int which)
 void
 ac97_power_up(struct ac97_codec_state *codec)
 {
-    if (!codec)
+    if (codec == NULL)
         return;
 
     ac97_write(codec, AC97_REG_POWERDOWN, AC97_PWR_D0);
-    IODelay(100);
+    ac97_delay(codec, 100);
 
     /* Wait for sections to power up */
     ac97_wait_ready(codec, 100);
@@ -486,7 +518,7 @@ ac97_power_up(struct ac97_codec_state *codec)
 void
 ac97_power_down(struct ac97_codec_state *codec)
 {
-    if (!codec)
+    if (codec == NULL)
         return;
 
     ac97_write(codec, AC97_REG_POWERDOWN, AC97_PWR_D3);
@@ -498,16 +530,94 @@ ac97_power_down(struct ac97_codec_state *codec)
 void
 ac97_dump_registers(struct ac97_codec_state *codec)
 {
-    int i;
-    unsigned short val;
+    (void)codec;
+}
 
-    if (!codec)
+/*
+ * ac97_attenuation_field - Map attenuation to volume field value
+ */
+unsigned short
+ac97_attenuation_field(int atten, int bits)
+{
+    int max_field;
+    int clamped;
+
+    if (atten > 0)
+        atten = 0;
+    if (atten < -84)
+        atten = -84;
+
+    max_field = (1 << bits) - 1;
+    clamped = (-atten * max_field) / 84;
+    return (unsigned short)clamped;
+}
+
+/*
+ * ac97_measure_volume_bits - Probe volume register bit width
+ */
+int
+ac97_measure_volume_bits(struct ac97_codec_state *codec, unsigned char reg)
+{
+    unsigned short saved;
+    unsigned short probe;
+    unsigned short mask;
+    int bits;
+    int i;
+
+    saved = ac97_read(codec, reg);
+    ac97_write(codec, reg, (unsigned short)(AC97_MUTE | 0x003f));
+    probe = ac97_read(codec, reg);
+    ac97_write(codec, reg, saved);
+
+    mask = probe & 0x003f;
+    bits = 0;
+    for (i = 0; i < 6; i++) {
+        if ((mask & (1U << i)) != 0)
+            bits++;
+    }
+
+    if (bits < 5)
+        bits = 5;
+    if (bits > 6)
+        bits = 6;
+
+    return bits;
+}
+
+/*
+ * ac97_apply_output - Apply attenuation to all present outputs
+ */
+void
+ac97_apply_output(struct ac97_codec_state *codec,
+                  int leftAtten, int rightAtten, int mute)
+{
+    int i;
+    unsigned short left;
+    unsigned short right;
+    unsigned short val;
+    unsigned short cur;
+    int max_field;
+
+    if (codec == NULL)
         return;
 
-    IOLog("AC97 Register Dump:\n");
-    for (i = 0; i < 0x80; i += 2) {
-        val = ac97_read(codec, i);
-        if (val != 0 && val != 0xffff)
-            IOLog("  [0x%02x] = 0x%04x\n", i, val);
+    for (i = 0; i < 3; i++) {
+        if (!codec->out_present[i])
+            continue;
+
+        left = ac97_attenuation_field(leftAtten, codec->out_bits[i]);
+        right = ac97_attenuation_field(rightAtten, codec->out_bits[i]);
+        max_field = (1 << codec->out_bits[i]) - 1;
+
+        val = (unsigned short)(((left & max_field) << AC97_LEFTVOL_SHIFT) |
+              ((right & max_field) << AC97_RIGHTVOL_SHIFT));
+
+        cur = ac97_read(codec, ac97_output_regs[i]);
+        if (mute)
+            val |= AC97_MUTE;
+        else
+            val |= (cur & AC97_MUTE);
+
+        ac97_write(codec, ac97_output_regs[i], val);
     }
 }

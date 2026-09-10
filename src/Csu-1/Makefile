@@ -36,11 +36,11 @@ all: crt0.o gcrt0.o pscrt0.o crt1.o gcrt1.o pscrt1.o dylib1.o bundle1.o
 
 # Minimal dylinker for -r merge (see DYLD comment above).
 $(OBJROOT)/dyld.stub: $(OBJROOT)/dyld_stub.o
-	ld $(RC_CFLAGS) -dylinker -dylinker_install_name /usr/lib/dyld \
-		-o $(OBJROOT)/dyld.stub $(OBJROOT)/dyld_stub.o
+	$(CC) $(RC_CFLAGS) -dylinker -dylinker_install_name /usr/lib/dyld \
+		-nostdlib -o $(OBJROOT)/dyld.stub $(OBJROOT)/dyld_stub.o
 
 $(OBJROOT)/dyld_stub.o: $(SRCROOT)/dyld_stub.s
-	as $(RC_CFLAGS) -o $(OBJROOT)/dyld_stub.o $(SRCROOT)/dyld_stub.s
+	$(CC) $(RC_CFLAGS) -c -o $(OBJROOT)/dyld_stub.o $(SRCROOT)/dyld_stub.s
 
 crt0.o: sstart.o xcrt0.o sdyld.o sinit_shlibs.o
 	$(CC) $(CFLAGS) $(RC_CFLAGS) \
@@ -90,7 +90,7 @@ xpscrt0.o: crt.c
 	$(CC) -static -DCRT0 -DPOSTSCRIPT $(CFLAGS) $(RC_CFLAGS) \
 		-c -o $(OBJROOT)/xpscrt0.o $(SRCROOT)/crt.c
 
-crt1.o: dstart.o xcrt1.o ddyld.o dinit_shlibs.o
+crt1.o: dstart.o xcrt1.o ddyld.o dinit_shlibs.o $(OBJROOT)/dyld.stub
 	$(CC) $(CFLAGS) $(RC_CFLAGS) $(DYLD) \
 		-r -dynamic -nostdlib -keep_private_externs \
 		$(OBJROOT)/dstart.o $(OBJROOT)/xcrt1.o \
@@ -114,7 +114,7 @@ dinit_shlibs.o: init_shlibs.c
 	$(CC) -dynamic $(CFLAGS) $(RC_CFLAGS) \
 		-c -o $(OBJROOT)/dinit_shlibs.o $(SRCROOT)/init_shlibs.c
 
-gcrt1.o: dstart.o xgcrt1.o ddyld.o dinit_shlibs.o
+gcrt1.o: dstart.o xgcrt1.o ddyld.o dinit_shlibs.o $(OBJROOT)/dyld.stub
 	$(CC) $(CFLAGS) $(RC_CFLAGS) $(DYLD) \
 		-r -dynamic -nostdlib -keep_private_externs \
 		$(OBJROOT)/dstart.o $(OBJROOT)/xgcrt1.o $(OBJROOT)/ddyld.o \
@@ -125,7 +125,7 @@ xgcrt1.o: crt.c
 	$(CC) -dynamic -DCRT1 -DGCRT $(CFLAGS) $(RC_CFLAGS) \
 		-c -o $(OBJROOT)/xgcrt1.o $(SRCROOT)/crt.c
 
-pscrt1.o: dstart.o xpscrt1.o ddyld.o dinit_shlibs.o
+pscrt1.o: dstart.o xpscrt1.o ddyld.o dinit_shlibs.o $(OBJROOT)/dyld.stub
 	$(CC) $(CFLAGS) $(RC_CFLAGS) $(DYLD) \
 		-r -dynamic -nostdlib -keep_private_externs \
 		$(OBJROOT)/dstart.o $(OBJROOT)/xpscrt1.o $(OBJROOT)/ddyld.o \

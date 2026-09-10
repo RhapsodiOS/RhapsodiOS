@@ -210,7 +210,7 @@ make_links::
 					continue;\
 				fi;\
 				if [ -f $$name/$${obj_dir}_obj/$$name.ofileList ]; then\
-					$(LN) $$name/$${obj_dir}_obj/$$name.ofileList $$name/ofileList;\
+					$(LN) $${obj_dir}_obj/$$name.ofileList $$name/ofileList;\
 				else\
 					echo "#####No $$name/$${obj_dir}_obj/$$name.ofileList";\
 					bail=YES;\
@@ -240,3 +240,18 @@ set_extra_libtool_flags =\
 			ofileList_flags="$$ofileList_flags -filelist $$subproj/ofileList,$$subproj/$${link_dir}_obj";\
 	done; \
 	ofileList_flags="$$ofileList_flags -lcc_dynamic"
+
+# Darwin 1.4 ships /usr/lib/libkvm.dylib (and libc, libm, ...) as
+# compatibility aliases of System.framework. Libkvm is harvested into
+# System and never installs a standalone dylib, so later bootstrap
+# tools (system_cmds/top) fail with "can't locate file for: -lkvm"
+# unless these links exist in DSTROOT.
+after_install::
+	$(MKDIRS) $(DSTROOT)/usr/lib
+	@(for lib in libc libm libkvm libcurses libedit libinfo \
+	             libstreams libobjc libmacho libdyld librld \
+	             libSystem libcompat; do \
+	    rm -f $(DSTROOT)/usr/lib/$$lib.dylib; \
+	    $(LN) ../../System/Library/Frameworks/System.framework/Versions/B/System \
+	          $(DSTROOT)/usr/lib/$$lib.dylib; \
+	  done)

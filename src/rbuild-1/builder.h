@@ -63,6 +63,7 @@ int builder_setupdirs(const Package *pkg, const Params *params,
 
 int builder_buildpackage(const Package *spkg, const Params *params,
                          const char *target, const BuildOptions *opt);
+int builder_relativize_symlinks(const char *root);
 int builder_harvest_objects(const Package *pkg, const Params *params,
                             const Params *bparams, const BuildOptions *opt);
 

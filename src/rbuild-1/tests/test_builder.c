@@ -175,19 +175,26 @@ TEST(test_bootstrap_flags_use_target_sysroot) {
     CHECK(list_has(&f, "CC=/tools/target-cc"));
     CHECK(list_has(&f, "AR=/tools/target-ar"));
     CHECK(list_has(&f, "RANLIB=/tools/target-ranlib"));
-    CHECK(list_has(&f, "LN=/tools/ln"));
+    CHECK(list_has(&f, "LN=/tools/ln -s"));
+    CHECK(!list_has(&f, "LN=/tools/ln"));
     CHECK(list_has(&f, "RC_ARCHS=ppc"));
     CHECK(list_has(&f, "RC_ppc=YES"));
     CHECK(list_has(&f, "TARGETS=ppc"));
     CHECK(!list_has_prefix(&f, "CoreOSMakefiles="));
     CHECK(list_has(&f, "MKDIRS=/bin/mkdir -p"));
     CHECK(list_has(&f, "SFILE_DIR=/y/derived_src"));
+    CHECK(list_has(&f, "HDRROOT=/target"));
+    CHECK(list_has(&f, "SUBLIBROOTS=/target/usr/local/lib/objs"));
+    CHECK(!list_has(&f, "SUBLIBROOTS=/objs"));
     rc_cflags = list_has_prefix(&f, "RC_CFLAGS=");
     CHECK(rc_cflags != 0);
     CHECK(str_has_prefix(rc_cflags,
-          "RC_CFLAGS=-arch ppc -nostdinc -I/target/System/Headers"));
+          "RC_CFLAGS=-arch ppc -nostdinc"));
+    CHECK(strstr(rc_cflags, "-I/") == 0);
+    CHECK(list_has(&f, "LOCAL_CFLAGS=-I/target/System/Headers"));
     for (i = 0; defines[i]; i++) CHECK(strstr(rc_cflags, defines[i]) != 0);
-    CHECK(list_has(&f, "OTHER_LDFLAGS=-Wl,-syslibroot,/target"));
+    CHECK(list_has(&f, "OTHER_LDFLAGS=-F/target/System/Library/Frameworks -L/target/usr/lib"));
+    CHECK(!list_has_prefix(&f, "INDR="));
     CHECK(!list_has_prefix(&f, "BOOTSTRAP_SKIP_DYLD="));
     strlist_free(&f);
 
@@ -466,7 +473,8 @@ TEST(test_bootstrap_ld_flags_wait_for_ready_path) {
 
     sprintf(base, "/tmp/rb-ld-flags-%ld", (long)getpid());
     sprintf(ready, "%s/ready/System", base);
-    sprintf(expected, "OTHER_LDFLAGS=-Wl,-syslibroot,%s", base);
+    sprintf(expected, "OTHER_LDFLAGS=-F%s/System/Library/Frameworks -L%s/usr/lib",
+            base, base);
     sprintf(expected_root, "NEXT_ROOT=%s", base);
     sprintf(shell_cmd, "rm -rf %s && mkdir -p %s/ready", base, base);
     CHECK_INT(system(shell_cmd), 0);
@@ -495,6 +503,96 @@ TEST(test_bootstrap_ld_flags_wait_for_ready_path) {
     builder_buildflags(&p, "install", &flags, &opt);
     CHECK(list_has(&flags, expected));
     CHECK(list_has(&flags, expected_root));
+    strlist_free(&flags);
+
+    params_free(&p);
+    sprintf(shell_cmd, "rm -rf %s", base);
+    CHECK_INT(system(shell_cmd), 0);
+}
+
+TEST(test_bootstrap_cpp_flags_wait_for_ready_path) {
+    Params p;
+    BuildOptions opt;
+    Toolchain tc;
+    strlist flags;
+    char base[128];
+    char ready[180];
+    char expected_other[256];
+    char shell_cmd[256];
+    const char *rc_cflags;
+    FILE *fp;
+
+    sprintf(base, "/tmp/rb-cpp-flags-%ld", (long)getpid());
+    sprintf(ready, "%s/ready/stdarg.h", base);
+    sprintf(expected_other, "LOCAL_CFLAGS=-I%s/System/Headers", base);
+    sprintf(shell_cmd, "rm -rf %s && mkdir -p %s/ready", base, base);
+    CHECK_INT(system(shell_cmd), 0);
+    params_init(&p);
+    build_options_init(&opt);
+    toolchain_fixture(&tc);
+    tc.cpp_flags_ready = "@SYSROOT@/ready/stdarg.h";
+    opt.bootstrap = 1;
+    opt.sysroot = base;
+    opt.toolchain = &tc;
+    p.SRCROOT = xstrdup("/s"); p.OBJROOT = xstrdup("/o");
+    p.SYMROOT = xstrdup("/y"); p.DSTROOT = xstrdup("/d");
+    p.HDRROOT = xstrdup("/h"); p.SUBLIBROOTS = xstrdup("/objs");
+
+    strlist_init(&flags);
+    builder_buildflags(&p, "install", &flags, &opt);
+    rc_cflags = list_has_prefix(&flags, "RC_CFLAGS=");
+    CHECK(rc_cflags != 0);
+    CHECK(strstr(rc_cflags, "-nostdinc") == 0);
+    CHECK(strstr(rc_cflags, "/System/Headers") == 0);
+    CHECK(list_has(&flags, expected_other));
+    strlist_free(&flags);
+
+    fp = fopen(ready, "w");
+    CHECK(fp != 0);
+    if (fp) fclose(fp);
+    strlist_init(&flags);
+    builder_buildflags(&p, "install", &flags, &opt);
+    rc_cflags = list_has_prefix(&flags, "RC_CFLAGS=");
+    CHECK(rc_cflags != 0);
+    CHECK(strstr(rc_cflags, "-nostdinc") != 0);
+    CHECK(strstr(rc_cflags, "/System/Headers") == 0);
+    CHECK(list_has(&flags, expected_other));
+    strlist_free(&flags);
+
+    params_free(&p);
+    sprintf(shell_cmd, "rm -rf %s", base);
+    CHECK_INT(system(shell_cmd), 0);
+}
+
+TEST(test_bootstrap_indr_from_sysroot) {
+    Params p;
+    BuildOptions opt;
+    Toolchain tc;
+    strlist flags;
+    char base[128];
+    char expected[192];
+    char shell_cmd[256];
+
+    sprintf(base, "/tmp/rb-indr-%ld", (long)getpid());
+    sprintf(expected, "INDR=%s/usr/local/bin/indr", base);
+    sprintf(shell_cmd,
+            "rm -rf %s && mkdir -p %s/usr/local/bin && "
+            "touch %s/usr/local/bin/indr && chmod +x %s/usr/local/bin/indr",
+            base, base, base, base);
+    CHECK_INT(system(shell_cmd), 0);
+    params_init(&p);
+    build_options_init(&opt);
+    toolchain_fixture(&tc);
+    opt.bootstrap = 1;
+    opt.sysroot = base;
+    opt.toolchain = &tc;
+    p.SRCROOT = xstrdup("/s"); p.OBJROOT = xstrdup("/o");
+    p.SYMROOT = xstrdup("/y"); p.DSTROOT = xstrdup("/d");
+    p.HDRROOT = xstrdup("/h"); p.SUBLIBROOTS = xstrdup("/objs");
+
+    strlist_init(&flags);
+    builder_buildflags(&p, "install", &flags, &opt);
+    CHECK(list_has(&flags, expected));
     strlist_free(&flags);
 
     params_free(&p);
@@ -601,6 +699,67 @@ TEST(test_scan_dir) {
     system("rm -rf /tmp/rbtest_src");
 }
 
+TEST(test_relativize_absolute_symlinks_inside_dstroot) {
+    char root[128];
+    char at_path[192];
+    char atq_path[192];
+    char surge_path[192];
+    char alias_path[192];
+    char outside_path[192];
+    char tz_path[192];
+    char localtime_path[192];
+    char command[256];
+    char target[1024];
+    int n;
+    FILE *f;
+
+    sprintf(root, "/tmp/rb-relsymlink-%ld", (long)getpid());
+    sprintf(command,
+            "rm -rf %s && mkdir -p %s/usr/bin %s/usr/share/nvram "
+            "%s/usr/share/zoneinfo/US %s/private/etc",
+            root, root, root, root, root);
+    CHECK_INT(system(command), 0);
+    sprintf(at_path, "%s/usr/bin/at", root);
+    sprintf(atq_path, "%s/usr/bin/atq", root);
+    sprintf(surge_path, "%s/usr/share/nvram/PowerSurge", root);
+    sprintf(alias_path, "%s/usr/share/nvram/7300", root);
+    sprintf(outside_path, "%s/usr/bin/outside", root);
+    sprintf(tz_path, "%s/usr/share/zoneinfo/US/Pacific", root);
+    sprintf(localtime_path, "%s/private/etc/localtime", root);
+    f = fopen(at_path, "w");
+    CHECK(f != 0);
+    if (f != 0) { fputs("at\n", f); fclose(f); }
+    f = fopen(surge_path, "w");
+    CHECK(f != 0);
+    if (f != 0) { fputs("nvram\n", f); fclose(f); }
+    f = fopen(tz_path, "w");
+    CHECK(f != 0);
+    if (f != 0) { fputs("tz\n", f); fclose(f); }
+    CHECK_INT(symlink(at_path, atq_path), 0);
+    CHECK_INT(symlink("PowerSurge", alias_path), 0);
+    CHECK_INT(symlink("/etc/passwd", outside_path), 0);
+    CHECK_INT(symlink("/usr/share/zoneinfo/US/Pacific", localtime_path), 0);
+    CHECK_INT(builder_relativize_symlinks(root), 0);
+    n = readlink(atq_path, target, sizeof(target) - 1);
+    CHECK(n > 0);
+    if (n > 0) target[n] = '\0';
+    CHECK_STR(target, "at");
+    n = readlink(alias_path, target, sizeof(target) - 1);
+    CHECK(n > 0);
+    if (n > 0) target[n] = '\0';
+    CHECK_STR(target, "PowerSurge");
+    n = readlink(outside_path, target, sizeof(target) - 1);
+    CHECK(n > 0);
+    if (n > 0) target[n] = '\0';
+    CHECK_STR(target, "/etc/passwd");
+    n = readlink(localtime_path, target, sizeof(target) - 1);
+    CHECK(n > 0);
+    if (n > 0) target[n] = '\0';
+    CHECK_STR(target, "../../usr/share/zoneinfo/US/Pacific");
+    sprintf(command, "rm -rf %s", root);
+    system(command);
+}
+
 static void run_all(void) {
     RUN(test_dir2name);
     RUN(test_pkgname);
@@ -615,10 +774,13 @@ static void run_all(void) {
     RUN(test_bootstrap_make_flags_wait_for_ready_path);
     RUN(test_bootstrap_coreos_makefiles_wait_for_sysroot);
     RUN(test_bootstrap_ld_flags_wait_for_ready_path);
+    RUN(test_bootstrap_cpp_flags_wait_for_ready_path);
+    RUN(test_bootstrap_indr_from_sysroot);
     RUN(test_bootstrap_harvest_stays_in_private_object_root);
     RUN(test_setupdirs_bootstrap_skips_makeroot);
     RUN(test_makeroot_dry_run_preserves_package_list);
     RUN(test_scan_dir);
+    RUN(test_relativize_absolute_symlinks_inside_dstroot);
 }
 
 TEST_MAIN()

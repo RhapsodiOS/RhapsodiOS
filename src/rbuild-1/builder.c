@@ -320,7 +320,14 @@ void builder_buildflags(const Params *params, const char *target, strlist *out,
     push_kv(out, "SRCROOT", params->SRCROOT);
     push_kv(out, "OBJROOT", params->OBJROOT);
     push_kv(out, "SYMROOT", params->SYMROOT);
-    push_kv(out, "SUBLIBROOTS", params->SUBLIBROOTS);
+    if (bootstrap && tc && opt->sysroot) {
+        char *sublibroots = str_cats(
+            opt->sysroot, "/usr/local/lib/objs", (char *)0);
+        push_kv(out, "SUBLIBROOTS", sublibroots);
+        free(sublibroots);
+    } else {
+        push_kv(out, "SUBLIBROOTS", params->SUBLIBROOTS);
+    }
     if (strcmp(target, "installhdrs") == 0)
         push_kv(out, "DSTROOT", params->HDRROOT);
     else
@@ -348,9 +355,39 @@ void builder_buildflags(const Params *params, const char *target, strlist *out,
 
     if (bootstrap && tc) {
         strlist words;
+        strlist include_words;
+        int cpp_ready = 1;
+        char *other_cflags;
         strlist_init(&words);
+        strlist_init(&include_words);
         expand_toolchain_words(tc->arch_flags, opt->sysroot, &words);
-        expand_toolchain_words(tc->cpp_flags, opt->sysroot, &words);
+        if (tc->cpp_flags_ready) {
+            char *path = expand_toolchain_value(
+                tc->cpp_flags_ready, opt->sysroot);
+            cpp_ready = access(path, F_OK) == 0;
+            free(path);
+        }
+        {
+            strlist cpp_words;
+            size_t wi;
+            strlist_init(&cpp_words);
+            expand_toolchain_words(tc->cpp_flags, opt->sysroot, &cpp_words);
+            for (wi = 0; wi < cpp_words.count; wi++) {
+                const char *word = cpp_words.items[wi];
+                if (!cpp_ready && strcmp(word, "-nostdinc") == 0)
+                    continue;
+                if (strcmp(word, "-nostdinc") == 0)
+                    strlist_push(&words, word);
+                else
+                    strlist_push(&include_words, word);
+            }
+            strlist_free(&cpp_words);
+        }
+        other_cflags = strlist_join(&include_words, " ");
+        if (other_cflags[0] != '\0')
+            push_kv(out, "LOCAL_CFLAGS", other_cflags);
+        free(other_cflags);
+        strlist_free(&include_words);
         expanded_cflags = strlist_join(&words, " ");
         arch_cflags = expanded_cflags;
         archs = tc->target_arch;
@@ -391,15 +428,57 @@ void builder_buildflags(const Params *params, const char *target, strlist *out,
             free(path);
         }
         /* NEXT_ROOT also redirects Darwin startup-object/library lookup. */
+        if (bootstrap && tc && opt->sysroot)
+            push_kv(out, "HDRROOT", opt->sysroot);
         if (opt->sysroot && ld_ready)
             push_kv(out, "NEXT_ROOT", opt->sysroot);
+        if (opt->sysroot) {
+            char *indr = str_cats(opt->sysroot, "/usr/local/bin/indr",
+                                  (char *)0);
+            if (access(indr, X_OK) == 0)
+                push_kv(out, "INDR", indr);
+            free(indr);
+        }
         if (tc->target_cc) push_kv(out, "CC", tc->target_cc);
         if (tc->target_ar) push_kv(out, "AR", tc->target_ar);
         if (tc->target_ranlib) push_kv(out, "RANLIB", tc->target_ranlib);
-        if (tc->ln) push_kv(out, "LN", tc->ln);
+        if (tc->ln) {
+            if (strstr(tc->ln, "-s") != 0)
+                push_kv(out, "LN", tc->ln);
+            else {
+                char *ln_s = str_cats(tc->ln, " -s", (char *)0);
+                push_kv(out, "LN", ln_s);
+                free(ln_s);
+            }
+        }
         strlist_init(&ld_words);
         if (ld_ready)
             expand_toolchain_words(tc->ld_flags, opt->sysroot, &ld_words);
+        /* Rhapsody ld rejects -syslibroot; search the sysroot with -F/-L. */
+        {
+            strlist rewritten;
+            size_t wi;
+            strlist_init(&rewritten);
+            for (wi = 0; wi < ld_words.count; wi++) {
+                const char *w = ld_words.items[wi];
+                const char *prefix = "-Wl,-syslibroot,";
+                if (str_has_prefix(w, prefix)) {
+                    const char *root = w + strlen(prefix);
+                    char *dash_f = str_cats("-F", root,
+                        "/System/Library/Frameworks", (char *)0);
+                    char *dash_l = str_cats("-L", root, "/usr/lib",
+                        (char *)0);
+                    strlist_push(&rewritten, dash_f);
+                    strlist_push(&rewritten, dash_l);
+                    free(dash_f);
+                    free(dash_l);
+                } else {
+                    strlist_push(&rewritten, w);
+                }
+            }
+            strlist_free(&ld_words);
+            ld_words = rewritten;
+        }
         ld_flags = strlist_join(&ld_words, " ");
         push_kv(out, "OTHER_LDFLAGS", ld_flags);
         free(ld_flags);
@@ -730,6 +809,140 @@ static int mkdirp(const char *path) {
     return exec_runv("mkdir", "-p", path, (char *)0);
 }
 
+static int path_is_inside(const char *root, const char *path) {
+    size_t n;
+    if (root == 0 || path == 0 || root[0] != '/' || path[0] != '/') return 0;
+    n = strlen(root);
+    while (n > 1 && root[n - 1] == '/') n--;
+    if (strncmp(path, root, n) != 0) return 0;
+    return path[n] == '\0' || path[n] == '/';
+}
+
+static int split_abs_components(const char *path, strlist *out) {
+    const char *p;
+    if (path == 0 || path[0] != '/') return 1;
+    p = path + 1;
+    while (*p != '\0') {
+        const char *start = p;
+        size_t length;
+        while (*p != '\0' && *p != '/') p++;
+        length = (size_t)(p - start);
+        if (length == 1 && start[0] == '.') {
+            /* skip */
+        } else if (length == 2 && start[0] == '.' && start[1] == '.') {
+            return 1;
+        } else if (length > 0) {
+            char *comp = (char *)xmalloc(length + 1);
+            memcpy(comp, start, length);
+            comp[length] = '\0';
+            strlist_push_owned(out, comp);
+        }
+        if (*p == '/') p++;
+    }
+    return 0;
+}
+
+static char *relative_from_dir(const char *from_dir, const char *to) {
+    strlist from;
+    strlist dest;
+    size_t common = 0;
+    size_t i;
+    sbuf s;
+    strlist_init(&from);
+    strlist_init(&dest);
+    if (split_abs_components(from_dir, &from) != 0 ||
+        split_abs_components(to, &dest) != 0) {
+        strlist_free(&from);
+        strlist_free(&dest);
+        return 0;
+    }
+    while (common < from.count && common < dest.count &&
+           strcmp(from.items[common], dest.items[common]) == 0)
+        common++;
+    sbuf_init(&s);
+    for (i = common; i < from.count; i++) {
+        if (s.len != 0) sbuf_putc(&s, '/');
+        sbuf_puts(&s, "..");
+    }
+    for (i = common; i < dest.count; i++) {
+        if (s.len != 0) sbuf_putc(&s, '/');
+        sbuf_puts(&s, dest.items[i]);
+    }
+    if (s.len == 0) sbuf_putc(&s, '.');
+    strlist_free(&from);
+    strlist_free(&dest);
+    return sbuf_steal(&s);
+}
+
+static int relativize_walk(const char *root, const char *dir) {
+    DIR *d = opendir(dir);
+    struct dirent *de;
+    int rc = 0;
+    if (d == 0) return 1;
+    while ((de = readdir(d)) != 0) {
+        char *path;
+        struct stat st;
+        if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0)
+            continue;
+        path = path_join(dir, de->d_name);
+        if (lstat(path, &st) != 0) { free(path); rc = 1; break; }
+        if (S_ISLNK(st.st_mode)) {
+            char target[1024];
+            int n = readlink(path, target, sizeof(target) - 1);
+            if (n < 0 || n == (int)sizeof(target) - 1) {
+                free(path); rc = 1; break;
+            }
+            target[n] = '\0';
+            if (target[0] == '/') {
+                char *abs_dest = 0;
+                struct stat mapped_st;
+                if (path_is_inside(root, target)) {
+                    abs_dest = xstrdup(target);
+                } else {
+                    char *mapped = str_cats(root, target, (char *)0);
+                    if (lstat(mapped, &mapped_st) == 0)
+                        abs_dest = mapped;
+                    else
+                        free(mapped);
+                }
+                if (abs_dest != 0) {
+                    char *from_dir = xstrdup(path);
+                    char *slash = strrchr(from_dir, '/');
+                    char *rel;
+                    if (slash == 0) {
+                        free(from_dir); free(abs_dest); free(path);
+                        rc = 1; break;
+                    }
+                    if (slash == from_dir) slash[1] = '\0';
+                    else *slash = '\0';
+                    rel = relative_from_dir(from_dir, abs_dest);
+                    free(from_dir);
+                    free(abs_dest);
+                    if (rel == 0 || unlink(path) != 0 ||
+                        symlink(rel, path) != 0) {
+                        free(rel); free(path); rc = 1; break;
+                    }
+                    free(rel);
+                }
+            }
+        } else if (S_ISDIR(st.st_mode)) {
+            if (relativize_walk(root, path) != 0) {
+                free(path); rc = 1; break;
+            }
+        }
+        free(path);
+    }
+    closedir(d);
+    return rc;
+}
+
+int builder_relativize_symlinks(const char *root) {
+    struct stat st;
+    if (root == 0 || root[0] == '\0') return 1;
+    if (lstat(root, &st) != 0 || !S_ISDIR(st.st_mode)) return 1;
+    return relativize_walk(root, root);
+}
+
 int builder_setupdirs(const Package *pkg, const Params *params,
                       const char *srcname, const char *srctype,
                       const strlist *repository, const BuildOptions *opt) {
@@ -902,6 +1115,10 @@ int builder_buildpackage(const Package *spkg, const Params *params,
             }
             free(extra);
         }
+    }
+
+    if (!exec_dry_run && builder_relativize_symlinks(dstroot) != 0) {
+        rc = 1; goto done;
     }
 
     /* Assemble <PACKAGEDIR>/<canon_name>.apk */

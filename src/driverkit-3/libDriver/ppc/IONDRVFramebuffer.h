@@ -117,7 +117,9 @@
 {
 @private
     volatile UInt32 *	registerBase;	// Memory-mapped register base
+    BOOL		engineInitialized;
 }
+- initEngine;
 @end
 
 @interface IOATIRAGE128NDRV:IOATINDRV
@@ -132,13 +134,15 @@
     UInt32		bytesPerPixel;	// Bytes per pixel (1 << depth)
     UInt32		pixelFormat;	// Pixel format information
 }
+- initEngine;
 @end
 
 @interface IOIX3DNDRV:IONDRVFramebuffer
 {
-@private
+@public
     volatile UInt32 *	registerBase;	// Memory-mapped register base
     UInt32		bytesPerPixel;	// Bytes per pixel (1 << depth)
     UInt32		pixelFormat;	// Pixel format information
 }
+- initEngine;
 @end

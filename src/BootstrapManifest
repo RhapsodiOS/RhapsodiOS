@@ -1,12 +1,16 @@
 #       Project[-Version]       Target
 #------ ----------------------- -------
 # Build frameworks and target headers before their first consumers.
+# pb_makefiles tools (dotdotify) need architecture and libc headers, but
+# objc4 header generation needs those tools.
 dir     CoreOSMakefiles-1       all
 dir     pb_makefiles-1          headers
 dir     project_makefiles-1     headers
 dir     architecture-1          headers
 dir     kernel-7                headers
 dir     Libstreams-1            headers
+dir     Libc-1                  headers
+dir     pb_makefiles-1          all
 dir     objc4-1                 headers
 dir     driverkit-3             headers
 dir     cctools-2               headers
@@ -14,7 +18,6 @@ dir     cctools-2               headers
 # cc consumes public Mach interfaces exported by Libc as well as headers
 # produced by its own installhdrs target.  Publish both first; the full cc
 # build still requires bison.
-dir     Libc-1                  headers
 dir     cc-1                    headers
 
 # Target build tools.
@@ -27,8 +30,7 @@ dir     awk-1                   all
 dir     grep-1                  all
 dir     patch-1                 all
 
-# Complete the build frameworks and bootstrap command set.
-dir     pb_makefiles-1          all
+# Complete remaining build frameworks and the bootstrap command set.
 dir     project_makefiles-1     all
 dir     Commands/bootstrap_cmds all
 
@@ -36,6 +38,7 @@ dir     Commands/bootstrap_cmds all
 dir     Csu-1                   all
 dir     objc4-1                 all
 dir     Libstreams-1            all
+dir     machkit-1               headers
 dir     driverkit-3             all
 
 # Libsystem component libraries.
@@ -43,6 +46,7 @@ dir     Libc-1                  all
 dir     Libcompat-1             all
 dir     Libcurses-1             all
 dir     Libedit-1               all
+dir     Librpcsvc-1             headers
 dir     Libinfo-1               all
 dir     Libkvm-1                all
 dir     Libm-1                  all

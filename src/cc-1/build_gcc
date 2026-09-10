@@ -368,7 +368,12 @@ if [ $TARGET_OS = nextstep -a "$result" != clean ]; then
   for host in $HOSTS; do
     compiler=${CC:-cc}
     compiler_backend=`$compiler -arch $host -print-prog-name=cc1 2>$null`
+    probe_c=$TEMP/cc-arch-probe.$$.c
+    probe_o=$TEMP/cc-arch-probe.$$.o
+    echo 'int x;' > $probe_c
     if [ -n "$compiler_backend" -a -x "$compiler_backend" ]; then
+      true
+    elif $compiler -arch $host -c $probe_c -o $probe_o >$null 2>&1; then
       true
     else
       echo "***********************************************************"
@@ -376,6 +381,7 @@ if [ $TARGET_OS = nextstep -a "$result" != clean ]; then
       echo "** cc1 reported by $compiler: ${compiler_backend:-not found}"
       missing_cross=yes
     fi
+    $RM -f $probe_c $probe_o
   done
 
   for host in $HOSTS; do

@@ -2,8 +2,18 @@
 set -e
 
 test_make=${MAKE:-gnumake}
-base=`mktemp -d /tmp/rb-resume.XXXXXX`
-test -n "$base"
+tmp_base=${TMPDIR-/tmp}/rb-resume-$$
+base=$tmp_base
+n=0
+while ! (umask 077 && mkdir "$base") 2>/dev/null; do
+    n=`expr "$n" + 1`
+    base=$tmp_base-$n
+    if test "$n" -ge 100; then
+        echo "bootstrap-resume: cannot create temporary directory" >&2
+        exit 1
+    fi
+done
+test -d "$base"
 trap 'rm -rf "$base"' 0 1 2 15
 BUILDIT_DIR=$base/build-roots
 export BUILDIT_DIR
@@ -66,7 +76,7 @@ target_cc=/usr/bin/cc
 target_arch=ppc
 target_ar=/usr/bin/ar
 target_ranlib=/usr/bin/ranlib
-make=/usr/bin/gnumake
+make=/bin/make
 make_flags=MAKEFILEDIR=@SYSROOT@/System/Developer/Makefiles/project MAKEFILEPATH=@SYSROOT@/System/Developer/Makefiles
 shell=/bin/sh
 tar=/usr/bin/gnutar

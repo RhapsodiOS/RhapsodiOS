@@ -94,6 +94,10 @@ $typedErrorText = Get-Content -Raw (Join-Path $repoRoot 'src\Commands\bootstrap_
 $typedErrorHeaderText = Get-Content -Raw (Join-Path $repoRoot 'src\Commands\bootstrap_cmds\migcom_typd.tproj\error.h')
 $kernelMakeTemplateText = Get-Content -Raw (Join-Path $repoRoot 'src\kernel-7\conf\Makefile.template')
 $pkginfoSourceText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\pkginfo.c')
+$apkSourceText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\apk.c')
+$apkTestSourceText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\tests\test_apk.c')
+$paxGnutarText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\pax-gnutar.sh')
+$bootstrapResumeText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\tests\bootstrap-resume.sh')
 $decommentSourcePath = Join-Path $repoRoot 'src\Commands\bootstrap_cmds\decomment.tproj\decomment.c'
 $decommentSourceText = Get-Content -Raw $decommentSourcePath
 Assert-Match $migWrapperText 'MIGCC' 'MIG wrapper supports configured compiler override'
@@ -160,6 +164,19 @@ Assert-Match $pkginfoSourceText 'tc->archive_create' 'configured APK creation se
 Assert-Match $pkginfoSourceText 'tc->archive_create_flags' 'configured APK creation expands generic creator flags'
 Assert-Match $pkginfoSourceText 'archive_cwd != 0 && chdir\(archive_cwd\) != 0' 'configured archive child enters the package root'
 Assert-NotMatch $pkginfoSourceText 'tc->tar_create_flags' 'APK creation has no tar-specific configured flags'
+foreach ($apkCase in @(
+    [pscustomobject]@{ Name = 'apk.c'; Text = $apkSourceText },
+    [pscustomobject]@{ Name = 'test_apk.c'; Text = $apkTestSourceText }
+)) {
+    $typesIdx = $apkCase.Text.IndexOf('#include <sys/types.h>')
+    $direntIdx = $apkCase.Text.IndexOf('#include <dirent.h>')
+    Assert-Equal ($typesIdx -ge 0) $true "$($apkCase.Name) includes sys/types.h"
+    Assert-Equal ($direntIdx -ge 0) $true "$($apkCase.Name) includes dirent.h"
+    Assert-Equal ($typesIdx -lt $direntIdx) $true "$($apkCase.Name) includes sys/types.h before dirent.h"
+}
+Assert-NotMatch $bootstrapResumeText 'mktemp' 'bootstrap-resume creates temps without mktemp'
+Assert-Match $bootstrapResumeText 'umask 077 && mkdir' 'bootstrap-resume claims a private temp directory atomically'
+Assert-Match $bootstrapResumeText '(?m)^make=/bin/make$' 'bootstrap-resume fixture make exists on Rhapsody'
 foreach ($header in @('stdio.h', 'ctype.h', 'fcntl.h', 'stdlib.h', 'unistd.h')) {
     Assert-Match $decommentSourceText ("#include <{0}>" -f [regex]::Escape($header)) "decomment declares precise $header dependency"
 }
@@ -429,6 +446,12 @@ Assert-Equal $profileValues.cpp_flags '-nostdinc -F@SYSROOT@/System/Library/Fram
 Assert-Equal $profileValues.ld_flags_ready '@SYSROOT@/System/Library/Frameworks/System.framework/Versions/B/System' 'profile bootstrap linker flags readiness path'
 Assert-Equal $profileValues.archive_create '/bin/pax' 'profile archive creator value'
 Assert-Equal $profileValues.archive_create_flags '-w -x ustar' 'profile archive creator flags'
+Assert-Equal $profileValues.tar '/build/src/rbuild-1/pax-gnutar.sh' 'profile tar reconstructs POSIX ustar prefix names'
+Assert-Match $paxGnutarText '(?m)^#!/bin/sh$' 'pax-gnutar is a POSIX shell wrapper'
+Assert-Match $paxGnutarText '-xf' 'pax-gnutar accepts GNU tar extract flags'
+Assert-Match $paxGnutarText '-cf' 'pax-gnutar accepts GNU tar create flags'
+Assert-Match $paxGnutarText '/bin/pax -r' 'pax-gnutar extracts with pax so ustar prefix names survive'
+Assert-Match $paxGnutarText '/bin/pax -w -x ustar' 'pax-gnutar creates POSIX ustar archives with pax'
 
 Assert-Equal (Test-RhapToolchainProfileText -Text $realProfile) $true 'real toolchain profile contract'
 Assert-Throws { Test-RhapToolchainProfileText -Text ($realProfile + "unknown_key=value`n") } 'reject unknown profile key'

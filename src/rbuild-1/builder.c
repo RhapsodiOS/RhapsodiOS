@@ -328,8 +328,15 @@ void builder_buildflags(const Params *params, const char *target, strlist *out,
     if (bootstrap && tc && opt->sysroot) {
         char *coreos_makefiles = str_cats(
             opt->sysroot, "/System/Developer/Makefiles/CoreOS", (char *)0);
-        push_kv(out, "CoreOSMakefiles", coreos_makefiles);
+        char *coreos_common = str_cats(
+            coreos_makefiles, "/ReleaseControl/Common.make", (char *)0);
+        /* CoreOSMakefiles-1 ships Common.make and includes it via
+         * CoreOSMakefiles=.; overriding that before the sysroot exists
+         * makes the first installhdrs fail. */
+        if (access(coreos_common, F_OK) == 0)
+            push_kv(out, "CoreOSMakefiles", coreos_makefiles);
         push_kv(out, "MKDIRS", "/bin/mkdir -p");
+        free(coreos_common);
         free(coreos_makefiles);
         {
             char *sfile_dir = str_cats(

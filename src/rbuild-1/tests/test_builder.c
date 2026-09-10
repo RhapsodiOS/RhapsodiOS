@@ -179,8 +179,7 @@ TEST(test_bootstrap_flags_use_target_sysroot) {
     CHECK(list_has(&f, "RC_ARCHS=ppc"));
     CHECK(list_has(&f, "RC_ppc=YES"));
     CHECK(list_has(&f, "TARGETS=ppc"));
-    CHECK(list_has(&f,
-          "CoreOSMakefiles=/target/System/Developer/Makefiles/CoreOS"));
+    CHECK(!list_has_prefix(&f, "CoreOSMakefiles="));
     CHECK(list_has(&f, "MKDIRS=/bin/mkdir -p"));
     CHECK(list_has(&f, "SFILE_DIR=/y/derived_src"));
     rc_cflags = list_has_prefix(&f, "RC_CFLAGS=");
@@ -402,6 +401,57 @@ TEST(test_bootstrap_make_flags_wait_for_ready_path) {
     CHECK_INT(system(shell_cmd), 0);
 }
 
+TEST(test_bootstrap_coreos_makefiles_wait_for_sysroot) {
+    Params p;
+    BuildOptions opt;
+    Toolchain tc;
+    strlist flags;
+    char base[128];
+    char common[256];
+    char shell_cmd[256];
+    char expected[256];
+    FILE *fp;
+
+    sprintf(base, "/tmp/rb-coreos-makefiles-%ld", (long)getpid());
+    sprintf(common,
+            "%s/System/Developer/Makefiles/CoreOS/ReleaseControl/Common.make",
+            base);
+    sprintf(expected,
+            "CoreOSMakefiles=%s/System/Developer/Makefiles/CoreOS", base);
+    sprintf(shell_cmd,
+            "rm -rf %s && mkdir -p %s/System/Developer/Makefiles/CoreOS/ReleaseControl",
+            base, base);
+    CHECK_INT(system(shell_cmd), 0);
+    params_init(&p);
+    build_options_init(&opt);
+    toolchain_fixture(&tc);
+    opt.bootstrap = 1;
+    opt.sysroot = base;
+    opt.toolchain = &tc;
+    p.SRCROOT = xstrdup("/s"); p.OBJROOT = xstrdup("/o");
+    p.SYMROOT = xstrdup("/y"); p.DSTROOT = xstrdup("/d");
+    p.HDRROOT = xstrdup("/h"); p.SUBLIBROOTS = xstrdup("/objs");
+
+    strlist_init(&flags);
+    builder_buildflags(&p, "install", &flags, &opt);
+    CHECK(!list_has_prefix(&flags, "CoreOSMakefiles="));
+    CHECK(list_has(&flags, "MKDIRS=/bin/mkdir -p"));
+    strlist_free(&flags);
+
+    fp = fopen(common, "w");
+    CHECK(fp != 0);
+    if (fp) fclose(fp);
+    strlist_init(&flags);
+    builder_buildflags(&p, "install", &flags, &opt);
+    CHECK(list_has(&flags, expected));
+    CHECK(list_has(&flags, "MKDIRS=/bin/mkdir -p"));
+    strlist_free(&flags);
+
+    params_free(&p);
+    sprintf(shell_cmd, "rm -rf %s", base);
+    CHECK_INT(system(shell_cmd), 0);
+}
+
 TEST(test_bootstrap_ld_flags_wait_for_ready_path) {
     Params p;
     BuildOptions opt;
@@ -563,6 +613,7 @@ static void run_all(void) {
     RUN(test_buildflags);
     RUN(test_buildcmd_bootstrap);
     RUN(test_bootstrap_make_flags_wait_for_ready_path);
+    RUN(test_bootstrap_coreos_makefiles_wait_for_sysroot);
     RUN(test_bootstrap_ld_flags_wait_for_ready_path);
     RUN(test_bootstrap_harvest_stays_in_private_object_root);
     RUN(test_setupdirs_bootstrap_skips_makeroot);

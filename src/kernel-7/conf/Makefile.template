@@ -877,9 +877,9 @@ install_mi_std_hdrs: DSTROOT $(MIG_HFILES_EXP) $(MACH_DEBUG_HFILE)
 			DSTDIR="$(DSTROOT)$(INCDIR)/$$i";		\
 			[ -d "$$DSTDIR" ] || $(MKDIRS) "$$DSTDIR" || exit 1; \
 			echo garbage > "$$EXPDIR/$$j.strip" || exit 1;	\
+			unifdef_status=0;				\
 			$(UNIFDEF) -UKERNEL_PRIVATE -UDRIVER_PRIVATE	\
-				"$$j" > "$$EXPDIR/$$j";		\
-			unifdef_status=$$?;				\
+				"$$j" > "$$EXPDIR/$$j" || unifdef_status=$$?; \
 			if [ $$unifdef_status -eq 1 ]; then		\
 				"$(DECOMMENT)" "$$EXPDIR/$$j"  r > 	\
 				"$$EXPDIR/$$j.strip" || exit 1; 	\
@@ -984,8 +984,8 @@ install_md_std_hdrs: DSTROOT
 			DSTDIR="$(DSTROOT)$(INCDIR)/$$i";		\
 			[ -d "$$DSTDIR" ] || $(MKDIRS) "$$DSTDIR" || exit 1; \
 			echo garbage > "$$EXPDIR/$$j.strip" || exit 1;	\
-			$(UNIFDEF) -UKERNEL_PRIVATE -UDRIVER_PRIVATE "$$j" > "$$EXPDIR/$$j"; \
-			unifdef_status=$$?;				\
+			unifdef_status=0;				\
+			$(UNIFDEF) -UKERNEL_PRIVATE -UDRIVER_PRIVATE "$$j" > "$$EXPDIR/$$j" || unifdef_status=$$?; \
 			if [ $$unifdef_status -eq 1 ]; then		\
 			"$(DECOMMENT)" "$$EXPDIR/$$j"  r > "$$EXPDIR/$$j.strip" || exit 1; \
 			elif [ $$unifdef_status -ne 0 ]; then		\

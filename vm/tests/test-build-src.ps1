@@ -96,6 +96,7 @@ $kernelMakeTemplateText = Get-Content -Raw (Join-Path $repoRoot 'src\kernel-7\co
 $pkginfoSourceText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\pkginfo.c')
 $apkSourceText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\apk.c')
 $apkTestSourceText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\tests\test_apk.c')
+$builderSourceText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\builder.c')
 $paxGnutarText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\pax-gnutar.sh')
 $bootstrapResumeText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\tests\bootstrap-resume.sh')
 $decommentSourcePath = Join-Path $repoRoot 'src\Commands\bootstrap_cmds\decomment.tproj\decomment.c'
@@ -107,7 +108,9 @@ Assert-Match $migWrapperText 'mig_arch=\$\{MIGARCH-\}' 'configured architecture 
 Assert-Match $migWrapperText 'arch=\$2; mig_arch=\$2' 'explicit -arch overrides both configured and historical architecture state'
 Assert-Match $migWrapperText 'MIGCOM_DIR' 'MIG wrapper supports private libexec override'
 Assert-Match $migWrapperText '-i[ `t]+\)' 'MIG wrapper forwards -i and its argument'
-Assert-Match $migWrapperText '\$\{1#-\}.*=.*\$1' 'MIG wrapper preserves a following option after optional -i prefix'
+Assert-Match $migWrapperText '(?s)-i[ `t]+\)[^\r\n]*shift;.*?case \$1 in' 'MIG wrapper classifies optional -i operand with a portable case test'
+Assert-Match $migWrapperText '(?s)-i[ `t]+\)[^\r\n]*.*?case \$1 in[\r\n\t ]*-\* \)' 'MIG wrapper does not consume a following option as the -i prefix'
+Assert-NotMatch $migWrapperText '\$\{1#-\}' 'MIG wrapper avoids quoted prefix stripping that Rhapsody ash ignores'
 Assert-Match $migWrapperText 'MIGCOM_ROOT/migcom_typd' 'MIG wrapper selects typed compiler below configured libexec'
 Assert-Match $migWrapperText 'MIGCOM_DIR-/usr/libexec' 'MIG wrapper preserves packaged target libexec default'
 Assert-Match $migWrapperText '"\$MIGCC" -E -x c -traditional-cpp' 'configured GCC forces C preprocessing for defs inputs while preserving historical semantics'
@@ -140,7 +143,9 @@ Assert-Match $typedErrorText 'strerror\(error_num\)' 'typed MIG uses the host-su
 Assert-NotMatch ($classicErrorText + $typedErrorText + $typedErrorHeaderText) '(?m)^\s*extern[^\r\n]*\b(sys_nerr|sys_errlist)\b|\b(sys_nerr|sys_errlist)\s*\[' 'private MIG sources do not depend on obsolete libc error tables'
 Assert-Match $kernelMakeTemplateText '(?m)^DECOMMENT \?= /usr/local/bin/decomment$' 'kernel preserves an overrideable historical decomment default'
 Assert-NotMatch $kernelMakeTemplateText '(?m)^\s*@-for i in (?:\$\{EXPORT\}|`echo \$\{MACHINE_EXPORT\}`)' 'kernel header export recipes do not ignore loop failure'
-Assert-Equal ([regex]::Matches($kernelMakeTemplateText, 'unifdef_status=\$\$\?;').Count) 2 'both kernel export loops capture unifdef status immediately'
+Assert-Equal ([regex]::Matches($kernelMakeTemplateText, 'unifdef_status=0;').Count) 2 'both kernel export loops start unifdef status at zero under sh -ce'
+Assert-Equal ([regex]::Matches($kernelMakeTemplateText, '\|\| unifdef_status=\$\$\?;').Count) 2 'both kernel export loops survive GNU make sh -ce when unifdef reports changes'
+Assert-NotMatch $kernelMakeTemplateText '\$\(UNIFDEF\)[^\r\n]*>(?:\\\r?\n\s*)?"\$\$EXPDIR/\$\$j";' 'unifdef is not a bare set -e command before status capture'
 Assert-Equal ([regex]::Matches($kernelMakeTemplateText, '\[ \$\$unifdef_status -eq 1 \]').Count) 2 'both kernel export loops reserve decomment fallback for unifdef status one'
 Assert-Equal ([regex]::Matches($kernelMakeTemplateText, '\[ \$\$unifdef_status -ne 0 \]').Count) 2 'both kernel export loops reject unexpected unifdef failure'
 Assert-Equal ([regex]::Matches($kernelMakeTemplateText, 'object_dir=`pwd` \|\| exit 1;').Count) 2 'both kernel export loops reject failed object directory capture'
@@ -152,7 +157,7 @@ Assert-Equal ([regex]::Matches($kernelMakeTemplateText, '\[ -d "\$\$EXPDIR" \] \
 Assert-Equal ([regex]::Matches($kernelMakeTemplateText, '\[ -d "\$\$DSTDIR" \] \|\| \$\(MKDIRS\) "\$\$DSTDIR" \|\| exit 1;').Count) 2 'both kernel export loops reject destination directory creation failure'
 Assert-Equal ([regex]::Matches($kernelMakeTemplateText, 'rm -f "\$\$EXPDIR"/\* \|\| exit 1;').Count) 2 'both kernel export loops reject export cleanup failure'
 Assert-Equal ([regex]::Matches($kernelMakeTemplateText, 'echo garbage > "\$\$EXPDIR/\$\$j\.strip" \|\| exit 1;').Count) 2 'both kernel export loops reject sentinel write failure'
-Assert-Equal ([regex]::Matches($kernelMakeTemplateText, '"\$\$j" > "\$\$EXPDIR/\$\$j";').Count) 2 'both kernel export loops quote unifdef header paths and output'
+Assert-Equal ([regex]::Matches($kernelMakeTemplateText, '"\$\$j" > "\$\$EXPDIR/\$\$j"').Count) 2 'both kernel export loops quote unifdef header paths and output'
 Assert-Equal ([regex]::Matches($kernelMakeTemplateText, '\[ -s "\$\$EXPDIR/\$\$j\.strip" \]').Count) 2 'both kernel export loops quote exported-header probes'
 Assert-Equal ([regex]::Matches($kernelMakeTemplateText, 'cd "\$\$EXPDIR" \|\| exit 1;').Count) 2 'both kernel export loops quote and guard export directory changes'
 Assert-Equal ([regex]::Matches($kernelMakeTemplateText, 'install \$\(INSTALL_FLAGS\) "\$\$j" "\$\$DSTDIR";').Count) 2 'both kernel export loops quote install source and destination paths'
@@ -174,6 +179,8 @@ foreach ($apkCase in @(
     Assert-Equal ($direntIdx -ge 0) $true "$($apkCase.Name) includes dirent.h"
     Assert-Equal ($typesIdx -lt $direntIdx) $true "$($apkCase.Name) includes sys/types.h before dirent.h"
 }
+Assert-Match $builderSourceText 'ReleaseControl/Common.make' 'bootstrap waits for CoreOS Common.make before CoreOSMakefiles='
+Assert-Match $builderSourceText 'access\(coreos_common, F_OK\)' 'bootstrap probes CoreOS Common.make in the sysroot'
 Assert-NotMatch $bootstrapResumeText 'mktemp' 'bootstrap-resume creates temps without mktemp'
 Assert-Match $bootstrapResumeText 'umask 077 && mkdir' 'bootstrap-resume claims a private temp directory atomically'
 Assert-Match $bootstrapResumeText '(?m)^make=/bin/make$' 'bootstrap-resume fixture make exists on Rhapsody'
@@ -1304,6 +1311,27 @@ exit 0
     Assert-Equal (@($backendArgs | Where-Object { $_ -eq (ConvertTo-TestShPath $headerOutput) }).Count) 2 'MIG wrapper preserves spaced backend header value'
     Assert-Equal (@($backendArgs | Where-Object { $_ -eq (ConvertTo-TestShPath $prefix) }).Count) 2 'MIG wrapper preserves spaced optional -i prefix'
     Assert-Equal (@($backendArgs | Where-Object { $_ -eq '--invocation--' }).Count) 2 'MIG wrapper invokes backend for multiple definitions'
+    $iflagCaptureDir = Join-Path $wrapperTestDir 'iflag argument capture'
+    New-Item -ItemType Directory -Path $iflagCaptureDir | Out-Null
+    $iflagHeader = Join-Path $outputDir 'kernloader header.h'
+    $iflagInvoke = 'cd {0} && MIGCC={1} MIGARCH=ppc MIGCOM_DIR={2} MIG_TEST_CAPTURE={3} sh {4} -header {5} -i -server /dev/null {6}' -f @(
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $runDir)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeCompiler)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeLibexec)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $iflagCaptureDir)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath (Join-Path $repoRoot 'src\Commands\bootstrap_cmds\migcom.tproj\mig.sh'))),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $iflagHeader)),
+        (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $defsOne))
+    )
+    & $sh -c $iflagInvoke
+    Assert-Equal $LASTEXITCODE 0 'MIG wrapper keeps -server after bare -i'
+    $iflagCompilerArgs = Get-Content -LiteralPath (Join-Path $iflagCaptureDir 'compiler.args')
+    $iflagBackendArgs = Get-Content -LiteralPath (Join-Path $iflagCaptureDir 'backend.args')
+    Assert-Equal (@($iflagCompilerArgs | Where-Object { $_ -eq (ConvertTo-TestShPath $defsOne) }).Count) 1 'bare -i still preprocesses the defs file once'
+    Assert-Equal (@($iflagCompilerArgs | Where-Object { $_ -eq '/dev/null' }).Count) 0 'bare -i does not preprocess /dev/null as a defs file'
+    Assert-Equal (@($iflagBackendArgs | Where-Object { $_ -eq '-server' }).Count) 1 'bare -i forwards -server to the backend'
+    Assert-Equal (@($iflagBackendArgs | Where-Object { $_ -eq '/dev/null' }).Count) 1 'bare -i forwards /dev/null as the -server operand'
+    Assert-Equal (@($iflagBackendArgs | Where-Object { $_ -eq '--invocation--' }).Count) 1 'bare -i invokes the backend once'
     $newlineFlag = "-DBAD=line one`nline two"
     $newlineInvoke = 'MIGCC={0} MIGCOM_DIR={1} MIG_TEST_CAPTURE={2} sh {3} {4} {5} 2>/dev/null' -f @(
         (ConvertTo-RhapShellLiteral (ConvertTo-TestShPath $fakeCompiler)),

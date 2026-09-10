@@ -89,8 +89,11 @@ do
 	-sheader ) require_operand "$1" "${2-}"; append_migflag "$1"; append_migflag "$2"; shift; shift;;
 	-handler ) require_operand "$1" "${2-}"; append_migflag "$1"; append_migflag "$2"; shift; shift;;
 	-i ) append_migflag "$1"; shift;
-		if [ $# -gt 0 ] && [ "${1#-}" = "$1" ]; then
-		    append_migflag "$1"; shift
+		if [ $# -gt 0 ]; then
+		    case $1 in
+			-* ) ;;
+			* ) append_migflag "$1"; shift;;
+		    esac
 		fi;;
 	-arch ) require_operand "$1" "${2-}"
 		if ! valid_arch "$2"; then

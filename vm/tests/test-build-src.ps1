@@ -237,11 +237,11 @@ $phaseArgs = @{
     BuiltDir = '/build/built'
     BuildCc = '/usr/bin/cc'
     TargetArch = 'ppc'
-    Make = '/usr/bin/make'
+    Make = '/bin/make'
     ToolPath = '/build/tools/bin:/usr/bin:/bin'
 }
 $rbuildCommand = New-RhapBuildPhaseCommand -Phase 'rbuild' @phaseArgs
-Assert-Match $rbuildCommand ([regex]::Escape('cd /build/src/rbuild-1 && /usr/bin/make CC=/usr/bin/cc clean test all')) 'rbuild cleans tests and builds with profile compiler'
+Assert-Match $rbuildCommand ([regex]::Escape('cd /build/src/rbuild-1 && /bin/make CC=/usr/bin/cc clean test all')) 'rbuild cleans tests and builds with profile compiler'
 Assert-Match $rbuildCommand ([regex]::Escape('/usr/bin/install -d /build/tools/bin')) 'rbuild creates private tool directory'
 Assert-Match $rbuildCommand ([regex]::Escape('/usr/bin/install -c -m 755 rbuild /build/tools/bin/rbuild')) 'rbuild installs privately'
 Assert-Match $rbuildCommand ([regex]::Escape('/usr/bin/cc -O -o /build/tools/bin/relpath /build/src/Commands/bootstrap_cmds/relpath.tproj/relpath.c')) 'relpath is source-built with profile compiler'
@@ -287,7 +287,7 @@ Assert-Match $alternateRbuild ([regex]::Escape('/opt/gcc/bin/gcc-4.2 -O -bsd -DC
 Assert-Match $alternateRbuild ([regex]::Escape('/opt/gcc/bin/gcc-4.2 -O -bsd -DNeXT=1 -I/build/tools/mig-build/include -I/build/src/Commands/bootstrap_cmds/migcom.tproj -I/build/tools/mig-build/migcom -o /build/tools/libexec/migcom')) 'alternate profile compiler builds MIG with historical platform flags'
 Assert-Match $alternateRbuild ([regex]::Escape('/opt/gcc/bin/gcc-4.2 -O -o /build/tools/bin/decomment /build/src/Commands/bootstrap_cmds/decomment.tproj/decomment.c')) 'alternate profile compiler builds private decomment'
 Assert-Match $alternateRbuild ([regex]::Escape('MIGCC=/opt/gcc/bin/gcc-4.2 MIGARCH=mips_safe MIGCOM_DIR=/build/tools/libexec')) 'alternate GCC profile selects its own safe MIG architecture'
-Assert-NotMatch $alternateRbuild ([regex]::Escape('/usr/bin/make CC=/usr/bin/cc')) 'alternate profile does not use default build tools'
+Assert-NotMatch $alternateRbuild ([regex]::Escape('/bin/make CC=/usr/bin/cc')) 'alternate profile does not use default build tools'
 $spacedCompilerArgs = $phaseArgs.Clone()
 $spacedCompilerArgs.BuildCc = '/opt/gcc tools/bin/gcc'
 $spacedCompilerRbuild = New-RhapBuildPhaseCommand -Phase 'rbuild' @spacedCompilerArgs
@@ -345,7 +345,7 @@ Assert-Equal ($kernelCommand.IndexOf('/usr/bin/install -d /build/built') -lt $ke
 Assert-Match $kernelCommand ([regex]::Escape('cd /build/src')) 'kernel package paths resolve beneath source root'
 Assert-Match $kernelCommand ([regex]::Escape('/build/tools/bin/rbuild buildpackage --state /build/state --dir kernel-7 /build/repo /build/built')) 'kernel uses persistent state'
 Assert-Match $kernelCommand ([regex]::Escape('--dir drivers-ppc/storage/drvExample /build/repo /build/built')) 'packaged driver uses rbuild'
-Assert-Match $kernelCommand ([regex]::Escape('cd /build/src/drvBPF && PATH=/build/tools/bin:/usr/bin:/bin /usr/bin/make')) 'make-only driver uses configured make and path'
+Assert-Match $kernelCommand ([regex]::Escape('cd /build/src/drvBPF && PATH=/build/tools/bin:/usr/bin:/bin /bin/make')) 'make-only driver uses configured make and path'
 Assert-Match $kernelCommand ([regex]::Escape('CC=/usr/bin/cc')) 'make-only driver uses configured compiler'
 Assert-Match $kernelCommand 'profile_cksum=.*cksum' 'make-only marker binds remote profile fingerprint'
 Assert-Match $kernelCommand '/build/state/logs/drvBPF-all\.log' 'make-only driver has persistent log'
@@ -422,7 +422,7 @@ Assert-Equal ($failureEvents -join ',') 'preflight,rbuild,bootstrap' 'orchestrat
 $profileValues = ConvertFrom-RhapToolchainProfileText -Text $realProfile
 Assert-Equal $profileValues.build_cc '/usr/bin/cc' 'profile build compiler value'
 Assert-Equal $profileValues.target_arch 'ppc' 'profile target architecture value'
-Assert-Equal $profileValues.make '/usr/bin/make' 'profile make value'
+Assert-Equal $profileValues.make '/bin/make' 'profile make value'
 Assert-Equal $profileValues.make_flags 'MAKEFILEDIR=@SYSROOT@/System/Developer/Makefiles/project MAKEFILEPATH=@SYSROOT@/System/Developer/Makefiles' 'profile bootstrap make flags'
 Assert-Equal $profileValues.make_flags_ready '@SYSROOT@/System/Developer/Makefiles/project/platform.make' 'profile bootstrap make flags readiness path'
 Assert-Equal $profileValues.cpp_flags '-nostdinc -F@SYSROOT@/System/Library/Frameworks -I@SYSROOT@/System/Library/Frameworks/System.framework/Versions/B/Headers -I@SYSROOT@/System/Library/Frameworks/System.framework/Versions/B/Headers/bsd -I@SYSROOT@/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders' 'profile bootstrap isolated versioned BSD headers'

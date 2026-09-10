@@ -1175,6 +1175,9 @@ static int audio_first =0;
 	  case NX_SoundDeviceInputGainLeft:
 	    [self _setInputGainLeft:(unsigned int)value];
 	    break;
+	  case NX_SoundDeviceInputGainRight:
+	    [self _setInputGainRight:(unsigned int)value];
+	    break;
 	  case NX_SoundDeviceAnalogInputSource:
 	    [self _setAnalogInputSource:(NXSoundParameterTag)value];
 	    break;

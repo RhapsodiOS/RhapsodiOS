@@ -98,6 +98,99 @@ extract_init_setters(const char *src, char names[][64], int max)
     return count;
 }
 
+static const char *
+method_body(const char *src, const char *signature)
+{
+    const char *method;
+
+    method = strstr(src, signature);
+    if (method == 0)
+        return 0;
+    return strchr(method, '{');
+}
+
+static const char *
+matching_brace(const char *body)
+{
+    const char *p;
+    int depth;
+
+    if (body == 0 || *body != '{')
+        return 0;
+    depth = 0;
+    for (p = body; *p != 0; p++) {
+        if (*p == '{')
+            depth++;
+        else if (*p == '}') {
+            depth--;
+            if (depth == 0)
+                return p;
+        }
+    }
+    return 0;
+}
+
+static int
+contains_in_span(const char *start, const char *end, const char *text)
+{
+    size_t text_len;
+    size_t span_len;
+    const char *p;
+
+    if (start == 0 || end == 0 || start >= end)
+        return 0;
+    text_len = strlen(text);
+    span_len = (size_t)(end - start);
+    if (text_len > span_len)
+        return 0;
+    for (p = start; p + text_len <= end; p++) {
+        if (strncmp(p, text, text_len) == 0)
+            return 1;
+    }
+    return 0;
+}
+
+static int
+set_parameter_sets_right_input_gain(const char *src)
+{
+    const char *body;
+    const char *end;
+    const char *case_right;
+    const char *case_end;
+    const char *next_case;
+
+    body = method_body(src, "- (BOOL) _setParameter:");
+    end = matching_brace(body);
+    if (body == 0 || end == 0)
+        return 0;
+
+    case_right = 0;
+    for (next_case = body; next_case < end; next_case++) {
+        if (strncmp(next_case, "case NX_SoundDeviceInputGainRight:", 34) == 0) {
+            case_right = next_case;
+            break;
+        }
+    }
+    if (case_right == 0)
+        return 0;
+
+    next_case = case_right + 34;
+    case_end = end;
+    while (next_case < end) {
+        if (strncmp(next_case, "case ", 5) == 0) {
+            case_end = next_case;
+            break;
+        }
+        if (strncmp(next_case, "default:", 8) == 0) {
+            case_end = next_case;
+            break;
+        }
+        next_case++;
+    }
+    return contains_in_span(case_right, case_end,
+        "[self _setInputGainRight:(unsigned int)value]");
+}
+
 int
 main(void)
 {
@@ -120,6 +213,7 @@ main(void)
         CHECK(strcmp(names[2], "_setOutputAttenuationLeft") == 0);
         CHECK(strcmp(names[3], "_setOutputAttenuationRight") == 0);
     }
+    CHECK(set_parameter_sets_right_input_gain(src));
 
     free(src);
     if (failures) {

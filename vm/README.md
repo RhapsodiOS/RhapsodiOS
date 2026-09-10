@@ -16,7 +16,7 @@ upload the local repository `src/` tree to `RemoteRoot/src` via OpenSSH
 legacy SCP mode, so the script streams a tar archive over SSH instead.
 
 Copy `vm.conf.example` to `vm.conf` first and set `Host`, `User`, `Password`,
-and `RemoteRoot` (default `/build/source`). Requires Windows OpenSSH Client
+and `RemoteRoot` (default `/build`). Requires Windows OpenSSH Client
 (`ssh.exe`) and `tar.exe`.
 
 The guest sshd only accepts ancient algorithms. The script always passes the
@@ -64,23 +64,28 @@ caveat applies until that tool is updated).
 ## Guest builds (`build-src.ps1`)
 
 After syncing with `sync-src.ps1`, kick off builds on the PPC guest. Uses the
-same OpenSSH legacy-crypto path as `sync-src` (via `rhap-remote.ps1`).
+same OpenSSH legacy-crypto path as `sync-src` (via `rhap-remote.ps1`). The
+canonical host steps also live in the repository `README.md`.
 
 ```bat
-powershell -File vm\build-src.ps1 -Rbuild
-powershell -File vm\build-src.ps1 -Bootstrap
-powershell -File vm\build-src.ps1 -KernelDrivers
-powershell -File vm\build-src.ps1 -World
+powershell -NoProfile -File vm\build-src.ps1 -Rbuild
+powershell -NoProfile -File vm\build-src.ps1 -Bootstrap
+powershell -NoProfile -File vm\build-src.ps1 -KernelDrivers
+powershell -NoProfile -File vm\build-src.ps1 -World
+powershell -NoProfile -File vm\build-src.ps1 -All
+powershell -NoProfile -File vm\clean-build.ps1
 ```
 
 | Flag | Remote action |
 |------|----------------|
-| `-Rbuild` | `gnumake` + `gnumake install DSTROOT=/` in `RemoteRoot/src/rbuild-1` |
-| `-Bootstrap` | `rbuild bootstrap BootstrapManifest RepoDir RepoDir` (stage-0 seed) |
+| `-Rbuild` | `make CC=… clean test all` in `RemoteRoot/src/rbuild-1`, then install `rbuild` and private helpers into `ToolsDir` |
+| `-Bootstrap` | `rbuild bootstrap --sysroot BootstrapRoot --toolchain … --state StateDir BootstrapManifest RepoDir RepoDir` |
 | `-KernelDrivers` | `rbuild buildpackage` for `driverkit-3`, `driverTools-1`, `kernel-7`, then every `drv*` / `Intel*` project under `drivers-i386` and `drivers-ppc` (plus `drvBPF` / `drvPortServer`). Projects with `dpkg/control` use `rbuild buildpackage`; others `gnumake`. Driver failures are listed; script exits non-zero if any failed. |
-| `-World` | `rbuild buildall Manifest RepoDir BuiltDir` |
+| `-World` | `rbuild buildall --state StateDir Manifest RepoDir BuiltDir` |
+| `-All` | `-Rbuild`, `-Bootstrap`, `-KernelDrivers`, then `-World` |
+| `-Fresh` | With `-All` only: delete `ToolsDir`, `BootstrapRoot`, `RepoDir`, `BuiltDir`, and `StateDir`; keep `SourceRoot` |
 
-Exactly one flag is required. Defaults (override in `vm.conf`): `RepoDir=/build/repo`, `BuiltDir=/build/built`, `Make=gnumake`. Typical fresh-box order: `-Rbuild` → `-Bootstrap` → `-World` (and/or `-KernelDrivers`).
+Exactly one of `-All`, `-Rbuild`, `-Bootstrap`, `-KernelDrivers`, or `-World` is required. `-Rbuild` cannot be combined with `-Bootstrap`. Defaults (override in `vm.conf`): `RemoteRoot=/build`, `RepoDir=/build/repo`, `BuiltDir=/build/built`. Typical fresh-box order: `-Rbuild` → `-Bootstrap` → `-KernelDrivers` / `-World`, or a single `-All`. `clean-build.ps1` performs the `-Fresh` output reset without starting a rebuild.
 
 ## Image chain
 

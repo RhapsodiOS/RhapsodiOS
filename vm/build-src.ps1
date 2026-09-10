@@ -62,17 +62,20 @@ if (-not (Test-Path -LiteralPath $localSrc -PathType Container)) {
     Write-Die "local src missing: $localSrc"
 }
 function Get-DriverProjectRels {
+    param(
+        [Parameter(Mandatory = $true)][string]$TargetArch
+    )
+    $arch = Assert-RhapSafeIdentifier -Value $TargetArch -Name 'TargetArch'
     $packaged = New-Object System.Collections.Generic.List[string]
     $makeOnly = New-Object System.Collections.Generic.List[string]
-    foreach ($arch in @('drivers-i386', 'drivers-ppc')) {
-        $archRoot = Join-Path $localSrc $arch
-        if (-not (Test-Path -LiteralPath $archRoot -PathType Container)) { continue }
+    $archRoot = Join-Path $localSrc "drivers-$arch"
+    if (Test-Path -LiteralPath $archRoot -PathType Container) {
         Get-ChildItem -LiteralPath $archRoot -Directory -ErrorAction SilentlyContinue | ForEach-Object {
             $category = $_
             Get-ChildItem -LiteralPath $category.FullName -Directory -ErrorAction SilentlyContinue | ForEach-Object {
                 $project = $_
                 if ($project.Name -notmatch '^(drv|Intel)') { return }
-                $rel = "$arch/$($category.Name)/$($project.Name)"
+                $rel = "drivers-$arch/$($category.Name)/$($project.Name)"
                 if (Test-Path -LiteralPath (Join-Path $project.FullName 'dpkg\control') -PathType Leaf) {
                     $packaged.Add($rel)
                 } elseif (Test-Path -LiteralPath (Join-Path $project.FullName 'Makefile') -PathType Leaf) {
@@ -127,15 +130,16 @@ $phaseFactory = {
     param($phase, $profileValues)
     $extra = @{}
     if ($phase -eq 'kernel-drivers') {
-        foreach ($package in @('driverkit-3', 'driverTools-1', 'kernel-7')) {
+        $corePackages = @(Get-RhapKernelCorePackages -TargetArch $profileValues.target_arch)
+        foreach ($package in $corePackages) {
             if (-not (Test-Path -LiteralPath (Join-Path $localSrc $package) -PathType Container)) {
                 throw "core package source missing locally: $package"
             }
         }
-        $drivers = Get-DriverProjectRels
-        $extra.DriverProjects = $drivers.Packaged
-        $extra.MakeDriverProjects = $drivers.MakeOnly
-        Write-Host "build-src: $($drivers.Packaged.Count + $drivers.MakeOnly.Count) optional driver projects"
+        $drivers = Get-DriverProjectRels -TargetArch $profileValues.target_arch
+        $extra.DriverProjects = @($drivers.Packaged | Where-Object { $corePackages -notcontains $_ })
+        $extra.MakeDriverProjects = @($drivers.MakeOnly | Where-Object { $corePackages -notcontains $_ })
+        Write-Host "build-src: $($extra.DriverProjects.Count + $extra.MakeDriverProjects.Count) optional driver projects"
     }
     return New-RhapBuildPhaseCommand -Phase $phase -SourceRoot $sourceRoot -ToolsDir $cfg.ToolsDir -BootstrapRoot $cfg.BootstrapRoot -StateDir $cfg.StateDir -Profile $cfg.ToolchainProfile -RepoDir $cfg.RepoDir -BuiltDir $cfg.BuiltDir -BuildCc $profileValues.build_cc -TargetArch $profileValues.target_arch -Make $profileValues.make -ToolPath $profileValues.path @extra
 }

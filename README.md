@@ -90,6 +90,6 @@ powershell -NoProfile -File vm\build-src.ps1 -World
 |------|----------------|
 | `-Rbuild` | `make CC=… clean test all` in `src/rbuild-1`, install into `/build/tools` |
 | `-Bootstrap` | `rbuild bootstrap --sysroot … --toolchain … --state … BootstrapManifest` |
-| `-KernelDrivers` | `driverkit-3`, `driverTools-1`, `kernel-7`, then optional `drv*` / `Intel*` projects |
+| `-KernelDrivers` | `driverkit-3`, `driverTools-1`, `kernload-1`, `drivers-<arch>/bus/drvPExpert`, `kernel-7`, then optional `drv*` / `Intel*` projects |
 | `-World` | `rbuild buildall --state … Manifest /build/repo /build/built` |
 | `-All` | The four phases above, in order |

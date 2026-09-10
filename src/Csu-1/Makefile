@@ -175,6 +175,8 @@ install: all $(DSTDIRS)
 	$(INSTALL) $(IFLAGS) $(SYMROOT)/gcrt0.o   $(DSTROOT)$(LOCLIBDIR)/gcrt0.o
 	$(INSTALL) $(IFLAGS) $(SYMROOT)/pscrt0.o  $(DSTROOT)$(LOCLIBDIR)/pscrt0.o
 	$(INSTALL) $(IFLAGS) $(SYMROOT)/pscrt1.o  $(DSTROOT)$(LOCLIBDIR)/pscrt1.o
+	$(MKDIR) $(DSTROOT)/usr/lib
+	$(INSTALL) -c -m 555 /usr/lib/dyld $(DSTROOT)/usr/lib/dyld
 
 installhdrs:
 

@@ -80,7 +80,7 @@ powershell -NoProfile -File vm\clean-build.ps1
 |------|----------------|
 | `-Rbuild` | `make CC=… clean test all` in `RemoteRoot/src/rbuild-1`, then install `rbuild` and private helpers into `ToolsDir` |
 | `-Bootstrap` | `rbuild bootstrap --sysroot BootstrapRoot --toolchain … --state StateDir BootstrapManifest RepoDir RepoDir` |
-| `-KernelDrivers` | `rbuild buildpackage` for `driverkit-3`, `driverTools-1`, `kernel-7`, then every `drv*` / `Intel*` project under `drivers-i386` and `drivers-ppc` (plus `drvBPF` / `drvPortServer`). Projects with `dpkg/control` use `rbuild buildpackage`; others `gnumake`. Driver failures are listed; script exits non-zero if any failed. |
+| `-KernelDrivers` | `rbuild buildpackage` for `driverkit-3`, `driverTools-1`, `kernload-1`, `drivers-<arch>/bus/drvPExpert`, `kernel-7`, then every remaining `drv*` / `Intel*` project under `drivers-<arch>` (plus `drvBPF` / `drvPortServer`). Projects with `dpkg/control` use `rbuild buildpackage`; others `gnumake`. Driver failures are listed; script exits non-zero if any failed. |
 | `-World` | `rbuild buildall --state StateDir Manifest RepoDir BuiltDir` |
 | `-All` | `-Rbuild`, `-Bootstrap`, `-KernelDrivers`, then `-World` |
 | `-Fresh` | With `-All` only: delete `ToolsDir`, `BootstrapRoot`, `RepoDir`, `BuiltDir`, and `StateDir`; keep `SourceRoot` |

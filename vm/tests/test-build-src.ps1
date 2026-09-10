@@ -85,6 +85,7 @@ Assert-Match $csuMakefileText '(?m)^gcrt1\.o:.*\$\(OBJROOT\)/dyld\.stub' 'Csu bu
 Assert-Match $csuMakefileText '(?m)^pscrt1\.o:.*\$\(OBJROOT\)/dyld\.stub' 'Csu builds the dylinker stub before merging pscrt1'
 Assert-NotMatch $csuMakefileText 'as \$\(RC_CFLAGS\)' 'Csu does not pass compiler defines to as for the dylinker stub'
 Assert-Match $csuMakefileText '\$\(CC\).*\$\(SRCROOT\)/dyld_stub\.s' 'Csu assembles the dylinker stub with the C compiler driver'
+Assert-Match $csuMakefileText '\$\(DSTROOT\)/usr/lib/dyld' 'Csu packages a runnable /usr/lib/dyld for chroot build roots'
 $csuStubText = Get-Content -Raw (Join-Path $repoRoot 'src\Csu-1\dyld_stub.s')
 Assert-NotMatch $csuStubText "`r" 'Csu dylinker stub uses Unix line endings'
 $bootstrapManifestText = Get-Content -Raw (Join-Path $repoRoot 'src\BootstrapManifest')
@@ -94,7 +95,12 @@ Assert-Match $bootstrapManifestText '(?s)dir\s+pb_makefiles-1\s+all.*dir\s+objc4
 Assert-Equal ([regex]::Matches($bootstrapManifestText, '(?m)^dir\s+pb_makefiles-1\s+headers\s*$').Count) 1 'pb_makefiles headers stay an early makefile-fragment pass'
 Assert-Equal ([regex]::Matches($bootstrapManifestText, '(?m)^dir\s+pb_makefiles-1\s+all\s*$').Count) 1 'pb_makefiles all is scheduled once'
 Assert-Match $bootstrapManifestText '(?s)dir\s+Libc-1\s+headers.*dir\s+cc-1\s+headers.*dir\s+bison-1\s+all.*dir\s+cc-1\s+all' 'libc and cc headers are replayed before bison and the full cc bootstrap'
-Assert-Match $bootstrapManifestText '(?s)dir\s+machkit-1\s+headers.*dir\s+driverkit-3\s+all' 'machkit headers are published before driverkit compiles against them'
+Assert-Match $bootstrapManifestText '(?s)dir\s+machkit-1\s+headers.*dir\s+machkit-1\s+all.*dir\s+driverkit-3\s+all' 'machkit library is packaged after its headers and before driverkit'
+Assert-Match $bootstrapManifestText '(?s)dir\s+architecture-1\s+headers.*dir\s+architecture-1\s+all' 'architecture headers are published before the architecture package'
+Assert-Match $bootstrapManifestText '(?s)dir\s+Libstreams-1\s+all.*dir\s+objc-1\s+all' 'in-kernel objc is packaged after libstreams'
+Assert-Match $bootstrapManifestText '(?s)dir\s+Libcurses-1\s+all.*dir\s+Commands/adv_cmds\s+all.*dir\s+files-5\s+all' 'adv-cmds is packaged after libcurses and before files and later chroot consumers'
+Assert-Match $bootstrapManifestText '(?s)dir\s+driverkit-3\s+all.*dir\s+kernload-1\s+all' 'kernload is packaged after driverkit'
+Assert-Match $bootstrapManifestText '(?m)^dir\s+gnudiff-1\s+all\s*$' 'gnudiff is packaged for later kernel chroot builds'
 Assert-Match $bootstrapManifestText '(?s)dir\s+Librpcsvc-1\s+headers.*dir\s+Libinfo-1\s+all' 'librpcsvc headers are published before libinfo and system_cmds include rpcsvc/yppasswd.h'
 $driverkitLibMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\driverkit-3\libDriver\Makefile')
 Assert-Match $driverkitLibMakefileText '(?m)^HEADER_ROOT=\$\(HDRROOT\)$' 'driverkit libDriver prefers HDRROOT for System.framework includes'
@@ -120,6 +126,11 @@ Assert-NotMatch $cctoolsAsMakefileText '-I\$\(NEXT_ROOT\)/System/Library/Framewo
 Assert-Match $cctoolsAsMakefileText '\$\(LOCAL_CFLAGS\)' 'cctools as compiles with bootstrap LOCAL_CFLAGS'
 Assert-Match $cctoolsLdMakefileText '\$\(LOCAL_CFLAGS\)' 'cctools ld compiles with bootstrap LOCAL_CFLAGS'
 Assert-Match $cctoolsGprofMakefileText '\$\(LOCAL_CFLAGS\)' 'cctools gprof compiles with bootstrap LOCAL_CFLAGS'
+$kernloadKernservMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\kernload-1\include\kernserv\Makefile')
+$kernloadLibMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\kernload-1\libkernload\Makefile')
+Assert-Equal ([regex]::Matches($kernloadKernservMakefileText, '(?m)^install:').Count) 1 'kernserv headers have one install target'
+Assert-Match $kernloadKernservMakefileText 'MIG_GENERATED_INSTALL' 'kernserv install publishes MIG-generated headers'
+Assert-Match $kernloadLibMakefileText '-I\$\{SYMROOT\}/include' 'libkernload compiles against SYMROOT-generated kernserv headers'
 $iondrvHeaderText = Get-Content -Raw (Join-Path $repoRoot 'src\driverkit-3\libDriver\ppc\IONDRVFramebuffer.h')
 $iondrvImplText = Get-Content -Raw (Join-Path $repoRoot 'src\driverkit-3\libDriver\ppc\IONDRVFramebuffer.m')
 Assert-Match $iondrvHeaderText '(?s)@interface IOATIMACH64NDRV:IOATINDRV\s*\{[^}]*engineInitialized' 'Mach64 NDRV declares engineInitialized in the class interface'
@@ -127,6 +138,8 @@ Assert-NotMatch $iondrvImplText '@implementation IOATIMACH64NDRV\s*\{' 'Mach64 N
 Assert-NotMatch $iondrvImplText 'config\.mode' 'NDRV acceleration uses IOFBConfiguration.displayMode'
 Assert-Match $iondrvHeaderText '(?s)@interface IOIX3DNDRV:IONDRVFramebuffer\s*\{[^}]*@public[^}]*registerBase' 'TwinTurbo interrupt handler can see NDRV registerBase'
 Assert-Match $iondrvImplText 'getPixelInformationForDisplayMode:modeID andDepthIndex:depthIndex' 'NDRV acceleration uses the IOFramebuffer pixel-info selector'
+$pexpertGestaltText = Get-Content -Raw (Join-Path $repoRoot 'src\drivers-ppc\bus\drvPExpert\powermac\powermac_gestalt.h')
+Assert-Match $pexpertGestaltText 'gestaltSawtooth\s*=\s*1000' 'PExpert gestalt table includes NewWorld Sawtooth machines'
 $libcMachPreambleText = Get-Content -Raw (Join-Path $repoRoot 'src\Libc-1\mach.subproj\Makefile.preamble')
 $libsystemPostambleText = Get-Content -Raw (Join-Path $repoRoot 'src\Libsystem-2\Makefile.postamble')
 Assert-Match $libsystemPostambleText 'after_install::' 'Libsystem installs compatibility dylibs after System.framework'
@@ -196,7 +209,8 @@ Assert-Match $classicErrorText 'strerror\(error_num\)' 'classic MIG uses the hos
 Assert-NotMatch $classicErrorHeaderText '<mach/mach_error\.h>' 'classic MIG does not import an unused live-only Mach error header'
 Assert-Match $typedErrorText 'strerror\(error_num\)' 'typed MIG uses the host-supported error string interface'
 Assert-NotMatch ($classicErrorText + $typedErrorText + $typedErrorHeaderText) '(?m)^\s*extern[^\r\n]*\b(sys_nerr|sys_errlist)\b|\b(sys_nerr|sys_errlist)\s*\[' 'private MIG sources do not depend on obsolete libc error tables'
-Assert-Match $kernelMakeTemplateText '(?m)^DECOMMENT \?= /usr/local/bin/decomment$' 'kernel preserves an overrideable historical decomment default'
+Assert-Match $kernelMakeTemplateText '(?ms)^ifndef DECOMMENT\s*\nDECOMMENT = /usr/local/bin/decomment\s*\nendif' 'kernel decomment default is GNU make 3.74-legal and env-overrideable'
+Assert-NotMatch $kernelMakeTemplateText 'DECOMMENT \?=' 'kernel decomment default does not use GNU make 3.77 \?='
 Assert-NotMatch $kernelMakeTemplateText '(?m)^\s*@-for i in (?:\$\{EXPORT\}|`echo \$\{MACHINE_EXPORT\}`)' 'kernel header export recipes do not ignore loop failure'
 Assert-Equal ([regex]::Matches($kernelMakeTemplateText, 'unifdef_status=0;').Count) 2 'both kernel export loops start unifdef status at zero under sh -ce'
 Assert-Equal ([regex]::Matches($kernelMakeTemplateText, '\|\| unifdef_status=\$\$\?;').Count) 2 'both kernel export loops survive GNU make sh -ce when unifdef reports changes'
@@ -312,6 +326,12 @@ Assert-Match $remoteScriptText '(?s)finally \{.*?WaitForExit\(\).*?Dispose\(\)' 
 Assert-Equal ($buildScriptText.IndexOf('New-RhapFreshCommand') -lt $buildScriptText.IndexOf('New-RhapPreflightCommand')) $true 'fresh topology validates before preflight'
 Assert-Match $buildScriptText 'New-RhapFreshCommand[^\r\n]+-Profile \$cfg\.ToolchainProfile' 'fresh validates resolved configured profile'
 Assert-Match $buildScriptText ([regex]::Escape('-TargetArch $profileValues.target_arch')) 'phase generation consumes the selected profile architecture'
+Assert-Equal ((Get-RhapKernelCorePackages -TargetArch 'ppc') -join ',') 'driverkit-3,driverTools-1,kernload-1,drivers-ppc/bus/drvPExpert,kernel-7' 'ppc kernel core package order'
+Assert-Equal ((Get-RhapKernelCorePackages -TargetArch 'i386') -join ',') 'driverkit-3,driverTools-1,kernload-1,drivers-i386/bus/drvPExpert,kernel-7' 'i386 kernel core package order'
+Assert-Match $buildScriptText 'Get-RhapKernelCorePackages -TargetArch \$profileValues\.target_arch' 'kernel phase validates core sources for the selected architecture'
+Assert-Match $buildScriptText 'Get-DriverProjectRels -TargetArch \$profileValues\.target_arch' 'optional drivers are selected for the profile architecture'
+Assert-Match $buildScriptText '(?s)function Get-DriverProjectRels \{.*?Join-Path \$localSrc "drivers-\$arch"' 'optional driver scan stays inside drivers-<arch>'
+Assert-NotMatch $buildScriptText "@\('drivers-i386', 'drivers-ppc'\)" 'optional driver scan does not mix i386 and ppc trees'
 
 $phaseArgs = @{
     SourceRoot = '/build/src'
@@ -428,6 +448,10 @@ $kernelCommand = New-RhapBuildPhaseCommand -Phase 'kernel-drivers' @phaseArgs -D
 Assert-Match $kernelCommand ([regex]::Escape('test -d /build/repo')) 'kernel requires existing repository input'
 Assert-Match $kernelCommand ([regex]::Escape('/usr/bin/install -d /build/built /build/state')) 'kernel creates owned output directories'
 Assert-Equal ($kernelCommand.IndexOf('/usr/bin/install -d /build/built') -lt $kernelCommand.IndexOf('--dir driverkit-3')) $true 'kernel creates outputs before core packages'
+Assert-Equal ($kernelCommand.IndexOf('--dir driverkit-3') -lt $kernelCommand.IndexOf('--dir driverTools-1')) $true 'driverkit is packaged before drivertools'
+Assert-Equal ($kernelCommand.IndexOf('--dir driverTools-1') -lt $kernelCommand.IndexOf('--dir kernload-1')) $true 'drivertools is packaged before kernload'
+Assert-Equal ($kernelCommand.IndexOf('--dir kernload-1') -lt $kernelCommand.IndexOf('--dir drivers-ppc/bus/drvPExpert')) $true 'kernload is packaged before the platform expert'
+Assert-Equal ($kernelCommand.IndexOf('--dir drivers-ppc/bus/drvPExpert') -lt $kernelCommand.IndexOf('--dir kernel-7')) $true 'platform expert is packaged before kernel-7'
 Assert-Match $kernelCommand ([regex]::Escape('cd /build/src')) 'kernel package paths resolve beneath source root'
 Assert-Match $kernelCommand ([regex]::Escape('/build/tools/bin/rbuild buildpackage --state /build/state --dir kernel-7 /build/repo /build/built')) 'kernel uses persistent state'
 Assert-Match $kernelCommand ([regex]::Escape('--dir drivers-ppc/storage/drvExample /build/repo /build/built')) 'packaged driver uses rbuild'
@@ -440,9 +464,16 @@ Assert-Match $kernelCommand 'mv .*\.done\.tmp\.\$\$ .*\.done' 'make-only marker 
 Assert-Match $kernelCommand 'profile mismatch.*-Fresh' 'make-only stale profile is a hard error'
 Assert-Equal ($kernelCommand.IndexOf('mkdir -p /build/state/logs') -lt $kernelCommand.IndexOf('set +e')) $true 'driver state directories are required setup'
 Assert-Match $kernelCommand 'driver state write failed' 'make-only marker write failure is reported'
-Assert-Match $kernelCommand 'core: driverkit-3, driverTools-1, kernel-7 \(required, all ok\)' 'kernel summary reports required core packages'
+Assert-Match $kernelCommand 'core: driverkit-3, driverTools-1, kernload-1, drivers-ppc/bus/drvPExpert, kernel-7 \(required, all ok\)' 'kernel summary reports required core packages'
 Assert-Match $kernelCommand 'drivers ok: \$rbuild_driver_passes' 'kernel summary reports optional successes'
 Assert-Match $kernelCommand 'drivers fail: \$rbuild_driver_failures' 'kernel summary reports optional failures'
+Assert-Match $kernelCommand ([regex]::Escape('rbuild_driver_passes=$(/bin/expr $rbuild_driver_passes + 1)')) 'optional driver counts use 1996 ash expr'
+Assert-NotMatch $kernelCommand '\$\(\(rbuild_driver_(passes|failures)' 'optional driver counts do not use POSIX arithmetic expansion'
+Assert-Match $kernelCommand '(?s)--dir drivers-ppc/storage/drvExample /build/repo /build/built.*rm -rf /private/tmp/roots' 'optional driver chroots are removed after each package'
+$i386KernelArgs = $phaseArgs.Clone()
+$i386KernelArgs.TargetArch = 'i386'
+$i386KernelCommand = New-RhapBuildPhaseCommand -Phase 'kernel-drivers' @i386KernelArgs
+Assert-Equal ($i386KernelCommand.IndexOf('--dir drivers-i386/bus/drvPExpert') -lt $i386KernelCommand.IndexOf('--dir kernel-7')) $true 'i386 kernel packages the i386 platform expert before kernel-7'
 $worldCommand = New-RhapBuildPhaseCommand -Phase 'world' @phaseArgs
 Assert-Match $worldCommand ([regex]::Escape('test -d /build/repo')) 'world requires existing repository input'
 Assert-Match $worldCommand ([regex]::Escape('/usr/bin/install -d /build/built /build/state')) 'world creates owned output directories'
@@ -451,7 +482,7 @@ Assert-Match $worldCommand ([regex]::Escape('cd /build/src && /build/tools/bin/r
 
 foreach ($generated in @($rbuildCommand, $bootstrapCommand, $kernelCommand, $worldCommand)) {
     Assert-NotMatch $generated '/tmp/_|_seed-bootstrap-hdrs\.sh|DSTROOT=/|/usr/bin/rbuild|date-setting|header upload' 'generated command excludes obsolete workaround'
-    Assert-NotMatch $generated '(?m)^\s*rm\s+-rf' 'phase command never deletes build output trees'
+    Assert-NotMatch $generated '(?m)^\s*rm\s+-rf(?! /private/tmp/roots)' 'phase command never deletes build output trees'
 }
 
 $freshCommand = New-RhapFreshCommand -RemoteRoot '/build' -SourceRoot '/build/src' -Profile '/build/src/rbuild-1/toolchains/gcc-darwin.conf' -ToolsDir '/build/tools' -BootstrapRoot '/build/bootstrap-root' -RepoDir '/build/repo' -BuiltDir '/build/built' -StateDir '/build/state'

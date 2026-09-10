@@ -146,6 +146,9 @@ enum {
 	gestaltPowerMac6500             = 513,  // gestaltGazelleTower
 	gestaltPowerMac4400             = 515,
 	gestalt20thAnniversary          = gestaltPowerMac5500,
+
+// Fake gestalt numbers for NewWorld machines
+	gestaltSawtooth                 = 1000,
 };
 
 #endif /* !defined _POWERMAC_GESTALT_H_ */

@@ -142,7 +142,9 @@ INSTALL_FLAGS = -c -m 444
 # DRIVER_PRIVATE stuff
 #
 UNIFDEF   = /usr/bin/unifdef
-DECOMMENT ?= /usr/local/bin/decomment
+ifndef DECOMMENT
+DECOMMENT = /usr/local/bin/decomment
+endif
 
 #
 # Header files that are unifdef'ed and installed in INCDIR

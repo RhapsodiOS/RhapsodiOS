@@ -54,7 +54,7 @@ powershell -File vm\build-src.ps1 -World
 |------|---------------------------|
 | `-Rbuild` | Build/install `rbuild` from `RemoteRoot/src/rbuild-1` |
 | `-Bootstrap` | `rbuild bootstrap BootstrapManifest` → `RepoDir` |
-| `-KernelDrivers` | driverkit / driverTools / kernel, then i386+ppc drivers |
+| `-KernelDrivers` | driverkit / driverTools / kernel, then remaining `drivers-<arch>` drivers |
 | `-World` | `rbuild buildall Manifest` |
 
 `RepoDir` / `BuiltDir` / `Make` are also in `vm.conf` (defaults `/build/repo`,

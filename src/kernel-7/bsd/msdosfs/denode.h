@@ -48,6 +48,10 @@
  * October 1992
  */
 
+#ifdef _KERNEL
+#include <sys/lock.h>
+#endif
+
 /*
  * This is the pc filesystem specific portion of the vnode structure.
  *
@@ -135,7 +139,7 @@ struct fatcache {
  * contained within a vnode.
  */
 struct denode {
-	struct lock de_lock;	/* denode lock >Keep this first< */
+	struct lock__bsd__ de_lock;	/* denode lock >Keep this first< */
 	struct denode *de_next;	/* Hash chain forward */
 	struct denode **de_prev; /* Hash chain back */
 	struct vnode *de_vnode;	/* addr of vnode we are part of */
@@ -214,8 +218,14 @@ struct denode {
 
 #ifdef _KERNEL
 
+#include <sys/time.h>
+#include <sys/kernel.h>
+
 #define	VTODE(vp)	((struct denode *)(vp)->v_data)
 #define	DETOV(de)	((de)->de_vnode)
+
+/* Darwin has microtime()/time, not FreeBSD getnanotime(). */
+#define	getnanotime(tsp)	TIMEVAL_TO_TIMESPEC(&time, (tsp))
 
 #define	DETIMES(dep, acc, mod, cre) do {				\
 	if ((dep)->de_flag & DE_UPDATE) { 				\

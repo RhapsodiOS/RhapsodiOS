@@ -57,8 +57,8 @@
 #include <sys/buf.h>
 #include <sys/vnode.h>
 
-#include <vm/vm.h>
-#include <vm/vm_extern.h>
+#include <sys/lock.h>
+#include <sys/vm.h>
 
 #include <msdosfs/bpb.h>
 #include <msdosfs/msdosfsmount.h>
@@ -66,13 +66,14 @@
 #include <msdosfs/denode.h>
 #include <msdosfs/fat.h>
 
+extern int prtactive;
+extern void vnode_pager_setsize __P((struct vnode *vp, u_long nsize));
+
 static struct denode **dehashtbl;
 static u_long dehash;			/* size of hash table - 1 */
 #define	DEHASH(dev, dcl, doff)	(dehashtbl[(minor(dev) + (dcl) + (doff) / 	\
 				sizeof(struct direntry)) & dehash])
-#ifndef NULL_SIMPLELOCKS
-static struct simplelock dehash_slock;
-#endif
+static struct slock dehash_slock;
 
 union _qcvt {
 	quad_t qcvt;
@@ -125,7 +126,7 @@ msdosfs_hashget(dev, dirclust, diroff)
 	u_long dirclust;
 	u_long diroff;
 {
-	struct proc *p = curproc;	/* XXX */
+	struct proc *p = current_proc();	/* XXX */
 	struct denode *dep;
 	struct vnode *vp;
 
@@ -209,7 +210,7 @@ deget(pmp, dirclust, diroffset, depp)
 	struct denode *ldep;
 	struct vnode *nvp;
 	struct buf *bp;
-	struct proc *p = curproc;	/* XXX */
+	struct proc *p = current_proc();	/* XXX */
 	struct timeval tv;
 
 #ifdef MSDOSFS_DEBUG
@@ -261,7 +262,7 @@ deget(pmp, dirclust, diroffset, depp)
 		return error;
 	}
 	bzero((caddr_t)ldep, sizeof *ldep);
-	lockinit(&ldep->de_lock, PINOD, "denode", VLKTIMEOUT, 0);
+	lockinit(&ldep->de_lock, PINOD, "denode", 0, 0);
 	nvp->v_data = ldep;
 	ldep->de_vnode = nvp;
 	ldep->de_flag = 0;
@@ -277,7 +278,7 @@ deget(pmp, dirclust, diroffset, depp)
 	 * of at the start of msdosfs_hashins() so that reinsert() can
 	 * call msdosfs_hashins() with a locked denode.
 	 */
-	if (lockmgr(&ldep->de_lock, LK_EXCLUSIVE, (struct simplelock *)0, p))
+	if (lockmgr(&ldep->de_lock, LK_EXCLUSIVE, (struct slock *)0, p))
 		panic("deget: unexpected lock failure");
 
 	/*
@@ -378,7 +379,7 @@ deget(pmp, dirclust, diroffset, depp)
 		}
 	} else
 		nvp->v_type = VREG;
-	getmicrouptime(&tv);
+	microtime(&tv);
 	SETHIGH(ldep->de_modrev, tv.tv_sec);
 	SETLOW(ldep->de_modrev, tv.tv_usec * 4294);
 	ldep->de_devvp = pmp->pm_devvp;
@@ -721,6 +722,6 @@ out:
 	       dep->de_Name[0]);
 #endif
 	if (dep->de_Name[0] == SLOT_DELETED)
-		vrecycle(vp, (struct simplelock *)0, p);
+		vrecycle(vp, (struct slock *)0, p);
 	return (error);
 }

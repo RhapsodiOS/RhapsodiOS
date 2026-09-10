@@ -65,7 +65,6 @@
 #include <sys/lock.h>
 
 #include <vm/vm.h>
-#include <vm/vnode_pager.h>
 
 #include <vfs/vfs_support.h>
 
@@ -76,6 +75,8 @@
 #include <msdosfs/fat.h>
 
 #define	DOS_FILESIZE_MAX	0xffffffff
+
+extern void vnode_pager_setsize __P((struct vnode *vp, u_long nsize));
 
 /*
  * Prototypes for MSDOSFS vnode operations
@@ -341,7 +342,7 @@ msdosfs_getattr(ap)
 
 	getnanotime(&ts);
 	DETIMES(dep, &ts, &ts, &ts);
-	vap->va_fsid = dev2udev(dep->de_dev);
+	vap->va_fsid = dep->de_dev;
 	/*
 	 * The following computation of the fileid must be the same as that
 	 * used in msdosfs_readdir() to compute d_fileno. If not, pwd

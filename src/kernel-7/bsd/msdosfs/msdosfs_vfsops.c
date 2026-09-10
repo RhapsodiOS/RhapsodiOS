@@ -60,6 +60,9 @@
 #include <sys/fcntl.h>
 #include <sys/malloc.h>
 #include <sys/stat.h> 				/* defines ALLPERMS */
+#include <sys/disklabel.h>
+#include <sys/vm.h>
+#include <miscfs/specfs/specdev.h>
 
 #include <msdosfs/bpb.h>
 #include <msdosfs/bootsect.h>
@@ -158,20 +161,20 @@ update_mp(mp, argp)
 }
 
 #ifndef __FreeBSD__
+#define ROOTNAME	"root_device"
+
 int
 msdosfs_mountroot()
 {
 	register struct mount *mp;
-	struct proc *p = curproc;	/* XXX */
+	extern struct vnode *rootvp;
+	struct proc *p = current_proc();	/* XXX */
 	size_t size;
 	int error;
 	struct msdosfs_args args;
 
-	if (root_device->dv_class != DV_DISK)
-		return (ENODEV);
-
 	/*
-	 * Get vnodes for swapdev and rootdev.
+	 * Get vnode for rootdev.
 	 */
 	if (bdevvp(rootdev, &rootvp))
 		panic("msdosfs_mountroot: can't setup rootvp");
@@ -180,10 +183,10 @@ msdosfs_mountroot()
 	bzero((char *)mp, (u_long)sizeof(struct mount));
 	mp->mnt_op = &msdos_vfsops;
 	mp->mnt_flag = 0;
-	TAILQ_INIT(&mp->mnt_nvnodelist);
-	TAILQ_INIT(&mp->mnt_reservedvnlist);
+	LIST_INIT(&mp->mnt_vnodelist);
 
 	args.flags = 0;
+	args.magic = MSDOSFS_ARGSMAGIC;
 	args.uid = 0;
 	args.gid = 0;
 	args.mask = args.dirmask = 0777;
@@ -199,13 +202,9 @@ msdosfs_mountroot()
 		return (error);
 	}
 
-	if ((error = vfs_lock(mp)) != 0) {
-		(void)msdosfs_unmount(mp, 0, p);
-		free(mp, M_MOUNT);
-		return (error);
-	}
-
-	TAILQ_INSERT_TAIL(&mountlist, mp, mnt_list);
+	simple_lock(&mountlist_slock);
+	CIRCLEQ_INSERT_TAIL(&mountlist, mp, mnt_list);
+	simple_unlock(&mountlist_slock);
 	mp->mnt_vnodecovered = NULLVP;
 	(void) copystr("/", mp->mnt_stat.f_mntonname, MNAMELEN - 1,
 	    &size);
@@ -214,7 +213,6 @@ msdosfs_mountroot()
 	    &size);
 	bzero(mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
 	(void)msdosfs_statfs(mp, &mp->mnt_stat, p);
-	vfs_unlock(mp);
 	return (0);
 }
 #endif
@@ -263,7 +261,7 @@ msdosfs_mount(mp, path, data, ndp, p)
 			error = EOPNOTSUPP;
 		if (error)
 			return (error);
-		if ((pmp->pm_flags & MSDOSFSMNT_RONLY) && (mp->mnt_kern_flag & MNTK_WANTRDWR)) {
+		if ((pmp->pm_flags & MSDOSFSMNT_RONLY) && (mp->mnt_flag & MNT_WANTRDWR)) {
 			/*
 			 * If upgrade to read-write by non-root, then verify
 			 * that user has necessary permissions on the device.
@@ -732,10 +730,10 @@ mountmsdosfs(devvp, mp, p, argp)
 	else
 		pmp->pm_fmod = 1;
 	mp->mnt_data = (qaddr_t) pmp;
-	mp->mnt_stat.f_fsid.val[0] = dev2udev(dev);
+	mp->mnt_stat.f_fsid.val[0] = (long)dev;
 	mp->mnt_stat.f_fsid.val[1] = mp->mnt_vfc->vfc_typenum;
 	mp->mnt_flag |= MNT_LOCAL;
-	devvp->v_specmountpoint = mp;
+	devvp->v_specflags |= SI_MOUNTEDON;
 
 	return 0;
 
@@ -771,7 +769,7 @@ msdosfs_unmount(mp, mntflags, p)
 	if (error)
 		return error;
 	pmp = VFSTOMSDOSFS(mp);
-	pmp->pm_devvp->v_specmountpoint = NULL;
+	pmp->pm_devvp->v_specflags &= ~SI_MOUNTEDON;
 #ifdef MSDOSFS_DEBUG
 	{
 		struct vnode *vp = pmp->pm_devvp;
@@ -785,8 +783,8 @@ msdosfs_unmount(mp, mntflags, p)
 		    vp->v_freelist.tqe_next, vp->v_freelist.tqe_prev,
 		    vp->v_mount);
 		printf("cleanblkhd %p, dirtyblkhd %p, numoutput %ld, type %d\n",
-		    TAILQ_FIRST(&vp->v_cleanblkhd),
-		    TAILQ_FIRST(&vp->v_dirtyblkhd),
+		    vp->v_cleanblkhd.lh_first,
+		    vp->v_dirtyblkhd.lh_first,
 		    vp->v_numoutput, vp->v_type);
 		printf("union %p, tag %d, data[0] %08x, data[1] %08x\n",
 		    vp->v_socket, vp->v_tag,
@@ -877,7 +875,7 @@ msdosfs_sync(mp, waitfor, cred, p)
 	 */
 	simple_lock(&mntvnode_slock);
 loop:
-	for (vp = TAILQ_FIRST(&mp->mnt_nvnodelist); vp != NULL; vp = nvp) {
+	for (vp = mp->mnt_vnodelist.lh_first; vp != NULL; vp = nvp) {
 		/*
 		 * If the vnode that we are about to sync is no longer
 		 * associated with this mount point, start over.
@@ -886,12 +884,12 @@ loop:
 			goto loop;
 
 		simple_lock(&vp->v_interlock);
-		nvp = TAILQ_NEXT(vp, v_nmntvnodes);
+		nvp = vp->v_mntvnodes.le_next;
 		dep = VTODE(vp);
 		if (vp->v_type == VNON ||
 		    ((dep->de_flag &
 		    (DE_ACCESS | DE_CREATE | DE_UPDATE | DE_MODIFIED)) == 0 &&
-		    (TAILQ_EMPTY(&vp->v_dirtyblkhd) || waitfor == MNT_LAZY))) {
+		    vp->v_dirtyblkhd.lh_first == NULL)) {
 			simple_unlock(&vp->v_interlock);
 			continue;
 		}
@@ -915,13 +913,11 @@ loop:
 	/*
 	 * Flush filesystem control info.
 	 */
-	if (waitfor != MNT_LAZY) {
-		vn_lock(pmp->pm_devvp, LK_EXCLUSIVE | LK_RETRY, p);
-		error = VOP_FSYNC(pmp->pm_devvp, cred, waitfor, p);
-		if (error)
-			allerror = error;
-		VOP_UNLOCK(pmp->pm_devvp, 0, p);
-	}
+	vn_lock(pmp->pm_devvp, LK_EXCLUSIVE | LK_RETRY, p);
+	error = VOP_FSYNC(pmp->pm_devvp, cred, waitfor, p);
+	if (error)
+		allerror = error;
+	VOP_UNLOCK(pmp->pm_devvp, 0, p);
 	return (allerror);
 }
 

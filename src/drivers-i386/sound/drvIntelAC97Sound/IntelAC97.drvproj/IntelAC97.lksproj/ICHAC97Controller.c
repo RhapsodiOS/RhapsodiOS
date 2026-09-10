@@ -76,9 +76,41 @@ int ICHAC97ResetPlayback(ICHAC97Controller *controller,
 int ICHAC97ResetLink(ICHAC97Controller *controller,
                      ICHAC97UInt32 pollCount)
 {
-    (void)controller;
-    (void)pollCount;
-    return kICHAC97NotPrepared;
+    ICHAC97IO *io;
+    ICHAC97UInt32 base;
+    ICHAC97UInt32 globCnt;
+    ICHAC97UInt32 i;
+
+    if (controller == 0)
+        return kICHAC97InvalidArgument;
+
+    io = &controller->io;
+    base = controller->nabmbar;
+    globCnt = io->read32(io->context, base + ICHAC97_REG_GLOB_CNT);
+
+    if ((globCnt & ICHAC97_GLOB_CNT_COLD) != 0U) {
+        io->write32(io->context, base + ICHAC97_REG_GLOB_CNT,
+                    globCnt | ICHAC97_GLOB_CNT_WARM);
+        if (io->delayUS != 0)
+            io->delayUS(io->context, 1000U);
+    } else {
+        io->write32(io->context, base + ICHAC97_REG_GLOB_CNT,
+                    globCnt & ~ICHAC97_GLOB_CNT_COLD);
+        if (io->delayUS != 0)
+            io->delayUS(io->context, 1000U);
+        io->write32(io->context, base + ICHAC97_REG_GLOB_CNT,
+                    (globCnt & ~ICHAC97_GLOB_CNT_COLD) |
+                    ICHAC97_GLOB_CNT_COLD);
+    }
+
+    for (i = 0; i < pollCount; i++) {
+        if ((io->read32(io->context, base + ICHAC97_REG_GLOB_STA) &
+             ICHAC97_GLOB_STA_PCR) != 0U)
+            return kICHAC97Success;
+        if (io->delayUS != 0)
+            io->delayUS(io->context, 1000U);
+    }
+    return kICHAC97Timeout;
 }
 
 int ICHAC97StartPlayback(ICHAC97Controller *controller)
@@ -202,19 +234,74 @@ ICHAC97UInt32 ICHAC97ConsumeService(ICHAC97Controller *controller)
     return service;
 }
 
+static int ICHAC97WaitCodecAccess(ICHAC97Controller *controller)
+{
+    ICHAC97IO *io;
+    ICHAC97UInt32 casPort;
+    ICHAC97UInt32 i;
+
+    io = &controller->io;
+    casPort = controller->nabmbar + ICHAC97_REG_CAS;
+
+    for (i = 0; i < 100U; i++) {
+        if ((io->read8(io->context, casPort) & ICHAC97_CAS_BUSY) == 0U)
+            return 1;
+        if (io->delayUS != 0)
+            io->delayUS(io->context, 1U);
+    }
+    return 0;
+}
+
+static int ICHAC97CheckCodecResult(ICHAC97Controller *controller)
+{
+    ICHAC97IO *io;
+    ICHAC97UInt32 globSta;
+
+    io = &controller->io;
+    globSta = io->read32(io->context,
+                         controller->nabmbar + ICHAC97_REG_GLOB_STA);
+    if ((globSta & ICHAC97_GLOB_STA_RCS) != 0U) {
+        io->write32(io->context, controller->nabmbar + ICHAC97_REG_GLOB_STA,
+                    ICHAC97_GLOB_STA_RCS);
+        return 0;
+    }
+    return 1;
+}
+
 ICHAC97UInt16 ICHAC97CodecRead(ICHAC97Controller *controller,
                                ICHAC97UInt8 reg)
 {
-    (void)controller;
-    (void)reg;
-    return (ICHAC97UInt16)0xffffU;
+    ICHAC97IO *io;
+    ICHAC97UInt16 value;
+
+    if (controller == 0)
+        return (ICHAC97UInt16)0xffffU;
+
+    if (!ICHAC97WaitCodecAccess(controller))
+        return (ICHAC97UInt16)0xffffU;
+
+    io = &controller->io;
+    value = io->read16(io->context, controller->nambar + reg);
+
+    if (!ICHAC97CheckCodecResult(controller))
+        return (ICHAC97UInt16)0xffffU;
+
+    return value;
 }
 
 void ICHAC97CodecWrite(ICHAC97Controller *controller,
                        ICHAC97UInt8 reg,
                        ICHAC97UInt16 value)
 {
-    (void)controller;
-    (void)reg;
-    (void)value;
+    ICHAC97IO *io;
+
+    if (controller == 0)
+        return;
+
+    if (!ICHAC97WaitCodecAccess(controller))
+        return;
+
+    io = &controller->io;
+    io->write16(io->context, controller->nambar + reg, value);
+    (void)ICHAC97CheckCodecResult(controller);
 }

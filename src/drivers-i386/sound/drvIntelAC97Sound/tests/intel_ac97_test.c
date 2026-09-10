@@ -35,6 +35,8 @@ static void test_bdl_wraps_unique_fragments_into_32_slots(void)
 typedef struct {
     unsigned char regs[512];
     unsigned int delayCalls;
+    unsigned int casBusyReads;
+    unsigned int casReads;
     unsigned int resetReadsBeforeClear;
     unsigned int resetReads;
     unsigned int opCount;
@@ -50,6 +52,11 @@ static unsigned char fake_read8(void *context, unsigned int port)
 {
     FakeIO *fake = (FakeIO *)context;
     unsigned int offset = port & 0x1ffU;
+    if (offset == ICHAC97_REG_CAS &&
+        fake->casReads < fake->casBusyReads) {
+        fake->casReads++;
+        return ICHAC97_CAS_BUSY;
+    }
     if (offset == ICHAC97_REG_PO_CR &&
         (fake->regs[offset] & ICHAC97_CR_RR) != 0U &&
         fake->resetReads++ >= fake->resetReadsBeforeClear)
@@ -189,6 +196,39 @@ static void test_lvi_chase_and_output_irq(void)
     CHECK(controller.playback.fifoErrors == 1U);
 }
 
+static void test_codec_cas_rcs_and_link_reset(void)
+{
+    FakeIO fake;
+    ICHAC97Controller controller;
+    unsigned short value;
+
+    memset(&fake, 0, sizeof(fake));
+    fake.casBusyReads = 1U;
+    fake.regs[0x02] = 0x08;
+    fake.regs[0x03] = 0x08;
+    controller = fake_controller(&fake);
+    value = ICHAC97CodecRead(&controller, 0x02);
+    CHECK(value == 0x0808U);
+    CHECK(fake.delayCalls >= 1U);
+
+    memset(&fake, 0, sizeof(fake));
+    fake.regs[ICHAC97_REG_GLOB_STA] = 0;
+    fake.regs[ICHAC97_REG_GLOB_STA + 1U] = 0x80; /* RCS in bit 15 */
+    controller = fake_controller(&fake);
+    CHECK(ICHAC97CodecRead(&controller, 0x02) == 0xffffU);
+
+    memset(&fake, 0, sizeof(fake));
+    fake.regs[ICHAC97_REG_GLOB_CNT] = (unsigned char)ICHAC97_GLOB_CNT_COLD;
+    fake.regs[ICHAC97_REG_GLOB_STA + 1U] = 0x01; /* PCR bit 8 */
+    controller = fake_controller(&fake);
+    CHECK(ICHAC97ResetLink(&controller, 3U) == kICHAC97Success);
+    CHECK(fake.delayCalls >= 1U);
+
+    memset(&fake, 0, sizeof(fake));
+    controller = fake_controller(&fake);
+    CHECK(ICHAC97ResetLink(&controller, 2U) == kICHAC97Timeout);
+}
+
 static void test_bdl_64k_8k_and_rejects(void)
 {
     ICHAC97Playback playback;
@@ -214,6 +254,7 @@ int main(void)
     test_bdl_64k_8k_and_rejects();
     test_rr_clears_bdbar_and_start_rewrites_it();
     test_lvi_chase_and_output_irq();
+    test_codec_cas_rcs_and_link_reset();
     if (failures != 0) {
         fprintf(stderr, "%d Intel AC97 checks failed\n", failures);
         return 1;

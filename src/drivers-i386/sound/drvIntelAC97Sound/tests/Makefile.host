@@ -20,6 +20,7 @@ intel_ac97_test: intel_ac97_test.c \
 
 check: all
 	./intel_ac97_test
+	python3 driver_contract_test.py || python driver_contract_test.py
 
 clean:
 	rm -f $(TESTS) $(TESTS).exe *.o

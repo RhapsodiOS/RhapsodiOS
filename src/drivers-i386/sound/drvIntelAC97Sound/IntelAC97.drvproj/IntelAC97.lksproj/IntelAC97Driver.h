@@ -17,8 +17,11 @@
 
 #define DRV_TITLE       "IntelAC97"
 
+struct ich97_driver_state;
+
 @interface IntelAC97Driver : IOAudio
 {
+    struct ich97_driver_state *state;
 }
 
 + (BOOL)probe:deviceDescription;

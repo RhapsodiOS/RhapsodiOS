@@ -27,15 +27,14 @@ class DriverContractTests(unittest.TestCase):
             self.assertNotIn("outw(", source)
             self.assertNotIn("outl(", source)
 
-    # Task 7: enable test_kernel_io_is_port_then_value
-    # def test_kernel_io_is_port_then_value(self):
-    #     source = (LINK / "IntelAC97Driver.m").read_text(encoding="utf-8")
-    #     self.assertIn("outb((IOEISAPortAddress)port, value)", source)
-    #     self.assertNotIn("outb(value, port)", source)
-    #     self.assertNotIn("outw(value, port)", source)
-    #     self.assertNotIn("outl(value, port)", source)
-    #     self.assertIn("ICHAC97Controller controller;", source)
-    #     self.assertNotIn("static struct ich_state", source)
+    def test_kernel_io_is_port_then_value(self):
+        source = (LINK / "IntelAC97Driver.m").read_text(encoding="utf-8")
+        self.assertIn("outb((IOEISAPortAddress)port, value)", source)
+        self.assertNotIn("outb(value, port)", source)
+        self.assertNotIn("outw(value, port)", source)
+        self.assertNotIn("outl(value, port)", source)
+        self.assertIn("ICHAC97Controller controller;", source)
+        self.assertNotIn("static struct ich_state", source)
 
 
 if __name__ == "__main__":

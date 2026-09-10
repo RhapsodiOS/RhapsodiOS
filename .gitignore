@@ -1,6 +1,9 @@
 # macOS Finder special file
 .DS_Store
 
+# Git worktrees (project-local isolation)
+.worktrees/
+
 # Python bytecode: regenerated on every run of the tooling, not source
 __pycache__/
 *.pyc

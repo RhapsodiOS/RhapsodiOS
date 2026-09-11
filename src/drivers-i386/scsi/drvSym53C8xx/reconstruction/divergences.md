@@ -9,11 +9,29 @@ ownership-ambiguous normalize error on `_page_size` at file VA `0x4865`
 
 ## Baseline build
 
-This driver has **not been built**. There is no artifact under `out/i386/` for
-`drvSym53C8xx`, and `rebuilt_sha256` in `ledger.json` is `null`. This pass
-compares the reference binary and `SYM53c8.config` against the checked-in
-BusLogic-shaped stub; nothing here should be read as implying the driver has
-been compiled, linked, or run.
+`rebuilt_sha256` in `ledger.json` is still `null` for every entry: the Task 5
+reloc is a BusLogic-stub compile, not a CAM/SIM reconstruction to diff. Mapped
+functions that diverge stay `unexamined`. This pass compared the reference
+binary and `SYM53c8.config` against the checked-in BusLogic-shaped stub.
+
+## Baseline compile
+
+Guest `sh /tmp/bscsi.sh drvSym53C8xx` succeeded:
+
+```
+=== scsi-recon done fail=0 built: drvSym53C8xx reloc=SYM53c8_reloc ===
+```
+
+Staged as `/build/source/out/i386/drvSym53C8xx/SYM53c8_reloc`, 204732 bytes,
+unstripped (reference `SYM53c8_reloc` is 120756). `gnumake DSTROOT=… install`
+failed (`INSTALLDIR` unset); the script copied the reloc. Bare `gnumake` on the
+PPC guest defaults to ppc, and live `System.framework` has no `PrivateHeaders`;
+the lksproj `Makefile.preamble` sets `RC_ARCHS`/`INCLUDED_ARCHS` to i386 and `-I`
+to `/build/bootstrap-root/…/Versions/B/{PrivateHeaders,Headers}`.
+`SYM53c8Controller.m` imports `<mach/vm_param.h>` for `PAGE_SIZE`. There is no
+i386 `IOPCIDevice.h` (ppc-only in driverkit); the stub's unused pci ivar is
+`id`. `completeStatus` is defined in `SYM53c8ControllerPrivate.h`. No CAM/SIM
+rewrite.
 
 ## Summary
 
@@ -461,6 +479,6 @@ the equivalent pair in drvAdaptec1542B.
 
 ## What was not attempted
 
-This pass did not rewrite source, did not guest-compile a `_reloc`, and did not
-trace every CAM CCB field beyond the `convertReq` stores recorded above. The
-rewrite starts after this document is committed.
+This pass did not rewrite CAM/SIM source. Task 5 guest-compiled the BusLogic
+stub `_reloc` (`SYM53c8_reloc`, 204732 bytes, unstripped). The rewrite starts
+after this document is committed.

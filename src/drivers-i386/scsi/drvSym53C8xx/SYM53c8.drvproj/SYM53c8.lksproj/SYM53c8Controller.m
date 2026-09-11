@@ -23,13 +23,13 @@
 #import <mach/message.h>
 #import <mach/port.h>
 #import <mach/mach_interface.h>
+#import <mach/vm_param.h>
 #import <machkit/NXLock.h>
 #import <kernserv/ns_timer.h>
 #import <driverkit/i386/ioPorts.h>
 
 #import <driverkit/i386/directDevice.h>
 #import <driverkit/i386/IOPCIDeviceDescription.h>
-#import <driverkit/i386/IOPCIDevice.h>
 #import <driverkit/IOSCSIController.h>
 #import "SYM53c8Controller.h"
 #import "SYM53c8Types.h"
@@ -72,7 +72,7 @@ static msg_header_t SYMMessageTemplate = {
 {
 	SYM53c8Controller	*sym = [self alloc];
 	IORange			ioPort;
-	IOPCIDevice		*pciDev;
+	id			pciDev;
 
 	ddm_init("SYM53c8Controller probe\n", 1,2,3,4,5);
 	sym->ioThreadRunning = NO;

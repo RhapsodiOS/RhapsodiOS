@@ -45,6 +45,16 @@ typedef enum {
 } SYMOp;
 
 /*
+ * Reason for -commandCompleted:. Same enum the BusLogic clone uses;
+ * SYM53c8Thread.h names the type but this header never defined it.
+ */
+typedef enum {
+	CS_Complete,
+	CS_Timeout,
+	CS_Reset
+} completeStatus;
+
+/*
  * Command buffer passed between client methods and I/O thread.
  */
 typedef struct {

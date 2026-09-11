@@ -25,7 +25,7 @@
 	 * Hardware info.
 	 */
 	struct sym_config 	config;		/* config info from device */
-	IOPCIDevice		*pciDevice;	/* PCI device */
+	id			pciDevice;	/* [deviceDescription directDevice] */
 	IOEISAPortAddress 	ioBase;		/* base IO port addr */
 	unsigned char 		symChipId;
 	unsigned char 		symChipRev;

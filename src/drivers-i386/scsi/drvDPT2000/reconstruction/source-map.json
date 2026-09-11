@@ -1,0 +1,401 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [],
+  "reference_sha256": "5AE7A361F645EC693444A8AFC829DB477F34DE2576AFC0EB2A0D4128D3BD68A6",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 0,
+      "reference_names": [
+        "_eata_busy"
+      ],
+      "size": 36
+    },
+    {
+      "address": 36,
+      "reference_names": [
+        "+[EATAController probe:]"
+      ],
+      "size": 670
+    },
+    {
+      "address": 708,
+      "reference_names": [
+        "-[EATAController initFromDeviceDescription:]"
+      ],
+      "size": 775
+    },
+    {
+      "address": 1484,
+      "reference_names": [
+        "-[EATAController free]"
+      ],
+      "size": 112
+    },
+    {
+      "address": 1596,
+      "reference_names": [
+        "-[EATAController interruptOccurred]"
+      ],
+      "size": 138
+    },
+    {
+      "address": 1736,
+      "reference_names": [
+        "-[EATAController interruptOccurredAt:]"
+      ],
+      "size": 41
+    },
+    {
+      "address": 1780,
+      "reference_names": [
+        "-[EATAController otherOccurred:]"
+      ],
+      "size": 41
+    },
+    {
+      "address": 1824,
+      "reference_names": [
+        "-[EATAController receiveMsg]"
+      ],
+      "size": 69
+    },
+    {
+      "address": 1896,
+      "reference_names": [
+        "-[EATAController timeoutOccurred]"
+      ],
+      "size": 190
+    },
+    {
+      "address": 2088,
+      "reference_names": [
+        "-[EATAController commandRequestOccurred]"
+      ],
+      "size": 297
+    },
+    {
+      "address": 2388,
+      "reference_names": [
+        "-[EATAController numQueueSamples]"
+      ],
+      "size": 16
+    },
+    {
+      "address": 2404,
+      "reference_names": [
+        "-[EATAController sumQueueLengths]"
+      ],
+      "size": 16
+    },
+    {
+      "address": 2420,
+      "reference_names": [
+        "-[EATAController maxQueueLength]"
+      ],
+      "size": 16
+    },
+    {
+      "address": 2436,
+      "reference_names": [
+        "-[EATAController resetStats]"
+      ],
+      "size": 40
+    },
+    {
+      "address": 2476,
+      "reference_names": [
+        "-[EATAController acquireSCSIBus:owner:]"
+      ],
+      "size": 54
+    },
+    {
+      "address": 2532,
+      "reference_names": [
+        "-[EATAController releaseSCSIBus:owner:]"
+      ],
+      "size": 75
+    },
+    {
+      "address": 2608,
+      "reference_names": [
+        "-[EATAController maxTransfer]"
+      ],
+      "size": 15
+    },
+    {
+      "address": 2624,
+      "reference_names": [
+        "-[EATAController scsiBusId:]"
+      ],
+      "size": 21
+    },
+    {
+      "address": 2648,
+      "reference_names": [
+        "-[EATAController numberOfTargets]"
+      ],
+      "size": 20
+    },
+    {
+      "address": 2668,
+      "reference_names": [
+        "-[EATAController executeCmdBuf:]"
+      ],
+      "size": 303
+    },
+    {
+      "address": 2972,
+      "reference_names": [
+        "-[EATAController probeAtPortBase:]"
+      ],
+      "size": 80
+    },
+    {
+      "address": 3052,
+      "reference_names": [
+        "-[EATAController readConfig]"
+      ],
+      "size": 369
+    },
+    {
+      "address": 3424,
+      "reference_names": [
+        "-[EATAController readDMAConfig]"
+      ],
+      "size": 313
+    },
+    {
+      "address": 3740,
+      "reference_names": [
+        "_parseConfigSpace"
+      ],
+      "size": 442
+    },
+    {
+      "address": 4184,
+      "reference_names": [
+        "_eata_busy_0"
+      ],
+      "size": 36
+    },
+    {
+      "address": 4220,
+      "reference_names": [
+        "-[EATAController threadExecuteRequest:]"
+      ],
+      "size": 464
+    },
+    {
+      "address": 4684,
+      "reference_names": [
+        "-[EATAController commandCompleted:reason:]"
+      ],
+      "size": 604
+    },
+    {
+      "address": 5288,
+      "reference_names": [
+        "-[EATAController clearResetInts]"
+      ],
+      "size": 52
+    },
+    {
+      "address": 5340,
+      "reference_names": [
+        "-[EATAController threadResetBus:initConfig:]"
+      ],
+      "size": 346
+    },
+    {
+      "address": 5688,
+      "reference_names": [
+        "-[EATAController allocCcb:]"
+      ],
+      "size": 250
+    },
+    {
+      "address": 5940,
+      "reference_names": [
+        "-[EATAController freeCcb:]"
+      ],
+      "size": 90
+    },
+    {
+      "address": 6032,
+      "reference_names": [
+        "-[EATAController completeDMA:]"
+      ],
+      "size": 57
+    },
+    {
+      "address": 6092,
+      "reference_names": [
+        "-[EATAController abortDMA:]"
+      ],
+      "size": 57
+    },
+    {
+      "address": 6152,
+      "reference_names": [
+        "-[EATAController ccbFromCmd:]"
+      ],
+      "size": 1254
+    },
+    {
+      "address": 7408,
+      "reference_names": [
+        "_eataTimeout"
+      ],
+      "size": 68
+    },
+    {
+      "address": 7476,
+      "reference_names": [
+        "+[EATASCSIBus probe:]"
+      ],
+      "size": 142
+    },
+    {
+      "address": 7620,
+      "reference_names": [
+        "+[EATASCSIBus deviceStyle]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 7632,
+      "reference_names": [
+        "+[EATASCSIBus requiredProtocols]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 7644,
+      "reference_names": [
+        "-[EATASCSIBus maxTransfer]"
+      ],
+      "size": 29
+    },
+    {
+      "address": 7676,
+      "reference_names": [
+        "-[EATASCSIBus numberOfTargets]"
+      ],
+      "size": 29
+    },
+    {
+      "address": 7708,
+      "reference_names": [
+        "-[EATASCSIBus free]"
+      ],
+      "size": 41
+    },
+    {
+      "address": 7752,
+      "reference_names": [
+        "-[EATASCSIBus resetStats]"
+      ],
+      "size": 38
+    },
+    {
+      "address": 7792,
+      "reference_names": [
+        "-[EATASCSIBus numQueueSamples]"
+      ],
+      "size": 29
+    },
+    {
+      "address": 7824,
+      "reference_names": [
+        "-[EATASCSIBus sumQueueLengths]"
+      ],
+      "size": 29
+    },
+    {
+      "address": 7856,
+      "reference_names": [
+        "-[EATASCSIBus maxQueueLength]"
+      ],
+      "size": 29
+    },
+    {
+      "address": 7888,
+      "reference_names": [
+        "-[EATASCSIBus executeRequest:buffer:client:]"
+      ],
+      "size": 152
+    },
+    {
+      "address": 8040,
+      "reference_names": [
+        "-[EATASCSIBus resetSCSIBus]"
+      ],
+      "size": 55
+    },
+    {
+      "address": 8096,
+      "reference_names": [
+        "-[EATASCSIBus getPowerState:]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 8108,
+      "reference_names": [
+        "-[EATASCSIBus setPowerState:]"
+      ],
+      "size": 42
+    },
+    {
+      "address": 8152,
+      "reference_names": [
+        "-[EATASCSIBus getPowerManagement:]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 8164,
+      "reference_names": [
+        "-[EATASCSIBus setPowerManagement:]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 8176,
+      "reference_names": [
+        "-[EATASCSIBus initSCSIBus:channel:]"
+      ],
+      "size": 296
+    },
+    {
+      "address": 8472,
+      "reference_names": [
+        "-[EATASCSIBus flushCacheForTarget:lun:]"
+      ],
+      "size": 147
+    },
+    {
+      "address": 8620,
+      "reference_names": [
+        "-[EATASCSIBus flushAllCache]"
+      ],
+      "size": 187
+    },
+    {
+      "address": 8808,
+      "reference_names": [
+        "+[DPTSCSIDriverKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 8820,
+      "reference_names": [
+        "+[DPTSCSIDriverVersion driverKitVersionForDPTSCSIDriver]"
+      ],
+      "size": 12
+    }
+  ]
+}

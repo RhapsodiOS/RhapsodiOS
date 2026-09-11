@@ -9,6 +9,7 @@
  */
 
 #import "DPTSCSIDriver.h"
+#import <mach/vm_param.h>
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
 #import <driverkit/interruptMsg.h>
@@ -26,6 +27,7 @@
 {
 	unsigned int ioBase;
 	unsigned char status;
+	unsigned char sig[4];
 	int i;
 
 	/* Get I/O base from device description */
@@ -71,7 +73,6 @@
 	}
 
 	/* Read first 4 bytes to check signature */
-	unsigned char sig[4];
 	sig[0] = inb(ioBase + EATA_DATA);
 	sig[1] = inb(ioBase + EATA_DATA);
 	sig[2] = inb(ioBase + EATA_DATA);

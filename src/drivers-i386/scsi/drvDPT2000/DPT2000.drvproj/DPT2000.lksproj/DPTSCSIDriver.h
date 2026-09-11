@@ -14,9 +14,7 @@
 #import <driverkit/return.h>
 #import <driverkit/scsiTypes.h>
 #import <driverkit/IOSCSIController.h>
-#import <driverkit/i386/IOEISADeviceDescription.h>
-#import <driverkit/i386/IODirectDevice.h>
-#import "DPTSCSIDriverPrivate.h"
+#import <driverkit/machine/directDevice.h>
 #import "DPTSCSIDriverTypes.h"
 
 
@@ -103,5 +101,7 @@
 - (sc_status_t)resetSCSIBus;
 
 @end
+
+#import "DPTSCSIDriverPrivate.h"
 
 

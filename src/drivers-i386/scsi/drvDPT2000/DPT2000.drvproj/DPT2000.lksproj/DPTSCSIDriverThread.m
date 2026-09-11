@@ -15,7 +15,7 @@
 #import <machkit/NXLock.h>
 #import <kernserv/prototypes.h>
 
-@implementation DPTSCSIDriver(Private)
+@implementation DPTSCSIDriver(IOThread)
 
 /*
  * Thread execution of request.
@@ -59,9 +59,6 @@
 
 	/* Set up scatter/gather if needed */
 	if (scsiReq->maxTransfer > 0) {
-		IOMemoryDescriptor *memDesc;
-		IOReturn result;
-
 		/* For now, use physical addressing */
 		flags1 |= CP_PHYSICAL | CP_SCATTER;
 

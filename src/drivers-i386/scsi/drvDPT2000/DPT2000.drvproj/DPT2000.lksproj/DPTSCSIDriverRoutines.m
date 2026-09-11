@@ -22,6 +22,7 @@
 {
 	unsigned char status;
 	struct eata_config eataConfig;
+	unsigned char *configPtr;
 	int i;
 
 	/* Read configuration */
@@ -42,7 +43,7 @@
 	}
 
 	/* Read configuration data */
-	unsigned char *configPtr = (unsigned char *)&eataConfig;
+	configPtr = (unsigned char *)&eataConfig;
 	for (i = 0; i < sizeof(struct eata_config); i++) {
 		configPtr[i] = inb(ioBase + EATA_DATA);
 	}

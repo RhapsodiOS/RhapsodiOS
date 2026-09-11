@@ -11,11 +11,20 @@
 #ifndef _DPTSCSIDRIVERTYPES_H
 #define _DPTSCSIDRIVERTYPES_H
 
-#import <driverkit/i386/driverTypes.h>
+#import <driverkit/driverTypes.h>
 #import <kernserv/ns_timer.h>
 #import <kernserv/queue.h>
 #import <mach/boolean.h>
 #import <bsd/dev/scsireg.h>
+
+#if defined(i386) || defined(__i386__)
+#import <driverkit/i386/ioPorts.h>
+#else
+/* PPC rbuild has no i386 PIO headers; stub so the Linux-shaped tree compiles. */
+#define inb(port)		((unsigned char)0)
+#define outb(port, val)		((void)0)
+#define outl(port, val)		((void)0)
+#endif
 
 /*
  * EATA register offsets (from base I/O port)
@@ -67,6 +76,12 @@
  */
 #define EATA_AUX_BUSY		0x01
 #define EATA_AUX_IRQ_PENDING	0x02
+
+/* Names used by the stub bodies; headers above spell them EATA_*. */
+#define AUX_IRQ			EATA_AUX_IRQ_PENDING
+#define STAT_IRQ		EATA_STAT_IRQ
+#define EATA_CP_ADDR		REG_LOW
+#define SR_IOST_CMDTO		SR_IOST_IOTO
 
 /*
  * EATA Signature (Big Endian "EATA")

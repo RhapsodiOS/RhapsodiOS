@@ -222,6 +222,19 @@ merely wake the IOThread.
 
 No `msg_send_from_kernel` in this function.
 
+### Register and command immediates (Task 7)
+
+IRQ still only `in`s `ioBase+7`. Other paths do use more ports; offsets are IDA `add dx/cx, N` immediates:
+
+| Off | Use |
+| --- | --- |
+| +0 | PIO config data (`in ax, dx` in `readConfig`, `dx = ioBase`) |
+| +2..+5 | Physical address bytes (`readDMAConfig`, `threadExecuteRequest:`) |
+| +7 | Command out / status in (`0xF0` PIO config, `0xFD` DMA config, `0xFF` send CP, `0xF9` reset) |
+| +8 | Aux busy (`_eata_busy` / `_eata_busy_0`, `test al, 1`) |
+
+`readConfig` waits on status bit `0x08` (`test al, 8`). CP byte 1 is immediate `0x1A` (`mov byte ptr [esi+9], 1Ah`). Signature compare is `45415441h` after bswap of config+4. Do not keep unused Linux commands (`0xC6`, `0xF2`, `0xFA`) or `SP_EOC 0x01`.
+
 The IOThread is the **submit** path, not the completion path:
 
 - `-[EATAController executeCmdBuf:]` enqueues on `commandQ` and calls

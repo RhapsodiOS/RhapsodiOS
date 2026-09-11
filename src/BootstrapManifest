@@ -1,8 +1,6 @@
 #       Project[-Version]       Target
 #------ ----------------------- -------
 # Build frameworks and target headers before their first consumers.
-# pb_makefiles tools (dotdotify) need architecture and libc headers, but
-# objc4 header generation needs those tools.
 dir     CoreOSMakefiles-1       all
 dir     pb_makefiles-1          headers
 dir     project_makefiles-1     headers
@@ -58,7 +56,6 @@ dir     Libm-1                  all
 dir     Libsystem-2             all
 
 # Files and commands in the build-base package closure.
-# adv-cmds is a chroot Build-Depends of driverkit, files, cctools, and kernel.
 dir     Commands/adv_cmds       all
 dir     files-5                 all
 dir     Commands/basic_cmds     all

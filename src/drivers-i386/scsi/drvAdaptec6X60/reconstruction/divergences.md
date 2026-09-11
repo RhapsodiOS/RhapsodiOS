@@ -8,15 +8,27 @@ the authoritative partition and Ghidra as a second opinion on bodies)
 
 ## Baseline build
 
-This driver has **not been built**. There is no artifact under `out/i386/` for
-`drvAdaptec6X60`, and `src/drivers-i386/README` still lists it as a stub on the wrong
-architecture. This pass compares the reference binary's disassembly and ObjC metadata
-directly against the checked-in source; there is no rebuilt binary to diff against, so
-`rebuilt_sha256` in `ledger.json` is `null` for every entry. Nothing here should be read as
-implying the driver has been compiled, linked, or run.
+The report pass compared the reference binary's disassembly and ObjC metadata directly
+against the checked-in source. `rebuilt_sha256` in `ledger.json` is still `null` for every
+entry: the Task 5 reloc is a mailbox-stub compile, not a HIM reconstruction to diff.
+Mapped functions that diverge stay `unexamined`. `src/drivers-i386/README` still lists this
+driver as a stub on the wrong architecture.
 
-Mapped functions that diverge stay `unexamined` in the ledger. The ledger records parity
-confidence, not a repair queue. This is a report pass: no source rewrite.
+## Baseline compile
+
+Guest `sh /tmp/bscsi.sh drvAdaptec6X60` succeeded:
+
+```
+=== scsi-recon done fail=0 built: drvAdaptec6X60 reloc=Adaptec6X60_reloc ===
+```
+
+Staged as `/build/source/out/i386/drvAdaptec6X60/Adaptec6X60_reloc`, 230628 bytes, unstripped
+(reference `AIC6X60SCSI_reloc` is 61892). `gnumake DSTROOT=… install` failed
+(`INSTALLDIR` unset); the script copied the reloc. Bare `gnumake` on the PPC guest
+defaults to ppc, and live `System.framework` has no `PrivateHeaders`; the lksproj
+`Makefile.preamble` sets `RC_ARCHS`/`INCLUDED_ARCHS` to i386 and `-I` to
+`/build/bootstrap-root/…/Versions/B/{PrivateHeaders,Headers}`. `AIC6X60Controller.m` and
+`AIC6X60Thread.m` import `<mach/vm_param.h>` for `PAGE_SIZE`. No HIM rewrite.
 
 ## Summary
 

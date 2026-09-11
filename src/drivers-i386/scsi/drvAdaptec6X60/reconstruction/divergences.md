@@ -466,6 +466,6 @@ HIM callbacks (`_HIM6X60CompleteSCB`, `_HIM6X60Event`, `_HIM6X60MapDMA`, …).
 
 ## What was not attempted
 
-No source rewrite, no guest compile, no `binrecon compare` of a rebuilt `_reloc`. Mapped
+No HIM source rewrite, no `binrecon compare` of a rebuilt `_reloc`. Mapped
 mailbox bodies were not promoted past `unexamined`. HACB `(?)` union widths that IDA did
 not pin are left unset rather than copied from the mailbox headers.

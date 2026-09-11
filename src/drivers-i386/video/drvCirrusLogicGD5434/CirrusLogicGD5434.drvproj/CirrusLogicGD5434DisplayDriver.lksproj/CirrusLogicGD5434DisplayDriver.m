@@ -1074,8 +1074,8 @@ IODisplayInfo GD5446_modeTable[28] = {
     IOLog("%s: %s detected (%d Bytes)\n", [self name], chipName,
 	  installedVRAMBytes);
 
-    if (strncmp([[[self deviceDescription] configTable]
-		 valueForStringKey:"Bus Type"], "PCI", 4) == 0)
+    if (strcmp([[[self deviceDescription] configTable]
+		valueForStringKey:"Bus Type"], "PCI") == 0)
 	busType = 1;
     else
 	busType = 0;

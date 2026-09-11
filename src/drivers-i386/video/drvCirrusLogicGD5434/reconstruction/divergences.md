@@ -1568,26 +1568,33 @@ is `local` on both sides, so the `static` on it in `ProgramDAC.m` is correct, an
 Going past what `parity_check.py` can see, all 21 `__TEXT,__text` functions were
 disassembled and compared against the reference individually. **17 of 21 are
 byte-for-byte identical** once 32-bit relocation operands are masked — necessarily
-masked, because of the `__TEXT,__const` inversion above. `__TEXT,__text` is 4348
-bytes against the reference's 4388, and the whole 40-byte difference is accounted
-for by four functions:
+masked, because of the `__TEXT,__const` inversion above. After replacing the
+`"Bus Type"` `strncmp` with `strcmp` (see Task 1 result below), `__TEXT,__text`
+is 4404 bytes against the reference's 4388, and the remaining 16-byte difference
+is accounted for by three functions (`setMode:` 12 bytes smaller, `setPCIConfiguration`
+28 bytes larger). `determineConfiguration` is now the same size as the reference
+but still not byte-identical:
 
 | Function | Ref | Rebuilt | Nature of the difference |
 | --- | --- | --- | --- |
 | `setMode:` | 1020 | 1008 | Identical branch structure and an identical port-I/O sequence of 67 `in`/`out` instructions. gcc strength-reduced the register loops to a walking pointer in the reference where our build uses indexed addressing. |
 | `setPendingDisplayMode:` | 140 | 140 | Same size, same branches, same call target. The `memorySize` test is `cmp memorySize, installedVRAM / ja` in the reference and the operand-reversed `cmp installedVRAM, memorySize / jb` here — the same predicate — and one fewer callee-saved register is spilled. |
 | `setPCIConfiguration` | 584 | 612 | The same 19 calls — 15 `_objc_msgSend` and 4 `_IOLog` — but reordered by block placement, not in the same order. The "Incorrect number of address ranges" error block is out of line at the end in the reference and inline here, which moves the `_IOLog` calls from reference positions 4, 11, 14, 16 to 4, 10, 13, 16 and pushes two `_objc_msgSend` calls one slot later (reference 10 and 13 against 11 and 14 here); the reference has 11 branch instructions to our 12. Also `IORange range[3]` is at `ebp-0x18` in the reference against `ebp-0x118` here, i.e. the two locals are assigned to the frame in the opposite order. |
-| `determineConfiguration` | 768 | 712 | The one genuine divergence. See below. |
+| `determineConfiguration` | 768 | 768 | Same size after `strcmp`. Remaining DIFF is the two `chipType` `ja`/`jg` tests plus block placement. Not assembly-matched. |
 
-**`determineConfiguration` is the only function whose control flow does not
-match.** Two things differ. First, the reference expands the `"Bus Type"`
-`strncmp` inline as a `repe cmpsb` sequence while our build emits `call
-_strncmp`, so the ordered call-target lists differ by one entry — 7 calls in the
-reference against 8 here. Second, the two `chipType` range tests are signed here
+**`determineConfiguration` still does not match byte for byte.** Before the
+`strcmp` edit, two things differed. First, the reference expands the `"Bus Type"`
+test inline as a `repe cmpsb` sequence while our build emitted `call
+_strncmp`, so the ordered call-target lists differed by one entry — 7 calls in the
+reference against 8 here. That call is gone: the source now uses `strcmp`, the
+rebuilt extent has no `_strncmp` relocation, and the seven pc-relative call
+targets are `_objc_msgSend`, `_IOLog`, `_objc_msgSend`, `_IOLog`, then three
+`_objc_msgSend`. Second, the two `chipType` range tests are signed here
 and unsigned in the reference: `cmp ecx, 1 / ja` and `cmp ecx, 4 / ja` at 1147
 and 1184 in the reference against `cmp dword [esi+0x258], 1 / jg` and
 `cmp dword [esi+0x258], 4 / jg` at 1135 and 1176 here. That is the whole of the
-signedness divergence, and it is confined to those two branches.
+signedness divergence, and it is confined to those two branches. The extent
+gap that remains is those `ja`/`jg` tests plus block placement.
 
 The two other comparisons in this function that might look related are not
 divergences of that kind. The `cmp dword [reg+0x228], 0x1fffff` guard is `ja` on
@@ -1691,6 +1698,17 @@ the block placement and the two `ja`/`jg` tests already recorded above, and
 closing it is a separate question. Confidence: **high** — the diagnosis rests on
 a corpus-wide numeric regularity, not on a single reading.
 
+**Task 1 result.** `strcmp` is in source at the `"Bus Type"` test
+(`CirrusLogicGD5434DisplayDriver.m:1077`). The rebuilt `determineConfiguration`
+extent no longer relocates `_strncmp`; the pc-relative call list is seven
+entries and matches the reference's mix of `_objc_msgSend` and `_IOLog`. The
+function is still `DIFF` under masked compare (768 vs 768): the remaining gap
+is the `ja`/`jg` `chipType` tests plus block placement. It is **not**
+assembly-matched. `failed_matched` stayed 0; the other three campaign functions
+are unchanged `DIFF`. The 56-byte size gap closed even though the 21-byte
+call-vs-inline estimate predicted it would not; the leftover mismatch is still
+not a missing `_strncmp`.
+
 Note also `test al, 0` at +476. It is a two-byte no-op emitted by the
 `cmpstrqi_1` pattern between `cld` and the string op; it carries no meaning for
 the source and should not be read as part of the comparison.
@@ -1757,8 +1775,9 @@ where whole-body byte equality was actually demonstrated. `setMode:`,
 `setPendingDisplayMode:` and `setPCIConfiguration` are held at
 `control-flow-confirmed` because their block shape and call targets were compared
 and agree, but their instruction streams do not match byte for byte.
-`determineConfiguration` is held at `signature-confirmed` because its call-target
-list does not match, so control flow was checked and *not* confirmed. The two
+`determineConfiguration` is still not `assembly-matched`: after `strcmp` the
+call-target list matches (no `_strncmp`), but the instruction stream remains
+`DIFF` on the `ja`/`jg` tests plus block placement. The two
 `unexamined` entries are the build-generated glue at 4364 and 4376, which
 `source-map.json` lists as unmapped: they have no reconstructed source to review,
 and are left untouched even though both are byte-identical to the reference.

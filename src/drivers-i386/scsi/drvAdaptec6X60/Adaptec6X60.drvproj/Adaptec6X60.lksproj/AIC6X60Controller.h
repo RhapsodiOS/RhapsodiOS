@@ -23,60 +23,21 @@
 @interface AIC6X60 : IOSCSIController
 {
 	/*
-	 * Hardware info.
+	 * Layout from __OBJC,__instance_vars. instance_size 4220 / 0x107c.
+	 * First driver ivar at 0x244.
 	 */
-	struct aic_config 	config;		/* config info from device */
-	IOEISAPortAddress 	ioBase;		/* base IO port addr */
-	unsigned char 		aicBoardId;
-	BOOL			ioThreadRunning;
-
-	/*
-	 * mailbox and CCB areas. Dynamically allocated from low
-	 * 16 MB of memory.
-	 */
-	struct aic_mb_area	*aicMbArea;
-	struct ccb		*aicCcb;
-	int			numFreeCcbs;	/* number of free CCBs */
-
-	/*
-	 * Three queues:
-	 *
-	 * commandQ:	 contains AIC6X60CommandBuf's to be executed by the
-	 *		 I/O thread. Enqueued by exported methods (via
-	 *		 -executeCmdBuf); dequeued by the I/O thread in
-	 *		 -commandRequestOccurred.
-	 *
-	 * outstandingQ: contains ccb's on which the controller is
-	 * 		 currently operating. The number of ccb's in
-	 *		 outstandingQ is outstandingCount. Ccb's are
-	 *		 enqueued here by -runPendingCommands.
-	 *
-	 * pendingQ:	 contains ccb's which the I/O thread is holding
-	 *		 on to because outstandingCount == AIC_QUEUE_SIZE.
-	 *		 Ccb's are enqueued here by -threadExecuteRequest:.
-	 *
-	 */
-	queue_head_t	commandQ;		/* list of waiting
-						 * AIC6X60CommandBuf's */
-	id		commandLock;		/* NXLock; protects commandQ */
-	queue_head_t	outstandingQ;		/* list of running cmds */
-	unsigned int	outstandingCount;	/* length of outstandingQ */
-	queue_head_t	pendingQ;
-
-	/*
-	 * Local reference count for reserveDMALock.
-	 */
-	unsigned	dmaLockCount;
-
-	/*
-	 * Statistics counters.
-	 */
-	unsigned int	maxQueueLen;
-	unsigned int	queueLenTotal;
-	unsigned int	totalCommands;
-
-	port_t		interruptPortKern;	/* kernel version of
-						 * interruptPort */
+	struct _HACB		hacb;			/* 0x244, sizeof 0x390 */
+	unsigned char		scsiBus;		/* 0x5d4 */
+	IOEISAPortAddress	ioBase;			/* 0x5d6 */
+	unsigned int		totalCommands;		/* 0x5d8 */
+	port_t			interruptPortKern;	/* 0x5dc */
+	BOOL			ioThreadRunning;	/* 0x5e0 */
+	struct _SCB		him_scb[32];		/* 0x5e4 */
+	int			nextScb;		/* 0x1064 */
+	queue_head_t		pendingQ;		/* 0x1068 */
+	int			numFreeScbs;		/* 0x1070 */
+	BOOL			dmaEnabled;		/* 0x1074 */
+	void			*currentDMABuffer;	/* 0x1078 */
 }
 
 /*
@@ -102,5 +63,3 @@
 - (sc_status_t)resetSCSIBus;
 
 @end
-
-

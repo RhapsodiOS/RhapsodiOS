@@ -28,7 +28,7 @@ typedef enum {
 
 /*
  * Command struct passed from exported methods (executeRequest and
- * resetSCSIBus) to the I/O thread. This struct is passed via commandQ.
+ * resetSCSIBus) to the I/O thread.
  */
 typedef struct {
 	AIC6X60Op	op;		// AO_Execute, etc.
@@ -42,7 +42,7 @@ typedef struct {
 
 	sc_status_t	result;		// status upon completion
 	NXConditionLock	*cmdLock;	// client waits on this
-	queue_chain_t	link;		// for enqueueing on commandQ
+	queue_chain_t	link;
 } AIC6X60CommandBuf;
 
 /*
@@ -74,37 +74,9 @@ typedef struct {
 
 
 /*
- * Public low-level routines in AIC6X60Routines.m.
- */
-extern void aic_reset_board(unsigned short base,
-	unsigned char 	aic_board_id);
-boolean_t aic_setup_mb_area(unsigned short base,
-	struct aic_mb_area *aic_mb_area,
-	struct ccb 	*aic_ccb);
-extern void aic_start_scsi(unsigned short base);
-extern void aic_unlock_mb(unsigned short base);
-extern boolean_t aic_cmd(unsigned short	base,
-	unsigned char	cmd,
-	unsigned char	*args,
-	int		arglen,
-	unsigned char	*reply,
-	int		replylen,
-	boolean_t	polled
-);
-extern boolean_t aic_probe_cmd(
-	unsigned short	base,
-	unsigned char	cmd,
-	unsigned char	*args,
-	int		arglen,
-	unsigned char	*reply,
-	int		replylen,
-	boolean_t	polled
-);
-
-/*
- * Block transfer primitives in AIC6X60Routines.m.  Each moves "count"
- * items of the named width to or from the single port "port"; the
- * count is an item count, not a byte count.
+ * Block transfer primitives. Each moves "count" items of the named
+ * width to or from the single port "port"; the count is an item
+ * count, not a byte count. Definition sites move to the sequencer.
  */
 extern int repinsb(IOEISAPortAddress port, unsigned char *addr, int count);
 extern int repinsw(IOEISAPortAddress port, unsigned short *addr, int count);
@@ -112,4 +84,3 @@ extern int repinsd(IOEISAPortAddress port, unsigned long *addr, int count);
 extern int repoutsb(IOEISAPortAddress port, unsigned char *addr, int count);
 extern int repoutsw(IOEISAPortAddress port, unsigned short *addr, int count);
 extern int repoutsd(IOEISAPortAddress port, unsigned long *addr, int count);
-

@@ -2971,3 +2971,59 @@ installed on the guest. Checking whether it exists there settles it.
 stay so until a real rebuilt binary is compared against the reference.
 `rebuilt_sha256` is still the placeholder described above and has to be
 regenerated from a genuine build at the same time.
+
+## Phase 1 baseline (this rebuild)
+
+Guest `10.10.0.241` is Rhapsody PPC. Standalone `rbuild buildpackage` defaults
+to `RC_ARCHS=ppc`. This rebuild used `rbuild buildpackage --arch i386` against
+the DriverKit chroot (not live `System.framework`). The chroot's compiler apk
+only ships ppc `cc1obj`; host `/usr/libexec/i386` (`cc1obj`, `cpp-precomp`,
+`specs`) had to be copied into the leftover chroot before `cc -arch i386` could
+compile Objective-C. `kl_ld` then produced the `_reloc`. `make install`
+afterward failed on an unrelated `English.lproj/DriverHelp` rename; that does
+not affect the reloc.
+
+The rbuild chroot **does** install `kernelserver.make.preamble`, so this link
+includes `IBMThinkPad760EDDisplayDriver_vers.o` after `_instance.o`. The
+July live-system rebuild did not.
+
+- Unstripped `_reloc`: 164612 bytes, `Mach-O preload executable i386`
+- SHA-256: `FBD8CF5DFAB62CEBEFB646E0F7EE617FC72D052330D68E78CE8771CB2ABAFE99`
+  (must not equal the reference `47539E03…`)
+- `__text` size 6516 (reference 18204 includes `vidBIOS`/`_emu486`; in-scope
+  reference span is 6552)
+- `parity_check.py`: 8 missing strings and `_emu486` (expected until Phase 2);
+  extra `__text` names are `-g` stabs
+- `1cb44e28` compiled. Extent closures vs the last measured rebuild (`fd0e7355`):
+  `name` 56→60, `updateModeTable` 116→128, `determineConfiguration:` 404→396.
+  `setPendingDisplayMode:` 484→528 (still −16 vs ref 544).
+
+Campaign extents (next-symbol size, stabs ignored):
+
+| Function | ref | rebuilt | Δ |
+| --- | --- | --- | --- |
+| `initFromDeviceDescription:` | 780 | 788 | +8 |
+| `updateModeTable` | 128 | 128 | 0 |
+| `revertToVGAMode` | 216 | 212 | −4 |
+| `getModeInfo:` | 168 | 164 | −4 |
+| `determineConfiguration:` | 396 | 396 | 0 |
+| `setPCIConfiguration` | 676 | 664 | −12 |
+| `setPendingDisplayMode:` | 544 | 528 | −16 |
+| `setDisplayDeviceState:` | 80 | 76 | −4 |
+| `unlockRegisters` | 168 | 152 | −16 |
+| `lockRegisters` | 168 | 152 | −16 |
+| `reportSystemConfiguration` | 1088 | 1116 | +28 |
+| `name` | 60 | 60 | 0 |
+
+`unlockRegisters` / `lockRegisters` are still 152 vs 168 (Task 2).
+`initFromDeviceDescription:` remains +8 (accepted gcc `IOLog` tail merge).
+
+Same-size `compare_thinkpad.py` DIFF remains on several previously extent-matched
+functions (`_set555Mode`, `selectMode`, `enterLinearMode`, TransferTable
+methods, glue). Four matched byte-for-byte:
+`isValidPCIAssignedBaseAddress:`, `displayMemorySize`, `ramdacSpeed`,
+`_smapi_asm`. `failed_matched_or_glue` is 15, not 0. Treat those DIFFs as
+unresolved (reloc masking vs rbuild/`-g` codegen) until Task 3; do not close
+them from this table alone. The Version glue extent is 12 here vs 1168 in the
+reference because `vers.o` now sits immediately after `_instance.o` instead of
+a gap before `vidBIOS`.

@@ -1735,29 +1735,44 @@ and not from a `switch`, and is left as it stands. Do not repeat either attempt.
 
 Two further gaps, neither of them in the driver source:
 
-- The build prints `WARNING: no CirrusLogicGD5434DisplayDriver version bundle
+- The build still prints `WARNING: no CirrusLogicGD5434DisplayDriver version bundle
   produced`. Apple's `.config` directory carries a 16728-byte
   `CirrusLogicGD5434DisplayDriver` alongside the reloc; our build produces only
-  the reloc.
-- Correspondingly, `_CirrusLogicGD5434DisplayDriver_VERS_STRING` (160 bytes) and
-  `_..._VERS_NUM` (4 bytes) are absent from the rebuilt `__TEXT,__const`, which
-  is 2392 bytes against the reference's 2562 — a 170-byte difference that is
-  exactly those two symbols plus their padding.
+  the reloc. That is Task 3 (Driver-project postamble).
+- `_CirrusLogicGD5434DisplayDriver_VERS_STRING` and `_..._VERS_NUM` are still
+  absent from the rebuilt nlist after Task 2. The 170-byte `__TEXT,__const`
+  shortfall (2392 vs the reference's 2562) is still those two symbols plus
+  padding.
 
-**The missing version symbols are an unexplained build-configuration gap, not an
-expected omission.** It is tempting to wave them away as build-generated content
-encoding a 1998 host and timestamp, but that reasoning is self-contradictory: if
-they are build-generated, *our* build should have generated its own pair with a
-2026 timestamp. It generated neither, and emitted no version bundle at all. The
-version-file step is simply not running. Two things follow. First,
-`parity_check.py` cannot detect this and its green result is narrower than it
-looks — `parity_check.py:13-14` scope it to `__TEXT,__cstring` and
-`__TEXT,__text` and the symbol comparison at `parity_check.py:33` filters on the
-text section, so `__TEXT,__const` is outside what it inspects at all. Second, the
-runtime impact is low, because neither symbol is referenced by any function in
-either binary. The gap will recur identically on the ThinkPad 760ED track, which
-uses the same project machinery, and should be diagnosed before that track
-starts rather than rediscovered there.
+**Task 2 result.** The Kernel Server `Makefile.postamble` is now exactly
+`OTHER_GENERATED_OFILES += $(VERS_OFILE)`. Guest rebuild `make exit=0`.
+`compare_cirrus.py` `failed_matched` stayed 0. The nlist is still `[]` for
+`VERS`. `$(NAME)_vers.c` was not generated; the lksproj object directory has
+`CirrusLogicGD5434DisplayDriver.o`, `ProgramDAC.o` and
+`CirrusLogicGD5434DisplayDriver_instance.o` only.
+
+`gnumake -p` on the guest shows `VERSIONING_SYSTEM = next-sgs` and
+`OTHER_GENERATED_OFILES = $(INSTANCE_OBJFILE) $(VERS_OFILE)`, but no
+`VERS_OFILE =` assignment. `/System/Developer/Makefiles/VersioningSystems`
+contains `apple-generic.make` and `next-cvs.make` only — there is no
+`next-sgs.make`, and `common.make`'s `-include` of that path is silent.
+`$(VERS_OFILE)` therefore expands empty. `VERSIONING_SYSTEM` was not set
+(Task 2 instruction). `driverTools` was not edited. Contents of the version
+symbols, once they exist, may carry a 2026 timestamp; existence is what this
+task was measuring.
+
+Guest log excerpt (Task 2 rebuild):
+
+```
+/usr/bin/kl_ld -o /build/src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434DisplayDriver.config/CirrusLogicGD5434DisplayDriver_reloc -n CirrusLogicGD5434DisplayDriver  -i CirrusLogicGD5434DisplayDriver_instance -l Load_Commands.sect   -arch i386  /build/src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.build/objects-optimized/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/CirrusLogicGD5434DisplayDriver.o /build/src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.build/objects-optimized/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/ProgramDAC.o             /build/src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.build/objects-optimized/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/CirrusLogicGD5434DisplayDriver_instance.o
+make exit=0 for CirrusLogicGD5434DisplayDriver
+WARNING: no CirrusLogicGD5434DisplayDriver version bundle produced
+staged /build/out/i386/drvCirrusLogicGD5434/CirrusLogicGD5434DisplayDriver.config
+```
+
+No `*_vers.o` on the `kl_ld` line. `parity_check.py` still cannot see this
+gap: it scopes to `__TEXT,__cstring` and `__TEXT,__text`. Runtime impact is
+low; neither symbol is referenced by any function in either binary.
 
 ### Ledger status distribution
 
@@ -1808,9 +1823,10 @@ that defines them and the `__DATA,__common` symbol
 **They must not be written by hand.** If they are absent from the rebuilt binary,
 the fault is in the project's `NAME`/`PROJECTVERSION`/`DriverKitVersion`
 declarations or in the project type, not in the driver source. `_..._VERS_STRING`
-and `_..._VERS_NUM` are likewise not hand-written source, but their absence is an
-open build-configuration defect rather than a deliberate omission — see the
-version-symbol gap recorded under "Build and parity" above. Their *contents*
+and `_..._VERS_NUM` are likewise not hand-written source. Task 2 wired
+`OTHER_GENERATED_OFILES += $(VERS_OFILE)` into the Kernel Server postamble;
+`vers.c` was still not generated because `VERS_OFILE` is unset — see the Task 2
+result under "Build and parity". Their *contents*
 would carry our own build host and timestamp, not Apple's 1998 pair, so byte
 parity on those 164 bytes is not achievable; their existence is.
 

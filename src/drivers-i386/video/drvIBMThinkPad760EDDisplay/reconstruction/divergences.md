@@ -2699,6 +2699,13 @@ reference has it. Confidence: **high** — mechanism, byte arithmetic and a
 corpus-wide occurrence split all agree, and the negative side is confirmed
 against Cirrus source we hold.
 
+**Task 2 result — still open.** Nested RMW was rebuilt with `rbuild
+buildpackage --arch i386`. Both methods stayed **152**. The nested expression
+did not force the `mov ebx, 0x3c5` materialization. Source reverted to the
+split `value = inb(...); outb(..., value | 0x80)` form. SHA-256 of that
+failed rebuild: `72A1E60B2F6221F3D7F1F9E7F58990CA6E3EE5C30AB7CBB24596BB85246423A7`
+(164588 bytes).
+
 #### `initFromDeviceDescription:`, +8 — explained, not a defect
 
 **Observation.** At +293 the reference is `E9 65 01 00 00`, `jmp 0x2c7`, and
@@ -3015,7 +3022,9 @@ Campaign extents (next-symbol size, stabs ignored):
 | `reportSystemConfiguration` | 1088 | 1116 | +28 |
 | `name` | 60 | 60 | 0 |
 
-`unlockRegisters` / `lockRegisters` are still 152 vs 168 (Task 2).
+`unlockRegisters` / `lockRegisters` are still 152 vs 168. Task 2 nested
+RMW (`outb(0x3C5, inb(0x3C5) | 0x80)` / `& 0x7F`) did not close them;
+source reverted. 152→168 still open.
 `initFromDeviceDescription:` remains +8 (accepted gcc `IOLog` tail merge).
 
 Same-size `compare_thinkpad.py` DIFF remains on several previously extent-matched

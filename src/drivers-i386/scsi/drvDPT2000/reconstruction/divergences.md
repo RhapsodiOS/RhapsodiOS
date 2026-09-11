@@ -8,11 +8,32 @@ partition of record and Ghidra is a second opinion on bodies). Ledger
 
 ## Baseline build
 
-This driver has **not been built**. There is no artifact under `out/i386/` for
-`drvDPT2000`, and `rebuilt_sha256` in `ledger.json` is `null`. This pass compares
-the reference binary and its config bundle against the checked-in Linux-shaped
-stub; nothing here should be read as implying the driver has been compiled,
-linked, or run.
+Built on guest **10.10.0.241** with rbuild (not `vm/build-i386-scsi.sh`, not a
+hand `gnumake` of the `.lksproj`):
+
+```
+rbuild buildpackage --state /build/state --dir /build/src/drivers-i386/scsi/drvDPT2000 /build/repo /build/built
+```
+
+The first rbuild failed: missing `driverkit/i386/IODirectDevice.h` on the ppc
+sysroot, undefined `AUX_IRQ` / `STAT_IRQ` / `EATA_CP_ADDR` / `SR_IOST_CMDTO`,
+C89 mixed declarations, undeclared `PAGE_SIZE`, duplicate
+`DPTSCSIDriver(Private)` category at `kl_ld`, and `movehelp` with no
+`DriverHelp`. A minimum compile-fix is
+`244260ced257b94d63be5272c180d688c913ff15` (`drivers-i386: build drvDPT2000`).
+Linux residue and the `DPTSCSIDriver` class were left in place;
+`EATAController` / `EATASCSIBus` were not implemented.
+
+After that fix, rbuild exited 0. The guest toolchain is `gcc-darwin.conf`
+(`RC_ARCHS=ppc`, `cc -arch ppc`). Guest package / reloc (not committed, not
+compared with binrecon):
+
+- apk: `/build/built/drvdpt2000-17.apk` (7934 bytes)
+- reloc: `private/Drivers/ppc/DPT2000.config/DPT2000_reloc` (26120 bytes inside
+  the apk)
+
+`rebuilt_sha256` in `ledger.json` is still `null`. There is still no artifact
+under `out/i386/`.
 
 ## Summary
 

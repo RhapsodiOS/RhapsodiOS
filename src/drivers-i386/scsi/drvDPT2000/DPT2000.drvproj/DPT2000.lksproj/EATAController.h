@@ -77,6 +77,7 @@
 - (unsigned)maxTransfer;
 - (unsigned)scsiBusId:(unsigned)channel;
 - (unsigned)numberOfTargets;
+- (IOReturn)executeCmdBuf:(struct EATACommandBuf *)cmdBuf;
 
 @end
 

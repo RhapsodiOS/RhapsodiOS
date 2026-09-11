@@ -78,7 +78,7 @@ typedef enum {
  * Stack / heap object passed to executeCmdBuf:. Offsets from
  * -[EATASCSIBus executeRequest:buffer:client:] and executeCmdBuf:.
  */
-typedef struct {
+typedef struct EATACommandBuf {
 	unsigned int		scsiChannel;	/* +0x00 */
 	EATAOp			op;		/* +0x04 */
 	IOSCSIRequest		*scsiReq;	/* +0x08 */

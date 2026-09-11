@@ -1733,8 +1733,7 @@ byte-identical to the pre-experiment build across all 21 functions. The `ja`
 against `jg` divergence is therefore not reachable from the ivar's declared type
 and not from a `switch`, and is left as it stands. Do not repeat either attempt.
 
-Two further gaps, neither of them in the driver source (Task 3 later closed
-bundle *existence*; see the Task 3 result below):
+Two further gaps, neither of them in the driver source:
 
 - The build still printed `WARNING: no CirrusLogicGD5434DisplayDriver version bundle
   produced` through Task 2. Apple's `.config` directory carries a 16728-byte
@@ -1742,8 +1741,8 @@ bundle *existence*; see the Task 3 result below):
 - `_CirrusLogicGD5434DisplayDriver_VERS_STRING` and `_..._VERS_NUM` were still
   absent from the rebuilt nlist after Task 2. The 170-byte `__TEXT,__const`
   shortfall (2392 vs the reference's 2562) is still those two symbols plus
-  padding. Task 3 emits apple-generic `VersionString` / `VersionNumber`
-  instead; existence is the gate, not 1998 bytes or the SGS names.
+  padding. The spec gate for those SGS-named symbols on the `_reloc` remains
+  unmet after Task 3; see the Task 3 result below.
 
 **Task 2 result.** The Kernel Server `Makefile.postamble` is now exactly
 `OTHER_GENERATED_OFILES += $(VERS_OFILE)`. Guest rebuild `make exit=0`.
@@ -1816,12 +1815,24 @@ CirrusLogicGD5434DisplayDriver` and no missing-bundle WARNING.
 /usr/bin/cc ... -bundle -undefined suppress ... -arch i386 -o .../CirrusLogicGD5434DisplayDriver.config/CirrusLogicGD5434DisplayDriver .../CirrusLogicGD5434DisplayDriver_vers.o
 ```
 
-Host `$BUNDLE` is 9552 bytes, Mach-O `file_type = 8` (`MH_BUNDLE`). Rebuilt
-nlist `__TEXT,__const` has `_CirrusLogicGD5434DisplayDriverVersionString` and
-`_CirrusLogicGD5434DisplayDriverVersionNumber` (apple-generic names), not
-Apple's `_..._VERS_STRING` / `_..._VERS_NUM`. `compare_cirrus.py`
-`failed_matched` stayed 0. `parity_check.py` missing strings/symbols 0.
-`driverTools` was not edited. `apple-generic.make` produced `vers.o`.
+Host `$BUNDLE` is 9552 bytes, Mach-O `file_type = 8` (`MH_BUNDLE`). That is
+progress: the bundle exists and `compare_cirrus.py` `failed_matched` stayed 0.
+`parity_check.py` missing strings/symbols 0. Rebuilt nlist `__TEXT,__const`
+has apple-generic `_CirrusLogicGD5434DisplayDriverVersionString` and
+`_CirrusLogicGD5434DisplayDriverVersionNumber`. The spec gate —
+`_CirrusLogicGD5434DisplayDriver_VERS_STRING` and `_..._VERS_NUM` on the
+`_reloc` — is still unmet. `driverTools` was not edited.
+`apple-generic.make` produced `vers.o`.
+
+A later Cirrus-local `next-sgs` attempt copied `src/pb_makefiles-1/next-sgs.make`
+into `$DRV/VersioningSystems` and set `VERSIONING_SYSTEM = next-sgs` plus
+`LOCAL_VERSIONING_SYSTEM_MAKEFILEDIR` to that guest path in both preambles.
+`vers_string` exists on the guest (`/usr/bin/vers_string`), but `next-sgs.make`
+does not add `OTHER_GENERATED_SRCFILES`, so `vers.c` was not compiled.
+`kl_ld` listed a bare `CirrusLogicGD5434DisplayDriver_vers.o` and failed
+`ld: can't open`. The copy and preamble experiment were reverted; apple-generic
+preambles were restored. The SGS-named `_VERS_STRING` / `_VERS_NUM` symbols
+remain unmet. `driverTools` and `/System/Developer` were not edited.
 
 ### Ledger status distribution
 
@@ -1875,10 +1886,12 @@ declarations or in the project type, not in the driver source. `_..._VERS_STRING
 and `_..._VERS_NUM` are likewise not hand-written source. Task 2 wired
 `OTHER_GENERATED_OFILES += $(VERS_OFILE)` into the Kernel Server postamble;
 Task 3 set `VERSIONING_SYSTEM = apple-generic` in both preambles so `vers.c` is
-generated. The rebuilt symbols are `_...VersionString` / `_...VersionNumber`,
-not the SGS `_..._VERS_STRING` / `_..._VERS_NUM` pair. Their *contents*
+generated and a 9552-byte MH_BUNDLE exists. The rebuilt symbols are
+`_...VersionString` / `_...VersionNumber`. The SGS-named
+`_CirrusLogicGD5434DisplayDriver_VERS_STRING` and `_..._VERS_NUM` on the
+`_reloc` are still unmet. Their *contents*, once those names exist, would
 carry our own build host and timestamp, not Apple's 1998 pair, so byte
-parity on those bytes is not achievable; existence of the MH_BUNDLE is.
+parity on those bytes is not achievable.
 
 Also not reconstructed, and deliberately so:
 

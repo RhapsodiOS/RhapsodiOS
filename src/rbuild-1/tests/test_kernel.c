@@ -104,20 +104,20 @@ TEST(test_kernel_scan_drivers) {
     strlist_init(&packages);
     CHECK_INT(kernel_scan_drivers(scratch, "ppc", &packages), 0);
     CHECK_INT(packages.count, 5);
-    CHECK_STR(packages.items[0], "drvBPF");
-    CHECK_STR(packages.items[1], "drvSCSIServer");
-    CHECK_STR(packages.items[2], "drvSCSITape");
-    CHECK_STR(packages.items[3], "drivers-ppc/bus/drvPPCOHare");
-    CHECK_STR(packages.items[4], "drivers-ppc/network/Intel82557");
+    CHECK_STR(packages.items[0], "drivers-ppc/bus/drvPPCOHare");
+    CHECK_STR(packages.items[1], "drivers-ppc/network/Intel82557");
+    CHECK_STR(packages.items[2], "drvBPF");
+    CHECK_STR(packages.items[3], "drvSCSIServer");
+    CHECK_STR(packages.items[4], "drvSCSITape");
     strlist_free(&packages);
 
     strlist_init(&packages);
     CHECK_INT(kernel_scan_drivers(scratch, "i386", &packages), 0);
     CHECK_INT(packages.count, 4);
-    CHECK_STR(packages.items[0], "drvBPF");
-    CHECK_STR(packages.items[1], "drvSCSIServer");
-    CHECK_STR(packages.items[2], "drvSCSITape");
-    CHECK_STR(packages.items[3], "drivers-i386/bus/drvEISABus");
+    CHECK_STR(packages.items[0], "drivers-i386/bus/drvEISABus");
+    CHECK_STR(packages.items[1], "drvBPF");
+    CHECK_STR(packages.items[2], "drvSCSIServer");
+    CHECK_STR(packages.items[3], "drvSCSITape");
     strlist_free(&packages);
 
     strlist_init(&packages);
@@ -220,9 +220,9 @@ TEST(test_kernel_blacklist_filters_scan) {
             strlist_push(&keep, found.items[i]);
     }
     CHECK_INT(keep.count, 3);
-    CHECK_STR(keep.items[0], "drvSCSIServer");
-    CHECK_STR(keep.items[1], "drvSCSITape");
-    CHECK_STR(keep.items[2], "drivers-ppc/bus/drvPPCOHare");
+    CHECK_STR(keep.items[0], "drivers-ppc/bus/drvPPCOHare");
+    CHECK_STR(keep.items[1], "drvSCSIServer");
+    CHECK_STR(keep.items[2], "drvSCSITape");
     strlist_free(&found);
     strlist_free(&skip);
     strlist_free(&keep);

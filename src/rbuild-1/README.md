@@ -13,7 +13,8 @@ instead of dpkg `.deb`.
 
 ## Usage
 
-    rbuild buildpackage [--dir] [--target {all|headers|objs|local}] \
+    rbuild buildpackage [--state DIR] [--arch ARCH] [--dir] \
+        [--target {all|headers|objs|local}] \
         <source> <repository> <dstdir>
     rbuild buildall <srclist> <repository> <dstdir>
     rbuild kernel [--state DIR] --arch ARCH \
@@ -26,6 +27,11 @@ instead of dpkg `.deb`.
 `rbuild kerneldrivers` reads `rbuild-1/kernel-drivers-blacklist.json` under
 `<srcdir>` and skips every `skip` path. Remove a driver from that list when it
 packages successfully.
+
+`buildpackage --arch` and `kernel` / `kerneldrivers --arch` set `RC_ARCHS` and
+`-arch` for that target. Default remains the host architecture. When `--arch`
+selects another architecture, rbuild copies `/usr/libexec/<arch>` into the
+chroot so `cc` can find that arch's `cc1obj` / `cpp-precomp`.
 
 ## Notes
 

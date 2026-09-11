@@ -11,6 +11,7 @@ typedef struct {
     const char *sysroot;
     const char *state_dir;
     const Toolchain *toolchain;
+    const char *target_arch;
     int force;
 } BuildOptions;
 

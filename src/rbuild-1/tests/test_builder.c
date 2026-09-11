@@ -256,6 +256,30 @@ TEST(test_buildflags) {
     params_free(&p);
 }
 
+TEST(test_buildflags_honors_target_arch) {
+    Params p;
+    BuildOptions opt;
+    strlist f;
+    const char *rc_cflags;
+
+    params_init(&p);
+    build_options_init(&opt);
+    opt.target_arch = "i386";
+    p.SRCROOT = xstrdup("/s"); p.OBJROOT = xstrdup("/o");
+    p.SYMROOT = xstrdup("/y"); p.DSTROOT = xstrdup("/d");
+    p.HDRROOT = xstrdup("/h"); p.SUBLIBROOTS = xstrdup("/objs");
+    strlist_init(&f);
+    builder_buildflags(&p, "install", &f, &opt);
+    CHECK(list_has(&f, "RC_ARCHS=i386"));
+    CHECK(list_has(&f, "RC_i386=YES"));
+    CHECK(!list_has(&f, "RC_ppc=YES"));
+    rc_cflags = list_has_prefix(&f, "RC_CFLAGS=");
+    CHECK(rc_cflags != 0);
+    CHECK(str_has_prefix(rc_cflags, "RC_CFLAGS=-arch i386 "));
+    strlist_free(&f);
+    params_free(&p);
+}
+
 TEST(test_bootstrap_harvest_stays_in_private_object_root) {
     Package pkg;
     Params params, bparams;
@@ -770,6 +794,7 @@ static void run_all(void) {
     RUN(test_chrootparams);
     RUN(test_bootstrap_flags_use_target_sysroot);
     RUN(test_buildflags);
+    RUN(test_buildflags_honors_target_arch);
     RUN(test_buildcmd_bootstrap);
     RUN(test_bootstrap_make_flags_wait_for_ready_path);
     RUN(test_bootstrap_coreos_makefiles_wait_for_sysroot);

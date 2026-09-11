@@ -12,7 +12,8 @@
 
 static const char *USAGE =
     "usage:\n"
-    "  rbuild buildpackage [--state DIR] [--dir] [--target {all|headers|objs|local}]"
+    "  rbuild buildpackage [--state DIR] [--arch ARCH] [--dir]"
+    " [--target {all|headers|objs|local}]"
     " <source> <repository> <dstdir>\n"
     "  rbuild buildall [--state DIR] <srclist> <repository> <dstdir>\n"
     "  rbuild bootstrap --sysroot ROOT --toolchain FILE --state DIR"
@@ -31,37 +32,47 @@ static int cmd_buildpackage(int argc, char **argv) {
     const char *target = "all";
     const char *source, *seeddir, *dstdir;
     const char *state_dir = 0;
+    const char *arch = 0;
     int i = 0;
     int rc;
 
-    if (i < argc && strcmp(argv[i], "--state") == 0) {
-        if (++i >= argc) { usage(); return 1; }
-        state_dir = argv[i++];
-        if (state_dir[0] != '/') {
-            fprintf(stderr, "rbuild: state directory must be absolute\n");
+    while (i < argc && strncmp(argv[i], "--", 2) == 0) {
+        const char *name = argv[i++];
+        if (strcmp(name, "--dir") == 0) {
+            type = "dir";
+            continue;
+        }
+        if (strcmp(name, "--cvs") == 0) {
+            fprintf(stderr, "rbuild: cvs support has been removed; "
+                            "build from a --dir source\n");
+            return 1;
+        }
+        if (i >= argc) { usage(); return 1; }
+        if (strcmp(name, "--state") == 0) {
+            state_dir = argv[i++];
+            if (state_dir[0] != '/') {
+                fprintf(stderr, "rbuild: state directory must be absolute\n");
+                return 1;
+            }
+        } else if (strcmp(name, "--target") == 0) {
+            target = argv[i++];
+        } else if (strcmp(name, "--arch") == 0) {
+            arch = argv[i++];
+        } else {
+            usage();
             return 1;
         }
     }
 
-    /* optional --dir/--cvs */
-    if (i < argc && strcmp(argv[i], "--dir") == 0) { type = "dir"; i++; }
-    else if (i < argc && strcmp(argv[i], "--cvs") == 0) {
-        fprintf(stderr, "rbuild: cvs support has been removed; "
-                        "build from a --dir source\n");
+    if (argc - i != 3) { usage(); return 1; }
+    if (arch != 0 && !kernel_arch_safe(arch)) {
+        fprintf(stderr, "rbuild: unsafe architecture \"%s\"\n", arch);
         return 1;
     }
-
-    if (i < argc && strcmp(argv[i], "--target") == 0) {
-        i++;
-        if (i >= argc) { usage(); return 1; }
-        target = argv[i]; i++;
-    }
-
-    if (argc - i != 3) { usage(); return 1; }
     source = argv[i]; seeddir = argv[i + 1]; dstdir = argv[i + 2];
 
     rc = runner_buildpackage(type, source, seeddir, target, dstdir,
-                             state_dir);
+                             state_dir, arch);
     return rc;
 }
 

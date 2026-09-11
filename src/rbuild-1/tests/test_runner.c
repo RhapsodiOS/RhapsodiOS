@@ -26,7 +26,7 @@ TEST(test_buildpackage_scan_failure_clears_log) {
     CHECK_INT(exec_set_log(path), 0);
     CHECK(runner_buildpackage("invalid", "/no/such/source", "/tmp",
                               "all", "/tmp/rbuild-runner-output",
-                              "/tmp/rbuild-state") != 0);
+                              "/tmp/rbuild-state", 0) != 0);
     CHECK_INT(exec_run(cmd), 0);
     f = fopen(path, "r");
     CHECK(f != 0);

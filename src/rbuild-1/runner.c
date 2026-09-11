@@ -759,7 +759,8 @@ int runner_manifest(const char *srclist, const char *seeddir,
 
 int runner_buildpackage(const char *type, const char *source,
                         const char *seeddir, const char *target,
-                        const char *dstdir, const char *state_dir) {
+                        const char *dstdir, const char *state_dir,
+                        const char *arch) {
     strlist repository;
     BuildOptions opt;
     Package pkg;
@@ -813,6 +814,13 @@ int runner_buildpackage(const char *type, const char *source,
     build_options_init(&opt);
     opt.state_dir = safe_state;
     opt.clean = 1;
+    if (arch != 0) {
+        if (!kernel_arch_safe(arch)) {
+            fprintf(stderr, "rbuild: unsafe architecture \"%s\"\n", arch);
+            goto done_scanned;
+        }
+        opt.target_arch = arch;
+    }
     rc = builder_build(type, source, &repository, target, safe_dstdir, &opt);
     strlist_free(&repository);
 done_scanned:
@@ -841,7 +849,7 @@ int runner_kernel(const char *srcdir, const char *seeddir, const char *dstdir,
     for (i = 0; i < packages.count; i++) {
         path = path_join(srcdir, packages.items[i]);
         if (runner_buildpackage("dir", path, seeddir, "all", dstdir,
-                                state_dir) != 0) {
+                                state_dir, arch) != 0) {
             fprintf(stderr, "rbuild: kernel failed: %s\n", packages.items[i]);
             free(path);
             goto done;
@@ -906,7 +914,7 @@ int runner_kerneldrivers(const char *srcdir, const char *seeddir,
     for (i = 0; i < packages.count; i++) {
         path = path_join(srcdir, packages.items[i]);
         if (runner_buildpackage("dir", path, seeddir, "all", dstdir,
-                                state_dir) != 0) {
+                                state_dir, arch) != 0) {
             fprintf(stderr, "rbuild: FAIL %s\n", packages.items[i]);
             strlist_push(&failed, packages.items[i]);
         } else {

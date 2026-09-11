@@ -14,7 +14,8 @@ int runner_manifest(const char *srclist, const char *seeddir,
                     const char *dstdir, const RunnerOptions *opt);
 int runner_buildpackage(const char *type, const char *source,
                         const char *seeddir, const char *target,
-                        const char *dstdir, const char *state_dir);
+                        const char *dstdir, const char *state_dir,
+                        const char *arch);
 int runner_kernel(const char *srcdir, const char *seeddir, const char *dstdir,
                   const char *arch, const char *state_dir);
 int runner_kerneldrivers(const char *srcdir, const char *seeddir,

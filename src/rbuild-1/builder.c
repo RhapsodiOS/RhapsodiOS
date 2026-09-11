@@ -281,8 +281,9 @@ static void expand_toolchain_words(const char *value, const char *sysroot,
  * Stage-0 bootstrap builds link against the host root, which only has the
  * host architecture's crt/System. Fat i386+ppc links fail there.
  * Chroot builds on a single-arch guest also SIGILL/miscompile when the
- * opposite-architecture toolchain is unavailable, so keep host-arch-only
- * until a fat sysroot is intentionally introduced.
+ * opposite-architecture toolchain is unavailable, so default to
+ * host-arch-only. `BuildOptions.target_arch` (`rbuild buildpackage --arch`)
+ * opts into another -arch when the host compiler can emit it.
  */
 #if defined(__i386__) || defined(i386)
 #define RBUILD_HOST_ARCH "i386"
@@ -296,6 +297,7 @@ void builder_buildflags(const Params *params, const char *target, strlist *out,
     char *rc_cflags;
     sbuf s;
     const char *arch_cflags;
+    char arch_cflags_buf[64];
     char *expanded_cflags = 0;
     const char *archs;
     int bootstrap = opt && opt->bootstrap;
@@ -393,8 +395,12 @@ void builder_buildflags(const Params *params, const char *target, strlist *out,
         archs = tc->target_arch;
         strlist_free(&words);
     } else {
-        arch_cflags = "-arch " RBUILD_HOST_ARCH " ";
-        archs = RBUILD_HOST_ARCH;
+        if (opt && opt->target_arch && opt->target_arch[0] != '\0')
+            archs = opt->target_arch;
+        else
+            archs = RBUILD_HOST_ARCH;
+        sprintf(arch_cflags_buf, "-arch %s ", archs);
+        arch_cflags = arch_cflags_buf;
     }
 
     /* RC_CFLAGS = "-arch ..." + " -D..." for each cflag. */
@@ -412,7 +418,7 @@ void builder_buildflags(const Params *params, const char *target, strlist *out,
         /* Legacy projects often compute a separate default target list. */
         push_kv(out, "TARGETS", tc->target_arch);
     }
-    else if (strcmp(RBUILD_HOST_ARCH, "i386") == 0)
+    else if (strcmp(archs, "i386") == 0)
         push_kv(out, "RC_i386", "YES");
     else
         push_kv(out, "RC_ppc", "YES");
@@ -965,6 +971,29 @@ int builder_setupdirs(const Package *pkg, const Params *params,
     if (!bootstrap) {
         if (exec_check(mkdirp(params->BUILDROOT))) return 1;
         if (builder_makeroot(pkg, params->BUILDROOT, repository) != 0) return 1;
+        /* cc -arch <not-host> needs that arch's cc1obj/cpp-precomp. The
+         * compiler apk only seeds the host arch; copy the host's
+         * /usr/libexec/<arch> when --arch asked for another. */
+        if (opt && opt->target_arch && opt->target_arch[0] != '\0') {
+            char host_libexec[128];
+            char chroot_libexec[512];
+            struct stat st;
+            sprintf(host_libexec, "/usr/libexec/%s", opt->target_arch);
+            if (stat(host_libexec, &st) == 0 && S_ISDIR(st.st_mode)) {
+                char *parent = str_cats(params->BUILDROOT,
+                                        "/usr/libexec", (char *)0);
+                int failed = exec_check(mkdirp(parent));
+                free(parent);
+                if (failed) return 1;
+                sprintf(chroot_libexec, "%s/usr/libexec/%s",
+                        params->BUILDROOT, opt->target_arch);
+                if (exec_runv("rm", "-rf", chroot_libexec, (char *)0) != 0)
+                    return 1;
+                if (exec_runv("cp", "-R", host_libexec, chroot_libexec,
+                              (char *)0) != 0)
+                    return 1;
+            }
+        }
     }
 
     if (strcmp(srctype, "dir") == 0) {

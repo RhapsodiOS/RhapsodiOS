@@ -15,6 +15,11 @@ int runner_manifest(const char *srclist, const char *seeddir,
 int runner_buildpackage(const char *type, const char *source,
                         const char *seeddir, const char *target,
                         const char *dstdir, const char *state_dir);
+int runner_kernel(const char *srcdir, const char *seeddir, const char *dstdir,
+                  const char *arch, const char *state_dir);
+int runner_kerneldrivers(const char *srcdir, const char *seeddir,
+                         const char *dstdir, const char *arch,
+                         const char *state_dir);
 #ifdef RBUILD_RUNNER_TESTING
 void runner_test_set_before_replay_hook(void (*hook)(void));
 #endif

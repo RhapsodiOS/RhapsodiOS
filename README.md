@@ -67,7 +67,7 @@ Success prints `build-src: complete (bootstrap)` and exits 0. Already-built pack
 powershell -NoProfile -File vm\build-src.ps1 -All
 ```
 
-Success prints `build-src: complete (rbuild, bootstrap, kernel-drivers, world)` and exits 0.
+Success prints `build-src: complete (rbuild, bootstrap, kernel, kernel-drivers, world)` and exits 0.
 
 `-Fresh` is valid only with `-All`. It deletes `/build/tools`, `/build/bootstrap-root`, `/build/repo`, `/build/built`, and `/build/state`, and keeps `/build/src`.
 
@@ -82,6 +82,7 @@ Then sync anything that changed, run `-Rbuild`, then `-Bootstrap` (or `-All`).
 Individual phases after rbuild is installed:
 
 ```powershell
+powershell -NoProfile -File vm\build-src.ps1 -Kernel
 powershell -NoProfile -File vm\build-src.ps1 -KernelDrivers
 powershell -NoProfile -File vm\build-src.ps1 -World
 ```
@@ -90,6 +91,7 @@ powershell -NoProfile -File vm\build-src.ps1 -World
 |------|----------------|
 | `-Rbuild` | `make CC=… clean test all` in `src/rbuild-1`, install into `/build/tools` |
 | `-Bootstrap` | `rbuild bootstrap --sysroot … --toolchain … --state … BootstrapManifest` |
-| `-KernelDrivers` | `driverkit-3`, `driverTools-1`, `kernload-1`, `drivers-<arch>/bus/drvPExpert`, `kernel-7`, then optional `drv*` / `Intel*` projects |
+| `-Kernel` | `rbuild kernel --state … --arch <profile> src repo built` (driverkit, driverTools, kernload, PExpert, kernel-7) |
+| `-KernelDrivers` | `rbuild kerneldrivers --state … --arch <profile> src repo built` (remaining packaged `drv*` / `Intel*` plus `drvBPF` / `drvPortServer` / `drvSCSIServer` / `drvSCSITape`, minus `rbuild-1/kernel-drivers-blacklist.json`) |
 | `-World` | `rbuild buildall --state … Manifest /build/repo /build/built` |
-| `-All` | The four phases above, in order |
+| `-All` | The five phases above, in order |

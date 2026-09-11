@@ -165,6 +165,12 @@ $pkginfoSourceText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\pkginfo
 $apkSourceText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\apk.c')
 $apkTestSourceText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\tests\test_apk.c')
 $builderSourceText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\builder.c')
+$rbuildMainText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\main.c')
+$rbuildKernelText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\kernel.c')
+$rbuildRunnerText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\runner.c')
+$rbuildMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\Makefile')
+$rbuildBlacklistPath = Join-Path $repoRoot 'src\rbuild-1\kernel-drivers-blacklist.json'
+$rbuildBlacklistText = Get-Content -Raw $rbuildBlacklistPath
 $paxGnutarText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\pax-gnutar.sh')
 $bootstrapResumeText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\tests\bootstrap-resume.sh')
 $decommentSourcePath = Join-Path $repoRoot 'src\Commands\bootstrap_cmds\decomment.tproj\decomment.c'
@@ -249,6 +255,38 @@ foreach ($apkCase in @(
     Assert-Equal ($typesIdx -lt $direntIdx) $true "$($apkCase.Name) includes sys/types.h before dirent.h"
 }
 Assert-Match $builderSourceText 'ReleaseControl/Common.make' 'bootstrap waits for CoreOS Common.make before CoreOSMakefiles='
+Assert-Match $rbuildMainText 'rbuild kernel \[--state DIR\] --arch ARCH' 'rbuild usage includes kernel'
+Assert-Match $rbuildMainText 'rbuild kerneldrivers \[--state DIR\] --arch ARCH' 'rbuild usage includes kerneldrivers'
+Assert-Match $rbuildMainText 'strcmp\(sub, "kernel"\)' 'rbuild dispatches kernel'
+Assert-Match $rbuildMainText 'strcmp\(sub, "kerneldrivers"\)' 'rbuild dispatches kerneldrivers'
+Assert-Match $rbuildKernelText 'driverkit-3' 'kernel core starts at driverkit'
+Assert-Match $rbuildKernelText 'drivers-"' 'kernel core interpolates the selected architecture into PExpert'
+Assert-Match $rbuildKernelText 'kernel-7' 'kernel core ends at kernel-7'
+Assert-Match $rbuildKernelText 'drvBPF' 'kerneldrivers includes extra BPF project'
+Assert-Match $rbuildKernelText 'drvPortServer' 'kerneldrivers includes extra PortServer project'
+Assert-Match $rbuildKernelText 'drvSCSIServer' 'kerneldrivers includes extra SCSIServer project'
+Assert-Match $rbuildKernelText 'drvSCSITape' 'kerneldrivers includes extra SCSITape project'
+Assert-Match $rbuildKernelText 'drvPExpert' 'kerneldrivers skips the platform expert already built by kernel'
+Assert-Match $rbuildRunnerText 'runner_kernel\(' 'runner exposes kernel'
+Assert-Match $rbuildRunnerText 'runner_kerneldrivers\(' 'runner exposes kerneldrivers'
+Assert-Match $rbuildRunnerText 'KERNEL_DRIVERS_BLACKLIST_REL' 'kerneldrivers loads the checked-in driver blacklist'
+Assert-Match $rbuildRunnerText 'kernel_load_blacklist' 'kerneldrivers applies the JSON blacklist'
+Assert-Match $rbuildRunnerText 'rbuild: skip ' 'kerneldrivers reports each skipped WIP driver'
+Assert-Match $rbuildBlacklistText '"skip"' 'kernel driver blacklist is a JSON skip list'
+Assert-Match $rbuildBlacklistText 'drivers-ppc/ide/drvPPCSwimFloppy' 'blacklist includes unfinished ppc floppy reconstruction'
+Assert-Match $rbuildBlacklistText 'drivers-ppc/input/drvIOADBDevice' 'blacklist includes unfinished ppc ADB reconstruction'
+Assert-Match $rbuildBlacklistText 'drivers-i386/ide/drvEIDE' 'blacklist includes unfinished i386 EIDE work'
+Assert-Match $rbuildBlacklistText 'drivers-i386/sound/drvIntelAC97Sound' 'blacklist includes unfinished AC97 reconstruction'
+Assert-Match $rbuildBlacklistText 'drivers-i386/scsi/drvAdaptec6X60' 'blacklist includes unfinished i386 SCSI reconstruction'
+Assert-Match $rbuildBlacklistText '"drvBPF"' 'blacklist includes unfinished BPF reconstruction'
+Assert-Match $rbuildBlacklistText '"drvSCSIServer"' 'blacklist includes unfinished SCSIServer reconstruction'
+Assert-NotMatch $rbuildBlacklistText 'drvPPCOHare' 'working ppc OHare is not blacklisted'
+Assert-NotMatch $rbuildBlacklistText 'drvPPCBMac' 'working ppc BMac is not blacklisted'
+Assert-NotMatch $rbuildBlacklistText 'drvPPCDec21040' 'working ppc Dec21040 is not blacklisted'
+Assert-NotMatch $rbuildBlacklistText 'drvPExpert' 'platform expert is a kernel-core package, not a blacklist entry'
+Assert-Match $rbuildRunnerText '(?s)int runner_buildpackage.*?opt\.clean = 1' 'standalone buildpackage removes package chroots'
+Assert-Match $rbuildMakefileText 'kernel\.o' 'rbuild links the kernel module'
+Assert-Match $rbuildMakefileText 'tests/test_kernel' 'rbuild runs kernel unit tests'
 Assert-Match $builderSourceText 'access\(coreos_common, F_OK\)' 'bootstrap probes CoreOS Common.make in the sysroot'
 Assert-Match $builderSourceText 'cpp_flags_ready' 'bootstrap waits for compiler headers before isolated -nostdinc'
 Assert-Match $builderSourceText 'push_kv\(out, "HDRROOT", opt->sysroot\)' 'bootstrap make uses the target sysroot as HDRROOT'
@@ -313,7 +351,7 @@ try {
 } finally {
     Remove-Item -LiteralPath $decommentRuntimeDir -Recurse -Force -ErrorAction SilentlyContinue
 }
-Assert-Match $buildScriptText '(?s)param\(\s*\[switch\]\$All,\s*\[switch\]\$Rbuild,\s*\[switch\]\$Bootstrap,\s*\[switch\]\$KernelDrivers,\s*\[switch\]\$World,\s*\[switch\]\$Fresh\s*\)' 'canonical build-src parameters'
+Assert-Match $buildScriptText '(?s)param\(\s*\[switch\]\$All,\s*\[switch\]\$Rbuild,\s*\[switch\]\$Bootstrap,\s*\[switch\]\$Kernel,\s*\[switch\]\$KernelDrivers,\s*\[switch\]\$World,\s*\[switch\]\$Fresh\s*\)' 'canonical build-src parameters'
 Assert-Match $remoteScriptText ([regex]::Escape('$stdinWriter.WriteAsync($payload)')) 'stream stdin writer is asynchronous'
 Assert-Match $remoteScriptText 'Task\]::WaitAny' 'stream writer and readers share a blocking task loop'
 Assert-Match $remoteScriptText '\[void\]\$writeTask\.GetAwaiter\(\)\.GetResult\(\)' 'stream writer task result cannot pollute exit status'
@@ -329,8 +367,8 @@ Assert-Match $buildScriptText ([regex]::Escape('-TargetArch $profileValues.targe
 Assert-Equal ((Get-RhapKernelCorePackages -TargetArch 'ppc') -join ',') 'driverkit-3,driverTools-1,kernload-1,drivers-ppc/bus/drvPExpert,kernel-7' 'ppc kernel core package order'
 Assert-Equal ((Get-RhapKernelCorePackages -TargetArch 'i386') -join ',') 'driverkit-3,driverTools-1,kernload-1,drivers-i386/bus/drvPExpert,kernel-7' 'i386 kernel core package order'
 Assert-Match $buildScriptText 'Get-RhapKernelCorePackages -TargetArch \$profileValues\.target_arch' 'kernel phase validates core sources for the selected architecture'
-Assert-Match $buildScriptText 'Get-DriverProjectRels -TargetArch \$profileValues\.target_arch' 'optional drivers are selected for the profile architecture'
-Assert-Match $buildScriptText '(?s)function Get-DriverProjectRels \{.*?Join-Path \$localSrc "drivers-\$arch"' 'optional driver scan stays inside drivers-<arch>'
+Assert-Match $buildScriptText "\`$phase -eq 'kernel'" 'kernel phase preflights core package sources'
+Assert-NotMatch $buildScriptText 'function Get-DriverProjectRels' 'optional driver scan lives in rbuild, not the host orchestrator'
 Assert-NotMatch $buildScriptText "@\('drivers-i386', 'drivers-ppc'\)" 'optional driver scan does not mix i386 and ppc trees'
 
 $phaseArgs = @{
@@ -444,43 +482,34 @@ Assert-Match $spacedBootstrap ([regex]::Escape("/usr/bin/install -d '/srv/build 
 Assert-Match $spacedBootstrap ([regex]::Escape("CONFIG_DIR='/srv/build tree/tools'/bin DECOMMENT='/srv/build tree/tools'/bin/decomment MIGCC=/usr/bin/cc")) 'bootstrap safely quotes private config and decomment tools'
 Assert-Match $spacedBootstrap ([regex]::Escape("MIGCC=/usr/bin/cc MIGARCH=ppc MIGCOM_DIR='/srv/build tree/tools'/libexec BISON='/srv/build tree/bootstrap root'/usr/bin/bison BISON_SIMPLE='/srv/build tree/bootstrap root'/usr/share/bison.simple '/srv/build tree/tools'/bin/rbuild bootstrap")) 'bootstrap safely quotes private MIG, parser-generator, and profile architecture bindings'
 Assert-Match $spacedBootstrap ([regex]::Escape("DECOMMENT='/srv/build tree/tools'/bin/decomment MIGCC=/usr/bin/cc")) 'bootstrap safely quotes private decomment binding'
-$kernelCommand = New-RhapBuildPhaseCommand -Phase 'kernel-drivers' @phaseArgs -DriverProjects @('drivers-ppc/storage/drvExample') -MakeDriverProjects @('drvBPF')
+$kernelCommand = New-RhapBuildPhaseCommand -Phase 'kernel' @phaseArgs
 Assert-Match $kernelCommand ([regex]::Escape('test -d /build/repo')) 'kernel requires existing repository input'
 Assert-Match $kernelCommand ([regex]::Escape('/usr/bin/install -d /build/built /build/state')) 'kernel creates owned output directories'
-Assert-Equal ($kernelCommand.IndexOf('/usr/bin/install -d /build/built') -lt $kernelCommand.IndexOf('--dir driverkit-3')) $true 'kernel creates outputs before core packages'
-Assert-Equal ($kernelCommand.IndexOf('--dir driverkit-3') -lt $kernelCommand.IndexOf('--dir driverTools-1')) $true 'driverkit is packaged before drivertools'
-Assert-Equal ($kernelCommand.IndexOf('--dir driverTools-1') -lt $kernelCommand.IndexOf('--dir kernload-1')) $true 'drivertools is packaged before kernload'
-Assert-Equal ($kernelCommand.IndexOf('--dir kernload-1') -lt $kernelCommand.IndexOf('--dir drivers-ppc/bus/drvPExpert')) $true 'kernload is packaged before the platform expert'
-Assert-Equal ($kernelCommand.IndexOf('--dir drivers-ppc/bus/drvPExpert') -lt $kernelCommand.IndexOf('--dir kernel-7')) $true 'platform expert is packaged before kernel-7'
-Assert-Match $kernelCommand ([regex]::Escape('cd /build/src')) 'kernel package paths resolve beneath source root'
-Assert-Match $kernelCommand ([regex]::Escape('/build/tools/bin/rbuild buildpackage --state /build/state --dir kernel-7 /build/repo /build/built')) 'kernel uses persistent state'
-Assert-Match $kernelCommand ([regex]::Escape('--dir drivers-ppc/storage/drvExample /build/repo /build/built')) 'packaged driver uses rbuild'
-Assert-Match $kernelCommand ([regex]::Escape('cd /build/src/drvBPF && PATH=/build/tools/bin:/usr/bin:/bin /bin/make')) 'make-only driver uses configured make and path'
-Assert-Match $kernelCommand ([regex]::Escape('CC=/usr/bin/cc')) 'make-only driver uses configured compiler'
-Assert-Match $kernelCommand 'profile_cksum=.*cksum' 'make-only marker binds remote profile fingerprint'
-Assert-Match $kernelCommand '/build/state/logs/drvBPF-all\.log' 'make-only driver has persistent log'
-Assert-Match $kernelCommand '/build/state/drivers/drvBPF-all\.done' 'make-only driver has resume marker'
-Assert-Match $kernelCommand 'mv .*\.done\.tmp\.\$\$ .*\.done' 'make-only marker is atomic'
-Assert-Match $kernelCommand 'profile mismatch.*-Fresh' 'make-only stale profile is a hard error'
-Assert-Equal ($kernelCommand.IndexOf('mkdir -p /build/state/logs') -lt $kernelCommand.IndexOf('set +e')) $true 'driver state directories are required setup'
-Assert-Match $kernelCommand 'driver state write failed' 'make-only marker write failure is reported'
-Assert-Match $kernelCommand 'core: driverkit-3, driverTools-1, kernload-1, drivers-ppc/bus/drvPExpert, kernel-7 \(required, all ok\)' 'kernel summary reports required core packages'
-Assert-Match $kernelCommand 'drivers ok: \$rbuild_driver_passes' 'kernel summary reports optional successes'
-Assert-Match $kernelCommand 'drivers fail: \$rbuild_driver_failures' 'kernel summary reports optional failures'
-Assert-Match $kernelCommand ([regex]::Escape('rbuild_driver_passes=$(/bin/expr $rbuild_driver_passes + 1)')) 'optional driver counts use 1996 ash expr'
-Assert-NotMatch $kernelCommand '\$\(\(rbuild_driver_(passes|failures)' 'optional driver counts do not use POSIX arithmetic expansion'
-Assert-Match $kernelCommand '(?s)--dir drivers-ppc/storage/drvExample /build/repo /build/built.*rm -rf /private/tmp/roots' 'optional driver chroots are removed after each package'
+Assert-Equal ($kernelCommand.IndexOf('/usr/bin/install -d /build/built') -lt $kernelCommand.IndexOf('rbuild kernel')) $true 'kernel creates outputs before rbuild kernel'
+Assert-Match $kernelCommand ([regex]::Escape('cd /build/src && /build/tools/bin/rbuild kernel --state /build/state --arch ppc /build/src /build/repo /build/built')) 'kernel uses dedicated rbuild command'
+Assert-NotMatch $kernelCommand 'buildpackage|--dir driverkit-3|kerneldrivers' 'kernel phase does not inline package loops or optional drivers'
+$kernelDriversCommand = New-RhapBuildPhaseCommand -Phase 'kernel-drivers' @phaseArgs
+Assert-Match $kernelDriversCommand ([regex]::Escape('test -d /build/repo')) 'kernel-drivers requires existing repository input'
+Assert-Match $kernelDriversCommand ([regex]::Escape('/usr/bin/install -d /build/built /build/state')) 'kernel-drivers creates owned output directories'
+Assert-Equal ($kernelDriversCommand.IndexOf('/usr/bin/install -d /build/built') -lt $kernelDriversCommand.IndexOf('rbuild kerneldrivers')) $true 'kernel-drivers creates outputs before rbuild kerneldrivers'
+Assert-Match $kernelDriversCommand ([regex]::Escape('cd /build/src && /build/tools/bin/rbuild kerneldrivers --state /build/state --arch ppc /build/src /build/repo /build/built')) 'kernel-drivers uses dedicated rbuild command'
+Assert-NotMatch $kernelDriversCommand 'buildpackage|--dir driverkit-3| rbuild kernel ' 'kernel-drivers phase does not inline the kernel core list'
 $i386KernelArgs = $phaseArgs.Clone()
 $i386KernelArgs.TargetArch = 'i386'
-$i386KernelCommand = New-RhapBuildPhaseCommand -Phase 'kernel-drivers' @i386KernelArgs
-Assert-Equal ($i386KernelCommand.IndexOf('--dir drivers-i386/bus/drvPExpert') -lt $i386KernelCommand.IndexOf('--dir kernel-7')) $true 'i386 kernel packages the i386 platform expert before kernel-7'
+$i386KernelCommand = New-RhapBuildPhaseCommand -Phase 'kernel' @i386KernelArgs
+Assert-Match $i386KernelCommand ([regex]::Escape('rbuild kernel --state /build/state --arch i386 /build/src /build/repo /build/built')) 'i386 kernel selects the profile architecture'
+Assert-NotMatch $i386KernelCommand 'drivers-ppc' 'i386 kernel command does not mention the ppc driver tree'
+$i386KernelDriversCommand = New-RhapBuildPhaseCommand -Phase 'kernel-drivers' @i386KernelArgs
+Assert-Match $i386KernelDriversCommand ([regex]::Escape('rbuild kerneldrivers --state /build/state --arch i386 /build/src /build/repo /build/built')) 'i386 kernel-drivers selects the profile architecture'
+$spacedKernel = New-RhapBuildPhaseCommand -Phase 'kernel' @spacedPhaseArgs
+Assert-Match $spacedKernel ([regex]::Escape("'/srv/build tree/tools'/bin/rbuild kernel --state '/srv/build tree/state' --arch ppc '/srv/build tree/src' '/srv/build tree/repo' '/srv/build tree/built output'")) 'kernel safely quotes alternate source and output paths'
 $worldCommand = New-RhapBuildPhaseCommand -Phase 'world' @phaseArgs
 Assert-Match $worldCommand ([regex]::Escape('test -d /build/repo')) 'world requires existing repository input'
 Assert-Match $worldCommand ([regex]::Escape('/usr/bin/install -d /build/built /build/state')) 'world creates owned output directories'
 Assert-Equal ($worldCommand.IndexOf('/usr/bin/install -d /build/built') -lt $worldCommand.IndexOf('rbuild buildall')) $true 'world creates outputs before buildall'
 Assert-Match $worldCommand ([regex]::Escape('cd /build/src && /build/tools/bin/rbuild buildall --state /build/state Manifest /build/repo /build/built')) 'world uses manifest and state'
 
-foreach ($generated in @($rbuildCommand, $bootstrapCommand, $kernelCommand, $worldCommand)) {
+foreach ($generated in @($rbuildCommand, $bootstrapCommand, $kernelCommand, $kernelDriversCommand, $worldCommand)) {
     Assert-NotMatch $generated '/tmp/_|_seed-bootstrap-hdrs\.sh|DSTROOT=/|/usr/bin/rbuild|date-setting|header upload' 'generated command excludes obsolete workaround'
     Assert-NotMatch $generated '(?m)^\s*rm\s+-rf(?! /private/tmp/roots)' 'phase command never deletes build output trees'
 }
@@ -538,12 +567,12 @@ Assert-Equal $profileRead "set -e; /bin/cat '/opt/profiles/gcc.conf'" 'absolute 
 Assert-Throws { New-RhapReadProfileCommand -Profile "/opt/profile's.conf" } 'profile read rejects unsafe quote'
 
 $orchestrationEvents = New-Object System.Collections.Generic.List[string]
-$sequenceResult = Invoke-RhapBuildOrchestration -Phases @('rbuild', 'bootstrap', 'kernel-drivers', 'world') -PreflightBody 'preflight-body' -ProfileBody 'profile-body' -FreshBody 'fresh-body' -ParseProfile { param($text) "parsed:$text" } -PhaseFactory { param($phase, $profile) "$phase/$profile" } -ScriptInvoker { param($name, $body, $stream) $orchestrationEvents.Add("$name`:$stream"); return 0 } -CaptureInvoker { param($body) $orchestrationEvents.Add('profile'); return [pscustomobject]@{ ExitCode = 0; Stdout = 'remote'; Stderr = '' } }
+$sequenceResult = Invoke-RhapBuildOrchestration -Phases @('rbuild', 'bootstrap', 'kernel', 'kernel-drivers', 'world') -PreflightBody 'preflight-body' -ProfileBody 'profile-body' -FreshBody 'fresh-body' -ParseProfile { param($text) "parsed:$text" } -PhaseFactory { param($phase, $profile) "$phase/$profile" } -ScriptInvoker { param($name, $body, $stream) $orchestrationEvents.Add("$name`:$stream"); return 0 } -CaptureInvoker { param($body) $orchestrationEvents.Add('profile'); return [pscustomobject]@{ ExitCode = 0; Stdout = 'remote'; Stderr = '' } }
 Assert-Equal $sequenceResult $true 'orchestrator success'
-Assert-Equal ($orchestrationEvents -join ',') 'preflight:False,profile,fresh output reset:False,rbuild:True,bootstrap:True,kernel-drivers:True,world:True' 'orchestrator preflight fresh and canonical order'
+Assert-Equal ($orchestrationEvents -join ',') 'preflight:False,profile,fresh output reset:False,rbuild:True,bootstrap:True,kernel:True,kernel-drivers:True,world:True' 'orchestrator preflight fresh and canonical order'
 Assert-Equal @($orchestrationEvents | Where-Object { $_ -eq 'preflight:False' }).Count 1 'orchestrator runs preflight once'
 $failureEvents = New-Object System.Collections.Generic.List[string]
-Assert-Throws { Invoke-RhapBuildOrchestration -Phases @('rbuild', 'bootstrap', 'kernel-drivers', 'world') -PreflightBody 'p' -ProfileBody 'q' -ParseProfile { param($text) $text } -PhaseFactory { param($phase, $profile) $phase } -ScriptInvoker { param($name, $body, $stream) $failureEvents.Add($name); if ($name -eq 'bootstrap') { return 9 }; return 0 } -CaptureInvoker { param($body) return [pscustomobject]@{ ExitCode = 0; Stdout = 'remote'; Stderr = '' } } } 'orchestrator propagates required phase failure'
+Assert-Throws { Invoke-RhapBuildOrchestration -Phases @('rbuild', 'bootstrap', 'kernel', 'kernel-drivers', 'world') -PreflightBody 'p' -ProfileBody 'q' -ParseProfile { param($text) $text } -PhaseFactory { param($phase, $profile) $phase } -ScriptInvoker { param($name, $body, $stream) $failureEvents.Add($name); if ($name -eq 'bootstrap') { return 9 }; return 0 } -CaptureInvoker { param($body) return [pscustomobject]@{ ExitCode = 0; Stdout = 'remote'; Stderr = '' } } } 'orchestrator propagates required phase failure'
 Assert-Equal ($failureEvents -join ',') 'preflight,rbuild,bootstrap' 'orchestrator stops at first required failure'
 
 $profileValues = ConvertFrom-RhapToolchainProfileText -Text $realProfile
@@ -630,14 +659,16 @@ foreach ($case in @(
     Assert-Throws { Assert-RhapSafeRemoteOutputPath -RemoteRoot $root -Path $path } "reject $name"
 }
 
-Assert-Equal ((Get-RhapBuildPhases -All) -join ',') 'rbuild,bootstrap,kernel-drivers,world' 'all phase order'
+Assert-Equal ((Get-RhapBuildPhases -All) -join ',') 'rbuild,bootstrap,kernel,kernel-drivers,world' 'all phase order'
 Assert-Equal ((Get-RhapBuildPhases -Rbuild) -join ',') 'rbuild' 'rbuild phase'
 Assert-Equal ((Get-RhapBuildPhases -Bootstrap) -join ',') 'bootstrap' 'bootstrap phase'
-Assert-Equal ((Get-RhapBuildPhases -KernelDrivers) -join ',') 'kernel-drivers' 'kernel phase'
+Assert-Equal ((Get-RhapBuildPhases -Kernel) -join ',') 'kernel' 'kernel phase'
+Assert-Equal ((Get-RhapBuildPhases -KernelDrivers) -join ',') 'kernel-drivers' 'kernel-drivers phase'
 Assert-Equal ((Get-RhapBuildPhases -World) -join ',') 'world' 'world phase'
 Assert-Throws { Get-RhapBuildPhases } 'reject no phase'
 Assert-Throws { Get-RhapBuildPhases -All -World } 'reject all plus phase'
 Assert-Throws { Get-RhapBuildPhases -Rbuild -Bootstrap } 'reject two phases'
+Assert-Throws { Get-RhapBuildPhases -Kernel -KernelDrivers } 'reject kernel plus kernel-drivers'
 
 $cmd = New-RhapPreflightCommand -SourceRoot '/build/src' -ToolsDir '/build/tools' -BootstrapRoot '/build/bootstrap-root' -StateDir '/build/state' -Profile '/build/src/rbuild-1/toolchains/gcc-darwin.conf'
 $profileValidatorStart = $cmd.IndexOf("awk 'BEGIN {")

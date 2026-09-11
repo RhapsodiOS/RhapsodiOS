@@ -2,6 +2,7 @@
 #include "apk.h"
 #include "builder.h"
 #include "exec.h"
+#include "kernel.h"
 #include "manifest.h"
 #include "package.h"
 #include "strutil.h"
@@ -811,6 +812,7 @@ int runner_buildpackage(const char *type, const char *source,
     strlist_push(&repository, seeddir);
     build_options_init(&opt);
     opt.state_dir = safe_state;
+    opt.clean = 1;
     rc = builder_build(type, source, &repository, target, safe_dstdir, &opt);
     strlist_free(&repository);
 done_scanned:
@@ -819,5 +821,119 @@ done:
     exec_clear_log();
     free(version); free(log_path); free(logs); free(canon);
     free(safe_dstdir); free(safe_state);
+    return rc;
+}
+
+int runner_kernel(const char *srcdir, const char *seeddir, const char *dstdir,
+                  const char *arch, const char *state_dir) {
+    strlist packages;
+    size_t i;
+    int rc = 1;
+    char *path;
+
+    if (!kernel_arch_safe(arch)) {
+        fprintf(stderr, "rbuild: unsafe architecture \"%s\"\n",
+                arch ? arch : "");
+        return 1;
+    }
+    strlist_init(&packages);
+    if (kernel_core_packages(arch, &packages) != 0) goto done;
+    for (i = 0; i < packages.count; i++) {
+        path = path_join(srcdir, packages.items[i]);
+        if (runner_buildpackage("dir", path, seeddir, "all", dstdir,
+                                state_dir) != 0) {
+            fprintf(stderr, "rbuild: kernel failed: %s\n", packages.items[i]);
+            free(path);
+            goto done;
+        }
+        printf("rbuild: ok %s\n", packages.items[i]);
+        free(path);
+    }
+    printf("rbuild: kernel complete\n");
+    rc = 0;
+done:
+    strlist_free(&packages);
+    return rc;
+}
+
+int runner_kerneldrivers(const char *srcdir, const char *seeddir,
+                         const char *dstdir, const char *arch,
+                         const char *state_dir) {
+    strlist packages;
+    strlist failed;
+    strlist found;
+    strlist skip;
+    strlist skipped;
+    size_t i;
+    int rc = 1;
+    int passes = 0;
+    char *path;
+    char *list_path;
+
+    if (!kernel_arch_safe(arch)) {
+        fprintf(stderr, "rbuild: unsafe architecture \"%s\"\n",
+                arch ? arch : "");
+        return 1;
+    }
+    strlist_init(&packages);
+    strlist_init(&failed);
+    strlist_init(&found);
+    strlist_init(&skip);
+    strlist_init(&skipped);
+    list_path = path_join(srcdir, KERNEL_DRIVERS_BLACKLIST_REL);
+    if (kernel_load_blacklist(list_path, &skip) != 0) {
+        fprintf(stderr,
+                "rbuild: unable to read kernel driver blacklist %s\n",
+                list_path);
+        free(list_path);
+        goto done;
+    }
+    free(list_path);
+    if (kernel_scan_drivers(srcdir, arch, &found) != 0) {
+        fprintf(stderr,
+                "rbuild: unable to scan drivers for architecture \"%s\"\n",
+                arch);
+        goto done;
+    }
+    for (i = 0; i < found.count; i++) {
+        if (kernel_driver_blacklisted(&skip, found.items[i])) {
+            printf("rbuild: skip %s\n", found.items[i]);
+            strlist_push(&skipped, found.items[i]);
+        } else {
+            strlist_push(&packages, found.items[i]);
+        }
+    }
+    for (i = 0; i < packages.count; i++) {
+        path = path_join(srcdir, packages.items[i]);
+        if (runner_buildpackage("dir", path, seeddir, "all", dstdir,
+                                state_dir) != 0) {
+            fprintf(stderr, "rbuild: FAIL %s\n", packages.items[i]);
+            strlist_push(&failed, packages.items[i]);
+        } else {
+            printf("rbuild: ok %s\n", packages.items[i]);
+            passes++;
+        }
+        free(path);
+    }
+    printf("======== kerneldrivers summary ========\n");
+    printf("drivers skipped: %d\n", (int)skipped.count);
+    printf("drivers ok: %d\n", passes);
+    printf("drivers fail: %d\n", (int)failed.count);
+    for (i = 0; i < failed.count; i++)
+        printf("  FAIL %s\n", failed.items[i]);
+    if (failed.count != 0) {
+        fprintf(stderr,
+                "rbuild: kerneldrivers finished with %d driver failure(s)\n",
+                (int)failed.count);
+        goto done;
+    }
+    printf("rbuild: kerneldrivers complete\n");
+    rc = 0;
+done:
+    strlist_free(&packages);
+    strlist_free(&failed);
+    strlist_free(&found);
+    strlist_free(&skip);
+    strlist_free(&skipped);
     return rc;
 }

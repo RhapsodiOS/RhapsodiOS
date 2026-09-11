@@ -70,6 +70,7 @@ canonical host steps also live in the repository `README.md`.
 ```bat
 powershell -NoProfile -File vm\build-src.ps1 -Rbuild
 powershell -NoProfile -File vm\build-src.ps1 -Bootstrap
+powershell -NoProfile -File vm\build-src.ps1 -Kernel
 powershell -NoProfile -File vm\build-src.ps1 -KernelDrivers
 powershell -NoProfile -File vm\build-src.ps1 -World
 powershell -NoProfile -File vm\build-src.ps1 -All
@@ -80,12 +81,13 @@ powershell -NoProfile -File vm\clean-build.ps1
 |------|----------------|
 | `-Rbuild` | `make CC=… clean test all` in `RemoteRoot/src/rbuild-1`, then install `rbuild` and private helpers into `ToolsDir` |
 | `-Bootstrap` | `rbuild bootstrap --sysroot BootstrapRoot --toolchain … --state StateDir BootstrapManifest RepoDir RepoDir` |
-| `-KernelDrivers` | `rbuild buildpackage` for `driverkit-3`, `driverTools-1`, `kernload-1`, `drivers-<arch>/bus/drvPExpert`, `kernel-7`, then every remaining `drv*` / `Intel*` project under `drivers-<arch>` (plus `drvBPF` / `drvPortServer`). Projects with `dpkg/control` use `rbuild buildpackage`; others `gnumake`. Driver failures are listed; script exits non-zero if any failed. |
+| `-Kernel` | `rbuild kernel --state StateDir --arch <profile> SourceRoot RepoDir BuiltDir` for `driverkit-3`, `driverTools-1`, `kernload-1`, `drivers-<arch>/bus/drvPExpert`, `kernel-7` |
+| `-KernelDrivers` | `rbuild kerneldrivers --state StateDir --arch <profile> SourceRoot RepoDir BuiltDir` for remaining packaged `drv*` / `Intel*` projects under `drivers-<arch>` (plus `drvBPF` / `drvPortServer` / `drvSCSIServer` / `drvSCSITape` when they have `dpkg/control`). Paths in `src/rbuild-1/kernel-drivers-blacklist.json` are skipped until they package; rbuild exits non-zero if any non-skipped driver failed. |
 | `-World` | `rbuild buildall --state StateDir Manifest RepoDir BuiltDir` |
-| `-All` | `-Rbuild`, `-Bootstrap`, `-KernelDrivers`, then `-World` |
+| `-All` | `-Rbuild`, `-Bootstrap`, `-Kernel`, `-KernelDrivers`, then `-World` |
 | `-Fresh` | With `-All` only: delete `ToolsDir`, `BootstrapRoot`, `RepoDir`, `BuiltDir`, and `StateDir`; keep `SourceRoot` |
 
-Exactly one of `-All`, `-Rbuild`, `-Bootstrap`, `-KernelDrivers`, or `-World` is required. `-Rbuild` cannot be combined with `-Bootstrap`. Defaults (override in `vm.conf`): `RemoteRoot=/build`, `RepoDir=/build/repo`, `BuiltDir=/build/built`. Typical fresh-box order: `-Rbuild` → `-Bootstrap` → `-KernelDrivers` / `-World`, or a single `-All`. `clean-build.ps1` performs the `-Fresh` output reset without starting a rebuild.
+Exactly one of `-All`, `-Rbuild`, `-Bootstrap`, `-Kernel`, `-KernelDrivers`, or `-World` is required. `-Rbuild` cannot be combined with `-Bootstrap`. Defaults (override in `vm.conf`): `RemoteRoot=/build`, `RepoDir=/build/repo`, `BuiltDir=/build/built`. Typical fresh-box order: `-Rbuild` → `-Bootstrap` → `-Kernel` → `-KernelDrivers` / `-World`, or a single `-All`. `clean-build.ps1` performs the `-Fresh` output reset without starting a rebuild.
 
 ## Image chain
 

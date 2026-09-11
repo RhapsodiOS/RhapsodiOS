@@ -16,8 +16,16 @@ instead of dpkg `.deb`.
     rbuild buildpackage [--dir] [--target {all|headers|objs|local}] \
         <source> <repository> <dstdir>
     rbuild buildall <srclist> <repository> <dstdir>
+    rbuild kernel [--state DIR] --arch ARCH \
+        <srcdir> <repository> <dstdir>
+    rbuild kerneldrivers [--state DIR] --arch ARCH \
+        <srcdir> <repository> <dstdir>
     rbuild missing  <srclist> <dstdir>
     # global: -n / --dry-run
+
+`rbuild kerneldrivers` reads `rbuild-1/kernel-drivers-blacklist.json` under
+`<srcdir>` and skips every `skip` path. Remove a driver from that list when it
+packages successfully.
 
 ## Notes
 

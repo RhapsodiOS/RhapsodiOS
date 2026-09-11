@@ -147,20 +147,22 @@ function Get-RhapBuildPhases {
         [switch]$All,
         [switch]$Rbuild,
         [switch]$Bootstrap,
+        [switch]$Kernel,
         [switch]$KernelDrivers,
         [switch]$World
     )
 
-    $selected = @($All, $Rbuild, $Bootstrap, $KernelDrivers, $World) |
+    $selected = @($All, $Rbuild, $Bootstrap, $Kernel, $KernelDrivers, $World) |
         Where-Object { $_ } |
         Measure-Object |
         Select-Object -ExpandProperty Count
     if ($selected -ne 1) {
-        throw 'specify exactly one of -All, -Rbuild, -Bootstrap, -KernelDrivers, or -World'
+        throw 'specify exactly one of -All, -Rbuild, -Bootstrap, -Kernel, -KernelDrivers, or -World'
     }
-    if ($All) { return @('rbuild', 'bootstrap', 'kernel-drivers', 'world') }
+    if ($All) { return @('rbuild', 'bootstrap', 'kernel', 'kernel-drivers', 'world') }
     if ($Rbuild) { return @('rbuild') }
     if ($Bootstrap) { return @('bootstrap') }
+    if ($Kernel) { return @('kernel') }
     if ($KernelDrivers) { return @('kernel-drivers') }
     return @('world')
 }
@@ -185,6 +187,7 @@ function Assert-RhapFreshMode {
         [switch]$All,
         [switch]$Rbuild,
         [switch]$Bootstrap,
+        [switch]$Kernel,
         [switch]$KernelDrivers,
         [switch]$World,
         [switch]$Fresh
@@ -391,7 +394,7 @@ function New-RhapPreflightCommand {
 
 function New-RhapBuildPhaseCommand {
     param(
-        [Parameter(Mandatory = $true)][ValidateSet('rbuild', 'bootstrap', 'kernel-drivers', 'world')][string]$Phase,
+        [Parameter(Mandatory = $true)][ValidateSet('rbuild', 'bootstrap', 'kernel', 'kernel-drivers', 'world')][string]$Phase,
         [Parameter(Mandatory = $true)][string]$SourceRoot,
         [Parameter(Mandatory = $true)][string]$ToolsDir,
         [Parameter(Mandatory = $true)][string]$BootstrapRoot,
@@ -402,9 +405,7 @@ function New-RhapBuildPhaseCommand {
         [Parameter(Mandatory = $true)][string]$BuildCc,
         [Parameter(Mandatory = $true)][string]$TargetArch,
         [Parameter(Mandatory = $true)][string]$Make,
-        [Parameter(Mandatory = $true)][string]$ToolPath,
-        [string[]]$DriverProjects = @(),
-        [string[]]$MakeDriverProjects = @()
+        [Parameter(Mandatory = $true)][string]$ToolPath
     )
 
     foreach ($item in @(
@@ -493,56 +494,10 @@ function New-RhapBuildPhaseCommand {
     if ($Phase -eq 'world') {
         return "set -e; test -d $repo || { echo 'build-src: repository missing: $RepoDir' >&2; exit 1; }; /usr/bin/install -d $built $state && cd $source && $rbuild buildall --state $state Manifest $repo $built"
     }
-
-    $commands = New-Object System.Collections.Generic.List[string]
-    $commands.Add('set -e')
-    $commands.Add("test -d $repo || { echo 'build-src: repository missing: $RepoDir' >&2; exit 1; }")
-    $commands.Add("/usr/bin/install -d $built $state")
-    $commands.Add("cd $source")
-    $corePackages = @(Get-RhapKernelCorePackages -TargetArch $targetArchValue)
-    foreach ($package in $corePackages) {
-        $commands.Add("$rbuild buildpackage --state $state --dir $package $repo $built")
-        $commands.Add("echo 'build-src: ok $package'")
+    if ($Phase -eq 'kernel') {
+        return "set -e; test -d $repo || { echo 'build-src: repository missing: $RepoDir' >&2; exit 1; }; /usr/bin/install -d $built $state && cd $source && $rbuild kernel --state $state --arch $targetArch $source $repo $built"
     }
-    $commands.Add("mkdir -p $state/logs $state/drivers")
-    $commands.Add('set +e')
-    $commands.Add('rbuild_driver_passes=0')
-    $commands.Add('rbuild_driver_failures=0')
-    $commands.Add("rbuild_failed_projects=''")
-    foreach ($project in $DriverProjects) {
-        if ($project -notmatch '^[A-Za-z0-9_.+/-]+$' -or $project -match '(^|/)\.\.(/|$)') {
-            throw "unsafe driver project path: $project"
-        }
-        $commands.Add("$rbuild buildpackage --state $state --dir $project $repo $built")
-        $commands.Add('rbuild_status=$?')
-        $commands.Add("if test `$rbuild_status -eq 0; then echo 'build-src: ok $project'; rbuild_driver_passes=`$(/bin/expr `$rbuild_driver_passes + 1); else echo 'build-src: FAIL $project' >&2; rbuild_driver_failures=`$(/bin/expr `$rbuild_driver_failures + 1); rbuild_failed_projects=`"`$rbuild_failed_projects $project`"; fi")
-        $commands.Add('rm -rf /private/tmp/roots')
-    }
-    foreach ($project in $MakeDriverProjects) {
-        if ($project -notmatch '^[A-Za-z0-9_.+/-]+$' -or $project -match '(^|/)\.\.(/|$)') {
-            throw "unsafe driver project path: $project"
-        }
-        $markerName = ($project -replace '/', '_') + '-all'
-        $marker = "$state/drivers/$markerName.done"
-        $log = "$state/logs/$markerName.log"
-        $driverCommand = "cd $source/$project && PATH=$toolPath $makeTool CC=$cc"
-        $commands.Add("rbuild_profile_cksum=`$(/usr/bin/cksum $profilePath) || exit 1")
-        $commands.Add("rbuild_driver_command='$driverCommand'")
-        $commands.Add("if test -f $marker; then rbuild_saved_profile=`$(/usr/bin/sed -n 's/^profile_cksum=//p' $marker); rbuild_saved_command=`$(/usr/bin/sed -n 's/^command=//p' $marker); if test `"`$rbuild_saved_profile`" != `"`$rbuild_profile_cksum`" || test `"`$rbuild_saved_command`" != `"`$rbuild_driver_command`"; then echo 'build-src: driver profile mismatch; rerun with -Fresh' >&2; exit 1; fi; echo 'build-src: resume $project'; rbuild_driver_passes=`$(/bin/expr `$rbuild_driver_passes + 1); else rbuild_status_file=$marker.status.`$`$")
-        $commands.Add("rm -f `"`$rbuild_status_file`" $marker.tmp.`$`$")
-        $commands.Add("( (cd $source/$project && PATH=$toolPath $makeTool CC=$cc); echo `$? > `"`$rbuild_status_file`" ) 2>&1 | /usr/bin/tee $log; rbuild_tee_status=`$?")
-        $commands.Add("if test -f `"`$rbuild_status_file`"; then rbuild_status=`$(/bin/cat `"`$rbuild_status_file`"); else rbuild_status=1; fi; test `$rbuild_tee_status -eq 0 || rbuild_status=1; rm -f `"`$rbuild_status_file`"")
-        $commands.Add("if test `$rbuild_status -eq 0; then if printf 'profile_cksum=%s\ncommand=%s\n' `"`$rbuild_profile_cksum`" `"`$rbuild_driver_command`" > $marker.tmp.`$`$ && mv $marker.tmp.`$`$ $marker; then echo 'build-src: ok $project'; rbuild_driver_passes=`$(/bin/expr `$rbuild_driver_passes + 1); else echo 'build-src: driver state write failed: $project' >&2; rbuild_driver_failures=`$(/bin/expr `$rbuild_driver_failures + 1); rbuild_failed_projects=`"`$rbuild_failed_projects $project`"; fi; else echo 'build-src: FAIL $project' >&2; rbuild_driver_failures=`$(/bin/expr `$rbuild_driver_failures + 1); rbuild_failed_projects=`"`$rbuild_failed_projects $project`"; fi")
-        $commands.Add('fi')
-    }
-    $commands.Add("echo '======== kernel/drivers summary ======== '")
-    $commands.Add("echo 'core: $($corePackages -join ', ') (required, all ok)'")
-    $commands.Add('echo "drivers ok: $rbuild_driver_passes"')
-    $commands.Add('echo "drivers fail: $rbuild_driver_failures"')
-    $commands.Add('for rbuild_failed_project in $rbuild_failed_projects; do echo "  FAIL $rbuild_failed_project"; done')
-    $commands.Add('if test $rbuild_driver_failures -ne 0; then echo "build-src: kernel/drivers finished with $rbuild_driver_failures driver failure(s)" >&2; exit 1; fi')
-    $commands.Add("echo 'build-src: kernel/drivers complete'")
-    return $commands -join "; `n"
+    return "set -e; test -d $repo || { echo 'build-src: repository missing: $RepoDir' >&2; exit 1; }; /usr/bin/install -d $built $state && cd $source && $rbuild kerneldrivers --state $state --arch $targetArch $source $repo $built"
 }
 
 function New-RhapFreshCommand {

@@ -1,6 +1,7 @@
 #include "builder.h"
 #include "manifest.h"
 #include "exec.h"
+#include "kernel.h"
 #include "strutil.h"
 #include "package.h"
 #include "runner.h"
@@ -16,6 +17,10 @@ static const char *USAGE =
     "  rbuild buildall [--state DIR] <srclist> <repository> <dstdir>\n"
     "  rbuild bootstrap --sysroot ROOT --toolchain FILE --state DIR"
     " <srclist> <repository> <dstdir>\n"
+    "  rbuild kernel [--state DIR] --arch ARCH"
+    " <srcdir> <repository> <dstdir>\n"
+    "  rbuild kerneldrivers [--state DIR] --arch ARCH"
+    " <srcdir> <repository> <dstdir>\n"
     "  rbuild missing   <srclist> <dstdir>\n"
     "  (global: -n/--dry-run)\n";
 
@@ -170,6 +175,35 @@ static int cmd_missing(int argc, char **argv) {
     return rc;
 }
 
+static int cmd_kernel(int argc, char **argv, int drivers) {
+    const char *state = 0;
+    const char *arch = 0;
+    int i = 0;
+
+    while (i < argc && strncmp(argv[i], "--", 2) == 0) {
+        const char *name = argv[i++];
+        const char *value;
+        if (i >= argc) { usage(); return 1; }
+        value = argv[i++];
+        if (strcmp(name, "--state") == 0) state = value;
+        else if (strcmp(name, "--arch") == 0) arch = value;
+        else { usage(); return 1; }
+    }
+    if (argc - i != 3 || arch == 0) { usage(); return 1; }
+    if (state != 0 && state[0] != '/') {
+        fprintf(stderr, "rbuild: state directory must be absolute\n");
+        return 1;
+    }
+    if (!kernel_arch_safe(arch)) {
+        fprintf(stderr, "rbuild: unsafe architecture \"%s\"\n", arch);
+        return 1;
+    }
+    if (drivers)
+        return runner_kerneldrivers(argv[i], argv[i + 1], argv[i + 2],
+                                    arch, state);
+    return runner_kernel(argv[i], argv[i + 1], argv[i + 2], arch, state);
+}
+
 int main(int argc, char **argv) {
     int i = 1;
     const char *sub;
@@ -197,6 +231,10 @@ int main(int argc, char **argv) {
         return cmd_buildall(argc - i, argv + i);
     if (strcmp(sub, "bootstrap") == 0)
         return cmd_bootstrap(argc - i, argv + i);
+    if (strcmp(sub, "kernel") == 0)
+        return cmd_kernel(argc - i, argv + i, 0);
+    if (strcmp(sub, "kerneldrivers") == 0)
+        return cmd_kernel(argc - i, argv + i, 1);
     if (strcmp(sub, "missing") == 0)
         return cmd_missing(argc - i, argv + i);
 

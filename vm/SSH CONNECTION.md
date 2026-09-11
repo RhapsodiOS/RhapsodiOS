@@ -46,6 +46,7 @@ Same SSH path as sync. Typical fresh-box order after a sync:
 ```bat
 powershell -File vm\build-src.ps1 -Rbuild
 powershell -File vm\build-src.ps1 -Bootstrap
+powershell -File vm\build-src.ps1 -Kernel
 powershell -File vm\build-src.ps1 -KernelDrivers
 powershell -File vm\build-src.ps1 -World
 ```
@@ -54,7 +55,8 @@ powershell -File vm\build-src.ps1 -World
 |------|---------------------------|
 | `-Rbuild` | Build/install `rbuild` from `RemoteRoot/src/rbuild-1` |
 | `-Bootstrap` | `rbuild bootstrap BootstrapManifest` → `RepoDir` |
-| `-KernelDrivers` | driverkit / driverTools / kernel, then remaining `drivers-<arch>` drivers |
+| `-Kernel` | `rbuild kernel` (driverkit through kernel-7) |
+| `-KernelDrivers` | `rbuild kerneldrivers` for remaining `drivers-<arch>` packaged drivers, minus the JSON blacklist |
 | `-World` | `rbuild buildall Manifest` |
 
 `RepoDir` / `BuiltDir` / `Make` are also in `vm.conf` (defaults `/build/repo`,

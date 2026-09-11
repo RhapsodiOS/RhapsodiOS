@@ -13,7 +13,9 @@
 
 #import <driverkit/driverTypes.h>
 #import <kernserv/queue.h>
+#import <kernserv/clock_timer.h>
 #import <mach/boolean.h>
+#import <mach/port.h>
 #import <bsd/dev/scsireg.h>
 
 #if defined(i386) || defined(__i386__)
@@ -22,6 +24,16 @@
 /* PPC rbuild has no i386 PIO headers or IOEISADMABuffer. */
 #ifndef IOEISADMABuffer
 typedef void *IOEISADMABuffer;
+#endif
+#ifndef IOMallocLow
+#define IOMallocLow		IOMalloc
+#define IOFreeLow		IOFree
+#endif
+#ifndef IO_Cascade
+#define IO_Demand	0
+#define IO_Single	1
+#define IO_Block	2
+#define IO_Cascade	3
 #endif
 #define inb(port)		((unsigned char)0)
 #define inw(port)		((unsigned short)0)
@@ -67,6 +79,15 @@ typedef void *IOEISADMABuffer;
 #define EATA_SG_COUNT		64
 #define EATA_CHANNEL_COUNT	3
 
+#define EATA_BUS_EISA		0
+#define EATA_BUS_ISA		1
+#define EATA_BUS_PCI		2
+
+#define EATA_PCI_REGISTER_SPACE	9
+#define EATA_PCI_REGISTER_OFFSET	0x10
+#define EATA_EISA_SLOT_BASE	0xC88
+#define EATA_EISA_PORT_SIZE	8
+
 /*
  * Immediate written to CP byte 1 (ccb+9).
  */
@@ -84,6 +105,7 @@ typedef void *IOEISADMABuffer;
  * CP+8 (ccb+0x10): identify / physical.
  */
 #define EATA_CP_LUN_MASK	0x07
+#define EATA_CP_TARGET_MASK	0x1F
 #define EATA_CP_PHYSICAL	0x40
 #define EATA_CP_IDENTIFY	0x80
 
@@ -187,7 +209,11 @@ struct ccb {
 	void			*cmdBuf;	/* +0x50 */
 	struct eata_sg		sg_list[EATA_SG_COUNT];	/* +0x54 */
 	IOEISADMABuffer		dmaList[EATA_SG_COUNT];	/* +0x254 */
-	unsigned int		startTime[2];	/* +0x354 / +0x358 ns_time_t */
+	/*
+	 * ns_time_t at +0x354. Stored as two words so compilers that
+	 * 8-align long long do not insert padding (0x354 % 8 == 4).
+	 */
+	unsigned int		startTime[2];	/* +0x354 / +0x358 */
 	port_t			timeoutPort;	/* +0x35c */
 	esense_reply_t		senseData;	/* +0x360 */
 };

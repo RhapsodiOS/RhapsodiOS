@@ -20,7 +20,38 @@
 #import <driverkit/return.h>
 #import <driverkit/scsiTypes.h>
 #import <kernserv/queue.h>
+#import <driverkit/machine/directDevice.h>
 #import "EATAControllerTypes.h"
+
+#if !(defined(i386) || defined(__i386__))
+/*
+ * ppc rbuild has no EISA device-description / ISA DMA selectors.
+ * Declare them so the i386 bodies type-check.
+ */
+@interface Object(EATAEISADeviceDescription)
+- (IOReturn)getEISASlotNumber:(unsigned int *)slotNum;
+- (IOReturn)setPortRangeList:(IORange *)list num:(unsigned int)numRanges;
+- (unsigned int)numPortRanges;
+- (IORange *)portRangeList;
+@end
+@interface IODirectDevice(EATAEISADMA)
+- (IOReturn)enableChannel:(unsigned int)localChannel;
+- (IOReturn)setTransferMode:(int)mode forChannel:(unsigned int)localChannel;
+- (void)reserveDMALock;
+- (void)releaseDMALock;
+- (IOEISADMABuffer)createDMABufferFor:(unsigned int *)physAddr
+			      length:(unsigned int)length
+				read:(BOOL)isRead
+		      needsLowMemory:(BOOL)lowerMem
+			   limitSize:(BOOL)limitSize;
+- (void)freeDMABuffer:(IOEISADMABuffer)buffer;
+- (void)abortDMABuffer:(IOEISADMABuffer)buffer;
+@end
+#endif
+
+@interface Object(EATABusOwner)
+- (unsigned)numReserved;
+@end
 
 /*
  * Op at command-buf +0x04. commandRequestOccurred compares eax against
@@ -93,5 +124,11 @@ typedef struct {
 - (struct ccb *)ccbFromCmd:(EATACommandBuf *)cmdBuf;
 
 @end
+
+int eata_busy(unsigned short ioBase, int count);
+int eata_busy_0(unsigned short ioBase, int count);
+BOOL parseConfigSpace(id deviceDescription, const char *title,
+		unsigned regSize, unsigned short *baseAddr);
+void eataTimeout(void *arg);
 
 #endif /* _EATACONTROLLERPRIVATE_H */

@@ -2,8 +2,9 @@
     DRIVERNAME = DPT2000;
     DYNAMIC_CODE_GEN = YES;
     FILESTABLE = {
-        CLASSES = (DPTSCSIDriver.m, DPTSCSIDriverRoutines.m, DPTSCSIDriverThread.m);
-        H_FILES = (DPTSCSIDriver.h, DPTSCSIDriverPrivate.h, DPTSCSIDriverTypes.h);
+        CLASSES = (EATAController.m, EATAControllerThread.m);
+        H_FILES = (EATAController.h, EATAControllerPrivate.h, EATAControllerTypes.h);
+        C_FILES = (EATAControllerRoutines.c);
         OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble, Load_Commands.sect);
     };
     LANGUAGE = English;

@@ -13,9 +13,9 @@ PROJECTVERSION = 2.7
 PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
-CLASSES = DPTSCSIDriver.m DPTSCSIDriverRoutines.m DPTSCSIDriverThread.m
-
-HFILES = DPTSCSIDriver.h DPTSCSIDriverPrivate.h DPTSCSIDriverTypes.h
+CLASSES = EATAController.m EATAControllerThread.m
+HFILES = EATAController.h EATAControllerPrivate.h EATAControllerTypes.h
+CFILES = EATAControllerRoutines.c
 
 OTHERSRCS = Makefile.preamble Makefile Makefile.postamble Load_Commands.sect
 

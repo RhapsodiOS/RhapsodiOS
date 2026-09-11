@@ -8,7 +8,9 @@ OTHER_LIBS =
 LIBS =
 FRAMEWORKS =
 
-MFILES = DPTSCSIDriver.m DPTSCSIDriverRoutines.m DPTSCSIDriverThread.m
+MFILES = EATAController.m EATAControllerThread.m
 
-HFILES = DPTSCSIDriver.h DPTSCSIDriverPrivate.h DPTSCSIDriverTypes.h
+HFILES = EATAController.h EATAControllerPrivate.h EATAControllerTypes.h
+
+CFILES = EATAControllerRoutines.c
 

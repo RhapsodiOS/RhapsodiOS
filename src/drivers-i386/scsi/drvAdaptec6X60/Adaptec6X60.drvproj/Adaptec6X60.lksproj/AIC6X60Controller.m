@@ -25,6 +25,7 @@
 #import <mach/message.h>
 #import <mach/port.h>
 #import <mach/mach_interface.h>
+#import <mach/vm_param.h>
 #import <machkit/NXLock.h>
 #import <kernserv/ns_timer.h>
 #import <driverkit/i386/ioPorts.h>

@@ -17,6 +17,7 @@
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
 #import <kernserv/prototypes.h>
+#import <mach/vm_param.h>
 #import <sys/param.h>
 
 static void aicTimeout(void *arg);

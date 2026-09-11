@@ -1,0 +1,229 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 16,
+      "reference_names": [
+        "+[IOSmartDisplay probe:]"
+      ],
+      "size": 60,
+      "source_line": 111,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
+    },
+    {
+      "address": 92,
+      "reference_names": [
+        "+[IOSmartDisplay findForConnection:refCon:]"
+      ],
+      "size": 408,
+      "source_line": 118,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
+    },
+    {
+      "address": 516,
+      "reference_names": [
+        "-[IOSmartDisplay attach:refCon:]"
+      ],
+      "size": 164,
+      "source_line": 148,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
+    },
+    {
+      "address": 712,
+      "reference_names": [
+        "-[IOSmartDisplay detach]"
+      ],
+      "size": 20,
+      "source_line": 155,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
+    },
+    {
+      "address": 732,
+      "reference_names": [
+        "-[IOSmartDisplay attached]"
+      ],
+      "size": 24,
+      "source_line": 161,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
+    },
+    {
+      "address": 756,
+      "reference_names": [
+        "-[IOSmartDisplay getDisplayInfoForMode:flags:]"
+      ],
+      "size": 16,
+      "source_line": 166,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
+    },
+    {
+      "address": 772,
+      "reference_names": [
+        "-[IOSmartDisplay getGammaTableByIndex:dataCount:dataWidth:data:]"
+      ],
+      "size": 16,
+      "source_line": 172,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
+    },
+    {
+      "address": 1052,
+      "reference_names": [
+        "-[IOSmartDDCDisplay attach:refCon:]"
+      ],
+      "size": 568,
+      "source_line": 220,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
+    },
+    {
+      "address": 1684,
+      "reference_names": [
+        "-[IOSmartDDCDisplay getDisplayInfoForMode:flags:]"
+      ],
+      "size": 192,
+      "source_line": 302,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
+    },
+    {
+      "address": 2264,
+      "reference_names": [
+        "-[IOSmartADBDisplay getDisplayInfoForMode:flags:]"
+      ],
+      "size": 112,
+      "source_line": 427,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
+    },
+    {
+      "address": 2376,
+      "reference_names": [
+        "-[IOSmartADBDisplay doConnect]"
+      ],
+      "size": 192,
+      "source_line": 445,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
+    },
+    {
+      "address": 2700,
+      "reference_names": [
+        "-[IOSmartADBDisplay writeWithAcknowledge:data:ackValue:]"
+      ],
+      "size": 164,
+      "source_line": 485,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
+    },
+    {
+      "address": 2896,
+      "reference_names": [
+        "-[IOSmartADBDisplay setLogicalRegister:data:]"
+      ],
+      "size": 256,
+      "source_line": 508,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
+    },
+    {
+      "address": 3184,
+      "reference_names": [
+        "-[IOSmartADBDisplay getLogicalRegister:data:]"
+      ],
+      "size": 248,
+      "source_line": 531,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
+    },
+    {
+      "address": 3480,
+      "reference_names": [
+        "-[IOSmartADBDisplay setWiggle:]"
+      ],
+      "size": 72,
+      "source_line": 555,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
+    },
+    {
+      "address": 3568,
+      "reference_names": [
+        "-[IOSmartADBDisplay initForADB:]"
+      ],
+      "size": 348,
+      "source_line": 563,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
+    },
+    {
+      "address": 3980,
+      "reference_names": [
+        "-[IOSmartADBDisplay free]"
+      ],
+      "size": 84,
+      "source_line": 609,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
+    },
+    {
+      "address": 4080,
+      "reference_names": [
+        "-[IOSmartADBDisplay attach:refCon:]"
+      ],
+      "size": 364,
+      "source_line": 619,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
+    },
+    {
+      "address": 4492,
+      "reference_names": [
+        "+[IOSmartADBDisplay probeADBForDisplays]"
+      ],
+      "size": 172,
+      "source_line": 651,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
+    },
+    {
+      "address": 4680,
+      "reference_names": [
+        "-[IOSmartADBDisplay IOSMADBGetAVDeviceID:size:]"
+      ],
+      "size": 44,
+      "source_line": 674,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
+    },
+    {
+      "address": 4724,
+      "reference_names": [
+        "-[IOSmartADBDisplay IOSMADBGetLogicalRegister:size:result:size:]"
+      ],
+      "size": 104,
+      "source_line": 683,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
+    },
+    {
+      "address": 4844,
+      "reference_names": [
+        "-[IOSmartADBDisplay IOSMADBSetLogicalRegister:size:]"
+      ],
+      "size": 68,
+      "source_line": 699,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOSmartDisplay.m"
+    }
+  ],
+  "reference_sha256": "FD38FBA638BE85555D342D5349EABDE764F8562084DECEB1A3D33FDAC166B3F1",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 1876,
+      "reference_names": [
+        "-[IOSmartADBDisplay findADBDisplayInfoForType:]"
+      ],
+      "size": 324
+    },
+    {
+      "address": 4928,
+      "reference_names": [
+        "+[IODisplayKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 20
+    },
+    {
+      "address": 4948,
+      "reference_names": [
+        "+[IODisplayVersion driverKitVersionForIODisplay]"
+      ],
+      "size": 16
+    }
+  ]
+}

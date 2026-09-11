@@ -8,6 +8,7 @@
 #ifndef _IOPORTSESSIONKERN_H_
 #define _IOPORTSESSIONKERN_H_
 
+#import <driverkit/IODevice.h>
 #import "IOPortSession.h"
 
 /* ========================================================================
@@ -18,43 +19,43 @@
 
 /* Get character parameter values
  * values: Buffer to receive character values (output parameter)
- * parameter: Parameter identifier
- * count: Number of values to retrieve
+ * parameterName: Parameter identifier
+ * count: Pointer to the number of values to retrieve (in/out)
  * Returns: Result code (0 on success)
  */
-- (int)_getCharValues:(unsigned char *)values 
-         forParameter:(int)parameter 
-                count:(int)count;
+- (int)getCharValues:(char *)values
+        forParameter:(IOParameterName)parameterName
+               count:(unsigned int *)count;
 
 /* Get integer parameter values
  * values: Buffer to receive integer values (output parameter)
- * parameter: Parameter identifier
- * count: Number of values to retrieve
+ * parameterName: Parameter identifier
+ * count: Pointer to the number of values to retrieve (in/out)
  * Returns: Result code (0 on success)
  */
-- (int)_getIntValues:(unsigned int *)values 
-        forParameter:(int)parameter 
-               count:(int)count;
+- (int)getIntValues:(unsigned int *)values
+       forParameter:(IOParameterName)parameterName
+              count:(unsigned int *)count;
 
 /* Set character parameter values
  * values: Buffer containing character values to set
- * parameter: Parameter identifier
+ * parameterName: Parameter identifier
  * count: Number of values to set
  * Returns: Result code (0 on success)
  */
-- (int)_setCharValues:(unsigned char *)values 
-         forParameter:(int)parameter 
-                count:(int)count;
+- (int)setCharValues:(char *)values
+        forParameter:(IOParameterName)parameterName
+               count:(unsigned int)count;
 
 /* Set integer parameter values
  * values: Buffer containing integer values to set
- * parameter: Parameter identifier
+ * parameterName: Parameter identifier
  * count: Number of values to set
  * Returns: Result code (0 on success)
  */
-- (int)_setIntValues:(unsigned int *)values 
-        forParameter:(int)parameter 
-               count:(int)count;
+- (int)setIntValues:(unsigned int *)values
+       forParameter:(IOParameterName)parameterName
+              count:(unsigned int)count;
 
 /* Close kernel port session
  * sessionId: Session identifier/index
@@ -63,7 +64,7 @@
  * Cleans up and closes a kernel port session by freeing the associated
  * port object and clearing the session state.
  */
-- (int)iopsKernClose:(int)sessionId;
++ (int)iopsKernClose:(int)sessionId;
 
 /* Dequeue data from kernel port session
  * session: IOPortSession object to dequeue from
@@ -78,7 +79,7 @@
  *   field4_0x10: Total bytes transferred (output)
  *   field5_0x14: Minimum bytes before return (updated)
  */
-- (int)iopsKernDequeue:(id)session msg:(void *)msg;
++ (int)iopsKernDequeue:(id)session msg:(void *)msg;
 
 /* Enqueue data to kernel port session
  * session: IOPortSession object to enqueue to
@@ -93,7 +94,7 @@
  *   field4_0x10: Total bytes transferred (output)
  *   field5_0x14: Sleep flag (byte at offset)
  */
-- (int)iopsKernEnqueue:(id)session msg:(void *)msg;
++ (int)iopsKernEnqueue:(id)session msg:(void *)msg;
 
 /* Free kernel port session resources
  * Returns: 0 always
@@ -101,7 +102,7 @@
  * Closes all active sessions and frees the map lock.
  * Resets the session count and clears the kernel ID map.
  */
-- (id)iopsKernFree;
++ (id)iopsKernFree;
 
 /* Initialize kernel port session subsystem
  * deviceDescription: Device description object containing configuration
@@ -109,7 +110,7 @@
  * Reads "Maximum Sessions" from config table (max 64).
  * Initializes the map lock and session tracking arrays.
  */
-- (void)iopsKernInit:(id)deviceDescription;
++ (void)iopsKernInit:(id)deviceDescription;
 
 /* Handle kernel port session ioctl initialization
  * sessionId: Session identifier/index
@@ -121,7 +122,7 @@
  *   data[0] == 1: Get session name and copy to data[8]
  *   Other values: Return error
  */
-- (int)iopsKernInitIoctl:(int)sessionId data:(char *)data;
++ (int)iopsKernInitIoctl:(int)sessionId data:(char *)data;
 
 /* Handle kernel port session message ioctl
  * sessionId: Session identifier/index
@@ -130,18 +131,18 @@
  *
  * Dispatches ioctl operations (2-15) to appropriate session methods.
  */
-- (int)iopsKernMsgIoctl:(int)sessionId data:(char *)data;
++ (int)iopsKernMsgIoctl:(int)sessionId data:(char *)data;
 
 /* Get number of sessions
  * Returns: Number of sessions configured
  */
-- (int)iopsKernNumSess;
++ (int)iopsKernNumSess;
 
 /* Open kernel port session
  * sessionId: Session identifier/index to open
  * Returns: 0 on success, 0x13 (19) if not available, 0xd (13) if already open
  */
-- (int)iopsKernOpen:(int)sessionId;
++ (int)iopsKernOpen:(int)sessionId;
 
 /* Handle server ioctl commands
  * command: Ioctl command code
@@ -152,7 +153,7 @@
  *   0xc0047000: Lookup port server device
  *   0x40547001: Find free session slot
  */
-- (int)iopsServerIoctlCommand:(int)command data:(char *)data;
++ (int)iopsServerIoctlCommand:(int)command data:(char *)data;
 
 @end
 

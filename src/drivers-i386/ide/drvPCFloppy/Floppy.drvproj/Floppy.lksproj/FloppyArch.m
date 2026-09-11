@@ -16,12 +16,11 @@
 #define _dma_mask_chan		dma_mask_chan
 #define _dma_chan_xfer_mode	dma_chan_xfer_mode
 #define _is_dma_done		is_dma_done
-#define _get_dma_count		get_dma_count
 
 extern unsigned int page_size;
-/* Decompiled VM helpers used by this file (1-arg extract). */
-extern unsigned int _vm_map_pmap_EXTERNAL(unsigned int map, unsigned int addr);
-extern unsigned int _pmap_resident_extract(unsigned int pmap);
+/* Decompiled VM helpers used by this file (1-arg pmap lookup, 2-arg extract). */
+extern unsigned int vm_map_pmap_EXTERNAL(unsigned int map);
+extern unsigned int pmap_resident_extract(unsigned int pmap, unsigned int va);
 
 @implementation FloppyController(Arch)
 
@@ -35,10 +34,10 @@ extern unsigned int _pmap_resident_extract(unsigned int pmap);
  *
  * Parameters:
  *   cmdParams - Pointer to command parameters structure containing:
- *               - offset 0x04: VM map
  *               - offset 0x20: Buffer address
  *               - offset 0x24: Byte count
  *               - offset 0x3c: Flags (bit 1 = read/write direction)
+ *               - offset 0x58: VM map
  *   dmaStruct - Pointer to DMA transfer structure to be filled in
  *
  * Returns:
@@ -53,27 +52,29 @@ extern unsigned int _pmap_resident_extract(unsigned int pmap);
 	void *physAddr;
 	unsigned int physAddrInt;
 	BOOL isRead;
-	BOOL isEISA;
 	int result;
 
 	// Get byte count from cmdParams (offset 0x24)
 	byteCount = *(unsigned int *)((char *)cmdParams + 0x24);
 
-	// Get VM map from cmdParams (offset 0x04)
-	vmMap = *(unsigned int *)((char *)cmdParams + 0x04);
+	// Get VM map from cmdParams (offset 0x58)
+	vmMap = *(unsigned int *)((char *)cmdParams + 0x58);
 
 	// Get buffer address from cmdParams (offset 0x20)
 	bufferAddr = *(unsigned int *)((char *)cmdParams + 0x20);
 
 	// Get physical address from virtual address
-	pmap = _vm_map_pmap_EXTERNAL(vmMap, bufferAddr);
-	physAddr = (void *)_pmap_resident_extract(pmap);
+	pmap = vm_map_pmap_EXTERNAL(vmMap);
+	physAddr = (void *)pmap_resident_extract(pmap, bufferAddr);
 
 	result = 0;
 
 	// Check if byte count is valid (<= 1MB for EISA, <= page_size for ISA)
+	// The reference re-sends isEISAPresent for each decision below rather
+	// than caching it; matched here since these are independent objc_msgSend
+	// calls in the disassembly (0x1590, 0x15df, 0x1679).
 	if ((byteCount < 0x100001) &&
-	    ((isEISA = [self isEISAPresent]) || (byteCount <= page_size))) {
+	    ([self isEISAPresent] || (byteCount <= page_size))) {
 
 		// Get read/write flag from cmdParams (offset 0x3c, bit 1)
 		isRead = (*(unsigned char *)((char *)cmdParams + 0x3c) & 0x02) != 0;
@@ -91,7 +92,7 @@ extern unsigned int _pmap_resident_extract(unsigned int pmap);
 		_flags &= 0xf7;
 
 		// Check if we need to use bounce buffer (ISA only)
-		if (!isEISA) {
+		if (![self isEISAPresent]) {
 			// Set bit 3 of controller flags (using bounce buffer)
 			_flags |= 0x08;
 
@@ -101,9 +102,8 @@ extern unsigned int _pmap_resident_extract(unsigned int pmap);
 			}
 
 			// Get physical address of bounce buffer
-			pmap = _vm_map_pmap_EXTERNAL((unsigned int)kernel_map,
-			                              (unsigned int)_dmaBuffer);
-			physAddrInt = _pmap_resident_extract(pmap);
+			pmap = vm_map_pmap_EXTERNAL((unsigned int)kernel_map);
+			physAddrInt = pmap_resident_extract(pmap, (unsigned int)_dmaBuffer);
 			dmaStruct->physAddr = physAddrInt;
 		} else {
 			// EISA - use buffer directly
@@ -135,7 +135,7 @@ extern unsigned int _pmap_resident_extract(unsigned int pmap);
 		_dma_mask_chan(2);
 
 		// Set transfer mode (ISA vs EISA)
-		_dma_chan_xfer_mode(2, !isEISA);
+		_dma_chan_xfer_mode(2, ![self isEISAPresent]);
 
 		// Start the DMA transfer
 		result = dma_xfer_chan(2, (dma_xfer_t *)dmaStruct);
@@ -165,9 +165,9 @@ extern unsigned int _pmap_resident_extract(unsigned int pmap);
  *
  * Parameters:
  *   cmdParams - Pointer to command parameters structure containing:
- *               - offset 0x04: VM map
  *               - offset 0x20: Buffer address
  *               - offset 0x24: Byte count
+ *               - offset 0x58: VM map
  *   dmaStruct - Pointer to DMA transfer structure
  *
  * Returns:
@@ -186,12 +186,12 @@ extern unsigned int _pmap_resident_extract(unsigned int pmap);
 	unsigned int requestedBytes;
 
 	// Get VM map and buffer address from cmdParams
-	vmMap = *(unsigned int *)((char *)cmdParams + 0x04);
+	vmMap = *(unsigned int *)((char *)cmdParams + 0x58);
 	bufferAddr = *(unsigned int *)((char *)cmdParams + 0x20);
 
 	// Get physical address
-	pmap = _vm_map_pmap_EXTERNAL(vmMap, bufferAddr);
-	physAddr = (void *)_pmap_resident_extract(pmap);
+	pmap = vm_map_pmap_EXTERNAL(vmMap);
+	physAddr = (void *)pmap_resident_extract(pmap, bufferAddr);
 
 	// Wait for DMA to complete (up to 2 retries with 2ms delay)
 	retries = 2;
@@ -213,7 +213,7 @@ extern unsigned int _pmap_resident_extract(unsigned int pmap);
 	_dma_mask_chan(2);
 
 	// Get remaining byte count from DMA controller
-	remainingCount = _get_dma_count(2);
+	remainingCount = get_dma_count(2);
 
 	// Get requested byte count (offset 0x24)
 	requestedBytes = *(unsigned int *)((char *)cmdParams + 0x24);

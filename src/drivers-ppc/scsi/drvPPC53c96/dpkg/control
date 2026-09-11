@@ -1,0 +1,6 @@
+Package: drvppc53c96
+Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
+Vendor: Apple Computer
+Version: 2
+Description: 53c96 SCSI controller driver
+Build-Depends: build-base, drivertools, driverkit, machkit, kernload, libstreams

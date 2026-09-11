@@ -8,6 +8,85 @@ result - without a human watching the VGA window for most of that cycle.
 This does not claim the underlying IDE/interrupt boot bug is solved. See
 `docs/drivers/drvEIDE-issues.md` for the current state of that investigation.
 
+## Syncing `src/` to the guest (`sync-src.ps1`)
+
+For the PPC build box (or any guest listed in `vm.conf`), use `sync-src.ps1` to
+upload the local repository `src/` tree to `RemoteRoot/src` via OpenSSH
+(`tar | ssh`). Modern `scp` drops the connection against this guest even with
+legacy SCP mode, so the script streams a tar archive over SSH instead.
+
+Copy `vm.conf.example` to `vm.conf` first and set `Host`, `User`, `Password`,
+and `RemoteRoot` (default `/build`). Requires Windows OpenSSH Client
+(`ssh.exe`) and `tar.exe`.
+
+The guest sshd only accepts ancient algorithms. The script always passes the
+same options as a manual login (see `SSH CONNECTION.md`):
+
+```
+KexAlgorithms=diffie-hellman-group1-sha1
+HostKeyAlgorithms=ssh-dss
+Ciphers=3des-cbc
+MACs=hmac-sha1
+```
+
+Modern PuTTY `pscp`/`plink` will fail against this host with
+`FATAL ERROR: Remote side unexpectedly closed network connection` unless a
+saved session re-enables those algorithms — prefer `sync-src.ps1` or the
+OpenSSH one-liner in `SSH CONNECTION.md`.
+
+Host-key verification uses a throwaway file under `%TEMP%` with
+`StrictHostKeyChecking=no` so a failed write to `~/.ssh/known_hosts` (common
+with this guest’s `ssh-dss` host key on Windows OpenSSH) does not abort the
+transfer.
+
+```bat
+powershell -File vm\sync-src.ps1 -All
+powershell -File vm\sync-src.ps1 -Path drivers-i386/bus/drvPCMCIABus
+```
+
+| Flag | Effect |
+|------|--------|
+| `-All` | Upload the entire local `src/` directory to `RemoteRoot/src` |
+| `-Path <rel>` | Upload one folder or file under `src/` (path relative to `src/`) |
+
+Exactly one of `-All` or `-Path` is required. `-Path` creates the remote parent
+directory first, then extracts the leaf under `RemoteRoot/src/<rel>`.
+
+After extract, the script restores execute bits on `configure`,
+`config.guess`/`config.sub`, common autotools helpers, `build_gcc`, and `*.sh` /
+`*.pl` under the synced tree (Windows tar drops Unix `+x`, which breaks
+bootstrap `./configure`).
+
+This script only syncs `src/`. Broader uploads (e.g. whatever `SyncPaths` lists
+in `vm.conf`) still go through `rhap-vm.ps1 sync` (PuTTY-based; same crypto
+caveat applies until that tool is updated).
+
+## Guest builds (`build-src.ps1`)
+
+After syncing with `sync-src.ps1`, kick off builds on the PPC guest. Uses the
+same OpenSSH legacy-crypto path as `sync-src` (via `rhap-remote.ps1`). The
+canonical host steps also live in the repository `README.md`.
+
+```bat
+powershell -NoProfile -File vm\build-src.ps1 -Rbuild
+powershell -NoProfile -File vm\build-src.ps1 -Bootstrap
+powershell -NoProfile -File vm\build-src.ps1 -KernelDrivers
+powershell -NoProfile -File vm\build-src.ps1 -World
+powershell -NoProfile -File vm\build-src.ps1 -All
+powershell -NoProfile -File vm\clean-build.ps1
+```
+
+| Flag | Remote action |
+|------|----------------|
+| `-Rbuild` | `make CC=… clean test all` in `RemoteRoot/src/rbuild-1`, then install `rbuild` and private helpers into `ToolsDir` |
+| `-Bootstrap` | `rbuild bootstrap --sysroot BootstrapRoot --toolchain … --state StateDir BootstrapManifest RepoDir RepoDir` |
+| `-KernelDrivers` | `rbuild buildpackage` for `driverkit-3`, `driverTools-1`, `kernload-1`, `drivers-<arch>/bus/drvPExpert`, `kernel-7`, then every remaining `drv*` / `Intel*` project under `drivers-<arch>` (plus `drvBPF` / `drvPortServer`). Projects with `dpkg/control` use `rbuild buildpackage`; others `gnumake`. Driver failures are listed; script exits non-zero if any failed. |
+| `-World` | `rbuild buildall --state StateDir Manifest RepoDir BuiltDir` |
+| `-All` | `-Rbuild`, `-Bootstrap`, `-KernelDrivers`, then `-World` |
+| `-Fresh` | With `-All` only: delete `ToolsDir`, `BootstrapRoot`, `RepoDir`, `BuiltDir`, and `StateDir`; keep `SourceRoot` |
+
+Exactly one of `-All`, `-Rbuild`, `-Bootstrap`, `-KernelDrivers`, or `-World` is required. `-Rbuild` cannot be combined with `-Bootstrap`. Defaults (override in `vm.conf`): `RemoteRoot=/build`, `RepoDir=/build/repo`, `BuiltDir=/build/built`. Typical fresh-box order: `-Rbuild` → `-Bootstrap` → `-KernelDrivers` / `-World`, or a single `-All`. `clean-build.ps1` performs the `-Fresh` output reset without starting a rebuild.
+
 ## Image chain
 
 | File | Role |

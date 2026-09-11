@@ -139,12 +139,12 @@ error(const char *format, ...)
 const char *
 unix_error_string(int error_num)
 {
+    extern char *strerror(int);
     static char buffer[256];
     const char *error_mess;
 
-    if ((0 <= error_num) && (error_num < sys_nerr))
-	error_mess = sys_errlist[error_num];
-    else
+    error_mess = strerror(error_num);
+    if (error_mess == 0)
 	error_mess = "strange errno";
 
     sprintf(buffer, "%s (%d)", error_mess, error_num);

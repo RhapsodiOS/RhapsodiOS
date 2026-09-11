@@ -1,0 +1,325 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 340,
+      "reference_names": [
+        "-[PPCBurgundy reset]"
+      ],
+      "size": 124,
+      "source_line": 496,
+      "source_path": "src/drivers-ppc/sound/drvPPCBurgundy/PPCBurgundy.drvproj/PPCBurgundy.lksproj/BurgundySound.m"
+    },
+    {
+      "address": 480,
+      "reference_names": [
+        "-[PPCBurgundy getHandler:level:argument:forInterrupt:]"
+      ],
+      "size": 88,
+      "source_line": 415,
+      "source_path": "src/drivers-ppc/sound/drvPPCBurgundy/PPCBurgundy.drvproj/PPCBurgundy.lksproj/BurgundySound.m"
+    },
+    {
+      "address": 984,
+      "reference_names": [
+        "-[PPCBurgundy _interruptOccurred]"
+      ],
+      "size": 188,
+      "source_line": 652,
+      "source_path": "src/drivers-ppc/sound/drvPPCBurgundy/PPCBurgundy.drvproj/PPCBurgundy.lksproj/BurgundySound.m"
+    },
+    {
+      "address": 1220,
+      "reference_names": [
+        "-[PPCBurgundy interruptOccurredForInput:forOutput:]"
+      ],
+      "size": 132,
+      "source_line": 462,
+      "source_path": "src/drivers-ppc/sound/drvPPCBurgundy/PPCBurgundy.drvproj/PPCBurgundy.lksproj/BurgundySound.m"
+    },
+    {
+      "address": 1368,
+      "reference_names": [
+        "-[PPCBurgundy startDMAForChannel:read:buffer:bufferSizeForInterrupts:]"
+      ],
+      "size": 192,
+      "source_line": 506,
+      "source_path": "src/drivers-ppc/sound/drvPPCBurgundy/PPCBurgundy.drvproj/PPCBurgundy.lksproj/BurgundySound.m"
+    },
+    {
+      "address": 1576,
+      "reference_names": [
+        "-[PPCBurgundy stopDMAForChannel:read:]"
+      ],
+      "size": 112,
+      "source_line": 534,
+      "source_path": "src/drivers-ppc/sound/drvPPCBurgundy/PPCBurgundy.drvproj/PPCBurgundy.lksproj/BurgundySound.m"
+    },
+    {
+      "address": 1704,
+      "reference_names": [
+        "-[PPCBurgundy isInputActive]"
+      ],
+      "size": 20,
+      "source_line": 482,
+      "source_path": "src/drivers-ppc/sound/drvPPCBurgundy/PPCBurgundy.drvproj/PPCBurgundy.lksproj/BurgundySound.m"
+    },
+    {
+      "address": 1724,
+      "reference_names": [
+        "-[PPCBurgundy isOutputActive]"
+      ],
+      "size": 20,
+      "source_line": 489,
+      "source_path": "src/drivers-ppc/sound/drvPPCBurgundy/PPCBurgundy.drvproj/PPCBurgundy.lksproj/BurgundySound.m"
+    },
+    {
+      "address": 1744,
+      "reference_names": [
+        "-[PPCBurgundy getSamplingRatesLow:high:]"
+      ],
+      "size": 52,
+      "source_line": 449,
+      "source_path": "src/drivers-ppc/sound/drvPPCBurgundy/PPCBurgundy.drvproj/PPCBurgundy.lksproj/BurgundySound.m"
+    },
+    {
+      "address": 1796,
+      "reference_names": [
+        "-[PPCBurgundy getSamplingRates:count:]"
+      ],
+      "size": 64,
+      "source_line": 438,
+      "source_path": "src/drivers-ppc/sound/drvPPCBurgundy/PPCBurgundy.drvproj/PPCBurgundy.lksproj/BurgundySound.m"
+    },
+    {
+      "address": 1876,
+      "reference_names": [
+        "-[PPCBurgundy getDataEncodings:count:]"
+      ],
+      "size": 28,
+      "source_line": 404,
+      "source_path": "src/drivers-ppc/sound/drvPPCBurgundy/PPCBurgundy.drvproj/PPCBurgundy.lksproj/BurgundySound.m"
+    },
+    {
+      "address": 1904,
+      "reference_names": [
+        "-[PPCBurgundy channelCountLimit]"
+      ],
+      "size": 16,
+      "source_line": 398,
+      "source_path": "src/drivers-ppc/sound/drvPPCBurgundy/PPCBurgundy.drvproj/PPCBurgundy.lksproj/BurgundySound.m"
+    },
+    {
+      "address": 1920,
+      "reference_names": [
+        "-[PPCBurgundy channelCount]"
+      ],
+      "size": 16,
+      "source_line": 392,
+      "source_path": "src/drivers-ppc/sound/drvPPCBurgundy/PPCBurgundy.drvproj/PPCBurgundy.lksproj/BurgundySound.m"
+    },
+    {
+      "address": 1936,
+      "reference_names": [
+        "-[PPCBurgundy updateInputGainLeft]"
+      ],
+      "size": 40,
+      "source_line": 585,
+      "source_path": "src/drivers-ppc/sound/drvPPCBurgundy/PPCBurgundy.drvproj/PPCBurgundy.lksproj/BurgundySound.m"
+    },
+    {
+      "address": 1992,
+      "reference_names": [
+        "-[PPCBurgundy updateInputGainRight]"
+      ],
+      "size": 40,
+      "source_line": 591,
+      "source_path": "src/drivers-ppc/sound/drvPPCBurgundy/PPCBurgundy.drvproj/PPCBurgundy.lksproj/BurgundySound.m"
+    },
+    {
+      "address": 2048,
+      "reference_names": [
+        "-[PPCBurgundy updateInputGain]"
+      ],
+      "size": 184,
+      "source_line": 557,
+      "source_path": "src/drivers-ppc/sound/drvPPCBurgundy/PPCBurgundy.drvproj/PPCBurgundy.lksproj/BurgundySound.m"
+    },
+    {
+      "address": 2248,
+      "reference_names": [
+        "-[PPCBurgundy updateOutputAttenuationLeft]"
+      ],
+      "size": 40,
+      "source_line": 625,
+      "source_path": "src/drivers-ppc/sound/drvPPCBurgundy/PPCBurgundy.drvproj/PPCBurgundy.lksproj/BurgundySound.m"
+    },
+    {
+      "address": 2304,
+      "reference_names": [
+        "-[PPCBurgundy updateOutputAttenuationRight]"
+      ],
+      "size": 40,
+      "source_line": 631,
+      "source_path": "src/drivers-ppc/sound/drvPPCBurgundy/PPCBurgundy.drvproj/PPCBurgundy.lksproj/BurgundySound.m"
+    },
+    {
+      "address": 2360,
+      "reference_names": [
+        "-[PPCBurgundy updateOutputAttenuation]"
+      ],
+      "size": 216,
+      "source_line": 597,
+      "source_path": "src/drivers-ppc/sound/drvPPCBurgundy/PPCBurgundy.drvproj/PPCBurgundy.lksproj/BurgundySound.m"
+    },
+    {
+      "address": 2592,
+      "reference_names": [
+        "-[PPCBurgundy updateOutputMute]"
+      ],
+      "size": 72,
+      "source_line": 637,
+      "source_path": "src/drivers-ppc/sound/drvPPCBurgundy/PPCBurgundy.drvproj/PPCBurgundy.lksproj/BurgundySound.m"
+    },
+    {
+      "address": 2692,
+      "reference_names": [
+        "-[PPCBurgundy interruptClearFunc]"
+      ],
+      "size": 20,
+      "source_line": 456,
+      "source_path": "src/drivers-ppc/sound/drvPPCBurgundy/PPCBurgundy.drvproj/PPCBurgundy.lksproj/BurgundySound.m"
+    }
+  ],
+  "reference_sha256": "D49E3479C9F0D2E7417A10ABAA3DC7D49562C1D4D2E1DCE77CAE467B96EB97CE",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 2712,
+      "reference_names": [
+        "-[PPCBurgundy resetBurgundy]"
+      ],
+      "size": 608
+    },
+    {
+      "address": 3864,
+      "reference_names": [
+        "-[PPCBurgundy allocateDMAMemory]"
+      ],
+      "size": 408
+    },
+    {
+      "address": 4368,
+      "reference_names": [
+        "-[PPCBurgundy startIO:]"
+      ],
+      "size": 268
+    },
+    {
+      "address": 4652,
+      "reference_names": [
+        "-[PPCBurgundy addAudioBuffer:Length:Interrupt:Output:]"
+      ],
+      "size": 504
+    },
+    {
+      "address": 5220,
+      "reference_names": [
+        "-[PPCBurgundy loopAudio:]"
+      ],
+      "size": 320
+    },
+    {
+      "address": 5636,
+      "reference_names": [
+        "-[PPCBurgundy resetAudio:]"
+      ],
+      "size": 216
+    },
+    {
+      "address": 5916,
+      "reference_names": [
+        "-[PPCBurgundy setInputVol:]"
+      ],
+      "size": 120
+    },
+    {
+      "address": 6068,
+      "reference_names": [
+        "-[PPCBurgundy setOutputVol:]"
+      ],
+      "size": 152
+    },
+    {
+      "address": 6252,
+      "reference_names": [
+        "-[PPCBurgundy setOutputMute:]"
+      ],
+      "size": 120
+    },
+    {
+      "address": 6388,
+      "reference_names": [
+        "-[PPCBurgundy setRate:]"
+      ],
+      "size": 60
+    },
+    {
+      "address": 6464,
+      "reference_names": [
+        "-[PPCBurgundy setInputSource:]"
+      ],
+      "size": 344
+    },
+    {
+      "address": 6840,
+      "reference_names": [
+        "-[PPCBurgundy checkHeadphonesInstalled]"
+      ],
+      "size": 156
+    },
+    {
+      "address": 7184,
+      "reference_names": [
+        "-[PPCBurgundy getRate]"
+      ],
+      "size": 16
+    },
+    {
+      "address": 7200,
+      "reference_names": [
+        "-[PPCBurgundy getInputSrc]"
+      ],
+      "size": 16
+    },
+    {
+      "address": 7216,
+      "reference_names": [
+        "-[PPCBurgundy getOutputVol:]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 7228,
+      "reference_names": [
+        "-[PPCBurgundy getInputVol:]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 7952,
+      "reference_names": [
+        "+[drvPPCBurgundyKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 20
+    },
+    {
+      "address": 7972,
+      "reference_names": [
+        "+[drvPPCBurgundyVersion driverKitVersionFordrvPPCBurgundy]"
+      ],
+      "size": 16
+    }
+  ]
+}

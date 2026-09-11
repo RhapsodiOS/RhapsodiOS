@@ -63,41 +63,6 @@ unsigned int appleBandLayout1600[] = {
     0x00000000, 0x00000000, 0x00000018,  // Band 4: Cyl  0-15, 24 sect/cyl (12/track/side)
 };
 
-/*
- * FDC density and MID (Media IDentifier) lookup tables.
- *
- * These tables map density codes to FDC configuration values. Each table
- * contains pairs of values terminated by a {0, 0} entry.
- *
- * Structure: Array of pairs [value, densityCode]
- * - value: Configuration value or pointer (usage TBD)
- * - densityCode: Density identifier (0=terminator, 1=DD, 2=HD, 3=ED)
- *
- * Note: The first value in each pair appears to be in the 0x99xx range,
- * suggesting it may be a pointer or encoded parameter value.
- */
-
-// Density values table
-// Maps density codes to configuration parameters
-unsigned int densityValues[] = {
-    0x00000000, 0x00000000,  // Entry 0: padding/reserved
-    0x000099ab, 0x00000001,  // Entry 1: DD (Double Density) - 250 Kbps
-    0x000099a1, 0x00000002,  // Entry 2: HD (High Density) - 500 Kbps
-    0x00009997, 0x00000003,  // Entry 3: ED (Extra Density) - 1 Mbps
-    0x0000998d, 0x00000000,  // Entry 4: terminator
-};
-
-// MID (Media IDentifier) values table
-// Similar to densityValues but in different order (ED, HD, DD)
-// Used for media detection or format identification
-unsigned int midValues[] = {
-    0x00000000, 0x00000000,  // Entry 0: padding/reserved
-    0x000099d9, 0x00000003,  // Entry 1: ED (Extra Density) - 1 Mbps
-    0x000099ce, 0x00000002,  // Entry 2: HD (High Density) - 500 Kbps
-    0x000099c3, 0x00000001,  // Entry 3: DD (Double Density) - 250 Kbps
-    0x000099b8, 0x00000000,  // Entry 4: terminator
-};
-
 // FDC disk physical parameter table
 // Maps density codes to physical disk geometry parameters
 // Structure: Array of 4-word entries [densityCode, numHeads, numCylinders, ?]
@@ -208,31 +173,15 @@ fdGetSectSizeInfo(unsigned int density)
 	unsigned int *entry;
 
 	entry = fdDensitySectsize;
-	while (entry[0] != 0 || entry[1] != 0) {
-		if (entry[0] == density || entry[0] == 0) {
+	while (entry[1] != 0) {
+		if (entry[0] == density) {
 			return (unsigned int *)entry[1];
 		}
 		entry += 2;
 	}
-	return _ssi_1mb;
+	IOPanic("fdGetSectSizeInfo: bad density\n");
+	return 0;
 }
-
-/*
- * fdrValues - FDC status → string map for IOFindNameForValue.
- */
-const IONamedValue fdrValues[] = {
-	{ 0x00, "OK" },
-	{ 0x01, "I/O error" },
-	{ 0x02, "Write protected" },
-	{ 0x03, "Not readable" },
-	{ 0x04, "Not formatted" },
-	{ 0x05, "Media error" },
-	{ 0x0d, "DMA error" },
-	{ 0x14, "Timeout" },
-	{ 0x15, "Device error" },
-	{ 0x16, "No media" },
-	{ 0, (const char *)0 },
-};
 
 // FDC ioctl handler mapping table
 // Maps ioctl command codes to handler function pointers
@@ -252,44 +201,6 @@ unsigned int fdIoctlValues[] = {
     0x80046603, 0x000099fe,  // Entry 10: DKIOCGLASTREADYSTATUS (0x80046603) -> handler at 0x99fe
     0x40346601, 0x000099f3,  // Entry 11: Unknown ioctl (0x40346601) -> handler at 0x99f3
     0x4020660a, 0x000099e5,  // Entry 12: DKIOCGETFORMATCAPACITIES (0x4020660a) -> handler at 0x99e5
-    0x00000000, 0x00000000,  // Terminator
-};
-
-// FDC command configuration values table
-// Maps command IDs to FDC parameters and flags
-// Structure: Array of triplets [padding, paramValue, commandId]
-// Used for FDC command execution with timing/control parameters
-unsigned int fdCommandValues[] = {
-    0x00000000, 0x0000988b, 0x00000001,  // Entry 0: Cmd 1, param 0x988b
-    0x00000000, 0x0000987d, 0x00000002,  // Entry 1: Cmd 2, param 0x987d
-    0x00000000, 0x00009871, 0x00000003,  // Entry 2: Cmd 3, param 0x9871
-    0x00000000, 0x00009862, 0x00000004,  // Entry 3: Cmd 4, param 0x9862
-    0x00000000, 0x00009852, 0x00000005,  // Entry 4: Cmd 5, param 0x9852
-    0x00000000, 0x00009841, 0x00000006,  // Entry 5: Cmd 6, param 0x9841
-    0x00000000, 0x00000000, 0x00000000,  // Terminator
-};
-
-// FDC opcode/command configuration values table
-// Maps opcode/command codes to FDC parameters
-// Structure: Array of pairs [value, commandCode]
-// Used for configuring FDC commands with appropriate timing or parameters
-unsigned int fcOpcodeValues[] = {
-    0x00009982, 0x00000c06,  // Entry 0: Cmd 0x06, param 0x9982
-    0x00009970, 0x0000050c,  // Entry 1: Cmd 0x0c, param 0x9970
-    0x00009966, 0x00000905,  // Entry 2: Cmd 0x05, param 0x9966
-    0x00009953, 0x00000209,  // Entry 3: Cmd 0x09, param 0x9953
-    0x00009942, 0x00001602,  // Entry 4: Cmd 0x02, param 0x9942
-    0x00009935, 0x00001016,  // Entry 5: Cmd 0x16, param 0x9935
-    0x0000991a, 0x00000d10,  // Entry 6: Cmd 0x10, param 0x991a
-    0x0000990e, 0x0000070d,  // Entry 7: Cmd 0x0d, param 0x990e
-    0x00009900, 0x00000308,  // Entry 8: Cmd 0x08, param 0x9900
-    0x000098f2, 0x00000403,  // Entry 9: Cmd 0x03, param 0x98f2
-    0x000098df, 0x00000f04,  // Entry 10: Cmd 0x04, param 0x98df
-    0x000098d4, 0x0000130f,  // Entry 11: Cmd 0x0f, param 0x98d4
-    0x000098c4, 0x00000e13,  // Entry 12: Cmd 0x13, param 0x98c4
-    0x000098b6, 0x00000a0e,  // Entry 13: Cmd 0x0e, param 0x98b6
-    0x000098a9, 0x0000120a,  // Entry 14: Cmd 0x0a, param 0x98a9
-    0x00009895, 0x00000012,  // Entry 15: Cmd 0x12, param 0x9895
     0x00000000, 0x00000000,  // Terminator
 };
 
@@ -369,12 +280,12 @@ unsigned int FloppyGeometry[] = {
  *
  * FloppyGeometry table structure (7 int entries per format):
  *   [0] - Capacity identifier
- *   [1] - ? (offset 0x04)
+ *   [1] - Total block count (offset 0x04)
  *   [2] - ? (offset 0x08)
  *   [3] - ? (offset 0x0c)
- *   [4] - Blocks/sectors (offset 0x10)
- *   [5] - ? (offset 0x14)
- *   [6] - Sectors per track (offset 0x18)
+ *   [4] - ? (offset 0x10)
+ *   [5] - Sector size in bytes (offset 0x14)
+ *   [6] - ? (offset 0x18)
  *
  * The table is NULL-terminated (capacity = 0 marks end).
  */
@@ -385,7 +296,7 @@ unsigned int FloppyGeometry[] = {
 	int matchIndex;
 	unsigned int *geometryEntry;
 	unsigned int blocks;
-	unsigned int sectorsPerTrack;
+	unsigned int sectorSize;
 	unsigned int sizeInKB;
 
 	index = 0;
@@ -399,13 +310,13 @@ unsigned int FloppyGeometry[] = {
 		// Get pointer to current geometry entry
 		geometryEntry = &FloppyGeometry[index * 7];
 
-		// Calculate size in KB from blocks and sectors per track
-		// blocks at offset 0x10 (index 4), sectors per track at offset 0x18 (index 6)
-		blocks = geometryEntry[4];           // Offset 0x10 from entry start
-		sectorsPerTrack = geometryEntry[6];  // Offset 0x18 from entry start
+		// Calculate size in KB from block count and sector size
+		// blocks at offset 0x04 (index 1), sector size at offset 0x14 (index 5)
+		blocks = geometryEntry[1];      // Offset 0x04 from entry start
+		sectorSize = geometryEntry[5];  // Offset 0x14 from entry start
 
-		// Calculate size in KB: (blocks * sectorsPerTrack) / 1024
-		sizeInKB = (unsigned int)(blocks * sectorsPerTrack) >> 10;
+		// Calculate size in KB: (blocks * sectorSize) / 1024
+		sizeInKB = (unsigned int)(blocks * sectorSize) >> 10;
 
 		// Check if this entry matches the requested size
 		if (sizeInKB == diskSize) {
@@ -503,7 +414,7 @@ unsigned int FloppyGeometry[] = {
 	int nextIndex;
 	unsigned int *geometryEntry;
 	unsigned int blocks;
-	unsigned int sectorsPerTrack;
+	unsigned int sectorSize;
 	unsigned int sizeInKB;
 	unsigned int capacityId;
 
@@ -520,12 +431,12 @@ unsigned int FloppyGeometry[] = {
 
 		// Check if this capacity is in the bitmask
 		if ((capacityId & capacities) != 0) {
-			// Calculate size in KB from blocks and sectors per track
-			blocks = geometryEntry[4];           // Offset 0x10
-			sectorsPerTrack = geometryEntry[6];  // Offset 0x18
+			// Calculate size in KB from block count and sector size
+			blocks = geometryEntry[1];      // Offset 0x04
+			sectorSize = geometryEntry[5];  // Offset 0x14
 
-			// Calculate size in KB: (blocks * sectorsPerTrack) / 1024
-			sizeInKB = (unsigned int)(blocks * sectorsPerTrack) >> 10;
+			// Calculate size in KB: (blocks * sectorSize) / 1024
+			sizeInKB = (unsigned int)(blocks * sectorSize) >> 10;
 
 			// Store size in output array and advance pointer
 			*sizeList = sizeInKB;
@@ -573,7 +484,7 @@ unsigned int FloppyGeometry[] = {
 	} else {
 		// Variable geometry: search array for matching range
 		// Array format: [startBlock, ?, sectorsPerCyl, ...]
-		while (blockNumber >= *geometryArray) {
+		while (blockNumber < *geometryArray) {
 			geometryArray += 3;  // Move to next entry (3 uints per entry)
 		}
 		

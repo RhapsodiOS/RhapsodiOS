@@ -13,6 +13,7 @@ import binrecon.adapters.ida as ida_host
 from binrecon.adapters.ida import IdaAdapterError, export_with_ida
 from binrecon.identity import identify
 from binrecon.schema import validate_document, validate_analysis_semantics
+from macho_fixture import build_macho_fixture
 
 
 def _script_args(argv):
@@ -71,13 +72,16 @@ def _analysis(identity, *, sha256=None):
     }
 
 
-def _profile(tmp_path, input_path, *, executable=True, timeout=17):
+def _profile(
+    tmp_path, input_path, *, executable=True, timeout=17,
+    architecture=None, endianness=None,
+):
     ida = tmp_path / "IDA Pro" / "idat.exe"
     ida.parent.mkdir()
     if executable:
         ida.write_bytes(b"fake")
-    document = MappingProxyType(
-        {"analyzers": MappingProxyType({"ida": MappingProxyType({
+    raw_document = {
+        "analyzers": MappingProxyType({"ida": MappingProxyType({
             "enabled": True,
             "executable": str(ida),
             "timeout_seconds": timeout,
@@ -85,13 +89,143 @@ def _profile(tmp_path, input_path, *, executable=True, timeout=17):
         })}), "regions": ({
             "name": "image", "address": 0, "offset": 0,
             "size": input_path.stat().st_size, "permissions": "rx",
-        },)}
-    )
+        },),
+    }
+    if architecture is not None:
+        raw_document["architecture"] = architecture
+    if endianness is not None:
+        raw_document["endianness"] = endianness
+    document = MappingProxyType(raw_document)
     return SimpleNamespace(
         document=document,
         reference_identity=identify(input_path),
         rebuilt_identity=identify(input_path),
     ), ida
+
+
+def _fake_modules(identity, *, procname="metapc", is_be=False):
+    """A minimal, complete fake IDA environment: one segment, one function,
+    one instruction spanning the whole input, no relocations or imports."""
+    base = 0x1000
+
+    class Segment:
+        start_ea = base
+        end_ea = base + identity.size
+        perm = 5
+        type = 2
+
+    class Function:
+        start_ea = base
+        end_ea = base + identity.size
+
+    class Block:
+        start_ea = base
+        end_ea = base + identity.size
+
+        def succs(self):
+            return []
+
+    class EmptyStrings:
+        def __init__(self, default_setup=True):
+            pass
+
+        def setup(self, **options):
+            pass
+
+        def __iter__(self):
+            return iter([])
+
+    class EmptyFixup:
+        pass
+
+    return {
+        "ida_auto": SimpleNamespace(auto_wait=lambda: True),
+        "ida_bytes": SimpleNamespace(
+            get_item_size=lambda address: identity.size,
+            get_flags=lambda address: 1,
+            is_code=lambda flags: flags == 1,
+        ),
+        "ida_funcs": SimpleNamespace(get_func=lambda address: Function()),
+        "ida_fixup": SimpleNamespace(
+            FIXUP_OFF8=13, FIXUP_OFF16=1, FIXUP_SEG16=2, FIXUP_PTR16=3,
+            FIXUP_OFF32=4, FIXUP_PTR32=5, FIXUP_HI8=6, FIXUP_HI16=7,
+            FIXUP_LOW8=8, FIXUP_LOW16=9, FIXUP_OFF64=12,
+            FIXUP_OFF8S=14, FIXUP_OFF16S=15, FIXUP_OFF32S=16,
+            FIXUP_CUSTOM=0x8000,
+            fixup_data_t=EmptyFixup,
+            get_first_fixup_ea=lambda: 0xFFFFFFFFFFFFFFFF,
+            get_next_fixup_ea=lambda address: 0xFFFFFFFFFFFFFFFF,
+            get_fixup=lambda target, address: False,
+            calc_fixup_size=lambda type_: 4,
+        ),
+        "ida_gdl": SimpleNamespace(FC_NOEXT=2, FlowChart=lambda function, flags=0: [Block()]),
+        "ida_ida": SimpleNamespace(
+            inf_get_procname=lambda: procname,
+            inf_is_32bit_exactly=lambda: True,
+            inf_is_be=lambda: is_be,
+        ),
+        "ida_kernwin": SimpleNamespace(get_kernel_version=lambda: "9.2"),
+        "ida_loader": SimpleNamespace(get_fileregion_offset=lambda address: -1),
+        "ida_name": SimpleNamespace(
+            is_public_name=lambda address: False,
+            get_name=lambda address: "",
+        ),
+        "ida_nalt": SimpleNamespace(
+            STRTYPE_C=0,
+            get_import_module_qty=lambda: 0,
+            get_import_module_name=lambda index: "",
+            enum_import_names=lambda index, callback: True,
+            retrieve_input_file_size=lambda: identity.size,
+            retrieve_input_file_sha256=lambda: bytes.fromhex(identity.sha256),
+        ),
+        "ida_segment": SimpleNamespace(
+            SEGPERM_READ=1, SEGPERM_WRITE=2, SEGPERM_EXEC=4,
+            SEG_BSS=9, SEG_XTRN=1,
+            getseg=lambda address: (
+                Segment() if base <= address < base + identity.size else None
+            ),
+            get_segm_name=lambda segment: "__text",
+            get_segm_class=lambda segment: "CODE",
+        ),
+        "idaapi": SimpleNamespace(BADADDR=0xFFFFFFFFFFFFFFFF),
+        "ida_ua": SimpleNamespace(
+            o_void=0,
+            insn_t=type("Instruction", (), {
+                "ops": [SimpleNamespace(type=0, offb=0) for _ in range(8)],
+            }),
+            decode_insn=lambda instruction, address: identity.size,
+        ),
+        "idautils": SimpleNamespace(
+            Segments=lambda: [base],
+            Names=lambda: [(base, "start")],
+            Heads=lambda: [base],
+            CodeRefsFrom=lambda address, flow: [],
+            DataRefsFrom=lambda address: [],
+            Functions=lambda: [base],
+            FuncItems=lambda address: [base],
+            Strings=EmptyStrings,
+        ),
+        "idc": SimpleNamespace(
+            print_insn_mnem=lambda address: "nop",
+            print_operand=lambda address, index: "",
+            generate_disasm_line=lambda address, flags: "nop",
+        ),
+    }
+
+
+def _mapping(
+    identity, *, architecture="i386", endianness="little",
+    ida_processor="metapc", runs=None,
+):
+    return {
+        "schema_version": "ida-mapping-v1",
+        "input": {"size": identity.size, "sha256": identity.sha256,
+                  "architecture": architecture, "endianness": endianness,
+                  "ida_processor": ida_processor},
+        "runs": runs if runs is not None else [
+            {"address": 0x1000, "offset": 0, "size": identity.size}
+        ],
+    }
 
 
 def test_host_uses_argument_vector_temp_output_and_atomic_publication(tmp_path):
@@ -129,7 +263,8 @@ def test_host_uses_argument_vector_temp_output_and_atomic_publication(tmp_path):
     assert mappings == [{
         "schema_version": "ida-mapping-v1",
         "input": {"size": 6, "sha256": profile.reference_identity.sha256,
-                  "architecture": "i386", "endianness": "little"},
+                  "architecture": "i386", "endianness": "little",
+                  "ida_processor": "metapc"},
         "runs": [{"address": 0, "offset": 0, "size": 6}],
     }]
     expected_script = subprocess.list2cmdline(script_args)
@@ -149,6 +284,90 @@ def test_host_uses_argument_vector_temp_output_and_atomic_publication(tmp_path):
     assert not database.parent.exists()
     assert options["timeout"] == 17
     assert options["shell"] is False
+
+
+def test_ppc_profile_selects_the_ppc_processor(tmp_path):
+    input_path = tmp_path / "input.bin"
+    input_path.write_bytes(build_macho_fixture(architecture="ppc", relocations=b""))
+    profile, _ = _profile(tmp_path, input_path, architecture="ppc", endianness="big")
+    calls = []
+
+    def runner(argv, **kwargs):
+        calls.append(list(argv))
+        raise RuntimeError("stop after argv capture")
+
+    with pytest.raises(Exception):
+        export_with_ida(profile, "reference", tmp_path / "out.json", runner=runner)
+
+    assert calls[0][1:4] == ["-c", "-A", "-pppc"]
+
+
+def test_ppc_mapping_manifest_carries_architecture_and_processor(tmp_path):
+    input_path = tmp_path / "input.bin"
+    input_path.write_bytes(build_macho_fixture(architecture="ppc", relocations=b""))
+    profile, _ = _profile(tmp_path, input_path, architecture="ppc", endianness="big")
+
+    manifest = ida_host._mapping_manifest(profile, profile.reference_identity)
+
+    assert manifest["input"]["architecture"] == "ppc"
+    assert manifest["input"]["endianness"] == "big"
+    assert manifest["input"]["ida_processor"] == "ppc"
+
+
+def test_i386_mapping_manifest_still_names_metapc(tmp_path):
+    input_path = tmp_path / "input.bin"
+    input_path.write_bytes(build_macho_fixture())
+    profile, _ = _profile(tmp_path, input_path)
+
+    manifest = ida_host._mapping_manifest(profile, profile.reference_identity)
+
+    assert manifest["input"]["architecture"] == "i386"
+    assert manifest["input"]["ida_processor"] == "metapc"
+
+
+def test_each_artifact_maps_its_own_analysis_scope(tmp_path):
+    input_path = tmp_path / "input image.i64"
+    input_path.write_bytes(b"sample")
+    profile, _ = _profile(tmp_path, input_path)
+    profile.document = MappingProxyType({
+        **profile.document,
+        "analysis_scope": ({"start": 0x1000, "end": 0x1100},),
+        "rebuilt_analysis_scope": ({"start": 0x9000, "end": 0x9200},),
+    })
+    mappings = []
+
+    def runner(argv, **kwargs):
+        arguments = _script_args(argv)
+        mapping_path = Path(arguments[arguments.index("--mapping") + 1])
+        mappings.append(json.loads(mapping_path.read_text(encoding="utf-8")))
+        Path(arguments[arguments.index("--output") + 1]).write_text(
+            json.dumps(_analysis(profile.reference_identity)), encoding="utf-8"
+        )
+        return SimpleNamespace(returncode=0, stdout="ida log\n", stderr="")
+
+    export_with_ida(profile, "reference", tmp_path / "reference.json", runner=runner)
+    export_with_ida(profile, "rebuilt", tmp_path / "rebuilt.json", runner=runner)
+
+    assert mappings[0]["analysis_scope"] == [{"start": 0x1000, "end": 0x1100}]
+    assert mappings[1]["analysis_scope"] == [{"start": 0x9000, "end": 0x9200}]
+
+
+def test_ppc_profile_against_an_i386_artifact_is_rejected(tmp_path):
+    input_path = tmp_path / "input.bin"
+    input_path.write_bytes(build_macho_fixture(architecture="i386", relocations=b""))
+    profile, _ = _profile(tmp_path, input_path, architecture="ppc", endianness="big")
+
+    with pytest.raises(IdaAdapterError, match="ppc.*i386"):
+        ida_host._mapping_manifest(profile, profile.reference_identity)
+
+
+def test_i386_profile_against_a_ppc_artifact_is_rejected(tmp_path):
+    input_path = tmp_path / "input.bin"
+    input_path.write_bytes(build_macho_fixture(architecture="ppc", relocations=b""))
+    profile, _ = _profile(tmp_path, input_path)
+
+    with pytest.raises(IdaAdapterError, match="i386.*ppc"):
+        ida_host._mapping_manifest(profile, profile.reference_identity)
 
 
 def test_stale_temp_cannot_be_used_when_ida_does_not_write(tmp_path):
@@ -700,7 +919,8 @@ def test_exporter_collects_and_sorts_ida_metadata(tmp_path):
         "artifact_mapping": {
             "schema_version": "ida-mapping-v1",
             "input": {"size": identity.size, "sha256": identity.sha256,
-                      "architecture": "i386", "endianness": "little"},
+                      "architecture": "i386", "endianness": "little",
+                      "ida_processor": "metapc"},
             "runs": [{"address": 0x1000, "offset": 0, "size": 2}],
         },
         "ida_auto": SimpleNamespace(auto_wait=lambda: True),
@@ -930,6 +1150,158 @@ def test_exporter_collects_and_sorts_ida_metadata(tmp_path):
         module.collect_analysis(input_path, identity.size, identity.sha256, modules)
 
 
+class _RelocationFixup:
+    def __init__(self, type_=4, base=0, off=0, external=False, relative=False):
+        self._type = type_
+        self._base = base
+        self.off = off
+        self._external = external
+        self._relative = relative
+
+    def get_type(self):
+        return self._type
+
+    def is_extdef(self):
+        return self._external
+
+    def has_base(self):
+        return self._relative
+
+    def get_base(self):
+        return self._base
+
+    def get_value(self, address):
+        return 0
+
+
+def _relocation_fixup_modules(fixups):
+    """A minimal fake IDA environment covering only what
+    _collect_relocations touches: ida_fixup, ida_name, idaapi."""
+
+    class EmptyFixup:
+        pass
+
+    def get_fixup(target, address):
+        source = fixups[address]
+        target.__dict__.update(source.__dict__)
+        target.__class__ = _RelocationFixup
+        return True
+
+    addresses = sorted(fixups)
+    return {
+        "ida_fixup": SimpleNamespace(
+            FIXUP_OFF8=13, FIXUP_OFF16=1, FIXUP_SEG16=2, FIXUP_PTR16=3,
+            FIXUP_OFF32=4, FIXUP_PTR32=5, FIXUP_HI8=6, FIXUP_HI16=7,
+            FIXUP_LOW8=8, FIXUP_LOW16=9, FIXUP_OFF64=12,
+            FIXUP_OFF8S=14, FIXUP_OFF16S=15, FIXUP_OFF32S=16,
+            FIXUP_CUSTOM=0x8000,
+            fixup_data_t=EmptyFixup,
+            get_first_fixup_ea=lambda: addresses[0],
+            get_next_fixup_ea=lambda address: next(
+                (item for item in addresses if item > address), 0xFFFFFFFFFFFFFFFF
+            ),
+            get_fixup=get_fixup,
+            calc_fixup_size=lambda type_: 4,
+        ),
+        "ida_name": SimpleNamespace(get_name=lambda address: ""),
+        "idaapi": SimpleNamespace(BADADDR=0xFFFFFFFFFFFFFFFF),
+    }
+
+
+def _load_export_analysis_module(name):
+    import importlib.util
+
+    script = Path(__file__).parents[1] / "adapters" / "ida" / "export_analysis.py"
+    spec = importlib.util.spec_from_file_location(name, script)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_relocation_accepts_32bit_wrapping_powerpc_sectdiff_fixup():
+    # Real IDA fixup dump (probed directly against IDA 9.2, idat64) for one
+    # of SCSITape_reloc's switch-table fixups: base=0x2E34, off=-6696.
+    # IDAPython's SWIG binding surfaces the signed `off` field as its raw
+    # 64-bit two's-complement bit pattern, so this negative displacement
+    # arrives as 18446744073709544920 (0xFFFFFFFFFFFFE5D8), sign-extended
+    # across all 64 bits rather than as a small unsigned 32-bit value. The
+    # 32-bit modular sum (base + off) is the real target, 0x140C, which
+    # lands inside SCSITape's __TEXT,__text -- this is how PowerPC
+    # PPC_RELOC_SECTDIFF switch-table fixups are represented, not
+    # corruption.
+    module = _load_export_analysis_module("binrecon_test_ida_relocation_wrap")
+    modules = _relocation_fixup_modules({
+        0x2E34: _RelocationFixup(
+            type_=4, base=0x2E34, off=0xFFFFFFFFFFFFE5D8, relative=True
+        ),
+    })
+
+    relocations = module._collect_relocations(modules)
+
+    assert len(relocations) == 1
+    assert relocations[0]["address"] == 0x2E34
+    assert relocations[0]["target"] == "address:0000140C"
+
+
+def test_relocation_still_rejects_a_fixup_with_a_bad_address_base():
+    module = _load_export_analysis_module("binrecon_test_ida_relocation_malformed")
+    bad_address = 0xFFFFFFFFFFFFFFFF
+    modules = _relocation_fixup_modules({
+        0x2E34: _RelocationFixup(type_=4, base=bad_address, off=0),
+    })
+
+    with pytest.raises(module.ExportError, match="malformed fixup target"):
+        module._collect_relocations(modules)
+
+
+def test_relocation_still_rejects_an_offset_that_is_not_a_32bit_sign_extension():
+    # A legitimate `off` is either a small non-negative value or a 64-bit
+    # sign-extension of a negative 32-bit displacement (upper 32 bits all
+    # zero or all one). An offset whose upper 32 bits are neither -- e.g. a
+    # stray high word -- is not a real fixup and must still be rejected.
+    module = _load_export_analysis_module("binrecon_test_ida_relocation_garbage_offset")
+    modules = _relocation_fixup_modules({
+        0x2E34: _RelocationFixup(type_=4, base=0x2E34, off=0x1234567800000000),
+    })
+
+    with pytest.raises(module.ExportError, match="malformed fixup target"):
+        module._collect_relocations(modules)
+
+
+def test_relocation_accepts_a_large_positive_offset_with_bit_31_set():
+    # The sign of a legitimate `off` lives in the *upper* word, not in bit 31
+    # of the low word. off=0xFFFF0000 has its upper 32 bits all zero (offset
+    # >> 32 == 0), so it is a plain non-negative 32-bit displacement,
+    # +0xFFFF0000, not a sign-extended negative one -- bit 31 being set here
+    # is a value bit, not a sign bit. base=0x2000 + 0xFFFF0000 = 0xFFFF2000,
+    # which is in range and must be accepted rather than misread as -0x10000
+    # and rejected as malformed.
+    module = _load_export_analysis_module("binrecon_test_ida_relocation_large_positive")
+    modules = _relocation_fixup_modules({
+        0x2E34: _RelocationFixup(type_=4, base=0x2000, off=0xFFFF0000),
+    })
+
+    relocations = module._collect_relocations(modules)
+
+    assert len(relocations) == 1
+    assert relocations[0]["target"] == "address:FFFF2000"
+
+
+def test_relocation_still_rejects_a_sign_extended_negative_offset_that_underflows():
+    # A genuinely out-of-range target: off=0xFFFFFFFFFFFF0000 has its upper
+    # 32 bits all one, so it is a 64-bit sign-extension of a negative 32-bit
+    # displacement, signed value -0x10000. base=0x100 + -0x10000 is negative
+    # -- outside the 32-bit address space -- and must still be rejected by
+    # the range check rather than silently wrapping into range.
+    module = _load_export_analysis_module("binrecon_test_ida_relocation_underflow")
+    modules = _relocation_fixup_modules({
+        0x2E34: _RelocationFixup(type_=4, base=0x100, off=0xFFFFFFFFFFFF0000),
+    })
+
+    with pytest.raises(module.ExportError, match="malformed fixup target"):
+        module._collect_relocations(modules)
+
+
 def test_exporter_does_not_drop_a_real_operand_hidden_behind_a_blank_implicit_one(tmp_path):
     # Real IDA evidence (probed directly against the drvPCMCIABus reference
     # binary) for `div ds:_page_size` at 0xC7D in
@@ -1016,7 +1388,8 @@ def test_exporter_does_not_drop_a_real_operand_hidden_behind_a_blank_implicit_on
         "artifact_mapping": {
             "schema_version": "ida-mapping-v1",
             "input": {"size": identity.size, "sha256": identity.sha256,
-                      "architecture": "i386", "endianness": "little"},
+                      "architecture": "i386", "endianness": "little",
+                      "ida_processor": "metapc"},
             "runs": [{"address": 0x2000, "offset": 0, "size": 6}],
         },
         "ida_auto": SimpleNamespace(auto_wait=lambda: True),
@@ -1112,6 +1485,76 @@ def test_exporter_does_not_drop_a_real_operand_hidden_behind_a_blank_implicit_on
     operands = normalized["functions"][0]["instructions"][0]["operands"]
     assert len(operands) == 1
     assert len(operands[0]["relocations"]) == 1
+
+
+def test_exporter_accepts_a_ppc_database_when_the_manifest_asks_for_one(tmp_path):
+    import importlib.util
+
+    script = Path(__file__).parents[1] / "adapters" / "ida" / "export_analysis.py"
+    spec = importlib.util.spec_from_file_location(
+        "binrecon_test_ida_exporter_ppc_accept", script)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    input_path = tmp_path / "fixture.i64"
+    input_path.write_bytes(b"\x00\x00\x00\x00")
+    identity = identify(input_path)
+
+    modules = _fake_modules(identity, procname="PPC", is_be=True)
+    mapping = _mapping(identity, architecture="ppc", endianness="big", ida_processor="ppc")
+
+    document = module.collect_analysis(
+        input_path, identity.size, identity.sha256, modules=modules, mapping=mapping
+    )
+
+    assert document["input"]["architecture"] == "ppc"
+    assert document["input"]["endianness"] == "big"
+
+
+def test_exporter_rejects_a_little_endian_database_for_a_ppc_manifest(tmp_path):
+    import importlib.util
+
+    script = Path(__file__).parents[1] / "adapters" / "ida" / "export_analysis.py"
+    spec = importlib.util.spec_from_file_location(
+        "binrecon_test_ida_exporter_ppc_wrong_endian", script)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    input_path = tmp_path / "fixture.i64"
+    input_path.write_bytes(b"\x00\x00\x00\x00")
+    identity = identify(input_path)
+
+    # Processor matches ("ppc"); only endianness disagrees with the manifest,
+    # so this pins the endianness branch rather than the processor branch.
+    modules = _fake_modules(identity, procname="ppc", is_be=False)
+    mapping = _mapping(identity, architecture="ppc", endianness="big", ida_processor="ppc")
+
+    with pytest.raises(module.ExportError, match="endian"):
+        module.collect_analysis(
+            input_path, identity.size, identity.sha256, modules=modules, mapping=mapping
+        )
+
+
+def test_exporter_rejects_a_big_endian_database_for_an_i386_manifest(tmp_path):
+    import importlib.util
+
+    script = Path(__file__).parents[1] / "adapters" / "ida" / "export_analysis.py"
+    spec = importlib.util.spec_from_file_location(
+        "binrecon_test_ida_exporter_i386_wrong_endian", script)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    input_path = tmp_path / "fixture.i64"
+    input_path.write_bytes(b"\x00\x00\x00\x00")
+    identity = identify(input_path)
+
+    modules = _fake_modules(identity, procname="metapc", is_be=True)
+    mapping = _mapping(identity, architecture="i386", endianness="little", ida_processor="metapc")
+
+    with pytest.raises(module.ExportError, match="endian"):
+        module.collect_analysis(
+            input_path, identity.size, identity.sha256, modules=modules, mapping=mapping
+        )
 
 
 @pytest.mark.parametrize(
@@ -1266,7 +1709,8 @@ def test_exporter_mapping_manifest_fails_closed(mutation, message):
     digest = hashlib.sha256(b"0123456789").hexdigest().upper()
     manifest = {"schema_version": "ida-mapping-v1",
                 "input": {"size": 10, "sha256": digest,
-                          "architecture": "i386", "endianness": "little"},
+                          "architecture": "i386", "endianness": "little",
+                          "ida_processor": "metapc"},
                 "runs": [{"address": 0, "offset": 0, "size": 5},
                          {"address": 5, "offset": 5, "size": 5}]}
     if mutation == "identity": manifest["input"]["sha256"] = "0" * 64
@@ -1355,7 +1799,8 @@ def test_exporter_mapping_index_scales_and_cross_run_segment_fails():
     digest = hashlib.sha256(raw).hexdigest().upper()
     manifest = {"schema_version": "ida-mapping-v1",
                 "input": {"size": len(raw), "sha256": digest,
-                          "architecture": "i386", "endianness": "little"},
+                          "architecture": "i386", "endianness": "little",
+                          "ida_processor": "metapc"},
                 "runs": [{"address": i * 2, "offset": i, "size": 1}
                          for i in range(len(raw))]}
     runs = module._validate_mapping(manifest, len(raw), digest)

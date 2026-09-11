@@ -51,8 +51,6 @@ install: $(DSTROOT)$(DSTDIR) all
 		install ${INSTFLAGS} $$i ${DSTROOT}/${DSTDIR}; \
 	done
 
-install:
-
 installsrc: $(SRCDIR)
 	$(CP) -p $(SOURCEFILES) $(SRCDIR)
 

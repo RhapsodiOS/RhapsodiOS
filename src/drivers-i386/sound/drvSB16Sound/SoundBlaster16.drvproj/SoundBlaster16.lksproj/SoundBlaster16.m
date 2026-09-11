@@ -15,7 +15,7 @@
 static const char codecDeviceName[] = "SoundBlaster16";
 static const char codecDeviceKind[] = "Audio";
 
-static  sb16CardParameters_t sb16CardType;       // hardware type
+static  sb16CardParameters_t sbCardType = {0}; // hardware type
 
 /*
  * Include inline functions.
@@ -84,96 +84,18 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     return [dev initFromDeviceDescription:deviceDescription] != nil;
 }
 
-- (BOOL)reset
-{
-    unsigned int interrupt;
-    unsigned char irqSelectBits;
-    BOOL status;
-
-    interrupt = [[self deviceDescription] interrupt];
-
-    [self setName:codecDeviceName];
-    [self setDeviceKind:codecDeviceKind];
-
-    /*
-     * Validate IRQ selection
-     */
-    if ((interrupt == 5) || (interrupt == 7) ||
-        (interrupt >= 9 && interrupt <= 10)) {
-        status = YES;
-    } else {
-        IOLog("SoundBlaster16: Audio irq is %d.\n", interrupt);
-        IOLog("SoundBlaster16: Audio IRQ must be one of 5, 7, 9, 10.\n");
-        status = NO;
-    }
-
-    if (!status)
-        return NO;
-
-    /*
-     * Initialize hardware - detects card type
-     */
-    [self initializeHardware];
-
-    /*
-     * Check card type and reject unsupported cards
-     */
-    if (sb16CardType.version == SB16_BASIC ||
-        sb16CardType.version == SB16_VIBRA) {
-        /* Card types 1 and 2 are supported (16-bit capable) */
-        IOLog("%s hardware version is %d.%d\n",
-              [self name],
-              sb16CardType.majorVersion,
-              sb16CardType.minorVersion);
-    } else if (sb16CardType.version == 3) {
-        /* Card type 3 is 8-bit only */
-        IOLog("%s: This driver does not support 8-bit Sound Blaster cards.\n", [self name]);
-        return NO;
-    } else {
-        /* Card type 4 or unknown means no card detected */
-        IOLog("%s: None or unsupported card.\n", [self name]);
-        return NO;
-    }
-
-    /*
-     * Initialize DMA channels
-     */
-    if (![self initializeDMAChannels])
-        return NO;
-
-    /*
-     * Program IRQ select register (0x80) in mixer
-     */
-    irqSelectBits = 0;
-    if (interrupt == 9) {
-        irqSelectBits = 0x01;
-    } else if (interrupt == 5) {
-        irqSelectBits = 0x02;
-    } else if (interrupt == 7) {
-        irqSelectBits = 0x04;
-    } else if (interrupt == 10) {
-        irqSelectBits = 0x08;
-    }
-
-    outbIXMixer(MC16_IRQ_SELECT, irqSelectBits);
-
-    return YES;
-}
-
 - (BOOL) initializeDMAChannels
 {
-    id deviceDesc = [self deviceDescription];
-    int numChannels;
+    unsigned int dma8Channel;
+    unsigned int dma16Channel = 99;     /* invalid until a 16-bit channel is set */
     unsigned int *channelList;
     IOReturn ioReturn;
     BOOL status;
 
-    numChannels = [deviceDesc numChannels];
-
-    if (numChannels == 1) {
+    if ([[self deviceDescription] numChannels] == 1) {
         /* Single DMA channel - 8-bit only */
-        dma8Channel = [deviceDesc channel];
-        numDMAChannels = 1;
+        dma8Channel = [[self deviceDescription] channel];
+        dmaChannelsAvailable = 1;
 
         /* Validate 8-bit DMA channel */
         if ((dma8Channel < 2) || (dma8Channel == 3)) {
@@ -187,15 +109,12 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
         if (!status)
             return NO;
 
-        /* Set default 16-bit channel to invalid value */
-        dma16Channel = 99;
-
-    } else if (numChannels == 2) {
+    } else if ([[self deviceDescription] numChannels] == 2) {
         /* Dual DMA channels - 8-bit and 16-bit */
-        channelList = (unsigned int *)[deviceDesc channelList];
+        channelList = (unsigned int *)[[self deviceDescription] channelList];
         dma8Channel = channelList[0];
         dma16Channel = channelList[1];
-        numDMAChannels = 2;
+        dmaChannelsAvailable = 2;
 
         /* Validate 8-bit DMA channel */
         if ((dma8Channel < 2) || (dma8Channel == 3)) {
@@ -245,7 +164,7 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
         }
     }
 
-    ioReturn = [self setTransferMode: IO_Single forChannel: 0];
+    ioReturn = [self setTransferMode: IO_Demand forChannel: 0];
     if (ioReturn != IO_R_SUCCESS)  {
         IOLog("%s: dma transfer mode error %d\n", [self name], ioReturn);
         return NO;
@@ -260,14 +179,14 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     /*
      * Initialize 16-bit DMA controller (only if dual-channel mode)
      */
-    if (numDMAChannels == 1) {
+    if (dmaChannelsAvailable == 1) {
         return YES;
     }
 
     [self disableChannel: 1];
 
     if ([self isEISAPresent]) {
-        ioReturn = [self setDMATransferWidth:IO_16Bit forChannel:1];
+        ioReturn = [self setDMATransferWidth:IO_16BitByteCount forChannel:1];
         if (ioReturn != IO_R_SUCCESS) {
             IOLog("%s: could not set transfer width to 16 bits, error %d.\n",
                   [self name], ioReturn);
@@ -275,7 +194,7 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
         }
     }
 
-    ioReturn = [self setTransferMode: IO_Single forChannel: 1];
+    ioReturn = [self setTransferMode: IO_Demand forChannel: 1];
     if (ioReturn != IO_R_SUCCESS)  {
         IOLog("%s: dma transfer mode error %d\n", [self name], ioReturn);
         return NO;
@@ -290,39 +209,113 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     return YES;
 }
 
+- (BOOL)reset
+{
+    unsigned int interrupt;
+    unsigned char irqSelectBits;
+    BOOL status;
+
+    interrupt = [[self deviceDescription] interrupt];
+
+    [self setName:codecDeviceName];
+    [self setDeviceKind:codecDeviceKind];
+
+    /*
+     * Validate IRQ selection
+     */
+    if ((interrupt == 5) || (interrupt == 7) ||
+        (interrupt >= 9 && interrupt <= 10)) {
+        status = YES;
+    } else {
+        IOLog("SoundBlaster16: Audio irq is %d.\n", interrupt);
+        IOLog("SoundBlaster16: Audio IRQ must be one of 5, 7, 9, 10.\n");
+        status = NO;
+    }
+
+    if (!status)
+        return NO;
+
+    /*
+     * Initialize hardware - detects card type
+     */
+    [self initializeHardware];
+
+    /*
+     * Check card type and reject unsupported cards
+     */
+    if (sbCardType.version == SB16_BASIC ||
+        sbCardType.version == SB16_VIBRA) {
+        /* Card types 1 and 2 are supported (16-bit capable) */
+        IOLog("%s hardware version is %d.%d\n",
+              [self name],
+              sbCardType.majorVersion,
+              sbCardType.minorVersion);
+    } else if (sbCardType.version == 3) {
+        /* Card type 3 is 8-bit only */
+        IOLog("%s: This driver does not support 8-bit Sound Blaster cards.\n", [self name]);
+        return NO;
+    } else {
+        /* Card type 4 or unknown means no card detected */
+        IOLog("%s: None or unsupported card.\n", [self name]);
+        return NO;
+    }
+
+    /*
+     * Initialize DMA channels
+     */
+    if (![self initializeDMAChannels])
+        return NO;
+
+    /*
+     * Program IRQ select register (0x80) in mixer
+     */
+    irqSelectBits = 0;
+    if (interrupt == 9) {
+        irqSelectBits = 0x01;
+    } else if (interrupt == 5) {
+        irqSelectBits = 0x02;
+    } else if (interrupt == 7) {
+        irqSelectBits = 0x04;
+    } else if (interrupt == 10) {
+        irqSelectBits = 0x08;
+    }
+
+    outbIXMixer(MC16_IRQ_SELECT, irqSelectBits);
+
+    return YES;
+}
 
 - (void) initializeHardware
 {
-    resetHardware(&sb16CardType);
+    resetHardware(&sbCardType);
     [self initializeLastStageGainRegisters];
 }
 
 - (void) initializeLastStageGainRegisters
 {
-    id deviceDesc = [self deviceDescription];
-    id configTable;
     const char *gainStr;
     unsigned char gainValue;
 
     /*
      * Read last-stage gain values from config table if present
      */
-    configTable = [deviceDesc configTable];
 
     /* Read LS Input Gain */
-    gainStr = [[configTable valueForStringKey:"LS Input Gain"] stringValue];
-    if (gainStr != NULL && (gainStr[0] - '0') < 4) {
+    gainStr = [[[self deviceDescription] configTable]
+                        valueForStringKey:"LS Input Gain"];
+    if (gainStr != NULL) {
         gainValue = gainStr[0] - '0';
-        lastStageGainInputLeft = gainValue;
-        lastStageGainInputRight = gainValue;
+        if (gainValue < 4)
+            lastStageGainInputLeft = lastStageGainInputRight = gainValue;
     }
 
     /* Read LS Output Gain */
-    gainStr = [[configTable valueForStringKey:"LS Output Gain"] stringValue];
-    if (gainStr != NULL && (gainStr[0] - '0') < 4) {
+    gainStr = [[[self deviceDescription] configTable]
+                        valueForStringKey:"LS Output Gain"];
+    if (gainStr != NULL) {
         gainValue = gainStr[0] - '0';
-        lastStageGainOutputLeft = gainValue;
-        lastStageGainOutputRight = gainValue;
+        if (gainValue < 4)
+            lastStageGainOutputLeft = lastStageGainOutputRight = gainValue;
     }
 
     /*
@@ -341,7 +334,6 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
 - (void)updateInputGainLeft
 {
     unsigned int gain;
-    unsigned char regValue;
 
     gain = [self inputGainLeft];
     if (gain != 0) {
@@ -349,24 +341,17 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     }
 
     // Update shadow variables
-    volLine.reg.left = gain;
-    volLine.reg.right = gain;
-    volCD.reg.left = gain;
-    volCD.reg.right = gain;
-    volMic = gain;
+    volCDLeft = volCDRight = volLineLeft = volLineRight = volMic = gain;
 
     // Program CT1745 mixer registers (shift left 3 for 8-bit register)
-    regValue = gain << 3;
-
-    outbIXMixer(CT1745_LINE_VOLUME_LEFT, regValue);
-    outbIXMixer(CT1745_CD_VOLUME_LEFT, regValue);
-    outbIXMixer(CT1745_MIC_VOLUME, regValue);
+    outbIXMixer(CT1745_LINE_VOLUME_LEFT, volLineLeft << 3);
+    outbIXMixer(CT1745_CD_VOLUME_LEFT, volCDLeft << 3);
+    outbIXMixer(CT1745_MIC_VOLUME, volMic << 3);
 }
 
 - (void)updateInputGainRight
 {
     unsigned int gain;
-    unsigned char regValue;
 
     gain = [self inputGainRight];
     if (gain != 0) {
@@ -374,45 +359,28 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     }
 
     // Update shadow variables
-    volLine.reg.right = gain;
-    volCD.reg.left = gain;
-    volCD.reg.right = gain;
-    volMic = gain;
+    volCDLeft = volCDRight = volLineLeft = volLineRight = volMic = gain;
 
     // Program CT1745 mixer registers (shift left 3 for 8-bit register)
-    regValue = volLine.reg.right << 3;
-    outbIXMixer(CT1745_LINE_VOLUME_RIGHT, regValue);
-
-    regValue = volCD.reg.right << 3;
-    outbIXMixer(CT1745_CD_VOLUME_RIGHT, regValue);
-
-    regValue = volMic << 3;
-    outbIXMixer(CT1745_MIC_VOLUME, regValue);
+    outbIXMixer(CT1745_LINE_VOLUME_RIGHT, volLineRight << 3);
+    outbIXMixer(CT1745_CD_VOLUME_RIGHT, volCDRight << 3);
+    outbIXMixer(CT1745_MIC_VOLUME, volMic << 3);
 }
 
 - (void)updateOutputMute
 {
-    unsigned char regValue;
-
-    if (![self isOutputMuted]) {
-        // Restore volumes from shadow variables
-        regValue = volVoice.reg.left << 3;
-        outbIXMixer(CT1745_VOICE_VOLUME_LEFT, regValue);
-
-        regValue = volVoice.reg.right << 3;
-        outbIXMixer(CT1745_VOICE_VOLUME_RIGHT, regValue);
-
-        regValue = volMaster.reg.left << 3;
-        outbIXMixer(CT1745_MASTER_VOLUME_LEFT, regValue);
-
-        regValue = volMaster.reg.right << 3;
-        outbIXMixer(CT1745_MASTER_VOLUME_RIGHT, regValue);
-    } else {
+    if ([self isOutputMuted]) {
         // Mute by setting all volumes to 0
         outbIXMixer(CT1745_VOICE_VOLUME_LEFT, 0);
         outbIXMixer(CT1745_VOICE_VOLUME_RIGHT, 0);
         outbIXMixer(CT1745_MASTER_VOLUME_LEFT, 0);
         outbIXMixer(CT1745_MASTER_VOLUME_RIGHT, 0);
+    } else {
+        // Restore volumes from shadow variables
+        outbIXMixer(CT1745_VOICE_VOLUME_LEFT, volVoiceLeft << 3);
+        outbIXMixer(CT1745_VOICE_VOLUME_RIGHT, volVoiceRight << 3);
+        outbIXMixer(CT1745_MASTER_VOLUME_LEFT, volMasterLeft << 3);
+        outbIXMixer(CT1745_MASTER_VOLUME_RIGHT, volMasterRight << 3);
     }
 }
 
@@ -423,28 +391,18 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
 {
     unsigned int attenuation;
     unsigned int volume;
-    unsigned char regValue;
 
     attenuation = [self outputAttenuationLeft];
     volume = ((attenuation + SB16_ATTENUATION_RANGE) * MAX_MASTER_VOLUME_16) / SB16_ATTENUATION_RANGE;
 
     // Update shadow variables
-    volMaster.reg.left = volume;
-    volMaster.reg.right = volume;
-    volVoice.reg.left = volume;
-    volVoice.reg.right = volume;
-    volCD.reg.left = volume;
-    volCD.reg.right = volume;
+    volVoiceLeft = volVoiceRight = volCDLeft = volCDRight =
+        volMasterLeft = volMasterRight = volume;
 
     // Program CT1745 mixer registers (shift left 3 for 8-bit register)
-    regValue = volMaster.reg.left << 3;
-    outbIXMixer(CT1745_MASTER_VOLUME_LEFT, regValue);
-
-    regValue = volCD.reg.left << 3;
-    outbIXMixer(CT1745_CD_VOLUME_LEFT, regValue);
-
-    regValue = volVoice.reg.left << 3;
-    outbIXMixer(CT1745_VOICE_VOLUME_LEFT, regValue);
+    outbIXMixer(CT1745_MASTER_VOLUME_LEFT, volMasterLeft << 3);
+    outbIXMixer(CT1745_CD_VOLUME_LEFT, volCDLeft << 3);
+    outbIXMixer(CT1745_VOICE_VOLUME_LEFT, volVoiceLeft << 3);
 
     [self updateOutputMute];
 }
@@ -453,27 +411,18 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
 {
     unsigned int attenuation;
     unsigned int volume;
-    unsigned char regValue;
 
     attenuation = [self outputAttenuationRight];
     volume = ((attenuation + SB16_ATTENUATION_RANGE) * MAX_MASTER_VOLUME_16) / SB16_ATTENUATION_RANGE;
 
     // Update shadow variables
-    volMaster.reg.right = volume;
-    volVoice.reg.left = volume;
-    volVoice.reg.right = volume;
-    volCD.reg.left = volume;
-    volCD.reg.right = volume;
+    volVoiceLeft = volVoiceRight = volCDLeft = volCDRight =
+        volMasterLeft = volMasterRight = volume;
 
     // Program CT1745 mixer registers (shift left 3 for 8-bit register)
-    regValue = volMaster.reg.right << 3;
-    outbIXMixer(CT1745_MASTER_VOLUME_RIGHT, regValue);
-
-    regValue = volCD.reg.right << 3;
-    outbIXMixer(CT1745_CD_VOLUME_RIGHT, regValue);
-
-    regValue = volVoice.reg.right << 3;
-    outbIXMixer(CT1745_VOICE_VOLUME_RIGHT, regValue);
+    outbIXMixer(CT1745_MASTER_VOLUME_RIGHT, volMasterRight << 3);
+    outbIXMixer(CT1745_CD_VOLUME_RIGHT, volCDRight << 3);
+    outbIXMixer(CT1745_VOICE_VOLUME_RIGHT, volVoiceRight << 3);
 
     [self updateOutputMute];
 }
@@ -484,20 +433,14 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
 - (void)updateSampleRate
 {
     unsigned int rate;
-    unsigned int channelCount;
-    unsigned char command;
+    unsigned int stereo;
+    unsigned int dmaDirection;
     int timeout;
     char status;
 
     rate = [self sampleRate];
-    channelCount = [self channelCount];
-
-    // Determine command based on DMA direction
-    if (currentDMADirection == DMA_DIRECTION_IN) {
-        command = DC16_SET_SAMPLE_RATE_INPUT;   // 0x42
-    } else {
-        command = DC16_SET_SAMPLE_RATE_OUTPUT;  // 0x41
-    }
+    stereo = ([self channelCount] == 2);
+    dmaDirection = currentDMADirection;
 
     // Write command with timeout check
     timeout = 0;
@@ -516,8 +459,14 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
         IOLog("SoundBlaster16: DSP write error.\n");
     }
 
-    outb(sbWriteDataOrCommandReg, command);
-    IODelay(SB16_DATA_WRITE_DELAY);
+    // Send the command the DMA direction selects
+    if (dmaDirection == DMA_DIRECTION_IN) {
+        outb(sbWriteDataOrCommandReg, DC16_SET_SAMPLE_RATE_INPUT);   // 0x42
+        IODelay(SB16_DATA_WRITE_DELAY);
+    } else {
+        outb(sbWriteDataOrCommandReg, DC16_SET_SAMPLE_RATE_OUTPUT);  // 0x41
+        IODelay(SB16_DATA_WRITE_DELAY);
+    }
 
     // Write high byte of sample rate with timeout check
     timeout = 0;
@@ -560,13 +509,13 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     IODelay(SB16_DATA_WRITE_DELAY);
 
     // Update DMA mode flags based on encoding and channel count
-    if (is16BitTransfer == NX_SoundStreamDataEncoding_Linear8) {
+    if (currentEncoding == NX_SoundStreamDataEncoding_Linear8) {
         sbStartDMAMode &= ~DMA_MODE_SIGNED;  // Clear signed bit for 8-bit
     } else {
         sbStartDMAMode |= DMA_MODE_SIGNED;   // Set signed bit for 16-bit
     }
 
-    if (channelCount == 2) {
+    if (stereo == YES) {
         sbStartDMAMode |= DMA_MODE_STEREO;   // Set stereo bit
     } else {
         sbStartDMAMode &= ~DMA_MODE_STEREO;  // Clear stereo bit (mono)
@@ -600,7 +549,6 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
 {
     IOReturn ioReturn;
     unsigned int encoding;
-    unsigned int channelCount;
     unsigned int actualChannel;
 
 #ifdef DEBUG
@@ -608,18 +556,13 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
 #endif DEBUG
 
     /*
-     * Clear timeout flag - starting fresh DMA transfer
-     */
-    interruptTimedOut = NO;
-
-    /*
      * Restore volume if not muted (using CT1745 registers)
      */
     if (![self isOutputMuted]) {
-        outbIXMixer(CT1745_VOICE_VOLUME_LEFT, volVoice.reg.left << 3);
-        outbIXMixer(CT1745_VOICE_VOLUME_RIGHT, volVoice.reg.right << 3);
-        outbIXMixer(CT1745_MASTER_VOLUME_LEFT, volMaster.reg.left << 3);
-        outbIXMixer(CT1745_MASTER_VOLUME_RIGHT, volMaster.reg.right << 3);
+        outbIXMixer(CT1745_VOICE_VOLUME_LEFT, volVoiceLeft << 3);
+        outbIXMixer(CT1745_VOICE_VOLUME_RIGHT, volVoiceRight << 3);
+        outbIXMixer(CT1745_MASTER_VOLUME_LEFT, volMasterLeft << 3);
+        outbIXMixer(CT1745_MASTER_VOLUME_RIGHT, volMasterRight << 3);
     }
 
     /*
@@ -631,15 +574,17 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
      * Get encoding and determine if we need 16-bit transfer
      */
     encoding = [self dataEncoding];
-    is16BitTransfer = encoding;  /* Store raw encoding value */
+    currentEncoding = encoding;  /* Store raw encoding value */
 
     /*
      * Select DMA channel based on configuration
      * If dual-channel mode AND 16-bit encoding, use 16-bit DMA
      */
-    actualChannel = 0;
-    if ((numDMAChannels == 2) && (encoding == NX_SoundStreamDataEncoding_Linear16)) {
-        actualChannel = 1;
+    actualChannel = localChannel;
+    if (dmaChannelsAvailable == 2) {
+        actualChannel = 0;
+        if (encoding == NX_SoundStreamDataEncoding_Linear16)
+            actualChannel = 1;
     }
 
     /*
@@ -678,9 +623,10 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     /*
      * For mono recording, enable all input sources
      */
-    channelCount = [self channelCount];
-    if (isRead && (channelCount == 1)) {
-        outbIXMixer(MC16_INPUT_CONTROL_LEFT, INPUT_SOURCE_ALL);
+    if (isRead) {
+        if ([self channelCount] == 1) {
+            outbIXMixer(MC16_INPUT_CONTROL_LEFT, INPUT_SOURCE_ALL);
+        }
     }
 
     /*
@@ -688,34 +634,53 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
      */
     if (isRead) {
         /* Recording mode */
-        if (is16BitTransfer == NX_SoundStreamDataEncoding_Linear16) {
-            sbStartDMACommand = 0xb0;  /* 16-bit ADC */
+        sbStartDMACommand = 0;
+        if (currentEncoding == NX_SoundStreamDataEncoding_Linear16) {
+            sbStartDMACommand = DC16_START_16BIT_DMA_DAC;
         } else {
-            sbStartDMACommand = 0xc0;  /* 8-bit ADC */
+            sbStartDMACommand &= 0x0f;
+            sbStartDMACommand |= DC16_START_8BIT_DMA_DAC;
         }
-        sbStartDMACommand |= 0x0e;  /* FIFO + auto-init + ADC + stereo */
+        sbStartDMACommand |= DMA_MODE_ADC;
+        sbStartDMACommand |= DMA_MODE_AUTO_INIT;
+        sbStartDMACommand |= DMA_MODE_FIFO;
+
+        /* Adjust buffer counter for 16-bit transfers */
+        if (currentEncoding == NX_SoundStreamDataEncoding_Linear16) {
+            sbBufferCounter >>= 1;
+        }
+        sbBufferCounter--;
+
+        /* Send DSP commands */
+        writeToDSP(sbStartDMACommand);
+        writeToDSP(sbStartDMAMode);
+        writeToDSP(sbBufferCounter & 0xff);
+        writeToDSP((sbBufferCounter >> 8) & 0xff);
     } else {
         /* Playback mode */
-        if (is16BitTransfer == NX_SoundStreamDataEncoding_Linear16) {
-            sbStartDMACommand = 0xb0;  /* 16-bit DAC */
+        sbStartDMACommand = 0;
+        if (currentEncoding == NX_SoundStreamDataEncoding_Linear16) {
+            sbStartDMACommand = DC16_START_16BIT_DMA_DAC;
         } else {
-            sbStartDMACommand = 0xc0;  /* 8-bit DAC */
+            sbStartDMACommand &= 0x0f;
+            sbStartDMACommand |= DC16_START_8BIT_DMA_DAC;
         }
-        sbStartDMACommand |= 0x06;  /* FIFO + auto-init + stereo */
-    }
+        sbStartDMACommand &= ~DMA_MODE_ADC;
+        sbStartDMACommand |= DMA_MODE_AUTO_INIT;
+        sbStartDMACommand |= DMA_MODE_FIFO;
 
-    /* Adjust buffer counter for 16-bit transfers */
-    if (is16BitTransfer == NX_SoundStreamDataEncoding_Linear16) {
-        sbBufferCounter >>= 1;
-    }
-    sbBufferCounter--;
+        /* Adjust buffer counter for 16-bit transfers */
+        if (currentEncoding == NX_SoundStreamDataEncoding_Linear16) {
+            sbBufferCounter >>= 1;
+        }
+        sbBufferCounter--;
 
-    /* Send DSP commands */
-    writeToDSP(sbStartDMACommand);
-    writeToDSP(sbStartDMAMode);
-    IODelay(50);
-    writeToDSP(sbBufferCounter & 0xff);
-    writeToDSP((sbBufferCounter >> 8) & 0xff);
+        /* Send DSP commands */
+        writeToDSP(sbStartDMACommand);
+        writeToDSP(sbStartDMAMode);
+        writeToDSP(sbBufferCounter & 0xff);
+        writeToDSP((sbBufferCounter >> 8) & 0xff);
+    }
 
     return YES;
 }
@@ -724,8 +689,6 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
 {
     unsigned int actualChannel;
     unsigned int channelCount;
-    unsigned char pauseCommand;
-    unsigned char response;
 
 #ifdef DEBUG
     IOLog("SoundBlaster16: stopDMAForChannel\n");
@@ -736,12 +699,11 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
 
     /*
      * Stop DMA transfer (sends pause command and resets DSP)
-     * Note: The original uses 16-bit pause for 8-bit transfers and vice versa
      */
-    if (is16BitTransfer == NX_SoundStreamDataEncoding_Linear8) {
-        stopDMATransfer(YES);  /* 8-bit uses 16-bit pause command */
+    if (isRead) {
+        stopDMATransfer(currentEncoding);
     } else {
-        stopDMATransfer(NO);   /* 16-bit uses 8-bit pause command */
+        stopDMATransfer(currentEncoding);
     }
 
     /* Sleep to let hardware settle */
@@ -750,9 +712,11 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     /*
      * Determine which DMA channel to disable
      */
-    actualChannel = 0;
-    if ((numDMAChannels == 2) && (is16BitTransfer == NX_SoundStreamDataEncoding_Linear16)) {
-        actualChannel = 1;
+    actualChannel = localChannel;
+    if (dmaChannelsAvailable == 2) {
+        actualChannel = 0;
+        if (currentEncoding == NX_SoundStreamDataEncoding_Linear16)
+            actualChannel = 1;
     }
 
     [self disableChannel: actualChannel];
@@ -765,7 +729,7 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
      */
     channelCount = [self channelCount];
     if (isRead && (channelCount == 1)) {
-        outbIXMixer(MC16_INPUT_CONTROL_LEFT, 0x15);
+        outbIXMixer(MC16_INPUT_CONTROL_LEFT, inputMixerSwitchLeft);
     }
 }
 
@@ -793,17 +757,17 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
     status = inb(sbMixerDataReg);
     IODelay(75);
 
+    /* Store status for debugging */
+    interruptStatus = status;
+
     /*
      * Acknowledge the appropriate interrupt by reading its ack register
      */
     ackReg = sbAck16bitInterrupt;
     if ((status & IRQ_STATUS_16BIT) ||
-        (ackReg = sbAck8bitInterrupt, (status & IRQ_STATUS_8BIT))) {
+        (ackReg = sbAck8bitInterrupt, (interruptStatus & IRQ_STATUS_8BIT))) {
         inb(ackReg);
     }
-
-    /* Store status for debugging */
-    interruptStatus = status;
 
     /*
      * Signal which direction needs service based on current DMA direction
@@ -820,7 +784,7 @@ static  sb16CardParameters_t sb16CardType;       // hardware type
 - (void) timeoutOccurred
 {
     if (interruptTimedOut == NO) {
-        resetHardware(&sb16CardType);
+        resetHardware(&sbCardType);
         IOLog("%s: reset hardware.\n", [self name]);
         interruptTimedOut = YES;
     }

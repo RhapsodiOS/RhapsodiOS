@@ -1,0 +1,209 @@
+/*
+ * IOSCSISessionMig.defs
+ *
+ * MiG interface for the SCSIServer IOSCSISession Mach RPC surface.
+ * Reconstructed from the reference binary's 18 __XIOSCSISession_* server
+ * stubs (base message ID 4242) and cross-checked against the hand-written
+ * IOSCSISession_* wrappers already in this tree. See
+ * src/drvSCSIServer/reconstruction/divergences.md and task-9-report.md
+ * for the evidence behind each routine's signature.
+ *
+ * The subsystem name must be IOSCSISessionMig (not IOSCSISession) so that
+ * pb_makefiles generates IOSCSISessionMig.h rather than a colliding
+ * IOSCSISession.h.
+ */
+
+subsystem IOSCSISessionMig 4242;
+
+#include <mach/std_types.defs>
+import <mach/mach_types.h>;
+
+/* This tree's MiG dialect is the old (non-MACH_IPC_FLAVOR) one - see
+ * std_types.defs's #else branch - which does not define `unsigned`.
+ * Every other old-flavour .defs in this tree (driverServer.defs,
+ * Event.defs) declares it the same way. */
+type unsigned = int;
+
+/* Argument types and names below were cross-checked against the reference
+ * binary's own compiler-generated <arg>Check/<arg>Type msg_type_t statics
+ * in __TEXT,__const (decoded against mach/message.h:707-726); see
+ * task-9-report.md's "Fixes: argument types from the MiG type descriptors"
+ * section for the full dump and per-type decode. */
+
+/* A device name. The reference's own check is masked (like ioRanges
+ * below), not a c_string (MSG_TYPE_STRING_C=12, mach/message.h:722): the
+ * descriptor is MSG_TYPE_CHAR (8), and __XIOSCSISession_initForDevice
+ * passes a separate byte count (the extrwi'd msg_type_number) as a third
+ * argument to _IOSCSISession_initForDevice - c_string's no-count
+ * convention would not produce that. Bound (80) still comes from the
+ * reference's own message-size check: msgh_size - 0x1C <= 0x50. */
+type IOSCSIDeviceName_t = array[*:80] of char;
+
+/* A 64-bit SCSI-3 target or LUN identifier, transmitted as a pair of
+ * 32-bit words (high, low) - matches the reference's fixed 8-byte
+ * argument slot and the wrapper header's "unsigned int *" (2-element)
+ * signature. */
+type IOSCSITargetLUN_t = struct[2] of unsigned;
+
+/* Legacy (pre-SCSI-3) request structure, opaque to MiG - only the size
+ * (88 bytes) is recovered, from the reference's fixed msgh_size checks. */
+type IOSCSIRequest_t = array[88] of char;
+
+/* SCSI-3 request structure, opaque to MiG - size (108 bytes) recovered
+ * the same way. */
+type IOSCSI3Request_t = array[108] of char;
+
+/* Scatter-gather range lists, transmitted as raw byte blobs. Both scatter
+ * stubs check their descriptor masked to 08080008 - MSG_TYPE_CHAR (8),
+ * 8-bit elements - and pass the raw msg_type_number (a BYTE count) to the
+ * implementation, not a count of driverkit/driverTypes.h's 8-byte IORange
+ * {start, size} structs (contrast libDriver/driverServer.defs's
+ * IOPPCMemoryRange = struct[2] of int, commented "IORange" for the same
+ * reason - that spelling is used nowhere on this wire). Bounds are each
+ * stub's own message-size check: legacy scatter allows up to 0x380 (896)
+ * bytes; SCSI-3 scatter allows up to 0x368 (872) bytes - genuinely
+ * different, not a shared value. */
+type IOSCSIRangeArray896_t = array[*:896] of char;
+type IOSCSIRangeArray872_t = array[*:872] of char;
+
+/* Out-of-line scatter data. std_types.defs's own pointer_t is
+ * ^array[] of MSG_TYPE_BYTE (9, mach/message.h:718), but the OOL
+ * long-form descriptor's second word in both OOL stubs checks
+ * 0x00080008 - long_name=8, MSG_TYPE_CHAR (mach/message.h:717) - one off
+ * from pointer_t's BYTE. Declare a dedicated type using char instead. */
+type IOSCSIOOLData_t = ^array[] of char;
+
+/* Four-word DMA alignment result (readStart/writeStart/readLength/
+ * writeLength). The reference's _alignmentType.96 static checks
+ * 02200048 (INT32, number=4), and getDMAAlignment's stub sizes its reply
+ * for 4 extra words (li r11, 0x34), unlike maxTransfer's one word
+ * (li r11, 0x28). Matches driverkit/driverTypes.h's IODMAAlignment;
+ * named differently here - the same way libDriver/driverServer.defs's
+ * IOPPCMemoryRange avoids driverTypes.h's IORange name - to avoid
+ * colliding with that typedef in the generated Server.c. */
+type IOPPCDMAAlignment_t = struct[4] of unsigned;	/* IODMAAlignment */
+
+/* The "client" port in every execute* routine below is translated, not a
+ * bare mach_port_t: its descriptor is 06200018 (MSG_TYPE_PORT=6, legacy
+ * port_t; mach_port_t/MACH_MSG_TYPE_COPY_SEND=19 would read 13200018).
+ * Every one of the six execute* stubs calls the external relocation
+ * _IOConvertTaskPortToVMTask on the client port before the implementation
+ * call, and _IODestroyMappedVMTask after it - the intran/destructor
+ * shape MiG generates for a translated port type (compare
+ * libDriver/driverServer.defs's IODevicePort). Neither function exists
+ * anywhere in this tree yet (two of the six functions the fix pass
+ * deferred), so "vm_task_t" here is the defensible intran/destructor
+ * reading, not a recovered fact.
+ *
+ * Unlike IODevicePort (whose ctype defaults to its own type name,
+ * backed by driverkit/driverTypesPrivate.h's "typedef port_t
+ * IODevicePort;"), IOVMTaskPort has no such typedef anywhere in the
+ * tree, so leaving the ctype to default would name an undeclared C
+ * type in the generated Server.c. Declared explicitly here instead of
+ * adding a new typedef/header import, since port_t is already a real
+ * type in this tree's old MiG dialect. */
+type IOVMTaskPort = port_t
+	ctype: port_t
+	intran: vm_task_t IOConvertTaskPortToVMTask(IOVMTaskPort)
+	destructor: IODestroyMappedVMTask(vm_task_t)
+	;
+
+/*
+ * free - the reference's __XIOSCSISession_free unconditionally stores
+ * MIG_NO_REPLY (-305) as the retcode on its success path, discarding the
+ * implementation call's actual return value entirely (every other
+ * routine below propagates the real result). That is the standard MiG
+ * signature of a simpleroutine, consistent with a session-destroying
+ * call whose reply port may not survive to receive a reply.
+ */
+simpleroutine IOSCSISession_free(
+        server          : port_t);
+
+routine IOSCSISession_initForDevice(
+        server          : port_t;
+    in  deviceName      : IOSCSIDeviceName_t);
+
+routine IOSCSISession_releaseAllUnits(
+        server          : port_t);
+
+routine IOSCSISession_reserveTarget(
+        server          : port_t;
+    in  target          : char;
+    in  lun             : char);
+
+routine IOSCSISession_releaseTarget(
+        server          : port_t;
+    in  target          : char;
+    in  lun             : char);
+
+routine IOSCSISession_reserveSCSI3Target(
+        server          : port_t;
+    in  target          : IOSCSITargetLUN_t;
+    in  lun             : IOSCSITargetLUN_t);
+
+routine IOSCSISession_releaseSCSI3Target(
+        server          : port_t;
+    in  target          : IOSCSITargetLUN_t;
+    in  lun             : IOSCSITargetLUN_t);
+
+routine IOSCSISession_numberOfTargets(
+        server          : port_t;
+    out number          : unsigned);
+
+routine IOSCSISession_executeRequest(
+        server          : port_t;
+    inout scsiReq       : IOSCSIRequest_t;
+    in  client          : IOVMTaskPort;
+    in  buffer          : int;
+    out status          : int);
+
+routine IOSCSISession_executeSCSI3Request(
+        server          : port_t;
+    inout scsiReq       : IOSCSI3Request_t;
+    in  client          : IOVMTaskPort;
+    in  buffer          : int;
+    out status          : int);
+
+routine IOSCSISession_executeRequestScatter(
+        server          : port_t;
+    inout scsiReq       : IOSCSIRequest_t;
+    in  client          : IOVMTaskPort;
+    in  ioRanges        : IOSCSIRangeArray896_t;
+    out status          : int);
+
+routine IOSCSISession_executeSCSI3RequestScatter(
+        server          : port_t;
+    inout scsiReq       : IOSCSI3Request_t;
+    in  client          : IOVMTaskPort;
+    in  ioRanges        : IOSCSIRangeArray872_t;
+    out status          : int);
+
+routine IOSCSISession_executeRequestOOLScatter(
+        server          : port_t;
+    inout scsiReq       : IOSCSIRequest_t;
+    in  client          : IOVMTaskPort;
+    in  oolData         : IOSCSIOOLData_t;
+    out status          : int);
+
+routine IOSCSISession_executeSCSI3RequestOOLScatter(
+        server          : port_t;
+    inout scsiReq       : IOSCSI3Request_t;
+    in  client          : IOVMTaskPort;
+    in  oolData         : IOSCSIOOLData_t;
+    out status          : int);
+
+routine IOSCSISession_resetSCSIBus(
+        server          : port_t;
+    out status          : unsigned);
+
+routine IOSCSISession_returnFromScStatus(
+        server          : port_t;
+    in  status          : unsigned);
+
+routine IOSCSISession_maxTransfer(
+        server          : port_t;
+    out maxTransfer     : unsigned);
+
+routine IOSCSISession_getDMAAlignment(
+        server          : port_t;
+    out alignment       : IOPPCDMAAlignment_t);

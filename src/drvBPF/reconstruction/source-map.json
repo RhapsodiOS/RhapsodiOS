@@ -1,0 +1,276 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 0,
+      "reference_names": [
+        "+[BPF probe:]"
+      ],
+      "size": 156,
+      "source_line": 64,
+      "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/BPF.m"
+    },
+    {
+      "address": 156,
+      "reference_names": [
+        "-[BPF initFromDeviceDescription:]"
+      ],
+      "size": 105,
+      "source_line": 93,
+      "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/BPF.m"
+    },
+    {
+      "address": 264,
+      "reference_names": [
+        "-[BPF getIntValues:forParameter:count:]"
+      ],
+      "size": 147,
+      "source_line": 106,
+      "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/BPF.m"
+    },
+    {
+      "address": 412,
+      "reference_names": [
+        "_bpfilterattach"
+      ],
+      "size": 7,
+      "source_line": 148,
+      "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
+    },
+    {
+      "address": 420,
+      "reference_names": [
+        "_bpf_movein"
+      ],
+      "size": 534,
+      "source_line": 174,
+      "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
+    },
+    {
+      "address": 956,
+      "reference_names": [
+        "_bpf_attachd"
+      ],
+      "size": 29,
+      "source_line": 276,
+      "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
+    },
+    {
+      "address": 988,
+      "reference_names": [
+        "_bpf_detachd"
+      ],
+      "size": 129,
+      "source_line": 296,
+      "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
+    },
+    {
+      "address": 1120,
+      "reference_names": [
+        "_bpfopen"
+      ],
+      "size": 88,
+      "source_line": 341,
+      "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
+    },
+    {
+      "address": 1208,
+      "reference_names": [
+        "_bpfclose"
+      ],
+      "size": 67,
+      "source_line": 370,
+      "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
+    },
+    {
+      "address": 1276,
+      "reference_names": [
+        "_bpfread"
+      ],
+      "size": 239,
+      "source_line": 440,
+      "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
+    },
+    {
+      "address": 1516,
+      "reference_names": [
+        "_bpfwrite"
+      ],
+      "size": 159,
+      "source_line": 534,
+      "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
+    },
+    {
+      "address": 1676,
+      "reference_names": [
+        "_reset_d"
+      ],
+      "size": 57,
+      "source_line": 578,
+      "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
+    },
+    {
+      "address": 1736,
+      "reference_names": [
+        "_bpfioctl"
+      ],
+      "size": 795,
+      "source_line": 610,
+      "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
+    },
+    {
+      "address": 2532,
+      "reference_names": [
+        "_bpf_setf"
+      ],
+      "size": 195,
+      "source_line": 814,
+      "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
+    },
+    {
+      "address": 2728,
+      "reference_names": [
+        "_bpf_setif"
+      ],
+      "size": 249,
+      "source_line": 861,
+      "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
+    },
+    {
+      "address": 2980,
+      "reference_names": [
+        "_bpf_ifname"
+      ],
+      "size": 41,
+      "source_line": 934,
+      "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
+    },
+    {
+      "address": 3024,
+      "reference_names": [
+        "_bpf_select"
+      ],
+      "size": 98,
+      "source_line": 969,
+      "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
+    },
+    {
+      "address": 3124,
+      "reference_names": [
+        "_bpf_tap"
+      ],
+      "size": 79,
+      "source_line": 1020,
+      "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
+    },
+    {
+      "address": 3204,
+      "reference_names": [
+        "_bpf_mcopy"
+      ],
+      "size": 92,
+      "source_line": 1047,
+      "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
+    },
+    {
+      "address": 3296,
+      "reference_names": [
+        "_bpf_mtap"
+      ],
+      "size": 92,
+      "source_line": 1075,
+      "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
+    },
+    {
+      "address": 3388,
+      "reference_names": [
+        "_catchpacket"
+      ],
+      "size": 243,
+      "source_line": 1107,
+      "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
+    },
+    {
+      "address": 3632,
+      "reference_names": [
+        "_bpf_allocbufs"
+      ],
+      "size": 95,
+      "source_line": 1179,
+      "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
+    },
+    {
+      "address": 3728,
+      "reference_names": [
+        "_bpf_freed"
+      ],
+      "size": 93,
+      "source_line": 1201,
+      "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
+    },
+    {
+      "address": 3824,
+      "reference_names": [
+        "_ifpromisc"
+      ],
+      "size": 98,
+      "source_line": 1233,
+      "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf.c"
+    },
+    {
+      "address": 3924,
+      "reference_names": [
+        "_m_xword"
+      ],
+      "size": 234,
+      "source_line": 102,
+      "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf_filter.c"
+    },
+    {
+      "address": 4160,
+      "reference_names": [
+        "_m_xhalf"
+      ],
+      "size": 113,
+      "source_line": 147,
+      "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf_filter.c"
+    },
+    {
+      "address": 4276,
+      "reference_names": [
+        "_bpf_filter"
+      ],
+      "size": 1840,
+      "source_line": 187,
+      "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf_filter.c"
+    },
+    {
+      "address": 6116,
+      "reference_names": [
+        "_bpf_validate"
+      ],
+      "size": 156,
+      "source_line": 525,
+      "source_path": "src/drvBPF/BPF.drvproj/BPF.lksproj/bpf_filter.c"
+    }
+  ],
+  "reference_sha256": "56DF84EDC7D77C0799A036C21BE43D833A926BCAA6DA48512DF99CEE7A1B86DB",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 6272,
+      "reference_names": [
+        "+[BPFKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 6284,
+      "reference_names": [
+        "+[BPFVersion driverKitVersionForBPF]"
+      ],
+      "size": 12
+    }
+  ]
+}

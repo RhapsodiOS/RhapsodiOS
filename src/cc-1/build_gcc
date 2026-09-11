@@ -365,16 +365,24 @@ missing_cross=no
 
 if [ $TARGET_OS = nextstep -a "$result" != clean ]; then
 
-  for host in $HOSTS; do 
-    if [ -d /`if [ "$RHAPSODY" ]; then echo usr/libexec; else echo lib; fi`/$host ]
-    then true
-    else 
+  for host in $HOSTS; do
+    compiler=${CC:-cc}
+    compiler_backend=`$compiler -arch $host -print-prog-name=cc1 2>$null`
+    probe_c=$TEMP/cc-arch-probe.$$.c
+    probe_o=$TEMP/cc-arch-probe.$$.o
+    echo 'int x;' > $probe_c
+    if [ -n "$compiler_backend" -a -x "$compiler_backend" ]; then
+      true
+    elif $compiler -arch $host -c $probe_c -o $probe_o >$null 2>&1; then
+      true
+    else
       echo "***********************************************************"
-      echo "** The directory /`if [ "$RHAPSODY" ]; then echo usr/libexec; else echo lib; fi`/$host is missing!!!"
-      echo "** Please install a compiler that generates code for $host"
+      echo "** The configured compiler cannot generate code for $host"
+      echo "** cc1 reported by $compiler: ${compiler_backend:-not found}"
       missing_cross=yes
-    fi; 
-  done  
+    fi
+    $RM -f $probe_c $probe_o
+  done
 
   for host in $HOSTS; do
     if echo $TARGETS | grep $host >$null 2>&1; then true; else

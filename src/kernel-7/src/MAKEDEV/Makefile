@@ -58,6 +58,9 @@ VERSDIR=../..
 OBJROOT=$(VERSDIR)/BUILD
 SYMROOT=$(VERSDIR)/BUILD
 
+# Portable replacement for NeXT make's `.DEFTARGET: all`.
+all:
+
 install:
 
 #
@@ -75,4 +78,4 @@ installhdrs:
 #
 # Include file for shell script makefiles
 #
-findfile MakeInc.csh
+include ../../MakeInc.csh

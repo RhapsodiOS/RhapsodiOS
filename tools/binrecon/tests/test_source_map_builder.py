@@ -221,6 +221,107 @@ def test_source_sites_joins_wrapped_no_space_selector(tmp_path):
     ]
 
 
+def test_source_sites_joins_wrapped_selector_across_inline_comments(tmp_path):
+    """A comment inside a wrapped signature must not become a keyword.
+
+    Selector keywords are read as the word following each argument name, so
+    a comment between them -- drvSCSITape's SCSITape.m annotates both the
+    first line of initSCSITape: and a continuation line of executeRequest:
+    this way -- otherwise yields "initSCSITape:/*:lun:...".
+    """
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "SCSITape.m").write_text(
+        "@implementation SCSITape\n"
+        "\n"
+        "- (stInitReturn_t) initSCSITape:(int)iunit \t/* IODevice unit # */\n"
+        "    target:\t\t(u_char) stTarget\n"
+        "    lun:\t\t(u_char) stLun\n"
+        "{\n"
+        "    return ST_INIT_SUCCESS;\n"
+        "}\n"
+        "\n"
+        "- (sc_status_t) executeRequest: (IOSCSIRequest *)scsiReq\n"
+        "    buffer:(void *) buffer /* data destination */\n"
+        "    client:(vm_task_t) client\n"
+        "{\n"
+        "    return SR_IOST_GOOD;\n"
+        "}\n"
+        "\n"
+        "@end\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert sites["-[SCSITape initSCSITape:target:lun:]"] == [
+        ("src/driver/SCSITape.m", 3)
+    ]
+    assert sites["-[SCSITape executeRequest:buffer:client:]"] == [
+        ("src/driver/SCSITape.m", 10)
+    ]
+
+
+def test_source_sites_reads_a_selector_whose_argument_type_nests_parentheses(tmp_path):
+    """A function-pointer argument nests parentheses inside its type.
+
+    Stripping only innermost pairs leaves the outer type's closing paren
+    behind, and the segment walk then reads it as the keyword, yielding
+    "sortUsingFunction:)context:". Kits/Foundation/NSArray.m declares three
+    such methods.
+    """
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "NSArray.m").write_text(
+        "@implementation NSArray\n"
+        "\n"
+        "- (void)sortUsingFunction:(int (*)(id, id, void *))compare\n"
+        "    context:(void *)context\n"
+        "{\n"
+        "}\n"
+        "\n"
+        "@end\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert sites["-[NSArray sortUsingFunction:context:]"] == [
+        ("src/driver/NSArray.m", 3)
+    ]
+
+
+def test_source_sites_still_finds_single_line_selector_with_trailing_comment(tmp_path):
+    """A comment after a one-line signature already worked; keep it working.
+
+    Both shapes occur: an accessor with no keyword at all, and one whose
+    single keyword is followed by the comment.
+    """
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "SCSITape.m").write_text(
+        "@implementation SCSITape\n"
+        "\n"
+        "- (int) target\t\t\t/* Set only during initialization */\n"
+        "{\n"
+        "    return (int) _target;\n"
+        "}\n"
+        "\n"
+        "- (void) setTarget:(int)target\t/* Initialization only */\n"
+        "{\n"
+        "    _target = target;\n"
+        "}\n"
+        "\n"
+        "@end\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert sites["-[SCSITape target]"] == [("src/driver/SCSITape.m", 3)]
+    assert sites["-[SCSITape setTarget:]"] == [("src/driver/SCSITape.m", 8)]
+
+
 def test_source_sites_ignores_bare_arithmetic_inside_a_method_body(tmp_path):
     source_dir = tmp_path / "src" / "driver"
     source_dir.mkdir(parents=True)
@@ -378,6 +479,277 @@ def test_source_sites_finds_c_function_defined_after_implementation_end(tmp_path
     sites = source_sites(tmp_path, source_dir)
 
     assert sites["_helperAfterEnd"] == [("src/driver/Bus.m", 9)]
+
+
+def test_source_sites_finds_kandr_definition_with_return_type_on_its_own_line(
+    tmp_path,
+):
+    """K&R style: the return type is alone on one line; the name and
+    parameter list start the next; each indented parameter declaration ends
+    in ';' and must not be mistaken for the definition's own terminator.
+
+    Known limitation, not fixed here: `kandr` is set from
+    `line.rstrip().endswith(")")` on the header line itself. If the header's
+    own parameter list instead wraps across multiple lines, `kandr` is never
+    set, and the K&R parameter declarations that follow are misread as a
+    prototype's ';' terminator, dropping the definition. Not exercised here
+    - reproducing it would pin the bug, not the fix.
+    """
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "bpf.c").write_text(
+        "static int\n"
+        "bpf_movein(uio, mp)\n"
+        "\tstruct uio *uio;\n"
+        "\tstruct mbuf **mp;\n"
+        "{\n"
+        "\treturn 0;\n"
+        "}\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert sites["_bpf_movein"] == [("src/driver/bpf.c", 2)]
+
+
+def test_source_sites_finds_kandr_definition_with_unindented_parameters(tmp_path):
+    """K&R parameter declarations need not be indented.
+
+    drvSCSITape's stblocksize.c writes them at column zero. Each still ends
+    in ';' and must not be read as a prototype's terminator just because it
+    starts in column zero.
+    """
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "stblocksize.c").write_text(
+        "int\n"
+        "do_ioc(srp)\n"
+        "struct scsi_req *srp;\n"
+        "{\n"
+        "    return 0;\n"
+        "}\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert sites["_do_ioc"] == [("src/driver/stblocksize.c", 2)]
+
+
+def test_source_sites_finds_ansi_definition_with_return_type_on_its_own_line(
+    tmp_path,
+):
+    """Not K&R: a plain ANSI parameter list, but the return type is still
+    wrapped onto its own line, which the old (mandatory-prefix) regex could
+    not handle either."""
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "ide.c").write_text(
+        "int\n"
+        "ide_block_char_majors(int a, int b)\n"
+        "{\n"
+        "    return a + b;\n"
+        "}\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert sites["_ide_block_char_majors"] == [("src/driver/ide.c", 2)]
+
+
+def test_source_sites_still_skips_forward_declaration_with_return_type_on_its_own_line(
+    tmp_path,
+):
+    """A genuine prototype - ending in ';', no body - must still be rejected
+    now that _C_DEFINITION's return-type prefix is optional. This is the
+    property most at risk from that change: without this test, a scanner
+    that recorded every parenthesized, ';'-terminated line as a definition
+    would make the two tests above pass too, while badly over-reporting.
+    """
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "ide.c").write_text(
+        "int\n"
+        "ide_block_char_majors(int a, int b);\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert "_ide_block_char_majors" not in sites
+
+
+def test_source_sites_finds_semicolon_then_brace_method_definition(tmp_path):
+    """NeXT-era GCC allows a ';' between a method signature and its body.
+
+    AppleCuda's StartCudaTransmission: in cuda.m is written this way; the
+    scanner used to read the trailing ';' as ending a forward declaration
+    and never recorded a site for the definition that follows.
+    """
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "Cuda.m").write_text(
+        "@implementation AppleCuda\n"
+        "\n"
+        "- (void)StartCudaTransmission:(CudaRequest *)plugInMessage;\n"
+        "{\n"
+        "    return;\n"
+        "}\n"
+        "\n"
+        "@end\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert sites["-[AppleCuda StartCudaTransmission:]"] == [
+        ("src/driver/Cuda.m", 3)
+    ]
+
+
+def test_source_sites_finds_wrapped_signature_ending_in_semicolon_then_brace(tmp_path):
+    """The semicolon-before-brace idiom also occurs on a wrapped signature,
+    with the ';' on the last continuation line rather than the first line.
+
+    `drvApple96_SCSI/Apple96CurioPublic.m:424` is written this way:
+
+        - (void) logCommand
+                    : (const CommandBuffer *) commandPtr
+            reason  : (const char *) reason;
+        {
+
+    The first line does not end in ';', so the initial `found_semicolon`
+    check never fires; the signature only resolves inside the lookahead
+    loop, which must apply the same `_body_follows` guard to the ';' found
+    on this later continuation line -- otherwise the loop stops the scan
+    before ever reaching the '{' that follows, and the definition is lost.
+    """
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "Apple96.m").write_text(
+        "@implementation Apple96_SCSI\n"
+        "\n"
+        "- (void) logCommand\n"
+        "            : (const CommandBuffer *) commandPtr\n"
+        "    reason  : (const char *) reason;\n"
+        "{\n"
+        "    return;\n"
+        "}\n"
+        "\n"
+        "@end\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert sites["-[Apple96_SCSI logCommand:reason:]"] == [
+        ("src/driver/Apple96.m", 3)
+    ]
+
+
+def test_source_sites_still_skips_bare_semicolon_method_declaration(tmp_path):
+    """A signature ending in ';' with no following brace is a declaration,
+    not a definition, and must remain ignored. This must not regress just
+    because a brace-after-semicolon definition is now recorded."""
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "Forward.m").write_text(
+        "@implementation Foo\n"
+        "\n"
+        "- (void)declaredOnly:(int)x;\n"
+        "\n"
+        "- (void)realMethod\n"
+        "{\n"
+        "}\n"
+        "\n"
+        "@end\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert "-[Foo declaredOnly:]" not in sites
+    assert sites["-[Foo realMethod]"] == [("src/driver/Forward.m", 5)]
+
+
+def test_source_sites_declaration_does_not_reach_a_later_c_function_brace(tmp_path):
+    """Only the *next* non-blank line may turn a ';' into a definition.
+
+    A forward declaration followed by something that is not a structural
+    boundary but eventually opens a brace -- here a C helper -- must not be
+    read as a definition. Scanning on until any brace both invents
+    "-[Foo declaredOnly:]" and swallows the helper, because the outer loop
+    resumes past it.
+    """
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "Helper.m").write_text(
+        "@implementation Foo\n"
+        "\n"
+        "- (void)declaredOnly:(int)x;\n"
+        "\n"
+        "static int helper(int a) {\n"
+        "    return a;\n"
+        "}\n"
+        "\n"
+        "- (void)realMethod\n"
+        "{\n"
+        "}\n"
+        "\n"
+        "@end\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert "-[Foo declaredOnly:]" not in sites
+    assert sites["_helper"] == [("src/driver/Helper.m", 5)]
+    assert sites["-[Foo realMethod]"] == [("src/driver/Helper.m", 9)]
+
+
+def test_source_sites_ignores_a_c_continuation_line_starting_with_a_sign(tmp_path):
+    """`_METHOD` matches any indented line starting with '-' or '+'.
+
+    BMacEnetPrivate.m wraps arithmetic that way. The trailing ';' is what
+    stops the body search; without it "+ 2 * sizeof(IODBDMADescriptor) );"
+    scans on to the next brace and yields "+[Foo 2]".
+    """
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "Wrap.m").write_text(
+        "@implementation Foo\n"
+        "\n"
+        "- (void)compute\n"
+        "{\n"
+        "    dbdmaSize = round_page( RX_RING_LENGTH * sizeof(enet_dma_cmd_t)\n"
+        "                              + 2 * sizeof(IODBDMADescriptor) );\n"
+        "    /*\n"
+        "     * Allocate required memory\n"
+        "     */\n"
+        "    if ( !dmaCommands )\n"
+        "    {\n"
+        "        badFrameCount = ReadBigMacRegister(ioBaseEnet, kFECNT)\n"
+        "                          + ReadBigMacRegister(ioBaseEnet, kAECNT)\n"
+        "                              + ReadBigMacRegister(ioBaseEnet, kLECNT);\n"
+        "    }\n"
+        "}\n"
+        "\n"
+        "- (void)realMethod\n"
+        "{\n"
+        "}\n"
+        "\n"
+        "@end\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert sites == {
+        "-[Foo compute]": [("src/driver/Wrap.m", 3)],
+        "-[Foo realMethod]": [("src/driver/Wrap.m", 18)],
+    }
 
 
 def _analysis(functions, sha256="A" * 64):

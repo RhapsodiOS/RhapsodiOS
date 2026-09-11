@@ -4,9 +4,11 @@
  * Main class for floppy disk devices with cylinder-based caching
  */
 
-#import "IODriveNEW.h"
+#import "IODiskNew.h"
 #import <driverkit/return.h>
+#import <kernserv/queue.h>
 #import "FloppyVm.h"
+#import "IODiskProtocols.h"
 
 // Forward declarations
 @class IOFloppyDrive;
@@ -17,10 +19,15 @@ void OperationThreadStartup(id self);
 /*
  * IOFloppyDisk - Floppy disk device with cylinder caching
  *
- * Extends IODriveNEW to provide cylinder-based caching for floppy disks.
+ * Extends IODiskNEW to provide cylinder-based caching for floppy disks.
  * Uses a background operation thread for read-ahead and write-behind operations.
+ *
+ * IODiskNEW, not IODriveNEW: the reference names IODiskNEW, this class
+ * sends only IODiskNEW methods, and IODiskNEW is 308 bytes where
+ * IODriveNEW is 352 -- which is what puts the ivars below at the 0x134
+ * offsets their own comments already claim.
  */
-@interface IOFloppyDisk : IODriveNEW
+@interface IOFloppyDisk : IODiskNEW <IODiskReadingAndWriting, IODiskPhysicalNEW>
 {
 	// Cache management (offsets 0x134-0x140)
 	void *_cacheBuffer;              // offset 0x134: cache data buffer
@@ -36,12 +43,13 @@ void OperationThreadStartup(id self);
 	id _geometry;                    // offset 0x14c: geometry object
 
 	// Operation queue (offsets 0x150-0x158)
-	void *_queueHead;                // offset 0x150: operation queue head
-	void *_queueTail;                // offset 0x154: operation queue tail
+	queue_head_t _operationQueue;    // offset 0x150: next, prev
 	id _queueLock;                   // offset 0x158: queue lock
 
 	// Thread management (offset 0x15c)
-	int _operationThreadPort;        // offset 0x15c: operation thread port
+	// The reference declares this as a one-bit field, b1, and the code
+	// only ever tests, sets and clears bit 0 of it.
+	unsigned _startedThread:1;       // offset 0x15c: operation thread running
 
 	// Device info (offset 0x160)
 	id _deviceDescription;           // offset 0x160: device description
@@ -94,7 +102,7 @@ void OperationThreadStartup(id self);
  */
 - (IOReturn)readAsyncAt:(unsigned)offset
                  length:(unsigned)length
-                 buffer:(void *)buffer
+                 buffer:(unsigned char *)buffer
                 pending:(void *)pending
                  client:(vm_task_t)client;
 
@@ -103,7 +111,7 @@ void OperationThreadStartup(id self);
  */
 - (IOReturn)readAt:(unsigned)offset
             length:(unsigned)length
-            buffer:(void *)buffer
+            buffer:(unsigned char *)buffer
       actualLength:(unsigned *)actualLength
             client:(vm_task_t)client;
 
@@ -112,7 +120,7 @@ void OperationThreadStartup(id self);
  */
 - (IOReturn)writeAsyncAt:(unsigned)offset
                   length:(unsigned)length
-                  buffer:(void *)buffer
+                  buffer:(unsigned char *)buffer
                  pending:(void *)pending
                   client:(vm_task_t)client;
 
@@ -121,7 +129,7 @@ void OperationThreadStartup(id self);
  */
 - (IOReturn)writeAt:(unsigned)offset
              length:(unsigned)length
-             buffer:(void *)buffer
+             buffer:(unsigned char *)buffer
        actualLength:(unsigned *)actualLength
              client:(vm_task_t)client;
 

@@ -212,9 +212,12 @@ def _validate_mapping(mapping, size, digest):
         raise ExportError("artifact mapping manifest is malformed")
     identity = mapping["input"]
     if (not isinstance(identity, dict) or
-            set(identity) != {"size", "sha256", "architecture", "endianness"} or
+            set(identity) != {"size", "sha256", "architecture", "endianness",
+                              "ida_processor"} or
             identity["size"] != size or str(identity["sha256"]).upper() != digest or
-            identity["architecture"] != "i386" or identity["endianness"] != "little"):
+            not isinstance(identity["architecture"], str) or
+            identity["endianness"] not in ("little", "big") or
+            not isinstance(identity["ida_processor"], str)):
         raise ExportError("artifact mapping identity does not match analyzed input")
     runs = mapping["runs"]
     if not isinstance(runs, list) or not runs or len(runs) > 4096:
@@ -345,21 +348,43 @@ def _collect_relocations(modules):
         if (
             not isinstance(base, int)
             or not isinstance(offset, int)
+            or not isinstance(addend, int)
             or base < 0
             or offset < 0
             or base == bad_address
             or offset == bad_address
             or base > 0xFFFFFFFF
-            or offset > 0xFFFFFFFF - base
         ):
             raise ExportError(f"malformed fixup target at {address:#x}")
-        target_address = base + offset
-        if (
-            not isinstance(addend, int)
-            or not isinstance(target_address, int)
-            or target_address < 0
-        ):
-            raise ExportError(f"malformed fixup fields at {address:#x}")
+        # IDAPython exposes the signed `off` field as the raw, non-negative
+        # two's-complement bit pattern of a 64-bit value, so a negative
+        # displacement -- as produced by PowerPC PPC_RELOC_SECTDIFF
+        # switch-table fixups (e.g. SCSITape's __TEXT,__const jump table,
+        # base=0x2E34, off=-6696 surfacing as 0xFFFFFFFFFFFFE5D8) -- arrives
+        # sign-extended across all 64 bits rather than as a small unsigned
+        # 32-bit value. A legitimate offset therefore has its upper 32 bits
+        # either all zero (non-negative) or all one (a sign-extended
+        # negative 32-bit displacement); anything else is a stray high word,
+        # not a real fixup.
+        if offset >> 32 not in (0, 0xFFFFFFFF):
+            raise ExportError(f"malformed fixup target at {address:#x}")
+        # The sign lives in the upper word, not in bit 31 of the low word:
+        # when the upper word is all ones the value is a negative
+        # displacement sign-extended across all 64 bits, so the true signed
+        # value is recovered from the low 32 bits. When the upper word is
+        # zero, `offset` is already a plain non-negative 32-bit displacement
+        # -- e.g. +0xFFFF0000 -- whose bit 31 is a value bit, not a sign bit,
+        # and must not be reinterpreted as negative. Either way the result is
+        # added to base with ordinary (non-modular) arithmetic and
+        # range-checked, so a target that genuinely leaves the 32-bit address
+        # space is still rejected instead of silently wrapping into range.
+        if offset >> 32 == 0xFFFFFFFF:
+            signed = (offset & 0xFFFFFFFF) - 0x100000000
+        else:
+            signed = offset
+        target_address = base + signed
+        if not 0 <= target_address <= 0xFFFFFFFF:
+            raise ExportError(f"malformed fixup target at {address:#x}")
         target_name = ida_name.get_name(target_address) or ""
         if external:
             target = target_name or f"external:{target_address:08X}"
@@ -401,12 +426,19 @@ def collect_analysis(input_path, expected_size, expected_sha256, modules=None, m
         raise ExportError("IDA database input size does not match host request")
     if not isinstance(database_sha, bytes) or database_sha.hex().upper() != digest:
         raise ExportError("IDA database input sha256 does not match host request")
-    if not isinstance(processor, str) or processor.lower() != "metapc":
-        raise ExportError(f"IDA processor is not metapc: {processor!r}")
+    expected_processor = mapping["input"]["ida_processor"]
+    expected_big_endian = mapping["input"]["endianness"] == "big"
+    if not isinstance(processor, str) or processor.lower() != expected_processor.lower():
+        raise ExportError(
+            f"IDA processor is not {expected_processor}: {processor!r}"
+        )
     if exactly_32 is not True:
         raise ExportError("IDA database is not exactly 32-bit")
-    if big_endian is not False:
-        raise ExportError("IDA database is not little-endian")
+    if big_endian is not expected_big_endian:
+        raise ExportError(
+            "IDA database endianness does not match the requested "
+            f"{mapping['input']['endianness']}-endian analysis"
+        )
     if not modules["ida_auto"].auto_wait():
         raise ExportError("IDA auto-analysis did not complete")
     ida_segment = modules["ida_segment"]
@@ -661,7 +693,8 @@ def collect_analysis(input_path, expected_size, expected_sha256, modules=None, m
         "schema_version": "analysis-v1",
         "input": {
             "path": str(input_path.resolve()), "size": size, "sha256": digest,
-            "architecture": "i386", "endianness": "little",
+            "architecture": mapping["input"]["architecture"],
+            "endianness": mapping["input"]["endianness"],
         },
         "analyzer": {
             "name": "IDA", "version": version,

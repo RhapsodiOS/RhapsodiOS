@@ -11,6 +11,10 @@ from jsonschema import ValidationError
 from binrecon.profile import load_profile
 from binrecon.compare import ComparisonError, compare_artifacts, format_text_report
 from binrecon.consensus import ConsensusError, build_consensus
+from binrecon.functions import (
+    FunctionQueryError, function_index, load_published, render_function,
+    render_worklist, worklist,
+)
 from binrecon.macho import objc_method_index, read_macho
 from binrecon.normalize import preflight_json
 from binrecon.schema import validate_analysis_semantics, validate_document
@@ -19,7 +23,7 @@ from binrecon.runner import RunnerError, run_analysis
 from binrecon.source_map import build_source_map, scope_analysis, source_sites
 
 
-COMMANDS = ("validate", "analyze", "consensus", "compare", "ledger", "source-map")
+COMMANDS = ("validate", "analyze", "consensus", "compare", "ledger", "source-map", "function")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -67,6 +71,13 @@ def build_parser() -> argparse.ArgumentParser:
     source_map.add_argument("--scope-to-objc", action="store_true",
                             help="restrict the analysis to the Objective-C methods "
                                  "found by --objc-methods")
+
+    function = subparsers.add_parser("function")
+    function.add_argument("--profile", required=True)
+    function.add_argument("--analyzer", default="ida")
+    function.add_argument("--list", action="store_true", dest="list_functions",
+                          help="print every compared function, cheapest difference first")
+    function.add_argument("--name", help="print one function's two instruction sequences")
 
     return parser
 
@@ -206,6 +217,26 @@ def main(argv=None) -> int:
             print(f"binrecon: {error}", file=sys.stderr)
             return 1
 
+    if args.command == "function":
+        if args.list_functions == bool(args.name):
+            print("binrecon: give exactly one of --list or --name", file=sys.stderr)
+            return 1
+        try:
+            profile = load_profile(Path(args.profile), os.environ)
+            reference, rebuilt, comparison = load_published(profile.output_dir, args.analyzer)
+            if args.list_functions:
+                print(render_worklist(worklist(reference, rebuilt, comparison)))
+                return 0
+            record = next((item for item in comparison.get("functions") or []
+                           if args.name in (item.get("reference_aliases") or [])
+                           or args.name in (item.get("rebuilt_aliases") or [])), None)
+            print(render_function(args.name, function_index(reference).get(args.name),
+                                  function_index(rebuilt).get(args.name), record))
+            return 0
+        except (OSError, ValueError, ValidationError, FunctionQueryError) as error:
+            print(f"binrecon: {error}", file=sys.stderr)
+            return 1
+
     print(f"binrecon: command not implemented: {args.command}")
     return 2
 
@@ -216,10 +247,14 @@ def _source_map_command(arguments) -> int:
     if arguments.scope_to_objc and not arguments.objc_methods:
         raise ValueError("--scope-to-objc requires --objc-methods")
 
+    # A file is a legitimate argument: some drivers' sources share a directory
+    # with other binaries' sources, so scoping to a directory would silently
+    # measure the wrong thing. source_files() below rejects a wrong-suffix file,
+    # so only existence is checked here.
     source_dirs = [Path(value) for value in arguments.source_dir]
     for source_dir in source_dirs:
-        if not source_dir.is_dir():
-            raise ValueError(f"--source-dir {source_dir} is not an existing directory")
+        if not source_dir.exists():
+            raise ValueError(f"--source-dir {source_dir} does not exist")
 
     analysis = load_json(Path(arguments.reference_analysis))
     validate_document("analysis-v1", analysis)

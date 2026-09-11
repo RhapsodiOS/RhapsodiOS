@@ -38,6 +38,7 @@
 #import <driverkit/machine/directDevice.h>
 #import <driverkit/generalFuncs.h>
 #import "IdeCntPublic.h"
+#import "IDEAddressing.h"
 
 
 /*
@@ -55,25 +56,53 @@
  * ideRegsAddrs structure.
  */
 
-- (ide_return_t) ideReadGetInfoCommon:(ideRegsVal_t *)ideRegs 
+- (ide_return_t) ideReadGetInfoCommon:(const ideTaskfile_t *)taskfile
+			errorRegisters:(ideRegsVal_t *)ideRegs
 			client:(struct vm_map *)client 
 			addr:(caddr_t)xferAddr 
 			command:(unsigned)cmd;
 
-- (ide_return_t) ideReadMultiple:(ideRegsVal_t *)ideRegs 
+- (ide_return_t) ideReadMultiple:(const ideTaskfile_t *)taskfile
+			errorRegisters:(ideRegsVal_t *)ideRegs
 			client:(struct vm_map *)client 
+			addr:(caddr_t)xferAddr
+			command:(unsigned)cmd;
+
+- (ide_return_t) ideWrite:(const ideTaskfile_t *)taskfile
+			errorRegisters:(ideRegsVal_t *)ideRegs
+			client:(struct vm_map *)client	
+			addr:(caddr_t)addr
+			command:(unsigned)cmd;
+
+- (ide_return_t) ideWriteMultiple:(const ideTaskfile_t *)taskfile
+			errorRegisters:(ideRegsVal_t *)ideRegs
+			client: (struct vm_map *)client 
+			addr:(caddr_t)addr
+			command:(unsigned)cmd;
+
+- (ide_return_t) ideReadVerifySeekCommon:(const ideTaskfile_t *)taskfile
+			errorRegisters:(ideRegsVal_t *)ideRegs
+			command:(unsigned)cmd;
+
+/* Legacy initialization call paths use pre-built 28-bit register values. */
+- (ide_return_t) ideReadGetInfoCommon:(ideRegsVal_t *)ideRegs
+			client:(struct vm_map *)client
+			addr:(caddr_t)xferAddr
+			command:(unsigned)cmd;
+
+- (ide_return_t) ideReadMultiple:(ideRegsVal_t *)ideRegs
+			client:(struct vm_map *)client
 			addr:(caddr_t)xferAddr;
 
-- (ide_return_t) ideWrite:(ideRegsVal_t *)ideRegs 
-			client:(struct vm_map *)client	
-			addr:(caddr_t)addr;
-
-- (ide_return_t) ideWriteMultiple:(ideRegsVal_t *)ideRegs 
-			client: (struct vm_map *)client 
-			addr:(caddr_t)addr;
-
-- (ide_return_t) ideReadVerifySeekCommon:(ideRegsVal_t *)ideRegs 
+- (ide_return_t) ideReadVerifySeekCommon:(ideRegsVal_t *)ideRegs
 			command:(unsigned)cmd;
+
+- (ide_return_t)buildTaskfile:(ideTaskfile_t *)taskfile
+			block:(unsigned int)block count:(unsigned int)count
+			drive:(unsigned int)drive;
+
+- (void)writeTaskfile:(const ideTaskfile_t *)taskfile
+			errorRegisters:(ideRegsVal_t *)errorRegisters;
 
 - (ide_return_t) performDMATest;
 

@@ -3,14 +3,14 @@ Current list of drivers to be implemented and the status of re-implementation
 
 bus
  * drvEISABus - crashing; reconstructed against the reference binary, fixes applied, not yet retested
- * drvPCIBus - complete; reconstructed against the reference binary
- * drvPCMCIABus - compiles; reconstructed against the reference binary, fixes applied, not yet tested
+ * drvPCIBus - reconstructed against the reference binary, fixes applied; its testIDs:dev:fun:bus: prototype now matches Apple's, and PCIResourceDriver inherits IODirectDevice, but neither fix has been compiled or tested
+ * drvPCMCIABus - compiles; reconstructed against the reference binary, fixes applied, not yet tested; protocol records, every class instance size and ivar layout are byte-identical to the reference; two heap overflows from undeclared ivars fixed
  * Intel824X0PCI - reconstructed against the reference binary, fixes applied, not yet compiled or tested
- * Intel82365PCMCIA - reconstructed against the reference binary, fixes applied except the four PCMCIA protocol adoptions, not yet compiled or tested
+ * Intel82365PCMCIA - compiles; reconstructed against the reference binary, all fixes applied; its five ObjC protocol records and four adoptions are byte-identical to the reference, not yet tested
 
 ide
  * drvEIDE - complete
- * drvPCFloppy - builds; reconstruction against Apple's Floppy_reloc in progress
+ * drvPCFloppy - reconstructed against Apple's Floppy_reloc; not yet tested on hardware
 
 input
  * drvBusMouse - compiles; reconstructed against the reference binary, fixes applied, not yet tested
@@ -51,11 +51,11 @@ scsi
  * drvSym53C8xx - stub, 12/158 reference functions; reference is a 136-function CAM/SIM
 
 sound
- * drvBeepSound - needs compiled and then tested
- * drvES1x88Sound - needs compiled and then tested
+ * drvBeepSound - compiles; reconstructed against the reference binary, fixes applied, not yet tested
+ * drvES1x88Sound - compiles; reconstructed against the reference binary, fixes applied, not yet tested
  * drvIntelAC97Sound - needs compiled and then tested
- * drvSB8Sound - needs compiled and then tested
- * drvSB16Sound - needs compiled and then tested
+ * drvSB8Sound - compiles; reconstructed against the reference binary, fixes applied, not yet tested
+ * drvSB16Sound - compiles; reconstructed against the reference binary, fixes applied, not yet tested
  * drvSB128Sound - complete
 
 video
@@ -69,4 +69,9 @@ video
  * drvS3Generic - complete
  * drvVBoxVideo - complete
  * drvVMWareVideo - complete
- * drvVGA - reconstruction in progress
+ * drvVGA - both halves reconstructed against Apple's binaries, not built since the
+   emulator assembly landed, never booted
+
+other (these live at src/drvBPF and src/drvPortServer, not under drivers-i386)
+ * drvBPF - reconstructed against the reference binary, fixes applied, not yet compiled or tested
+ * drvPortServer - reconstructed against the reference binary, five pre-existing compile blockers repaired, fixes applied, not yet compiled or tested

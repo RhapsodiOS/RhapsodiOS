@@ -33,6 +33,7 @@
 #import <driverkit/KernBus.h>
 #import <driverkit/KernBusMemory.h>
 #import <driverkit/KernBusInterrupt.h>
+#import <driverkit/i386/PCMCIA.h>
 #import <objc/List.h>
 
 /* Socket info structure (24 bytes) */
@@ -56,19 +57,13 @@ extern unsigned int biosBitmap[3];
  */
 @protocol PCMCIAStatusChange
 
-- statusChangedForSocket:socket changedStatus:(unsigned int)status;
+- (void)statusChangedForSocket:socket changedStatus:(PCMCIAStatus)status;
 
 @end
 
 /*
- * Protocol for PCMCIA adapter drivers
+ * PCMCIAAdapter is declared in <driverkit/i386/PCMCIA.h>.
  */
-@protocol PCMCIAAdapter
-
-- setStatusChangeHandler:handler;
-- sockets;
-
-@end
 
 
 @interface PCMCIAKernBusInterrupt : KernBusInterrupt <KernBusInterrupt>
@@ -100,7 +95,7 @@ extern unsigned int biosBitmap[3];
     unsigned int    _memoryBase;            /* Offset 0x14: Memory range base */
     unsigned int    _memoryLength;          /* Offset 0x18: Memory range length */
     id              _socketMap;             /* Offset 0x1c: HashTable mapping sockets to info */
-    int             _verbose;               /* Offset 0x20: Verbose logging flag */
+    BOOL            _verbose;               /* Offset 0x20: Verbose logging flag */
     id              _memoryRangeResource;   /* Offset 0x24: Cached memory range resource */
 }
 
@@ -129,7 +124,7 @@ extern unsigned int biosBitmap[3];
 - (void)setVerbose:(BOOL)verbose;
 
 /* Status changes */
-- (void)statusChangedForSocket:socket changedStatus:(unsigned int)status;
+- (void)statusChangedForSocket:socket changedStatus:(PCMCIAStatus)status;
 
 @end
 

@@ -1413,9 +1413,6 @@ static void _m64DoBlit(volatile UInt32 *base, UInt32 src_x, UInt32 src_y,
 // Provides hardware acceleration support for blits and fills
 
 @implementation IOATIMACH64NDRV
-{
-    BOOL	engineInitialized;
-}
 
 //=======================================================================
 // Hardware cursor support
@@ -1536,11 +1533,11 @@ static void _m64DoBlit(volatile UInt32 *base, UInt32 src_x, UInt32 src_y,
 
 - (IOReturn)setIntValues:(unsigned *)parameterArray
 		forParameter:(IOParameterName)parameterName
-    		count:(unsigned int *)count
+    		count:(unsigned)count
 {
     // Handle hardware-accelerated blit operations
     if (strcmp(parameterName, IO_DISPLAY_DO_BLIT) == 0) {
-        if (*count != IO_DISPLAY_BLIT_SIZE)
+        if (count != IO_DISPLAY_BLIT_SIZE)
             return IO_R_INVALID_ARG;
 
         if (!engineInitialized || registerBase == NULL)
@@ -1560,7 +1557,7 @@ static void _m64DoBlit(volatile UInt32 *base, UInt32 src_x, UInt32 src_y,
 
     // Handle hardware-accelerated fill operations
     else if (strcmp(parameterName, IO_DISPLAY_DO_FILL) == 0) {
-        if (*count != IO_DISPLAY_FILL_SIZE)
+        if (count != IO_DISPLAY_FILL_SIZE)
             return IO_R_INVALID_ARG;
 
         if (!engineInitialized || registerBase == NULL)
@@ -1579,7 +1576,7 @@ static void _m64DoBlit(volatile UInt32 *base, UInt32 src_x, UInt32 src_y,
 
     // Handle display sync (wait for idle) operations
     else if (strcmp(parameterName, IO_DISPLAY_GET_SYNCED) == 0) {
-        if (*count != IO_DISPLAY_GET_SYNCED_SIZE)
+        if (count != IO_DISPLAY_GET_SYNCED_SIZE)
             return IO_R_INVALID_ARG;
 
         if (registerBase != NULL)
@@ -1754,13 +1751,13 @@ static void _ixDoBlit(volatile UInt32 *base, UInt32 bytesPerPixel, UInt32 pixelF
     }
 
     // Get current display mode and depth
-    modeID = config.mode;
+    modeID = config.displayMode;
     depthIndex = config.depth;
     pageIndex = config.page;
 
     // Get pixel information
-    err = [self getPixelInformationForDisplayMode:modeID depth:depthIndex page:pageIndex
-                                     pixelInformation:&pixelInfo];
+    err = [self getPixelInformationForDisplayMode:modeID andDepthIndex:depthIndex
+                                     pixelInfo:&pixelInfo];
     if (err != IO_R_SUCCESS) {
         IOLog("%s: Could not get pixel information (err=%d)\n", [self name], err);
         registerBase = NULL;
@@ -1804,9 +1801,9 @@ static void _ixDoBlit(volatile UInt32 *base, UInt32 bytesPerPixel, UInt32 pixelF
     return [super showCursor:cursorLoc frame:frame token:t];
 }
 
-- open
+- (IOReturn)open
 {
-    int result;
+    IOReturn result;
 
     result = [super open];
     if (result == 0) {
@@ -2016,13 +2013,13 @@ static void _ix3dInterruptHandler(void *identity, void *state, void *arg)
     }
 
     // Get current display mode and depth
-    modeID = config.mode;
+    modeID = config.displayMode;
     depthIndex = config.depth;
     pageIndex = config.page;
 
     // Get pixel information
-    err = [self getPixelInformationForDisplayMode:modeID depth:depthIndex page:pageIndex
-                                     pixelInformation:&pixelInfo];
+    err = [self getPixelInformationForDisplayMode:modeID andDepthIndex:depthIndex
+                                     pixelInfo:&pixelInfo];
     if (err != IO_R_SUCCESS) {
         IOLog("%s: Could not get pixel information (err=%d)\n", [self name], err);
         registerBase = NULL;
@@ -2062,9 +2059,9 @@ static void _ix3dInterruptHandler(void *identity, void *state, void *arg)
     return [super moveCursor:cursorLoc frame:frame token:t];
 }
 
-- open
+- (IOReturn)open
 {
-    int result;
+    IOReturn result;
 
     result = [super open];
     if (result == 0) {

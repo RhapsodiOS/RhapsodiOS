@@ -4,83 +4,92 @@ This is an open source reimplementation of Apple's Rhapsody operating system, th
 
 It's a fork of the Darwin 0.3 open source release done by Apple in the summer of 1999 with additional contributions from the community.
 
-### Compiling
-
 ## Notes
+
 These sources work best with a case-sensitive file system. Rhapsody DR 2 and Mac OS X Server 1.0 through 1.2v3 have been tested to work at the moment.
 
-## Pre-requisites
-Things are a bit manual to get going:
- * Make the following directories
-   ```
-   mkdir -p /build/source
-   mkdir -p /build/repo
-   mkdir -p /build/built
-   ```
- * Download the source files from the [RhapsodiOS GitHub repository](https://github.com/RhapsodiOS/RhapsodiOS) as a tarball and extract it to a directory on a supported system e.g. /build/source
- * The `/build/repo` directory starts **empty** — the seed package set is built
-   from source in Stage 0 below (no pre-built package download required).
- * Mount the released iso cd and open Terminal and run the following commands to install dpkg and the build scripts
-   ```
-   cd /tmp
-   ar x /CDROM/deb/dpkg_1.4.1.0.2-3_i386.deb
-   cd /
-   tar -xzvf /tmp/data.tar.gz
-   rm /tmp/data.tar.gz
-   rm /tmp/control.tar.gz
-   rm /tmp/debian-binary
-   ```
-   Close and reopen a Terminal session and you'll be able to run dpkg commands.
- * Update perl (for Rhapsody DR2 only)
-   ```
-   dpkg-deb -x /CDROM/deb/perl_5.005.03-1_i386-apple-rhapsody.deb /
-   ```
- * Install dpkg_scriptlib
-   ```
-   dpkg-deb -x /CDROM/deb/dpkg_scriptlib_1.4.1.0.2-3_i386-apple-rhapsody.deb /
-   ```
- * Install buildtools
-   ```
-   dpkg-deb -x /CDROM/deb/buildtools_0.1-2_i386-apple-rhapsody.deb /
-   ```
+Current builds are driven from a Windows host against a Rhapsody DR2 / Mac OS X Server **ppc** guest over OpenSSH. Copy `vm/vm.conf.example` to `vm/vm.conf` and set `Host`, `User`, `Password`, and the build paths. Defaults:
 
-## Building individual packages
-```
-usage: darwin-buildpackage [ --cvs | --dir ] [ --target {all|headers|objs|local} ] <source> <repository> <dstdir>
-example: darwin-buildpackage --dir --target all /build/source/kernel-7 /build/repo /build/built
+| Guest path | Role |
+|------------|------|
+| `/build/src` | Synced sources (`RemoteRoot/src`) |
+| `/build/tools` | Private `rbuild` and bootstrap helpers |
+| `/build/bootstrap-root` | Bootstrap sysroot |
+| `/build/repo` | Package repository (`.apk`) |
+| `/build/built` | World `DSTROOT` |
+| `/build/state` | Resume state |
+
+`rbuild` replaced the Perl `darwin-buildpackage` / `darwin-buildall` tools. QEMU, SSH crypto, and image-loop details live in `vm/README.md`.
+
+## Sync sources
+
+Upload from the repository `src/` tree. Prefer one project path over `-All`:
+
+```powershell
+powershell -NoProfile -File vm\sync-src.ps1 -Path rbuild-1
+powershell -NoProfile -File vm\sync-src.ps1 -Path cctools-2
 ```
 
-## Building from the manifest file
-* Current working directory must be the root directory containing source files e.g. /build/source and the Manifest file e.g. /build/source/Manifest
+`-All` uploads the entire `src/` tree. Exactly one of `-All` or `-Path` is required.
+
+## Install rbuild
+
+Builds, tests, and installs `rbuild` plus private `relpath`, `decomment`, `config`, and `mig` helpers into `/build/tools`:
+
+```powershell
+powershell -NoProfile -File vm\build-src.ps1 -Rbuild
 ```
-usage: darwin-buildall <srclist> <repository> <dstdir>
-example: darwin-buildall Manifest /build/repo /build/built
+
+Success prints `build-src: complete (rbuild)` and exits 0.
+
+On the guest, the same `rbuild` tree is:
+
+```sh
+cd /build/src/rbuild-1
+make CC=/usr/bin/cc clean test all
 ```
 
-## Bootstrapping from source (no pre-built packages)
+## Bootstrap
 
-The build root that `rbuild` populates for every package needs a `build-base`
-set (cc, cctools, gnumake, libsystem, headers, makefile frameworks, core
-commands). Those packages are themselves built by `rbuild`, so a fresh
-`/build/repo` cannot build anything. Break the cycle with a three-stage
-from-source bootstrap on the Rhapsody host (which already has Apple's native
-toolchain):
+Stage-0 seed: resume `src/BootstrapManifest` into `/build/bootstrap-root` and `/build/repo`. `-Rbuild` and `-Bootstrap` cannot be combined.
 
-* **Stage 0 — native seed.** Build the `build-base` closure against the host
-  root (no chroot, no dependency install) and write the seed `.apk`s into the
-  repository:
-  ```
-  cd /build/source
-  rbuild bootstrap BootstrapManifest /build/repo /build/repo
-  ```
-* **Stage 1 — self-host.** Build the whole system in clean chroots seeded only
-  by Stage 0's output (this also rebuilds `build-base`, now self-hosted):
-  ```
-  rbuild buildall Manifest /build/repo /build/built
-  ```
-* **Stage 2 — self-consistency (optional).** Reseed from Stage 1's output and
-  rebuild; the `build-base` `.apk`s from Stage 1 and Stage 2 should match,
-  confirming the bootstrap is reproducible:
-  ```
-  rbuild buildall Manifest /build/built /build/built2
-  ```
+```powershell
+powershell -NoProfile -File vm\build-src.ps1 -Bootstrap
+```
+
+Success prints `build-src: complete (bootstrap)` and exits 0. Already-built packages are skipped.
+
+## Full build
+
+`-All` runs **rbuild**, **bootstrap**, **kernel/drivers**, then **world** in that order:
+
+```powershell
+powershell -NoProfile -File vm\build-src.ps1 -All
+```
+
+Success prints `build-src: complete (rbuild, bootstrap, kernel-drivers, world)` and exits 0.
+
+`-Fresh` is valid only with `-All`. It deletes `/build/tools`, `/build/bootstrap-root`, `/build/repo`, `/build/built`, and `/build/state`, and keeps `/build/src`.
+
+To reset those outputs without starting a rebuild:
+
+```powershell
+powershell -NoProfile -File vm\clean-build.ps1
+```
+
+Then sync anything that changed, run `-Rbuild`, then `-Bootstrap` (or `-All`).
+
+Individual phases after rbuild is installed:
+
+```powershell
+powershell -NoProfile -File vm\build-src.ps1 -KernelDrivers
+powershell -NoProfile -File vm\build-src.ps1 -World
+```
+
+| Flag | Remote action |
+|------|----------------|
+| `-Rbuild` | `make CC=… clean test all` in `src/rbuild-1`, install into `/build/tools` |
+| `-Bootstrap` | `rbuild bootstrap --sysroot … --toolchain … --state … BootstrapManifest` |
+| `-KernelDrivers` | `driverkit-3`, `driverTools-1`, `kernload-1`, `drivers-<arch>/bus/drvPExpert`, `kernel-7`, then optional `drv*` / `Intel*` projects |
+| `-World` | `rbuild buildall --state … Manifest /build/repo /build/built` |
+| `-All` | The four phases above, in order |

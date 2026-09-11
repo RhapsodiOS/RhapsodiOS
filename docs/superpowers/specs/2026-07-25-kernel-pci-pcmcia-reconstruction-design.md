@@ -17,9 +17,11 @@ verifying it closes the loop under that work.
 ## Motivation
 
 Nothing has ever checked our DriverKit PCI/PCMCIA layer against Apple's. A
-symbol-level comparison done while scoping this work found that our kernel is
-missing three of the five modules outright (§2.1), which means the PCMCIA half of
-the driver stack we just reconstructed sits on code that is not being built.
+symbol-level comparison done while scoping this work found that our kernel was
+missing three of the five modules outright (§2.1), which looked as though the
+PCMCIA half of the driver stack we just reconstructed sat on code that was not
+being built. That turned out to be stale objects rather than missing code; see
+§2.1.
 
 ## 1. Scope
 
@@ -60,18 +62,22 @@ covers their functions, not the kernel's other ~4100 symbols.
 The PPC kernel (`mach_kernel`, 2983828 bytes) is big-endian and is not a
 comparison target for this i386 work.
 
-Diagnosing why our build omits the three PCMCIA modules (§2.1) is tracked
-separately — see §5. No boot testing and no QEMU run.
+Adding the three PCMCIA modules to the kernel build was declared out of scope on
+the belief that their absence was an upstream Darwin 0.3 omission. **There is
+now nothing to add**: the modules were absent only because their objects had
+never been compiled, and they are present in the kernel built 2026-07-26 11:47
+(§2.1). No boot testing and no QEMU run.
 
 ## 2. Findings that shaped this design
 
 From direct Mach-O parsing during scoping, before any analyzer run.
 
-### 2.1 Our kernel is missing the entire PCMCIA half
+### 2.1 Our kernel was missing the entire PCMCIA half — stale objects, now built
 
-Comparing the `__OBJC,__class_names` pools:
+Comparing the `__OBJC,__class_names` pools, in the kernel artifacts available
+while this work was scoped and carried out:
 
-| Module | Apple's kernel | Ours |
+| Module | Apple's kernel | Ours, up to the 11:02 build |
 | --- | --- | --- |
 | `IOPCIDeviceDescription.m` | present | present |
 | `IOPCIDirectDevice.m` | present | present |
@@ -81,13 +87,49 @@ Comparing the `__OBJC,__class_names` pools:
 
 Apple's kernel also defines `.objc_class_name_IOPCMCIADeviceDescription`,
 `.objc_class_name_IOPCMCIATuple`, and the three PCMCIA category symbols. Ours
-defines none of them.
+defined none of them.
 
-This is a build failure, not missing source. All three `.m` files exist in
-`src/driverkit-3/libDriver/pcmcia/`; `pcmcia_BUS_MFILES` lists all three;
-`i386_KERN_MFILES` includes that variable; and `KERNEL_DIRS` puts `pcmcia` on the
-VPATH. Why the objects never reach the kernel could not be determined without a
-build.
+**The superseded account.** This section previously recorded, on the project
+owner's report, that the absence was an upstream Darwin 0.3 omission rather than
+a build failure in this tree: Apple had not shipped these three modules in the
+*kernel* build, most likely an oversight, so there was no local
+misconfiguration to hunt down. It held one nuance carefully — the *sources* were
+shipped, `git log` confirming all five `.m` files entered this repository at
+commit `19ffee9a Original Darwin 0.3 Sources` — and concluded that what was not
+shipped was whatever makes the kernel link those three objects in, so that
+adding PCMCIA to the kernel would be a feature decision rather than a repair. It
+was explicitly labelled as the owner's account plus local observations, not
+something verified by a build.
+
+**A build has now contradicted it.** All three modules are present in
+`out/i386/mach_kernel` built 2026-07-26 11:47, SHA-256
+`A82940452938737FB8514C334434CEAF70B4DC39179A4047B4153D9B589325C1`. Comparing
+Objective-C metadata between Apple's reference kernel and ours:
+
+```
+reference PCI/PCMCIA methods: 24
+ours now:                     26
+reference methods MISSING from ours: 0
+ours-only: 2   (-[IOPCIDeviceDescription property_IODeviceType:length:],
+                -[IOPCIDeviceDescription property_IOSlotName:length:])
+```
+
+Nothing the reference has is missing, and the two extras are later-Apple
+additions already accepted in `divergences.md` Finding 5.
+
+**The cause was staleness, the same class of build trap that produced every
+other false signal in this work.** Those objects had never been compiled; a
+forced recompile — `touch` on the `.m` files under `libDriver/pcmcia` — built
+and linked them. Locally the sources exist in `src/driverkit-3/libDriver/pcmcia/`;
+`pcmcia_BUS_MFILES` lists all three; `i386_KERN_MFILES` includes that variable;
+and `KERNEL_DIRS` puts `pcmcia` on the VPATH — all correctly wired all along,
+which is why nothing was ever found wrong in the Makefile. The wiring was never
+the problem, and neither was Apple.
+
+**Consequences.** Adding PCMCIA to the kernel is not a feature decision, because
+it builds already. The one-sided comparison limitation described in §5 is
+lifted. `divergences.md` records the same correction and the third build-system
+trap it exposes.
 
 One real but unrelated bug surfaced while checking: `SOURCE_DIRS` at
 `src/driverkit-3/libDriver/Makefile:46` omits `pcmcia` where every other list
@@ -239,9 +281,14 @@ the only source of truth, so a bug in it produces confidently wrong mappings.
 Cross-check the recovered IMPs against the analyzers' independently discovered
 function boundaries; they should coincide.
 
-**The PCMCIA half cannot be parity-checked against our kernel** until the build
-gap in §2.1 is closed, because those three modules are absent from our binary.
-The report pass is unaffected — it compares Apple's binary against our source.
+**The PCMCIA half could not be parity-checked against our kernel** during the
+report and fix passes, because those three modules were absent from our binary.
+This was recorded as a permanent limitation on the strength of the
+upstream-omission account, and **it was neither permanent nor real**: the
+modules were stale objects and are present in the current build (§2.1). All 24
+methods are comparable on both sides now, and a first two-sided read of all 24
+has been done. What is still outstanding is a `binrecon compare` parity run, not
+the availability of the code.
 
 **Struct-return and calling-convention assumptions** carried over from the driver
 work remain unverified without a build host.
@@ -270,9 +317,14 @@ ledger.
 *Verify:* the three §4 checks from the driver effort, to the extent a build host
 allows.
 
-**Phase 4 — the build gap.** Record what is known about §2.1 in the divergence
-document and decide whether fixing it belongs here or in its own effort. Fix the
-`SOURCE_DIRS` omission, which is independent and safe.
+**Phase 4 — the missing modules.** Record §2.1 in the divergence document. The
+cause is now known and was measured, not inferred: the objects were stale and a
+forced recompile builds and links them, so there is nothing to add to the kernel
+build and no feature decision to make. Fix the `SOURCE_DIRS` omission, which is
+independent and safe.
+
+*Verify:* the three modules appear in a `__OBJC,__module_info` walk of the built
+kernel, and all 24 reference methods resolve on our side too.
 
 ## 7. Deliverables
 

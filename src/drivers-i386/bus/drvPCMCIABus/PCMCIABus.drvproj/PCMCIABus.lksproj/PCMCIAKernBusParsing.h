@@ -48,7 +48,7 @@
  * Parse a single tuple into device description
  * Extracts resource information from the tuple and adds it to the description
  */
-- (void)parseTuple:tuple intoDeviceDescription:description;
+- parseTuple:tuple intoDeviceDescription:description;
 
 @end
 

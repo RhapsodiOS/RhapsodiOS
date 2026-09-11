@@ -14,11 +14,10 @@
 /* Geometry.m tables / helpers */
 extern unsigned int fdDiskInfo[];
 extern unsigned int fdDensityInfo[];
-extern const IONamedValue fdrValues[];
 extern unsigned int *fdGetSectSizeInfo(unsigned int density);
 
 // External VM functions
-extern void *vm_map_pmap(vm_map_t map);
+extern void *vm_map_pmap_EXTERNAL(vm_map_t map);
 extern unsigned int pmap_resident_extract(void *pmap, vm_address_t va);
 extern unsigned int page_size;
 extern void fdTimer(id drive);
@@ -63,7 +62,7 @@ static int physContBlocks(vm_address_t address, vm_map_t map,
 	contiguousBytes = 0;
 
 	// Get the physical map for this VM map
-	pmap = vm_map_pmap(map);
+	pmap = vm_map_pmap_EXTERNAL(map);
 
 	// Get physical address for the starting virtual address
 	physAddr = pmap_resident_extract(pmap, address);
@@ -182,11 +181,11 @@ static void vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 		chunkSize = destPageRemaining;
 
 		// Get physical address for destination
-		destPmap = vm_map_pmap(destMap);
+		destPmap = vm_map_pmap_EXTERNAL(destMap);
 		destPhys = (void *)pmap_resident_extract(destPmap, destAddr);
 
 		// Get physical address for source
-		srcPmap = vm_map_pmap(srcMap);
+		srcPmap = vm_map_pmap_EXTERNAL(srcMap);
 		srcPhys = (void *)pmap_resident_extract(srcPmap, srcAddr);
 
 		// Copy chunk using physical addresses
@@ -244,7 +243,7 @@ static void vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 			driveName = [self name];
 
 			// Log the error
-			IOLog("%s seek: %s; %s", driveName, errorString, errorType);
+			IOLog("%s seek: %s; %s\n", driveName, errorString, errorType);
 
 			// If fatal, return the error
 			if (isFatal) {
@@ -265,7 +264,7 @@ static void vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 	bzero(cmdBuffer, 0x60);
 
 	// Set command type 4 (motor off/eject)
-	*(unsigned *)(cmdBuffer + 0x5c) = 4;
+	*(unsigned *)(cmdBuffer + 0x08) = 4;
 
 	// Send command to FDC
 	[self fdSendCmd:cmdBuffer];
@@ -302,6 +301,7 @@ static void vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 	unsigned actualBytes;
 	int fdcStatus;
 	BOOL isContiguous;
+	int contiguousBlocks;
 	int eisaPresent;
 	unsigned long long startTime, endTime;
 	const char *statsMethod;
@@ -339,12 +339,19 @@ static void vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 			blocksToTransfer = page_size / sectorSize;
 		}
 
-		// Check if buffer is physically contiguous
-		isContiguous = physContBlocks(currentBuffer, client, blocksToTransfer, sectorSize);
+		// Check if buffer is physically contiguous. physContBlocks
+		// returns the actual number of contiguous blocks (which may be
+		// less than blocksToTransfer); the disassembly uses that count
+		// directly instead of just a yes/no flag.
+		contiguousBlocks = physContBlocks(currentBuffer, client, blocksToTransfer, sectorSize);
 
-		// If not contiguous, can only transfer 1 block at a time
-		if (!isContiguous) {
+		if (contiguousBlocks == 0) {
+			// Not contiguous, can only transfer 1 block at a time
+			isContiguous = NO;
 			blocksToTransfer = 1;
+		} else {
+			isContiguous = YES;
+			blocksToTransfer = contiguousBlocks;
 		}
 
 		// Adjust block count to not exceed track boundary
@@ -357,20 +364,20 @@ static void vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 			 readFlag:isRead];
 
 		// Set command length
-		*(unsigned *)(cmdBuffer + 0x5c) = 1;
+		*(unsigned *)(cmdBuffer + 0x08) = 1;
 
 		// Calculate expected bytes
-		*(unsigned *)(cmdBuffer + 0x34) = adjustedBlockCount * sectorSize;
+		*(unsigned *)(cmdBuffer + 0x24) = adjustedBlockCount * sectorSize;
 
 		// Set up buffer pointer and VM task
 		if (isContiguous) {
 			// Use user buffer directly
-			*(void **)(cmdBuffer + 0x30) = currentBuffer;
-			*(vm_task_t *)(cmdBuffer + 0x54) = client;
+			*(void **)(cmdBuffer + 0x20) = currentBuffer;
+			*(vm_task_t *)(cmdBuffer + 0x58) = client;
 		} else {
 			// Use bounce buffer
-			*(void **)(cmdBuffer + 0x30) = bounceBuffer;
-			*(vm_task_t *)(cmdBuffer + 0x54) = kernel_map;
+			*(void **)(cmdBuffer + 0x20) = bounceBuffer;
+			*(vm_task_t *)(cmdBuffer + 0x58) = kernel_map;
 
 			// For write, copy data to bounce buffer
 			if (!isRead) {
@@ -384,8 +391,8 @@ static void vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 		// Get FDC status from offset 0x40
 		fdcStatus = *(int *)(cmdBuffer + 0x40);
 
-		// Get actual bytes transferred from offset 0x3c
-		actualBytes = *(unsigned *)(cmdBuffer + 0x3c);
+		// Get actual bytes transferred from offset 0x48
+		actualBytes = *(unsigned *)(cmdBuffer + 0x48);
 
 		// Special case: if status 6 and actualBytes != 0, adjust by sector size
 		if ((fdcStatus == 6) && (actualBytes != 0)) {
@@ -446,14 +453,14 @@ static void vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 					// Give up after 6 recalibrations
 					[self logRwErr:"FATAL"
 						      block:currentBlock
-						     status:(unsigned char *)&fdcStatus
+						     status:fdcStatus
 						   readFlag:isRead];
 					goto transfer_done;
 				}
 
 				[self logRwErr:"RECALIBRATING"
 					      block:currentBlock
-					     status:(unsigned char *)&fdcStatus
+					     status:fdcStatus
 					   readFlag:isRead];
 
 				[self fdRecal];
@@ -461,7 +468,7 @@ static void vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 			} else {
 				[self logRwErr:"RETRYING"
 					      block:currentBlock
-					     status:(unsigned char *)&fdcStatus
+					     status:fdcStatus
 					   readFlag:isRead];
 			}
 
@@ -478,7 +485,7 @@ update_stats:
 		default:  // Fatal error
 			[self logRwErr:"FATAL"
 				      block:currentBlock
-				     status:(unsigned char *)&fdcStatus
+				     status:fdcStatus
 				   readFlag:isRead];
 			goto transfer_done;
 		}
@@ -525,21 +532,52 @@ transfer_done:
  * Log read/write error.
  * From decompiled code: logs FDC error with operation type and status.
  */
-- (void)logRwErr : (unsigned)operation
+- (void)logRwErr : (const char *)operation
 	      block : (unsigned)block
-	     status : (unsigned char *)status
+	     status : (unsigned)status
 	   readFlag : (BOOL)readFlag
 {
 	const char *statusString;
 	const char *operationType;
 	const char *driveName;
-	int fdcStatus;
 
-	// Get FDC status value
-	fdcStatus = *(int *)status;
+	/*
+	 * fdrValues - fd_ioreq result code -> string map for
+	 * IOFindNameForValue, recovered byte-for-byte from the reference
+	 * binary's __DATA segment (_fdrValues). This is the sole consumer;
+	 * the reference exports no _fdrValues symbol, so the table is not
+	 * shared across translation units.
+	 */
+	static const IONamedValue fdrValues[] = {
+		{ 0x00, "Success" },
+		{ 0x01, "fd_ioreq.timeout exceeded" },
+		{ 0x02, "Couldn't allocate memory" },
+		{ 0x03, "Memory transfer error" },
+		{ 0x04, "Bad field in fd_ioreq" },
+		{ 0x05, "Drive not present" },
+		{ 0x06, "Media error - data CRC" },
+		{ 0x07, "Media error - header CRC" },
+		{ 0x08, "Misc. media error" },
+		{ 0x09, "seek error" },
+		{ 0x0a, "Unexpected controller phase change" },
+		{ 0x0b, "Basic Drive Failure" },
+		{ 0x0c, "Header Not Found" },
+		{ 0x0d, "Disk Write Protected" },
+		{ 0x0e, "Missing Address Mark" },
+		{ 0x0f, "Missing Control Mark" },
+		{ 0x10, "Missing Data Mark" },
+		{ 0x11, "Controller rejected command" },
+		{ 0x12, "Controller Handshake Error" },
+		{ 0x13, "DMA Over/underrun" },
+		{ 0x14, "Requested Volume not available" },
+		{ 0x15, "DMA Alignment Error" },
+		{ 0x16, "DMA Error" },
+		{ 0x17, "Spurious Interrupt" },
+		{ 0, (const char *)0 },
+	};
 
 	// Find name for FDC status value in fdrValues table
-	statusString = IOFindNameForValue(fdcStatus, fdrValues);
+	statusString = IOFindNameForValue(status, fdrValues);
 
 	// Set operation type based on read flag
 	operationType = readFlag ? "Read" : "Write";
@@ -547,10 +585,12 @@ transfer_done:
 	// Get drive name
 	driveName = [self name];
 
-	// Log the error
-	IOLog("%s: Sector %d cmd = %s; %s: %s",
+	// Log the error. The disassembly's argument order puts statusString
+	// before operation (the leftover push from the IOFindNameForValue
+	// call ends up as the last IOLog vararg).
+	IOLog("%s: Sector %d cmd = %s; %s: %s\n",
 	      driveName, block, operationType,
-	      (const char *)operation, statusString);
+	      statusString, operation);
 }
 
 
@@ -578,9 +618,9 @@ transfer_done:
 	currentTimeLow = (unsigned)(currentTime & 0xFFFFFFFF);
 	currentTimeHigh = (unsigned)(currentTime >> 32);
 
-	// Get last operation timestamp from offset 0x170
-	lastTimeLow = *(unsigned *)((char *)self + 0x170);
-	lastTimeHigh = *(unsigned *)((char *)self + 0x174);
+	// Get last operation timestamp from lastAccess
+	lastTimeLow = (unsigned)lastAccess;
+	lastTimeHigh = (unsigned)(lastAccess >> 32);
 
 	// Calculate timeout time (last time + 2 seconds = 2000000000 ns)
 	// Add 2000000000 to low word, handle carry to high word
@@ -601,7 +641,7 @@ transfer_done:
 		bzero(cmdBuffer, 0x60);
 
 		// Set command type 4 (motor off)
-		*(unsigned *)(cmdBuffer + 0x5c) = 4;
+		*(unsigned *)(cmdBuffer + 0x08) = 4;
 
 		// Send command to FDC
 		[self fdSendCmd:cmdBuffer];
@@ -743,7 +783,7 @@ transfer_done:
 	// Get drive status
 	result = [self fdGetStatus:&status];
 	if (result != IO_R_SUCCESS) {
-		IOLog("fd updatePhysicalParametersInt: GET STATUS FAILED");
+		IOLog("fd updatePhysicalParametersInt: GET STATUS FAILED\n");
 		return;
 	}
 

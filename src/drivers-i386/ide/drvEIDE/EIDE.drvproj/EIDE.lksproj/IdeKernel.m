@@ -43,30 +43,16 @@
  * Note that this file builds with KERNEL_PRIVATE and !MACH_USER_API.
  */
 #import <sys/types.h>
-#import <sys/ttycom.h>
 #import <sys/ucred.h>
-#import <driverkit/kernelDiskMethods.h> 
 #import <driverkit/generalFuncs.h>
 #import "IdeCnt.h"
 #import "IdeDiskInternal.h"
 #import "IdeDisk.h"
-#import <driverkit/kernelDriver.h>
-#import <driverkit/IODiskPartition.h>
-#import <sys/buf.h>
-#import <sys/uio.h>
-#import <bsd/dev/ldd.h>
 #import <sys/errno.h>
 #import <sys/proc.h>
-#if (IO_DRIVERKIT_VERSION == 330)
-#import <vm/vm_kern.h>
-#endif
-#import <sys/fcntl.h>
 #import <sys/systm.h>
 #import "IdeKernel.h"
-
-#if (IO_DRIVERKIT_VERSION != 330)
-extern struct vm_map *kernel_map;
-#endif
+#import "EIDEIoctlValidation.h"
 
 IONamedValue iderValues[] = {
 
@@ -83,543 +69,121 @@ IONamedValue iderValues[] = {
 	{0,			NULL				},
 };
 
-
 /*
- * dev-to-id map array. Instances of DiskObject register their IDs in
- * this array via registerUnixDisk:.
- */
-IODevAndIdInfo IdeIdMap[NUM_IDE_DEV];
-
-/*
- * Private per-unit data.
- */
-static Ide_dev_t ide_dev[NUM_IDE_DEV] = {
-	{NULL},
-	{NULL},
-	{NULL},
-	{NULL},
-};
-
-/*
- * Indices of our entries in devsw's.
- */
-static int ide_block_major;
-static int ide_raw_major;
-
-/*
- * prototypes for internal functions
- */
-static unsigned ideminphys(struct buf *bp); 
-static id ide_dev_to_id(dev_t dev);
-
-/*
- * Initialize id map and Ide_dev. Currently invoked by Ide probe:.
- */
-__private_extern__ void ide_init_idmap(id self)
-{
-    IODevAndIdInfo *idMap = IdeIdMap;
-    Ide_dev_t *ide_devp = ide_dev;
-    int unit;
-    
-    /* 
-     * figure out our major device numbers.
-     */
-    ide_block_major = [self blockMajor];
-    ide_raw_major = [self characterMajor];
-
-    bzero((char *)idMap, sizeof(IODevAndIdInfo) * NUM_IDE_DEV);
-    for (unit = 0; unit < NUM_IDE_DEV; unit++) {
-	idMap->rawDev   = makedev(ide_raw_major, (unit << 3));
-	idMap->blockDev = makedev(ide_block_major, (unit << 3));
-	idMap++;
-	ide_devp->physbuf = (struct buf *)IOMalloc(sizeof(struct buf));
-	ide_devp->physbuf->b_flags = 0;
-	ide_devp++;
-    }
-}
-
-__private_extern__ IODevAndIdInfo *ide_idmap()
-{
-    return IdeIdMap;
-}
-
-__private_extern__ int
-ideopen(dev_t dev, int flag, int devtype, struct proc * pp)
-{
-    id diskObj = ide_dev_to_id(dev);
-    
-    if(diskObj == nil)
-	return(ENXIO);
-
-    if([diskObj isDiskReady:NO])
-	return(ENXIO);
-		
-    /*
-     * Register this 'Unix-level open' event for IODiskPartitions.
-     */
-    if(IO_DISK_PART(dev) != IDE_LIVE_PART) {
-	if(major(dev) == ide_block_major) {
-	    [diskObj setBlockDeviceOpen:YES];
-	}
-	else {
-	    [diskObj setRawDeviceOpen:YES];
-	}
-    }
-    return(0);	
-} /* ideopen() */
-
-__private_extern__ int
-ideclose(dev_t dev, int flag, int devtype, struct proc * pp)
-{
-    id diskObj = ide_dev_to_id(dev);
-    
-    if(diskObj == nil)
-	return(ENXIO);
-    if(IO_DISK_PART(dev) == IDE_LIVE_PART) { 
-	return 0;
-    } else 	{
-	if(![diskObj isInstanceOpen])
-	    return(ENXIO);
-    }
-	    
-    /*
-     * Register this 'Unix-level close' event. We won't be called unless
-     * this is the last close.
-     */
-    if(major(dev) == ide_block_major) {
-	[diskObj setBlockDeviceOpen:NO];
-    }
-    else {
-	[diskObj setRawDeviceOpen:NO];
-    }
-    
-    return(0);	
-} /* ideclose() */
-
-/*
- * Raw I/O uses standard UNIX physio routine, resulting in async I/O requests
- * via idestrategy().
- */
-
-__private_extern__ int
-ideread(dev_t dev, struct uio *uiop, int ioflag)
-{
-    id 		diskObj = ide_dev_to_id(dev);
-    int 	unit = IO_DISK_UNIT(dev);
-    int 	rtn;
-
-    if(diskObj == nil) {
-	return(ENXIO);
-    }
-
-
-    rtn = physio(idestrategy, 
-	ide_dev[unit].physbuf, 
-	dev, 
-	B_READ, 
-	ideminphys, 
-	uiop, 
-	[diskObj blockSize]);
-	    
-    return rtn;
-} /* ideread() */
-
-__private_extern__ int
-idewrite(dev_t dev, struct uio *uiop, int ioflag)
-{
-    id 		diskObj = ide_dev_to_id(dev);
-    int 	unit = IO_DISK_UNIT(dev);
-    int 	rtn;
-	    
-    if(diskObj == nil)
-	return(ENXIO);
-    
-
-    rtn = physio(idestrategy, 
-	ide_dev[unit].physbuf, 
-	dev, 
-	B_WRITE, 
-	ideminphys, 
-	uiop, 
-	[diskObj blockSize]);
-	    
-    return rtn;
-} /* idewrite() */
-
-__private_extern__ void
-idestrategy(struct buf *bp)
-{
-    id diskObj = ide_dev_to_id(bp->b_dev);
-    u_int offset;
-    u_int bytes_req;
-    void *bufp;
-    u_int block_size;
-    IOReturn rtn;
-    vm_task_t client;
-
-    if(diskObj == nil) {
-	bp->b_error = ENXIO;
-	goto bad;
-    }
-
-    if((bp->b_flags & (B_PHYS|B_KERNSPACE)) == B_PHYS) {
-	/*
-	 * Physical I/O to user space.
-	 */
-	client = IOVmTaskForBuf(bp);
-    }
-    else {
-	/*
-	 * Either block I/O (always kernel space) or physical I/O
-	 * to kernel space (e.g., loadable file system).
-	 */
-	client = IOVmTaskSelf();
-    }
-
-    block_size = [diskObj blockSize];
-    if (block_size == 0) {
-	bp->b_error = ENXIO;
-	goto bad;
-    }
-    offset = bp->b_blkno;
-    bytes_req = bp->b_bcount;
-    bufp = bp->b_un.b_addr;
-
-    if (bp->b_flags & B_READ) {
-	rtn = [diskObj readAsyncAt:offset
-		length:bytes_req
-		buffer:bufp
-		pending:bp
-		client:client];
-    }
-    else {
-	rtn = [diskObj writeAsyncAt:offset
-		length:bytes_req
-		buffer:bufp
-		pending:bp
-		client:client];
-    }
-
-    if (rtn) {
-	bp->b_error = [diskObj errnoFromReturn:rtn];
-	goto bad;
-    }
-    return;
-
-bad:
-    bp->b_flags |= B_ERROR;
-    biodone(bp);
-} /* fdstrategy() */
-
-/*
- * Ops which are common to all IODiskPartitions are done on the raw device; 
- * Ide-specific ioctls are done directly to the live Ide object.
+ * Handle the diagnostic requests specific to the legacy EIDE transport.
+ * Generic disk ioctls are handled by the shared ATA hd registry.
  */
 __private_extern__ int
-ideioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc * pp)
+IdeDiskTransportIoctl(id disk, dev_t dev, unsigned int cmd, caddr_t data,
+		      int flag, struct proc *proc)
 {
-    int     unit = IO_DISK_UNIT(dev);
-    id      diskObj;
-    IODevAndIdInfo *idmap;
-    int     rtn = 0;
-    IOReturn irtn = IO_R_SUCCESS;
-    struct ucred cred;
-    u_short acflags;
-
-    // user src/dest
-    int     i;
-    int     nblk;
     ideIoReq_t *ideIoReq;
-    int     error;
-    void   *userPtr;
-
-    // in ideIoReq_t
+    int error;
+    void *userPtr;
     BOOL wrFlag = NO;
+    BOOL readFlag = NO;
     unsigned bSize = 0;
+    unsigned allocationBytes = 0;
+    unsigned copyBytes = 0;
+    unsigned requestedBlocks = 0;
     unsigned char *alignedPtr;
 
-    if (unit > NUM_IDE_DEV)
+    (void)dev;
+    (void)flag;
+    if (disk == nil)
 	return (ENXIO);
-#if 0
-    if ((major(dev) != ide_raw_major) ||
-	(IO_DISK_PART(dev) >= NUM_IDE_PART)) {
-	return (ENXIO);
-    }
-#endif
-
-    idmap = &IdeIdMap[unit];
-
-    /*
-     * First verify valid device. 
-     */
-    switch (cmd) {
-      case DKIOCSFORMAT:
-      case DKIOCGFORMAT:
-      case DKIOCGLABEL:
-      case DKIOCSLABEL:
-
-	/*
-	 * Raw device, whatever the caller asked for. 
-	 */
-	diskObj = idmap->partitionId[0];
-	break;
-
-      case IDEDIOCREQ:
-      case IDEDIOCINFO:
-      case DKIOCINFO:
-      case DKIOCBLKSIZE:
-      case DKIOCNUMBLKS:
-
-	diskObj = idmap->liveId;
-	break;
-
-      default:
-	return (EINVAL);
-    }
-    if (diskObj == nil)
-	goto nodev;
 
     switch (cmd) {
-      case DKIOCSFORMAT:
-
-	/*
-	 * This can fail if block devices attached to this disk are open. 
-	 */
-	irtn = [diskObj setFormatted:(*(u_int *) data)];
-	break;
-
-      case DKIOCGFORMAT:
-	{
-	    *(int *)data = [diskObj isFormatted];
-	    break;
-	}
-
-      case DKIOCGLABEL:
-	{
-	    struct disk_label *labelp;
-
-	    labelp = (struct disk_label *)IOMalloc(sizeof(*labelp));
-	    irtn = [diskObj readLabel:labelp];
-	    if (irtn == IO_R_SUCCESS) {
-		*(struct disk_label *)data = *labelp;
-	    }
-	    IOFree(labelp, sizeof(*labelp));
-	    break;
-	}
-
-      case DKIOCSLABEL:
-	{
-	    struct disk_label *labelp;
-
-		//IOLog("DKIOCSLABEL called\n");
-
-	    labelp = (struct disk_label *)IOMalloc(sizeof(*labelp));
-	    *labelp = *(struct disk_label *)data;
-	    irtn = [diskObj writeLabel:labelp];
-	    IOFree(labelp, sizeof(*labelp));
-	    break;
-	}
-
-      case DKIOCINFO:
-	{
-	    struct drive_info info;
-
-	    bzero(&info, sizeof(info));
-	    strcpy(info.di_name,[diskObj driveName]);
-	    info.di_devblklen = [diskObj blockSize];
-	    info.di_maxbcount = IDE_MAX_PHYS_IO;
-	    if (info.di_devblklen) {
-		nblk = howmany(sizeof(struct disk_label),
-			       info.di_devblklen);
-	    } else {
-		nblk = 0;
-	    }
-	    for (i = 0; i < NLABELS; i++)
-		info.di_label_blkno[i] = nblk * i;
-	    *(struct drive_info *) data = info;
-	    break;
-	}
-
-      case DKIOCBLKSIZE:
-	*(int *)data = [diskObj blockSize];
-	break;
-
-      case DKIOCNUMBLKS:
-	*(int *)data = [diskObj diskSize];
-	break;
-
       case IDEDIOCREQ:
 
 	/*
 	 * Perform specified I/O.
 	 */
-	ideIoReq = (ideIoReq_t *) data;
-//	if (!suser() && (ideIoReq->cmd != IDE_IDENTIFY_DRIVE))
-	if (!suser(&cred, &acflags) && (ideIoReq->cmd != IDE_IDENTIFY_DRIVE))	{
-//	    return (u.u_error);
-	    return (EINVAL);
+	ideIoReq = (ideIoReq_t *)data;
+	if (ideIoReq->cmd != IDE_IDENTIFY_DRIVE) {
+	    if (proc == NULL)
+		return (EPERM);
+	    error = suser(proc->p_ucred, &proc->p_acflag);
+	    if (error)
+		return (error);
 	}
-	
+
+	bSize = [disk blockSize];
+	error = EIDEIoctlPrepareTransfer(ideIoReq->cmd, ideIoReq->block,
+		ideIoReq->blkcnt, bSize, [disk diskSize],
+		&allocationBytes);
+	if (error)
+	    return (error);
+
 	if ((ideIoReq->cmd == IDE_WRITE_DMA) ||
 	    (ideIoReq->cmd == IDE_READ_DMA)) {
-	    if ([[diskObj cntrlr] isDmaSupported:[diskObj driveNum]] != TRUE)
+	    if ([[disk cntrlr] isDmaSupported:[disk driveNum]] != TRUE)
 		return (EINVAL);
 	}
-        if (ideIoReq->cmd == IDE_IDENTIFY_DRIVE)
+	if (ideIoReq->cmd == IDE_IDENTIFY_DRIVE) {
 	    ideIoReq->blkcnt = 1;
+	    bSize = EIDE_IOCTL_IDENTIFY_BYTES;
+	}
+	requestedBlocks = ideIoReq->blkcnt;
 
 	userPtr = (void *)ideIoReq->addr;
-
-	alignedPtr = ideIoReq->addr;
-	if ((ideIoReq->cmd == IDE_WRITE) ||
-	    (ideIoReq->cmd == IDE_READ) ||
-	    (ideIoReq->cmd == IDE_READ_MULTIPLE) ||
-	    (ideIoReq->cmd == IDE_WRITE_MULTIPLE) ||
-	    (ideIoReq->cmd == IDE_READ_DMA) ||
-	    (ideIoReq->cmd == IDE_WRITE_DMA) ||
-	    (ideIoReq->cmd == IDE_IDENTIFY_DRIVE)) {
-	    if (ideIoReq->blkcnt != 0) {
-		bSize = [diskObj blockSize];
-		wrFlag = ((ideIoReq->cmd == IDE_WRITE) ||
-			  (ideIoReq->cmd == IDE_WRITE_MULTIPLE) ||
-			  (ideIoReq->cmd == IDE_WRITE_DMA));
-
-		alignedPtr = (unsigned char *)
-		    IOMalloc(ideIoReq->blkcnt * bSize);
-		if (alignedPtr == 0) {
-		    ideIoReq->status = IDER_MEMALLOC;
-		    return (ENOMEM);
-		}
-		if (wrFlag) {
-		    error = copyin(ideIoReq->addr,
-				   alignedPtr,
-				   ideIoReq->blkcnt * bSize);
-		    if (error) {
-			ideIoReq->status = IDER_MEMFAIL;
-			goto err_exit;
-		    }
+	alignedPtr = NULL;
+	wrFlag = ((ideIoReq->cmd == IDE_WRITE) ||
+		  (ideIoReq->cmd == IDE_WRITE_MULTIPLE) ||
+		  (ideIoReq->cmd == IDE_WRITE_DMA));
+	readFlag = ((ideIoReq->cmd == IDE_READ) ||
+		    (ideIoReq->cmd == IDE_READ_MULTIPLE) ||
+		    (ideIoReq->cmd == IDE_READ_DMA) ||
+		    (ideIoReq->cmd == IDE_IDENTIFY_DRIVE));
+	if (allocationBytes != 0) {
+	    alignedPtr = (unsigned char *)IOMalloc(allocationBytes);
+	    if (alignedPtr == NULL) {
+		ideIoReq->status = IDER_MEMALLOC;
+		return (ENOMEM);
+	    }
+	    if (wrFlag) {
+		error = copyin(ideIoReq->addr, alignedPtr, allocationBytes);
+		if (error) {
+		    ideIoReq->status = IDER_MEMFAIL;
+		    IOFree(alignedPtr, allocationBytes);
+		    return (error);
 		}
 	    }
-	    ideIoReq->addr = (caddr_t) alignedPtr;
+	    ideIoReq->addr = (caddr_t)alignedPtr;
 	    ideIoReq->map = (struct vm_map *)IOVmTaskSelf();
 	}
 
-
-	[diskObj ideXfrIoReq:ideIoReq];
-
-	/*
-	 * Note if we got this far, we'll return 0; any errors are in
-	 * ideIoReq->status. 
-	 */
-	if ((ideIoReq->cmd == IDE_WRITE) ||
-	    (ideIoReq->cmd == IDE_READ) ||
-	    (ideIoReq->cmd == IDE_READ_MULTIPLE) ||
-	    (ideIoReq->cmd == IDE_WRITE_MULTIPLE) ||
-	    (ideIoReq->cmd == IDE_READ_DMA) ||
-	    (ideIoReq->cmd == IDE_WRITE_DMA) ||
-	    (ideIoReq->cmd == IDE_IDENTIFY_DRIVE)) {
-
+	[disk ideXfrIoReq:ideIoReq];
+	if (allocationBytes != 0)
 	    ideIoReq->addr = userPtr;
-	    if (((ideIoReq->cmd == IDE_READ) ||
-		 (ideIoReq->cmd == IDE_READ_MULTIPLE) ||
-		 (ideIoReq->cmd == IDE_IDENTIFY_DRIVE) ||
-		 (ideIoReq->cmd == IDE_READ_DMA)) &&
-		(ideIoReq->blocks_xfered != 0)) {
-		error = copyout(alignedPtr,
-				userPtr,
-				ideIoReq->blocks_xfered * bSize);
-		if (error) {
-		    ideIoReq->status = IDER_MEMFAIL;
-		}
-	    }
-    err_exit:
-
-	    /*
-	     * if we malloc'd any memory, free it. 
-	     */
-	    if (ideIoReq->blkcnt != 0)
-		IOFree(alignedPtr, ideIoReq->blkcnt * bSize);
+	error = EIDEIoctlValidateCompletion(ideIoReq->cmd, requestedBlocks,
+		ideIoReq->blocks_xfered, bSize, &copyBytes);
+	if (error) {
+	    ideIoReq->status = IDER_MEMFAIL;
+	    if (alignedPtr != NULL)
+		IOFree(alignedPtr, allocationBytes);
+	    return (error);
 	}
+	if (readFlag && copyBytes != 0) {
+	    error = copyout(alignedPtr, userPtr, copyBytes);
+	    if (error)
+		ideIoReq->status = IDER_MEMFAIL;
+	}
+	if (alignedPtr != NULL)
+	    IOFree(alignedPtr, allocationBytes);
+	if (error)
+	    return (error);
 	break;
 
       case IDEDIOCINFO:
-	{
-	    ideDriveInfo_t *idep = (ideDriveInfo_t *) data;
+	*(ideDriveInfo_t *)data = (ideDriveInfo_t)[disk ideGetDriveInfo];
+	break;
 
-	    *idep = (ideDriveInfo_t)[diskObj ideGetDriveInfo];
-	    break;
-	}
       default:
 	return (EINVAL);
     }
 
-    if (irtn)
-	rtn = [diskObj errnoFromReturn:irtn];
-    return (rtn);
-
-nodev:
-    return (ENXIO);
-
-} /* ideioctl() */
-
-/*
- * Obtain physical block size.
- */
-__private_extern__ int
-idesize(dev_t dev)
-{
-    id diskObj = ide_dev_to_id(dev);
-    
-    if(diskObj == nil) {
-	return -1;
-    }
-    return [diskObj blockSize];
-}
-
-/*
- * Returns block and char major nums. This is used so that the PostLoad
- * program can create block and character nodes for IDE. 
- */
-__private_extern__ void
-ide_block_char_majors(int *blockmajor, int *charmajor)
-{
-    *blockmajor = ide_block_major;
-    *charmajor = ide_raw_major;
-}
-
-static unsigned ideminphys(struct buf *bp)
-{
-    if (bp->b_bcount > IDE_MAX_PHYS_IO)
-	bp->b_bcount = IDE_MAX_PHYS_IO;
-    return(bp->b_bcount);
-}
-
-/*
- * Map dev_t to id. A nil return indicates ENXIO.
- */
-static id ide_dev_to_id(dev_t dev)
-{
-    id rtn;
-    int unit = IO_DISK_UNIT(dev);
-    IODevAndIdInfo *idmap;
-    int part = IO_DISK_PART(dev);
-    
-    if((unit >= NUM_IDE_DEV) || (part >= NUM_IDE_PART)) {
-	return nil;
-    }
-    idmap = &IdeIdMap[unit];
-    if(part == IDE_LIVE_PART) {
-	if(major(dev) == ide_block_major) {
-	    rtn = nil;  
-	}
-	else {
-	    rtn = idmap->liveId;
-	}
-    }
-    else {
-	rtn = idmap->partitionId[part];
-    }
-    return rtn;
+    return (0);
 }
 
 /* end of IdeKern.m */

@@ -80,7 +80,7 @@ struct _tuple_private {
     return private->length;
 }
 
-- (unsigned char *) data;
+- (unsigned char *) data
 {
     struct _tuple_private *private = (struct _tuple_private *)_private;
     unsigned length;

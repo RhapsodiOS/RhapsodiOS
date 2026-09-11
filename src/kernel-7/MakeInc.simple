@@ -135,6 +135,10 @@ EXIT=${$(TYPE)_EXIT}
 #
 CMD_FLAGS= "RC_FLAGS=$(RC_FLAGS)" "RC_ARCH=$(RC_ARCH)"
 
+# Portable replacement for NeXT make's `.DEFTARGET: all`.  Declare it before
+# the suffix and generated-source rules so bare GNU make selects it.
+all:
+
 #
 # Cause .c file to be built from yacc file
 #
@@ -177,8 +181,6 @@ $(XLFILES:.l=.c): $$(@:.c=.l)
 # Standard targets
 # All executed in "source" directory
 #
-.DEFTARGET:	all
-
 all:	$(TYPES)
 
 remake:	clean all

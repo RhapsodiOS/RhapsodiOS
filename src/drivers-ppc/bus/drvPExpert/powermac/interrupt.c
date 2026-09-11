@@ -25,6 +25,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <interrupts.h>
+#include <interrupt_depth.h>
 #include <powermac.h>
 #include <kern/thread.h>
 #include <kern/assert.h>
@@ -63,6 +64,13 @@ spl_t splstatclock(void) { return set_priority_level(SPLSCLK); }
 spl_t splusclock(void) { return set_priority_level(SPLSCLK); }
 
 spl_t current_priority = SPLHIGH;	/* MEB 11/2/95  */
+static unsigned int pe_interrupt_depth[NCPUS];
+
+boolean_t
+PEIsInInterruptContext(void)
+{
+	return PEInterruptDepthActive(pe_interrupt_depth[cpu_number()]);
+}
 
 #if DEBUG
 vm_offset_t spl_addr;
@@ -193,10 +201,15 @@ struct ppc_saved_state * interrupt(
 	unsigned int dar)
 {
 	int irq;
+	int entered;
+	int cpu;
 	spl_t		old_spl = current_priority;
 	thread_t th;
 
 	current_priority = SPLHIGH;
+	cpu = cpu_number();
+	entered = PEInterruptDepthEnterException(&pe_interrupt_depth[cpu], type,
+	    EXC_INTERRUPT, EXC_DECREMENTER);
 
 #ifdef notdef_next
 #if DEBUG
@@ -255,7 +268,8 @@ struct ppc_saved_state * interrupt(
 		 * thandler vectors to ihandler.
 		 */
 		th = current_thread();
-		if (th && th->recover) {
+		if (PEInterruptDepthAllowsRecovery(pe_interrupt_depth[cpu],
+		    th != 0 && th->recover != 0)) {
 			label_t *l = (label_t *)th->recover;
 			th->recover = (vm_offset_t)NULL;
 			longjmp(l,1);
@@ -269,9 +283,11 @@ struct ppc_saved_state * interrupt(
 #endif
 
 	case EXC_INTERRUPT:
+	{
 		/* Call the pmac interrupt routine */
 		(*pmac_interrupt)(type, ssp, dsisr, dar);
 		break;
+	}
 
 	default:
 #ifdef DEBUG
@@ -281,6 +297,8 @@ struct ppc_saved_state * interrupt(
 #endif /* DEBUG */
 		break;
 	}
+	if (entered)
+		(void)PEInterruptDepthLeave(&pe_interrupt_depth[cpu]);
 
 	current_priority = old_spl;
 	return ssp;

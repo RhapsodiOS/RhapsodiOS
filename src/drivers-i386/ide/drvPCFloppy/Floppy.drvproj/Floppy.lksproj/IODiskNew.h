@@ -23,9 +23,9 @@
 	void		*_devAndIdInfo;		// provides dev_t to id mapping (IODevAndIdInfoNEW *)
 #endif	KERNEL
 	id		_LogicalDiskLock;	// NXLock for serialization
-	id		_drive;			// associated drive object
+	id		_driveId;		// associated drive object
 
-	int		_IODiskNEW_reserved[4];
+	int		_IODisk_reserved[4];
 }
 
 /*

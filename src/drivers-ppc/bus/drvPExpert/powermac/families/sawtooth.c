@@ -26,6 +26,7 @@
 #include <families/sawtooth.h>
 #include <chips/keylargo.h>
 #include <chips/mpic.h>
+#include <sys/systm.h>
 
 powermac_init_t sawtooth_init = {
 	configure_sawtooth,		    // configure_machine
@@ -206,6 +207,8 @@ struct powermac_interrupt  sawtooth_interrupts[NSAWTOOTH_INTERRUPTS] = {
 
 void configure_sawtooth(void)
 {
+  kern_return_t result;
+
   mpic_interrupts = (struct powermac_interrupt *) &sawtooth_interrupts;
   mpic_via1_interrupts = (struct powermac_interrupt *) &sawtooth_via1_interrupts;
   mpic_int_mapping_tbl = (u_long *) &sawtooth_int_mapping_tbl;
@@ -215,6 +218,10 @@ void configure_sawtooth(void)
   mpic_via_cascade = 0x19;  /* VIA cascaded at interrupt 25 (0x19) */
 
   powermac_info.viaIRQ = 0x5a;  /* 90 decimal - VIA IRQ index */
+
+  result = PEKeyLargoInitialize();
+  if (result != KERN_SUCCESS)
+    printf("KeyLargo audio services unavailable (0x%x)\n", result);
 }
 
 void sawtooth_initialize_bats()

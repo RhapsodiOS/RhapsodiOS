@@ -23,8 +23,33 @@ import sys
 from pathlib import Path
 
 from binrecon.macho import read_macho
+from binrecon.source_map import read_selector
+from source_paths import source_files
 
 TEXT_SECTION = "__TEXT,__text"
+
+_IMPLEMENTATION = re.compile(r"^@implementation\s+(\w+)\s*(?:\(\s*(\w+)\s*\))?")
+_END = "@end"
+_METHOD = re.compile(r"^[-+]\s*[\(\w]")
+
+_SIGNATURE_LINE_LIMIT = 20
+"""Lines a wrapped signature may span, mirroring source_map's window.
+
+The length cap alone is not a bound: a signature that never resolves would
+otherwise scan to the end of the file.
+"""
+
+
+def _body_follows(lines, index):
+    """True when the next non-blank line after `index` opens a body.
+
+    NeXT GCC allows a semicolon between a method signature and its body, so a
+    trailing ";" only ends a declaration when no brace follows it.
+    """
+    for candidate in lines[index + 1:]:
+        if candidate.strip():
+            return candidate.lstrip().startswith("{")
+    return False
 
 
 def reference_selectors(path):
@@ -37,74 +62,66 @@ def reference_selectors(path):
     }
 
 
-def _outside_parens(text):
-    """Drop parenthesised spans, so argument types don't look like keywords."""
-    kept = []
-    depth = 0
-    for character in text:
-        if character == "(":
-            depth += 1
-        elif character == ")":
-            depth -= 1
-        elif depth == 0:
-            kept.append(character)
-    return "".join(kept)
-
-
-def _selector(signature):
-    """Extract the selector from a method signature, types and argument names removed.
-
-    Apple declares some methods with empty keywords — `initFromDeviceDescription::::`
-    is a real selector in the reference binary. Once the parenthesised types are
-    gone, each colon is followed by its argument name and then, optionally, the
-    next keyword. Matching `(\\w*)\\s*:` would capture the argument name as the
-    keyword and silently turn `foo:::` into `foo:a:b:`, so walk the segments
-    instead: in every segment after the first, the argument name is the leading
-    word and the keyword is whatever word follows it, or nothing.
-    """
-    body = _outside_parens(signature).strip()
-    if ":" not in body:
-        words = body.split()
-        return words[0] if words else ""
-
-    segments = body.split(":")
-    selector = segments[0].strip() + ":"
-    for segment in segments[1:-1]:
-        words = segment.split()
-        selector += (words[1] if len(words) > 1 else "") + ":"
-    return selector
-
-
-def source_methods(source_dir):
+def source_methods(source_path):
     """Yield (full_name, class_name, selector, path, line) per definition."""
-    for path in sorted(Path(source_dir).glob("*.m")):
+    for path in source_files(source_path, {".m"}, recursive=False):
         lines = path.read_text(errors="replace").splitlines()
         class_name = category = None
         index = 0
         while index < len(lines):
             line = lines[index]
-            opening = re.match(r"^@implementation\s+(\w+)\s*(?:\(\s*(\w+)\s*\))?", line)
+            opening = _IMPLEMENTATION.match(line)
             if opening:
                 class_name, category = opening.group(1), opening.group(2)
                 index += 1
                 continue
-            if line.startswith("@end"):
+            if line.startswith(_END):
                 class_name = category = None
                 index += 1
                 continue
-            if class_name and re.match(r"^[-+]\s*[\(\w]", line):
+            if class_name and _METHOD.match(line):
                 start = index
                 signature = line
+                found_brace = "{" in signature
                 # A signature may wrap across lines; it ends at the body brace.
-                while "{" not in signature and index + 1 < len(lines) and len(signature) < 600:
+                # A trailing ";" ends the declaration unless the next non-blank
+                # line opens the body: NeXT GCC allows a semicolon between a
+                # method signature and its body, matching source_map's
+                # source_sites. A structural boundary -- @end, another
+                # @implementation, or another method's signature -- also stops
+                # the scan; without that check a forward declaration whose ";"
+                # is followed by a brace further down would let the scan run
+                # into the next real method and merge the two.
+                found_semicolon = (not found_brace
+                                   and signature.rstrip().endswith(";")
+                                   and not _body_follows(lines, index))
+                end = index + _SIGNATURE_LINE_LIMIT
+                while (not found_brace and not found_semicolon
+                       and index + 1 < min(len(lines), end)
+                       and len(signature) < 600):
+                    candidate = lines[index + 1]
+                    if (candidate.startswith(_END)
+                            or _IMPLEMENTATION.match(candidate)
+                            or _METHOD.match(candidate)):
+                        break
                     index += 1
-                    signature += " " + lines[index]
-                head = signature.split("{")[0].strip()
-                sign, remainder = head[0], head[1:]
-                selector = _selector(remainder)
-                scope = "%s(%s)" % (class_name, category) if category else class_name
-                yield ("%s[%s %s]" % (sign, scope, selector),
-                       class_name, selector, path.name, start + 1)
+                    signature += " " + candidate
+                    if "{" in candidate:
+                        found_brace = True
+                    elif (candidate.rstrip().endswith(";")
+                            and not _body_follows(lines, index)):
+                        found_semicolon = True
+                if found_brace and not found_semicolon:
+                    head = signature.split("{")[0].strip()
+                    sign, remainder = head[0], head[1:]
+                    # The sign is dropped before parsing: source_map's reader
+                    # keys off the last word before the first colon, which a
+                    # signature written without a space after the sign would
+                    # hand back.
+                    selector = read_selector(remainder) or ""
+                    scope = "%s(%s)" % (class_name, category) if category else class_name
+                    yield ("%s[%s %s]" % (sign, scope, selector),
+                           class_name, selector, path.name, start + 1)
             index += 1
 
 

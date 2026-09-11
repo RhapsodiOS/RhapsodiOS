@@ -1,28 +1,71 @@
-#       Project[-Version]     Target
-#------ --------------------- -------
-dir     CoreOSMakefiles-1     all
-dir     pb_makefiles-1        all
-dir     project_makefiles-1   all
-dir     cc-1                  all
-dir     cctools-2             all
-dir     gnumake-1             all
-dir     gnutar-1              all
-dir     awk-1                 all
-dir     grep-1                all
-dir     patch-1               all
-dir     Csu-1                 all
-dir     objc4-1               all
-dir     Libc-1                all
-dir     Libsystem-2           all
-dir     architecture-1        all
-dir     kernel-7              headers
-dir     files-5               all
-dir     basic_cmds-1          all
-dir     bootstrap_cmds-1      all
-dir     system_cmds-2         all
-dir     shell_cmds-2          all
-dir     file_cmds-1           all
-dir     text_cmds-1           all
-dir     developer_cmds-1      all
-dir     zsh-1                 all
-dir     tcsh-1                all
+#       Project[-Version]       Target
+#------ ----------------------- -------
+# Build frameworks and target headers before their first consumers.
+# pb_makefiles tools (dotdotify) need architecture and libc headers, but
+# objc4 header generation needs those tools.
+dir     CoreOSMakefiles-1       all
+dir     pb_makefiles-1          headers
+dir     project_makefiles-1     headers
+dir     architecture-1          headers
+dir     kernel-7                headers
+dir     Libstreams-1            headers
+dir     Libc-1                  headers
+dir     pb_makefiles-1          all
+dir     objc4-1                 headers
+dir     driverkit-3             headers
+dir     cctools-2               headers
+
+# cc consumes public Mach interfaces exported by Libc as well as headers
+# produced by its own installhdrs target.  Publish both first; the full cc
+# build still requires bison.
+dir     cc-1                    headers
+
+# Target build tools.
+dir     bison-1                 all
+dir     cc-1                    all
+dir     cctools-2               all
+dir     gnumake-1               all
+dir     gnutar-1                all
+dir     awk-1                   all
+dir     grep-1                  all
+dir     patch-1                 all
+dir     gnudiff-1               all
+
+# Complete remaining build frameworks and the bootstrap command set.
+dir     project_makefiles-1     all
+dir     architecture-1          all
+dir     Commands/bootstrap_cmds all
+
+# CRT and language/runtime support.
+dir     Csu-1                   all
+dir     objc4-1                 all
+dir     Libstreams-1            all
+dir     objc-1                  all
+dir     machkit-1               headers
+dir     machkit-1               all
+dir     driverkit-3             all
+dir     kernload-1              all
+
+# Libsystem component libraries.
+dir     Libc-1                  all
+dir     Libcompat-1             all
+dir     Libcurses-1             all
+dir     Libedit-1               all
+dir     Librpcsvc-1             headers
+dir     Libinfo-1               all
+dir     Libkvm-1                all
+dir     Libm-1                  all
+dir     Libsystem-2             all
+
+# Files and commands in the build-base package closure.
+# adv-cmds is a chroot Build-Depends of driverkit, files, cctools, and kernel.
+dir     Commands/adv_cmds       all
+dir     files-5                 all
+dir     Commands/basic_cmds     all
+dir     Commands/system_cmds    all
+dir     Commands/shell_cmds     all
+dir     Commands/file_cmds      all
+dir     Commands/text_cmds      all
+dir     Commands/developer_cmds all
+dir     Commands/zsh            all
+dir     Commands/tcsh           all

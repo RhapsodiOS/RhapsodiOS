@@ -20,7 +20,7 @@
 #import "AIC6X60Types.h"
 
 
-@interface AIC6X60Controller : IOSCSIController
+@interface AIC6X60 : IOSCSIController
 {
 	/*
 	 * Hardware info.

@@ -1,0 +1,10 @@
+"Title"         = "drvPPC53c96";
+"Driver Name"   = "drvPPC53c96";
+"Matching"      = "53c94";
+"Class Names"   = "Apple96_SCSI";
+"Bus Type"      = "PPC";
+"Boot Driver"   = "no";
+"Load Priority" = "5200";
+"Server Name" = "drvPPC53c96";
+"Driver Version" = "PROGRAM:drvPPC53c96  PROJECT:drvPPC53c96-2  DEVELOPER:root  BUILT:Tue Nov 23 19:13:44 PST 1999";
+"Version" = "5.00";

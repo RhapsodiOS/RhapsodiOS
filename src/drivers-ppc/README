@@ -3,21 +3,45 @@ Current list of drivers to be implemented and the status of re-implementation
 
 bus
  * drvPExpert - needs compiled and then tested
+ * drvPPCOHare - copy of src/kernel-7/bsd/dev/ppc/drvOHare; see tools/ppc_package_check.py
 
 ide
  * drvPPCSwimFloppy - needs compiled and then tested
 
 input
  * drvPPCSerialPort - needs compiled and then tested
+ * drvPPCCuda - copy of src/kernel-7/bsd/dev/ppc/drvCuda; see tools/ppc_package_check.py
+ * drvPPCPMU - copy of src/kernel-7/bsd/dev/ppc/drvPMU; see tools/ppc_package_check.py
+ * drvIOADBDevice - STUB, no in-tree source; class/selector list scaffolded from the
+   shipped binary, every method body empty
 
 network
  * drvPPCGem - needs compiled and then tested
  * drvPPCGNic - needs compiled and then tested
+ * drvPPCBMac - copy of src/kernel-7/bsd/dev/ppc/drvBMacEnet; see tools/ppc_package_check.py
+ * drvPPCMace - copy of src/kernel-7/bsd/dev/ppc/drvMaceEnet; see tools/ppc_package_check.py
+ * drvPPCDec21040 - copy of src/kernel-7/bsd/dev/ppc/drvDECchip21040; see tools/ppc_package_check.py
+ * drvDEC21x4Ethernet - STUB, no in-tree source; class/selector list scaffolded from the
+   shipped binary, every method body empty
 
 scsi
+ * drvPPC53c96 - copy of src/kernel-7/bsd/dev/ppc/drvApple96_SCSI; see tools/ppc_package_check.py
+ * drvPPCMesh - copy of src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI; see tools/ppc_package_check.py
+ * drvPPCSym8xx - copy of src/kernel-7/bsd/dev/ppc/drvSymbios8xx; see tools/ppc_package_check.py
 
 sound
  * drvPPCAwacs - needs compiled and then tested
  * drvPPCBurgundy - needs compiled and then tested
+ * drvPPCTASAudio - needs compiled and then tested
 
 video
+
+Nine of the entries above marked "copy of ..." are byte-identical copies of the
+sources they cite, which also still live under src/kernel-7/bsd/dev/ppc/ and
+build into the kernel via conf/files.ppc; the two copies are not kept in sync
+automatically. Run tools/ppc_package_check.py to check whether they have
+drifted apart.
+
+The two entries marked STUB have no implementation at all: their headers and
+.m files declare every selector the shipped binary carries, with empty
+method bodies, so a later reconstruction has a starting point.

@@ -55,7 +55,7 @@ extern port_t create_dev_port(KernDevice *kernDevice);
  */
 static BOOL waitForSocketReady(id socket)
 {
-    char status;
+    PCMCIAStatus status;
     int retries;
 
     retries = 100;
@@ -63,8 +63,8 @@ static BOOL waitForSocketReady(id socket)
         /* Get socket status */
         status = [socket status];
 
-        /* Check if ready bit is set (bit 7 = 0x80) */
-        if (status < 0) {  /* Signed char < 0 means bit 7 is set */
+        /* Check if ready bit is set */
+        if (status.ready) {
             return YES;
         }
 
@@ -138,7 +138,7 @@ static void printDescription(id deviceDesc)
 /*
  * Allocate shared memory for socket
  */
-- allocateSharedMemory:(unsigned int)size
+- allocateSharedMemory:configEntry
         ForDescription:deviceDesc
              AndSocket:socket
 {
@@ -165,7 +165,7 @@ static void printDescription(id deviceDesc)
     memoryMapList = [deviceDesc resourcesForKey:"Memory Maps"];
 
     /* Get memory range count from device description (offset 0x104) */
-    memoryRangeCount = *(int *)((char *)size + 0x104);
+    memoryRangeCount = *(int *)((char *)configEntry + 0x104);
 
     /* Allocate check list (2 bytes per range) */
     checkList = IOMalloc(memoryRangeCount * 2);
@@ -186,7 +186,7 @@ static void printDescription(id deviceDesc)
         [memoryMapList setAvailableCapacity:memoryRangeCount];
 
         /* Process fixed-base memory ranges (offset 0x108 is start of array) */
-        rangePtr = (unsigned int *)((char *)size + 0x108);
+        rangePtr = (unsigned int *)((char *)configEntry + 0x108);
         for (i = 0; i < memoryRangeCount; i++) {
             base = rangePtr[0];
             length = rangePtr[1];
@@ -201,7 +201,7 @@ static void printDescription(id deviceDesc)
                 if (rangeResource != nil) {
                     range = [rangeResource range];
                     if (base == range.base) {
-                        if (_verbose) {
+                        if (_verbose == YES) {
                             IOLog("PKB: reserved range 0x%x..0x%x (card base 0x%x)\n",
                                   base, length, cardBase);
                         }
@@ -222,7 +222,7 @@ static void printDescription(id deviceDesc)
         }
 
         /* Process shared/any-base memory ranges */
-        rangePtr = (unsigned int *)((char *)size + 0x108);
+        rangePtr = (unsigned int *)((char *)configEntry + 0x108);
         for (i = 0; i < memoryRangeCount; i++) {
             length = rangePtr[1];
             cardBase = rangePtr[2];
@@ -238,7 +238,7 @@ static void printDescription(id deviceDesc)
                     goto cleanup_and_fail;
                 }
 
-                if (_verbose) {
+                if (_verbose == YES) {
                     range = [rangeResource range];
                     IOLog("PKB: reserved range 0x%x..0x%x (card base 0x%x)\n",
                           range.base, range.base + range.length, cardBase);
@@ -256,7 +256,7 @@ static void printDescription(id deviceDesc)
         /* User supplied memory map list */
         userSupplied = YES;
 
-        if (_verbose) {
+        if (_verbose == YES) {
             IOLog("PKB: user supplied memory range list (%d range(s))\n",
                   [memoryMapList count]);
         }
@@ -269,7 +269,7 @@ static void printDescription(id deviceDesc)
         }
 
         /* Match fixed-base ranges */
-        rangePtr = (unsigned int *)((char *)size + 0x108);
+        rangePtr = (unsigned int *)((char *)configEntry + 0x108);
         for (i = 0; i < memoryRangeCount; i++) {
             base = rangePtr[0];
             length = rangePtr[1];
@@ -311,7 +311,7 @@ static void printDescription(id deviceDesc)
         }
 
         /* Match shared/any-base ranges */
-        rangePtr = (unsigned int *)((char *)size + 0x108);
+        rangePtr = (unsigned int *)((char *)configEntry + 0x108);
         for (i = 0; i < memoryRangeCount; i++) {
             length = rangePtr[1];
             isShared = *(unsigned char *)(&rangePtr[3]);
@@ -353,7 +353,7 @@ static void printDescription(id deviceDesc)
     }
 
     /* Map all memory ranges */
-    rangePtr = (unsigned int *)((char *)size + 0x108);
+    rangePtr = (unsigned int *)((char *)configEntry + 0x108);
     for (i = 0; i < memoryRangeCount; i++) {
         cardBase = rangePtr[2];
 
@@ -369,8 +369,8 @@ static void printDescription(id deviceDesc)
             goto cleanup_and_fail;
         }
 
-        /* Set 16-bit mode (offset 0x71 in size parameter) */
-        [[window object] set16Bit:*(unsigned char *)((char *)size + 0x71)];
+        /* Set 16-bit mode (offset 0x71 in the config entry) */
+        [[window object] set16Bit:*(unsigned char *)((char *)configEntry + 0x71)];
 
         [windowList addObject:window];
 
@@ -382,10 +382,10 @@ static void printDescription(id deviceDesc)
 
 cleanup_and_fail:
     if (!userSupplied && memoryMapList != nil) {
-        [[memoryMapList freeObjects:@selector(free)] free];
+        [[memoryMapList freeObjects] free];
     }
     if (windowList != nil) {
-        [[windowList freeObjects:@selector(free)] free];
+        [[windowList freeObjects] free];
     }
     IOFree(checkList, memoryRangeCount * 2);
     return nil;
@@ -461,7 +461,7 @@ cleanup_and_fail:
         socketBytes = (unsigned char *)value;
 
         /* Log socket status if verbose */
-        if (_verbose) {
+        if (_verbose == YES) {
             socketNum = [socket socketNumber];
             IOLog("PKB: socket %d present %d probed %d\n",
                   socketNum, socketBytes[0] & 1, socketBytes[4]);
@@ -490,7 +490,7 @@ cleanup_and_fail:
         }
 
         /* Success - mark socket as probed */
-        if (_verbose) {
+        if (_verbose == YES) {
             socketNum = [socket socketNumber];
             IOLog("PKB: socket number %d now marked as probed\n", socketNum);
         }
@@ -506,7 +506,7 @@ cleanup_and_fail:
 /*
  * Configure socket
  */
-- (BOOL)configureSocket:socket
+- (void)configureSocket:socket
 {
     SocketInfo *socketInfo;
     unsigned int socketNum;
@@ -519,7 +519,7 @@ cleanup_and_fail:
     /* Get socket info */
     socketInfo = (SocketInfo *)[_socketMap valueForKey:socket];
 
-    if (_verbose) {
+    if (_verbose == YES) {
         socketNum = [socket socketNumber];
         IOLog("PKB: configuring socket %d\n", socketNum);
     }
@@ -529,7 +529,7 @@ cleanup_and_fail:
     while (YES) {
         count = [_driverConfigTables count];
         if (count <= i) {
-            return NO;
+            return;
         }
 
         table = [_driverConfigTables objectAt:i];
@@ -551,15 +551,13 @@ cleanup_and_fail:
     /* Remove the used table from the global list */
     [_driverConfigTables removeObjectAt:i];
 
-    if (_verbose) {
+    if (_verbose == YES) {
         socketNum = [socket socketNumber];
         IOLog("PKB: socket %d marked as probed\n", socketNum);
     }
 
     /* Mark socket as probed (offset 4 in SocketInfo) */
     socketInfo->probed = 1;
-
-    return YES;
 }
 
 /*
@@ -612,9 +610,9 @@ cleanup_and_fail:
     /* Look up EISA bus */
     eisaBus = [KernBus lookupBusInstanceWithName:"EISA" busId:0];
 
-    if (_verbose) {
+    if (_verbose == YES) {
         IOLog("PKB: configureSocket:withDescription:\n");
-        if (_verbose) {
+        if (_verbose == YES) {
             printDescription(deviceDesc);
         }
     }
@@ -622,7 +620,7 @@ cleanup_and_fail:
     /* Get TPCE list */
     tpceList = [deviceDesc resourcesForKey:"PCMCIA_TPCE_LIST"];
 
-    if (_verbose) {
+    if (_verbose == YES) {
         IOLog("PKB: configureCardWithDescription: %d TPCE tuples\n", [tpceList count]);
     }
 
@@ -636,7 +634,7 @@ cleanup_and_fail:
         }
     } else {
         userSuppliedPorts = YES;
-        if (_verbose) {
+        if (_verbose == YES) {
             IOLog("PKB: user supplied port list (%d ranges)\n", [portRangeList count]);
         }
     }
@@ -651,7 +649,7 @@ cleanup_and_fail:
         }
     } else {
         userSuppliedIRQ = YES;
-        if (_verbose) {
+        if (_verbose == YES) {
             IOLog("PKB: user supplied IRQ list (%d items)\n", [irqList count]);
         }
     }
@@ -669,7 +667,7 @@ cleanup_and_fail:
     /* Try to find a matching configuration entry */
     selectedConfig = nil;
     for (i = 0; i < [tpceList count]; i++) {
-        if (_verbose) {
+        if (_verbose == YES) {
             IOLog("PKB: configuring card, looking at config entry %d\n", i);
         }
 
@@ -689,7 +687,7 @@ cleanup_and_fail:
 
     /* If no config found, try to make one up */
     if (selectedConfig == nil) {
-        if (_verbose) {
+        if (_verbose == YES) {
             IOLog("PKB: couldn't find a configuration; making one up.\n");
         }
 
@@ -698,7 +696,7 @@ cleanup_and_fail:
 
             /* Check if this config decodes all address lines (offset 0x6c) */
             if (*(int *)((char *)config + 0x6c) == 0) {
-                if (_verbose) {
+                if (_verbose == YES) {
                     IOLog("PKB: this configuration decodes all address lines; trying another.\n");
                 }
                 continue;
@@ -722,7 +720,7 @@ cleanup_and_fail:
                 }
 
                 if (range.length != alignment) {
-                    if (_verbose) {
+                    if (_verbose == YES) {
                         IOLog("PKB: range %x+%x doesn't exist or doesn't match alignment %d\n",
                               range.base, range.length, alignment);
                     }
@@ -734,7 +732,7 @@ cleanup_and_fail:
                     rangeResource = [ioPortsResource reserveRange:range];
                     if (rangeResource == nil) {
                         failed = YES;
-                        [[portRangeList freeObjects:@selector(free)] free];
+                        [[portRangeList freeObjects] free];
                         break;
                     }
                     [portRangeList addObject:rangeResource];
@@ -748,7 +746,7 @@ cleanup_and_fail:
         }
 
         if (selectedConfig == nil) {
-            if (_verbose) {
+            if (_verbose == YES) {
                 IOLog("PKB: no configuration found\n");
             }
             goto cleanup_and_fail;
@@ -757,7 +755,7 @@ cleanup_and_fail:
 
     /* Allocate IRQ if needed */
     if ([irqList count] == 0 && *(unsigned char *)((char *)selectedConfig + 0xf8) != 0) {
-        if (_verbose) {
+        if (_verbose == YES) {
             IOLog("PKB: looking for IRQ in tuples\n");
         }
 
@@ -776,7 +774,7 @@ cleanup_and_fail:
         }
 
         if (irqResource == nil) {
-            if (_verbose) {
+            if (_verbose == YES) {
                 IOLog("PKB: trying to find a free IRQ\n");
             }
             irqNumber = [irqLevelsResource findFreeItem];
@@ -789,7 +787,7 @@ cleanup_and_fail:
     } else {
         irqResource = [irqList objectAt:0];
         irqNumber = [irqResource item];
-        if (_verbose) {
+        if (_verbose == YES) {
             IOLog("PKB: user supplied irq %d\n", irqNumber);
         }
     }
@@ -807,32 +805,32 @@ cleanup_and_fail:
     } else {
         /* Check if driver's config table incorrectly indicates shared memory */
         memMapList = [deviceDesc resourcesForKey:"Memory Maps"];
-        if (memMapList != nil && _verbose) {
+        if (memMapList != nil && _verbose == YES) {
             IOLog("PKB: driver's config table indicates shared memory but device does not\n");
         }
     }
 
     /* Log port ranges and IRQs if verbose */
-    if (_verbose) {
+    if (_verbose == YES) {
         IOLog("PKB: port range list: ");
         for (i = 0; i < [portRangeList count]; i++) {
             rangeResource = [portRangeList objectAt:i];
-            if (_verbose) {
+            if (_verbose == YES) {
                 range = [rangeResource range];
                 IOLog("%x-%x ", range.base, range.base + range.length - 1);
             }
         }
-        if (_verbose) {
+        if (_verbose == YES) {
             IOLog("\n");
             IOLog("PKB: IRQ list: ");
         }
         for (i = 0; i < [irqList count]; i++) {
             irqResource = [irqList objectAt:i];
-            if (_verbose) {
+            if (_verbose == YES) {
                 IOLog("%d ", [irqResource item]);
             }
         }
-        if (_verbose) {
+        if (_verbose == YES) {
             IOLog("\n");
         }
     }
@@ -845,7 +843,7 @@ cleanup_and_fail:
     for (i = 0; i < [portRangeList count]; i++) {
         window = [self allocIOWindowForSocket:socket];
         if (window == nil) {
-            if (_verbose) {
+            if (_verbose == YES) {
                 IOLog("PKB: couldn't get all requested I/O windows\n");
             }
             goto cleanup_and_fail;
@@ -864,7 +862,7 @@ cleanup_and_fail:
     windowList = nil;
 
     /* Set card IRQ */
-    if (_verbose) {
+    if (_verbose == YES) {
         IOLog("PKB: setting hardware IRQ to %d\n", irqNumber);
     }
     if (irqNumber != 0) {
@@ -872,7 +870,7 @@ cleanup_and_fail:
     }
 
     /* Set socket to I/O mode */
-    if (_verbose) {
+    if (_verbose == YES) {
         IOLog("PKB: setting socket to I/O mode\n");
     }
     [socket setMemoryInterface:NO];
@@ -888,7 +886,7 @@ cleanup_and_fail:
         configRegOffset = configRegOffset - baseOffset;
     }
 
-    if (_verbose) {
+    if (_verbose == YES) {
         IOLog("PKB: trying for address base 0x%x\n", _memoryBase);
     }
 
@@ -903,7 +901,7 @@ cleanup_and_fail:
     range = [configRangeResource range];
     configBase = range.base;
 
-    if (_verbose) {
+    if (_verbose == YES) {
         IOLog("PKB: mapping config option reg: host 0x%x (card 0x%x)\n",
               configBase, baseOffset);
     }
@@ -922,7 +920,7 @@ cleanup_and_fail:
         configValue |= 0x40;
     }
 
-    if (_verbose) {
+    if (_verbose == YES) {
         IOLog("PKB: writing %x to %x\n", configValue, configRegOffset + configBase);
     }
 
@@ -955,18 +953,18 @@ cleanup_and_fail:
     return YES;
 
 cleanup_and_fail:
-    if (_verbose) {
+    if (_verbose == YES) {
         IOLog("PKB: card could not be configured\n");
     }
 
     if (!userSuppliedPorts && portRangeList != nil) {
-        [[portRangeList freeObjects:@selector(free)] free];
+        [[portRangeList freeObjects] free];
     }
     if (!userSuppliedIRQ && irqList != nil) {
-        [[irqList freeObjects:@selector(free)] free];
+        [[irqList freeObjects] free];
     }
     if (windowList != nil) {
-        [[windowList freeObjects:@selector(free)] free];
+        [[windowList freeObjects] free];
     }
 
     return NO;
@@ -1005,7 +1003,7 @@ cleanup_and_fail:
     }
 
     /* Allocate resources for description */
-    if (_verbose) {
+    if (_verbose == YES) {
         IOLog("PKB: Allocating resources for description..\n");
     }
 
@@ -1019,22 +1017,22 @@ cleanup_and_fail:
         if (driverName != NULL && strcmp(driverName, "<unknown>") != 0) {
             [table freeString:driverName];
         }
-        [[tupleListCopy freeObjects:@selector(free)] free];
+        [[tupleListCopy freeObjects] free];
         [deviceDesc free];
         return NO;
     }
 
     /* Configure socket with description */
-    if (_verbose) {
+    if (_verbose == YES) {
         IOLog("PKB: Configuring socket..\n");
     }
 
     configured = [self configureSocket:socket withDescription:deviceDesc];
     if (!configured) {
-        if (_verbose) {
+        if (_verbose == YES) {
             IOLog("PKB: failed to configure\n");
         }
-        [[tupleListCopy freeObjects:@selector(free)] free];
+        [[tupleListCopy freeObjects] free];
         [deviceDesc free];
         return NO;
     }
@@ -1047,7 +1045,7 @@ cleanup_and_fail:
 
     /* Free cached memory range resource if it exists */
     if (_memoryRangeResource != nil) {
-        if (_verbose) {
+        if (_verbose == YES) {
             range = [_memoryRangeResource range];
             IOLog("PKB: freeing range 0x%x(0x%x)\n", range.base, range.length);
         }
@@ -1056,7 +1054,7 @@ cleanup_and_fail:
     }
 
     if (!probed) {
-        if (_verbose) {
+        if (_verbose == YES) {
             IOLog("PKB: configure/probe failed\n");
         }
         [deviceDesc free];
@@ -1120,7 +1118,7 @@ cleanup_and_fail:
     int count;
 
 
-    if (_verbose) {
+    if (_verbose == YES) {
         IOLog("PKB: Scanning for tuples\n");
     }
 
@@ -1143,7 +1141,7 @@ cleanup_and_fail:
         tupleCode = attrMem[0];
         tupleLength = attrMem[2];
 
-        if (_verbose) {
+        if (_verbose == YES) {
             IOLog("PKB: Scanning at %x, tuple '%x', length %d\n",
                   (unsigned int)attrMem, tupleCode, tupleLength);
         }
@@ -1207,7 +1205,7 @@ done:
 - (BOOL)enableSocket:socket
 {
     int retries;
-    char status;
+    PCMCIAStatus status;
     unsigned int socketNum;
 
     /* Assert reset */
@@ -1236,12 +1234,11 @@ done:
     /* Wait for card to start responding */
     IOSleep(100);
 
-    /* Wait for card to become ready (check bit 7 of status) */
+    /* Wait for card to become ready */
     retries = 100;
     do {
-        status = (char)[socket status];
-        if (status < 0) {
-            /* Card is ready (bit 7 set) */
+        status = [socket status];
+        if (status.ready) {
             IOSleep(20);
             break;
         }
@@ -1260,7 +1257,7 @@ done:
 /*
  * Disable socket
  */
-- (BOOL)disableSocket:socket
+- (void)disableSocket:socket
 {
     /* Disable card */
     [socket setCardEnabled:NO];
@@ -1278,14 +1275,12 @@ done:
 
     /* Wait for reset to take effect */
     IOSleep(100);
-
-    return YES;
 }
 
 /*
  * Free memory window element
  */
-- freeMemoryWindowElement:element
+- (void)freeMemoryWindowElement:element
 {
     id window;
 
@@ -1297,8 +1292,6 @@ done:
 
     /* Free the pool element (auto-releases window back to pool) */
     [element free];
-
-    return self;
 }
 
 /*
@@ -1339,7 +1332,7 @@ ToCardAddress:(unsigned int)cardAddr
     windowElement = [self allocMemoryWindowForSocket:socket];
 
     if (windowElement == nil) {
-        if (_verbose) {
+        if (_verbose == YES) {
             IOLog("PKB: couldn't get a memory window!\n");
         }
         return nil;
@@ -1389,7 +1382,7 @@ ToCardAddress:(unsigned int)cardAddr
     /* Calculate string length and make a copy */
     classListLength = strlen(classNames);
 
-    if (_verbose) {
+    if (_verbose == YES) {
         IOLog("PKB: class list '%s'\n", classNames);
     }
 
@@ -1420,9 +1413,11 @@ ToCardAddress:(unsigned int)cardAddr
         /* Get the driver class */
         driverClass = objc_getClass(className);
         if (driverClass == nil) {
-            if (_verbose) {
+            if (_verbose == YES) {
                 IOLog("PKB: driver class '%s' was not loaded\n", className);
-                if (serverName != NULL) {
+                /* The reference re-tests _verbose here rather than checking
+                 * serverName for NULL, and pushes the pointer unguarded. */
+                if (_verbose == YES) {
                     IOLog("PKB: Driver %s could not be configured\n", serverName);
                 }
             }
@@ -1432,7 +1427,7 @@ ToCardAddress:(unsigned int)cardAddr
         /* Create KernDevice */
         kernDevice = [[KernDevice alloc] initWithDeviceDescription:deviceDesc];
         if (kernDevice == nil) {
-            if (_verbose) {
+            if (_verbose == YES) {
                 IOLog("PKB:probeDriver: initFromDeviceDescription failed for class %s\n",
                       className);
             }
@@ -1445,9 +1440,6 @@ ToCardAddress:(unsigned int)cardAddr
         /* Create IOPCMCIADeviceDescription */
         pcmciaDesc = [[IOPCMCIADeviceDescription alloc] _initWithDelegate:deviceDesc];
         if (pcmciaDesc == nil) {
-            if (_verbose) {
-                IOLog("PKB: aborting probe\n");
-            }
             goto cleanup_and_fail;
         }
 
@@ -1458,19 +1450,19 @@ ToCardAddress:(unsigned int)cardAddr
         /* Check if class responds to probe: */
         respondsToProbe = [driverClass respondsTo:@selector(probe:)];
         if (!respondsToProbe) {
-            if (_verbose) {
+            if (_verbose == YES) {
                 IOLog("PKB: configureDriver: Class %s does not respond to probe:\n", className);
             }
         } else {
             /* Add loaded class */
-            if (_verbose) {
+            if (_verbose == YES) {
                 IOLog("PKB: adding loaded class '%s'\n", className);
             }
 
             result = [IODevice addLoadedClass:driverClass description:pcmciaDesc];
             if (result == 0) {
                 classesLoaded++;
-                if (_verbose) {
+                if (_verbose == YES) {
                     IOLog("PKB: addLoadedClass returns success\n");
                 }
             }
@@ -1478,7 +1470,7 @@ ToCardAddress:(unsigned int)cardAddr
     }
 
     /* Done probing */
-    if (_verbose) {
+    if (_verbose == YES) {
         IOLog("PKB: all done probing\n");
     }
 
@@ -1490,22 +1482,29 @@ ToCardAddress:(unsigned int)cardAddr
         [device freeString:serverName];
     }
 
-    if (classesLoaded == 0) {
-        if (kernDevice != nil) {
-            [kernDevice free];
-        }
-        if (pcmciaDesc != nil) {
-            [pcmciaDesc free];
-        }
-        if (_verbose) {
-            IOLog("PKB: no classes loaded, returning no\n");
-        }
-        return NO;
+    /* The reference returns here and lets the no-classes case fall
+     * through, rather than wrapping it in an if. */
+    if (classesLoaded != 0) {
+        return YES;
     }
 
-    return YES;
+    if (kernDevice != nil) {
+        [kernDevice free];
+    }
+    if (pcmciaDesc != nil) {
+        [pcmciaDesc free];
+    }
+    if (_verbose == YES) {
+        IOLog("PKB: no classes loaded, returning no\n");
+    }
+    return NO;
 
 cleanup_and_fail:
+    /* Every failure path logs this, not just the one that allocates
+     * the device description. */
+    if (_verbose == YES) {
+        IOLog("PKB: aborting probe\n");
+    }
     if (classListLength != 0) {
         IOFree(classNames, classListLength);
     }
@@ -1524,7 +1523,7 @@ cleanup_and_fail:
 /*
  * Test IDs for adapter and socket
  */
-- (BOOL)testIDs:idList ForAdapter:adapter andSocket:socket
+- (BOOL)testIDs:(char *)idList ForAdapter:(int)adapter andSocket:(int)socket
 {
     int adapterIndex;
     int socketIndex;
@@ -1540,8 +1539,8 @@ cleanup_and_fail:
     BOOL matched;
     id tempID;
 
-    adapterIndex = (int)adapter;
-    socketIndex = (int)socket;
+    adapterIndex = adapter;
+    socketIndex = socket;
     socketInfo = NULL;
 
     /* Validate adapter index */
@@ -1576,7 +1575,7 @@ cleanup_and_fail:
     }
 
     /* Test IDs */
-    idString = (char *)idList;
+    idString = idList;
     matched = NO;
 
     if (idString == NULL) {
@@ -1611,7 +1610,7 @@ cleanup_and_fail:
 /*
  * Check if entry matches user I/O ports
  */
-- (BOOL)entry:entry matchesUserIOPorts:(const char *)portList
+- (BOOL)entry:entry matchesUserIOPorts:portList
 {
     int numRanges;
     int userCount;
@@ -1632,15 +1631,15 @@ cleanup_and_fail:
 
     if (numRanges == 0) {
         /* Single range with alignment based on address lines */
-        userCount = [(id)portList count];
+        userCount = [portList count];
         if (userCount != 1) {
-            if (_verbose) {
+            if (_verbose == YES) {
                 IOLog("PKB: port range count must be 1\n");
             }
             goto done;
         }
 
-        rangeResource = [(id)portList objectAt:0];
+        rangeResource = [portList objectAt:0];
         range = [rangeResource range];
 
         /* Check address lines (offset 0x6c) */
@@ -1654,16 +1653,16 @@ cleanup_and_fail:
             if (range.length == alignment) {
                 matched = YES;
             } else {
-                if (_verbose) {
+                if (_verbose == YES) {
                     IOLog("PKB: port range number of lines don't agree\n");
                 }
             }
         }
     } else {
         /* Multiple ranges - must match exactly */
-        userCount = [(id)portList count];
+        userCount = [portList count];
         if (numRanges != userCount) {
-            if (_verbose) {
+            if (_verbose == YES) {
                 IOLog("PKB: port range counts differ\n");
             }
             goto done;
@@ -1676,11 +1675,11 @@ cleanup_and_fail:
             entryBase = rangesPtr[0];
             entryLength = rangesPtr[1];
 
-            rangeResource = [(id)portList objectAt:i];
+            rangeResource = [portList objectAt:i];
             range = [rangeResource range];
 
             if (range.base != entryBase || range.length != entryLength) {
-                if (_verbose) {
+                if (_verbose == YES) {
                     IOLog("PKB: user range doesn't match card range\n");
                 }
                 matched = NO;
@@ -1692,7 +1691,7 @@ cleanup_and_fail:
     }
 
 done:
-    if (matched && _verbose) {
+    if (matched && _verbose == YES) {
         IOLog("PKB: card entry %d matches user port ranges.\n",
               *(unsigned int *)((char *)entry + 4));
     }
@@ -1703,7 +1702,7 @@ done:
 /*
  * Reserve I/O ports using entry
  */
-- (BOOL)reserveIOPorts:(const char *)portList UsingEntry:entry
+- (BOOL)reserveIOPorts:portList UsingEntry:entry
 {
     id eisaBus;
     id ioPortsResource;
@@ -1718,13 +1717,13 @@ done:
     eisaBus = [KernBus lookupBusInstanceWithName:"EISA" busId:0];
     ioPortsResource = [eisaBus _lookupResourceWithKey:"I/O Ports"];
 
-    if (_verbose) {
+    if (_verbose == YES) {
         IOLog("PKB: looking for a suitable config entry in the tuples..\n");
     }
 
     /* Check for invalid config (decodes lines but no ranges) */
     if (*(int *)((char *)entry + 8) == 1 && *(int *)((char *)entry + 0x74) == 0) {
-        if (_verbose) {
+        if (_verbose == YES) {
             IOLog("PKB: config entry decodes address lines but has no port ranges.\n");
         }
         return NO;
@@ -1746,18 +1745,18 @@ done:
             rangeResource = [ioPortsResource reserveRange:range];
             if (rangeResource == nil) {
                 /* Reservation failed - free all previously allocated ranges */
-                [(id)portList freeObjects:@selector(free)];
+                [portList freeObjects];
                 return NO;
             }
 
             /* Add to port range list */
-            [(id)portList addObject:rangeResource];
+            [portList addObject:rangeResource];
 
             rangesPtr += 2;  /* Move to next range (8 bytes) */
         }
     }
 
-    if (_verbose) {
+    if (_verbose == YES) {
         IOLog("PKB: entry %d seems to be good\n", *(unsigned int *)((char *)entry + 4));
     }
 

@@ -1,0 +1,14 @@
+CC ?= cc
+CFLAGS = -std=c89 -pedantic -Wall -Wextra -Werror
+
+.PHONY: all test clean
+all: test_ioaudio_init
+
+test_ioaudio_init: test_ioaudio_init.c
+	$(CC) $(CFLAGS) test_ioaudio_init.c -o $@
+
+test: test_ioaudio_init
+	./test_ioaudio_init
+
+clean:
+	rm -f test_ioaudio_init test_ioaudio_init.exe

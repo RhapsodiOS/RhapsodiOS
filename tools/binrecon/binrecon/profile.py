@@ -65,13 +65,23 @@ def load_profile(path: Path, environ: Mapping[str, str]) -> Profile:
     )
 
 
-def analysis_scope(profile):
-    """Return the profile's analysis scope as sorted (start, end) pairs.
+def analysis_scope(profile, artifact: str = "reference"):
+    """Return an artifact's analysis scope as sorted (start, end) pairs.
 
-    An empty tuple means the profile declares no scope, so everything is
-    analyzed. ``start`` is inclusive and ``end`` exclusive.
+    The reference always uses ``analysis_scope``; the rebuilt artifact uses
+    ``rebuilt_analysis_scope`` when the profile declares one and falls back to
+    ``analysis_scope`` otherwise. An empty tuple means no scope is declared, so
+    everything is analyzed. ``start`` is inclusive and ``end`` exclusive.
     """
-    declared = profile.document.get("analysis_scope")
+    if artifact not in ("reference", "rebuilt"):
+        raise ProfileError(f"unknown artifact {artifact!r}")
+    field = "analysis_scope"
+    if artifact == "rebuilt" and "rebuilt_analysis_scope" in profile.document:
+        field = "rebuilt_analysis_scope"
+    return _scope_ranges(profile.document.get(field), field)
+
+
+def _scope_ranges(declared, field: str) -> tuple:
     if not declared:
         return ()
     ranges = []
@@ -79,14 +89,14 @@ def analysis_scope(profile):
         start, end = int(item["start"]), int(item["end"])
         if end <= start:
             raise ProfileError(
-                f"analysis_scope range {start}..{end} is empty or inverted"
+                f"{field} range {start}..{end} is empty or inverted"
             )
         ranges.append((start, end))
     ranges.sort()
     for (_, previous_end), (next_start, _) in zip(ranges, ranges[1:]):
         if next_start < previous_end:
             raise ProfileError(
-                f"analysis_scope ranges overlap at {next_start}"
+                f"{field} ranges overlap at {next_start}"
             )
     return tuple(ranges)
 

@@ -15,8 +15,13 @@ RC_OS = RC_OS
 RC_CFLAGS =
 
 APPLE_SUBDIRS = ar file
-COMMON_SUBDIRS = libstuff as gprof include misc ld dyld libdyld \
-		 libmacho mkshlib otool profileServer RelNotes man
+# dyld (MH_DYLINKER) needs a static libc.a; stage-0 only has System.framework
+# as a dylib. Skip rebuilding host /usr/lib/dyld; libdyld/libmacho still build.
+# otool links -static -lc_static, which does not exist until Libc is built
+# (after cctools in BootstrapManifest). Host already has /usr/bin/otool.
+# To build dyld/otool later: add them once libc_static.a exists.
+COMMON_SUBDIRS = libstuff as gprof include misc ld libdyld \
+		 libmacho mkshlib profileServer RelNotes man
 
 ifeq "nextstep" "$(RC_OS)"
   SUBDIRS = $(COMMON_SUBDIRS)
@@ -283,8 +288,8 @@ installsrc installGNUsrc installMWsrc: SRCROOT
 installhdrs: $(DSTROOT)
 	@if [ $(SRCROOT) ];						\
 	then								\
-	    projName=`basename $(SRCROOT) | sed 's/-[0-9.]*//'`;	\
-	    if [ "$$projName" = cctoolslib ];				\
+	    projName=`basename $(SRCROOT) | sed 's/-[-0-9.]*//' | sed 's/\.cvs//'`; \
+	    if [ "$$projName" = cctools -o "$$projName" = cctoolslib ];	\
 	    then							\
 		cd include; $(MAKE) DSTROOT=$(DSTROOT) install;		\
 	    fi;								\

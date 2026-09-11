@@ -58,9 +58,16 @@ ARFLAGS= rucv
 ARCHFULL_RC_CFLAGS = $(foreach X, $(RC_ARCHS),$(addprefix -arch , $(X)))
 ARCHLESS_RC_CFLAGS = $(filter-out $(ARCHFULL_RC_CFLAGS), $(RC_CFLAGS))
 
+# Bootstrap supplies HDRROOT as the target sysroot. NEXT_ROOT stays gated
+# until System exists, so header lookup cannot wait on that library.
+HEADER_ROOT=$(HDRROOT)
+ifeq "$(HEADER_ROOT)" ""
+HEADER_ROOT=$(NEXT_ROOT)
+endif
+
 #COMMON_CFLAGS = -g $(ARCHLESS_RC_CFLAGS) -fno-omit-frame-pointer -I.. -I. -MD -I$(LOCAL_DEVELOPER_DIR)/Headers -Wformat -Wno-precomp -D_POSIX_SOURCE -static
 
-COMMON_CFLAGS = -g  -nostdinc $(ARCHLESS_RC_CFLAGS) -fno-omit-frame-pointer -I.. -I. -MD -I$(NEXT_ROOT)$(SYSTEM_LIBRARY_DIR)/Frameworks/System.framework/PrivateHeaders   -I$(NEXT_ROOT)$(SYSTEM_LIBRARY_DIR)/Frameworks/System.framework/Headers -I$(NEXT_ROOT)$(SYSTEM_LIBRARY_DIR)/Frameworks/System.framework/PrivateHeaders/bsd -I$(NEXT_ROOT)$(SYSTEM_LIBRARY_DIR)/Frameworks/System.framework/PrivateHeaders/machdep -I$(NEXT_ROOT)$(SYSTEM_LIBRARY_DIR)/Frameworks/System.framework/Headers/bsd -F$(NEXT_ROOT)$(SYSTEM_LIBRARY_DIR)/Frameworks -Wformat -Wno-precomp -traditional-cpp
+COMMON_CFLAGS = -g  -nostdinc $(ARCHLESS_RC_CFLAGS) -fno-omit-frame-pointer -I.. -I. -MD -I$(HEADER_ROOT)$(SYSTEM_LIBRARY_DIR)/Frameworks/System.framework/Versions/B/PrivateHeaders   -I$(HEADER_ROOT)$(SYSTEM_LIBRARY_DIR)/Frameworks/System.framework/Versions/B/Headers -I$(HEADER_ROOT)$(SYSTEM_LIBRARY_DIR)/Frameworks/System.framework/Versions/B/PrivateHeaders/bsd -I$(HEADER_ROOT)$(SYSTEM_LIBRARY_DIR)/Frameworks/System.framework/Versions/B/PrivateHeaders/machdep -I$(HEADER_ROOT)$(SYSTEM_LIBRARY_DIR)/Frameworks/System.framework/Versions/B/Headers/bsd -F$(HEADER_ROOT)$(SYSTEM_LIBRARY_DIR)/Frameworks -Wformat -Wno-precomp -traditional-cpp
 
 DEBUG_CFLAGS=	-g -DDEBUG -DDDM_DEBUG
 PROFILE_CFLAGS=	-pg

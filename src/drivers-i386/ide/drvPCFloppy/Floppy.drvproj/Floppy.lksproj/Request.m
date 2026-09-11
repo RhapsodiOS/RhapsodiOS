@@ -8,21 +8,23 @@
 #import "Request.h"
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
+#import <machkit/NXLock.h>
 #import "FloppyVm.h"
+#import "FloppyOperation.h"
 
 // External references for VM functions
-extern unsigned int __page_size;
-extern unsigned int __page_mask;
-extern vm_map_t _vm_map_pmap_EXTERNAL(vm_map_t map, vm_address_t address);
-extern vm_offset_t _pmap_resident_extract(pmap_t pmap, vm_address_t address);
-extern kern_return_t _vm_map_pageable(vm_map_t map, vm_address_t start, vm_address_t end, boolean_t new_pageable);
+extern unsigned int page_size;
+extern unsigned int page_mask;
+extern vm_map_t vm_map_pmap_EXTERNAL(vm_map_t map);
+extern vm_offset_t pmap_resident_extract(pmap_t pmap, vm_address_t address);
+extern kern_return_t vm_map_pageable(vm_map_t map, vm_address_t start, vm_address_t end, boolean_t new_pageable);
 
 /*
  * dowire - Wire or unwire memory pages
  * From decompiled code: wires or unwires memory pages in a VM map.
  *
  * This function makes memory pages resident (wired) or pageable (unwired) by
- * calling _vm_map_pageable. It automatically page-aligns the address range.
+ * calling vm_map_pageable. It automatically page-aligns the address range.
  *
  * Parameters:
  *   map       - VM map containing the memory
@@ -31,12 +33,14 @@ extern kern_return_t _vm_map_pageable(vm_map_t map, vm_address_t start, vm_addre
  *   wireFlag  - 0 to unwire (make pageable), non-zero to wire (make resident)
  *
  * Implementation details:
- *   - Start address is aligned down: address & ~__page_mask
- *   - End address is aligned up: (address + size + __page_mask) & ~__page_mask
+ *   - Start address is aligned down: address & ~page_mask
+ *   - End address is aligned up: (address + size + page_mask) & ~page_mask
  *   - Wiring when wireFlag != 0 (new_pageable = FALSE)
  *   - Unwiring when wireFlag == 0 (new_pageable = TRUE)
+ *   - Returns vm_map_pageable's kern_return_t so callers can detect a wire
+ *     failure
  */
-static void dowire(vm_map_t map,
+static kern_return_t dowire(vm_map_t map,
                     vm_address_t address,
                     vm_size_t size,
                     int wireFlag)
@@ -46,12 +50,12 @@ static void dowire(vm_map_t map,
 	boolean_t newPageable;
 
 	// Calculate page-aligned start address (round down)
-	startAddr = address & ~__page_mask;
+	startAddr = address & ~page_mask;
 
 	// Calculate page-aligned end address (round up)
-	// address + size + __page_mask rounds up to next page boundary
-	// Then & ~__page_mask aligns it
-	endAddr = (address + size + __page_mask) & ~__page_mask;
+	// address + size + page_mask rounds up to next page boundary
+	// Then & ~page_mask aligns it
+	endAddr = (address + size + page_mask) & ~page_mask;
 
 	// Convert wire flag to pageable flag
 	// wireFlag == 0 means unwire (make pageable = TRUE)
@@ -59,7 +63,7 @@ static void dowire(vm_map_t map,
 	newPageable = (wireFlag == 0);
 
 	// Wire or unwire the memory range
-	_vm_map_pageable(map, startAddr, endAddr, newPageable);
+	return vm_map_pageable(map, startAddr, endAddr, newPageable);
 }
 
 /*
@@ -79,8 +83,8 @@ static void dowire(vm_map_t map,
  *
  * Implementation details:
  *   - Processes data in chunks that don't cross page boundaries
- *   - Uses _vm_map_pmap_EXTERNAL to get pmap from vm_map
- *   - Uses _pmap_resident_extract to get physical addresses
+ *   - Uses vm_map_pmap_EXTERNAL to get pmap from vm_map
+ *   - Uses pmap_resident_extract to get physical addresses
  *   - Copies data using bcopy on physical addresses
  *   - Handles source and destination page boundaries separately
  */
@@ -101,10 +105,10 @@ static void docopy(vm_map_t sourceMap,
 	// Process all bytes
 	while (byteCount != 0) {
 		// Calculate bytes remaining to end of source page
-		// __page_mask contains the page offset mask (e.g., 0xFFF for 4KB pages)
-		// sourceAddr & __page_mask gives offset within page
-		// __page_size - offset gives bytes to page boundary
-		sourceBytesRemaining = __page_size - (sourceAddr & __page_mask);
+		// page_mask contains the page offset mask (e.g., 0xFFF for 4KB pages)
+		// sourceAddr & page_mask gives offset within page
+		// page_size - offset gives bytes to page boundary
+		sourceBytesRemaining = page_size - (sourceAddr & page_mask);
 
 		// Start with minimum of bytes remaining and source page boundary
 		chunkSize = byteCount;
@@ -113,18 +117,18 @@ static void docopy(vm_map_t sourceMap,
 		}
 
 		// Also limit by destination page boundary
-		destBytesRemaining = __page_size - (destAddr & __page_mask);
+		destBytesRemaining = page_size - (destAddr & page_mask);
 		if (destBytesRemaining < chunkSize) {
 			chunkSize = destBytesRemaining;
 		}
 
 		// Get physical addresses for this chunk
 		// First get the pmap (physical map) for each address space
-		destPmap = _vm_map_pmap_EXTERNAL(destMap, destAddr);
-		destPhys = _pmap_resident_extract(destPmap, destAddr);
+		destPmap = vm_map_pmap_EXTERNAL(destMap);
+		destPhys = pmap_resident_extract(destPmap, destAddr);
 
-		sourcePmap = _vm_map_pmap_EXTERNAL(sourceMap, sourceAddr);
-		sourcePhys = _pmap_resident_extract(sourcePmap, sourceAddr);
+		sourcePmap = vm_map_pmap_EXTERNAL(sourceMap);
+		sourcePhys = pmap_resident_extract(sourcePmap, sourceAddr);
 
 		// Copy the chunk using physical addresses
 		bcopy((void *)sourcePhys, (void *)destPhys, chunkSize);
@@ -214,8 +218,7 @@ static void docopy(vm_map_t sourceMap,
 	BOOL isWrite;
 	int cylinderState;
 	int cylinderOffset;
-	unsigned *readOperation;
-	id mainQueue;
+	floppyOperation_t *readOperation;
 	id queueLock;
 	int *queueHead;
 	BOOL ready;
@@ -236,40 +239,23 @@ static void docopy(vm_map_t sourceMap,
 	// Check if cylinder needs to be loaded (state == 3)
 	if (cylinderState == 3) {
 		// Allocate read operation (0x28 = 40 bytes)
-		readOperation = (unsigned *)IOMalloc(0x28);
-		
+		readOperation = (floppyOperation_t *)IOMalloc(sizeof(floppyOperation_t));
+
 		// Set operation type to 0 (read cylinder)
-		readOperation[0] = 0;
-		
+		readOperation->type = 0;
+
 		// Set cylinder number
-		readOperation[1] = cylinderNumber;
+		readOperation->cylinder = cylinderNumber;
 		
 		// Get queue lock
-		queueLock = *(id *)((char *)self + 0x158);
-		
+		queueLock = self->_queueLock;
+
 		// Lock the queue
 		[queueLock lock];
-		
-		// Get main operation queue head
-		mainQueue = (id)((char *)self + 0x150);
-		queueHead = (int *)((char *)self + 0x150);
-		
+
 		// Add operation to queue
-		if (*(void **)((char *)self + 0x150) == mainQueue) {
-			// Queue is empty
-			*(unsigned **)((char *)self + 0x150) = readOperation;
-			*(unsigned **)((char *)self + 0x154) = readOperation;
-			readOperation[8] = (unsigned)queueHead;  // prev
-			readOperation[9] = (unsigned)queueHead;  // next
-		} else {
-			// Queue has entries - append to end
-			int lastEntry = *(int *)((char *)self + 0x154);
-			readOperation[9] = lastEntry;  // prev
-			readOperation[8] = (unsigned)queueHead;  // next
-			*(unsigned **)((char *)self + 0x154) = readOperation;
-			*(unsigned **)(lastEntry + 0x20) = readOperation;
-		}
-		
+		queue_enter(&self->_operationQueue, readOperation, floppyOperation_t *, link);
+
 		// Unlock with status 1 (wake operation thread)
 		[queueLock unlockWith:1];
 		
@@ -366,7 +352,7 @@ static void docopy(vm_map_t sourceMap,
 	*((unsigned char *)request + 0x0c) = 0;                // +0x0c: abort flag
 	
 	// Allocate lock object
-	lockObject = [[objc_getClass("NXConditionLock") alloc] init];
+	lockObject = [NXConditionLock alloc];
 	*(id *)((char *)request + 0x18) = lockObject;          // +0x18: lock
 	*(unsigned *)((char *)request + 0x20) = numCylinders;  // +0x20: num subrequests
 	*(unsigned *)((char *)request + 0x1c) = 0;             // +0x1c: completed count
@@ -653,9 +639,13 @@ static void docopy(vm_map_t sourceMap,
 	// Check if error flag is set (bit 0)
 	if ((*flagsPtr & 1) != 0) {
 		// Cylinder has an error - fail the operation
+		/* 0x7cb8 stores -721 (IO_R_MEDIA) here, not IO_R_IO_ERROR. The
+		   reference then jumps straight to the epilogue, which never sets
+		   eax, so its return value on this path is incidental; we return
+		   the same code we recorded. */
 		parentRequest = *(id *)((char *)subrequest + 0x08);
-		*(IOReturn *)((char *)parentRequest + 0x1c) = IO_R_IO_ERROR;
-		return IO_R_IO_ERROR;
+		*(IOReturn *)((char *)parentRequest + 0x1c) = IO_R_MEDIA;
+		return IO_R_MEDIA;
 	}
 
 	// Get block start and calculate cache pointer
@@ -669,7 +659,15 @@ static void docopy(vm_map_t sourceMap,
 	byteCount = sectorSize * blockCount;
 
 	// Wire the cache memory (make pages resident)
-	dowire(kernel_map, (vm_address_t)cachePointer, byteCount, 1);
+	wireResult = dowire(kernel_map, (vm_address_t)cachePointer, byteCount, 1);
+
+	if (wireResult != 0) {
+		// Wiring failed - fail the operation without touching memory
+		// (no docopy, no compensating unwire)
+		parentRequest = *(id *)((char *)subrequest + 0x08);
+		*(IOReturn *)((char *)parentRequest + 0x1c) = IO_R_CANT_WIRE;
+		return IO_R_CANT_WIRE;
+	}
 
 	// Get write flag and buffer info
 	isWrite = *(BOOL *)subrequest;
@@ -867,10 +865,8 @@ static void docopy(vm_map_t sourceMap,
 	BOOL isWrite;
 	int *refCountPtr;
 	unsigned char *flagsPtr;
-	unsigned *operation;
+	floppyOperation_t *operation;
 	id queueLock;
-	id mainQueue;
-	int *queueHead;
 	int cylinderState;
 
 	// Get cylinder number
@@ -903,39 +899,22 @@ static void docopy(vm_map_t sourceMap,
 		*(int *)((char *)cacheMetadata + cylinderOffset) = 0;
 
 		// Allocate write operation structure (0x28 = 40 bytes)
-		operation = (unsigned *)IOMalloc(0x28);
+		operation = (floppyOperation_t *)IOMalloc(sizeof(floppyOperation_t));
 
 		// Set operation type to 1 (write cylinder)
-		operation[0] = 1;
+		operation->type = 1;
 
 		// Set cylinder number
-		operation[1] = cylinderNumber;
+		operation->cylinder = cylinderNumber;
 
 		// Get queue lock
-		queueLock = *(id *)((char *)self + 0x158);
+		queueLock = self->_queueLock;
 
 		// Lock the queue
 		[queueLock lock];
 
-		// Get main operation queue head (at offset 0x150)
-		mainQueue = (id)((char *)self + 0x150);
-		queueHead = (int *)((char *)self + 0x150);
-
 		// Add operation to queue
-		if (*(void **)((char *)self + 0x150) == mainQueue) {
-			// Queue is empty
-			*(unsigned **)((char *)self + 0x150) = operation;
-			*(unsigned **)((char *)self + 0x154) = operation;
-			operation[8] = (unsigned)queueHead;  // prev
-			operation[9] = (unsigned)queueHead;  // next
-		} else {
-			// Queue has entries - append to end
-			int lastEntry = *(int *)((char *)self + 0x154);
-			operation[9] = lastEntry;  // prev
-			operation[8] = (unsigned)queueHead;  // next
-			*(unsigned **)((char *)self + 0x154) = operation;
-			*(unsigned **)(lastEntry + 0x20) = operation;
-		}
+		queue_enter(&self->_operationQueue, operation, floppyOperation_t *, link);
 
 		// Unlock with status 1 (wake operation thread)
 		[queueLock unlockWith:1];

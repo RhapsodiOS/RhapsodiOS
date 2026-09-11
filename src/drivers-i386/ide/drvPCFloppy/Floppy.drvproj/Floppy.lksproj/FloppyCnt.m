@@ -42,8 +42,8 @@ static void FloppyControllerThread(void *arg);
  */
 static int _fcUnitNum = 0;
 
-// External CMOS lock variable (referenced in decompiled code)
-extern int __xxx;
+// CMOS access counter (compiler-generated name in the decompiled code)
+static int __xxx;
 
 /*
  * floppyDriveType - Read floppy drive type from CMOS
@@ -178,11 +178,11 @@ BOOL numFloppyDrives(void)
 
 	// Call superclass initialization
 	if ([super initFromDeviceDescription:deviceDescription] == nil) {
-		return nil;
+		return [self free];
 	}
 
 	// Enable all interrupts
-	if ([self enableAllInterrupts] == NO) {
+	if ([self enableAllInterrupts] != IO_R_SUCCESS) {
 		return [self free];
 	}
 
@@ -204,7 +204,7 @@ BOOL numFloppyDrives(void)
 		// Allocate conventional memory for DMA buffer (page-aligned)
 		// Uses page_size for both size and alignment
 		extern unsigned int page_size;
-		_dmaBuffer = _alloc_cnvmem(page_size, page_size);
+		_dmaBuffer = alloc_cnvmem(page_size, page_size);
 
 		if (_dmaBuffer == NULL) {
 			return [self free];
@@ -249,7 +249,7 @@ BOOL numFloppyDrives(void)
 	}
 
 	// Fork the floppy controller thread
-	threadResult = _IOForkThread(FloppyControllerThread, self);
+	threadResult = IOForkThread(FloppyControllerThread, self);
 
 	// Clear bit 4 of flags
 	_flags = _flags & 0xef;
@@ -360,7 +360,7 @@ BOOL numFloppyDrives(void)
 	request = (RequestNode *)IOMalloc(0x10);
 
 	if (request == NULL) {
-		return IO_R_NO_MEMORY;
+		return IO_R_SUCCESS;
 	}
 
 	// Set the command parameters
@@ -372,7 +372,7 @@ BOOL numFloppyDrives(void)
 
 	if (requestLock == nil) {
 		IOFree(request, 0x10);
-		return IO_R_NO_MEMORY;
+		return IO_R_SUCCESS;
 	}
 
 	// Lock the command lock to modify the queue
@@ -505,11 +505,11 @@ BOOL numFloppyDrives(void)
  * Parameters:
  *   cmdParams - Pointer to command parameters structure containing:
  *               - offset 0x08: Command type (1=cmdXfr, 2=eject, 3=motorOn, 4=motorOff, 5=getStatus)
- *               - offset 0x14: Drive number
  *               - offset 0x40: Result status (return value)
  *               - offset 0x44: Error code
  *               - offset 0x48: Transferred bytes
  *               - offset 0x4c: Additional result
+ *               - offset 0x5c: Drive number
  *
  * Returns:
  *   0 always
@@ -536,10 +536,10 @@ BOOL numFloppyDrives(void)
 	// Check if controller needs reset (bit 0 of _flags)
 	// If not set, or reset succeeds, proceed with command
 	if (((_flags & 0x01) == 0) ||
-	    ([self i82077Reset:0] == IO_R_SUCCESS)) {
+	    ((result = [self i82077Reset:0]) == IO_R_SUCCESS)) {
 
-		// Get drive number (offset 0x14)
-		driveNum = *(unsigned char *)((char *)cmdParams + 0x14);
+		// Get drive number (offset 0x5c)
+		driveNum = *(unsigned char *)((char *)cmdParams + 0x5c);
 
 		// Get command type (offset 0x08)
 		cmdType = *(unsigned int *)((char *)cmdParams + 0x08);
@@ -571,8 +571,8 @@ BOOL numFloppyDrives(void)
 				[self getDriveStatus:cmdParams];
 				[self doMotorOff:driveNum];
 
-				// Clear bit 2 of flags at offset 0x4e
-				flagsPtr = (unsigned char *)((char *)cmdParams + 0x4e);
+				// Clear bit 2 of flags at offset 0x50
+				flagsPtr = (unsigned char *)((char *)cmdParams + 0x50);
 				*flagsPtr &= 0xfb;
 
 				needsReset = NO;
@@ -696,7 +696,7 @@ static void FloppyControllerThread(void *arg)
 			if (cmdParams == NULL) {
 				// Exit request - unlock the request lock and exit thread
 				[requestLock unlockWith:0];
-				_IOExitThread();
+				IOExitThread();
 				return;  // Thread terminates
 			}
 

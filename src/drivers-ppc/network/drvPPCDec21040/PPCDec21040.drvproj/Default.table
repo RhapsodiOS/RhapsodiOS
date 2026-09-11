@@ -1,0 +1,10 @@
+"Title"             = "drvPPCDec21040";
+"Driver Name"       = "drvPPCDec21040";
+"Matching"          = "pci1011,14";
+"Class Names"       = "DECchip21041";
+"Network Interface" = "AUTO";
+"Boot Driver"       = "no";
+"Load Priority"     = "7000";
+"Server Name" = "drvPPCDec21040";
+"Driver Version" = "PROGRAM:drvPPCDec21040  PROJECT:drvPPCDec21040-1  DEVELOPER:root  BUILT:Tue Nov 23 19:15:19 PST 1999";
+"Version" = "5.00";

@@ -99,7 +99,7 @@
 # derived files should go.
 #
 
-MACH_DEBUG_DEFS = $(SYSTEM_LIBRARY_DIR)/Frameworks/System.framework/PrivateHeaders/mach_debug/mach_debug.defs
+MACH_DEBUG_DEFS = $(HDRROOT)/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders/mach_debug/mach_debug.defs
 mach_debug.defs : $(MACH_DEBUG_DEFS)
 	cp $(MACH_DEBUG_DEFS) $(DERIVED_SRC_DIR)
 

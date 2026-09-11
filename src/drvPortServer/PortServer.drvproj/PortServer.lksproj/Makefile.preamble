@@ -12,4 +12,4 @@ KERNEL_VERS_HEADERS = $(SYSTEM_VERS_FRAMEWORK)/PrivateHeaders
 PUBLIC_HDR_INSTALLDIR  = $(SYSTEM_VERS_HEADERS)/bsd/dev
 PRIVATE_HDR_INSTALLDIR = $(KERNEL_VERS_HEADERS)/bsd/dev
 
-OTHER_CFLAGS =  -I$(NEXT_ROOT)$(SYSTEM_LIBRARY_DIR)/Frameworks/System.framework/PrivateHeaders/machdep
+OTHER_CFLAGS = -DDRIVER_PRIVATE -Wno-format -I$(NEXT_ROOT)$(SYSTEM_LIBRARY_DIR)/Frameworks/System.framework/PrivateHeaders/machdep

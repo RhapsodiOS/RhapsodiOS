@@ -13,11 +13,11 @@ PROJECTVERSION = 1.0
 PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
-CLASSES = SCSIServer.m IOSCSISession.m
+CLASSES = SCSIServer.m IOSCSISession.m IOTask.m
 
-HFILES = SCSIServer.h IOSCSISession.h
+HFILES = SCSIServer.h IOSCSISession.h IOTask.h
 
-OTHERSRCS = Makefile Makefile.preamble Makefile.driver_preamble Makefile.postamble
+OTHERSRCS = Makefile Makefile.preamble Makefile.driver_preamble Makefile.postamble IOSCSISessionMig.defs
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC

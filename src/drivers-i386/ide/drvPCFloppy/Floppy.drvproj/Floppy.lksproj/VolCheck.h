@@ -5,6 +5,7 @@
  */
 
 #import <driverkit/return.h>
+#import "IODiskProtocols.h"
 
 // Forward declarations
 @class IOFloppyDrive;
@@ -12,7 +13,7 @@
 /*
  * VolCheckSupport methods category for IOFloppyDrive.
  */
-@interface IOFloppyDrive(volCheckSupport)
+@interface IOFloppyDrive(volCheckSupport) <IODriveVolCheckSupport>
 
 /*
  * Abort pending volume check request.

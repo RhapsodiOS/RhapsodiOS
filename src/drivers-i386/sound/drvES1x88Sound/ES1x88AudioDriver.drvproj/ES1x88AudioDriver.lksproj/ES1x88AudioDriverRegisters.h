@@ -112,8 +112,8 @@
 /*
  * ES1x88 Audio Control 2 Mode Values (register 0xB8)
  */
-#define ES_MODE_INPUT                           0x04    /* Input/Record mode */
-#define ES_MODE_OUTPUT                          0x0E    /* Output/Playback mode */
+#define ES_MODE_INPUT                           0x0E    /* Input/Record mode */
+#define ES_MODE_OUTPUT                          0x04    /* Output/Playback mode */
 
 /*
  * ES1x88 Audio Control 1 Mode Commands (register 0xB7)
@@ -187,7 +187,7 @@ typedef union {
                 right:4,
                 left:4;
     }       reg;
-    unsigned char data;
+    unsigned char rawValue;
 }       sb16MonoMixerRegister_t;
 
 typedef union {
@@ -198,6 +198,25 @@ typedef union {
     }       reg;
     unsigned char rawValue;
 }       es1x88MixerRegister_t;
+
+/*
+ * IRQ control (0xB1) and DMA control (0xB2) share a layout: two select bits at
+ * 2 and 3 encoding the interrupt or channel, and two bits at 4 and 6 that are
+ * always set.
+ */
+typedef union {
+    struct {
+        unsigned char
+                reserved0:2,
+                select0:1,
+                select1:1,
+                fixed4:1,
+                reserved5:1,
+                fixed6:1,
+                reserved7:1;
+    }       reg;
+    unsigned char rawValue;
+}       es1x88ControlRegister_t;
 
 /*
  * Card version enumeration

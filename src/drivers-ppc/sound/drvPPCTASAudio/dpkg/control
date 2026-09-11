@@ -1,0 +1,6 @@
+Package: drvppctasaudio
+Maintainer: RhapsodiOS Developers
+Vendor: RhapsodiOS
+Version: 1
+Description: PowerPC I2S TAS audio device driver
+Build-Depends: build-base, drivertools, driverkit, machkit, kernload, libstreams

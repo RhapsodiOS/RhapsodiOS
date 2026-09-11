@@ -29,7 +29,7 @@ static inline void enforceInOrderExecutionIO(void)
     __asm__ __volatile__ ("eieio" : : : "memory");
 }
 
-unsigned int _ReadGNicRegister(int base, unsigned int offset_and_size)
+unsigned int ReadGNicRegister(int base, unsigned int offset_and_size)
 {
     unsigned int size = offset_and_size >> 16;
     unsigned int value;
@@ -63,7 +63,7 @@ unsigned int _ReadGNicRegister(int base, unsigned int offset_and_size)
     return value;
 }
 
-void _WriteGNicRegister(int base, unsigned int offset_and_size, unsigned int value)
+void WriteGNicRegister(int base, unsigned int offset_and_size, unsigned int value)
 {
     unsigned int size = offset_and_size >> 16;
     unsigned char byte_lo;
@@ -312,7 +312,7 @@ void _WriteGNicRegister(int base, unsigned int offset_and_size, unsigned int val
     [self _monitorLinkStatus];
 
     // Read RX status register and check if bit 1 is clear
-    regValue = _ReadGNicRegister((int)memBase, 0x20026);
+    regValue = ReadGNicRegister((int)memBase, 0x20026);
     if ((regValue & 1) == 0) {
         // RX appears stuck, log and try to recover
         IOLog("Ethernet(GNic): Checking for timeout - RxHead = %d RxTail = %d\n\r",
@@ -357,7 +357,7 @@ void _WriteGNicRegister(int base, unsigned int offset_and_size, unsigned int val
     // Process all pending interrupts
     do {
         // Read interrupt status register
-        intStatus = _ReadGNicRegister((int)memBase, 0x40084);
+        intStatus = ReadGNicRegister((int)memBase, 0x40084);
 
         // Check for transmit completion (bits 0x700)
         if ((intStatus & 0x700) != 0) {
@@ -481,10 +481,10 @@ void _WriteGNicRegister(int base, unsigned int offset_and_size, unsigned int val
     [self reserveDebuggerLock];
 
     // Read current control register value
-    regValue = _ReadGNicRegister((int)memBase, 0x200d0);
+    regValue = ReadGNicRegister((int)memBase, 0x200d0);
 
     // Set bits 0x24 to enable promiscuous mode
-    _WriteGNicRegister((int)memBase, 0x200d0, regValue | 0x24);
+    WriteGNicRegister((int)memBase, 0x200d0, regValue | 0x24);
 
     // Unlock debugger access
     [self releaseDebuggerLock];
@@ -506,10 +506,10 @@ void _WriteGNicRegister(int base, unsigned int offset_and_size, unsigned int val
     [self reserveDebuggerLock];
 
     // Read current control register value
-    regValue = _ReadGNicRegister((int)memBase, 0x200d0);
+    regValue = ReadGNicRegister((int)memBase, 0x200d0);
 
     // Clear bits 0x24 to disable promiscuous mode (AND with 0xffdb)
-    _WriteGNicRegister((int)memBase, 0x200d0, regValue & 0xffdb);
+    WriteGNicRegister((int)memBase, 0x200d0, regValue & 0xffdb);
 
     // Unlock debugger access
     [self releaseDebuggerLock];
@@ -529,10 +529,10 @@ void _WriteGNicRegister(int base, unsigned int offset_and_size, unsigned int val
     multicastEnabled = YES;
 
     // Read current control register value
-    regValue = _ReadGNicRegister((int)memBase, 0x200d0);
+    regValue = ReadGNicRegister((int)memBase, 0x200d0);
 
     // Set bit 2 to enable multicast mode
-    _WriteGNicRegister((int)memBase, 0x200d0, regValue | 2);
+    WriteGNicRegister((int)memBase, 0x200d0, regValue | 2);
 
     // Unlock debugger access
     [self releaseDebuggerLock];
@@ -554,10 +554,10 @@ void _WriteGNicRegister(int base, unsigned int offset_and_size, unsigned int val
     multicastEnabled = NO;
 
     // Read current control register value
-    regValue = _ReadGNicRegister((int)memBase, 0x200d0);
+    regValue = ReadGNicRegister((int)memBase, 0x200d0);
 
     // Clear bit 2 to disable multicast mode (AND with 0xfffd)
-    _WriteGNicRegister((int)memBase, 0x200d0, regValue & 0xfffd);
+    WriteGNicRegister((int)memBase, 0x200d0, regValue & 0xfffd);
 
     // Unlock debugger access
     [self releaseDebuggerLock];

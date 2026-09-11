@@ -8,6 +8,8 @@ Objective-C implementations and C function definitions.
 from pathlib import Path
 import re
 
+from source_paths import source_files
+
 
 _IMPLEMENTATION = re.compile(r"^@implementation\s+(\w+)(?:\s*\(\s*(\w+)\s*\))?")
 _END = re.compile(r"^@end")
@@ -38,6 +40,8 @@ _C_DEFINITION = re.compile(
 
 _METHOD_DECLARATION_LIMIT = 20
 
+_COMMENT = re.compile(r"/\*.*?\*/")
+
 
 def defined_symbols(macho_document):
     """Map each address to the sorted unique names defined there.
@@ -52,7 +56,28 @@ def defined_symbols(macho_document):
     return {address: sorted(names) for address, names in index.items()}
 
 
-def _selector(declaration):
+def _strip_parenthesised(text):
+    """Replace every parenthesised span with a space, nesting included.
+
+    A single `\\([^()]*\\)` pass only removes innermost pairs, so a
+    function-pointer type such as `(int (*)(id, id))` loses its inner pairs
+    and leaves the outer `)` behind for the segment walk to read as a
+    keyword. Track the depth instead.
+    """
+    kept = []
+    depth = 0
+    for character in text:
+        if character == "(":
+            depth += 1
+            kept.append(" ")
+        elif character == ")":
+            depth = max(0, depth - 1)
+        elif depth == 0:
+            kept.append(character)
+    return "".join(kept)
+
+
+def read_selector(declaration):
     """Reduce an Objective-C method declaration to its bare selector.
 
     Keywords after the first may be empty: `initFromDeviceDescription::::` is a
@@ -60,8 +85,14 @@ def _selector(declaration):
     gone, each colon is followed by its argument name and then, optionally, the
     next keyword, so matching `(\\w+)\\s*:` would capture the argument name as a
     keyword and turn `foo::::` into `foo:a:b:c:`. Walk the segments instead.
+
+    Comments go first, before the types: a comment may itself contain
+    parentheses, and one sitting between an argument name and the next
+    keyword would otherwise be read as that keyword, turning
+    `initSCSITape:target:` into `initSCSITape:/*:`.
     """
-    text = re.sub(r"\([^()]*\)", " ", declaration)
+    declaration = _COMMENT.sub(" ", declaration)
+    text = _strip_parenthesised(declaration)
     text = text.split("{")[0]
     if ":" in text:
         segments = text.split(":")
@@ -78,10 +109,38 @@ def _relative_posix(repo_root, path):
     return path.resolve().relative_to(repo_root.resolve()).as_posix()
 
 
-def source_sites(repo_root, source_dir):
+def _body_follows(lines, index):
+    """True when the next non-blank line after `index` opens a body.
+
+    NeXT GCC allows a semicolon between a method signature and its body:
+
+        - (void)StartCudaTransmission:(CudaRequest *)plugInMessage;
+        {
+
+    so a trailing ";" cannot end the search on its own. It still has to end
+    it in every other case, because `_METHOD` matches any indented line
+    starting with "-" or "+" -- including a C continuation such as
+    "+ 2 * sizeof(IODBDMADescriptor) );". Without the ";" terminator that
+    line would scan forward to the next brace and invent a method.
+    """
+    for candidate in lines[index + 1:]:
+        if candidate.strip():
+            return candidate.lstrip().startswith("{")
+    return False
+
+
+def source_sites(repo_root, source_path):
     """Map symbol names to the source locations that define them."""
     sites = {}
-    paths = sorted(Path(source_dir).glob("*.m")) + sorted(Path(source_dir).glob("*.c"))
+    # source_files() returns one suffix-mixed sorted list; a directory whose
+    # source shares space with .c-prefixed names earlier in the alphabet
+    # (e.g. Windows' case-insensitive path sort) would otherwise interleave
+    # .m and .c files instead of scanning all .m files before all .c files.
+    # sites accumulates every definition site regardless of scan order, so
+    # this reorder changes nothing about the output; it costs nothing and
+    # keeps the call site faithful to what it replaced, so restore it anyway.
+    found = source_files(source_path, {".m", ".c"}, recursive=False)
+    paths = [p for p in found if p.suffix == ".m"] + [p for p in found if p.suffix == ".c"]
     for path in paths:
         relative = _relative_posix(Path(repo_root), path)
         lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
@@ -107,7 +166,11 @@ def source_sites(repo_root, source_dir):
             if method:
                 declaration = [line]
                 found_brace = "{" in line
-                found_semicolon = not found_brace and line.rstrip().endswith(";")
+                found_semicolon = (
+                    not found_brace
+                    and line.rstrip().endswith(";")
+                    and not _body_follows(lines, index)
+                )
                 end = min(total, index + _METHOD_DECLARATION_LIMIT)
                 scan = index
                 while not found_brace and not found_semicolon and scan + 1 < end:
@@ -128,11 +191,13 @@ def source_sites(repo_root, source_dir):
                     declaration.append(candidate)
                     if "{" in candidate:
                         found_brace = True
-                    elif candidate.rstrip().endswith(";"):
+                    elif candidate.rstrip().endswith(";") and not _body_follows(
+                        lines, scan
+                    ):
                         found_semicolon = True
 
                 if found_brace and not found_semicolon:
-                    selector = _selector(" ".join(declaration))
+                    selector = read_selector(" ".join(declaration))
                     if selector:
                         key = f"{method.group(1)}[{current_class} {selector}]"
                         sites.setdefault(key, []).append((relative, number))
@@ -148,6 +213,15 @@ def source_sites(repo_root, source_dir):
                 declaration = [line]
                 found_brace = "{" in line
                 found_semicolon = not found_brace and line.rstrip().endswith(";")
+                # A closed parameter list with no ";" may be a K&R definition,
+                # whose parameter declarations each end in ";". Those must not
+                # be read as a prototype's terminator. They are not reliably
+                # indented -- drvSCSITape's stblocksize.c writes them at column
+                # zero -- so indentation cannot be part of the test. A genuine
+                # prototype is unaffected: a single-line one is skipped before
+                # this point, and a wrapped one does not close its parameter
+                # list on the header line, so "kandr" is never set.
+                kandr = line.rstrip().endswith(")")
                 end = min(total, index + _METHOD_DECLARATION_LIMIT)
                 scan = index
                 while not found_brace and not found_semicolon and scan + 1 < end:
@@ -169,7 +243,7 @@ def source_sites(repo_root, source_dir):
                     declaration.append(candidate)
                     if "{" in candidate:
                         found_brace = True
-                    elif candidate.rstrip().endswith(";"):
+                    elif candidate.rstrip().endswith(";") and not kandr:
                         found_semicolon = True
 
                 if found_brace and not found_semicolon:

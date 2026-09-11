@@ -5,9 +5,11 @@
  */
 
 #import "IOFloppyDisk.h"
+#import "FloppyOperation.h"
 #import "IOFloppyDrive.h"
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
+#import <machkit/NXLock.h>
 
 /*
  * Thread startup function.
@@ -83,46 +85,28 @@ extern unsigned int _FloppyGeometry[];
 - free
 {
 	id drive;
-	unsigned *operation;
+	floppyOperation_t *operation;
 	id completionLock;
-	id mainQueue;
-	int *queueHead;
 
 	// Get drive and detach BSD interface
 	drive = [self drive];
 	[self detachBsdDiskInterfaceFromDrive:drive];
 
 	// If operation thread is running, shut it down
-	if ((*(unsigned char *)((char *)self + 0x15c) & 1) != 0) {
+	if (_startedThread) {
 		// Allocate abort operation (type 4)
-		operation = (unsigned *)IOMalloc(0x28);
-		operation[0] = 4;  // Type 4: abort and exit thread
+		operation = (floppyOperation_t *)IOMalloc(sizeof(floppyOperation_t));
+		operation->type = 4;  // Type 4: abort and exit thread
 
 		// Allocate completion lock
-		completionLock = [[objc_getClass("NXConditionLock") alloc] init];
+		completionLock = [NXConditionLock alloc];
 		[completionLock initWith:1];
-		operation[4] = (unsigned)completionLock;
+		operation->completionLock = completionLock;
 
 		// Lock queue and add operation
 		[_queueLock lock];
 
-		mainQueue = (id)((char *)self + 0x150);
-		queueHead = (int *)((char *)self + 0x150);
-
-		if (_queueHead == mainQueue) {
-			// Queue is empty
-			_queueHead = (void *)operation;
-			_queueTail = (void *)operation;
-			operation[8] = (unsigned)queueHead;  // prev
-			operation[9] = (unsigned)queueHead;  // next
-		} else {
-			// Append to end
-			int lastEntry = (int)_queueTail;
-			operation[9] = lastEntry;  // prev
-			operation[8] = (unsigned)queueHead;  // next
-			_queueTail = (void *)operation;
-			*(unsigned **)(lastEntry + 0x20) = operation;
-		}
+		queue_enter(&_operationQueue, operation, floppyOperation_t *, link);
 
 		// Unlock with status 1 (wake operation thread)
 		[_queueLock unlockWith:1];
@@ -171,14 +155,12 @@ extern unsigned int _FloppyGeometry[];
 	int threadResult;
 
 	// Call super's init
-	self = [super initFromDeviceDescription:deviceDescription];
-	if (self == nil) {
-		return nil;
+	if ([super initFromDeviceDescription:deviceDescription] == nil) {
+		return [self free];
 	}
 
 	// Initialize operation queue (circular list pointing to itself)
-	_queueHead = (void *)((char *)self + 0x150);
-	_queueTail = (void *)((char *)self + 0x150);
+	queue_init(&_operationQueue);
 
 	// Clear cache pointers
 	_cacheBuffer = NULL;
@@ -187,7 +169,7 @@ extern unsigned int _FloppyGeometry[];
 	_metadataSize = 0;
 
 	// Allocate operation lock (NXSpinLock)
-	_operationLock = [[objc_getClass("NXSpinLock") alloc] init];
+	_operationLock = [NXSpinLock alloc];
 
 	// Set capacity
 	_capacity = capacity;
@@ -197,10 +179,10 @@ extern unsigned int _FloppyGeometry[];
 	_geometry = geometry;
 
 	// Allocate queue lock (NXConditionLock)
-	_queueLock = [[objc_getClass("NXConditionLock") alloc] init];
+	_queueLock = [NXConditionLock alloc];
 
-	// Clear thread port flag (bit 0)
-	*(unsigned char *)((char *)self + 0x15c) &= 0xfe;
+	// Thread not started yet
+	_startedThread = 0;
 
 	// Store device description
 	_deviceDescription = deviceDescription;
@@ -261,14 +243,14 @@ extern unsigned int _FloppyGeometry[];
 	// Fork operation thread
 	threadResult = IOForkThread((IOThreadFunc)OperationThreadStartup, self);
 
-	// Set thread port flag based on result
-	*(unsigned char *)((char *)self + 0x15c) &= 0xfe;
+	// Set the started flag from the fork result
+	_startedThread = 0;
 	if (threadResult != 0) {
-		*(unsigned char *)((char *)self + 0x15c) |= 1;
+		_startedThread = 1;
 	}
 
 	// Register device if thread started successfully
-	if ((*(unsigned char *)((char *)self + 0x15c) & 1) != 0) {
+	if (_startedThread) {
 		if ([self registerDevice]) {
 			return self;
 		}
@@ -281,7 +263,7 @@ extern unsigned int _FloppyGeometry[];
 
 - (IOReturn)readAsyncAt:(unsigned)offset
                  length:(unsigned)length
-                 buffer:(void *)buffer
+                 buffer:(unsigned char *)buffer
                 pending:(void *)pending
                  client:(vm_task_t)client
 {
@@ -318,7 +300,7 @@ extern unsigned int _FloppyGeometry[];
 
 - (IOReturn)readAt:(unsigned)offset
             length:(unsigned)length
-            buffer:(void *)buffer
+            buffer:(unsigned char *)buffer
       actualLength:(unsigned *)actualLength
             client:(vm_task_t)client
 {
@@ -354,7 +336,7 @@ extern unsigned int _FloppyGeometry[];
 
 - (IOReturn)writeAsyncAt:(unsigned)offset
                   length:(unsigned)length
-                  buffer:(void *)buffer
+                  buffer:(unsigned char *)buffer
                  pending:(void *)pending
                   client:(vm_task_t)client
 {
@@ -408,7 +390,7 @@ extern unsigned int _FloppyGeometry[];
 
 - (IOReturn)writeAt:(unsigned)offset
              length:(unsigned)length
-             buffer:(void *)buffer
+             buffer:(unsigned char *)buffer
        actualLength:(unsigned *)actualLength
              client:(vm_task_t)client
 {

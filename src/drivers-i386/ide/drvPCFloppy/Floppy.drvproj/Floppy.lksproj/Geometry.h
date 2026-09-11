@@ -11,7 +11,6 @@
 extern unsigned int fdDiskInfo[];
 extern unsigned int fdDensityInfo[];
 extern unsigned int fdDensitySectsize[];
-extern const IONamedValue fdrValues[];
 extern unsigned int *fdGetSectSizeInfo(unsigned int density);
 
 // Forward declaration

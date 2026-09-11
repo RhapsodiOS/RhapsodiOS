@@ -35,11 +35,9 @@
 #ifndef	_ERROR_H
 #define	_ERROR_H
 
-#include <mach/mach_error.h>
-
-extern void fatal(/* char *format, ... */);
-extern void warn(/* char *format, ... */);
-extern void error(/* char *format, ... */);
+extern void fatal(char *format, ...);
+extern void warn(char *format, ...);
+extern void error(char *format, ...);
 
 #if	NeXT
 #include <errno.h>	/* for errno */
@@ -47,9 +45,9 @@ extern void error(/* char *format, ... */);
 extern int errno;
 #endif	NeXT
 
-extern char *unix_error_string();
+extern char *unix_error_string(int error_num);
 
 extern int errors;
-extern void set_program_name(/* char *name */);
+extern void set_program_name(char *name);
 
 #endif	_ERROR_H

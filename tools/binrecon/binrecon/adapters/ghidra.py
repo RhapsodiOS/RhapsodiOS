@@ -193,6 +193,37 @@ def _oversize_error_message(base_message: str, path: Path, artifact: str) -> str
     return f"{base_message}; rejected output saved to {preserved}"
 
 
+def _preserve_failure_logs(log_path: Path, script_log: Path, artifact: str) -> list[Path]:
+    """Copy Ghidra's aggregated and script logs into the run's output directory.
+
+    The run's staging directory (holding the aggregated log and the raw
+    script log) is deleted once the run ends, so without this the only
+    evidence of a Ghidra failure is the raised error message. Copies by
+    streaming; swallows any failure so a diagnostic never masks the
+    original error.
+    """
+    preserved = []
+    output_directory = log_path.parent.parent
+    for source, name in (
+        (log_path, f"failed-ghidra-{artifact}.log"),
+        (script_log, f"failed-ghidra-{artifact}-script.log"),
+    ):
+        try:
+            target = output_directory / name
+            shutil.copyfile(source, target)
+        except OSError:
+            continue
+        preserved.append(target)
+    return preserved
+
+
+def _failure_error_message(base_message: str, log_path: Path, script_log: Path, artifact: str) -> str:
+    preserved = _preserve_failure_logs(log_path, script_log, artifact)
+    if not preserved:
+        return base_message
+    return f"{base_message}; logs saved to {', '.join(str(path) for path in preserved)}"
+
+
 def _read_snapshot(path: Path, artifact: str) -> dict:
     if path.is_symlink():
         raise GhidraAdapterError("Ghidra output is a symlink")
@@ -279,10 +310,9 @@ def _script_arguments(mode: str, output: Path, identity: InputIdentity,
         arguments += ["--output", str(output)]
     arguments += ["--input", str(identity.path), "--size", str(identity.size),
                   "--sha256", identity.sha256, "--language", _LANGUAGE]
-    if mode == "export" and scope:
-        arguments += ["--analysis-scope", json.dumps(
-            [{"start": start, "end": end} for start, end in scope],
-            separators=(",", ":"))]
+    if mode == "export":
+        for start, end in scope:
+            arguments += ["--analysis-scope", f"{start}-{end}"]
     return arguments
 
 
@@ -303,7 +333,7 @@ def _command(executable: Path, workspace: Path, project: str,
     return argv
 
 
-def _layout(profile, identity: InputIdentity) -> dict:
+def _layout(profile, identity: InputIdentity, artifact: str = "reference") -> dict:
     try:
         macho = read_macho(identity.path)
     except (OSError, MachOFormatError) as error:
@@ -417,7 +447,7 @@ def _layout(profile, identity: InputIdentity) -> dict:
         ),
         "entry_points": sorted(entries, key=lambda item: (item["address"], item["name"])),
     }
-    scope = analysis_scope(profile)
+    scope = analysis_scope(profile, artifact)
     if scope:
         document["analysis_scope"] = [{"start": start, "end": end}
                                       for start, end in scope]
@@ -462,6 +492,25 @@ def _validate_instruction_relocations(document: dict, layout: dict) -> None:
             raise GhidraAdapterError("contained instruction relocation index is missing")
 
 
+def _validate_section_backing(document: dict) -> None:
+    """Require the per-section zero-fill metadata the comparator reads.
+
+    The native Mach-O loader reports uninitialized blocks (bss, common) with
+    no file bytes; without this metadata the comparator treats every section
+    as file-backed and rejects the overlapping synthetic blocks.
+    """
+    backing = document.get("extensions", {}).get("ghidra", {}).get("sections")
+    if not isinstance(backing, list) or len(backing) != len(document["sections"]):
+        raise GhidraAdapterError("Ghidra output section backing metadata is missing")
+    for section, actual in zip(document["sections"], backing):
+        if not isinstance(actual, dict) or type(actual.get("initialized")) is not bool:
+            raise GhidraAdapterError("Ghidra output section backing metadata is invalid")
+        if (any(actual.get(field) != section[field]
+                for field in ("name", "address", "offset", "size")) or
+                actual.get("zero_fill") is not (not actual["initialized"])):
+            raise GhidraAdapterError("Ghidra output section backing does not match sections")
+
+
 def _validate_output(document: dict, configuration: dict, identity: InputIdentity,
                      layout: dict | None = None) -> None:
     validate_document("analysis-v1", document)
@@ -478,6 +527,8 @@ def _validate_output(document: dict, configuration: dict, identity: InputIdentit
     extension = document.get("extensions", {}).get("ghidra", {})
     if extension.get("language") != _LANGUAGE:
         raise GhidraAdapterError("Ghidra output used the wrong processor language")
+    if layout is None:
+        _validate_section_backing(document)
     if layout is not None:
         for name in ("sections", "symbols", "relocations"):
             if extension.get(f"fallback_{name}") != layout[name]:
@@ -556,6 +607,11 @@ def _validate_output(document: dict, configuration: dict, identity: InputIdentit
 def export_with_ghidra(profile, artifact: str, destination: Path, *,
                        runner: Callable = subprocess.run) -> dict:
     """Run Ghidra headlessly and atomically publish validated canonical JSON."""
+    architecture = profile.document.get("architecture", "i386")
+    if architecture != "i386":
+        raise GhidraAdapterError(
+            f"the Ghidra adapter is i386-only and cannot analyse {architecture}"
+        )
     configuration = _configuration(profile)
     executable_value = configuration.get("executable")
     if not executable_value:
@@ -571,7 +627,7 @@ def export_with_ghidra(profile, artifact: str, destination: Path, *,
         assert_identity(identity)
     except (OSError, ValueError) as error:
         raise GhidraAdapterError(f"input identity is no longer stable: {error}") from error
-    scope = analysis_scope(profile)
+    scope = analysis_scope(profile, artifact)
 
     destination = Path(destination).resolve(strict=False)
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -603,7 +659,9 @@ def export_with_ghidra(profile, artifact: str, destination: Path, *,
         except subprocess.TimeoutExpired as error:
             entry, _ = _log_entry("native", error.stdout, error.stderr, native_log, script_log)
             log_entries.append(entry); _publish_log(log_path, log_entries)
-            raise GhidraAdapterError(f"Ghidra timed out after {timeout} seconds") from error
+            raise GhidraAdapterError(_failure_error_message(
+                f"Ghidra timed out after {timeout} seconds", log_path, script_log, artifact
+            )) from error
         except OSError as error:
             entry, _ = _log_entry("native", "", str(error), native_log, script_log)
             log_entries.append(entry); _publish_log(log_path, log_entries)
@@ -614,7 +672,12 @@ def export_with_ghidra(profile, artifact: str, destination: Path, *,
         log_entries.append(entry); _publish_log(log_path, log_entries)
         native_needs_fallback = _is_native_loader_rejection(native_diagnostic)
         if completed.returncode == 0 and output.is_file() and not native_needs_fallback:
-            native_document = _read_snapshot(output, artifact)
+            try:
+                native_document = _read_snapshot(output, artifact)
+            except GhidraAdapterError as error:
+                raise GhidraAdapterError(_failure_error_message(
+                    str(error), log_path, script_log, artifact
+                )) from error
             try:
                 _validate_output(native_document, configuration, identity)
             except SemanticValidationError as error:
@@ -625,13 +688,17 @@ def export_with_ghidra(profile, artifact: str, destination: Path, *,
         if completed.returncode != 0 or not output.is_file() or native_needs_fallback:
             if not native_needs_fallback:
                 if completed.returncode == 0:
-                    raise GhidraAdapterError("Ghidra did not produce a fresh analysis output")
-                raise GhidraAdapterError(f"Ghidra failed with exit code {completed.returncode}")
+                    raise GhidraAdapterError(_failure_error_message(
+                        "Ghidra did not produce a fresh analysis output", log_path, script_log, artifact
+                    ))
+                raise GhidraAdapterError(_failure_error_message(
+                    f"Ghidra failed with exit code {completed.returncode}", log_path, script_log, artifact
+                ))
             try:
                 output.unlink(missing_ok=True)
             except OSError as error:
                 raise GhidraAdapterError(f"could not reset fallback output: {error}") from error
-            layout_document = _layout(profile, identity)
+            layout_document = _layout(profile, identity, artifact)
             _atomic_text(layout_path, json.dumps(layout_document, ensure_ascii=False,
                                                   sort_keys=True, separators=(",", ":")) + "\n")
             command = _command(executable, workspace, f"fallback-{run_token}", identity, script, output,
@@ -642,7 +709,9 @@ def export_with_ghidra(profile, artifact: str, destination: Path, *,
             except subprocess.TimeoutExpired as error:
                 entry, _ = _log_entry("fallback", error.stdout, error.stderr, native_log, script_log)
                 log_entries.append(entry); _publish_log(log_path, log_entries)
-                raise GhidraAdapterError(f"Ghidra fallback timed out after {timeout} seconds") from error
+                raise GhidraAdapterError(_failure_error_message(
+                    f"Ghidra fallback timed out after {timeout} seconds", log_path, script_log, artifact
+                )) from error
             except OSError as error:
                 entry, _ = _log_entry("fallback", "", str(error), native_log, script_log)
                 log_entries.append(entry); _publish_log(log_path, log_entries)
@@ -651,16 +720,25 @@ def export_with_ghidra(profile, artifact: str, destination: Path, *,
                                   native_log, script_log)
             log_entries.append(entry); _publish_log(log_path, log_entries)
             if completed.returncode != 0:
-                raise GhidraAdapterError(f"Ghidra fallback failed with exit code {completed.returncode}")
+                raise GhidraAdapterError(_failure_error_message(
+                    f"Ghidra fallback failed with exit code {completed.returncode}",
+                    log_path, script_log, artifact
+                ))
         if not output.is_file():
-            raise GhidraAdapterError("Ghidra did not produce a fresh analysis output")
+            raise GhidraAdapterError(_failure_error_message(
+                "Ghidra did not produce a fresh analysis output", log_path, script_log, artifact
+            ))
         try:
             document = _read_snapshot(output, artifact)
             _validate_output(document, configuration, identity, layout_document)
-        except GhidraAdapterError:
-            raise
+        except GhidraAdapterError as error:
+            raise GhidraAdapterError(_failure_error_message(
+                str(error), log_path, script_log, artifact
+            )) from error
         except Exception as error:
-            raise GhidraAdapterError(f"Ghidra output is invalid: {error}") from error
+            raise GhidraAdapterError(_failure_error_message(
+                f"Ghidra output is invalid: {error}", log_path, script_log, artifact
+            )) from error
         try:
             assert_identity(identity)
         except (OSError, ValueError) as error:

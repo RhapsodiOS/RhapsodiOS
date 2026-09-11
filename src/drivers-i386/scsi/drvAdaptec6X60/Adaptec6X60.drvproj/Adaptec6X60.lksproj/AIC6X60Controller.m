@@ -56,23 +56,23 @@ static msg_header_t AIC6X60MessageTemplate = {
 /*
  * Private methods implemented in this file.
  */
-@interface AIC6X60Controller(PrivateMethods)
+@interface AIC6X60(PrivateMethods)
 - (BOOL) probeAtPortBase 	: (IOEISAPortAddress) portBase;
 - (IOReturn)executeCmdBuf	: (AIC6X60CommandBuf *)cmdBuf;
 @end
 
 
-@implementation AIC6X60Controller
+@implementation AIC6X60
 
 /*
  *  Probe, configure board, and init new instance.
  */
 + (BOOL)probe:deviceDescription
 {
-	AIC6X60Controller	*aic = [self alloc];
+	AIC6X60	*aic = [self alloc];
 	IORange		ioPort;
 
-	ddm_init("AIC6X60Controller probe\n", 1,2,3,4,5);
+	ddm_init("AIC6X60 probe\n", 1,2,3,4,5);
 	aic->ioThreadRunning = NO;
 
 	/*
@@ -81,7 +81,7 @@ static msg_header_t AIC6X60MessageTemplate = {
 	 *  -probeAtPortBase returns TRUE if there's an AIC Controller present.
 	 */
 	if ([deviceDescription numPortRanges] < 1) {
-		IOLog("AIC6X60Controller: can't determine port base!\n");
+		IOLog("AIC6X60: can't determine port base!\n");
 	    	[aic free];
 		return NO;
 	}
@@ -99,7 +99,7 @@ static msg_header_t AIC6X60MessageTemplate = {
 	unsigned Lun;
 	kern_return_t krtn;
 
-	ddm_init("AIC6X60Controller initFromDeviceDescription\n", 1,2,3,4,5);
+	ddm_init("AIC6X60 initFromDeviceDescription\n", 1,2,3,4,5);
 
 	queue_init(&outstandingQ);
 	queue_init(&pendingQ);
@@ -127,7 +127,7 @@ static msg_header_t AIC6X60MessageTemplate = {
 	 */
 	if ([deviceDescription numInterrupts] < 1 ||
 	    [deviceDescription interrupt] != config.irq) {
-		IOLog("AIC6X60Controller: Actual IRQ (%d) doesn't match "
+		IOLog("AIC6X60: Actual IRQ (%d) doesn't match "
 		      "configured value (%d)!\n", config.irq,
 		      ([deviceDescription numInterrupts] ?
 		      	[deviceDescription interrupt] : 0));
@@ -148,7 +148,7 @@ static msg_header_t AIC6X60MessageTemplate = {
 	 *  disable) our resources (IRQ, DMA channel, portRanges).
 	 */
 	if (!aic_setup_mb_area(ioBase, aicMbArea, aicCcb)) {
-		IOLog("AIC6X60Controller: couldn't set up mailbox area!\n");
+		IOLog("AIC6X60: couldn't set up mailbox area!\n");
 		return [self free];
 	}
 
@@ -493,13 +493,13 @@ out:
 
 @end	/* methods declared in AIC6X60Controller.h */
 
-@implementation AIC6X60Controller(PrivateMethods)
+@implementation AIC6X60(PrivateMethods)
 
 - (BOOL) probeAtPortBase:(IOEISAPortAddress) portBase
 {
 	aic_inquiry_t	inquiry;
 
-	ddm_init("AIC6X60Controller probeAtPortBase\n", 1,2,3,4,5);
+	ddm_init("AIC6X60 probeAtPortBase\n", 1,2,3,4,5);
 
 	ioBase = portBase;
 	aic_reset_board(ioBase, aicBoardId);
@@ -587,7 +587,7 @@ out:
 	return rtn;
 }
 
-@end	/* AIC6X60Controller(PrivateMethods) */
+@end	/* AIC6X60(PrivateMethods) */
 
 
 

@@ -32,9 +32,9 @@
 /*
  * Log read/write error.
  */
-- (void)logRwErr : (unsigned)operation
+- (void)logRwErr : (const char *)operation
 	      block : (unsigned)block
-	     status : (unsigned char *)status
+	     status : (unsigned)status
 	   readFlag : (BOOL)readFlag;
 
 /*

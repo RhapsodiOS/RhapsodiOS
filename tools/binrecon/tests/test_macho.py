@@ -721,6 +721,27 @@ def test_ppc_scattered_value_outside_every_section_is_rejected(tmp_path):
         read_macho(write_ppc(tmp_path, text, relocations))
 
 
+def test_ppc_non_four_byte_relocation_length_is_rejected(tmp_path):
+    # Every relocation in the reference binaries has r_length == 2 (spec
+    # §3.2); a one-byte field (length 0) must be refused rather than decoded
+    # as if it were the whole four-byte instruction word.
+    text = struct.pack(">II", 0x3C620F3A, 0x60000000)
+    relocations = ppc_relocation(0, 1, kind=PPC_RELOC_VANILLA, length=0)
+
+    with pytest.raises(MachOFormatError, match="relocation length code 0"):
+        read_macho(write_ppc(tmp_path, text, relocations))
+
+
+def test_ppc_pair_with_non_four_byte_length_is_rejected(tmp_path):
+    text = struct.pack(">II", 0x3C600002, 0x3863FFFF)
+    relocations = (
+        ppc_relocation(0, 0, kind=PPC_RELOC_HA16, extern=1) + ppc_pair(0xFFFF, length=1)
+    )
+
+    with pytest.raises(MachOFormatError, match="relocation length code 1"):
+        read_macho(write_ppc(tmp_path, text, relocations))
+
+
 def test_ppc_sectdiff_requires_a_scattered_pair(tmp_path):
     text = struct.pack(">II", 0x00000010, 0x60000000)
     relocations = (

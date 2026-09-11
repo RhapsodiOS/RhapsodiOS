@@ -5,6 +5,7 @@ set -e
 here=$(cd "$(dirname "$0")" && pwd)
 proj=$(cd "$here/../.." && pwd)     # src/rbuild-1
 shim="$here/shim"
+chmod a+x "$shim"/*
 perltool="$proj/../buildtools-2/tools/darwin-buildpackage.pl"
 perllib="$proj/../buildtools-2/lib"
 scriptlib="$proj/../dpkg_scriptlib-1/perl5"
@@ -64,7 +65,26 @@ rm -rf "$projroot"
 # into the same trace log alongside the shim-log lines from the earlier
 # (still-shimmed) steps.
 
-# --- rbuild trace ---
+# --- rbuild makeroot dry-run trace ---
+RBUILD_TRACE=/tmp/rb_trace_makeroot.log
+export RBUILD_TRACE
+: > "$RBUILD_TRACE"
+( cd "$here" && PATH="$shim:$PATH" "$proj/rbuild" -n buildpackage --dir "$src" "$seed" "$dst" ) 2>&1 \
+    | tee -a "$RBUILD_TRACE" >/dev/null || true
+
+# A package root is assembled only from repository artifacts. Neither the
+# command trace nor the configured execution environment may reach into
+# one-off host seed locations.
+for forbidden in /usr/lib/dyld /lib/crt1.o /usr/bin/strip.real /build/bin; do
+  if grep "$forbidden" "$RBUILD_TRACE" >/dev/null 2>&1; then
+    echo "TRACE ERROR: rbuild referenced live-host bootstrap seed: $forbidden"
+    exit 1
+  fi
+done
+
+rm -rf "$projroot"
+
+# --- rbuild comparison trace ---
 RBUILD_TRACE=/tmp/rb_trace_rbuild.log
 export RBUILD_TRACE
 : > "$RBUILD_TRACE"
@@ -100,17 +120,33 @@ rm -rf "$projroot"
 # multi-word values like RC_CFLAGS/RC_ARCHS whose internal spacing (e.g.
 # the double space after "ppc") must be preserved, not collapsed, since
 # collapsing it would hide the very thing being compared.
+#
 extract() {
-  grep -oE '(chroot|make) .*' "$1" \
+  perl -ne 'print "$1\n" if /((?:chroot|make) .*)/' "$1" \
     | sed -f "$here/normalize.sed" \
     | perl -ne 'while (/"([^"]*)"|(\S+)/g) {
           my $t = defined($1) ? $1 : $2;
           print "$t\n" if $t =~ /=/;
-        }' \
-    | sort -u
+        }'
 }
-extract /tmp/rb_trace_rbuild.log > /tmp/rb_trace_rbuild.flags
-extract /tmp/rb_trace_perl.log   > /tmp/rb_trace_perl.flags
+
+# rbuild intentionally uses the host-only PPC policy while the Perl oracle
+# still requests a fat i386+ppc build. Normalize only the Perl oracle's three
+# architecture fields, preserving RC_CFLAGS' historical double space. Never
+# normalize rbuild output: a regression back to fat flags must remain visible.
+normalize_perl_arch() {
+  sed -e '/^RC_i386=YES$/d' \
+      -e 's/^RC_ARCHS=i386 ppc$/RC_ARCHS=ppc/' \
+      -e 's/^RC_CFLAGS=-arch i386 -arch ppc  /RC_CFLAGS=-arch ppc  /'
+}
+extract /tmp/rb_trace_rbuild.log | sort -u > /tmp/rb_trace_rbuild.flags
+extract /tmp/rb_trace_perl.log | normalize_perl_arch | sort -u \
+  > /tmp/rb_trace_perl.flags
+
+if [ ! -s /tmp/rb_trace_rbuild.flags ] || [ ! -s /tmp/rb_trace_perl.flags ]; then
+  echo "TRACE ERROR: failed to extract make flags"
+  exit 1
+fi
 
 echo "=== make/chroot flag diff (rbuild vs perl) ==="
 if diff -u /tmp/rb_trace_perl.flags /tmp/rb_trace_rbuild.flags; then

@@ -5,7 +5,8 @@ ifneq "mwcc" "$(notdir $(CC))"
   GCC_FLAGS = -Wall -Wno-precomp
 endif
 CFLAGS = $(OFLAG) -g -I../include $(GCC_FLAGS) -DNeXT_MOD -DDEBUG \
-	-I$(NEXT_ROOT)/System/Library/Frameworks/System.framework/PrivateHeaders
+	$(LOCAL_CFLAGS) \
+	-I$(HDRROOT)/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders
 
 ifneq "" "$(wildcard /bin/mkdirs)"
   MKDIRS = /bin/mkdirs

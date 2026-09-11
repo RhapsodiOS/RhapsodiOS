@@ -15,10 +15,6 @@
 @private
     unsigned int currentDMADirection;
     BOOL interruptTimedOut;
-    BOOL is16BitTransfer;                // Are we doing 16-bit audio?
-    unsigned int dma8Channel;            // 8-bit DMA channel
-    unsigned int dma16Channel;           // 16-bit DMA channel
-    unsigned int numDMAChannels;         // Number of DMA channels (1 or 2)
     const char *hardwareName;            // Hardware chip name (ES688, ES1688, etc.)
     unsigned char inputSource;           // Input source selection (0=Mic, 1=Line, 2=CD, 3=Mix)
 }
@@ -26,8 +22,6 @@
 + (BOOL)probe: deviceDescription;
 - (BOOL)reset;
 - (void) initializeHardware;
-- (BOOL) initializeDMAChannels;
-- (void) initializeLastStageGainRegisters;
 
 - (BOOL) startDMAForChannel: (unsigned int) localChannel
         read: (BOOL) isRead
@@ -39,10 +33,7 @@
 - (void) interruptOccurredForInput: (BOOL *) serviceInput
                          forOutput: (BOOL *) serviceOutput;
 
-- (void)updateSampleRate;
 - (void)configureHardwareForDataTransfer:(unsigned int)transferCount;
-
-- (void) setBufferCount:(int)count;
 
 - (IOReturn)enableAllInterrupts;
 - (void)disableAllInterrupts;

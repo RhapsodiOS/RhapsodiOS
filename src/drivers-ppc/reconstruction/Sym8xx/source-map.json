@@ -1,0 +1,420 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 480,
+      "reference_names": [
+        "-[Sym8xxController interruptOccurred]"
+      ],
+      "size": 172,
+      "source_line": 111,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxExecute.m"
+    },
+    {
+      "address": 700,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxProcessIODone]"
+      ],
+      "size": 232,
+      "source_line": 151,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxExecute.m"
+    },
+    {
+      "address": 948,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxProcessInterrupt]"
+      ],
+      "size": 1084,
+      "source_line": 205,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxExecute.m"
+    },
+    {
+      "address": 2112,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxProcessStatus:]"
+      ],
+      "size": 208,
+      "source_line": 480,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxExecute.m"
+    },
+    {
+      "address": 2336,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxIssueRequestSense:]"
+      ],
+      "size": 544,
+      "source_line": 529,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxExecute.m"
+    },
+    {
+      "address": 2928,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxAdjustDataPtrs:Nexus:]"
+      ],
+      "size": 488,
+      "source_line": 614,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxExecute.m"
+    },
+    {
+      "address": 3464,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxCheckFifo:FifoCnt:]"
+      ],
+      "size": 440,
+      "source_line": 724,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxExecute.m"
+    },
+    {
+      "address": 3920,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxUpdateXferOffset:]"
+      ],
+      "size": 176,
+      "source_line": 803,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxExecute.m"
+    },
+    {
+      "address": 4096,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxProcessNoNexus]"
+      ],
+      "size": 400,
+      "source_line": 873,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxExecute.m"
+    },
+    {
+      "address": 4560,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxAbortCurrent:]"
+      ],
+      "size": 152,
+      "source_line": 966,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxExecute.m"
+    },
+    {
+      "address": 4728,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxClearFifo]"
+      ],
+      "size": 268,
+      "source_line": 994,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxExecute.m"
+    },
+    {
+      "address": 5028,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxNegotiateSDTR:Nexus:]"
+      ],
+      "size": 400,
+      "source_line": 1031,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxExecute.m"
+    },
+    {
+      "address": 5460,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxNegotiateWDTR:Nexus:]"
+      ],
+      "size": 292,
+      "source_line": 1115,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxExecute.m"
+    },
+    {
+      "address": 5784,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxSendMsgReject:]"
+      ],
+      "size": 72,
+      "source_line": 1182,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxExecute.m"
+    },
+    {
+      "address": 5856,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxCheckInquiryData:]"
+      ],
+      "size": 348,
+      "source_line": 1200,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxExecute.m"
+    },
+    {
+      "address": 6236,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxSCSIBusReset:]"
+      ],
+      "size": 144,
+      "source_line": 1258,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxExecute.m"
+    },
+    {
+      "address": 6428,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxProcessSCSIBusReset]"
+      ],
+      "size": 460,
+      "source_line": 1287,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxExecute.m"
+    },
+    {
+      "address": 6920,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxSignalScript:]"
+      ],
+      "size": 48,
+      "source_line": 1386,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxExecute.m"
+    },
+    {
+      "address": 6984,
+      "reference_names": [
+        "-[Sym8xxController timeoutOccurred]"
+      ],
+      "size": 580,
+      "source_line": 1403,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxExecute.m"
+    },
+    {
+      "address": 7612,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxAbortBdr:]"
+      ],
+      "size": 132,
+      "source_line": 1540,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxExecute.m"
+    },
+    {
+      "address": 7760,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxAbortScript]"
+      ],
+      "size": 360,
+      "source_line": 1568,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxExecute.m"
+    },
+    {
+      "address": 8184,
+      "reference_names": [
+        "+[Sym8xxController probe:]"
+      ],
+      "size": 76,
+      "source_line": 113,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxInit.m"
+    },
+    {
+      "address": 8276,
+      "reference_names": [
+        "-[Sym8xxController initFromDeviceDescription:]"
+      ],
+      "size": 232,
+      "source_line": 125,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxInit.m"
+    },
+    {
+      "address": 8588,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxInit:]"
+      ],
+      "size": 200,
+      "source_line": 164,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxInit.m"
+    },
+    {
+      "address": 8820,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxInitPCI:]"
+      ],
+      "size": 604,
+      "source_line": 215,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxInit.m"
+    },
+    {
+      "address": 9472,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxInitVars]"
+      ],
+      "size": 576,
+      "source_line": 335,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxInit.m"
+    },
+    {
+      "address": 10144,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxInitScript]"
+      ],
+      "size": 248,
+      "source_line": 422,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxInit.m"
+    },
+    {
+      "address": 10440,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxLoadScript:count:]"
+      ],
+      "size": 64,
+      "source_line": 467,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxInit.m"
+    },
+    {
+      "address": 10504,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxInitChip]"
+      ],
+      "size": 412,
+      "source_line": 482,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxInit.m"
+    },
+    {
+      "address": 10948,
+      "reference_names": [
+        "-[Sym8xxController executeRequest:buffer:client:]"
+      ],
+      "size": 788,
+      "source_line": 44,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxClient.m"
+    },
+    {
+      "address": 11768,
+      "reference_names": [
+        "-[Sym8xxController executeRequest:ioMemoryDescriptor:]"
+      ],
+      "size": 44,
+      "source_line": 185,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxClient.m"
+    },
+    {
+      "address": 11828,
+      "reference_names": [
+        "-[Sym8xxController resetSCSIBus]"
+      ],
+      "size": 140,
+      "source_line": 196,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxClient.m"
+    },
+    {
+      "address": 11984,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxSendCommand:]"
+      ],
+      "size": 292,
+      "source_line": 222,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxClient.m"
+    },
+    {
+      "address": 12308,
+      "reference_names": [
+        "-[Sym8xxController getDMAAlignment:]"
+      ],
+      "size": 36,
+      "source_line": 264,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxClient.m"
+    },
+    {
+      "address": 12344,
+      "reference_names": [
+        "-[Sym8xxController numberOfTargets]"
+      ],
+      "size": 16,
+      "source_line": 276,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxClient.m"
+    },
+    {
+      "address": 12360,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxCalcMsgs:]"
+      ],
+      "size": 500,
+      "source_line": 290,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxClient.m"
+    },
+    {
+      "address": 12892,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxUpdateSGList:]"
+      ],
+      "size": 68,
+      "source_line": 415,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxClient.m"
+    },
+    {
+      "address": 12976,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxUpdateSGListVirt:]"
+      ],
+      "size": 364,
+      "source_line": 434,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxClient.m"
+    },
+    {
+      "address": 13356,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxUpdateSGListDesc:]"
+      ],
+      "size": 384,
+      "source_line": 500,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxClient.m"
+    },
+    {
+      "address": 13756,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxAllocTag:CmdQueue:]"
+      ],
+      "size": 248,
+      "source_line": 570,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxClient.m"
+    },
+    {
+      "address": 14020,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxFreeTag:]"
+      ],
+      "size": 112,
+      "source_line": 623,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxClient.m"
+    },
+    {
+      "address": 14148,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxAllocSRB]"
+      ],
+      "size": 340,
+      "source_line": 651,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxClient.m"
+    },
+    {
+      "address": 14520,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxFreeSRB:]"
+      ],
+      "size": 464,
+      "source_line": 720,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxClient.m"
+    },
+    {
+      "address": 15124,
+      "reference_names": [
+        "-[Sym8xxController Sym8xxGrowSRBPool]"
+      ],
+      "size": 416,
+      "source_line": 804,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvSymbios8xx/Sym8xxClient.m"
+    }
+  ],
+  "reference_sha256": "45092B9D7C33E4B9688C215D1806F1B1808670A61A2B6C376660B608B5746514",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 16060,
+      "reference_names": [
+        "+[drvPPCSym8xxKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 20
+    },
+    {
+      "address": 16080,
+      "reference_names": [
+        "+[drvPPCSym8xxVersion driverKitVersionFordrvPPCSym8xx]"
+      ],
+      "size": 16
+    }
+  ]
+}

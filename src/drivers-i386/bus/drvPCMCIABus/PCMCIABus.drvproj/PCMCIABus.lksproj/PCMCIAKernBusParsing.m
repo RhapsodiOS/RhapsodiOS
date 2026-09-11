@@ -750,7 +750,7 @@ static void parse_FUNCID(int verbose, id description, void *data, unsigned int l
  * Parse a single tuple into device description
  * Uses dispatch table to find appropriate parser
  */
-- (void)parseTuple:tuple intoDeviceDescription:description
+- parseTuple:tuple intoDeviceDescription:description
 {
     unsigned char code;
     TupleParserEntry *entry;
@@ -767,11 +767,12 @@ static void parse_FUNCID(int verbose, id description, void *data, unsigned int l
             length = [tuple length];
             data = [tuple data];
             entry->handler(_verbose, description, data, length);
-            return;
+            return description;
         }
     }
 
     /* No handler found - tuple type not supported */
+    return description;
 }
 
 @end

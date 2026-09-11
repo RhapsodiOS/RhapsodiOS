@@ -48,7 +48,7 @@
  */
 
 #include <stdio.h>
-#include <varargs.h>
+#include <stdarg.h>
 #include "global.h"
 #include "error.h"
 
@@ -61,12 +61,10 @@ int errors = 0;
 /*ARGSUSED*/
 /*VARARGS1*/
 void
-fatal(format, va_alist)
-    char *format;
-    va_dcl
+fatal(char *format, ...)
 {
     va_list pvar;
-    va_start(pvar);
+    va_start(pvar, format);
     fprintf(stderr, "%s: fatal: ", program);
     (void) vfprintf(stderr, format, pvar);
     fprintf(stderr, "\n");
@@ -78,12 +76,10 @@ fatal(format, va_alist)
 /*VARARGS1*/
 __private_extern__
 void
-warn(format, va_alist)
-    char *format;
-    va_dcl
+warn(char *format, ...)
 {
     va_list pvar;
-    va_start(pvar);
+    va_start(pvar, format);
     if (!BeQuiet && (errors == 0))
     {
 	fprintf(stderr, "\"%s\", line %d: warning: ", yyinname, yylineno-1);
@@ -96,12 +92,10 @@ warn(format, va_alist)
 /*ARGSUSED*/
 /*VARARGS1*/
 void
-error(format, va_alist)
-    char *format;
-    va_dcl
+error(char *format, ...)
 {
     va_list pvar;
-    va_start(pvar);
+    va_start(pvar, format);
     fprintf(stderr, "\"%s\", line %d: ", yyinname, yylineno-1);
     (void) vfprintf(stderr, format, pvar);
     fprintf(stderr, "\n");
@@ -110,20 +104,17 @@ error(format, va_alist)
 }
 
 char *
-unix_error_string(errno)
-    int errno;
+unix_error_string(int error_num)
 {
-    extern const char * const sys_errlist[]; 
-    extern int sys_nerr;
+    extern char *strerror(int);
     static char buffer[256];
     char *error_mess;
 
-    if ((0 <= errno) && (errno < sys_nerr))
-	error_mess = sys_errlist[errno];
-    else
+    error_mess = strerror(error_num);
+    if (error_mess == 0)
 	error_mess = "strange errno";
 
-    sprintf(buffer, "%s (%d)", error_mess, errno);
+    sprintf(buffer, "%s (%d)", error_mess, error_num);
     return buffer;
 }
 

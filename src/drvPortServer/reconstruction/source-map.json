@@ -1,0 +1,1021 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 0,
+      "reference_names": [
+        "+[AppleIOPSSafeCondLock initialize]"
+      ],
+      "size": 222,
+      "source_line": 45,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/AppleIOPSSafeCondLock.m"
+    },
+    {
+      "address": 224,
+      "reference_names": [
+        "-[AppleIOPSSafeCondLock init]"
+      ],
+      "size": 27,
+      "source_line": 102,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/AppleIOPSSafeCondLock.m"
+    },
+    {
+      "address": 252,
+      "reference_names": [
+        "-[AppleIOPSSafeCondLock initWith:]"
+      ],
+      "size": 29,
+      "source_line": 112,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/AppleIOPSSafeCondLock.m"
+    },
+    {
+      "address": 284,
+      "reference_names": [
+        "-[AppleIOPSSafeCondLock initWith:intr:]"
+      ],
+      "size": 84,
+      "source_line": 124,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/AppleIOPSSafeCondLock.m"
+    },
+    {
+      "address": 368,
+      "reference_names": [
+        "_AIOPSSCL_interuptable"
+      ],
+      "size": 28,
+      "source_line": 143,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/AppleIOPSSafeCondLock.m"
+    },
+    {
+      "address": 396,
+      "reference_names": [
+        "-[AppleIOPSSafeCondLock interuptable]"
+      ],
+      "size": 14,
+      "source_line": 156,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/AppleIOPSSafeCondLock.m"
+    },
+    {
+      "address": 412,
+      "reference_names": [
+        "_AIOPSSCL_condition"
+      ],
+      "size": 25,
+      "source_line": 165,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/AppleIOPSSafeCondLock.m"
+    },
+    {
+      "address": 440,
+      "reference_names": [
+        "-[AppleIOPSSafeCondLock condition]"
+      ],
+      "size": 13,
+      "source_line": 175,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/AppleIOPSSafeCondLock.m"
+    },
+    {
+      "address": 456,
+      "reference_names": [
+        "_AIOPSSCL_setCondition"
+      ],
+      "size": 25,
+      "source_line": 189,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/AppleIOPSSafeCondLock.m"
+    },
+    {
+      "address": 484,
+      "reference_names": [
+        "-[AppleIOPSSafeCondLock setCondition:]"
+      ],
+      "size": 35,
+      "source_line": 200,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/AppleIOPSSafeCondLock.m"
+    },
+    {
+      "address": 520,
+      "reference_names": [
+        "-[AppleIOPSSafeCondLock free]"
+      ],
+      "size": 41,
+      "source_line": 218,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/AppleIOPSSafeCondLock.m"
+    },
+    {
+      "address": 564,
+      "reference_names": [
+        "_AIOPSSCL_unlock"
+      ],
+      "size": 25,
+      "source_line": 228,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/AppleIOPSSafeCondLock.m"
+    },
+    {
+      "address": 592,
+      "reference_names": [
+        "-[AppleIOPSSafeCondLock unlock]"
+      ],
+      "size": 86,
+      "source_line": 240,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/AppleIOPSSafeCondLock.m"
+    },
+    {
+      "address": 680,
+      "reference_names": [
+        "_AIOPSSCL_unlockWith"
+      ],
+      "size": 29,
+      "source_line": 293,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/AppleIOPSSafeCondLock.m"
+    },
+    {
+      "address": 712,
+      "reference_names": [
+        "-[AppleIOPSSafeCondLock unlockWith:]"
+      ],
+      "size": 84,
+      "source_line": 306,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/AppleIOPSSafeCondLock.m"
+    },
+    {
+      "address": 796,
+      "reference_names": [
+        "_AIOPSSCL_lock"
+      ],
+      "size": 25,
+      "source_line": 363,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/AppleIOPSSafeCondLock.m"
+    },
+    {
+      "address": 824,
+      "reference_names": [
+        "-[AppleIOPSSafeCondLock lock]"
+      ],
+      "size": 133,
+      "source_line": 377,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/AppleIOPSSafeCondLock.m"
+    },
+    {
+      "address": 960,
+      "reference_names": [
+        "_AIOPSSCL_lockTry"
+      ],
+      "size": 28,
+      "source_line": 448,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/AppleIOPSSafeCondLock.m"
+    },
+    {
+      "address": 988,
+      "reference_names": [
+        "-[AppleIOPSSafeCondLock lockTry]"
+      ],
+      "size": 59,
+      "source_line": 463,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/AppleIOPSSafeCondLock.m"
+    },
+    {
+      "address": 1048,
+      "reference_names": [
+        "_AIOPSSCL_lockWhen"
+      ],
+      "size": 29,
+      "source_line": 506,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/AppleIOPSSafeCondLock.m"
+    },
+    {
+      "address": 1080,
+      "reference_names": [
+        "-[AppleIOPSSafeCondLock lockWhen:]"
+      ],
+      "size": 108,
+      "source_line": 520,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/AppleIOPSSafeCondLock.m"
+    },
+    {
+      "address": 1188,
+      "reference_names": [
+        "+[IOPortSession initialize]"
+      ],
+      "size": 70,
+      "source_line": 36,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSession.m"
+    },
+    {
+      "address": 1260,
+      "reference_names": [
+        "-[IOPortSession init]"
+      ],
+      "size": 41,
+      "source_line": 60,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSession.m"
+    },
+    {
+      "address": 1304,
+      "reference_names": [
+        "-[IOPortSession initForDevice:result:]"
+      ],
+      "size": 453,
+      "source_line": 74,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSession.m"
+    },
+    {
+      "address": 1760,
+      "reference_names": [
+        "-[IOPortSession free]"
+      ],
+      "size": 88,
+      "source_line": 171,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSession.m"
+    },
+    {
+      "address": 1848,
+      "reference_names": [
+        "-[IOPortSession name]"
+      ],
+      "size": 42,
+      "source_line": 191,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSession.m"
+    },
+    {
+      "address": 1892,
+      "reference_names": [
+        "-[IOPortSession locked]"
+      ],
+      "size": 38,
+      "source_line": 212,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSession.m"
+    },
+    {
+      "address": 1932,
+      "reference_names": [
+        "-[IOPortSession acquireAudit:]"
+      ],
+      "size": 49,
+      "source_line": 232,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSession.m"
+    },
+    {
+      "address": 1984,
+      "reference_names": [
+        "-[IOPortSession acquire:]"
+      ],
+      "size": 49,
+      "source_line": 254,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSession.m"
+    },
+    {
+      "address": 2036,
+      "reference_names": [
+        "-[IOPortSession release]"
+      ],
+      "size": 68,
+      "source_line": 275,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSession.m"
+    },
+    {
+      "address": 2104,
+      "reference_names": [
+        "-[IOPortSession setState:mask:]"
+      ],
+      "size": 54,
+      "source_line": 303,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSession.m"
+    },
+    {
+      "address": 2160,
+      "reference_names": [
+        "-[IOPortSession getState]"
+      ],
+      "size": 28,
+      "source_line": 334,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSession.m"
+    },
+    {
+      "address": 2188,
+      "reference_names": [
+        "-[IOPortSession watchState:mask:]"
+      ],
+      "size": 73,
+      "source_line": 362,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSession.m"
+    },
+    {
+      "address": 2264,
+      "reference_names": [
+        "-[IOPortSession nextEvent]"
+      ],
+      "size": 42,
+      "source_line": 403,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSession.m"
+    },
+    {
+      "address": 2308,
+      "reference_names": [
+        "-[IOPortSession executeEvent:data:]"
+      ],
+      "size": 54,
+      "source_line": 440,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSession.m"
+    },
+    {
+      "address": 2364,
+      "reference_names": [
+        "-[IOPortSession requestEvent:data:]"
+      ],
+      "size": 54,
+      "source_line": 474,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSession.m"
+    },
+    {
+      "address": 2420,
+      "reference_names": [
+        "-[IOPortSession enqueueEvent:data:sleep:]"
+      ],
+      "size": 85,
+      "source_line": 509,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSession.m"
+    },
+    {
+      "address": 2508,
+      "reference_names": [
+        "-[IOPortSession dequeueEvent:data:sleep:]"
+      ],
+      "size": 85,
+      "source_line": 554,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSession.m"
+    },
+    {
+      "address": 2596,
+      "reference_names": [
+        "-[IOPortSession enqueueData:bufferSize:transferCount:sleep:]"
+      ],
+      "size": 89,
+      "source_line": 600,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSession.m"
+    },
+    {
+      "address": 2688,
+      "reference_names": [
+        "-[IOPortSession dequeueData:bufferSize:transferCount:minCount:]"
+      ],
+      "size": 81,
+      "source_line": 649,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSession.m"
+    },
+    {
+      "address": 2772,
+      "reference_names": [
+        "-[IOPortSession acquirePort:sleep:]"
+      ],
+      "size": 560,
+      "source_line": 704,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSession.m"
+    },
+    {
+      "address": 3332,
+      "reference_names": [
+        "-[IOPortSession releasePort]"
+      ],
+      "size": 254,
+      "source_line": 842,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSession.m"
+    },
+    {
+      "address": 3588,
+      "reference_names": [
+        "-[IOPortSession getType:sleep:]"
+      ],
+      "size": 235,
+      "source_line": 926,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSession.m"
+    },
+    {
+      "address": 3824,
+      "reference_names": [
+        "-[IOPortSession requestType:sleep:]"
+      ],
+      "size": 500,
+      "source_line": 1004,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSession.m"
+    },
+    {
+      "address": 4324,
+      "reference_names": [
+        "+[PDPseudo deviceStyle]"
+      ],
+      "size": 12,
+      "source_line": 19,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/PDPseudo.m"
+    },
+    {
+      "address": 4336,
+      "reference_names": [
+        "+[PDPseudo probe:]"
+      ],
+      "size": 61,
+      "source_line": 32,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/PDPseudo.m"
+    },
+    {
+      "address": 4400,
+      "reference_names": [
+        "-[PDPseudo initFromDeviceDescription:]"
+      ],
+      "size": 146,
+      "source_line": 54,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/PDPseudo.m"
+    },
+    {
+      "address": 4548,
+      "reference_names": [
+        "-[PDPseudo acquire:]"
+      ],
+      "size": 12,
+      "source_line": 90,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/PDPseudo.m"
+    },
+    {
+      "address": 4560,
+      "reference_names": [
+        "-[PDPseudo release]"
+      ],
+      "size": 12,
+      "source_line": 102,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/PDPseudo.m"
+    },
+    {
+      "address": 4572,
+      "reference_names": [
+        "-[PDPseudo setState:mask:]"
+      ],
+      "size": 12,
+      "source_line": 117,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/PDPseudo.m"
+    },
+    {
+      "address": 4584,
+      "reference_names": [
+        "-[PDPseudo getState]"
+      ],
+      "size": 9,
+      "source_line": 130,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/PDPseudo.m"
+    },
+    {
+      "address": 4596,
+      "reference_names": [
+        "-[PDPseudo watchState:mask:]"
+      ],
+      "size": 12,
+      "source_line": 145,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/PDPseudo.m"
+    },
+    {
+      "address": 4608,
+      "reference_names": [
+        "-[PDPseudo nextEvent]"
+      ],
+      "size": 9,
+      "source_line": 158,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/PDPseudo.m"
+    },
+    {
+      "address": 4620,
+      "reference_names": [
+        "-[PDPseudo executeEvent:data:]"
+      ],
+      "size": 12,
+      "source_line": 173,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/PDPseudo.m"
+    },
+    {
+      "address": 4632,
+      "reference_names": [
+        "-[PDPseudo requestEvent:data:]"
+      ],
+      "size": 12,
+      "source_line": 188,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/PDPseudo.m"
+    },
+    {
+      "address": 4644,
+      "reference_names": [
+        "-[PDPseudo enqueueEvent:data:sleep:]"
+      ],
+      "size": 12,
+      "source_line": 203,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/PDPseudo.m"
+    },
+    {
+      "address": 4656,
+      "reference_names": [
+        "-[PDPseudo dequeueEvent:data:sleep:]"
+      ],
+      "size": 12,
+      "source_line": 219,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/PDPseudo.m"
+    },
+    {
+      "address": 4668,
+      "reference_names": [
+        "-[PDPseudo enqueueData:bufferSize:transferCount:sleep:]"
+      ],
+      "size": 12,
+      "source_line": 236,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/PDPseudo.m"
+    },
+    {
+      "address": 4680,
+      "reference_names": [
+        "-[PDPseudo dequeueData:bufferSize:transferCount:minCount:]"
+      ],
+      "size": 12,
+      "source_line": 256,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/PDPseudo.m"
+    },
+    {
+      "address": 4692,
+      "reference_names": [
+        "+[PortServer serverMajor:]"
+      ],
+      "size": 234,
+      "source_line": 174,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/PortServer.m"
+    },
+    {
+      "address": 4928,
+      "reference_names": [
+        "+[PortServer deviceStyle]"
+      ],
+      "size": 12,
+      "source_line": 152,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/PortServer.m"
+    },
+    {
+      "address": 4940,
+      "reference_names": [
+        "+[PortServer requiredProtocols]"
+      ],
+      "size": 12,
+      "source_line": 161,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/PortServer.m"
+    },
+    {
+      "address": 4952,
+      "reference_names": [
+        "+[PortServer probe:]"
+      ],
+      "size": 174,
+      "source_line": 212,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/PortServer.m"
+    },
+    {
+      "address": 5128,
+      "reference_names": [
+        "-[PortServer initFromDeviceDescription:]"
+      ],
+      "size": 490,
+      "source_line": 254,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/PortServer.m"
+    },
+    {
+      "address": 5620,
+      "reference_names": [
+        "-[PortServer getIntValues:forParameter:count:]"
+      ],
+      "size": 273,
+      "source_line": 401,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/PortServer.m"
+    },
+    {
+      "address": 5896,
+      "reference_names": [
+        "-[PortServer setIntValues:forParameter:count:]"
+      ],
+      "size": 167,
+      "source_line": 464,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/PortServer.m"
+    },
+    {
+      "address": 6064,
+      "reference_names": [
+        "-[PortServer iopsName]"
+      ],
+      "size": 29,
+      "source_line": 369,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/PortServer.m"
+    },
+    {
+      "address": 6096,
+      "reference_names": [
+        "-[PortServer state]"
+      ],
+      "size": 15,
+      "source_line": 383,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/PortServer.m"
+    },
+    {
+      "address": 6112,
+      "reference_names": [
+        "_portServeropen"
+      ],
+      "size": 99,
+      "source_line": 56,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/PortServer.m"
+    },
+    {
+      "address": 6212,
+      "reference_names": [
+        "_portServerclose"
+      ],
+      "size": 99,
+      "source_line": 73,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/PortServer.m"
+    },
+    {
+      "address": 6312,
+      "reference_names": [
+        "_portServerioctl"
+      ],
+      "size": 263,
+      "source_line": 94,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/PortServer.m"
+    },
+    {
+      "address": 6576,
+      "reference_names": [
+        "+[IOPortSession iopsKernInit:]"
+      ],
+      "size": 213,
+      "source_line": 440,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSessionKern.m"
+    },
+    {
+      "address": 6792,
+      "reference_names": [
+        "+[IOPortSession iopsKernFree]"
+      ],
+      "size": 106,
+      "source_line": 402,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSessionKern.m"
+    },
+    {
+      "address": 6900,
+      "reference_names": [
+        "+[IOPortSession iopsKernNumSess]"
+      ],
+      "size": 12,
+      "source_line": 694,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSessionKern.m"
+    },
+    {
+      "address": 6912,
+      "reference_names": [
+        "+[IOPortSession iopsServerIoctlCommand:data:]"
+      ],
+      "size": 317,
+      "source_line": 715,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSessionKern.m"
+    },
+    {
+      "address": 7232,
+      "reference_names": [
+        "+[IOPortSession iopsKernOpen:]"
+      ],
+      "size": 79,
+      "source_line": 699,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSessionKern.m"
+    },
+    {
+      "address": 7312,
+      "reference_names": [
+        "+[IOPortSession iopsKernInitIoctl:data:]"
+      ],
+      "size": 125,
+      "source_line": 503,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSessionKern.m"
+    },
+    {
+      "address": 7440,
+      "reference_names": [
+        "+[IOPortSession iopsKernMsgIoctl:data:]"
+      ],
+      "size": 508,
+      "source_line": 555,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSessionKern.m"
+    },
+    {
+      "address": 7948,
+      "reference_names": [
+        "+[IOPortSession iopsKernEnqueue:msg:]"
+      ],
+      "size": 231,
+      "source_line": 302,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSessionKern.m"
+    },
+    {
+      "address": 8180,
+      "reference_names": [
+        "+[IOPortSession iopsKernDequeue:msg:]"
+      ],
+      "size": 252,
+      "source_line": 192,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSessionKern.m"
+    },
+    {
+      "address": 8432,
+      "reference_names": [
+        "+[IOPortSession iopsKernClose:]"
+      ],
+      "size": 79,
+      "source_line": 149,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSessionKern.m"
+    },
+    {
+      "address": 8512,
+      "reference_names": [
+        "-[IOPortSession getIntValues:forParameter:count:]"
+      ],
+      "size": 61,
+      "source_line": 70,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSessionKern.m"
+    },
+    {
+      "address": 8576,
+      "reference_names": [
+        "-[IOPortSession getCharValues:forParameter:count:]"
+      ],
+      "size": 61,
+      "source_line": 44,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSessionKern.m"
+    },
+    {
+      "address": 8640,
+      "reference_names": [
+        "-[IOPortSession setIntValues:forParameter:count:]"
+      ],
+      "size": 61,
+      "source_line": 122,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSessionKern.m"
+    },
+    {
+      "address": 8704,
+      "reference_names": [
+        "-[IOPortSession setCharValues:forParameter:count:]"
+      ],
+      "size": 61,
+      "source_line": 96,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/IOPortSessionKern.m"
+    },
+    {
+      "address": 8768,
+      "reference_names": [
+        "_ttyiops_attachDevice"
+      ],
+      "size": 119,
+      "source_line": 204,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/ttyiops.m"
+    },
+    {
+      "address": 8888,
+      "reference_names": [
+        "_ttyiops_open"
+      ],
+      "size": 594,
+      "source_line": 1890,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/ttyiops.m"
+    },
+    {
+      "address": 9484,
+      "reference_names": [
+        "_ttyiops_close"
+      ],
+      "size": 485,
+      "source_line": 398,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/ttyiops.m"
+    },
+    {
+      "address": 9972,
+      "reference_names": [
+        "_ttyiops_read"
+      ],
+      "size": 172,
+      "source_line": 1767,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/ttyiops.m"
+    },
+    {
+      "address": 10144,
+      "reference_names": [
+        "_ttyiops_write"
+      ],
+      "size": 106,
+      "source_line": 1144,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/ttyiops.m"
+    },
+    {
+      "address": 10252,
+      "reference_names": [
+        "_ttyiops_select"
+      ],
+      "size": 100,
+      "source_line": 879,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/ttyiops.m"
+    },
+    {
+      "address": 10352,
+      "reference_names": [
+        "_ttyiops_convertFlowCtrl"
+      ],
+      "size": 101,
+      "source_line": 674,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/ttyiops.m"
+    },
+    {
+      "address": 10456,
+      "reference_names": [
+        "_ttyiops_control_ioctl"
+      ],
+      "size": 219,
+      "source_line": 588,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/ttyiops.m"
+    },
+    {
+      "address": 10676,
+      "reference_names": [
+        "_ttyiops_ioctl"
+      ],
+      "size": 636,
+      "source_line": 1510,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/ttyiops.m"
+    },
+    {
+      "address": 11312,
+      "reference_names": [
+        "_ttyiops_start"
+      ],
+      "size": 105,
+      "source_line": 917,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/ttyiops.m"
+    },
+    {
+      "address": 11420,
+      "reference_names": [
+        "_ttyiops_stop"
+      ],
+      "size": 170,
+      "source_line": 953,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/ttyiops.m"
+    },
+    {
+      "address": 11592,
+      "reference_names": [
+        "_ttyiops_acquireSession"
+      ],
+      "size": 667,
+      "source_line": 236,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/ttyiops.m"
+    },
+    {
+      "address": 12260,
+      "reference_names": [
+        "_ttyiops_init"
+      ],
+      "size": 618,
+      "source_line": 747,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/ttyiops.m"
+    },
+    {
+      "address": 12880,
+      "reference_names": [
+        "_ttyiops_waitForDCD"
+      ],
+      "size": 160,
+      "source_line": 1083,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/ttyiops.m"
+    },
+    {
+      "address": 13040,
+      "reference_names": [
+        "_ttyiops_param"
+      ],
+      "size": 634,
+      "source_line": 1315,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/ttyiops.m"
+    },
+    {
+      "address": 13676,
+      "reference_names": [
+        "_ttyiops_mctl"
+      ],
+      "size": 324,
+      "source_line": 502,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/ttyiops.m"
+    },
+    {
+      "address": 14000,
+      "reference_names": [
+        "_ttyiops_optimiseInput"
+      ],
+      "size": 214,
+      "source_line": 1675,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/ttyiops.m"
+    },
+    {
+      "address": 14216,
+      "reference_names": [
+        "_tiotors232"
+      ],
+      "size": 15,
+      "source_line": 191,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/ttyiops.m"
+    },
+    {
+      "address": 14232,
+      "reference_names": [
+        "_rs232totio"
+      ],
+      "size": 15,
+      "source_line": 182,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/ttyiops.m"
+    },
+    {
+      "address": 14248,
+      "reference_names": [
+        "_ttyiops_getData"
+      ],
+      "size": 309,
+      "source_line": 99,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/ttyiops.m"
+    },
+    {
+      "address": 14560,
+      "reference_names": [
+        "_ttyiops_procEvent"
+      ],
+      "size": 207,
+      "source_line": 2052,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/ttyiops.m"
+    },
+    {
+      "address": 14768,
+      "reference_names": [
+        "_ttyiops_rxFunc"
+      ],
+      "size": 184,
+      "source_line": 1825,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/ttyiops.m"
+    },
+    {
+      "address": 14952,
+      "reference_names": [
+        "_ttyiops_txload"
+      ],
+      "size": 284,
+      "source_line": 996,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/ttyiops.m"
+    },
+    {
+      "address": 15236,
+      "reference_names": [
+        "_ttyiops_dcddelay"
+      ],
+      "size": 77,
+      "source_line": 712,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/ttyiops.m"
+    },
+    {
+      "address": 15316,
+      "reference_names": [
+        "_ttyiops_txFunc"
+      ],
+      "size": 411,
+      "source_line": 1184,
+      "source_path": "src/drvPortServer/PortServer.drvproj/PortServer.lksproj/ttyiops.m"
+    }
+  ],
+  "reference_sha256": "D724803154872B1D8199BE0426EAC4FDBE499C56FB81CCF07D5706916FF9B949",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 15728,
+      "reference_names": [
+        "+[PortServerKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 15740,
+      "reference_names": [
+        "+[PortServerVersion driverKitVersionForPortServer]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 15752,
+      "reference_names": [
+        "__divdi3"
+      ],
+      "size": 408
+    }
+  ]
+}

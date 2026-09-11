@@ -28,21 +28,24 @@
  * Writes result on stdout.
  */
  
-#import <stdio.h>
-#import <bsd/libc.h>
+#include <stdio.h>
+#include <ctype.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 /*
  * State of input scanner.
  */
 typedef enum {
 	IS_NORMAL,
-	IS_SLASH,		// encountered opening '/'
-	IS_IN_COMMENT,		// within / * * / comment
-	IS_STAR,		// encountered closing '*'
-	IS_IN_END_COMMENT	// within / / comment
+	IS_SLASH,		/* encountered opening '/' */
+	IS_IN_COMMENT,		/* within / * * / comment */
+	IS_STAR,		/* encountered closing '*' */
+	IS_IN_END_COMMENT	/* within / / comment */
 } input_state_t;
 
-static volatile void usage(char **argv);
+static void usage(char **argv);
 
 int main(int argc, char **argv)
 {
@@ -67,7 +70,7 @@ int main(int argc, char **argv)
 	}	
 	
 	fd = open(argv[1], O_RDONLY, 0);
-	if(fd <= 0) {
+	if(fd < 0) {
 		fprintf(stderr, "Error opening %s\n", argv[1]);
 		perror("open");
 		exit(1);
@@ -93,7 +96,7 @@ int main(int argc, char **argv)
 				input_state = IS_SLASH;
 			}
 			else {
-				if(!(remove_whitespace && isspace(bufchar))) {
+				if(!(remove_whitespace && isspace((unsigned char)bufchar))) {
 					putchar(bufchar);
 				}
 			}
@@ -123,7 +126,7 @@ int main(int argc, char **argv)
 				 * current char.
 				 */
 				putchar('/');
-				if(!(remove_whitespace && isspace(bufchar))) {
+				if(!(remove_whitespace && isspace((unsigned char)bufchar))) {
 					putchar(bufchar);
 				}
 				input_state = IS_NORMAL;
@@ -188,7 +191,7 @@ int main(int argc, char **argv)
 	return(exit_code);
 }
 
-static volatile void usage(char **argv)
+static void usage(char **argv)
 {
 	printf("usage: %s infile [r(emove whitespace)]\n", argv[0]);
 	exit(1);

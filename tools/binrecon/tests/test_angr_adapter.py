@@ -127,6 +127,25 @@ def test_host_layout_preserves_canonical_relocation_metadata(tmp_path):
     assert layout["relocation_metadata"][0]["external"] is True
 
 
+def test_host_layout_scopes_each_artifact_separately(tmp_path):
+    binary = tmp_path / "input.o"
+    binary.write_bytes(build_macho_fixture())
+    identity = identify(binary)
+    profile = SimpleNamespace(document=MappingProxyType({
+        "image_base": 0x1000,
+        "comparison": MappingProxyType({"entry_points": ()}),
+        "regions": (),
+        "analysis_scope": ({"start": 0x1000, "end": 0x1100},),
+        "rebuilt_analysis_scope": ({"start": 0x9000, "end": 0x9200},),
+    }))
+
+    reference = angr_host._layout(profile, identity, "reference")
+    rebuilt = angr_host._layout(profile, identity, "rebuilt")
+
+    assert reference["analysis_scope"] == [{"start": 0x1000, "end": 0x1100}]
+    assert rebuilt["analysis_scope"] == [{"start": 0x9000, "end": 0x9200}]
+
+
 @pytest.mark.parametrize("mode,match", [
     ("missing", "fresh"), ("malformed", "malformed"),
     ("identity", "identity"), ("version", "version"), ("contract", "contract"),
@@ -783,3 +802,35 @@ def test_callsite_uses_terminating_call_instruction_not_block_start(tmp_path):
     assert call["address"] == 0x4005
     assert not any(item["kind"] == "control-call" and item["address"] == 0x4000
                    for item in references)
+
+
+def _profile(tmp_path, input_path):
+    executable = tmp_path / "Python 3.13" / "python.exe"
+    executable.parent.mkdir()
+    executable.write_text("stub", encoding="ascii")
+    identity = identify(input_path)
+    profile = SimpleNamespace(
+        reference_identity=identity, rebuilt_identity=identity,
+        document=MappingProxyType({
+            "architecture": "i386", "endianness": "little", "image_base": 0x1000,
+            "analyzers": MappingProxyType({"angr": MappingProxyType({
+                "enabled": True, "executable": str(executable),
+                "timeout_seconds": 19, "version": "9.3.0"})}),
+            "comparison": MappingProxyType({"entry_points": ("entry",)}),
+            "regions": (), "symbolic_checks": (),
+        }),
+    )
+    return profile
+
+
+def test_rejects_non_i386_profile_before_running_angr(tmp_path):
+    input_path = tmp_path / "input.bin"
+    input_path.write_bytes(build_macho_fixture(architecture="ppc", relocations=b""))
+    profile = _profile(tmp_path, input_path)
+    profile.document = {**profile.document, "architecture": "ppc"}
+
+    def runner(*args, **kwargs):
+        raise AssertionError("angr must not be started for a ppc profile")
+
+    with pytest.raises(AngrAdapterError, match="i386-only"):
+        export_with_angr(profile, "reference", tmp_path / "out.json", runner=runner)

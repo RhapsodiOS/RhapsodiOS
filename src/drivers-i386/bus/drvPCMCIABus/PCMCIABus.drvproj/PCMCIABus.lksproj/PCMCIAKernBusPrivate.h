@@ -28,12 +28,13 @@
 
 #import "PCMCIAKernBus.h"
 
-/* Forward declarations that a secondary PCMCIA driver would have to hook into the bus driver */
+/* Forward declarations that a secondary PCMCIA driver would have to hook into the bus driver.
+ * status / setStatusChangeMask: / socketNumber match <driverkit/i386/PCMCIA.h> PCMCIASocket. */
 @interface Object(PCMCIASocketWindowMethods)
 - (id)windows;
-- (void)setStatusChangeMask:(unsigned int)mask;
-- (unsigned int)socketNumber;
-- (unsigned int)status;
+- (char)setStatusChangeMask:(PCMCIAStatus)mask;
+- (int)socketNumber;
+- (PCMCIAStatus)status;
 @end
 
 @interface Object(ListFreeMethods)
@@ -44,14 +45,14 @@
 
 /* Resource allocation */
 - allocateResourcesForDeviceDescription:descr;
-- allocateSharedMemory:(unsigned int)size
+- allocateSharedMemory:configEntry
         ForDescription:deviceDesc
              AndSocket:socket;
 
 /* Configuration */
 - (BOOL)configTable:table matchesSocket:socket;
 - (BOOL)configureDriverWithTable:table;
-- (BOOL)configureSocket:socket;
+- (void)configureSocket:socket;
 - (BOOL)configureSocket:socket withDescription:deviceDesc;
 - (BOOL)configureSocket:socket withDriverTable:table;
 
@@ -61,10 +62,10 @@
 
 /* Socket control */
 - (BOOL)enableSocket:socket;
-- (BOOL)disableSocket:socket;
+- (void)disableSocket:socket;
 
 /* Memory window management */
-- freeMemoryWindowElement:element;
+- (void)freeMemoryWindowElement:element;
 - mapAttributeMemory:(Range)range
            ForSocket:socket
             CardBase:(unsigned int)cardBase;
@@ -74,11 +75,11 @@ ToCardAddress:(unsigned int)cardAddr;
 
 /* Device probing */
 - (BOOL)probeDevice:device withDescription:deviceDesc;
-- (BOOL)testIDs:idList ForAdapter:adapter andSocket:socket;
+- (BOOL)testIDs:(char *)idList ForAdapter:(int)adapter andSocket:(int)socket;
 
 /* I/O port management */
-- (BOOL)entry:entry matchesUserIOPorts:(const char *)portString;
-- (BOOL)reserveIOPorts:(const char *)portString UsingEntry:entry;
+- (BOOL)entry:entry matchesUserIOPorts:portList;
+- (BOOL)reserveIOPorts:portList UsingEntry:entry;
 
 /* Range finding */
 - findAndReserveRangeBase:(unsigned int)base

@@ -7,6 +7,7 @@ import subprocess
 
 import pytest
 
+from binrecon.compare import _section_backing_metadata
 from binrecon.identity import identify
 from binrecon.adapters.ghidra import (
     GhidraAdapterError, _layout, _validate_instruction_relocations, export_with_ghidra,
@@ -27,7 +28,7 @@ def _analysis(identity, version="12.1"):
         "analyzer": {"name": "Ghidra", "version": version, "invocation": "headless"},
         "sections": [], "symbols": [], "relocations": [], "functions": [],
         "references": [], "imports": [], "strings": [],
-        "extensions": {"ghidra": {"language": "x86:LE:32:default"}},
+        "extensions": {"ghidra": {"language": "x86:LE:32:default", "sections": []}},
     }
 
 
@@ -103,9 +104,43 @@ def test_analysis_scope_reaches_the_export_script_on_the_native_path(configured,
     argv = calls[-1][0]
     assert "-loader" not in argv and "-preScript" not in argv
     assert "--analysis-scope" in argv
-    assert argv[argv.index("--analysis-scope") + 1] == json.dumps(
-        [{"start": 4096, "end": 4112}], separators=(",", ":")
-    )
+    assert argv[argv.index("--analysis-scope") + 1] == "4096-4112"
+
+
+def test_multiple_analysis_scope_ranges_emit_repeated_arguments(configured, tmp_path):
+    profile, identity, _, _ = configured
+    profile.document = MappingProxyType({
+        **profile.document, "analysis_scope": [
+            {"start": 4096, "end": 4112}, {"start": 8192, "end": 8320},
+        ],
+    })
+    destination = tmp_path / "scoped-multi.json"
+    calls = []
+    export_with_ghidra(profile, "reference", destination,
+                       runner=_successful_runner(identity, calls))
+    argv = calls[-1][0]
+    indexes = [index for index, value in enumerate(argv) if value == "--analysis-scope"]
+    assert len(indexes) == 2
+    assert [argv[index + 1] for index in indexes] == ["4096-4112", "8192-8320"]
+
+
+def test_rebuilt_artifact_uses_the_rebuilt_analysis_scope(configured, tmp_path):
+    profile, identity, _, _ = configured
+    profile.document = MappingProxyType({
+        **profile.document,
+        "analysis_scope": [{"start": 4096, "end": 4112}],
+        "rebuilt_analysis_scope": [{"start": 8192, "end": 8320}],
+    })
+    calls = []
+    export_with_ghidra(profile, "reference", tmp_path / "reference.json",
+                       runner=_successful_runner(identity, calls))
+    reference_argv = calls[-1][0]
+    export_with_ghidra(profile, "rebuilt", tmp_path / "rebuilt.json",
+                       runner=_successful_runner(identity, calls))
+    rebuilt_argv = calls[-1][0]
+
+    assert reference_argv[reference_argv.index("--analysis-scope") + 1] == "4096-4112"
+    assert rebuilt_argv[rebuilt_argv.index("--analysis-scope") + 1] == "8192-8320"
 
 
 def test_oversize_analyzer_output_is_preserved_for_inspection(configured, tmp_path, monkeypatch):
@@ -131,6 +166,32 @@ def test_oversize_analyzer_output_is_preserved_for_inspection(configured, tmp_pa
     preserved = tmp_path / "out" / "rejected-ghidra-reference.json"
     assert preserved.is_file()
     assert preserved.read_bytes() == payload
+
+
+def test_failure_logs_are_preserved_for_inspection(configured, tmp_path):
+    profile, identity, executable, java = configured
+    staging = tmp_path / "out" / "binrecon-run-test"
+    staging.mkdir(parents=True, exist_ok=True)
+    destination = staging / "ghidra.json"
+
+    def runner(argv, **kwargs):
+        if Path(argv[0]).name.lower().startswith("java"):
+            return subprocess.CompletedProcess(argv, 0, "", 'openjdk version "21.0.4"')
+        native_log = Path(argv[argv.index("-log") + 1])
+        script_log = Path(argv[argv.index("-scriptlog") + 1])
+        native_log.write_text("native diagnostic\n", encoding="utf-8")
+        script_log.write_text("script diagnostic\n", encoding="utf-8")
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    with pytest.raises(GhidraAdapterError, match="did not produce a fresh analysis output"):
+        export_with_ghidra(profile, "reference", destination, runner=runner)
+
+    log = tmp_path / "out" / "failed-ghidra-reference.log"
+    script = tmp_path / "out" / "failed-ghidra-reference-script.log"
+    assert log.is_file()
+    assert script.is_file()
+    assert "native diagnostic" in log.read_text(encoding="utf-8")
+    assert "script diagnostic" in script.read_text(encoding="utf-8")
 
 
 def test_deterministic_reruns_use_different_projects_but_identical_output(configured, tmp_path):
@@ -240,7 +301,7 @@ def test_published_log_is_replaced_and_native_hardlink_is_not_followed(configure
 
 def test_native_loader_log_exact_rejection_retries_but_exporter_text_does_not(configured, tmp_path, monkeypatch):
     profile, identity, _, _ = configured
-    monkeypatch.setattr("binrecon.adapters.ghidra._layout", lambda profile, identity: {
+    monkeypatch.setattr("binrecon.adapters.ghidra._layout", lambda profile, identity, artifact: {
         "schema_version": "ghidra-layout-v1", "language": "x86:LE:32:default",
         "input": {"path": str(identity.path), "size": identity.size, "sha256": identity.sha256},
         "image_base": 0, "sections": [], "symbols": [], "relocations": [], "entry_points": [],
@@ -315,6 +376,87 @@ def test_schema_invalid_and_hardlinked_outputs_are_untrusted(configured, tmp_pat
             return subprocess.CompletedProcess(argv, 0, "", "")
         with pytest.raises(GhidraAdapterError, match=match):
             export_with_ghidra(profile, "reference", destination, runner=runner)
+
+
+def _native_backed_analysis(identity):
+    """A native-loader document with one file-backed and one uninitialized block."""
+    document = _analysis(identity)
+    document["sections"] = [
+        {"name": "__TEXT,__text", "address": 4096, "offset": 64, "size": 16,
+         "permissions": "rx", "sha256": "0" * 64},
+        {"name": "__DATA,__bss", "address": 8192, "offset": 0, "size": 32,
+         "permissions": "rw", "sha256": "0" * 64},
+    ]
+    document["extensions"]["ghidra"]["sections"] = [
+        {"name": "__TEXT,__text", "address": 4096, "offset": 64, "size": 16,
+         "initialized": True, "zero_fill": False},
+        {"name": "__DATA,__bss", "address": 8192, "offset": 0, "size": 32,
+         "initialized": False, "zero_fill": True},
+    ]
+    return document
+
+
+def _document_runner(document):
+    def runner(argv, **kwargs):
+        if Path(argv[0]).name.lower().startswith("java"):
+            return subprocess.CompletedProcess(argv, 0, "", 'openjdk version "21"')
+        Path(argv[argv.index("--output") + 1]).write_text(
+            json.dumps(document), encoding="utf-8"
+        )
+        return subprocess.CompletedProcess(argv, 0, "", "")
+    return runner
+
+
+def test_native_section_backing_marks_uninitialized_blocks_as_zero_fill(configured, tmp_path):
+    profile, identity, _, _ = configured
+
+    document = export_with_ghidra(
+        profile, "reference", tmp_path / "native.json",
+        runner=_document_runner(_native_backed_analysis(identity)),
+    )
+
+    assert [(item["name"], item["zero_fill"], item["initialized"])
+            for item in document["extensions"]["ghidra"]["sections"]] == [
+        ("__TEXT,__text", False, True), ("__DATA,__bss", True, False)]
+    metadata = _section_backing_metadata(document)
+    assert metadata[("__TEXT,__text", 4096, 64, 16)]["zero_fill"] is False
+    assert metadata[("__DATA,__bss", 8192, 0, 32)]["zero_fill"] is True
+
+
+@pytest.mark.parametrize("mutation,match", [
+    ("missing", "backing metadata is missing"),
+    ("truncated", "backing metadata is missing"),
+    ("unflagged", "backing metadata is invalid"),
+    ("contradictory", "backing does not match sections"),
+    ("mismatched-key", "backing does not match sections"),
+])
+def test_native_output_without_trustworthy_section_backing_is_rejected(
+    configured, tmp_path, mutation, match
+):
+    profile, identity, _, _ = configured
+    document = _native_backed_analysis(identity)
+    backing = document["extensions"]["ghidra"]["sections"]
+    if mutation == "missing":
+        del document["extensions"]["ghidra"]["sections"]
+    elif mutation == "truncated":
+        del backing[1]
+    elif mutation == "unflagged":
+        del backing[1]["initialized"]
+    elif mutation == "contradictory":
+        backing[1]["zero_fill"] = False
+    else:
+        backing[1]["offset"] = 96
+
+    with pytest.raises(GhidraAdapterError, match=match):
+        export_with_ghidra(profile, "reference", tmp_path / f"{mutation}.json",
+                           runner=_document_runner(document))
+
+
+def test_java_exporter_emits_section_backing_on_the_native_loader_path():
+    source = (Path(__file__).parents[1] / "adapters" / "ghidra" / "ExportAnalysis.java").read_text(encoding="utf-8")
+    assert 'ghidra.put("sections", sectionBacking)' in source
+    assert 'backing.put("initialized", block.isInitialized())' in source
+    assert 'backing.put("zero_fill", !block.isInitialized())' in source
 
 
 def test_retries_only_specific_unsupported_macho_failure(configured, tmp_path, monkeypatch):
@@ -772,3 +914,41 @@ def test_java_argument_parser_is_explicit_and_closed():
                      "boolean options are unsupported"):
         assert required in source
     assert "Set.of(" in source
+
+
+def _profile(tmp_path, input_path):
+    executable = tmp_path / "Ghidra 12.1" / "analyzeHeadless.bat"
+    executable.parent.mkdir()
+    executable.write_text("stub", encoding="ascii")
+    java = tmp_path / "Java 21" / "bin" / "java.exe"
+    java.parent.mkdir(parents=True)
+    java.write_text("stub", encoding="ascii")
+    identity = identify(input_path)
+    profile = SimpleNamespace(
+        reference_identity=identity,
+        rebuilt_identity=identity,
+        document=MappingProxyType({
+            "analyzers": MappingProxyType({"ghidra": MappingProxyType({
+                "enabled": True, "executable": str(executable),
+                "timeout_seconds": 17, "version": "12.1",
+            })}),
+            "image_base": 4096,
+            "comparison": MappingProxyType({"entry_points": ("entry",)}),
+            "regions": (),
+            "architecture": "i386",
+        }),
+    )
+    return profile
+
+
+def test_rejects_non_i386_profile_before_running_ghidra(tmp_path):
+    input_path = tmp_path / "input.bin"
+    input_path.write_bytes(build_macho_fixture(architecture="ppc", relocations=b""))
+    profile = _profile(tmp_path, input_path)
+    profile.document = {**profile.document, "architecture": "ppc"}
+
+    def runner(*args, **kwargs):
+        raise AssertionError("Ghidra must not be started for a ppc profile")
+
+    with pytest.raises(GhidraAdapterError, match="i386-only"):
+        export_with_ghidra(profile, "reference", tmp_path / "out.json", runner=runner)

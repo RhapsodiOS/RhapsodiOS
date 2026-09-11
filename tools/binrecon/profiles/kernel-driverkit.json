@@ -35,7 +35,16 @@
   "analysis_scope": [
     {
       "start": 2085076,
-      "end": 2088160
+      "end": 2088215
     }
-  ]
+  ],
+  "rebuilt_analysis_scope": [
+    {
+      "start": 2140036,
+      "end": 2143308
+    }
+  ],
+  "rebuilt": {
+    "path": "${BINRECON_REBUILT}"
+  }
 }

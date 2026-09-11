@@ -22,7 +22,7 @@ CLASSES = Bsd.m FloppyArch.m FloppyCmds.m FloppyCnt.m FloppyCntIo.m\
 
 HFILES = Bsd.h FloppyArch.h FloppyCmds.h FloppyCnt.h FloppyCntIo.h\
          FloppyDriveInt.h FloppyDriveInt2.h FloppyVm.h Geometry.h\
-         IODiskNew.h IODiskPartitionNEW.h IODriveNEW.h\
+         IODiskNew.h IODiskPartitionNEW.h IODiskProtocols.h IODriveNEW.h\
          IOFloppyDisk.h IOFloppyDrive.h IOLogicalDiskNEW.h\
          kernelDiskMethodsNEW.h Request.h Support.h Thread.h\
          VolCheck.h

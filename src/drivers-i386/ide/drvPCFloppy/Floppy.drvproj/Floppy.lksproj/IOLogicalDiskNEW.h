@@ -5,20 +5,21 @@
  */
 
 #import "IODiskNew.h"
+#import "IODiskProtocols.h"
 
 #ifdef	KERNEL
 #import <driverkit/kernelDiskMethods.h>
 #import <bsd/dev/ldd.h>
 #endif	KERNEL
 
-@interface IOLogicalDiskNEW : IODiskNEW
+@interface IOLogicalDiskNEW : IODiskNEW <IODiskReadingAndWriting>
 {
 @private
 	id		_physicalDisk;		// physical disk object
 	unsigned	_partitionBase;		// base offset of partition
 	BOOL		_instanceOpen;		// instance open flag
 
-	int		_IOLogicalDiskNEW_reserved[4];
+	int		_IOLogicalDisk_reserved[4];
 }
 
 /*

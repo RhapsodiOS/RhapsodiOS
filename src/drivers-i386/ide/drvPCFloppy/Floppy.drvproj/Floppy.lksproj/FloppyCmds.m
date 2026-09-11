@@ -41,18 +41,138 @@ static unsigned int _motorChangeCount = 0;
  */
 - (IOReturn)doCmdXfr:(void *)cmdParams
 {
-	// TODO: Implement command transfer execution
-	// This should:
-	// - Turn on motor if needed
-	// - Seek to correct track if needed
-	// - Set up DMA for data transfers
-	// - Send command bytes to controller
-	// - Wait for interrupt
-	// - Read result bytes
-	// - Handle errors and retries
-	// - Turn off motor (or start motor timeout)
+	unsigned char cmdOpcode;
+	unsigned char density;
+	unsigned char driveNum;
+	unsigned char targetTrack;
+	unsigned char targetHead;
+	unsigned char *cmdBytePtr;
+	IOReturn result;
+	BOOL isEISA;
 
-	return IO_R_SUCCESS;
+	// Reconstructed from the reference's 24-block/551-byte disassembly
+	// (0x17b8-0x19de). The cmdParams offsets below are read directly off
+	// the instructions, not off this file's older field-offset comments,
+	// which reconstruction/divergences.md already flagged as wrong for
+	// this method's own drive-number read (it used +0x14; the reference
+	// uses +0x5c throughout doCmdXfr:):
+	//   +0x00       requested density -- doConfigure:/doSpecify:'s
+	//               argument, and seek:head:density:'s "density" arg
+	//   +0x0c..+0x0f raw FDC command bytes 0-3 (opcode, drive/head
+	//               select, cylinder, head) -- the same bytes sendCmd:
+	//               sends to the controller
+	//   +0x40       result status, already written by sendCmd: itself
+	//   +0x5c       drive/unit number (0-3), staged by the caller
+	//
+	// self->_lastErrorCode (offset 0x140) does double duty here as a
+	// cached "current cylinder": doSpecify:/i82077Reset: prime it to
+	// 0xffff ("unknown"), and sendCmd:'s own SEEK case updates it from
+	// the reached PCN -- which is why comparing it against the requested
+	// cylinder below is what decides whether a seek is actually needed.
+	//
+	// The reference picks which of the actions below apply via two
+	// compiler-generated jump tables (jpt_17E2 gating the drive-select
+	// merge, jpt_188E gating the motor-on/seek step). Both tables, and
+	// their default (out-of-range) targets, have since been recovered
+	// byte-for-byte from the reference binary, and the case lists below
+	// are verified against them.
+	cmdOpcode = *(unsigned char *)((char *)cmdParams + 0x0c) & 0x1f;
+	cmdBytePtr = (unsigned char *)cmdParams + 0x0c;
+	density = *(unsigned char *)cmdParams;
+	driveNum = *((unsigned char *)cmdParams + 0x5c);
+
+	// Blocks 0x17e2/0x1830/0x1836: merge the drive-select byte into FDC
+	// command byte 1, except for the commands whose byte 1 has a
+	// different meaning (SPECIFY's SRT/HUT, CONFIGURE's reserved byte,
+	// SENSE INTERRUPT STATUS/DUMPREG/VERSION/PERPENDICULAR MODE, none of
+	// which take a drive-select byte).
+	switch (cmdOpcode) {
+	case 0x03: case 0x08: case 0x0e: case 0x10: case 0x12: case 0x13:
+		break;
+	default:
+		*((unsigned char *)cmdParams + 0x0d) |= driveNum;
+		break;
+	}
+
+	// Blocks 0x1836-0x187e: doConfigure:/doSpecify: are only reissued
+	// when the requested density differs from the controller's cached
+	// density (_currentDensity, offset 0x139); an error from either
+	// aborts the transfer immediately.
+	if (_currentDensity != density) {
+		result = [self doConfigure:density];
+		if (result != 0) {
+			*(unsigned int *)((char *)cmdParams + 0x40) = result;
+			return result;
+		}
+
+		result = [self doSpecify:density];
+		if (result != 0) {
+			*(unsigned int *)((char *)cmdParams + 0x40) = result;
+			return result;
+		}
+	}
+
+	// Blocks 0x188e/0x18ec/0x1910/0x193c: spin up the drive for any
+	// command that touches it. For commands whose command bytes 2/3
+	// carry a real cylinder/head (read track/write/read/write deleted/
+	// read deleted), seek there first if the cached cylinder doesn't
+	// already match; RECALIBRATE/READ ID/FORMAT TRACK/SEEK/VERIFY (whose
+	// byte 2 isn't a cylinder to seek to) just get the motor turned on.
+	switch (cmdOpcode) {
+	case 0x02: case 0x05: case 0x06: case 0x09: case 0x0c:
+		[self doMotorOn:driveNum];
+
+		targetTrack = cmdBytePtr[2];
+		targetHead = cmdBytePtr[3];
+
+		if (_lastErrorCode != targetTrack) {
+			result = [self seek:targetTrack head:targetHead density:density];
+			IOSleep(20);
+			if (result != 0) {
+				*(unsigned int *)((char *)cmdParams + 0x40) = result;
+				return result;
+			}
+		}
+		break;
+
+	case 0x07: case 0x0a: case 0x0d: case 0x0f: case 0x16:
+		[self doMotorOn:driveNum];
+		break;
+
+	default:
+		break;
+	}
+
+	// Block 0x1951: send the command. sendCmd: already stores its result
+	// at +0x40; the reference re-stores it here too.
+	result = [self sendCmd:cmdParams];
+	*(unsigned int *)((char *)cmdParams + 0x40) = result;
+
+	// Blocks 0x1962-0x19d2: the post-processing tail is gated entirely
+	// on isEISAPresent. On EISA systems, SEEK/RECALIBRATE/VERIFY just
+	// get an extra 20ms settle delay (blocks 0x1976-0x1988) and the
+	// function returns. On non-EISA systems, that settle sleep is
+	// skipped (block 0x1994's own IOSleep(30) is gated by a condition
+	// that's always false in the reference build -- dead code, nothing
+	// to reproduce) and a RECALIBRATE gets a retry instead: verify by
+	// explicitly seeking to cylinder 0/head 0, and let that failure
+	// override sendCmd:'s result only if sendCmd: had itself reported
+	// success.
+	isEISA = [self isEISAPresent];
+	if (isEISA) {
+		if (cmdOpcode == 0x0f || cmdOpcode == 0x07 || cmdOpcode == 0x16) {
+			IOSleep(20);
+		}
+	} else if (cmdOpcode == 0x07) {
+		result = [self seek:0 head:0 density:density];
+		IOSleep(20);
+		if (result != 0 &&
+		    *(unsigned int *)((char *)cmdParams + 0x40) == 0) {
+			*(unsigned int *)((char *)cmdParams + 0x40) = result;
+		}
+	}
+
+	return *(IOReturn *)((char *)cmdParams + 0x40);
 }
 
 /*
@@ -204,8 +324,8 @@ static unsigned int _motorChangeCount = 0;
 	unsigned char byte;
 	unsigned char st0, st1, st2;
 
-	// Get command opcode (offset 0x0c + 3) and mask to 5 bits
-	cmdOpcode = *(unsigned char *)((char *)cmdParams + 0x0f) & 0x1f;
+	// Get command opcode (offset 0x0c) and mask to 5 bits
+	cmdOpcode = *(unsigned char *)((char *)cmdParams + 0x0c) & 0x1f;
 
 	// Initialize result fields
 	*(unsigned int *)((char *)cmdParams + 0x40) = 0xffffffff;  // Result status
@@ -222,8 +342,8 @@ static unsigned int _motorChangeCount = 0;
 	// Start DMA if byte count > 0
 	if (dmaByteCount > 0) {
 		result = [self dmaStart:cmdParams dmaStruct:&dmaStruct];
-		_get_dma_addr(2);  // Debug/verify
-		_get_dma_count(2); // Debug/verify
+		get_dma_addr(2);  // Debug/verify
+		get_dma_count(2); // Debug/verify
 
 		if (result != 0) {
 			goto cleanup;
@@ -253,7 +373,7 @@ static unsigned int _motorChangeCount = 0;
 	}
 
 	// Send command bytes
-	cmdBytesPtr = (unsigned char *)((char *)cmdParams + 0x0c + 3);
+	cmdBytesPtr = (unsigned char *)((char *)cmdParams + 0x0c);
 	cmdByteCount = *(unsigned int *)((char *)cmdParams + 0x1c);
 
 	for (i = 0; i < cmdByteCount; i++) {
@@ -298,7 +418,7 @@ static unsigned int _motorChangeCount = 0;
 	// Read result bytes
 	resultByteCount = *(unsigned int *)((char *)cmdParams + 0x38);
 	resultBytesPtr = (unsigned char *)((char *)cmdParams + 0x28) +
-	                 *(unsigned int *)((char *)cmdParams + 0x4c) + 3;
+	                 *(unsigned int *)((char *)cmdParams + 0x4c);
 
 	for (i = *(unsigned int *)((char *)cmdParams + 0x4c); i < resultByteCount; i++) {
 		result = [self fcGetByte:resultBytesPtr];
@@ -318,8 +438,8 @@ static unsigned int _motorChangeCount = 0;
 	// Complete DMA if active
 	if (dmaActive) {
 		result = [self dmaDone:cmdParams dmaStruct:&dmaStruct];
-		_get_dma_addr(2);  // Debug/verify
-		_get_dma_count(2); // Debug/verify
+		get_dma_addr(2);  // Debug/verify
+		get_dma_count(2); // Debug/verify
 		dmaActive = NO;
 
 		if (result != 0) {
@@ -348,9 +468,9 @@ static unsigned int _motorChangeCount = 0;
 		}
 
 		// Get status registers
-		st0 = ((unsigned char *)((char *)cmdParams + 0x28))[3];
-		st1 = ((unsigned char *)((char *)cmdParams + 0x28))[4];
-		st2 = ((unsigned char *)((char *)cmdParams + 0x28))[5];
+		st0 = ((unsigned char *)((char *)cmdParams + 0x28))[0];
+		st1 = ((unsigned char *)((char *)cmdParams + 0x28))[1];
+		st2 = ((unsigned char *)((char *)cmdParams + 0x28))[2];
 
 		// Check ST0 bits 7-6 (error bits)
 		if ((st0 & 0xc0) == 0) {
@@ -480,8 +600,8 @@ static unsigned int _motorChangeCount = 0;
 cleanup:
 	// Abort DMA if still active
 	if (dmaActive) {
-		_dma_mask_chan(2);
-		_dma_xfer_abort(&dmaStruct);
+		dma_mask_chan(2);
+		dma_xfer_abort(&dmaStruct);
 		[self releaseDMALock];
 	}
 

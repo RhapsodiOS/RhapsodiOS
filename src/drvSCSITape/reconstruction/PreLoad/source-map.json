@@ -1,0 +1,96 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 7496,
+      "reference_names": [
+        "_main"
+      ],
+      "size": 276,
+      "source_line": 26,
+      "source_path": "src/drvSCSITape/PreLoad.tproj/PreLoad.m"
+    }
+  ],
+  "reference_sha256": "177355F05BDCBD6EDE34121F93E6B6A176B105ACF8EAD1945761A9E1D3BFB60A",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 6948,
+      "reference_names": [
+        "start"
+      ],
+      "size": 48
+    },
+    {
+      "address": 7000,
+      "reference_names": [
+        "__start"
+      ],
+      "size": 320
+    },
+    {
+      "address": 7320,
+      "reference_names": [
+        "__call_mod_init_funcs"
+      ],
+      "size": 76
+    },
+    {
+      "address": 7396,
+      "reference_names": [
+        "__dyld_init_check"
+      ],
+      "size": 60
+    },
+    {
+      "address": 7456,
+      "reference_names": [
+        "dyld_stub_binding_helper"
+      ],
+      "size": 24
+    },
+    {
+      "address": 7480,
+      "reference_names": [
+        "__dyld_func_lookup"
+      ],
+      "size": 16
+    },
+    {
+      "address": 8012,
+      "reference_names": [
+        "_exit"
+      ],
+      "size": 36
+    },
+    {
+      "address": 8048,
+      "reference_names": [
+        "_printf"
+      ],
+      "size": 36
+    },
+    {
+      "address": 8084,
+      "reference_names": [
+        "_unlink"
+      ],
+      "size": 36
+    },
+    {
+      "address": 8120,
+      "reference_names": [
+        "_sprintf"
+      ],
+      "size": 36
+    },
+    {
+      "address": 8156,
+      "reference_names": [
+        "_bzero"
+      ],
+      "size": 36
+    }
+  ]
+}

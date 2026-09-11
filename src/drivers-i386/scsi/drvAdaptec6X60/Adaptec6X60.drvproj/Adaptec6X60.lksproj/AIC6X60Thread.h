@@ -27,7 +27,7 @@ typedef enum {
 /*
  * Methods executed by the I/O thread.
  */
-@interface AIC6X60Controller(IOThread)
+@interface AIC6X60(IOThread)
 
 - (int)threadExecuteRequest	: (AIC6X60CommandBuf *)cmdBuf;
 - (void)threadResetBus		: (AIC6X60CommandBuf *)cmdBuf;

@@ -511,7 +511,7 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
 
     /* If we have a cached resource, free it first */
     if (_memoryRangeResource != nil) {
-        if (_verbose) {
+        if (_verbose == YES) {
             range = [_memoryRangeResource range];
             IOLog("PKB: freeing range 0x%x(0x%x)\n", range.base, range.length);
         }
@@ -528,7 +528,7 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
                                                AlignedTo:PAGE_SIZE];
 
     /* Log the result if verbose */
-    if (_verbose) {
+    if (_verbose == YES) {
         if (_memoryRangeResource == nil) {
             IOLog("%s: memoryRangeResource: resource is nil\n", [self name]);
         } else {
@@ -553,8 +553,9 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
     id pool;
     id windows;
     unsigned int windowCount;
+    PCMCIAStatus cardPresent = { 1 };	/* present, nothing else */
 
-    if (_verbose) {
+    if (_verbose == YES) {
         IOLog("PKB: adding adapter %x\n", (unsigned int)adapter);
     }
 
@@ -581,7 +582,7 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
         socketInfo->pool = pool;
 
         /* Add windows from socket to pool */
-        if (_verbose) {
+        if (_verbose == YES) {
             windows = [socket windows];
             windowCount = [windows count];
             IOLog("PKB: adding %d windows for adapter\n", windowCount);
@@ -594,7 +595,7 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
         [_socketMap insertKey:socket value:socketInfo];
 
         /* Set status change mask */
-        [socket setStatusChangeMask:1];
+        [socket setStatusChangeMask:cardPresent];
 
         /* Initialize remaining fields */
         socketInfo->tupleList = nil;
@@ -604,7 +605,7 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
         socketInfo->cardID = nil;
 
         /* Trigger initial status change */
-        [self statusChangedForSocket:socket changedStatus:1];
+        [self statusChangedForSocket:socket changedStatus:cardPresent];
     }
 
     return self;
@@ -687,22 +688,23 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
 /*
  * Handle socket status change
  */
-- (void)statusChangedForSocket:socket changedStatus:(unsigned int)changedStatus
+- (void)statusChangedForSocket:socket changedStatus:(PCMCIAStatus)changedStatus
 {
     SocketInfo *socketInfo;
     unsigned int socketNum;
-    unsigned int currentStatus;
+    PCMCIAStatus currentStatus;
     id memRange;
     Range range;
     id memWindow;
     unsigned int i, count;
     id tuple;
 
-    /* Get socket number for logging */
+    /* The reference asks for the number before testing, so this one send
+     * happens whether or not the status change is interesting. */
     socketNum = [socket socketNumber];
 
-    /* Check if we care about this status change (bit 0) */
-    if ((changedStatus & 1) == 0) {
+    /* Check if we care about this status change */
+    if (!changedStatus.present) {
         IOLog("PCMCIA: don't care socket %d\n", socketNum);
         return;
     }
@@ -716,28 +718,29 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
 
     /* Check if already probed */
     if (socketInfo->flag1 != 0) {
-        IOLog("PCMCIA: Socket %d: already probed\n", socketNum);
+        IOLog("PCMCIA: Socket %d: already probed\n", [socket socketNumber]);
         return;
     }
 
     /* Get current status */
     currentStatus = [socket status];
 
-    if (_verbose) {
+    if (_verbose == YES) {
         IOLog("PKB: socket %d status: changed = %x, current = %x\n",
-              socketNum, changedStatus, currentStatus);
+              [socket socketNumber], *(unsigned char *)&changedStatus,
+              *(unsigned char *)&currentStatus);
     }
 
-    /* Store current status */
-    socketInfo->status = currentStatus;
+    /* Store current status (PCMCIAStatus is 4 bytes) */
+    socketInfo->status = *(unsigned int *)&currentStatus;
 
     /* Check if card is present (bit 0 of status) */
-    if ((currentStatus & 1) == 0) {
+    if (!currentStatus.present) {
         /* Card removed */
         if (socketInfo->probed != 0) {
             /* Clean up card resources */
             if (socketInfo->tupleList != nil) {
-                [[socketInfo->tupleList freeObjects:@selector(free)] free];
+                [[socketInfo->tupleList freeObjects] free];
             }
 
             if (socketInfo->deviceDesc != nil) {
@@ -755,11 +758,11 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
             socketInfo->flag1 = 0;
 
             [self disableSocket:socket];
-            IOLog("PCMCIABus: Socket %d: card removed\n", socketNum);
+            IOLog("PCMCIABus: Socket %d: card removed\n", [socket socketNumber]);
         }
     } else {
-        /* Card inserted */
-        if (socketInfo->probed == 0) {
+        /* Card inserted.  The reference compares against 1, not 0. */
+        if (socketInfo->probed != 1) {
             socketInfo->probed = 1;
 
             /* Enable socket */
@@ -769,7 +772,7 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
             }
 
             /* Allocate memory range for attribute memory */
-            if (_verbose) {
+            if (_verbose == YES) {
                 IOLog("%s: trying to allocate memory range 0x%x..0x%x\n",
                       [self name], _memoryBase, _memoryBase + _memoryLength - 1);
             }
@@ -786,7 +789,7 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
 
             range = [memRange range];
 
-            if (_verbose) {
+            if (_verbose == YES) {
                 IOLog("%s: reserved memory range 0x%x..0x%x\n",
                       [self name], range.base, range.base + range.length - 1);
             }
@@ -814,7 +817,7 @@ char *configTableLookupServerAttribute(const char *busName, int busId, const cha
                     [self parseTuple:tuple intoDeviceDescription:socketInfo->deviceDesc];
                 }
 
-                IOLog("PCMCIABus: Socket %d: card inserted\n", socketNum);
+                IOLog("PCMCIABus: Socket %d: card inserted\n", [socket socketNumber]);
 
                 /* Create PCMCIAid from device description */
                 socketInfo->cardID = [[PCMCIAid alloc] initFromDescription:socketInfo->deviceDesc];

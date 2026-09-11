@@ -101,6 +101,15 @@ SERVERDEFSFILES = bootstrap.defs netname.defs
 UNTYPEDDEFSFILES = mach_port.defs
 UNTYPEDDEFSSRCFILES = $(UNTYPEDDEFSFILES:.defs=User.c)
 DEFSFILES = $(MACHDEFSFILES) $(SERVERDEFSFILES)
+
+# Bootstrap builds provide a private MIG and isolated framework include flags.
+# Normal historical builds leave CONFIG_DIR unset and retain the platform
+# makefiles' defaults.
+ifneq ($(strip $(CONFIG_DIR)),)
+override MIG = $(CONFIG_DIR)/mig
+MIGFLAGS = $(RC_CFLAGS)
+endif
+
 INITIAL_INITIAL_TARGETS = $(UNTYPEDDEFSFILES:.defs=User.o)
 
 # .mig files (no .defs files) that should have mig run on them
@@ -120,4 +129,3 @@ OTHER_HELP_DIRS =
 
 # Don't add more rules here unless you want the first one to be the default
 # target for make!  Put all your targets in Makefile.postamble.
-

@@ -229,10 +229,10 @@ bpf_movein(uio, linktype, mp, sockp, datlen)
 	if ((unsigned)len > MCLBYTES)
 		return (EIO);
 
-	MGETHDR(m, M_WAIT, MT_DATA);
+	MGET(m, M_WAIT, MT_DATA);
 	if (m == 0)
 		return (ENOBUFS);
-	if (len > MHLEN) {
+	if (len > MLEN) {
 #if BSD >= 199103
 		MCLGET(m, M_WAIT);
 		if ((m->m_flags & M_EXT) == 0) {
@@ -245,14 +245,12 @@ bpf_movein(uio, linktype, mp, sockp, datlen)
 		}
 	}
 	m->m_len = len;
-	m->m_pkthdr.len = len;
 	*mp = m;
 	/*
 	 * Make room for link header.
 	 */
 	if (hlen != 0) {
 		m->m_len -= hlen;
-		m->m_pkthdr.len -= hlen;
 #if BSD >= 199103
 		m->m_data += hlen; /* XXX */
 #else
@@ -288,7 +286,7 @@ bpf_attachd(d, bp)
 	d->bd_next = bp->bif_dlist;
 	bp->bif_dlist = d;
 
-/*	*bp->bif_driverp = bp; */
+	*bp->bif_driverp = bp;
 }
 
 /*
@@ -328,7 +326,7 @@ bpf_detachd(d)
 		/*
 		 * Let the driver know that there are no more listeners.
 		 */
-	    /* *d->bd_bif->bif_driverp = 0 */;
+		*d->bd_bif->bif_driverp = 0;
 	d->bd_bif = 0;
 }
 #endif /* BPFDRV */
@@ -1020,7 +1018,7 @@ bpf_select(dev, rw, p)
 #ifdef BPFDRV
 void
 bpf_tap(arg, pkt, pktlen)
-	struct ifnet *ifp;
+	caddr_t arg;
 	register u_char *pkt;
 	register u_int pktlen;
 {

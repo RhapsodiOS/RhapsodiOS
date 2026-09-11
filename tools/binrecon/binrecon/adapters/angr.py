@@ -142,7 +142,7 @@ def _thaw(value):
     return value
 
 
-def _layout(profile, identity: InputIdentity) -> dict:
+def _layout(profile, identity: InputIdentity, artifact: str = "reference") -> dict:
     try:
         canonical = read_macho(identity.path)
         metadata = canonical["extensions"]["macho"]["sections"]
@@ -175,7 +175,7 @@ def _layout(profile, identity: InputIdentity) -> dict:
             "entry_points": entry_points, "sections": sections,
             "symbols": symbols, "relocations": relocations,
             "relocation_metadata": relocation_metadata}
-    scope = analysis_scope(profile)
+    scope = analysis_scope(profile, artifact)
     if scope:
         document["analysis_scope"] = [{"start": start, "end": end}
                                       for start, end in scope]
@@ -310,6 +310,11 @@ def _validate_angr_contract(document: dict) -> None:
 
 def export_with_angr(profile, artifact: str, destination: Path, *,
                      runner: Callable = subprocess.run) -> dict:
+    architecture = profile.document.get("architecture", "i386")
+    if architecture != "i386":
+        raise AngrAdapterError(
+            f"the angr adapter is i386-only and cannot analyse {architecture}"
+        )
     configuration = _configuration(profile)
     executable = Path(configuration.get("executable", "")).resolve(strict=False)
     if not executable.is_file(): raise AngrAdapterError(f"angr Python executable does not exist: {executable}")
@@ -346,9 +351,10 @@ def export_with_angr(profile, artifact: str, destination: Path, *,
                   "peer_artifact": peer_artifact,
                   "peer_input": None if peer_identity is None else {"path": str(peer_identity.path),
                                  "size": peer_identity.size, "sha256": peer_identity.sha256},
-                  "peer_layout": None if peer_identity is None else _layout(profile, peer_identity)}
+                  "peer_layout": None if peer_identity is None
+                                 else _layout(profile, peer_identity, peer_artifact)}
         _atomic_text(config_path, json.dumps(config, sort_keys=True, separators=(",", ":")) + "\n")
-        _atomic_text(layout_path, json.dumps(_layout(profile, identity), sort_keys=True,
+        _atomic_text(layout_path, json.dumps(_layout(profile, identity, artifact), sort_keys=True,
                                             separators=(",", ":")) + "\n")
         argv = [str(executable), str(script.resolve()), "--input", str(identity.path),
                 "--output", str(output), "--config", str(config_path), "--layout", str(layout_path),

@@ -28,9 +28,11 @@
  * Exported interface for Kernel PCMCIA Bus Resource Object(s).
  */
 
- #ifdef	DRIVER_PRIVATE
+#ifdef	DRIVER_PRIVATE
 
 #import <driverkit/KernBus.h>
+#import <driverkit/driverTypes.h>
+#import <driverkit/i386/PCMCIA.h>
 
 #define IO_PORTS_KEY 		"I/O Ports"
 #define MEM_MAPS_KEY 		"Memory Maps"
@@ -41,5 +43,45 @@
 #define PCMCIA_TUPLE_LIST	"PCMCIA Tuple List"
 #define PCMCIA_SOCKET_LIST	"PCMCIA Socket List"
 #define PCMCIA_WINDOW_LIST	"PCMCIA Window List"
+
+/*
+ * PCMCIAStatus, and the protocols the adapter, socket
+ * and window objects adopt, are in <driverkit/i386/PCMCIA.h>.
+ */
+
+/*
+ * The PCMCIA bus object is supplied
+ * by a loadable driver.  The kernel
+ * only sends it messages, so the
+ * instance variables are private
+ * to the driver.
+ */
+
+@interface PCMCIAKernBus : KernBus
+
++ initialize;
++ (BOOL)probe: deviceDescription;
++ (IODeviceStyle)deviceStyle;
++ (Protocol **)requiredProtocols;
++ (BOOL)configureDriverWithTable: table;
+
+- init;
+- free;
+
+- addAdapter: adapter;
+- removeAdapter: adapter;
+
+- allocIOWindowForSocket: socket;
+- allocMemoryWindowForSocket: socket;
+
+- memoryRangeResource;
+
+- (void)setBusRange: (Range)range;
+- (void)setVerbose: (BOOL)verbose;
+
+- (void)statusChangedForSocket: socket
+		 changedStatus: (PCMCIAStatus)status;
+
+@end
 
 #endif	/* DRIVER_PRIVATE */

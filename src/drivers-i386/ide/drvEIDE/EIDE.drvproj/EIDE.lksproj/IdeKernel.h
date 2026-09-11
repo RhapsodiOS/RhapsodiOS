@@ -35,14 +35,8 @@
 #ifndef _IDEKERNEL_H
 #define _IDEKERNEL_H 1
 
-__private_extern__ int ideopen(dev_t dev, int flag, int devtype, struct proc * pp);
-__private_extern__ int ideclose(dev_t dev, int flag, int devtype, struct proc * pp);
-__private_extern__ int ideread(dev_t dev, struct uio *uiop, int ioflag);
-__private_extern__ int idewrite(dev_t dev, struct uio *uiop, int ioflag);
-__private_extern__ void idestrategy(register struct buf *bp);
-__private_extern__ int ideioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc * pp);
-__private_extern__ int idesize(dev_t dev);
-__private_extern__ void ide_block_char_majors(int *blockmajor, int *charmajor);
+__private_extern__ int IdeDiskTransportIoctl(id disk, dev_t dev,
+	unsigned int cmd, caddr_t data, int flag, struct proc *proc);
 
 extern IONamedValue iderValues[];
 

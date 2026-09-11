@@ -31,6 +31,7 @@ void strlist_init(strlist *l);
 void strlist_free(strlist *l);
 void strlist_push(strlist *l, const char *s);       /* copies */
 void strlist_push_owned(strlist *l, char *s);       /* takes ownership */
+char *strlist_join(const strlist *list, const char *separator);
 
 /* str_chomp/str_trim/str_lowercase mutate the caller's buffer in place and
    return a pointer INTO it (str_trim may point past the start) — do not free

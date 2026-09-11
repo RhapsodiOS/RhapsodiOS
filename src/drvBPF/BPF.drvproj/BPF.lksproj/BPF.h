@@ -32,13 +32,13 @@
 #ifndef _DRVBPF_H_
 #define _DRVBPF_H_
 
-#import <driverkit/IODevice.h>
+#import <driverkit/IODirectDevice.h>
 
-@interface BPF : IODevice
+@interface BPF : IODirectDevice
 
 + (BOOL)probe:(IODeviceDescription *)deviceDescription;
 - initFromDeviceDescription:(IODeviceDescription *)deviceDescription;
-- (IOReturn)getIntValues:(int *)parameterArray
+- (IOReturn)getIntValues:(unsigned int *)parameterArray
             forParameter:(IOParameterName)parameterName
                    count:(unsigned int *)count;
 

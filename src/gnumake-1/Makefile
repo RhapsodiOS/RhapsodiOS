@@ -266,7 +266,7 @@ build_info: $(MAKEDIR)/Makefile
 	cd $(MAKEDIR); make info
 
 $(MAKEDIR)/Makefile:
-	@(PWD=`pwd` ; \
+	@(source_root="$(SRCROOT)" ; \
 	cd $(MAKEDIR); \
 	if [ -z "$(RC_OS)" ] ; then \
 	   echo Hey buddy!  You need to set RC_OS. ; \
@@ -274,10 +274,10 @@ $(MAKEDIR)/Makefile:
 	fi ; \
 	if [ "$(RC_OS)" = "winnt" ] ; then \
 	   echo RC_OS=$(RC_OS) ; \
-	   $(CONFIGURE_ENVIRON) $$PWD/$(MAKE_SRC_DIR)/nt-configure ; \
+	   $(CONFIGURE_ENVIRON) "$$source_root/$(MAKE_SRC_DIR)/nt-configure" ; \
         else \
-	   echo $(CONFIGURE_ENVIRON) $$PWD/$(MAKE_SRC_DIR)/configure ; \
-	   $(CONFIGURE_ENVIRON) $$PWD/$(MAKE_SRC_DIR)/configure ; \
+	   echo $(CONFIGURE_ENVIRON) "$$source_root/$(MAKE_SRC_DIR)/configure" ; \
+	   $(CONFIGURE_ENVIRON) "$$source_root/$(MAKE_SRC_DIR)/configure" ; \
 	fi)
 
 
@@ -305,4 +305,3 @@ really_clean:
 
 $(MAKEDIR) $(HTML_DIR) $(SYMROOT) $(OBJROOT) $(SRCROOT) $(LOCALDIR) $(INFODIR) $(NEXTSTEP_BINDIR) $(WINNT_BINDIR) $(MANDIR) $(PRODSRCROOT) $(GNU_SRC_DIR):
 	$(MKDIRS) $@
-

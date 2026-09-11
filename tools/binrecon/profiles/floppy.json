@@ -1,6 +1,6 @@
 {
   "schema_version": "profile-v1",
-  "name": "drvPCFloppy reconstruction",
+  "name": "drvPCFloppy reconstruction (IDA only; see reconstruction/analyzer-notes.md)",
   "architecture": "i386",
   "endianness": "little",
   "reference": {
@@ -23,7 +23,7 @@
       "version": "12.1"
     },
     "angr": {
-      "enabled": true,
+      "enabled": false,
       "executable": ".venv-binrecon/Scripts/python.exe",
       "timeout_seconds": 900,
       "version": "9.3.0"

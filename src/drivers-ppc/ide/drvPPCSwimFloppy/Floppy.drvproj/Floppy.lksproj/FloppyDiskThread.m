@@ -33,7 +33,7 @@ typedef struct _QueueHead {
 } QueueHead;
 
 // Command operation names for logging
-static const char *_fdOpValues[] = {
+static const char *fdOpValues[] = {
     "FD_SEND_CMD", "FD_READ", "FD_WRITE", "FD_UNKNOWN3", "FD_EJECT",
     "FD_ABORT_ALL", "FD_UNKNOWN6", "FD_SET_DENSITY", "FD_SET_SECT_SIZE",
     "FD_SET_GAP", "FD_SET_INNER_RETRY", "FD_SET_OUTER_RETRY", "FD_GET_INNER_RETRY",
@@ -42,7 +42,7 @@ static const char *_fdOpValues[] = {
 };
 
 // Floppy disk result status names
-static const char *_fdrValues[] = {
+static const char *fdrValues[] = {
     "Success", "Retry", "Reserved", "Reserved", "Fatal", "Reserved",
     "Partial", "Reserved", "Reserved", "Reserved", "Reserved", "Reserved",
     "Reserved", "Reserved", "Reserved", "Reserved", "Reserved", "Reserved",
@@ -50,12 +50,12 @@ static const char *_fdrValues[] = {
 };
 
 // Density value names
-static const char *_densityValues[] = {
+static const char *densityValues[] = {
     "Auto", "500kbps", "300kbps", "1Mbps"
 };
 
 // Density info table: {density, capacity, isFormatted}
-static int _fdDensityInfo[] = {
+static int fdDensityInfo[] = {
     1, 0xb4000, 1,   // 500kbps MFM: 720KB, formatted
     2, 0x168000, 1,  // 300kbps GCR: 1.44MB, formatted
     3, 0x168000, 1,  // 1Mbps MFM: 1.44MB, formatted
@@ -85,21 +85,16 @@ static int _fdSectSizeInfo_1Mbps[] = {
 
 static const char *_getOpName(unsigned int opCode)
 {
-    if (opCode < sizeof(_fdOpValues) / sizeof(_fdOpValues[0])) {
-        return _fdOpValues[opCode];
+    if (opCode < sizeof(fdOpValues) / sizeof(fdOpValues[0])) {
+        return fdOpValues[opCode];
     }
     return "FD_UNKNOWN";
 }
 
-static const char *_getStatusName(unsigned int statusCode, const char **values)
-{
-    if (statusCode < 20) {
-        return values[statusCode];
-    }
-    return "Unknown";
-}
+// _getStatusName is the external definition in FloppyDisk.m,
+// declared by FloppyDisk.h.
 
-static int *_fdGetSectSizeInfo(unsigned int density)
+static int *fdGetSectSizeInfo(unsigned int density)
 {
     switch (density) {
     case 1:
@@ -113,7 +108,7 @@ static int *_fdGetSectSizeInfo(unsigned int density)
     }
 }
 
-extern void _IOExitThread(void);
+extern void IOExitThread(void);
 
 @implementation FloppyDisk(Thread)
 
@@ -121,7 +116,7 @@ extern void _IOExitThread(void);
  * Dispatch floppy disk command
  * Main command dispatcher for the floppy thread
  */
-- (void)_fdCmdDispatch:(void *)command
+- (void)fdCmdDispatch:(void *)command
 {
     FdBuffer *fdBuf = (FdBuffer *)command;
     IOReturn result = IO_R_SUCCESS;
@@ -137,16 +132,16 @@ extern void _IOExitThread(void);
 
     switch (cmdCode) {
     case 0:  // FD_SEND_CMD - Send command to controller
-        result = [self _fdSendCmd:(unsigned char *)fdBuf->reserved2];
+        result = [self fdSendCmd:(unsigned char *)fdBuf->reserved2];
         break;
 
     case 1:  // FD_READ - Read operation
     case 2:  // FD_WRITE - Write operation
-        result = [self _fdRwCommon:fdBuf];
+        result = [self fdRwCommon:fdBuf];
         break;
 
     case 4:  // FD_EJECT - Eject disk
-        result = [self _fdEjectInt];
+        result = [self fdEjectInt];
         break;
 
     case 5:  // FD_ABORT_ALL - Abort all pending requests
@@ -187,7 +182,7 @@ extern void _IOExitThread(void);
                 }
 
                 // Complete the I/O
-                [self _fdIoComplete:currentBuf];
+                [self fdIoComplete:currentBuf];
 
                 [_queueLock lock];
 
@@ -201,15 +196,15 @@ extern void _IOExitThread(void);
         break;
 
     case 7:  // FD_SET_DENSITY - Set media density
-        result = [self _setDensityInt:*(unsigned int *)fdBuf->reserved5];
+        result = [self setDensityInt:*(unsigned int *)fdBuf->reserved5];
         break;
 
     case 8:  // FD_SET_SECT_SIZE - Set sector size
-        result = [self _setSectSizeInt:*(unsigned int *)fdBuf->reserved5];
+        result = [self setSectSizeInt:*(unsigned int *)fdBuf->reserved5];
         break;
 
     case 9:  // FD_SET_GAP - Set gap length
-        result = [self _setGapInt:*(unsigned int *)fdBuf->reserved5];
+        result = [self setGapInt:*(unsigned int *)fdBuf->reserved5];
         break;
 
     case 10:  // FD_SET_INNER_RETRY - Set inner retry count
@@ -232,19 +227,19 @@ extern void _IOExitThread(void);
         break;
 
     case 15:  // FD_UPDATE_PARAMS - Update physical parameters
-        result = [self _updatePhysicalParametersInt];
+        result = [self updatePhysicalParametersInt];
         break;
 
     case 16:  // FD_TERMINATE - Terminate I/O thread
         fdBuf->status = 0;
         IOLog("fdCmdDispatch: TERMINATING IO THREAD\n");
-        [self _fdIoComplete:fdBuf];
-        _IOExitThread();
+        [self fdIoComplete:fdBuf];
+        IOExitThread();
         // Never returns
         break;
 
     case 17:  // FD_MOTOR_OFF_CHECK - Check motor off condition
-        [self _motorOffCheck];
+        [self motorOffCheck];
         break;
 
     default:
@@ -259,18 +254,18 @@ extern void _IOExitThread(void);
         fdBuf->status = result;
         IOLog("fdCmdDispatch: DONE: cmd = %s status = %s\n",
               cmdName, [self stringFromReturn:result]);
-        [self _fdIoComplete:fdBuf];
+        [self fdIoComplete:fdBuf];
     } else {
         // Asynchronous operation - free buffer
         IOLog("fdCmdDispatch: ASYNC; DONE: cmd = %s\n", cmdName);
-        [self _freeFdBuf:(id)fdBuf];
+        [self freeFdBuf:(id)fdBuf];
     }
 }
 
 /*
  * Eject floppy disk internal
  */
-- (IOReturn)_fdEjectInt
+- (IOReturn)fdEjectInt
 {
     BOOL isFatal = NO;
     int retryCount = 0;
@@ -285,7 +280,7 @@ extern void _IOExitThread(void);
             bzero(cmdBuf, 96);
             *(unsigned int *)(cmdBuf + 0x38) = 2;  // Eject command code
 
-            result = [self _fdSendCmd:cmdBuf];
+            result = [self fdSendCmd:cmdBuf];
 
             if (result == IO_R_SUCCESS) {
                 // Get status from command buffer
@@ -302,7 +297,7 @@ extern void _IOExitThread(void);
         }
 
         // Try to seek to cylinder 0x4f (79)
-        result = [self _fdSeek:0x4f head:0];
+        result = [self fdSeek:0x4f head:0];
 
         if (result != IO_R_SUCCESS) {
             // Check if this is the last retry
@@ -327,7 +322,7 @@ extern void _IOExitThread(void);
 /*
  * Common read/write operation
  */
-- (IOReturn)_fdRwCommon:(void *)ioReq
+- (IOReturn)fdRwCommon:(void *)ioReq
 {
     FdBuffer *fdBuf = (FdBuffer *)ioReq;
     unsigned int startBlock, blockCount, remainingBlocks;
@@ -360,10 +355,10 @@ extern void _IOExitThread(void);
 transfer_loop:
     while (remainingBlocks > 0) {
         // Get max blocks we can transfer (limited by track boundary)
-        maxBlocks = [self _rwBlockCount:startBlock blockCount:remainingBlocks];
+        maxBlocks = [self rwBlockCount:startBlock blockCount:remainingBlocks];
 
         // Generate read/write command
-        [self _fdGenRwCmd:startBlock
+        [self fdGenRwCmd:startBlock
                blockCount:maxBlocks
                  fdIoReq:cmdBuf
                 readFlag:isRead];
@@ -375,7 +370,7 @@ transfer_loop:
         *(unsigned int *)(cmdBuf + 0x14) = (unsigned int)fdBuf->reserved6; // Client parameter
 
         // Send command to controller
-        result = [self _fdSendCmd:cmdBuf];
+        result = [self fdSendCmd:cmdBuf];
 
         // Get status and actual transfer from command buffer
         statusCode = *(int *)(cmdBuf + 0x40);
@@ -444,17 +439,17 @@ transfer_loop:
 
                     if (outerRetryCount == _outerRetry) {
                         // Outer retry limit reached - fatal error
-                        [self _logRwErr:(void *)"FATAL" block:startBlock status:statusCode readFlag:isRead];
+                        [self logRwErr:(void *)"FATAL" block:startBlock status:statusCode readFlag:isRead];
                         goto error_exit;
                     }
 
                     // Recalibrate and reset inner retry
-                    [self _logRwErr:(void *)"RECALIBRATING" block:startBlock status:statusCode readFlag:isRead];
-                    [self _fdRecal];
+                    [self logRwErr:(void *)"RECALIBRATING" block:startBlock status:statusCode readFlag:isRead];
+                    [self fdRecal];
                     innerRetryCount = 0;
                 } else {
                     // Still have inner retries left
-                    [self _logRwErr:(void *)"RETRYING" block:startBlock status:statusCode readFlag:isRead];
+                    [self logRwErr:(void *)"RETRYING" block:startBlock status:statusCode readFlag:isRead];
                 }
 
                 // Increment retry statistics
@@ -470,7 +465,7 @@ transfer_loop:
 
             default:
                 // Non-retriable error - fatal
-                [self _logRwErr:(void *)"FATAL" block:startBlock status:statusCode readFlag:isRead];
+                [self logRwErr:(void *)"FATAL" block:startBlock status:statusCode readFlag:isRead];
                 goto error_exit;
             }
         }
@@ -527,7 +522,7 @@ error_exit:
 /*
  * Log read/write error
  */
-- (void)_logRwErr:(void *)ioReq
+- (void)logRwErr:(void *)ioReq
             block:(unsigned)block
            status:(IOReturn)status
          readFlag:(BOOL)isRead
@@ -538,7 +533,7 @@ error_exit:
     const char *message = (const char *)ioReq;  // Error message like "RETRYING", "FATAL"
 
     driveName = [self name];
-    statusName = _getStatusName(status, _fdrValues);
+    statusName = _getStatusName(status, fdrValues);
     operation = isRead ? "Read" : "Write";
 
     IOLog("%s: Sector %d cmd = %s; %s: %s\n",
@@ -548,7 +543,7 @@ error_exit:
 /*
  * Check motor off condition
  */
-- (void)_motorOffCheck
+- (void)motorOffCheck
 {
     int readyState;
     unsigned int currentTime[2];
@@ -583,21 +578,21 @@ error_exit:
         *(unsigned int *)((char *)self + 0x1ac) |= 0x80000000;
 
         // Schedule timer callback in 2 seconds
-        extern void _fdTimer(void *arg);
-        IOScheduleFunc((IOThreadFunc)_fdTimer, self, 2);
+        extern void fdTimer(void *arg);
+        IOScheduleFunc((IOThreadFunc)fdTimer, self, 2);
     } else {
         // Time to turn motor off - send motor off command
         bzero(cmdBuf, 96);
         *(unsigned int *)(cmdBuf + 0x38) = 4;  // Motor off command code
 
-        [self _fdSendCmd:cmdBuf];
+        [self fdSendCmd:cmdBuf];
     }
 }
 
 /*
  * Set density internal
  */
-- (IOReturn)_setDensityInt:(unsigned)density
+- (IOReturn)setDensityInt:(unsigned)density
 {
     BOOL isAutoDensity;
     const char *densityName;
@@ -605,7 +600,7 @@ error_exit:
     int densityValue, capacityValue, formattedValue;
 
     // Get density name for logging
-    densityName = _getStatusName(density, _densityValues);
+    densityName = _getStatusName(density, densityValues);
     IOLog("setDensityInt: density %s\n", densityName);
 
     // Check if auto-density (0)
@@ -617,7 +612,7 @@ error_exit:
     }
 
     // Search density info table
-    densityInfo = _fdDensityInfo;
+    densityInfo = fdDensityInfo;
     while (*densityInfo != 0) {
         if (*densityInfo == density) {
             break;
@@ -636,7 +631,7 @@ error_exit:
     _isFormatted = formattedValue;  // offset 0x1d4
 
     // Update sector size with current block size
-    [self _setSectSizeInt:_blockSize];
+    [self setSectSizeInt:_blockSize];
 
     // If auto-density, clear bit 0 at offset 0x1c8
     if (isAutoDensity) {
@@ -649,7 +644,7 @@ error_exit:
 /*
  * Set gap internal
  */
-- (IOReturn)_setGapInt:(unsigned)gap
+- (IOReturn)setGapInt:(unsigned)gap
 {
     IOLog("setGapInt: rwGap = %d\n", gap);
 
@@ -662,7 +657,7 @@ error_exit:
 /*
  * Set sector size internal
  */
-- (IOReturn)_setSectSizeInt:(unsigned)sectSize
+- (IOReturn)setSectSizeInt:(unsigned)sectSize
 {
     int *sectSizeInfo;
     int savedSectorsPerTrack;
@@ -672,7 +667,7 @@ error_exit:
     IOLog("setSectSizeInt: sectSize %d\n", sectSize);
 
     // Get sector size info table for current density
-    sectSizeInfo = _fdGetSectSizeInfo(_density);
+    sectSizeInfo = fdGetSectSizeInfo(_density);
 
     // Check if table is valid
     if (*sectSizeInfo == 0) {
@@ -732,7 +727,7 @@ error_exit:
 /*
  * Unlock I/O queue lock
  */
-- (void)_unlockIoQLock
+- (void)unlockIoQLock
 {
     int readyState;
     int unlockValue;
@@ -759,7 +754,7 @@ error_exit:
 /*
  * Update physical parameters internal
  */
-- (IOReturn)_updatePhysicalParametersInt
+- (IOReturn)updatePhysicalParametersInt
 {
     int isWriteProtected;
     unsigned int flags;
@@ -770,12 +765,12 @@ error_exit:
     objc_msgSend(self, sel_getUid("setFormattedInternal:"), 0);
 
     // Set busy flag in controller
-    extern void _GetBusyFlag(void);
-    _GetBusyFlag();
+    extern void GetBusyFlag(void);
+    GetBusyFlag();
 
     // Get format info from controller into our format buffer at offset 0x1b8
-    extern void _FloppyFormatInfo(void *formatInfo);
-    _FloppyFormatInfo((char *)self + 0x1b8);
+    extern void FloppyFormatInfo(void *formatInfo);
+    FloppyFormatInfo((char *)self + 0x1b8);
 
     // Copy detected density from offset 0x1c4 to current density at offset 0x1cc
     _density = *(unsigned int *)((char *)self + 0x1c4);
@@ -784,14 +779,14 @@ error_exit:
     objc_msgSend(self, sel_getUid("setFormattedInternal:"), 1);
 
     // Set sector size to 512 bytes
-    [self _setSectSizeInt:0x200];
+    [self setSectSizeInt:0x200];
 
     // Set bit 0 at offset 0x1c8
     *(unsigned int *)((char *)self + 0x1c8) |= 1;
 
     // Check write protection status
-    extern int _FloppyWriteProtected(void);
-    isWriteProtected = _FloppyWriteProtected();
+    extern int FloppyWriteProtected(void);
+    isWriteProtected = FloppyWriteProtected();
 
     // If 10 sectors per track, force write protected (special case)
     if (_sectorsPerTrack == 10) {
@@ -812,8 +807,8 @@ error_exit:
     *(unsigned int *)((char *)self + 0x1c8) = flags;
 
     // Clear busy flag in controller
-    extern void _ResetBusyFlag(void);
-    _ResetBusyFlag();
+    extern void ResetBusyFlag(void);
+    ResetBusyFlag();
 
     return IO_R_SUCCESS;
 }

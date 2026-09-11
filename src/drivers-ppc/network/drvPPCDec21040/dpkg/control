@@ -1,0 +1,6 @@
+Package: drvppcdec21040
+Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
+Vendor: Apple Computer
+Version: 2
+Description: Dec21040 ethernet device driver
+Build-Depends: build-base, drivertools, driverkit, machkit, kernload, libstreams

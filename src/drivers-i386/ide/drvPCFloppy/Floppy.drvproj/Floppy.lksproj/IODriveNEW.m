@@ -21,7 +21,7 @@
 	int timeInMs;
 	
 	// Increment read count
-	_readCount++;
+	_readOps++;
 	
 	// Add to total bytes read
 	_bytesRead += bytes;
@@ -46,7 +46,7 @@
 	int timeInMs;
 	
 	// Increment write count
-	_writeCount++;
+	_writeOps++;
 	
 	// Add to total bytes written
 	_bytesWritten += bytes;
@@ -77,7 +77,7 @@
 - (IOReturn)ejectMedia
 {
 	// Free the disk object and store result
-	_diskObject = [_diskObject free];
+	_diskId = [_diskId free];
 	
 	// Set ready state to 2 (not ready)
 	[self setLastReadyState:2];
@@ -107,13 +107,13 @@
 	// Check if parameter name is "IODiskStats"
 	if (strcmp(parameterName, "IODiskStats") == 0) {
 		// Fill stats array from instance variables
-		statsArray[0] = _readCount;
+		statsArray[0] = _readOps;
 		statsArray[1] = _bytesRead;
 		statsArray[2] = _readTotalTime;
 		statsArray[3] = _readLatentTime;
 		statsArray[4] = _readRetries;
 		statsArray[5] = _readErrors;
-		statsArray[6] = _writeCount;
+		statsArray[6] = _writeOps;
 		statsArray[7] = _bytesWritten;
 		statsArray[8] = _writeTotalTime;
 		statsArray[9] = _writeLatentTime;
@@ -220,13 +220,13 @@
 	IOReturn result;
 	
 	// Clear all statistics counters
-	_readCount = 0;
+	_readOps = 0;
 	_bytesRead = 0;
 	_readTotalTime = 0;
 	_readLatentTime = 0;
 	_readRetries = 0;
 	_readErrors = 0;
-	_writeCount = 0;
+	_writeOps = 0;
 	_bytesWritten = 0;
 	_writeTotalTime = 0;
 	_writeLatentTime = 0;

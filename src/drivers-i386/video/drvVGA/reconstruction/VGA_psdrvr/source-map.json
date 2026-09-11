@@ -1,7 +1,315 @@
 {
   "boundary_disputed": [],
   "duplicate_candidates": [],
-  "mapped": [],
+  "mapped": [
+    {
+      "address": 1882201944,
+      "reference_names": [
+        "sub_70301F58"
+      ],
+      "size": 127,
+      "source_line": 500,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c"
+    },
+    {
+      "address": 1882202072,
+      "reference_names": [
+        "sub_70301FD8"
+      ],
+      "size": 96,
+      "source_line": 520,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c"
+    },
+    {
+      "address": 1882202168,
+      "reference_names": [
+        "sub_70302038"
+      ],
+      "size": 7,
+      "source_line": 534,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c"
+    },
+    {
+      "address": 1882202176,
+      "reference_names": [
+        "sub_70302040"
+      ],
+      "size": 521,
+      "source_line": 554,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c"
+    },
+    {
+      "address": 1882202700,
+      "reference_names": [
+        "sub_7030224C"
+      ],
+      "size": 36,
+      "source_line": 620,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c"
+    },
+    {
+      "address": 1882202736,
+      "reference_names": [
+        "sub_70302270"
+      ],
+      "size": 57,
+      "source_line": 632,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c"
+    },
+    {
+      "address": 1882202796,
+      "reference_names": [
+        "sub_703022AC"
+      ],
+      "size": 45,
+      "source_line": 643,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c"
+    },
+    {
+      "address": 1882202844,
+      "reference_names": [
+        "sub_703022DC"
+      ],
+      "size": 29,
+      "source_line": 651,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c"
+    },
+    {
+      "address": 1882202876,
+      "reference_names": [
+        "sub_703022FC"
+      ],
+      "size": 111,
+      "source_line": 668,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c"
+    },
+    {
+      "address": 1882202988,
+      "reference_names": [
+        "sub_7030236C"
+      ],
+      "size": 223,
+      "source_line": 692,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c"
+    },
+    {
+      "address": 1882203212,
+      "reference_names": [
+        "sub_7030244C"
+      ],
+      "size": 58,
+      "source_line": 727,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c"
+    },
+    {
+      "address": 1882203272,
+      "reference_names": [
+        "_Start",
+        "_VGAStart"
+      ],
+      "size": 637,
+      "source_line": 752,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c"
+    },
+    {
+      "address": 1882203912,
+      "reference_names": [
+        "_VGASysHideCursor"
+      ],
+      "size": 29,
+      "source_line": 852,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c"
+    },
+    {
+      "address": 1882203944,
+      "reference_names": [
+        "_VGASysShowCursor"
+      ],
+      "size": 107,
+      "source_line": 864,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c"
+    },
+    {
+      "address": 1882204052,
+      "reference_names": [
+        "_VGACheckShield"
+      ],
+      "size": 178,
+      "source_line": 892,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c"
+    },
+    {
+      "address": 1882204232,
+      "reference_names": [
+        "_VGASetCursor"
+      ],
+      "size": 554,
+      "source_line": 933,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c"
+    },
+    {
+      "address": 1882204788,
+      "reference_names": [
+        "_VGAHideCursor"
+      ],
+      "size": 44,
+      "source_line": 985,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c"
+    },
+    {
+      "address": 1882204832,
+      "reference_names": [
+        "_VGAShowCursor"
+      ],
+      "size": 44,
+      "source_line": 993,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c"
+    },
+    {
+      "address": 1882204876,
+      "reference_names": [
+        "_VGAObscureCursor"
+      ],
+      "size": 66,
+      "source_line": 1002,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c"
+    },
+    {
+      "address": 1882204944,
+      "reference_names": [
+        "_VGARevealCursor"
+      ],
+      "size": 63,
+      "source_line": 1014,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c"
+    },
+    {
+      "address": 1882205008,
+      "reference_names": [
+        "_VGAShieldCursor"
+      ],
+      "size": 78,
+      "source_line": 1032,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c"
+    },
+    {
+      "address": 1882205088,
+      "reference_names": [
+        "_VGAUnshieldCursor"
+      ],
+      "size": 73,
+      "source_line": 1043,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c"
+    },
+    {
+      "address": 1882205164,
+      "reference_names": [
+        "sub_70302BEC"
+      ],
+      "size": 603,
+      "source_line": 1066,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c"
+    },
+    {
+      "address": 1882205768,
+      "reference_names": [
+        "sub_70302E48"
+      ],
+      "size": 481,
+      "source_line": 1145,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c"
+    },
+    {
+      "address": 1882206252,
+      "reference_names": [
+        "_set_colormap"
+      ],
+      "size": 196,
+      "source_line": 1206,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c"
+    },
+    {
+      "address": 1882206448,
+      "reference_names": [
+        "sub_703030F0"
+      ],
+      "size": 81,
+      "source_line": 1236,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c"
+    },
+    {
+      "address": 1882206532,
+      "reference_names": [
+        "sub_70303144"
+      ],
+      "size": 92,
+      "source_line": 1251,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c"
+    },
+    {
+      "address": 1882206624,
+      "reference_names": [
+        "_get_addr_range"
+      ],
+      "size": 117,
+      "source_line": 1269,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c"
+    },
+    {
+      "address": 1882206744,
+      "reference_names": [
+        "_fill_64K_plane"
+      ],
+      "size": 120,
+      "source_line": 1294,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c"
+    },
+    {
+      "address": 1882206864,
+      "reference_names": [
+        "_vga_at_mode12_bpp2_to_bpp4"
+      ],
+      "size": 932,
+      "source_line": 1322,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c"
+    },
+    {
+      "address": 1882207796,
+      "reference_names": [
+        "_read_bpp4planar_to_bpp2packed"
+      ],
+      "size": 402,
+      "source_line": 1398,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c"
+    },
+    {
+      "address": 1882208200,
+      "reference_names": [
+        "_write_bpp2packed_to_bpp4planar"
+      ],
+      "size": 124,
+      "source_line": 1433,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c"
+    },
+    {
+      "address": 1882208324,
+      "reference_names": [
+        "sub_70303844"
+      ],
+      "size": 240,
+      "source_line": 1451,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c"
+    },
+    {
+      "address": 1882208564,
+      "reference_names": [
+        "_VGASetStdRegs"
+      ],
+      "size": 401,
+      "source_line": 1478,
+      "source_path": "src/drivers-i386/video/drvVGA/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.c"
+    }
+  ],
   "reference_sha256": "E785BA22F1121EAAE140A2340C5068AE1FC23EBC3309F02E7705D8775E47C1F4",
   "schema_version": "source-map-v1",
   "unmapped": [
@@ -18,245 +326,6 @@
         "__dyld_func_lookup"
       ],
       "size": 14
-    },
-    {
-      "address": 1882201944,
-      "reference_names": [
-        "sub_70301F58"
-      ],
-      "size": 127
-    },
-    {
-      "address": 1882202072,
-      "reference_names": [
-        "sub_70301FD8"
-      ],
-      "size": 96
-    },
-    {
-      "address": 1882202168,
-      "reference_names": [
-        "sub_70302038"
-      ],
-      "size": 7
-    },
-    {
-      "address": 1882202176,
-      "reference_names": [
-        "sub_70302040"
-      ],
-      "size": 521
-    },
-    {
-      "address": 1882202700,
-      "reference_names": [
-        "sub_7030224C"
-      ],
-      "size": 36
-    },
-    {
-      "address": 1882202736,
-      "reference_names": [
-        "sub_70302270"
-      ],
-      "size": 57
-    },
-    {
-      "address": 1882202796,
-      "reference_names": [
-        "sub_703022AC"
-      ],
-      "size": 45
-    },
-    {
-      "address": 1882202844,
-      "reference_names": [
-        "sub_703022DC"
-      ],
-      "size": 29
-    },
-    {
-      "address": 1882202876,
-      "reference_names": [
-        "sub_703022FC"
-      ],
-      "size": 111
-    },
-    {
-      "address": 1882202988,
-      "reference_names": [
-        "sub_7030236C"
-      ],
-      "size": 223
-    },
-    {
-      "address": 1882203212,
-      "reference_names": [
-        "sub_7030244C"
-      ],
-      "size": 58
-    },
-    {
-      "address": 1882203272,
-      "reference_names": [
-        "_Start",
-        "_VGAStart"
-      ],
-      "size": 637
-    },
-    {
-      "address": 1882203912,
-      "reference_names": [
-        "_VGASysHideCursor"
-      ],
-      "size": 29
-    },
-    {
-      "address": 1882203944,
-      "reference_names": [
-        "_VGASysShowCursor"
-      ],
-      "size": 107
-    },
-    {
-      "address": 1882204052,
-      "reference_names": [
-        "_VGACheckShield"
-      ],
-      "size": 178
-    },
-    {
-      "address": 1882204232,
-      "reference_names": [
-        "_VGASetCursor"
-      ],
-      "size": 554
-    },
-    {
-      "address": 1882204788,
-      "reference_names": [
-        "_VGAHideCursor"
-      ],
-      "size": 44
-    },
-    {
-      "address": 1882204832,
-      "reference_names": [
-        "_VGAShowCursor"
-      ],
-      "size": 44
-    },
-    {
-      "address": 1882204876,
-      "reference_names": [
-        "_VGAObscureCursor"
-      ],
-      "size": 66
-    },
-    {
-      "address": 1882204944,
-      "reference_names": [
-        "_VGARevealCursor"
-      ],
-      "size": 63
-    },
-    {
-      "address": 1882205008,
-      "reference_names": [
-        "_VGAShieldCursor"
-      ],
-      "size": 78
-    },
-    {
-      "address": 1882205088,
-      "reference_names": [
-        "_VGAUnshieldCursor"
-      ],
-      "size": 73
-    },
-    {
-      "address": 1882205164,
-      "reference_names": [
-        "sub_70302BEC"
-      ],
-      "size": 603
-    },
-    {
-      "address": 1882205768,
-      "reference_names": [
-        "sub_70302E48"
-      ],
-      "size": 481
-    },
-    {
-      "address": 1882206252,
-      "reference_names": [
-        "_set_colormap"
-      ],
-      "size": 196
-    },
-    {
-      "address": 1882206448,
-      "reference_names": [
-        "sub_703030F0"
-      ],
-      "size": 81
-    },
-    {
-      "address": 1882206532,
-      "reference_names": [
-        "sub_70303144"
-      ],
-      "size": 92
-    },
-    {
-      "address": 1882206624,
-      "reference_names": [
-        "_get_addr_range"
-      ],
-      "size": 117
-    },
-    {
-      "address": 1882206744,
-      "reference_names": [
-        "_fill_64K_plane"
-      ],
-      "size": 120
-    },
-    {
-      "address": 1882206864,
-      "reference_names": [
-        "_vga_at_mode12_bpp2_to_bpp4"
-      ],
-      "size": 932
-    },
-    {
-      "address": 1882207796,
-      "reference_names": [
-        "_read_bpp4planar_to_bpp2packed"
-      ],
-      "size": 402
-    },
-    {
-      "address": 1882208200,
-      "reference_names": [
-        "_write_bpp2packed_to_bpp4planar"
-      ],
-      "size": 124
-    },
-    {
-      "address": 1882208324,
-      "reference_names": [
-        "sub_70303844"
-      ],
-      "size": 240
-    },
-    {
-      "address": 1882208564,
-      "reference_names": [
-        "_VGASetStdRegs"
-      ],
-      "size": 401
     },
     {
       "address": 1882209417,

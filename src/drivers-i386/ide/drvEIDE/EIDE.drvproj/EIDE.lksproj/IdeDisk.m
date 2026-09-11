@@ -34,12 +34,12 @@
  
 #import <driverkit/return.h>
 #import <driverkit/driverTypes.h>
-#import <driverkit/devsw.h>
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDiskMethods.h>
 #import <driverkit/IODevice.h>
 #import <machkit/NXLock.h>
 #import <sys/systm.h>
+#import <bsd/dev/ata_hd_registry.h>
 
 #import "IdeCnt.h"
 #import "IdeDisk.h"
@@ -49,16 +49,35 @@
 
 //#define DEBUG
 
-static int diskUnit = 0;
-static BOOL switchTableInited = NO;	
-
 /*
  * List of controllers that have been already probed. We need this since each
  * Instance table lists IdeDisk as well as IdeController classes. And we need
  * to create instances of disks attached to each controller only once. 
  */
+/*
+ * IODevice probe dispatch is assumed serialized for a given controller.
+ * These statics prevent sequential duplicate probes; they are not a lock.
+ */
 static int probedControllerCount = 0;
 static id probedControllers[MAX_IDE_CONTROLLERS];
+
+static void
+IdeDiskRollbackPrepared(id *disks, unsigned int count)
+{
+    while (count != 0) {
+	--count;
+	[disks[count] free];
+    }
+}
+
+static void
+IdeDiskReleaseUntouched(id *disks, unsigned int first, unsigned int count)
+{
+    while (count > first) {
+	--count;
+	[disks[count] free];
+    }
+}
 
 @implementation IdeDisk
 
@@ -87,14 +106,26 @@ static Protocol *protocols[] = {
 
 + (BOOL)probe : deviceDescription
 {
-    id diskId;
-    IODevAndIdInfo *idMap = ide_idmap();
+    IdeDisk *diskId;
+    id preparedDisks[MAX_IDE_DRIVES];
+    unsigned int preparedUnits[MAX_IDE_DRIVES];
+    unsigned int preparedCount = 0;
+    unsigned int attemptedCount;
+    unsigned int publishedCount;
+    ideDriveInfo_t candidateInfo;
+    IODevAndIdInfo *idMap;
+    int globalUnit;
     int unit, i;
     id controllerId = [deviceDescription directDevice];
 
 #ifdef DEBUG
     IOLog("IdeDisk probed with controller id %x\n", controllerId);
 #endif DEBUG
+
+    if (ata_hd_devsw_init(self, deviceDescription) == NO) {
+	IOLog("IDEDisk: failed to initialize shared hd devsw tables.\n");
+	return NO;
+    }
     
     for (i = 0; i < probedControllerCount; i++)	{
     	if (probedControllers[i] == controllerId)	{
@@ -102,94 +133,91 @@ static Protocol *protocols[] = {
 	    return YES;
 	}
     }
-    probedControllers[probedControllerCount++] = controllerId;
+    if (probedControllerCount >= MAX_IDE_CONTROLLERS) {
+	IOLog("IDEDisk: too many controllers to probe.\n");
+	return NO;
+    }
 //  IOLog("IdeDisk probing for controller %x\n", controllerId);
 	
     for (unit = 0; unit < MAX_IDE_DRIVES; unit++) {
-    
+	if ([controllerId isAtapiDevice:unit] == YES)
+	    continue;
+	candidateInfo = [controllerId getIdeDriveInfo:unit];
+	if (candidateInfo.type == 0)
+	    continue;
+
 	diskId = [[IdeDisk alloc] initFromDeviceDescription:deviceDescription];
+	if (diskId == nil) {
+	    IdeDiskRollbackPrepared(preparedDisks, preparedCount);
+	    return NO;
+	}
+	diskId->_hdUnit = -1;
+
+	globalUnit = ata_hd_register(diskId, IdeDiskTransportIoctl, &idMap);
+	if (globalUnit < 0) {
+	    [diskId free];
+	    IdeDiskRollbackPrepared(preparedDisks, preparedCount);
+	    IOLog("IDEDisk: failed to allocate shared hd unit.\n");
+	    return NO;
+	}
 	[diskId initResources:controllerId];
-	[diskId setDevAndIdInfo:&(idMap[diskUnit])];
-	
-	if ([diskId ideDiskInit:diskUnit target:unit] == NO) {
+	diskId->_hdUnit = globalUnit;
+	[diskId setDevAndIdInfo:idMap];
+
+	if ([diskId ideDiskInit:(unsigned int)globalUnit target:unit] == NO) {
 	    [diskId free];
 	    continue;
 	}
-	
-	if (([self hd_devsw_init:deviceDescription]) == NO) {
-	    [diskId free];
-	    IOLog("IDEDisk: failed to add to devsw tables.\n");
-	    return NO;
-	}
-	
+
 	/*
 	 * Success; we initialized a drive. Have DiskObject superclass take
-	 * care of the rest. 
+	 * care of the rest.
 	 */
 	[diskId setDeviceKind:"IDEDisk"];
 	[diskId setIsPhysical:YES];
-	[diskId registerDevice];
-	diskUnit += 1;
+	if (preparedCount >= MAX_IDE_DRIVES) {
+	    [diskId free];
+	    IdeDiskRollbackPrepared(preparedDisks, preparedCount);
+	    IOLog("IDEDisk: too many prepared ATA disks.\n");
+	    return NO;
+	}
+	preparedDisks[preparedCount] = diskId;
+	preparedUnits[preparedCount] = (unsigned int)globalUnit;
+	++preparedCount;
     }
-    
+
+    publishedCount = 0;
+    for (attemptedCount = 0; attemptedCount < preparedCount;
+	 ++attemptedCount) {
+	diskId = preparedDisks[attemptedCount];
+	if ([diskId registerDevice] == nil) {
+	    if (publishedCount != 0 &&
+		ata_hd_activate_units(preparedUnits, preparedDisks,
+				      publishedCount) == NO) {
+		IOLog("IDEDisk: failed to activate published hd units; "
+		      "retaining them inactive.\n");
+	    }
+	    IdeDiskReleaseUntouched(preparedDisks, attemptedCount + 1,
+				     preparedCount);
+	    probedControllers[probedControllerCount++] = controllerId;
+	    IOLog("IDEDisk: shared hd unit %d publication state is "
+		  "uncertain; retaining it and suppressing retry.\n",
+		  preparedUnits[attemptedCount]);
+	    return YES;
+	}
+	++publishedCount;
+    }
+
+    if (ata_hd_activate_units(preparedUnits, preparedDisks,
+			      preparedCount) == NO) {
+	probedControllers[probedControllerCount++] = controllerId;
+	IOLog("IDEDisk: failed to activate published shared hd units; "
+	      "retaining them inactive and suppressing retry.\n");
+	return YES;
+    }
+    probedControllers[probedControllerCount++] = controllerId;
     return YES;
 }
-
-/*
- * Add our entry to the device switch tables. 
- */
-+ (BOOL)hd_devsw_init:deviceDescription
-{
-    extern int seltrue();
-    
-    /*
-     * We get called once for each IDE controller in the system; we
-     * only have to call IOAddToCdevsw() once.
-     */
-    if (switchTableInited == YES)	{
-    	return YES;
-    }
-	
-    if ([self addToCdevswFromDescription: deviceDescription
-                                    open: (IOSwitchFunc) ideopen
-                                   close: (IOSwitchFunc) ideclose
-                                    read: (IOSwitchFunc) ideread
-                                   write: (IOSwitchFunc) idewrite
-                                   ioctl: (IOSwitchFunc) ideioctl
-                                    stop: (IOSwitchFunc) eno_stop
-                                   reset: (IOSwitchFunc) nulldev
-                                  select: (IOSwitchFunc) seltrue
-                                    mmap: (IOSwitchFunc) eno_mmap
-                                    getc: (IOSwitchFunc) eno_getc
-                                    putc: (IOSwitchFunc) eno_putc] != YES)
-    {
-	    return NO;
-    }
-
-    if ([self addToBdevswFromDescription: deviceDescription
-                                    open: (IOSwitchFunc) ideopen
-                                   close: (IOSwitchFunc) ideclose
-                                strategy: (IOSwitchFunc) idestrategy
-                                   ioctl: (IOSwitchFunc) ideioctl
-                                    dump: (IOSwitchFunc) eno_dump
-                                   psize: (IOSwitchFunc) idesize
-                                  isTape: FALSE] != YES)
-    {
-	    return NO;
-    }
-
-    ide_init_idmap(self);
-    
-    switchTableInited = YES;
-    
-#ifdef undef
-    IOLog("IDE: block major %d, character major %d\n",
-	[self blockMajor], [self characterMajor]);
-#endif undef
-
-    return YES;
-}
-
 
 /*
  * Common read/write methods. These are used directly in the kernel; user-level
@@ -340,21 +368,18 @@ static Protocol *protocols[] = {
 	    count:(unsigned int *)count
 {
     int maxCount = *count;
-    int blockMajor, characterMajor;
 
     if (maxCount == 0) {
 	maxCount = IO_MAX_PARAMETER_ARRAY_LENGTH;
     }
     
     if (strcmp(parameter, "BlockMajor") == 0) {
-        ide_block_char_majors(&blockMajor, &characterMajor);
-	values[0] = blockMajor;
+	values[0] = [[self class] blockMajor];
 	*count = 1;
 	return IO_R_SUCCESS;
     }
     if (strcmp(parameter, "CharacterMajor") == 0) {
-        ide_block_char_majors(&blockMajor, &characterMajor);
-	values[0] = characterMajor;
+	values[0] = [[self class] characterMajor];
 	*count = 1;
 	return IO_R_SUCCESS;
     }

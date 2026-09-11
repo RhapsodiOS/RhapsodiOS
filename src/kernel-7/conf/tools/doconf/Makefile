@@ -54,6 +54,9 @@ OBJROOT=$(VERSDIR)/BUILD/$(PROGRAM)_OBJS
 SYMROOT=$(VERSDIR)/BUILD/$(PROGRAM)_OBJS
 DSTROOT=$(VERSDIR)/BUILD
 
+# Portable replacement for NeXT make's `.DEFTARGET: all`.
+all:
+
 #
 # installhdrs
 #
@@ -62,4 +65,4 @@ installhdrs:
 #
 # Include file for shell script makefiles
 #
-findfile MakeInc.csh
+include ../../../MakeInc.csh

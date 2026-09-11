@@ -15,7 +15,9 @@ LANGUAGE = English
 
 CLASSES = ISASerialPort.m
 
-HFILES = ISASerialPort.h
+CFILES = ISASerialPortFlow.c
+
+HFILES = ISASerialPort.h ISASerialPortInternal.h
 
 OTHERSRCS = Load_Commands.sect Makefile Makefile.preamble
 

@@ -4,7 +4,6 @@
  */
 
 #import "PDPseudo.h"
-#import <objc/objc-runtime.h>
 
 /* Global flag to track if pseudo device has been loaded */
 static char _PseudoDeviceLoaded = '\0';
@@ -33,19 +32,11 @@ static char _PseudoDeviceLoaded = '\0';
 + (char)probe:(id)deviceDescription
 {
     id pseudoDevice;
-    int initResult;
 
     /* Allocate and initialize PDPseudo with device description */
-    pseudoDevice = objc_msgSend(objc_getClass("PDPseudo"),
-                                @selector(alloc));
-    pseudoDevice = objc_msgSend(pseudoDevice,
-                                @selector(initFromDeviceDescription:),
-                                deviceDescription);
+    pseudoDevice = [[PDPseudo alloc] initFromDeviceDescription:deviceDescription];
 
-    /* Check if initialization succeeded */
-    initResult = objc_msgSend(pseudoDevice);
-
-    if (initResult == 0) {
+    if (pseudoDevice == nil) {
         return 0;  /* Probe failed */
     }
 
@@ -60,10 +51,9 @@ static char _PseudoDeviceLoaded = '\0';
  * Only initializes once (singleton pattern using _PseudoDeviceLoaded flag)
  * Sets device name and kind, then registers the device
  */
-- initFromDeviceDescription:(void *)deviceDescription
+- initFromDeviceDescription:(id)deviceDescription
 {
     id result;
-    struct objc_super super_struct;
 
     /* Check if pseudo device has already been loaded */
     if (_PseudoDeviceLoaded == '\0') {
@@ -76,12 +66,7 @@ static char _PseudoDeviceLoaded = '\0';
         /* Set device kind to "Server Device" */
         [self setDeviceKind:"Server Device"];
 
-        /* Call [super initFromDeviceDescription:] using objc_msgSendSuper */
-        super_struct.receiver = self;
-        super_struct.class = objc_getClass("IODevice");
-        result = objc_msgSendSuper(&super_struct,
-                                   @selector(initFromDeviceDescription:),
-                                   deviceDescription);
+        result = [super initFromDeviceDescription:deviceDescription];
 
         if (result != nil) {
             /* Registration successful - register the device */
@@ -97,12 +82,12 @@ static char _PseudoDeviceLoaded = '\0';
 
 /*
  * acquire: - Acquire pseudo device
- * param: Acquisition parameter
+ * sleep: Whether to sleep if the port is busy
  * Returns: 0xfffffd42 (-702 decimal) - operation not supported
  *
  * PDPseudo devices cannot be acquired - always returns error
  */
-- (int)acquire:(int)param
+- (int)acquire:(BOOL)sleep
 {
     /* Pseudo devices cannot be acquired */
     return 0xfffffd42;  /* -702 decimal */
@@ -114,23 +99,10 @@ static char _PseudoDeviceLoaded = '\0';
  *
  * PDPseudo devices cannot be released - always returns error
  */
-- (void)release
+- (int)release
 {
-    /* Operation not supported - no-op */
-    /* Note: Decompiled shows return 0xfffffd42 but signature is void */
-}
-
-
-/*
- * getState - Get current device state
- * Returns: Current state value (always 0)
- *
- * PDPseudo devices have no state - always returns 0
- */
-- (unsigned int)getState
-{
-    /* Pseudo devices have no state */
-    return 0;
+    /* Operation not supported */
+    return 0xfffffd42;  /* -702 decimal */
 }
 
 
@@ -142,10 +114,23 @@ static char _PseudoDeviceLoaded = '\0';
  *
  * PDPseudo devices do not support state setting
  */
-- (void)setState:(unsigned int)state mask:(unsigned int)mask
+- (int)setState:(unsigned long)state mask:(unsigned long)mask
 {
-    /* Operation not supported - no-op */
-    /* Note: Decompiled shows return 0xfffffd42 but signature is void */
+    /* Operation not supported */
+    return 0xfffffd42;  /* -702 decimal */
+}
+
+
+/*
+ * getState - Get current device state
+ * Returns: Current state value (always 0)
+ *
+ * PDPseudo devices have no state - always returns 0
+ */
+- (unsigned long)getState
+{
+    /* Pseudo devices have no state */
+    return 0;
 }
 
 
@@ -157,10 +142,10 @@ static char _PseudoDeviceLoaded = '\0';
  *
  * PDPseudo devices do not support state watching
  */
-- (void)watchState:(unsigned int *)state mask:(unsigned int)mask
+- (int)watchState:(unsigned long *)state mask:(unsigned long)mask
 {
-    /* Operation not supported - no-op */
-    /* Note: Decompiled shows return 0xfffffd42 but signature is void */
+    /* Operation not supported */
+    return 0xfffffd42;  /* -702 decimal */
 }
 
 
@@ -170,7 +155,7 @@ static char _PseudoDeviceLoaded = '\0';
  *
  * PDPseudo devices have no events - always returns 0
  */
-- (unsigned int)nextEvent
+- (unsigned long)nextEvent
 {
     /* No events available */
     return 0;
@@ -185,10 +170,10 @@ static char _PseudoDeviceLoaded = '\0';
  *
  * PDPseudo devices do not support event execution
  */
-- (void)executeEvent:(unsigned int)event data:(unsigned int)data
+- (int)executeEvent:(unsigned long)event data:(unsigned long)data
 {
-    /* Operation not supported - no-op */
-    /* Note: Decompiled shows return 0xfffffd42 but signature is void */
+    /* Operation not supported */
+    return 0xfffffd42;  /* -702 decimal */
 }
 
 
@@ -200,12 +185,10 @@ static char _PseudoDeviceLoaded = '\0';
  *
  * PDPseudo devices do not support event requests
  */
-- (void)requestEvent:(unsigned int)event data:(unsigned int *)data
+- (int)requestEvent:(unsigned long)event data:(unsigned long *)data
 {
-    /* Operation not supported - no-op */
-    /* Note: Decompiled shows return 0xfffffd42 but signature is void */
-}
-
+    /* Operation not supported */
+    return 0xfffffd42;  /* -702 decimal */
 }
 
 /*
@@ -217,7 +200,7 @@ static char _PseudoDeviceLoaded = '\0';
  *
  * PDPseudo devices do not support event queueing
  */
-- (int)enqueueEvent:(unsigned int)event data:(unsigned int)data sleep:(int)sleep
+- (int)enqueueEvent:(unsigned long)event data:(unsigned long)data sleep:(BOOL)sleep
 {
     /* Operation not supported */
     return 0xfffffd42;  /* -702 decimal */
@@ -233,7 +216,7 @@ static char _PseudoDeviceLoaded = '\0';
  *
  * PDPseudo devices do not support event queueing
  */
-- (int)dequeueEvent:(unsigned int *)event data:(unsigned int *)data sleep:(int)sleep
+- (int)dequeueEvent:(unsigned long *)event data:(unsigned long *)data sleep:(BOOL)sleep
 {
     /* Operation not supported */
     return 0xfffffd42;  /* -702 decimal */
@@ -250,10 +233,10 @@ static char _PseudoDeviceLoaded = '\0';
  *
  * PDPseudo devices do not support data transfer
  */
-- (int)enqueueData:(void *)buffer
+- (int)enqueueData:(char *)buffer
         bufferSize:(unsigned int)bufferSize
      transferCount:(unsigned int *)transferCount
-             sleep:(int)sleep
+             sleep:(BOOL)sleep
 {
     /* Operation not supported */
     return 0xfffffd42;  /* -702 decimal */
@@ -270,7 +253,7 @@ static char _PseudoDeviceLoaded = '\0';
  *
  * PDPseudo devices do not support data transfer
  */
-- (int)dequeueData:(void *)buffer
+- (int)dequeueData:(char *)buffer
         bufferSize:(unsigned int)bufferSize
      transferCount:(unsigned int *)transferCount
           minCount:(unsigned int)minCount

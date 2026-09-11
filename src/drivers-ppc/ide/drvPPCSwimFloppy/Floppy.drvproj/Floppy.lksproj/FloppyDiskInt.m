@@ -15,7 +15,7 @@
 @class FloppyController;
 @interface FloppyController : NSObject
 - (void)lock;
-- (IOReturn)_fcCmdXfr:(void *)cmdBuf driveInfo:(const char *)driveInfo;
+- (IOReturn)fcCmdXfr:(void *)cmdBuf driveInfo:(const char *)driveInfo;
 @end
 
 /*
@@ -114,40 +114,32 @@ typedef struct _FdCmdBuf {
 } FdCmdBuf;
 
 // Global variables for FloppyPluginIO
-static int _DataSource = 0;
-static BOOL _BusyFlag = NO;
-extern int _FloppyPluginIO(unsigned int *actualLength, unsigned int length, void *buffer,
+static int DataSource = 0;
+extern int FloppyPluginIO(unsigned int *actualLength, unsigned int length, void *buffer,
                            unsigned int offset, BOOL isWrite, unsigned int param6);
-extern int _floppyMalloc(unsigned int size, void *physAddr, void *virtAddr);
-extern void _fdTimer(id disk);
-extern void _fdThread(id disk);
+extern int floppyMalloc(unsigned int size, void *physAddr, void *virtAddr);
+extern void fdTimer(id disk);
+extern void fdThread(id disk);
 
-static void _GetBusyFlag(void)
-{
-    _BusyFlag = YES;
-}
-
-static void _ResetBusyFlag(void)
-{
-    _BusyFlag = NO;
-}
+// GetBusyFlag and ResetBusyFlag are the external definitions in FloppyDisk.m,
+// declared by FloppyDisk.h.
 
 // Command name lookup (simplified version)
-static const char *_fdCommandValues[] = {
+static const char *fdCommandValues[] = {
     "UNKNOWN", "UNKNOWN", "UNKNOWN", "UNKNOWN", "UNKNOWN",
     "SENSE_DRV_STATUS", "READ_DATA", "RECALIBRATE", "SENSE_INT_STATUS", "UNKNOWN",
     "READ_ID", "UNKNOWN", "UNKNOWN", "UNKNOWN", "UNKNOWN", "SEEK"
 };
 
-static const char *_fdrValues[] = {
+static const char *fdrValues[] = {
     "SUCCESS", "ERROR", "TIMEOUT", "INVALID"
 };
 
 // Helper to get command name
 static const char *_getCommandName(unsigned int cmdCode)
 {
-    if (cmdCode < sizeof(_fdCommandValues) / sizeof(_fdCommandValues[0])) {
-        return _fdCommandValues[cmdCode];
+    if (cmdCode < sizeof(fdCommandValues) / sizeof(fdCommandValues[0])) {
+        return fdCommandValues[cmdCode];
     }
     return "UNKNOWN";
 }
@@ -155,8 +147,8 @@ static const char *_getCommandName(unsigned int cmdCode)
 // Helper to get result name
 static const char *_getResultName(unsigned int result)
 {
-    if (result < sizeof(_fdrValues) / sizeof(_fdrValues[0])) {
-        return _fdrValues[result];
+    if (result < sizeof(fdrValues) / sizeof(fdrValues[0])) {
+        return fdrValues[result];
     }
     return "UNKNOWN";
 }
@@ -166,7 +158,7 @@ static const char *_getResultName(unsigned int result)
 /*
  * Allocate a floppy disk buffer
  */
-- (id)_allocFdBuf:(unsigned)size
+- (id)allocFdBuf:(unsigned)size
 {
     FdBuffer *fdBuf;
 
@@ -197,7 +189,7 @@ static const char *_getResultName(unsigned int result)
 /*
  * Common device read/write operation
  */
-- (IOReturn)_deviceRwCommon:(BOOL)isRead
+- (IOReturn)deviceRwCommon:(BOOL)isRead
                       block:(unsigned)block
                      length:(unsigned)length
                      buffer:(void *)buffer
@@ -212,7 +204,7 @@ static const char *_getResultName(unsigned int result)
     BOOL isWrite = !isRead;
 
     // Check if disk is ready
-    status = [self _isDiskReady:nil];
+    status = [self isDiskReady:nil];
 
     if (status == (IOReturn)0xfffffbb2) {  // IO_R_NO_DISK = -1102
         IOLog("Floppy deviceRwCommon: disk not present\n");
@@ -245,26 +237,26 @@ static const char *_getResultName(unsigned int result)
     }
 
     // Set busy flag
-    _GetBusyFlag();
+    GetBusyFlag();
 
     // Determine data source based on pending parameter
     // pending == VM_TASK_NULL means kernel space (data source 1)
     // otherwise user space (data source 2)
     if (pending == (void *)VM_TASK_NULL) {
-        _DataSource = 1;
+        DataSource = 1;
     } else {
-        _DataSource = 2;
+        DataSource = 2;
     }
 
     // Call the FloppyPluginIO function
-    status = _FloppyPluginIO(&localActualLength, length, buffer,
+    status = FloppyPluginIO(&localActualLength, length, buffer,
                              block * blockSize, isWrite, 0);
 
     // Store actual length transferred
     *actualLength = localActualLength;
 
     // Reset busy flag
-    _ResetBusyFlag();
+    ResetBusyFlag();
 
     return status;
 }
@@ -272,7 +264,7 @@ static const char *_getResultName(unsigned int result)
 /*
  * Enqueue a floppy disk buffer
  */
-- (void)_enqueueFdBuf:(id)buffer
+- (void)enqueueFdBuf:(id)buffer
 {
     FdBuffer *fdBuf = (FdBuffer *)buffer;
     QueueHead *targetQueue;
@@ -336,7 +328,7 @@ static const char *_getResultName(unsigned int result)
 /*
  * Generate read/write command
  */
-- (IOReturn)_fdGenRwCmd:(unsigned)block
+- (IOReturn)fdGenRwCmd:(unsigned)block
              blockCount:(unsigned)blockCount
                fdIoReq:(void *)fdIoReq
                readFlag:(BOOL)isRead
@@ -353,7 +345,7 @@ static const char *_getResultName(unsigned int result)
     bzero(cmdBytes, 9);
 
     // Convert logical block to physical cylinder/head/sector
-    [self _fdLogToPhys:block cmdp:&rwCmd];
+    [self fdLogToPhys:block cmdp:&rwCmd];
 
     // Extract and modify command fields
     cmdByte = rwCmd.cylinder;
@@ -390,7 +382,7 @@ static const char *_getResultName(unsigned int result)
 /*
  * Get floppy disk status
  */
-- (IOReturn)_fdGetStatus:(void *)status
+- (IOReturn)fdGetStatus:(void *)status
 {
     IOReturn result;
     unsigned char cmdBuffer[0x60];
@@ -414,7 +406,7 @@ static const char *_getResultName(unsigned int result)
     *cmdLengthPtr = 5;
 
     // Send the status command
-    result = [self _fdSendCmd:cmdBuffer];
+    result = [self fdSendCmd:cmdBuffer];
 
     IOLog("fdGetStatus: returning %s\n", [self stringFromReturn:result]);
 
@@ -429,7 +421,7 @@ static const char *_getResultName(unsigned int result)
 /*
  * Floppy disk I/O completion
  */
-- (void)_fdIoComplete:(void *)ioReq
+- (void)fdIoComplete:(void *)ioReq
 {
     FdBuffer *fdBuf = (FdBuffer *)ioReq;
 
@@ -450,14 +442,14 @@ static const char *_getResultName(unsigned int result)
                 actualTransfer:fdBuf->actualLength];
 
         // Free the buffer
-        [self _freeFdBuf:(id)fdBuf];
+        [self freeFdBuf:(id)fdBuf];
     }
 }
 
 /*
  * Convert logical block to physical cylinder/head/sector
  */
-- (IOReturn)_fdLogToPhys:(unsigned)logicalBlock
+- (IOReturn)fdLogToPhys:(unsigned)logicalBlock
                     cmdp:(void *)cmdp
 {
     fd_rw_cmd *cmd = (fd_rw_cmd *)cmdp;
@@ -484,7 +476,7 @@ static const char *_getResultName(unsigned int result)
  * Read ID from floppy disk
  * Reads the sector ID to verify disk format
  */
-- (IOReturn)_fdReadId:(unsigned)head
+- (IOReturn)fdReadId:(unsigned)head
                 statp:(void *)statp
 {
     IOReturn status;
@@ -517,7 +509,7 @@ static const char *_getResultName(unsigned int result)
     cmdBuf.reserved3 = 0;
 
     // Send the command
-    status = [self _fdSendCmd:(unsigned char *)&cmdBuf];
+    status = [self fdSendCmd:(unsigned char *)&cmdBuf];
 
     // If successful, check the status code
     if (status == IO_R_SUCCESS) {
@@ -545,7 +537,7 @@ static const char *_getResultName(unsigned int result)
  * Recalibrate floppy disk
  * Seeks the drive to track 0 to establish a known position
  */
-- (IOReturn)_fdRecal
+- (IOReturn)fdRecal
 {
     IOReturn status;
     FdCmdBuf cmdBuf;
@@ -568,7 +560,7 @@ static const char *_getResultName(unsigned int result)
     cmdBuf.resultLength = 2;     // Result is 2 bytes
 
     // Send the command
-    status = [self _fdSendCmd:(unsigned char *)&cmdBuf];
+    status = [self fdSendCmd:(unsigned char *)&cmdBuf];
 
     // If successful, check the status code
     if (status == IO_R_SUCCESS) {
@@ -587,7 +579,7 @@ static const char *_getResultName(unsigned int result)
  * Seek to cylinder and head
  * Positions the drive head to a specific cylinder and head
  */
-- (IOReturn)_fdSeek:(unsigned)cylinder
+- (IOReturn)fdSeek:(unsigned)cylinder
                head:(unsigned)head
 {
     IOReturn status;
@@ -605,7 +597,7 @@ static const char *_getResultName(unsigned int result)
     cmdBuf.cmd[2] = (unsigned char)cylinder;
 
     // Get current density, default to 3 if 0
-    density = [self _getCurrentDensity];
+    density = [self getCurrentDensity];
     if (density == 0) {
         density = 3;
     }
@@ -620,7 +612,7 @@ static const char *_getResultName(unsigned int result)
     cmdBuf.resultLength = 2;     // Result is 2 bytes
 
     // Send the command
-    status = [self _fdSendCmd:(unsigned char *)&cmdBuf];
+    status = [self fdSendCmd:(unsigned char *)&cmdBuf];
 
     // If successful, check the status code
     if (status == IO_R_SUCCESS) {
@@ -638,7 +630,7 @@ static const char *_getResultName(unsigned int result)
 /*
  * Send command to floppy controller
  */
-- (IOReturn)_fdSendCmd:(void *)command
+- (IOReturn)fdSendCmd:(void *)command
 {
     FdCmdBuf *cmdBuf = (FdCmdBuf *)command;
     IOReturn result;
@@ -652,7 +644,7 @@ static const char *_getResultName(unsigned int result)
     IOLog("fdSendCmd: sending %s\n", cmdName);
 
     // Get current density and set it in the command buffer
-    density = [self _getCurrentDensity];
+    density = [self getCurrentDensity];
     if (density == 0) {
         density = 3;  // Default density
     }
@@ -665,7 +657,7 @@ static const char *_getResultName(unsigned int result)
     [_controller lock];
 
     // Call the controller's command transfer method
-    result = [_controller _fcCmdXfr:cmdBuf driveInfo:_driveInfo];
+    result = [_controller fcCmdXfr:cmdBuf driveInfo:_driveInfo];
 
     // Get result name for logging
     resultName = _getResultName(cmdBuf->status);
@@ -676,13 +668,13 @@ static const char *_getResultName(unsigned int result)
     if ((cmdBuf->resultLength & 0x20000000) == 0) {
         // Clear bit 31 of timer flags and cancel timer
         _timerFlags = _timerFlags & 0x7fffffff;
-        _fdTimer(self);  // Cancel timer
+        fdTimer(self);  // Cancel timer
     }
     // If bit 31 of timer flags is NOT set
     else if ((_timerFlags & 0x80000000) == 0) {
         // Set bit 31 and start timer with 2 second delay
         _timerFlags = _timerFlags | 0x80000000;
-        _fdTimer(self);  // Start timer with delay
+        fdTimer(self);  // Start timer with delay
     }
 
     IOLog("fdSendCmd:rtn=%d,setting to 0\n", result);
@@ -695,7 +687,7 @@ static const char *_getResultName(unsigned int result)
  * Send simple command to floppy controller
  * Wrapper for simple command execution
  */
-- (IOReturn)_fdSimpleCommand:(unsigned)command
+- (IOReturn)fdSimpleCommand:(unsigned)command
                       buffer:(void *)buffer
                   needsDisk:(BOOL)needsDisk
 {
@@ -704,7 +696,7 @@ static const char *_getResultName(unsigned int result)
     int *bufAsInt;
 
     // Allocate an FdBuffer (synchronous operation, size = 0)
-    fdBuf = (FdBuffer *)[self _allocFdBuf:0];
+    fdBuf = (FdBuffer *)[self allocFdBuf:0];
     if (fdBuf == NULL) {
         return IO_R_NO_MEMORY;
     }
@@ -724,10 +716,10 @@ static const char *_getResultName(unsigned int result)
                   ((needsDisk ? 0xffffffff : 0) & 0x80000000);
 
     // Enqueue the buffer and wait for completion
-    result = [self _enqueueFdBuf:(id)fdBuf];
+    result = [self enqueueFdBuf:(id)fdBuf];
 
     // Free the buffer
-    [self _freeFdBuf:(id)fdBuf];
+    [self freeFdBuf:(id)fdBuf];
 
     return result;
 }
@@ -736,7 +728,7 @@ static const char *_getResultName(unsigned int result)
  * Simple I/O request
  * Wrapper for simple I/O request execution
  */
-- (IOReturn)_fdSimpleIoReq:(void *)ioReq
+- (IOReturn)fdSimpleIoReq:(void *)ioReq
                  needsDisk:(BOOL)needsDisk
 {
     FdBuffer *fdBuf;
@@ -744,7 +736,7 @@ static const char *_getResultName(unsigned int result)
     unsigned int *bufAsUInt;
 
     // Allocate an FdBuffer (synchronous operation, size = 0)
-    fdBuf = (FdBuffer *)[self _allocFdBuf:0];
+    fdBuf = (FdBuffer *)[self allocFdBuf:0];
     if (fdBuf == NULL) {
         return IO_R_NO_MEMORY;
     }
@@ -766,10 +758,10 @@ static const char *_getResultName(unsigned int result)
     IOLog("FloppyDiskInt.m:fdSimpleIoReq:enqueing\n");
 
     // Enqueue the buffer and wait for completion
-    result = [self _enqueueFdBuf:(id)fdBuf];
+    result = [self enqueueFdBuf:(id)fdBuf];
 
     // Free the buffer
-    [self _freeFdBuf:(id)fdBuf];
+    [self freeFdBuf:(id)fdBuf];
 
     return result;
 }
@@ -778,7 +770,7 @@ static const char *_getResultName(unsigned int result)
  * Initialize floppy disk
  * Initializes the floppy disk device with default parameters
  */
-- (IOReturn)_floppyInit:(id)controller
+- (IOReturn)floppyInit:(id)controller
 {
     IOReturn result;
     void *physAddr = NULL;
@@ -801,7 +793,7 @@ static const char *_getResultName(unsigned int result)
     _outerRetry = 3;
 
     // Allocate 1024 bytes for DMA buffer
-    result = _floppyMalloc(0x400, &physAddr, &virtAddr);
+    result = floppyMalloc(0x400, &physAddr, &virtAddr);
     _buffer = virtAddr;
     if (result == 0) {
         IOLog("floppyMalloc failed;but ignoring\n");
@@ -836,7 +828,7 @@ static const char *_getResultName(unsigned int result)
     [self setLastReadyState:YES];
 
     // Update physical parameters to detect disk
-    result = [self _updatePhysicalParameters];
+    result = [self updatePhysicalParameters];
 
     if (result == (IOReturn)-0x2c0) {  // Drive not present error
         IOLog("floppyInit: drive not present\n");
@@ -854,12 +846,12 @@ static const char *_getResultName(unsigned int result)
 /*
  * Free floppy disk resources
  */
-- (void)_free
+- (void)free
 {
     IOLog("floppy free\n");
 
     // Send motor off command (0x10)
-    [self _fdSimpleCommand:0x10 buffer:NULL needsDisk:NO];
+    [self fdSimpleCommand:0x10 buffer:NULL needsDisk:NO];
 
     // Free the queue lock
     [_queueLock free];
@@ -871,7 +863,7 @@ static const char *_getResultName(unsigned int result)
 /*
  * Free a floppy disk buffer
  */
-- (void)_freeFdBuf:(id)buffer
+- (void)freeFdBuf:(id)buffer
 {
     FdBuffer *fdBuf = (FdBuffer *)buffer;
 
@@ -888,7 +880,7 @@ static const char *_getResultName(unsigned int result)
  * Get current density
  * Returns the current media density setting
  */
-- (unsigned)_getCurrentDensity
+- (unsigned)getCurrentDensity
 {
     return _density;
 }
@@ -897,7 +889,7 @@ static const char *_getResultName(unsigned int result)
  * Initialize resources
  * Sets up controller reference and queue lock
  */
-- (IOReturn)_initResources:(id)controller
+- (IOReturn)initResources:(id)controller
 {
     IOLog("floppy initResources\n");
 
@@ -911,7 +903,7 @@ static const char *_getResultName(unsigned int result)
     }
 
     // Start the floppy thread
-    _fdThread(self);
+    fdThread(self);
 
     return IO_R_SUCCESS;
 }
@@ -920,7 +912,7 @@ static const char *_getResultName(unsigned int result)
  * Raw read internal
  * Performs a raw sector read operation
  */
-- (IOReturn)_rawReadInt:(unsigned)sector
+- (IOReturn)rawReadInt:(unsigned)sector
               sectCount:(unsigned)sectCount
                  buffer:(void *)buffer
 {
@@ -936,7 +928,7 @@ static const char *_getResultName(unsigned int result)
     bzero(&cmdBuf, sizeof(FdCmdBuf));
 
     // Generate read command
-    [self _fdGenRwCmd:sector
+    [self fdGenRwCmd:sector
            blockCount:sectCount
              fdIoReq:&cmdBuf
              readFlag:YES];
@@ -949,7 +941,7 @@ static const char *_getResultName(unsigned int result)
     // Based on the decompiled code, these might be at specific offsets
 
     // Send the command
-    result = [self _fdSendCmd:(unsigned char *)&cmdBuf];
+    result = [self fdSendCmd:(unsigned char *)&cmdBuf];
 
     // Get actual bytes transferred and status
     // These would be returned in the command buffer
@@ -972,14 +964,14 @@ static const char *_getResultName(unsigned int result)
  * Read/write block count
  * Calculates actual blocks to transfer, limiting to track boundaries
  */
-- (IOReturn)_rwBlockCount:(unsigned)block
+- (IOReturn)rwBlockCount:(unsigned)block
                blockCount:(unsigned)blockCount
 {
     fd_rw_cmd rwCmd;
     unsigned int blocksToDo;
 
     // Convert logical block to physical CHS
-    [self _fdLogToPhys:block cmdp:&rwCmd];
+    [self fdLogToPhys:block cmdp:&rwCmd];
 
     // Calculate blocks to do - limit to end of track
     blocksToDo = blockCount;
@@ -1001,13 +993,13 @@ static const char *_getResultName(unsigned int result)
  * Timer event handler
  * Called by timer to check motor off condition
  */
-- (void)_timerEvent
+- (void)timerEvent
 {
     FdBuffer *fdBuf;
     unsigned int *bufAsUInt;
 
     // Allocate an FdBuffer (synchronous operation)
-    fdBuf = (FdBuffer *)[self _allocFdBuf:0];
+    fdBuf = (FdBuffer *)[self allocFdBuf:0];
     if (fdBuf == NULL) {
         return;
     }
@@ -1022,7 +1014,7 @@ static const char *_getResultName(unsigned int result)
     bufAsUInt[8] = (bufAsUInt[8] & 0x7fffffff) | 0x20000000;
 
     // Enqueue the buffer (async, will be freed by handler)
-    [self _enqueueFdBuf:(id)fdBuf];
+    [self enqueueFdBuf:(id)fdBuf];
 }
 
 @end

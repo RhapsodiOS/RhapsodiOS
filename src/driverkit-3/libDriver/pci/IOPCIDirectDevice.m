@@ -42,7 +42,7 @@
 #import <driverkit/i386/IOPCIDeviceDescription.h>
 #import <driverkit/IODeviceDescription.h>
 
-static inline id
+static inline PCIKernBus *
 getThePCIBus(void)
 {
     return [KernBus lookupBusInstanceWithName:"PCI" busId:0];
@@ -56,7 +56,7 @@ getThePCIBus(void)
  */
 + (BOOL)isPCIPresent
 {
-	id	thePCIBus = getThePCIBus();
+	PCIKernBus	*thePCIBus = getThePCIBus();
 	
 	if (thePCIBus == nil) return NO;
 	return [thePCIBus isPCIPresent];
@@ -64,7 +64,7 @@ getThePCIBus(void)
 
 - (BOOL)isPCIPresent
 {
-	id	thePCIBus = getThePCIBus();
+	PCIKernBus	*thePCIBus = getThePCIBus();
 
 	if (thePCIBus == nil) return NO;
 	return [thePCIBus isPCIPresent];
@@ -83,7 +83,7 @@ getThePCIBus(void)
 	unsigned long	*ptr;
 	int		address;
 	IOReturn	ret;
-	id	thePCIBus = getThePCIBus();
+	PCIKernBus	*thePCIBus = getThePCIBus();
 
 	if (![self isPCIPresent]) return IO_R_NO_DEVICE;
 
@@ -121,7 +121,7 @@ getThePCIBus(void)
 	unsigned long	*ptr;
 	int		address;
 	IOReturn	ret;
-	id	thePCIBus = getThePCIBus();
+	PCIKernBus	*thePCIBus = getThePCIBus();
 
 	if (![self isPCIPresent]) return IO_R_NO_DEVICE;
 
@@ -157,7 +157,7 @@ getThePCIBus(void)
 {
 	unsigned char devNum, funNum, busNum;
 	IOReturn      ret;
-	id	thePCIBus = getThePCIBus();
+	PCIKernBus	*thePCIBus = getThePCIBus();
 
 	if (![self isPCIPresent]) return IO_R_NO_DEVICE;
 
@@ -191,7 +191,7 @@ getThePCIBus(void)
 {
 	unsigned char devNum, funNum, busNum;
 	IOReturn      ret;
-	id	thePCIBus = getThePCIBus();
+	PCIKernBus	*thePCIBus = getThePCIBus();
 
 	if (![self isPCIPresent]) return IO_R_NO_DEVICE;
 

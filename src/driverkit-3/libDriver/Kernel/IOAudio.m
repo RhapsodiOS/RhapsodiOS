@@ -73,23 +73,6 @@ static void ioThread(IOAudio *audioDevice);
 static void keyThread(IOAudio *audioDevice);
 
 /*
- * FIXME: These tags should be incorporated in NXSoundParameterTags. 
- */
-typedef enum {
-    NX_SoundDeviceLineOut = NX_SoundDeviceParameterKeyBase + 25,
-    NX_SoundDeviceSpeakerOut,
-    NX_SoundDeviceCDOut,
-    NX_SoundDeviceAux1Out,
-    NX_SoundDeviceAux2Out,
-        
-    NX_SoundDeviceMicIn,
-    NX_SoundDeviceLineIn,
-    NX_SoundDeviceCDIn,
-    NX_SoundDeviceAux1In,
-    NX_SoundDeviceAux2In,
-} NXSoundParameterTagExtra;
-
-/*
  * NeXTTime relies on +_instance, so
  * these can be factory variables.
  */
@@ -874,36 +857,55 @@ static int audio_first =0;
     _isOutputActive = isActive;
 }
 
-- (void) _setInputFor:(NXSoundParameterTag)ptag to:(BOOL)enable
+- (void) _setInputReportFor:(NXSoundParameterTag)ptag to:(BOOL)enable
 {
     switch (ptag) {
       case NX_SoundDeviceMicIn:
 	((_audioPrivateData *) _audioPrivate)->_enableMicIn = enable;
+	break;
+      case NX_SoundDeviceLineIn:
+	((_audioPrivateData *) _audioPrivate)->_enableLineIn = enable;
+	break;
+      case NX_SoundDeviceCDIn:
+	((_audioPrivateData *) _audioPrivate)->_enableCDIn = enable;
+	break;
+      case NX_SoundDeviceAux1In:
+	((_audioPrivateData *) _audioPrivate)->_enableAux1In = enable;
+	break;
+      case NX_SoundDeviceAux2In:
+	((_audioPrivateData *) _audioPrivate)->_enableAux2In = enable;
+	break;
+      default:
+        IOLog("Audio: unknown input source: %d\n", (int)ptag);
+	break;
+    }
+}
+
+- (void) _setInputFor:(NXSoundParameterTag)ptag to:(BOOL)enable
+{
+    [self _setInputReportFor:ptag to:enable];
+    switch (ptag) {
+      case NX_SoundDeviceMicIn:
 	[[self _audioCommand] send: (enable) ?
 	    setDeviceInputMicEnable : setDeviceInputMicDisable];
 	break;
       case NX_SoundDeviceLineIn:
-	((_audioPrivateData *) _audioPrivate)->_enableLineIn = enable;
 	[[self _audioCommand] send: (enable) ?
 	    setDeviceInputLineEnable : setDeviceInputLineDisable];
 	break;
       case NX_SoundDeviceCDIn:
-	((_audioPrivateData *) _audioPrivate)->_enableCDIn = enable;
 	[[self _audioCommand] send: (enable) ?
 	    setDeviceInputCDEnable : setDeviceInputCDDisable];
 	break;
       case NX_SoundDeviceAux1In:
-	((_audioPrivateData *) _audioPrivate)->_enableAux1In = enable;
 	[[self _audioCommand] send: (enable) ?
 	    setDeviceInputAux1Enable : setDeviceInputAux1Disable];
 	break;
       case NX_SoundDeviceAux2In:
-	((_audioPrivateData *) _audioPrivate)->_enableAux2In = enable;
 	[[self _audioCommand] send: (enable) ?
 	    setDeviceInputAux2Enable : setDeviceInputAux2Disable];
 	break;
       default:
-        IOLog("Audio: unknown input source: %d\n", (int)ptag);
 	break;
     }
 }
@@ -948,7 +950,7 @@ static int audio_first =0;
     if (((_audioPrivateData *) _audioPrivate)->_enableMicIn)
 	return NX_SoundDeviceMicIn;
     else if (((_audioPrivateData *) _audioPrivate)->_enableLineIn)
-	return NX_SoundDeviceAux1In;
+	return NX_SoundDeviceLineIn;
     else if (((_audioPrivateData *) _audioPrivate)->_enableCDIn)
 	return NX_SoundDeviceAux1In;
     else if (((_audioPrivateData *) _audioPrivate)->_enableAux1In)
@@ -1172,6 +1174,9 @@ static int audio_first =0;
 	    break;
 	  case NX_SoundDeviceInputGainLeft:
 	    [self _setInputGainLeft:(unsigned int)value];
+	    break;
+	  case NX_SoundDeviceInputGainRight:
+	    [self _setInputGainRight:(unsigned int)value];
 	    break;
 	  case NX_SoundDeviceAnalogInputSource:
 	    [self _setAnalogInputSource:(NXSoundParameterTag)value];
@@ -1492,15 +1497,20 @@ static int audio_first =0;
 }
 
 /*
- * Initialize audio hardware with default values for gain, attenuation etc. 
+ * Initialize audio hardware with default values for gain, attenuation etc.
+ *
+ * OPENSTEP called _setInputGainRight: and _setOutputAttenuationLeft: twice,
+ * leaving inputGainLeft and outputAttenuationRight at allocation zero
+ * (right output at full volume). Found by onionmixer:
+ * https://github.com/onionmixer/openstep-ac97/blob/main/KERNEL-IOAUDIO-BUG.md
  */
 - (void) _initAudioHardwareSettings
 {
-    [self _setInputGainRight:32768/2];
+    [self _setInputGainLeft:32768/2];
     [self _setInputGainRight:32768/2];
     
     [self _setOutputAttenuationLeft:-42];
-    [self _setOutputAttenuationLeft:-42];
+    [self _setOutputAttenuationRight:-42];
     
     // add more generic ones here
 }
@@ -1647,8 +1657,6 @@ static int audio_first =0;
     if ([self reset] == NO)
         return nil;
 
-    [self _initAudioHardwareSettings];
-    
     /*
      * Get the kernel server instance for the just-loaded reloc.
      */
@@ -1743,7 +1751,11 @@ static int audio_first =0;
     (void) IOSetThreadPolicy(thread, POLICY_FIXEDPRI);
     (void) IOSetThreadPriority(thread, 30);	/* XXX */
     (void)IOForkThread((IOThreadFunc)keyThread, (void *)self);
-    
+
+    /*
+     * Defaults go through _audioCommand, which needs ioThread running.
+     */
+    [self _initAudioHardwareSettings];
 
     /*
      * This should be after the ioThread fork to guarantee that

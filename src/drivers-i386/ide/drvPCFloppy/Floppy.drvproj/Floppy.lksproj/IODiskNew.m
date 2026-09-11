@@ -10,6 +10,19 @@
 #import <machkit/NXLock.h>
 #import <driverkit/kernelDriver.h>
 
+/*
+ * Disk-specific IOReturn values table, read by -stringFromReturn: below.
+ * Format: { returnCode, stringPtr, terminatorFlag }
+ */
+static const struct {
+	IOReturn code;
+	const char *string;
+	int terminator;
+} diskIoReturnValues[] = {
+	// Add disk-specific return codes here if needed
+	{ 0, NULL, 1 }  // Terminator entry
+};
+
 @implementation IODiskNEW
 
 /*
@@ -36,7 +49,7 @@
  */
 - drive
 {
-	return _drive;
+	return _driveId;
 }
 
 /*
@@ -95,8 +108,10 @@
 	}
 	
 	// Note: Decompiled code shows return here without calling super free
-	// This may be because the actual freeing happens elsewhere
-	return self;
+	// This may be because the actual freeing happens elsewhere.
+	// The reference unconditionally zeroes eax before returning, i.e. it
+	// returns nil regardless of whether a chained disk was freed.
+	return nil;
 }
 
 /*
@@ -198,7 +213,7 @@
 	_nextLogicalDisk = nil;
 	
 	// Create a new NXLock for logical disk operations (offset 0x11c)
-	_LogicalDiskLock = [[NXLock alloc] init];
+	_LogicalDiskLock = [NXLock new];
 	
 	// Call superclass registerDevice
 	result = [super registerDevice];
@@ -230,7 +245,7 @@
  */
 - (void)setDrive : driveId
 {
-	_drive = driveId;  // offset 0x120
+	_driveId = driveId;  // offset 0x120
 }
 
 /*
@@ -297,17 +312,6 @@
  */
 - (const char *)stringFromReturn : (IOReturn)rtn
 {
-	// Disk-specific IOReturn values table
-	// Format: { returnCode, stringPtr, terminatorFlag }
-	static const struct {
-		IOReturn code;
-		const char *string;
-		int terminator;
-	} diskIoReturnValues[] = {
-		// Add disk-specific return codes here if needed
-		{ 0, NULL, 1 }  // Terminator entry
-	};
-	
 	// Search through disk-specific return values
 	const void *table = diskIoReturnValues;
 	const int *ptr = (const int *)table;

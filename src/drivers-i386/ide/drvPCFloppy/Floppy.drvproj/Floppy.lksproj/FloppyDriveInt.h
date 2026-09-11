@@ -82,7 +82,7 @@
 /*
  * Update drive ready state (internal).
  */
-- (void)updateReadyStateInt;
+- (int)updateReadyStateInt;
 
 @end
 

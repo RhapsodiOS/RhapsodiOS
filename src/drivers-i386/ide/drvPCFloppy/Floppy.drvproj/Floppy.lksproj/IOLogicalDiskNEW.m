@@ -185,9 +185,6 @@
 	                    deviceOffset:&deviceOffset
 	                     bytesToMove:&bytesToMove];
 	if (result != IO_R_SUCCESS) {
-		if (actualLength) {
-			*actualLength = 0;
-		}
 		return result;
 	}
 
@@ -248,9 +245,6 @@
 	// Check if disk is write protected
 	writeProtected = [self isWriteProtected];
 	if (writeProtected) {
-		if (actualLength) {
-			*actualLength = 0;
-		}
 		return (IOReturn)0xfffffd31;  // IO_R_WRITE_PROTECTED
 	}
 
@@ -260,9 +254,6 @@
 	                    deviceOffset:&deviceOffset
 	                     bytesToMove:&bytesToMove];
 	if (result != IO_R_SUCCESS) {
-		if (actualLength) {
-			*actualLength = 0;
-		}
 		return result;
 	}
 

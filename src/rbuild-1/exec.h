@@ -4,6 +4,8 @@
 extern int exec_dry_run;
 
 void exec_printcmd(char *const argv[]);
+int exec_set_log(const char *path);
+void exec_clear_log(void);
 int exec_run(char *const argv[]);
 int exec_runv(const char *arg0, ...);
 char *exec_checkret(int status);

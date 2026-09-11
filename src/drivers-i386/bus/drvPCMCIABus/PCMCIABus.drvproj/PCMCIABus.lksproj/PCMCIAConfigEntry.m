@@ -55,113 +55,113 @@
 /* Configuration accessors */
 - (unsigned int)configIndex
 {
-    return _configIndex;
+    return index;
 }
 
 - (unsigned int)interfaceType
 {
-    return _interfaceType;
+    return interfaceType;
 }
 
 /* I/O accessors */
 - (unsigned int)ioAddressLines
 {
-    return _ioAddressLines;
+    return IOAddrLines;
 }
 
 - (BOOL)io8BitSupported
 {
-    return _io8BitSupported;
+    return bus8;
 }
 
 - (BOOL)io16BitSupported
 {
-    return _io16BitSupported;
+    return bus16;
 }
 
 - (unsigned int)ioRangeCount
 {
-    return _ioRangeCount;
+    return PortRanges.numEntries;
 }
 
 - (unsigned int)ioRangeStartAt:(unsigned int)index
 {
-    if (index >= MAX_IO_RANGES) {
+    if (index >= PCMCIA_PORT_ENTRIES) {
         return 0;
     }
-    return _ioRangeStart[index];
+    return PortRanges.table[index].base;
 }
 
 - (unsigned int)ioRangeLengthAt:(unsigned int)index
 {
-    if (index >= MAX_IO_RANGES) {
+    if (index >= PCMCIA_PORT_ENTRIES) {
         return 0;
     }
-    return _ioRangeLength[index];
+    return PortRanges.table[index].length;
 }
 
 /* IRQ accessors */
 - (BOOL)irqPresent
 {
-    return _irqPresent;
+    return IRQInfo.irqUsed;
 }
 
 - (BOOL)irqShared
 {
-    return _irqShared;
+    return IRQInfo.share;
 }
 
 - (BOOL)irqPulse
 {
-    return _irqPulse;
+    return IRQInfo.pulse;
 }
 
 - (BOOL)irqLevel
 {
-    return _irqLevel;
+    return IRQInfo.level;
 }
 
 - (unsigned int)irqMask
 {
-    return _irqMask;
+    return IRQInfo.irqLevels;
 }
 
 /* Memory window accessors */
 - (unsigned int)memWindowCount
 {
-    return _memWindowCount;
+    return MemSpaceInfo.numEntries;
 }
 
 - (unsigned int)memCardAddressAt:(unsigned int)index
 {
-    if (index >= MAX_MEM_WINDOWS) {
+    if (index >= PCMCIA_MEM_ENTRIES) {
         return 0;
     }
-    return _memCardAddress[index];
+    return MemSpaceInfo.table[index].cardBase;
 }
 
 - (unsigned int)memLengthAt:(unsigned int)index
 {
-    if (index >= MAX_MEM_WINDOWS) {
+    if (index >= PCMCIA_MEM_ENTRIES) {
         return 0;
     }
-    return _memLength[index];
+    return MemSpaceInfo.table[index].length;
 }
 
 - (unsigned int)memHostAddressAt:(unsigned int)index
 {
-    if (index >= MAX_MEM_WINDOWS) {
+    if (index >= PCMCIA_MEM_ENTRIES) {
         return 0;
     }
-    return _memHostAddress[index];
+    return MemSpaceInfo.table[index].hostBase;
 }
 
 - (BOOL)memHostAddressValidAt:(unsigned int)index
 {
-    if (index >= MAX_MEM_WINDOWS) {
+    if (index >= PCMCIA_MEM_ENTRIES) {
         return NO;
     }
-    return _memHostAddressValid[index];
+    return MemSpaceInfo.table[index].anyHostBase;
 }
 
 @end

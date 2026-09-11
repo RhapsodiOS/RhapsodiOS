@@ -1,38 +1,53 @@
 Current list of drivers to be implemented and the status of re-implementation
 =====================================================
 
+Guest packaging (`rbuild kernel` / `rbuild kerneldrivers` on the ppc build box)
+is tracked separately from reconstruction completeness. Paths listed in
+`src/rbuild-1/kernel-drivers-blacklist.json` are skipped until they package;
+remove an entry there to promote a driver into the optional driver pass.
+
 bus
- * drvPExpert - needs compiled and then tested
- * drvPPCOHare - copy of src/kernel-7/bsd/dev/ppc/drvOHare; see tools/ppc_package_check.py
+ * drvPExpert - packaged as drvpexpert-29.apk (kernel core); not yet hardware-tested
+ * drvPPCOHare - packaged as drvppcohare-2.apk; copy of
+   src/kernel-7/bsd/dev/ppc/drvOHare; see tools/ppc_package_check.py; not yet
+   hardware-tested
 
 ide
- * drvPPCSwimFloppy - needs compiled and then tested
+ * drvPPCSwimFloppy - blacklisted WIP; needs compile and then test
 
 input
  * drvPPCSerialPort - needs compiled and then tested
  * drvPPCCuda - copy of src/kernel-7/bsd/dev/ppc/drvCuda; see tools/ppc_package_check.py
  * drvPPCPMU - copy of src/kernel-7/bsd/dev/ppc/drvPMU; see tools/ppc_package_check.py
- * drvIOADBDevice - STUB, no in-tree source; class/selector list scaffolded from the
-   shipped binary, every method body empty
+ * drvIOADBDevice - blacklisted WIP; STUB, no in-tree source; class/selector list
+   scaffolded from the shipped binary, every method body empty
 
 network
- * drvPPCGem - needs compiled and then tested
- * drvPPCGNic - needs compiled and then tested
- * drvPPCBMac - copy of src/kernel-7/bsd/dev/ppc/drvBMacEnet; see tools/ppc_package_check.py
- * drvPPCMace - copy of src/kernel-7/bsd/dev/ppc/drvMaceEnet; see tools/ppc_package_check.py
- * drvPPCDec21040 - copy of src/kernel-7/bsd/dev/ppc/drvDECchip21040; see tools/ppc_package_check.py
- * drvDEC21x4Ethernet - STUB, no in-tree source; class/selector list scaffolded from the
-   shipped binary, every method body empty
+ * drvPPCGem - blacklisted WIP; needs compile and then test
+ * drvPPCGNic - blacklisted WIP; needs compile and then test
+ * drvPPCBMac - packaged as drvppcbmac-2.apk; copy of
+   src/kernel-7/bsd/dev/ppc/drvBMacEnet; see tools/ppc_package_check.py; not yet
+   hardware-tested
+ * drvPPCMace - blacklisted WIP; copy of src/kernel-7/bsd/dev/ppc/drvMaceEnet;
+   see tools/ppc_package_check.py
+ * drvPPCDec21040 - packaged as drvppcdec21040-2.apk; copy of
+   src/kernel-7/bsd/dev/ppc/drvDECchip21040; see tools/ppc_package_check.py;
+   not yet hardware-tested
+ * drvDEC21x4Ethernet - blacklisted WIP; STUB, no in-tree source; class/selector
+   list scaffolded from the shipped binary, every method body empty
 
 scsi
- * drvPPC53c96 - copy of src/kernel-7/bsd/dev/ppc/drvApple96_SCSI; see tools/ppc_package_check.py
- * drvPPCMesh - copy of src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI; see tools/ppc_package_check.py
- * drvPPCSym8xx - copy of src/kernel-7/bsd/dev/ppc/drvSymbios8xx; see tools/ppc_package_check.py
+ * drvPPC53c96 - blacklisted WIP; copy of src/kernel-7/bsd/dev/ppc/drvApple96_SCSI;
+   see tools/ppc_package_check.py
+ * drvPPCMesh - blacklisted WIP; copy of src/kernel-7/bsd/dev/ppc/drvAppleMesh_SCSI;
+   see tools/ppc_package_check.py
+ * drvPPCSym8xx - blacklisted WIP; copy of src/kernel-7/bsd/dev/ppc/drvSymbios8xx;
+   see tools/ppc_package_check.py
 
 sound
  * drvPPCAwacs - needs compiled and then tested
- * drvPPCBurgundy - needs compiled and then tested
- * drvPPCTASAudio - needs compiled and then tested
+ * drvPPCBurgundy - blacklisted WIP; needs compile and then test
+ * drvPPCTASAudio - blacklisted WIP; needs compile and then test
 
 video
 

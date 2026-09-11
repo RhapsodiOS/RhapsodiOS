@@ -1,6 +1,12 @@
 Current list of drivers to be implemented and the status of re-implementation
 =====================================================
 
+Guest packaging uses `rbuild kernel` / `rbuild kerneldrivers` with the profile
+architecture. On the current ppc build box, only `drivers-ppc` optional drivers
+are scanned; i386 projects are out of scope until an i386 profile run. WIP
+paths live in `src/rbuild-1/kernel-drivers-blacklist.json` and are skipped until
+promoted out of that list.
+
 bus
  * drvEISABus - crashing; reconstructed against the reference binary, fixes applied, not yet retested
  * drvPCIBus - reconstructed against the reference binary, fixes applied; its testIDs:dev:fun:bus: prototype now matches Apple's, and PCIResourceDriver inherits IODirectDevice, but neither fix has been compiled or tested

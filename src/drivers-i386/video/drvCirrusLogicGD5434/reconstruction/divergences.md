@@ -1733,16 +1733,17 @@ byte-identical to the pre-experiment build across all 21 functions. The `ja`
 against `jg` divergence is therefore not reachable from the ivar's declared type
 and not from a `switch`, and is left as it stands. Do not repeat either attempt.
 
-Two further gaps, neither of them in the driver source:
+Two further gaps, neither of them in the driver source (Task 3 later closed
+bundle *existence*; see the Task 3 result below):
 
-- The build still prints `WARNING: no CirrusLogicGD5434DisplayDriver version bundle
-  produced`. Apple's `.config` directory carries a 16728-byte
-  `CirrusLogicGD5434DisplayDriver` alongside the reloc; our build produces only
-  the reloc. That is Task 3 (Driver-project postamble).
-- `_CirrusLogicGD5434DisplayDriver_VERS_STRING` and `_..._VERS_NUM` are still
+- The build still printed `WARNING: no CirrusLogicGD5434DisplayDriver version bundle
+  produced` through Task 2. Apple's `.config` directory carries a 16728-byte
+  `CirrusLogicGD5434DisplayDriver` alongside the reloc.
+- `_CirrusLogicGD5434DisplayDriver_VERS_STRING` and `_..._VERS_NUM` were still
   absent from the rebuilt nlist after Task 2. The 170-byte `__TEXT,__const`
   shortfall (2392 vs the reference's 2562) is still those two symbols plus
-  padding.
+  padding. Task 3 emits apple-generic `VersionString` / `VersionNumber`
+  instead; existence is the gate, not 1998 bytes or the SGS names.
 
 **Task 2 result.** The Kernel Server `Makefile.postamble` is now exactly
 `OTHER_GENERATED_OFILES += $(VERS_OFILE)`. Guest rebuild `make exit=0`.
@@ -1773,6 +1774,54 @@ staged /build/out/i386/drvCirrusLogicGD5434/CirrusLogicGD5434DisplayDriver.confi
 No `*_vers.o` on the `kl_ld` line. `parity_check.py` still cannot see this
 gap: it scopes to `__TEXT,__cstring` and `__TEXT,__text`. Runtime impact is
 low; neither symbol is referenced by any function in either binary.
+
+**Task 3, first rebuild (Driver-project `VERS_OFILE` only).** The Driver-project
+`Makefile.postamble` is `OTHER_GENERATED_OFILES += $(VERS_OFILE)` with no
+`VERSIONING_SYSTEM` yet. Guest rebuild `make exit=0`. `VERS` nlist still `[]`.
+No `*vers*` files under the driver tree. `kl_ld` is unchanged from Task 2 (no
+`*_vers.o`). Driver-project `driver.make` never ran `ld -bundle`: `LOADABLES`
+is empty when `$(VERS_OFILE)` is unset, so `$(INNER_PRODUCT)` (the MH_BUNDLE
+`CirrusLogicGD5434DisplayDriver`) is not linked.
+
+```
+/usr/bin/kl_ld -o /build/src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434DisplayDriver.config/CirrusLogicGD5434DisplayDriver_reloc -n CirrusLogicGD5434DisplayDriver  -i CirrusLogicGD5434DisplayDriver_instance -l Load_Commands.sect   -arch i386  /build/src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.build/objects-optimized/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/CirrusLogicGD5434DisplayDriver.o /build/src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.build/objects-optimized/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/ProgramDAC.o             /build/src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.build/objects-optimized/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/CirrusLogicGD5434DisplayDriver_instance.o
+make exit=0 for CirrusLogicGD5434DisplayDriver
+WARNING: no CirrusLogicGD5434DisplayDriver version bundle produced
+```
+
+No Driver-project `ld` line appears in the log. `driverTools` was not edited.
+
+**Task 3, `VERSIONING_SYSTEM` retries.** Setting `VERSIONING_SYSTEM` only in
+`Makefile.postamble` is too late: `common.make` already `-include`d
+`$(VERSIONING_SYSTEM).make` (missing `next-sgs.make`) before the postamble is
+read. Re-including from the postamble puts `vers.o` on `LOADABLES` but does not
+run `BEFORE_PREBUILD` / `OTHER_GENERATED_SRCFILES`, so `vers.c` is never
+written.
+
+- `next-cvs` in both postambles: `kl_ld` listed
+  `CirrusLogicGD5434DisplayDriver_vers.o` as a bare filename;
+  `ld: can't open: CirrusLogicGD5434DisplayDriver_vers.o`. `next-cvs.make`
+  depends on `CVSVersionInfo.txt`, which this project does not have, and does
+  not add `OTHER_GENERATED_SRCFILES`. No `vers.c`. Reloc missing; build script
+  `fail=1`.
+- `apple-generic` in both postambles: same `can't open` / no `vers.c`.
+
+`VERSIONING_SYSTEM = apple-generic` in both **preambles** (so `common.make`
+includes `apple-generic.make` in time) produced `vers.o`. Guest
+`make exit=0`, `fail=0`. Log contains `staged version bundle
+CirrusLogicGD5434DisplayDriver` and no missing-bundle WARNING.
+
+```
+/usr/bin/kl_ld -o .../CirrusLogicGD5434DisplayDriver_reloc ... CirrusLogicGD5434DisplayDriver.o ... ProgramDAC.o ... CirrusLogicGD5434DisplayDriver_instance.o .../CirrusLogicGD5434DisplayDriver_vers.o
+/usr/bin/cc ... -bundle -undefined suppress ... -arch i386 -o .../CirrusLogicGD5434DisplayDriver.config/CirrusLogicGD5434DisplayDriver .../CirrusLogicGD5434DisplayDriver_vers.o
+```
+
+Host `$BUNDLE` is 9552 bytes, Mach-O `file_type = 8` (`MH_BUNDLE`). Rebuilt
+nlist `__TEXT,__const` has `_CirrusLogicGD5434DisplayDriverVersionString` and
+`_CirrusLogicGD5434DisplayDriverVersionNumber` (apple-generic names), not
+Apple's `_..._VERS_STRING` / `_..._VERS_NUM`. `compare_cirrus.py`
+`failed_matched` stayed 0. `parity_check.py` missing strings/symbols 0.
+`driverTools` was not edited. `apple-generic.make` produced `vers.o`.
 
 ### Ledger status distribution
 
@@ -1825,10 +1874,11 @@ the fault is in the project's `NAME`/`PROJECTVERSION`/`DriverKitVersion`
 declarations or in the project type, not in the driver source. `_..._VERS_STRING`
 and `_..._VERS_NUM` are likewise not hand-written source. Task 2 wired
 `OTHER_GENERATED_OFILES += $(VERS_OFILE)` into the Kernel Server postamble;
-`vers.c` was still not generated because `VERS_OFILE` is unset — see the Task 2
-result under "Build and parity". Their *contents*
-would carry our own build host and timestamp, not Apple's 1998 pair, so byte
-parity on those 164 bytes is not achievable; their existence is.
+Task 3 set `VERSIONING_SYSTEM = apple-generic` in both preambles so `vers.c` is
+generated. The rebuilt symbols are `_...VersionString` / `_...VersionNumber`,
+not the SGS `_..._VERS_STRING` / `_..._VERS_NUM` pair. Their *contents*
+carry our own build host and timestamp, not Apple's 1998 pair, so byte
+parity on those bytes is not achievable; existence of the MH_BUNDLE is.
 
 Also not reconstructed, and deliberately so:
 

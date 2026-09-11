@@ -84,7 +84,8 @@ that `repe cmpsb` is gcc's `strcmp` builtin rather than a flag artefact: across
 nine literals in six drivers the `ecx` count is always `strlen(literal) + 1`, so
 `strncmp(..., "PCI", 4)` should be `strcmp(..., "PCI")`. Untested.
 
-The second is the version bundle (below), which affects both driven drivers.
+The second was the version bundle (below). Cirrus now emits an MH_BUNDLE;
+ThinkPad still does not.
 
 ## drvIBMThinkPad760EDDisplay — reconstructed in part
 
@@ -162,29 +163,29 @@ with 53 functions. The equivalent bundles in the Cirrus and ThinkPad configs are
 34-byte version stubs containing only dyld glue and `_VERS_STRING`/`_VERS_NUM`,
 with no code to reconstruct.
 
-## The version bundle is missing from both built drivers
+## The version bundle: Cirrus emits one; ThinkPad still does not
 
-Neither driver's build emits the `.config` bundle executable that sits beside the
-`_reloc` and carries `_VERS_STRING`/`_VERS_NUM`. Apple's bundles have one;
-`vm/build-i386-video-recon.sh` prints `WARNING: no <name> version bundle
-produced`. Measured on Cirrus: reference `__TEXT,__const` is 2562 bytes with both
-symbols, ours is 2392 with neither, a delta of 170.
+Cirrus now stages `CirrusLogicGD5434DisplayDriver` beside the `_reloc`
+(9552-byte MH_BUNDLE, `file_type = 8`). `vm/build-i386-video-recon.sh` prints
+`staged version bundle CirrusLogicGD5434DisplayDriver` and no longer warns.
+The guest has no `next-sgs.make`; `VERSIONING_SYSTEM = apple-generic` in both
+Cirrus preambles produces `_...VersionString` / `_...VersionNumber` rather than
+Apple's `_..._VERS_STRING` / `_..._VERS_NUM`. Existence was the gate; 1998
+bytes and SGS names were not. ThinkPad still has no bundle.
 
-`parity_check.py` cannot see this — it covers only `__TEXT,__cstring` strings and
-`__TEXT,__text` symbols, so `__const` is outside its scope and its green result
-is narrower than it looks. The spec's §1.2 named bundle existence as its only
-verification criterion for these stubs, so that criterion is currently **unmet**.
+`parity_check.py` cannot see `__const` — it covers only `__TEXT,__cstring`
+strings and `__TEXT,__text` symbols, so its green result is narrower than it
+looks.
 
-The cause is unproven. The strongest in-repo account is that
-`src/pb_makefiles-1/next-sgs.make:36-45` generates `$(NAME)_vers.c`, but nothing
-links `$(VERS_OFILE)` unless `OTHER_GENERATED_OFILES` picks it up — which for a
-Kernel Server comes from
-`src/driverTools-1/KernelServerProjectType/kernelserver.make.preamble:8-10`
-through an optional `-include` that is silently skipped when that file is not
-installed on the guest. An earlier hypothesis blaming `drvS3Generic`'s outer
-`Makefile.postamble` was refuted: its include is an absolute path to
-`/NextDeveloper/Makefiles/`, absent from this tree, at the aggregate level, which
-builds no code.
+For Cirrus the cause is now measured: the guest has no `next-sgs.make`, local
+`driver.make.preamble` / `kernelserver.make.preamble` are not installed, and
+`VERSIONING_SYSTEM` in a project postamble is parsed after `common.make` already
+skipped the missing versioning makefile. `OTHER_GENERATED_OFILES += $(VERS_OFILE)`
+in both Cirrus postambles plus `VERSIONING_SYSTEM = apple-generic` in both
+preambles is what emitted `vers.o`. ThinkPad has not had that wire. An earlier
+hypothesis blaming `drvS3Generic`'s outer `Makefile.postamble` was refuted: its
+include is an absolute path to `/NextDeveloper/Makefiles/`, absent from this
+tree, at the aggregate level, which builds no code.
 
 ## Analyzer coverage is narrower than intended
 

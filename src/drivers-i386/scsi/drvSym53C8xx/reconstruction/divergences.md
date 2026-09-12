@@ -470,6 +470,26 @@ ledger `analyzer_agreement` is `agreed` / `["IDA"]`.
 2 + 1 + 22 + 136 = 161. The 35 unnamed `__data` hits are **not** in this
 table.
 
+## Task 7: SIM API written
+
+`SYM53c8SIM.c` / `SYM53c8SIM.h` hold the DriverKit-facing SIM and the SIM-layer
+helpers those bodies call. Ledger rows stay `unexamined` until Task 11.
+
+- [x] `SIMInit` `SIM17Init` `SIMAddPath` `SIMActionInit`
+- [x] `SIMStart` `SIMRun` `SIMInterrupt` `SIMTickTock`
+- [x] `RespondToComp` `CallComp` `CallCompletion` `RespondToBusReset` `CCBInSIMQueue`
+- [x] `SIM16Start` `SIM16Int` `SIM16Action` `SIM17Action`
+- [x] `DisableInterrupts` `EnableInterrupts` `RestoreInterrupts`
+- [x] `QInsert` `QAppend` `QDelete` `IDLUNToDP` `PathToROMInfoPtr` `GetNumROMs` `GetROMTableBase`
+- [x] `SIMClearMem` `GetWidth` `Do17On16` `Do16On17` `Start17On16` `Start16On17` `r16Comp` `r17Comp`
+
+Extern to Task 8: `FindROMs` `InitROMs` `MemAlloc` `VtoP` `FCalcSync` `FWideInit`
+`InitializeQueueTags` `FRun` `FResumeXFer` `FResetBus` `FRespRes` `CheckForStart`
+`FindRunningRequest` `SetFrag` `GotMSG` `WantMSG` `FreeQueueTag` `AutosenseSetup`
+`PreTransfer17` `PostTransfer17` `PreTransfer16` `PostTransfer16` `PeekAtData`
+`DoneWithCurrentData` `AddToDeviceList` `ResetDevice` `xpt_async` `T17To16`
+`T16To17` `Stat16To17` `Stat17To16`.
+
 ## Unmapped: build-generated
 
 `+[SYM53c8KernelServerInstance kernelServerInstance]` and
@@ -479,6 +499,6 @@ the equivalent pair in drvAdaptec1542B.
 
 ## What was not attempted
 
-This pass did not rewrite CAM/SIM source. Task 5 guest-compiled the BusLogic
-stub `_reloc` (`SYM53c8_reloc`, 204732 bytes, unstripped). The rewrite starts
-after this document is committed.
+Task 7 wrote the SIM API in `SYM53c8SIM.c`. CAM helpers, SCRIPTS bytes, and
+DriverKit method rewrites remain for later tasks. Ledger statuses stay
+`unexamined`.

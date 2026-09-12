@@ -67,7 +67,7 @@ void linkScbPreemptive(struct _SCB **head, struct _SCB *scb);
 void linkScb(struct _SCB **head, struct _SCB *scb);
 int unlinkScb(struct _SCB **head, struct _SCB *scb);
 void HIM6X60CompleteSCB(struct _HACB *hacb, struct _SCB *scb);
-void HIM6X60Event(void);
+void HIM6X60Event(struct _HACB *hacb, int event, int extra);
 void HIM6X60FlushDMA(struct _HACB *hacb);
 HIM_LUCB *HIM6X60GetLUCB(struct _HACB *hacb, int bus, unsigned char target, unsigned char lun);
 unsigned int HIM6X60GetPhysicalAddress(struct _HACB *hacb, struct _SCB *scb, unsigned char *virt, unsigned int offset, unsigned int *outLength);
@@ -107,8 +107,11 @@ HIM6X60CompleteSCB(struct _HACB *hacb, struct _SCB *scb)
 }
 
 void
-HIM6X60Event(void)
+HIM6X60Event(struct _HACB *hacb, int event, int extra)
 {
+	(void)hacb;
+	(void)event;
+	(void)extra;
 }
 
 void
@@ -588,7 +591,7 @@ HIM6X60QueueSCB(struct _HACB *hacb, struct _SCB *scb)
 	unsigned int phys;
 	unsigned char t, l;
 
-	if (scb->length > 0x53) {
+	if (scb->length <= 0x53) {
 		scb->scbStatus = 0x15;
 		return scb->scbStatus;
 	}
@@ -681,7 +684,7 @@ HIM6X60AbortSCB(struct _HACB *hacb, struct _SCB *scb, struct _SCB *targetScb)
 	HIM_LUCB *lucb;
 	struct _SCB *next;
 
-	if (scb->length > 0x53) {
+	if (scb->length <= 0x53) {
 		scb->scbStatus = 0x15;
 		return scb->scbStatus;
 	}
@@ -744,7 +747,7 @@ HIM6X60TerminateSCB(struct _HACB *hacb, struct _SCB *scb, struct _SCB *targetScb
 	HIM_LUCB *lucb;
 	struct _SCB *next;
 
-	if (scb->length > 0x53) {
+	if (scb->length <= 0x53) {
 		scb->scbStatus = 0x15;
 		return scb->scbStatus;
 	}
@@ -932,8 +935,8 @@ defaults:
 			}
 			if ((char)stack < 0) {
 				hacb->negotiateSDTR &= ~(1u << i);
-				H8(hacb, 0x4E + i) = ((stack & 0x70) >> 4) + 2;
-				H8(hacb, 0x56 + i) = stack & 0x0F;
+				hacb->syncCycles[i] = ((stack & 0x70) >> 4) + 2;
+				hacb->syncOffset[i] = stack & 0x0F;
 			}
 		}
 	} else if (sig == 0x03020100) {
@@ -946,8 +949,8 @@ defaults:
 			}
 			if ((char)stack < 0) {
 				hacb->negotiateSDTR &= ~(1u << i);
-				H8(hacb, 0x4E + i) = ((stack & 0x70) >> 4) + 2;
-				H8(hacb, 0x56 + i) = stack & 0x0F;
+				hacb->syncCycles[i] = ((stack & 0x70) >> 4) + 2;
+				hacb->syncOffset[i] = stack & 0x0F;
 			}
 		}
 		outb(hacb->baseAddress + AIC_DMACNTRL1, 0);

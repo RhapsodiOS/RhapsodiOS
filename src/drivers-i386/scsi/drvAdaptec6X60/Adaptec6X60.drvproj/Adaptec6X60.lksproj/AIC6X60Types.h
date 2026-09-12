@@ -28,8 +28,9 @@
 #define AIC_SCSIRATE		0x04	/* add dx, 4; scsiBusFree / resetSDTR */
 #define AIC_SCSIDAT		0x06	/* add dx, 6; scsiBusFree / targetREQuest */
 #define AIC_SCSIBUS		0x07	/* add dx, 7; interpretMessageIn */
-#define AIC_STCNT0		0x08	/* add dx, 8; HIM6X60DmaProgrammed */
-#define AIC_STCNT1		0x09	/* add dx, 9; HIM6X60Initialize */
+#define AIC_STCNT0		0x08	/* add dx, 8; HIM6X60DmaProgrammed / updateDataPointer */
+#define AIC_STCNT1		0x09	/* add dx, 9; HIM6X60Initialize / updateDataPointer */
+#define AIC_STCNT2		0x0a	/* add dx, 0Ah; updateDataPointer */
 #define AIC_SSTAT0		0x0b	/* add dx, 0Bh; _isr in -> hacb.sStat0 */
 #define AIC_CLRSINT0		0x0b	/* write; scsiBusFree / reselection */
 #define AIC_SSTAT1		0x0c	/* add dx, 0Ch; _isr in -> hacb.sStat1 */
@@ -145,10 +146,9 @@ struct _HACB {
 	struct _SCB		*queueFreezeScb;	/* +0x1c */
 	struct _SCB		*resetScb;		/* +0x20 */
 	unsigned char		nx[0x2a];		/* +0x24..+0x4d; [0] is SCB* in _isr */
-	unsigned char		targetStatus;		/* +0x4e */
-	unsigned char		reservedForAlignment1;	/* +0x4f */
-	unsigned char		syncCycles[8];		/* +0x50 */
-	unsigned char		syncOffset[8];		/* +0x58 */
+	unsigned char		syncCycles[8];		/* +0x4e; IDA [hacb+4Eh+i] */
+	unsigned char		syncOffset[8];		/* +0x56; IDA [hacb+56h+i] */
+	unsigned char		_opaque_sync_pad[2];	/* +0x5e; keep cQueuedScb at +0x60 */
 	unsigned int		cQueuedScb;		/* +0x60 */
 	unsigned int		cActiveScb;		/* +0x64 */
 	unsigned char		negotiateSDTR;		/* +0x68 */

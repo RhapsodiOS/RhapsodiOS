@@ -464,6 +464,16 @@ the `HIM6X60*` API, `_isr` / `_deferredIsr` / `_watchdog`, the phase machine
 (`_selection` … `_prepareMessageOut`), SDTR, PIO/DMA data path, SCB link helpers, and the
 HIM callbacks (`_HIM6X60CompleteSCB`, `_HIM6X60Event`, `_HIM6X60MapDMA`, …).
 
+## Task 7: HACB sync-array layout
+
+IDA indexes `[hacb+4Eh+i]` / `[hacb+56h+i]` as the per-target sync arrays
+(`updateSDTR`, `selection`, `resetSDTR`). The ObjC `_HACB` encoding listed
+`targetStatus`/`reservedForAlignment1` at `+0x4E` and put `syncCycles` at
+`+0x50`. IDA wins: `syncCycles[8]` is at `+0x4E`, `syncOffset[8]` at `+0x56`,
+and a two-byte pad at `+0x5E` keeps `cQueuedScb` at `+0x60`, `sStat0` at
+`+0x74`, `selectTimeLimit` at `+0x78`, `controllerId` at `+0x38c`,
+`sizeof(_HACB) == 0x390`.
+
 ## Task 7: HIM / sequencer definition sites
 
 Written from IDA `analysis-reference-ida.json` instructions/blocks/calls (no
@@ -519,6 +529,18 @@ calls them and does not redefine them.
 - [x] quiesceDmaAndSCSI
 - [x] updateDataPointer
 - [x] bitbucketAndABORT
+
+HACB sync arrays follow IDA displacements, not the ObjC encoding order that
+placed `targetStatus`/`reservedForAlignment1` at `+0x4E`. `syncCycles[8]` is
+at `+0x4E` and `syncOffset[8]` at `+0x56`, with two pad bytes at `+0x5E` so
+`cQueuedScb` stays at `+0x60`, `sStat0` at `+0x74`, `selectTimeLimit` at
+`+0x78`, `controllerId` at `+0x38c`, and `sizeof(_HACB)` at `0x390`.
+
+The first sequencer pass truncated several bodies (`targetREQuest` tested
+`scb->function & 0x408000` as a byte, which is always 0). Those functions
+were rewritten from the IDA instruction dumps so the reference call targets
+and major branches exist. `samePhaseREQuest` returns `int` (IDA `eax`).
+`targetREQuest` tests the dword at SCB `+0x10` against `0x408000`.
 
 ## What was not attempted
 

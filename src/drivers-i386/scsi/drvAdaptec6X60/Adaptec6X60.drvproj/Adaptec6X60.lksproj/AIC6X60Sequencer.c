@@ -16,7 +16,7 @@ typedef struct {
 
 extern HIM_LUCB *HIM6X60GetLUCB(struct _HACB *hacb, int bus, unsigned char target, unsigned char lun);
 extern void HIM6X60CompleteSCB(struct _HACB *hacb, struct _SCB *scb);
-extern void HIM6X60Event(void);
+extern void HIM6X60Event(struct _HACB *hacb, int event, int extra);
 extern void HIM6X60FlushDMA(struct _HACB *hacb);
 extern void HIM6X60LogError(struct _HACB *hacb, struct _SCB *scb, int bus, int target, int lun, int code, int extra);
 extern void HIM6X60Watchdog(struct _HACB *hacb, void (*proc)(void *), unsigned int milliseconds);
@@ -29,6 +29,7 @@ extern void linkScbPreemptive(struct _SCB **head, struct _SCB *scb);
 extern int unlinkScb(struct _SCB **head, struct _SCB *scb);
 extern void deferredIsr(struct _HACB *hacb);
 extern void memset(void *b, int c, int len);
+extern void *memcpy(void *dst, const void *src, unsigned int n);
 
 extern int repinsb(IOEISAPortAddress port, unsigned char *addr, int count);
 extern int repinsw(IOEISAPortAddress port, unsigned short *addr, int count);
@@ -42,7 +43,7 @@ void reselection(struct _HACB *hacb);
 void scsiBusFree(struct _HACB *hacb);
 void scsiBusReset(struct _HACB *hacb);
 void targetREQuest(struct _HACB *hacb);
-void samePhaseREQuest(struct _HACB *hacb, unsigned char wait);
+int samePhaseREQuest(struct _HACB *hacb, unsigned char wait);
 void interpretMessageIn(struct _HACB *hacb);
 void prepareMessageOut(struct _HACB *hacb, unsigned char msg);
 void negotiateSDTR(struct _HACB *hacb);
@@ -170,9 +171,9 @@ program:
 	outb(hacb->baseAddress + AIC_SCSISEQ, AIC_ENAUTOATNP);
 	outb(hacb->baseAddress + AIC_SIMODE0, 0);
 	outb(hacb->baseAddress + AIC_SIMODE1, 0x29);
-	if (H8(hacb, 0x56 + target) != 0)
-		rate = ((H8(hacb, 0x4E + target) + 0xFE) << 4) |
-		    H8(hacb, 0x56 + target);
+	if (hacb->syncOffset[target] != 0)
+		rate = ((hacb->syncCycles[target] + 0xFE) << 4) |
+		    hacb->syncOffset[target];
 	else
 		rate = 0;
 	outb(hacb->baseAddress + AIC_SCSIRATE, rate);
@@ -215,8 +216,8 @@ reselection(struct _HACB *hacb)
 	outb(hacb->baseAddress + AIC_CLRSINT1, AIC_BUSFREE);
 	outb(hacb->baseAddress + AIC_SIMODE0, 0);
 	outb(hacb->baseAddress + AIC_SIMODE1, 0x29);
-	if (H8(hacb, 0x56 + id) != 0)
-		rate = ((H8(hacb, 0x4E + id) + 0xFE) << 4) | H8(hacb, 0x56 + id);
+	if (hacb->syncOffset[id] != 0)
+		rate = ((hacb->syncCycles[id] + 0xFE) << 4) | hacb->syncOffset[id];
 	else
 		rate = 0;
 	outb(hacb->baseAddress + AIC_SCSIRATE, rate);
@@ -227,8 +228,8 @@ updateSDTR(struct _HACB *hacb, unsigned int target, unsigned char cycles, unsign
 {
 	unsigned char slot, rate;
 
-	H8(hacb, 0x4E + target) = cycles;
-	H8(hacb, 0x56 + target) = offset;
+	hacb->syncCycles[target] = cycles;
+	hacb->syncOffset[target] = offset;
 	if (persist != 0)
 		hacb->negotiateSDTR &= ~(1u << hacb->busID);
 	slot = 0;
@@ -307,8 +308,8 @@ resetSDTR(struct _HACB *hacb, unsigned int target)
 	unsigned char buf[8];
 
 	if (target == hacb->ownID) {
-		memset((unsigned char *)hacb + 0x4E, 0, 8);
-		memset((unsigned char *)hacb + 0x56, 0, 8);
+		memset(hacb->syncCycles, 0, 8);
+		memset(hacb->syncOffset, 0, 8);
 		if ((hacb->ac & 0xA0) == 0xA0)
 			hacb->negotiateSDTR = 0xFF;
 		else
@@ -348,79 +349,234 @@ dataPhaseDMA(struct _HACB *hacb)
 void
 dataInPIO(struct _HACB *hacb)
 {
-	unsigned char mode;
-	unsigned int n;
+	unsigned char mode, dmastat;
+	unsigned int n, wait;
 
 	mode = hacb->revision != 0 ? 0x90 : 0x80;
 	outb(hacb->baseAddress + AIC_DMACNTRL0, mode);
 	outb(hacb->baseAddress + AIC_SXFRCTL0, 0xE0);
+refill:
 	if (H32(hacb, 0x2C) == 0)
-		return;
+		goto enable_req;
 	if (H32(hacb, 0x34) == 0) {
 		if (H32(hacb, 0x2C) < H32(hacb, 0x34))
 			H32(hacb, 0x34) = H32(hacb, 0x2C);
+		if (H32(hacb, 0x34) == 0)
+			goto refill;
 	}
-	n = H32(hacb, 0x34);
-	if (n == 0)
-		return;
-	if ((n & 3) == 0)
+wait_fifo:
+	wait = 0;
+	for (;;) {
+		dmastat = inb(hacb->baseAddress + AIC_DMASTAT);
+		if (dmastat & 0x30)
+			break;
+		wait++;
+		if (wait != 0xFFFFF)
+			continue;
+		if (inb(hacb->baseAddress + AIC_SCSISIG) & 2) {
+			HIM6X60ResetBus(hacb, 0);
+			continue;
+		}
+		outb(hacb->baseAddress + AIC_CLRSINT1, AIC_REQINIT);
+		if (inb(hacb->baseAddress + AIC_SCSISIG) & 2)
+			goto wait_fifo;
+		goto enable_req;
+	}
+	if (dmastat & AIC_DFIFOFULL)
+		n = 0x80;
+	else {
+		n = inb(hacb->baseAddress + AIC_FIFOSTAT);
+		if (n == 0)
+			return;
+	}
+	if (H32(hacb, 0x34) < n)
+		n = H32(hacb, 0x34);
+	if ((n & 3) == 0 && hacb->revision != 0) {
+		if (mode != 0x90) {
+			mode = 0x90;
+			outb(hacb->baseAddress + AIC_DMACNTRL0, 0x90);
+		}
 		repinsd(hacb->baseAddress + AIC_DMADATA32,
 		    (unsigned long *)H32(hacb, 0x28), (int)(n >> 2));
-	else if ((n & 1) == 0)
-		repinsw(hacb->baseAddress + AIC_DMADATA,
-		    (unsigned short *)H32(hacb, 0x28), (int)(n >> 1));
-	else
+	} else if (n & 1) {
+		if (mode != 0xC0) {
+			mode = 0xC0;
+			outb(hacb->baseAddress + AIC_DMACNTRL0, 0xC0);
+		}
 		repinsb(hacb->baseAddress + AIC_DMADATA,
 		    (unsigned char *)H32(hacb, 0x28), (int)n);
+	} else {
+		if (mode != 0x80) {
+			mode = 0x80;
+			outb(hacb->baseAddress + AIC_DMACNTRL0, 0x80);
+		}
+		repinsw(hacb->baseAddress + AIC_DMADATA,
+		    (unsigned short *)H32(hacb, 0x28), (int)(n >> 1));
+	}
 	H32(hacb, 0x28) += n;
 	H32(hacb, 0x2C) -= n;
-	H32(hacb, 0x34) = 0;
+	H32(hacb, 0x38) += n;
+	H32(hacb, 0x34) -= n;
+	if (H32(hacb, 0x34) != 0)
+		goto wait_fifo;
+	goto refill;
+enable_req:
+	outb(hacb->baseAddress + AIC_SIMODE1, 0x39);
 }
 
 void
 dataOutPIO(struct _HACB *hacb)
 {
-	unsigned char mode;
-	unsigned int n;
+	unsigned char mode, dmastat;
+	unsigned int n, wait;
 
 	mode = hacb->revision != 0 ? 0x98 : 0x88;
 	outb(hacb->baseAddress + AIC_DMACNTRL0, mode);
 	outb(hacb->baseAddress + AIC_SXFRCTL0, 0xE0);
+refill:
 	if (H32(hacb, 0x2C) == 0)
-		return;
+		goto drain;
 	if (H32(hacb, 0x34) == 0) {
 		if (H32(hacb, 0x2C) < H32(hacb, 0x34))
 			H32(hacb, 0x34) = H32(hacb, 0x2C);
+		if (H32(hacb, 0x34) == 0)
+			goto refill;
 	}
-	n = H32(hacb, 0x34);
-	if (n == 0)
+wait_fifo:
+	wait = 0;
+	for (;;) {
+		dmastat = inb(hacb->baseAddress + AIC_DMASTAT);
+		if (dmastat & 0x28)
+			break;
+		wait++;
+		if (wait != 0xFFFFF)
+			continue;
+		if (inb(hacb->baseAddress + AIC_SCSISIG) & 2) {
+			HIM6X60ResetBus(hacb, 0);
+			continue;
+		}
+		outb(hacb->baseAddress + AIC_CLRSINT1, AIC_REQINIT);
+		if (inb(hacb->baseAddress + AIC_SCSISIG) & 2)
+			goto wait_fifo;
+		goto enable_req;
+	}
+	if (dmastat & AIC_INTSTAT)
 		return;
-	if ((n & 3) == 0)
+	if (dmastat & AIC_DFIFOEMP) {
+		n = H32(hacb, 0x34);
+		if (n > 0x80)
+			n = 0x80;
+	} else {
+		n = H32(hacb, 0x34);
+		if (n > 0x40)
+			n = 0x40;
+	}
+	if ((n & 3) == 0 && hacb->revision != 0) {
+		if (mode != 0x98) {
+			mode = 0x98;
+			outb(hacb->baseAddress + AIC_DMACNTRL0, 0x98);
+		}
 		repoutsd(hacb->baseAddress + AIC_DMADATA32,
 		    (unsigned long *)H32(hacb, 0x28), (int)(n >> 2));
-	else if ((n & 1) == 0)
-		repoutsw(hacb->baseAddress + AIC_DMADATA,
-		    (unsigned short *)H32(hacb, 0x28), (int)(n >> 1));
-	else
+	} else if (n & 1) {
+		if (mode != 0xC8) {
+			mode = 0xC8;
+			outb(hacb->baseAddress + AIC_DMACNTRL0, 0xC8);
+		}
 		repoutsb(hacb->baseAddress + AIC_DMADATA,
 		    (unsigned char *)H32(hacb, 0x28), (int)n);
+	} else {
+		if (mode != 0x88) {
+			mode = 0x88;
+			outb(hacb->baseAddress + AIC_DMACNTRL0, 0x88);
+		}
+		repoutsw(hacb->baseAddress + AIC_DMADATA,
+		    (unsigned short *)H32(hacb, 0x28), (int)(n >> 1));
+	}
 	H32(hacb, 0x28) += n;
 	H32(hacb, 0x2C) -= n;
-	H32(hacb, 0x34) = 0;
+	H32(hacb, 0x38) += n;
+	H32(hacb, 0x34) -= n;
+	if (H32(hacb, 0x34) != 0)
+		goto wait_fifo;
+	goto refill;
+drain:
+	for (;;) {
+		dmastat = inb(hacb->baseAddress + AIC_DMASTAT);
+		if (dmastat & AIC_INTSTAT)
+			return;
+		dmastat = inb(hacb->baseAddress + AIC_DMASTAT);
+		if ((dmastat & AIC_DFIFOEMP) == 0)
+			continue;
+		if ((inb(hacb->baseAddress + AIC_SSTAT2) & 0x10) == 0)
+			continue;
+		break;
+	}
+enable_req:
+	outb(hacb->baseAddress + AIC_SIMODE1, 0x39);
 }
 
 void
 updateDataPointer(struct _HACB *hacb)
 {
-	struct _SCB *scb = HP(hacb, 0x24);
+	struct _SCB *scb;
+	unsigned int n, stcnt, fifo;
+	unsigned char al;
 
-	if (scb == 0)
+	scb = HP(hacb, 0x24);
+	if (hacb->cs & 1) {
+		hacb->cs &= ~1;
+		outb(hacb->baseAddress + AIC_SXFRCTL0, 0x32);
+		outb(hacb->baseAddress + AIC_SXFRCTL0, 0x20);
+		outb(hacb->baseAddress + AIC_SXFRCTL1, hacb->sXfrCtl1Image);
+		outb(hacb->baseAddress + AIC_DMACNTRL0, AIC_RSTFIFO);
 		return;
-	scb->dataPointer = (unsigned char *)H32(hacb, 0x28);
-	scb->dataLength = H32(hacb, 0x2C);
-	scb->dataOffset = H32(hacb, 0x38);
-	scb->segmentAddress = H32(hacb, 0x30);
-	scb->segmentLength = H32(hacb, 0x34);
+	}
+	if ((hacb->ac & 0x40) && (short)scb->flags >= 0) {
+		stcnt = inb(hacb->baseAddress + AIC_STCNT0);
+		stcnt |= (unsigned int)inb(hacb->baseAddress + AIC_STCNT1) << 8;
+		stcnt |= (unsigned int)inb(hacb->baseAddress + AIC_STCNT2) << 16;
+		hacb->scsiCount = stcnt;
+		n = stcnt;
+		if (hacb->scsiPhase != 0) {
+			al = inb(hacb->baseAddress + AIC_DMASTAT);
+			if ((char)al < 0 && H32(hacb, 0x34) <= stcnt)
+				n = H32(hacb, 0x34);
+			else {
+				fifo = inb(hacb->baseAddress + AIC_FIFOSTAT);
+				fifo += inb(hacb->baseAddress + AIC_SSTAT2) & 0x0F;
+				n = hacb->scsiCount - fifo;
+			}
+		}
+		H32(hacb, 0x28) += n;
+		H32(hacb, 0x2C) -= n;
+		H32(hacb, 0x38) += n;
+		H32(hacb, 0x30) += n;
+		H32(hacb, 0x34) -= n;
+		if (inb(hacb->baseAddress + AIC_SSTAT1) & AIC_PHASEMIS)
+			goto flush;
+		al = inb(hacb->baseAddress + AIC_DMACNTRL0);
+		outb(hacb->baseAddress + AIC_DMACNTRL0, al & 0x7F);
+		return;
+	}
+	if ((hacb->maskedSStat1 & AIC_PHASEMIS) == 0)
+		return;
+	if (hacb->scsiPhase == 0x40)
+		dataInPIO(hacb);
+	else {
+		fifo = inb(hacb->baseAddress + AIC_FIFOSTAT);
+		n = fifo + (inb(hacb->baseAddress + AIC_SSTAT2) & 0x0F);
+		if (n != 0) {
+			H32(hacb, 0x28) -= n;
+			H32(hacb, 0x2C) += n;
+			H32(hacb, 0x38) -= n;
+			H32(hacb, 0x34) += n;
+		}
+	}
+flush:
+	outb(hacb->baseAddress + AIC_SXFRCTL0, 0x32);
+	outb(hacb->baseAddress + AIC_SXFRCTL0, 0x20);
+	outb(hacb->baseAddress + AIC_DMACNTRL0, AIC_RSTFIFO);
 }
 
 void
@@ -429,16 +585,14 @@ quiesceDmaAndSCSI(struct _HACB *hacb)
 	unsigned short i;
 	unsigned char al;
 
+	i = 0;
 	if (hacb->revision == 1)
 		HIM6X60Watchdog(hacb, 0, 0);
-	i = 0;
 	if (hacb->scsiPhase == 0) {
 		for (;;) {
-			al = inb(hacb->baseAddress + AIC_SSTAT0);
-			if (al & AIC_DMADONE)
+			if (inb(hacb->baseAddress + AIC_SSTAT0) & AIC_DMADONE)
 				break;
-			al = inb(hacb->baseAddress + AIC_SSTAT1);
-			if ((al & AIC_PHASEMIS) == 0) {
+			if (inb(hacb->baseAddress + AIC_SSTAT1) & AIC_PHASEMIS) {
 				al = inb(hacb->baseAddress + AIC_DMASTAT);
 				if ((char)al < 0)
 					break;
@@ -449,10 +603,38 @@ quiesceDmaAndSCSI(struct _HACB *hacb)
 			if (i == 0xFFFF)
 				break;
 		}
+		goto finish;
 	}
-	if (i == 0xFFFF)
+	for (;;) {
+		if (inb(hacb->baseAddress + AIC_SSTAT0) & AIC_DMADONE) {
+			if (inb(hacb->baseAddress + AIC_DMASTAT) & AIC_DFIFOFULL)
+				break;
+			if (inb(hacb->baseAddress + AIC_SSTAT1) & AIC_PHASEMIS)
+				break;
+		}
+		if (inb(hacb->baseAddress + AIC_SSTAT1) & AIC_PHASEMIS) {
+			if (inb(hacb->baseAddress + AIC_DMASTAT) & AIC_DFIFOEMP)
+				break;
+		}
+		i++;
+		if (i == 0xFFFF)
+			break;
+		if (hacb->revision != 1)
+			continue;
+		if ((char)inb(hacb->baseAddress + AIC_DMASTAT) >= 0)
+			continue;
+		if (inb(hacb->baseAddress + AIC_SSTAT0) & AIC_DMADONE)
+			continue;
 		HIM6X60LogError(hacb, HP(hacb, 0x24), 0, hacb->busID,
 		    hacb->lun, 0x8001, hacb->scsiPhase);
+		al = inb(hacb->baseAddress + AIC_DMACNTRL0);
+		outb(hacb->baseAddress + AIC_DMACNTRL0, al & 0x7F);
+		al = inb(hacb->baseAddress + AIC_DMACNTRL0);
+		outb(hacb->baseAddress + AIC_DMACNTRL0, al | 0x80);
+	}
+finish:
+	outb(hacb->baseAddress + AIC_SXFRCTL0, 0xA0);
+	outb(hacb->baseAddress + AIC_CLRSINT0, AIC_DMADONE);
 	HIM6X60FlushDMA(hacb);
 	hacb->cs &= ~0x04;
 }
@@ -460,8 +642,9 @@ quiesceDmaAndSCSI(struct _HACB *hacb)
 void
 scsiBusFree(struct _HACB *hacb)
 {
-	struct _SCB *scb;
+	struct _SCB *scb, *linked, *next;
 	HIM_LUCB *lucb;
+	unsigned char dl;
 
 	if (hacb->cs & 0x04) {
 		if (hacb->revision == 1)
@@ -476,27 +659,97 @@ scsiBusFree(struct _HACB *hacb)
 	outb(hacb->baseAddress + AIC_SCSISIG, 0);
 	outb(hacb->baseAddress + AIC_SCSIDAT, 0);
 	outb(hacb->baseAddress + AIC_DMACNTRL0, AIC_RSTFIFO);
-	outb(hacb->baseAddress + AIC_CLRSINT1, AIC_BUSFREE);
-	scb = HP(hacb, 0x24);
-	if (scb != 0) {
-		unlinkScb(&hacb->eligibleScb, scb);
-		lucb = HIM6X60GetLUCB(hacb, 0, scb->targetID, scb->lun);
-		if (lucb && lucb->activeScb == scb)
-			lucb->activeScb = 0;
-		if (lucb && lucb->queuedScb != 0) {
-			struct _SCB *next = lucb->queuedScb;
-			unlinkScb(&lucb->queuedScb, next);
-			linkScb(&hacb->eligibleScb, next);
-		}
-		HIM6X60CompleteSCB(hacb, scb);
-		HP(hacb, 0x24) = 0;
-		if (hacb->cActiveScb)
-			hacb->cActiveScb--;
+	outb(hacb->baseAddress + AIC_CLRSINT0, 0x5F);
+	outb(hacb->baseAddress + AIC_CLRSINT1, 0xFF);
+	outb(hacb->baseAddress + AIC_SIMODE0, 0x20);
+	outb(hacb->baseAddress + AIC_SIMODE1, 0x20);
+	outb(hacb->baseAddress + AIC_SCSISEQ, AIC_ENRESELI);
+	scb = 0;
+	if (hacb->maskedSStat1 & AIC_SCSIRSTI) {
+		scsiBusReset(hacb);
+		goto reinit;
 	}
-	hacb->busID = 0xFF;
-	hacb->lun = 0xFF;
+	if (HP(hacb, 0x24) == 0)
+		goto reinit;
+	scb = HP(hacb, 0x24);
+	if ((signed char)hacb->maskedSStat1 < 0) {
+		if (scb->function == 0)
+			scb->scbStatus = 0x0A;
+		else
+			HIM6X60ResetBus(hacb, 0);
+	} else if (hacb->cs & 0x02) {
+		hacb->cs &= ~0x02;
+		if (hacb->scsiPhase != 0xA0)
+			goto check_complete;
+		if (scb->scbStatus & 0x7F)
+			goto unlink_active;
+		dl = 1;
+		if (H8(hacb, 0x3D) == 6)
+			dl = 2;
+		scb->scbStatus = dl;
+	} else {
+		scb->scbStatus = 0x13;
+		HIM6X60LogError(hacb, scb, 0, hacb->busID, hacb->lun,
+		    2, hacb->scsiPhase);
+	}
+check_complete:
+	if ((scb->scbStatus & 0x7F) == 0) {
+		scb = 0;
+		goto reinit;
+	}
+unlink_active:
+	unlinkScb(&hacb->eligibleScb, scb);
+	lucb = HIM6X60GetLUCB(hacb, 0, scb->targetID, scb->lun);
+	if (lucb == 0)
+		goto reinit;
+	lucb->activeScb = 0;
+	if (lucb->queuedScb == 0 || (hacb->cs & 0x20))
+		lucb->busy = 0;
+	else {
+		lucb->busy = 1;
+		next = lucb->queuedScb;
+		unlinkScb(&lucb->queuedScb, next);
+		hacb->cQueuedScb--;
+		linkScb(&hacb->eligibleScb, next);
+		hacb->cActiveScb++;
+	}
+reinit:
 	hacb->scsiPhase = 0xFF;
+	hacb->lun = 0xFF;
+	hacb->busID = 0xFF;
+	memset((unsigned char *)hacb + 0x24, 0, 0x28);
 	initiateIO(hacb);
+	if (scb == 0)
+		goto freeze;
+	linked = scb->linkedScb;
+	if (linked != 0) {
+		if (linked->function == 0x10) {
+			if (scb->scbStatus == 2)
+				linked->scbStatus = 1;
+			else
+				linked->scbStatus = 3;
+		} else if (linked->function == 0x14) {
+			if ((scb->scbStatus & 0x7F) == 4 && scb->targetStatus == 0x22)
+				linked->scbStatus = 1;
+			else
+				linked->scbStatus = 0x25;
+		}
+	}
+	HIM6X60CompleteSCB(hacb, scb);
+	hacb->cActiveScb--;
+	if (linked != 0)
+		HIM6X60CompleteSCB(hacb, linked);
+freeze:
+	if (hacb->cActiveScb != 0)
+		return;
+	while (hacb->queueFreezeScb != 0) {
+		scb = hacb->queueFreezeScb;
+		unlinkScb(&hacb->queueFreezeScb, scb);
+		scb->scbStatus = 1;
+		HIM6X60CompleteSCB(hacb, scb);
+	}
+	if (hacb->revision != 0)
+		outb(hacb->baseAddress + AIC_DMACNTRL1, 0x80);
 }
 
 void
@@ -504,91 +757,265 @@ scsiBusReset(struct _HACB *hacb)
 {
 	unsigned char t, l;
 	HIM_LUCB *lucb;
-	struct _SCB *scb;
+	struct _SCB *scb, *linked;
+	int hadResetScb;
 
 	outb(hacb->baseAddress + AIC_CLRSINT1, AIC_SCSIRSTI);
 	resetSDTR(hacb, hacb->ownID);
+	hadResetScb = 0;
 	for (t = 0; t <= 7; t++) {
+		if (t == hacb->ownID)
+			continue;
 		for (l = 0; l <= 7; l++) {
 			lucb = HIM6X60GetLUCB(hacb, 0, t, l);
 			if (lucb == 0)
 				continue;
+			lucb->busy = 0;
+			if (lucb->activeScb != 0) {
+				scb = lucb->activeScb;
+				unlinkScb(&hacb->eligibleScb, scb);
+				lucb->activeScb = 0;
+				if ((signed char)scb->scbStatus < 0)
+					scb->scbStatus = 0x10;
+				else if (scb->scbStatus == 0)
+					scb->scbStatus = 0x0E;
+				linked = scb->linkedScb;
+				if (linked != 0)
+					linked->scbStatus = 1;
+				HIM6X60CompleteSCB(hacb, scb);
+				hacb->cActiveScb--;
+				if (linked != 0)
+					HIM6X60CompleteSCB(hacb, linked);
+			}
 			while (lucb->queuedScb != 0) {
 				scb = lucb->queuedScb;
 				unlinkScb(&lucb->queuedScb, scb);
-				scb->scbStatus = 0x14;
+				hacb->cQueuedScb--;
+				scb->scbStatus = 0x0E;
 				HIM6X60CompleteSCB(hacb, scb);
 			}
-			if (lucb->activeScb != 0) {
-				scb = lucb->activeScb;
-				lucb->activeScb = 0;
-				scb->scbStatus = 0x14;
-				HIM6X60CompleteSCB(hacb, scb);
-			}
-			lucb->busy = 0;
 		}
 	}
 	while (hacb->eligibleScb != 0) {
 		scb = hacb->eligibleScb;
 		unlinkScb(&hacb->eligibleScb, scb);
-		scb->scbStatus = 0x14;
+		if ((signed char)scb->scbStatus < 0)
+			scb->scbStatus = 0x10;
+		else if (scb->scbStatus == 0)
+			scb->scbStatus = 0x0E;
+		linked = scb->linkedScb;
+		if (linked != 0)
+			linked->scbStatus = 1;
 		HIM6X60CompleteSCB(hacb, scb);
+		hacb->cActiveScb--;
+		if (linked != 0)
+			HIM6X60CompleteSCB(hacb, linked);
+	}
+	while (hacb->resetScb != 0) {
+		scb = hacb->resetScb;
+		unlinkScb(&hacb->resetScb, scb);
+		scb->scbStatus = 1;
+		HIM6X60CompleteSCB(hacb, scb);
+		hadResetScb = 1;
+	}
+	if (hadResetScb) {
+		HIM6X60Event(hacb, 2, 0);
+		return;
 	}
 	while (hacb->deferredScb != 0) {
 		scb = hacb->deferredScb;
 		unlinkScb(&hacb->deferredScb, scb);
-		HIM6X60CompleteSCB(hacb, scb);
+		lucb = HIM6X60GetLUCB(hacb, 0, scb->targetID, scb->lun);
+		if (lucb == 0)
+			continue;
+		if (lucb->busy == 0) {
+			lucb->busy = 1;
+			linkScb(&hacb->eligibleScb, scb);
+			hacb->cActiveScb++;
+		} else {
+			linkScb(&lucb->queuedScb, scb);
+			hacb->cQueuedScb++;
+		}
 	}
-	HIM6X60Event();
-	hacb->cQueuedScb = 0;
-	hacb->cActiveScb = 0;
-	HP(hacb, 0x24) = 0;
-	hacb->busID = 0xFF;
-	hacb->lun = 0xFF;
 }
 
 void
 interpretMessageIn(struct _HACB *hacb)
 {
-	unsigned char msg;
-	unsigned char idx;
+	unsigned char msg, st;
+	unsigned int x;
+	struct _SCB *scb;
 	HIM_LUCB *lucb;
 
 	msg = inb(hacb->baseAddress + AIC_SCSIBUS);
-	idx = H8(hacb, 0x44);
-	H8(hacb, 0x45 + idx) = msg;
+	H8(hacb, 0x45 + H8(hacb, 0x44)) = msg;
 	H8(hacb, 0x44)++;
 	if ((signed char)H8(hacb, 0x45) < 0) {
-		if (hacb->lun == 0xFF)
+		if (hacb->lun != 0xFF) {
 			prepareMessageOut(hacb, 6);
-		return;
-	}
-	if (H8(hacb, 0x45) == 0x01) {
-		negotiateSDTR(hacb);
-		return;
-	}
-	if (H8(hacb, 0x45) == 0x03) {
-		updateSDTR(hacb, hacb->busID, 0, 0, 1);
-		return;
-	}
-	if (H8(hacb, 0x45) == 0x07 || H8(hacb, 0x45) == 0x0C) {
-		if (HP(hacb, 0x24) != 0)
-			HIM6X60CompleteSCB(hacb, HP(hacb, 0x24));
-		return;
-	}
-	if ((H8(hacb, 0x45) & 0x80) && hacb->lun == 0xFF) {
+			goto ack_reset;
+		}
 		hacb->lun = H8(hacb, 0x45) & 7;
 		lucb = HIM6X60GetLUCB(hacb, 0, hacb->busID, hacb->lun);
-		if (lucb && lucb->activeScb)
-			HP(hacb, 0x24) = lucb->activeScb;
+		scb = lucb->activeScb;
+		HP(hacb, 0x24) = scb;
+		if (scb == 0) {
+			prepareMessageOut(hacb, 0x0C);
+			HIM6X60LogError(hacb, 0, 0, hacb->busID, 0xFF, 3,
+			    H8(hacb, 0x45));
+			goto ack_reset;
+		}
+		if (scb->function == 0x10) {
+			unlinkScb(&hacb->eligibleScb, scb);
+			prepareMessageOut(hacb, 6);
+			goto ack_reset;
+		}
+		if (scb->function == 0x14) {
+			unlinkScb(&hacb->eligibleScb, scb);
+			prepareMessageOut(hacb, 0x11);
+			goto ack_reset;
+		}
+		H32(hacb, 0x28) = (unsigned int)scb->dataPointer;
+		H32(hacb, 0x2C) = scb->dataLength;
+		H32(hacb, 0x38) = scb->dataOffset;
+		H32(hacb, 0x30) = scb->segmentAddress;
+		H32(hacb, 0x34) = scb->segmentLength;
+		goto ack_reset;
 	}
+	scb = HP(hacb, 0x24);
+	if (scb == 0) {
+		prepareMessageOut(hacb, 0x0C);
+		goto ack_reset;
+	}
+	msg = H8(hacb, 0x45);
+	if (msg > 7)
+		goto reject;
+	switch (msg) {
+	case 0:
+		if ((signed char)scb->scbStatus < 0) {
+			if (H8(hacb, 0x4C) != 0)
+				scb->scbStatus = 0x10;
+			else
+				scb->scbStatus |= 4;
+			goto ack_reset;
+		}
+		x = scb->dataLength - H32(hacb, 0x2C) + scb->provisionalTransfer;
+		scb->transferLength += x;
+		scb->transferResidual -= x;
+		st = H8(hacb, 0x4C);
+		scb->targetStatus = st;
+		if (st > 0x28)
+			goto st_bad;
+		switch (st) {
+		case 0x00:
+		case 0x04:
+		case 0x10:
+		case 0x14:
+			if (hacb->cs & 0x10) {
+				hacb->cs &= ~0x10;
+				scb->scbStatus = 0x0F;
+			} else
+				scb->scbStatus = 1;
+			break;
+		case 0x02:
+		case 0x22:
+			if (scb->scbStatus != 0)
+				break;
+			if ((scb->flags & 0x20) == 0 && scb->senseData != 0 &&
+			    scb->senseDataLength != 0) {
+				scb->function = 0;
+				scb->flags |= 0x8000;
+				scb->scbStatus = 0x80;
+				scb->dataPointer = scb->senseData;
+				scb->dataLength = scb->senseDataLength;
+				scb->dataOffset = 0;
+				scb->segmentAddress = 0;
+				scb->segmentLength = scb->senseDataLength;
+				linkScbPreemptive(&hacb->eligibleScb, scb);
+				break;
+			}
+			/* FALLTHROUGH */
+		default:
+st_bad:
+			scb->scbStatus = 4;
+			break;
+		case 0x08:
+		case 0x28:
+			scb->scbStatus = 5;
+			break;
+		}
+		goto ack_reset;
+	case 1:
+		if (H8(hacb, 0x44) == 1)
+			goto ack_keep;
+		if (H8(hacb, 0x44) < H8(hacb, 0x46) + 2)
+			goto ack_keep;
+		if (H8(hacb, 0x47) == 1 && (signed char)hacb->ac < 0) {
+			negotiateSDTR(hacb);
+			goto ack_reset;
+		}
+		prepareMessageOut(hacb, 7);
+		goto ack_reset;
+	case 2:
+		if ((signed char)scb->scbStatus >= 0) {
+			x = scb->dataLength - H32(hacb, 0x2C);
+			scb->transferLength += x;
+			scb->transferResidual -= x;
+		}
+		scb->dataPointer = (unsigned char *)H32(hacb, 0x28);
+		scb->dataLength = H32(hacb, 0x2C);
+		scb->dataOffset = H32(hacb, 0x38);
+		scb->segmentAddress = H32(hacb, 0x30);
+		scb->segmentLength = H32(hacb, 0x34);
+		goto ack_reset;
+	case 3:
+		H32(hacb, 0x28) = (unsigned int)scb->dataPointer;
+		H32(hacb, 0x2C) = scb->dataLength;
+		H32(hacb, 0x38) = scb->dataOffset;
+		H32(hacb, 0x30) = scb->segmentAddress;
+		H32(hacb, 0x34) = scb->segmentLength;
+		scb->provisionalTransfer = 0;
+		goto ack_reset;
+	case 4:
+		if ((signed char)scb->scbStatus >= 0)
+			scb->provisionalTransfer =
+			    scb->dataLength - H32(hacb, 0x2C);
+		scb->scbStatus = 0x10;
+		break;
+	case 5:
+	case 6:
+reject:
+		prepareMessageOut(hacb, 7);
+		goto ack_reset;
+	case 7:
+		if ((signed char)H8(hacb, 0x3D) < 0)
+			scb->scbStatus = 0x20;
+		else if (memcmp((unsigned char *)hacb + 0x3D,
+		    &hacb->sdtrMsg, 3) == 0)
+			updateSDTR(hacb, hacb->busID, 0, 0, 1);
+		else if (scb->linkedScb != 0) {
+			scb->function = 0;
+			scb->linkedScb->scbStatus = 0x0D;
+			HIM6X60CompleteSCB(hacb, scb->linkedScb);
+			scb->linkedScb = 0;
+		} else
+			scb->scbStatus = 0x0D;
+		H8(hacb, 0x3C) = 1;
+		H8(hacb, 0x3D) = 8;
+		goto ack_reset;
+	}
+	hacb->cs |= 0x02;
+ack_reset:
+	H8(hacb, 0x44) = 0;
+ack_keep:
+	inb(hacb->baseAddress + AIC_SCSIDAT);
 }
 
 void
 targetREQuest(struct _HACB *hacb)
 {
 	struct _SCB *scb;
-	unsigned char sig, phase, spio;
+	unsigned char sig, phase, spio, orig, remaining;
 	unsigned int n;
 
 	scb = HP(hacb, 0x24);
@@ -606,19 +1033,18 @@ targetREQuest(struct _HACB *hacb)
 			bitbucketAndABORT(hacb, 0);
 			return;
 		}
-		if ((signed char)scb->flags >= 0 && H32(hacb, 0x2C) != 0) {
-			if ((hacb->ac & 0x40) && (short)scb->flags >= 0)
-				dataPhaseDMA(hacb);
-			else if (hacb->cs & 0x40)
-				dataOutPIO(hacb);
-			else {
-				hacb->disableINT++;
-				deferredIsr(hacb);
-			}
-		} else if (H32(hacb, 0x2C) == 0)
-			bitbucketAndABORT(hacb, 0x12);
-		else
+		if ((signed char)scb->flags >= 0)
+			goto abort_14;
+		if (H32(hacb, 0x2C) == 0)
+			goto abort_12;
+		if ((hacb->ac & 0x40) && (short)scb->flags >= 0)
+			dataPhaseDMA(hacb);
+		else if (hacb->cs & 0x40)
 			dataOutPIO(hacb);
+		else {
+			hacb->disableINT++;
+			deferredIsr(hacb);
+		}
 		return;
 	}
 	if (phase == 0x40) {
@@ -626,15 +1052,11 @@ targetREQuest(struct _HACB *hacb)
 			bitbucketAndABORT(hacb, 0);
 			return;
 		}
-		if (scb->function & 0x408000) {
-			bitbucketAndABORT(hacb, 0x14);
-			HIM6X60LogError(hacb, scb, 0, hacb->busID, hacb->lun,
-			    5, hacb->scsiPhase);
-			return;
-		}
+		if ((*(unsigned int *)&scb->function & 0x408000) == 0)
+			goto abort_14;
 		if (H32(hacb, 0x2C) == 0)
-			bitbucketAndABORT(hacb, 0x12);
-		else if ((hacb->ac & 0x40) && (short)scb->flags >= 0)
+			goto abort_12;
+		if ((hacb->ac & 0x40) && (short)scb->flags >= 0)
 			dataPhaseDMA(hacb);
 		else if (hacb->cs & 0x40)
 			dataInPIO(hacb);
@@ -645,32 +1067,133 @@ targetREQuest(struct _HACB *hacb)
 		return;
 	}
 	if (phase == 0x80) {
-		if (scb == 0 || scb->cdb == 0)
-			return;
-		n = scb->cdbLength;
-		if (n)
-			repoutsb(hacb->baseAddress + AIC_SCSIDAT, scb->cdb, (int)n);
+		outb(hacb->baseAddress + AIC_DMACNTRL0, 0xCA);
+		outb(hacb->baseAddress + AIC_SXFRCTL0, 0xE0);
+		if ((signed char)scb->scbStatus < 0) {
+			hacb->requestSenseCdb[4] = scb->senseDataLength;
+			repoutsb(hacb->baseAddress + AIC_DMADATA,
+			    hacb->requestSenseCdb, 6);
+		} else
+			repoutsb(hacb->baseAddress + AIC_DMADATA,
+			    scb->cdb, scb->cdbLength);
 		return;
 	}
 	if (phase == 0xA0) {
-		unsigned char len = H8(hacb, 0x3C);
-		if (len)
-			repoutsb(hacb->baseAddress + AIC_SCSIDAT,
-			    (unsigned char *)hacb + 0x3D, len);
-		H8(hacb, 0x3C) = 0;
+		if (inb(hacb->baseAddress + AIC_SSTAT1) & AIC_SCSIPERR) {
+			if (hacb->revision == 0)
+				outb(hacb->baseAddress + AIC_SXFRCTL1,
+				    hacb->sXfrCtl1Image & 0xDF);
+			outb(hacb->baseAddress + AIC_CLRSINT1, AIC_SCSIPERR);
+			hacb->cs |= 0x10;
+			prepareMessageOut(hacb, 5);
+			HIM6X60LogError(hacb, HP(hacb, 0x24), 0, hacb->busID,
+			    hacb->lun, 1, hacb->scsiPhase);
+		} else if (H8(hacb, 0x3C) == 0)
+			prepareMessageOut(hacb, 6);
+		outb(hacb->baseAddress + AIC_DMACNTRL0, 0);
+		outb(hacb->baseAddress + AIC_SXFRCTL0, 0x28);
+		orig = H8(hacb, 0x3C);
+		if (orig != 0) {
+			n = orig;
+			do {
+				if (samePhaseREQuest(hacb, spio) == 0)
+					break;
+				if (H8(hacb, 0x3C) == 1)
+					outb(hacb->baseAddress + AIC_CLRSINT1,
+					    AIC_ATNTARG);
+				remaining = H8(hacb, 0x3C);
+				outb(hacb->baseAddress + AIC_SCSIDAT,
+				    H8(hacb, 0x3D + n - remaining));
+				H8(hacb, 0x3C)--;
+				spio = 0;
+			} while (H8(hacb, 0x3C) != 0);
+		}
+		if (orig > 1 && (signed char)H8(hacb, 0x3D) < 0)
+			memcpy((unsigned char *)hacb + 0x3D,
+			    (unsigned char *)hacb + 0x3E, orig - 1);
+		if ((signed char)H8(hacb, 0x3D) >= 0) {
+			if (H8(hacb, 0x3D) == 0x0C) {
+				resetSDTR(hacb, hacb->busID);
+				hacb->cs |= 0x02;
+			} else if (H8(hacb, 0x3D) == 6 || H8(hacb, 0x3D) == 0x10)
+				hacb->cs |= 0x02;
+			else if (H8(hacb, 0x3D) == 5)
+				hacb->cs &= ~0x10;
+			else if (H8(hacb, 0x3D) == 9)
+				hacb->cs &= ~0x08;
+			else if (memcmp((unsigned char *)hacb + 0x3D,
+			    &hacb->sdtrMsg, 3) == 0) {
+				if (H8(hacb, 0x3C) != 0)
+					updateSDTR(hacb, hacb->busID, 0, 0, 1);
+				else if (memcmp((unsigned char *)hacb + 0x45,
+				    &hacb->sdtrMsg, 3) == 0)
+					hacb->negotiateSDTR &=
+					    (unsigned char)~(1u << hacb->busID);
+			}
+		}
+		if (H8(hacb, 0x3C) != 0) {
+			outb(hacb->baseAddress + AIC_CLRSINT1, AIC_ATNTARG);
+			H8(hacb, 0x3C) = 0;
+		}
 		return;
 	}
 	if (phase == 0xC0) {
-		unsigned char status = inb(hacb->baseAddress + AIC_SCSIDAT);
-		if (scb != 0)
-			scb->targetStatus = status;
-		hacb->targetStatus = status;
-		return;
+		outb(hacb->baseAddress + AIC_DMACNTRL0, 0);
+		outb(hacb->baseAddress + AIC_SXFRCTL0, 0x28);
+		for (;;) {
+			if (samePhaseREQuest(hacb, spio) == 0)
+				return;
+			if (inb(hacb->baseAddress + AIC_SSTAT1) & AIC_SCSIPERR) {
+				if (hacb->revision == 0)
+					outb(hacb->baseAddress + AIC_SXFRCTL1,
+					    hacb->sXfrCtl1Image & 0xDF);
+				outb(hacb->baseAddress + AIC_CLRSINT1,
+				    AIC_SCSIPERR);
+				H8(hacb, 0x4C) = 0xFF;
+				hacb->cs |= 0x10;
+				prepareMessageOut(hacb, 5);
+				HIM6X60LogError(hacb, HP(hacb, 0x24), 0,
+				    hacb->busID, hacb->lun, 1, hacb->scsiPhase);
+				inb(hacb->baseAddress + AIC_SCSIDAT);
+			} else
+				H8(hacb, 0x4C) = inb(hacb->baseAddress +
+				    AIC_SCSIDAT);
+			spio = 0;
+		}
 	}
 	if (phase == 0xE0) {
-		interpretMessageIn(hacb);
-		return;
+		outb(hacb->baseAddress + AIC_DMACNTRL0, 0);
+		outb(hacb->baseAddress + AIC_SXFRCTL0, 0x28);
+		for (;;) {
+			if (samePhaseREQuest(hacb, spio) == 0)
+				return;
+			if (inb(hacb->baseAddress + AIC_SSTAT1) & AIC_SCSIPERR) {
+				if (hacb->revision == 0)
+					outb(hacb->baseAddress + AIC_SXFRCTL1,
+					    hacb->sXfrCtl1Image & 0xDF);
+				outb(hacb->baseAddress + AIC_CLRSINT1,
+				    AIC_SCSIPERR);
+				H8(hacb, 0x44) = 0;
+				hacb->cs |= 0x08;
+				prepareMessageOut(hacb, 9);
+				HIM6X60LogError(hacb, HP(hacb, 0x24), 0,
+				    hacb->busID, hacb->lun, 1, hacb->scsiPhase);
+			}
+			if (hacb->cs & 0x08)
+				inb(hacb->baseAddress + AIC_SCSIDAT);
+			else
+				interpretMessageIn(hacb);
+			spio = 0;
+		}
 	}
 	HIM6X60LogError(hacb, scb, 0, hacb->busID, hacb->lun, 5, phase);
 	prepareMessageOut(hacb, 7);
+	return;
+abort_12:
+	bitbucketAndABORT(hacb, 0x12);
+	return;
+abort_14:
+	bitbucketAndABORT(hacb, 0x14);
+	HIM6X60LogError(hacb, HP(hacb, 0x24), 0, hacb->busID, hacb->lun,
+	    5, hacb->scsiPhase);
 }

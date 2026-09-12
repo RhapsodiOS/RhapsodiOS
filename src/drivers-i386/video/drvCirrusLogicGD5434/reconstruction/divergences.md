@@ -1850,6 +1850,59 @@ this way is not recoverable. What the reference does fix is that two read-side
 temporaries of these two types were there, that neither was spilled, and that the
 `chipType` ivar itself stayed signed.
 
+### Task 5 — `setMode:` register-loop campaign (exhausted)
+
+`setMode:` stays `control-flow-confirmed`. No ledger transition: none of the
+five candidate shapes produced a `MATCH`. `failed_matched` stayed 0 on every
+rebuild. The in/out order was not rearranged. Source is back to the indexed
+`for` loops that were in HEAD.
+
+**Experiment 1 — walking pointer, inner-block `for`.** Replaced the four
+indexed loops (`mode->seq[i - 1]`, `mode->crtc[i]`, `mode->attr[i]`,
+`mode->gfx[i]`) with
+
+```c
+    {
+	const unsigned char *p = mode->seq;
+	for (i = 1; i <= 4; i++)
+	    outw(0x3C4, (*p++ << 8) | i);
+    }
+```
+
+and the matching `crtc`/`attr`/`gfx` blocks. Guest rebuild `make exit=0`.
+`compare_cirrus.py`: `DIFF  -[CirrusLogicGD5434DisplayDriver setMode:] ref 1020 reb 1020`.
+The 12-byte size gap closed (was rebuilt 1008); the masked bytes still differ.
+`failed_matched` 0. Reverted the four loops.
+
+**Experiment 2 — walking pointer, inner-block `while (i <= N)`.** Same
+pointer shape as experiment 1, with `i = start; while (i <= N) { ...; i++; }`
+instead of `for`. Guest rebuild `make exit=0`.
+`compare_cirrus.py`: `DIFF  -[CirrusLogicGD5434DisplayDriver setMode:] ref 1020 reb 1020`.
+Size stayed closed; masked bytes still differ. `failed_matched` 0. Reverted.
+
+**Experiment 3 — indexed `while`, no walking pointer.** Restore
+`mode->seq[i - 1]` / `mode->crtc[i]` / `mode->attr[i]` / `mode->gfx[i]`
+addressing, with `i = start; while (i <= N) { ...; i++; }` instead of
+`for`. Guest rebuild `make exit=0` after touching the `.m` so cc actually
+ran. `compare_cirrus.py`: `DIFF  -[CirrusLogicGD5434DisplayDriver setMode:] ref 1020 reb 1008`.
+Size gap reopened. `failed_matched` 0. Reverted.
+
+**Experiment 4 — one `const unsigned char *p` at function top.** Declare
+`p` next to `value`/`i`; assign `p = mode->seq` (then crtc/attr/gfx)
+immediately before each `for`. Guest rebuild `make exit=0`.
+`compare_cirrus.py`: `DIFF  -[CirrusLogicGD5434DisplayDriver setMode:] ref 1020 reb 1020`.
+Size closed again; masked bytes still differ. `failed_matched` 0. Reverted.
+
+**Experiment 5 — pointer as a statement before each `for`, no extra inner
+`{ }`.** Skipped: that is the experiment 4 shape already built (function-scope
+`p`, `p = …;` then `for`, no wrapping block). Wrapping those pairs in a bare
+inner block would be experiment 1, also already built.
+
+Walking pointers close the 12-byte extent gap; they do not make the masked
+instruction stream match. The remaining residue is not a `for`/`while` or
+inner-block vs function-scope pointer question. Leave `setMode:` at
+`control-flow-confirmed`.
+
 Two further gaps, neither of them in the driver source:
 
 - The build still printed `WARNING: no CirrusLogicGD5434DisplayDriver version bundle

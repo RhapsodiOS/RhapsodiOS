@@ -139,7 +139,7 @@ static int cmd_missing(int argc, char **argv) {
         const char *type = m.items[i].type;
         const char *source = m.items[i].source;
         const char *target = m.items[i].targets ? m.items[i].targets : "all";
-        Package pkg; Params params; char *found;
+        Package pkg; Params params; char *found; BuildOptions opt;
 
         if (strcmp(target, "all") != 0 && strcmp(target, "headers") != 0) {
             fprintf(stderr,
@@ -153,7 +153,12 @@ static int cmd_missing(int argc, char **argv) {
         if (builder_scan(type, source, &pkg, &params) != 0) {
             fprintf(stderr, "rbuild: skipping \"%s\": scan failed\n", source);
             package_free(&pkg); params_free(&params);
+            rc = 1;
             continue;
+        }
+        build_options_init(&opt);
+        if (builder_resolve_architecture(&pkg, &opt) != 0) {
+            package_free(&pkg); params_free(&params); rc = 1; continue;
         }
         if (strcmp(target, "headers") == 0) {
             char *header_package = str_cats(pkg.package, "-hdrs", (char *)0);

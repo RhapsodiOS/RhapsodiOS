@@ -1,6 +1,7 @@
 #include "builder.h"
 #include "architecture.h"
 #include "products.h"
+#include "apk.h"
 #include <errno.h>
 #include "pkginfo.h"
 #include "exec.h"
@@ -106,21 +107,44 @@ char *builder_resolve_dependency(const char *name, const strlist *repository) {
     return 0;
 }
 
-char *builder_exists(const Package *pkg, const char *type, const char *dir) {
-    if (strcmp(type, "any") == 0) {
-        return scan_dir_for(dir, pkg->package);
-    } else if (strcmp(type, "exact") == 0) {
-        char *canon = package_canon_name(pkg);
-        char *base = str_cats(canon, ".apk", (char *)0);
-        char *full = path_join(dir, base);
-        struct stat st;
-        free(canon); free(base);
-        if (stat(full, &st) == 0) return full;
-        free(full);
-        return 0;
+/* Inspect every candidate in repository order; incompatible files do not hide
+ * compatible versions later in the same directory or a later repository. */
+static char *find_arch_package(const char *dir, const char *name,
+                               const char *version, unsigned required,
+                               int dependency) {
+    DIR *d = opendir(dir);
+    struct dirent *de;
+    char *found = 0;
+    char *exact_name;
+    if (!d) return 0;
+    exact_name = version ? str_cats(name, "-", version, ".apk", (char *)0) : 0;
+    while ((de = readdir(d)) != 0) {
+        char *path;
+        if (exact_name && strcmp(de->d_name, exact_name) != 0) continue;
+        if (!builder_match_pkgfile(de->d_name, name)) continue;
+        path = path_join(dir, de->d_name);
+        if (!exec_dry_run && apk_use_arch(path, 0, 0, name, version,
+                required, str_has_suffix(name, "-obj"), dependency) == 0) {
+            found = path; break;
+        }
+        if (exec_dry_run) printf("validate APK %s for %s\n", path,
+                                architecture_label(required));
+        free(path);
     }
-    fprintf(stderr, "rbuild: invalid match type \"%s\"\n", type);
-    return 0;
+    closedir(d);
+    free(exact_name);
+    return found;
+}
+
+char *builder_exists(const Package *pkg, const char *type, const char *dir) {
+    unsigned required;
+    char *version = 0, *found;
+    if (architecture_parse(pkg->architecture, &required) != 0) return 0;
+    if (strcmp(type, "exact") == 0) version = package_canon_version(pkg);
+    else if (strcmp(type, "any") != 0) return 0;
+    found = find_arch_package(dir, pkg->package, version, required, 0);
+    free(version);
+    return found;
 }
 
 /* Return env value if set and non-empty, else NULL (mirrors Perl
@@ -700,31 +724,12 @@ static char *deb_to_name(const char *path) {
     return out;
 }
 
-/* Apk analog of "dpkg-deb -x <debfile> <buildroot>": an .apk is a gzipped
-   tar, so extract its payload (including the harmless .PKGINFO member)
-   directly into buildroot. Prefer gnutar; treat exit status 1 as success
-   (warnings such as Unable to set file uid/gid on device nodes in files.apk). */
-static int apk_extract(const char *apkfile, const char *buildroot) {
-    /* Exit status 1 is treated as success: files.apk trips
-       "Unable to set file uid/gid" warnings on device nodes. */
-    char *cmd = str_cats(
-        "gzip -dc '", apkfile, "' | tar -C '", buildroot, "' -xf -; "
-        "ec=$?; if [ \"$ec\" -gt 1 ]; then exit \"$ec\"; fi; exit 0",
-        (char *)0);
-    char *argv[4];
-    int rc;
-    argv[0] = "sh"; argv[1] = "-c"; argv[2] = cmd; argv[3] = 0;
-    rc = exec_run_checked(argv);
-    free(cmd);
-    return rc;
-}
-
 int builder_makeroot(const Package *pkg, const char *buildroot,
                      const strlist *repository) {
     strlist deps;       /* expanded, deduped dependency names */
     strlist depnames;   /* resolved package basenames (no .apk) */
     strlist depfiles;   /* resolved full paths, parallel to depnames */
-    strlist curdeps;    /* already-installed names from package-list */
+    unsigned required;
     size_t i;
     char *listpath;
     char *admdir;
@@ -734,7 +739,7 @@ int builder_makeroot(const Package *pkg, const char *buildroot,
     strlist_init(&deps);
     strlist_init(&depnames);
     strlist_init(&depfiles);
-    strlist_init(&curdeps);
+    if (architecture_parse(pkg->architecture, &required) != 0) return 1;
 
     printf("Building build root:\n");
     fflush(stdout);
@@ -760,8 +765,17 @@ int builder_makeroot(const Package *pkg, const char *buildroot,
 
     /* Resolve each dep to a package file. */
     for (i = 0; i < deps.count; i++) {
-        char *file = builder_resolve_dependency(deps.items[i], repository);
+        char *file = 0;
         char *name;
+        size_t ri;
+        for (ri = 0; ri < repository->count && !file; ri++)
+            file = find_arch_package(repository->items[ri], deps.items[i],
+                                     0, required, 1);
+        if (exec_dry_run && !file) {
+            printf("validate and install dependency %s for %s\n", deps.items[i],
+                   architecture_label(required));
+            continue;
+        }
         if (!file) {
             fprintf(stderr, "rbuild: unable to find dependency for \"%s\"\n",
                     deps.items[i]);
@@ -773,30 +787,14 @@ int builder_makeroot(const Package *pkg, const char *buildroot,
         strlist_push_owned(&depfiles, file);
     }
 
-    /* Read existing package-list. */
     listpath = str_cats(buildroot, "/var/adm/package-list", (char *)0);
-    f = fopen(listpath, "r");
-    if (f) {
-        char line[1024];
-        while (fgets(line, sizeof(line), f) != 0) {
-            str_chomp(line);
-            if (line[0]) set_add(&curdeps, line);
-        }
-        fclose(f);
-    }
-
-    /* Install any dep not already present. */
+    /* A basename-only package-list cannot attest installed architecture. */
     for (i = 0; i < depnames.count; i++) {
-        if (set_has(&curdeps, depnames.items[i])) {
-            printf("\talready have %s\n", depfiles.items[i]);
-        } else {
-            printf("\tinstalling %s\n", depfiles.items[i]);
-            fflush(stdout);
-            if (apk_extract(depfiles.items[i], buildroot) != 0) {
-                rc = 1;
-                free(listpath);
-                goto cleanup;
-            }
+        printf("\tinstalling %s\n", depfiles.items[i]);
+        fflush(stdout);
+        if (apk_use_arch(depfiles.items[i], buildroot, 0, deps.items[i], 0,
+                         required, str_has_suffix(deps.items[i], "-obj"), 1) != 0) {
+            rc = 1; free(listpath); goto cleanup;
         }
     }
 
@@ -838,7 +836,7 @@ cleanup:
     strlist_free(&deps);
     strlist_free(&depnames);
     strlist_free(&depfiles);
-    strlist_free(&curdeps);
+
     return rc;
 }
 
@@ -1063,6 +1061,24 @@ static int validate_products(const char *root, unsigned required,
     return products_validate(root, required, objects, 0);
 }
 
+int builder_cache_status(const char *path, const Toolchain *tc,
+                          const char *name, const char *version,
+                          unsigned required, int objects, int *exists) {
+    struct stat st;
+    *exists = 0;
+    if (exec_dry_run) {
+        printf("validate cached APK %s for %s\n", path, architecture_label(required));
+        return 0;
+    }
+    if (lstat(path, &st) != 0) return errno == ENOENT ? 0 : 1;
+    if (S_ISREG(st.st_mode) &&
+        apk_use_arch(path, 0, tc, name, version, required, objects, 0) == 0) {
+        *exists = 1; return 0;
+    }
+    fprintf(stderr, "rbuild: invalid APK %s; quarantining\n", path);
+    return apk_quarantine(path);
+}
+
 /* Ancillary package files are products too: stage before architecture checks. */
 static int stage_ancillary_files(const Params *params) {
     static const char *names[] =
@@ -1106,6 +1122,8 @@ static int buildpackage(const Package *spkg, const Params *params,
     char *pkginfo_path;
     char *apk_path;
     int nonempty;
+    int existing;
+    char *version;
     int rc = 0;
     BuildOptions resolved_opt;
 
@@ -1203,8 +1221,12 @@ static int buildpackage(const Package *spkg, const Params *params,
     /* Assemble <PACKAGEDIR>/<canon_name>.apk */
     canon = package_canon_name(&pkg);
     apk_path = str_cats(params->PACKAGEDIR, "/", canon, ".apk", (char *)0);
-    rc = pkginfo_build_apk(dstroot, apk_path,
-                           opt != 0 ? opt->toolchain : 0);
+    version = package_canon_version(&pkg);
+    rc = builder_cache_status(apk_path, resolved_opt.toolchain, pkg.package,
+                              version, resolved_opt.effective_arch,
+                              strcmp(target, "objects") == 0, &existing);
+    free(version);
+    if (!rc) rc = pkginfo_build_apk(dstroot, apk_path, resolved_opt.toolchain);
     free(canon);
     free(apk_path);
 
@@ -1347,14 +1369,6 @@ static char *cwd_dup(void) {
     return xstrdup(buf);
 }
 
-static int file_apk_exists(const char *dstdir, const char *canon) {
-    char *p = str_cats(dstdir, "/", canon, ".apk", (char *)0);
-    struct stat st;
-    int ok = (stat(p, &st) == 0);
-    free(p);
-    return ok;
-}
-
 static int run_make(strlist *cmd, const BuildOptions *opt) {
     char **argv;
     size_t i;
@@ -1424,16 +1438,33 @@ int builder_build(const char *srctype, const char *srcname,
     hdrfilename = package_canon_name(&hdrpkg);
     filename = package_canon_name(&pkg);
 
-    if (!(opt && (opt->bootstrap || opt->force)) &&
-        strcmp(target, "headers") == 0 &&
-        file_apk_exists(dstdir, hdrfilename)) {
-        printf("package file for \"%s\" already exists; not building\n", hdrfilename);
-        goto done_ok;
-    }
-    if (!(opt && (opt->bootstrap || opt->force)) &&
-        file_apk_exists(dstdir, filename)) {
-        printf("package file for \"%s\" already exists; not building\n", filename);
-        goto done_ok;
+    if (do_hdr || do_bin) {
+        char *names[3];
+        char *version = package_canon_version(&pkg);
+        int exists[3], was[3], i, count = 0, invalid = 0;
+        struct stat st;
+        names[count++] = xstrdup(strcmp(target, "headers") == 0 ? hdrpkg.package : pkg.package);
+        if (strcmp(target, "all") == 0 || strcmp(target, "binary") == 0) {
+            names[count++] = xstrdup(hdrpkg.package);
+            names[count++] = str_cats(pkg.package, "-obj", (char *)0);
+        }
+        for (i = 0; i < count; i++) {
+            char *path = str_cats(dstdir, "/", names[i], "-", version, ".apk", (char *)0);
+            was[i] = lstat(path, &st) == 0;
+            if (builder_cache_status(path, opt->toolchain, names[i], version,
+                    opt->effective_arch, str_has_suffix(names[i], "-obj"), &exists[i]) != 0)
+                rc = 1;
+            if (was[i] && !exists[i]) invalid = 1;
+            free(path); free(names[i]);
+        }
+        free(version);
+        if (rc) goto done_ok;
+        if (!opt->bootstrap && !opt->force && !invalid && exists[0] &&
+            (strcmp(target, "headers") == 0 || strcmp(target, "all") == 0 ||
+             strcmp(target, "binary") == 0)) {
+            printf("package file for \"%s\" already exists; not building\n", filename);
+            goto done_ok;
+        }
     }
 
     /* params = chrootparams(bparams, bparams.BUILDROOT) */
@@ -1527,5 +1558,5 @@ done_ok:
     free(hdrfilename); free(filename);
     package_free(&pkg); package_free(&hdrpkg);
     params_free(&bparams);
-    return 0;
+    return rc;
 }

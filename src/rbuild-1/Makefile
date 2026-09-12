@@ -35,11 +35,11 @@ test_architecture_OBJS = architecture.o
 test_strutil_OBJS = strutil.o
 test_package_OBJS = strutil.o package.o
 test_manifest_OBJS = strutil.o manifest.o
-test_builder_OBJS = strutil.o package.o exec.o toolchain.o pkginfo.o builder.o architecture.o products.o macho.o
+test_builder_OBJS = strutil.o package.o exec.o toolchain.o pkginfo.o builder.o architecture.o products.o macho.o apk.o
 test_exec_OBJS = strutil.o exec.o
-test_pkginfo_OBJS = strutil.o package.o exec.o toolchain.o apk.o pkginfo.o
+test_pkginfo_OBJS = strutil.o package.o exec.o toolchain.o apk.o pkginfo.o products.o macho.o architecture.o
 test_toolchain_OBJS = strutil.o toolchain.o
-test_apk_OBJS = strutil.o exec.o toolchain.o tests/apk_test.o
+test_apk_OBJS = strutil.o exec.o toolchain.o tests/apk_test.o products.o macho.o architecture.o
 test_kernel_OBJS = strutil.o kernel.o
 test_runner_OBJS = strutil.o package.o manifest.o exec.o pkginfo.o builder.o architecture.o products.o macho.o toolchain.o apk.o kernel.o tests/runner_test.o
 

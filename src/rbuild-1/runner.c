@@ -263,20 +263,10 @@ static int artifact_present(const char *path) {
 static int validate_or_quarantine(const char *path, const Toolchain *tc,
                                   const char *pkgname, const char *pkgver,
                                   const char *architecture, int *exists) {
-    struct stat st;
-    *exists = 0;
-    if (lstat(path, &st) != 0) return errno == ENOENT ? 0 : 1;
-    if (S_ISREG(st.st_mode) &&
-        apk_validate_identity(path, tc, pkgname, pkgver, architecture,
-                              exec_dry_run) == 0) {
-        *exists = 1;
-        return 0;
-    }
-    fprintf(stderr, "rbuild: invalid APK %s; quarantining\n", path);
-    if (exec_dry_run) { *exists = 0; return 0; }
-    if (apk_quarantine(path) != 0) return 1;
-    *exists = 0;
-    return 0;
+    unsigned required;
+    if (architecture_parse(architecture, &required) != 0) return 1;
+    return builder_cache_status(path, tc, pkgname, pkgver, required,
+                                 str_has_suffix(pkgname, "-obj"), exists);
 }
 
 static const Toolchain *validation_toolchain(const RunnerOptions *opt) {
@@ -451,10 +441,12 @@ static int replay(const char *path, const RunnerOptions *opt,
                 path);
         return 1;
     }
-    if (apk_validate_identity(path, opt->toolchain, pkgname, pkgver,
-                              architecture, 0) != 0) return 1;
-    return apk_extract_identity(path, opt->sysroot, opt->toolchain, pkgname,
-                                pkgver, architecture);
+    {
+        unsigned required;
+        if (architecture_parse(architecture, &required) != 0) return 1;
+        return apk_use_arch(path, opt->sysroot, opt->toolchain, pkgname,
+                             pkgver, required, str_has_suffix(pkgname, "-obj"), 0);
+    }
 }
 
 static int run_entry(const ManifestEntry *entry, const char *seeddir,

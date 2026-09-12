@@ -11,6 +11,11 @@
 static char replay_artifact[256];
 static char replay_target[256];
 
+static void replace_required_with_code(void) {
+    unlink(replay_artifact);
+    rename(replay_target, replay_artifact);
+}
+
 static void replace_required_artifact(void) {
     unlink(replay_artifact);
     symlink(replay_target, replay_artifact);
@@ -51,6 +56,7 @@ TEST(test_replay_rejects_required_artifact_replaced_by_symlink) {
     FILE *f;
     Toolchain tc;
     RunnerOptions opt;
+    unsigned char code[28];
 
     sprintf(scratch, "/tmp/rbuild-runner-replay-%ld", (long)getpid());
     sprintf(source, "%s/foo", scratch);
@@ -119,6 +125,21 @@ TEST(test_replay_rejects_required_artifact_replaced_by_symlink) {
         text[0] = '\0'; fgets(text, sizeof(text), f); fclose(f);
         CHECK_STR(text, "outside-target");
     }
+    /* A regular replacement with matching metadata still needs payload checks. */
+    unlink(replay_artifact);
+    sprintf(command,"(cd %s && /usr/bin/gnutar --posix -cf - .) | /usr/bin/gzip -9 > %s",content,replay_artifact);
+    CHECK_INT(system(command),0);
+    memset(code,0,sizeof(code));code[0]=0xfe;code[1]=0xed;code[2]=0xfa;code[3]=0xce;code[7]=7;code[15]=1;
+    sprintf(control,"%s/tool",content);
+    f=fopen(control,"wb");CHECK(f!=0);
+    if(f){fwrite(code,1,sizeof(code),f);fclose(f);}
+    sprintf(command,"(cd %s && /usr/bin/gnutar --posix -cf - .) | /usr/bin/gzip -9 > %s",content,replay_target);
+    CHECK_INT(system(command),0);
+    runner_test_set_before_replay_hook(replace_required_with_code);
+    CHECK(runner_manifest(manifest,repo,repo,&opt)!=0);
+    runner_test_set_before_replay_hook(0);
+    CHECK(access(state_file,F_OK)!=0);
+    CHECK(access(root,F_OK)!=0);
     toolchain_free(&tc);
     sprintf(command, "rm -rf %s", scratch);
     system(command);

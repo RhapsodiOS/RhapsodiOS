@@ -17,6 +17,11 @@ typedef struct {
 } BuildOptions;
 
 void build_options_init(BuildOptions *opt);
+/* Missing is successful with *exists == 0; invalid cache is quarantined.
+ * Dry-run reports inspection and leaves every cache unavailable. */
+int builder_cache_status(const char *path, const Toolchain *tc,
+                          const char *name, const char *version,
+                          unsigned required, int objects, int *exists);
 int builder_resolve_architecture(Package *pkg, BuildOptions *opt);
 
 typedef struct {

@@ -958,6 +958,11 @@ TEST(test_packaging_rejects_wrong_products) {
     CHECK_INT(builder_buildpackage(&pkg,&params,"objects",&opt),0);
     CHECK_INT(builder_buildpackage(&pkg,&params,"headers",&opt),0);
     CHECK_INT(builder_buildpackage(&pkg,&params,"local",&opt),1);
+    f = fopen("/tmp/rb-package-products/source/dpkg/postinst", "w");
+    CHECK(f != 0);
+    if (f) { fputs("#!/bin/sh\nexit 0\n", f); fclose(f); }
+    CHECK_INT(builder_buildpackage(&pkg, &params, "binary", &opt), 1);
+    CHECK(access(params.DSTROOT, F_OK) != 0);
     params_free(&params); package_free(&pkg);
     system("rm -rf /tmp/rb-package-products");
 }

@@ -1068,7 +1068,15 @@ static int stage_ancillary_files(const Params *params) {
     static const char *names[] =
         { "conffiles", "preinst", "postinst", "prerm", "postrm", 0 };
     int i;
+    struct stat st;
     if (!params->SRCDIR) return 0;
+    if (!exec_dry_run && (!params->DSTROOT ||
+        lstat(params->DSTROOT, &st) != 0 || !S_ISDIR(st.st_mode))) {
+        fprintf(stderr, "rbuild: product root %s: cannot stage ancillary files; "
+                "required destination directory is missing or invalid\n",
+                params->DSTROOT ? params->DSTROOT : "(null)");
+        return 1;
+    }
     for (i = 0; names[i]; i++) {
         char *extra = str_cats(params->SRCDIR, "/dpkg/", names[i], (char *)0);
         if (file_exists(extra)) {
@@ -1076,8 +1084,7 @@ static int stage_ancillary_files(const Params *params) {
             const char *mode = strcmp(names[i], "conffiles") == 0 ? "644" : "755";
             printf("copying %s\n", names[i]);
             fflush(stdout);
-            if (exec_check(mkdirp(params->DSTROOT)) ||
-                exec_runv("cp", "-p", extra, dest, (char *)0) != 0 ||
+            if (exec_runv("cp", "-p", extra, dest, (char *)0) != 0 ||
                 exec_runv("chmod", mode, dest, (char *)0) != 0) {
                 free(extra); free(dest); return 1;
             }

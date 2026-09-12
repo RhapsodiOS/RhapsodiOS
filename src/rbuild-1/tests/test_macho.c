@@ -69,6 +69,22 @@ TEST(test_thin) {
         word(b, 0xcafebabfUL, le); expect(b, n, 1, 0);
     }
 }
+TEST(test_load_commands) {
+    int le;
+    for (le = 0; le <= 1; le++) {
+        thin(b, 7, le);
+        word(b+16, 1, le); word(b+20, 24, le);
+        /* An empty LC_SYMTAB with its complete 24-byte command. */
+        memset(b+28, 0, 28); word(b+28, 2, le); word(b+32, 24, le);
+        expect(b, 52, 0, RB_ARCH_I386);
+        word(b+32, 4, le); expect(b, 52, 1, 0);  /* Below command header. */
+        word(b+32, 23, le); expect(b, 52, 1, 0); /* Misaligned command. */
+        word(b+32, 28, le); expect(b, 52, 1, 0); /* Past sizeofcmds. */
+        word(b+32, 20, le); expect(b, 52, 1, 0); /* Unclaimed command bytes. */
+        word(b+32, 24, le); word(b+16, 2, le); word(b+20, 28, le);
+        expect(b, 56, 1, 0); /* Truncated header of the second command. */
+    }
+}
 TEST(test_fat) {
     unsigned n; int le;
     thin(x, 7, 1); thin(y, 18, 0);
@@ -144,7 +160,7 @@ TEST(test_nesting) {
 }
 static void run_all(void) {
     sprintf(path, "/tmp/rbuild-test-macho-%ld", (long)getpid());
-    RUN(test_plain_and_io); RUN(test_thin); RUN(test_fat);
+    RUN(test_plain_and_io); RUN(test_thin); RUN(test_load_commands); RUN(test_fat);
     RUN(test_archives); RUN(test_archive_names); RUN(test_nesting);
     unlink(path);
 }

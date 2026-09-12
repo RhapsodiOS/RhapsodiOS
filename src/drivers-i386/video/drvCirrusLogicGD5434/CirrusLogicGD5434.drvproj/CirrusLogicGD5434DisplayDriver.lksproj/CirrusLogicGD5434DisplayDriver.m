@@ -1330,7 +1330,7 @@ IODisplayInfo GD5446_modeTable[28] = {
 {
     if (mode < 0 || mode >= modeTableCount)
 	return NO;
-    if (modeTable[mode].memorySize > installedVRAMBytes)
+    if (installedVRAMBytes < modeTable[mode].memorySize)
 	return NO;
     if (modeTable[mode].width > 1024 && installedVRAMBytes <= 0x1FFFFF)
 	return NO;

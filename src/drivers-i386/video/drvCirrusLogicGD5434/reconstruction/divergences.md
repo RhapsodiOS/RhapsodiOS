@@ -1158,7 +1158,7 @@ arrives through the argument.
 {
     if (mode < 0 || mode >= self->modeTableCount)
         return NO;
-    if (self->modeTable[mode].memorySize > self->installedVRAMBytes)
+    if (self->installedVRAMBytes < self->modeTable[mode].memorySize)
         return NO;
     if (self->modeTable[mode].width > 1024 &&
         self->installedVRAMBytes <= 0x1FFFFF)
@@ -1566,20 +1566,20 @@ is `local` on both sides, so the `static` on it in `ProgramDAC.m` is correct, an
 `defaultMode`/`modeTableCount` scalars are `external` on both sides.
 
 Going past what `parity_check.py` can see, all 21 `__TEXT,__text` functions were
-disassembled and compared against the reference individually. **18 of 21 are
+disassembled and compared against the reference individually. **19 of 21 are
 byte-for-byte identical** once 32-bit relocation operands are masked — necessarily
 masked, because of the `__TEXT,__const` inversion above. After replacing the
 `"Bus Type"` `strncmp` with `strcmp` (see Task 1 result below), `__TEXT,__text`
 is 4404 bytes against the reference's 4388, and the remaining 16-byte difference
-is accounted for by three functions (`setMode:` 12 bytes smaller, `setPCIConfiguration`
-28 bytes larger). `determineConfiguration` was the eighteenth to close, in Task 4,
-and is kept in the table below for the record; the three above it are the ones
-that remain:
+is accounted for by two functions (`setMode:` 12 bytes smaller, `setPCIConfiguration`
+28 bytes larger). `determineConfiguration` was the eighteenth to close, in Task 4;
+`setPendingDisplayMode:` was the nineteenth, in Task 6. The two above them are
+the ones that remain:
 
 | Function | Ref | Rebuilt | Nature of the difference |
 | --- | --- | --- | --- |
 | `setMode:` | 1020 | 1008 | Identical branch structure and an identical port-I/O sequence of 67 `in`/`out` instructions. gcc strength-reduced the register loops to a walking pointer in the reference where our build uses indexed addressing. Task 5 exhausted spec §7.2 without a `MATCH`; see the Task 5 result below. The source is still the indexed `for` loops. |
-| `setPendingDisplayMode:` | 140 | 140 | Same size, same branches, same call target. The `memorySize` test is `cmp memorySize, installedVRAM / ja` in the reference and the operand-reversed `cmp installedVRAM, memorySize / jb` here — the same predicate — and one fewer callee-saved register is spilled. |
+| `setPendingDisplayMode:` | 140 | 140 | **Byte-for-byte identical after Task 6.** Spec §7.3 experiment 1 — `if (installedVRAMBytes < modeTable[mode].memorySize)` — closed the operand-reversed `cmp`. Now `assembly-matched`. |
 | `setPCIConfiguration` | 584 | 612 | The same 19 calls — 15 `_objc_msgSend` and 4 `_IOLog` — but reordered by block placement, not in the same order. The "Incorrect number of address ranges" error block is out of line at the end in the reference and inline here, which moves the `_IOLog` calls from reference positions 4, 11, 14, 16 to 4, 10, 13, 16 and pushes two `_objc_msgSend` calls one slot later (reference 10 and 13 against 11 and 14 here); the reference has 11 branch instructions to our 12. Also `IORange range[3]` is at `ebp-0x18` in the reference against `ebp-0x118` here, i.e. the two locals are assigned to the frame in the opposite order. |
 | `determineConfiguration` | 768 | 768 | **Byte-for-byte identical after Task 4.** See the Task 4 result below: an `unsigned int` local for the `chipType` range tests, an `IOConfigTable *` local for the `"Bus Type"` test, and the `memorySize > installedVRAMBytes` operand order together closed it. Now `assembly-matched`. |
 
@@ -1795,14 +1795,16 @@ of them touches the `chipType` ivar's declared type:
 
    **This swap does not close that function, and Task 4 makes no claim that it
    does.** The change was made inside `-determineConfiguration` only.
-   `setPendingDisplayMode:` was not touched by Task 4 and still has its own
-   operand-reversed `cmp`; it is still `control-flow-confirmed`, not
-   `assembly-matched`. What Task 4 establishes is only that the pattern is real
-   and that swapping the operands is what fixed it here, which makes the same
-   swap the obvious first thing for Task 6 to try — but it has to be built on
-   the guest and compared on that function before anything can be claimed for
-   it. Nothing about `setPendingDisplayMode:` follows from this section by
-   inference.
+   `setPendingDisplayMode:` was not touched by Task 4 and still had its own
+   operand-reversed `cmp` after that task; it stayed `control-flow-confirmed`
+   until Task 6. What Task 4 established is only that the pattern is real
+   and that swapping the operands is what fixed it here, which made the same
+   swap the obvious first thing for Task 6 to try — but it had to be built on
+   the guest and compared on that function before anything could be claimed for
+   it. Nothing about `setPendingDisplayMode:` followed from this section by
+   inference. *(Superseded by the Task 6 result below: experiment 1, the
+   reversed C form `installedVRAMBytes < modeTable[mode].memorySize`, matched
+   and the function is now `assembly-matched`.)*
 
 **Experiment log.** Spec §7.1 listed seven candidate shapes for the `chipType`
 tests. Experiment 1 — the assignment wrapped in a bare inner block,
@@ -1910,6 +1912,38 @@ same 1008-byte extent as the indexed `for` baseline. Indexed `while`
 reach. Leave `setMode:` at `control-flow-confirmed`. Do not mark it
 `assembly-matched`.
 
+### Task 6 result — `setPendingDisplayMode:` compare shape closed
+
+`setPendingDisplayMode:` is `assembly-matched` at address 3388. Spec §7.3
+experiment 1 matched on the first guest rebuild; experiments 2–5 were not
+built. `setMode:` and `setPCIConfiguration` were not edited.
+`failed_matched` stayed 0. `determineConfiguration` stayed `MATCH` at 768.
+
+**Experiment 1 — reversed compare.** Replaced
+
+```c
+    if (modeTable[mode].memorySize > installedVRAMBytes)
+	return NO;
+```
+
+with
+
+```c
+    if (installedVRAMBytes < modeTable[mode].memorySize)
+	return NO;
+```
+
+Guest rebuild `make exit=0`. `compare_cirrus.py`:
+`MATCH -[CirrusLogicGD5434DisplayDriver setPendingDisplayMode:] ref 140 reb 140`.
+`failed_matched` 0. That is the opposite C operand order from the form that
+closed `determineConfiguration` in Task 4 (`memorySize > installedVRAMBytes`).
+Here gcc needed `installedVRAMBytes < memorySize` to emit the reference's
+`cmp memorySize, VRAM / ja` rather than `cmp VRAM, memorySize / jb`.
+
+Experiments 2–5 (`needed` local, top-of-function `needed`, negated `<=`,
+`needed` plus reversed compare) were skipped because a `MATCH` already
+existed.
+
 Two further gaps, neither of them in the driver source:
 
 - The build still printed `WARNING: no CirrusLogicGD5434DisplayDriver version bundle
@@ -2015,20 +2049,21 @@ remain unmet. `driverTools` and `/System/Developer` were not edited.
 
 | Status | Count |
 | --- | --- |
-| `assembly-matched` | 16 |
-| `control-flow-confirmed` | 3 |
+| `assembly-matched` | 17 |
+| `control-flow-confirmed` | 2 |
 | `unexamined` | 2 |
 
-The 16 at `assembly-matched` are the hand-written functions whose rebuilt
+The 17 at `assembly-matched` are the hand-written functions whose rebuilt
 instruction stream was read against the reference and found byte-identical under
 relocation masking; that is the strongest claim available and it is claimed only
-where whole-body byte equality was actually demonstrated. `setMode:`,
-`setPendingDisplayMode:` and `setPCIConfiguration` are held at
-`control-flow-confirmed` because their block shape and call targets were compared
-and agree, but their instruction streams do not match byte for byte.
-`determineConfiguration` joined the `assembly-matched` set in Task 4 — it passed
-through `control-flow-confirmed` on the way, since the ledger forbids skipping a
-state — and there are no `signature-confirmed` entries left. The two
+where whole-body byte equality was actually demonstrated. `setMode:` and
+`setPCIConfiguration` are held at `control-flow-confirmed` because their block
+shape and call targets were compared and agree, but their instruction streams
+do not match byte for byte. `determineConfiguration` joined the
+`assembly-matched` set in Task 4 and `setPendingDisplayMode:` joined it in
+Task 6 — both passed through `control-flow-confirmed` on the way, since the
+ledger forbids skipping a state — and there are no `signature-confirmed`
+entries left. The two
 `unexamined` entries are the build-generated glue at 4364 and 4376, which
 `source-map.json` lists as unmapped: they have no reconstructed source to review,
 and are left untouched even though both are byte-identical to the reference.

@@ -1791,8 +1791,18 @@ of them touches the `chipType` ivar's declared type:
    already recorded above as "not a signedness question" — but only the first
    form matches the reference's bytes. **This is the same pattern still open in
    `setPendingDisplayMode:`**, where the reference is `cmp memorySize, VRAM / ja`
-   against our `cmp VRAM, memorySize / jb`; the fix there is the same operand
-   swap, and it is the obvious next thing to try on that function.
+   against our `cmp VRAM, memorySize / jb`.
+
+   **This swap does not close that function, and Task 4 makes no claim that it
+   does.** The change was made inside `-determineConfiguration` only.
+   `setPendingDisplayMode:` was not touched by Task 4 and still has its own
+   operand-reversed `cmp`; it is still `control-flow-confirmed`, not
+   `assembly-matched`. What Task 4 establishes is only that the pattern is real
+   and that swapping the operands is what fixed it here, which makes the same
+   swap the obvious first thing for Task 6 to try — but it has to be built on
+   the guest and compared on that function before anything can be claimed for
+   it. Nothing about `setPendingDisplayMode:` follows from this section by
+   inference.
 
 **Experiment log.** Spec §7.1 listed seven candidate shapes for the `chipType`
 tests. Experiment 1 — the assignment wrapped in a bare inner block,
@@ -1800,13 +1810,34 @@ tests. Experiment 1 — the assignment wrapped in a bare inner block,
 two `ja` right on the first try**, closing offsets +240…+320 completely. It was
 still `DIFF`, but only at three places: the frame size (`83 ec 1c` against the
 reference's `83 ec 18`, with the matching `8d 65 d8`/`8d 65 dc` in the epilogue),
-the +406…+500 `strcmp` window, and the +713…+722 `memorySize` test. Experiments
-2, 3 and 5 through 7 were therefore never built: the comparison form was already
-correct and the residue was not a comparison question. Moving the declaration to
-the function's local block — experiment 4's placement, with the assignment left
-after the `switch` where it belongs — is what closed the frame size; a local
-declared in a bare inner block costs a stack slot that the reference's frame does
-not have.
+the +406…+500 `strcmp` window, and the +713…+722 `memorySize` test.
+
+**No §7.1 candidate matched on its own, experiment 1 included.** The two guest
+rebuilds after experiment 1 were not further §7.1 candidates. They were
+same-function source-shape steps inside `-determineConfiguration`, each one
+needed to close residue that introducing the `kind` local had itself created —
+the extra live value raised register pressure, and that is what moved the
+`strcmp` argument pushes and grew the frame. In the order they were built: the
+second rebuild added the `configTable` hoist, which closed the +406…+500
+`strcmp` window and left only the frame size and the one `cmp` operand order;
+the third rebuild moved the declaration out of the bare inner block into the
+function's local block — experiment 4's placement, with the assignment left
+after the `switch` where it belongs, which closed the frame size, because a
+local declared in a bare inner block costs a stack slot the reference's frame
+does not have — and swapped the `memorySize` operands, which closed +713…+722.
+That third rebuild is the one that reported `MATCH`. The result is the sum of the
+three source changes listed above plus getting the declaration's placement right;
+no one of them matches the reference alone.
+
+Experiments 2, 3 and 5 through 7 were therefore never built, and the reason
+matters: **they were skipped because a `MATCH` already existed once those
+same-function steps were in, not because any §7.1 item MATCHed by itself.** By
+that point the comparison form was demonstrably already correct — the two `ja`
+were right from experiment 1 onward — and the remaining residue was not a
+comparison question at all, so there was nothing left for the alternative
+comparison shapes to fix. A later reader should not take the skip as evidence
+that shapes 2, 3 and 5 through 7 were ruled out on their own merits; they were
+never tested.
 
 **What the two locals cost.** The reference `_reloc` is stripped, so nothing about
 its source-level locals can be read from it; the byte equality of the extent is

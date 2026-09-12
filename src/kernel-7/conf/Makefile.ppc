@@ -57,6 +57,9 @@ MACHINE_CFLAGS= -arch ppc -I$(SOURCE_DIR)/bsd/include \
 	-fwritable-strings -fno-common -msoft-float -mcpu=604 \
 	-Dppc -DPPC -Wall -Wno-four-char-constants -fpascal-strings
 
+# Workaround: Apple cc1obj fatal signal 11 compiling fdesc_vnops.c at -O2.
+fdesc_vnops.o: CCONFIGFLAGS = -g -O0
+
 MACHINE_SFLAGS= -arch ppc -D__ASSEMBLER__ -Dppc -DPPC -force_cpusubtype_ALL
 
 LDFLAGS=-e start -segalign 0x1000		\

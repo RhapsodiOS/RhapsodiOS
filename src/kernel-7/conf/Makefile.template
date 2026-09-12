@@ -161,7 +161,7 @@ EXPORT= mach mach/machine kernserv kernserv/machine 	 		\
 LCLEXPORT= mach mach_debug kern ipc kernserv vm bsd/sys bsd/dev bsd/net	\
 	bsd/netiso bsd/netccitt bsd/netns bsd/dev/machine mach/machine	\
 	machdep/machine driverkit					\
-	bsd/ufs/mfs bsd/ufs/lfs bsd/isofs/cd9660			\
+	bsd/ufs/mfs bsd/ufs/lfs bsd/isofs/cd9660 bsd/msdosfs	\
 	bsd/netat/h bsd/netat/at					\
 	bsd/hfs/hfscommon/headers bsd/hfs/hfscommon/headers/system
 
@@ -1127,6 +1127,14 @@ subr_prof.o: $(SOURCE_DIR)/bsd/kern/subr_prof.c
 #
 
 %RULES
+
+#
+# Work around reproducible Apple cc1obj ICE (fatal signal 11) when compiling
+# fdesc_vnops.c at -O2 on ppc. Keep the object in the link; just drop opt.
+#
+fdesc_vnops.o: $(SOURCE_DIR)/bsd/miscfs/fdesc/fdesc_vnops.c
+	$(KCC) -c -g -O0 $(CPP_FLAGS) $(MACHINE_CFLAGS) \
+		$(SOURCE_DIR)/bsd/miscfs/fdesc/fdesc_vnops.c
 
 #
 # Lord only knows what this is for, but config spit's out a reference

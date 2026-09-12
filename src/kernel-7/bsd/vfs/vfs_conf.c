@@ -227,6 +227,7 @@ extern struct vnodeopv_desc hfs_vnodeop_opv_desc;
 extern struct vnodeopv_desc cd9660_vnodeop_opv_desc;
 extern struct vnodeopv_desc cd9660_specop_opv_desc;
 extern struct vnodeopv_desc cd9660_fifoop_opv_desc;
+extern struct vnodeopv_desc msdosfs_vnodeop_opv_desc;
 extern struct vnodeopv_desc union_vnodeop_opv_desc;
 
 struct vnodeopv_desc *vfs_opv_descs[] = {
@@ -284,6 +285,9 @@ struct vnodeopv_desc *vfs_opv_descs[] = {
 #if FIFO
 	&cd9660_fifoop_opv_desc,
 #endif
+#endif
+#if MSDOS
+	&msdosfs_vnodeop_opv_desc,
 #endif
 #if UNION
 	&union_vnodeop_opv_desc,

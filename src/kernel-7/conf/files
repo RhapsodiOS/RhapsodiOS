@@ -118,6 +118,7 @@ OPTIONS/procfs				optional procfs
 OPTIONS/umapfs				optional umapfs
 OPTIONS/union				optional union
 OPTIONS/cd9660				optional cd9660
+OPTIONS/msdos				optional msdos
 
 bsd/libkern/locc.c				standard
 bsd/libkern/random.c			standard
@@ -178,6 +179,13 @@ bsd/isofs/cd9660/cd9660_rrip.c		optional cd9660
 bsd/isofs/cd9660/cd9660_util.c		optional cd9660
 bsd/isofs/cd9660/cd9660_vfsops.c	optional cd9660
 bsd/isofs/cd9660/cd9660_vnops.c		optional cd9660
+
+bsd/msdosfs/msdosfs_conv.c		optional msdos
+bsd/msdosfs/msdosfs_denode.c		optional msdos
+bsd/msdosfs/msdosfs_fat.c		optional msdos
+bsd/msdosfs/msdosfs_lookup.c		optional msdos
+bsd/msdosfs/msdosfs_vfsops.c		optional msdos
+bsd/msdosfs/msdosfs_vnops.c		optional msdos
 
 bsd/net/bpf.c				optional bpfilter
 bsd/net/if.c				standard

@@ -1,0 +1,4 @@
+FreeBSD 4.11-RELEASE
+https://github.com/freebsd/freebsd-src/tree/release/4.11.0/sys/msdosfs
+Imported for RhapsodiOS msdosfs port. Adaptations documented in
+docs/superpowers/plans/2026-07-23-msdosfs.md Task 2.

@@ -35,6 +35,9 @@
 #define PCI_COMMAND_MEM_ENABLE    0x0002
 #define PCI_COMMAND_MASTER_ENABLE 0x0004
 #endif
+#ifndef PCI_BASE_IO_BIT
+#define PCI_BASE_IO_BIT           0x01
+#endif
 
 #define ICH97_PCI_BASE_IO(x) ((unsigned int)((x) & ~3UL))
 
@@ -195,17 +198,6 @@ static void ich97_codec_reset(void *host_priv)
     (void)host_priv;
 }
 
-static void ich97_apply_initial_output(IntelAC97Driver *self)
-{
-    if (self->state == nil)
-        return;
-
-    ac97_apply_output(&self->state->codec,
-                      [self outputAttenuationLeft],
-                      [self outputAttenuationRight],
-                      1);
-}
-
 static void clearInterrupts(void)
 {
     struct ich97_driver_state *st = activeInterruptState;
@@ -254,6 +246,17 @@ static void clearInt(void *identity, void *handlerState, unsigned int arg)
         return NO;
 
     return ([dev initFromDeviceDescription:deviceDescription] != nil);
+}
+
+- (void)ich97_apply_initial_output
+{
+    if (state == nil)
+        return;
+
+    ac97_apply_output(&state->codec,
+                      [self outputAttenuationLeft],
+                      [self outputAttenuationRight],
+                      1);
 }
 
 /*
@@ -447,7 +450,7 @@ static void clearInt(void *identity, void *handlerState, unsigned int arg)
     }
 
     state->ioAudioInitialized = YES;
-    ich97_apply_initial_output(self);
+    [self ich97_apply_initial_output];
 
     return self;
 }
@@ -506,7 +509,7 @@ static void clearInt(void *identity, void *handlerState, unsigned int arg)
     IOLog("%s: Attached codec %s (%s)\n", DRV_TITLE,
           codec->codec_name, codec->vendor_name);
 
-    ich97_apply_initial_output(self);
+    [self ich97_apply_initial_output];
 
     return YES;
 }

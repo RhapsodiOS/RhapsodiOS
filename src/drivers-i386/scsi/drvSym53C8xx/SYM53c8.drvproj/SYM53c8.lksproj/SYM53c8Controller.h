@@ -15,69 +15,33 @@
 #import <driverkit/scsiTypes.h>
 #import <driverkit/IOSCSIController.h>
 #import <driverkit/i386/directDevice.h>
-#import "SYM53c8ControllerPrivate.h"
+#import <kernserv/queue.h>
 #import "SYM53c8Types.h"
+#import "SYM53c8ControllerPrivate.h"
 
 
-@interface SYM53c8Controller : IOSCSIController
+@interface SYM53c8 : IOSCSIController
 {
 	/*
-	 * Hardware info.
+	 * __OBJC,__instance_vars (16 entries). First declared ivar is
+	 * +0x244; instance_size is 0x600.
 	 */
-	struct sym_config 	config;		/* config info from device */
-	id			pciDevice;	/* [deviceDescription directDevice] */
-	IOEISAPortAddress 	ioBase;		/* base IO port addr */
-	unsigned char 		symChipId;
-	unsigned char 		symChipRev;
-	BOOL			ioThreadRunning;
-
-	/*
-	 * CCB areas. Dynamically allocated from low
-	 * 16 MB of memory.
-	 */
-	struct ccb		*symCcb;
-	int			numFreeCcbs;	/* number of free CCBs */
-
-	/*
-	 * SCRIPTS program area
-	 */
-	unsigned int		*scriptsPhys;	/* Physical address */
-	unsigned int		*scriptsVirt;	/* Virtual address */
-
-	/*
-	 * Three queues:
-	 *
-	 * commandQ:	 contains SYMCommandBuf's to be executed by the
-	 *		 I/O thread. Enqueued by exported methods (via
-	 *		 -executeCmdBuf); dequeued by the I/O thread in
-	 *		 -commandRequestOccurred.
-	 *
-	 * outstandingQ: contains ccb's on which the controller is
-	 * 		 currently operating. The number of ccb's in
-	 *		 outstandingQ is outstandingCount. Ccb's are
-	 *		 enqueued here by -runPendingCommands.
-	 *
-	 * pendingQ:	 contains ccb's which the I/O thread is holding
-	 *		 on to because outstandingCount == SYM_QUEUE_SIZE.
-	 *		 Ccb's are enqueued here by -threadExecuteRequest:.
-	 *
-	 */
-	queue_head_t	commandQ;		/* list of waiting
-						 * SYMCommandBuf's */
-	id		commandLock;		/* NXLock; protects commandQ */
-	queue_head_t	outstandingQ;		/* list of running cmds */
-	unsigned int	outstandingCount;	/* length of outstandingQ */
-	queue_head_t	pendingQ;
-
-	/*
-	 * Statistics counters.
-	 */
-	unsigned int	maxQueueLen;
-	unsigned int	queueLenTotal;
-	unsigned int	totalCommands;
-
-	port_t		interruptPortKern;	/* kernel version of
-						 * interruptPort */
+	int			intPortKern;		/* +0x244 */
+	unsigned int		interrupt;		/* +0x248 */
+	unsigned char		path;			/* +0x24c */
+	id			reqPoolLock;		/* +0x250 NXLock */
+	unsigned int		availReqs;		/* +0x254 */
+	struct _scsireq		*freereq;		/* +0x258 */
+	struct _scsireq		reqs[SYM_REQS_COUNT];	/* +0x25c, 32 × 0x1C */
+	char			levelIRQ;		/* +0x5dc */
+	unsigned char		ioThreadRunning : 1;	/* +0x5dd */
+	unsigned		pad : 31;		/* +0x5e0 */
+	queue_head_t		commandQ;		/* +0x5e4 */
+	id			commandLock;		/* +0x5ec NXLock */
+	unsigned int		maxQueueLen;		/* +0x5f0 */
+	unsigned int		queueLenTotal;		/* +0x5f4 */
+	unsigned int		totalCommands;		/* +0x5f8 */
+	unsigned int		outstandingCount;	/* +0x5fc */
 }
 
 /*
@@ -88,11 +52,8 @@
 - (unsigned)maxTransfer;
 - free;
 - (void)interruptOccurred;
-- (void)interruptOccurredAt:(int)localNum;
-- (void)otherOccurred:(int)id;
-- (void)receiveMsg;
-- (void)timeoutOccurred;
 - (void)commandRequestOccurred;
+- (void)setPath			: (unsigned char)thePath;
 
 /*
  * IOSCSIControllerExported methods implemented here.
@@ -101,7 +62,20 @@
 		         buffer : (void *)buffer
 		         client : (vm_task_t)client;
 - (sc_status_t)resetSCSIBus;
+- (unsigned)numberOfTargets;
+- (void)resetStats;
+- (unsigned)numQueueSamples;
+- (unsigned)sumQueueLengths;
+- (unsigned)maxQueueLength;
+
+- (struct _scsireq *)allocReq;
+- (void)freeReq			: (struct _scsireq *)req;
+- convertReq			: (struct _scsireq *)req
+			   ToXpt : (struct cam_ccb *)xpt
+			  buffer : (void *)buffer
+			  client : (vm_task_t)client;
+- (void)updateStatus		: (struct _scsireq *)req;
+- (int)executeCmdBuf		: (SYMCommandBuf *)cmdBuf;
+- (void)manualTURScan;
 
 @end
-
-

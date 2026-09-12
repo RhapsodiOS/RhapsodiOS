@@ -465,6 +465,8 @@ void builder_buildflags(const Params *params, const char *target, strlist *out,
     /* RC_CFLAGS = "-arch ..." + " -D..." for each cflag. */
     sbuf_init(&s);
     sbuf_puts(&s, arch_cflags);
+    /* Preserve the legacy ordinary flag separator used by the Perl oracle. */
+    if (!bootstrap) sbuf_putc(&s, ' ');
     for (i = 0; cflags[i]; i++) { sbuf_putc(&s, ' '); sbuf_puts(&s, cflags[i]); }
     rc_cflags = sbuf_steal(&s);
     sbuf_free(&s);
@@ -662,10 +664,14 @@ int builder_scan_dir(const char *source, Package *pkg, Params *params) {
         return 1;
     }
     if (rc != 0) {
-        /* reset any partial parse and synthesize default */
+        /* Synthesize legacy defaults without discarding a validated explicit
+         * architecture from a partial control file. */
+        char *architecture = pkg->architecture ? xstrdup(pkg->architecture) : 0;
         package_free(pkg);
         package_init(pkg);
         makecontrol(pkg, pname);
+        if (architecture) package_set(&pkg->architecture, architecture);
+        free(architecture);
     }
     free(control_path);
 
@@ -1137,6 +1143,9 @@ static int buildpackage(const Package *spkg, const Params *params,
     unparsed = package_unparse(spkg);
     package_parse(&pkg, unparsed);
     free(unparsed);
+    /* Serialization represents an absent field as empty; keep their distinct
+     * architecture semantics for direct callers. */
+    if (!spkg->architecture) package_set(&pkg.architecture, 0);
     /* Direct callers share normal build architecture resolution. */
     build_options_init(&resolved_opt);
     if (opt) resolved_opt = *opt;

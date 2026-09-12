@@ -222,7 +222,7 @@ TEST(test_buildflags) {
     CHECK(list_has(&f, "RC_ppc=YES"));
     CHECK(!list_has_prefix(&f, "TARGETS="));
     CHECK(str_has_prefix(list_has_prefix(&f, "RC_CFLAGS="),
-                         "RC_CFLAGS=-arch i386 -arch ppc -Dunix"));
+                         "RC_CFLAGS=-arch i386 -arch ppc  -Dunix"));
     strlist_free(&f);
 
     strlist_init(&f);
@@ -837,7 +837,7 @@ TEST(test_resolved_thin_flags) {
     CHECK(list_has(&flags, "RC_i386=YES"));
     CHECK(list_has(&flags, "RC_ppc="));
     CHECK(str_has_prefix(list_has_prefix(&flags, "RC_CFLAGS="),
-                         "RC_CFLAGS=-arch i386 -Dunix"));
+                         "RC_CFLAGS=-arch i386  -Dunix"));
     CHECK(!list_has_prefix(&flags, "TARGETS="));
     strlist_free(&flags);
     package_set(&pkg.architecture, "ppc");
@@ -849,7 +849,7 @@ TEST(test_resolved_thin_flags) {
     CHECK(list_has(&flags, "RC_i386="));
     CHECK(list_has(&flags, "RC_ppc=YES"));
     CHECK(str_has_prefix(list_has_prefix(&flags, "RC_CFLAGS="),
-                         "RC_CFLAGS=-arch ppc -Dunix"));
+                         "RC_CFLAGS=-arch ppc  -Dunix"));
     strlist_free(&flags);
     opt.operation_arch = RB_ARCH_I386;
     CHECK(builder_resolve_architecture(&pkg, &opt) != 0);
@@ -1330,7 +1330,41 @@ TEST(test_probe_failure_precedes_project_make) {
     system("rm -rf /tmp/rb-probe-tools");
 }
 
+TEST(test_fallback_preserves_explicit_architecture) {
+    static const char *controls[]={"Package: fallback\nArchitecture: i386\n",
+        "Version: 1\nArchitecture: ppc\n"};
+    static const char *labels[]={"i386","ppc"};
+    Package pkg;Params params;FILE *f;int i;
+    CHECK_INT(system("mkdir -p /tmp/rb-thin-fallback-1/dpkg"),0);
+    for(i=0;i<2;i++) {
+        f=fopen("/tmp/rb-thin-fallback-1/dpkg/control","w");CHECK(f!=0);if(!f)return;
+        fputs(controls[i],f);fclose(f);package_init(&pkg);params_init(&params);
+        CHECK_INT(builder_scan("dir","/tmp/rb-thin-fallback-1",&pkg,&params),0);
+        CHECK_STR(pkg.architecture,labels[i]);
+        package_free(&pkg);params_free(&params);
+    }
+    system("rm -rf /tmp/rb-thin-fallback-1");
+}
+TEST(test_direct_packaging_missing_architecture_defaults_universal) {
+    Package pkg;Params params;FILE *f;char data[1024];size_t n;
+    CHECK_INT(system("rm -rf /tmp/rb-default-package && mkdir -p /tmp/rb-default-package/root /tmp/rb-default-package/repo"),0);
+    package_init(&pkg);params_init(&params);
+    package_set(&pkg.package,"default");package_set(&pkg.version,"1");
+    params.DSTROOT=xstrdup("/tmp/rb-default-package/root");params.PACKAGEDIR=xstrdup("/tmp/rb-default-package/repo");
+    CHECK_INT(builder_buildpackage(&pkg,&params,"binary",0),0);
+    CHECK(pkg.architecture==0);
+    f=fopen("/tmp/rb-default-package/root/.PKGINFO","r");CHECK(f!=0);
+    if(f){n=fread(data,1,sizeof(data)-1,f);data[n]=0;fclose(f);
+        CHECK(strstr(data,"arch = universal-apple-rhapsody\n")!=0);}
+    package_set(&pkg.architecture,"");
+    CHECK(builder_buildpackage(&pkg,&params,"binary",0)!=0);
+    CHECK_STR(pkg.architecture,"");
+    package_free(&pkg);params_free(&params);system("rm -rf /tmp/rb-default-package");
+}
+
 static void run_all(void) {
+    RUN(test_fallback_preserves_explicit_architecture);
+    RUN(test_direct_packaging_missing_architecture_defaults_universal);
     RUN(test_probe_failure_precedes_project_make);
     RUN(test_toolchain_probes);
     RUN(test_base_cache_does_not_hide_incompatible_companions);

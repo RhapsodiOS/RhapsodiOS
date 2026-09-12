@@ -249,6 +249,15 @@ with allow_superset=1 may accept universal code for a thin consumer.
   architecture-specific source sets differ. Never OR all objects across the
   entire package. Ordinary installed executables outside these collections
   still require fat code for universal builds.
+
+  Repository inspection during execution found a second actual layout:
+  `pb_makefiles-1/implicitrules.make` retains `foo.i386.o` and `foo.ppc.o`
+  beside the combined `foo.o`. Within harvested object collections, recognize
+  these exact suffixes as per-object slice pairs, grouping by directory and
+  basename with only the architecture suffix removed. Verify the encoded CPU
+  matches the suffix and require all requested slices for each such pair.
+  Keep this separate from directory buckets (whose filenames may differ).
+  Add positive paired-suffix fixtures and negative missing/wrong-slice fixtures.
 - [ ] Add tree fixtures: fat executable, thin mislabeled executable, non-code
   executable script, library with no execute bit, symlink escape, paired object
   groups with differing filenames, missing ppc group, wrong CPU inside an i386

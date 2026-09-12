@@ -222,7 +222,8 @@ static int fingerprint_file(const char *path, unsigned long *out) {
 }
 
 static unsigned long entry_fingerprint(const ManifestEntry *entry,
-                                       const char *target) {
+                                       const char *target,
+                                       const char *architecture) {
     unsigned long hash = 2166136261UL;
     static const char separator = '\0';
     hash = fnv_bytes(hash, entry->type, strlen(entry->type));
@@ -230,6 +231,10 @@ static unsigned long entry_fingerprint(const ManifestEntry *entry,
     hash = fnv_bytes(hash, entry->source, strlen(entry->source));
     hash = fnv_bytes(hash, &separator, 1);
     hash = fnv_bytes(hash, target, strlen(target));
+    hash = fnv_bytes(hash, &separator, 1);
+    hash = fnv_bytes(hash, RB_ARCH_POLICY_VERSION, strlen(RB_ARCH_POLICY_VERSION));
+    hash = fnv_bytes(hash, &separator, 1);
+    hash = fnv_bytes(hash, architecture, strlen(architecture));
     return hash;
 }
 
@@ -298,7 +303,7 @@ static int parse_hex(const char *text, unsigned long *value) {
 
 typedef struct {
     int exists;
-    int legacy;
+    int legacy; /* Existing record lacks current architecture policy. */
     int header;
     int object;
 } StateInfo;
@@ -306,7 +311,8 @@ typedef struct {
 static int check_state(const char *path, const RunnerOptions *opt,
                        unsigned long tool_hash, unsigned long entry_hash,
                        const ManifestEntry *entry, const char *target,
-                       const char *package_path, StateInfo *info) {
+                       const char *package_path, const char *architecture,
+                       StateInfo *info) {
     FILE *f;
     char line[4096];
     char *expected_profile;
@@ -315,8 +321,9 @@ static int check_state(const char *path, const RunnerOptions *opt,
     char *expected_package;
     unsigned long stored_tool;
     unsigned long stored_entry;
-    int line_no = 0;
-    int version_two = 0;
+    int line_no = 0, field = 0, format = 1;
+    int saw_policy = 0, saw_architecture = 0;
+    int policy_current = 0, architecture_current = 0;
     struct stat state_stat;
     memset(info, 0, sizeof(*info));
     if (lstat(path, &state_stat) == 0 && !S_ISREG(state_stat.st_mode)) {
@@ -336,13 +343,31 @@ static int check_state(const char *path, const RunnerOptions *opt,
     expected_package = str_cats("package=", package_path, "\n", (char *)0);
     while (fgets(line, sizeof(line), f) != 0) {
         line_no++;
-        if (strchr(line, '\n') == 0 || line_no > 8) goto corrupt;
-        if (line_no == 1 && strcmp(line, "format=2\n") == 0) {
-            version_two = 1;
+        if (strchr(line, '\n') == 0 || line_no > 10) goto corrupt;
+        if (line_no == 1 && str_has_prefix(line, "format=")) {
+            if (strcmp(line, "format=2\n") == 0) format = 2;
+            else if (strcmp(line, "format=3\n") == 0) format = 3;
+            else goto corrupt;
             continue;
         }
-        {
-            int field = line_no - (version_two ? 1 : 0);
+        /* Markers are named, so either may be absent without shifting the
+         * mandatory fields. Missing/old marker values mean stale policy. */
+        if (format == 3 && str_has_prefix(line, "architecture_policy=")) {
+            if (saw_policy) goto corrupt;
+            saw_policy = 1;
+            policy_current = strcmp(line, "architecture_policy="
+                                     RB_ARCH_POLICY_VERSION "\n") == 0;
+            continue;
+        }
+        if (format == 3 && str_has_prefix(line, "effective_architecture=")) {
+            if (saw_architecture) goto corrupt;
+            saw_architecture = 1;
+            line[strlen(line) - 1] = '\0';
+            architecture_current = strcmp(line + 23, architecture) == 0;
+            continue;
+        }
+        field++;
+        if (field > (format == 1 ? 6 : 7)) goto corrupt;
         if (field == 1 && strcmp(line, expected_profile) != 0) goto mismatch;
         if (field == 2) {
             if (strncmp(line, "toolchain_fingerprint=", 22) != 0) goto corrupt;
@@ -354,7 +379,6 @@ static int check_state(const char *path, const RunnerOptions *opt,
             if (strncmp(line, "entry_fingerprint=", 18) != 0) goto corrupt;
             line[strlen(line) - 1] = '\0';
             if (parse_hex(line + 18, &stored_entry) != 0) goto corrupt;
-            if (stored_entry != entry_hash) goto mismatch;
         }
         if (field == 4 && strcmp(line, expected_source) != 0) goto corrupt;
         if (field == 5 && strcmp(line, expected_target) != 0) goto corrupt;
@@ -370,11 +394,13 @@ static int check_state(const char *path, const RunnerOptions *opt,
                 info->header = 1; info->object = 1;
             } else goto corrupt;
         }
-        }
     }
-    if (ferror(f) || (version_two ? line_no != 8 : line_no != 6)) goto corrupt;
+    if (ferror(f) || field != (format == 1 ? 6 : 7)) goto corrupt;
+    info->legacy = format != 3 || !policy_current || !architecture_current;
+    /* Old records have an older entry hash. Classify staleness first, but
+     * retain the existing mismatch failure for current policy records. */
+    if (!info->legacy && stored_entry != entry_hash) goto mismatch;
     info->exists = 1;
-    info->legacy = !version_two;
     fclose(f);
     free(expected_package); free(expected_target); free(expected_source);
     free(expected_profile);
@@ -396,8 +422,8 @@ corrupt:
 static int write_state(const char *path, const RunnerOptions *opt,
                        unsigned long tool_hash, unsigned long entry_hash,
                        const ManifestEntry *entry, const char *target,
-                       const char *package_path, int have_header,
-                       int have_object) {
+                       const char *package_path, const char *architecture,
+                       int have_header, int have_object) {
     char temporary[4096];
     FILE *f = 0;
     int fd = -1;
@@ -415,7 +441,7 @@ static int write_state(const char *path, const RunnerOptions *opt,
     if (fd < 0) return 1;
     f = fdopen(fd, "w");
     if (f == 0) { close(fd); unlink(temporary); return 1; }
-    if (fprintf(f, "format=2\n") < 0 ||
+    if (fprintf(f, "format=3\n") < 0 ||
         fprintf(f, "profile=%s\n", opt->toolchain->profile) < 0 ||
         fprintf(f, "toolchain_fingerprint=%08lx\n", tool_hash) < 0 ||
         fprintf(f, "entry_fingerprint=%08lx\n", entry_hash) < 0 ||
@@ -425,6 +451,8 @@ static int write_state(const char *path, const RunnerOptions *opt,
         fprintf(f, "companions=%s\n",
                 have_header ? (have_object ? "hdr,obj" : "hdr") :
                               (have_object ? "obj" : "none")) < 0 ||
+        fprintf(f, "architecture_policy=%s\n", RB_ARCH_POLICY_VERSION) < 0 ||
+        fprintf(f, "effective_architecture=%s\n", architecture) < 0 ||
         fflush(f) != 0) rc = 1;
     if (rc == 0 && fsync(fd) != 0) rc = 1;
     if (fclose(f) != 0) rc = 1;
@@ -531,13 +559,13 @@ static int run_entry(const ManifestEntry *entry, const char *seeddir,
         if (exec_set_log(log_path) != 0) goto done;
     }
 
-    entry_hash = entry_fingerprint(entry, target);
+    entry_hash = entry_fingerprint(entry, target, pkg.architecture);
     if (opt->bootstrap && !exec_dry_run &&
         check_state(state_path, opt, tool_hash,
                                      entry_hash, entry, target,
                                      strcmp(target, "headers") == 0 ?
                                      hdr_path : base_path,
-                                     &state_info) != 0) goto done;
+                                     pkg.architecture, &state_info) != 0) goto done;
 
     if (opt->bootstrap) {
         if (headers_only) {
@@ -566,8 +594,9 @@ static int run_entry(const ManifestEntry *entry, const char *seeddir,
             must_build = !base_exists || (hdr_was && !hdr_exists) ||
                          (obj_was && !obj_exists);
         if (all_target && state_info.exists &&
-            (state_info.legacy || (state_info.header && !hdr_exists) ||
+            ((state_info.header && !hdr_exists) ||
              (state_info.object && !obj_exists))) must_build = 1;
+        if (state_info.exists && state_info.legacy) must_build = 1;
         if (base_was && !base_exists) must_build = 1;
     } else {
         if (headers_only) {
@@ -656,7 +685,7 @@ static int run_entry(const ManifestEntry *entry, const char *seeddir,
                        pkg.architecture) != 0) goto done;
         }
         if (write_state(state_path, opt, tool_hash, entry_hash, entry, target,
-                        headers_only ? hdr_path : base_path,
+                        headers_only ? hdr_path : base_path, pkg.architecture,
                         all_target && hdr_exists,
                         all_target && obj_exists)
             != 0) {

@@ -3191,3 +3191,44 @@ to the current `- (` / `- name` declaration lines (Task 3 inserted two lines
 inside `getModeInfo:`, and earlier edits drifted later methods). TransferTable
 lines were verified unchanged. No new mappings for unmapped smapi/glue/vidBIOS/
 `_emu486`.
+
+## Task 5: `vidBIOS.m` from this reloc
+
+Phase 2 reconstructs the six `vidBIOS` methods from **this** `_reloc` at
+6552–7708. VGA's `vidBIOS.m` is a read-only cross-check. Capstone of both
+`__TEXT,__text` slices (ThinkPad file offset 8948, VGA 8860) gives **399
+instructions on each side**. 1078 of 1156 bytes are identical; the 78
+differing bytes sit on the 57 GENERIC_RELOC_VANILLA sites plus two absolute
+loads of `vidBIOS->super_class` (ThinkPad 33104 / VGA 33076), which are
+class-layout addresses, not opcode differences. Control flow, strings, and
+calls match. Keep ThinkPad.
+
+### Method extents (half-open)
+
+| Method | ThinkPad | VGA | Size |
+| --- | --- | --- | --- |
+| `-[vidBIOS init]` | 6552 | 6396 | 268 |
+| `-[vidBIOS free]` | 6820 | 6664 | 108 |
+| `-[vidBIOS int10:outregs:iorange:ionum:smmport:]` | 6928 | 6772 | 696 |
+| `-[vidBIOS int10:outregs:iorange:ionum:]` | 7624 | 7468 | 44 |
+| `-[vidBIOS scratchSegment]` | 7668 | 7512 | 16 |
+| `-[vidBIOS realToVirtual::]` | 7684 | 7528 | 24 |
+
+`realToVirtual::` is 22 bytes of code plus two padding zeros before `_emu486`
+at 7708; VGA is the same 22+2 at 7528–7552. `init`/`free` include one
+trailing nop each, which is why VGA's findings sometimes quote 267 / 107.
+
+### Disagreements with VGA — keep ThinkPad
+
+| What | ThinkPad | VGA |
+| --- | --- | --- |
+| `ioPorts.h` in `vidBIOS.m` | **included.** gcc emits the unused `_xxx.8` / `_xxx.11` / `_xxx.14` triple at `__bss` 26596 / 26600 / 26604. No `inb`/`outb` in this TU; the header is present so the triple exists. | **omitted.** VGA `__bss` has one triple, and it belongs to `IOVGADisplay.m` (`_xxx.100` / `.103` / `.106`). VGA 6396–7552 has no corresponding counters. |
+| Shared header | `IBMThinkPad760ED.h` (this driver's TU) | `IOVGADisplayReloc.h` |
+| `emu486` call | ThinkPad 7346, PC-relative to `_emu486` at 7708 | VGA 7190, PC-relative to `_emu486` at 7552 |
+| Four `init` IOLogs | `__cstring` 19296, 19334, 19377, 19428 | VGA's own `__cstring` (same four format strings) |
+| Four `int10:…smmport:` IOLogs | `__cstring` 19453, 19493, 19534, 19575 | VGA's own `__cstring` (same four format strings) |
+| `[super …]` class pointer | `mov edx, [0x8150]` at 6745 (`init`) and 6902 (`free`) — `vidBIOS.super_class` at 33104 | `mov edx, [0x8134]` at 6589 and 6746 — VGA `vidBIOS.super_class` at 33076 |
+
+No method-body disagreement: both binaries take `IOMallocLow` / `IOPhysicalFromVirtual` / `IOMapPhysicalIntoIOTask` in `-init` with four separate `return [self free]` tails (no shared `fail:`), `IOFreeLow` / `IOUnmapPhysicalFromIOTask` in `-free`, `pagePerm[256]` plus `IOMalloc(0x2000)` `ioPerm` in the five-argument `-int10:`, `cmp ebx, 0xffff / ja` (unsigned) at ThinkPad 7116 / VGA 6960, `smmport:0x10000` forwarder, `scratchSegment` as `biosStackPhysical >> 4`, `realToVirtual::` as `(segment << 4) + lowMem + offset`.
+
+`vidBIOS.m` is **not** on `CLASSES`. Link order is Task 7. `_emu486` is Task 6.

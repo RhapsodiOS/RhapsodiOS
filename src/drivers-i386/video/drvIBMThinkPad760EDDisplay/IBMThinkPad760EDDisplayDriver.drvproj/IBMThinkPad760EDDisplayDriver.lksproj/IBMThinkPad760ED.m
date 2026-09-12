@@ -20,17 +20,6 @@
 #import <driverkit/i386/IOPCIDirectDevice.h>
 #import "IBMThinkPad760ED.h"
 
-/* The register block `vidBIOS' hands to the real-mode BIOS, in the order
- * the emulator keeps its registers.
- */
-
-typedef struct {
-    unsigned int eax, ecx, edx, ebx;
-    unsigned int esp, ebp, esi, edi;
-    unsigned int eip, eflags;
-    unsigned int es, cs, ss, ds, fs, gs;
-} biosRegs;
-
 /* Reassert 5-5-5 direct colour in the hidden DAC command register every
  * half second. System management mode reprograms that register behind the
  * driver's back when the panel state changes, and nothing else in the
@@ -322,7 +311,7 @@ IODisplayInfo ThinkPad760EDModeTable[14] = {
 - (void)enterLinearMode
 {
     const ThinkPad760EDMode *parameters = [self displayInfo]->parameters;
-    biosRegs regs;
+    emu486regs_t regs;
 
     if (currentState == 1)
 	return;
@@ -393,7 +382,7 @@ IODisplayInfo ThinkPad760EDModeTable[14] = {
  */
 - (void)revertToVGAMode
 {
-    biosRegs regs;
+    emu486regs_t regs;
     int i;
 
     currentState = 0;
@@ -428,7 +417,7 @@ IODisplayInfo ThinkPad760EDModeTable[14] = {
  */
 - (BOOL)getModeInfo:(unsigned int)mode
 {
-    biosRegs regs;
+    emu486regs_t regs;
     unsigned int segment;
     unsigned char *buffer;
 

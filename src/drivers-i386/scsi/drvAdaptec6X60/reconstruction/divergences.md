@@ -464,6 +464,62 @@ the `HIM6X60*` API, `_isr` / `_deferredIsr` / `_watchdog`, the phase machine
 (`_selection` … `_prepareMessageOut`), SDTR, PIO/DMA data path, SCB link helpers, and the
 HIM callbacks (`_HIM6X60CompleteSCB`, `_HIM6X60Event`, `_HIM6X60MapDMA`, …).
 
+## Task 7: HIM / sequencer definition sites
+
+Written from IDA `analysis-reference-ida.json` instructions/blocks/calls (no
+decompilation in the published JSON). Ledger stays `unexamined` until Task 10.
+`repins*` / `repouts*` stay in `AIC6X60Routines.m` until Task 8; Sequencer.c
+calls them and does not redefine them.
+
+- [x] HIM6X60Initialize
+- [x] HIM6X60ISR
+- [x] HIM6X60QueueSCB
+- [x] HIM6X60AbortSCB
+- [x] HIM6X60FindAdapter
+- [x] HIM6X60GetConfiguration
+- [x] HIM6X60GetStackContents
+- [x] HIM6X60TerminateSCB
+- [x] HIM6X60ResetBus
+- [x] HIM6X60DisableINT
+- [x] HIM6X60EnableINT
+- [x] HIM6X60AssertINT
+- [x] HIM6X60IRQ
+- [x] HIM6X60CompleteSCB
+- [x] HIM6X60Event
+- [x] HIM6X60FlushDMA
+- [x] HIM6X60GetLUCB
+- [x] HIM6X60GetPhysicalAddress
+- [x] HIM6X60LogError
+- [x] HIM6X60MapDMA
+- [x] HIM6X60Watchdog
+- [x] HIM6X60DmaProgrammed
+- [x] himTimeout
+- [x] initiateIO
+- [x] deferredIsr
+- [x] watchdog
+- [x] isr
+- [x] linkScbPreemptive
+- [x] linkScb
+- [x] unlinkScb
+- [x] memset
+- [x] selection
+- [x] reselection
+- [x] scsiBusFree
+- [x] scsiBusReset
+- [x] targetREQuest
+- [x] samePhaseREQuest
+- [x] interpretMessageIn
+- [x] prepareMessageOut
+- [x] negotiateSDTR
+- [x] updateSDTR
+- [x] resetSDTR
+- [x] dataInPIO
+- [x] dataOutPIO
+- [x] dataPhaseDMA
+- [x] quiesceDmaAndSCSI
+- [x] updateDataPointer
+- [x] bitbucketAndABORT
+
 ## What was not attempted
 
 No HIM source rewrite, no `binrecon compare` of a rebuilt `_reloc`. Mapped

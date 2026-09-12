@@ -214,6 +214,11 @@ reached and diagnosed.
 
 #### `rebuilt_sha256` in the committed ledger is a placeholder, not a rebuild
 
+**Task 4 supersession:** this heading is the Task 6 placeholder history. After
+the Phase 1 freeze, `ledger.json`'s `rebuilt_sha256` is the guest `_reloc`
+`45C7EF9A52153EF1D8A8B776B423A557EC5979A2C2A1779A604520CBD6C9F269`, not the
+reference hash. See **Task 4 Phase 1 freeze** below.
+
 Task 6 gave `thinkpad760ed.json` a `rebuilt` artifact so that Tasks 8 and 9 can
 run `binrecon compare`. `profile.py` resolves that artifact eagerly, so **every**
 `binrecon` subcommand — `validate` included — fails outright unless
@@ -2842,6 +2847,10 @@ and re-measure all 29 before any of this is treated as closed.**
 
 ### Ledger status
 
+**Task 4 supersession:** this heading is historical (placeholder-rebuild era).
+After the Phase 1 freeze, MATCH and accepted-compiler entries have advanced and
+`rebuilt_sha256` names the guest `_reloc`. See **Task 4 Phase 1 freeze** below.
+
 All 40 entries remain **`unexamined`**, which is the only defensible status. The
 strongest evidence available is name-level parity, and *no* entry has been
 confirmed byte-for-byte against a rebuild — twelve demonstrably differ. The
@@ -3031,11 +3040,12 @@ Same-size `compare_thinkpad.py` DIFF remains on several previously extent-matche
 functions (`_set555Mode`, `selectMode`, `enterLinearMode`, TransferTable
 methods, glue). Four matched byte-for-byte:
 `isValidPCIAssignedBaseAddress:`, `displayMemorySize`, `ramdacSpeed`,
-`_smapi_asm`. `failed_matched_or_glue` is 15, not 0. Treat those DIFFs as
-unresolved (reloc masking vs rbuild/`-g` codegen) until Task 3; do not close
-them from this table alone. The Version glue extent is 12 here vs 1168 in the
-reference because `vers.o` now sits immediately after `_instance.o` instead of
-a gap before `vidBIOS`.
+`_smapi_asm`. `failed_matched_or_glue` is 15, not 0. Those same-size DIFFs are
+reloc-masking / rbuild/`-g` codegen residuals, not missing statements; Task 3
+did not close the byte streams. They stay DIFF through this Phase 1 freeze
+and are not `assembly-matched`. The Version glue extent is 12 here vs 1168 in
+the reference because `vers.o` now sits immediately after `_instance.o`
+instead of a gap before `vidBIOS`.
 
 ## Task 3 campaign (guest `10.10.0.241`)
 
@@ -3105,3 +3115,79 @@ Campaign extents after Task 3 (next-symbol size, stabs ignored):
 | `lockRegisters` | 168 | 152 | −16 |
 | `reportSystemConfiguration` | 1088 | 1116 | +28 |
 | `name` | 60 | 60 | 0 |
+
+## Task 4 Phase 1 freeze
+
+Documentation and ledger freeze against the Task 3 guest `_reloc` (164636
+bytes, SHA-256
+`45C7EF9A52153EF1D8A8B776B423A557EC5979A2C2A1779A604520CBD6C9F269`). No source
+shape experiments. `compare_thinkpad.py` was re-run against that file; byte
+MATCH after reloc masking is only:
+
+- `isValidPCIAssignedBaseAddress:` (32/32)
+- `displayMemorySize` (16/16)
+- `ramdacSpeed` (12/12)
+- `_smapi_asm` (88/88)
+
+`failed_matched_or_glue` is still 15. GLUE remains DIFF (`kernelServerInstance`
+12 vs 12; Version 1168 vs 12 because `vers.o` sits after `_instance.o`).
+`getModeInfo:` is extent 168==168 and still DIFF — extent equality is not
+`assembly-matched`.
+
+### Identity rewrite
+
+`ledger.json`'s `rebuilt_sha256` was still the placeholder copy of
+`$REFSHA` (`47539E03…`). `load_ledger` refuses a guest file whose SHA-256
+differs from that field, and `write_ledger` does not rewrite the identity.
+One-shot edit before the first transition: set `rebuilt_sha256` to the guest
+file hash `45C7EF9A…` with `BINRECON_REBUILT` pointing at that same file.
+`reference_sha256` stays `$REFSHA`. After the first `write_ledger`, the JSON
+is canonicalized (sorted keys, one object). That is expected.
+
+### Accepted compiler-only deltas
+
+Remaining campaign `DIFF` functions with a named compiler mechanism. Ledger:
+`control-flow-confirmed` (not `assembly-matched`). `initFromDeviceDescription:`
+stays; this rebuild did not MATCH it.
+
+| Function | ref | reb | Δ | mechanism |
+| --- | --- | --- | --- | --- |
+| `initFromDeviceDescription:` | 780 | 788 | +8 | gcc merged two IOLog tails |
+| `getModeInfo:` | 168 | 168 | 0 | BOOL split closed extent; remaining same-size byte DIFF after reloc masking |
+| `revertToVGAMode` | 216 | 212 | −4 | delayed `add esp,4` folded into later `add esp,0x28` |
+| `setPCIConfiguration` | 676 | 664 | −12 | `deviceDescription` in `edi` vs `[ebp-0x124]`; frame already `sub esp,0x124` |
+| `setDisplayDeviceState:` | 80 | 76 | −4 | missing `push ebx` holding `&reg`; HImode experiment reverted |
+| `setPendingDisplayMode:` | 544 | 528 | −16 | `savedState` in `edi` / `sub esp,0x10` vs stack `[ebp-0x14]` / `sub esp,0x14` |
+| `name` | 60 | 60 | 0 | ternary already; same-size DIFF on immediates |
+| `updateModeTable` | 128 | 128 | 0 | subscript already; `jae` vs `jbe` operand swap |
+| `determineConfiguration:` | 396 | 396 | 0 | CR2A already common-path; remaining same-size DIFF |
+
+Not on this list (no named compiler-only close; ledger stays `unexamined`):
+
+- `unlockRegisters` / `lockRegisters`: Task 2 nested RMW failed; 152 vs 168
+  still open. No third source shape.
+- `reportSystemConfiguration`: rebuilt prologue `55 89 e5 53`, **no `sub
+  esp`**; +28 cause not named. Task 3 would have allowed
+  `control-flow-confirmed` only if statement-for-statement identity held; it
+  was not claimed.
+
+Also left `unexamined`: `vidBIOS` cluster, `_emu486`, unnamed 15796 / 15877
+(Phase 2); Version / instance GLUE; MATCHED_NAMES that are still byte DIFF
+(`_set555Mode`, `selectMode`, `defaultMode`, `enterLinearMode`,
+`getDisplayDeviceState`, `free`, `displayModeCount`, `displayModes`,
+`readCMOS:`, TransferTable methods). Task 3 did not name compiler mechanisms
+for TransferTable / `_set555Mode`.
+
+### Ledger promotions (Task 4)
+
+| Status | Names |
+| --- | --- |
+| `assembly-matched` | `isValidPCIAssignedBaseAddress:`, `displayMemorySize`, `ramdacSpeed`, `_smapi_asm` |
+| `control-flow-confirmed` | the nine accepted-compiler functions above, including `getModeInfo:` |
+| `unexamined` | everything else (27 entries), including unlock/lock, `reportSystemConfiguration`, GLUE, vidBIOS/`_emu486`/15796/15877 |
+
+`source-map.json` `source_line` values for `IBMThinkPad760ED.m` were restamped
+to the current `- (` / `- name` declaration lines (Task 3 inserted two lines
+inside `getModeInfo:`, and earlier edits drifted later methods). TransferTable
+lines were verified unchanged. No new mappings for unmapped smapi/glue/vidBIOS/
+`_emu486`.

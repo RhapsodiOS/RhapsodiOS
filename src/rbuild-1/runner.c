@@ -1,4 +1,5 @@
 #include "runner.h"
+#include "architecture.h"
 #include "apk.h"
 #include "builder.h"
 #include "exec.h"
@@ -497,6 +498,17 @@ static int run_entry(const ManifestEntry *entry, const char *seeddir,
         fprintf(stderr, "rbuild: skipping \"%s\": scan failed\n", entry->source);
         goto done;
     }
+    build_options_init(&build_opt);
+    build_opt.clean = !opt->bootstrap;
+    build_opt.bootstrap = opt->bootstrap;
+    build_opt.sysroot = opt->sysroot;
+    build_opt.state_dir = opt->state_dir;
+    build_opt.toolchain = opt->toolchain;
+    build_opt.operation_arch = opt->operation_arch;
+    if (builder_resolve_architecture(&pkg, &build_opt) != 0) {
+        fprintf(stderr, "rbuild: architecture resolution failed for %s\n", entry->source);
+        goto done;
+    }
     version = package_canon_version(&pkg);
     hdr_name = str_cats(pkg.package, "-hdrs", (char *)0);
     obj_name = str_cats(pkg.package, "-obj", (char *)0);
@@ -592,12 +604,6 @@ static int run_entry(const ManifestEntry *entry, const char *seeddir,
     strlist_init(&repository);
     strlist_push(&repository, dstdir);
     strlist_push(&repository, seeddir);
-    build_options_init(&build_opt);
-    build_opt.clean = !opt->bootstrap;
-    build_opt.bootstrap = opt->bootstrap;
-    build_opt.sysroot = opt->sysroot;
-    build_opt.state_dir = opt->state_dir;
-    build_opt.toolchain = opt->toolchain;
     build_opt.force = must_build;
     if (must_build) {
         printf("must build %s.apk using %s %s\n", base_canon,
@@ -757,9 +763,10 @@ int runner_manifest(const char *srclist, const char *seeddir,
     return failures;
 }
 
-int runner_buildpackage(const char *type, const char *source,
+static int buildpackage_for_arch(const char *type, const char *source,
                         const char *seeddir, const char *target,
-                        const char *dstdir, const char *state_dir) {
+                        const char *dstdir, const char *state_dir,
+                        unsigned operation_arch) {
     strlist repository;
     BuildOptions opt;
     Package pkg;
@@ -793,6 +800,12 @@ int runner_buildpackage(const char *type, const char *source,
     }
     package_init(&pkg); params_init(&params);
     if (builder_scan(type, source, &pkg, &params) != 0) goto done_scanned;
+    build_options_init(&opt);
+    opt.operation_arch = operation_arch;
+    if (builder_resolve_architecture(&pkg, &opt) != 0) {
+        fprintf(stderr, "rbuild: architecture resolution failed for %s\n", source);
+        goto done_scanned;
+    }
     version = package_canon_version(&pkg);
     if (!safe_component(pkg.package) || !safe_component(version) ||
         !safe_component(pkg.architecture)) {
@@ -810,7 +823,6 @@ int runner_buildpackage(const char *type, const char *source,
     strlist_init(&repository);
     strlist_push(&repository, safe_dstdir);
     strlist_push(&repository, seeddir);
-    build_options_init(&opt);
     opt.state_dir = safe_state;
     opt.clean = 1;
     rc = builder_build(type, source, &repository, target, safe_dstdir, &opt);
@@ -824,15 +836,25 @@ done:
     return rc;
 }
 
+int runner_buildpackage(const char *type, const char *source,
+                        const char *seeddir, const char *target,
+                        const char *dstdir, const char *state_dir) {
+    return buildpackage_for_arch(type, source, seeddir, target, dstdir,
+                                 state_dir, 0);
+}
+
 int runner_kernel(const char *srcdir, const char *seeddir, const char *dstdir,
                   const char *arch, const char *state_dir) {
     strlist packages;
     size_t i;
     int rc = 1;
     char *path;
+    unsigned operation_arch;
 
-    if (!kernel_arch_safe(arch)) {
-        fprintf(stderr, "rbuild: unsafe architecture \"%s\"\n",
+    if (!kernel_arch_safe(arch) ||
+        architecture_parse(arch, &operation_arch) != 0 ||
+        (operation_arch != RB_ARCH_I386 && operation_arch != RB_ARCH_PPC)) {
+        fprintf(stderr, "rbuild: unsupported or unsafe architecture \"%s\"\n",
                 arch ? arch : "");
         return 1;
     }
@@ -840,8 +862,8 @@ int runner_kernel(const char *srcdir, const char *seeddir, const char *dstdir,
     if (kernel_core_packages(arch, &packages) != 0) goto done;
     for (i = 0; i < packages.count; i++) {
         path = path_join(srcdir, packages.items[i]);
-        if (runner_buildpackage("dir", path, seeddir, "all", dstdir,
-                                state_dir) != 0) {
+        if (buildpackage_for_arch("dir", path, seeddir, "all", dstdir,
+                                  state_dir, operation_arch) != 0) {
             fprintf(stderr, "rbuild: kernel failed: %s\n", packages.items[i]);
             free(path);
             goto done;
@@ -869,9 +891,12 @@ int runner_kerneldrivers(const char *srcdir, const char *seeddir,
     int passes = 0;
     char *path;
     char *list_path;
+    unsigned operation_arch;
 
-    if (!kernel_arch_safe(arch)) {
-        fprintf(stderr, "rbuild: unsafe architecture \"%s\"\n",
+    if (!kernel_arch_safe(arch) ||
+        architecture_parse(arch, &operation_arch) != 0 ||
+        (operation_arch != RB_ARCH_I386 && operation_arch != RB_ARCH_PPC)) {
+        fprintf(stderr, "rbuild: unsupported or unsafe architecture \"%s\"\n",
                 arch ? arch : "");
         return 1;
     }
@@ -905,8 +930,8 @@ int runner_kerneldrivers(const char *srcdir, const char *seeddir,
     }
     for (i = 0; i < packages.count; i++) {
         path = path_join(srcdir, packages.items[i]);
-        if (runner_buildpackage("dir", path, seeddir, "all", dstdir,
-                                state_dir) != 0) {
+        if (buildpackage_for_arch("dir", path, seeddir, "all", dstdir,
+                                  state_dir, operation_arch) != 0) {
             fprintf(stderr, "rbuild: FAIL %s\n", packages.items[i]);
             strlist_push(&failed, packages.items[i]);
         } else {

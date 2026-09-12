@@ -252,6 +252,42 @@ void build_options_init(BuildOptions *opt) {
     memset(opt, 0, sizeof(*opt));
 }
 
+/* Resolve only the scanned local package, never its source control file. */
+int builder_resolve_architecture(Package *pkg, BuildOptions *opt) {
+    unsigned source, operation = opt->operation_arch, effective;
+    if (opt->bootstrap) {
+        unsigned profile_arch;
+        if (!opt->toolchain ||
+            architecture_parse(opt->toolchain->target_arch, &profile_arch) != 0 ||
+            (profile_arch != RB_ARCH_I386 && profile_arch != RB_ARCH_PPC) ||
+            (operation && operation != profile_arch)) {
+            fprintf(stderr, "rbuild: %s: invalid or conflicting bootstrap architecture '%s' for operation '%s'\n",
+                    pkg->source ? pkg->source :
+                    (pkg->package ? pkg->package : "(unknown)"),
+                    opt->toolchain && opt->toolchain->target_arch ?
+                    opt->toolchain->target_arch : "(missing)",
+                    operation ? (architecture_label(operation) ?
+                    architecture_label(operation) : "(invalid)") : "bootstrap");
+            return 1;
+        }
+        operation = profile_arch;
+    }
+    if (architecture_parse(pkg->architecture, &source) != 0 ||
+        architecture_resolve(source, operation, &effective) != 0) {
+        fprintf(stderr, "rbuild: %s: unsupported or conflicting package architecture '%s' for operation '%s'\n",
+                pkg->source ? pkg->source :
+                    (pkg->package ? pkg->package : "(unknown)"),
+                pkg->architecture ? pkg->architecture : "(missing)",
+                operation ? (architecture_label(operation) ?
+                architecture_label(operation) : "(invalid)") : "ordinary");
+        return 1;
+    }
+    opt->operation_arch = operation;
+    opt->effective_arch = effective;
+    package_set(&pkg->architecture, architecture_label(effective));
+    return 0;
+}
+
 static char *expand_toolchain_value(const char *value, const char *sysroot) {
     static const char marker[] = "@SYSROOT@";
     const char *p = value ? value : "";
@@ -278,19 +314,6 @@ static void expand_toolchain_words(const char *value, const char *sysroot,
     free(expanded);
 }
 
-/*
- * Stage-0 bootstrap builds link against the host root, which only has the
- * host architecture's crt/System. Fat i386+ppc links fail there.
- * Chroot builds on a single-arch guest also SIGILL/miscompile when the
- * opposite-architecture toolchain is unavailable, so keep host-arch-only
- * until a fat sysroot is intentionally introduced.
- */
-#if defined(__i386__) || defined(i386)
-#define RBUILD_HOST_ARCH "i386"
-#else
-#define RBUILD_HOST_ARCH "ppc"
-#endif
-
 void builder_buildflags(const Params *params, const char *target, strlist *out,
                         const BuildOptions *opt) {
     int i;
@@ -301,17 +324,21 @@ void builder_buildflags(const Params *params, const char *target, strlist *out,
     const char *archs;
     int bootstrap = opt && opt->bootstrap;
     const Toolchain *tc = opt ? opt->toolchain : 0;
-    char *rc_arch_key = 0;
+    unsigned effective = opt && opt->effective_arch ? opt->effective_arch :
+                         RB_ARCH_UNIVERSAL;
 
-    if (bootstrap && tc && tc->target_arch)
-        rc_arch_key = str_cats("RC_", tc->target_arch, (char *)0);
+    if (bootstrap && tc && !(opt && opt->effective_arch)) {
+        unsigned profile_arch;
+        if (architecture_parse(tc->target_arch, &profile_arch) == 0 &&
+            profile_arch != RB_ARCH_UNIVERSAL)
+            effective = profile_arch;
+    }
 
     /* Fixed base flags, but skip the ones we override below. */
     for (i = 0; baseflags[i][0]; i++) {
         const char *k = baseflags[i][0];
         if (strcmp(k, "RC_CFLAGS") == 0 || strcmp(k, "RC_ARCHS") == 0 ||
             strcmp(k, "RC_i386") == 0 || strcmp(k, "RC_ppc") == 0 ||
-            (rc_arch_key && strcmp(k, rc_arch_key) == 0) ||
             (bootstrap && strcmp(k, "NEXT_ROOT") == 0))
             continue;
         push_kv(out, k, baseflags[i][1]);
@@ -391,11 +418,11 @@ void builder_buildflags(const Params *params, const char *target, strlist *out,
         strlist_free(&include_words);
         expanded_cflags = strlist_join(&words, " ");
         arch_cflags = expanded_cflags;
-        archs = tc->target_arch;
+        archs = architecture_archs(effective);
         strlist_free(&words);
     } else {
-        arch_cflags = "-arch " RBUILD_HOST_ARCH " ";
-        archs = RBUILD_HOST_ARCH;
+        arch_cflags = architecture_cflags(effective);
+        archs = architecture_archs(effective);
     }
 
     /* RC_CFLAGS = "-arch ..." + " -D..." for each cflag. */
@@ -408,16 +435,10 @@ void builder_buildflags(const Params *params, const char *target, strlist *out,
     free(rc_cflags);
 
     push_kv(out, "RC_ARCHS", archs);
-    if (bootstrap && tc) {
-        push_kv(out, rc_arch_key, "YES");
-        /* Legacy projects often compute a separate default target list. */
-        push_kv(out, "TARGETS", tc->target_arch);
-    }
-    else if (strcmp(RBUILD_HOST_ARCH, "i386") == 0)
-        push_kv(out, "RC_i386", "YES");
-    else
-        push_kv(out, "RC_ppc", "YES");
-    free(rc_arch_key);
+    push_kv(out, "RC_i386", effective & RB_ARCH_I386 ? "YES" : "");
+    push_kv(out, "RC_ppc", effective & RB_ARCH_PPC ? "YES" : "");
+    if (bootstrap && tc)
+        push_kv(out, "TARGETS", architecture_archs(effective));
     if (bootstrap && tc) {
         strlist ld_words;
         char *ld_flags;
@@ -1315,6 +1336,7 @@ static int run_make(strlist *cmd, const BuildOptions *opt) {
 int builder_build(const char *srctype, const char *srcname,
                   const strlist *repository, const char *target,
                   const char *dstdir, const BuildOptions *opt) {
+    BuildOptions resolved_opt;
     Package pkg, hdrpkg;
     Params bparams, params;
     char *hdrfilename, *filename;
@@ -1329,6 +1351,15 @@ int builder_build(const char *srctype, const char *srcname,
         package_free(&pkg); params_free(&bparams);
         return 1;
     }
+
+    build_options_init(&resolved_opt);
+    if (opt) resolved_opt = *opt;
+    if (builder_resolve_architecture(&pkg, &resolved_opt) != 0) {
+        fprintf(stderr, "rbuild: architecture resolution failed for %s\n", srcname);
+        package_free(&pkg); params_free(&bparams);
+        return 1;
+    }
+    opt = &resolved_opt;
 
     /* hdrpackage = clone(pkg); name += "-hdrs" */
     {

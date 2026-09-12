@@ -32,7 +32,7 @@ cat > "$src/dpkg/control" <<'EOF'
 Package: foo
 Maintainer: Test <test@example.invalid>
 Version: 1.0
-Architecture: all
+Architecture: universal-apple-rhapsody
 Description: resume fixture
 Build-Depends:
 EOF
@@ -54,12 +54,12 @@ EOF
 cat > "$base/base/.PKGINFO" <<'EOF'
 pkgname = foo
 pkgver = 1.0
-arch = universal-apple-rhapsody
+arch = ppc-apple-rhapsody
 EOF
 cat > "$base/hdr/.PKGINFO" <<'EOF'
 pkgname = foo-hdrs
 pkgver = 1.0
-arch = universal-apple-rhapsody
+arch = ppc-apple-rhapsody
 EOF
 : > "$base/base/usr/bin/foo"
 : > "$base/hdr/System/Headers/foo.h"
@@ -289,7 +289,10 @@ echo gzip >> "$base/wrapper.log"
 exec /usr/bin/gzip "\$@"
 EOF
 chmod +x "$base/wrappers/tar" "$base/wrappers/gzip"
-PATH="$base/wrappers:$PATH" ./rbuild buildall "$base/Manifest" "$repo" "$repo"
+mkdir -p "$base/world-source/dpkg"
+sed 's/universal-apple-rhapsody/ppc-apple-rhapsody/' "$src/dpkg/control" > "$base/world-source/dpkg/control"
+echo "dir $base/world-source all" > "$base/WorldManifest"
+PATH="$base/wrappers:$PATH" ./rbuild buildall "$base/WorldManifest" "$repo" "$repo"
 grep '^tar$' "$base/wrapper.log" > /dev/null
 grep '^gzip$' "$base/wrapper.log" > /dev/null
 
@@ -304,6 +307,10 @@ ln -s "$base/outside.apk" "$repo/foo-1.0.apk"
 test ! -L "$repo/foo-1.0.apk"
 test -f "$repo/foo-1.0.apk"
 test -f "$repo/foo-1.0.apk.invalid"
+mkdir "$base/metadata"
+(cd "$base/metadata" && /usr/bin/gzip -dc "$repo/foo-1.0.apk" | /usr/bin/gnutar -xf -)
+grep '^arch = ppc-apple-rhapsody$' "$base/metadata/.PKGINFO" > /dev/null
+grep '^Architecture: universal-apple-rhapsody$' "$src/dpkg/control" > /dev/null
 grep 'symlink' "$repo/foo-1.0.apk.invalid" > /dev/null
 if grep 'MAKEFILEDIR=' "$state/logs/foo-1.0-all.log" > /dev/null; then
     echo 'bootstrap-resume: MAKEFILEDIR command-line override escaped'
@@ -389,19 +396,19 @@ EOF
         /usr/bin/gzip -9 > "$wrong_output"
 }
 
-make_wrong_apk unrelated 1.0 universal-apple-rhapsody "$repo/foo-1.0.apk"
+make_wrong_apk unrelated 1.0 ppc-apple-rhapsody "$repo/foo-1.0.apk"
 ./rbuild bootstrap --sysroot "$root" --toolchain "$profile" \
     --state "$state" "$base/Manifest" "$repo" "$repo"
 test -f "$repo/foo-1.0.apk.invalid"
 
 rm -f "$repo/foo-hdrs-1.0.apk.invalid"
-make_wrong_apk foo-hdrs 9.9 universal-apple-rhapsody "$repo/foo-hdrs-1.0.apk"
+make_wrong_apk foo-hdrs 9.9 ppc-apple-rhapsody "$repo/foo-hdrs-1.0.apk"
 ./rbuild bootstrap --sysroot "$root" --toolchain "$profile" \
     --state "$state" "$base/Manifest" "$repo" "$repo"
 test -f "$repo/foo-hdrs-1.0.apk.invalid"
 
 rm -f "$repo/foo-hdrs-1.0.apk.invalid"
-make_wrong_apk foo 1.0 universal-apple-rhapsody "$repo/foo-hdrs-1.0.apk"
+make_wrong_apk foo 1.0 ppc-apple-rhapsody "$repo/foo-hdrs-1.0.apk"
 ./rbuild bootstrap --sysroot "$root" --toolchain "$profile" \
     --state "$state" "$base/Manifest" "$repo" "$repo"
 test -f "$repo/foo-hdrs-1.0.apk.invalid"
@@ -412,9 +419,9 @@ make_wrong_apk foo-obj 1.0 wrong-architecture "$repo/foo-obj-1.0.apk"
 test -f "$repo/foo-obj-1.0.apk.invalid"
 
 ./rbuild buildpackage --state "$state" --dir --target all \
-    "$src" "$repo" "$repo"
+    "$base/world-source" "$repo" "$repo"
 test -f "$state/logs/foo-1.0-all.log"
-./rbuild buildall --state "$state" "$base/Manifest" "$repo" "$repo"
+./rbuild buildall --state "$state" "$base/WorldManifest" "$repo" "$repo"
 
 headers_base=$base/headers-case
 headers_repo=$headers_base/repo
@@ -429,7 +436,7 @@ cp "$base/hdr/.PKGINFO" "$headers_base/hdr/.PKGINFO"
 cat > "$headers_base/obj/.PKGINFO" <<'EOF'
 pkgname = foo-obj
 pkgver = 1.0
-arch = universal-apple-rhapsody
+arch = ppc-apple-rhapsody
 EOF
 : > "$headers_base/base/usr/bin/stale-base"
 : > "$headers_base/hdr/System/Headers/foo.h"
@@ -454,7 +461,8 @@ test -f "$headers_root/System/Headers/foo.h"
 test ! -f "$headers_repo/foo-1.0.apk.invalid"
 test "`cat "$headers_repo/foo-1.0.apk"`" = broken
 
-./rbuild buildall "$headers_base/Manifest" "$headers_repo" "$headers_repo"
+echo "dir $base/world-source headers" > "$headers_base/WorldManifest"
+./rbuild buildall "$headers_base/WorldManifest" "$headers_repo" "$headers_repo"
 test "`cat "$headers_repo/foo-1.0.apk"`" = broken
 test ! -f "$headers_repo/foo-1.0.apk.invalid"
 
@@ -464,7 +472,7 @@ cp "$repo/foo-1.0.apk" "$world_base/repo/foo-1.0.apk"
 cp "$repo/foo-hdrs-1.0.apk" "$world_base/repo/foo-hdrs-1.0.apk"
 cp "$repo/foo-obj-1.0.apk" "$world_base/repo/foo-obj-1.0.apk"
 printf broken > "$world_base/repo/foo-1.0.apk"
-echo "dir $src all" > "$world_base/Manifest"
+echo "dir $base/world-source all" > "$world_base/Manifest"
 if ./rbuild buildall "$world_base/Manifest" "$world_base/repo" \
     "$world_base/repo" > "$world_base/build.out" 2>&1; then
     echo 'bootstrap-resume: corrupt world artifact unexpectedly succeeded'

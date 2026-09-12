@@ -1,4 +1,5 @@
 #include "builder.h"
+#include "architecture.h"
 #include "test.h"
 #include "exec.h"
 #include <stdio.h>
@@ -179,6 +180,7 @@ TEST(test_bootstrap_flags_use_target_sysroot) {
     CHECK(!list_has(&f, "LN=/tools/ln"));
     CHECK(list_has(&f, "RC_ARCHS=ppc"));
     CHECK(list_has(&f, "RC_ppc=YES"));
+    CHECK(list_has(&f, "RC_i386="));
     CHECK(list_has(&f, "TARGETS=ppc"));
     CHECK(!list_has_prefix(&f, "CoreOSMakefiles="));
     CHECK(list_has(&f, "MKDIRS=/bin/mkdir -p"));
@@ -198,13 +200,6 @@ TEST(test_bootstrap_flags_use_target_sysroot) {
     CHECK(!list_has_prefix(&f, "BOOTSTRAP_SKIP_DYLD="));
     strlist_free(&f);
 
-    tc.target_arch = "m68k";
-    strlist_init(&f);
-    builder_buildflags(&p, "install", &f, &opt);
-    CHECK(list_has(&f, "RC_ARCHS=m68k"));
-    CHECK(list_has(&f, "RC_m68k=YES"));
-    CHECK(list_has(&f, "TARGETS=m68k"));
-    strlist_free(&f);
     params_free(&p);
 }
 
@@ -221,23 +216,12 @@ TEST(test_buildflags) {
     builder_buildflags(&p, "install", &f, &opt);
     CHECK(list_has(&f, "SRCROOT=/s"));
     CHECK(list_has(&f, "DSTROOT=/d"));
-    /* Host-arch only for both bootstrap and chroot (single-arch guest seed). */
-    CHECK(!list_has(&f, "RC_ARCHS=i386 ppc"));
-    CHECK(list_has(&f, "RC_ARCHS=ppc") || list_has(&f, "RC_ARCHS=i386"));
-    CHECK(list_has(&f,
-          "RC_CFLAGS=-arch ppc  -Dunix -D__unix -D__unix__ "
-          "-DNX_COMPILER_RELEASE_3_0=300 -DNX_COMPILER_RELEASE_3_1=310 "
-          "-DNX_COMPILER_RELEASE_3_2=320 -DNX_COMPILER_RELEASE_3_3=330 "
-          "-DNX_CURRENT_COMPILER_RELEASE=520 -DNS_TARGET=52 "
-          "-DNS_TARGET_MAJOR=5 -DNS_TARGET_MINOR=2 -DNeXT -D__NeXT "
-          "-D__NeXT__ -D_NEXT_SOURCE") ||
-          list_has(&f,
-          "RC_CFLAGS=-arch i386  -Dunix -D__unix -D__unix__ "
-          "-DNX_COMPILER_RELEASE_3_0=300 -DNX_COMPILER_RELEASE_3_1=310 "
-          "-DNX_COMPILER_RELEASE_3_2=320 -DNX_COMPILER_RELEASE_3_3=330 "
-          "-DNX_CURRENT_COMPILER_RELEASE=520 -DNS_TARGET=52 "
-          "-DNS_TARGET_MAJOR=5 -DNS_TARGET_MINOR=2 -DNeXT -D__NeXT "
-          "-D__NeXT__ -D_NEXT_SOURCE"));
+    CHECK(list_has(&f, "RC_ARCHS=i386 ppc"));
+    CHECK(list_has(&f, "RC_i386=YES"));
+    CHECK(list_has(&f, "RC_ppc=YES"));
+    CHECK(!list_has_prefix(&f, "TARGETS="));
+    CHECK(str_has_prefix(list_has_prefix(&f, "RC_CFLAGS="),
+                         "RC_CFLAGS=-arch i386 -arch ppc -Dunix"));
     strlist_free(&f);
 
     strlist_init(&f);
@@ -249,8 +233,7 @@ TEST(test_buildflags) {
     strlist_init(&f);
     opt.bootstrap = 1;
     builder_buildflags(&p, "install", &f, &opt);
-    CHECK(!list_has(&f, "RC_ARCHS=i386 ppc"));
-    CHECK(list_has(&f, "RC_ARCHS=ppc") || list_has(&f, "RC_ARCHS=i386"));
+    CHECK(list_has(&f, "RC_ARCHS=i386 ppc"));
     CHECK(!list_has_prefix(&f, "LN="));
     strlist_free(&f);
     params_free(&p);
@@ -833,7 +816,88 @@ TEST(test_scan_rejects_invalid_architecture) {
     CHECK_INT(system(command), 0);
 }
 
+TEST(test_resolved_thin_flags) {
+    Package pkg;
+    Params params;
+    BuildOptions opt;
+    Toolchain tc;
+    strlist flags;
+    package_init(&pkg);
+    params_init(&params);
+    build_options_init(&opt);
+    package_set(&pkg.architecture, "i386");
+    CHECK_INT(builder_resolve_architecture(&pkg, &opt), 0);
+    CHECK_STR(pkg.architecture, "i386-apple-rhapsody");
+    CHECK_INT(opt.effective_arch, RB_ARCH_I386);
+    CHECK_INT(opt.operation_arch, 0);
+    strlist_init(&flags);
+    builder_buildflags(&params, "install", &flags, &opt);
+    CHECK(list_has(&flags, "RC_ARCHS=i386"));
+    CHECK(list_has(&flags, "RC_i386=YES"));
+    CHECK(list_has(&flags, "RC_ppc="));
+    CHECK(str_has_prefix(list_has_prefix(&flags, "RC_CFLAGS="),
+                         "RC_CFLAGS=-arch i386 -Dunix"));
+    CHECK(!list_has_prefix(&flags, "TARGETS="));
+    strlist_free(&flags);
+    package_set(&pkg.architecture, "ppc");
+    CHECK_INT(builder_resolve_architecture(&pkg, &opt), 0);
+    CHECK_STR(pkg.architecture, "ppc-apple-rhapsody");
+    strlist_init(&flags);
+    builder_buildflags(&params, "install", &flags, &opt);
+    CHECK(list_has(&flags, "RC_ARCHS=ppc"));
+    CHECK(list_has(&flags, "RC_i386="));
+    CHECK(list_has(&flags, "RC_ppc=YES"));
+    CHECK(str_has_prefix(list_has_prefix(&flags, "RC_CFLAGS="),
+                         "RC_CFLAGS=-arch ppc -Dunix"));
+    strlist_free(&flags);
+    opt.operation_arch = RB_ARCH_I386;
+    CHECK(builder_resolve_architecture(&pkg, &opt) != 0);
+    toolchain_fixture(&tc);
+    opt.bootstrap = 1;
+    opt.toolchain = &tc;
+    CHECK(builder_resolve_architecture(&pkg, &opt) != 0);
+    opt.operation_arch = 0;
+    tc.target_arch = "universal-apple-rhapsody";
+    CHECK(builder_resolve_architecture(&pkg, &opt) != 0);
+    tc.target_arch = 0;
+    CHECK(builder_resolve_architecture(&pkg, &opt) != 0);
+    package_free(&pkg);
+    params_free(&params);
+}
+
+TEST(test_build_rejects_unsupported_bootstrap_architecture) {
+    BuildOptions opt;
+    Toolchain tc;
+    strlist repo;
+    FILE *f;
+    CHECK_INT(system("mkdir -p /tmp/rbuild-policy-source/dpkg /tmp/rbuild-policy-output"), 0);
+    f = fopen("/tmp/rbuild-policy-source/dpkg/control", "w");
+    CHECK(f != 0);
+    if (!f) return;
+    fputs("Package: policy\nVersion: 1.0\nDescription: policy\n", f);
+    fclose(f);
+    build_options_init(&opt);
+    toolchain_fixture(&tc);
+    tc.target_arch = "m68k";
+    opt.bootstrap = 1;
+    opt.toolchain = &tc;
+    strlist_init(&repo);
+    exec_dry_run = 1;
+    CHECK(builder_build("dir", "/tmp/rbuild-policy-source", &repo,
+                        "all", "/tmp/rbuild-policy-output", &opt) != 0);
+    tc.target_arch = "ppc";
+    CHECK_INT(builder_build("dir", "/tmp/rbuild-policy-source", &repo,
+                            "objs", "/tmp/rbuild-policy-output", &opt), 0);
+    CHECK_INT(opt.operation_arch, 0);
+    CHECK_INT(opt.effective_arch, 0);
+    exec_dry_run = 0;
+    strlist_free(&repo);
+    system("rm -rf /tmp/rbuild-policy-source /tmp/rbuild-policy-output");
+}
+
 static void run_all(void) {
+    RUN(test_resolved_thin_flags);
+    RUN(test_build_rejects_unsupported_bootstrap_architecture);
     RUN(test_scan_architecture_labels);
     RUN(test_scan_rejects_invalid_architecture);
     RUN(test_dir2name);

@@ -12,9 +12,12 @@ typedef struct {
     const char *state_dir;
     const Toolchain *toolchain;
     int force;
+    unsigned operation_arch; /* zero for ordinary builds */
+    unsigned effective_arch; /* zero until the source is resolved */
 } BuildOptions;
 
 void build_options_init(BuildOptions *opt);
+int builder_resolve_architecture(Package *pkg, BuildOptions *opt);
 
 typedef struct {
     char *BUILDROOT;

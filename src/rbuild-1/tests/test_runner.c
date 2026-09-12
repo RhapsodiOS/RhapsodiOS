@@ -78,7 +78,7 @@ TEST(test_replay_rejects_required_artifact_replaced_by_symlink) {
     CHECK(f != 0);
     if (f != 0) {
         fputs("pkgname = foo-hdrs\npkgver = 1.0\n"
-              "arch = universal-apple-rhapsody\n", f);
+              "arch = ppc-apple-rhapsody\n", f);
         fclose(f);
     }
     sprintf(command,
@@ -98,6 +98,7 @@ TEST(test_replay_rejects_required_artifact_replaced_by_symlink) {
 
     toolchain_init(&tc);
     tc.profile = xstrdup("runner-test");
+    tc.target_arch = xstrdup("ppc");
     tc.tar = xstrdup("/usr/bin/gnutar");
     tc.gzip = xstrdup("/usr/bin/gzip");
     memset(&opt, 0, sizeof(opt));
@@ -123,7 +124,70 @@ TEST(test_replay_rejects_required_artifact_replaced_by_symlink) {
     system(command);
 }
 
+TEST(test_kernel_architecture_controls_build_commands) {
+    static const char *projects[] = {
+        "driverkit-3", "driverTools-1", "kernload-1",
+        "drivers-i386/bus/drvPExpert", "kernel-7", "drvBPF", 0
+    };
+    char path[256], command[512], output[65536];
+    FILE *f;
+    int i, drivers, saved_stdout, rc;
+    size_t n;
+    CHECK_INT(system("mkdir -p /tmp/rbuild-kernel-policy/repo /tmp/rbuild-kernel-policy/rbuild-1"), 0);
+    f = fopen("/tmp/rbuild-kernel-policy/rbuild-1/kernel-drivers-blacklist.json", "w");
+    CHECK(f != 0);
+    if (!f) return;
+    fputs("{\"skip\": []}\n", f); fclose(f);
+    for (i = 0; projects[i]; i++) {
+        sprintf(command, "mkdir -p /tmp/rbuild-kernel-policy/%s/dpkg", projects[i]);
+        CHECK_INT(system(command), 0);
+        sprintf(path, "/tmp/rbuild-kernel-policy/%s/dpkg/control", projects[i]);
+        f = fopen(path, "w");
+        CHECK(f != 0);
+        if (!f) return;
+        fprintf(f, "Package: policy%d\nVersion: 1.0\nDescription: policy\nBuild-Depends:\n", i);
+        fclose(f);
+    }
+    for (drivers = 0; drivers < 2; drivers++) {
+        f = tmpfile();
+        CHECK(f != 0);
+        if (!f) return;
+        fflush(stdout); saved_stdout = dup(1); dup2(fileno(f), 1);
+        exec_dry_run = 1;
+        rc = drivers ? runner_kerneldrivers("/tmp/rbuild-kernel-policy",
+                           "/tmp/rbuild-kernel-policy/repo",
+                           "/tmp/rbuild-kernel-policy/repo", "i386", 0) :
+             runner_kernel("/tmp/rbuild-kernel-policy", "/tmp/rbuild-kernel-policy/repo",
+                           "/tmp/rbuild-kernel-policy/repo", "i386", 0);
+        fflush(stdout); dup2(saved_stdout, 1); close(saved_stdout);
+        rewind(f); n = fread(output, 1, sizeof(output)-1, f); output[n] = '\0'; fclose(f);
+        CHECK_INT(rc, 0);
+        CHECK(strstr(output, "RC_ARCHS=i386") != 0);
+        CHECK(strstr(output, "RC_ppc= ") != 0);
+        CHECK(strstr(output, "-arch ppc") == 0);
+        sprintf(path, "/tmp/rbuild-kernel-policy/%s/dpkg/control",
+                drivers ? "drvBPF" : "driverkit-3");
+        f = fopen(path, "a"); CHECK(f != 0);
+        if (f) { fputs("Architecture: ppc\n", f); fclose(f); }
+        f = tmpfile(); CHECK(f != 0);
+        if (!f) return;
+        fflush(stdout); saved_stdout = dup(1); dup2(fileno(f), 1);
+        rc = drivers ? runner_kerneldrivers("/tmp/rbuild-kernel-policy",
+                           "/tmp/rbuild-kernel-policy/repo",
+                           "/tmp/rbuild-kernel-policy/repo", "i386", 0) :
+             runner_kernel("/tmp/rbuild-kernel-policy", "/tmp/rbuild-kernel-policy/repo",
+                           "/tmp/rbuild-kernel-policy/repo", "i386", 0);
+        fflush(stdout); dup2(saved_stdout, 1); close(saved_stdout);
+        rewind(f); n = fread(output, 1, sizeof(output)-1, f); output[n] = '\0'; fclose(f);
+        CHECK(rc != 0);
+        CHECK(strstr(output, "RC_ARCHS=") == 0);
+    }
+    exec_dry_run = 0;
+    system("rm -rf /tmp/rbuild-kernel-policy");
+}
+
 static void run_all(void) {
+    RUN(test_kernel_architecture_controls_build_commands);
     RUN(test_buildpackage_scan_failure_clears_log);
     RUN(test_replay_rejects_required_artifact_replaced_by_symlink);
 }

@@ -1,4 +1,6 @@
 #include "apk.h"
+#include "architecture.h"
+#include "products.h"
 #include "exec.h"
 #include "strutil.h"
 
@@ -956,9 +958,10 @@ int apk_validate_identity(const char *path, const Toolchain *tc,
     return result;
 }
 
-int apk_extract_identity(const char *path, const char *root,
+static int use_artifact(const char *path, const char *root,
                          const Toolchain *tc, const char *pkgname,
-                         const char *pkgver, const char *architecture) {
+                         const char *pkgver, const char *architecture,
+                         unsigned required, int objects, int superset) {
     char private_dir[128];
     char stage[160];
     int artifact_fd = -1;
@@ -967,10 +970,11 @@ int apk_extract_identity(const char *path, const char *root,
     struct stat current;
     strlist explicit_dirs;
     ApkIdentity identity;
+    unsigned declared = 0;
 
     strlist_init(&explicit_dirs);
     memset(&identity, 0, sizeof(identity));
-    if (path == 0 || path[0] == '\0' || root == 0 || root[0] == '\0' ||
+    if (path == 0 || path[0] == '\0' || (!required && !root) || (root && !root[0]) ||
         !valid_tools(tc)) {
         strlist_free(&explicit_dirs);
         return 1;
@@ -982,8 +986,8 @@ int apk_extract_identity(const char *path, const char *root,
     sprintf(stage, "%s/root", private_dir);
     if (make_immutable_copy(path, private_dir, &artifact_fd, &source) != 0 ||
         validate_artifact(artifact_fd, tc, &explicit_dirs,
-                          pkgname != 0 ? &identity : 0) != 0 ||
-        (pkgname != 0 && !identity_matches(&identity, pkgname, pkgver,
+                          (required || pkgname) ? &identity : 0) != 0 ||
+        (!required && pkgname != 0 && !identity_matches(&identity, pkgname, pkgver,
                                            architecture)) ||
         mkdir(stage, 0700) != 0) {
         if (artifact_fd >= 0) close(artifact_fd);
@@ -992,12 +996,24 @@ int apk_extract_identity(const char *path, const char *root,
         identity_free(&identity);
         return 1;
     }
-    result = tar_pipeline(artifact_fd, stage, 0, tc);
+    result = 0;
+    if (required && (!identity.architecture || !identity.architecture[0] ||
+        architecture_parse(identity.architecture, &declared) != 0 ||
+        (pkgname && strcmp(identity.pkgname, pkgname) != 0) ||
+        (pkgver && strcmp(identity.pkgver, pkgver) != 0) ||
+        (!superset && strcmp(identity.architecture, architecture_label(required)) != 0)))
+        result = 1;
+    if (!result) result = tar_pipeline(artifact_fd, stage, 0, tc);
+    if (!result && required) {
+        result = products_validate(stage, declared, objects, 0);
+        if (!result && superset)
+            result = products_validate(stage, required, objects, 1);
+    }
     if (result == 0 &&
         (lstat(path, &current) != 0 || !S_ISREG(current.st_mode) ||
          !same_artifact(&source, &current)))
         result = 1;
-    if (result == 0 && merge_stage(stage, root, &explicit_dirs) != 0) {
+    if (result == 0 && root && merge_stage(stage, root, &explicit_dirs) != 0) {
         fprintf(stderr,
                 "rbuild: APK merge failed; earlier destination entries may "
                 "have been overwritten or deleted\n");
@@ -1008,6 +1024,31 @@ int apk_extract_identity(const char *path, const char *root,
     strlist_free(&explicit_dirs);
     identity_free(&identity);
     return result;
+}
+
+int apk_extract_identity(const char *path, const char *root,
+                         const Toolchain *tc, const char *pkgname,
+                         const char *pkgver, const char *architecture) {
+    return use_artifact(path, root, tc, pkgname, pkgver, architecture, 0, 0, 0);
+}
+
+int apk_use_arch(const char *path, const char *root, const Toolchain *tc,
+                  const char *pkgname, const char *pkgver, unsigned required,
+                  int object_collection, int allow_superset) {
+    Toolchain fallback;
+    if (!architecture_label(required)) return 1;
+    if (exec_dry_run) {
+        printf("validate APK %s for %s%s\n", path,
+               architecture_label(required), root ? " and install" : "");
+        return 0;
+    }
+    if (!tc) {
+        toolchain_init(&fallback);
+        fallback.tar = "tar"; fallback.gzip = "gzip";
+        tc = &fallback;
+    }
+    return use_artifact(path, root, tc, pkgname, pkgver, 0, required,
+                        object_collection, allow_superset);
 }
 
 int apk_extract(const char *path, const char *root, const Toolchain *tc) {

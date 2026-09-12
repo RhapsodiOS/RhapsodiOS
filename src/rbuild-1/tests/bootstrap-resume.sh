@@ -32,7 +32,7 @@ cat > "$src/dpkg/control" <<'EOF'
 Package: foo
 Maintainer: Test <test@example.invalid>
 Version: 1.0
-Architecture: all
+Architecture: universal-apple-rhapsody
 Description: resume fixture
 Build-Depends:
 EOF
@@ -54,12 +54,12 @@ EOF
 cat > "$base/base/.PKGINFO" <<'EOF'
 pkgname = foo
 pkgver = 1.0
-arch = universal-apple-rhapsody
+arch = ppc-apple-rhapsody
 EOF
 cat > "$base/hdr/.PKGINFO" <<'EOF'
 pkgname = foo-hdrs
 pkgver = 1.0
-arch = universal-apple-rhapsody
+arch = ppc-apple-rhapsody
 EOF
 : > "$base/base/usr/bin/foo"
 : > "$base/hdr/System/Headers/foo.h"
@@ -88,6 +88,7 @@ path=/usr/bin:/bin:/usr/sbin:/sbin
 arch_flags=-arch ppc
 cpp_flags=$cpp
 ld_flags=-Wl,-syslibroot,@SYSROOT@
+ld_flags_ready=@SYSROOT@/runtime-not-installed
 ln=/bin/ln
 EOF
 }
@@ -289,7 +290,10 @@ echo gzip >> "$base/wrapper.log"
 exec /usr/bin/gzip "\$@"
 EOF
 chmod +x "$base/wrappers/tar" "$base/wrappers/gzip"
-PATH="$base/wrappers:$PATH" ./rbuild buildall "$base/Manifest" "$repo" "$repo"
+mkdir -p "$base/world-source/dpkg"
+sed 's/universal-apple-rhapsody/ppc-apple-rhapsody/' "$src/dpkg/control" > "$base/world-source/dpkg/control"
+echo "dir $base/world-source all" > "$base/WorldManifest"
+PATH="$base/wrappers:$PATH" ./rbuild buildall "$base/WorldManifest" "$repo" "$repo"
 grep '^tar$' "$base/wrapper.log" > /dev/null
 grep '^gzip$' "$base/wrapper.log" > /dev/null
 
@@ -304,6 +308,10 @@ ln -s "$base/outside.apk" "$repo/foo-1.0.apk"
 test ! -L "$repo/foo-1.0.apk"
 test -f "$repo/foo-1.0.apk"
 test -f "$repo/foo-1.0.apk.invalid"
+mkdir "$base/metadata"
+(cd "$base/metadata" && /usr/bin/gzip -dc "$repo/foo-1.0.apk" | /usr/bin/gnutar -xf -)
+grep '^arch = ppc-apple-rhapsody$' "$base/metadata/.PKGINFO" > /dev/null
+grep '^Architecture: universal-apple-rhapsody$' "$src/dpkg/control" > /dev/null
 grep 'symlink' "$repo/foo-1.0.apk.invalid" > /dev/null
 if grep 'MAKEFILEDIR=' "$state/logs/foo-1.0-all.log" > /dev/null; then
     echo 'bootstrap-resume: MAKEFILEDIR command-line override escaped'
@@ -322,7 +330,7 @@ test ! -e "$base/missing-outside.apk"
 rm "$repo/foo-1.0.apk.invalid"
 
 cp "$state/projects/foo-1.0-all.done" "$base/done.saved"
-sed '$d' "$base/done.saved" > "$state/projects/foo-1.0-all.done"
+sed 's/^companions=.*/companions=invalid/' "$base/done.saved" > "$state/projects/foo-1.0-all.done"
 if ./rbuild bootstrap --sysroot "$root" --toolchain "$profile" \
     --state "$state" "$base/Manifest" "$repo" "$repo" \
     > "$base/corrupt.out" 2>&1; then
@@ -389,19 +397,19 @@ EOF
         /usr/bin/gzip -9 > "$wrong_output"
 }
 
-make_wrong_apk unrelated 1.0 universal-apple-rhapsody "$repo/foo-1.0.apk"
+make_wrong_apk unrelated 1.0 ppc-apple-rhapsody "$repo/foo-1.0.apk"
 ./rbuild bootstrap --sysroot "$root" --toolchain "$profile" \
     --state "$state" "$base/Manifest" "$repo" "$repo"
 test -f "$repo/foo-1.0.apk.invalid"
 
 rm -f "$repo/foo-hdrs-1.0.apk.invalid"
-make_wrong_apk foo-hdrs 9.9 universal-apple-rhapsody "$repo/foo-hdrs-1.0.apk"
+make_wrong_apk foo-hdrs 9.9 ppc-apple-rhapsody "$repo/foo-hdrs-1.0.apk"
 ./rbuild bootstrap --sysroot "$root" --toolchain "$profile" \
     --state "$state" "$base/Manifest" "$repo" "$repo"
 test -f "$repo/foo-hdrs-1.0.apk.invalid"
 
 rm -f "$repo/foo-hdrs-1.0.apk.invalid"
-make_wrong_apk foo 1.0 universal-apple-rhapsody "$repo/foo-hdrs-1.0.apk"
+make_wrong_apk foo 1.0 ppc-apple-rhapsody "$repo/foo-hdrs-1.0.apk"
 ./rbuild bootstrap --sysroot "$root" --toolchain "$profile" \
     --state "$state" "$base/Manifest" "$repo" "$repo"
 test -f "$repo/foo-hdrs-1.0.apk.invalid"
@@ -412,9 +420,9 @@ make_wrong_apk foo-obj 1.0 wrong-architecture "$repo/foo-obj-1.0.apk"
 test -f "$repo/foo-obj-1.0.apk.invalid"
 
 ./rbuild buildpackage --state "$state" --dir --target all \
-    "$src" "$repo" "$repo"
+    "$base/world-source" "$repo" "$repo"
 test -f "$state/logs/foo-1.0-all.log"
-./rbuild buildall --state "$state" "$base/Manifest" "$repo" "$repo"
+./rbuild buildall --state "$state" "$base/WorldManifest" "$repo" "$repo"
 
 headers_base=$base/headers-case
 headers_repo=$headers_base/repo
@@ -429,7 +437,7 @@ cp "$base/hdr/.PKGINFO" "$headers_base/hdr/.PKGINFO"
 cat > "$headers_base/obj/.PKGINFO" <<'EOF'
 pkgname = foo-obj
 pkgver = 1.0
-arch = universal-apple-rhapsody
+arch = ppc-apple-rhapsody
 EOF
 : > "$headers_base/base/usr/bin/stale-base"
 : > "$headers_base/hdr/System/Headers/foo.h"
@@ -454,7 +462,8 @@ test -f "$headers_root/System/Headers/foo.h"
 test ! -f "$headers_repo/foo-1.0.apk.invalid"
 test "`cat "$headers_repo/foo-1.0.apk"`" = broken
 
-./rbuild buildall "$headers_base/Manifest" "$headers_repo" "$headers_repo"
+echo "dir $base/world-source headers" > "$headers_base/WorldManifest"
+./rbuild buildall "$headers_base/WorldManifest" "$headers_repo" "$headers_repo"
 test "`cat "$headers_repo/foo-1.0.apk"`" = broken
 test ! -f "$headers_repo/foo-1.0.apk.invalid"
 
@@ -464,13 +473,113 @@ cp "$repo/foo-1.0.apk" "$world_base/repo/foo-1.0.apk"
 cp "$repo/foo-hdrs-1.0.apk" "$world_base/repo/foo-hdrs-1.0.apk"
 cp "$repo/foo-obj-1.0.apk" "$world_base/repo/foo-obj-1.0.apk"
 printf broken > "$world_base/repo/foo-1.0.apk"
-echo "dir $src all" > "$world_base/Manifest"
+echo "dir $base/world-source all" > "$world_base/Manifest"
 if ./rbuild buildall "$world_base/Manifest" "$world_base/repo" \
     "$world_base/repo" > "$world_base/build.out" 2>&1; then
     echo 'bootstrap-resume: corrupt world artifact unexpectedly succeeded'
     exit 1
 fi
 test -f "$world_base/repo/foo-1.0.apk.invalid"
+
+# Existing completion records must attest the current architecture policy.
+# Exercise both target paths with valid cached artifacts: a stale state must
+# force a rebuild, then its replacement must permit an unchanged replay.
+check_policy_migration() {
+    policy_target=$1
+    policy_manifest=$2
+    policy_repo=$3
+    policy_root=$4
+    policy_state=$5
+    policy_record=$policy_state/projects/foo-1.0-$policy_target.done
+    policy_saved=$base/policy-$policy_target.saved
+    cp "$policy_record" "$policy_saved"
+    grep '^format=3$' "$policy_saved" > /dev/null
+    grep '^architecture_policy=1$' "$policy_saved" > /dev/null
+    grep '^effective_architecture=ppc-apple-rhapsody$' "$policy_saved" > /dev/null
+    for policy_case in format2 legacy no-policy no-architecture no-markers wrong-policy wrong-architecture stale-hash; do
+        case "$policy_case" in
+        format2)
+            sed '/^architecture_policy=/d; /^effective_architecture=/d; s/^format=3$/format=2/; s/^entry_fingerprint=.*/entry_fingerprint=00000000/' "$policy_saved" > "$policy_record"
+            ;;
+        legacy)
+            sed '/^format=/d; /^companions=/d; /^architecture_policy=/d; /^effective_architecture=/d; s/^entry_fingerprint=.*/entry_fingerprint=00000000/' "$policy_saved" > "$policy_record"
+            ;;
+        no-policy)
+            sed '/^architecture_policy=/d' "$policy_saved" > "$policy_record"
+            ;;
+        no-architecture)
+            sed '/^effective_architecture=/d' "$policy_saved" > "$policy_record"
+            ;;
+        no-markers)
+            sed '/^architecture_policy=/d; /^effective_architecture=/d' "$policy_saved" > "$policy_record"
+            ;;
+        wrong-policy)
+            sed 's/^architecture_policy=.*/architecture_policy=0/' "$policy_saved" > "$policy_record"
+            ;;
+        wrong-architecture)
+            sed 's/^effective_architecture=.*/effective_architecture=i386-apple-rhapsody/' "$policy_saved" > "$policy_record"
+            ;;
+        stale-hash)
+            sed 's/^architecture_policy=.*/architecture_policy=0/; s/^entry_fingerprint=.*/entry_fingerprint=00000000/' "$policy_saved" > "$policy_record"
+            ;;
+        esac
+        ./rbuild bootstrap --sysroot "$policy_root" --toolchain "$profile"             --state "$policy_state" "$policy_manifest" "$policy_repo" "$policy_repo"             > "$base/policy-rebuild.out" 2>&1
+        grep 'must build foo-1.0.apk' "$base/policy-rebuild.out" > /dev/null
+        grep '^format=3$' "$policy_record" > /dev/null
+        grep '^architecture_policy=1$' "$policy_record" > /dev/null
+        grep '^effective_architecture=ppc-apple-rhapsody$' "$policy_record" > /dev/null
+        ./rbuild bootstrap --sysroot "$policy_root" --toolchain "$profile"             --state "$policy_state" "$policy_manifest" "$policy_repo" "$policy_repo"             > "$base/policy-replay.out" 2>&1
+        if grep 'must build' "$base/policy-replay.out" > /dev/null; then
+            echo "bootstrap-resume: unchanged $policy_target state rebuilt"
+            exit 1
+        fi
+    done
+
+    # Named optional markers may appear in either order.
+    sed '/^architecture_policy=/d; /^effective_architecture=/d' "$policy_saved" > "$policy_record"
+    echo effective_architecture=ppc-apple-rhapsody >> "$policy_record"
+    echo architecture_policy=1 >> "$policy_record"
+    ./rbuild bootstrap --sysroot "$policy_root" --toolchain "$profile"         --state "$policy_state" "$policy_manifest" "$policy_repo" "$policy_repo"         > "$base/policy-reordered.out" 2>&1
+    if grep 'must build' "$base/policy-reordered.out" > /dev/null; then
+        echo 'bootstrap-resume: reordered policy markers rebuilt'
+        exit 1
+    fi
+
+    # Staleness does not excuse corrupt mandatory data or a changed toolchain.
+    for policy_error in entry-hash tool-hash bad-source bad-companions duplicate-marker; do
+        case "$policy_error" in
+        entry-hash)
+            sed 's/^entry_fingerprint=.*/entry_fingerprint=00000000/' "$policy_saved" > "$policy_record"
+            policy_diagnostic='toolchain state mismatch; use -Fresh'
+            ;;
+        tool-hash)
+            sed 's/^toolchain_fingerprint=.*/toolchain_fingerprint=00000000/; s/^architecture_policy=.*/architecture_policy=0/' "$policy_saved" > "$policy_record"
+            policy_diagnostic='toolchain state mismatch; use -Fresh'
+            ;;
+        bad-source)
+            sed 's/^source=.*/source=incorrect/; s/^architecture_policy=.*/architecture_policy=0/' "$policy_saved" > "$policy_record"
+            policy_diagnostic='corrupt state record'
+            ;;
+        bad-companions)
+            sed 's/^companions=.*/companions=incorrect/; /^architecture_policy=/d' "$policy_saved" > "$policy_record"
+            policy_diagnostic='corrupt state record'
+            ;;
+        duplicate-marker)
+            cat "$policy_saved" > "$policy_record"
+            echo architecture_policy=1 >> "$policy_record"
+            policy_diagnostic='corrupt state record'
+            ;;
+        esac
+        if ./rbuild bootstrap --sysroot "$policy_root" --toolchain "$profile"             --state "$policy_state" "$policy_manifest" "$policy_repo" "$policy_repo"             > "$base/policy-error.out" 2>&1; then
+            echo "bootstrap-resume: invalid $policy_error state succeeded"
+            exit 1
+        fi
+        grep "$policy_diagnostic" "$base/policy-error.out" > /dev/null
+    done
+    cp "$policy_saved" "$policy_record"
+}
+check_policy_migration all "$base/Manifest" "$repo" "$root" "$state"
+check_policy_migration headers "$headers_base/Manifest" "$headers_repo" "$headers_root" "$headers_state"
 
 write_profile '-nostdinc -DCHANGED -I@SYSROOT@/System/Headers'
 if ./rbuild bootstrap --sysroot "$root" --toolchain "$profile" \

@@ -32,6 +32,18 @@ say_fail()
     fail=1
 }
 
+# Real data-only APKs exercise architecture-aware cache inspection.
+make_fixture_apk()
+{
+    fixture_name=$1
+    fixture_version=$2
+    fixture_output=$3
+    mkdir -p "$tmp/apk-content"
+    printf 'pkgname = %s\npkgver = %s\narch = universal-apple-rhapsody\n' \
+        "$fixture_name" "$fixture_version" >"$tmp/apk-content/.PKGINFO"
+    (cd "$tmp/apk-content" && gnutar --posix -cf - .) | gzip -9 >"$fixture_output"
+}
+
 if test ! -x "$rbuild_dir/rbuild"; then
     echo "bootstrap-closure: rbuild is not built" >&2
     exit 1
@@ -108,7 +120,10 @@ while read source target; do
     else
         artifact=$scan_artifact
     fi
-    : >"$tmp/populated/$artifact"
+    fixture_base=`echo "$artifact" | sed 's/\.apk$//'`
+    if test "$target" = headers; then fixture_package=$package-hdrs; else fixture_package=$package; fi
+    fixture_version=`echo "$fixture_base" | sed "s/^$fixture_package-//"`
+    make_fixture_apk "$fixture_package" "$fixture_version" "$tmp/populated/$artifact"
     echo "$source $target $artifact" >>"$tmp/artifacts"
 done <"$tmp/entries"
 
@@ -151,8 +166,8 @@ printf 'Package: sample-header\nVersion: 1\n' >"$tmp/header-src/dpkg/control"
 printf 'Package: sample-base\nVersion: 1\n' >"$tmp/base-src/dpkg/control"
 printf 'dir %s headers\ndir %s\n' "$tmp/header-src" "$tmp/base-src" \
     >"$tmp/synthetic.manifest"
-: >"$tmp/synthetic-repo/sample-header-hdrs-1.apk"
-: >"$tmp/synthetic-repo/sample-base-1.apk"
+make_fixture_apk sample-header-hdrs 1 "$tmp/synthetic-repo/sample-header-hdrs-1.apk"
+make_fixture_apk sample-base 1 "$tmp/synthetic-repo/sample-base-1.apk"
 if ! "$rbuild_dir/rbuild" missing "$tmp/synthetic.manifest" \
         "$tmp/synthetic-repo" >"$tmp/synthetic.scan" \
         2>"$tmp/synthetic.err"; then
@@ -162,6 +177,24 @@ elif test -s "$tmp/synthetic.scan"; then
     cat "$tmp/synthetic.scan" >&2
     say_fail "synthetic target-correct artifacts are reported missing"
 fi
+# Inspection reports invalid cache without changing it or the source.
+printf broken >"$tmp/synthetic-repo/sample-base-1.apk"
+if ! "$rbuild_dir/rbuild" missing "$tmp/synthetic.manifest" "$tmp/synthetic-repo" >"$tmp/invalid.scan" 2>"$tmp/invalid.err"; then
+    say_fail "readonly incompatible-cache inspection failed"
+fi
+if ! grep 'must build sample-base-1.apk' "$tmp/invalid.scan" >/dev/null ||
+    test "`cat "$tmp/synthetic-repo/sample-base-1.apk"`" != broken ||
+    test -e "$tmp/synthetic-repo/sample-base-1.apk.invalid"; then
+    say_fail "missing changed or accepted an incompatible artifact"
+fi
+make_fixture_apk sample-base 1 "$tmp/synthetic-repo/sample-base-1.apk"
+mkdir -p "$tmp/bad-source/dpkg"
+printf 'Package: bad\nVersion: 1\nArchitecture: m68k\n' >"$tmp/bad-source/dpkg/control"
+printf 'dir %s all\n' "$tmp/bad-source" >"$tmp/bad.manifest"
+if "$rbuild_dir/rbuild" missing "$tmp/bad.manifest" "$tmp/synthetic-repo" >"$tmp/bad.scan" 2>"$tmp/bad.err"; then
+    say_fail "missing returned success for an invalid source architecture"
+fi
+
 rm -f "$tmp/synthetic-repo/sample-header-hdrs-1.apk"
 if ! "$rbuild_dir/rbuild" missing "$tmp/synthetic.manifest" \
         "$tmp/synthetic-repo" >"$tmp/synthetic-one.scan" \

@@ -29,6 +29,7 @@ typedef struct {
     const char *linkname;
     const char *data;
     int flags;
+    size_t binary_size;
 } TarEntry;
 
 void apk_test_set_quarantine_hook(void (*hook)(void));
@@ -102,7 +103,7 @@ static int write_tar(const char *path, const TarEntry *entries,
     for (i = 0; i < count; i++) {
         char header[512];
         const char *data = entries[i].data ? entries[i].data : "";
-        size_t data_size = strlen(data);
+        size_t data_size = entries[i].binary_size ? entries[i].binary_size : strlen(data);
         unsigned long stored_size = (unsigned long)data_size;
         unsigned long checksum = 0;
         size_t j;
@@ -1205,7 +1206,59 @@ TEST(test_quarantine_symlink_preserves_target) {
     CHECK_INT(exec_runv("/bin/rm", "-rf", scratch, (char *)0), 0);
 }
 
+static void arch_word(unsigned char *p, unsigned long v) {
+    int i; for(i=0;i<4;i++) p[3-i]=(unsigned char)(v>>(i*8));
+}
+TEST(test_architecture_use) {
+    char scratch[160], apk[192], root[192], marker[224];
+    unsigned char code[104];
+    TarEntry e[2];
+    make_scratch(scratch,sizeof(scratch),"arches");
+    sprintf(apk,"%s/test.apk",scratch); sprintf(root,"%s/root",scratch);
+    sprintf(marker,"%s/tool",root);
+    memset(e,0,sizeof(e)); e[0].name=".PKGINFO"; e[0].type='0';
+    e[0].data="pkgname = code\npkgver = 1\narch = universal-apple-rhapsody\n";
+    e[1].name="tool"; e[1].type='0'; e[1].data=(char*)code; e[1].binary_size=28;
+    memset(code,0,sizeof(code)); arch_word(code,0xfeedfaceUL); arch_word(code+4,7); arch_word(code+12,1);
+    CHECK_INT(make_apk(apk,e,2),0);
+    CHECK(apk_use_arch(apk,root,0,"code","1",3,0,0)!=0);
+    CHECK(apk_use_arch(apk,root,0,"code",0,1,0,1)!=0);
+    CHECK(!file_exists(root)); CHECK(!file_exists(marker));
+    e[0].data="pkgname = code\npkgver = 1\narch = i386\n";
+    CHECK_INT(make_apk(apk,e,2),0);
+    CHECK_INT(apk_use_arch(apk,0,0,"code",0,1,0,1),0);
+    CHECK(apk_use_arch(apk,0,0,"code","1",1,0,0)!=0);
+    CHECK(apk_use_arch(apk,root,0,"code",0,3,0,1)!=0);
+    e[0].data="pkgname = code\npkgver = 1\narch = ppc-apple-rhapsody\n";
+    CHECK_INT(make_apk(apk,e,2),0);
+    CHECK(apk_use_arch(apk,root,0,"code","1",2,0,0)!=0);
+    memset(code,0,sizeof(code)); arch_word(code,0xcafebabeUL); arch_word(code+4,2);
+    arch_word(code+8,7); arch_word(code+16,48); arch_word(code+20,28);
+    arch_word(code+28,18); arch_word(code+36,76); arch_word(code+40,28);
+    arch_word(code+48,0xfeedfaceUL); arch_word(code+52,7); arch_word(code+60,1);
+    arch_word(code+76,0xfeedfaceUL); arch_word(code+80,18); arch_word(code+88,1);
+    e[1].binary_size=104;
+    e[0].data="pkgname = code\npkgver = 1\narch = universal-apple-rhapsody\n";
+    CHECK_INT(make_apk(apk,e,2),0);
+    CHECK_INT(apk_use_arch(apk,0,0,"code","1",3,0,0),0);
+    CHECK(!file_exists(root));
+    CHECK(apk_use_arch(apk,0,0,"wrong","1",3,0,0)!=0);
+    CHECK(apk_use_arch(apk,0,0,"code","2",3,0,0)!=0);
+    CHECK_INT(apk_use_arch(apk,root,0,"code",0,1,0,1),0);
+    CHECK(file_exists(marker));
+    e[1].binary_size=0; e[1].data="header data";
+    e[0].data="pkgname = code\npkgver = 1\narch = i386\n";
+    CHECK_INT(make_apk(apk,e,2),0);
+    CHECK_INT(apk_use_arch(apk,0,0,"code",0,3,0,1),0);
+    e[0].data="pkgname = code\npkgver = 1\narch = \n";
+    CHECK_INT(make_apk(apk,e,2),0); CHECK(apk_use_arch(apk,0,0,"code",0,3,0,1)!=0);
+    e[0].data="pkgname = code\npkgver = 1\narch = m68k\n";
+    CHECK_INT(make_apk(apk,e,2),0); CHECK(apk_use_arch(apk,0,0,"code",0,3,0,1)!=0);
+    { char command[256]; sprintf(command,"rm -rf %s",scratch); system(command); }
+}
+
 static void run_all(void) {
+    RUN(test_architecture_use);
     RUN(test_validate_extract_and_quarantine);
     RUN(test_configured_tools_are_used_without_tar_z);
     RUN(test_validation_rejects_unsafe_or_malformed_members);

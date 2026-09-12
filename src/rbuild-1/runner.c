@@ -1,4 +1,5 @@
 #include "runner.h"
+#include "architecture.h"
 #include "apk.h"
 #include "builder.h"
 #include "exec.h"
@@ -221,7 +222,8 @@ static int fingerprint_file(const char *path, unsigned long *out) {
 }
 
 static unsigned long entry_fingerprint(const ManifestEntry *entry,
-                                       const char *target) {
+                                       const char *target,
+                                       const char *architecture) {
     unsigned long hash = 2166136261UL;
     static const char separator = '\0';
     hash = fnv_bytes(hash, entry->type, strlen(entry->type));
@@ -229,6 +231,10 @@ static unsigned long entry_fingerprint(const ManifestEntry *entry,
     hash = fnv_bytes(hash, entry->source, strlen(entry->source));
     hash = fnv_bytes(hash, &separator, 1);
     hash = fnv_bytes(hash, target, strlen(target));
+    hash = fnv_bytes(hash, &separator, 1);
+    hash = fnv_bytes(hash, RB_ARCH_POLICY_VERSION, strlen(RB_ARCH_POLICY_VERSION));
+    hash = fnv_bytes(hash, &separator, 1);
+    hash = fnv_bytes(hash, architecture, strlen(architecture));
     return hash;
 }
 
@@ -262,20 +268,10 @@ static int artifact_present(const char *path) {
 static int validate_or_quarantine(const char *path, const Toolchain *tc,
                                   const char *pkgname, const char *pkgver,
                                   const char *architecture, int *exists) {
-    struct stat st;
-    *exists = 0;
-    if (lstat(path, &st) != 0) return errno == ENOENT ? 0 : 1;
-    if (S_ISREG(st.st_mode) &&
-        apk_validate_identity(path, tc, pkgname, pkgver, architecture,
-                              exec_dry_run) == 0) {
-        *exists = 1;
-        return 0;
-    }
-    fprintf(stderr, "rbuild: invalid APK %s; quarantining\n", path);
-    if (exec_dry_run) { *exists = 0; return 0; }
-    if (apk_quarantine(path) != 0) return 1;
-    *exists = 0;
-    return 0;
+    unsigned required;
+    if (architecture_parse(architecture, &required) != 0) return 1;
+    return builder_cache_status(path, tc, pkgname, pkgver, required,
+                                 str_has_suffix(pkgname, "-obj"), exists);
 }
 
 static const Toolchain *validation_toolchain(const RunnerOptions *opt) {
@@ -307,7 +303,7 @@ static int parse_hex(const char *text, unsigned long *value) {
 
 typedef struct {
     int exists;
-    int legacy;
+    int legacy; /* Existing record lacks current architecture policy. */
     int header;
     int object;
 } StateInfo;
@@ -315,7 +311,8 @@ typedef struct {
 static int check_state(const char *path, const RunnerOptions *opt,
                        unsigned long tool_hash, unsigned long entry_hash,
                        const ManifestEntry *entry, const char *target,
-                       const char *package_path, StateInfo *info) {
+                       const char *package_path, const char *architecture,
+                       StateInfo *info) {
     FILE *f;
     char line[4096];
     char *expected_profile;
@@ -324,8 +321,9 @@ static int check_state(const char *path, const RunnerOptions *opt,
     char *expected_package;
     unsigned long stored_tool;
     unsigned long stored_entry;
-    int line_no = 0;
-    int version_two = 0;
+    int line_no = 0, field = 0, format = 1;
+    int saw_policy = 0, saw_architecture = 0;
+    int policy_current = 0, architecture_current = 0;
     struct stat state_stat;
     memset(info, 0, sizeof(*info));
     if (lstat(path, &state_stat) == 0 && !S_ISREG(state_stat.st_mode)) {
@@ -345,13 +343,31 @@ static int check_state(const char *path, const RunnerOptions *opt,
     expected_package = str_cats("package=", package_path, "\n", (char *)0);
     while (fgets(line, sizeof(line), f) != 0) {
         line_no++;
-        if (strchr(line, '\n') == 0 || line_no > 8) goto corrupt;
-        if (line_no == 1 && strcmp(line, "format=2\n") == 0) {
-            version_two = 1;
+        if (strchr(line, '\n') == 0 || line_no > 10) goto corrupt;
+        if (line_no == 1 && str_has_prefix(line, "format=")) {
+            if (strcmp(line, "format=2\n") == 0) format = 2;
+            else if (strcmp(line, "format=3\n") == 0) format = 3;
+            else goto corrupt;
             continue;
         }
-        {
-            int field = line_no - (version_two ? 1 : 0);
+        /* Markers are named, so either may be absent without shifting the
+         * mandatory fields. Missing/old marker values mean stale policy. */
+        if (format == 3 && str_has_prefix(line, "architecture_policy=")) {
+            if (saw_policy) goto corrupt;
+            saw_policy = 1;
+            policy_current = strcmp(line, "architecture_policy="
+                                     RB_ARCH_POLICY_VERSION "\n") == 0;
+            continue;
+        }
+        if (format == 3 && str_has_prefix(line, "effective_architecture=")) {
+            if (saw_architecture) goto corrupt;
+            saw_architecture = 1;
+            line[strlen(line) - 1] = '\0';
+            architecture_current = strcmp(line + 23, architecture) == 0;
+            continue;
+        }
+        field++;
+        if (field > (format == 1 ? 6 : 7)) goto corrupt;
         if (field == 1 && strcmp(line, expected_profile) != 0) goto mismatch;
         if (field == 2) {
             if (strncmp(line, "toolchain_fingerprint=", 22) != 0) goto corrupt;
@@ -363,7 +379,6 @@ static int check_state(const char *path, const RunnerOptions *opt,
             if (strncmp(line, "entry_fingerprint=", 18) != 0) goto corrupt;
             line[strlen(line) - 1] = '\0';
             if (parse_hex(line + 18, &stored_entry) != 0) goto corrupt;
-            if (stored_entry != entry_hash) goto mismatch;
         }
         if (field == 4 && strcmp(line, expected_source) != 0) goto corrupt;
         if (field == 5 && strcmp(line, expected_target) != 0) goto corrupt;
@@ -379,11 +394,13 @@ static int check_state(const char *path, const RunnerOptions *opt,
                 info->header = 1; info->object = 1;
             } else goto corrupt;
         }
-        }
     }
-    if (ferror(f) || (version_two ? line_no != 8 : line_no != 6)) goto corrupt;
+    if (ferror(f) || field != (format == 1 ? 6 : 7)) goto corrupt;
+    info->legacy = format != 3 || !policy_current || !architecture_current;
+    /* Old records have an older entry hash. Classify staleness first, but
+     * retain the existing mismatch failure for current policy records. */
+    if (!info->legacy && stored_entry != entry_hash) goto mismatch;
     info->exists = 1;
-    info->legacy = !version_two;
     fclose(f);
     free(expected_package); free(expected_target); free(expected_source);
     free(expected_profile);
@@ -405,8 +422,8 @@ corrupt:
 static int write_state(const char *path, const RunnerOptions *opt,
                        unsigned long tool_hash, unsigned long entry_hash,
                        const ManifestEntry *entry, const char *target,
-                       const char *package_path, int have_header,
-                       int have_object) {
+                       const char *package_path, const char *architecture,
+                       int have_header, int have_object) {
     char temporary[4096];
     FILE *f = 0;
     int fd = -1;
@@ -424,7 +441,7 @@ static int write_state(const char *path, const RunnerOptions *opt,
     if (fd < 0) return 1;
     f = fdopen(fd, "w");
     if (f == 0) { close(fd); unlink(temporary); return 1; }
-    if (fprintf(f, "format=2\n") < 0 ||
+    if (fprintf(f, "format=3\n") < 0 ||
         fprintf(f, "profile=%s\n", opt->toolchain->profile) < 0 ||
         fprintf(f, "toolchain_fingerprint=%08lx\n", tool_hash) < 0 ||
         fprintf(f, "entry_fingerprint=%08lx\n", entry_hash) < 0 ||
@@ -434,6 +451,8 @@ static int write_state(const char *path, const RunnerOptions *opt,
         fprintf(f, "companions=%s\n",
                 have_header ? (have_object ? "hdr,obj" : "hdr") :
                               (have_object ? "obj" : "none")) < 0 ||
+        fprintf(f, "architecture_policy=%s\n", RB_ARCH_POLICY_VERSION) < 0 ||
+        fprintf(f, "effective_architecture=%s\n", architecture) < 0 ||
         fflush(f) != 0) rc = 1;
     if (rc == 0 && fsync(fd) != 0) rc = 1;
     if (fclose(f) != 0) rc = 1;
@@ -450,10 +469,12 @@ static int replay(const char *path, const RunnerOptions *opt,
                 path);
         return 1;
     }
-    if (apk_validate_identity(path, opt->toolchain, pkgname, pkgver,
-                              architecture, 0) != 0) return 1;
-    return apk_extract_identity(path, opt->sysroot, opt->toolchain, pkgname,
-                                pkgver, architecture);
+    {
+        unsigned required;
+        if (architecture_parse(architecture, &required) != 0) return 1;
+        return apk_use_arch(path, opt->sysroot, opt->toolchain, pkgname,
+                             pkgver, required, str_has_suffix(pkgname, "-obj"), 0);
+    }
 }
 
 static int run_entry(const ManifestEntry *entry, const char *seeddir,
@@ -497,6 +518,17 @@ static int run_entry(const ManifestEntry *entry, const char *seeddir,
         fprintf(stderr, "rbuild: skipping \"%s\": scan failed\n", entry->source);
         goto done;
     }
+    build_options_init(&build_opt);
+    build_opt.clean = !opt->bootstrap;
+    build_opt.bootstrap = opt->bootstrap;
+    build_opt.sysroot = opt->sysroot;
+    build_opt.state_dir = opt->state_dir;
+    build_opt.toolchain = opt->toolchain;
+    build_opt.operation_arch = opt->operation_arch;
+    if (builder_resolve_architecture(&pkg, &build_opt) != 0) {
+        fprintf(stderr, "rbuild: architecture resolution failed for %s\n", entry->source);
+        goto done;
+    }
     version = package_canon_version(&pkg);
     hdr_name = str_cats(pkg.package, "-hdrs", (char *)0);
     obj_name = str_cats(pkg.package, "-obj", (char *)0);
@@ -527,13 +559,13 @@ static int run_entry(const ManifestEntry *entry, const char *seeddir,
         if (exec_set_log(log_path) != 0) goto done;
     }
 
-    entry_hash = entry_fingerprint(entry, target);
+    entry_hash = entry_fingerprint(entry, target, pkg.architecture);
     if (opt->bootstrap && !exec_dry_run &&
         check_state(state_path, opt, tool_hash,
                                      entry_hash, entry, target,
                                      strcmp(target, "headers") == 0 ?
                                      hdr_path : base_path,
-                                     &state_info) != 0) goto done;
+                                     pkg.architecture, &state_info) != 0) goto done;
 
     if (opt->bootstrap) {
         if (headers_only) {
@@ -562,8 +594,9 @@ static int run_entry(const ManifestEntry *entry, const char *seeddir,
             must_build = !base_exists || (hdr_was && !hdr_exists) ||
                          (obj_was && !obj_exists);
         if (all_target && state_info.exists &&
-            (state_info.legacy || (state_info.header && !hdr_exists) ||
+            ((state_info.header && !hdr_exists) ||
              (state_info.object && !obj_exists))) must_build = 1;
+        if (state_info.exists && state_info.legacy) must_build = 1;
         if (base_was && !base_exists) must_build = 1;
     } else {
         if (headers_only) {
@@ -592,12 +625,6 @@ static int run_entry(const ManifestEntry *entry, const char *seeddir,
     strlist_init(&repository);
     strlist_push(&repository, dstdir);
     strlist_push(&repository, seeddir);
-    build_options_init(&build_opt);
-    build_opt.clean = !opt->bootstrap;
-    build_opt.bootstrap = opt->bootstrap;
-    build_opt.sysroot = opt->sysroot;
-    build_opt.state_dir = opt->state_dir;
-    build_opt.toolchain = opt->toolchain;
     build_opt.force = must_build;
     if (must_build) {
         printf("must build %s.apk using %s %s\n", base_canon,
@@ -658,7 +685,7 @@ static int run_entry(const ManifestEntry *entry, const char *seeddir,
                        pkg.architecture) != 0) goto done;
         }
         if (write_state(state_path, opt, tool_hash, entry_hash, entry, target,
-                        headers_only ? hdr_path : base_path,
+                        headers_only ? hdr_path : base_path, pkg.architecture,
                         all_target && hdr_exists,
                         all_target && obj_exists)
             != 0) {
@@ -757,9 +784,10 @@ int runner_manifest(const char *srclist, const char *seeddir,
     return failures;
 }
 
-int runner_buildpackage(const char *type, const char *source,
+static int buildpackage_for_arch(const char *type, const char *source,
                         const char *seeddir, const char *target,
-                        const char *dstdir, const char *state_dir) {
+                        const char *dstdir, const char *state_dir,
+                        unsigned operation_arch) {
     strlist repository;
     BuildOptions opt;
     Package pkg;
@@ -793,6 +821,12 @@ int runner_buildpackage(const char *type, const char *source,
     }
     package_init(&pkg); params_init(&params);
     if (builder_scan(type, source, &pkg, &params) != 0) goto done_scanned;
+    build_options_init(&opt);
+    opt.operation_arch = operation_arch;
+    if (builder_resolve_architecture(&pkg, &opt) != 0) {
+        fprintf(stderr, "rbuild: architecture resolution failed for %s\n", source);
+        goto done_scanned;
+    }
     version = package_canon_version(&pkg);
     if (!safe_component(pkg.package) || !safe_component(version) ||
         !safe_component(pkg.architecture)) {
@@ -810,7 +844,6 @@ int runner_buildpackage(const char *type, const char *source,
     strlist_init(&repository);
     strlist_push(&repository, safe_dstdir);
     strlist_push(&repository, seeddir);
-    build_options_init(&opt);
     opt.state_dir = safe_state;
     opt.clean = 1;
     rc = builder_build(type, source, &repository, target, safe_dstdir, &opt);
@@ -824,15 +857,25 @@ done:
     return rc;
 }
 
+int runner_buildpackage(const char *type, const char *source,
+                        const char *seeddir, const char *target,
+                        const char *dstdir, const char *state_dir) {
+    return buildpackage_for_arch(type, source, seeddir, target, dstdir,
+                                 state_dir, 0);
+}
+
 int runner_kernel(const char *srcdir, const char *seeddir, const char *dstdir,
                   const char *arch, const char *state_dir) {
     strlist packages;
     size_t i;
     int rc = 1;
     char *path;
+    unsigned operation_arch;
 
-    if (!kernel_arch_safe(arch)) {
-        fprintf(stderr, "rbuild: unsafe architecture \"%s\"\n",
+    if (!kernel_arch_safe(arch) ||
+        architecture_parse(arch, &operation_arch) != 0 ||
+        (operation_arch != RB_ARCH_I386 && operation_arch != RB_ARCH_PPC)) {
+        fprintf(stderr, "rbuild: unsupported or unsafe architecture \"%s\"\n",
                 arch ? arch : "");
         return 1;
     }
@@ -840,8 +883,8 @@ int runner_kernel(const char *srcdir, const char *seeddir, const char *dstdir,
     if (kernel_core_packages(arch, &packages) != 0) goto done;
     for (i = 0; i < packages.count; i++) {
         path = path_join(srcdir, packages.items[i]);
-        if (runner_buildpackage("dir", path, seeddir, "all", dstdir,
-                                state_dir) != 0) {
+        if (buildpackage_for_arch("dir", path, seeddir, "all", dstdir,
+                                  state_dir, operation_arch) != 0) {
             fprintf(stderr, "rbuild: kernel failed: %s\n", packages.items[i]);
             free(path);
             goto done;
@@ -869,9 +912,12 @@ int runner_kerneldrivers(const char *srcdir, const char *seeddir,
     int passes = 0;
     char *path;
     char *list_path;
+    unsigned operation_arch;
 
-    if (!kernel_arch_safe(arch)) {
-        fprintf(stderr, "rbuild: unsafe architecture \"%s\"\n",
+    if (!kernel_arch_safe(arch) ||
+        architecture_parse(arch, &operation_arch) != 0 ||
+        (operation_arch != RB_ARCH_I386 && operation_arch != RB_ARCH_PPC)) {
+        fprintf(stderr, "rbuild: unsupported or unsafe architecture \"%s\"\n",
                 arch ? arch : "");
         return 1;
     }
@@ -905,8 +951,8 @@ int runner_kerneldrivers(const char *srcdir, const char *seeddir,
     }
     for (i = 0; i < packages.count; i++) {
         path = path_join(srcdir, packages.items[i]);
-        if (runner_buildpackage("dir", path, seeddir, "all", dstdir,
-                                state_dir) != 0) {
+        if (buildpackage_for_arch("dir", path, seeddir, "all", dstdir,
+                                  state_dir, operation_arch) != 0) {
             fprintf(stderr, "rbuild: FAIL %s\n", packages.items[i]);
             strlist_push(&failed, packages.items[i]);
         } else {

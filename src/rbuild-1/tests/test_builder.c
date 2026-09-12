@@ -1,10 +1,12 @@
 #include "builder.h"
+#include "architecture.h"
 #include "test.h"
 #include "exec.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
 TEST(test_dir2name) {
     char *base = 0, *name = 0, *rev = 0;
@@ -62,7 +64,7 @@ TEST(test_resolve_and_exists) {
     package_init(&p);
     package_set(&p.package, "gnumake");
     e = builder_exists(&p, "any", "/tmp/rbtest_repo");
-    CHECK_STR(e, "/tmp/rbtest_repo/gnumake-3.79.apk");
+    CHECK(e == 0); /* A zero-byte filename is not a reusable APK. */
     free(e);
     package_free(&p);
     system("rm -rf /tmp/rbtest_repo");
@@ -179,6 +181,7 @@ TEST(test_bootstrap_flags_use_target_sysroot) {
     CHECK(!list_has(&f, "LN=/tools/ln"));
     CHECK(list_has(&f, "RC_ARCHS=ppc"));
     CHECK(list_has(&f, "RC_ppc=YES"));
+    CHECK(list_has(&f, "RC_i386="));
     CHECK(list_has(&f, "TARGETS=ppc"));
     CHECK(!list_has_prefix(&f, "CoreOSMakefiles="));
     CHECK(list_has(&f, "MKDIRS=/bin/mkdir -p"));
@@ -198,13 +201,6 @@ TEST(test_bootstrap_flags_use_target_sysroot) {
     CHECK(!list_has_prefix(&f, "BOOTSTRAP_SKIP_DYLD="));
     strlist_free(&f);
 
-    tc.target_arch = "m68k";
-    strlist_init(&f);
-    builder_buildflags(&p, "install", &f, &opt);
-    CHECK(list_has(&f, "RC_ARCHS=m68k"));
-    CHECK(list_has(&f, "RC_m68k=YES"));
-    CHECK(list_has(&f, "TARGETS=m68k"));
-    strlist_free(&f);
     params_free(&p);
 }
 
@@ -221,23 +217,12 @@ TEST(test_buildflags) {
     builder_buildflags(&p, "install", &f, &opt);
     CHECK(list_has(&f, "SRCROOT=/s"));
     CHECK(list_has(&f, "DSTROOT=/d"));
-    /* Host-arch only for both bootstrap and chroot (single-arch guest seed). */
-    CHECK(!list_has(&f, "RC_ARCHS=i386 ppc"));
-    CHECK(list_has(&f, "RC_ARCHS=ppc") || list_has(&f, "RC_ARCHS=i386"));
-    CHECK(list_has(&f,
-          "RC_CFLAGS=-arch ppc  -Dunix -D__unix -D__unix__ "
-          "-DNX_COMPILER_RELEASE_3_0=300 -DNX_COMPILER_RELEASE_3_1=310 "
-          "-DNX_COMPILER_RELEASE_3_2=320 -DNX_COMPILER_RELEASE_3_3=330 "
-          "-DNX_CURRENT_COMPILER_RELEASE=520 -DNS_TARGET=52 "
-          "-DNS_TARGET_MAJOR=5 -DNS_TARGET_MINOR=2 -DNeXT -D__NeXT "
-          "-D__NeXT__ -D_NEXT_SOURCE") ||
-          list_has(&f,
-          "RC_CFLAGS=-arch i386  -Dunix -D__unix -D__unix__ "
-          "-DNX_COMPILER_RELEASE_3_0=300 -DNX_COMPILER_RELEASE_3_1=310 "
-          "-DNX_COMPILER_RELEASE_3_2=320 -DNX_COMPILER_RELEASE_3_3=330 "
-          "-DNX_CURRENT_COMPILER_RELEASE=520 -DNS_TARGET=52 "
-          "-DNS_TARGET_MAJOR=5 -DNS_TARGET_MINOR=2 -DNeXT -D__NeXT "
-          "-D__NeXT__ -D_NEXT_SOURCE"));
+    CHECK(list_has(&f, "RC_ARCHS=i386 ppc"));
+    CHECK(list_has(&f, "RC_i386=YES"));
+    CHECK(list_has(&f, "RC_ppc=YES"));
+    CHECK(!list_has_prefix(&f, "TARGETS="));
+    CHECK(str_has_prefix(list_has_prefix(&f, "RC_CFLAGS="),
+                         "RC_CFLAGS=-arch i386 -arch ppc  -Dunix"));
     strlist_free(&f);
 
     strlist_init(&f);
@@ -249,8 +234,7 @@ TEST(test_buildflags) {
     strlist_init(&f);
     opt.bootstrap = 1;
     builder_buildflags(&p, "install", &f, &opt);
-    CHECK(!list_has(&f, "RC_ARCHS=i386 ppc"));
-    CHECK(list_has(&f, "RC_ARCHS=ppc") || list_has(&f, "RC_ARCHS=i386"));
+    CHECK(list_has(&f, "RC_ARCHS=i386 ppc"));
     CHECK(!list_has_prefix(&f, "LN="));
     strlist_free(&f);
     params_free(&p);
@@ -627,10 +611,10 @@ TEST(test_setupdirs_bootstrap_skips_makeroot) {
     rc_bootstrap = builder_setupdirs(&pkg, &p, "foo", "dir", &repo, &opt);
     CHECK_INT(rc_bootstrap, 0);
 
-    /* non-bootstrap: makeroot runs -> empty repo cannot resolve "cc" -> fail */
+    /* Dry-run reports required dependencies without staging any archives. */
     opt.bootstrap = 0;
     rc_normal = builder_setupdirs(&pkg, &p, "foo", "dir", &repo, &opt);
-    CHECK_INT(rc_normal, 1);
+    CHECK_INT(rc_normal, 0);
 
     exec_dry_run = 0;
     params_free(&p);
@@ -760,7 +744,640 @@ TEST(test_relativize_absolute_symlinks_inside_dstroot) {
     system(command);
 }
 
+
+/* Each fixture is a real source control file consumed through builder_scan. */
+TEST(test_scan_architecture_labels) {
+    static const char *labels[] = { "i386", "ppc", "i386-apple-rhapsody",
+        "ppc-apple-rhapsody", "universal-apple-rhapsody", 0 };
+    char root[128], control[160], command[256];
+    unsigned i;
+    sprintf(root, "/tmp/rb-scan-arch-%ld", (long)getpid());
+    sprintf(control, "%s/dpkg/control", root);
+    sprintf(command, "mkdir -p %s/dpkg", root);
+    CHECK_INT(system(command), 0);
+    for (i = 0; i < sizeof(labels) / sizeof(labels[0]); i++) {
+        Package pkg;
+        Params params;
+        FILE *f = fopen(control, "w");
+        CHECK(f != 0);
+        if (!f) continue;
+        fputs("Package: fixture\nVersion: 1\n", f);
+        if (labels[i]) fprintf(f, "Architecture: %s\n", labels[i]);
+        fclose(f);
+        package_init(&pkg);
+        params_init(&params);
+        CHECK_INT(builder_scan("dir", root, &pkg, &params), 0);
+        CHECK_STR(pkg.architecture, labels[i] ? labels[i] :
+                  "universal-apple-rhapsody");
+        package_free(&pkg);
+        params_free(&params);
+    }
+    CHECK_INT(unlink(control), 0);
+    {
+        Package pkg;
+        Params params;
+        package_init(&pkg);
+        params_init(&params);
+        CHECK_INT(builder_scan("dir", root, &pkg, &params), 0);
+        CHECK_STR(pkg.architecture, "universal-apple-rhapsody");
+        package_free(&pkg);
+        params_free(&params);
+    }
+    sprintf(command, "rm -rf %s", root);
+    CHECK_INT(system(command), 0);
+}
+
+TEST(test_scan_rejects_invalid_architecture) {
+    static const char *labels[] = { "", "arm64", "universal", "i386 ppc" };
+    char root[128], control[160], command[256];
+    unsigned i;
+    sprintf(root, "/tmp/rb-scan-bad-arch-%ld", (long)getpid());
+    sprintf(control, "%s/dpkg/control", root);
+    sprintf(command, "mkdir -p %s/dpkg", root);
+    CHECK_INT(system(command), 0);
+    for (i = 0; i < sizeof(labels) / sizeof(labels[0]); i++) {
+        Package pkg;
+        Params params;
+        FILE *f = fopen(control, "w");
+        CHECK(f != 0);
+        if (!f) continue;
+        /* Also omit Package/Version once: fallback must not hide a bad arch. */
+        if (i != 3) fputs("Package: fixture\nVersion: 1\n", f);
+        fprintf(f, "Architecture: %s\n", labels[i]);
+        fclose(f);
+        package_init(&pkg);
+        params_init(&params);
+        CHECK(builder_scan("dir", root, &pkg, &params) != 0);
+        CHECK_STR(pkg.architecture, labels[i]);
+        CHECK(params.SRCROOT == 0);
+        package_free(&pkg);
+        params_free(&params);
+    }
+    sprintf(command, "rm -rf %s", root);
+    CHECK_INT(system(command), 0);
+}
+
+TEST(test_resolved_thin_flags) {
+    Package pkg;
+    Params params;
+    BuildOptions opt;
+    Toolchain tc;
+    strlist flags;
+    package_init(&pkg);
+    params_init(&params);
+    build_options_init(&opt);
+    package_set(&pkg.architecture, "i386");
+    CHECK_INT(builder_resolve_architecture(&pkg, &opt), 0);
+    CHECK_STR(pkg.architecture, "i386-apple-rhapsody");
+    CHECK_INT(opt.effective_arch, RB_ARCH_I386);
+    CHECK_INT(opt.operation_arch, 0);
+    strlist_init(&flags);
+    builder_buildflags(&params, "install", &flags, &opt);
+    CHECK(list_has(&flags, "RC_ARCHS=i386"));
+    CHECK(list_has(&flags, "RC_i386=YES"));
+    CHECK(list_has(&flags, "RC_ppc="));
+    CHECK(str_has_prefix(list_has_prefix(&flags, "RC_CFLAGS="),
+                         "RC_CFLAGS=-arch i386  -Dunix"));
+    CHECK(!list_has_prefix(&flags, "TARGETS="));
+    strlist_free(&flags);
+    package_set(&pkg.architecture, "ppc");
+    CHECK_INT(builder_resolve_architecture(&pkg, &opt), 0);
+    CHECK_STR(pkg.architecture, "ppc-apple-rhapsody");
+    strlist_init(&flags);
+    builder_buildflags(&params, "install", &flags, &opt);
+    CHECK(list_has(&flags, "RC_ARCHS=ppc"));
+    CHECK(list_has(&flags, "RC_i386="));
+    CHECK(list_has(&flags, "RC_ppc=YES"));
+    CHECK(str_has_prefix(list_has_prefix(&flags, "RC_CFLAGS="),
+                         "RC_CFLAGS=-arch ppc  -Dunix"));
+    strlist_free(&flags);
+    opt.operation_arch = RB_ARCH_I386;
+    CHECK(builder_resolve_architecture(&pkg, &opt) != 0);
+    toolchain_fixture(&tc);
+    opt.bootstrap = 1;
+    opt.toolchain = &tc;
+    CHECK(builder_resolve_architecture(&pkg, &opt) != 0);
+    opt.operation_arch = 0;
+    tc.target_arch = "universal-apple-rhapsody";
+    CHECK(builder_resolve_architecture(&pkg, &opt) != 0);
+    tc.target_arch = 0;
+    CHECK(builder_resolve_architecture(&pkg, &opt) != 0);
+    package_free(&pkg);
+    params_free(&params);
+}
+
+TEST(test_build_rejects_unsupported_bootstrap_architecture) {
+    BuildOptions opt;
+    Toolchain tc;
+    strlist repo;
+    FILE *f;
+    CHECK_INT(system("mkdir -p /tmp/rbuild-policy-source/dpkg /tmp/rbuild-policy-output"), 0);
+    f = fopen("/tmp/rbuild-policy-source/dpkg/control", "w");
+    CHECK(f != 0);
+    if (!f) return;
+    fputs("Package: policy\nVersion: 1.0\nDescription: policy\n", f);
+    fclose(f);
+    build_options_init(&opt);
+    toolchain_fixture(&tc);
+    tc.target_arch = "m68k";
+    opt.bootstrap = 1;
+    opt.toolchain = &tc;
+    strlist_init(&repo);
+    exec_dry_run = 1;
+    CHECK(builder_build("dir", "/tmp/rbuild-policy-source", &repo,
+                        "all", "/tmp/rbuild-policy-output", &opt) != 0);
+    tc.target_arch = "ppc";
+    CHECK_INT(builder_build("dir", "/tmp/rbuild-policy-source", &repo,
+                            "objs", "/tmp/rbuild-policy-output", &opt), 0);
+    CHECK_INT(opt.operation_arch, 0);
+    CHECK_INT(opt.effective_arch, 0);
+    exec_dry_run = 0;
+    strlist_free(&repo);
+    system("rm -rf /tmp/rbuild-policy-source /tmp/rbuild-policy-output");
+}
+
+TEST(test_packaging_rejects_wrong_products) {
+    Package pkg;
+    Params params;
+    BuildOptions opt;
+    Toolchain tc;
+    unsigned char code[28];
+    FILE *f;
+    int i;
+    static const char *targets[] = { "binary", "headers", "objects", "local", 0 };
+    system("rm -rf /tmp/rb-package-products && mkdir -p /tmp/rb-package-products/root /tmp/rb-package-products/apks");
+    memset(code,0,sizeof(code));
+    code[0]=0xfe; code[1]=0xed; code[2]=0xfa; code[3]=0xce;
+    code[7]=7; code[15]=1;
+    f=fopen("/tmp/rb-package-products/root/tool","wb");
+    CHECK(f!=0);
+    if (!f) return;
+    CHECK_INT(fwrite(code,1,sizeof(code),f),sizeof(code)); fclose(f);
+    package_init(&pkg); params_init(&params); build_options_init(&opt);
+    toolchain_fixture(&tc);
+    tc.archive_create="/usr/bin/false"; tc.gzip="/usr/bin/false";
+    opt.toolchain=&tc;
+    package_set(&pkg.package,"products");
+    package_set(&pkg.version,"1");
+    package_set(&pkg.architecture,"universal-apple-rhapsody");
+    params.DSTROOT=xstrdup("/tmp/rb-package-products/root");
+    params.HDRROOT=xstrdup(params.DSTROOT);
+    params.LIBCOBJROOT=xstrdup(params.DSTROOT);
+    params.PACKAGEDIR=xstrdup("/tmp/rb-package-products/apks");
+    for(i=0;targets[i];i++) {
+        unlink("/tmp/rb-package-products/root/.PKGINFO");
+        CHECK_INT(builder_buildpackage(&pkg,&params,targets[i],&opt),1);
+        CHECK(access("/tmp/rb-package-products/root/.PKGINFO",F_OK)!=0);
+    }
+    package_set(&pkg.architecture,"ppc");
+    CHECK_INT(builder_buildpackage(&pkg,&params,"local",&opt),1);
+    package_set(&pkg.architecture,"i386");
+    CHECK_INT(builder_buildpackage(&pkg,&params,"local",&opt),0);
+    package_set(&pkg.architecture,"universal-apple-rhapsody");
+    opt.operation_arch=1;
+    CHECK_INT(builder_buildpackage(&pkg,&params,"local",&opt),0);
+    CHECK_STR(pkg.architecture,"universal-apple-rhapsody");
+    CHECK_INT(opt.effective_arch,0);
+    opt.operation_arch=0;
+    exec_dry_run=1;
+    CHECK_INT(builder_buildpackage(&pkg,&params,"local",&opt),0);
+    CHECK(access("/tmp/rb-package-products/root/.PKGINFO",F_OK)!=0);
+    for(i=0;targets[i];i++)
+        CHECK_INT(builder_buildpackage(&pkg,&params,targets[i],&opt),0);
+    exec_dry_run=0;
+    CHECK_INT(system("mkdir -p /tmp/rb-package-products/source/dpkg && "
+                     "mv /tmp/rb-package-products/root/tool "
+                     "/tmp/rb-package-products/source/dpkg/postinst"), 0);
+    params.SRCDIR = xstrdup("/tmp/rb-package-products/source");
+    CHECK_INT(builder_buildpackage(&pkg, &params, "binary", &opt), 1);
+    CHECK(access("/tmp/rb-package-products/root/.PKGINFO", F_OK) != 0);
+    CHECK(access("/tmp/rb-package-products/root/postinst", F_OK) == 0);
+    unlink("/tmp/rb-package-products/root/.PKGINFO");
+    unlink("/tmp/rb-package-products/root/postinst");
+    rmdir("/tmp/rb-package-products/root");
+    CHECK_INT(builder_buildpackage(&pkg,&params,"objects",&opt),0);
+    CHECK_INT(builder_buildpackage(&pkg,&params,"headers",&opt),0);
+    CHECK_INT(builder_buildpackage(&pkg,&params,"local",&opt),1);
+    f = fopen("/tmp/rb-package-products/source/dpkg/postinst", "w");
+    CHECK(f != 0);
+    if (f) { fputs("#!/bin/sh\nexit 0\n", f); fclose(f); }
+    CHECK_INT(builder_buildpackage(&pkg, &params, "binary", &opt), 1);
+    CHECK(access(params.DSTROOT, F_OK) != 0);
+    params_free(&params); package_free(&pkg);
+    system("rm -rf /tmp/rb-package-products");
+}
+
+TEST(test_build_validates_all_roots_before_packaging) {
+    BuildOptions opt;
+    Toolchain tc;
+    strlist repo;
+    FILE *f;
+    unsigned char code[28];
+    static const char *envs[] = {"BUILDROOT","SRCROOT","OBJROOT","SYMROOT",
+        "DSTROOT","HDRROOT","LIBCOBJROOT","PACKAGEROOT",0};
+    static const char *dirs[] = {"build","src","obj","sym","dst","hdr","objs","pkg"};
+    int i;
+    char path[256];
+    system("rm -rf /tmp/rb-products-build && mkdir -p /tmp/rb-products-build/source/dpkg /tmp/rb-products-build/apks");
+    f=fopen("/tmp/rb-products-build/source/dpkg/control","w");
+    CHECK(f!=0); if (!f) return;
+    fputs("Package: products\nVersion: 1\nDescription: products\n",f); fclose(f);
+    memset(code,0,sizeof(code));
+    code[0]=0xfe; code[1]=0xed; code[2]=0xfa; code[3]=0xce;
+    code[7]=18; code[15]=1;
+    f=fopen("/tmp/rb-products-build/wrong","wb");
+    CHECK(f!=0); if (!f) return;
+    fwrite(code,1,sizeof(code),f); fclose(f);
+    code[7]=7;
+    f=fopen("/tmp/rb-products-build/correct","wb"); CHECK(f!=0);
+    if(f){fwrite(code,1,sizeof(code),f);fclose(f);}
+    code[7]=18;
+    f=fopen("/tmp/rb-products-build/make","w");
+    CHECK(f!=0); if (!f) return;
+    fputs("#!/bin/sh\nprevious=\nfor arg do\n"
+          "test \"$previous\" != -C || dir=$arg\n"
+          "case $arg in probe.o|probe) cp /tmp/rb-products-build/correct \"$dir/$arg\"; exit $?;; esac\n"
+          "previous=$arg\ndone\n"
+          "cp /tmp/rb-products-build/wrong /tmp/rb-products-build/dst/tool\n"
+          "echo header > /tmp/rb-products-build/hdr/header.h\n",f);
+    fclose(f); chmod("/tmp/rb-products-build/make",0755);
+    for(i=0;envs[i];i++) {
+        sprintf(path,"/tmp/rb-products-build/%s",dirs[i]);
+        setenv(envs[i],path,1);
+    }
+    build_options_init(&opt); memset(&tc,0,sizeof(tc));
+    tc.target_arch="i386"; tc.make="/tmp/rb-products-build/make";
+    tc.rsync="/usr/bin/true";
+    tc.archive_create="/usr/bin/false"; tc.gzip="/usr/bin/false";
+    opt.bootstrap=1; opt.toolchain=&tc;
+    strlist_init(&repo);
+    CHECK_INT(builder_build("dir","/tmp/rb-products-build/source",&repo,
+                            "all","/tmp/rb-products-build/apks",&opt),1);
+    CHECK(access("/tmp/rb-products-build/hdr/.PKGINFO",F_OK)!=0);
+    CHECK(access("/tmp/rb-products-build/dst/.PKGINFO",F_OK)!=0);
+    /* The installed tool now matches, but an ancillary postinst is wrong. */
+    CHECK_INT(system("cp /tmp/rb-products-build/wrong "
+                     "/tmp/rb-products-build/source/dpkg/postinst"), 0);
+    code[7] = 7;
+    f = fopen("/tmp/rb-products-build/wrong", "wb");
+    CHECK(f != 0);
+    if (f) { fwrite(code, 1, sizeof(code), f); fclose(f); }
+    CHECK_INT(builder_build("dir", "/tmp/rb-products-build/source", &repo,
+                            "all", "/tmp/rb-products-build/apks", &opt), 1);
+    CHECK(access("/tmp/rb-products-build/hdr/.PKGINFO", F_OK) != 0);
+    CHECK(access("/tmp/rb-products-build/dst/.PKGINFO", F_OK) != 0);
+    CHECK(access("/tmp/rb-products-build/dst/postinst", F_OK) == 0);
+    for(i=0;envs[i];i++) unsetenv(envs[i]);
+    strlist_free(&repo);
+    system("rm -rf /tmp/rb-products-build");
+}
+
+TEST(test_packaging_dry_run_keeps_command_trace) {
+    Package pkg;
+    Params params;
+    FILE *capture;
+    int saved, result;
+    size_t n;
+    char trace[4096];
+    package_init(&pkg);
+    params_init(&params);
+    package_set(&pkg.package, "dry-products");
+    package_set(&pkg.version, "1");
+    package_set(&pkg.architecture, "universal-apple-rhapsody");
+    params.DSTROOT = xstrdup("/tmp/rb-products-dry-missing");
+    params.PACKAGEDIR = xstrdup("/tmp/rb-products-dry-apks");
+    system("rm -rf /tmp/rb-products-dry-missing /tmp/rb-products-dry-apks");
+    capture = tmpfile();
+    CHECK(capture != 0);
+    if (!capture) { params_free(&params); package_free(&pkg); return; }
+    fflush(stdout);
+    saved = dup(STDOUT_FILENO);
+    CHECK(saved >= 0);
+    if (saved < 0) {
+        fclose(capture); params_free(&params); package_free(&pkg); return;
+    }
+    CHECK(dup2(fileno(capture), STDOUT_FILENO) >= 0);
+    exec_dry_run = 1;
+    result = builder_buildpackage(&pkg, &params, "binary", 0);
+    exec_dry_run = 0;
+    fflush(stdout);
+    dup2(saved, STDOUT_FILENO);
+    close(saved);
+    rewind(capture);
+    n = fread(trace, 1, sizeof(trace)-1, capture);
+    trace[n] = 0;
+    fclose(capture);
+    CHECK_INT(result, 0);
+    CHECK(strstr(trace, "validate products in /tmp/rb-products-dry-missing") != 0);
+    CHECK(strstr(trace, "mkdir -p /tmp/rb-products-dry-missing") != 0);
+    CHECK(strstr(trace, "tar -C /tmp/rb-products-dry-missing -cf - .") != 0);
+    CHECK(strstr(trace, "gzip -9") != 0);
+    CHECK(access(params.DSTROOT, F_OK) != 0);
+    CHECK(access(params.PACKAGEDIR, F_OK) != 0);
+    params_free(&params);
+    package_free(&pkg);
+}
+
+TEST(test_cache_checks_payload_architecture) {
+    Package pkg;
+    FILE *f;
+    char *found;
+    unsigned char code[28];
+    CHECK_INT(system("rm -rf /tmp/rb-cache-policy && mkdir -p /tmp/rb-cache-policy/content /tmp/rb-cache-policy/repo"),0);
+    f=fopen("/tmp/rb-cache-policy/content/.PKGINFO","w"); CHECK(f!=0);
+    if (!f) return;
+    fputs("pkgname = cache\npkgver = 1\narch = universal-apple-rhapsody\n",f); fclose(f);
+    memset(code,0,sizeof(code)); code[0]=0xfe; code[1]=0xed; code[2]=0xfa; code[3]=0xce; code[7]=7; code[15]=1;
+    f=fopen("/tmp/rb-cache-policy/content/tool","wb"); CHECK(f!=0);
+    if (!f) return;
+    fwrite(code,1,sizeof(code),f); fclose(f);
+    CHECK_INT(system("(cd /tmp/rb-cache-policy/content && /usr/bin/gnutar --posix -cf - .) | /usr/bin/gzip -9 > /tmp/rb-cache-policy/repo/cache-1.apk"),0);
+    package_init(&pkg); package_set(&pkg.package,"cache"); package_set(&pkg.version,"1");
+    package_set(&pkg.architecture,"universal-apple-rhapsody");
+    found=builder_exists(&pkg,"any","/tmp/rb-cache-policy/repo");
+    CHECK(found==0); free(found);
+    CHECK(access("/tmp/rb-cache-policy/repo/cache-1.apk",F_OK)==0);
+    CHECK(access("/tmp/rb-cache-policy/repo/cache-1.apk.invalid",F_OK)!=0);
+    unlink("/tmp/rb-cache-policy/content/tool");
+    CHECK_INT(system("(cd /tmp/rb-cache-policy/content && /usr/bin/gnutar --posix -cf - .) | /usr/bin/gzip -9 > /tmp/rb-cache-policy/repo/cache-2.apk"),0);
+    found=builder_exists(&pkg,"exact","/tmp/rb-cache-policy/repo");
+    CHECK(found==0);free(found);
+    found=builder_exists(&pkg,"any","/tmp/rb-cache-policy/repo");
+    CHECK(found!=0);free(found);
+    package_free(&pkg); system("rm -rf /tmp/rb-cache-policy");
+}
+
+static void cache_fixture(const char *repo, const char *name, const char *version,
+                          const char *arch, int cpu) {
+    char command[1024], path[256];
+    FILE *f;
+    unsigned char code[28];
+    CHECK_INT(system("mkdir -p /tmp/rb-cache-fixture"),0);
+    f=fopen("/tmp/rb-cache-fixture/.PKGINFO","w"); CHECK(f!=0); if(!f)return;
+    fprintf(f,"pkgname = %s\npkgver = %s\narch = %s\n",name,version,arch); fclose(f);
+    f=fopen("/tmp/rb-cache-fixture/tool","wb"); CHECK(f!=0); if(!f)return;
+    if(cpu) {
+        memset(code,0,sizeof(code)); code[0]=0xfe;code[1]=0xed;code[2]=0xfa;code[3]=0xce;code[7]=cpu;code[15]=1;
+        fwrite(code,1,sizeof(code),f);
+    } else fputs("data fixture",f);
+    fclose(f);
+    sprintf(path,"%s/%s-%s.apk",repo,name,version);
+    sprintf(command,"(cd /tmp/rb-cache-fixture && /usr/bin/gnutar --posix -cf - .) | /usr/bin/gzip -9 > %s",path);
+    CHECK_INT(system(command),0);
+}
+TEST(test_dependency_fallback_and_reinstallation) {
+    Package pkg;
+    strlist repo;
+    FILE *f;
+    char data[32];
+    CHECK_INT(system("rm -rf /tmp/rb-dep-policy && mkdir -p /tmp/rb-dep-policy/first /tmp/rb-dep-policy/second /tmp/rb-dep-policy/root/var/adm"),0);
+    cache_fixture("/tmp/rb-dep-policy/first","dep","1","ppc",18);
+    cache_fixture("/tmp/rb-dep-policy/first","dep","2","i386",7);
+    package_init(&pkg); package_set(&pkg.architecture,"i386");
+    pkg.has_build_depends=1; strlist_push(&pkg.build_depends,"dep");
+    strlist_init(&repo); strlist_push(&repo,"/tmp/rb-dep-policy/first"); strlist_push(&repo,"/tmp/rb-dep-policy/second");
+    f=fopen("/tmp/rb-dep-policy/root/var/adm/package-list","w");CHECK(f!=0);
+    if(f){fputs("dep-2\n",f);fclose(f);}
+    CHECK_INT(builder_makeroot(&pkg,"/tmp/rb-dep-policy/root",&repo),0);
+    CHECK(access("/tmp/rb-dep-policy/root/tool",F_OK)==0);
+    unlink("/tmp/rb-dep-policy/first/dep-2.apk");
+    cache_fixture("/tmp/rb-dep-policy/second","dep","3","i386",7);
+    CHECK_INT(builder_makeroot(&pkg,"/tmp/rb-dep-policy/root",&repo),0);
+    package_set(&pkg.architecture,"universal-apple-rhapsody");
+    f=fopen("/tmp/rb-dep-policy/root/tool","w"); CHECK(f!=0);
+    if(f){fputs("untouched",f);fclose(f);}
+    CHECK(builder_makeroot(&pkg,"/tmp/rb-dep-policy/root",&repo)!=0);
+    f=fopen("/tmp/rb-dep-policy/root/tool","r"); CHECK(f!=0);
+    if(f){data[0]=0;fgets(data,sizeof(data),f);fclose(f);CHECK_STR(data,"untouched");}
+    cache_fixture("/tmp/rb-dep-policy/second","dep","3","ppc",0);
+    CHECK_INT(builder_makeroot(&pkg,"/tmp/rb-dep-policy/root",&repo),0);
+    package_free(&pkg);strlist_free(&repo);
+    system("rm -rf /tmp/rb-dep-policy /tmp/rb-cache-fixture");
+}
+TEST(test_direct_publication_quarantines_collision) {
+    Package pkg;
+    Params params;
+    BuildOptions opt;
+    CHECK_INT(system("rm -rf /tmp/rb-publish-policy && mkdir -p /tmp/rb-publish-policy/root /tmp/rb-publish-policy/repo"),0);
+    cache_fixture("/tmp/rb-publish-policy/repo","collision","1","universal-apple-rhapsody",7);
+    package_init(&pkg);params_init(&params);build_options_init(&opt);
+    package_set(&pkg.package,"collision");package_set(&pkg.version,"1");
+    package_set(&pkg.architecture,"universal-apple-rhapsody");
+    params.DSTROOT=xstrdup("/tmp/rb-publish-policy/root");
+    params.PACKAGEDIR=xstrdup("/tmp/rb-publish-policy/repo");
+    opt.force=1;
+    CHECK_INT(builder_buildpackage(&pkg,&params,"binary",&opt),0);
+    CHECK(access("/tmp/rb-publish-policy/repo/collision-1.apk.invalid",F_OK)==0);
+    unlink("/tmp/rb-publish-policy/repo/collision-1.apk");
+    CHECK_INT(symlink("/tmp/rb-publish-policy/outside","/tmp/rb-publish-policy/repo/collision-1.apk"),0);
+    CHECK_INT(builder_buildpackage(&pkg,&params,"binary",&opt),0);
+    CHECK(access("/tmp/rb-publish-policy/outside",F_OK)!=0);
+    params_free(&params);package_free(&pkg);
+    system("rm -rf /tmp/rb-publish-policy /tmp/rb-cache-fixture");
+}
+
+TEST(test_base_cache_does_not_hide_incompatible_companions) {
+    BuildOptions opt;
+    Toolchain tc;
+    strlist repo;
+    FILE *f;
+    static const char *envs[]={"BUILDROOT","SRCROOT","OBJROOT","SYMROOT","DSTROOT","HDRROOT","LIBCOBJROOT","PACKAGEROOT",0};
+    static const char *dirs[]={"build","src","obj","sym","dst","hdr","objs","pkg"};
+    char path[256];int i;
+    CHECK_INT(system("rm -rf /tmp/rb-companions && mkdir -p /tmp/rb-companions/source/dpkg /tmp/rb-companions/repo"),0);
+    f=fopen("/tmp/rb-companions/source/dpkg/control","w");CHECK(f!=0);if(!f)return;
+    fputs("Package: companions\nVersion: 1\nBuild-Depends:\n",f);fclose(f);
+    cache_fixture("/tmp/rb-companions/repo","companions","1","universal-apple-rhapsody",0);
+    cache_fixture("/tmp/rb-companions/repo","companions-obj","1","universal-apple-rhapsody",7);
+    for(i=0;envs[i];i++){sprintf(path,"/tmp/rb-companions/%s",dirs[i]);setenv(envs[i],path,1);}
+    build_options_init(&opt);toolchain_init(&tc);tc.make="/usr/bin/false";tc.rsync="/usr/bin/true";opt.toolchain=&tc;
+    tc.tar="tar";tc.gzip="gzip";
+    strlist_init(&repo);
+    CHECK(builder_build("dir","/tmp/rb-companions/source",&repo,"all","/tmp/rb-companions/repo",&opt)!=0);
+    CHECK(access("/tmp/rb-companions/repo/companions-obj-1.apk.invalid",F_OK)==0);
+    /* Absent companions are optional and do not invalidate a valid base. */
+    CHECK_INT(builder_build("dir","/tmp/rb-companions/source",&repo,"all","/tmp/rb-companions/repo",&opt),0);
+    cache_fixture("/tmp/rb-companions/repo","companions-hdrs","1","universal-apple-rhapsody",7);
+    CHECK(builder_build("dir","/tmp/rb-companions/source",&repo,"headers","/tmp/rb-companions/repo",&opt)!=0);
+    CHECK(access("/tmp/rb-companions/repo/companions-hdrs-1.apk.invalid",F_OK)==0);
+    cache_fixture("/tmp/rb-companions/repo","companions","1","universal-apple-rhapsody",7);
+    f=fopen("/tmp/rb-companions/repo/companions-1.apk.invalid","w");CHECK(f!=0);
+    if(f){fputs("preserve old quarantine",f);fclose(f);}
+    CHECK(builder_build("dir","/tmp/rb-companions/source",&repo,"binary","/tmp/rb-companions/repo",&opt)!=0);
+    CHECK(access("/tmp/rb-companions/repo/companions-1.apk",F_OK)==0);
+    for(i=0;envs[i];i++)unsetenv(envs[i]);
+    strlist_free(&repo);system("rm -rf /tmp/rb-companions /tmp/rb-cache-fixture");
+}
+
+/* The compiler shim emits on-disk code, never a host executable. */
+static void probe_fixture(void) {
+    FILE *f;
+    unsigned char code[28];
+    int i;
+    CHECK_INT(system("rm -rf /tmp/rb-probe-tools && mkdir -p /tmp/rb-probe-tools/bin /tmp/rb-probe-tools/obj"),0);
+    for (i=0;i<2;i++) {
+        memset(code,0,sizeof(code)); code[0]=0xfe;code[1]=0xed;code[2]=0xfa;code[3]=0xce;
+        code[7]=i ? 18 : 7; code[15]=1;
+        f=fopen(i ? "/tmp/rb-probe-tools/ppc" : "/tmp/rb-probe-tools/i386","wb");
+        CHECK(f!=0); if(f){fwrite(code,1,sizeof(code),f);fclose(f);}
+    }
+    f=fopen("/tmp/rb-probe-tools/bin/cc","w"); CHECK(f!=0); if(!f)return;
+    fputs("#!/bin/sh\narch=none\nout=\nstage=link\n"
+          "echo \"$*\" >> /tmp/rb-probe-tools/args\n"
+          "while test $# -gt 0; do\ncase \"$1\" in\n"
+          "-arch) shift; arch=$1;;\n-o) shift; out=$1;;\n-c) stage=compile;;\nesac\nshift\ndone\n"
+          "echo $arch-$stage >> /tmp/rb-probe-tools/calls\n"
+          "case $RB_PROBE_MODE in\nextra) touch probe.d;;\nnoop) exit 0;;\nwrong) arch=ppc;;\n"
+          "wronglink) test $stage != link || arch=ppc;;\n"
+          "second) test $arch != ppc || exit 1;;\nlink) test $stage != link || exit 1;;\nesac\n"
+          "cp /tmp/rb-probe-tools/$arch \"$out\"\n",f);
+    fclose(f); chmod("/tmp/rb-probe-tools/bin/cc",0755);
+    f=fopen("/tmp/rb-probe-tools/bin/chroot","w"); CHECK(f!=0); if(!f)return;
+    fputs("#!/bin/sh\necho chroot >> /tmp/rb-probe-tools/chroots\nshift\nexec \"$@\"\n",f);
+    fclose(f); chmod("/tmp/rb-probe-tools/bin/chroot",0755);
+}
+static int probe_text_has(const char *file, const char *needle) {
+    FILE *f=fopen(file,"r");
+    char data[8192]; size_t n;
+    if(!f)return 0;
+    n=fread(data,1,sizeof(data)-1,f);data[n]=0;fclose(f);
+    return strstr(data,needle)!=0;
+}
+TEST(test_toolchain_probes) {
+    Params p;
+    BuildOptions opt;
+    Toolchain tc;
+    FILE *f;
+    static const char *modes[]={"wrong","wronglink","second","link","noop",0};
+    int i;
+    probe_fixture(); params_init(&p); build_options_init(&opt); toolchain_init(&tc);
+    p.OBJROOT="/tmp/rb-probe-tools/obj";p.BUILDROOT="/unused-probe-root";
+    p.SYMROOT=p.OBJROOT;
+    tc.path="/tmp/rb-probe-tools/bin:/usr/bin:/bin:/usr/sbin:/sbin";
+    opt.toolchain=&tc;opt.effective_arch=3;
+    setenv("RB_PROBE_MODE","ok",1);
+    CHECK_INT(builder_probe_toolchain(&p,&p,&opt),0);
+    CHECK(probe_text_has("/tmp/rb-probe-tools/calls","i386-compile"));
+    CHECK(probe_text_has("/tmp/rb-probe-tools/calls","ppc-link"));
+    CHECK(probe_text_has("/tmp/rb-probe-tools/chroots","chroot"));
+    for(i=0;modes[i];i++) {
+        setenv("RB_PROBE_MODE",modes[i],1);
+        CHECK_INT(builder_probe_toolchain(&p,&p,&opt),1);
+    }
+    setenv("RB_PROBE_MODE","extra",1);
+    CHECK_INT(builder_probe_toolchain(&p,&p,&opt),0);
+    opt.bootstrap=1;opt.effective_arch=1;
+    tc.target_cc="/tmp/rb-probe-tools/bin/cc";tc.arch_flags="-arch i386";
+    tc.cpp_flags="-I/probe-include";tc.ld_flags="-L/probe-library";
+    tc.ld_flags_ready="@SYSROOT@/ready";opt.sysroot="/tmp/rb-probe-tools";
+    setenv("RB_PROBE_MODE","link",1);
+    unlink("/tmp/rb-probe-tools/calls");
+    CHECK_INT(builder_probe_toolchain(&p,&p,&opt),0);
+    CHECK(!probe_text_has("/tmp/rb-probe-tools/calls","link"));
+    f=fopen("/tmp/rb-probe-tools/ready","w");CHECK(f!=0);if(f)fclose(f);
+    CHECK_INT(builder_probe_toolchain(&p,&p,&opt),1);
+    setenv("RB_PROBE_MODE","ok",1);
+    CHECK_INT(builder_probe_toolchain(&p,&p,&opt),0);
+    CHECK(probe_text_has("/tmp/rb-probe-tools/args","-I/probe-include"));
+    CHECK(probe_text_has("/tmp/rb-probe-tools/args","-L/probe-library"));
+    tc.ld_flags_ready=0;tc.arch_flags="-arch ppc";
+    CHECK_INT(builder_probe_toolchain(&p,&p,&opt),1);
+    tc.arch_flags="-arch i386";
+    CHECK_INT(builder_probe_toolchain(&p,&p,&opt),0);
+    unlink("/tmp/rb-probe-tools/calls");
+    p.OBJROOT="/tmp/rb-probe-tools/missing";
+    exec_dry_run=1;
+    CHECK_INT(builder_probe_toolchain(&p,&p,&opt),0);
+    exec_dry_run=0;
+    CHECK(access(p.OBJROOT,F_OK)!=0);
+    CHECK(access("/tmp/rb-probe-tools/calls",F_OK)!=0);
+    unsetenv("RB_PROBE_MODE");
+    system("rm -rf /tmp/rb-probe-tools");
+}
+
+TEST(test_probe_failure_precedes_project_make) {
+    BuildOptions opt;
+    Toolchain tc;
+    strlist repo;
+    FILE *f;
+    static const char *envs[]={"BUILDROOT","SRCROOT","OBJROOT","SYMROOT","DSTROOT","HDRROOT","LIBCOBJROOT","PACKAGEROOT",0};
+    static const char *dirs[]={"build","src","obj","sym","dst","hdr","objs","pkg"};
+    char path[256]; int i;
+    probe_fixture();
+    CHECK_INT(system("mkdir -p /tmp/rb-probe-tools/source/dpkg /tmp/rb-probe-tools/repo"),0);
+    f=fopen("/tmp/rb-probe-tools/source/dpkg/control","w"); CHECK(f!=0);if(!f)return;
+    fputs("Package: probes\nVersion: 1\nBuild-Depends:\n",f);fclose(f);
+    f=fopen("/tmp/rb-probe-tools/make","w");CHECK(f!=0);if(!f)return;
+    fputs("#!/bin/sh\nfor arg do\ncase $arg in probe.o|probe) exec /bin/make \"$@\";; esac\ndone\n"
+          "echo project >> /tmp/rb-probe-tools/project\nexit 1\n",f);
+    fclose(f);chmod("/tmp/rb-probe-tools/make",0755);
+    for(i=0;envs[i];i++){sprintf(path,"/tmp/rb-probe-tools/%s",dirs[i]);setenv(envs[i],path,1);}
+    build_options_init(&opt);toolchain_init(&tc);strlist_init(&repo);
+    tc.target_arch="i386";tc.arch_flags="-arch i386";
+    tc.target_cc="/tmp/rb-probe-tools/bin/cc";tc.make="/tmp/rb-probe-tools/make";
+    tc.rsync="/usr/bin/true";opt.bootstrap=1;opt.toolchain=&tc;
+    setenv("RB_PROBE_MODE","link",1);
+    CHECK_INT(builder_build("dir","/tmp/rb-probe-tools/source",&repo,"all","/tmp/rb-probe-tools/repo",&opt),1);
+    CHECK(access("/tmp/rb-probe-tools/project",F_OK)!=0);
+    CHECK(access("/tmp/rb-probe-tools/hdr/.PKGINFO",F_OK)!=0);
+    CHECK(access("/tmp/rb-probe-tools/dst/.PKGINFO",F_OK)!=0);
+    unlink("/tmp/rb-probe-tools/project");unlink("/tmp/rb-probe-tools/calls");
+    CHECK_INT(builder_build("dir","/tmp/rb-probe-tools/source",&repo,"headers","/tmp/rb-probe-tools/repo",&opt),1);
+    CHECK(access("/tmp/rb-probe-tools/project",F_OK)==0);
+    CHECK(access("/tmp/rb-probe-tools/calls",F_OK)!=0);
+    for(i=0;envs[i];i++)unsetenv(envs[i]);
+    unsetenv("RB_PROBE_MODE");strlist_free(&repo);
+    system("rm -rf /tmp/rb-probe-tools");
+}
+
+TEST(test_fallback_preserves_explicit_architecture) {
+    static const char *controls[]={"Package: fallback\nArchitecture: i386\n",
+        "Version: 1\nArchitecture: ppc\n"};
+    static const char *labels[]={"i386","ppc"};
+    Package pkg;Params params;FILE *f;int i;
+    CHECK_INT(system("mkdir -p /tmp/rb-thin-fallback-1/dpkg"),0);
+    for(i=0;i<2;i++) {
+        f=fopen("/tmp/rb-thin-fallback-1/dpkg/control","w");CHECK(f!=0);if(!f)return;
+        fputs(controls[i],f);fclose(f);package_init(&pkg);params_init(&params);
+        CHECK_INT(builder_scan("dir","/tmp/rb-thin-fallback-1",&pkg,&params),0);
+        CHECK_STR(pkg.architecture,labels[i]);
+        package_free(&pkg);params_free(&params);
+    }
+    system("rm -rf /tmp/rb-thin-fallback-1");
+}
+TEST(test_direct_packaging_missing_architecture_defaults_universal) {
+    Package pkg;Params params;FILE *f;char data[1024];size_t n;
+    CHECK_INT(system("rm -rf /tmp/rb-default-package && mkdir -p /tmp/rb-default-package/root /tmp/rb-default-package/repo"),0);
+    package_init(&pkg);params_init(&params);
+    package_set(&pkg.package,"default");package_set(&pkg.version,"1");
+    params.DSTROOT=xstrdup("/tmp/rb-default-package/root");params.PACKAGEDIR=xstrdup("/tmp/rb-default-package/repo");
+    CHECK_INT(builder_buildpackage(&pkg,&params,"binary",0),0);
+    CHECK(pkg.architecture==0);
+    f=fopen("/tmp/rb-default-package/root/.PKGINFO","r");CHECK(f!=0);
+    if(f){n=fread(data,1,sizeof(data)-1,f);data[n]=0;fclose(f);
+        CHECK(strstr(data,"arch = universal-apple-rhapsody\n")!=0);}
+    package_set(&pkg.architecture,"");
+    CHECK(builder_buildpackage(&pkg,&params,"binary",0)!=0);
+    CHECK_STR(pkg.architecture,"");
+    package_free(&pkg);params_free(&params);system("rm -rf /tmp/rb-default-package");
+}
+
 static void run_all(void) {
+    RUN(test_fallback_preserves_explicit_architecture);
+    RUN(test_direct_packaging_missing_architecture_defaults_universal);
+    RUN(test_probe_failure_precedes_project_make);
+    RUN(test_toolchain_probes);
+    RUN(test_base_cache_does_not_hide_incompatible_companions);
+    RUN(test_dependency_fallback_and_reinstallation);
+    RUN(test_direct_publication_quarantines_collision);
+    RUN(test_cache_checks_payload_architecture);
+    RUN(test_packaging_dry_run_keeps_command_trace);
+    RUN(test_build_validates_all_roots_before_packaging);
+    RUN(test_packaging_rejects_wrong_products);
+    RUN(test_resolved_thin_flags);
+    RUN(test_build_rejects_unsupported_bootstrap_architecture);
+    RUN(test_scan_architecture_labels);
+    RUN(test_scan_rejects_invalid_architecture);
     RUN(test_dir2name);
     RUN(test_pkgname);
     RUN(test_match_pkgfile);

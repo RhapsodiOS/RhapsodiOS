@@ -12,9 +12,17 @@ typedef struct {
     const char *state_dir;
     const Toolchain *toolchain;
     int force;
+    unsigned operation_arch; /* zero for ordinary builds */
+    unsigned effective_arch; /* zero until the source is resolved */
 } BuildOptions;
 
 void build_options_init(BuildOptions *opt);
+/* Missing is successful with *exists == 0; invalid cache is quarantined.
+ * Dry-run reports inspection and leaves every cache unavailable. */
+int builder_cache_status(const char *path, const Toolchain *tc,
+                          const char *name, const char *version,
+                          unsigned required, int objects, int *exists);
+int builder_resolve_architecture(Package *pkg, BuildOptions *opt);
 
 typedef struct {
     char *BUILDROOT;
@@ -60,6 +68,11 @@ int builder_makeroot(const Package *pkg, const char *buildroot,
 int builder_setupdirs(const Package *pkg, const Params *params,
                       const char *srcname, const char *srctype,
                       const strlist *repository, const BuildOptions *opt);
+
+/* Probe resolved slices in private OBJROOT directories using the build make
+ * environment. Bootstrap link readiness follows the toolchain profile. */
+int builder_probe_toolchain(const Params *params, const Params *bparams,
+                            const BuildOptions *opt);
 
 int builder_buildpackage(const Package *spkg, const Params *params,
                          const char *target, const BuildOptions *opt);

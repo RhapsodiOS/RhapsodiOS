@@ -8,6 +8,7 @@ typedef struct {
     const char *state_dir;
     const Toolchain *toolchain;
     const char *toolchain_file;
+    unsigned operation_arch;
 } RunnerOptions;
 
 int runner_manifest(const char *srclist, const char *seeddir,

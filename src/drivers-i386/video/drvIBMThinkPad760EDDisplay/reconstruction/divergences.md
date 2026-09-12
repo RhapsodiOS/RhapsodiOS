@@ -3036,3 +3036,72 @@ unresolved (reloc masking vs rbuild/`-g` codegen) until Task 3; do not close
 them from this table alone. The Version glue extent is 12 here vs 1168 in the
 reference because `vers.o` now sits immediately after `_instance.o` instead of
 a gap before `vidBIOS`.
+
+## Task 3 campaign (guest `10.10.0.241`)
+
+One experiment per rebuild. Misses reverted before the next edit.
+`unlockRegisters` / `lockRegisters` were not touched. Final unstripped
+`_reloc` is 164636 bytes, SHA-256
+`45C7EF9A52153EF1D8A8B776B423A557EC5979A2C2A1779A604520CBD6C9F269`
+(not the reference `47539E03…`). `failed_matched_or_glue` is still 15.
+
+**1. `setDisplayDeviceState:` — reverted.** `((state & 3) << 8) | 0x8000`
+did emit the reference HImode (`and ax,3` / `shl ax,8` / `or ah,0x80`) but
+the extent stayed **76** (ref 80). The missing 4 bytes are still `push ebx`
+/ `mov ebx,[ebp-4]` holding `&reg`; this build keeps `add edx,0x25c`.
+Source restored to `((state & 3) | 0x80) << 8`.
+
+**2. `reportSystemConfiguration` — no source change.** The rebuilt prologue
+(Task 2 reloc, before any Task 3 edit of this method) is `55 89 e5 53`
+(`push ebp` / `mov ebp,esp` / `push ebx`) with **no `sub esp`**. Spill of
+`vendor` / `panelType` / `panelSize` is not confirmed. Did not inline the
+string literals. Extent remains **1116** (ref 1088, +28).
+
+**3. `setPCIConfiguration` — both experiments reverted.** Rebuilt frame
+already matches the reference `sub esp, 0x124`. The −12 is
+`deviceDescription` in `edi` (`89 c7`) versus a stack spill to
+`[ebp-0x124]`. Declaring `IORange range[3]` before `IOPCIConfigSpace
+configSpace` shrank the extent **664 → 640** (file also dropped 8 KiB);
+reverted. Cirrus `rangeCount == 3` success-path shape (logs and call
+targets unchanged; command restore still falls through) grew it
+**664 → 700**, past ref 676; reverted. Extent remains **664**.
+
+**4. `getModeInfo:` — kept.** The dump named the BOOL return, not `bzero`
+size (`push 0x40` both sides) or `int10:` arguments (`push 0, 0, edi, edi`
+both sides). Replacing `return A && B` with `if (A && B) return YES;
+return NO` closed the extent **164 → 168**. Rebuilt tail is now `cmp` /
+`jne` / `test` / `je` / `mov eax,1` / `jmp` / `nop` / `xor eax,eax`, the
+reference sequence. Same-size byte DIFF may remain after reloc masking.
+
+**4b. `revertToVGAMode` — no source edit.** `bzero` is already `push 0x40`
+and `int10:` already `iorange:0 ionum:0`. The −4 is delayed stack cleanup:
+rebuild folds `smapi_asm`'s `add esp,4` into a later `add esp,0x28`; the
+reference emits `add esp,4` then `add esp,0x24`. Did not invent a barrier
+or retry holding `&regs` in a callee-saved register. Extent remains **212**
+(ref 216).
+
+**5. Re-measure of `1cb44e28` methods.**
+
+| Function | ref | rebuilt | Δ | note |
+| --- | --- | --- | --- | --- |
+| `name` | 60 | 60 | 0 | ternary already; instruction stream matches aside from immediates |
+| `updateModeTable` | 128 | 128 | 0 | subscript already; remaining DIFF is `cmp displayMemorySize, row` vs swapped operands (`jae` vs `jbe`) |
+| `determineConfiguration:` | 396 | 396 | 0 | CR2A already on the common path; same-size DIFF |
+| `setPendingDisplayMode:` | 544 | 528 | −16 | 0x100D already duplicated; remaining gap is `savedState` in `edi` / `sub esp,0x10` vs stack `[ebp-0x14]` / `sub esp,0x14`, plus early `lea`/`add esp,4` on the first SMAPI. Not rewritten. |
+
+Campaign extents after Task 3 (next-symbol size, stabs ignored):
+
+| Function | ref | rebuilt | Δ |
+| --- | --- | --- | --- |
+| `initFromDeviceDescription:` | 780 | 788 | +8 |
+| `updateModeTable` | 128 | 128 | 0 |
+| `revertToVGAMode` | 216 | 212 | −4 |
+| `getModeInfo:` | 168 | 168 | 0 |
+| `determineConfiguration:` | 396 | 396 | 0 |
+| `setPCIConfiguration` | 676 | 664 | −12 |
+| `setPendingDisplayMode:` | 544 | 528 | −16 |
+| `setDisplayDeviceState:` | 80 | 76 | −4 |
+| `unlockRegisters` | 168 | 152 | −16 |
+| `lockRegisters` | 168 | 152 | −16 |
+| `reportSystemConfiguration` | 1088 | 1116 | +28 |
+| `name` | 60 | 60 | 0 |

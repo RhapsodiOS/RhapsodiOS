@@ -442,7 +442,9 @@ IODisplayInfo ThinkPad760EDModeTable[14] = {
     bzero(buffer, 256);
     [bios int10:&regs outregs:&regs iorange:0 ionum:0 smmport:smapiPort];
 
-    return ((regs.eax & 0xFFFF) == 0x004F) && (buffer[0] & 1);
+    if (((regs.eax & 0xFFFF) == 0x004F) && (buffer[0] & 1))
+	return YES;
+    return NO;
 }
 
 /* Identify the graphics chip and size its memory. The device description

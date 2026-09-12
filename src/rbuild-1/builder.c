@@ -1122,7 +1122,7 @@ int builder_buildpackage(const Package *spkg, const Params *params,
                           strcmp(target, "objects") == 0) != 0) {
         rc = 1; goto done;
     }
-    if (exec_dry_run || strcmp(target, "local") == 0) goto done;
+    if (strcmp(target, "local") == 0) goto done;
     /* Ensure the base package dir exists (Perl mkdir -p DEBIAN for binary,
        BEFORE the emptiness check -- this guarantees "binary" always proceeds
        to packaging, matching Builder.pm:398-404). */

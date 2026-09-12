@@ -999,7 +999,54 @@ TEST(test_build_validates_all_roots_before_packaging) {
     system("rm -rf /tmp/rb-products-build");
 }
 
+TEST(test_packaging_dry_run_keeps_command_trace) {
+    Package pkg;
+    Params params;
+    FILE *capture;
+    int saved, result;
+    size_t n;
+    char trace[4096];
+    package_init(&pkg);
+    params_init(&params);
+    package_set(&pkg.package, "dry-products");
+    package_set(&pkg.version, "1");
+    package_set(&pkg.architecture, "universal-apple-rhapsody");
+    params.DSTROOT = xstrdup("/tmp/rb-products-dry-missing");
+    params.PACKAGEDIR = xstrdup("/tmp/rb-products-dry-apks");
+    system("rm -rf /tmp/rb-products-dry-missing /tmp/rb-products-dry-apks");
+    capture = tmpfile();
+    CHECK(capture != 0);
+    if (!capture) { params_free(&params); package_free(&pkg); return; }
+    fflush(stdout);
+    saved = dup(STDOUT_FILENO);
+    CHECK(saved >= 0);
+    if (saved < 0) {
+        fclose(capture); params_free(&params); package_free(&pkg); return;
+    }
+    CHECK(dup2(fileno(capture), STDOUT_FILENO) >= 0);
+    exec_dry_run = 1;
+    result = builder_buildpackage(&pkg, &params, "binary", 0);
+    exec_dry_run = 0;
+    fflush(stdout);
+    dup2(saved, STDOUT_FILENO);
+    close(saved);
+    rewind(capture);
+    n = fread(trace, 1, sizeof(trace)-1, capture);
+    trace[n] = 0;
+    fclose(capture);
+    CHECK_INT(result, 0);
+    CHECK(strstr(trace, "validate products in /tmp/rb-products-dry-missing") != 0);
+    CHECK(strstr(trace, "mkdir -p /tmp/rb-products-dry-missing") != 0);
+    CHECK(strstr(trace, "tar -C /tmp/rb-products-dry-missing -cf - .") != 0);
+    CHECK(strstr(trace, "gzip -9") != 0);
+    CHECK(access(params.DSTROOT, F_OK) != 0);
+    CHECK(access(params.PACKAGEDIR, F_OK) != 0);
+    params_free(&params);
+    package_free(&pkg);
+}
+
 static void run_all(void) {
+    RUN(test_packaging_dry_run_keeps_command_trace);
     RUN(test_build_validates_all_roots_before_packaging);
     RUN(test_packaging_rejects_wrong_products);
     RUN(test_resolved_thin_flags);

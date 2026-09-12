@@ -1578,7 +1578,7 @@ that remain:
 
 | Function | Ref | Rebuilt | Nature of the difference |
 | --- | --- | --- | --- |
-| `setMode:` | 1020 | 1008 | Identical branch structure and an identical port-I/O sequence of 67 `in`/`out` instructions. gcc strength-reduced the register loops to a walking pointer in the reference where our build uses indexed addressing. |
+| `setMode:` | 1020 | 1008 | Identical branch structure and an identical port-I/O sequence of 67 `in`/`out` instructions. gcc strength-reduced the register loops to a walking pointer in the reference where our build uses indexed addressing. Task 5 exhausted spec §7.2 without a `MATCH`; see the Task 5 result below. The source is still the indexed `for` loops. |
 | `setPendingDisplayMode:` | 140 | 140 | Same size, same branches, same call target. The `memorySize` test is `cmp memorySize, installedVRAM / ja` in the reference and the operand-reversed `cmp installedVRAM, memorySize / jb` here — the same predicate — and one fewer callee-saved register is spilled. |
 | `setPCIConfiguration` | 584 | 612 | The same 19 calls — 15 `_objc_msgSend` and 4 `_IOLog` — but reordered by block placement, not in the same order. The "Incorrect number of address ranges" error block is out of line at the end in the reference and inline here, which moves the `_IOLog` calls from reference positions 4, 11, 14, 16 to 4, 10, 13, 16 and pushes two `_objc_msgSend` calls one slot later (reference 10 and 13 against 11 and 14 here); the reference has 11 branch instructions to our 12. Also `IORange range[3]` is at `ebp-0x18` in the reference against `ebp-0x118` here, i.e. the two locals are assigned to the frame in the opposite order. |
 | `determineConfiguration` | 768 | 768 | **Byte-for-byte identical after Task 4.** See the Task 4 result below: an `unsigned int` local for the `chipType` range tests, an `IOConfigTable *` local for the `"Bus Type"` test, and the `memorySize > installedVRAMBytes` operand order together closed it. Now `assembly-matched`. |
@@ -1850,16 +1850,18 @@ this way is not recoverable. What the reference does fix is that two read-side
 temporaries of these two types were there, that neither was spilled, and that the
 `chipType` ivar itself stayed signed.
 
-### Task 5 — `setMode:` register-loop campaign (exhausted)
+### Task 5 result — `setMode:` register-loop campaign exhausted
 
-`setMode:` stays `control-flow-confirmed`. No ledger transition: none of the
-five candidate shapes produced a `MATCH`. `failed_matched` stayed 0 on every
-rebuild. The in/out order was not rearranged. Source is back to the indexed
-`for` loops that were in HEAD.
+`setMode:` stays `control-flow-confirmed` at address 2276. No ledger
+transition: none of the five §7.2 shapes produced a `MATCH`. Source is the
+indexed `for` loops that were in HEAD. The 67 `in`/`out` operations were not
+reordered. `setPendingDisplayMode:` and `setPCIConfiguration` were not
+edited. `failed_matched` stayed 0 on every successful rebuild; the 17
+previously matched functions plus glue stayed `MATCH`, and
+`determineConfiguration` stayed `MATCH` at 768.
 
-**Experiment 1 — walking pointer, inner-block `for`.** Replaced the four
-indexed loops (`mode->seq[i - 1]`, `mode->crtc[i]`, `mode->attr[i]`,
-`mode->gfx[i]`) with
+**Experiment 1 — walking pointers, inner-block `for`.** Replaced the four
+indexed loops with
 
 ```c
     {
@@ -1869,39 +1871,44 @@ indexed loops (`mode->seq[i - 1]`, `mode->crtc[i]`, `mode->attr[i]`,
     }
 ```
 
-and the matching `crtc`/`attr`/`gfx` blocks. Guest rebuild `make exit=0`.
-`compare_cirrus.py`: `DIFF  -[CirrusLogicGD5434DisplayDriver setMode:] ref 1020 reb 1020`.
-The 12-byte size gap closed (was rebuilt 1008); the masked bytes still differ.
-`failed_matched` 0. Reverted the four loops.
+and the matching `crtc` / `attr` / `gfx` blocks. Guest rebuild `make exit=0`.
+`compare_cirrus.py`: `DIFF  -[CirrusLogicGD5434DisplayDriver setMode:] ref 1020 reb 1008`.
+Size gap unchanged. `failed_matched` 0. Reverted.
 
-**Experiment 2 — walking pointer, inner-block `while (i <= N)`.** Same
-pointer shape as experiment 1, with `i = start; while (i <= N) { ...; i++; }`
-instead of `for`. Guest rebuild `make exit=0`.
+**Experiment 2 — walking pointers, inner-block `while (i <= N)`.** Same
+pointers as experiment 1, with `i = start; while (i <= N) { ...; i++; }`
+instead of `for` (seq 1..4, crtc 0..24, attr 0..20, gfx 0..8). Guest rebuild
+`make exit=0`. Reloc grew 160912 → 161276.
 `compare_cirrus.py`: `DIFF  -[CirrusLogicGD5434DisplayDriver setMode:] ref 1020 reb 1020`.
-Size stayed closed; masked bytes still differ. `failed_matched` 0. Reverted.
+The 12-byte extent gap closed; the masked bytes still differ.
+`failed_matched` 0. Reverted.
 
-**Experiment 3 — indexed `while`, no walking pointer.** Restore
-`mode->seq[i - 1]` / `mode->crtc[i]` / `mode->attr[i]` / `mode->gfx[i]`
-addressing, with `i = start; while (i <= N) { ...; i++; }` instead of
-`for`. Guest rebuild `make exit=0` after touching the `.m` so cc actually
-ran. `compare_cirrus.py`: `DIFF  -[CirrusLogicGD5434DisplayDriver setMode:] ref 1020 reb 1008`.
+**Experiment 3 — indexed `while`, no walking pointer.**
+`i = 1; while (i <= 4) { outw(..., mode->seq[i - 1] ...); i++; }` and the
+analogous indexed `while` for crtc / attr / gfx. Guest rebuild `make exit=0`.
+`compare_cirrus.py`: `DIFF  -[CirrusLogicGD5434DisplayDriver setMode:] ref 1020 reb 1008`.
 Size gap reopened. `failed_matched` 0. Reverted.
 
-**Experiment 4 — one `const unsigned char *p` at function top.** Declare
-`p` next to `value`/`i`; assign `p = mode->seq` (then crtc/attr/gfx)
-immediately before each `for`. Guest rebuild `make exit=0`.
-`compare_cirrus.py`: `DIFF  -[CirrusLogicGD5434DisplayDriver setMode:] ref 1020 reb 1020`.
-Size closed again; masked bytes still differ. `failed_matched` 0. Reverted.
+**Experiment 4 — one `const unsigned char *p` next to `value` / `i`.**
+Assign `p = mode->seq` (then crtc / attr / gfx) immediately before each
+`for`; walking `*p++`. Guest rebuild `make exit=0`. Reloc back to 160912.
+`compare_cirrus.py`: `DIFF  -[CirrusLogicGD5434DisplayDriver setMode:] ref 1020 reb 1008`.
+`failed_matched` 0. Reverted.
 
-**Experiment 5 — pointer as a statement before each `for`, no extra inner
-`{ }`.** Skipped: that is the experiment 4 shape already built (function-scope
-`p`, `p = …;` then `for`, no wrapping block). Wrapping those pairs in a bare
-inner block would be experiment 1, also already built.
+**Experiment 5 — pointer declared immediately before the first loop as a
+statement, no extra inner `{ }`.** `const unsigned char *p = mode->seq;`
+after the video-off `outb`, then `p = mode->crtc` / `attr` / `gfx` before
+the later `for`s. Guest `cc` rejected it: `CirrusLogicGD5434DisplayDriver.m:1197: illegal expression, found \`const\``
+(C89: a declaration after statements, without a new block). `make exit=2`,
+`fail=1`. No reloc to compare. Reverted.
 
-Walking pointers close the 12-byte extent gap; they do not make the masked
-instruction stream match. The remaining residue is not a `for`/`while` or
-inner-block vs function-scope pointer question. Leave `setMode:` at
-`control-flow-confirmed`.
+Only experiment 2 closed the 12-byte extent gap, and even then the masked
+stream stayed `DIFF`. Walking `for` (experiments 1 and 4) compiled to the
+same 1008-byte extent as the indexed `for` baseline. Indexed `while`
+(experiment 3) also stayed 1008. The remaining residue is not a `for` /
+`while` or inner-block vs function-scope pointer question that §7.2 can
+reach. Leave `setMode:` at `control-flow-confirmed`. Do not mark it
+`assembly-matched`.
 
 Two further gaps, neither of them in the driver source:
 

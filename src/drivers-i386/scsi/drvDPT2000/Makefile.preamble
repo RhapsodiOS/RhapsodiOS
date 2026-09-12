@@ -8,9 +8,9 @@ OTHER_LIBS =
 LIBS =
 FRAMEWORKS =
 
-MFILES = EATAController.m EATAControllerThread.m
+MFILES = EATAController.m EATAControllerThread.m EATASCSIBus.m
 
-HFILES = EATAController.h EATAControllerPrivate.h EATAControllerTypes.h
+HFILES = EATAController.h EATAControllerPrivate.h EATAControllerTypes.h EATASCSIBus.h EATASCSIBusPrivate.h
 
 CFILES = EATAControllerRoutines.c
 

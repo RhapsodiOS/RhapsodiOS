@@ -2,8 +2,8 @@
     DRIVERNAME = DPT2000;
     DYNAMIC_CODE_GEN = YES;
     FILESTABLE = {
-        CLASSES = (EATAController.m, EATAControllerThread.m);
-        H_FILES = (EATAController.h, EATAControllerPrivate.h, EATAControllerTypes.h);
+        CLASSES = (EATAController.m, EATAControllerThread.m, EATASCSIBus.m);
+        H_FILES = (EATAController.h, EATAControllerPrivate.h, EATAControllerTypes.h, EATASCSIBus.h, EATASCSIBusPrivate.h);
         C_FILES = (EATAControllerRoutines.c);
         OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble, Load_Commands.sect);
     };

@@ -13,8 +13,8 @@ PROJECTVERSION = 2.7
 PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
-CLASSES = EATAController.m EATAControllerThread.m
-HFILES = EATAController.h EATAControllerPrivate.h EATAControllerTypes.h
+CLASSES = EATAController.m EATAControllerThread.m EATASCSIBus.m
+HFILES = EATAController.h EATAControllerPrivate.h EATAControllerTypes.h EATASCSIBus.h EATASCSIBusPrivate.h
 CFILES = EATAControllerRoutines.c
 
 OTHERSRCS = Makefile.preamble Makefile Makefile.postamble Load_Commands.sect

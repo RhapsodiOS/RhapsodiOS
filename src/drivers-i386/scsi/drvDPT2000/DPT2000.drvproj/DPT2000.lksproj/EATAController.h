@@ -18,8 +18,29 @@
 #import <kernserv/queue.h>
 #import "EATAControllerTypes.h"
 
+struct EATACommandBuf;
 
-@interface EATAController : IODirectDevice
+/*
+ * Protocol adopted by EATAController. EATASCSIBus +requiredProtocols
+ * returns this; the reloc's __OBJC,__protocol names it EATAExported.
+ */
+@protocol EATAExported
+
+- (unsigned)numberOfTargets;
+- (unsigned)maxQueueLength;
+- (unsigned)sumQueueLengths;
+- (unsigned)numQueueSamples;
+- (void)resetStats;
+- (IOReturn)executeCmdBuf:(struct EATACommandBuf *)cmdBuf;
+- (unsigned)scsiBusId:(unsigned)channel;
+- (unsigned)maxTransfer;
+- (void)releaseSCSIBus:(unsigned)channel owner:owner;
+- (BOOL)acquireSCSIBus:(unsigned)channel owner:owner;
+
+@end
+
+
+@interface EATAController : IODirectDevice <EATAExported>
 {
 	/*
 	 * Hardware info. First declared ivar is at +0x128; IODirectDevice

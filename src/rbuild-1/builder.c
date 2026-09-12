@@ -1063,8 +1063,34 @@ static int validate_products(const char *root, unsigned required,
     return products_validate(root, required, objects, 0);
 }
 
-int builder_buildpackage(const Package *spkg, const Params *params,
-                         const char *target, const BuildOptions *opt) {
+/* Ancillary package files are products too: stage before architecture checks. */
+static int stage_ancillary_files(const Params *params) {
+    static const char *names[] =
+        { "conffiles", "preinst", "postinst", "prerm", "postrm", 0 };
+    int i;
+    if (!params->SRCDIR) return 0;
+    for (i = 0; names[i]; i++) {
+        char *extra = str_cats(params->SRCDIR, "/dpkg/", names[i], (char *)0);
+        if (file_exists(extra)) {
+            char *dest = str_cats(params->DSTROOT, "/", names[i], (char *)0);
+            const char *mode = strcmp(names[i], "conffiles") == 0 ? "644" : "755";
+            printf("copying %s\n", names[i]);
+            fflush(stdout);
+            if (exec_check(mkdirp(params->DSTROOT)) ||
+                exec_runv("cp", "-p", extra, dest, (char *)0) != 0 ||
+                exec_runv("chmod", mode, dest, (char *)0) != 0) {
+                free(extra); free(dest); return 1;
+            }
+            free(dest);
+        }
+        free(extra);
+    }
+    return 0;
+}
+
+static int buildpackage(const Package *spkg, const Params *params,
+                        const char *target, const BuildOptions *opt,
+                        int ancillary_staged) {
     Package pkg;
     const char *dstroot;
     char *pname;
@@ -1115,6 +1141,11 @@ int builder_buildpackage(const Package *spkg, const Params *params,
         return 1;
     }
 
+    if (!ancillary_staged && strcmp(target, "binary") == 0 &&
+        stage_ancillary_files(params) != 0) {
+        rc = 1; goto done;
+    }
+
     /* Validate before metadata or archive creation, including direct callers. */
     if (validate_products(dstroot, resolved_opt.effective_arch,
                           strcmp(target, "objects") == 0,
@@ -1158,30 +1189,6 @@ int builder_buildpackage(const Package *spkg, const Params *params,
         free(pkginfo_path);
     }
 
-    /* For binary, copy present maintainer scripts into dstroot. */
-    if (strcmp(target, "binary") == 0 && params->SRCDIR) {
-        static const char *names[] =
-            { "conffiles", "preinst", "postinst", "prerm", "postrm", 0 };
-        int i;
-        for (i = 0; names[i]; i++) {
-            char *extra = str_cats(params->SRCDIR, "/dpkg/", names[i], (char *)0);
-            if (file_exists(extra)) {
-                char *dest = str_cats(dstroot, "/", names[i], (char *)0);
-                printf("copying %s\n", names[i]);
-                fflush(stdout);
-                if (exec_runv("cp", "-p", extra, dest, (char *)0) != 0) {
-                    free(extra); free(dest); rc = 1; goto done;
-                }
-                if (strcmp(names[i], "conffiles") == 0)
-                    exec_runv("chmod", "644", dest, (char *)0);
-                else
-                    exec_runv("chmod", "755", dest, (char *)0);
-                free(dest);
-            }
-            free(extra);
-        }
-    }
-
     if (!exec_dry_run && builder_relativize_symlinks(dstroot) != 0) {
         rc = 1; goto done;
     }
@@ -1198,6 +1205,11 @@ done:
     free(pname);
     package_free(&pkg);
     return rc;
+}
+
+int builder_buildpackage(const Package *spkg, const Params *params,
+                         const char *target, const BuildOptions *opt) {
+    return buildpackage(spkg, params, target, opt, 0);
 }
 
 /* Object harvest: find directories containing a 'dynamic_obj' entry under
@@ -1463,6 +1475,10 @@ int builder_build(const char *srctype, const char *srcname,
         printf("\n");
     }
 
+    if (do_bin && stage_ancillary_files(&params) != 0) {
+        rc = 1; goto done;
+    }
+
     /* Complete all validation after harvest, before writing any package. */
     if ((do_hdr && validate_products(params.HDRROOT, opt->effective_arch, 0, 1)) ||
         (do_bin && (validate_products(params.DSTROOT, opt->effective_arch, 0, 0) ||
@@ -1472,18 +1488,18 @@ int builder_build(const char *srctype, const char *srcname,
         rc = 1; goto done;
     }
     if (do_hdr) {
-        if (builder_buildpackage(&pkg, &params, "headers", opt) != 0) {
+        if (buildpackage(&pkg, &params, "headers", opt, 1) != 0) {
             rc = 1; goto done;
         }
     }
     if (do_bin) {
-        if (builder_buildpackage(&pkg, &params, "binary", opt) != 0) {
+        if (buildpackage(&pkg, &params, "binary", opt, 1) != 0) {
             rc = 1; goto done;
         }
-        if (builder_buildpackage(&pkg, &params, "objects", opt) != 0) {
+        if (buildpackage(&pkg, &params, "objects", opt, 1) != 0) {
             rc = 1; goto done;
         }
-        if (builder_buildpackage(&pkg, &params, "local", opt) != 0) {
+        if (buildpackage(&pkg, &params, "local", opt, 1) != 0) {
             rc = 1; goto done;
         }
     }

@@ -945,7 +945,15 @@ TEST(test_packaging_rejects_wrong_products) {
     for(i=0;targets[i];i++)
         CHECK_INT(builder_buildpackage(&pkg,&params,targets[i],&opt),0);
     exec_dry_run=0;
-    unlink("/tmp/rb-package-products/root/tool");
+    CHECK_INT(system("mkdir -p /tmp/rb-package-products/source/dpkg && "
+                     "mv /tmp/rb-package-products/root/tool "
+                     "/tmp/rb-package-products/source/dpkg/postinst"), 0);
+    params.SRCDIR = xstrdup("/tmp/rb-package-products/source");
+    CHECK_INT(builder_buildpackage(&pkg, &params, "binary", &opt), 1);
+    CHECK(access("/tmp/rb-package-products/root/.PKGINFO", F_OK) != 0);
+    CHECK(access("/tmp/rb-package-products/root/postinst", F_OK) == 0);
+    unlink("/tmp/rb-package-products/root/.PKGINFO");
+    unlink("/tmp/rb-package-products/root/postinst");
     rmdir("/tmp/rb-package-products/root");
     CHECK_INT(builder_buildpackage(&pkg,&params,"objects",&opt),0);
     CHECK_INT(builder_buildpackage(&pkg,&params,"headers",&opt),0);
@@ -994,6 +1002,18 @@ TEST(test_build_validates_all_roots_before_packaging) {
                             "all","/tmp/rb-products-build/apks",&opt),1);
     CHECK(access("/tmp/rb-products-build/hdr/.PKGINFO",F_OK)!=0);
     CHECK(access("/tmp/rb-products-build/dst/.PKGINFO",F_OK)!=0);
+    /* The installed tool now matches, but an ancillary postinst is wrong. */
+    CHECK_INT(system("cp /tmp/rb-products-build/wrong "
+                     "/tmp/rb-products-build/source/dpkg/postinst"), 0);
+    code[7] = 7;
+    f = fopen("/tmp/rb-products-build/wrong", "wb");
+    CHECK(f != 0);
+    if (f) { fwrite(code, 1, sizeof(code), f); fclose(f); }
+    CHECK_INT(builder_build("dir", "/tmp/rb-products-build/source", &repo,
+                            "all", "/tmp/rb-products-build/apks", &opt), 1);
+    CHECK(access("/tmp/rb-products-build/hdr/.PKGINFO", F_OK) != 0);
+    CHECK(access("/tmp/rb-products-build/dst/.PKGINFO", F_OK) != 0);
+    CHECK(access("/tmp/rb-products-build/dst/postinst", F_OK) == 0);
     for(i=0;envs[i];i++) unsetenv(envs[i]);
     strlist_free(&repo);
     system("rm -rf /tmp/rb-products-build");

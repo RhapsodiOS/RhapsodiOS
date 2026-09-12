@@ -1,4 +1,5 @@
 #include "builder.h"
+#include "architecture.h"
 #include "pkginfo.h"
 #include "exec.h"
 #include <string.h>
@@ -566,12 +567,18 @@ static char *slurp_file(const char *path) {
     return out;
 }
 
-/* Returns 0 and fills pkg on success; 1 if control missing/invalid. */
+/* Returns 0 on success, 1 for fallback, 2 for invalid architecture. */
 static int readcontrol(Package *pkg, const char *control_path) {
+    unsigned mask;
     char *data = slurp_file(control_path);
     if (!data) return 1;
     package_parse(pkg, data);
     free(data);
+    if (architecture_parse(pkg->architecture, &mask) != 0) {
+        fprintf(stderr, "rbuild: %s: invalid Architecture: '%s'\n",
+                control_path, pkg->architecture);
+        return 2;
+    }
     if (!pkg->package) {
         fprintf(stderr, "error: package file does not contain 'Package:' entry\n");
         return 1;
@@ -582,7 +589,7 @@ static int readcontrol(Package *pkg, const char *control_path) {
     }
     if (!pkg->description) package_set(&pkg->description, DEFAULT_DESC);
     if (!pkg->maintainer) package_set(&pkg->maintainer, DEFAULT_MAINT);
-    package_set(&pkg->architecture, ARCH);
+    if (!pkg->architecture) package_set(&pkg->architecture, ARCH);
     package_set(&pkg->source, pkg->package);
     return 0;
 }
@@ -591,11 +598,18 @@ int builder_scan_dir(const char *source, Package *pkg, Params *params) {
     char *pbase = 0, *pname = 0, *rev = 0;
     char *control_path;
     char *projname;
+    int rc;
 
     builder_dir2name(source, &pbase, &pname, &rev);
 
     control_path = str_cats(source, "/dpkg/control", (char *)0);
-    if (readcontrol(pkg, control_path) != 0) {
+    rc = readcontrol(pkg, control_path);
+    if (rc == 2) {
+        free(control_path);
+        free(pbase); free(pname); free(rev);
+        return 1;
+    }
+    if (rc != 0) {
         /* reset any partial parse and synthesize default */
         package_free(pkg);
         package_init(pkg);

@@ -760,7 +760,82 @@ TEST(test_relativize_absolute_symlinks_inside_dstroot) {
     system(command);
 }
 
+
+/* Each fixture is a real source control file consumed through builder_scan. */
+TEST(test_scan_architecture_labels) {
+    static const char *labels[] = { "i386", "ppc", "i386-apple-rhapsody",
+        "ppc-apple-rhapsody", "universal-apple-rhapsody", 0 };
+    char root[128], control[160], command[256];
+    unsigned i;
+    sprintf(root, "/tmp/rb-scan-arch-%ld", (long)getpid());
+    sprintf(control, "%s/dpkg/control", root);
+    sprintf(command, "mkdir -p %s/dpkg", root);
+    CHECK_INT(system(command), 0);
+    for (i = 0; i < sizeof(labels) / sizeof(labels[0]); i++) {
+        Package pkg;
+        Params params;
+        FILE *f = fopen(control, "w");
+        CHECK(f != 0);
+        if (!f) continue;
+        fputs("Package: fixture\nVersion: 1\n", f);
+        if (labels[i]) fprintf(f, "Architecture: %s\n", labels[i]);
+        fclose(f);
+        package_init(&pkg);
+        params_init(&params);
+        CHECK_INT(builder_scan("dir", root, &pkg, &params), 0);
+        CHECK_STR(pkg.architecture, labels[i] ? labels[i] :
+                  "universal-apple-rhapsody");
+        package_free(&pkg);
+        params_free(&params);
+    }
+    CHECK_INT(unlink(control), 0);
+    {
+        Package pkg;
+        Params params;
+        package_init(&pkg);
+        params_init(&params);
+        CHECK_INT(builder_scan("dir", root, &pkg, &params), 0);
+        CHECK_STR(pkg.architecture, "universal-apple-rhapsody");
+        package_free(&pkg);
+        params_free(&params);
+    }
+    sprintf(command, "rm -rf %s", root);
+    CHECK_INT(system(command), 0);
+}
+
+TEST(test_scan_rejects_invalid_architecture) {
+    static const char *labels[] = { "", "arm64", "universal", "i386 ppc" };
+    char root[128], control[160], command[256];
+    unsigned i;
+    sprintf(root, "/tmp/rb-scan-bad-arch-%ld", (long)getpid());
+    sprintf(control, "%s/dpkg/control", root);
+    sprintf(command, "mkdir -p %s/dpkg", root);
+    CHECK_INT(system(command), 0);
+    for (i = 0; i < sizeof(labels) / sizeof(labels[0]); i++) {
+        Package pkg;
+        Params params;
+        FILE *f = fopen(control, "w");
+        CHECK(f != 0);
+        if (!f) continue;
+        /* Also omit Package/Version once: fallback must not hide a bad arch. */
+        if (i != 3) fputs("Package: fixture\nVersion: 1\n", f);
+        fprintf(f, "Architecture: %s\n", labels[i]);
+        fclose(f);
+        package_init(&pkg);
+        params_init(&params);
+        CHECK(builder_scan("dir", root, &pkg, &params) != 0);
+        CHECK_STR(pkg.architecture, labels[i]);
+        CHECK(params.SRCROOT == 0);
+        package_free(&pkg);
+        params_free(&params);
+    }
+    sprintf(command, "rm -rf %s", root);
+    CHECK_INT(system(command), 0);
+}
+
 static void run_all(void) {
+    RUN(test_scan_architecture_labels);
+    RUN(test_scan_rejects_invalid_architecture);
     RUN(test_dir2name);
     RUN(test_pkgname);
     RUN(test_match_pkgfile);

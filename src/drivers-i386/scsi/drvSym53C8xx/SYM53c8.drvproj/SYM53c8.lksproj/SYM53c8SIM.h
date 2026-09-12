@@ -364,4 +364,57 @@ extern void			Start17On16(struct sim_ccb *ccb17,
 extern void			Start16On17(struct sim16_ccb *ccb16,
 					    struct sim_ccb *ccb17);
 
+/*
+ * CAM / XPT half. Bodies are in SYM53c8CAM.c.
+ */
+extern unsigned short		FindROMs(void);
+extern int			InitROMs(void *arg);
+extern void			*MemAlloc(unsigned int size);
+extern unsigned int		VtoP(void *virt);
+extern unsigned short		FCalcSync(struct sim_hba *hba, unsigned int id,
+					  unsigned int flag);
+extern void			FWideInit(struct sim_hba *hba);
+extern void			InitializeQueueTags(struct sim_hba *hba);
+extern unsigned int		FRun(struct sim_hba *hba);
+extern unsigned int		FResumeXFer(struct sim_hba *hba);
+extern unsigned int		FResetBus(struct sim_hba *hba);
+extern unsigned int		FRespRes(struct sim_hba *hba);
+extern void			CheckForStart(struct sim_hba *hba, int flag);
+extern struct sim_ccb		*FindRunningRequest(struct sim_hba *hba,
+						    unsigned int id,
+						    unsigned int lun,
+						    unsigned int tag);
+extern void			SetFrag(struct sim_ccb *ccb,
+					unsigned int initiatorId);
+extern unsigned int		GotMSG(struct sim_hba *hba, int flag);
+extern unsigned int		WantMSG(struct sim_hba *hba);
+extern void			FreeQueueTag(struct sim_hba *hba,
+					     struct sim_ccb *ccb);
+extern void			AutosenseSetup(struct sim_hba *hba);
+extern void			PreTransfer17(struct sim_ccb *ccb,
+					      unsigned int initiatorId);
+extern void			PostTransfer17(struct sim_ccb *ccb,
+					       unsigned int initiatorId);
+extern void			PreTransfer16(struct sim16_ccb *ccb,
+					      unsigned int initiatorId);
+extern void			PostTransfer16(struct sim16_ccb *ccb);
+extern unsigned short		PeekAtData(struct sim_ccb *ccb, int off);
+extern void			DoneWithCurrentData(struct sim_ccb *ccb);
+extern struct sim_dev		*AddToDeviceList(struct sim_hba *hba,
+						unsigned int id,
+						unsigned int lun);
+extern void			ResetDevice(struct sim_hba *hba,
+					    unsigned int id,
+					    unsigned int reason);
+extern void			xpt_async(int opcode, unsigned int path,
+					  unsigned int a, unsigned int b,
+					  unsigned int c, unsigned int d);
+extern void			T17To16(struct sim_ccb *ccb17,
+					struct sim16_ccb *ccb16);
+extern void			T16To17(struct sim16_ccb *ccb16,
+					struct sim_ccb *ccb17);
+extern unsigned char		Stat16To17(unsigned int status);
+extern unsigned char		Stat17To16(unsigned int status);
+extern void			StuffAction(void *bus);
+
 #endif /* _SYM53C8SIM_H_ */

@@ -465,7 +465,7 @@ ledger `analyzer_agreement` is `agreed` / `["IDA"]`.
 | Kernel Server glue | 2 | `+[SYM53c8KernelServerInstance kernelServerInstance]` @ 32132, `+[SYM53c8Version driverKitVersionForSYM53c8]` @ 32144. Emitted by project type `Kernel Server` / `Load_Commands.sect`. Ledger `intentional-mismatch`, reviewer Pat Raynor. |
 | `nullsub_1` | 1 | 1-byte named IDA hit @ 63544 in `__data`, not a `__text` routine. Ledger `intentional-mismatch`. |
 | Class-name miss (all ObjC) | 22 | Reloc class `SYM53c8`; our class `SYM53c8Controller`. `probe:`, `initFromDeviceDescription:`, `free`, `setPath:`, `executeRequest:buffer:client:`, `threadExecuteRequest:`, `allocReq`, `freeReq:`, `convertReq:ToXpt:buffer:client:`, `resetSCSIBus`, `threadResetSCSIBus`, `numberOfTargets`, `commandRequestOccurred`, `maxTransfer`, `resetStats`, `numQueueSamples`, `sumQueueLengths`, `maxQueueLength`, `updateStatus:`, `interruptOccurred`, `executeCmdBuf:`, `manualTURScan`. |
-| Absent CAM/SIM C | 136 | No `SYM53c8SIM.c` / `SYM53c8CAM.c` / SCRIPT blob. Every named `__text` C symbol (`_SIMStart`, `_xpt_action`, `_FRun`, …). |
+| Absent CAM/SIM C | 136 | Task 7 wrote `SYM53c8SIM.c`. Task 8 wrote `SYM53c8CAM.c` and the `__DATA,__data` SCRIPT blob in `SYM53c8Scripts.c`. Ledger rows stay `unexamined` until Task 11. |
 
 2 + 1 + 22 + 136 = 161. The 35 unnamed `__data` hits are **not** in this
 table.
@@ -490,6 +490,36 @@ Extern to Task 8: `FindROMs` `InitROMs` `MemAlloc` `VtoP` `FCalcSync` `FWideInit
 `DoneWithCurrentData` `AddToDeviceList` `ResetDevice` `xpt_async` `T17To16`
 `T16To17` `Stat16To17` `Stat17To16`.
 
+## Task 8: CAM helpers and SCRIPTS bytes
+
+`SYM53c8CAM.c` holds the remaining named `__text` C (device table, scan,
+autosense, sync/wide, xfer/message, XPT, FindROMs). `SYM53c8Scripts.c` is the
+byte-exact `__DATA,__data` dump (file offset 43356, length 40528). The unnamed
+IDA span (file offset 62956, length 10532) lives inside that blob and is not
+C. `RAMcorePtr` is the option ROM at blob offset 2688; CAM.c uses
+`#define RAMCORE_PTR (&SYM53c8Scripts[2688])` because IDA treats the label as
+a byte-array, not a pointer variable.
+
+- [x] Step 1: dump remaining C (`_task8_dumps/`, not committed)
+- [x] Step 2: `SYM53c8CAM.c` (no `return 0;` stubs; no Linux / ppc SCRIPT
+  source)
+- [x] Step 3: `SYM53c8Scripts.c` full 40528-byte array
+- [x] Step 4: Makefile `CFILES = SYM53c8SIM.c SYM53c8CAM.c SYM53c8Scripts.c`
+- [x] `_StuffAction` @ 21228 with the `xpt_bus_register` path
+- [x] `FindROMs` `InitROMs` `MemAlloc` `VtoP` `FCalcSync` `FSetSync` `FSetWide` `FWideInit` `FSendMsg`
+- [x] `InitializeQueueTags` `FRun` `FResumeXFer` `FResetBus` `FRespRes` `CheckForStart`
+- [x] `FindRunningRequest` `SetFrag` `GotMSG` `WantMSG` `FreeQueueTag` `AutosenseSetup`
+- [x] `PreTransfer17` `PostTransfer17` `PreTransfer16` `PostTransfer16` `PeekAtData`
+- [x] `DoneWithCurrentData` `AddToDeviceList` `DeletePathFromDeviceTable` `ResetDevice`
+- [x] `xpt_async` `T17To16` `T16To17` `Stat16To17` `Stat17To16` `StuffAction`
+- [x] `BeginScan` `ScanStep` `StartNewIO` `xpt_action` `xpt_init` `xpt_ccb_alloc` `xpt_ccb_free`
+- [x] `xpt_bus_register` `XPTInit` `XPTDeregisterBus` `XPTClearMem` `AbortedRequest`
+
+The 40528-byte array duplicates live C globals that also exist as symbols
+(`HBAs`, `DEVs`, `SIMs`, `Devtab`, `dlStack`, …). Residue pytest stays RED
+until a later packing pass. Handshake BSS (`SyncSCSIEnable` etc.) stays for
+Task 9.
+
 ## Unmapped: build-generated
 
 `+[SYM53c8KernelServerInstance kernelServerInstance]` and
@@ -499,6 +529,5 @@ the equivalent pair in drvAdaptec1542B.
 
 ## What was not attempted
 
-Task 7 wrote the SIM API in `SYM53c8SIM.c`. CAM helpers, SCRIPTS bytes, and
-DriverKit method rewrites remain for later tasks. Ledger statuses stay
-`unexamined`.
+DriverKit method rewrites remain for Task 9. Handshake BSS wiring stays
+for Task 9. Ledger statuses stay `unexamined`. Guest compile is Task 11.

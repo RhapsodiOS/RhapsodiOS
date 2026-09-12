@@ -47,7 +47,7 @@ scsi
  * drvAMDPCSCSIDriver - complete
  * drvBusLogic - reconstructed against the reference binary, fixes applied; not yet compiled
  * drvBusLogicFP - stub, 7/123 reference functions
- * drvDPT2000 - stub, 10/55 reference functions; missing the whole EATASCSIBus class
+ * drvDPT2000 - reconstructed against the reference binary, compiled on the ppc rbuild guest; not hardware-tested
  * drvSym53C8xx - stub, 12/158 reference functions; reference is a 136-function CAM/SIM
 
 sound

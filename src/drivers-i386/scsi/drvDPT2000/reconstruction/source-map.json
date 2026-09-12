@@ -1,388 +1,497 @@
 {
   "boundary_disputed": [],
   "duplicate_candidates": [],
-  "mapped": [],
-  "reference_sha256": "5AE7A361F645EC693444A8AFC829DB477F34DE2576AFC0EB2A0D4128D3BD68A6",
-  "schema_version": "source-map-v1",
-  "unmapped": [
+  "mapped": [
     {
       "address": 0,
       "reference_names": [
         "_eata_busy"
       ],
-      "size": 36
+      "size": 36,
+      "source_line": 31,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAControllerRoutines.c"
     },
     {
       "address": 36,
       "reference_names": [
         "+[EATAController probe:]"
       ],
-      "size": 670
+      "size": 670,
+      "source_line": 148,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAController.m"
     },
     {
       "address": 708,
       "reference_names": [
         "-[EATAController initFromDeviceDescription:]"
       ],
-      "size": 775
+      "size": 775,
+      "source_line": 230,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAController.m"
     },
     {
       "address": 1484,
       "reference_names": [
         "-[EATAController free]"
       ],
-      "size": 112
+      "size": 112,
+      "source_line": 302,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAController.m"
     },
     {
       "address": 1596,
       "reference_names": [
         "-[EATAController interruptOccurred]"
       ],
-      "size": 138
+      "size": 138,
+      "source_line": 317,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAController.m"
     },
     {
       "address": 1736,
       "reference_names": [
         "-[EATAController interruptOccurredAt:]"
       ],
-      "size": 41
+      "size": 41,
+      "source_line": 339,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAController.m"
     },
     {
       "address": 1780,
       "reference_names": [
         "-[EATAController otherOccurred:]"
       ],
-      "size": 41
+      "size": 41,
+      "source_line": 344,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAController.m"
     },
     {
       "address": 1824,
       "reference_names": [
         "-[EATAController receiveMsg]"
       ],
-      "size": 69
+      "size": 69,
+      "source_line": 349,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAController.m"
     },
     {
       "address": 1896,
       "reference_names": [
         "-[EATAController timeoutOccurred]"
       ],
-      "size": 190
+      "size": 190,
+      "source_line": 355,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAController.m"
     },
     {
       "address": 2088,
       "reference_names": [
         "-[EATAController commandRequestOccurred]"
       ],
-      "size": 297
+      "size": 297,
+      "source_line": 389,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAController.m"
     },
     {
       "address": 2388,
       "reference_names": [
         "-[EATAController numQueueSamples]"
       ],
-      "size": 16
+      "size": 16,
+      "source_line": 420,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAController.m"
     },
     {
       "address": 2404,
       "reference_names": [
         "-[EATAController sumQueueLengths]"
       ],
-      "size": 16
+      "size": 16,
+      "source_line": 425,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAController.m"
     },
     {
       "address": 2420,
       "reference_names": [
         "-[EATAController maxQueueLength]"
       ],
-      "size": 16
+      "size": 16,
+      "source_line": 430,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAController.m"
     },
     {
       "address": 2436,
       "reference_names": [
         "-[EATAController resetStats]"
       ],
-      "size": 40
+      "size": 40,
+      "source_line": 435,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAController.m"
     },
     {
       "address": 2476,
       "reference_names": [
         "-[EATAController acquireSCSIBus:owner:]"
       ],
-      "size": 54
+      "size": 54,
+      "source_line": 442,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAController.m"
     },
     {
       "address": 2532,
       "reference_names": [
         "-[EATAController releaseSCSIBus:owner:]"
       ],
-      "size": 75
+      "size": 75,
+      "source_line": 454,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAController.m"
     },
     {
       "address": 2608,
       "reference_names": [
         "-[EATAController maxTransfer]"
       ],
-      "size": 15
+      "size": 15,
+      "source_line": 462,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAController.m"
     },
     {
       "address": 2624,
       "reference_names": [
         "-[EATAController scsiBusId:]"
       ],
-      "size": 21
+      "size": 21,
+      "source_line": 467,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAController.m"
     },
     {
       "address": 2648,
       "reference_names": [
         "-[EATAController numberOfTargets]"
       ],
-      "size": 20
+      "size": 20,
+      "source_line": 472,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAController.m"
     },
     {
       "address": 2668,
       "reference_names": [
         "-[EATAController executeCmdBuf:]"
       ],
-      "size": 303
+      "size": 303,
+      "source_line": 477,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAController.m"
     },
     {
       "address": 2972,
       "reference_names": [
         "-[EATAController probeAtPortBase:]"
       ],
-      "size": 80
+      "size": 80,
+      "source_line": 506,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAController.m"
     },
     {
       "address": 3052,
       "reference_names": [
         "-[EATAController readConfig]"
       ],
-      "size": 369
+      "size": 369,
+      "source_line": 520,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAController.m"
     },
     {
       "address": 3424,
       "reference_names": [
         "-[EATAController readDMAConfig]"
       ],
-      "size": 313
+      "size": 313,
+      "source_line": 565,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAController.m"
     },
     {
       "address": 3740,
       "reference_names": [
         "_parseConfigSpace"
       ],
-      "size": 442
+      "size": 442,
+      "source_line": 76,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAController.m"
     },
     {
       "address": 4184,
       "reference_names": [
         "_eata_busy_0"
       ],
-      "size": 36
+      "size": 36,
+      "source_line": 47,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAControllerRoutines.c"
     },
     {
       "address": 4220,
       "reference_names": [
         "-[EATAController threadExecuteRequest:]"
       ],
-      "size": 464
+      "size": 464,
+      "source_line": 54,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAControllerThread.m"
     },
     {
       "address": 4684,
       "reference_names": [
         "-[EATAController commandCompleted:reason:]"
       ],
-      "size": 604
+      "size": 604,
+      "source_line": 99,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAControllerThread.m"
     },
     {
       "address": 5288,
       "reference_names": [
         "-[EATAController clearResetInts]"
       ],
-      "size": 52
+      "size": 52,
+      "source_line": 180,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAControllerThread.m"
     },
     {
       "address": 5340,
       "reference_names": [
         "-[EATAController threadResetBus:initConfig:]"
       ],
-      "size": 346
+      "size": 346,
+      "source_line": 190,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAControllerThread.m"
     },
     {
       "address": 5688,
       "reference_names": [
         "-[EATAController allocCcb:]"
       ],
-      "size": 250
+      "size": 250,
+      "source_line": 231,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAControllerThread.m"
     },
     {
       "address": 5940,
       "reference_names": [
         "-[EATAController freeCcb:]"
       ],
-      "size": 90
+      "size": 90,
+      "source_line": 269,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAControllerThread.m"
     },
     {
       "address": 6032,
       "reference_names": [
         "-[EATAController completeDMA:]"
       ],
-      "size": 57
+      "size": 57,
+      "source_line": 283,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAControllerThread.m"
     },
     {
       "address": 6092,
       "reference_names": [
         "-[EATAController abortDMA:]"
       ],
-      "size": 57
+      "size": 57,
+      "source_line": 294,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAControllerThread.m"
     },
     {
       "address": 6152,
       "reference_names": [
         "-[EATAController ccbFromCmd:]"
       ],
-      "size": 1254
+      "size": 1254,
+      "source_line": 305,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAControllerThread.m"
     },
     {
       "address": 7408,
       "reference_names": [
         "_eataTimeout"
       ],
-      "size": 68
+      "size": 68,
+      "source_line": 63,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATAControllerRoutines.c"
     },
     {
       "address": 7476,
       "reference_names": [
         "+[EATASCSIBus probe:]"
       ],
-      "size": 142
+      "size": 142,
+      "source_line": 33,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATASCSIBus.m"
     },
     {
       "address": 7620,
       "reference_names": [
         "+[EATASCSIBus deviceStyle]"
       ],
-      "size": 12
+      "size": 12,
+      "source_line": 53,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATASCSIBus.m"
     },
     {
       "address": 7632,
       "reference_names": [
         "+[EATASCSIBus requiredProtocols]"
       ],
-      "size": 12
+      "size": 12,
+      "source_line": 58,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATASCSIBus.m"
     },
     {
       "address": 7644,
       "reference_names": [
         "-[EATASCSIBus maxTransfer]"
       ],
-      "size": 29
+      "size": 29,
+      "source_line": 63,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATASCSIBus.m"
     },
     {
       "address": 7676,
       "reference_names": [
         "-[EATASCSIBus numberOfTargets]"
       ],
-      "size": 29
+      "size": 29,
+      "source_line": 68,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATASCSIBus.m"
     },
     {
       "address": 7708,
       "reference_names": [
         "-[EATASCSIBus free]"
       ],
-      "size": 41
+      "size": 41,
+      "source_line": 73,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATASCSIBus.m"
     },
     {
       "address": 7752,
       "reference_names": [
         "-[EATASCSIBus resetStats]"
       ],
-      "size": 38
+      "size": 38,
+      "source_line": 78,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATASCSIBus.m"
     },
     {
       "address": 7792,
       "reference_names": [
         "-[EATASCSIBus numQueueSamples]"
       ],
-      "size": 29
+      "size": 29,
+      "source_line": 84,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATASCSIBus.m"
     },
     {
       "address": 7824,
       "reference_names": [
         "-[EATASCSIBus sumQueueLengths]"
       ],
-      "size": 29
+      "size": 29,
+      "source_line": 89,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATASCSIBus.m"
     },
     {
       "address": 7856,
       "reference_names": [
         "-[EATASCSIBus maxQueueLength]"
       ],
-      "size": 29
+      "size": 29,
+      "source_line": 94,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATASCSIBus.m"
     },
     {
       "address": 7888,
       "reference_names": [
         "-[EATASCSIBus executeRequest:buffer:client:]"
       ],
-      "size": 152
+      "size": 152,
+      "source_line": 99,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATASCSIBus.m"
     },
     {
       "address": 8040,
       "reference_names": [
         "-[EATASCSIBus resetSCSIBus]"
       ],
-      "size": 55
+      "size": 55,
+      "source_line": 124,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATASCSIBus.m"
     },
     {
       "address": 8096,
       "reference_names": [
         "-[EATASCSIBus getPowerState:]"
       ],
-      "size": 12
+      "size": 12,
+      "source_line": 134,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATASCSIBus.m"
     },
     {
       "address": 8108,
       "reference_names": [
         "-[EATASCSIBus setPowerState:]"
       ],
-      "size": 42
+      "size": 42,
+      "source_line": 140,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATASCSIBus.m"
     },
     {
       "address": 8152,
       "reference_names": [
         "-[EATASCSIBus getPowerManagement:]"
       ],
-      "size": 12
+      "size": 12,
+      "source_line": 149,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATASCSIBus.m"
     },
     {
       "address": 8164,
       "reference_names": [
         "-[EATASCSIBus setPowerManagement:]"
       ],
-      "size": 12
+      "size": 12,
+      "source_line": 155,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATASCSIBus.m"
     },
     {
       "address": 8176,
       "reference_names": [
         "-[EATASCSIBus initSCSIBus:channel:]"
       ],
-      "size": 296
+      "size": 296,
+      "source_line": 166,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATASCSIBus.m"
     },
     {
       "address": 8472,
       "reference_names": [
         "-[EATASCSIBus flushCacheForTarget:lun:]"
       ],
-      "size": 147
+      "size": 147,
+      "source_line": 200,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATASCSIBus.m"
     },
     {
       "address": 8620,
       "reference_names": [
         "-[EATASCSIBus flushAllCache]"
       ],
-      "size": 187
-    },
+      "size": 187,
+      "source_line": 223,
+      "source_path": "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj/EATASCSIBus.m"
+    }
+  ],
+  "reference_sha256": "5AE7A361F645EC693444A8AFC829DB477F34DE2576AFC0EB2A0D4128D3BD68A6",
+  "schema_version": "source-map-v1",
+  "unmapped": [
     {
       "address": 8808,
       "reference_names": [

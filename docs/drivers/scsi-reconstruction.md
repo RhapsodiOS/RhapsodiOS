@@ -2,10 +2,10 @@
 
 Findings from comparing our sources against Apple's shipped `*_reloc` binaries
 with `tools/binrecon`. The headline is that the eight drivers are not eight
-partial reconstructions at different stages. Two are essentially complete, one
-is a modern addition with no reference, and the other five are stubs — and two
-of those are built on the wrong hardware model, so they could not work even if
-completed as written.
+partial reconstructions at different stages. Three are reconstructed against
+their reference, one is a modern addition with no reference, and the other
+four are stubs — and two of those are built on the wrong hardware model, so
+they could not work even if completed as written.
 
 ## Coverage
 
@@ -21,7 +21,7 @@ project type and are correctly absent from source.
 | drvAdaptec1542B | 36 | 34 | complete; only build glue absent |
 | drvBusLogic | 37 | 35 | complete; only build glue absent |
 | drvAdaptec6X60 | 79 | 18 | stub, wrong architecture |
-| drvDPT2000 | 55 | 10 | stub; missing the `EATASCSIBus` class |
+| drvDPT2000 | 56 | 54 | reconstructed against the reference; guest `_reloc` produced on the ppc rbuild guest; not hardware-tested |
 | drvBusLogicFP | 123 | 7 | stub |
 | drvSym53C8xx | 158 | 12 | stub, wrong architecture |
 | drvAdaptec2940 | 170 | 10 | stub; missing the `SCSIBus` class |
@@ -31,23 +31,24 @@ than a reconstruction and is out of scope here.
 
 ## The class-name divergence
 
-Five of the seven name their principal class differently from the reference.
-This is the same pattern already resolved in drvPCMCIABus, and it is why five
-drivers initially resolved **zero** symbols — a total mismatch rather than a
-partial one.
+Four of the seven still name their principal class differently from the
+reference. This is the same pattern already resolved in drvPCMCIABus, and it
+is why those drivers initially resolved **zero** symbols — a total mismatch
+rather than a partial one.
 
 | Driver | Ours | Reference |
 | --- | --- | --- |
 | drvAdaptec6X60 | `AIC6X60Controller` | `AIC6X60` |
 | drvBusLogic | `BLController` | `BLCController` |
 | drvBusLogicFP | `BusLogicFPSCSI` | `BLFPController` |
-| drvDPT2000 | `DPTSCSIDriver` | `EATAController` |
+| drvDPT2000 | `EATAController` (+ `EATASCSIBus`) | `EATAController` (+ `EATASCSIBus`) |
 | drvSym53C8xx | `SYM53c8Controller` | `SYM53c8` |
 
-drvAdaptec1542B (`AHAController`) and drvAdaptec2940 (`Adaptec2940`) already
-match. The `(PrivateMethods)` and `(IOThread)` category split is correct in
-every driver, and the `*Controller.m` / `*Routines.m` / `*Thread.m` file
-layout mirrors it — that part was reconstructed well throughout.
+drvAdaptec1542B (`AHAController`), drvAdaptec2940 (`Adaptec2940`), and
+drvDPT2000 (`EATAController` + `EATASCSIBus`) already match. The
+`(PrivateMethods)` and `(IOThread)` category split is correct in every
+driver, and the `*Controller.m` / `*Routines.m` / `*Thread.m` file layout
+mirrors it — that part was reconstructed well throughout.
 
 Renaming is necessary but sufficient only for drvBusLogic, where it took the
 count from 26 to 30 and left five genuinely missing functions.
@@ -100,12 +101,13 @@ the emulated target. It is also the largest reconstruction of the group.
 
 ## Missing classes
 
-Two drivers are missing an entire second class, which is why their counts stay
-low even where the principal class name already matches:
+One driver is still missing an entire second class, which is why its count
+stays low even where the principal class name already matches:
 
 - drvAdaptec2940 has no `SCSIBus` (13 methods across the class and its
   `(PrivateMethods)` category).
-- drvDPT2000 has no `EATASCSIBus` (19 methods likewise).
+- drvDPT2000 now has `EATASCSIBus` (19 methods across the class and its
+  `(PrivateMethods)` category), matching the reference.
 
 ## Link blockers found and fixed
 

@@ -15,59 +15,102 @@ hand `gnumake` of the `.lksproj`):
 rbuild buildpackage --state /build/state --dir /build/src/drivers-i386/scsi/drvDPT2000 /build/repo /build/built
 ```
 
-The first rbuild failed: missing `driverkit/i386/IODirectDevice.h` on the ppc
-sysroot, undefined `AUX_IRQ` / `STAT_IRQ` / `EATA_CP_ADDR` / `SR_IOST_CMDTO`,
-C89 mixed declarations, undeclared `PAGE_SIZE`, duplicate
+The first rbuild (stub era) failed: missing `driverkit/i386/IODirectDevice.h` on
+the ppc sysroot, undefined `AUX_IRQ` / `STAT_IRQ` / `EATA_CP_ADDR` /
+`SR_IOST_CMDTO`, C89 mixed declarations, undeclared `PAGE_SIZE`, duplicate
 `DPTSCSIDriver(Private)` category at `kl_ld`, and `movehelp` with no
 `DriverHelp`. A minimum compile-fix is
 `244260ced257b94d63be5272c180d688c913ff15` (`drivers-i386: build drvDPT2000`).
-Linux residue and the `DPTSCSIDriver` class were left in place;
-`EATAController` / `EATASCSIBus` were not implemented.
 
-After that fix, rbuild exited 0. The guest toolchain is `gcc-darwin.conf`
-(`RC_ARCHS=ppc`, `cc -arch ppc`). Guest package / reloc (not committed, not
-compared with binrecon):
+Task 12 deleted `/build/built/drvdpt2000-*.apk` first, then reran the same
+rbuild command against the reconstructed tree. That run compiled
+`EATASCSIBus.m` (`cc -arch ppc ... -c ... EATASCSIBus.ppc.o EATASCSIBus.m`)
+and `kl_ld` linked `EATASCSIBus.o`. Exit 0. The guest toolchain is
+`gcc-darwin.conf` (`cc -arch ppc`). Guest package / reloc (not committed, not
+copied to the host, not compared with binrecon):
 
-- apk: `/build/built/drvdpt2000-17.apk` (7934 bytes)
-- reloc: `private/Drivers/ppc/DPT2000.config/DPT2000_reloc` (26120 bytes inside
-  the apk)
+- apk: `/build/built/drvdpt2000-17.apk` (16475 bytes)
+- reloc: `private/Drivers/ppc/DPT2000.config/DPT2000_reloc` (55096 bytes inside
+  the apk). `file`: Mach-O preload executable ppc. `lipo -info`: architecture
+  ppc. `thindriver.sh` moved the config to `ppc`.
 
 `rebuilt_sha256` in `ledger.json` is still `null`. There is still no artifact
-under `out/i386/`.
+under `out/i386/`. This is a ppc guest reloc, not an i386 hardware test.
 
 ## Summary
 
 | Bucket | Count |
 | --- | --- |
-| mapped | 0 |
-| unmapped | 56 |
+| mapped | 54 |
+| unmapped | 2 |
 | duplicate_candidates | 0 |
 | boundary_disputed | 0 |
 
-IDA `__text` contains 56 functions. The source map accounts for all 56 as
-unmapped: our tree implements a single class `DPTSCSIDriver` subclassing
-`IOSCSIController`, and shares no class name with the reloc. Glue (2) is already
-accepted as `intentional-mismatch`; the other 54 entries stay `unexamined`.
+IDA `__text` contains 56 functions. After remapping `$LKS` with
+`binrecon source-map --objc-methods`, 54 names resolve to
+`EATAController.m` / `EATAControllerThread.m` / `EATASCSIBus.m` /
+`EATAControllerRoutines.c`. Glue (2) stays unmapped and
+`intentional-mismatch`. The Linux `DPTSCSIDriver` stub is gone; both reloc
+classes exist. `tools/binrecon/tests/test_dpt2000_linux_residue.py` and
+`test_dpt2000_profile.py` pass (4 tests).
 
-The reloc is a two-class DriverKit stack compiled from `EATAController.m`,
-`EATAThread.m`, and `SCSIBus.m`. Our stub is Linux-shaped under `DPTSCSIDriver`
-and has no `EATASCSIBus`. Forbidden residue that exists in `$LKS` live code,
-versus names that actually appear in the reloc:
+`_parseConfigSpace` lives in `EATAController.m` (it sends `IODirectDevice`
+messages). `EATAControllerRoutines.c` is `_eata_busy`, `_eata_busy_0`,
+`_eataTimeout`.
 
-| In our tree (must go) | In `DPTSCSIDriver_reloc` |
-| --- | --- |
-| `@interface DPTSCSIDriver` | `@interface EATAController`, `@interface EATASCSIBus` |
-| `eataInitController` | `probeAtPortBase:`, `readConfig`, `readDMAConfig` |
-| `allocCp` / `freeCp:` | `allocCcb:` / `freeCcb:` / `ccbFromCmd:` |
-| `runPendingCommands` | `commandRequestOccurred` dispatches `threadExecuteRequest:` |
-| `processCmdComplete` | `commandCompleted:reason:` |
-| `struct dpt_config` | ivar `config` typed `{eata_config=...}` |
-| `Based on Linux eata.c` (comment on `interruptOccurred`) | IRQ path walks `outstandingQ` and calls `commandCompleted:reason:` |
+Fresh remap put `_eata_busy_0` @ 4184 in `duplicate_candidates` because the
+reloc symbol table names both copies `_eata_busy` and IDA suffixes the
+second `_0`. The committed map takes the `eata_busy_0` definition
+(`EATAControllerRoutines.c:47`), not `eata_busy`. That is the IDA name, not
+a hand-written lie.
 
 `allocCcb:`, `freeCcb:`, and `ccbFromCmd:` are Apple names on
 `EATAController(IOThread)`. They are not Linux residue. Do not rename them to
 `allocCp`. `"Server Name" = "DPTSCSIDriver"` in the tables is required and is
 not residue.
+
+## Ledger
+
+| Status | Count |
+| --- | --- |
+| unexamined | 53 |
+| control-flow-confirmed | 1 |
+| intentional-mismatch | 2 |
+| assembly-matched | 0 |
+
+Tasks 8–9 implemented the two classes from IDA. That is not an
+instruction-by-instruction compare, so mapped bodies stay `unexamined`
+except the largest function. Glue stays `intentional-mismatch`, reviewer
+Pat Raynor.
+
+`-[EATAController ccbFromCmd:]` @ 6152 (1254 bytes) is
+`control-flow-confirmed`. Control flow compared to IDA: CDB group dispatch
+(`0x00`/`0x20`/`0x40`/`0xa0`/`0xc0`/`0xe0`), link-bit reject
+(`SR_IOST_CMDREJ`), `allocCcb:` from `maxTransfer != 0`, page count vs
+`configSgSize` (`self+0x198`), `bzero` of SP @ `ccb+0x34` (0x18) and CP @
+`ccb+0x8` (0x2c), CDB copy, flags / immediate `0x1A`, sense @ `ccb+0x360`
+and SP physical addresses, target/lun/identify/channel, `numReserved` /
+disconnect, single-page vs SG walk, `createDMABufferFor:` failure →
+`abortDMA:` / `freeCcb:` / `SR_IOST_INT`. Not traced operand-by-operand:
+SG-loop addressing arithmetic (`page_mask` rounding), every `eata_bswap32`
+on SG entries, and each `IOPhysicalFromVirtual` failure-path immediate.
+
+## Remaining warnings / open items
+
+- `EATAController.m`: incomplete `EATAController(PrivateMethods)` —
+  `-executeCmdBuf:` is implemented on the class (in `EATAController.m`) but
+  still declared on `(PrivateMethods)`. Left as-is.
+- `EATASCSIBus.m:70`: `numberOfTargets` is `int` on `IOSCSIController` /
+  `EATASCSIBus` and `unsigned` on `EATAExported` / `EATAController`. Left
+  as-is.
+- Guest toolchain is ppc only (`gcc-darwin.conf`). Do not read this reloc as
+  i386 hardware proof.
+- Help lives under `English.lproj/Help/`. `driver.make` `movehelp` wants
+  `English.lproj/DriverHelp`. `Makefile.postamble` stubs `movehelp` with
+  `@true`; leave that stub.
+- `DRIVERNAME` stays `DPT2000` (installed `DPT2000.config` vs reference
+  `DPTSCSIDriver.config`). Recorded, not a rename.
+- `English.lproj/IntrInspector.nib` is in the reference only. Do not copy.
 
 ## Method
 
@@ -254,9 +297,9 @@ The IOThread is the **submit** path, not the completion path:
   `threadResetBus:initConfig:`.
 
 `initFromDeviceDescription:` starts that thread with `[super startIOThread]`
-(`ds:paStartiothread`) and sets `ioThreadRunning` at `self+0x1A8`. An
-`EATAControllerThread.m` (the reloc's `EATAThread.m` / `EATAController(IOThread)`
-category) is required later.
+(`ds:paStartiothread`) and sets `ioThreadRunning` at `self+0x1A8`.
+`EATAControllerThread.m` is the reloc's `EATAThread.m` /
+`EATAController(IOThread)` category.
 
 ## Channel model
 
@@ -276,9 +319,7 @@ Several `EATASCSIBus` objects, one per channel, not a single bus.
 
 ## Standalone C symbols
 
-Four `__text` symbols are not Objective-C methods. Recommend
-`EATAControllerRoutines.c` later (do not write it in this pass). Call sites
-from IDA:
+Four `__text` symbols are not Objective-C methods. Call sites from IDA:
 
 | Symbol | Addr | Size | Callers |
 | --- | --- | --- | --- |
@@ -288,137 +329,49 @@ from IDA:
 | `_eataTimeout` | 7408 | 68 | address taken by `threadExecuteRequest:` @ 4327 (`IOScheduleFunc`) and `commandCompleted:reason:` @ 5167 (`IOUnscheduleFunc`) |
 
 `_parseConfigSpace` talks to `IODirectDevice` (`getPCIConfigSpace:withDeviceDescription:`,
-`setInterruptList:num:`, `setPortRangeList:num:`). Both busy helpers are 36-byte
-port-wait copies; keep them as two functions because IDA's partition of record
-does.
+`setInterruptList:num:`, `setPortRangeList:num:`). It is defined in
+`EATAController.m`. Both busy helpers are 36-byte port-wait copies in
+`EATAControllerRoutines.c`; keep them as two functions because IDA's
+partition of record does.
 
 ## Findings: stub methods on the wrong class / Linux bodies
 
-Every mapped-looking selector on `DPTSCSIDriver` is a name collision at best.
-`binrecon source-map` reported 0 mapped because the class name does not match.
+Resolved. The Linux `DPTSCSIDriver` class and helper names are gone. The
+tree is `EATAController` + `EATASCSIBus` as in the reloc. Residue test
+`test_dpt2000_linux_residue.py` is green.
 
-### Finding 1 — `@interface DPTSCSIDriver : IOSCSIController` instead of two reloc classes
+### Finding 1 — two reloc classes — resolved
 
-**Source:** `DPTSCSIDriver.h`.
+`EATAController : IODirectDevice` and `EATASCSIBus : IOSCSIController`.
 
-**Reference:** `EATAController : IODirectDevice` and `EATASCSIBus : IOSCSIController`.
+### Finding 2 — `executeRequest:buffer:client:` / `resetSCSIBus` — resolved
 
-**Disposition:** rewrite (later tasks). The Linux stub cannot be adapted in place.
+Both selectors are on `EATASCSIBus`. The bus method builds a command buf and
+sends `executeCmdBuf:` to `_direct`. For CDB opcode `0x1B` with flag bit 1
+at `scsiReq+6`, it first sends `flushCacheForTarget:lun:`.
 
-### Finding 2 — `executeRequest:buffer:client:` and `resetSCSIBus` live on the controller class
+### Findings 3–8 — Linux names, IRQ path, IOThread, CCB, probe, types — resolved
 
-**Source:** `DPTSCSIDriver.m`.
-
-**Reference:** both selectors are on `EATASCSIBus`. The bus method builds a
-command buf and sends `executeCmdBuf:` to `_direct`. For CDB opcode `0x1B` with
-flag bit 1 at `scsiReq+6`, it first sends `flushCacheForTarget:lun:`.
-
-**Disposition:** rewrite; move onto `EATASCSIBus`.
-
-### Finding 3 — Linux helper names with no reloc symbol
-
-**Source:** `DPTSCSIDriverPrivate.h`, `DPTSCSIDriverRoutines.m`,
-`DPTSCSIDriverThread.m`.
-
-`eataInitController`, `eataResetBus`, `eataAllocateResources`,
-`eataFreeResources`, `allocCp`, `freeCp:`, `runPendingCommands`,
-`processCmdComplete` have no `__text` symbol in the reloc. The Apple names
-are `probeAtPortBase:`, `readConfig`, `readDMAConfig`, `allocCcb:`, `freeCcb:`,
-`ccbFromCmd:`, `commandCompleted:reason:`, `threadResetBus:initConfig:`.
-
-**Disposition:** delete the Linux names; do not keep them as wrappers.
-
-### Finding 4 — `interruptOccurred` is the Linux eata.c IRQ path
-
-**Source:** `DPTSCSIDriver.m`, comment `Based on Linux eata.c interrupt handling`.
-Reads `REG_AUX_STATUS` / `REG_STATUS`, reconstructs a CP address from
-`REG_LOW`..`REG_MSB`, indexes `cpArray`, calls `processCmdComplete:`.
-
-**Reference:** walk `outstandingQ`, test SP EOC at `ccb+0x34`, call
-`commandCompleted:reason:` with reason 0, optionally `enableAllInterrupts`.
-One status `in` from `ioBase+7`. No AUX register, no CP-address ports, no
-`cpArray`.
-
-**Disposition:** rewrite from the IDA body.
-
-### Finding 5 — `commandRequestOccurred` / `executeCmdBuf:` skip the IOThread message
-
-**Source:** `commandRequestOccurred` only calls `runPendingCommands`.
-`executeCmdBuf:` locks, enqueues, then calls `commandRequestOccurred` on the
-same thread.
-
-**Reference:** `executeCmdBuf:` enqueues and `_msg_send_from_kernel`s to
-`interruptPortKern`. `commandRequestOccurred` is the IOThread loop
-(`lock` / dequeue / `threadExecuteRequest:` or `threadResetBus:initConfig:` /
-`IOExitThread`).
-
-**Disposition:** rewrite.
-
-### Finding 6 — `threadExecuteRequest:` builds a Linux `struct eata_cp`
-
-**Source:** `DPTSCSIDriverThread.m` calls `allocCp`, fills `cp_scsi_addr` /
-`cp_cdb` / `cp_flags1`, `outl`s a CP address, `outb`s `EATA_CMD_SEND_CP`.
-
-**Reference:** `allocCcb:`, `ccbFromCmd:`, `_eata_busy_0`, `IOScheduleFunc(_eataTimeout)`,
-`IOPhysicalFromVirtual`. CCB size 0x37C, not `sizeof(struct eata_cp)` from
-`DPTSCSIDriverTypes.h`.
-
-**Disposition:** rewrite in `EATAController(IOThread)`.
-
-### Finding 7 — `probe:` / `initFromDeviceDescription:` ignore Card Type and channels
-
-**Source:** `probe:` reads four PIO signature bytes from `EATA_DATA`. `init`
-calls `eataInitController` and does not create bus objects.
-
-**Reference:** `+[EATAController probe:]` reads `"Card Type"` from the config
-table and branches `EISA` / `ISA` / `PCI`. PCI calls `_parseConfigSpace`.
-Success path is `probeAtPortBase:` then `initFromDeviceDescription:`. Init
-calls `[super startIOThread]`, fills `channelInfo[3]` from `maxChannel`, and
-`registerDevice`.
-
-**Disposition:** rewrite.
-
-### Finding 8 — types header is Linux eata.c, not the reloc `eata_config`
-
-**Source:** `DPTSCSIDriverTypes.h` (`Based on Linux eata.c driver definitions`,
-`struct dpt_config`, `struct eata_cp`, `struct eata_sp` with `SP_EOC 0x01`).
-
-**Reference:** the ObjC `eata_config` encoding above; SP EOC is the sign bit of
-`ccb+0x34`, not `0x01` in a separate `sp_eoc` field.
-
-**Disposition:** replace the header from the reloc encoding. Do not copy Linux
-layouts forward.
+Implemented from IDA in Tasks 8–9. Not stamped `assembly-matched`.
 
 ## Table / help findings
 
 Compared host files to
 `C:\Users\raynorpat\Downloads\test\Drivers\i386\DPTSCSIDriver.config`.
-`"Driver Version"` ignored. `IntrInspector.nib` is present in the reference
-and must not be copied.
+Tables and `English.lproj` strings/Help were aligned in
+`4349515f` (`drivers-i386: align drvDPT2000 tables and help with
+DPTSCSIDriver.config`). `"Driver Version"` ignored.
+`IntrInspector.nib` is present in the reference and must not be copied.
+
+Still recorded, not a rename or a `movehelp` rewrite:
 
 | # | File | Result |
 | --- | --- | --- |
-| 1 | `Default.table` | `"Family"` is `"SDSI"` here, `"SCSI"` in the reference. |
-| 2 | `Default.table` | Reference has `"Location" = ""`; we do not. |
-| 3 | `Default.table` | Reference has `"IRQ Levels" = "15"`; we do not. |
-| 4 | `Default.table` | Shared keys `Valid IRQ Levels` / `I/O Ports` / `Memory Maps` are present in both but in different order (ours after `"Card Type"`; reference before `"Bus Type"`). |
-| 5 | `DPT_EISA.table` | Identical ignoring `"Driver Version"`. |
-| 6 | `DPT_PCI.table` | Ours has extra `"IRQ Levels" = "15"` and `"Memory Maps" = ""`; reference has neither as default lines. |
-| 7 | `DPT_PCI.table` | `"Share IRQ Levels"` is `"NO"` here, `"YES"` in the reference. |
-| 8 | `DPT_OnBoard.table` | Identical ignoring `"Driver Version"`. |
 | 9 | `DriverInfo` | Present in our `.drvproj` (`DRIVER_NAME="DPTSCSIDriver"`). Absent from the reference bundle. |
 | 10 | `Load_Commands.sect` | Matches the reloc `Loaded Server,Load Commands` section (`WIRE`, no Mig handler). Reloc `Server Name` is `DPTSCSIDriver`; `Instance Var` is `DPTSCSIDriver_instance`. |
-| 11 | `English.lproj/Localizable.strings` | Ours is `"Driver Name" = "DPT2000"`. Reference is `"DPTSCSIDriver" = "DPT 2021"` plus `"Long Name" = "DPT 2021 ISA SCSI Adapter"`. |
-| 12 | `English.lproj/DPT_EISA.strings` | Missing here. Reference: `"DPTSCSIDriver" = "DPT EISA Series"` / `"Long Name" = "DPT 2xx2/3222 Series EISA SCSI Adapter"`. |
-| 13 | `English.lproj/DPT_PCI.strings` | Missing here. Reference: `"DPTSCSIDriver" = "DPT PCI"` / `"Long Name" = "DPT 2xx4/3224 PCI SCSI Adapter"`. |
-| 14 | `English.lproj/DPT_OnBoard.strings` | Missing here. Reference: `"DPTSCSIDriver" = "DPT On-Board"` / `"Long Name" = "DPT On-Board SCSI Adapter"`. |
-| 15 | `English.lproj/Help/DPT_ISA.rtfd` | Missing (reference has `TXT.rtf` plus tiffs). |
-| 16 | `English.lproj/Help/DPT_EISA.rtfd` | Missing. |
-| 17 | `English.lproj/Help/DPT_PCI.rtfd` | Missing. |
-| 18 | `English.lproj/Help/DPT_On_Board.rtfd` | Missing. |
-| 19 | `English.lproj/Help/TableOfContents.rtf` | Missing. Links the four Help RTFDs (EISA, On Board, PCI, ISA). |
-| 20 | Installed config name | `DRIVERNAME` stays `DPT2000`, so the installed bundle is `DPT2000.config` versus reference `DPTSCSIDriver.config`. Recorded, not a rename. |
+| 20 | Installed config name | `DRIVERNAME` stays `DPT2000`, so the installed bundle is `DPT2000.config` versus reference `DPTSCSIDriver.config`. |
 | 21 | `English.lproj/IntrInspector.nib` | In the reference only. Do not copy. |
+| 22 | Help directory | Sources use `English.lproj/Help/`. `driver.make` `movehelp` expects `DriverHelp`. `Makefile.postamble` stubs `movehelp`; leave the stub. |
 
 ## Analyzer disagreement
 
@@ -434,11 +387,8 @@ partition. angr was not used as evidence.
 | Class | Count | Why unmapped |
 | --- | --- | --- |
 | Kernel Server glue | 2 | `+[DPTSCSIDriverKernelServerInstance kernelServerInstance]` @ 8808, `+[DPTSCSIDriverVersion driverKitVersionForDPTSCSIDriver]` @ 8820. Emitted by project type `Kernel Server` / `Load_Commands.sect`. Ledger `intentional-mismatch`, reviewer Pat Raynor. |
-| Missing `EATASCSIBus` | 19 | No `EATASCSIBus` type in our tree. Includes `executeRequest:buffer:client:`, `resetSCSIBus`, `initSCSIBus:channel:`, cache flush, power, stats, `probe:`, `deviceStyle`, `requiredProtocols`. |
-| Missing `EATAController` engine | 31 | Controller class is `DPTSCSIDriver`, not `EATAController`. Includes probe/init, IRQ/IOThread, `allocCcb:` / `freeCcb:` / `ccbFromCmd:`, `acquireSCSIBus:owner:`, `readConfig`, `readDMAConfig`. |
-| Standalone C | 4 | `_eata_busy`, `_parseConfigSpace`, `_eata_busy_0`, `_eataTimeout`. No `.c` home yet. |
 
-2 + 19 + 31 + 4 = 56.
+54 mapped + 2 unmapped = 56.
 
 ## Unmapped: build-generated
 
@@ -449,6 +399,6 @@ Accepted, same as the equivalent pair in drvAdaptec1542B.
 
 ## What was not attempted
 
-This pass did not rewrite source, did not guest-compile a `_reloc`, and did not
-trace every instruction of `ccbFromCmd:` beyond the field stores needed for the
-CCB map. The rewrite starts after this document is committed.
+No instruction-by-instruction `assembly-matched` pass. No binrecon compare
+against the guest ppc reloc. No host `out/i386` extract. No QEMU or hardware
+run. The `movehelp` stub is left in place.

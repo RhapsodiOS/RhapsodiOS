@@ -69,6 +69,11 @@ int builder_setupdirs(const Package *pkg, const Params *params,
                       const char *srcname, const char *srctype,
                       const strlist *repository, const BuildOptions *opt);
 
+/* Probe resolved slices in private OBJROOT directories using the build make
+ * environment. Bootstrap link readiness follows the toolchain profile. */
+int builder_probe_toolchain(const Params *params, const Params *bparams,
+                            const BuildOptions *opt);
+
 int builder_buildpackage(const Package *spkg, const Params *params,
                          const char *target, const BuildOptions *opt);
 int builder_relativize_symlinks(const char *root);

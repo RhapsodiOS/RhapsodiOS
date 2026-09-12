@@ -988,9 +988,17 @@ TEST(test_build_validates_all_roots_before_packaging) {
     f=fopen("/tmp/rb-products-build/wrong","wb");
     CHECK(f!=0); if (!f) return;
     fwrite(code,1,sizeof(code),f); fclose(f);
+    code[7]=7;
+    f=fopen("/tmp/rb-products-build/correct","wb"); CHECK(f!=0);
+    if(f){fwrite(code,1,sizeof(code),f);fclose(f);}
+    code[7]=18;
     f=fopen("/tmp/rb-products-build/make","w");
     CHECK(f!=0); if (!f) return;
-    fputs("#!/bin/sh\ncp /tmp/rb-products-build/wrong /tmp/rb-products-build/dst/tool\n"
+    fputs("#!/bin/sh\nprevious=\nfor arg do\n"
+          "test \"$previous\" != -C || dir=$arg\n"
+          "case $arg in probe.o|probe) cp /tmp/rb-products-build/correct \"$dir/$arg\"; exit $?;; esac\n"
+          "previous=$arg\ndone\n"
+          "cp /tmp/rb-products-build/wrong /tmp/rb-products-build/dst/tool\n"
           "echo header > /tmp/rb-products-build/hdr/header.h\n",f);
     fclose(f); chmod("/tmp/rb-products-build/make",0755);
     for(i=0;envs[i];i++) {
@@ -1201,7 +1209,130 @@ TEST(test_base_cache_does_not_hide_incompatible_companions) {
     strlist_free(&repo);system("rm -rf /tmp/rb-companions /tmp/rb-cache-fixture");
 }
 
+/* The compiler shim emits on-disk code, never a host executable. */
+static void probe_fixture(void) {
+    FILE *f;
+    unsigned char code[28];
+    int i;
+    CHECK_INT(system("rm -rf /tmp/rb-probe-tools && mkdir -p /tmp/rb-probe-tools/bin /tmp/rb-probe-tools/obj"),0);
+    for (i=0;i<2;i++) {
+        memset(code,0,sizeof(code)); code[0]=0xfe;code[1]=0xed;code[2]=0xfa;code[3]=0xce;
+        code[7]=i ? 18 : 7; code[15]=1;
+        f=fopen(i ? "/tmp/rb-probe-tools/ppc" : "/tmp/rb-probe-tools/i386","wb");
+        CHECK(f!=0); if(f){fwrite(code,1,sizeof(code),f);fclose(f);}
+    }
+    f=fopen("/tmp/rb-probe-tools/bin/cc","w"); CHECK(f!=0); if(!f)return;
+    fputs("#!/bin/sh\narch=none\nout=\nstage=link\n"
+          "echo \"$*\" >> /tmp/rb-probe-tools/args\n"
+          "while test $# -gt 0; do\ncase \"$1\" in\n"
+          "-arch) shift; arch=$1;;\n-o) shift; out=$1;;\n-c) stage=compile;;\nesac\nshift\ndone\n"
+          "echo $arch-$stage >> /tmp/rb-probe-tools/calls\n"
+          "case $RB_PROBE_MODE in\nextra) touch probe.d;;\nnoop) exit 0;;\nwrong) arch=ppc;;\n"
+          "wronglink) test $stage != link || arch=ppc;;\n"
+          "second) test $arch != ppc || exit 1;;\nlink) test $stage != link || exit 1;;\nesac\n"
+          "cp /tmp/rb-probe-tools/$arch \"$out\"\n",f);
+    fclose(f); chmod("/tmp/rb-probe-tools/bin/cc",0755);
+    f=fopen("/tmp/rb-probe-tools/bin/chroot","w"); CHECK(f!=0); if(!f)return;
+    fputs("#!/bin/sh\necho chroot >> /tmp/rb-probe-tools/chroots\nshift\nexec \"$@\"\n",f);
+    fclose(f); chmod("/tmp/rb-probe-tools/bin/chroot",0755);
+}
+static int probe_text_has(const char *file, const char *needle) {
+    FILE *f=fopen(file,"r");
+    char data[8192]; size_t n;
+    if(!f)return 0;
+    n=fread(data,1,sizeof(data)-1,f);data[n]=0;fclose(f);
+    return strstr(data,needle)!=0;
+}
+TEST(test_toolchain_probes) {
+    Params p;
+    BuildOptions opt;
+    Toolchain tc;
+    FILE *f;
+    static const char *modes[]={"wrong","wronglink","second","link","noop",0};
+    int i;
+    probe_fixture(); params_init(&p); build_options_init(&opt); toolchain_init(&tc);
+    p.OBJROOT="/tmp/rb-probe-tools/obj";p.BUILDROOT="/unused-probe-root";
+    p.SYMROOT=p.OBJROOT;
+    tc.path="/tmp/rb-probe-tools/bin:/usr/bin:/bin:/usr/sbin:/sbin";
+    opt.toolchain=&tc;opt.effective_arch=3;
+    setenv("RB_PROBE_MODE","ok",1);
+    CHECK_INT(builder_probe_toolchain(&p,&p,&opt),0);
+    CHECK(probe_text_has("/tmp/rb-probe-tools/calls","i386-compile"));
+    CHECK(probe_text_has("/tmp/rb-probe-tools/calls","ppc-link"));
+    CHECK(probe_text_has("/tmp/rb-probe-tools/chroots","chroot"));
+    for(i=0;modes[i];i++) {
+        setenv("RB_PROBE_MODE",modes[i],1);
+        CHECK_INT(builder_probe_toolchain(&p,&p,&opt),1);
+    }
+    setenv("RB_PROBE_MODE","extra",1);
+    CHECK_INT(builder_probe_toolchain(&p,&p,&opt),0);
+    opt.bootstrap=1;opt.effective_arch=1;
+    tc.target_cc="/tmp/rb-probe-tools/bin/cc";tc.arch_flags="-arch i386";
+    tc.cpp_flags="-I/probe-include";tc.ld_flags="-L/probe-library";
+    tc.ld_flags_ready="@SYSROOT@/ready";opt.sysroot="/tmp/rb-probe-tools";
+    setenv("RB_PROBE_MODE","link",1);
+    unlink("/tmp/rb-probe-tools/calls");
+    CHECK_INT(builder_probe_toolchain(&p,&p,&opt),0);
+    CHECK(!probe_text_has("/tmp/rb-probe-tools/calls","link"));
+    f=fopen("/tmp/rb-probe-tools/ready","w");CHECK(f!=0);if(f)fclose(f);
+    CHECK_INT(builder_probe_toolchain(&p,&p,&opt),1);
+    setenv("RB_PROBE_MODE","ok",1);
+    CHECK_INT(builder_probe_toolchain(&p,&p,&opt),0);
+    CHECK(probe_text_has("/tmp/rb-probe-tools/args","-I/probe-include"));
+    CHECK(probe_text_has("/tmp/rb-probe-tools/args","-L/probe-library"));
+    tc.ld_flags_ready=0;tc.arch_flags="-arch ppc";
+    CHECK_INT(builder_probe_toolchain(&p,&p,&opt),1);
+    tc.arch_flags="-arch i386";
+    CHECK_INT(builder_probe_toolchain(&p,&p,&opt),0);
+    unlink("/tmp/rb-probe-tools/calls");
+    p.OBJROOT="/tmp/rb-probe-tools/missing";
+    exec_dry_run=1;
+    CHECK_INT(builder_probe_toolchain(&p,&p,&opt),0);
+    exec_dry_run=0;
+    CHECK(access(p.OBJROOT,F_OK)!=0);
+    CHECK(access("/tmp/rb-probe-tools/calls",F_OK)!=0);
+    unsetenv("RB_PROBE_MODE");
+    system("rm -rf /tmp/rb-probe-tools");
+}
+
+TEST(test_probe_failure_precedes_project_make) {
+    BuildOptions opt;
+    Toolchain tc;
+    strlist repo;
+    FILE *f;
+    static const char *envs[]={"BUILDROOT","SRCROOT","OBJROOT","SYMROOT","DSTROOT","HDRROOT","LIBCOBJROOT","PACKAGEROOT",0};
+    static const char *dirs[]={"build","src","obj","sym","dst","hdr","objs","pkg"};
+    char path[256]; int i;
+    probe_fixture();
+    CHECK_INT(system("mkdir -p /tmp/rb-probe-tools/source/dpkg /tmp/rb-probe-tools/repo"),0);
+    f=fopen("/tmp/rb-probe-tools/source/dpkg/control","w"); CHECK(f!=0);if(!f)return;
+    fputs("Package: probes\nVersion: 1\nBuild-Depends:\n",f);fclose(f);
+    f=fopen("/tmp/rb-probe-tools/make","w");CHECK(f!=0);if(!f)return;
+    fputs("#!/bin/sh\nfor arg do\ncase $arg in probe.o|probe) exec /bin/make \"$@\";; esac\ndone\n"
+          "echo project >> /tmp/rb-probe-tools/project\nexit 1\n",f);
+    fclose(f);chmod("/tmp/rb-probe-tools/make",0755);
+    for(i=0;envs[i];i++){sprintf(path,"/tmp/rb-probe-tools/%s",dirs[i]);setenv(envs[i],path,1);}
+    build_options_init(&opt);toolchain_init(&tc);strlist_init(&repo);
+    tc.target_arch="i386";tc.arch_flags="-arch i386";
+    tc.target_cc="/tmp/rb-probe-tools/bin/cc";tc.make="/tmp/rb-probe-tools/make";
+    tc.rsync="/usr/bin/true";opt.bootstrap=1;opt.toolchain=&tc;
+    setenv("RB_PROBE_MODE","link",1);
+    CHECK_INT(builder_build("dir","/tmp/rb-probe-tools/source",&repo,"all","/tmp/rb-probe-tools/repo",&opt),1);
+    CHECK(access("/tmp/rb-probe-tools/project",F_OK)!=0);
+    CHECK(access("/tmp/rb-probe-tools/hdr/.PKGINFO",F_OK)!=0);
+    CHECK(access("/tmp/rb-probe-tools/dst/.PKGINFO",F_OK)!=0);
+    unlink("/tmp/rb-probe-tools/project");unlink("/tmp/rb-probe-tools/calls");
+    CHECK_INT(builder_build("dir","/tmp/rb-probe-tools/source",&repo,"headers","/tmp/rb-probe-tools/repo",&opt),1);
+    CHECK(access("/tmp/rb-probe-tools/project",F_OK)==0);
+    CHECK(access("/tmp/rb-probe-tools/calls",F_OK)!=0);
+    for(i=0;envs[i];i++)unsetenv(envs[i]);
+    unsetenv("RB_PROBE_MODE");strlist_free(&repo);
+    system("rm -rf /tmp/rb-probe-tools");
+}
+
 static void run_all(void) {
+    RUN(test_probe_failure_precedes_project_make);
+    RUN(test_toolchain_probes);
     RUN(test_base_cache_does_not_hide_incompatible_companions);
     RUN(test_dependency_fallback_and_reinstallation);
     RUN(test_direct_publication_quarantines_collision);

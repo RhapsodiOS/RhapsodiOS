@@ -88,6 +88,7 @@ path=/usr/bin:/bin:/usr/sbin:/sbin
 arch_flags=-arch ppc
 cpp_flags=$cpp
 ld_flags=-Wl,-syslibroot,@SYSROOT@
+ld_flags_ready=@SYSROOT@/runtime-not-installed
 ln=/bin/ln
 EOF
 }

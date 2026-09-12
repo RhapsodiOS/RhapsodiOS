@@ -1,6 +1,7 @@
 #include "builder.h"
 #include "architecture.h"
 #include "products.h"
+#include "macho.h"
 #include "apk.h"
 #include <errno.h>
 #include "pkginfo.h"
@@ -340,6 +341,16 @@ static void expand_toolchain_words(const char *value, const char *sysroot,
     free(expanded);
 }
 
+static int toolchain_ready(const char *marker, const char *sysroot) {
+    char *path;
+    int ready;
+    if (!marker) return 1;
+    path = expand_toolchain_value(marker, sysroot);
+    ready = access(path, F_OK) == 0;
+    free(path);
+    return ready;
+}
+
 void builder_buildflags(const Params *params, const char *target, strlist *out,
                         const BuildOptions *opt) {
     int i;
@@ -468,13 +479,7 @@ void builder_buildflags(const Params *params, const char *target, strlist *out,
     if (bootstrap && tc) {
         strlist ld_words;
         char *ld_flags;
-        int ld_ready = 1;
-        if (tc->ld_flags_ready) {
-            char *path = expand_toolchain_value(
-                tc->ld_flags_ready, opt->sysroot);
-            ld_ready = access(path, F_OK) == 0;
-            free(path);
-        }
+        int ld_ready = toolchain_ready(tc->ld_flags_ready, opt->sysroot);
         /* NEXT_ROOT also redirects Darwin startup-object/library lookup. */
         if (bootstrap && tc && opt->sysroot)
             push_kv(out, "HDRROOT", opt->sysroot);
@@ -1396,6 +1401,99 @@ static int run_make(strlist *cmd, const BuildOptions *opt) {
     return rc;
 }
 
+static int probe_write(const char *dir, const char *name, const char *text) {
+    char *path = path_join(dir, name);
+    FILE *f = fopen(path, "w");
+    int rc = 1;
+    free(path);
+    if (f) {
+        rc = fputs(text, f) == EOF;
+        if (fclose(f) != 0) rc = 1;
+    }
+    return rc;
+}
+
+int builder_probe_toolchain(const Params *params, const Params *bparams,
+                            const BuildOptions *opt) {
+    static const char makefile[] =
+        "probe.o: probe.c\n"
+        "\t$(CC) $(CPPFLAGS) $(CFLAGS) $(RC_CFLAGS) $(LOCAL_CFLAGS) -c probe.c -o probe.o\n"
+        "probe: probe.o\n"
+        "\t$(CC) $(CFLAGS) $(RC_CFLAGS) $(LOCAL_CFLAGS) $(LDFLAGS) $(OTHER_LDFLAGS) probe.o -o probe\n";
+    char name[80];
+    char *parent = 0, *dir = 0, *guest_parent = 0;
+    const char *stage = "setup";
+    unsigned slice = 0;
+    int attempt, made = 0, rc = 1, link_ready = 1;
+    if (!opt || !architecture_label(opt->effective_arch) ||
+        !params->OBJROOT || !bparams->OBJROOT) return 1;
+    if (opt->bootstrap && opt->toolchain)
+        link_ready = toolchain_ready(opt->toolchain->ld_flags_ready, opt->sysroot);
+    for (attempt = 0; attempt < 100; attempt++) {
+        sprintf(name, ".rbuild-probe-%ld-%d", (long)getpid(), attempt);
+        parent = path_join(params->OBJROOT, name);
+        if (exec_dry_run || mkdir(parent, 0700) == 0) {
+            made = !exec_dry_run;
+            break;
+        }
+        free(parent); parent = 0;
+        if (errno != EEXIST) break;
+    }
+    if (!parent) goto done;
+    guest_parent = path_join(bparams->OBJROOT, name);
+    for (slice = RB_ARCH_I386; slice <= RB_ARCH_PPC; slice <<= 1) {
+        Params probe_params = *bparams;
+        BuildOptions probe_opt = *opt;
+        char *guest_dir;
+        int pass;
+        if (!(opt->effective_arch & slice)) continue;
+        stage = "setup";
+        dir = path_join(parent, architecture_archs(slice));
+        guest_dir = path_join(guest_parent, architecture_archs(slice));
+        probe_params.SRCROOT = guest_dir;
+        probe_opt.effective_arch = slice;
+        rc = 0;
+        if (!exec_dry_run && (mkdir(dir, 0700) != 0 ||
+            probe_write(dir, "probe.c", "int main(void) { return 0; }\n") ||
+            probe_write(dir, "Makefile", makefile))) rc = 1;
+        for (pass = 0; !rc && pass < (link_ready ? 2 : 1); pass++) {
+            strlist cmd;
+            char *output;
+            unsigned mask;
+            int code;
+            stage = pass ? "link" : "compile";
+            printf("probe %s %s\n", architecture_archs(slice), stage);
+            strlist_init(&cmd);
+            builder_buildcmd(params, &probe_params, pass ? "probe" : "probe.o",
+                              &cmd, &probe_opt);
+            rc = run_make(&cmd, &probe_opt);
+            strlist_free(&cmd);
+            if (!rc && !exec_dry_run) {
+                stage = pass ? "link inspection" : "compile inspection";
+                output = path_join(dir, pass ? "probe" : "probe.o");
+                if (macho_file_arches(output, &mask, &code) || !code || mask != slice)
+                    rc = 1;
+                free(output);
+            }
+        }
+        free(guest_dir);
+        free(dir); dir = 0;
+        if (rc) break;
+    }
+done:
+    /* Only this exclusively created subtree is owned by the probe. Compiler
+     * options can leave extra files (for example -save-temps or -MD). */
+    if (made && exec_runv("rm", "-rf", parent, (char *)0) != 0 && !rc) {
+        stage = "cleanup"; rc = 1;
+    }
+    if (rc)
+        fprintf(stderr, "rbuild: %s toolchain probe failed during %s\n",
+                architecture_archs(architecture_label(slice) ? slice :
+                                    opt->effective_arch), stage);
+    free(guest_parent); free(parent);
+    return rc;
+}
+
 int builder_build(const char *srctype, const char *srcname,
                   const strlist *repository, const char *target,
                   const char *dstdir, const BuildOptions *opt) {
@@ -1491,6 +1589,10 @@ int builder_build(const char *srctype, const char *srcname,
     printf("building %s from %s:\n\n", filename, params.SRCDIR);
 
     if (builder_setupdirs(&pkg, &params, srcname, srctype, repository, opt) != 0) {
+        rc = 1; goto done;
+    }
+
+    if (do_bin && builder_probe_toolchain(&params, &bparams, opt) != 0) {
         rc = 1; goto done;
     }
 

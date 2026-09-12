@@ -34,7 +34,7 @@ die()
 
 usage()
 {
-    echo "usage: $0 [--dry-run] [--iso PATH] [--second-disk PATH] SOURCE_ROOT_IMAGE vm/work/IMAGE" >&2
+    echo "usage: $0 [--dry-run] [--iso PATH] [--second-disk PATH] [--ac97 BACKEND] SOURCE_ROOT_IMAGE vm/work/IMAGE" >&2
     exit 2
 }
 
@@ -45,6 +45,7 @@ canonical()
 
 iso_arg=
 second_arg=
+ac97_backend=
 while [ $# -gt 0 ]; do
     case "$1" in
         --dry-run)
@@ -59,6 +60,14 @@ while [ $# -gt 0 ]; do
         --second-disk)
             [ $# -ge 2 ] || usage
             second_arg=$2
+            shift 2
+            ;;
+        --ac97)
+            [ $# -ge 2 ] || usage
+            case "$2" in
+                none|dbus|dsound|jack|sdl|spice|wav) ac97_backend=$2 ;;
+                *) usage ;;
+            esac
             shift 2
             ;;
         --)
@@ -112,6 +121,10 @@ fi
 if [ -n "$iso_image" ]; then
     set -- "$@" -drive "if=none,id=ahci-cd,media=cdrom,readonly=on,file=$iso_image" \
         -device ide-cd,drive=ahci-cd,bus=ide.2
+fi
+if [ -n "$ac97_backend" ]; then
+    set -- "$@" -audiodev "$ac97_backend,id=ac97" \
+        -device AC97,audiodev=ac97
 fi
 if [ "${AHCI_DEBUG:-0}" = 1 ]; then
     set -- "$@" -trace "enable=ahci_*,file=$trace_log"

@@ -15,7 +15,7 @@
 #ifndef _AC97VAR_H_
 #define _AC97VAR_H_
 
-#import "ac97reg.h"
+#include "ac97reg.h"
 
 /*
  * AC97 Codec Types
@@ -32,6 +32,8 @@ typedef enum {
     AC97_HOST_AUX_INVERTED      = 0x0004,   /* Aux In is inverted */
     AC97_HOST_DONT_READMIX      = 0x0008    /* Don't read mixer registers */
 } ac97_host_flags_t;
+
+typedef void (*ac97_delay_func)(void *context, unsigned int microseconds);
 
 /*
  * AC97 Codec Capabilities
@@ -66,6 +68,8 @@ struct ac97_codec_state {
     unsigned short      (*read_reg)(void *host_priv, unsigned char reg);
     void                (*write_reg)(void *host_priv, unsigned char reg, unsigned short val);
     void                (*reset)(void *host_priv);
+    ac97_delay_func     delay_us;
+    void                *delay_context;
 
     /* Codec information */
     unsigned short      codec_id;           /* Codec ID from registers */
@@ -74,6 +78,9 @@ struct ac97_codec_state {
     char                codec_name[32];     /* Codec name string */
     ac97_caps_t         caps;               /* Codec capabilities */
     ac97_host_flags_t   host_flags;         /* Host flags */
+
+    int                 out_present[3];
+    int                 out_bits[3];
 
     /* Current settings (shadow registers) */
     unsigned short      regs[AC97_REG_CNT]; /* Cached register values */
@@ -119,7 +126,7 @@ struct ac97_codec_state {
 int ac97_attach(struct ac97_codec_state *codec, int codec_type);
 
 /* Reset codec */
-void ac97_reset(struct ac97_codec_state *codec);
+int ac97_reset(struct ac97_codec_state *codec);
 
 /* Register access */
 unsigned short ac97_read(struct ac97_codec_state *codec, unsigned char reg);
@@ -157,5 +164,10 @@ void ac97_power_down(struct ac97_codec_state *codec);
 /* Utility functions */
 int ac97_wait_ready(struct ac97_codec_state *codec, int timeout_ms);
 void ac97_dump_registers(struct ac97_codec_state *codec);
+unsigned short ac97_attenuation_field(int atten, int bits);
+int ac97_measure_volume_bits(struct ac97_codec_state *codec,
+                             unsigned char reg);
+void ac97_apply_output(struct ac97_codec_state *codec,
+                       int leftAtten, int rightAtten, int mute);
 
 #endif /* _AC97VAR_H_ */

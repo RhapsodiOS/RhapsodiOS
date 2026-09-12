@@ -177,7 +177,7 @@
 /*
  * Sample Rate Ranges
  */
-#define AC97_RATE_MIN                   4000    /* Minimum sample rate */
+#define AC97_RATE_MIN                   8000    /* Minimum sample rate */
 #define AC97_RATE_MAX                   48000   /* Maximum sample rate */
 #define AC97_RATE_DEFAULT               48000   /* Default sample rate */
 

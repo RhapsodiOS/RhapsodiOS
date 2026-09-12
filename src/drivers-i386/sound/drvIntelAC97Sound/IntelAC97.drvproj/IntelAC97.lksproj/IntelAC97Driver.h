@@ -13,12 +13,26 @@
  */
 
 #import <driverkit/IOAudio.h>
+
+#if defined(i386) || defined(__i386__)
 #import <driverkit/i386/ioPorts.h>
+#else
+typedef unsigned short IOEISAPortAddress;
+#define inb(port)		((unsigned char)0)
+#define inw(port)		((unsigned short)0)
+#define inl(port)		((unsigned int)0)
+#define outb(port, val)		((void)0)
+#define outw(port, val)		((void)0)
+#define outl(port, val)		((void)0)
+#endif
 
 #define DRV_TITLE       "IntelAC97"
 
+struct ich97_driver_state;
+
 @interface IntelAC97Driver : IOAudio
 {
+    struct ich97_driver_state *state;
 }
 
 + (BOOL)probe:deviceDescription;

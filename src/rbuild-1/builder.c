@@ -1,5 +1,7 @@
 #include "builder.h"
 #include "architecture.h"
+#include "products.h"
+#include <errno.h>
 #include "pkginfo.h"
 #include "exec.h"
 #include <string.h>
@@ -1045,6 +1047,22 @@ static int file_exists(const char *path) {
     return stat(path, &st) == 0 && S_ISREG(st.st_mode);
 }
 
+/* Missing optional trees mean there was nothing to harvest/install. Existing
+ * paths, including symlinks and unreadable directories, must validate. */
+static int validate_products(const char *root, unsigned required,
+                             int objects, int optional) {
+    struct stat st;
+    if (exec_dry_run) {
+        printf("validate products in %s for %s%s\n",
+               root ? root : "(null)", architecture_label(required),
+               objects ? " (object collection)" : "");
+        return 0;
+    }
+    if (optional && root && lstat(root, &st) != 0 && errno == ENOENT)
+        return 0;
+    return products_validate(root, required, objects, 0);
+}
+
 int builder_buildpackage(const Package *spkg, const Params *params,
                          const char *target, const BuildOptions *opt) {
     Package pkg;
@@ -1056,21 +1074,25 @@ int builder_buildpackage(const Package *spkg, const Params *params,
     char *apk_path;
     int nonempty;
     int rc = 0;
-
-    if (strcmp(target, "local") == 0) return 0;
+    BuildOptions resolved_opt;
 
     /* Clone spkg by round-tripping through unparse/parse (matches Perl). */
     package_init(&pkg);
     unparsed = package_unparse(spkg);
     package_parse(&pkg, unparsed);
     free(unparsed);
-    /* unparse drops arch/desc? No -- unparse includes them; re-set arch to
-       be safe if the round trip somehow left it unset. */
-    if (!pkg.architecture) package_set(&pkg.architecture, ARCH);
+    /* Direct callers share normal build architecture resolution. */
+    build_options_init(&resolved_opt);
+    if (opt) resolved_opt = *opt;
+    if (builder_resolve_architecture(&pkg, &resolved_opt) != 0) {
+        package_free(&pkg); return 1;
+    }
 
     pname = xstrdup(pkg.package ? pkg.package : "");
 
-    if (strcmp(target, "binary") == 0) {
+    if (strcmp(target, "local") == 0) {
+        dstroot = params->DSTROOT;
+    } else if (strcmp(target, "binary") == 0) {
         char *hdrs = str_cats(pname, "-hdrs", (char *)0);
         dstroot = params->DSTROOT;
         package_set(&pkg.package, pname);
@@ -1093,6 +1115,14 @@ int builder_buildpackage(const Package *spkg, const Params *params,
         return 1;
     }
 
+    /* Validate before metadata or archive creation, including direct callers. */
+    if (validate_products(dstroot, resolved_opt.effective_arch,
+                          strcmp(target, "objects") == 0,
+                          strcmp(target, "headers") == 0 ||
+                          strcmp(target, "objects") == 0) != 0) {
+        rc = 1; goto done;
+    }
+    if (exec_dry_run || strcmp(target, "local") == 0) goto done;
     /* Ensure the base package dir exists (Perl mkdir -p DEBIAN for binary,
        BEFORE the emptiness check -- this guarantees "binary" always proceeds
        to packaging, matching Builder.pm:398-404). */
@@ -1433,6 +1463,14 @@ int builder_build(const char *srctype, const char *srcname,
         printf("\n");
     }
 
+    /* Complete all validation after harvest, before writing any package. */
+    if ((do_hdr && validate_products(params.HDRROOT, opt->effective_arch, 0, 1)) ||
+        (do_bin && (validate_products(params.DSTROOT, opt->effective_arch, 0, 0) ||
+                    validate_products(params.LIBCOBJROOT, opt->effective_arch, 1, 1))) ||
+        (strcmp(target, "local") == 0 &&
+         validate_products(params.DSTROOT, opt->effective_arch, 0, 0))) {
+        rc = 1; goto done;
+    }
     if (do_hdr) {
         if (builder_buildpackage(&pkg, &params, "headers", opt) != 0) {
             rc = 1; goto done;

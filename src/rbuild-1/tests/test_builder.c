@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
 TEST(test_dir2name) {
     char *base = 0, *name = 0, *rev = 0;
@@ -895,7 +896,112 @@ TEST(test_build_rejects_unsupported_bootstrap_architecture) {
     system("rm -rf /tmp/rbuild-policy-source /tmp/rbuild-policy-output");
 }
 
+TEST(test_packaging_rejects_wrong_products) {
+    Package pkg;
+    Params params;
+    BuildOptions opt;
+    Toolchain tc;
+    unsigned char code[28];
+    FILE *f;
+    int i;
+    static const char *targets[] = { "binary", "headers", "objects", "local", 0 };
+    system("rm -rf /tmp/rb-package-products && mkdir -p /tmp/rb-package-products/root /tmp/rb-package-products/apks");
+    memset(code,0,sizeof(code));
+    code[0]=0xfe; code[1]=0xed; code[2]=0xfa; code[3]=0xce;
+    code[7]=7; code[15]=1;
+    f=fopen("/tmp/rb-package-products/root/tool","wb");
+    CHECK(f!=0);
+    if (!f) return;
+    CHECK_INT(fwrite(code,1,sizeof(code),f),sizeof(code)); fclose(f);
+    package_init(&pkg); params_init(&params); build_options_init(&opt);
+    toolchain_fixture(&tc);
+    tc.archive_create="/usr/bin/false"; tc.gzip="/usr/bin/false";
+    opt.toolchain=&tc;
+    package_set(&pkg.package,"products");
+    package_set(&pkg.version,"1");
+    package_set(&pkg.architecture,"universal-apple-rhapsody");
+    params.DSTROOT=xstrdup("/tmp/rb-package-products/root");
+    params.HDRROOT=xstrdup(params.DSTROOT);
+    params.LIBCOBJROOT=xstrdup(params.DSTROOT);
+    params.PACKAGEDIR=xstrdup("/tmp/rb-package-products/apks");
+    for(i=0;targets[i];i++) {
+        unlink("/tmp/rb-package-products/root/.PKGINFO");
+        CHECK_INT(builder_buildpackage(&pkg,&params,targets[i],&opt),1);
+        CHECK(access("/tmp/rb-package-products/root/.PKGINFO",F_OK)!=0);
+    }
+    package_set(&pkg.architecture,"ppc");
+    CHECK_INT(builder_buildpackage(&pkg,&params,"local",&opt),1);
+    package_set(&pkg.architecture,"i386");
+    CHECK_INT(builder_buildpackage(&pkg,&params,"local",&opt),0);
+    package_set(&pkg.architecture,"universal-apple-rhapsody");
+    opt.operation_arch=1;
+    CHECK_INT(builder_buildpackage(&pkg,&params,"local",&opt),0);
+    CHECK_STR(pkg.architecture,"universal-apple-rhapsody");
+    CHECK_INT(opt.effective_arch,0);
+    opt.operation_arch=0;
+    exec_dry_run=1;
+    CHECK_INT(builder_buildpackage(&pkg,&params,"local",&opt),0);
+    CHECK(access("/tmp/rb-package-products/root/.PKGINFO",F_OK)!=0);
+    for(i=0;targets[i];i++)
+        CHECK_INT(builder_buildpackage(&pkg,&params,targets[i],&opt),0);
+    exec_dry_run=0;
+    unlink("/tmp/rb-package-products/root/tool");
+    rmdir("/tmp/rb-package-products/root");
+    CHECK_INT(builder_buildpackage(&pkg,&params,"objects",&opt),0);
+    CHECK_INT(builder_buildpackage(&pkg,&params,"headers",&opt),0);
+    CHECK_INT(builder_buildpackage(&pkg,&params,"local",&opt),1);
+    params_free(&params); package_free(&pkg);
+    system("rm -rf /tmp/rb-package-products");
+}
+
+TEST(test_build_validates_all_roots_before_packaging) {
+    BuildOptions opt;
+    Toolchain tc;
+    strlist repo;
+    FILE *f;
+    unsigned char code[28];
+    static const char *envs[] = {"BUILDROOT","SRCROOT","OBJROOT","SYMROOT",
+        "DSTROOT","HDRROOT","LIBCOBJROOT","PACKAGEROOT",0};
+    static const char *dirs[] = {"build","src","obj","sym","dst","hdr","objs","pkg"};
+    int i;
+    char path[256];
+    system("rm -rf /tmp/rb-products-build && mkdir -p /tmp/rb-products-build/source/dpkg /tmp/rb-products-build/apks");
+    f=fopen("/tmp/rb-products-build/source/dpkg/control","w");
+    CHECK(f!=0); if (!f) return;
+    fputs("Package: products\nVersion: 1\nDescription: products\n",f); fclose(f);
+    memset(code,0,sizeof(code));
+    code[0]=0xfe; code[1]=0xed; code[2]=0xfa; code[3]=0xce;
+    code[7]=18; code[15]=1;
+    f=fopen("/tmp/rb-products-build/wrong","wb");
+    CHECK(f!=0); if (!f) return;
+    fwrite(code,1,sizeof(code),f); fclose(f);
+    f=fopen("/tmp/rb-products-build/make","w");
+    CHECK(f!=0); if (!f) return;
+    fputs("#!/bin/sh\ncp /tmp/rb-products-build/wrong /tmp/rb-products-build/dst/tool\n"
+          "echo header > /tmp/rb-products-build/hdr/header.h\n",f);
+    fclose(f); chmod("/tmp/rb-products-build/make",0755);
+    for(i=0;envs[i];i++) {
+        sprintf(path,"/tmp/rb-products-build/%s",dirs[i]);
+        setenv(envs[i],path,1);
+    }
+    build_options_init(&opt); memset(&tc,0,sizeof(tc));
+    tc.target_arch="i386"; tc.make="/tmp/rb-products-build/make";
+    tc.rsync="/usr/bin/true";
+    tc.archive_create="/usr/bin/false"; tc.gzip="/usr/bin/false";
+    opt.bootstrap=1; opt.toolchain=&tc;
+    strlist_init(&repo);
+    CHECK_INT(builder_build("dir","/tmp/rb-products-build/source",&repo,
+                            "all","/tmp/rb-products-build/apks",&opt),1);
+    CHECK(access("/tmp/rb-products-build/hdr/.PKGINFO",F_OK)!=0);
+    CHECK(access("/tmp/rb-products-build/dst/.PKGINFO",F_OK)!=0);
+    for(i=0;envs[i];i++) unsetenv(envs[i]);
+    strlist_free(&repo);
+    system("rm -rf /tmp/rb-products-build");
+}
+
 static void run_all(void) {
+    RUN(test_build_validates_all_roots_before_packaging);
+    RUN(test_packaging_rejects_wrong_products);
     RUN(test_resolved_thin_flags);
     RUN(test_build_rejects_unsupported_bootstrap_architecture);
     RUN(test_scan_architecture_labels);

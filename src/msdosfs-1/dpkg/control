@@ -3,4 +3,4 @@ Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
 Vendor: Apple Computer
 Version: 1.0
 Description: MSDOS FAT filesystem commands (mount, newfs, fsck, util)
-Build-Depends: build-base, diskdev-cmds
+Build-Depends: build-base

@@ -3232,3 +3232,26 @@ trailing nop each, which is why VGA's findings sometimes quote 267 / 107.
 No method-body disagreement: both binaries take `IOMallocLow` / `IOPhysicalFromVirtual` / `IOMapPhysicalIntoIOTask` in `-init` with four separate `return [self free]` tails (no shared `fail:`), `IOFreeLow` / `IOUnmapPhysicalFromIOTask` in `-free`, `pagePerm[256]` plus `IOMalloc(0x2000)` `ioPerm` in the five-argument `-int10:`, `cmp ebx, 0xffff / ja` (unsigned) at ThinkPad 7116 / VGA 6960, `smmport:0x10000` forwarder, `scratchSegment` as `biosStackPhysical >> 4`, `realToVirtual::` as `(segment << 4) + lowMem + offset`.
 
 `vidBIOS.m` is **not** on `CLASSES`. Link order is Task 7. `_emu486` is Task 6.
+
+## Task 6: `emu486.s` from this reloc
+
+Phase 2 transcribes `_emu486` from **this** `_reloc` at `__text` 7708–18204 (10496 bytes, `binrecon.macho.read_macho` slice; size matches the symbol-table gap). `_emu486` is the only exported symbol in the range. The unnamed bodies at 15796 and 15877 stay in this file as `L3db4` and `L3e05`, not `.globl`.
+
+VGA's `emu486.s` is a second copy of the same source 156 bytes lower (`__text` 7552–18048). After masking the 1604 four-byte relocs (same file offsets on both sides), the **instruction stream matches**: 0 non-reloc byte diffs. Reloc addends differ as expected:
+
+| Reloc class | Count | Addend delta (ThinkPad − VGA) |
+| --- | --- | --- |
+| text absolute + text PC-relative + 1 scattered text | 1004 | **+156** |
+| data absolute + scattered data | 600 | **+1808** |
+
+The +1808 is the 92-byte unnamed state block sitting at a different place in `__DATA,__data`: ThinkPad `24576+1904` = **26480–26572** (end of this driver's 1996-byte `__data`); VGA `24576+96` = 24672–24764. Data labels in `emu486.s` stay symbolic (`Lstate`, `Lregs`, …). Do not copy VGA data addresses.
+
+Three Apple defects, transcribed at ThinkPad VAs (VGA + 156), confirmed in this dump:
+
+1. `Ltab_46dc` slot 11 (linked addend **15857** = `L3df1`) is `setno` (`0F 91 C0 C3`) instead of `setnp`.
+2. 32-bit CMPS repeat-prefix test at `L2b1d` is `jne L2b73` (`75 4D`) — the middle of 32-bit TEST — not `L2b2a`.
+3. 32-bit SCAS repeat-prefix test at `L2da2` is `0F 85 35 01 00 00` (`jne L2ee4`, 32-bit ROL) with **no relocation**. Unreachable `L2b2a` / `L2db3` kept.
+
+`cmpxchg` is i486 A-step `0F A6` at 0x37a6 and `0F A7` at 0x37cb. Accumulator `moffs` forms are pinned as `.byte`/`.long` (7× `8A 05`, 17× `88 05`, same counts as VGA).
+
+`emu486.s` is **not** on `OTHERLINKED` (that would place it before `_instance.o`). Link order is Task 7. Host GNU `as` for i386 was not available; guest assembly is Task 8.

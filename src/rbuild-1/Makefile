@@ -5,9 +5,9 @@ CFLAGS = -Wall -O
 d = $(DSTROOT)
 p = rbuild
 
-OBJS = strutil.o package.o manifest.o exec.o pkginfo.o builder.o architecture.o toolchain.o apk.o kernel.o runner.o main.o
+OBJS = strutil.o package.o manifest.o exec.o pkginfo.o builder.o architecture.o macho.o toolchain.o apk.o kernel.o runner.o main.o
 
-TESTS = tests/test_architecture tests/test_strutil tests/test_package tests/test_manifest tests/test_builder tests/test_exec tests/test_pkginfo tests/test_toolchain tests/test_apk tests/test_kernel tests/test_runner
+TESTS = tests/test_macho tests/test_architecture tests/test_strutil tests/test_package tests/test_manifest tests/test_builder tests/test_exec tests/test_pkginfo tests/test_toolchain tests/test_apk tests/test_kernel tests/test_runner
 
 .PHONY: all clean install installhdrs installsrc test trace-test
 
@@ -28,6 +28,7 @@ test: rbuild $(TESTS)
 	MAKE=$(MAKE) sh tests/bootstrap-resume.sh
 	MAKE=$(MAKE) sh tests/bootstrap-closure.sh
 
+test_macho_OBJS = macho.o
 test_architecture_OBJS = architecture.o
 
 test_strutil_OBJS = strutil.o
@@ -46,6 +47,9 @@ tests/apk_test.o: apk.c apk.h
 
 tests/runner_test.o: runner.c runner.h
 	$(CC) $(CFLAGS) -DRBUILD_RUNNER_TESTING -c -o $@ runner.c
+
+tests/test_macho: tests/test_macho.c $(test_macho_OBJS)
+	$(CC) $(CFLAGS) -I. -o $@ tests/test_macho.c $(test_macho_OBJS)
 
 tests/test_architecture: tests/test_architecture.c $(test_architecture_OBJS)
 	$(CC) $(CFLAGS) -I. -o $@ tests/test_architecture.c $(test_architecture_OBJS)

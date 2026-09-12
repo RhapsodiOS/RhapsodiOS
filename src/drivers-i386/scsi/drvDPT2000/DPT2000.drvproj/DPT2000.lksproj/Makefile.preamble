@@ -2,7 +2,7 @@
 #  NeXT Makefile.preamble
 ###############################################################################
 
-OTHER_CFLAGS = -g -Wall -Wno-format
+OTHER_CFLAGS = -g -Wall -Wno-format -x objective-c
 OTHER_LDFLAGS =
 OTHER_LIBS =
 LIBS =

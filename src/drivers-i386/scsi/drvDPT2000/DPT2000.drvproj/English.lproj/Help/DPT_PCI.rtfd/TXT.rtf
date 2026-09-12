@@ -1,0 +1,130 @@
+{\rtf0\ansi{\fonttbl\f0\fswiss Helvetica;}
+\paperw7900
+\paperh9000
+\margl0
+\margr160
+{\colortbl;\red0\green0\blue0;}
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b0\i0\ulnone\fs16\li360\fc1\cf1 \
+
+{\b\fs36{\NeXTHelpMarker1 \markername Sending;}
+¬ }\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b\i0\ulnone\fs36\li360\fc1\cf1 DPT 2xx4/3224 PCI SCSI Adapter\
+
+{\b0\fs12{\NeXTGraphic34 216461_PixelRule.tiff \width7180 \height60
+}
+¬}\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b0\i0\ulnone\fs12\li360\fc1\cf1 \
+
+\fs24 \
+
+{\b\fs28{\NeXTGraphic37 366446_SCSI.tiff \width960 \height860
+}
+¬}\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b\i0\ulnone\fs28\li360\fc1\cf1\up20 SCSI Devices
+\b0\fs24\up0 \
+\
+This PCI Bus device driver automatically detects the target adapter.  \
+
+\fs16 \
+\
+
+\b\fs24\fc0\cf0 Supported Hardware: \
+
+\pard\tx520\tx1060\tx1600\tx2120\tx2660\tx3200\tx3720\tx4260\tx4800\tx5320\b0\fs16\fc1\cf1 \
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fs24\li360\fc0\cf0 PM2024 PCI SCSI Adapter\
+PM2044W PCI Wide SCSI Adapter\
+PM2044UW PCI Ultra Wide SCSI Adapter\
+PM2124 PCI SCSI Adapter\
+PM2124W PCI Wide SCSI Adapter\
+PM2144W PCI Wide SCSI Adapter\
+PM2144UW PCI Ultra Wide SCSI Adapter\
+PM3224 PCI SCSI Adapter\
+PM3224W PCI Wide SCSI Adapter\
+
+\fs16\fc1\cf1 \
+\
+
+\fs24 This driver supports the DPT 2xx4 series and the the 3224 PCI SCSI Host Adapters. 
+\fc0\cf0 \
+
+\fs16\fc1\cf1 \
+\
+
+\b\fs24\fc0\cf0 Installing a DPT PCI SCSI Adapter\
+
+\b0\fs16\fc1\cf1 \
+
+\pard\tx360\tx1060\tx1600\tx2120\tx2660\tx3200\tx3720\tx4260\tx4800\tx5320\fs24\fi-360\li360\fc0\cf0 	
+\b Note:
+\b0   You must install the DPT PCI SCSI adapter in your system before you configure the driver.  \
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fs16\li360\fc1\cf1 \
+
+\fs24\fi-380\li740\fc0\cf0 1.	Refer to the "Smart Cache User's
+\fc1\cf1  Manual"
+\fc0\cf0  or the SmartRAID User's Manual" that comes with the adapter. This manual contains information that you should read before installing the adapter.  \
+2.   Be aware of the necessity of proper SCSI termination.  Refer to \
+       the User's Manual and configure the host adapter accordingly using the DPT SCSI Setup program, available at boot time. \
+3.   If you are using any external SCSI drives, you will need to limit the data rate on the SCSI bus using the DPT's SCSI Setup program.\
+	
+\b Note:
+\b0   Early versions of the PM2024 and PM2124 have a bug that prevents the user from specifying "Async" data transfer mode, which is normally the desired transfer mode for external drives.  The same bug also prevents the "External Cable Detection" feature from working.  You may need to select the "5 MB/s Synchronous" transfer mode in this case.  Contact DPT to find out if your board requires this workaround. \
+4.	Install the DPT PCI SCSI Adapter in a PCI slot.\
+	
+\b Note:
+\b0   Early versions of the PM2024 have a bug that results in PCI Parity errors.  You may need to disable PCI parity in the DPT Setup program if you see errors on the console of the form "EATA interrupt: bad status 0x12".\
+5. 	If you have attached a SX4000 module to the DPT host adapter in order to obtain multiple SCSI buses, and your boot drive will be connected to the DPT host adapter, note that boot drive must be connected to the external SCSI connector, 
+\b not
+\b0  to one of the internal SCSI bus connectors on the SX4000.\
+
+\fs16\fi0\li360\fc1\cf1 \
+\
+
+\b\fs24\fc0\cf0 Configuring the DPT PCI SCSI Adapter Device Driver 
+\b0  \
+
+\fs16\fc1\cf1 \
+
+\pard\tx360\tx1060\tx1600\tx2120\tx2660\tx3200\tx3720\tx4260\tx4800\tx5320\b\fs24\fi-360\li360\fc1\cf1 	Note
+\b0\fc0\cf0 : When installing a PCI Host Adapter, you must first install the board before configuring the driver.\
+	
+\b\fc1\cf1 Note: 
+\b0\fc0\cf0 See Configure's Help for general information on running the Configure Application.\
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fs16\li360\fc1\cf1 \
+
+\fs24\fi-380\li740\fc0\cf0 1. 	Click the SCSI icon at the top of Configure's Summary window.  If any string containing "DPT" is in the list of devices that appears in the window, and if a DPT SCSI Adapter adapter is already installed in your computer, select the driver's name, and click Remove.
+\b \
+
+\b0 2. 	If you're planning to use the DPT SCSI Adapter adapter in place of another adapter named in the list, select the other adapter's name, and click Remove. \
+3.	Click Add in the window.  \
+4. 	In  the Add SCSI Devices panel that opens, select the radio button labeled "Show Drivers for Detected Devices."  Select "DPT 2xx4/3224 PCI SCSI Adapter"  from the list, and click Add. \
+	
+\b Note: 
+\b0  If the DPT driver does not show up in the list of  detected devices, this indicates a problem with the system setup. You need to run the system's setup program at boot time to ensure that the system BIOS knows about the board. \
+5.	Click Done, and then click Save. \
+6.	Choose Quit from the Configure menu.\
+
+\fs16\fc1\cf1 \
+
+{\fs12\fi0\li360{\NeXTGraphic3367 486444_PixelRule.tiff \width7180 \height20
+}
+¬}\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b0\i0\ulnone\fs12\li360\fc1\cf1 \
+
+\fs16 	\
+
+\b\fs24 See also\
+
+\b0\fs16 \
+
+\pard\tx720\tx720\tx1080\tx1440\tx1800\tx2160\fs24\fi-360\li720\fc1\cf1 ·	"Add a Device" in Configure's on-line help.\
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fs16\li360\fc1\cf1 \
+
+\fs24 ·	See NeXTanswer 1824 for general information on installing \
+	and configuring device drivers. \
+
+\pard\tx533\tx1067\tx1601\tx2135\tx2668\tx3202\tx3736\tx4270\tx4803\tx5337\fc1\cf1 \
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\li360\fc1\cf1 ·	See NeXTanswer 1830 for an overview of this DPT device \
+	driver. \
+
+}

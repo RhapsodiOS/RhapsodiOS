@@ -1,3 +1,2 @@
-/* DPT EATA SCSI Controller Driver Localized Strings */
-
-"Driver Name" = "DPT2000";
+"DPTSCSIDriver" = "DPT 2021";
+"Long Name" = "DPT 2021 ISA SCSI Adapter";

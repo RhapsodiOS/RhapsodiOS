@@ -1017,7 +1017,9 @@ IODisplayInfo GD5446_modeTable[28] = {
  */
 - (BOOL)determineConfiguration
 {
+    IOConfigTable *configTable;
     const char *chipName;
+    unsigned int kind;
     int i;
 
     /* Unlock the Cirrus extensions and read the key back. */
@@ -1057,11 +1059,12 @@ IODisplayInfo GD5446_modeTable[28] = {
 	break;
     }
 
-    if (chipType <= 1) {
+    kind = chipType;
+    if (kind <= 1) {
 	modeTable = GD5434_modeTable;
 	modeTableCount = GD5434_modeTableCount;
 	defaultMode = GD5434_defaultMode;
-    } else if (chipType <= 4) {
+    } else if (kind <= 4) {
 	modeTable = GD5446_modeTable;
 	modeTableCount = GD5446_modeTableCount;
 	defaultMode = GD5446_defaultMode;
@@ -1074,8 +1077,8 @@ IODisplayInfo GD5446_modeTable[28] = {
     IOLog("%s: %s detected (%d Bytes)\n", [self name], chipName,
 	  installedVRAMBytes);
 
-    if (strcmp([[[self deviceDescription] configTable]
-		valueForStringKey:"Bus Type"], "PCI") == 0)
+    configTable = [[self deviceDescription] configTable];
+    if (strcmp([configTable valueForStringKey:"Bus Type"], "PCI") == 0)
 	busType = 1;
     else
 	busType = 0;
@@ -1093,7 +1096,7 @@ IODisplayInfo GD5446_modeTable[28] = {
 
 	if (modeTable[i].width > 1024 && installedVRAMBytes <= 0x1FFFFF)
 	    modeTable[i].modeUnavailableFlag = IO_DISPLAY_MODE_OTHER_INVALID;
-	if (installedVRAMBytes < modeTable[i].memorySize)
+	if (modeTable[i].memorySize > installedVRAMBytes)
 	    modeTable[i].modeUnavailableFlag =
 		IO_DISPLAY_MODE_NEEDS_MORE_MEMORY;
     }

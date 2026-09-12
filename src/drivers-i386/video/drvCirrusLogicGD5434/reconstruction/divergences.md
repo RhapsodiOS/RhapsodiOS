@@ -1566,24 +1566,27 @@ is `local` on both sides, so the `static` on it in `ProgramDAC.m` is correct, an
 `defaultMode`/`modeTableCount` scalars are `external` on both sides.
 
 Going past what `parity_check.py` can see, all 21 `__TEXT,__text` functions were
-disassembled and compared against the reference individually. **17 of 21 are
+disassembled and compared against the reference individually. **18 of 21 are
 byte-for-byte identical** once 32-bit relocation operands are masked — necessarily
 masked, because of the `__TEXT,__const` inversion above. After replacing the
 `"Bus Type"` `strncmp` with `strcmp` (see Task 1 result below), `__TEXT,__text`
 is 4404 bytes against the reference's 4388, and the remaining 16-byte difference
 is accounted for by three functions (`setMode:` 12 bytes smaller, `setPCIConfiguration`
-28 bytes larger). `determineConfiguration` is now the same size as the reference
-but still not byte-identical:
+28 bytes larger). `determineConfiguration` was the eighteenth to close, in Task 4,
+and is kept in the table below for the record; the three above it are the ones
+that remain:
 
 | Function | Ref | Rebuilt | Nature of the difference |
 | --- | --- | --- | --- |
 | `setMode:` | 1020 | 1008 | Identical branch structure and an identical port-I/O sequence of 67 `in`/`out` instructions. gcc strength-reduced the register loops to a walking pointer in the reference where our build uses indexed addressing. |
 | `setPendingDisplayMode:` | 140 | 140 | Same size, same branches, same call target. The `memorySize` test is `cmp memorySize, installedVRAM / ja` in the reference and the operand-reversed `cmp installedVRAM, memorySize / jb` here — the same predicate — and one fewer callee-saved register is spilled. |
 | `setPCIConfiguration` | 584 | 612 | The same 19 calls — 15 `_objc_msgSend` and 4 `_IOLog` — but reordered by block placement, not in the same order. The "Incorrect number of address ranges" error block is out of line at the end in the reference and inline here, which moves the `_IOLog` calls from reference positions 4, 11, 14, 16 to 4, 10, 13, 16 and pushes two `_objc_msgSend` calls one slot later (reference 10 and 13 against 11 and 14 here); the reference has 11 branch instructions to our 12. Also `IORange range[3]` is at `ebp-0x18` in the reference against `ebp-0x118` here, i.e. the two locals are assigned to the frame in the opposite order. |
-| `determineConfiguration` | 768 | 768 | Same size after `strcmp`. Remaining DIFF is the two `chipType` `ja`/`jg` tests plus block placement. Not assembly-matched. |
+| `determineConfiguration` | 768 | 768 | **Byte-for-byte identical after Task 4.** See the Task 4 result below: an `unsigned int` local for the `chipType` range tests, an `IOConfigTable *` local for the `"Bus Type"` test, and the `memorySize > installedVRAMBytes` operand order together closed it. Now `assembly-matched`. |
 
-**`determineConfiguration` still does not match byte for byte.** Before the
-`strcmp` edit, two things differed. First, the reference expands the `"Bus Type"`
+**`determineConfiguration` still does not match byte for byte.** *(Superseded by
+the Task 4 result below, which closed this function. The reading of the two
+divergences recorded here was correct; what follows is the state after Task 1.)*
+Before the `strcmp` edit, two things differed. First, the reference expands the `"Bus Type"`
 test inline as a `repe cmpsb` sequence while our build emitted `call
 _strncmp`, so the ordered call-target lists differed by one entry — 7 calls in the
 reference against 8 here. That call is gone: the source now uses `strcmp`, the
@@ -1731,7 +1734,90 @@ taking the function from 14 conditional branches to 15 and moving it *away* from
 the reference's block shape. The change was reverted; the restored build is
 byte-identical to the pre-experiment build across all 21 functions. The `ja`
 against `jg` divergence is therefore not reachable from the ivar's declared type
-and not from a `switch`, and is left as it stands. Do not repeat either attempt.
+and not from a `switch`. Do not repeat either attempt — but the divergence *is*
+reachable from a local, which is what Task 4 below found.
+
+### Task 4 result — `determineConfiguration` is closed
+
+**The function is now byte-for-byte identical to the reference** under 32-bit
+relocation masking: `compare_cirrus.py` reports `MATCH` at 768 against 768 and a
+byte-level diff of the masked extent reports no differing offsets.
+`failed_matched` stayed 0 and the 17 previously matched functions are unchanged.
+The ledger entry at 892 is `assembly-matched`.
+
+Three source changes were needed, all inside `-determineConfiguration`, and none
+of them touches the `chipType` ivar's declared type:
+
+```c
+    IOConfigTable *configTable;
+    const char *chipName;
+    unsigned int kind;
+    int i;
+    ...
+    kind = chipType;
+    if (kind <= 1) {
+	...GD5434...
+    } else if (kind <= 4) {
+	...GD5446...
+    }
+    ...
+    configTable = [[self deviceDescription] configTable];
+    if (strcmp([configTable valueForStringKey:"Bus Type"], "PCI") == 0)
+    ...
+	if (modeTable[i].memorySize > installedVRAMBytes)
+```
+
+1. **`unsigned int kind`, assigned from `chipType` after the `switch`.** This is
+   what turns the two `jg` into `ja`. It also makes gcc load the ivar once into
+   `ecx` and compare the register — `mov ecx, [edx+0x258]` / `cmp ecx, 1` / `ja`
+   and `cmp ecx, 4` / `ja` — which is exactly the reference's shape, and which
+   reading the ivar's memory operand twice never produced. The ivar stays
+   `int chipType` (`'i'` in `__OBJC,__instance_vars`), so the section that was
+   already identical stays identical. The `switch` still assigns `chipType`
+   directly; `kind` is a read-side temporary only.
+2. **`IOConfigTable *configTable`, hoisted out of the `strcmp` line.** With the
+   three message sends nested in the `if`, the extra live value from `kind`
+   raised register pressure enough that gcc hoisted the `push "Bus Type"` above
+   the `[self deviceDescription]` send and switched `a1`/`8b 55 08` to
+   `8b 15`/`8b 75 08`, perturbing 94 bytes in the +406…+500 window. Hoisting the
+   config table into its own statement restores the reference's order exactly.
+   `strcmp` and the inline `repe cmpsb` are untouched by this — the call-target
+   list stays at seven entries with no `_strncmp`.
+3. **`modeTable[i].memorySize > installedVRAMBytes`**, the operand order of the
+   needs-more-memory test. The reference emits `mov eax, [ecx+edi+0x68]` /
+   `cmp [edx+0x228], eax` / `jae`; `installedVRAMBytes < modeTable[i].memorySize`
+   emits the operand-reversed `mov eax, [edx+0x228]` / `cmp [ecx+edi+0x68], eax`
+   / `jbe`. Both are unsigned and both compute the same predicate — this was
+   already recorded above as "not a signedness question" — but only the first
+   form matches the reference's bytes. **This is the same pattern still open in
+   `setPendingDisplayMode:`**, where the reference is `cmp memorySize, VRAM / ja`
+   against our `cmp VRAM, memorySize / jb`; the fix there is the same operand
+   swap, and it is the obvious next thing to try on that function.
+
+**Experiment log.** Spec §7.1 listed seven candidate shapes for the `chipType`
+tests. Experiment 1 — the assignment wrapped in a bare inner block,
+`{ unsigned int kind = chipType; ... }` — was built on the guest and **got the
+two `ja` right on the first try**, closing offsets +240…+320 completely. It was
+still `DIFF`, but only at three places: the frame size (`83 ec 1c` against the
+reference's `83 ec 18`, with the matching `8d 65 d8`/`8d 65 dc` in the epilogue),
+the +406…+500 `strcmp` window, and the +713…+722 `memorySize` test. Experiments
+2, 3 and 5 through 7 were therefore never built: the comparison form was already
+correct and the residue was not a comparison question. Moving the declaration to
+the function's local block — experiment 4's placement, with the assignment left
+after the `switch` where it belongs — is what closed the frame size; a local
+declared in a bare inner block costs a stack slot that the reference's frame does
+not have.
+
+**What the two locals cost.** The reference `_reloc` is stripped, so nothing about
+its source-level locals can be read from it; the byte equality of the extent is
+the whole of the evidence that this shape is the reference's. The rebuilt objects
+are compiled `-g`, and their stabs confirm the one thing that had to be true for
+the frame to match: both locals are register-allocated and neither takes a stack
+slot. `kind` is `kind:r4`, a register `unsigned int`, and `configTable` is
+`configTable:r282=*167`, a register `IOConfigTable *`. Whether Apple spelled them
+this way is not recoverable. What the reference does fix is that two read-side
+temporaries of these two types were there, that neither was spilled, and that the
+`chipType` ivar itself stayed signed.
 
 Two further gaps, neither of them in the driver source:
 
@@ -1838,21 +1924,20 @@ remain unmet. `driverTools` and `/System/Developer` were not edited.
 
 | Status | Count |
 | --- | --- |
-| `assembly-matched` | 15 |
+| `assembly-matched` | 16 |
 | `control-flow-confirmed` | 3 |
-| `signature-confirmed` | 1 |
 | `unexamined` | 2 |
 
-The 15 at `assembly-matched` are the hand-written functions whose rebuilt
+The 16 at `assembly-matched` are the hand-written functions whose rebuilt
 instruction stream was read against the reference and found byte-identical under
 relocation masking; that is the strongest claim available and it is claimed only
 where whole-body byte equality was actually demonstrated. `setMode:`,
 `setPendingDisplayMode:` and `setPCIConfiguration` are held at
 `control-flow-confirmed` because their block shape and call targets were compared
 and agree, but their instruction streams do not match byte for byte.
-`determineConfiguration` is still not `assembly-matched`: after `strcmp` the
-call-target list matches (no `_strncmp`), but the instruction stream remains
-`DIFF` on the `ja`/`jg` tests plus block placement. The two
+`determineConfiguration` joined the `assembly-matched` set in Task 4 — it passed
+through `control-flow-confirmed` on the way, since the ledger forbids skipping a
+state — and there are no `signature-confirmed` entries left. The two
 `unexamined` entries are the build-generated glue at 4364 and 4376, which
 `source-map.json` lists as unmapped: they have no reconstructed source to review,
 and are left untouched even though both are byte-identical to the reference.

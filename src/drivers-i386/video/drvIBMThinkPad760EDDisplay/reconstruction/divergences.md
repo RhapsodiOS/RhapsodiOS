@@ -3338,6 +3338,12 @@ Phase 2 names:
 
 The plan's `python -m binrecon compare --profile` needs `--reference-analysis`, `--rebuilt-analysis`, and `--output`. `binrecon analyze --profile` runs IDA on both and writes `acceptance.passed`.
 
-`read_macho` on this rebuilt needed i386 scattered `GENERIC_RELOC_SECTDIFF` (type 2) + PAIR; `_emu486` jump tables emit those. That decoder is in `tools/binrecon/binrecon/macho.py` on this branch.
+`read_macho` on this rebuilt needed i386 scattered `GENERIC_RELOC_SECTDIFF` (type 2) + PAIR; `_emu486` jump tables emit those. That decoder is in `tools/binrecon/binrecon/macho.py` on this branch. Keeping it is a spec exception: the original plan said not to change binrecon, but compare cannot parse this rebuilt without it (24 SECTDIFF relocs). Phase 1 `failed_matched_or_glue` 15 was the uncommitted compare script's `width` check on semantic relocs (they have no `width`), not macho.py.
 
-`binrecon analyze` still **failed** on the rebuilt: IDA relocation 875 at `0x4180` is a 4-byte `ida-off32` over a 2-byte `in al, (offset loc_1A+4)` inside `_emu486` moffs forms. No comparison report, so **`acceptance.passed` was not produced**. Expected `normalized-functions` FAIL while accepted compiler-only remain; this is a harder failure than that. `compare_thinkpad.py` is the Phase 2 record.
+`binrecon analyze --profile` was retried against `$REF` and this guest `$REBUILT` with the worktree decoder. It still **failed** before writing a comparison report:
+
+```
+relocation 875 is outside its instruction: relocation covers 0x4180..0x4184 (width 4, kind ida-off32-32) but the instruction covers 0x4180..0x4182 — IDA on ...IBMThinkPad760EDDisplayDriver_reloc: instruction at 0x4180 (2 bytes, in al, (offset loc_1A+4))
+```
+
+IDA treats `_emu486` moffs (`in al, (offset …)`) as a 2-byte instruction and then overlays a 4-byte `ida-off32`. `emu486.s` encodings were not rewritten to please IDA. No `acceptance.passed` file exists; the boolean is **unavailable**, not `false`. `compare_thinkpad.py` remains the Phase 2 compare record.

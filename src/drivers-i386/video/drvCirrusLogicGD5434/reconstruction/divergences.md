@@ -18,11 +18,14 @@ The Mach-O header carries `cpu_type = 7` (i386), `cpu_subtype = 3` (`CPU_SUBTYPE
 `__TEXT,__text` is 4388 bytes at address 0.
 
 **Every one of the 19 hand-written functions has now been examined against our
-source, and 17 of the binary's 21 are byte-for-byte identical to the reference
+source, and 19 of the binary's 21 are byte-for-byte identical to the reference
 under relocation masking** — see "Per-function findings" and "Build and parity"
 below. That was not true when this report was first written, and the next three
 paragraphs describe the pre-rewrite state; they are retained because the
 `mapped`/`unmapped` history below is unreadable without them.
+
+Rebuilt `$REBUILT` from the Task 8 clean-tree guest rebuild is 160912 bytes,
+SHA-256 `D8FB7EE758197E6CD3A9DF686D0F16723D22DA9A970930854A5DB2FA574F468C`.
 
 **At the report pass, no function had been examined against our source, because
 our source implemented none of the reference's behaviour.** Our
@@ -2102,6 +2105,21 @@ does not add `OTHER_GENERATED_SRCFILES`, so `vers.c` was not compiled.
 `ld: can't open`. The copy and preamble experiment were reverted; apple-generic
 preambles were restored. The SGS-named `_VERS_STRING` / `_VERS_NUM` symbols
 remain unmet. `driverTools` and `/System/Developer` were not edited.
+
+### Task 8 result — final rebuild SHA and public status
+
+Clean-tree guest rebuild from HEAD `39c86b02f`. `make exit=0`, `fail=0`.
+`$REBUILT` SHA-256
+`D8FB7EE758197E6CD3A9DF686D0F16723D22DA9A970930854A5DB2FA574F468C`,
+stamped into `ledger.json` `rebuilt_sha256`. `compare_cirrus.py`:
+`failed_matched` 0; campaign `MATCH` on `determineConfiguration` (768/768)
+and `setPendingDisplayMode:` (140/140); `DIFF` on `setMode:` (1020 vs 1008)
+and `setPCIConfiguration` (584 vs 612). Nineteen of twenty-one functions
+byte-identical under relocation masking. `parity_check.py`: 0 missing
+strings, 0 missing symbols. Host `$BUNDLE` exists (9552 bytes, MH_BUNDLE
+`file_type = 8`). SGS `_CirrusLogicGD5434DisplayDriver_VERS_STRING` /
+`_VERS_NUM` still unmet (apple-generic `VersionString`/`VersionNumber`
+instead). Not hardware-tested.
 
 ### Ledger status distribution
 

@@ -7,9 +7,9 @@
 "IRQ Levels" = "11";
 "I/O Ports" = "0x340-0x35f";
 "Valid IRQ Levels" = "9 10 11 12";
-"Valid I/O Ports" = "0x340-0x35f";
+"Valid DMA Channels" = "0 5 6 7";
 "Boot Driver";
-"Help File" = "AIC6X60SCSI_PROJECT.drvAdaptec6x60-15_DEVELOPER.root_BUILT:Sat Mar 28 21:59:55 PST 1998";
+"Help File" = "AIC_6X60_SCSI_Adapter.rtfd";
 "Server Name" = "AIC6X60SCSI";
 "Driver Version" = "PROGRAM.AIC6X60SCSI_VERSION.AIC6X60SCSI_VERS_NUM.AIC6X60SCSI_VERS_STRING.AIC6X60_5.00";
 "Version" = "5.00";

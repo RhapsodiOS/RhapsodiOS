@@ -1,6 +1,6 @@
 #!/bin/sh
 # Build one i386 SCSI driver on the Rhapsody guest and stage its _reloc.
-# Usage: sh vm/build-i386-scsi.sh drvSym53C8xx
+# Usage: sh vm/build-i386-scsi.sh drvAdaptec6X60|drvSym53C8xx
 
 set -e
 
@@ -44,6 +44,7 @@ fi
 
 rm -rf "$DST"
 mkdir -p "$DST" "$STAGE"
+# install if the project supports it; otherwise copy the reloc
 if gnumake DSTROOT="$DST" install; then
     find "$DST" -name '*_reloc' -exec cp {} "$STAGE/" \;
 else

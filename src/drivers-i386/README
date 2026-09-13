@@ -39,8 +39,8 @@ network
  * drvVMwareVMXNet - complete
 
 scsi
- (see docs/drivers/scsi-reconstruction.md - four of these are stubs on the
-  wrong hardware model, not partial reconstructions)
+ (see docs/drivers/scsi-reconstruction.md - four of these are stubs; only
+  drvSym53C8xx is on the wrong hardware model)
  * drvAdaptec6X60 - reconstructed against the reference binary, compiled; not hardware-tested
  * drvAdaptec1542B - reconstructed against the reference binary, no divergences; not yet compiled
  * drvAdaptec2940 - stub, 10/170 reference functions; missing the whole SCSIBus class

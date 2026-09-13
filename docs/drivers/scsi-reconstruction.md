@@ -20,7 +20,7 @@ project type and are correctly absent from source.
 | --- | --- | --- | --- |
 | drvAdaptec1542B | 36 | 34 | complete; only build glue absent |
 | drvBusLogic | 37 | 35 | complete; only build glue absent |
-| drvAdaptec6X60 | 79 | 77 | reconstructed against the reference; guest `_reloc` produced; not hardware-tested |
+| drvAdaptec6X60 | 79 | 77 | reconstructed; guest `_reloc`; 54 functions unexamined; not hardware-tested |
 | drvDPT2000 | 55 | 10 | stub; missing the `EATASCSIBus` class |
 | drvBusLogicFP | 123 | 7 | stub |
 | drvSym53C8xx | 158 | 12 | stub, wrong architecture |
@@ -46,8 +46,9 @@ rather than a partial one.
 
 drvAdaptec1542B (`AHAController`), drvAdaptec6X60 (`AIC6X60`), and
 drvAdaptec2940 (`Adaptec2940`) already match. The `(PrivateMethods)` and `(IOThread)` category split is correct in
-every driver, and the `*Controller.m` / `*Routines.m` / `*Thread.m` file
-layout mirrors it — that part was reconstructed well throughout.
+every driver. The `*Controller.m` / `*Routines.m` / `*Thread.m` file
+layout still mirrors that split in the other drivers; drvAdaptec6X60 no
+longer has `AIC6X60Routines.m` after the HIM rewrite.
 
 Renaming is necessary but sufficient only for drvBusLogic, where it took the
 count from 26 to 30 and left five genuinely missing functions.
@@ -65,9 +66,10 @@ Reconstructed against `AIC6X60SCSI_reloc`. The AHA-154x mailbox clone
 The live tree is a DriverKit `AIC6X60` class plus an Adaptec HIM
 (`HIM6X60.c`) and SCSI sequencer (`AIC6X60Sequencer.c`) that program
 AIC-6260/6360 ports directly: selection, reselection, message and data
-phases, SDTR, PIO and DMA. 77 of 79 reference `__text` functions map; the
-two absences are Kernel Server glue. A guest `Adaptec6X60_reloc` was
-produced. Not hardware-tested. Linux `aic6x60` was not used as a template.
+phases, SDTR, PIO and DMA. The reconstruction ledger is 13
+assembly-matched, 10 control-flow-confirmed, 54 unexamined, and 2 Kernel
+Server glue. A guest `Adaptec6X60_reloc` was produced. Not
+hardware-tested. Linux `aic6x60` was not used as a template.
 
 ### drvSym53C8xx
 

@@ -69,7 +69,15 @@ echo "dir $src all" > "$base/Manifest"
 
 write_profile() {
     cpp=$1
-    cat > "$profile" <<EOF
+    ready=$2
+    dest=$3
+    if test -z "$ready"; then
+        ready='@SYSROOT@/runtime-not-installed'
+    fi
+    if test -z "$dest"; then
+        dest=$profile
+    fi
+    cat > "$dest" <<EOF
 profile=test-gcc
 build_cc=/usr/bin/cc
 target_cc=/usr/bin/cc
@@ -88,7 +96,7 @@ path=/usr/bin:/bin:/usr/sbin:/sbin
 arch_flags=-arch ppc
 cpp_flags=$cpp
 ld_flags=-Wl,-syslibroot,@SYSROOT@
-ld_flags_ready=@SYSROOT@/runtime-not-installed
+ld_flags_ready=$ready
 ln=/bin/ln
 EOF
 }
@@ -580,6 +588,71 @@ check_policy_migration() {
 }
 check_policy_migration all "$base/Manifest" "$repo" "$root" "$state"
 check_policy_migration headers "$headers_base/Manifest" "$headers_repo" "$headers_root" "$headers_state"
+
+univ=$base/universal
+univ_root=$univ/root
+univ_state=$univ/state
+univ_repo=$univ/repo
+univ_profile=$univ/toolchain.conf
+mkdir -p "$univ/rt/dpkg" "$univ/later/dpkg" "$univ_repo" "$univ_root"
+for pkg in rt later; do
+    cat > "$univ/$pkg/dpkg/control" <<EOF
+Package: $pkg
+Maintainer: Test <test@example.invalid>
+Version: 1.0
+Architecture: universal-apple-rhapsody
+Description: universal $pkg fixture
+Build-Depends:
+EOF
+    cp "$src/Makefile" "$univ/$pkg/Makefile"
+done
+echo "dir $univ/rt all" > "$univ/BootstrapRuntimeManifest"
+echo "dir $univ/later all" > "$univ/Manifest"
+write_profile '-nostdinc -I@SYSROOT@/System/Headers' '@SYSROOT@/System' "$univ_profile"
+: > "$univ_root/System"
+
+if ./rbuild bootstrap-universal --sysroot "$univ_root" --toolchain "$univ_profile" \
+    --state "$univ_state" "$univ/Manifest" "$univ_repo" "$univ_repo" \
+    > "$univ/missing-indr.out" 2>&1; then
+    echo 'bootstrap-resume: missing indr accepted'
+    exit 1
+fi
+grep 'rbuild:' "$univ/missing-indr.out" > /dev/null
+grep "$univ_root/usr/local/bin/indr" "$univ/missing-indr.out" > /dev/null
+
+mkdir -p "$univ_root/usr/local/bin"
+cat > "$univ_root/usr/local/bin/indr" <<'EOF'
+#!/bin/sh
+exit 0
+EOF
+chmod +x "$univ_root/usr/local/bin/indr"
+
+./rbuild -n bootstrap-universal --sysroot "$univ_root" --toolchain "$univ_profile" \
+    --state "$univ_state" "$univ/Manifest" "$univ_repo" "$univ_repo" \
+    > "$univ/dry.out" 2>&1
+if awk '
+    /must build rt-1.0.apk using dir / { if (!r) r = NR }
+    /must build later-1.0.apk using dir / { if (!f) f = NR }
+    END { exit (r && f && r < f) ? 0 : 1 }
+' "$univ/dry.out"; then
+    :
+else
+    echo 'bootstrap-resume: dry-run did not list runtime source before full-manifest source'
+    exit 1
+fi
+
+rm -f "$univ_root/System"
+./rbuild bootstrap --sysroot "$univ_root" --toolchain "$univ_profile" \
+    --state "$univ_state" "$univ/Manifest" "$univ_repo" "$univ_repo"
+grep '^effective_architecture=ppc-apple-rhapsody$' \
+    "$univ_state/projects/later-1.0-all.done" > /dev/null
+test -f "$univ_repo/later-1.0.apk"
+make_wrong_apk rt 1.0 universal-apple-rhapsody "$univ_repo/rt-1.0.apk"
+
+./rbuild bootstrap-universal --sysroot "$univ_root" --toolchain "$univ_profile" \
+    --state "$univ_state" "$univ/Manifest" "$univ_repo" "$univ_repo" \
+    > "$univ/live.out" 2>&1 || :
+grep 'must build later-1.0.apk' "$univ/live.out" > /dev/null
 
 write_profile '-nostdinc -DCHANGED -I@SYSROOT@/System/Headers'
 if ./rbuild bootstrap --sysroot "$root" --toolchain "$profile" \

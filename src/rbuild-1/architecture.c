@@ -20,7 +20,8 @@ int architecture_parse(const char *label, unsigned *mask) {
 int architecture_resolve(unsigned source, unsigned operation, unsigned *effective) {
     if (source < RB_ARCH_I386 || source > RB_ARCH_UNIVERSAL)
         return 1;
-    if (operation != 0 && operation != RB_ARCH_I386 && operation != RB_ARCH_PPC)
+    if (operation != 0 && operation != RB_ARCH_I386 &&
+        operation != RB_ARCH_PPC && operation != RB_ARCH_UNIVERSAL)
         return 1;
     if (operation != 0 && (source & operation) != operation)
         return 1;

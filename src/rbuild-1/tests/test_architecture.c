@@ -42,8 +42,7 @@ TEST(test_resolve) {
     unsigned source, operation, effective;
     for (source = 1; source <= 3; source++) {
         for (operation = 0; operation <= 3; operation++) {
-            int valid = operation == 0 ||
-                (operation != 3 && (source & operation) == operation);
+            int valid = operation == 0 || (source & operation) == operation;
             effective = 99;
             if (valid) {
                 CHECK_INT(architecture_resolve(source, operation, &effective), 0);
@@ -53,6 +52,20 @@ TEST(test_resolve) {
                 CHECK_INT(effective, 99);
             }
         }
+    }
+    {
+        unsigned effective = 99;
+        CHECK_INT(architecture_resolve(RB_ARCH_UNIVERSAL, RB_ARCH_UNIVERSAL,
+                                       &effective), 0);
+        CHECK_INT(effective, RB_ARCH_UNIVERSAL);
+        effective = 99;
+        CHECK(architecture_resolve(RB_ARCH_I386, RB_ARCH_UNIVERSAL,
+                                   &effective) != 0);
+        CHECK_INT(effective, 99);
+        effective = 99;
+        CHECK(architecture_resolve(RB_ARCH_PPC, RB_ARCH_UNIVERSAL,
+                                   &effective) != 0);
+        CHECK_INT(effective, 99);
     }
 }
 

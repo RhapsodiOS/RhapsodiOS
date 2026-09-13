@@ -48,9 +48,11 @@ drivers, and `QVision`. The Number9 and Weitek drivers and
 instruction. `QVision` exists as an untracked working tree in the main checkout
 but is not on this branch.
 
-## drvCirrusLogicGD5434 — reconstructed and verified
+## drvCirrusLogicGD5434 — reconstructed, 19/21 byte-identical
 
-The only video driver whose reconstruction has been closed against a build.
+The only video driver rebuilt and compared against its reference. Two
+functions (`setMode:` and `setPCIConfiguration`) remain
+`control-flow-confirmed`.
 
 Apple's `__OBJC,__module_info` names the source files outright, so the file
 partition is not inferred: `CirrusLogicGD5434DisplayDriver.m` (`__text` 0–3588),
@@ -180,16 +182,14 @@ did not rebuild it.
 `__TEXT,__text` symbols, so `__const` is outside its scope and its green result
 is narrower than it looks.
 
-The cause is unproven. The strongest in-repo account is that
-`src/pb_makefiles-1/next-sgs.make:36-45` generates `$(NAME)_vers.c`, but nothing
-links `$(VERS_OFILE)` unless `OTHER_GENERATED_OFILES` picks it up — which for a
-Kernel Server comes from
-`src/driverTools-1/KernelServerProjectType/kernelserver.make.preamble:8-10`
-through an optional `-include` that is silently skipped when that file is not
-installed on the guest. An earlier hypothesis blaming `drvS3Generic`'s outer
-`Makefile.postamble` was refuted: its include is an absolute path to
-`/NextDeveloper/Makefiles/`, absent from this tree, at the aggregate level, which
-builds no code.
+Cirrus leftover is the symbol names, not a missing link of `$(VERS_OFILE)`.
+`vers.o` is linked; the rebuild carries apple-generic `VersionString` /
+`VersionNumber`. The SGS `_VERS_STRING` / `_VERS_NUM` names remain **unmet**.
+Historically the guest had no `next-sgs.make` and `$(VERS_OFILE)` stayed empty
+until Cirrus-local `OTHER_GENERATED_OFILES` plus
+`VERSIONING_SYSTEM = apple-generic` produced `vers.o` — that is the
+pre-Task-2/3 gap, not the current Cirrus cause. ThinkPad still has no
+recorded version bundle from this pass.
 
 ## Analyzer coverage is narrower than intended
 

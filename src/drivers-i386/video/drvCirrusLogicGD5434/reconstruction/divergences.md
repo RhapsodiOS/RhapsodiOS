@@ -20,9 +20,10 @@ The Mach-O header carries `cpu_type = 7` (i386), `cpu_subtype = 3` (`CPU_SUBTYPE
 **Every one of the 19 hand-written functions has now been examined against our
 source, and 19 of the binary's 21 are byte-for-byte identical to the reference
 under relocation masking** — see "Per-function findings" and "Build and parity"
-below. That was not true when this report was first written, and the next three
-paragraphs describe the pre-rewrite state; they are retained because the
-`mapped`/`unmapped` history below is unreadable without them.
+below. That was not true when this report was first written, and the three
+paragraphs after the rebuilt SHA describe the pre-rewrite state; they are
+retained because the `mapped`/`unmapped` history below is unreadable without
+them.
 
 Rebuilt `$REBUILT` from the Task 8 clean-tree guest rebuild is 160912 bytes,
 SHA-256 `D8FB7EE758197E6CD3A9DF686D0F16723D22DA9A970930854A5DB2FA574F468C`.

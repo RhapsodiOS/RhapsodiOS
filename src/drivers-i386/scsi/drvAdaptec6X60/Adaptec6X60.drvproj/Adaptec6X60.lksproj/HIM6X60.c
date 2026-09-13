@@ -25,13 +25,6 @@ extern void dataOutPIO(struct _HACB *hacb);
 
 extern int repinsb(IOEISAPortAddress port, unsigned char *addr, int count);
 
-typedef struct {
-	unsigned char	busy;
-	unsigned char	_pad[3];
-	struct _SCB	*queuedScb;
-	struct _SCB	*activeScb;
-} HIM_LUCB;
-
 static void (*savewatchdog)(void *arg);
 
 msg_header_t timeoutMsgTemplate = {

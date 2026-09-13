@@ -2,18 +2,10 @@
 #import "AIC6X60Inline.h"
 #import "AIC6X60ControllerPrivate.h"
 #import <driverkit/generalFuncs.h>
-#import <string.h>
 
 /*
  * HIM helpers this translation unit calls. Global C linkage.
  */
-typedef struct {
-	unsigned char	busy;
-	unsigned char	_pad[3];
-	struct _SCB	*queuedScb;
-	struct _SCB	*activeScb;
-} HIM_LUCB;
-
 extern HIM_LUCB *HIM6X60GetLUCB(struct _HACB *hacb, int bus, unsigned char target, unsigned char lun);
 extern void HIM6X60CompleteSCB(struct _HACB *hacb, struct _SCB *scb);
 extern void HIM6X60Event(struct _HACB *hacb, int event, int extra);
@@ -29,6 +21,7 @@ extern void linkScbPreemptive(struct _SCB **head, struct _SCB *scb);
 extern int unlinkScb(struct _SCB **head, struct _SCB *scb);
 extern void deferredIsr(struct _HACB *hacb);
 extern void memset(void *b, int c, int len);
+extern int memcmp(const void *s1, const void *s2, unsigned int n);
 extern void *memcpy(void *dst, const void *src, unsigned int n);
 
 extern int repinsb(IOEISAPortAddress port, unsigned char *addr, int count);

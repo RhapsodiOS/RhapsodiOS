@@ -125,6 +125,13 @@
 
 struct _SCB;
 
+typedef struct {
+	unsigned char	busy;			/* GetLUCB: 0x8c + index*12 */
+	unsigned char	_pad[3];
+	struct _SCB	*queuedScb;
+	struct _SCB	*activeScb;
+} HIM_LUCB;
+
 /*
  * Host adapter control block. sizeof 1488 / 0x390.
  * Unknown ObjC (?) unions are opaque so IDA-confirmed displacements land.
@@ -176,12 +183,7 @@ struct _HACB {
 	unsigned char		_opaque_signature[2];	/* +0x82; align signature */
 	unsigned int		signature;		/* +0x84 */
 	unsigned int		scsiCount;		/* +0x88 */
-	struct {
-		unsigned char	busy;			/* GetLUCB: 0x8c + index*12 */
-		unsigned char	_opaque[3];
-		struct _SCB	*queuedScb;
-		struct _SCB	*activeScb;
-	} lucb[64];					/* +0x8c, stride 12 */
+	HIM_LUCB		lucb[64];		/* +0x8c, stride 12 */
 	void			*controllerId;		/* +0x38c */
 };
 

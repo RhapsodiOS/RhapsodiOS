@@ -542,6 +542,84 @@ were rewritten from the IDA instruction dumps so the reference call targets
 and major branches exist. `samePhaseREQuest` returns `int` (IDA `eax`).
 `targetREQuest` tests the dword at SCB `+0x10` against `0x408000`.
 
+### Task 7 quality review (IDA, not Linux)
+
+**PIO `+0x34 == 0`.** `_dataInPIO` / `_dataOutPIO` do **not** call
+`_HIM6X60GetPhysicalAddress`. That call exists only in `_dataPhaseDMA`.
+When segment length at `hacb+34h` is 0 the PIO bodies store `+0x28` and
+`+0x34` to themselves, then compare residual `+0x2C` against `+0x34` and
+`jz` back to refill. Unsigned `2C >= 0` is always true, so the clamp is
+dead and IDA itself tight-loops; it does not return or `ResetBus`. Left
+as that control flow.
+
+`_dataInPIO` (no GetPhysicalAddress in `calls`; refill is `loc_3648`):
+
+```
+13906  cmp      dword ptr [esi+34h], 0
+13910  jnz      loc_3678
+13912  mov      eax, [esi+28h]
+13915  mov      [esi+28h], eax
+13918  mov      eax, [esi+34h]
+13921  mov      [esi+34h], eax
+13924  mov      edx, [esi+34h]
+13927  cmp      [esi+2Ch], edx
+13930  jnb      loc_366F
+13932  mov      edx, [esi+2Ch]
+13935  mov      [esi+34h], edx
+13938  test     edx, edx
+13940  jz       loc_3648
+```
+
+`_dataOutPIO` (same shape; refill is `loc_3450`):
+
+```
+13402  cmp      dword ptr [esi+34h], 0
+13406  jnz      loc_3480
+13408  mov      eax, [esi+28h]
+13411  mov      [esi+28h], eax
+13414  mov      edx, [esi+34h]
+13417  mov      [esi+34h], edx
+13420  mov      ecx, [esi+34h]
+13423  cmp      [esi+2Ch], ecx
+13426  jnb      loc_3477
+13428  mov      ecx, [esi+2Ch]
+13431  mov      [esi+34h], ecx
+13434  test     ecx, ecx
+13436  jz       loc_3450
+```
+
+Contrast `_dataPhaseDMA`, which does refill `+0x34` from GetPhysicalAddress:
+
+```
+14323  cmp      dword ptr [ebx+34h], 0
+14327  jnz      loc_3823
+14329  lea      eax, [ebx+34h]
+...
+14346  call     _HIM6X60GetPhysicalAddress
+```
+
+**Watchdog scale.** `_HIM6X60Watchdog` multiplies milliseconds by `3E8h`
+(1000), not 1_000_000. The reloc passes that product to `_ns_timeout`.
+Kept `milliseconds * 1000ULL`.
+
+```
+17548  mov      eax, 3E8h
+17553  mul      ecx
+```
+
+**Signature immediates differ in IDA.** `_HIM6X60GetConfiguration` uses
+`0FFFFFFAEh` (window `0x52`/`0x53`); `_updateSDTR` / `_resetSDTR` use
+`0FFFFFFADh` (window `0x53`/`0x54`). Both kept.
+
+```
+4199   add      eax, 0FFFFFFAEh     ; GetConfiguration
+4485   add      eax, 0FFFFFFAEh
+4912   add      eax, 0FFFFFFAEh
+16188  add      eax, 0FFFFFFADh     ; updateSDTR
+16521  add      eax, 0FFFFFFADh     ; resetSDTR
+16698  add      eax, 0FFFFFFADh
+```
+
 ## What was not attempted
 
 No HIM source rewrite, no `binrecon compare` of a rebuilt `_reloc`. Mapped

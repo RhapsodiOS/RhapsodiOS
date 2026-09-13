@@ -442,11 +442,11 @@ not copied).
 
 | # | File | Result |
 | --- | --- | --- |
-| 1 | `Default.table` | Byte-identical except the ignored `"Driver Version"` PROGRAM line and missing `"Version" = "5.00";`. Auto Detect IDs already `0x00011000 0x00021000 0x00031000 0x00041000`. Title / Family / Server Name / Wide SCSI / Synchronous / Valid IRQ Levels match. |
+| 1 | `Default.table` | Task 10: added `"Version" = "5.00";`. Still omit `"Driver Version"` PROGRAM line. Auto Detect IDs already `0x00011000 0x00021000 0x00031000 0x00041000`. Title / Family / Server Name / Wide SCSI / Synchronous / Valid IRQ Levels match. |
 | 2 | `DriverInfo` | Present in our `.drvproj` (`DRIVER_NAME="SYM53c8"`). **Absent** from the reference bundle. |
-| 3 | `Load_Commands.sect` | Same `WIRE` / no Mig handler as reloc `Loaded Server,Load Commands` (VA 90119, file 92515, size 164). Reloc first line is `"# \n"` (hash-space); ours is `"#\n"`. Reloc `Server Name` is `SYM53c8`; `Instance Var` is `SYM53c8_instance`. |
+| 3 | `Load_Commands.sect` | Task 10: first line is `"# \n"` (hash-space) to match the reloc. Same `WIRE` / no Mig handler. Reloc `Server Name` is `SYM53c8`; `Instance Var` is `SYM53c8_instance`. |
 | 4 | `English.lproj/Localizable.strings` | Byte-identical (`"SYM53c8" = "Symbios 53C8xx"` / `"Long Name" = "Symbios Logic 53C8xx SCSI Adapter"`). |
-| 5 | Help directory | Ours `English.lproj/DriverHelp/`; reference `English.lproj/Help/`. `Makefile` `LOCAL_RESOURCES` still lists `DriverHelp`. |
+| 5 | Help directory | Task 10: `English.lproj/Help/`; `Makefile` `LOCAL_RESOURCES = Localizable.strings Help SYM53c8Inspector.nib`. Inspector nib left in place; DYLDLINK `SYM53c8` not copied. |
 | 6 | Help contents | `TableOfContents.rtf`, `Symbios_Logic_53C8xx_SCSI_Adapter.rtfd/TXT.rtf`, and the three tiffs are byte-identical across those two directory names. |
 
 ## Analyzer disagreement

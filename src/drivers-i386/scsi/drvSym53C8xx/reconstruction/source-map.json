@@ -1,1116 +1,1433 @@
 {
   "boundary_disputed": [],
   "duplicate_candidates": [],
-  "mapped": [],
-  "reference_sha256": "E0AC193DF652271D1B4249440140842B788F0BAAC13F93008B7E029A095CF6D3",
-  "schema_version": "source-map-v1",
-  "unmapped": [
+  "mapped": [
     {
       "address": 0,
       "reference_names": [
         "+[SYM53c8 probe:]"
       ],
-      "size": 322
+      "size": 322,
+      "source_line": 95,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8Controller.m"
     },
     {
       "address": 324,
       "reference_names": [
         "-[SYM53c8 initFromDeviceDescription:]"
       ],
-      "size": 1631
+      "size": 1631,
+      "source_line": 144,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8Controller.m"
     },
     {
       "address": 1956,
       "reference_names": [
         "-[SYM53c8 free]"
       ],
-      "size": 164
+      "size": 164,
+      "source_line": 277,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8Controller.m"
     },
     {
       "address": 2120,
       "reference_names": [
         "-[SYM53c8 setPath:]"
       ],
-      "size": 19
+      "size": 19,
+      "source_line": 272,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8Controller.m"
     },
     {
       "address": 2140,
       "reference_names": [
         "-[SYM53c8 executeRequest:buffer:client:]"
       ],
-      "size": 141
+      "size": 141,
+      "source_line": 473,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8Controller.m"
     },
     {
       "address": 2284,
       "reference_names": [
         "-[SYM53c8 threadExecuteRequest:]"
       ],
-      "size": 179
+      "size": 179,
+      "source_line": 535,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8Controller.m"
     },
     {
       "address": 2464,
       "reference_names": [
         "-[SYM53c8 allocReq]"
       ],
-      "size": 190
+      "size": 190,
+      "source_line": 329,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8Controller.m"
     },
     {
       "address": 2656,
       "reference_names": [
         "-[SYM53c8 freeReq:]"
       ],
-      "size": 81
+      "size": 81,
+      "source_line": 351,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8Controller.m"
     },
     {
       "address": 2740,
       "reference_names": [
         "-[SYM53c8 convertReq:ToXpt:buffer:client:]"
       ],
-      "size": 457
+      "size": 457,
+      "source_line": 360,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8Controller.m"
     },
     {
       "address": 3200,
       "reference_names": [
         "-[SYM53c8 resetSCSIBus]"
       ],
-      "size": 39
+      "size": 39,
+      "source_line": 493,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8Controller.m"
     },
     {
       "address": 3240,
       "reference_names": [
         "-[SYM53c8 threadResetSCSIBus]"
       ],
-      "size": 116
+      "size": 116,
+      "source_line": 559,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8Controller.m"
     },
     {
       "address": 3356,
       "reference_names": [
         "-[SYM53c8 numberOfTargets]"
       ],
-      "size": 12
+      "size": 12,
+      "source_line": 302,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8Controller.m"
     },
     {
       "address": 3368,
       "reference_names": [
         "-[SYM53c8 commandRequestOccurred]"
       ],
-      "size": 313
+      "size": 313,
+      "source_line": 504,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8Controller.m"
     },
     {
       "address": 3684,
       "reference_names": [
         "-[SYM53c8 maxTransfer]"
       ],
-      "size": 18
+      "size": 18,
+      "source_line": 297,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8Controller.m"
     },
     {
       "address": 3704,
       "reference_names": [
         "-[SYM53c8 resetStats]"
       ],
-      "size": 40
+      "size": 40,
+      "source_line": 307,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8Controller.m"
     },
     {
       "address": 3744,
       "reference_names": [
         "-[SYM53c8 numQueueSamples]"
       ],
-      "size": 16
+      "size": 16,
+      "source_line": 314,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8Controller.m"
     },
     {
       "address": 3760,
       "reference_names": [
         "-[SYM53c8 sumQueueLengths]"
       ],
-      "size": 16
+      "size": 16,
+      "source_line": 319,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8Controller.m"
     },
     {
       "address": 3776,
       "reference_names": [
         "-[SYM53c8 maxQueueLength]"
       ],
-      "size": 16
+      "size": 16,
+      "source_line": 324,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8Controller.m"
     },
     {
       "address": 3792,
       "reference_names": [
         "-[SYM53c8 updateStatus:]"
       ],
-      "size": 484
+      "size": 484,
+      "source_line": 417,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8Controller.m"
     },
     {
       "address": 4276,
       "reference_names": [
         "-[SYM53c8 interruptOccurred]"
       ],
-      "size": 71
+      "size": 71,
+      "source_line": 580,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8Controller.m"
     },
     {
       "address": 4348,
       "reference_names": [
         "-[SYM53c8 executeCmdBuf:]"
       ],
-      "size": 340
+      "size": 340,
+      "source_line": 608,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8Controller.m"
     },
     {
       "address": 4688,
       "reference_names": [
         "-[SYM53c8 manualTURScan]"
       ],
-      "size": 125
+      "size": 125,
+      "source_line": 587,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8Controller.m"
     },
     {
       "address": 4816,
       "reference_names": [
         "_requestCompleted"
       ],
-      "size": 51
+      "size": 51,
+      "source_line": 607,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 4868,
       "reference_names": [
         "_ticktock"
       ],
-      "size": 32
+      "size": 32,
+      "source_line": 617,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 4900,
       "reference_names": [
         "_GetWidth"
       ],
-      "size": 51
+      "size": 51,
+      "source_line": 162,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 4952,
       "reference_names": [
         "_IDLUNToDP"
       ],
-      "size": 50
+      "size": 50,
+      "source_line": 127,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 5004,
       "reference_names": [
         "_SIMStart"
       ],
-      "size": 1072
+      "size": 1072,
+      "source_line": 831,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 6076,
       "reference_names": [
         "_SIMRun"
       ],
-      "size": 745
+      "size": 745,
+      "source_line": 1000,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 6824,
       "reference_names": [
         "_RespondToComp"
       ],
-      "size": 602
+      "size": 602,
+      "source_line": 369,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 7428,
       "reference_names": [
         "_SIMTickTock"
       ],
-      "size": 336
+      "size": 336,
+      "source_line": 1156,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 7764,
       "reference_names": [
         "_AddToDeviceList"
       ],
-      "size": 150
+      "size": 150,
+      "source_line": 663,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 7916,
       "reference_names": [
         "_SIM17Init"
       ],
-      "size": 110
+      "size": 110,
+      "source_line": 681,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 8028,
       "reference_names": [
         "_SIMAddPath"
       ],
-      "size": 386
+      "size": 386,
+      "source_line": 699,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 8416,
       "reference_names": [
         "_QInsert"
       ],
-      "size": 55
+      "size": 55,
+      "source_line": 85,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 8472,
       "reference_names": [
         "_QAppend"
       ],
-      "size": 57
+      "size": 57,
+      "source_line": 99,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 8532,
       "reference_names": [
         "_QDelete"
       ],
-      "size": 53
+      "size": 53,
+      "source_line": 113,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 8588,
       "reference_names": [
         "_CallComp"
       ],
-      "size": 938
+      "size": 938,
+      "source_line": 193,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 9528,
       "reference_names": [
         "_RespondToBusReset"
       ],
-      "size": 138
+      "size": 138,
+      "source_line": 347,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 9668,
       "reference_names": [
         "_ResetDevice"
       ],
-      "size": 709
+      "size": 709,
+      "source_line": 1298,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 10380,
       "reference_names": [
         "_AbortedRequest"
       ],
-      "size": 111
+      "size": 111,
+      "source_line": 847,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 10492,
       "reference_names": [
         "_CCBInSIMQueue"
       ],
-      "size": 92
+      "size": 92,
+      "source_line": 320,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 10584,
       "reference_names": [
         "_AutosenseSetup"
       ],
-      "size": 185
+      "size": 185,
+      "source_line": 867,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 10772,
       "reference_names": [
         "_StartNewIO"
       ],
-      "size": 884
+      "size": 884,
+      "source_line": 1184,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 11656,
       "reference_names": [
         "_FindRunningRequest"
       ],
-      "size": 98
+      "size": 98,
+      "source_line": 754,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 11756,
       "reference_names": [
         "_CheckForStart"
       ],
-      "size": 205
+      "size": 205,
+      "source_line": 906,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 11964,
       "reference_names": [
         "_WantMSG"
       ],
-      "size": 2563
+      "size": 2563,
+      "source_line": 2753,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 14528,
       "reference_names": [
         "_GotMSG"
       ],
-      "size": 861
+      "size": 861,
+      "source_line": 2628,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 15392,
       "reference_names": [
         "_GetMoreMsgBytes"
       ],
-      "size": 87
+      "size": 87,
+      "source_line": 1401,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 15480,
       "reference_names": [
         "_GetCompleteMsg"
       ],
-      "size": 197
+      "size": 197,
+      "source_line": 1420,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 15680,
       "reference_names": [
         "_WhatMsgIsIt"
       ],
-      "size": 63
+      "size": 63,
+      "source_line": 1387,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 15744,
       "reference_names": [
         "_SetQueueTag"
       ],
-      "size": 212
+      "size": 212,
+      "source_line": 777,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 15956,
       "reference_names": [
         "_FreeQueueTag"
       ],
-      "size": 184
+      "size": 184,
+      "source_line": 816,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 16140,
       "reference_names": [
         "_InitializeQueueTags"
       ],
-      "size": 34
+      "size": 34,
+      "source_line": 744,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 16176,
       "reference_names": [
         "_SetFrag"
       ],
-      "size": 229
+      "size": 229,
+      "source_line": 1097,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 16408,
       "reference_names": [
         "_SIMClearMem"
       ],
-      "size": 41
+      "size": 41,
+      "source_line": 174,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 16452,
       "reference_names": [
         "_DoBegin"
       ],
-      "size": 355
+      "size": 355,
+      "source_line": 1135,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 16808,
       "reference_names": [
         "_IsRAMSeg"
       ],
-      "size": 65
+      "size": 65,
+      "source_line": 407,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 16876,
       "reference_names": [
         "_bsim_doinit"
       ],
-      "size": 75
+      "size": 75,
+      "source_line": 1670,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 16952,
       "reference_names": [
         "_VtoP"
       ],
-      "size": 46
+      "size": 46,
+      "source_line": 211,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 17000,
       "reference_names": [
         "_CVtoP"
       ],
-      "size": 55
+      "size": 55,
+      "source_line": 233,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 17056,
       "reference_names": [
         "_PtoV"
       ],
-      "size": 54
+      "size": 54,
+      "source_line": 247,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 17112,
       "reference_names": [
         "_GlobMemAlloc"
       ],
-      "size": 80
+      "size": 80,
+      "source_line": 260,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 17192,
       "reference_names": [
         "_MemAlloc"
       ],
-      "size": 16
+      "size": 16,
+      "source_line": 193,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 17208,
       "reference_names": [
         "_GetScreenPtr"
       ],
-      "size": 9
+      "size": 9,
+      "source_line": 273,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 17220,
       "reference_names": [
         "_ROMGetAddress"
       ],
-      "size": 66
+      "size": 66,
+      "source_line": 421,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 17288,
       "reference_names": [
         "_ROMReadByte"
       ],
-      "size": 85
+      "size": 85,
+      "source_line": 429,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 17376,
       "reference_names": [
         "_ROMReadWord"
       ],
-      "size": 69
+      "size": 69,
+      "source_line": 443,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 17448,
       "reference_names": [
         "_ROMReadLong"
       ],
-      "size": 68
+      "size": 68,
+      "source_line": 455,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 17516,
       "reference_names": [
         "_ROMMakeCopy"
       ],
-      "size": 131
+      "size": 131,
+      "source_line": 467,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 17648,
       "reference_names": [
         "_ROMCopyPatched"
       ],
-      "size": 49
+      "size": 49,
+      "source_line": 489,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 17700,
       "reference_names": [
         "_ROMSearchComplete"
       ],
-      "size": 17
+      "size": 17,
+      "source_line": 385,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 17720,
       "reference_names": [
         "_ROMIntAndDMA"
       ],
-      "size": 35
+      "size": 35,
+      "source_line": 391,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 17756,
       "reference_names": [
         "_BusNowOperational"
       ],
-      "size": 31
+      "size": 31,
+      "source_line": 398,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 17788,
       "reference_names": [
         "_DisableInterrupts"
       ],
-      "size": 9
+      "size": 9,
+      "source_line": 68,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 17800,
       "reference_names": [
         "_EnableInterrupts"
       ],
-      "size": 9
+      "size": 9,
+      "source_line": 74,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 17812,
       "reference_names": [
         "_RestoreInterrupts"
       ],
-      "size": 7
+      "size": 7,
+      "source_line": 80,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 17820,
       "reference_names": [
         "_PutString"
       ],
-      "size": 21
+      "size": 21,
+      "source_line": 301,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 17844,
       "reference_names": [
         "_PutChar"
       ],
-      "size": 22
+      "size": 22,
+      "source_line": 307,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 17868,
       "reference_names": [
         "_puthex"
       ],
-      "size": 41
+      "size": 41,
+      "source_line": 313,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 17912,
       "reference_names": [
         "_putbyte"
       ],
-      "size": 39
+      "size": 39,
+      "source_line": 323,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 17952,
       "reference_names": [
         "_PutWord"
       ],
-      "size": 34
+      "size": 34,
+      "source_line": 330,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 17988,
       "reference_names": [
         "_PrintNexus"
       ],
-      "size": 32
+      "size": 32,
+      "source_line": 337,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 18020,
       "reference_names": [
         "_PreTransfer17"
       ],
-      "size": 140
+      "size": 140,
+      "source_line": 973,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 18160,
       "reference_names": [
         "_PostTransfer17"
       ],
-      "size": 57
+      "size": 57,
+      "source_line": 1001,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 18220,
       "reference_names": [
         "_AddBufferToDatalist"
       ],
-      "size": 422
+      "size": 422,
+      "source_line": 1037,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 18644,
       "reference_names": [
         "_DoneWithCurrentData"
       ],
-      "size": 32
+      "size": 32,
+      "source_line": 951,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 18676,
       "reference_names": [
         "_BytesInDatalist"
       ],
-      "size": 50
+      "size": 50,
+      "source_line": 959,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 18728,
       "reference_names": [
         "_PreTransfer16"
       ],
-      "size": 69
+      "size": 69,
+      "source_line": 1015,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 18800,
       "reference_names": [
         "_PostTransfer16"
       ],
-      "size": 7
+      "size": 7,
+      "source_line": 1031,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 18808,
       "reference_names": [
         "_PeekAtData"
       ],
-      "size": 21
+      "size": 21,
+      "source_line": 945,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 18832,
       "reference_names": [
         "_pci_initialize"
       ],
-      "size": 295
+      "size": 295,
+      "source_line": 2128,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 19128,
       "reference_names": [
         "_SIM16Start"
       ],
-      "size": 172
+      "size": 172,
+      "source_line": 469,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 19300,
       "reference_names": [
         "_CallCompletion"
       ],
-      "size": 35
+      "size": 35,
+      "source_line": 185,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 19336,
       "reference_names": [
         "_SIM16Int"
       ],
-      "size": 49
+      "size": 49,
+      "source_line": 514,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 19388,
       "reference_names": [
         "_r16Comp"
       ],
-      "size": 274
+      "size": 274,
+      "source_line": 544,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 19664,
       "reference_names": [
         "_r17Comp"
       ],
-      "size": 161
+      "size": 161,
+      "source_line": 600,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 19828,
       "reference_names": [
         "_SIMActionInit"
       ],
-      "size": 325
+      "size": 325,
+      "source_line": 765,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 20156,
       "reference_names": [
         "_SIM17Action"
       ],
-      "size": 524
+      "size": 524,
+      "source_line": 1273,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 20680,
       "reference_names": [
         "_Do17On16"
       ],
-      "size": 105
+      "size": 105,
+      "source_line": 635,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 20788,
       "reference_names": [
         "_Start17On16"
       ],
-      "size": 43
+      "size": 43,
+      "source_line": 526,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 20832,
       "reference_names": [
         "_SIM16Action"
       ],
-      "size": 250
+      "size": 250,
+      "source_line": 1217,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 21084,
       "reference_names": [
         "_Do16On17"
       ],
-      "size": 97
+      "size": 97,
+      "source_line": 658,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 21184,
       "reference_names": [
         "_Start16On17"
       ],
-      "size": 43
+      "size": 43,
+      "source_line": 535,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 21228,
       "reference_names": [
         "_StuffAction"
       ],
-      "size": 17
+      "size": 17,
+      "source_line": 1613,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 21248,
       "reference_names": [
         "_GetNumROMs"
       ],
-      "size": 12
+      "size": 12,
+      "source_line": 150,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 21260,
       "reference_names": [
         "_GetROMTableBase"
       ],
-      "size": 12
+      "size": 12,
+      "source_line": 156,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 21272,
       "reference_names": [
         "_InitStep"
       ],
-      "size": 517
+      "size": 517,
+      "source_line": 2164,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 21792,
       "reference_names": [
         "_PathToROMInfoPtr"
       ],
-      "size": 66
+      "size": 66,
+      "source_line": 138,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 21860,
       "reference_names": [
         "_SIMInit"
       ],
-      "size": 121
+      "size": 121,
+      "source_line": 808,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 21984,
       "reference_names": [
         "_SIMInterrupt"
       ],
-      "size": 185
+      "size": 185,
+      "source_line": 1125,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8SIM.c"
     },
     {
       "address": 22172,
       "reference_names": [
         "_FindROMs"
       ],
-      "size": 1617
+      "size": 1617,
+      "source_line": 2264,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 23792,
       "reference_names": [
         "_InitROMs"
       ],
-      "size": 410
+      "size": 410,
+      "source_line": 2214,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 24204,
       "reference_names": [
         "_FRun"
       ],
-      "size": 44
+      "size": 44,
+      "source_line": 501,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 24248,
       "reference_names": [
         "_FRespRes"
       ],
-      "size": 67
+      "size": 67,
+      "source_line": 507,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 24316,
       "reference_names": [
         "_FCalcSync"
       ],
-      "size": 92
+      "size": 92,
+      "source_line": 513,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 24408,
       "reference_names": [
         "_FSetSync"
       ],
-      "size": 137
+      "size": 137,
+      "source_line": 522,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 24548,
       "reference_names": [
         "_FGetMsgByte"
       ],
-      "size": 67
+      "size": 67,
+      "source_line": 537,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 24616,
       "reference_names": [
         "_FMsgResponse"
       ],
-      "size": 67
+      "size": 67,
+      "source_line": 543,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 24684,
       "reference_names": [
         "_FSendMsg"
       ],
-      "size": 67
+      "size": 67,
+      "source_line": 549,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 24752,
       "reference_names": [
         "_FResetBus"
       ],
-      "size": 67
+      "size": 67,
+      "source_line": 555,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 24820,
       "reference_names": [
         "_FResumeXFer"
       ],
-      "size": 67
+      "size": 67,
+      "source_line": 561,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 24888,
       "reference_names": [
         "_FWideInit"
       ],
-      "size": 75
+      "size": 75,
+      "source_line": 567,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 24964,
       "reference_names": [
         "_FSetWide"
       ],
-      "size": 120
+      "size": 120,
+      "source_line": 575,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 25084,
       "reference_names": [
         "_GetIRQ"
       ],
-      "size": 79
+      "size": 79,
+      "source_line": 588,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 25164,
       "reference_names": [
         "_T16To17"
       ],
-      "size": 313
+      "size": 313,
+      "source_line": 1467,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 25480,
       "reference_names": [
         "_T17To16"
       ],
-      "size": 277
+      "size": 277,
+      "source_line": 1525,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 25760,
       "reference_names": [
         "_Stat16To17"
       ],
-      "size": 231
+      "size": 231,
+      "source_line": 1569,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 25992,
       "reference_names": [
         "_Stat17To16"
       ],
-      "size": 307
+      "size": 307,
+      "source_line": 1591,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 26300,
       "reference_names": [
         "_util_start_unit"
       ],
-      "size": 597
+      "size": 597,
+      "source_line": 2481,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 26900,
       "reference_names": [
         "_util_stop_unit"
       ],
-      "size": 605
+      "size": 605,
+      "source_line": 2550,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 27508,
       "reference_names": [
         "_util_direct_access_check"
       ],
-      "size": 292
+      "size": 292,
+      "source_line": 2445,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 27800,
       "reference_names": [
         "_util_print_hex_data"
       ],
-      "size": 90
+      "size": 90,
+      "source_line": 2432,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 27892,
       "reference_names": [
         "_XPTInit"
       ],
-      "size": 176
+      "size": 176,
+      "source_line": 1646,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 28068,
       "reference_names": [
         "_xpt_bus_register"
       ],
-      "size": 221
+      "size": 221,
+      "source_line": 1708,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 28292,
       "reference_names": [
         "_xpt_async"
       ],
-      "size": 431
+      "size": 431,
+      "source_line": 1747,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 28724,
       "reference_names": [
         "_XPTDeregisterBus"
       ],
-      "size": 315
+      "size": 315,
+      "source_line": 1793,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 29040,
       "reference_names": [
         "_xpt_action"
       ],
-      "size": 1316
+      "size": 1316,
+      "source_line": 1830,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 30356,
       "reference_names": [
         "_ScanStep"
       ],
-      "size": 462
+      "size": 462,
+      "source_line": 1956,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 30820,
       "reference_names": [
         "_BeginScan"
       ],
-      "size": 404
+      "size": 404,
+      "source_line": 2035,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 31224,
       "reference_names": [
         "_PathToSIMInfoPtr"
       ],
-      "size": 46
+      "size": 46,
+      "source_line": 716,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 31272,
       "reference_names": [
         "_PathIDLUNToDeviceInfoPtr"
       ],
-      "size": 81
+      "size": 81,
+      "source_line": 730,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 31356,
       "reference_names": [
         "_DeletePathFromDeviceTable"
       ],
-      "size": 129
+      "size": 129,
+      "source_line": 694,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 31488,
       "reference_names": [
         "_XPTClearMem"
       ],
-      "size": 41
+      "size": 41,
+      "source_line": 290,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 31532,
       "reference_names": [
         "_xpt_ccb_alloc"
       ],
-      "size": 32
+      "size": 32,
+      "source_line": 1619,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 31564,
       "reference_names": [
         "_xpt_ccb_free"
       ],
-      "size": 65
+      "size": 65,
+      "source_line": 1632,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 31632,
       "reference_names": [
         "_xpt_init"
       ],
-      "size": 131
+      "size": 131,
+      "source_line": 1685,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 31764,
       "reference_names": [
         "_xVtoP"
       ],
-      "size": 43
+      "size": 43,
+      "source_line": 223,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 31808,
       "reference_names": [
         "_xMemAlloc"
       ],
-      "size": 16
+      "size": 16,
+      "source_line": 199,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 31824,
       "reference_names": [
         "_MemFree"
       ],
-      "size": 20
+      "size": 20,
+      "source_line": 205,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 31844,
       "reference_names": [
         "_xDisableInterrupts"
       ],
-      "size": 9
+      "size": 9,
+      "source_line": 279,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 31856,
       "reference_names": [
         "_xRestoreInterrupts"
       ],
-      "size": 7
+      "size": 7,
+      "source_line": 285,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 31864,
       "reference_names": [
         "_xPutString"
       ],
-      "size": 21
+      "size": 21,
+      "source_line": 343,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 31888,
       "reference_names": [
         "_xPutChar"
       ],
-      "size": 22
+      "size": 22,
+      "source_line": 349,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 31912,
       "reference_names": [
         "_puthex_0"
       ],
-      "size": 41
+      "size": 41,
+      "source_line": 355,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 31956,
       "reference_names": [
         "_putbyte_0"
       ],
-      "size": 39
+      "size": 39,
+      "source_line": 365,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 31996,
       "reference_names": [
         "_xPutWord"
       ],
-      "size": 34
+      "size": 34,
+      "source_line": 372,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 32032,
       "reference_names": [
         "_xPrintNexus"
       ],
-      "size": 32
+      "size": 32,
+      "source_line": 379,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
     },
     {
       "address": 32064,
       "reference_names": [
         "_pcidir"
       ],
-      "size": 65
-    },
+      "size": 65,
+      "source_line": 2105,
+      "source_path": "src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj/SYM53c8CAM.c"
+    }
+  ],
+  "reference_sha256": "E0AC193DF652271D1B4249440140842B788F0BAAC13F93008B7E029A095CF6D3",
+  "schema_version": "source-map-v1",
+  "unmapped": [
     {
       "address": 32132,
       "reference_names": [

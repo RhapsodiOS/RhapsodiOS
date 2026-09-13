@@ -420,7 +420,8 @@ extern void			T16To17(struct sim16_ccb *ccb16,
 					struct sim_ccb *ccb17);
 extern unsigned char		Stat16To17(unsigned int status);
 extern unsigned char		Stat17To16(unsigned int status);
-extern void			StuffAction(void *bus);
+struct xpt_bus;
+extern void			StuffAction(struct xpt_bus *bus);
 extern int			xpt_init(void);
 extern int			xpt_action(struct sim_ccb *ccb);
 extern struct sim_ccb		*xpt_ccb_alloc(void);

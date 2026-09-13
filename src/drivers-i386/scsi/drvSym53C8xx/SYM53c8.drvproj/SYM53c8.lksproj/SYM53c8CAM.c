@@ -16,7 +16,6 @@
 #import "SYM53c8Inline.h"
 #import <driverkit/generalFuncs.h>
 #import <objc/objc.h>
-#import <objc/objc-runtime.h>
 #import <kernserv/kern_server_types.h>
 
 extern vm_task_t	IOVmTaskSelf(void);
@@ -2115,8 +2114,8 @@ pcidir(unsigned int *eaxp, unsigned int *ebxp, unsigned int *ecxp,
 	asm volatile (
 		"pushl %%cs\n\t"
 		"call *%4"
-		: "+a"(a), "+b"(b), "+c"(c), "+d"(d)
-		: "m"(fn)
+		: "=a"(a), "=b"(b), "=c"(c), "=d"(d)
+		: "0"(a), "1"(b), "2"(c), "3"(d), "m"(fn)
 		: "memory"
 	);
 	*eaxp = a;

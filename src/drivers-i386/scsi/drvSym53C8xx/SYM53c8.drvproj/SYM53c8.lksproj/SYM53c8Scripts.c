@@ -2551,9 +2551,3 @@ unsigned char SYM53c8Scripts[40528] = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-/*
- * RAMcorePtr is the NCR option-ROM image at scripts+2688.
- * ROMGetAddress / ROMRead* add the ROM offset to this label.
- */
-unsigned char *RAMcorePtr = &SYM53c8Scripts[2688];
-

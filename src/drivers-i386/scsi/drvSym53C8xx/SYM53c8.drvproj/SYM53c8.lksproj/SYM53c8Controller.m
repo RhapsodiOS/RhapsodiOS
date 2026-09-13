@@ -13,6 +13,7 @@
 #import <objc/Object.h>
 #import <kernserv/queue.h>
 #import <kernserv/prototypes.h>
+#import <kernserv/ns_timer.h>
 #import <driverkit/return.h>
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
@@ -36,6 +37,8 @@
 extern unsigned int	page_size;
 extern void		*bios_rom_vap;
 
+ns_time_t		StartTime;
+
 int			cmdQueueEnable;
 unsigned char		inst_tbl[4];
 unsigned char		shared[4];
@@ -49,10 +52,6 @@ static msg_header_t SYMMessageTemplate = {
 	PORT_NULL,
 	IO_COMMAND_MSG
 };
-
-@interface SYM53c8(PrivateMethods)
-- (int)executeCmdBuf	: (SYMCommandBuf *)cmdBuf;
-@end
 
 static int
 symYesValue(const char *value)
@@ -533,6 +532,51 @@ symHostId(unsigned char path)
 	[commandLock unlock];
 }
 
+- (int)threadExecuteRequest:(struct _scsireq *)req
+{
+	int	rc;
+
+	IOGetTimestamp(&StartTime);
+	rc = xpt_action(req->XPTReq);
+	if (rc) {
+		IOLog("XPTAction: Error returned from XPTAction %ld\n",
+		    (long)rc);
+		xpt_ccb_free(req->XPTReq);
+		req->NeXTReq->driverStatus = SR_IOST_INVALID;
+		[req->reqLock lock];
+		[req->reqLock unlockWith:REQ_IDLE];
+		[self freeReq:req];
+		return 0;
+	}
+	if (outstandingCount > maxQueueLen)
+		maxQueueLen = outstandingCount;
+	queueLenTotal += outstandingCount;
+	totalCommands++;
+	outstandingCount++;
+	return 0;
+}
+
+- (void)threadResetSCSIBus
+{
+	struct sim_ccb	*ccb;
+	int		rc;
+
+	IOLog("%s: Resetting SCSI bus...", [self name]);
+	ccb = xpt_ccb_alloc();
+	if (ccb == 0)
+		return;
+	ccb->func_code = SIM_FUNC_RESET_BUS;
+	ccb->path = path;
+	ccb->flags0 |= 0x08;
+	ccb->flags1 |= CAM_CCB_FLAGS2_OR;
+	rc = xpt_action(ccb);
+	if (rc == 0)
+		IOLog("OK\n");
+	else
+		IOLog("Failed\n");
+	xpt_ccb_free(ccb);
+}
+
 - (void)interruptOccurred
 {
 	SIMInterrupt((unsigned char)interrupt);
@@ -560,10 +604,6 @@ symHostId(unsigned char path)
 		[self executeRequest:&scsiReq buffer:0 client:IOVmTaskSelf()];
 	}
 }
-
-@end
-
-@implementation SYM53c8(PrivateMethods)
 
 - (int)executeCmdBuf:(SYMCommandBuf *)cmdBuf
 {

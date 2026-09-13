@@ -35,24 +35,30 @@ rewrite.
 
 ## Summary
 
+Task 11 remap (named functions only; see below):
+
 | Bucket | Count |
 | --- | --- |
-| mapped | 0 |
-| unmapped | 161 |
+| mapped | 158 |
+| unmapped | 3 |
 | duplicate_candidates | 0 |
 | boundary_disputed | 0 |
 
-IDA reports **196** functions. The source-map accounts for the **161 named**
-ones. The other **35** have empty `names` and live in `__DATA,__data` at
-addresses 60560–71060 (last body ends at 71092). `source-map-v1` requires
+Mapped files: `SYM53c8CAM.c` 101, `SYM53c8SIM.c` 35, `SYM53c8Controller.m` 22.
+All 22 ObjC methods map to class `SYM53c8`, not `SYM53c8Controller`. Unmapped
+are the two Kernel Server glue methods plus `nullsub_1`.
+
+IDA reports **196** functions. Named=**161**. Unnamed=**35** in `__DATA,__data`
+at addresses 60560–71060 (last body ends at 71092). `source-map-v1` requires
 names, so those 35 were dropped on purpose. They are not missing C functions;
-Task 8 should treat that `__data` range as the SCRIPT / CAMcore dump. `nullsub_1`
+they live inside the SCRIPT / CAMcore dump in `SYM53c8Scripts.c`. `nullsub_1`
 @ 63544 is a 1-byte named `retn` inside the same blob.
 
-`binrecon source-map` reported `mapped=0` because the reloc class is `SYM53c8`
-and our tree still declares `@interface SYM53c8Controller`. Glue (2) and
-`nullsub_1` are `intentional-mismatch`; the other 158 entries stay
-`unexamined`.
+Raw `check_map.py` against all 196 IDA functions fails on the first unnamed
+hit. Filter to named functions (same as Task 3:
+`analysis-reference-ida-named.json`) before `load_source_map`. Expected:
+`source map OK`. `reference_sha256` is
+`E0AC193DF652271D1B4249440140842B788F0BAAC13F93008B7E029A095CF6D3`.
 
 ## Architecture is wrong: BusLogic CCB vs CAM/SIM + SCRIPTS
 
@@ -462,13 +468,11 @@ ledger `analyzer_agreement` is `agreed` / `["IDA"]`.
 
 | Class | Count | Why unmapped |
 | --- | --- | --- |
-| Kernel Server glue | 2 | `+[SYM53c8KernelServerInstance kernelServerInstance]` @ 32132, `+[SYM53c8Version driverKitVersionForSYM53c8]` @ 32144. Emitted by project type `Kernel Server` / `Load_Commands.sect`. Ledger `intentional-mismatch`, reviewer Pat Raynor. |
-| `nullsub_1` | 1 | 1-byte named IDA hit @ 63544 in `__data`, not a `__text` routine. Ledger `intentional-mismatch`. |
-| Class-name miss (all ObjC) | 22 | Reloc class `SYM53c8`; our class `SYM53c8Controller`. `probe:`, `initFromDeviceDescription:`, `free`, `setPath:`, `executeRequest:buffer:client:`, `threadExecuteRequest:`, `allocReq`, `freeReq:`, `convertReq:ToXpt:buffer:client:`, `resetSCSIBus`, `threadResetSCSIBus`, `numberOfTargets`, `commandRequestOccurred`, `maxTransfer`, `resetStats`, `numQueueSamples`, `sumQueueLengths`, `maxQueueLength`, `updateStatus:`, `interruptOccurred`, `executeCmdBuf:`, `manualTURScan`. |
-| Absent CAM/SIM C | 136 | Task 7 wrote `SYM53c8SIM.c`. Task 8 wrote `SYM53c8CAM.c` and the `__DATA,__data` SCRIPT blob in `SYM53c8Scripts.c`. Ledger rows stay `unexamined` until Task 11. |
+| Kernel Server glue | 2 | `+[SYM53c8KernelServerInstance kernelServerInstance]` @ 32132, `+[SYM53c8Version driverKitVersionForSYM53c8]` @ 32144. Emitted by project type `Kernel Server` / `Load_Commands.sect`. Stay unmapped. Ledger `intentional-mismatch`, reviewer Pat Raynor. |
+| `nullsub_1` | 1 | 1-byte named IDA hit @ 63544 in `__data`, not a reconstructable `__text` routine. Stay unmapped. Ledger `intentional-mismatch`, reviewer Pat Raynor. Not a glue-only unmapped. |
 
-2 + 1 + 22 + 136 = 161. The 35 unnamed `__data` hits are **not** in this
-table.
+2 + 1 = 3. CAM/SIM C and ObjC methods are mapped. The 35 unnamed `__data`
+hits are **not** in this table.
 
 ## Task 7: SIM API written
 
@@ -527,7 +531,96 @@ Task 9.
 project type and `Load_Commands.sect`, not written by hand. Accepted, same as
 the equivalent pair in drvAdaptec1542B.
 
-## What was not attempted
+## Task 11: remap, ledger, final compile
 
-DriverKit method rewrites remain for Task 9. Handshake BSS wiring stays
-for Task 9. Ledger statuses stay `unexamined`. Guest compile is Task 11.
+Fresh `binrecon source-map` against `analysis-reference-ida.json` failed on
+the unnamed function at 60560 (`source-map-v1` requires names). Remap used
+the Task 3 named analysis
+`tools/binrecon/out/sym53c8xx/published/analysis-reference-ida-named.json`.
+`source_path` / `source_line` were copied into the committed map by address.
+
+`_puthex_0` @ 31912 and `_putbyte_0` @ 31956 landed in `duplicate_candidates`
+because Mach-O symbols are still `_puthex` / `_putbyte`. Same resolution as
+DPT2000 `eata_busy_0`: keep the later `_0` definition in `SYM53c8CAM.c`
+(lines 355 and 365). Duplicate bucket is empty in the committed map.
+
+Category implementations did not map (`SYM53c8(IOThread)`,
+`SYM53c8(PrivateMethods)`). `executeCmdBuf:` moved into the main
+`@implementation SYM53c8` in `SYM53c8Controller.m`.
+`threadExecuteRequest:` / `threadResetSCSIBus` also live there: keeping them
+as `@implementation SYM53c8` in `SYM53c8Thread.m` produced
+`ld: multiple definitions of symbol .objc_class_name_SYM53c8`.
+`SYM53c8Thread.m` is now an empty `@implementation SYM53c8(IOThread)` so the
+file stays in `CLASSES`. `StartTime` moved to Controller.m.
+
+### Ledger (honest)
+
+Do not claim `assembly-matched` without a re-read this task. Glue +
+`nullsub_1` stay `intentional-mismatch`. `analyzer_agreement` stays IDA only.
+
+| Status | Count |
+| --- | --- |
+| unexamined | 153 |
+| assembly-matched | 4 |
+| control-flow-confirmed | 1 |
+| intentional-mismatch | 3 |
+
+Re-read against IDA this task:
+
+| Addr | Name | Status | Source |
+| --- | --- | --- | --- |
+| 2740 | `-[SYM53c8 convertReq:ToXpt:buffer:client:]` | assembly-matched | Controller.m 360 |
+| 21984 | `_SIMInterrupt` | assembly-matched | SIM.c 1125 |
+| 24204 | `_FRun` | assembly-matched | CAM.c 501 (inlines camcore, cmd=2, `[hba+4]+0x14` / `[hba+0x100]+0x0C`) |
+| 31632 | `_xpt_init` | assembly-matched | CAM.c 1685 (ref has a one-shot loop around `xpt_bus_register`; equivalent to one call) |
+| 11964 | `_WantMSG` | control-flow-confirmed | CAM.c 2753 |
+
+`_WantMSG` is the largest named function (2563 bytes). Control flow was
+confirmed (send/`FSendMsg` switch, sync/wide negotiation, extmsg WDTR/SDTR
+path, `fw_put_msg` into `+0x2A`). It was **not** traced operand-by-operand
+for every instruction, so it is not `assembly-matched`.
+
+### Final guest compile
+
+Host sync: `powershell -File vm\sync-src.ps1 -Path drivers-i386/scsi/drvSym53C8xx`
+(worktree `LocalRoot`). Guest:
+
+```
+tr -d '\r' < /build/source/vm/build-i386-scsi.sh > /tmp/bscsi.sh
+sh /tmp/bscsi.sh drvSym53C8xx
+```
+
+Exit 0. Staged `/build/source/out/i386/drvSym53C8xx/SYM53c8_reloc`, **347304**
+bytes, unstripped (reference 120756, stripped). `gnumake DSTROOT=… install`
+failed (`INSTALLDIR` unset); the script copied the reloc. Did not run
+`binrecon compare` on the rebuilt file. Did not commit `out/`.
+
+Hygiene / compile-error fixes applied (allowed by Task 11):
+
+- Deleted `unsigned char *RAMcorePtr = &SYM53c8Scripts[2688];` in
+  `SYM53c8Scripts.c`; kept `#define RAMCORE_PTR`.
+- `StuffAction` in `SYM53c8SIM.h`: `extern void StuffAction(struct xpt_bus *bus);`
+  plus `struct xpt_bus;` forward decl.
+- Dropped duplicate CAM `extern` block in `SYM53c8SIM.c` (prototypes in SIM.h).
+- `_scsireq.XPTReq` typed `struct sim_ccb *` in `SYM53c8Types.h`.
+- Trailing newline on `Default.table`.
+- `SYM53c8Types.h`: `#ifdef __OBJC__` around `scsiTypes.h`; C path uses
+  `objc/objc.h` plus `typedef struct IOSCSIRequest IOSCSIRequest` (SIM.c as C
+  was pulling `Object.h`).
+- Dropped `#import <objc/objc-runtime.h>` from CAM.c.
+- `pcidir` inline asm: NeXT gcc rejected `"+a"`; matching constraints
+  `"=a"/"0"` etc. (`call *%4` still `fn`).
+
+Did not “fix” IDA-faithful sharp edges (probe leak, `unlockWith:0` vs
+`lockWhen:1`, `base[+3]`).
+
+Warnings (do not gate):
+
+- `SYM53c8Controller.m`: implicit `port_set_backlog_EXTERNAL`
+- `SYM53c8Thread.m:18`: incomplete category `IOThread` (methods live on the
+  main class)
+- `SYM53c8CAM.c`: unused `rc` in `InitStep`, unused `per2` in `GotMSG`,
+  `lun` maybe uninitialized in `WantMSG`, unused `xpt_sim_action`
+- `ld`: ppc `libcc.a` vs `-arch i386` (same class as other i386 guest builds)
+
+Residue pytest `tools/binrecon/tests/test_sym53c8xx_buslogic_residue.py`: PASS.

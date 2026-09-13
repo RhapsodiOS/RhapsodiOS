@@ -23,7 +23,7 @@ project type and are correctly absent from source.
 | drvAdaptec6X60 | 79 | 18 | stub, wrong architecture |
 | drvDPT2000 | 55 | 10 | stub; missing the `EATASCSIBus` class |
 | drvBusLogicFP | 123 | 7 | stub |
-| drvSym53C8xx | 158 | 12 | stub, wrong architecture |
+| drvSym53C8xx | 158 | 158 | reconstructed against the reference; guest `_reloc` produced; not hardware-tested |
 | drvAdaptec2940 | 170 | 10 | stub; missing the `SCSIBus` class |
 
 `drvAMDPCSCSIDriver` has no reference bundle. It is a modern addition rather
@@ -42,7 +42,7 @@ partial one.
 | drvBusLogic | `BLController` | `BLCController` |
 | drvBusLogicFP | `BusLogicFPSCSI` | `BLFPController` |
 | drvDPT2000 | `DPTSCSIDriver` | `EATAController` |
-| drvSym53C8xx | `SYM53c8Controller` | `SYM53c8` |
+| drvSym53C8xx | `SYM53c8` | `SYM53c8` |
 
 drvAdaptec1542B (`AHAController`) and drvAdaptec2940 (`Adaptec2940`) already
 match. The `(PrivateMethods)` and `(IOThread)` category split is correct in
@@ -91,8 +91,9 @@ real hardware regardless of how much of the remainder is filled in.
 The reference contains 136 C functions forming a CAM/SIM implementation, with
 Symbios's own naming: `_CCBInSIMQueue`, `_AddToDeviceList`,
 `_DeletePathFromDeviceTable`, `_FCalcSync`, `_FSetWide`, `_FWideInit`,
-`_FResumeXFer`, `_FSendMsg`, `_AutosenseSetup`, `_BeginScan`. Our source
-resolves 12 of 158.
+`_FResumeXFer`, `_FSendMsg`, `_AutosenseSetup`, `_BeginScan`. Those names now
+resolve in `SYM53c8SIM.c` / `SYM53c8CAM.c`. Guest `_reloc` produced; not
+hardware-tested.
 
 This one matters beyond completeness: QEMU emulates `lsi53c895a`, a member of
 this chip family, so a working drvSym53C8xx would be the natural SCSI path for

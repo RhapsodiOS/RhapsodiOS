@@ -48,7 +48,7 @@ scsi
  * drvBusLogic - reconstructed against the reference binary, fixes applied; not yet compiled
  * drvBusLogicFP - stub, 7/123 reference functions
  * drvDPT2000 - stub, 10/55 reference functions; missing the whole EATASCSIBus class
- * drvSym53C8xx - stub, 12/158 reference functions; reference is a 136-function CAM/SIM
+ * drvSym53C8xx - reconstructed against the reference binary, compiled; not hardware-tested
 
 sound
  * drvBeepSound - compiles; reconstructed against the reference binary, fixes applied, not yet tested

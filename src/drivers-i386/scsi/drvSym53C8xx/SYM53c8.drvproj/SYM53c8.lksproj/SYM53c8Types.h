@@ -15,9 +15,15 @@
 #define _SYM53C8TYPES_H
 
 #import <driverkit/i386/driverTypes.h>
-#import <driverkit/scsiTypes.h>
 #import <kernserv/queue.h>
 #import <mach/boolean.h>
+#ifdef __OBJC__
+#import <driverkit/scsiTypes.h>
+#else
+#import <objc/objc.h>
+struct IOSCSIRequest;
+typedef struct IOSCSIRequest IOSCSIRequest;
+#endif
 
 /*
  * ObjC instance_size and the first SYM53c8 ivar. IOSCSIController occupies
@@ -141,8 +147,10 @@ struct cam_ccb {
 /*
  * One reqs[] slot / allocReq object. Encoded size 28 bytes.
  */
+struct sim_ccb;
+
 struct _scsireq {
-	struct cam_ccb		*XPTReq;		/* +0x00 */
+	struct sim_ccb		*XPTReq;		/* +0x00 */
 	struct _scsireq		*next;			/* +0x04 */
 	id			reqLock;		/* +0x08 NXConditionLock */
 	IOSCSIRequest		*NeXTReq;		/* +0x0C */

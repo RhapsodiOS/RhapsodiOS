@@ -3,10 +3,12 @@
 #
 # drvCirrusLogicGD5434 must link: its _reloc is the deliverable.
 # drvIBMThinkPad760EDDisplay precompiles vidBIOS.m and assembles emu486.s,
-# exports them through OPTIONAL_LDFLAGS so they follow the instance object,
-# emits VERS_OFILE, and stages its _reloc. .objc_class_name_vidBIOS must not
-# remain undefined, _emu486 must be defined, and the version symbols must
-# be present; those gates fail the ThinkPad arm only.
+# exports VIDBIOS_I386 / EMU486_I386 so Makefile.postamble can append them
+# to LOADABLES after the instance object (OPTIONAL_LDFLAGS would precede
+# LOADABLES), emits VERS_OFILE, and stages its _reloc.
+# .objc_class_name_vidBIOS must not remain undefined, _emu486 must be
+# defined, and the version symbols must be present; those gates fail the
+# ThinkPad arm only.
 #
 # Gating is on artifact presence, not on gnumake's exit code, and that is
 # deliberate. run_make records gnumake's status in MAKE_EC and each arm echoes
@@ -85,7 +87,7 @@ build_reloc() {
 }
 
 # Compile vidBIOS.m and assemble emu486.s in the lksproj, then export
-# absolute paths so Makefile.preamble's OPTIONAL_LDFLAGS reaches kl_ld.
+# absolute paths so Makefile.postamble can append them to LOADABLES.
 # Same -Wno-format / kernelserver flags as IBMThinkPad760ED.m; as -arch
 # i386 matches smapi.s. No local; Rhapsody /bin/sh is 1999 Bourne.
 prebuild_thinkpad_extras() {

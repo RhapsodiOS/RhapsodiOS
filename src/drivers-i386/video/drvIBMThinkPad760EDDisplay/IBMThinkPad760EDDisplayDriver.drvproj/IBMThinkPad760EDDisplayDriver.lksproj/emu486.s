@@ -72,9 +72,13 @@
  * which is what the reference contains even where a short displacement
  * would reach.  Both are pinned so the assembler cannot choose otherwise.
  *
+ * Apple's /usr/libexec/i386/as rejects a prefix and a string opcode on the
+ * same line (`rep movsl') and rejects `aam $0xa' / `aad $0xa'.  `rep; movsl'
+ * and bare `aam'/`aad' are the same encodings (F3 A5, D4 0A, D5 0A).
+ *
  * Not named through CLASSES or OTHERLINKED (OTHERLINKED would place this
  * object before `_instance.o').  Task 7 wires it after instance via
- * OPTIONAL_LDFLAGS.
+ * LOADABLES in Makefile.postamble.
  */
 	.text
 	.align	2,0x00
@@ -100,7 +104,7 @@ _emu486:
 	movl	0x14(%esp),%esi
 	movl	$Lregs,%edi
 	movl	$0x10,%ecx
-	rep movsl
+	rep; movsl
 	shll	$4,Lsregs+12
 	addl	%eax,Lsregs+12
 	shll	$4,Lsregs
@@ -174,7 +178,7 @@ L1ef4:
 	movl	$Lregs,%esi
 	movl	0x18(%esp),%edi
 	movl	$0x10,%ecx
-	rep movsl
+	rep; movsl
 	popl	%edi
 	popl	%esi
 	popl	%ebx
@@ -1051,7 +1055,7 @@ L2a46:
 	movzwl	Lregs+4,%ecx
 	cmpb	$1,Ldesc+2
 	jne	L2a8f
-	repne cmpsb
+	repne; cmpsb
 	jmp	L2a9a
 L2a8f:
 	cmpb	$2,Ldesc+2
@@ -1088,7 +1092,7 @@ L2ac0:
 	je	L2b1d
 	cmpb	$1,Ldesc+2
 	jne	L2b0f
-	repne cmpsw
+	repne; cmpsw
 	jmp	L2b35
 L2b0f:
 	cmpb	$2,Ldesc+2
@@ -1106,7 +1110,7 @@ L2b19:
 L2b1d:
 	cmpb	$1,Ldesc+2
 	jne	L2b73
-	repne cmpsl
+	repne; cmpsl
 	jmp	L2b35
 
 /* Unreachable because of the branch above, and kept so the byte
@@ -1264,7 +1268,7 @@ L2cf7:
 	movl	Lregs,%eax
 	cmpb	$1,Ldesc+2
 	jne	L2d2f
-	repne scasb
+	repne; scasb
 	jmp	L2d3a
 L2d2f:
 	cmpb	$2,Ldesc+2
@@ -1294,7 +1298,7 @@ L2d56:
 	je	L2da2
 	cmpb	$1,Ldesc+2
 	jne	L2d94
-	repne scasw
+	repne; scasw
 	jmp	L2dbe
 L2d94:
 	cmpb	$2,Ldesc+2
@@ -1312,7 +1316,7 @@ L2d9e:
 L2da2:
 	cmpb	$1,Ldesc+2
 	jne	L2ee4
-	repne scasl
+	repne; scasl
 	jmp	L2dbe
 
 /* Unreachable because of the branch above, and kept so the byte
@@ -1740,13 +1744,13 @@ L3248:
 L325a:
 	incl	%esi
 	movl	Lregs,%eax
-	aam	$0xa
+	aam
 	movl	%eax,Lregs
 	jmp	L1ebc
 L326c:
 	incl	%esi
 	movl	Lregs,%eax
-	aad	$0xa
+	aad
 	movl	%eax,Lregs
 	jmp	L1ebc
 L327e:

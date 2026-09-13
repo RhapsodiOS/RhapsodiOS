@@ -621,7 +621,11 @@ def _decode_i386_relocations(
             )
         table_size = count * architecture.layouts.relocation_info.size
         _checked_slice(data, section["relocation_offset"], table_size, context)
+        skip_next = False
         for relocation_index in range(count):
+            if skip_next:
+                skip_next = False
+                continue
             entry_offset = (
                 section["relocation_offset"]
                 + relocation_index * architecture.layouts.relocation_info.size
@@ -640,12 +644,50 @@ def _decode_i386_relocations(
             raw_address = address & 0xFFFFFFFF
             scattered = bool(raw_address & 0x80000000)
             target_section_ordinal = None
+            sectdiff_pair_value = None
             if scattered:
                 address = raw_address & 0x00FFFFFF
                 relocation_type = (raw_address >> 24) & 0xF
                 length = (raw_address >> 28) & 0x3
                 pc_relative = bool(raw_address & (1 << 30))
-                if relocation_type != 0:
+                # GENERIC_RELOC_VANILLA=0, PAIR=1, SECTDIFF=2, LOCAL_SECTDIFF=4.
+                if relocation_type == 1:
+                    raise MachOFormatError(
+                        f"{entry_context}: unexpected scattered PAIR without a "
+                        "SECTDIFF principal"
+                    )
+                if relocation_type in (2, 4):
+                    if relocation_index + 1 >= count:
+                        raise MachOFormatError(
+                            f"{entry_context}: SECTDIFF requires a scattered PAIR"
+                        )
+                    pair_offset = (
+                        section["relocation_offset"]
+                        + (relocation_index + 1)
+                        * architecture.layouts.relocation_info.size
+                    )
+                    pair_context = (
+                        f"load command {section['command_index']} section "
+                        f"{section['section_in_segment']} (global {section_index}) "
+                        f"relocation {relocation_index + 1} at file offset "
+                        f"0x{pair_offset:x}"
+                    )
+                    pair_address, pair_word = _unpack(
+                        architecture.layouts.relocation_info,
+                        data,
+                        pair_offset,
+                        pair_context,
+                    )
+                    pair_raw = pair_address & 0xFFFFFFFF
+                    pair_scattered = bool(pair_raw & 0x80000000)
+                    pair_type = (pair_raw >> 24) & 0xF
+                    if not pair_scattered or pair_type != 1:
+                        raise MachOFormatError(
+                            f"{entry_context}: SECTDIFF requires a scattered PAIR"
+                        )
+                    sectdiff_pair_value = pair_word
+                    skip_next = True
+                elif relocation_type != 0:
                     raise MachOFormatError(
                         f"{entry_context}: unsupported scattered relocation type "
                         f"{relocation_type}"
@@ -705,8 +747,11 @@ def _decode_i386_relocations(
                         target_section = sections[symbol_number - 1]
                         target = target_section["name"]
                         target_section_ordinal = symbol_number
-            type_name = ("scattered-vanilla" if scattered else
-                         ("vanilla" if relocation_type == 0 else f"type-{relocation_type}"))
+            if scattered and relocation_type in (2, 4):
+                type_name = "sectdiff" if relocation_type == 2 else "local-sectdiff"
+            else:
+                type_name = ("scattered-vanilla" if scattered else
+                             ("vanilla" if relocation_type == 0 else f"type-{relocation_type}"))
             relative = "pc-relative" if pc_relative else "absolute"
             if section["zero_fill"]:
                 field = b"\0" * width
@@ -718,9 +763,12 @@ def _decode_i386_relocations(
             # comparison a stable semantic addend without changing stored bits.
             field_value = int.from_bytes(field, architecture.endianness, signed=pc_relative)
             relocation_address = section["address"] + address
-            addend = (field_value + (relocation_address if pc_relative else 0)
-                      - target_section["address"]
-                      if target_section_ordinal is not None else field_value)
+            if sectdiff_pair_value is not None:
+                addend = field_value - (word - sectdiff_pair_value)
+            else:
+                addend = (field_value + (relocation_address if pc_relative else 0)
+                          - target_section["address"]
+                          if target_section_ordinal is not None else field_value)
             result.append(
                 {
                     "address": relocation_address,

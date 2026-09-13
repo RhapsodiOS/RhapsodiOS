@@ -142,7 +142,10 @@ Assert-Match $iondrvImplText 'getPixelInformationForDisplayMode:modeID andDepthI
 $pexpertGestaltText = Get-Content -Raw (Join-Path $repoRoot 'src\drivers-ppc\bus\drvPExpert\powermac\powermac_gestalt.h')
 Assert-Match $pexpertGestaltText 'gestaltSawtooth\s*=\s*1000' 'PExpert gestalt table includes NewWorld Sawtooth machines'
 $libcMachPreambleText = Get-Content -Raw (Join-Path $repoRoot 'src\Libc-1\mach.subproj\Makefile.preamble')
+$libsystemMakeText = Get-Content -Raw (Join-Path $repoRoot 'src\Libsystem-2\Makefile')
 $libsystemPostambleText = Get-Content -Raw (Join-Path $repoRoot 'src\Libsystem-2\Makefile.postamble')
+Assert-NotMatch $libsystemMakeText 'System\.order\.\$\(TARGET_ARCH\)' 'Libsystem does not bind a single TARGET_ARCH order file at parse time'
+Assert-Match $libsystemPostambleText 'TARGET_ARCHS' 'Libsystem harvest links iterate TARGET_ARCHS'
 Assert-Match $libsystemPostambleText 'after_install::' 'Libsystem installs compatibility dylibs after System.framework'
 Assert-Match $libsystemPostambleText 'usr/lib/\$\$lib\.dylib' 'Libsystem compatibility dylibs live in /usr/lib'
 Assert-Match $libsystemPostambleText 'libkvm' 'Libsystem publishes libkvm.dylib as a System.framework compatibility link'

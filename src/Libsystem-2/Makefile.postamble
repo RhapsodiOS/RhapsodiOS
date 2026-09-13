@@ -146,6 +146,7 @@ GREP = /bin/grep
 # FIXME when we have the latest cc from 4.2mach
 LIBTOOL=/usr/bin/libtool
 DYNAMIC_PROJDIRS = $(ARGON_PROJECTS) $(DYNAMIC_ONLY)
+DYNAMIC_SECTORDER_FLAGS = $(foreach A,$(TARGET_ARCHS),-sectorder __TEXT __text $(SRCROOT)/System.order.$(A))
 
 make_links::
 	@(if [ ! -f $(OFILE_DIR)/links/.all_done ]; then\
@@ -162,7 +163,8 @@ make_links::
 		echo "#### $(BUILD_TARGET) is not a suitable target";\
 		exit 1;\
             fi;\
-			echo ========== Creating $$obj_dir links for ${TARGET_ARCH} ==========;\
+			for arch in $(TARGET_ARCHS); do \
+			echo ========== Creating $$obj_dir links for $$arch ==========;\
 			for i in $$dirs; do\
 				echo -n "Linking $$i to ";\
 				name=$$i;\
@@ -189,23 +191,23 @@ make_links::
 				rm -rf $$name;\
 				$(MKDIRS) $$name;\
 				root=$(SUBLIBROOTS)/$$proj;\
-				if [ -d $$root/$${obj_dir}_obj/${TARGET_ARCH} ]; then\
-					echo -n $$root/$${obj_dir}_obj/${TARGET_ARCH};\
-					$(LN) $$root/$${obj_dir}_obj/${TARGET_ARCH} $$name/$${obj_dir}_obj;\
-				elif [ -d $$root/$${obj_dir}_${TARGET_ARCH}_obj ]; then\
-					echo -n $$root/$${obj_dir}_${TARGET_ARCH}_obj;\
-					$(LN) $$root/$${obj_dir}_${TARGET_ARCH}_obj $$name/$${obj_dir}_obj;\
+				if [ -d $$root/$${obj_dir}_obj/$$arch ]; then\
+					echo -n $$root/$${obj_dir}_obj/$$arch;\
+					$(LN) $$root/$${obj_dir}_obj/$$arch $$name/$${obj_dir}_obj;\
+				elif [ -d $$root/$${obj_dir}_$$arch_obj ]; then\
+					echo -n $$root/$${obj_dir}_$$arch_obj;\
+					$(LN) $$root/$${obj_dir}_$$arch_obj $$name/$${obj_dir}_obj;\
 				elif [ -d $$root/$${obj_dir}_obj ]; then\
 					echo -n $$root/$${obj_dir}_obj;\
 					$(LN) $$root/$${obj_dir}_obj $$name/$${obj_dir}_obj;\
-				elif [ -d $$root/dynamic_obj/${TARGET_ARCH} ]; then\
-					echo -n $$root/dynamic_obj/${TARGET_ARCH};\
-					$(LN) $$root/dynamic_obj/${TARGET_ARCH} $$name/$${obj_dir}_obj;\
+				elif [ -d $$root/dynamic_obj/$$arch ]; then\
+					echo -n $$root/dynamic_obj/$$arch;\
+					$(LN) $$root/dynamic_obj/$$arch $$name/$${obj_dir}_obj;\
 				elif [ -d $$root/dynamic_obj ]; then\
 					echo -n $$root/dynamic_obj;\
 					$(LN) $$root/dynamic_obj $$name/$${obj_dir}_obj;\
 				else\
-					echo "##### No $$root/$${obj_dir}_obj/${TARGET_ARCH}";\
+					echo "##### No $$root/$${obj_dir}_obj/$$arch";\
 					bail=YES;\
 					continue;\
 				fi;\
@@ -217,6 +219,7 @@ make_links::
 					continue;\
 				fi;\
 				echo " done.";\
+			done;\
 			done;\
 			if [ "$$bail" = YES ]; then\
 				exit 1;\

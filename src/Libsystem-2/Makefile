@@ -29,7 +29,7 @@ DEBUG_LIBS = $(LIBS)
 PROF_LIBS = $(LIBS)
 
 
-NEXTSTEP_PB_LDFLAGS = -seg1addr 0x41300000 -sectorder __TEXT __text $(SRCROOT)/System.order.$(TARGET_ARCH) -sectorder_detail -read_only_relocs warning
+NEXTSTEP_PB_LDFLAGS = -seg1addr 0x41300000 -sectorder_detail -read_only_relocs warning
 WINDOWS_PB_LDFLAGS = -seg1addr 0x05000000
 PDO_UNIX_PB_LDFLAGS = -seg1addr 0x05000000
 

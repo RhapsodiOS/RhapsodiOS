@@ -3382,8 +3382,8 @@ Ledger (`binrecon ledger` with no `--address` loads): 40 entries, **0
 | Status | Count | Who |
 | --- | --- | --- |
 | `assembly-matched` | 25 | MATCH after kind-based mask, including Version 12/12, `_emu486` 10496, interior 15796/15877, instance glue |
-| `control-flow-confirmed` | 11 | named compiler-only: Task 4 list minus `getModeInfo:`/`name`; Phase 2 `int10:…smmport:` and `realToVirtual::`; `unlockRegisters`/`lockRegisters` (Task 2 nested RMW failed, 152 vs 168, statement-for-statement source kept) |
-| `signature-confirmed` | 4 | `enterLinearMode`, `getDisplayDeviceState`, `setGammaTable` (same-size DIFF residuals; not AM); `reportSystemConfiguration` (+28, prologue `55 89 e5 53`, Task 4 forbade CFC) |
+| `control-flow-confirmed` | 9 | named compiler-only: Task 4 list minus `getModeInfo:`/`name`; Phase 2 `int10:…smmport:` and `realToVirtual::` |
+| `signature-confirmed` | 6 | `enterLinearMode`, `getDisplayDeviceState`, `setGammaTable` (same-size DIFF residuals; not AM); `reportSystemConfiguration` (+28, prologue `55 89 e5 53`, Task 4 forbade CFC); `unlockRegisters`/`lockRegisters` (Task 2 nested RMW failed, 152 vs 168 still open — not a named compiler-only close) |
 
 IDA `binrecon compare` is still unavailable (emu486 moffs vs `ida-off32`).
 Reviewer `Pat Raynor`.

@@ -866,6 +866,34 @@ TEST(test_resolved_thin_flags) {
     params_free(&params);
 }
 
+TEST(test_bootstrap_universal_resolve) {
+    Package pkg;
+    BuildOptions opt;
+    Toolchain tc;
+    package_init(&pkg);
+    build_options_init(&opt);
+    toolchain_fixture(&tc);
+    opt.bootstrap = 1;
+    opt.toolchain = &tc;
+    opt.operation_arch = RB_ARCH_UNIVERSAL;
+    CHECK_INT(builder_resolve_architecture(&pkg, &opt), 0);
+    CHECK_STR(pkg.architecture, "universal-apple-rhapsody");
+    CHECK_INT(opt.effective_arch, RB_ARCH_UNIVERSAL);
+    CHECK_INT(opt.operation_arch, RB_ARCH_UNIVERSAL);
+    package_set(&pkg.architecture, "i386");
+    opt.operation_arch = RB_ARCH_UNIVERSAL;
+    CHECK(builder_resolve_architecture(&pkg, &opt) != 0);
+    package_set(&pkg.architecture, "ppc");
+    opt.operation_arch = RB_ARCH_UNIVERSAL;
+    CHECK(builder_resolve_architecture(&pkg, &opt) != 0);
+    package_set(&pkg.architecture, 0);
+    opt.operation_arch = 0;
+    CHECK_INT(builder_resolve_architecture(&pkg, &opt), 0);
+    CHECK_STR(pkg.architecture, "ppc-apple-rhapsody");
+    CHECK_INT(opt.effective_arch, RB_ARCH_PPC);
+    package_free(&pkg);
+}
+
 TEST(test_build_rejects_unsupported_bootstrap_architecture) {
     BuildOptions opt;
     Toolchain tc;
@@ -1375,6 +1403,7 @@ static void run_all(void) {
     RUN(test_build_validates_all_roots_before_packaging);
     RUN(test_packaging_rejects_wrong_products);
     RUN(test_resolved_thin_flags);
+    RUN(test_bootstrap_universal_resolve);
     RUN(test_build_rejects_unsupported_bootstrap_architecture);
     RUN(test_scan_architecture_labels);
     RUN(test_scan_rejects_invalid_architecture);

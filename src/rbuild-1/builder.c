@@ -287,7 +287,8 @@ int builder_resolve_architecture(Package *pkg, BuildOptions *opt) {
         if (!opt->toolchain ||
             architecture_parse(opt->toolchain->target_arch, &profile_arch) != 0 ||
             (profile_arch != RB_ARCH_I386 && profile_arch != RB_ARCH_PPC) ||
-            (operation && operation != profile_arch)) {
+            (operation && operation != profile_arch &&
+             operation != RB_ARCH_UNIVERSAL)) {
             fprintf(stderr, "rbuild: %s: invalid or conflicting bootstrap architecture '%s' for operation '%s'\n",
                     pkg->source ? pkg->source :
                     (pkg->package ? pkg->package : "(unknown)"),
@@ -297,7 +298,8 @@ int builder_resolve_architecture(Package *pkg, BuildOptions *opt) {
                     architecture_label(operation) : "(invalid)") : "bootstrap");
             return 1;
         }
-        operation = profile_arch;
+        if (operation != RB_ARCH_UNIVERSAL)
+            operation = profile_arch;
     }
     if (architecture_parse(pkg->architecture, &source) != 0 ||
         architecture_resolve(source, operation, &effective) != 0) {

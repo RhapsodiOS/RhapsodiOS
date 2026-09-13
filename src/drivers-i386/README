@@ -41,7 +41,7 @@ network
 scsi
  (see docs/drivers/scsi-reconstruction.md - four of these are stubs on the
   wrong hardware model, not partial reconstructions)
- * drvAdaptec6X60 - stub on the wrong architecture; reconstruction in progress
+ * drvAdaptec6X60 - reconstructed against the reference binary, compiled; not hardware-tested
  * drvAdaptec1542B - reconstructed against the reference binary, no divergences; not yet compiled
  * drvAdaptec2940 - stub, 10/170 reference functions; missing the whole SCSIBus class
  * drvAMDPCSCSIDriver - complete

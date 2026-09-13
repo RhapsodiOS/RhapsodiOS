@@ -3,9 +3,9 @@
 Findings from comparing our sources against Apple's shipped `*_reloc` binaries
 with `tools/binrecon`. The headline is that the eight drivers are not eight
 partial reconstructions at different stages. Two are essentially complete, one
-is a modern addition with no reference, and the other five are stubs — and two
-of those are built on the wrong hardware model, so they could not work even if
-completed as written.
+is reconstructed against its reference and guest-compiled, one is a modern
+addition with no reference, and the other four are stubs — and one of those
+(`drvSym53C8xx`) is still built on the wrong hardware model.
 
 ## Coverage
 
@@ -20,7 +20,7 @@ project type and are correctly absent from source.
 | --- | --- | --- | --- |
 | drvAdaptec1542B | 36 | 34 | complete; only build glue absent |
 | drvBusLogic | 37 | 35 | complete; only build glue absent |
-| drvAdaptec6X60 | 79 | 18 | stub, wrong architecture |
+| drvAdaptec6X60 | 79 | 77 | reconstructed against the reference; guest `_reloc` produced; not hardware-tested |
 | drvDPT2000 | 55 | 10 | stub; missing the `EATASCSIBus` class |
 | drvBusLogicFP | 123 | 7 | stub |
 | drvSym53C8xx | 158 | 12 | stub, wrong architecture |
@@ -31,21 +31,21 @@ than a reconstruction and is out of scope here.
 
 ## The class-name divergence
 
-Five of the seven name their principal class differently from the reference.
-This is the same pattern already resolved in drvPCMCIABus, and it is why five
-drivers initially resolved **zero** symbols — a total mismatch rather than a
-partial one.
+Four of the seven still name their principal class differently from the
+reference. This is the same pattern already resolved in drvPCMCIABus, and it
+is why those drivers initially resolved **zero** symbols — a total mismatch
+rather than a partial one.
 
 | Driver | Ours | Reference |
 | --- | --- | --- |
-| drvAdaptec6X60 | `AIC6X60Controller` | `AIC6X60` |
+| drvAdaptec6X60 | `AIC6X60` | `AIC6X60` |
 | drvBusLogic | `BLController` | `BLCController` |
 | drvBusLogicFP | `BusLogicFPSCSI` | `BLFPController` |
 | drvDPT2000 | `DPTSCSIDriver` | `EATAController` |
 | drvSym53C8xx | `SYM53c8Controller` | `SYM53c8` |
 
-drvAdaptec1542B (`AHAController`) and drvAdaptec2940 (`Adaptec2940`) already
-match. The `(PrivateMethods)` and `(IOThread)` category split is correct in
+drvAdaptec1542B (`AHAController`), drvAdaptec6X60 (`AIC6X60`), and
+drvAdaptec2940 (`Adaptec2940`) already match. The `(PrivateMethods)` and `(IOThread)` category split is correct in
 every driver, and the `*Controller.m` / `*Routines.m` / `*Thread.m` file
 layout mirrors it — that part was reconstructed well throughout.
 
@@ -54,37 +54,20 @@ count from 26 to 30 and left five genuinely missing functions.
 
 ## The architecture problem
 
-Two drivers do not merely lack functions. They implement a different hardware
-interface from the chip they target.
+`drvAdaptec6X60` used to implement an AHA-154x mailbox instead of the AIC-6X60
+HIM; that rewrite is done (see below). `drvSym53C8xx` still implements a
+different hardware interface from the chip it targets.
 
 ### drvAdaptec6X60
 
-`AIC6X60Routines.m` programs a **mailbox interface**: `AIC_CMD_INIT` carrying
-`mb_cnt`, in and out mailbox arrays, `AIC_CMD_START_SCSI`,
-`AIC_CMD_SET_MB_ENABLE`, `AIC_CMD_GET_BIOS_INFO`. That is the AHA-154x host
-adapter command protocol, for a board whose onboard processor accepts mailbox
-commands. The driver was cloned from drvAdaptec1542B and kept its architecture.
-
-The AIC-6260/6360 has no onboard processor and no mailbox interface. It is a
-low-level SCSI protocol chip: the host drives selection, reselection, message
-and data phases directly. Apple's driver does exactly that — of its 79
-functions, 54 are C functions forming an Adaptec HIM plus a SCSI sequencer:
-
-    _HIM6X60Initialize  _HIM6X60ISR        _HIM6X60QueueSCB    _HIM6X60AbortSCB
-    _selection          _reselection       _scsiBusFree        _scsiBusReset
-    _targetREQuest      _samePhaseREQuest  _interpretMessageIn _prepareMessageOut
-    _negotiateSDTR      _updateSDTR        _resetSDTR
-    _dataInPIO          _dataOutPIO        _dataPhaseDMA
-    _repinsb _repinsw _repinsd  _repoutsb _repoutsw _repoutsd
-
-Our 18 resolved symbols are DriverKit method shells, not the engine. Sixteen
-symbols exist in our source that the reference does not have — `_aic_cmd`,
-`_aic_probe_cmd`, `_aicTimeout`, and the mailbox-era `allocCcb:`,
-`ccbFromCmd:ccb:`, `freeCcb:`, `runPendingCommands` — all residue of the wrong
-model.
-
-Our driver sends commands the chip does not implement, so it cannot work on
-real hardware regardless of how much of the remainder is filled in.
+Reconstructed against `AIC6X60SCSI_reloc`. The AHA-154x mailbox clone
+(`AIC6X60Routines.m`, `aic_cmd`, `allocCcb:`, `runPendingCommands`) is gone.
+The live tree is a DriverKit `AIC6X60` class plus an Adaptec HIM
+(`HIM6X60.c`) and SCSI sequencer (`AIC6X60Sequencer.c`) that program
+AIC-6260/6360 ports directly: selection, reselection, message and data
+phases, SDTR, PIO and DMA. 77 of 79 reference `__text` functions map; the
+two absences are Kernel Server glue. A guest `Adaptec6X60_reloc` was
+produced. Not hardware-tested. Linux `aic6x60` was not used as a template.
 
 ### drvSym53C8xx
 

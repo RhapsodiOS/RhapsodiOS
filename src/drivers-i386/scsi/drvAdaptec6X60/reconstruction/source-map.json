@@ -8,7 +8,7 @@
         "+[AIC6X60 probe:]"
       ],
       "size": 154,
-      "source_line": 70,
+      "source_line": 61,
       "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Controller.m"
     },
     {
@@ -17,7 +17,7 @@
         "-[AIC6X60 initFromDeviceDescription:]"
       ],
       "size": 588,
-      "source_line": 97,
+      "source_line": 80,
       "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Controller.m"
     },
     {
@@ -26,7 +26,16 @@
         "-[AIC6X60 maxTransfer]"
       ],
       "size": 33,
-      "source_line": 189,
+      "source_line": 133,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Controller.m"
+    },
+    {
+      "address": 780,
+      "reference_names": [
+        "-[AIC6X60 getDMAAlignment:]"
+      ],
+      "size": 83,
+      "source_line": 140,
       "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Controller.m"
     },
     {
@@ -35,7 +44,7 @@
         "-[AIC6X60 free]"
       ],
       "size": 81,
-      "source_line": 198,
+      "source_line": 155,
       "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Controller.m"
     },
     {
@@ -44,7 +53,7 @@
         "-[AIC6X60 executeRequest:buffer:client:]"
       ],
       "size": 58,
-      "source_line": 250,
+      "source_line": 166,
       "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Controller.m"
     },
     {
@@ -53,7 +62,7 @@
         "-[AIC6X60 resetSCSIBus]"
       ],
       "size": 40,
-      "source_line": 274,
+      "source_line": 180,
       "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Controller.m"
     },
     {
@@ -62,7 +71,7 @@
         "-[AIC6X60 interruptOccurred]"
       ],
       "size": 211,
-      "source_line": 292,
+      "source_line": 189,
       "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Controller.m"
     },
     {
@@ -71,7 +80,7 @@
         "-[AIC6X60 commandRequestOccurred]"
       ],
       "size": 7,
-      "source_line": 443,
+      "source_line": 269,
       "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Controller.m"
     },
     {
@@ -80,7 +89,7 @@
         "-[AIC6X60 timeoutOccurred]"
       ],
       "size": 91,
-      "source_line": 374,
+      "source_line": 250,
       "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Controller.m"
     },
     {
@@ -89,7 +98,7 @@
         "-[AIC6X60 otherOccurred:]"
       ],
       "size": 31,
-      "source_line": 353,
+      "source_line": 210,
       "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Controller.m"
     },
     {
@@ -98,7 +107,7 @@
         "-[AIC6X60 receiveMsg]"
       ],
       "size": 225,
-      "source_line": 358,
+      "source_line": 216,
       "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Controller.m"
     },
     {
@@ -107,7 +116,7 @@
         "-[AIC6X60 probeAtPortBase:]"
       ],
       "size": 66,
-      "source_line": 498,
+      "source_line": 277,
       "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Controller.m"
     },
     {
@@ -116,7 +125,16 @@
         "-[AIC6X60 executeCmdBuf:]"
       ],
       "size": 193,
-      "source_line": 553,
+      "source_line": 286,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Controller.m"
+    },
+    {
+      "address": 1884,
+      "reference_names": [
+        "-[AIC6X60 initDMA]"
+      ],
+      "size": 373,
+      "source_line": 307,
       "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Controller.m"
     },
     {
@@ -125,7 +143,7 @@
         "-[AIC6X60 threadExecuteRequest:]"
       ],
       "size": 247,
-      "source_line": 53,
+      "source_line": 32,
       "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Thread.m"
     },
     {
@@ -134,7 +152,16 @@
         "-[AIC6X60 threadResetBus:]"
       ],
       "size": 124,
-      "source_line": 98,
+      "source_line": 60,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Thread.m"
+    },
+    {
+      "address": 2632,
+      "reference_names": [
+        "-[AIC6X60 scbFromCmd:scb:]"
+      ],
+      "size": 341,
+      "source_line": 77,
       "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Thread.m"
     },
     {
@@ -143,7 +170,25 @@
         "-[AIC6X60 commandCompleted:reason:]"
       ],
       "size": 444,
-      "source_line": 391,
+      "source_line": 165,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Thread.m"
+    },
+    {
+      "address": 3420,
+      "reference_names": [
+        "-[AIC6X60 allocScb]"
+      ],
+      "size": 177,
+      "source_line": 247,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Thread.m"
+    },
+    {
+      "address": 3600,
+      "reference_names": [
+        "-[AIC6X60 freeScb:]"
+      ],
+      "size": 31,
+      "source_line": 272,
       "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Thread.m"
     },
     {
@@ -152,7 +197,7 @@
         "-[AIC6X60 completeDMA:length:]"
       ],
       "size": 48,
-      "source_line": 558,
+      "source_line": 278,
       "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Thread.m"
     },
     {
@@ -161,8 +206,359 @@
         "-[AIC6X60 abortDMA:length:]"
       ],
       "size": 48,
-      "source_line": 574,
+      "source_line": 292,
       "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Thread.m"
+    },
+    {
+      "address": 3728,
+      "reference_names": [
+        "_himTimeout"
+      ],
+      "size": 89,
+      "source_line": 258,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/HIM6X60.c"
+    },
+    {
+      "address": 3820,
+      "reference_names": [
+        "_HIM6X60FindAdapter"
+      ],
+      "size": 135,
+      "source_line": 206,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/HIM6X60.c"
+    },
+    {
+      "address": 3956,
+      "reference_names": [
+        "_HIM6X60GetStackContents"
+      ],
+      "size": 159,
+      "source_line": 232,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/HIM6X60.c"
+    },
+    {
+      "address": 4116,
+      "reference_names": [
+        "_HIM6X60GetConfiguration"
+      ],
+      "size": 1096,
+      "source_line": 801,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/HIM6X60.c"
+    },
+    {
+      "address": 5212,
+      "reference_names": [
+        "_HIM6X60Initialize"
+      ],
+      "size": 991,
+      "source_line": 956,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/HIM6X60.c"
+    },
+    {
+      "address": 6204,
+      "reference_names": [
+        "_HIM6X60AbortSCB"
+      ],
+      "size": 361,
+      "source_line": 675,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/HIM6X60.c"
+    },
+    {
+      "address": 6568,
+      "reference_names": [
+        "_HIM6X60QueueSCB"
+      ],
+      "size": 576,
+      "source_line": 580,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/HIM6X60.c"
+    },
+    {
+      "address": 7144,
+      "reference_names": [
+        "_HIM6X60TerminateSCB"
+      ],
+      "size": 361,
+      "source_line": 738,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/HIM6X60.c"
+    },
+    {
+      "address": 7508,
+      "reference_names": [
+        "_initiateIO"
+      ],
+      "size": 261,
+      "source_line": 549,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/HIM6X60.c"
+    },
+    {
+      "address": 7772,
+      "reference_names": [
+        "_HIM6X60ResetBus"
+      ],
+      "size": 85,
+      "source_line": 194,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/HIM6X60.c"
+    },
+    {
+      "address": 7860,
+      "reference_names": [
+        "_HIM6X60DisableINT"
+      ],
+      "size": 39,
+      "source_line": 162,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/HIM6X60.c"
+    },
+    {
+      "address": 7900,
+      "reference_names": [
+        "_HIM6X60EnableINT"
+      ],
+      "size": 80,
+      "source_line": 176,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/HIM6X60.c"
+    },
+    {
+      "address": 7980,
+      "reference_names": [
+        "_HIM6X60AssertINT"
+      ],
+      "size": 29,
+      "source_line": 153,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/HIM6X60.c"
+    },
+    {
+      "address": 8012,
+      "reference_names": [
+        "_HIM6X60IRQ"
+      ],
+      "size": 149,
+      "source_line": 423,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/HIM6X60.c"
+    },
+    {
+      "address": 8164,
+      "reference_names": [
+        "_HIM6X60ISR"
+      ],
+      "size": 129,
+      "source_line": 391,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/HIM6X60.c"
+    },
+    {
+      "address": 8296,
+      "reference_names": [
+        "_deferredIsr"
+      ],
+      "size": 77,
+      "source_line": 459,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/HIM6X60.c"
+    },
+    {
+      "address": 8376,
+      "reference_names": [
+        "_watchdog"
+      ],
+      "size": 233,
+      "source_line": 473,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/HIM6X60.c"
+    },
+    {
+      "address": 8612,
+      "reference_names": [
+        "_isr"
+      ],
+      "size": 308,
+      "source_line": 502,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/HIM6X60.c"
+    },
+    {
+      "address": 8920,
+      "reference_names": [
+        "_scsiBusFree"
+      ],
+      "size": 712,
+      "source_line": 629,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Sequencer.c"
+    },
+    {
+      "address": 9632,
+      "reference_names": [
+        "_scsiBusReset"
+      ],
+      "size": 577,
+      "source_line": 742,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Sequencer.c"
+    },
+    {
+      "address": 10212,
+      "reference_names": [
+        "_reselection"
+      ],
+      "size": 296,
+      "source_line": 169,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Sequencer.c"
+    },
+    {
+      "address": 10508,
+      "reference_names": [
+        "_selection"
+      ],
+      "size": 380,
+      "source_line": 102,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Sequencer.c"
+    },
+    {
+      "address": 10888,
+      "reference_names": [
+        "_quiesceDmaAndSCSI"
+      ],
+      "size": 382,
+      "source_line": 569,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Sequencer.c"
+    },
+    {
+      "address": 11272,
+      "reference_names": [
+        "_updateDataPointer"
+      ],
+      "size": 447,
+      "source_line": 506,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Sequencer.c"
+    },
+    {
+      "address": 11720,
+      "reference_names": [
+        "_targetREQuest"
+      ],
+      "size": 1390,
+      "source_line": 1001,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Sequencer.c"
+    },
+    {
+      "address": 13112,
+      "reference_names": [
+        "_samePhaseREQuest"
+      ],
+      "size": 146,
+      "source_line": 72,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Sequencer.c"
+    },
+    {
+      "address": 13260,
+      "reference_names": [
+        "_bitbucketAndABORT"
+      ],
+      "size": 66,
+      "source_line": 61,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Sequencer.c"
+    },
+    {
+      "address": 13328,
+      "reference_names": [
+        "_dataOutPIO"
+      ],
+      "size": 508,
+      "source_line": 414,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Sequencer.c"
+    },
+    {
+      "address": 13836,
+      "reference_names": [
+        "_dataInPIO"
+      ],
+      "size": 479,
+      "source_line": 336,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Sequencer.c"
+    },
+    {
+      "address": 14316,
+      "reference_names": [
+        "_dataPhaseDMA"
+      ],
+      "size": 101,
+      "source_line": 320,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Sequencer.c"
+    },
+    {
+      "address": 14420,
+      "reference_names": [
+        "_HIM6X60DmaProgrammed"
+      ],
+      "size": 220,
+      "source_line": 364,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/HIM6X60.c"
+    },
+    {
+      "address": 14640,
+      "reference_names": [
+        "_interpretMessageIn"
+      ],
+      "size": 1138,
+      "source_line": 829,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Sequencer.c"
+    },
+    {
+      "address": 15780,
+      "reference_names": [
+        "_negotiateSDTR"
+      ],
+      "size": 332,
+      "source_line": 244,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Sequencer.c"
+    },
+    {
+      "address": 16112,
+      "reference_names": [
+        "_updateSDTR"
+      ],
+      "size": 279,
+      "source_line": 213,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Sequencer.c"
+    },
+    {
+      "address": 16392,
+      "reference_names": [
+        "_resetSDTR"
+      ],
+      "size": 474,
+      "source_line": 292,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Sequencer.c"
+    },
+    {
+      "address": 16868,
+      "reference_names": [
+        "_linkScbPreemptive"
+      ],
+      "size": 19,
+      "source_line": 111,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/HIM6X60.c"
+    },
+    {
+      "address": 16888,
+      "reference_names": [
+        "_linkScb"
+      ],
+      "size": 33,
+      "source_line": 118,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/HIM6X60.c"
+    },
+    {
+      "address": 16924,
+      "reference_names": [
+        "_unlinkScb"
+      ],
+      "size": 53,
+      "source_line": 133,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/HIM6X60.c"
+    },
+    {
+      "address": 16980,
+      "reference_names": [
+        "_prepareMessageOut"
+      ],
+      "size": 41,
+      "source_line": 50,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Sequencer.c"
     },
     {
       "address": 17024,
@@ -170,8 +566,80 @@
         "_memset"
       ],
       "size": 29,
-      "source_line": 275,
-      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Routines.m"
+      "source_line": 76,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/HIM6X60.c"
+    },
+    {
+      "address": 17056,
+      "reference_names": [
+        "_HIM6X60CompleteSCB"
+      ],
+      "size": 14,
+      "source_line": 96,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/HIM6X60.c"
+    },
+    {
+      "address": 17072,
+      "reference_names": [
+        "_HIM6X60Event"
+      ],
+      "size": 7,
+      "source_line": 103,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/HIM6X60.c"
+    },
+    {
+      "address": 17080,
+      "reference_names": [
+        "_HIM6X60FlushDMA"
+      ],
+      "size": 77,
+      "source_line": 319,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/HIM6X60.c"
+    },
+    {
+      "address": 17160,
+      "reference_names": [
+        "_HIM6X60GetLUCB"
+      ],
+      "size": 31,
+      "source_line": 85,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/HIM6X60.c"
+    },
+    {
+      "address": 17192,
+      "reference_names": [
+        "_HIM6X60GetPhysicalAddress"
+      ],
+      "size": 91,
+      "source_line": 299,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/HIM6X60.c"
+    },
+    {
+      "address": 17284,
+      "reference_names": [
+        "_HIM6X60LogError"
+      ],
+      "size": 27,
+      "source_line": 274,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/HIM6X60.c"
+    },
+    {
+      "address": 17312,
+      "reference_names": [
+        "_HIM6X60MapDMA"
+      ],
+      "size": 200,
+      "source_line": 333,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/HIM6X60.c"
+    },
+    {
+      "address": 17512,
+      "reference_names": [
+        "_HIM6X60Watchdog"
+      ],
+      "size": 79,
+      "source_line": 285,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/HIM6X60.c"
     },
     {
       "address": 17592,
@@ -179,8 +647,8 @@
         "_repinsd"
       ],
       "size": 49,
-      "source_line": 335,
-      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Routines.m"
+      "source_line": 1233,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Sequencer.c"
     },
     {
       "address": 17644,
@@ -188,8 +656,8 @@
         "_repoutsd"
       ],
       "size": 56,
-      "source_line": 380,
-      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Routines.m"
+      "source_line": 1278,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Sequencer.c"
     },
     {
       "address": 17700,
@@ -197,8 +665,8 @@
         "_repinsb"
       ],
       "size": 47,
-      "source_line": 305,
-      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Routines.m"
+      "source_line": 1203,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Sequencer.c"
     },
     {
       "address": 17748,
@@ -206,8 +674,8 @@
         "_repinsw"
       ],
       "size": 51,
-      "source_line": 320,
-      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Routines.m"
+      "source_line": 1218,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Sequencer.c"
     },
     {
       "address": 17800,
@@ -215,8 +683,8 @@
         "_repoutsb"
       ],
       "size": 54,
-      "source_line": 350,
-      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Routines.m"
+      "source_line": 1248,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Sequencer.c"
     },
     {
       "address": 17856,
@@ -224,377 +692,13 @@
         "_repoutsw"
       ],
       "size": 58,
-      "source_line": 365,
-      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Routines.m"
+      "source_line": 1263,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj/AIC6X60Sequencer.c"
     }
   ],
   "reference_sha256": "E70647063BC4E6BC4BF47F73BF298BEAC59264B163C9D9D1920788CCBCE35E13",
   "schema_version": "source-map-v1",
   "unmapped": [
-    {
-      "address": 780,
-      "reference_names": [
-        "-[AIC6X60 getDMAAlignment:]"
-      ],
-      "size": 83
-    },
-    {
-      "address": 1884,
-      "reference_names": [
-        "-[AIC6X60 initDMA]"
-      ],
-      "size": 373
-    },
-    {
-      "address": 2632,
-      "reference_names": [
-        "-[AIC6X60 scbFromCmd:scb:]"
-      ],
-      "size": 341
-    },
-    {
-      "address": 3420,
-      "reference_names": [
-        "-[AIC6X60 allocScb]"
-      ],
-      "size": 177
-    },
-    {
-      "address": 3600,
-      "reference_names": [
-        "-[AIC6X60 freeScb:]"
-      ],
-      "size": 31
-    },
-    {
-      "address": 3728,
-      "reference_names": [
-        "_himTimeout"
-      ],
-      "size": 89
-    },
-    {
-      "address": 3820,
-      "reference_names": [
-        "_HIM6X60FindAdapter"
-      ],
-      "size": 135
-    },
-    {
-      "address": 3956,
-      "reference_names": [
-        "_HIM6X60GetStackContents"
-      ],
-      "size": 159
-    },
-    {
-      "address": 4116,
-      "reference_names": [
-        "_HIM6X60GetConfiguration"
-      ],
-      "size": 1096
-    },
-    {
-      "address": 5212,
-      "reference_names": [
-        "_HIM6X60Initialize"
-      ],
-      "size": 991
-    },
-    {
-      "address": 6204,
-      "reference_names": [
-        "_HIM6X60AbortSCB"
-      ],
-      "size": 361
-    },
-    {
-      "address": 6568,
-      "reference_names": [
-        "_HIM6X60QueueSCB"
-      ],
-      "size": 576
-    },
-    {
-      "address": 7144,
-      "reference_names": [
-        "_HIM6X60TerminateSCB"
-      ],
-      "size": 361
-    },
-    {
-      "address": 7508,
-      "reference_names": [
-        "_initiateIO"
-      ],
-      "size": 261
-    },
-    {
-      "address": 7772,
-      "reference_names": [
-        "_HIM6X60ResetBus"
-      ],
-      "size": 85
-    },
-    {
-      "address": 7860,
-      "reference_names": [
-        "_HIM6X60DisableINT"
-      ],
-      "size": 39
-    },
-    {
-      "address": 7900,
-      "reference_names": [
-        "_HIM6X60EnableINT"
-      ],
-      "size": 80
-    },
-    {
-      "address": 7980,
-      "reference_names": [
-        "_HIM6X60AssertINT"
-      ],
-      "size": 29
-    },
-    {
-      "address": 8012,
-      "reference_names": [
-        "_HIM6X60IRQ"
-      ],
-      "size": 149
-    },
-    {
-      "address": 8164,
-      "reference_names": [
-        "_HIM6X60ISR"
-      ],
-      "size": 129
-    },
-    {
-      "address": 8296,
-      "reference_names": [
-        "_deferredIsr"
-      ],
-      "size": 77
-    },
-    {
-      "address": 8376,
-      "reference_names": [
-        "_watchdog"
-      ],
-      "size": 233
-    },
-    {
-      "address": 8612,
-      "reference_names": [
-        "_isr"
-      ],
-      "size": 308
-    },
-    {
-      "address": 8920,
-      "reference_names": [
-        "_scsiBusFree"
-      ],
-      "size": 712
-    },
-    {
-      "address": 9632,
-      "reference_names": [
-        "_scsiBusReset"
-      ],
-      "size": 577
-    },
-    {
-      "address": 10212,
-      "reference_names": [
-        "_reselection"
-      ],
-      "size": 296
-    },
-    {
-      "address": 10508,
-      "reference_names": [
-        "_selection"
-      ],
-      "size": 380
-    },
-    {
-      "address": 10888,
-      "reference_names": [
-        "_quiesceDmaAndSCSI"
-      ],
-      "size": 382
-    },
-    {
-      "address": 11272,
-      "reference_names": [
-        "_updateDataPointer"
-      ],
-      "size": 447
-    },
-    {
-      "address": 11720,
-      "reference_names": [
-        "_targetREQuest"
-      ],
-      "size": 1390
-    },
-    {
-      "address": 13112,
-      "reference_names": [
-        "_samePhaseREQuest"
-      ],
-      "size": 146
-    },
-    {
-      "address": 13260,
-      "reference_names": [
-        "_bitbucketAndABORT"
-      ],
-      "size": 66
-    },
-    {
-      "address": 13328,
-      "reference_names": [
-        "_dataOutPIO"
-      ],
-      "size": 508
-    },
-    {
-      "address": 13836,
-      "reference_names": [
-        "_dataInPIO"
-      ],
-      "size": 479
-    },
-    {
-      "address": 14316,
-      "reference_names": [
-        "_dataPhaseDMA"
-      ],
-      "size": 101
-    },
-    {
-      "address": 14420,
-      "reference_names": [
-        "_HIM6X60DmaProgrammed"
-      ],
-      "size": 220
-    },
-    {
-      "address": 14640,
-      "reference_names": [
-        "_interpretMessageIn"
-      ],
-      "size": 1138
-    },
-    {
-      "address": 15780,
-      "reference_names": [
-        "_negotiateSDTR"
-      ],
-      "size": 332
-    },
-    {
-      "address": 16112,
-      "reference_names": [
-        "_updateSDTR"
-      ],
-      "size": 279
-    },
-    {
-      "address": 16392,
-      "reference_names": [
-        "_resetSDTR"
-      ],
-      "size": 474
-    },
-    {
-      "address": 16868,
-      "reference_names": [
-        "_linkScbPreemptive"
-      ],
-      "size": 19
-    },
-    {
-      "address": 16888,
-      "reference_names": [
-        "_linkScb"
-      ],
-      "size": 33
-    },
-    {
-      "address": 16924,
-      "reference_names": [
-        "_unlinkScb"
-      ],
-      "size": 53
-    },
-    {
-      "address": 16980,
-      "reference_names": [
-        "_prepareMessageOut"
-      ],
-      "size": 41
-    },
-    {
-      "address": 17056,
-      "reference_names": [
-        "_HIM6X60CompleteSCB"
-      ],
-      "size": 14
-    },
-    {
-      "address": 17072,
-      "reference_names": [
-        "_HIM6X60Event"
-      ],
-      "size": 7
-    },
-    {
-      "address": 17080,
-      "reference_names": [
-        "_HIM6X60FlushDMA"
-      ],
-      "size": 77
-    },
-    {
-      "address": 17160,
-      "reference_names": [
-        "_HIM6X60GetLUCB"
-      ],
-      "size": 31
-    },
-    {
-      "address": 17192,
-      "reference_names": [
-        "_HIM6X60GetPhysicalAddress"
-      ],
-      "size": 91
-    },
-    {
-      "address": 17284,
-      "reference_names": [
-        "_HIM6X60LogError"
-      ],
-      "size": 27
-    },
-    {
-      "address": 17312,
-      "reference_names": [
-        "_HIM6X60MapDMA"
-      ],
-      "size": 200
-    },
-    {
-      "address": 17512,
-      "reference_names": [
-        "_HIM6X60Watchdog"
-      ],
-      "size": 79
-    },
     {
       "address": 17916,
       "reference_names": [

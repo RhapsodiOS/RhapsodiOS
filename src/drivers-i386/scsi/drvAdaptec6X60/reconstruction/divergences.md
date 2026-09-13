@@ -8,11 +8,10 @@ the authoritative partition and Ghidra as a second opinion on bodies)
 
 ## Baseline build
 
-The report pass compared the reference binary's disassembly and ObjC metadata directly
-against the checked-in source. `rebuilt_sha256` in `ledger.json` is still `null` for every
-entry: the Task 5 reloc is a mailbox-stub compile, not a HIM reconstruction to diff.
-Mapped functions that diverge stay `unexamined`. `src/drivers-i386/README` still lists this
-driver as a stub on the wrong architecture.
+The report pass compared the reference binary's disassembly and ObjC metadata
+directly against the then-mailbox source. The fix pass replaced that tree with
+a HIM plus sequencer. `rebuilt_sha256` in `ledger.json` stays `null`: this
+task does not run `binrecon compare` on the guest `_reloc`.
 
 ## Baseline compile
 
@@ -28,25 +27,58 @@ Staged as `/build/source/out/i386/drvAdaptec6X60/Adaptec6X60_reloc`, 230628 byte
 defaults to ppc, and live `System.framework` has no `PrivateHeaders`; the lksproj
 `Makefile.preamble` sets `RC_ARCHS`/`INCLUDED_ARCHS` to i386 and `-I` to
 `/build/bootstrap-root/…/Versions/B/{PrivateHeaders,Headers}`. `AIC6X60Controller.m` and
-`AIC6X60Thread.m` import `<mach/vm_param.h>` for `PAGE_SIZE`. No HIM rewrite.
+`AIC6X60Thread.m` import `<mach/vm_param.h>` for `PAGE_SIZE`. This was the mailbox
+tree; see Final guest compile for the HIM `_reloc`.
+
+## Final guest compile
+
+Host synced `drivers-i386/scsi/drvAdaptec6X60` and copied `vm/build-i386-scsi.sh`
+to `/build/source/vm/`. Guest:
+
+```
+tr -d '\r' < /build/source/vm/build-i386-scsi.sh > /tmp/bscsi.sh
+sh /tmp/bscsi.sh drvAdaptec6X60
+=== scsi-recon done fail=0 built: drvAdaptec6X60 reloc=Adaptec6X60_reloc ===
+```
+
+Staged as `/build/source/out/i386/drvAdaptec6X60/Adaptec6X60_reloc`, **363060**
+bytes, unstripped Mach-O preload i386 (reference `AIC6X60SCSI_reloc` is 61892).
+`gnumake DSTROOT=… install` still fails (`INSTALLDIR` unset); the script copied
+the reloc. Compile-fix commit `drivers-i386: build drvAdaptec6X60 HIM`: drop
+the unused `struct objc_super` (incomplete type on this compiler), compile
+`HIM6X60.c` / `AIC6X60Sequencer.c` with `-ObjC` because they call `objc_msgSend`
+and include ObjC headers, and stop listing the `.m` files in both `CLASSES` and
+`MFILES` (that doubled `AIC6X60Controller.o` on `kl_ld`).
+
+Warnings (do not gate):
+
+- `port_set_backlog_EXTERNAL` / `bzero` / `msg_send_from_kernel` implicit
+  declarations
+- unused `bit` in `HIM6X60Initialize`, unused `period` in `negotiateSDTR`
+- `memcmp` / `memcpy` builtin-type conflict in `AIC6X60Sequencer.c`
+- `libcc.a` ppc vs i386 `-arch` (same guest toolchain warning as the
+  mailbox baseline)
+- `INSTALLDIR` unset on `install`
+
+No `binrecon compare` of the rebuilt file.
 
 ## Summary
 
 | Bucket | Count |
 | --- | --- |
-| mapped | 25 |
-| unmapped | 54 |
+| mapped | 77 |
+| unmapped | 2 |
 | duplicate_candidates | 0 |
 | boundary_disputed | 0 |
 
-The architecture is wrong. The reference is an Adaptec HIM plus a SCSI sequencer that
-programs AIC-6260/6360 ports directly. Our tree is still the AHA-1542B mailbox clone
-(`AIC_CMD_INIT`, `aic_setup_mb_area`, `allocCcb:`, `runPendingCommands`). The 25 mapped
-symbols are DriverKit selector names (and `memset` / `repins*` / `repouts*`) that happen
-to exist in `$LKS/*.m`; the bodies still call mailbox helpers, or, for the PIO primitives,
-live in the mailbox `AIC6X60Routines.m` file. The 54 unmapped symbols are the actual chip
-engine plus five DriverKit helpers our `.m` files never define, plus two Kernel Server
-glue methods.
+HIM names map to `HIM6X60.c` or `AIC6X60Sequencer.c`. DriverKit helpers added
+in the glue rewrite (`getDMAAlignment:`, `initDMA`, `scbFromCmd:scb:`,
+`allocScb`, `freeScb:`, `commandCompleted:reason:`) map. `repins*` / `repouts*`
+map to `AIC6X60Sequencer.c`. `_memset` maps to `HIM6X60.c`. Glue stays
+unmapped:
+
+- `+[AIC6X60SCSIKernelServerInstance kernelServerInstance]`
+- `+[AIC6X60SCSIVersion driverKitVersionForAIC6X60SCSI]`
 
 ## Method
 
@@ -58,46 +90,26 @@ pointer words). Call targets are the IDA analysis `calls[].target` / `calls[].na
 fields. Ghidra's 77-function partition is recorded under Analyzer disagreement; it is not
 used to invent a majority vote.
 
-Offsets below are **not** taken from `AIC6X60Types.h`. That header is the mailbox layout
-and is the thing being replaced.
+Offsets below were **not** taken from the mailbox `AIC6X60Types.h`. The live
+header matches these IDA displacements.
 
-## Architecture: mailbox vs HIM
+## Architecture: HIM + sequencer
 
-Our live code still defines these forbidden mailbox symbols (they must have no definition
-site and no call site after the rewrite):
+The mailbox clone is deleted. `AIC6X60Routines.m` is gone. Forbidden mailbox
+tokens (`AIC_CMD_INIT`, `aic_setup_mb_area`, `aicMbArea`, `allocCcb:`,
+`runPendingCommands`, …) have no definition site; 
+`tools/binrecon/tests/test_adaptec6x60_mailbox_residue.py` passes. The engine
+is `HIM6X60.c` plus `AIC6X60Sequencer.c`. Completions stay IOThread-side:
+ISR/IRQ mark `scb->completed`; `interruptOccurred` walks `him_scb` and sends
+`commandCompleted:reason:`.
 
-```
-aic_cmd aic_probe_cmd aicTimeout aic_start_scsi aic_setup_mb_area
-aic_reset_board aic_unlock_mb
-AIC_CMD_INIT AIC_CMD_START_SCSI AIC_CMD_DO_INQUIRY
-AIC_CMD_GET_CONFIG AIC_CMD_GET_BIOS_INFO AIC_CMD_SET_MB_ENABLE
-allocCcb: freeCcb: ccbFromCmd:ccb: runPendingCommands
-aicMbArea aic_mb_area
-```
+`repinsb` / `repinsw` / `repinsd` / `repoutsb` / `repoutsw` / `repoutsd`
+live in `AIC6X60Sequencer.c`. `__OBJC,__class_names` in the reference `_reloc`
+still contains the original compilation unit names `HIMRoutines.m`,
+`AICController.m`, and `AICThread.m`.
 
-Homes: `AIC6X60Types.h`, `AIC6X60Inline.h`, `AIC6X60ControllerPrivate.h`,
-`AIC6X60Controller.h`, `AIC6X60Controller.m`, `AIC6X60Thread.h`, `AIC6X60Thread.m`,
-`AIC6X60Routines.m`.
-
-The reference has none of those names. Its engine, which our tree does not define, includes:
-
-```
-HIM6X60Initialize HIM6X60ISR HIM6X60QueueSCB HIM6X60AbortSCB
-HIM6X60FindAdapter HIM6X60GetConfiguration HIM6X60ResetBus
-HIM6X60IRQ HIM6X60CompleteSCB HIM6X60TerminateSCB
-selection reselection scsiBusFree scsiBusReset
-targetREQuest samePhaseREQuest interpretMessageIn prepareMessageOut
-negotiateSDTR updateSDTR resetSDTR
-dataInPIO dataOutPIO dataPhaseDMA
-```
-
-`repinsb` / `repinsw` / `repinsd` / `repoutsb` / `repoutsw` / `repoutsd` exist in both;
-they stay. `__OBJC,__class_names` in the `_reloc` still contains the original compilation
-unit names `HIMRoutines.m`, `AICController.m`, and `AICThread.m`.
-
-`+[AIC6X60 probe:]` in the reference logs `"AIC6X60: can't find host adapter!\n"` and
-`"AIC6X60: couldn't initialize HIM!\n"`. Ours probes with `AIC_CMD_DO_INQUIRY` /
-`AIC_CMD_GET_CONFIG`.
+`+[AIC6X60 probe:]` logs `"AIC6X60: can't find host adapter!\n"`; init
+failure logs `"AIC6X60: couldn't initialize HIM!\n"`.
 
 ## Ivar / SCB / HIM-state layouts
 
@@ -128,9 +140,9 @@ that the layouts share nothing.
 `nextScb`. `initFromDeviceDescription:` writes `numFreeScbs = 0x20` (32) at `self+0x1070`
 and `controllerId = self` at `self+0x5d0` (`hacb+0x38c`).
 
-Our header instead declares `config`, `aicBoardId`, `aicMbArea`, `aicCcb`, `numFreeCcbs`,
-`commandQ`, `commandLock`, `outstandingQ`, `outstandingCount`, `dmaLockCount`, `maxQueueLen`,
-`queueLenTotal`. Those names are not in `__instance_vars`.
+`AIC6X60Types.h` now declares this ivar layout (`hacb`, `scsiBus`, `him_scb`,
+`nextScb`, `pendingQ`, `numFreeScbs`, `dmaEnabled`, `currentDMABuffer`). The
+mailbox names (`aicMbArea`, `aicCcb`, `numFreeCcbs`, …) are gone.
 
 ### `struct _SCB` (`sizeof` 84 / `0x54`)
 
@@ -250,11 +262,11 @@ So completions are **IOThread-side**: ISR/IRQ mark the SCB; `interruptOccurred` 
 `commandCompleted:reason:`, which unlocks the command-buf lock the client is waiting on
 in `executeCmdBuf:`.
 
-## Numbered findings: mapped DriverKit methods that still call mailbox helpers
+## Numbered findings: report-pass mailbox bodies (rewritten)
 
-These selectors exist in both the `_reloc` and our `.m` files (source-map `mapped`).
-Our bodies still talk mailboxes. They stay `unexamined`. Call targets on the **reference**
-side are quoted from IDA.
+These were the report-pass notes. The rewrite landed in Tasks 7–8; the
+"Source:" lines below describe the **old** mailbox tree, not the live HIM
+sources. Call targets on the **reference** side remain IDA.
 
 ### Finding 1: `-[AIC6X60 initFromDeviceDescription:]` (156)
 
@@ -357,15 +369,17 @@ our `probeAtPortBase:`.
 
 **Disposition:** rewrite with Finding 6.
 
-`maxTransfer`, `executeRequest:buffer:client:`, `resetSCSIBus`, `otherOccurred:`,
-`receiveMsg`, `executeCmdBuf:`, `completeDMA:length:`, and `abortDMA:length:` are mapped
-and stay `unexamined`; they do not call the forbidden `aic_*` helpers by name, but several
-still assume mailbox constants (`AIC_SG_COUNT` in our `maxTransfer` vs the reference's
-`dmaEnabled` at `self+0x1074` choosing `_page_size` vs `0x10000`).
+`maxTransfer` now uses `dmaEnabled` at `self+0x1074` (`0x10000` vs `_page_size`).
+`executeRequest:buffer:client:`, `resetSCSIBus`, `otherOccurred:`, `receiveMsg`,
+`executeCmdBuf:`, `completeDMA:length:`, and `abortDMA:length:` stay mapped;
+several remain `unexamined` in the ledger because this pass did not re-read
+every instruction.
 
 ## Table / help / bundle extras
 
-`"Driver Version"` is ignored throughout.
+`"Driver Version"` is ignored throughout. Task 9 aligned `Default.table` and
+`AIC_PCMCIA.table` with the reference bundle; the diffs below are the
+report-pass snapshot.
 
 ### `Default.table`
 
@@ -413,7 +427,7 @@ Version` is the single byte `2`.
 
 ### `English.lproj`
 
-Ours: **missing**. Reference `AIC6X60SCSI.config/English.lproj/` contains:
+Copied from the reference bundle in Task 9. Present:
 
 - `Localizable.strings`
 - `AIC_PCMCIA.strings`
@@ -441,28 +455,13 @@ angr 9.3.0 produced `analysis-reference-angr.json`; it is not evidence.
 
 ## Unmapped reason classes
 
-54 unmapped, all with `source_path` null.
+2 unmapped, both with `source_path` null.
 
-**Glue (2)** — Kernel Server project type, marked `intentional-mismatch` / reviewer
-`Pat Raynor`:
+**Glue (2)** — Kernel Server project type, marked `intentional-mismatch` /
+reviewer `Pat Raynor`:
 
 - 17916 `+[AIC6X60SCSIKernelServerInstance kernelServerInstance]`
 - 17928 `+[AIC6X60SCSIVersion driverKitVersionForAIC6X60SCSI]`
-
-**Absent DriverKit helpers without `.m` defs (5):**
-
-- 780 `-[AIC6X60 getDMAAlignment:]`
-- 1884 `-[AIC6X60 initDMA]`
-- 2632 `-[AIC6X60 scbFromCmd:scb:]`
-- 3420 `-[AIC6X60 allocScb]`
-- 3600 `-[AIC6X60 freeScb:]`
-
-Our thread category still declares `ccbFromCmd:ccb:`, `allocCcb:`, `freeCcb:` instead.
-
-**Absent HIM / sequencer (47):** everything else in `unmapped`, including `_himTimeout`,
-the `HIM6X60*` API, `_isr` / `_deferredIsr` / `_watchdog`, the phase machine
-(`_selection` … `_prepareMessageOut`), SDTR, PIO/DMA data path, SCB link helpers, and the
-HIM callbacks (`_HIM6X60CompleteSCB`, `_HIM6X60Event`, `_HIM6X60MapDMA`, …).
 
 ## Task 7: HACB sync-array layout
 
@@ -477,9 +476,8 @@ and a two-byte pad at `+0x5E` keeps `cQueuedScb` at `+0x60`, `sStat0` at
 ## Task 7: HIM / sequencer definition sites
 
 Written from IDA `analysis-reference-ida.json` instructions/blocks/calls (no
-decompilation in the published JSON). Ledger stays `unexamined` until Task 10.
-`repins*` / `repouts*` stay in `AIC6X60Routines.m` until Task 8; Sequencer.c
-calls them and does not redefine them.
+decompilation in the published JSON). `repins*` / `repouts*` now live in
+`AIC6X60Sequencer.c`.
 
 - [x] HIM6X60Initialize
 - [x] HIM6X60ISR
@@ -620,8 +618,49 @@ Kept `milliseconds * 1000ULL`.
 16698  add      eax, 0FFFFFFADh
 ```
 
+## Ledger (Task 10)
+
+Statuses were advanced only after re-reading IDA against the live source.
+Do not treat `unexamined` as "wrong"; those bodies were not instruction-compared
+in this pass.
+
+| Status | Count |
+| --- | --- |
+| assembly-matched | 13 |
+| control-flow-confirmed | 10 |
+| unexamined | 54 |
+| intentional-mismatch | 2 |
+
+**assembly-matched** (every IDA instruction compared): `HIM6X60CompleteSCB`,
+`HIM6X60Event`, `commandRequestOccurred`, `probeAtPortBase:`, `freeScb:`,
+`maxTransfer`, `getDMAAlignment:`, `repinsb` / `repinsw` / `repinsd` /
+`repoutsb` / `repoutsw` / `repoutsd`.
+
+**control-flow-confirmed** — block shape and call targets compared; not traced
+operand-by-operand:
+
+- `targetREQuest` — SCSISIG/SXFRCTL programming and the `0x408000` dword-test
+  side paths
+- `interpretMessageIn` — each message-byte table compare and residual SDTR
+  field writes
+- `HIM6X60Initialize` — each `outb` immediate and the IRQ-connected probe loop
+- `HIM6X60GetConfiguration` — every STACK in/out and `ac` bitfield pack
+- `HIM6X60QueueSCB` — LUCB busy/unlink arithmetic and `segmentLength` clamps
+- `scsiBusFree` — each CLRSINT/SIMODE immediate and linked-SCB complete cases
+- `commandCompleted:reason:` — `scsiReq` field stores and the bad-status
+  IOLog format immediate
+- `initFromDeviceDescription:` — each `objc_msgSend` selector word and the
+  `hacb.ac` bit stores
+- `initDMA` — width immediate vs `hacb.dmaChannel` at `self+0x2C2` and every
+  `stringFromReturn:` path
+- `scbFromCmd:scb:` — each SCB field store displacement and the default
+  reject immediates
+
+Glue stays `intentional-mismatch`, reviewer Pat Raynor.
+
 ## What was not attempted
 
-No HIM source rewrite, no `binrecon compare` of a rebuilt `_reloc`. Mapped
-mailbox bodies were not promoted past `unexamined`. HACB `(?)` union widths that IDA did
-not pin are left unset rather than copied from the mailbox headers.
+No `binrecon compare` of the guest `_reloc` against the reference. No hardware
+test. Mapped bodies not listed above stay `unexamined` rather than guessed.
+HACB `(?)` union widths that IDA did not pin are left as the Task 7 layout
+rather than invented. Linux `aic6x60` was not used as a template.

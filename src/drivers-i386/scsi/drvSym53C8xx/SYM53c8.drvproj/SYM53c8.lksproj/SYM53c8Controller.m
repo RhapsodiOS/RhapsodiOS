@@ -1,604 +1,605 @@
 /*
  * Copyright (c) 1998 NeXT Software, Inc.
  *
- * Symbios Logic NCR 53C8xx SCSI controller driver.
+ * SYM53c8Controller.m - DriverKit shell for the Symbios 53C8xx CAM/SIM.
  *
  * HISTORY
  *
- * Oct 1998	Created from BusLogic driver.
+ * Reconstructed from SYM53c8_reloc (divergences.md).
  */
 
 #import <sys/types.h>
-#import <bsd/sys/param.h>
+#import <string.h>
 #import <objc/Object.h>
 #import <kernserv/queue.h>
 #import <kernserv/prototypes.h>
 #import <driverkit/return.h>
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
-#import <driverkit/i386/kernelDriver.h>
 #import <driverkit/interruptMsg.h>
 #import <driverkit/scsiTypes.h>
 #import <bsd/dev/scsireg.h>
 #import <mach/message.h>
 #import <mach/port.h>
 #import <mach/mach_interface.h>
-#import <mach/vm_param.h>
 #import <machkit/NXLock.h>
-#import <kernserv/ns_timer.h>
-#import <driverkit/i386/ioPorts.h>
-
 #import <driverkit/i386/directDevice.h>
 #import <driverkit/i386/IOPCIDeviceDescription.h>
+#import <driverkit/i386/IOPCIDirectDevice.h>
 #import <driverkit/IOSCSIController.h>
+
 #import "SYM53c8Controller.h"
 #import "SYM53c8Types.h"
-#import "SYM53c8Inline.h"
 #import "SYM53c8Thread.h"
+#import "SYM53c8SIM.h"
 
-extern unsigned ffs(unsigned mask);
-extern BOOL sym_reset_chip(IOEISAPortAddress portBase);
-extern BOOL sym_init_chip(IOEISAPortAddress portBase, struct sym_config *config);
+extern unsigned int	page_size;
+extern void		*bios_rom_vap;
 
-/*
- * Template for command message sent to the I/O thread.
- */
+int			cmdQueueEnable;
+unsigned char		inst_tbl[4];
+unsigned char		shared[4];
+
 static msg_header_t SYMMessageTemplate = {
-	0,					// msg_unused
-	1,					// msg_simple
-	sizeof(msg_header_t),			// msg_size
-	MSG_TYPE_NORMAL,			// msg_type
-	PORT_NULL,				// msg_local_port
-	PORT_NULL,				// msg_remote_port - TO
-						// BE FILLED IN
-	IO_COMMAND_MSG				// msg_id
+	0,
+	1,
+	sizeof(msg_header_t),
+	MSG_TYPE_NORMAL,
+	PORT_NULL,
+	PORT_NULL,
+	IO_COMMAND_MSG
 };
 
-/*
- * Private methods implemented in this file.
- */
-@interface SYM53c8Controller(PrivateMethods)
-- (BOOL) probeChip;
-- (IOReturn)executeCmdBuf	: (SYMCommandBuf *)cmdBuf;
+@interface SYM53c8(PrivateMethods)
+- (int)executeCmdBuf	: (SYMCommandBuf *)cmdBuf;
 @end
 
+static int
+symYesValue(const char *value)
+{
+	if (value == 0)
+		return 0;
+	return (strcmp(value, "YES") == 0);
+}
 
-@implementation SYM53c8Controller
+static unsigned char
+symCdbLen(unsigned char opcode)
+{
+	switch ((opcode >> 5) & 7) {
+	case 0:
+	case 6:
+		return 6;
+	case 1:
+	case 2:
+	case 7:
+		return 10;
+	case 5:
+		return 12;
+	default:
+		return 0;
+	}
+}
 
-/*
- *  Probe, configure chip, and init new instance.
- */
+static unsigned char
+symHostId(unsigned char path)
+{
+	struct sim_hba *hba;
+
+	hba = &HBAs[path];
+	if (hba->base == 0)
+		return 0;
+	return ((unsigned char *)hba->base)[3];
+}
+
+@implementation SYM53c8
+
 + (BOOL)probe:deviceDescription
 {
-	SYM53c8Controller	*sym = [self alloc];
-	IORange			ioPort;
-	id			pciDev;
+	SYM53c8		*sym;
+	const char	*instStr;
+	unsigned char	ch;
+	int		inst;
+	id		table;
 
-	ddm_init("SYM53c8Controller probe\n", 1,2,3,4,5);
-	sym->ioThreadRunning = NO;
-
-	/*
-	 * This is a PCI device, get the PCI device object
-	 */
-	pciDev = [deviceDescription directDevice];
-	if (!pciDev) {
-		IOLog("SYM53c8Controller: No PCI device!\n");
-		[sym free];
+	sym = [self alloc];
+	table = [deviceDescription configTable];
+	instStr = [table valueForStringKey:"Instance"];
+	ch = instStr ? (unsigned char)instStr[0] : 0;
+	switch (ch) {
+	case '0':
+		inst = 0;
+		break;
+	case '1':
+		inst = 1;
+		break;
+	case '2':
+		inst = 2;
+		break;
+	case '3':
+		inst = 3;
+		break;
+	default:
+		IOLog("SYM53c8: Unknown instance %s\n", instStr);
+		IOLog("SYM53c8: Defaulting to instance 0\n");
+		inst = 0;
+		break;
+	}
+	IOLog("sc%d: Probing for device Symbios Logic SCSI Adapter instance %d.\n",
+	    inst, inst);
+	if (inst_tbl[inst] == 1) {
+		IOLog("Already probed, return YES.\n");
+		return YES;
+	}
+	[sym setPath:(unsigned char)inst];
+	[table freeString:instStr];
+	if ([deviceDescription getPCIdevice:0 function:0 bus:0]) {
+		IOLog("SYM53c8: Can't find this PCI device; ABORTING\n");
 		return NO;
 	}
-	sym->pciDevice = pciDev;
-
-	/*
-	 *  Check that we have some IO Ports assigned
-	 */
-	if ([deviceDescription numPortRanges] < 1) {
-		IOLog("SYM53c8Controller: can't determine port base!\n");
-	    	[sym free];
+	if ([sym initFromDeviceDescription:deviceDescription] == nil)
 		return NO;
-	}
-	ioPort = [deviceDescription portRangeList][0];
-	sym->ioBase = ioPort.start;
-	sym->config.io_base = ioPort.start;
-	sym->config.io_size = ioPort.size;
-
-	if (![sym probeChip]) {
-		IOLog("Symbios 53C8xx Not Found at port 0x%x\n", ioPort.start);
-	    	[sym free];
-		return NO;
-	}
-	return ([sym initFromDeviceDescription:deviceDescription] ? YES : NO);
+	inst_tbl[inst] = 1;
+	return YES;
 }
 
 - initFromDeviceDescription:deviceDescription
 {
-	unsigned Lun;
-	kern_return_t krtn;
-	int i;
+	id			table;
+	const char		*value;
+	IOPCIConfigSpace	cfg;
+	IORange			ioRange;
+	IOReturn		irtn;
+	vm_address_t		biosVirt;
+	unsigned char		lun;
+	unsigned char		hostId;
+	int			i;
+	id			lock;
 
-	ddm_init("SYM53c8Controller initFromDeviceDescription\n", 1,2,3,4,5);
-
-	queue_init(&outstandingQ);
-	queue_init(&pendingQ);
 	queue_init(&commandQ);
-	commandLock      = [[NXLock alloc] init];
-	outstandingCount = 0;
-	numFreeCcbs      = SYM_QUEUE_SIZE;
+	commandLock = [[NXLock alloc] init];
+	reqPoolLock = [[NXConditionLock new] initWith:POOL_HAS_REQS];
+	availReqs = 0;
+	for (i = 0; i < SYM_REQS_COUNT; i++) {
+		lock = [[NXConditionLock alloc] initWith:REQ_IDLE];
+		reqs[i].reqLock = lock;
+		[self freeReq:&reqs[i]];
+	}
+	levelIRQ = 0;
 
-	/*
-	 * Note the I/O thread provided by IOSCSIController is running
-	 * upon return from the following method.
-	 */
-	if ([super initFromDeviceDescription:deviceDescription] == nil)
-		return [self free];
-	interruptPortKern = IOConvertPort([self interruptPort],
-		IO_KernelIOTask,
-		IO_Kernel);
-	ioThreadRunning = YES;
+	table = [deviceDescription configTable];
+	value = [table valueForStringKey:"Share IRQ Levels"];
+	if (symYesValue(value)) {
+		levelIRQ = 1;
+		shared[path] = 1;
+	}
+	if (value)
+		[table freeString:value];
 
-	/*
-	 *  Check the irq we just found against what's in our
-	 *  device description.  If they don't match, print a nasty warning
-	 *  message and fail.
-	 */
-	if ([deviceDescription numInterrupts] < 1) {
-		IOLog("SYM53c8Controller: No IRQ assigned!\n");
+	if (path == 0) {
+		value = [table valueForStringKey:"Cmd Queueing"];
+		cmdQueueEnable = symYesValue(value);
+		if (value)
+			[table freeString:value];
+
+		value = [table valueForStringKey:"Synchronous"];
+		SyncSCSIEnable = symYesValue(value);
+		if (value)
+			[table freeString:value];
+
+		value = [table valueForStringKey:"Wide SCSI"];
+		WideSCSIEnable = symYesValue(value);
+		if (value)
+			[table freeString:value];
+	}
+
+	bzero(&cfg, sizeof(cfg));
+	irtn = [IODirectDevice getPCIConfigSpace:&cfg
+		withDeviceDescription:deviceDescription];
+	if (irtn) {
+		IOLog("SYM53c8: Can't get configSpace; ABORTING\n");
 		return [self free];
 	}
 
-	config.irq = [deviceDescription interrupt];
+	interrupt = cfg.InterruptLine;
+	if ((cfg.BaseAddress[0] & SYM_PCI_IO_SPACE) == 0) {
+		IOLog("SYM53c8: No I/O Port Base Found\n");
+		return [self free];
+	}
+	ioRange.start = cfg.BaseAddress[0] & SYM_PCI_IO_MASK;
+	ioRange.size = SYM_PCI_IO_RANGE;
+	irtn = [deviceDescription setPortRangeList:&ioRange num:1];
+	if (irtn) {
+		IOLog("%s: Can't set portRangeList to port 0x%x (%s)\n",
+		    [self name], ioRange.start,
+		    [IODirectDevice stringFromReturn:irtn]);
+		return [self free];
+	}
+	[deviceDescription setInterruptList:(int *)&interrupt num:1];
 
-	/*
-	 * Allocate CCB's from low 16 M of memory (for DMA compatibility)
-	 */
-	symCcb = IOMallocLow(sizeof(struct ccb) * SYM_QUEUE_SIZE);
-	if (!symCcb) {
-		IOLog("SYM53c8Controller: couldn't allocate CCBs!\n");
+	if ([super initFromDeviceDescription:deviceDescription] == nil) {
+		IOLog("%s: super initFromDeviceDescription failed.",
+		    [self name]);
 		return [self free];
 	}
 
-	/*
-	 * Initialize CCB pool
-	 */
-	for (i = 0; i < SYM_QUEUE_SIZE; i++) {
-		symCcb[i].in_use = FALSE;
+	intPortKern = IOConvertPort([self interruptPort],
+	    IO_KernelIOTask, IO_Kernel);
+	ioThreadRunning = 1;
+
+	if (path == 0) {
+		irtn = IOMapPhysicalIntoIOTask(SYM_BIOS_WINDOW_PHYS,
+		    SYM_BIOS_WINDOW_SIZE, &biosVirt);
+		if (irtn) {
+			IOLog("%s: IOMapPhysicalIntoIOTask failed IO_RETURN = %d\n",
+			    [self name], irtn);
+			return [self free];
+		}
+		bios_rom_vap = (void *)biosVirt;
+		xpt_init();
+		IOUnmapPhysicalFromIOTask(biosVirt, SYM_BIOS_WINDOW_SIZE);
+		bios_rom_vap = 0;
+		IOScheduleFunc(ticktock, self, 1);
+	} else {
+		[self threadResetSCSIBus];
 	}
 
-	/*
-	 * Allocate SCRIPTS program area
-	 */
-	scriptsVirt = (unsigned int *)IOMallocLow(4096);
-	if (!scriptsVirt) {
-		IOLog("SYM53c8Controller: couldn't allocate SCRIPTS!\n");
+	if ([self enableInterrupt:0]) {
+		IOLog("%s: Unable to enable interrupt\n", [self name]);
 		return [self free];
 	}
-	scriptsPhys = (unsigned int *)kvtophys((vm_offset_t)scriptsVirt);
 
-	/*
-	 * Initialize the chip
-	 */
-	if (!sym_init_chip(ioBase, &config)) {
-		IOLog("SYM53c8Controller: couldn't initialize chip!\n");
-		return [self free];
+	irtn = port_set_backlog(task_self(), [self interruptPort], 0x10);
+	if (irtn) {
+		IOLog("%s: error %d on port_set_backlog()\n",
+		    [self name], irtn);
+	}
+
+	hostId = symHostId(path);
+	for (lun = 0; lun <= 7; lun++) {
+		if ([self reserveTarget:hostId lun:lun forOwner:self]) {
+			IOLog("%s: reserveTarget t=%d l=%d failed\n",
+			    [self name], hostId, lun);
+			return [self free];
+		}
 	}
 
 	[self resetStats];
-
-	/*
-	 * Reserve our target, enable interrupts, and go.
-	 */
-	for(Lun=0; Lun<SCSI_NLUNS; Lun++) {
-		[self reserveTarget:config.scsi_id lun:Lun forOwner:self];
-	}
-
-	[self enableAllInterrupts];	/* turn on interrupts */
-
-	/*
-	 * Set the port queue length to the maximum size.
-	 */
-	krtn = port_set_backlog(task_self(), [self interruptPort],
-		PORT_BACKLOG_MAX);
-	if(krtn) {
-		IOLog("%s: error %d on port_set_backlog()\n",
-			[self name], krtn);
-		/* Oh well... */
-	}
-	[self resetSCSIBus];
-	[self registerDevice];		/* this is the last thing we do! */
-
+	outstandingCount = 0;
+	[self manualTURScan];
+	[self registerDevice];
 	return self;
 }
 
-/*
- *  Maximum transfer size based on scatter/gather list
- */
-- (unsigned)maxTransfer
+- (void)setPath:(unsigned char)thePath
 {
-	return (SYM_SG_COUNT - 1) * PAGE_SIZE;
+	path = thePath;
 }
 
-/*
- * kill I/O thread, free up local dynamically allocated resources,
- * then have super release resources.
- */
 - free
 {
-	SYMCommandBuf cmdBuf;
+	SYMCommandBuf	cmdBuf;
+	int		i;
 
-	if(ioThreadRunning) {
+	if (ioThreadRunning) {
 		cmdBuf.op = SO_Abort;
+		cmdBuf.req = 0;
+		cmdBuf.lock = 0;
 		[self executeCmdBuf:&cmdBuf];
 	}
-	if(symCcb) {
-		IOFreeLow(symCcb, sizeof(struct ccb) * SYM_QUEUE_SIZE);
-	}
-	if(scriptsVirt) {
-		IOFreeLow(scriptsVirt, 4096);
-	}
-	if(commandLock) {
+	if (commandLock)
 		[commandLock free];
+	for (i = 0; i < SYM_REQS_COUNT; i++) {
+		if (reqs[i].reqLock)
+			[reqs[i].reqLock free];
 	}
 	return [super free];
 }
 
-/*
- * Statistics support.
- */
-- (unsigned int) numQueueSamples
+- (unsigned)maxTransfer
+{
+	return page_size * 15;
+}
+
+- (unsigned)numberOfTargets
+{
+	return 8;
+}
+
+- (void)resetStats
+{
+	queueLenTotal = 0;
+	maxQueueLen = 0;
+	totalCommands = 0;
+}
+
+- (unsigned)numQueueSamples
 {
 	return totalCommands;
 }
 
-
-- (unsigned int) sumQueueLengths
+- (unsigned)sumQueueLengths
 {
 	return queueLenTotal;
 }
 
-
-- (unsigned int) maxQueueLength
+- (unsigned)maxQueueLength
 {
 	return maxQueueLen;
 }
 
-
-- (void)resetStats
+- (struct _scsireq *)allocReq
 {
-	totalCommands = 0;
-	queueLenTotal = 0;
-	maxQueueLen   = 0;
+	struct _scsireq	*req;
+	int		cond;
+
+	[reqPoolLock lockWhen:POOL_HAS_REQS];
+	req = freereq;
+	if (req == 0) {
+		[reqPoolLock unlockWith:POOL_EMPTY];
+		IOPanic("SYM53C8xx: No Free Requests");
+		return 0;
+	}
+	[req->reqLock lock];
+	[req->reqLock unlockWith:CMD_PENDING];
+	freereq = req->next;
+	req->next = 0;
+	availReqs--;
+	cond = (availReqs == 0) ? POOL_EMPTY : POOL_HAS_REQS;
+	[reqPoolLock unlockWith:cond];
+	return req;
 }
 
-/*
- * Do a SCSI command, as specified by an IOSCSIRequest. All the
- * work is done by the I/O thread.
- */
-- (sc_status_t) executeRequest : (IOSCSIRequest *)scsiReq
-		    buffer : (void *)buffer
-		    client : (vm_task_t)client
+- (void)freeReq:(struct _scsireq *)req
 {
-	SYMCommandBuf cmdBuf;
+	[reqPoolLock lock];
+	req->next = freereq;
+	freereq = req;
+	availReqs++;
+	[reqPoolLock unlockWith:POOL_HAS_REQS];
+}
 
-	ddm_exp("executeRequest: cmdBuf 0x%x\n", &cmdBuf, 2,3,4,5);
+- convertReq:(IOSCSIRequest *)scsiReq
+	ToXpt:(struct _scsireq *)req
+	buffer:(void *)buffer
+	client:(vm_task_t)client
+{
+	struct sim_ccb	*ccb;
+	unsigned char	*src;
+	unsigned char	len;
+	unsigned int	i;
+	unsigned char	*cdb;
 
-	cmdBuf.op      = SO_Execute;
-	cmdBuf.scsiReq = scsiReq;
-	cmdBuf.buffer  = buffer;
-	cmdBuf.client  = client;
+	req->XPTReq = 0;
+	ccb = xpt_ccb_alloc();
+	req->XPTReq = ccb;
+	if (ccb == 0)
+		return self;
 
+	req->self = self;
+	ccb->osd_rsvd = CAM_CCB_SENTINEL;
+	req->client = (unsigned int)client;
+	req->NeXTReq = scsiReq;
+	ccb->path = path;
+	ccb->target = scsiReq->target;
+	ccb->lun = scsiReq->lun;
+	ccb->flags0 = scsiReq->read ? CAM_CCB_FLAGS_OUT : CAM_CCB_FLAGS_IN;
+	ccb->flags0 |= CAM_CCB_FLAGS_OR;
+	if (scsiReq->disconnect == 0)
+		ccb->flags1 |= CAM_CCB_FLAGS2_80;
+	ccb->flags1 |= CAM_CCB_FLAGS2_OR;
+	if (Sync_dev[path * 7 + scsiReq->target]) {
+		ccb->flags1 &= ~CAM_CCB_FLAGS2_20;
+		ccb->flags1 |= CAM_CCB_FLAGS2_40;
+	} else {
+		ccb->flags1 |= CAM_CCB_FLAGS2_20;
+		ccb->flags1 &= ~CAM_CCB_FLAGS2_40;
+	}
+	ccb->tag_action = CAM_CCB_BYTE54;
+	*(struct _scsireq **)(void *)&ccb->rsvd18[0] = req;
+	ccb->complete = requestCompleted;
+	ccb->data = buffer;
+	ccb->dxfer_len = scsiReq->maxTransfer;
+	ccb->sense_ptr = (unsigned char *)&scsiReq->senseData;
+	ccb->sense_len = 0x1A;
+	len = symCdbLen(((unsigned char *)&scsiReq->cdb)[0]);
+	ccb->cdb_len = len;
+	src = (unsigned char *)&scsiReq->cdb;
+	cdb = ccb->cdb;
+	for (i = 0; i < len; i++)
+		cdb[i] = src[i];
+	ccb->timeout = scsiReq->timeoutLength;
+	if (ccb->cdb[0] == 3)
+		ccb->flags1 |= CAM_CCB_FLAGS2_10;
+	else if (cmdQueueEnable)
+		ccb->flags0 |= CAM_CCB_FLAGS_TAGGED;
+	return self;
+}
+
+- (void)updateStatus:(struct _scsireq *)req
+{
+	IOSCSIRequest	*scsiReq;
+	struct sim_ccb	*ccb;
+	unsigned	st;
+
+	scsiReq = req->NeXTReq;
+	ccb = req->XPTReq;
+	st = ccb->status & 0x3F;
+	switch (st) {
+	case 1:
+		scsiReq->scsiStatus = 0;
+		scsiReq->driverStatus = SR_IOST_GOOD;
+		break;
+	case 8:
+	case 0x0A:
+		scsiReq->scsiStatus = 0;
+		scsiReq->driverStatus = SR_IOST_SELTO;
+		break;
+	case 0x0B:
+		scsiReq->scsiStatus = 0;
+		scsiReq->driverStatus = SR_IOST_IOTO;
+		break;
+	case 4:
+		scsiReq->scsiStatus = ccb->scsi_status;
+		scsiReq->driverStatus = SR_IOST_CHKSNV;
+		break;
+	case 0x10:
+		scsiReq->scsiStatus = 2;
+		scsiReq->driverStatus = SR_IOST_CHKSNV;
+		break;
+	case 0x0E:
+		scsiReq->scsiStatus = 0;
+		scsiReq->driverStatus = SR_IOST_RESET;
+		break;
+	case 5:
+	case 0x3F:
+		scsiReq->scsiStatus = 8;
+		scsiReq->driverStatus = SR_IOST_CMDREJ;
+		break;
+	case 6:
+	case 7:
+	case 0x15:
+	case 0x38:
+	case 0x39:
+		scsiReq->scsiStatus = 0;
+		scsiReq->driverStatus = SR_IOST_CMDREJ;
+		break;
+	default:
+		IOLog("%s: error 0x%x\n", [self name], ccb->status);
+		scsiReq->driverStatus = SR_IOST_HW;
+		break;
+	}
+	scsiReq->bytesTransferred = scsiReq->maxTransfer - (int)ccb->resid;
+}
+
+- (sc_status_t)executeRequest:(IOSCSIRequest *)scsiReq
+	buffer:(void *)buffer
+	client:(vm_task_t)client
+{
+	struct _scsireq	*req;
+	SYMCommandBuf	cmdBuf;
+
+	req = [self allocReq];
+	[self convertReq:scsiReq ToXpt:req buffer:buffer client:client];
+	cmdBuf.op = SO_Execute;
+	cmdBuf.req = req;
+	cmdBuf.lock = 0;
 	[self executeCmdBuf:&cmdBuf];
-
-	ddm_exp("executeRequest: cmdBuf 0x%x complete; result %d\n",
-		&cmdBuf, cmdBuf.result, 3,4,5);
-	return cmdBuf.result;
+	[self updateStatus:req];
+	xpt_ccb_free(req->XPTReq);
+	[self freeReq:req];
+	outstandingCount--;
+	return scsiReq->driverStatus;
 }
 
-
-/*
- *  Reset the SCSI bus. All the work is done by the I/O thread.
- */
 - (sc_status_t)resetSCSIBus
 {
-	SYMCommandBuf cmdBuf;
-
-	ddm_exp("resetSCSIBus: cmdBuf 0x%x\n", &cmdBuf, 2,3,4,5);
+	SYMCommandBuf	cmdBuf;
 
 	cmdBuf.op = SO_Reset;
+	cmdBuf.req = 0;
+	cmdBuf.lock = 0;
 	[self executeCmdBuf:&cmdBuf];
-	return cmdBuf.result;
+	return 0;
 }
 
-/*
- * The following 6 methods are all called from the I/O thread in
- * IODirectDevice.
- */
-
-/*
- * Called from the I/O thread when it receives an interrupt message.
- */
-- (void)interruptOccurred
-{
-	struct ccb	*ccb;
-	unsigned char	istat, dstat, sist0, sist1;
-
-	ddm_thr("interruptOccurred\n", 1,2,3,4,5);
-
-	istat = sym_get_istat(ioBase);
-
-	/* Check for DMA interrupt */
-	if (istat & SYM_ISTAT_DIP) {
-		dstat = sym_get_dstat(ioBase);
-
-		if (dstat & SYM_DSTAT_SIR) {
-			/* SCRIPTS interrupt - command completed */
-			[self handleScriptsInterrupt];
-		}
-		else if (dstat & (SYM_DSTAT_IID | SYM_DSTAT_ABRT | SYM_DSTAT_BF)) {
-			/* DMA error */
-			IOLog("%s: DMA error, DSTAT=0x%x\n", [self name], dstat);
-			[self handleDMAError:dstat];
-		}
-	}
-
-	/* Check for SCSI interrupt */
-	if (istat & SYM_ISTAT_SIP) {
-		sist0 = sym_get_sist0(ioBase);
-		sist1 = sym_get_sist1(ioBase);
-
-		if (sist0 & SYM_SIST0_RST) {
-			IOLog("%s: SCSI bus reset detected\n", [self name]);
-			[self handleBusReset];
-		}
-		else if (sist0 & SYM_SIST0_STO) {
-			[self handleSelectionTimeout];
-		}
-		else if (sist0 & SYM_SIST0_PAR) {
-			IOLog("%s: Parity error\n", [self name]);
-			[self handleParityError];
-		}
-		else {
-			IOLog("%s: SCSI interrupt, SIST0=0x%x SIST1=0x%x\n",
-				[self name], sist0, sist1);
-		}
-	}
-
-	/*
-	 * Handle possible pending commands
-	 */
-	[self runPendingCommands];
-
-	/*
-	 * Process possible entries waiting in commandQ.
-	 */
-	[self commandRequestOccurred];
-	ddm_thr("interruptOccurred: DONE\n", 1,2,3,4,5);
-}
-
-/*
- * These three should not occur; they are here as error traps. All three are
- * called out from the I/O thread upon receipt of messages which it should
- * not be seeing.
- */
-- (void)interruptOccurredAt:(int)localNum
-{
-	IOLog("%s: interruptOccurredAt:%d\n", [self name], localNum);
-}
-
-- (void)otherOccurred:(int)id
-{
-	IOLog("%s: otherOccurred:%d\n", [self name], id);
-}
-
-- (void)receiveMsg
-{
-	IOLog("%s: receiveMsg\n", [self name]);
-
-	/*
-	 * We have to let IODirectDevice take care of this (i.e., dequeue the
-	 * bogus message).
-	 */
-	[super receiveMsg];
-}
-
-/*
- * Called from the I/O thread when it receives a timeout
- * message.
- */
-- (void)timeoutOccurred
-{
-	struct ccb	*ccb, *nextCcb;
-	ns_time_t	now;
-	queue_head_t	*queue;
-	BOOL		ccbTimedOut = NO;
-	SYMCommandBuf	*cmdBuf;
-	IOSCSIRequest	*scsiReq;
-
-	ddm_thr("timeoutOccurred\n", 1,2,3,4,5);
-
-	IOGetTimestamp(&now);
-
-	/*
-	 *  Scan the list of outstanding and pending commands, and time
-	 *  out any ones whose time is past.
-	 */
-
-	for (queue = &outstandingQ; queue != &pendingQ; queue = &pendingQ) {
-
-	    ccb = (struct ccb *) queue_first(&outstandingQ);
-	    while (!queue_end(&outstandingQ, (queue_entry_t) ccb)) {
-	        ns_time_t	expire;
-
-		cmdBuf  = ccb->cmdBuf;
-		scsiReq = cmdBuf->scsiReq;
-		expire = ccb->startTime +
-		    1000000000ULL *
-		    	(unsigned long long)scsiReq->timeoutLength;
-	        if (now >= expire) {
-			/*
-			 *  Remove ccb from the oustanding queue and
-			 *  complete it.
-			 */
-			nextCcb = (struct ccb *) queue_next(&ccb->ccbQ);
-			queue_remove(&outstandingQ, ccb, struct ccb *, ccbQ);
-			if(queue == &outstandingQ) {
-				ASSERT(outstandingCount != 0);
-				outstandingCount--;
-			}
-			[self commandCompleted:ccb reason:CS_Timeout];
-			ccb = nextCcb;
-			ccbTimedOut = YES;
-		}
-		else {
-			ccb = (struct ccb *) queue_next(&ccb->ccbQ);
-		}
-	    }
-	}
-
-	/*
-	 * Reset bus. This also completes all I/Os in outstandingQ with
-	 * status CS_Reset.
-	 */
-	if(ccbTimedOut) {
-		[self threadResetBus:NULL];
-	}
-	ddm_thr("timeoutOccurred: DONE\n", 1,2,3,4,5);
-}
-
-/*
- * Process all commands in commandQ. If we run out of ccb's during this
- * method, we abort, leaving commands enqueued; these will be handled after
- * subsequent interrupts.
- *
- * This is called either as a result of an IO_COMMAND_MSG message being
- * received by the I/O thread, or upon completion of interrupt handling. In
- * either case, it runs in the context of the I/O thread.
- */
 - (void)commandRequestOccurred
 {
-	SYMCommandBuf *cmdBuf;
+	SYMCommandBuf	*cmdBuf;
 
-	ddm_thr("commandRequestOccurred: top\n", 1,2,3,4,5);
 	[commandLock lock];
-	while(!queue_empty(&commandQ)) {
-		cmdBuf = (SYMCommandBuf *) queue_first(&commandQ);
+	while (!queue_empty(&commandQ)) {
+		cmdBuf = (SYMCommandBuf *)queue_first(&commandQ);
 		queue_remove(&commandQ, cmdBuf, SYMCommandBuf *, link);
 		[commandLock unlock];
-		switch(cmdBuf->op) {
-		    case SO_Reset:
-		    	[self threadResetBus:cmdBuf];
+		switch (cmdBuf->op) {
+		case SO_Reset:
+			[self threadResetSCSIBus];
+			[cmdBuf->lock lock];
+			[cmdBuf->lock unlockWith:CMD_COMPLETE];
 			break;
-
-		    case SO_Abort:
-			/*
-			 * First notify caller of completion, then
-			 * self-terminate.
-			 */
-			[cmdBuf->cmdLock lock];
-			[cmdBuf->cmdLock unlockWith:CMD_COMPLETE];
+		case SO_Abort:
+			[cmdBuf->lock lock];
+			[cmdBuf->lock unlockWith:CMD_COMPLETE];
 			IOExitThread();
-			/* not reached */
-
-		    case SO_Execute:
-		    	if([self threadExecuteRequest:cmdBuf]) {
-				/*
-				 * No more CCBs available. Abort this entire
-				 * method. Enqueue this request on the head
-				 * of commandQ for future processing.
-				 */
-				[commandLock lock];
-				queue_enter_first(&commandQ, cmdBuf,
-					SYMCommandBuf *, link);
-				[commandLock unlock];
-				ddm_thr("processCommandQ: no more ccbs; "
-					"cmdBuf 0x%x\n", cmdBuf, 2,3,4,5);
-				goto out;
-
-			}
+			break;
+		case SO_Execute:
+			[self threadExecuteRequest:cmdBuf->req];
+			break;
+		default:
+			break;
 		}
 		[commandLock lock];
 	}
 	[commandLock unlock];
-out:
-	ddm_thr("commandRequestOccurred: DONE\n", 1,2,3,4,5);
-	return;
 }
 
-
-@end	/* methods declared in SYM53c8Controller.h */
-
-@implementation SYM53c8Controller(PrivateMethods)
-
-- (BOOL) probeChip
+- (void)interruptOccurred
 {
-	unsigned char	istat;
+	SIMInterrupt((unsigned char)interrupt);
+	if ([self enableAllInterrupts])
+		IOLog("%s: Unable to enable interrupt\n", [self name]);
+}
 
-	ddm_init("SYM53c8Controller probeChip\n", 1,2,3,4,5);
+- (void)manualTURScan
+{
+	IOSCSIRequest	scsiReq;
+	unsigned	target;
+	unsigned char	hostId;
 
-	/* Try to read ISTAT register */
-	istat = sym_get_istat(ioBase);
+	if (path == 0)
+		return;
+	hostId = symHostId(path);
+	for (target = 0; target <= 7; target++) {
+		if (target == hostId)
+			continue;
+		bzero(&scsiReq, sizeof(scsiReq));
+		scsiReq.target = (unsigned char)target;
+		scsiReq.lun = 0;
+		scsiReq.maxTransfer = 0;
+		scsiReq.timeoutLength = 4;
+		[self executeRequest:&scsiReq buffer:0 client:IOVmTaskSelf()];
+	}
+}
 
-	/* Reset the chip */
-	sym_soft_reset(ioBase);
+@end
 
-	/* Try reading again */
-	istat = sym_get_istat(ioBase);
-	if (istat == 0xFF) {
-		ddm_init("  ..chip not present\n", 1,2,3,4,5);
-		return FALSE;
+@implementation SYM53c8(PrivateMethods)
+
+- (int)executeCmdBuf:(SYMCommandBuf *)cmdBuf
+{
+	msg_header_t	msg;
+	id		lock;
+	kern_return_t	krtn;
+	int		rtn;
+
+	msg = SYMMessageTemplate;
+	rtn = 0;
+	if (cmdBuf->op == SO_Execute)
+		lock = cmdBuf->req->reqLock;
+	else {
+		lock = [[NXConditionLock alloc] initWith:CMD_PENDING];
+		cmdBuf->lock = lock;
 	}
 
-	/* Set default configuration */
-	config.scsi_id = 7;		/* Default adapter ID */
-	config.max_target = 7;		/* Standard SCSI */
-	config.max_lun = 8;
-
-	IOLog("Symbios 53C8xx at port 0x%x\n", ioBase);
-	return TRUE;
-}
-
-/*
- * Pass one SYMCommandBuf to the I/O thread; wait for completion.
- * Normal completion status is in cmdBuf->status; a non-zero return
- * from this function indicates a Mach IPC error.
- *
- * This method allocates and frees cmdBuf->cmdLock.
- */
-- (IOReturn)executeCmdBuf : (SYMCommandBuf *)cmdBuf
-{
-	msg_header_t msg = SYMMessageTemplate;
-	kern_return_t krtn;
-	IOReturn rtn = IO_R_SUCCESS;
-
-	cmdBuf->cmdLock = [[NXConditionLock alloc] initWith:CMD_PENDING];
 	[commandLock lock];
 	queue_enter(&commandQ, cmdBuf, SYMCommandBuf *, link);
 	[commandLock unlock];
 
-	/*
-	 * Create a Mach message and send it in order to wake up the
-	 * I/O thread.
-	 */
-	msg.msg_remote_port = interruptPortKern;
+	msg.msg_remote_port = intPortKern;
 	krtn = msg_send_from_kernel(&msg, MSG_OPTION_NONE, 0);
-	if(krtn) {
+	if (krtn) {
 		IOLog("%s: msg_send_from_kernel() returned %d\n",
-			[self name], krtn);
+		    [self name], krtn);
 		rtn = IO_R_IPC_FAILURE;
-		goto out;
+	} else {
+		[lock lockWhen:CMD_COMPLETE];
 	}
 
-	/*
-	 * Wait for I/O complete.
-	 */
-	ddm_exp("executeCmdBuf: waiting for completion on cmdBuf 0x%x\n",
-		cmdBuf, 2,3,4,5);
-	[cmdBuf->cmdLock lockWhen:CMD_COMPLETE];
-	ddm_exp("executeCmdBuf: cmdBuf 0x%x complete\n",
-		cmdBuf, 2,3,4,5);
-out:
-	[cmdBuf->cmdLock free];
+	if (cmdBuf->op != SO_Execute)
+		[lock free];
+	else
+		[lock unlockWith:REQ_IDLE];
 	return rtn;
 }
 
-@end	/* SYM53c8Controller(PrivateMethods) */
-
-
+@end

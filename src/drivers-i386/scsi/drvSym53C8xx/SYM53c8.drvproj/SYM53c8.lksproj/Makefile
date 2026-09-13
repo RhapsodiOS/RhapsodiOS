@@ -13,7 +13,7 @@ PROJECTVERSION = 2.7
 PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
-CLASSES = SYM53c8Controller.m SYM53c8Routines.m SYM53c8Thread.m
+CLASSES = SYM53c8Controller.m SYM53c8Thread.m
 CFILES = SYM53c8SIM.c SYM53c8CAM.c SYM53c8Scripts.c
 HFILES = scsivar.h SYM53c8Controller.h SYM53c8ControllerPrivate.h SYM53c8Inline.h SYM53c8Thread.h SYM53c8Types.h SYM53c8SIM.h
 

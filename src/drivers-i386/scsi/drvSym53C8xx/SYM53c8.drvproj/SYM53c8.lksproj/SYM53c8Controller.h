@@ -70,8 +70,8 @@
 
 - (struct _scsireq *)allocReq;
 - (void)freeReq			: (struct _scsireq *)req;
-- convertReq			: (struct _scsireq *)req
-			   ToXpt : (struct cam_ccb *)xpt
+- convertReq			: (IOSCSIRequest *)scsiReq
+			   ToXpt : (struct _scsireq *)req
 			  buffer : (void *)buffer
 			  client : (vm_task_t)client;
 - (void)updateStatus		: (struct _scsireq *)req;

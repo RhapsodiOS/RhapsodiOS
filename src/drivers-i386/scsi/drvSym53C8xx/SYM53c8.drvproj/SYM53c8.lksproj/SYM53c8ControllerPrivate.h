@@ -59,7 +59,13 @@ typedef struct {
 } SYMCommandBuf;
 
 /*
- * _requestCompleted unlockWith:1 on the _scsireq reqLock.
+ * NXConditionLock values from the reloc methods.
+ * reqLock: idle=0, complete=1, pending=2.
+ * reqPoolLock: has free reqs=3, empty=4.
+ * Command-buf locks are allocated initWith:2 and woken with 1.
  */
-#define CMD_PENDING	0
+#define REQ_IDLE	0
 #define CMD_COMPLETE	1
+#define CMD_PENDING	2
+#define POOL_HAS_REQS	3
+#define POOL_EMPTY	4

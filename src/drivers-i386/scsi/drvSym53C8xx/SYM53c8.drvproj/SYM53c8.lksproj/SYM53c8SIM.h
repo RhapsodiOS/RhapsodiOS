@@ -311,6 +311,11 @@ extern struct sim_q		timeq;
 extern struct sim_rom		ROMs[SIM_ROM_SLOTS];
 extern int			numROMs;
 extern unsigned short		MaxCCBPrivateLen;
+extern unsigned int		carldiag;
+extern int			SyncSCSIEnable;
+extern int			WideSCSIEnable;
+extern unsigned char		Sync_dev[32];
+extern unsigned char		Wide_dev[32];
 extern struct sim_q		q16to17;
 extern struct sim_q		q17to16;
 extern struct sim16_ccb		*ccb16[7];
@@ -416,5 +421,11 @@ extern void			T16To17(struct sim16_ccb *ccb16,
 extern unsigned char		Stat16To17(unsigned int status);
 extern unsigned char		Stat17To16(unsigned int status);
 extern void			StuffAction(void *bus);
+extern int			xpt_init(void);
+extern int			xpt_action(struct sim_ccb *ccb);
+extern struct sim_ccb		*xpt_ccb_alloc(void);
+extern void			xpt_ccb_free(struct sim_ccb *ccb);
+extern void			requestCompleted(struct sim_ccb *ccb);
+extern void			ticktock(void *arg);
 
 #endif /* _SYM53C8SIM_H_ */

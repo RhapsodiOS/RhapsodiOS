@@ -3,9 +3,10 @@
 Findings from comparing our sources against Apple's shipped `*_reloc` binaries
 with `tools/binrecon`. The headline is that the eight drivers are not eight
 partial reconstructions at different stages. Two are essentially complete, one
-is a modern addition with no reference, and the other five are stubs — and two
-of those are built on the wrong hardware model, so they could not work even if
-completed as written.
+is reconstructed against its reference and guest-compiled but not
+hardware-tested, one is a modern addition with no reference, and the other
+four are stubs — and one of those is built on the wrong hardware model, so it
+could not work even if completed as written.
 
 ## Coverage
 
@@ -31,10 +32,10 @@ than a reconstruction and is out of scope here.
 
 ## The class-name divergence
 
-Five of the seven name their principal class differently from the reference.
-This is the same pattern already resolved in drvPCMCIABus, and it is why five
-drivers initially resolved **zero** symbols — a total mismatch rather than a
-partial one.
+Four of the seven still name their principal class differently from the
+reference. This is the same pattern already resolved in drvPCMCIABus, and it
+is why those drivers initially resolved **zero** symbols — a total mismatch
+rather than a partial one. drvSym53C8xx now matches (`SYM53c8`).
 
 | Driver | Ours | Reference |
 | --- | --- | --- |
@@ -46,16 +47,18 @@ partial one.
 
 drvAdaptec1542B (`AHAController`) and drvAdaptec2940 (`Adaptec2940`) already
 match. The `(PrivateMethods)` and `(IOThread)` category split is correct in
-every driver, and the `*Controller.m` / `*Routines.m` / `*Thread.m` file
-layout mirrors it — that part was reconstructed well throughout.
+the other drivers. drvSym53C8xx folded IOThread methods onto the main
+`@implementation SYM53c8` (empty `SYM53c8(IOThread)` remains so `SYM53c8Thread.m`
+stays in `CLASSES`) and deleted `SYM53c8Routines.m`.
 
 Renaming is necessary but sufficient only for drvBusLogic, where it took the
 count from 26 to 30 and left five genuinely missing functions.
 
 ## The architecture problem
 
-Two drivers do not merely lack functions. They implement a different hardware
-interface from the chip they target.
+One remaining stub implements a different hardware interface from the chip it
+targets. drvSym53C8xx used to be in this group (BusLogic CCB clone vs CAM/SIM
++ SCRIPTS); that reconstruction closed in Tasks 6–11.
 
 ### drvAdaptec6X60
 
@@ -86,7 +89,7 @@ model.
 Our driver sends commands the chip does not implement, so it cannot work on
 real hardware regardless of how much of the remainder is filled in.
 
-### drvSym53C8xx
+## drvSym53C8xx
 
 The reference contains 136 C functions forming a CAM/SIM implementation, with
 Symbios's own naming: `_CCBInSIMQueue`, `_AddToDeviceList`,

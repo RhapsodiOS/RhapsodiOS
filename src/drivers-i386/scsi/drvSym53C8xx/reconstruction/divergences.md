@@ -7,14 +7,15 @@ ownership-ambiguous normalize error on `_page_size` at file VA `0x4865`
 (`_AddBufferToDatalist`, `cmp ds:_page_size, ecx`). Ledger
 `analyzer_agreement.analyzers` is `["IDA"]` only.
 
-## Baseline build
+## Task 5 (historical): baseline build
 
-`rebuilt_sha256` in `ledger.json` is still `null` for every entry: the Task 5
-reloc is a BusLogic-stub compile, not a CAM/SIM reconstruction to diff. Mapped
-functions that diverge stay `unexamined`. This pass compared the reference
-binary and `SYM53c8.config` against the checked-in BusLogic-shaped stub.
+`rebuilt_sha256` in `ledger.json` is still `null` for every entry: this Task 5
+reloc was a BusLogic-stub compile, not a CAM/SIM reconstruction to diff.
+Mapped functions that diverged stayed `unexamined`. That pass compared the
+reference binary and `SYM53c8.config` against the then-checked-in BusLogic-shaped
+stub. Superseded by Task 11 (mapped 158; guest `_reloc` 347304 bytes).
 
-## Baseline compile
+## Task 5 (historical): baseline compile
 
 Guest `sh /tmp/bscsi.sh drvSym53C8xx` succeeded:
 
@@ -31,7 +32,7 @@ to `/build/bootstrap-root/…/Versions/B/{PrivateHeaders,Headers}`.
 `SYM53c8Controller.m` imports `<mach/vm_param.h>` for `PAGE_SIZE`. There is no
 i386 `IOPCIDevice.h` (ppc-only in driverkit); the stub's unused pci ivar is
 `id`. `completeStatus` is defined in `SYM53c8ControllerPrivate.h`. No CAM/SIM
-rewrite.
+rewrite in that pass.
 
 ## Summary
 
@@ -60,12 +61,14 @@ hit. Filter to named functions (same as Task 3:
 `source map OK`. `reference_sha256` is
 `E0AC193DF652271D1B4249440140842B788F0BAAC13F93008B7E029A095CF6D3`.
 
-## Architecture is wrong: BusLogic CCB vs CAM/SIM + SCRIPTS
+## Task 4–5 (historical): architecture was BusLogic CCB vs CAM/SIM + SCRIPTS
 
-The reloc is a DriverKit `SYM53c8 : IOSCSIController` shell over an NCR SDMS
-CAM/XPT/SIM engine plus an on-chip SCRIPTS / CAMcore blob. Our tree was cloned
-from `drvBusLogic` (`SYM53c8Controller.h` HISTORY: "Created from BusLogic
-driver") and still allocates mailbox-shaped `struct ccb`s.
+Superseded by Tasks 6–11: class `SYM53c8`, CAM/SIM definition sites in
+`SYM53c8SIM.c` / `SYM53c8CAM.c`, mapped 158. The reloc is a DriverKit
+`SYM53c8 : IOSCSIController` shell over an NCR SDMS CAM/XPT/SIM engine plus
+an on-chip SCRIPTS / CAMcore blob. Our tree was cloned from `drvBusLogic`
+(`SYM53c8Controller.h` HISTORY: "Created from BusLogic driver") and at that
+pass allocated mailbox-shaped `struct ccb`s.
 
 | In our tree (must go) | In `SYM53c8_reloc` |
 | --- | --- |
@@ -77,9 +80,9 @@ driver") and still allocates mailbox-shaped `struct ccb`s.
 | `threadResetBus:` / `timeoutOccurred` / `interruptOccurredAt:` / `otherOccurred:` / `receiveMsg` / `probeChip` | not in the reloc method lists |
 | `struct ccb` / `struct sym_config` in `SYM53c8Types.h` | CAM CCB filled by `convertReq:ToXpt:` (offsets below); SIM `_HBAs` / `_DEVs` / XPT `_Devtab` |
 
-CAM/SIM `__text` names that do not exist as definition sites in `$LKS` include
-(complete named C list is the source-map `unmapped` bucket minus the 22 ObjC
-methods, two glue methods, and `nullsub_1`):
+CAM/SIM `__text` names that did not exist as definition sites in `$LKS` at
+that pass include (complete named C list was the source-map `unmapped` bucket
+minus the 22 ObjC methods, two glue methods, and `nullsub_1`):
 
 ```
 SIMStart SIMRun SIMInterrupt SIM17Init SIMAddPath SIM16Start SIM16Int
@@ -339,12 +342,13 @@ The IOThread is the **submit** path:
 `initFromDeviceDescription:` sets `ioThreadRunning` (`or byte ptr [edx+5DDh], 1`)
 after `IOConvertPort` of `interruptPort` into `intPortKern`.
 
-## Findings: DriverKit methods still BusLogic in our source
+## Task 5 (historical): DriverKit methods were still BusLogic in our source
 
-Every reloc ObjC method is unmapped because the class name is `SYM53c8Controller`
-instead of `SYM53c8`. The selectors below exist (or have near-miss names) in
-our tree and still call BusLogic helpers. Disposition for all of them: rewrite
-in later tasks; do not adapt the CCB mailbox path.
+Superseded by Tasks 6–9. At that pass every reloc ObjC method was unmapped
+because the class name was `SYM53c8Controller` instead of `SYM53c8`. The
+selectors below existed (or had near-miss names) in our tree and still called
+BusLogic helpers. Disposition then: rewrite in later tasks; do not adapt the
+CCB mailbox path.
 
 ### Finding 1 — `@interface SYM53c8Controller` instead of `SYM53c8`
 

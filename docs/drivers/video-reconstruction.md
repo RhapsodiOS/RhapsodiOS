@@ -29,7 +29,7 @@ project type and are correctly absent from source.
 
 | Driver | Reference binary | Partition entries | Mapped | Status |
 | --- | --- | --- | --- | --- |
-| drvCirrusLogicGD5434 | `CirrusLogicGD5434DisplayDriver_reloc` | 21 | 19 | **built, linked, parity clean**; 17/21 byte-identical |
+| drvCirrusLogicGD5434 | `CirrusLogicGD5434DisplayDriver_reloc` | 21 | 19 | **built, linked, parity clean**; 19/21 byte-identical; apple-generic MH_BUNDLE present; SGS VERS unmet |
 | drvIBMThinkPad760EDDisplay | `IBMThinkPad760EDDisplayDriver_reloc` | 40 | 28 | compiles and links; 17/29 in-scope extents match |
 | drvVGA | `VGA_reloc` + `VGA_psdrvr` | 38 + 53 | 0 + 0 | analysed in full, **not yet rewritten** |
 | drvATIMach64 | `ATIMach64DisplayDriver_reloc` | — | — | no reconstruction pass |
@@ -48,9 +48,11 @@ drivers, and `QVision`. The Number9 and Weitek drivers and
 instruction. `QVision` exists as an untracked working tree in the main checkout
 but is not on this branch.
 
-## drvCirrusLogicGD5434 — reconstructed and verified
+## drvCirrusLogicGD5434 — reconstructed, 19/21 byte-identical
 
-The only video driver whose reconstruction has been closed against a build.
+The only video driver rebuilt and compared against its reference. Two
+functions (`setMode:` and `setPCIConfiguration`) remain
+`control-flow-confirmed`.
 
 Apple's `__OBJC,__module_info` names the source files outright, so the file
 partition is not inferred: `CirrusLogicGD5434DisplayDriver.m` (`__text` 0–3588),
@@ -64,27 +66,28 @@ What is verified:
 
 - Builds in the Rhapsody guest with `make exit=0` and links.
 - `parity_check.py` reports **zero missing strings and zero missing symbols**.
-  The 26 extras are stab entries from our unstripped `-g` build.
-- **17 of 21 functions are byte-identical** to the reference under relocation
-  masking, re-derived independently during review rather than taken on trust.
+  The extras are stab entries from our unstripped `-g` build.
+- **19 of 21 functions are byte-identical** to the reference under relocation
+  masking: the original 15 handwritten matches, plus generated glue at 4364 and
+  4376, plus `determineConfiguration` and `setPendingDisplayMode:`.
+- The `"Bus Type"` test is `strcmp`; that closed `determineConfiguration`.
+  `determineConfiguration` (892) and `setPendingDisplayMode:` (3388) are
+  `assembly-matched`.
+- An apple-generic MH_BUNDLE exists beside the reloc. The SGS-named
+  `_CirrusLogicGD5434DisplayDriver_VERS_STRING` / `_VERS_NUM` symbols are
+  still unmet (the rebuild emits apple-generic `VersionString` /
+  `VersionNumber` instead).
 - All 30 `__TEXT,__const` register sets and all 52 mode-table entries in
   `_GD5434_modeTable` and `_GD5446_modeTable` were re-parsed from the written C
   and byte-compared against the binary, with zero mismatches.
-- Ledger: 15 `assembly-matched`, 3 `control-flow-confirmed`, 1
-  `signature-confirmed`, 2 `unexamined` (the build-generated glue, byte-identical
-  but deliberately not credited).
+- Ledger: 17 `assembly-matched`, 2 `control-flow-confirmed`, 2 `unexamined`
+  (the build-generated glue, byte-identical but not credited as handwritten).
+- Not hardware-tested.
 
-Two things remain open. `determineConfiguration` is the single function that
-failed control-flow confirmation: the reference inlines its string comparison as
-`repe cmpsb` where our build emits `call _strncmp`, 7 calls against 8. A
-`chipType` signedness hypothesis was investigated and **refuted** — the
-reference's `__OBJC,__instance_vars` encodes `chipType` as `'i'`, so declaring it
-unsigned would break a section that currently matches. The current diagnosis is
-that `repe cmpsb` is gcc's `strcmp` builtin rather than a flag artefact: across
-nine literals in six drivers the `ecx` count is always `strlen(literal) + 1`, so
-`strncmp(..., "PCI", 4)` should be `strcmp(..., "PCI")`. Untested.
-
-The second is the version bundle (below), which affects both driven drivers.
+Two things remain open. `setMode:` (2276) and `setPCIConfiguration` (1692) were
+exhausted through their campaigns and stay `control-flow-confirmed`; they are
+not byte-identical. The SGS `_VERS_STRING` / `_VERS_NUM` gate is still unmet.
+The driver has not been tested on hardware.
 
 ## drvIBMThinkPad760EDDisplay — reconstructed in part
 
@@ -162,29 +165,31 @@ with 53 functions. The equivalent bundles in the Cirrus and ThinkPad configs are
 34-byte version stubs containing only dyld glue and `_VERS_STRING`/`_VERS_NUM`,
 with no code to reconstruct.
 
-## The version bundle is missing from both built drivers
+## The version bundle and SGS version symbols
 
-Neither driver's build emits the `.config` bundle executable that sits beside the
-`_reloc` and carries `_VERS_STRING`/`_VERS_NUM`. Apple's bundles have one;
-`vm/build-i386-video-recon.sh` prints `WARNING: no <name> version bundle
-produced`. Measured on Cirrus: reference `__TEXT,__const` is 2562 bytes with both
-symbols, ours is 2392 with neither, a delta of 170.
+Cirrus now emits an apple-generic MH_BUNDLE beside the `_reloc` (9552 bytes,
+`file_type = 8`). That bundle, and the reloc nlist, carry
+`_CirrusLogicGD5434DisplayDriverVersionString` /
+`_CirrusLogicGD5434DisplayDriverVersionNumber`, not the SGS names
+`_CirrusLogicGD5434DisplayDriver_VERS_STRING` / `_VERS_NUM`. The spec gate
+for those SGS-named symbols remains **unmet**. Rebuilt `__TEXT,__const` is
+2528 bytes against the reference's 2562.
+
+ThinkPad was last recorded without a version bundle; this Cirrus finish pass
+did not rebuild it.
 
 `parity_check.py` cannot see this — it covers only `__TEXT,__cstring` strings and
 `__TEXT,__text` symbols, so `__const` is outside its scope and its green result
-is narrower than it looks. The spec's §1.2 named bundle existence as its only
-verification criterion for these stubs, so that criterion is currently **unmet**.
+is narrower than it looks.
 
-The cause is unproven. The strongest in-repo account is that
-`src/pb_makefiles-1/next-sgs.make:36-45` generates `$(NAME)_vers.c`, but nothing
-links `$(VERS_OFILE)` unless `OTHER_GENERATED_OFILES` picks it up — which for a
-Kernel Server comes from
-`src/driverTools-1/KernelServerProjectType/kernelserver.make.preamble:8-10`
-through an optional `-include` that is silently skipped when that file is not
-installed on the guest. An earlier hypothesis blaming `drvS3Generic`'s outer
-`Makefile.postamble` was refuted: its include is an absolute path to
-`/NextDeveloper/Makefiles/`, absent from this tree, at the aggregate level, which
-builds no code.
+Cirrus leftover is the symbol names, not a missing link of `$(VERS_OFILE)`.
+`vers.o` is linked; the rebuild carries apple-generic `VersionString` /
+`VersionNumber`. The SGS `_VERS_STRING` / `_VERS_NUM` names remain **unmet**.
+Historically the guest had no `next-sgs.make` and `$(VERS_OFILE)` stayed empty
+until Cirrus-local `OTHER_GENERATED_OFILES` plus
+`VERSIONING_SYSTEM = apple-generic` produced `vers.o` — that is the
+pre-Task-2/3 gap, not the current Cirrus cause. ThinkPad still has no
+recorded version bundle from this pass.
 
 ## Analyzer coverage is narrower than intended
 

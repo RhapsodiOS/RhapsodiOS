@@ -31,19 +31,24 @@ typedef enum {
  * resetSCSIBus) to the I/O thread.
  */
 typedef struct {
-	AIC6X60Op	op;		// AO_Execute, etc.
-
-	/*
-	 * The following 3 fields are only valid if op == AO_Execute.
-	 */
-	IOSCSIRequest	*scsiReq;
-	void		*buffer;
-	vm_task_t	client;
-
-	sc_status_t	result;		// status upon completion
-	NXConditionLock	*cmdLock;	// client waits on this
-	queue_chain_t	link;
+	AIC6X60Op	op;		/* +0x00 */
+	IOSCSIRequest	*scsiReq;	/* +0x04 */
+	void		*buffer;	/* +0x08 */
+	vm_task_t	client;		/* +0x0c */
+	unsigned int	_reserved0;	/* +0x10 */
+	unsigned int	_reserved1;	/* +0x14 */
+	sc_status_t	result;		/* +0x18 */
+	NXConditionLock	*cmdLock;	/* +0x1c */
+	queue_chain_t	link;		/* +0x20 */
 } AIC6X60CommandBuf;
+
+typedef struct {
+	msg_header_t		header;
+	unsigned int		unused;
+	AIC6X60CommandBuf	*cmdBuf;
+} AIC6X60ThreadMsg;
+
+#define HIM_MESSAGE_ID		0x232343	/* receiveMsg cmp to this */
 
 /*
  * Condition variable states for AIC6X60CommandBuf.cmdLock.

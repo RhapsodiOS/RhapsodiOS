@@ -48,11 +48,11 @@
 - (unsigned)maxTransfer;
 - free;
 - (void)interruptOccurred;
-- (void)interruptOccurredAt:(int)localNum;
 - (void)otherOccurred:(int)id;
 - (void)receiveMsg;
 - (void)timeoutOccurred;
 - (void)commandRequestOccurred;
+- (void)getDMAAlignment:(IODMAAlignment *)alignment;
 
 /*
  * IOSCSIControllerExported methods implemented here.

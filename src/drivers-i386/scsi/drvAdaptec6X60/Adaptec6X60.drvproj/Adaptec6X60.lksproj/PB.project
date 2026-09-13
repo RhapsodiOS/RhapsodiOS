@@ -2,7 +2,7 @@
     DRIVERNAME = Adaptec6X60;
     DYNAMIC_CODE_GEN = YES;
     FILESTABLE = {
-        CLASSES = (AIC6X60Controller.m, AIC6X60Routines.m, AIC6X60Thread.m);
+        CLASSES = (AIC6X60Controller.m, AIC6X60Thread.m);
         H_FILES = (scsivar.h, AIC6X60Controller.h, AIC6X60ControllerPrivate.h, AIC6X60Inline.h, AIC6X60Thread.h, AIC6X60Types.h, HIM6X60.h);
         OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble, Load_Commands.sect);
     };

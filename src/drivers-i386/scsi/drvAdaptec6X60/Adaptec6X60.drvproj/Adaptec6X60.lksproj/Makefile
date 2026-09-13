@@ -13,7 +13,7 @@ PROJECTVERSION = 2.7
 PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
-CLASSES = AIC6X60Controller.m AIC6X60Routines.m AIC6X60Thread.m
+CLASSES = AIC6X60Controller.m AIC6X60Thread.m
 
 CFILES = HIM6X60.c AIC6X60Sequencer.c
 

@@ -81,14 +81,7 @@ static AIC6X60ThreadMsg HIMMessageTemplate = {
 {
 	unsigned	lun;
 	kern_return_t	krtn;
-	struct objc_super super;
 
-	super.receiver = self;
-	super.class = [AIC6X60 class]->isa;
-	/*
-	 * Use the compiled super send; keep the same call as IDA's
-	 * objc_msgSendSuper to IOSCSIController.
-	 */
 	if ([super initFromDeviceDescription:deviceDescription] == nil)
 		return [super free];
 

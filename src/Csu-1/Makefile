@@ -187,9 +187,13 @@ install: all $(DSTDIRS)
 	$(INSTALL) $(IFLAGS) $(SYMROOT)/pscrt0.o  $(DSTROOT)$(LOCLIBDIR)/pscrt0.o
 	$(INSTALL) $(IFLAGS) $(SYMROOT)/pscrt1.o  $(DSTROOT)$(LOCLIBDIR)/pscrt1.o
 	$(MKDIR) $(DSTROOT)/usr/lib
+ifneq "$(findstring i386,$(RC_ARCHS))" ""
 	$(CC) -arch i386 -dylinker -dylinker_install_name /usr/lib/dyld \
 		-nostdlib -o $(OBJROOT)/dyld.i386 $(OBJROOT)/dyld_stub.i386.o
 	$(LIPO) -create -o $(DSTROOT)/usr/lib/dyld /usr/lib/dyld $(OBJROOT)/dyld.i386
+else
+	$(INSTALL) -c -m 555 /usr/lib/dyld $(DSTROOT)/usr/lib/dyld
+endif
 	$(CHMOD) 555 $(DSTROOT)/usr/lib/dyld
 
 installhdrs:

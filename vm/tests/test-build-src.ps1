@@ -86,6 +86,8 @@ Assert-Match $csuMakefileText '(?m)^pscrt1\.o:.*\$\(OBJROOT\)/dyld\.stub' 'Csu b
 Assert-NotMatch $csuMakefileText 'as \$\(RC_CFLAGS\)' 'Csu does not pass compiler defines to as for the dylinker stub'
 Assert-Match $csuMakefileText '\$\(CC\).*\$\(SRCROOT\)/dyld_stub\.s' 'Csu assembles the dylinker stub with the C compiler driver'
 Assert-Match $csuMakefileText '\$\(DSTROOT\)/usr/lib/dyld' 'Csu packages a runnable /usr/lib/dyld for chroot build roots'
+Assert-Match $csuMakefileText 'findstring i386,\$\(RC_ARCHS\)' 'Csu lipos host ppc dyld with an i386 stub only when RC_ARCHS includes i386'
+Assert-Match $csuMakefileText '(?s)ifneq.*findstring i386.*LIPO.*else.*usr/lib/dyld' 'thin Csu install copies host ppc dyld instead of creating a fat product'
 $csuStubText = Get-Content -Raw (Join-Path $repoRoot 'src\Csu-1\dyld_stub.s')
 Assert-NotMatch $csuStubText "`r" 'Csu dylinker stub uses Unix line endings'
 $bootstrapManifestText = Get-Content -Raw (Join-Path $repoRoot 'src\BootstrapManifest')

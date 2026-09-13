@@ -27,6 +27,7 @@ test: rbuild $(TESTS)
 		[ $$fail -eq 0 ] && echo "ALL TESTS PASSED" || (echo "TESTS FAILED"; exit 1)
 	MAKE=$(MAKE) sh tests/bootstrap-resume.sh
 	MAKE=$(MAKE) sh tests/bootstrap-closure.sh
+	MAKE=$(MAKE) sh tests/bootstrap-runtime-manifest.sh
 
 test_products_OBJS = products.o macho.o architecture.o strutil.o
 test_macho_OBJS = macho.o

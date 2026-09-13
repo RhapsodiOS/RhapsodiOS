@@ -1,0 +1,22 @@
+#       Project[-Version]       Target
+#------ ----------------------- -------
+# CRT, libc components, language/runtime objects, then System.
+# Csu and Libc must precede i386 compiles of later runtime libraries.
+# objc4/Libstreams objects must exist before Libsystem harvests them.
+dir     Csu-1                   all
+dir     Libc-1                  all
+dir     Libcompat-1             all
+dir     Libcurses-1             all
+dir     Libedit-1               all
+dir     Librpcsvc-1             headers
+dir     Libinfo-1               all
+dir     Libkvm-1                all
+dir     Libm-1                  all
+dir     objc4-1                 all
+dir     Libstreams-1            all
+dir     objc-1                  all
+dir     machkit-1               headers
+dir     machkit-1               all
+dir     driverkit-3             all
+dir     kernload-1              all
+dir     Libsystem-2             all

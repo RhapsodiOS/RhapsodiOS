@@ -353,6 +353,32 @@ static int toolchain_ready(const char *marker, const char *sysroot) {
     return ready;
 }
 
+static int file_has_slice(const char *path, unsigned slice) {
+    unsigned mask;
+    int code;
+    if (!path || macho_file_arches(path, &mask, &code) != 0 || !code)
+        return 0;
+    return (mask & slice) == slice;
+}
+
+static int slice_link_ready(const BuildOptions *opt, unsigned slice) {
+    char *system_path;
+    char *crt_path;
+    int ready;
+    if (!opt || !opt->bootstrap || !opt->toolchain) return 1;
+    if (!opt->toolchain->ld_flags_ready) return 1;
+    if (!toolchain_ready(opt->toolchain->ld_flags_ready, opt->sysroot))
+        return 0;
+    system_path = expand_toolchain_value(opt->toolchain->ld_flags_ready,
+                                         opt->sysroot);
+    crt_path = str_cats(opt->sysroot ? opt->sysroot : "", "/lib/crt1.o",
+                        (char *)0);
+    ready = file_has_slice(system_path, slice) && file_has_slice(crt_path, slice);
+    free(system_path);
+    free(crt_path);
+    return ready;
+}
+
 void builder_buildflags(const Params *params, const char *target, strlist *out,
                         const BuildOptions *opt) {
     int i;
@@ -1435,11 +1461,9 @@ int builder_probe_toolchain(const Params *params, const Params *bparams,
     char *parent = 0, *dir = 0, *guest_parent = 0;
     const char *stage = "setup";
     unsigned slice = 0;
-    int attempt, made = 0, rc = 1, link_ready = 1;
+    int attempt, made = 0, rc = 1;
     if (!opt || !architecture_label(opt->effective_arch) ||
         !params->OBJROOT || !bparams->OBJROOT) return 1;
-    if (opt->bootstrap && opt->toolchain)
-        link_ready = toolchain_ready(opt->toolchain->ld_flags_ready, opt->sysroot);
     for (attempt = 0; attempt < 100; attempt++) {
         sprintf(name, ".rbuild-probe-%ld-%d", (long)getpid(), attempt);
         parent = path_join(params->OBJROOT, name);
@@ -1455,6 +1479,7 @@ int builder_probe_toolchain(const Params *params, const Params *bparams,
     for (slice = RB_ARCH_I386; slice <= RB_ARCH_PPC; slice <<= 1) {
         Params probe_params = *bparams;
         BuildOptions probe_opt = *opt;
+        Toolchain probe_tc;
         char *guest_dir;
         int pass;
         if (!(opt->effective_arch & slice)) continue;
@@ -1463,10 +1488,18 @@ int builder_probe_toolchain(const Params *params, const Params *bparams,
         guest_dir = path_join(guest_parent, architecture_archs(slice));
         probe_params.SRCROOT = guest_dir;
         probe_opt.effective_arch = slice;
+        if (opt->bootstrap && opt->effective_arch == RB_ARCH_UNIVERSAL &&
+            opt->toolchain) {
+            probe_tc = *opt->toolchain;
+            probe_tc.arch_flags = architecture_cflags(slice);
+            probe_opt.toolchain = &probe_tc;
+        }
         rc = 0;
         if (!exec_dry_run && (mkdir(dir, 0700) != 0 ||
             probe_write(dir, "probe.c", "int main(void) { return 0; }\n") ||
             probe_write(dir, "Makefile", makefile))) rc = 1;
+        {
+        int link_ready = slice_link_ready(opt, slice);
         for (pass = 0; !rc && pass < (link_ready ? 2 : 1); pass++) {
             strlist cmd;
             char *output;
@@ -1486,6 +1519,7 @@ int builder_probe_toolchain(const Params *params, const Params *bparams,
                     rc = 1;
                 free(output);
             }
+        }
         }
         free(guest_dir);
         free(dir); dir = 0;

@@ -1271,6 +1271,19 @@ static int probe_text_has(const char *file, const char *needle) {
     n=fread(data,1,sizeof(data)-1,f);data[n]=0;fclose(f);
     return strstr(data,needle)!=0;
 }
+static void write_macho(const char *path, unsigned char cputype) {
+    unsigned char code[28];
+    FILE *f;
+    memset(code, 0, sizeof(code));
+    code[0] = 0xfe; code[1] = 0xed; code[2] = 0xfa; code[3] = 0xce;
+    code[7] = cputype;
+    code[15] = 1;
+    f = fopen(path, "wb");
+    CHECK(f != 0);
+    if (!f) return;
+    CHECK_INT(fwrite(code, 1, sizeof(code), f), sizeof(code));
+    fclose(f);
+}
 TEST(test_toolchain_probes) {
     Params p;
     BuildOptions opt;
@@ -1303,9 +1316,27 @@ TEST(test_toolchain_probes) {
     CHECK_INT(builder_probe_toolchain(&p,&p,&opt),0);
     CHECK(!probe_text_has("/tmp/rb-probe-tools/calls","link"));
     f=fopen("/tmp/rb-probe-tools/ready","w");CHECK(f!=0);if(f)fclose(f);
-    CHECK_INT(builder_probe_toolchain(&p,&p,&opt),1);
-    setenv("RB_PROBE_MODE","ok",1);
+    unlink("/tmp/rb-probe-tools/calls");
     CHECK_INT(builder_probe_toolchain(&p,&p,&opt),0);
+    CHECK(!probe_text_has("/tmp/rb-probe-tools/calls","link"));
+    mkdir("/tmp/rb-probe-tools/lib", 0755);
+    write_macho("/tmp/rb-probe-tools/ready", 18);
+    write_macho("/tmp/rb-probe-tools/lib/crt1.o", 18);
+    setenv("RB_PROBE_MODE","ok",1);
+    unlink("/tmp/rb-probe-tools/calls");
+    opt.effective_arch=3;
+    CHECK_INT(builder_probe_toolchain(&p,&p,&opt),0);
+    CHECK(probe_text_has("/tmp/rb-probe-tools/calls","i386-compile"));
+    CHECK(!probe_text_has("/tmp/rb-probe-tools/calls","i386-link"));
+    CHECK(probe_text_has("/tmp/rb-probe-tools/calls","ppc-link"));
+    write_macho("/tmp/rb-probe-tools/ready", 7);
+    write_macho("/tmp/rb-probe-tools/lib/crt1.o", 7);
+    unlink("/tmp/rb-probe-tools/calls");
+    CHECK_INT(builder_probe_toolchain(&p,&p,&opt),0);
+    CHECK(probe_text_has("/tmp/rb-probe-tools/calls","i386-link"));
+    CHECK(probe_text_has("/tmp/rb-probe-tools/calls","ppc-compile"));
+    CHECK(!probe_text_has("/tmp/rb-probe-tools/calls","ppc-link"));
+    opt.effective_arch=1;
     CHECK(probe_text_has("/tmp/rb-probe-tools/args","-I/probe-include"));
     CHECK(probe_text_has("/tmp/rb-probe-tools/args","-L/probe-library"));
     tc.ld_flags_ready=0;tc.arch_flags="-arch ppc";

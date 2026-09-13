@@ -69,8 +69,8 @@ int builder_setupdirs(const Package *pkg, const Params *params,
                       const char *srcname, const char *srctype,
                       const strlist *repository, const BuildOptions *opt);
 
-/* Probe resolved slices in private OBJROOT directories using the build make
- * environment. Bootstrap link readiness follows the toolchain profile. */
+/* Probe resolved slices in private OBJROOT directories. Bootstrap links a
+ * CPU only when sysroot crt1.o and ld_flags_ready System contain that slice. */
 int builder_probe_toolchain(const Params *params, const Params *bparams,
                             const BuildOptions *opt);
 

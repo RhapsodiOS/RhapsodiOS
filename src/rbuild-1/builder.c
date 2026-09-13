@@ -370,6 +370,12 @@ void builder_buildflags(const Params *params, const char *target, strlist *out,
             profile_arch != RB_ARCH_UNIVERSAL)
             effective = profile_arch;
     }
+    if (opt && opt->target_arch && opt->target_arch[0] != '\0') {
+        unsigned requested;
+        if (architecture_parse(opt->target_arch, &requested) == 0 &&
+            requested != RB_ARCH_UNIVERSAL)
+            effective = requested;
+    }
 
     /* Fixed base flags, but skip the ones we override below. */
     for (i = 0; baseflags[i][0]; i++) {
@@ -1011,6 +1017,29 @@ int builder_setupdirs(const Package *pkg, const Params *params,
     if (!bootstrap) {
         if (exec_check(mkdirp(params->BUILDROOT))) return 1;
         if (builder_makeroot(pkg, params->BUILDROOT, repository) != 0) return 1;
+        /* cc -arch <not-host> needs that arch's cc1obj/cpp-precomp. The
+         * compiler apk only seeds the host arch; copy the host's
+         * /usr/libexec/<arch> when --arch asked for another. */
+        if (opt && opt->target_arch && opt->target_arch[0] != '\0') {
+            char host_libexec[128];
+            char chroot_libexec[512];
+            struct stat st;
+            sprintf(host_libexec, "/usr/libexec/%s", opt->target_arch);
+            if (stat(host_libexec, &st) == 0 && S_ISDIR(st.st_mode)) {
+                char *parent = str_cats(params->BUILDROOT,
+                                        "/usr/libexec", (char *)0);
+                int failed = exec_check(mkdirp(parent));
+                free(parent);
+                if (failed) return 1;
+                sprintf(chroot_libexec, "%s/usr/libexec/%s",
+                        params->BUILDROOT, opt->target_arch);
+                if (exec_runv("rm", "-rf", chroot_libexec, (char *)0) != 0)
+                    return 1;
+                if (exec_runv("cp", "-R", host_libexec, chroot_libexec,
+                              (char *)0) != 0)
+                    return 1;
+            }
+        }
     }
 
     if (strcmp(srctype, "dir") == 0) {

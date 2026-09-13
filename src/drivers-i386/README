@@ -69,7 +69,7 @@ video
  * drvATIMach64
  * drvATIRage
  * drvCirrusLogicGD5434 - builds and links against the reference binary, 19/21 functions byte-identical, apple-generic version bundle present, SGS VERS_STRING/VERS_NUM unmet, setMode: and setPCIConfiguration unmatched; not hardware-tested
- * drvIBMThinkPad760EDDisplay - reconstructed in part, last verified build at fd0e7355; 29 of the driver's functions compile and produce a `_reloc`, but only 17 match the reference and `vidBIOS.m`/`_emu486` remain deferred to drvVGA; not yet tested
+ * drvIBMThinkPad760EDDisplay - reconstructed against the reference binary, built, ledger advanced; not hardware-tested
  * drvMatroxMGA - complete
  * drvNVidiaRiva - needs compiled and then tested
  * drvS3Generic - complete

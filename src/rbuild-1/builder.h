@@ -11,6 +11,7 @@ typedef struct {
     const char *sysroot;
     const char *state_dir;
     const Toolchain *toolchain;
+    const char *target_arch;
     int force;
     unsigned operation_arch; /* zero for ordinary builds */
     unsigned effective_arch; /* zero until the source is resolved */

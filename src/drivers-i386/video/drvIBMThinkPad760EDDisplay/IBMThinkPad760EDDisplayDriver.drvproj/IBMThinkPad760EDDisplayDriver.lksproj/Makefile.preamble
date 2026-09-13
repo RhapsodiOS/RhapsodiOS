@@ -1,0 +1,16 @@
+# Always generate a version file. Apple's kernelserver.make.preamble does
+# this when installed; we do not install that preamble on the guest.
+# Do not append $(VERS_OFILE) here: it is defined later in next-sgs.make,
+# so += $(VERS_OFILE) is a lazy reference. The leftover DriverKit chroot
+# already includes kernelserver.make.preamble, which does the same += ;
+# two lazy references expand to vers.o twice and kl_ld reports multiple
+# definitions of _VERS_STRING / _VERS_NUM.
+ifndef VERSIONING_SYSTEM
+    VERSIONING_SYSTEM = next-sgs
+endif
+
+# vidBIOS.o and emu486.o must follow IBMThinkPad760EDDisplayDriver_instance.o.
+# CLASSES would put vidBIOS.o before smapi.o; OTHERLINKED would put emu486.o
+# before the instance object. The harness builds the two objects and exports
+# VIDBIOS_I386 / EMU486_I386; Makefile.postamble appends them to LOADABLES
+# so they are not consumed as OPTIONAL_LDFLAGS before the in-scope objects.

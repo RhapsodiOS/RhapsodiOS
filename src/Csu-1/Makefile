@@ -15,6 +15,7 @@ DSTDIRS = $(DSTROOT)$(LIBDIR) $(DSTROOT)$(LOCLIBDIR)
 DYLD = $(OBJROOT)/dyld.stub
 CC = /usr/bin/cc
 INDR = /usr/local/bin/indr
+LIPO = /usr/bin/lipo
 ifneq "$(wildcard /bin/pax)" ""
 PAX = /bin/pax -rw
 else
@@ -30,17 +31,24 @@ INSTALL = /usr/bin/install
 
 CFILES = crt.c init_shlibs.c
 SFILES = start.s dyld.s dylib1.s bundle1.s
-INSTALL_FILES = $(CFILES) $(SFILES) dyld_stub.s Makefile PB.project indr_list notes
+INSTALL_FILES = $(CFILES) $(SFILES) dyld_stub.s dyld_stub_i386.s Makefile PB.project indr_list notes
 
 all: crt0.o gcrt0.o pscrt0.o crt1.o gcrt1.o pscrt1.o dylib1.o bundle1.o
 
 # Minimal dylinker for -r merge (see DYLD comment above).
-$(OBJROOT)/dyld.stub: $(OBJROOT)/dyld_stub.o
-	$(CC) $(RC_CFLAGS) -dylinker -dylinker_install_name /usr/lib/dyld \
-		-nostdlib -o $(OBJROOT)/dyld.stub $(OBJROOT)/dyld_stub.o
+$(OBJROOT)/dyld_stub.ppc.o: $(SRCROOT)/dyld_stub.s
+	$(CC) -arch ppc -c -o $(OBJROOT)/dyld_stub.ppc.o $(SRCROOT)/dyld_stub.s
 
-$(OBJROOT)/dyld_stub.o: $(SRCROOT)/dyld_stub.s
-	$(CC) $(RC_CFLAGS) -c -o $(OBJROOT)/dyld_stub.o $(SRCROOT)/dyld_stub.s
+$(OBJROOT)/dyld_stub.i386.o: $(SRCROOT)/dyld_stub_i386.s
+	$(CC) -arch i386 -c -o $(OBJROOT)/dyld_stub.i386.o $(SRCROOT)/dyld_stub_i386.s
+
+$(OBJROOT)/dyld.stub: $(OBJROOT)/dyld_stub.ppc.o $(OBJROOT)/dyld_stub.i386.o
+	$(CC) -arch ppc -dylinker -dylinker_install_name /usr/lib/dyld \
+		-nostdlib -o $(OBJROOT)/dyld.stub.ppc $(OBJROOT)/dyld_stub.ppc.o
+	$(CC) -arch i386 -dylinker -dylinker_install_name /usr/lib/dyld \
+		-nostdlib -o $(OBJROOT)/dyld.stub.i386 $(OBJROOT)/dyld_stub.i386.o
+	$(LIPO) -create -o $(OBJROOT)/dyld.stub \
+		$(OBJROOT)/dyld.stub.ppc $(OBJROOT)/dyld.stub.i386
 
 crt0.o: sstart.o xcrt0.o sdyld.o sinit_shlibs.o
 	$(CC) $(CFLAGS) $(RC_CFLAGS) \
@@ -165,6 +173,9 @@ clean:
 	      $(SYMROOT)/gcrt1.o \
 	      $(SYMROOT)/pscrt1.o
 	rm -f $(SYMROOT)/dylib1.o $(SYMROOT)/bundle1.o
+	rm -f $(OBJROOT)/dyld_stub.ppc.o $(OBJROOT)/dyld_stub.i386.o \
+	      $(OBJROOT)/dyld.stub.ppc $(OBJROOT)/dyld.stub.i386 \
+	      $(OBJROOT)/dyld.stub $(OBJROOT)/dyld.i386
 
 install: all $(DSTDIRS)
 	$(INSTALL) $(IFLAGS) $(SYMROOT)/crt1.o    $(DSTROOT)$(LIBDIR)/crt1.o
@@ -176,7 +187,10 @@ install: all $(DSTDIRS)
 	$(INSTALL) $(IFLAGS) $(SYMROOT)/pscrt0.o  $(DSTROOT)$(LOCLIBDIR)/pscrt0.o
 	$(INSTALL) $(IFLAGS) $(SYMROOT)/pscrt1.o  $(DSTROOT)$(LOCLIBDIR)/pscrt1.o
 	$(MKDIR) $(DSTROOT)/usr/lib
-	$(INSTALL) -c -m 555 /usr/lib/dyld $(DSTROOT)/usr/lib/dyld
+	$(CC) -arch i386 -dylinker -dylinker_install_name /usr/lib/dyld \
+		-nostdlib -o $(OBJROOT)/dyld.i386 $(OBJROOT)/dyld_stub.i386.o
+	$(LIPO) -create -o $(DSTROOT)/usr/lib/dyld /usr/lib/dyld $(OBJROOT)/dyld.i386
+	$(CHMOD) 555 $(DSTROOT)/usr/lib/dyld
 
 installhdrs:
 

@@ -1,0 +1,14 @@
+# Always generate a version file. Apple's kernelserver.make.preamble does
+# this when installed; we do not install that preamble on the guest.
+ifndef VERSIONING_SYSTEM
+    VERSIONING_SYSTEM = next-sgs
+endif
+ifeq "" "$(findstring $(VERS_OFILE), $(OTHER_GENERATED_OFILES))"
+    OTHER_GENERATED_OFILES += $(VERS_OFILE)
+endif
+
+# vidBIOS.o and emu486.o must follow IBMThinkPad760EDDisplayDriver_instance.o.
+# CLASSES would put vidBIOS.o before smapi.o; OTHERLINKED would put emu486.o
+# before the instance object. The harness builds the two objects and passes
+# absolute paths in these variables; kl_ld sees them via OPTIONAL_LDFLAGS.
+OPTIONAL_LDFLAGS = $(VIDBIOS_I386) $(EMU486_I386)

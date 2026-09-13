@@ -1580,7 +1580,7 @@ the ones that remain:
 | --- | --- | --- | --- |
 | `setMode:` | 1020 | 1008 | Identical branch structure and an identical port-I/O sequence of 67 `in`/`out` instructions. gcc strength-reduced the register loops to a walking pointer in the reference where our build uses indexed addressing. Task 5 exhausted spec §7.2 without a `MATCH`; see the Task 5 result below. The source is still the indexed `for` loops. |
 | `setPendingDisplayMode:` | 140 | 140 | **Byte-for-byte identical after Task 6.** Spec §7.3 experiment 1 — `if (installedVRAMBytes < modeTable[mode].memorySize)` — closed the operand-reversed `cmp`. Now `assembly-matched`. |
-| `setPCIConfiguration` | 584 | 612 | The same 19 calls — 15 `_objc_msgSend` and 4 `_IOLog` — but reordered by block placement, not in the same order. The "Incorrect number of address ranges" error block is out of line at the end in the reference and inline here, which moves the `_IOLog` calls from reference positions 4, 11, 14, 16 to 4, 10, 13, 16 and pushes two `_objc_msgSend` calls one slot later (reference 10 and 13 against 11 and 14 here); the reference has 11 branch instructions to our 12. Also `IORange range[3]` is at `ebp-0x18` in the reference against `ebp-0x118` here, i.e. the two locals are assigned to the frame in the opposite order. |
+| `setPCIConfiguration` | 584 | 612 | The same 19 calls — 15 `_objc_msgSend` and 4 `_IOLog` — but reordered by block placement, not in the same order. The "Incorrect number of address ranges" error block is out of line at the end in the reference and inline here, which moves the `_IOLog` calls from reference positions 4, 11, 14, 16 to 4, 10, 13, 16 and pushes two `_objc_msgSend` calls one slot later (reference 10 and 13 against 11 and 14 here); the reference has 11 branch instructions to our 12. Also `IORange range[3]` is at `ebp-0x18` in the reference against `ebp-0x118` here, i.e. the two locals are assigned to the frame in the opposite order. Task 7 exhausted the frame-shape campaign without a `MATCH`; see the Task 7 result below. The source is still `IOPCIConfigSpace` then `IORange range[3]`, with indexed `for` copies and an early return on `rangeCount != 3`. |
 | `determineConfiguration` | 768 | 768 | **Byte-for-byte identical after Task 4.** See the Task 4 result below: an `unsigned int` local for the `chipType` range tests, an `IOConfigTable *` local for the `"Bus Type"` test, and the `memorySize > installedVRAMBytes` operand order together closed it. Now `assembly-matched`. |
 
 **`determineConfiguration` still does not match byte for byte.** *(Superseded by
@@ -1943,6 +1943,64 @@ Here gcc needed `installedVRAMBytes < memorySize` to emit the reference's
 Experiments 2–5 (`needed` local, top-of-function `needed`, negated `<=`,
 `needed` plus reversed compare) were skipped because a `MATCH` already
 existed.
+
+### Task 7 result — `setPCIConfiguration` frame shape exhausted
+
+`setPCIConfiguration` stays `control-flow-confirmed` at address 1692. No
+ledger transition: none of the four built shapes produced a `MATCH`.
+Experiment 5 was skipped because experiment 2 already tried the trailing
+else-`IOLog`. Source is the `IOPCIConfigSpace configSpace;` then
+`IORange range[3];` locals and the indexed `for` copy loops that were in
+HEAD. `setMode:` is still the indexed `for` loops.
+`setPendingDisplayMode:` is still
+`installedVRAMBytes < modeTable[mode].memorySize`.
+`determineConfiguration` extras were not edited. `failed_matched` stayed 0
+on every successful rebuild; the previously matched functions plus glue
+stayed `MATCH`, `determineConfiguration` stayed `MATCH` at 768, and
+`setPendingDisplayMode:` stayed `MATCH` at 140.
+
+**Experiment 1 — swap the two locals.** `IORange range[3];` declared
+before `IOPCIConfigSpace configSpace;`. Guest rebuild `make exit=0`.
+`compare_cirrus.py`:
+`DIFF  -[CirrusLogicGD5434DisplayDriver setPCIConfiguration] ref 584 reb 588`.
+The 28-byte extent gap narrowed to 4 bytes; the masked stream stayed
+`DIFF`. `failed_matched` 0. Reverted (`IOPCIConfigSpace configSpace;`
+before `IORange range[3];`).
+
+**Experiment 2 — trailing else-`IOLog` inside the
+`isValidPCIAssignedBaseAddress:` guard.** Replaced the early
+`if (rangeCount != 3) { IOLog ...; return NO; }` with
+`if (rangeCount == 3) { existing success body } else { IOLog Incorrect
+number...; return NO; }`. Guest rebuild `make exit=0`.
+`compare_cirrus.py`:
+`DIFF  -[CirrusLogicGD5434DisplayDriver setPCIConfiguration] ref 584 reb 608`.
+`failed_matched` 0. Reverted.
+
+**Experiment 3 — both copy loops as `while`.**
+`i = 0; while (i < rangeCount) { range[i] = rangeList[i]; i++; }` on
+both copies. Experiment 1 stayed reverted. Guest rebuild `make exit=0`.
+Reloc grew 160912 → 160960.
+`compare_cirrus.py`:
+`DIFF  -[CirrusLogicGD5434DisplayDriver setPCIConfiguration] ref 584 reb 612`.
+`failed_matched` 0. Reverted.
+
+**Experiment 4 — `while` on the first copy only.** Second copy stayed
+`for`. Guest rebuild `make exit=0`. Reloc 160936.
+`compare_cirrus.py`:
+`DIFF  -[CirrusLogicGD5434DisplayDriver setPCIConfiguration] ref 584 reb 612`.
+`failed_matched` 0. Reverted.
+
+**Experiment 5 — skipped.** Experiment 2 already built the trailing
+else-`IOLog`.
+
+Only experiment 1 closed most of the extent gap (612 → 588), and even
+then the masked stream stayed `DIFF`. The `rangeCount == 3` / trailing
+else shape (experiment 2) landed at 608. Both-`while` and first-copy
+`while` (experiments 3 and 4) rebuilt at 612, the same size as the
+indexed-`for` baseline. The remaining residue is not a local-order,
+trailing-else, or `for`/`while` copy-loop question that this campaign
+can reach. Leave `setPCIConfiguration` at `control-flow-confirmed`. Do
+not mark it `assembly-matched`.
 
 Two further gaps, neither of them in the driver source:
 

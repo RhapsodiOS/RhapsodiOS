@@ -2,10 +2,11 @@
 
 Findings from comparing our sources against Apple's shipped `*_reloc` binaries
 with `tools/binrecon`. The headline is that the eight drivers are not eight
-partial reconstructions at different stages. Three are reconstructed against
-their reference, one is a modern addition with no reference, and the other
-four are stubs — and two of those are built on the wrong hardware model, so
-they could not work even if completed as written.
+partial reconstructions at different stages. Two are essentially complete, two
+are reconstructed against their reference and guest-compiled but not
+hardware-tested, one is a modern addition with no reference, and the other
+three are stubs — and one of those is built on the wrong hardware model, so it
+could not work even if completed as written.
 
 ## Coverage
 
@@ -23,7 +24,7 @@ project type and are correctly absent from source.
 | drvAdaptec6X60 | 79 | 18 | stub, wrong architecture |
 | drvDPT2000 | 56 | 54 | reconstructed against the reference; guest `_reloc` produced on the ppc rbuild guest; not hardware-tested |
 | drvBusLogicFP | 123 | 7 | stub |
-| drvSym53C8xx | 158 | 12 | stub, wrong architecture |
+| drvSym53C8xx | 158 | 158 | reconstructed against the reference; guest `_reloc` produced; not hardware-tested |
 | drvAdaptec2940 | 170 | 10 | stub; missing the `SCSIBus` class |
 
 `drvAMDPCSCSIDriver` has no reference bundle. It is a modern addition rather
@@ -31,10 +32,10 @@ than a reconstruction and is out of scope here.
 
 ## The class-name divergence
 
-Four of the seven still name their principal class differently from the
+Three of the seven still name their principal class differently from the
 reference. This is the same pattern already resolved in drvPCMCIABus, and it
 is why those drivers initially resolved **zero** symbols — a total mismatch
-rather than a partial one.
+rather than a partial one. drvDPT2000 and drvSym53C8xx now match.
 
 | Driver | Ours | Reference |
 | --- | --- | --- |
@@ -42,21 +43,23 @@ rather than a partial one.
 | drvBusLogic | `BLController` | `BLCController` |
 | drvBusLogicFP | `BusLogicFPSCSI` | `BLFPController` |
 | drvDPT2000 | `EATAController` (+ `EATASCSIBus`) | `EATAController` (+ `EATASCSIBus`) |
-| drvSym53C8xx | `SYM53c8Controller` | `SYM53c8` |
+| drvSym53C8xx | `SYM53c8` | `SYM53c8` |
 
 drvAdaptec1542B (`AHAController`), drvAdaptec2940 (`Adaptec2940`), and
 drvDPT2000 (`EATAController` + `EATASCSIBus`) already match. The
-`(PrivateMethods)` and `(IOThread)` category split is correct in every
-driver, and the `*Controller.m` / `*Routines.m` / `*Thread.m` file layout
-mirrors it — that part was reconstructed well throughout.
+`(PrivateMethods)` and `(IOThread)` category split is correct in the other
+drivers. drvSym53C8xx folded IOThread methods onto the main
+`@implementation SYM53c8` (empty `SYM53c8(IOThread)` remains so `SYM53c8Thread.m`
+stays in `CLASSES`) and deleted `SYM53c8Routines.m`.
 
 Renaming is necessary but sufficient only for drvBusLogic, where it took the
 count from 26 to 30 and left five genuinely missing functions.
 
 ## The architecture problem
 
-Two drivers do not merely lack functions. They implement a different hardware
-interface from the chip they target.
+One remaining stub implements a different hardware interface from the chip it
+targets. drvSym53C8xx used to be in this group (BusLogic CCB clone vs CAM/SIM
++ SCRIPTS); that reconstruction closed in Tasks 6–11.
 
 ### drvAdaptec6X60
 
@@ -87,13 +90,14 @@ model.
 Our driver sends commands the chip does not implement, so it cannot work on
 real hardware regardless of how much of the remainder is filled in.
 
-### drvSym53C8xx
+## drvSym53C8xx
 
 The reference contains 136 C functions forming a CAM/SIM implementation, with
 Symbios's own naming: `_CCBInSIMQueue`, `_AddToDeviceList`,
 `_DeletePathFromDeviceTable`, `_FCalcSync`, `_FSetWide`, `_FWideInit`,
-`_FResumeXFer`, `_FSendMsg`, `_AutosenseSetup`, `_BeginScan`. Our source
-resolves 12 of 158.
+`_FResumeXFer`, `_FSendMsg`, `_AutosenseSetup`, `_BeginScan`. Those names now
+resolve in `SYM53c8SIM.c` / `SYM53c8CAM.c`. Guest `_reloc` produced; not
+hardware-tested.
 
 This one matters beyond completeness: QEMU emulates `lsi53c895a`, a member of
 this chip family, so a working drvSym53C8xx would be the natural SCSI path for

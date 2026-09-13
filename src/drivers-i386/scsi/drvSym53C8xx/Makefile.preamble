@@ -28,7 +28,7 @@ LIBS =
 FRAMEWORKS =
 
 # Source files to compile
-MFILES = SYM53c8Controller.m SYM53c8Thread.m SYM53c8Routines.m
+MFILES = SYM53c8Controller.m SYM53c8Thread.m
 
 # Header files
 HFILES = SYM53c8Controller.h SYM53c8ControllerPrivate.h \

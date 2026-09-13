@@ -93,6 +93,30 @@ validated seed APKs to establish state. Mandatory corruption, changed profile
 or toolchain fingerprint, and a mismatched current entry fingerprint remain
 errors requiring the existing `-Fresh` workflow. State publication stays atomic.
 
+## Repository bootstrap
+
+Live repository bootstrap is a three-walk sequence driven by the host
+`-Bootstrap` phase:
+
+1. **Thin bootstrap** — `rbuild bootstrap` with the profile's thin
+   `target_arch` walks the full `BootstrapManifest` once. This stages the
+   profile CPU, build tools, and the thin sysroot marker required by the
+   universal walk.
+2. **Universal runtime bootstrap** — `rbuild bootstrap-universal` loads the
+   sibling `BootstrapRuntimeManifest` beside the caller's manifest and walks
+   Csu through Libsystem with `RB_ARCH_UNIVERSAL`.
+3. **Universal full manifest** — the same `bootstrap-universal` invocation
+   then walks the caller-supplied full `BootstrapManifest`.
+
+Per-CPU link readiness applies on every walk: rbuild compiles every requested
+CPU slice, but links a CPU only when the sysroot already provides that slice's
+`crt1.o` and `System` framework. Until both exist, compile-only probing is
+allowed. No `golden.img` seeds or other read-only guest image inputs are used;
+bootstrap products come only from the synced source tree and resumable state.
+
+Kernel, kernel drivers, and world (`buildall`) are out of scope for bootstrap.
+The host orchestrator runs them in separate phases after bootstrap completes.
+
 ## Verification environment and scope
 
 The 2026-09-12 acceptance run used implementation commit
@@ -123,7 +147,11 @@ Prepared environment provenance is in the local, untracked files
 The earlier `initial-rbuild-evidence.md` describes Tasks1-5 only and is not final
 acceptance for probes or state migration.
 
-## Executed acceptance matrix
+## Fixture acceptance matrix
+
+The table below records the 2026-09-12 bounded fixture run. It is acceptance
+evidence for rbuild's architecture policy and probe behavior, not evidence that
+the live repository bootstrap path above has completed on a guest.
 
 Current rbuild was compiled natively in
 `/tmp/rbuild-universal-final-20260912/src/rbuild-1`. The full command was:

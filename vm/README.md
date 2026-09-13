@@ -80,7 +80,7 @@ powershell -NoProfile -File vm\clean-build.ps1
 | Flag | Remote action |
 |------|----------------|
 | `-Rbuild` | `make CC=… clean test all` in `RemoteRoot/src/rbuild-1`, then install `rbuild` and private helpers into `ToolsDir` |
-| `-Bootstrap` | `rbuild bootstrap --sysroot BootstrapRoot --toolchain … --state StateDir BootstrapManifest RepoDir RepoDir` |
+| `-Bootstrap` | thin `rbuild bootstrap` then `rbuild bootstrap-universal` with the same `--sysroot BootstrapRoot --toolchain … --state StateDir` and full `BootstrapManifest RepoDir RepoDir` |
 | `-Kernel` | `rbuild kernel --state StateDir --arch <profile> SourceRoot RepoDir BuiltDir` for `driverkit-3`, `driverTools-1`, `kernload-1`, `drivers-<arch>/bus/drvPExpert`, `kernel-7` |
 | `-KernelDrivers` | `rbuild kerneldrivers --state StateDir --arch <profile> SourceRoot RepoDir BuiltDir` for remaining packaged `drv*` / `Intel*` projects under `drivers-<arch>` (plus `drvBPF` / `drvPortServer` / `drvSCSIServer` / `drvSCSITape` when they have `dpkg/control`). Paths in `src/rbuild-1/kernel-drivers-blacklist.json` are skipped until they package; rbuild exits non-zero if any non-skipped driver failed. |
 | `-World` | `rbuild buildall --state StateDir Manifest RepoDir BuiltDir` |

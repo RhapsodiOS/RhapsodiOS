@@ -460,6 +460,8 @@ Assert-NotMatch $bootstrapCommand '/usr/bin/mig|/usr/libexec/migcom|NEXT_ROOT|bo
 Assert-Equal ($bootstrapCommand.IndexOf('/usr/bin/install -d') -lt $bootstrapCommand.IndexOf('/build/tools/bin/rbuild bootstrap')) $true 'bootstrap creates outputs before rbuild'
 Assert-Match $bootstrapCommand ([regex]::Escape('&& cd /build/src && CONFIG_DIR=/build/tools/bin')) 'bootstrap starts from synced source root'
 Assert-Match $bootstrapCommand ([regex]::Escape('/build/tools/bin/rbuild bootstrap --sysroot /build/bootstrap-root --toolchain /build/src/rbuild-1/toolchains/gcc-darwin.conf --state /build/state /build/src/BootstrapManifest /build/repo /build/repo')) 'bootstrap uses resumable CLI'
+Assert-Match $bootstrapCommand ([regex]::Escape('/build/tools/bin/rbuild bootstrap-universal --sysroot /build/bootstrap-root --toolchain /build/src/rbuild-1/toolchains/gcc-darwin.conf --state /build/state /build/src/BootstrapManifest /build/repo /build/repo')) 'bootstrap-universal is the primary second walk'
+Assert-Equal ($bootstrapCommand.IndexOf('/build/tools/bin/rbuild bootstrap --sysroot') -lt $bootstrapCommand.IndexOf('/build/tools/bin/rbuild bootstrap-universal --sysroot')) $true 'thin bootstrap runs before bootstrap-universal'
 $alternateSourceArgs = $phaseArgs.Clone()
 $alternateSourceArgs.SourceRoot = '/srv/synced source'
 $alternateBootstrap = New-RhapBuildPhaseCommand -Phase 'bootstrap' @alternateSourceArgs

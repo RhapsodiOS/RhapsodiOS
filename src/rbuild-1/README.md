@@ -22,6 +22,8 @@ instead of dpkg `.deb`.
         <srcdir> <repository> <dstdir>
     rbuild bootstrap --sysroot ROOT --toolchain FILE --state DIR \
         <srclist> <repository> <dstdir>
+    rbuild bootstrap-universal --sysroot ROOT --toolchain FILE --state DIR \
+        <srclist> <repository> <dstdir>
     rbuild missing  <srclist> <dstdir>
     # global: -n / --dry-run
 
@@ -40,6 +42,11 @@ Bootstrap uses the toolchain profile's thin `target_arch`; kernel commands
 use `--arch i386` or `--arch ppc`. A universal source permits either operation,
 but an explicit conflicting thin source is rejected. Metadata records the
 canonical effective architecture without rewriting source control files.
+
+`bootstrap-universal` is the primary bootstrap method for a dual-architecture
+repository: it walks `BootstrapRuntimeManifest` (Csu through Libsystem) and
+then the caller's full manifest with `RB_ARCH_UNIVERSAL`. Thin `bootstrap`
+remains for unit tests and the first walk that stages the profile's thin CPU.
 
 Before an `all` or `binary` project build, private compiler/linker probes must
 produce every requested CPU slice. Bootstrap may defer linking until its

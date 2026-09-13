@@ -3255,3 +3255,89 @@ Three Apple defects, transcribed at ThinkPad VAs (VGA + 156), confirmed in this 
 `cmpxchg` is i486 A-step `0F A6` at 0x37a6 and `0F A7` at 0x37cb. Accumulator `moffs` forms are pinned as `.byte`/`.long` (7× `8A 05`, 17× `88 05`, same counts as VGA).
 
 `emu486.s` is **not** on `OTHERLINKED` (that would place it before `_instance.o`). Link order is Task 7. Host GNU `as` for i386 was not available; guest assembly is Task 8.
+
+## Task 8: Phase 2 guest rebuild, parity, compare
+
+Guest `10.10.0.241`. Rebuild path: **Task 7 harness inside the leftover DriverKit chroot** (`/private/tmp/roots/drvibmthinkpad760eddisplay-7.roots/drvibmthinkpad760eddisplay-7.root`), not live `System.framework` (still missing `objc/zone.h`) and not bare `rbuild buildpackage` (guest `/build/tools/bin/rbuild` has no `buildpackage --arch`; extras env would be empty anyway).
+
+`/usr/libexec/i386` was already in that chroot from Phase 1. Synced sources were copied to `$ROOT/build/src/...`, `/build/source/src` → `/build/src`, `MAKEFILEPATH=/System/Developer/Makefiles`, then `sh /tmp/bvideo.sh drvIBMThinkPad760EDDisplay`. `make install` still failed on `English.lproj/DriverHelp` → `Help`; `kl_ld` had already produced the `_reloc`. Gates: `.objc_class_name_vidBIOS` not undefined, `_emu486` defined, both `VERS_*` symbols present.
+
+### Task 7 artifacts measured here
+
+`kernelserver.make` is `kl_ld … $(KL_LDFLAGS including OPTIONAL_LDFLAGS) … $(LOADABLES)`, so objects on `OPTIONAL_LDFLAGS` land **before** the in-scope files. `Makefile.postamble` now does `LOADABLES += $(VIDBIOS_I386) $(EMU486_I386)`. Putting `$(VERS_OFILE)` in `Makefile.preamble` as well as the chroot's `kernelserver.make.preamble` expanded the lazy `$(VERS_OFILE)` twice and `kl_ld` died on duplicate `_VERS_STRING` / `_VERS_NUM`. The lksproj preamble only sets `VERSIONING_SYSTEM = next-sgs`; the installed preamble supplies one `vers.o` **after** `_instance.o`.
+
+Guest Apple `as` rejects a prefix and a string opcode on one line (`rep movsl`) and rejects `aam $0xa` / `aad $0xa`. `emu486.s` uses `rep; movsl` / `repne; cmpsb` and bare `aam`/`aad` (same encodings: `F3 A5`, `D4 0A`, `D5 0A`).
+
+### `kl_ld` object order (verbatim)
+
+```
+IBMThinkPad760ED.o TransferTable.o smapi.o
+IBMThinkPad760EDDisplayDriver_instance.o
+IBMThinkPad760EDDisplayDriver_vers.o
+vidBIOS.i386.o emu486.i386.o
+```
+
+`vers.o` is after `_instance.o`, not between `smapi.o` and `_instance.o`. `vers.o` has no `__text`, so it does not shift instance/vidBIOS. In-scope campaign deltas still sum to −32, so rebuilt addresses are 32 bytes low until `-[vidBIOS int10:…smmport:]` (+28), then 4 bytes low through `_emu486`:
+
+| Symbol | ref | rebuilt |
+| --- | --- | --- |
+| instance glue | 6528 | 6496 |
+| `-[vidBIOS init]` | 6552 | 6520 (`0x1978`) |
+| `_emu486` | 7708 | 7704 (`0x1e18`) |
+| `__text` size | 18204 | 18200 |
+
+Do not pad reconstructed functions for that −32.
+
+### Reloc identity
+
+Unstripped `_reloc`: **216976** bytes, SHA-256
+`4DD10AC0A20D35F60C4687D9F1A5400591C429E6AD64CF071B6BAA69C1870A13`
+(must not equal the reference `47539E03…`).
+
+### `parity_check.py`
+
+| Bucket | Count | Contents |
+| --- | --- | --- |
+| `missing_symbols` | **0** | `_emu486` is present |
+| `missing_strings` | **0** | the eight `vidBIOS` strings are present |
+| `extra_strings` | 0 | — |
+| `extra_symbols` | 49 | `-g` stabs (`…:f19` and friends), source paths, `vidBIOS.m`, and `-[vidBIOS …]` nlists Apple's reloc does not export (those methods live in objc metadata on the reference) |
+
+### `compare_thinkpad.py`
+
+Semantic Mach-O relocs have no `width`; the Phase 1 script's `width != 4` test masked **nothing**, which is why `failed_matched_or_glue` was 15. This run masks 32-bit sites by `kind` and unions reference/rebuilt **relative** offsets per function so Apple's intra-file PC-relative relocs (guest `as` resolves those and emits no reloc) zero both sides.
+
+`failed_matched_or_glue` is **4**, not 0 and not the Phase 1 15:
+
+| Name | ref | reb | note |
+| --- | --- | --- | --- |
+| `enterLinearMode` | 628 | 628 | same-size DIFF; Phase 1 residual |
+| `getDisplayDeviceState` | 84 | 84 | same-size DIFF; Phase 1 residual |
+| `setGammaTable` | 232 | 232 | same-size DIFF; Phase 1 residual |
+| Version glue | 1168 | 12 | reference next `__text` nlist is `_emu486` (vidBIOS methods unnamed); rebuilt Version is 12 bytes |
+
+MATCHED_NAMES that are now MATCH (14): `_set555Mode`, `selectMode`, `defaultMode`, `isValidPCIAssignedBaseAddress:`, `free`, `displayModeCount`, `displayModes`, `displayMemorySize`, `ramdacSpeed`, `readCMOS:`, TransferTable `setTransferTable:count:` / `setBrightness:token:` / `SetGammaValueRed:Green:Blue:Level:`, `_smapi_asm`. Glue `kernelServerInstance` MATCH (12/12).
+
+Campaign accepted-compiler list stays DIFF except `getModeInfo:` and `name`, which MATCH after real masking. `unlockRegisters` / `lockRegisters` / `reportSystemConfiguration` still open (152 vs 168, +28).
+
+Phase 2 names:
+
+| Name | result | ref | reb |
+| --- | --- | --- | --- |
+| `-[vidBIOS init]` | **MATCH** | 268 | 268 |
+| `-[vidBIOS free]` | **MATCH** | 108 | 108 |
+| `-[vidBIOS int10:outregs:iorange:ionum:smmport:]` | DIFF | 696 | 724 |
+| `-[vidBIOS int10:outregs:iorange:ionum:]` | **MATCH** | 44 | 44 |
+| `-[vidBIOS scratchSegment]` | **MATCH** | 16 | 16 |
+| `-[vidBIOS realToVirtual::]` | DIFF | 24 | 24 |
+| `_emu486` | **MATCH** | 10496 | 10496 |
+
+`int10:…smmport:` is +28: rebuilt prologue is `sub esp, 0x14c` vs reference `sub esp, 0x148` (`pagePerm[256]` + `IOMalloc(0x2000)` frame). Compiler-only; not padded. `realToVirtual::` is 22 bytes of identical code plus two padding zeros in the reference vs two `nop`s (`90 90`) before `_emu486`. Compiler-only alignment; not padded.
+
+### `binrecon compare` / `acceptance.passed`
+
+The plan's `python -m binrecon compare --profile` needs `--reference-analysis`, `--rebuilt-analysis`, and `--output`. `binrecon analyze --profile` runs IDA on both and writes `acceptance.passed`.
+
+`read_macho` on this rebuilt needed i386 scattered `GENERIC_RELOC_SECTDIFF` (type 2) + PAIR; `_emu486` jump tables emit those. That decoder is in `tools/binrecon/binrecon/macho.py` on this branch.
+
+`binrecon analyze` still **failed** on the rebuilt: IDA relocation 875 at `0x4180` is a 4-byte `ida-off32` over a 2-byte `in al, (offset loc_1A+4)` inside `_emu486` moffs forms. No comparison report, so **`acceptance.passed` was not produced**. Expected `normalized-functions` FAIL while accepted compiler-only remain; this is a harder failure than that. `compare_thinkpad.py` is the Phase 2 record.

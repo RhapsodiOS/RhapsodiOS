@@ -3347,3 +3347,43 @@ relocation 875 is outside its instruction: relocation covers 0x4180..0x4184 (wid
 ```
 
 IDA treats `_emu486` moffs (`in al, (offset …)`) as a 2-byte instruction and then overlays a 4-byte `ida-off32`. `emu486.s` encodings were not rewritten to please IDA. No `acceptance.passed` file exists; the boolean is **unavailable**, not `false`. `compare_thinkpad.py` remains the Phase 2 compare record.
+
+## Task 9: source map and ledger
+
+`rebuilt_sha256` is now the guest artifact
+`4DD10AC0A20D35F60C4687D9F1A5400591C429E6AD64CF071B6BAA69C1870A13`
+(not the reference `47539E03…`). `$IDA_REF` is absent (gitignored), so the
+source map was restamped by hand from the current tree rather than by
+`binrecon source-map`.
+
+| Bucket | Count |
+| --- | --- |
+| `mapped` | **38** |
+| `unmapped` | **2** (instance glue only) |
+
+`_smapi_asm` → `smapi.s:32`. vidBIOS methods → `vidBIOS.m` declaration lines.
+`_emu486` → `emu486.s:92` (`_emu486:`). Unnamed 15796 / 15877 → `L3db4` /
+`L3e05`. `IBMThinkPad760ED.m` `source_line` values restamped to current
+declarations (`_set555Mode` at 35, methods 11 lines earlier than the Phase 1
+map).
+
+The two Kernel Server glue functions stay `unmapped`, matching Cirrus/VGA.
+Mapping them to generated `IBMThinkPad760EDDisplayDriver_instance.m` fails
+`source-map-v1` semantic validation (`source_path … is not a file`). The spec
+forbids writing that file by hand, so the schema cannot be satisfied. Ledger
+entries for both still advanced: `kernelServerInstance` and Version are
+`assembly-matched` with null `source_path` (generated glue). Version is a fair
+12-vs-12 MATCH (`55 89 e5 b8 f4 01 00 00 89 ec 5d c3`); `compare_thinkpad.py`'s
+DIFF was the next-nlist stretch to `_emu486` (1168 vs 12).
+
+Ledger (`binrecon ledger` with no `--address` loads): 40 entries, **0
+`unexamined`**.
+
+| Status | Count | Who |
+| --- | --- | --- |
+| `assembly-matched` | 25 | MATCH after kind-based mask, including Version 12/12, `_emu486` 10496, interior 15796/15877, instance glue |
+| `control-flow-confirmed` | 11 | named compiler-only: Task 4 list minus `getModeInfo:`/`name`; Phase 2 `int10:…smmport:` and `realToVirtual::`; `unlockRegisters`/`lockRegisters` (Task 2 nested RMW failed, 152 vs 168, statement-for-statement source kept) |
+| `signature-confirmed` | 4 | `enterLinearMode`, `getDisplayDeviceState`, `setGammaTable` (same-size DIFF residuals; not AM); `reportSystemConfiguration` (+28, prologue `55 89 e5 53`, Task 4 forbade CFC) |
+
+IDA `binrecon compare` is still unavailable (emu486 moffs vs `ida-off32`).
+Reviewer `Pat Raynor`.

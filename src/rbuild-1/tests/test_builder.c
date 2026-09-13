@@ -1242,6 +1242,11 @@ static void probe_fixture(void) {
     FILE *f;
     unsigned char code[28];
     int i;
+    /* gnumake CC=/usr/bin/cc test exports CC and MAKEFLAGS into this
+     * process; nested make would then ignore the PATH shim. */
+    unsetenv("CC");
+    unsetenv("MAKEFLAGS");
+    unsetenv("MFLAGS");
     CHECK_INT(system("rm -rf /tmp/rb-probe-tools && mkdir -p /tmp/rb-probe-tools/bin /tmp/rb-probe-tools/obj"),0);
     for (i=0;i<2;i++) {
         memset(code,0,sizeof(code)); code[0]=0xfe;code[1]=0xed;code[2]=0xfa;code[3]=0xce;

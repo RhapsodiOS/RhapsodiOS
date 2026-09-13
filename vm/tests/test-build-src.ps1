@@ -158,7 +158,7 @@ Assert-Match $nvramPostambleText '\$\(LN\) -f PowerSurge' 'nvram machine aliases
 Assert-NotMatch $nvramPostambleText '\$\(LN\) -s ' 'nvram does not pass extra -s; bootstrap LN is already /bin/ln -s'
 Assert-NotMatch $libsystemPostambleText '\$\(LN\) \$\$name/\$\$\{obj_dir\}_obj/\$\$name\.ofileList' 'Libsystem ofileList symlink is not cwd-relative (dangling with ln -s)'
 Assert-Match $libcMachPreambleText 'override\s+MIG\s*=\s*\$\(CONFIG_DIR\)/mig' 'libc Mach headers override inherited host MIG with the configured private tool'
-Assert-Match $libcMachPreambleText 'MIGFLAGS\s*=\s*\$\(RC_CFLAGS\)' 'libc Mach MIG preprocessing uses the isolated target header flags'
+Assert-Match $libcMachPreambleText 'MIGFLAGS\s*=\s*\$\(RC_CFLAGS\)\s+\$\(LOCAL_CFLAGS\)' 'libc Mach MIG preprocessing uses isolated RC flags and bootstrap LOCAL_CFLAGS includes'
 
 $buildScriptText = Get-Content -Raw (Join-Path $VmDir 'build-src.ps1')
 $remoteScriptText = Get-Content -Raw (Join-Path $VmDir 'rhap-remote.ps1')

@@ -14,7 +14,7 @@ test "$start" = "Csu-1 all" || {
     echo "bootstrap-runtime-manifest: must start at Csu-1 all" >&2
     exit 1
 }
-end=`flat "$runtime" | awk 'END { print $2, $3 }'`
+end=`flat "$runtime" | tail -1 | awk '{ print $2, $3 }'`
 test "$end" = "Libsystem-2 all" || {
     echo "bootstrap-runtime-manifest: must end at Libsystem-2 all" >&2
     exit 1

@@ -63,7 +63,7 @@ TEST(test_directory_buckets) {
     put(OBJ "lib/ppc/dynamic_obj/power.o",2);
     CHECK_INT(products_validate(ROOT,3,1,0),0);
     CHECK_INT(products_validate(ROOT,1,1,1),0);
-    CHECK_INT(products_validate(ROOT,1,1,0),1);
+    CHECK_INT(products_validate(ROOT,1,1,0),0);
     CHECK_INT(products_validate(ROOT,3,0,0),1);
     put(OBJ "lib/profile/i386/dynamic_obj/a.o",1);
     CHECK_INT(products_validate(ROOT,3,1,0),1);

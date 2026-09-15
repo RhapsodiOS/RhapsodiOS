@@ -224,7 +224,7 @@ int products_validate(const char *root, unsigned required,
     rc = walk(&v, "");
     for (g = v.groups; g; g = next) {
         next = g->next;
-        if (!rc && !covers(g->mask, required, allow_superset))
+        if (!rc && !covers(g->mask, required, allow_superset || v.objects))
             rc = failure(&v, g->key, "incomplete object architecture coverage",
                          g->mask, required);
         free(g->key);

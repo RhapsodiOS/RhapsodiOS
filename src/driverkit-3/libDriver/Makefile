@@ -646,18 +646,26 @@ $(SYMDIR)/$(BUILD_NAME)$(MACHINE)_g.dylib: $(BUILD_DIR) $(OFILES) vers.o
 	@echo ----building user library----
 	@if [ -z "`vers_string -n`" ]; then					\
 	    echo libtool -o $@ $(OFILES) vers.o -dynamic -framework $(FRAMEWORK)\
+		    -undefined suppress $(OTHER_LDFLAGS)			\
+		    -F$(HEADER_ROOT)$(SYSTEM_LIBRARY_DIR)/Frameworks		\
 		    -install_name $(INSTALL_DIR)$(BUILD_NAME)$(BUILD_VERS).dylib\
 		    -compatibility_version $(COMPAT_VERS);			\
 	    libtool -o $@ $(OFILES) vers.o -dynamic -framework $(FRAMEWORK)	\
+		    -undefined suppress $(OTHER_LDFLAGS)			\
+		    -F$(HEADER_ROOT)$(SYSTEM_LIBRARY_DIR)/Frameworks		\
 		    -install_name $(INSTALL_DIR)$(BUILD_NAME)$(BUILD_VERS).dylib\
 		    -seg1addr 0x66700000					\
 		    -compatibility_version $(COMPAT_VERS);			\
 	else									\
 	    echo libtool -o $@ $(OFILES) vers.o -dynamic -framework $(FRAMEWORK)\
+		    -undefined suppress $(OTHER_LDFLAGS)			\
+		    -F$(HEADER_ROOT)$(SYSTEM_LIBRARY_DIR)/Frameworks		\
 		    -install_name $(INSTALL_DIR)$(BUILD_NAME)$(BUILD_VERS).dylib\
 		    -compatibility_version $(COMPAT_VERS)			\
 		    -current_version "`vers_string -n`";			\
 	    libtool -o $@ $(OFILES) vers.o -dynamic -framework $(FRAMEWORK)	\
+		    -undefined suppress $(OTHER_LDFLAGS)			\
+		    -F$(HEADER_ROOT)$(SYSTEM_LIBRARY_DIR)/Frameworks		\
 		    -install_name $(INSTALL_DIR)$(BUILD_NAME)$(BUILD_VERS).dylib\
 		    -compatibility_version $(COMPAT_VERS)			\
 		    -seg1addr 0x66700000					\

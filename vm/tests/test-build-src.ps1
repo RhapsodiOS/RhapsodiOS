@@ -108,6 +108,8 @@ Assert-Match $bootstrapManifestText '(?s)dir\s+Librpcsvc-1\s+headers.*dir\s+Libi
 $driverkitLibMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\driverkit-3\libDriver\Makefile')
 Assert-Match $driverkitLibMakefileText '(?m)^HEADER_ROOT=\$\(HDRROOT\)$' 'driverkit libDriver prefers HDRROOT for System.framework includes'
 Assert-Match $driverkitLibMakefileText '-I\$\(HEADER_ROOT\)\$\(SYSTEM_LIBRARY_DIR\)/Frameworks/System.framework/Versions/B/Headers' 'driverkit libDriver compiles against versioned sysroot System.framework headers'
+Assert-Match $driverkitLibMakefileText '-undefined suppress' 'driverkit user dylib allows unresolved System symbols until fat Libsystem exists'
+Assert-Match $driverkitLibMakefileText 'OTHER_LDFLAGS' 'driverkit user dylib link uses bootstrap OTHER_LDFLAGS'
 $projectCommonMakeText = Get-Content -Raw (Join-Path $repoRoot 'src\project_makefiles-1\common.make')
 Assert-Match $projectCommonMakeText 'ALL_CFLAGS = .*\$\(LOCAL_CFLAGS\)' 'project_makefiles compile with bootstrap LOCAL_CFLAGS after the local -I.'
 $coreosCommonMakeText = Get-Content -Raw (Join-Path $repoRoot 'src\CoreOSMakefiles-1\ReleaseControl\Common.make')

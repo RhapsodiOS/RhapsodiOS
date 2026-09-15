@@ -895,6 +895,12 @@ static int mkdirp(const char *path) {
     return exec_runv("mkdir", "-p", path, (char *)0);
 }
 
+static int rmtree_dir(const char *path) {
+    if (path == 0 || path[0] == '\0' || strcmp(path, "/") == 0)
+        return 0;
+    return exec_runv("rm", "-rf", path, (char *)0);
+}
+
 static int path_is_inside(const char *root, const char *path) {
     size_t n;
     if (root == 0 || path == 0 || root[0] != '/' || path[0] != '/') return 0;
@@ -1034,6 +1040,14 @@ int builder_setupdirs(const Package *pkg, const Params *params,
                       const strlist *repository, const BuildOptions *opt) {
     int bootstrap = opt && opt->bootstrap;
     (void) srcname;   /* only used by the dropped cvs branch */
+
+    if (exec_check(rmtree_dir(params->OBJROOT))) return 1;
+    if (exec_check(rmtree_dir(params->SYMROOT))) return 1;
+    if (exec_check(rmtree_dir(params->DSTROOT))) return 1;
+    if (exec_check(rmtree_dir(params->HDRROOT))) return 1;
+    if (exec_check(rmtree_dir(params->LIBCOBJROOT))) return 1;
+    if (exec_check(rmtree_dir(params->SRCROOT))) return 1;
+    if (exec_check(rmtree_dir(params->PACKAGEROOT))) return 1;
 
     if (exec_check(mkdirp(params->OBJROOT))) return 1;
     if (exec_check(mkdirp(params->SYMROOT))) return 1;

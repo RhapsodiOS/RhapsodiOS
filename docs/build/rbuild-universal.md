@@ -117,7 +117,9 @@ Live repository bootstrap is a three-walk sequence driven by the host
 Per-CPU link readiness applies on every walk: rbuild compiles every requested
 CPU slice, but links a CPU only when the sysroot already provides that slice's
 `crt1.o` and `System` framework. Until both exist, compile-only probing is
-allowed. No `golden.img` seeds or other read-only guest image inputs are used;
+allowed. Each `must_build` wipes that package's OBJROOT, SYMROOT, DSTROOT,
+HDRROOT, object-harvest, package, and SRCROOT trees before rsync and probes,
+so a thin leftover cannot skip a later universal compile. No `golden.img` seeds or other read-only guest image inputs are used;
 bootstrap products come only from the synced source tree and resumable state.
 
 Kernel, kernel drivers, and world (`buildall`) are out of scope for bootstrap.

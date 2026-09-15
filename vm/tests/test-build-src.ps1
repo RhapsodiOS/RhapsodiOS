@@ -291,6 +291,8 @@ foreach ($apkCase in @(
     Assert-Equal ($typesIdx -lt $direntIdx) $true "$($apkCase.Name) includes sys/types.h before dirent.h"
 }
 Assert-Match $builderSourceText 'ReleaseControl/Common.make' 'bootstrap waits for CoreOS Common.make before CoreOSMakefiles='
+Assert-Match $builderSourceText 'rmtree_dir\(params->SYMROOT\)' 'must_build wipes leftover SYMROOT before rsync and probes'
+Assert-Match $builderSourceText 'rmtree_dir\(params->OBJROOT\)' 'must_build wipes leftover OBJROOT before rsync and probes'
 Assert-Match $rbuildMainText 'rbuild kernel \[--state DIR\] --arch ARCH' 'rbuild usage includes kernel'
 Assert-Match $rbuildMainText 'rbuild kerneldrivers \[--state DIR\] --arch ARCH' 'rbuild usage includes kerneldrivers'
 Assert-Match $rbuildMainText 'strcmp\(sub, "kernel"\)' 'rbuild dispatches kernel'

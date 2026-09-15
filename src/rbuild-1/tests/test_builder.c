@@ -653,6 +653,59 @@ TEST(test_setupdirs_bootstrap_skips_makeroot) {
     package_free(&pkg);
 }
 
+TEST(test_setupdirs_wipes_stale_product_trees) {
+    Package pkg;
+    Params p;
+    BuildOptions opt;
+    strlist repo;
+    char base[128];
+    char command[768];
+    char stale_lib[192];
+    char stale_obj[192];
+    char synced[192];
+
+    sprintf(base, "/tmp/rb-wipe-roots-%ld", (long)getpid());
+    sprintf(command,
+            "rm -rf %s && mkdir -p %s/srcdir %s/sym/leftover %s/obj/leftover "
+            "%s/dst/usr/local/lib %s/cobj && "
+            "echo ppc-only > %s/sym/libcompat.a && "
+            "echo thin > %s/obj/leftover/x.o && "
+            "echo leftover-dst > %s/dst/usr/local/lib/libcompat.a && "
+            "echo src > %s/srcdir/file.c",
+            base, base, base, base, base, base, base, base, base, base);
+    CHECK_INT(system(command), 0);
+
+    package_init(&pkg);
+    params_init(&p);
+    build_options_init(&opt);
+    strlist_init(&repo);
+    opt.bootstrap = 1;
+    p.OBJROOT = str_cats(base, "/obj", (char *)0);
+    p.SYMROOT = str_cats(base, "/sym", (char *)0);
+    p.DSTROOT = str_cats(base, "/dst", (char *)0);
+    p.HDRROOT = str_cats(base, "/hdr", (char *)0);
+    p.PACKAGEROOT = str_cats(base, "/pkg", (char *)0);
+    p.SRCROOT = str_cats(base, "/src", (char *)0);
+    p.SRCDIR = str_cats(base, "/srcdir", (char *)0);
+    p.LIBCOBJROOT = str_cats(base, "/cobj", (char *)0);
+    p.BUILDROOT = str_cats(base, "/br", (char *)0);
+
+    CHECK_INT(builder_setupdirs(&pkg, &p, "compat", "dir", &repo, &opt), 0);
+
+    sprintf(stale_lib, "%s/sym/libcompat.a", base);
+    sprintf(stale_obj, "%s/obj/leftover/x.o", base);
+    sprintf(synced, "%s/src/file.c", base);
+    CHECK(access(stale_lib, F_OK) != 0);
+    CHECK(access(stale_obj, F_OK) != 0);
+    CHECK(access(synced, F_OK) == 0);
+
+    params_free(&p);
+    strlist_free(&repo);
+    package_free(&pkg);
+    sprintf(command, "rm -rf %s", base);
+    system(command);
+}
+
 TEST(test_makeroot_dry_run_preserves_package_list) {
     Package pkg;
     strlist repo;
@@ -1536,6 +1589,7 @@ static void run_all(void) {
     RUN(test_bootstrap_indr_from_sysroot);
     RUN(test_bootstrap_harvest_stays_in_private_object_root);
     RUN(test_setupdirs_bootstrap_skips_makeroot);
+    RUN(test_setupdirs_wipes_stale_product_trees);
     RUN(test_makeroot_dry_run_preserves_package_list);
     RUN(test_scan_dir);
     RUN(test_relativize_absolute_symlinks_inside_dstroot);

@@ -161,6 +161,10 @@ $libsystemMakeText = Get-Content -Raw (Join-Path $repoRoot 'src\Libsystem-2\Make
 $libsystemPostambleText = Get-Content -Raw (Join-Path $repoRoot 'src\Libsystem-2\Makefile.postamble')
 Assert-NotMatch $libsystemMakeText 'System\.order\.\$\(TARGET_ARCH\)' 'Libsystem does not bind a single TARGET_ARCH order file at parse time'
 Assert-Match $libsystemPostambleText 'TARGET_ARCHS' 'Libsystem harvest links iterate TARGET_ARCHS'
+Assert-Match $libsystemPostambleText 'LINK_ARCHS = \$\(TARGET_ARCH\)' 'empty TARGET_ARCHS falls back to project_makefiles TARGET_ARCH'
+Assert-Match $libsystemPostambleText 'for arch in \$\(LINK_ARCHS\)' 'make_links iterates LINK_ARCHS so a per-arch recurse still harvests'
+Assert-Match $libsystemPostambleText 'foreach A,\$\(LINK_ARCHS\)' 'sectorder uses LINK_ARCHS instead of empty TARGET_ARCHS'
+Assert-NotMatch $libsystemPostambleText 'for arch in \$\(TARGET_ARCHS\); do' 'make_links does not iterate possibly-empty TARGET_ARCHS'
 Assert-Match $libsystemPostambleText 'after_install::' 'Libsystem installs compatibility dylibs after System.framework'
 Assert-Match $libsystemPostambleText 'usr/lib/\$\$lib\.dylib' 'Libsystem compatibility dylibs live in /usr/lib'
 Assert-Match $libsystemPostambleText 'libkvm' 'Libsystem publishes libkvm.dylib as a System.framework compatibility link'

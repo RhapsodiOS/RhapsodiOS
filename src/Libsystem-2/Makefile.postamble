@@ -146,10 +146,21 @@ GREP = /bin/grep
 # FIXME when we have the latest cc from 4.2mach
 LIBTOOL=/usr/bin/libtool
 DYNAMIC_PROJDIRS = $(ARGON_PROJECTS) $(DYNAMIC_ONLY)
-DYNAMIC_SECTORDER_FLAGS = $(foreach A,$(TARGET_ARCHS),-sectorder __TEXT __text $(SRCROOT)/System.order.$(A))
+# pb_makefiles sets TARGET_ARCHS=$(RC_ARCHS). project_makefiles recurse
+# once per arch with TARGET_ARCH only, so an empty TARGET_ARCHS must
+# not skip harvest links or drop System.order.$(TARGET_ARCH).
+ifneq ($(strip $(TARGET_ARCHS)),)
+LINK_ARCHS = $(TARGET_ARCHS)
+else
+LINK_ARCHS = $(TARGET_ARCH)
+endif
+DYNAMIC_SECTORDER_FLAGS = $(foreach A,$(LINK_ARCHS),-sectorder __TEXT __text $(SRCROOT)/System.order.$(A))
 
 make_links::
-	@(if [ ! -f $(OFILE_DIR)/links/.all_done ]; then\
+	@(if [ -f $(OFILE_DIR)/links/.all_done ] && [ ! -f $(OFILE_DIR)/links/c/ofileList ]; then \
+		/bin/rm -rf $(OFILE_DIR)/links; \
+	fi; \
+	if [ ! -f $(OFILE_DIR)/links/.all_done ]; then\
 		$(MKDIRS) $(OFILE_DIR)/links;\
 		cd $(OFILE_DIR)/links;\
 		bail=NO;\
@@ -163,7 +174,11 @@ make_links::
 		echo "#### $(BUILD_TARGET) is not a suitable target";\
 		exit 1;\
             fi;\
-			for arch in $(TARGET_ARCHS); do \
+			if [ -z "$(LINK_ARCHS)" ]; then\
+				echo "##### No TARGET_ARCHS or TARGET_ARCH for make_links";\
+				exit 1;\
+			fi;\
+			for arch in $(LINK_ARCHS); do \
 			echo ========== Creating $$obj_dir links for $$arch ==========;\
 			for i in $$dirs; do\
 				echo -n "Linking $$i to ";\

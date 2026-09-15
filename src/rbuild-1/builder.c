@@ -451,9 +451,12 @@ void builder_buildflags(const Params *params, const char *target, strlist *out,
         strlist include_words;
         int cpp_ready = 1;
         char *other_cflags;
+        const char *slice_flags;
         strlist_init(&words);
         strlist_init(&include_words);
-        expand_toolchain_words(tc->arch_flags, opt->sysroot, &words);
+        slice_flags = architecture_cflags(effective);
+        if (!slice_flags) slice_flags = tc->arch_flags;
+        expand_toolchain_words(slice_flags, opt->sysroot, &words);
         if (tc->cpp_flags_ready) {
             char *path = expand_toolchain_value(
                 tc->cpp_flags_ready, opt->sysroot);

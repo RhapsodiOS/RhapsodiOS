@@ -204,6 +204,37 @@ TEST(test_bootstrap_flags_use_target_sysroot) {
     params_free(&p);
 }
 
+TEST(test_bootstrap_universal_uses_both_arch_cflags) {
+    Params p;
+    BuildOptions opt;
+    Toolchain tc;
+    strlist f;
+    const char *rc_cflags;
+
+    params_init(&p);
+    build_options_init(&opt);
+    toolchain_fixture(&tc);
+    opt.bootstrap = 1;
+    opt.sysroot = "/target";
+    opt.toolchain = &tc;
+    opt.effective_arch = RB_ARCH_UNIVERSAL;
+    p.SRCROOT = xstrdup("/s"); p.OBJROOT = xstrdup("/o");
+    p.SYMROOT = xstrdup("/y"); p.DSTROOT = xstrdup("/d");
+    p.HDRROOT = xstrdup("/h"); p.SUBLIBROOTS = xstrdup("/objs");
+
+    strlist_init(&f);
+    builder_buildflags(&p, "install", &f, &opt);
+    CHECK(list_has(&f, "RC_ARCHS=i386 ppc"));
+    CHECK(list_has(&f, "RC_i386=YES"));
+    CHECK(list_has(&f, "RC_ppc=YES"));
+    rc_cflags = list_has_prefix(&f, "RC_CFLAGS=");
+    CHECK(rc_cflags != 0);
+    CHECK(str_has_prefix(rc_cflags,
+          "RC_CFLAGS=-arch i386 -arch ppc -nostdinc"));
+    strlist_free(&f);
+    params_free(&p);
+}
+
 TEST(test_buildflags) {
     Params p;
     BuildOptions opt;

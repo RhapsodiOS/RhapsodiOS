@@ -321,7 +321,7 @@ Assert-Match $builderSourceText 'access\(coreos_common, F_OK\)' 'bootstrap probe
 Assert-Match $builderSourceText 'cpp_flags_ready' 'bootstrap waits for compiler headers before isolated -nostdinc'
 Assert-Match $builderSourceText 'push_kv\(out, "HDRROOT", opt->sysroot\)' 'bootstrap make uses the target sysroot as HDRROOT'
 Assert-Match $builderSourceText 'str_cats\(\s*opt->sysroot, "/usr/local/lib/objs"' 'bootstrap SUBLIBROOTS points at harvested objects in the sysroot'
-Assert-Match $builderSourceText 'str_cats\(tc->ln, " -s"' 'bootstrap LN follows Darwin SYMLINK and creates symbolic links'
+Assert-Match $builderSourceText 'architecture_cflags\(effective\)' 'universal bootstrap RC_CFLAGS uses both -arch flags, not the profile arch_flags'
 Assert-Match $builderSourceText 'builder_relativize_symlinks\(dstroot\)' 'APK packaging rewrites DSTROOT absolute aliases to relative symlinks'
 Assert-Match $builderSourceText '-Wl,-syslibroot,' 'bootstrap rewrites syslibroot linker flags for Rhapsody ld'
 Assert-Match $builderSourceText 'str_cats\("-L", root, "/usr/local/lib"' 'bootstrap linker search includes sysroot /usr/local/lib for libcompat.a'

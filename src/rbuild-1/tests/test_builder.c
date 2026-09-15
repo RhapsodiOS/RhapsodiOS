@@ -1166,6 +1166,49 @@ TEST(test_cache_checks_payload_architecture) {
     package_free(&pkg); system("rm -rf /tmp/rb-cache-policy");
 }
 
+TEST(test_cache_accepts_covering_architecture) {
+    Toolchain tc;
+    FILE *f;
+    unsigned char b[104];
+    int exists, i;
+    CHECK_INT(system("rm -rf /tmp/rb-cache-cover && mkdir -p /tmp/rb-cache-cover/content /tmp/rb-cache-cover/repo"),0);
+    f=fopen("/tmp/rb-cache-cover/content/.PKGINFO","w"); CHECK(f!=0);
+    if (!f) return;
+    fputs("pkgname = cover\npkgver = 1\narch = universal-apple-rhapsody\n",f); fclose(f);
+    memset(b,0,sizeof(b));
+    for (i=0;i<4;i++) b[3-i]=(unsigned char)(0xcafebabeUL>>(8*i));
+    b[7]=2; b[11]=7; b[19]=48; b[23]=28; b[31]=18; b[39]=76; b[43]=28;
+    b[48]=0xfe;b[49]=0xed;b[50]=0xfa;b[51]=0xce;b[55]=7;b[63]=1;
+    b[76]=0xfe;b[77]=0xed;b[78]=0xfa;b[79]=0xce;b[83]=18;b[91]=1;
+    f=fopen("/tmp/rb-cache-cover/content/tool","wb"); CHECK(f!=0);
+    if (!f) return;
+    CHECK_INT(fwrite(b,1,sizeof(b),f),sizeof(b)); fclose(f);
+    CHECK_INT(system("(cd /tmp/rb-cache-cover/content && /usr/bin/gnutar --posix -cf - .) | /usr/bin/gzip -9 > /tmp/rb-cache-cover/repo/cover-1.apk"),0);
+    toolchain_init(&tc); tc.tar="tar"; tc.gzip="gzip";
+    exists=0;
+    CHECK_INT(builder_cache_status("/tmp/rb-cache-cover/repo/cover-1.apk",&tc,"cover","1",RB_ARCH_PPC,0,&exists),0);
+    CHECK_INT(exists,1);
+    CHECK(access("/tmp/rb-cache-cover/repo/cover-1.apk.invalid",F_OK)!=0);
+    exists=0;
+    CHECK_INT(builder_cache_status("/tmp/rb-cache-cover/repo/cover-1.apk",&tc,"cover","1",RB_ARCH_UNIVERSAL,0,&exists),0);
+    CHECK_INT(exists,1);
+    f=fopen("/tmp/rb-cache-cover/content/.PKGINFO","w"); CHECK(f!=0);
+    if (f) { fputs("pkgname = cover\npkgver = 1\narch = ppc-apple-rhapsody\n",f); fclose(f); }
+    unlink("/tmp/rb-cache-cover/content/tool");
+    f=fopen("/tmp/rb-cache-cover/content/tool","wb"); CHECK(f!=0);
+    if (f) {
+        memset(b,0,28); b[0]=0xfe;b[1]=0xed;b[2]=0xfa;b[3]=0xce;b[7]=18;b[15]=1;
+        fwrite(b,1,28,f); fclose(f);
+    }
+    CHECK_INT(system("(cd /tmp/rb-cache-cover/content && /usr/bin/gnutar --posix -cf - .) | /usr/bin/gzip -9 > /tmp/rb-cache-cover/repo/thin-1.apk"),0);
+    exists=0;
+    CHECK_INT(builder_cache_status("/tmp/rb-cache-cover/repo/thin-1.apk",&tc,"cover","1",RB_ARCH_UNIVERSAL,0,&exists),0);
+    CHECK_INT(exists,0);
+    CHECK(access("/tmp/rb-cache-cover/repo/thin-1.apk",F_OK)!=0);
+    CHECK(access("/tmp/rb-cache-cover/repo/thin-1.apk.invalid",F_OK)==0);
+    system("rm -rf /tmp/rb-cache-cover");
+}
+
 static void cache_fixture(const char *repo, const char *name, const char *version,
                           const char *arch, int cpu) {
     char command[1024], path[256];
@@ -1466,6 +1509,7 @@ static void run_all(void) {
     RUN(test_dependency_fallback_and_reinstallation);
     RUN(test_direct_publication_quarantines_collision);
     RUN(test_cache_checks_payload_architecture);
+    RUN(test_cache_accepts_covering_architecture);
     RUN(test_packaging_dry_run_keeps_command_trace);
     RUN(test_build_validates_all_roots_before_packaging);
     RUN(test_packaging_rejects_wrong_products);

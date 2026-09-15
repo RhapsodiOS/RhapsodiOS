@@ -1123,7 +1123,7 @@ int builder_cache_status(const char *path, const Toolchain *tc,
     }
     if (lstat(path, &st) != 0) return errno == ENOENT ? 0 : 1;
     if (S_ISREG(st.st_mode) &&
-        apk_use_arch(path, 0, tc, name, version, required, objects, 0) == 0) {
+        apk_use_arch(path, 0, tc, name, version, required, objects, 1) == 0) {
         *exists = 1; return 0;
     }
     fprintf(stderr, "rbuild: invalid APK %s; quarantining\n", path);

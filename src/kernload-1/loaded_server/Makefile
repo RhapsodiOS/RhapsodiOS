@@ -91,7 +91,7 @@ libmig: Makefile.gen ${GEN_MIGFILES}
 MIGOFILES:	ALWAYS
 	${MAKE} -f ${SYMDIR}/Makefile.gen libmig
 
-Makefile.gen: $(GEN_HFILES) $(GEN_MIGFILES)
+Makefile.gen: $(MAKEFILE) $(GEN_HFILES) $(GEN_MIGFILES)
 	$(RM) -f Makefile.gen
 	$(ECHO) "CFILES=`$(ECHO) *.c`"			> Makefile.gen
 	$(ECHO)						>> Makefile.gen

@@ -343,6 +343,10 @@ Assert-Match $rbuildRunnerText 'architecture_covers' 'thin bootstrap reuses stat
 Assert-Match $productsSourceText 'i386\.subproj' 'object harvest treats Project Builder i386.subproj as an i386 CPU bucket'
 Assert-Match $productsSourceText 'allow_superset \|\| v\.objects' 'object collections accept extra CPU coverage'
 Assert-Match $productsSourceText '\(mask & bucket\) != bucket' 'directory buckets accept fat objects that still cover the bucket CPU'
+$libsystemPostambleText = Get-Content -Raw (Join-Path $repoRoot 'src\Libsystem-2\Makefile.postamble')
+Assert-Match $libsystemPostambleText '\$\(SYMROOT\)/libsystem-links' 'Libsystem make_links staging stays outside harvested OBJROOT'
+Assert-NotMatch $libsystemPostambleText '\$\(OFILE_DIR\)/links' 'Libsystem make_links does not harvest foreign-arch objects under OFILE_DIR'
+Assert-NotMatch $libsystemPostambleText '\$\(OBJROOT\)/libsystem-links' 'Libsystem make_links is not under OBJROOT harvest'
 Assert-Match $builderSourceText 'builder_relativize_symlinks\(dstroot\)' 'APK packaging rewrites DSTROOT absolute aliases to relative symlinks'
 Assert-Match $builderSourceText '-Wl,-syslibroot,' 'bootstrap rewrites syslibroot linker flags for Rhapsody ld'
 Assert-Match $builderSourceText 'str_cats\("-L", root, "/usr/local/lib"' 'bootstrap linker search includes sysroot /usr/local/lib for libcompat.a'

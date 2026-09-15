@@ -157,12 +157,12 @@ endif
 DYNAMIC_SECTORDER_FLAGS = $(foreach A,$(LINK_ARCHS),-sectorder __TEXT __text $(SRCROOT)/System.order.$(A))
 
 make_links::
-	@(if [ -f $(OFILE_DIR)/links/.all_done ] && [ ! -f $(OFILE_DIR)/links/c/ofileList ]; then \
-		/bin/rm -rf $(OFILE_DIR)/links; \
+	@(if [ -f $(SYMROOT)/libsystem-links/.all_done ] && [ ! -f $(SYMROOT)/libsystem-links/c/ofileList ]; then \
+		/bin/rm -rf $(SYMROOT)/libsystem-links; \
 	fi; \
-	if [ ! -f $(OFILE_DIR)/links/.all_done ]; then\
-		$(MKDIRS) $(OFILE_DIR)/links;\
-		cd $(OFILE_DIR)/links;\
+	if [ ! -f $(SYMROOT)/libsystem-links/.all_done ]; then\
+		$(MKDIRS) $(SYMROOT)/libsystem-links;\
+		cd $(SYMROOT)/libsystem-links;\
 		bail=NO;\
             if [ "$(BUILD_TARGET)" = framework ]; then\
 		dirs="$(DYNAMIC_PROJDIRS)";\
@@ -242,11 +242,11 @@ make_links::
 		if [ "$$bail" = YES ]; then\
 			exit 1;\
 		fi;\
-		touch $(OFILE_DIR)/links/.all_done;\
+		touch $(SYMROOT)/libsystem-links/.all_done;\
 	fi)
 
 set_extra_libtool_flags =\
-	cd $(OFILE_DIR)/links ;\
+	cd $(SYMROOT)/libsystem-links ;\
 	if [ "$(BUILD_TARGET)" = framework ]; then\
 		link_dir=dynamic;\
 		ofileList_flags="$(DYNAMIC_SECTORDER_FLAGS) " ;\

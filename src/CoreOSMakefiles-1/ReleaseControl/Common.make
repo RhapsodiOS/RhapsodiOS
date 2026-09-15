@@ -87,7 +87,8 @@ BuildDirectory = $(OBJROOT)
 CC_Archs      = $(RC_ARCHS:%=-arch %)
 #CPP_Defines += -DPROJECT_VERSION=\"$(Project)-$(Version)\"
 
-Extra_CC_Flags += $(RC_CFLAGS)
+Extra_CC_Flags += $(RC_CFLAGS) $(LOCAL_CFLAGS)
+Extra_LD_Flags += $(OTHER_LDFLAGS)
 
 Environment =   CFLAGS="$(CFLAGS)"	\
 	       CCFLAGS="$(CXXFLAGS)"	\

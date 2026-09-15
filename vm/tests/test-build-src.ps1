@@ -110,6 +110,9 @@ Assert-Match $driverkitLibMakefileText '(?m)^HEADER_ROOT=\$\(HDRROOT\)$' 'driver
 Assert-Match $driverkitLibMakefileText '-I\$\(HEADER_ROOT\)\$\(SYSTEM_LIBRARY_DIR\)/Frameworks/System.framework/Versions/B/Headers' 'driverkit libDriver compiles against versioned sysroot System.framework headers'
 $projectCommonMakeText = Get-Content -Raw (Join-Path $repoRoot 'src\project_makefiles-1\common.make')
 Assert-Match $projectCommonMakeText 'ALL_CFLAGS = .*\$\(LOCAL_CFLAGS\)' 'project_makefiles compile with bootstrap LOCAL_CFLAGS after the local -I.'
+$coreosCommonMakeText = Get-Content -Raw (Join-Path $repoRoot 'src\CoreOSMakefiles-1\ReleaseControl\Common.make')
+Assert-Match $coreosCommonMakeText 'Extra_CC_Flags \+= \$\(RC_CFLAGS\) \$\(LOCAL_CFLAGS\)' 'GNUSource projects compile with bootstrap LOCAL_CFLAGS'
+Assert-Match $coreosCommonMakeText 'Extra_LD_Flags \+= \$\(OTHER_LDFLAGS\)' 'GNUSource projects link with bootstrap OTHER_LDFLAGS'
 $projectMakefilesMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\project_makefiles-1\Makefile')
 Assert-Match $projectMakefilesMakefileText '(?m)^CFLAGS = .*\$\(LOCAL_CFLAGS\)' 'project_makefiles tools compile with bootstrap LOCAL_CFLAGS'
 $libcDriversPostambleText = Get-Content -Raw (Join-Path $repoRoot 'src\Libc-1\drivers.subproj\Makefile.postamble')

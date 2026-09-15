@@ -48,10 +48,12 @@ Symlinks are not followed by the product walker. Missing optional header/object
 trees are allowed; the installed product root must exist.
 
 Only harvested `usr/local/lib/objs/<source>/.../dynamic_obj/...` collections
-allow CPU coverage across separate objects. CPU directory buckets are grouped
-by source and remaining variant path; different source filenames may occur in
-each CPU bucket. Without such buckets, `.i386.o` and `.ppc.o` pair by the same
-base path. Directory CPU, filename suffix, and object contents must agree.
+allow CPU coverage across separate objects. CPU directory buckets (`i386`,
+`ppc`, and Project Builder `i386.subproj`/`ppc.subproj`) are grouped by source
+and remaining variant path; different source filenames may occur in each CPU
+bucket. Repeated same-CPU names in one path are still one bucket. Without such
+buckets, `.i386.o` and `.ppc.o` pair by the same base path. Directory CPU,
+filename suffix, and object contents must agree.
 Coverage cannot be borrowed from another source or build variant. Code outside
 these collections must itself contain the required architectures.
 

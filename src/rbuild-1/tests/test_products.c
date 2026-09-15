@@ -85,7 +85,18 @@ TEST(test_directory_buckets) {
     put("elsewhere/i386/dynamic_obj/a.o",1);
     CHECK_INT(products_validate(ROOT,3,1,0),1);
     put("elsewhere/i386/dynamic_obj/a.o",3);
+    CHECK_INT(products_validate(ROOT,3,0,0),0);
+    reset();
+    put(OBJ "Libc/dynamic_obj/i386/gen.subproj/i386.subproj/setjmp.o",1);
+    CHECK_INT(products_validate(ROOT,3,1,0),1);
+    put(OBJ "Libc/dynamic_obj/ppc/gen.subproj/ppc.subproj/setjmp.o",2);
     CHECK_INT(products_validate(ROOT,3,1,0),0);
+    reset();
+    put(OBJ "lib/dynamic_obj/gen.subproj/i386.subproj/a.o",1);
+    put(OBJ "lib/dynamic_obj/gen.subproj/ppc.subproj/b.o",2);
+    CHECK_INT(products_validate(ROOT,3,1,0),0);
+    put(OBJ "lib/dynamic_obj/i386.subproj/ppc/mixed.o",1);
+    CHECK_INT(products_validate(ROOT,3,1,0),1);
 }
 TEST(test_suffix_pairs) {
     reset();

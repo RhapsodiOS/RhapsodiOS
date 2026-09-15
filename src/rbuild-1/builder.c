@@ -549,11 +549,15 @@ void builder_buildflags(const Params *params, const char *target, strlist *out,
                     const char *root = w + strlen(prefix);
                     char *dash_f = str_cats("-F", root,
                         "/System/Library/Frameworks", (char *)0);
+                    char *dash_local = str_cats("-L", root, "/usr/local/lib",
+                        (char *)0);
                     char *dash_l = str_cats("-L", root, "/usr/lib",
                         (char *)0);
                     strlist_push(&rewritten, dash_f);
+                    strlist_push(&rewritten, dash_local);
                     strlist_push(&rewritten, dash_l);
                     free(dash_f);
+                    free(dash_local);
                     free(dash_l);
                 } else {
                     strlist_push(&rewritten, w);

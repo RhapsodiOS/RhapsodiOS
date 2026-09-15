@@ -268,7 +268,7 @@ after_install::
 	$(MKDIRS) $(DSTROOT)/usr/lib
 	@(for lib in libc libm libkvm libcurses libedit libinfo \
 	             libstreams libobjc libmacho libdyld librld \
-	             libSystem libcompat; do \
+	             libSystem; do \
 	    rm -f $(DSTROOT)/usr/lib/$$lib.dylib; \
 	    $(LN) ../../System/Library/Frameworks/System.framework/Versions/B/System \
 	          $(DSTROOT)/usr/lib/$$lib.dylib; \

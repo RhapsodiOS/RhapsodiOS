@@ -168,6 +168,7 @@ Assert-NotMatch $libsystemPostambleText 'for arch in \$\(TARGET_ARCHS\); do' 'ma
 Assert-Match $libsystemPostambleText 'after_install::' 'Libsystem installs compatibility dylibs after System.framework'
 Assert-Match $libsystemPostambleText 'usr/lib/\$\$lib\.dylib' 'Libsystem compatibility dylibs live in /usr/lib'
 Assert-Match $libsystemPostambleText 'libkvm' 'Libsystem publishes libkvm.dylib as a System.framework compatibility link'
+Assert-NotMatch $libsystemPostambleText 'libcompat' 'Libsystem does not alias unharvested libcompat onto System.framework'
 $nvramPostambleText = Get-Content -Raw (Join-Path $repoRoot 'src\Commands\system_cmds\nvram.tproj\Makefile.postamble')
 Assert-Match $nvramPostambleText '\$\(LN\) -f PowerSurge' 'nvram machine aliases force-replace so bootstrap resume does not fail with File exists'
 Assert-NotMatch $nvramPostambleText '\$\(LN\) -s ' 'nvram does not pass extra -s; bootstrap LN is already /bin/ln -s'
@@ -317,6 +318,7 @@ Assert-Match $builderSourceText 'str_cats\(\s*opt->sysroot, "/usr/local/lib/objs
 Assert-Match $builderSourceText 'str_cats\(tc->ln, " -s"' 'bootstrap LN follows Darwin SYMLINK and creates symbolic links'
 Assert-Match $builderSourceText 'builder_relativize_symlinks\(dstroot\)' 'APK packaging rewrites DSTROOT absolute aliases to relative symlinks'
 Assert-Match $builderSourceText '-Wl,-syslibroot,' 'bootstrap rewrites syslibroot linker flags for Rhapsody ld'
+Assert-Match $builderSourceText 'str_cats\("-L", root, "/usr/local/lib"' 'bootstrap linker search includes sysroot /usr/local/lib for libcompat.a'
 Assert-Match $builderSourceText '/usr/local/bin/indr' 'bootstrap selects sysroot indr for Csu after cctools'
 Assert-NotMatch $bootstrapResumeText 'mktemp' 'bootstrap-resume creates temps without mktemp'
 Assert-Match $bootstrapResumeText 'umask 077 && mkdir' 'bootstrap-resume claims a private temp directory atomically'

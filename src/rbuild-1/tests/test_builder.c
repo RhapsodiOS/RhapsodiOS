@@ -196,7 +196,7 @@ TEST(test_bootstrap_flags_use_target_sysroot) {
     CHECK(strstr(rc_cflags, "-I/") == 0);
     CHECK(list_has(&f, "LOCAL_CFLAGS=-I/target/System/Headers"));
     for (i = 0; defines[i]; i++) CHECK(strstr(rc_cflags, defines[i]) != 0);
-    CHECK(list_has(&f, "OTHER_LDFLAGS=-F/target/System/Library/Frameworks -L/target/usr/lib"));
+    CHECK(list_has(&f, "OTHER_LDFLAGS=-F/target/System/Library/Frameworks -L/target/usr/local/lib -L/target/usr/lib"));
     CHECK(!list_has_prefix(&f, "INDR="));
     CHECK(!list_has_prefix(&f, "BOOTSTRAP_SKIP_DYLD="));
     strlist_free(&f);
@@ -457,8 +457,8 @@ TEST(test_bootstrap_ld_flags_wait_for_ready_path) {
 
     sprintf(base, "/tmp/rb-ld-flags-%ld", (long)getpid());
     sprintf(ready, "%s/ready/System", base);
-    sprintf(expected, "OTHER_LDFLAGS=-F%s/System/Library/Frameworks -L%s/usr/lib",
-            base, base);
+    sprintf(expected, "OTHER_LDFLAGS=-F%s/System/Library/Frameworks -L%s/usr/local/lib -L%s/usr/lib",
+            base, base, base);
     sprintf(expected_root, "NEXT_ROOT=%s", base);
     sprintf(shell_cmd, "rm -rf %s && mkdir -p %s/ready", base, base);
     CHECK_INT(system(shell_cmd), 0);

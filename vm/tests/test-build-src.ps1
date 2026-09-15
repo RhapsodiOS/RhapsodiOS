@@ -103,6 +103,9 @@ Assert-Match $bootstrapManifestText '(?s)dir\s+Libstreams-1\s+all.*dir\s+objc-1\
 Assert-Match $bootstrapManifestText '(?s)dir\s+Csu-1\s+all.*dir\s+Libc-1\s+all.*dir\s+objc4-1\s+all.*dir\s+Libsystem-2\s+all' 'Csu and Libc are packaged before objc4 all and Libsystem'
 Assert-Match $bootstrapManifestText '(?s)dir\s+Libcurses-1\s+all.*dir\s+Commands/adv_cmds\s+all.*dir\s+files-5\s+all' 'adv-cmds is packaged after libcurses and before files and later chroot consumers'
 Assert-Match $bootstrapManifestText '(?s)dir\s+driverkit-3\s+all.*dir\s+kernload-1\s+all' 'kernload is packaged after driverkit'
+Assert-Match $bootstrapManifestText '(?s)dir\s+Libsystem-2\s+all.*dir\s+kernload-1\s+all' 'kernload is packaged after Libsystem so fat System exists for i386 links'
+$bootstrapRuntimeManifestText = Get-Content -Raw (Join-Path $repoRoot 'src\BootstrapRuntimeManifest')
+Assert-NotMatch $bootstrapRuntimeManifestText '(?m)^dir\s+kernload-1\s' 'runtime walk does not link kernload before fat System'
 Assert-Match $bootstrapManifestText '(?m)^dir\s+gnudiff-1\s+all\s*$' 'gnudiff is packaged for later kernel chroot builds'
 Assert-Match $bootstrapManifestText '(?s)dir\s+Librpcsvc-1\s+headers.*dir\s+Libinfo-1\s+headers.*dir\s+Libinfo-1\s+all' 'librpcsvc and libinfo headers are published before libinfo compiles dns against netinfo/ni.h'
 $driverkitLibMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\driverkit-3\libDriver\Makefile')

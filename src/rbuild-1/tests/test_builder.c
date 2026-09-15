@@ -1482,6 +1482,7 @@ static void run_all(void) {
     RUN(test_canonparams);
     RUN(test_chrootparams);
     RUN(test_bootstrap_flags_use_target_sysroot);
+    RUN(test_bootstrap_universal_uses_both_arch_cflags);
     RUN(test_buildflags);
     RUN(test_buildcmd_bootstrap);
     RUN(test_bootstrap_make_flags_wait_for_ready_path);

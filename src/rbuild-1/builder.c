@@ -454,7 +454,12 @@ void builder_buildflags(const Params *params, const char *target, strlist *out,
         const char *slice_flags;
         strlist_init(&words);
         strlist_init(&include_words);
-        slice_flags = architecture_cflags(effective);
+        /* Universal install must pass both -arch flags so Csu/etc. produce
+         * fat objects. Thin bootstrap still follows the profile arch_flags. */
+        if (effective == RB_ARCH_UNIVERSAL)
+            slice_flags = architecture_cflags(effective);
+        else
+            slice_flags = 0;
         if (!slice_flags) slice_flags = tc->arch_flags;
         expand_toolchain_words(slice_flags, opt->sysroot, &words);
         if (tc->cpp_flags_ready) {

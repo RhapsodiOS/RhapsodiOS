@@ -324,6 +324,8 @@ Assert-Match $builderSourceText 'push_kv\(out, "HDRROOT", opt->sysroot\)' 'boots
 Assert-Match $builderSourceText 'str_cats\(\s*opt->sysroot, "/usr/local/lib/objs"' 'bootstrap SUBLIBROOTS points at harvested objects in the sysroot'
 Assert-Match $builderSourceText 'architecture_cflags\(effective\)' 'universal bootstrap RC_CFLAGS uses both -arch flags, not the profile arch_flags'
 Assert-Match $builderSourceText 'apk_use_arch\(path, 0, tc, name, version, required, objects, 1\)' 'bootstrap cache reuse accepts a covering architecture'
+Assert-Match $builderSourceText 'products_validate\(root, required, objects, objects\)' 'object harvest allows extra CPU coverage in directory buckets'
+Assert-Match $rbuildRunnerText 'architecture_covers' 'thin bootstrap reuses state whose architecture covers the requested CPU'
 Assert-Match $productsSourceText 'i386\.subproj' 'object harvest treats Project Builder i386.subproj as an i386 CPU bucket'
 Assert-Match $builderSourceText 'builder_relativize_symlinks\(dstroot\)' 'APK packaging rewrites DSTROOT absolute aliases to relative symlinks'
 Assert-Match $builderSourceText '-Wl,-syslibroot,' 'bootstrap rewrites syslibroot linker flags for Rhapsody ld'

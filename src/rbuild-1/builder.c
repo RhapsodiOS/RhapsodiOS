@@ -1109,7 +1109,7 @@ static int validate_products(const char *root, unsigned required,
     }
     if (optional && root && lstat(root, &st) != 0 && errno == ENOENT)
         return 0;
-    return products_validate(root, required, objects, 0);
+    return products_validate(root, required, objects, objects);
 }
 
 int builder_cache_status(const char *path, const Toolchain *tc,

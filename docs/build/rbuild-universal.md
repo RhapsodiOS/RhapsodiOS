@@ -63,7 +63,10 @@ APK use pins an immutable private copy, validates tar members and identity,
 extracts privately, checks products, then optionally merges that same stage.
 Cache reuse requires the expected name/version and a payload that covers the
 requested architecture. A universal APK satisfies a thin lookup; a thin APK
-does not satisfy a universal lookup and is quarantined. Existing companion header/object APKs must also validate;
+does not satisfy a universal lookup and is quarantined. A bootstrap state
+record whose effective architecture covers the current walk is not stale.
+Object harvest directory buckets may contain extra CPUs; they must still
+cover the requested architecture. Existing companion header/object APKs must also validate;
 absent optional companions do not prevent reuse. Dependency selection validates
 code against the package's own declared architecture first, then checks that it
 covers the consumer. Thus a valid universal code dependency can serve a thin

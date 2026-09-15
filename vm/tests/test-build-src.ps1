@@ -141,6 +141,10 @@ Assert-NotMatch $cctoolsAsMakefileText '-I\$\(NEXT_ROOT\)/System/Library/Framewo
 Assert-Match $cctoolsAsMakefileText '\$\(LOCAL_CFLAGS\)' 'cctools as compiles with bootstrap LOCAL_CFLAGS'
 Assert-Match $cctoolsLdMakefileText '\$\(LOCAL_CFLAGS\)' 'cctools ld compiles with bootstrap LOCAL_CFLAGS'
 Assert-Match $cctoolsGprofMakefileText '\$\(LOCAL_CFLAGS\)' 'cctools gprof compiles with bootstrap LOCAL_CFLAGS'
+foreach ($cctoolsDir in @('ar', 'file', 'otool', 'misc', 'mkshlib', 'profileServer', 'dyld', 'libstuff', 'libmacho', 'libdyld')) {
+    $cctoolsMakefileText = Get-Content -Raw (Join-Path $repoRoot ("src\cctools-2\{0}\Makefile" -f $cctoolsDir))
+    Assert-Match $cctoolsMakefileText '\$\(LOCAL_CFLAGS\)' ("cctools {0} compiles with bootstrap LOCAL_CFLAGS" -f $cctoolsDir)
+}
 $kernloadKernservMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\kernload-1\include\kernserv\Makefile')
 $kernloadLibMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\kernload-1\libkernload\Makefile')
 Assert-Equal ([regex]::Matches($kernloadKernservMakefileText, '(?m)^install:').Count) 1 'kernserv headers have one install target'

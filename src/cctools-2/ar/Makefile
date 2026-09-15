@@ -1,8 +1,8 @@
 OFLAG = -O
 ifeq "mwcc" "$(notdir $(CC))"
-  CFLAGS = -g $(OFLAG)
+  CFLAGS = -g $(OFLAG) $(LOCAL_CFLAGS)
 else
-  CFLAGS = -g $(OFLAG) -Wall
+  CFLAGS = -g $(OFLAG) -Wall $(LOCAL_CFLAGS)
 endif
 
 ifneq "" "$(wildcard /bin/mkdirs)"

@@ -170,8 +170,11 @@ Assert-Match $libsystemPostambleText 'usr/lib/\$\$lib\.dylib' 'Libsystem compati
 Assert-Match $libsystemPostambleText 'libkvm' 'Libsystem publishes libkvm.dylib as a System.framework compatibility link'
 Assert-NotMatch $libsystemPostambleText 'libcompat' 'Libsystem does not alias unharvested libcompat onto System.framework'
 $nvramPostambleText = Get-Content -Raw (Join-Path $repoRoot 'src\Commands\system_cmds\nvram.tproj\Makefile.postamble')
+$fbalertSourceText = Get-Content -Raw (Join-Path $repoRoot 'src\Commands\system_cmds\fbalert.tproj\fbalert.c')
 Assert-Match $nvramPostambleText '\$\(LN\) -f PowerSurge' 'nvram machine aliases force-replace so bootstrap resume does not fail with File exists'
 Assert-NotMatch $nvramPostambleText '\$\(LN\) -s ' 'nvram does not pass extra -s; bootstrap LN is already /bin/ln -s'
+Assert-Match $fbalertSourceText '#include <bsd/dev/kmreg_com.h>' 'fbalert includes kmreg_com.h from System PrivateHeaders/bsd'
+Assert-NotMatch $fbalertSourceText '#include <dev/kmreg_com.h>' 'fbalert does not use the kernel-relative kmreg_com.h path'
 Assert-NotMatch $libsystemPostambleText '\$\(LN\) \$\$name/\$\$\{obj_dir\}_obj/\$\$name\.ofileList' 'Libsystem ofileList symlink is not cwd-relative (dangling with ln -s)'
 Assert-Match $libcMachPreambleText 'override\s+MIG\s*=\s*\$\(CONFIG_DIR\)/mig' 'libc Mach headers override inherited host MIG with the configured private tool'
 Assert-Match $libcMachPreambleText 'MIGFLAGS\s*=\s*\$\(RC_CFLAGS\)\s+\$\(LOCAL_CFLAGS\)' 'libc Mach MIG preprocessing uses isolated RC flags and bootstrap LOCAL_CFLAGS includes'

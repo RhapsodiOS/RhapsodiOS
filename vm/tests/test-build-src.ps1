@@ -181,6 +181,11 @@ Assert-NotMatch $fbalertSourceText '#include <dev/kmreg_com.h>' 'fbalert does no
 Assert-NotMatch $libsystemPostambleText '\$\(LN\) \$\$name/\$\$\{obj_dir\}_obj/\$\$name\.ofileList' 'Libsystem ofileList symlink is not cwd-relative (dangling with ln -s)'
 Assert-Match $libcMachPreambleText 'override\s+MIG\s*=\s*\$\(CONFIG_DIR\)/mig' 'libc Mach headers override inherited host MIG with the configured private tool'
 Assert-Match $libcMachPreambleText 'MIGFLAGS\s*=\s*\$\(RC_CFLAGS\)\s+\$\(LOCAL_CFLAGS\)' 'libc Mach MIG preprocessing uses isolated RC flags and bootstrap LOCAL_CFLAGS includes'
+$libcPostambleText = Get-Content -Raw (Join-Path $repoRoot 'src\Libc-1\Makefile.postamble')
+Assert-Match $libcPostambleText '\$\(LIPO\) -create' 'Libc lipos per-arch static archives before installing libc_static.a'
+Assert-Match $libcPostambleText '\$\(RM\) -f \$\(SYMROOT\)/libc_static\.a' 'Libc breaks the last-arch hardlink before lipo of libc_static.a'
+Assert-Match $libcPostambleText 'libc\.\$\$\{arch\}_static\.a' 'Libc finds per-arch static archives as libc.<arch>_static.a'
+Assert-Match $libcPostambleText 'count -gt 1' 'Libc only lipos libc_static.a when more than one architecture archive exists'
 
 $buildScriptText = Get-Content -Raw (Join-Path $VmDir 'build-src.ps1')
 $remoteScriptText = Get-Content -Raw (Join-Path $VmDir 'rhap-remote.ps1')

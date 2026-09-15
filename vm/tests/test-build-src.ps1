@@ -136,6 +136,15 @@ $kernloadLibMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\kernload-1
 Assert-Equal ([regex]::Matches($kernloadKernservMakefileText, '(?m)^install:').Count) 1 'kernserv headers have one install target'
 Assert-Match $kernloadKernservMakefileText 'MIG_GENERATED_INSTALL' 'kernserv install publishes MIG-generated headers'
 Assert-Match $kernloadLibMakefileText '-I\$\{SYMROOT\}/include' 'libkernload compiles against SYMROOT-generated kernserv headers'
+Assert-Match $kernloadLibMakefileText '\$\{LOCAL_CFLAGS\}' 'libkernload compiles with bootstrap LOCAL_CFLAGS'
+$kernloadLoaderMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\kernload-1\kern_loader\Makefile')
+$kernloadLoadedServerMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\kernload-1\loaded_server\Makefile')
+$kernloadKlLogMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\kernload-1\cmds\kl_log\Makefile')
+$kernloadKlUtilMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\kernload-1\cmds\kl_util\Makefile')
+Assert-Match $kernloadLoaderMakefileText '\$\{LOCAL_CFLAGS\}' 'kern_loader compiles with bootstrap LOCAL_CFLAGS'
+Assert-Match $kernloadLoadedServerMakefileText '\$\{LOCAL_CFLAGS\}' 'loaded_server compiles with bootstrap LOCAL_CFLAGS'
+Assert-Match $kernloadKlLogMakefileText '\$\{LOCAL_CFLAGS\}' 'kl_log compiles with bootstrap LOCAL_CFLAGS'
+Assert-Match $kernloadKlUtilMakefileText '\$\{LOCAL_CFLAGS\}' 'kl_util compiles with bootstrap LOCAL_CFLAGS'
 $iondrvHeaderText = Get-Content -Raw (Join-Path $repoRoot 'src\driverkit-3\libDriver\ppc\IONDRVFramebuffer.h')
 $iondrvImplText = Get-Content -Raw (Join-Path $repoRoot 'src\driverkit-3\libDriver\ppc\IONDRVFramebuffer.m')
 Assert-Match $iondrvHeaderText '(?s)@interface IOATIMACH64NDRV:IOATINDRV\s*\{[^}]*engineInitialized' 'Mach64 NDRV declares engineInitialized in the class interface'

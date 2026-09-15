@@ -97,6 +97,13 @@ TEST(test_directory_buckets) {
     CHECK_INT(products_validate(ROOT,3,1,0),0);
     put(OBJ "lib/dynamic_obj/i386.subproj/ppc/mixed.o",1);
     CHECK_INT(products_validate(ROOT,3,1,0),1);
+    reset();
+    put(OBJ "lib/i386/dynamic_obj/intel.o",1);
+    put(OBJ "lib/ppc/dynamic_obj/fat.o",3);
+    CHECK_INT(products_validate(ROOT,3,1,0),0);
+    CHECK_INT(products_validate(ROOT,2,1,0),0);
+    put(OBJ "lib/ppc/dynamic_obj/fat.o",1);
+    CHECK_INT(products_validate(ROOT,3,1,0),1);
 }
 TEST(test_suffix_pairs) {
     reset();

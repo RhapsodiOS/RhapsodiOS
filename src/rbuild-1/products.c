@@ -134,7 +134,7 @@ static int code_file(validation *v, const char *rel, unsigned mask) {
     if (count > 1) {
         rc = failure(v, rel, "ambiguous architecture path", mask, v->required);
     } else if (bucket) {
-        if (mask != bucket || (suffix && suffix != bucket)) {
+        if ((mask & bucket) != bucket || (suffix && suffix != bucket)) {
             rc = failure(v, rel, "object CPU/suffix disagrees with directory bucket",
                          mask, bucket);
         } else {

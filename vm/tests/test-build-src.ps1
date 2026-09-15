@@ -342,6 +342,7 @@ Assert-Match $builderSourceText 'products_validate\(root, required, objects, obj
 Assert-Match $rbuildRunnerText 'architecture_covers' 'thin bootstrap reuses state whose architecture covers the requested CPU'
 Assert-Match $productsSourceText 'i386\.subproj' 'object harvest treats Project Builder i386.subproj as an i386 CPU bucket'
 Assert-Match $productsSourceText 'allow_superset \|\| v\.objects' 'object collections accept extra CPU coverage'
+Assert-Match $productsSourceText '\(mask & bucket\) != bucket' 'directory buckets accept fat objects that still cover the bucket CPU'
 Assert-Match $builderSourceText 'builder_relativize_symlinks\(dstroot\)' 'APK packaging rewrites DSTROOT absolute aliases to relative symlinks'
 Assert-Match $builderSourceText '-Wl,-syslibroot,' 'bootstrap rewrites syslibroot linker flags for Rhapsody ld'
 Assert-Match $builderSourceText 'str_cats\("-L", root, "/usr/local/lib"' 'bootstrap linker search includes sysroot /usr/local/lib for libcompat.a'

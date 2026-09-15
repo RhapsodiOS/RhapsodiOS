@@ -143,6 +143,7 @@ $kernloadKlLogMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\kernload
 $kernloadKlUtilMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\kernload-1\cmds\kl_util\Makefile')
 Assert-Match $kernloadLoaderMakefileText '\$\{LOCAL_CFLAGS\}' 'kern_loader compiles with bootstrap LOCAL_CFLAGS'
 Assert-Match $kernloadLoadedServerMakefileText '\$\{LOCAL_CFLAGS\}' 'loaded_server compiles with bootstrap LOCAL_CFLAGS'
+Assert-Match $kernloadLoadedServerMakefileText "CFLAGS=-static.*LOCAL_CFLAGS" 'loaded_server generated MIG compile uses bootstrap LOCAL_CFLAGS'
 Assert-Match $kernloadKlLogMakefileText '\$\{LOCAL_CFLAGS\}' 'kl_log compiles with bootstrap LOCAL_CFLAGS'
 Assert-Match $kernloadKlUtilMakefileText '\$\{LOCAL_CFLAGS\}' 'kl_util compiles with bootstrap LOCAL_CFLAGS'
 $iondrvHeaderText = Get-Content -Raw (Join-Path $repoRoot 'src\driverkit-3\libDriver\ppc\IONDRVFramebuffer.h')

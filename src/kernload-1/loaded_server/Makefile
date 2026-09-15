@@ -96,7 +96,7 @@ Makefile.gen: $(GEN_HFILES) $(GEN_MIGFILES)
 	$(ECHO) "CFILES=`$(ECHO) *.c`"			> Makefile.gen
 	$(ECHO)						>> Makefile.gen
 	$(ECHO) 'OFILES=$$(CFILES:.c=.o)'			>> Makefile.gen
-	$(ECHO) 'CFLAGS=-static -g -O -MD -Wall -DMACH -DKERNEL_FEATURES $${RC_CFLAGS}' \
+	$(ECHO) 'CFLAGS=-static -g -O -MD -Wall -DMACH -DKERNEL_FEATURES $${RC_CFLAGS} $${LOCAL_CFLAGS}' \
 							>> Makefile.gen
 	$(ECHO)						>> Makefile.gen
 	$(ECHO) 'libmig: $$(OFILES)'			>> Makefile.gen

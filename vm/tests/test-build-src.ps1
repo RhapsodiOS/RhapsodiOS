@@ -139,6 +139,7 @@ Assert-Match $cctoolsLdMakefileText '-I\$\(HDRROOT\)/System/Library/Frameworks/S
 Assert-Match $cctoolsGprofMakefileText '-I\$\(HDRROOT\)/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders' 'cctools gprof reads PrivateHeaders from the bootstrap sysroot'
 Assert-NotMatch $cctoolsAsMakefileText '-I\$\(NEXT_ROOT\)/System/Library/Frameworks/System.framework/PrivateHeaders' 'cctools as does not wait for NEXT_ROOT/System.framework'
 Assert-Match $cctoolsAsMakefileText '\$\(LOCAL_CFLAGS\)' 'cctools as compiles with bootstrap LOCAL_CFLAGS'
+Assert-Equal ([regex]::Matches($cctoolsAsMakefileText, 'CFLAGS="-g -O[^"]*\$\(LOCAL_CFLAGS\)"').Count) 2 'cctools as driver_build recursive CFLAGS keep LOCAL_CFLAGS'
 Assert-Match $cctoolsLdMakefileText '\$\(LOCAL_CFLAGS\)' 'cctools ld compiles with bootstrap LOCAL_CFLAGS'
 Assert-Match $cctoolsGprofMakefileText '\$\(LOCAL_CFLAGS\)' 'cctools gprof compiles with bootstrap LOCAL_CFLAGS'
 foreach ($cctoolsDir in @('ar', 'file', 'otool', 'misc', 'mkshlib', 'profileServer', 'dyld', 'libstuff', 'libmacho', 'libdyld')) {

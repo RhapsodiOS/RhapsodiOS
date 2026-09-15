@@ -3,6 +3,8 @@
 # CRT, libc components, language/runtime objects, then System.
 # Csu and Libc must precede i386 compiles of later runtime libraries.
 # objc4/Libstreams objects must exist before Libsystem harvests them.
+# Fat cctools (libmacho/libdyld/librld) and cc (libcc_dynamic) must exist
+# before Libsystem's i386 System.framework link.
 dir     Csu-1                   all
 dir     Libc-1                  all
 dir     Libcompat-1             all
@@ -19,4 +21,6 @@ dir     objc-1                  all
 dir     machkit-1               headers
 dir     machkit-1               all
 dir     driverkit-3             all
+dir     cctools-2               all
+dir     cc-1                    all
 dir     Libsystem-2             all

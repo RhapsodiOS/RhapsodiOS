@@ -146,23 +146,24 @@ GREP = /bin/grep
 # FIXME when we have the latest cc from 4.2mach
 LIBTOOL=/usr/bin/libtool
 DYNAMIC_PROJDIRS = $(ARGON_PROJECTS) $(DYNAMIC_ONLY)
-# pb_makefiles sets TARGET_ARCHS=$(RC_ARCHS). project_makefiles recurse
-# once per arch with TARGET_ARCH only, so an empty TARGET_ARCHS must
-# not skip harvest links or drop System.order.$(TARGET_ARCH).
-ifneq ($(strip $(TARGET_ARCHS)),)
-LINK_ARCHS = $(TARGET_ARCHS)
-else
+# project_makefiles recurse once per arch with TARGET_ARCH. Prefer that
+# so make_links/.all_done/sectorder are the current CPU; TARGET_ARCHS is
+# both i386 and ppc and would let the second CPU reuse the first's objects.
+ifneq ($(strip $(TARGET_ARCH)),)
 LINK_ARCHS = $(TARGET_ARCH)
+else
+LINK_ARCHS = $(TARGET_ARCHS)
 endif
+LINK_STAGE = $(SYMROOT)/libsystem-links/$(BUILD_TARGET)/$(TARGET_ARCH)
 DYNAMIC_SECTORDER_FLAGS = $(foreach A,$(LINK_ARCHS),-sectorder __TEXT __text $(SRCROOT)/System.order.$(A))
 
 make_links::
-	@(if [ -f $(SYMROOT)/libsystem-links/$(BUILD_TARGET)/.all_done ] && [ ! -f $(SYMROOT)/libsystem-links/$(BUILD_TARGET)/c/ofileList ]; then \
-		/bin/rm -rf $(SYMROOT)/libsystem-links/$(BUILD_TARGET); \
+	@(if [ -f $(LINK_STAGE)/.all_done ] && [ ! -f $(LINK_STAGE)/c/ofileList ]; then \
+		/bin/rm -rf $(LINK_STAGE); \
 	fi; \
-	if [ ! -f $(SYMROOT)/libsystem-links/$(BUILD_TARGET)/.all_done ]; then\
-		$(MKDIRS) $(SYMROOT)/libsystem-links/$(BUILD_TARGET);\
-		cd $(SYMROOT)/libsystem-links/$(BUILD_TARGET);\
+	if [ ! -f $(LINK_STAGE)/.all_done ]; then\
+		$(MKDIRS) $(LINK_STAGE);\
+		cd $(LINK_STAGE);\
 		bail=NO;\
             if [ "$(BUILD_TARGET)" = framework ]; then\
 		dirs="$(DYNAMIC_PROJDIRS)";\
@@ -242,11 +243,11 @@ make_links::
 		if [ "$$bail" = YES ]; then\
 			exit 1;\
 		fi;\
-		touch $(SYMROOT)/libsystem-links/$(BUILD_TARGET)/.all_done;\
+		touch $(LINK_STAGE)/.all_done;\
 	fi)
 
 set_extra_libtool_flags =\
-	cd $(SYMROOT)/libsystem-links/$(BUILD_TARGET) ;\
+	cd $(LINK_STAGE) ;\
 	if [ "$(BUILD_TARGET)" = framework ]; then\
 		link_dir=dynamic;\
 		ofileList_flags="$(DYNAMIC_SECTORDER_FLAGS) " ;\

@@ -370,7 +370,7 @@ Assert-Match $productsSourceText 'i386\.subproj' 'object harvest treats Project 
 Assert-Match $productsSourceText 'allow_superset \|\| v\.objects' 'object collections accept extra CPU coverage'
 Assert-Match $productsSourceText '\(mask & bucket\) != bucket' 'directory buckets accept fat objects that still cover the bucket CPU'
 $libsystemPostambleText = Get-Content -Raw (Join-Path $repoRoot 'src\Libsystem-2\Makefile.postamble')
-Assert-Match $libsystemPostambleText '\$\(SYMROOT\)/libsystem-links/\$\(BUILD_TARGET\)' 'Libsystem make_links staging is per-target under SYMROOT'
+Assert-Match $libsystemPostambleText '\$\(SYMROOT\)/libsystem-links/\$\(BUILD_TARGET\)/\$\(TARGET_ARCH\)' 'Libsystem make_links staging is per-arch so ppc does not reuse i386 object links'
 Assert-NotMatch $libsystemPostambleText '\$\(OFILE_DIR\)/links' 'Libsystem make_links does not harvest foreign-arch objects under OFILE_DIR'
 Assert-NotMatch $libsystemPostambleText '\$\(OBJROOT\)/libsystem-links' 'Libsystem make_links is not under OBJROOT harvest'
 Assert-Match $builderSourceText 'builder_relativize_symlinks\(dstroot\)' 'APK packaging rewrites DSTROOT absolute aliases to relative symlinks'

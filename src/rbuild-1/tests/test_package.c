@@ -1,4 +1,5 @@
 #include "package.h"
+#include "architecture.h"
 #include "test.h"
 #include <stdlib.h>
 
@@ -43,8 +44,31 @@ TEST(test_canon_names) {
     v = package_canon_version(&p);
     n = package_canon_name(&p);
     CHECK_STR(v, "1.2-3");
-    CHECK_STR(n, "foo-1.2-3");
+    CHECK_STR(n, "foo-1.2-3-universal");
     free(v); free(n);
+
+    package_set(&p.architecture, "i386-apple-rhapsody");
+    n = package_canon_name(&p);
+    CHECK_STR(n, "foo-1.2-3-i386");
+    free(n);
+
+    package_set(&p.architecture, "ppc-apple-rhapsody");
+    n = package_canon_name(&p);
+    CHECK_STR(n, "foo-1.2-3-ppc");
+    free(n);
+
+    package_set(&p.architecture, 0);
+    n = package_canon_name(&p);
+    CHECK_STR(n, "foo-1.2-3-universal");
+    free(n);
+
+    package_set(&p.architecture, "");
+    n = package_canon_name(&p);
+    CHECK(n == 0);
+
+    package_set(&p.architecture, "m68k");
+    n = package_canon_name(&p);
+    CHECK(n == 0);
     package_free(&p);
 }
 

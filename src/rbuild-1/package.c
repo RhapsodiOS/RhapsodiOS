@@ -1,4 +1,5 @@
 #include "package.h"
+#include "architecture.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -119,11 +120,28 @@ char *package_canon_version(const Package *p) {
     return out;
 }
 
-/* apk stem: "<pkgname>-<pkgver>". Redefined from Perl's canon_name
-   (pkg_ver_arch); architecture now lives only in .PKGINFO. */
+/* apk stem: "<pkgname>-<pkgver>-<shortarch>". */
 char *package_canon_name(const Package *p) {
-    char *ver = package_canon_version(p);
-    char *out = str_cats(p->package ? p->package : "", "-", ver, (char *)0);
+    unsigned mask = 0;
+    const char *token;
+    char *ver;
+    char *out;
+    if (p->architecture && p->architecture[0] == '\0') {
+        fprintf(stderr,
+            "rbuild: missing or unsupported architecture for package \"%s\"\n",
+            p->package ? p->package : "");
+        return 0;
+    }
+    if (architecture_parse(p->architecture, &mask) != 0 ||
+        (token = architecture_filename_token(mask)) == 0) {
+        fprintf(stderr,
+            "rbuild: missing or unsupported architecture for package \"%s\"\n",
+            p->package ? p->package : "");
+        return 0;
+    }
+    ver = package_canon_version(p);
+    out = str_cats(p->package ? p->package : "", "-", ver, "-", token,
+                   (char *)0);
     free(ver);
     return out;
 }

@@ -34,7 +34,7 @@ test_macho_OBJS = macho.o
 test_architecture_OBJS = architecture.o
 
 test_strutil_OBJS = strutil.o
-test_package_OBJS = strutil.o package.o
+test_package_OBJS = strutil.o package.o architecture.o
 test_manifest_OBJS = strutil.o manifest.o
 test_builder_OBJS = strutil.o package.o exec.o toolchain.o pkginfo.o builder.o architecture.o products.o macho.o apk.o
 test_exec_OBJS = strutil.o exec.o

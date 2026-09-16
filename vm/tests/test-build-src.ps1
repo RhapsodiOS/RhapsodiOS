@@ -84,6 +84,8 @@ $gnumakeMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\gnumake-1\Make
 Assert-Match $gnumakeMakefileText 'source_root="\$\(SRCROOT\)"' 'gnumake preserves its configured source root across the object-directory chdir'
 Assert-Match $gnumakeMakefileText '\$\$source_root/\$\(MAKE_SRC_DIR\)/configure' 'gnumake configures from the preserved source tree'
 Assert-NotMatch $gnumakeMakefileText 'PWD=`pwd`' 'gnumake does not repurpose the shell-maintained PWD variable for its source root'
+Assert-Match $gnumakeMakefileText '"CFLAGS = \$\(RC_CFLAGS\) \$\(\$\(RC_OS\)_CFLAGS\) \$\(LOCAL_CFLAGS\)"' 'gnumake recursive compile uses bootstrap LOCAL_CFLAGS'
+Assert-Match $gnumakeMakefileText '"LDFLAGS= \$\(RC_CFLAGS\) \$\(OTHER_LDFLAGS\)"' 'gnumake recursive link uses bootstrap OTHER_LDFLAGS'
 $csuMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\Csu-1\Makefile')
 Assert-Match $csuMakefileText '(?m)^crt1\.o:.*\$\(OBJROOT\)/dyld\.stub' 'Csu builds the dylinker stub before merging crt1'
 Assert-Match $csuMakefileText '(?m)^gcrt1\.o:.*\$\(OBJROOT\)/dyld\.stub' 'Csu builds the dylinker stub before merging gcrt1'

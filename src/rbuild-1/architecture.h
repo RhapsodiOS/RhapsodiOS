@@ -13,5 +13,7 @@ int architecture_resolve(unsigned source, unsigned operation, unsigned *effectiv
 const char *architecture_label(unsigned mask);
 const char *architecture_archs(unsigned mask);
 const char *architecture_cflags(unsigned mask);
+const char *architecture_filename_token(unsigned mask);
+int architecture_path_has_token(const char *path, unsigned mask);
 
 #endif

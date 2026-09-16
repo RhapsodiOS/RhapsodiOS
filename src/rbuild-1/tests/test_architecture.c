@@ -1,6 +1,7 @@
 #include "architecture.h"
 #include "test.h"
 #include <limits.h>
+#include <string.h>
 
 TEST(test_labels) {
     static const char *labels[] = { 0, "universal-apple-rhapsody", "i386",
@@ -69,6 +70,28 @@ TEST(test_resolve) {
     }
 }
 
+TEST(test_filename_token) {
+    CHECK_STR(architecture_filename_token(RB_ARCH_I386), "i386");
+    CHECK_STR(architecture_filename_token(RB_ARCH_PPC), "ppc");
+    CHECK_STR(architecture_filename_token(RB_ARCH_UNIVERSAL), "universal");
+    CHECK(architecture_filename_token(0) == 0);
+    CHECK(architecture_filename_token(4) == 0);
+}
+
+TEST(test_path_has_token) {
+    CHECK_INT(architecture_path_has_token("csu-23.1-1-universal.apk",
+                                          RB_ARCH_UNIVERSAL), 1);
+    CHECK_INT(architecture_path_has_token(
+        "/build/repo/drvpcfloppy-5-i386.apk", RB_ARCH_I386), 1);
+    CHECK_INT(architecture_path_has_token("kernel-154.5.1-7-ppc.apk",
+                                          RB_ARCH_PPC), 1);
+    CHECK_INT(architecture_path_has_token("csu-23.1-1.apk",
+                                          RB_ARCH_UNIVERSAL), 0);
+    CHECK_INT(architecture_path_has_token("csu-23.1-1-ppc.apk",
+                                          RB_ARCH_UNIVERSAL), 0);
+    CHECK_INT(architecture_path_has_token(0, RB_ARCH_UNIVERSAL), 0);
+}
+
 TEST(test_invalid_masks) {
     static const unsigned masks[] = { 0, 4, 5, 6, 7, UINT_MAX };
     unsigned i, effective;
@@ -90,6 +113,8 @@ static void run_all(void) {
     RUN(test_labels);
     RUN(test_invalid_labels);
     RUN(test_resolve);
+    RUN(test_filename_token);
+    RUN(test_path_has_token);
     RUN(test_invalid_masks);
 }
 

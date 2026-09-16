@@ -55,3 +55,31 @@ const char *architecture_cflags(unsigned mask) {
     }
     return 0;
 }
+
+const char *architecture_filename_token(unsigned mask) {
+    switch (mask) {
+    case RB_ARCH_I386: return "i386";
+    case RB_ARCH_PPC: return "ppc";
+    case RB_ARCH_UNIVERSAL: return "universal";
+    }
+    return 0;
+}
+
+int architecture_path_has_token(const char *path, unsigned mask) {
+    const char *token = architecture_filename_token(mask);
+    const char *slash;
+    const char *base;
+    size_t base_len;
+    size_t token_len;
+    size_t need;
+    if (path == 0 || token == 0) return 0;
+    slash = strrchr(path, '/');
+    base = slash ? slash + 1 : path;
+    base_len = strlen(base);
+    token_len = strlen(token);
+    need = token_len + 5; /* - + token + .apk */
+    if (base_len < need) return 0;
+    if (base[base_len - need] != '-') return 0;
+    if (strncmp(base + base_len - need + 1, token, token_len) != 0) return 0;
+    return strcmp(base + base_len - 4, ".apk") == 0;
+}

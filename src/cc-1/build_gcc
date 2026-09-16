@@ -831,12 +831,21 @@ for target in $TARGETS; do
     $RM -f $TEMP/make.$$
   done
 
-  install_newer $sym/$host/lib/$target/specs \
-		$fat/$libexec/$target`if [ "$RHAPSODY" ]; then echo /$gcc_version; fi`/specs \
-		"-m 444"
-  if [ "$RHAPSODY" ]; then
+  specs_dst=$fat/$libexec/$target`if [ "$RHAPSODY" ]; then echo /$gcc_version; fi`/specs
+  specs_src=$sym/$arch/lib/$target/specs
+  if [ ! -f "$specs_src" ]; then
+    if [ -f /usr/libexec/$target/$gcc_version/specs ]; then
+      specs_src=/usr/libexec/$target/$gcc_version/specs
+    elif [ -f /usr/libexec/$target/specs ]; then
+      specs_src=/usr/libexec/$target/specs
+    elif [ -f /lib/$target/specs ]; then
+      specs_src=/lib/$target/specs
+    fi
+  fi
+  install_newer "$specs_src" "$specs_dst" "-m 444"
+  if [ "$RHAPSODY" -a -f "$specs_dst" ]; then
     # Make this symbolic link so cpp-precomp can find the specs file.
-    (cd $fat/$libexec/$target && ln -s $gcc_version/specs .)
+    (cd $fat/$libexec/$target && rm -f specs && ln -s $gcc_version/specs specs)
   fi
 done
 
@@ -952,10 +961,16 @@ if [ "$result" = lib_ofiles -o "$NEXT_ROOT" -a "$result" != thins ]; then
   build_lib_ofiles
   if [ "$result" = lib_ofiles ]; then exit 0; fi
   # Copy the builder's specs files because the executables the builder creates
-  # don't run on the builder.
+  # don't run on the builder. Rhapsody keeps them under usr/libexec.
   for target in $TARGETS; do
     $MKDIRS $DSTROOT/lib/$target
-    install_newer /lib/$target/specs $DSTROOT/lib/$target/specs "-m 444"
+    if [ -f /lib/$target/specs ]; then
+      install_newer /lib/$target/specs $DSTROOT/lib/$target/specs "-m 444"
+    elif [ -f /usr/libexec/$target/$gcc_version/specs ]; then
+      install_newer /usr/libexec/$target/$gcc_version/specs $DSTROOT/lib/$target/specs "-m 444"
+    elif [ -f /usr/libexec/$target/specs ]; then
+      install_newer /usr/libexec/$target/specs $DSTROOT/lib/$target/specs "-m 444"
+    fi
   done
 fi
 

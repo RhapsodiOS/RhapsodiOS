@@ -74,6 +74,11 @@ Assert-Match $ccBuildGccText '-print-prog-name=cc1' 'cc bootstrap discovers the 
 Assert-Match $ccBuildGccText '-arch \$host -c' 'cc bootstrap compile-probes when -print-prog-name returns a basename'
 Assert-Match $ccBuildGccText 'LDFLAGS="\$\{OTHER_LDFLAGS\} -undefined suppress"' 'cc fat xgcc links before System is universal'
 Assert-NotMatch $ccBuildGccText 'if \[ -d /`if \[ "\$RHAPSODY" \]; then echo usr/libexec; else echo lib; fi`/\$host \]' 'cc bootstrap does not require the historical fixed compiler directory'
+Assert-NotMatch $ccBuildGccText 'install_newer \$sym/\$host/lib/\$target/specs' 'cc fat install does not take specs from leftover HOSTS iterator'
+Assert-Match $ccBuildGccText 'install_newer "\$specs_src"' 'cc fat install copies a resolved per-target specs file into libexec'
+Assert-Match $ccBuildGccText '\$sym/\$arch/lib/\$target/specs' 'cc fat install prefers specs from the build-host SYMROOT'
+Assert-Match $ccBuildGccText '/usr/libexec/\$target/\$gcc_version/specs' 'cc fat install falls back to Rhapsody host libexec specs'
+Assert-Match $ccBuildGccText 'rm -f specs && ln -s \$gcc_version/specs specs' 'cc fat install replaces libexec specs symlink only after the real file exists'
 $ccMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\cc-1\cc\Makefile.in')
 Assert-Equal ([regex]::Matches($ccMakefileText, '\$\(MAKE\).*BISON="\$\(BISON\)"').Count) 6 'cc self-bootstrap propagates configured bison through every compiler-stage submake'
 $ccTopMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\cc-1\Makefile')

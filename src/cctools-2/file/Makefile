@@ -40,7 +40,7 @@ PRODUCT = file
 all: $(OFILE_DIR) $(SYMROOT) $(PRODUCT).NEW magic
 
 $(PRODUCT).NEW:	$(OFILE_DIR) $(SYMROOT) $(OBJS)
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/$@ $(OBJS)
+	$(CC) $(CFLAGS) $(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress -o $(SYMROOT)/$@ $(OBJS)
 
 magic: $(MAGFILES)
 	cat $(MAGFILES) > $(OFILE_DIR)/magic

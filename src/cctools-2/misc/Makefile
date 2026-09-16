@@ -63,56 +63,56 @@ checksyms.NEW: checksyms.o vers.o
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r \
 		-o $(OBJROOT)/checksyms.private.o \
 		$(OFILE_DIR)/checksyms.o $(OFILE_DIR)/vers.o $(LIBSTUFF)
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/checksyms.NEW \
+	$(CC) $(CFLAGS) $(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress -o $(SYMROOT)/checksyms.NEW \
 		$(OFILE_DIR)/checksyms.private.o
 
 cmpdylib.NEW: cmpdylib.o vers.o
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r \
 		-o $(OBJROOT)/cmpdylib.private.o \
 		$(OFILE_DIR)/cmpdylib.o $(OFILE_DIR)/vers.o $(LIBSTUFF)
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/cmpdylib.NEW \
+	$(CC) $(CFLAGS) $(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress -o $(SYMROOT)/cmpdylib.NEW \
 		$(OFILE_DIR)/cmpdylib.private.o
 
 main.NEW: main.o vers.o
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r \
 		-o $(OBJROOT)/main.private.o \
 		$(OFILE_DIR)/main.o $(OFILE_DIR)/vers.o $(LIBSTUFF)
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/main.NEW \
+	$(CC) $(CFLAGS) $(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress -o $(SYMROOT)/main.NEW \
 		$(OFILE_DIR)/lipo.private.o
 
 lipo.NEW: lipo.o vers.o
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r \
 		-o $(OBJROOT)/lipo.private.o \
 		$(OFILE_DIR)/lipo.o $(OFILE_DIR)/vers.o $(LIBSTUFF)
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/lipo.NEW \
+	$(CC) $(CFLAGS) $(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress -o $(SYMROOT)/lipo.NEW \
 		$(OFILE_DIR)/lipo.private.o
 
 size.NEW: size.o vers.o
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r \
 		-o $(OBJROOT)/size.private.o \
 		$(OFILE_DIR)/size.o $(OFILE_DIR)/vers.o $(LIBSTUFF)
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/size.NEW \
+	$(CC) $(CFLAGS) $(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress -o $(SYMROOT)/size.NEW \
 		$(OFILE_DIR)/size.private.o
 
 strings.NEW: strings.o vers.o
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r \
 		-o $(OBJROOT)/strings.private.o \
 		$(OFILE_DIR)/strings.o $(OFILE_DIR)/vers.o $(LIBSTUFF)
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/strings.NEW \
+	$(CC) $(CFLAGS) $(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress -o $(SYMROOT)/strings.NEW \
 		$(OFILE_DIR)/strings.private.o
 
 nm.NEW: nm.o vers.o
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r \
 		-o $(OBJROOT)/nm.private.o \
 		$(OFILE_DIR)/nm.o $(OFILE_DIR)/vers.o $(LIBSTUFF)
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/nm.NEW \
+	$(CC) $(CFLAGS) $(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress -o $(SYMROOT)/nm.NEW \
 		$(OFILE_DIR)/nm.private.o
 
 kern_tool.NEW: kern_tool.o vers.o
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r \
 		-o $(OBJROOT)/kern_tool.private.o \
 		$(OFILE_DIR)/kern_tool.o $(OFILE_DIR)/vers.o $(LIBSTUFF)
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/kern_tool.NEW \
+	$(CC) $(CFLAGS) $(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress -o $(SYMROOT)/kern_tool.NEW \
 		$(OFILE_DIR)/kern_tool.private.o
 
 libtool.NEW: makeUser.o libtool.o vers.o
@@ -120,14 +120,14 @@ libtool.NEW: makeUser.o libtool.o vers.o
 		-o $(OBJROOT)/libtool.private.o \
 		$(OFILE_DIR)/libtool.o $(OFILE_DIR)/vers.o \
 		$(OFILE_DIR)/makeUser.o $(LIBSTUFF)
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/libtool.NEW \
+	$(CC) $(CFLAGS) $(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress -o $(SYMROOT)/libtool.NEW \
 		$(OFILE_DIR)/libtool.private.o
 
 redo_prebinding.NEW: redo_prebinding.o vers.o
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r \
 		-o $(OBJROOT)/redo_prebinding.private.o \
 		$(OFILE_DIR)/redo_prebinding.o $(OFILE_DIR)/vers.o $(LIBSTUFF)
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/redo_prebinding.NEW \
+	$(CC) $(CFLAGS) $(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress -o $(SYMROOT)/redo_prebinding.NEW \
 		$(OFILE_DIR)/redo_prebinding.private.o
 
 makeUser.c libtool.o: make.h
@@ -152,7 +152,7 @@ inout.NEW: inout.o vers.o
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r \
 		-o $(OBJROOT)/inout.private.o \
 		$(OFILE_DIR)/inout.o $(OFILE_DIR)/vers.o $(LIBSTUFF)
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/inout.NEW \
+	$(CC) $(CFLAGS) $(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress -o $(SYMROOT)/inout.NEW \
 		$(OFILE_DIR)/inout.private.o
 
 core.NEW: core.o vers.o
@@ -160,28 +160,28 @@ core.NEW: core.o vers.o
 		-o $(OBJROOT)/core.private.o \
 		$(OFILE_DIR)/core.o $(OFILE_DIR)/vers.o $(LIBSTUFF) \
 		../libdyld/dtmp_obj/dyld_debug.o
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/core.NEW \
+	$(CC) $(CFLAGS) $(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress -o $(SYMROOT)/core.NEW \
 		$(OFILE_DIR)/core.private.o
 
 indr.NEW: indr.o vers.o
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r \
 		-o $(OBJROOT)/indr.private.o \
 		$(OFILE_DIR)/indr.o $(OFILE_DIR)/vers.o $(LIBSTUFF)
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/indr.NEW \
+	$(CC) $(CFLAGS) $(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress -o $(SYMROOT)/indr.NEW \
 		$(OFILE_DIR)/indr.private.o
 
 strip.NEW: strip.o vers.o
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r \
 		-o $(OBJROOT)/strip.private.o \
 		$(OFILE_DIR)/strip.o $(OFILE_DIR)/vers.o $(LIBSTUFF)
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/strip.NEW \
+	$(CC) $(CFLAGS) $(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress -o $(SYMROOT)/strip.NEW \
 		$(OFILE_DIR)/strip.private.o
 
 nmedit.NEW: nmedit.o vers.o
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r \
 		-o $(OBJROOT)/nmedit.private.o \
 		$(OFILE_DIR)/nmedit.o $(OFILE_DIR)/vers.o $(LIBSTUFF)
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/nmedit.NEW \
+	$(CC) $(CFLAGS) $(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress -o $(SYMROOT)/nmedit.NEW \
 		$(OFILE_DIR)/nmedit.private.o
 	# Stage-0: libdyld needs nmedit on PATH before cctools install finishes
 	rm -f /usr/local/bin/nmedit
@@ -197,42 +197,42 @@ file.NEW: file.o vers.o
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r \
 		-o $(OBJROOT)/file.private.o \
 		$(OFILE_DIR)/file.o $(OFILE_DIR)/vers.o $(LIBSTUFF)
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/file.NEW \
+	$(CC) $(CFLAGS) $(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress -o $(SYMROOT)/file.NEW \
 		$(OFILE_DIR)/file.private.o
 
 ar.NEW: ar.o vers.o
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r \
 		-o $(OBJROOT)/ar.private.o \
 		$(OFILE_DIR)/ar.o $(OFILE_DIR)/vers.o $(LIBSTUFF)
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/ar.NEW \
+	$(CC) $(CFLAGS) $(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress -o $(SYMROOT)/ar.NEW \
 		$(OFILE_DIR)/ar.private.o
 
 atom.NEW: atom.o vers.o
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r \
 		-o $(OBJROOT)/atom.private.o \
 		$(OFILE_DIR)/atom.o $(OFILE_DIR)/vers.o $(LIBSTUFF)
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/atom.NEW \
+	$(CC) $(CFLAGS) $(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress -o $(SYMROOT)/atom.NEW \
 		$(OFILE_DIR)/atom.private.o
 
 segedit.NEW: segedit.o vers.o
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r \
 		-o $(OBJROOT)/segedit.private.o \
 		$(OFILE_DIR)/segedit.o $(OFILE_DIR)/vers.o $(LIBSTUFF)
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/segedit.NEW \
+	$(CC) $(CFLAGS) $(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress -o $(SYMROOT)/segedit.NEW \
 		$(OFILE_DIR)/segedit.private.o
 
 dylib_pcsampler.NEW: dylib_pcsampler.o vers.o
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r \
 		-o $(OBJROOT)/dylib_pcsampler.private.o \
 		$(OFILE_DIR)/dylib_pcsampler.o $(OFILE_DIR)/vers.o $(LIBSTUFF)
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/dylib_pcsampler.NEW \
+	$(CC) $(CFLAGS) $(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress -o $(SYMROOT)/dylib_pcsampler.NEW \
 		$(OFILE_DIR)/dylib_pcsampler.private.o
 
 pagestuff.NEW: pagestuff.o vers.o
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r \
 		-o $(OBJROOT)/pagestuff.private.o \
 		$(OFILE_DIR)/pagestuff.o $(OFILE_DIR)/vers.o $(LIBSTUFF)
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/pagestuff.NEW \
+	$(CC) $(CFLAGS) $(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress -o $(SYMROOT)/pagestuff.NEW \
 		$(OFILE_DIR)/pagestuff.private.o
 
 

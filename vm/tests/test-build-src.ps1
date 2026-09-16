@@ -146,6 +146,22 @@ foreach ($cctoolsDir in @('ar', 'file', 'otool', 'misc', 'mkshlib', 'profileServ
     $cctoolsMakefileText = Get-Content -Raw (Join-Path $repoRoot ("src\cctools-2\{0}\Makefile" -f $cctoolsDir))
     Assert-Match $cctoolsMakefileText '\$\(LOCAL_CFLAGS\)' ("cctools {0} compiles with bootstrap LOCAL_CFLAGS" -f $cctoolsDir)
 }
+$cctoolsArMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\cctools-2\ar\Makefile')
+$cctoolsFileMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\cctools-2\file\Makefile')
+$cctoolsMiscMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\cctools-2\misc\Makefile')
+$cctoolsMkshlibMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\cctools-2\mkshlib\Makefile')
+$cctoolsProfileServerMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\cctools-2\profileServer\Makefile')
+$cctoolsFatToolLink = '\$\(RC_CFLAGS\) \$\(OTHER_LDFLAGS\) -undefined suppress -o'
+Assert-Match $cctoolsArMakefileText $cctoolsFatToolLink 'cctools ar fat-links before System is universal'
+Assert-Match $cctoolsFileMakefileText $cctoolsFatToolLink 'cctools file fat-links before System is universal'
+Assert-Match $cctoolsAsMakefileText $cctoolsFatToolLink 'cctools as fat-links before System is universal'
+Assert-Match $cctoolsLdMakefileText $cctoolsFatToolLink 'cctools ld fat-links before System is universal'
+Assert-Match $cctoolsGprofMakefileText $cctoolsFatToolLink 'cctools gprof fat-links before System is universal'
+Assert-Match $cctoolsMiscMakefileText $cctoolsFatToolLink 'cctools misc fat-links before System is universal'
+Assert-Match $cctoolsMkshlibMakefileText $cctoolsFatToolLink 'cctools mkshlib fat-links before System is universal'
+Assert-Match $cctoolsProfileServerMakefileText $cctoolsFatToolLink 'cctools profileServer fat-links before System is universal'
+Assert-Equal ([regex]::Matches($cctoolsArMakefileText, '-undefined suppress').Count) 1 'cctools ar only suppresses on the executable link'
+Assert-Equal ([regex]::Matches($cctoolsAsMakefileText, '-undefined suppress').Count) 2 'cctools as suppresses driver and as, not relocatable -r'
 $kernloadKernservMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\kernload-1\include\kernserv\Makefile')
 $kernloadLibMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\kernload-1\libkernload\Makefile')
 Assert-Equal ([regex]::Matches($kernloadKernservMakefileText, '(?m)^install:').Count) 1 'kernserv headers have one install target'

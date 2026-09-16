@@ -213,7 +213,7 @@ ld.NEW:	$(OBJS) ld_vers.o makeUser.o
 	$(CC) $(COPTS) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r \
 		$(OBJS) ld_vers.o makeUser.o $(LIBSTUFF) \
 		-o $(SYMROOT)/ld.private.o
-	$(CC) $(COPTS) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/ld.NEW \
+	$(CC) $(COPTS) $(CFLAGS) $(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress -o $(SYMROOT)/ld.NEW \
 		$(SYMROOT)/ld.private.o
 
 ld_g.NEW: $(OBJS) ld_vers.o makeUser.o

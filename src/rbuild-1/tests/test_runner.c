@@ -250,8 +250,44 @@ TEST(test_kernel_architecture_controls_build_commands) {
     system("rm -rf /tmp/rbuild-kernel-policy");
 }
 
+TEST(test_kernel_skips_missing_core_source) {
+    static const char *projects[] = {
+        "driverkit-3", "driverTools-1", "kernload-1", "kernel-7", 0
+    };
+    char path[256], command[512], output[65536];
+    FILE *f;
+    int i, saved_stdout, rc;
+    size_t n;
+    CHECK_INT(system("mkdir -p /tmp/rbuild-kernel-skip/repo /tmp/rbuild-kernel-skip/rbuild-1"), 0);
+    for (i = 0; projects[i]; i++) {
+        sprintf(command, "mkdir -p /tmp/rbuild-kernel-skip/%s/dpkg", projects[i]);
+        CHECK_INT(system(command), 0);
+        sprintf(path, "/tmp/rbuild-kernel-skip/%s/dpkg/control", projects[i]);
+        f = fopen(path, "w");
+        CHECK(f != 0);
+        if (!f) return;
+        fprintf(f, "Package: skip%d\nVersion: 1.0\nDescription: skip\nBuild-Depends:\n", i);
+        fclose(f);
+    }
+    f = tmpfile();
+    CHECK(f != 0);
+    if (!f) return;
+    fflush(stdout); saved_stdout = dup(1); dup2(fileno(f), 1);
+    exec_dry_run = 1;
+    rc = runner_kernel("/tmp/rbuild-kernel-skip", "/tmp/rbuild-kernel-skip/repo",
+                       "/tmp/rbuild-kernel-skip/repo", "i386", 0);
+    fflush(stdout); dup2(saved_stdout, 1); close(saved_stdout);
+    rewind(f); n = fread(output, 1, sizeof(output)-1, f); output[n] = '\0'; fclose(f);
+    exec_dry_run = 0;
+    CHECK_INT(rc, 0);
+    CHECK(strstr(output, "skip missing kernel source drivers-i386/bus/drvPExpert") != 0);
+    CHECK(strstr(output, "rbuild: kernel complete") != 0);
+    system("rm -rf /tmp/rbuild-kernel-skip");
+}
+
 static void run_all(void) {
     RUN(test_kernel_architecture_controls_build_commands);
+    RUN(test_kernel_skips_missing_core_source);
     RUN(test_buildpackage_scan_failure_clears_log);
     RUN(test_replay_rejects_required_artifact_replaced_by_symlink);
 }

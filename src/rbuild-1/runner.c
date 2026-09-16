@@ -893,7 +893,14 @@ int runner_kernel(const char *srcdir, const char *seeddir, const char *dstdir,
     strlist_init(&packages);
     if (kernel_core_packages(arch, &packages) != 0) goto done;
     for (i = 0; i < packages.count; i++) {
+        struct stat st;
         path = path_join(srcdir, packages.items[i]);
+        if (stat(path, &st) != 0 || !S_ISDIR(st.st_mode)) {
+            printf("rbuild: skip missing kernel source %s\n", packages.items[i]);
+            fflush(stdout);
+            free(path);
+            continue;
+        }
         if (buildpackage_for_arch("dir", path, seeddir, "all", dstdir,
                                   state_dir, operation_arch) != 0) {
             fprintf(stderr, "rbuild: kernel failed: %s\n", packages.items[i]);

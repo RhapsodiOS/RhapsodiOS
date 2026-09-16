@@ -63,7 +63,7 @@ int builder_scan_dir(const char *source, Package *pkg, Params *params);
 int builder_scan(const char *type, const char *source, Package *pkg, Params *params);
 
 int builder_makeroot(const Package *pkg, const char *buildroot,
-                     const strlist *repository);
+                     const strlist *repository, const Toolchain *tc);
 
 int builder_setupdirs(const Package *pkg, const Params *params,
                       const char *srcname, const char *srctype,

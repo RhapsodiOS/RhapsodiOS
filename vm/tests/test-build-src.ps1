@@ -243,10 +243,22 @@ $pkginfoSourceText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\pkginfo
 $apkSourceText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\apk.c')
 $apkTestSourceText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\tests\test_apk.c')
 $builderSourceText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\builder.c')
+Assert-Match $builderSourceText 'char \*saved_path = old_path \? xstrdup\(old_path\) : 0;' 'run_make saves PATH before the make environment'
+Assert-Match $builderSourceText '(?s)rc = exec_run_checked\(argv\);\s+if \(saved_path\) \{\s+setenv\("PATH", saved_path, 1\);' 'run_make restores PATH so later APK extracts keep host tar'
+Assert-Match $builderSourceText 'builder_makeroot\(pkg, params->BUILDROOT, repository,\s+opt \? opt->toolchain : 0\)' 'ordinary chroot extract uses the toolchain tar wrapper'
+Assert-Match $builderSourceText 'apk_use_arch\(path, 0, tc, name, version,' 'package lookup uses toolchain tar for architecture checks'
 $productsSourceText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\products.c')
 $rbuildMainText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\main.c')
 $rbuildKernelText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\kernel.c')
 $rbuildRunnerText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\runner.c')
+Assert-Match $rbuildRunnerText 'skip missing kernel source' 'kernel walk skips a core package whose source directory is absent'
+$kernelControlText = Get-Content -Raw (Join-Path $repoRoot 'src\kernel-7\dpkg\control')
+Assert-NotMatch $kernelControlText 'drvpexpert' 'kernel-7 does not require a Platform Expert APK that i386 does not ship'
+$ataHdRegistryText = Get-Content -Raw (Join-Path $repoRoot 'src\kernel-7\bsd\dev\ata_hd_registry.m')
+Assert-Match $ataHdRegistryText '(?s)#import <sys/param.h>.*#import <sys/proc.h>' 'i386 ATA registry includes param.h before proc.h'
+$kernelI386MakeText = Get-Content -Raw (Join-Path $repoRoot 'src\kernel-7\conf\Makefile.i386')
+Assert-Match $kernelI386MakeText '(?m)^LIBS= -lcc$' 'i386 kernel links against fat libcc instead of a missing helper object'
+Assert-NotMatch $kernelI386MakeText 'libcc_i386_helpers' 'i386 kernel does not require a PPC-only libcc workaround object'
 $rbuildMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\Makefile')
 $rbuildBlacklistPath = Join-Path $repoRoot 'src\rbuild-1\kernel-drivers-blacklist.json'
 $rbuildBlacklistText = Get-Content -Raw $rbuildBlacklistPath

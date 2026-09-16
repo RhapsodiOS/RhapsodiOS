@@ -727,7 +727,7 @@ TEST(test_makeroot_dry_run_preserves_package_list) {
     pkg.has_build_depends = 1; /* Explicitly empty: no APK extraction. */
     strlist_init(&repo);
     exec_dry_run = 1;
-    CHECK_INT(builder_makeroot(&pkg, root, &repo), 0);
+    CHECK_INT(builder_makeroot(&pkg, root, &repo, 0), 0);
     exec_dry_run = 0;
 
     f = fopen(path, "r");
@@ -1293,19 +1293,19 @@ TEST(test_dependency_fallback_and_reinstallation) {
     strlist_init(&repo); strlist_push(&repo,"/tmp/rb-dep-policy/first"); strlist_push(&repo,"/tmp/rb-dep-policy/second");
     f=fopen("/tmp/rb-dep-policy/root/var/adm/package-list","w");CHECK(f!=0);
     if(f){fputs("dep-2\n",f);fclose(f);}
-    CHECK_INT(builder_makeroot(&pkg,"/tmp/rb-dep-policy/root",&repo),0);
+    CHECK_INT(builder_makeroot(&pkg,"/tmp/rb-dep-policy/root",&repo,0),0);
     CHECK(access("/tmp/rb-dep-policy/root/tool",F_OK)==0);
     unlink("/tmp/rb-dep-policy/first/dep-2.apk");
     cache_fixture("/tmp/rb-dep-policy/second","dep","3","i386",7);
-    CHECK_INT(builder_makeroot(&pkg,"/tmp/rb-dep-policy/root",&repo),0);
+    CHECK_INT(builder_makeroot(&pkg,"/tmp/rb-dep-policy/root",&repo,0),0);
     package_set(&pkg.architecture,"universal-apple-rhapsody");
     f=fopen("/tmp/rb-dep-policy/root/tool","w"); CHECK(f!=0);
     if(f){fputs("untouched",f);fclose(f);}
-    CHECK(builder_makeroot(&pkg,"/tmp/rb-dep-policy/root",&repo)!=0);
+    CHECK(builder_makeroot(&pkg,"/tmp/rb-dep-policy/root",&repo,0)!=0);
     f=fopen("/tmp/rb-dep-policy/root/tool","r"); CHECK(f!=0);
     if(f){data[0]=0;fgets(data,sizeof(data),f);fclose(f);CHECK_STR(data,"untouched");}
     cache_fixture("/tmp/rb-dep-policy/second","dep","3","ppc",0);
-    CHECK_INT(builder_makeroot(&pkg,"/tmp/rb-dep-policy/root",&repo),0);
+    CHECK_INT(builder_makeroot(&pkg,"/tmp/rb-dep-policy/root",&repo,0),0);
     package_free(&pkg);strlist_free(&repo);
     system("rm -rf /tmp/rb-dep-policy /tmp/rb-cache-fixture");
 }

@@ -112,7 +112,7 @@ char *builder_resolve_dependency(const char *name, const strlist *repository) {
  * compatible versions later in the same directory or a later repository. */
 static char *find_arch_package(const char *dir, const char *name,
                                const char *version, unsigned required,
-                               int dependency) {
+                               int dependency, const Toolchain *tc) {
     DIR *d = opendir(dir);
     struct dirent *de;
     char *found = 0;
@@ -124,7 +124,7 @@ static char *find_arch_package(const char *dir, const char *name,
         if (exact_name && strcmp(de->d_name, exact_name) != 0) continue;
         if (!builder_match_pkgfile(de->d_name, name)) continue;
         path = path_join(dir, de->d_name);
-        if (!exec_dry_run && apk_use_arch(path, 0, 0, name, version,
+        if (!exec_dry_run && apk_use_arch(path, 0, tc, name, version,
                 required, str_has_suffix(name, "-obj"), dependency) == 0) {
             found = path; break;
         }
@@ -143,7 +143,7 @@ char *builder_exists(const Package *pkg, const char *type, const char *dir) {
     if (architecture_parse(pkg->architecture, &required) != 0) return 0;
     if (strcmp(type, "exact") == 0) version = package_canon_version(pkg);
     else if (strcmp(type, "any") != 0) return 0;
-    found = find_arch_package(dir, pkg->package, version, required, 0);
+    found = find_arch_package(dir, pkg->package, version, required, 0, 0);
     free(version);
     return found;
 }
@@ -776,7 +776,7 @@ static char *deb_to_name(const char *path) {
 }
 
 int builder_makeroot(const Package *pkg, const char *buildroot,
-                     const strlist *repository) {
+                     const strlist *repository, const Toolchain *tc) {
     strlist deps;       /* expanded, deduped dependency names */
     strlist depnames;   /* resolved package basenames (no .apk) */
     strlist depfiles;   /* resolved full paths, parallel to depnames */
@@ -821,7 +821,7 @@ int builder_makeroot(const Package *pkg, const char *buildroot,
         size_t ri;
         for (ri = 0; ri < repository->count && !file; ri++)
             file = find_arch_package(repository->items[ri], deps.items[i],
-                                     0, required, 1);
+                                     0, required, 1, tc);
         if (exec_dry_run && !file) {
             printf("validate and install dependency %s for %s\n", deps.items[i],
                    architecture_label(required));
@@ -843,7 +843,7 @@ int builder_makeroot(const Package *pkg, const char *buildroot,
     for (i = 0; i < depnames.count; i++) {
         printf("\tinstalling %s\n", depfiles.items[i]);
         fflush(stdout);
-        if (apk_use_arch(depfiles.items[i], buildroot, 0, deps.items[i], 0,
+        if (apk_use_arch(depfiles.items[i], buildroot, tc, deps.items[i], 0,
                          required, str_has_suffix(deps.items[i], "-obj"), 1) != 0) {
             rc = 1; free(listpath); goto cleanup;
         }
@@ -1064,7 +1064,8 @@ int builder_setupdirs(const Package *pkg, const Params *params,
     /* Bootstrap builds run on the host root: no chroot to create or populate. */
     if (!bootstrap) {
         if (exec_check(mkdirp(params->BUILDROOT))) return 1;
-        if (builder_makeroot(pkg, params->BUILDROOT, repository) != 0) return 1;
+        if (builder_makeroot(pkg, params->BUILDROOT, repository,
+                             opt ? opt->toolchain : 0) != 0) return 1;
     }
 
     if (strcmp(srctype, "dir") == 0) {
@@ -1453,13 +1454,19 @@ static int run_make(strlist *cmd, const BuildOptions *opt) {
     }
     {
         const char *path = "/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin";
+        const char *old_path = getenv("PATH");
+        char *saved_path = old_path ? xstrdup(old_path) : 0;
         if (opt && opt->toolchain && opt->toolchain->path)
             path = opt->toolchain->path;
         setenv("PATH", path, 1);
         printf("UNAME_SYSNAME=Rhapsody PATH=%s ", path);
+        exec_printcmd(argv);
+        rc = exec_run_checked(argv);
+        if (saved_path) {
+            setenv("PATH", saved_path, 1);
+            free(saved_path);
+        }
     }
-    exec_printcmd(argv);
-    rc = exec_run_checked(argv);
     free(argv);
     return rc;
 }

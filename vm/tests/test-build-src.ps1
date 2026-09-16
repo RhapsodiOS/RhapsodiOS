@@ -75,6 +75,10 @@ Assert-Match $ccBuildGccText '-arch \$host -c' 'cc bootstrap compile-probes when
 Assert-NotMatch $ccBuildGccText 'if \[ -d /`if \[ "\$RHAPSODY" \]; then echo usr/libexec; else echo lib; fi`/\$host \]' 'cc bootstrap does not require the historical fixed compiler directory'
 $ccMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\cc-1\cc\Makefile.in')
 Assert-Equal ([regex]::Matches($ccMakefileText, '\$\(MAKE\).*BISON="\$\(BISON\)"').Count) 6 'cc self-bootstrap propagates configured bison through every compiler-stage submake'
+$ccTopMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\cc-1\Makefile')
+Assert-Match $ccTopMakefileText 'CFLAGS="-O \$\(RC_CFLAGS\) \$\(OTHER_CFLAGS\) \$\(LOCAL_CFLAGS\)"' 'cc bundled bison compiles with bootstrap LOCAL_CFLAGS'
+Assert-Match $ccTopMakefileText 'LDFLAGS="\$\(RC_CFLAGS\) \$\(OTHER_LDFLAGS\) -undefined suppress' 'cc bundled bison fat-links before System is universal'
+Assert-Match $ccTopMakefileText '\$\(RC_CFLAGS\) \$\(OTHER_CFLAGS\) \$\(LOCAL_CFLAGS\)"' 'cc fat bootstrap compiles with bootstrap LOCAL_CFLAGS'
 $gnumakeMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\gnumake-1\Makefile')
 Assert-Match $gnumakeMakefileText 'source_root="\$\(SRCROOT\)"' 'gnumake preserves its configured source root across the object-directory chdir'
 Assert-Match $gnumakeMakefileText '\$\$source_root/\$\(MAKE_SRC_DIR\)/configure' 'gnumake configures from the preserved source tree'

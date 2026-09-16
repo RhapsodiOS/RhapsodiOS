@@ -80,7 +80,7 @@ debug: obj.clone
 		--dstroot=$(DSTROOT) \
 		--objroot=$(OBJROOT) \
 		--symroot=$(SYMROOT) \
-		--cflags="$(RC_CFLAGS) -g" \
+		--cflags="$(RC_CFLAGS) $(LOCAL_CFLAGS) -g" \
 		--hosts="$(RC_ARCHS)" \
 		--targets="$(TARGETS)"
 
@@ -114,7 +114,7 @@ config:
 		--dstroot=$(DSTROOT) \
 		--objroot=$(OBJROOT) \
 		--symroot=$(SYMROOT) \
-		--cflags="$(RC_CFLAGS) -g" \
+		--cflags="$(RC_CFLAGS) $(LOCAL_CFLAGS) -g" \
 		--hosts="$(RC_ARCHS)" \
 		--targets="$(TARGETS)"
 
@@ -130,7 +130,7 @@ build: build_bison
 			     echo -DOPENSTEP; \
 			   elif [ "$(TARGET_OS)" = macos ]; then \
 			     echo -DMACOSX; \
-			   fi` $(RC_CFLAGS) $(OTHER_CFLAGS) -g" \
+			   fi` $(RC_CFLAGS) $(OTHER_CFLAGS) $(LOCAL_CFLAGS) -g" \
 		--hosts="$(RC_ARCHS)" \
 		--targets="$(TARGETS)" \
 		--targetos="$(TARGET_OS)" \
@@ -150,7 +150,7 @@ install_no_src: install_bison
 			     echo -DOPENSTEP; \
 			   elif [ "$(TARGET_OS)" = macos ]; then \
 			     echo -DMACOSX; \
-			   fi` $(RC_CFLAGS) $(OTHER_CFLAGS)" \
+			   fi` $(RC_CFLAGS) $(OTHER_CFLAGS) $(LOCAL_CFLAGS)" \
 		--hosts="$(RC_ARCHS)" \
 		--targets="$(TARGETS)" && \
 	    if [ ! -f /usr/bin/uname ]; then \
@@ -181,7 +181,7 @@ bootstrap: bootstrap_bison
 		--dstroot=$(DSTROOT) \
 		--objroot=$(OBJROOT) \
 		--symroot=$(SYMROOT) \
-		--cflags="$(RC_CFLAGS)" \
+		--cflags="$(RC_CFLAGS) $(LOCAL_CFLAGS)" \
 		--hosts=$(ARCH) \
 		--targets="$(RC_ARCHS)"
 
@@ -197,7 +197,7 @@ clean: clean_bison
 			     echo -DOPENSTEP; \
 			   elif [ "$(TARGET_OS)" = macos ]; then \
 			     echo -DMACOSX; \
-			   fi` $(RC_CFLAGS) $(OTHER_CFLAGS)" \
+			   fi` $(RC_CFLAGS) $(OTHER_CFLAGS) $(LOCAL_CFLAGS)" \
 		--hosts="$(RC_ARCHS)" \
 		--targets="$(TARGETS)"
 
@@ -277,8 +277,8 @@ SRCROOT:
 
 build_bison: $(OBJROOT)/bison_$(ARCH)_obj/Makefile
 	(cd $(OBJROOT)/bison_$(ARCH)_obj; \
-	 $(make) CFLAGS="-O $(RC_CFLAGS) $(OTHER_CFLAGS)" \
-		LDFLAGS="$(RC_CFLAGS) `case "$(TARGET_OS)" in *solaris* | *hpux*) \
+	 $(make) CFLAGS="-O $(RC_CFLAGS) $(OTHER_CFLAGS) $(LOCAL_CFLAGS)" \
+		LDFLAGS="$(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress `case "$(TARGET_OS)" in *solaris* | *hpux*) \
 			      echo -nopdolib ;; \
 			  esac`" \
 		datadir="`case "$(TARGET_OS)" in *win*) \
@@ -323,8 +323,8 @@ install_bison: build_bison
 			 esac`
 	(cd $(OBJROOT)/bison_$(ARCH)_obj; \
 	$(make) install \
-		CFLAGS="$(RC_CFLAGS) $(OTHER_CFLAGS)" \
-		LDFLAGS="$(RC_CFLAGS)" \
+		CFLAGS="$(RC_CFLAGS) $(OTHER_CFLAGS) $(LOCAL_CFLAGS)" \
+		LDFLAGS="$(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress" \
 		prefix="$(DSTROOT)/`case "$(TARGET_OS)" in *solaris* | *hpux*)\
 			     echo Local ;; \
 			  *) echo usr/local ;; \
@@ -354,6 +354,6 @@ lib_ofiles:
 		--dstroot=$(DSTROOT) \
 		--objroot=$(OBJROOT) \
 		--symroot=$(SYMROOT) \
-		--cflags="$(RC_CFLAGS)" \
+		--cflags="$(RC_CFLAGS) $(LOCAL_CFLAGS)" \
 		--hosts="$(RC_ARCHS)" \
 		--targets="$(TARGETS)"

@@ -914,6 +914,7 @@ for library in libcc.a libcc_dynamic.a; do
     thin_files="$thin_files $OBJROOT/cc-$target-on-$host/libgcc.a"
   done
   $MKDIRS $DSTROOT/lib
+  $MKDIRS $DSTROOT/usr/lib
   $RM -f $DSTROOT/lib/$library
   $RM -f $TEMP/make.$$
   touch -f $TEMP/make.$$
@@ -924,6 +925,11 @@ for library in libcc.a libcc_dynamic.a; do
   echo "	chmod 444  $DSTROOT/lib/$library"		>>$TEMP/make.$$
   safe_exec $make -f $TEMP/make.$$
   $RM -f $TEMP/make.$$
+  # Bootstrap sets NEXT_ROOT, which skips the later fat usr/lib install.
+  # -lcc_dynamic searches usr/lib, so publish the same archive there.
+  $RM -f $DSTROOT/usr/lib/$library
+  cp $DSTROOT/lib/$library $DSTROOT/usr/lib/$library
+  chmod 444 $DSTROOT/usr/lib/$library
   extra_cflags=''
 done
 }

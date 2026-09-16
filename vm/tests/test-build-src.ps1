@@ -213,6 +213,9 @@ Assert-Match $nvramPostambleText '\$\(LN\) -f PowerSurge' 'nvram machine aliases
 Assert-NotMatch $nvramPostambleText '\$\(LN\) -s ' 'nvram does not pass extra -s; bootstrap LN is already /bin/ln -s'
 Assert-Match $fbalertSourceText '#include <bsd/dev/kmreg_com.h>' 'fbalert includes kmreg_com.h from System PrivateHeaders/bsd'
 Assert-NotMatch $fbalertSourceText '#include <dev/kmreg_com.h>' 'fbalert does not use the kernel-relative kmreg_com.h path'
+$topPostambleText = Get-Content -Raw (Join-Path $repoRoot 'src\Commands\system_cmds\top.tproj\Makefile.postamble')
+Assert-Match $topPostambleText 'lipo -create -output \./commands\.o' 'top fat-links commands.o from per-arch objects'
+Assert-NotMatch $topPostambleText 'commands\.ppc\.o \./commands\.o' 'top does not copy a ppc-only commands.o into a fat link'
 Assert-NotMatch $libsystemPostambleText '\$\(LN\) \$\$name/\$\$\{obj_dir\}_obj/\$\$name\.ofileList' 'Libsystem ofileList symlink is not cwd-relative (dangling with ln -s)'
 Assert-Match $libcMachPreambleText 'override\s+MIG\s*=\s*\$\(CONFIG_DIR\)/mig' 'libc Mach headers override inherited host MIG with the configured private tool'
 Assert-Match $libcMachPreambleText 'MIGFLAGS\s*=\s*\$\(RC_CFLAGS\)\s+\$\(LOCAL_CFLAGS\)' 'libc Mach MIG preprocessing uses isolated RC flags and bootstrap LOCAL_CFLAGS includes'

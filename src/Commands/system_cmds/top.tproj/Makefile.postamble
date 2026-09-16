@@ -24,13 +24,19 @@ sigdesc.h: sigconv.awk $(SIGNAL)
 	$(AWK) -f sigconv.awk $(SIGNAL) >sigdesc.h
 
 # Make sure sigdesc.h is built before compiling commands.c.
-commands.o $(OFILE_DIR)/commands.o commands.ppc.o $(OFILE_DIR)/commands.ppc.o: sigdesc.h
+commands.o $(OFILE_DIR)/commands.o commands.ppc.o $(OFILE_DIR)/commands.ppc.o commands.i386.o $(OFILE_DIR)/commands.i386.o: sigdesc.h
 
 # NeXT make VPATH-qualifies most ofiles on the link line but leaves bare
-# commands.o; place a real copy in cwd so cc can open it.
-ensure-commands-o: $(OFILE_DIR)/commands.ppc.o
+# commands.o. Lipo per-arch objects so a universal link can load i386.
+ensure-commands-o: $(foreach A,$(RC_ARCHS),$(OFILE_DIR)/commands.$(A).o)
 	$(RM) -f ./commands.o
-	$(CP) -p $(OFILE_DIR)/commands.ppc.o ./commands.o
+	@thins="$(foreach A,$(RC_ARCHS),$(OFILE_DIR)/commands.$(A).o)"; \
+	n=`echo $$thins | wc -w`; \
+	if [ $$n -gt 1 ]; then \
+	  lipo -create -output ./commands.o $$thins; \
+	else \
+	  $(CP) -p $$thins ./commands.o; \
+	fi
 
 # Additional clean targets
 clean:

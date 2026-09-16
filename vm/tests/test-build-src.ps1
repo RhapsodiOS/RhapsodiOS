@@ -72,6 +72,7 @@ Assert-Match $texi2htmlIndex '^100755 ' 'CoreOS texi2html is tracked executable'
 $ccBuildGccText = Get-Content -Raw (Join-Path $repoRoot 'src\cc-1\build_gcc')
 Assert-Match $ccBuildGccText '-print-prog-name=cc1' 'cc bootstrap discovers the configured GCC backend instead of assuming a host layout'
 Assert-Match $ccBuildGccText '-arch \$host -c' 'cc bootstrap compile-probes when -print-prog-name returns a basename'
+Assert-Match $ccBuildGccText 'LDFLAGS="\$\{OTHER_LDFLAGS\} -undefined suppress"' 'cc fat xgcc links before System is universal'
 Assert-NotMatch $ccBuildGccText 'if \[ -d /`if \[ "\$RHAPSODY" \]; then echo usr/libexec; else echo lib; fi`/\$host \]' 'cc bootstrap does not require the historical fixed compiler directory'
 $ccMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\cc-1\cc\Makefile.in')
 Assert-Equal ([regex]::Matches($ccMakefileText, '\$\(MAKE\).*BISON="\$\(BISON\)"').Count) 6 'cc self-bootstrap propagates configured bison through every compiler-stage submake'

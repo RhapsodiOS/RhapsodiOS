@@ -531,6 +531,7 @@ for host in $HOSTS; do
 			 else echo ./xgcc -B./ -traditional-cpp; fi`" \
 	BISON="$BISON" \
 	CFLAGS="$OPTIMIZE $CFLAGS" \
+	LDFLAGS="${OTHER_LDFLAGS} -undefined suppress" \
 	BOOT_CFLAGS="$OPTIMIZE $CFLAGS \
 	  `if [ $TARGET_OS != win32 ]; then echo -traditional-cpp; fi`" \
 	CC="`if [ $TARGET_OS = win32 ]; then echo gcc; \

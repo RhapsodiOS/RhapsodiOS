@@ -125,6 +125,87 @@ bootstrap products come only from the synced source tree and resumable state.
 Kernel, kernel drivers, and world (`buildall`) are out of scope for bootstrap.
 The host orchestrator runs them in separate phases after bootstrap completes.
 
+## Live guest evidence (Task 9)
+
+Recorded on the configured PPC guest (`vm/vm.conf`, Rhapsody 5.6) against
+`/build/repo` and `/build/bootstrap-root` without wiping those trees and
+without `golden.img` or `-All`. Guest `rbuild` was
+`/build/tools/bin/rbuild` (115624 bytes). The sources in that binary match
+commit `4095d32304901e0462b53e495712be04bc7c2efc` (`rbuild: keep pax-gnutar
+for chroot extracts and finish i386 kernel proof`). Earlier fat-link and
+sysroot commits still on the branch include `1399a2288` (cc specs),
+`f4e1a8eae` (libcc in usr/lib), `c4ed3ba31` (Libsystem per-arch links),
+`e73039984` / `55199076d` (`-undefined suppress`), and `c02231fcd` /
+`446724709` / `617d6741b` (LOCAL_CFLAGS / top lipo).
+
+Long walks used one guest `nohup` writing `/build/state/logs/task9-bootstrap.out`
+then `/build/state/logs/task9-kernel.out`. Host SSH was not used for the
+bootstrap or kernel compile. No produced i386 program was executed or booted.
+
+### Step 4: live repo inspection
+
+All 68 APKs under `/build/repo` declared `arch = universal-apple-rhapsody`
+(count `TOTAL=68 UNIVERSAL=68 OTHER=0`). Sample `lipo -info` on the bootstrap
+sysroot:
+
+```
+Architectures in the fat file: /build/bootstrap-root/lib/crt1.o are: i386 ppc
+Architectures in the fat file: /build/bootstrap-root/usr/lib/dyld are: ppc i386
+Architectures in the fat file: /build/bootstrap-root/System/Library/Frameworks/System.framework/Versions/B/System are: i386 ppc
+Architectures in the fat file: /build/bootstrap-root/usr/bin/bison are: i386 ppc
+Architectures in the fat file: /build/bootstrap-root/usr/bin/cc are: ppc i386
+Architectures in the fat file: /build/bootstrap-root/bin/gnumake are: i386 ppc
+Architectures in the fat file: /build/bootstrap-root/usr/bin/as are: i386 ppc
+Architectures in the fat file: /build/bootstrap-root/usr/bin/ld are: i386 ppc
+```
+
+`/build/bootstrap-root/usr/bin/mig` is a Bourne shell script. The bootstrap log
+ends `BOOTSTRAP_COMPLETE`.
+
+### Step 5: ordinary universal `buildpackage`
+
+A private copy of `patch-1` named `task9-patch-proof` was built with ordinary
+(non-bootstrap) `rbuild buildpackage --dir --target all` against seed
+`/build/repo` and dest `/tmp/task9-proof-apks`. Log
+`/build/state/logs/task9-proof.out`:
+
+```
+FIRST_RC=0 Tue Sep 15 05:24:30 EDT 2026
+pkgname = task9-patch-proof
+pkgver = 2.5-1
+arch = universal-apple-rhapsody
+Architectures in the fat file: /tmp/task9-proof-info/usr/bin/patch are: ppc i386
+package file for "task9-patch-proof-2.5-1" already exists; not building
+SECOND_RC=0 Tue Sep 15 05:24:31 EDT 2026
+PROOF_COMPLETE rc1=0 rc2=0
+```
+
+The produced binary was inspected with `lipo`, not executed.
+
+### Step 6: `rbuild kernel --arch i386`
+
+```
+rbuild kernel --state /build/state --arch i386 \
+  /build/src /build/repo /build/rbuild-i386-kernel-proof
+```
+
+Log `/build/state/logs/task9-kernel.out` ends `rbuild: kernel complete` and
+`KERNEL_PROOF_COMPLETE rc=0`. Dest APKs (all `arch = i386-apple-rhapsody`):
+`driverkit-139.1-3`, `drivertools-24-1`, `kernload-60-1`, `kernel-154.5.1-7`
+plus matching `-hdrs` companions. There is no `drivers-i386/bus/drvPExpert`
+source in this tree; rbuild skipped that missing core path and `kernel-7` no
+longer lists `drvpexpert` as a Build-Depends. Inspected Mach-O (not booted):
+
+```
+/tmp/kext/mach_kernel: Mach-O executable i386
+Non-fat file: /tmp/kext/mach_kernel is architecture: i386
+Non-fat file: /tmp/kl/usr/sbin/kern_loader is architecture: i486
+Non-fat file: /tmp/kl/usr/lib/libkernload.a is architecture: i386
+Architectures in the fat file: /tmp/dk/usr/lib/libDriver.A.dylib are: i386
+```
+
+i486 is the i386 CPU family. No i386 kernel or tool was executed.
+
 ## Verification environment and scope
 
 The 2026-09-12 acceptance run used implementation commit

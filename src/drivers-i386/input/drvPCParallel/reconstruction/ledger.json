@@ -1715,7 +1715,8 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "rewritten against 6304-6707: returns int, copies bp->b_un.b_addr by value into pp_softc[].data, and the jump table at 6496 maps -738/-737 to 83, -726 to 60, -725 to 16 and everything else to 5 - all 36 entries decoded from the binary (Findings 41, 42, 43)"
+          "rewritten against 6304-6707: returns int, copies bp->b_un.b_addr by value into pp_softc[].data, and the jump table at 6496 maps -738/-737 to 83, -726 to 60, -725 to 16 and everything else to 5 - all 36 entries decoded from the binary (Findings 41, 42, 43)",
+          "Task 8: READ-first, recompute minor(bp->b_dev), error-if result!=0, case PP_IO_ERROR so gcc emits lea +2E2h/cmp 23h, BUSY before TIMEOUT; IDA masked_equal"
         ],
         "status": "agreed"
       },
@@ -1723,12 +1724,12 @@
       "names": [
         "_ppstrategy"
       ],
-      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reason": null,
       "reviewer": "Pat Raynor",
       "size": 404,
       "source_line": 352,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
-      "status": "intentional-mismatch"
+      "status": "assembly-matched"
     },
     {
       "address": 6708,
@@ -1803,7 +1804,7 @@
       "status": "intentional-mismatch"
     }
   ],
-  "rebuilt_sha256": "4286DBE19D7CAEA41A8E990E3CC4DA6EC057816542D47F944028291F7FDC3CED",
+  "rebuilt_sha256": "B2569ED7E39790C27046346BCE98B6B8115F37428CB8796C75D51C94F14ABA32",
   "reference_sha256": "D188A4D909005683B0C943C84CD99514C14A84AD1D378425B3B1DB343F1EAAA2",
   "schema_version": "ledger-v1"
 }

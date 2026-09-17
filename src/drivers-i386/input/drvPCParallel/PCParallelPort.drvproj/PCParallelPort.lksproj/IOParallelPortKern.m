@@ -352,10 +352,9 @@ int ppioctl(dev_t dev, unsigned long cmd, void *data, int flag, void *p)
 int ppstrategy(struct buf *bp)
 {
     IOParallelPort *port;
-    int portNum = minor(bp->b_dev);
     IOReturn result;
 
-    port = (IOParallelPort *)pp_softc[portNum].device;
+    port = (IOParallelPort *)pp_softc[minor(bp->b_dev)].device;
     if (port == nil) {
         bp->b_error = ENXIO;
         bp->b_flags |= (B_DONE | B_ERROR);
@@ -363,52 +362,53 @@ int ppstrategy(struct buf *bp)
     }
 
     // Check if this is a READ or WRITE operation
-    if ((bp->b_flags & B_READ) == 0) {
+    if (bp->b_flags & B_READ) {
+        // READ operation
+        result = [port readFromPort];
+    } else {
         // WRITE operation: hand the transfer to the port, by value
-        pp_softc[portNum].data = (unsigned char *)bp->b_un.b_addr;
-        pp_softc[portNum].count = bp->b_bcount;
+        pp_softc[minor(bp->b_dev)].data = (unsigned char *)bp->b_un.b_addr;
+        pp_softc[minor(bp->b_dev)].count = bp->b_bcount;
 
         result = [port writeToPort];
 
         // Update residual count
-        bp->b_resid = pp_softc[portNum].count;
-    } else {
-        // READ operation
-        result = [port readFromPort];
+        bp->b_resid = pp_softc[minor(bp->b_dev)].count;
     }
 
     // Mark buffer as done
     bp->b_flags |= B_DONE;
 
-    if (result == 0) {
-        // Success - clear error flag
-        bp->b_flags &= ~B_ERROR;
-        return 0;
+    if (result != 0) {
+        // Error occurred - set error flag and map the IOReturn to an errno
+        bp->b_flags |= B_ERROR;
+
+        switch (result) {
+            case PP_PAPER_OUT_ERROR:    // -737
+            case PP_OFFLINE_ERROR:      // -738
+                bp->b_error = 0x53;     // 83
+                break;
+
+            case PP_BUSY_ERROR:         // -725
+                bp->b_error = EBUSY;    // 16
+                break;
+
+            case PP_TIMEOUT_ERROR:      // -726
+                bp->b_error = ETIMEDOUT;  // 60
+                break;
+
+            case PP_IO_ERROR:           // -703
+            default:
+                bp->b_error = EIO;      // 5
+                break;
+        }
+
+        return -1;
     }
 
-    // Error occurred - set error flag and map the IOReturn to an errno
-    bp->b_flags |= B_ERROR;
-
-    switch (result) {
-        case PP_PAPER_OUT_ERROR:    // -737
-        case PP_OFFLINE_ERROR:      // -738
-            bp->b_error = 0x53;     // 83
-            break;
-
-        case PP_TIMEOUT_ERROR:      // -726
-            bp->b_error = ETIMEDOUT;  // 60
-            break;
-
-        case PP_BUSY_ERROR:         // -725
-            bp->b_error = EBUSY;    // 16
-            break;
-
-        default:
-            bp->b_error = EIO;      // 5
-            break;
-    }
-
-    return -1;
+    // Success - clear error flag
+    bp->b_flags &= ~B_ERROR;
+    return 0;
 }
 
 unsigned int ppminphys(struct buf *bp)

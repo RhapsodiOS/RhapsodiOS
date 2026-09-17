@@ -1365,23 +1365,47 @@ _IOParallelPortInterruptHandler
   push 232325h                            push 232325h
 ```
 
+### Task 8 — `_ppstrategy` jump table
+
+READ-first so `jz` takes WRITE, `minor(bp->b_dev)` at each `pp_softc` access,
+`if (result != 0)` so `test edx` / `jz` success, missing `case PP_IO_ERROR`
+(-703) so gcc emits `lea eax, [edx+2E2h]` / `cmp eax, 23h`, BUSY before
+TIMEOUT so the case bodies are 0x53 / 0x10 / 0x3C / 0x5. IDA `masked_equal`
+(label/jpt addresses only). Rebuilt SHA-256
+`B2569ED7E39790C27046346BCE98B6B8115F37428CB8796C75D51C94F14ABA32`.
+Parity 0/0. Previously identical rows stayed identical (40). Ledger 6304
+`assembly-matched`.
+
+```
+_ppstrategy
+  status=different raw_equal=False masked_equal=True
+  lea eax, [edx+2E2h]                     lea eax, [edx+2E2h]
+  cmp eax, 23h                            cmp eax, 23h
+* ja def_1957                             ja def_1683
+* jmp ds:jpt_1957[eax*4]                  jmp ds:jpt_1683[eax*4]
+  mov dword ptr [esi+28h], 53h            mov dword ptr [esi+28h], 53h
+  mov dword ptr [esi+28h], 10h            mov dword ptr [esi+28h], 10h
+  mov dword ptr [esi+28h], 3Ch            mov dword ptr [esi+28h], 3Ch
+  mov dword ptr [esi+28h], 5              mov dword ptr [esi+28h], 5
+```
+
 ### Task 8 — remaining large functions (compiler-shaped leftover)
 
-`--name` on the current reloc for `_ppstrategy`, `_ppioctl`,
+`--name` on the current reloc for `_ppioctl`,
 `initFromDeviceDescription:`, and `_IOParallelPortThread` — grind in progress.
 
 ### 8.9 The status rule used
 
-- `assembly-matched` (56) - the reference's full instruction stream was read and our
+- `assembly-matched` (57) - the reference's full instruction stream was read and our
   source is a statement-for-statement transliteration of it with no remaining difference,
   and the function's emitted metadata was verified identical in the rebuilt binary. Used
-  for the accessors and the short bodies. Task 8 promoted `msgTypeToIOReturn:` and
-  `cmdBufAlloc` (`masked_equal`).
+  for the accessors and the short bodies. Task 8 promoted `msgTypeToIOReturn:`,
+  `cmdBufAlloc`, and `_ppstrategy` (`masked_equal`).
 - `control-flow-confirmed` (0) - the reference's full instruction stream was read and our
   source reproduces its block structure, every call target and every constant, but the
   rebuilt output was **not** itself disassembled and compared instruction by instruction.
   Used for the larger functions.
-- `intentional-mismatch` (19) - a deliberate difference remains: 0 (`_waitForDevice:isReady:`
+- `intentional-mismatch` (18) - a deliberate difference remains: 0 (`_waitForDevice:isReady:`
   for-loop with `tries < busyMaxRetries`; leftover is the `inb` stack slot), 112 and 1452
   (Finding 53, uninitialized control byte reconstructed; leftover is gcc 2.x zero-fill /
   immediate fold), 2372 and 2388 (`struct buf` encoding), 3132 (`printerInit` control byte
@@ -1396,6 +1420,5 @@ _IOParallelPortInterruptHandler
   (`_IOParallelPortThread` commandType test vs cmp / status slot), 5240
   (`_IOParallelPortInterruptHandler` decode invert; leftover is `inb` slot vs `dl`), 5828
   (`_ppwrite` signed initDevice range without pre-zeroed locals; leftover is
-  `esi` vs `ebx` and Apple's extra zeroing), 6304 (`_ppstrategy` extra
-  `sub esp,4` / register choice), 6708 (`_ppioctl` switch-pivot / labels),
+  `esi` vs `ebx` and Apple's extra zeroing), 6708 (`_ppioctl` switch-pivot / labels),
   7392 and 7404, untouched from the report pass.

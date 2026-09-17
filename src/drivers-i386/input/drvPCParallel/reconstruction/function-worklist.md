@@ -558,17 +558,16 @@ Accepted leftover: rebuilt `4286DBE19D7CAEA41A8E990E3CC4DA6EC057816542D47F944028
 
 ### `_ppstrategy` (diff 83)
 
-Star: extra `sub esp,4` / `port` spill; inverted B_READ test; Apple reindexes
-`pp_softc` instead of keeping a base pointer.
-Accepted leftover: rebuilt `C439A3442A4B9600B5C0281A3877C2645A3C979EE472234505BD6CA88248FB7F`
-(compiler-shaped extra slot / register choice; list not rebuilt-tried item-by-item).
+Star from current `--name`: Apple `jz` to WRITE (READ fallthrough) vs our
+`jnz` to READ; `result == 0` uses `jz` success vs our `jnz` error; Apple
+reindexes `pp_softc` from `minor(bp->b_dev)` instead of a `port` local.
 
-1. Invert READ/WRITE if/else
-2. Recompute `minor(bp->b_dev)` at each `pp_softc` access (no `portNum` local)
-3. Drop `portNum` local; use `minor(bp->b_dev)` as the expression
-4. Set `B_DONE` before vs after the `result == 0` test
-5. `if (result == 0) { clear B_ERROR; return 0; }` vs `if (result) error`
-6. Switch case order: paper/offline, timeout, busy, default
+1. Invert READ/WRITE: `if (bp->b_flags & B_READ)` read first — **kept** (`jz` write)
+2. Drop `portNum`; use `minor(bp->b_dev)` at each `pp_softc` access — **kept** (prologue `esi`, no extra frame)
+3. Invert `if (result)` error vs `if (result == 0)` success — **kept** (`test edx` / `jz` success)
+4. Add missing `case PP_IO_ERROR` (-703) so the switch spans `lea +2E2h` / `cmp 23h` — **kept** (jump table)
+5. Reorder BUSY before TIMEOUT so case bodies emit 53h / 10h / 3Ch / 5 — **kept, masked_equal**
+   Matched: rebuilt `B2569ED7E39790C27046346BCE98B6B8115F37428CB8796C75D51C94F14ABA32`.
 
 ### `_ppwrite` (diff 112)
 

@@ -629,19 +629,16 @@ unsigned char getKeyboardData(void)
 /* Helper function: Check if keyboard data is present and read it */
 BOOL getKeyboardDataIfPresent(unsigned char *data)
 {
-    BOOL hasData;
-
     lock_controller();
 
-    hasData = keyboardDataPresent();
-
-    unlock_controller();
-
-    if (hasData) {
+    if (!keyboardDataPresent()) {
+        unlock_controller();
+        return 0;
+    } else {
+        unlock_controller();
         *data = getKeyboardData();
+        return 1;
     }
-
-    return hasData;
 }
 
 /* Helper function: Read data from the PS/2 mouse */

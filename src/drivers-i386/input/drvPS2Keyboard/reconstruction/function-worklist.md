@@ -185,6 +185,10 @@ Task 8 regression gate. Do not apply the BOOL / `and eax, 0FFh` typed rewrite. A
 ### `_getKeyboardDataIfPresent` (diff 12)
 
 1. Branch on `keyboardDataPresent()` before the matching unlock, with explicit `return 1` / `return 0` on each path, instead of parking the BOOL and always unlocking first.
+   **Tried, miss:** `if (keyboardDataPresent()) { unlock; get; return 1; } unlock; return 0;` laid the return-0 path first (`jnz` to success). Diff 12 → 7. No closed-function regression.
+2. Explicit `else` on that `if`. Same `jnz` layout. Miss.
+3. Invert: `if (!keyboardDataPresent()) { unlock; return 0; } else { unlock; get; return 1; }` so the `jz` failure path matches the reference.
+   **Match:** `masked_equal` after rebuild `66F2CFBFA8781004505F3E4A2DA92FFE8EB9467C5EBF93118BDF7AD30A501496`. Ledger `assembly-matched`.
 
 ### `_enqueueKeyboardData` (diff 13)
 

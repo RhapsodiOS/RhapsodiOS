@@ -110,7 +110,8 @@
         ],
         "reasons": [
           "IDA, Ghidra and angr agree on address, size and block structure",
-          "full disassembly read instruction by instruction against source; divergences found (divergences.md Findings 2, 3, 8, 11). Finding 4 confirms the Force Detection parse at 716-760 is byte-for-byte what our source does"
+          "full disassembly read instruction by instruction against source; divergences found (divergences.md Findings 2, 3, 8, 11). Finding 4 confirms the Force Detection parse at 716-760 is byte-for-byte what our source does",
+          "Task 6: NULL-or-not-y/Y branch rewritten to the positive form (str != NULL && (*str == 'y' || *str == 'Y')) for Force Detection and Inverted. --name is masked_equal; remaining diffs are jump labels"
         ],
         "status": "agreed"
       },
@@ -123,7 +124,7 @@
       "size": 214,
       "source_line": 279,
       "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
-      "status": "control-flow-confirmed"
+      "status": "assembly-matched"
     },
     {
       "address": 900,

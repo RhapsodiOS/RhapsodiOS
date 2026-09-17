@@ -292,22 +292,22 @@ static void PS2MouseIntHandler(unsigned int param_1, unsigned int param_2)
      * If set to 'y' or 'Y', bypass mouse presence detection
      */
     forceDetectionStr = [configTable valueForStringKey:"Force Detection"];
-    if ((forceDetectionStr == NULL) ||
-        ((*forceDetectionStr != 'y') && (*forceDetectionStr != 'Y'))) {
-        force_detection = NO;
-    } else {
+    if ((forceDetectionStr != NULL) &&
+        ((*forceDetectionStr == 'y') || (*forceDetectionStr == 'Y'))) {
         force_detection = YES;
+    } else {
+        force_detection = NO;
     }
 
     /* Read "Inverted" parameter (offset 0x130)
      * If set to 'y' or 'Y', invert the mouse axes
      */
     invertedStr = [configTable valueForStringKey:INVERTED];
-    if ((invertedStr == NULL) ||
-        ((*invertedStr != 'y') && (*invertedStr != 'Y'))) {
-        inverted = NO;
-    } else {
+    if ((invertedStr != NULL) &&
+        ((*invertedStr == 'y') || (*invertedStr == 'Y'))) {
         inverted = YES;
+    } else {
+        inverted = NO;
     }
 
     /* Read "Resolution" parameter (offset 0x12c)

@@ -186,3 +186,148 @@ Human decision after Task 4 review:
 - Reloc rebuilt **angr** failed (`block at address 1444 is outside function at address 1465`). Reloc rebuilt **Ghidra** failed (`Ghidra relocation operand metadata is ambiguous`). Reloc dual-run `complete: true` is IDA-only. Apple reloc Ghidra/angr reference at `D:\RhapsodiOS\tools\binrecon\out\eisabus\` is unchanged.
 - Ghidra cannot use a project path under `.worktrees` (`Path element starting with '.' is not permitted`). Reloc IDA output for this run lives in `D:\RhapsodiOS\tools\binrecon\out\eisabus-task4\` (not committed).
 - Guest compile needed `-DDRIVER_PRIVATE`, bootstrap-root `LOCAL_LDFLAGS`, `LIBS = -lDriver`, basename `MFILES` + `vpath`, local MIG stubs, and `"$PnP"` in shared `PnPResources.m`. Those landed in the preceding `drvEISABus:` compile-fix commit.
+
+## Task 6 experiment lists (2026-09-17)
+
+Written **before** the first source-shape `.m` edit. Cheapest `differing` first.
+One idea per remaining non-equal paired **tool** function. Tag is `shared` or `tool-only`.
+Tried experiments are marked in place after a miss. Empty `none` lists accept as
+`compiler-shaped leftover after exhausted source-shape list` (reviewer Pat Raynor).
+
+CRT/dyld/libc rows are not hand-written; they are listed so the paired-tool set is complete,
+then left alone. Unpaired `missing-reference` shared-class names are **not** paired tool
+functions and have no experiment list.
+
+- `-[IODeviceMaster getCharValues:forParameter:objectNumber:count:]` (tool-only, diff 0): none — identical mnemonic stream; `calls differ` only
+- `-[IODeviceMaster getIntValues:forParameter:objectNumber:count:]` (tool-only, diff 0): none — identical mnemonic stream; `calls differ` only
+- `-[IODeviceMaster lookUpByDeviceName:objectNumber:deviceKind:]` (tool-only, diff 0): none — identical mnemonic stream; `calls differ` only
+- `-[IODeviceMaster lookUpByObjectNumber:deviceKind:deviceName:]` (tool-only, diff 0): none — identical mnemonic stream; `calls differ` only
+- `-[IODeviceMaster setCharValues:forParameter:objectNumber:count:]` (tool-only, diff 0): none — identical mnemonic stream; `calls differ` only
+- `-[IODeviceMaster setIntValues:forParameter:objectNumber:count:]` (tool-only, diff 0): none — identical mnemonic stream; `calls differ` only
+- `_IOExitThread` (tool-only, diff 0): none — identical mnemonic stream; `calls differ` only
+- `_IOForkThread` (tool-only, diff 0): none — identical mnemonic stream; `calls differ` only
+- `_IOFree` (tool-only, diff 0): none — identical mnemonic stream; `calls differ` only
+- `_IOMalloc` (tool-only, diff 0): none — identical mnemonic stream; `calls differ` only
+- `_IOResumeThread` (tool-only, diff 0): none — identical mnemonic stream; `calls differ` only
+- `_IOSuspendThread` (tool-only, diff 0): none — identical mnemonic stream; `calls differ` only
+- `__dyld_func_lookup` (tool-only, diff 0): none — CRT/dyld/libc glue; not hand-written
+- `dyld_stub_binding_helper` (tool-only, diff 0): none — CRT/dyld/libc glue; not hand-written
+- `+[PnPDeviceResources setReadPort:]` (shared, diff 1; reloc masked-eq d=0): none — PIC displacement of `_readPort` only; reloc already masked-eq
+- `-[PnPDeviceResources deviceCount]` (shared, diff 1; reloc masked-eq d=0): none — PIC selector displacement only; reloc already masked-eq
+- `-[PnPLogicalDevice addCompatID:]` (shared, diff 1; reloc masked-eq d=0): none — PIC selector displacement only; reloc already masked-eq
+- `_IOLog` (tool-only, diff 1): none — PIC leftover
+- `__call_mod_init_funcs` (tool-only, diff 1): none — CRT/dyld/libc glue; not hand-written
+- `__objcInit` (tool-only, diff 1): none — CRT/dyld/libc glue; not hand-written
+- `_bcopy` (tool-only, diff 1): none — CRT/dyld/libc glue; not hand-written
+- `_cond_signal` (tool-only, diff 1): none — CRT/dyld/libc glue; not hand-written
+- `_condition_wait` (tool-only, diff 1): none — CRT/dyld/libc glue; not hand-written
+- `_cthread_exit` (tool-only, diff 1): none — CRT/dyld/libc glue; not hand-written
+- `_cthread_fork` (tool-only, diff 1): none — CRT/dyld/libc glue; not hand-written
+- `_device_master_self` (tool-only, diff 1): none — CRT/dyld/libc glue; not hand-written
+- `_exit` (tool-only, diff 1): none — CRT/dyld/libc glue; not hand-written
+- `_fprintf` (tool-only, diff 1): none — CRT/dyld/libc glue; not hand-written
+- `_free` (tool-only, diff 1): none — CRT/dyld/libc glue; not hand-written
+- `_kern_timestamp` (tool-only, diff 1): none — CRT/dyld/libc glue; not hand-written
+- `_malloc` (tool-only, diff 1): none — CRT/dyld/libc glue; not hand-written
+- `_mig_dealloc_reply_port` (tool-only, diff 1): none — CRT/dyld/libc glue; not hand-written
+- `_mig_get_reply_port` (tool-only, diff 1): none — CRT/dyld/libc glue; not hand-written
+- `_msg_receive` (tool-only, diff 1): none — CRT/dyld/libc glue; not hand-written
+- `_msg_rpc` (tool-only, diff 1): none — CRT/dyld/libc glue; not hand-written
+- `_mutex_try_lock` (tool-only, diff 1): none — CRT/dyld/libc glue; not hand-written
+- `_mutex_wait_lock` (tool-only, diff 1): none — CRT/dyld/libc glue; not hand-written
+- `_objc_msgSend` (tool-only, diff 1): none — CRT/dyld/libc glue; not hand-written
+- `_objc_msgSendSuper` (tool-only, diff 1): none — CRT/dyld/libc glue; not hand-written
+- `_port_allocate` (tool-only, diff 1): none — CRT/dyld/libc glue; not hand-written
+- `_printf` (tool-only, diff 1): none — CRT/dyld/libc glue; not hand-written
+- `_spin_lock` (tool-only, diff 1): none — CRT/dyld/libc glue; not hand-written
+- `_sprintf` (tool-only, diff 1): none — CRT/dyld/libc glue; not hand-written
+- `_strcmp` (tool-only, diff 1): none — CRT/dyld/libc glue; not hand-written
+- `_strncpy` (tool-only, diff 1): none — CRT/dyld/libc glue; not hand-written
+- `_syslog` (tool-only, diff 1): none — CRT/dyld/libc glue; not hand-written
+- `_thread_resume` (tool-only, diff 1): none — CRT/dyld/libc glue; not hand-written
+- `_thread_suspend` (tool-only, diff 1): none — CRT/dyld/libc glue; not hand-written
+- `_vsprintf` (tool-only, diff 1): none — CRT/dyld/libc glue; not hand-written
+- `+[PnPDeviceResources setVerbose:]` (shared, diff 2; reloc masked-eq d=1): none — extra PIC load of extern `_verbose_ptr`; reloc already masked-eq
+- `-[NXLock unlock]` (tool-only, diff 2): none — jump labels only
+- `-[pnpDMA addDMAToList:]` (shared, diff 2; reloc different d=2): omit explicit `return self` so eax is not copied from edx (local vs expression)
+- `-[pnpIOPort initWithBase:Length:]` (shared, diff 2; reloc different d=1): none — PIC / objc super_class displacement only
+- `-[pnpIRQ addToIRQList:]` (shared, diff 2; reloc different d=2): omit explicit `return self` so eax is not copied from edx (local vs expression)
+- `-[pnpMemory initWithBase:Length:Bit16:Bit32:HighAddr:Is32:]` (shared, diff 2; reloc different d=1): none — PIC / objc class-pointer displacement only
+- `_IOPanic` (tool-only, diff 2): none — PIC leftover
+- `__dyld_init_check` (tool-only, diff 2): none — CRT/dyld/libc glue; not hand-written
+- `-[NXLock lock]` (tool-only, diff 3): none — jump labels / PIC leftovers
+- `_bail` (tool-only, diff 3): none — PIC leftover on the syslog path
+- `-[NXLock free]` (tool-only, diff 4): none — PIC / objc class-pointer leftover
+- `_IOCopyMemory` (tool-only, diff 4): none — PIC leftover
+- `_IOSleep` (tool-only, diff 5): local vs expression for the msg_receive timeout block
+- `-[IODeviceMaster createMachPort:objectNumber:]` (tool-only, diff 6): local vs expression for `self` around the MIG call
+- `-[NXLock init]` (tool-only, diff 6): declaration order of the existing mutex/cond zeroing stores
+- `-[PnPResources free]` (shared, diff 6; reloc different d=1): none — PIC selector / objc super_class vs ext leftover
+- `-[PnPResource free]` (shared, diff 8; reloc different d=3): none — extra PIC selector push plus super_class vs ext leftover
+- `-[PnPResource init]` (shared, diff 8; reloc different d=3): none — PIC selector leftover; jump labels only besides PIC
+- `-[PnPDeviceResources free]` (shared, diff 9; reloc different d=4): none — extra PIC selector push plus super_class vs ext leftover
+- `_IOFindValueForName` (tool-only, diff 9): loop shape of the table walk
+- `-[PnPLogicalDevice free]` (shared, diff 10; reloc different d=3): none — extra PIC selector push plus super_class vs ext leftover
+- `-[PnPLogicalDevice init]` (shared, diff 11; reloc different d=1): none — PIC selector leftover; reloc is class-pointer names only
+- `-[pnpIRQ setHigh:Level:]` (shared, diff 11; reloc different d=11): invert outer test to `if (high)` / `else` (if vs else if)
+- `_IOFindNameForValue` (tool-only, diff 11): loop shape of the table walk
+- `-[PnPDeviceResources deviceWithID:]` (shared, diff 12; reloc different d=10): loop shape: `if ([device ID] != id) { index++; continue; } return device` instead of break
+- `-[pnpIOPort print]` (shared, diff 12; reloc different d=9): none — Apple tool calls `_printf`, reloc both call `_IOLog`; dual-bar forbids swapping
+- `-[PnPDeviceResources initForBufNoHeader:Length:CSN:]` (shared, diff 13; reloc different d=6): none — PIC selectors plus `_printf` vs `_IOLog` on the error path
+- `-[PnPLogicalDevice setDeviceName:Length:]` (shared, diff 14; reloc different d=14): operand-reversed min `(0x4f < length) ? 0x4f : length` plus `if (_deviceNameLength == 0)` body
+- `+[IODeviceMaster new]` (tool-only, diff 15): local vs expression for the allocated object
+- `-[PnPResources addDMA:]` (shared, diff 15; reloc different d=9): omit explicit `return self` (local vs expression)
+- `-[PnPResources addIOPort:]` (shared, diff 15; reloc different d=9): omit explicit `return self` (local vs expression)
+- `-[PnPResources addIRQ:]` (shared, diff 15; reloc different d=9): omit explicit `return self` (local vs expression)
+- `-[PnPResources addMemory:]` (shared, diff 15; reloc different d=9): omit explicit `return self` (local vs expression)
+- `__start` (tool-only, diff 17): none — CRT/dyld/libc glue; not hand-written
+- `-[PnPResources init]` (shared, diff 20; reloc different d=6): none — PIC selector leftover
+- `-[pnpMemory matches:]` (shared, diff 20; reloc different d=19): loop shape / `if` vs `else if` on the channel compare
+- `-[pnpMemory setControl:]` (shared, diff 22; reloc different d=21): if vs else if on the bit-width flags
+- `-[PnPDeviceResources setDeviceName:Length:]` (shared, diff 24; reloc different d=24): operand-reversed min `(0x4f < length) ? 0x4f : length` plus `if (_deviceNameLength == 0)` body
+- `-[PnPResources print]` (shared, diff 24; reloc different d=18): none — Apple tool `_printf` vs rebuilt `_IOLog`; reloc both `_IOLog`
+- `-[pnpIRQ initFrom:Length:]` (shared, diff 26; reloc different d=22): loop shape of the mask walk; signedness of the bit index local
+- `-[pnpIOPort matches:]` (shared, diff 30; reloc different d=27): local vs expression for the aligned-base calculation
+- `-[pnpIRQ print]` (shared, diff 31; reloc different d=16): none — Apple tool `_printf` vs rebuilt `_IOLog`; reloc both `_IOLog`
+- `-[PnPResource objectAt:Using:]` (shared, diff 32; reloc different d=25): if vs else if on the type dispatch
+- `_IOInitGeneralFuncs` (tool-only, diff 32): statement order of the existing assignments
+- `-[pnpDMA initFrom:Length:]` (shared, diff 33; reloc different d=22): loop shape of the channel-mask walk
+- `_IODelay` (tool-only, diff 36): local vs expression for the timestamp add
+- `-[PnPResource matches:Using:]` (shared, diff 37; reloc different d=23): if vs else if on the type dispatch
+- `-[pnpMemory print]` (shared, diff 38; reloc different d=21): none — Apple tool `_printf` vs rebuilt `_IOLog`; reloc both `_IOLog`
+- `-[pnpDMA matches:]` (shared, diff 44; reloc different d=33): if vs else if on `otherCount != 1`; Apple tool `_printf` vs `_IOLog`
+- `-[pnpIRQ matches:]` (shared, diff 44; reloc different d=33): if vs else if on `otherCount != 1`; Apple tool `_printf` vs `_IOLog`
+- `-[pnpDMA print]` (shared, diff 48; reloc different d=34): none — Apple tool `_printf` vs rebuilt `_IOLog`; reloc both `_IOLog`
+- `__PMRestoreDefaults` (tool-only, diff 51): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
+- `_IOUnscheduleFunc` (tool-only, diff 52): loop shape of the callout-chain walk
+- `__IOMapEISADevicePorts` (tool-only, diff 56): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
+- `__IOUnMapEISADevicePorts` (tool-only, diff 56): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
+- `__PMSetPowerManagement` (tool-only, diff 61): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
+- `__PMSetPowerState` (tool-only, diff 61): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
+- `__PMGetPowerEvent` (tool-only, diff 65): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
+- `__IOCreateMachPort` (tool-only, diff 69): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
+- `__PMGetPowerStatus` (tool-only, diff 71): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
+- `__IOProbeDriver` (tool-only, diff 77): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
+- `__IOUnloadDriver` (tool-only, diff 77): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
+- `-[PnPResources markStartDependentResources]` (shared, diff 78; reloc different d=22): statement order of the four list walks
+- `-[pnpIOPort initFrom:Length:Type:]` (shared, diff 84; reloc different d=72): declaration order of existing locals after the header parse
+- `_calloutThread` (tool-only, diff 85): loop shape of the callout dispatch
+- `__IOCopyMemory` (tool-only, diff 86): none — Apple full body vs local stub
+- `__IOLookupByObjectNumber` (tool-only, diff 87): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
+- `__IOLookupByDeviceName` (tool-only, diff 88): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
+- `__IOSetIntValues` (tool-only, diff 95): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
+- `__IOMapEISADeviceMemory` (tool-only, diff 96): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
+- `__IOSetCharValues` (tool-only, diff 96): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
+- `_IOGetTimestamp` (tool-only, diff 102): local vs expression for the 64-bit store
+- `__IOGetSystemConfig` (tool-only, diff 103): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
+- `__IOGetDriverConfig` (tool-only, diff 106): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
+- `-[pnpMemory initFrom:Length:Type:]` (shared, diff 119; reloc different d=161): declaration order of existing locals after the header parse
+- `__IOGetIntValues` (tool-only, diff 130): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
+- `__IOGetCharValues` (tool-only, diff 131): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
+- `-[PnPDeviceResources initForBuf:Length:CSN:]` (shared, diff 134; reloc different d=149): declaration order of the header locals
+- `_IOScheduleFunc` (tool-only, diff 162): loop shape of the insertion walk
+- `__IOCallDeviceMethod` (tool-only, diff 167): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
+- `-[PnPResources initFromRegisters:]` (shared, diff 173; reloc different d=91): loop shape of the register walk
+- `__IOGetEISADeviceConfig` (tool-only, diff 224): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
+- `_main` (tool-only, diff 357): statement order of the existing option/dispatch blocks (large body; one idea only)
+- `-[PnPDeviceResources parseConfig:Length:]` (shared, diff 857; reloc different d=890): loop shape of the tag walk (large body; one idea only)

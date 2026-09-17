@@ -10,6 +10,7 @@ import shutil
 import struct
 import subprocess
 import sys
+import tempfile
 
 SECTOR = 512
 MBR_PART_OFFSET = 446
@@ -59,27 +60,38 @@ def build(rhapsody_image, efi_app, out_path, esp_mb=16):
     rhapsody_lba = ESP_LBA + esp_sectors
     total_sectors = rhapsody_lba + rhapsody_sectors
 
-    with open(out_path, "wb") as out:
-        out.truncate(total_sectors * SECTOR)
+    esp_fd, esp_path = tempfile.mkstemp(prefix="rhapsody-esp-")
+    try:
+        os.close(esp_fd)
+        with open(esp_path, "wb") as esp:
+            esp.truncate(esp_sectors * SECTOR)
 
-        mbr = bytearray(SECTOR)
-        entries = (_part_entry(EFI_SYSTEM, ESP_LBA, esp_sectors)
-                   + _part_entry(FDISK_NEXTNAME, rhapsody_lba,
-                                 rhapsody_sectors))
-        mbr[MBR_PART_OFFSET:MBR_PART_OFFSET + len(entries)] = entries
-        mbr[510:512] = b"\x55\xaa"
-        out.seek(0)
-        out.write(mbr)
+        _run(["mformat", "-i", esp_path, "-F", "-v", "RHAPEFI", "::"])
+        _run(["mmd", "-i", esp_path, "::/EFI"])
+        _run(["mmd", "-i", esp_path, "::/EFI/BOOT"])
+        _run(["mcopy", "-i", esp_path, efi_app, "::/EFI/BOOT/BOOTIA32.EFI"])
 
-        out.seek(rhapsody_lba * SECTOR)
-        with open(rhapsody_image, "rb") as src:
-            shutil.copyfileobj(src, out, length=1024 * 1024)
+        with open(out_path, "wb") as out:
+            out.truncate(total_sectors * SECTOR)
 
-    at = "%s@@%d" % (out_path, ESP_LBA * SECTOR)
-    _run(["mformat", "-i", at, "-F", "-v", "RHAPEFI", "::"])
-    _run(["mmd", "-i", at, "::/EFI"])
-    _run(["mmd", "-i", at, "::/EFI/BOOT"])
-    _run(["mcopy", "-i", at, efi_app, "::/EFI/BOOT/BOOTIA32.EFI"])
+            mbr = bytearray(SECTOR)
+            entries = (_part_entry(EFI_SYSTEM, ESP_LBA, esp_sectors)
+                       + _part_entry(FDISK_NEXTNAME, rhapsody_lba,
+                                     rhapsody_sectors))
+            mbr[MBR_PART_OFFSET:MBR_PART_OFFSET + len(entries)] = entries
+            mbr[510:512] = b"\x55\xaa"
+            out.seek(0)
+            out.write(mbr)
+
+            out.seek(ESP_LBA * SECTOR)
+            with open(esp_path, "rb") as esp:
+                shutil.copyfileobj(esp, out, length=1024 * 1024)
+
+            out.seek(rhapsody_lba * SECTOR)
+            with open(rhapsody_image, "rb") as src:
+                shutil.copyfileobj(src, out, length=1024 * 1024)
+    finally:
+        os.unlink(esp_path)
 
 
 def main(argv):

@@ -124,28 +124,37 @@ loader's **first** action, before any other allocation, is
 
 | Range | Size | Holds |
 |---|---|---|
-| `0x000000`–`0x003000` | 12K | `disk.c`'s sector cache `intbuf`, pinned at `BIOS_ADDR` |
-| `0x011000`–`0x020000` | 60K | `KERNBOOTSTRUCT` |
-| `0x030000`–`0x0A0000` | 448K | `sarld` (`RLD_ADDR`) |
-| `0x100000`–`0x700000` | 6M | Kernel, linked drivers, `sarld` scratch heap (`RLD_MEM_ADDR`), `libsa` arena (`ZALLOC_ADDR`) |
+| `0x011000`–`0x0A0000` | 596K | `KERNBOOTSTRUCT`, `disk.c`'s sector cache, `sarld` |
+| `0x100000`–`0x700000` | 6M | Kernel, linked drivers, `sarld` scratch heap, `libsa` arena |
 
-The last range extends to `0x700000` rather than `0x600000` because `sarld`'s
-statically linked `libsa` allocator initializes its arena at `ZALLOC_ADDR`.
+**These two ranges are measured, not assumed.** The phase 0 spike ran under IA32 OVMF
+and both were granted with `EFI_SUCCESS`. Getting there required two corrections to the
+original four-range plan, both driven by what the firmware actually did.
 
-The first range exists because `disk.c` is compiled unchanged rather than
-replaced. `Biosread()` already has a flat-LBA path, taken when
-`uses_ebios[biosdev - 0x80]` is set, which calls `ebiosread(biosdev, secno,
-nsecs)` — exactly the shape an EFI backend wants. Supplying `ebiosread` and
-forcing that path reuses `read_label`, `devopen`, `devread` and the sector
-cache with no edits to `src/boot-2`, at the cost of reserving that fixed cache
-buffer. The range starts at physical 0, which firmware often withholds for
-null-pointer detection; the contingency is to drop `static` from `read_label()`
-and supply a private sector buffer instead.
+**Page 0 is withheld.** OVMF reserves physical page 0 for null-pointer detection even
+though its memory map reports the page as conventional. Probing at page granularity
+showed page 0 refused while `0x1000` and `0x2000` were granted individually — so page 0
+alone is the obstacle. `disk.c`'s sector cache `intbuf` sits at `BIOS_ADDR` (`0xC00`),
+inside it. Rather than fight the firmware or fork `disk.c`, the loader redefines
+`BIOS_ADDR` to `0x20000` through an `-include` prologue
+(`src/bootefi-1/bootefi_memory_override.h`) that includes `memory.h` and then
+`#undef`/`#define`s it. It stays a compile-time constant, so `disk.c`'s
+`static char * const intbuf` initializer still compiles, and `src/boot-2` needs no edit.
+`0x20000` is `EISA_CONFIG_ADDR`, which is safe here only because the loader excludes
+`boot.c` — boot2's sole consumer of that region. If `boot.c` is ever added to this
+build, the address must move.
 
-If firmware refuses a range, the loader aborts and dumps the conflicting
-memory-map descriptor rather than continuing. Whether OVMF grants these ranges
-is the largest unknown in the project, which is why phase 0 tests exactly this
-and nothing else.
+**The loader's own image blocked the kernel range.** Firmware first loaded the EFI
+application at `0x400000`, inside `0x100000`–`0x700000`, which is why that range was
+refused. A per-megabyte probe confirmed nothing else obstructed it: every other
+megabyte was granted. Since firmware chooses the load address, the loader is linked
+with `/base:0x08000000 /fixed`. A PE image with no relocation table must be loaded at
+its `ImageBase` or not at all, which forces firmware out of the way. `0x08000000` is
+128MB, chosen against the harness's `-m 256`; that dependency is real and a smaller VM
+would need a different base.
+
+The second range runs to `0x700000` rather than `0x600000` because `sarld`'s statically
+linked `libsa` allocator initializes its arena at `ZALLOC_ADDR`.
 
 The loader's own `malloc`/`free` are backed by `AllocatePool`/`FreePool`, not
 by `boot2`'s `ZALLOC_ADDR` heap. Nothing is allocated after
@@ -212,14 +221,22 @@ A new `vm/build-uefi-image.sh`, separate from `rhap_image.py` and
 `ufs_build.py`, produces a hybrid **MBR** disk:
 
 - Partition 1: EFI System (type `0xEF`), FAT32, holding `/EFI/BOOT/BOOTIA32.EFI`
-  (`mformat -F`; FAT32 is what the UEFI spec expects on a fixed disk)
+  (`mformat -F`; FAT32 is what the UEFI spec expects on a fixed disk). The ESP
+  defaults to **64MB**: a 16MB FAT32 volume has too few clusters to be valid, and
+  EDK2's FAT driver silently declines to mount it — it prints nothing and simply
+  never binds, and BDS then reports that it cannot boot.
 - Partition 2: the existing Rhapsody partition, unchanged
 
 MBR rather than GPT specifically so `read_label`'s fdisk-table walk keeps
 working. UEFI supports MBR EFI System Partitions.
 
 `vm/run-q35-uefi.sh` mirrors `run-q35-ahci.sh`: serial logging, QMP key
-injection for the `boot:` prompt, and per-run temporary image copies.
+injection for the `boot:` prompt, and per-run temporary image copies. It passes
+`-cpu Nehalem`, without which this OVMF DEBUG build asserts before BDS runs.
+
+Note on qemu: Homebrew's formula does not build on the development host, because
+it compiles every target and the ARM board files fail under clang 15. An
+i386-only source build (`--target-list=i386-softmmu`) sidesteps that entirely.
 
 ## Testing
 
@@ -238,23 +255,24 @@ existing `test_ufs_build.py` style.
 
 | # | Work | Verify |
 |---|---|---|
-| 0 | Spike: EFI app dumps the memory map and attempts the three reservations | OVMF grants all three, or the placement strategy changes |
+| 0 | Spike: EFI app dumps the memory map and attempts the reservations | **DONE.** Both ranges granted, after moving `BIOS_ADDR` off page 0 and linking at a fixed high base |
 | 1 | Toolchain, `efi.h`, console, image script | `BOOTIA32.EFI` prints under OVMF; image tests pass |
 | 2 | `efi_disk.c`; reuse `sys.c` and `read_label` | Host test extracts `/mach_kernel`; loader prints its Mach-O header |
 | 3 | Kernel load and bootstruct synthesis | Field-by-field dump matches a BIOS-boot reference capture |
 | 4 | `ExitBootServices` and trampoline, no drivers | Kernel verbose output appears on serial |
 | 5 | `sarld`, `drivers.c`, `linkDriver` | AHCI and EIDE link; `vfs_mountroot()` succeeds |
 
-Phase 0 is throwaway by design. If OVMF will not hand over low memory, the
-placement strategy changes, and that should cost a hundred lines to discover.
+Phase 0 was throwaway by design, and it earned its keep: it found both the
+withheld page 0 and the loader's own image sitting in the kernel range, either
+of which would have been extremely expensive to diagnose later.
 
 ## Risks
 
-1. **Firmware refuses the fixed reservations.** Phase 0 answers this. Fallback:
-   stage every file in memory before `ExitBootServices`, then do placement and
-   `sarld` linking afterwards, in loader code that owns all memory. Harder to
-   debug without an EFI console, but it needs no mode change, so it stays
-   tractable.
+1. ~~**Firmware refuses the fixed reservations.**~~ **RESOLVED by phase 0.** Both
+   ranges are granted once `BIOS_ADDR` moves off page 0 and the image is linked
+   at a fixed high base. The staged-placer fallback is no longer needed. The
+   residual risk is narrower: the `/fixed` base `0x08000000` assumes the VM has
+   256MB, and `intbuf` at `0x20000` assumes `boot.c` stays out of the build.
 2. **IA32 OVMF availability.** May require building `OvmfPkgIa32` from edk2.
 3. **VGA console after EFI graphics initialization.** The kernel reprograms the
    VGA registers itself, which should recover the hardware, but this is

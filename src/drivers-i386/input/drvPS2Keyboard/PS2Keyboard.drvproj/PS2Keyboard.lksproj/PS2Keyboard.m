@@ -273,11 +273,10 @@ PS2KeyboardEvent *scancodeToKeyEvent(unsigned char scancode)
 {
     static PS2KeyboardEvent event;
     static unsigned char extendCount;
-    unsigned char keyCode;
     unsigned char bitPosition;
     unsigned int wordIndex;
     unsigned int bitMask;
-    unsigned int isKeyDown;
+    unsigned char isKeyDown;
 
     /* Handle the extended scancode prefix 0xE0 */
     if (scancode == 0xE0) {
@@ -294,7 +293,10 @@ PS2KeyboardEvent *scancodeToKeyEvent(unsigned char scancode)
     }
 
     /* Process extended scancodes */
-    if (extendCount != 0) {
+    if (extendCount == 0) {
+        /* Normal scancode - just mask off the break bit */
+        event.keyCode = scancode & 0x7F;
+    } else {
         extendCount--;
 
         if (extendCount != 0) {
@@ -303,34 +305,31 @@ PS2KeyboardEvent *scancodeToKeyEvent(unsigned char scancode)
 
         /* Translate extended scancodes to ADB keycodes */
         switch (scancode & 0x7F) {
-            case 0x1C: keyCode = 0x62; break;  /* Keypad Enter */
-            case 0x1D: keyCode = 0x60; break;  /* Right Control */
-            case 0x35: keyCode = 0x63; break;  /* Keypad / */
-            case 0x37: keyCode = 0x6E; break;  /* Print Screen */
-            case 0x38: keyCode = 0x61; break;  /* Right Alt */
-            case 0x45: keyCode = 0x6F; break;  /* Num Lock */
-            case 0x47: keyCode = 0x6C; break;  /* Home */
-            case 0x48: keyCode = 0x64; break;  /* Up Arrow */
-            case 0x49: keyCode = 0x6A; break;  /* Page Up */
-            case 0x4B: keyCode = 0x66; break;  /* Left Arrow */
-            case 0x4D: keyCode = 0x67; break;  /* Right Arrow */
-            case 0x4F: keyCode = 0x6D; break;  /* End */
-            case 0x50: keyCode = 0x65; break;  /* Down Arrow */
-            case 0x51: keyCode = 0x6B; break;  /* Page Down */
-            case 0x52: keyCode = 0x68; break;  /* Insert */
-            case 0x53: keyCode = 0x69; break;  /* Delete */
-            case 0x5B: keyCode = 0x70; break;  /* Left Windows */
-            case 0x5C: keyCode = 0x71; break;  /* Right Windows */
-            case 0x5D: keyCode = 0x72; break;  /* Menu */
+            case 0x1C: event.keyCode = 0x62; break;  /* Keypad Enter */
+            case 0x1D: event.keyCode = 0x60; break;  /* Right Control */
+            case 0x35: event.keyCode = 0x63; break;  /* Keypad / */
+            case 0x37: event.keyCode = 0x6E; break;  /* Print Screen */
+            case 0x38: event.keyCode = 0x61; break;  /* Right Alt */
+            case 0x45: event.keyCode = 0x6F; break;  /* Num Lock */
+            case 0x47: event.keyCode = 0x6C; break;  /* Home */
+            case 0x48: event.keyCode = 0x64; break;  /* Up Arrow */
+            case 0x49: event.keyCode = 0x6A; break;  /* Page Up */
+            case 0x4B: event.keyCode = 0x66; break;  /* Left Arrow */
+            case 0x4D: event.keyCode = 0x67; break;  /* Right Arrow */
+            case 0x4F: event.keyCode = 0x6D; break;  /* End */
+            case 0x50: event.keyCode = 0x65; break;  /* Down Arrow */
+            case 0x51: event.keyCode = 0x6B; break;  /* Page Down */
+            case 0x52: event.keyCode = 0x68; break;  /* Insert */
+            case 0x53: event.keyCode = 0x69; break;  /* Delete */
+            case 0x5B: event.keyCode = 0x70; break;  /* Left Windows */
+            case 0x5C: event.keyCode = 0x71; break;  /* Right Windows */
+            case 0x5D: event.keyCode = 0x72; break;  /* Menu */
             default:
                 return NULL;  /* Unrecognized extended key */
         }
-    } else {
-        /* Normal scancode - just mask off the break bit */
-        keyCode = scancode & 0x7F;
     }
 
-    if (keyCode == 0) {
+    if (event.keyCode == 0) {
         return NULL;
     }
 
@@ -339,17 +338,17 @@ PS2KeyboardEvent *scancodeToKeyEvent(unsigned char scancode)
 
     /* Bit 7 of the scancode: 0 = key down, 1 = key up */
     isKeyDown = (scancode >> 7) ^ 1;
+    event.goingDown = isKeyDown;
 
     /* Num Lock toggles off its own recorded state rather than the break bit */
-    if (keyCode == 0x6F) {
+    if (event.keyCode == 0x6F) {
         isKeyDown = (_kbdBitVector[0x6F >> 5] & (1 << (0x6F & 0x1F))) == 0;
+        event.goingDown = isKeyDown;
     }
 
-    event.keyCode = keyCode;
-
     /* Update the keyboard bit vector */
-    bitPosition = (unsigned char)keyCode;
-    wordIndex = keyCode >> 5;
+    bitPosition = (unsigned char)event.keyCode;
+    wordIndex = event.keyCode >> 5;
     bitMask = 1 << (bitPosition & 0x1F);
 
     if (isKeyDown == 0) {
@@ -362,8 +361,6 @@ PS2KeyboardEvent *scancodeToKeyEvent(unsigned char scancode)
         }
         _kbdBitVector[wordIndex] = _kbdBitVector[wordIndex] | bitMask;
     }
-
-    event.goingDown = isKeyDown;
 
     return &event;
 }

@@ -2070,6 +2070,10 @@ Inverted `_owner != nil` and `respondsTo:` so grant / IOLog are the `jz` targets
 
 Free-queue fill branches empty vs tail; both queues store `prev` before `next`. Remaining leftover is extra `edi`, `self` register, `stru_40F0.ext` vs `super_class`, and duplicated element `lea`. Rebuilt `920B1D08B4592B04A390A3FA592798C349EE2D4035A6127A6BAD5B1BA24DF302`. Task 8 gates unchanged. Unpaired 0.
 
+### `_scancodeToKeyEvent` (3520) — accepted leftover
+
+Case bodies store `event.keyCode` directly; `extendCount == 0` lays the normal mask first. Remaining leftover is jump-table body order, NumLock byte test vs shift, and key-up `rol` vs `not`. Rebuilt `66A9030CBB92CCC4DEA81267E51AFFA76E33E85231CEF265B5AED6FC5D140D89`. Task 8 gates unchanged. Unpaired 0.
+
 ## Task 4 stop (unpaired growth)
 
 `readConfigTable:` ivar-in-branch experiment made `--list` report 50 functions / 2 unpaired (`missing-rebuilt __PS2KeyboardNumKeysDown`, `missing-reference _resetEscapes`). That is a layout or linkage finding. Experiment reverted. After rebuild, SHA is again `20C8BD6E1243FE4CB6D1CDCC51654CBADF65E118370ACBF8D49EBE05B3631C07`, `--list` 49 / 0 unpaired. Do not repeat the ivar-in-NULL-branch store. Campaign continues on other functions.

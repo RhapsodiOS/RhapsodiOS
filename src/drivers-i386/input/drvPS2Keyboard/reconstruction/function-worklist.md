@@ -13,9 +13,9 @@ Analyzer: IDA 9.2 only (`analyzers.angr.enabled` is false; Ghidra stays off).
 | | SHA-256 | size |
 | --- | --- | --- |
 | Reference | `AB413CA3919950F22A1F5D10B0BF1167387FEF320C9FB82A3EA66E586A6BE02A` | 43460 |
-| Rebuilt | `920B1D08B4592B04A390A3FA592798C349EE2D4035A6127A6BAD5B1BA24DF302` | 157660 |
+| Rebuilt | `66A9030CBB92CCC4DEA81267E51AFFA76E33E85231CEF265B5AED6FC5D140D89` | 157840 |
 
-`__TEXT,__text`: reference 4952, rebuilt 4660.
+`__TEXT,__text`: reference 4952, rebuilt 4884.
 
 `parity_check.py`: `missing_strings (0)`, `missing_symbols (0)`. Extra symbols 54 (stabs / file names on the unstripped guest `_reloc`).
 
@@ -274,4 +274,5 @@ Task 8 regression gate. `--name` shows then/else order on `respondsTo:`, but do 
 
 ### `_scancodeToKeyEvent` (diff 102)
 
-1. Store each jump-table keycode into `event.keyCode` in the case body instead of a `keyCode` local (`mov ds:dword_213C, 62h` vs `mov bl, 62h`).
+1. Store each jump-table keycode into `event.keyCode` in the case body instead of a `keyCode` local (`mov ds:dword_213C, 62h` vs `mov bl, 62h`). Invert `extendCount == 0` so the normal mask is the `jnz` fall-through. `unsigned char isKeyDown`.
+   **Kept, leftover accepted:** prologue, E0/E1, extendCount polarity, case stores into `event.keyCode`, and the zero-key `cmp`/`jz` now match. Remaining starred rows are jump-table body order, NumLock `test byte` vs `shr`, and key-up `rol` vs `not`. Rebuild `66A9030CBB92CCC4DEA81267E51AFFA76E33E85231CEF265B5AED6FC5D140D89`. `intentional-mismatch`.

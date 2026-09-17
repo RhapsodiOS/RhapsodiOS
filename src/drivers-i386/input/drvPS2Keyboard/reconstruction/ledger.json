@@ -977,12 +977,12 @@
       "names": [
         "_scancodeToKeyEvent"
       ],
-      "reason": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 818,
-      "source_line": 277,
+      "source_line": 272,
       "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m",
-      "status": "control-flow-confirmed"
+      "status": "intentional-mismatch"
     },
     {
       "address": 4340,
@@ -1177,7 +1177,7 @@
       "status": "intentional-mismatch"
     }
   ],
-  "rebuilt_sha256": "920B1D08B4592B04A390A3FA592798C349EE2D4035A6127A6BAD5B1BA24DF302",
+  "rebuilt_sha256": "66A9030CBB92CCC4DEA81267E51AFFA76E33E85231CEF265B5AED6FC5D140D89",
   "reference_sha256": "AB413CA3919950F22A1F5D10B0BF1167387FEF320C9FB82A3EA66E586A6BE02A",
   "schema_version": "ledger-v1"
 }

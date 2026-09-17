@@ -16,7 +16,17 @@ work_root=$repo_root/vm/work
 logs_dir=$repo_root/vm/logs
 firmware_dir=${UEFI_FIRMWARE_DIR:-$repo_root/vm/firmware}
 serial_log=$logs_dir/uefi-serial.log
-qemu=${UEFI_QEMU:-qemu-system-i386}
+# Homebrew's qemu formula does not build on this host: it compiles every
+# target, and the ARM board files fail under clang 15.  An i386-only source
+# build lives in ~/opt/qemu-i386.  Prefer it, fall back to PATH.
+qemu=${UEFI_QEMU:-}
+if [ -z "$qemu" ]; then
+    if [ -x "$HOME/opt/qemu-i386/bin/qemu-system-i386" ]; then
+        qemu=$HOME/opt/qemu-i386/bin/qemu-system-i386
+    else
+        qemu=qemu-system-i386
+    fi
+fi
 code_fd=$firmware_dir/OVMF32_CODE.fd
 vars_fd=$firmware_dir/OVMF32_VARS.fd
 

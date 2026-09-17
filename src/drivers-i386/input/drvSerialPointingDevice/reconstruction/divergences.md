@@ -1279,3 +1279,71 @@ remain **MISSING**. There is no `__TEXT,__const` section. The rebuilt
 (byte-identical to the Task 2 baseline). The nine hand-written `--list`
 gates still `identical` / `masked-eq`. `parity_check.py` stays
 `missing_strings` 0 / `missing_symbols` 0. The postamble stays.
+
+## Task 5: cheapest-first instruction-shape grind
+
+### `getByte:sleep:` — accepted (stack packing)
+
+One declaration-order try moved `unsigned char data` ahead of `IOReturn ret`
+and `int eventType` (live order was already ret/eventType/data). Guest
+`fail=0`. `--list` still 7 diffs / 43 vs 43; the nine gates stayed
+`identical` / `masked-eq`. `parity_check.py` 0 / 0. Reverted.
+
+Leftover is gcc packing `data` at `[ebp+var_5]` against the reference's
+`[ebp+var_8]`, plus jump labels. CFG, `do`/`while (active)`, and the
+`0x55` / `0` / `_active` tests match.
+
+```
+-[SerialPointingDevice getByte:sleep:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 8                              sub esp, 8
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  mov esi, [ebp+self]                     mov esi, [ebp+self]
+  mov edi, [ebp+arg_8]                    mov edi, [ebp+arg_8]
+  mov bl, [ebp+arg_C]                     mov bl, [ebp+arg_C]
+  nop                                     nop
+  nop                                     nop
+  movsx eax, bl                           movsx eax, bl
+  push eax                                push eax
+* lea eax, [ebp+var_8]                    lea eax, [ebp+var_5]
+  push eax                                push eax
+  lea eax, [ebp+var_4]                    lea eax, [ebp+var_4]
+  push eax                                push eax
+  mov edx, ds:paDequeueeventDa            mov edx, ds:paDequeueeventDa
+  push edx                                push edx
+  mov edx, [esi+154h]                     mov edx, [esi+154h]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 14h                            add esp, 14h
+  test eax, eax                           test eax, eax
+* jnz loc_747                             jnz loc_BC7
+  cmp [ebp+var_4], 55h                    cmp [ebp+var_4], 55h
+* jnz loc_738                             jnz loc_BB8
+* mov dl, [ebp+var_8]                     mov dl, [ebp+var_5]
+  mov [edi], dl                           mov [edi], dl
+  mov eax, 1                              mov eax, 1
+* jmp loc_749                             jmp loc_BC9
+  cmp [ebp+var_4], 0                      cmp [ebp+var_4], 0
+* jz loc_747                              jz loc_BC7
+  cmp ds:_active, 0                       cmp ds:_active, 0
+* jnz loc_700                             jnz loc_B80
+  xor eax, eax                            xor eax, eax
+  lea esp, [ebp-14h]                      lea esp, [ebp-14h]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+

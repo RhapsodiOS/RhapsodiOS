@@ -149,3 +149,17 @@ Source-shaped grind order after `getByte:sleep:`'s one-shot:
 
 `mouseInit:`, `MSProtocol`, and `detect` stay compiler-shaped leftovers,
 not grind targets unless a later dump shows a source-level hole.
+
+## Task 5 experiment lists (before first source edit)
+
+Cheapest remaining first. One idea per function; add more only after a miss.
+
+| Function | Experiment |
+| --- | --- |
+| `getByte:sleep:` | Declaration-order: `unsigned char data` then `IOReturn ret` then `int eventType` (live order is already ret/eventType/data; a no-op is not a try). Then accept as stack packing. **Tried: miss** (still `lea eax, [ebp+var_5]` vs ref `[ebp+var_8]`; 7 diffs; gates held). Reverted. **Accepted** as stack packing. |
+| `getIntValues:forParameter:count:` | Replace counted char loops with `strcmp(parameterName, RESOLUTION)` / `INVERTED` (drvPS2Mouse Finding 15). |
+| `setIntValues:forParameter:count:` | Same `strcmp` rewrite. Keep verbose logs and the existing stores/sends. Do not add dummy spills. |
+| `FiveBProtocol` | Split combined `case 2:`/`case 4:` into distinct cases so gcc can emit a 5-entry jump table; `lastTimeStamp = currentTimeStamp` stays in case 2 only. |
+| `mouseInit:` | Compiler-shaped. Dump `--name` only; grind only if a source-level hole appears. |
+| `MSProtocol` | Compiler-shaped. Dump `--name` only; optional `maskedByte` fold / default fallthrough only if that dump shows they are the cheapest source-shaped leftover. |
+| `detect` | Compiler-shaped. Dump `--name` only; optional inline `byte & 0x3F` only if that dump shows a source-level hole. |

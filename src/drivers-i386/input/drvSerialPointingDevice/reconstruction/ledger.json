@@ -206,7 +206,8 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely but records the same calls. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
-          "full disassembly read instruction by instruction against source; the dequeueEvent:data:sleep: call, the 0x55 event test, the byte store and both early returns match, but the reference is a do/while that always attempts one dequeue and ours tests active first (divergences.md Findings 1, 8)"
+          "full disassembly read instruction by instruction against source; the dequeueEvent:data:sleep: call, the 0x55 event test, the byte store and both early returns match, but the reference is a do/while that always attempts one dequeue and ours tests active first (divergences.md Findings 1, 8)",
+          "Finish campaign Task 5: one declaration-order permutation of unsigned char data missed; leftover is compiler-shaped stack packing of data at [ebp+var_5] vs reference [ebp+var_8] plus jump labels"
         ],
         "status": "agreed"
       },
@@ -214,12 +215,12 @@
       "names": [
         "-[SerialPointingDevice getByte:sleep:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 103,
       "source_line": 556,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m",
-      "status": "control-flow-confirmed"
+      "status": "intentional-mismatch"
     },
     {
       "address": 1876,

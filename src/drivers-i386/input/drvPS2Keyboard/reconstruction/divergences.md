@@ -1723,3 +1723,11 @@ used. (2) `xxx` is `ioPorts.h`'s, not the driver's; see Finding 16's correction.
 `.92` numbering was not chased and our build emits its own copies per translation unit.
 (3) `NXLock.h` and `NXLock.m` were deleted outright — the evidence in Finding 3 is decisive and
 keeping them would have doubled `__OBJC,__class`.
+
+## Finish campaign (2026-09-16)
+
+Instruction-stream finish against rebuilt `967883F054B1FC06D89EB5F0BF9E59D8CB973DC61749941686B9042F49E3A1B7` (157632 bytes).
+At IDA baseline: 5 `raw_equal`, 22 `masked_equal`, 22 open, 0 unpaired.
+Task 3 marked the non-glue identical/masked-eq rows `assembly-matched`.
+The two Kernel Server glue methods stay `intentional-mismatch` even though they are instruction-identical.
+Two Task 8 gate names remain open on `--list` (`setAlphaLockFeedback:`, `relinquishOwnership:`) and were not demoted.

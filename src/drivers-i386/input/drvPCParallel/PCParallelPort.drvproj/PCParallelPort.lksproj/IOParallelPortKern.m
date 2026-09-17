@@ -453,51 +453,50 @@ void IOParallelPortInterruptHandler(void *identity, void *state, unsigned int po
         return;
 
     // Decode status register to determine error condition
-    if ((statusByte & 0x28) == 0x08) {
+    if ((statusByte & 0x28) != 0x08) {
+        if (statusByte & 0x20) {
+            // Paper out
+            interruptMsg = PP_INT_MSG_PAPER_OUT;
+        } else {
+            // Select set is the default; SELECT clear overwrites to ERROR
+            interruptMsg = PP_INT_MSG_OFFLINE;
+            if (!(statusByte & 0x10))
+                interruptMsg = PP_INT_MSG_ERROR;
+        }
+    } else {
         // Mask is ERROR|PAPER_OUT: error bit set, paper-out bit clear
         if ((char)statusByte >= 0) {
             // Busy: PP_STATUS_BUSY is inverted, so a clear bit 7 means busy
             interruptMsg = PP_INT_MSG_DEVICE_BUSY;
         }
-    } else {
-        if (statusByte & 0x20) {
-            // Paper out
-            interruptMsg = PP_INT_MSG_PAPER_OUT;
-        } else if (statusByte & 0x10) {
-            // Select set
-            interruptMsg = PP_INT_MSG_OFFLINE;
-        } else {
-            // Select clear
-            interruptMsg = PP_INT_MSG_ERROR;
-        }
     }
 
-    // If no error, handle data transfer
-    if (interruptMsg == 0) {
-        if ((physbuf->b_flags & B_READ) == 0) {
-            // Output mode: send next character if available
-            if (pp_softc[portNum].count > 0) {
-                _strobeChar(portNum, delay, 0);
-                return;
-            }
-        } else {
-            // Input mode: advance, then store
-            if (pp_softc[portNum].count != 0) {
-                pp_softc[portNum].data++;
-                pp_softc[portNum].count--;
-                *(pp_softc[portNum].data) = inb(PP_PORT(dataRegAddr));
-            }
-        }
+    // If an error was decoded, send it; otherwise transfer then COMPLETE
+    if (interruptMsg != 0) {
+        IOSendInterrupt(identity, state, interruptMsg);
+        return;
+    }
 
-        // More data to transfer, no interrupt needed
-        if (pp_softc[portNum].count > 0)
+    if ((physbuf->b_flags & B_READ) == 0) {
+        // Output mode: send next character if available
+        if (pp_softc[portNum].count > 0) {
+            _strobeChar(portNum, delay, 0);
             return;
-
-        interruptMsg = PP_INT_MSG_COMPLETE;
+        }
+    } else {
+        // Input mode: advance, then store
+        if (pp_softc[portNum].count != 0) {
+            pp_softc[portNum].data++;
+            pp_softc[portNum].count--;
+            *(pp_softc[portNum].data) = inb(PP_PORT(dataRegAddr));
+        }
     }
 
-    // Send interrupt message to waiting thread
-    IOSendInterrupt(identity, state, interruptMsg);
+    // More data to transfer, no interrupt needed
+    if (pp_softc[portNum].count > 0)
+        return;
+
+    IOSendInterrupt(identity, state, PP_INT_MSG_COMPLETE);
 }
 
 /*

@@ -1339,26 +1339,36 @@ _ppwrite
 * xor ebx, ebx                            test ebx, ebx
 ```
 
+### Task 8 — `_IOParallelPortInterruptHandler` decode leftover
+
+Inverted the outer `(status & 0x28) != 8` so Apple's `jz` busy-arm polarity
+matches, stored OFFLINE then overwrote ERROR on SELECT-clear, and sent
+nonzero `interruptMsg` before the transfer path (`test ecx` / `jz` transfer /
+`push ecx`). Leftover is gcc 2.x `inb` stack slot vs `dl`. Rebuilt SHA-256
+`4286DBE19D7CAEA41A8E990E3CC4DA6EC057816542D47F944028291F7FDC3CED`.
+Parity 0/0. Previously identical rows stayed identical. Ledger 5240
+`intentional-mismatch`.
+
+```
+_IOParallelPortInterruptHandler
+  status=different raw_equal=False masked_equal=False
+* sub esp, 10h                            sub esp, 8
+  cmp al, 8                               cmp al, 8
+* jz loc_14FC                             jz loc_178C
+  mov ecx, 232336h                        mov ecx, 232336h
+* test byte ptr [esi], 10h                test dl, 10h
+* jnz loc_1506                            jnz loc_1795
+  mov ecx, 232339h                        mov ecx, 232339h
+  test ecx, ecx                           test ecx, ecx
+* jz loc_1510                             jz loc_179C
+  push ecx                                push ecx
+  push 232325h                            push 232325h
+```
+
 ### Task 8 — remaining large functions (compiler-shaped leftover)
 
-`--name` on the current reloc for `_IOParallelPortInterruptHandler`,
-`_ppstrategy`, `_ppioctl`, `initFromDeviceDescription:`, and
-`_IOParallelPortThread` shows register choice, extra `inb`/frame slots,
-`strcmp` setup, and switch-pivot scheduling — not wrong constants, missing
-calls, inverted business-logic branches, or wrong ivar offsets. Ledger
-456 / 4512 / 5240 / 6304 / 6708 `intentional-mismatch`, reviewer Pat Raynor,
-reason `compiler-shaped leftover after exhausted source-shape list`.
-Final reloc SHA-256
-`C439A3442A4B9600B5C0281A3877C2645A3C979EE472234505BD6CA88248FB7F`.
-`--list`: 40 byte-identical, 16 masked-eq, 0 unpaired.
-
-```
-_IOParallelPortInterruptHandler  * sub esp, 10h vs 0Ch; ebx vs esi; lea [ebp+var_1]
-_ppstrategy                      * extra sub esp,4; edi vs esi
-_ppioctl                         * labels / switch binary-search pivot
-initFromDeviceDescription:       * sub esp, 24h vs 20h; extra var_20=0
-_IOParallelPortThread            * commandType test vs cmp dword,1; status slot
-```
+`--name` on the current reloc for `_ppstrategy`, `_ppioctl`,
+`initFromDeviceDescription:`, and `_IOParallelPortThread` — grind in progress.
 
 ### 8.9 The status rule used
 
@@ -1384,7 +1394,7 @@ _IOParallelPortThread            * commandType test vs cmp dword,1; status slot
   5520 (`_ppopen` nested signed initDevice range; leftover is `jl` vs `jge`),
   456 (`initFromDeviceDescription:` extra `var_20` / register choice), 4512
   (`_IOParallelPortThread` commandType test vs cmp / status slot), 5240
-  (`_IOParallelPortInterruptHandler` inb slot / `ebx` vs `esi`), 5828
+  (`_IOParallelPortInterruptHandler` decode invert; leftover is `inb` slot vs `dl`), 5828
   (`_ppwrite` signed initDevice range without pre-zeroed locals; leftover is
   `esi` vs `ebx` and Apple's extra zeroing), 6304 (`_ppstrategy` extra
   `sub esp,4` / register choice), 6708 (`_ppioctl` switch-pivot / labels),

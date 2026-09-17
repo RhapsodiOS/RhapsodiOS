@@ -545,17 +545,16 @@ Accepted leftover: rebuilt `D13D6D48DA5CB5B131E2F1BBF6A56A59B68EEC72583A7A74FC18
 
 ### `_IOParallelPortInterruptHandler` (diff 61)
 
-Star: extra stack slot / `lea esi, [ebp+var_1]` for status; inverted
-`(status & 0x28) == 0x08` branch; SELECT test uses `[esi]` vs flags in `dl`.
-Accepted leftover: rebuilt `C439A3442A4B9600B5C0281A3877C2645A3C979EE472234505BD6CA88248FB7F`
-(compiler-shaped frame / `ebx` vs `esi`; list not rebuilt-tried item-by-item).
+Star from current `--name`: `jz` vs `jnz` on `(status & 0x28) == 8`; SELECT
+assigns ERROR then OFFLINE vs Apple OFFLINE then ERROR; `interruptMsg == 0`
+uses `jnz` to send vs Apple `jz` to transfer.
 
-1. Keep `statusByte` on stack and re-read it for SELECT/busy
-2. Invert the `(status & 0x28) == 0x08` if/else
-3. SELECT-set then SELECT-clear as if/else rather than if/else if
-4. Load `writing` from `pp_softc[portNum].device` a second time (Apple does)
-5. `portNum` in `ebx` vs `esi`; declaration order of `physbuf` / `dataRegAddr` / `delay`
-6. Read-path `count != 0` vs `count > 0`; write-path `count > 0` vs `<= 0`
+1. Invert the outer decode: `if ((statusByte & 0x28) != 0x08)` paper/select first — **kept** (`jz` polarity)
+2. SELECT: store OFFLINE, then `if (!(statusByte & 0x10))` ERROR — **kept** (`232336` then `232339`)
+3. Invert `if (interruptMsg != 0)` so the send path is the taken branch — **kept** (`jz` transfer / `push ecx`)
+Accepted leftover: rebuilt `4286DBE19D7CAEA41A8E990E3CC4DA6EC057816542D47F944028291F7FDC3CED`
+(compiler-shaped `inb` slot / `lea [ebp+var_1]` vs `dl`).
+3. Invert `if (interruptMsg != 0)` so the send path is the taken branch
 
 ### `_ppstrategy` (diff 83)
 

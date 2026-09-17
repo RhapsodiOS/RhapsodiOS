@@ -1305,7 +1305,8 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "unchanged by the fix pass; the seven arms were corrected by value in 15ce9007 and all 23 jump-table entries at 3520 were re-checked"
+          "unchanged by the fix pass; the seven arms were corrected by value in 15ce9007 and all 23 jump-table entries at 3520 were re-checked",
+          "Task 8: PP_MSG_OFFLINE case before PP_MSG_BUSY so gcc emits 0xFFFFFD1E then 0xFFFFFD2B; IDA masked_equal"
         ],
         "status": "agreed"
       },
@@ -1318,7 +1319,7 @@
       "size": 197,
       "source_line": 1014,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "control-flow-confirmed"
+      "status": "assembly-matched"
     },
     {
       "address": 3692,
@@ -1801,7 +1802,7 @@
       "status": "intentional-mismatch"
     }
   ],
-  "rebuilt_sha256": "562D9829B43605A045C84FA4253C90206BECE0E236695BB3782B2E9D5A867A1E",
+  "rebuilt_sha256": "7DD159FCB4BCD936009C2B5FB9F89859A4E171DAA75266036958CF45AF1C2D23",
   "reference_sha256": "D188A4D909005683B0C943C84CD99514C14A84AD1D378425B3B1DB343F1EAAA2",
   "schema_version": "ledger-v1"
 }

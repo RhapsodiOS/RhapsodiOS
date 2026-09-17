@@ -1118,13 +1118,25 @@ Diff count dropped from 70 to 55 (84 vs 80 instructions). Leftover is compiler-s
 `[ebp+var_1]` via `ebx`; gcc 2.x `-O` uses `sub esp, 14h`, one `_pp_softc` load into `edx`,
 and holds the control byte in `bl`. Ledger 4232 stays `intentional-mismatch`.
 
+### Task 8 — `msgTypeToIOReturn:` case order (`masked_equal`)
+
+Swapped the `PP_MSG_OFFLINE` (−738 / `0xFFFFFD1E`) and `PP_MSG_BUSY` (−725 /
+`0xFFFFFD2B`) cases in `IOParallelPort.m` so gcc 2.x emits the jump-table bodies
+in Apple's order. `--name -[IOParallelPort msgTypeToIOReturn:]`:
+`masked_equal=True`; leftover stars are jump-table label addresses only.
+Rebuilt SHA-256 `7DD159FCB4BCD936009C2B5FB9F89859A4E171DAA75266036958CF45AF1C2D23`
+(165620 bytes). Parity `missing_strings (0):`, `missing_symbols (0):`. Previously
+identical rows stayed identical (40 `raw_equal`, 15 `masked_equal`, 0 unpaired).
+Ledger 3492 is `assembly-matched`.
+
 ### 8.9 The status rule used
 
-- `assembly-matched` (55) - the reference's full instruction stream was read and our
+- `assembly-matched` (56) - the reference's full instruction stream was read and our
   source is a statement-for-statement transliteration of it with no remaining difference,
   and the function's emitted metadata was verified identical in the rebuilt binary. Used
-  for the accessors and the short bodies.
-- `control-flow-confirmed` (13) - the reference's full instruction stream was read and our
+  for the accessors and the short bodies. Task 8 promoted `msgTypeToIOReturn:` after the
+  OFFLINE/BUSY case-order edit (`masked_equal`).
+- `control-flow-confirmed` (12) - the reference's full instruction stream was read and our
   source reproduces its block structure, every call target and every constant, but the
   rebuilt output was **not** itself disassembled and compared instruction by instruction.
   Used for the larger functions.

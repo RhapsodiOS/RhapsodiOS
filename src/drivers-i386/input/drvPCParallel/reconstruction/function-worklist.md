@@ -445,3 +445,165 @@ Regression: every Task 6 `identical` and `masked-eq` row stayed equal (0 lost).
 
 75 functions: 40 byte-identical, 35 differing, 0 unpaired
 ```
+
+## Task 8 — cheapest-first source-shape experiment lists
+
+Skipped (do not grind): glue, physbuf/setPhysbuf, already-identical,
+Finding 53 leftover (`initDevice`, `probeForController`), strobeChar leftover,
+inb stack-slot (`controlRegisterContents` / `statusRegisterContents`), BOOL
+materialization (`probe:`, `isInitialized`).
+
+Dumps kept under `tools/binrecon/out/parallelport/task8-dumps/`. Tried items
+are marked when an experiment is reverted.
+
+### `-[IOParallelPort msgTypeToIOReturn:]` (diff 4)
+
+Star: jump-table bodies `0xFFFFFD1E` / `0xFFFFFD2B` swapped (OFFLINE vs BUSY).
+Matched: rebuilt `7DD159FCB4BCD936009C2B5FB9F89859A4E171DAA75266036958CF45AF1C2D23`.
+
+1. Swap `PP_MSG_BUSY` and `PP_MSG_OFFLINE` case order so OFFLINE is emitted first — **kept, masked_equal**
+2. Order cases by jump-table index: NOT_READY, SUCCESS, TIMEOUT, NO_PAPER, BUSY, OFFLINE
+3. Order cases by `msgType` numeric value
+4. Fall through TIMEOUT into default (both return `IO_R_IO`)
+
+### `-[IOParallelPort cmdBufExec:]` (diff 6)
+
+Star: `cmdBuffer->link.prev` store before vs after `link.next`; `add esp,8` scheduling.
+
+1. Store `link.prev` before `link.next` (`cmdBuffer->link.prev = oldTail` first)
+2. Compute `&ioQueue` into a local before the two stores
+3. Empty-queue test as `ioQueue.prev == &ioQueue` vs `next`
+4. Declaration order: `oldTail` before vs after the lock
+
+### `-[IOParallelPort cmdBufAlloc]` (diff 11)
+
+Star: extra `esi` / separate lock local; Apple keeps the buffer in `ebx` and
+sends `lock` with the `new` result still in `eax`.
+
+1. Drop `conditionLock` local; use `cmdBuffer->conditionLock` as the expression
+2. Assign `conditionLock` after `new`, then send through that local only
+3. Declaration order: lock local before buffer local
+
+### `-[IOParallelPort waitForCmdBuf]` (diff 13)
+
+Star: `setnz` ternary for `unlockWith:` vs `push 0`/`push 1` if/else; inverted
+`jz`/`jnz` on the prev-link arm.
+
+1. Replace ternary with if/else `unlockWith:1` / `unlockWith:0`
+2. Invert the prev-buffer if/else arms (`if (prev == &ioQueue)` first)
+3. Invert the next-buffer if/else arms
+4. Load `next` before `prev`
+5. Signedness of queue pointer locals
+
+### `-[IOParallelPort printerInit]` (diff 14)
+
+Star: control byte in `[ebp+var_1]` vs `bl`; Apple keeps `self` in `ebx`.
+
+1. Split `controlValue = defaults & ~INIT` into load then `&=`
+2. Write `outb(..., controlValue)` after a separate `controlValue |= INIT`
+3. Reload `controlRegister` from `self` between the two `outb`s by naming `self->`
+4. Declare `controlValue` after a dummy-width sibling is forbidden; try `int` vs `unsigned char`
+
+### `-[IOParallelPort _waitForDevice:isReady:]` (diff 17)
+
+Star: extra stack slot for `inb`; `cmp [ivar], ebx` vs `cmp ivar, 0`; `inc ebx`
+vs `add esp` order.
+
+1. `for (tries = 0; ; tries++)` with the bound test inside
+2. `while (1)` + `if (!(busyMaxRetries > tries || wait)) break;`
+3. Compare `tries < busyMaxRetries` (operand-reversed)
+4. Store `status` then mask (`unsigned char` vs `int`)
+5. Declaration order: `slept` before `tries` before `status`
+6. `wait == YES` tested before the retry bound
+
+### `_ppopen` (diff 22)
+
+Star: Apple two-range signed `cmp`/`jg`/`jge` vs our `lea`/`cmp 1`/`jbe`.
+
+1. Nested `if (result > -725) { if (result != 0) return EIO; } else { ... }`
+2. `if (result > PP_BUSY_ERROR)` then `test` zero; else `>= TIMEOUT` accept; else `> PAPER` reject; else `< OFFLINE` reject
+3. Operand-reversed `result < 0` first
+4. Keep `result` in a signed `int` and compare constants in Apple's order
+
+### `-[IOParallelPort writeToPort]` (diff 27)
+
+Star: switch-arm layout (`or al,2` first vs `or al,10h`); IO_R_IO falls into
+shared `mov edi, [ebx+0Ch]`.
+
+1. Fall through `IO_R_IO` into `default` for `returnCode = cmdBuffer->returnCode`
+2. Reorder cases: BUSY, NO_PAPER, OFFLINE, TIMEOUT, SUCCESS, IO, default
+3. Reorder cases to match Apple's binary-search pivots (`-726` first)
+4. Assign `returnCode = 0` as `xor` by not naming it until after the switch
+5. `if/else if` chain instead of `switch`
+
+### `_IOParallelPortInterruptHandler` (diff 61)
+
+Star: extra stack slot / `lea esi, [ebp+var_1]` for status; inverted
+`(status & 0x28) == 0x08` branch; SELECT test uses `[esi]` vs flags in `dl`.
+
+1. Keep `statusByte` on stack and re-read it for SELECT/busy
+2. Invert the `(status & 0x28) == 0x08` if/else
+3. SELECT-set then SELECT-clear as if/else rather than if/else if
+4. Load `writing` from `pp_softc[portNum].device` a second time (Apple does)
+5. `portNum` in `ebx` vs `esi`; declaration order of `physbuf` / `dataRegAddr` / `delay`
+6. Read-path `count != 0` vs `count > 0`; write-path `count > 0` vs `<= 0`
+
+### `_ppstrategy` (diff 83)
+
+Star: extra `sub esp,4` / `port` spill; inverted B_READ test; Apple reindexes
+`pp_softc` instead of keeping a base pointer.
+
+1. Invert READ/WRITE if/else
+2. Recompute `minor(bp->b_dev)` at each `pp_softc` access (no `portNum` local)
+3. Drop `portNum` local; use `minor(bp->b_dev)` as the expression
+4. Set `B_DONE` before vs after the `result == 0` test
+5. `if (result == 0) { clear B_ERROR; return 0; }` vs `if (result) error`
+6. Switch case order: paper/offline, timeout, busy, default
+
+### `_ppwrite` (diff 112)
+
+Star: more stack (initialized locals); `initDevice` range is `lea+cmp 1` vs
+Apple's signed `cmp`/`jle`; uio pointer copied to two slots.
+
+1. Nested signed range tests matching `_ppopen` / Finding 49
+2. Do not pre-zero `iov` / `tempBuffer` / `dataCopied` / `copySize`
+3. Keep `uio` as the argument; drop `uioPtr`
+4. `if (uio_segflg == UIO_SYSSPACE)` inverted vs `!=`
+5. Declaration order: `port` / `result` / `initResult` first, copy locals later
+6. Clamp `copySize` with `if (iov_len > 0x8000) copySize = 0x8000; else copySize = iov_len`
+
+### `_ppioctl` (diff 163)
+
+Star: different switch binary-search pivots (`40047004h` vs `40047011h`).
+
+1. Reorder cases to numeric ioctl value
+2. Reorder cases SET-then-GET as in the reference dump
+3. GET-then-SET grouped by field (delay, minPhys, thread delay, ...)
+4. `if/else if` chain instead of `switch`
+5. Timeout `0xFFFFFFFF` test as `== (unsigned)-1` vs `== 0xFFFFFFFF`
+6. Drop `timeout` local; pass `*uintData * 1000` as the expression
+
+### `-[IOParallelPort initFromDeviceDescription:]` (diff 201)
+
+Star: extra `var_20=0`; `strcmp` inlined with different length/pointer setup;
+error-path `free` register choice.
+
+1. `strcmp(minorDevStr, "0")` vs length-2 `cmpsb` locals (`int n = 2`)
+2. Declaration order: `configTable` / `minorDevStr` / `driverName` / `portRanges`
+3. Invert each early-return `if` so the success path is the `else`
+4. `numPortRanges > 1` vs `!= 1` vs `>= 2`
+5. Keep `self` in a local vs using `self` throughout
+6. `validRange` test as else-if vs nested if
+
+### `_IOParallelPortThread` (diff 210)
+
+Star: `commandType` loaded then `test`/`cmp 1` vs `cmp dword, 1`; status in
+`[ebp+var_1]` vs `bl`; first not-ready decode if/else polarity.
+
+1. `if (commandType == 1) exit; if (commandType != 0) goto complete;` as load-to-local first
+2. `switch (commandType)`
+3. Store `statusByte` then mask (force stack slot)
+4. Invert first not-ready `(status & 8)` if/else
+5. Second decode: `errorFlag = 0` then `if (!(status & 8)) errorFlag = 1` as separate statements
+6. `ioTimeout` / `elapsedTime` / `timeout` declaration order
+7. `while (msgResult != 0)` vs `while (1)` with breaks

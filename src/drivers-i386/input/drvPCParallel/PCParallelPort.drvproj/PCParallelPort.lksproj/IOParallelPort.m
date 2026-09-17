@@ -1026,11 +1026,11 @@ extern int sprintf(char *str, const char *fmt, ...);
     case PP_MSG_NO_PAPER:     // 0x232337
         return IO_R_NO_PAPER;  // -737 (0xfffffd1f)
 
-    case PP_MSG_BUSY:         // 0x232338
-        return IO_R_BUSY;  // -725 (0xfffffd2b)
-
     case PP_MSG_OFFLINE:      // 0x232339
         return IO_R_PRINTER_OFFLINE;  // -738 (0xfffffd1e)
+
+    case PP_MSG_BUSY:         // 0x232338
+        return IO_R_BUSY;  // -725 (0xfffffd2b)
 
     default:
         return IO_R_IO;  // -714 (0xfffffd36)

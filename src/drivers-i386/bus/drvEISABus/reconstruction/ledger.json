@@ -1626,11 +1626,11 @@
         "-[pnpIRQ irqs]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 95,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIRQ.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 16076,
@@ -1698,11 +1698,11 @@
         "-[pnpIRQ number]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 104,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIRQ.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 16180,
@@ -1842,11 +1842,11 @@
         "-[pnpDMA number]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 132,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 16944,
@@ -1866,11 +1866,11 @@
         "-[pnpDMA dmaChannels]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 110,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 16960,
@@ -2010,11 +2010,11 @@
         "-[pnpIOPort min_base]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 14,
       "source_line": 139,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 17552,
@@ -2034,11 +2034,11 @@
         "-[pnpIOPort max_base]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 14,
       "source_line": 147,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 17568,
@@ -2058,11 +2058,11 @@
         "-[pnpIOPort alignment]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 14,
       "source_line": 155,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 17584,
@@ -2082,11 +2082,11 @@
         "-[pnpIOPort length]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 14,
       "source_line": 163,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 17600,
@@ -2106,11 +2106,11 @@
         "-[pnpIOPort lines_decoded]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 14,
       "source_line": 171,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 17616,
@@ -2202,11 +2202,11 @@
         "-[pnpMemory is32]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 14,
       "source_line": 243,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 18160,
@@ -2226,11 +2226,11 @@
         "-[pnpMemory min_base]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 187,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 18176,
@@ -2250,11 +2250,11 @@
         "-[pnpMemory max_base]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 195,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 18192,
@@ -2274,11 +2274,11 @@
         "-[pnpMemory alignment]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 203,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 18208,
@@ -2298,11 +2298,11 @@
         "-[pnpMemory length]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 211,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 18224,
@@ -2322,11 +2322,11 @@
         "-[pnpMemory bit8]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 14,
       "source_line": 219,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 18240,
@@ -2346,11 +2346,11 @@
         "-[pnpMemory bit16]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 14,
       "source_line": 227,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 18256,
@@ -2370,11 +2370,11 @@
         "-[pnpMemory bit32]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 14,
       "source_line": 235,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 18272,
@@ -2394,11 +2394,11 @@
         "-[pnpMemory highAddressDecode]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 14,
       "source_line": 251,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 18288,
@@ -2586,11 +2586,11 @@
         "-[PnPResource list]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 76,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResource.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 20316,
@@ -2610,11 +2610,11 @@
         "-[PnPResource setDepStart:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 16,
       "source_line": 85,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResource.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 20332,
@@ -2778,11 +2778,11 @@
         "-[PnPResources irq]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 85,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 22756,
@@ -2802,11 +2802,11 @@
         "-[PnPResources dma]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 93,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 22772,
@@ -2826,11 +2826,11 @@
         "-[PnPResources port]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 101,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 22788,
@@ -2850,11 +2850,11 @@
         "-[PnPResources memory]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 109,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 22804,
@@ -3018,11 +3018,11 @@
         "-[PnPDependentResources setGoodConfig:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 16,
       "source_line": 58,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDependentResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 23484,
@@ -3042,11 +3042,11 @@
         "-[PnPDependentResources goodConfig]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 14,
       "source_line": 49,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDependentResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 23500,
@@ -3162,11 +3162,11 @@
         "-[PnPLogicalDevice compatIDs]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 128,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 24304,
@@ -3186,11 +3186,11 @@
         "-[PnPLogicalDevice addCompatID:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 30,
       "source_line": 180,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 24336,
@@ -3210,11 +3210,11 @@
         "-[PnPLogicalDevice deviceName]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 96,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 24352,
@@ -3234,11 +3234,11 @@
         "-[PnPLogicalDevice setID:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 16,
       "source_line": 136,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 24368,
@@ -3258,11 +3258,11 @@
         "-[PnPLogicalDevice ID]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 87,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 24384,
@@ -3282,11 +3282,11 @@
         "-[PnPLogicalDevice setLogicalDeviceNumber:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 16,
       "source_line": 171,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 24400,
@@ -3306,11 +3306,11 @@
         "-[PnPLogicalDevice logicalDeviceNumber]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 104,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 24416,
@@ -3330,11 +3330,11 @@
         "-[PnPLogicalDevice depResources]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 120,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 24432,
@@ -3354,11 +3354,11 @@
         "-[PnPLogicalDevice resources]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 112,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 24448,
@@ -3378,11 +3378,11 @@
         "+[PnPDeviceResources setReadPort:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 17,
       "source_line": 64,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 24468,
@@ -3426,11 +3426,11 @@
         "-[PnPDeviceResources setID:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 16,
       "source_line": 201,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 24556,
@@ -3450,11 +3450,11 @@
         "-[PnPDeviceResources deviceName]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 286,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 24572,
@@ -3474,11 +3474,11 @@
         "-[PnPDeviceResources ID]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 193,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 24588,
@@ -3498,11 +3498,11 @@
         "-[PnPDeviceResources setSerialNumber:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 16,
       "source_line": 218,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 24604,
@@ -3522,11 +3522,11 @@
         "-[PnPDeviceResources serialNumber]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 210,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 24620,
@@ -3570,11 +3570,11 @@
         "+[PnPDeviceResources setVerbose:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 16,
       "source_line": 73,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 27208,
@@ -3642,11 +3642,11 @@
         "-[PnPDeviceResources csn]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 228,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 27784,
@@ -3690,11 +3690,11 @@
         "-[PnPDeviceResources deviceList]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 246,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 27888,
@@ -3714,11 +3714,11 @@
         "-[PnPDeviceResources deviceCount]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 26,
       "source_line": 237,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 27916,
@@ -3935,7 +3935,7 @@
       "status": "unexamined"
     }
   ],
-  "rebuilt_sha256": null,
+  "rebuilt_sha256": "4430CA7B3DE0161164445D54DAF584B88CB0D48DFF5E7D55F565670A900E41F8",
   "reference_sha256": "8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23",
   "schema_version": "ledger-v1"
 }

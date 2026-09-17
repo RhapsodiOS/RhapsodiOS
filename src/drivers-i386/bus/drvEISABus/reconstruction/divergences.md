@@ -625,3 +625,13 @@ These are the natural next targets for a follow-up pass, in roughly this priorit
 PnP resource-allocation methods (most likely to interact with the calling-convention findings
 above, since they consume the results of the BIOS calls), then `getEISASlotNumber:...` and the
 rest of `EISAKernBus.m`, then the `pnp*.m`/`PnP*Resources.m` family.
+
+## Finish campaign
+
+Date: 2026-09-17. Branch: `pnpdump-binrecon-finish`.
+
+Task 5 IDA `--list` against the Task 4 rebuilt reloc (`4430CA7B…`): **45** of the 93 shared
+nine-class names were already `raw_equal` or `masked_equal`; those reloc ledger rows are now
+`assembly-matched` (reviewer Pat Raynor). Kernel-only reloc statuses were not changed. The tool
+side recorded **43** baseline-identical rows in `reconstruction/pnpdump/ledger.json` (see
+`reconstruction/pnpdump/divergences.md`).

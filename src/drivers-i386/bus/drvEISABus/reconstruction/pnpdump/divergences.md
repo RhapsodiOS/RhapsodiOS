@@ -185,3 +185,31 @@ Inverted the outer test to `if (high)`. Apple `jz` polarity and flag offsets (`4
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+### Task 6 `createMachPort:objectNumber:` return MIG result (2026-09-17)
+
+Return `_IOCreateMachPort(...)` instead of `self`. The printed mnemonic stream now matches; leftover is call-site PIC (`calls differ`). Accepted compiler-shaped leftover (reviewer Pat Raynor). Tool SHA `F5EED1197BF4A7E578676F26F0D51C0047886D1B698AB94B1087A17EE7B0752B`. Previously identical rows stayed matched. Unpaired count unchanged (10). Tool-only; reloc SHA unchanged.
+
+```
+-[IODeviceMaster createMachPort:objectNumber:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  mov eax, [ebp+self]                     mov eax, [ebp+self]
+  mov edx, [ebp+arg_8]                    mov edx, [ebp+arg_8]
+  push edx                                push edx
+  mov edx, [ebp+arg_C]                    mov edx, [ebp+arg_C]
+  push edx                                push edx
+  mov eax, [eax+4]                        mov eax, [eax+4]
+  push eax                                push eax
+  call __IOCreateMachPort                 call __IOCreateMachPort
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

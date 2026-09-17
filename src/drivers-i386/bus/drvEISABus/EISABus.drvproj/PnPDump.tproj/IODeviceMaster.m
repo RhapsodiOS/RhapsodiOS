@@ -69,8 +69,7 @@ static id thisTasksId = nil;
  */
 - createMachPort:(port_t *)port objectNumber:(unsigned int)objNum
 {
-    _IOCreateMachPort(deviceMasterPort, objNum, port);
-    return self;
+    return (id)_IOCreateMachPort(deviceMasterPort, objNum, port);
 }
 
 /*

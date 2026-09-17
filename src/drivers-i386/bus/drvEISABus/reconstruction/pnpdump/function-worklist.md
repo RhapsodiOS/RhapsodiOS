@@ -260,7 +260,7 @@ functions and have no experiment list.
 - `-[NXLock free]` (tool-only, diff 4): none — PIC / objc class-pointer leftover
 - `_IOCopyMemory` (tool-only, diff 4): none — PIC leftover
 - `_IOSleep` (tool-only, diff 5): local vs expression for the msg_receive timeout block
-- `-[IODeviceMaster createMachPort:objectNumber:]` (tool-only, diff 6): local vs expression for `self` around the MIG call
+- `-[IODeviceMaster createMachPort:objectNumber:]` (tool-only, diff 6): return the MIG call result instead of `self` (local vs expression) — **tried, kept**; mnemonic stream matches; leftover is call-site PIC; **accepted** compiler-shaped
 - `-[NXLock init]` (tool-only, diff 6): declaration order of the existing mutex/cond zeroing stores
 - `-[PnPResources free]` (shared, diff 6; reloc different d=1): none — PIC selector / objc super_class vs ext leftover
 - `-[PnPResource free]` (shared, diff 8; reloc different d=3): none — extra PIC selector push plus super_class vs ext leftover

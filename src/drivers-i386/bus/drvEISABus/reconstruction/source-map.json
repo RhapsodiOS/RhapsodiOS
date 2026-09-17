@@ -1109,7 +1109,7 @@
         "-[PnPResources addDMA:]"
       ],
       "size": 46,
-      "source_line": 128,
+      "source_line": 130,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m"
     },
     {
@@ -1118,7 +1118,7 @@
         "-[PnPResources addIOPort:]"
       ],
       "size": 46,
-      "source_line": 138,
+      "source_line": 139,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m"
     },
     {
@@ -1127,7 +1127,7 @@
         "-[PnPResources addMemory:]"
       ],
       "size": 46,
-      "source_line": 148,
+      "source_line": 147,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m"
     },
     {
@@ -1136,7 +1136,7 @@
         "-[PnPResources markStartDependentResources]"
       ],
       "size": 213,
-      "source_line": 159,
+      "source_line": 158,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m"
     },
     {

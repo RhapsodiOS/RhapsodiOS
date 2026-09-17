@@ -2865,7 +2865,8 @@
         ],
         "reasons": [
           "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
+          "not examined in this pass",
+          "Task 6 nested [[list] addObject:]; reloc IDA masked_equal; tool leftover is PIC selector displacements"
         ],
         "status": "agreed"
       },
@@ -2874,11 +2875,11 @@
         "-[PnPResources addIRQ:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 46,
       "source_line": 118,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 22852,
@@ -2889,7 +2890,8 @@
         ],
         "reasons": [
           "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
+          "not examined in this pass",
+          "Task 6 nested [[list] addObject:]; reloc IDA masked_equal; tool leftover is PIC selector displacements"
         ],
         "status": "agreed"
       },
@@ -2898,11 +2900,11 @@
         "-[PnPResources addDMA:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 46,
-      "source_line": 128,
+      "source_line": 130,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 22900,
@@ -2913,7 +2915,8 @@
         ],
         "reasons": [
           "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
+          "not examined in this pass",
+          "Task 6 nested [[list] addObject:]; reloc IDA masked_equal; tool leftover is PIC selector displacements"
         ],
         "status": "agreed"
       },
@@ -2922,11 +2925,11 @@
         "-[PnPResources addIOPort:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 46,
-      "source_line": 138,
+      "source_line": 139,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 22948,
@@ -2937,7 +2940,8 @@
         ],
         "reasons": [
           "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
+          "not examined in this pass",
+          "Task 6 nested [[list] addObject:]; reloc IDA masked_equal; tool leftover is PIC selector displacements"
         ],
         "status": "agreed"
       },
@@ -2946,11 +2950,11 @@
         "-[PnPResources addMemory:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 46,
-      "source_line": 148,
+      "source_line": 147,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 22996,
@@ -2972,7 +2976,7 @@
       "reason": null,
       "reviewer": null,
       "size": 213,
-      "source_line": 159,
+      "source_line": 158,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
       "status": "unexamined"
     },
@@ -3937,7 +3941,7 @@
       "status": "unexamined"
     }
   ],
-  "rebuilt_sha256": "2AD36AEF5E4934EBD7C9F8447D5204EADFBB4449524BD9B5E14B3EFD9F19A874",
+  "rebuilt_sha256": "C471FE4013DF9F95FFD3DE61F11183C049347E8812EFCB65B2F29851EC746C42",
   "reference_sha256": "8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23",
   "schema_version": "ledger-v1"
 }

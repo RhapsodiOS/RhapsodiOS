@@ -120,8 +120,7 @@ const char * const pnpBiosSignatureString = "$PnP";
  */
 - (id)addIRQ:(id)irqObject
 {
-    List *list = [_irq list];
-    return [list addObject:irqObject];
+    return [[_irq list] addObject:irqObject];
 }
 
 /*
@@ -130,8 +129,7 @@ const char * const pnpBiosSignatureString = "$PnP";
  */
 - (id)addDMA:(id)dmaObject
 {
-    List *list = [_dma list];
-    return [list addObject:dmaObject];
+    return [[_dma list] addObject:dmaObject];
 }
 
 /*
@@ -140,8 +138,7 @@ const char * const pnpBiosSignatureString = "$PnP";
  */
 - (id)addIOPort:(id)portObject
 {
-    List *list = [_port list];
-    return [list addObject:portObject];
+    return [[_port list] addObject:portObject];
 }
 
 /*
@@ -150,8 +147,7 @@ const char * const pnpBiosSignatureString = "$PnP";
  */
 - (id)addMemory:(id)memoryObject
 {
-    List *list = [_memory list];
-    return [list addObject:memoryObject];
+    return [[_memory list] addObject:memoryObject];
 }
 
 /*

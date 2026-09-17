@@ -799,3 +799,35 @@ Kernel-only reloc statuses were not reopened. Reloc SHA `2AD36AEF5E4934EBD7C9F84
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+### Task 6 nested `[[list] addObject:]` (2026-09-17)
+
+Kernel-only reloc statuses were not reopened. Reloc SHA `C471FE4013DF9F95FFD3DE61F11183C049347E8812EFCB65B2F29851EC746C42` (603708). All four add methods are IDA `masked_equal`. `addIOPort:`/`addIRQ:`/`addMemory:` match `addDMA:` aside from the ivar offset.
+
+```
+-[PnPResources addDMA:]
+  status=different raw_equal=False masked_equal=True
+  reason: calls differ
+  reason: cfg differs
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  mov eax, [ebp+self]                     mov eax, [ebp+self]
+  mov edx, [ebp+arg_8]                    mov edx, [ebp+arg_8]
+  push edx                                push edx
+  mov edx, ds:paAddobject                 mov edx, ds:paAddobject
+  push edx                                push edx
+  mov edx, ds:paList_0                    mov edx, ds:paList_0
+  push edx                                push edx
+  mov eax, [eax+8]                        mov eax, [eax+8]
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

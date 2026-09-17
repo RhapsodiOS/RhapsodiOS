@@ -276,10 +276,10 @@ functions and have no experiment list.
 - `-[PnPDeviceResources initForBufNoHeader:Length:CSN:]` (shared, diff 13; reloc different d=6): none — PIC selectors plus `_printf` vs `_IOLog` on the error path
 - `-[PnPLogicalDevice setDeviceName:Length:]` (shared, diff 14; reloc different d=14): `if (_deviceNameLength == 0)` plus signed `copyLength = 0x4f; if (copyLength > length)` — **tried, kept**; leftover is IDA `__src` vs `arg_8` plus jump labels; reloc **masked_equal**; tool **accepted** compiler-shaped
 - `+[IODeviceMaster new]` (tool-only, diff 15): local vs expression for the allocated object
-- `-[PnPResources addDMA:]` (shared, diff 15; reloc different d=9): omit explicit `return self` (local vs expression)
-- `-[PnPResources addIOPort:]` (shared, diff 15; reloc different d=9): omit explicit `return self` (local vs expression)
-- `-[PnPResources addIRQ:]` (shared, diff 15; reloc different d=9): omit explicit `return self` (local vs expression)
-- `-[PnPResources addMemory:]` (shared, diff 15; reloc different d=9): omit explicit `return self` (local vs expression)
+- `-[PnPResources addDMA:]` (shared, diff 15; reloc different d=9): nested `[[_dma list] addObject:]` (local vs expression) — **tried, kept**; reloc **masked_equal**; tool leftover is PIC selector displacements; **accepted** compiler-shaped
+- `-[PnPResources addIOPort:]` (shared, diff 15; reloc different d=9): nested `[[_port list] addObject:]` (local vs expression) — **tried, kept**; reloc **masked_equal**; tool leftover is PIC selector displacements; **accepted** compiler-shaped
+- `-[PnPResources addIRQ:]` (shared, diff 15; reloc different d=9): nested `[[_irq list] addObject:]` (local vs expression) — **tried, kept**; reloc **masked_equal**; tool leftover is PIC selector displacements; **accepted** compiler-shaped
+- `-[PnPResources addMemory:]` (shared, diff 15; reloc different d=9): nested `[[_memory list] addObject:]` (local vs expression) — **tried, kept**; reloc **masked_equal**; tool leftover is PIC selector displacements; **accepted** compiler-shaped
 - `__start` (tool-only, diff 17): none — CRT/dyld/libc glue; not hand-written
 - `-[PnPResources init]` (shared, diff 20; reloc different d=6): none — PIC selector leftover
 - `-[pnpMemory matches:]` (shared, diff 20; reloc different d=19): loop shape / `if` vs `else if` on the channel compare

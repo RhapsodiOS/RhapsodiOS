@@ -213,3 +213,39 @@ Return `_IOCreateMachPort(...)` instead of `self`. The printed mnemonic stream n
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+### Task 6 nested `[[list] addObject:]` (2026-09-17)
+
+Dropped the `List *list` temporary on `addIRQ:`/`addDMA:`/`addIOPort:`/`addMemory:`. Reloc IDA `masked_equal` on all four. Tool leftover is PIC selector displacements (`paList_0` vs `paList_1` and immediate offsets). Accepted compiler-shaped leftover (reviewer Pat Raynor). Tool SHA `613D8ED01BF4B7A5CAB0C7085A88E61ED7070ED43D102D5B6A1E39D21DD15C3C` (299424). Previously identical rows stayed matched. Unpaired count unchanged (10). `addIOPort:`/`addIRQ:`/`addMemory:` match `addDMA:` aside from the ivar offset.
+
+```
+-[PnPResources addDMA:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  call $+5                                call $+5
+  pop edx                                 pop edx
+  mov eax, [ebp+self]                     mov eax, [ebp+self]
+  mov ecx, [ebp+arg_8]                    mov ecx, [ebp+arg_8]
+  push ecx                                push ecx
+  mov ecx, edx                            mov ecx, edx
+* mov ecx, [ecx+697Ch]                    mov ecx, [ecx+4B0Ch]
+  push ecx                                push ecx
+* mov edx, ds:(paList_0 - 5724h)[edx]     mov edx, ds:(paList_1 - 5538h)[edx]
+  push edx                                push edx
+  mov eax, [eax+8]                        mov eax, [eax+8]
+  push eax                                push eax
+  call _objc_msgSend                      call _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call _objc_msgSend                      call _objc_msgSend
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

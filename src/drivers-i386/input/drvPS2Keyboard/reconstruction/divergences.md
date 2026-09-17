@@ -2034,6 +2034,10 @@ Dropped the inverted `noMouseData` BOOL; `if (!(status & 0x20))` returns 0 after
 
 Signed `i` / `savedEventCount` yield `jge`/`jl`; the n==1 path is a struct copy so `goingDown` stores as a dword. `--name` differs only by jump labels. Rebuilt `BD73917E3E2C0AFDD7F6A5E82A8D28B09A59415055533261C382D4B55A8F6359`. Task 8 gates unchanged. Unpaired 0.
 
+### `-[PS2Keyboard enqueueKeyEvent:goingDown:atTime:]` (3420) — `identical`
+
+Scalar parked locals were copy-propagated. A `PS2KeyboardEvent` local filled then struct-assigned into the slot yields `sub esp, 10h` and the four dword stores. `--name` is `raw_equal`. Rebuilt `AF59A809360F8ADBC6010ECDC5781E9FD247D2F9A375A817356DF631E9310BAD`. Task 8 gates unchanged. Unpaired 0.
+
 ## Task 4 stop (unpaired growth)
 
 `readConfigTable:` ivar-in-branch experiment made `--list` report 50 functions / 2 unpaired (`missing-rebuilt __PS2KeyboardNumKeysDown`, `missing-reference _resetEscapes`). That is a layout or linkage finding. Experiment reverted. After rebuild, SHA is again `20C8BD6E1243FE4CB6D1CDCC51654CBADF65E118370ACBF8D49EBE05B3631C07`, `--list` 49 / 0 unpaired. Do not repeat the ivar-in-NULL-branch store. Campaign continues on other functions.

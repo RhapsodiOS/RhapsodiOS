@@ -958,7 +958,7 @@
       "size": 99,
       "source_line": 257,
       "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m",
-      "status": "control-flow-confirmed"
+      "status": "assembly-matched"
     },
     {
       "address": 3520,
@@ -1177,7 +1177,7 @@
       "status": "intentional-mismatch"
     }
   ],
-  "rebuilt_sha256": "BD73917E3E2C0AFDD7F6A5E82A8D28B09A59415055533261C382D4B55A8F6359",
+  "rebuilt_sha256": "AF59A809360F8ADBC6010ECDC5781E9FD247D2F9A375A817356DF631E9310BAD",
   "reference_sha256": "AB413CA3919950F22A1F5D10B0BF1167387FEF320C9FB82A3EA66E586A6BE02A",
   "schema_version": "ledger-v1"
 }

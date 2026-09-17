@@ -258,15 +258,15 @@ int _PS2KeyboardNumKeysDown(void)
                  atTime:(unsigned long long)timestamp
 {
     int index;
+    PS2KeyboardEvent event;
 
     /* Check if the queue is not full (max 16 events) */
     if (numEvents != MAX_KEYBOARD_EVENTS) {
+        event.keyCode = keyCode;
+        event.goingDown = goingDown;
+        event.timeStamp = timestamp;
         index = numEvents;
-
-        pendingEvents[index].timeStamp = timestamp;
-        pendingEvents[index].keyCode = keyCode;
-        pendingEvents[index].goingDown = goingDown;
-
+        pendingEvents[index] = event;
         numEvents++;
     }
     /* If the queue is full, the event is dropped */

@@ -13,9 +13,9 @@ Analyzer: IDA 9.2 only (`analyzers.angr.enabled` is false; Ghidra stays off).
 | | SHA-256 | size |
 | --- | --- | --- |
 | Reference | `AB413CA3919950F22A1F5D10B0BF1167387FEF320C9FB82A3EA66E586A6BE02A` | 43460 |
-| Rebuilt | `BD73917E3E2C0AFDD7F6A5E82A8D28B09A59415055533261C382D4B55A8F6359` | 157584 |
+| Rebuilt | `AF59A809360F8ADBC6010ECDC5781E9FD247D2F9A375A817356DF631E9310BAD` | 157620 |
 
-`__TEXT,__text`: reference 4952, rebuilt 4656.
+`__TEXT,__text`: reference 4952, rebuilt 4668.
 
 `parity_check.py`: `missing_strings (0)`, `missing_symbols (0)`. Extra symbols 54 (stabs / file names on the unstripped guest `_reloc`).
 
@@ -222,6 +222,9 @@ Task 8 regression gate. `--name` shows then/else order on `respondsTo:`, but do 
 ### `-[PS2Keyboard enqueueKeyEvent:goingDown:atTime:]` (diff 31)
 
 1. Park `timestamp`, `keyCode`, and `goingDown` in locals before computing the slot address (`sub esp, 10h` then four stores vs immediate indexed stores).
+   **Tried, miss:** three scalar locals were copy-propagated; instruction stream unchanged. Diff stayed 31.
+2. Park a `PS2KeyboardEvent` local, then struct-assign into the slot.
+   **Match:** `identical` / `raw_equal` after rebuild `AF59A809360F8ADBC6010ECDC5781E9FD247D2F9A375A817356DF631E9310BAD`. Ledger `assembly-matched`.
 
 ### `-[PS2Keyboard interruptOccurred]` (diff 32)
 

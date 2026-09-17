@@ -4809,3 +4809,57 @@ Zero mutex/condition/reserved2/waiters/locked in Apple store order and omit unus
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+### Task 6 `_IOFindValueForName` for-loop table walk (2026-09-17)
+
+Walk the name/value table with a `for` over dual pointers instead of `if` plus `do-while`. Leftover is instruction scheduling of independent loads/adds. Accepted compiler-shaped leftover (reviewer Pat Raynor). Tool SHA `F1D978864204107A5B08BC6CBDA5395CAB5A139AC8550CC72303D7079406FDEE` (299452). Previously identical rows stayed matched (45). Unpaired count unchanged (10). Tool-only; reloc SHA unchanged.
+
+```
+_IOFindValueForName
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+*                                         mov edi, [ebp+arg_8]
+  mov esi, [ebp+arg_4]                    mov esi, [ebp+arg_4]
+* mov edi, [ebp+arg_8]                    lea ebx, [esi+4]
+  cmp dword ptr [esi+4], 0                cmp dword ptr [esi+4], 0
+* jz loc_715F                             jz loc_39CF
+* lea ebx, [esi+4]
+  nop                                     nop
+  nop                                     nop
+  nop                                     nop
+  mov edx, [ebp+__s2]                     mov edx, [ebp+__s2]
+  push edx                                push edx
+  mov edx, [ebx]                          mov edx, [ebx]
+  push edx                                push edx
+  call _strcmp                            call _strcmp
+  add esp, 8                              add esp, 8
+  test eax, eax                           test eax, eax
+* jnz loc_7154                            jnz loc_39C4
+  mov esi, [esi]                          mov esi, [esi]
+  mov [edi], esi                          mov [edi], esi
+  xor eax, eax                            xor eax, eax
+* jmp loc_7164                            jmp loc_39D4
+*                                         add esi, 8
+  add ebx, 8                              add ebx, 8
+* add esi, 8
+  cmp dword ptr [ebx], 0                  cmp dword ptr [ebx], 0
+* jnz loc_7138                            jnz loc_39A8
+  mov eax, 0FFFFFD3Eh                     mov eax, 0FFFFFD3Eh
+  lea esp, [ebp-0Ch]                      lea esp, [ebp-0Ch]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

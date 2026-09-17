@@ -268,7 +268,7 @@ Accepted 2026-09-17: remaining `none` hand-written rows are `intentional-mismatc
 - `-[PnPResource free]` (shared, diff 8; reloc different d=3): none — extra PIC selector push plus super_class vs ext leftover
 - `-[PnPResource init]` (shared, diff 8; reloc different d=3): none — PIC selector leftover; jump labels only besides PIC
 - `-[PnPDeviceResources free]` (shared, diff 9; reloc different d=4): none — extra PIC selector push plus super_class vs ext leftover
-- `_IOFindValueForName` (tool-only, diff 9): loop shape of the table walk
+- `_IOFindValueForName` (tool-only, diff 9): loop shape of the table walk — **tried, kept**; leftover is load/add scheduling; **accepted** compiler-shaped
 - `-[PnPLogicalDevice free]` (shared, diff 10; reloc different d=3): none — extra PIC selector push plus super_class vs ext leftover
 - `-[PnPLogicalDevice init]` (shared, diff 11; reloc different d=1): none — PIC selector leftover; reloc is class-pointer names only
 - `-[pnpIRQ setHigh:Level:]` (shared, diff 11; reloc different d=11): invert outer test to `if (high)` / `else` (if vs else if) — **tried, kept**; leftover is register allocation (`edx`/`al` vs `eax`/`dl`); **accepted** compiler-shaped on both

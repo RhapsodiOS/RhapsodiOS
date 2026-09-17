@@ -356,31 +356,17 @@ void IOForkThread(void (*func)(void *), void *arg)
  */
 int IOFindValueForName(const char *name, int *table, int *outValue)
 {
-    char **namePtr;
     int *valuePtr;
-    int result;
+    char **namePtr;
 
-    /* Check if table has entries (second element is first name pointer) */
-    if (table[1] != 0) {
-        namePtr = (char **)(table + 1);
-        valuePtr = table;
-
-        /* Walk through table */
-        do {
-            result = strcmp(*namePtr, name);
-            if (result == 0) {
-                /* Found match */
-                *outValue = *valuePtr;
-                return 0;
-            }
-
-            /* Advance to next entry (skip value and name pointers) */
-            namePtr += 2;
-            valuePtr += 2;
-        } while (*namePtr != NULL);
+    for (valuePtr = table, namePtr = (char **)(table + 1);
+         *namePtr != 0;
+         valuePtr += 2, namePtr += 2) {
+        if (!strcmp(*namePtr, name)) {
+            *outValue = *valuePtr;
+            return 0;
+        }
     }
-
-    /* Not found */
     return 0xfffffd3e;
 }
 

@@ -86,8 +86,8 @@ extern int sprintf(char *str, const char *fmt, ...);
 - initFromDeviceDescription:(IODeviceDescription *)deviceDescription
 {
     IOEISADeviceDescription *eisaDesc = (IOEISADeviceDescription *)deviceDescription;
-    id configTable;
     const char *minorDevStr;
+    id configTable;
     const char *driverName;
     IORange *portRanges;
     BOOL validRange;
@@ -222,36 +222,38 @@ extern int sprintf(char *str, const char *fmt, ...);
 
 - (BOOL)probeForController
 {
+    unsigned char readBack;
     unsigned char controlValue;
     unsigned char readValue;
 
-    // Read the current control register value.  The reference discards it and
-    // builds each test pattern bit by bit; only bits 0-5 are defined.
-    (void)inb(PP_PORT(controlRegister));
+    readBack = inb(PP_PORT(controlRegister));
 
-    // First test pattern 0x1e:
-    // STROBE=0, AUTOFEED=1, INIT=1, SELECT=1, IRQ_EN=1, DIR=0
-    controlValue = PP_CONTROL_AUTOFEED | PP_CONTROL_INIT |
-                   PP_CONTROL_SELECT | PP_CONTROL_IRQ_EN;
+    controlValue &= 0xFE;
+    controlValue |= 0x02;
+    controlValue |= 0x04;
+    controlValue |= 0x08;
+    controlValue |= 0x10;
+    controlValue &= 0xDF;
     outb(PP_PORT(controlRegister), controlValue);
 
-    // Read back and verify
     readValue = inb(PP_PORT(controlRegister));
     if ((readValue & 0x1F) != 0x1E) {
         return NO;
     }
 
-    // Second test pattern 0x04: only INIT set
-    controlValue = PP_CONTROL_INIT;
+    controlValue &= 0xFE;
+    controlValue &= 0xFD;
+    controlValue |= 0x04;
+    controlValue &= 0xF7;
+    controlValue &= 0xEF;
+    controlValue &= 0xDF;
     outb(PP_PORT(controlRegister), controlValue);
 
-    // Read back and verify
     readValue = inb(PP_PORT(controlRegister));
     if ((readValue & 0x15) != 0x04) {
         return NO;
     }
 
-    // Controller found and verified
     return YES;
 }
 
@@ -261,15 +263,14 @@ extern int sprintf(char *str, const char *fmt, ...);
     unsigned char statusValue;
     BOOL isReady;
 
-    // Setup control register value:
-    // - Set SELECT (0x08) and INIT (0x04) bits
-    // - Set AUTOFEED (0x02) if enabled
-    controlValue = PP_CONTROL_SELECT | PP_CONTROL_INIT;
-    if (autofeedOutput & 1) {
-        controlValue |= PP_CONTROL_AUTOFEED;
-    }
+    controlValue &= 0xFE;
+    controlValue &= 0xFD;
+    controlValue |= (unsigned char)((autofeedOutput & 1) << 1);
+    controlValue |= 0x04;
+    controlValue |= 0x08;
+    controlValue &= 0xEF;
+    controlValue &= 0xDF;
 
-    // Write initial control value
     outb(PP_PORT(controlRegister), controlValue);
 
     // Read status register (initial check)
@@ -508,13 +509,8 @@ extern int sprintf(char *str, const char *fmt, ...);
     // Set status bits based on the command's return code.  The arms are
     // selected by value: our IO_R_* comments state the expansion.
     switch (cmdBuffer->returnCode) {
-    case IO_R_TIMEOUT:  // -726
-        status |= PP_SW_NOT_READY;  // 0x10
-        [self setStatusWord:status];
-        break;
-
-    case IO_R_PRINTER_OFFLINE:  // -738
-        status |= PP_SW_OFFLINE;  // 0x08
+    case IO_R_BUSY:  // -725
+        status |= PP_SW_BUSY;  // 0x02
         [self setStatusWord:status];
         break;
 
@@ -523,8 +519,13 @@ extern int sprintf(char *str, const char *fmt, ...);
         [self setStatusWord:status];
         break;
 
-    case IO_R_BUSY:  // -725
-        status |= PP_SW_BUSY;  // 0x02
+    case IO_R_PRINTER_OFFLINE:  // -738
+        status |= PP_SW_OFFLINE;  // 0x08
+        [self setStatusWord:status];
+        break;
+
+    case IO_R_TIMEOUT:  // -726
+        status |= PP_SW_NOT_READY;  // 0x10
         [self setStatusWord:status];
         break;
 
@@ -535,9 +536,7 @@ extern int sprintf(char *str, const char *fmt, ...);
     case IO_R_IO:  // -714
         status |= PP_SW_NO_ERROR;  // 0x20
         [self setStatusWord:status];
-        returnCode = cmdBuffer->returnCode;
-        break;
-
+        /* fall through */
     default:
         // For unknown errors, keep the return code and leave the status word
         returnCode = cmdBuffer->returnCode;
@@ -829,13 +828,15 @@ extern int sprintf(char *str, const char *fmt, ...);
 
 - (BOOL)_waitForDevice:(BOOL)wait isReady:(BOOL *)isReady
 {
-    unsigned int tries = 0;
+    unsigned int tries;
     unsigned char status;
     BOOL slept = NO;
 
     // Poll the status register for (BUSY|PAPER_OUT|SELECT|ERROR) == ready,
     // bounded by busyMaxRetries, or forever when the caller says so.
-    while (busyMaxRetries > tries || wait == YES) {
+    for (tries = 0; ; tries++) {
+        if (!(tries < busyMaxRetries || wait == YES))
+            break;
         status = inb(PP_PORT(statusRegister));
         if ((status & 0xB8) == 0x98) {
             *isReady = YES;
@@ -844,7 +845,6 @@ extern int sprintf(char *str, const char *fmt, ...);
 
         IOSleep(busyRetryInterval);
         slept = YES;
-        tries++;
     }
 
     *isReady = NO;
@@ -858,18 +858,14 @@ extern int sprintf(char *str, const char *fmt, ...);
 - (PPCommandBuffer *)cmdBufAlloc
 {
     PPCommandBuffer *cmdBuffer;
-    id conditionLock;
 
     // Allocate command buffer structure (0x1c = 28 bytes)
     cmdBuffer = (PPCommandBuffer *)IOMalloc(sizeof(PPCommandBuffer));
 
-    // Create an NXConditionLock
-    conditionLock = [NXConditionLock new];
-    cmdBuffer->conditionLock = conditionLock;
-
-    // Lock and then unlock with condition 0
-    [conditionLock lock];
-    [conditionLock unlockWith:0];
+    // Create an NXConditionLock, lock it, then unlock with condition 0
+    cmdBuffer->conditionLock = [NXConditionLock new];
+    [cmdBuffer->conditionLock lock];
+    [cmdBuffer->conditionLock unlockWith:0];
 
     return cmdBuffer;
 }
@@ -902,8 +898,8 @@ extern int sprintf(char *str, const char *fmt, ...);
     }
 
     // Set up the new buffer's links
-    cmdBuffer->link.next = (struct queue_entry *)&ioQueue;
     cmdBuffer->link.prev = (struct queue_entry *)oldTail;
+    cmdBuffer->link.next = (struct queue_entry *)&ioQueue;
 
     // Update tail to point to new buffer
     ioQueue.prev = (struct queue_entry *)cmdBuffer;
@@ -952,17 +948,19 @@ extern int sprintf(char *str, const char *fmt, ...);
         ((PPCommandBuffer *)nextBuffer)->link.prev = prevBuffer;
     }
 
-    if ((struct queue_entry *)&ioQueue == prevBuffer) {
-        // This was first in queue, update head
-        ioQueue.next = nextBuffer;
-    } else {
+    if ((struct queue_entry *)&ioQueue != prevBuffer) {
         // Update previous buffer's next pointer
         ((PPCommandBuffer *)prevBuffer)->link.next = nextBuffer;
+    } else {
+        // This was first in queue, update head
+        ioQueue.next = nextBuffer;
     }
 
     // Unlock with condition based on whether the queue is now empty
-    [ioQueueLock unlockWith:
-        (ioQueue.next != (struct queue_entry *)&ioQueue) ? 1 : 0];
+    if (ioQueue.next == (struct queue_entry *)&ioQueue)
+        [ioQueueLock unlockWith:0];
+    else
+        [ioQueueLock unlockWith:1];
 
     return cmdBuffer;
 }
@@ -1025,11 +1023,11 @@ extern int sprintf(char *str, const char *fmt, ...);
     case PP_MSG_NO_PAPER:     // 0x232337
         return IO_R_NO_PAPER;  // -737 (0xfffffd1f)
 
-    case PP_MSG_BUSY:         // 0x232338
-        return IO_R_BUSY;  // -725 (0xfffffd2b)
-
     case PP_MSG_OFFLINE:      // 0x232339
         return IO_R_PRINTER_OFFLINE;  // -738 (0xfffffd1e)
+
+    case PP_MSG_BUSY:         // 0x232338
+        return IO_R_BUSY;  // -725 (0xfffffd2b)
 
     default:
         return IO_R_IO;  // -714 (0xfffffd36)

@@ -1,0 +1,403 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 15072,
+      "reference_names": [
+        "_main"
+      ],
+      "size": 564,
+      "source_line": 17,
+      "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PreLoad.tproj/InstallPPDev.m"
+    },
+    {
+      "address": 15636,
+      "reference_names": [
+        "+[IODeviceMaster new]"
+      ],
+      "size": 72,
+      "source_line": 44,
+      "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PreLoad.tproj/IODeviceMaster.m"
+    },
+    {
+      "address": 15708,
+      "reference_names": [
+        "-[IODeviceMaster free]"
+      ],
+      "size": 10,
+      "source_line": 53,
+      "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PreLoad.tproj/IODeviceMaster.m"
+    },
+    {
+      "address": 15720,
+      "reference_names": [
+        "-[IODeviceMaster lookUpByObjectNumber:deviceKind:deviceName:]"
+      ],
+      "size": 31,
+      "source_line": 58,
+      "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PreLoad.tproj/IODeviceMaster.m"
+    },
+    {
+      "address": 15752,
+      "reference_names": [
+        "-[IODeviceMaster lookUpByDeviceName:objectNumber:deviceKind:]"
+      ],
+      "size": 31,
+      "source_line": 68,
+      "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PreLoad.tproj/IODeviceMaster.m"
+    },
+    {
+      "address": 15784,
+      "reference_names": [
+        "-[IODeviceMaster getIntValues:forParameter:objectNumber:count:]"
+      ],
+      "size": 38,
+      "source_line": 78,
+      "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PreLoad.tproj/IODeviceMaster.m"
+    },
+    {
+      "address": 15824,
+      "reference_names": [
+        "-[IODeviceMaster getCharValues:forParameter:objectNumber:count:]"
+      ],
+      "size": 38,
+      "source_line": 91,
+      "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PreLoad.tproj/IODeviceMaster.m"
+    },
+    {
+      "address": 15864,
+      "reference_names": [
+        "-[IODeviceMaster setIntValues:forParameter:objectNumber:count:]"
+      ],
+      "size": 35,
+      "source_line": 104,
+      "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PreLoad.tproj/IODeviceMaster.m"
+    },
+    {
+      "address": 15900,
+      "reference_names": [
+        "-[IODeviceMaster setCharValues:forParameter:objectNumber:count:]"
+      ],
+      "size": 35,
+      "source_line": 116,
+      "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PreLoad.tproj/IODeviceMaster.m"
+    },
+    {
+      "address": 15936,
+      "reference_names": [
+        "-[IODeviceMaster createMachPort:objectNumber:]"
+      ],
+      "size": 27,
+      "source_line": 128,
+      "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PreLoad.tproj/IODeviceMaster.m"
+    },
+    {
+      "address": 23164,
+      "reference_names": [
+        "__IOCreateMachPort"
+      ],
+      "size": 223,
+      "source_line": 143,
+      "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PreLoad.tproj/IODeviceMaster.m"
+    }
+  ],
+  "reference_sha256": "3B0EECB6934DA0717985C59B2457DE5CD99E4A547E6D8BB074FD05EE63CD9AE5",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 14720,
+      "reference_names": [
+        "start"
+      ],
+      "size": 38
+    },
+    {
+      "address": 14760,
+      "reference_names": [
+        "__start"
+      ],
+      "size": 200
+    },
+    {
+      "address": 14960,
+      "reference_names": [
+        "__call_mod_init_funcs"
+      ],
+      "size": 37
+    },
+    {
+      "address": 15000,
+      "reference_names": [
+        "__dyld_init_check"
+      ],
+      "size": 52
+    },
+    {
+      "address": 15052,
+      "reference_names": [
+        "dyld_stub_binding_helper"
+      ],
+      "size": 11
+    },
+    {
+      "address": 15064,
+      "reference_names": [
+        "__dyld_func_lookup"
+      ],
+      "size": 6
+    },
+    {
+      "address": 15964,
+      "reference_names": [
+        "__IOLookupByObjectNumber"
+      ],
+      "size": 362
+    },
+    {
+      "address": 16328,
+      "reference_names": [
+        "__IOLookupByDeviceName"
+      ],
+      "size": 298
+    },
+    {
+      "address": 16628,
+      "reference_names": [
+        "__IOGetIntValues"
+      ],
+      "size": 546
+    },
+    {
+      "address": 17176,
+      "reference_names": [
+        "__IOGetCharValues"
+      ],
+      "size": 543
+    },
+    {
+      "address": 17720,
+      "reference_names": [
+        "__IOSetIntValues"
+      ],
+      "size": 413
+    },
+    {
+      "address": 18136,
+      "reference_names": [
+        "__IOSetCharValues"
+      ],
+      "size": 405
+    },
+    {
+      "address": 18544,
+      "reference_names": [
+        "__IOGetEISADeviceConfig"
+      ],
+      "size": 851
+    },
+    {
+      "address": 19396,
+      "reference_names": [
+        "__IOMapEISADevicePorts"
+      ],
+      "size": 186
+    },
+    {
+      "address": 19584,
+      "reference_names": [
+        "__IOUnMapEISADevicePorts"
+      ],
+      "size": 186
+    },
+    {
+      "address": 19772,
+      "reference_names": [
+        "__IOMapEISADeviceMemory"
+      ],
+      "size": 311
+    },
+    {
+      "address": 20084,
+      "reference_names": [
+        "__IOProbeDriver"
+      ],
+      "size": 301
+    },
+    {
+      "address": 20388,
+      "reference_names": [
+        "__IOGetSystemConfig"
+      ],
+      "size": 384
+    },
+    {
+      "address": 20772,
+      "reference_names": [
+        "__IOUnloadDriver"
+      ],
+      "size": 301
+    },
+    {
+      "address": 21076,
+      "reference_names": [
+        "__IOGetDriverConfig"
+      ],
+      "size": 384
+    },
+    {
+      "address": 21460,
+      "reference_names": [
+        "__PMSetPowerState"
+      ],
+      "size": 202
+    },
+    {
+      "address": 21664,
+      "reference_names": [
+        "__PMGetPowerEvent"
+      ],
+      "size": 207
+    },
+    {
+      "address": 21872,
+      "reference_names": [
+        "__PMGetPowerStatus"
+      ],
+      "size": 227
+    },
+    {
+      "address": 22100,
+      "reference_names": [
+        "__PMSetPowerManagement"
+      ],
+      "size": 202
+    },
+    {
+      "address": 22304,
+      "reference_names": [
+        "__PMRestoreDefaults"
+      ],
+      "size": 166
+    },
+    {
+      "address": 22472,
+      "reference_names": [
+        "__IOCallDeviceMethod"
+      ],
+      "size": 691
+    },
+    {
+      "address": 23877,
+      "reference_names": [
+        "_exit"
+      ],
+      "size": 14
+    },
+    {
+      "address": 23903,
+      "reference_names": [
+        "__objcInit"
+      ],
+      "size": 14
+    },
+    {
+      "address": 23929,
+      "reference_names": [
+        "_mknod"
+      ],
+      "size": 14
+    },
+    {
+      "address": 23955,
+      "reference_names": [
+        "_umask"
+      ],
+      "size": 14
+    },
+    {
+      "address": 23981,
+      "reference_names": [
+        "_unlink"
+      ],
+      "size": 14
+    },
+    {
+      "address": 24007,
+      "reference_names": [
+        "_objc_msgSend"
+      ],
+      "size": 14
+    },
+    {
+      "address": 24033,
+      "reference_names": [
+        "_sprintf"
+      ],
+      "size": 14
+    },
+    {
+      "address": 24059,
+      "reference_names": [
+        "_bzero"
+      ],
+      "size": 14
+    },
+    {
+      "address": 24085,
+      "reference_names": [
+        "_atoi"
+      ],
+      "size": 14
+    },
+    {
+      "address": 24111,
+      "reference_names": [
+        "_printf"
+      ],
+      "size": 14
+    },
+    {
+      "address": 24137,
+      "reference_names": [
+        "_strncmp"
+      ],
+      "size": 14
+    },
+    {
+      "address": 24163,
+      "reference_names": [
+        "_device_master_self"
+      ],
+      "size": 14
+    },
+    {
+      "address": 24189,
+      "reference_names": [
+        "_bcopy"
+      ],
+      "size": 14
+    },
+    {
+      "address": 24215,
+      "reference_names": [
+        "_mig_dealloc_reply_port"
+      ],
+      "size": 14
+    },
+    {
+      "address": 24241,
+      "reference_names": [
+        "_msg_rpc"
+      ],
+      "size": 14
+    },
+    {
+      "address": 24267,
+      "reference_names": [
+        "_mig_get_reply_port"
+      ],
+      "size": 14
+    }
+  ]
+}

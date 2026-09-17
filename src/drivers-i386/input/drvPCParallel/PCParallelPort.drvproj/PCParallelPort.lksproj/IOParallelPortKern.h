@@ -62,7 +62,7 @@ int ppopen(dev_t dev, int flags, int devtype, void *p);
 int ppclose(dev_t dev, int flags, int devtype, void *p);
 int ppread(dev_t dev, void *uio, int ioflag);
 int ppwrite(dev_t dev, void *uio, int ioflag);
-int ppioctl(dev_t dev, unsigned long cmd, void *data, int flag, void *p);
+int ppioctl(dev_t dev, int cmd, void *data, int flag, void *p);
 int ppstrategy(struct buf *bp);
 unsigned int ppminphys(struct buf *bp);
 

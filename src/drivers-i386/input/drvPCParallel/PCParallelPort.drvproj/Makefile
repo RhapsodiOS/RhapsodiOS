@@ -21,8 +21,7 @@ CLASSES =
 
 HFILES =
 
-# PostLoad/PreLoad are userspace tools; skip on PPC cross-host i386 builds.
-TOOLS = PCParallelPort.lksproj
+TOOLS = PCParallelPort.lksproj PostLoad.tproj PreLoad.tproj
 
 OTHERSRCS = Makefile Makefile.preamble DriverInfo
 

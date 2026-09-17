@@ -1,0 +1,117 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 15584,
+      "reference_names": [
+        "_main"
+      ],
+      "size": 308,
+      "source_line": 15,
+      "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PostLoad.tproj/RemovePPDev.c"
+    }
+  ],
+  "reference_sha256": "ADE6C2176D8FDE1EF8AC6EE6A1F3EC72ECC7B7FE74813320AEEF1C12929353A8",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 15232,
+      "reference_names": [
+        "start"
+      ],
+      "size": 38
+    },
+    {
+      "address": 15272,
+      "reference_names": [
+        "__start"
+      ],
+      "size": 200
+    },
+    {
+      "address": 15472,
+      "reference_names": [
+        "__call_mod_init_funcs"
+      ],
+      "size": 37
+    },
+    {
+      "address": 15512,
+      "reference_names": [
+        "__dyld_init_check"
+      ],
+      "size": 52
+    },
+    {
+      "address": 15564,
+      "reference_names": [
+        "dyld_stub_binding_helper"
+      ],
+      "size": 11
+    },
+    {
+      "address": 15576,
+      "reference_names": [
+        "__dyld_func_lookup"
+      ],
+      "size": 6
+    },
+    {
+      "address": 16176,
+      "reference_names": [
+        "_exit"
+      ],
+      "size": 14
+    },
+    {
+      "address": 16202,
+      "reference_names": [
+        "_strerror"
+      ],
+      "size": 14
+    },
+    {
+      "address": 16228,
+      "reference_names": [
+        "_unlink"
+      ],
+      "size": 14
+    },
+    {
+      "address": 16254,
+      "reference_names": [
+        "_sprintf"
+      ],
+      "size": 14
+    },
+    {
+      "address": 16280,
+      "reference_names": [
+        "_bzero"
+      ],
+      "size": 14
+    },
+    {
+      "address": 16306,
+      "reference_names": [
+        "_sscanf"
+      ],
+      "size": 14
+    },
+    {
+      "address": 16332,
+      "reference_names": [
+        "_strncmp"
+      ],
+      "size": 14
+    },
+    {
+      "address": 16358,
+      "reference_names": [
+        "_printf"
+      ],
+      "size": 14
+    }
+  ]
+}

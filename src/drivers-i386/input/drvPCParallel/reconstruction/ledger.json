@@ -17,12 +17,12 @@
       "names": [
         "-[IOParallelPort _waitForDevice:isReady:]"
       ],
-      "reason": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 112,
-      "source_line": 830,
+      "source_line": 829,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "control-flow-confirmed"
+      "status": "intentional-mismatch"
     },
     {
       "address": 112,
@@ -33,7 +33,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "rewritten against 112-393: all six returns now match by value, the statusWord bit for each arm matches, the initialized ivar is gone and -isInitialized reads bit 0 of statusWord. One deliberate difference remains: the reference builds the control byte with and/or against an uninitialised stack slot (122-160), leaving bits 6 and 7 garbage. Ours starts from 0, so bits 0-5 agree exactly and bits 6-7 are deterministically clear. Reproducing the reference here would mean reproducing a read of uninitialised memory (Findings 52, 53, 58)"
+          "Finding 53 uninitialized control byte; leftover is gcc 2.x zero-fill"
         ],
         "status": "agreed"
       },
@@ -41,10 +41,10 @@
       "names": [
         "-[IOParallelPort initDevice]"
       ],
-      "reason": "rewritten against 112-393: all six returns now match by value, the statusWord bit for each arm matches, the initialized ivar is gone and -isInitialized reads bit 0 of statusWord. One deliberate difference remains: the reference builds the control byte with and/or against an uninitialised stack slot (122-160), leaving bits 6 and 7 garbage. Ours starts from 0, so bits 0-5 agree exactly and bits 6-7 are deterministically clear. Reproducing the reference here would mean reproducing a read of uninitialised memory (Findings 52, 53, 58)",
+      "reason": "Finding 53 uninitialized control byte; leftover is gcc 2.x zero-fill",
       "reviewer": "Pat Raynor",
       "size": 282,
-      "source_line": 258,
+      "source_line": 260,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "intentional-mismatch"
     },
@@ -65,12 +65,12 @@
       "names": [
         "+[IOParallelPort probe:]"
       ],
-      "reason": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 57,
       "source_line": 68,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "assembly-matched"
+      "status": "intentional-mismatch"
     },
     {
       "address": 456,
@@ -81,7 +81,8 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "rewritten against 456-1451. setDeviceKind: replaces setDriverName:, the Location read and setLocation: are gone, [deviceDescription name] is gone, the Minor Device Number string is freed on both the not-found path (828) and the success path (1028) with no NULL fallback, setMinorDevNum:0 is sent, IOThreadDelay and intHandlerDelay are initialised to 1, cdevsw slot 8 is seltrue, dataBuffer is sized from minPhys, the log text and its 16-bit address argument match __cstring at 7608, the explicit attachInterruptPort / interruptPort / setInterruptMessage: block is gone because IODirectDevice attaches the port, sizeLock is an NXLock, and registerDevice is tested for nil rather than against IO_R_SUCCESS (Findings 18-27, 61)"
+          "rewritten against 456-1451. setDeviceKind: replaces setDriverName:, the Location read and setLocation: are gone, [deviceDescription name] is gone, the Minor Device Number string is freed on both the not-found path (828) and the success path (1028) with no NULL fallback, setMinorDevNum:0 is sent, IOThreadDelay and intHandlerDelay are initialised to 1, cdevsw slot 8 is seltrue, dataBuffer is sized from minPhys, the log text and its 16-bit address argument match __cstring at 7608, the explicit attachInterruptPort / interruptPort / setInterruptMessage: block is gone because IODirectDevice attaches the port, sizeLock is an NXLock, and registerDevice is tested for nil rather than against IO_R_SUCCESS (Findings 18-27, 61)",
+      "Task 8: minorDevStr declared before configTable so slots match var_1C/var_18; leftover is extra var_20 / strcmp length"
         ],
         "status": "agreed"
       },
@@ -89,12 +90,12 @@
       "names": [
         "-[IOParallelPort initFromDeviceDescription:]"
       ],
-      "reason": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 996,
       "source_line": 86,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "control-flow-confirmed"
+      "status": "intentional-mismatch"
     },
     {
       "address": 1452,
@@ -105,7 +106,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "rewritten against 1452-1613 and now returns BOOL - 1 when both readbacks verify, 0 otherwise - so the caller's test in initFromDeviceDescription: inverts with it. Same deliberate difference as 112: the reference assembles both test patterns in an uninitialised stack slot, so bits 6 and 7 are garbage where ours are clear. Bits 0-5 are identical in both patterns, 0x1E then 0x04 (Findings 5, 53)"
+          "Finding 53 uninitialized control byte; leftover is gcc 2.x zero-fill"
         ],
         "status": "agreed"
       },
@@ -113,7 +114,7 @@
       "names": [
         "-[IOParallelPort probeForController]"
       ],
-      "reason": "rewritten against 1452-1613 and now returns BOOL - 1 when both readbacks verify, 0 otherwise - so the caller's test in initFromDeviceDescription: inverts with it. Same deliberate difference as 112: the reference assembles both test patterns in an uninitialised stack slot, so bits 6 and 7 are garbage where ours are clear. Bits 0-5 are identical in both patterns, 0x1E then 0x04 (Findings 5, 53)",
+      "reason": "Finding 53 uninitialized control byte; leftover is gcc 2.x zero-fill",
       "reviewer": "Pat Raynor",
       "size": 162,
       "source_line": 223,
@@ -140,7 +141,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 76,
-      "source_line": 783,
+      "source_line": 782,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -164,7 +165,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 48,
-      "source_line": 809,
+      "source_line": 808,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -188,9 +189,9 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 237,
-      "source_line": 357,
+      "source_line": 358,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "control-flow-confirmed"
+      "status": "assembly-matched"
     },
     {
       "address": 1980,
@@ -212,9 +213,9 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 163,
-      "source_line": 974,
+      "source_line": 972,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "control-flow-confirmed"
+      "status": "assembly-matched"
     },
     {
       "address": 2144,
@@ -236,7 +237,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 428,
+      "source_line": 429,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -260,7 +261,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 433,
+      "source_line": 434,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -284,7 +285,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 395,
+      "source_line": 396,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -308,7 +309,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 400,
+      "source_line": 401,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -332,7 +333,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 406,
+      "source_line": 407,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -356,7 +357,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 411,
+      "source_line": 412,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -377,12 +378,12 @@
       "names": [
         "-[IOParallelPort statusRegisterContents]"
       ],
-      "reason": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 29,
-      "source_line": 454,
+      "source_line": 455,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "assembly-matched"
+      "status": "intentional-mismatch"
     },
     {
       "address": 2284,
@@ -404,7 +405,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 417,
+      "source_line": 418,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -428,7 +429,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 422,
+      "source_line": 423,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -449,12 +450,12 @@
       "names": [
         "-[IOParallelPort controlRegisterContents]"
       ],
-      "reason": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 29,
-      "source_line": 443,
+      "source_line": 444,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "assembly-matched"
+      "status": "intentional-mismatch"
     },
     {
       "address": 2352,
@@ -476,7 +477,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 17,
-      "source_line": 449,
+      "source_line": 450,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -500,7 +501,7 @@
       "reason": "the body matches 2372-2387 exactly and the ivar is now struct buf * at 0x174. The __meth_var_types encoding differs by one character: this tree's src/kernel-7/bsd/sys/buf.h ends struct buf with `int b_timestamp; long b_reserved[3]` (encoded ^vi[3l]) where Apple's 1998 header had four longs (^vllll). Same 16 bytes and the same offsets; the fix is in a kernel header this task must not touch (Finding 14)",
       "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 709,
+      "source_line": 708,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "intentional-mismatch"
     },
@@ -524,7 +525,7 @@
       "reason": "the body matches 2388-2406 exactly; it carries the same one-character struct buf encoding difference as 2372, from src/kernel-7/bsd/sys/buf.h, which this task must not touch (Finding 14)",
       "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 714,
+      "source_line": 713,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "intentional-mismatch"
     },
@@ -548,7 +549,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 798,
+      "source_line": 797,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -572,7 +573,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 803,
+      "source_line": 802,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -596,7 +597,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 613,
+      "source_line": 612,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -620,7 +621,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 608,
+      "source_line": 607,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -644,7 +645,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 624,
+      "source_line": 623,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -668,7 +669,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 619,
+      "source_line": 618,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -692,7 +693,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 17,
-      "source_line": 571,
+      "source_line": 570,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -716,7 +717,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 576,
+      "source_line": 575,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -740,7 +741,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 746,
+      "source_line": 745,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -764,7 +765,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 751,
+      "source_line": 750,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -788,7 +789,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 724,
+      "source_line": 723,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -812,7 +813,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 729,
+      "source_line": 728,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -836,7 +837,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 735,
+      "source_line": 734,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -860,7 +861,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 740,
+      "source_line": 739,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -884,7 +885,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 593,
+      "source_line": 592,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -908,7 +909,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 598,
+      "source_line": 597,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -932,7 +933,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 768,
+      "source_line": 767,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -956,7 +957,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 773,
+      "source_line": 772,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -980,7 +981,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 757,
+      "source_line": 756,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1004,7 +1005,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 762,
+      "source_line": 761,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1028,7 +1029,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 460,
+      "source_line": 461,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1049,12 +1050,12 @@
       "names": [
         "-[IOParallelPort isInitialized]"
       ],
-      "reason": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 33,
-      "source_line": 565,
+      "source_line": 564,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "assembly-matched"
+      "status": "intentional-mismatch"
     },
     {
       "address": 2824,
@@ -1076,7 +1077,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 465,
+      "source_line": 466,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1100,7 +1101,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 17,
-      "source_line": 582,
+      "source_line": 581,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1124,7 +1125,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 587,
+      "source_line": 586,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1148,7 +1149,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 675,
+      "source_line": 674,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1172,9 +1173,9 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 105,
-      "source_line": 680,
+      "source_line": 679,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "control-flow-confirmed"
+      "status": "assembly-matched"
     },
     {
       "address": 3008,
@@ -1196,7 +1197,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 634,
+      "source_line": 633,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1220,9 +1221,9 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 105,
-      "source_line": 639,
+      "source_line": 638,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "control-flow-confirmed"
+      "status": "assembly-matched"
     },
     {
       "address": 3132,
@@ -1241,12 +1242,12 @@
       "names": [
         "-[IOParallelPort printerInit]"
       ],
-      "reason": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 79,
-      "source_line": 337,
+      "source_line": 338,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "assembly-matched"
+      "status": "intentional-mismatch"
     },
     {
       "address": 3212,
@@ -1265,12 +1266,12 @@
       "names": [
         "-[IOParallelPort writeToPort]"
       ],
-      "reason": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 265,
-      "source_line": 481,
+      "source_line": 482,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "control-flow-confirmed"
+      "status": "intentional-mismatch"
     },
     {
       "address": 3480,
@@ -1292,7 +1293,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 9,
-      "source_line": 475,
+      "source_line": 476,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1305,7 +1306,8 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "unchanged by the fix pass; the seven arms were corrected by value in 15ce9007 and all 23 jump-table entries at 3520 were re-checked"
+          "unchanged by the fix pass; the seven arms were corrected by value in 15ce9007 and all 23 jump-table entries at 3520 were re-checked",
+          "Task 8: PP_MSG_OFFLINE case before PP_MSG_BUSY so gcc emits 0xFFFFFD1E then 0xFFFFFD2B; IDA masked_equal"
         ],
         "status": "agreed"
       },
@@ -1316,9 +1318,9 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 197,
-      "source_line": 1013,
+      "source_line": 1011,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "control-flow-confirmed"
+      "status": "assembly-matched"
     },
     {
       "address": 3692,
@@ -1340,7 +1342,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 704,
+      "source_line": 703,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1364,7 +1366,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 35,
-      "source_line": 663,
+      "source_line": 662,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1388,7 +1390,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 35,
-      "source_line": 669,
+      "source_line": 668,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1401,7 +1403,8 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "rewritten against 3780-3852: the IOMalloc(0x1c) result is used without a NULL guard, and the return type is the command buffer rather than void * (Finding 34)"
+          "rewritten against 3780-3852: the IOMalloc(0x1c) result is used without a NULL guard, and the return type is the command buffer rather than void * (Finding 34)",
+          "Task 8: dropped conditionLock local; send lock with new still in eax; IDA masked_equal"
         ],
         "status": "agreed"
       },
@@ -1414,7 +1417,7 @@
       "size": 73,
       "source_line": 858,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "control-flow-confirmed"
+      "status": "assembly-matched"
     },
     {
       "address": 3856,
@@ -1436,7 +1439,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 37,
-      "source_line": 877,
+      "source_line": 873,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1457,12 +1460,12 @@
       "names": [
         "-[IOParallelPort cmdBufExec:]"
       ],
-      "reason": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 143,
-      "source_line": 886,
+      "source_line": 882,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "control-flow-confirmed"
+      "status": "intentional-mismatch"
     },
     {
       "address": 4040,
@@ -1481,12 +1484,12 @@
       "names": [
         "-[IOParallelPort waitForCmdBuf]"
       ],
-      "reason": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 141,
-      "source_line": 930,
+      "source_line": 926,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "control-flow-confirmed"
+      "status": "intentional-mismatch"
     },
     {
       "address": 4184,
@@ -1508,7 +1511,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 46,
-      "source_line": 921,
+      "source_line": 917,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1521,7 +1524,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "rewritten against 4232-4511: the invented pp_strobe_count is gone (the lock inc after each outb comes from the outb() macro in <driverkit/i386/ioPorts.h>), the strobe reads and advances pp_softc[].data by value, and the bounds check is gone. One deliberate difference: the reference loads the device pointer and its three registers before testing the byte count (4263-4308); ours tests the count first, so a nil device with nothing to send returns 0 where the reference would fault. No difference on any path the driver actually takes (Findings 36, 43, 50, 51)"
+          "reversed load-then-test so the device pointer and three registers load before testing pp_softc[portNum].count, matching 4263-4308. Leftover is gcc 2.x CSE / register allocation (one pp_softc load vs Apple three; control byte in bl vs [ebp+var_1])"
         ],
         "status": "agreed"
       },
@@ -1529,10 +1532,10 @@
       "names": [
         "__strobeChar"
       ],
-      "reason": "rewritten against 4232-4511: the invented pp_strobe_count is gone (the lock inc after each outb comes from the outb() macro in <driverkit/i386/ioPorts.h>), the strobe reads and advances pp_softc[].data by value, and the bounds check is gone. One deliberate difference: the reference loads the device pointer and its three registers before testing the byte count (4263-4308); ours tests the count first, so a nil device with nothing to send returns 0 where the reference would fault. No difference on any path the driver actually takes (Findings 36, 43, 50, 51)",
-      "reviewer": "Pat Raynor",
-      "size": 280,
-      "source_line": 636,
+  "reason": "reversed load-then-test so the device pointer and three registers load before testing pp_softc[portNum].count, matching 4263-4308. Leftover is gcc 2.x CSE / register allocation (one pp_softc load vs Apple three; control byte in bl vs [ebp+var_1])",
+  "reviewer": "Pat Raynor",
+  "size": 280,
+  "source_line": 649,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
       "status": "intentional-mismatch"
     },
@@ -1545,20 +1548,21 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "rewritten against 4512-5239: [self interruptMessage] is fetched once and that buffer is what msg_receive fills, the nested [self _waitForDevice:[self waitForever] isReady:&ready] is a single statement at both sites, and the first not-ready decode uses its own shape - errorFlag set, then paper-out -737, select-set clears errorFlag and gives -726, otherwise -738 (Findings 46, 47, 48)"
+          "rewritten against 4512-5239: [self interruptMessage] is fetched once and that buffer is what msg_receive fills, the nested [self _waitForDevice:[self waitForever] isReady:&ready] is a single statement at both sites, and the first not-ready decode uses its own shape - errorFlag set, then paper-out -737, select-set clears errorFlag and gives -726, otherwise -738 (Findings 46, 47, 48)",
+      "Task 8: commandType loaded then ==0 write / ==1 exit; leftover is inb slot vs bl"
         ],
         "status": "agreed"
       },
       "artifacts": [],
-      "names": [
-        "_IOParallelPortThread"
-      ],
-      "reason": null,
-      "reviewer": "Pat Raynor",
-      "size": 728,
-      "source_line": 490,
+  "names": [
+    "_IOParallelPortThread"
+  ],
+  "reason": "compiler-shaped leftover after exhausted source-shape list",
+  "reviewer": "Pat Raynor",
+  "size": 728,
+  "source_line": 502,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
-      "status": "control-flow-confirmed"
+      "status": "intentional-mismatch"
     },
     {
       "address": 5240,
@@ -1574,15 +1578,15 @@
         "status": "agreed"
       },
       "artifacts": [],
-      "names": [
-        "_IOParallelPortInterruptHandler"
-      ],
-      "reason": null,
-      "reviewer": "Pat Raynor",
-      "size": 279,
-      "source_line": 416,
+  "names": [
+    "_IOParallelPortInterruptHandler"
+  ],
+  "reason": "compiler-shaped leftover after exhausted source-shape list",
+  "reviewer": "Pat Raynor",
+  "size": 279,
+  "source_line": 429,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
-      "status": "control-flow-confirmed"
+      "status": "intentional-mismatch"
     },
     {
       "address": 5520,
@@ -1601,12 +1605,12 @@
       "names": [
         "_ppopen"
       ],
-      "reason": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 132,
-      "source_line": 90,
+      "source_line": 93,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
-      "status": "control-flow-confirmed"
+      "status": "intentional-mismatch"
     },
     {
       "address": 5652,
@@ -1628,7 +1632,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 38,
-      "source_line": 112,
+      "source_line": 123,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
       "status": "assembly-matched"
     },
@@ -1652,9 +1656,9 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 134,
-      "source_line": 124,
+      "source_line": 135,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
-      "status": "control-flow-confirmed"
+      "status": "assembly-matched"
     },
     {
       "address": 5828,
@@ -1673,12 +1677,12 @@
       "names": [
         "_ppwrite"
       ],
-      "reason": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 424,
-      "source_line": 146,
+      "source_line": 157,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
-      "status": "control-flow-confirmed"
+      "status": "intentional-mismatch"
     },
     {
       "address": 6252,
@@ -1694,13 +1698,13 @@
         "status": "agreed"
       },
       "artifacts": [],
-      "names": [
-        "_ppminphys"
-      ],
-      "reason": null,
-      "reviewer": "Pat Raynor",
-      "size": 49,
-      "source_line": 396,
+  "names": [
+    "_ppminphys"
+  ],
+  "reason": null,
+  "reviewer": "Pat Raynor",
+  "size": 49,
+  "source_line": 409,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
       "status": "assembly-matched"
     },
@@ -1713,20 +1717,21 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "rewritten against 6304-6707: returns int, copies bp->b_un.b_addr by value into pp_softc[].data, and the jump table at 6496 maps -738/-737 to 83, -726 to 60, -725 to 16 and everything else to 5 - all 36 entries decoded from the binary (Findings 41, 42, 43)"
+          "rewritten against 6304-6707: returns int, copies bp->b_un.b_addr by value into pp_softc[].data, and the jump table at 6496 maps -738/-737 to 83, -726 to 60, -725 to 16 and everything else to 5 - all 36 entries decoded from the binary (Findings 41, 42, 43)",
+          "Task 8: READ-first, recompute minor(bp->b_dev), error-if result!=0, case PP_IO_ERROR so gcc emits lea +2E2h/cmp 23h, BUSY before TIMEOUT; IDA masked_equal"
         ],
         "status": "agreed"
       },
       "artifacts": [],
-      "names": [
-        "_ppstrategy"
-      ],
-      "reason": null,
-      "reviewer": "Pat Raynor",
-      "size": 404,
-      "source_line": 334,
+  "names": [
+    "_ppstrategy"
+  ],
+  "reason": null,
+  "reviewer": "Pat Raynor",
+  "size": 404,
+  "source_line": 347,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
-      "status": "control-flow-confirmed"
+      "status": "assembly-matched"
     },
     {
       "address": 6708,
@@ -1737,7 +1742,8 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "rewritten against 6708-7390: the same command decode and the same EINVAL default, now dispatching through ordinary message sends instead of sel_getUid, with the bounds check removed (Findings 29, 51)"
+          "rewritten against 6708-7390: the same command decode and the same EINVAL default, now dispatching through ordinary message sends instead of sel_getUid, with the bounds check removed (Findings 29, 51)",
+      "Task 8: signed int cmd so gcc emits jg, timeout=*uintData then *1000, GET-then-SET field grouping; leftover is getter/setter tail-merge"
         ],
         "status": "agreed"
       },
@@ -1745,12 +1751,12 @@
       "names": [
         "_ppioctl"
       ],
-      "reason": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 683,
-      "source_line": 232,
+      "source_line": 250,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
-      "status": "control-flow-confirmed"
+      "status": "intentional-mismatch"
     },
     {
       "address": 7392,
@@ -1801,7 +1807,7 @@
       "status": "intentional-mismatch"
     }
   ],
-  "rebuilt_sha256": null,
+  "rebuilt_sha256": "F31C01A0FBB4F010AADC205C8CAE011A501FD6D5016BFCEC10022AA65E2BA9DC",
   "reference_sha256": "D188A4D909005683B0C943C84CD99514C14A84AD1D378425B3B1DB343F1EAAA2",
   "schema_version": "ledger-v1"
 }

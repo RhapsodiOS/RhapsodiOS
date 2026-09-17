@@ -90,7 +90,7 @@ install: rbuild
 installhdrs:
 
 installsrc:
-	gnutar --exclude=CVS --exclude=.git -cf - . | gnutar -C $(SRCROOT) -xf -
+	gnutar --exclude=CVS --exclude=.git --exclude=.hg -cf - . | gnutar -C $(SRCROOT) -xf -
 
 clean:
 	$(RM) $(OBJS) rbuild $(TESTS) tests/*.o

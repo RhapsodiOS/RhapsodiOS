@@ -731,6 +731,65 @@ TEST(test_setupdirs_wipes_stale_product_trees) {
     system(command);
 }
 
+TEST(test_setupdirs_excludes_hg) {
+    Package pkg;
+    Params p;
+    strlist repo;
+    BuildOptions opt;
+    FILE *capture;
+    int saved, result;
+    size_t n;
+    char trace[4096];
+
+    package_init(&pkg);
+    strlist_init(&repo);
+    params_init(&p);
+    build_options_init(&opt);
+    opt.bootstrap = 1;
+    p.BUILDROOT = xstrdup("/tmp/rb_hg/br");
+    p.OBJROOT = xstrdup("/tmp/rb_hg/obj");
+    p.SYMROOT = xstrdup("/tmp/rb_hg/sym");
+    p.DSTROOT = xstrdup("/tmp/rb_hg/dst");
+    p.HDRROOT = xstrdup("/tmp/rb_hg/hdr");
+    p.PACKAGEROOT = xstrdup("/tmp/rb_hg/pkg");
+    p.SRCROOT = xstrdup("/tmp/rb_hg/src");
+    p.SRCDIR = xstrdup("/tmp/rb_hg/srcdir");
+
+    capture = tmpfile();
+    CHECK(capture != 0);
+    if (!capture) {
+        params_free(&p); strlist_free(&repo); package_free(&pkg); return;
+    }
+    fflush(stdout);
+    saved = dup(STDOUT_FILENO);
+    CHECK(saved >= 0);
+    if (saved < 0) {
+        fclose(capture); params_free(&p); strlist_free(&repo); package_free(&pkg);
+        return;
+    }
+    CHECK(dup2(fileno(capture), STDOUT_FILENO) >= 0);
+    exec_dry_run = 1;
+    result = builder_setupdirs(&pkg, &p, "foo", "dir", &repo, &opt);
+    exec_dry_run = 0;
+    fflush(stdout);
+    dup2(saved, STDOUT_FILENO);
+    close(saved);
+    rewind(capture);
+    n = fread(trace, 1, sizeof(trace) - 1, capture);
+    trace[n] = 0;
+    fclose(capture);
+
+    CHECK_INT(result, 0);
+    CHECK(strstr(trace, "--exclude=CVS/") != 0);
+    CHECK(strstr(trace, "--exclude=.svn/") != 0);
+    CHECK(strstr(trace, "--exclude=.git/") != 0);
+    CHECK(strstr(trace, "--exclude=.hg/") != 0);
+
+    params_free(&p);
+    strlist_free(&repo);
+    package_free(&pkg);
+}
+
 TEST(test_makeroot_dry_run_preserves_package_list) {
     Package pkg;
     strlist repo;
@@ -1649,6 +1708,7 @@ static void run_all(void) {
     RUN(test_bootstrap_harvest_stays_in_private_object_root);
     RUN(test_setupdirs_bootstrap_skips_makeroot);
     RUN(test_setupdirs_wipes_stale_product_trees);
+    RUN(test_setupdirs_excludes_hg);
     RUN(test_makeroot_dry_run_preserves_package_list);
     RUN(test_scan_dir);
     RUN(test_relativize_absolute_symlinks_inside_dstroot);

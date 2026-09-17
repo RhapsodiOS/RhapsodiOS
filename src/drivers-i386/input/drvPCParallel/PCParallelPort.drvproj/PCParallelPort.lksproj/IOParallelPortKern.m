@@ -103,10 +103,18 @@ int ppopen(dev_t dev, int flags, int devtype, void *p)
     // Accept success and the four printer conditions the caller can act on:
     // busy (-725), not ready (-726), paper out (-737) and offline (-738).
     result = [port initDevice];
-    if (!(result == 0 ||
-          (result >= PP_TIMEOUT_ERROR && result <= PP_BUSY_ERROR) ||
-          (result >= PP_OFFLINE_ERROR && result <= PP_PAPER_OUT_ERROR)))
-        return EIO;
+    if (result <= PP_BUSY_ERROR) {
+        if (result >= PP_TIMEOUT_ERROR) {
+            /* busy or timeout: accept */
+        } else if (result > PP_PAPER_OUT_ERROR) {
+            return EIO;
+        } else if (result < PP_OFFLINE_ERROR) {
+            return EIO;
+        }
+    } else {
+        if (result != 0)
+            return EIO;
+    }
 
     [port setInUse:YES];
     return 0;
@@ -149,14 +157,13 @@ int ppread(dev_t dev, void *uio, int ioflag)
 int ppwrite(dev_t dev, void *uio, int ioflag)
 {
     IOParallelPort *port;
-    struct uio *uioPtr = (struct uio *)uio;
-    struct iovec *iov = NULL;
+    struct iovec *iov;
     int result;
     IOReturn initResult;
-    BOOL dataCopied = NO;
-    void *tempBuffer = NULL;
-    int copySize = 0;
-    int savedSegflg = 0;
+    BOOL dataCopied;
+    void *tempBuffer;
+    int copySize;
+    int savedSegflg;
     char *savedBase;
     int savedLen;
 
@@ -170,16 +177,24 @@ int ppwrite(dev_t dev, void *uio, int ioflag)
 
         // The same four printer conditions ppopen accepts mean "nothing to
         // write about"; the reference returns 0 without writing.
-        if ((initResult >= PP_TIMEOUT_ERROR && initResult <= PP_BUSY_ERROR) ||
-            (initResult >= PP_OFFLINE_ERROR && initResult <= PP_PAPER_OUT_ERROR))
-            return 0;
-        if (initResult != 0)
-            return EIO;
+        if (initResult > PP_BUSY_ERROR) {
+            if (initResult != 0)
+                return EIO;
+        } else {
+            if (initResult >= PP_TIMEOUT_ERROR)
+                return 0;
+            else if (initResult > PP_PAPER_OUT_ERROR)
+                return EIO;
+            else if (initResult < PP_OFFLINE_ERROR)
+                return EIO;
+            else
+                return 0;
+        }
     }
 
     // Check if data is in user space (not kernel space)
-    if (uioPtr->uio_segflg != UIO_SYSSPACE) {
-        iov = uioPtr->uio_iov;
+    if (((struct uio *)uio)->uio_segflg != UIO_SYSSPACE) {
+        iov = ((struct uio *)uio)->uio_iov;
         copySize = iov->iov_len;
 
         // Limit copy size to 0x8000 (32KB)
@@ -192,12 +207,12 @@ int ppwrite(dev_t dev, void *uio, int ioflag)
         copyin(iov->iov_base, tempBuffer, copySize);
 
         // Save original values
-        savedSegflg = uioPtr->uio_segflg;
+        savedSegflg = ((struct uio *)uio)->uio_segflg;
         savedBase = iov->iov_base;
         savedLen = iov->iov_len;
 
         // Update to kernel space
-        uioPtr->uio_segflg = UIO_SYSSPACE;
+        ((struct uio *)uio)->uio_segflg = UIO_SYSSPACE;
         iov->iov_base = tempBuffer;
         iov->iov_len = copySize;
 
@@ -219,20 +234,20 @@ int ppwrite(dev_t dev, void *uio, int ioflag)
 
     // If we copied data, restore original values and free temp buffer
     if (dataCopied) {
-        uioPtr->uio_segflg = savedSegflg;
+        ((struct uio *)uio)->uio_segflg = savedSegflg;
         iov->iov_base = savedBase;
         iov->iov_len = savedLen;
 
         IOFree(tempBuffer, copySize);
 
         // Account for the bytes the clamp above left behind
-        uioPtr->uio_resid += (iov->iov_len - copySize);
+        ((struct uio *)uio)->uio_resid += (iov->iov_len - copySize);
     }
 
     return result;
 }
 
-int ppioctl(dev_t dev, unsigned long cmd, void *data, int flag, void *p)
+int ppioctl(dev_t dev, int cmd, void *data, int flag, void *p)
 {
     IOParallelPort *port;
     unsigned int *uintData = (unsigned int *)data;
@@ -244,76 +259,72 @@ int ppioctl(dev_t dev, unsigned long cmd, void *data, int flag, void *p)
 
     // Process ioctl command
     switch (cmd) {
-        // SET operations (write to device)
-        case PP_IOCTL_SET_INT_HANDLER_DELAY:
-            [port setIntHandlerDelay:*uintData];
-            return 0;
-
-        case PP_IOCTL_SET_MIN_PHYS:
-            [port setMinPhys:*uintData];
-            return 0;
-
-        case PP_IOCTL_SET_IO_THREAD_DELAY:
-            [port setIOThreadDelay:*uintData];
-            return 0;
-
-        case PP_IOCTL_SET_BLOCK_SIZE:
-            [port setBlockSize:*uintData];
-            return 0;
-
-        case PP_IOCTL_SET_BUSY_RETRY_INTERVAL:
-            [port setBusyRetryInterval:*uintData];
-            return 0;
-
-        case PP_IOCTL_SET_BUSY_MAX_RETRIES:
-            [port setBusyMaxRetries:*uintData];
+        case PP_IOCTL_GET_STATUS_WORD:
+            *uintData = [port statusWord];
             return 0;
 
         case PP_IOCTL_SET_TIMEOUT:
-            // Special handling for timeout setting
-            if (*uintData == 0xFFFFFFFF) {
-                // Wait forever mode
+            timeout = *uintData;
+            if (timeout == 0xFFFFFFFF) {
                 [port setBusyMaxRetries:10];
                 [port setBusyRetryInterval:1000];
                 [port setIoTimeout:2000];
                 [port setWaitForever:YES];
             } else {
-                // Timeout in seconds
                 [port setBusyMaxRetries:1];
-                timeout = *uintData * 1000;  // Convert to milliseconds
+                timeout = timeout * 1000;
                 [port setBusyRetryInterval:timeout];
                 [port setIoTimeout:timeout];
                 [port setWaitForever:NO];
             }
             return 0;
 
-        // GET operations (read from device)
         case PP_IOCTL_GET_INT_HANDLER_DELAY:
             *uintData = [port intHandlerDelay];
             return 0;
 
-        case PP_IOCTL_GET_MIN_PHYS:
-            *uintData = [port minPhys];
+        case PP_IOCTL_SET_INT_HANDLER_DELAY:
+            [port setIntHandlerDelay:*uintData];
             return 0;
 
         case PP_IOCTL_GET_IO_THREAD_DELAY:
             *uintData = [port IOThreadDelay];
             return 0;
 
+        case PP_IOCTL_SET_IO_THREAD_DELAY:
+            [port setIOThreadDelay:*uintData];
+            return 0;
+
+        case PP_IOCTL_GET_MIN_PHYS:
+            *uintData = [port minPhys];
+            return 0;
+
+        case PP_IOCTL_SET_MIN_PHYS:
+            [port setMinPhys:*uintData];
+            return 0;
+
         case PP_IOCTL_GET_BLOCK_SIZE:
             *uintData = [port blockSize];
+            return 0;
+
+        case PP_IOCTL_SET_BLOCK_SIZE:
+            [port setBlockSize:*uintData];
             return 0;
 
         case PP_IOCTL_GET_BUSY_RETRY_INTERVAL:
             *uintData = [port busyRetryInterval];
             return 0;
 
+        case PP_IOCTL_SET_BUSY_RETRY_INTERVAL:
+            [port setBusyRetryInterval:*uintData];
+            return 0;
+
         case PP_IOCTL_GET_BUSY_MAX_RETRIES:
             *uintData = [port busyMaxRetries];
             return 0;
 
-        case PP_IOCTL_GET_STATUS_WORD:
-            *uintData = [port statusWord];
+        case PP_IOCTL_SET_BUSY_MAX_RETRIES:
+            [port setBusyMaxRetries:*uintData];
             return 0;
 
         case PP_IOCTL_GET_STATUS_REG_CONTENTS:
@@ -329,7 +340,6 @@ int ppioctl(dev_t dev, unsigned long cmd, void *data, int flag, void *p)
             return 0;
 
         default:
-            // Unknown ioctl command
             return EINVAL;
     }
 }
@@ -337,10 +347,9 @@ int ppioctl(dev_t dev, unsigned long cmd, void *data, int flag, void *p)
 int ppstrategy(struct buf *bp)
 {
     IOParallelPort *port;
-    int portNum = minor(bp->b_dev);
     IOReturn result;
 
-    port = (IOParallelPort *)pp_softc[portNum].device;
+    port = (IOParallelPort *)pp_softc[minor(bp->b_dev)].device;
     if (port == nil) {
         bp->b_error = ENXIO;
         bp->b_flags |= (B_DONE | B_ERROR);
@@ -348,52 +357,53 @@ int ppstrategy(struct buf *bp)
     }
 
     // Check if this is a READ or WRITE operation
-    if ((bp->b_flags & B_READ) == 0) {
+    if (bp->b_flags & B_READ) {
+        // READ operation
+        result = [port readFromPort];
+    } else {
         // WRITE operation: hand the transfer to the port, by value
-        pp_softc[portNum].data = (unsigned char *)bp->b_un.b_addr;
-        pp_softc[portNum].count = bp->b_bcount;
+        pp_softc[minor(bp->b_dev)].data = (unsigned char *)bp->b_un.b_addr;
+        pp_softc[minor(bp->b_dev)].count = bp->b_bcount;
 
         result = [port writeToPort];
 
         // Update residual count
-        bp->b_resid = pp_softc[portNum].count;
-    } else {
-        // READ operation
-        result = [port readFromPort];
+        bp->b_resid = pp_softc[minor(bp->b_dev)].count;
     }
 
     // Mark buffer as done
     bp->b_flags |= B_DONE;
 
-    if (result == 0) {
-        // Success - clear error flag
-        bp->b_flags &= ~B_ERROR;
-        return 0;
+    if (result != 0) {
+        // Error occurred - set error flag and map the IOReturn to an errno
+        bp->b_flags |= B_ERROR;
+
+        switch (result) {
+            case PP_PAPER_OUT_ERROR:    // -737
+            case PP_OFFLINE_ERROR:      // -738
+                bp->b_error = 0x53;     // 83
+                break;
+
+            case PP_BUSY_ERROR:         // -725
+                bp->b_error = EBUSY;    // 16
+                break;
+
+            case PP_TIMEOUT_ERROR:      // -726
+                bp->b_error = ETIMEDOUT;  // 60
+                break;
+
+            case PP_IO_ERROR:           // -703
+            default:
+                bp->b_error = EIO;      // 5
+                break;
+        }
+
+        return -1;
     }
 
-    // Error occurred - set error flag and map the IOReturn to an errno
-    bp->b_flags |= B_ERROR;
-
-    switch (result) {
-        case PP_PAPER_OUT_ERROR:    // -737
-        case PP_OFFLINE_ERROR:      // -738
-            bp->b_error = 0x53;     // 83
-            break;
-
-        case PP_TIMEOUT_ERROR:      // -726
-            bp->b_error = ETIMEDOUT;  // 60
-            break;
-
-        case PP_BUSY_ERROR:         // -725
-            bp->b_error = EBUSY;    // 16
-            break;
-
-        default:
-            bp->b_error = EIO;      // 5
-            break;
-    }
-
-    return -1;
+    // Success - clear error flag
+    bp->b_flags &= ~B_ERROR;
+    return 0;
 }
 
 unsigned int ppminphys(struct buf *bp)
@@ -438,51 +448,50 @@ void IOParallelPortInterruptHandler(void *identity, void *state, unsigned int po
         return;
 
     // Decode status register to determine error condition
-    if ((statusByte & 0x28) == 0x08) {
+    if ((statusByte & 0x28) != 0x08) {
+        if (statusByte & 0x20) {
+            // Paper out
+            interruptMsg = PP_INT_MSG_PAPER_OUT;
+        } else {
+            // Select set is the default; SELECT clear overwrites to ERROR
+            interruptMsg = PP_INT_MSG_OFFLINE;
+            if (!(statusByte & 0x10))
+                interruptMsg = PP_INT_MSG_ERROR;
+        }
+    } else {
         // Mask is ERROR|PAPER_OUT: error bit set, paper-out bit clear
         if ((char)statusByte >= 0) {
             // Busy: PP_STATUS_BUSY is inverted, so a clear bit 7 means busy
             interruptMsg = PP_INT_MSG_DEVICE_BUSY;
         }
-    } else {
-        if (statusByte & 0x20) {
-            // Paper out
-            interruptMsg = PP_INT_MSG_PAPER_OUT;
-        } else if (statusByte & 0x10) {
-            // Select set
-            interruptMsg = PP_INT_MSG_OFFLINE;
-        } else {
-            // Select clear
-            interruptMsg = PP_INT_MSG_ERROR;
-        }
     }
 
-    // If no error, handle data transfer
-    if (interruptMsg == 0) {
-        if ((physbuf->b_flags & B_READ) == 0) {
-            // Output mode: send next character if available
-            if (pp_softc[portNum].count > 0) {
-                _strobeChar(portNum, delay, 0);
-                return;
-            }
-        } else {
-            // Input mode: advance, then store
-            if (pp_softc[portNum].count != 0) {
-                pp_softc[portNum].data++;
-                pp_softc[portNum].count--;
-                *(pp_softc[portNum].data) = inb(PP_PORT(dataRegAddr));
-            }
-        }
+    // If an error was decoded, send it; otherwise transfer then COMPLETE
+    if (interruptMsg != 0) {
+        IOSendInterrupt(identity, state, interruptMsg);
+        return;
+    }
 
-        // More data to transfer, no interrupt needed
-        if (pp_softc[portNum].count > 0)
+    if ((physbuf->b_flags & B_READ) == 0) {
+        // Output mode: send next character if available
+        if (pp_softc[portNum].count > 0) {
+            _strobeChar(portNum, delay, 0);
             return;
-
-        interruptMsg = PP_INT_MSG_COMPLETE;
+        }
+    } else {
+        // Input mode: advance, then store
+        if (pp_softc[portNum].count != 0) {
+            pp_softc[portNum].data++;
+            pp_softc[portNum].count--;
+            *(pp_softc[portNum].data) = inb(PP_PORT(dataRegAddr));
+        }
     }
 
-    // Send interrupt message to waiting thread
-    IOSendInterrupt(identity, state, interruptMsg);
+    // More data to transfer, no interrupt needed
+    if (pp_softc[portNum].count > 0)
+        return;
+
+    IOSendInterrupt(identity, state, PP_INT_MSG_COMPLETE);
 }
 
 /*
@@ -501,6 +510,7 @@ void IOParallelPortThread(void *portObject)
     int timeout;
     int ioTimeout;
     int elapsedTime;
+    int commandType;
 
     // The interrupt receive buffer is the 8192-byte allocation made at init
     interruptMsg = [port interruptMessage];
@@ -510,18 +520,16 @@ void IOParallelPortThread(void *portObject)
         // Wait for command buffer
         cmdBuf = (PPCommandBuffer *)[port waitForCmdBuf];
 
-        // Check command type
-        if (cmdBuf->commandType == 1) {
-            // Exit command
+        commandType = cmdBuf->commandType;
+        if (commandType == 0)
+            goto write_command;
+        if (commandType == 1) {
             [port cmdBufComplete:cmdBuf];
             IOExitThread();
         }
+        goto complete_command;
 
-        if (cmdBuf->commandType != 0) {
-            // Unknown command
-            goto complete_command;
-        }
-
+write_command:
         // Read status register
         statusByte = inb(PP_PORT([port statusRegister]));
 
@@ -644,15 +652,13 @@ int _strobeChar(int portNum, unsigned int delay, char useSpl)
     IOEISAPortAddress controlRegAddr;
     int savedPriority = 0;
 
-    // Nothing to send?
-    if (pp_softc[portNum].count <= 0)
-        return 0;
-
-    // Read register addresses and take a local copy of the control value
     port = (IOParallelPort *)pp_softc[portNum].device;
     controlRegValue = port->controlRegisterDefaults;
     controlRegAddr = PP_PORT(port->controlRegister);
     dataRegAddr = PP_PORT(port->dataRegister);
+
+    if (pp_softc[portNum].count <= 0)
+        return 0;
 
     // Raise interrupt priority if requested
     if (useSpl != 0) {

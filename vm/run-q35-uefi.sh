@@ -60,8 +60,12 @@ cp "$src_image" "$dst_image"
 vars_copy=$work_root/OVMF32_VARS.fd
 cp "$vars_fd" "$vars_copy"
 
+# QEMU's default i386 CPU model lacks paging/NX support this OVMF DEBUG
+# build asserts on during DXE startup (before BDS even runs); Nehalem has
+# what it needs. (Task 3 finding.)
 exec "$qemu" \
     -machine q35 \
+    -cpu Nehalem \
     -m 256 \
     -drive if=pflash,format=raw,unit=0,readonly=on,file="$code_fd" \
     -drive if=pflash,format=raw,unit=1,file="$vars_copy" \

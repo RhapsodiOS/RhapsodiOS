@@ -44,7 +44,7 @@ def _run(argv):
                            % (argv[0], proc.stdout.decode(errors="replace")))
 
 
-def build(rhapsody_image, efi_app, out_path, esp_mb=16):
+def build(rhapsody_image, efi_app, out_path, esp_mb=64):
     """Write a hybrid MBR disk to out_path."""
     for path in (rhapsody_image, efi_app):
         if not os.path.exists(path):
@@ -99,7 +99,11 @@ def main(argv):
         sys.stderr.write(
             "usage: %s RHAPSODY_IMAGE EFI_APP OUT_PATH [ESP_MB]\n" % argv[0])
         return 2
-    esp_mb = int(argv[4]) if len(argv) == 5 else 16
+    # A 16 MiB FAT32 volume has too few clusters to be structurally valid;
+    # EDK2's FAT driver silently declines to mount it (no error, it just
+    # never binds), and BDS reports "unable to boot". 64 MiB is comfortably
+    # above the FAT32 minimum. (Task 3 finding.)
+    esp_mb = int(argv[4]) if len(argv) == 5 else 64
     build(argv[1], argv[2], argv[3], esp_mb=esp_mb)
     return 0
 

@@ -1,7 +1,21 @@
 {
     DYNAMIC_CODE_GEN = YES;
     FILESTABLE = {
-        CLASSES = (R.m, IODeviceMaster.m, NXLock.m);
+        CLASSES = (
+            PnPDump.m,
+            IODeviceMaster.m,
+            NXLock.m,
+            IOStubs.m,
+            ../EISABus.lksproj/PnPDependentResources.m,
+            ../EISABus.lksproj/PnPDeviceResources.m,
+            ../EISABus.lksproj/PnPLogicalDevice.m,
+            ../EISABus.lksproj/PnPResource.m,
+            ../EISABus.lksproj/PnPResources.m,
+            ../EISABus.lksproj/pnpDMA.m,
+            ../EISABus.lksproj/pnpIOPort.m,
+            ../EISABus.lksproj/pnpIRQ.m,
+            ../EISABus.lksproj/pnpMemory.m
+        );
         H_FILES = (IODeviceMaster.h, NXLock.h);
         OTHER_LINKED = ();
         OTHER_SOURCES = (

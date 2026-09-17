@@ -1215,3 +1215,18 @@ Verified directly against the rebuilt `SerialPointingDevice_reloc`:
 comparison of the rebuilt functions against the reference. `binrecon` was not asked to analyze
 the rebuilt artifact — spec §1.3 puts that out of scope — so no function's status was raised to
 `assembly-matched` on the strength of this pass's work.
+
+## Finish campaign
+
+2026-09-16 Phase 1 baseline, no `SerialPointingDevice.m` / `.h` edits. Guest
+`=== input-recon done fail=0 built: drvSerialPointingDevice ===`. Staged
+unstripped `SerialPointingDevice_reloc` is **112064** bytes, SHA-256
+`7A0D1052C9178CFE8DCD576605DA163ECF0835A4A28F04309CB30D459E7C8E64`.
+`parity_check.py`: `missing_strings` **0**, `missing_symbols` **0**.
+`SerialPointingDevice` `instance_size` is still **356**. IDA `--list`: **3**
+`raw_equal`, **11** `masked_equal` (the 3 plus 8 more), 7 remaining.
+
+All five July `assembly-matched` rows held on this `_reloc`:
+`getResolution` (`raw_equal`); `MPlusProtocol`, `MMProtocol`, `RBProtocol`,
+and `UnknownProtocol` (`masked_equal`). See `function-worklist.md`. This
+`_reloc` is not kept as the campaign result; `rebuilt_sha256` is unchanged.

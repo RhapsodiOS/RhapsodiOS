@@ -5308,3 +5308,67 @@ Flatten index dispatch to if (index < _depStart) / else if / else so the outer c
   pop ebp                                 pop ebp
   retn                                    retn
 `
+
+### Task 6 `_IOInitGeneralFuncs` statement order (2026-09-17)
+
+Swap of calloutChain head/tail stores missed Apple tail-then-head and was reverted. Leftover is PIC GOT versus lea of `_calloutChain` plus `objc_getClass`/`sel_getUid` versus a class pointer. Accepted compiler-shaped leftover (reviewer Pat Raynor). Tool SHA `37C59B6941A1C1EF6DBA48590CB7607337817E9A429BFEE96FC50386E3FC6ADD` (299280). Previously identical rows stayed matched (45). Unpaired count unchanged (10). Tool-only; reloc SHA unchanged.
+
+```
+_IOInitGeneralFuncs
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+*                                         push esi
+  push ebx                                push ebx
+  call $+5                                call $+5
+  pop ebx                                 pop ebx
+* lea eax, (_calloutChain - 7179h)[ebx]   mov eax, ebx
+* mov ds:(dword_AB48 - 7179h)[ebx], eax   mov eax, [eax+494Ah]
+* mov ds:(_calloutChain - 7179h)[ebx], eax  add eax, 4
+* mov edx, ebx                            mov edx, ds:(off_802C - 36E2h)[ebx]
+* mov edx, [edx+4EA7h]                    mov [eax], edx
+* push edx                                mov [edx], edx
+* mov edx, ebx                            lea eax, (aNxlock - 36E2h)[ebx]
+* mov edx, [edx+4F9Fh]                    push eax
+* push edx                                call _objc_getClass
+*                                         mov esi, eax
+*                                         lea eax, (aNew - 36E2h)[ebx]
+*                                         push eax
+*                                         call _sel_getUid
+*                                         push eax
+*                                         push esi
+  call _objc_msgSend                      call _objc_msgSend
+* mov ds:(_calloutLock - 7179h)[ebx], eax  mov edx, eax
+* lea eax, (_sleepPort - 7179h)[ebx]      mov eax, ds:(off_8028 - 36E2h)[ebx]
+*                                         mov [eax], edx
+*                                         lea eax, (_sleepPort - 36E2h)[ebx]
+  push eax                                push eax
+* mov eax, ds:(_task_self__ptr - 7179h)[ebx]  mov eax, ds:(off_8024 - 36E2h)[ebx]
+*                                         mov eax, [eax]
+  mov eax, [eax]                          mov eax, [eax]
+  push eax                                push eax
+  call _port_allocate                     call _port_allocate
+* add esp, 10h                            add esp, 18h
+  test eax, eax                           test eax, eax
+* jz loc_71D4                             jz loc_3750
+* lea eax, (aIoinitgeneralf - 7179h)[ebx]  lea eax, (aIoinitgeneralf - 36E2h)[ebx]
+  push eax                                push eax
+  call _IOLog                             call _IOLog
+  add esp, 4                              add esp, 4
+  push 0                                  push 0
+* lea eax, (_calloutThread - 7179h)[ebx]  mov ebx, ds:(off_8020 - 36E2h)[ebx]
+* push eax                                push ebx
+  call _IOForkThread                      call _IOForkThread
+* mov ebx, [ebp+var_4]                    lea esp, [ebp-8]
+*                                         pop ebx
+*                                         pop esi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

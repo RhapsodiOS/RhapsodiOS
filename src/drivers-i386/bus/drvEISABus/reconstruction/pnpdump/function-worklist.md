@@ -292,7 +292,7 @@ Accepted 2026-09-17: remaining `none` hand-written rows are `intentional-mismatc
 - `-[pnpIOPort matches:]` (shared, diff 30; reloc different d=27): alignment local plus 16-bit `otherBase` — **tried, kept**; leftover is PIC / register vs stack; **accepted** compiler-shaped on both
 - `-[pnpIRQ print]` (shared, diff 31; reloc different d=16): none — Apple tool `_printf` vs rebuilt `_IOLog`; reloc both `_IOLog`
 - `-[PnPResource objectAt:Using:]` (shared, diff 32; reloc different d=25): if vs else if on the type dispatch — **tried, kept**; leftover is usingList local / nested list plus inner jump polarity; **accepted** compiler-shaped on both
-- `_IOInitGeneralFuncs` (tool-only, diff 32): statement order of the existing assignments
+- `_IOInitGeneralFuncs` (tool-only, diff 32): statement order of the existing assignments — **tried, miss** (head/tail swap reverted); leftover is PIC GOT vs lea plus getClass; **accepted** compiler-shaped
 - `-[pnpDMA initFrom:Length:]` (shared, diff 33; reloc different d=22): loop shape of the channel-mask walk
 - `_IODelay` (tool-only, diff 36): local vs expression for the timestamp add
 - `-[PnPResource matches:Using:]` (shared, diff 37; reloc different d=23): if vs else if on the type dispatch

@@ -915,7 +915,7 @@
         "_IOCopyMemory"
       ],
       "size": 28,
-      "source_line": 420,
+      "source_line": 434,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -951,7 +951,7 @@
         "_IOExitThread"
       ],
       "size": 14,
-      "source_line": 385,
+      "source_line": 399,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1032,7 +1032,7 @@
         "_IOFindNameForValue"
       ],
       "size": 76,
-      "source_line": 365,
+      "source_line": 379,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {

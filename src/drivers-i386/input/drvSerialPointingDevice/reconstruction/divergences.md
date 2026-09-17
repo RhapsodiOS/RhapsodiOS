@@ -1459,3 +1459,172 @@ are forbidden. Nine gates held, including `getIntValues:` still `masked-eq`.
   retn                                    retn
 ```
 
+### `FiveBProtocol` — kept split + post-increment; leftover accepted
+
+Combined `case 2:`/`case 4:` was split so gcc emits a 5-entry jump table.
+`switch (byteIndex++)` matches reference `mov edx,esi` / `inc esi` /
+`cmp edx,4` / `jmp ds:jpt_*[edx*4]`. `lastTimeStamp = currentTimeStamp`
+stays in case 2 only; case 4 resets `byteIndex` and leaves the clock.
+40ms unsigned 64-bit gate. No `IOLog`. Sync-if polarity try was a no-op
+and was reverted. Diffs 118/161/112 → 103/161/177. Nine gates held.
+`parity_check.py` 0 / 0.
+
+Leftover is compiler-shaped: frame `sub esp,24h` vs `28h`, `and dl,0F8h`
+vs `and edx`, `setnz` vs `if`, plus extra spills. Source-shape list
+exhausted. Accepted. Reviewer Pat Raynor. Rebuilt SHA-256
+`D6D751BA6A1015D93B65CD72CD18F61924A6517CC67279B1129E38EB1939D30F`.
+
+```
+-[SerialPointingDevice FiveBProtocol]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+* sub esp, 24h                            sub esp, 28h
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+* xor esi, esi                            mov [ebp+var_18], 0
+* xor edi, edi                            mov [ebp+var_1C], 0
+* mov [ebp+var_1], 0                      mov [ebp+var_20], 0
+  mov [ebp+var_C], 0                      mov [ebp+var_C], 0
+  mov [ebp+var_8], 0                      mov [ebp+var_8], 0
+  mov [ebp+var_14], 0                     mov [ebp+var_14], 0
+  mov [ebp+var_10], 0                     mov [ebp+var_10], 0
+* mov [ebp+var_18], 0                     xor esi, esi
+* mov [ebp+var_1C], 0
+* nop
+* nop
+  nop                                     nop
+  push 1                                  push 1
+  lea edx, [ebp+var_1]                    lea edx, [ebp+var_1]
+  push edx                                push edx
+  mov ecx, ds:paGetbyteSleep              mov ecx, ds:paGetbyteSleep
+  push ecx                                push ecx
+  mov ebx, [ebp+self]                     mov ebx, [ebp+self]
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 10h                            add esp, 10h
+  test al, al                             test al, al
+* jz loc_10D8                             jz loc_1150
+  mov edx, esi                            mov edx, esi
+  inc esi                                 inc esi
+  cmp edx, 4                              cmp edx, 4
+* ja def_EED                              ja def_F11
+* jmp ds:jpt_EED[edx*4]                   jmp ds:jpt_F11[edx*4]
+```
+
+### `mouseInit:` — accepted (compiler-shaped leftover)
+
+`--name` shows shared vs in-place failure epilogue and cstring reloc
+suffixes. No wrong constant, missing call, or inverted branch. Load-bearing
+`acquire:nil`, `PCPatoi`, BOOL polarity YES success unchanged. 58 diffs /
+248 vs 249. Accepted. Reviewer Pat Raynor.
+
+```
+-[SerialPointingDevice mouseInit:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  mov esi, [ebp+self]                     mov esi, [ebp+self]
+  cmp ds:_active, 0                       cmp ds:_active, 0
+* jz loc_40                               jz loc_614
+* push offset aSerialpointing             push offset aSerialpointing_0
+  call near ptr _IOLog                    call near ptr _IOLog
+* jmp loc_380                             xor eax, eax
+*                                         jmp loc_950
+  mov ds:_active, 0                       mov ds:_active, 0
+```
+
+### `MSProtocol` — accepted (compiler-shaped leftover)
+
+`--name` leftover is frame `sub esp,28h` vs `30h` and `esi` vs stack.
+In-place `byte &= 0x7F` and `switch (byteIndex++)` tried; diffs rose
+74 → 75 / 80. Both reverted. 3-byte packet, 40ms unsigned 64-bit gate,
+no `IOLog` unchanged. Accepted. Reviewer Pat Raynor.
+
+```
+-[SerialPointingDevice MSProtocol]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+* sub esp, 28h                            sub esp, 30h
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+* xor esi, esi                            mov esi, [ebp+self]
+*                                         mov [ebp+var_1C], 0
+*                                         mov [ebp+var_20], 0
+  xor edi, edi                            xor edi, edi
+* mov [ebp+var_18], 0                     mov [ebp+var_24], 0
+* mov [ebp+var_1], 0
+  mov [ebp+var_C], 0                      mov [ebp+var_C], 0
+  mov [ebp+var_8], 0                      mov [ebp+var_8], 0
+  mov [ebp+var_14], 0                     mov [ebp+var_14], 0
+  mov [ebp+var_10], 0                     mov [ebp+var_10], 0
+* mov [ebp+var_1C], 0                     mov [ebp+var_30], 0
+* mov [ebp+var_20], 0
+  push 1                                  push 1
+  lea edx, [ebp+var_1]                    lea edx, [ebp+var_1]
+  push edx                                push edx
+  mov ecx, ds:paGetbyteSleep              mov ecx, ds:paGetbyteSleep
+  push ecx                                push ecx
+* mov ebx, [ebp+self]                     push esi
+* push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+```
+
+### `detect` — accepted (compiler-shaped leftover)
+
+`--name` leftover is `xor edi,edi` moved a few slots. Four-iteration baud
+sweep 1200/2400/4800/9600 sending `executeEvent:0x33` at
+2400/4800/9600/19200; `M`/`M3`/`*?` mouseType 1–4; `C` at 5 unchanged.
+239 diffs / 404 vs 405. Accepted. Reviewer Pat Raynor.
+
+```
+-[SerialPointingDevice detect]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 18h                            sub esp, 18h
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  mov esi, [ebp+self]                     mov esi, [ebp+self]
+  mov [ebp+var_8], 0                      mov [ebp+var_8], 0
+  mov [ebp+var_C], 0                      mov [ebp+var_C], 0
+  mov [ebp+var_10], 0                     mov [ebp+var_10], 0
+* xor edi, edi
+  mov [ebp+var_14], 0                     mov [ebp+var_14], 0
+  mov [ebp+var_18], 0                     mov [ebp+var_18], 0
+*                                         xor edi, edi
+  cmp byte ptr [esi+144h], 0              cmp byte ptr [esi+144h], 0
+* jz loc_7A3                              jz loc_62
+```
+

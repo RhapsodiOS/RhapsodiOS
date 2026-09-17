@@ -159,7 +159,45 @@ Cheapest remaining first. One idea per function; add more only after a miss.
 | `getByte:sleep:` | Declaration-order: `unsigned char data` then `IOReturn ret` then `int eventType` (live order is already ret/eventType/data; a no-op is not a try). Then accept as stack packing. **Tried: miss** (still `lea eax, [ebp+var_5]` vs ref `[ebp+var_8]`; 7 diffs; gates held). Reverted. **Accepted** as stack packing. |
 | `getIntValues:forParameter:count:` | Replace counted char loops with `strcmp(parameterName, RESOLUTION)` / `INVERTED` (drvPS2Mouse Finding 15). **Kept:** `strcmp` + store through `*parameterArray` (no `value` local) → **masked-eq** 4/36/36. |
 | `setIntValues:forParameter:count:` | Same `strcmp` rewrite. Keep verbose logs and the existing stores/sends. Do not add dummy spills. **Kept `strcmp`.** Leftover is gcc spilling `ecx=0Bh` to `[ebp+var_4]` plus register allocation (31 diffs, 85 vs 81). Dummy spills forbidden. **Accepted.** |
-| `FiveBProtocol` | Split combined `case 2:`/`case 4:` into distinct cases so gcc can emit a 5-entry jump table; `lastTimeStamp = currentTimeStamp` stays in case 2 only. |
-| `mouseInit:` | Compiler-shaped. Dump `--name` only; grind only if a source-level hole appears. |
-| `MSProtocol` | Compiler-shaped. Dump `--name` only; optional `maskedByte` fold / default fallthrough only if that dump shows they are the cheapest source-shaped leftover. |
-| `detect` | Compiler-shaped. Dump `--name` only; optional inline `byte & 0x3F` only if that dump shows a source-level hole. |
+| `FiveBProtocol` | Split combined `case 2:`/`case 4:` into distinct cases so gcc can emit a 5-entry jump table; `lastTimeStamp = currentTimeStamp` stays in case 2 only. **Kept** split + `switch (byteIndex++)` (diffs 118→103; dispatch now `inc esi` / `jmp ds:jpt_*[edx*4]`). Sync-if polarity no-op. Leftover: frame 24h vs 28h, `and dl` vs `and edx`, `setnz` vs if. **Accepted.** |
+| `mouseInit:` | Compiler-shaped. Dump `--name` only; grind only if a source-level hole appears. **Accepted** (shared vs in-place failure epilogue, cstring reloc names). |
+| `MSProtocol` | Compiler-shaped. Dump `--name` only; optional `maskedByte` fold / default fallthrough only if that dump shows they are the cheapest source-shaped leftover. In-place mask + `switch(byteIndex++)` tried; diffs rose 74→75/80. **Reverted. Accepted.** |
+| `detect` | Compiler-shaped. Dump `--name` only; optional inline `byte & 0x3F` only if that dump shows a source-level hole. **Accepted** (`xor edi` scheduling). |
+
+## Task 5 results
+
+Guest `fail=0`. Reloc 111660 bytes, SHA-256
+`D6D751BA6A1015D93B65CD72CD18F61924A6517CC67279B1129E38EB1939D30F`.
+`parity_check.py` 0 / 0. Nine original gates plus `getIntValues:` stayed
+`identical` / `masked-eq`. 0 unpaired besides generated glue. No
+layout/linkage growth.
+
+```
+  diff    ref    new  flags       name
+
+     0      6      6  masked-eq   +[SerialPointingDeviceKernelServerInstance kernelServerInstance]
+     0      6      6  identical   +[SerialPointingDeviceVersion driverKitVersionForSerialPointingDevice]
+     0     14     14  masked-eq   -[SerialPointingDevice MMProtocol]
+     0     10     10  masked-eq   -[SerialPointingDevice MPlusProtocol]
+     0     14     14  masked-eq   -[SerialPointingDevice RBProtocol]
+     0     14     14  masked-eq   -[SerialPointingDevice UnknownProtocol]
+     0      7      7  identical   -[SerialPointingDevice getResolution]
+     0     12     12  identical   _mainLoop
+     2     28     28  masked-eq   -[SerialPointingDevice setEventTarget:]
+     3     31     31  masked-eq   -[SerialPointingDevice free]
+     4     36     36  masked-eq   -[SerialPointingDevice getIntValues:forParameter:count:]
+     7     43     43              -[SerialPointingDevice getByte:sleep:]
+    15     76     76  masked-eq   -[SerialPointingDevice mainLoop:]
+    31     85     81              -[SerialPointingDevice setIntValues:forParameter:count:]
+    58    248    249              -[SerialPointingDevice mouseInit:]
+    74    129    128              -[SerialPointingDevice MSProtocol]
+   103    161    177              -[SerialPointingDevice FiveBProtocol]
+   239    404    405              -[SerialPointingDevice detect]
+```
+
+18 functions: 3 identical + 8 further masked = **11 `masked_equal` total**,
+5 remaining accepted as compiler-shaped leftovers, 0 unpaired.
+
+Stop condition: unpaired is only the two generated glue methods; every other
+hand-written row is identical, masked_equal, or accepted. No unexamined
+hand-written function.

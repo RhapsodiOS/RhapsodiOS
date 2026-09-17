@@ -21,6 +21,16 @@ IDA-only analyze: `complete: true`, `normalized-functions=FAIL` (expected),
 published trio `analysis-reference-ida.json`, `analysis-rebuilt-ida.json`,
 `comparison-ida.json`. Rebuilt analysis SHA matches this `_reloc`.
 
+## Task 4 (`VERS_OFILE`)
+
+2026-09-16. Kernel Server postamble added. Guest `fail=0`. Reloc size and
+SHA-256 **unchanged** from the table above: `VERS_OFILE` expanded empty
+(see `divergences.md` Task 4). `_SerialPointingDevice_VERS_STRING` /
+`_SerialPointingDevice_VERS_NUM` MISSING; no `__TEXT,__const`.
+`parity_check.py` still 0 / 0. `--list` identical to the baseline table
+below; the nine hand-written gates still `identical` / `masked-eq`.
+`rebuilt_sha256` left unset.
+
 ## `__TEXT,__text`
 
 | | size (bytes) |

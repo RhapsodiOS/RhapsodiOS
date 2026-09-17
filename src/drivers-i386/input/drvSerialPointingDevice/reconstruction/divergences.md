@@ -74,9 +74,9 @@ Three scaffolding facts the report pass recorded for the fix pass to check:
   section below.
 - The reference carries a `__TEXT,__const` section of **170 bytes** holding
   `_SerialPointingDevice_VERS_STRING` (160 bytes at 5330) and `_SerialPointingDevice_VERS_NUM`
-  (10 bytes at 5490). Those are emitted by NeXT's `vers_string` machinery, not written by hand,
-  and no driver in this repository produces them. Still recorded, not fixed: unlike the section
-  gaps it is not reachable from `OTHERSRCS`.
+  (10 bytes at 5490). Those are emitted by NeXT's `vers_string` machinery, not written by hand.
+  **Task 4** wired `OTHER_GENERATED_OFILES += $(VERS_OFILE)` in the Kernel Server
+  postamble; the symbols are still absent. See the Task 4 section below.
 
 ## `Loaded Server` sections: exact parity
 
@@ -1246,3 +1246,36 @@ Server glue stays `intentional-mismatch` even though `--list` matched.
 The remaining seven stay `control-flow-confirmed`: `getByte:sleep:`,
 `getIntValues:`, `mouseInit:`, `MSProtocol`, `setIntValues:`,
 `FiveBProtocol`, `detect`.
+
+## Task 4: Kernel Server `VERS_OFILE` (accepted gap)
+
+2026-09-16. Created
+`SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/Makefile.postamble`
+with the single line `OTHER_GENERATED_OFILES += $(VERS_OFILE)`. Guest
+`sh /build/source/vm/build-i386-input-recon.sh drvSerialPointingDevice`
+ended `=== input-recon done fail=0 built: drvSerialPointingDevice ===`.
+`kl_ld` ran; `Makefile.postamble` is on the guest (40 bytes).
+
+The `__TEXT,__const` gap is **accepted, not closed**. Guest evidence:
+
+- `SerialPointingDevice_vers.c` / `.o` were **not** generated. `find` under
+  the driver tree returned no `*vers*` path. `derived_src` holds only
+  `SerialPointingDevice_instance.m`. The object directory is
+  `SerialPointingDevice.o`, `SerialPointingDevice_instance.o`, and their
+  `.i386.o` siblings.
+- The `kl_ld` line linked those two objects only. No vers object appeared.
+- `VERSIONING_SYSTEM` is unset in both in-tree preambles (this pass must
+  not edit `Makefile` / `Makefile.preamble`). Guest
+  `/System/Developer/Makefiles/VersioningSystems` has `apple-generic.make`
+  and `next-cvs.make` but **no** `next-sgs.make`. `common.make` only
+  `-include`s `$(VERSIONING_SYSTEM).make`; with the variable empty,
+  `VERS_OFILE` is never assigned, so `OTHER_GENERATED_OFILES += $(VERS_OFILE)`
+  is a no-op. `driverTools` was not edited.
+
+`_SerialPointingDevice_VERS_STRING` and `_SerialPointingDevice_VERS_NUM`
+remain **MISSING**. There is no `__TEXT,__const` section. The rebuilt
+`_reloc` is still **112064** bytes, SHA-256
+`7A0D1052C9178CFE8DCD576605DA163ECF0835A4A28F04309CB30D459E7C8E64`
+(byte-identical to the Task 2 baseline). The nine hand-written `--list`
+gates still `identical` / `masked-eq`. `parity_check.py` stays
+`missing_strings` 0 / `missing_symbols` 0. The postamble stays.

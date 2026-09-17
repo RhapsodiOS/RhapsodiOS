@@ -193,6 +193,9 @@ Task 8 regression gate. Do not apply the BOOL / `and eax, 0FFh` typed rewrite. A
 ### `_enqueueKeyboardData` (diff 13)
 
 1. Compare `keyboardFreeQueue.next == KBD_FREE_QUEUE` before loading `element`, matching the reference's `cmp ds:_keyboardFreeQueue` before `mov edx, ds:_keyboardFreeQueue`.
+   **Kept:** empty-check now matches. Diff 13 → 10. Leftover was insert-path store order plus a dead `movzx`.
+2. Capture `keyboardQueue.prev` in existing `tempPtr`, store `keyboardQueue.prev = element` before `tempPtr->next = element`.
+   **Kept, leftover accepted:** insert-path stores now match; remaining starred row is a dead `movzx eax, [ebp+var_4]` on the reference. Diff 10 → 9, not masked-eq. Rebuild `0ED264C35A59ED1EAECA13B36EA184596482F08B67DEBE9207B58B923C151FDE`. `intentional-mismatch`.
 
 ### `_getMouseDataIfPresent` (diff 14)
 

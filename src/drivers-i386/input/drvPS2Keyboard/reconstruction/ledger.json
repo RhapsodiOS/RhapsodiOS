@@ -161,12 +161,12 @@
       "names": [
         "_enqueueKeyboardData"
       ],
-      "reason": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 155,
-      "source_line": 284,
+      "source_line": 286,
       "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
-      "status": "control-flow-confirmed"
+      "status": "intentional-mismatch"
     },
     {
       "address": 732,
@@ -1177,7 +1177,7 @@
       "status": "intentional-mismatch"
     }
   ],
-  "rebuilt_sha256": "66F2CFBFA8781004505F3E4A2DA92FFE8EB9467C5EBF93118BDF7AD30A501496",
+  "rebuilt_sha256": "0ED264C35A59ED1EAECA13B36EA184596482F08B67DEBE9207B58B923C151FDE",
   "reference_sha256": "AB413CA3919950F22A1F5D10B0BF1167387FEF320C9FB82A3EA66E586A6BE02A",
   "schema_version": "ledger-v1"
 }

@@ -2007,6 +2007,25 @@ Dropped the `scancode` local; enqueue `sequence->keys[index * 2] | 0x80` as an e
 
 Branch on `keyboardDataPresent()` before each unlock with explicit `return 1` / `return 0`, inverted to `if (!keyboardDataPresent())` so the `jz` failure path is laid after the success store. `--name` differs only by jump labels. Rebuilt `66F2CFBFA8781004505F3E4A2DA92FFE8EB9467C5EBF93118BDF7AD30A501496`. `_undoEscape` stayed masked-eq. Task 8 gates unchanged. Unpaired 0.
 
+### `_enqueueKeyboardData` (576) — kept source, leftover accepted
+
+Compared `keyboardFreeQueue.next == KBD_FREE_QUEUE` before loading `element`, then stored `keyboardQueue.prev = element` before `oldPrev->next = element` through existing `tempPtr`. Remaining `--name` star is a dead `movzx eax, [ebp+var_4]` on the reference. Diff 9. Rebuilt `0ED264C35A59ED1EAECA13B36EA184596482F08B67DEBE9207B58B923C151FDE`.
+
+```
+_enqueueKeyboardData
+  status=different raw_equal=False masked_equal=False
+  starred leftover:
+* jz loc_2CE                              jz loc_B7A
+* jz loc_274                              jz loc_B20
+* jz loc_286                              jz loc_B32
+* jnz loc_2B8                             jnz loc_B64
+* mov ds:dword_211C, edx                  mov ds:dword_2140, edx
+* jmp loc_2CE                             jmp loc_B7A
+* mov eax, ds:dword_211C                  mov eax, ds:dword_2140
+* mov ds:dword_211C, edx                  mov ds:dword_2140, edx
+* movzx eax, [ebp+var_4]
+```
+
 ## Task 4 stop (unpaired growth)
 
 `readConfigTable:` ivar-in-branch experiment made `--list` report 50 functions / 2 unpaired (`missing-rebuilt __PS2KeyboardNumKeysDown`, `missing-reference _resetEscapes`). That is a layout or linkage finding. Experiment reverted. After rebuild, SHA is again `20C8BD6E1243FE4CB6D1CDCC51654CBADF65E118370ACBF8D49EBE05B3631C07`, `--list` 49 / 0 unpaired. Do not repeat the ivar-in-NULL-branch store. Campaign continues on other functions.

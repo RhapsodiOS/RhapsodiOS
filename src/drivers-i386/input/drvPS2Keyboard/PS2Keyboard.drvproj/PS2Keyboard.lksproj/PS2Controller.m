@@ -290,14 +290,14 @@ static void enqueueKeyboardData(unsigned char data)
     PS2QueueElement *prevElement;
     PS2QueueElement *tempPtr;
 
-    /* Get a free queue element from the head of the free queue */
-    element = keyboardFreeQueue.next;
-
     /* Check if we have a free element (not pointing to the queue head) */
-    if (element == KBD_FREE_QUEUE) {
+    if (keyboardFreeQueue.next == KBD_FREE_QUEUE) {
         /* No free elements - queue is full */
         return;
     }
+
+    /* Get a free queue element from the head of the free queue */
+    element = keyboardFreeQueue.next;
 
     /* Remove element from free queue */
     nextElement = element->next;
@@ -325,10 +325,11 @@ static void enqueueKeyboardData(unsigned char data)
         element->next = KBD_QUEUE;
         element->prev = KBD_QUEUE;
     } else {
-        element->prev = keyboardQueue.prev;
+        tempPtr = keyboardQueue.prev;
+        element->prev = tempPtr;
         element->next = KBD_QUEUE;
-        keyboardQueue.prev->next = element;
         keyboardQueue.prev = element;
+        tempPtr->next = element;
     }
 }
 

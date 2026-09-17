@@ -50,9 +50,7 @@ static void puthex(UINT64 v)
 struct range { UINT64 start; UINT64 end; CHAR16 *name; };
 
 static struct range ranges[] = {
-    { 0x000000, 0x003000, L"intbuf (BIOS_ADDR)" },
-    { 0x011000, 0x020000, L"bootstruct" },
-    { 0x030000, 0x0A0000, L"sarld" },
+    { 0x011000, 0x0A0000, L"bootstruct + intbuf + sarld" },
     { 0x100000, 0x700000, L"kernel+drivers+heaps" },
     { 0, 0, 0 }
 };

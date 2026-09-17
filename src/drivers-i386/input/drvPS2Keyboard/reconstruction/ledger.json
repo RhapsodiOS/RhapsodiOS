@@ -17,12 +17,12 @@
       "names": [
         "_lock_controller"
       ],
-      "reason": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 54,
       "source_line": 129,
       "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
-      "status": "control-flow-confirmed"
+      "status": "intentional-mismatch"
     },
     {
       "address": 56,
@@ -233,12 +233,12 @@
       "names": [
         "_resetEscapes"
       ],
-      "reason": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 56,
       "source_line": 396,
       "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
-      "status": "control-flow-confirmed"
+      "status": "intentional-mismatch"
     },
     {
       "address": 1020,
@@ -1049,12 +1049,12 @@
       "names": [
         "-[PS2Keyboard setAlphaLockFeedback:]"
       ],
-      "reason": null,
-      "reviewer": "binrecon-task-7",
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 43,
       "source_line": 386,
       "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m",
-      "status": "assembly-matched"
+      "status": "intentional-mismatch"
     },
     {
       "address": 4416,
@@ -1097,12 +1097,12 @@
       "names": [
         "-[PS2Keyboard relinquishOwnership:]"
       ],
-      "reason": null,
-      "reviewer": "binrecon-task-7",
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 196,
       "source_line": 435,
       "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m",
-      "status": "assembly-matched"
+      "status": "intentional-mismatch"
     },
     {
       "address": 4828,

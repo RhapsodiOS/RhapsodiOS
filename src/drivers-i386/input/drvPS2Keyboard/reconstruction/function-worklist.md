@@ -133,9 +133,13 @@ One idea per remaining empty-flag row, cheapest first. Add more only after a mis
 
 Task 8 regression gate. Do not apply the BOOL / `and eax, 0FFh` typed rewrite. Accept without a source edit.
 
+**Accepted** 2026-09-16: `intentional-mismatch`, compiler-shaped leftover after exhausted source-shape list.
+
 ### `_resetEscapes` (diff 4) — empty; compiler-shaped confirmed
 
 `--name` 2026-09-16: same mnemonics; starred rows are jump labels and `ds:off_2078` vs `ds:off_2080`. Reloc / layout masking, not a wrong constant or missing call. Accept without a source experiment.
+
+**Accepted** 2026-09-16: `intentional-mismatch`, compiler-shaped leftover after exhausted source-shape list.
 
 ### `_sendMouseCommand` (diff 4)
 
@@ -148,6 +152,8 @@ Task 8 regression gate. Do not apply the BOOL / `and eax, 0FFh` typed rewrite. A
 ### `_lock_controller` (diff 6) — empty; compiler-shaped confirmed
 
 `--name` 2026-09-16: `cmp dword ptr [edx], 0` vs `mov`/`test`, and `xor eax, 1`/`test` vs `cmp eax, 1`. Equivalent gcc 2.x spinlock shape; no missing call. Accept without a source experiment.
+
+**Accepted** 2026-09-16: `intentional-mismatch`, compiler-shaped leftover after exhausted source-shape list.
 
 ### `+[PS2Controller probe:]` (diff 7)
 
@@ -180,6 +186,8 @@ Task 8 regression gate. Do not apply the BOOL / `and eax, 0FFh` typed rewrite. A
 ### `-[PS2Keyboard relinquishOwnership:]` (diff 20) — empty by policy
 
 Task 8 regression gate. `--name` shows then/else order on `respondsTo:`, but do not rewrite the body. Accept without a source edit.
+
+**Accepted** 2026-09-16: `intentional-mismatch`, compiler-shaped leftover after exhausted source-shape list.
 
 ### `-[PS2Keyboard dispatchKeyboardEvents]` (diff 27)
 

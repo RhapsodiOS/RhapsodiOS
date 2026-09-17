@@ -1731,3 +1731,197 @@ At IDA baseline: 5 `raw_equal`, 22 `masked_equal`, 22 open, 0 unpaired.
 Task 3 marked the non-glue identical/masked-eq rows `assembly-matched`.
 The two Kernel Server glue methods stay `intentional-mismatch` even though they are instruction-identical.
 Two Task 8 gate names remain open on `--list` (`setAlphaLockFeedback:`, `relinquishOwnership:`) and were not demoted.
+
+## Task 4 accepts (compiler-shaped leftover)
+
+Empty source-shape lists. Reason on each ledger row:
+`compiler-shaped leftover after exhausted source-shape list`. Reviewer: Pat Raynor.
+Rebuilt SHA still `967883F054B1FC06D89EB5F0BF9E59D8CB973DC61749941686B9042F49E3A1B7`.
+
+### `-[PS2Keyboard setAlphaLockFeedback:]` (4372) — Task 8 gate, empty by policy
+
+BOOL / `and eax, 0FFh` typed rewrite forbidden. `--name`:
+
+```
+-[PS2Keyboard setAlphaLockFeedback:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  mov edx, [ebp+self]                     mov edx, [ebp+self]
+  xor eax, eax                            xor eax, eax
+  cmp [ebp+arg_8], 0                      cmp [ebp+arg_8], 0
+* jz loc_1127                             jz loc_6CB
+  mov eax, 4                              mov eax, 4
+*                                         and eax, 0FFh
+  push eax                                push eax
+  mov ecx, ds:paSetleds                   mov ecx, ds:paSetleds
+  push ecx                                push ecx
+  mov edx, [edx+108h]                     mov edx, [edx+108h]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+### `_resetEscapes` (964) — compiler-shaped, no source experiment
+
+Same mnemonics; starred rows are jump labels and a `ds:` reloc.
+
+```
+_resetEscapes
+  status=different raw_equal=False masked_equal=False
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  mov edx, offset _escapes                mov edx, offset _escapes
+* cmp ds:off_2078, 0                      cmp ds:off_2080, 0
+* jz loc_3F8                              jz loc_C9C
+  nop                                     nop
+  nop                                     nop
+  nop                                     nop
+  cmp dword ptr [edx+28h], 0              cmp dword ptr [edx+28h], 0
+* jz loc_3EF                              jz loc_C93
+  mov eax, [edx+28h]                      mov eax, [edx+28h]
+  mov dword ptr [eax+4], 0                mov dword ptr [eax+4], 0
+  mov dword ptr [edx+28h], 0              mov dword ptr [edx+28h], 0
+  add edx, 30h                            add edx, 30h
+  cmp dword ptr [edx+18h], 0              cmp dword ptr [edx+18h], 0
+* jnz loc_3D8                             jnz loc_C7C
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+### `_lock_controller` (0) — compiler-shaped, no source experiment
+
+`cmp dword ptr [edx], 0` vs `mov`/`test`; `xor eax, 1`/`test` vs `cmp eax, 1`. Equivalent gcc 2.x spinlock.
+
+```
+_lock_controller
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push 6                                  push 6
+  call near ptr _spln                     call near ptr _spln
+  mov ecx, eax                            mov ecx, eax
+  mov edx, ds:_controller_lock            mov edx, ds:_controller_lock
+  add edx, 4                              add edx, 4
+  nop                                     nop
+  nop                                     nop
+  nop                                     nop
+* cmp dword ptr [edx], 0                  mov eax, [edx]
+* jnz loc_18                              test eax, eax
+*                                         jnz loc_8FC
+  mov eax, 1                              mov eax, 1
+  xchg eax, [edx]                         xchg eax, [edx]
+* xor eax, 1                              cmp eax, 1
+* test eax, eax                           jz loc_8FC
+* jz loc_18
+  mov eax, ds:_controller_lock            mov eax, ds:_controller_lock
+  mov [eax], ecx                          mov [eax], ecx
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+### `-[PS2Keyboard relinquishOwnership:]` (4632) — Task 8 gate, empty by policy
+
+Then/else order on `respondsTo:` is compiler-shaped leftover under the gate. Body not rewritten.
+
+```
+-[PS2Keyboard relinquishOwnership:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  mov ebx, [ebp+self]                     mov ebx, [ebp+self]
+  mov edi, [ebp+arg_8]                    mov edi, [ebp+arg_8]
+  mov edx, ds:paLock                      mov edx, ds:paLock
+  push edx                                push edx
+  mov edx, [ebx+220h]                     mov edx, [ebx+220h]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  cmp [ebx+218h], edi                     cmp [ebx+218h], edi
+* jnz loc_1250                            jnz loc_7F8
+  xor esi, esi                            xor esi, esi
+  mov dword ptr [ebx+218h], 0             mov dword ptr [ebx+218h], 0
+* jmp loc_1255                            jmp loc_7FD
+  mov esi, 0FFFFFD2Bh                     mov esi, 0FFFFFD2Bh
+  mov edx, ds:paUnlock                    mov edx, ds:paUnlock
+  push edx                                push edx
+  mov edx, [ebx+220h]                     mov edx, [ebx+220h]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  test esi, esi                           test esi, esi
+* jnz loc_12D0                            jnz loc_878
+  cmp dword ptr [ebx+21Ch], 0             cmp dword ptr [ebx+21Ch], 0
+* jz loc_12D0                             jz loc_878
+  cmp [ebx+21Ch], edi                     cmp [ebx+21Ch], edi
+* jz loc_12D0                             jz loc_878
+  mov edx, ds:paCanbecomeowner            mov edx, ds:paCanbecomeowner
+  push edx                                push edx
+  mov edx, ds:paRespondsto                mov edx, ds:paRespondsto
+  push edx                                push edx
+  mov edx, [ebx+21Ch]                     mov edx, [ebx+21Ch]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 0Ch                            add esp, 0Ch
+  test al, al                             test al, al
+* jz loc_12B8                             jnz loc_864
+* push ebx
+* mov edx, ds:paCanbecomeowner
+* push edx
+* mov ebx, [ebx+21Ch]
+* push ebx
+* call near ptr _objc_msgSend
+* jmp loc_12D0
+  mov edx, ds:paName                      mov edx, ds:paName
+  push edx                                push edx
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  push eax                                push eax
+  push offset aSDesiredownerD             push offset aSDesiredownerD
+  call near ptr _IOLog                    call near ptr _IOLog
+*                                         jmp loc_878
+*                                         push ebx
+*                                         mov edx, ds:paCanbecomeowner
+*                                         push edx
+*                                         mov ebx, [ebx+21Ch]
+*                                         push ebx
+*                                         call near ptr _objc_msgSend
+  mov eax, esi                            mov eax, esi
+  lea esp, [ebp-0Ch]                      lea esp, [ebp-0Ch]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

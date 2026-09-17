@@ -396,30 +396,26 @@ PS2KeyboardEvent *scancodeToKeyEvent(unsigned char scancode)
 - (IOReturn)becomeOwner:(id)owner
 {
     IOReturn result;
-    const char *ownerName;
-    const char *selfName;
 
     [_ownerLock lock];
 
-    if (_owner == nil) {
-        /* No current owner - grant ownership immediately */
-        _owner = owner;
-        result = 0;
-    } else {
+    if (_owner != nil) {
         /* Already owned - ask the owner to relinquish */
-        if (![_owner respondsTo:@selector(relinquishOwnershipRequest:)]) {
-            ownerName = [_owner name];
-            selfName = [self name];
-            IOLog("%s: owner %s does not respond to relinquishOwnershipRequest:\n",
-                  selfName, ownerName);
-            result = 0xFFFFFD2B;  /* -725 */
-        } else {
+        if ([_owner respondsTo:@selector(relinquishOwnershipRequest:)]) {
             result = [_owner relinquishOwnershipRequest:self];
+        } else {
+            IOLog("%s: owner %s does not respond to relinquishOwnershipRequest:\n",
+                  [self name], [_owner name]);
+            result = 0xFFFFFD2B;  /* -725 */
         }
 
         if (result == 0) {
             _owner = owner;
         }
+    } else {
+        /* No current owner - grant ownership immediately */
+        _owner = owner;
+        result = 0;
     }
 
     [_ownerLock unlock];

@@ -2058,6 +2058,10 @@ Rebuilt `924B8B12ACB1F6C1F87536930504C244AC75C3460B56E918DDE092906C171FF9`. Task
 
 Inlined key compares, reversed `index >= count`, and a signed `extendedHalf` yield `sar` / `sub esp, 4` / matching completion `jg`. Remaining leftover is `esi` vs `edi`, `cmp byte ptr [ebp+arg_0]` vs a register, and cursor addressing. `_undoEscape` became `identical` as a side effect. Rebuilt `ECFE96B1136F8EDF6EEA601C99713F288E9515AD5983848E0C4CB3344E5C74A1`. Task 8 gates unchanged. Unpaired 0.
 
+### `-[PS2Keyboard becomeOwner:]` (4416) — `masked_equal`
+
+Inverted `_owner != nil` and `respondsTo:` so grant / IOLog are the `jz` targets. Inlined `IOLog(..., [self name], [_owner name])` so ownerName stays on the stack (`push eax` / `add esp, 14h`) instead of `ebx`. `--name` differs only by jump labels. Rebuilt `E59F9DD4DCA17A66F7881219E3A43063D744E0A495A3BCBF54CCCDC9A19ADD09`. Task 8 gates unchanged. Unpaired 0.
+
 ## Task 4 stop (unpaired growth)
 
 `readConfigTable:` ivar-in-branch experiment made `--list` report 50 functions / 2 unpaired (`missing-rebuilt __PS2KeyboardNumKeysDown`, `missing-reference _resetEscapes`). That is a layout or linkage finding. Experiment reverted. After rebuild, SHA is again `20C8BD6E1243FE4CB6D1CDCC51654CBADF65E118370ACBF8D49EBE05B3631C07`, `--list` 49 / 0 unpaired. Do not repeat the ivar-in-NULL-branch store. Campaign continues on other functions.

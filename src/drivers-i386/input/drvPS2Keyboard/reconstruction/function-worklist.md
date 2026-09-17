@@ -13,7 +13,7 @@ Analyzer: IDA 9.2 only (`analyzers.angr.enabled` is false; Ghidra stays off).
 | | SHA-256 | size |
 | --- | --- | --- |
 | Reference | `AB413CA3919950F22A1F5D10B0BF1167387FEF320C9FB82A3EA66E586A6BE02A` | 43460 |
-| Rebuilt | `ECFE96B1136F8EDF6EEA601C99713F288E9515AD5983848E0C4CB3344E5C74A1` | 157596 |
+| Rebuilt | `E59F9DD4DCA17A66F7881219E3A43063D744E0A495A3BCBF54CCCDC9A19ADD09` | 157520 |
 
 `__TEXT,__text`: reference 4952, rebuilt 4660.
 
@@ -255,7 +255,10 @@ Task 8 regression gate. `--name` shows then/else order on `respondsTo:`, but do 
 
 ### `-[PS2Keyboard becomeOwner:]` (diff 43)
 
-1. Invert the `_owner == nil` if/else so the already-owned / `respondsTo:` path is laid out first (`jz` to the grant vs `jnz` to the ask).
+1. Invert the `_owner == nil` if/else so the already-owned / `respondsTo:` path is laid out first (`jz` to the grant vs `jnz` to the ask). Also invert `respondsTo:` so the relinquish call is fall-through.
+   **Kept:** control-flow polarity now matches; leftover was `ownerName` parked in `ebx`.
+2. Inline `[self name]` / `[_owner name]` as `IOLog` arguments (no parked locals).
+   **Kept, matched:** `masked_equal`. Rebuild `E59F9DD4DCA17A66F7881219E3A43063D744E0A495A3BCBF54CCCDC9A19ADD09`.
 
 ### `-[PS2Controller initFromDeviceDescription:]` (diff 48)
 

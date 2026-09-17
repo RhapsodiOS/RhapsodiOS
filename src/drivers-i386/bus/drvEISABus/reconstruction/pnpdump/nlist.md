@@ -36,6 +36,8 @@ All nine shared PnP resource classes are present. None of the kernel-only classe
 
 ## Entry point and I/O symbols
 
+In `binrecon.macho` output, binding `external` with a `__TEXT` section denotes a defined symbol (N_EXT), not an import.
+
 | Symbol | Binding | Section | Address | Notes |
 | --- | --- | --- | --- | --- |
 | `_main` | external | `__TEXT,__text` | `0x3d78` | tool entry |
@@ -71,5 +73,7 @@ Both classes are implemented locally in the tool (`+[IODeviceMaster new]`, `-[IO
 
 | Artifact | SHA-256 | binrecon `complete` | Notes |
 | --- | --- | --- | --- |
-| PnPDump (tool) | `006DC6BB…` | `true` | `pnpdump.json`, IDA + angr, Ghidra off |
-| EISABus_reloc (kernel) | `8F252AF6…` | `true` | reused published `tools/binrecon/out/eisabus/` from main checkout |
+| PnPDump (tool) | `006DC6BB73CEBC6243DA669E5199AEC808F309E72C3EE617A3FD8ED310364772` | `true` | `pnpdump.json`, IDA + angr, Ghidra off |
+| EISABus_reloc (kernel) | `8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23` | `true` | reused published `tools/binrecon/out/eisabus/` from main checkout |
+
+**Analyze workaround:** Brief Step 3 sets `BINRECON_REBUILT` to the same path as `BINRECON_REFERENCE`; binrecon rejects that (`artifacts alias each other`). The run used a content-identical copy at `tools/binrecon/out/pnpdump/PnPDump.rebuilt-copy` (gitignored) so `complete: true` could be published.

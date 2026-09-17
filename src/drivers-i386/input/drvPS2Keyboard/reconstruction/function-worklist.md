@@ -162,6 +162,8 @@ Task 8 regression gate. Do not apply the BOOL / `and eax, 0FFh` typed rewrite. A
 ### `+[PS2Controller probe:]` (diff 7)
 
 1. Zero the kalloc'd lock flag through a pointer increment (`eax += 4; *eax = 0`) instead of `controller_lock[1] = 0`.
+   **Tried, miss:** extra `lockFlag` local still compiled to `mov dword ptr [eax+4], 0`. Diff stayed 7. No closed-function regression. Reverted.
+   **Accepted** 2026-09-16: leftover is addressing mode plus `test eax` vs `mov ebx, eax` / `test ebx`. `intentional-mismatch`, compiler-shaped leftover after exhausted source-shape list.
 
 ### `-[PS2Keyboard initWithController:]` (diff 7)
 

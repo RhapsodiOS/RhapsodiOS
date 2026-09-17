@@ -1935,3 +1935,55 @@ Inverted `if (response != 0xFA) return 0; else return 1;` (experiment 2). `--nam
 ### `-[PS2Keyboard desireOwnership:]` (4828) — `masked_equal`
 
 Inverted the conflict test first (`_desiredOwner != nil && _desiredOwner != owner`). `--name` differs only by jump labels. Rebuilt `4FC38265802F44ADCD416DC55FED02E5138218867A93433CDDBAB6C15B74DA62`. `_sendMouseCommand` stayed masked-eq. Task 8 gates unchanged. Unpaired 0.
+
+### `+[PS2Controller probe:]` (88) — accepted leftover
+
+Pointer-increment store still compiled to `mov dword ptr [eax+4], 0`. Remaining: addressing mode and `test eax` vs `mov ebx, eax` / `test ebx`. `--name` after the miss (same shape as baseline):
+
+```
++[PS2Controller probe:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push ebx                                push ebx
+  mov edx, ds:paAlloc                     mov edx, ds:paAlloc
+  push edx                                push edx
+  mov edx, [ebp+arg_0]                    mov edx, [ebp+arg_0]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov ebx, eax                            mov ebx, eax
+  add esp, 8                              add esp, 8
+  test ebx, ebx                           test ebx, ebx
+* jz loc_C4                               jz loc_9AC
+  mov ds:__controller, ebx                mov ds:__controller, ebx
+  mov ds:__mouse, 0                       mov ds:__mouse, 0
+  mov ds:_pendingAck, 0                   mov ds:_pendingAck, 0
+  push 8                                  push 8
+  call near ptr _kalloc                   call near ptr _kalloc
+  mov ds:_controller_lock, eax            mov ds:_controller_lock, eax
+* add eax, 4                              mov dword ptr [eax+4], 0
+* add esp, 4
+* mov dword ptr [eax], 0
+  mov edx, [ebp+arg_8]                    mov edx, [ebp+arg_8]
+  push edx                                push edx
+  mov edx, ds:paInitfromdevice            mov edx, ds:paInitfromdevice
+  push edx                                push edx
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+* test eax, eax                           mov ebx, eax
+*                                         test ebx, ebx
+  setnz al                                setnz al
+  and eax, 0FFh                           and eax, 0FFh
+* jmp loc_C6                              jmp loc_9AE
+  xor eax, eax                            xor eax, eax
+  mov ebx, [ebp+var_4]                    mov ebx, [ebp+var_4]
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

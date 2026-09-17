@@ -469,11 +469,12 @@ Matched: rebuilt `7DD159FCB4BCD936009C2B5FB9F89859A4E171DAA75266036958CF45AF1C2D
 ### `-[IOParallelPort cmdBufExec:]` (diff 6)
 
 Star: `cmdBuffer->link.prev` store before vs after `link.next`; `add esp,8` scheduling.
+Accepted leftover: rebuilt `49863885A11EC0AE2FFD49F9297D54E0702CBC364C1ABEB398D73F5AB742456A`.
 
-1. Store `link.prev` before `link.next` (`cmdBuffer->link.prev = oldTail` first)
-2. Compute `&ioQueue` into a local before the two stores
-3. Empty-queue test as `ioQueue.prev == &ioQueue` vs `next`
-4. Declaration order: `oldTail` before vs after the lock
+1. Store `link.prev` before `link.next` (`cmdBuffer->link.prev = oldTail` first) — **kept**; leftover is `add esp,8` scheduling
+2. Compute `&ioQueue` into a local before the two stores — **skipped** (invented temp / register-picking)
+3. Empty-queue test as `ioQueue.prev == &ioQueue` vs `next` — **tried, reverted** (`cmp edx, eax`)
+4. Declaration order: `oldTail` before vs after the lock — **skipped** (C89)
 
 ### `-[IOParallelPort cmdBufAlloc]` (diff 11)
 

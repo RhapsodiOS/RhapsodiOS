@@ -903,8 +903,8 @@ extern int sprintf(char *str, const char *fmt, ...);
     }
 
     // Set up the new buffer's links
-    cmdBuffer->link.next = (struct queue_entry *)&ioQueue;
     cmdBuffer->link.prev = (struct queue_entry *)oldTail;
+    cmdBuffer->link.next = (struct queue_entry *)&ioQueue;
 
     // Update tail to point to new buffer
     ioQueue.prev = (struct queue_entry *)cmdBuffer;

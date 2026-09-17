@@ -1129,6 +1129,54 @@ Rebuilt SHA-256 `7DD159FCB4BCD936009C2B5FB9F89859A4E171DAA75266036958CF45AF1C2D2
 identical rows stayed identical (40 `raw_equal`, 15 `masked_equal`, 0 unpaired).
 Ledger 3492 is `assembly-matched`.
 
+### Task 8 — `cmdBufExec:` prev-link first (compiler-shaped leftover)
+
+Store `cmdBuffer->link.prev` before `link.next` so the enqueue writes match Apple.
+Operand-reversed empty-queue compare (`ioQueue.prev == &ioQueue`) inverted `cmp`
+operands (`cmp edx, eax`) and was reverted. `&ioQueue` local skipped (invented temp).
+C89 cannot declare `oldTail` after the lock.
+
+Leftover is gcc 2.x `add esp, 8` scheduling after `[ioQueueLock lock]`. Rebuilt
+SHA-256 `49863885A11EC0AE2FFD49F9297D54E0702CBC364C1ABEB398D73F5AB742456A`.
+Parity 0/0. Previously identical rows stayed identical. Ledger 3896
+`intentional-mismatch`, reviewer Pat Raynor, reason
+`compiler-shaped leftover after exhausted source-shape list`.
+
+```
+-[IOParallelPort cmdBufExec:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push esi                                push esi
+  push ebx                                push ebx
+  mov ebx, [ebp+self]                     mov ebx, [ebp+self]
+  mov esi, [ebp+arg_8]                    mov esi, [ebp+arg_8]
+  mov ecx, ds:paLock                      mov ecx, ds:paLock
+  push ecx                                push ecx
+  mov ecx, [ebx+164h]                     mov ecx, [ebx+164h]
+  push ecx                                push ecx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+* add esp, 8
+  mov edx, [ebx+16Ch]                     mov edx, [ebx+16Ch]
+  lea eax, [ebx+168h]                     lea eax, [ebx+168h]
+*                                         add esp, 8
+  cmp eax, edx                            cmp eax, edx
+* jnz loc_F74                             jnz loc_DC0
+  mov [ebx+168h], esi                     mov [ebx+168h], esi
+* jmp loc_F77                             jmp loc_DC3
+  mov [edx+14h], esi                      mov [edx+14h], esi
+  mov [esi+18h], edx                      mov [esi+18h], edx
+  lea ecx, [ebx+168h]                     lea ecx, [ebx+168h]
+  mov [esi+14h], ecx                      mov [esi+14h], ecx
+  mov [ebx+16Ch], esi                     mov [ebx+16Ch], esi
+```
+
 ### 8.9 The status rule used
 
 - `assembly-matched` (56) - the reference's full instruction stream was read and our
@@ -1136,12 +1184,13 @@ Ledger 3492 is `assembly-matched`.
   and the function's emitted metadata was verified identical in the rebuilt binary. Used
   for the accessors and the short bodies. Task 8 promoted `msgTypeToIOReturn:` after the
   OFFLINE/BUSY case-order edit (`masked_equal`).
-- `control-flow-confirmed` (12) - the reference's full instruction stream was read and our
+- `control-flow-confirmed` (11) - the reference's full instruction stream was read and our
   source reproduces its block structure, every call target and every constant, but the
   rebuilt output was **not** itself disassembled and compared instruction by instruction.
   Used for the larger functions.
-- `intentional-mismatch` (7) - a deliberate difference remains: 112 and 1452 (Finding 53,
+- `intentional-mismatch` (8) - a deliberate difference remains: 112 and 1452 (Finding 53,
   uninitialized control byte reconstructed; leftover is gcc 2.x zero-fill / immediate fold),
-  2372 and 2388 (`struct buf` encoding), 4232 (`_strobeChar` load-then-test reversed;
+  2372 and 2388 (`struct buf` encoding), 3896 (`cmdBufExec:` prev-link stored first; leftover
+  is `add esp,8` scheduling), 4232 (`_strobeChar` load-then-test reversed;
   leftover is gcc 2.x CSE / register allocation), and the two build-generated glue
   functions at 7392 and 7404, untouched from the report pass.

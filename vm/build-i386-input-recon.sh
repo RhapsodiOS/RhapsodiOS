@@ -8,9 +8,26 @@ OUT=/build/out/i386
 INPUT=/build/source/src/drivers-i386/input
 mkdir -p "$OUT"
 
-FW=/System/Library/Frameworks/System.framework
-if [ ! -L "$FW/PrivateHeaders" ]; then
-	echo "WARNING: PrivateHeaders is not a symlink; builds may miss kern headers"
+# Live System.framework on this guest lacks DriverKit private headers.
+# Symlink from bootstrap-root when absent; never overwrite a live path.
+BOOTFW=/build/bootstrap-root/System/Library/Frameworks/System.framework/Versions/B
+LIVEFW=/System/Library/Frameworks/System.framework
+if [ ! -e "$LIVEFW/PrivateHeaders" ]; then
+	if [ ! -d "$BOOTFW/PrivateHeaders" ]; then
+		echo "build-i386-input-recon: missing $BOOTFW/PrivateHeaders" >&2
+		exit 1
+	fi
+	ln -s "$BOOTFW/PrivateHeaders" "$LIVEFW/PrivateHeaders" || exit 1
+	echo "planted $LIVEFW/PrivateHeaders -> $BOOTFW/PrivateHeaders"
+fi
+if [ ! -e "$LIVEFW/Headers/objc/zone.h" ]; then
+	if [ ! -f "$BOOTFW/Headers/objc/zone.h" ]; then
+		echo "build-i386-input-recon: missing $BOOTFW/Headers/objc/zone.h" >&2
+		exit 1
+	fi
+	mkdir -p "$LIVEFW/Headers/objc"
+	ln -s "$BOOTFW/Headers/objc/zone.h" "$LIVEFW/Headers/objc/zone.h" || exit 1
+	echo "planted $LIVEFW/Headers/objc/zone.h -> $BOOTFW/Headers/objc/zone.h"
 fi
 
 build_one() {

@@ -22,7 +22,7 @@ input
  * drvBusMouse - compiles; 7/11 hand-written functions masked-equal to BusMouse_reloc, apple-generic version objects emitted; not yet tested on hardware
  * drvISASerialPort - needs compiled and then tested
  * drvPCParallel - compiles; reconstructed against the reference binary, fixes applied, not yet tested
- * drvPS2Keyboard - compiles; reconstructed against the reference binary, fixes applied, not yet tested
+ * drvPS2Keyboard - compiles; reconstructed against the reference binary, 34/47 hand-written functions byte-identical under relocation masking, remainder accepted as compiler-shaped; not yet tested
  * drvPS2Mouse - compiles; 6/11 hand-written functions masked-equal to PS2Mouse_reloc, five compiler-shaped leftovers accepted, SGS VERS_STRING/VERS_NUM unmet (guest lacks next-sgs.make); not yet tested on hardware
  * drvSerialPointingDevice - compiles; reconstructed against the reference binary, 10/16 hand-written functions byte-identical under relocation masking, remainder accepted as compiler-shaped; Kernel Server vers_string objects still unmet on this guest; not yet tested
 

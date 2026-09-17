@@ -512,13 +512,14 @@ Accepted leftover: rebuilt `D9B5138F47C5CFFF3682FE9D7FBBD6BD1E7D05CFCC11A3F78F6E
 
 Star: extra stack slot for `inb`; `cmp [ivar], ebx` vs `cmp ivar, 0`; `inc ebx`
 vs `add esp` order.
+Accepted leftover: rebuilt `76CA62E75C2467B5E0BFA25A61BB433DF1385F389D0D4DA66E98FD8411CD753F`.
 
-1. `for (tries = 0; ; tries++)` with the bound test inside
-2. `while (1)` + `if (!(busyMaxRetries > tries || wait)) break;`
-3. Compare `tries < busyMaxRetries` (operand-reversed)
-4. Store `status` then mask (`unsigned char` vs `int`)
-5. Declaration order: `slept` before `tries` before `status`
-6. `wait == YES` tested before the retry bound
+1. `for (tries = 0; ; tries++)` with the bound test inside — **kept** (xor/`inc` order now matches)
+2. `while (1)` + `if (!(busyMaxRetries > tries || wait)) break;` — **skipped** (same shape as kept for-loop)
+3. Compare `tries < busyMaxRetries` (operand-reversed) — **kept** (first `cmp [ivar], ebx` / extra `nop`)
+4. Store `status` then mask (`unsigned char` vs `int`) — **tried, no inb spill**
+5. Declaration order: `slept` before `tries` before `status` — **skipped** (xor order already matches)
+6. `wait == YES` tested before the retry bound — **skipped** (would invert Apple's bound-then-wait)
 
 ### `_ppopen` (diff 22)
 

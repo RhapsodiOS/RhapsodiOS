@@ -1242,6 +1242,31 @@ Parity 0/0. Previously identical rows stayed identical. Ledger 3132
   out dx, al                              out dx, al
 ```
 
+### Task 8 — `_waitForDevice:isReady:` for-loop leftover
+
+Kept a `for (tries = 0; ; tries++)` with `if (!(tries < busyMaxRetries || wait))`
+break so the first compare is `cmp [busyMaxRetries], ebx` / `ja` like Apple, with
+matching `nop` padding and `inc ebx` after `add esp, 4`. Leftover is gcc 2.x
+leaving `in al` in `al` instead of `[ebp+var_1]` (`sub esp, 4` vs `8`). Rebuilt
+SHA-256 `76CA62E75C2467B5E0BFA25A61BB433DF1385F389D0D4DA66E98FD8411CD753F`.
+Parity 0/0. Previously identical rows stayed identical. Ledger 0
+`intentional-mismatch`, reviewer Pat Raynor, reason
+`compiler-shaped leftover after exhausted source-shape list`. source-map relined
+7 later `IOParallelPort.m` sites (73 mapped / 2 unmapped).
+
+```
+-[IOParallelPort _waitForDevice:isReady:]
+  status=different raw_equal=False masked_equal=False
+* sub esp, 8                              sub esp, 4
+  xor cl, cl                              xor cl, cl
+  xor ebx, ebx                            xor ebx, ebx
+  cmp [esi+144h], ebx                     cmp [esi+144h], ebx
+  nop                                     nop
+  in al, dx                               in al, dx
+* mov [ebp+var_1], al
+  and al, 0B8h                            and al, 0B8h
+```
+
 ### 8.9 The status rule used
 
 - `assembly-matched` (56) - the reference's full instruction stream was read and our
@@ -1249,15 +1274,17 @@ Parity 0/0. Previously identical rows stayed identical. Ledger 3132
   and the function's emitted metadata was verified identical in the rebuilt binary. Used
   for the accessors and the short bodies. Task 8 promoted `msgTypeToIOReturn:` and
   `cmdBufAlloc` (`masked_equal`).
-- `control-flow-confirmed` (9) - the reference's full instruction stream was read and our
+- `control-flow-confirmed` (8) - the reference's full instruction stream was read and our
   source reproduces its block structure, every call target and every constant, but the
   rebuilt output was **not** itself disassembled and compared instruction by instruction.
   Used for the larger functions.
-- `intentional-mismatch` (10) - a deliberate difference remains: 112 and 1452 (Finding 53,
-  uninitialized control byte reconstructed; leftover is gcc 2.x zero-fill / immediate fold),
-  2372 and 2388 (`struct buf` encoding), 3132 (`printerInit` control byte in `bl` vs
-  `[ebp+var_1]`; leftover is gcc 2.x register allocation), 3896 (`cmdBufExec:` prev-link
-  stored first; leftover is `add esp,8` scheduling), 4040 (`waitForCmdBuf` if/else dequeue;
-  leftover is `add esp,0Ch` scheduling and else-block placement), 4232 (`_strobeChar`
-  load-then-test reversed; leftover is gcc 2.x CSE / register allocation), and the two
-  build-generated glue functions at 7392 and 7404, untouched from the report pass.
+- `intentional-mismatch` (11) - a deliberate difference remains: 0 (`_waitForDevice:isReady:`
+  for-loop with `tries < busyMaxRetries`; leftover is the `inb` stack slot), 112 and 1452
+  (Finding 53, uninitialized control byte reconstructed; leftover is gcc 2.x zero-fill /
+  immediate fold), 2372 and 2388 (`struct buf` encoding), 3132 (`printerInit` control byte
+  in `bl` vs `[ebp+var_1]`; leftover is gcc 2.x register allocation), 3896 (`cmdBufExec:`
+  prev-link stored first; leftover is `add esp,8` scheduling), 4040 (`waitForCmdBuf`
+  if/else dequeue; leftover is `add esp,0Ch` scheduling and else-block placement), 4232
+  (`_strobeChar` load-then-test reversed; leftover is gcc 2.x CSE / register allocation),
+  and the two build-generated glue functions at 7392 and 7404, untouched from the report
+  pass.

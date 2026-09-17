@@ -830,13 +830,15 @@ extern int sprintf(char *str, const char *fmt, ...);
 
 - (BOOL)_waitForDevice:(BOOL)wait isReady:(BOOL *)isReady
 {
-    unsigned int tries = 0;
+    unsigned int tries;
     unsigned char status;
     BOOL slept = NO;
 
     // Poll the status register for (BUSY|PAPER_OUT|SELECT|ERROR) == ready,
     // bounded by busyMaxRetries, or forever when the caller says so.
-    while (busyMaxRetries > tries || wait == YES) {
+    for (tries = 0; ; tries++) {
+        if (!(tries < busyMaxRetries || wait == YES))
+            break;
         status = inb(PP_PORT(statusRegister));
         if ((status & 0xB8) == 0x98) {
             *isReady = YES;
@@ -845,7 +847,6 @@ extern int sprintf(char *str, const char *fmt, ...);
 
         IOSleep(busyRetryInterval);
         slept = YES;
-        tries++;
     }
 
     *isReady = NO;

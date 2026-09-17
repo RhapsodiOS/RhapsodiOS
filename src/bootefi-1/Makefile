@@ -9,30 +9,65 @@ LINK     ?= lld-link
 
 BUILD    := BUILD
 BOOT2    := ../boot-2/i386
+KERNEL7  := ../kernel-7
+CCTOOLS  := ../cctools-2/include
 
+# vendor_includes/architecture is a symlink to ../architecture-1, so
+# <architecture/byte_order.h> resolves without editing anything under
+# src/boot-2 or renaming src/architecture-1.  -I$(KERNEL7) and
+# -I$(KERNEL7)/bsd resolve disk.c/sys.c's <bsd/...>, <ufs/...> and
+# <machine/...> includes the same way the assembled Rhapsody SDK once did
+# (this checkout has only the raw project trees, not that installed tree).
 CFLAGS := -target i386-unknown-windows -std=gnu89 -ffreestanding \
           -fno-stack-protector -fshort-wchar -Wall -Os \
-          -I. -I$(BOOT2)/libsaio -I$(BOOT2)/libsa \
+          -fno-ms-extensions \
+          -Wno-implicit-int -Wno-implicit-function-declaration \
+          -D__ARCHITECTURE__=\"i386\" -D_KERNEL -DDONT_USE_ASM \
+          -I. -I$(BOOT2)/libsaio -I$(BOOT2)/libsa -I$(BOOT2)/util \
+          -Ivendor_includes -I$(KERNEL7) -I$(KERNEL7)/bsd -I$(CCTOOLS) \
           -include bootefi_memory_override.h
 
-LDFLAGS := /machine:x86 /subsystem:efi_application /nodefaultlib /entry:efi_main
+# sys.c's own `#define BIG_ENDIAN_INTEL_FS __LITTLE_ENDIAN__` is always true
+# on i386 (clang predefines __LITTLE_ENDIAN__=1 for this target) and
+# byte-swaps every superblock/inode/directory read as though it might be
+# PPC-written media.  golden.img's UFS payload is genuinely little-endian on
+# disk (only its NeXT disk label is big-endian, swapped unconditionally and
+# separately in disk.c/ufs_byteorder.c).  Overriding __LITTLE_ENDIAN__ to 0
+# for sys.c's translation unit ALONE disables just that mistaken payload
+# swap; Task 4's host test proved this exact override byte-perfect against
+# the same image.  Do not apply it build-wide.
+SYS_CFLAGS := $(CFLAGS) -D__LITTLE_ENDIAN__=0
 
-# Spike-only: force the image to a high fixed base with no relocation table,
-# so firmware must either load it there or refuse outright (used to get a
-# clean answer on whether our own image collides with the kernel range).
-# The VM has 256 MiB (0x10000000) of RAM total, so 0x10000000 itself is the
-# first byte *past* populated RAM, not a usable base. The Task 3 spike found
-# the allocator already using space near 0x0E2A5000-0x0E3A5000 (~227-228 MiB)
-# by the time it ran, so pick something well clear of both that zone and the
-# low ranges under test: 0x08000000 (128 MiB).
-SPIKE_LDFLAGS := $(LDFLAGS) /base:0x08000000 /fixed
+LDFLAGS := /machine:x86 /subsystem:efi_application /nodefaultlib /entry:efi_main \
+           /base:0x08000000 /fixed
 
-EFI_OBJS := $(BUILD)/efi_main.obj
+BOOT2_SRCS := $(BOOT2)/libsaio/disk.c \
+              $(BOOT2)/libsaio/ufs_byteorder.c \
+              $(BOOT2)/libsaio/cache.c \
+              $(BOOT2)/libsa/sprintf.c \
+              $(BOOT2)/libsa/prf.c \
+              $(BOOT2)/libsa/string1.c \
+              $(BOOT2)/libsa/memcpy.c
+# libsa/memset.c is NOT included: nothing this loader compiles calls
+# memset()/bzero() (confirmed by grep), and memset.c's unconditional
+# `simple_char_set` inline asm (invalid "&c" input constraint under clang)
+# and lvalue-cast assignments (`UNS(dst) += ...`) do not compile under any
+# modern compiler flag short of editing the file, which src/boot-2 forbids.
+
+EFI_SRCS := efi_main.c efi_console.c efi_disk.c efi_memory.c $(BOOT2_SRCS)
+
+EFI_OBJS := $(patsubst %.c,$(BUILD)/%.obj,$(notdir $(EFI_SRCS))) \
+            $(BUILD)/sys.obj
+
+VPATH := $(BOOT2)/libsaio:$(BOOT2)/libsa
 
 all: $(BUILD)/BOOTIA32.EFI
 
 $(BUILD):
 	mkdir -p $(BUILD)
+
+$(BUILD)/sys.obj: $(BOOT2)/libsaio/sys.c | $(BUILD)
+	$(CC) $(SYS_CFLAGS) -c -o $@ $<
 
 $(BUILD)/%.obj: %.c | $(BUILD)
 	$(CC) $(CFLAGS) -c -o $@ $<
@@ -43,7 +78,7 @@ $(BUILD)/BOOTIA32.EFI: $(EFI_OBJS)
 spike: $(BUILD)/SPIKE.EFI
 
 $(BUILD)/SPIKE.EFI: $(BUILD)/spike_memmap.obj
-	$(LINK) $(SPIKE_LDFLAGS) /out:$@ $(BUILD)/spike_memmap.obj
+	$(LINK) $(LDFLAGS) /out:$@ $(BUILD)/spike_memmap.obj
 
 clean:
 	rm -rf $(BUILD)

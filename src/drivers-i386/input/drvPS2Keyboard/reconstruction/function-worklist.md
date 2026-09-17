@@ -13,9 +13,9 @@ Analyzer: IDA 9.2 only (`analyzers.angr.enabled` is false; Ghidra stays off).
 | | SHA-256 | size |
 | --- | --- | --- |
 | Reference | `AB413CA3919950F22A1F5D10B0BF1167387FEF320C9FB82A3EA66E586A6BE02A` | 43460 |
-| Rebuilt | `20C8BD6E1243FE4CB6D1CDCC51654CBADF65E118370ACBF8D49EBE05B3631C07` | 157692 |
+| Rebuilt | `BD73917E3E2C0AFDD7F6A5E82A8D28B09A59415055533261C382D4B55A8F6359` | 157584 |
 
-`__TEXT,__text`: reference 4952, rebuilt 4664.
+`__TEXT,__text`: reference 4952, rebuilt 4656.
 
 `parity_check.py`: `missing_strings (0)`, `missing_symbols (0)`. Extra symbols 54 (stabs / file names on the unstripped guest `_reloc`).
 
@@ -213,6 +213,11 @@ Task 8 regression gate. `--name` shows then/else order on `respondsTo:`, but do 
 ### `-[PS2Keyboard dispatchKeyboardEvents]` (diff 27)
 
 1. Signedness of the dispatch loop index: declare `i` as `int` so the count compare is `jl`/`jge` rather than `jb`/`jnb`.
+   **Tried, miss:** `unsigned int savedEventCount` still forced usual-arithmetic unsigned `jb`/`jnb`. Diff stayed 27.
+2. Also declare `savedEventCount` as `int`.
+   **Kept:** loop compares are now `jge`/`jl`. Leftover was the single-event `goingDown` byte store plus register allocation.
+3. Copy the n==1 event as a struct assignment (`localEventBuffer[0] = pendingEvents[0]`) so gcc lays four dword stores.
+   **Match:** `masked_equal` after rebuild `BD73917E3E2C0AFDD7F6A5E82A8D28B09A59415055533261C382D4B55A8F6359`. Ledger `assembly-matched`.
 
 ### `-[PS2Keyboard enqueueKeyEvent:goingDown:atTime:]` (diff 31)
 

@@ -201,9 +201,9 @@ static unsigned int _kbdBitVector[4];
 - (void)dispatchKeyboardEvents
 {
     PS2KeyboardEvent localEventBuffer[MAX_KEYBOARD_EVENTS];
-    unsigned int savedEventCount;
+    int savedEventCount;
     int savedSPL;
-    unsigned int i;
+    int i;
 
     /* Raise to IPL 6 -- IPLDMA/IPLCLOCK/IPLSCHED in <kernserv/i386/spl.h>, not
      * IPLBIO, which is 3 -- and save previous level
@@ -212,9 +212,7 @@ static unsigned int _kbdBitVector[4];
 
     /* Copy events from the queue to the local buffer atomically */
     if (numEvents == 1) {
-        localEventBuffer[0].timeStamp = pendingEvents[0].timeStamp;
-        localEventBuffer[0].keyCode = pendingEvents[0].keyCode;
-        localEventBuffer[0].goingDown = pendingEvents[0].goingDown;
+        localEventBuffer[0] = pendingEvents[0];
     } else {
         bcopy(pendingEvents, localEventBuffer,
               numEvents * sizeof(PS2KeyboardEvent));

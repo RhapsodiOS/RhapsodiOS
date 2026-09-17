@@ -24,82 +24,27 @@ void package_set(char **field, const char *value) {
     *field = value ? xstrdup(value) : 0;
 }
 
-/* Assign a parsed key/value pair into the struct. Unknown keys are
-   ignored (mirrors Perl's Package.pm storing them in a hash that is
-   never read back for anything but the known fields). */
-static void assign_field(Package *p, const char *key, const char *value) {
-    if (strcmp(key, "package") == 0) package_set(&p->package, value);
-    else if (strcmp(key, "version") == 0) package_set(&p->version, value);
-    else if (strcmp(key, "architecture") == 0) package_set(&p->architecture, value);
-    else if (strcmp(key, "source") == 0) package_set(&p->source, value);
-    else if (strcmp(key, "description") == 0) package_set(&p->description, value);
-    else if (strcmp(key, "maintainer") == 0) package_set(&p->maintainer, value);
-    else if (strcmp(key, "provides") == 0) package_set(&p->provides, value);
-    else if (strcmp(key, "conflicts") == 0) package_set(&p->conflicts, value);
-    else if (strcmp(key, "replaces") == 0) package_set(&p->replaces, value);
-    else if (strcmp(key, "revision") == 0) package_set(&p->revision, value);
-    else if (strcmp(key, "package_revision") == 0)
-        package_set(&p->package_revision, value);
-    else if (strcmp(key, "build-depends") == 0) {
-        strlist_free(&p->build_depends);
-        strlist_init(&p->build_depends);
-        str_split_chars(value, " ,", &p->build_depends);
-        p->has_build_depends = 1;
-    }
-}
-
-/* Parse Debian-control-style text. Single scan over physical lines:
-   a line beginning with whitespace is a continuation and is folded onto
-   the current field's value as "\n " + trim(line) (Package.pm:33-39);
-   any other line is split at the first ':' to become a new field,
-   flushing whatever field was previously accumulating. Lines with
-   neither leading whitespace nor a colon are silently ignored, matching
-   Perl's /^(\S+):\s*(.*)\s*$/mg which simply skips non-matching lines. */
-void package_parse(Package *p, const char *data) {
-    char *copy = xstrdup(data);
-    char *cursor = copy;
-    char *key = 0;
-    sbuf value;
-    int have = 0;
-
-    sbuf_init(&value);
-
-    while (*cursor != '\0') {
-        char *line = cursor;
-        char *nl = strchr(cursor, '\n');
-        if (nl != 0) { *nl = '\0'; cursor = nl + 1; }
-        else { cursor = cursor + strlen(cursor); }
-
-        if (line[0] == ' ' || line[0] == '\t') {
-            if (have) {
-                sbuf_puts(&value, "\n ");
-                sbuf_puts(&value, str_trim(line));
-            }
-        } else {
-            char *colon;
-            if (have) {
-                assign_field(p, key, value.buf);
-                have = 0;
-                sbuf_free(&value);
-                sbuf_init(&value);
-            }
-            colon = strchr(line, ':');
-            if (colon != 0) {
-                char *val;
-                *colon = '\0';
-                str_lowercase(line);
-                key = line;
-                val = colon + 1;
-                sbuf_puts(&value, str_trim(val));
-                have = 1;
-            }
-        }
-    }
-
-    if (have) assign_field(p, key, value.buf);
-
-    sbuf_free(&value);
-    free(copy);
+int package_copy(Package *dst, const Package *src) {
+    size_t i;
+    package_free(dst);
+    package_init(dst);
+    package_set(&dst->package, src->package);
+    package_set(&dst->version, src->version);
+    package_set(&dst->architecture, src->architecture);
+    package_set(&dst->source, src->source);
+    package_set(&dst->description, src->description);
+    package_set(&dst->maintainer, src->maintainer);
+    package_set(&dst->url, src->url);
+    package_set(&dst->license, src->license);
+    package_set(&dst->provides, src->provides);
+    package_set(&dst->conflicts, src->conflicts);
+    package_set(&dst->replaces, src->replaces);
+    package_set(&dst->revision, src->revision);
+    package_set(&dst->package_revision, src->package_revision);
+    for (i = 0; i < src->build_depends.count; i++)
+        strlist_push(&dst->build_depends, src->build_depends.items[i]);
+    dst->has_build_depends = src->has_build_depends;
+    return 0;
 }
 
 char *package_canon_version(const Package *p) {
@@ -144,44 +89,5 @@ char *package_canon_name(const Package *p) {
     out = str_cats(p->package ? p->package : "", "-", ver, "-", token,
                    (char *)0);
     free(ver);
-    return out;
-}
-
-static void unparse_field(sbuf *s, const char *label, const char *value) {
-    sbuf_puts(s, label);
-    sbuf_puts(s, ": ");
-    sbuf_puts(s, value ? value : "");
-    sbuf_putc(s, '\n');
-}
-
-char *package_unparse(const Package *p) {
-    sbuf s;
-    char *out;
-    sbuf_init(&s);
-    unparse_field(&s, "Package", p->package);
-    if (p->provides) unparse_field(&s, "Provides", p->provides);
-    if (p->conflicts) unparse_field(&s, "Conflicts", p->conflicts);
-    if (p->replaces) unparse_field(&s, "Replaces", p->replaces);
-    unparse_field(&s, "Maintainer", p->maintainer);
-    unparse_field(&s, "Version", p->version);
-    unparse_field(&s, "Source", p->source);
-    if (p->has_build_depends) {
-        sbuf bd;
-        char *joined;
-        size_t i;
-        sbuf_init(&bd);
-        for (i = 0; i < p->build_depends.count; i++) {
-            if (i) sbuf_puts(&bd, ", ");
-            sbuf_puts(&bd, p->build_depends.items[i]);
-        }
-        joined = sbuf_steal(&bd);
-        unparse_field(&s, "Build-Depends", joined);
-        free(joined);
-        sbuf_free(&bd);
-    }
-    unparse_field(&s, "Architecture", p->architecture);
-    unparse_field(&s, "Description", p->description);
-    out = sbuf_steal(&s);
-    sbuf_free(&s);
     return out;
 }

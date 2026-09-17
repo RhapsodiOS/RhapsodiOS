@@ -792,6 +792,27 @@ TEST(test_scan_dir) {
     system("rm -rf /tmp/rbtest_src");
 }
 
+TEST(test_scan_dir_missing_pkgname_fails) {
+    Package pkg;
+    Params params;
+    int rc;
+    FILE *f;
+    system("rm -rf /tmp/rbtest_incomplete && mkdir -p /tmp/rbtest_incomplete/apk");
+    f = fopen("/tmp/rbtest_incomplete/apk/pkginfo", "w");
+    CHECK(f != 0);
+    if (f) {
+        fputs("pkgver = 1\n", f);
+        fclose(f);
+    }
+    package_init(&pkg);
+    params_init(&params);
+    rc = builder_scan_dir("/tmp/rbtest_incomplete", &pkg, &params);
+    CHECK_INT(rc, 1);
+    package_free(&pkg);
+    params_free(&params);
+    system("rm -rf /tmp/rbtest_incomplete");
+}
+
 TEST(test_relativize_absolute_symlinks_inside_dstroot) {
     char root[128];
     char at_path[192];
@@ -1651,6 +1672,7 @@ static void run_all(void) {
     RUN(test_setupdirs_wipes_stale_product_trees);
     RUN(test_makeroot_dry_run_preserves_package_list);
     RUN(test_scan_dir);
+    RUN(test_scan_dir_missing_pkgname_fails);
     RUN(test_relativize_absolute_symlinks_inside_dstroot);
 }
 

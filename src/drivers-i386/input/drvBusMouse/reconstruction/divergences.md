@@ -13,11 +13,11 @@ Analyses: IDA 9.2, Ghidra 12.1, angr 9.3.0 (all three enabled; `run-summary.json
 | duplicate_candidates | 0 |
 | boundary_disputed | 0 |
 
-Ledger status distribution **after Task 12's fix pass**: **8 `assembly-matched`**,
-**5 `intentional-mismatch`**, **0 `unexamined`**. The report pass that produced everything
+Ledger status distribution **after Task 4**: **7 `assembly-matched`**,
+**6 `intentional-mismatch`**, **0 `unexamined`**. The report pass that produced everything
 above this line left 2 `assembly-matched`, 9 `unexamined` and 2 `intentional-mismatch`. See
-the "Fix pass (Task 12): results" section at the end of this document for the resolution of
-every finding, the per-function size comparison and the emitted section sizes.
+the "Fix pass (Task 12): results" section and Task 4 at the end of this document for the
+resolution of every finding, the per-function size comparison and the emitted section sizes.
 
 **The body of this document is the report pass. Task 12 rewrote all 11 hand-written
 functions as a unit** under the spec's §4.3 approved exception. The reason is stated plainly:
@@ -1670,15 +1670,16 @@ stream exactly.
 
 ## Ledger
 
-13 entries, **0 `unexamined`**: 8 `assembly-matched`, 5 `intentional-mismatch`.
+13 entries, **0 `unexamined`**: 7 `assembly-matched`, 6 `intentional-mismatch`.
 
 - `assembly-matched` - the rebuilt instruction stream was disassembled and compared against the
   reference's and is identical once link-time addresses are normalized:
   `validConfiguration:`, `interruptHandler`, `BusMouseThread`, `mouseInit:`, `free`,
-  `getHandler:level:argument:forInterrupt:`, `getResolution`, `getIntValues:forParameter:count:`.
-- `intentional-mismatch` - a named residual remains: `_GetIRQFromBoard`, `_MouseIntHandler` and
-  `setIntValues:forParameter:count:` for the register-allocation differences described above,
-  plus the two build-generated glue methods, which keep task 11's reviewer.
+  `getHandler:level:argument:forInterrupt:`, `getResolution`.
+- `intentional-mismatch` - a named residual remains: `_GetIRQFromBoard`, `_MouseIntHandler`,
+  `getIntValues:forParameter:count:` and `setIntValues:forParameter:count:` for the
+  register-allocation differences described above (and in Task 4), plus the two
+  build-generated glue methods, which keep task 11's reviewer.
 
 ## Phase 1 baseline
 
@@ -1865,4 +1866,22 @@ putting the IRQ in `ecx` instead of `ebx`. Dummy locals were not added.
 
 **Disposition:** accept as unreachable. Ledger `intentional-mismatch`,
 reviewer `Pat Raynor`.
+
+## Closing
+
+Campaign grinding is complete. 7/11 hand-written functions are IDA
+masked-eq or identical: `-[BusMouse validConfiguration:]`,
+`-[BusMouse interruptHandler]`, `_BusMouseThread`, `-[BusMouse mouseInit:]`,
+`-[BusMouse free]`, `-[BusMouse getHandler:level:argument:forInterrupt:]`,
+`-[BusMouse getResolution]`. Four leftovers were accepted as gcc 2.7
+register allocation / spill / scheduling:
+`-[BusMouse getIntValues:forParameter:count:]` (edx vs eax store),
+`-[BusMouse setIntValues:forParameter:count:]` (parameterArray/count hoist),
+`_MouseIntHandler` (button-decode scheduling), `_GetIRQFromBoard`
+(masked-nibble spill). Two Kernel Server glue methods remain generated.
+Last kept rebuilt `BusMouse_reloc` is 100372 bytes, SHA-256
+`55BB1C543C383A311E57447DDD6B722D251ED577D2769BC9ECD0475334C9815D`.
+`__TEXT,__const` is 92 bytes with apple-generic `_BusMouseVersionString` /
+`_BusMouseVersionNumber`; SGS `_BusMouse_VERS_*` names are absent
+(documented leftover, same as Cirrus). Not yet tested on hardware.
 

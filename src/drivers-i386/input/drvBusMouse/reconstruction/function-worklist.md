@@ -18,8 +18,8 @@ Unstripped Mach-O preload i386. `__TEXT,__text` is 1584 bytes;
 `__TEXT,__const` is **92** bytes. The SHA differs from Task 3's
 `2EAA0112…` because `BusMouse_vers.c` embeds a new build timestamp.
 Instruction-diff table is unchanged from Phase 1 / Task 3.
-`ledger.json` `rebuilt_sha256` is left unset; this is still not a
-byte-identity campaign result.
+`ledger.json` `rebuilt_sha256` records this SHA. This is an
+instruction-stream finish, not a byte-identity campaign result.
 
 The published IDA trio under `tools/binrecon/out/busmouse/published/`
 is from this rebuilt SHA. Ghidra and angr stayed disabled.
@@ -85,3 +85,22 @@ plus the two glue methods). See `divergences.md` Task 4.
 accepted leftover, same as Cirrus. `driverTools` was not edited.
 Findings 1–19 stay closed. The four remaining IDA diffs are gcc 2.7
 allocation / spill / scheduling and are recorded unreachable.
+
+## Closing
+
+7/11 hand-written functions are IDA masked-eq or identical:
+`-[BusMouse validConfiguration:]`, `-[BusMouse interruptHandler]`,
+`_BusMouseThread`, `-[BusMouse mouseInit:]`, `-[BusMouse free]`,
+`-[BusMouse getHandler:level:argument:forInterrupt:]`,
+`-[BusMouse getResolution]`. Four leftovers were accepted as gcc 2.7
+register allocation / spill / scheduling:
+`-[BusMouse getIntValues:forParameter:count:]` (edx vs eax store),
+`-[BusMouse setIntValues:forParameter:count:]` (parameterArray/count hoist),
+`_MouseIntHandler` (button-decode scheduling), `_GetIRQFromBoard`
+(masked-nibble spill). Two Kernel Server glue methods are generated.
+Last kept rebuilt `BusMouse_reloc` SHA-256
+`55BB1C543C383A311E57447DDD6B722D251ED577D2769BC9ECD0475334C9815D`
+(100372 bytes). Apple-generic `_BusMouseVersionString` /
+`_BusMouseVersionNumber` are present; SGS `_BusMouse_VERS_*` names are
+absent. Not yet tested on hardware.
+

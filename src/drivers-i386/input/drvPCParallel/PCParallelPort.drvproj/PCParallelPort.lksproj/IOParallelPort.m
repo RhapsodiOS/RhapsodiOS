@@ -509,13 +509,8 @@ extern int sprintf(char *str, const char *fmt, ...);
     // Set status bits based on the command's return code.  The arms are
     // selected by value: our IO_R_* comments state the expansion.
     switch (cmdBuffer->returnCode) {
-    case IO_R_TIMEOUT:  // -726
-        status |= PP_SW_NOT_READY;  // 0x10
-        [self setStatusWord:status];
-        break;
-
-    case IO_R_PRINTER_OFFLINE:  // -738
-        status |= PP_SW_OFFLINE;  // 0x08
+    case IO_R_BUSY:  // -725
+        status |= PP_SW_BUSY;  // 0x02
         [self setStatusWord:status];
         break;
 
@@ -524,8 +519,13 @@ extern int sprintf(char *str, const char *fmt, ...);
         [self setStatusWord:status];
         break;
 
-    case IO_R_BUSY:  // -725
-        status |= PP_SW_BUSY;  // 0x02
+    case IO_R_PRINTER_OFFLINE:  // -738
+        status |= PP_SW_OFFLINE;  // 0x08
+        [self setStatusWord:status];
+        break;
+
+    case IO_R_TIMEOUT:  // -726
+        status |= PP_SW_NOT_READY;  // 0x10
         [self setStatusWord:status];
         break;
 
@@ -536,9 +536,7 @@ extern int sprintf(char *str, const char *fmt, ...);
     case IO_R_IO:  // -714
         status |= PP_SW_NO_ERROR;  // 0x20
         [self setStatusWord:status];
-        returnCode = cmdBuffer->returnCode;
-        break;
-
+        /* fall through */
     default:
         // For unknown errors, keep the return code and leave the status word
         returnCode = cmdBuffer->returnCode;

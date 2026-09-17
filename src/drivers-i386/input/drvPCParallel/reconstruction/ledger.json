@@ -20,7 +20,7 @@
       "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 112,
-      "source_line": 831,
+      "source_line": 829,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "intentional-mismatch"
     },
@@ -140,7 +140,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 76,
-      "source_line": 784,
+      "source_line": 782,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -164,7 +164,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 48,
-      "source_line": 810,
+      "source_line": 808,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -212,7 +212,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 163,
-      "source_line": 974,
+      "source_line": 972,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -500,7 +500,7 @@
       "reason": "the body matches 2372-2387 exactly and the ivar is now struct buf * at 0x174. The __meth_var_types encoding differs by one character: this tree's src/kernel-7/bsd/sys/buf.h ends struct buf with `int b_timestamp; long b_reserved[3]` (encoded ^vi[3l]) where Apple's 1998 header had four longs (^vllll). Same 16 bytes and the same offsets; the fix is in a kernel header this task must not touch (Finding 14)",
       "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 710,
+      "source_line": 708,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "intentional-mismatch"
     },
@@ -524,7 +524,7 @@
       "reason": "the body matches 2388-2406 exactly; it carries the same one-character struct buf encoding difference as 2372, from src/kernel-7/bsd/sys/buf.h, which this task must not touch (Finding 14)",
       "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 715,
+      "source_line": 713,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "intentional-mismatch"
     },
@@ -548,7 +548,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 799,
+      "source_line": 797,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -572,7 +572,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 804,
+      "source_line": 802,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -596,7 +596,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 614,
+      "source_line": 612,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -620,7 +620,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 609,
+      "source_line": 607,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -644,7 +644,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 625,
+      "source_line": 623,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -668,7 +668,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 620,
+      "source_line": 618,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -692,7 +692,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 17,
-      "source_line": 572,
+      "source_line": 570,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -716,7 +716,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 577,
+      "source_line": 575,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -740,7 +740,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 747,
+      "source_line": 745,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -764,7 +764,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 752,
+      "source_line": 750,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -788,7 +788,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 725,
+      "source_line": 723,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -812,7 +812,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 730,
+      "source_line": 728,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -836,7 +836,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 736,
+      "source_line": 734,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -860,7 +860,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 741,
+      "source_line": 739,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -884,7 +884,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 594,
+      "source_line": 592,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -908,7 +908,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 599,
+      "source_line": 597,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -932,7 +932,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 769,
+      "source_line": 767,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -956,7 +956,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 774,
+      "source_line": 772,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -980,7 +980,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 758,
+      "source_line": 756,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1004,7 +1004,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 763,
+      "source_line": 761,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1052,7 +1052,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 33,
-      "source_line": 566,
+      "source_line": 564,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1100,7 +1100,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 17,
-      "source_line": 583,
+      "source_line": 581,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1124,7 +1124,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 19,
-      "source_line": 588,
+      "source_line": 586,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1148,7 +1148,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 676,
+      "source_line": 674,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1172,7 +1172,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 105,
-      "source_line": 681,
+      "source_line": 679,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1196,7 +1196,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 635,
+      "source_line": 633,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1220,7 +1220,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 105,
-      "source_line": 640,
+      "source_line": 638,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1265,12 +1265,12 @@
       "names": [
         "-[IOParallelPort writeToPort]"
       ],
-      "reason": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 265,
       "source_line": 482,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "control-flow-confirmed"
+      "status": "intentional-mismatch"
     },
     {
       "address": 3480,
@@ -1317,7 +1317,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 197,
-      "source_line": 1013,
+      "source_line": 1011,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1341,7 +1341,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 705,
+      "source_line": 703,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1365,7 +1365,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 35,
-      "source_line": 664,
+      "source_line": 662,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1389,7 +1389,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 35,
-      "source_line": 670,
+      "source_line": 668,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1414,7 +1414,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 73,
-      "source_line": 860,
+      "source_line": 858,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1438,7 +1438,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 37,
-      "source_line": 875,
+      "source_line": 873,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1462,7 +1462,7 @@
       "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 143,
-      "source_line": 884,
+      "source_line": 882,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "intentional-mismatch"
     },
@@ -1486,7 +1486,7 @@
       "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 141,
-      "source_line": 928,
+      "source_line": 926,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "intentional-mismatch"
     },
@@ -1510,7 +1510,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 46,
-      "source_line": 919,
+      "source_line": 917,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1803,7 +1803,7 @@
       "status": "intentional-mismatch"
     }
   ],
-  "rebuilt_sha256": "5F8A0FDE2A167B1DF11035829FA2D2117D5D101357BFE2EB6BEC5D33D70AD624",
+  "rebuilt_sha256": "D13D6D48DA5CB5B131E2F1BBF6A56A59B68EEC72583A7A74FC18880CF159C6EF",
   "reference_sha256": "D188A4D909005683B0C943C84CD99514C14A84AD1D378425B3B1DB343F1EAAA2",
   "schema_version": "ledger-v1"
 }

@@ -1295,6 +1295,32 @@ _ppopen
   test eax, eax                           test eax, eax
 ```
 
+### Task 8 — `writeToPort` IO_R_IO fallthrough
+
+`IO_R_IO` now falls into `default` so `returnCode = cmdBuffer->returnCode` is the
+shared `mov edi, [ebx+0Ch]`. Switch cases reordered BUSY / PAPER / OFFLINE /
+TIMEOUT / SUCCESS / IO so the `or al, 2/4/8/10h` bodies match Apple. Leftover
+is gcc 2.x SUCCESS `jz` vs `jnz` polarity. Rebuilt SHA-256
+`D13D6D48DA5CB5B131E2F1BBF6A56A59B68EEC72583A7A74FC18880CF159C6EF`.
+Parity 0/0. Previously identical rows stayed identical. Ledger 3212
+`intentional-mismatch`, reviewer Pat Raynor, reason
+`compiler-shaped leftover after exhausted source-shape list`. source-map relined
+42 later `IOParallelPort.m` sites (73 mapped / 2 unmapped).
+
+```
+-[IOParallelPort writeToPort]
+  status=different raw_equal=False masked_equal=False
+  test edx, edx                           test edx, edx
+* jnz loc_D4B                             jz loc_88E
+* jmp loc_D22                             jmp loc_8B7
+  or al, 2                                or al, 2
+  or al, 4                                or al, 4
+  or al, 8                                or al, 8
+  or al, 10h                              or al, 10h
+  or al, 20h                              or al, 20h
+  mov edi, [ebx+0Ch]                      mov edi, [ebx+0Ch]
+```
+
 ### 8.9 The status rule used
 
 - `assembly-matched` (56) - the reference's full instruction stream was read and our
@@ -1302,15 +1328,17 @@ _ppopen
   and the function's emitted metadata was verified identical in the rebuilt binary. Used
   for the accessors and the short bodies. Task 8 promoted `msgTypeToIOReturn:` and
   `cmdBufAlloc` (`masked_equal`).
-- `control-flow-confirmed` (7) - the reference's full instruction stream was read and our
+- `control-flow-confirmed` (6) - the reference's full instruction stream was read and our
   source reproduces its block structure, every call target and every constant, but the
   rebuilt output was **not** itself disassembled and compared instruction by instruction.
   Used for the larger functions.
-- `intentional-mismatch` (12) - a deliberate difference remains: 0 (`_waitForDevice:isReady:`
+- `intentional-mismatch` (13) - a deliberate difference remains: 0 (`_waitForDevice:isReady:`
   for-loop with `tries < busyMaxRetries`; leftover is the `inb` stack slot), 112 and 1452
   (Finding 53, uninitialized control byte reconstructed; leftover is gcc 2.x zero-fill /
   immediate fold), 2372 and 2388 (`struct buf` encoding), 3132 (`printerInit` control byte
-  in `bl` vs `[ebp+var_1]`; leftover is gcc 2.x register allocation), 3896 (`cmdBufExec:`
+  in `bl` vs `[ebp+var_1]`; leftover is gcc 2.x register allocation), 3212
+  (`writeToPort` IO_R_IO falls into default; leftover is SUCCESS `jz` vs `jnz`),
+  3896 (`cmdBufExec:`
   prev-link stored first; leftover is `add esp,8` scheduling), 4040 (`waitForCmdBuf`
   if/else dequeue; leftover is `add esp,0Ch` scheduling and else-block placement), 4232
   (`_strobeChar` load-then-test reversed; leftover is gcc 2.x CSE / register allocation),

@@ -535,12 +535,13 @@ Accepted leftover: rebuilt `5F8A0FDE2A167B1DF11035829FA2D2117D5D101357BFE2EB6BEC
 
 Star: switch-arm layout (`or al,2` first vs `or al,10h`); IO_R_IO falls into
 shared `mov edi, [ebx+0Ch]`.
+Accepted leftover: rebuilt `D13D6D48DA5CB5B131E2F1BBF6A56A59B68EEC72583A7A74FC18880CF159C6EF`.
 
-1. Fall through `IO_R_IO` into `default` for `returnCode = cmdBuffer->returnCode`
-2. Reorder cases: BUSY, NO_PAPER, OFFLINE, TIMEOUT, SUCCESS, IO, default
-3. Reorder cases to match Apple's binary-search pivots (`-726` first)
-4. Assign `returnCode = 0` as `xor` by not naming it until after the switch
-5. `if/else if` chain instead of `switch`
+1. Fall through `IO_R_IO` into `default` for `returnCode = cmdBuffer->returnCode` — **kept**
+2. Reorder cases: BUSY, NO_PAPER, OFFLINE, TIMEOUT, SUCCESS, IO, default — **kept**
+3. Reorder cases to match Apple's binary-search pivots (`-726` first) — **already matched**
+4. Assign `returnCode = 0` as `xor` by not naming it until after the switch — **already the source**
+5. `if/else if` chain instead of `switch` — **skipped** (leftover is SUCCESS polarity)
 
 ### `_IOParallelPortInterruptHandler` (diff 61)
 

@@ -4950,3 +4950,55 @@ Allocate the singleton with `[self alloc]` instead of `[super alloc]` so the too
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+### Task 6 `-[pnpMemory matches:]` alignment local (2026-09-17)
+
+Keep `_alignment` in a local and compute the aligned base only when it is nonzero. Reloc IDA `masked_equal`. Tool leftover is PIC selector displacement (`paMinBase` vs `paMinBase_0`) plus jump labels. Accepted compiler-shaped leftover (reviewer Pat Raynor). Tool SHA `6CD74564E9E7687387C575FB1483B02E7F7E9CC0C3F8677C8DEECBABA5B2A23D` (299384). Previously identical rows stayed matched (45). Unpaired count unchanged (10). Tool-only; reloc SHA unchanged.
+
+```
+-[pnpMemory matches:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  call $+5                                call $+5
+  pop eax                                 pop eax
+  mov ebx, [ebp+self]                     mov ebx, [ebp+self]
+* mov eax, ds:(paMinBase - 49A3h)[eax]    mov eax, ds:(paMinBase_0 - 6C8Fh)[eax]
+  push eax                                push eax
+  mov edx, [ebp+arg_8]                    mov edx, [ebp+arg_8]
+  push edx                                push edx
+  call _objc_msgSend                      call _objc_msgSend
+  mov ecx, eax                            mov ecx, eax
+  mov edi, [ebx+0Ch]                      mov edi, [ebx+0Ch]
+  test edi, edi                           test edi, edi
+* jz loc_49CB                             jz loc_6CB7
+  lea eax, [edi+ecx-1]                    lea eax, [edi+ecx-1]
+  xor edx, edx                            xor edx, edx
+  div edi                                 div edi
+  imul eax, edi                           imul eax, edi
+  cmp ecx, eax                            cmp ecx, eax
+* jnz loc_49E0                            jnz loc_6CCC
+  cmp [ebx+4], ecx                        cmp [ebx+4], ecx
+* ja loc_49E0                             ja loc_6CCC
+  cmp [ebx+8], ecx                        cmp [ebx+8], ecx
+* jb loc_49E0                             jb loc_6CCC
+  mov eax, 1                              mov eax, 1
+* jmp loc_49E2                            jmp loc_6CCE
+  xor eax, eax                            xor eax, eax
+  lea esp, [ebp-0Ch]                      lea esp, [ebp-0Ch]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

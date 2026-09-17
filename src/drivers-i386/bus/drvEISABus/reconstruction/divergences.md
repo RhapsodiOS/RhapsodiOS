@@ -1988,3 +1988,52 @@ Accepted `intentional-mismatch` (compiler-shaped leftover after exhausted source
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+### Task 6 `-[pnpMemory matches:]` alignment local (2026-09-17)
+
+Keep `_alignment` in a local and compute the aligned base only when it is nonzero. Reloc IDA `masked_equal`. Kernel-only reloc statuses were not reopened. Reloc SHA `ED488370D3F6326FAA6B49863D0D61D023F4015CFE6FB9379E26B664AD96536B` (603720). Unpaired count unchanged (11).
+
+```
+-[pnpMemory matches:]
+  status=different raw_equal=False masked_equal=True
+  reason: calls differ
+  reason: cfg differs
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  mov ebx, [ebp+self]                     mov ebx, [ebp+self]
+  mov edx, ds:paMinBase                   mov edx, ds:paMinBase
+  push edx                                push edx
+  mov edx, [ebp+arg_8]                    mov edx, [ebp+arg_8]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov ecx, eax                            mov ecx, eax
+  mov edi, [ebx+0Ch]                      mov edi, [ebx+0Ch]
+  test edi, edi                           test edi, edi
+* jz loc_46BD                             jz loc_52C5
+  lea eax, [edi+ecx-1]                    lea eax, [edi+ecx-1]
+  xor edx, edx                            xor edx, edx
+  div edi                                 div edi
+  imul eax, edi                           imul eax, edi
+  cmp ecx, eax                            cmp ecx, eax
+* jnz loc_46D4                            jnz loc_52DC
+  cmp [ebx+4], ecx                        cmp [ebx+4], ecx
+* ja loc_46D4                             ja loc_52DC
+  cmp [ebx+8], ecx                        cmp [ebx+8], ecx
+* jb loc_46D4                             jb loc_52DC
+  mov eax, 1                              mov eax, 1
+* jmp loc_46D6                            jmp loc_52DE
+  xor eax, eax                            xor eax, eax
+  lea esp, [ebp-0Ch]                      lea esp, [ebp-0Ch]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

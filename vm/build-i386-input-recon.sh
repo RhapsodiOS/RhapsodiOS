@@ -6,6 +6,19 @@
 # pb_makefiles build can return nonzero for a step outside what we need.
 # Keep this POSIX sh — Rhapsody's /bin/sh is a 1999 Bourne shell.
 
+# Live System.framework on this guest lacks DriverKit private headers.
+# Symlink from bootstrap-root when absent; never overwrite a live path.
+BOOTFW=/build/bootstrap-root/System/Library/Frameworks/System.framework/Versions/B
+LIVEFW=/System/Library/Frameworks/System.framework
+if [ ! -e "$LIVEFW/PrivateHeaders" ]; then
+	ln -s "$BOOTFW/PrivateHeaders" "$LIVEFW/PrivateHeaders"
+	echo "planted $LIVEFW/PrivateHeaders -> $BOOTFW/PrivateHeaders"
+fi
+if [ ! -e "$LIVEFW/Headers/objc/zone.h" ]; then
+	ln -s "$BOOTFW/Headers/objc/zone.h" "$LIVEFW/Headers/objc/zone.h"
+	echo "planted $LIVEFW/Headers/objc/zone.h -> $BOOTFW/Headers/objc/zone.h"
+fi
+
 DRV="$1"
 NAME=""
 PROJ=""

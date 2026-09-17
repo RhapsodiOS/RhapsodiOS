@@ -29,7 +29,12 @@ $(BUILD)/%.obj: %.c | $(BUILD)
 $(BUILD)/BOOTIA32.EFI: $(EFI_OBJS)
 	$(LINK) $(LDFLAGS) /out:$@ $(EFI_OBJS)
 
+spike: $(BUILD)/SPIKE.EFI
+
+$(BUILD)/SPIKE.EFI: $(BUILD)/spike_memmap.obj
+	$(LINK) $(LDFLAGS) /out:$@ $(BUILD)/spike_memmap.obj
+
 clean:
 	rm -rf $(BUILD)
 
-.PHONY: all clean
+.PHONY: all clean spike

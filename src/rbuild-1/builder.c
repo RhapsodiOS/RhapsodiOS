@@ -1044,7 +1044,7 @@ int builder_setupdirs(const Package *pkg, const Params *params,
 
     if (strcmp(srctype, "dir") == 0) {
         char *source;
-        char *argv[8];
+        char *argv[9];
         const char *rsync = "rsync";
         int rc;
         if (exec_check(mkdirp(params->SRCROOT))) return 1;
@@ -1053,7 +1053,8 @@ int builder_setupdirs(const Package *pkg, const Params *params,
         source = str_cats(params->SRCDIR, "/", (char *)0);
         argv[0] = (char *)rsync; argv[1] = "-avr"; argv[2] = source;
         argv[3] = "--exclude=CVS/"; argv[4] = "--exclude=.svn/";
-        argv[5] = "--exclude=.git/"; argv[6] = params->SRCROOT; argv[7] = 0;
+        argv[5] = "--exclude=.git/"; argv[6] = "--exclude=.hg/";
+        argv[7] = params->SRCROOT; argv[8] = 0;
         exec_printcmd(argv);
         rc = exec_run_checked(argv);
         free(source);

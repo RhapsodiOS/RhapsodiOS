@@ -120,11 +120,6 @@ static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_
     unsigned char dataByte;
     ns_time_t newStamp;
 
-    /* Check if controller functions are available */
-    if (controllerFunctions == NULL) {
-        return 0;
-    }
-
     /* Read a byte from the PS/2 controller
      * This calls the controller's readDataPort method or equivalent.
      * In the decompiled code, this was via a function table at offset 0x1c
@@ -252,11 +247,6 @@ static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_
     int status;
     unsigned char responseByte;
 
-    /* Check if controller functions are available */
-    if (controllerFunctions == NULL) {
-        return NO;
-    }
-
     /* Send SET_RESOLUTION command (0xE8) to the mouse
      * This should return ACK if a mouse is present
      */
@@ -338,11 +328,6 @@ static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_
 
 - (void)resetMouse
 {
-    /* Check if controller functions are available */
-    if (controllerFunctions == NULL) {
-        return;
-    }
-
     /* Send SET_DEFAULTS command (0xF6)
      * This resets the mouse to default settings
      */
@@ -379,9 +364,7 @@ static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_
     /* Drain any stale byte out of the 8042 output buffer via the function
      * table.  Slot 3 is clearOutputBuffer (see PS2Controller.h).
      */
-    if (controllerFunctions != NULL && controllerFunctions->reserved[3] != NULL) {
-        ((void (*)(void))controllerFunctions->reserved[3])();
-    }
+    ((void (*)(void))controllerFunctions->reserved[3])();
 
     /* Check if mouse is present (only if force_detection is not set).
      * "Force Detection = Yes" means force the attach and skip detection.
@@ -403,29 +386,10 @@ static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_
      * [1] = getKeyboardData, read the data port 0x60
      * [4] = sendControllerData, write to the data port 0x60
      */
-    if (controllerFunctions != NULL) {
-        if (controllerFunctions->reserved[0] != NULL) {
-            ((void (*)(unsigned char))controllerFunctions->reserved[0])(K8042_READ_COMMAND_BYTE);
-        }
-
-        /* Read the command byte back off the data port */
-        if (controllerFunctions->reserved[1] != NULL) {
-            statusByte = ((unsigned char (*)(void))controllerFunctions->reserved[1])();
-        } else {
-            statusByte = 0;
-        }
-
-        if (controllerFunctions->reserved[0] != NULL) {
-            ((void (*)(unsigned char))controllerFunctions->reserved[0])(K8042_WRITE_COMMAND_BYTE);
-        }
-
-        /* Modify status byte and write it back
-         * Clear bit 5, set bit 1: (status & 0xDF) | 0x02
-         */
-        if (controllerFunctions->reserved[4] != NULL) {
-            ((void (*)(unsigned char))controllerFunctions->reserved[4])((statusByte & 0xDF) | 0x02);
-        }
-    }
+    ((void (*)(unsigned char))controllerFunctions->reserved[0])(K8042_READ_COMMAND_BYTE);
+    statusByte = ((unsigned char (*)(void))controllerFunctions->reserved[1])();
+    ((void (*)(unsigned char))controllerFunctions->reserved[0])(K8042_WRITE_COMMAND_BYTE);
+    ((void (*)(unsigned char))controllerFunctions->reserved[4])((statusByte & 0xDF) | 0x02);
 
     /* Reset the mouse to known state */
     [self resetMouse];

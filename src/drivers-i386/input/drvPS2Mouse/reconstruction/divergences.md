@@ -947,37 +947,57 @@ reference.
 
 ## Finding 13: defensive null guards the reference does not have
 
-**Source:** `src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m:132`,
-`:274`, `:365`, `:407`, `:430`, `:432`, `:437`, `:444`, `:451`
+**Source:** `src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m:127`,
+`:253`, `:334`, `:367`, `:389`
 
 **Reference behaviour:** `_PS2MouseIntHandler` (915), `-[PS2Mouse isMousePresent]` (184),
 `-[PS2Mouse resetMouse]` (295) and `-[PS2Mouse initWithController:]` (405, 451, 462, 480, 491)
 all load `_func_list` and immediately dereference it. There is no `test`/`cmp` against zero on
 `_func_list` or on any of its slots anywhere in the binary.
 
-**Our source:** four `if (controllerFunctions == NULL)` early returns plus six per-slot
-`!= NULL` guards inside `initWithController:`.
+**Our source (before Task 3):** four `if (controllerFunctions == NULL)` early returns plus six
+per-slot `!= NULL` guards inside `initWithController:`.
 
-**Disposition:** accept
+**Disposition:** fix
 
 **Rationale:** `_func_list` is set from `[controller controllerAccessFunctions]` before any of
-these run, and the reference simply trusts it. Our guards convert a would-be null dereference
-into a quiet failure, which is strictly safer and cannot change behaviour when the pointer is
-valid. Recorded because it is real added code the reference does not contain, and because the
-per-slot guards in `initWithController:` mean a partially-populated table would silently skip
-hardware initialization rather than fault — worth knowing if that path is ever suspected.
+these run, and the reference simply trusts it. The guards were real added code the reference
+does not contain. Parity with the shipped binary is the point of this reconstruction, so they
+come out.
 
-**Resolution (Task 4):** accepted unchanged. All four early returns and all six per-slot
-guards remain. This is most of the 152-byte `__TEXT,__text` excess our build carries over the
-reference. Ledger: `-[PS2Mouse isMousePresent]`, `-[PS2Mouse resetMouse]`,
-`-[PS2Mouse initWithController:]` and `_PS2MouseIntHandler` are `intentional-mismatch`,
-reviewed by Pat Raynor, for this reason.
+**Resolution (Task 4):** accepted unchanged at the time. That acceptance is reversed below.
 
-**Correction (follow-up pass):** the sentence above was wrong when written. The guards were 76
-of the 152 bytes, not "most" of them; the other 88 belonged to Findings 15 and 16 in the two
-parameter methods, now fixed. With those gone the guards are 76 bytes against a 52-byte residual
-overshoot — the only source-level excess left in the driver. The disposition is unchanged: still
-accepted, still `intentional-mismatch`.
+**Correction (follow-up pass):** the Task 4 sentence that the guards were "most" of the 152-byte
+`__text` excess was wrong when written. The guards were 76 of those 152 bytes; the other 88
+belonged to Findings 15 and 16, now fixed.
+
+**Resolution (Task 3):** fixed. The three `controllerFunctions == NULL` early returns in
+`_PS2MouseIntHandler`, `isMousePresent` and `resetMouse` are gone. In `initWithController:`
+the drain is now an unguarded `reserved[3]()` call and the 8042 read/mask/write sandwich is
+four unguarded slot-0/1/0/4 calls, with no outer `controllerFunctions != NULL` and no
+`else { statusByte = 0; }`. `if (controllerDevice == nil)` and `if (!force_detection)` were
+left alone; Force Detection was not inverted. `Select-String` for
+`controllerFunctions == NULL|controllerFunctions != NULL|reserved[[0-9]] != NULL` has no
+matches.
+
+Guest rebuild `fail=0`, staged unstripped `_reloc` 94416 bytes. `--list` against the Task 2
+baseline (diffs 11/4/83/133):
+
+| Function | Task 2 | Task 3 |
+| --- | --- | --- |
+| `-[PS2Mouse isMousePresent]` | 11 / 37 / 39 | **9 / 37 / 37 `masked-eq`** |
+| `-[PS2Mouse resetMouse]` | 4 / 13 / 15 | **2 / 13 / 13 `masked-eq`** |
+| `-[PS2Mouse initWithController:]` | 83 / 108 / 125 | **35 / 108 / 108** |
+| `_PS2MouseIntHandler` | 133 / 120 / 114 | **133 / 120 / 112** |
+
+`--name` confirms `masked_equal=True` for `isMousePresent` and `resetMouse` (the remaining
+instruction diffs are `_func_list` vs `_controllerFunctions` and jump targets). Those two
+advance to `assembly-matched`. `initWithController:` and `_PS2MouseIntHandler` still differ
+and stay `intentional-mismatch` for Task 4/6; the edit is kept even though those extents did
+not fully close. Residual on the handler is Finding 14 (`unsigned int` / `return 0`).
+
+Regression gate held: `getHandler:level:argument:forInterrupt:` stayed `masked-eq`,
+`getResolution` stayed `identical`, `getIntValues:forParameter:count:` stayed at 7 diffs.
 
 ## Finding 14: `_PS2MouseIntHandler` return value and `mouseInit:` initialization set
 
@@ -1149,3 +1169,13 @@ No function in this driver was reviewed at control-flow level only.
 `extra_strings` **0**, `extra_symbols` **16**. This `_reloc` is not kept as
 the campaign result; `rebuilt_sha256` is unchanged. Finding 13/14/VERS are
 still in source. See `function-worklist.md`.
+
+## Task 3: Finding 13 guards dropped
+
+2026-09-16 guest rebuild after removing every `controllerFunctions` null guard.
+Guest log: `=== input-recon done fail=0 built: drvPS2Mouse ===`. Staged unstripped
+`PS2Mouse_reloc` is **94416** bytes, SHA-256
+`6817E812FFD0B853FB403D58FC6C883AF2544DF63AE59669A73C91B4486E8365`.
+`parity_check.py`: `missing_strings` **0**, `missing_symbols` **0**,
+`extra_strings` **0**, `extra_symbols` **16**. Finding 14's handler return and the
+missing `VERS_OFILE` line are still in source. See `function-worklist.md`.

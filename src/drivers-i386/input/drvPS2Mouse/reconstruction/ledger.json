@@ -21,7 +21,7 @@
       "reason": null,
       "reviewer": null,
       "size": 179,
-      "source_line": 450,
+      "source_line": 416,
       "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
       "status": "control-flow-confirmed"
     },
@@ -43,12 +43,12 @@
       "names": [
         "-[PS2Mouse isMousePresent]"
       ],
-      "reason": "divergences.md Finding 13, accepted: our source keeps a controllerFunctions == NULL early return that the reference does not have. The reference loads _func_list and dereferences it immediately, with no test against zero anywhere in the binary. The guard turns a would-be null dereference into a quiet NO and cannot change behaviour when the pointer is valid. Every other divergence in this function was fixed; the emitted body is otherwise the reference shape.",
-      "reviewer": "Pat Raynor",
+      "reason": null,
+      "reviewer": null,
       "size": 109,
-      "source_line": 248,
+      "source_line": 245,
       "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
-      "status": "intentional-mismatch"
+      "status": "assembly-matched"
     },
     {
       "address": 292,
@@ -68,12 +68,12 @@
       "names": [
         "-[PS2Mouse resetMouse]"
       ],
-      "reason": "divergences.md Finding 13, accepted: our source keeps a controllerFunctions == NULL early return that the reference does not have. The return type was corrected to void per Finding 2 and the 0xF6/0xF4 command pair already matched; the null guard is the only remaining difference from the reference.",
-      "reviewer": "Pat Raynor",
+      "reason": null,
+      "reviewer": null,
       "size": 37,
-      "source_line": 337,
+      "source_line": 329,
       "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
-      "status": "intentional-mismatch"
+      "status": "assembly-matched"
     },
     {
       "address": 332,
@@ -93,10 +93,10 @@
       "names": [
         "-[PS2Mouse initWithController:]"
       ],
-      "reason": "divergences.md Finding 13, accepted: our source keeps six per-slot func_list != NULL guards that the reference does not have, so a partially populated table would silently skip hardware initialization rather than fault. Findings 2 and 7 were fixed (BOOL return, 8042 command bytes 0x20 and 0x60); Finding 4 confirmed the force_detection gate already matches and it was deliberately left uninverted.",
+      "reason": "Finding 13 guards dropped (Task 3): the six per-slot != NULL tests and the outer controllerFunctions != NULL are gone, and --list shrank 83/125 to 35/108. Residual, not masked_equal: remaining diffs are _func_list vs _controllerFunctions, the 8042 mask codegen (or/and vs and/or), and a jz/jnz layout of the isMousePresent failure path. Force Detection was not inverted. Left for Task 4/6.",
       "reviewer": "Pat Raynor",
       "size": 350,
-      "source_line": 355,
+      "source_line": 342,
       "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
       "status": "intentional-mismatch"
     },
@@ -121,7 +121,7 @@
       "reason": null,
       "reviewer": null,
       "size": 214,
-      "source_line": 289,
+      "source_line": 281,
       "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
       "status": "control-flow-confirmed"
     },
@@ -143,10 +143,10 @@
       "names": [
         "_PS2MouseIntHandler"
       ],
-      "reason": "divergences.md Findings 13 and 14, accepted: our source keeps a controllerFunctions == NULL early return the reference does not have, and the handler is declared to return unsigned int and returns 0 where the reference returns void and never writes eax. DriverKit discards the handler return value, so it is inert. Findings 5 and 11 were fixed: the three event buffers are now 12-byte PCPointerEvent objects in the reference bss order and both log strings match.",
+      "reason": "Finding 13's controllerFunctions == NULL early return is gone (Task 3). Residual is divergences.md Finding 14: the handler is declared to return unsigned int and returns 0 where the reference returns void and never writes eax. DriverKit discards the handler return value, so it is inert. --list new size 114→112; diff count stayed 133. Left for Task 4.",
       "reviewer": "Pat Raynor",
       "size": 525,
-      "source_line": 115,
+      "source_line": 117,
       "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
       "status": "intentional-mismatch"
     },
@@ -171,7 +171,7 @@
       "reason": null,
       "reviewer": null,
       "size": 50,
-      "source_line": 494,
+      "source_line": 460,
       "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
       "status": "control-flow-confirmed"
     },
@@ -196,7 +196,7 @@
       "reason": null,
       "reviewer": null,
       "size": 39,
-      "source_line": 482,
+      "source_line": 448,
       "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
       "status": "assembly-matched"
     },
@@ -221,7 +221,7 @@
       "reason": null,
       "reviewer": null,
       "size": 16,
-      "source_line": 556,
+      "source_line": 522,
       "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
       "status": "assembly-matched"
     },
@@ -247,7 +247,7 @@
       "reason": null,
       "reviewer": null,
       "size": 93,
-      "source_line": 508,
+      "source_line": 474,
       "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
       "status": "assembly-matched"
     },
@@ -273,7 +273,7 @@
       "reason": "Finding 16 fixed: the target != nil guards around both dispatches were removed, because the reference messages target unconditionally on both branches and merges them into one shared objc_msgSend tail. Finding 15 fixed: the compares are now strcmp. The rebuilt stream was disassembled and read against the reference at 1632-1777; every instruction corresponds, including repe cmpsb at 11 and 9, resolution written to +0x12C and re-read through [self getResolution], inverted written to +0x130 and forwarded sign-extended, and the single unguarded objc_msgSend to target at +0x128 shared by both branches. Residual, accepted: ours is 12 bytes SMALLER (136 against 148) because gcc hoists the parameterArray load and keeps the compare count as an immediate where the reference spilled both to the stack. This is a code-generation difference with no source-level counterpart; drvBusMouse's verified setIntValues: lands on the same 136. Down from 204.",
       "reviewer": "Pat Raynor",
       "size": 146,
-      "source_line": 526,
+      "source_line": 492,
       "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
       "status": "intentional-mismatch"
     },

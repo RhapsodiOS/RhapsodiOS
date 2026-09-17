@@ -172,7 +172,8 @@ sources are gone.
 | `first_addr0` | `0`, matching the BIOS path when no EISA config is present |
 | `kernDev` | Synthesized with `boot2`'s encoding so `setconf()` matches its generic `hd`/`sd` prefixes |
 | `rootdev` | From the boot string, e.g. `rootdev=hd0a` |
-| `diskInfo[4]`, `numIDEs` | Zeroed. These are BIOS CHS geometry and a CMOS probe with no EFI equivalent. |
+| `diskInfo[4]` | Zeroed. This is BIOS CHS geometry with no EFI equivalent. |
+| `numIDEs` | Count of EFI block devices mapped as `hd`. It **cannot** be zero: `sys.c`'s device parser rejects every `hd(...)` open when `numIDEs == 0`, which would break the loader's own file access before the kernel sees the field. |
 | `graphicsMode` | `TEXT_MODE` |
 | `boot_video`, `pciInfo`, `eisaSlotInfo`, `eisaConfigFunctions`, `apm_config` | Zeroed |
 | `kaddr`, `ksize`, `rld_entry`, `driverConfig`, `numBootDrivers` | Filled by the reused `load.c` and `drivers.c` |
@@ -250,7 +251,8 @@ placement strategy changes, and that should cost a hundred lines to discover.
 4. **`sarld` assumes more of `boot2`'s environment** than the reserved ranges
    cover — `libsa`'s error path in particular. This bites only when a driver
    fails to link.
-5. **Zeroed `diskInfo` and `numIDEs`** may matter to `setconf()`. Cheap to test
-   in phase 3.
+5. **Zeroed `diskInfo`** may matter to `setconf()`. Cheap to test in phase 3.
+   `numIDEs` is separately constrained by the loader's own device parser and is
+   set from the EFI block-device count, not zeroed.
 6. **1999 C through modern clang.** `-std=gnu89` should carry it; implicit-int
    and K&R prototypes are the likely friction.

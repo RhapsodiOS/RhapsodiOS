@@ -272,7 +272,7 @@ Accepted 2026-09-17: remaining `none` hand-written rows are `intentional-mismatc
 - `-[PnPLogicalDevice free]` (shared, diff 10; reloc different d=3): none — extra PIC selector push plus super_class vs ext leftover
 - `-[PnPLogicalDevice init]` (shared, diff 11; reloc different d=1): none — PIC selector leftover; reloc is class-pointer names only
 - `-[pnpIRQ setHigh:Level:]` (shared, diff 11; reloc different d=11): invert outer test to `if (high)` / `else` (if vs else if) — **tried, kept**; leftover is register allocation (`edx`/`al` vs `eax`/`dl`); **accepted** compiler-shaped on both
-- `_IOFindNameForValue` (tool-only, diff 11): loop shape of the table walk
+- `_IOFindNameForValue` (tool-only, diff 11): loop shape of the table walk — **tried, kept**; leftover is lea/add scheduling plus PIC; **accepted** compiler-shaped
 - `-[PnPDeviceResources deviceWithID:]` (shared, diff 12; reloc different d=10): `if (device)` plus `if (ID != id) continue; return device` — **tried, kept**; leftover is inverted ID-compare jump (equivalent CFG); **accepted** compiler-shaped on both
 - `-[pnpIOPort print]` (shared, diff 12; reloc different d=9): none — Apple tool calls `_printf`, reloc both call `_IOLog`; dual-bar forbids swapping
 - `-[PnPDeviceResources initForBufNoHeader:Length:CSN:]` (shared, diff 13; reloc different d=6): none — PIC selectors plus `_printf` vs `_IOLog` on the error path

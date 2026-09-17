@@ -4863,3 +4863,52 @@ _IOFindValueForName
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+### Task 6 `_IOFindNameForValue` for-loop table walk (2026-09-17)
+
+Walk the name/value table with a `for` over dual pointers instead of `if` plus `do-while`. Leftover is instruction scheduling of lea/adds plus PIC sprintf displacement. Accepted compiler-shaped leftover (reviewer Pat Raynor). Tool SHA `FEAC10FEB02CCF2049FD1B5D2916C740BD4C6C45C198FEB5A5A21FC2671E7FB3` (299404). Previously identical rows stayed matched (45). Unpaired count unchanged (10). Tool-only; reloc SHA unchanged.
+
+```
+_IOFindNameForValue
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push ebx                                push ebx
+  call $+5                                call $+5
+  pop ebx                                 pop ebx
+  mov ecx, [ebp+arg_0]                    mov ecx, [ebp+arg_0]
+  mov edx, [ebp+arg_4]                    mov edx, [ebp+arg_4]
+*                                         lea eax, [edx+4]
+  cmp dword ptr [edx+4], 0                cmp dword ptr [edx+4], 0
+* jz loc_7103                             jz loc_3A0F
+* lea eax, [edx+4]
+  nop                                     nop
+  nop                                     nop
+  nop                                     nop
+  cmp [edx], ecx                          cmp [edx], ecx
+* jnz loc_70F8                            jnz loc_3A04
+  mov eax, [eax]                          mov eax, [eax]
+* jmp loc_7119                            jmp loc_3A25
+*                                         add edx, 8
+  add eax, 8                              add eax, 8
+* add edx, 8
+  cmp dword ptr [eax], 0                  cmp dword ptr [eax], 0
+* jnz loc_70F0                            jnz loc_39FC
+  push ecx                                push ecx
+* lea eax, (aDDUndefined - 70DDh)[ebx]    lea eax, (aDDUndefined - 39E9h)[ebx]
+  push eax                                push eax
+* add ebx, 3A77h                          add ebx, 4B3Bh
+  push ebx                                push ebx
+  call _sprintf                           call _sprintf
+  mov eax, ebx                            mov eax, ebx
+  mov ebx, [ebp+var_4]                    mov ebx, [ebp+var_4]
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

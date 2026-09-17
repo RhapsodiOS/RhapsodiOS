@@ -381,25 +381,13 @@ char *IOFindNameForValue(int value, int *table)
     int *valuePtr;
     char **namePtr;
 
-    /* Check if table has entries */
-    if (table[1] != 0) {
-        valuePtr = table;
-        namePtr = (char **)(table + 1);
-
-        /* Walk through table */
-        do {
-            if (*valuePtr == value) {
-                /* Found match */
-                return *namePtr;
-            }
-
-            /* Advance to next entry */
-            namePtr += 2;
-            valuePtr += 2;
-        } while (*namePtr != NULL);
+    for (valuePtr = table, namePtr = (char **)(table + 1);
+         *namePtr != 0;
+         valuePtr += 2, namePtr += 2) {
+        if (*valuePtr == value) {
+            return *namePtr;
+        }
     }
-
-    /* Not found - format undefined value string */
     sprintf(noValue, "%d(d) (UNDEFINED)", value);
     return noValue;
 }

@@ -1389,10 +1389,33 @@ _ppstrategy
   mov dword ptr [esi+28h], 5              mov dword ptr [esi+28h], 5
 ```
 
-### Task 8 — remaining large functions (compiler-shaped leftover)
+### Task 8 — `_ppioctl` signed switch leftover
 
-`--name` on the current reloc for `_ppioctl`,
-`initFromDeviceDescription:`, and `_IOParallelPortThread` — grind in progress.
+`int cmd` so gcc emits signed `jg` (SET codes sort below GET), `timeout = *uintData`
+then `* 1000`, cases grouped GET-then-SET by field. Switch pivots and timeout
+`lea [ebx+ebx*4]` match. Leftover is gcc 2.x inlining getter `objc_msgSend`
+instead of Apple's shared `jmp loc_1C82` / `jmp loc_1C99` tails. Rebuilt
+SHA-256 `1276E0E5BFDA0E577ED4949E842DAE136BF3CA16588143A32960915448A88D4E`.
+Parity 0/0. Previously identical rows stayed identical (40). Ledger 6708
+`intentional-mismatch`, reviewer Pat Raynor, reason
+`compiler-shaped leftover after exhausted source-shape list`.
+
+```
+_ppioctl
+  status=different raw_equal=False masked_equal=False
+  cmp edx, 40047004h                      cmp edx, 40047004h
+* jz loc_1C18                             jz loc_14E0
+* jg loc_1AF0                             jg loc_13B8
+  mov ecx, ds:paStatusword                mov ecx, ds:paStatusword
+* jmp loc_1C82                            push ecx
+*                                         push esi
+*                                         call near ptr _objc_msgSend
+  mov ebx, [ebx]                          mov ebx, [ebx]
+  cmp ebx, 0FFFFFFFFh                     cmp ebx, 0FFFFFFFFh
+  lea eax, [ebx+ebx*4]                    lea eax, [ebx+ebx*4]
+```
+
+### Task 8 — remaining large functions
 
 ### 8.9 The status rule used
 
@@ -1420,5 +1443,6 @@ _ppstrategy
   (`_IOParallelPortThread` commandType test vs cmp / status slot), 5240
   (`_IOParallelPortInterruptHandler` decode invert; leftover is `inb` slot vs `dl`), 5828
   (`_ppwrite` signed initDevice range without pre-zeroed locals; leftover is
-  `esi` vs `ebx` and Apple's extra zeroing), 6708 (`_ppioctl` switch-pivot / labels),
+  `esi` vs `ebx` and Apple's extra zeroing), 6708 (`_ppioctl` signed `int cmd` /
+  GET-then-SET grouping; leftover is getter/setter tail-merge),
   7392 and 7404, untouched from the report pass.

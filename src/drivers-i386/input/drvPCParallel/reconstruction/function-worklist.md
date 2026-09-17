@@ -584,16 +584,19 @@ Accepted leftover: rebuilt `C439A3442A4B9600B5C0281A3877C2645A3C979EE472234505BD
 
 ### `_ppioctl` (diff 163)
 
-Star: different switch binary-search pivots (`40047004h` vs `40047011h`).
-Accepted leftover: rebuilt `C439A3442A4B9600B5C0281A3877C2645A3C979EE472234505BD6CA88248FB7F`
-(compiler-shaped switch pivot / labels; list not rebuilt-tried item-by-item).
+Star from current `--name` (after `_ppstrategy`): Apple `jg` at `40047004h`
+vs our `ja`; first pivot `40047004h` vs `40047011h`; timeout loads `*uintData`
+into `ebx` then `cmp 0FFFFFFFFh`.
 
-1. Reorder cases to numeric ioctl value
-2. Reorder cases SET-then-GET as in the reference dump
-3. GET-then-SET grouped by field (delay, minPhys, thread delay, ...)
-4. `if/else if` chain instead of `switch`
-5. Timeout `0xFFFFFFFF` test as `== (unsigned)-1` vs `== 0xFFFFFFFF`
-6. Drop `timeout` local; pass `*uintData * 1000` as the expression
+1. Signed `int cmd` so the switch uses `jg` and SET codes sort below GET — **kept** (tree matches `jg`)
+3. Load `timeout = *uintData` first, then scale — **kept** (`mov ebx,[ebx]` / `lea [ebx+ebx*4]`)
+6. GET-then-SET grouped by field — **kept** (bodies in Apple order; diff 108→77)
+2. Reorder cases to numeric ioctl value — **skipped** (would undo kept grouping)
+4. Timeout test as `(unsigned)-1` — **skipped** (0xFFFFFFFF already matches)
+5. SET-then-GET — **skipped** (opposite of kept grouping)
+7. `if/else if` chain instead of `switch` — **skipped** (would undo the signed tree)
+Accepted leftover: rebuilt `1276E0E5BFDA0E577ED4949E842DAE136BF3CA16588143A32960915448A88D4E`
+(compiler-shaped getter/setter tail-merge vs inline send).
 
 ### `-[IOParallelPort initFromDeviceDescription:]` (diff 201)
 

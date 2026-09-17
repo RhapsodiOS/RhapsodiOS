@@ -247,7 +247,7 @@ int ppwrite(dev_t dev, void *uio, int ioflag)
     return result;
 }
 
-int ppioctl(dev_t dev, unsigned long cmd, void *data, int flag, void *p)
+int ppioctl(dev_t dev, int cmd, void *data, int flag, void *p)
 {
     IOParallelPort *port;
     unsigned int *uintData = (unsigned int *)data;
@@ -259,76 +259,72 @@ int ppioctl(dev_t dev, unsigned long cmd, void *data, int flag, void *p)
 
     // Process ioctl command
     switch (cmd) {
-        // SET operations (write to device)
-        case PP_IOCTL_SET_INT_HANDLER_DELAY:
-            [port setIntHandlerDelay:*uintData];
-            return 0;
-
-        case PP_IOCTL_SET_MIN_PHYS:
-            [port setMinPhys:*uintData];
-            return 0;
-
-        case PP_IOCTL_SET_IO_THREAD_DELAY:
-            [port setIOThreadDelay:*uintData];
-            return 0;
-
-        case PP_IOCTL_SET_BLOCK_SIZE:
-            [port setBlockSize:*uintData];
-            return 0;
-
-        case PP_IOCTL_SET_BUSY_RETRY_INTERVAL:
-            [port setBusyRetryInterval:*uintData];
-            return 0;
-
-        case PP_IOCTL_SET_BUSY_MAX_RETRIES:
-            [port setBusyMaxRetries:*uintData];
+        case PP_IOCTL_GET_STATUS_WORD:
+            *uintData = [port statusWord];
             return 0;
 
         case PP_IOCTL_SET_TIMEOUT:
-            // Special handling for timeout setting
-            if (*uintData == 0xFFFFFFFF) {
-                // Wait forever mode
+            timeout = *uintData;
+            if (timeout == 0xFFFFFFFF) {
                 [port setBusyMaxRetries:10];
                 [port setBusyRetryInterval:1000];
                 [port setIoTimeout:2000];
                 [port setWaitForever:YES];
             } else {
-                // Timeout in seconds
                 [port setBusyMaxRetries:1];
-                timeout = *uintData * 1000;  // Convert to milliseconds
+                timeout = timeout * 1000;
                 [port setBusyRetryInterval:timeout];
                 [port setIoTimeout:timeout];
                 [port setWaitForever:NO];
             }
             return 0;
 
-        // GET operations (read from device)
         case PP_IOCTL_GET_INT_HANDLER_DELAY:
             *uintData = [port intHandlerDelay];
             return 0;
 
-        case PP_IOCTL_GET_MIN_PHYS:
-            *uintData = [port minPhys];
+        case PP_IOCTL_SET_INT_HANDLER_DELAY:
+            [port setIntHandlerDelay:*uintData];
             return 0;
 
         case PP_IOCTL_GET_IO_THREAD_DELAY:
             *uintData = [port IOThreadDelay];
             return 0;
 
+        case PP_IOCTL_SET_IO_THREAD_DELAY:
+            [port setIOThreadDelay:*uintData];
+            return 0;
+
+        case PP_IOCTL_GET_MIN_PHYS:
+            *uintData = [port minPhys];
+            return 0;
+
+        case PP_IOCTL_SET_MIN_PHYS:
+            [port setMinPhys:*uintData];
+            return 0;
+
         case PP_IOCTL_GET_BLOCK_SIZE:
             *uintData = [port blockSize];
+            return 0;
+
+        case PP_IOCTL_SET_BLOCK_SIZE:
+            [port setBlockSize:*uintData];
             return 0;
 
         case PP_IOCTL_GET_BUSY_RETRY_INTERVAL:
             *uintData = [port busyRetryInterval];
             return 0;
 
+        case PP_IOCTL_SET_BUSY_RETRY_INTERVAL:
+            [port setBusyRetryInterval:*uintData];
+            return 0;
+
         case PP_IOCTL_GET_BUSY_MAX_RETRIES:
             *uintData = [port busyMaxRetries];
             return 0;
 
-        case PP_IOCTL_GET_STATUS_WORD:
-            *uintData = [port statusWord];
+        case PP_IOCTL_SET_BUSY_MAX_RETRIES:
+            [port setBusyMaxRetries:*uintData];
             return 0;
 
         case PP_IOCTL_GET_STATUS_REG_CONTENTS:
@@ -344,7 +340,6 @@ int ppioctl(dev_t dev, unsigned long cmd, void *data, int flag, void *p)
             return 0;
 
         default:
-            // Unknown ioctl command
             return EINVAL;
     }
 }

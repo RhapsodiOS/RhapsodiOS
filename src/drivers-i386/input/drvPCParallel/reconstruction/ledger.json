@@ -1740,7 +1740,8 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "rewritten against 6708-7390: the same command decode and the same EINVAL default, now dispatching through ordinary message sends instead of sel_getUid, with the bounds check removed (Findings 29, 51)"
+          "rewritten against 6708-7390: the same command decode and the same EINVAL default, now dispatching through ordinary message sends instead of sel_getUid, with the bounds check removed (Findings 29, 51)",
+      "Task 8: signed int cmd so gcc emits jg, timeout=*uintData then *1000, GET-then-SET field grouping; leftover is getter/setter tail-merge"
         ],
         "status": "agreed"
       },
@@ -1804,7 +1805,7 @@
       "status": "intentional-mismatch"
     }
   ],
-  "rebuilt_sha256": "B2569ED7E39790C27046346BCE98B6B8115F37428CB8796C75D51C94F14ABA32",
+  "rebuilt_sha256": "1276E0E5BFDA0E577ED4949E842DAE136BF3CA16588143A32960915448A88D4E",
   "reference_sha256": "D188A4D909005683B0C943C84CD99514C14A84AD1D378425B3B1DB343F1EAAA2",
   "schema_version": "ledger-v1"
 }

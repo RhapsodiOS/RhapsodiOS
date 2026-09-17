@@ -1,29 +1,22 @@
 # drvPS2Mouse function worklist
 
-Task 5 (Kernel Server `VERS_OFILE` postamble). 2026-09-16.
+Task 6 (cheapest-first grinding). 2026-09-17.
 
 ## Reloc
 
 | | size (bytes) | SHA-256 |
 | --- | --- | --- |
 | Reference `PS2Mouse_reloc` | 30204 | `4C43D8A9AE0B83ACD1BA4D17340A4C6BF5FDACD84634CE5C7FC457D97DE11A7E` |
-| Rebuilt `PS2Mouse_reloc` | 94408 | `30CB12E57AB8774148915AA5954328A0C644D66407343ECA8877C0F350DBBA94` |
+| Rebuilt `PS2Mouse_reloc` | 94408 | `948DCB8066528D89F8E83B03C62B988769A9B92A0DFF6C2DF6B40AFB989EE771` |
 
 Guest `sh /build/source/vm/build-i386-input-recon.sh drvPS2Mouse` ended
 `=== input-recon done fail=0 built: drvPS2Mouse ===`. The staged object is
 unstripped Mach-O preload i386. `gnumake` used the same bootstrap-root `-I`
-pair as Task 2/3/4 (guest copy of the harness only). SHA matches Task 4.
+pair as Task 2/3/4/5 (guest copy of the harness only).
 
-Live `System.framework` on the guest has no `PrivateHeaders`. The published IDA
-trio under `tools/binrecon/out/ps2mouse/published/` is from this rebuilt SHA.
-
-## VERS_OFILE
-
-`PS2Mouse.lksproj/Makefile.postamble` is `OTHER_GENERATED_OFILES += $(VERS_OFILE)`.
-`__TEXT,__const` is still **absent**. `_PS2Mouse_VERS_STRING` and
-`_PS2Mouse_VERS_NUM` are both **MISSING**. `PS2Mouse_vers.c` / `.o` were not
-generated and do not appear on `kl_ld`. Guest has no `next-sgs.make`. Gap
-accepted; see `divergences.md` Task 5.
+This SHA is the kept `readConfigTable:` y/Y rewrite. The 8042
+`statusByte &= 0xDF; statusByte |= 0x02` experiment was rebuilt, measured
+(initWithController 35→30, not masked-eq), and reverted.
 
 ## parity_check.py
 
@@ -52,23 +45,32 @@ methods. Extra unstripped symbols are not a failure.
      2     13     13  masked-eq   -[PS2Mouse resetMouse]
      7     36     36              -[PS2Mouse getIntValues:forParameter:count:]
      9     37     37  masked-eq   -[PS2Mouse isMousePresent]
-    18     65     65              -[PS2Mouse readConfigTable:]
+    12     65     65  masked-eq   -[PS2Mouse readConfigTable:]
     20     53     49              -[PS2Mouse setIntValues:forParameter:count:]
     26     54     52              -[PS2Mouse mouseInit:]
     35    108    108              -[PS2Mouse initWithController:]
    119    120    111              _PS2MouseIntHandler
 ```
 
-Unchanged vs Task 4 (same SHA). `_PS2MouseIntHandler` stays
-`intentional-mismatch` for Task 6.
+Glue is still only the two generated `+[` methods. Do not hand-write them.
+
+## Task 6 outcomes
+
+| Function | Result |
+| --- | --- |
+| `getIntValues:forParameter:count:` | accepted: `edx` vs `eax` register allocation |
+| `readConfigTable:` | matched: y/Y branch layout → `masked-eq` |
+| `setIntValues:forParameter:count:` | accepted: 12-byte gcc spill of count/`parameterArray` |
+| `mouseInit:` | accepted unreachable: store order already matches; leftover is early-return layout |
+| `initWithController:` | accepted unreachable after one reverted and/or split |
+| `_PS2MouseIntHandler` | accepted: `_func_list` vs `_controllerFunctions` and frame shape |
+| `interruptOccurred` / `getHandler:` / `getResolution` / `isMousePresent` / `resetMouse` | already matching; skipped |
 
 ## Regression gate
 
 - `getHandler:level:argument:forInterrupt:` stayed `masked-eq`
 - `getResolution` stayed `identical`
-- `getIntValues:forParameter:count:` stayed at 7 diffs (not increased)
 - `isMousePresent` stayed `masked-eq`
 - `resetMouse` stayed `masked-eq`
-
-The Kernel Server postamble is in tree. The `__TEXT,__const` / VERS symbols
-gap is accepted with guest evidence (`next-sgs.make` missing).
+- `interruptOccurred` stayed `masked-eq`
+- `getIntValues:forParameter:count:` stayed at 7 diffs

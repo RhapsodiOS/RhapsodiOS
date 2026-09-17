@@ -1265,3 +1265,123 @@ task forbids. **Accepted.** Do not compare the 160-byte string to Apple's.
 `getHandler:…` `masked-eq`, `getResolution` `identical`, `getIntValues:` still
 7 diffs, `isMousePresent` and `resetMouse` `masked-eq`. See
 `function-worklist.md`.
+
+## Task 6: cheapest-first grinding
+
+2026-09-17. Guest rebuild `fail=0` after the kept `readConfigTable:` edit.
+Staged unstripped `_reloc` **94408** bytes, SHA-256
+`948DCB8066528D89F8E83B03C62B988769A9B92A0DFF6C2DF6B40AFB989EE771`.
+`parity_check.py`: `missing_strings` **0**, `missing_symbols` **0**,
+`extra_strings` **0**, `extra_symbols` **16**. Glue is still only the two
+generated `+[` methods.
+
+Regression gate held: `getHandler:…` `masked-eq`, `getResolution` `identical`,
+`isMousePresent` `masked-eq`, `resetMouse` `masked-eq`, `interruptOccurred`
+`masked-eq`, `getIntValues:` stayed at 7 diffs.
+
+### `-[PS2Mouse getIntValues:forParameter:count:]` — accepted, compiler-shaped
+
+`--name` before any Task 6 edit. Same prologue, `repe cmpsb` at 11 then 9,
+`IO_R_UNSUPPORTED` (`0xFFFFFD39`), offsets `+12Ch` / `+130h`. Leftover is
+register allocation:
+
+```
+  reference                               rebuilt
+* mov edx, [edx+12Ch]                     mov eax, [edx+12Ch]
+* movsx edx, byte ptr [edx+130h]          movsx eax, byte ptr [edx+130h]
+* mov [ebx], edx                          mov [ebx], eax
+```
+
+Jump labels differ only as layout. No missing call, no wrong offset. Did not
+add dummy locals. Ledger: `intentional-mismatch`, reviewer Pat Raynor. This
+reverses the earlier `assembly-matched` claim; IDA still shows 7 diffs.
+
+### `-[PS2Mouse readConfigTable:]` — matched
+
+`--name` showed inverted NULL/`y`/`Y` branch layout (ours `jz` to store 1 and
+an inline store-0; reference `jnz` to store 0 with store-1 fall-through).
+Force Detection sense was not inverted.
+
+Experiment: rewrite both Force Detection and Inverted to the positive form
+already used by drvBusMouse:
+
+```
+if ((str != NULL) && ((*str == 'y') || (*str == 'Y'))) {
+    flag = YES;
+} else {
+    flag = NO;
+}
+```
+
+Kept. `--list` 18/65 → **12/65 `masked-eq`**. `--name` `masked_equal=True`;
+remaining diffs are jump labels. Commit
+`drvPS2Mouse: match readConfigTable y/Y branch layout to the reference`.
+Declaration-order experiment not tried; not needed.
+
+### `-[PS2Mouse setIntValues:forParameter:count:]` — accepted, gcc spill
+
+`--name` is the 12-byte spill already recorded under Finding 16. Ours is
+smaller (49 vs 53 instructions). Reference has `sub esp, 4`,
+`mov [ebp+var_4], 0Bh; mov ecx, [ebp+var_4]`, and reloads of `[ebp+arg_8]`
+(`parameterArray`). Ours hoists `parameterArray` into `eax` and keeps the
+compare count as `mov ecx, 0Bh`. Same calls (`getResolution`, shared
+`setResolution:`/`setInverted:` tail), same constants (11, 9, `0xFFFFFD39`),
+same offsets (`+12Ch`, `+130h`, `+128h`). No dummy spills. Ledger stays
+`intentional-mismatch`, reviewer Pat Raynor.
+
+### `-[PS2Mouse mouseInit:]` — accepted unreachable
+
+`--name` store order already matches:
+
+```
+mov ds:_seqInProgress, 0
+mov ds:_seqBeingProcessed, 0
+mov ds:_indexInSequence, 0
+mov ds:byte_4026, 0          ; summedEvent.deltaY
+mov ds:byte_4025, 0          ; summedEvent.deltaX
+mov dword ptr [ebx+12Ch], 96h
+```
+
+Starter list items (2) BOOL as 0 and (3) resolution as 150 do not match the
+dump: the stores are already 0 and `0x96`. Leftover is gcc layout of
+`if (result != IO_R_SUCCESS) { IOLog(...); return NO; }` — reference `jz`
+over an inline error path, ours `jnz` to a trailing one — plus the same
+inversion on `readConfigTable:`. Same calls (`IOGetObjectForDeviceName`,
+`stringFromReturn:`, `IOLog`, `configTable`, `readConfigTable:`,
+`initWithController:`), same constants, same offsets. Empty list.
+Accepted unreachable. Ledger: `intentional-mismatch`, reviewer Pat Raynor.
+
+### `-[PS2Mouse initWithController:]` — tried and/or split, then accepted
+
+`--name` leftover after Tasks 3–5: `_func_list` vs `_controllerFunctions`,
+`isMousePresent` fail-path `jz` to a trailing cleanup vs `jnz` over an
+inline one, and 8042 mask codegen (`and bl, 0DFh; or bl, 2; movzx eax, bl`
+vs `mov eax, ebx; or al, 2; and eax, 0DFh`). Packet/8042 order (0x20 read,
+read byte, 0x60 write, write data) already matches. Force Detection was
+not inverted.
+
+Tried: split the mask into `statusByte &= 0xDF; statusByte |= 0x02` after
+the command-byte read, then pass `statusByte`. Guest rebuild `fail=0`,
+reloc 94432 bytes. `--list` `initWithController:` 35→30, not `masked-eq`.
+Gates held. **Reverted.** Marked tried.
+
+Remaining diffs are compiler/ABI-shaped (`_func_list` name, fail-path
+scheduling, and/or that the split did not close). Empty list. Accepted
+unreachable. Ledger: `intentional-mismatch`, reviewer Pat Raynor.
+
+### `_PS2MouseIntHandler` — accepted, compiler/ABI-shaped
+
+`--name` leftover is `_func_list` vs `_controllerFunctions`, frame
+(`sub esp, 14h` + `push edi`/`push esi` vs `sub esp, 0Ch` + `ebx` only),
+timestamp copy through extra stack slots, and inverted
+`seqBeingProcessed` `jz`/`jnz`. Did not reorder resync / timeout /
+`seqBeingProcessed` / `seqInProgress` branches. Did not add dummy locals.
+Accepted as compiler/ABI-shaped. Ledger: `intentional-mismatch`,
+reviewer Pat Raynor.
+
+### Already matching (skipped)
+
+`getHandler:level:argument:forInterrupt:` `masked-eq`, `getResolution`
+`identical`, `interruptOccurred` `masked-eq` (promoted to
+`assembly-matched` in the ledger), `isMousePresent` `masked-eq`,
+`resetMouse` `masked-eq`. Both `+[` glue methods stay generated.

@@ -18,12 +18,12 @@
       "names": [
         "-[PS2Mouse mouseInit:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "Task 6: store order already matches the reference (seqInProgress, seqBeingProcessed, indexInSequence, summedEvent.buf[2], summedEvent.buf[1], resolution = 0x96). Starter experiments (BOOL as 0, resolution as 150) do not match the dump. Leftover is gcc early-return vs inline-error layout for IOGetObjectForDeviceName / readConfigTable: (jnz to trailing IOLog vs jz over it). Same calls, constants, offsets. Accepted unreachable.",
+      "reviewer": "Pat Raynor",
       "size": 179,
       "source_line": 414,
       "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
-      "status": "control-flow-confirmed"
+      "status": "intentional-mismatch"
     },
     {
       "address": 180,
@@ -93,7 +93,7 @@
       "names": [
         "-[PS2Mouse initWithController:]"
       ],
-      "reason": "Finding 13 guards dropped (Task 3): the six per-slot != NULL tests and the outer controllerFunctions != NULL are gone, and --list shrank 83/125 to 35/108. Residual, not masked_equal: remaining diffs are _func_list vs _controllerFunctions, the 8042 mask codegen (or/and vs and/or), and a jz/jnz layout of the isMousePresent failure path. Force Detection was not inverted. Left for Task 6.",
+      "reason": "Task 6: tried splitting the 8042 mask into statusByte &= 0xDF; statusByte |= 0x02 immediately after the read. --list 35→30, not masked_equal; reverted. Residual, accepted unreachable: _func_list vs _controllerFunctions, isMousePresent fail-path jz-to-tail vs jnz-over-inline, and gcc or/and vs and/or of (statusByte & 0xDF) | 0x02. Packet/8042 command order was not changed. Force Detection was not inverted.",
       "reviewer": "Pat Raynor",
       "size": 350,
       "source_line": 340,
@@ -144,7 +144,7 @@
       "names": [
         "_PS2MouseIntHandler"
       ],
-      "reason": "Finding 14 handler-return half fixed (Task 4): declared void; every return 0 became return; rebuilt epilogue is mov esp,ebp / pop ebp / retn with no xor eax,eax. Residual, not masked_equal: --list 133/112 → 119/111. Remaining diffs are _func_list vs _controllerFunctions, frame (sub esp,14h+edi/esi vs sub esp,0Ch+ebx), timestamp spill, and inverted seqBeingProcessed branch layout. Left for Task 6.",
+      "reason": "Task 6: accepted as compiler/ABI-shaped. --name leftover is _func_list vs _controllerFunctions, frame (sub esp,14h + push edi/esi vs sub esp,0Ch + ebx only), timestamp spill through extra stack slots, and inverted seqBeingProcessed jz/jnz layout. Did not reorder resync / timeout / seqBeingProcessed / seqInProgress branches. Did not add dummy locals.",
       "reviewer": "Pat Raynor",
       "size": 525,
       "source_line": 115,
@@ -161,7 +161,7 @@
         ],
         "reasons": [
           "IDA, Ghidra and angr agree on address, size and block structure",
-          "full disassembly read instruction by instruction against source; control-flow shape matches but the dispatchPointerEvent: argument is wrong in our source (divergences.md Finding 6)"
+          "full disassembly read instruction by instruction against source; control-flow shape matches (divergences.md Finding 6 closed in Task 4). Task 6 --list is masked_equal; skipped, already matching"
         ],
         "status": "agreed"
       },
@@ -174,7 +174,7 @@
       "size": 50,
       "source_line": 458,
       "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
-      "status": "control-flow-confirmed"
+      "status": "assembly-matched"
     },
     {
       "address": 1480,
@@ -245,12 +245,12 @@
       "names": [
         "-[PS2Mouse getIntValues:forParameter:count:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "Task 6: previously claimed assembly-matched from source; IDA --name is 7 diffs, all register allocation. Same calls, constants, offsets (12Ch / 130h); reference uses edx for the loaded value, ours uses eax. Jump labels differ only as layout. Accepted as compiler-shaped. Do not add dummy locals.",
+      "reviewer": "Pat Raynor",
       "size": 93,
       "source_line": 472,
       "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
-      "status": "assembly-matched"
+      "status": "intentional-mismatch"
     },
     {
       "address": 1632,

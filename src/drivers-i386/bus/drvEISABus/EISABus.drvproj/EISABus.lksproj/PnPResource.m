@@ -130,31 +130,24 @@
     configList = [configResource list];
     count = [configList count];
 
-    /* If no resources to match, return YES */
     if (count == 0) {
         return YES;
-    }
+    } else {
+        for (i = 0; ; i++) {
+            ourObject = [self objectAt:i Using:depResource];
+            if (ourObject == nil) {
+                break;
+            }
 
-    /* Check each resource */
-    for (i = 0; ; i++) {
-        /* Get our resource (using dependent fallback) */
-        ourObject = [self objectAt:i Using:depResource];
-        if (ourObject == nil) {
-            break;
+            configObject = [configList objectAt:i];
+            match = [ourObject matches:configObject];
+            if (!match) {
+                return NO;
+            }
         }
 
-        /* Get config resource to match against */
-        configObject = [configList objectAt:i];
-
-        /* Check if they match */
-        match = [ourObject matches:configObject];
-        if (!match) {
-            return NO;
-        }
+        return (i > 0);
     }
-
-    /* Return YES if we processed at least one item */
-    return (i > 0);
 }
 
 @end

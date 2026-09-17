@@ -5533,3 +5533,99 @@ _IODelay
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+### Task 6 -[PnPResource matches:Using:] count==0 else-wrap (2026-09-17)
+
+Wrap the match loop in `else` after `if (count == 0) return YES`. Leftover is Apple's list/count and list/objectAt: stack-trick versus the `configList` local, plus PIC / register scheduling. Accepted compiler-shaped leftover (reviewer Pat Raynor). Tool SHA D340AF35027155B5EA5961C2B28AD43903D669BEA1F6D7A43D0745AAD730CB70 (299328). Previously identical rows stayed matched (45). Unpaired count unchanged (10).
+
+`
+-[PnPResource matches:Using:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+*                                         sub esp, 4
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  call $+5                                call $+5
+* pop esi                                 pop edi
+* mov edx, esi                            mov edx, edi
+* mov edx, [edx+72E9h]                    mov edx, [edx+4DDAh]
+* push edx
+* mov edx, esi
+* mov edx, [edx+7311h]
+  push edx                                push edx
+  mov edx, [ebp+arg_8]                    mov edx, [ebp+arg_8]
+  push edx                                push edx
+  call _objc_msgSend                      call _objc_msgSend
+* add esp, 8                              mov [ebp+var_4], eax
+* push eax                                mov edx, edi
+*                                         mov edx, [edx+4D82h]
+*                                         push edx
+*                                         mov edx, [ebp+var_4]
+*                                         push edx
+  call _objc_msgSend                      call _objc_msgSend
+* add esp, 8                              add esp, 10h
+  test eax, eax                           test eax, eax
+* jnz loc_4D94                            jnz loc_52E0
+  mov eax, 1                              mov eax, 1
+* jmp loc_4E02                            jmp loc_533E
+  xor eax, eax                            xor eax, eax
+* jmp loc_4E02                            jmp loc_533E
+  xor ebx, ebx                            xor ebx, ebx
+  nop                                     nop
+  nop                                     nop
+  mov edx, [ebp+arg_C]                    mov edx, [ebp+arg_C]
+  push edx                                push edx
+  push ebx                                push ebx
+* mov edx, esi                            mov edx, edi
+* mov edx, [edx+7315h]                    mov edx, [edx+4DDEh]
+  push edx                                push edx
+  mov edx, [ebp+self]                     mov edx, [ebp+self]
+  push edx                                push edx
+  call _objc_msgSend                      call _objc_msgSend
+* mov edi, eax                            mov esi, eax
+  add esp, 10h                            add esp, 10h
+* test edi, edi                           test esi, esi
+* jz loc_4DF8                             jz loc_5334
+  push ebx                                push ebx
+* mov edx, esi                            mov edx, edi
+* mov edx, [edx+72E1h]                    mov edx, [edx+4D86h]
+  push edx                                push edx
+* mov edx, esi                            mov edx, [ebp+var_4]
+* mov edx, [edx+7311h]
+* push edx
+* mov edx, [ebp+arg_8]
+  push edx                                push edx
+  call _objc_msgSend                      call _objc_msgSend
+* add esp, 8
+  push eax                                push eax
+* call _objc_msgSend                      mov edx, edi
+* push eax                                mov edx, [edx+4DE2h]
+* mov edx, esi
+* mov edx, [edx+7319h]
+  push edx                                push edx
+* push edi                                push esi
+  call _objc_msgSend                      call _objc_msgSend
+  add esp, 18h                            add esp, 18h
+  test al, al                             test al, al
+* jz loc_4D90                             jz loc_52DC
+  inc ebx                                 inc ebx
+* jmp loc_4D98                            jmp loc_52E4
+  test ebx, ebx                           test ebx, ebx
+  setnle al                               setnle al
+  and eax, 0FFh                           and eax, 0FFh
+* lea esp, [ebp-0Ch]                      lea esp, [ebp-10h]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+`

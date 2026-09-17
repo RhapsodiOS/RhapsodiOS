@@ -295,7 +295,7 @@ Accepted 2026-09-17: remaining `none` hand-written rows are `intentional-mismatc
 - `_IOInitGeneralFuncs` (tool-only, diff 32): statement order of the existing assignments — **tried, miss** (head/tail swap reverted); leftover is PIC GOT vs lea plus getClass; **accepted** compiler-shaped
 - `-[pnpDMA initFrom:Length:]` (shared, diff 33; reloc different d=22): loop shape of the channel-mask walk — **tried, kept**; leftover is `_count` zero / buffer pointer versus `data[1]`; **accepted** compiler-shaped on both
 - `_IODelay` (tool-only, diff 36): local vs expression for the timestamp add — **tried, kept**; leftover is explicit carry vs `adc` plus loop buffer reuse; **accepted** compiler-shaped
-- `-[PnPResource matches:Using:]` (shared, diff 37; reloc different d=23): if vs else if on the type dispatch
+- `-[PnPResource matches:Using:]` (shared, diff 37; reloc different d=23): count==0 else-wrap — **tried, kept**; leftover is Apple list/count stack-trick vs configList local / PIC; **accepted** compiler-shaped on both
 - `-[pnpMemory print]` (shared, diff 38; reloc different d=21): none — Apple tool `_printf` vs rebuilt `_IOLog`; reloc both `_IOLog`
 - `-[pnpDMA matches:]` (shared, diff 44; reloc different d=33): if vs else if on `otherCount != 1`; Apple tool `_printf` vs `_IOLog`
 - `-[pnpIRQ matches:]` (shared, diff 44; reloc different d=33): if vs else if on `otherCount != 1`; Apple tool `_printf` vs `_IOLog`

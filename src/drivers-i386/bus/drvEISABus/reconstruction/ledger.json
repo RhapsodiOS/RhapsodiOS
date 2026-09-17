@@ -2492,26 +2492,24 @@
     {
       "address": 19940,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 6 else-wrap on count==0; leftover is Apple list/count stack-trick vs configList local plus PIC / register scheduling"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[PnPResource matches:Using:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 164,
       "source_line": 120,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResource.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 20104,
@@ -3933,7 +3931,7 @@
       "status": "unexamined"
     }
   ],
-  "rebuilt_sha256": "25DC982C3EE8B344B7239162BC99532E17574BC8095051E2B12F0A7D7E0EE516",
+  "rebuilt_sha256": "2CA61BA37A7EF5A8D33FFB885D1A7C516DD6A58779288B1EFBC5AD038C67A0F0",
   "reference_sha256": "8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23",
   "schema_version": "ledger-v1"
 }

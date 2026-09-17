@@ -2413,3 +2413,90 @@ Walk the DMA channel mask with a do-while so the compiler still emits Apple `bt`
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+### Task 6 -[PnPResource matches:Using:] count==0 else-wrap (2026-09-17)
+
+Same else-wrap as the tool. Leftover is Apple's list/count and nested `[list objectAt:]` stack reuse versus a `configList` local. Accepted compiler-shaped leftover (reviewer Pat Raynor). Reloc SHA 2CA61BA37A7EF5A8D33FFB885D1A7C516DD6A58779288B1EFBC5AD038C67A0F0 (603644). Previously identical rows stayed matched (46). Unpaired count unchanged (11).
+
+`
+-[PnPResource matches:Using:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+* mov edi, [ebp+arg_8]                    mov edx, ds:paList_0
+*                                         push edx
+*                                         mov edx, [ebp+arg_8]
+*                                         push edx
+*                                         call near ptr _objc_msgSend
+*                                         mov edi, eax
+  mov edx, ds:paCount                     mov edx, ds:paCount
+* push edx
+* mov edx, ds:paList_0
+  push edx                                push edx
+  push edi                                push edi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+* add esp, 8                              add esp, 10h
+* push eax
+* call near ptr _objc_msgSend
+* add esp, 8
+  test eax, eax                           test eax, eax
+* jnz loc_4E1C                            jnz loc_5810
+  mov eax, 1                              mov eax, 1
+* jmp loc_4E7E                            jmp loc_5862
+  xor eax, eax                            xor eax, eax
+* jmp loc_4E7E                            jmp loc_5862
+  xor ebx, ebx                            xor ebx, ebx
+  nop                                     nop
+  nop                                     nop
+  mov edx, [ebp+arg_C]                    mov edx, [ebp+arg_C]
+  push edx                                push edx
+  push ebx                                push ebx
+  mov edx, ds:paObjectatUsing             mov edx, ds:paObjectatUsing
+  push edx                                push edx
+  mov edx, [ebp+self]                     mov edx, [ebp+self]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov esi, eax                            mov esi, eax
+  add esp, 10h                            add esp, 10h
+  test esi, esi                           test esi, esi
+* jz loc_4E74                             jz loc_5858
+  push ebx                                push ebx
+  mov edx, ds:paObjectat                  mov edx, ds:paObjectat
+  push edx                                push edx
+* mov edx, ds:paList_0
+* push edx
+  push edi                                push edi
+* call near ptr _objc_msgSend
+* add esp, 8
+* push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  push eax                                push eax
+  mov edx, ds:paMatches                   mov edx, ds:paMatches
+  push edx                                push edx
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 18h                            add esp, 18h
+  test al, al                             test al, al
+* jz loc_4E18                             jz loc_580C
+  inc ebx                                 inc ebx
+* jmp loc_4E20                            jmp loc_5814
+  test ebx, ebx                           test ebx, ebx
+  setnle al                               setnle al
+  and eax, 0FFh                           and eax, 0FFh
+  lea esp, [ebp-0Ch]                      lea esp, [ebp-0Ch]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+`

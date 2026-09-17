@@ -41,6 +41,9 @@
 /* External verbose flag */
 extern char verbose;
 
+/* Keep the PnP BIOS signature in __cstring (Apple EISABus_reloc). */
+const char * const pnpBiosSignatureString = "$PnP";
+
 @implementation PnPResources
 
 /*

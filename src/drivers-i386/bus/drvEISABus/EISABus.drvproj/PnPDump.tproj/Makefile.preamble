@@ -1,7 +1,18 @@
 INCLUDED_ARCHS = i386
 
-OTHER_CFLAGS = -Wno-format -I../EISABus.lksproj
+OTHER_CFLAGS = -Wno-format -I../EISABus.lksproj -DDRIVER_PRIVATE
 
 OTHER_INCLUDES =
 
 FRAMEWORKS =
+
+LIBS = -lDriver
+
+# i386 slices live in the bootstrap root; the PPC host /lib/crt1.o
+# and System.framework cannot satisfy -arch i386.
+LOCAL_LDFLAGS = -L/build/bootstrap-root/lib -L/build/bootstrap-root/usr/lib -F/build/bootstrap-root/System/Library/Frameworks
+
+# pb_makefiles strips directories from MFILES when forming
+# ARCH_SPECIFIC_OFILES, then compiles via `%.i386.o: %.m`. Point
+# make at the shared lksproj sources without copying them.
+vpath %.m ../EISABus.lksproj

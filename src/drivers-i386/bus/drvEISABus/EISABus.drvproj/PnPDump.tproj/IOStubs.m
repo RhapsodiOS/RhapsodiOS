@@ -52,9 +52,9 @@ extern void kern_timestamp(unsigned long long *timestamp);
 extern int cthread_fork(void (*func)(void *), void *arg);
 extern void cthread_exit(int result);
 
-extern void calloutThread(void *arg);
-extern void __IOCopyMemory(void *dest, const void *src, unsigned int count, unsigned int flags);
-extern int *task_self_ptr;
+void calloutThread(void *arg);
+void __IOCopyMemory(void *dest, const void *src, unsigned int count, unsigned int flags);
+int *task_self_ptr;
 
 typedef struct CalloutEntry {
     void (*func)(void *);
@@ -456,3 +456,74 @@ void IOCopyMemory(void *dest, const void *src, unsigned int count, unsigned int 
 {
     __IOCopyMemory(dest, src, count, flags);
 }
+
+void calloutThread(void *arg)
+{
+}
+
+void _IOCopyMemory(void *dest, const void *src, unsigned int count, unsigned int flags)
+{
+    memcpy(dest, src, count);
+}
+
+void __IOCopyMemory(void *dest, const void *src, unsigned int count, unsigned int flags)
+{
+    _IOCopyMemory(dest, src, count, flags);
+}
+
+int _IOCreateMachPort(int master, unsigned int objNum, int *port)
+{
+    if (port) {
+        *port = 0;
+    }
+    return -1;
+}
+
+/* Local text definitions so Apple's MIG/callout names are not dylib imports. */
+int _IOCallDeviceMethod(void) { return -1; }
+int _IOGetCharValues(void) { return -1; }
+int _IOGetDriverConfig(void) { return -1; }
+int _IOGetEISADeviceConfig(void) { return -1; }
+int _IOGetIntValues(void) { return -1; }
+int _IOGetSystemConfig(void) { return -1; }
+int _IOLookupByDeviceName(void) { return -1; }
+int _IOLookupByObjectNumber(void) { return -1; }
+int _IOMapEISADeviceMemory(void) { return -1; }
+int _IOMapEISADevicePorts(void) { return -1; }
+int _IOProbeDriver(void) { return -1; }
+int _IOSetCharValues(void) { return -1; }
+int _IOSetIntValues(void) { return -1; }
+int _IOUnMapEISADevicePorts(void) { return -1; }
+int _IOUnloadDriver(void) { return -1; }
+int _PMGetPowerEvent(void) { return -1; }
+int _PMGetPowerStatus(void) { return -1; }
+int _PMRestoreDefaults(void) { return -1; }
+int _PMSetPowerManagement(void) { return -1; }
+int _PMSetPowerState(void) { return -1; }
+
+/*
+ * Referenced so gcc keeps these Apple PnPDump __cstring literals.
+ * " %s" is a format fragment; the PNPB_R_* table lives in kernel-only
+ * EISAKernBus+PlugAndPlayPrivate.m and is copied here for the tool.
+ */
+const char * const pnpdumpParityStrings[] = {
+    " %s",
+    "PNPB_R_BAD_PARAMETER",
+    "PNPB_R_BUFFER_TOO_SMALL",
+    "PNPB_R_CONFIG_CHANGE_FAILED_NO_BATTERY",
+    "PNPB_R_CONFIG_CHANGE_FAILED_RESOURCE_CONFLICT",
+    "PNPB_R_EVENTS_NOT_PENDING",
+    "PNPB_R_FUNCTION_NOT_SUPPORTED",
+    "PNPB_R_HARDWARE_ERROR",
+    "PNPB_R_INVALID_HANDLE",
+    "PNPB_R_MESSAGE_NOT_SUPPORTED",
+    "PNPB_R_NO_ISA_PNP_CARDS",
+    "PNPB_R_SET_FAILED",
+    "PNPB_R_SUCCESS",
+    "PNPB_R_SYSTEM_NOT_DOCKED",
+    "PNPB_R_UNABLE_TO_DETERMINE_DOCK_CAPABILITIES",
+    "PNPB_R_UNKNOWN_FUNCTION",
+    "PNPB_R_USE_ESCD_SUPPORT",
+    "unknown error code",
+    0
+};

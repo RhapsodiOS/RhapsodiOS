@@ -63,8 +63,8 @@ the drvproj-level and lksproj-level links; the i386 preload reloc still wrote.
 
 | File | Staged | Size | Type |
 |---|---|---:|---|
-| `InstallPPDev` | no | — | PreLoad `gnumake` failed: `IODeviceMaster.m` `illegal expression, found unsigned` (lines 138, 1161, 1184, 1207). Not a missing-crt link yet. |
-| `RemovePPDev` | yes | 17568 | Mach-O executable **ppc** (`MH_MAGIC` `feedface`, cputype 18), not i386. Host `cc` without `-arch i386`. |
+| `InstallPPDev` | yes | 68820 | Mach-O executable **i386** |
+| `RemovePPDev` | yes | 21904 | Mach-O executable **i386** |
 
 ## Task 10 — InstallPPDev nlist decision
 
@@ -73,10 +73,9 @@ the drvproj-level and lksproj-level links; the i386 preload reloc still wrote.
 
 `IODeviceMaster` methods and the MIG stubs are **defined** in the tool
 (`local` / `external` in `__TEXT,__text`), not undefined imports. Decision:
-**local-TU** (not `-lDriver`). Replaced the 2180-line invented Mach-message
+**local-TU** (class compiled in PreLoad; Makefile `LIBS` stays empty). Replaced the 2180-line invented Mach-message
 `IODeviceMaster.m` with a libDriver-shaped TU (`#import <driverkit/driverServer.h>`,
-calls `_IOGetCharValues` and friends). `LIBS` stays empty; the reference also
-defines `__IOGetCharValues` in `__TEXT,__text`. Both tproj trees converted to
+calls `_IOGetCharValues` and friends). Both tproj trees converted to
 PB `tool.make`.
 
 Nlist lines (binding, section, name):
@@ -111,54 +110,39 @@ not among them. Also defined in `__TEXT,__text`: `__IOProbeDriver`,
 
 ### Guest rebuild (Task 10)
 
-`=== input-recon done fail=0 built: drvPCParallel ===` with staged
-`ParallelPort_reloc` SHA-256 still
+Live `/lib/crt1.o` is ppc. Fat i386 slices are in `/build/bootstrap-root/`
+(`file` / `lipo -info`: `crt1.o`, `libcc_dynamic.a`, `System`, `dyld` all
+i386+ppc). `otool -arch i386 -hv` on crt1.o: `cputype I386`. Probe
+`cc -arch i386 -nostdlib …/crt1.o -L…/usr/lib -F…/Frameworks -framework System`
+produced `/tmp/i386probe: Mach-O executable i386`. Did not replace live
+`/lib/crt1.o`.
+
+Both tproj preambles keep the PB 2.6 template + `INCLUDED_ARCHS = i386` and:
+
+```
+I386_SYSROOT = /build/bootstrap-root
+OTHER_LDFLAGS = -nostdlib $(I386_SYSROOT)/lib/crt1.o -L$(I386_SYSROOT)/usr/lib -F$(I386_SYSROOT)/System/Library/Frameworks -framework System
+```
+
+PreLoad also appends `-lDriver` from that sysroot so the local TU can resolve
+`_IOGetCharValues` and friends (`_objc_msgSend` came from System; no extra
+`-lobjc`). `createMachPort:` calls Darwin `_IOServerConnect` (bootstrap
+libDriver has no `_IOCreateMachPort`).
+
+Deleted leftover ppc `RemovePPDev` under SRC/STAGE, then harness rebuild:
+
+```
+=== input-recon done fail=0 built: drvPCParallel ===
+staged InstallPPDev
+staged RemovePPDev
+/build/out/i386/drvPCParallel/ParallelPort.config/ParallelPort_reloc: Mach-O preload executable i386
+/build/out/i386/drvPCParallel/ParallelPort.config/InstallPPDev: Mach-O executable i386
+/build/out/i386/drvPCParallel/ParallelPort.config/RemovePPDev: Mach-O executable i386
+```
+
+Reloc SHA-256 still
 `F31C01A0FBB4F010AADC205C8CAE011A501FD6D5016BFCEC10022AA65E2BA9DC`
-(165880 bytes, i386). Reloc `__text` did not regress.
-
-Both tools **failed to stage as i386**. `PostLoad.tproj` compiled
-`RemovePPDev.c` `-arch i386` then `ld` exited 1:
-
-```
-/usr/bin/ld: warning /lib/crt1.o cputype (18, architecture ppc) does not match cputype (7) for specified -arch flag: i386 (file not loaded)
-/usr/bin/ld: warning /usr/lib/libcc_dynamic.a archive's cputype (18, architecture ppc) does not match cputype (7) for specified -arch flag: i386 (can't load from it)
-/usr/bin/ld: warning /System/Library/Frameworks/System.framework/System cputype (18, architecture ppc) does not match cputype (7) for specified -arch flag: i386 (file not loaded)
-Undefined symbols: _bzero _errno _printf _sprintf _sscanf _strerror _strncmp _unlink dyld_stub_binding_helper
-```
-
-`gnumake` stopped at `build@PostLoad.tproj`, so PreLoad/`InstallPPDev` never
-linked. Harness: `WARNING: no InstallPPDev` / `WARNING: no RemovePPDev`.
-STAGE still holds a leftover ppc `RemovePPDev` from Sep 15 (17568 bytes,
-`MH_MAGIC` `feedface`, cputype 18). Live `/lib/crt1.o`,
-`/usr/lib/libcc_dynamic.a`, and `System.framework` are ppc-only. Fat i386
-slices exist under `/build/bootstrap-root/` (not on the default link line).
-**BLOCKED on i386 crt / System**, not on invented `IODeviceMaster`. Also defined in `__TEXT,__text`: `__IOProbeDriver`,
-`__IOUnloadDriver`.
-
-### Guest rebuild (Task 10)
-
-`=== input-recon done fail=0 built: drvPCParallel ===` with staged
-`ParallelPort_reloc` SHA-256 still
-`F31C01A0FBB4F010AADC205C8CAE011A501FD6D5016BFCEC10022AA65E2BA9DC`
-(165880 bytes, i386). Reloc `__text` did not regress.
-
-Both tools **failed to stage as i386**. `PostLoad.tproj` compiled
-`RemovePPDev.c` `-arch i386` then `ld` exited 1:
-
-```
-/usr/bin/ld: warning /lib/crt1.o cputype (18, architecture ppc) does not match cputype (7) for specified -arch flag: i386 (file not loaded)
-/usr/bin/ld: warning /usr/lib/libcc_dynamic.a archive's cputype (18, architecture ppc) does not match cputype (7) for specified -arch flag: i386 (can't load from it)
-/usr/bin/ld: warning /System/Library/Frameworks/System.framework/System cputype (18, architecture ppc) does not match cputype (7) for specified -arch flag: i386 (file not loaded)
-Undefined symbols: _bzero _errno _printf _sprintf _sscanf _strerror _strncmp _unlink dyld_stub_binding_helper
-```
-
-`gnumake` stopped at `build@PostLoad.tproj`, so PreLoad/`InstallPPDev` never
-linked. Harness: `WARNING: no InstallPPDev` / `WARNING: no RemovePPDev`.
-STAGE still holds a leftover ppc `RemovePPDev` from Sep 15 (17568 bytes,
-`MH_MAGIC` `feedface`, cputype 18). Live `/lib/crt1.o`,
-`/usr/lib/libcc_dynamic.a`, and `System.framework` are ppc-only. Fat i386
-slices exist under `/build/bootstrap-root/` (not on the default link line).
-**BLOCKED on i386 crt / System**, not on invented `IODeviceMaster`.
+(165880 bytes). No `WARNING: no InstallPPDev` / `RemovePPDev`.
 
 ## `--list` counts (IDA)
 

@@ -34,10 +34,6 @@
 #import <driverkit/driverServer.h>
 #import <mach/port.h>
 
-extern IOReturn _IOCreateMachPort(port_t device_master,
-	IOObjectNumber objectNumber,
-	port_t *machPort);
-
 static IODeviceMaster *thisTasksId = nil;
 
 @implementation IODeviceMaster
@@ -129,7 +125,8 @@ static IODeviceMaster *thisTasksId = nil;
 - (IOReturn)createMachPort:(port_t *)machPort
 	      objectNumber:(IOObjectNumber)objectNumber
 {
-	return _IOCreateMachPort(_deviceMasterPort, objectNumber, machPort);
+	return _IOServerConnect(_deviceMasterPort, objectNumber,
+		task_self(), machPort);
 }
 
 @end

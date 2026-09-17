@@ -1519,7 +1519,7 @@ Pat Raynor, reason `compiler-shaped leftover after exhausted source-shape list`.
 `sub esp, 4` / `in al, dx` / `mov [ebp+var_1], al` / `movzx eax, [ebp+var_1]`;
 rebuilt `in al, dx` / `movzx eax, al` with no stack slot.
 
-### Task 10 — tool.make conversion; i386 crt block
+### Task 10 — tool.make conversion; i386 bootstrap-root link
 
 Nlist on Apple's `InstallPPDev`: `IODeviceMaster` methods are `local` in
 `__TEXT,__text`; `__IOGetCharValues` and the rest of the MIG family are
@@ -1528,31 +1528,16 @@ path. Replaced the 2180-line invented `IODeviceMaster.m` with a
 libDriver-shaped TU. Both tproj Makefiles are PB `tool.make`. IDA-only
 profiles: `tools/binrecon/profiles/installppdev.json` and `removeppdev.json`.
 
-Guest rebuild: reloc SHA-256 unchanged
+Live `/lib/crt1.o` stayed ppc. Tools link with `I386_SYSROOT=/build/bootstrap-root`
+and `OTHER_LDFLAGS = -nostdlib $(I386_SYSROOT)/lib/crt1.o -L$(I386_SYSROOT)/usr/lib -F$(I386_SYSROOT)/System/Library/Frameworks -framework System`.
+PreLoad also uses `-lDriver` from that sysroot for MIG stubs (not for the
+ObjC class). `createMachPort:` calls `_IOServerConnect`. Guest `file`:
+
+```
+ParallelPort_reloc: Mach-O preload executable i386
+InstallPPDev: Mach-O executable i386
+RemovePPDev: Mach-O executable i386
+```
+
+Reloc SHA-256 unchanged
 `F31C01A0FBB4F010AADC205C8CAE011A501FD6D5016BFCEC10022AA65E2BA9DC`.
-`RemovePPDev` compiled `-arch i386` then failed to link because live
-`/lib/crt1.o`, `/usr/lib/libcc_dynamic.a`, and `System.framework` are ppc
-(cputype 18). Undefined: `_bzero`, `_errno`, `_printf`, `_sprintf`,
-`_sscanf`, `_strerror`, `_strncmp`, `_unlink`, `dyld_stub_binding_helper`.
-`InstallPPDev` was not reached. **BLOCKED on i386 crt / System.** Do not
-invent Mach-message stubs. Fat i386 crt/System exist at
-`/build/bootstrap-root/` but are not on the default `cc` link line.
-
-### Task 10 — tool.make conversion; i386 crt block
-
-Nlist on Apple's `InstallPPDev`: `IODeviceMaster` methods are `local` in
-`__TEXT,__text`; `__IOGetCharValues` and the rest of the MIG family are
-`external` in `__TEXT,__text` (defined, not imports). Took the **local-TU**
-path. Replaced the 2180-line invented `IODeviceMaster.m` with a
-libDriver-shaped TU. Both tproj Makefiles are PB `tool.make`. IDA-only
-profiles: `tools/binrecon/profiles/installppdev.json` and `removeppdev.json`.
-
-Guest rebuild: reloc SHA-256 unchanged
-`F31C01A0FBB4F010AADC205C8CAE011A501FD6D5016BFCEC10022AA65E2BA9DC`.
-`RemovePPDev` compiled `-arch i386` then failed to link because live
-`/lib/crt1.o`, `/usr/lib/libcc_dynamic.a`, and `System.framework` are ppc
-(cputype 18). Undefined: `_bzero`, `_errno`, `_printf`, `_sprintf`,
-`_sscanf`, `_strerror`, `_strncmp`, `_unlink`, `dyld_stub_binding_helper`.
-`InstallPPDev` was not reached. **BLOCKED on i386 crt / System.** Do not
-invent Mach-message stubs. Fat i386 crt/System exist at
-`/build/bootstrap-root/` but are not on the default `cc` link line.

@@ -16,10 +16,20 @@
 - `src/boot-2/` must keep building with the old Rhapsody toolchain. Any edit to a reused file must stay valid gnu89 C accepted by the 1999 compiler. Prefer zero edits.
 - Reused sources are compiled **in place** from `../boot-2/`. Never copy them into `src/bootefi-1/`.
 - `src/bootefi-1` is host-built with clang and `lld-link`. Do **not** add it to `src/Manifest`; that file lists projects built on the Rhapsody guest.
-- Reserved physical ranges, exactly: `0x000000`–`0x003000`, `0x011000`–`0x020000`,
-  `0x030000`–`0x0A0000`, `0x100000`–`0x700000`. The first covers `disk.c`'s sector
-  cache `intbuf`, pinned at `BIOS_ADDR` (`0xC00`); the spec's table omits it because
-  the spec did not yet account for compiling `disk.c` unchanged.
+- Reserved physical ranges, exactly: `0x011000`–`0x0A0000` and `0x100000`–`0x700000`.
+  **Measured in phase 0: both granted.** This replaces the original four-range set.
+  Two constraints came out of that measurement and bind every later task:
+  - `BIOS_ADDR` is redefined to `0x20000` via `-include src/bootefi-1/bootefi_memory_override.h`,
+    because OVMF withholds physical page 0 where `intbuf` (`0xC00`) would otherwise sit.
+    It must stay a compile-time constant — it initializes `static char * const intbuf`.
+  - The EFI image links with `/base:0x08000000 /fixed`. Without the fixed high base,
+    firmware loads it at `0x400000`, inside the kernel range, and that range is refused.
+- The ESP defaults to 64MB. A 16MB FAT32 volume has too few clusters to be valid and
+  EDK2's FAT driver silently declines to mount it.
+- `vm/run-q35-uefi.sh` must pass `-cpu Nehalem`, or this OVMF DEBUG build asserts
+  before BDS runs.
+- qemu is `~/opt/qemu-i386/bin/qemu-system-i386`, an i386-only source build. Homebrew's
+  qemu formula does not build on this host.
 - Handoff selectors, exactly: data `0x20`, code `0x28`, stack `esp = 0xFFF0`.
 - `numIDEs` in `KERNBOOTSTRUCT` must be non-zero, or `sys.c` rejects every `hd(...)` open.
 - Boot testing uses temporary disk image copies, never the source image (CLAUDE.md §6).

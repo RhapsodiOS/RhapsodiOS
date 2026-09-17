@@ -94,7 +94,7 @@ typedef struct {
 static PS2ControllerFunctions *controllerFunctions;
 
 /* Forward declarations */
-static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_2);
+static void PS2MouseIntHandler(unsigned int param_1, unsigned int param_2);
 
 /**
  * PS2MouseIntHandler - Low-level interrupt handler for PS/2 mouse
@@ -110,11 +110,9 @@ static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_
  *
  * @param param_1 - Device parameter (passed to IOSendInterrupt)
  * @param param_2 - Context parameter (passed to IOSendInterrupt)
- * @return always 0.  Every exit path returns 0; there is no error return.  The
- *         reference is void and never writes eax, and DriverKit discards the
- *         value either way (divergences.md Finding 14).
+ * @return void. DriverKit discards the handler result; the reference never writes eax.
  */
-static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_2)
+static void PS2MouseIntHandler(unsigned int param_1, unsigned int param_2)
 {
     int status;
     unsigned char dataByte;
@@ -127,7 +125,7 @@ static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_
     status = controllerFunctions->readMouseByte(&dataByte);
     if (status == 0) {
         /* No data available */
-        return 0;
+        return;
     }
 
     /* Check for self-test passed response (0xAA) at start of sequence */
@@ -140,7 +138,7 @@ static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_
          */
         controllerFunctions->readMouseByteSimple();
         controllerFunctions->sendMouseCommand(PS2_CMD_ENABLE);
-        return 0;
+        return;
     }
 
     /* Get current timestamp for timeout detection */
@@ -158,7 +156,7 @@ static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_
             IOLog("PS2Mouse: mouse reset after resync\n");
             controllerFunctions->readMouseByteSimple();
             controllerFunctions->sendMouseCommand(PS2_CMD_ENABLE);
-            return 0;
+            return;
         }
     }
 
@@ -177,7 +175,7 @@ static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_
 
             if (indexInSequence < MOUSE_SEQUENCE_LENGTH) {
                 /* Need more bytes to complete packet */
-                return 0;
+                return;
             }
 
             /* Packet complete - fold in the accumulated movement deltas */
@@ -192,7 +190,7 @@ static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_
 
             if (indexInSequence != MOUSE_SEQUENCE_LENGTH) {
                 /* Need more bytes */
-                return 0;
+                return;
             }
 
             /* Pending packet complete - copy to current, folding in the deltas */
@@ -237,7 +235,7 @@ static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_
         }
     }
 
-    return 0;
+    return;
 }
 
 @implementation PS2Mouse

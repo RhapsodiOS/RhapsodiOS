@@ -1053,10 +1053,50 @@ rewrote this region anyway, the dead stores went with it, and `mouseInit:` now i
 exactly the reference's six locations (`seqInProgress`, `seqBeingProcessed`,
 `indexInSequence`, `summedEvent.data.buf[2]`, `summedEvent.data.buf[1]`, `resolution = 0x96`)
 and no longer pre-sets `inverted` or `force_detection` or clears the event buffers. The
-handler-return half was **accepted unchanged**: `PS2MouseIntHandler` still returns
-`unsigned int` and still returns 0, which DriverKit discards. Ledger: `_PS2MouseIntHandler`
-is `intentional-mismatch` (jointly with Finding 13); `-[PS2Mouse mouseInit:]` is
-`control-flow-confirmed` with no residual divergence.
+handler-return half was **accepted unchanged** at the time: `PS2MouseIntHandler` still
+returned `unsigned int` and still returned 0, which DriverKit discards. Ledger:
+`_PS2MouseIntHandler` is `intentional-mismatch` (jointly with Finding 13);
+`-[PS2Mouse mouseInit:]` is `control-flow-confirmed` with no residual divergence.
+
+**Resolution (this campaign, Task 4):** Finding 14 handler-return half **fixed**. Do not
+reopen the already-fixed `mouseInit:` half. `PS2MouseIntHandler` is now `static void`;
+every `return 0` inside the handler is a bare `return`. `-getHandler:…` still assigns
+`*handler = (IOInterruptHandler)PS2MouseIntHandler`. Guest rebuild `fail=0`, staged
+unstripped `_reloc` 94408 bytes. `--list` vs Task 3: `_PS2MouseIntHandler` 133/120/112 →
+**119/120/111**. Rebuilt epilogue is `mov esp,ebp; pop ebp; retn` with no `xor eax,eax`
+(the reference never wrote eax either). Not `raw_equal` / `masked_equal`; leftover is
+Task 6. `--name` (prologue + epilogue):
+
+```
+_PS2MouseIntHandler
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+* sub esp, 14h                            sub esp, 0Ch
+* push edi
+* push esi
+  push ebx                                push ebx
+* mov edi, [ebp+arg_0]                    mov edx, ds:_controllerFunctions
+* mov esi, [ebp+arg_4]
+* mov edx, ds:_func_list
+  ...
+* lea esp, [ebp-20h]
+* pop ebx
+* pop esi
+* pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+Residual diffs are `_func_list` vs `_controllerFunctions`, the smaller frame (no
+edi/esi save), timestamp spill, and inverted `seqBeingProcessed` branch layout.
 
 ## Finding 15: the parameter-name compares are `strcmp`, not a hand-unrolled loop
 
@@ -1179,3 +1219,16 @@ Guest log: `=== input-recon done fail=0 built: drvPS2Mouse ===`. Staged unstripp
 `parity_check.py`: `missing_strings` **0**, `missing_symbols` **0**,
 `extra_strings` **0**, `extra_symbols` **16**. Finding 14's handler return and the
 missing `VERS_OFILE` line are still in source. See `function-worklist.md`.
+
+## Task 4: Finding 14 handler declared void
+
+2026-09-16 guest rebuild after changing `PS2MouseIntHandler` to `static void` and
+replacing every `return 0` in the handler with `return`. Guest log:
+`=== input-recon done fail=0 built: drvPS2Mouse ===`. Staged unstripped
+`PS2Mouse_reloc` is **94408** bytes, SHA-256
+`30CB12E57AB8774148915AA5954328A0C644D66407343ECA8877C0F350DBBA94`.
+`parity_check.py`: `missing_strings` **0**, `missing_symbols` **0**,
+`extra_strings` **0**, `extra_symbols` **16**. Finding 14 handler-return half is
+**fixed**; the `mouseInit:` half was already fixed and was not reopened. Residual
+on `_PS2MouseIntHandler` (119 diffs, not masked-eq) is left for Task 6. The
+missing `VERS_OFILE` line is still in source. See `function-worklist.md`.

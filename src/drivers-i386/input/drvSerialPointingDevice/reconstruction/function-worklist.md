@@ -157,8 +157,8 @@ Cheapest remaining first. One idea per function; add more only after a miss.
 | Function | Experiment |
 | --- | --- |
 | `getByte:sleep:` | Declaration-order: `unsigned char data` then `IOReturn ret` then `int eventType` (live order is already ret/eventType/data; a no-op is not a try). Then accept as stack packing. **Tried: miss** (still `lea eax, [ebp+var_5]` vs ref `[ebp+var_8]`; 7 diffs; gates held). Reverted. **Accepted** as stack packing. |
-| `getIntValues:forParameter:count:` | Replace counted char loops with `strcmp(parameterName, RESOLUTION)` / `INVERTED` (drvPS2Mouse Finding 15). |
-| `setIntValues:forParameter:count:` | Same `strcmp` rewrite. Keep verbose logs and the existing stores/sends. Do not add dummy spills. |
+| `getIntValues:forParameter:count:` | Replace counted char loops with `strcmp(parameterName, RESOLUTION)` / `INVERTED` (drvPS2Mouse Finding 15). **Kept:** `strcmp` + store through `*parameterArray` (no `value` local) → **masked-eq** 4/36/36. |
+| `setIntValues:forParameter:count:` | Same `strcmp` rewrite. Keep verbose logs and the existing stores/sends. Do not add dummy spills. **Kept `strcmp`.** Leftover is gcc spilling `ecx=0Bh` to `[ebp+var_4]` plus register allocation (31 diffs, 85 vs 81). Dummy spills forbidden. **Accepted.** |
 | `FiveBProtocol` | Split combined `case 2:`/`case 4:` into distinct cases so gcc can emit a 5-entry jump table; `lastTimeStamp = currentTimeStamp` stays in case 2 only. |
 | `mouseInit:` | Compiler-shaped. Dump `--name` only; grind only if a source-level hole appears. |
 | `MSProtocol` | Compiler-shaped. Dump `--name` only; optional `maskedByte` fold / default fallthrough only if that dump shows they are the cheapest source-shaped leftover. |

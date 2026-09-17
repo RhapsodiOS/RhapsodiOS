@@ -95,7 +95,7 @@
       "reason": "Finish campaign Task 3: confirmed against rebuilt SerialPointingDevice_reloc SHA-256 7A0D1052C9178CFE8DCD576605DA163ECF0835A4A28F04309CB30D459E7C8E64 (raw_equal), not only source-vs-IDA",
       "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 529,
+      "source_line": 454,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m",
       "status": "assembly-matched"
     },
@@ -120,7 +120,7 @@
       "reason": "Finish campaign Task 3: confirmed against rebuilt SerialPointingDevice_reloc SHA-256 7A0D1052C9178CFE8DCD576605DA163ECF0835A4A28F04309CB30D459E7C8E64 (masked_equal), not only source-vs-IDA",
       "reviewer": "Pat Raynor",
       "size": 72,
-      "source_line": 537,
+      "source_line": 462,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m",
       "status": "assembly-matched"
     },
@@ -133,7 +133,8 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely but records the same calls. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
-          "full disassembly read instruction by instruction against source; both repe cmpsb compares and the sign-extending read of inverted match, but the no-match return is IO_R_UNSUPPORTED not IO_R_INVALID_ARG (divergences.md Findings 1, 16)"
+          "full disassembly read instruction by instruction against source; both repe cmpsb compares and the sign-extending read of inverted match, but the no-match return is IO_R_UNSUPPORTED not IO_R_INVALID_ARG (divergences.md Findings 1, 16)",
+          "Finish campaign Task 5: strcmp against RESOLUTION/INVERTED; rebuilt stream is masked_equal (jump labels only)"
         ],
         "status": "agreed"
       },
@@ -141,12 +142,12 @@
       "names": [
         "-[SerialPointingDevice getIntValues:forParameter:count:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "Finish campaign Task 5: strcmp against RESOLUTION/INVERTED emits repe cmpsb; masked_equal against rebuilt SerialPointingDevice_reloc SHA-256 9F66998CC2307F50F1663729B5FC1B48FB8DFFA9903053D4ACB3764284C89235",
+      "reviewer": "Pat Raynor",
       "size": 93,
       "source_line": 401,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m",
-      "status": "control-flow-confirmed"
+      "status": "assembly-matched"
     },
     {
       "address": 1200,
@@ -157,7 +158,8 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely but records the same calls. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
-          "full disassembly read instruction by instruction against source; both compares, both unconditional sends to target and both verbose logs match. The Task 6 fix pass initially missed this site's no-match return (still IO_R_INVALID_ARG); a follow-up fix corrected it and the rebuilt SerialPointingDevice_reloc was disassembled directly (capstone, __TEXT,__text offset 0xa96 in that build) to confirm it now emits mov eax, 0xfffffd39, matching the reference's constant at 1448 (divergences.md Findings 1, 16). The rebuilt function is 312 bytes against the reference's 263 due to ordinary codegen differences elsewhere in the body, so the two instruction streams are not byte-identical and this stays control-flow-confirmed rather than assembly-matched"
+          "full disassembly read instruction by instruction against source; both compares, both unconditional sends to target and both verbose logs match. The Task 6 fix pass initially missed this site's no-match return (still IO_R_INVALID_ARG); a follow-up fix corrected it and the rebuilt SerialPointingDevice_reloc was disassembled directly (capstone, __TEXT,__text offset 0xa96 in that build) to confirm it now emits mov eax, 0xfffffd39, matching the reference's constant at 1448 (divergences.md Findings 1, 16). The rebuilt function is 312 bytes against the reference's 263 due to ordinary codegen differences elsewhere in the body, so the two instruction streams are not byte-identical and this stays control-flow-confirmed rather than assembly-matched",
+          "Finish campaign Task 5: counted loops replaced with strcmp (repe cmpsb). Leftover is gcc spilling the Resolution compare count to [ebp+var_4] plus selector/register allocation; dummy spills are forbidden"
         ],
         "status": "agreed"
       },
@@ -165,12 +167,12 @@
       "names": [
         "-[SerialPointingDevice setIntValues:forParameter:count:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 263,
-      "source_line": 457,
+      "source_line": 419,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m",
-      "status": "control-flow-confirmed"
+      "status": "intentional-mismatch"
     },
     {
       "address": 1464,
@@ -193,7 +195,7 @@
       "reason": "Finish campaign Task 3: confirmed against rebuilt SerialPointingDevice_reloc SHA-256 7A0D1052C9178CFE8DCD576605DA163ECF0835A4A28F04309CB30D459E7C8E64 (masked_equal), not only source-vs-IDA",
       "reviewer": "Pat Raynor",
       "size": 305,
-      "source_line": 593,
+      "source_line": 518,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m",
       "status": "assembly-matched"
     },
@@ -218,7 +220,7 @@
       "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 103,
-      "source_line": 556,
+      "source_line": 481,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m",
       "status": "intentional-mismatch"
     },
@@ -266,7 +268,7 @@
       "reason": null,
       "reviewer": null,
       "size": 442,
-      "source_line": 651,
+      "source_line": 576,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m",
       "status": "control-flow-confirmed"
     },
@@ -291,7 +293,7 @@
       "reason": "Finish campaign Task 3: confirmed against rebuilt SerialPointingDevice_reloc SHA-256 7A0D1052C9178CFE8DCD576605DA163ECF0835A4A28F04309CB30D459E7C8E64 (masked_equal), not only source-vs-IDA",
       "reviewer": "Pat Raynor",
       "size": 22,
-      "source_line": 762,
+      "source_line": 687,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m",
       "status": "assembly-matched"
     },
@@ -315,7 +317,7 @@
       "reason": null,
       "reviewer": null,
       "size": 598,
-      "source_line": 771,
+      "source_line": 696,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m",
       "status": "control-flow-confirmed"
     },
@@ -340,7 +342,7 @@
       "reason": "Finish campaign Task 3: confirmed against rebuilt SerialPointingDevice_reloc SHA-256 7A0D1052C9178CFE8DCD576605DA163ECF0835A4A28F04309CB30D459E7C8E64 (masked_equal), not only source-vs-IDA",
       "reviewer": "Pat Raynor",
       "size": 40,
-      "source_line": 750,
+      "source_line": 675,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m",
       "status": "assembly-matched"
     },
@@ -365,7 +367,7 @@
       "reason": "Finish campaign Task 3: confirmed against rebuilt SerialPointingDevice_reloc SHA-256 7A0D1052C9178CFE8DCD576605DA163ECF0835A4A28F04309CB30D459E7C8E64 (masked_equal), not only source-vs-IDA",
       "reviewer": "Pat Raynor",
       "size": 40,
-      "source_line": 856,
+      "source_line": 781,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m",
       "status": "assembly-matched"
     },
@@ -390,7 +392,7 @@
       "reason": "Finish campaign Task 3: confirmed against rebuilt SerialPointingDevice_reloc SHA-256 7A0D1052C9178CFE8DCD576605DA163ECF0835A4A28F04309CB30D459E7C8E64 (masked_equal), not only source-vs-IDA",
       "reviewer": "Pat Raynor",
       "size": 40,
-      "source_line": 868,
+      "source_line": 793,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m",
       "status": "assembly-matched"
     },
@@ -443,7 +445,7 @@
       "status": "intentional-mismatch"
     }
   ],
-  "rebuilt_sha256": "7A0D1052C9178CFE8DCD576605DA163ECF0835A4A28F04309CB30D459E7C8E64",
+  "rebuilt_sha256": "9F66998CC2307F50F1663729B5FC1B48FB8DFFA9903053D4ACB3764284C89235",
   "reference_sha256": "59C0C95C5A4D93456BDD6667970AC4A3605A961FEAC2CF7CE97F586D3A958F59",
   "schema_version": "ledger-v1"
 }

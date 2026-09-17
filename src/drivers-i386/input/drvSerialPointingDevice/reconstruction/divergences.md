@@ -1347,3 +1347,115 @@ Leftover is gcc packing `data` at `[ebp+var_5]` against the reference's
   retn                                    retn
 ```
 
+### `getIntValues:forParameter:count:` — matched (`masked_equal`)
+
+Replaced the counted char loops with `strcmp(parameterName, RESOLUTION)` /
+`INVERTED`, then stored through `*parameterArray` without a `value` local.
+Guest `fail=0`. `--list` 4 diffs / 36 vs 36 `masked-eq` (jump labels only).
+`repe cmpsb` with `ecx = 0Bh` then `ecx = 9`. Nine gates held.
+`parity_check.py` 0 / 0. Rebuilt SHA-256
+`9F66998CC2307F50F1663729B5FC1B48FB8DFFA9903053D4ACB3764284C89235`.
+
+### `setIntValues:forParameter:count:` — accepted (compiler-shaped leftover)
+
+Same `strcmp` rewrite. Diffs 80/85/108 → 31/85/81. `repe cmpsb` now matches
+the reference. Leftover is gcc spilling the Resolution compare count to
+`[ebp+var_4]` (`sub esp, 4`) plus selector register allocation. Dummy spills
+are forbidden. Nine gates held, including `getIntValues:` still `masked-eq`.
+
+```
+-[SerialPointingDevice setIntValues:forParameter:count:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+* sub esp, 4
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  mov ebx, [ebp+self]                     mov ebx, [ebp+self]
+* mov eax, [ebp+arg_C]                    mov eax, [ebp+arg_8]
+* mov esi, eax                            mov esi, [ebp+arg_C]
+  mov edi, offset aResolution             mov edi, offset aResolution
+* mov [ebp+var_4], 0Bh                    mov ecx, 0Bh
+* mov ecx, [ebp+var_4]
+  cld                                     cld
+  test al, 0                              test al, 0
+  cmpsb                                   cmpsb
+* jnz loc_534                             jnz loc_A34
+* mov edx, [ebp+arg_8]                    mov eax, [eax]
+* mov edx, [edx]                          mov [ebx+12Ch], eax
+* mov [ebx+12Ch], edx                     mov edx, ds:paGetresolution
+* mov ecx, ds:paGetresolution             push edx
+* push ecx
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  push eax                                push eax
+  mov edx, ds:paSetresolution             mov edx, ds:paSetresolution
+  push edx                                push edx
+* mov ecx, [ebx+128h]                     mov edx, [ebx+128h]
+* push ecx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 14h                            add esp, 14h
+  cmp byte ptr [ebx+144h], 0              cmp byte ptr [ebx+144h], 0
+* jz loc_5A4                              jz loc_AA2
+  mov edx, [ebx+12Ch]                     mov edx, [ebx+12Ch]
+  push edx                                push edx
+* mov ecx, ds:paName                      mov edx, ds:paName
+* push ecx                                push edx
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  push offset aSResolutionD               push offset aSResolutionD
+* jmp loc_59F                             jmp loc_A9D
+* mov esi, eax                            mov esi, [ebp+arg_C]
+  mov edi, offset aInverted               mov edi, offset aInverted
+  mov ecx, 9                              mov ecx, 9
+  cld                                     cld
+  test al, 0                              test al, 0
+  cmpsb                                   cmpsb
+* jnz loc_5A8                             jnz loc_AA8
+* mov edx, [ebp+arg_8]                    mov al, [eax]
+* mov dl, [edx]                           mov [ebx+130h], al
+* mov [ebx+130h], dl                      movsx eax, al
+* movsx eax, dl
+  push eax                                push eax
+* mov ecx, ds:paSetinverted               mov edx, ds:paSetinverted
+* push ecx                                push edx
+  mov edx, [ebx+128h]                     mov edx, [ebx+128h]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 0Ch                            add esp, 0Ch
+  cmp byte ptr [ebx+144h], 0              cmp byte ptr [ebx+144h], 0
+* jz loc_5A4                              jz loc_AA2
+  mov eax, offset aNo                     mov eax, offset aNo
+  cmp byte ptr [ebx+130h], 0              cmp byte ptr [ebx+130h], 0
+* jz loc_588                              jz loc_A86
+  mov eax, offset aYes                    mov eax, offset aYes
+  push eax                                push eax
+* mov ecx, ds:paName                      mov edx, ds:paName
+* push ecx                                push edx
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  push offset aSInvertS                   push offset aSInvertS
+  call near ptr _IOLog                    call near ptr _IOLog
+  xor eax, eax                            xor eax, eax
+* jmp loc_5AD                             jmp loc_AAD
+  mov eax, 0FFFFFD39h                     mov eax, 0FFFFFD39h
+* lea esp, [ebp-10h]                      lea esp, [ebp-0Ch]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+

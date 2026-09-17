@@ -402,52 +402,14 @@ IOThreadFunc mainLoop(id driver)
             forParameter:(IOParameterName)parameterName
                    count:(unsigned *)count
 {
-    int i;
-    BOOL match;
-    const char *param;
-    const char *key;
-    unsigned int value;
-
-    /* Check for "Resolution" parameter (11 characters) */
-    i = 11;
-    match = YES;
-    param = parameterName;
-    key = "Resolution";
-    do {
-        if (i == 0) break;
-        i = i - 1;
-        match = (*param == *key);
-        param = param + 1;
-        key = key + 1;
-    } while (match);
-
-    if (match) {
-        /* Return resolution value */
-        value = resolution;
+    if (strcmp(parameterName, RESOLUTION) == 0) {
+        *parameterArray = resolution;
+    } else if (strcmp(parameterName, INVERTED) == 0) {
+        *parameterArray = (unsigned int)inverted;
     } else {
-        /* Check for "Inverted" parameter (9 characters) */
-        i = 9;
-        match = YES;
-        param = parameterName;
-        key = "Inverted";
-        do {
-            if (i == 0) break;
-            i = i - 1;
-            match = (*param == *key);
-            param = param + 1;
-            key = key + 1;
-        } while (match);
-
-        if (!match) {
-            /* Unknown parameter */
-            return IO_R_UNSUPPORTED;
-        }
-
-        /* Return inverted flag */
-        value = (unsigned int)inverted;
+        return IO_R_UNSUPPORTED;
     }
 
-    *parameterArray = value;
     return IO_R_SUCCESS;
 }
 
@@ -458,31 +420,11 @@ IOThreadFunc mainLoop(id driver)
             forParameter:(IOParameterName)parameterName
                    count:(unsigned)count
 {
-    int i;
-    BOOL match;
-    const char *param;
-    const char *key;
     unsigned int resolutionValue;
     char invertedValue;
 
-    /* Check for "Resolution" parameter (11 characters) */
-    i = 11;
-    match = YES;
-    param = parameterName;
-    key = "Resolution";
-    do {
-        if (i == 0) break;
-        i = i - 1;
-        match = (*param == *key);
-        param = param + 1;
-        key = key + 1;
-    } while (match);
-
-    if (match) {
-        /* Set resolution value */
+    if (strcmp(parameterName, RESOLUTION) == 0) {
         resolution = *parameterArray;
-
-        /* Get the resolution back and update the event port */
         resolutionValue = [self getResolution];
         [target setResolution:resolutionValue];
 
@@ -491,36 +433,19 @@ IOThreadFunc mainLoop(id driver)
         }
 
         return IO_R_SUCCESS;
+    } else if (strcmp(parameterName, INVERTED) == 0) {
+        invertedValue = *(char *)parameterArray;
+        inverted = invertedValue;
+        [target setInverted:invertedValue];
+
+        if (verbose) {
+            IOLog("%s: Invert = %s\n", [self name], inverted ? "YES" : "NO");
+        }
+
+        return IO_R_SUCCESS;
     }
 
-    /* Check for "Inverted" parameter (9 characters) */
-    i = 9;
-    match = YES;
-    param = parameterName;
-    key = "Inverted";
-    do {
-        if (i == 0) break;
-        i = i - 1;
-        match = (*param == *key);
-        param = param + 1;
-        key = key + 1;
-    } while (match);
-
-    if (!match) {
-        /* Unknown parameter */
-        return IO_R_UNSUPPORTED;
-    }
-
-    /* Set inverted value */
-    invertedValue = *(char *)parameterArray;
-    inverted = invertedValue;
-    [target setInverted:invertedValue];
-
-    if (verbose) {
-        IOLog("%s: Invert = %s\n", [self name], inverted ? "YES" : "NO");
-    }
-
-    return IO_R_SUCCESS;
+    return IO_R_UNSUPPORTED;
 }
 
 /*

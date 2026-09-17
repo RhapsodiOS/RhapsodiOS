@@ -997,7 +997,7 @@ Now `if ([self registerDevice] == nil)`.
 | 50 | Fixed. `pp_strobe_count` deleted. |
 | 51 | Fixed, deliberately. Every `PP_KERN_MAX_PORTS` bounds check removed; NULL checks kept in exactly the four functions that have one in the reference - `ppread`, `ppwrite`, `ppioctl`, `ppstrategy` - and removed from `ppopen`, `ppclose`, `ppminphys`, `_strobeChar` and the interrupt handler. One ordering difference survives in `_strobeChar`; see the ledger entry at 4232. |
 | 52 | Fixed. The `initialized` ivar is gone; `-isInitialized` reads bit 0 of `statusWord`. |
-| 53 | **Accepted.** Entries 112 and 1452 are `intentional-mismatch`. Bits 0-5 of every control byte agree with the reference exactly; bits 6 and 7 are garbage in the reference because it builds the byte in an uninitialised stack slot, and are deterministically clear in ours. The report pass's claim that ours also differs in bits 0 and 5 of `probeForController`'s second pattern does not hold: ours derived that pattern from the first, in which both bits are already 0. |
+| 53 | **Reversed.** `probeForController` and `initDevice` now `and`/`or` an uninitialized `controlValue` with Apple's immediates (`0xFE`/`0x02`/`0x04`/`0x08`/`0x10`/`0xDF`, then `0xFE`/`0xFD`/`0x04`/`0xF7`/`0xEF`/`0xDF` in probe; `0xFE`/`0xFD`, autofeed `<< 1`, `0x04`/`0x08`/`0xEF`/`0xDF` in initDevice). Guest gcc 2.x `-O` folds those immediates (`or …, 1Eh`, `and …, 0C7h`, `and bl, 0FCh` / `or bl, 0Ch`) and does not emit the unused first `inb` store, so both rows stay `intentional-mismatch`. Leftover is compiler-shaped, not a missing reconstruction. |
 | 54 | **Corrected and accepted** - see 8.3. No source change. |
 | 55 | **Repaired** - see 8.5. |
 | 56 | No action. `__module_info` is 48 bytes in both binaries and the three modules are unchanged. |
@@ -1048,6 +1048,49 @@ Tools: `InstallPPDev` was not staged — PreLoad `gnumake` failed on `IODeviceMa
 (`illegal expression, found unsigned`). `RemovePPDev` was staged but is a Mach-O **ppc**
 executable, not i386. Phase 3 / Task 10 converts both tproj trees to `tool.make`.
 
+### Task 6 — Finding 53 reversed (uninitialized control byte)
+
+`probeForController` and `initDevice` now build the control byte with `and`/`or` on an
+uninitialized local, using the reference immediates from the Task 4 IDA `--name` dump.
+Guest `cc -O` still folds consecutive constant `and`/`or` and does not keep the unused
+first `inb` store, so neither function is `masked_equal`. Ledger entries 112 and 1452
+stay `intentional-mismatch` with reason `Finding 53 uninitialized control byte; leftover
+is gcc 2.x zero-fill`. Rebuilt SHA-256
+`F1FDFD0943E86BA99F2AA510DF54AFE1CD1A9F7ACB675CA17755CC32DBDD6883` (165600 bytes).
+`parity_check.py`: `missing_strings (0):`, `missing_symbols (0):`. Previously identical
+and `masked_equal` rows stayed equal (40 `raw_equal`, 14 `masked_equal`, 0 unpaired).
+
+`--name -[IOParallelPort probeForController]` after the rewrite:
+
+```
+status=different raw_equal=False masked_equal=False
+reason: cfg differs
+reason: function range bytes differ
+reason: instruction shape differs
+```
+
+Reference emits `and [ebp+var_2], 0FEh` / `or …, 2` / `or …, 4` / `or …, 8` /
+`or …, 10h` / `and al, 0DFh`, then the second pattern as separate `0FEh`/`0FDh`/`4`/
+`0F7h`/`0EFh`/`0DFh` ops. Rebuilt folds to `and [ebp+var_8], 0FEh` / `or …, 1Eh` /
+`and …, 0DFh` and `and …, 0FCh` / `or …, 4` / `and …, 0C7h`. The unused `mov [ebp+var_1], al`
+after the first `inb` is dropped.
+
+`--name -[IOParallelPort initDevice]`:
+
+```
+status=different raw_equal=False masked_equal=False
+reason: calls differ
+reason: cfg differs
+reason: function range bytes differ
+reason: instruction shape differs
+```
+
+Reference: `and [ebp+var_1], 0FEh` then `and al, 1` / `add al, al` / `and [ebp+var_1], 0FDh`
+/ `or [ebp+var_1], al` / `or …, 4` / `or …, 8` / `and …, 0EFh` / `and al, 0DFh`. Rebuilt
+keeps the autofeed `and al, 1` / `add al, al` but holds the byte in `bl` and folds to
+`and bl, 0FCh` / `or bl, al` / `or bl, 0Ch` / `and bl, 0CFh`. `IO_R_*` immediates
+(`0xFFFFFD1F`, `0xFFFFFD1E`, `0xFFFFFD2B`, `0xFFFFFD36`, `0xFFFFFD2A`) are unchanged.
+
 ### 8.9 The status rule used
 
 - `assembly-matched` (55) - the reference's full instruction stream was read and our
@@ -1058,6 +1101,7 @@ executable, not i386. Phase 3 / Task 10 converts both tproj trees to `tool.make`
   source reproduces its block structure, every call target and every constant, but the
   rebuilt output was **not** itself disassembled and compared instruction by instruction.
   Used for the larger functions.
-- `intentional-mismatch` (7) - a deliberate difference remains: 112 and 1452 (Finding 53),
+- `intentional-mismatch` (7) - a deliberate difference remains: 112 and 1452 (Finding 53,
+  uninitialized control byte reconstructed; leftover is gcc 2.x zero-fill / immediate fold),
   2372 and 2388 (`struct buf` encoding), 4232 (`_strobeChar` ordering), and the two
   build-generated glue functions at 7392 and 7404, untouched from the report pass.

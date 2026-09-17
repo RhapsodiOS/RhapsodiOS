@@ -222,36 +222,38 @@ extern int sprintf(char *str, const char *fmt, ...);
 
 - (BOOL)probeForController
 {
+    unsigned char readBack;
     unsigned char controlValue;
     unsigned char readValue;
 
-    // Read the current control register value.  The reference discards it and
-    // builds each test pattern bit by bit; only bits 0-5 are defined.
-    (void)inb(PP_PORT(controlRegister));
+    readBack = inb(PP_PORT(controlRegister));
 
-    // First test pattern 0x1e:
-    // STROBE=0, AUTOFEED=1, INIT=1, SELECT=1, IRQ_EN=1, DIR=0
-    controlValue = PP_CONTROL_AUTOFEED | PP_CONTROL_INIT |
-                   PP_CONTROL_SELECT | PP_CONTROL_IRQ_EN;
+    controlValue &= 0xFE;
+    controlValue |= 0x02;
+    controlValue |= 0x04;
+    controlValue |= 0x08;
+    controlValue |= 0x10;
+    controlValue &= 0xDF;
     outb(PP_PORT(controlRegister), controlValue);
 
-    // Read back and verify
     readValue = inb(PP_PORT(controlRegister));
     if ((readValue & 0x1F) != 0x1E) {
         return NO;
     }
 
-    // Second test pattern 0x04: only INIT set
-    controlValue = PP_CONTROL_INIT;
+    controlValue &= 0xFE;
+    controlValue &= 0xFD;
+    controlValue |= 0x04;
+    controlValue &= 0xF7;
+    controlValue &= 0xEF;
+    controlValue &= 0xDF;
     outb(PP_PORT(controlRegister), controlValue);
 
-    // Read back and verify
     readValue = inb(PP_PORT(controlRegister));
     if ((readValue & 0x15) != 0x04) {
         return NO;
     }
 
-    // Controller found and verified
     return YES;
 }
 
@@ -261,15 +263,14 @@ extern int sprintf(char *str, const char *fmt, ...);
     unsigned char statusValue;
     BOOL isReady;
 
-    // Setup control register value:
-    // - Set SELECT (0x08) and INIT (0x04) bits
-    // - Set AUTOFEED (0x02) if enabled
-    controlValue = PP_CONTROL_SELECT | PP_CONTROL_INIT;
-    if (autofeedOutput & 1) {
-        controlValue |= PP_CONTROL_AUTOFEED;
-    }
+    controlValue &= 0xFE;
+    controlValue &= 0xFD;
+    controlValue |= (unsigned char)((autofeedOutput & 1) << 1);
+    controlValue |= 0x04;
+    controlValue |= 0x08;
+    controlValue &= 0xEF;
+    controlValue &= 0xDF;
 
-    // Write initial control value
     outb(PP_PORT(controlRegister), controlValue);
 
     // Read status register (initial check)

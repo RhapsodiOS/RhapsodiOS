@@ -342,23 +342,20 @@ static void enqueueKeyboardData(unsigned char data)
 /* Check if a key matches an escape sequence */
 static BOOL isEscape(unsigned short key, EscapeSequence *escape)
 {
-    unsigned char scancodeChar;
-    unsigned char extendedChar;
     KeySequenceEntry **cursor;
     KeySequenceEntry *currentSeq;
     unsigned char *keyBytes;
-
-    /* Extract scancode and extended flag from the 16-bit key */
-    scancodeChar = (unsigned char)(key & 0xFF);
-    extendedChar = (unsigned char)((key >> 8) & 0xFF);
+    short extendedHalf;
 
     if (escape->currentSequence == NULL) {
         /* Not currently matching - try every alternative in this entry */
+        extendedHalf = (short)key >> 8;
         for (cursor = escape->sequences; *cursor != NULL; cursor++) {
             currentSeq = *cursor;
             keyBytes = &currentSeq->keys[currentSeq->index * 2];
 
-            if (keyBytes[0] == scancodeChar && keyBytes[1] == extendedChar) {
+            if ((unsigned char)key == keyBytes[0] &&
+                (unsigned char)extendedHalf == keyBytes[1]) {
                 /* Found a matching sequence - start tracking it */
                 escape->matchedSequence = currentSeq;
                 escape->currentSequence = currentSeq;
@@ -371,11 +368,13 @@ static BOOL isEscape(unsigned short key, EscapeSequence *escape)
         /* Currently matching a sequence - check the next key */
         currentSeq = escape->currentSequence;
         keyBytes = &currentSeq->keys[currentSeq->index * 2];
+        extendedHalf = (short)key >> 8;
 
-        if (keyBytes[0] == scancodeChar && keyBytes[1] == extendedChar) {
+        if ((unsigned char)key == keyBytes[0] &&
+            (unsigned char)extendedHalf == keyBytes[1]) {
             currentSeq->index++;
 
-            if (currentSeq->count <= currentSeq->index) {
+            if (currentSeq->index >= currentSeq->count) {
                 /* Sequence complete */
                 currentSeq->index = 0;
                 escape->currentSequence = NULL;

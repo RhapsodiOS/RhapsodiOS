@@ -13,9 +13,9 @@ Analyzer: IDA 9.2 only (`analyzers.angr.enabled` is false; Ghidra stays off).
 | | SHA-256 | size |
 | --- | --- | --- |
 | Reference | `AB413CA3919950F22A1F5D10B0BF1167387FEF320C9FB82A3EA66E586A6BE02A` | 43460 |
-| Rebuilt | `924B8B12ACB1F6C1F87536930504C244AC75C3460B56E918DDE092906C171FF9` | 157624 |
+| Rebuilt | `ECFE96B1136F8EDF6EEA601C99713F288E9515AD5983848E0C4CB3344E5C74A1` | 157596 |
 
-`__TEXT,__text`: reference 4952, rebuilt 4652.
+`__TEXT,__text`: reference 4952, rebuilt 4660.
 
 `parity_check.py`: `missing_strings (0)`, `missing_symbols (0)`. Extra symbols 54 (stabs / file names on the unstripped guest `_reloc`).
 
@@ -247,6 +247,11 @@ Task 8 regression gate. `--name` shows then/else order on `respondsTo:`, but do 
 ### `_isEscape` (diff 40)
 
 1. Do not hoist `scancodeChar` / `extendedChar` locals; compare `key` bytes in place after the `currentSequence` test (`cmp byte ptr [ebp+arg_0]` vs stack extracts).
+   **Kept:** inlined compares; instruction count 70 → 73. Leftover included `shr` vs `sar` and operand-reversed `count`/`index`.
+2. Reverse the byte compares and `index >= count` so `cmp [ebx], eax` / `jg` match.
+   **Kept:** completion test now matches.
+3. Park a `short extendedHalf = (short)key >> 8` so the high byte uses `sar`.
+   **Kept, leftover accepted:** `sar` and `sub esp, 4` now match. Remaining starred rows are `esi` vs `edi`, `cmp byte ptr [ebp+arg_0]` vs a register compare, and the cursor in `edx` rather than `[ebp+var_4]`. Rebuild `ECFE96B1136F8EDF6EEA601C99713F288E9515AD5983848E0C4CB3344E5C74A1`. `intentional-mismatch`.
 
 ### `-[PS2Keyboard becomeOwner:]` (diff 43)
 

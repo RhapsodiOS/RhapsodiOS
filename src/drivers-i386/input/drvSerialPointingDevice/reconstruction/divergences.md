@@ -1234,3 +1234,15 @@ row (nine, glue excluded): `getResolution`, `_mainLoop`, `MPlusProtocol`,
 that nine. Glue stays unmatched and is not a grind target. See
 `function-worklist.md`. This `_reloc` is not kept as the campaign result;
 `rebuilt_sha256` is unchanged.
+
+Task 3 (2026-09-16): promoted the nine hand-written identical / `masked_equal`
+rows to `assembly-matched` against rebuilt `_reloc`
+`7A0D1052C9178CFE8DCD576605DA163ECF0835A4A28F04309CB30D459E7C8E64`. Four
+were `control-flow-confirmed` (`_mainLoop`, `free`, `setEventTarget:`,
+`mainLoop:`); five already were `assembly-matched` (`getResolution`,
+`MPlusProtocol`, `MMProtocol`, `RBProtocol`, `UnknownProtocol`) and were
+left there with reviewer/reason refreshed to cite this baseline. Kernel
+Server glue stays `intentional-mismatch` even though `--list` matched.
+The remaining seven stay `control-flow-confirmed`: `getByte:sleep:`,
+`getIntValues:`, `mouseInit:`, `MSProtocol`, `setIntValues:`,
+`FiveBProtocol`, `detect`.

@@ -8,6 +8,7 @@
           "angr"
         ],
         "reasons": [
+          "Finish campaign Task 3: confirmed against rebuilt SerialPointingDevice_reloc SHA-256 7A0D1052C9178CFE8DCD576605DA163ECF0835A4A28F04309CB30D459E7C8E64 (raw_equal), not only source-vs-IDA",
           "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely but records the same calls. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
           "full disassembly read instruction by instruction against source; the objc_msgSend to mainLoop: matches, but the reference writes eax = 0 before returning where our static function is declared void (divergences.md Finding 2)"
         ],
@@ -17,12 +18,12 @@
       "names": [
         "_mainLoop"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "Finish campaign Task 3: confirmed against rebuilt SerialPointingDevice_reloc SHA-256 7A0D1052C9178CFE8DCD576605DA163ECF0835A4A28F04309CB30D459E7C8E64 (raw_equal), not only source-vs-IDA",
+      "reviewer": "Pat Raynor",
       "size": 26,
       "source_line": 68,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m",
-      "status": "control-flow-confirmed"
+      "status": "assembly-matched"
     },
     {
       "address": 28,
@@ -56,6 +57,7 @@
           "angr"
         ],
         "reasons": [
+          "Finish campaign Task 3: confirmed against rebuilt SerialPointingDevice_reloc SHA-256 7A0D1052C9178CFE8DCD576605DA163ECF0835A4A28F04309CB30D459E7C8E64 (masked_equal), not only source-vs-IDA",
           "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely but records the same calls. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
           "full disassembly read instruction by instruction against source; the verbose-gated log, active = NO, the nil check, the release and the objc_msgSendSuper to free all match; the only difference is our extra store of nil to the port ivar (divergences.md Findings 1, 7)"
         ],
@@ -65,12 +67,12 @@
       "names": [
         "-[SerialPointingDevice free]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "Finish campaign Task 3: confirmed against rebuilt SerialPointingDevice_reloc SHA-256 7A0D1052C9178CFE8DCD576605DA163ECF0835A4A28F04309CB30D459E7C8E64 (masked_equal), not only source-vs-IDA",
+      "reviewer": "Pat Raynor",
       "size": 105,
       "source_line": 256,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m",
-      "status": "control-flow-confirmed"
+      "status": "assembly-matched"
     },
     {
       "address": 1016,
@@ -80,6 +82,7 @@
           "angr"
         ],
         "reasons": [
+          "Finish campaign Task 3: confirmed against rebuilt SerialPointingDevice_reloc SHA-256 7A0D1052C9178CFE8DCD576605DA163ECF0835A4A28F04309CB30D459E7C8E64 (raw_equal), not only source-vs-IDA",
           "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely but records the same calls. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
           "full disassembly read instruction by instruction against source; emitted code reproduces the reference exactly. The declared return type differs (unsigned int vs int, divergences.md Finding 2); the match on the ivar offset 0x12c is contingent on divergences.md Finding 1 (the PCPointer re-parent) landing, since our header currently lacks _reserved[4]"
         ],
@@ -89,8 +92,8 @@
       "names": [
         "-[SerialPointingDevice getResolution]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "Finish campaign Task 3: confirmed against rebuilt SerialPointingDevice_reloc SHA-256 7A0D1052C9178CFE8DCD576605DA163ECF0835A4A28F04309CB30D459E7C8E64 (raw_equal), not only source-vs-IDA",
+      "reviewer": "Pat Raynor",
       "size": 16,
       "source_line": 529,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m",
@@ -104,6 +107,7 @@
           "angr"
         ],
         "reasons": [
+          "Finish campaign Task 3: confirmed against rebuilt SerialPointingDevice_reloc SHA-256 7A0D1052C9178CFE8DCD576605DA163ECF0835A4A28F04309CB30D459E7C8E64 (masked_equal), not only source-vs-IDA",
           "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely but records the same calls. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
           "full disassembly read instruction by instruction against source; the objc_msgSendSuper and the conditional store to target match, but the reference returns BOOL and ours returns void, so the xor eax,eax / mov eax,1 pair has no counterpart (divergences.md Findings 1, 2)"
         ],
@@ -113,12 +117,12 @@
       "names": [
         "-[SerialPointingDevice setEventTarget:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "Finish campaign Task 3: confirmed against rebuilt SerialPointingDevice_reloc SHA-256 7A0D1052C9178CFE8DCD576605DA163ECF0835A4A28F04309CB30D459E7C8E64 (masked_equal), not only source-vs-IDA",
+      "reviewer": "Pat Raynor",
       "size": 72,
       "source_line": 537,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m",
-      "status": "control-flow-confirmed"
+      "status": "assembly-matched"
     },
     {
       "address": 1104,
@@ -176,6 +180,7 @@
           "angr"
         ],
         "reasons": [
+          "Finish campaign Task 3: confirmed against rebuilt SerialPointingDevice_reloc SHA-256 7A0D1052C9178CFE8DCD576605DA163ECF0835A4A28F04309CB30D459E7C8E64 (masked_equal), not only source-vs-IDA",
           "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely but records the same calls. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
           "full disassembly read instruction by instruction against source; the while (active) shape, the detect retry with IOSleep(10000), the two verbose logs and the five-entry protocol jump table at 1652 all match, but the reference writes eax = 0 before returning where ours is declared void (divergences.md Findings 1, 2)"
         ],
@@ -185,12 +190,12 @@
       "names": [
         "-[SerialPointingDevice mainLoop:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "Finish campaign Task 3: confirmed against rebuilt SerialPointingDevice_reloc SHA-256 7A0D1052C9178CFE8DCD576605DA163ECF0835A4A28F04309CB30D459E7C8E64 (masked_equal), not only source-vs-IDA",
+      "reviewer": "Pat Raynor",
       "size": 305,
       "source_line": 593,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m",
-      "status": "control-flow-confirmed"
+      "status": "assembly-matched"
     },
     {
       "address": 1772,
@@ -272,6 +277,7 @@
           "angr"
         ],
         "reasons": [
+          "Finish campaign Task 3: confirmed against rebuilt SerialPointingDevice_reloc SHA-256 7A0D1052C9178CFE8DCD576605DA163ECF0835A4A28F04309CB30D459E7C8E64 (masked_equal), not only source-vs-IDA",
           "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely but records the same calls. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
           "full disassembly read instruction by instruction against source; emitted code reproduces the reference exactly: a single objc_msgSend of MSProtocol to self, with the v8@8:12 type encoding our declaration already produces"
         ],
@@ -281,8 +287,8 @@
       "names": [
         "-[SerialPointingDevice MPlusProtocol]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "Finish campaign Task 3: confirmed against rebuilt SerialPointingDevice_reloc SHA-256 7A0D1052C9178CFE8DCD576605DA163ECF0835A4A28F04309CB30D459E7C8E64 (masked_equal), not only source-vs-IDA",
+      "reviewer": "Pat Raynor",
       "size": 22,
       "source_line": 762,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m",
@@ -320,6 +326,7 @@
           "angr"
         ],
         "reasons": [
+          "Finish campaign Task 3: confirmed against rebuilt SerialPointingDevice_reloc SHA-256 7A0D1052C9178CFE8DCD576605DA163ECF0835A4A28F04309CB30D459E7C8E64 (masked_equal), not only source-vs-IDA",
           "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely but records the same calls. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
           "full disassembly read instruction by instruction against source; emitted code reproduces the reference exactly: executeEvent:5 data:0 to the port ivar, then a byte store of 0 to _active. The match on the 0x154 offset is contingent on divergences.md Finding 1 (the PCPointer re-parent) landing, since our header currently lacks _reserved[4] and compiles serialPortObject at roughly 0x140 rather than 0x154; _active's linkage already matches (divergences.md Finding 4) and needs no fix"
         ],
@@ -329,8 +336,8 @@
       "names": [
         "-[SerialPointingDevice MMProtocol]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "Finish campaign Task 3: confirmed against rebuilt SerialPointingDevice_reloc SHA-256 7A0D1052C9178CFE8DCD576605DA163ECF0835A4A28F04309CB30D459E7C8E64 (masked_equal), not only source-vs-IDA",
+      "reviewer": "Pat Raynor",
       "size": 40,
       "source_line": 750,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m",
@@ -344,6 +351,7 @@
           "angr"
         ],
         "reasons": [
+          "Finish campaign Task 3: confirmed against rebuilt SerialPointingDevice_reloc SHA-256 7A0D1052C9178CFE8DCD576605DA163ECF0835A4A28F04309CB30D459E7C8E64 (masked_equal), not only source-vs-IDA",
           "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely but records the same calls. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
           "full disassembly read instruction by instruction against source; emitted code reproduces the reference exactly; identical body to MMProtocol at 4324, with the same Finding 1 contingency; no Finding 4 caveat applies since _active's linkage already matches"
         ],
@@ -353,8 +361,8 @@
       "names": [
         "-[SerialPointingDevice RBProtocol]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "Finish campaign Task 3: confirmed against rebuilt SerialPointingDevice_reloc SHA-256 7A0D1052C9178CFE8DCD576605DA163ECF0835A4A28F04309CB30D459E7C8E64 (masked_equal), not only source-vs-IDA",
+      "reviewer": "Pat Raynor",
       "size": 40,
       "source_line": 856,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m",
@@ -368,6 +376,7 @@
           "angr"
         ],
         "reasons": [
+          "Finish campaign Task 3: confirmed against rebuilt SerialPointingDevice_reloc SHA-256 7A0D1052C9178CFE8DCD576605DA163ECF0835A4A28F04309CB30D459E7C8E64 (masked_equal), not only source-vs-IDA",
           "IDA and angr agree on this function's address and size exactly; angr splits basic blocks more finely but records the same calls. Ghidra is disabled for this driver (see divergences.md, stated limitation)",
           "full disassembly read instruction by instruction against source; emitted code reproduces the reference exactly; identical body to MMProtocol at 4324, with the same Finding 1 contingency; no Finding 4 caveat applies since _active's linkage already matches"
         ],
@@ -377,8 +386,8 @@
       "names": [
         "-[SerialPointingDevice UnknownProtocol]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "Finish campaign Task 3: confirmed against rebuilt SerialPointingDevice_reloc SHA-256 7A0D1052C9178CFE8DCD576605DA163ECF0835A4A28F04309CB30D459E7C8E64 (masked_equal), not only source-vs-IDA",
+      "reviewer": "Pat Raynor",
       "size": 40,
       "source_line": 868,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m",
@@ -433,7 +442,7 @@
       "status": "intentional-mismatch"
     }
   ],
-  "rebuilt_sha256": null,
+  "rebuilt_sha256": "7A0D1052C9178CFE8DCD576605DA163ECF0835A4A28F04309CB30D459E7C8E64",
   "reference_sha256": "59C0C95C5A4D93456BDD6667970AC4A3605A961FEAC2CF7CE97F586D3A958F59",
   "schema_version": "ledger-v1"
 }

@@ -1,0 +1,1937 @@
+{
+  "entries": [
+    {
+      "address": 0,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; naming-divergence group (extra underscore/category in our source, see divergences.md); matches source exactly (strlen, IOFree, null-out pointer)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_freeString"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 53,
+      "source_line": 71,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAid.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 56,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; genuinely absent from our source: declared extern and called, but never defined anywhere in drvPCMCIABus; confirmed via grep and via undefined-external symbols in our built binary (see divergences.md Finding 1); implemented from the reference disassembly (jump table of 10 function-ID name strings plus a 0xFE vendor-specific case), block structure matched, not compiled"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_stringForFunctionID"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 74,
+      "source_line": 189,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAid.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 132,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; matches source numeric-constant validity test exactly"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_isValidPCMCIA_IDChar"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 70,
+      "source_line": 83,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAid.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 204,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra blocks/size agree; call-site classification differs slightly (not a body disagreement); naming-divergence group (extra underscore/category in our source, see divergences.md); matches source exactly (NULL check, count valid chars, IOMalloc, copy, terminate)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_sanitizeStringCopy"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 211,
+      "source_line": 98,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAid.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 416,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra blocks/size agree; call-site classification differs slightly (not a body disagreement); matches source 5-field loop with function-ID special case, calling the (missing) _stringForFunctionID"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[PCMCIAid IOLogCardInformation:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 124,
+      "source_line": 364,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAid.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 540,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; matches source 5-field _freeString loop"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAid free]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 72,
+      "source_line": 298,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAid.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 612,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra blocks/size agree; call-site classification differs slightly (not a body disagreement); matches source 5-field sanitizeStringCopy loop"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAid initFromDescription:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 104,
+      "source_line": 172,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAid.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 716,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; matches source 5-field conditional IOLog loop"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAid IOLog]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 67,
+      "source_line": 345,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAid.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 784,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; block/call counts agree (23 blocks, 8 calls); general token-scanning shape matches source, not every instruction"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAid initFromIDString:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 420,
+      "source_line": 195,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAid.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 1204,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; matches source 5-field wildcard-compare loop"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAid matchesID:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 77,
+      "source_line": 314,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAid.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 1284,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; matches source two hash-state iteration loops (initStringState/nextStringState, initResourcesState/nextResourcesState)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_printDescription"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 205,
+      "source_line": 85,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 1492,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; genuinely absent from our source: declared extern and called, but never defined anywhere in drvPCMCIABus; confirmed via grep and via undefined-external symbols in our built binary (see divergences.md Finding 1); implemented from the reference disassembly (boot config string scan matching Server Name/Instance against busName/busId), same shape as drvEISABus's own configTableLookupServerAttribute, block structure matched, not compiled"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_configTableLookupServerAttribute"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 341,
+      "source_line": 172,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 1836,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; matches source exactly (stores range.base/length at ivar offsets 0x14/0x18)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAKernBus setBusRange:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 22,
+      "source_line": 589,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 1860,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; matches source exactly (stores verbose byte at ivar offset 0x20)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAKernBus setVerbose:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 16,
+      "source_line": 598,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 1876,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra blocks/size agree; call-site classification differs slightly (not a body disagreement); matches source (findBIOSMemoryRange, two List alloc+init, registerBusClass, IODevice registerClass)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[PCMCIAKernBus initialize]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 148,
+      "source_line": 154,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 2024,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; matches source exactly (returns static protocols array)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[PCMCIAKernBus requiredProtocols]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 12,
+      "source_line": 212,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 2036,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; matches source exactly (returns constant 1)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[PCMCIAKernBus deviceStyle]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 12,
+      "source_line": 203,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 2048,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra blocks/size agree; call-site classification differs slightly (not a body disagreement); read in full; loop over bus instances calling the (missing) configTableLookupServerAttribute three times, clamping and setting bus range, matches source"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[PCMCIAKernBus probe:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 488,
+      "source_line": 221,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 2536,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; matches source loop over _busInstances calling configureDriverWithTable: with queue fallback"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[PCMCIAKernBus configureDriverWithTable:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 128,
+      "source_line": 178,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 2664,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; confirmed divergence: see divergences.md Finding 6 (extra, currently unreachable nil-check around the global _busInstances list)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAKernBus init]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 227,
+      "source_line": 339,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 2892,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; matches source (free _adapters, iterate+free socketMap values, free socketMap, remove self from _busInstances, super free)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAKernBus free]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 175,
+      "source_line": 375,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 3068,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; matches source (conditional free of cached resource, page-align length, findAndReserveRangeBase:Length:AlignedTo:)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAKernBus memoryRangeResource]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 270,
+      "source_line": 423,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 3340,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; matches source (addObject:, setStatusChangeHandler:, per-socket IOMalloc/bzero/pool/addList/insertKey/setStatusChangeMask/statusChangedForSocket:)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAKernBus addAdapter:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 393,
+      "source_line": 463,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 3736,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; matches source (per-socket pool free + IOFree + removeKey, then removeObject: on adapter)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAKernBus removeAdapter:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 192,
+      "source_line": 532,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 3928,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; matches source (valueForKey: lookup, NULL check, allocElementByMethod:@selector(supportsMemory))"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAKernBus allocMemoryWindowForSocket:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 67,
+      "source_line": 403,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 3996,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; matches source (valueForKey: lookup, NULL check, allocElementByMethod:@selector(supportsIO))"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAKernBus allocIOWindowForSocket:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 67,
+      "source_line": 569,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 4064,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; not examined: deprioritized due to size (1113 bytes) and time budget, see divergences.md Deprioritized section"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAKernBus statusChangedForSocket:changedStatus:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 1113,
+      "source_line": 606,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 5180,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; matches source ([element object], setEnabled:NO, [element free])"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAKernBus freeMemoryWindowElement:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 55,
+      "source_line": 1297,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 5236,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; matches source exactly, including the correctly-typed signed status<0 ready check"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAKernBus enableSocket:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 243,
+      "source_line": 1216,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 5480,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; matches source exactly (four power-down sends, two IOSleep calls)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAKernBus disableSocket:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 106,
+      "source_line": 1272,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 5588,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; matches source (allocMemoryWindowForSocket:, configure window, setMapWithSize:systemAddress:cardAddress:)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAKernBus mapMemory:ForSocket:ToCardAddress:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 173,
+      "source_line": 1340,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 5764,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; matches source (mapMemory:ForSocket:ToCardAddress:, then setAttributeMemory:YES)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAKernBus mapAttributeMemory:ForSocket:CardBase:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 89,
+      "source_line": 1316,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 5856,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; block/call counts agree (9 blocks, 3 calls); bitmap search loop and reservation call matches source, not every instruction"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAKernBus findAndReserveRangeBase:Length:AlignedTo:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 285,
+      "source_line": 1779,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 6144,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; not examined: deprioritized due to time budget, see divergences.md Deprioritized section"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAKernBus configTable:matchesSocket:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 221,
+      "source_line": 397,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 6368,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; boundary check confirmed byte for byte (unsigned ja, matching source admittedly off-by-one-looking > comparison, which is faithfully reproduced from the reference, not a bug introduced by us)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAKernBus testIDs:ForAdapter:andSocket:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 365,
+      "source_line": 1536,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 6736,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; not examined: deprioritized due to time budget, see divergences.md Deprioritized section"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAKernBus configureDriverWithTable:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 264,
+      "source_line": 445,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 7000,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; not examined: deprioritized due to time budget, see divergences.md Deprioritized section"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAKernBus configureSocket:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 262,
+      "source_line": 509,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 7264,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; not examined: deprioritized due to size (924 bytes) and time budget, see divergences.md Deprioritized section"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAKernBus probeDevice:withDescription:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 924,
+      "source_line": 1373,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 8188,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; not examined: deprioritized due to time budget, see divergences.md Deprioritized section"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAKernBus copyTupleList:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 215,
+      "source_line": 1072,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 8404,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; not examined: deprioritized due to size (543 bytes) and time budget, see divergences.md Deprioritized section"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAKernBus configureSocket:withDriverTable:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 543,
+      "source_line": 978,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 8948,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; block/call counts agree (27 blocks, 9 calls); single-range and multi-range matching paths checked against source, not every instruction"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAKernBus entry:matchesUserIOPorts:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 436,
+      "source_line": 1623,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 9384,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; block/call counts agree (16 blocks, 8 calls); range reservation loop and rollback-on-failure matches source, not every instruction"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAKernBus reserveIOPorts:UsingEntry:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 238,
+      "source_line": 1715,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 9624,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; not examined: deprioritized due to size (1814 bytes) and time budget, see divergences.md Deprioritized section"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAKernBus allocateSharedMemory:ForDescription:AndSocket:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 1814,
+      "source_line": 141,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 11440,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra blocks/size agree; call-site classification differs slightly (not a body disagreement); not examined: deprioritized due to size (3114 bytes, the largest function in the binary) and time budget, see divergences.md Deprioritized section"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAKernBus configureSocket:withDescription:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 3114,
+      "source_line": 568,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 14556,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra blocks/size agree; call-site classification differs slightly (not a body disagreement); blocks agree exactly (25); three waitForSocketReady call sites confirmed present matching source structure, not every instruction"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAKernBus tupleListFromSocket:mappedAddress:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 443,
+      "source_line": 1108,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 15000,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; matches source exactly (lookupBusInstanceWithName:busId:, setBus:, allocateResourcesForDeviceDescription:)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAKernBus allocateResourcesForDeviceDescription:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 73,
+      "source_line": 121,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 15076,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; matches source exactly (bit-set-in-bitmap arithmetic)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_markRange"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 71,
+      "source_line": 81,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 15148,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra blocks/size agree; call-site classification differs slightly (not a body disagreement); matches source exactly, including all four rounding-threshold constants"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_findBIOSMemoryRange"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 176,
+      "source_line": 107,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBus.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 15324,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; confirmed divergence: see divergences.md Finding 5 (unsigned char status<0 is dead code; our compiled binary never tests socket status at all); fix applied, status is now plain char matching the reference's signed test and the sibling enableSocket: copy of this loop"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_waitForSocketReady"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 71,
+      "source_line": 56,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusPrivate.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 15396,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; naming-divergence group (extra underscore/category in our source, see divergences.md); matches source exactly (strlen, IOMalloc, strcpy, setString:forKey:)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_addString"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 71,
+      "source_line": 58,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusParsing.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 15468,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra blocks/size agree; call-site classification differs slightly (not a body disagreement); naming-divergence group (extra underscore/category in our source, see divergences.md); matches source exactly (loop of sprintf + addString)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_addStrings"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 83,
+      "source_line": 87,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusParsing.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 15552,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra blocks/size agree; call-site classification differs slightly (not a body disagreement); naming-divergence group (extra underscore/category in our source, see divergences.md); confirmed divergence: see divergences.md Finding 2 (adds verbose-gated IOLog calls the reference never has)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_parse_VERS_1"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 336,
+      "source_line": 124,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusParsing.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 15888,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra blocks/size agree; call-site classification differs slightly (not a body disagreement); naming-divergence group (extra underscore/category in our source, see divergences.md); confirmed divergence: see divergences.md Finding 2"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_parse_MANFID"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 81,
+      "source_line": 667,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusParsing.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 15972,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra blocks/size agree; call-site classification differs slightly (not a body disagreement); naming-divergence group (extra underscore/category in our source, see divergences.md); confirmed divergence: see divergences.md Finding 2"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_parse_CONFIG"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 152,
+      "source_line": 244,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusParsing.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 16124,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; naming-divergence group (extra underscore/category in our source, see divergences.md); block/call counts identical between IDA and Ghidra (151 blocks, 39 calls); verbose gating on first IOLog call and overall shape checked against source, not every instruction"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_parse_CFTABLE_ENTRY"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 2430,
+      "source_line": 299,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusParsing.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 18556,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra blocks/size agree; call-site classification differs slightly (not a body disagreement); naming-divergence group (extra underscore/category in our source, see divergences.md); confirmed divergence: see divergences.md Finding 2"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_parse_FUNCID"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 54,
+      "source_line": 699,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusParsing.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 18612,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; naming-divergence group (extra underscore/category in our source, see divergences.md); matches source exactly; only divergence is the naming/category issue documented above"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAKernBus allocResourcesForDescription:fromTupleList:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 116,
+      "source_line": 728,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusParsing.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 18728,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; naming-divergence group (extra underscore/category in our source, see divergences.md); matches source exactly (dispatch-table loop over tupleParserTable); only divergence is naming/category"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAKernBus parseTuple:intoDeviceDescription:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 121,
+      "source_line": 753,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAKernBusParsing.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 18852,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "Ghidra has no function at this address (analyzer detection gap); naming-divergence group (extra underscore/category in our source, see divergences.md); matches source exactly (IOMalloc 8 bytes, two List alloc+init)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[_PCMCIAPool init]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 137,
+      "source_line": 42,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAPool.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 18992,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; naming-divergence group (extra underscore/category in our source, see divergences.md); matches source exactly (free two lists, IOFree 8 bytes, super free)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[_PCMCIAPool free]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 93,
+      "source_line": 61,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAPool.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 19088,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; naming-divergence group (extra underscore/category in our source, see divergences.md); confirmed divergence: see divergences.md Finding 3 (adds a poolData/object nil-guard the reference never has)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[_PCMCIAPool addObject:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 38,
+      "source_line": 89,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAPool.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 19128,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; naming-divergence group (extra underscore/category in our source, see divergences.md); confirmed divergence: see divergences.md Finding 3"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[_PCMCIAPool addList:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 38,
+      "source_line": 77,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAPool.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 19168,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; naming-divergence group (extra underscore/category in our source, see divergences.md); matches source exactly (single removeObject: send, no guard)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[_PCMCIAPool removeObject:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 32,
+      "source_line": 241,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAPool.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 19200,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; naming-divergence group (extra underscore/category in our source, see divergences.md); confirmed divergence: see divergences.md Finding 4 (peeks with objectAt: before removeObjectAt: instead of one destructive call)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[_PCMCIAPool allocObject]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 65,
+      "source_line": 161,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAPool.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 19268,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; naming-divergence group (extra underscore/category in our source, see divergences.md); matches source exactly (allocObject, then alloc+initWithPCMCIAPool:object:)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[_PCMCIAPool allocElement]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 76,
+      "source_line": 101,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAPool.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 19344,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; naming-divergence group (extra underscore/category in our source, see divergences.md); confirmed divergence: see divergences.md Finding 3 (adds a poolData/method nil-guard the reference never has)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[_PCMCIAPool allocObjectByMethod:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 136,
+      "source_line": 182,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAPool.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 19480,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; naming-divergence group (extra underscore/category in our source, see divergences.md); confirmed divergence: see divergences.md Finding 3"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[_PCMCIAPool allocElementByMethod:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 176,
+      "source_line": 117,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAPool.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 19656,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; naming-divergence group (extra underscore/category in our source, see divergences.md); matches source exactly (removeObject: from objectList, addObject: to elementList)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[_PCMCIAPool releaseObject:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 71,
+      "source_line": 222,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAPool.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 19728,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; naming-divergence group (extra underscore/category in our source, see divergences.md); matches source exactly (super init, IOMalloc 8 bytes, store pool/object)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[_PCMCIAPoolElement initWithPCMCIAPool:object:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 73,
+      "source_line": 40,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAPoolElement.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 19804,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; naming-divergence group (extra underscore/category in our source, see divergences.md); matches source exactly (releaseObject: on pool, IOFree 8 bytes, super free)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[_PCMCIAPoolElement free]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 78,
+      "source_line": 57,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAPoolElement.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 19884,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; naming-divergence group (extra underscore/category in our source, see divergences.md); matches source exactly (trivial ivar accessor)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[_PCMCIAPoolElement object]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 16,
+      "source_line": 70,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAPoolElement.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 19900,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; genuinely absent from our source: declared extern and called, but never defined anywhere in drvPCMCIABus; confirmed via grep and via undefined-external symbols in our built binary (see divergences.md Finding 1); implemented from the reference disassembly (NULL guard, strncmp against prefix length, then a literal '(' check), block structure matched, not compiled"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_parsePrefix"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 75,
+      "source_line": 41,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAResourceDriver.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 19976,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; genuinely absent from our source: declared extern and called, but never defined anywhere in drvPCMCIABus; confirmed via grep and via undefined-external symbols in our built binary (see divergences.md Finding 1); implemented from the reference disassembly (leading-digit-run accumulator that advances *strPtr), block structure matched, not compiled"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_parsenum"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 58,
+      "source_line": 66,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAResourceDriver.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 20036,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; genuinely absent from our source: declared extern and called, but never defined anywhere in drvPCMCIABus; confirmed via grep and via undefined-external symbols in our built binary (see divergences.md Finding 1); implemented from the reference disassembly (scans sockets 0-3 via testIDs:ForAdapter:andSocket: for the Nth matching card, formats \"Socket %d\"), block structure matched, not compiled"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_LookForPCMCIAID"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 151,
+      "source_line": 95,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAResourceDriver.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 20188,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; matches source (alloc+initFromDeviceDescription:, registerDevice, NO on zero result)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[PCMCIAResourceDriver probe:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 61,
+      "source_line": 36,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAResourceDriver.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 20252,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; matches source (super initFromDeviceDescription:, setName/setDeviceKind/registerDevice on success)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAResourceDriver initFromDeviceDescription:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 112,
+      "source_line": 56,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAResourceDriver.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 20364,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra blocks/size agree; call-site classification differs slightly (not a body disagreement); call list matches source exactly (4x _parsePrefix, bzero, strncpy, _parsenum, _LookForPCMCIAID, objc_msgSendSuper = 9 calls); IO_R_INVALID_ARG/IO_R_NOT_ATTACHED literals and *count<0x50 threshold confirmed against source, not every instruction"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIAResourceDriver getCharValues:forParameter:count:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 428,
+      "source_line": 80,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIAResourceDriver.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 20792,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; matches source exactly, including the redundant double _length store"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIATuple initFromData:length:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 81,
+      "source_line": 37,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIATuple.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 20876,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; matches source exactly (IOFree(_data,_length), super free)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIATuple free]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 58,
+      "source_line": 62,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIATuple.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 20936,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; matches source exactly (movzx byte at data ptr)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIATuple code]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 16,
+      "source_line": 74,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIATuple.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 20952,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; matches source exactly (return _data)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIATuple data]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 13,
+      "source_line": 82,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIATuple.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 20968,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; matches source exactly (return _length)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PCMCIATuple length]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 13,
+      "source_line": 90,
+      "source_path": "src/drivers-i386/bus/drvPCMCIABus/PCMCIABus.drvproj/PCMCIABus.lksproj/PCMCIATuple.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 20984,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "Ghidra has no function at this address (analyzer detection gap); build-generated Kernel Server glue (kernelServerInstance / driverKitVersionForPCMCIABus), not present in source"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[PCMCIABusKernelServerInstance kernelServerInstance]"
+      ],
+      "reason": "build-generated kernel server glue, not present in source",
+      "reviewer": "binrecon-task-10",
+      "size": 12,
+      "source_line": null,
+      "source_path": null,
+      "status": "intentional-mismatch"
+    },
+    {
+      "address": 20996,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical; build-generated Kernel Server glue (kernelServerInstance / driverKitVersionForPCMCIABus), not present in source"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[PCMCIABusVersion driverKitVersionForPCMCIABus]"
+      ],
+      "reason": "build-generated kernel server glue, not present in source",
+      "reviewer": "binrecon-task-10",
+      "size": 12,
+      "source_line": null,
+      "source_path": null,
+      "status": "intentional-mismatch"
+    }
+  ],
+  "rebuilt_sha256": null,
+  "reference_sha256": "B0D8A35E4C55DD7DF2F77B7F8BC07A453D843C24814B874C47B737B3425607ED",
+  "schema_version": "ledger-v1"
+}

@@ -8,6 +8,20 @@
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
 
+extern unsigned int page_size;
+extern unsigned int page_mask;
+
+/*
+ * protocols - required-protocol list for +requiredProtocols, recovered by
+ * resolving the two relocations in the reference binary's __OBJC,__protocol
+ * section (addends 40 and 20) to their protocol records.
+ */
+static Protocol *protocols[] = {
+	@protocol(IODiskPhysicalNEW),
+	@protocol(IODiskReadingAndWriting),
+	nil
+};
+
 @implementation IODiskPartitionNEW
 
 /*
@@ -21,14 +35,10 @@
 
 /*
  * Class method: requiredProtocols
- * From decompiled code: returns array of required protocol names.
+ * From decompiled code: returns array of required Protocol objects.
  */
-+ (const char **)requiredProtocols
++ (Protocol **)requiredProtocols
 {
-	static const char *protocols[] = {
-		"IOPhysicalDiskMethods",
-		NULL
-	};
 	return protocols;
 }
 
@@ -69,7 +79,7 @@
 	logicalDisk = [directDevice nextLogicalDisk];
 	if (logicalDisk == nil) {
 		// Create new partition 'a'
-		logicalDisk = [[IODiskPartitionNEW alloc] init];
+		logicalDisk = [IODiskPartitionNEW new];
 		
 		// Set partition name (e.g., "fd0a")
 		sprintf(partitionName, "%sa", deviceName);
@@ -123,45 +133,38 @@
 			if (result == IO_R_SUCCESS) {
 				hasValidLabel = YES;
 				// Probe label and create partitions
-				[logicalDisk __probeLabel:(BOOL)label];
+				[logicalDisk _probeLabel:(BOOL)label];
 			} else {
-				IOLog("%s: No Valid Disk Label
-", deviceName);
+				IOLog("%s: No Valid Disk Label\n", deviceName);
 				// Set default parameters for partition 'a'
 				[logicalDisk setBlockSize:blockSize];
 				[logicalDisk setDiskSize:[directDevice diskSize]];
 			}
 		} else {
-			IOLog("%s: Disk Unformatted
-", deviceName);
+			IOLog("%s: Disk Unformatted\n", deviceName);
 		}
 	} else {
-		IOLog("%s: Disk Not Ready
-", deviceName);
+		IOLog("%s: Disk Not Ready\n", deviceName);
 	}
 	
 	// Log disk information
 	if (hasValidDisk) {
-		IOLog("%s: Device Block Size: %u bytes
-", deviceName, blockSize);
+		IOLog("%s: Device Block Size: %u bytes\n", deviceName, blockSize);
 		
 		// Calculate capacity
 		capacityKB = (diskSize >> 10) * blockSize;
 		if (capacityKB < 0x2801) {  // Less than ~10 MB
 			capacityKB = diskSize * blockSize;
-			capacityUnit = "%s: Device Capacity:   %u KB
-";
+			capacityUnit = "%s: Device Capacity:   %u KB\n";
 		} else {
-			capacityUnit = "%s: Device Capacity:   %u MB
-";
+			capacityUnit = "%s: Device Capacity:   %u MB\n";
 		}
 		IOLog(capacityUnit, deviceName, capacityKB >> 10);
 	}
 	
 	if (hasValidLabel) {
 		// Log disk label name (at offset 0xc in disk_label_t)
-		IOLog("%s: Disk Label:        %s
-", deviceName, (char *)label + 0xc);
+		IOLog("%s: Disk Label:        %s\n", deviceName, (char *)label + 0xc);
 	}
 	
 	// Free label buffer if allocated
@@ -177,7 +180,7 @@
  * Free method.
  * From decompiled code: unregisters Unix disk then calls super.
  */
-- _free
+- free
 {
 	// Unregister the Unix disk with partition number (offset 0x150)
 	[self unregisterUnixDisk:_partition];
@@ -190,7 +193,7 @@
  * Eject method.
  * From decompiled code: checks safety, frees partitions, ejects media.
  */
-- (IOReturn)_eject
+- (IOReturn)eject
 {
 	id physicalDisk;
 	id drive;
@@ -199,13 +202,13 @@
 	physicalDisk = [self physicalDisk];
 
 	// Check if it's safe to eject
-	result = [self _checkSafeConfig:"eject"];
+	result = [self checkSafeConfig:"eject"];
 	if (result != IO_R_SUCCESS) {
 		return result;
 	}
 
 	// Free all partitions
-	[self __freePartitions];
+	[self _freePartitions];
 
 	// Clear label valid flag (offset 0x154)
 	_labelValid = NO;
@@ -224,7 +227,7 @@
  * Read disk label.
  * From decompiled code: reads and validates disk label from partition.
  */
-- (IOReturn)_readLabel : (disk_label_t *)label_p
+- (IOReturn)readLabel : (disk_label_t *)label_p
 {
 	id physicalDisk;
 	unsigned blockSize;
@@ -254,7 +257,7 @@
 	}
 
 	// Get NeXT partition offset
-	partitionOffset = [self _NeXTpartitionOffset];
+	partitionOffset = [self NeXTpartitionOffset];
 	if (partitionOffset < 0) {
 		return partitionOffset;
 	}
@@ -320,7 +323,7 @@
  * Write disk label.
  * From decompiled code: validates label, writes to multiple locations with checksums.
  */
-- (IOReturn)_writeLabel : (disk_label_t *)label_p
+- (IOReturn)writeLabel : (disk_label_t *)label_p
 {
 	id physicalDisk;
 	unsigned blockSize;
@@ -339,7 +342,7 @@
 	int i;
 	unsigned writeOffset;
 	unsigned actualLength;
-	int checkResult;
+	char *checkResult;
 	ns_time_t timestamp;
 	const char *name;
 
@@ -348,7 +351,7 @@
 	blockSize = [physicalDisk blockSize];
 
 	// Check if it's safe to write label
-	result = [self _checkSafeConfig:"writeLabel"];
+	result = [self checkSafeConfig:"writeLabel"];
 	if (result != IO_R_SUCCESS) {
 		return result;
 	}
@@ -364,7 +367,7 @@
 	}
 
 	// Free partitions and clear label valid flag
-	[self __freePartitions];
+	[self _freePartitions];
 	_labelValid = NO;  // offset 0x154
 
 	// Determine label type and set appropriate sizes
@@ -372,23 +375,23 @@
 		// NeXT or dlV2 label (0x4e655854 or 0x646c5632)
 		checksumSize = 0x1c48;
 		checksumOffset = 0x1c46;
-		checksumPtr = (unsigned short *)((char *)label_p + checksumOffset);
+		checksumPtr = &label_p->dl_checksum;
 	} else if (label_p->dl_version == DL_V3) {
 		// dlV3 label (0x646c5633)
 		checksumSize = 0x230;
 		checksumOffset = 0x22e;
-		checksumPtr = (unsigned short *)((char *)label_p + checksumOffset);
+		checksumPtr = &label_p->dl_v3_checksum;
 	} else {
 		// Bad label version
 		name = (const char *)[self name];
-		IOLog("%s writeLabel: BAD LABEL", name);
+		IOLog("%s writeLabel: BAD LABEL\n", name);
 		result = (IOReturn)0xfffffd3e;
 		goto cleanup;
 	}
 
-	// Set timestamp
+	// Tag label with current time
 	IOGetTimestamp(&timestamp);
-	label_p->dl_label_time = (unsigned)timestamp;
+	label_p->dl_tag = (unsigned)timestamp;
 
 	// Clear checksum and block offset
 	label_p->dl_label_blkno = 0;
@@ -415,13 +418,13 @@
 	checkResult = check_label(buffer, 0);
 	if (checkResult != 0) {
 		name = (const char *)[self name];
-		IOLog("%s writeLabel: BAD LABEL", name);
+		IOLog("%s writeLabel: BAD LABEL : %s\n", name, checkResult);
 		result = (IOReturn)0xfffffd3e;
 		goto cleanup;
 	}
 
 	// Get NeXT partition offset
-	partitionOffset = [self _NeXTpartitionOffset];
+	partitionOffset = [self NeXTpartitionOffset];
 	if (partitionOffset < 0) {
 		result = partitionOffset;
 		goto cleanup;
@@ -461,7 +464,7 @@
 		_labelValid = YES;
 
 		// Probe label to recreate partitions
-		[self __probeLabel:(BOOL)label_p];
+		[self _probeLabel:(BOOL)label_p];
 
 		result = IO_R_SUCCESS;
 	} else {
@@ -483,13 +486,6 @@ cleanup:
 	return result;
 }
 
-/*
- * Check if block device is open.
- */
-- (BOOL)_isBlockDeviceOpen
-{
-	return _blockDeviceOpen;
-}
 
 /*
  * Check if block device is open (public version).
@@ -504,37 +500,28 @@ cleanup:
  * Set block device open flag.
  * From decompiled code: sets flag and updates instance open status.
  */
-- (void)_setBlockDeviceOpen : (BOOL)openFlag
+- (void)setBlockDeviceOpen : (BOOL)openFlag
 {
 	// Set block device open flag (offset 0x155)
 	_blockDeviceOpen = (openFlag != 0);
 
-	// Update instance open status based on whether any devices are open
-	// Check if _labelValid (0x154) or other flags indicate open devices
-	[self setInstanceOpen:(_labelValid != 0)];
+	// Update instance open status based on whether either device is open
+	[self setInstanceOpen:(_blockDeviceOpen || _rawDeviceOpen)];
 }
 
 
-/*
- * Check if raw device is open.
- */
-- (BOOL)_isRawDeviceOpen
-{
-	return _rawDeviceOpen;
-}
 
 /*
  * Set raw device open flag.
  * From decompiled code: sets flag and updates instance open status.
  */
-- (void)_setRawDeviceOpen : (BOOL)openFlag
+- (void)setRawDeviceOpen : (BOOL)openFlag
 {
 	// Set raw device open flag (offset 0x156)
 	_rawDeviceOpen = (openFlag != 0);
 
-	// Update instance open status based on whether any devices are open
-	// Check if _labelValid (0x154) or other flags indicate open devices
-	[self setInstanceOpen:(_labelValid != 0)];
+	// Update instance open status based on whether either device is open
+	[self setInstanceOpen:(_blockDeviceOpen || _rawDeviceOpen)];
 }
 
 /*
@@ -550,7 +537,7 @@ cleanup:
  * Get NeXT partition offset.
  * From decompiled code: reads MBR and finds NeXT partition (type 0xA7).
  */
-- (unsigned)_NeXTpartitionOffset
+- (unsigned)NeXTpartitionOffset
 {
 	id physicalDisk;
 	unsigned char *buffer;
@@ -619,13 +606,13 @@ cleanup:
  * Set formatted flag (override).
  * From decompiled code: checks safety then sets formatted on physical disk and self.
  */
-- (IOReturn)_setFormatted : (BOOL)formattedFlag
+- (IOReturn)setFormatted : (BOOL)formattedFlag
 {
 	IOReturn result;
 	id physicalDisk;
 
 	// Check if it's safe to change formatted status
-	result = [self _checkSafeConfig:"setFormatted"];
+	result = [self checkSafeConfig:"setFormatted"];
 	if (result != IO_R_SUCCESS) {
 		return result;
 	}
@@ -644,10 +631,10 @@ cleanup:
  * Set formatted flag internal (override).
  * From decompiled code: frees partitions, clears label, then calls super.
  */
-- (void)_setFormattedInternal : (BOOL)formattedFlag
+- (void)setFormattedInternal : (BOOL)formattedFlag
 {
 	// Free all partitions
-	[self __freePartitions];
+	[self _freePartitions];
 
 	// Clear label valid flag (offset 0x154)
 	_labelValid = NO;
@@ -662,7 +649,7 @@ cleanup:
  * Read at offset.
  * From decompiled code: checks label validity then delegates to super.
  */
-- (IOReturn)_readAt : (unsigned)offset
+- (IOReturn)readAt : (unsigned)offset
 	     length : (unsigned)length
 	     buffer : (unsigned char *)buffer
        actualLength : (unsigned *)actualLength
@@ -673,7 +660,7 @@ cleanup:
 	// Check if label is valid (offset 0x154)
 	if (_labelValid) {
 		// Delegate to superclass
-		return [super _readAt:offset
+		return [super readAt:offset
 		               length:length
 		               buffer:buffer
 		         actualLength:actualLength
@@ -682,7 +669,7 @@ cleanup:
 
 	// No valid label
 	name = (const char *)[self name];
-	IOLog("%s: Read attempt with no valid label", name);
+	IOLog("%s: Read attempt with no valid label\n", name);
 	return (IOReturn)0xfffffd3e;
 }
 
@@ -690,7 +677,7 @@ cleanup:
  * Read asynchronously at offset.
  * From decompiled code: checks label validity then delegates to super.
  */
-- (IOReturn)_readAsyncAt : (unsigned)offset
+- (IOReturn)readAsyncAt : (unsigned)offset
 		  length : (unsigned)length
 		  buffer : (unsigned char *)buffer
 		 pending : (void *)pending
@@ -701,7 +688,7 @@ cleanup:
 	// Check if label is valid (offset 0x154)
 	if (_labelValid) {
 		// Delegate to superclass
-		return [super _readAsyncAt:offset
+		return [super readAsyncAt:offset
 		                    length:length
 		                    buffer:buffer
 		                   pending:pending
@@ -710,7 +697,7 @@ cleanup:
 
 	// No valid label
 	name = (const char *)[self name];
-	IOLog("%s: Read attempt with no valid label", name);
+	IOLog("%s: Read attempt with no valid label\n", name);
 	return (IOReturn)0xfffffd3e;
 }
 
@@ -718,7 +705,7 @@ cleanup:
  * Write at offset.
  * From decompiled code: checks label validity then delegates to super.
  */
-- (IOReturn)_writeAt : (unsigned)offset
+- (IOReturn)writeAt : (unsigned)offset
 	      length : (unsigned)length
 	      buffer : (unsigned char *)buffer
         actualLength : (unsigned *)actualLength
@@ -729,7 +716,7 @@ cleanup:
 	// Check if label is valid (offset 0x154)
 	if (_labelValid) {
 		// Delegate to superclass
-		return [super _writeAt:offset
+		return [super writeAt:offset
 		                length:length
 		                buffer:buffer
 		          actualLength:actualLength
@@ -738,7 +725,7 @@ cleanup:
 
 	// No valid label
 	name = (const char *)[self name];
-	IOLog("%s: Write attempt with no valid label", name);
+	IOLog("%s: Write attempt with no valid label\n", name);
 	return (IOReturn)0xfffffd3e;
 }
 
@@ -746,7 +733,7 @@ cleanup:
  * Write asynchronously at offset.
  * From decompiled code: checks label validity then delegates to super.
  */
-- (IOReturn)_writeAsyncAt : (unsigned)offset
+- (IOReturn)writeAsyncAt : (unsigned)offset
 		   length : (unsigned)length
 		   buffer : (unsigned char *)buffer
 		  pending : (void *)pending
@@ -757,7 +744,7 @@ cleanup:
 	// Check if label is valid (offset 0x154)
 	if (_labelValid) {
 		// Delegate to superclass
-		return [super _writeAsyncAt:offset
+		return [super writeAsyncAt:offset
 		                     length:length
 		                     buffer:buffer
 		                    pending:pending
@@ -766,7 +753,7 @@ cleanup:
 
 	// No valid label
 	name = (const char *)[self name];
-	IOLog("%s: Write attempt with no valid label", name);
+	IOLog("%s: Write attempt with no valid label\n", name);
 	return (IOReturn)0xfffffd3e;
 }
 
@@ -783,7 +770,7 @@ cleanup:
  * Free all partitions.
  * From decompiled code: frees next logical disk if not open.
  */
-- (IOReturn)__freePartitions
+- (IOReturn)_freePartitions
 {
 	id nextDisk;
 	const char *name;
@@ -794,7 +781,7 @@ cleanup:
 	// Must be partition 0 to free partitions (offset 0x150)
 	if (_partition != 0) {
 		name = (const char *)[self name];
-		IOLog("%s: __freePartitions on partition != 0", name);
+		IOLog("%s: _freePartitions on partition != 0\n", name);
 		return (IOReturn)0xfffffd2b;  // IO_R_BUSY
 	}
 
@@ -806,7 +793,7 @@ cleanup:
 	// Check if the next disk is open
 	if ([nextDisk isOpen]) {
 		name = (const char *)[self name];
-		IOLog("%s: __freePartitions with open partitions", name);
+		IOLog("%s: _freePartitions with open partitions\n", name);
 		return (IOReturn)0xfffffd2b;  // IO_R_BUSY
 	}
 
@@ -823,7 +810,7 @@ cleanup:
  * Initialize a partition.
  * From decompiled code: sets up partition with data from disktab.
  */
-- (IOReturn)__initPartition : (int)partition
+- (IOReturn)_initPartition : (int)partition
 		    disktab : (struct disktab *)dt
 {
 	id physicalDisk;
@@ -876,7 +863,7 @@ cleanup:
  * Probe for disk label.
  * From decompiled code: creates partition objects for valid partitions.
  */
-- (IOReturn)__probeLabel : (BOOL)needsLabel
+- (IOReturn)_probeLabel : (BOOL)needsLabel
 {
 	id physicalDisk;
 	id partition;
@@ -891,7 +878,7 @@ cleanup:
 	if (_partition == 0) {
 		// Get disktab from structure at offset 0x2c
 		dt = (struct disktab *)((char *)needsLabel + 0x2c);
-		[self __initPartition:0 disktab:dt];
+		[self _initPartition:0 disktab:dt];
 
 		// Create partitions 1-6 if valid
 		previousPartition = self;
@@ -899,9 +886,9 @@ cleanup:
 			partEntry = &dt->d_partitions[i];
 
 			if (partEntry->p_size > 0) {
-				partition = [[IODiskPartitionNEW alloc] init];
+				partition = [IODiskPartitionNEW new];
 				[partition connectToPhysicalDisk:physicalDisk];
-				[partition __initPartition:i disktab:dt];
+				[partition _initPartition:i disktab:dt];
 				[partition init];
 				[partition registerDevice];
 				[previousPartition setLogicalDisk:partition];
@@ -910,7 +897,7 @@ cleanup:
 			}
 		}
 	} else {
-		IOLog("%s: __probeLabel on partition != 0",
+		IOLog("%s:  _probeLabel on partition != 0\n",
 		      (const char *)[self name]);
 	}
 
@@ -921,28 +908,28 @@ cleanup:
  * Check if configuration is safe for destructive operations.
  * From decompiled code: checks partition, block devices, and other opens.
  */
-- (IOReturn)_checkSafeConfig : (const char *)operation
+- (IOReturn)checkSafeConfig : (const char *)operation
 {
 	const char *name;
 
 	// Must be partition 0 for destructive operations (offset 0x150)
 	if (_partition != 0) {
 		name = (const char *)[self name];
-		IOLog("%s: %s on partition != 0", name, operation);
+		IOLog("%s: %s on partition != 0\n", name, operation);
 		return (IOReturn)0xfffffd2b;  // IO_R_BUSY
 	}
 
 	// Check if any block devices are open
-	if ([self _isAnyBlockDevOpen]) {
+	if ([self isAnyBlockDevOpen]) {
 		name = (const char *)[self name];
-		IOLog("%s: %s with open block devices", name, operation);
+		IOLog("%s: %s with open block devices\n", name, operation);
 		return (IOReturn)0xfffffd2b;  // IO_R_BUSY
 	}
 
 	// Check if any other partitions are open
-	if ([self _isAnyOtherOpen]) {
+	if ([self isAnyOtherOpen]) {
 		name = (const char *)[self name];
-		IOLog("%s: %s with other partitions open", name, operation);
+		IOLog("%s: %s with other partitions open\n", name, operation);
 		return (IOReturn)0xfffffd2b;  // IO_R_BUSY
 	}
 
@@ -953,7 +940,7 @@ cleanup:
  * Check if any block device is open.
  * From decompiled code: iterates through all partitions.
  */
-- (BOOL)_isAnyBlockDevOpen
+- (BOOL)isAnyBlockDevOpen
 {
 	id physicalDisk;
 	id partition;
@@ -968,30 +955,6 @@ cleanup:
 			return NO;
 		}
 		if ([partition isBlockDeviceOpen]) {
-			return YES;
-		}
-	}
-}
-
-/*
- * Check if any other partition has devices open.
- * Similar to isAnyBlockDevOpen but checks raw devices.
- */
-- (BOOL)_isAnyOtherOpen
-{
-	id physicalDisk;
-	id partition;
-
-	// Get physical disk and iterate through all partitions
-	physicalDisk = [self physicalDisk];
-	partition = physicalDisk;
-
-	while (1) {
-		partition = [partition nextLogicalDisk];
-		if (partition == nil) {
-			return NO;
-		}
-		if ([partition isRawDeviceOpen]) {
 			return YES;
 		}
 	}

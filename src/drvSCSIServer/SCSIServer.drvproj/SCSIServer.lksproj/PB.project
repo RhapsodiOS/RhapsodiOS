@@ -3,17 +3,20 @@
     FILESTABLE = {
         CLASSES = (
             SCSIServer.m,
-            IOSCSISession.m
+            IOSCSISession.m,
+            IOTask.m
         );
         H_FILES = (
             SCSIServer.h,
-            IOSCSISession.h
+            IOSCSISession.h,
+            IOTask.h
         );
         OTHER_SOURCES = (
             Makefile,
             Makefile.preamble,
             Makefile.driver_preamble,
-            Makefile.postamble
+            Makefile.postamble,
+            IOSCSISessionMig.defs
         );
         PUBLIC_HEADERS = ();
     };

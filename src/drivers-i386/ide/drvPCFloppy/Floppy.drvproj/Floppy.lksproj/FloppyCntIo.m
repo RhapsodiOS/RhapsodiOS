@@ -13,7 +13,28 @@
 #import <bsd/sys/systm.h>
 #import <mach/message.h>
 #import <mach/mach_error.h>
-#import <stdio.h>
+/* Use kernel printf from <sys/systm.h>; do not import <stdio.h>. */
+
+/*
+ * FIFO threshold and extended-FIFO configuration used to build the
+ * CONFIGURE command byte. These are `static` globals in the reference
+ * driver's __DATA segment (_cf2_fifo_value, _cf2_efifo). Initialized here
+ * to reproduce the value this driver previously hardcoded (0x18, i.e.
+ * fifo=8, efifo=0); the reference may set these elsewhere at runtime.
+ */
+static unsigned char cf2_fifo_value = 8;
+static unsigned char cf2_efifo = 0;
+
+/*
+ * Raw FDC I/O result codes. These are not driverkit IOReturn values --
+ * fcWaitPio:/fcWaitIntr:timeout: pass them straight through fcGetByte:/
+ * fcSendByte:/floppyInterrupt: up to sendCmd: in FloppyCmds.m, which
+ * compares against these same literal ints directly (see its own
+ * "// Bad phase" / "// Timeout" comments).
+ */
+#define FC_TIMEOUT	1	/* fcWaitPio:/fcWaitIntr:timeout: gave up waiting */
+#define FC_BAD_PHASE	10	/* fcWaitPio: saw the wrong DIO direction (phase error) */
+#define FC_NO_RESULTS	0x12	/* sendCmd: got no result bytes back from the FDC */
 
 @implementation FloppyController(IO)
 
@@ -29,30 +50,33 @@
  * This is necessary after certain operations that may leave the controller
  * in a polling state.
  */
-- (IOReturn)_clearPollIntr
+- (IOReturn)clearPollIntr
 {
 	unsigned char local_buffer[96];
 	unsigned char result_byte;
+	IOReturn result;
 	int outer_loop;
 	int inner_loop;
 
 	// Wait for interrupt with 500ms timeout
-	[self _fcWaitIntr:local_buffer timeout:500];
+	[self fcWaitIntr:local_buffer timeout:500];
 
 	// Loop 4 times to clear all possible pending interrupts
 	for (outer_loop = 0; outer_loop < 4; outer_loop++) {
 		// Read 2 result bytes (ST0 and PCN from previous SENSE INTERRUPT STATUS)
 		for (inner_loop = 0; inner_loop < 2; inner_loop++) {
-			[self _fcGetByte:&result_byte];
+			result = [self fcGetByte:&result_byte];
 		}
 
 		// Send SENSE INTERRUPT STATUS command (0x08) for first 3 iterations
 		if (outer_loop < 3) {
-			[self _fcSendByte:0x08];
+			result = [self fcSendByte:0x08];
 		}
 	}
 
-	return IO_R_SUCCESS;
+	// Reference has no explicit return here; it just falls off the end
+	// with whatever the last fcGetByte:/fcSendByte: call left in eax.
+	return result;
 }
 
 /*
@@ -76,7 +100,7 @@
  *   Byte 2: configByte (configuration settings)
  *   Byte 3: 0x00 (precompensation start track)
  */
-- (IOReturn)_doConfigure:(unsigned char)configByte
+- (IOReturn)doConfigure:(unsigned char)configByte
 {
 	unsigned char cmdBuffer[96];
 	IOReturn result;
@@ -95,7 +119,7 @@
 	// local_58 is at offset -0x58 from buffer start, which is 0x0c into the 96-byte buffer
 	cmdBuffer[0x0c] = 0x13;        // Command: CONFIGURE
 	cmdBuffer[0x0d] = 0;           // Byte 1: reserved (0)
-	cmdBuffer[0x0e] = 0x18;        // Byte 2: configuration byte (implied seeks enabled, FIFO enabled)
+	cmdBuffer[0x0e] = cf2_fifo_value | 0x10 | cf2_efifo;  // Byte 2: configuration byte (implied seeks enabled, FIFO enabled)
 	cmdBuffer[0x0f] = 0;           // Byte 3: precompensation (0)
 
 	// Set timeout at offset 0x04 (local_60)
@@ -104,11 +128,11 @@
 	// Set unknown field at offset 0x08 (local_5c)
 	*(unsigned int *)(cmdBuffer + 0x08) = 1;
 
-	// Set command byte count at offset 0x4c (local_48)
-	*(unsigned int *)(cmdBuffer + 0x4c) = 4;
+	// Set command byte count at offset 0x1c
+	*(unsigned int *)(cmdBuffer + 0x1c) = 4;
 
 	// Send command to controller
-	result = [self _sendCmd:cmdBuffer];
+	result = [self sendCmd:cmdBuffer];
 
 	return result;
 }
@@ -128,7 +152,7 @@
  * Returns:
  *   Always returns 0 (IO_R_SUCCESS)
  */
-- (IOReturn)_doPerpendicular:(unsigned char)perpendicularMode gap:(unsigned char)gap
+- (IOReturn)doPerpendicular:(unsigned char)perpendicularMode gap:(unsigned char)gap
 {
 	// From decompiled code: this method simply returns 0
 	// No perpendicular mode support is implemented
@@ -159,7 +183,7 @@
  *   2 = 250 kbps (MFM)
  *   3 = 1 Mbps (MFM)
  */
-- (IOReturn)_doSpecify:(unsigned int)density
+- (IOReturn)doSpecify:(unsigned int)density
 {
 	unsigned char cmdBuffer[96];
 	unsigned char dataRateByte;
@@ -209,15 +233,15 @@
 	*(unsigned int *)(cmdBuffer + 0x04) = 5000;  // timeout
 	*(unsigned int *)(cmdBuffer + 0x08) = 1;
 
-	// Set command byte count at offset 0x4c
-	*(unsigned int *)(cmdBuffer + 0x4c) = 3;
+	// Set command byte count at offset 0x1c
+	*(unsigned int *)(cmdBuffer + 0x1c) = 3;
 
 	// Send SPECIFY command
-	result = [self _sendCmd:cmdBuffer];
+	result = [self sendCmd:cmdBuffer];
 
 	// If controller supports CONFIGURE and density is 3 (1Mbps), send PERPENDICULAR command
 	if (((_flags & 0x02) != 0) && (density == 3)) {
-		result = [self _doPerpendicular:1 gap:perpendicularGap];
+		result = [self doPerpendicular:1 gap:perpendicularGap];
 	}
 
 	// Update density setting at offset 0x139
@@ -253,14 +277,14 @@
  *   - Bit 4: CB (command busy)
  *   - Bits 0-3: Drive busy flags
  */
-- (IOReturn)_fcGetByte:(unsigned char *)bytePtr
+- (IOReturn)fcGetByte:(unsigned char *)bytePtr
 {
 	IOReturn result;
 	unsigned char dataByte;
 
 	// Wait for controller ready with DIO=1 (data direction: FDC->CPU)
 	// 0x40 = bit 6 (DIO) which must be set for reading
-	result = [self _fcWaitPio:0x40];
+	result = [self fcWaitPio:0x40];
 
 	if (result == IO_R_SUCCESS) {
 		// Read byte from data FIFO register (port 0x3F5)
@@ -287,13 +311,13 @@
  * I/O Registers:
  *   0x3F5 - Data FIFO (write when DIO=0)
  */
-- (IOReturn)_fcSendByte:(unsigned char)byte
+- (IOReturn)fcSendByte:(unsigned char)byte
 {
 	IOReturn result;
 
 	// Wait for controller ready with DIO=0 (data direction: CPU->FDC)
 	// Pass 0 to wait for RQM=1 and DIO=0
-	result = [self _fcWaitPio:0];
+	result = [self fcWaitPio:0];
 
 	if (result == IO_R_SUCCESS) {
 		// Write byte to data FIFO register (port 0x3F5)
@@ -323,9 +347,9 @@
  * Returns:
  *   IOReturn status code:
  *     0 (IO_R_SUCCESS) if interrupt received
- *     1 (IO_R_TIMEOUT) if timeout occurred
+ *     1 (FC_TIMEOUT) if timeout occurred
  */
-- (IOReturn)_fcWaitIntr:(void *)cmdParams timeout:(unsigned int)timeout
+- (IOReturn)fcWaitIntr:(void *)cmdParams timeout:(unsigned int)timeout
 {
 	BOOL isEISA;
 	msg_header_t msg;
@@ -340,19 +364,22 @@
 	}
 
 	// Set up message header for receiving interrupt
-	msg.msg_local_port = _interruptPort;  // Port at offset 0x134
+	msg.msg_local_port = _fdcInterruptPort;  // Port at offset 0x134
 	msg.msg_size = 0x18;  // Message size (24 bytes)
 
 	// Wait for interrupt message with timeout
-	msgResult = msg_receive(&msg, MSG_OPTION_NONE, timeout);
+	/* RCV_TIMEOUT, not MSG_OPTION_NONE (0x2f6c: push 100h): without it
+	   msg_receive ignores the timeout and waits forever. */
+	msgResult = msg_receive(&msg, RCV_TIMEOUT, timeout);
 
-	// Check if message received successfully or timed out
-	if ((msgResult == KERN_SUCCESS) || (msgResult == RCV_TIMED_OUT)) {
+	// A message arrived if the receive succeeded, or if it failed only
+	// because our buffer was too small for it (0x2f81: cmp eax, -204).
+	if ((msgResult == KERN_SUCCESS) || (msgResult == RCV_TOO_LARGE)) {
 		// Call interrupt handler to process the interrupt
-		result = [self _floppyInterrupt:cmdParams];
+		result = [self floppyInterrupt:cmdParams];
 	} else {
 		// Message receive error (timeout)
-		result = IO_R_TIMEOUT;
+		result = FC_TIMEOUT;
 	}
 
 	return result;
@@ -374,8 +401,8 @@
  * Returns:
  *   IOReturn status code:
  *     0 (IO_R_SUCCESS) if controller ready
- *     1 (IO_R_TIMEOUT) if timeout occurred
- *     10 (IO_R_VM_FAILURE) if DIO direction mismatch (phase error)
+ *     1 (FC_TIMEOUT) if timeout occurred
+ *     10 (FC_BAD_PHASE) if DIO direction mismatch (phase error)
  *
  * I/O Registers:
  *   0x3F4 - Main Status Register (MSR)
@@ -387,7 +414,7 @@
  *   - Bit 4: CB (command busy)
  *   - Bits 0-3: Drive busy flags
  */
-- (IOReturn)_fcWaitPio:(unsigned int)dioMask
+- (IOReturn)fcWaitPio:(unsigned int)dioMask
 {
 	unsigned char msrByte;
 	int result;
@@ -407,7 +434,7 @@
 			// Controller is ready, check DIO bit direction
 			if (dioMask != (msrByte & 0x40)) {
 				// DIO direction mismatch - phase error
-				result = IO_R_VM_FAILURE;  // 10
+				result = FC_BAD_PHASE;  // 10
 			}
 			break;
 		}
@@ -424,7 +451,7 @@
 
 	// Check if we timed out
 	if (timeRemaining == 0) {
-		result = IO_R_TIMEOUT;  // 1
+		result = FC_TIMEOUT;  // 1
 	}
 
 	return result;
@@ -444,13 +471,14 @@
  * Returns:
  *   IOReturn status code:
  *     0 (IO_R_SUCCESS) if interrupt handled successfully
- *     1 (IO_R_TIMEOUT) if timeout waiting for controller ready
+ *     1 (FC_TIMEOUT) if timeout waiting for controller ready
+ *     otherwise the raw FDC status code fcSendByte: failed with
  *
  * Command parameters structure offsets used:
  *   0x28 - Result bytes buffer (stores interrupt result byte at offset 3)
  *   0x4c - Result byte count (incremented)
  */
-- (IOReturn)_floppyInterrupt:(void *)cmdParams
+- (IOReturn)floppyInterrupt:(void *)cmdParams
 {
 	unsigned char msrByte;
 	unsigned char resultByte;
@@ -473,7 +501,7 @@
 	// Check if we timed out
 	if (retryCount == 10000) {
 		// Timeout - set error flag
-		result = IO_R_TIMEOUT;
+		result = FC_TIMEOUT;
 		goto set_error_flag;
 	}
 
@@ -481,7 +509,7 @@
 	if ((msrByte & 0x40) == 0) {
 		// DIO=0 (CPU->FDC): Controller wants us to send a command
 		// Send SENSE INTERRUPT STATUS command (0x08)
-		result = [self _fcSendByte:0x08];
+		result = [self fcSendByte:0x08];
 		if (result != IO_R_SUCCESS) {
 			goto set_error_flag;
 		}
@@ -519,9 +547,12 @@ set_error_flag:
  * and if found, processes them and reads any remaining result bytes.
  *
  * Returns:
- *   Always returns 0 (IO_R_SUCCESS)
+ *   0 (IO_R_SUCCESS) if no message was pending, or floppyInterrupt:'s
+ *   result if one was. The drain loop's own fcGetByte: failures are not
+ *   propagated (matches the disassembly at 0x2e7c: only the initial
+ *   floppyInterrupt: call's return value reaches the epilogue).
  */
-- (IOReturn)_flushIntrMsgs
+- (IOReturn)flushIntrMsgs
 {
 	msg_header_t msg;
 	kern_return_t msgResult;
@@ -533,21 +564,24 @@ set_error_flag:
 	IOReturn getByteResult;
 
 	// Set up message header for receiving interrupt
-	msg.msg_local_port = _interruptPort;  // Port at offset 0x134
+	msg.msg_local_port = _fdcInterruptPort;  // Port at offset 0x134
 	msg.msg_size = 0x18;  // Message size (24 bytes)
 
 	// Try to receive interrupt message with no timeout (non-blocking)
-	msgResult = msg_receive(&msg, MSG_OPTION_NONE, 0);
+	/* RCV_TIMEOUT with a zero timeout is what makes this poll rather than
+	   block (0x2e9a: push 100h, 0x2e98: push 0). */
+	msgResult = msg_receive(&msg, RCV_TIMEOUT, 0);
 
-	// Check if message received successfully or timed out
-	if ((msgResult == KERN_SUCCESS) || (msgResult == RCV_TIMED_OUT)) {
+	// A message arrived if the receive succeeded, or if it failed only
+	// because our buffer was too small for it (0x2eaf: cmp eax, -204).
+	if ((msgResult == KERN_SUCCESS) || (msgResult == RCV_TOO_LARGE)) {
 		// Got a stray interrupt - process it
 
 		// Zero out command buffer
 		bzero(cmdBuffer, 0x60);
 
 		// Call interrupt handler to process the interrupt
-		intrResult = [self _floppyInterrupt:cmdBuffer];
+		intrResult = [self floppyInterrupt:cmdBuffer];
 
 		if (intrResult == IO_R_SUCCESS) {
 			// Read any remaining result bytes from the FIFO
@@ -560,9 +594,10 @@ set_error_flag:
 
 			// Read up to 16 total result bytes
 			for (i = resultByteCount; i < 0x10; i++) {
-				getByteResult = [self _fcGetByte:resultBytesPtr];
+				getByteResult = [self fcGetByte:resultBytesPtr];
 				if (getByteResult != IO_R_SUCCESS) {
-					// No more bytes available
+					// No more bytes available; the reference does not
+					// propagate this failure, unlike floppyInterrupt:'s.
 					break;
 				}
 				resultBytesPtr++;
@@ -571,9 +606,11 @@ set_error_flag:
 
 		// Log the stray interrupt
 		printf("FloppyCntIo:flushIntMsgs:Stray Interrupt\n");
+
+		return intrResult;
 	}
 
-	// Always return success
+	// No message was pending
 	return IO_R_SUCCESS;
 }
 
@@ -608,13 +645,14 @@ set_error_flag:
  *   - Bit 2: Head address
  *   - Bits 0-1: Drive select
  */
-- (IOReturn)_getDriveStatus:(void *)cmdParams
+- (IOReturn)getDriveStatus:(void *)cmdParams
 {
 	unsigned char *statusFlagsPtr;
 	unsigned char driveNum;
 	unsigned char motorBit;
 	unsigned char dirByte;
 	unsigned char cmdBuffer[96];
+	unsigned char writeProtectBit;
 	IOReturn result;
 	int density;
 
@@ -631,7 +669,7 @@ set_error_flag:
 	motorBit = (unsigned char)(0x10 << (driveNum & 0x1f));
 	if ((motorBit & _dorRegister) == 0) {
 		// Motor is off, turn it on
-		[self _doMotorOn:driveNum];
+		[self doMotorOn:driveNum];
 	} else {
 		// Motor is already on, set bit 2 of status flags
 		*statusFlagsPtr |= 0x04;
@@ -657,7 +695,7 @@ set_error_flag:
 
 	// Set command parameters
 	*(unsigned int *)(cmdBuffer + 0x08) = 1;  // Command type or flags
-	*(unsigned int *)(cmdBuffer + 0x4c) = 2;  // Command byte count
+	*(unsigned int *)(cmdBuffer + 0x1c) = 2;  // Command byte count
 
 	// Build command bytes at offset 0x0c
 	cmdBuffer[0x0c] = (cmdBuffer[0x0c] & 0xc0) | 0x4a;  // Command with flags (likely 0x04 | MT flag)
@@ -666,43 +704,35 @@ set_error_flag:
 	// Set timeout
 	*(unsigned int *)(cmdBuffer + 0x04) = 500;
 
-	// Set expected result byte count at offset 0x2c
-	*(unsigned int *)(cmdBuffer + 0x2c) = 7;
+	// Set expected result byte count at offset 0x38
+	*(unsigned int *)(cmdBuffer + 0x38) = 7;
 
 	// Send the command
-	result = [self _sendCmd:cmdBuffer];
+	result = [self sendCmd:cmdBuffer];
 
-	// Check result
-	if (result == IO_R_TIMEOUT) {
-		goto handle_timeout_or_phase_error;
-	} else if (result == IO_R_VM_FAILURE) {  // 10 = phase error
-		goto handle_timeout_or_phase_error;
-	} else if (result != IO_R_SUCCESS) {
-		goto handle_error;
-	}
-
-	// Success path
-	goto get_write_protect_status;
-
-handle_timeout_or_phase_error:
-	if ((result != IO_R_NO_DEVICE) && (result != IO_R_VM_FAILURE)) {
-		goto handle_error;
-	}
-	// Set error flag (bit 0 of _flags)
-	_flags |= 0x01;
-
-handle_error:
-	if (result == IO_R_TIMEOUT) {
+	// Check result: disassembly (0x2c19-0x2c30) branches on the raw FDC
+	// status codes sendCmd: returns, not driverkit constants. FC_TIMEOUT
+	// sets only the timeout flag; FC_NO_RESULTS/FC_BAD_PHASE set only the
+	// controller-hung flag. Any other result (including success) skips
+	// straight to the write-protect check below.
+	if (result == FC_TIMEOUT) {
 		// Set timeout flag (bit 2 of _flags)
 		_flags |= 0x04;
+	} else if (result == FC_NO_RESULTS || result == FC_BAD_PHASE) {
+		// Set error/hung flag (bit 0 of _flags)
+		_flags |= 0x01;
+	} else {
+		// Success path
+		goto get_write_protect_status;
 	}
 
 	// Clear bits 0-1 of status flags
 	*statusFlagsPtr &= 0xfc;
 	// Clear bit 2 (motor status)
 	*statusFlagsPtr &= 0xfb;
-	// Turn off motor
-	[self _doMotorOff:driveNum];
+	// Turn off motor (always returns IO_R_SUCCESS, which is what the
+	// disassembly leaves in eax here)
+	[self doMotorOff:driveNum];
 	return IO_R_SUCCESS;
 
 simplified_status_check:
@@ -717,7 +747,7 @@ get_write_protect_status:
 
 	// Set command parameters
 	*(unsigned int *)(cmdBuffer + 0x08) = 1;
-	*(unsigned int *)(cmdBuffer + 0x4c) = 2;  // Command byte count
+	*(unsigned int *)(cmdBuffer + 0x1c) = 2;  // Command byte count
 
 	// Build command bytes
 	cmdBuffer[0x0c] = 0x04;  // SENSE DRIVE STATUS command
@@ -726,24 +756,29 @@ get_write_protect_status:
 	// Set timeout
 	*(unsigned int *)(cmdBuffer + 0x04) = 2000;
 
-	// Set expected result byte count at offset 0x2c
-	*(unsigned int *)(cmdBuffer + 0x2c) = 1;
+	// Set expected result byte count at offset 0x38
+	*(unsigned int *)(cmdBuffer + 0x38) = 1;
 
 	// Send the command
-	result = [self _sendCmd:cmdBuffer];
+	result = [self sendCmd:cmdBuffer];
 
 	if (result != IO_R_SUCCESS) {
-		return IO_R_SUCCESS;
+		return result;
 	}
 
 	// Clear bit 3 of status flags
 	*statusFlagsPtr &= 0xf7;
 
 	// Extract write protect bit (bit 3 of ST3 at offset 0x40 in cmdBuffer)
-	// and set bit 3 of status flags if write protected
-	*statusFlagsPtr |= (*(unsigned char *)(cmdBuffer + 0x40) >> 3) & 0x08;
+	// and set bit 3 of status flags if write protected. Disassembly
+	// (0x2cca-0x2cd5) leaves this same byte (0 or 8) in eax at the
+	// epilogue instead of an explicit IO_R_SUCCESS; every caller of
+	// getDriveStatus: discards the return value, so this is otherwise
+	// inert, but it is what the reference actually returns.
+	writeProtectBit = (*(unsigned char *)(cmdBuffer + 0x40) >> 3) & 0x08;
+	*statusFlagsPtr |= writeProtectBit;
 
-	return IO_R_SUCCESS;
+	return writeProtectBit;
 }
 
 /*
@@ -790,7 +825,7 @@ get_write_protect_status:
 	// Reset loop - retries if CONFIGURE fails
 	do {
 		// Flush any pending interrupt messages
-		[self _flushIntrMsgs];
+		[self flushIntrMsgs];
 
 		// Assert reset by clearing DOR (all bits = 0, including reset bit 2)
 		_dorRegister = 0;
@@ -839,7 +874,7 @@ get_write_protect_status:
 		// UNLOCK();
 
 		// Clear polling interrupts generated by reset
-		[self _clearPollIntr];
+		[self clearPollIntr];
 
 		// Determine density for CONFIGURE command
 		if (_currentDensity == 0) {
@@ -849,7 +884,7 @@ get_write_protect_status:
 		}
 
 		// Send CONFIGURE command
-		configResult = [self _doConfigure:density];
+		configResult = [self doConfigure:density];
 
 		if (configResult == IO_R_SUCCESS) {
 			// CONFIGURE succeeded, continue with SPECIFY
@@ -862,7 +897,7 @@ get_write_protect_status:
 			}
 
 			// Send SPECIFY command
-			specifyResult = [self _doSpecify:density];
+			specifyResult = [self doSpecify:density];
 
 			// Update error flag (bit 0 of _flags) based on SPECIFY result
 			_flags &= 0xfe;  // Clear bit 0
@@ -893,12 +928,12 @@ get_write_protect_status:
 			// Recalibrate drive 0 if motor A is not already on
 			if ((_dorRegister & 0x10) == 0) {
 				// Motor A is off, turn it on first
-				[self _doMotorOn:0];
-				[self _recal];
-				[self _doMotorOff:0];
+				[self doMotorOn:0];
+				[self recal];
+				[self doMotorOff:0];
 			} else {
 				// Motor A is already on, just recalibrate
-				[self _recal];
+				[self recal];
 			}
 
 			return specifyResult;
@@ -927,7 +962,7 @@ get_write_protect_status:
  * The command waits for an interrupt (with 20 second timeout) and expects
  * 2 result bytes from SENSE INTERRUPT STATUS.
  */
-- (IOReturn)_recal
+- (IOReturn)recal
 {
 	unsigned char cmdBuffer[96];
 	IOReturn result;
@@ -945,21 +980,21 @@ get_write_protect_status:
 	// Set command parameters
 	*(unsigned int *)(cmdBuffer + 0x08) = 1;  // Command type/flags
 
-	// Set command byte count at offset 0x4c
-	*(unsigned int *)(cmdBuffer + 0x4c) = 2;
+	// Set command byte count at offset 0x1c
+	*(unsigned int *)(cmdBuffer + 0x1c) = 2;
 
 	// Set timeout at offset 0x04 (20 seconds)
 	*(unsigned int *)(cmdBuffer + 0x04) = 20000;
 
-	// Set expected result byte count at offset 0x2c
-	*(unsigned int *)(cmdBuffer + 0x2c) = 2;
+	// Set expected result byte count at offset 0x38
+	*(unsigned int *)(cmdBuffer + 0x38) = 2;
 
-	// Clear additional fields at offsets 0x44 and 0x40
-	*(unsigned int *)(cmdBuffer + 0x44) = 0;
-	*(unsigned int *)(cmdBuffer + 0x40) = 0;
+	// Clear additional fields at offsets 0x20 and 0x24
+	*(unsigned int *)(cmdBuffer + 0x20) = 0;
+	*(unsigned int *)(cmdBuffer + 0x24) = 0;
 
 	// Send the RECALIBRATE command
-	result = [self _sendCmd:cmdBuffer];
+	result = [self sendCmd:cmdBuffer];
 
 	// Wait 30ms for mechanical settling
 	IOSleep(30);
@@ -990,7 +1025,7 @@ get_write_protect_status:
  * The command waits for an interrupt (with 500ms timeout) and expects
  * 2 result bytes from SENSE INTERRUPT STATUS.
  */
-- (IOReturn)_seek:(unsigned int)track head:(unsigned int)head density:(unsigned int)density
+- (IOReturn)seek:(unsigned int)track head:(unsigned int)head density:(unsigned int)density
 {
 	unsigned char cmdBuffer[96];
 	IOReturn result;
@@ -1004,8 +1039,8 @@ get_write_protect_status:
 	// Set command parameters
 	*(unsigned int *)(cmdBuffer + 0x08) = 1;  // Command type/flags
 
-	// Set command byte count at offset 0x4c
-	*(unsigned int *)(cmdBuffer + 0x4c) = 3;
+	// Set command byte count at offset 0x1c
+	*(unsigned int *)(cmdBuffer + 0x1c) = 3;
 
 	// Build SEEK command at offset 0x0c
 	cmdBuffer[0x0c] = 0x0f;  // SEEK command
@@ -1020,15 +1055,15 @@ get_write_protect_status:
 	// Set timeout at offset 0x04 (500ms)
 	*(unsigned int *)(cmdBuffer + 0x04) = 500;
 
-	// Set expected result byte count at offset 0x2c
-	*(unsigned int *)(cmdBuffer + 0x2c) = 2;
+	// Set expected result byte count at offset 0x38
+	*(unsigned int *)(cmdBuffer + 0x38) = 2;
 
-	// Clear additional fields at offsets 0x44 and 0x40
-	*(unsigned int *)(cmdBuffer + 0x44) = 0;
-	*(unsigned int *)(cmdBuffer + 0x40) = 0;
+	// Clear additional fields at offsets 0x20 and 0x24
+	*(unsigned int *)(cmdBuffer + 0x20) = 0;
+	*(unsigned int *)(cmdBuffer + 0x24) = 0;
 
 	// Send the SEEK command
-	result = [self _sendCmd:cmdBuffer];
+	result = [self sendCmd:cmdBuffer];
 
 	return result;
 }

@@ -7,38 +7,25 @@
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
 #import <driverkit/interruptMsg.h>
-#import <driverkit/i386/ioPorts.h>
 #import <bsd/dev/i386/PCPointer.h>
-#import <bsd/dev/i386/kbd_entries.h>
 #import <mach/mach_traps.h>
-#import <objc/NXLock.h>
 
-/* Forward declarations for functions in this file */
-BOOL _keyboardDataPresent(void);
-PS2KeyboardEvent *_scancodeToKeyEvent(unsigned char scancode);
-PS2KeyboardEvent *_NewStealKeyboardEvent(void);
+/*
+ * Publishes the driver's keyboard entry points to the kernel.  Declared here
+ * because <bsd/dev/i386/kbd_entries.h> is KERNEL_PRIVATE only.
+ */
+extern void register_keyboard_entries(void *list);
 
- /*
- * The protocol we need as an indirect device.
+/*
+ * The protocol we need of our direct device as an indirect device.
  */
 static Protocol *protocols[] = {
-	@protocol(PS2Controller),
-	@protocol(PCKeyboard),
+	@protocol(PS2ControllerExported),
 	nil
 };
 
-/* Keyboard bit vector - tracks which keys are currently pressed
- * 128 keys tracked in 4 words (32 bits each) */
-static unsigned int __kbdBitVector[4] = {0, 0, 0, 0};
-
-/* Static event structure for scancode conversion */
-static PS2KeyboardEvent _event = {0, 0, 0, 0};
-
-/* Extended scancode counter */
-static unsigned char _extendCount = 0;
-
-/* Additional keyboard state - appears to be at a higher offset */
-static unsigned char _keyboardState[32] = {0};
+/* Keyboard bit vector - tracks which of the 128 keys are currently pressed */
+static unsigned int _kbdBitVector[4];
 
 @implementation PS2Keyboard
 
@@ -46,9 +33,13 @@ static unsigned char _keyboardState[32] = {0};
 
 + (int)deviceStyle
 {
-    /* Return the device style for this driver
-     * Returns 1 for standard keyboard device */
+    /* Indirect device */
     return 1;
+}
+
++ (Protocol **)requiredProtocols
+{
+    return protocols;
 }
 
 + (BOOL)probe:(IODeviceDescription *)deviceDescription
@@ -57,9 +48,8 @@ static unsigned char _keyboardState[32] = {0};
     id keyboardInstance;
     IOConfigTable *configTable;
     BOOL result;
-    unsigned int keyboardEntries[2];
+    void *keyboardEntries[2];
 
-    /* Initialize result to NO */
     result = NO;
 
     /* Get the direct device (PS2Controller) from the device description */
@@ -68,73 +58,88 @@ static unsigned char _keyboardState[32] = {0};
     /* Allocate and initialize a PS2Keyboard instance with the controller */
     keyboardInstance = [[self alloc] initWithController:directDevice];
 
-    /* Check if instance was created successfully */
     if (keyboardInstance != nil) {
-        /* Get the config table from device description */
         configTable = [deviceDescription configTable];
 
-        /* Read configuration from the table */
         result = [keyboardInstance readConfigTable:configTable];
 
         if (result == NO) {
-            /* Configuration failed - free the instance */
             [keyboardInstance free];
         } else {
-            /* Configuration succeeded - register keyboard entries */
-            keyboardEntries[0] = 0;
-            keyboardEntries[1] = 0x910;  /* 2320 decimal */
+            /* struct keyboard_entries { keyboard_reboot, steal_keyboard_event } */
+            keyboardEntries[0] = NULL;
+            keyboardEntries[1] = (void *)NewStealKeyboardEvent;
 
-            _register_keyboard_entries(keyboardEntries);
+            register_keyboard_entries(keyboardEntries);
         }
     }
 
     return result;
 }
 
-+ (Protocol **)requiredProtocols
-{
-    return protocols;
-}
-
 /* Instance Methods */
+
+- (BOOL)readConfigTable:(IOConfigTable *)configTable
+{
+    const char *interfaceStr;
+    const char *handlerStr;
+    int interfaceValue;
+    int handlerValue;
+
+    if (configTable == nil) {
+        IOLog("PS2Keyboard kbdInit: no configuration table\n");
+        return NO;
+    }
+
+    /* Read "Interface" key from config table */
+    interfaceStr = [configTable valueForStringKey:"Interface"];
+    if (interfaceStr == NULL) {
+        IOLog("PS2Keyboard kbdInit: no Interface ID; use default\n");
+        interfaceValue = 3;
+    } else {
+        interfaceValue = PCPatoi((char *)interfaceStr);
+    }
+
+    interfaceId = interfaceValue;
+
+    /* Read "Handler ID" key from config table */
+    handlerStr = [configTable valueForStringKey:"Handler ID"];
+    if (handlerStr == NULL) {
+        IOLog("PS2Keyboard kbdInit: no Handler ID; use default\n");
+        handlerValue = 0;
+    } else {
+        handlerValue = PCPatoi((char *)handlerStr);
+    }
+
+    handlerId = handlerValue;
+
+    return YES;
+}
 
 - initWithController:(id)controllerInstance
 {
     unsigned char commandByte;
 
-    /* Call superclass initializer */
     [super init];
 
     /* Store the controller reference at offset 0x108 */
     controller = controllerInstance;
 
-    /* Initialize owner lock */
-    ownerLock = [[NXLock alloc] init];
-    keyboardOwner = nil;
-    desiredOwner = nil;
-
-    /* Initialize event queue */
-    eventCount = 0;
-
-    /* Initialize IDs */
-    interfaceID = 0;
-    handlerID = 0;
-
     /* Clear any pending data from the PS/2 controller output buffer */
     clearOutputBuffer();
 
     /* Read the current PS/2 controller command byte */
-    _sendControllerCommand(0x20);  /* Command: Read Command Byte */
-    commandByte = _getKeyboardData();
+    sendControllerCommand(0x20);  /* Command: Read Command Byte */
+    commandByte = getKeyboardData();
 
-    /* Write modified command byte back to controller */
-    _sendControllerCommand(0x60);  /* Command: Write Command Byte */
+    /* Write the modified command byte back to the controller */
+    sendControllerCommand(0x60);  /* Command: Write Command Byte */
 
-    /* Modify command byte:
-     * & 0xEF clears bit 4 (disable mouse interface)
-     * | 0x41 sets bit 0 (enable keyboard interrupt) and bit 6 (translate scancodes)
+    /*
+     * & 0xEF clears bit 4 (enable the keyboard interface)
+     * | 0x41 sets bit 0 (keyboard interrupt) and bit 6 (translate scancodes)
      */
-    _sendControllerData(commandByte & 0xEF | 0x41);
+    sendControllerData(commandByte & 0xEF | 0x41);
 
     /* Register ourselves with the controller as the keyboard object */
     [controller setKeyboardObject:self];
@@ -142,117 +147,13 @@ static unsigned char _keyboardState[32] = {0};
     /* Initialize Caps Lock LED to off */
     [self setAlphaLockFeedback:NO];
 
-    /* Set device unit number to 0 */
     [self setUnit:0];
-
-    /* Set device name and kind */
     [self setName:"PCKeyboard0"];
     [self setDeviceKind:"PS2Keyboard"];
 
-    /* Register this device with the system */
     [self registerDevice];
 
     return self;
-}
-
-- (BOOL)becomeOwner:(id)owner
-{
-    int result;
-    const char *ownerName;
-    const char *selfName;
-
-    /* Lock to ensure thread-safe ownership changes */
-    [ownerLock lock];
-
-    if (keyboardOwner == nil) {
-        /* No current owner - grant ownership immediately */
-        keyboardOwner = owner;
-        result = 0;  /* Success */
-    } else {
-        /* Already have an owner - need to request relinquishment */
-
-        /* Check if current owner responds to relinquishOwnershipRequest: */
-        if (![keyboardOwner respondsTo:@selector(relinquishOwnershipRequest:)]) {
-            /* Owner doesn't support relinquishment protocol - log error */
-            ownerName = [keyboardOwner name];
-            selfName = [self name];
-            IOLog("%s: owner %s does not respond to relinquishOwnershipRequest:\n",
-                  selfName, ownerName);
-            result = 0xFFFFFD2B;  /* -725 decimal - error code */
-        } else {
-            /* Ask current owner to relinquish ownership */
-            result = [keyboardOwner relinquishOwnershipRequest:self];
-        }
-
-        /* If relinquishment succeeded, grant ownership to new owner */
-        if (result == 0) {
-            keyboardOwner = owner;
-        }
-    }
-
-    /* Unlock */
-    [ownerLock unlock];
-
-    return (result == 0);
-}
-
-- (BOOL)desireOwnership:(id)owner
-{
-    int result;
-
-    /* Lock to ensure thread-safe access */
-    [ownerLock lock];
-
-    /* Check if no one has desired ownership yet, or if this is the same owner */
-    if (desiredOwner == nil || desiredOwner == owner) {
-        /* Grant or maintain desired ownership */
-        desiredOwner = owner;
-        result = 0;  /* Success */
-    } else {
-        /* Someone else already desires ownership */
-        result = 0xFFFFFD2B;  /* -725 decimal - conflict error */
-    }
-
-    /* Unlock */
-    [ownerLock unlock];
-
-    return (result == 0);
-}
-
-- (int)relinquishOwnership:(id)owner
-{
-    int result;
-
-    /* Lock to ensure thread-safe ownership changes */
-    [ownerLock lock];
-
-    /* Check if the owner parameter matches the current owner */
-    if (keyboardOwner == owner) {
-        /* Owner matches - relinquish ownership */
-        result = 0;  /* Success */
-        keyboardOwner = nil;
-    } else {
-        /* Owner doesn't match - return error */
-        result = 0xFFFFFD2B;  /* -725 decimal - not owner error */
-    }
-
-    /* Unlock */
-    [ownerLock unlock];
-
-    /* If relinquishment succeeded and there's a desired owner waiting */
-    if ((result == 0) && (desiredOwner != nil) && (desiredOwner != owner)) {
-        /* Check if desired owner responds to canBecomeOwner: */
-        if (![desiredOwner respondsTo:@selector(canBecomeOwner:)]) {
-            /* Desired owner doesn't support the protocol - log error */
-            IOLog("%s: desiredOwner does not respond to canBecomeOwner:\n",
-                  [self name]);
-        } else {
-            /* Notify the desired owner that it can now become owner */
-            [desiredOwner canBecomeOwner:self];
-        }
-    }
-
-    return result;
 }
 
 - (void)interruptOccurred
@@ -262,44 +163,38 @@ static unsigned char _keyboardState[32] = {0};
     int index;
 
     /* Process all available keyboard data */
-    while (_keyboardDataPresent()) {
-        /* Read the scancode from the keyboard */
-        scancode = _getKeyboardData();
+    while (keyboardDataPresent()) {
+        scancode = getKeyboardData();
 
-        /* Check for special PS/2 response codes */
         if (scancode == 0xFA) {
-            /* ACK (0xFA = -6 in signed char) - unexpected here */
+            /* ACK - unexpected here */
             IOLog("PS2Keyboard: Unexpected ACK from controller\n");
             continue;
         }
 
         if (scancode == 0xFE) {
-            /* RESEND (0xFE = -2 in signed char) - controller wants resend */
-            _resendControllerData();
+            /* RESEND - the controller wants the last data byte again */
+            resendControllerData();
             continue;
         }
 
-        /* Convert scancode to keyboard event */
-        event = _scancodeToKeyEvent(scancode);
+        event = scancodeToKeyEvent(scancode);
 
         if (event != NULL) {
-            /* Valid event - add to queue if not full */
-            if (eventCount != MAX_KEYBOARD_EVENTS) {
-                /* Get index for new event */
-                index = eventCount;
-
-                /* Copy the 4-int event structure (16 bytes) */
-                eventQueue[index].timestamp_high = event->timestamp_high;
-                eventQueue[index].timestamp_low = event->timestamp_low;
-                eventQueue[index].keyCode = event->keyCode;
-                eventQueue[index].flags = event->flags;
-
-                /* Increment event count */
-                eventCount++;
+            if (numEvents == MAX_KEYBOARD_EVENTS) {
+                /* Queue full - drop the event and poll again */
+                continue;
             }
+
+            index = numEvents;
+
+            pendingEvents[index].timeStamp = event->timeStamp;
+            pendingEvents[index].keyCode = event->keyCode;
+            pendingEvents[index].goingDown = event->goingDown;
+
+            numEvents++;
         }
 
-        /* Dispatch queued events to owner */
         [self dispatchKeyboardEvents];
     }
 }
@@ -307,164 +202,53 @@ static unsigned char _keyboardState[32] = {0};
 - (void)dispatchKeyboardEvents
 {
     PS2KeyboardEvent localEventBuffer[MAX_KEYBOARD_EVENTS];
-    int savedEventCount;
+    unsigned int savedEventCount;
     int savedSPL;
-    int i;
+    unsigned int i;
 
-    /* Raise to IPL 6 (IPL_BIO) and save previous level */
+    /* Raise to IPL 6 -- IPLDMA/IPLCLOCK/IPLSCHED in <kernserv/i386/spl.h>, not
+     * IPLBIO, which is 3 -- and save previous level
+     */
     savedSPL = splx(6);
 
-    /* Copy events from the queue to local buffer atomically */
-    if (eventCount == 1) {
-        /* Optimized path for single event - direct copy of 16 bytes (4 ints) */
-        localEventBuffer[0].timestamp_high = eventQueue[0].timestamp_high;
-        localEventBuffer[0].timestamp_low = eventQueue[0].timestamp_low;
-        localEventBuffer[0].keyCode = eventQueue[0].keyCode;
-        localEventBuffer[0].flags = eventQueue[0].flags;
-    } else if (eventCount > 0) {
-        /* Multiple events - use bcopy to copy all events */
-        /* Each event is 16 bytes (4 ints), so copy eventCount * 16 bytes */
-        bcopy(eventQueue, localEventBuffer, eventCount * sizeof(PS2KeyboardEvent));
+    /* Copy events from the queue to the local buffer atomically */
+    if (numEvents == 1) {
+        localEventBuffer[0].timeStamp = pendingEvents[0].timeStamp;
+        localEventBuffer[0].keyCode = pendingEvents[0].keyCode;
+        localEventBuffer[0].goingDown = pendingEvents[0].goingDown;
+    } else {
+        bcopy(pendingEvents, localEventBuffer,
+              numEvents * sizeof(PS2KeyboardEvent));
     }
 
-    /* Save event count and reset the queue */
-    savedEventCount = eventCount;
-    eventCount = 0;
+    savedEventCount = numEvents;
+    numEvents = 0;
 
-    /* Restore previous SPL */
     splx(savedSPL);
 
     /* Dispatch events to the keyboard owner if one exists */
-    if (keyboardOwner != nil && savedEventCount > 0) {
+    if (_owner != nil) {
         for (i = 0; i < savedEventCount; i++) {
-            /* Dispatch each event to the owner */
-            [keyboardOwner dispatchKeyboardEvent:&localEventBuffer[i]];
+            [_owner dispatchKeyboardEvent:(PCKeyboardEvent *)&localEventBuffer[i]];
         }
     }
 }
 
-- (void)enqueueKeyEvent:(unsigned int)keyCode
-              goingDown:(BOOL)goingDown
-                 atTime:(unsigned long long)timestamp
-{
-    int index;
-    unsigned int flags;
-
-    /* Check if queue is not full (max 16 events) */
-    if (eventCount != MAX_KEYBOARD_EVENTS) {
-        /* Get current index for new event */
-        index = eventCount;
-
-        /* Build flags from goingDown and keyCode */
-        flags = goingDown ? 0 : 1;  /* 0 = key down, 1 = key up */
-
-        /* Store event in the queue at offset 0x110 + (index * 0x10) */
-        eventQueue[index].timestamp_high = (unsigned int)(timestamp >> 32);
-        eventQueue[index].timestamp_low = (unsigned int)(timestamp & 0xFFFFFFFF);
-        eventQueue[index].keyCode = keyCode;
-        eventQueue[index].flags = flags;
-
-        /* Increment event count */
-        eventCount++;
-    }
-    /* If queue is full, event is dropped (no error reporting) */
-}
-
-- (BOOL)readConfigTable:(IOConfigTable *)configTable
-{
-    const char *interfaceStr;
-    const char *handlerStr;
-    int interfaceValue;
-    int handlerValue;
-
-    /* Check if config table is valid */
-    if (configTable == nil) {
-        IOLog("PS2Keyboard kbdInit: no configuration table\n");
-        return NO;
-    }
-
-    /* Read "Interface" key from config table */
-    interfaceStr = [configTable valueForStringKey:"Interface"];
-    if (interfaceStr == NULL) {
-        /* No Interface key - use default value 3 */
-        IOLog("PS2Keyboard kbdInit: no Interface key in config table\n");
-        interfaceValue = 3;
-    } else {
-        /* Parse the interface value using PCPatoi */
-        interfaceValue = PCPatoi(interfaceStr);
-    }
-
-    /* Store the interface ID at offset 0x210 */
-    interfaceID = interfaceValue;
-
-    /* Read "Handler ID" key from config table */
-    handlerStr = [configTable valueForStringKey:"Handler ID"];
-    if (handlerStr == NULL) {
-        /* No Handler ID key - use default value 0 */
-        IOLog("PS2Keyboard kbdInit: no Handler ID key in config table\n");
-        handlerValue = 0;
-    } else {
-        /* Parse the handler ID value using PCPatoi */
-        handlerValue = PCPatoi(handlerStr);
-    }
-
-    /* Store the handler ID at offset 0x214 */
-    handlerID = handlerValue;
-
-    return YES;
-}
-
-- (void)setAlphaLockFeedback:(BOOL)on
-{
-    unsigned int ledState;
-
-    /* Build LED state byte:
-     * Bit 0: Scroll Lock
-     * Bit 1: Num Lock
-     * Bit 2: Caps Lock
-     */
-    ledState = 0;
-    if (on != NO) {
-        ledState = 4;  /* Caps Lock bit */
-    }
-
-    /* Send LED command directly to controller */
-    [controller setLEDs:ledState];
-}
-
-- (int)handlerId
-{
-    /* Return the handler ID for this keyboard (offset 0x214) */
-    return handlerID;
-}
-
-- (int)interfaceId
-{
-    /* Return the interface ID for this keyboard (offset 0x210) */
-    return interfaceID;
-}
-
 /* Helper function: Return the number of keys currently pressed */
-int __PS2KeyboardNumKeysDown(void)
+int _PS2KeyboardNumKeysDown(void)
 {
     int keyCount;
     int keyIndex;
     unsigned int wordIndex;
     unsigned int bitMask;
 
-    /* Initialize counter */
     keyCount = 0;
 
-    /* Iterate through all 128 possible key positions */
     for (keyIndex = 0; keyIndex < 0x80; keyIndex++) {
-        /* Calculate which word in the bit vector (divide by 32) */
         wordIndex = keyIndex >> 5;
-
-        /* Calculate bit mask for this key position (modulo 32) */
         bitMask = 1 << (keyIndex & 0x1f);
 
-        /* Check if this key is currently pressed */
-        if ((__kbdBitVector[wordIndex] & bitMask) != 0) {
+        if ((_kbdBitVector[wordIndex] & bitMask) != 0) {
             keyCount++;
         }
     }
@@ -472,47 +256,55 @@ int __PS2KeyboardNumKeysDown(void)
     return keyCount;
 }
 
-/* Helper function: Check if keyboard data is present */
-BOOL _keyboardDataPresent(void)
+- (void)enqueueKeyEvent:(int)keyCode
+              goingDown:(BOOL)goingDown
+                 atTime:(unsigned long long)timestamp
 {
-    /* Check if there's keyboard data available to read */
-    /* TODO: Implement from decompiled code */
-    /* This should check the PS/2 controller status register */
-    unsigned char status = inb(0x64);
+    int index;
 
-    /* Bit 0: Output buffer full (data available)
-     * Bit 5: Auxiliary device (0 = keyboard, 1 = mouse) */
-    return ((status & 0x01) != 0 && (status & 0x20) == 0);
+    /* Check if the queue is not full (max 16 events) */
+    if (numEvents != MAX_KEYBOARD_EVENTS) {
+        index = numEvents;
+
+        pendingEvents[index].timeStamp = timestamp;
+        pendingEvents[index].keyCode = keyCode;
+        pendingEvents[index].goingDown = goingDown;
+
+        numEvents++;
+    }
+    /* If the queue is full, the event is dropped */
 }
 
-/* Helper function: Convert scancode to keyboard event */
-PS2KeyboardEvent *_scancodeToKeyEvent(unsigned char scancode)
+/* Helper function: Convert a scancode to a keyboard event */
+PS2KeyboardEvent *scancodeToKeyEvent(unsigned char scancode)
 {
+    static PS2KeyboardEvent event;
+    static unsigned char extendCount;
     unsigned char keyCode;
     unsigned char bitPosition;
     unsigned int wordIndex;
     unsigned int bitMask;
     unsigned int isKeyDown;
 
-    /* Handle extended scancode prefix 0xE0 */
+    /* Handle the extended scancode prefix 0xE0 */
     if (scancode == 0xE0) {
-        _extendCount = 1;
+        extendCount = 1;
         return NULL;
     }
 
-    /* Handle extended scancode prefix 0xE1 (Pause/Break key) */
+    /* Handle the extended scancode prefix 0xE1 (Pause/Break) */
     if (scancode == 0xE1) {
-        if (_extendCount == 0) {
-            _extendCount = 5;
+        if (extendCount == 0) {
+            extendCount = 5;
             return NULL;
         }
     }
 
     /* Process extended scancodes */
-    if (_extendCount != 0) {
-        _extendCount--;
+    if (extendCount != 0) {
+        extendCount--;
 
-        if (_extendCount != 0) {
+        if (extendCount != 0) {
             return NULL;
         }
 
@@ -545,26 +337,22 @@ PS2KeyboardEvent *_scancodeToKeyEvent(unsigned char scancode)
         keyCode = scancode & 0x7F;
     }
 
-    /* Check if we got a valid keycode */
     if (keyCode == 0) {
         return NULL;
     }
 
-    /* Get timestamp for this event */
-    IOGetTimestamp((ns_time_t *)&_event);
+    /* Get the timestamp for this event */
+    IOGetTimestamp((ns_time_t *)&event);
 
-    /* Determine if this is a key down (0) or key up (1) event */
-    /* Bit 7 of scancode: 0 = key down, 1 = key up */
+    /* Bit 7 of the scancode: 0 = key down, 1 = key up */
     isKeyDown = (scancode >> 7) ^ 1;
 
-    /* Special case for Num Lock (0x6F) - check keyboard state */
+    /* Num Lock toggles off its own recorded state rather than the break bit */
     if (keyCode == 0x6F) {
-        /* Check bit 7 of state byte at offset 0x18 (24) */
-        isKeyDown = (_keyboardState[0x18] & 0x80) == 0;
+        isKeyDown = (_kbdBitVector[0x6F >> 5] & (1 << (0x6F & 0x1F))) == 0;
     }
 
-    /* Store the keycode in the event structure */
-    _event.keyCode = keyCode;
+    event.keyCode = keyCode;
 
     /* Update the keyboard bit vector */
     bitPosition = (unsigned char)keyCode;
@@ -573,52 +361,124 @@ PS2KeyboardEvent *_scancodeToKeyEvent(unsigned char scancode)
 
     if (isKeyDown == 0) {
         /* Key up - clear the bit in the vector */
-        /* Create mask with all bits set except target bit */
-        __kbdBitVector[wordIndex] = __kbdBitVector[wordIndex] & ~bitMask;
+        _kbdBitVector[wordIndex] = _kbdBitVector[wordIndex] & ~bitMask;
     } else {
-        /* Key down - check if already pressed (ignore auto-repeat) */
-        if ((__kbdBitVector[wordIndex] & bitMask) != 0) {
-            return NULL;  /* Key already down, ignore */
+        /* Key down - reject auto-repeat of a key already held */
+        if ((_kbdBitVector[wordIndex] & bitMask) != 0) {
+            return NULL;
         }
-        /* Set the bit in the vector */
-        __kbdBitVector[wordIndex] = __kbdBitVector[wordIndex] | bitMask;
+        _kbdBitVector[wordIndex] = _kbdBitVector[wordIndex] | bitMask;
     }
 
-    /* Store flags in event structure */
-    _event.flags = isKeyDown;
+    event.goingDown = isKeyDown;
 
-    return &_event;
+    return &event;
 }
 
-/* Non-blocking function to "steal" a keyboard event if one is available */
-PS2KeyboardEvent *_NewStealKeyboardEvent(void)
+- (int)interfaceId
 {
-    unsigned char scancode;
-    PS2KeyboardEvent *event;
+    return interfaceId;
+}
 
-    /* Try to get keyboard data if present (non-blocking) */
-    if (!_getKeyboardDataIfPresent(&scancode)) {
-        /* No keyboard data available */
-        return NULL;
+- (int)handlerId
+{
+    return handlerId;
+}
+
+- (void)setAlphaLockFeedback:(BOOL)on
+{
+    unsigned int ledState;
+
+    /*
+     * LED state byte: bit 0 Scroll Lock, bit 1 Num Lock, bit 2 Caps Lock.
+     */
+    ledState = 0;
+    if (on != NO) {
+        ledState = 4;
     }
 
-    /* Check for ACK response (0xFA = -6 in signed char) */
-    if (scancode == 0xFA) {
-        IOLog("PS2Keyboard: Unexpected ACK from controller\n");
-        return NULL;
+    [controller setLEDs:ledState];
+}
+
+- (IOReturn)becomeOwner:(id)owner
+{
+    IOReturn result;
+    const char *ownerName;
+    const char *selfName;
+
+    [_ownerLock lock];
+
+    if (_owner == nil) {
+        /* No current owner - grant ownership immediately */
+        _owner = owner;
+        result = 0;
+    } else {
+        /* Already owned - ask the owner to relinquish */
+        if (![_owner respondsTo:@selector(relinquishOwnershipRequest:)]) {
+            ownerName = [_owner name];
+            selfName = [self name];
+            IOLog("%s: owner %s does not respond to relinquishOwnershipRequest:\n",
+                  selfName, ownerName);
+            result = 0xFFFFFD2B;  /* -725 */
+        } else {
+            result = [_owner relinquishOwnershipRequest:self];
+        }
+
+        if (result == 0) {
+            _owner = owner;
+        }
     }
 
-    /* Check for RESEND response (0xFE = -2 in signed char) */
-    if (scancode == 0xFE) {
-        /* Controller wants us to resend the last data */
-        _resendControllerData();
-        return NULL;
+    [_ownerLock unlock];
+
+    return result;
+}
+
+- (IOReturn)relinquishOwnership:(id)owner
+{
+    IOReturn result;
+
+    [_ownerLock lock];
+
+    if (_owner == owner) {
+        result = 0;
+        _owner = nil;
+    } else {
+        result = 0xFFFFFD2B;  /* -725 */
     }
 
-    /* Convert scancode to keyboard event */
-    event = _scancodeToKeyEvent(scancode);
+    [_ownerLock unlock];
 
-    return event;
+    /* If ownership was released and someone is waiting for it, tell them */
+    if ((result == 0) && (_desiredOwner != nil) && (_desiredOwner != owner)) {
+        if (![_desiredOwner respondsTo:@selector(canBecomeOwner:)]) {
+            IOLog("%s: desiredOwner does not respond to canBecomeOwner:\n",
+                  [self name]);
+        } else {
+            [_desiredOwner canBecomeOwner:self];
+        }
+    }
+
+    return result;
+}
+
+- (IOReturn)desireOwnership:(id)owner
+{
+    IOReturn result;
+
+    [_ownerLock lock];
+
+    if (_desiredOwner == nil || _desiredOwner == owner) {
+        _desiredOwner = owner;
+        result = 0;
+    } else {
+        /* Someone else is already next in line */
+        result = 0xFFFFFD2B;  /* -725 */
+    }
+
+    [_ownerLock unlock];
+
+    return result;
 }
 
 @end

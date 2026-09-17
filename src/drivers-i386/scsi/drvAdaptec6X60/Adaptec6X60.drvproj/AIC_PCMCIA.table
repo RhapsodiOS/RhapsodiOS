@@ -2,7 +2,7 @@
 "Family" = "SCSI";
 "Location" = "";
 "Instance" = "0";
-"Driver Name" = "AIC6X60";
+"Class Names" = "AIC6X60";
 "DMA Channels" = "";
 "Bus Type" = "PCMCIA";
 "IRQ Levels" = "11";
@@ -10,6 +10,7 @@
 "Valid IRQ Levels" = "9 10 11 12";
 "Valid DMA Channels" = "0 5 6 7";
 "Boot Driver";
+"Auto Detect IDs" = "MFR=AdaptecInc.,PROD=APA-1460SCSIHostAdapter";
 "Help File" = "AIC_6360_PCMCIA_SCSI_Adapter.rtfd";
 "Server Name" = "AIC6X60SCSI";
 "Driver Version" = "PROGRAM.AIC6X60SCSI_VERSION.AIC6X60SCSI_VERS_NUM.AIC6X60SCSI_VERS_STRING.AIC6X60_5.00";

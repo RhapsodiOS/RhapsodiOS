@@ -96,6 +96,21 @@ void strlist_push(strlist *l, const char *s) {
     strlist_push_owned(l, xstrdup(s));
 }
 
+char *strlist_join(const strlist *list, const char *separator) {
+    sbuf joined;
+    char *result;
+    size_t i;
+
+    sbuf_init(&joined);
+    for (i = 0; i < list->count; i++) {
+        if (i != 0) sbuf_puts(&joined, separator);
+        sbuf_puts(&joined, list->items[i]);
+    }
+    result = sbuf_steal(&joined);
+    sbuf_free(&joined);
+    return result;
+}
+
 char *str_chomp(char *s) {
     size_t n = strlen(s);
     if (n > 0 && s[n - 1] == '\n') s[n - 1] = '\0';

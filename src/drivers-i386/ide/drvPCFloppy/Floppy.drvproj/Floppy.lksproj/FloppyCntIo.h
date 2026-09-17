@@ -24,7 +24,7 @@
  * Returns:
  *   IOReturn status code
  */
-- (IOReturn)_clearPollIntr;
+- (IOReturn)clearPollIntr;
 
 /*
  * Send CONFIGURE command to controller.
@@ -35,7 +35,7 @@
  * Returns:
  *   IOReturn status code
  */
-- (IOReturn)_doConfigure:(unsigned char)configByte;
+- (IOReturn)doConfigure:(unsigned char)configByte;
 
 /*
  * Send PERPENDICULAR MODE command.
@@ -47,7 +47,7 @@
  * Returns:
  *   IOReturn status code
  */
-- (IOReturn)_doPerpendicular:(unsigned char)perpendicularMode gap:(unsigned char)gap;
+- (IOReturn)doPerpendicular:(unsigned char)perpendicularMode gap:(unsigned char)gap;
 
 /*
  * Send SPECIFY command to set controller timing.
@@ -58,7 +58,7 @@
  * Returns:
  *   IOReturn status code
  */
-- (IOReturn)_doSpecify:(unsigned int)density;
+- (IOReturn)doSpecify:(unsigned int)density;
 
 /*
  * Read a byte from the controller FIFO.
@@ -69,7 +69,7 @@
  * Returns:
  *   IOReturn status code
  */
-- (IOReturn)_fcGetByte:(unsigned char *)bytePtr;
+- (IOReturn)fcGetByte:(unsigned char *)bytePtr;
 
 /*
  * Send a byte to the controller FIFO.
@@ -80,7 +80,7 @@
  * Returns:
  *   IOReturn status code
  */
-- (IOReturn)_fcSendByte:(unsigned char)byte;
+- (IOReturn)fcSendByte:(unsigned char)byte;
 
 /*
  * Wait for controller interrupt.
@@ -92,7 +92,7 @@
  * Returns:
  *   IOReturn status code
  */
-- (IOReturn)_fcWaitIntr:(void *)cmdParams timeout:(unsigned int)timeout;
+- (IOReturn)fcWaitIntr:(void *)cmdParams timeout:(unsigned int)timeout;
 
 /*
  * Wait for controller ready for PIO.
@@ -103,7 +103,7 @@
  * Returns:
  *   IOReturn status code
  */
-- (IOReturn)_fcWaitPio:(unsigned int)dioMask;
+- (IOReturn)fcWaitPio:(unsigned int)dioMask;
 
 /*
  * Floppy interrupt handler.
@@ -115,7 +115,7 @@
  * Returns:
  *   IOReturn status code
  */
-- (IOReturn)_floppyInterrupt:(void *)cmdParams;
+- (IOReturn)floppyInterrupt:(void *)cmdParams;
 
 /*
  * Flush pending interrupt messages.
@@ -123,7 +123,7 @@
  * Returns:
  *   IOReturn status code
  */
-- (IOReturn)_flushIntrMsgs;
+- (IOReturn)flushIntrMsgs;
 
 /*
  * Get drive status using SENSE DRIVE STATUS command.
@@ -134,7 +134,7 @@
  * Returns:
  *   IOReturn status code
  */
-- (IOReturn)_getDriveStatus:(void *)cmdParams;
+- (IOReturn)getDriveStatus:(void *)cmdParams;
 
 /*
  * Reset the i82077 floppy controller.
@@ -153,7 +153,7 @@
  * Returns:
  *   IOReturn status code
  */
-- (IOReturn)_recal;
+- (IOReturn)recal;
 
 /*
  * Seek to a specific track.
@@ -166,7 +166,7 @@
  * Returns:
  *   IOReturn status code
  */
-- (IOReturn)_seek:(unsigned int)track head:(unsigned int)head density:(unsigned int)density;
+- (IOReturn)seek:(unsigned int)track head:(unsigned int)head density:(unsigned int)density;
 
 @end
 

@@ -86,6 +86,29 @@ def test_host_uses_shell_free_unique_files_and_atomically_publishes(configured, 
     assert not any(tmp_path.glob(".*angr-work-*"))
 
 
+def test_oversize_analyzer_output_is_preserved_for_inspection(configured, tmp_path, monkeypatch):
+    profile, identity, executable = configured
+    staging = tmp_path / "binrecon-run-test"
+    staging.mkdir(parents=True, exist_ok=True)
+    destination = staging / "analysis.json"
+    monkeypatch.setattr(angr_host, "_MAX_OUTPUT", 128)
+    payload = b"x" * 129
+
+    def runner(argv, **options):
+        options["stdout"].write(b"stdout")
+        options["stdout"].flush()
+        output = Path(argv[argv.index("--output") + 1])
+        output.write_bytes(payload)
+        return subprocess.CompletedProcess(argv, 0)
+
+    with pytest.raises(AngrAdapterError, match="rejected output saved to"):
+        export_with_angr(profile, "reference", destination, runner=runner)
+
+    preserved = tmp_path / "rejected-angr-reference.json"
+    assert preserved.is_file()
+    assert preserved.read_bytes() == payload
+
+
 def test_host_layout_preserves_canonical_relocation_metadata(tmp_path):
     binary = tmp_path / "input.o"
     binary.write_bytes(build_macho_fixture())
@@ -102,6 +125,25 @@ def test_host_layout_preserves_canonical_relocation_metadata(tmp_path):
     assert layout["relocation_metadata"][0]["width"] == 4
     assert layout["relocation_metadata"][0]["target"] == "_external"
     assert layout["relocation_metadata"][0]["external"] is True
+
+
+def test_host_layout_scopes_each_artifact_separately(tmp_path):
+    binary = tmp_path / "input.o"
+    binary.write_bytes(build_macho_fixture())
+    identity = identify(binary)
+    profile = SimpleNamespace(document=MappingProxyType({
+        "image_base": 0x1000,
+        "comparison": MappingProxyType({"entry_points": ()}),
+        "regions": (),
+        "analysis_scope": ({"start": 0x1000, "end": 0x1100},),
+        "rebuilt_analysis_scope": ({"start": 0x9000, "end": 0x9200},),
+    }))
+
+    reference = angr_host._layout(profile, identity, "reference")
+    rebuilt = angr_host._layout(profile, identity, "rebuilt")
+
+    assert reference["analysis_scope"] == [{"start": 0x1000, "end": 0x1100}]
+    assert rebuilt["analysis_scope"] == [{"start": 0x9000, "end": 0x9200}]
 
 
 @pytest.mark.parametrize("mode,match", [
@@ -163,6 +205,36 @@ def test_host_rejects_peer_aliases_before_launch(configured, tmp_path):
     destination.with_suffix(".angr.log").hardlink_to(peer)
     with pytest.raises(AngrAdapterError, match="peer"):
         export_with_angr(profile, "reference", destination)
+
+
+def test_host_reference_only_profile_skips_peer_identity_checks(tmp_path):
+    binary = tmp_path / "input.o"
+    binary.write_bytes(b"legacy-mach-o")
+    executable = tmp_path / "python.exe"
+    executable.write_text("stub", encoding="ascii")
+    identity = identify(binary)
+    profile = SimpleNamespace(
+        reference_identity=identity, rebuilt_identity=None,
+        document=MappingProxyType({
+            "architecture": "i386", "endianness": "little", "image_base": 0x1000,
+            "analyzers": MappingProxyType({"angr": MappingProxyType({
+                "enabled": True, "executable": str(executable),
+                "timeout_seconds": 19, "version": "9.3.0"})}),
+            "comparison": MappingProxyType({"entry_points": ("entry",)}),
+            "regions": (), "symbolic_checks": (),
+        }),
+    )
+    destination = tmp_path / "analysis.json"
+
+    def runner(argv, **options):
+        options["stdout"].write(b"stdout")
+        options["stdout"].flush()
+        output = Path(argv[argv.index("--output") + 1])
+        output.write_text(json.dumps(_analysis(identity)), encoding="utf-8")
+        return subprocess.CompletedProcess(argv, 0)
+
+    document = export_with_angr(profile, "reference", destination, runner=runner)
+    assert document == _analysis(identity)
 
 
 def test_host_streams_and_bounds_large_child_log(configured, tmp_path):
@@ -730,3 +802,35 @@ def test_callsite_uses_terminating_call_instruction_not_block_start(tmp_path):
     assert call["address"] == 0x4005
     assert not any(item["kind"] == "control-call" and item["address"] == 0x4000
                    for item in references)
+
+
+def _profile(tmp_path, input_path):
+    executable = tmp_path / "Python 3.13" / "python.exe"
+    executable.parent.mkdir()
+    executable.write_text("stub", encoding="ascii")
+    identity = identify(input_path)
+    profile = SimpleNamespace(
+        reference_identity=identity, rebuilt_identity=identity,
+        document=MappingProxyType({
+            "architecture": "i386", "endianness": "little", "image_base": 0x1000,
+            "analyzers": MappingProxyType({"angr": MappingProxyType({
+                "enabled": True, "executable": str(executable),
+                "timeout_seconds": 19, "version": "9.3.0"})}),
+            "comparison": MappingProxyType({"entry_points": ("entry",)}),
+            "regions": (), "symbolic_checks": (),
+        }),
+    )
+    return profile
+
+
+def test_rejects_non_i386_profile_before_running_angr(tmp_path):
+    input_path = tmp_path / "input.bin"
+    input_path.write_bytes(build_macho_fixture(architecture="ppc", relocations=b""))
+    profile = _profile(tmp_path, input_path)
+    profile.document = {**profile.document, "architecture": "ppc"}
+
+    def runner(*args, **kwargs):
+        raise AssertionError("angr must not be started for a ppc profile")
+
+    with pytest.raises(AngrAdapterError, match="i386-only"):
+        export_with_angr(profile, "reference", tmp_path / "out.json", runner=runner)

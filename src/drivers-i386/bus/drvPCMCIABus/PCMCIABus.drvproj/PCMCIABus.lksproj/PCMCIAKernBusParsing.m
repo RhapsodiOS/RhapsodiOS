@@ -45,17 +45,17 @@ static id _defaultConfigEntry = nil;
 /*
  * Forward declarations for tuple parser functions
  */
-static void _parse_VERS_1(int verbose, id description, void *data, unsigned int length);
-static void _parse_CONFIG(int verbose, id description, void *data, unsigned int length);
-static void _parse_CFTABLE_ENTRY(int verbose, id description, void *data, unsigned int length);
-static void _parse_MANFID(int verbose, id description, void *data, unsigned int length);
-static void _parse_FUNCID(int verbose, id description, void *data, unsigned int length);
+static void parse_VERS_1(int verbose, id description, void *data, unsigned int length);
+static void parse_CONFIG(int verbose, id description, void *data, unsigned int length);
+static void parse_CFTABLE_ENTRY(int verbose, id description, void *data, unsigned int length);
+static void parse_MANFID(int verbose, id description, void *data, unsigned int length);
+static void parse_FUNCID(int verbose, id description, void *data, unsigned int length);
 
 /*
  * Helper function to add a single string to device description
  * Allocates memory for the string and adds it to description
  */
-static void _addString(id description, char *string, const char *key)
+static void addString(id description, char *string, const char *key)
 {
     char *buffer;
     unsigned int length;
@@ -84,7 +84,7 @@ static void _addString(id description, char *string, const char *key)
  * Helper function to add formatted strings to device description
  * Formats and adds multiple values to the description
  */
-static void _addStrings(id description, char *format, int base,
+static void addStrings(id description, char *format, int base,
                        int *values, int count, const char **keys)
 {
     char buffer[256];
@@ -95,7 +95,7 @@ static void _addStrings(id description, char *format, int base,
         sprintf(buffer, format, values[i]);
 
         /* Add to description */
-        _addString(description, buffer, keys[i]);
+        addString(description, buffer, keys[i]);
     }
 }
 
@@ -109,11 +109,11 @@ typedef struct {
 } TupleParserEntry;
 
 static TupleParserEntry tupleParserTable[] = {
-    { 0x15, _parse_VERS_1 },        /* VERS_1 - Version 1 product info */
-    { 0x1A, _parse_CONFIG },         /* CONFIG - Configuration tuple */
-    { 0x1B, _parse_CFTABLE_ENTRY },  /* CFTABLE_ENTRY - Config table entry */
-    { 0x20, _parse_MANFID },         /* MANFID - Manufacturer identification */
-    { 0x21, _parse_FUNCID },         /* FUNCID - Function identification */
+    { 0x15, parse_VERS_1 },        /* VERS_1 - Version 1 product info */
+    { 0x1A, parse_CONFIG },         /* CONFIG - Configuration tuple */
+    { 0x1B, parse_CFTABLE_ENTRY },  /* CFTABLE_ENTRY - Config table entry */
+    { 0x20, parse_MANFID },         /* MANFID - Manufacturer identification */
+    { 0x21, parse_FUNCID },         /* FUNCID - Function identification */
     { 0x00, NULL }                   /* Terminator */
 };
 
@@ -121,7 +121,7 @@ static TupleParserEntry tupleParserTable[] = {
  * Parse VERS_1 tuple (0x15)
  * Version 1 product information tuple
  */
-static void _parse_VERS_1(int verbose, id description, void *data, unsigned int length)
+static void parse_VERS_1(int verbose, id description, void *data, unsigned int length)
 {
     unsigned char *ptr = (unsigned char *)data;
     unsigned char *endPtr;
@@ -147,7 +147,7 @@ static void _parse_VERS_1(int verbose, id description, void *data, unsigned int 
     }
 
     /* Add version numbers */
-    _addStrings(description, "%d", 16, (int *)values, 2, keys);
+    addStrings(description, "%d", 16, (int *)values, 2, keys);
 
     /* Calculate end pointer */
     endPtr = (unsigned char *)((int)data + length);
@@ -241,7 +241,7 @@ skip_addl1:
  * Parse CONFIG tuple (0x1A)
  * Configuration tuple - defines configuration registers
  */
-static void _parse_CONFIG(int verbose, id description, void *data, unsigned int length)
+static void parse_CONFIG(int verbose, id description, void *data, unsigned int length)
 {
     unsigned char *ptr = (unsigned char *)data;
     unsigned char sizeByte;
@@ -289,14 +289,14 @@ static void _parse_CONFIG(int verbose, id description, void *data, unsigned int 
     }
 
     /* Add register address to device description */
-    _addStrings(description, "%d", 10, &registerAddress, 1, &key);
+    addStrings(description, "%d", 10, &registerAddress, 1, &key);
 }
 
 /*
  * Parse CFTABLE_ENTRY tuple (0x1B)
  * Configuration table entry - describes one configuration option
  */
-static void _parse_CFTABLE_ENTRY(int verbose, id description, void *data, unsigned int length)
+static void parse_CFTABLE_ENTRY(int verbose, id description, void *data, unsigned int length)
 {
     unsigned char *ptr = (unsigned char *)data;
     unsigned char indexByte, featureByte;
@@ -664,7 +664,7 @@ static void _parse_CFTABLE_ENTRY(int verbose, id description, void *data, unsign
  * Parse MANFID tuple (0x20)
  * Manufacturer identification tuple
  */
-static void _parse_MANFID(int verbose, id description, void *data, unsigned int length)
+static void parse_MANFID(int verbose, id description, void *data, unsigned int length)
 {
     unsigned char *ptr = (unsigned char *)data;
     const char *keys[2];
@@ -689,14 +689,14 @@ static void _parse_MANFID(int verbose, id description, void *data, unsigned int 
     }
 
     /* Add both values as hex strings */
-    _addStrings(description, "%04x", 16, (int *)values, 2, keys);
+    addStrings(description, "%04x", 16, (int *)values, 2, keys);
 }
 
 /*
  * Parse FUNCID tuple (0x21)
  * Function identification tuple
  */
-static void _parse_FUNCID(int verbose, id description, void *data, unsigned int length)
+static void parse_FUNCID(int verbose, id description, void *data, unsigned int length)
 {
     unsigned char *ptr = (unsigned char *)data;
     unsigned char functionCode;
@@ -717,7 +717,7 @@ static void _parse_FUNCID(int verbose, id description, void *data, unsigned int 
     sprintf(buffer, "%d", functionCode);
 
     /* Add to description */
-    _addString(description, buffer, "PCMCIA_TPLFID_FUNCTION");
+    addString(description, buffer, "PCMCIA_TPLFID_FUNCTION");
 }
 
 @implementation PCMCIAKernBus(Parsing)
@@ -725,7 +725,7 @@ static void _parse_FUNCID(int verbose, id description, void *data, unsigned int 
 /*
  * Allocate resources for description from tuple list
  */
-- _allocResourcesForDescription:description fromTupleList:tupleList
+- allocResourcesForDescription:description fromTupleList:tupleList
 {
     unsigned int count;
     unsigned int i;
@@ -740,7 +740,7 @@ static void _parse_FUNCID(int verbose, id description, void *data, unsigned int 
     count = [tupleList count];
     for (i = 0; i < count; i++) {
         tuple = [tupleList objectAt:i];
-        [self _parseTuple:tuple intoDeviceDescription:description];
+        [self parseTuple:tuple intoDeviceDescription:description];
     }
 
     return description;
@@ -750,7 +750,7 @@ static void _parse_FUNCID(int verbose, id description, void *data, unsigned int 
  * Parse a single tuple into device description
  * Uses dispatch table to find appropriate parser
  */
-- (void)_parseTuple:tuple intoDeviceDescription:description
+- parseTuple:tuple intoDeviceDescription:description
 {
     unsigned char code;
     TupleParserEntry *entry;
@@ -767,11 +767,12 @@ static void _parse_FUNCID(int verbose, id description, void *data, unsigned int 
             length = [tuple length];
             data = [tuple data];
             entry->handler(_verbose, description, data, length);
-            return;
+            return description;
         }
     }
 
     /* No handler found - tuple type not supported */
+    return description;
 }
 
 @end

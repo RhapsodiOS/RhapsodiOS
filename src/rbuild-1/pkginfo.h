@@ -2,8 +2,10 @@
 #define RBUILD_PKGINFO_H
 
 #include "package.h"
+#include "toolchain.h"
 
 int pkginfo_write(const Package *p, const char *path);
-int pkginfo_build_apk(const char *root_dir, const char *out_apk);
+int pkginfo_build_apk(const char *root_dir, const char *out_apk,
+                      const Toolchain *tc);
 
 #endif

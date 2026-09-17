@@ -1,0 +1,26 @@
+CC ?= cc
+CFLAGS = -std=c89 -pedantic -Wall -Wextra -Werror
+CORE = ../PPCTASAudio.drvproj/PPCTASAudio.lksproj/TASCore.c \
+	../PPCTASAudio.drvproj/PPCTASAudio.lksproj/TASTime.c \
+	../PPCTASAudio.drvproj/PPCTASAudio.lksproj/TAS3001C.c \
+	../PPCTASAudio.drvproj/PPCTASAudio.lksproj/TAS3004.c \
+	../PPCTASAudio.drvproj/PPCTASAudio.lksproj/PPCDBDMAAudio.c \
+	../PPCTASAudio.drvproj/PPCTASAudio.lksproj/TASRuntime.c
+
+.PHONY: all test clean
+all: tas_audio_test tas_runtime_test
+
+tas_audio_test: tas_audio_test.c tas_fixtures.c tas_fixtures.h $(CORE)
+	$(CC) $(CFLAGS) -I../PPCTASAudio.drvproj/PPCTASAudio.lksproj \
+	    tas_audio_test.c tas_fixtures.c $(CORE) -o $@
+
+test: tas_audio_test tas_runtime_test
+	./tas_audio_test
+	./tas_runtime_test
+
+tas_runtime_test: tas_runtime_test.c tas_fixtures.c tas_fixtures.h $(CORE)
+	$(CC) $(CFLAGS) -I../PPCTASAudio.drvproj/PPCTASAudio.lksproj \
+	    tas_runtime_test.c tas_fixtures.c $(CORE) -o $@
+
+clean:
+	rm -f tas_audio_test tas_runtime_test

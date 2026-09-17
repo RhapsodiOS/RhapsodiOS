@@ -1,24 +1,30 @@
 Current list of drivers to be implemented and the status of re-implementation
 =====================================================
 
+Guest packaging uses `rbuild kernel` / `rbuild kerneldrivers` with the profile
+architecture. On the current ppc build box, only `drivers-ppc` optional drivers
+are scanned; i386 projects are out of scope until an i386 profile run. WIP
+paths live in `src/rbuild-1/kernel-drivers-blacklist.json` and are skipped until
+promoted out of that list.
+
 bus
- * drvEISABus - crashing, needs debugging
- * drvPICBus - complete
- * drvPCMCIABus - needs compiled and then tested
- * Intel824X0PCI - complete
- * Intel82365PCMCIA - needs compiled and then tested
+ * drvEISABus - crashing; reconstructed against the reference binary, fixes applied, not yet retested
+ * drvPCIBus - reconstructed against the reference binary, fixes applied; its testIDs:dev:fun:bus: prototype now matches Apple's, and PCIResourceDriver inherits IODirectDevice, but neither fix has been compiled or tested
+ * drvPCMCIABus - compiles; reconstructed against the reference binary, fixes applied, not yet tested; protocol records, every class instance size and ivar layout are byte-identical to the reference; two heap overflows from undeclared ivars fixed
+ * Intel824X0PCI - reconstructed against the reference binary, fixes applied, not yet compiled or tested
+ * Intel82365PCMCIA - compiles; reconstructed against the reference binary, all fixes applied; its five ObjC protocol records and four adoptions are byte-identical to the reference, not yet tested
 
 ide
  * drvEIDE - complete
- * drvPCFloppy - needs compiled and then tested
+ * drvPCFloppy - reconstructed against Apple's Floppy_reloc; not yet tested on hardware
 
 input
- * drvBusMouse - needs compiled and then tested
+ * drvBusMouse - compiles; reconstructed against the reference binary, fixes applied, not yet tested
  * drvISASerialPort - needs compiled and then tested
- * drvPCParallel - needs compiled and then tested
- * drvPS2Keyboard - needs compiled and then tested
- * drvPS2Mouse - needs compiled and then tested
- * drvSerialPointingDevice - needs compiled and then tested
+ * drvPCParallel - compiles; reconstructed against the reference binary, fixes applied, not yet tested
+ * drvPS2Keyboard - compiles; reconstructed against the reference binary, fixes applied, not yet tested
+ * drvPS2Mouse - compiles; reconstructed against the reference binary, fixes applied, not yet tested
+ * drvSerialPointingDevice - compiles; reconstructed against the reference binary, fixes applied, not yet tested
 
 network
  * drvAMDPCNet32II - complete
@@ -39,32 +45,39 @@ network
  * drvVMwareVMXNet - complete
 
 scsi
- * drvAdaptec6X60 - needs compiled and then tested
- * drvAdaptec1542B - needs compiled and then tested
- * drvAdaptec2940 - needs compiled and then tested
+ (see docs/drivers/scsi-reconstruction.md — two complete, three reconstructed
+  and guest-compiled but untested, two stubs)
+ * drvAdaptec6X60 - reconstructed against the reference binary, compiled; not hardware-tested
+ * drvAdaptec1542B - reconstructed against the reference binary, no divergences; not yet compiled
+ * drvAdaptec2940 - stub, 10/170 reference functions; missing the whole SCSIBus class
  * drvAMDPCSCSIDriver - complete
- * drvBusLogic - needs compiled and then tested
- * drvBusLogicFP - needs compiled and then tested
- * drvDPT2000 - needs compiled and then tested
- * drvSym53C8xx - needs compiled and then tested
+ * drvBusLogic - reconstructed against the reference binary, fixes applied; not yet compiled
+ * drvBusLogicFP - stub, 7/123 reference functions
+ * drvDPT2000 - reconstructed against the reference binary, compiled on the ppc rbuild guest; not hardware-tested
+ * drvSym53C8xx - reconstructed against the reference binary, compiled; not hardware-tested
 
 sound
- * drvBeepSound - needs compiled and then tested
- * drvES1x88Sound - needs compiled and then tested
+ * drvBeepSound - compiles; reconstructed against the reference binary, fixes applied, not yet tested
+ * drvES1x88Sound - compiles; reconstructed against the reference binary, fixes applied, not yet tested
  * drvIntelAC97Sound - needs compiled and then tested
- * drvSB8Sound - needs compiled and then tested
- * drvSB16Sound - needs compiled and then tested
+ * drvSB8Sound - compiles; reconstructed against the reference binary, fixes applied, not yet tested
+ * drvSB16Sound - compiles; reconstructed against the reference binary, fixes applied, not yet tested
  * drvSB128Sound - complete
 
 video
  * drv3DfxVoodooVSA - needs compiled and then tested
  * drvATIMach64
  * drvATIRage
- * drvCirrusLogicGD5434
- * drvIBMThinkPad760EDDisplay
+ * drvCirrusLogicGD5434 - builds and links against the reference binary, 19/21 functions byte-identical, apple-generic version bundle present, SGS VERS_STRING/VERS_NUM unmet, setMode: and setPCIConfiguration unmatched; not hardware-tested
+ * drvIBMThinkPad760EDDisplay - reconstructed against the reference binary, built, ledger advanced; not hardware-tested
  * drvMatroxMGA - complete
  * drvNVidiaRiva - needs compiled and then tested
  * drvS3Generic - complete
  * drvVBoxVideo - complete
  * drvVMWareVideo - complete
- * vga
+ * drvVGA - both halves reconstructed against Apple's binaries, not built since the
+   emulator assembly landed, never booted
+
+other (these live at src/drvBPF and src/drvPortServer, not under drivers-i386)
+ * drvBPF - reconstructed against the reference binary, fixes applied, not yet compiled or tested
+ * drvPortServer - reconstructed against the reference binary, five pre-existing compile blockers repaired, fixes applied, not yet compiled or tested

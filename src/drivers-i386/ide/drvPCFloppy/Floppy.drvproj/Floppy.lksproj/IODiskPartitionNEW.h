@@ -9,6 +9,7 @@
 
 #import "IODiskNew.h"
 #import "IOLogicalDiskNEW.h"
+#import "IODiskProtocols.h"
 #import <bsd/dev/disk_label.h>
 
 #ifdef	KERNEL
@@ -16,53 +17,48 @@
 #import <bsd/dev/ldd.h>
 #endif	KERNEL
 
-@interface IODiskPartitionNEW : IOLogicalDiskNEW
+@interface IODiskPartitionNEW : IOLogicalDiskNEW <IODiskPartitionExported>
 {
 @private
 	int		_partition;		// like 3 LSB's of the old UNIX minor number
 	BOOL		_labelValid;		// label is valid
 	BOOL		_blockDeviceOpen;	// block device is open
 	BOOL		_rawDeviceOpen;		// raw device is open
-	unsigned char	_physicalPartition;	// partition index in real map
-	ns_time_t	_probeTime;
-	id		_partitionWaitLock;	// condition lock to wait for probe of label
-	int		_IODiskPartitionNEW_reserved[4];
+	int		_IODiskPartition_reserved[4];
 }
 
 /*
  * Class methods.
  */
 + (int)deviceStyle;
-+ (const char **)requiredProtocols;
++ (Protocol **)requiredProtocols;
 + (BOOL)probe : deviceDescription;
 
 /*
  * Free all attached logicalDisks.
  */
-- _free;
+- free;
 
 /*
  * Eject method.
  */
-- (IOReturn)_eject;
+- (IOReturn)eject;
 
 /*
  * Read disk label.
  */
-- (IOReturn)_readLabel : (disk_label_t *)label_p;
+- (IOReturn)readLabel : (disk_label_t *)label_p;
 
 /*
  * Write disk label.
  */
-- (IOReturn)_writeLabel : (disk_label_t *)label_p;
+- (IOReturn)writeLabel : (disk_label_t *)label_p;
 
 /*
  * Get/set "device open" flags.
  */
-- (BOOL)_isBlockDeviceOpen;
-- (void)_setBlockDeviceOpen : (BOOL)openFlag;
-- (BOOL)_isRawDeviceOpen;
-- (void)_setRawDeviceOpen : (BOOL)openFlag;
+- (void)setBlockDeviceOpen : (BOOL)openFlag;
+- (void)setRawDeviceOpen : (BOOL)openFlag;
 
 /*
  * Public method to check if block device is open.
@@ -72,37 +68,37 @@
 /*
  * Get NeXT partition offset.
  */
-- (unsigned)_NeXTpartitionOffset;
+- (unsigned)NeXTpartitionOffset;
 
 /*
  * Set formatted flags (override from IODiskNEW).
  */
-- (IOReturn)_setFormatted : (BOOL)formattedFlag;
-- (void)_setFormattedInternal : (BOOL)formattedFlag;
+- (IOReturn)setFormatted : (BOOL)formattedFlag;
+- (void)setFormattedInternal : (BOOL)formattedFlag;
 
 /*
  * Read/Write methods.
  */
 #ifdef KERNEL
-- (IOReturn)_readAt : (unsigned)offset
+- (IOReturn)readAt : (unsigned)offset
 	     length : (unsigned)length
 	     buffer : (unsigned char *)buffer
        actualLength : (unsigned *)actualLength
 	     client : (vm_task_t)client;
 
-- (IOReturn)_readAsyncAt : (unsigned)offset
+- (IOReturn)readAsyncAt : (unsigned)offset
 		  length : (unsigned)length
 		  buffer : (unsigned char *)buffer
 		 pending : (void *)pending
 		  client : (vm_task_t)client;
 
-- (IOReturn)_writeAt : (unsigned)offset
+- (IOReturn)writeAt : (unsigned)offset
 	      length : (unsigned)length
 	      buffer : (unsigned char *)buffer
         actualLength : (unsigned *)actualLength
 	      client : (vm_task_t)client;
 
-- (IOReturn)_writeAsyncAt : (unsigned)offset
+- (IOReturn)writeAsyncAt : (unsigned)offset
 		   length : (unsigned)length
 		   buffer : (unsigned char *)buffer
 		  pending : (void *)pending
@@ -119,28 +115,27 @@
 /*
  * Free all partitions.
  */
-- (IOReturn)__freePartitions;
+- (IOReturn)_freePartitions;
 
 /*
  * Initialize a partition.
  */
-- (IOReturn)__initPartition : (int)partition
+- (IOReturn)_initPartition : (int)partition
 		    disktab : (struct disktab *)dt;
 
 /*
  * Probe for disk label.
  */
-- (IOReturn)__probeLabel : (BOOL)needsLabel;
+- (IOReturn)_probeLabel : (BOOL)needsLabel;
 
 /*
  * Check if configuration is safe for destructive operations.
  */
-- (IOReturn)_checkSafeConfig : (const char *)operation;
+- (IOReturn)checkSafeConfig : (const char *)operation;
 
 /*
  * Check if any block device is open.
  */
-- (BOOL)_isAnyBlockDevOpen;
-- (BOOL)_isAnyOtherOpen;
+- (BOOL)isAnyBlockDevOpen;
 
 @end

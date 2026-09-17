@@ -1,0 +1,3941 @@
+{
+  "entries": [
+    {
+      "address": 0,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "was genuinely absent from our source (EISAKernBusInterrupt had no initForResource:item:shareable: override at all, relying entirely on the inherited generic KernBusInterrupt initializer, which was traced and found to do only generic attached-interrupt-list/lock bookkeeping with no IRQ-specific registration at all); fix applied -- EISAKernBusInterrupt now overrides initForResource:item:shareable:, stores the IRQ, registers _EISAKernBusInterruptDispatch via intr_register_irq and sets trigger mode via intr_change_mode (skipping both for IRQ 2, the 8259 cascade), and allocates a KernLock at level 7 (see divergences.md Finding 5)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAKernBusInterrupt initForResource:item:shareable:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 197,
+      "source_line": 81,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBusInterrupt.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 200,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAKernBusInterrupt dealloc]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 70,
+      "source_line": 38,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBusInterrupt.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 272,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAKernBusInterrupt attachDeviceInterrupt:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 125,
+      "source_line": 53,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBusInterrupt.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 400,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAKernBusInterrupt attachDeviceInterrupt:atLevel:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 191,
+      "source_line": 84,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBusInterrupt.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 592,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAKernBusInterrupt detachDeviceInterrupt:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 115,
+      "source_line": 129,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBusInterrupt.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 708,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAKernBusInterrupt suspend]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 104,
+      "source_line": 151,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBusInterrupt.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 812,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAKernBusInterrupt resume]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 108,
+      "source_line": 173,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBusInterrupt.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 920,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "was genuinely absent from our source (no dispatch trampoline or auto-disable-on-unclaimed-interrupt logic existed anywhere in EISAKernBusInterrupt.m); fix applied -- added a static C trampoline (named _EISAKernBusInterruptDispatch, single leading underscore, matching this driver's own C helper naming convention rather than the reference's compiler-generated double-underscore symbol) that calls the generic KernBusInterruptDispatch() and, if unclaimed, acquires the EISALock, calls intr_disable_irq, and clears the enabled flag (see divergences.md Finding 5)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "__EISAKernBusInterruptDispatch"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 62,
+      "source_line": 56,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBusInterrupt.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 984,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAKernBusDMAChannel initForResource:item:shareable:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 109,
+      "source_line": 41,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBusDMAChannel.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 1096,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAKernBusDMAChannel dealloc]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 64,
+      "source_line": 64,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBusDMAChannel.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 1160,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[EISAKernBus initialize]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 35,
+      "source_line": 100,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBus.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 1196,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAKernBus init]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 525,
+      "source_line": 109,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBus.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 1724,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAKernBus resourceNames]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 12,
+      "source_line": 328,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBus.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 1736,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_testSlotForID"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 68,
+      "source_line": 367,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/eisa.c",
+      "status": "unexamined"
+    },
+    {
+      "address": 1804,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAKernBus testIDs:slot:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 25,
+      "source_line": 315,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBus.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 1832,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAKernBus getEISASlotNumber:slotID:usingDeviceDescription:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 609,
+      "source_line": 212,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBus.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 2444,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAKernBus free]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 213,
+      "source_line": 172,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBus.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 2660,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAKernBus allocateResourcesForDeviceDescription:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 165,
+      "source_line": 336,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBus.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 2828,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_getEISASlotInfo"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 72,
+      "source_line": 289,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/eisa.c",
+      "status": "unexamined"
+    },
+    {
+      "address": 2900,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_getEISAFunctionInfo"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 95,
+      "source_line": 328,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/eisa.c",
+      "status": "unexamined"
+    },
+    {
+      "address": 2996,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_LookForEISAID"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 143,
+      "source_line": 404,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBus.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 3140,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[EISAResourceDriver probe:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 61,
+      "source_line": 65,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAResourceDriver.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 3204,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAResourceDriver initFromDeviceDescription:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 128,
+      "source_line": 85,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAResourceDriver.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 3332,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAResourceDriver setupBootFlag]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 136,
+      "source_line": 367,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAResourceDriver.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 3468,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAResourceDriver getCharValues:forParameter:count:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 1251,
+      "source_line": 110,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAResourceDriver.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 4720,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAResourceDriver setCharValues:forParameter:count:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 299,
+      "source_line": 304,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAResourceDriver.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 5020,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_setBit"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 87,
+      "source_line": 214,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/bios.c",
+      "status": "unexamined"
+    },
+    {
+      "address": 5108,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_computeChecksum"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 40,
+      "source_line": 262,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/bios.c",
+      "status": "unexamined"
+    },
+    {
+      "address": 5148,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_clearPnPConfigRegisters"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 367,
+      "source_line": 114,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/bios.c",
+      "status": "unexamined"
+    },
+    {
+      "address": 5516,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_readIsolationBit"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 42,
+      "source_line": 194,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/bios.c",
+      "status": "unexamined"
+    },
+    {
+      "address": 5560,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_isolateCard"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 227,
+      "source_line": 284,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/bios.c",
+      "status": "unexamined"
+    },
+    {
+      "address": 5788,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "present in our source under the same name (EISAKernBus+PlugAndPlayPrivate.m:984) despite being listed unmapped -- see divergences.md note; only the first ~100 of 999 reference instructions were skimmed, which surfaced a confirmed divergence (reference refuses to read when *length<=8 and skips the Wait-for-Key cleanup on that path, see Finding 4); the remainder of the function was not examined"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_getCardConfig"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 999,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 6788,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "present in our source under the same name (EISAKernBus+PlugAndPlayPrivate.m:1062) despite being listed unmapped -- see divergences.md note; the 700-byte reference body was not disassembled in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_getDeviceCfg"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 700,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 7488,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAKernBus maxPnPCard]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 12,
+      "source_line": 60,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBus+PlugAndPlay.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 7500,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "verified instruction-by-instruction; ports 0x279/pnpReadPort match our source exactly; reference also increments a diagnostic counter after the outb that our source does not have (see divergences.md, accepted as cosmetic)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAKernBus readPnPRegister:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 38,
+      "source_line": 70,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBus+PlugAndPlay.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 7540,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "verified instruction-by-instruction; ports 0x279/0xa79 match our source exactly; same missing diagnostic counter as readPnPRegister: (see divergences.md, accepted as cosmetic)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAKernBus writePnPRegister:value:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 47,
+      "source_line": 88,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBus+PlugAndPlay.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 7588,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "verified instruction-by-instruction; csn!=0 and csn<=maxPnPCard checks and the getCardConfig call match our source exactly"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAKernBus readPnPConfig:length:forCard:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 45,
+      "source_line": 102,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBus+PlugAndPlay.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 7636,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "verified instruction-by-instruction; csn range check, deviceCount-1 bound and the getDeviceCfg call match our source exactly"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAKernBus readPnPDeviceCfg:length:forCard:andLogicalDevice:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 95,
+      "source_line": 119,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBus+PlugAndPlay.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 7732,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAKernBus readSystemNode:length:forNode:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 9,
+      "source_line": 151,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBus+PlugAndPlay.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 7744,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAKernBus getPnPId:forCsn:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 69,
+      "source_line": 163,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBus+PlugAndPlay.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 7816,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAKernBus testIDs:csn:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 64,
+      "source_line": 187,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBus+PlugAndPlay.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 7880,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAKernBus lookForPnPIDs:Instance:LogicalDevice:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 444,
+      "source_line": 210,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBus+PlugAndPlay.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 8324,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_configTableLookupServerAttribute"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 253,
+      "source_line": 473,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBus.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 8580,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAKernBus findCardWithID:Serial:LogicalDevice:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 149,
+      "source_line": 77,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBus+PlugAndPlayPrivate.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 8732,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAKernBus deactivateLogicalDevices:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 313,
+      "source_line": 130,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBus+PlugAndPlayPrivate.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 9048,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAKernBus initializeNoBIOS]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 754,
+      "source_line": 258,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBus+PlugAndPlayPrivate.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 9804,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAKernBus initializePnP]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 791,
+      "source_line": 330,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBus+PlugAndPlayPrivate.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 10596,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAKernBus getConfigForCard:LogicalDevice:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 156,
+      "source_line": 501,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBus+PlugAndPlayPrivate.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 10752,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAKernBus allocateResources:Using:DependentFunction:Description:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 1203,
+      "source_line": 542,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBus+PlugAndPlayPrivate.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 11956,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[EISAKernBus pnpSetResourcesForDescription:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 1596,
+      "source_line": 788,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/EISAKernBus+PlugAndPlayPrivate.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 13552,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[PnPBios setVerbose:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 16,
+      "source_line": 361,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPBios.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 13568,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[PnPBios Present:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 99,
+      "source_line": 297,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPBios.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 13668,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "confirmed divergence: reference setupSegments saves the pre-existing GDT[16..19] entries and lazily allocates PnPArgStack; called before every BIOS call, not once at init (see divergences.md Finding 2 and Finding 3); fix applied for Finding 2 -- our setupSegments now saves GDT[16], GDT[18], GDT[19], GDT[17] into _saveGDTBiosCode/_saveGDTBiosEntry/_saveGDTKData/_saveGDTBiosData before overwriting them, and is called from each of the three PnP-call methods rather than once at init; PnPArgStack (Finding 1) remains unimplemented"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPBios setupSegments]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 587,
+      "source_line": 615,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPBios.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 14256,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "was genuinely absent from our source (no releaseSegments method existed on PnPBios), consistent with setupSegments never being called per-call in our reimplementation (see divergences.md Finding 2); fix applied -- PnPBios now has a -releaseSegments method that restores GDT[16], GDT[18], GDT[19], GDT[17] from the ivars -setupSegments saves them into, called from each of the three PnP-call methods immediately after call_pnp_bios, matching the reference's restore order"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPBios releaseSegments]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 111,
+      "source_line": 762,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPBios.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 14368,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "confirmed divergence: reference free() never restores the GDT (no releaseSegments call), consistent with GDT save/restore happening per-call rather than at init/free (see divergences.md Finding 2)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPBios free]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 93,
+      "source_line": 492,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPBios.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 14464,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "genuinely absent from our source: no equivalent function, method, or class exists anywhere in drvEISABus (see divergences.md central finding); confirmed via grep across the whole source tree"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_call_bios"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 71,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 14536,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "confirmed divergence: reference marshals a call-specific, variable-length argument list via PnPArgStack (4 words here) instead of our fixed 8-word call_pnp_bios packing, and wraps the call in per-call setupSegments/releaseSegments (see divergences.md Finding 1 and Finding 3)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPBios getPnPConfig:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 158,
+      "source_line": 578,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPBios.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 14696,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "confirmed divergence: same PnPArgStack-based variable-length marshalling as getPnPConfig:, 6 words here (see divergences.md Finding 1 and Finding 3)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPBios getNumNodes:AndSize:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 191,
+      "source_line": 545,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPBios.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 14888,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "confirmed divergence: same PnPArgStack-based variable-length marshalling as getPnPConfig:, 7 words here (see divergences.md Finding 1 and Finding 3)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPBios getDeviceNode:ForHandle:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 215,
+      "source_line": 513,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPBios.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 15104,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "confirmed divergence: reference init() only reads the PnP BIOS install fields and allocates the 64KB buffer; it does not call setupSegments or allocate a stack buffer at init time (see divergences.md Finding 2); partially fixed -- init no longer calls setupSegments (matches reference), but still allocates a 4KB _kStack buffer for GDT 20, which the reference has no counterpart for at all (that GDT slot is our own trampoline design, not part of Finding 2's scope)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPBios init]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 166,
+      "source_line": 374,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPBios.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 15272,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "genuinely absent from our source: no equivalent function, method, or class exists anywhere in drvEISABus (see divergences.md central finding); confirmed via grep across the whole source tree"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPArgStack initWithData:Selector:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 79,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 15352,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "genuinely absent from our source: no equivalent function, method, or class exists anywhere in drvEISABus (see divergences.md central finding); confirmed via grep across the whole source tree"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPArgStack reset]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 37,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 15392,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "genuinely absent from our source: no equivalent function, method, or class exists anywhere in drvEISABus (see divergences.md central finding); confirmed via grep across the whole source tree"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPArgStack push:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 84,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 15476,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "genuinely absent from our source: no equivalent function, method, or class exists anywhere in drvEISABus (see divergences.md central finding); confirmed via grep across the whole source tree"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPArgStack pushFarPtr:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 108,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 15584,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpIRQ print]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 176,
+      "source_line": 188,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIRQ.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 15760,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpIRQ matches:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 126,
+      "source_line": 114,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIRQ.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 15888,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpIRQ initFrom:Length:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 169,
+      "source_line": 48,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIRQ.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 16060,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpIRQ irqs]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 13,
+      "source_line": 95,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIRQ.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 16076,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpIRQ addToIRQList:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 29,
+      "source_line": 176,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIRQ.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 16108,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpIRQ setHigh:Level:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 56,
+      "source_line": 153,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIRQ.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 16164,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpIRQ number]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 13,
+      "source_line": 104,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIRQ.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 16180,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpIRQ writePnPConfig:Index:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 122,
+      "source_line": 227,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIRQ.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 16304,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpDMA print]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 252,
+      "source_line": 176,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 16556,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpDMA matches:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 126,
+      "source_line": 142,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 16684,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpDMA initFrom:Length:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 210,
+      "source_line": 49,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 16896,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpDMA addDMAToList:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 29,
+      "source_line": 119,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 16928,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpDMA number]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 13,
+      "source_line": 132,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 16944,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpDMA dmaChannels]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 13,
+      "source_line": 110,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 16960,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpDMA writePnPConfig:Index:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 80,
+      "source_line": 240,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 17040,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpIOPort print]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 45,
+      "source_line": 215,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 17088,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpIOPort matches:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 108,
+      "source_line": 182,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 17196,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpIOPort initWithBase:Length:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 72,
+      "source_line": 125,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 17268,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpIOPort initFrom:Length:Type:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 266,
+      "source_line": 50,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 17536,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpIOPort min_base]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 14,
+      "source_line": 139,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 17552,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpIOPort max_base]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 14,
+      "source_line": 147,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 17568,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpIOPort alignment]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 14,
+      "source_line": 155,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 17584,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpIOPort length]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 14,
+      "source_line": 163,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 17600,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpIOPort lines_decoded]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 14,
+      "source_line": 171,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 17616,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpIOPort writePnPConfig:Index:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 231,
+      "source_line": 228,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 17848,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpMemory print]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 213,
+      "source_line": 345,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 18064,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpMemory matches:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 80,
+      "source_line": 262,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 18144,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpMemory is32]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 14,
+      "source_line": 243,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 18160,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpMemory min_base]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 13,
+      "source_line": 187,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 18176,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpMemory max_base]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 13,
+      "source_line": 195,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 18192,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpMemory alignment]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 13,
+      "source_line": 203,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 18208,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpMemory length]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 13,
+      "source_line": 211,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 18224,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpMemory bit8]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 14,
+      "source_line": 219,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 18240,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpMemory bit16]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 14,
+      "source_line": 227,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 18256,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpMemory bit32]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 14,
+      "source_line": 235,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 18272,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpMemory highAddressDecode]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 14,
+      "source_line": 251,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 18288,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpMemory setControl:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 119,
+      "source_line": 303,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 18408,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpMemory initWithBase:Length:Bit16:Bit32:HighAddr:Is32:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 117,
+      "source_line": 156,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 18528,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpMemory initFrom:Length:Type:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 418,
+      "source_line": 57,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 18948,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[pnpMemory writePnPConfig:Index:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 989,
+      "source_line": 397,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 19940,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPResource matches:Using:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 164,
+      "source_line": 128,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResource.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 20104,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPResource init]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 116,
+      "source_line": 43,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResource.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 20220,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPResource free]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 77,
+      "source_line": 65,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResource.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 20300,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPResource list]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 13,
+      "source_line": 76,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResource.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 20316,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPResource setDepStart:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 16,
+      "source_line": 85,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResource.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 20332,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPResource objectAt:Using:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 138,
+      "source_line": 97,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResource.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 20472,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPResources print]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 144,
+      "source_line": 540,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 20616,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPResources init]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 245,
+      "source_line": 50,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 20864,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPResources initFromDeviceDescription:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 713,
+      "source_line": 246,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 21580,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPResources initFromRegisters:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 1045,
+      "source_line": 364,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 22628,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPResources free]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 112,
+      "source_line": 72,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 22740,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPResources irq]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 13,
+      "source_line": 85,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 22756,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPResources dma]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 13,
+      "source_line": 93,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 22772,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPResources port]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 13,
+      "source_line": 101,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 22788,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPResources memory]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 13,
+      "source_line": 109,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 22804,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPResources addIRQ:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 46,
+      "source_line": 118,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 22852,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPResources addDMA:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 46,
+      "source_line": 128,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 22900,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPResources addIOPort:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 46,
+      "source_line": 138,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 22948,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPResources addMemory:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 46,
+      "source_line": 148,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 22996,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPResources markStartDependentResources]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 213,
+      "source_line": 159,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 23212,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPResources configure:Using:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 256,
+      "source_line": 192,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 23468,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPDependentResources setGoodConfig:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 16,
+      "source_line": 58,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDependentResources.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 23484,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPDependentResources goodConfig]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 14,
+      "source_line": 49,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDependentResources.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 23500,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPLogicalDevice findMatchingDependentFunction:ForConfig:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 440,
+      "source_line": 192,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 23940,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPLogicalDevice init]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 161,
+      "source_line": 52,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 24104,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPLogicalDevice free]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 109,
+      "source_line": 70,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 24216,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPLogicalDevice setDeviceName:Length:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 69,
+      "source_line": 146,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 24288,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPLogicalDevice compatIDs]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 13,
+      "source_line": 128,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 24304,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPLogicalDevice addCompatID:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 30,
+      "source_line": 180,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 24336,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPLogicalDevice deviceName]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 13,
+      "source_line": 96,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 24352,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPLogicalDevice setID:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 16,
+      "source_line": 136,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 24368,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPLogicalDevice ID]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 13,
+      "source_line": 87,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 24384,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPLogicalDevice setLogicalDeviceNumber:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 16,
+      "source_line": 171,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 24400,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPLogicalDevice logicalDeviceNumber]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 13,
+      "source_line": 104,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 24416,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPLogicalDevice depResources]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 13,
+      "source_line": 120,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 24432,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPLogicalDevice resources]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 13,
+      "source_line": 112,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 24448,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[PnPDeviceResources setReadPort:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 17,
+      "source_line": 64,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 24468,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPDeviceResources setDeviceName:Length:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 69,
+      "source_line": 297,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 24540,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPDeviceResources setID:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 16,
+      "source_line": 201,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 24556,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPDeviceResources deviceName]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 13,
+      "source_line": 286,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 24572,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPDeviceResources ID]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 13,
+      "source_line": 193,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 24588,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPDeviceResources setSerialNumber:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 16,
+      "source_line": 218,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 24604,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPDeviceResources serialNumber]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 13,
+      "source_line": 210,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 24620,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPDeviceResources parseConfig:Length:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 2570,
+      "source_line": 328,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 27192,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[PnPDeviceResources setVerbose:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 16,
+      "source_line": 73,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 27208,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPDeviceResources initForBuf:Length:CSN:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 401,
+      "source_line": 86,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 27612,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPDeviceResources initForBufNoHeader:Length:CSN:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 156,
+      "source_line": 151,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 27768,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPDeviceResources csn]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 13,
+      "source_line": 228,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 27784,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPDeviceResources free]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 86,
+      "source_line": 178,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 27872,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPDeviceResources deviceList]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 13,
+      "source_line": 246,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 27888,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPDeviceResources deviceCount]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 26,
+      "source_line": 237,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 27916,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PnPDeviceResources deviceWithID:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 84,
+      "source_line": 255,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
+      "status": "unexamined"
+    },
+    {
+      "address": 28000,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "verified instruction-by-instruction against our source (whitespace-skip loop, strtoul fallback, EISA 3-letter-code bit packing, redundant param_1 NULL-recheck before the 3-letter skip); exact match, no divergence"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_EISAParseID"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 256,
+      "source_line": 63,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/eisa.c",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 28256,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "disassembly structure (NULL checks, manual strlen via repne scasb, strncmp, trailing '(' check) matches our source's algorithm; not re-verified operand by operand"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_EISAParsePrefix"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 75,
+      "source_line": 176,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/eisa.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 28332,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
+          "disassembly structure (loop over EISAParseID + optional '&' mask via strtoul, masked comparison, no-progress termination) matches our source's algorithm; not re-verified operand by operand"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_EISAMatchIDs"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 117,
+      "source_line": 230,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/eisa.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 28652,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "Ghidra has no function entry at this address (see divergences.md analyzer-disagreement note); IDA reports a 103-byte function matching the Mach-O symbol table",
+          "boundary_disputed in source-map.json: function range overlaps another; symbol may be an interior label",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "__PnPEntry"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 103,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 28708,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "Ghidra has no function entry at this address (see divergences.md analyzer-disagreement note); IDA reports a 6-byte function matching the Mach-O symbol table",
+          "boundary_disputed in source-map.json: function range overlaps another; symbol may be an interior label",
+          "not examined in this pass"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "push_arg"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 6,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 28762,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "Ghidra has no function entry at this address (see divergences.md analyzer-disagreement note); IDA reports a 20-byte function matching the Mach-O symbol table",
+          "genuinely absent from our source: no equivalent function, method, or class exists anywhere in drvEISABus (see divergences.md central finding); confirmed via grep across the whole source tree"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "bios_rtn"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 20,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 28784,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "Ghidra has no function entry at this address (see divergences.md analyzer-disagreement note); IDA reports a 12-byte function matching the Mach-O symbol table",
+          "build-generated (Kernel Server project type / Load_Commands.sect), not written by hand; accepted, see divergences.md"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[EISABusKernelServerInstance kernelServerInstance]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 12,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 28796,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA"
+        ],
+        "reasons": [
+          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
+          "build-generated (Kernel Server project type / Load_Commands.sect), not written by hand; accepted, see divergences.md"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[EISABusVersion driverKitVersionForEISABus]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 12,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    }
+  ],
+  "rebuilt_sha256": null,
+  "reference_sha256": "8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23",
+  "schema_version": "ledger-v1"
+}

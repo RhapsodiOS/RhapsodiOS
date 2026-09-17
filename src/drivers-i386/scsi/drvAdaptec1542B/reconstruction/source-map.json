@@ -1,0 +1,330 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 0,
+      "reference_names": [
+        "+[AHAController probe:]"
+      ],
+      "size": 184,
+      "source_line": 73,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m"
+    },
+    {
+      "address": 184,
+      "reference_names": [
+        "-[AHAController initFromDeviceDescription:]"
+      ],
+      "size": 807,
+      "source_line": 100,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m"
+    },
+    {
+      "address": 992,
+      "reference_names": [
+        "-[AHAController maxTransfer]"
+      ],
+      "size": 15,
+      "source_line": 211,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m"
+    },
+    {
+      "address": 1008,
+      "reference_names": [
+        "-[AHAController free]"
+      ],
+      "size": 170,
+      "source_line": 220,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m"
+    },
+    {
+      "address": 1180,
+      "reference_names": [
+        "-[AHAController numQueueSamples]"
+      ],
+      "size": 16,
+      "source_line": 243,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m"
+    },
+    {
+      "address": 1196,
+      "reference_names": [
+        "-[AHAController sumQueueLengths]"
+      ],
+      "size": 16,
+      "source_line": 249,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m"
+    },
+    {
+      "address": 1212,
+      "reference_names": [
+        "-[AHAController maxQueueLength]"
+      ],
+      "size": 16,
+      "source_line": 255,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m"
+    },
+    {
+      "address": 1228,
+      "reference_names": [
+        "-[AHAController resetStats]"
+      ],
+      "size": 40,
+      "source_line": 261,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m"
+    },
+    {
+      "address": 1268,
+      "reference_names": [
+        "-[AHAController executeRequest:buffer:client:]"
+      ],
+      "size": 58,
+      "source_line": 272,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m"
+    },
+    {
+      "address": 1328,
+      "reference_names": [
+        "-[AHAController resetSCSIBus]"
+      ],
+      "size": 40,
+      "source_line": 296,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m"
+    },
+    {
+      "address": 1368,
+      "reference_names": [
+        "-[AHAController interruptOccurred]"
+      ],
+      "size": 277,
+      "source_line": 314,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m"
+    },
+    {
+      "address": 1648,
+      "reference_names": [
+        "-[AHAController interruptOccurredAt:]"
+      ],
+      "size": 41,
+      "source_line": 370,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m"
+    },
+    {
+      "address": 1692,
+      "reference_names": [
+        "-[AHAController otherOccurred:]"
+      ],
+      "size": 41,
+      "source_line": 375,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m"
+    },
+    {
+      "address": 1736,
+      "reference_names": [
+        "-[AHAController receiveMsg]"
+      ],
+      "size": 69,
+      "source_line": 380,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m"
+    },
+    {
+      "address": 1808,
+      "reference_names": [
+        "-[AHAController timeoutOccurred]"
+      ],
+      "size": 311,
+      "source_line": 396,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m"
+    },
+    {
+      "address": 2120,
+      "reference_names": [
+        "-[AHAController commandRequestOccurred]"
+      ],
+      "size": 391,
+      "source_line": 465,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m"
+    },
+    {
+      "address": 2512,
+      "reference_names": [
+        "-[AHAController probeAtPortBase:]"
+      ],
+      "size": 239,
+      "source_line": 520,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m"
+    },
+    {
+      "address": 2752,
+      "reference_names": [
+        "-[AHAController executeCmdBuf:]"
+      ],
+      "size": 303,
+      "source_line": 587,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAController.m"
+    },
+    {
+      "address": 3056,
+      "reference_names": [
+        "_aha_start_scsi"
+      ],
+      "size": 29,
+      "source_line": 20,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHARoutines.m"
+    },
+    {
+      "address": 3088,
+      "reference_names": [
+        "_aha_probe_cmd"
+      ],
+      "size": 367,
+      "source_line": 34,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHARoutines.m"
+    },
+    {
+      "address": 3456,
+      "reference_names": [
+        "_aha_cmd"
+      ],
+      "size": 274,
+      "source_line": 100,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHARoutines.m"
+    },
+    {
+      "address": 3732,
+      "reference_names": [
+        "_aha_reset_board"
+      ],
+      "size": 88,
+      "source_line": 155,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHARoutines.m"
+    },
+    {
+      "address": 3820,
+      "reference_names": [
+        "_aha_setup_mb_area"
+      ],
+      "size": 288,
+      "source_line": 184,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHARoutines.m"
+    },
+    {
+      "address": 4108,
+      "reference_names": [
+        "_aha_unlock_mb"
+      ],
+      "size": 69,
+      "source_line": 256,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHARoutines.m"
+    },
+    {
+      "address": 4180,
+      "reference_names": [
+        "-[AHAController threadExecuteRequest:]"
+      ],
+      "size": 267,
+      "source_line": 53,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAThread.m"
+    },
+    {
+      "address": 4448,
+      "reference_names": [
+        "-[AHAController threadResetBus:]"
+      ],
+      "size": 284,
+      "source_line": 98,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAThread.m"
+    },
+    {
+      "address": 4732,
+      "reference_names": [
+        "-[AHAController ccbFromCmd:ccb:]"
+      ],
+      "size": 1300,
+      "source_line": 151,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAThread.m"
+    },
+    {
+      "address": 6032,
+      "reference_names": [
+        "-[AHAController runPendingCommands]"
+      ],
+      "size": 270,
+      "source_line": 345,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAThread.m"
+    },
+    {
+      "address": 6304,
+      "reference_names": [
+        "-[AHAController commandCompleted:reason:]"
+      ],
+      "size": 512,
+      "source_line": 391,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAThread.m"
+    },
+    {
+      "address": 6816,
+      "reference_names": [
+        "-[AHAController allocCcb:]"
+      ],
+      "size": 208,
+      "source_line": 496,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAThread.m"
+    },
+    {
+      "address": 7024,
+      "reference_names": [
+        "-[AHAController freeCcb:]"
+      ],
+      "size": 93,
+      "source_line": 544,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAThread.m"
+    },
+    {
+      "address": 7120,
+      "reference_names": [
+        "-[AHAController completeDMA:length:]"
+      ],
+      "size": 58,
+      "source_line": 558,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAThread.m"
+    },
+    {
+      "address": 7180,
+      "reference_names": [
+        "-[AHAController abortDMA:length:]"
+      ],
+      "size": 58,
+      "source_line": 574,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAThread.m"
+    },
+    {
+      "address": 7240,
+      "reference_names": [
+        "_ahaTimeout"
+      ],
+      "size": 95,
+      "source_line": 597,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec1542B/Adaptec1542B.drvproj/Adaptec1542B.lksproj/AHAThread.m"
+    }
+  ],
+  "reference_sha256": "C4160F413776FF3559408BD802946EFB9624A249BF6CB0F2EAE6C212B0B40A24",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 7336,
+      "reference_names": [
+        "+[Adaptec1542BKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 7348,
+      "reference_names": [
+        "+[Adaptec1542BVersion driverKitVersionForAdaptec1542B]"
+      ],
+      "size": 12
+    }
+  ]
+}

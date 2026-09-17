@@ -17,9 +17,24 @@
 #define BL_TIMEOUT_MS	1000
 
 /*
+ * Tell the board to go look at the outgoing mailboxes. The board must not
+ * be busy taking command parameters when the command byte is written.
+ */
+void blc_start_scsi(IOEISAPortAddress portBase)
+{
+	bl_stat_reg_t stat;
+
+	do {
+		stat = bl_get_stat(portBase);
+	} while (stat.cmd_param_busy);
+
+	bl_put_cmd(portBase, BL_CMD_START_SCSI);
+}
+
+/*
  * Reset the BusLogic board.
  */
-BOOL bl_reset_board(IOEISAPortAddress portBase, unsigned char boardId)
+BOOL blc_reset_board(IOEISAPortAddress portBase, unsigned char boardId)
 {
 	bl_ctrl_reg_t ctrl = { 0 };
 	bl_stat_reg_t stat;
@@ -52,7 +67,7 @@ BOOL bl_reset_board(IOEISAPortAddress portBase, unsigned char boardId)
 /*
  * Send command to board with optional data in/out.
  */
-BOOL bl_probe_cmd(IOEISAPortAddress portBase, unsigned char cmd,
+BOOL blc_probe_cmd(IOEISAPortAddress portBase, unsigned char cmd,
 		  unsigned char *dataOut, int dataOutLen,
 		  unsigned char *dataIn, int dataInLen,
 		  BOOL expectResponse)
@@ -112,9 +127,33 @@ BOOL bl_probe_cmd(IOEISAPortAddress portBase, unsigned char cmd,
 }
 
 /*
+ * Release the board's mailbox lock.
+ *
+ * The two-byte lock structure is read back with board command 0x28 and, if
+ * the board accepts that command, written out again with command 0x29 and a
+ * cleared status byte. BusLogicTypes.h spells those two opcodes
+ * BL_CMD_SET_PREEMPT_TIME and BL_CMD_SET_TIMEOFF; those names do not
+ * describe this use, but they are the opcodes involved. A board which
+ * rejects the read simply has no lock to release.
+ */
+void blc_unlock_mb(IOEISAPortAddress portBase)
+{
+	bl_mb_lock_t mbLock;
+
+	if (!blc_probe_cmd(portBase, BL_CMD_SET_PREEMPT_TIME, NULL, 0,
+			  (unsigned char *)&mbLock, sizeof(mbLock), TRUE))
+		return;
+
+	mbLock.mb_status = 0;
+	(void)blc_probe_cmd(portBase, BL_CMD_SET_TIMEOFF,
+			   (unsigned char *)&mbLock, sizeof(mbLock),
+			   NULL, 0, TRUE);
+}
+
+/*
  * Setup mailbox area.
  */
-BOOL bl_setup_mb_area(IOEISAPortAddress portBase,
+BOOL blc_setup_mb_area(IOEISAPortAddress portBase,
 		      struct bl_mb_area *mbArea,
 		      struct ccb *ccbArray)
 {
@@ -132,12 +171,15 @@ BOOL bl_setup_mb_area(IOEISAPortAddress portBase,
 		return FALSE;
 	}
 
+	/* Drop any mailbox lock left over from a previous owner */
+	blc_unlock_mb(portBase);
+
 	/* Initialize mailbox structure */
 	initCmd.mb_cnt = BL_MB_CNT;
 	bl_put_24(physAddr, initCmd.mb_area_addr);
 
 	/* Send mailbox init command */
-	if (!bl_probe_cmd(portBase, BL_CMD_INIT_MBOX,
+	if (!blc_probe_cmd(portBase, BL_CMD_INIT_MBOX,
 			  (unsigned char *)&initCmd, sizeof(initCmd),
 			  NULL, 0, FALSE)) {
 		IOLog("BusLogic: Mailbox init failed\n");

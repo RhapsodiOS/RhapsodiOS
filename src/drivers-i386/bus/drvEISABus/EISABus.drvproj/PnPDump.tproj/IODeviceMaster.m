@@ -29,15 +29,23 @@
 
 #import "IODeviceMaster.h"
 
-/* External device_master functions */
+/*
+ * The device_master interface is MIG-generated from
+ * driverkit-3/libDriver/driverServer.defs, whose routines are declared with a
+ * leading underscore -- "routine _IOGetCharValues(...)" and so on -- so the
+ * generated C functions are named _IOGetCharValues and the Mach-O symbols are
+ * __IOGetCharValues.  That matches the reference PnPDump, which defines
+ * __IOGetCharValues, __IOLookupByDeviceName and the rest.  Calling them
+ * without the underscore, as this file used to, asks the linker for
+ * _IOGetCharValues, which nothing defines.
+ *
+ * driverServer.h carries the real prototypes; the canonical
+ * driverkit-3/libDriver/User/IODeviceMaster.m imports it rather than
+ * hand-declaring externs, so do the same here.
+ */
+#import <driverkit/driverServer.h>
+
 extern port_t device_master_self(void);
-extern int IOCreateMachPort(port_t master, unsigned int objNum, port_t *port);
-extern int IOGetCharValues(port_t master, unsigned int objNum, const char *param, unsigned int maxCount, char **values, unsigned int *count);
-extern int IOGetIntValues(port_t master, unsigned int objNum, const char *param, unsigned int maxCount, unsigned int *values, unsigned int *count);
-extern int IOLookupByDeviceName(port_t master, const char *name, unsigned int *objNum, const char **kind);
-extern int IOLookupByObjectNumber(port_t master, unsigned int objNum, const char **kind, const char **name);
-extern int IOSetCharValues(port_t master, unsigned int objNum, const char *param, const char **values, unsigned int count);
-extern int IOSetIntValues(port_t master, unsigned int objNum, const char *param, const unsigned int *values, unsigned int count);
 
 /* Static singleton instance */
 static id thisTasksId = nil;
@@ -61,7 +69,7 @@ static id thisTasksId = nil;
  */
 - createMachPort:(port_t *)port objectNumber:(unsigned int)objNum
 {
-    IOCreateMachPort(deviceMasterPort, objNum, port);
+    _IOCreateMachPort(deviceMasterPort, objNum, port);
     return self;
 }
 
@@ -78,7 +86,7 @@ static id thisTasksId = nil;
  */
 - (int)getCharValues:(char **)values forParameter:(const char *)param objectNumber:(unsigned int)objNum count:(unsigned int *)count
 {
-    return IOGetCharValues(deviceMasterPort, objNum, param, *count, values, count);
+    return _IOGetCharValues(deviceMasterPort, objNum, param, *count, values, count);
 }
 
 /*
@@ -86,7 +94,7 @@ static id thisTasksId = nil;
  */
 - (int)getIntValues:(unsigned int *)values forParameter:(const char *)param objectNumber:(unsigned int)objNum count:(unsigned int *)count
 {
-    return IOGetIntValues(deviceMasterPort, objNum, param, *count, values, count);
+    return _IOGetIntValues(deviceMasterPort, objNum, param, *count, values, count);
 }
 
 /*
@@ -94,7 +102,7 @@ static id thisTasksId = nil;
  */
 - (int)lookUpByDeviceName:(const char *)name objectNumber:(unsigned int *)objNum deviceKind:(const char **)kind
 {
-    return IOLookupByDeviceName(deviceMasterPort, name, objNum, kind);
+    return _IOLookupByDeviceName(deviceMasterPort, name, objNum, kind);
 }
 
 /*
@@ -102,7 +110,7 @@ static id thisTasksId = nil;
  */
 - (int)lookUpByObjectNumber:(unsigned int)objNum deviceKind:(const char **)kind deviceName:(const char **)name
 {
-    return IOLookupByObjectNumber(deviceMasterPort, objNum, kind, name);
+    return _IOLookupByObjectNumber(deviceMasterPort, objNum, kind, name);
 }
 
 /*
@@ -110,7 +118,7 @@ static id thisTasksId = nil;
  */
 - (int)setCharValues:(const char **)values forParameter:(const char *)param objectNumber:(unsigned int)objNum count:(unsigned int)count
 {
-    return IOSetCharValues(deviceMasterPort, objNum, param, values, count);
+    return _IOSetCharValues(deviceMasterPort, objNum, param, values, count);
 }
 
 /*
@@ -118,7 +126,7 @@ static id thisTasksId = nil;
  */
 - (int)setIntValues:(const unsigned int *)values forParameter:(const char *)param objectNumber:(unsigned int)objNum count:(unsigned int)count
 {
-    return IOSetIntValues(deviceMasterPort, objNum, param, values, count);
+    return _IOSetIntValues(deviceMasterPort, objNum, param, values, count);
 }
 
 @end

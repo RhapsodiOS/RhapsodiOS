@@ -1,0 +1,447 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 116,
+      "reference_names": [
+        "-[MaceEnet initFromDeviceDescription:]"
+      ],
+      "size": 456,
+      "source_line": 73,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnet.m"
+    },
+    {
+      "address": 620,
+      "reference_names": [
+        "-[MaceEnet free]"
+      ],
+      "size": 228,
+      "source_line": 132,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnet.m"
+    },
+    {
+      "address": 896,
+      "reference_names": [
+        "-[MaceEnet interruptOccurredAt:]"
+      ],
+      "size": 204,
+      "source_line": 157,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnet.m"
+    },
+    {
+      "address": 1116,
+      "reference_names": [
+        "-[MaceEnet serviceTransmitQueue]"
+      ],
+      "size": 164,
+      "source_line": 192,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnet.m"
+    },
+    {
+      "address": 1296,
+      "reference_names": [
+        "-[MaceEnet transmit:]"
+      ],
+      "size": 360,
+      "source_line": 222,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnet.m"
+    },
+    {
+      "address": 1736,
+      "reference_names": [
+        "-[MaceEnet transmitQueueSize]"
+      ],
+      "size": 16,
+      "source_line": 310,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnet.m"
+    },
+    {
+      "address": 1752,
+      "reference_names": [
+        "-[MaceEnet transmitQueueCount]"
+      ],
+      "size": 44,
+      "source_line": 315,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnet.m"
+    },
+    {
+      "address": 1812,
+      "reference_names": [
+        "-[MaceEnet resetAndEnable:]"
+      ],
+      "size": 352,
+      "source_line": 325,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnet.m"
+    },
+    {
+      "address": 2180,
+      "reference_names": [
+        "-[MaceEnet timeoutOccurred]"
+      ],
+      "size": 288,
+      "source_line": 362,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnet.m"
+    },
+    {
+      "address": 2500,
+      "reference_names": [
+        "-[MaceEnet allocateNetbuf]"
+      ],
+      "size": 68,
+      "source_line": 432,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnet.m"
+    },
+    {
+      "address": 2600,
+      "reference_names": [
+        "-[MaceEnet enablePromiscuousMode]"
+      ],
+      "size": 144,
+      "source_line": 451,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnet.m"
+    },
+    {
+      "address": 2792,
+      "reference_names": [
+        "-[MaceEnet disablePromiscuousMode]"
+      ],
+      "size": 140,
+      "source_line": 469,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnet.m"
+    },
+    {
+      "address": 2980,
+      "reference_names": [
+        "-[MaceEnet enableMulticastMode]"
+      ],
+      "size": 24,
+      "source_line": 486,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnet.m"
+    },
+    {
+      "address": 3004,
+      "reference_names": [
+        "-[MaceEnet disableMulticastMode]"
+      ],
+      "size": 20,
+      "source_line": 492,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnet.m"
+    },
+    {
+      "address": 3024,
+      "reference_names": [
+        "-[MaceEnet addMulticastAddress:]"
+      ],
+      "size": 132,
+      "source_line": 497,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnet.m"
+    },
+    {
+      "address": 3172,
+      "reference_names": [
+        "-[MaceEnet removeMulticastAddress:]"
+      ],
+      "size": 124,
+      "source_line": 506,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnet.m"
+    },
+    {
+      "address": 3312,
+      "reference_names": [
+        "-[MaceEnet sendPacket:length:]"
+      ],
+      "size": 40,
+      "source_line": 517,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnet.m"
+    },
+    {
+      "address": 3368,
+      "reference_names": [
+        "-[MaceEnet receivePacket:length:timeout:]"
+      ],
+      "size": 40,
+      "source_line": 522,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnet.m"
+    },
+    {
+      "address": 3424,
+      "reference_names": [
+        "-[MaceEnet getPowerState:]"
+      ],
+      "size": 16,
+      "source_line": 530,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnet.m"
+    },
+    {
+      "address": 3440,
+      "reference_names": [
+        "-[MaceEnet setPowerState:]"
+      ],
+      "size": 68,
+      "source_line": 535,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnet.m"
+    },
+    {
+      "address": 3524,
+      "reference_names": [
+        "-[MaceEnet getPowerManagement:]"
+      ],
+      "size": 16,
+      "source_line": 545,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnet.m"
+    },
+    {
+      "address": 3540,
+      "reference_names": [
+        "-[MaceEnet setPowerManagement:]"
+      ],
+      "size": 16,
+      "source_line": 550,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnet.m"
+    },
+    {
+      "address": 3648,
+      "reference_names": [
+        "-[MaceEnet _allocateMemory]"
+      ],
+      "size": 1040,
+      "source_line": 72,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnetPrivate.m"
+    },
+    {
+      "address": 4736,
+      "reference_names": [
+        "-[MaceEnet _initTxRing]"
+      ],
+      "size": 560,
+      "source_line": 202,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnetPrivate.m"
+    },
+    {
+      "address": 5392,
+      "reference_names": [
+        "-[MaceEnet _initRxRing]"
+      ],
+      "size": 620,
+      "source_line": 277,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnetPrivate.m"
+    },
+    {
+      "address": 6108,
+      "reference_names": [
+        "-[MaceEnet _startChip]"
+      ],
+      "size": 64,
+      "source_line": 357,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnetPrivate.m"
+    },
+    {
+      "address": 6204,
+      "reference_names": [
+        "-[MaceEnet _resetChip]"
+      ],
+      "size": 216,
+      "source_line": 374,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnetPrivate.m"
+    },
+    {
+      "address": 6468,
+      "reference_names": [
+        "-[MaceEnet _initChip]"
+      ],
+      "size": 416,
+      "source_line": 405,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnetPrivate.m"
+    },
+    {
+      "address": 6948,
+      "reference_names": [
+        "-[MaceEnet _restartChip]"
+      ],
+      "size": 184,
+      "source_line": 481,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnetPrivate.m"
+    },
+    {
+      "address": 7164,
+      "reference_names": [
+        "-[MaceEnet _stopReceiveDMA]"
+      ],
+      "size": 368,
+      "source_line": 525,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnetPrivate.m"
+    },
+    {
+      "address": 7644,
+      "reference_names": [
+        "-[MaceEnet _stopTransmitDMA]"
+      ],
+      "size": 272,
+      "source_line": 608,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnetPrivate.m"
+    },
+    {
+      "address": 7996,
+      "reference_names": [
+        "-[MaceEnet _disableAdapterInterrupts]"
+      ],
+      "size": 44,
+      "source_line": 665,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnetPrivate.m"
+    },
+    {
+      "address": 8056,
+      "reference_names": [
+        "-[MaceEnet _enableAdapterInterrupts]"
+      ],
+      "size": 100,
+      "source_line": 681,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnetPrivate.m"
+    },
+    {
+      "address": 8204,
+      "reference_names": [
+        "-[MaceEnet _transmitPacket:]"
+      ],
+      "size": 412,
+      "source_line": 699,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnetPrivate.m"
+    },
+    {
+      "address": 8712,
+      "reference_names": [
+        "-[MaceEnet _receivePacket:length:timeout:]"
+      ],
+      "size": 208,
+      "source_line": 779,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnetPrivate.m"
+    },
+    {
+      "address": 8968,
+      "reference_names": [
+        "-[MaceEnet _packetToDebugger:]"
+      ],
+      "size": 100,
+      "source_line": 815,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnetPrivate.m"
+    },
+    {
+      "address": 9132,
+      "reference_names": [
+        "-[MaceEnet _sendPacket:length:]"
+      ],
+      "size": 412,
+      "source_line": 831,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnetPrivate.m"
+    },
+    {
+      "address": 9672,
+      "reference_names": [
+        "-[MaceEnet _receiveInterruptOccurred]"
+      ],
+      "size": 48,
+      "source_line": 899,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnetPrivate.m"
+    },
+    {
+      "address": 9736,
+      "reference_names": [
+        "-[MaceEnet _receivePackets:]"
+      ],
+      "size": 1388,
+      "source_line": 912,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnetPrivate.m"
+    },
+    {
+      "address": 11300,
+      "reference_names": [
+        "-[MaceEnet _transmitInterruptOccurred]"
+      ],
+      "size": 540,
+      "source_line": 1182,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnetPrivate.m"
+    },
+    {
+      "address": 11936,
+      "reference_names": [
+        "-[MaceEnet _updateDescriptorFromNetBuf:Desc:ReceiveFlag:]"
+      ],
+      "size": 908,
+      "source_line": 1287,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnetPrivate.m"
+    },
+    {
+      "address": 12924,
+      "reference_names": [
+        "-[MaceEnet _dumpDesc:Size:]"
+      ],
+      "size": 252,
+      "source_line": 1379,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnetPrivate.m"
+    },
+    {
+      "address": 13224,
+      "reference_names": [
+        "-[MaceEnet _dumpRegisters]"
+      ],
+      "size": 740,
+      "source_line": 1400,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnetPrivate.m"
+    },
+    {
+      "address": 13996,
+      "reference_names": [
+        "-[MaceEnet _getStationAddress:]"
+      ],
+      "size": 96,
+      "source_line": 1476,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnetPrivate.m"
+    },
+    {
+      "address": 14292,
+      "reference_names": [
+        "-[MaceEnet _addToHashTableMask:]"
+      ],
+      "size": 124,
+      "source_line": 1563,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnetPrivate.m"
+    },
+    {
+      "address": 14432,
+      "reference_names": [
+        "-[MaceEnet _removeFromHashTableMask:]"
+      ],
+      "size": 136,
+      "source_line": 1583,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnetPrivate.m"
+    },
+    {
+      "address": 14584,
+      "reference_names": [
+        "-[MaceEnet _updateHashTableMask]"
+      ],
+      "size": 164,
+      "source_line": 1606,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvMaceEnet/MaceEnetPrivate.m"
+    }
+  ],
+  "reference_sha256": "3D8C168B0A3F2485D6F9B43D8C1290E0A46974F45A715C2778DA97C3A4BBC87C",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 14780,
+      "reference_names": [
+        "+[drvPPCMaceKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 20
+    },
+    {
+      "address": 14800,
+      "reference_names": [
+        "+[drvPPCMaceVersion driverKitVersionFordrvPPCMace]"
+      ],
+      "size": 16
+    }
+  ]
+}

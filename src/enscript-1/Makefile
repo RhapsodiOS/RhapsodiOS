@@ -11,4 +11,4 @@ Extra_LD_Flags        = -read_only_relocs warning
 Extra_Install_Flags   = sysconfdir=$(DSTROOT)$(Install_Prefix)/share/enscript
 
 # It's a GNU Source project
-include /System/Developer/Makefiles/CoreOS/ReleaseControl/GNUSource.make
+include $(MAKEFILEPATH)/CoreOS/ReleaseControl/GNUSource.make

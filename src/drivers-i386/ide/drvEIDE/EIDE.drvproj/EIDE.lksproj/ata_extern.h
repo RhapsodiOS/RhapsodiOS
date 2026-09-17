@@ -181,11 +181,18 @@ typedef struct _ideRegsVal {
  * Mandatory commands. 
  */
 #define 	IDE_READ		0x20
+#define IDE_READ_EXT            0x24
+#define IDE_READ_DMA_EXT        0x25
+#define IDE_READ_MULTIPLE_EXT   0x29
 #define 	IDE_WRITE		0x30
+#define IDE_WRITE_EXT           0x34
+#define IDE_WRITE_DMA_EXT       0x35
+#define IDE_WRITE_MULTIPLE_EXT  0x39
 #define 	IDE_SEEK		0x70
 #define		IDE_RESTORE		0x10
 #define		IDE_FORMAT_TRACK	0x50 	/* do not use */
 #define 	IDE_READ_VERIFY		0x40
+#define IDE_READ_VERIFY_EXT     0x42
 #define		IDE_DIAGNOSE		0x90
 #define		IDE_SET_PARAMS		0x91
 
@@ -292,6 +299,7 @@ typedef struct _ideIoReq {
 #define	IDE_MULTI_SECTOR_MASK		0x00ff
 
 #define	IDE_CAP_LBA_SUPPORTED		0x0200
+#define IDE_CAP_LBA48_ENABLED   0x0400
 #define IDE_CAP_DMA_SUPPORTED		0x0100
 #define IDE_CAP_IORDY_SUPPORTED		0x0800		/* from ATA-2 */
 
@@ -374,12 +382,17 @@ typedef	struct	_ideIdentifyInfo {
 	unsigned short	timeForSecurityErase;			/* word 89 */
 	unsigned short	timeForEnhancedErase;			/* word 90 */
 	unsigned short	currentAPMValue;				/* word 91 */
-	unsigned short	reserved_92_126[35];
+	unsigned short	reserved_92_99[8];
+	unsigned short	userAddressableSectors48[4];
+	unsigned short	reserved_104_126[23];
 	unsigned short	removableMediaStatusSupport;	/* word 127 */
 	unsigned short	securityStatus;					/* word 128 */
 	unsigned short	reserved_129_159[31];
 	unsigned short	reserved_160_255[96];
 } ideIdentifyInfo_t;
+
+typedef char ideIdentifyInfo_must_be_512_bytes[
+    sizeof(ideIdentifyInfo_t) == 512 ? 1 : -1];
 
 /*
  * Maximum Number of bytes of data that can be transfered via DMA using

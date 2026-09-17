@@ -15,7 +15,7 @@
  * Release cylinder cache.
  * From decompiled code: frees cylinder cache buffer and metadata.
  */
-- (void)_releaseCache
+- (void)releaseCache
 {
 	void *cacheBuffer;
 	unsigned cacheSize;
@@ -52,7 +52,7 @@
  * Set up cylinder cache.
  * From decompiled code: allocates cylinder cache buffer and metadata.
  */
-- (BOOL)_setUpCache
+- (BOOL)setUpCache
 {
 	int capacity;
 	id geometry;
@@ -108,7 +108,7 @@
 		// Check if either allocation failed
 		if (cacheBuffer == NULL || cacheMetadata == NULL) {
 			// Release any allocated memory and fail
-			[self _releaseCache];
+			[self releaseCache];
 			return NO;
 		}
 		

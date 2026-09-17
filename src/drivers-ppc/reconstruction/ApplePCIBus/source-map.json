@@ -1,0 +1,240 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 12,
+      "reference_names": [
+        "-[IOPCIBridge initFromDeviceDescription:]"
+      ],
+      "size": 312,
+      "source_line": 73,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOMacRiscPCI.m"
+    },
+    {
+      "address": 356,
+      "reference_names": [
+        "-[IOPCIBridge createDevice:ref:]"
+      ],
+      "size": 248,
+      "source_line": 105,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOMacRiscPCI.m"
+    },
+    {
+      "address": 620,
+      "reference_names": [
+        "-[IOPCIBridge configReadLong:offset:value:]"
+      ],
+      "size": 108,
+      "source_line": 143,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOMacRiscPCI.m"
+    },
+    {
+      "address": 744,
+      "reference_names": [
+        "-[IOPCIBridge configWriteLong:offset:value:]"
+      ],
+      "size": 92,
+      "source_line": 154,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOMacRiscPCI.m"
+    },
+    {
+      "address": 852,
+      "reference_names": [
+        "-[IOPCIBridge getDeviceUnitStr:name:maxLength:]"
+      ],
+      "size": 124,
+      "source_line": 165,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOMacRiscPCI.m"
+    },
+    {
+      "address": 1024,
+      "reference_names": [
+        "-[IOPCIBridge mapRegisters:]"
+      ],
+      "size": 16,
+      "source_line": 182,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOMacRiscPCI.m"
+    },
+    {
+      "address": 1040,
+      "reference_names": [
+        "-[IOPCIBridge setConfigAddress:offset:]"
+      ],
+      "size": 64,
+      "source_line": 187,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOMacRiscPCI.m"
+    },
+    {
+      "address": 1120,
+      "reference_names": [
+        "-[IOPCIBridge getIOAperture]"
+      ],
+      "size": 64,
+      "source_line": 195,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOMacRiscPCI.m"
+    },
+    {
+      "address": 1200,
+      "reference_names": [
+        "-[IOMacRiscPCIBridge isVCI]"
+      ],
+      "size": 16,
+      "source_line": 212,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOMacRiscPCI.m"
+    },
+    {
+      "address": 1216,
+      "reference_names": [
+        "-[IOMacRiscPCIBridge mapRegisters:]"
+      ],
+      "size": 384,
+      "source_line": 217,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOMacRiscPCI.m"
+    },
+    {
+      "address": 1632,
+      "reference_names": [
+        "-[IOMacRiscPCIBridge setConfigAddress:offset:]"
+      ],
+      "size": 196,
+      "source_line": 268,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOMacRiscPCI.m"
+    },
+    {
+      "address": 1828,
+      "reference_names": [
+        "-[IOMacRiscPCIBridge getIOAperture]"
+      ],
+      "size": 16,
+      "source_line": 295,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOMacRiscPCI.m"
+    },
+    {
+      "address": 1844,
+      "reference_names": [
+        "-[IOMacRiscVCIBridge isVCI]"
+      ],
+      "size": 16,
+      "source_line": 304,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOMacRiscPCI.m"
+    },
+    {
+      "address": 1860,
+      "reference_names": [
+        "-[IOGracklePCIBridge mapRegisters:]"
+      ],
+      "size": 312,
+      "source_line": 313,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOMacRiscPCI.m"
+    },
+    {
+      "address": 2204,
+      "reference_names": [
+        "-[IOGracklePCIBridge setConfigAddress:offset:]"
+      ],
+      "size": 100,
+      "source_line": 361,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOMacRiscPCI.m"
+    },
+    {
+      "address": 2304,
+      "reference_names": [
+        "-[IOGracklePCIBridge getIOAperture]"
+      ],
+      "size": 16,
+      "source_line": 372,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOMacRiscPCI.m"
+    },
+    {
+      "address": 2320,
+      "reference_names": [
+        "-[IOPCIDevice initAt:parent:ref:]"
+      ],
+      "size": 156,
+      "source_line": 61,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOPCIDevice.m"
+    },
+    {
+      "address": 2524,
+      "reference_names": [
+        "-[IOPCIDevice resolveAddressing]"
+      ],
+      "size": 192,
+      "source_line": 74,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOPCIDevice.m"
+    },
+    {
+      "address": 2732,
+      "reference_names": [
+        "-[IOPCIDevice resolveInterrupts]"
+      ],
+      "size": 304,
+      "source_line": 94,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOPCIDevice.m"
+    },
+    {
+      "address": 3068,
+      "reference_names": [
+        "-[IOPCIDevice configReadLong:value:]"
+      ],
+      "size": 108,
+      "source_line": 130,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOPCIDevice.m"
+    },
+    {
+      "address": 3192,
+      "reference_names": [
+        "-[IOPCIDevice configWriteLong:value:]"
+      ],
+      "size": 108,
+      "source_line": 135,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOPCIDevice.m"
+    },
+    {
+      "address": 3316,
+      "reference_names": [
+        "-[IOPCIDevice getIOAperture]"
+      ],
+      "size": 52,
+      "source_line": 140,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOPCIDevice.m"
+    },
+    {
+      "address": 3384,
+      "reference_names": [
+        "-[IOPCIDevice getLocation:device:function:]"
+      ],
+      "size": 36,
+      "source_line": 145,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOPCIDevice.m"
+    },
+    {
+      "address": 3420,
+      "reference_names": [
+        "-[IOPCIDevice property_IODeviceType:length:]"
+      ],
+      "size": 112,
+      "source_line": 154,
+      "source_path": "src/driverkit-3/libDriver/ppc/IOPCIDevice.m"
+    }
+  ],
+  "reference_sha256": "59F4DFF2481850E5F18B275CFCBE7950CCE74658D18DAD03FF68EC0A98DB9C4D",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 3564,
+      "reference_names": [
+        "+[IOApplePCIBusKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 20
+    },
+    {
+      "address": 3584,
+      "reference_names": [
+        "+[IOApplePCIBusVersion driverKitVersionForIOApplePCIBus]"
+      ],
+      "size": 16
+    }
+  ]
+}

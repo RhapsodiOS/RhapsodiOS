@@ -5,6 +5,13 @@
  */
 
 #import <driverkit/return.h>
+#import <driverkit/driverTypes.h>
+
+/* Geometry lookup tables (Geometry.m) */
+extern unsigned int fdDiskInfo[];
+extern unsigned int fdDensityInfo[];
+extern unsigned int fdDensitySectsize[];
+extern unsigned int *fdGetSectSizeInfo(unsigned int density);
 
 // Forward declaration
 @class IOFloppyDisk;
@@ -23,7 +30,7 @@
  * Returns:
  *   Capacity value corresponding to the disk size
  */
-+ (unsigned int)_capacityFromSize:(unsigned int)diskSize;
++ (unsigned int)capacityFromSize:(unsigned int)diskSize;
 
 /*
  * Class method: Get geometry from capacity.
@@ -34,7 +41,7 @@
  * Returns:
  *   Pointer to geometry structure for the given capacity
  */
-+ (void *)_geometryOfCapacity:(unsigned int)capacity;
++ (void *)geometryOfCapacity:(unsigned int)capacity;
 
 /*
  * Class method: Create size list from capacities.
@@ -46,30 +53,30 @@
  * Returns:
  *   IOReturn status code
  */
-+ (IOReturn)_sizeListFromCapacities:(unsigned int)capacities
++ (IOReturn)sizeListFromCapacities:(unsigned int)capacities
                            sizeList:(unsigned int *)sizeList;
 
 /*
  * Calculate blocks remaining to end of cylinder from given block number.
  */
-- (unsigned)_blocksToEndOfCylinderFromBlockNumber:(unsigned)blockNumber;
+- (unsigned)blocksToEndOfCylinderFromBlockNumber:(unsigned)blockNumber;
 
 /*
  * Get cache pointer from block number.
  */
-- (void *)_cachePointerFromBlockNumber:(unsigned)blockNumber;
+- (void *)cachePointerFromBlockNumber:(unsigned)blockNumber;
 
 /*
  * Get cache pointer from cylinder number.
  */
-- (void *)_cachePointerFromCylinderNumber:(unsigned)cylinderNumber;
+- (void *)cachePointerFromCylinderNumber:(unsigned)cylinderNumber;
 
 /*
  * Calculate cylinder number from block number and get head/sector.
  */
-- (unsigned)_cylinderFromBlockNumber:(unsigned)blockNumber
-                                head:(unsigned *)head
-                              sector:(unsigned *)sector;
+- (unsigned)cylinderFromBlockNumber:(unsigned)blockNumber
+                                   :(unsigned *)head
+                                   :(unsigned *)sector;
 
 @end
 

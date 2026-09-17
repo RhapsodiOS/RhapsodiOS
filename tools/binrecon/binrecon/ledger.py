@@ -178,8 +178,8 @@ def _validate_entry(entry, index):
     if status_value == "intentional-mismatch":
         if not _trimmed(reason) or not _trimmed(reviewer):
             raise LedgerError("intentional-mismatch requires nonempty reason and reviewer")
-    elif reason is not None:
-        raise LedgerError(f"{where} reason is reserved for intentional-mismatch")
+    elif reason is not None and not _trimmed(reason):
+        raise LedgerError(f"{where} reason is invalid")
     if reviewer is not None and not _trimmed(reviewer): raise LedgerError(f"{where} reviewer is invalid")
     agreement = entry["analyzer_agreement"]
     basic_fields = {"status", "analyzers", "reasons"}
@@ -270,6 +270,7 @@ def transition(document, address, status_value, reference, rebuilt, *, reason=No
         if new_index > old_index + 1: raise LedgerError("skipping ledger states is forbidden")
         item["status"] = status_value
         if reviewer is not None: item["reviewer"] = reviewer.strip() if _trimmed(reviewer) else reviewer
+        if reason is not None: item["reason"] = reason.strip() if _trimmed(reason) else reason
     if source_path is not None or source_line is not None:
         item.update(source_path=source_path, source_line=source_line)
     validate_ledger(result, reference, rebuilt)

@@ -35,12 +35,14 @@
 #import <driverkit/KernLock.h>
 #import "PCMCIAKernBus.h"
 #import "PCMCIAKernBusPrivate.h"
+#import "PCMCIAKernBusParsing.h"
 #import "PCMCIAPool.h"
 #import "PCMCIATuple.h"
 #import "PCMCIAid.h"
 #import <driverkit/KernDevice.h>
 #import <driverkit/KernDeviceDescription.h>
 #import <driverkit/IODevice.h>
+#import <driverkit/IOConfigTable.h>
 #import <kernserv/i386/spl.h>
 #import <machdep/i386/intr_exported.h>
 #import <machdep/i386/io_inline.h>
@@ -62,6 +64,14 @@ unsigned int biosBitmap[3];
 
 /* External function to look up server configuration attributes */
 extern char *configTableLookupServerAttribute(const char *busName, int busId, const char *attribute);
+
+/* Forward declaration for undocumented IOConfigTable method */
+@interface IOConfigTable (UndocumentedMethods)
++ newForConfigData:(const char *)configData;
+@end
+
+/* External function in the Kernel */
+extern const char *findBootConfigString(int index);
 
  /*
  * The protocol we need as an indirect device.
@@ -147,6 +157,80 @@ static void findBIOSMemoryRange(void *bitmap)
             scanPtr += 0x800;
         }
     } while (scanPtr < (unsigned char *)0xF0000);
+}
+
+/*
+ * configTableLookupServerAttribute
+ * Look up an attribute for a named, instance-numbered server in the boot
+ * configuration
+ *
+ * @param busName  The name of the server to look up
+ * @param busId    The instance number of the server to look up
+ * @param attribute  The attribute key to retrieve
+ * @return  Allocated string with the attribute value, or NULL if not found
+ *          Caller must free the returned string with IOFree
+ */
+char *configTableLookupServerAttribute(const char *busName, int busId, const char *attribute)
+{
+    int found;
+    int configIndex;
+    const char *configData;
+    id configTable;
+    char *serverName;
+    char *instanceStr;
+    char *attributeValue;
+    char *result;
+    unsigned int length;
+    int instance;
+
+    found = 0;
+    result = NULL;
+    configIndex = 1;
+
+    while (1) {
+        configData = findBootConfigString(configIndex);
+        if (configData == NULL) {
+            return result;
+        }
+
+        configTable = [IOConfigTable newForConfigData:configData];
+        serverName = (char *)[configTable valueForStringKey:"Server Name"];
+        instanceStr = (char *)[configTable valueForStringKey:"Instance"];
+
+        instance = 0;
+        if (instanceStr != NULL) {
+            instance = strtol(instanceStr, NULL, 0);
+        }
+
+        if (strcmp(serverName, busName) == 0 && busId == instance) {
+            found = 1;
+
+            attributeValue = (char *)[configTable valueForStringKey:attribute];
+            if (attributeValue != NULL) {
+                length = strlen(attributeValue);
+                result = (char *)IOMalloc(length + 1);
+                if (result != NULL) {
+                    strcpy(result, attributeValue);
+                }
+                [configTable freeString:attributeValue];
+            }
+        }
+
+        if (serverName != NULL) {
+            [configTable freeString:serverName];
+        }
+        if (instanceStr != NULL) {
+            [configTable freeString:instanceStr];
+        }
+
+        [configTable free];
+
+        configIndex++;
+
+        if (found) {
+            return result;
+        }
+    }
 }
 
 @implementation PCMCIAKernBus
@@ -427,7 +511,7 @@ static void findBIOSMemoryRange(void *bitmap)
 
     /* If we have a cached resource, free it first */
     if (_memoryRangeResource != nil) {
-        if (_verbose) {
+        if (_verbose == YES) {
             range = [_memoryRangeResource range];
             IOLog("PKB: freeing range 0x%x(0x%x)\n", range.base, range.length);
         }
@@ -444,7 +528,7 @@ static void findBIOSMemoryRange(void *bitmap)
                                                AlignedTo:PAGE_SIZE];
 
     /* Log the result if verbose */
-    if (_verbose) {
+    if (_verbose == YES) {
         if (_memoryRangeResource == nil) {
             IOLog("%s: memoryRangeResource: resource is nil\n", [self name]);
         } else {
@@ -469,8 +553,9 @@ static void findBIOSMemoryRange(void *bitmap)
     id pool;
     id windows;
     unsigned int windowCount;
+    PCMCIAStatus cardPresent = { 1 };	/* present, nothing else */
 
-    if (_verbose) {
+    if (_verbose == YES) {
         IOLog("PKB: adding adapter %x\n", (unsigned int)adapter);
     }
 
@@ -493,11 +578,11 @@ static void findBIOSMemoryRange(void *bitmap)
         bzero(socketInfo, 0x18);
 
         /* Create pool for this socket */
-        pool = [[PCMCIAPool alloc] init];
+        pool = [[_PCMCIAPool alloc] init];
         socketInfo->pool = pool;
 
         /* Add windows from socket to pool */
-        if (_verbose) {
+        if (_verbose == YES) {
             windows = [socket windows];
             windowCount = [windows count];
             IOLog("PKB: adding %d windows for adapter\n", windowCount);
@@ -510,7 +595,7 @@ static void findBIOSMemoryRange(void *bitmap)
         [_socketMap insertKey:socket value:socketInfo];
 
         /* Set status change mask */
-        [socket setStatusChangeMask:1];
+        [socket setStatusChangeMask:cardPresent];
 
         /* Initialize remaining fields */
         socketInfo->tupleList = nil;
@@ -520,7 +605,7 @@ static void findBIOSMemoryRange(void *bitmap)
         socketInfo->cardID = nil;
 
         /* Trigger initial status change */
-        [self statusChangedForSocket:socket changedStatus:1];
+        [self statusChangedForSocket:socket changedStatus:cardPresent];
     }
 
     return self;
@@ -603,22 +688,23 @@ static void findBIOSMemoryRange(void *bitmap)
 /*
  * Handle socket status change
  */
-- (void)statusChangedForSocket:socket changedStatus:(unsigned int)changedStatus
+- (void)statusChangedForSocket:socket changedStatus:(PCMCIAStatus)changedStatus
 {
     SocketInfo *socketInfo;
     unsigned int socketNum;
-    unsigned int currentStatus;
+    PCMCIAStatus currentStatus;
     id memRange;
     Range range;
     id memWindow;
     unsigned int i, count;
     id tuple;
 
-    /* Get socket number for logging */
+    /* The reference asks for the number before testing, so this one send
+     * happens whether or not the status change is interesting. */
     socketNum = [socket socketNumber];
 
-    /* Check if we care about this status change (bit 0) */
-    if ((changedStatus & 1) == 0) {
+    /* Check if we care about this status change */
+    if (!changedStatus.present) {
         IOLog("PCMCIA: don't care socket %d\n", socketNum);
         return;
     }
@@ -632,28 +718,29 @@ static void findBIOSMemoryRange(void *bitmap)
 
     /* Check if already probed */
     if (socketInfo->flag1 != 0) {
-        IOLog("PCMCIA: Socket %d: already probed\n", socketNum);
+        IOLog("PCMCIA: Socket %d: already probed\n", [socket socketNumber]);
         return;
     }
 
     /* Get current status */
     currentStatus = [socket status];
 
-    if (_verbose) {
+    if (_verbose == YES) {
         IOLog("PKB: socket %d status: changed = %x, current = %x\n",
-              socketNum, changedStatus, currentStatus);
+              [socket socketNumber], *(unsigned char *)&changedStatus,
+              *(unsigned char *)&currentStatus);
     }
 
-    /* Store current status */
-    socketInfo->status = currentStatus;
+    /* Store current status (PCMCIAStatus is 4 bytes) */
+    socketInfo->status = *(unsigned int *)&currentStatus;
 
     /* Check if card is present (bit 0 of status) */
-    if ((currentStatus & 1) == 0) {
+    if (!currentStatus.present) {
         /* Card removed */
         if (socketInfo->probed != 0) {
             /* Clean up card resources */
             if (socketInfo->tupleList != nil) {
-                [[socketInfo->tupleList freeObjects:@selector(free)] free];
+                [[socketInfo->tupleList freeObjects] free];
             }
 
             if (socketInfo->deviceDesc != nil) {
@@ -671,11 +758,11 @@ static void findBIOSMemoryRange(void *bitmap)
             socketInfo->flag1 = 0;
 
             [self disableSocket:socket];
-            IOLog("PCMCIABus: Socket %d: card removed\n", socketNum);
+            IOLog("PCMCIABus: Socket %d: card removed\n", [socket socketNumber]);
         }
     } else {
-        /* Card inserted */
-        if (socketInfo->probed == 0) {
+        /* Card inserted.  The reference compares against 1, not 0. */
+        if (socketInfo->probed != 1) {
             socketInfo->probed = 1;
 
             /* Enable socket */
@@ -685,7 +772,7 @@ static void findBIOSMemoryRange(void *bitmap)
             }
 
             /* Allocate memory range for attribute memory */
-            if (_verbose) {
+            if (_verbose == YES) {
                 IOLog("%s: trying to allocate memory range 0x%x..0x%x\n",
                       [self name], _memoryBase, _memoryBase + _memoryLength - 1);
             }
@@ -702,7 +789,7 @@ static void findBIOSMemoryRange(void *bitmap)
 
             range = [memRange range];
 
-            if (_verbose) {
+            if (_verbose == YES) {
                 IOLog("%s: reserved memory range 0x%x..0x%x\n",
                       [self name], range.base, range.base + range.length - 1);
             }
@@ -730,7 +817,7 @@ static void findBIOSMemoryRange(void *bitmap)
                     [self parseTuple:tuple intoDeviceDescription:socketInfo->deviceDesc];
                 }
 
-                IOLog("PCMCIABus: Socket %d: card inserted\n", socketNum);
+                IOLog("PCMCIABus: Socket %d: card inserted\n", [socket socketNumber]);
 
                 /* Create PCMCIAid from device description */
                 socketInfo->cardID = [[PCMCIAid alloc] initFromDescription:socketInfo->deviceDesc];

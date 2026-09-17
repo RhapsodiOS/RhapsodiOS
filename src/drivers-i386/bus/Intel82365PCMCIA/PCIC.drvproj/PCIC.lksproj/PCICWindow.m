@@ -34,16 +34,16 @@
 /* External reference to global reg_base from PCIC.m */
 extern unsigned int reg_base;
 
-/* External helper functions */
-extern void _setIoWindow(unsigned int socket, unsigned int window, unsigned int cardAddr, unsigned int size, unsigned int sysAddr);
-extern void _setMemoryWindow(unsigned int socket, unsigned int window, unsigned int cardAddr, unsigned int size, unsigned int sysAddr);
+/* Internal helper functions */
+static void setMemoryWindow(unsigned int socket, unsigned int window, unsigned int cardAddr, unsigned int size, unsigned int sysAddr);
+static void setIoWindow(unsigned int socket, unsigned int window, unsigned int cardAddr, unsigned int size, unsigned int sysAddr);
 
 @implementation PCICWindow
 
 /*
  * Initialize window with socket, memory window type, and number
  */
-- initWithSocket:theSocket memoryWindow:(int)memWindow number:(int)number
+- initWithSocket:theSocket memoryWindow:(char)memWindow number:(int)number
 {
     /* Store socket at offset 4 */
     socket = theSocket;
@@ -55,11 +55,11 @@ extern void _setMemoryWindow(unsigned int socket, unsigned int window, unsigned 
     windowNumber = number;
 
     /* Store memory window flag at offset 0x14 */
-    memoryWindow = (unsigned char)memWindow;
+    memoryWindow = memWindow;
 
     /* Create list of valid sockets and add the socket to it (offset 8) */
-    validSocketsList = [[List alloc] init];
-    [validSocketsList addObject:socket];
+    validSockets = [[List alloc] init];
+    [validSockets addObject:socket];
 
     return self;
 }
@@ -77,7 +77,7 @@ extern void _setMemoryWindow(unsigned int socket, unsigned int window, unsigned 
  * Get enabled state
  * Checks bit in Address Window Enable register
  */
-- (unsigned int)enabled
+- (char)enabled
 {
     unsigned char regValue;
     char bitOffset;
@@ -128,7 +128,7 @@ extern void _setMemoryWindow(unsigned int socket, unsigned int window, unsigned 
  * Get attribute memory flag
  * Reads bit 6 from window control register
  */
-- (unsigned int)attributeMemory
+- (char)attributeMemory
 {
     unsigned char regValue;
 
@@ -144,7 +144,7 @@ extern void _setMemoryWindow(unsigned int socket, unsigned int window, unsigned 
  * Get 16-bit data path flag
  * Reads different registers based on window type
  */
-- (unsigned int)is16Bit
+- (char)is16Bit
 {
     unsigned char regValue;
 
@@ -173,39 +173,41 @@ extern void _setMemoryWindow(unsigned int socket, unsigned int window, unsigned 
  * Get memory interface type
  * Returns memoryWindow flag from offset 0x14
  */
-- (unsigned int)memoryInterface
+- (char)memoryInterface
 {
     return memoryWindow;
 }
 
 /*
  * Get valid sockets
- * Returns validSocketsList from offset 8
+ * Returns validSockets from offset 8
  */
 - validSockets
 {
-    return validSocketsList;
+    return validSockets;
 }
 
 /*
  * Set parent socket
  * Validates that the socket matches the current socket
  */
-- (void)setSocket:theSocket
+- (char)setSocket:theSocket
 {
     /* Check if the requested socket matches current socket */
     if (socket != theSocket) {
         /* Socket mismatch - cannot change socket */
-        return;
+        return 0;
     }
     /* Socket matches - no action needed */
+
+    return 1;
 }
 
 /*
  * Set enabled state
  * Sets or clears bit in Address Window Enable register
  */
-- (void)setEnabled:(unsigned int)isEnabled
+- (char)setEnabled:(char)isEnabled
 {
     unsigned char regValue;
     unsigned char bitPosition;
@@ -239,13 +241,15 @@ extern void _setMemoryWindow(unsigned int socket, unsigned int window, unsigned 
     regOffset = (char)(socketNumber << 6);
     outb(reg_base, regOffset + 0x06);
     outb(reg_base + 1, regValue);
+
+    return 1;
 }
 
 /*
  * Set mapping with size, system address, and card address
  * Stores parameters and calls appropriate window configuration function
  */
-- (void)setMapWithSize:(unsigned int)size systemAddress:(unsigned int)sysAddr cardAddress:(unsigned int)cardAddr
+- (char)setMapWithSize:(unsigned int)size systemAddress:(unsigned int)sysAddr cardAddress:(unsigned int)cardAddr
 {
     /* Store parameters at their respective offsets */
     systemAddress = sysAddr;   /* Offset 0x18 */
@@ -255,18 +259,20 @@ extern void _setMemoryWindow(unsigned int socket, unsigned int window, unsigned 
     /* Call appropriate window setup function based on window type
      * Note: The function calls appear inverted but match the decompiled binary */
     if (memoryWindow == 0) {
-        _setIoWindow(socketNumber, windowNumber, cardAddr, size, sysAddr);
+        setIoWindow(socketNumber, windowNumber, cardAddr, size, sysAddr);
     }
     else {
-        _setMemoryWindow(socketNumber, windowNumber, cardAddr, size, sysAddr);
+        setMemoryWindow(socketNumber, windowNumber, cardAddr, size, sysAddr);
     }
+
+    return 1;
 }
 
 /*
  * Set attribute memory flag
  * Sets bit 6 in window control register
  */
-- (void)setAttributeMemory:(unsigned int)attrMem
+- (char)setAttributeMemory:(char)attrMem
 {
     unsigned char regValue;
     char regOffset;
@@ -282,13 +288,15 @@ extern void _setMemoryWindow(unsigned int socket, unsigned int window, unsigned 
     regOffset = (char)socketNumber * 64 + 0x15 + (char)windowNumber * 8;
     outb(reg_base, regOffset);
     outb(reg_base + 1, (regValue & 0xBF) | ((attrMem & 1) << 6));
+
+    return 1;
 }
 
 /*
  * Set 16-bit data path flag
  * Writes to different registers based on window type
  */
-- (void)set16Bit:(unsigned int)is16
+- (char)set16Bit:(char)is16
 {
     unsigned char regValue;
     char regOffset;
@@ -327,20 +335,134 @@ extern void _setMemoryWindow(unsigned int socket, unsigned int window, unsigned 
 
     /* Write the value */
     outb(reg_base + 1, regValue);
+
+    return 1;
 }
 
 /*
  * Set memory interface type
  * Validates that the interface matches the window type
  */
-- (void)setMemoryInterface:(unsigned int)interface
+- (char)setMemoryInterface:(char)interface
 {
     /* Check if the requested interface matches current window type */
     if (memoryWindow != interface) {
         /* Interface mismatch - cannot change window type */
-        return;
+        return 0;
     }
     /* Interface matches - no action needed */
+
+    return 1;
 }
 
 @end
+
+/*
+ * Configure a memory window
+ * Sets up PCIC registers for memory window mapping
+ */
+static void setMemoryWindow(unsigned int socket, unsigned int window, unsigned int cardAddr, unsigned int size, unsigned int sysAddr)
+{
+    unsigned char socketOffset;
+    unsigned char windowOffset;
+    unsigned char regValue;
+    unsigned int startAddr;
+    unsigned int stopAddr;
+    unsigned int cardOffset;
+
+    /* Calculate socket base offset: socket * 64 */
+    socketOffset = socket << 6;
+
+    /* Calculate window register base: 0x10 + (window * 8) for memory windows */
+    /* Each memory window uses 8 registers:
+     * +0: Memory window start address low (bits 12-19)
+     * +1: Memory window start address high (bits 20-23)
+     * +2: Memory window stop address low (bits 12-19)
+     * +3: Memory window stop address high (bits 20-23)
+     * +4: Card offset address low (bits 12-19)
+     * +5: Card offset address high (bits 20-25) + flags
+     * +6: Reserved
+     * +7: Reserved
+     */
+    windowOffset = 0x10 + (window * 8);
+
+    /* Memory addresses are shifted right by 12 bits (4KB pages) */
+    startAddr = sysAddr >> 12;
+    stopAddr = (sysAddr + size - 1) >> 12;
+
+    /* The card offset register holds a displacement that is added to the
+     * system address to reach the card address; 0x400000 is the 4MB wrap
+     * constant that keeps the field positive */
+    cardOffset = (cardAddr + 0x400000 - sysAddr) >> 12;
+
+    /* Write system start address; the high register also carries the timing
+     * set select and the 16-bit data path bit, so preserve bits 4-7 */
+    outb(reg_base, socketOffset + windowOffset);
+    outb(reg_base + 1, (unsigned char)(startAddr & 0xFF));
+    outb(reg_base, socketOffset + windowOffset + 1);
+    regValue = inb(reg_base + 1);
+    outb(reg_base, socketOffset + windowOffset + 1);
+    outb(reg_base + 1, (regValue & 0xF0) | (unsigned char)((startAddr >> 8) & 0x0F));
+
+    /* Write system stop address; the high register also carries the wait
+     * state and timing set bits, so preserve bits 4-7 */
+    outb(reg_base, socketOffset + windowOffset + 2);
+    outb(reg_base + 1, (unsigned char)(stopAddr & 0xFF));
+    outb(reg_base, socketOffset + windowOffset + 3);
+    regValue = inb(reg_base + 1);
+    outb(reg_base, socketOffset + windowOffset + 3);
+    outb(reg_base + 1, (regValue & 0xF0) | (unsigned char)((stopAddr >> 8) & 0x0F));
+
+    /* Write card offset address; the high register also carries the write
+     * protect and register select bits, so preserve bits 6-7 */
+    outb(reg_base, socketOffset + windowOffset + 4);
+    outb(reg_base + 1, (unsigned char)(cardOffset & 0xFF));
+    outb(reg_base, socketOffset + windowOffset + 5);
+    regValue = inb(reg_base + 1);
+    outb(reg_base, socketOffset + windowOffset + 5);
+    outb(reg_base + 1, (regValue & 0xC0) | (unsigned char)((cardOffset >> 8) & 0x3F));
+}
+
+/*
+ * Configure an I/O window
+ * Sets up PCIC registers for I/O window mapping
+ */
+static void setIoWindow(unsigned int socket, unsigned int window, unsigned int cardAddr, unsigned int size, unsigned int sysAddr)
+{
+    unsigned char socketOffset;
+    unsigned char windowOffset;
+    unsigned short startAddr;
+    unsigned short stopAddr;
+
+    /* Calculate socket base offset: socket * 64 */
+    socketOffset = socket << 6;
+
+    /* Calculate window register base: 0x08 + (window * 4) for I/O windows */
+    /* Each I/O window uses 4 registers:
+     * +0: I/O window start address low
+     * +1: I/O window start address high
+     * +2: I/O window stop address low
+     * +3: I/O window stop address high
+     */
+    windowOffset = 0x08 + (window * 4);
+
+    /* Calculate start and stop addresses */
+    startAddr = (unsigned short)sysAddr;
+    stopAddr = (unsigned short)(sysAddr + size - 1);
+
+    /* Write start address low byte */
+    outb(reg_base, socketOffset + windowOffset);
+    outb(reg_base + 1, (unsigned char)(startAddr & 0xFF));
+
+    /* Write start address high byte */
+    outb(reg_base, socketOffset + windowOffset + 1);
+    outb(reg_base + 1, (unsigned char)((startAddr >> 8) & 0xFF));
+
+    /* Write stop address low byte */
+    outb(reg_base, socketOffset + windowOffset + 2);
+    outb(reg_base + 1, (unsigned char)(stopAddr & 0xFF));
+
+    /* Write stop address high byte */
+    outb(reg_base, socketOffset + windowOffset + 3);
+    outb(reg_base + 1, (unsigned char)((stopAddr >> 8) & 0xFF));
+}

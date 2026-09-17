@@ -4,46 +4,33 @@
  */
 
 #import "IOSCSISession.h"
+#import "IOTask.h"
 #import <objc/objc-runtime.h>
 #import <driverkit/IODevice.h>
+#import <driverkit/IOMemoryDescriptor.h>
+#import <driverkit/kernelDriver.h>
 #import <driverkit/generalFuncs.h>
+#import <driverkit/return.h>
 #import <mach/mach.h>
+#import <mach/mig_errors.h>
+#import <mach/notify.h>
 
 /* Global SCSI session structures */
 static void *_scsiSessionList = NULL;      /* Head of session list (circular linked list) */
 static void *_scsiSessionListTail = NULL;  /* Tail of session list */
 static id _scsiSessionListLock = NULL;     /* Lock protecting the session list */
-static int _sSessionIndex = 0;             /* Global session index counter */
-
-/* External kernel functions and global variables */
-extern int IORequestNotifyForClientTask(mach_port_t task, mach_port_t notifyPort, mach_port_t *deathPort);
-
-/* Global entry structure pointer
- * The '_entry' global contains pointers to kernel functions and data:
- * offset +0x18: Task port for memory operations
- * offset +0xa4: Mach port management functions
- */
-extern struct {
-    char pad1[0x18];
-    mach_port_t task_port;     /* offset +0x18 */
-    char pad2[0x8c];
-    void *port_funcs;          /* offset +0xa4 */
-} *_entry;
-
-/* Page size global - used for address alignment */
-extern unsigned int _page_size;
-
-/* Function pointer for session cleanup callback
- * This is loaded from a global variable and called indirectly
- */
-typedef void (*session_cleanup_callback_t)(void);
-extern session_cleanup_callback_t _scsiSessionCleanupCallback;
+static int sSessionIndex = 0;             /* Global session index counter */
 
 /* Helper functions for managing SCSI reservations
  * These are C functions that manage the reservation list
  */
 extern void addReservation(id session, int target_high, int target_low, int lun_high, int lun_low);
 extern void blastAllReservations(id session);
+
+/* The per-session Mach RPC server loop, defined below and forked by
+ * -[IOSCSISession(Private) initServerWithTask:sendPort:]
+ */
+static void serverThreadFunc(id session);
 
 @implementation IOSCSISession
 
@@ -69,7 +56,7 @@ extern void blastAllReservations(id session);
  * NOTE: This is unusual - the init method immediately frees the object!
  * This suggests that IOSCSISession objects should NOT be created via
  * a simple alloc/init pattern, but rather through initForDevice:result:
- * or via _initServerWithTask:sendPort:.
+ * or via initServerWithTask:sendPort:.
  */
 - init
 {
@@ -90,7 +77,7 @@ extern void blastAllReservations(id session);
  *
  * NOTE: Like init, this method immediately frees the object!
  * This suggests that IOSCSISession should NOT be initialized via
- * initForDevice:result:, but only through _initServerWithTask:sendPort:.
+ * initForDevice:result:, but only through initServerWithTask:sendPort:.
  * The server-based initialization is the only supported path.
  */
 - initForDevice:(const char *)device result:(int *)result
@@ -111,8 +98,8 @@ extern void blastAllReservations(id session);
  * If session object ID exists, calls an unknown cleanup function.
  *
  * Session structure (at offset +4, size 0x1c bytes):
- * offset +0: prev pointer (circular list)
- * offset +4: next pointer (circular list)
+ * offset +0: next pointer (circular list)
+ * offset +4: prev pointer (circular list)
  * offset +8: object pointer (for releaseAllUnitsForOwner:)
  * offset +c: notify port
  * offset +10: death port
@@ -125,7 +112,6 @@ extern void blastAllReservations(id session);
     int object_at_8;
     int death_port;
     int notify_port;
-    struct objc_super super_struct;
 
     session_object_id = 0;
 
@@ -154,7 +140,7 @@ extern void blastAllReservations(id session);
         /* Deallocate task port at offset +c */
         notify_port = *(int *)(*(int *)((char *)self + 4) + 0xc);
         if (notify_port != 0) {
-            IOTaskPortDeallocate();
+            IOTaskPortDeallocate(notify_port);
             *(int *)(*(int *)((char *)self + 4) + 0xc) = 0;
         }
 
@@ -163,32 +149,35 @@ extern void blastAllReservations(id session);
         *(int *)((char *)self + 4) = 0;
     }
 
-    /* Call [super free] using objc_msgSendSuper */
-    super_struct.receiver = self;
-    super_struct.class = objc_getClass("Object");
-    objc_msgSendSuper(&super_struct, @selector(free));
+    /* Call [super free].
+     * Addresses 1908-1936: receiver = self (stw r31) and class loaded
+     * statically from _OBJC_CLASS_IOSCSISession.super_class (the lis/lwz
+     * pair at 1912/1916 carries a scattered relocation to __OBJC,__class+44,
+     * i.e. offset +4 of the second class record), then bl _objc_msgSendSuper.
+     * That is gcc's own output for a plain [super free] inside a class
+     * @implementation; no objc_getClass("Object") call is made -- and
+     * _objc_getClass is not among the reference's 34 imports at all.
+     */
+    [super free];
 
-    /* If session object ID exists, call cleanup callback
-     * This is FUN_000007bc() in the decompiled code, which loads
-     * a function pointer from a global variable and calls it indirectly.
-     *
-     * PowerPC assembly:
-     *   lis   r12, 0x0        ; Load high 16 bits of address into r12
-     *   ori   r12, r12, 0x0   ; OR with low 16 bits (address of callback)
-     *   mtspr CTR, r12        ; Move r12 to Count Register
-     *   bctr                  ; Branch to address in CTR
-     *
-     * This pattern is an indirect function call through a function pointer
-     * stored in a global variable. The callback likely handles session-specific
-     * cleanup like releasing session object IDs or updating global session state.
+    /* Addresses 1940-1948 are the whole tail: cmpwi cr1, r30, 0 /
+     * beq cr1, loc_7A0 / bl sub_7BC.  There is exactly one test and no
+     * argument register is set up before the call.  The bl at 1948 carries a
+     * ppc-jbsr-24-pc-relative relocation naming _IOExitThread directly (its
+     * jump island at 1980/1984 carries the matching hi16/lo16 pair for the
+     * same symbol), and _IOExitThread is one of the reference's 34 imports.
+     * So this is a direct, fixed IOExitThread() -- the session's own server
+     * thread exiting with the session that owns it -- not a call through a
+     * function-pointer global, and there is no second NULL check.
      */
     if (session_object_id != 0) {
-        if (_scsiSessionCleanupCallback != NULL) {
-            _scsiSessionCleanupCallback();
-        }
+        IOExitThread();
     }
 
-    return self;
+    /* Address 1952 is li r3, 0, reached both by falling through the call
+     * above and by the beq at 1944, with no intervening write to r3.
+     */
+    return nil;
 }
 
 /*
@@ -215,7 +204,7 @@ extern void blastAllReservations(id session);
 @implementation IOSCSISession (Private)
 
 /*
- * _initServerWithTask:sendPort: - Initialize server with Mach task and send port
+ * initServerWithTask:sendPort: - Initialize server with Mach task and send port
  * task: Mach task port
  * sendPort: Pointer to send port (output parameter)
  * Returns: self on success, calls free and returns that result on failure
@@ -223,26 +212,34 @@ extern void blastAllReservations(id session);
  * Sets up the Mach messaging infrastructure for SCSI communication.
  *
  * Session structure (at offset +4, size 0x1c bytes):
- * offset +0: prev pointer (circular list)
- * offset +4: next pointer (circular list)
+ * offset +0: next pointer (circular list)
+ * offset +4: prev pointer (circular list)
  * offset +8: (unused/reserved)
  * offset +c: notify port (from IOTaskPortAllocateName)
  * offset +10: death port (from IORequestNotifyForClientTask)
- * offset +14: session object ID (from objc_msgSend with selector 0xa70)
+ * offset +14: the forked server thread (from IOForkThread)
  * offset +18: session index (_sSessionIndex)
  */
-- (int)_initServerWithTask:(mach_port_t)task sendPort:(mach_port_t *)sendPort
+- (int)initServerWithTask:(mach_port_t)task sendPort:(mach_port_t *)sendPort
 {
     int result;
     void **session_struct;
     mach_port_t notify_port;
-    id session_object_id;
-    struct objc_super super_struct;
+    IOThread session_thread;
 
-    /* Call [super init] */
-    super_struct.receiver = self;
-    super_struct.class = objc_getClass("Object");
-    objc_msgSendSuper(&super_struct, @selector(init));
+    /* Call [super init].
+     * Addresses 1208-1240: receiver = self, then the class field is filled
+     * from a real call -- lis/addi materialise the "Object" string and the
+     * bl at 1220 carries a relocation naming _objc_getOrigClass, whose result
+     * is stored into the struct at 1224 -- followed by bl _objc_msgSendSuper.
+     * That runtime call is not a divergence: this is a *category*
+     * implementation, and gcc emits get_orig_class_reference() rather than a
+     * static super_class load for [super ...] in a category
+     * (src/cc-1/cc/objc-act.c:8421).  Plain [super init] reproduces it; the
+     * hand-built struct with objc_getClass("Object") named a different
+     * runtime function and is removed.
+     */
+    [super init];
 
     /* Initialize sendPort to 0 */
     *sendPort = 0;
@@ -280,27 +277,35 @@ extern void blastAllReservations(id session);
      * This sets up the death port at offset +10
      */
     result = IORequestNotifyForClientTask(task,
-                                         *(mach_port_t *)((char *)session_struct + 0xc),
+                                         *(id *)((char *)session_struct + 0xc),
                                          (mach_port_t *)((char *)session_struct + 0x10));
     if (result != 0) {
         /* Notification registration failed - free self and return */
         return (int)[self free];
     }
 
-    /* Get session object ID using selector 0xa70
-     * This appears to be a method that returns an object identifier
+    /* Fork this session's Mach RPC server loop.
+     *
+     * Addresses 1352-1372: lis/addi materialise _serverThreadFunc (the
+     * ha16/lo16 relocation pair names __TEXT,__text+2672), `mr r4, r30` puts
+     * self in the second argument, the bl at 1364 relocates to _IOForkThread,
+     * and `stw r3, 0x14(r9)` stores the returned thread into the session
+     * structure.  What used to stand here -- objc_msgSend(self, (SEL)0xa70) --
+     * read the function's own address as a selector; there is no message send
+     * at this site at all.  Field +0x14 is the thread, which is why -free
+     * calls IOExitThread() when it is non-zero.
      */
-    session_object_id = objc_msgSend(self, (SEL)0xa70);
-    *(id *)((char *)session_struct + 0x14) = session_object_id;
+    session_thread = IOForkThread((IOThreadFunc)serverThreadFunc, self);
+    *(IOThread *)((char *)session_struct + 0x14) = session_thread;
 
-    if (*(id *)((char *)session_struct + 0x14) == NULL) {
-        /* Failed to get session object ID - free self and return */
+    if (*(IOThread *)((char *)session_struct + 0x14) == NULL) {
+        /* Thread fork failed - free self and return */
         return (int)[self free];
     }
 
     /* Assign and increment global session index */
-    *(int *)((char *)session_struct + 0x18) = _sSessionIndex;
-    _sSessionIndex++;
+    *(int *)((char *)session_struct + 0x18) = sSessionIndex;
+    sSessionIndex++;
 
     /* Set sendPort output parameter to self */
     *sendPort = (mach_port_t)self;
@@ -308,636 +313,8 @@ extern void blastAllReservations(id session);
     return (int)self;
 }
 
-/*
- * _reserveTarget:lun: - Reserve a SCSI target and LUN for this session
- * target: SCSI target ID (0-15)
- * lun: SCSI logical unit number (0-7)
- * Returns: 0 on success, error code on failure
- *
- * This method:
- * 1. Gets the controller object from session structure offset +8
- * 2. Calls reserveTarget:lun:forOwner: on the controller
- * 3. If successful, adds the reservation to this session's reservation list
- *
- * The decompiled code shows sign-extension of the target and lun values
- * (iVar3 >> 0x1f, iVar2 >> 0x1f) which produces the high 32 bits for
- * passing unsigned chars as 64-bit values on PowerPC.
- */
-- (int)_reserveTarget:(unsigned char)target lun:(unsigned char)lun
-{
-    int result;
-    id controller;
-    int target_val;
-    int lun_val;
-
-    /* Convert unsigned char to int */
-    target_val = (int)target;
-    lun_val = (int)lun;
-
-    /* Get controller object from session structure at offset +8
-     * This is the SCSI controller that owns this target/LUN
-     */
-    controller = *(id *)(*(int *)((char *)self + 4) + 8);
-
-    /* Call reserveTarget:lun:forOwner: on the controller
-     * This reserves the target/LUN pair for exclusive use by this session
-     */
-    result = objc_msgSend(controller,
-                         @selector(reserveTarget:lun:forOwner:),
-                         target_val,
-                         lun_val,
-                         self);
-
-    /* If reservation succeeded, add it to this session's reservation list */
-    if (result == 0) {
-        /* The sign extension (>> 0x1f) extracts the sign bit, which is 0
-         * for positive values. This is used to pass 64-bit values on PowerPC.
-         * For unsigned chars, this will always be 0.
-         */
-        addReservation(self,
-                      target_val >> 0x1f,  /* High 32 bits of target (always 0) */
-                      target_val,           /* Low 32 bits of target */
-                      lun_val >> 0x1f,      /* High 32 bits of LUN (always 0) */
-                      lun_val);             /* Low 32 bits of LUN */
-    }
-
-    return result;
-}
-
 @end
 
-
-/* ========================================================================
- * MIG Server Dispatch Function
- * ======================================================================== */
-
-/* Forward declaration of MIG handler dispatch table (defined below) */
-typedef int (*mig_handler_func_t)(int *request, int *reply);
-static const mig_handler_func_t _IOSCSISessionMig_handlers[18];
-
-/*
- * IOSCSISessionMig_server - MIG server dispatch function
- * request: Pointer to incoming MIG request message
- * reply: Pointer to outgoing MIG reply message
- * Returns: 1 if message was handled, 0 if not recognized
- *
- * This is the main dispatch function for Mach messages sent to SCSI sessions.
- * It routes incoming messages to the appropriate handler functions based on
- * the message ID.
- *
- * The decompiled code shows this behavior:
- * 1. Set up reply message header with standard MIG fields
- * 2. Check if message ID is in valid range (0x1092 - 0x10a3, 18 messages)
- * 3. Look up handler in dispatch table at offset (msg_id * 4 + -0xaa4)
- * 4. If handler exists, call it and return 1
- * 5. Otherwise return 0 with MIG_BAD_ID error in reply
- *
- * MIG Message IDs: 0x1092 - 0x10a3 (4242 - 4259 decimal, 18 messages total)
- *
- * Message structure offsets:
- * request+0x08: sender port
- * request+0x10: message flags
- * request+0x14: message ID
- *
- * reply+0x03: flags (set to 1)
- * reply+0x04: size (0x20 = 32 bytes)
- * reply+0x08: sender port (copied from request)
- * reply+0x0c: 0
- * reply+0x10: flags (copied from request)
- * reply+0x14: message ID (request ID + 100)
- * reply+0x18: 0x2200018 (NDR record or type descriptor)
- * reply+0x1c: return code (default 0xfffffed1 = MIG_BAD_ID = -303)
- */
-int IOSCSISessionMig_server(int *request, int *reply)
-{
-    int msg_id;
-    int handler_offset;
-    mig_handler_func_t handler;
-    int result;
-
-    /* Set up reply message header
-     * The decompiled code shows these exact assignments:
-     * *(undefined *)(param_2 + 3) = 1;
-     * *(undefined4 *)(param_2 + 4) = 0x20;
-     * etc.
-     */
-    *((unsigned char *)reply + 3) = 1;              /* reply+0x03: flags = 1 */
-    reply[1] = 0x20;                                 /* reply+0x04: size = 32 bytes */
-    reply[2] = request[2];                           /* reply+0x08: sender port from request+0x08 */
-    reply[3] = 0;                                    /* reply+0x0c: 0 */
-    reply[4] = request[4];                           /* reply+0x10: flags from request+0x10 */
-    reply[5] = request[5] + 100;                     /* reply+0x14: msg ID + 100 */
-    reply[6] = 0x2200018;                            /* reply+0x18: NDR/type constant */
-    reply[7] = 0xfffffed1;                           /* reply+0x1c: MIG_BAD_ID (-303) */
-
-    /* Get message ID from request
-     * *(int *)(param_1 + 0x14)
-     */
-    msg_id = request[5];                             /* request+0x14: message ID */
-
-    /* Check if message ID is in valid range
-     * Decompiled: (*(int *)(param_1 + 0x14) - 0x1092U < 0x12)
-     * This checks if: 0x1092 <= msg_id <= 0x10a3 (18 messages)
-     */
-    if ((unsigned int)(msg_id - 0x1092) < 0x12) {
-        /* Calculate handler table index
-         * Index = msg_id - 0x1092 (base message ID)
-         * This converts message ID to array index (0-17)
-         */
-        handler_offset = msg_id - 0x1092;
-
-        /* Get handler function pointer from dispatch table
-         * The dispatch table _IOSCSISessionMig_handlers is indexed by
-         * the message ID offset from the base (0x1092)
-         */
-        handler = _IOSCSISessionMig_handlers[handler_offset];
-
-        /* Check if handler exists (not NULL)
-         * All handlers in the table should be valid, but check anyway
-         */
-        if (handler != NULL) {
-            /* Call the handler function
-             * The handler unmarshals parameters, calls the implementation,
-             * and marshals the results into the reply message
-             */
-            (*handler)(request, reply);
-
-            /* Return 1 to indicate message was handled
-             * Decompiled: uVar1 = 1;
-             */
-            result = 1;
-        }
-        else {
-            /* Handler is NULL - message not handled
-             * Reply already has MIG_BAD_ID error set
-             */
-            result = 0;
-        }
-    }
-    else {
-        /* Message ID out of range - not handled
-         * Decompiled: else { uVar1 = 0; }
-         * Reply already has MIG_BAD_ID error set
-         */
-        result = 0;
-    }
-
-    return result;
-}
-
-
-/* ========================================================================
- * MIG Handler Functions
- * ======================================================================== */
-
-/*
- * MIG message format:
- * - MIG messages use a standard header followed by typed parameters
- * - Request messages contain input parameters
- * - Reply messages contain output parameters and return codes
- *
- * Standard MIG message offsets:
- * - request+0x00: message header
- * - request+0x14: message ID
- * - request+0x18+: typed parameters (each parameter has type descriptor + data)
- *
- * - reply+0x00: message header
- * - reply+0x14: reply message ID (request ID + 100)
- * - reply+0x18: NDR record (0x2200018)
- * - reply+0x1c: return code (kern_return_t)
- * - reply+0x20+: typed output parameters
- */
-
-/*
- * MIG Handler: Reserve SCSI-3 Target (Message ID 0x1092 / 4242)
- *
- * Reserves a SCSI-3 target/LUN for exclusive access.
- *
- * Request format:
- *   +0x18: session port (implied in server context)
- *   +0x1c: target high 32 bits
- *   +0x20: target low 32 bits
- *   +0x24: LUN high 32 bits
- *   +0x28: LUN low 32 bits
- *
- * Reply format:
- *   +0x1c: return code (0 on success)
- */
-int _IOSCSISession_reserveSCSI3Target_handler(int *request, int *reply)
-{
-    id session;
-    unsigned int target[2];
-    unsigned int lun[2];
-    int result;
-
-    /* Extract session from message context (typically stored in a per-message context) */
-    session = (id)request[3];  /* Adjust based on actual message format */
-
-    /* Extract target (64-bit) */
-    target[0] = request[7];   /* High 32 bits */
-    target[1] = request[8];   /* Low 32 bits */
-
-    /* Extract LUN (64-bit) */
-    lun[0] = request[9];      /* High 32 bits */
-    lun[1] = request[10];     /* Low 32 bits */
-
-    /* Call implementation */
-    result = IOSCSISession_reserveSCSI3Target(session, target, lun);
-
-    /* Set return code in reply */
-    reply[7] = result;
-
-    return 0;
-}
-
-/*
- * MIG Handler: Release SCSI-3 Target (Message ID 0x1093 / 4243)
- */
-int _IOSCSISession_releaseSCSI3Target_handler(int *request, int *reply)
-{
-    id session;
-    unsigned int target[2];
-    unsigned int lun[2];
-    int result;
-
-    session = (id)request[3];
-    target[0] = request[7];
-    target[1] = request[8];
-    lun[0] = request[9];
-    lun[1] = request[10];
-
-    result = IOSCSISession_releaseSCSI3Target(session, target, lun);
-    reply[7] = result;
-
-    return 0;
-}
-
-/*
- * MIG Handler: Reserve Target (Legacy) (Message ID 0x1094 / 4244)
- */
-int _IOSCSISession_reserveTarget_handler(int *request, int *reply)
-{
-    id session;
-    unsigned char target;
-    unsigned char lun;
-    int result;
-
-    session = (id)request[3];
-    target = (unsigned char)request[7];
-    lun = (unsigned char)request[8];
-
-    result = IOSCSISession_reserveTarget(session, target, lun);
-    reply[7] = result;
-
-    return 0;
-}
-
-/*
- * MIG Handler: Release Target (Legacy) (Message ID 0x1095 / 4245)
- */
-int _IOSCSISession_releaseTarget_handler(int *request, int *reply)
-{
-    id session;
-    unsigned char target;
-    unsigned char lun;
-    int result;
-
-    session = (id)request[3];
-    target = (unsigned char)request[7];
-    lun = (unsigned char)request[8];
-
-    result = IOSCSISession_releaseTarget(session, target, lun);
-    reply[7] = result;
-
-    return 0;
-}
-
-/*
- * MIG Handler: Execute SCSI-3 Request (Message ID 0x1096 / 4246)
- */
-int _IOSCSISession_executeSCSI3Request_handler(int *request, int *reply)
-{
-    id session;
-    void *scsi_request;
-    mach_port_t client;
-    int buffer_size;
-    int result;
-
-    session = (id)request[3];
-    scsi_request = (void *)&request[7];  /* Inline SCSI request structure */
-    client = request[40];  /* Client port */
-    buffer_size = request[41];
-
-    result = IOSCSISession_executeSCSI3Request(session, scsi_request, client,
-                                               buffer_size, &result);
-    reply[7] = result;
-
-    return 0;
-}
-
-/*
- * MIG Handler: Execute SCSI-3 Request with Scatter-Gather (Message ID 0x1097 / 4247)
- */
-int _IOSCSISession_executeSCSI3RequestScatter_handler(int *request, int *reply)
-{
-    id session;
-    void *scsi_request;
-    mach_port_t client;
-    void *io_ranges;
-    unsigned int range_count;
-    int result;
-
-    session = (id)request[3];
-    scsi_request = (void *)&request[7];
-    client = request[40];
-    io_ranges = (void *)&request[42];
-    range_count = request[41];
-
-    result = IOSCSISession_executeSCSI3RequestScatter(session, scsi_request, client,
-                                                      io_ranges, range_count, &result);
-    reply[7] = result;
-
-    return 0;
-}
-
-/*
- * MIG Handler: Execute SCSI-3 Request with OOL Scatter-Gather (Message ID 0x1098 / 4248)
- */
-int _IOSCSISession_executeSCSI3RequestOOLScatter_handler(int *request, int *reply)
-{
-    id session;
-    void *scsi_request;
-    mach_port_t client;
-    void *ool_data;
-    int ool_size;
-    int result;
-
-    session = (id)request[3];
-    scsi_request = (void *)&request[7];
-    client = request[40];
-    ool_data = (void *)request[42];
-    ool_size = request[43];
-
-    result = IOSCSISession_executeSCSI3RequestOOLScatter(session, scsi_request, client,
-                                                         ool_data, ool_size, &result);
-    reply[7] = result;
-
-    return 0;
-}
-
-/*
- * MIG Handler: Execute Request (Legacy) (Message ID 0x1099 / 4249)
- */
-int _IOSCSISession_executeRequest_handler(int *request, int *reply)
-{
-    id session;
-    void *scsi_request;
-    mach_port_t client;
-    int buffer_size;
-    int result;
-
-    session = (id)request[3];
-    scsi_request = (void *)&request[7];
-    client = request[40];
-    buffer_size = request[41];
-
-    result = IOSCSISession_executeRequest(session, scsi_request, client,
-                                          buffer_size, &result);
-    reply[7] = result;
-
-    return 0;
-}
-
-/*
- * MIG Handler: Execute Request with Scatter-Gather (Legacy) (Message ID 0x109A / 4250)
- */
-int _IOSCSISession_executeRequestScatter_handler(int *request, int *reply)
-{
-    id session;
-    void *scsi_request;
-    mach_port_t client;
-    void *io_ranges;
-    unsigned int range_count;
-    int result;
-
-    session = (id)request[3];
-    scsi_request = (void *)&request[7];
-    client = request[40];
-    io_ranges = (void *)&request[42];
-    range_count = request[41];
-
-    result = IOSCSISession_executeRequestScatter(session, scsi_request, client,
-                                                 io_ranges, range_count, &result);
-    reply[7] = result;
-
-    return 0;
-}
-
-/*
- * MIG Handler: Execute Request with OOL Scatter-Gather (Legacy) (Message ID 0x109B / 4251)
- */
-int _IOSCSISession_executeRequestOOLScatter_handler(int *request, int *reply)
-{
-    id session;
-    void *scsi_request;
-    mach_port_t client;
-    void *ool_data;
-    int ool_size;
-    int result;
-
-    session = (id)request[3];
-    scsi_request = (void *)&request[7];
-    client = request[40];
-    ool_data = (void *)request[42];
-    ool_size = request[43];
-
-    result = IOSCSISession_executeRequestOOLScatter(session, scsi_request, client,
-                                                    ool_data, ool_size, &result);
-    reply[7] = result;
-
-    return 0;
-}
-
-/*
- * MIG Handler: Reset SCSI Bus (Message ID 0x109C / 4252)
- */
-int _IOSCSISession_resetSCSIBus_handler(int *request, int *reply)
-{
-    id session;
-    unsigned int result;
-
-    session = (id)request[3];
-
-    IOSCSISession_resetSCSIBus(session, &result);
-    reply[7] = 0;
-    reply[8] = result;
-
-    return 0;
-}
-
-/*
- * MIG Handler: Get Number of Targets (Message ID 0x109D / 4253)
- */
-int _IOSCSISession_numberOfTargets_handler(int *request, int *reply)
-{
-    id session;
-    unsigned int num_targets;
-
-    session = (id)request[3];
-
-    IOSCSISession_numberOfTargets(session, &num_targets);
-    reply[7] = 0;
-    reply[8] = num_targets;
-
-    return 0;
-}
-
-/*
- * MIG Handler: Get DMA Alignment (Message ID 0x109E / 4254)
- */
-int _IOSCSISession_getDMAAlignment_handler(int *request, int *reply)
-{
-    id session;
-    unsigned int alignment;
-
-    session = (id)request[3];
-
-    IOSCSISession_getDMAAlignment(session, &alignment);
-    reply[7] = 0;
-    reply[8] = alignment;
-
-    return 0;
-}
-
-/*
- * MIG Handler: Get Max Transfer Size (Message ID 0x109F / 4255)
- */
-int _IOSCSISession_maxTransfer_handler(int *request, int *reply)
-{
-    id session;
-    unsigned int max_transfer;
-
-    session = (id)request[3];
-
-    IOSCSISession_maxTransfer(session, &max_transfer);
-    reply[7] = 0;
-    reply[8] = max_transfer;
-
-    return 0;
-}
-
-/*
- * MIG Handler: Release All Units (Message ID 0x10A0 / 4256)
- */
-int _IOSCSISession_releaseAllUnits_handler(int *request, int *reply)
-{
-    id session;
-    int result;
-
-    session = (id)request[3];
-
-    result = IOSCSISession_releaseAllUnits(session);
-    reply[7] = result;
-
-    return 0;
-}
-
-/*
- * MIG Handler: Free Session (Message ID 0x10A1 / 4257)
- */
-int _IOSCSISession_free_handler(int *request, int *reply)
-{
-    id session;
-    int result;
-
-    session = (id)request[3];
-
-    result = IOSCSISession_free(session);
-    reply[7] = result;
-
-    return 0;
-}
-
-/*
- * MIG Handler: Initialize for Device (Message ID 0x10A2 / 4258)
- */
-int _IOSCSISession_initForDevice_handler(int *request, int *reply)
-{
-    id session;
-    const char *device_name;
-    int result;
-
-    session = (id)request[3];
-    device_name = (const char *)&request[7];
-
-    result = IOSCSISession_initForDevice(session, device_name);
-    reply[7] = result;
-
-    return 0;
-}
-
-/*
- * MIG Handler: Return from SCSI Status (Message ID 0x10A3 / 4259)
- */
-int _IOSCSISession_returnFromScStatus_handler(int *request, int *reply)
-{
-    id session;
-    unsigned int sc_status;
-
-    session = (id)request[3];
-    sc_status = request[7];
-
-    IOSCSISession_returnFromScStatus(session, sc_status);
-    reply[7] = 0;
-
-    return 0;
-}
-
-/* ========================================================================
- * MIG Handler Table
- * ======================================================================== */
-
-/*
- * MIG Handler Dispatch Table
- *
- * This table maps message IDs (0x1092 - 0x10a3) to handler functions.
- * The IOSCSISessionMig_server function uses this table to dispatch
- * incoming MIG messages to the appropriate handler.
- *
- * Message ID calculation:
- *   handler_offset = msg_id * 4 + (-0xaa4)
- *
- * The table is accessed as: *(handler_table_base + msg_id * 4 - 0xaa4)
- *
- * For proper linkage, this table needs to be at the correct offset in memory.
- * In the binary, the calculation (-0xaa4 + msg_id * 4) resolves to addresses
- * in the dispatch table section.
- *
- * NOTE: In the actual binary, this table is embedded at a specific location
- * such that the formula (msg_id * 4 + (-0xaa4)) correctly indexes into it.
- * For a complete recreation, you would need to use linker scripts or
- * compiler-specific directives to place this at the correct address.
- */
-static const mig_handler_func_t _IOSCSISessionMig_handlers[18] = {
-    _IOSCSISession_reserveSCSI3Target_handler,           /* 0x1092 / 4242 */
-    _IOSCSISession_releaseSCSI3Target_handler,           /* 0x1093 / 4243 */
-    _IOSCSISession_reserveTarget_handler,                /* 0x1094 / 4244 */
-    _IOSCSISession_releaseTarget_handler,                /* 0x1095 / 4245 */
-    _IOSCSISession_executeSCSI3Request_handler,          /* 0x1096 / 4246 */
-    _IOSCSISession_executeSCSI3RequestScatter_handler,   /* 0x1097 / 4247 */
-    _IOSCSISession_executeSCSI3RequestOOLScatter_handler,/* 0x1098 / 4248 */
-    _IOSCSISession_executeRequest_handler,               /* 0x1099 / 4249 */
-    _IOSCSISession_executeRequestScatter_handler,        /* 0x109A / 4250 */
-    _IOSCSISession_executeRequestOOLScatter_handler,     /* 0x109B / 4251 */
-    _IOSCSISession_resetSCSIBus_handler,                 /* 0x109C / 4252 */
-    _IOSCSISession_numberOfTargets_handler,              /* 0x109D / 4253 */
-    _IOSCSISession_getDMAAlignment_handler,              /* 0x109E / 4254 */
-    _IOSCSISession_maxTransfer_handler,                  /* 0x109F / 4255 */
-    _IOSCSISession_releaseAllUnits_handler,              /* 0x10A0 / 4256 */
-    _IOSCSISession_free_handler,                         /* 0x10A1 / 4257 */
-    _IOSCSISession_initForDevice_handler,                /* 0x10A2 / 4258 */
-    _IOSCSISession_returnFromScStatus_handler            /* 0x10A3 / 4259 */
-};
 
 
 /* ========================================================================
@@ -1058,6 +435,9 @@ int IOSCSISession_free(id session)
  * IOSCSISession_initForDevice - Initialize SCSI session for a device
  * session: IOSCSISession object
  * deviceName: Name of the SCSI device
+ * deviceNameCnt: Byte count of deviceName, as passed by the MiG-generated
+ *   IOSCSISessionMigServer.c (the array[*:80] of char argument's implicit
+ *   count parameter)
  * Returns: 0 on success, error code on failure
  *
  * This function:
@@ -1068,7 +448,8 @@ int IOSCSISession_free(id session)
  * Note: This is different from the Objective-C initForDevice:result: method
  * which always calls free. This C function provides actual initialization.
  */
-int IOSCSISession_initForDevice(id session, const char *deviceName)
+int IOSCSISession_initForDevice(id session, const char *deviceName,
+                                unsigned int deviceNameCnt)
 {
     int result;
     id device_obj;
@@ -1092,7 +473,7 @@ int IOSCSISession_initForDevice(id session, const char *deviceName)
         else {
             /* Store device object in session structure at offset +8
              * This is the same location where the controller object is stored
-             * in _initServerWithTask:sendPort:
+             * in initServerWithTask:sendPort:
              */
             *(id *)(*(int *)((char *)session + 4) + 8) = device_obj;
         }
@@ -1344,7 +725,7 @@ void removeReservation(id session, int target_high, int target_low,
             prev = (int *)current[1];  /* current->prev */
 
             /* Unlink from list: prev->next = next, next->prev = prev */
-            *(int **)(next + 4) = prev;   /* next->prev = prev */
+            next[1] = (int)prev;           /* next->prev = prev */
             *prev = (int)next;             /* prev->next = next */
 
             /* Free the reservation entry (0x18 = 24 bytes) */
@@ -1410,373 +791,126 @@ int findReservation(id session, int target_high, int target_low,
 
 
 /* ========================================================================
- * Client Reference Counting
+ * Per-Session Server Thread
  * ======================================================================== */
 
 /*
- * Client reference tracking structure
+ * serverThreadFunc - the per-session Mach RPC server loop
+ * session: the IOSCSISession this thread belongs to
  *
- * Located at address 0x4008 in the binary
- * Valid range: 0x4008 - 0x4087 (128 bytes = 32 ints)
- * Boundary at 0x4088 is marked as _notifyThread
+ * Address 2672.  Sixty-nine instructions of body ending in the unconditional
+ * `b` back to the loop top at 2944, plus five 16-byte jump islands at
+ * 2948-3027 that make up the 356-byte next-symbol span (targets: msg_send,
+ * IOSCSISessionMig_server, objc_msgSend, IOLog, msg_receive).  It has no
+ * epilogue and never executes a blr - the only way out is one of the three
+ * [session free] calls, each of which reaches IOExitThread() inside -free
+ * whenever the session's own thread field is set, which it is for a live
+ * session.  The instructions after those calls are unreachable in practice.
  *
- * This is an array of reference counts, where each entry is a single int
- * representing the reference count for that client slot. The IOReferenceClientTask
- * function searches this array for empty slots (value == 0) and allocates them
- * as needed.
+ * It belongs in this file, not IOTask.m: it sits between _blastAllReservations
+ * (2544) and _IOSCSISession_initForDevice (3028) in the reference's text, it
+ * sends -free to an IOSCSISession, it reads the session's own _priv fields,
+ * and it dispatches through IOSCSISessionMig_server.
  *
- * Structure:
- * - Array of 32 integers (128 bytes total)
- * - Each entry is a reference count (not a struct)
- * - Empty slots have value 0
- * - Allocated slots have reference count >= 1
+ * Two 1024-byte buffers, at r1+0x38 and r1+0x438 in an 0x850-byte frame.
+ * Instruction by instruction:
+ *
+ *   2700-2712  r31 = session, r30 = request, r29 = reply, r28 = the "free"
+ *              selector reference
+ *   2716       request->msg_local_port = (port_t)session.  The session object
+ *              *is* its own port name: -initServerWithTask:sendPort: calls
+ *              IOTaskPortAllocateName(self) at 1300-1304, which renames the
+ *              freshly allocated port to self.
+ *   2720-2740  request->msg_size = 0x400; msg_receive(request, 0x1400, 0).
+ *              0x1400 is RCV_LARGE (0x1000) | RCV_INTERRUPT (0x400),
+ *              src/kernel-7/mach/message.h:765 and :764 - an option word, not
+ *              a size.
+ *   2744-2780  on failure: IOLog the session index (_priv->0x18) and the
+ *              error, then [session free] - which does not return
+ *   2784-2792  IOSCSISessionMig_server(request, reply)
+ *   2796-2800  non-zero means "dispatched"; branch to the reply half
+ *   2804-2816  otherwise test request->msg_id: `msg_id - 0x41 <=u 11` is the
+ *              open range NOTIFY_FIRST < msg_id < NOTIFY_LAST, i.e. 65..76,
+ *              from NOTIFY_FIRST = 0100 and NOTIFY_LAST = NOTIFY_FIRST + 015
+ *              (src/kernel-7/mach/notify.h:152 and :159).  Outside it, fall
+ *              into the reply half.
+ *   2820-2832  inside it: 0x41 is NOTIFY_PORT_DELETED (notify.h:153) and 0x45
+ *              is NOTIFY_PORT_DESTROYED (notify.h:157); anything else in the
+ *              range is dropped without a reply (branch back to 2716)
+ *   2836-2856  either death notification clears _priv->0x10, the death port
+ *              IORequestNotifyForClientTask filled in, then [session free]
+ *   2860-2868  reply->RetCode == MIG_NO_REPLY (-0x131, mig_errors.h:98):
+ *              round again with nothing sent
+ *   2872-2884  reply->RetCode == MIG_BAD_ID (-0x12F, mig_errors.h:96) is
+ *              rewritten to IO_R_BAD_MSG_ID (-0x2C6, driverkit/return.h:49)
+ *   2888-2900  msg_send(reply, 5, 0); option 5 is SEND_TIMEOUT | SEND_INTERRUPT
+ *              (message.h:755 and :758)
+ *   2904-2908  success: round again
+ *   2912-2944  failure: IOLog, [session free], then the branch back to 2716
+ *
+ * The reply buffer is read at offset 0x1C, which is death_pill_t's RetCode -
+ * this tree's old-IPC MiG reply shape, msg_header_t + msg_type_t +
+ * kern_return_t (src/kernel-7/mach/mig_errors.h:124-128).
  */
-static int _clientReferences[32] = {0};  /* Client reference array at 0x4008-0x4087 */
+extern boolean_t IOSCSISessionMig_server(msg_header_t *request,
+                                         msg_header_t *reply);
 
-/*
- * Notify thread identifier or boundary marker
- *
- * Located at address 0x4088 in the binary, immediately after _clientReferences
- * This serves as a boundary marker for the client references array in
- * IOReferenceClientTask, which searches until it reaches &_notifyThread.
- *
- * Cross-references show this is used by IORequestNotifyForClientTask,
- * suggesting it may be a thread identifier for notification handling.
- */
-static int _notifyThread = 0;  /* Notify thread or boundary marker at 0x4088 */
-
-/* ========================================================================
- * Client Task Notification Management
- * ======================================================================== */
-
-/*
- * Global notification client tracking
- * Maximum 32 (0x20) notification clients can be registered
- *
- * Structure:
- * - notifClients[64]: Array of 32 client entries (2 ints each = 8 bytes)
- *   Entry structure:
- *   offset +0: death port (mach_port_t)
- *   offset +4: reference count
- * - DAT_00004098[64]: Parallel array storing session objects (id)
- * - notifClientCnt: Current number of registered clients
- */
-static int notifClients[64];      /* 32 entries * 2 ints = 64 ints */
-static id notifClientObjects[32]; /* Parallel array for session objects */
-static int notifClientCnt = 0;    /* Current client count */
-
-/*
- * IOReleaseNotifyForFunc - Release notification registration
- * deathPort: Death notification port to release
- * session: IOSCSISession object associated with the notification
- *
- * This function:
- * 1. Searches the notification client array for matching port/session
- * 2. Dereferences the client task
- * 3. Clears the entry (8 bytes)
- * 4. Decrements the client count
- */
-void IOReleaseNotifyForFunc(mach_port_t deathPort, id session)
+static void serverThreadFunc(id session)
 {
-    int i;
-    int *client_entry;
-
-    /* Iterate through all possible notification slots (0-31) */
-    for (i = 0; i < 0x20; i++) {
-        /* Get pointer to client entry (2 ints = 8 bytes per entry)
-         * Entry layout:
-         *   notifClients[i*2+0]: death port
-         *   notifClients[i*2+1]: reference count
-         */
-        client_entry = &notifClients[i * 2];
-
-        /* Check if this entry matches the death port and session */
-        if ((client_entry[0] == (int)deathPort) &&
-            (notifClientObjects[i] == session)) {
-
-            /* Dereference the client task (decrements reference count) */
-            IODereferenceClientTask(&notifClients[i * 2]);
-
-            /* Clear the entry (8 bytes = 2 ints) */
-            memset(client_entry, 0, 8);
-
-            /* Decrement global client count */
-            notifClientCnt--;
-        }
-    }
-}
-
-/*
- * IODereferenceClientTask - Decrement reference count for a client task
- * clientEntry: Pointer to client entry (death port at offset +0, refcount at offset +4)
- * Returns: 0 on success, result of cleanup function if refcount reaches 0, 4 on error
- *
- * This function:
- * 1. Validates the client entry pointer is in valid range
- * 2. Decrements the reference count
- * 3. If refcount reaches 0, calls cleanup function
- */
-int IODereferenceClientTask(int *clientEntry)
-{
-    int refcount;
+    union { msg_header_t hdr; char bytes[0x400]; } requestBuffer;   /* r1+0x38 */
+    union { death_pill_t pill; char bytes[0x400]; } replyBuffer;    /* r1+0x438 */
+    msg_header_t *request;
+    death_pill_t *reply;
     int result;
 
-    /* Validate pointer is within notifClients array
-     * Range check: &notifClients[1] <= clientEntry <= &notifClients[33]
-     * (Actually checking the reference count field, which is at offset +4)
-     *
-     * The decompiled code checks:
-     * (&UNK_00004007 < param_1 && param_1 <= &UNK_00004087)
-     * This appears to check if pointer is within the notifClients array
-     */
-    if ((clientEntry < &notifClients[0]) ||
-        (clientEntry > &notifClients[64])) {
-        return 4;  /* Invalid pointer */
-    }
+    request = &requestBuffer.hdr;
+    reply = &replyBuffer.pill;
 
-    /* Get reference count from offset +4 (second int in entry) */
-    refcount = clientEntry[1];
+    for (;;) {
+        request->msg_local_port = (port_t)session;
+        request->msg_size = sizeof(requestBuffer);
 
-    /* Check if reference count is positive */
-    if (refcount <= 0) {
-        return 4;  /* Invalid refcount */
-    }
-
-    /* Decrement reference count */
-    clientEntry[1] = refcount - 1;
-
-    /* If refcount reached 0, call cleanup function */
-    if (clientEntry[1] == 0) {
-        /* Call function from entry table at offset 0xa4
-         * This appears to be a Mach port cleanup function
-         * FUN_00001c88(*(undefined4 *)(_entry + 0xa4))
-         *
-         * This likely calls mach_port_deallocate() or similar
-         */
-        result = 0;  /* Placeholder - actual cleanup would happen here */
-    }
-    else {
-        result = 0;  /* Success, refcount still > 0 */
-    }
-
-    return result;
-}
-
-/*
- * IOReferenceClientTask - Reference a client task and increment reference count
- * param_1: Pointer to pointer to client entry (input/output parameter)
- * Returns: 0 on success, 6 if no slots available, error code from kernel function on failure
- *
- * This function manages client task references in a more complex way than just
- * incrementing a counter. It:
- * 1. Checks if *param_1 already points to a valid entry in the reference table
- * 2. If not, searches for an empty slot in the client reference table
- * 3. Calls a kernel function to set up the reference
- * 4. Updates *param_1 to point to the found/allocated entry
- * 5. Increments the reference count in the entry
- *
- * The decompiled code shows this behavior:
- * - If *param_1 is already in valid range (0x4008-0x4087), just increment
- * - Otherwise, search _clientReferences array for an empty slot (where *slot == 0)
- * - Call kernel function FUN_00001be4() to set up the reference
- * - Update *param_1 to point to the allocated slot
- * - Increment the reference count
- *
- * Client reference table range:
- * - Start: &_clientReferences (0x4008)
- * - End: &_notifyThread (appears to be end of client reference array)
- * - Valid range for existing references: 0x4008-0x4087
- */
-int IOReferenceClientTask(int **param_1)
-{
-    int result;
-    int *current_entry;
-    int *search_ptr;
-
-    /* Get the entry pointer from param_1
-     * piVar2 = *param_1
-     */
-    current_entry = *param_1;
-
-    /* Check if current_entry is already in valid range
-     * Decompiled: if (piVar2 <= &UNK_00004007 || &UNK_00004087 < piVar2)
-     * Valid range is &_clientReferences[0] to &_clientReferences[31]
-     * (0x4008 - 0x4087)
-     */
-    if ((current_entry < &_clientReferences[0]) || (current_entry > &_clientReferences[31])) {
-        /* Entry not in valid range - need to find or allocate a slot */
-
-        /* Start search at beginning of client references table
-         * piVar2 = &_clientReferences
-         */
-        search_ptr = _clientReferences;
-
-        /* Search for an empty slot (where *slot == 0)
-         * Decompiled:
-         * do {
-         *   if (*piVar2 == 0) break;
-         *   piVar2 = piVar2 + 1;
-         * } while (piVar2 < &_notifyThread);
-         */
-        while (search_ptr < &_notifyThread) {
-            if (*search_ptr == 0) {
-                /* Found empty slot */
-                break;
-            }
-            search_ptr = search_ptr + 1;
-        }
-
-        /* Check if we found a valid slot
-         * Decompiled: if (&UNK_00004087 < piVar2)
-         * This checks if search went past the last valid slot
-         */
-        if (search_ptr > &_clientReferences[31]) {
-            /* No empty slots available */
-            return 6;  /* Error code 6: no slots */
-        }
-
-        /* Call kernel function to set up the reference
-         * Decompiled: iVar1 = FUN_00001be4(*(undefined4 *)(_entry + 0xa4),*param_1,piVar2)
-         *
-         * This appears to be a kernel function that:
-         * - Takes the port functions pointer from _entry+0xa4
-         * - Takes the original *param_1 value (client identifier?)
-         * - Takes the allocated slot pointer
-         * - Returns 0 on success, error code on failure
-         */
-        result = 0;  /* TODO: Call actual kernel function */
-        /* result = FUN_00001be4(_entry->port_funcs, *param_1, search_ptr); */
-
-        /* Update *param_1 to point to the allocated slot
-         * Decompiled: *param_1 = piVar2
-         */
-        *param_1 = search_ptr;
-
-        /* Check if kernel function failed
-         * Decompiled: if (iVar1 != 0) { return iVar1; }
-         */
+        result = msg_receive(request, RCV_LARGE | RCV_INTERRUPT, 0);
         if (result != 0) {
-            return result;
+            IOLog("SS%d: Server Thread Receive Error(%d) - terminating\n",
+                  *(int *)((*(int *)((char *)session + 4)) + 0x18), result);
+            [session free];   /* reaches IOExitThread(); does not return */
         }
 
-        /* Update current_entry to point to the new slot */
-        current_entry = search_ptr;
-    }
+        if (IOSCSISessionMig_server(request, &reply->Head) == 0) {
+            if ((request->msg_id > NOTIFY_FIRST) &&
+                (request->msg_id < NOTIFY_LAST)) {
 
-    /* Increment reference count in the entry
-     * Decompiled: *piVar2 = *piVar2 + 1
-     *
-     * Note: This increments the value at the entry, which is the reference count.
-     * The entry structure appears to be just the reference count itself,
-     * not a struct with multiple fields like notifClients.
-     */
-    *current_entry = *current_entry + 1;
+                if ((request->msg_id == NOTIFY_PORT_DELETED) ||
+                    (request->msg_id == NOTIFY_PORT_DESTROYED)) {
+                    /* The client task died; drop the death-port registration
+                     * and take the session down with it.
+                     */
+                    *(int *)((*(int *)((char *)session + 4)) + 0x10) = 0;
+                    [session free];   /* does not return */
+                } else {
+                    /* Some other notification: no reply is owed */
+                    continue;
+                }
+            }
+        }
 
-    return 0;  /* Success */
-}
+        if (reply->RetCode == MIG_NO_REPLY) {
+            continue;
+        }
+        if (reply->RetCode == MIG_BAD_ID) {
+            reply->RetCode = IO_R_BAD_MSG_ID;
+        }
 
-/* ========================================================================
- * Memory Wiring Functions
- * ======================================================================== */
-
-/*
- * IOTaskWireMemory - Wire memory in task's address space for DMA
- * address: Virtual address to wire
- * length: Length of memory region in bytes
- *
- * "Wiring" memory locks it into physical RAM and prevents it from being
- * paged out. This is required for DMA operations as the hardware needs
- * stable physical addresses.
- */
-void IOTaskWireMemory(unsigned int address, int length)
-{
-    unsigned int start_addr;
-    unsigned int end_addr;
-    mach_port_t task_port;
-
-    /* Get task port from global entry structure */
-    task_port = _entry->task_port;
-
-    /* Align start address to page boundary (round down) */
-    start_addr = address & ~(_page_size - 1);
-
-    /* Calculate end address aligned to page boundary (round up) */
-    end_addr = (address + length + (_page_size - 1)) & ~(_page_size - 1);
-
-    /* TODO: Call kernel vm_wire() function
-     * FUN_00001a8c(task_port, start_addr, end_addr, 0)
-     */
-}
-
-/*
- * IOTaskUnwireMemory - Unwire previously wired memory
- * address: Virtual address to unwire
- * length: Length of memory region in bytes
- */
-void IOTaskUnwireMemory(unsigned int address, int length)
-{
-    unsigned int start_addr;
-    unsigned int end_addr;
-    mach_port_t task_port;
-
-    /* Get task port from global entry structure */
-    task_port = _entry->task_port;
-
-    /* Align start address to page boundary (round down) */
-    start_addr = address & ~(_page_size - 1);
-
-    /* Calculate end address aligned to page boundary (round up) */
-    end_addr = (address + length + (_page_size - 1)) & ~(_page_size - 1);
-
-    /* TODO: Call kernel vm_unwire() function
-     * FUN_00001aec(task_port, start_addr, end_addr, 1)
-     */
-}
-
-/* ========================================================================
- * Port Management Functions
- * ======================================================================== */
-
-/*
- * IOTaskPortDeallocate - Deallocate a Mach port
- * port: Mach port to deallocate
- */
-void IOTaskPortDeallocate(mach_port_t port)
-{
-    void *port_funcs;
-
-    /* Get port management functions from global entry structure */
-    port_funcs = _entry->port_funcs;
-
-    /* TODO: Call mach_port_deallocate()
-     * FUN_00001a2c(port_funcs, port)
-     */
-}
-
-/*
- * IOTaskPortAllocateName - Allocate and assign a name to a Mach port
- * name: Port name to assign
- */
-void IOTaskPortAllocateName(mach_port_t name)
-{
-    int result;
-    mach_port_t allocated_port;
-    void *port_funcs;
-
-    /* Get port management functions from global entry structure */
-    port_funcs = _entry->port_funcs;
-
-    /* TODO: Allocate port
-     * result = FUN_000019ac(port_funcs, &allocated_port)
-     */
-    result = 0;
-
-    if (result == 0) {
-        /* TODO: Insert send right with name
-         * FUN_0000199c(port_funcs, allocated_port, name)
-         */
+        result = msg_send(&reply->Head, SEND_TIMEOUT | SEND_INTERRUPT, 0);
+        if (result != 0) {
+            IOLog("SS%d: Server Thread Send Error(%d) - terminating\n",
+                  *(int *)((*(int *)((char *)session + 4)) + 0x18), result);
+            [session free];   /* does not return */
+        }
     }
 }
+
 
 /* ========================================================================
  * SCSI Controller Functions
@@ -1786,17 +920,36 @@ void IOTaskPortAllocateName(mach_port_t name)
  * IOSCSISession_returnFromScStatus - Convert SCSI status to IOReturn
  * session: IOSCSISession object
  * scStatus: SCSI status code
+ * Returns: the controller's converted status
+ *
+ * The reference (address 6236, 52 bytes) is thirteen instructions:
+ * prologue; mr r5, r4 (scStatus into the message's third argument);
+ * lwz r9, 4(r3) / lwz r3, 8(r9) (the controller, at session_struct+8);
+ * the lis/lwz pair at 6256/6264, whose relocations name
+ * __OBJC,__message_refs+120 -- slot 30, whose own relocation resolves to the
+ * selector string "returnFromScStatus:"; bl at 6268, relocation
+ * ppc-jbsr-24-pc-relative naming _objc_msgSend; then the epilogue at
+ * 6272-6284 with no instruction between the call and the blr that touches
+ * r3.  The dispatched result is therefore this function's own return value,
+ * which is why IOSCSISessionMig.defs:199 declares routine 15 a `routine`
+ * (not a simpleroutine) and __XIOSCSISession_returnFromScStatus stores r3
+ * into the reply's RetCode at 0x336c.  The `void` this used to carry made
+ * the stub store an undefined register instead.
+ *
+ * `int` is the return type __OBJC,__meth_var_types gives the selector in the
+ * reference's own IOSCSIControllerExported protocol record:
+ * "i12@4:8i16" -- int return, int argument.
  */
-void IOSCSISession_returnFromScStatus(id session, unsigned int scStatus)
+int IOSCSISession_returnFromScStatus(id session, unsigned int scStatus)
 {
     id controller;
 
     /* Get controller from session structure at offset +8 */
     controller = *(id *)((*(int *)((char *)session + 4)) + 8);
 
-    /* TODO: Call returnFromScStatus: on controller
-     * FUN_00001890(controller, @selector(returnFromScStatus:), scStatus)
-     */
+    return (int)objc_msgSend(controller,
+                             @selector(returnFromScStatus:),
+                             scStatus);
 }
 
 /*
@@ -1813,10 +966,14 @@ int IOSCSISession_resetSCSIBus(id session, unsigned int *result)
     /* Get controller from session structure at offset +8 */
     controller = *(id *)((*(int *)((char *)session + 4)) + 8);
 
-    /* TODO: Call resetSCSIBus on controller
-     * reset_result = FUN_0000184c(controller, @selector(resetSCSIBus))
+    /* Call resetSCSIBus on the controller.
+     * Reference address 6152, seventeen instructions: r31 = result (r4),
+     * r3 = *(*(session+4)+8), r4 = __OBJC,__message_refs+116
+     * ("resetSCSIBus"), bl at 6188 relocating to _objc_msgSend, then
+     * stw r3, 0(r31) and li r3, 0.
      */
-    reset_result = 0;
+    reset_result = (unsigned int)objc_msgSend(controller,
+                                              @selector(resetSCSIBus));
 
     /* Store result */
     *result = reset_result;
@@ -1892,11 +1049,16 @@ int IOSCSISession_executeSCSI3Request(id session, void *request,
              */
             controller = *(id *)((*(int *)((char *)session + 4)) + 8);
 
-            /* TODO: exec_result = objc_msgSend(controller,
-             *          @selector(executeSCSI3Request:buffer:client:),
-             *          request, NULL, NULL);
+            /* Reference addresses 5324-5356: r3 = *(*(session+4)+8),
+             * r4 = __OBJC,__message_refs+108
+             * ("executeSCSI3Request:buffer:client:"), r5 = request,
+             * r6 = 0 and r7 = 0 -- the reference passes NULL for both the
+             * buffer and the client on this path, not the incoming client --
+             * bl at 5352 relocating to _objc_msgSend, then stw r3, 0(r30).
              */
-            exec_result = 0;
+            exec_result = (int)objc_msgSend(controller,
+                                            @selector(executeSCSI3Request:buffer:client:),
+                                            request, NULL, NULL);
             *result = exec_result;
         }
 
@@ -1964,76 +1126,101 @@ int IOSCSISession_executeSCSI3RequestScatter(id session, void *request,
 
     /* Check if this is a simple transfer (no scatter-gather) */
     if ((rangeCount == 0) || (bufferSize == 0)) {
-        /* Simple case: execute with NULL buffer
-         * Call executeSCSI3Request:buffer:client: on controller
+        /* Simple case: execute with NULL buffer.
+         * Reference addresses 5836-5868: selector
+         * __OBJC,__message_refs+108, r5 = request, r6 = 0, r7 = 0,
+         * bl at 5864 to _objc_msgSend, stw r3, 0(r29).  Note this path does
+         * not touch request+0x30.
          */
-        /* TODO: exec_result = objc_msgSend(controller,
-         *                    @selector(executeSCSI3Request:buffer:client:),
-         *                    request, NULL, NULL);
-         */
-        exec_result = 0;
+        exec_result = (int)objc_msgSend(controller,
+                                        @selector(executeSCSI3Request:buffer:client:),
+                                        request, NULL, NULL);
         *result = exec_result;
     }
     else {
         /* Scatter-gather case: create IOMemoryDescriptor */
 
         /* Calculate actual range count: rangeCount >> 3
-         * The count is encoded in the upper bits
+         * The count is encoded in the upper bits (srwi r6, r31, 3 at 5908)
          */
         actualRangeCount = rangeCount >> 3;
 
-        /* Allocate IOMemoryDescriptor */
-        /* TODO: ioMemDesc = [[IOMemoryDescriptor alloc]
-         *                    initWithIORange:ioRanges
-         *                    count:actualRangeCount
-         *                    byReference:YES];
+        /* Allocate IOMemoryDescriptor.
+         * Reference addresses 5876-5916: r3 from __OBJC,__cls_refs+4 (whose
+         * relocation names __OBJC,__class_names+120, "IOMemoryDescriptor"),
+         * r4 = __OBJC,__message_refs+4 ("alloc"); then selector
+         * __OBJC,__message_refs+84
+         * ("initWithIORange:count:byReference:") with r5 = ioRanges,
+         * r6 = rangeCount >> 3 and r7 = 1 (YES).
          */
-        ioMemDesc = NULL;
+        ioMemDesc = [[IOMemoryDescriptor alloc]
+                        initWithIORange:(const IORange *)ioRanges
+                                  count:actualRangeCount
+                            byReference:YES];
 
         if (ioMemDesc == NULL) {
-            /* Allocation/initialization failed */
+            /* Allocation/initialization failed (5928-5940) */
             *result = 8;  /* Error code 8 */
             *(int *)((char *)request + 0x30) = 8;  /* Set status in request */
         }
         else {
-            /* Set the client task for the memory descriptor */
-            /* TODO: objc_msgSend(ioMemDesc, @selector(setClient:), client); */
+            /* Set the client task for the memory descriptor
+             * (5944-5960, selector __OBJC,__message_refs+88)
+             */
+            [ioMemDesc setClient:(vm_task_t)client];
 
-            /* Wire the memory for DMA
-             * Direction is at request offset +0x20
+            /* Wire the memory for DMA.  Direction is the *byte* at request
+             * offset +0x20 (lbz r5, 0x20(r30) at 5976); selector
+             * __OBJC,__message_refs+92.
              */
             direction = *(unsigned char *)((char *)request + 0x20);
-            /* TODO: wire_result = objc_msgSend(ioMemDesc,
-             *                      @selector(wireMemory:), direction);
-             */
-            wire_result = 0;
+            wire_result = (int)[ioMemDesc wireMemory:direction];
 
             *result = wire_result;
             *(int *)((char *)request + 0x30) = wire_result;
 
             if (*result != 0) {
-                /* Wiring failed - release the descriptor */
-                /* TODO: objc_msgSend(ioMemDesc, @selector(release)); */
+                /* Wiring failed - release the descriptor
+                 * (6004-6016, selector __OBJC,__message_refs+96)
+                 */
+                [ioMemDesc release];
+
+                /* INTENTIONAL MISMATCH (use-after-free in the reference):
+                 * the reference's guard at 6020-6024 is cmpwi cr1, r31, 0 /
+                 * beq cr1, loc_17CC with r31 still holding the descriptor the
+                 * bl at 6016 just released -- nothing between 6016 and 6020
+                 * clears r31.  So the reference's wire-failure path falls
+                 * into the block below and sends
+                 * executeSCSI3Request:ioMemoryDescriptor:, unwireMemory and a
+                 * second release to an already-released object.
+                 * IOMemoryDescriptor.h:132-134 confirms -release is a real
+                 * refcount release, so at a retain count of 1 that frees it,
+                 * and wireMemory: fails on client-supplied addresses, which
+                 * makes the path client-reachable.  We drop the descriptor
+                 * here so the block below is skipped; recorded as
+                 * intentional-mismatch at address 5760 in
+                 * reconstruction/SCSIServer/ledger.json.
+                 */
+                ioMemDesc = nil;
             }
         }
 
-        /* If we successfully created and wired the descriptor */
         if (ioMemDesc != NULL) {
             /* Execute SCSI request with the memory descriptor
-             * Call executeSCSI3Request:ioMemoryDescriptor: on controller
+             * (6028-6056, selector __OBJC,__message_refs+112,
+             * "executeSCSI3Request:ioMemoryDescriptor:", r5 = request,
+             * r6 = ioMemDesc)
              */
-            /* TODO: exec_result = objc_msgSend(controller,
-             *          @selector(executeSCSI3Request:ioMemoryDescriptor:),
-             *          request, ioMemDesc);
-             */
-            exec_result = 0;
+            exec_result = (int)objc_msgSend(controller,
+                                            @selector(executeSCSI3Request:ioMemoryDescriptor:),
+                                            request, ioMemDesc);
             *result = exec_result;
 
-            /* Unwire the memory */
-            /* TODO: objc_msgSend(ioMemDesc, @selector(unwireMemory)); */
+            /* Unwire the memory (selector __OBJC,__message_refs+104) */
+            [ioMemDesc unwireMemory];
 
-            /* Release the memory descriptor */
-            /* TODO: objc_msgSend(ioMemDesc, @selector(release)); */
+            /* Release the memory descriptor (__OBJC,__message_refs+96) */
+            [ioMemDesc release];
         }
     }
 
@@ -2098,11 +1285,18 @@ int IOSCSISession_executeSCSI3RequestOOLScatter(id session, void *request,
         }
     }
 
-    /* Deallocate the out-of-line memory
-     * FUN_00001640(oolData, oolDataSize) is likely vm_deallocate()
-     * This releases the memory that was sent via Mach IPC
+    /* Release the out-of-line mapping.
+     * Reference addresses 5644-5648: r3 = oolData, r4 = oolDataSize, and the
+     * bl at 5648 carries a ppc-jbsr-24-pc-relative relocation naming the
+     * imported _IOUnmapPhysicalFromIOTask -- not vm_deallocate, which the
+     * old comment guessed and which is not among the reference's imports.
+     * driverkit/kernelDriver.h:133 declares it
+     * IOReturn IOUnmapPhysicalFromIOTask(vm_address_t, unsigned), matching
+     * the two argument registers exactly.  This call is unconditional: both
+     * the wire-failure path (5588's bne, which skips the scatter call and
+     * the unwire) and the success path converge on it.
      */
-    /* TODO: Call vm_deallocate(mach_task_self(), (vm_address_t)oolData, oolDataSize) */
+    IOUnmapPhysicalFromIOTask((vm_address_t)oolData, oolDataSize);
 
     return 0;
 }
@@ -2182,11 +1376,16 @@ int IOSCSISession_executeRequest(id session, void *request,
              */
             controller = *(id *)((*(int *)((char *)session + 4)) + 8);
 
-            /* TODO: exec_result = objc_msgSend(controller,
-             *          @selector(executeRequest:buffer:client:),
-             *          request, NULL, NULL);
+            /* Reference addresses 4392-4424: r3 = *(*(session+4)+8),
+             * r4 = __OBJC,__message_refs+80
+             * ("executeRequest:buffer:client:"), r5 = request, r6 = 0 and
+             * r7 = 0 (NULL buffer and NULL client, the same as the SCSI-3
+             * path), bl at 4420 relocating to _objc_msgSend, then
+             * stw r3, 0(r30).
              */
-            exec_result = 0;
+            exec_result = (int)objc_msgSend(controller,
+                                            @selector(executeRequest:buffer:client:),
+                                            request, NULL, NULL);
             *result = exec_result;
         }
 
@@ -2256,76 +1455,100 @@ int IOSCSISession_executeRequestScatter(id session, void *request,
 
     /* Check if this is a simple transfer (no scatter-gather) */
     if ((rangeCount == 0) || (bufferSize == 0)) {
-        /* Simple case: execute with NULL buffer
-         * Call executeRequest:buffer:client: on controller (legacy selector)
+        /* Simple case: execute with NULL buffer.
+         * Reference addresses 4904-4936: selector
+         * __OBJC,__message_refs+80 ("executeRequest:buffer:client:"),
+         * r5 = request, r6 = 0, r7 = 0, bl at 4932 to _objc_msgSend,
+         * stw r3, 0(r29).  This path does not touch request+0x20.
          */
-        /* TODO: exec_result = objc_msgSend(controller,
-         *                    @selector(executeRequest:buffer:client:),
-         *                    request, NULL, NULL);
-         */
-        exec_result = 0;
+        exec_result = (int)objc_msgSend(controller,
+                                        @selector(executeRequest:buffer:client:),
+                                        request, NULL, NULL);
         *result = exec_result;
     }
     else {
         /* Scatter-gather case: create IOMemoryDescriptor */
 
         /* Calculate actual range count: rangeCount >> 3
-         * The count is encoded in the upper bits
+         * The count is encoded in the upper bits (srwi r6, r31, 3 at 4976)
          */
         actualRangeCount = rangeCount >> 3;
 
-        /* Allocate IOMemoryDescriptor */
-        /* TODO: ioMemDesc = [[IOMemoryDescriptor alloc]
-         *                    initWithIORange:ioRanges
-         *                    count:actualRangeCount
-         *                    byReference:YES];
+        /* Allocate IOMemoryDescriptor.
+         * Reference addresses 4944-4984: r3 from __OBJC,__cls_refs+4
+         * ("IOMemoryDescriptor"), r4 = __OBJC,__message_refs+4 ("alloc");
+         * then selector __OBJC,__message_refs+84
+         * ("initWithIORange:count:byReference:") with r5 = ioRanges,
+         * r6 = rangeCount >> 3 and r7 = 1 (YES).
          */
-        ioMemDesc = NULL;
+        ioMemDesc = [[IOMemoryDescriptor alloc]
+                        initWithIORange:(const IORange *)ioRanges
+                                  count:actualRangeCount
+                            byReference:YES];
 
         if (ioMemDesc == NULL) {
-            /* Allocation/initialization failed */
+            /* Allocation/initialization failed (4996-5008) */
             *result = 8;  /* Error code 8 */
             *(int *)((char *)request + 0x20) = 8;  /* Set status in request (legacy offset) */
         }
         else {
-            /* Set the client task for the memory descriptor */
-            /* TODO: objc_msgSend(ioMemDesc, @selector(setClient:), client); */
+            /* Set the client task for the memory descriptor
+             * (5012-5028, selector __OBJC,__message_refs+88)
+             */
+            [ioMemDesc setClient:(vm_task_t)client];
 
-            /* Wire the memory for DMA
-             * Direction is at request offset +0x10 (legacy offset, not +0x20)
+            /* Wire the memory for DMA.  Direction is the *byte* at request
+             * offset +0x10 (lbz r5, 0x10(r30) at 5044, the legacy offset,
+             * not +0x20); selector __OBJC,__message_refs+92.
              */
             direction = *(unsigned char *)((char *)request + 0x10);
-            /* TODO: wire_result = objc_msgSend(ioMemDesc,
-             *                      @selector(wireMemory:), direction);
-             */
-            wire_result = 0;
+            wire_result = (int)[ioMemDesc wireMemory:direction];
 
             *result = wire_result;
             *(int *)((char *)request + 0x20) = wire_result;  /* Legacy status offset */
 
             if (*result != 0) {
-                /* Wiring failed - release the descriptor */
-                /* TODO: objc_msgSend(ioMemDesc, @selector(release)); */
+                /* Wiring failed - release the descriptor
+                 * (5072-5084, selector __OBJC,__message_refs+96)
+                 */
+                [ioMemDesc release];
+
+                /* INTENTIONAL MISMATCH (use-after-free in the reference):
+                 * the reference's guard at 5088-5092 is cmpwi cr1, r31, 0 /
+                 * beq cr1, loc_1428 with r31 still holding the descriptor the
+                 * bl at 5084 just released -- nothing between 5084 and 5088
+                 * clears r31.  So the reference's wire-failure path falls
+                 * into the block below (5096-5156) and sends
+                 * executeRequest:ioMemoryDescriptor:, unwireMemory and a
+                 * second release to an already-released object.
+                 * IOMemoryDescriptor.h:132-134 confirms -release is a real
+                 * refcount release, so at a retain count of 1 that frees it,
+                 * and wireMemory: fails on client-supplied addresses, which
+                 * makes the path client-reachable.  We drop the descriptor
+                 * here so the block below is skipped; recorded as
+                 * intentional-mismatch at address 4828 in
+                 * reconstruction/SCSIServer/ledger.json.
+                 */
+                ioMemDesc = nil;
             }
         }
 
-        /* If we successfully created and wired the descriptor */
         if (ioMemDesc != NULL) {
             /* Execute SCSI request with the memory descriptor
-             * Call executeRequest:ioMemoryDescriptor: on controller (legacy selector)
+             * (5096-5124, selector __OBJC,__message_refs+100,
+             * "executeRequest:ioMemoryDescriptor:", r5 = request,
+             * r6 = ioMemDesc)
              */
-            /* TODO: exec_result = objc_msgSend(controller,
-             *          @selector(executeRequest:ioMemoryDescriptor:),
-             *          request, ioMemDesc);
-             */
-            exec_result = 0;
+            exec_result = (int)objc_msgSend(controller,
+                                            @selector(executeRequest:ioMemoryDescriptor:),
+                                            request, ioMemDesc);
             *result = exec_result;
 
-            /* Unwire the memory */
-            /* TODO: objc_msgSend(ioMemDesc, @selector(unwireMemory)); */
+            /* Unwire the memory (selector __OBJC,__message_refs+104) */
+            [ioMemDesc unwireMemory];
 
-            /* Release the memory descriptor */
-            /* TODO: objc_msgSend(ioMemDesc, @selector(release)); */
+            /* Release the memory descriptor (__OBJC,__message_refs+96) */
+            [ioMemDesc release];
         }
     }
 
@@ -2392,10 +1615,18 @@ int IOSCSISession_executeRequestOOLScatter(id session, void *request,
         }
     }
 
-    /* Deallocate the out-of-line memory
-     * This releases the memory that was sent via Mach IPC
+    /* Release the out-of-line mapping.
+     * Reference addresses 4708-4716: r3 = oolData, r4 = oolDataSize, and the
+     * bl at 4716 carries a ppc-jbsr-24-pc-relative relocation naming the
+     * imported _IOUnmapPhysicalFromIOTask -- not vm_deallocate, which the
+     * old comment guessed and which is not among the reference's imports.
+     * driverkit/kernelDriver.h:133 declares it
+     * IOReturn IOUnmapPhysicalFromIOTask(vm_address_t, unsigned), matching
+     * the two argument registers exactly.  This call is unconditional: both
+     * the wire-failure path (4656's bne, which skips the scatter call and
+     * the unwire) and the success path converge on it.
      */
-    /* TODO: Call vm_deallocate(mach_task_self(), (vm_address_t)oolData, oolDataSize) */
+    IOUnmapPhysicalFromIOTask((vm_address_t)oolData, oolDataSize);
 
     return 0;
 }
@@ -2421,10 +1652,14 @@ int IOSCSISession_numberOfTargets(id session, unsigned int *numTargets)
     /* Get controller from session structure at offset +8 */
     controller = *(id *)((*(int *)((char *)session + 4)) + 8);
 
-    /* TODO: Call numberOfTargets on controller
-     * target_count = FUN_000010b0(controller, @selector(numberOfTargets))
+    /* Call numberOfTargets on the controller.
+     * Reference address 4204, seventeen instructions: r31 = numTargets (r4),
+     * r3 = *(*(session+4)+8), r4 = __OBJC,__message_refs+76
+     * ("numberOfTargets"), bl at 4240 relocating to _objc_msgSend, then
+     * stw r3, 0(r31) and li r3, 0.
      */
-    target_count = 0;
+    target_count = (unsigned int)objc_msgSend(controller,
+                                              @selector(numberOfTargets));
 
     /* Store result */
     *numTargets = target_count;
@@ -2480,12 +1715,17 @@ int IOSCSISession_releaseSCSI3Target(id session, unsigned int *target, unsigned 
         controller = *(id *)((*(int *)((char *)session + 4)) + 8);
 
         /* Call releaseSCSI3Target:lun:forOwner: on controller
-         * This notifies the controller that we're releasing our reservation
+         * This notifies the controller that we're releasing our reservation.
+         * Reference addresses 4068-4104: r3 = *(*(session+4)+8),
+         * r4 = __OBJC,__message_refs+72 ("releaseSCSI3Target:lun:forOwner:"),
+         * r5-r8 reloaded from the four stack slots holding target/lun, r9 =
+         * session, bl at 4104 relocating to _objc_msgSend.  Its result is
+         * never read -- __OBJC,__meth_var_types gives the selector
+         * "v28@4:8Q12Q20@32", a void return.
          */
-        /* TODO: FUN_0000104c(controller,
-         *          @selector(releaseSCSI3Target:lun:forOwner:),
-         *          target_high, target_low, lun_high, lun_low, session);
-         */
+        objc_msgSend(controller,
+                     @selector(releaseSCSI3Target:lun:forOwner:),
+                     target_high, target_low, lun_high, lun_low, session);
 
         /* Remove the reservation from our list */
         removeReservation(session, target_high, target_low, lun_high, lun_low);
@@ -2542,11 +1782,16 @@ int IOSCSISession_reserveSCSI3Target(id session, unsigned int *target, unsigned 
     /* Call reserveSCSI3Target:lun:forOwner: on controller
      * This asks the controller to reserve the target/LUN for this session
      */
-    /* TODO: result = FUN_00000f80(controller,
-     *          @selector(reserveSCSI3Target:lun:forOwner:),
-     *          target_high, target_low, lun_high, lun_low, session);
+    /* Reference addresses 3852-3892: r3 = *(*(session+4)+8),
+     * r4 = __OBJC,__message_refs+68 ("reserveSCSI3Target:lun:forOwner:"),
+     * r5-r8 reloaded from the four stack slots holding target/lun, r9 =
+     * session, bl at 3888 relocating to _objc_msgSend, then mr. r31, r3 --
+     * the result is kept and returned at 3924 ("i28@4:8Q12Q20@32").
      */
-    result = 0;
+    result = (int)objc_msgSend(controller,
+                               @selector(reserveSCSI3Target:lun:forOwner:),
+                               target_high, target_low, lun_high, lun_low,
+                               session);
 
     /* If reservation was successful, add it to our list */
     if (result == 0) {
@@ -2612,10 +1857,16 @@ int IOSCSISession_releaseTarget(id session, unsigned char target, unsigned char 
         /* Call releaseTarget:lun:forOwner: on controller (legacy selector)
          * Only passes the low 32 bits of target/LUN to the controller
          */
-        /* TODO: FUN_00000eb4(controller,
-         *          @selector(releaseTarget:lun:forOwner:),
-         *          target_int, lun_int, session);
+        /* Reference addresses 3644-3672: r3 = *(*(session+4)+8),
+         * r4 = __OBJC,__message_refs+64 ("releaseTarget:lun:forOwner:"),
+         * r5 = r27 and r6 = r26 (the two sign-extended bytes, not the
+         * high halves), r7 = session, bl at 3672 relocating to
+         * _objc_msgSend.  The result is never read
+         * ("v20@4:8C12C16@24", a void return).
          */
+        objc_msgSend(controller,
+                     @selector(releaseTarget:lun:forOwner:),
+                     target_int, lun_int, session);
 
         /* Remove the reservation from our list using full 64-bit values */
         removeReservation(session, target_high, target_int, lun_high, lun_int);

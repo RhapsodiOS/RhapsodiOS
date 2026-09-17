@@ -1,121 +1,249 @@
 #include "builder.h"
 #include "manifest.h"
 #include "exec.h"
+#include "kernel.h"
 #include "strutil.h"
 #include "package.h"
+#include "runner.h"
+#include "toolchain.h"
+#include "architecture.h"
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 static const char *USAGE =
     "usage:\n"
-    "  rbuild buildpackage [--dir] [--target {all|headers|objs|local}]"
+    "  rbuild buildpackage [--state DIR] [--arch ARCH] [--dir]"
+    " [--target {all|headers|objs|local}]"
     " <source> <repository> <dstdir>\n"
-    "  rbuild buildall  <srclist> <repository> <dstdir>\n"
-    "  rbuild bootstrap <srclist> <repository> <dstdir>\n"
+    "  rbuild buildall [--state DIR] <srclist> <repository> <dstdir>\n"
+    "  rbuild bootstrap --sysroot ROOT --toolchain FILE --state DIR"
+    " <srclist> <repository> <dstdir>\n"
+    "  rbuild bootstrap-universal --sysroot ROOT --toolchain FILE --state DIR"
+    " <srclist> <repository> <dstdir>\n"
+    "  rbuild kernel [--state DIR] --arch ARCH"
+    " <srcdir> <repository> <dstdir>\n"
+    "  rbuild kerneldrivers [--state DIR] --arch ARCH"
+    " <srcdir> <repository> <dstdir>\n"
     "  rbuild missing   <srclist> <dstdir>\n"
     "  (global: -n/--dry-run)\n";
 
 static void usage(void) { fputs(USAGE, stderr); }
 
-/* Build the [dstdir, seeddir] repository search list. */
-static void make_repo(const char *dstdir, const char *seeddir, strlist *out) {
-    strlist_init(out);
-    strlist_push(out, dstdir);
-    strlist_push(out, seeddir);
-}
-
 static int cmd_buildpackage(int argc, char **argv) {
     const char *type = "dir";
     const char *target = "all";
     const char *source, *seeddir, *dstdir;
-    strlist repo;
+    const char *state_dir = 0;
+    const char *arch = 0;
     int i = 0;
     int rc;
 
-    /* optional --dir/--cvs */
-    if (i < argc && strcmp(argv[i], "--dir") == 0) { type = "dir"; i++; }
-    else if (i < argc && strcmp(argv[i], "--cvs") == 0) {
-        fprintf(stderr, "rbuild: cvs support has been removed; "
-                        "build from a --dir source\n");
-        return 1;
-    }
-
-    if (i < argc && strcmp(argv[i], "--target") == 0) {
-        i++;
+    while (i < argc && strncmp(argv[i], "--", 2) == 0) {
+        const char *name = argv[i++];
+        if (strcmp(name, "--dir") == 0) {
+            type = "dir";
+            continue;
+        }
+        if (strcmp(name, "--cvs") == 0) {
+            fprintf(stderr, "rbuild: cvs support has been removed; "
+                            "build from a --dir source\n");
+            return 1;
+        }
         if (i >= argc) { usage(); return 1; }
-        target = argv[i]; i++;
+        if (strcmp(name, "--state") == 0) {
+            state_dir = argv[i++];
+            if (state_dir[0] != '/') {
+                fprintf(stderr, "rbuild: state directory must be absolute\n");
+                return 1;
+            }
+        } else if (strcmp(name, "--target") == 0) {
+            target = argv[i++];
+        } else if (strcmp(name, "--arch") == 0) {
+            arch = argv[i++];
+        } else {
+            usage();
+            return 1;
+        }
     }
 
     if (argc - i != 3) { usage(); return 1; }
+    if (arch != 0 && !kernel_arch_safe(arch)) {
+        fprintf(stderr, "rbuild: unsafe architecture \"%s\"\n", arch);
+        return 1;
+    }
     source = argv[i]; seeddir = argv[i + 1]; dstdir = argv[i + 2];
 
-    make_repo(dstdir, seeddir, &repo);
-    rc = builder_build(type, source, &repo, target, dstdir, 0, 0);
-    strlist_free(&repo);
+    rc = runner_buildpackage(type, source, seeddir, target, dstdir,
+                             state_dir, arch);
     return rc;
 }
 
-static int run_manifest(int argc, char **argv, int native) {
-    const char *srclist, *seeddir, *dstdir;
-    strlist repo;
-    Manifest m;
-    size_t i;
-
-    if (argc != 3) { usage(); return 1; }
-    srclist = argv[0]; seeddir = argv[1]; dstdir = argv[2];
-
-    make_repo(dstdir, seeddir, &repo);
-    manifest_init(&m);
-    if (manifest_read(&m, srclist) != 0) {
-        manifest_free(&m); strlist_free(&repo); return 1;
-    }
-
-    for (i = 0; i < m.count; i++) {
-        const char *type = m.items[i].type;
-        const char *source = m.items[i].source;
-        const char *targets = m.items[i].targets ? m.items[i].targets : "all";
-        Package pkg; Params params; char *found;
-
-        package_init(&pkg); params_init(&params);
-        if (builder_scan(type, source, &pkg, &params) != 0) {
-            fprintf(stderr, "rbuild: skipping \"%s\": scan failed\n", source);
-            package_free(&pkg); params_free(&params);
-            continue;
+static int cmd_buildall(int argc, char **argv) {
+    RunnerOptions opt;
+    const char *state = 0;
+    int i = 0;
+    if (i < argc && strcmp(argv[i], "--state") == 0) {
+        if (++i >= argc) { usage(); return 1; }
+        state = argv[i++];
+        if (state[0] != '/') {
+            fprintf(stderr, "rbuild: state directory must be absolute\n");
+            return 1;
         }
-        found = builder_exists(&pkg, "any", dstdir);
-        if (!found) {
-            char *canon = package_canon_name(&pkg);
-            printf("must build %s.apk using %s %s\n", canon, type, source);
-            fflush(stdout);
-            free(canon);
-            if (builder_build(type, source, &repo, targets, dstdir,
-                              !native, native) != 0)
-                fprintf(stderr, "rbuild: build of \"%s\" failed; continuing\n",
-                        source);
-        } else {
-            printf("already have %s\n", found);
-            free(found);
-        }
-        package_free(&pkg); params_free(&params);
     }
+    if (argc - i != 3) { usage(); return 1; }
+    memset(&opt, 0, sizeof(opt));
+    opt.state_dir = state;
+    return runner_manifest(argv[i], argv[i + 1], argv[i + 2], &opt);
+}
 
-    manifest_free(&m);
-    strlist_free(&repo);
+static int cmd_bootstrap_args(int argc, char **argv, const char **sysroot,
+                              const char **profile, const char **state,
+                              int *arg_i) {
+    int i = 0;
+    *sysroot = 0;
+    *profile = 0;
+    *state = 0;
+    while (i < argc && strncmp(argv[i], "--", 2) == 0) {
+        const char *name = argv[i++];
+        const char *value;
+        if (i >= argc) { usage(); return 1; }
+        value = argv[i++];
+        if (strcmp(name, "--sysroot") == 0) *sysroot = value;
+        else if (strcmp(name, "--toolchain") == 0) *profile = value;
+        else if (strcmp(name, "--state") == 0) *state = value;
+        else { usage(); return 1; }
+    }
+    if (argc - i != 3 || *sysroot == 0 || *profile == 0 || *state == 0) {
+        usage(); return 1;
+    }
+    if ((*sysroot)[0] != '/' || (*state)[0] != '/') {
+        fprintf(stderr, "rbuild: sysroot and state directory must be absolute\n");
+        return 1;
+    }
+    *arg_i = i;
     return 0;
 }
 
-static int cmd_buildall(int argc, char **argv) {
-    return run_manifest(argc, argv, 0);
+static char *sibling_path(const char *srclist, const char *name) {
+    const char *slash = strrchr(srclist, '/');
+    if (!slash) return xstrdup(name);
+    {
+        size_t n = (size_t)(slash - srclist);
+        char *dir = xmalloc(n + 1);
+        memcpy(dir, srclist, n);
+        dir[n] = '\0';
+        {
+            char *out = path_join(dir, name);
+            free(dir);
+            return out;
+        }
+    }
+}
+
+static int bootstrap_sysroot_ready(const Toolchain *tc, const char *sysroot) {
+    char *marker;
+    char *indr;
+    int rc = 0;
+    marker = 0;
+    if (tc->ld_flags_ready) {
+        const char *p = tc->ld_flags_ready;
+        const char *m = "@SYSROOT@";
+        sbuf expanded;
+        const char *hit;
+        sbuf_init(&expanded);
+        while ((hit = strstr(p, m)) != 0) {
+            sbuf_putn(&expanded, p, (size_t)(hit - p));
+            sbuf_puts(&expanded, sysroot ? sysroot : "");
+            p = hit + sizeof("@SYSROOT@") - 1;
+        }
+        sbuf_puts(&expanded, p);
+        marker = sbuf_steal(&expanded);
+        sbuf_free(&expanded);
+    }
+    if (!marker || access(marker, F_OK) != 0) {
+        fprintf(stderr, "rbuild: bootstrap-universal requires thin sysroot marker %s\n",
+                marker ? marker : "(missing ld_flags_ready)");
+        rc = 1;
+    }
+    indr = str_cats(sysroot, "/usr/local/bin/indr", (char *)0);
+    if (!rc && access(indr, X_OK) != 0) {
+        fprintf(stderr, "rbuild: bootstrap-universal requires %s\n", indr);
+        rc = 1;
+    }
+    free(marker);
+    free(indr);
+    return rc;
 }
 
 static int cmd_bootstrap(int argc, char **argv) {
-    return run_manifest(argc, argv, 1);
+    const char *sysroot = 0;
+    const char *profile = 0;
+    const char *state = 0;
+    Toolchain tc;
+    RunnerOptions opt;
+    int i = 0;
+    int rc;
+    if (cmd_bootstrap_args(argc, argv, &sysroot, &profile, &state, &i) != 0)
+        return 1;
+    toolchain_init(&tc);
+    if (toolchain_load(&tc, profile) != 0 || toolchain_validate(&tc) != 0) {
+        toolchain_free(&tc); return 1;
+    }
+    memset(&opt, 0, sizeof(opt));
+    opt.bootstrap = 1;
+    opt.sysroot = sysroot;
+    opt.state_dir = state;
+    opt.toolchain = &tc;
+    opt.toolchain_file = profile;
+    rc = runner_manifest(argv[i], argv[i + 1], argv[i + 2], &opt);
+    toolchain_free(&tc);
+    return rc;
+}
+
+static int cmd_bootstrap_universal(int argc, char **argv) {
+    const char *sysroot = 0;
+    const char *profile = 0;
+    const char *state = 0;
+    Toolchain tc;
+    RunnerOptions opt;
+    char *runtime;
+    int i = 0;
+    int rc;
+    if (cmd_bootstrap_args(argc, argv, &sysroot, &profile, &state, &i) != 0)
+        return 1;
+    toolchain_init(&tc);
+    if (toolchain_load(&tc, profile) != 0 || toolchain_validate(&tc) != 0) {
+        toolchain_free(&tc); return 1;
+    }
+    if (bootstrap_sysroot_ready(&tc, sysroot) != 0) { toolchain_free(&tc); return 1; }
+    runtime = sibling_path(argv[i], "BootstrapRuntimeManifest");
+    if (access(runtime, R_OK) != 0) {
+        fprintf(stderr, "rbuild: missing BootstrapRuntimeManifest beside %s\n",
+                argv[i]);
+        free(runtime); toolchain_free(&tc); return 1;
+    }
+    memset(&opt, 0, sizeof(opt));
+    opt.bootstrap = 1;
+    opt.sysroot = sysroot;
+    opt.state_dir = state;
+    opt.toolchain = &tc;
+    opt.toolchain_file = profile;
+    opt.operation_arch = RB_ARCH_UNIVERSAL;
+    rc = runner_manifest(runtime, argv[i + 1], argv[i + 2], &opt);
+    if (rc == 0)
+        rc = runner_manifest(argv[i], argv[i + 1], argv[i + 2], &opt);
+    free(runtime);
+    toolchain_free(&tc);
+    return rc;
 }
 
 static int cmd_missing(int argc, char **argv) {
     const char *srclist, *dstdir;
     Manifest m;
     size_t i;
+    int rc = 0;
 
     if (argc != 2) { usage(); return 1; }
     srclist = argv[0]; dstdir = argv[1];
@@ -126,13 +254,32 @@ static int cmd_missing(int argc, char **argv) {
     for (i = 0; i < m.count; i++) {
         const char *type = m.items[i].type;
         const char *source = m.items[i].source;
-        Package pkg; Params params; char *found;
+        const char *target = m.items[i].targets ? m.items[i].targets : "all";
+        Package pkg; Params params; char *found; BuildOptions opt;
+
+        if (strcmp(target, "all") != 0 && strcmp(target, "headers") != 0) {
+            fprintf(stderr,
+                "rbuild: unsupported manifest target \"%s\" for missing\n",
+                target);
+            rc = 1;
+            continue;
+        }
 
         package_init(&pkg); params_init(&params);
         if (builder_scan(type, source, &pkg, &params) != 0) {
             fprintf(stderr, "rbuild: skipping \"%s\": scan failed\n", source);
             package_free(&pkg); params_free(&params);
+            rc = 1;
             continue;
+        }
+        build_options_init(&opt);
+        if (builder_resolve_architecture(&pkg, &opt) != 0) {
+            package_free(&pkg); params_free(&params); rc = 1; continue;
+        }
+        if (strcmp(target, "headers") == 0) {
+            char *header_package = str_cats(pkg.package, "-hdrs", (char *)0);
+            package_set(&pkg.package, header_package);
+            free(header_package);
         }
         found = builder_exists(&pkg, "any", dstdir);
         if (!found) {
@@ -146,7 +293,36 @@ static int cmd_missing(int argc, char **argv) {
     }
 
     manifest_free(&m);
-    return 0;
+    return rc;
+}
+
+static int cmd_kernel(int argc, char **argv, int drivers) {
+    const char *state = 0;
+    const char *arch = 0;
+    int i = 0;
+
+    while (i < argc && strncmp(argv[i], "--", 2) == 0) {
+        const char *name = argv[i++];
+        const char *value;
+        if (i >= argc) { usage(); return 1; }
+        value = argv[i++];
+        if (strcmp(name, "--state") == 0) state = value;
+        else if (strcmp(name, "--arch") == 0) arch = value;
+        else { usage(); return 1; }
+    }
+    if (argc - i != 3 || arch == 0) { usage(); return 1; }
+    if (state != 0 && state[0] != '/') {
+        fprintf(stderr, "rbuild: state directory must be absolute\n");
+        return 1;
+    }
+    if (!kernel_arch_safe(arch)) {
+        fprintf(stderr, "rbuild: unsafe architecture \"%s\"\n", arch);
+        return 1;
+    }
+    if (drivers)
+        return runner_kerneldrivers(argv[i], argv[i + 1], argv[i + 2],
+                                    arch, state);
+    return runner_kernel(argv[i], argv[i + 1], argv[i + 2], arch, state);
 }
 
 int main(int argc, char **argv) {
@@ -176,6 +352,12 @@ int main(int argc, char **argv) {
         return cmd_buildall(argc - i, argv + i);
     if (strcmp(sub, "bootstrap") == 0)
         return cmd_bootstrap(argc - i, argv + i);
+    if (strcmp(sub, "bootstrap-universal") == 0)
+        return cmd_bootstrap_universal(argc - i, argv + i);
+    if (strcmp(sub, "kernel") == 0)
+        return cmd_kernel(argc - i, argv + i, 0);
+    if (strcmp(sub, "kerneldrivers") == 0)
+        return cmd_kernel(argc - i, argv + i, 1);
     if (strcmp(sub, "missing") == 0)
         return cmd_missing(argc - i, argv + i);
 

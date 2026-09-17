@@ -24,11 +24,11 @@ class Profile:
     name: str
     architecture: str
     reference: ArtifactSpec
-    rebuilt: ArtifactSpec
+    rebuilt: ArtifactSpec | None
     output_dir: Path
     document: Mapping[str, object]
     reference_identity: InputIdentity
-    rebuilt_identity: InputIdentity
+    rebuilt_identity: InputIdentity | None
 
 
 class ProfileError(ValueError):
@@ -44,9 +44,12 @@ def load_profile(path: Path, environ: Mapping[str, str]) -> Profile:
     reference, reference_identity = _load_artifact(
         "reference", document["reference"], base_dir, environ
     )
-    rebuilt, rebuilt_identity = _load_artifact(
-        "rebuilt", document["rebuilt"], base_dir, environ
-    )
+    if "rebuilt" in document:
+        rebuilt, rebuilt_identity = _load_artifact(
+            "rebuilt", document["rebuilt"], base_dir, environ
+        )
+    else:
+        rebuilt, rebuilt_identity = None, None
     output_dir = _resolve_from(base_dir, Path(document["output_dir"]), strict=False)
 
     return Profile(
@@ -60,6 +63,42 @@ def load_profile(path: Path, environ: Mapping[str, str]) -> Profile:
         reference_identity=reference_identity,
         rebuilt_identity=rebuilt_identity,
     )
+
+
+def analysis_scope(profile, artifact: str = "reference"):
+    """Return an artifact's analysis scope as sorted (start, end) pairs.
+
+    The reference always uses ``analysis_scope``; the rebuilt artifact uses
+    ``rebuilt_analysis_scope`` when the profile declares one and falls back to
+    ``analysis_scope`` otherwise. An empty tuple means no scope is declared, so
+    everything is analyzed. ``start`` is inclusive and ``end`` exclusive.
+    """
+    if artifact not in ("reference", "rebuilt"):
+        raise ProfileError(f"unknown artifact {artifact!r}")
+    field = "analysis_scope"
+    if artifact == "rebuilt" and "rebuilt_analysis_scope" in profile.document:
+        field = "rebuilt_analysis_scope"
+    return _scope_ranges(profile.document.get(field), field)
+
+
+def _scope_ranges(declared, field: str) -> tuple:
+    if not declared:
+        return ()
+    ranges = []
+    for item in declared:
+        start, end = int(item["start"]), int(item["end"])
+        if end <= start:
+            raise ProfileError(
+                f"{field} range {start}..{end} is empty or inverted"
+            )
+        ranges.append((start, end))
+    ranges.sort()
+    for (_, previous_end), (next_start, _) in zip(ranges, ranges[1:]):
+        if next_start < previous_end:
+            raise ProfileError(
+                f"{field} ranges overlap at {next_start}"
+            )
+    return tuple(ranges)
 
 
 def _load_artifact(

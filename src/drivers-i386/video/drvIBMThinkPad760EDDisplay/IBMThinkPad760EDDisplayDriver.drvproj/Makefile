@@ -13,9 +13,9 @@ PROJECTVERSION = 2.7
 PROJECT_TYPE = Driver
 LANGUAGE = English
 
-GLOBAL_RESOURCES = Default.table
+GLOBAL_RESOURCES = Default.table Display.modes ThinkPad760.table ThinkPad760.modes
 
-LOCAL_RESOURCES = Localizable.strings
+LOCAL_RESOURCES = Localizable.strings ThinkPad760.strings Help
 
 TOOLS = IBMThinkPad760EDDisplayDriver.lksproj
 

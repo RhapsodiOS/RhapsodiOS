@@ -1,0 +1,22 @@
+FILESTABLE = {
+    OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble, DriverInfo);
+    OTHER_RESOURCES = (
+        Default.table,
+        SB16PnP.table,
+        SB16SingleDMAChannelPnP.table,
+        SingleDMAChannel.table
+    );
+    STRINGS_FILES = (Localizable.strings);
+    TOOLS = (SoundBlaster16.lksproj);
+    SUBPROJECTS = ();
+};
+LANGUAGE = English;
+LOCALIZABLE_FILES = {
+    Localizable.strings;
+};
+PROJECTVERSION = 2.7;
+INSTALLDIR = "$(NEXT_ROOT)/private/Drivers";
+PROJECTTYPE = Bundle;
+PROJECTNAME = SoundBlaster16;
+GENERATEMAIN = YES;
+BUNDLE_EXTENSION = config;

@@ -27,6 +27,96 @@
  */
 
 #import "PCMCIAResourceDriver.h"
+#import <driverkit/KernBus.h>
+
+/* Forward declaration for a private PCMCIAKernBus method used by LookForPCMCIAID */
+@interface Object(PCMCIAKernBusTestIDsMethod)
+- (BOOL)testIDs:idList ForAdapter:adapter andSocket:socket;
+@end
+
+/*
+ * Check whether str begins with prefix followed immediately by '('
+ * Returns a pointer just past the '(' on a match, NULL otherwise
+ */
+char *parsePrefix(const char *prefix, const char *str)
+{
+    unsigned int length;
+
+    if (prefix == NULL || str == NULL) {
+        return NULL;
+    }
+
+    length = strlen(prefix);
+
+    if (strncmp(prefix, str, length) != 0) {
+        return NULL;
+    }
+
+    if (str[length] != '(') {
+        return NULL;
+    }
+
+    return (char *)(str + length + 1);
+}
+
+/*
+ * Parse a leading run of decimal digits from *strPtr, advancing *strPtr
+ * past the digits consumed. Returns the accumulated value (0 if none).
+ */
+unsigned int parsenum(char **strPtr)
+{
+    char *p;
+    unsigned int value;
+
+    value = 0;
+    p = *strPtr;
+
+    if (*p != '\0') {
+        do {
+            if ((unsigned char)(*p - '0') > 9) {
+                break;
+            }
+            value = value * 10 + (*p - '0');
+            (*strPtr)++;
+            p = *strPtr;
+        } while (*p != '\0');
+    }
+
+    return value;
+}
+
+/*
+ * Find the instance-th PCMCIA socket (0-3) whose card ID matches idBuffer,
+ * and format its socket number as "Socket %d" into output. On success,
+ * *count is set to the formatted string's length (including the null
+ * terminator) and 0 is returned. On failure, *count is set to 0 and
+ * IO_R_NOT_ATTACHED (0xfffffd27) is returned.
+ */
+int LookForPCMCIAID(unsigned int instance, char *idBuffer, char *output, unsigned int *count)
+{
+    id busInstance;
+    unsigned int socketNum;
+    unsigned int matchCount;
+    BOOL matched;
+
+    busInstance = [KernBus lookupBusInstanceWithName:"PCMCIA" busId:0];
+
+    matchCount = 0;
+    for (socketNum = 0; socketNum <= 3; socketNum++) {
+        matched = [busInstance testIDs:idBuffer ForAdapter:0 andSocket:socketNum];
+        if (matched) {
+            if (instance == matchCount) {
+                sprintf(output, "Socket %d", socketNum);
+                *count = strlen(output) + 1;
+                return 0;
+            }
+            matchCount++;
+        }
+    }
+
+    *count = 0;
+    return 0xfffffd27;  /* IO_R_NOT_ATTACHED */
+}
 
 @implementation PCMCIAResourceDriver
 
@@ -87,24 +177,22 @@
     int result;
     char *idBuffer;
     int *bufferLength;
-    extern char *_parsePrefix(const char *prefix, const char *str);
-    extern unsigned int _parsenum(char **strPtr);
-    extern int _LookForPCMCIAID(unsigned int instance, char *idBuffer, char *output, unsigned int *count);
+    extern char *parsePrefix(const char *prefix, const char *str);
+    extern unsigned int parsenum(char **strPtr);
+    extern int LookForPCMCIAID(unsigned int instance, char *idBuffer, char *output, unsigned int *count);
 
-    /* ID buffer is at offset 0x128 (296), size 0x200 (512 bytes) */
-    idBuffer = (char *)self + 0x128;
-    /* Buffer length counter at offset 0x328 (808) */
-    bufferLength = (int *)((char *)self + 0x328);
+    idBuffer = autoDetectIDs;
+    bufferLength = &autoDetectIDindex;
 
     /* Try "IDs" prefix */
-    parseResult = _parsePrefix("IDs", parameterName);
+    parseResult = parsePrefix("IDs", parameterName);
     if (parseResult != NULL) {
         /* Clear ID buffer and reset counter */
         bzero(idBuffer, 0x200);
         *bufferLength = 0;
 
         /* Look for "PCMCIA)" after "IDs" */
-        parseResult = _parsePrefix("PCMCIA)", parseResult);
+        parseResult = parsePrefix("PCMCIA)", parseResult);
         if (parseResult != NULL) {
             /* Copy ID string from parameter to buffer */
             offset = parseResult - parameterName;
@@ -124,7 +212,7 @@
     }
 
     /* Try "...IDs" prefix (append to existing IDs) */
-    parseResult = _parsePrefix("...IDs", parameterName);
+    parseResult = parsePrefix("...IDs", parameterName);
     if (parseResult != NULL) {
         /* Check if buffer has existing data */
         if (idBuffer[0] != '\0') {
@@ -149,7 +237,7 @@
     }
 
     /* Try "LocationForInstance" prefix */
-    parseResult = _parsePrefix("LocationForInstance", parameterName);
+    parseResult = parsePrefix("LocationForInstance", parameterName);
     if (parseResult != NULL) {
         /* Check minimum buffer size (0x50 = 80 bytes) */
         if (*count < 0x50) {
@@ -159,10 +247,10 @@
         /* Check if ID buffer has data */
         if (idBuffer[0] != '\0') {
             /* Parse instance number */
-            instance = _parsenum(&parseResult);
+            instance = parsenum(&parseResult);
 
             /* Look up PCMCIA ID for this instance */
-            result = _LookForPCMCIAID(instance, idBuffer, (char *)values, count);
+            result = LookForPCMCIAID(instance, idBuffer, (char *)values, count);
             return result;
         }
         return 0xfffffd27;  /* Error - no IDs to search */

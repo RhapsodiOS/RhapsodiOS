@@ -113,22 +113,31 @@ class _Artifact:
             chunks.append(chunk); remaining -= len(chunk)
         return b"".join(chunks)
 
-    def hash_all(self):
+    def _digest_all(self):
         digest = hashlib.sha256(); count = 0
         os.lseek(self.fd, 0, os.SEEK_SET)
         while True:
             chunk = os.read(self.fd, CHUNK_SIZE)
             if not chunk: break
             digest.update(chunk); count += len(chunk)
+        return digest.hexdigest().upper(), count
+
+    def hash_all(self):
+        sha256, count = self._digest_all()
         if count != self.initial.st_size:
             raise ComparisonError(f"artifact changed while comparing: {self.path}")
-        self.identity = {"path": str(self.path), "size": count,
-                         "sha256": digest.hexdigest().upper()}
+        self.identity = {"path": str(self.path), "size": count, "sha256": sha256}
         return self.identity
 
     def verify_stable(self):
         final = os.fstat(self.fd)
         if any(getattr(self.initial, field) != getattr(final, field) for field in _STABLE_FIELDS):
+            raise ComparisonError(f"artifact changed while comparing: {self.path}")
+
+    def verify_content(self):
+        """Re-read the bytes: a same-size overwrite need not move any stat timestamp."""
+        sha256, count = self._digest_all()
+        if (count, sha256) != (self.identity["size"], self.identity["sha256"]):
             raise ComparisonError(f"artifact changed while comparing: {self.path}")
 
     def close(self):
@@ -197,6 +206,7 @@ def _section_backing_metadata(document):
     sources = [
         (extensions.get("macho", {}).get("sections", []), False),
         (extensions.get("ghidra", {}).get("fallback_sections", []), True),
+        (extensions.get("ghidra", {}).get("sections", []), True),
         (extensions.get("ida", {}).get("sections", []), True),
     ]
     angr = extensions.get("angr", {})
@@ -607,15 +617,80 @@ def _apply_masks(chunk, chunk_start, masks):
     return bytes(value)
 
 
+def _range_digests(artifact, offset, size, masks):
+    raw = hashlib.sha256(); masked = hashlib.sha256()
+    position = 0
+    while position < size:
+        amount = min(CHUNK_SIZE, size - position)
+        chunk = artifact.read_at(offset + position, amount)
+        raw.update(chunk); masked.update(_apply_masks(chunk, position, masks))
+        position += amount
+    return raw.hexdigest().upper(), masked.hexdigest().upper()
+
+
+def _unequal_range_result(pair, left_offset, left_size, right_offset, right_size,
+                          masks, printable, section):
+    left_raw, left_masked = _range_digests(pair.left, left_offset, left_size, masks)
+    right_raw, right_masked = _range_digests(pair.right, right_offset, right_size, masks)
+
+    def sample(artifact, offset, size):
+        amount = min(32, size)
+        return _apply_masks(artifact.read_at(offset, amount), 0, masks).hex().upper()
+
+    return {"raw_equal": False, "masked_equal": False,
+            "reference_sha256": left_raw, "rebuilt_sha256": right_raw,
+            "reference_masked_sha256": left_masked, "rebuilt_masked_sha256": right_masked,
+            "evidence": _instruction_evidence(
+                "function-range", "code", "function range bytes differ", printable, section,
+                0, max(left_size, right_size), sample(pair.left, left_offset, left_size),
+                sample(pair.right, right_offset, right_size))}
+
+
+def _compare_name_paired_instructions(left_instructions, right_instructions,
+                                      left_map, right_map, printable, section):
+    def stream(instructions, section_map):
+        raw = bytearray(); masked = bytearray()
+        for instruction, actual, _ in instructions:
+            raw.extend(actual)
+            masked.extend(_masked(instruction, actual, section_map)[0])
+        return bytes(raw), bytes(masked)
+
+    left_raw, left_masked = stream(left_instructions, left_map)
+    right_raw, right_masked = stream(right_instructions, right_map)
+    evidence = None
+    if left_masked != right_masked:
+        width = max(len(left_masked), len(right_masked))
+        left_pad = left_masked.ljust(width, b"\0")
+        right_pad = right_masked.ljust(width, b"\0")
+        index = next((i for i, (a, b) in enumerate(zip(left_pad, right_pad)) if a != b),
+                     min(len(left_masked), len(right_masked)))
+        end = index + 1
+        while end < width and left_pad[end] != right_pad[end]:
+            end += 1
+        evidence = _instruction_evidence(
+            "function-range", "code", "function range bytes differ", printable, section,
+            index, end, left_masked[index:index + 32].hex().upper(),
+            right_masked[index:index + 32].hex().upper())
+    return {"raw_equal": left_raw == right_raw, "masked_equal": left_masked == right_masked,
+            "reference_sha256": hashlib.sha256(left_raw).hexdigest().upper(),
+            "rebuilt_sha256": hashlib.sha256(right_raw).hexdigest().upper(),
+            "reference_masked_sha256": hashlib.sha256(left_masked).hexdigest().upper(),
+            "rebuilt_masked_sha256": hashlib.sha256(right_masked).hexdigest().upper(),
+            "evidence": evidence}
+
+
 def _compare_function_range(left_function, right_function, left_instructions, right_instructions,
-                            left_map, right_map, pair, printable):
+                            left_map, right_map, pair, printable, pairing):
+    if pairing == "name":
+        return _compare_name_paired_instructions(
+            left_instructions, right_instructions, left_map, right_map, printable,
+            _section_tag(left_function["range"]["section"], left_map))
     left_info = _section_info(left_map, left_function["range"]["section"])
     right_info = _section_info(right_map, right_function["range"]["section"])
     if left_info["zero"] or right_info["zero"]:
         raise ComparisonError("function range cannot be zero-fill")
     size = left_function["range"]["end"] - left_function["range"]["start"]
-    if size != right_function["range"]["end"] - right_function["range"]["start"]:
-        raise ComparisonError("matched function ranges have different sizes")
+    right_size = right_function["range"]["end"] - right_function["range"]["start"]
     left_masks = _function_masks(left_function, left_instructions, left_map)
     right_masks = _function_masks(right_function, right_instructions, right_map)
     left_by_field = {(field, width): semantics for field, width, semantics in left_masks}
@@ -624,6 +699,9 @@ def _compare_function_range(left_function, right_function, left_instructions, ri
                         if right_by_field.get((field, width)) == semantics)
     left_offset = left_info["raw"]["offset"] + left_function["range"]["start"]
     right_offset = right_info["raw"]["offset"] + right_function["range"]["start"]
+    if size != right_size:
+        return _unequal_range_result(pair, left_offset, size, right_offset, right_size, compatible,
+                                     printable, _section_tag(left_function["range"]["section"], left_map))
     raw_left = hashlib.sha256(); raw_right = hashlib.sha256()
     masked_left = hashlib.sha256(); masked_right = hashlib.sha256()
     raw_equal = True; masked_equal = True; first_difference = None
@@ -655,13 +733,38 @@ def _compare_function_range(left_function, right_function, left_instructions, ri
             "evidence": first_difference}
 
 
+def _name_pairs(lm, rm):
+    """Pair offset-unmatched functions by a name unique among the unmatched on both sides."""
+    def index(keys, functions):
+        result = {}
+        for key in keys:
+            for name in functions[key]["aliases"]: result.setdefault(name, []).append(key)
+        return result
+
+    left_names = index(set(lm) - set(rm), lm); right_names = index(set(rm) - set(lm), rm)
+    candidates = sorted({(left_names[name][0], right_names[name][0])
+                         for name in set(left_names) & set(right_names)
+                         if len(left_names[name]) == 1 and len(right_names[name]) == 1})
+    left_partners, right_partners = {}, {}
+    for left_key, right_key in candidates:
+        left_partners.setdefault(left_key, set()).add(right_key)
+        right_partners.setdefault(right_key, set()).add(left_key)
+    return {left_key: right_key for left_key, right_key in candidates
+            if len(left_partners[left_key]) == 1 and len(right_partners[right_key]) == 1}
+
+
 def _compare_functions(left, right, left_map, right_map, pair, categories):
     lm = {_function_key(item, left_map): item for item in left["functions"]}
     rm = {_function_key(item, right_map): item for item in right["functions"]}
+    name_pairs = _name_pairs(lm, rm); consumed = set(name_pairs.values())
     overlaps = _overlaps(left["functions"], left_map) | _overlaps(right["functions"], right_map); records = []
     for key in sorted(set(lm) | set(rm)):
+        if key in consumed: continue
         finding_before = _reason_snapshot(categories)
         a, b = lm.get(key), rm.get(key); printable = _printable_function(key); reasons = []
+        right_key = name_pairs.get(key, key)
+        if right_key != key: b = rm[right_key]
+        pairing = ("offset" if right_key == key else "name") if a is not None and b is not None else None
         if a is None or b is None:
             reason = "missing reference function" if a is None else "missing rebuilt function"
             _add(categories, _function_evidence("code", reason, printable,
@@ -703,13 +806,15 @@ def _compare_functions(left, right, left_map, right_map, pair, categories):
                 reasons.append("cfg differs")
             calls_equal = _canonical_calls(a["calls"], left_map) == _canonical_calls(b["calls"], right_map)
             if not calls_equal: reasons.append("calls differ")
-            range_result = _compare_function_range(a, b, ai, bi, left_map, right_map, pair, printable)
+            range_result = _compare_function_range(a, b, ai, bi, left_map, right_map, pair, printable,
+                                                   pairing)
             if range_result["masked_equal"]:
                 for candidate in relocation_candidates:
                     _add(categories, candidate)
             if range_result["evidence"] is not None:
                 reasons.append("function range bytes differ"); _add(categories, range_result["evidence"])
-            if key in overlaps: reasons.append("overlapping functions")
+            overlapping = key in overlaps or right_key in overlaps
+            if overlapping: reasons.append("overlapping functions")
             semantics_equal = not any(reason in reasons for reason in
                 ("analyzer bytes disagree with artifact", "instruction shape differs",
                  "instruction layout differs", "instruction semantics differ",
@@ -717,11 +822,11 @@ def _compare_functions(left, right, left_map, right_map, pair, categories):
             for reason in sorted(set(reasons)):
                 category = "relocation" if reason == "relocation target semantics differ" else "code"
                 _add(categories, _function_evidence(category, reason, printable, "different", "different"))
-            if key in overlaps:
+            if overlapping:
                 _add(categories, _function_evidence("layout", "overlapping functions", printable,
                                                     "overlap", "overlap"))
             status = "different" if reasons else "assembly-matched"
-        records.append({"key": printable, "status": status,
+        records.append({"key": printable, "pairing": pairing, "status": status,
                         "reference_aliases": [] if a is None else a["aliases"],
                         "rebuilt_aliases": [] if b is None else b["aliases"],
                         "reasons": sorted(set(reasons)), "raw_equal": range_result["raw_equal"],
@@ -945,6 +1050,7 @@ def compare_artifacts(reference_path, rebuilt_path, reference_analysis, rebuilt_
                   "relocation_summary": relocation_summary,
                   "functions": functions, "sections": sections}
         pair.left.verify_stable(); pair.right.verify_stable()
+        pair.left.verify_content(); pair.right.verify_content()
         validate_comparison_report(report); complete = True
     finally:
         if complete: pair.close_verified()
@@ -1154,8 +1260,8 @@ def _validate_comparison_report(report):
     if not isinstance(report["functions"], list): raise ComparisonError("invalid functions")
     function_keys = []
     for item in report["functions"]:
-        function_fields = {"key", "status", "reference_aliases", "rebuilt_aliases", "reasons",
-            "raw_equal", "masked_equal", "semantics_equal", "cfg_equal", "calls_equal",
+        function_fields = {"key", "pairing", "status", "reference_aliases", "rebuilt_aliases",
+            "reasons", "raw_equal", "masked_equal", "semantics_equal", "cfg_equal", "calls_equal",
             "reference_sha256", "rebuilt_sha256", "reference_masked_sha256", "rebuilt_masked_sha256",
             "finding_counts"}
         if not isinstance(item, dict) or set(item) != function_fields:
@@ -1177,6 +1283,8 @@ def _validate_comparison_report(report):
             if item[name] is not None and (not isinstance(item[name], str) or re.fullmatch(r"[0-9A-F]{64}", item[name]) is None):
                 raise ComparisonError("invalid function hash")
         missing = item["status"].startswith("missing-")
+        if item["pairing"] not in ((None,) if missing else ("offset", "name")):
+            raise ComparisonError("invalid function pairing")
         hashes = [item[name] for name in ("reference_sha256", "rebuilt_sha256",
                   "reference_masked_sha256", "rebuilt_masked_sha256")]
         if missing and any(value is not None for value in hashes): raise ComparisonError("missing function has hashes")

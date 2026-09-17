@@ -1,4 +1,5 @@
 "Title" = "System Serial";
+"Version" = "5.00";
 "Class Names" = "ISASerialPort";
 "Family" = "Serial";
 "Boot Driver" = "Yes";
@@ -10,4 +11,5 @@
 "Memory Maps" = "";
 "Instance" = "0";
 "Auto Resolve Conflicts";
+
 "Server Name" = "ISASerialPort";

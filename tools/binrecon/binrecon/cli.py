@@ -11,13 +11,19 @@ from jsonschema import ValidationError
 from binrecon.profile import load_profile
 from binrecon.compare import ComparisonError, compare_artifacts, format_text_report
 from binrecon.consensus import ConsensusError, build_consensus
+from binrecon.functions import (
+    FunctionQueryError, function_index, load_published, render_function,
+    render_worklist, worklist,
+)
+from binrecon.macho import objc_method_index, read_macho
 from binrecon.normalize import preflight_json
 from binrecon.schema import validate_analysis_semantics, validate_document
 from binrecon.ledger import LedgerError, LedgerLock, load_ledger, transition, write_ledger
 from binrecon.runner import RunnerError, run_analysis
+from binrecon.source_map import build_source_map, scope_analysis, source_sites
 
 
-COMMANDS = ("validate", "analyze", "consensus", "compare", "ledger")
+COMMANDS = ("validate", "analyze", "consensus", "compare", "ledger", "source-map", "function")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -52,6 +58,26 @@ def build_parser() -> argparse.ArgumentParser:
     consensus.add_argument("--expected-analyzer", action="append",
                            dest="expected_analyzers")
     consensus.add_argument("--output", required=True)
+    source_map = subparsers.add_parser("source-map")
+    source_map.add_argument("--reference-analysis", required=True)
+    source_map.add_argument("--binary", required=True)
+    source_map.add_argument("--source-dir", required=True, action="append",
+                            help="directory to scan for source sites; may be repeated")
+    source_map.add_argument("--repo-root", required=True)
+    source_map.add_argument("--output", required=True)
+    source_map.add_argument("--objc-methods", action="store_true",
+                            help="resolve names from Objective-C metadata as well as "
+                                 "the symbol table")
+    source_map.add_argument("--scope-to-objc", action="store_true",
+                            help="restrict the analysis to the Objective-C methods "
+                                 "found by --objc-methods")
+
+    function = subparsers.add_parser("function")
+    function.add_argument("--profile", required=True)
+    function.add_argument("--analyzer", default="ida")
+    function.add_argument("--list", action="store_true", dest="list_functions",
+                          help="print every compared function, cheapest difference first")
+    function.add_argument("--name", help="print one function's two instruction sequences")
 
     return parser
 
@@ -69,6 +95,8 @@ def main(argv=None) -> int:
             ("reference", profile.reference_identity),
             ("rebuilt", profile.rebuilt_identity),
         ):
+            if identity is None:
+                continue
             print(
                 f"{label} {identity.path} size={identity.size} "
                 f"sha256={identity.sha256}"
@@ -182,8 +210,78 @@ def main(argv=None) -> int:
             print(f"binrecon: {error}", file=sys.stderr); return 1
         return 0 if report["selected"]["passed"] else 1
 
+    if args.command == "source-map":
+        try:
+            return _source_map_command(args)
+        except (OSError, ValueError, ValidationError) as error:
+            print(f"binrecon: {error}", file=sys.stderr)
+            return 1
+
+    if args.command == "function":
+        if args.list_functions == bool(args.name):
+            print("binrecon: give exactly one of --list or --name", file=sys.stderr)
+            return 1
+        try:
+            profile = load_profile(Path(args.profile), os.environ)
+            reference, rebuilt, comparison = load_published(profile.output_dir, args.analyzer)
+            if args.list_functions:
+                print(render_worklist(worklist(reference, rebuilt, comparison)))
+                return 0
+            record = next((item for item in comparison.get("functions") or []
+                           if args.name in (item.get("reference_aliases") or [])
+                           or args.name in (item.get("rebuilt_aliases") or [])), None)
+            print(render_function(args.name, function_index(reference).get(args.name),
+                                  function_index(rebuilt).get(args.name), record))
+            return 0
+        except (OSError, ValueError, ValidationError, FunctionQueryError) as error:
+            print(f"binrecon: {error}", file=sys.stderr)
+            return 1
+
     print(f"binrecon: command not implemented: {args.command}")
     return 2
+
+
+def _source_map_command(arguments) -> int:
+    from binrecon.schema import load_json, load_source_map
+
+    if arguments.scope_to_objc and not arguments.objc_methods:
+        raise ValueError("--scope-to-objc requires --objc-methods")
+
+    # A file is a legitimate argument: some drivers' sources share a directory
+    # with other binaries' sources, so scoping to a directory would silently
+    # measure the wrong thing. source_files() below rejects a wrong-suffix file,
+    # so only existence is checked here.
+    source_dirs = [Path(value) for value in arguments.source_dir]
+    for source_dir in source_dirs:
+        if not source_dir.exists():
+            raise ValueError(f"--source-dir {source_dir} does not exist")
+
+    analysis = load_json(Path(arguments.reference_analysis))
+    validate_document("analysis-v1", analysis)
+    validate_analysis_semantics(analysis)
+
+    extra_names = None
+    if arguments.objc_methods:
+        extra_names = objc_method_index(arguments.binary)
+        if arguments.scope_to_objc:
+            analysis = scope_analysis(analysis, set(extra_names))
+
+    sites = {}
+    for source_dir in source_dirs:
+        for key, locations in source_sites(Path(arguments.repo_root), source_dir).items():
+            sites.setdefault(key, []).extend(locations)
+
+    document = build_source_map(
+        analysis, read_macho(Path(arguments.binary)), sites, extra_names=extra_names
+    )
+    output = Path(arguments.output)
+    output.write_text(json.dumps(document, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    load_source_map(
+        output,
+        reference_analysis=analysis,
+        repo_root=Path(arguments.repo_root),
+    )
+    return 0
 
 
 _MAX_JSON = 16 * 1024 * 1024

@@ -1,0 +1,456 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 1028,
+      "reference_names": [
+        "-[DECchip21041 getStationAddress:]"
+      ],
+      "size": 820,
+      "source_line": 144,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip21041.m"
+    },
+    {
+      "address": 1896,
+      "reference_names": [
+        "-[DECchip21041 _setInterface:]"
+      ],
+      "size": 256,
+      "source_line": 191,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip21041.m"
+    },
+    {
+      "address": 2184,
+      "reference_names": [
+        "-[DECchip21041 selectInterface]"
+      ],
+      "size": 428,
+      "source_line": 223,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip21041.m"
+    },
+    {
+      "address": 3064,
+      "reference_names": [
+        "-[DECchip2104x _allocateMemory]"
+      ],
+      "size": 440,
+      "source_line": 164,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104xPrivate.m"
+    },
+    {
+      "address": 3600,
+      "reference_names": [
+        "-[DECchip2104x _initTxRing]"
+      ],
+      "size": 276,
+      "source_line": 250,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104xPrivate.m"
+    },
+    {
+      "address": 3940,
+      "reference_names": [
+        "-[DECchip2104x _initRxRing]"
+      ],
+      "size": 272,
+      "source_line": 284,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104xPrivate.m"
+    },
+    {
+      "address": 4276,
+      "reference_names": [
+        "-[DECchip2104x _initChip]"
+      ],
+      "size": 128,
+      "source_line": 315,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104xPrivate.m"
+    },
+    {
+      "address": 4420,
+      "reference_names": [
+        "-[DECchip2104x _resetChip]"
+      ],
+      "size": 88,
+      "source_line": 338,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104xPrivate.m"
+    },
+    {
+      "address": 4540,
+      "reference_names": [
+        "-[DECchip2104x _startTransmit]"
+      ],
+      "size": 40,
+      "source_line": 354,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104xPrivate.m"
+    },
+    {
+      "address": 4580,
+      "reference_names": [
+        "-[DECchip2104x _startReceive]"
+      ],
+      "size": 40,
+      "source_line": 363,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104xPrivate.m"
+    },
+    {
+      "address": 4620,
+      "reference_names": [
+        "-[DECchip2104x _initRegisters]"
+      ],
+      "size": 248,
+      "source_line": 372,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104xPrivate.m"
+    },
+    {
+      "address": 4932,
+      "reference_names": [
+        "-[DECchip2104x _transmitPacket:]"
+      ],
+      "size": 416,
+      "source_line": 428,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104xPrivate.m"
+    },
+    {
+      "address": 5412,
+      "reference_names": [
+        "-[DECchip2104x receivePacket:length:timeout:]"
+      ],
+      "size": 340,
+      "source_line": 500,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104xPrivate.m"
+    },
+    {
+      "address": 5800,
+      "reference_names": [
+        "-[DECchip2104x sendPacket:length:]"
+      ],
+      "size": 548,
+      "source_line": 555,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104xPrivate.m"
+    },
+    {
+      "address": 6492,
+      "reference_names": [
+        "-[DECchip2104x _receiveInterruptOccurred]"
+      ],
+      "size": 608,
+      "source_line": 628,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104xPrivate.m"
+    },
+    {
+      "address": 7228,
+      "reference_names": [
+        "-[DECchip2104x _transmitInterruptOccurred]"
+      ],
+      "size": 376,
+      "source_line": 702,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104xPrivate.m"
+    },
+    {
+      "address": 7636,
+      "reference_names": [
+        "-[DECchip2104x _loadSetupFilter:]"
+      ],
+      "size": 344,
+      "source_line": 751,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104xPrivate.m"
+    },
+    {
+      "address": 7996,
+      "reference_names": [
+        "-[DECchip2104x _setAddressFiltering:]"
+      ],
+      "size": 452,
+      "source_line": 817,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104xPrivate.m"
+    },
+    {
+      "address": 8528,
+      "reference_names": [
+        "-[DECchip21040 initFromDeviceDescription:]"
+      ],
+      "size": 600,
+      "source_line": 46,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip21040.m"
+    },
+    {
+      "address": 9192,
+      "reference_names": [
+        "-[DECchip21040 getStationAddress:]"
+      ],
+      "size": 132,
+      "source_line": 115,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip21040.m"
+    },
+    {
+      "address": 9340,
+      "reference_names": [
+        "-[DECchip21040 _setInterface:]"
+      ],
+      "size": 292,
+      "source_line": 139,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip21040.m"
+    },
+    {
+      "address": 9664,
+      "reference_names": [
+        "-[DECchip21040 selectInterface]"
+      ],
+      "size": 228,
+      "source_line": 166,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip21040.m"
+    },
+    {
+      "address": 9924,
+      "reference_names": [
+        "+[DECchip2104x probe:]"
+      ],
+      "size": 272,
+      "source_line": 69,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104x.m"
+    },
+    {
+      "address": 10228,
+      "reference_names": [
+        "-[DECchip2104x initFromDeviceDescription:]"
+      ],
+      "size": 176,
+      "source_line": 98,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104x.m"
+    },
+    {
+      "address": 10452,
+      "reference_names": [
+        "-[DECchip2104x free]"
+      ],
+      "size": 212,
+      "source_line": 114,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104x.m"
+    },
+    {
+      "address": 10712,
+      "reference_names": [
+        "-[DECchip2104x enableAdapterInterrupts]"
+      ],
+      "size": 32,
+      "source_line": 141,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104x.m"
+    },
+    {
+      "address": 10744,
+      "reference_names": [
+        "-[DECchip2104x disableAdapterInterrupts]"
+      ],
+      "size": 32,
+      "source_line": 149,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104x.m"
+    },
+    {
+      "address": 10776,
+      "reference_names": [
+        "-[DECchip2104x resetAndEnable:]"
+      ],
+      "size": 328,
+      "source_line": 157,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104x.m"
+    },
+    {
+      "address": 11120,
+      "reference_names": [
+        "-[DECchip2104x interruptOccurred]"
+      ],
+      "size": 252,
+      "source_line": 196,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104x.m"
+    },
+    {
+      "address": 11388,
+      "reference_names": [
+        "-[DECchip2104x serviceTransmitQueue]"
+      ],
+      "size": 152,
+      "source_line": 251,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104x.m"
+    },
+    {
+      "address": 11556,
+      "reference_names": [
+        "-[DECchip2104x transmit:]"
+      ],
+      "size": 264,
+      "source_line": 263,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104x.m"
+    },
+    {
+      "address": 11868,
+      "reference_names": [
+        "-[DECchip2104x transmitQueueSize]"
+      ],
+      "size": 16,
+      "source_line": 293,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104x.m"
+    },
+    {
+      "address": 11884,
+      "reference_names": [
+        "-[DECchip2104x transmitQueueCount]"
+      ],
+      "size": 44,
+      "source_line": 301,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104x.m"
+    },
+    {
+      "address": 11944,
+      "reference_names": [
+        "-[DECchip2104x pendingTransmitCount]"
+      ],
+      "size": 68,
+      "source_line": 309,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104x.m"
+    },
+    {
+      "address": 12028,
+      "reference_names": [
+        "-[DECchip2104x timeoutOccurred]"
+      ],
+      "size": 128,
+      "source_line": 317,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104x.m"
+    },
+    {
+      "address": 12172,
+      "reference_names": [
+        "-[DECchip2104x allocateNetbuf]"
+      ],
+      "size": 104,
+      "source_line": 347,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104x.m"
+    },
+    {
+      "address": 12356,
+      "reference_names": [
+        "-[DECchip2104x enablePromiscuousMode]"
+      ],
+      "size": 104,
+      "source_line": 372,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104x.m"
+    },
+    {
+      "address": 12476,
+      "reference_names": [
+        "-[DECchip2104x disablePromiscuousMode]"
+      ],
+      "size": 100,
+      "source_line": 389,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104x.m"
+    },
+    {
+      "address": 12592,
+      "reference_names": [
+        "-[DECchip2104x enableMulticastMode]"
+      ],
+      "size": 24,
+      "source_line": 406,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104x.m"
+    },
+    {
+      "address": 12616,
+      "reference_names": [
+        "-[DECchip2104x disableMulticastMode]"
+      ],
+      "size": 152,
+      "source_line": 415,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104x.m"
+    },
+    {
+      "address": 12800,
+      "reference_names": [
+        "-[DECchip2104x addMulticastAddress:]"
+      ],
+      "size": 140,
+      "source_line": 432,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104x.m"
+    },
+    {
+      "address": 12972,
+      "reference_names": [
+        "-[DECchip2104x removeMulticastAddress:]"
+      ],
+      "size": 132,
+      "source_line": 446,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104x.m"
+    },
+    {
+      "address": 13136,
+      "reference_names": [
+        "-[DECchip2104x getPowerState:]"
+      ],
+      "size": 16,
+      "source_line": 460,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104x.m"
+    },
+    {
+      "address": 13152,
+      "reference_names": [
+        "-[DECchip2104x setPowerState:]"
+      ],
+      "size": 68,
+      "source_line": 465,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104x.m"
+    },
+    {
+      "address": 13236,
+      "reference_names": [
+        "-[DECchip2104x getPowerManagement:]"
+      ],
+      "size": 16,
+      "source_line": 475,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104x.m"
+    },
+    {
+      "address": 13252,
+      "reference_names": [
+        "-[DECchip2104x setPowerManagement:]"
+      ],
+      "size": 16,
+      "source_line": 480,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104x.m"
+    },
+    {
+      "address": 13268,
+      "reference_names": [
+        "-[DECchip2104x getStationAddress:]"
+      ],
+      "size": 12,
+      "source_line": 485,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104x.m"
+    },
+    {
+      "address": 13280,
+      "reference_names": [
+        "-[DECchip2104x selectInterface]"
+      ],
+      "size": 12,
+      "source_line": 493,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvDECchip21040/DECchip2104x.m"
+    }
+  ],
+  "reference_sha256": "CA1B142E20E0A26C6D702D2EF3562880AAAB2EF11D15198FB739B37967DCDCEB",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 13292,
+      "reference_names": [
+        "+[drvPPCDec21040KernelServerInstance kernelServerInstance]"
+      ],
+      "size": 20
+    },
+    {
+      "address": 13312,
+      "reference_names": [
+        "+[drvPPCDec21040Version driverKitVersionFordrvPPCDec21040]"
+      ],
+      "size": 16
+    }
+  ]
+}

@@ -49,6 +49,7 @@
 #import <driverkit/align.h>
 #import <bsd/stdio.h>
 #import <bsd/string.h>
+#import <bsd/dev/ata_hd_registry.h>
 
 IOReturn iderToIo(ide_return_t);
 
@@ -258,6 +259,7 @@ void *ideThreadPtr;
 
 - initResources	: controller
 {
+    _hdUnit = -1;
     _cntrlr = controller;
     _ioQLock = [NXConditionLock alloc];
     [_ioQLock initWith:NO_WORK_AVAILABLE];
@@ -279,6 +281,19 @@ void *ideThreadPtr;
      */
     ideBuf_t *ideBuf;
     int i;
+    IOReturn unregisterResult;
+
+    if (_hdUnit >= 0) {
+	unregisterResult = ata_hd_unregister(_hdUnit);
+	if (unregisterResult != IO_R_SUCCESS) {
+	    IOLog("IDEDisk: failed to release shared hd unit %d (%s).\n",
+		  _hdUnit, [self stringFromReturn:unregisterResult]);
+	    return self;
+	}
+	_hdUnit = -1;
+    }
+    if (_ioQLock == nil)
+	return ([super free]);
 
     ideBuf = [self allocIdeBuf:NULL];
     ideBuf->command = IDEC_THREAD_ABORT;
@@ -331,8 +346,10 @@ void *ideThreadPtr;
     ideBuf->waitLock = waitLock;
     [ideBuf->waitLock initWith:NO];
     
-    if (pending != NULL)
+    if (pending != NULL) {
 	ideBuf->pending = pending;
+	(void)ata_hd_async_token(pending, &ideBuf->registryToken);
+    }
 	
     [_ideBufLock unlock];
     return (ideBuf);
@@ -356,8 +373,10 @@ void *ideThreadPtr;
     if (pending == NULL) {
 	ideBuf->waitLock = [NXConditionLock alloc];
 	[ideBuf->waitLock initWith:NO];
-    } else
+    } else {
 	ideBuf->pending = pending;
+	(void)ata_hd_async_token(pending, &ideBuf->registryToken);
+    }
     return (ideBuf);
 }
 
@@ -448,12 +467,12 @@ void *ideThreadPtr;
 		return (IO_R_INVALID);
     }
     blocksReq = length / block_size;
-    if ((deviceBlock + blocksReq) > dev_size) {
-		if (deviceBlock >= dev_size) {
-			return (IO_R_INVALID_ARG);
-		}
+    if (blocksReq == 0)
+		return (IO_R_INVALID);
+    if (deviceBlock >= dev_size)
+		return (IO_R_INVALID_ARG);
+    if (blocksReq > dev_size - deviceBlock)
 		blocksReq = dev_size - deviceBlock;
-    }
     ideBuf = [self allocIdeBuf:pending];
     ideBuf->command = command;
     ideBuf->block = deviceBlock;
@@ -521,10 +540,21 @@ void *ideThreadPtr;
 - (void)ideIoComplete:(ideBuf_t *) ideBuf
 {
     if (ideBuf->pending) {
-	[self completeTransfer:ideBuf->pending
-		    withStatus:ideBuf->status
-		    actualLength:ideBuf->bytesXfr];
+	void *pending;
+	ATAHDAsyncToken registryToken;
+	IOReturn status;
+	u_int bytesXfr;
+
+	registryToken = ideBuf->registryToken;
+	(void)ata_hd_async_claim(registryToken);
+	pending = ideBuf->pending;
+	status = ideBuf->status;
+	bytesXfr = ideBuf->bytesXfr;
+	[self completeTransfer:pending
+		    withStatus:status
+		    actualLength:bytesXfr];
 	[self freeIdeBuf:ideBuf];
+	ata_hd_async_complete(registryToken);
     } else {
 	/*
 	 * Sync I/O. Just wake up the waiting thread. 
@@ -632,21 +662,22 @@ void *ideThreadPtr;
  */
 - (IOReturn) ideRwCommon:(ideBuf_t *)ideBuf
 {
-    int     currentBlock = ideBuf->block;	/* start block, current
+    unsigned int currentBlock = ideBuf->block;	/* start block, current
 						 * segment */
-    int     	currentBlockCnt;	/* block count, current segment */
-    int     	blocksToGo = ideBuf->blockCnt;
+    unsigned int currentBlockCnt;	/* block count, current segment */
+    unsigned int blocksToGo = ideBuf->blockCnt;
     char   	*currentBuf = ideBuf->buf;
     ideIoReq_t ideIoReq;
     IOReturn 	rtn;
     unsigned 	int block_size = _ideInfo.bytes_per_sector;
     BOOL    	readFlag = (ideBuf->command == IDEC_READ) ? YES : NO;
-    int     	blocksMoved;
+    unsigned int blocksMoved;
     ns_time_t 	start_time;
 
     IOGetTimestamp(&start_time);
 
     while (blocksToGo) {
+	bzero(&ideIoReq, sizeof(ideIoReq));
 
 	/*
 	 * Set up controller command block for current segment. 
@@ -868,4 +899,3 @@ IOReturn iderToIo(ide_return_t ider)
 }
 
 @end
-

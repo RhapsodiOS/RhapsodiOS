@@ -206,14 +206,18 @@ def _hash_backed_segment(start, size, snapshot, runs):
 
 
 def _validate_mapping(mapping, size, digest):
-    if (not isinstance(mapping, dict) or set(mapping) != {"schema_version", "input", "runs"}
+    if (not isinstance(mapping, dict)
+            or set(mapping) - {"analysis_scope"} != {"schema_version", "input", "runs"}
             or mapping["schema_version"] != "ida-mapping-v1"):
         raise ExportError("artifact mapping manifest is malformed")
     identity = mapping["input"]
     if (not isinstance(identity, dict) or
-            set(identity) != {"size", "sha256", "architecture", "endianness"} or
+            set(identity) != {"size", "sha256", "architecture", "endianness",
+                              "ida_processor"} or
             identity["size"] != size or str(identity["sha256"]).upper() != digest or
-            identity["architecture"] != "i386" or identity["endianness"] != "little"):
+            not isinstance(identity["architecture"], str) or
+            identity["endianness"] not in ("little", "big") or
+            not isinstance(identity["ida_processor"], str)):
         raise ExportError("artifact mapping identity does not match analyzed input")
     runs = mapping["runs"]
     if not isinstance(runs, list) or not runs or len(runs) > 4096:
@@ -237,6 +241,24 @@ def _validate_mapping(mapping, size, digest):
            for left, right in zip(by_file, by_file[1:])):
         raise ExportError("artifact mapping file runs overlap")
     return _MappingRuns(ordered)
+
+
+def _scope_from_mapping(mapping):
+    """Return sorted (start, end) pairs, or () when the manifest has no scope."""
+    declared = mapping.get("analysis_scope")
+    if not declared:
+        return ()
+    ranges = []
+    for item in declared:
+        start, end = int(item["start"]), int(item["end"])
+        if end <= start:
+            raise ExportError(f"analysis scope range {start}..{end} is empty or inverted")
+        ranges.append((start, end))
+    return tuple(sorted(ranges))
+
+
+def _in_scope(address, scope):
+    return not scope or any(start <= address < end for start, end in scope)
 
 
 def _load_mapping(path, expected_sha256, *, opener=os.open, fstat=os.fstat,
@@ -326,21 +348,43 @@ def _collect_relocations(modules):
         if (
             not isinstance(base, int)
             or not isinstance(offset, int)
+            or not isinstance(addend, int)
             or base < 0
             or offset < 0
             or base == bad_address
             or offset == bad_address
             or base > 0xFFFFFFFF
-            or offset > 0xFFFFFFFF - base
         ):
             raise ExportError(f"malformed fixup target at {address:#x}")
-        target_address = base + offset
-        if (
-            not isinstance(addend, int)
-            or not isinstance(target_address, int)
-            or target_address < 0
-        ):
-            raise ExportError(f"malformed fixup fields at {address:#x}")
+        # IDAPython exposes the signed `off` field as the raw, non-negative
+        # two's-complement bit pattern of a 64-bit value, so a negative
+        # displacement -- as produced by PowerPC PPC_RELOC_SECTDIFF
+        # switch-table fixups (e.g. SCSITape's __TEXT,__const jump table,
+        # base=0x2E34, off=-6696 surfacing as 0xFFFFFFFFFFFFE5D8) -- arrives
+        # sign-extended across all 64 bits rather than as a small unsigned
+        # 32-bit value. A legitimate offset therefore has its upper 32 bits
+        # either all zero (non-negative) or all one (a sign-extended
+        # negative 32-bit displacement); anything else is a stray high word,
+        # not a real fixup.
+        if offset >> 32 not in (0, 0xFFFFFFFF):
+            raise ExportError(f"malformed fixup target at {address:#x}")
+        # The sign lives in the upper word, not in bit 31 of the low word:
+        # when the upper word is all ones the value is a negative
+        # displacement sign-extended across all 64 bits, so the true signed
+        # value is recovered from the low 32 bits. When the upper word is
+        # zero, `offset` is already a plain non-negative 32-bit displacement
+        # -- e.g. +0xFFFF0000 -- whose bit 31 is a value bit, not a sign bit,
+        # and must not be reinterpreted as negative. Either way the result is
+        # added to base with ordinary (non-modular) arithmetic and
+        # range-checked, so a target that genuinely leaves the 32-bit address
+        # space is still rejected instead of silently wrapping into range.
+        if offset >> 32 == 0xFFFFFFFF:
+            signed = (offset & 0xFFFFFFFF) - 0x100000000
+        else:
+            signed = offset
+        target_address = base + signed
+        if not 0 <= target_address <= 0xFFFFFFFF:
+            raise ExportError(f"malformed fixup target at {address:#x}")
         target_name = ida_name.get_name(target_address) or ""
         if external:
             target = target_name or f"external:{target_address:08X}"
@@ -369,6 +413,7 @@ def collect_analysis(input_path, expected_size, expected_sha256, modules=None, m
         raise ExportError("input identity does not match host request")
     mapping = mapping if mapping is not None else modules.get("artifact_mapping")
     runs = _validate_mapping(mapping, size, digest)
+    scope = _scope_from_mapping(mapping)
     try:
         database_size = modules["ida_nalt"].retrieve_input_file_size()
         database_sha = modules["ida_nalt"].retrieve_input_file_sha256()
@@ -381,12 +426,19 @@ def collect_analysis(input_path, expected_size, expected_sha256, modules=None, m
         raise ExportError("IDA database input size does not match host request")
     if not isinstance(database_sha, bytes) or database_sha.hex().upper() != digest:
         raise ExportError("IDA database input sha256 does not match host request")
-    if not isinstance(processor, str) or processor.lower() != "metapc":
-        raise ExportError(f"IDA processor is not metapc: {processor!r}")
+    expected_processor = mapping["input"]["ida_processor"]
+    expected_big_endian = mapping["input"]["endianness"] == "big"
+    if not isinstance(processor, str) or processor.lower() != expected_processor.lower():
+        raise ExportError(
+            f"IDA processor is not {expected_processor}: {processor!r}"
+        )
     if exactly_32 is not True:
         raise ExportError("IDA database is not exactly 32-bit")
-    if big_endian is not False:
-        raise ExportError("IDA database is not little-endian")
+    if big_endian is not expected_big_endian:
+        raise ExportError(
+            "IDA database endianness does not match the requested "
+            f"{mapping['input']['endianness']}-endian analysis"
+        )
     if not modules["ida_auto"].auto_wait():
         raise ExportError("IDA auto-analysis did not complete")
     ida_segment = modules["ida_segment"]
@@ -456,6 +508,8 @@ def collect_analysis(input_path, expected_size, expected_sha256, modules=None, m
 
     references = []
     for source in idautils.Heads():
+        if not _in_scope(source, scope):
+            continue
         for target in idautils.CodeRefsFrom(source, False):
             references.append({"address": source, "target": target, "kind": "code"})
         for target in idautils.DataRefsFrom(source):
@@ -465,11 +519,14 @@ def collect_analysis(input_path, expected_size, expected_sha256, modules=None, m
 
     functions = []
     seen_functions = set()
+    instruction_operand_offsets = []
     for address in idautils.Functions():
         function = ida_funcs.get_func(address)
         if function is None:
             raise ExportError(f"could not read function at {address:#x}")
         canonical_entry = function.start_ea
+        if not _in_scope(canonical_entry, scope):
+            continue
         if canonical_entry in seen_functions:
             continue
         seen_functions.add(canonical_entry)
@@ -506,12 +563,32 @@ def collect_analysis(input_path, expected_size, expected_sha256, modules=None, m
                 raise ExportError(f"could not decode instruction at {item:#x}")
             mnemonic = idc.print_insn_mnem(item) or ""
             operand_values = []
+            operand_offsets = []
             for operand_index in range(8):
+                # `type == o_void` is IDA's own signal that this operand slot
+                # does not exist; that is the correct loop terminator. Blank
+                # *text* on an otherwise real slot is not the same thing --
+                # e.g. div/idiv/mul/neg/not decode an implicit accumulator
+                # operand (real type, offb, addr) that IDA deliberately never
+                # renders because it is not written in assembly syntax. Such
+                # a slot must be skipped, not mistaken for the end of the
+                # operand list, or a real, later, relocatable operand (e.g.
+                # the divisor in `div ds:_page_size`) is silently dropped.
+                if instruction.ops[operand_index].type == ida_ua.o_void:
+                    break
                 operand = idc.print_operand(item, operand_index) or ""
                 if not operand:
-                    break
+                    continue
+                operand_offsets.append({
+                    "index": len(operand_values),
+                    "offset": instruction.ops[operand_index].offb,
+                })
                 operand_values.append(operand)
             operands = ", ".join(operand_values)
+            if operand_offsets:
+                instruction_operand_offsets.append({
+                    "address": item, "operands": operand_offsets,
+                })
             instructions.append({
                 "address": item,
                 "bytes": raw.hex().upper(),
@@ -594,11 +671,30 @@ def collect_analysis(input_path, expected_size, expected_sha256, modules=None, m
     version = modules["ida_kernwin"].get_kernel_version()
     if not isinstance(version, str) or not version:
         raise ExportError("could not read IDA kernel version")
+    if scope and not functions:
+        raise ExportError("analysis scope matched no functions")
+    extensions = {"ida": {
+        "selectors": selector_names,
+        "instruction_operand_offsets": sorted(
+            instruction_operand_offsets, key=lambda item: item["address"]
+        ),
+        "sections": sorted(
+            section_backing, key=lambda item: (item["address"], item["name"])
+        ),
+        "zero_fill_sections": sorted(
+            zero_fill_sections, key=lambda item: (item["address"], item["name"])
+        ),
+    }}
+    if scope:
+        extensions["binrecon"] = {
+            "analysis_scope": [{"start": start, "end": end} for start, end in scope]
+        }
     return {
         "schema_version": "analysis-v1",
         "input": {
             "path": str(input_path.resolve()), "size": size, "sha256": digest,
-            "architecture": "i386", "endianness": "little",
+            "architecture": mapping["input"]["architecture"],
+            "endianness": mapping["input"]["endianness"],
         },
         "analyzer": {
             "name": "IDA", "version": version,
@@ -623,15 +719,7 @@ def collect_analysis(input_path, expected_size, expected_sha256, modules=None, m
             strings,
             key=lambda item: (item["address"], item["value"], item["encoding"]),
         ),
-        "extensions": {"ida": {
-            "selectors": selector_names,
-            "sections": sorted(
-                section_backing, key=lambda item: (item["address"], item["name"])
-            ),
-            "zero_fill_sections": sorted(
-                zero_fill_sections, key=lambda item: (item["address"], item["name"])
-            ),
-        }},
+        "extensions": extensions,
     }
 
 

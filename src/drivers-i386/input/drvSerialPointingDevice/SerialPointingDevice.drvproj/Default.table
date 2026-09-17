@@ -1,5 +1,6 @@
 "Title" = "Serial Mouse";
 "Family" = "Pointing Device";
+"Version" = "5.01";
 "Location" = "";
 "Instance" = "0";
 "Class Names" = "SerialPointingDevice";

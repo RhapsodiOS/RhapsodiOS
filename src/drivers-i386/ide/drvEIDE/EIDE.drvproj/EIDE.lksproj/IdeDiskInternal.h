@@ -51,29 +51,6 @@
 #define WORK_AVAILABLE		1
 
 /*
- * Kernel-specific types.
- */
-#define NUM_IDE_DEV		(MAX_IDE_DRIVES * MAX_IDE_CONTROLLERS)	// 4
-
-#define NUM_IDE_PART		8
-#define IDE_LIVE_PART		(NUM_IDE_PART-1)
-
-
-typedef struct {
-    /*
-     * One per unit. Note that the physDevice (live partition), the raw
-     * device, and the block devices for a given disk all share the same
-     * physbuf. Block devices don't use physbuf; arbitration for access to
-     * physbuf by the raw and live devices is done by physio(). 
-     */
-    struct buf *physbuf;   /* for phys I/O */
-
-}       Ide_dev_t;
-
-__private_extern__ void ide_init_idmap(id);
-__private_extern__ IODevAndIdInfo *ide_idmap();
-
-/*
  * General utility methods in IdeDiskInt.m.
  */
 @interface IdeDisk(Internal)
@@ -162,4 +139,3 @@ volatile void ideThread(IdeDisk *idisk);
 #endif	/* _BSD_DEV_IDEDISKINTERNAL_H */
 
 #endif	/* DRIVER_PRIVATE */
-

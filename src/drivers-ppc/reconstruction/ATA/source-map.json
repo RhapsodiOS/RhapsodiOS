@@ -1,0 +1,1294 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [
+    {
+      "address": 5204,
+      "candidates": [
+        {
+          "source_line": 124,
+          "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCntInternal.m"
+        },
+        {
+          "source_line": 161,
+          "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCntInternal.m"
+        }
+      ],
+      "reasons": [
+        "symbol name resolves to multiple definitions"
+      ],
+      "reference_names": [
+        "-[AtapiController allocAtapiBuf]"
+      ],
+      "size": 244
+    },
+    {
+      "address": 5496,
+      "candidates": [
+        {
+          "source_line": 151,
+          "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCntInternal.m"
+        },
+        {
+          "source_line": 172,
+          "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCntInternal.m"
+        }
+      ],
+      "reasons": [
+        "symbol name resolves to multiple definitions"
+      ],
+      "reference_names": [
+        "-[AtapiController freeAtapiBuf:]"
+      ],
+      "size": 128
+    },
+    {
+      "address": 20176,
+      "candidates": [
+        {
+          "source_line": 475,
+          "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+        },
+        {
+          "source_line": 443,
+          "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCntInit.m"
+        }
+      ],
+      "reasons": [
+        "symbol name resolves to multiple definitions"
+      ],
+      "reference_names": [
+        "-[IdeController getIdeDriveInfo:]"
+      ],
+      "size": 76
+    },
+    {
+      "address": 23280,
+      "candidates": [
+        {
+          "source_line": 469,
+          "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+        },
+        {
+          "source_line": 1101,
+          "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCntInit.m"
+        }
+      ],
+      "reasons": [
+        "symbol name resolves to multiple definitions"
+      ],
+      "reference_names": [
+        "-[IdeController getIdeIdentifyInfo:]"
+      ],
+      "size": 48
+    }
+  ],
+  "mapped": [
+    {
+      "address": 116,
+      "reference_names": [
+        "-[IdeController atapiWaitReadyForPacket]"
+      ],
+      "size": 100,
+      "source_line": 70,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCntCmds.m"
+    },
+    {
+      "address": 232,
+      "reference_names": [
+        "-[IdeController printAtapiInfo:Device:]"
+      ],
+      "size": 208,
+      "source_line": 89,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCntCmds.m"
+    },
+    {
+      "address": 456,
+      "reference_names": [
+        "-[IdeController atapiIdentifyDeviceWaitForDataReady]"
+      ],
+      "size": 192,
+      "source_line": 172,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCntCmds.m"
+    },
+    {
+      "address": 680,
+      "reference_names": [
+        "-[IdeController _atapiIdentifyDevice:addr:]"
+      ],
+      "size": 420,
+      "source_line": 204,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCntCmds.m"
+    },
+    {
+      "address": 1132,
+      "reference_names": [
+        "-[IdeController atapiIdentifyDevice:addr:unit:]"
+      ],
+      "size": 232,
+      "source_line": 269,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCntCmds.m"
+    },
+    {
+      "address": 1412,
+      "reference_names": [
+        "-[IdeController atapiInitParameters:Device:]"
+      ],
+      "size": 308,
+      "source_line": 295,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCntCmds.m"
+    },
+    {
+      "address": 1752,
+      "reference_names": [
+        "-[IdeController atapiCommandPacketSize:]"
+      ],
+      "size": 40,
+      "source_line": 340,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCntCmds.m"
+    },
+    {
+      "address": 1792,
+      "reference_names": [
+        "-[IdeController atapiSoftReset:]"
+      ],
+      "size": 184,
+      "source_line": 356,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCntCmds.m"
+    },
+    {
+      "address": 1992,
+      "reference_names": [
+        "-[IdeController atapiPacketCommand]"
+      ],
+      "size": 280,
+      "source_line": 395,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCntCmds.m"
+    },
+    {
+      "address": 2320,
+      "reference_names": [
+        "-[IdeController sendAtapiCommand:cmdLen:]"
+      ],
+      "size": 88,
+      "source_line": 449,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCntCmds.m"
+    },
+    {
+      "address": 2408,
+      "reference_names": [
+        "-[IdeController dumpStatus:]"
+      ],
+      "size": 236,
+      "source_line": 463,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCntCmds.m"
+    },
+    {
+      "address": 2676,
+      "reference_names": [
+        "-[IdeController atapiExecuteCmd:buffer:client:]"
+      ],
+      "size": 712,
+      "source_line": 487,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCntCmds.m"
+    },
+    {
+      "address": 3420,
+      "reference_names": [
+        "-[IdeController atapiXferPIO:buffer:client:]"
+      ],
+      "size": 660,
+      "source_line": 612,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCntCmds.m"
+    },
+    {
+      "address": 4128,
+      "reference_names": [
+        "-[IdeController atapiXferDMA:buffer:client:]"
+      ],
+      "size": 348,
+      "source_line": 730,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCntCmds.m"
+    },
+    {
+      "address": 4540,
+      "reference_names": [
+        "-[AtapiController initResources:]"
+      ],
+      "size": 344,
+      "source_line": 53,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCntInternal.m"
+    },
+    {
+      "address": 4916,
+      "reference_names": [
+        "-[AtapiController free]"
+      ],
+      "size": 240,
+      "source_line": 92,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCntInternal.m"
+    },
+    {
+      "address": 5640,
+      "reference_names": [
+        "-[AtapiController enqueueAtapiBuf:]"
+      ],
+      "size": 168,
+      "source_line": 189,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCntInternal.m"
+    },
+    {
+      "address": 5824,
+      "reference_names": [
+        "-[AtapiController atapiIoComplete:]"
+      ],
+      "size": 76,
+      "source_line": 213,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCntInternal.m"
+    },
+    {
+      "address": 5916,
+      "reference_names": [
+        "-[AtapiController atapiCmdDispatch:]"
+      ],
+      "size": 212,
+      "source_line": 225,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCntInternal.m"
+    },
+    {
+      "address": 6192,
+      "reference_names": [
+        "-[AtapiController unlockIoQLock]"
+      ],
+      "size": 64,
+      "source_line": 259,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCntInternal.m"
+    },
+    {
+      "address": 6500,
+      "reference_names": [
+        "+[AtapiController probe:]"
+      ],
+      "size": 440,
+      "source_line": 84,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCnt.m"
+    },
+    {
+      "address": 6972,
+      "reference_names": [
+        "+[AtapiController deviceStyle]"
+      ],
+      "size": 16,
+      "source_line": 141,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCnt.m"
+    },
+    {
+      "address": 6988,
+      "reference_names": [
+        "+[AtapiController requiredProtocols]"
+      ],
+      "size": 20,
+      "source_line": 154,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCnt.m"
+    },
+    {
+      "address": 7008,
+      "reference_names": [
+        "-[AtapiController scsiCmdLen:]"
+      ],
+      "size": 164,
+      "source_line": 160,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCnt.m"
+    },
+    {
+      "address": 7172,
+      "reference_names": [
+        "-[AtapiController executeRequest:buffer:client:]"
+      ],
+      "size": 680,
+      "source_line": 209,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCnt.m"
+    },
+    {
+      "address": 7884,
+      "reference_names": [
+        "-[AtapiController maptoAtapiCmd:buffer:]"
+      ],
+      "size": 208,
+      "source_line": 313,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCnt.m"
+    },
+    {
+      "address": 8092,
+      "reference_names": [
+        "-[AtapiController emulateSCSICmd:buffer:]"
+      ],
+      "size": 144,
+      "source_line": 374,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCnt.m"
+    },
+    {
+      "address": 8252,
+      "reference_names": [
+        "-[AtapiController resetSCSIBus]"
+      ],
+      "size": 240,
+      "source_line": 406,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCnt.m"
+    },
+    {
+      "address": 8524,
+      "reference_names": [
+        "-[AtapiController getDMAAlignment:]"
+      ],
+      "size": 36,
+      "source_line": 436,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCnt.m"
+    },
+    {
+      "address": 8560,
+      "reference_names": [
+        "-[AtapiController maxTransfer]"
+      ],
+      "size": 44,
+      "source_line": 451,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCnt.m"
+    },
+    {
+      "address": 8604,
+      "reference_names": [
+        "-[AtapiController property_IODeviceClass:length:]"
+      ],
+      "size": 64,
+      "source_line": 456,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCnt.m"
+    },
+    {
+      "address": 8684,
+      "reference_names": [
+        "-[AtapiController property_IODeviceType:length:]"
+      ],
+      "size": 60,
+      "source_line": 462,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/AtapiCnt.m"
+    },
+    {
+      "address": 8760,
+      "reference_names": [
+        "-[IdeController logToPhys:numOfBlocks:]"
+      ],
+      "size": 292,
+      "source_line": 71,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCntCmds.m"
+    },
+    {
+      "address": 9052,
+      "reference_names": [
+        "-[IdeController ideDiagnose:]"
+      ],
+      "size": 360,
+      "source_line": 111,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCntCmds.m"
+    },
+    {
+      "address": 9444,
+      "reference_names": [
+        "-[IdeController ideSetParams:numHeads:ForDrive:]"
+      ],
+      "size": 284,
+      "source_line": 167,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCntCmds.m"
+    },
+    {
+      "address": 9744,
+      "reference_names": [
+        "-[IdeController ideSetDriveFeature:value:]"
+      ],
+      "size": 304,
+      "source_line": 194,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCntCmds.m"
+    },
+    {
+      "address": 10064,
+      "reference_names": [
+        "-[IdeController ideRestore:]"
+      ],
+      "size": 312,
+      "source_line": 226,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCntCmds.m"
+    },
+    {
+      "address": 10392,
+      "reference_names": [
+        "-[IdeController ideReadGetInfoCommon:client:addr:command:]"
+      ],
+      "size": 524,
+      "source_line": 264,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCntCmds.m"
+    },
+    {
+      "address": 10932,
+      "reference_names": [
+        "-[IdeController ideWrite:client:addr:]"
+      ],
+      "size": 436,
+      "source_line": 354,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCntCmds.m"
+    },
+    {
+      "address": 11384,
+      "reference_names": [
+        "-[IdeController ideReadVerifySeekCommon:command:]"
+      ],
+      "size": 316,
+      "source_line": 415,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCntCmds.m"
+    },
+    {
+      "address": 11716,
+      "reference_names": [
+        "-[IdeController ideSetMultiSectorMode:numSectors:]"
+      ],
+      "size": 312,
+      "source_line": 457,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCntCmds.m"
+    },
+    {
+      "address": 12044,
+      "reference_names": [
+        "-[IdeController ideReadMultiple:client:addr:]"
+      ],
+      "size": 568,
+      "source_line": 503,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCntCmds.m"
+    },
+    {
+      "address": 12628,
+      "reference_names": [
+        "-[IdeController ideWriteMultiple:client:addr:]"
+      ],
+      "size": 560,
+      "source_line": 606,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCntCmds.m"
+    },
+    {
+      "address": 13204,
+      "reference_names": [
+        "-[IdeController ideExecuteCmd:ToDrive:]"
+      ],
+      "size": 1552,
+      "source_line": 414,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 14820,
+      "reference_names": [
+        "-[IdeController isDmaSupported:]"
+      ],
+      "size": 32,
+      "source_line": 480,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 14852,
+      "reference_names": [
+        "-[IdeController initIdeDma:]"
+      ],
+      "size": 236,
+      "source_line": 54,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCntDma.m"
+    },
+    {
+      "address": 15168,
+      "reference_names": [
+        "-[IdeController allocDmaMemory]"
+      ],
+      "size": 200,
+      "source_line": 96,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCntDma.m"
+    },
+    {
+      "address": 15432,
+      "reference_names": [
+        "-[IdeController ideDmaRwCommon:]"
+      ],
+      "size": 252,
+      "source_line": 130,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCntDma.m"
+    },
+    {
+      "address": 15716,
+      "reference_names": [
+        "-[IdeController ideReadWriteDma:fRead:]"
+      ],
+      "size": 412,
+      "source_line": 154,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCntDma.m"
+    },
+    {
+      "address": 16192,
+      "reference_names": [
+        "-[IdeController setupDBDMA:client:length:fRead:]"
+      ],
+      "size": 996,
+      "source_line": 263,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCntDma.m"
+    },
+    {
+      "address": 17236,
+      "reference_names": [
+        "-[IdeController stopDBDMA]"
+      ],
+      "size": 192,
+      "source_line": 414,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCntDma.m"
+    },
+    {
+      "address": 17460,
+      "reference_names": [
+        "-[IdeController fixOHareDMACorruption_1]"
+      ],
+      "size": 328,
+      "source_line": 454,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCntDma.m"
+    },
+    {
+      "address": 17836,
+      "reference_names": [
+        "-[IdeController fixOHareDMACorruption_2]"
+      ],
+      "size": 68,
+      "source_line": 524,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCntDma.m"
+    },
+    {
+      "address": 17920,
+      "reference_names": [
+        "-[IdeController getDBDMATransferCount]"
+      ],
+      "size": 148,
+      "source_line": 538,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCntDma.m"
+    },
+    {
+      "address": 18220,
+      "reference_names": [
+        "-[IdeController checkMediaBayOption:]"
+      ],
+      "size": 188,
+      "source_line": 140,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCntInit.m"
+    },
+    {
+      "address": 18456,
+      "reference_names": [
+        "-[IdeController controllerPresent]"
+      ],
+      "size": 184,
+      "source_line": 189,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCntInit.m"
+    },
+    {
+      "address": 18640,
+      "reference_names": [
+        "-[IdeController ideControllerInit:]"
+      ],
+      "size": 928,
+      "source_line": 240,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCntInit.m"
+    },
+    {
+      "address": 19664,
+      "reference_names": [
+        "-[IdeController ideDetectDrive:]"
+      ],
+      "size": 252,
+      "source_line": 372,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCntInit.m"
+    },
+    {
+      "address": 19948,
+      "reference_names": [
+        "-[IdeController ideDetectATAPIDevice:]"
+      ],
+      "size": 196,
+      "source_line": 417,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCntInit.m"
+    },
+    {
+      "address": 20252,
+      "reference_names": [
+        "-[IdeController ideReset]"
+      ],
+      "size": 252,
+      "source_line": 450,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCntInit.m"
+    },
+    {
+      "address": 20568,
+      "reference_names": [
+        "-[IdeController resetAndInit]"
+      ],
+      "size": 520,
+      "source_line": 497,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCntInit.m"
+    },
+    {
+      "address": 21120,
+      "reference_names": [
+        "-[IdeController getTransferModes:Unit:]"
+      ],
+      "size": 536,
+      "source_line": 584,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCntInit.m"
+    },
+    {
+      "address": 22336,
+      "reference_names": [
+        "-[IdeController setATADriveCapabilities:]"
+      ],
+      "size": 832,
+      "source_line": 973,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCntInit.m"
+    },
+    {
+      "address": 23328,
+      "reference_names": [
+        "-[IdeController endianSwapIdentifyData:]"
+      ],
+      "size": 272,
+      "source_line": 1106,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCntInit.m"
+    },
+    {
+      "address": 23632,
+      "reference_names": [
+        "-[IdeController assignRegisterAddresses:]"
+      ],
+      "size": 216,
+      "source_line": 1140,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCntInit.m"
+    },
+    {
+      "address": 23864,
+      "reference_names": [
+        "+[IdeController probe:]"
+      ],
+      "size": 432,
+      "source_line": 107,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 24344,
+      "reference_names": [
+        "-[IdeController ideWaitForInterrupt:ideStatus:]"
+      ],
+      "size": 252,
+      "source_line": 217,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 24644,
+      "reference_names": [
+        "-[IdeController clearInterrupts]"
+      ],
+      "size": 88,
+      "source_line": 271,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 24748,
+      "reference_names": [
+        "-[IdeController waitForNotBusy]"
+      ],
+      "size": 188,
+      "source_line": 294,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 24968,
+      "reference_names": [
+        "-[IdeController waitForDeviceReady]"
+      ],
+      "size": 192,
+      "source_line": 317,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 25192,
+      "reference_names": [
+        "-[IdeController waitForDataReady]"
+      ],
+      "size": 192,
+      "source_line": 339,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 25416,
+      "reference_names": [
+        "-[IdeController ataIdeReadGetInfoCommonWaitForDataReady]"
+      ],
+      "size": 192,
+      "source_line": 369,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 25640,
+      "reference_names": [
+        "-[IdeController enableInterrupts]"
+      ],
+      "size": 28,
+      "source_line": 392,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 25668,
+      "reference_names": [
+        "-[IdeController disableInterrupts]"
+      ],
+      "size": 28,
+      "source_line": 398,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 25696,
+      "reference_names": [
+        "-[IdeController setInterruptTimeOut:]"
+      ],
+      "size": 16,
+      "source_line": 404,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 25712,
+      "reference_names": [
+        "-[IdeController interruptTimeOut]"
+      ],
+      "size": 16,
+      "source_line": 409,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 25728,
+      "reference_names": [
+        "-[IdeController getIdeRegisters:Print:]"
+      ],
+      "size": 260,
+      "source_line": 423,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 26020,
+      "reference_names": [
+        "-[IdeController xferData:read:client:length:]"
+      ],
+      "size": 1420,
+      "source_line": 453,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 27504,
+      "reference_names": [
+        "-[IdeController isMultiSectorAllowed:]"
+      ],
+      "size": 32,
+      "source_line": 459,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 27536,
+      "reference_names": [
+        "-[IdeController getMultiSectorValue:]"
+      ],
+      "size": 48,
+      "source_line": 464,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 27620,
+      "reference_names": [
+        "-[IdeController setTransferMode:]"
+      ],
+      "size": 136,
+      "source_line": 634,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 27772,
+      "reference_names": [
+        "-[IdeController ideCntrlrLock]"
+      ],
+      "size": 44,
+      "source_line": 662,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 27832,
+      "reference_names": [
+        "-[IdeController ideCntrlrUnLock]"
+      ],
+      "size": 44,
+      "source_line": 667,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 27892,
+      "reference_names": [
+        "-[IdeController atapiCntrlrLock]"
+      ],
+      "size": 44,
+      "source_line": 682,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 27952,
+      "reference_names": [
+        "-[IdeController atapiCntrlrUnLock]"
+      ],
+      "size": 44,
+      "source_line": 687,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 28012,
+      "reference_names": [
+        "-[IdeController numDevices]"
+      ],
+      "size": 16,
+      "source_line": 696,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 28028,
+      "reference_names": [
+        "-[IdeController isAtapiDevice:]"
+      ],
+      "size": 44,
+      "source_line": 701,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 28072,
+      "reference_names": [
+        "-[IdeController isAtapiCommandActive:]"
+      ],
+      "size": 28,
+      "source_line": 709,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 28100,
+      "reference_names": [
+        "-[IdeController setAtapiCommandActive:forUnit:]"
+      ],
+      "size": 24,
+      "source_line": 714,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 28124,
+      "reference_names": [
+        "-[IdeController drivePowerState]"
+      ],
+      "size": 16,
+      "source_line": 722,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 28140,
+      "reference_names": [
+        "-[IdeController setDrivePowerState:]"
+      ],
+      "size": 16,
+      "source_line": 727,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 28156,
+      "reference_names": [
+        "-[IdeController putDriveToSleep]"
+      ],
+      "size": 104,
+      "source_line": 732,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 28276,
+      "reference_names": [
+        "-[IdeController wakeUpDrive]"
+      ],
+      "size": 104,
+      "source_line": 752,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 28396,
+      "reference_names": [
+        "-[IdeController spinUpDrive:]"
+      ],
+      "size": 424,
+      "source_line": 770,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 28868,
+      "reference_names": [
+        "-[IdeController startUpAttachedDevices]"
+      ],
+      "size": 216,
+      "source_line": 817,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 29100,
+      "reference_names": [
+        "-[IdeController getPowerState:]"
+      ],
+      "size": 16,
+      "source_line": 835,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 29116,
+      "reference_names": [
+        "-[IdeController setPowerState:]"
+      ],
+      "size": 72,
+      "source_line": 840,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 29204,
+      "reference_names": [
+        "-[IdeController getPowerManagement:]"
+      ],
+      "size": 16,
+      "source_line": 853,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 29220,
+      "reference_names": [
+        "-[IdeController setPowerManagement:]"
+      ],
+      "size": 16,
+      "source_line": 858,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 29236,
+      "reference_names": [
+        "-[IdeController property_IODeviceClass:length:]"
+      ],
+      "size": 64,
+      "source_line": 863,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    },
+    {
+      "address": 29316,
+      "reference_names": [
+        "-[IdeController property_IODeviceType:length:]"
+      ],
+      "size": 60,
+      "source_line": 869,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvPPCATA/IdeCnt.m"
+    }
+  ],
+  "reference_sha256": "734464DC6604C7430761D95E3FA2D51C3C5A9E38956FD847B15390CD3448F597",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 21672,
+      "reference_names": [
+        "-[IdeController calcIdeConfigWord:]"
+      ],
+      "size": 616
+    },
+    {
+      "address": 27584,
+      "reference_names": [
+        "-[IdeController setTransferRate:]"
+      ],
+      "size": 36
+    },
+    {
+      "address": 29392,
+      "reference_names": [
+        "-[IdeDisk printInfo:unit:]"
+      ],
+      "size": 276
+    },
+    {
+      "address": 29716,
+      "reference_names": [
+        "-[IdeDisk ideDiskInit:target:]"
+      ],
+      "size": 1004
+    },
+    {
+      "address": 30816,
+      "reference_names": [
+        "-[IdeDisk initResources:]"
+      ],
+      "size": 104
+    },
+    {
+      "address": 30952,
+      "reference_names": [
+        "-[IdeDisk free]"
+      ],
+      "size": 272
+    },
+    {
+      "address": 31272,
+      "reference_names": [
+        "-[IdeDisk allocIdeBuf:]"
+      ],
+      "size": 268
+    },
+    {
+      "address": 31588,
+      "reference_names": [
+        "-[IdeDisk freeIdeBuf:]"
+      ],
+      "size": 128
+    },
+    {
+      "address": 31732,
+      "reference_names": [
+        "-[IdeDisk ideXfrIoReq:]"
+      ],
+      "size": 192
+    },
+    {
+      "address": 31940,
+      "reference_names": [
+        "-[IdeDisk initIdeDrive]"
+      ],
+      "size": 188
+    },
+    {
+      "address": 32144,
+      "reference_names": [
+        "-[IdeDisk deviceRwCommon:block:length:buffer:client:pending:actualLength:]"
+      ],
+      "size": 512
+    },
+    {
+      "address": 32688,
+      "reference_names": [
+        "-[IdeDisk enqueueIdeBuf:]"
+      ],
+      "size": 228
+    },
+    {
+      "address": 32932,
+      "reference_names": [
+        "-[IdeDisk ideIoComplete:]"
+      ],
+      "size": 144
+    },
+    {
+      "address": 33092,
+      "reference_names": [
+        "-[IdeDisk ideCmdDispatch:]"
+      ],
+      "size": 524
+    },
+    {
+      "address": 33680,
+      "reference_names": [
+        "-[IdeDisk ideRwCommon:]"
+      ],
+      "size": 544
+    },
+    {
+      "address": 34272,
+      "reference_names": [
+        "-[IdeDisk logRwErr:block:status:readFlag:]"
+      ],
+      "size": 172
+    },
+    {
+      "address": 34492,
+      "reference_names": [
+        "-[IdeDisk unlockIoQLock]"
+      ],
+      "size": 120
+    },
+    {
+      "address": 35116,
+      "reference_names": [
+        "+[IdeDisk requiredProtocols]"
+      ],
+      "size": 20
+    },
+    {
+      "address": 35136,
+      "reference_names": [
+        "+[IdeDisk deviceStyle]"
+      ],
+      "size": 16
+    },
+    {
+      "address": 35152,
+      "reference_names": [
+        "+[IdeDisk probe:]"
+      ],
+      "size": 556
+    },
+    {
+      "address": 35756,
+      "reference_names": [
+        "-[IdeDisk getDevicePath:maxLength:useAlias:]"
+      ],
+      "size": 204
+    },
+    {
+      "address": 36040,
+      "reference_names": [
+        "-[IdeDisk matchDevicePath:]"
+      ],
+      "size": 188
+    },
+    {
+      "address": 36292,
+      "reference_names": [
+        "-[IdeDisk property_IOUnit:length:]"
+      ],
+      "size": 72
+    },
+    {
+      "address": 36396,
+      "reference_names": [
+        "+[IdeDisk hd_devsw_init:]"
+      ],
+      "size": 328
+    },
+    {
+      "address": 36756,
+      "reference_names": [
+        "-[IdeDisk readAt:length:buffer:actualLength:client:]"
+      ],
+      "size": 76
+    },
+    {
+      "address": 36848,
+      "reference_names": [
+        "-[IdeDisk readAsyncAt:length:buffer:pending:client:]"
+      ],
+      "size": 104
+    },
+    {
+      "address": 36968,
+      "reference_names": [
+        "-[IdeDisk writeAt:length:buffer:actualLength:client:]"
+      ],
+      "size": 76
+    },
+    {
+      "address": 37060,
+      "reference_names": [
+        "-[IdeDisk writeAsyncAt:length:buffer:pending:client:]"
+      ],
+      "size": 104
+    },
+    {
+      "address": 37180,
+      "reference_names": [
+        "-[IdeDisk updatePhysicalParameters]"
+      ],
+      "size": 16
+    },
+    {
+      "address": 37196,
+      "reference_names": [
+        "-[IdeDisk abortRequest]"
+      ],
+      "size": 144
+    },
+    {
+      "address": 37356,
+      "reference_names": [
+        "-[IdeDisk diskBecameReady]"
+      ],
+      "size": 76
+    },
+    {
+      "address": 37448,
+      "reference_names": [
+        "-[IdeDisk isDiskReady:]"
+      ],
+      "size": 16
+    },
+    {
+      "address": 37464,
+      "reference_names": [
+        "-[IdeDisk updateReadyState]"
+      ],
+      "size": 40
+    },
+    {
+      "address": 37520,
+      "reference_names": [
+        "-[IdeDisk ejectPhysical]"
+      ],
+      "size": 16
+    },
+    {
+      "address": 37536,
+      "reference_names": [
+        "-[IdeDisk deviceOpen:]"
+      ],
+      "size": 16
+    },
+    {
+      "address": 37552,
+      "reference_names": [
+        "-[IdeDisk deviceClose]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 37564,
+      "reference_names": [
+        "-[IdeDisk ideGetDriveInfo]"
+      ],
+      "size": 60
+    },
+    {
+      "address": 37624,
+      "reference_names": [
+        "-[IdeDisk cntrlr]"
+      ],
+      "size": 16
+    },
+    {
+      "address": 37640,
+      "reference_names": [
+        "-[IdeDisk driveNum]"
+      ],
+      "size": 16
+    },
+    {
+      "address": 37656,
+      "reference_names": [
+        "-[IdeDisk getIntValues:forParameter:count:]"
+      ],
+      "size": 248
+    },
+    {
+      "address": 41884,
+      "reference_names": [
+        "+[drvPPCATAKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 20
+    },
+    {
+      "address": 41904,
+      "reference_names": [
+        "+[drvPPCATAVersion driverKitVersionFordrvPPCATA]"
+      ],
+      "size": 16
+    }
+  ]
+}

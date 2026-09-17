@@ -17,12 +17,12 @@
 /*
  * Release cylinder cache.
  */
-- (void)_releaseCache;
+- (void)releaseCache;
 
 /*
  * Set up cylinder cache.
  */
-- (BOOL)_setUpCache;
+- (BOOL)setUpCache;
 
 @end
 

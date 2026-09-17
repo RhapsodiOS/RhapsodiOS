@@ -116,9 +116,14 @@ initialize_slave(
     outb(INTR2_PRIMARY_PORT, tconv.iodata);
 }
 
+/*
+ * EOI is directed at one PIC at a time.  A cascaded interrupt needs two
+ * commands -- the slave, then the master's cascade input -- and an
+ * interrupt on the master needs only one.
+ */
 static inline
 void
-send_eoi_command(
+send_master_eoi_command(
     intr_ocw2_t		ocw2
 )
 {
@@ -127,6 +132,18 @@ send_eoi_command(
     tconv.ocw2 = ocw2;
 
     outb(INTR_PRIMARY_PORT, tconv.iodata);
+}
+
+static inline
+void
+send_slave_eoi_command(
+    intr_ocw2_t		ocw2
+)
+{
+    cw_conv_t		tconv;
+
+    tconv.ocw2 = ocw2;
+
     outb(INTR2_PRIMARY_PORT, tconv.iodata);
 }
 

@@ -1,0 +1,124 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 10972,
+      "reference_names": [
+        "_main"
+      ],
+      "size": 592,
+      "source_line": 34,
+      "source_path": "src/drvSCSITape/PostLoad.tproj/PostLoad.m"
+    }
+  ],
+  "reference_sha256": "A6025294E3E1AB96270BBE3AFAD73A3885C7C5F44644241E44DD553632699F87",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 10424,
+      "reference_names": [
+        "start"
+      ],
+      "size": 48
+    },
+    {
+      "address": 10476,
+      "reference_names": [
+        "__start"
+      ],
+      "size": 320
+    },
+    {
+      "address": 10796,
+      "reference_names": [
+        "__call_mod_init_funcs"
+      ],
+      "size": 76
+    },
+    {
+      "address": 10872,
+      "reference_names": [
+        "__dyld_init_check"
+      ],
+      "size": 60
+    },
+    {
+      "address": 10932,
+      "reference_names": [
+        "dyld_stub_binding_helper"
+      ],
+      "size": 24
+    },
+    {
+      "address": 10956,
+      "reference_names": [
+        "__dyld_func_lookup"
+      ],
+      "size": 16
+    },
+    {
+      "address": 11964,
+      "reference_names": [
+        "_exit"
+      ],
+      "size": 36
+    },
+    {
+      "address": 12000,
+      "reference_names": [
+        "__objcInit"
+      ],
+      "size": 36
+    },
+    {
+      "address": 12036,
+      "reference_names": [
+        "_mknod"
+      ],
+      "size": 36
+    },
+    {
+      "address": 12072,
+      "reference_names": [
+        "_umask"
+      ],
+      "size": 36
+    },
+    {
+      "address": 12108,
+      "reference_names": [
+        "_unlink"
+      ],
+      "size": 36
+    },
+    {
+      "address": 12144,
+      "reference_names": [
+        "_printf"
+      ],
+      "size": 36
+    },
+    {
+      "address": 12180,
+      "reference_names": [
+        "_sprintf"
+      ],
+      "size": 36
+    },
+    {
+      "address": 12216,
+      "reference_names": [
+        "_bzero"
+      ],
+      "size": 36
+    },
+    {
+      "address": 12252,
+      "reference_names": [
+        "_objc_msgSend"
+      ],
+      "size": 36
+    }
+  ]
+}

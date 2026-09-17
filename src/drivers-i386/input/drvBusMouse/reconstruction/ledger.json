@@ -1,0 +1,340 @@
+{
+  "entries": [
+    {
+      "address": 0,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure; angr additionally reports one-to-three-byte fragments on the inter-function and interior nop alignment padding as function starts and splits basic blocks more finely (see divergences.md, analyzer agreement)",
+          "fix pass: static was dropped so the symbol is external in __TEXT,__text exactly as the reference's is (divergences.md Finding 5), and the masked low-nibble copy at 47 is now written explicitly as lowBits = changed & 0x0F and read by the three later bit tests. The rebuilt stream was disassembled with capstone and compared against the reference at 0-108: the same seeding inb(0x23E), the same 0xF000 loop accumulating the OR of consecutive-sample XORs, and the same 5/4/3/2/0 ladder. Residual, accepted: 52 instructions against the reference's 44 and 124 bytes against 112, because gcc spills the masked copy to [ebp-8] and reloads it before each bit test where the reference keeps it in cl and the result in ebx. Register allocation only, which is why this is intentional-mismatch rather than assembly-matched",
+          "full disassembly read instruction by instruction at 0-108: inb(0x23E) once, then 0xF000 more reads accumulating the OR of consecutive-sample XORs, then a nested if ladder decoding bit 0 to IRQ 5, bit 1 to IRQ 4, bit 2 to IRQ 3, bit 3 to IRQ 2 and 0 otherwise. Pre-fix survey: the algorithm in our source already matched, but the symbol was static where the reference's is global (divergences.md Finding 5) and the 'and cl, 0Fh' masked copy at 47 had no counterpart. Both were corrected; see the fix-pass reason above"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_GetIRQFromBoard"
+      ],
+      "reason": "Rebuilt stream disassembled and compared against the reference: same 44-instruction sequence, same port 0x23E, same 0xF000 count, same masked-copy and 5/4/3/2/0 ladder. Residual: gcc spills the masked nibble copy to [ebp-8] where the reference keeps it in cl, costing 8 extra instructions and 12 bytes (124 vs 112). Register allocation only; no structural difference remains.",
+      "reviewer": "Pat Raynor",
+      "size": 109,
+      "source_line": 71,
+      "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m",
+      "status": "intentional-mismatch"
+    },
+    {
+      "address": 112,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure; angr additionally reports one-to-three-byte fragments on the inter-function and interior nop alignment padding as function starts and splits basic blocks more finely (see divergences.md, analyzer agreement)",
+          "fix pass: IODelay(30) was replaced by us_spin(30000), so the probe now waits the 30 milliseconds the reference waits (divergences.md Finding 9); _us_spin is an undefined import of the rebuilt object and neither _IODelay nor _IOSleep is. Both IOLog strings were rewritten to the reference's wording, including the space in 'Bus Mouse : ' (Finding 4), and the two failure paths were merged onto one shared return NO so the block order matches (Finding 19). The rebuilt stream was disassembled with capstone and compared against the reference at 112-240: identical instruction sequence and identical encoding lengths throughout, differing only in the __cstring addresses. Size is exactly the reference's 132",
+          "full disassembly read instruction by instruction at 112-240: outb(0x23F, 0x91), us_spin(30000), outb(0x23D, 0xA5), inb(0x23D) compared against 0xA5, then [deviceDescription interrupt] against GetIRQFromBoard(). Pre-fix survey: our source waited IODelay(30), 30 microseconds against the reference's 30 milliseconds, and both IOLog strings were our own wording (divergences.md Findings 4, 6, 9). All were corrected; see the fix-pass reason above"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[BusMouse validConfiguration:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 129,
+      "source_line": 111,
+      "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 244,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure; angr additionally reports one-to-three-byte fragments on the inter-function and interior nop alignment padding as function starts and splits basic blocks more finely (see divergences.md, analyzer agreement)",
+          "fix pass: the handler now returns void with arg never read (divergences.md Finding 7), _event and _summedEvent are 12-byte PCPointerEvent objects at the reference's __bss addresses (Finding 3), and the transcribed ioPortCount increments are gone (Finding 6). The rebuilt stream was disassembled with capstone and compared against the reference at 244-649: all ten port accesses, the doubled outb(0x23E, 0x80), the active-low button decode, the split-nibble X, the negated Y, the four-way change test, both the busy-accumulate and the post-and-clear paths, and every __bss offset match. Residual, accepted: 115 instructions against 117 and 400 bytes against 408, because the reference widens the left-button value before the xor 1 where gcc does it at byte width, the reference spills the shifted right-button byte to [ebp-8] where gcc keeps it in a register, and gcc emits one extra and al, 1 in the rightButton bitfield store. Register allocation only, which is why this is intentional-mismatch",
+          "full disassembly read instruction by instruction at 244-649: the six outb writes to 0x23E (0x80 twice, 0xA0, 0xC0, 0xE0, 0x00) and four inb reads of 0x23C, the active-low button decode from bits 7 and 5, the split-nibble X and negated Y, the four-way change test, and the busy-accumulate versus post-and-clear split around _higherLevelsBusy. Pre-fix survey: our handler returned a value where the reference's returns void, _summedEvent was an unsigned int plus two loose chars rather than a 12-byte PCPointerEvent, and our ioPortCount increments were a transcribed decompiler artifact (divergences.md Findings 3, 6, 7). All were corrected; see the fix-pass reason above"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_MouseIntHandler"
+      ],
+      "reason": "Rebuilt stream disassembled and compared against the reference: all ten port accesses, the doubled outb(0x23E,0x80), the split-nibble X, the negated Y, the four-way change test, the busy-accumulate and post-and-clear paths and every _bss offset match. Residual: ours is 8 bytes SMALLER (400 vs 408) because gcc widens the left-button value after the XOR rather than before and keeps the right-button intermediate in a register where the reference spilled it to [ebp-8], offset by one extra mask in the rightButton bitfield store.",
+      "reviewer": "Pat Raynor",
+      "size": 406,
+      "source_line": 147,
+      "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m",
+      "status": "intentional-mismatch"
+    },
+    {
+      "address": 652,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure; angr additionally reports one-to-three-byte fragments on the inter-function and interior nop alignment padding as function starts and splits basic blocks more finely (see divergences.md, analyzer agreement)",
+          "fix pass: BusMouse now derives from PCPointer with no ivars of its own (divergences.md Finding 1), so the nil-checked send goes to target at +0x128 rather than to an invented mouseEventPort. The rebuilt stream was disassembled with capstone and compared against the reference at 652-704: identical instruction sequence and identical encoding lengths, including the nil test on [self+0x128], the dispatchPointerEvent: send with &_event, and the _higherLevelsBusy = 0 store on both paths. Size is exactly the reference's 56",
+          "full disassembly read instruction by instruction at 652-704: nil-check [self+0x128], [target dispatchPointerEvent:&_event], then _higherLevelsBusy = 0 on both paths. Pre-fix survey: the control-flow shape was already correct in our source, but the ivar our code messaged was an invented mouseEventPort at 0x130 where the reference messages PCPointer's target at 0x128 (divergences.md Finding 1). Corrected; see the fix-pass reason above"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[BusMouse interruptHandler]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 53,
+      "source_line": 208,
+      "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 708,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure; angr additionally reports one-to-three-byte fragments on the inter-function and interior nop alignment padding as function starts and splits basic blocks more finely (see divergences.md, analyzer agreement)",
+          "fix pass: the invented 36-byte interrupt_msg_t was replaced by a bare msg_header_t (divergences.md Finding 8), so msg_size is written at +4, msg_local_port at +0x0C and the message ID is read from +0x14, and the receive is tested against RCV_SUCCESS. The IOLog strings were rewritten to the reference's wording (Finding 4). The rebuilt stream was disassembled with capstone and compared against the reference at 708-830: identical instruction sequence and identical encoding lengths, including the 24-byte msg_size, the 0x232325 message-ID compare and the port compare. Size is exactly the reference's 124",
+          "full disassembly read instruction by instruction at 708-830: [driver interruptPort], then an unterminated loop setting msg_size to 24 and msg_local_port before msg_receive(&msg, 0, 0), testing msg_id at +0x14 against 0x232325 and msg_local_port at +0x0C against the port. Pre-fix survey: the reference's buffer is a bare 24-byte msg_header_t where our source invented a 36-byte interrupt_msg_t and read the message ID from offset 32, and both IOLog strings were our own wording (divergences.md Findings 4, 8). All were corrected; see the fix-pass reason above"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_BusMouseThread"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 123,
+      "source_line": 220,
+      "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 832,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure; angr additionally reports one-to-three-byte fragments on the inter-function and interior nop alignment padding as function starts and splits basic blocks more finely (see divergences.md, analyzer agreement)",
+          "fix pass: the method now returns BOOL with 1 = success (divergences.md Finding 2) on a class re-parented to PCPointer whose ivars sit at 0x128/0x12C/0x130 (Finding 1), the resolution is parsed with PCPatoi rather than strtoul (Finding 12), the seven static initializations are the reference's set in the reference's order and _event is left untouched (Finding 13), the four IOLog strings are the reference's wording (Finding 4), and the Inverted parse is written in the positive form the reference branches on (Finding 17). The rebuilt stream was disassembled with capstone and compared against the reference at 832-1223: identical instruction sequence and identical encoding lengths throughout. Size is exactly the reference's 392",
+          "full disassembly read instruction by instruction at 832-1223: validConfiguration: gate, setName:/setDeviceKind: with the literal BusMouse, [[self deviceDescription] configTable], the Inverted y/Y parse into the byte at 0x130, the Resolution parse via PCPatoi with 400 as the default, seven static initializations, enableAllInterrupts, outb(0x23E, 0) and IOForkThread(BusMouseThread, self). Pre-fix survey: the reference returns BOOL with 1 = success where ours returned IOReturn with inverted polarity, it parses with PCPatoi not strtoul, our code read ivars one slot lower, it cleared _event's timestamp rather than _summedEvent's, and four IOLog strings were our own wording (divergences.md Findings 1, 2, 3, 4, 12, 13). All were corrected; see the fix-pass reason above"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[BusMouse mouseInit:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 392,
+      "source_line": 244,
+      "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 1224,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure; angr additionally reports one-to-three-byte fragments on the inter-function and interior nop alignment padding as function starts and splits basic blocks more finely (see divergences.md, analyzer agreement)",
+          "full disassembly read instruction by instruction at 1224-1264: the objc_super struct is built on the stack from self and the class's super_class field and passed to objc_msgSendSuper with @selector(free). Our bare '- free' returning [super free] compiles to exactly this byte for byte, and the super_class field reference is the same instruction whatever the superclass is, so it stays matched after the re-parent"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[BusMouse free]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 41,
+      "source_line": 298,
+      "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 1268,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure; angr additionally reports one-to-three-byte fragments on the inter-function and interior nop alignment padding as function starts and splits basic blocks more finely (see divergences.md, analyzer agreement)",
+          "full disassembly read instruction by instruction at 1268-1306: *handler = _MouseIntHandler, *ipl = 3, *argument = 0xDEADBEEF, return 1; forInterrupt: is never read. Our body compiles to this byte for byte. The fix pass retyped argument: as unsigned int * (divergences.md Finding 2), so the selector's type encoding now matches the reference's too and __OBJC,__meth_var_types is an identical set. Identical to drvPS2Mouse's at the identical reference size of 40"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[BusMouse getHandler:level:argument:forInterrupt:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 39,
+      "source_line": 303,
+      "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 1308,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure; angr additionally reports one-to-three-byte fragments on the inter-function and interior nop alignment padding as function starts and splits basic blocks more finely (see divergences.md, analyzer agreement)",
+          "fix pass: the re-parent to PCPointer puts resolution at +0x12C where the reference reads it, and the method now returns int (divergences.md Findings 1, 2). The rebuilt stream was disassembled with capstone and compared against the reference at 1308-1323: the same single load of [self+0x12C], byte for byte. Size is exactly the reference's 16",
+          "full disassembly read instruction by instruction at 1308-1323: a single load of the ivar at [self+0x12C]. Pre-fix survey: our source read the right field but our ivar layout put resolution at 0x128, so the emitted displacement differed, and the reference returns int where ours returned unsigned int (divergences.md Findings 1, 2). Both were corrected; see the fix-pass reason above. Identical to drvPS2Mouse's at the identical reference size of 16"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[BusMouse getResolution]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 16,
+      "source_line": 314,
+      "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 1324,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure; angr additionally reports one-to-three-byte fragments on the inter-function and interior nop alignment padding as function starts and splits basic blocks more finely (see divergences.md, analyzer agreement)",
+          "fix pass: the no-match path now returns IO_R_UNSUPPORTED, emitting mov eax, 0FFFFFD39h like the reference (divergences.md Finding 10), the re-parent puts resolution at +0x12C and inverted at +0x130 (Finding 1), and the hand-unrolled character-compare loop was replaced by strcmp against RESOLUTION and INVERTED, which is what the reference's cld; repe cmpsb expansion actually compiles from (Finding 18). The rebuilt stream was disassembled with capstone and compared against the reference at 1324-1416: identical instruction sequence and identical encoding lengths, including repe cmpsb with ecx = 11 then ecx = 9 and the sign-extended byte read of inverted. Size is exactly the reference's 96, down from 128",
+          "full disassembly read instruction by instruction at 1324-1416: fixed-length repe cmpsb against Resolution with ecx = 11 then Inverted with ecx = 9, both including the terminating NUL; resolution read from 0x12C, inverted sign-extended from the byte at 0x130; count never touched. Pre-fix survey: the no-match path returns IO_R_UNSUPPORTED (-711) where ours returned IO_R_INVALID_ARG (-706), and both ivar displacements were one slot off (divergences.md Findings 1, 10). Both were corrected; see the fix-pass reason above. Identical to drvPS2Mouse's at the identical reference size of 96"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[BusMouse getIntValues:forParameter:count:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 93,
+      "source_line": 319,
+      "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 1420,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure; angr additionally reports one-to-three-byte fragments on the inter-function and interior nop alignment padding as function starts and splits basic blocks more finely (see divergences.md, analyzer agreement)",
+          "fix pass: the no-match path now returns IO_R_UNSUPPORTED (divergences.md Finding 10), the re-parent puts the ivars at +0x12C and +0x130 and target at +0x128 (Finding 1), and both compares are strcmp rather than the unrolled loop (Finding 18). The unguarded send to target was kept deliberately and drvPS2Mouse's target != nil guards were not copied across (Finding 11). The rebuilt stream was disassembled with capstone and compared against the reference at 1420-1565: both repe cmpsb comparisons at 11 and 9 bytes, resolution written to +0x12C and re-read through [self getResolution], inverted written to +0x130 and forwarded sign-extended, and the single unguarded objc_msgSend to target at +0x128 shared by both branches. Residual, accepted: 52 instructions against 56 and 136 bytes against 148, because the reference spills both the parameterArray pointer and the compare count to the stack where gcc hoists the load and keeps the count immediate. Code generation only, which is why this is intentional-mismatch; drvPS2Mouse's verified setIntValues: lands on the same 136",
+          "full disassembly read instruction by instruction at 1420-1565: the same two fixed-length repe cmpsb comparisons, resolution written from *parameterArray and then re-read through [self getResolution], inverted written as a char and forwarded sign-extended, and both branches converging on one unguarded objc_msgSend to target at 0x128. Pre-fix survey: the no-match path returns IO_R_UNSUPPORTED where ours returned IO_R_INVALID_ARG, and the ivar displacements were one slot off (divergences.md Findings 1, 10); both were corrected. Our source's lack of a target nil check was already correct and must not be changed to drvPS2Mouse's guarded form (divergences.md Finding 11). Identical to drvPS2Mouse's at the identical reference size of 148"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[BusMouse setIntValues:forParameter:count:]"
+      ],
+      "reason": "Rebuilt stream disassembled and compared against the reference: both repe cmpsb comparisons at 11 and 9 bytes, resolution written to +0x12C and re-read through [self getResolution], inverted written to +0x130 and forwarded sign-extended, and the single unguarded objc_msgSend to target at +0x128 shared by both branches. Residual: ours is 12 bytes SMALLER (136 vs 148) because gcc hoists the parameterArray load and keeps the compare count immediate where the reference spilled both to the stack.",
+      "reviewer": "Pat Raynor",
+      "size": 146,
+      "source_line": 337,
+      "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m",
+      "status": "intentional-mismatch"
+    },
+    {
+      "address": 1568,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on address and size; Ghidra does not detect this function at all (see divergences.md, analyzer agreement). IDA is authoritative for the partition",
+          "full disassembly read at 1568-1579: loads the address of _BusMouse_instance (0x2030) into eax"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[BusMouseKernelServerInstance kernelServerInstance]"
+      ],
+      "reason": "build-generated Kernel Server glue emitted by the Kernel Server project type and Load_Commands.sect, not present in source; returns &_BusMouse_instance",
+      "reviewer": "binrecon-task-11",
+      "size": 12,
+      "source_line": null,
+      "source_path": null,
+      "status": "intentional-mismatch"
+    },
+    {
+      "address": 1580,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure",
+          "full disassembly read at 1580-1591: loads the constant 500 (0x1F4) into eax"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[BusMouseVersion driverKitVersionForBusMouse]"
+      ],
+      "reason": "build-generated Kernel Server glue emitted by the Kernel Server project type and Load_Commands.sect, not present in source; returns the DriverKit version 500",
+      "reviewer": "binrecon-task-11",
+      "size": 12,
+      "source_line": null,
+      "source_path": null,
+      "status": "intentional-mismatch"
+    }
+  ],
+  "rebuilt_sha256": null,
+  "reference_sha256": "A1AAB49F4D9F2BA90B4D7105F3D76BBF054F6D2D150B041D2156FC4F75E71864",
+  "schema_version": "ledger-v1"
+}

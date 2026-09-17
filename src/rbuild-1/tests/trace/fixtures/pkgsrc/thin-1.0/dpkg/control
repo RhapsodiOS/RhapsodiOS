@@ -1,0 +1,6 @@
+Package: thin
+Maintainer: Test <t@x>
+Version: 1.0
+Architecture: i386
+Description: Thin trace fixture
+Build-Depends: build-base

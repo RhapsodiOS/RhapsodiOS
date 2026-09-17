@@ -1,4 +1,4 @@
-"Port Server" = "Port Server";
+"PortServer" = "Port Server";
 "Long Name" = "TTY Port Server";
 "Port Name 0" = "Serial A";
 "Port Name 1" = "Serial B";

@@ -28,7 +28,7 @@ LIBS =
 FRAMEWORKS =
 
 # Source files to compile
-MFILES = AIC6X60Controller.m AIC6X60Thread.m AIC6X60Routines.m
+MFILES = AIC6X60Controller.m AIC6X60Thread.m
 
 # Header files
 HFILES = AIC6X60Controller.h AIC6X60ControllerPrivate.h \

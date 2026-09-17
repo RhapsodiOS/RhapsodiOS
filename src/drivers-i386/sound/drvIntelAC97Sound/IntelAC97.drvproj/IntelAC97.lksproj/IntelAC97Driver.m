@@ -26,8 +26,20 @@
 #import <kernserv/i386/spl.h>
 
 #import "IntelAC97Driver.h"
+#import "ICHAC97Controller.h"
 #import "ac97var.h"
 #import "ac97reg.h"
+
+#ifndef PCI_COMMAND_IO_ENABLE
+#define PCI_COMMAND_IO_ENABLE     0x0001
+#define PCI_COMMAND_MEM_ENABLE    0x0002
+#define PCI_COMMAND_MASTER_ENABLE 0x0004
+#endif
+#ifndef PCI_BASE_IO_BIT
+#define PCI_BASE_IO_BIT           0x01
+#endif
+
+#define ICH97_PCI_BASE_IO(x) ((unsigned int)((x) & ~3UL))
 
 /* PCI Vendor/Device IDs for Intel ICH chipsets */
 #define PCI_VENDOR_INTEL                0x8086
@@ -71,9 +83,6 @@
 #define ICH_REG_GLOB_STA                0x30    /* Global Status */
 #define ICH_REG_ACC_SEMA                0x34    /* Access Semaphore */
 
-/* ICH Register offsets - Mixer (NAMBAR) */
-#define ICH_MIXER_RESET                 AC97_REG_RESET
-
 /* Control Register bits */
 #define ICH_CR_RPBM                     0x01    /* Run/Pause Bus Master */
 #define ICH_CR_RR                       0x02    /* Reset Registers */
@@ -87,15 +96,6 @@
 #define ICH_SR_LVBCI                    0x04    /* Last Valid Buffer Completion Interrupt */
 #define ICH_SR_BCIS                     0x08    /* Buffer Completion Interrupt Status */
 #define ICH_SR_FIFOE                    0x10    /* FIFO Error */
-
-/* Global Control bits */
-#define ICH_GLOB_CNT_GIE                0x00000001  /* GPI Interrupt Enable */
-#define ICH_GLOB_CNT_COLD               0x00000002  /* AC97 Cold Reset */
-#define ICH_GLOB_CNT_WARM               0x00000004  /* AC97 Warm Reset */
-#define ICH_GLOB_CNT_SHUT               0x00000008  /* AC97 Shutoff */
-#define ICH_GLOB_CNT_PRIE               0x00000010  /* PCM In Resume Interrupt Enable */
-#define ICH_GLOB_CNT_SRIE               0x00000020  /* Secondary Resume Interrupt Enable */
-#define ICH_GLOB_CNT_MRIE               0x00000040  /* Mic Resume Interrupt Enable */
 
 /* Global Status bits */
 #define ICH_GLOB_STA_GSCI               0x00000001  /* GPI Status Change Interrupt */
@@ -124,57 +124,113 @@ struct ich_buffer_desc {
 #define ICH_BD_COUNT                    32
 #define ICH_BD_SIZE                     (ICH_BD_COUNT * sizeof(struct ich_buffer_desc))
 
-/* ICH Hardware State */
-struct ich_state {
-    unsigned int    magic;
-
-    /* Hardware resources */
-    unsigned int    nambar;         /* Native Audio Mixer BAR */
-    unsigned int    nabmbar;        /* Native Audio Bus Master BAR */
-    unsigned int    irq;
-
-    /* PCI Info */
-    unsigned short  vendor;
-    unsigned short  device;
-    unsigned char   revision;
-
-    /* AC97 Codec */
-    struct ac97_codec_state *codec;
-
-    /* DMA Buffers */
-    struct ich_buffer_desc  *bdl_output;    /* Buffer Descriptor List for output */
-    unsigned int            bdl_output_phys;
-    struct ich_buffer_desc  *bdl_input;     /* Buffer Descriptor List for input */
-    unsigned int            bdl_input_phys;
-
-    /* Playback state */
-    unsigned int    out_buffer_phys;
-    unsigned int    out_buffer_size;
-    unsigned int    out_fragment_size;
-    unsigned int    out_lvi;                /* Last Valid Index */
-    unsigned int    out_civ;                /* Current Index Value */
-    BOOL            out_running;
-
-    /* Record state */
-    unsigned int    in_buffer_phys;
-    unsigned int    in_buffer_size;
-    BOOL            in_running;
-
-    /* Locking */
-    simple_lock_t   lock;
+struct ich97_driver_state {
+    ICHAC97Controller controller;
+    struct ac97_codec_state codec;
+    IOInterruptHandler oldHandler;
+    simple_lock_t lock;
+    BOOL ioAudioInitialized;
+    BOOL interruptRegistered;
+    BOOL mixerRangeRegistered;
+    BOOL busMasterRangeRegistered;
+    BOOL codecAttached;
+    unsigned int bufVirt;
+    unsigned int lastService;
 };
 
-#define ICH_MAGIC                       0x49434800  /* "ICH\0" */
+static struct ich97_driver_state *activeInterruptState;
 
-static struct ich_state     *s = NULL;
-static IOInterruptHandler   oldHandler = NULL;
+static unsigned char kernel_read8(void *context, unsigned int port)
+{
+    (void)context;
+    return inb((IOEISAPortAddress)port);
+}
 
-/* Forward declarations */
-static unsigned short ich_codec_read(void *host_priv, unsigned char reg);
-static void ich_codec_write(void *host_priv, unsigned char reg, unsigned short val);
-static void ich_codec_reset(void *host_priv);
-static int ich_init_codec(struct ich_state *s);
-static void ich_reset_channels(struct ich_state *s);
+static unsigned short kernel_read16(void *context, unsigned int port)
+{
+    (void)context;
+    return inw((IOEISAPortAddress)port);
+}
+
+static unsigned int kernel_read32(void *context, unsigned int port)
+{
+    (void)context;
+    return inl((IOEISAPortAddress)port);
+}
+
+static void kernel_write8(void *context, unsigned int port, unsigned char value)
+{
+    (void)context;
+    outb((IOEISAPortAddress)port, value);
+}
+
+static void kernel_write16(void *context, unsigned int port, unsigned short value)
+{
+    (void)context;
+    outw((IOEISAPortAddress)port, value);
+}
+
+static void kernel_write32(void *context, unsigned int port, unsigned int value)
+{
+    (void)context;
+    outl((IOEISAPortAddress)port, value);
+}
+
+static void kernel_delay(void *context, unsigned int microseconds)
+{
+    (void)context;
+    IODelay(microseconds);
+}
+
+static unsigned short ich97_codec_read(void *host_priv, unsigned char reg)
+{
+    return ICHAC97CodecRead((ICHAC97Controller *)host_priv, (ICHAC97UInt8)reg);
+}
+
+static void ich97_codec_write(void *host_priv, unsigned char reg, unsigned short val)
+{
+    ICHAC97CodecWrite((ICHAC97Controller *)host_priv, (ICHAC97UInt8)reg,
+                      (ICHAC97UInt16)val);
+}
+
+static void ich97_codec_reset(void *host_priv)
+{
+    (void)host_priv;
+}
+
+static void clearInterrupts(void)
+{
+    struct ich97_driver_state *st = activeInterruptState;
+
+    if (st == nil)
+        return;
+
+    simple_lock(st->lock);
+    ICHAC97ServiceInterrupt(&st->controller);
+    simple_unlock(st->lock);
+}
+
+static void clearInt(void *identity, void *handlerState, unsigned int arg)
+{
+    struct ich97_driver_state *st = activeInterruptState;
+    unsigned int service;
+
+    if (st == nil) {
+        IOEnableInterrupt(identity);
+        return;
+    }
+
+    simple_lock(st->lock);
+    service = ICHAC97ServiceInterrupt(&st->controller);
+    simple_unlock(st->lock);
+
+    if (service & kICHAC97ServiceOutput) {
+        if (st->oldHandler)
+            (*st->oldHandler)(identity, handlerState, arg);
+    }
+
+    IOEnableInterrupt(identity);
+}
 
 @implementation IntelAC97Driver
 
@@ -192,6 +248,50 @@ static void ich_reset_channels(struct ich_state *s);
     return ([dev initFromDeviceDescription:deviceDescription] != nil);
 }
 
+- (void)ich97_apply_initial_output
+{
+    if (state == nil)
+        return;
+
+    ac97_apply_output(&state->codec,
+                      [self outputAttenuationLeft],
+                      [self outputAttenuationRight],
+                      1);
+}
+
+/*
+ * ich97_release_state - Idempotent teardown of instance state
+ */
+- (void)ich97_release_state
+{
+    if (state == nil)
+        return;
+
+    if (state->controller.nabmbar != 0)
+        ICHAC97StopPlayback(&state->controller);
+
+    if (activeInterruptState == state)
+        activeInterruptState = nil;
+
+    if (state->interruptRegistered)
+        [self releaseInterrupt:0];
+    if (state->mixerRangeRegistered)
+        [self releasePortRange:0];
+    if (state->busMasterRangeRegistered)
+        [self releasePortRange:1];
+
+    if (state->controller.playback.bdl != nil) {
+        IOFree(state->controller.playback.bdl, ICH_BD_SIZE);
+        state->controller.playback.bdl = nil;
+    }
+
+    if (state->lock != nil)
+        simple_lock_free(state->lock);
+
+    IOFree(state, sizeof(*state));
+    state = nil;
+}
+
 /*
  * initFromDeviceDescription: - Initialize instance
  */
@@ -200,11 +300,12 @@ static void ich_reset_channels(struct ich_state *s);
     IOReturn            irtn;
     IOPCIConfigSpace    configSpace;
     IORange             portRange[2];
-    unsigned long       *basePtr = 0;
     unsigned long       regLong;
-    int                 i;
+    unsigned int        nambar;
+    unsigned int        nabmbar;
+    unsigned int        irq;
+    ICHAC97IO           io;
 
-    /* Get PCI configuration space */
     bzero(&configSpace, sizeof(IOPCIConfigSpace));
     if ((irtn = [IODirectDevice getPCIConfigSpace:&configSpace
                         withDeviceDescription:deviceDescription])) {
@@ -213,25 +314,13 @@ static void ich_reset_channels(struct ich_state *s);
         return nil;
     }
 
-    /* Allocate driver state */
-    s = IOMalloc(sizeof(*s));
-    bzero(s, sizeof(*s));
-    s->magic = ICH_MAGIC;
-    s->vendor = configSpace.VendorID;
-    s->device = configSpace.DeviceID;
-    s->revision = configSpace.RevisionID;
-
-    /* Initialize lock */
-    s->lock = simple_lock_alloc();
-    simple_lock_init(s->lock);
-
-    /* Check if this is a supported Intel AC97 controller */
-    if (s->vendor != PCI_VENDOR_INTEL) {
-        IOLog("%s: Not an Intel device (0x%04x)\n", DRV_TITLE, s->vendor);
+    if (configSpace.VendorID != PCI_VENDOR_INTEL) {
+        IOLog("%s: Not an Intel device (0x%04x)\n",
+              DRV_TITLE, configSpace.VendorID);
         return nil;
     }
 
-    switch (s->device) {
+    switch (configSpace.DeviceID) {
     case PCI_DEVICE_INTEL_82801AA_AC97:
         IOLog("%s: Found Intel 82801AA (ICH)\n", DRV_TITLE);
         break;
@@ -260,72 +349,108 @@ static void ich_reset_channels(struct ich_state *s);
         IOLog("%s: Found Intel 82801GB (ICH7)\n", DRV_TITLE);
         break;
     default:
-        IOLog("%s: Unsupported Intel device (0x%04x)\n", DRV_TITLE, s->device);
+        IOLog("%s: Unsupported Intel device (0x%04x)\n",
+              DRV_TITLE, configSpace.DeviceID);
         return nil;
     }
 
-    /* Read I/O base addresses */
-    basePtr = configSpace.BaseAddress;
-    s->nambar = 0;  /* Mixer BAR */
-    s->nabmbar = 0; /* Bus Master BAR */
-
-    for (i = 0; i < PCI_NUM_BASE_ADDRESS; i++) {
-        if (basePtr[i] & PCI_BASE_IO_BIT) {
-            if (s->nambar == 0)
-                s->nambar = PCI_BASE_IO(basePtr[i]);
-            else if (s->nabmbar == 0)
-                s->nabmbar = PCI_BASE_IO(basePtr[i]);
-        }
+    if (!(configSpace.BaseAddress[0] & PCI_BASE_IO_BIT)) {
+        IOLog("%s: BAR0 is not an I/O port\n", DRV_TITLE);
+        return nil;
     }
+    nambar = ICH97_PCI_BASE_IO(configSpace.BaseAddress[0]);
 
-    /* Get IRQ */
-    s->irq = configSpace.InterruptLine;
+    if (!(configSpace.BaseAddress[1] & PCI_BASE_IO_BIT)) {
+        IOLog("%s: BAR1 is not an I/O port\n", DRV_TITLE);
+        return nil;
+    }
+    nabmbar = ICH97_PCI_BASE_IO(configSpace.BaseAddress[1]);
 
-    if (!s->nambar || !s->nabmbar || !s->irq) {
+    irq = configSpace.InterruptLine;
+    if (nambar == 0 || nabmbar == 0 || irq == 0) {
         IOLog("%s: No I/O ports or IRQ found\n", DRV_TITLE);
         IOLog("%s: NAMBAR=0x%x NABMBAR=0x%x IRQ=%d\n",
-              DRV_TITLE, s->nambar, s->nabmbar, s->irq);
+              DRV_TITLE, nambar, nabmbar, irq);
         return nil;
     }
 
     IOLog("%s: NAMBAR at 0x%x, NABMBAR at 0x%x, IRQ %d\n",
-          DRV_TITLE, s->nambar, s->nabmbar, s->irq);
+          DRV_TITLE, nambar, nabmbar, irq);
 
-    /* Register interrupt and port ranges */
-    irtn = [deviceDescription setInterruptList:&(s->irq) num:1];
+    state = IOMalloc(sizeof(*state));
+    if (state == nil) {
+        IOLog("%s: Can't allocate driver state\n", DRV_TITLE);
+        return nil;
+    }
+    bzero(state, sizeof(*state));
+    state->lock = simple_lock_alloc();
+    simple_lock_init(state->lock);
+
+    irtn = [deviceDescription setInterruptList:&irq num:1];
     if (irtn) {
         IOLog("%s: Can't set interrupt list (%s)\n",
               DRV_TITLE, [IODirectDevice stringFromReturn:irtn]);
+        [self ich97_release_state];
         return nil;
     }
+    state->interruptRegistered = YES;
 
-    portRange[0].start = s->nambar;
+    portRange[0].start = nambar;
     portRange[0].size = 256;
-    portRange[1].start = s->nabmbar;
+    portRange[1].start = nabmbar;
     portRange[1].size = 64;
     irtn = [deviceDescription setPortRangeList:portRange num:2];
     if (irtn) {
         IOLog("%s: Can't set port range list (%s)\n",
               DRV_TITLE, [IODirectDevice stringFromReturn:irtn]);
+        [self ich97_release_state];
         return nil;
     }
+    state->mixerRangeRegistered = YES;
+    state->busMasterRangeRegistered = YES;
 
-    /* Enable bus mastering */
     if ((irtn = [IODirectDevice getPCIConfigData:&regLong atRegister:0x04
                         withDeviceDescription:deviceDescription]) ||
-        (irtn = [IODirectDevice setPCIConfigData:(regLong | PCI_COMMAND_MASTER_ENABLE)
+        (irtn = [IODirectDevice setPCIConfigData:(regLong |
+                        (PCI_COMMAND_IO_ENABLE |
+                         PCI_COMMAND_MEM_ENABLE |
+                         PCI_COMMAND_MASTER_ENABLE))
                         atRegister:0x04
                         withDeviceDescription:deviceDescription])) {
-        IOLog("%s: Can't enable bus mastering (%s)\n",
+        IOLog("%s: Can't enable PCI command bits (%s)\n",
               DRV_TITLE, [IODirectDevice stringFromReturn:irtn]);
+        [self ich97_release_state];
         return nil;
     }
 
-    /* Initialize IOAudio */
-    if (![super initFromDeviceDescription:deviceDescription]) {
-        IOLog("%s: Failed on [super init]\n", DRV_TITLE);
+    bzero(&io, sizeof(io));
+    io.context = nil;
+    io.read8 = kernel_read8;
+    io.read16 = kernel_read16;
+    io.read32 = kernel_read32;
+    io.write8 = kernel_write8;
+    io.write16 = kernel_write16;
+    io.write32 = kernel_write32;
+    io.delayUS = kernel_delay;
+    ICHAC97ControllerInit(&state->controller, &io, nambar, nabmbar);
+
+    if (activeInterruptState != nil) {
+        IOLog("%s: Another instance already owns the interrupt bridge\n",
+              DRV_TITLE);
+        [self ich97_release_state];
         return nil;
     }
+
+    activeInterruptState = state;
+
+    if (![super initFromDeviceDescription:deviceDescription]) {
+        IOLog("%s: Failed on [super init]\n", DRV_TITLE);
+        [self ich97_release_state];
+        return nil;
+    }
+
+    state->ioAudioInitialized = YES;
+    [self ich97_apply_initial_output];
 
     return self;
 }
@@ -335,25 +460,7 @@ static void ich_reset_channels(struct ich_state *s);
  */
 - free
 {
-    [self releaseInterrupt:0];
-    [self releasePortRange:0];
-    [self releasePortRange:1];
-
-    if (s) {
-        if (s->codec) {
-            IOFree(s->codec, sizeof(struct ac97_codec_state));
-        }
-        if (s->bdl_output) {
-            /* Free buffer descriptor lists */
-            IOFree(s->bdl_output, ICH_BD_SIZE);
-        }
-        if (s->bdl_input) {
-            IOFree(s->bdl_input, ICH_BD_SIZE);
-        }
-        simple_lock_free(s->lock);
-        IOFree(s, sizeof(*s));
-    }
-
+    [self ich97_release_state];
     return [super free];
 }
 
@@ -362,44 +469,47 @@ static void ich_reset_channels(struct ich_state *s);
  */
 - (BOOL)reset
 {
-    unsigned int glob_cnt, glob_sta;
-    int timeout;
+    struct ac97_codec_state *codec;
 
     [self setName:"IntelAC97"];
     [self setDeviceKind:"Audio"];
 
-    /* Reset all channels */
-    ich_reset_channels(s);
+    if (state == nil)
+        return NO;
 
-    /* Cold reset AC97 */
-    glob_cnt = inl(s->nabmbar + ICH_REG_GLOB_CNT);
-    glob_cnt &= ~ICH_GLOB_CNT_COLD;
-    outl(glob_cnt, s->nabmbar + ICH_REG_GLOB_CNT);
-    IODelay(1000);
-
-    glob_cnt |= ICH_GLOB_CNT_COLD;
-    outl(glob_cnt, s->nabmbar + ICH_REG_GLOB_CNT);
-
-    /* Wait for codec ready (up to 1 second) */
-    for (timeout = 0; timeout < 1000; timeout++) {
-        glob_sta = inl(s->nabmbar + ICH_REG_GLOB_STA);
-        if (glob_sta & ICH_GLOB_STA_PCR)
-            break;
-        IODelay(1000);
+    if (ICHAC97ResetPlayback(&state->controller, 100) != kICHAC97Success) {
+        IOLog("%s: Playback reset timeout\n", DRV_TITLE);
+        return NO;
     }
 
-    if (!(glob_sta & ICH_GLOB_STA_PCR)) {
+    if (ICHAC97ResetLink(&state->controller, 1000) != kICHAC97Success) {
         IOLog("%s: Codec ready timeout\n", DRV_TITLE);
         return NO;
     }
 
     IOLog("%s: Primary codec ready\n", DRV_TITLE);
 
-    /* Initialize AC97 codec */
-    if (ich_init_codec(s) < 0) {
+    state->codecAttached = NO;
+    codec = &state->codec;
+    bzero(codec, sizeof(*codec));
+    codec->host_priv = &state->controller;
+    codec->read_reg = ich97_codec_read;
+    codec->write_reg = ich97_codec_write;
+    codec->reset = ich97_codec_reset;
+    codec->delay_us = kernel_delay;
+    codec->delay_context = nil;
+    codec->host_flags = 0;
+
+    if (ac97_attach(codec, AC97_CODEC_TYPE_AUDIO) < 0) {
         IOLog("%s: Failed to initialize AC97 codec\n", DRV_TITLE);
         return NO;
     }
+
+    state->codecAttached = YES;
+    IOLog("%s: Attached codec %s (%s)\n", DRV_TITLE,
+          codec->codec_name, codec->vendor_name);
+
+    [self ich97_apply_initial_output];
 
     return YES;
 }
@@ -415,62 +525,33 @@ static void ich_reset_channels(struct ich_state *s);
 {
     IOReturn        irtn;
     unsigned int    physAddr;
-    int             i;
-    unsigned int    fragment_size;
-    unsigned int    fragments;
 
-    /* Get physical address */
+    if (state == nil)
+        return NULL;
+
+    if (isRead)
+        return NULL;
+
     irtn = IOPhysicalFromVirtual(IOVmTaskSelf(), *physicalAddress, &physAddr);
     if (irtn) {
         IOLog("%s: Failed to map memory\n", DRV_TITLE);
         return NULL;
     }
 
-    /* Calculate fragment size (must be multiple of samples) */
-    fragments = ICH_BD_COUNT;
-    fragment_size = numBytes / fragments;
+    state->bufVirt = *physicalAddress;
+    state->controller.playback.bufferPhysical = physAddr;
+    state->controller.playback.bufferBytes = numBytes;
 
-    if (isRead) {
-        s->in_buffer_phys = physAddr;
-        s->in_buffer_size = numBytes;
-
-        /* Allocate buffer descriptor list if not already done */
-        if (!s->bdl_input) {
-            s->bdl_input = IOMalloc(ICH_BD_SIZE);
-            bzero(s->bdl_input, ICH_BD_SIZE);
-            IOPhysicalFromVirtual(IOVmTaskSelf(), (unsigned int)s->bdl_input,
-                                &s->bdl_input_phys);
+    if (state->controller.playback.bdl == nil) {
+        state->controller.playback.bdl = IOMalloc(ICH_BD_SIZE);
+        if (state->controller.playback.bdl == nil) {
+            IOLog("%s: Can't allocate BDL\n", DRV_TITLE);
+            return NULL;
         }
-
-        /* Setup buffer descriptors */
-        for (i = 0; i < ICH_BD_COUNT; i++) {
-            s->bdl_input[i].buffer_addr = physAddr + (i * fragment_size);
-            s->bdl_input[i].control = fragment_size | ICH_BD_IOC;
-        }
-
-        /* Set buffer descriptor list address */
-        outl(s->bdl_input_phys, s->nabmbar + ICH_REG_PI_BDBAR);
-    } else {
-        s->out_buffer_phys = physAddr;
-        s->out_buffer_size = numBytes;
-        s->out_fragment_size = fragment_size;
-
-        /* Allocate buffer descriptor list if not already done */
-        if (!s->bdl_output) {
-            s->bdl_output = IOMalloc(ICH_BD_SIZE);
-            bzero(s->bdl_output, ICH_BD_SIZE);
-            IOPhysicalFromVirtual(IOVmTaskSelf(), (unsigned int)s->bdl_output,
-                                &s->bdl_output_phys);
-        }
-
-        /* Setup buffer descriptors */
-        for (i = 0; i < ICH_BD_COUNT; i++) {
-            s->bdl_output[i].buffer_addr = physAddr + (i * fragment_size);
-            s->bdl_output[i].control = fragment_size | ICH_BD_IOC;
-        }
-
-        /* Set buffer descriptor list address */
-        outl(s->bdl_output_phys, s->nabmbar + ICH_REG_PO_BDBAR);
+        bzero(state->controller.playback.bdl, ICH_BD_SIZE);
+        IOPhysicalFromVirtual(IOVmTaskSelf(),
+                            (unsigned int)state->controller.playback.bdl,
+                            &state->controller.playback.bdlPhysical);
     }
 
     return (IOEISADMABuffer)physAddr;
@@ -484,40 +565,37 @@ static void ich_reset_channels(struct ich_state *s);
                     buffer:(IOEISADMABuffer)buffer
      bufferSizeForInterrupts:(unsigned int)bufferSize
 {
-    unsigned char   cr;
+    int result;
 
-    [self updateSampleRate];
+    if (state == nil)
+        return NO;
 
-    if (isRead) {
-        /* Setup PCM In */
-        outb(ICH_CR_RR, s->nabmbar + ICH_REG_PI_CR);  /* Reset */
-        IODelay(10);
-        outb(0, s->nabmbar + ICH_REG_PI_CR);
+    if (isRead)
+        return NO;
 
-        /* Set Last Valid Index */
-        outb(ICH_BD_COUNT - 1, s->nabmbar + ICH_REG_PI_LVI);
-
-        /* Enable interrupts and start */
-        cr = ICH_CR_RPBM | ICH_CR_LVBIE | ICH_CR_IOCE;
-        outb(cr, s->nabmbar + ICH_REG_PI_CR);
-
-        s->in_running = YES;
-    } else {
-        /* Setup PCM Out */
-        outb(ICH_CR_RR, s->nabmbar + ICH_REG_PO_CR);  /* Reset */
-        IODelay(10);
-        outb(0, s->nabmbar + ICH_REG_PO_CR);
-
-        /* Set Last Valid Index */
-        s->out_lvi = ICH_BD_COUNT - 1;
-        outb(s->out_lvi, s->nabmbar + ICH_REG_PO_LVI);
-
-        /* Enable interrupts and start */
-        cr = ICH_CR_RPBM | ICH_CR_LVBIE | ICH_CR_IOCE;
-        outb(cr, s->nabmbar + ICH_REG_PO_CR);
-
-        s->out_running = YES;
+    result = ICHAC97PrepareBDL(&state->controller.playback,
+                               state->controller.playback.bdl,
+                               state->controller.playback.bdlPhysical,
+                               state->controller.playback.bufferPhysical,
+                               state->controller.playback.bufferBytes,
+                               bufferSize);
+    if (result != kICHAC97Success) {
+        IOLog("%s: Failed to prepare BDL (%d)\n", DRV_TITLE, result);
+        return NO;
     }
+
+    ac97_set_rate(&state->codec, AC97_RATE_DAC, [self sampleRate]);
+
+    result = ICHAC97StartPlayback(&state->controller);
+    if (result != kICHAC97Success) {
+        IOLog("%s: Failed to start playback (%d)\n", DRV_TITLE, result);
+        return NO;
+    }
+
+    ac97_apply_output(&state->codec,
+                      [self outputAttenuationLeft],
+                      [self outputAttenuationRight],
+                      [self isOutputMuted]);
 
     [self enableAllInterrupts];
 
@@ -529,31 +607,13 @@ static void ich_reset_channels(struct ich_state *s);
  */
 - (void)stopDMAForChannel:(unsigned int)localChannel read:(BOOL)isRead
 {
-    if (isRead) {
-        outb(0, s->nabmbar + ICH_REG_PI_CR);
-        s->in_running = NO;
-    } else {
-        outb(0, s->nabmbar + ICH_REG_PO_CR);
-        s->out_running = NO;
-    }
+    if (state == nil)
+        return;
 
-    [self disableAllInterrupts];
-}
+    if (isRead)
+        return;
 
-/*
- * clearInterrupts - Clear interrupt status
- */
-static void clearInterrupts(void)
-{
-    unsigned char   sr;
-
-    /* Clear PCM Out status */
-    sr = inb(s->nabmbar + ICH_REG_PO_SR);
-    outb(sr, s->nabmbar + ICH_REG_PO_SR);
-
-    /* Clear PCM In status */
-    sr = inb(s->nabmbar + ICH_REG_PI_SR);
-    outb(sr, s->nabmbar + ICH_REG_PI_SR);
+    ICHAC97StopPlayback(&state->controller);
 }
 
 /*
@@ -565,51 +625,32 @@ static void clearInterrupts(void)
 }
 
 /*
- * clearInt - Interrupt handler
- */
-static void clearInt(void *identity, void *state, unsigned int arg)
-{
-    unsigned int    glob_sta;
-    unsigned char   sr;
-
-    glob_sta = inl(s->nabmbar + ICH_REG_GLOB_STA);
-
-    /* Check if it's our interrupt */
-    if (!(glob_sta & (ICH_GLOB_STA_POINT | ICH_GLOB_STA_PIINT)))
-        return;
-
-    /* Clear status */
-    if (glob_sta & ICH_GLOB_STA_POINT) {
-        sr = inb(s->nabmbar + ICH_REG_PO_SR);
-        outb(sr, s->nabmbar + ICH_REG_PO_SR);
-
-        if (sr & ICH_SR_BCIS) {
-            /* Update current index */
-            s->out_civ = inb(s->nabmbar + ICH_REG_PO_CIV);
-
-            /* Call original handler */
-            if (oldHandler)
-                (*oldHandler)(identity, state, arg);
-        }
-    }
-
-    if (glob_sta & ICH_GLOB_STA_PIINT) {
-        sr = inb(s->nabmbar + ICH_REG_PI_SR);
-        outb(sr, s->nabmbar + ICH_REG_PI_SR);
-    }
-
-    /* Re-enable interrupt */
-    IOEnableInterrupt(identity);
-}
-
-/*
  * interruptOccurredForInput:forOutput:
  */
 - (void)interruptOccurredForInput:(BOOL *)serviceInput
                         forOutput:(BOOL *)serviceOutput
 {
+    unsigned int service;
+    unsigned int fifoErrors;
+
+    if (state == nil) {
+        *serviceInput = NO;
+        *serviceOutput = NO;
+        return;
+    }
+
+    simple_lock(state->lock);
+    service = ICHAC97ConsumeService(&state->controller);
+    fifoErrors = state->controller.playback.fifoErrors;
+    simple_unlock(state->lock);
+
+    if ((service & kICHAC97ServiceOutputFIFOError) != 0) {
+        if (fifoErrors == 1 || (fifoErrors & 0xff) == 0)
+            IOLog("%s: FIFO error (count %u)\n", DRV_TITLE, fifoErrors);
+    }
+
     *serviceInput = NO;
-    *serviceOutput = s->out_running;
+    *serviceOutput = (service & kICHAC97ServiceOutput) != 0;
 }
 
 /*
@@ -620,7 +661,10 @@ static void clearInt(void *identity, void *state, unsigned int arg)
           argument:(unsigned int *)arg
       forInterrupt:(unsigned int)localInterrupt
 {
-    [super getHandler:&oldHandler level:ipl argument:arg
+    if (state == nil)
+        return NO;
+
+    [super getHandler:&state->oldHandler level:ipl argument:arg
          forInterrupt:localInterrupt];
 
     *handler = clearInt;
@@ -642,9 +686,9 @@ static void clearInt(void *identity, void *state, unsigned int arg)
 {
     unsigned int rate = [self sampleRate];
 
-    if (s->codec) {
-        ac97_set_rate(s->codec, AC97_RATE_DAC, rate);
-        ac97_set_rate(s->codec, AC97_RATE_ADC, rate);
+    if (state != nil && state->codecAttached) {
+        if (ac97_set_rate(&state->codec, AC97_RATE_DAC, rate) < 0)
+            IOLog("%s: Failed to set DAC sample rate to %u\n", DRV_TITLE, rate);
     }
 }
 
@@ -653,7 +697,10 @@ static void clearInt(void *identity, void *state, unsigned int arg)
  */
 - (BOOL)acceptsContinuousSamplingRates
 {
-    return s->codec ? s->codec->caps.vra_supported : NO;
+    if (state == nil || !state->codecAttached)
+        return NO;
+
+    return state->codec.vra_enabled;
 }
 
 /*
@@ -661,8 +708,13 @@ static void clearInt(void *identity, void *state, unsigned int arg)
  */
 - (void)getSamplingRatesLow:(int *)lowRate high:(int *)highRate
 {
-    *lowRate = AC97_RATE_MIN;
-    *highRate = AC97_RATE_MAX;
+    if (state != nil && state->codecAttached && state->codec.vra_enabled) {
+        *lowRate = AC97_RATE_MIN;
+        *highRate = AC97_RATE_MAX;
+    } else {
+        *lowRate = AC97_RATE_DEFAULT;
+        *highRate = AC97_RATE_DEFAULT;
+    }
 }
 
 /*
@@ -670,14 +722,19 @@ static void clearInt(void *identity, void *state, unsigned int arg)
  */
 - (void)getSamplingRates:(int *)rates count:(unsigned int *)numRates
 {
-    rates[0] = 8000;
-    rates[1] = 11025;
-    rates[2] = 16000;
-    rates[3] = 22050;
-    rates[4] = 32000;
-    rates[5] = 44100;
-    rates[6] = 48000;
-    *numRates = 7;
+    if (state != nil && state->codecAttached && state->codec.vra_enabled) {
+        rates[0] = 8000;
+        rates[1] = 11025;
+        rates[2] = 16000;
+        rates[3] = 22050;
+        rates[4] = 32000;
+        rates[5] = 44100;
+        rates[6] = 48000;
+        *numRates = 7;
+    } else {
+        rates[0] = AC97_RATE_DEFAULT;
+        *numRates = 1;
+    }
 }
 
 /*
@@ -695,7 +752,7 @@ static void clearInt(void *identity, void *state, unsigned int arg)
  */
 - (unsigned int)channelCountLimit
 {
-    return 2;  /* Stereo */
+    return 2;
 }
 
 /*
@@ -703,13 +760,17 @@ static void clearInt(void *identity, void *state, unsigned int arg)
  */
 - (void)updateOutputMute
 {
-    if (!s->codec)
+    BOOL mute;
+
+    if (state == nil || !state->codecAttached)
         return;
 
-    ac97_set_master_volume(s->codec,
-                          s->codec->master_vol_l,
-                          s->codec->master_vol_r,
-                          [self isOutputMuted]);
+    mute = [self isOutputMuted] || !state->controller.playback.running;
+
+    ac97_apply_output(&state->codec,
+                      [self outputAttenuationLeft],
+                      [self outputAttenuationRight],
+                      mute);
 }
 
 /*
@@ -717,16 +778,17 @@ static void clearInt(void *identity, void *state, unsigned int arg)
  */
 - (void)updateOutputAttenuationLeft
 {
-    unsigned char left;
+    BOOL mute;
 
-    if (!s->codec)
+    if (state == nil || !state->codecAttached)
         return;
 
-    /* Convert from NeXT attenuation to AC97 volume */
-    left = ([self outputAttenuationLeft] * 31) / 13;
+    mute = [self isOutputMuted] || !state->controller.playback.running;
 
-    ac97_set_master_volume(s->codec, left, s->codec->master_vol_r,
-                          [self isOutputMuted]);
+    ac97_apply_output(&state->codec,
+                      [self outputAttenuationLeft],
+                      [self outputAttenuationRight],
+                      mute);
 }
 
 /*
@@ -734,16 +796,17 @@ static void clearInt(void *identity, void *state, unsigned int arg)
  */
 - (void)updateOutputAttenuationRight
 {
-    unsigned char right;
+    BOOL mute;
 
-    if (!s->codec)
+    if (state == nil || !state->codecAttached)
         return;
 
-    /* Convert from NeXT attenuation to AC97 volume */
-    right = ([self outputAttenuationRight] * 31) / 13;
+    mute = [self isOutputMuted] || !state->controller.playback.running;
 
-    ac97_set_master_volume(s->codec, s->codec->master_vol_l, right,
-                          [self isOutputMuted]);
+    ac97_apply_output(&state->codec,
+                      [self outputAttenuationLeft],
+                      [self outputAttenuationRight],
+                      mute);
 }
 
 /*
@@ -763,78 +826,3 @@ static void clearInt(void *identity, void *state, unsigned int arg)
 }
 
 @end
-
-/*
- * AC97 codec access functions
- */
-
-static unsigned short
-ich_codec_read(void *host_priv, unsigned char reg)
-{
-    struct ich_state *s = (struct ich_state *)host_priv;
-    return inw(s->nambar + reg);
-}
-
-static void
-ich_codec_write(void *host_priv, unsigned char reg, unsigned short val)
-{
-    struct ich_state *s = (struct ich_state *)host_priv;
-    outw(val, s->nambar + reg);
-}
-
-static void
-ich_codec_reset(void *host_priv)
-{
-    /* Hardware reset is done elsewhere */
-}
-
-/*
- * ich_init_codec - Initialize AC97 codec
- */
-static int
-ich_init_codec(struct ich_state *s)
-{
-    struct ac97_codec_state *codec;
-
-    /* Allocate codec structure */
-    codec = IOMalloc(sizeof(struct ac97_codec_state));
-    bzero(codec, sizeof(struct ac97_codec_state));
-
-    /* Setup codec callbacks */
-    codec->host_priv = s;
-    codec->read_reg = ich_codec_read;
-    codec->write_reg = ich_codec_write;
-    codec->reset = ich_codec_reset;
-    codec->host_flags = 0;
-
-    /* Attach codec */
-    if (ac97_attach(codec, AC97_CODEC_TYPE_AUDIO) < 0) {
-        IOFree(codec, sizeof(struct ac97_codec_state));
-        return -1;
-    }
-
-    s->codec = codec;
-    return 0;
-}
-
-/*
- * ich_reset_channels - Reset all DMA channels
- */
-static void
-ich_reset_channels(struct ich_state *s)
-{
-    /* Reset PCM Out */
-    outb(ICH_CR_RR, s->nabmbar + ICH_REG_PO_CR);
-    IODelay(10);
-    outb(0, s->nabmbar + ICH_REG_PO_CR);
-
-    /* Reset PCM In */
-    outb(ICH_CR_RR, s->nabmbar + ICH_REG_PI_CR);
-    IODelay(10);
-    outb(0, s->nabmbar + ICH_REG_PI_CR);
-
-    /* Reset Mic In */
-    outb(ICH_CR_RR, s->nabmbar + ICH_REG_MC_CR);
-    IODelay(10);
-    outb(0, s->nabmbar + ICH_REG_MC_CR);
-}

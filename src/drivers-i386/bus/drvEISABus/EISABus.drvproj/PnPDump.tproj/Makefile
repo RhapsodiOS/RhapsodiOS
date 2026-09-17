@@ -15,9 +15,9 @@ LANGUAGE = English
 
 CFILES =
 
-MFILES = PnPDump.m
+MFILES = R.m IODeviceMaster.m NXLock.m
 
-HFILES =
+HFILES = IODeviceMaster.h NXLock.h
 
 OTHERSRCS = Makefile Makefile.preamble Makefile.postamble
 

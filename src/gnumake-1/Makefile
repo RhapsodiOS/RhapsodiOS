@@ -181,8 +181,8 @@ solaris_CFLAGS = -D__EXTENSIONS__=1
 hpux_CFLAGS = -D__EXTENSIONS__=1
 build_make_into_makedir: $(MAKEDIR) $(MAKEDIR)/Makefile
 	@echo BUILDING WITH $(RC_CFLAGS) $($(RC_OS)_CFLAGS) on $(RC_OS)
-	cd $(MAKEDIR); $(MAKE) "CFLAGS = $(RC_CFLAGS) $($(RC_OS)_CFLAGS)" \
-	                       "LDFLAGS= $(RC_CFLAGS)"
+	cd $(MAKEDIR); $(MAKE) "CFLAGS = $(RC_CFLAGS) $($(RC_OS)_CFLAGS) $(LOCAL_CFLAGS)" \
+	                       "LDFLAGS= $(RC_CFLAGS) $(OTHER_LDFLAGS)"
 
 update_docs: $(HTML_DIR) $(HTML_DIR)/texi2html $(HTML_DIR)/make_toc.html $(HTML_DIR)/make-stds_toc.html
 
@@ -213,8 +213,8 @@ $(HTML_DIR)/make_toc.html: $(SRCROOT)/$(MAKE_SRC_DIR)/make.texinfo
 #	d=`pwd` && cd $(HTML_DIR) && $(PERL) -- texi2html $(TEXI_FLAGS) $$d/$<
 
 debug: $(MAKEDIR) $(MAKEDIR)/Makefile
-	cd $(MAKEDIR); $(MAKE) "CFLAGS = $(RC_CFLAGS) $($(RC_OS)_CFLAGS) -DDEBUG -g -coffonly" \
-	                       "LDFLAGS= $(RC_CFLAGS) -g -coffonly"
+	cd $(MAKEDIR); $(MAKE) "CFLAGS = $(RC_CFLAGS) $($(RC_OS)_CFLAGS) $(LOCAL_CFLAGS) -DDEBUG -g -coffonly" \
+	                       "LDFLAGS= $(RC_CFLAGS) $(OTHER_LDFLAGS) -g -coffonly"
 
 # PDO cannot use the build_make_into_makedir target since VPATH is not supported on
 # some PDO platforms, i.e. SUNOS
@@ -266,7 +266,7 @@ build_info: $(MAKEDIR)/Makefile
 	cd $(MAKEDIR); make info
 
 $(MAKEDIR)/Makefile:
-	@(PWD=`pwd` ; \
+	@(source_root="$(SRCROOT)" ; \
 	cd $(MAKEDIR); \
 	if [ -z "$(RC_OS)" ] ; then \
 	   echo Hey buddy!  You need to set RC_OS. ; \
@@ -274,10 +274,10 @@ $(MAKEDIR)/Makefile:
 	fi ; \
 	if [ "$(RC_OS)" = "winnt" ] ; then \
 	   echo RC_OS=$(RC_OS) ; \
-	   $(CONFIGURE_ENVIRON) $$PWD/$(MAKE_SRC_DIR)/nt-configure ; \
+	   $(CONFIGURE_ENVIRON) "$$source_root/$(MAKE_SRC_DIR)/nt-configure" ; \
         else \
-	   echo $(CONFIGURE_ENVIRON) $$PWD/$(MAKE_SRC_DIR)/configure ; \
-	   $(CONFIGURE_ENVIRON) $$PWD/$(MAKE_SRC_DIR)/configure ; \
+	   echo $(CONFIGURE_ENVIRON) "$$source_root/$(MAKE_SRC_DIR)/configure" ; \
+	   $(CONFIGURE_ENVIRON) "$$source_root/$(MAKE_SRC_DIR)/configure" ; \
 	fi)
 
 
@@ -305,4 +305,3 @@ really_clean:
 
 $(MAKEDIR) $(HTML_DIR) $(SYMROOT) $(OBJROOT) $(SRCROOT) $(LOCALDIR) $(INFODIR) $(NEXTSTEP_BINDIR) $(WINNT_BINDIR) $(MANDIR) $(PRODSRCROOT) $(GNU_SRC_DIR):
 	$(MKDIRS) $@
-

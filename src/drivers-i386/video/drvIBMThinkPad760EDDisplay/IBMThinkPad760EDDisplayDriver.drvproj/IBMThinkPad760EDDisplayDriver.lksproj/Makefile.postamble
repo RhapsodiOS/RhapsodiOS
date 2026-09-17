@@ -1,0 +1,5 @@
+# vidBIOS.o and emu486.o must follow IBMThinkPad760EDDisplayDriver_instance.o.
+# kernelserver.make expands OPTIONAL_LDFLAGS inside KL_LDFLAGS, and kl_ld
+# consumes KL_LDFLAGS before LOADABLES. Appending here places the extras
+# after the in-scope objects and the generated instance object.
+LOADABLES += $(VIDBIOS_I386) $(EMU486_I386)

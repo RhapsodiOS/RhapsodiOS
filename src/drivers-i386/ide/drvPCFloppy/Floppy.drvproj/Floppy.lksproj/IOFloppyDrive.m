@@ -5,8 +5,12 @@
  */
 
 #import "IOFloppyDrive.h"
+#import "IOFloppyDisk.h"
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
+
+extern void *floppyMalloc(unsigned int size, vm_address_t *allocAddrOut,
+                          unsigned int *allocSizeOut);
 
 @implementation IOFloppyDrive
 
@@ -59,15 +63,15 @@
  */
 - (IOReturn)ejectMedia
 {
-	// Call superclass ejectMedia
+	// Call superclass ejectMedia; its result is discarded (the
+	// disassembly overwrites eax with fdEjectInt's result before
+	// returning)
 	[super ejectMedia];
-	
-	// Perform internal eject operations
+
+	// Perform internal eject operations and propagate its result
 	// - Seeks to track 79 to unload heads
 	// - Turns off motor
-	[self _fdEjectInt];
-	
-	return IO_R_SUCCESS;
+	return [self fdEjectInt];
 }
 
 /*
@@ -102,7 +106,7 @@
 	
 	// If this is cylinder 0, recalibrate first
 	if (cylinder == 0) {
-		result = [self _fdRecal];
+		result = [self fdRecal];
 		if (result != IO_R_SUCCESS) {
 			return result;
 		}
@@ -110,7 +114,7 @@
 	
 	// Format each track (head) in the cylinder
 	for (head = 0; head < numHeads; head++) {
-		result = [self _fdFormatTrack:cylinder head:head];
+		result = [self fdFormatTrack:cylinder head:head];
 		if (result != IO_R_SUCCESS) {
 			return result;  // Format failed
 		}
@@ -125,7 +129,7 @@
 		blocksPerCylinder = numHeads * sectorsPerTrack;
 		
 		// Read to verify format
-		result = [self _fdRwCommon:YES  // isRead = YES
+		result = [self fdRwCommon:YES  // isRead = YES
 				    block:startingBlock
 				 blockCnt:blocksPerCylinder
 				   buffer:data
@@ -144,7 +148,7 @@
 {
 	// If bit 2 is set, unregister from volume check
 	if ((_regFlags & 2) != 0) {
-		[self _unregisterVolCheck];
+		[self unregisterVolCheck];
 	}
 	
 	// If bit 1 is set, unregister drive from IOFloppyDisk
@@ -166,23 +170,38 @@
  * From decompiled code: initializes drive with default parameters and registers.
  */
 - initFromDeviceDescription:(IODeviceDescription *)deviceDescription
-                 controller:(id)controller
-                       unit:(unsigned)unit
+                           :(id)controller
+                           :(unsigned)unit
 {
 	BOOL registered;
 	int driveNumber;
 	char name[20];
 	IOReturn result;
+	vm_address_t allocAddr;
+	unsigned allocSize;
 	
 	// Store device description, controller, and unit
 	_deviceDescription = deviceDescription;    // offset 0x160
 	_fdController = controller;                // offset 0x164
-	_unit = unit;                              // offset 0x168
+	[self setUnit:unit];
 	
 	// Initialize disk object pointer
 	_nextLogicalDisk = nil;                    // offset 0x108
 	
-	// Set default parameters (720KB DD settings)
+	// Set default parameters (720KB DD settings).
+	//
+	// UNRESOLVED: the disassembly does not use these as literals. It loads
+	// _fdcNumber from ds:_fdDensityInfo (the *address* of the density
+	// table, not an integer -- inconsistent with every other place in this
+	// layer that treats offset 0x190 as a one-byte density value), and
+	// loads _totalBytes/_writePrecomp/the four sector-size fields from
+	// separate globals (dword_C28C, dword_C290, off_C264[0..3]) that live
+	// in Geometry.m, outside this layer's files. Those globals' values
+	// line up numerically with fdDensityInfo's density-1 entry and
+	// _ssi_1mb (both already in Geometry.m) for the 720KB DD case, so the
+	// literals below match what the binary would actually store, but the
+	// _fdcNumber pointer-vs-integer mismatch is not resolved here -- see
+	// the reconstruction/divergences.md write-up for this function.
 	_fdcNumber = 1;                            // offset 400
 	_totalBytes = 0xb4000;                     // offset 0x194 (737,280 bytes)
 	_writePrecomp = 1;                         // offset 0x198
@@ -198,8 +217,6 @@
 	_motorTimerActive = _motorTimerActive & 0xfe;  // offset 0x178
 	
 	// Allocate bounce buffer (1024 bytes = 0x400)
-	vm_address_t allocAddr;
-	unsigned allocSize;
 	_bounceBuffer = (void *)floppyMalloc(0x400, &allocAddr, &allocSize);
 	
 	if (_bounceBuffer == NULL) {
@@ -226,8 +243,10 @@
 	// Get drive number and set up name
 	driveNumber = [IOFloppyDisk driveNumberOfDrive:self];
 	sprintf(name, "fd%d", driveNumber);
-	
-	// Set up drive properties
+
+	// Set up drive properties. The disassembly sends driveNumberOfDrive:
+	// a second time here rather than reusing the first result.
+	driveNumber = [IOFloppyDisk driveNumberOfDrive:self];
 	[self setUnit:driveNumber];
 	[self setName:name];
 	[self setDeviceKind:"Floppy Drive"];
@@ -237,15 +256,18 @@
 	[self setLastReadyState:1];
 	
 	// Register for volume check notifications
-	[self _registerVolCheck];
+	[self registerVolCheck];
 	
 	// Set bit 2 of _regFlags (volCheck registered flag)
 	_regFlags = _regFlags | 2;
 	
-	// Register the device with the system
+	// Register the device with the system. registerDevice returns nil on
+	// failure (not an IOReturn), so the disassembly tests for a zero
+	// result here, not IO_R_SUCCESS -- the old "!= IO_R_SUCCESS" check
+	// had this backwards and would free on success instead of failure.
 	result = [self registerDevice];
-	
-	if (result != IO_R_SUCCESS) {
+
+	if (result == 0) {
 		// Registration failed
 		return [self free];
 	}
@@ -264,19 +286,19 @@
 	BOOL allocated;
 	
 	// Update ready state
-	result = [self _updateReadyStateInt];
+	result = [self updateReadyStateInt];
 	
 	// If ready and no disk object allocated yet
 	if ((result == 0) && (_nextLogicalDisk == nil)) {
 		// Update physical parameters (probe geometry)
-		result = [self _updatePhysicalParametersInt];
+		result = [self updatePhysicalParametersInt];
 		
 		if (result == 0) {
 			// Set ready state to 0 (ready)
 			[self setLastReadyState:0];
 			
 			// Allocate disk object
-			allocated = [self _allocateDisk];
+			allocated = [self allocateDisk];
 			
 			if (allocated) {
 				return YES;  // Media present and disk allocated
@@ -300,7 +322,7 @@
 
 /*
  * Read a specific cylinder.
- * From decompiled code: reads all sectors in cylinder using _fdRwCommon.
+ * From decompiled code: reads all sectors in cylinder using fdRwCommon.
  */
 - (IOReturn)readCylinder:(unsigned)cylinder
                     data:(void *)data
@@ -318,7 +340,7 @@
 	blocksPerCylinder = _density * _sectorsPerTrack;
 	
 	// Read the entire cylinder
-	result = [self _fdRwCommon:YES  // isRead = YES
+	result = [self fdRwCommon:YES  // isRead = YES
 			    block:startingBlock
 			 blockCnt:blocksPerCylinder
 			   buffer:data
@@ -404,7 +426,7 @@
 
 /*
  * Write a specific cylinder.
- * From decompiled code: writes all sectors in cylinder using _fdRwCommon.
+ * From decompiled code: writes all sectors in cylinder using fdRwCommon.
  */
 - (IOReturn)writeCylinder:(unsigned)cylinder
                      data:(void *)data
@@ -422,7 +444,7 @@
 	blocksPerCylinder = _density * _sectorsPerTrack;
 	
 	// Write the entire cylinder
-	result = [self _fdRwCommon:NO   // isRead = NO (write)
+	result = [self fdRwCommon:NO   // isRead = NO (write)
 			    block:startingBlock
 			 blockCnt:blocksPerCylinder
 			   buffer:data

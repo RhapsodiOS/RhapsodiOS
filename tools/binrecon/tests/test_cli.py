@@ -138,6 +138,35 @@ def test_validate_prints_absolute_identities_and_returns_zero(tmp_path, capsys):
     ]
 
 
+def test_validate_reference_only_profile_prints_reference_line_and_returns_zero(tmp_path, capsys):
+    reference = tmp_path / "reference.bin"
+    reference.write_bytes(b"reference")
+    document = {
+        "schema_version": "profile-v1",
+        "name": "reference-only fixture",
+        "architecture": "powerpc",
+        "reference": {"path": reference.name},
+        "analyzers": {},
+        "comparison": {
+            "acceptance": "normalized-functions",
+            "ignore_metadata": [],
+            "entry_points": [],
+        },
+        "output_dir": "out",
+    }
+    profile_path = tmp_path / "profile.json"
+    profile_path.write_text(json.dumps(document), encoding="utf-8")
+
+    result = main(["validate", "--profile", str(profile_path)])
+
+    captured = capsys.readouterr()
+    assert result == 0
+    assert captured.err == ""
+    assert captured.out.splitlines() == [
+        f"reference {reference.resolve()} size=9 sha256={hashlib.sha256(b'reference').hexdigest().upper()}",
+    ]
+
+
 def test_validate_reports_mismatch_without_traceback(tmp_path, capsys):
     profile_path, reference, _ = _write_profile(tmp_path, expected_size=999)
 
@@ -247,6 +276,24 @@ def test_ledger_cli_rejects_incoherent_transition_flags(tmp_path, capsys):
     result = main(["ledger", "--profile", str(profile_path), "--ledger", str(tmp_path / "x.json"),
                    "--address", "0x1000"])
     assert result == 1 and "--address and --status" in capsys.readouterr().err
+
+
+def test_ledger_cli_persists_reason_outside_intentional_mismatch(tmp_path, capsys):
+    from binrecon.ledger import new_ledger, write_ledger
+    from binrecon.profile import load_profile
+    profile_path, _, _ = _write_profile(tmp_path)
+    loaded = load_profile(profile_path, os.environ); path = tmp_path / "ledger.json"
+    value = {"address": 4096, "size": 4, "names": ["probe"], "source_path": None,
+             "source_line": None, "status": "unexamined",
+             "analyzer_agreement": {"status": "none", "analyzers": [], "reasons": []},
+             "artifacts": [], "reason": None, "reviewer": None}
+    write_ledger(path, new_ledger(loaded.reference_identity, loaded.rebuilt_identity, [value]),
+                 loaded.reference_identity, loaded.rebuilt_identity)
+    result = main(["ledger", "--profile", str(profile_path), "--ledger", str(path),
+                   "--address", "0x1000", "--status", "signature-confirmed",
+                   "--reason", "THIS SHOULD PERSIST"])
+    assert result == 0
+    assert json.loads(path.read_text())["entries"][0]["reason"] == "THIS SHOULD PERSIST"
 
 
 def test_ledger_module_entrypoint_validates_outside_repository_cwd(tmp_path):
@@ -458,3 +505,197 @@ def test_consensus_cli_rejects_nonfinite_json_constant(tmp_path):
         env=_subprocess_environment(), capture_output=True, text=True, check=False)
     assert completed.returncode == 1
     assert "non-finite" in completed.stderr
+
+
+def test_source_map_command_writes_validated_document(tmp_path, monkeypatch):
+    import json
+
+    from binrecon.cli import main
+
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "bus.c").write_text(
+        "int testSlotForID(unsigned slot)\n{\n    return slot;\n}\n", encoding="utf-8"
+    )
+    analysis_path = tmp_path / "reference.analysis.json"
+    analysis_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "analysis-v1",
+                "input": {"path": "x", "size": 16, "sha256": "B" * 64,
+                          "architecture": "i386", "endianness": "little"},
+                "analyzer": {"name": "fixture", "version": "1", "invocation": "fixture"},
+                "sections": [{"name": "__TEXT,__text", "address": 4096, "offset": 0,
+                              "size": 16, "permissions": "rx", "sha256": "B" * 64}],
+                "symbols": [],
+                "relocations": [],
+                "functions": [
+                    {
+                        "address": 4096,
+                        "size": 16,
+                        "names": ["_testSlotForID"],
+                        "blocks": [],
+                        "instructions": [],
+                        "calls": [],
+                        "confidence": 1.0,
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("binrecon.cli.read_macho", lambda path: {"symbols": []})
+    output_path = tmp_path / "source-map.json"
+
+    exit_code = main(
+        [
+            "source-map",
+            "--reference-analysis", str(analysis_path),
+            "--binary", str(analysis_path),
+            "--source-dir", str(source_dir),
+            "--repo-root", str(tmp_path),
+            "--output", str(output_path),
+        ]
+    )
+
+    assert exit_code == 0
+    document = json.loads(output_path.read_text(encoding="utf-8"))
+    assert document["schema_version"] == "source-map-v1"
+    assert document["mapped"][0]["source_path"] == "src/driver/bus.c"
+    assert document["mapped"][0]["source_line"] == 1
+
+
+def test_source_map_command_rejects_malformed_analysis_without_traceback(tmp_path, capsys):
+    import json
+
+    from binrecon.cli import main
+
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "bus.c").write_text(
+        "int testSlotForID(unsigned slot)\n{\n    return slot;\n}\n", encoding="utf-8"
+    )
+    analysis_path = tmp_path / "reference.analysis.json"
+    analysis_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "analysis-v1",
+                "input": {"path": "x", "size": 16, "sha256": "B" * 64,
+                          "architecture": "i386", "endianness": "little"},
+                "analyzer": {"name": "fixture", "version": "1", "invocation": "fixture"},
+                "sections": [],
+                "symbols": [],
+                "relocations": [],
+                # "functions" intentionally omitted: valid JSON, invalid analysis-v1.
+            }
+        ),
+        encoding="utf-8",
+    )
+    output_path = tmp_path / "source-map.json"
+
+    exit_code = main(
+        [
+            "source-map",
+            "--reference-analysis", str(analysis_path),
+            "--binary", str(analysis_path),
+            "--source-dir", str(source_dir),
+            "--repo-root", str(tmp_path),
+            "--output", str(output_path),
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert captured.err.startswith("binrecon: ")
+    assert "Traceback" not in captured.err
+    assert not output_path.exists()
+
+
+def test_source_map_command_rejects_reference_sha256_mismatch_and_writes_nothing_usable(
+    tmp_path, monkeypatch, capsys
+):
+    import json
+
+    from binrecon.cli import main
+    from binrecon.schema import SemanticValidationError, load_source_map
+
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "bus.c").write_text(
+        "int testSlotForID(unsigned slot)\n{\n    return slot;\n}\n", encoding="utf-8"
+    )
+    analysis_path = tmp_path / "reference.analysis.json"
+    # A lowercase input sha256: build_source_map stores its upper() form as
+    # reference_sha256, which then fails the semantic cross-check against this
+    # (unmodified, lowercase) analysis document -- a real mismatch the command
+    # must catch instead of reporting success.
+    analysis_document = {
+        "schema_version": "analysis-v1",
+        "input": {"path": "x", "size": 16, "sha256": "b" * 64,
+                  "architecture": "i386", "endianness": "little"},
+        "analyzer": {"name": "fixture", "version": "1", "invocation": "fixture"},
+        "sections": [{"name": "__TEXT,__text", "address": 4096, "offset": 0,
+                      "size": 16, "permissions": "rx", "sha256": "B" * 64}],
+        "symbols": [],
+        "relocations": [],
+        "functions": [
+            {
+                "address": 4096,
+                "size": 16,
+                "names": ["_testSlotForID"],
+                "blocks": [],
+                "instructions": [],
+                "calls": [],
+                "confidence": 1.0,
+            }
+        ],
+    }
+    analysis_path.write_text(json.dumps(analysis_document), encoding="utf-8")
+    monkeypatch.setattr("binrecon.cli.read_macho", lambda path: {"symbols": []})
+    output_path = tmp_path / "source-map.json"
+
+    exit_code = main(
+        [
+            "source-map",
+            "--reference-analysis", str(analysis_path),
+            "--binary", str(analysis_path),
+            "--source-dir", str(source_dir),
+            "--repo-root", str(tmp_path),
+            "--output", str(output_path),
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert captured.err.startswith("binrecon: ")
+    if output_path.exists():
+        with pytest.raises(SemanticValidationError):
+            load_source_map(
+                output_path,
+                reference_analysis=analysis_document,
+                repo_root=tmp_path,
+            )
+
+
+def test_source_map_command_rejects_missing_source_dir(tmp_path, capsys):
+    from binrecon.cli import main
+
+    missing_source_dir = tmp_path / "does-not-exist"
+    output_path = tmp_path / "source-map.json"
+
+    exit_code = main(
+        [
+            "source-map",
+            "--reference-analysis", str(tmp_path / "reference.analysis.json"),
+            "--binary", str(tmp_path / "binary"),
+            "--source-dir", str(missing_source_dir),
+            "--repo-root", str(tmp_path),
+            "--output", str(output_path),
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert captured.err.startswith("binrecon: ")
+    assert str(missing_source_dir) in captured.err
+    assert not output_path.exists()

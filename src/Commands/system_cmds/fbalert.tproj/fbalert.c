@@ -32,7 +32,7 @@
 #include <err.h>
 
 #define KERNEL_PRIVATE
-#include <dev/kmreg_com.h>
+#include <bsd/dev/kmreg_com.h>
 #undef KERNEL_PRIVATE
 
 void alert_open ();

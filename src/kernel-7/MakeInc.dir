@@ -36,8 +36,6 @@ endif
 
 BUILD_DIRS= $(OBJROOT) $(SYMROOT)
 
-.DEFTARGET:	all
-
 all STD DBG PROF clean clobber tags: $(BUILD_DIRS) ALWAYS
 	@echo '#################' make $@ for $(DIR) '###################'
 	@CWD=`pwd`; \

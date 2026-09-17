@@ -17,12 +17,12 @@
 /*
  * Eject disk (internal).
  */
-- (IOReturn)_fdEjectInt;
+- (IOReturn)fdEjectInt;
 
 /*
  * Common read/write operation.
  */
-- (IOReturn)_fdRwCommon : (BOOL)isRead
+- (IOReturn)fdRwCommon : (BOOL)isRead
 		    block : (unsigned)block
 		 blockCnt : (unsigned)blockCnt
 		   buffer : (unsigned char *)buffer
@@ -32,30 +32,30 @@
 /*
  * Log read/write error.
  */
-- (void)_logRwErr : (unsigned)operation
+- (void)logRwErr : (const char *)operation
 	      block : (unsigned)block
-	     status : (unsigned char *)status
+	     status : (unsigned)status
 	   readFlag : (BOOL)readFlag;
 
 /*
  * Check if motor should be turned off.
  */
-- (void)_motorOffCheck;
+- (void)motorOffCheck;
 
 /*
  * Set disk density (internal).
  */
-- (IOReturn)_setDensityInt : (unsigned)density;
+- (IOReturn)setDensityInt : (unsigned)density;
 
 /*
  * Set sector size (internal).
  */
-- (IOReturn)_setSectSizeInt : (unsigned)sectorSize;
+- (IOReturn)setSectSizeInt : (unsigned)sectorSize;
 
 /*
  * Update physical parameters (internal).
  */
-- (void)_updatePhysicalParametersInt;
+- (void)updatePhysicalParametersInt;
 
 @end
 

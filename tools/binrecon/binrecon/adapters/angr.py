@@ -17,6 +17,7 @@ from typing import Callable
 
 from binrecon.identity import InputIdentity, assert_identity
 from binrecon.macho import MachOFormatError, read_macho
+from binrecon.profile import analysis_scope
 from binrecon.schema import validate_analysis_semantics, validate_document
 
 
@@ -24,7 +25,8 @@ class AngrAdapterError(RuntimeError):
     """Raised when angr cannot produce a trustworthy analysis snapshot."""
 
 
-_MAX_OUTPUT = 16 * 1024 * 1024
+# Bounds raw analyzer output read into memory, sized for ~1.4 MB kernel images.
+_MAX_OUTPUT = 64 * 1024 * 1024
 _MAX_LOG = 4 * 1024 * 1024
 _CHUNK = 1024 * 1024
 _TRUNCATION_MARKER = b"\n[truncated]\n"
@@ -140,7 +142,7 @@ def _thaw(value):
     return value
 
 
-def _layout(profile, identity: InputIdentity) -> dict:
+def _layout(profile, identity: InputIdentity, artifact: str = "reference") -> dict:
     try:
         canonical = read_macho(identity.path)
         metadata = canonical["extensions"]["macho"]["sections"]
@@ -169,10 +171,15 @@ def _layout(profile, identity: InputIdentity) -> dict:
     entry_points = sorted({item["address"] for item in symbols if item["name"] in names})
     if not entry_points and sections:
         entry_points = [int(profile.document.get("image_base", sections[0]["address"]))]
-    return {"image_base": int(profile.document.get("image_base", 0)),
+    document = {"image_base": int(profile.document.get("image_base", 0)),
             "entry_points": entry_points, "sections": sections,
             "symbols": symbols, "relocations": relocations,
             "relocation_metadata": relocation_metadata}
+    scope = analysis_scope(profile, artifact)
+    if scope:
+        document["analysis_scope"] = [{"start": start, "end": end}
+                                      for start, end in scope]
+    return document
 
 
 def _atomic_text(path: Path, text: str) -> None:
@@ -221,7 +228,30 @@ def _reject_peer_alias(first: Path, second: Path) -> None:
         raise AngrAdapterError(f"could not validate destination and log paths: {error}") from error
 
 
-def _read_snapshot(path: Path) -> dict:
+def _preserve_oversized_output(path: Path, artifact: str) -> Path | None:
+    """Copy a rejected oversized output into the run's output directory.
+
+    The staging workspace is deleted after rejection, so without this the
+    only evidence of an oversized analyzer output is its byte count. Copies
+    by streaming; swallows any failure so a diagnostic never masks the
+    original size error.
+    """
+    try:
+        preserved = path.parent.parent.parent / f"rejected-angr-{artifact}.json"
+        shutil.copyfile(path, preserved)
+        return preserved
+    except OSError:
+        return None
+
+
+def _oversize_error_message(base_message: str, path: Path, artifact: str) -> str:
+    preserved = _preserve_oversized_output(path, artifact)
+    if preserved is None:
+        return base_message
+    return f"{base_message}; rejected output saved to {preserved}"
+
+
+def _read_snapshot(path: Path, artifact: str) -> dict:
     if path.is_symlink(): raise AngrAdapterError("angr output is a symlink")
     flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_NOFOLLOW", 0)
     try: descriptor = os.open(path, flags)
@@ -231,13 +261,21 @@ def _read_snapshot(path: Path) -> dict:
         reparse = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
         if not stat.S_ISREG(initial.st_mode) or initial.st_nlink != 1 or getattr(initial, "st_file_attributes", 0) & reparse:
             raise AngrAdapterError("angr output is not a private regular file")
-        if initial.st_size > _MAX_OUTPUT: raise AngrAdapterError("angr output exceeds maximum JSON size")
+        if initial.st_size > _MAX_OUTPUT:
+            raise AngrAdapterError(_oversize_error_message(
+                f"angr output exceeds maximum JSON size ({initial.st_size:,} bytes; "
+                f"cap {_MAX_OUTPUT:,})", path, artifact
+            ))
         chunks, total = [], 0
         while True:
             chunk = os.read(descriptor, min(_CHUNK, _MAX_OUTPUT + 1 - total))
             if not chunk: break
             chunks.append(chunk); total += len(chunk)
-            if total > _MAX_OUTPUT: raise AngrAdapterError("angr output exceeds maximum JSON size")
+            if total > _MAX_OUTPUT:
+                raise AngrAdapterError(_oversize_error_message(
+                    f"angr output exceeds maximum JSON size (more than {_MAX_OUTPUT:,} bytes; "
+                    f"cap {_MAX_OUTPUT:,})", path, artifact
+                ))
         final = os.fstat(descriptor)
         fields = ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns", "st_nlink")
         if total != initial.st_size or any(getattr(initial, f) != getattr(final, f) for f in fields):
@@ -272,6 +310,11 @@ def _validate_angr_contract(document: dict) -> None:
 
 def export_with_angr(profile, artifact: str, destination: Path, *,
                      runner: Callable = subprocess.run) -> dict:
+    architecture = profile.document.get("architecture", "i386")
+    if architecture != "i386":
+        raise AngrAdapterError(
+            f"the angr adapter is i386-only and cannot analyse {architecture}"
+        )
     configuration = _configuration(profile)
     executable = Path(configuration.get("executable", "")).resolve(strict=False)
     if not executable.is_file(): raise AngrAdapterError(f"angr Python executable does not exist: {executable}")
@@ -285,12 +328,14 @@ def export_with_angr(profile, artifact: str, destination: Path, *,
     log_path = destination.with_suffix(destination.suffix + ".angr.log")
     peer_artifact = "rebuilt" if artifact == "reference" else "reference"
     peer_identity = _identity(profile, peer_artifact)
-    try: assert_identity(peer_identity)
-    except (OSError, ValueError) as error:
-        raise AngrAdapterError(f"peer input identity is no longer stable: {error}") from error
+    if peer_identity is not None:
+        try: assert_identity(peer_identity)
+        except (OSError, ValueError) as error:
+            raise AngrAdapterError(f"peer input identity is no longer stable: {error}") from error
     _reject_alias(destination, identity.path, "destination"); _reject_alias(log_path, identity.path, "log path")
-    _reject_alias(destination, peer_identity.path, "destination (peer artifact)")
-    _reject_alias(log_path, peer_identity.path, "log path (peer artifact)")
+    if peer_identity is not None:
+        _reject_alias(destination, peer_identity.path, "destination (peer artifact)")
+        _reject_alias(log_path, peer_identity.path, "log path (peer artifact)")
     _reject_peer_alias(destination, log_path)
     workspace = Path(tempfile.mkdtemp(prefix=f".{destination.name}.angr-work-", dir=destination.parent))
     try:
@@ -299,15 +344,17 @@ def export_with_angr(profile, artifact: str, destination: Path, *,
         for temporary, label in ((output, "output temporary"), (config_path, "config temporary"),
                                  (layout_path, "layout temporary")):
             _reject_alias(temporary, identity.path, label)
-            _reject_alias(temporary, peer_identity.path, label + " (peer artifact)")
+            if peer_identity is not None:
+                _reject_alias(temporary, peer_identity.path, label + " (peer artifact)")
         script = Path(__file__).parents[2] / "adapters" / "angr" / "export_analysis.py"
         config = {"profile": _thaw(profile.document), "artifact": artifact,
                   "peer_artifact": peer_artifact,
-                  "peer_input": {"path": str(peer_identity.path), "size": peer_identity.size,
-                                 "sha256": peer_identity.sha256},
-                  "peer_layout": _layout(profile, peer_identity)}
+                  "peer_input": None if peer_identity is None else {"path": str(peer_identity.path),
+                                 "size": peer_identity.size, "sha256": peer_identity.sha256},
+                  "peer_layout": None if peer_identity is None
+                                 else _layout(profile, peer_identity, peer_artifact)}
         _atomic_text(config_path, json.dumps(config, sort_keys=True, separators=(",", ":")) + "\n")
-        _atomic_text(layout_path, json.dumps(_layout(profile, identity), sort_keys=True,
+        _atomic_text(layout_path, json.dumps(_layout(profile, identity, artifact), sort_keys=True,
                                             separators=(",", ":")) + "\n")
         argv = [str(executable), str(script.resolve()), "--input", str(identity.path),
                 "--output", str(output), "--config", str(config_path), "--layout", str(layout_path),
@@ -352,7 +399,7 @@ def export_with_angr(profile, artifact: str, destination: Path, *,
         _publish_log(log_path, captured)
         if not output.is_file(): raise AngrAdapterError("angr did not produce a fresh analysis output")
         try:
-            document = _read_snapshot(output); validate_document("analysis-v1", document); validate_analysis_semantics(document)
+            document = _read_snapshot(output, artifact); validate_document("analysis-v1", document); validate_analysis_semantics(document)
             _validate_angr_contract(document)
         except Exception as error: raise AngrAdapterError(f"angr output is invalid: {error}") from error
         analyzer = document["analyzer"]
@@ -364,12 +411,14 @@ def export_with_angr(profile, artifact: str, destination: Path, *,
         shutil.rmtree(workspace); workspace = None
         try: assert_identity(identity)
         except (OSError, ValueError) as error: raise AngrAdapterError(f"input identity changed during angr analysis: {error}") from error
-        try: assert_identity(peer_identity)
-        except (OSError, ValueError) as error: raise AngrAdapterError(f"peer input identity changed during angr analysis: {error}") from error
+        if peer_identity is not None:
+            try: assert_identity(peer_identity)
+            except (OSError, ValueError) as error: raise AngrAdapterError(f"peer input identity changed during angr analysis: {error}") from error
         _reject_alias(destination, identity.path, "destination")
         _reject_alias(log_path, identity.path, "log path")
-        _reject_alias(destination, peer_identity.path, "destination (peer artifact)")
-        _reject_alias(log_path, peer_identity.path, "log path (peer artifact)")
+        if peer_identity is not None:
+            _reject_alias(destination, peer_identity.path, "destination (peer artifact)")
+            _reject_alias(log_path, peer_identity.path, "log path (peer artifact)")
         _reject_peer_alias(destination, log_path)
         _atomic_text(destination, json.dumps(document, sort_keys=True, separators=(",", ":"), ensure_ascii=False) + "\n")
         return document

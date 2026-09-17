@@ -146,11 +146,24 @@ GREP = /bin/grep
 # FIXME when we have the latest cc from 4.2mach
 LIBTOOL=/usr/bin/libtool
 DYNAMIC_PROJDIRS = $(ARGON_PROJECTS) $(DYNAMIC_ONLY)
+# project_makefiles recurse once per arch with TARGET_ARCH. Prefer that
+# so make_links/.all_done/sectorder are the current CPU; TARGET_ARCHS is
+# both i386 and ppc and would let the second CPU reuse the first's objects.
+ifneq ($(strip $(TARGET_ARCH)),)
+LINK_ARCHS = $(TARGET_ARCH)
+else
+LINK_ARCHS = $(TARGET_ARCHS)
+endif
+LINK_STAGE = $(SYMROOT)/libsystem-links/$(BUILD_TARGET)/$(TARGET_ARCH)
+DYNAMIC_SECTORDER_FLAGS = $(foreach A,$(LINK_ARCHS),-sectorder __TEXT __text $(SRCROOT)/System.order.$(A))
 
 make_links::
-	@(if [ ! -f $(OFILE_DIR)/links/.all_done ]; then\
-		$(MKDIRS) $(OFILE_DIR)/links;\
-		cd $(OFILE_DIR)/links;\
+	@(if [ -f $(LINK_STAGE)/.all_done ] && [ ! -f $(LINK_STAGE)/c/ofileList ]; then \
+		/bin/rm -rf $(LINK_STAGE); \
+	fi; \
+	if [ ! -f $(LINK_STAGE)/.all_done ]; then\
+		$(MKDIRS) $(LINK_STAGE);\
+		cd $(LINK_STAGE);\
 		bail=NO;\
             if [ "$(BUILD_TARGET)" = framework ]; then\
 		dirs="$(DYNAMIC_PROJDIRS)";\
@@ -162,7 +175,12 @@ make_links::
 		echo "#### $(BUILD_TARGET) is not a suitable target";\
 		exit 1;\
             fi;\
-			echo ========== Creating $$obj_dir links for ${TARGET_ARCH} ==========;\
+			if [ -z "$(LINK_ARCHS)" ]; then\
+				echo "##### No TARGET_ARCHS or TARGET_ARCH for make_links";\
+				exit 1;\
+			fi;\
+			for arch in $(LINK_ARCHS); do \
+			echo ========== Creating $$obj_dir links for $$arch ==========;\
 			for i in $$dirs; do\
 				echo -n "Linking $$i to ";\
 				name=$$i;\
@@ -189,28 +207,28 @@ make_links::
 				rm -rf $$name;\
 				$(MKDIRS) $$name;\
 				root=$(SUBLIBROOTS)/$$proj;\
-				if [ -d $$root/$${obj_dir}_obj/${TARGET_ARCH} ]; then\
-					echo -n $$root/$${obj_dir}_obj/${TARGET_ARCH};\
-					$(LN) $$root/$${obj_dir}_obj/${TARGET_ARCH} $$name/$${obj_dir}_obj;\
-				elif [ -d $$root/$${obj_dir}_${TARGET_ARCH}_obj ]; then\
-					echo -n $$root/$${obj_dir}_${TARGET_ARCH}_obj;\
-					$(LN) $$root/$${obj_dir}_${TARGET_ARCH}_obj $$name/$${obj_dir}_obj;\
+				if [ -d $$root/$${obj_dir}_obj/$$arch ]; then\
+					echo -n $$root/$${obj_dir}_obj/$$arch;\
+					$(LN) $$root/$${obj_dir}_obj/$$arch $$name/$${obj_dir}_obj;\
+				elif [ -d $$root/$${obj_dir}_$$arch_obj ]; then\
+					echo -n $$root/$${obj_dir}_$$arch_obj;\
+					$(LN) $$root/$${obj_dir}_$$arch_obj $$name/$${obj_dir}_obj;\
 				elif [ -d $$root/$${obj_dir}_obj ]; then\
 					echo -n $$root/$${obj_dir}_obj;\
 					$(LN) $$root/$${obj_dir}_obj $$name/$${obj_dir}_obj;\
-				elif [ -d $$root/dynamic_obj/${TARGET_ARCH} ]; then\
-					echo -n $$root/dynamic_obj/${TARGET_ARCH};\
-					$(LN) $$root/dynamic_obj/${TARGET_ARCH} $$name/$${obj_dir}_obj;\
+				elif [ -d $$root/dynamic_obj/$$arch ]; then\
+					echo -n $$root/dynamic_obj/$$arch;\
+					$(LN) $$root/dynamic_obj/$$arch $$name/$${obj_dir}_obj;\
 				elif [ -d $$root/dynamic_obj ]; then\
 					echo -n $$root/dynamic_obj;\
 					$(LN) $$root/dynamic_obj $$name/$${obj_dir}_obj;\
 				else\
-					echo "##### No $$root/$${obj_dir}_obj/${TARGET_ARCH}";\
+					echo "##### No $$root/$${obj_dir}_obj/$$arch";\
 					bail=YES;\
 					continue;\
 				fi;\
 				if [ -f $$name/$${obj_dir}_obj/$$name.ofileList ]; then\
-					$(LN) $$name/$${obj_dir}_obj/$$name.ofileList $$name/ofileList;\
+					$(LN) $${obj_dir}_obj/$$name.ofileList $$name/ofileList;\
 				else\
 					echo "#####No $$name/$${obj_dir}_obj/$$name.ofileList";\
 					bail=YES;\
@@ -218,17 +236,18 @@ make_links::
 				fi;\
 				echo " done.";\
 			done;\
+			done;\
 			if [ "$$bail" = YES ]; then\
 				exit 1;\
 			fi;\
 		if [ "$$bail" = YES ]; then\
 			exit 1;\
 		fi;\
-		touch $(OFILE_DIR)/links/.all_done;\
+		touch $(LINK_STAGE)/.all_done;\
 	fi)
 
 set_extra_libtool_flags =\
-	cd $(OFILE_DIR)/links ;\
+	cd $(LINK_STAGE) ;\
 	if [ "$(BUILD_TARGET)" = framework ]; then\
 		link_dir=dynamic;\
 		ofileList_flags="$(DYNAMIC_SECTORDER_FLAGS) " ;\
@@ -240,3 +259,18 @@ set_extra_libtool_flags =\
 			ofileList_flags="$$ofileList_flags -filelist $$subproj/ofileList,$$subproj/$${link_dir}_obj";\
 	done; \
 	ofileList_flags="$$ofileList_flags -lcc_dynamic"
+
+# Darwin 1.4 ships /usr/lib/libkvm.dylib (and libc, libm, ...) as
+# compatibility aliases of System.framework. Libkvm is harvested into
+# System and never installs a standalone dylib, so later bootstrap
+# tools (system_cmds/top) fail with "can't locate file for: -lkvm"
+# unless these links exist in DSTROOT.
+after_install::
+	$(MKDIRS) $(DSTROOT)/usr/lib
+	@(for lib in libc libm libkvm libcurses libedit libinfo \
+	             libstreams libobjc libmacho libdyld librld \
+	             libSystem; do \
+	    rm -f $(DSTROOT)/usr/lib/$$lib.dylib; \
+	    $(LN) ../../System/Library/Frameworks/System.framework/Versions/B/System \
+	          $(DSTROOT)/usr/lib/$$lib.dylib; \
+	  done)

@@ -15,7 +15,7 @@ SOURCEFILES= $(MAKEFILE) $(CFILES) $(HFILES)
 
 SYSTEM_FRAMEWORK_DIR = $(SYSTEM_LIBRARY_DIR)/Frameworks/System.framework
 INCDIR=$(SYSTEM_FRAMEWORK_DIR)/Headers
-CFLAGS= -static -g -O -MD -Wimplicit -DKERNEL -D_KERNEL -DMACH ${RC_CFLAGS}
+CFLAGS= -static -g -O -MD -Wimplicit -DKERNEL -D_KERNEL -DMACH ${RC_CFLAGS} ${LOCAL_CFLAGS}
 IFLAGS= -c -m 644
 OFILES= $(CFILES:.c=.o) $(MIGCFILES:.c=.o)
 MIGKERNEL=-typed
@@ -91,12 +91,12 @@ libmig: Makefile.gen ${GEN_MIGFILES}
 MIGOFILES:	ALWAYS
 	${MAKE} -f ${SYMDIR}/Makefile.gen libmig
 
-Makefile.gen: $(GEN_HFILES) $(GEN_MIGFILES)
+Makefile.gen: $(MAKEFILE) $(GEN_HFILES) $(GEN_MIGFILES)
 	$(RM) -f Makefile.gen
 	$(ECHO) "CFILES=`$(ECHO) *.c`"			> Makefile.gen
 	$(ECHO)						>> Makefile.gen
 	$(ECHO) 'OFILES=$$(CFILES:.c=.o)'			>> Makefile.gen
-	$(ECHO) 'CFLAGS=-static -g -O -MD -Wall -DMACH -DKERNEL_FEATURES $${RC_CFLAGS}' \
+	$(ECHO) 'CFLAGS=-static -g -O -MD -Wall -DMACH -DKERNEL_FEATURES $${RC_CFLAGS} $${LOCAL_CFLAGS}' \
 							>> Makefile.gen
 	$(ECHO)						>> Makefile.gen
 	$(ECHO) 'libmig: $$(OFILES)'			>> Makefile.gen

@@ -1,0 +1,540 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "AHCIHBA.h"
+
+#define MAX_EVENTS 4096
+#define NEVER_MS 0xffffffffU
+
+typedef enum {
+    EVENT_READ,
+    EVENT_WRITE,
+    EVENT_DELAY,
+    EVENT_BARRIER
+} EventKind;
+
+typedef struct {
+    EventKind kind;
+    AHCIU32 offset;
+    AHCIU32 value;
+} Event;
+
+typedef struct {
+    AHCIU32 registers[12];
+    Event events[MAX_EVENTS];
+    unsigned int eventCount;
+    unsigned int elapsed;
+    unsigned int bohcClearAt;
+    unsigned int resetClearAfter;
+    unsigned int resetStart;
+    int resetStarted;
+} FakeHBA;
+
+static int failures;
+
+static void fail(const char *test, const char *message)
+{
+    fprintf(stderr, "%s: %s\n", test, message);
+    ++failures;
+}
+
+static void record_event(FakeHBA *fake, EventKind kind, AHCIU32 offset,
+                         AHCIU32 value)
+{
+    Event *event;
+
+    if (fake->eventCount >= MAX_EVENTS) {
+        fail("event log", "overflow");
+        return;
+    }
+    event = &fake->events[fake->eventCount++];
+    event->kind = kind;
+    event->offset = offset;
+    event->value = value;
+}
+
+static void refresh_hardware(FakeHBA *fake)
+{
+    if (fake->bohcClearAt != NEVER_MS &&
+        fake->elapsed >= fake->bohcClearAt)
+        fake->registers[AHCI_REG_BOHC / 4U] &=
+            ~(AHCI_BOHC_BOS | AHCI_BOHC_BB);
+    if (fake->resetStarted && fake->resetClearAfter != NEVER_MS &&
+        fake->elapsed - fake->resetStart >= fake->resetClearAfter)
+        fake->registers[AHCI_REG_GHC / 4U] &= ~AHCI_GHC_HR;
+}
+
+static AHCIU32 fake_read(void *context, AHCIU32 offset)
+{
+    FakeHBA *fake;
+    AHCIU32 value;
+
+    fake = (FakeHBA *)context;
+    refresh_hardware(fake);
+    value = fake->registers[offset / 4U];
+    record_event(fake, EVENT_READ, offset, value);
+    return value;
+}
+
+static void fake_write(void *context, AHCIU32 offset, AHCIU32 value)
+{
+    FakeHBA *fake;
+
+    fake = (FakeHBA *)context;
+    refresh_hardware(fake);
+    record_event(fake, EVENT_WRITE, offset, value);
+    if (offset == AHCI_REG_IS)
+        fake->registers[offset / 4U] &= ~value;
+    else
+        fake->registers[offset / 4U] = value;
+    if (offset == AHCI_REG_GHC && (value & AHCI_GHC_HR) != 0) {
+        fake->resetStarted = 1;
+        fake->resetStart = fake->elapsed;
+    }
+}
+
+static void fake_delay(void *context, unsigned int milliseconds)
+{
+    FakeHBA *fake;
+
+    fake = (FakeHBA *)context;
+    record_event(fake, EVENT_DELAY, 0, (AHCIU32)milliseconds);
+    fake->elapsed += milliseconds;
+}
+
+static void fake_barrier(void *context)
+{
+    FakeHBA *fake;
+
+    fake = (FakeHBA *)context;
+    record_event(fake, EVENT_BARRIER, 0, 0);
+}
+
+static void initialize_fake(FakeHBA *fake, AHCIHBAOps *ops)
+{
+    memset(fake, 0, sizeof(*fake));
+    fake->registers[AHCI_REG_CAP / 4U] = 0;
+    fake->registers[AHCI_REG_GHC / 4U] = AHCI_GHC_IE;
+    fake->registers[AHCI_REG_IS / 4U] = 0x80000005U;
+    fake->registers[AHCI_REG_PI / 4U] = 1U;
+    fake->registers[AHCI_REG_VS / 4U] = 0x00010301U;
+    fake->registers[AHCI_REG_CAP2 / 4U] = 0;
+    fake->bohcClearAt = NEVER_MS;
+    fake->resetClearAfter = 2U;
+    ops->context = fake;
+    ops->read = fake_read;
+    ops->write = fake_write;
+    ops->delay = fake_delay;
+    ops->barrier = fake_barrier;
+}
+
+static int nth_write(const FakeHBA *fake, AHCIU32 offset, AHCIU32 value,
+                     unsigned int occurrence)
+{
+    unsigned int index;
+    unsigned int found;
+
+    found = 0;
+    for (index = 0; index < fake->eventCount; ++index) {
+        if (fake->events[index].kind == EVENT_WRITE &&
+            fake->events[index].offset == offset &&
+            fake->events[index].value == value) {
+            ++found;
+            if (found == occurrence)
+                return (int)index;
+        }
+    }
+    return -1;
+}
+
+static unsigned int delay_total(const FakeHBA *fake, unsigned int value)
+{
+    unsigned int index;
+    unsigned int total;
+
+    total = 0;
+    for (index = 0; index < fake->eventCount; ++index) {
+        if (fake->events[index].kind == EVENT_DELAY &&
+            fake->events[index].value == value)
+            total += value;
+    }
+    return total;
+}
+
+static unsigned int delay_total_between(const FakeHBA *fake, int first,
+                                        int last, unsigned int value)
+{
+    unsigned int index;
+    unsigned int total;
+
+    if (first < 0 || last <= first)
+        return 0;
+    total = 0;
+    for (index = (unsigned int)(first + 1); index < (unsigned int)last;
+         ++index) {
+        if (fake->events[index].kind == EVENT_DELAY &&
+            fake->events[index].value == value)
+            total += value;
+    }
+    return total;
+}
+
+static int has_single_delay_between(const FakeHBA *fake, int first,
+                                    int last, unsigned int milliseconds)
+{
+    unsigned int index;
+    unsigned int count;
+
+    if (first < 0 || last <= first)
+        return 0;
+    count = 0;
+    for (index = (unsigned int)(first + 1); index < (unsigned int)last;
+         ++index) {
+        if (fake->events[index].kind == EVENT_DELAY) {
+            if (fake->events[index].value != (AHCIU32)milliseconds)
+                return 0;
+            ++count;
+        }
+    }
+    return count == 1U;
+}
+
+static unsigned int write_count(const FakeHBA *fake)
+{
+    unsigned int index;
+    unsigned int count;
+
+    count = 0;
+    for (index = 0; index < fake->eventCount; ++index) {
+        if (fake->events[index].kind == EVENT_WRITE)
+            ++count;
+    }
+    return count;
+}
+
+static unsigned int matching_write_count(const FakeHBA *fake,
+                                         AHCIU32 offset, AHCIU32 mask,
+                                         AHCIU32 value)
+{
+    unsigned int index;
+    unsigned int count;
+
+    count = 0;
+    for (index = 0; index < fake->eventCount; ++index) {
+        if (fake->events[index].kind == EVENT_WRITE &&
+            fake->events[index].offset == offset &&
+            (fake->events[index].value & mask) == value)
+            ++count;
+    }
+    return count;
+}
+
+static unsigned int offset_write_count(const FakeHBA *fake, AHCIU32 offset)
+{
+    unsigned int index;
+    unsigned int count;
+
+    count = 0;
+    for (index = 0; index < fake->eventCount; ++index) {
+        if (fake->events[index].kind == EVENT_WRITE &&
+            fake->events[index].offset == offset)
+            ++count;
+    }
+    return count;
+}
+
+static void require_write_barriers(const char *name, const FakeHBA *fake)
+{
+    unsigned int index;
+
+    for (index = 0; index < fake->eventCount; ++index) {
+        if (fake->events[index].kind == EVENT_WRITE &&
+            (index + 1U >= fake->eventCount ||
+             fake->events[index + 1U].kind != EVENT_BARRIER)) {
+            fail(name, "register write was not immediately barriered");
+            return;
+        }
+    }
+}
+
+static void test_global_initialization_order(void)
+{
+    static const char name[] = "global initialization order";
+    FakeHBA fake;
+    AHCIHBAOps ops;
+    AHCIHBAInfo info;
+    AHCIHBAResult result;
+    int firstAE;
+    int reset;
+    int secondAE;
+    int interruptDisable;
+    int staleClear;
+
+    initialize_fake(&fake, &ops);
+    result = AHCIHBAInitialize(&ops, &info);
+    if (result != AHCI_HBA_SUCCESS)
+        fail(name, "initialization failed");
+    firstAE = nth_write(&fake, AHCI_REG_GHC, AHCI_GHC_AE | AHCI_GHC_IE, 1);
+    reset = nth_write(&fake, AHCI_REG_GHC,
+                      AHCI_GHC_AE | AHCI_GHC_IE | AHCI_GHC_HR, 1);
+    secondAE = nth_write(&fake, AHCI_REG_GHC,
+                         AHCI_GHC_AE | AHCI_GHC_IE, 2);
+    interruptDisable = nth_write(&fake, AHCI_REG_GHC, AHCI_GHC_AE, 1);
+    staleClear = nth_write(&fake, AHCI_REG_IS, 0xffffffffU, 1);
+    if (firstAE < 0 || reset <= firstAE || secondAE <= reset ||
+        interruptDisable <= secondAE || staleClear <= interruptDisable)
+        fail(name, "AE/reset/IE/IS write order is wrong");
+    if ((fake.registers[AHCI_REG_GHC / 4U] & AHCI_GHC_IE) != 0)
+        fail(name, "global interrupts left enabled");
+    if ((fake.registers[AHCI_REG_GHC / 4U] & AHCI_GHC_HR) != 0)
+        fail(name, "reset bit left asserted");
+    if (fake.registers[AHCI_REG_IS / 4U] != 0)
+        fail(name, "stale global interrupt status not cleared");
+    if (info.version != 0x00010301U || info.capabilities != 0 ||
+        info.capabilities2 != 0 || info.portsImplemented != 1U)
+        fail(name, "capability snapshot is wrong");
+    require_write_barriers(name, &fake);
+}
+
+static void test_bohc_busy_handoff(void)
+{
+    static const char name[] = "BOHC busy handoff";
+    FakeHBA fake;
+    AHCIHBAOps ops;
+    AHCIHBAInfo info;
+    AHCIHBAResult result;
+    int ownership;
+    int firstAE;
+    int reset;
+    int secondAE;
+
+    initialize_fake(&fake, &ops);
+    fake.registers[AHCI_REG_CAP2 / 4U] = AHCI_CAP2_BOH;
+    fake.registers[AHCI_REG_BOHC / 4U] = AHCI_BOHC_BOS | AHCI_BOHC_BB;
+    fake.bohcClearAt = AHCI_BOHC_BB_OBSERVE_MS + 5U;
+    result = AHCIHBAInitialize(&ops, &info);
+    if (result != AHCI_HBA_SUCCESS)
+        fail(name, "handoff failed");
+    ownership = nth_write(&fake, AHCI_REG_BOHC,
+                          AHCI_BOHC_BOS | AHCI_BOHC_BB | AHCI_BOHC_OOS, 1);
+    if (ownership < 0)
+        fail(name, "OOS was not requested");
+    firstAE = nth_write(&fake, AHCI_REG_GHC,
+                        AHCI_GHC_AE | AHCI_GHC_IE, 1);
+    reset = nth_write(&fake, AHCI_REG_GHC,
+                      AHCI_GHC_AE | AHCI_GHC_IE | AHCI_GHC_HR, 1);
+    secondAE = nth_write(&fake, AHCI_REG_GHC,
+                         AHCI_GHC_AE | AHCI_GHC_IE, 2);
+    if (delay_total_between(&fake, ownership, firstAE,
+                            AHCI_BOHC_BB_OBSERVE_MS) !=
+        AHCI_BOHC_BB_OBSERVE_MS)
+        fail(name, "25 ms busy observation missing");
+    if (delay_total_between(&fake, ownership, firstAE,
+                            AHCI_POLL_INTERVAL_MS) != 5U)
+        fail(name, "busy cleanup polling duration is wrong");
+    if (delay_total_between(&fake, reset, secondAE,
+                            AHCI_POLL_INTERVAL_MS) != 2U)
+        fail(name, "reset polling duration is wrong");
+    require_write_barriers(name, &fake);
+}
+
+static void test_bohc_timeouts(void)
+{
+    static const char busyName[] = "BOHC busy timeout";
+    static const char noBusyName[] = "BOHC no-busy observation";
+    FakeHBA fake;
+    AHCIHBAOps ops;
+    AHCIHBAInfo info;
+    AHCIHBAResult result;
+    int ownership;
+    int firstAE;
+    AHCIU32 originalGHC;
+    AHCIU32 originalIS;
+
+    initialize_fake(&fake, &ops);
+    fake.registers[AHCI_REG_CAP2 / 4U] = AHCI_CAP2_BOH;
+    fake.registers[AHCI_REG_BOHC / 4U] = AHCI_BOHC_BOS | AHCI_BOHC_BB;
+    originalGHC = fake.registers[AHCI_REG_GHC / 4U];
+    originalIS = fake.registers[AHCI_REG_IS / 4U];
+    result = AHCIHBAInitialize(&ops, &info);
+    if (result != AHCI_HBA_BOHC_TIMEOUT)
+        fail(busyName, "persistent BB was accepted");
+    if (fake.elapsed != AHCI_BOHC_BB_OBSERVE_MS +
+                        AHCI_BOHC_HANDOFF_TIMEOUT_MS)
+        fail(busyName, "handoff wait was not bounded");
+    if (offset_write_count(&fake, AHCI_REG_GHC) != 0 ||
+        offset_write_count(&fake, AHCI_REG_IS) != 0 ||
+        fake.registers[AHCI_REG_GHC / 4U] != originalGHC ||
+        fake.registers[AHCI_REG_IS / 4U] != originalIS)
+        fail(busyName, "firmware-owned GHC/IS were touched");
+    require_write_barriers(busyName, &fake);
+
+    initialize_fake(&fake, &ops);
+    fake.registers[AHCI_REG_CAP2 / 4U] = AHCI_CAP2_BOH;
+    fake.registers[AHCI_REG_BOHC / 4U] = AHCI_BOHC_BOS;
+    result = AHCIHBAInitialize(&ops, &info);
+    if (result != AHCI_HBA_SUCCESS)
+        fail(noBusyName, "persistent BOS without observed BB was rejected");
+    ownership = nth_write(&fake, AHCI_REG_BOHC,
+                          AHCI_BOHC_BOS | AHCI_BOHC_OOS, 1);
+    firstAE = nth_write(&fake, AHCI_REG_GHC,
+                        AHCI_GHC_AE | AHCI_GHC_IE, 1);
+    if (!has_single_delay_between(&fake, ownership, firstAE,
+                                  AHCI_BOHC_BB_OBSERVE_MS))
+        fail(noBusyName, "BB observation was not exactly one bounded wait");
+    require_write_barriers(noBusyName, &fake);
+}
+
+static void test_reset_timeout(void)
+{
+    static const char name[] = "reset timeout";
+    FakeHBA fake;
+    AHCIHBAOps ops;
+    AHCIHBAInfo info;
+    AHCIHBAResult result;
+    int reset;
+    int interruptDisable;
+    int staleClear;
+
+    initialize_fake(&fake, &ops);
+    fake.resetClearAfter = NEVER_MS;
+    result = AHCIHBAInitialize(&ops, &info);
+    if (result != AHCI_HBA_RESET_TIMEOUT)
+        fail(name, "persistent HR was accepted");
+    if (fake.elapsed != AHCI_HBA_RESET_TIMEOUT_MS)
+        fail(name, "reset wait was not bounded to one second");
+    reset = nth_write(&fake, AHCI_REG_GHC,
+                      AHCI_GHC_AE | AHCI_GHC_IE | AHCI_GHC_HR, 1);
+    interruptDisable = nth_write(&fake, AHCI_REG_GHC, AHCI_GHC_AE, 1);
+    staleClear = nth_write(&fake, AHCI_REG_IS, 0xffffffffU, 1);
+    if (reset < 0 || interruptDisable <= reset ||
+        staleClear <= interruptDisable)
+        fail(name, "HR/IE cleanup did not precede status clear");
+    if ((fake.registers[AHCI_REG_GHC / 4U] &
+         (AHCI_GHC_IE | AHCI_GHC_HR)) != 0)
+        fail(name, "failed reset left IE or HR asserted");
+    if (matching_write_count(&fake, AHCI_REG_GHC, AHCI_GHC_HR,
+                             AHCI_GHC_HR) != 1U)
+        fail(name, "reset was issued more than once");
+    require_write_barriers(name, &fake);
+}
+
+static void test_reset_timeout_boundary(void)
+{
+    static const char successName[] = "reset final allowed read";
+    static const char timeoutName[] = "reset beyond final allowed read";
+    FakeHBA fake;
+    AHCIHBAOps ops;
+    AHCIHBAInfo info;
+    AHCIHBAResult result;
+
+    initialize_fake(&fake, &ops);
+    fake.resetClearAfter = AHCI_HBA_RESET_TIMEOUT_MS;
+    result = AHCIHBAInitialize(&ops, &info);
+    if (result != AHCI_HBA_SUCCESS ||
+        delay_total(&fake, AHCI_POLL_INTERVAL_MS) !=
+            AHCI_HBA_RESET_TIMEOUT_MS)
+        fail(successName, "HR clear on final allowed read was rejected");
+    if (matching_write_count(&fake, AHCI_REG_GHC, AHCI_GHC_HR,
+                             AHCI_GHC_HR) != 1U)
+        fail(successName, "reset was issued more than once");
+    require_write_barriers(successName, &fake);
+
+    initialize_fake(&fake, &ops);
+    fake.resetClearAfter = AHCI_HBA_RESET_TIMEOUT_MS + 1U;
+    result = AHCIHBAInitialize(&ops, &info);
+    if (result != AHCI_HBA_RESET_TIMEOUT)
+        fail(timeoutName, "late HR clear was accepted");
+    if (matching_write_count(&fake, AHCI_REG_GHC, AHCI_GHC_HR,
+                             AHCI_GHC_HR) != 1U)
+        fail(timeoutName, "reset was reissued during cleanup");
+    if ((fake.registers[AHCI_REG_GHC / 4U] &
+         (AHCI_GHC_IE | AHCI_GHC_HR)) != 0)
+        fail(timeoutName, "timeout cleanup left IE or HR asserted");
+    require_write_barriers(timeoutName, &fake);
+}
+
+static void test_pi_validation(void)
+{
+    static const char zeroName[] = "zero PI";
+    static const char highName[] = "PI above NP";
+    static const char port31Name[] = "NP31 safety";
+    FakeHBA fake;
+    AHCIHBAOps ops;
+    AHCIHBAInfo info;
+    AHCIHBAResult result;
+
+    initialize_fake(&fake, &ops);
+    fake.registers[AHCI_REG_PI / 4U] = 0;
+    result = AHCIHBAInitialize(&ops, &info);
+    if (result != AHCI_HBA_INVALID_PI || write_count(&fake) != 0)
+        fail(zeroName, "zero PI did not fail before writes");
+
+    initialize_fake(&fake, &ops);
+    fake.registers[AHCI_REG_PI / 4U] = 2U;
+    result = AHCIHBAInitialize(&ops, &info);
+    if (result != AHCI_HBA_INVALID_PI || write_count(&fake) != 0)
+        fail(highName, "PI above CAP.NP did not fail before writes");
+
+    initialize_fake(&fake, &ops);
+    fake.registers[AHCI_REG_CAP / 4U] = AHCI_CAP_NP_MASK;
+    fake.registers[AHCI_REG_PI / 4U] = 0x80000000U;
+    result = AHCIHBAInitialize(&ops, &info);
+    if (result != AHCI_HBA_SUCCESS)
+        fail(port31Name, "port 31 was rejected or shifted unsafely");
+    require_write_barriers(port31Name, &fake);
+}
+
+static void test_register_and_argument_failures(void)
+{
+    static const char registerName[] = "invalid registers";
+    static const char argumentName[] = "invalid callbacks";
+    static const char laterName[] = "later version";
+    FakeHBA fake;
+    AHCIHBAOps ops;
+    AHCIHBAInfo info;
+    AHCIHBAResult result;
+
+    initialize_fake(&fake, &ops);
+    fake.registers[AHCI_REG_VS / 4U] = 0;
+    result = AHCIHBAInitialize(&ops, &info);
+    if (result != AHCI_HBA_INVALID_REGISTERS || write_count(&fake) != 0)
+        fail(registerName, "zero VS was accepted");
+
+    initialize_fake(&fake, &ops);
+    fake.registers[AHCI_REG_CAP / 4U] = 0xffffffffU;
+    result = AHCIHBAInitialize(&ops, &info);
+    if (result != AHCI_HBA_INVALID_REGISTERS || write_count(&fake) != 0)
+        fail(registerName, "all-one CAP was accepted");
+
+    initialize_fake(&fake, &ops);
+    ops.barrier = NULL;
+    result = AHCIHBAInitialize(&ops, &info);
+    if (result != AHCI_HBA_BAD_ARGUMENT || write_count(&fake) != 0)
+        fail(argumentName, "missing callback was accepted");
+
+    initialize_fake(&fake, &ops);
+    fake.registers[AHCI_REG_VS / 4U] = 0x00020000U;
+    result = AHCIHBAInitialize(&ops, &info);
+    if (result != AHCI_HBA_SUCCESS || info.version != 0x00020000U)
+        fail(laterName, "later AHCI version was rejected");
+    require_write_barriers(laterName, &fake);
+}
+
+int main(void)
+{
+    test_global_initialization_order();
+    test_bohc_busy_handoff();
+    test_bohc_timeouts();
+    test_reset_timeout();
+    test_reset_timeout_boundary();
+    test_pi_validation();
+    test_register_and_argument_failures();
+    if (failures != 0) {
+        fprintf(stderr, "ahci_hba_test: %d failure(s)\n", failures);
+        return EXIT_FAILURE;
+    }
+    printf("ahci_hba_test: all tests passed\n");
+    return EXIT_SUCCESS;
+}

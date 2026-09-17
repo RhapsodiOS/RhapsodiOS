@@ -34,7 +34,7 @@ DSTROOT=$(VERSDIR)/BUILD
 #
 # Include file for directory makefiles
 #
-findfile MakeInc.dir
+include ../../MakeInc.dir
 
 #
 # Get a usable version of doconf for the installhdrs target.
@@ -48,4 +48,3 @@ pre_install:	ALWAYS OBJROOT
 		OBJROOT=$(OBJROOT)					     \
 		SYMROOT=$(SYMROOT)					     \
 		DSTROOT=$(DSTROOT)
-

@@ -1,0 +1,117 @@
+{\rtf0\ansi{\fonttbl\f0\fswiss Helvetica;}
+\paperw7900
+\paperh9000
+\margl0
+\margr160
+{\colortbl;\red0\green0\blue0;}
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b0\i0\ulnone\fs16\li360\fc1\cf1 \
+
+{\b\fs36{\NeXTHelpMarker1 \markername Sending;}
+¬ }\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b\i0\ulnone\fs36\li360\fc1\cf1 DPT On-Board Series SCSI Adapter\
+
+{\b0\fs12{\NeXTGraphic36 216461_PixelRule.tiff \width7180 \height60
+}
+¬}\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b\i0\ulnone\fs36\li360\fc1\cf1 \
+
+\b0\fs24 \
+
+{\b\fs28{\NeXTGraphic39 366446_SCSI.tiff \width960 \height860
+}
+¬}\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b\i0\ulnone\fs28\li360\fc1\cf1\up20 SCSI Devices\
+
+\b0\fs24\up0 \
+This EISA Bus device driver automatically detects the target adapter.\
+
+\fs16 \
+\
+
+\b\fs24\fc0\cf0 Supported Hardware: \
+
+\pard\tx520\tx1060\tx1600\tx2120\tx2660\tx3200\tx3720\tx4260\tx4800\tx5320\b0\fs16\fc1\cf1 \
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fs24\li360\fc0\cf0 DPT On-Board (Embedded) SCSI Adapter\
+
+\fs16\fc1\cf1 \
+\
+
+\fs24 This driver supports systems with the DPT On-Board SCSI Host Adapter, inlcuding the NEC Express/II P60ST.
+\fc0\cf0 \
+
+\fs16\fc1\cf1 \
+\
+
+\b\fs24\fc0\cf0 Configuring a DPT EISA SCSI Adapter\
+
+\b0\fs16\fc1\cf1 \
+
+\pard\tx360\tx1060\tx1600\tx2120\tx2660\tx3200\tx3720\tx4260\tx4800\tx5320\fs24\fi-360\li360\fc0\cf0 	
+\b Note:
+\b0   There is no installation involved with DPT On-Board SCSI Adapters, but it may be necessary to run the system's ECU program to configure the hardware.  \
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fs16\li360\fc1\cf1 \
+
+\fs24\fi-380\li740\fc0\cf0 1. 	Run the system's ECU program to add the adapter to the system's BIOS configuration. \
+2.   Be aware of the necessity of proper SCSI termination.  Refer to \
+       the User's Manual and configure the host adapter accordingly using the system's ECU program.\
+3.   If you are using any external SCSI drives, be sure to limit the data rate on the SCSI bus using the system's ECU program.  Selecting "External Cable Detection" is usually sufficient to cover this case. \
+
+\fs16\fi0\li360\fc1\cf1 \
+\
+
+\b\fs24\fc0\cf0 Configuring the DPT On-Board SCSI Adapter Device Driver 
+\b0  \
+
+\fs16\fc1\cf1 \
+
+\pard\tx360\tx1060\tx1600\tx2120\tx2660\tx3200\tx3720\tx4260\tx4800\tx5320\fs24\fi-360\li360\fc0\cf0 	
+\b\fc1\cf1 Note: 
+\b0\fc0\cf0 See Configure's Help for general information on running the Configure Application.\
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fs16\li360\fc1\cf1 \
+
+\fs24\fi-380\li740\fc0\cf0 1. 	Click the SCSI icon at the top of Configure's Summary window.  If any string containing "DPT" is in the list of devices that appears in the window, and if a DPT SCSI Adapter device driver is already installed in your computer, select the driver's name, and click Remove.
+\b \
+
+\b0 2. 	If you're planning to use the DPT SCSI Adapter in place of another adapter named in the list, select the other adapter's name, and click Remove. \
+3.	Click Add in the window.  \
+4. 	In the Add SCSI Devices panel that opens, select the radio button labeled "Show Drivers for Detected Devices."  Select "DPT On-Board SCSI Adapter"  from the list, and click Add. \
+	
+\b Note: 
+\b0  If the DPT driver does not show up in the list of  detected devices, this indicates a problem with the system setup.  You need to run the ECU program to ensure that the system BIOS knows about the adapter. \
+5.	You have the option of selecting either level-triggered or edge-triggered interrupts.  The default is to use edge-triggered interrupts.  Using level triggered interrupts allows multiple boards to share an IRQ.  If you do this, use the system's ECU program to make sure the adapter is configured to use level-triggered interrupts. \
+
+\b\fc1\cf1 	Note: 
+\b0\fc0\cf0 There is a bug in the Configure application which results in a panel which says "
+\i These settings are claimed by more than one device. You must resolve the conflicts before saving
+\i0 "  when you configure multiple EISA devices to share the same (level-triggered) IRQ.  Ignore this panel and proceed to save the configuration as usual. \
+	
+\b\fc1\cf1 Note: 
+\b0 The NEC Express II/60st system does not allow the On-board SCSI Adapter to be configured for level-triggered interrupts, so the driver must be configured for edge-triggerred interrupts\
+
+\fc0\cf0 6.	Click Done, and then click Save. \
+7.	Choose Quit from the Configure menu.\
+
+\fs16\fc1\cf1 \
+
+{\fs12\fi0\li360{\NeXTGraphic2906 486444_PixelRule.tiff \width7180 \height20
+}
+¬}\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\f0\b0\i0\ulnone\fs16\li360\fc1\cf1 \
+
+\b\fs24 \
+See also\
+
+\b0\fs16 \
+
+\pard\tx720\tx720\tx1080\tx1440\tx1800\tx2160\fs24\fi-360\li720\fc1\cf1 ·	"Add a Device" in Configure's on-line help.\
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\fs16\li360\fc1\cf1 \
+
+\fs24 ·	See NeXTanswer 1824 for general information on installing \
+	and configuring device drivers. \
+
+\pard\tx533\tx1067\tx1601\tx2135\tx2668\tx3202\tx3736\tx4270\tx4803\tx5337\fc1\cf1 \
+
+\pard\tx720\tx1080\tx1440\tx1800\tx2160\tx2520\tx2880\tx3240\tx3600\tx3960\tx4320\tx4680\tx5040\tx5400\tx5760\tx6120\tx6480\tx6840\tx7200\tx7560\li360\fc1\cf1 ·	See NeXTanswer 1830 for an overview of this DPT device \
+	driver. \
+
+}

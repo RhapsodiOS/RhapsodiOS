@@ -358,7 +358,7 @@ def _has_valid_scattered_addend(document: dict, metadata_entries: list[dict],
 
 
 def _ghidra_operand_owner(document: dict, instruction: dict, relocation: dict,
-                          relocation_index: int) -> int | None:
+                          relocation_index: int, width: int, relative: bool) -> int | None:
     ghidra = document.get("extensions", {}).get("ghidra", {})
     entries = [item for item in ghidra.get("instruction_reference_indexes", [])
                if item.get("address") == instruction["address"]]
@@ -383,14 +383,15 @@ def _ghidra_operand_owner(document: dict, instruction: dict, relocation: dict,
     if target_sections and (section_target or not target_symbols):
         section = target_sections[0]
         target = section["address"] + relocation["addend"]
-        if not section["address"] <= target < section["address"] + section["size"]:
+        resolved_target = target + (width if relative else 0)
+        if not section["address"] <= resolved_target < section["address"] + section["size"]:
             if not _has_valid_scattered_addend(
                     document, extension_entries, relocation, section):
                 if "-scattered-" in relocation["kind"]:
                     raise NormalizationError("Ghidra scattered relocation evidence is invalid")
                 raise NormalizationError("Ghidra relocation addend is outside target section")
-        target_address_groups = [{target}]
-        if target != section["address"]:
+        target_address_groups = [{resolved_target}]
+        if resolved_target != section["address"]:
             target_address_groups.append({section["address"]})
     else:
         target_addresses = {symbol["address"] for symbol in target_symbols}
@@ -505,13 +506,13 @@ def _angr_operand_owner(document: dict, instruction: dict, relocation: dict,
     if target_sections and (section_target or not target_symbols):
         section = target_sections[0]
         target = section["address"] + relocation["addend"]
-        if not section["address"] <= target < section["address"] + section["size"]:
+        resolved_target = target + (width if relative else 0)
+        if not section["address"] <= resolved_target < section["address"] + section["size"]:
             if not _has_valid_scattered_addend(
                     document, extension_entries, relocation, section):
                 if "-scattered-" in relocation["kind"]:
                     raise NormalizationError("angr scattered relocation evidence is invalid")
                 raise NormalizationError("angr relocation addend is outside target section")
-        resolved_target = target + (width if relative else 0)
         resolved_address_groups = [{resolved_target}]
         encoded_address_groups = [{target - relocation["address"] if relative else target}]
     elif target_symbols:
@@ -557,8 +558,31 @@ def _angr_operand_owner(document: dict, instruction: dict, relocation: dict,
     raise NormalizationError("angr relocation operand metadata has no matching owner")
 
 
+def _ida_operand_owner(document: dict, instruction: dict, relocation: dict) -> int | None:
+    ida = document.get("extensions", {}).get("ida", {})
+    entries = [item for item in ida.get("instruction_operand_offsets", [])
+              if item.get("address") == instruction["address"]]
+    if not entries:
+        return None
+    if len(entries) != 1:
+        raise NormalizationError("IDA instruction operand offset metadata is ambiguous")
+    field_offset = relocation["address"] - instruction["address"]
+    owners = set()
+    for operand in entries[0].get("operands", []):
+        index, offset = operand.get("index"), operand.get("offset")
+        if (type(index) is not int or index < 0 or
+                type(offset) is not int or offset < 0):
+            raise NormalizationError("IDA instruction operand offset metadata is invalid")
+        if offset == field_offset:
+            owners.add(index)
+    if len(owners) > 1:
+        raise NormalizationError("IDA relocation operand metadata is ambiguous")
+    return next(iter(owners)) if owners else None
+
+
 def _operand_owner(relocation: dict, operands: list[str],
-                   structured_owner: int | None = None) -> int:
+                   structured_owner: int | None = None,
+                   context: str = "") -> int:
     if len(operands) == 1:
         candidates = [0]
     elif relocation["target"]:
@@ -570,12 +594,20 @@ def _operand_owner(relocation: dict, operands: list[str],
         candidates = []
     if structured_owner is not None:
         if structured_owner >= len(operands):
-            raise NormalizationError("structured relocation operand index is out of range")
+            raise NormalizationError(
+                f"structured relocation operand index {structured_owner} is out of range "
+                f"({len(operands)} operands: {operands}){context}")
         if candidates and structured_owner not in candidates:
-            raise NormalizationError("structured and textual relocation operands conflict")
+            raise NormalizationError(
+                f"structured and textual relocation operands conflict: structured says "
+                f"{structured_owner}, text says {candidates} for target "
+                f"{relocation.get('target')!r} in operands {operands}{context}")
         candidates = [structured_owner]
     if len(candidates) != 1:
-        raise NormalizationError("relocation operand ownership is ambiguous")
+        raise NormalizationError(
+            f"relocation operand ownership is ambiguous: {len(candidates)} candidates "
+            f"{candidates} for target {relocation.get('target')!r} "
+            f"(kind {relocation.get('kind', '?')}) in operands {operands}{context}")
     return candidates[0]
 
 
@@ -595,6 +627,19 @@ def _target(document: dict, target, sections: list[dict]) -> dict:
     return {"kind": "external", "name": target}
 
 
+def _instruction_context(document: dict, instruction: dict) -> str:
+    """Identify which artifact, analyzer and instruction a failure came from.
+
+    Normalization errors are otherwise indistinguishable between the reference
+    and the rebuilt run, which makes them very expensive to chase.
+    """
+    analyzer = (document.get("analyzer") or {}).get("name", "?")
+    source = (document.get("input") or {}).get("path", "?")
+    return (f"{analyzer} on {source}: instruction at "
+            f"{instruction['address']:#x} ({len(instruction['bytes']) // 2} bytes, "
+            f"{instruction.get('mnemonic', '?')} {instruction.get('operands', '')})".rstrip())
+
+
 def _normalize_instruction(document: dict, instruction: dict, sections: list[dict],
                            ownership: dict[int, int], original_references: list[dict],
                            angr_operand_metadata: dict[int, dict]) -> dict:
@@ -603,15 +648,25 @@ def _normalize_instruction(document: dict, instruction: dict, sections: list[dic
     fields = []
     for index in instruction["relocations"]:
         if index >= len(document["relocations"]):
-            raise NormalizationError(f"relocation index {index} is out of range")
+            raise NormalizationError(
+                f"relocation index {index} is out of range "
+                f"({len(document['relocations'])} relocations) — "
+                f"{_instruction_context(document, instruction)}")
         relocation = document["relocations"][index]
         width, relative = _relocation_metadata(document, index, relocation)
         start = relocation["address"]
         end = start + width
         if not (address <= start and end <= address + length):
-            raise NormalizationError(f"relocation {index} is outside its instruction")
+            raise NormalizationError(
+                f"relocation {index} is outside its instruction: relocation covers "
+                f"{start:#x}..{end:#x} (width {width}, kind "
+                f"{relocation.get('kind', '?')}) but the instruction covers "
+                f"{address:#x}..{address + length:#x} — "
+                f"{_instruction_context(document, instruction)}")
         if index in ownership:
-            raise NormalizationError(f"relocation {index} has multiple instruction owners")
+            raise NormalizationError(
+                f"relocation {index} has multiple instruction owners: already owned by "
+                f"{ownership[index]:#x} — {_instruction_context(document, instruction)}")
         ownership[index] = address
         fields.append((start, end, index, width, relative, relocation))
     fields.sort(key=lambda item: (item[0], item[1], item[2]))
@@ -623,12 +678,16 @@ def _normalize_instruction(document: dict, instruction: dict, sections: list[dic
         raise NormalizationError("display and normalized operand counts differ")
     operands = [{"text": text, "relocations": []} for text in display_operands]
     for start, _, index, width, relative, relocation in fields:
-        structured_owner = _ghidra_operand_owner(document, instruction, relocation, index)
+        structured_owner = _ghidra_operand_owner(
+            document, instruction, relocation, index, width, relative)
         if structured_owner is None:
             structured_owner = _angr_operand_owner(
                 document, instruction, relocation, index, width, relative,
                 angr_operand_metadata)
-        owner = _operand_owner(relocation, normalized_operands, structured_owner)
+        if structured_owner is None:
+            structured_owner = _ida_operand_owner(document, instruction, relocation)
+        owner = _operand_owner(relocation, normalized_operands, structured_owner,
+                               " | " + _instruction_context(document, instruction))
         operands[owner]["relocations"].append({
             "field_offset": start - address, "width": width,
             "signed": relative, "kind": relocation["kind"],

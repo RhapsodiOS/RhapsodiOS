@@ -39,7 +39,7 @@ extern unsigned int reg_base;
  * Read register for socket
  * Directly accesses PCIC hardware registers
  */
-- (unsigned char)_readRegister:(int)regOffset socket:(int)socket
+- (unsigned char)readRegister:(int)regOffset socket:(int)socket
 {
     unsigned char value;
 
@@ -56,7 +56,7 @@ extern unsigned int reg_base;
  * Write register for socket
  * Directly accesses PCIC hardware registers
  */
-- (void)_writeRegister:(int)regOffset socket:(int)socket value:(unsigned char)value
+- (void)writeRegister:(int)regOffset socket:(int)socket value:(unsigned char)value
 {
     char offsetCalc;
 

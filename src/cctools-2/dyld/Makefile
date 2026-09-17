@@ -12,10 +12,10 @@ endif
 OFLAG = -O
 ifeq "mwcc" "$(notdir $(CC))"
   CFLAGS = $(DEBUG) $(OFLAG) -dynamic -g \
-	 -I$(SRCROOT)/../include -I$(SRCROOT) -I$(OBJROOT)
+	 -I$(SRCROOT)/../include -I$(SRCROOT) -I$(OBJROOT) $(LOCAL_CFLAGS)
 else
   CFLAGS = $(DEBUG) $(OFLAG) -dynamic -g -Wall -Wno-precomp \
-	 -I$(SRCROOT)/../include -I$(SRCROOT) -I$(OBJROOT)
+	 -I$(SRCROOT)/../include -I$(SRCROOT) -I$(OBJROOT) $(LOCAL_CFLAGS)
 endif
 LIBSTUFF = -L$(SYMROOT)/../libstuff -lstuff
 # Prefer libc_dynamic when present; otherwise plain -lc (seeded by host-fixes).

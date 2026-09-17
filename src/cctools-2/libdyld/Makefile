@@ -7,10 +7,10 @@ endif
 
 ifeq "mwcc" "$(notdir $(CC))"
   CFLAGS = $(PROFILING) $(OFLAG) -g \
-     -I$(SRCROOT) -I$(SRCROOT)/../include -I$(OFILE_DIR) -I$(SRCROOT)/../dyld
+     -I$(SRCROOT) -I$(SRCROOT)/../include -I$(OFILE_DIR) -I$(SRCROOT)/../dyld $(LOCAL_CFLAGS)
 else
   CFLAGS = $(PROFILING) $(OFLAG) -g -Wall -Wno-precomp \
-     -I$(SRCROOT) -I$(SRCROOT)/../include -I$(OFILE_DIR) -I$(SRCROOT)/../dyld
+     -I$(SRCROOT) -I$(SRCROOT)/../include -I$(OFILE_DIR) -I$(SRCROOT)/../dyld $(LOCAL_CFLAGS)
 endif
 
 ifneq "" "$(wildcard /bin/mkdirs)"

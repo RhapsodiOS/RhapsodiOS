@@ -42,13 +42,13 @@
  * Allocate resources for a device description by parsing tuple list
  * Returns the description if successful, nil otherwise
  */
-- _allocResourcesForDescription:description fromTupleList:tupleList;
+- allocResourcesForDescription:description fromTupleList:tupleList;
 
 /*
  * Parse a single tuple into device description
  * Extracts resource information from the tuple and adds it to the description
  */
-- (void)_parseTuple:tuple intoDeviceDescription:description;
+- parseTuple:tuple intoDeviceDescription:description;
 
 @end
 

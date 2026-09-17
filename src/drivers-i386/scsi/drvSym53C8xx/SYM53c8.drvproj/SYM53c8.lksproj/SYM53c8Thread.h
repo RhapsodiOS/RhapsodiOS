@@ -11,22 +11,9 @@
 #import "SYM53c8Controller.h"
 #import "SYM53c8ControllerPrivate.h"
 
-@interface SYM53c8Controller(IOThread)
+@interface SYM53c8(IOThread)
 
-- (int)threadExecuteRequest	: (SYMCommandBuf *)cmdBuf;
-- (void)threadResetBus		: (SYMCommandBuf *)cmdBuf;
-- (int)ccbFromCmd		: (SYMCommandBuf *)cmdBuf
-				  ccb:(struct ccb *)ccb;
-- runPendingCommands;
-- (void)commandCompleted	: (struct ccb *)ccb
-			  reason : (completeStatus)reason;
-- (struct ccb *)allocCcb	: (BOOL)doDMA;
-- (void)freeCcb			: (struct ccb *)ccb;
-- (void)handleScriptsInterrupt;
-- (void)handleDMAError		: (unsigned char)dstat;
-- (void)handleBusReset;
-- (void)handleSelectionTimeout;
-- (void)handleParityError;
+- (int)threadExecuteRequest	: (struct _scsireq *)req;
+- (void)threadResetSCSIBus;
 
 @end
-

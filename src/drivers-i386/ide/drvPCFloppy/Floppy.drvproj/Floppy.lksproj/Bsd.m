@@ -6,21 +6,100 @@
 
 #import "IOFloppyDisk.h"
 #import "Bsd.h"
+#import "kernelDiskMethodsNEW.h"
+#import "IODiskPartitionNEW.h"
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
+#import <machkit/NXLock.h>
 #import <sys/buf.h>
 #import <sys/uio.h>
+#import "FloppyVm.h"
 
 // External BSD functions
 extern int physio(int (*strategy)(struct buf *), struct buf *bp, dev_t dev, int flags,
                   u_int (*minphys)(struct buf *), struct uio *uio, int blocksize);
-extern vm_map_t IOVmTaskForBuf(struct buf *bp);
 
 // Forward declaration for detached disk identification
-static id _identifyDetachedDiskIdFromBsdDev(dev_t dev);
+static id identifyDetachedDiskIdFromBsdDev(dev_t dev);
 
 /*
- * _HandleBsdIoctl - BSD ioctl handler
+ * Drives - per-drive BSD device state table.
+ *
+ * Reconstructed from the reference binary's local __DATA symbols _Drives
+ * (0xc000) and _DrivesRegistered (0xc1a0): the 0x1a0-byte gap between them
+ * is 8 entries of 0x34 bytes each, indexed by drive number. Every absolute
+ * 0xc0NN pointer in this file used to dereference that same __DATA region
+ * directly - those were the reference's link-time addresses, meaningless
+ * in a relocatable driver.
+ *
+ * Running offsets within one entry, verified against layer-5.txt
+ * (identifyBsdDev @0x13d8, identifyDetachedDiskIdFromBsdDev @0x14cc,
+ * driveNumberOfDrive: @0x0, registerDrive: @0x40,
+ * attachBsdDiskInterfaceToDrive: @0x2bc, detachBsdDiskInterfaceFromDrive:
+ * @0x408, HandleBsdRead/Write/Strategy, fakeStrategySuccess):
+ *
+ *   +0x00  1 byte     flags   - bit 0 (0x01) registered, bit 1 (0x02)
+ *           attached (test/or/and byte ptr _Drives[idx*4], every site agrees)
+ *   +0x01  3 bytes    reserved
+ *   +0x04  4 bytes    id drive - the drive object (driveNumberOfDrive:
+ *           compares this against its argument; registerDrive: stores it)
+ *   +0x08  0x28 bytes devInfo - the block passed whole to setDevAndIdInfo:/
+ *           bcopy'd from _getDevInfo in attachBsdDiskInterfaceToDrive:
+ *           (`lea ecx,[ebx+0C008h]` then `push 28h` before both bzero and
+ *           bcopy, ending exactly at +0x30). Two of its own words are also
+ *           read directly, as plain `id`s, by the C-side lookup functions:
+ *     +0x00 (entry +0x08) id disk   - identifyBsdDev/identifyDetachedDiskId-
+ *           FromBsdDev's partition-1 disk (`mov eax,[edx+eax+8]` at 0x148b),
+ *           and the "deviceInfo"/"disk" object HandleBsdIoctl, HandleBsdRead
+ *           and fakeStrategySuccess message-send through
+ *           (`mov eax,[eax+edi+8]` at 0x97a; `mov ecx,ds:dword_C008[eax*4]`
+ *           at 0x59a and 0x62b)
+ *     +0x04 (entry +0x0c) id diskForPartition0 - identifyBsdDev/identify-
+ *           DetachedDiskIdFromBsdDev's partition-0 disk, read as
+ *           `_Drives[entry+0x0c+partition*4]` (0x152d, 0x14b1). partition
+ *           is validated to 0 or 1 before either read (`cmp [var_8],1;
+ *           ja loc_1470` in identifyBsdDev); the partition==1 case never
+ *           reaches this array - it reads `disk` (+0x08) instead - so only
+ *           index 0 (this field) is ever exercised. The "partition * 4"
+ *           collision with +0x28 that the naive `partition & 7` range would
+ *           imply therefore never happens in practice.
+ *     +0x08..+0x1f (24 bytes) reserved - not read anywhere in this file
+ *     +0x20 (entry +0x28) int charDev  - (characterMajor << 8) | minor
+ *     +0x24 (entry +0x2c) int blockDev - (blockMajor << 8) | minor; its
+ *           second byte (entry +0x2d, the major half) is read alone as the
+ *           "expected major" in identifyBsdDev/identifyDetachedDiskIdFrom-
+ *           BsdDev. Confirmed via attachBsdDiskInterfaceToDrive:
+ *           (0x335-0x392: characterMajor is fetched and stored at +0xC028,
+ *           blockMajor at +0xC02C) - this is reversed from what an earlier
+ *           pass assumed; see the block/char major swap fix below.
+ *   +0x30  4 bytes    struct buf *deviceBuf - the IOMalloc(0x80) block
+ *           registerDrive: allocates and stores at +0x30
+ *           (`mov [edi+esi+30h],eax`), later read by HandleBsdRead/Write and
+ *           passed to physio() as `bp` (`mov edx,ds:dword_C030[edx*4]`).
+ */
+struct DriveDevInfo {
+	id disk;
+	id diskForPartition0;
+	unsigned char reserved[0x18];
+	int charDev;
+	int blockDev;
+};
+
+struct DriveEntry {
+	unsigned char flags;
+	unsigned char reserved1[3];
+	id drive;
+	struct DriveDevInfo devInfo;
+	struct buf *deviceBuf;
+};
+
+static struct DriveEntry Drives[8];
+
+// Count of floppy drives registered with the BSD device layer
+static int DrivesRegistered = 0;
+
+/*
+ * HandleBsdIoctl - BSD ioctl handler
  * From decompiled code: handles ioctl commands from BSD layer.
  *
  * This function implements various ioctl commands for floppy disk control,
@@ -41,7 +120,7 @@ static id _identifyDetachedDiskIdFromBsdDev(dev_t dev);
  *   DKIOCEJECT (0x20006415)  - Eject disk
  *   And many more...
  */
-static int _HandleBsdIoctl(dev_t dev, unsigned int cmd, int *data)
+static int HandleBsdIoctl(dev_t dev, unsigned int cmd, int *data)
 {
 	id drive;
 	id disk;
@@ -65,38 +144,43 @@ static int _HandleBsdIoctl(dev_t dev, unsigned int cmd, int *data)
 	int blockSize;
 	int diskSize;
 	char *driveName;
-	unsigned int cmdType;
 	unsigned int formatState;
 
 	// Identify the BSD device
-	identifyResult = _identifyBsdDev(dev, &drive, &disk, &partition);
+	identifyResult = identifyBsdDev(dev, &drive, &disk, &partition);
 
 	// Check for invalid device or block device (bit 0 set in partition flags)
 	if (identifyResult == 0) {
 		return ENXIO;  // 6
 	}
 
-	partFlags = (unsigned char *)partition;
-	if ((partFlags != NULL) && ((*partFlags & 1) != 0)) {
+	// identifyBsdDev wrote the major-match flag directly into the low byte
+	// of the "partition" slot - it is not a pointer to allocated storage,
+	// so it must not be dereferenced.
+	partFlags = (unsigned char *)&partition;
+	if ((*partFlags & 1) != 0) {
 		return ENXIO;  // Block device ioctl not allowed on raw device
 	}
 
 	// Get drive number and device info
 	driveNumber = [IOFloppyDisk driveNumberOfDrive:drive];
-	disk = *(id *)(0xc00c + (driveNumber * 0x34));
+	disk = Drives[driveNumber].devInfo.diskForPartition0;
 
 	// Get detached device info at offset 0x08
-	deviceInfo = *(id *)(0xc008 + (driveNumber * 0x34));
+	deviceInfo = Drives[driveNumber].devInfo.disk;
 
-	// Special handling: allow DKIOCFORMAT (0xc0606600) even without disk
-	if ((deviceInfo == nil || *(int *)((char *)deviceInfo + 0x168) == 0) &&
-	    (cmd != 0xc0606600) && (disk == nil)) {
+	// Special handling: allow DKIOCFORMAT (0xc0606600) even without disk.
+	// The "cmd != FORMAT" test is OR'd in alongside the nil-checks (not
+	// AND'd on its own): ENXIO fires when disk==nil AND (deviceInfo==nil
+	// OR deviceInfo->0x168==0 OR cmd isn't FORMAT).
+	if (((deviceInfo == nil) || (*(int *)((char *)deviceInfo + 0x168) == 0) ||
+	     (cmd != 0xc0606600)) && (disk == nil)) {
 		return ENXIO;
 	}
 
 	// Get the actual device info pointer
 	if (identifyResult != 2) {
-		disk = *(id *)(0xc00c + (driveNumber * 0x34));
+		disk = Drives[driveNumber].devInfo.diskForPartition0;
 	}
 
 	// Process ioctl commands
@@ -225,7 +309,7 @@ static int _HandleBsdIoctl(dev_t dev, unsigned int cmd, int *data)
 		*(unsigned int *)operation = 2;  // Type 2: eject
 
 		// Allocate completion lock
-		lock = [[objc_getClass("NXConditionLock") alloc] initWith:1];
+		lock = [[NXConditionLock alloc] initWith:1];
 		*(id *)((char *)operation + 0xc) = lock;
 
 		// Lock queue and add operation
@@ -253,111 +337,215 @@ static int _HandleBsdIoctl(dev_t dev, unsigned int cmd, int *data)
 		[lock lockWhen:0];
 		[lock unlock];
 
-		// Check result
-		if (*(char *)((char *)operation + 8) == 0) {
+		// Check result. The reattach (below) is unconditional on
+		// result != 0 regardless of which branch set it - the reference
+		// falls into a single shared "if (result != 0) attach" after
+		// this, not two independent if/else halves.
+		if (*(char *)((char *)operation + 8) != 0) {
+			result = [disk eject];
+		} else {
 			result = [disk eject];
 			if (result == 0) {
 				result = -0x2d1;  // EIO
 				IOLog("%s: Some unwritten data was lost, due to bad media or a missing disk.\n",
 				      [deviceInfo name]);
-			} else {
-				[deviceInfo attachBsdDiskInterfaceToDrive:drive];
 			}
-		} else {
-			result = [disk eject];
-			if (result != 0) {
-				[deviceInfo attachBsdDiskInterfaceToDrive:drive];
-			}
+		}
+		if (result != 0) {
+			[deviceInfo attachBsdDiskInterfaceToDrive:drive];
 		}
 
 		[lock free];
 		IOFree(operation, 0x28);
 		break;
 
-	case 0x4020660a:  // Get format capacities list
-		// Get format capacities from device
-		formatCapacities = [deviceInfo formatCapacities];
-
-		// Allocate buffer for capacity list (at offset pointed to by data[1])
-		buffer = (int *)data[1];
-
-		// Store number of capacities in first word
-		*buffer = 3;  // 3 capacities: 720KB, 1.44MB, 2.88MB
-
-		// Fill in capacity codes
-		buffer[1] = 0x20;   // 720KB (DD)
-		buffer[2] = 0x100;  // 1.44MB (HD)
-		buffer[3] = 0x800;  // 2.88MB (ED)
+	case 0x4020660a:  // FDIOCGCAPLIST - Get format capacities list
+		// Reference sends formatCapacities to drive (not deviceInfo) at
+		// 0x12f4, then feeds the returned bitmask and data into
+		// sizeListFromCapacities:sizeList:. The selector names are taken
+		// from the reference's own __OBJC,__meth_var_names, which holds
+		// "formatCapacities" with no colon and only the two-keyword
+		// "sizeListFromCapacities:sizeList:" - there is no one-argument
+		// form of either anywhere in the binary. The disassembly pushes an
+		// extra word before the zero-argument send at 0x12f3; cdecl lets
+		// the callee ignore it, and it does not name a different selector.
+		formatCapacities = [drive formatCapacities];
+		[IOFloppyDisk sizeListFromCapacities:formatCapacities
+		                             sizeList:(unsigned int *)data];
 		break;
 
-	case 0x40306405:  // Get drive info
-		// Return drive name string pointer
-		driveName = (char *)[deviceInfo driveName];
-		*(char **)data = driveName;
-		break;
+	case 0x40306405:  // DKIOCINFO - Get drive info
+		bzero(data, 4);
 
-	case 0x5c5c6400:  // Read disk label (not supported on floppy)
-		result = EINVAL;
-		break;
+		// driveName comes from drive, not deviceInfo, and is copied into
+		// the caller's buffer - the old code stored the pointer itself.
+		driveName = (char *)[drive driveName];
+		strcpy((char *)data, driveName);
 
-	case 0x9c5c6401:  // Write disk label (not supported on floppy)
-		result = EINVAL;
-		break;
+		*(unsigned int *)((char *)data + 0x2c) = 0x10000;
 
-	case 0xc0606600:  // DKIOCFORMAT - Format disk
-		// This is a complex multi-state operation
-		// data[0] = command type (1=start, 2=cylinder, 3=end)
-		// data[1] = cylinder number (for type 2)
+		blockSize = [deviceInfo blockSize];
+		*(int *)((char *)data + 0x28) = blockSize;
+		if (blockSize == 0) {
+			*(int *)((char *)data + 0x28) = 0x200;
+		}
 
-		cmdType = data[0];
-
-		if (cmdType == 1) {
-			// Format start - detach BSD interface
-			[deviceInfo detachBsdDiskInterfaceFromDrive:drive];
-
-			// Store format state at offset 0x168
-			*(unsigned int *)((char *)deviceInfo + 0x168) = 1;
-
-		} else if (cmdType == 2) {
-			// Format cylinder
-			unsigned int cylinder = data[1];
-			void *formatData = (void *)data[2];
-
-			result = [deviceInfo formatCylinder:cylinder data:formatData];
-
-		} else if (cmdType == 3) {
-			// Format end - reattach BSD interface
-			formatState = *(unsigned int *)((char *)deviceInfo + 0x168);
-
-			if (formatState != 0) {
-				*(unsigned int *)((char *)deviceInfo + 0x168) = 0;
-				[deviceInfo attachBsdDiskInterfaceToDrive:drive];
-			}
-		} else {
-			result = EINVAL;
+		capacity = (*(unsigned int *)((char *)data + 0x28) + 0x1c5b) /
+		           *(unsigned int *)((char *)data + 0x28);
+		for (i = 0; i <= 3; i++) {
+			*(int *)((char *)data + 0x18 + i * 4) = capacity * i;
 		}
 		break;
 
-	case 0x40086416:  // DKIOCISWRITABLE - Is disk writable?
-		isWriteProtected = [disk isWriteProtected];
-		*data = !isWriteProtected;  // Return 1 if writable, 0 if protected
+	case 0x5c5c6400:  // DKIOCGLABEL - Read disk label
+		buffer = (int *)IOMalloc(0x1c5c);
+		result = [disk readLabel:(void *)buffer];
+		if (result == 0) {
+			bcopy(buffer, data, 0x1c5c);
+		}
+		IOFree(buffer, 0x1c5c);
 		break;
 
-	case 0x2000641a:  // DKIOCCHECKINSERT - Check for disk insertion
-		// Poll for media
-		[drive pollMedia];
+	case 0x9c5c6401:  // DKIOCSLABEL - Write disk label
+		buffer = (int *)IOMalloc(0x1c5c);
+		bcopy(data, buffer, 0x1c5c);
+		result = [disk writeLabel:(void *)buffer];
+		IOFree(buffer, 0x1c5c);
 		break;
 
-	case 0x20006414:  // DKIOCGLABEL - Get label (not supported)
-		result = EINVAL;
+	case 0xc0606600:  // DKIOCFORMAT - Format disk
+		// Reference (0xd90-0x105d) switches on (byte at data+0xC) & 0x1F
+		// against {7, 13, 15} - not on data[0] against {1, 2, 3} as the
+		// old reconstruction assumed. The three branch bodies below have
+		// no resemblance to the old cmdType==1/2/3 handling.
+		formatState = *(unsigned char *)((char *)data + 0x0c) & 0x1f;
+
+		switch (formatState) {
+		case 0x0d:
+			// Run the queued async format operation. Only proceeds when
+			// a prior formatState==7 call left deviceInfo+0x16C armed
+			// at 2 (set by the formatState==15 branch below).
+			if (*(unsigned int *)((char *)deviceInfo + 0x16c) == 2) {
+				capacity = *(unsigned int *)((char *)deviceInfo + 0x164);
+				operation = nil;
+
+				if (capacity == 0) {
+					result = -0x2c2;
+				} else {
+					isWriteProtected = [deviceInfo isWriteProtected];
+					if (isWriteProtected) {
+						result = -0x2cf;
+					} else {
+						formatCapacities = [drive formatCapacities];
+						if ((capacity & formatCapacities) == 0) {
+							result = -0x2c7;
+						} else {
+							[deviceInfo detachBsdDiskInterfaceFromDrive:drive];
+							result = [(IODiskPartitionNEW *)disk setFormatted:NO];
+
+							if (result != 0) {
+								[deviceInfo attachBsdDiskInterfaceToDrive:drive];
+								*(unsigned int *)((char *)deviceInfo + 0x168) = 0;
+							} else {
+								// Allocate format operation (type 3) and
+								// queue it exactly like the eject case
+								// above (same op-list at deviceInfo+0x150/
+								// +0x154, same NXConditionLock protocol).
+								operation = (id)IOMalloc(0x28);
+								*(unsigned int *)operation = 3;  // Type 3: format
+								*(unsigned int *)((char *)operation + 0x14) = capacity;
+
+								lock = [[NXConditionLock alloc] initWith:1];
+								*(id *)((char *)operation + 0x1c) = lock;
+
+								[*(id *)((char *)deviceInfo + 0x158) lock];
+
+								queueHead = (int)((char *)deviceInfo + 0x150);
+								if (*(int *)((char *)deviceInfo + 0x150) == queueHead) {
+									*(id *)((char *)deviceInfo + 0x150) = operation;
+									*(id *)((char *)deviceInfo + 0x154) = operation;
+									*(int *)((char *)operation + 0x20) = queueHead;
+									*(int *)((char *)operation + 0x24) = queueHead;
+								} else {
+									lastEntry = *(int *)((char *)deviceInfo + 0x154);
+									*(int *)((char *)operation + 0x24) = lastEntry;
+									*(int *)((char *)operation + 0x20) = queueHead;
+									*(id *)((char *)deviceInfo + 0x154) = operation;
+									*(id *)(lastEntry + 0x20) = operation;
+								}
+
+								[*(id *)((char *)deviceInfo + 0x158) unlockWith:1];
+
+								[lock lockWhen:0];
+								[lock unlock];
+
+								result = 0;
+								if (*(unsigned char *)((char *)operation + 0x18) == 0) {
+									result = -0x2d1;  // EIO
+								}
+
+								if (result != 0) {
+									[deviceInfo attachBsdDiskInterfaceToDrive:drive];
+									*(unsigned int *)((char *)deviceInfo + 0x168) = 0;
+								} else {
+									id geometry = *(id *)((char *)deviceInfo + 0x14c);
+									*(unsigned int *)((char *)deviceInfo + 0x168) =
+									    *(unsigned int *)((char *)geometry + 8) *
+									    *(unsigned int *)((char *)geometry + 0xc);
+								}
+							}
+
+							if (operation != nil) {
+								[*(id *)((char *)operation + 0x1c) free];
+								IOFree(operation, 0x28);
+							}
+
+							*(unsigned int *)((char *)deviceInfo + 0x16c) = 0;
+							*(unsigned int *)((char *)deviceInfo + 0x164) = 0;
+						}
+					}
+				}
+			}
+			break;
+
+		case 0x07:
+			// Toggle the "format armed" flag at deviceInfo+0x16C.
+			if (*(unsigned int *)((char *)deviceInfo + 0x16c) == 0) {
+				*(unsigned int *)((char *)deviceInfo + 0x16c) = 1;
+			} else {
+				*(unsigned int *)((char *)deviceInfo + 0x16c) = 0;
+			}
+			break;
+
+		case 0x0f:
+			if ((*(unsigned int *)((char *)deviceInfo + 0x16c) == 1) &&
+			    ((*(unsigned int *)((char *)data + 0x0c) & 0xffff00) == 0)) {
+				*(unsigned int *)((char *)deviceInfo + 0x16c) = 2;
+			} else {
+				*(unsigned int *)((char *)deviceInfo + 0x16c) = 0;
+			}
+			break;
+
+		default:
+			*(unsigned int *)((char *)deviceInfo + 0x16c) = 0;
+			break;
+		}
+
+		// Common tail (loc_105D): always runs, regardless of formatState.
+		*(unsigned int *)((char *)data + 0x40) = 0;
+		*(unsigned int *)((char *)data + 0x44) = *(unsigned int *)((char *)data + 0x1c);
+		*(unsigned int *)((char *)data + 0x48) = *(unsigned int *)((char *)data + 0x24);
+		*(unsigned int *)((char *)data + 0x4c) = *(unsigned int *)((char *)data + 0x38);
+		*(unsigned char *)((char *)data + 0x50) &= 0xfc;
+		*(unsigned char *)((char *)data + 0x50) |= 0x04;
+		*(unsigned char *)((char *)data + 0x50) &= 0xf7;
+		*(unsigned char *)((char *)data + 0x50) |= 0x10;
 		break;
 
-	case 0x80606401:  // DKIOCSLABEL - Set label (not supported)
-		result = EINVAL;
-		break;
-
-	case 0x40046603:  // Get last ready state
-		*data = [deviceInfo lastReadyState];
+	case 0x80046603:  // FDIOCSSIZE - no-op in the reference; it compares
+	                   // against this exact value (0x80046603, not
+	                   // 0x40046603) and jumps straight to cleanup without
+	                   // touching data or sending any selector.
 		break;
 
 	default:
@@ -377,7 +565,7 @@ static int _HandleBsdIoctl(dev_t dev, unsigned int cmd, int *data)
 }
 
 /*
- * _HandleBsdOpen - BSD open handler
+ * HandleBsdOpen - BSD open handler
  * From decompiled code: handles open operations from BSD layer.
  *
  * This function is called when a user process opens a floppy device node.
@@ -389,7 +577,7 @@ static int _HandleBsdIoctl(dev_t dev, unsigned int cmd, int *data)
  * Returns:
  *   0 on success, ENXIO (6) on error
  */
-static int _HandleBsdOpen(dev_t dev)
+static int HandleBsdOpen(dev_t dev)
 {
 	id drive;
 	id disk;
@@ -399,7 +587,7 @@ static int _HandleBsdOpen(dev_t dev)
 	unsigned char *partFlags;
 
 	// Identify the BSD device
-	identifyResult = _identifyBsdDev(dev, &drive, &disk, &partition);
+	identifyResult = identifyBsdDev(dev, &drive, &disk, &partition);
 
 	// Check if device is invalid or result > 2
 	if ((identifyResult == 0) || (identifyResult > 2)) {
@@ -414,20 +602,22 @@ static int _HandleBsdOpen(dev_t dev)
 		}
 
 		// Re-identify after polling (disk may now be available)
-		_identifyBsdDev(dev, &drive, &disk, &partition);
+		identifyBsdDev(dev, &drive, &disk, &partition);
 	}
 
 	// If result is 2 (normal case), set the open flag
 	if (identifyResult == 2) {
-		partFlags = (unsigned char *)partition;
+		// identifyBsdDev wrote the major-match flag directly into the
+		// low byte of the "partition" slot - it is not a pointer to
+		// dereference.
+		partFlags = (unsigned char *)&partition;
 
-		// Check partition flags bit 0 to determine device type
-		if ((partFlags != NULL) && ((*partFlags & 1) == 0)) {
-			// Raw device - set raw open flag
-			[disk setRawDeviceOpen:YES];
-		} else {
+		if ((*partFlags & 1) != 0) {
 			// Block device - set block open flag
 			[disk setBlockDeviceOpen:YES];
+		} else {
+			// Raw device - set raw open flag
+			[disk setRawDeviceOpen:YES];
 		}
 	}
 
@@ -435,7 +625,7 @@ static int _HandleBsdOpen(dev_t dev)
 }
 
 /*
- * _HandleBsdClose - BSD close handler
+ * HandleBsdClose - BSD close handler
  * From decompiled code: handles close operations from BSD layer.
  *
  * This function is called when a user process closes a floppy device node.
@@ -447,7 +637,7 @@ static int _HandleBsdOpen(dev_t dev)
  * Returns:
  *   0 on success, ENXIO (6) on error
  */
-static int _HandleBsdClose(dev_t dev)
+static int HandleBsdClose(dev_t dev)
 {
 	id drive;
 	id disk;
@@ -456,7 +646,7 @@ static int _HandleBsdClose(dev_t dev)
 	unsigned char *partFlags;
 
 	// Identify the BSD device
-	identifyResult = _identifyBsdDev(dev, &drive, &disk, &partition);
+	identifyResult = identifyBsdDev(dev, &drive, &disk, &partition);
 
 	// Special case: if result is 1, just return success
 	if (identifyResult == 1) {
@@ -470,20 +660,22 @@ static int _HandleBsdClose(dev_t dev)
 
 	// If no disk object, try to get detached disk
 	if (disk == nil) {
-		disk = _identifyDetachedDiskIdFromBsdDev(dev);
+		disk = identifyDetachedDiskIdFromBsdDev(dev);
 	}
 
 	// If we have a disk object, clear the open flag
 	if (disk != nil) {
-		partFlags = (unsigned char *)partition;
+		// identifyBsdDev wrote the major-match flag directly into the
+		// low byte of the "partition" slot - it is not a pointer to
+		// dereference.
+		partFlags = (unsigned char *)&partition;
 
-		// Check partition flags bit 0 to determine device type
-		if ((partFlags != NULL) && ((*partFlags & 1) == 0)) {
-			// Raw device - clear raw open flag
-			[disk setRawDeviceOpen:NO];
-		} else {
+		if ((*partFlags & 1) != 0) {
 			// Block device - clear block open flag
 			[disk setBlockDeviceOpen:NO];
+		} else {
+			// Raw device - clear raw open flag
+			[disk setRawDeviceOpen:NO];
 		}
 	}
 
@@ -514,7 +706,7 @@ static u_int fdminphys(struct buf *bp)
 }
 
 /*
- * _identifyBsdDev - Identify BSD device components from dev_t
+ * identifyBsdDev - Identify BSD device components from dev_t
  * From decompiled code: extracts drive, disk, and partition from device number.
  *
  * This function decodes a BSD device number (dev_t) into its component parts:
@@ -524,7 +716,10 @@ static u_int fdminphys(struct buf *bp)
  *   dev        - BSD device number (dev_t)
  *   driveOut   - Output pointer for drive object
  *   diskOut    - Output pointer for disk object
- *   partOut    - Output pointer for partition info flags
+ *   partOut    - Output slot for the major-match flag (0 or 1), written
+ *                directly into *partOut's storage. This is never a
+ *                pointer to allocated memory - callers must not
+ *                dereference the value read back through it.
  *
  * Returns:
  *   0 = Invalid device
@@ -537,7 +732,7 @@ static u_int fdminphys(struct buf *bp)
  *   minor & 7 = partition (0 or 1)
  *   dev >> 8 = major number
  */
-static unsigned int _identifyBsdDev(dev_t dev,
+static unsigned int identifyBsdDev(dev_t dev,
                                      id *driveOut,
                                      id *diskOut,
                                      void **partOut)
@@ -568,7 +763,7 @@ static unsigned int _identifyBsdDev(dev_t dev,
 	}
 
 	// Get flags pointer for this drive
-	flagsPtr = (unsigned char *)(0xc000 + (driveNumber * 0x34));
+	flagsPtr = &Drives[driveNumber].flags;
 
 	// Check if drive is registered (bit 0)
 	if ((*flagsPtr & 0x01) == 0) {
@@ -576,22 +771,22 @@ static unsigned int _identifyBsdDev(dev_t dev,
 	}
 
 	// Get drive object pointer at offset 0x04
-	drive = *(id *)(0xc004 + (driveNumber * 0x34));
+	drive = Drives[driveNumber].drive;
 	*driveOut = drive;
 
 	// Extract major number from device
 	major = (unsigned char)(dev >> 8);
 
 	// Get expected major number from offset 0x2d in drive table entry
-	expectedMajor = *(unsigned char *)(0xc02d + (driveNumber * 0x34));
+	expectedMajor = *((unsigned char *)&Drives[driveNumber].devInfo.blockDev + 1);
 
-	// Check if major number matches (set bit 0 in partition flags if it does)
+	// Check if major number matches. identifyBsdDev never allocates
+	// storage for the partition output - it writes the flag bit
+	// directly into *partOut's own storage (the caller's local slot),
+	// so callers must read that slot as a small integer, not dereference
+	// it as a pointer.
 	if (expectedMajor == major) {
-		// Allocate partition flags if needed
-		if (*partOut == NULL) {
-			*partOut = (void *)IOMalloc(1);
-		}
-		partFlags = (unsigned char *)*partOut;
+		partFlags = (unsigned char *)partOut;
 		*partFlags |= 1;  // Set bit 0 to indicate major match
 	}
 
@@ -600,7 +795,7 @@ static unsigned int _identifyBsdDev(dev_t dev,
 		// Partition 0 or other - check if disk is attached (bit 2)
 		if ((*flagsPtr & 0x02) != 0) {
 			// Get disk object from table at offset 0x0c/0x10
-			*diskOut = *(id *)(0xc00c + (partition * 4) + (driveNumber * 0x34));
+			*diskOut = *(id *)((char *)&Drives[driveNumber].devInfo.diskForPartition0 + (partition * 4));
 		}
 		return 2;  // Valid drive with disk
 	}
@@ -610,7 +805,7 @@ static unsigned int _identifyBsdDev(dev_t dev,
 		// Check if disk is attached (bit 2)
 		if ((*flagsPtr & 0x02) != 0) {
 			// Get disk object from offset 0x08
-			*diskOut = *(id *)(0xc008 + (driveNumber * 0x34));
+			*diskOut = Drives[driveNumber].devInfo.disk;
 		}
 		return 1;  // Valid but special case
 	}
@@ -619,11 +814,11 @@ static unsigned int _identifyBsdDev(dev_t dev,
 }
 
 /*
- * _identifyDetachedDiskIdFromBsdDev - Get disk object from detached device
+ * identifyDetachedDiskIdFromBsdDev - Get disk object from detached device
  * From decompiled code: retrieves disk object for a detached BSD device.
  *
  * This function is used to get the disk object for a device that has been
- * detached from the BSD interface. It's similar to _identifyBsdDev but only
+ * detached from the BSD interface. It's similar to identifyBsdDev but only
  * returns the disk object and only works when the disk is NOT currently
  * attached (bit 2 is clear).
  *
@@ -639,7 +834,7 @@ static unsigned int _identifyBsdDev(dev_t dev,
  *   minor & 7 = partition (0 or 1)
  *   dev >> 8 = major number
  */
-static id _identifyDetachedDiskIdFromBsdDev(dev_t dev)
+static id identifyDetachedDiskIdFromBsdDev(dev_t dev)
 {
 	unsigned int driveNumber;
 	unsigned int partition;
@@ -660,7 +855,7 @@ static id _identifyDetachedDiskIdFromBsdDev(dev_t dev)
 	}
 
 	// Get flags pointer for this drive
-	flagsPtr = (unsigned char *)(0xc000 + (driveNumber * 0x34));
+	flagsPtr = &Drives[driveNumber].flags;
 
 	// Check if drive is registered (bit 0)
 	if ((*flagsPtr & 0x01) == 0) {
@@ -670,7 +865,7 @@ static id _identifyDetachedDiskIdFromBsdDev(dev_t dev)
 	// Handle partition 1 specially
 	if (partition == 1) {
 		// Get expected major number from offset 0x2d
-		expectedMajor = *(unsigned char *)(0xc02d + (driveNumber * 0x34));
+		expectedMajor = *((unsigned char *)&Drives[driveNumber].devInfo.blockDev + 1);
 
 		// Get actual major number from device
 		actualMajor = (unsigned char)(dev >> 8);
@@ -681,10 +876,10 @@ static id _identifyDetachedDiskIdFromBsdDev(dev_t dev)
 		}
 
 		// Get disk object from offset 0x08
-		disk = *(id *)(0xc008 + (driveNumber * 0x34));
+		disk = Drives[driveNumber].devInfo.disk;
 	} else {
 		// Partition 0 - get disk object from table at offset 0x0c
-		disk = *(id *)(0xc00c + (partition * 4) + (driveNumber * 0x34));
+		disk = *(id *)((char *)&Drives[driveNumber].devInfo.diskForPartition0 + (partition * 4));
 	}
 
 	// Check if disk is currently attached (bit 2)
@@ -699,7 +894,7 @@ static id _identifyDetachedDiskIdFromBsdDev(dev_t dev)
 }
 
 /*
- * _fakeStrategySuccess - Fake strategy routine that always succeeds
+ * fakeStrategySuccess - Fake strategy routine that always succeeds
  * From decompiled code: used for handling detaching disks.
  *
  * This function is used as a strategy routine when a disk is being detached.
@@ -712,7 +907,7 @@ static id _identifyDetachedDiskIdFromBsdDev(dev_t dev)
  * Returns:
  *   0 (success)
  */
-static int _fakeStrategySuccess(struct buf *bp)
+static int fakeStrategySuccess(struct buf *bp)
 {
 	id drive;
 	id disk;
@@ -720,18 +915,34 @@ static int _fakeStrategySuccess(struct buf *bp)
 	int driveNumber;
 	id deviceInfo;
 	dev_t dev;
+	void *geometry;
+	unsigned int transferSize;
 
 	// Get device number from buffer
 	dev = bp->b_dev;
 
 	// Identify the BSD device components
-	_identifyBsdDev(dev, &drive, &disk, &partition);
+	identifyBsdDev(dev, &drive, &disk, &partition);
 
 	// Get drive number
 	driveNumber = [IOFloppyDisk driveNumberOfDrive:drive];
 
 	// Get device info pointer
-	deviceInfo = *(id *)(0xc008 + (driveNumber * 0x34));
+	deviceInfo = Drives[driveNumber].devInfo.disk;
+
+	// From decompiled code: two divisions against the geometry record
+	// (deviceInfo+0x14c, the same "geometry" pointer HandleBsdIoctl uses)
+	// whose quotients are discarded - neither result is stored or used.
+	// Reproduced verbatim rather than dropped because a zero geometry
+	// field divides by zero (#DE) in the real binary; the reconstructed
+	// source previously had no equivalent code here at all.
+	geometry = *(void **)((char *)deviceInfo + 0x14c);
+	(void)(bp->b_blkno / *(unsigned int *)((char *)geometry + 0x10));
+	if ((bp->b_blkno % *(unsigned int *)((char *)geometry + 0x10)) == 0) {
+		transferSize = *(unsigned int *)((char *)geometry + 0x10) *
+		               *(unsigned int *)((char *)geometry + 0x14);
+		(void)(bp->b_bcount / transferSize);
+	}
 
 	// Complete the transfer with success status
 	[deviceInfo completeTransfer:bp
@@ -742,7 +953,7 @@ static int _fakeStrategySuccess(struct buf *bp)
 }
 
 /*
- * _HandleBsdSize - BSD partition size handler
+ * HandleBsdSize - BSD partition size handler
  * From decompiled code: returns the size of a disk partition.
  *
  * This function is called by the BSD layer to get the size of a disk partition
@@ -754,7 +965,7 @@ static int _fakeStrategySuccess(struct buf *bp)
  * Returns:
  *   Number of blocks in partition, or error code (6 = ENXIO, 0 = no disk)
  */
-static int _HandleBsdSize(dev_t dev)
+static int HandleBsdSize(dev_t dev)
 {
 	id drive;
 	id disk;
@@ -763,7 +974,7 @@ static int _HandleBsdSize(dev_t dev)
 	int blockSize;
 
 	// Identify the BSD device
-	identifyResult = _identifyBsdDev(dev, &drive, &disk, &partition);
+	identifyResult = identifyBsdDev(dev, &drive, &disk, &partition);
 
 	// Check for invalid device
 	if (identifyResult == 0) {
@@ -784,7 +995,7 @@ static int _HandleBsdSize(dev_t dev)
 }
 
 /*
- * _HandleBsdStrategy - BSD strategy handler
+ * HandleBsdStrategy - BSD strategy handler
  * From decompiled code: handles block I/O requests from BSD layer.
  *
  * This function is the strategy routine for block device I/O. It processes
@@ -796,7 +1007,7 @@ static int _HandleBsdSize(dev_t dev)
  * Returns:
  *   void (errors reported via completeTransfer)
  */
-static void _HandleBsdStrategy(struct buf *bp)
+static void HandleBsdStrategy(struct buf *bp)
 {
 	id drive;
 	id disk;
@@ -814,7 +1025,7 @@ static void _HandleBsdStrategy(struct buf *bp)
 	dev = bp->b_dev;
 
 	// Identify the BSD device
-	identifyResult = _identifyBsdDev(dev, &drive, &disk, &partition);
+	identifyResult = identifyBsdDev(dev, &drive, &disk, &partition);
 
 	if (identifyResult == 0) {
 		result = -0x2c0;  // ENXIO (different encoding)
@@ -835,7 +1046,7 @@ static void _HandleBsdStrategy(struct buf *bp)
 
 				// If flag 0x4040000 == 0x40000, get task from buffer
 				if ((bufFlags & 0x4040000) == 0x40000) {
-					vmTask = IOVmTaskForBuf(bp);
+					vmTask = (vm_map_t)IOVmTaskForBuf(bp);
 				}
 
 				// Check if this is a read or write operation
@@ -855,26 +1066,25 @@ static void _HandleBsdStrategy(struct buf *bp)
 					                   pending:bp
 					                    client:vmTask];
 				}
-
-				// If successful, return without completing (async operation)
-				if (result == 0) {
-					return;
-				}
 			} else {
 				result = -0x44d;  // Disk not formatted
 			}
 		}
 	}
 
-	// Error path - complete transfer with error status
-	[disk completeTransfer:bp withStatus:result actualLength:0];
+	// If the async operation was accepted, skip completeTransfer: - but
+	// the reference always sends errnoFromReturn: below regardless, even
+	// on success (result == 0).
+	if (result != 0) {
+		[disk completeTransfer:bp withStatus:result actualLength:0];
+	}
 
-	// Convert IOReturn to errno (not used, but matches decompiled code)
+	// Convert IOReturn to errno (return value unused, but always sent)
 	[disk errnoFromReturn:result];
 }
 
 /*
- * _HandleBsdRead - BSD read handler
+ * HandleBsdRead - BSD read handler
  * From decompiled code: handles read operations from BSD layer.
  *
  * This function is called by the BSD layer to perform read operations on
@@ -887,7 +1097,7 @@ static void _HandleBsdStrategy(struct buf *bp)
  * Returns:
  *   BSD error code (0 = success, errno on failure)
  */
-static int _HandleBsdRead(dev_t dev, struct uio *uio)
+static int HandleBsdRead(dev_t dev, struct uio *uio)
 {
 	id drive;
 	id disk;
@@ -902,13 +1112,13 @@ static int _HandleBsdRead(dev_t dev, struct uio *uio)
 	struct buf *deviceBuf;
 
 	// Identify the BSD device
-	identifyResult = _identifyBsdDev(dev, &drive, &disk, &partition);
+	identifyResult = identifyBsdDev(dev, &drive, &disk, &partition);
 
 	// Get drive number
 	driveNumber = [IOFloppyDisk driveNumberOfDrive:drive];
 
 	// Get device info pointer
-	deviceInfo = *(id *)(0xc008 + (driveNumber * 0x34));
+	deviceInfo = Drives[driveNumber].devInfo.disk;
 
 	// Check if device has a detach counter at offset 0x168
 	if ((deviceInfo != nil) && (*(int *)((char *)deviceInfo + 0x168) != 0)) {
@@ -925,10 +1135,10 @@ static int _HandleBsdRead(dev_t dev, struct uio *uio)
 		blockSize = [deviceInfo blockSize];
 
 		// Get device buffer pointer
-		deviceBuf = *(struct buf **)(0xc030 + (driveNumber * 0x34));
+		deviceBuf = Drives[driveNumber].deviceBuf;
 
 		// Perform I/O using fake strategy (always succeeds)
-		result = physio((int (*)(struct buf *))_fakeStrategySuccess,
+		result = physio((int (*)(struct buf *))fakeStrategySuccess,
 		                deviceBuf,
 		                dev,
 		                0x100000,  // B_READ flag
@@ -947,17 +1157,17 @@ static int _HandleBsdRead(dev_t dev, struct uio *uio)
 	// Check if disk is formatted
 	isFormatted = [disk isFormatted];
 	if (!isFormatted) {
-		return ENXIO;  // Device not formatted (0x16 = 22 = EINVAL in some contexts)
+		return EINVAL;  // 0x16 = 22 - Invalid argument (disk not formatted)
 	}
 
 	// Get block size from disk
 	blockSize = [disk blockSize];
 
 	// Get device buffer pointer
-	deviceBuf = *(struct buf **)(0xc030 + (driveNumber * 0x34));
+	deviceBuf = Drives[driveNumber].deviceBuf;
 
 	// Perform I/O using real strategy
-	result = physio((int (*)(struct buf *))_HandleBsdStrategy,
+	result = physio((int (*)(struct buf *))HandleBsdStrategy,
 	                deviceBuf,
 	                dev,
 	                0x100000,  // B_READ flag
@@ -969,7 +1179,7 @@ static int _HandleBsdRead(dev_t dev, struct uio *uio)
 }
 
 /*
- * _HandleBsdWrite - BSD write handler
+ * HandleBsdWrite - BSD write handler
  * From decompiled code: handles write operations from BSD layer.
  *
  * This function is called by the BSD layer to perform write operations on
@@ -983,7 +1193,7 @@ static int _HandleBsdRead(dev_t dev, struct uio *uio)
  * Returns:
  *   BSD error code (0 = success, errno on failure)
  */
-static int _HandleBsdWrite(dev_t dev, struct uio *uio)
+static int HandleBsdWrite(dev_t dev, struct uio *uio)
 {
 	id drive;
 	id disk;
@@ -996,7 +1206,7 @@ static int _HandleBsdWrite(dev_t dev, struct uio *uio)
 	int result;
 
 	// Identify the BSD device
-	identifyResult = _identifyBsdDev(dev, &drive, &disk, &partition);
+	identifyResult = identifyBsdDev(dev, &drive, &disk, &partition);
 
 	// Check for errors
 	if ((identifyResult == 0) || (identifyResult > 2) || (disk == NULL)) {
@@ -1016,11 +1226,11 @@ static int _HandleBsdWrite(dev_t dev, struct uio *uio)
 	driveNumber = [IOFloppyDisk driveNumberOfDrive:drive];
 
 	// Get device buffer pointer from global table
-	deviceBuf = *(struct buf **)(0xc030 + (driveNumber * 0x34));
+	deviceBuf = Drives[driveNumber].deviceBuf;
 
 	// Perform I/O using strategy routine
 	// Flag 0 = write (no B_READ flag)
-	result = physio((int (*)(struct buf *))_HandleBsdStrategy,
+	result = physio((int (*)(struct buf *))HandleBsdStrategy,
 	                deviceBuf,
 	                dev,
 	                0,  // 0 = write (no B_READ flag)
@@ -1053,12 +1263,12 @@ static int _HandleBsdWrite(dev_t dev, struct uio *uio)
  *   - Combined: 0x100 | (driveNumber * 8)
  *   - Example: drive 0 = 0x100, drive 1 = 0x108, etc.
  */
-+ (unsigned int)_blockDevOfDrive:(id)drive
++ (unsigned int)blockDevOfDrive:(id)drive
 {
 	int driveNumber;
 
 	// Get drive number from drive object using class method
-	driveNumber = [[self class] _driveNumberOfDrive:drive];
+	driveNumber = [[self class] driveNumberOfDrive:drive];
 
 	// If drive number is invalid (-1), return 0
 	if (driveNumber == -1) {
@@ -1092,12 +1302,12 @@ static int _HandleBsdWrite(dev_t dev, struct uio *uio)
  *   - Combined: 0x2900 | (driveNumber * 8)
  *   - Example: drive 0 = 0x2900, drive 1 = 0x2908, etc.
  */
-+ (unsigned int)_characterDevOfDrive:(id)drive
++ (unsigned int)characterDevOfDrive:(id)drive
 {
 	int driveNumber;
 
 	// Get drive number from drive object using class method
-	driveNumber = [[self class] _driveNumberOfDrive:drive];
+	driveNumber = [[self class] driveNumberOfDrive:drive];
 
 	// If drive number is invalid (-1), return 0
 	if (driveNumber == -1) {
@@ -1131,7 +1341,7 @@ static int _HandleBsdWrite(dev_t dev, struct uio *uio)
  *   - Offset 0x04: Drive object pointer
  *   - Up to 8 entries (indices 0-7)
  */
-+ (unsigned int)_driveNumberOfDrive:(id)drive
++ (unsigned int)driveNumberOfDrive:(id)drive
 {
 	unsigned int driveIndex;
 	unsigned char *flagsPtr;
@@ -1143,13 +1353,13 @@ static int _HandleBsdWrite(dev_t dev, struct uio *uio)
 	while (1) {
 		// Calculate pointer to flags byte for this entry
 		// Base 0xc000 + (driveIndex * 0x34) + offset 0
-		flagsPtr = (unsigned char *)(0xc000 + (driveIndex * 0x34));
+		flagsPtr = &Drives[driveIndex].flags;
 
 		// Calculate pointer to drive object pointer for this entry
 		// Base 0xc000 + (driveIndex * 0x34) + offset 4
 		// offset 0x04 = 4 bytes into entry = (&DAT_0000c004)[driveIndex * 0xd]
 		// Note: 0xd * 4 = 0x34 (each entry is 0x34 bytes)
-		driveObjectPtr = (id *)(0xc004 + (driveIndex * 0x34));
+		driveObjectPtr = &Drives[driveIndex].drive;
 
 		// Check if this entry is valid (bit 0 set) AND matches the drive object
 		if (((*flagsPtr & 0x01) != 0) && (*driveObjectPtr == drive)) {
@@ -1196,9 +1406,8 @@ static int _HandleBsdWrite(dev_t dev, struct uio *uio)
  *   - HandleBsdStrategy (0x908)
  *   - HandleBsdSize (function pointer)
  */
-+ (IOReturn)_registerDrive:(id)drive
++ (IOReturn)registerDrive:(id)drive
 {
-	extern int DrivesRegistered;  // Global counter of registered drives
 	extern int enodev, nulldev, seltrue;
 
 	unsigned int driveIndex;
@@ -1211,7 +1420,7 @@ static int _HandleBsdWrite(dev_t dev, struct uio *uio)
 	// Find first available slot in drive table
 	driveIndex = 0;
 	while (1) {
-		flagsPtr = (unsigned char *)(0xc000 + (driveIndex * 0x34));
+		flagsPtr = &Drives[driveIndex].flags;
 
 		// Check if slot is available (bit 0 clear)
 		if ((*flagsPtr & 0x01) == 0) {
@@ -1231,7 +1440,7 @@ static int _HandleBsdWrite(dev_t dev, struct uio *uio)
 	allocatedDevInfo = (void *)IOMalloc(0x80);
 
 	// Store device info pointer at offset 0x30 (base 0xc030)
-	devInfoPtr = (void **)(0xc030 + (driveIndex * 0x34));
+	devInfoPtr = (void **)&Drives[driveIndex].deviceBuf;
 	*devInfoPtr = allocatedDevInfo;
 
 	if (allocatedDevInfo == NULL) {
@@ -1246,11 +1455,11 @@ static int _HandleBsdWrite(dev_t dev, struct uio *uio)
 		// Add to character device switch table (major 41 = 0x29)
 		result = IOAddToCdevswAt(
 			0x29,                     // Major number 41 (character device)
-			(int)&_HandleBsdOpen,     // d_open at 0x448
-			(int)&_HandleBsdClose,    // d_close at 0x4e4
-			(int)&_HandleBsdRead,     // d_read at 0x5ec
-			(int)&_HandleBsdWrite,    // d_write at 0x74c
-			(int)&_HandleBsdIoctl,    // d_ioctl at 0x908
+			(int)&HandleBsdOpen,     // d_open at 0x448
+			(int)&HandleBsdClose,    // d_close at 0x4e4
+			(int)&HandleBsdRead,     // d_read at 0x5ec
+			(int)&HandleBsdWrite,    // d_write at 0x74c
+			(int)&HandleBsdIoctl,    // d_ioctl at 0x908
 			(int)&enodev,             // d_stop
 			(int)&nulldev,            // d_reset
 			(int)&seltrue,            // d_select
@@ -1269,12 +1478,12 @@ static int _HandleBsdWrite(dev_t dev, struct uio *uio)
 		// Add to block device switch table (major 1)
 		result = IOAddToBdevswAt(
 			1,                         // Major number 1 (block device)
-			(int)&_HandleBsdOpen,      // d_open at 0x448
-			(int)&_HandleBsdClose,     // d_close at 0x4e4
-			(int)&_HandleBsdStrategy,  // d_strategy at 0x7f8
-			(int)&_HandleBsdIoctl,     // d_ioctl at 0x908
+			(int)&HandleBsdOpen,      // d_open at 0x448
+			(int)&HandleBsdClose,     // d_close at 0x4e4
+			(int)&HandleBsdStrategy,  // d_strategy at 0x7f8
+			(int)&HandleBsdIoctl,     // d_ioctl at 0x908
 			(int)&enodev,              // d_dump
-			(int)&_HandleBsdSize,      // d_psize
+			(int)&HandleBsdSize,      // d_psize
 			0                          // d_flags
 		);
 
@@ -1295,11 +1504,11 @@ static int _HandleBsdWrite(dev_t dev, struct uio *uio)
 	}
 
 	// Store drive object pointer at offset 0x04 (base 0xc004)
-	driveObjectPtr = (id *)(0xc004 + (driveIndex * 0x34));
+	driveObjectPtr = &Drives[driveIndex].drive;
 	*driveObjectPtr = drive;
 
 	// Set bit 0 in flags to mark as registered
-	flagsPtr = (unsigned char *)(0xc000 + (driveIndex * 0x34));
+	flagsPtr = &Drives[driveIndex].flags;
 	*flagsPtr |= 0x01;
 
 	return 1;  // Success
@@ -1324,16 +1533,14 @@ static int _HandleBsdWrite(dev_t dev, struct uio *uio)
  *   - Base: 0xc000 (flags and state) - cleared (0x34 bytes)
  *   - Base: 0xc030 (device info structure pointers) - freed
  */
-+ (IOReturn)_unregisterDrive:(id)drive
++ (IOReturn)unregisterDrive:(id)drive
 {
-	extern int DrivesRegistered;  // Global counter of registered drives
-
 	int driveNumber;
 	void **devInfoPtr;
 	void *deviceInfo;
 
 	// Get drive number from drive object
-	driveNumber = [self _driveNumberOfDrive:drive];
+	driveNumber = [self driveNumberOfDrive:drive];
 
 	// If drive not found, nothing to do
 	if (driveNumber == -1) {
@@ -1341,14 +1548,14 @@ static int _HandleBsdWrite(dev_t dev, struct uio *uio)
 	}
 
 	// Get device info pointer at offset 0x30 (base 0xc030)
-	devInfoPtr = (void **)(0xc030 + (driveNumber * 0x34));
+	devInfoPtr = (void **)&Drives[driveNumber].deviceBuf;
 	deviceInfo = *devInfoPtr;
 
 	// Free device info structure (0x80 = 128 bytes)
 	IOFree(deviceInfo, 0x80);
 
 	// Clear entire drive table entry (0x34 bytes starting at 0xc000)
-	bzero((void *)(0xc000 + (driveNumber * 0x34)), 0x34);
+	bzero(&Drives[driveNumber], 0x34);
 
 	// Decrement registered drives counter
 	DrivesRegistered--;
@@ -1373,10 +1580,9 @@ static int _HandleBsdWrite(dev_t dev, struct uio *uio)
  * Attach BSD disk interface to a drive.
  * From decompiled code: creates BSD device nodes (block and character devices).
  */
-- (IOReturn)_attachBsdDiskInterfaceToDrive:(id)drive
+- (IOReturn)attachBsdDiskInterfaceToDrive:(id)drive
 {
 	int driveNumber;
-	int devInfoOffset;
 	BOOL hasDevInfo;
 	char *devInfoPtr;
 	void *sourceDevInfo;
@@ -1394,48 +1600,45 @@ static int _HandleBsdWrite(dev_t dev, struct uio *uio)
 		return IO_R_INVALID_ARG;
 	}
 	
-	// Calculate offset into device info table (each entry is 0x34 bytes)
-	devInfoOffset = driveNumber * 0x34;
-	
-	// Get pointer to device info structure (global table at 0xc008)
-	devInfoPtr = (char *)0xc008 + devInfoOffset;
-	
+	// Get pointer to device info structure (Drives[driveNumber].devInfo)
+	devInfoPtr = (char *)&Drives[driveNumber].devInfo;
+
 	// Check if device info already exists
 	hasDevInfo = [drive _hasDevInfo];
-	
+
 	if (!hasDevInfo) {
-		// Clear device info area (0x28 bytes starting at offset 0xc008)
-		bzero(devInfoPtr, 0x28);
-		
+		// Clear device info area
+		bzero(devInfoPtr, sizeof(struct DriveDevInfo));
+
 		// Get block device major number from class
 		blockDevMajor = [[self class] blockMajor];
-		
-		// Calculate and store block device major/minor at offset 0xc028
+
+		// Calculate and store block device major/minor
 		blockDevMinor = driveNumber * 8;
-		*(int *)((char *)0xc028 + devInfoOffset) = (blockDevMajor << 8) | blockDevMinor;
-		
-		// Get character device major number from class  
+		Drives[driveNumber].devInfo.blockDev = (blockDevMajor << 8) | blockDevMinor;
+
+		// Get character device major number from class
 		charDevMajor = [[self class] characterMajor];
-		
-		// Calculate and store char device major/minor at offset 0xc02c
+
+		// Calculate and store char device major/minor
 		charDevMinor = driveNumber * 8;
-		*(int *)((char *)0xc02c + devInfoOffset) = (charDevMajor << 8) | charDevMinor;
+		Drives[driveNumber].devInfo.charDev = (charDevMajor << 8) | charDevMinor;
 	} else {
 		// Device info already exists, get existing info
-		sourceDevInfo = [self _getDevInfo];
-		
+		sourceDevInfo = [self devAndIdInfo];
+
 		// Check if it's not already the same pointer
 		if (sourceDevInfo != devInfoPtr) {
-			// Copy existing device info (0x28 bytes)
-			bcopy(sourceDevInfo, devInfoPtr, 0x28);
+			// Copy existing device info
+			bcopy(sourceDevInfo, devInfoPtr, sizeof(struct DriveDevInfo));
 		}
 	}
-	
+
 	// Set device and ID info on the drive
-	[self setDevAndIdInfo:devInfoPtr];
-	
-	// Set bit 2 in flags byte at offset 0xc000 (marks as attached)
-	flagsPtr = (unsigned char *)((char *)0xc000 + devInfoOffset);
+	[self setDevAndIdInfo:(IODevAndIdInfoNEW *)devInfoPtr];
+
+	// Set bit 2 in flags byte (marks as attached)
+	flagsPtr = &Drives[driveNumber].flags;
 	*flagsPtr |= 2;
 	
 	return IO_R_SUCCESS;
@@ -1445,24 +1648,26 @@ static int _HandleBsdWrite(dev_t dev, struct uio *uio)
  * Detach BSD disk interface from a drive.
  * From decompiled code: removes BSD device nodes.
  */
-- (IOReturn)_detachBsdDiskInterfaceFromDrive:(id)drive
+- (IOReturn)detachBsdDiskInterfaceFromDrive:(id)drive
 {
 	int driveNumber;
 	unsigned char *flagsPtr;
-	
+
 	// Get drive number
 	driveNumber = [[self class] driveNumberOfDrive:drive];
-	
+
 	// If invalid drive number, nothing to do
-	if (driveNumber == -1) {
-		return IO_R_SUCCESS;
+	if (driveNumber != -1) {
+		// Clear bit 2 in flags byte (marks as detached)
+		flagsPtr = &Drives[driveNumber].flags;
+		*flagsPtr &= 0xfd;  // Clear bit 2 (0xfd = ~0x02)
 	}
-	
-	// Clear bit 2 in flags byte at offset 0xc000 (marks as detached)
-	flagsPtr = (unsigned char *)((char *)0xc000 + driveNumber * 0x34);
-	*flagsPtr &= 0xfd;  // Clear bit 2 (0xfd = ~0x02)
-	
-	return IO_R_SUCCESS;
+
+	// The reference never loads a fixed IO_R_SUCCESS/IO_R_INVALID_ARG
+	// constant here - it returns whatever driveNumberOfDrive: left in
+	// eax: -1 on the invalid path, or the raw driveNumber (0-7) on the
+	// normal path.
+	return (IOReturn)driveNumber;
 }
 
 @end

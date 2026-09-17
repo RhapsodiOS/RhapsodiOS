@@ -36,8 +36,35 @@
 /* External reference to global reg_base from PCIC.m */
 extern unsigned int reg_base;
 
-/* External reference to _socketIsValid function from PCIC.m */
-extern char _socketIsValid(unsigned int socket);
+/*
+ * Check if socket is valid by reading hardware
+ * Returns 1 if valid, 0 if invalid
+ * Based on decompiled implementation
+ */
+static char socketIsValid(unsigned int socket)
+{
+    unsigned char regValue;
+    unsigned char regOffset;
+
+    /* Calculate register offset: socket * 0x40 */
+    regOffset = socket << 6;
+
+    /* Write register offset to index port */
+    outb(reg_base, regOffset);
+
+    /* Read register value from data port */
+    regValue = inb(reg_base + 1);
+
+    /* Check if socket is valid:
+     * - Lower 4 bits must be > 1
+     * - Bits 4-5 must be 0
+     */
+    if (((regValue & 0x0F) > 1) && ((regValue & 0x30) == 0)) {
+        return 1;
+    }
+
+    return 0;
+}
 
 @implementation PCICSocket
 
@@ -45,7 +72,7 @@ extern char _socketIsValid(unsigned int socket);
  * Initialize socket with adapter and socket number
  * Validates socket, initializes hardware registers, and creates window objects
  */
-- initWithAdapter:theAdapter socketNumber:(unsigned int)number
+- initWithAdapter:theAdapter socketNumber:(int)number
 {
     char socketValid;
     char socketOffset;
@@ -59,7 +86,7 @@ extern char _socketIsValid(unsigned int socket);
     socketNumber = number;
 
     /* Validate socket hardware */
-    socketValid = _socketIsValid(number);
+    socketValid = socketIsValid(number);
     if (socketValid == 0) {
         [self free];
         return nil;
@@ -99,14 +126,12 @@ extern char _socketIsValid(unsigned int socket);
     outb(dataPort, 0);
 
     /* Create window list with capacity for 7 windows (offset 0x10 = 16) */
-    windowList = [[List alloc] initCount:7];
-    windowList = [windowList init];
+    windows = [[List alloc] initCount:7];
 
     /* Create 1 memory window (memoryWindow = 0) */
     for (i = 0; i < 1; i++) {
         window = [[PCICWindow alloc] initWithSocket:self memoryWindow:0 number:i];
-        window = [window init];
-        [windowList addObject:window];
+        [windows addObject:window];
 
         /* Configure memory window registers */
         windowOffset = (char)i * 4;
@@ -135,8 +160,7 @@ extern char _socketIsValid(unsigned int socket);
     /* Create 5 I/O windows (memoryWindow = 1) */
     for (i = 0; i < 5; i++) {
         window = [[PCICWindow alloc] initWithSocket:self memoryWindow:1 number:i];
-        window = [window init];
-        [windowList addObject:window];
+        [windows addObject:window];
 
         /* Configure I/O window registers */
         windowOffset = (char)i * 8;
@@ -171,14 +195,14 @@ extern char _socketIsValid(unsigned int socket);
  */
 - windows
 {
-    return windowList;
+    return windows;
 }
 
 /*
  * Get socket number
  * Returns socket number from offset 8
  */
-- (unsigned int)socketNumber
+- (int)socketNumber
 {
     return socketNumber;
 }
@@ -195,7 +219,7 @@ extern char _socketIsValid(unsigned int socket);
  * Get card enabled state
  * Reads bit 7 from Power and RESETDRV Control register
  */
-- (unsigned int)cardEnabled
+- (char)cardEnabled
 {
     unsigned char regValue;
 
@@ -243,7 +267,7 @@ extern char _socketIsValid(unsigned int socket);
  * Get card auto power state
  * Reads bit 5 from Power and RESETDRV Control register
  */
-- (unsigned int)cardAutoPower
+- (char)cardAutoPower
 {
     unsigned char regValue;
 
@@ -275,7 +299,7 @@ extern char _socketIsValid(unsigned int socket);
  * Get memory interface type
  * Reads inverted bit 5 from Interrupt and General Control register
  */
-- (unsigned int)memoryInterface
+- (char)memoryInterface
 {
     unsigned char regValue;
 
@@ -291,26 +315,27 @@ extern char _socketIsValid(unsigned int socket);
  * Get status change mask
  * Returns mask from offset 0xc
  */
-- (unsigned int)statusChangeMask
+- (PCMCIAStatus)statusChangeMask
 {
-    return statusChangeMask;
+    return statusMask;
 }
 
 /*
  * Get power states
  * Returns available power states (currently none)
  */
-- (unsigned int)powerStates
+- powerStates
 {
-    return 0;
+    return nil;
 }
 
 /*
  * Get socket status
  * Reads and reformats Interface Status register
  */
-- (unsigned int)status
+- (PCMCIAStatus)status
 {
+    PCMCIAStatus status;
     unsigned char regValue;
     char socketOffset;
 
@@ -319,23 +344,23 @@ extern char _socketIsValid(unsigned int socket);
     outb(reg_base, socketOffset + 0x01);
     regValue = inb(reg_base + 1);
 
-    /* Reformat status bits:
-     * bit 0: Card detect (1 if both CD bits 2-3 are set)
-     * bits 4-5: Battery status (from register bits 0-1)
-     * bit 6: From register bit 4
-     * bit 7: Ready status (from register bit 5)
-     */
-    return ((regValue & 0x0C) == 0x0C) |           /* bit 0: CD status */
-           ((unsigned char)(regValue & 3) << 4) |   /* bits 4-5: battery */
-           ((unsigned char)((regValue >> 4) & 1) << 6) |  /* bit 6 */
-           ((unsigned char)((regValue >> 5) & 1) << 7);   /* bit 7: ready */
+    /* Reformat status bits */
+    status.present = ((regValue & 0x0C) == 0x0C);   /* both CD bits 2-3 set */
+    status.locked = 0;
+    status.ejectRequest = 0;
+    status.insertRequest = 0;
+    status.batteryStatus = regValue & 3;            /* register bits 0-1 */
+    status.writeProtect = (regValue >> 4) & 1;      /* register bit 4 */
+    status.ready = (regValue >> 5) & 1;             /* register bit 5 */
+
+    return status;
 }
 
 /*
  * Set card enabled state
  * Sets bit 7 in Power and RESETDRV Control register
  */
-- (void)setCardEnabled:(unsigned int)enabled
+- (char)setCardEnabled:(char)enabled
 {
     unsigned char regValue;
     char socketOffset;
@@ -349,13 +374,15 @@ extern char _socketIsValid(unsigned int socket);
     socketOffset = (char)(socketNumber << 6);
     outb(reg_base, socketOffset + 0x02);
     outb(reg_base + 1, (regValue & 0x7F) | (enabled << 7));
+
+    return 1;
 }
 
 /*
  * Set card VCC power level
  * Sets bit 4 in Power and RESETDRV Control register
  */
-- (void)setCardVccPower:(unsigned int)power
+- (char)setCardVccPower:(unsigned int)power
 {
     unsigned char regValue;
     char socketOffset;
@@ -369,13 +396,15 @@ extern char _socketIsValid(unsigned int socket);
     socketOffset = (char)(socketNumber << 6);
     outb(reg_base, socketOffset + 0x02);
     outb(reg_base + 1, (regValue & 0xEF) | (((unsigned char)power & 1) << 4));
+
+    return 1;
 }
 
 /*
  * Set card VPP power level
  * Sets lower 2 bits in Power and RESETDRV Control register
  */
-- (void)setCardVppPower:(unsigned int)power
+- (char)setCardVppPower:(unsigned int)power
 {
     unsigned char regValue;
     char socketOffset;
@@ -389,13 +418,15 @@ extern char _socketIsValid(unsigned int socket);
     socketOffset = (char)(socketNumber << 6);
     outb(reg_base, socketOffset + 0x02);
     outb(reg_base + 1, (regValue & 0xFC) | ((unsigned char)power & 3));
+
+    return 1;
 }
 
 /*
  * Set card auto power state
  * Sets bit 5 in Power and RESETDRV Control register
  */
-- (void)setCardAutoPower:(unsigned int)autoPower
+- (char)setCardAutoPower:(char)autoPower
 {
     unsigned char regValue;
     char socketOffset;
@@ -409,13 +440,15 @@ extern char _socketIsValid(unsigned int socket);
     socketOffset = (char)(socketNumber << 6);
     outb(reg_base, socketOffset + 0x02);
     outb(reg_base + 1, (regValue & 0xDF) | ((autoPower & 1) << 5));
+
+    return 1;
 }
 
 /*
  * Set card IRQ number
  * Sets lower 4 bits in Interrupt and General Control register
  */
-- (void)setCardIRQ:(unsigned int)irq
+- (char)setCardIRQ:(unsigned int)irq
 {
     unsigned char regValue;
     char socketOffset;
@@ -429,13 +462,15 @@ extern char _socketIsValid(unsigned int socket);
     socketOffset = (char)(socketNumber << 6);
     outb(reg_base, socketOffset + 0x03);
     outb(reg_base + 1, (regValue & 0xF0) | ((unsigned char)irq & 0x0F));
+
+    return 1;
 }
 
 /*
  * Set card reset state
  * Sets bit 6 in Interrupt and General Control register (inverted logic)
  */
-- (void)setCardReset:(unsigned int)reset
+- (void)setCardReset:(char)reset
 {
     char socketOffset;
 
@@ -453,7 +488,7 @@ extern char _socketIsValid(unsigned int socket);
  * Set memory interface type
  * Sets bit 5 in Interrupt and General Control register (inverted logic)
  */
-- (void)setMemoryInterface:(unsigned int)interface
+- (char)setMemoryInterface:(char)interface
 {
     unsigned char regValue;
     char socketOffset;
@@ -469,13 +504,15 @@ extern char _socketIsValid(unsigned int socket);
     socketOffset = (char)(socketNumber << 6);
     outb(reg_base, socketOffset + 0x03);
     outb(reg_base + 1, (regValue & 0xDF) | ((interface == 0) << 5));
+
+    return 1;
 }
 
 /*
  * Set status change mask
  * Configures Card Status Change Interrupt Enable register
  */
-- (void)setStatusChangeMask:(unsigned int)mask
+- (char)setStatusChangeMask:(PCMCIAStatus)mask
 {
     unsigned char readyBit;
     unsigned char batteryBits;
@@ -483,13 +520,13 @@ extern char _socketIsValid(unsigned int socket);
     char socketOffset;
 
     /* Store mask at offset 0xc */
-    statusChangeMask = mask;
+    statusMask = mask;
 
     /* Extract bit 7 (READY status change) */
-    readyBit = (unsigned char)(mask >> 7) & 1;
+    readyBit = mask.ready;
 
     /* Check if bits 4-5 are set (battery status changes) */
-    batteryBits = ((unsigned char)mask & 0x30) != 0;
+    batteryBits = mask.batteryStatus != 0;
 
     /* Get IRQ number from adapter */
     irq = (unsigned char)[adapter interrupt];
@@ -506,11 +543,13 @@ extern char _socketIsValid(unsigned int socket);
      * bits 4-7: IRQ number
      */
     outb(reg_base + 1,
-         (((unsigned char)mask & 1) != 0) << 3 |  /* CD change */
+         (mask.present != 0) << 3 |               /* CD change */
          readyBit << 2 |                           /* READY change */
          batteryBits << 1 |                        /* Battery warning */
          batteryBits |                             /* Battery dead */
          irq << 4);                                /* IRQ number */
+
+    return 1;
 }
 
 /*

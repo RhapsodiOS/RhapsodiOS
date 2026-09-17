@@ -18,7 +18,9 @@
 #import <kernserv/prototypes.h>
 #import <sys/param.h>
 
-static void blTimeout(void *arg);
+static void blcTimeout(void *arg);
+
+extern void blc_start_scsi(IOEISAPortAddress portBase);
 
 #define AUTO_SENSE_ENABLE	1
 
@@ -36,7 +38,7 @@ static msg_header_t timeoutMsgTemplate = {
 	IO_TIMEOUT_MSG				// msg_id
 };
 
-@implementation BLController(IOThread)
+@implementation BLCController(IOThread)
 
 /*
  * I/O thread version of -executeRequest:buffer:client.
@@ -56,7 +58,7 @@ static msg_header_t timeoutMsgTemplate = {
 
 	ddm_thr("threadExecuteRequest cmdBuf 0x%x\n", cmdBuf, 2,3,4,5);
 
-	ccb = [self allocCcb:(scsiReq->maxTransfer ? YES : NO)];
+	ccb = [self allocCcb];
 	if(ccb == NULL) {
 		return 1;
 	}
@@ -77,7 +79,7 @@ static msg_header_t timeoutMsgTemplate = {
 	 *  rare, so we don't particularly care about how efficient it is.
 	 */
 	ccb->timeoutPort = interruptPortKern;
-	IOScheduleFunc(blTimeout, ccb, scsiReq->timeoutLength);
+	IOScheduleFunc(blcTimeout, ccb, scsiReq->timeoutLength);
 
 	/*
 	 * Stick this command on the list of pending ones, and run them.
@@ -121,8 +123,8 @@ static msg_header_t timeoutMsgTemplate = {
 	/*
 	 * Now reset the hardware.
 	 */
-	bl_reset_board(ioBase, blBoardId);
-	bl_setup_mb_area(ioBase, blMbArea, blCcb);
+	blc_reset_board(ioBase, blBoardId);
+	blc_setup_mb_area(ioBase, blMbArea, blCcb);
 
 	ctrl.scsi_rst = 1;
 	bl_put_ctrl(ioBase, ctrl);
@@ -326,7 +328,7 @@ static msg_header_t timeoutMsgTemplate = {
 				&phys)) {
 			IOLog("%s: Can\'t get physical address of ccb\n",
 				[self name]);
-			IOPanic("BLController");
+			IOPanic("BLCController");
 		}
 		bl_put_24(phys, ccb->data_addr);
 		bl_put_24(sgEntry * sizeof(struct bl_sg), ccb->data_len);
@@ -365,7 +367,7 @@ static msg_header_t timeoutMsgTemplate = {
 		 *  Let 'er rip...
 		 */
 		ccb->mb_out->mb_stat = BL_MB_OUT_START;
-		bl_start_scsi(ioBase);
+		blc_start_scsi(ioBase);
 
 		/*
 		 *  Accumulate some simple statistics: the max queue length
@@ -483,7 +485,7 @@ static msg_header_t timeoutMsgTemplate = {
 	/*
 	 * Free the CCB and clean up possible pending timeout.
 	 */
-	(void) IOUnscheduleFunc(blTimeout, ccb);
+	(void) IOUnscheduleFunc(blcTimeout, ccb);
 	[self freeCcb:ccb];
 }
 
@@ -492,7 +494,7 @@ static msg_header_t timeoutMsgTemplate = {
  * If we can't find one, return NULL - caller will have to try
  * again later.
  */
-- (struct ccb *)allocCcb : (BOOL)doDMA
+- (struct ccb *)allocCcb
 {
 	struct ccb *ccb;
 	int i;
@@ -511,7 +513,7 @@ static msg_header_t timeoutMsgTemplate = {
 		ccb++;
 	}
 	if (ccb > &blCcb[BL_QUEUE_SIZE - 1]) {
-		IOPanic("BLController: out of ccbs");
+		IOPanic("BLCController: out of ccbs");
 	}
 	numFreeCcbs--;
 	ccb->in_use = TRUE;
@@ -524,14 +526,14 @@ static msg_header_t timeoutMsgTemplate = {
 	}
 
 	/*
-	 * Acquire the reentrant DMA lock. This is a nop on EISA machines.
+	 * Acquire the reentrant DMA lock. Only ISA boards drive the machine's
+	 * DMA controller, so this is skipped entirely on EISA, VL and PCI.
 	 *
 	 * Although -reserveDMALock is reentrant for multiple threads on
 	 * one device, it is *not* reentrant for one thread. Thus we should
 	 * only call it if we don't already hold the lock.
-	 * Also, avoid this if we're not going to do any DMA.
 	 */
-	if(doDMA && (++dmaLockCount == 1)) {
+	if((++dmaLockCount == 1) && (busType == BL_BUS_ISA)) {
 		ddm_thr("allocCcb: calling reserveDMALock\n", 1,2,3,4,5);
 		[super reserveDMALock];
 	}
@@ -542,12 +544,10 @@ static msg_header_t timeoutMsgTemplate = {
 
 - (void)freeCcb : (struct ccb *)ccb
 {
-	BOOL	didDMA = (ccb->total_xfer_len ? YES : NO);
-
 	ddm_thr("freeCcb: ccb 0x%x\n", ccb, 2,3,4,5);
 	ccb->in_use = FALSE;
 	numFreeCcbs++;
-	if(didDMA && (--dmaLockCount == 0)) {
+	if((--dmaLockCount == 0) && (busType == BL_BUS_ISA)) {
 		ddm_thr("freeCcb: calling releaseDMALock\n",
 			1,2,3,4,5);
 		[super releaseDMALock];
@@ -593,7 +593,7 @@ static msg_header_t timeoutMsgTemplate = {
  *  so it wakes up.
  */
 static void
-blTimeout(void *arg)
+blcTimeout(void *arg)
 {
 
 	struct ccb	*ccb = arg;
@@ -610,7 +610,7 @@ blTimeout(void *arg)
 	msg.msg_remote_port = ccb->timeoutPort;
 	IOLog("BL timeout\n");
 	if(mrtn = msg_send_from_kernel(&msg, MSG_OPTION_NONE, 0)) {
-		IOLog("blTimeout: msg_send_from_kernel() returned %d\n",
+		IOLog("blcTimeout: msg_send_from_kernel() returned %d\n",
 			mrtn);
 	}
 }

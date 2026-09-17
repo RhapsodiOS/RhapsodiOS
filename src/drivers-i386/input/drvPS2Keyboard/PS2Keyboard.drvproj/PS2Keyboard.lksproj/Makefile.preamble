@@ -1,2 +1,2 @@
-# Additional compiler flags
-OTHER_CFLAGS = -Wall
+INCLUDED_ARCHS = i386
+OTHER_CFLAGS = -I$(NEXT_ROOT)$(SYSTEM_LIBRARY_DIR)/Frameworks/System.framework/PrivateHeaders/machdep -Wno-format

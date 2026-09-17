@@ -1,0 +1,366 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 0,
+      "reference_names": [
+        "_set555Mode"
+      ],
+      "size": 54,
+      "source_line": 35,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/IBMThinkPad760ED.m"
+    },
+    {
+      "address": 56,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver initFromDeviceDescription:]"
+      ],
+      "size": 777,
+      "source_line": 159,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/IBMThinkPad760ED.m"
+    },
+    {
+      "address": 836,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver updateModeTable]"
+      ],
+      "size": 128,
+      "source_line": 245,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/IBMThinkPad760ED.m"
+    },
+    {
+      "address": 964,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver selectMode]"
+      ],
+      "size": 115,
+      "source_line": 268,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/IBMThinkPad760ED.m"
+    },
+    {
+      "address": 1080,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver defaultMode]"
+      ],
+      "size": 102,
+      "source_line": 287,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/IBMThinkPad760ED.m"
+    },
+    {
+      "address": 1184,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver enterLinearMode]"
+      ],
+      "size": 626,
+      "source_line": 311,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/IBMThinkPad760ED.m"
+    },
+    {
+      "address": 1812,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver revertToVGAMode]"
+      ],
+      "size": 215,
+      "source_line": 383,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/IBMThinkPad760ED.m"
+    },
+    {
+      "address": 2028,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver getModeInfo:]"
+      ],
+      "size": 168,
+      "source_line": 418,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/IBMThinkPad760ED.m"
+    },
+    {
+      "address": 2196,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver determineConfiguration:]"
+      ],
+      "size": 395,
+      "source_line": 449,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/IBMThinkPad760ED.m"
+    },
+    {
+      "address": 2592,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver isValidPCIAssignedBaseAddress:]"
+      ],
+      "size": 29,
+      "source_line": 501,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/IBMThinkPad760ED.m"
+    },
+    {
+      "address": 2624,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver setPCIConfiguration]"
+      ],
+      "size": 674,
+      "source_line": 513,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/IBMThinkPad760ED.m"
+    },
+    {
+      "address": 3300,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver setPendingDisplayMode:]"
+      ],
+      "size": 544,
+      "source_line": 590,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/IBMThinkPad760ED.m"
+    },
+    {
+      "address": 3844,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver getDisplayDeviceState]"
+      ],
+      "size": 81,
+      "source_line": 662,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/IBMThinkPad760ED.m"
+    },
+    {
+      "address": 3928,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver setDisplayDeviceState:]"
+      ],
+      "size": 80,
+      "source_line": 674,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/IBMThinkPad760ED.m"
+    },
+    {
+      "address": 4008,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver unlockRegisters]"
+      ],
+      "size": 166,
+      "source_line": 688,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/IBMThinkPad760ED.m"
+    },
+    {
+      "address": 4176,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver lockRegisters]"
+      ],
+      "size": 166,
+      "source_line": 709,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/IBMThinkPad760ED.m"
+    },
+    {
+      "address": 4344,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver free]"
+      ],
+      "size": 89,
+      "source_line": 731,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/IBMThinkPad760ED.m"
+    },
+    {
+      "address": 4436,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver displayModeCount]"
+      ],
+      "size": 12,
+      "source_line": 740,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/IBMThinkPad760ED.m"
+    },
+    {
+      "address": 4448,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver displayModes]"
+      ],
+      "size": 12,
+      "source_line": 745,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/IBMThinkPad760ED.m"
+    },
+    {
+      "address": 4460,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver displayMemorySize]"
+      ],
+      "size": 16,
+      "source_line": 750,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/IBMThinkPad760ED.m"
+    },
+    {
+      "address": 4476,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver ramdacSpeed]"
+      ],
+      "size": 9,
+      "source_line": 755,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/IBMThinkPad760ED.m"
+    },
+    {
+      "address": 4488,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver readCMOS:]"
+      ],
+      "size": 71,
+      "source_line": 765,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/IBMThinkPad760ED.m"
+    },
+    {
+      "address": 4560,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver reportSystemConfiguration]"
+      ],
+      "size": 1088,
+      "source_line": 783,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/IBMThinkPad760ED.m"
+    },
+    {
+      "address": 5648,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver name]"
+      ],
+      "size": 59,
+      "source_line": 926,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/IBMThinkPad760ED.m"
+    },
+    {
+      "address": 5708,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver setTransferTable:count:]"
+      ],
+      "size": 333,
+      "source_line": 24,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/TransferTable.m"
+    },
+    {
+      "address": 6044,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver setBrightness:token:]"
+      ],
+      "size": 77,
+      "source_line": 67,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/TransferTable.m"
+    },
+    {
+      "address": 6124,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver SetGammaValueRed:Green:Blue:Level:]"
+      ],
+      "size": 82,
+      "source_line": 112,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/TransferTable.m"
+    },
+    {
+      "address": 6208,
+      "reference_names": [
+        "-[IBMThinkPad760EDDisplayDriver setGammaTable]"
+      ],
+      "size": 229,
+      "source_line": 123,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/TransferTable.m"
+    },
+    {
+      "address": 6440,
+      "reference_names": [
+        "_smapi_asm"
+      ],
+      "size": 86,
+      "source_line": 32,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/smapi.s"
+    },
+    {
+      "address": 6552,
+      "reference_names": [
+        "-[vidBIOS init]"
+      ],
+      "size": 267,
+      "source_line": 41,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/vidBIOS.m"
+    },
+    {
+      "address": 6820,
+      "reference_names": [
+        "-[vidBIOS free]"
+      ],
+      "size": 107,
+      "source_line": 68,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/vidBIOS.m"
+    },
+    {
+      "address": 6928,
+      "reference_names": [
+        "-[vidBIOS int10:outregs:iorange:ionum:smmport:]"
+      ],
+      "size": 696,
+      "source_line": 87,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/vidBIOS.m"
+    },
+    {
+      "address": 7624,
+      "reference_names": [
+        "-[vidBIOS int10:outregs:iorange:ionum:]"
+      ],
+      "size": 44,
+      "source_line": 164,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/vidBIOS.m"
+    },
+    {
+      "address": 7668,
+      "reference_names": [
+        "-[vidBIOS scratchSegment]"
+      ],
+      "size": 16,
+      "source_line": 173,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/vidBIOS.m"
+    },
+    {
+      "address": 7684,
+      "reference_names": [
+        "-[vidBIOS realToVirtual::]"
+      ],
+      "size": 22,
+      "source_line": 178,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/vidBIOS.m"
+    },
+    {
+      "address": 7708,
+      "reference_names": [
+        "_emu486"
+      ],
+      "size": 8088,
+      "source_line": 92,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/emu486.s"
+    },
+    {
+      "address": 15796,
+      "reference_names": [
+        "sub_00003DB4"
+      ],
+      "size": 81,
+      "source_line": 2733,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/emu486.s"
+    },
+    {
+      "address": 15877,
+      "reference_names": [
+        "sub_00003E05"
+      ],
+      "size": 37,
+      "source_line": 2797,
+      "source_path": "src/drivers-i386/video/drvIBMThinkPad760EDDisplay/IBMThinkPad760EDDisplayDriver.drvproj/IBMThinkPad760EDDisplayDriver.lksproj/emu486.s"
+    }
+  ],
+  "reference_sha256": "47539E03C441BBFD6724EB6778D85BFACD0961B78A8DFA33D56321C938EB5AEC",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 6528,
+      "reference_names": [
+        "+[IBMThinkPad760EDDisplayDriverKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 6540,
+      "reference_names": [
+        "+[IBMThinkPad760EDDisplayDriverVersion driverKitVersionForIBMThinkPad760EDDisplayDriver]"
+      ],
+      "size": 12
+    }
+  ]
+}

@@ -62,21 +62,49 @@ static intr_irq_mask_t	current_irq_mask, disabled_irq_mask;
 static intr_irq_mask_t	current_elcr;
 
 /*
- * Send an EOI (end of interrupt) to both PICs.
+ * A specific EOI for one input of one PIC.
+ */
+static inline
+intr_ocw2_t
+specific_eoi(
+    int			level
+)
+{
+    return ((intr_ocw2_t) {
+			level,		/* input on this PIC	*/
+			0,		/* must be zero		*/
+			TRUE,		/* EOI			*/
+			TRUE,		/* specific		*/
+			FALSE		/* no rotation		*/
+		    });
+}
+
+/*
+ * Acknowledge an interrupt.
+ *
+ * Specific rather than non-specific, and for a cascaded interrupt the
+ * slave is acknowledged before the master's cascade input.  This is the
+ * sequence Linux and NetBSD both use.
+ *
+ * Both details matter.  A non-specific EOI clears whichever in-service
+ * bit currently has the highest priority, which is not necessarily the
+ * interrupt being finished once interrupts nest.  Worse, the previous
+ * code sent one to *both* PICs regardless of where the interrupt came
+ * from, so finishing an interrupt on the master would also clear an
+ * unrelated slave interrupt that was still in service.
  */
 static inline
 void
 send_eoi(
-    void
+    int			irq
 )
 {
-    send_eoi_command((intr_ocw2_t) {
-			0,		/* no level	*/
-			0,		/* must be	*/
-			TRUE,		/* EOI		*/
-			FALSE,		/* non-specific	*/
-			FALSE		/* no rotation	*/
-		    });
+    if (irq >= INTR_NIRQ / 2) {
+	send_slave_eoi_command(specific_eoi(irq - INTR_NIRQ / 2));
+	send_master_eoi_command(specific_eoi(INTR_SLAVE_IRQ));
+    }
+    else
+	send_master_eoi_command(specific_eoi(irq));
 }
 
 static inline
@@ -140,10 +168,10 @@ set_irq_mask(
 
     if (new_mask.full.mask != current_irq_mask.mask) {
 	current_irq_mask = new_mask.full;
-    
+
 	set_master_mask((intr_ocw1_t) {
 					    new_mask.master.half });
-	
+
 	set_slave_mask((intr_ocw1_t) {
 					    new_mask.slave.half });
     }
@@ -659,12 +687,32 @@ intr_handler(
 
     /*
      * Check for phantom interrupt.
+     *
+     * A spurious interrupt leaves no in-service bit set in the PIC that
+     * reported it, which is how it is recognised here.  The master and
+     * slave cases are not symmetric.
+     *
+     * A spurious IRQ 7 needs no acknowledgement: the master has nothing
+     * in service.  A spurious IRQ 15 does, because the master already
+     * acknowledged the cascade and set its IRQ 2 in-service bit before
+     * the slave reported the interrupt as spurious.  Returning without
+     * clearing that bit leaves the cascade permanently in service, and
+     * the master then refuses every later slave interrupt (IRQ 8-15)
+     * while continuing to deliver the higher-priority IRQ 0.
      */
-    if (((irq == INTR_MASTER_PHANTOM_IRQ && 
-		(get_master_isr() & INTR_PHANTOM_IRQ_MASK) == 0)) ||
-	((irq == INTR_SLAVE_PHANTOM_IRQ &&
-		(get_slave_isr() & INTR_PHANTOM_IRQ_MASK) == 0)) ) {
+    if (irq == INTR_MASTER_PHANTOM_IRQ &&
+		(get_master_isr() & INTR_PHANTOM_IRQ_MASK) == 0) {
 	 intr_cnt.phantom++;
+	 if (intr_cnt.phantom <= 8)
+	     printf("intr: phantom IRQ %d\n", irq);
+	 return;
+    }
+    if (irq == INTR_SLAVE_PHANTOM_IRQ &&
+		(get_slave_isr() & INTR_PHANTOM_IRQ_MASK) == 0) {
+	 intr_cnt.phantom++;
+	 if (intr_cnt.phantom <= 8)
+	     printf("intr: phantom IRQ %d, EOI to master\n", irq);
+	 send_master_eoi_command(specific_eoi(INTR_SLAVE_IRQ));
 	 return;
     }
 
@@ -679,7 +727,7 @@ intr_handler(
      * Acknowledge by sending
      * an EOI command to the PICs.
      */
-    send_eoi();  
+    send_eoi(irq);
 
     /*
      * Leave this interrupt

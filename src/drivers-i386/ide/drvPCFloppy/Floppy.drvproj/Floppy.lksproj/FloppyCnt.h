@@ -35,16 +35,16 @@ typedef struct {
  */
 @interface FloppyController : IODirectDevice
 {
-@private
+@public
 	id                  _fcCmdLock;         // offset 0x128: Lock for controller access (NXConditionLock)
 	id                  _requestQueue;      // offset 0x130: Request queue head pointer
 	port_t              _fdcInterruptPort;  // offset 0x134: Interrupt port
 	unsigned char       _flags;             // offset 0x138: Controller flags
-	unsigned char       _field_139;         // offset 0x139: Unknown field
+	unsigned char       _currentDensity;    // offset 0x139: Current density/data-rate select
 	unsigned char       _dorRegister;       // offset 0x13a: Digital Output Register (DOR) cache
-	unsigned char       _field_13b;         // offset 0x13b: Unknown field
+	unsigned char       _dataRateChangeCount; // offset 0x13b: Data-rate change counter
 	void               *_dmaBuffer;         // offset 0x13c: DMA transfer buffer
-	unsigned int        _field_140;         // offset 0x140: Unknown field (initialized to 0xffff)
+	unsigned int        _lastErrorCode;     // offset 0x140: Last error / status word
 
 	// Request queue (offset 300 / 0x12c)
 	id                  _queueHead;         // Circular queue for I/O requests
@@ -83,7 +83,7 @@ typedef struct {
 /*
  * Controller operations
  */
-- (IOReturn)_fcCmdXfr:(void *)cmdParams;
+- (IOReturn)fcCmdXfr:(void *)cmdParams;
 
 @end
 
@@ -110,15 +110,14 @@ typedef struct {
 /*
  * Forward declarations for external functions
  */
-extern void *_alloc_cnvmem(unsigned int size, unsigned int align);
-extern IOReturn _IOForkThread(void (*threadFunc)(void *), void *arg);
-extern void _IOExitThread(void);
+extern void *alloc_cnvmem(unsigned int size, unsigned int align);
+/* IOForkThread / IOExitThread come from <driverkit/generalFuncs.h> */
 
 /*
- * Floppy drive detection functions
+ * Floppy drive detection functions (defined in FloppyCnt.m)
  */
-extern int _numFloppyDrives(void);
-extern int _floppyDriveType(int driveNum);
+unsigned char floppyDriveType(int driveNum);
+BOOL numFloppyDrives(void);
 
 #endif // _BSD_DEV_I386_FLOPPYCNT_H_
 

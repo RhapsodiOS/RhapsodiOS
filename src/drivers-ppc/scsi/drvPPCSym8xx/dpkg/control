@@ -1,0 +1,6 @@
+Package: drvppcsym8xx
+Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
+Vendor: Apple Computer
+Version: 2
+Description: Symbios 8xx SCSI controller driver
+Build-Depends: build-base, drivertools, driverkit, machkit, kernload, libstreams

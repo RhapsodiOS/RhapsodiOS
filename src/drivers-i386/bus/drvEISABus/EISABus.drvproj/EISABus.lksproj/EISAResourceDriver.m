@@ -39,20 +39,27 @@
 #import <stdio.h>
 #import <string.h>
 
-/* Parameter name keys */
+/*
+ * Parameter name keys.
+ *
+ * EISAParsePrefix() compares strlen(key) characters and then requires the
+ * parameter to continue with '(' -- so the keys must not carry the paren
+ * themselves.  A parameter reads e.g. "EISASlotInfo(0)", "in(0x60)" or
+ * "IDs(EISA)(PNP0303)".
+ */
 static const char *keys[] = {
-    "Slot(",           /* 0 - Read slot info */
-    "Function(",       /* 1 - Read function info */
-    "Register(",       /* 2 - Read PnP register */
-    "Write(",          /* 3 - Write to PnP register */
-    "Config(",         /* 4 - Read PnP config */
-    "Port(",           /* 5 - Read I/O port */
-    "Out(",            /* 6 - Write to I/O port */
-    "IDs(",            /* 7 - Parse ID prefix */
-    "",                /* 8 - continuation of IDs */
-    "Instance(",       /* 9 - Lookup by instance */
-    "Device(",         /* 10 - Read device config */
-    "Node("            /* 11 - Read system node */
+    "EISASlotInfo",        /* 0 - Read slot info */
+    "EISAFunctionInfo",    /* 1 - Read function info */
+    "ReadPnPRegister",     /* 2 - Read PnP register */
+    "WritePnPRegister",    /* 3 - set only */
+    "GetPnPInfo",          /* 4 - Read PnP config */
+    "in",                  /* 5 - Read I/O port */
+    "out",                 /* 6 - set only */
+    "IDs",                 /* 7 - Parse ID prefix */
+    "...IDs",              /* 8 - continuation of IDs */
+    "LocationForInstance", /* 9 - Lookup by instance */
+    "GetPnPDeviceCfg",     /* 10 - Read device config */
+    "GetSystemNode"        /* 11 - Read system node */
 };
 
 @implementation EISAResourceDriver
@@ -196,7 +203,13 @@ static const char *keys[] = {
             *(unsigned short *)parameterArray = (unsigned short)portValue;
             return IO_R_SUCCESS;
         } else if (*count == 4) {
-            portValue = inw(portAddr);
+            /*
+             * 32-bit port read.  inl() in <machdep/i386/io_inline.h> issues
+             * "inl" but is declared to return unsigned short, so the value
+             * reaching the caller is already narrowed; the reference keeps
+             * the resulting mask (in eax, dx / and eax, 0xFFFF) and so do we.
+             */
+            portValue = inl(portAddr);
             *(unsigned int *)parameterArray = portValue & 0xFFFF;
             return IO_R_SUCCESS;
         }
@@ -249,15 +262,16 @@ static const char *keys[] = {
                     unsigned long serialNum = (unsigned long)[deviceResources serialNumber];
                     unsigned long idValue = (unsigned long)[deviceResources ID];
 
-                    sprintf((char *)parameterArray, "Card:0x%lx Serial:0x%lx Logical:0x%x",
-                            idValue, serialNum, logicalDevice);
+                    sprintf((char *)parameterArray, "%s:0x%lx %s:0x%lx %s:0x%x",
+                            "Card", idValue, "Serial", serialNum,
+                            "Logical", logicalDevice);
 
-                    /* Calculate string length */
+                    /* Returned count includes the terminating NUL */
                     len = 0;
-                    while (parameterArray[len] != '\0' && len < *count) {
+                    while (parameterArray[len] != '\0') {
                         len++;
                     }
-                    *count = len;
+                    *count = len + 1;
                     return IO_R_SUCCESS;
                 }
                 *count = 0;
@@ -349,8 +363,13 @@ static const char *keys[] = {
             outw(portValue16, *(unsigned short *)parameterArray);
             return IO_R_SUCCESS;
         } else if (count == 4) {
-            /* Write 4 bytes (dword) - uses 2-byte writes on i386 */
-            outw(portValue16, *(unsigned short *)parameterArray);
+            /*
+             * 32-bit port write.  outl() in <machdep/i386/io_inline.h> issues
+             * "outl" but takes its datum as unsigned short, so only the low
+             * half of the parameter reaches the bus -- which is exactly what
+             * the reference does (mov ax, [ecx] / out dx, eax).
+             */
+            outl(portValue16, *(unsigned short *)parameterArray);
             return IO_R_SUCCESS;
         }
     } else {

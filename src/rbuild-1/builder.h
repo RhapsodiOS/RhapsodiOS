@@ -3,6 +3,27 @@
 
 #include "strutil.h"
 #include "package.h"
+#include "toolchain.h"
+
+typedef struct {
+    int clean;
+    int bootstrap;
+    const char *sysroot;
+    const char *state_dir;
+    const Toolchain *toolchain;
+    const char *target_arch;
+    int force;
+    unsigned operation_arch; /* zero for ordinary builds */
+    unsigned effective_arch; /* zero until the source is resolved */
+} BuildOptions;
+
+void build_options_init(BuildOptions *opt);
+/* Missing is successful with *exists == 0; invalid cache is quarantined.
+ * Dry-run reports inspection and leaves every cache unavailable. */
+int builder_cache_status(const char *path, const Toolchain *tc,
+                          const char *name, const char *version,
+                          unsigned required, int objects, int *exists);
+int builder_resolve_architecture(Package *pkg, BuildOptions *opt);
 
 typedef struct {
     char *BUILDROOT;
@@ -34,27 +55,34 @@ void builder_canonparams(Params *p, const char *cwd);
 void builder_chrootparams(const Params *in, const char *buildroot, Params *out);
 
 void builder_buildflags(const Params *params, const char *target, strlist *out,
-                        int native);
+                        const BuildOptions *opt);
 void builder_buildcmd(const Params *chroot_params, const Params *build_params,
-                      const char *target, strlist *out, int native);
+                      const char *target, strlist *out,
+                      const BuildOptions *opt);
 
 int builder_scan_dir(const char *source, Package *pkg, Params *params);
 int builder_scan(const char *type, const char *source, Package *pkg, Params *params);
 
 int builder_makeroot(const Package *pkg, const char *buildroot,
-                     const strlist *repository);
+                     const strlist *repository, const Toolchain *tc);
 
 int builder_setupdirs(const Package *pkg, const Params *params,
                       const char *srcname, const char *srctype,
-                      const strlist *repository, int native);
+                      const strlist *repository, const BuildOptions *opt);
+
+/* Probe resolved slices in private OBJROOT directories. Bootstrap links a
+ * CPU only when sysroot crt1.o and ld_flags_ready System contain that slice. */
+int builder_probe_toolchain(const Params *params, const Params *bparams,
+                            const BuildOptions *opt);
 
 int builder_buildpackage(const Package *spkg, const Params *params,
-                         const char *target);
+                         const char *target, const BuildOptions *opt);
+int builder_relativize_symlinks(const char *root);
 int builder_harvest_objects(const Package *pkg, const Params *params,
-                            const Params *bparams, int native);
+                            const Params *bparams, const BuildOptions *opt);
 
 int builder_build(const char *srctype, const char *srcname,
                   const strlist *repository, const char *target,
-                  const char *dstdir, int clean, int native);
+                  const char *dstdir, const BuildOptions *opt);
 
 #endif

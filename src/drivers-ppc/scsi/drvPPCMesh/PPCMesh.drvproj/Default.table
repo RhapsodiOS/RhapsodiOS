@@ -1,0 +1,10 @@
+"Title"         = "drvPPCMesh";
+"Driver Name"   = "drvPPCMesh";
+"Matching"      = "mesh";
+"Class Names"   = "AppleMesh_SCSI";
+"Bus Type"      = "PPC";
+"Boot Driver"   = "no";
+"Load Priority" = "5100";
+"Server Name" = "drvPPCMesh";
+"Driver Version" = "PROGRAM:drvPPCMesh  PROJECT:drvPPCMesh-2  DEVELOPER:root  BUILT:Tue Nov 23 19:14:01 PST 1999";
+"Version" = "5.00";

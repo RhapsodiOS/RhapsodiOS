@@ -1,1 +1,6 @@
-__PAGEZERO __DATA __LINKEDIT
+# 
+# This loadable kernel driver does not use a Mig-generated interface,
+# so no handler or server interface is specified.
+#
+# This driver must be wired down.
+WIRE

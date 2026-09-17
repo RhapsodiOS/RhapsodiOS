@@ -1,0 +1,123 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 0,
+      "reference_names": [
+        "+[Beep probe:]"
+      ],
+      "size": 66,
+      "source_line": 107,
+      "source_path": "src/drivers-i386/sound/drvBeepSound/Beep.drvproj/Beep.lksproj/Beep.m"
+    },
+    {
+      "address": 68,
+      "reference_names": [
+        "_stringToStyle"
+      ],
+      "size": 99,
+      "source_line": 80,
+      "source_path": "src/drivers-i386/sound/drvBeepSound/Beep.drvproj/Beep.lksproj/Beep.m"
+    },
+    {
+      "address": 168,
+      "reference_names": [
+        "-[Beep reset]"
+      ],
+      "size": 97,
+      "source_line": 175,
+      "source_path": "src/drivers-i386/sound/drvBeepSound/Beep.drvproj/Beep.lksproj/Beep.m"
+    },
+    {
+      "address": 268,
+      "reference_names": [
+        "-[Beep initFromDeviceDescription:]"
+      ],
+      "size": 318,
+      "source_line": 124,
+      "source_path": "src/drivers-i386/sound/drvBeepSound/Beep.drvproj/Beep.lksproj/Beep.m"
+    },
+    {
+      "address": 588,
+      "reference_names": [
+        "-[Beep beep]"
+      ],
+      "size": 441,
+      "source_line": 194,
+      "source_path": "src/drivers-i386/sound/drvBeepSound/Beep.drvproj/Beep.lksproj/Beep.m"
+    },
+    {
+      "address": 1032,
+      "reference_names": [
+        "-[Beep _channelWillAddStream]"
+      ],
+      "size": 25,
+      "source_line": 452,
+      "source_path": "src/drivers-i386/sound/drvBeepSound/Beep.drvproj/Beep.lksproj/Beep.m"
+    },
+    {
+      "address": 1060,
+      "reference_names": [
+        "-[Beep getIntValues:forParameter:count:]"
+      ],
+      "size": 223,
+      "source_line": 263,
+      "source_path": "src/drivers-i386/sound/drvBeepSound/Beep.drvproj/Beep.lksproj/Beep.m"
+    },
+    {
+      "address": 1284,
+      "reference_names": [
+        "-[Beep setIntValues:forParameter:count:]"
+      ],
+      "size": 192,
+      "source_line": 383,
+      "source_path": "src/drivers-i386/sound/drvBeepSound/Beep.drvproj/Beep.lksproj/Beep.m"
+    },
+    {
+      "address": 1476,
+      "reference_names": [
+        "-[Beep getCharValues:forParameter:count:]"
+      ],
+      "size": 356,
+      "source_line": 309,
+      "source_path": "src/drivers-i386/sound/drvBeepSound/Beep.drvproj/Beep.lksproj/Beep.m"
+    },
+    {
+      "address": 1832,
+      "reference_names": [
+        "-[Beep setCharValues:forParameter:count:]"
+      ],
+      "size": 123,
+      "source_line": 422,
+      "source_path": "src/drivers-i386/sound/drvBeepSound/Beep.drvproj/Beep.lksproj/Beep.m"
+    },
+    {
+      "address": 1956,
+      "reference_names": [
+        "-[Beep _getSupportedParameters:count:forObject:]"
+      ],
+      "size": 77,
+      "source_line": 461,
+      "source_path": "src/drivers-i386/sound/drvBeepSound/Beep.drvproj/Beep.lksproj/Beep.m"
+    }
+  ],
+  "reference_sha256": "752B5A078A747CE0ED0C36951C5DED5DD99DD2420CD4CFF979D12059A53D6C73",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 2036,
+      "reference_names": [
+        "+[BeepKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 2048,
+      "reference_names": [
+        "+[BeepVersion driverKitVersionForBeep]"
+      ],
+      "size": 12
+    }
+  ]
+}

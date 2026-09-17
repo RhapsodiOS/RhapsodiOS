@@ -5,6 +5,7 @@
  */
 
 #import "IOFloppyDrive.h"
+#import "IOFloppyDisk.h"
 #import "VolCheck.h"
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
@@ -15,7 +16,7 @@
  * Abort pending volume check request.
  * From decompiled code: empty function (no abort needed).
  */
-- (void)_abortRequest
+- (void)abortRequest
 {
 	// No operation required
 	return;
@@ -25,7 +26,7 @@
  * Handle disk became ready event.
  * From decompiled code: empty function (handling done elsewhere).
  */
-- (void)_diskBecameReady
+- (void)diskBecameReady
 {
 	// No operation required
 	return;
@@ -35,7 +36,7 @@
  * Check if disk is formatted.
  * From decompiled code: checks bit 0 of flags.
  */
-- (BOOL)_isFormatted
+- (BOOL)isFormatted
 {
 	// Return bit 0 of flags (offset 0x18c)
 	return _flags & 1;
@@ -45,7 +46,7 @@
  * Check if this is a physical device.
  * From decompiled code: checks bit 1 of offset 0x16c.
  */
-- (BOOL)_isPhysical
+- (BOOL)isPhysical
 {
 	// Check bit 1 of _regFlags
 	// Returns YES (1) if bit 1 is clear, NO (0) if bit 1 is set
@@ -59,7 +60,7 @@
  * Check if disk is removable.
  * From decompiled code: always returns YES.
  */
-- (BOOL)_isRemovable
+- (BOOL)isRemovable
 {
 	// Floppy disks are always removable
 	return YES;
@@ -69,7 +70,7 @@
  * Check if disk is write protected.
  * From decompiled code: checks bit 2 of flags.
  */
-- (BOOL)_isWriteProtected
+- (BOOL)isWriteProtected
 {
 	// Return bit 2 of flags (offset 0x18c)
 	return _flags & 4;
@@ -79,7 +80,7 @@
  * Check if manual polling is needed for disk change detection.
  * From decompiled code: returns opposite of canPollInexpensively.
  */
-- (BOOL)_needsManualPolling
+- (BOOL)needsManualPolling
 {
 	BOOL canPollInexpensively;
 	
@@ -94,7 +95,7 @@
  * Get next logical disk in chain.
  * From decompiled code: delegates to disk object at offset 0x108.
  */
-- (id)_nextLogicalDisk
+- (id)nextLogicalDisk
 {
 	id diskObject;
 	id nextDisk;
@@ -112,40 +113,48 @@
  * Register for volume check notifications.
  * From decompiled code: gets character and block devices, registers with volCheck.
  */
-- (IOReturn)_registerVolCheck
+- (IOReturn)registerVolCheck
 {
 	id characterDev;
 	id blockDev;
-	
+
 	// Get character device for this drive
 	characterDev = [IOFloppyDisk characterDevOfDrive:self];
-	
+
 	// Get block device for this drive
 	blockDev = [IOFloppyDisk blockDevOfDrive:self];
-	
-	// Register with volume check subsystem
-	volCheckRegister(self, blockDev);
-	
-	return IO_R_SUCCESS;
+
+	// Register with volume check subsystem. The disassembly pushes
+	// characterDev as a third argument that the two-argument call here
+	// used to drop: volCheckRegister(self, blockDev, characterDev).
+	volCheckRegister(self, blockDev, characterDev);
+
+	// The disassembly never sets eax after this call, so the method's
+	// true return value is whatever volCheckRegister (declared void)
+	// happened to leave behind -- not a meaningful IO_R_SUCCESS. Left
+	// unresolved rather than guessing; no caller in this driver inspects
+	// registerVolCheck's return value.
 }
 
 /*
  * Unregister from volume check notifications.
  * From decompiled code: calls volCheckUnregister.
  */
-- (IOReturn)_unregisterVolCheck
+- (IOReturn)unregisterVolCheck
 {
 	// Unregister from volume check subsystem
 	volCheckUnregister(self);
-	
-	return IO_R_SUCCESS;
+
+	// As in registerVolCheck, the disassembly sets no explicit return
+	// value after this void call; not asserting IO_R_SUCCESS here since
+	// that isn't what the binary does. No caller inspects the result.
 }
 
 /*
  * Update physical disk parameters.
  * From decompiled code: returns 0 (no operation).
  */
-- (IOReturn)_updatePhysicalParameters
+- (IOReturn)updatePhysicalParameters
 {
 	// No operation required for volCheck interface
 	// Actual work done by internal methods
@@ -156,7 +165,7 @@
  * Update ready state.
  * From decompiled code: polls media and returns ready state.
  */
-- (int)_updateReadyState
+- (int)updateReadyState
 {
 	BOOL mediaPresent;
 	int readyState;

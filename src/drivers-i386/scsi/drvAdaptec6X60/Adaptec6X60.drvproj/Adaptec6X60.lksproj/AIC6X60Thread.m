@@ -11,132 +11,59 @@
 
 #import "AIC6X60Thread.h"
 #import "AIC6X60Types.h"
-#import "AIC6X60Inline.h"
 #import "AIC6X60ControllerPrivate.h"
 #import "scsivar.h"
 #import <driverkit/generalFuncs.h>
-#import <driverkit/kernelDriver.h>
 #import <kernserv/prototypes.h>
-#import <sys/param.h>
+#import <kernserv/queue.h>
+#import <bsd/dev/scsireg.h>
 
-static void aicTimeout(void *arg);
+extern int HIM6X60QueueSCB(struct _HACB *hacb, struct _SCB *scb);
+extern int HIM6X60ResetBus(struct _HACB *hacb, int abort);
+extern void himTimeout(struct _SCB *scb);
 
-#define AUTO_SENSE_ENABLE	1
-
-/*
- * Template for timeout message.
- */
-static msg_header_t timeoutMsgTemplate = {
-	0,					// msg_unused
-	1,					// msg_simple
-	sizeof(msg_header_t),			// msg_size
-	MSG_TYPE_NORMAL,			// msg_type
-	PORT_NULL,				// msg_local_port
-	PORT_NULL,				// msg_remote_port - TO
-						// BE FILLED IN
-	IO_TIMEOUT_MSG				// msg_id
-};
-
-@implementation AIC6X60Controller(IOThread)
+@implementation AIC6X60(IOThread)
 
 /*
  * I/O thread version of -executeRequest:buffer:client.
- * The approximate logic is:
- *	Build up an internal ccb describing this request
- *	Put it on the queue of pending commands
- *	Run as many pending commands as possible
- *
- * Returns non-zero if no ccb was available for the command. This case
- * must be handled gracefully by the caller by enqueueing the request on
- * commandQ.
+ * allocScb, fill the SCB, IOScheduleFunc(himTimeout), HIM6X60QueueSCB.
+ * If the SCB pool is empty, enqueue cmdBuf on pendingQ (self+0x1068).
  */
-- (int)threadExecuteRequest	: (AIC6X60CommandBuf *)cmdBuf
+- (void)threadExecuteRequest	: (AIC6X60CommandBuf *)cmdBuf
 {
-	struct ccb	*ccb;
+	struct _SCB	*scb;
 	IOSCSIRequest	*scsiReq = cmdBuf->scsiReq;
 
-	ddm_thr("threadExecuteRequest cmdBuf 0x%x\n", cmdBuf, 2,3,4,5);
-
-	ccb = [self allocCcb:(scsiReq->maxTransfer ? YES : NO)];
-	if(ccb == NULL) {
-		return 1;
+	scb = [self allocScb];
+	if (scb == NULL) {
+		queue_enter(&pendingQ, cmdBuf, AIC6X60CommandBuf *, link);
+		return;
 	}
-	if([self ccbFromCmd:cmdBuf ccb:ccb]) {
-		/*
-		 * Command reject. Error status is in
-		 * cmdBuf->scsiReq->driverStatus.
-		 * Notify caller and clean up.
-		 */
-		[self freeCcb:ccb];
+	if ([self scbFromCmd:cmdBuf scb:scb]) {
 		[cmdBuf->cmdLock lock];
 		[cmdBuf->cmdLock unlockWith:CMD_COMPLETE];
-		return 0;
+		[self freeScb:scb];
+		return;
 	}
 
-	/*
-	 *  Make sure we'll be able to time this command out.  This should be
-	 *  rare, so we don't particularly care about how efficient it is.
-	 */
-	ccb->timeoutPort = interruptPortKern;
-	IOScheduleFunc(aicTimeout, ccb, scsiReq->timeoutLength);
-
-	/*
-	 * Stick this command on the list of pending ones, and run them.
-	 */
-	queue_enter(&pendingQ, ccb, struct ccb *, ccbQ);
-	[self runPendingCommands];
-	return 0;
-
+	scb->timeout_Port = interruptPortKern;
+	IOScheduleFunc((IOThreadFunc)himTimeout, scb, scsiReq->timeoutLength);
+	if (HIM6X60QueueSCB(&hacb, scb))
+		[self commandCompleted:scb reason:CS_Complete];
+	totalCommands++;
 }
 
 /*
  * I/O thread version of -resetSCSIBus.
- * We also interpret this to mean we should reset the board.
- * cmdBuf == NULL indicates a call from within the I/O thread for
- * a reason other than -resetSCSIBus (e.g., timeout recovery).
+ * cmdBuf == NULL is the timeout-recovery call from timeoutOccurred.
  */
 - (void)threadResetBus : (AIC6X60CommandBuf *)cmdBuf
 {
-
-	aic_ctrl_reg_t	ctrl = { 0 };
-    	struct ccb *ccb;
-	queue_head_t *q;
-
-	ddm_thr("threadResetBus\n", 1,2,3,4,5);
-
-	/*
-	 * Abort all outstanding and pending commands.
-	 */
-	for(q=&outstandingQ; q!=&pendingQ; q=&pendingQ)	{
-		while(!queue_empty(q)) {
-			ccb = (struct ccb *)queue_first(q);
-			queue_remove(q, ccb, struct ccb *, ccbQ);
-			if(q == &outstandingQ) {
-				ASSERT(outstandingCount != 0);
-				outstandingCount--;
-			}
-			[self commandCompleted:ccb reason:CS_Reset];
-		}
-	}
-
-	/*
-	 * Now reset the hardware.
-	 */
-	aic_reset_board(ioBase, aicBoardId);
-	aic_setup_mb_area(ioBase, aicMbArea, aicCcb);
-
-	ctrl.scsi_rst = 1;
-	aic_put_ctrl(ioBase, ctrl);
-
+	if (!HIM6X60ResetBus(&hacb, scsiBus))
+		IOLog("Reset of SCSI Bus failed...\n");
 	IOLog("Resetting SCSI Bus...\n");
 	IOSleep(10000);
-
-	/*
-	 * Notify caller of completion if appropriate.
-	 */
-	if(cmdBuf) {
-		ddm_thr("threadResetBus: I/O complete on cmdBuf 0x%x\n",
-			cmdBuf, 2,3,4,5);
+	if (cmdBuf) {
 		cmdBuf->result = SR_IOST_GOOD;
 		[cmdBuf->cmdLock lock];
 		[cmdBuf->cmdLock unlockWith:CMD_COMPLETE];
@@ -144,415 +71,208 @@ static msg_header_t timeoutMsgTemplate = {
 }
 
 /*
- * Build a ccb from the specified AIC6X60CommandBuf. Returns non-zero on error
- * (i.e., on command reject from this method). In that case, error status
- * is in cmdBuf->scsiReq->driverStatus.
+ * Build an SCB from the specified AIC6X60CommandBuf. Returns non-zero
+ * on command reject; driverStatus and cmdBuf->result are SR_IOST_CMDREJ.
  */
-- (int) ccbFromCmd:(AIC6X60CommandBuf *)cmdBuf ccb:(struct ccb *)ccb
+- (int) scbFromCmd:(AIC6X60CommandBuf *)cmdBuf scb:(struct _SCB *)scb
 {
 	IOSCSIRequest		*scsiReq = cmdBuf->scsiReq;
-	union cdb		*cdbp = &scsiReq->cdb;
-	int			cdb_ctrl;
-	vm_offset_t		addr, phys;
-	vm_size_t		len;
-	unsigned int		pages;
+	unsigned char		*cdb = (unsigned char *)&scsiReq->cdb;
 	unsigned int		cmdlen;
+	unsigned int		cdb_ctrl;
+	unsigned int		opgroup;
 
-	/*
-	 * Figure out what kind of cdb we've been given
-	 * and snag the ctrl byte
-	 */
-	switch (SCSI_OPGROUP(cdbp->cdb_opcode)) {
+	opgroup = SCSI_OPGROUP(cdb[0]);
+	switch (opgroup) {
 
 	    case OPGROUP_0:
-		cmdlen = sizeof (struct cdb_6);
-		cdb_ctrl = cdbp->cdb_c6.c6_ctrl;
+		cmdlen = 6;
+		cdb_ctrl = cdb[5];
 		break;
 
 	    case OPGROUP_1:
 	    case OPGROUP_2:
-		cmdlen = sizeof (struct cdb_10);
-		cdb_ctrl = cdbp->cdb_c10.c10_ctrl;
+		cmdlen = 10;
+		cdb_ctrl = cdb[9];
 		break;
 
 	    case OPGROUP_5:
-		cmdlen = sizeof (struct cdb_12);
-		cdb_ctrl = cdbp->cdb_c12.c12_ctrl;
+		cmdlen = 12;
+		cdb_ctrl = cdb[11];
 		break;
 
-    	    /*
-	     * Group 6 and 7 commands allow a user-specified CDB length.
-	     */
 	    case OPGROUP_6:
-		if(scsiReq->cdbLength)
-		 	cmdlen = scsiReq->cdbLength;
+		if (scsiReq->cdbLength)
+			cmdlen = scsiReq->cdbLength;
 		else
-			cmdlen = sizeof (struct cdb_6);
+			cmdlen = 6;
 		cdb_ctrl = 0;
 		break;
 
 	    case OPGROUP_7:
-		if(scsiReq->cdbLength)
-		 	cmdlen = scsiReq->cdbLength;
+		if (scsiReq->cdbLength)
+			cmdlen = scsiReq->cdbLength;
 		else
-			cmdlen = sizeof (struct cdb_10);
+			cmdlen = 10;
 		cdb_ctrl = 0;
 		break;
 
 	    default:
 		scsiReq->driverStatus = SR_IOST_CMDREJ;
-		return 1;
+		cmdBuf->result = SR_IOST_CMDREJ;
+		return -1;
 	}
 
-	/*
-	 * Make sure nothing unreasonable has been asked of us
-	 */
-	if ((cdb_ctrl & CTRL_LINKFLAG) != CTRL_NOLINK) {
+	if (cdb_ctrl & CTRL_LINKFLAG) {
 		scsiReq->driverStatus = SR_IOST_CMDREJ;
-		return 1;
+		cmdBuf->result = SR_IOST_CMDREJ;
+		return -1;
 	}
 
-	addr = (vm_offset_t)cmdBuf->buffer;
-	len = scsiReq->maxTransfer;
+	if (cdb[0] == C6OP_MODESELECT)
+		scsiReq->read = 0;
 
-	if (len > 0)
-		pages = (round_page(addr+len) - trunc_page(addr)) / PAGE_SIZE;
-	else
-		pages = 0;
-
-	ccb->cdb		= *cdbp;
-	ccb->cdb_len		= cmdlen;
-
-	ccb->data_in		= scsiReq->read;
-	ccb->data_out		= !scsiReq->read;
-	ccb->target		= scsiReq->target;
-	ccb->lun		= scsiReq->lun;
-	#if	AUTO_SENSE_ENABLE
-	ccb->reqsense_len      = sizeof(esense_reply_t);
-	#else	AUTO_SENSE_ENABLE
-	ccb->reqsense_len	= 1;	/* no auto reqsense */
-	#endif	AUTO_SENSE_ENABLE
-
-	/*
-	 * Note Adaptec does not support command queueing. Synchronous
-	 * negotiation can only be disabled by jumper. Disconnects can
-	 * not be disabled.
-	 */
-
-	ccb->cmdBuf = cmdBuf;
-	ccb->total_xfer_len = 0;
-	IOGetTimestamp(&ccb->startTime);
-
-	/*
-	 *  Set up the DMA address and length.  If we have more than one page,
-	 *  then chances are that we'll have to use scatter/gather to collect
-	 *  all the physical pages into a single transfer.
-	 */
-	if (pages == 0) {
-		aic_put_24(0, ccb->data_addr);
-		aic_put_24(0, ccb->data_len);
-		ccb->oper = AIC_CCB_INITIATOR_RESID;
+	scb->dataLength = scsiReq->maxTransfer;
+	scb->cdb = cdb;
+	scb->cdbLength = cmdlen;
+	scb->function = 0;
+	scb->flags = 0;
+	scb->senseData = (unsigned char *)&scsiReq->senseData;
+	scb->senseDataLength = 0x1A;
+	scb->dataPointer = cmdBuf->buffer;
+	if (scb->dataLength != 0) {
+		if (scsiReq->read)
+			scb->flags |= 0x40;
+		else
+			scb->flags |= 0x80;
 	}
-	else if (pages == 1) {
-
-		if(IOPhysicalFromVirtual(cmdBuf->client, addr, &phys)) {
-			IOLog("%s: Can\'t get physical address\n",
-				[self name]);
-			scsiReq->driverStatus = SR_IOST_INT;
-			return 1;
-		}
-
-		ccb->dmaList[0] = [self createDMABufferFor:&phys
-				length:len read:scsiReq->read
-				needsLowMemory:YES limitSize:NO];
-
-		if (ccb->dmaList[0] == NULL) {
-			[self abortDMA:ccb->dmaList length:len];
-			scsiReq->driverStatus = SR_IOST_INT;
-			return 1;
-		}
-
-		aic_put_24(phys, ccb->data_addr);
-		aic_put_24(len, ccb->data_len);
-
-		ccb->oper = AIC_CCB_INITIATOR_RESID;
-		ccb->total_xfer_len = len;
-	}
-	else {
-		vm_offset_t	lastPhys = 0;
-		unsigned int	sgEntry = 0;
-		unsigned int	maxEntries = MIN(pages, AIC_SG_COUNT);
-		IOEISADMABuffer	*dmaBuf = ccb->dmaList;
-
-		for (sgEntry=0;  sgEntry < maxEntries;  sgEntry++) {
-			struct aic_sg	*sg = &ccb->sg_list[sgEntry];
-			unsigned int	thisLength;
-
-			thisLength = MIN(len, round_page(addr+1) - addr);
-
-	   		if(IOPhysicalFromVirtual(cmdBuf->client,
-					addr, &phys)) {
-				IOLog("%s: Can\'t get physical address\n",
-					[self name]);
-				[self abortDMA:ccb->dmaList
-					length:ccb->total_xfer_len];
-				scsiReq->driverStatus = SR_IOST_INT;
-				return 1;
-			}
-			*dmaBuf = [self createDMABufferFor:&phys
-					length:thisLength
-					read:scsiReq->read
-					needsLowMemory:YES limitSize:NO];
-
-			if (*dmaBuf == NULL) {
-				[self abortDMA:ccb->dmaList
-					length:ccb->total_xfer_len];
-				scsiReq->driverStatus = SR_IOST_INT;
-				return 1;
-			}
-
-			aic_put_24(phys, sg->addr);
-			aic_put_24(thisLength, sg->len);
-
-			ccb->total_xfer_len += thisLength;
-
-			addr += thisLength;
-			len -= thisLength;
-			lastPhys = phys;
-			dmaBuf++;
-		}
-
-		if(IOPhysicalFromVirtual(IOVmTaskSelf(),
-				(unsigned)ccb->sg_list,
-				&phys)) {
-			IOLog("%s: Can\'t get physical address of ccb\n",
-				[self name]);
-			IOPanic("AIC6X60Controller");
-		}
-		aic_put_24(phys, ccb->data_addr);
-		aic_put_24(sgEntry * sizeof(struct aic_sg), ccb->data_len);
-
-		ccb->oper = AIC_CCB_INITIATOR_RESID_SG;
-	}
-
+	if ((scsiReq->disconnect & 1) == 0)
+		scb->flags |= 0x04;
+	scb->targetID = scsiReq->target;
+	scb->lun = scsiReq->lun;
+	scb->osRequestBlock = cmdBuf;
+	scb->scsiBus = 0;
+	scb->queueTag = 0;
+	IOGetTimestamp(&scb->startTime);
 	return 0;
 }
 
 /*
- * If any commands pending, and the controller's queue is not full,
- * run the new commands.
+ * A command is done. Figure out what happened, and notify the client.
+ * Called from interruptOccurred (CS_Complete), QueueSCB immediate
+ * completion, and the timeout/reset reason codes.
  */
-- runPendingCommands
-{
-	unsigned int	cmdsToRun;
-	struct ccb	*ccb;
-
-	cmdsToRun = AIC_QUEUE_SIZE - outstandingCount;
-
-	while (cmdsToRun > 0 && !queue_empty(&pendingQ)) {
-
-		/*
-		 *  Dequeue pending command and add to the outstanding queue.
-		 */
-		ccb = (struct ccb *) queue_first(&pendingQ);
-		queue_remove(&pendingQ, ccb, struct ccb *, ccbQ);
-		if (!ccb)
-			break;
-
-		queue_enter(&outstandingQ, ccb, struct ccb *, ccbQ);
-		outstandingCount++;
-
-		/*
-		 *  Let 'er rip...
-		 */
-		ccb->mb_out->mb_stat = AIC_MB_OUT_START;
-		aic_start_scsi(ioBase);
-
-		/*
-		 *  Accumulate some simple statistics: the max queue length
-		 *  and enough info to compute a running average of the queue
-		 *  length.
-		 */
-		maxQueueLen = MAX(maxQueueLen, outstandingCount);
-		queueLenTotal += outstandingCount;
-		totalCommands++;
-
-		cmdsToRun--;
-	}
-	return self;
-}
-
-/*
- * A command is done.  Figure out what happened, and notify the
- * client appropriately. Called upon detection of I/O complete interrupt,
- * timeout detection, or when we reset the bus and blow off pending
- * commands.
- */
-- (void)commandCompleted : (struct ccb *) ccb
+- (void)commandCompleted : (struct _SCB *) scb
 	          reason : (completeStatus)reason
 {
 	ns_time_t		currentTime;
 	IOSCSIRequest		*scsiReq;
-	AIC6X60CommandBuf  		*cmdBuf = ccb->cmdBuf;
+	AIC6X60CommandBuf	*cmdBuf = scb->osRequestBlock;
+	unsigned char		senseValid;
 
-	ASSERT(cmdBuf != NULL);
 	scsiReq = cmdBuf->scsiReq;
-	ASSERT(scsiReq != NULL);
+	senseValid = scb->scbStatus & 0x80;
+	scb->scbStatus &= 0x7F;
+	scsiReq->scsiStatus = scb->targetStatus;
 
-	ddm_thr("commandCompleted: ccb 0x%x cmdBuf 0x%x reason %d\n",
-		ccb, cmdBuf, reason, 4,5);
-
-	scsiReq->scsiStatus = ccb->target_status;
-
-	switch(reason) {
+	switch (reason) {
 	    case CS_Timeout:
-	   	scsiReq->driverStatus = SR_IOST_IOTO;
+		scsiReq->driverStatus = SR_IOST_IOTO;
 		break;
 	    case CS_Reset:
-	    	scsiReq->driverStatus = SR_IOST_RESET;
+		scsiReq->driverStatus = SR_IOST_RESET;
 		break;
 	    case CS_Complete:
-		switch (ccb->host_status) {
-
-		/*
-		 * Handle success and data overrun/underrun.  We can handle
-		 * overrun/underrun as a normal case because the controller
-		 * sets the data_len field to be the actual number of bytes
-		 * transferred regardless of overrun.
-	         */
-		case AIC_HOST_SUCCESS:
-		case AIC_HOST_DATA_OVRUN:
-		    [self completeDMA:ccb->dmaList
-		    	length:scsiReq->maxTransfer];
-		    scsiReq->bytesTransferred = ccb->total_xfer_len -
-					aic_get_24(ccb->data_len);
-
-		    /*
-		     *  Everything looks good.  Make sure the SCSI status byte
-		     *  is cool before we really say everything is hunky-dory.
-		     */
-		    if (scsiReq->scsiStatus == STAT_GOOD)
-			    scsiReq->driverStatus = SR_IOST_GOOD;
-		    else if (scsiReq->scsiStatus == STAT_CHECK) {
-		        if(AUTO_SENSE_ENABLE) {
-
-			    esense_reply_t *sensePtr;
-
-			    scsiReq->driverStatus = SR_IOST_CHKSV;
-
-			    /*
-			     * Sense data starts immediately after the actual
-			     * cdb area we use, not an entire union cdb.
-			     */
-			    sensePtr = (esense_reply_t *)
-			    	(((char *)&ccb->cdb) + ccb->cdb_len);
-			    scsiReq->senseData = *sensePtr;
-			}
-			else {
-			    scsiReq->driverStatus = SR_IOST_CHKSNV;
-			}
-		    }
-		    else
-			    scsiReq->driverStatus = ST_IOST_BADST;
-		    break;
-
-		case AIC_HOST_SEL_TIMEOUT:
-		    [self abortDMA:ccb->dmaList length:scsiReq->maxTransfer];
-		    scsiReq->driverStatus = SR_IOST_SELTO;
-		    break;
-
-		default:
-		    IOLog("AIC interrupt: bad status %x\n", ccb->host_status);
-		    [self abortDMA:ccb->dmaList length:scsiReq->maxTransfer];
-		    scsiReq->driverStatus = SR_IOST_INVALID;
-		    break;
-	    }   /*  switch host_status */
-	}   	/*  switch status */
+		if (scb->timedOut) {
+			scsiReq->driverStatus = SR_IOST_IOTO;
+			break;
+		}
+		switch (scb->scbStatus) {
+		    case 1:
+		    case 0x12:
+			scsiReq->bytesTransferred = scb->transferLength;
+			if (scsiReq->scsiStatus == STAT_GOOD)
+				scsiReq->driverStatus = SR_IOST_GOOD;
+			else if (scsiReq->scsiStatus == STAT_CHECK)
+				scsiReq->driverStatus = senseValid ?
+				    SR_IOST_CHKSV : SR_IOST_CHKSNV;
+			else
+				scsiReq->driverStatus = SR_IOST_BADST;
+			break;
+		    case 4:
+			if (scsiReq->scsiStatus == STAT_CHECK)
+				scsiReq->driverStatus = senseValid ?
+				    SR_IOST_CHKSV : SR_IOST_CHKSNV;
+			else
+				scsiReq->driverStatus = SR_IOST_BADST;
+			break;
+		    case 0x0A:
+			scsiReq->driverStatus = SR_IOST_SELTO;
+			break;
+		    case 5:
+		    case 0x13:
+			scsiReq->driverStatus = SR_IOST_BADST;
+			break;
+		    case 0x0D:
+			scsiReq->driverStatus = SR_IOST_CMDREJ;
+			break;
+		    case 0x0E:
+			scsiReq->driverStatus = SR_IOST_RESET;
+			break;
+		    case 0x0F:
+			scsiReq->driverStatus = SR_IOST_PARITY;
+			break;
+		    default:
+			IOLog("AIC:commandComplete: bad status %x\n",
+			    scb->scbStatus);
+			scsiReq->driverStatus = SR_IOST_BADST;
+			break;
+		}
+		break;
+	}
 
 	IOGetTimestamp(&currentTime);
-	scsiReq->totalTime = currentTime - ccb->startTime;
+	scsiReq->totalTime = currentTime - scb->startTime;
 	cmdBuf->result = scsiReq->driverStatus;
 
-	/*
-	 * Wake up client.
-	 */
-	ddm_thr("commandCompleted: I/O complete on cmdBuf 0x%x\n",
-			cmdBuf, 2,3,4,5);
 	[cmdBuf->cmdLock lock];
 	[cmdBuf->cmdLock unlockWith:CMD_COMPLETE];
-
-	/*
-	 * Free the CCB and clean up possible pending timeout.
-	 */
-	(void) IOUnscheduleFunc(aicTimeout, ccb);
-	[self freeCcb:ccb];
+	[self freeScb:scb];
+	(void) IOUnscheduleFunc((IOThreadFunc)himTimeout, scb);
 }
 
 /*
- * Alloc/free ccb's. These only come from the array aicCcb[].
- * If we can't find one, return NULL - caller will have to try
- * again later.
+ * Alloc/free SCBs from him_scb[]. If the pool is empty, return NULL.
  */
-- (struct ccb *)allocCcb : (BOOL)doDMA
+- (struct _SCB *)allocScb
 {
-	struct ccb *ccb;
-	int i;
+	struct _SCB *scb;
 
-	if(numFreeCcbs == 0) {
-		ddm_thr("allocCcb: numFreeCcbs = 0\n", 1,2,3,4,5);
+	if (numFreeScbs == 0)
 		return NULL;
-	}
 
-	/*
-	 * Since numFreeCcbs is non-zero, there has to be one available
-	 * in aicCcb[].
-	 */
-	ccb = aicCcb;
-	while (ccb <= &aicCcb[AIC_QUEUE_SIZE - 1] && ccb->in_use) {
-		ccb++;
+	nextScb = (nextScb + 1) & 0x1F;
+	scb = &him_scb[nextScb];
+	while (scb->in_use) {
+		nextScb = (nextScb + 1) & 0x1F;
+		scb = &him_scb[nextScb];
 	}
-	if (ccb > &aicCcb[AIC_QUEUE_SIZE - 1]) {
-		IOPanic("AIC6X60Controller: out of ccbs");
-	}
-	numFreeCcbs--;
-	ccb->in_use = TRUE;
-
-	/*
-	 * Null out dmaList.
-	 */
-	for(i=0; i<AIC_SG_COUNT; i++) {
-		ccb->dmaList[i] = NULL;
-	}
-
-	/*
-	 * Acquire the reentrant DMA lock. This is a nop on EISA machines.
-	 *
-	 * Although -reserveDMALock is reentrant for multiple threads on
-	 * one device, it is *not* reentrant for one thread. Thus we should
-	 * only call it if we don't already hold the lock.
-	 * Also, avoid this if we're not going to do any DMA.
-	 */
-	if(doDMA && (++dmaLockCount == 1)) {
-		ddm_thr("allocCcb: calling reserveDMALock\n", 1,2,3,4,5);
-		[super reserveDMALock];
-	}
-	ddm_thr("allocCcb: returning 0x%x\n", ccb, 2,3,4,5);
-
-	return ccb;
+	if (scb > &him_scb[AIC_SCB_COUNT - 1])
+		IOPanic("AIC: out of scbs");
+	numFreeScbs--;
+	bzero(scb, AIC_SCB_SIZE);
+	scb->in_use = 1;
+	scb->timedOut = 0;
+	scb->completed = 0;
+	scb->chain = 0;
+	scb->length = AIC_SCB_SIZE;
+	return scb;
 }
 
-- (void)freeCcb : (struct ccb *)ccb
+- (void)freeScb : (struct _SCB *)scb
 {
-	BOOL	didDMA = (ccb->total_xfer_len ? YES : NO);
-
-	ddm_thr("freeCcb: ccb 0x%x\n", ccb, 2,3,4,5);
-	ccb->in_use = FALSE;
-	numFreeCcbs++;
-	if(didDMA && (--dmaLockCount == 0)) {
-		ddm_thr("freeCcb: calling releaseDMALock\n",
-			1,2,3,4,5);
-		[super releaseDMALock];
-	}
+	bzero(scb, AIC_SCB_SIZE);
+	numFreeScbs++;
 }
 
 - (void) completeDMA:(IOEISADMABuffer *) dmaList length:(unsigned int) xferLen
@@ -560,13 +280,11 @@ static msg_header_t timeoutMsgTemplate = {
 	IOEISADMABuffer	*buf = &dmaList[0];
 	int		i;
 
-	for (i = 0; i < AIC_SG_COUNT; i++, buf++) {
-		if(*buf) {
-			[self freeDMABuffer:*buf];
-		}
-		else {
+	(void)xferLen;
+	for (i = 0; i <= 0x10; i++, buf++) {
+		if (*buf == NULL)
 			return;
-		}
+		IOLog("AIC DMA???\n");
 	}
 }
 
@@ -576,43 +294,12 @@ static msg_header_t timeoutMsgTemplate = {
 	IOEISADMABuffer	*buf = &dmaList[0];
 	int		i;
 
-	for (i = 0; i < AIC_SG_COUNT; i++, buf++) {
-		if(*buf) {
-			[self abortDMABuffer:*buf];
-		}
-		else {
+	(void)xferLen;
+	for (i = 0; i <= 0x10; i++, buf++) {
+		if (*buf == NULL)
 			return;
-		}
+		IOLog("AIC DMA???\n");
 	}
 }
 
 @end
-
-
-/*
- *  Handle timeouts.  We just send a timeout message to the I/O thread
- *  so it wakes up.
- */
-static void
-aicTimeout(void *arg)
-{
-
-	struct ccb	*ccb = arg;
-	msg_header_t	msg = timeoutMsgTemplate;
-	msg_return_t	mrtn;
-
-	if(!ccb->in_use) {
-		/*
-		 * Race condition - this CCB got completed another way.
-		 * No problem.
-		 */
-		return;
-	}
-	msg.msg_remote_port = ccb->timeoutPort;
-	IOLog("AIC timeout\n");
-	if(mrtn = msg_send_from_kernel(&msg, MSG_OPTION_NONE, 0)) {
-		IOLog("aicTimeout: msg_send_from_kernel() returned %d\n",
-			mrtn);
-	}
-}
-

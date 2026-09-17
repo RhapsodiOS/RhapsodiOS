@@ -1,12 +1,13 @@
 import hashlib
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import jsonschema
 import pytest
 
 from binrecon.identity import IdentityMismatchError
-from binrecon.profile import ProfileError, load_profile
+from binrecon.profile import ProfileError, analysis_scope, load_profile
 
 
 def _profile_document(reference="reference.bin", rebuilt="rebuilt.bin"):
@@ -228,3 +229,173 @@ def test_loaded_profile_document_is_deeply_immutable(tmp_path):
         profile.document["reference"]["path"] = "changed.bin"
     with pytest.raises(AttributeError):
         profile.document["comparison"]["entry_points"].append("entry")
+
+
+def test_load_profile_allows_missing_rebuilt(tmp_path):
+    document = _profile_document()
+    del document["rebuilt"]
+    profile_path = _write_profile(tmp_path, document)
+
+    profile = load_profile(profile_path, {})
+
+    assert profile.rebuilt is None
+    assert profile.rebuilt_identity is None
+    assert profile.reference.path == (tmp_path / "reference.bin").resolve()
+
+
+def test_load_profile_still_loads_rebuilt_when_present(tmp_path):
+    profile = load_profile(_write_profile(tmp_path), {})
+
+    assert profile.rebuilt is not None
+    assert profile.rebuilt.path == (tmp_path / "rebuilt.bin").resolve()
+    assert profile.rebuilt_identity is not None
+
+
+def test_analysis_scope_is_empty_when_absent():
+    profile = SimpleNamespace(document={})
+
+    assert analysis_scope(profile) == ()
+
+
+def test_analysis_scope_returns_sorted_pairs():
+    profile = SimpleNamespace(document={
+        "analysis_scope": [{"start": 0x2000, "end": 0x3000},
+                           {"start": 0x1000, "end": 0x1500}]
+    })
+
+    assert analysis_scope(profile) == ((0x1000, 0x1500), (0x2000, 0x3000))
+
+
+def test_analysis_scope_rejects_an_inverted_range():
+    profile = SimpleNamespace(document={
+        "analysis_scope": [{"start": 0x3000, "end": 0x2000}]
+    })
+
+    with pytest.raises(ProfileError):
+        analysis_scope(profile)
+
+
+def test_analysis_scope_rejects_an_empty_range():
+    profile = SimpleNamespace(document={
+        "analysis_scope": [{"start": 0x2000, "end": 0x2000}]
+    })
+
+    with pytest.raises(ProfileError):
+        analysis_scope(profile)
+
+
+def test_analysis_scope_rejects_overlapping_ranges():
+    profile = SimpleNamespace(document={
+        "analysis_scope": [{"start": 0x1000, "end": 0x2000},
+                           {"start": 0x1800, "end": 0x2400}]
+    })
+
+    with pytest.raises(ProfileError):
+        analysis_scope(profile)
+
+
+def test_rebuilt_scope_uses_the_rebuilt_ranges_when_declared():
+    profile = SimpleNamespace(document={
+        "analysis_scope": [{"start": 0x1000, "end": 0x1500}],
+        "rebuilt_analysis_scope": [{"start": 0x4000, "end": 0x4200},
+                                   {"start": 0x3000, "end": 0x3100}],
+    })
+
+    assert analysis_scope(profile, "rebuilt") == ((0x3000, 0x3100), (0x4000, 0x4200))
+
+
+def test_rebuilt_scope_falls_back_to_the_shared_ranges():
+    profile = SimpleNamespace(document={
+        "analysis_scope": [{"start": 0x1000, "end": 0x1500}]
+    })
+
+    assert analysis_scope(profile, "rebuilt") == ((0x1000, 0x1500),)
+
+
+def test_reference_scope_ignores_the_rebuilt_ranges():
+    profile = SimpleNamespace(document={
+        "analysis_scope": [{"start": 0x1000, "end": 0x1500}],
+        "rebuilt_analysis_scope": [{"start": 0x4000, "end": 0x4200}],
+    })
+
+    assert analysis_scope(profile, "reference") == ((0x1000, 0x1500),)
+    assert analysis_scope(profile) == ((0x1000, 0x1500),)
+
+
+def test_analysis_scope_rejects_an_unknown_artifact():
+    profile = SimpleNamespace(document={
+        "analysis_scope": [{"start": 0x1000, "end": 0x1500}]
+    })
+
+    with pytest.raises(ProfileError):
+        analysis_scope(profile, "peer")
+
+
+def test_rebuilt_scope_rejects_an_inverted_range():
+    profile = SimpleNamespace(document={
+        "analysis_scope": [{"start": 0x1000, "end": 0x1500}],
+        "rebuilt_analysis_scope": [{"start": 0x4200, "end": 0x4000}],
+    })
+
+    with pytest.raises(ProfileError):
+        analysis_scope(profile, "rebuilt")
+
+
+def test_rebuilt_scope_rejects_overlapping_ranges():
+    profile = SimpleNamespace(document={
+        "analysis_scope": [{"start": 0x1000, "end": 0x1500}],
+        "rebuilt_analysis_scope": [{"start": 0x4000, "end": 0x4200},
+                                   {"start": 0x4100, "end": 0x4300}],
+    })
+
+    with pytest.raises(ProfileError):
+        analysis_scope(profile, "rebuilt")
+
+
+PPC_PROFILES = sorted(
+    (Path(__file__).parents[1] / "profiles").glob("*-ppc.json")
+)
+
+
+def test_ppc_profile_inventory():
+    assert [path.name for path in PPC_PROFILES] == [
+        "53c96-bundle-ppc.json", "53c96-ppc.json",
+        "applepcibus-bundle-ppc.json", "applepcibus-ppc.json",
+        "ata-bundle-ppc.json", "ata-ppc.json",
+        "awacs-bundle-ppc.json", "awacs-ppc.json",
+        "bmac-bundle-ppc.json", "bmac-ppc.json",
+        "burgundy-bundle-ppc.json", "burgundy-ppc.json",
+        "cuda-bundle-ppc.json", "cuda-ppc.json",
+        "dec21040-bundle-ppc.json", "dec21040-ppc.json",
+        "floppy-bundle-ppc.json", "floppy-ppc.json",
+        "gem-bundle-ppc.json", "gem-ppc.json",
+        "gnic-bundle-ppc.json", "gnic-ppc.json",
+        "ioadbdevice-ppc.json",
+        "iodisplay-bundle-ppc.json", "iodisplay-ppc.json",
+        "iondrvsupport-bundle-ppc.json", "iondrvsupport-ppc.json",
+        "mace-bundle-ppc.json", "mace-ppc.json",
+        "mesh-bundle-ppc.json", "mesh-ppc.json",
+        "ohare-bundle-ppc.json", "ohare-ppc.json",
+        "pmu-bundle-ppc.json", "pmu-ppc.json",
+        "ppcserialport-bundle-ppc.json", "ppcserialport-ppc.json",
+        "scsiserver-bundle-ppc.json", "scsiserver-ppc.json",
+        "scsitape-bundle-ppc.json", "scsitape-postload-ppc.json",
+        "scsitape-ppc.json", "scsitape-preload-ppc.json",
+        "stblocksize-ppc.json", "sym8xx-bundle-ppc.json",
+        "sym8xx-ppc.json",
+    ]
+
+
+@pytest.mark.parametrize("path", PPC_PROFILES, ids=lambda path: path.name)
+def test_ppc_profiles_are_reference_only_ida_runs(path):
+    document = json.loads(path.read_text(encoding="utf-8"))
+
+    assert document["schema_version"] == "profile-v1"
+    assert document["architecture"] == "ppc"
+    assert document["endianness"] == "big"
+    assert document["reference"] == {"path": "${BINRECON_REFERENCE}"}
+    assert "rebuilt" not in document
+    assert document["analyzers"]["ida"]["enabled"] is True
+    assert document["analyzers"]["ghidra"]["enabled"] is False
+    assert document["analyzers"]["angr"]["enabled"] is False
+    assert document["output_dir"] == f"../out/{path.stem}"

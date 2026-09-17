@@ -32,9 +32,22 @@
 
 #import <driverkit/return.h>
 #import <driverkit/driverTypes.h>
-#import <driverkit/IODevice.h>
+#import <driverkit/i386/driverTypes.h>
+#import <driverkit/IODirectDevice.h>
 #import <driverkit/generalFuncs.h>
+#import <mach/message.h>
 #import <sys/types.h>
+
+struct buf;
+struct queue_entry;
+
+/*
+ * The four register ivars hold I/O port addresses but are typed `char *`,
+ * as the reference does (ivar encoding `*`, accessor encoding `r*`).
+ * inb()/outb() want an IOEISAPortAddress, and the reference narrows to
+ * 16 bits at every port access.
+ */
+#define PP_PORT(reg)	((IOEISAPortAddress)(unsigned int)(reg))
 
 // Parallel Port Register Offsets
 #define PP_DATA_REG      0   // Data Register (read/write)
@@ -73,62 +86,67 @@
 #define PP_MSG_BUSY         0x232338  // Busy
 #define PP_MSG_OFFLINE      0x232339  // Offline
 
-// Command buffer structure
-typedef struct _PPCommandBuffer {
-    id conditionLock;      // NXConditionLock object
-    int commandType;       // Command type
-    int reserved1;
-    int returnCode;        // Return code
-    unsigned char errorFlag;
-    unsigned char reserved2[3];
-    struct _PPCommandBuffer *next;  // Next in queue
-    struct _PPCommandBuffer *prev;  // Previous in queue (or pointer to head)
+/*
+ * Command buffer, 28 bytes.  The layout is the reference's, read from the
+ * argument encoding of -cmdBufExec: —
+ * `^{?=@i*ic{?=^{queue_entry}^{queue_entry}}}`.  The struct is anonymous and
+ * the two links are typed `struct queue_entry *`, so the buffers are chained
+ * by their base address and reached through `link`.
+ */
+typedef struct {
+    id              conditionLock;      // +0x00  NXConditionLock
+    int             commandType;        // +0x04  0 = write, 1 = shut down
+    char           *dataPtr;            // +0x08  unused by the reference
+    int             returnCode;         // +0x0c
+    char            errorFlag;          // +0x10
+    struct {
+        struct queue_entry *next;       // +0x14
+        struct queue_entry *prev;       // +0x18
+    } link;
 } PPCommandBuffer;
 
-@interface IOParallelPort : IODevice
+@interface IOParallelPort : IODirectDevice
 {
-    @private
-    IORange         portRange;
-    unsigned int    dataReg;
-    unsigned int    statusReg;
-    unsigned int    controlReg;
-    unsigned int    configReg;
-
-    unsigned char   controlRegContents;
-    unsigned char   controlRegDefaults;
-    unsigned short  statusWord;
-
-    BOOL            autofeedOutput;
-    BOOL            initialized;
-    BOOL            inUse;
-
-    int             majorDevNum;
-    int             minorDevNum;
-
-    unsigned int    blockSize;
-    unsigned int    lockSize;
-    unsigned int    unlockSize;
-    unsigned int    minPhys;
-
-    unsigned int    busyMaxRetries;
-    unsigned int    busyRetryInterval;
-    unsigned int    ioTimeout;
-    unsigned int    intHandlerDelay;
-    unsigned int    ioThreadDelay;
-
-    id              cmdBufLock;        // NXConditionLock for command queue
-    PPCommandBuffer *cmdBufHead;       // Head of command queue
-    PPCommandBuffer *cmdBufTail;       // Tail of command queue
-
-    unsigned int    threadID;          // Thread ID for I/O thread
-    void           *physbuf;           // Physical buffer (128 bytes)
-    void           *cmdBuf;            // Command buffer (8192 bytes)
-
-    unsigned int    interruptMessage;
-    unsigned int    physbufArg;        // Physbuf argument for interrupt handler
-    void           *dataBuffer;        // Data buffer
-    void           *interruptPortHandle;
-    BOOL            waitForever;       // Wait forever flag (offset 0x18c)
+    /*
+     * 27 ivars, in the reference's order, at the reference's offsets:
+     * IODirectDevice ends at 0x128 and the class is 404 bytes.
+     *
+     * @public because the reference's _strobeChar and interrupt handler read
+     * these registers, `writing` and physbuf straight out of the instance
+     * rather than through accessors.  Protection is not recorded in
+     * __instance_vars, so this is invisible in the binary.
+     */
+    @public
+    BOOL            inUse;                  // 0x128
+    BOOL            writing;                // 0x129
+    char           *configRegister;         // 0x12c
+    char           *dataRegister;           // 0x130
+    unsigned char   dataRegisterData;       // 0x134  never read by the reference
+    char           *statusRegister;         // 0x138
+    char           *controlRegister;        // 0x13c
+    unsigned char   controlRegisterDefaults;// 0x140
+    unsigned int    busyMaxRetries;         // 0x144
+    unsigned int    busyRetryInterval;      // 0x148
+    int             autofeedOutput;         // 0x14c
+    unsigned int    IOThreadDelay;          // 0x150
+    unsigned int    intHandlerDelay;        // 0x154
+    unsigned int    minPhys;                // 0x158
+    unsigned int    blockSize;              // 0x15c
+    int             ioTimeout;              // 0x160
+    id              ioQueueLock;            // 0x164  NXConditionLock
+    struct {
+        struct queue_entry *next;           // 0x168  head
+        struct queue_entry *prev;           // 0x16c  tail
+    } ioQueue;
+    void           *ioTaskThread;           // 0x170
+    struct buf     *physbuf;                // 0x174
+    msg_header_t   *interruptMessage;       // 0x178  8192-byte receive buffer
+    int             majorDevNum;            // 0x17c
+    int             minorDevNum;            // 0x180
+    void           *dataBuffer;             // 0x184
+    id              sizeLock;               // 0x188  NXLock
+    BOOL            waitForever;            // 0x18c
+    unsigned int    statusWord;             // 0x190
 }
 
 // Class methods
@@ -136,27 +154,27 @@ typedef struct _PPCommandBuffer {
 
 // Initialization and probe
 - initFromDeviceDescription:(IODeviceDescription *)deviceDescription;
-- (IOReturn)probeForController;
+- (BOOL)probeForController;
 - (IOReturn)initDevice;
-- (void)printerInit;
-- (void)free;
+- (IOReturn)printerInit;
+- free;
 
 // Register access
-- (unsigned int)dataRegister;
-- setDataRegister:(unsigned int)reg;
-- (unsigned int)statusRegister;
-- setStatusRegister:(unsigned int)reg;
-- (unsigned int)controlRegister;
-- setControlRegister:(unsigned int)reg;
-- (unsigned int)configRegister;
-- setConfigRegister:(unsigned int)reg;
+- (const char *)dataRegister;
+- setDataRegister:(const char *)reg;
+- (const char *)statusRegister;
+- setStatusRegister:(const char *)reg;
+- (const char *)controlRegister;
+- setControlRegister:(const char *)reg;
+- (const char *)configRegister;
+- setConfigRegister:(const char *)reg;
 
 // Register contents
 - (unsigned char)controlRegisterContents;
 - (unsigned char)controlRegisterDefaults;
 - (unsigned char)statusRegisterContents;
-- (unsigned short)statusWord;
-- setStatusWord:(unsigned short)word;
+- (unsigned int)statusWord;
+- setStatusWord:(unsigned int)word;
 
 // Port I/O operations
 - (IOReturn)readFromPort;
@@ -168,8 +186,8 @@ typedef struct _PPCommandBuffer {
 - setInUse:(BOOL)flag;
 - (BOOL)waitForever;
 - setWaitForever:(BOOL)flag;
-- (BOOL)autofeedOutput;
-- setAutofeedOutput:(BOOL)flag;
+- (int)autofeedOutput;
+- setAutofeedOutput:(int)flag;
 
 // Device numbers
 - (int)majorDevNum;
@@ -185,16 +203,16 @@ typedef struct _PPCommandBuffer {
 - (unsigned int)minPhys;
 - setMinPhys:(unsigned int)size;
 - (void *)dataBuffer;
-- (void *)physbuf;
-- setPhysbuf:(void *)buf;
+- (struct buf *)physbuf;
+- setPhysbuf:(struct buf *)buf;
 
 // Timing and retries
 - (unsigned int)busyMaxRetries;
 - setBusyMaxRetries:(unsigned int)retries;
 - (unsigned int)busyRetryInterval;
 - setBusyRetryInterval:(unsigned int)interval;
-- (unsigned int)ioTimeout;
-- setIoTimeout:(unsigned int)timeout;
+- (int)ioTimeout;
+- setIoTimeout:(int)timeout;
 - (unsigned int)intHandlerDelay;
 - setIntHandlerDelay:(unsigned int)delay;
 - (unsigned int)IOThreadDelay;
@@ -202,22 +220,21 @@ typedef struct _PPCommandBuffer {
 
 // Interrupt handling
 - (IOReturn)attachInterruptPort;
-- (unsigned int)interruptMessage;
-- setInterruptMessage:(unsigned int)msg;
-- (void *)interruptPort;
+- (msg_header_t *)interruptMessage;
+- setInterruptMessage:(msg_header_t *)msg;
 - (BOOL)getHandler:(IOInterruptHandler *)handler
             level:(unsigned int *)ipl
-         argument:(void **)arg
+         argument:(unsigned int *)arg
      forInterrupt:(unsigned int)localInterrupt;
 
 // Device waiting
-- (void)_waitForDevice:(BOOL)waitForever isReady:(BOOL *)isReady;
+- (BOOL)_waitForDevice:(BOOL)wait isReady:(BOOL *)isReady;
 
 // Command buffer operations
-- (void *)cmdBufAlloc;
-- (void)cmdBufFree:(void *)buf;
-- (IOReturn)cmdBufExec:(void *)buf;
-- (void)cmdBufComplete:(void *)buf;
+- (PPCommandBuffer *)cmdBufAlloc;
+- (void)cmdBufFree:(PPCommandBuffer *)buf;
+- (void)cmdBufExec:(PPCommandBuffer *)buf;
+- (void)cmdBufComplete:(PPCommandBuffer *)buf;
 - (void *)waitForCmdBuf;
 
 // Parameter handling

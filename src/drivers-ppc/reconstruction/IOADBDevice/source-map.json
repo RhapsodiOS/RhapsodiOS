@@ -1,0 +1,159 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 228,
+      "reference_names": [
+        "-[IOADBDevice initForDevice:result:]"
+      ],
+      "size": 584,
+      "source_line": 268,
+      "source_path": "src/drivers-ppc/input/drvIOADBDevice/IOADBDevice.drvproj/IOADBDevice.lksproj/IOADBDevice.m"
+    },
+    {
+      "address": 924,
+      "reference_names": [
+        "-[IOADBDevice free]"
+      ],
+      "size": 200,
+      "source_line": 341,
+      "source_path": "src/drivers-ppc/input/drvIOADBDevice/IOADBDevice.drvproj/IOADBDevice.lksproj/IOADBDevice.m"
+    },
+    {
+      "address": 1156,
+      "reference_names": [
+        "-[IOADBDevice getADBInfo:]"
+      ],
+      "size": 68,
+      "source_line": 365,
+      "source_path": "src/drivers-ppc/input/drvIOADBDevice/IOADBDevice.drvproj/IOADBDevice.lksproj/IOADBDevice.m"
+    },
+    {
+      "address": 1224,
+      "reference_names": [
+        "-[IOADBDevice flushADBDevice]"
+      ],
+      "size": 60,
+      "source_line": 388,
+      "source_path": "src/drivers-ppc/input/drvIOADBDevice/IOADBDevice.drvproj/IOADBDevice.lksproj/IOADBDevice.m"
+    },
+    {
+      "address": 1300,
+      "reference_names": [
+        "-[IOADBDevice readADBDeviceRegister:buffer:length:]"
+      ],
+      "size": 76,
+      "source_line": 411,
+      "source_path": "src/drivers-ppc/input/drvIOADBDevice/IOADBDevice.drvproj/IOADBDevice.lksproj/IOADBDevice.m"
+    },
+    {
+      "address": 1392,
+      "reference_names": [
+        "-[IOADBDevice writeADBDeviceRegister:buffer:length:]"
+      ],
+      "size": 76,
+      "source_line": 434,
+      "source_path": "src/drivers-ppc/input/drvIOADBDevice/IOADBDevice.drvproj/IOADBDevice.lksproj/IOADBDevice.m"
+    },
+    {
+      "address": 1484,
+      "reference_names": [
+        "-[IOADBDevice setState:mask:]"
+      ],
+      "size": 16,
+      "source_line": 457,
+      "source_path": "src/drivers-ppc/input/drvIOADBDevice/IOADBDevice.drvproj/IOADBDevice.lksproj/IOADBDevice.m"
+    },
+    {
+      "address": 1500,
+      "reference_names": [
+        "-[IOADBDevice getState]"
+      ],
+      "size": 16,
+      "source_line": 470,
+      "source_path": "src/drivers-ppc/input/drvIOADBDevice/IOADBDevice.drvproj/IOADBDevice.lksproj/IOADBDevice.m"
+    },
+    {
+      "address": 1516,
+      "reference_names": [
+        "-[IOADBDevice watchState:mask:]"
+      ],
+      "size": 16,
+      "source_line": 481,
+      "source_path": "src/drivers-ppc/input/drvIOADBDevice/IOADBDevice.drvproj/IOADBDevice.lksproj/IOADBDevice.m"
+    },
+    {
+      "address": 2000,
+      "reference_names": [
+        "+[ADBServer serverMajor:]"
+      ],
+      "size": 260,
+      "source_line": 232,
+      "source_path": "src/drivers-ppc/input/drvIOADBDevice/IOADBDevice.drvproj/IOADBDevice.lksproj/ADBServer.m"
+    },
+    {
+      "address": 2292,
+      "reference_names": [
+        "+[ADBServer deviceStyle]"
+      ],
+      "size": 16,
+      "source_line": 272,
+      "source_path": "src/drivers-ppc/input/drvIOADBDevice/IOADBDevice.drvproj/IOADBDevice.lksproj/ADBServer.m"
+    },
+    {
+      "address": 2308,
+      "reference_names": [
+        "+[ADBServer requiredProtocols]"
+      ],
+      "size": 20,
+      "source_line": 301,
+      "source_path": "src/drivers-ppc/input/drvIOADBDevice/IOADBDevice.drvproj/IOADBDevice.lksproj/ADBServer.m"
+    },
+    {
+      "address": 2328,
+      "reference_names": [
+        "+[ADBServer probe:]"
+      ],
+      "size": 488,
+      "source_line": 349,
+      "source_path": "src/drivers-ppc/input/drvIOADBDevice/IOADBDevice.drvproj/IOADBDevice.lksproj/ADBServer.m"
+    },
+    {
+      "address": 2880,
+      "reference_names": [
+        "-[ADBServer initFromDeviceDescription:]"
+      ],
+      "size": 252,
+      "source_line": 427,
+      "source_path": "src/drivers-ppc/input/drvIOADBDevice/IOADBDevice.drvproj/IOADBDevice.lksproj/ADBServer.m"
+    },
+    {
+      "address": 3180,
+      "reference_names": [
+        "-[ADBServer getIntValues:forParameter:count:]"
+      ],
+      "size": 232,
+      "source_line": 475,
+      "source_path": "src/drivers-ppc/input/drvIOADBDevice/IOADBDevice.drvproj/IOADBDevice.lksproj/ADBServer.m"
+    }
+  ],
+  "reference_sha256": "EA515EE4794B771E1482344E921EE51D7D5E8AEAD77927CBC0DED9282E6997B5",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 5488,
+      "reference_names": [
+        "+[IOADBDeviceKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 20
+    },
+    {
+      "address": 5508,
+      "reference_names": [
+        "+[IOADBDeviceVersion driverKitVersionForIOADBDevice]"
+      ],
+      "size": 16
+    }
+  ]
+}

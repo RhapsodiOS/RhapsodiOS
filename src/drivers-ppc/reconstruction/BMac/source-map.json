@@ -1,0 +1,600 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 92,
+      "reference_names": [
+        "-[BMacEnet initFromDeviceDescription:]"
+      ],
+      "size": 576,
+      "source_line": 63,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnet.m"
+    },
+    {
+      "address": 716,
+      "reference_names": [
+        "-[BMacEnet free]"
+      ],
+      "size": 228,
+      "source_line": 140,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnet.m"
+    },
+    {
+      "address": 992,
+      "reference_names": [
+        "-[BMacEnet interruptOccurredAt:]"
+      ],
+      "size": 188,
+      "source_line": 166,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnet.m"
+    },
+    {
+      "address": 1196,
+      "reference_names": [
+        "-[BMacEnet serviceTransmitQueue]"
+      ],
+      "size": 164,
+      "source_line": 207,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnet.m"
+    },
+    {
+      "address": 1376,
+      "reference_names": [
+        "-[BMacEnet transmit:]"
+      ],
+      "size": 312,
+      "source_line": 237,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnet.m"
+    },
+    {
+      "address": 1736,
+      "reference_names": [
+        "-[BMacEnet transmitQueueSize]"
+      ],
+      "size": 16,
+      "source_line": 320,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnet.m"
+    },
+    {
+      "address": 1752,
+      "reference_names": [
+        "-[BMacEnet transmitQueueCount]"
+      ],
+      "size": 44,
+      "source_line": 325,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnet.m"
+    },
+    {
+      "address": 1812,
+      "reference_names": [
+        "-[BMacEnet resetAndEnable:]"
+      ],
+      "size": 372,
+      "source_line": 335,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnet.m"
+    },
+    {
+      "address": 2200,
+      "reference_names": [
+        "-[BMacEnet timeoutOccurred]"
+      ],
+      "size": 700,
+      "source_line": 383,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnet.m"
+    },
+    {
+      "address": 2932,
+      "reference_names": [
+        "-[BMacEnet enablePromiscuousMode]"
+      ],
+      "size": 156,
+      "source_line": 508,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnet.m"
+    },
+    {
+      "address": 3136,
+      "reference_names": [
+        "-[BMacEnet disablePromiscuousMode]"
+      ],
+      "size": 152,
+      "source_line": 535,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnet.m"
+    },
+    {
+      "address": 3336,
+      "reference_names": [
+        "-[BMacEnet enableMulticastMode]"
+      ],
+      "size": 24,
+      "source_line": 560,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnet.m"
+    },
+    {
+      "address": 3360,
+      "reference_names": [
+        "-[BMacEnet disableMulticastMode]"
+      ],
+      "size": 20,
+      "source_line": 566,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnet.m"
+    },
+    {
+      "address": 3380,
+      "reference_names": [
+        "-[BMacEnet addMulticastAddress:]"
+      ],
+      "size": 132,
+      "source_line": 571,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnet.m"
+    },
+    {
+      "address": 3528,
+      "reference_names": [
+        "-[BMacEnet removeMulticastAddress:]"
+      ],
+      "size": 124,
+      "source_line": 580,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnet.m"
+    },
+    {
+      "address": 3668,
+      "reference_names": [
+        "-[BMacEnet sendPacket:length:]"
+      ],
+      "size": 40,
+      "source_line": 591,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnet.m"
+    },
+    {
+      "address": 3724,
+      "reference_names": [
+        "-[BMacEnet receivePacket:length:timeout:]"
+      ],
+      "size": 40,
+      "source_line": 596,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnet.m"
+    },
+    {
+      "address": 3780,
+      "reference_names": [
+        "-[BMacEnet getPowerState:]"
+      ],
+      "size": 16,
+      "source_line": 604,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnet.m"
+    },
+    {
+      "address": 3796,
+      "reference_names": [
+        "-[BMacEnet setPowerState:]"
+      ],
+      "size": 68,
+      "source_line": 609,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnet.m"
+    },
+    {
+      "address": 3880,
+      "reference_names": [
+        "-[BMacEnet getPowerManagement:]"
+      ],
+      "size": 16,
+      "source_line": 619,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnet.m"
+    },
+    {
+      "address": 3896,
+      "reference_names": [
+        "-[BMacEnet setPowerManagement:]"
+      ],
+      "size": 16,
+      "source_line": 624,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnet.m"
+    },
+    {
+      "address": 3912,
+      "reference_names": [
+        "-[BMacEnet reserveDebuggerLock]"
+      ],
+      "size": 80,
+      "source_line": 629,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnet.m"
+    },
+    {
+      "address": 4008,
+      "reference_names": [
+        "-[BMacEnet releaseDebuggerLock]"
+      ],
+      "size": 80,
+      "source_line": 637,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnet.m"
+    },
+    {
+      "address": 4932,
+      "reference_names": [
+        "-[BMacEnet miiReadWord:reg:phy:]"
+      ],
+      "size": 332,
+      "source_line": 23,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetMII.m"
+    },
+    {
+      "address": 5280,
+      "reference_names": [
+        "-[BMacEnet miiWriteWord:reg:phy:]"
+      ],
+      "size": 224,
+      "source_line": 96,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetMII.m"
+    },
+    {
+      "address": 5520,
+      "reference_names": [
+        "-[BMacEnet miiWrite:size:]"
+      ],
+      "size": 176,
+      "source_line": 144,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetMII.m"
+    },
+    {
+      "address": 5728,
+      "reference_names": [
+        "-[BMacEnet miiReadBit]"
+      ],
+      "size": 132,
+      "source_line": 171,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetMII.m"
+    },
+    {
+      "address": 5908,
+      "reference_names": [
+        "-[BMacEnet miiCheckZeroBit]"
+      ],
+      "size": 52,
+      "source_line": 195,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetMII.m"
+    },
+    {
+      "address": 5976,
+      "reference_names": [
+        "-[BMacEnet miiOutThreeState]"
+      ],
+      "size": 88,
+      "source_line": 207,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetMII.m"
+    },
+    {
+      "address": 6096,
+      "reference_names": [
+        "-[BMacEnet miiResetPHY:]"
+      ],
+      "size": 244,
+      "source_line": 220,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetMII.m"
+    },
+    {
+      "address": 6372,
+      "reference_names": [
+        "-[BMacEnet miiWaitForLink:]"
+      ],
+      "size": 152,
+      "source_line": 252,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetMII.m"
+    },
+    {
+      "address": 6556,
+      "reference_names": [
+        "-[BMacEnet miiWaitForAutoNegotiation:]"
+      ],
+      "size": 152,
+      "source_line": 271,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetMII.m"
+    },
+    {
+      "address": 6740,
+      "reference_names": [
+        "-[BMacEnet miiRestartAutoNegotiation:]"
+      ],
+      "size": 120,
+      "source_line": 290,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetMII.m"
+    },
+    {
+      "address": 6876,
+      "reference_names": [
+        "-[BMacEnet miiFindPHY:]"
+      ],
+      "size": 196,
+      "source_line": 319,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetMII.m"
+    },
+    {
+      "address": 7088,
+      "reference_names": [
+        "-[BMacEnet miiInitializePHY:]"
+      ],
+      "size": 272,
+      "source_line": 346,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetMII.m"
+    },
+    {
+      "address": 7432,
+      "reference_names": [
+        "-[BMacEnet _allocateMemory]"
+      ],
+      "size": 1040,
+      "source_line": 68,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetPrivate.m"
+    },
+    {
+      "address": 8520,
+      "reference_names": [
+        "-[BMacEnet _initTxRing]"
+      ],
+      "size": 724,
+      "source_line": 197,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetPrivate.m"
+    },
+    {
+      "address": 9324,
+      "reference_names": [
+        "-[BMacEnet _initRxRing]"
+      ],
+      "size": 596,
+      "source_line": 271,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetPrivate.m"
+    },
+    {
+      "address": 10000,
+      "reference_names": [
+        "-[BMacEnet _startChip]"
+      ],
+      "size": 112,
+      "source_line": 346,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetPrivate.m"
+    },
+    {
+      "address": 10160,
+      "reference_names": [
+        "-[BMacEnet _resetChip]"
+      ],
+      "size": 576,
+      "source_line": 366,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetPrivate.m"
+    },
+    {
+      "address": 10800,
+      "reference_names": [
+        "-[BMacEnet _initChip]"
+      ],
+      "size": 576,
+      "source_line": 445,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetPrivate.m"
+    },
+    {
+      "address": 11424,
+      "reference_names": [
+        "-[BMacEnet _disableAdapterInterrupts]"
+      ],
+      "size": 44,
+      "source_line": 523,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetPrivate.m"
+    },
+    {
+      "address": 11484,
+      "reference_names": [
+        "-[BMacEnet _enableAdapterInterrupts]"
+      ],
+      "size": 60,
+      "source_line": 534,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetPrivate.m"
+    },
+    {
+      "address": 11560,
+      "reference_names": [
+        "-[BMacEnet _setDuplexMode:]"
+      ],
+      "size": 144,
+      "source_line": 547,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetPrivate.m"
+    },
+    {
+      "address": 11736,
+      "reference_names": [
+        "-[BMacEnet _restartTransmitter]"
+      ],
+      "size": 136,
+      "source_line": 577,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetPrivate.m"
+    },
+    {
+      "address": 11936,
+      "reference_names": [
+        "-[BMacEnet _restartReceiver]"
+      ],
+      "size": 124,
+      "source_line": 609,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetPrivate.m"
+    },
+    {
+      "address": 12124,
+      "reference_names": [
+        "-[BMacEnet _stopReceiveDMA]"
+      ],
+      "size": 172,
+      "source_line": 640,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetPrivate.m"
+    },
+    {
+      "address": 12360,
+      "reference_names": [
+        "-[BMacEnet _stopTransmitDMA]"
+      ],
+      "size": 180,
+      "source_line": 664,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetPrivate.m"
+    },
+    {
+      "address": 12604,
+      "reference_names": [
+        "-[BMacEnet _transmitPacket:]"
+      ],
+      "size": 372,
+      "source_line": 689,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetPrivate.m"
+    },
+    {
+      "address": 13056,
+      "reference_names": [
+        "-[BMacEnet _receivePacket:length:timeout:]"
+      ],
+      "size": 248,
+      "source_line": 758,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetPrivate.m"
+    },
+    {
+      "address": 13352,
+      "reference_names": [
+        "-[BMacEnet _packetToDebugger:]"
+      ],
+      "size": 100,
+      "source_line": 798,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetPrivate.m"
+    },
+    {
+      "address": 13516,
+      "reference_names": [
+        "-[BMacEnet _sendPacket:length:]"
+      ],
+      "size": 444,
+      "source_line": 814,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetPrivate.m"
+    },
+    {
+      "address": 14088,
+      "reference_names": [
+        "-[BMacEnet _sendDummyPacket]"
+      ],
+      "size": 172,
+      "source_line": 885,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetPrivate.m"
+    },
+    {
+      "address": 14292,
+      "reference_names": [
+        "-[BMacEnet _receiveInterruptOccurred]"
+      ],
+      "size": 48,
+      "source_line": 907,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetPrivate.m"
+    },
+    {
+      "address": 14356,
+      "reference_names": [
+        "-[BMacEnet _receivePackets:]"
+      ],
+      "size": 1376,
+      "source_line": 920,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetPrivate.m"
+    },
+    {
+      "address": 15908,
+      "reference_names": [
+        "-[BMacEnet _transmitInterruptOccurred]"
+      ],
+      "size": 448,
+      "source_line": 1184,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetPrivate.m"
+    },
+    {
+      "address": 16436,
+      "reference_names": [
+        "-[BMacEnet _updateDescriptorFromNetBuf:Desc:ReceiveFlag:]"
+      ],
+      "size": 920,
+      "source_line": 1259,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetPrivate.m"
+    },
+    {
+      "address": 17420,
+      "reference_names": [
+        "-[BMacEnet _dump_srom]"
+      ],
+      "size": 200,
+      "source_line": 1358,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetPrivate.m"
+    },
+    {
+      "address": 17668,
+      "reference_names": [
+        "-[BMacEnet _dumpDesc:Size:]"
+      ],
+      "size": 240,
+      "source_line": 1372,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetPrivate.m"
+    },
+    {
+      "address": 17956,
+      "reference_names": [
+        "-[BMacEnet _dumpRegisters]"
+      ],
+      "size": 1964,
+      "source_line": 1392,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetPrivate.m"
+    },
+    {
+      "address": 19952,
+      "reference_names": [
+        "-[BMacEnet _getStationAddress:]"
+      ],
+      "size": 160,
+      "source_line": 1586,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetPrivate.m"
+    },
+    {
+      "address": 20344,
+      "reference_names": [
+        "-[BMacEnet _addToHashTableMask:]"
+      ],
+      "size": 124,
+      "source_line": 1675,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetPrivate.m"
+    },
+    {
+      "address": 20484,
+      "reference_names": [
+        "-[BMacEnet _removeFromHashTableMask:]"
+      ],
+      "size": 136,
+      "source_line": 1695,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetPrivate.m"
+    },
+    {
+      "address": 20636,
+      "reference_names": [
+        "-[BMacEnet _updateBMacHashTableMask]"
+      ],
+      "size": 180,
+      "source_line": 1718,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvBMacEnet/BMacEnetPrivate.m"
+    }
+  ],
+  "reference_sha256": "F940BFBF0B67652409BF430F2A380D432B4BA59EAEE377A5FF218A0AE49DE616",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 20848,
+      "reference_names": [
+        "+[drvPPCBMacKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 20
+    },
+    {
+      "address": 20868,
+      "reference_names": [
+        "+[drvPPCBMacVersion driverKitVersionFordrvPPCBMac]"
+      ],
+      "size": 16
+    }
+  ]
+}

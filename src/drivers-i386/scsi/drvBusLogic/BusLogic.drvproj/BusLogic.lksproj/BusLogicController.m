@@ -9,6 +9,7 @@
  */
 
 #import <sys/types.h>
+#import <string.h>
 #import <bsd/sys/param.h>
 #import <objc/Object.h>
 #import <kernserv/queue.h>
@@ -30,6 +31,7 @@
 
 #import <driverkit/i386/directDevice.h>
 #import <driverkit/i386/IOEISADeviceDescription.h>
+#import <driverkit/i386/IOPCIDirectDevice.h>
 #import <driverkit/IOSCSIController.h>
 #import "BusLogicController.h"
 #import "BusLogicTypes.h"
@@ -37,14 +39,26 @@
 #import "BusLogicThread.h"
 
 extern unsigned ffs(unsigned mask);
-extern BOOL bl_reset_board(IOEISAPortAddress portBase, unsigned char boardId);
-extern BOOL bl_probe_cmd(IOEISAPortAddress portBase, unsigned char cmd,
+extern BOOL blc_reset_board(IOEISAPortAddress portBase, unsigned char boardId);
+extern BOOL blc_probe_cmd(IOEISAPortAddress portBase, unsigned char cmd,
 			 unsigned char *dataOut, int dataOutLen,
 			 unsigned char *dataIn, int dataInLen,
 			 BOOL expectResponse);
-extern BOOL bl_setup_mb_area(IOEISAPortAddress portBase,
+extern BOOL blc_setup_mb_area(IOEISAPortAddress portBase,
 			     struct bl_mb_area *mbArea,
 			     struct ccb *ccbArray);
+
+/*
+ * PCI base address register decoding.
+ */
+#define PCI_NUM_BASE_ADDRESS	6
+#define PCI_BASE_IO_BIT		0x01
+#define PCI_BASE_IO(value)	((value) & 0xfffffffc)
+
+static BOOL parseConfigSpace(id deviceDescription,
+			     const char *title,
+			     unsigned regSize,
+			     IOEISAPortAddress *baseAddr);
 
 /*
  * Template for command message sent to the I/O thread.
@@ -63,38 +77,79 @@ static msg_header_t BLMessageTemplate = {
 /*
  * Private methods implemented in this file.
  */
-@interface BLController(PrivateMethods)
+@interface BLCController(PrivateMethods)
 - (BOOL) probeAtPortBase 	: (IOEISAPortAddress) portBase;
 - (IOReturn)executeCmdBuf	: (BLCommandBuf *)cmdBuf;
 @end
 
 
-@implementation BLController
+@implementation BLCController
 
 /*
  *  Probe, configure board, and init new instance.
  */
 + (BOOL)probe:deviceDescription
 {
-	BLController	*bl = [self alloc];
-	IORange		ioPort;
+	BLCController	*bl = [self alloc];
+	id		configTable;
+	const char	*cardType;
+	IOEISAPortAddress portBase;
 
-	ddm_init("BLController probe\n", 1,2,3,4,5);
+	ddm_init("BLCController probe\n", 1,2,3,4,5);
 	bl->ioThreadRunning = NO;
 
 	/*
-	 *  Check that we have some IO Ports assigned, and probe using the
-	 *  first IO Port.
-	 *  -probeAtPortBase returns TRUE if there's a BusLogic Controller present.
+	 *  Which bus is the board on? This decides where the I/O port base
+	 *  comes from and whether we have to arbitrate for the machine's DMA
+	 *  controller.
 	 */
-	if ([deviceDescription numPortRanges] < 1) {
-		IOLog("BLController: can't determine port base!\n");
-	    	[bl free];
-		return NO;
+	configTable = [deviceDescription configTable];
+	cardType = [configTable valueForStringKey:"Card Type"];
+	if (cardType == NULL) {
+		bl->busType = BL_BUS_ISA;
 	}
-	ioPort = [deviceDescription portRangeList][0];
-	if (![bl probeAtPortBase:ioPort.start]) {
-		IOLog("BusLogic Not Found at port 0x%x\n", ioPort.start);
+	else {
+		if (strcmp(cardType, "EISA") == 0)
+			bl->busType = BL_BUS_EISA;
+		else if (strcmp(cardType, "PCI") == 0)
+			bl->busType = BL_BUS_PCI;
+		else if (strcmp(cardType, "VL") == 0)
+			bl->busType = BL_BUS_VL;
+		else
+			bl->busType = BL_BUS_ISA;
+		[configTable freeString:cardType];
+	}
+
+	if (bl->busType == BL_BUS_PCI) {
+		/*
+		 *  A PCI board's port base and IRQ live in config space, and
+		 *  the device description has to be retweezed to match.
+		 */
+		if (!parseConfigSpace(deviceDescription, "BusLogic",
+				      BL_PCI_REGISTER_SPACE, &portBase)) {
+			[bl free];
+			return NO;
+		}
+	}
+	else {
+		/*
+		 *  Check that we have some IO Ports assigned, and probe using
+		 *  the first IO Port.
+		 */
+		if ([deviceDescription numPortRanges] < 1) {
+			IOLog("BLCController: can't determine port base!\n");
+			[bl free];
+			return NO;
+		}
+		portBase = [deviceDescription portRangeList][0].start;
+	}
+
+	/*
+	 *  -probeAtPortBase returns TRUE if there's a BusLogic Controller
+	 *  present.
+	 */
+	if (![bl probeAtPortBase:portBase]) {
+		IOLog("BusLogic Not Found at port 0x%x\n", portBase);
 	    	[bl free];
 		return NO;
 	}
@@ -106,7 +161,7 @@ static msg_header_t BLMessageTemplate = {
 	unsigned Lun;
 	kern_return_t krtn;
 
-	ddm_init("BLController initFromDeviceDescription\n", 1,2,3,4,5);
+	ddm_init("BLCController initFromDeviceDescription\n", 1,2,3,4,5);
 
 	queue_init(&outstandingQ);
 	queue_init(&pendingQ);
@@ -134,7 +189,7 @@ static msg_header_t BLMessageTemplate = {
 	 */
 	if ([deviceDescription numChannels] < 1 ||
 	    [deviceDescription channel] != config.dma_channel) {
-		IOLog("BLController: Actual DMA Channel (%d) doesn't match "
+		IOLog("BLCController: Actual DMA Channel (%d) doesn't match "
 		      "configured value (%d)!\n", config.dma_channel,
 		      ([deviceDescription numChannels] ?
 		      	[deviceDescription channel] : 0));
@@ -143,7 +198,7 @@ static msg_header_t BLMessageTemplate = {
 
 	if ([deviceDescription numInterrupts] < 1 ||
 	    [deviceDescription interrupt] != config.irq) {
-		IOLog("BLController: Actual IRQ (%d) doesn't match "
+		IOLog("BLCController: Actual IRQ (%d) doesn't match "
 		      "configured value (%d)!\n", config.irq,
 		      ([deviceDescription numInterrupts] ?
 		      	[deviceDescription interrupt] : 0));
@@ -156,7 +211,7 @@ static msg_header_t BLMessageTemplate = {
 	 */
 	if ([self setTransferMode:IO_Cascade forChannel:0] != IO_R_SUCCESS ||
 	    [self enableChannel:0] != IO_R_SUCCESS) {
-		IOLog("BLController: couldn't init DMA!\n");
+		IOLog("BLCController: couldn't init DMA!\n");
 		return [super free];
 	}
 
@@ -173,8 +228,8 @@ static msg_header_t BLMessageTemplate = {
 	 *  Note that if we fail, the call to [super free] will release (and
 	 *  disable) our resources (IRQ, DMA channel, portRanges).
 	 */
-	if (!bl_setup_mb_area(ioBase, blMbArea, blCcb)) {
-		IOLog("BLController: couldn't set up mailbox area!\n");
+	if (!blc_setup_mb_area(ioBase, blMbArea, blCcb)) {
+		IOLog("BLCController: couldn't set up mailbox area!\n");
 		return [self free];
 	}
 
@@ -215,6 +270,14 @@ static msg_header_t BLMessageTemplate = {
 - (unsigned)maxTransfer
 {
 	return (BL_SG_COUNT - 1) * PAGE_SIZE;
+}
+
+/*
+ * Number of targets this board can address, established by -probeAtPortBase:.
+ */
+- (int)numberOfTargets
+{
+	return targetsPerBus;
 }
 
 /*
@@ -394,7 +457,7 @@ static msg_header_t BLMessageTemplate = {
 
 /*
  * Called from the I/O thread when it receives a timeout
- * message. We send these messages ourself from blTimeout() in
+ * message. We send these messages ourself from blcTimeout() in
  * BusLogicThread.m.
  */
 - (void)timeoutOccurred
@@ -519,22 +582,22 @@ out:
 
 @end	/* methods declared in BusLogicController.h */
 
-@implementation BLController(PrivateMethods)
+@implementation BLCController(PrivateMethods)
 
 - (BOOL) probeAtPortBase:(IOEISAPortAddress) portBase
 {
 	bl_inquiry_t	inquiry;
 
-	ddm_init("BLController probeAtPortBase\n", 1,2,3,4,5);
+	ddm_init("BLCController probeAtPortBase\n", 1,2,3,4,5);
 
 	ioBase = portBase;
-	bl_reset_board(ioBase, blBoardId);
+	blc_reset_board(ioBase, blBoardId);
 
 	/*
 	 *  Do an inquiry to find out the board id and other things that
 	 *  we won't check.
 	 */
-	if (!bl_probe_cmd(ioBase, BL_CMD_INQUIRY, NULL, 0,
+	if (!blc_probe_cmd(ioBase, BL_CMD_INQUIRY, NULL, 0,
 	    (unsigned char *)&inquiry, sizeof(inquiry), TRUE)) {
 	    	ddm_init("  ..inquiry command failed\n", 1,2,3,4,5);
 		return FALSE;
@@ -556,10 +619,17 @@ out:
 	}
 
 	/*
+	 *  Every board ID we accept above is a narrow board. (The reference
+	 *  driver picks 16 instead of 8 from the wide bit of the Inquire
+	 *  Extended Setup reply; we do not issue that command.)
+	 */
+	targetsPerBus = 8;
+
+	/*
 	 *  Attempt to read the configuration data from the board.
 	 *  If this succeeds, then we have successfully probed.
 	 */
-	if (!bl_probe_cmd(ioBase, BL_CMD_GET_CONFIG, NULL, 0,
+	if (!blc_probe_cmd(ioBase, BL_CMD_GET_CONFIG, NULL, 0,
 	                   (unsigned char *)&config, sizeof(config), TRUE)) {
 	    	ddm_init("  ..get config command failed\n", 1,2,3,4,5);
 
@@ -621,7 +691,82 @@ out:
 	return rtn;
 }
 
-@end	/* BLController(PrivateMethods) */
+@end	/* BLCController(PrivateMethods) */
 
 
+/*
+ * Get I/O port range and IRQ from PCI config space. Set appropriate
+ * values in deviceDescription. Returns base address in *baseAddr.
+ * Returns YES if successful, else NO.
+ */
+static BOOL parseConfigSpace(
+	id deviceDescription,
+	const char *title,
+	unsigned regSize,		/* in bytes */
+	IOEISAPortAddress *baseAddr)	/* RETURNED */
+{
+	IOPCIConfigSpace	configSpace;
+	IORange			portRange;
+	unsigned		*basePtr = 0;
+	int			irq;
+	int			i;
+	BOOL			foundBase = NO;
+	IOReturn		irtn;
 
+	/*
+	 * First get our configSpace register set.
+	 */
+	bzero(&configSpace, sizeof(IOPCIConfigSpace));
+	if(irtn = [IODirectDevice getPCIConfigSpace:&configSpace
+			withDeviceDescription:deviceDescription]) {
+		IOLog("%s: Can\'t get configSpace (%s); ABORTING\n",
+			title, [IODirectDevice stringFromReturn:irtn]);
+		return NO;
+	}
+	basePtr = configSpace.BaseAddress;
+	irq     = configSpace.InterruptLine;
+	if((basePtr[0] == 0) || (irq == 0)) {
+		IOLog("%s: Bogus config info (IRQ %d, Base 0x%x)\n",
+			title, irq, (unsigned)basePtr);
+		return NO;
+	}
+
+	/*
+	 * Scan all 6 base address registers, make sure there is exactly one
+	 * I/O address.
+	 */
+	for(i=0; i<PCI_NUM_BASE_ADDRESS; i++) {
+	    if(basePtr[i] & PCI_BASE_IO_BIT) {
+		if(foundBase) {
+		    IOLog("%s: Multiple I/O Port Bases Found\n", title);
+		    return NO;
+		}
+		foundBase = YES;
+		portRange.start = PCI_BASE_IO(basePtr[i]);
+	    }
+	}
+	if(!foundBase) {
+	    	IOLog("%s: No I/O Port Base Found\n", title);
+		return NO;
+	}
+	portRange.size = regSize;
+	*baseAddr = portRange.start;
+
+	/*
+	 * OK, retweeze our device description.
+	 */
+	irtn = [deviceDescription setInterruptList:&irq num:1];
+	if(irtn) {
+		IOLog("%s: Can\'t set interruptList to IRQ %d (%s)\n",
+			title, irq, [IODirectDevice stringFromReturn:irtn]);
+		return NO;
+	}
+	irtn = [deviceDescription setPortRangeList:&portRange num:1];
+	if(irtn) {
+		IOLog("%s: Can\'t set portRangeList to port 0x%x (%s)\n",
+			title, portRange.start,
+			[IODirectDevice stringFromReturn:irtn]);
+		return NO;
+	}
+	return YES;
+}

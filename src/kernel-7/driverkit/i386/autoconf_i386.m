@@ -61,6 +61,7 @@
 #import <driverkit/i386/PCMCIAKernBus.h>
 #import <driverkit/i386/PCIKernBus.h>
 
+#import <bsd/dev/ata_hd_registry.h>
 #import <machdep/i386/kernBootStruct.h>
 
 boolean_t eisa_id(int slot, unsigned int *_id);
@@ -156,6 +157,9 @@ probeNativeDevices(void)
 	const char	*family, *busName;
 	char		*nameBuf;
 	id		busClass;
+
+	if (!ata_hd_registry_init())
+		panic("ATA hd registry initialization failed");
 
 	//
 	// Initialize drivers and modules loaded by booter.

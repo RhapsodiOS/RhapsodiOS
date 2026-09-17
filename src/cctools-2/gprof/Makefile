@@ -5,7 +5,8 @@ ifneq "mwcc" "$(notdir $(CC))"
   GCC_FLAGS = -Wall -Wno-precomp
 endif
 CFLAGS = $(OFLAG) -g -I../include $(GCC_FLAGS) -DNeXT_MOD -DDEBUG \
-	-I$(NEXT_ROOT)/System/Library/Frameworks/System.framework/PrivateHeaders
+	$(LOCAL_CFLAGS) \
+	-I$(HDRROOT)/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders
 
 ifneq "" "$(wildcard /bin/mkdirs)"
   MKDIRS = /bin/mkdirs
@@ -36,7 +37,7 @@ all: $(OFILE_DIR) $(SYMROOT) $(PRODUCT).NEW
 $(PRODUCT).NEW:	$(OFILE_DIR) $(SYMROOT) $(OBJS)
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r \
 		-o $(SYMROOT)/$@.private.o $(OBJS) $(LIBSTUFF)
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/$@ $(SYMROOT)/$@.private.o
+	$(CC) $(CFLAGS) $(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress -o $(SYMROOT)/$@ $(SYMROOT)/$@.private.o
 
 vers.c:
 	vers_string -c $(VERS_STRING_FLAGS) $(PRODUCT) > $(OFILE_DIR)/$@

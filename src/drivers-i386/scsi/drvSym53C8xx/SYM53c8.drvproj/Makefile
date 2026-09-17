@@ -15,7 +15,7 @@ LANGUAGE = English
 
 GLOBAL_RESOURCES = Default.table
 
-LOCAL_RESOURCES = Localizable.strings DriverHelp SYM53c8Inspector.nib
+LOCAL_RESOURCES = Localizable.strings Help SYM53c8Inspector.nib
 
 TOOLS = SYM53c8.lksproj
 

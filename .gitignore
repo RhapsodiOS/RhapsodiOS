@@ -1,5 +1,38 @@
 # macOS Finder special file
 .DS_Store
 
-# vm directory
-vm/
+# Git worktrees (project-local isolation)
+.worktrees/
+
+# Python bytecode: regenerated on every run of the tooling, not source
+__pycache__/
+*.pyc
+
+# vm directory: large binaries and generated images, not source
+vm/*.vmdk
+vm/*.img
+vm/*.iso
+vm/work/
+vm/logs/
+vm/artifacts/
+vm/debs/
+vm/shots-*/
+vm/capture_output/
+
+# vm directory: local machine config, never committed. vm.conf holds the guest
+# root password; the tracked .example files stay tracked.
+vm/vm.conf
+vm/bridge.conf
+
+# binrecon: analyzer output is generated evidence, not source
+tools/binrecon/out/
+# Rebuilt driver artifacts staged from the Rhapsody guest; never committed.
+out/
+# binrecon ledger lock files: transient, never committed
+ledger.json.lock
+**/reconstruction/**/*.lock
+
+# Rhapsody DR2 install media
+/vm/install/rhapsody_dr2_x86.iso
+/vm/install/rhapsody_dr2_x86_DriverDisk.img
+/vm/install/rhapsody_dr2_x86_InstallationFloppy.img

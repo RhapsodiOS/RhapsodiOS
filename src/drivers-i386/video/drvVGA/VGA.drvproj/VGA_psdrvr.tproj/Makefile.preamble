@@ -1,0 +1,3 @@
+# BUNDLE1_I386 names an i386 bundle1.o when the build host cannot supply one
+# of its own; it is empty on a host whose /lib/bundle1.o is already i386.
+OTHER_LDFLAGS = -bundle -undefined suppress $(BUNDLE1_I386)

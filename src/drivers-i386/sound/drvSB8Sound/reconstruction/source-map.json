@@ -1,0 +1,267 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 0,
+      "reference_names": [
+        "_writeToDSP"
+      ],
+      "size": 37,
+      "source_line": 23,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m"
+    },
+    {
+      "address": 40,
+      "reference_names": [
+        "_readFromDSP"
+      ],
+      "size": 31,
+      "source_line": 23,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m"
+    },
+    {
+      "address": 72,
+      "reference_names": [
+        "+[SoundBlaster8 probe:]"
+      ],
+      "size": 275,
+      "source_line": 30,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m"
+    },
+    {
+      "address": 348,
+      "reference_names": [
+        "-[SoundBlaster8 reset]"
+      ],
+      "size": 576,
+      "source_line": 91,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m"
+    },
+    {
+      "address": 924,
+      "reference_names": [
+        "-[SoundBlaster8 initializeHardware]"
+      ],
+      "size": 2175,
+      "source_line": 185,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m"
+    },
+    {
+      "address": 3100,
+      "reference_names": [
+        "-[SoundBlaster8 updateInputGainLeft]"
+      ],
+      "size": 115,
+      "source_line": 195,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m"
+    },
+    {
+      "address": 3216,
+      "reference_names": [
+        "-[SoundBlaster8 updateInputGainRight]"
+      ],
+      "size": 115,
+      "source_line": 215,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m"
+    },
+    {
+      "address": 3332,
+      "reference_names": [
+        "-[SoundBlaster8 updateOutputMute]"
+      ],
+      "size": 557,
+      "source_line": 231,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m"
+    },
+    {
+      "address": 3892,
+      "reference_names": [
+        "-[SoundBlaster8 updateOutputAttenuationLeft]"
+      ],
+      "size": 380,
+      "source_line": 239,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m"
+    },
+    {
+      "address": 4272,
+      "reference_names": [
+        "-[SoundBlaster8 updateOutputAttenuationRight]"
+      ],
+      "size": 380,
+      "source_line": 256,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m"
+    },
+    {
+      "address": 4652,
+      "reference_names": [
+        "-[SoundBlaster8 updateSampleRate]"
+      ],
+      "size": 773,
+      "source_line": 273,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m"
+    },
+    {
+      "address": 5428,
+      "reference_names": [
+        "-[SoundBlaster8 setBufferCount:]"
+      ],
+      "size": 365,
+      "source_line": 307,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m"
+    },
+    {
+      "address": 5796,
+      "reference_names": [
+        "-[SoundBlaster8 enableAllInterrupts]"
+      ],
+      "size": 41,
+      "source_line": 313,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m"
+    },
+    {
+      "address": 5840,
+      "reference_names": [
+        "-[SoundBlaster8 disableAllInterrupts]"
+      ],
+      "size": 41,
+      "source_line": 319,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m"
+    },
+    {
+      "address": 5884,
+      "reference_names": [
+        "-[SoundBlaster8 isValidRequest:]"
+      ],
+      "size": 170,
+      "source_line": 330,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m"
+    },
+    {
+      "address": 6056,
+      "reference_names": [
+        "-[SoundBlaster8 startDMAForChannel:read:buffer:bufferSizeForInterrupts:]"
+      ],
+      "size": 1437,
+      "source_line": 384,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m"
+    },
+    {
+      "address": 7496,
+      "reference_names": [
+        "-[SoundBlaster8 stopDMAForChannel:read:]"
+      ],
+      "size": 257,
+      "source_line": 476,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m"
+    },
+    {
+      "address": 7756,
+      "reference_names": [
+        "_clearInterrupts"
+      ],
+      "size": 15,
+      "source_line": 511,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m"
+    },
+    {
+      "address": 7772,
+      "reference_names": [
+        "-[SoundBlaster8 interruptClearFunc]"
+      ],
+      "size": 12,
+      "source_line": 520,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m"
+    },
+    {
+      "address": 7784,
+      "reference_names": [
+        "-[SoundBlaster8 interruptOccurredForInput:forOutput:]"
+      ],
+      "size": 591,
+      "source_line": 525,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m"
+    },
+    {
+      "address": 8376,
+      "reference_names": [
+        "-[SoundBlaster8 timeoutOccurred]"
+      ],
+      "size": 210,
+      "source_line": 567,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m"
+    },
+    {
+      "address": 8588,
+      "reference_names": [
+        "-[SoundBlaster8 setAnalogInputSource:]"
+      ],
+      "size": 131,
+      "source_line": 583,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m"
+    },
+    {
+      "address": 8720,
+      "reference_names": [
+        "-[SoundBlaster8 acceptsContinuousSamplingRates]"
+      ],
+      "size": 12,
+      "source_line": 598,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m"
+    },
+    {
+      "address": 8732,
+      "reference_names": [
+        "-[SoundBlaster8 getSamplingRatesLow:high:]"
+      ],
+      "size": 25,
+      "source_line": 603,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m"
+    },
+    {
+      "address": 8760,
+      "reference_names": [
+        "-[SoundBlaster8 getSamplingRates:count:]"
+      ],
+      "size": 53,
+      "source_line": 610,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m"
+    },
+    {
+      "address": 8816,
+      "reference_names": [
+        "-[SoundBlaster8 getDataEncodings:count:]"
+      ],
+      "size": 25,
+      "source_line": 622,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m"
+    },
+    {
+      "address": 8844,
+      "reference_names": [
+        "-[SoundBlaster8 channelCountLimit]"
+      ],
+      "size": 26,
+      "source_line": 629,
+      "source_path": "src/drivers-i386/sound/drvSB8Sound/SoundBlaster8.drvproj/SoundBlaster8.lksproj/SoundBlaster8.m"
+    }
+  ],
+  "reference_sha256": "3CE9787321C1E52D62BF1B19CFC58BD6F7340A98D5C6FEAEC8B92B5E6A8EC9D4",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 8872,
+      "reference_names": [
+        "+[SoundBlaster8KernelServerInstance kernelServerInstance]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 8884,
+      "reference_names": [
+        "+[SoundBlaster8Version driverKitVersionForSoundBlaster8]"
+      ],
+      "size": 12
+    }
+  ]
+}

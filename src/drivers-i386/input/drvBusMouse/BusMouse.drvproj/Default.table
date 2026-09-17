@@ -1,5 +1,6 @@
 "Title" = "Bus Mouse";
 "Family" = "Pointing Device";
+"Version" = "5.01";
 "Location" = "";
 "Instance" = "0";
 "Driver Name" = "BusMouse";

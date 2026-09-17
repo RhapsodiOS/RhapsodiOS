@@ -30,60 +30,61 @@
 #define _PCIC_SOCKET_H_
 
 #import <objc/Object.h>
+#import <driverkit/i386/PCMCIA.h>
 
 /* Forward declarations */
+@class List;
 @class PCIC;
 
-@interface PCICSocket : Object
+/*
+ * The socket status bits are PCMCIAStatus, declared with the
+ * PCMCIA protocols in <driverkit/i386/PCMCIA.h>.
+ */
+
+@interface PCICSocket : Object <PCMCIASocket>
 {
     id adapter;                     /* Parent PCIC controller */
-    unsigned int socketNumber;      /* Socket number (0-3) */
-    id windowList;                  /* List of PCICWindow instances for this socket */
-    unsigned int cardEnabled;       /* Card enable state */
-    unsigned int cardVccPower;      /* VCC power level */
-    unsigned int cardVppPower;      /* VPP power level */
-    unsigned int cardIRQ;           /* Card IRQ number */
-    unsigned int cardAutoPower;     /* Auto power management enabled */
-    unsigned int memoryInterface;   /* Memory interface type */
-    unsigned int statusChangeMask;  /* Status change interrupt mask */
+    int socketNumber;               /* Socket number (0-3) */
+    PCMCIAStatus statusMask;        /* Status change interrupt mask (offset 0xc) */
+    List *windows;                  /* List of PCICWindow instances for this socket */
 }
 
 /* Initialization */
-- initWithAdapter:theAdapter socketNumber:(unsigned int)number;
+- initWithAdapter:theAdapter socketNumber:(int)number;
 
 /* Window management */
 - windows;
 
 /* Socket information */
-- (unsigned int)socketNumber;
+- (int)socketNumber;
 - adapter;
 
 /* Power management getters */
-- (unsigned int)cardEnabled;
+- (char)cardEnabled;
 - (unsigned int)cardVccPower;
 - (unsigned int)cardVppPower;
-- (unsigned int)cardAutoPower;
-- (unsigned int)powerStates;
+- (char)cardAutoPower;
+- powerStates;
 
 /* Card configuration getters */
 - (unsigned int)cardIRQ;
-- (unsigned int)memoryInterface;
-- (unsigned int)statusChangeMask;
+- (char)memoryInterface;
+- (PCMCIAStatus)statusChangeMask;
 
 /* Status */
-- (unsigned int)status;
+- (PCMCIAStatus)status;
 
 /* Power management setters */
-- (void)setCardEnabled:(unsigned int)enabled;
-- (void)setCardVccPower:(unsigned int)power;
-- (void)setCardVppPower:(unsigned int)power;
-- (void)setCardAutoPower:(unsigned int)autoPower;
+- (char)setCardEnabled:(char)enabled;
+- (char)setCardVccPower:(unsigned int)power;
+- (char)setCardVppPower:(unsigned int)power;
+- (char)setCardAutoPower:(char)autoPower;
 
 /* Card configuration setters */
-- (void)setCardIRQ:(unsigned int)irq;
-- (void)setCardReset:(unsigned int)reset;
-- (void)setMemoryInterface:(unsigned int)interface;
-- (void)setStatusChangeMask:(unsigned int)mask;
+- (char)setCardIRQ:(unsigned int)irq;
+- (void)setCardReset:(char)reset;
+- (char)setMemoryInterface:(char)interface;
+- (char)setStatusChangeMask:(PCMCIAStatus)mask;
 
 /* Reset */
 - (void)reset;

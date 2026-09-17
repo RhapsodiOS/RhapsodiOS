@@ -1,14 +1,17 @@
--include $(LOCALMAKEFILEDIR)/Makefile.local_postamble
-include /NextDeveloper/Makefiles/driverkit/Makefile.bundle_postamble
+###############################################################################
+#  Makefile.postamble
+#  Copyright 1997, Apple Computer, Inc.
+#
+#  Use this makefile for adding commands to be run at the end of the build.
+#
+###############################################################################
 
-
-bundle all::
-	mv $(PRODUCT_ROOT)/English.lproj/DriverHelp \
-    	$(PRODUCT_ROOT)/English.lproj/Help
-
+# Install the package description alongside the driver.  `after_install' is
+# only ever a prerequisite in pb_makefiles (compatibility.make), never a
+# single-colon target, so a double-colon rule here is safe.
 after_install::
 	if [ ! -d $(DSTROOT)/usr/local/InfoFiles ]; then \
-		mkdirs $(DSTROOT)/usr/local/InfoFiles;\
+		$(MKDIRS) $(DSTROOT)/usr/local/InfoFiles;\
 	fi
 	cp $(SRCROOT)/$(NAME).info \
 		$(DSTROOT)/usr/local/InfoFiles/$(NAME).info

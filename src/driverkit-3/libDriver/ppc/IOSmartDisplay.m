@@ -104,8 +104,16 @@ typedef struct EDID EDID;
 
 static UInt32	smInited = 0;			// why does +initialize get called twice?
 static IOSmartADBDisplay * ADB2SmartDisplay[ ADB_DEVICE_COUNT ];
+static IOConfigTable * configTable;		// saved by +probe:
 
 @implementation IOSmartDisplay
+
++ (BOOL) probe:deviceDescription
+{
+    // no instance is made here - just keep the table for later lookups
+    configTable = [deviceDescription configTable];
+    return( YES);
+}
 
 + findForConnection:framebuffer refCon:(UInt32)refCon
 {
@@ -169,6 +177,43 @@ static IOSmartADBDisplay * ADB2SmartDisplay[ ADB_DEVICE_COUNT ];
     return( IO_R_UNSUPPORTED);
 }
 @end
+
+extern long int strtol(const char *nptr, char **endptr, int base);
+
+// Turn a config table string of numbers into an allocated array of them.
+// Pass one counts and allocates, pass two fills in. Nothing is allocated,
+// and *count is left alone, if the string holds no numbers at all.
+
+static UInt32 * UnpackString( const char * string, UInt32 * count)
+{
+UInt32 *	array = 0;
+UInt32		num, value;
+const char *	next;
+char *		end;
+int		pass = 1;
+
+    do {
+	end = (char *) string;
+	num = 0;
+
+	while( (next = end)) {
+	    value = strtol( next, &end, 0);
+	    if( end == next)			// nothing more to convert
+		break;
+	    if( array)
+		array[ num] = value;
+	    num++;
+	}
+
+	if( pass && num) {
+	    array = (UInt32 *) IOMalloc( num * sizeof( UInt32));
+	    *count = num;
+	}
+
+    } while( pass--);
+
+    return( array);
+}
 
 @implementation IOSmartDDCDisplay
 
@@ -621,6 +666,43 @@ UInt16		value;
 	[[IOSmartADBDisplay alloc] initForADB:i];
     }
     return( self);
+}
+
+// +callDeviceMethod: hands these the output buffer with its count by
+// reference, and the input buffer with its count by value. Counts are bytes.
+
+- (IOReturn) IOSMADBGetAVDeviceID:(UInt32 *)deviceID size:(UInt32 *)size
+{
+    if( *size != sizeof( UInt32))
+	return( IO_R_INVALID_ARG);
+
+    *deviceID = avDisplayID;
+    return( noErr);
+}
+
+- (IOReturn) IOSMADBGetLogicalRegister:(UInt32 *)params size:(UInt32)size
+		result:(UInt32 *)result size:(UInt32 *)resultSize
+{
+    IOReturn	err;
+    UInt16	data = 0;
+
+    if( (size != sizeof( UInt32)) || (*resultSize != sizeof( UInt32)))
+	return( IO_R_INVALID_ARG);
+
+    // register is the low 16 bits of the input word
+    err = [self getLogicalRegister:params[0] data:&data];
+    *result = data;
+
+    return( err);
+}
+
+- (IOReturn) IOSMADBSetLogicalRegister:(UInt32 *)params size:(UInt32)size
+{
+    if( size != (2 * sizeof( UInt32)))
+	return( IO_R_INVALID_ARG);
+
+    // register and data are the low 16 bits of each word
+    return( [self setLogicalRegister:params[0] data:params[1]]);
 }
 
 @end

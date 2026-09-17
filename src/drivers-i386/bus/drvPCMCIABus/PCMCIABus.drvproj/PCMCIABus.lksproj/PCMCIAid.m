@@ -67,8 +67,22 @@ static const char *PCMCIAidFieldLabels[] = {
     "Version 2:"
 };
 
+/* Human-readable names for the standard PCMCIA_TPLFID_FUNCTION codes (0-9) */
+static const char *PCMCIAFunctionIDNames[] = {
+    "Multiple Function",
+    "Memory",
+    "Serial Port/Modem",
+    "Parallel Port",
+    "Fixed Disk",
+    "Video Adapter",
+    "Local Area Network",
+    "AIMS",
+    "SCSI Bridge",
+    "CardBus"
+};
+
 /* Helper function to free a string field */
-static void _freeString(char **stringPtr)
+static void freeString(char **stringPtr)
 {
     if (*stringPtr != NULL) {
         IOFree(*stringPtr, strlen(*stringPtr) + 1);
@@ -95,7 +109,7 @@ static char isValidPCMCIA_IDChar(char c)
  * Sanitize and copy a string, filtering out invalid characters
  * Returns NULL if input is NULL or contains no valid characters
  */
-static char *_sanitizeStringCopy(char *str)
+static char *sanitizeStringCopy(char *str)
 {
     char c;
     char *scanPtr;
@@ -167,6 +181,27 @@ static char *_sanitizeStringCopy(char *str)
     return result;
 }
 
+/*
+ * Return a human-readable name for a PCMCIA_TPLFID_FUNCTION code string
+ * Codes 0-9 map to the standard function names; 0xFE is "Vendor Specific";
+ * anything else returns NULL
+ */
+const char *stringForFunctionID(const char *funcID)
+{
+    long value;
+
+    value = strtol(funcID, NULL, 0);
+
+    if ((unsigned long)value > 9) {
+        if (value == 0xFE) {
+            return "Vendor Specific";
+        }
+        return NULL;
+    }
+
+    return PCMCIAFunctionIDNames[value];
+}
+
 @implementation PCMCIAid
 
 - initFromDescription:description
@@ -186,7 +221,7 @@ static char *_sanitizeStringCopy(char *str)
         str = [description stringForKey:PCMCIAidDescriptionKeys[i]];
 
         /* Sanitize and copy the string */
-        fields[i] = _sanitizeStringCopy(str);
+        fields[i] = sanitizeStringCopy(str);
     }
 
     return self;
@@ -305,7 +340,7 @@ static char *_sanitizeStringCopy(char *str)
 
     /* Free all 5 string fields */
     for (i = 0; i < 5; i++) {
-        _freeString(&fields[i]);
+        freeString(&fields[i]);
     }
 
     return [super free];
@@ -366,7 +401,7 @@ static char *_sanitizeStringCopy(char *str)
     int i;
     const char *value;
     const char *functionName;
-    extern const char *_stringForFunctionID(const char *funcID);
+    extern const char *stringForFunctionID(const char *funcID);
 
     /* Loop through all 5 ID fields */
     for (i = 0; i < 5; i++) {
@@ -376,7 +411,7 @@ static char *_sanitizeStringCopy(char *str)
         if (value != NULL) {
             if (i == 0) {
                 /* Field 0 is function type - convert to human-readable string */
-                functionName = _stringForFunctionID(value);
+                functionName = stringForFunctionID(value);
                 IOLog("PCMCIABus: %s %s (%s)\n",
                        PCMCIAidFieldLabels[i], functionName, value);
             } else {

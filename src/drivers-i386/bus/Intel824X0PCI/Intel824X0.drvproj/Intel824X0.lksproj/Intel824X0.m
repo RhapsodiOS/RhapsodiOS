@@ -32,10 +32,10 @@
 #define PCI_REVISION_ID        0x08    /* Revision ID register */
 #define PCI_DRAMC              0x54    /* DRAM Control Register */
 
-/* PCI Vendor/Device IDs */
+/* Vendor and device IDs, as read from configuration register 0 */
 #define INTEL_VENDOR_ID        0x8086
-#define INTEL_82440FX_DEVID    0x0483  /* 82440FX (Natoma) */
-#define INTEL_82443FX_DEVID    0x04A3  /* 82443FX (Orion) */
+#define INTEL_82424ZX_ID       0x04838086  /* 82424ZX host bridge */
+#define INTEL_82434LX_ID       0x04A38086  /* 82434LX/NX host bridge */
 
 /* DRAM Control Register bits */
 #define DRAMC_WP_ENABLE        0x01    /* Bit 0: Write-Posting Enable */
@@ -47,7 +47,7 @@
     id instance;
 
     /* Attempt to allocate and initialize an instance */
-    instance = [[self alloc] initFromDeviceDescription:deviceDescription];
+    instance = [[Intel824X0 alloc] initFromDeviceDescription:deviceDescription];
 
     /* If initialization failed, device is not supported */
     if (instance == nil) {
@@ -62,13 +62,10 @@
 {
     BOOL needsWritePostingFix = NO;
     unsigned long configData;
-    unsigned short vendorID, deviceID;
-    unsigned char revisionID;
-    const char *deviceName;
 
     /* Set device identification */
     [self setName:"Intel824X0"];
-    [self setDeviceKind:"Intel 824X0 PCI Host Bridge"];
+    [self setDeviceKind:"Other"];
 
     /* Initialize from parent */
     if ([super initFromDeviceDescription:deviceDescription] == nil) {
@@ -87,43 +84,37 @@
 
     /* Read vendor and device ID */
     [self getPCIConfigData:&configData atRegister:0x00];
-    vendorID = configData & 0xFFFF;
-    deviceID = (configData >> 16) & 0xFFFF;
 
-    deviceName = [self name];
-    IOLog("Intel824X0: %s\n", deviceName);
+    /* One console line is composed from this prefix and one of the chipset
+     * tails below, so the prefix deliberately carries no newline.
+     */
+    IOLog("%s: Detected ", [self name]);
 
     /* Identify the specific chipset */
-    if (configData == ((INTEL_82440FX_DEVID << 16) | INTEL_VENDOR_ID)) {
-        /* Intel 82440FX (Natoma) */
-        IOLog("Intel824X0: Intel 82440FX (Natoma) PCI and Memory Controller detected\n");
+    if (configData == INTEL_82424ZX_ID) {
+        IOLog("Intel 82424ZX Host-Bridge\n");
         needsWritePostingFix = YES;
     }
-    else if (configData == ((INTEL_82443FX_DEVID << 16) | INTEL_VENDOR_ID)) {
-        /* Intel 82443FX (Orion) */
+    else if (configData == INTEL_82434LX_ID) {
         [self getPCIConfigData:&configData atRegister:PCI_REVISION_ID];
-        revisionID = configData & 0xFF;
 
-        /* Determine stepping (C0 = 0x00, C1 = 0x01, etc.) */
-        if (configData & 0x10) {
-            IOLog("Intel824X0: Intel 82443FX (Orion) C-%d stepping detected\n",
-                  0x0E, revisionID & 0x0F);
-        } else {
-            IOLog("Intel824X0: Intel 82443FX (Orion) C-%d stepping detected\n",
-                  0x0C, revisionID & 0x0F);
-        }
+        /* Bit 4 of the revision picks the NX from the LX, the low nibble
+         * is the A stepping number.
+         */
+        IOLog("Intel 82434%cX Host-Bridge (step A-%d)\n",
+              (configData & 0x10) ? 'N' : 'L', configData & 0x0F);
 
-        /* Revision 0x10 and later need write-posting fix */
-        if ((revisionID & 0xFF) == 0x10) {
+        /* Only the 82434NX A-0 stepping needs the write-posting fix */
+        if ((configData & 0xFF) == 0x10) {
             needsWritePostingFix = YES;
         }
     }
     else {
-        /* Check if it's at least an Intel chipset */
-        if (vendorID == INTEL_VENDOR_ID) {
-            IOLog("Intel824X0: Intel chipset detected (device ID 0x%04x)\n", deviceID);
+        /* Unrecognised part, name the vendor if it is Intel at all */
+        if ((configData & 0xFFFF) == INTEL_VENDOR_ID) {
+            IOLog("Intel ");
         }
-        IOLog("Intel824X0: Unknown or unsupported chipset\n");
+        IOLog("Host-Bridge\n");
     }
 
     /* Apply write-posting fix if needed */
@@ -131,12 +122,10 @@
         [self getPCIConfigData:&configData atRegister:PCI_DRAMC];
 
         if ((configData & DRAMC_WP_ENABLE) == 0) {
-            deviceName = [self name];
-            IOLog("Intel824X0: %s: Write-posting already disabled\n", deviceName);
+            IOLog("%s: PCI-to-Memory write posting disabled by BIOS.\n", [self name]);
         }
         else {
-            deviceName = [self name];
-            IOLog("Intel824X0: %s: Write-posting enabled, disabling...\n", deviceName);
+            IOLog("%s: Disabling PCI-to-Memory write posting.\n", [self name]);
 
             /* Disable write-posting by clearing bit 0 */
             configData &= ~DRAMC_WP_ENABLE;

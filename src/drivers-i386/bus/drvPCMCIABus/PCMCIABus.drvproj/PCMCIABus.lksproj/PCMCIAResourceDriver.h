@@ -33,8 +33,19 @@
 
 #ifdef DRIVER_PRIVATE
 
+/*
+ * Both ivars are Apple's, recovered from the PCMCIABus_reloc class
+ * structure: autoDetectIDs [512c] at +296 and autoDetectIDindex i at
+ * +808, for an instance size of 812.  getCharValues:forParameter:count:
+ * addressed them by raw offset while the class declared no ivars at all,
+ * so every write to them landed past the end of the object.
+ */
+
 @interface PCMCIAResourceDriver : IODirectDevice
 {
+@private
+    char    autoDetectIDs[512];         /* +296 */
+    int     autoDetectIDindex;          /* +808 */
 }
 
 /* Class method */

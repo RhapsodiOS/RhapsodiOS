@@ -33,29 +33,25 @@
 #import <driverkit/IODevice.h>
 #import <driverkit/IOPower.h>
 #import <driverkit/IOEventSource.h>
+#import <driverkit/generalFuncs.h>
 #import <kernserv/queue.h>
+#import <bsd/dev/i386/PCPointer.h>
+#import <bsd/dev/i386/PCPointerDefs.h>
 
-/* Mouse event structure */
-typedef struct {
-    unsigned int timestamp_low;     // Offset 0x158
-    unsigned int timestamp_high;    // Offset 0x15C
-    unsigned char buttons;          // Offset 0x160
-    char deltaX;                    // Offset 0x161
-    char deltaY;                    // Offset 0x162
-} MouseEvent;
-
-@interface SerialPointingDevice : IODirectDevice
+/*
+ * target (0x128), resolution (0x12c) and inverted (0x130) are inherited from
+ * PCPointer, which also reserves 0x134-0x143.  This class adds only the six
+ * ivars below, giving an instance size of 356 (0x164).
+ */
+@interface SerialPointingDevice : PCPointer
 {
 @private
-    id mouseEventPort;              // Offset 0x128 - Event target
-    unsigned int resolution;        // Offset 0x12C (300)
-    BOOL inverted;                  // Offset 0x130
-    BOOL verbose;                   // Offset 0x144
-    void *mainLoopThread;           // Offset 0x148
-    int mouseType;                  // Offset 0x14C (mouse hardware type)
-    int protocolType;               // Offset 0x150 (protocol handler ID)
-    id serialPortObject;            // Offset 0x154
-    MouseEvent mouseEvent;          // Offset 0x158
+    BOOL verbose;                   /* 0x144 */
+    void *mainThread;               /* 0x148 */
+    int mouseType;                  /* 0x14c - mouse hardware type */
+    int protocol;                   /* 0x150 - protocol handler ID */
+    id portDevice;                  /* 0x154 */
+    PCPointerEvent pointerEvent;    /* 0x158 */
 }
 
 /* Detection and initialization */
@@ -63,7 +59,7 @@ typedef struct {
 - free;
 
 /* Configuration */
-- (IOReturn)mouseInit:(IODeviceDescription *)deviceDescription;
+- (BOOL)mouseInit:(IODeviceDescription *)deviceDescription;
 
 /* Parameters */
 - (IOReturn)getIntValues:(unsigned *)parameterArray
@@ -74,14 +70,14 @@ typedef struct {
             forParameter:(IOParameterName)parameterName
                    count:(unsigned)count;
 
-- (unsigned int)getResolution;
+- (int)getResolution;
 
 /* Event target */
-- (void)setEventTarget:(id)target;
+- (BOOL)setEventTarget:(id)eventTarget;
 
 /* Serial communication */
-- (BOOL)getByte:(unsigned char *)byte sleep:(BOOL)shouldSleep;
-- (void)mainLoop:(id)arg;
+- (BOOL)getByte:(char *)byte sleep:(BOOL)shouldSleep;
+- (IOThreadFunc)mainLoop:(id)arg;
 
 /* Protocol handlers */
 - (void)MSProtocol;

@@ -37,17 +37,17 @@ extern unsigned int reg_base;
 /* Global variables for memory mapping */
 static char *__memory = NULL;
 
-/* Forward declaration of _setWindow function */
-static IOReturn _setWindow(int socket, int window, unsigned int baseAddr,
-                           unsigned int size, unsigned int physicalAddr,
-                           unsigned int offset, unsigned int flags,
-                           int windowType, int enable);
+/* Forward declaration of setWindow function */
+static void setWindow(int socket, int window, unsigned int cardAddress,
+                      unsigned int size, unsigned int systemAddress,
+                      char is16Bit, char extraWaitState,
+                      char attributeMemory, char writeProtect);
 
 /*
  * Find empty memory range in upper memory (0xCC000-0xF0000)
  * Scans for BIOS ROM signatures (0xAA55) and finds unused space
  */
-static char * _FindEmptyMemoryRange(void)
+static char * FindEmptyMemoryRange(void)
 {
     unsigned char *ptr;
     unsigned char biosLength;
@@ -84,7 +84,7 @@ static char * _FindEmptyMemoryRange(void)
  * Map attribute memory for PCMCIA socket
  * Finds empty memory range, maps it, and configures PCIC window
  */
-static unsigned long long _MapAttributeMemory(int socket)
+void MapAttributeMemory(int socket)
 {
     unsigned char regValue;
     unsigned char regOffset;
@@ -92,7 +92,7 @@ static unsigned long long _MapAttributeMemory(int socket)
     vm_task_t task;
 
     /* Find and store empty memory range in global */
-    __memory = _FindEmptyMemoryRange();
+    __memory = FindEmptyMemoryRange();
 
     /* Get VM task */
     task = IOVmTaskSelf();
@@ -115,32 +115,73 @@ static unsigned long long _MapAttributeMemory(int socket)
     outb(reg_base + 1, regValue & 0xE0);
 
     /* Configure the window
-     * Parameters: socket, window 0, base 0, size 0x2000 (8KB),
-     *            physical address, offset 0, flags 0, type 1, enable 0
+     * Parameters: socket, window 0, card address 0, size 0x2000 (8KB),
+     *            system address, 8-bit path, no extra wait state,
+     *            attribute memory, no write protect
      */
-    _setWindow(socket, 0, 0, 0x2000, physicalAddr, 0, 0, 1, 0);
+    setWindow(socket, 0, 0, 0x2000, physicalAddr, 0, 0, 1, 0);
 
     /* Enable window (set bit 0 = window enable) */
     outb(reg_base, regOffset);
     outb(reg_base + 1, (regValue & 0xE0) | 1);
-
-    /* Return the final register value written */
-    return ((regValue & 0xE0) | 1);
 }
 
 /*
  * Set window configuration
- * Configures a PCMCIA memory or I/O window
- * Implementation to be filled in from decompiled code
+ * Programs the six registers of one memory window: the system start and stop
+ * addresses, the card offset, and the flags that ride in the high bits of the
+ * three odd registers
  */
-static IOReturn _setWindow(int socket, int window, unsigned int baseAddr,
-                           unsigned int size, unsigned int physicalAddr,
-                           unsigned int offset, unsigned int flags,
-                           int windowType, int enable)
+static void setWindow(int socket, int window, unsigned int cardAddress,
+                      unsigned int size, unsigned int systemAddress,
+                      char is16Bit, char extraWaitState,
+                      char attributeMemory, char writeProtect)
 {
-    /* Placeholder implementation */
-    /* This would configure PCIC window registers for the specified parameters */
-    return IO_R_SUCCESS;
+    unsigned int cardOffset;
+    unsigned int stopAddress;
+    unsigned int socketOffset;
+    unsigned int windowOffset;
+    unsigned char regValue;
+
+    /* The card offset register holds a displacement that is added to the
+     * system address to reach the card address; 0x400000 is the 4MB wrap
+     * constant that keeps the field positive */
+    cardOffset = cardAddress + 0x400000 - systemAddress;
+
+    /* Window register base: (socket * 64) + 0x10 + (window * 8) */
+    windowOffset = window << 3;
+    socketOffset = socket << 6;
+
+    /* +0: system start address, bits 12-19 */
+    outb(reg_base, socketOffset + windowOffset + 0x10);
+    outb(reg_base + 1, (unsigned char)((systemAddress >> 12) & 0xFF));
+
+    /* +1: system start address bits 20-23, plus the 16-bit data path */
+    regValue = ((systemAddress >> 20) & 0x0F) | (is16Bit << 7);
+    outb(reg_base, socketOffset + windowOffset + 0x11);
+    outb(reg_base + 1, regValue);
+
+    /* +2: system stop address, bits 12-19 */
+    stopAddress = systemAddress + size - 1;
+    outb(reg_base, socketOffset + windowOffset + 0x12);
+    outb(reg_base + 1, (unsigned char)((stopAddress >> 12) & 0xFF));
+
+    /* +3: system stop address bits 20-23, plus the extra wait state */
+    regValue = ((stopAddress >> 20) & 0x0F) | (extraWaitState << 6);
+    outb(reg_base, socketOffset + windowOffset + 0x13);
+    outb(reg_base + 1, regValue);
+
+    /* +4: card offset address, bits 12-19 */
+    outb(reg_base, socketOffset + windowOffset + 0x14);
+    outb(reg_base + 1, (unsigned char)((cardOffset >> 12) & 0xFF));
+
+    /* +5: card offset bits 20-25, the attribute memory select and the
+     * write protect bit */
+    regValue = ((cardOffset >> 20) & 0x3F) | ((attributeMemory & 1) << 6);
+    /* & 0x7F is a no-op here (bit 7 already clear); kept for parity with the reference's `and bl, 7Fh` at 2251 */
+    regValue = (regValue & 0x7F) | (writeProtect << 7);
+    outb(reg_base, socketOffset + windowOffset + 0x15);
+    outb(reg_base + 1, regValue);
 }
 
 @implementation PCIC(Debug)
@@ -150,7 +191,7 @@ static IOReturn _setWindow(int socket, int window, unsigned int baseAddr,
  * On first call, initializes attribute memory mapping
  * Waits for card ready status before reading
  */
-- (unsigned char)_readAttributeMemory:(unsigned int)address forSocket:(unsigned int)socket
+- (unsigned char)readAttributeMemory:(int)address forSocket:(int)socket
 {
     static int __init_117 = 0;
     unsigned char statusReg;
@@ -159,7 +200,7 @@ static IOReturn _setWindow(int socket, int window, unsigned int baseAddr,
 
     /* Initialize attribute memory mapping on first call */
     if (__init_117 == 0) {
-        _MapAttributeMemory(0);
+        MapAttributeMemory(0);
         __init_117 = 1;
     }
 
@@ -195,12 +236,12 @@ static IOReturn _setWindow(int socket, int window, unsigned int baseAddr,
 
 /*
  * Spoof interrupt for testing
- * Simulates an interrupt by directly calling the interrupt handler
+ * Raises the IRQ 5 vector, so the whole delivery path is exercised: IDT
+ * entry, kernel dispatch, DriverKit interrupt message and I/O thread
  */
-- (void)_spoofInterrupt
+- (void)spoofInterrupt
 {
-    /* Call the interrupt handler directly to simulate an interrupt */
-    [self interruptOccurred];
+    asm volatile("int $0x45");
 }
 
 @end

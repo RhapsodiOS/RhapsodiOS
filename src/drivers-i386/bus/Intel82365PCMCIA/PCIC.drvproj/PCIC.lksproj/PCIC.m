@@ -32,6 +32,8 @@
 #import <driverkit/generalFuncs.h>
 #import <driverkit/interruptMsg.h>
 #import <driverkit/kernelDriver.h>
+#import <driverkit/i386/IOEISADeviceDescription.h>
+#import <driverkit/i386/IOPCIDirectDevice.h>
 #import <machdep/i386/io_inline.h>
 #import <objc/List.h>
 #import <bsd/sys/types.h>
@@ -40,9 +42,49 @@
 unsigned int reg_base = 0;
 
 /* Internal helper functions */
-static char _socketIsValid(unsigned int socket);
-static unsigned char _checkForCirrusChip(void);
-static void _setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
+static char socketIsValid(unsigned int socket);
+static unsigned char checkForCirrusChip(void);
+static void setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
+
+@implementation PCIC_PCI
+
+/*
+ * Initialize from device description
+ * Reads the bridge's I/O base out of PCI base address register 0, publishes it
+ * as the port range, and lets PCIC drive the adapter from there
+ */
+- initFromDeviceDescription:(IOPCIDeviceDescription *)deviceDescription
+{
+    unsigned char device, bus;
+    IORange range;
+
+    /* Locate the bridge; the function number is not wanted */
+    if ([deviceDescription getPCIdevice:&device function:0 bus:&bus]) {
+        return [super free];
+    }
+
+    IOLog("PCIC: PCMCIA->PCI Bus Bridge Detected (Dev=%d, Bus=%d)\n",
+          device, bus);
+
+    /* BAR0 carries the I/O base; mask off the two base address type bits */
+    [IODirectDevice getPCIConfigData:(unsigned long *)&reg_base
+                          atRegister:0x10
+               withDeviceDescription:deviceDescription];
+    reg_base &= 0xfffc;
+
+    /* The PD6832 exposes four ports, not the two the ISA path asks for */
+    range.start = reg_base;
+    range.size = 4;
+    [deviceDescription setPortRangeList:&range num:1];
+
+    if (![super initFromDeviceDescription:deviceDescription]) {
+        return [super free];
+    }
+
+    return self;
+}
+
+@end
 
 @implementation PCIC
 
@@ -80,32 +122,21 @@ static void _setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
 {
     IORange *range;
     id socket;
-    id socketWindows;
     int i;
 
-    /* Get port range list and validate */
-    range = [deviceDescription resourcesForKey:"I/O Ports"];
-    if (!range) {
-        IOLog("PCIC: No I/O port range specified\n");
-        [self free];
-        return nil;
-    }
-    basePort = range->start;
-
-    /* Set global base register for internal functions */
-    reg_base = basePort;
+    /* The adapter's index/data pair is the first port range */
+    range = [(IOEISADeviceDescription *)deviceDescription portRangeList];
+    reg_base = range->start;
 
     /* Validate socket 0 exists (basic hardware check) */
-    if (!_socketIsValid(0)) {
-        IOLog("PCIC: Hardware validation failed at port 0x%x\n", basePort);
-        [self free];
-        return nil;
+    if (!socketIsValid(0)) {
+        IOLog("PCIC: No device at base address 0x%04x\n", reg_base);
+        return [self free];
     }
 
     /* Call superclass initialization */
     if (![super initFromDeviceDescription:deviceDescription]) {
-        [super free];
-        return nil;
+        return [super free];
     }
 
     /* Set device name and properties */
@@ -113,27 +144,8 @@ static void _setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
     [self setDeviceKind:"PCMCIA Adapter"];
     [self setUnit:0];
 
-    /* Get IRQ level */
-    irqLevel = [deviceDescription interrupt];
-    if (irqLevel == 0) {
-        irqLevel = 5; /* Default IRQ */
-    }
-
-    /* Create socket list */
-    socketList = [[List alloc] init];
-    if (!socketList) {
-        IOLog("PCIC: Failed to create socket list\n");
-        [self free];
-        return nil;
-    }
-
-    /* Create window list */
-    windowList = [[List alloc] init];
-    if (!windowList) {
-        IOLog("PCIC: Failed to create window list\n");
-        [self free];
-        return nil;
-    }
+    sockets = [[List alloc] init];
+    windows = [[List alloc] init];
 
     /* Create up to 4 sockets and collect their windows */
     for (i = 0; i < 4; i++) {
@@ -143,38 +155,30 @@ static void _setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
         }
 
         /* Add socket to socket list */
-        [socketList addObject:socket];
+        [sockets addObject:socket];
 
-        /* Get socket's window list and append to master window list */
-        socketWindows = [socket windows];
-        if (socketWindows) {
-            [windowList appendList:socketWindows];
-        }
+        /* Append the socket's windows to the master window list */
+        [windows appendList:[socket windows]];
     }
 
-    /* Check if we successfully created any sockets */
-    if ([socketList count] == 0) {
-        IOLog("PCIC: Failed to create any sockets\n");
+    /* No socket answered: give the list back and fail */
+    if ([sockets count] == 0) {
+        [sockets free];
         [self free];
         return nil;
     }
-
-    /* Store actual number of sockets created */
-    numSockets = [socketList count];
 
     /* Check for Cirrus Logic chip */
-    isCirrusChip = _checkForCirrusChip();
+    CirrusCompatible = checkForCirrusChip();
 
     /* Set up status change interrupts for each socket */
-    for (i = 0; i < [socketList count]; i++) {
-        _setStatusChangeInterrupt(i, irqLevel);
+    for (i = 0; i < [sockets count]; i++) {
+        setStatusChangeInterrupt(i, [deviceDescription interrupt]);
     }
 
-    /* Enable all interrupts */
+    /* Interrupt enabling is not fatal; the IO thread starts either way */
     if ([self enableAllInterrupts] != IO_R_SUCCESS) {
         IOLog("PCIC: couldn't enable interrupts\n");
-        [self free];
-        return nil;
     }
 
     /* Start I/O thread */
@@ -186,9 +190,6 @@ static void _setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
 
     /* Register device with system */
     [self registerDevice];
-
-    IOLog("PCIC: Initialized at port 0x%x, IRQ %d, %d sockets%s\n",
-          basePort, irqLevel, numSockets, isCirrusChip ? " (Cirrus)" : "");
 
     return self;
 }
@@ -206,19 +207,19 @@ static void _setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
     unsigned char regOffset;
 
     /* Get number of sockets */
-    count = [socketList count];
+    count = [sockets count];
 
     /* Check each socket for status changes */
     for (i = 0; i < count; i++) {
         /* Get socket object */
-        socket = [socketList objectAt:i];
+        socket = [sockets objectAt:i];
 
         /* Calculate register offset: socket * 0x40 + 0x04 (Card Status Change register) */
         regOffset = (i << 6) + 0x04;
 
         /* Read from base port with calculated offset */
-        outb(basePort, regOffset);
-        statusByte = inb(basePort + 1);
+        outb(reg_base, regOffset);
+        statusByte = inb(reg_base + 1);
 
         /* If any status change bits are set */
         if (statusByte != 0) {
@@ -234,8 +235,8 @@ static void _setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
                            (((statusByte >> 1) & 1) | (statusByte & 1)) << 4;  /* bits 0,1 -> bit 4 */
 
             /* Call status change handler if registered */
-            if (statusChangeHandler) {
-                [statusChangeHandler statusChangedForSocket:socket changedStatus:changedStatus];
+            if (statusHandler) {
+                [statusHandler statusChangedForSocket:socket changedStatus:changedStatus];
             }
         }
     }
@@ -259,7 +260,7 @@ static void _setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
  */
 - sockets
 {
-    return socketList;
+    return sockets;
 }
 
 /*
@@ -268,7 +269,7 @@ static void _setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
  */
 - windows
 {
-    return windowList;
+    return windows;
 }
 
 /*
@@ -278,14 +279,14 @@ static void _setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
  */
 - (void)setStatusChangeHandler:handler
 {
-    statusChangeHandler = handler;
+    statusHandler = handler;
 }
 
 /*
  * Set power management flags
  * Returns IO_R_UNSUPPORTED (not implemented in original binary)
  */
-- (IOReturn)setPowerManagement:(int)flags
+- (IOReturn)setPowerManagement:(PMPowerManagementState)flags
 {
     return IO_R_UNSUPPORTED;
 }
@@ -295,7 +296,7 @@ static void _setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
  * Based on decompiled implementation
  * Power state 3 disables all sockets and windows
  */
-- (IOReturn)setPowerState:(int)powerState
+- (IOReturn)setPowerState:(PMPowerState)powerState
 {
     unsigned int i, count;
     unsigned int j, windowCount;
@@ -305,9 +306,9 @@ static void _setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
     /* If power state is 3 (sleep/suspend), disable everything */
     if (powerState == 3) {
         /* Disable all sockets */
-        count = [socketList count];
+        count = [sockets count];
         for (i = 0; i < count; i++) {
-            socket = [socketList objectAt:i];
+            socket = [sockets objectAt:i];
 
             /* Disable card */
             [socket setCardEnabled:0];
@@ -316,9 +317,9 @@ static void _setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
             [socket setCardVccPower:0];
 
             /* Disable all windows for this socket */
-            windowCount = [windowList count];
+            windowCount = [windows count];
             for (j = 0; j < windowCount; j++) {
-                window = [windowList objectAt:j];
+                window = [windows objectAt:j];
                 [window setEnabled:0];
             }
         }
@@ -331,7 +332,7 @@ static void _setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
  * Get power management flags
  * Returns IO_R_UNSUPPORTED (not implemented in original binary)
  */
-- (IOReturn)getPowerManagement:(int *)flags
+- (IOReturn)getPowerManagement:(PMPowerManagementState *)flags
 {
     return IO_R_UNSUPPORTED;
 }
@@ -340,7 +341,7 @@ static void _setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
  * Get power state
  * Returns IO_R_UNSUPPORTED (not implemented in original binary)
  */
-- (IOReturn)getPowerState:(int *)state
+- (IOReturn)getPowerState:(PMPowerState *)state
 {
     return IO_R_UNSUPPORTED;
 }
@@ -356,7 +357,7 @@ static void _setStatusChangeInterrupt(unsigned int socket, unsigned int irq);
  * Returns 1 if valid, 0 if invalid
  * Based on decompiled implementation
  */
-static char _socketIsValid(unsigned int socket)
+static char socketIsValid(unsigned int socket)
 {
     unsigned char regValue;
     unsigned char regOffset;
@@ -385,7 +386,7 @@ static char _socketIsValid(unsigned int socket)
  * Check for Cirrus Logic chip
  * Returns 1 if Cirrus chip detected, 0 otherwise
  */
-static unsigned char _checkForCirrusChip(void)
+static unsigned char checkForCirrusChip(void)
 {
     unsigned char value;
     unsigned short dataPort;
@@ -425,7 +426,7 @@ static unsigned char _checkForCirrusChip(void)
  * Set status change interrupt for a socket
  * Configures the interrupt handling for card status changes
  */
-static void _setStatusChangeInterrupt(unsigned int socket, unsigned int irq)
+static void setStatusChangeInterrupt(unsigned int socket, unsigned int irq)
 {
     unsigned char regOffset;
     unsigned char value;
@@ -443,100 +444,4 @@ static void _setStatusChangeInterrupt(unsigned int socket, unsigned int irq)
      */
     value = (irq << 4) | 0x0f;
     outb(reg_base + 1, value);
-}
-
-/*
- * Configure an I/O window
- * Sets up PCIC registers for I/O window mapping
- */
-void _setIoWindow(unsigned int socket, unsigned int window, unsigned int cardAddr, unsigned int size, unsigned int sysAddr)
-{
-    unsigned char socketOffset;
-    unsigned char windowOffset;
-    unsigned short startAddr;
-    unsigned short stopAddr;
-
-    /* Calculate socket base offset: socket * 64 */
-    socketOffset = socket << 6;
-
-    /* Calculate window register base: 0x08 + (window * 4) for I/O windows */
-    /* Each I/O window uses 4 registers:
-     * +0: I/O window start address low
-     * +1: I/O window start address high
-     * +2: I/O window stop address low
-     * +3: I/O window stop address high
-     */
-    windowOffset = 0x08 + (window * 4);
-
-    /* Calculate start and stop addresses */
-    startAddr = (unsigned short)sysAddr;
-    stopAddr = (unsigned short)(sysAddr + size - 1);
-
-    /* Write start address low byte */
-    outb(reg_base, socketOffset + windowOffset);
-    outb(reg_base + 1, (unsigned char)(startAddr & 0xFF));
-
-    /* Write start address high byte */
-    outb(reg_base, socketOffset + windowOffset + 1);
-    outb(reg_base + 1, (unsigned char)((startAddr >> 8) & 0xFF));
-
-    /* Write stop address low byte */
-    outb(reg_base, socketOffset + windowOffset + 2);
-    outb(reg_base + 1, (unsigned char)(stopAddr & 0xFF));
-
-    /* Write stop address high byte */
-    outb(reg_base, socketOffset + windowOffset + 3);
-    outb(reg_base + 1, (unsigned char)((stopAddr >> 8) & 0xFF));
-}
-
-/*
- * Configure a memory window
- * Sets up PCIC registers for memory window mapping
- */
-void _setMemoryWindow(unsigned int socket, unsigned int window, unsigned int cardAddr, unsigned int size, unsigned int sysAddr)
-{
-    unsigned char socketOffset;
-    unsigned char windowOffset;
-    unsigned int startAddr;
-    unsigned int stopAddr;
-    unsigned int cardOffset;
-
-    /* Calculate socket base offset: socket * 64 */
-    socketOffset = socket << 6;
-
-    /* Calculate window register base: 0x10 + (window * 8) for memory windows */
-    /* Each memory window uses 8 registers:
-     * +0: Memory window start address low (bits 12-19)
-     * +1: Memory window start address high (bits 20-23)
-     * +2: Memory window stop address low (bits 12-19)
-     * +3: Memory window stop address high (bits 20-23)
-     * +4: Card offset address low (bits 12-19)
-     * +5: Card offset address high (bits 20-25) + flags
-     * +6: Reserved
-     * +7: Reserved
-     */
-    windowOffset = 0x10 + (window * 8);
-
-    /* Memory addresses are shifted right by 12 bits (4KB pages) */
-    startAddr = sysAddr >> 12;
-    stopAddr = (sysAddr + size - 1) >> 12;
-    cardOffset = cardAddr >> 12;
-
-    /* Write system start address */
-    outb(reg_base, socketOffset + windowOffset);
-    outb(reg_base + 1, (unsigned char)(startAddr & 0xFF));
-    outb(reg_base, socketOffset + windowOffset + 1);
-    outb(reg_base + 1, (unsigned char)((startAddr >> 8) & 0x0F));
-
-    /* Write system stop address */
-    outb(reg_base, socketOffset + windowOffset + 2);
-    outb(reg_base + 1, (unsigned char)(stopAddr & 0xFF));
-    outb(reg_base, socketOffset + windowOffset + 3);
-    outb(reg_base + 1, (unsigned char)((stopAddr >> 8) & 0x0F));
-
-    /* Write card offset address */
-    outb(reg_base, socketOffset + windowOffset + 4);
-    outb(reg_base + 1, (unsigned char)(cardOffset & 0xFF));
-    outb(reg_base, socketOffset + windowOffset + 5);
-    outb(reg_base + 1, (unsigned char)((cardOffset >> 8) & 0x3F));
 }

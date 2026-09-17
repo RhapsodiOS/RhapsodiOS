@@ -142,7 +142,9 @@ INSTALL_FLAGS = -c -m 444
 # DRIVER_PRIVATE stuff
 #
 UNIFDEF   = /usr/bin/unifdef
+ifndef DECOMMENT
 DECOMMENT = /usr/local/bin/decomment
+endif
 
 #
 # Header files that are unifdef'ed and installed in INCDIR
@@ -159,7 +161,7 @@ EXPORT= mach mach/machine kernserv kernserv/machine 	 		\
 LCLEXPORT= mach mach_debug kern ipc kernserv vm bsd/sys bsd/dev bsd/net	\
 	bsd/netiso bsd/netccitt bsd/netns bsd/dev/machine mach/machine	\
 	machdep/machine driverkit					\
-	bsd/ufs/mfs bsd/ufs/lfs bsd/isofs/cd9660			\
+	bsd/ufs/mfs bsd/ufs/lfs bsd/isofs/cd9660 bsd/msdosfs	\
 	bsd/netat/h bsd/netat/at					\
 	bsd/hfs/hfscommon/headers bsd/hfs/hfscommon/headers/system
 
@@ -857,43 +859,52 @@ installhdrs: DSTROOT install_mi_hdrs install_md_hdrs
 install_mi_hdrs: DSTROOT install_mi_std_hdrs
 
 #
-# Note the outer for loop of this operation has to be tolerant of non-zero
-# returns because unifdef returns 1 if it makes a change. I don't think this
-# is a problem, but we might want to modify unifdef instead of having the
-# following "-for" expression...
+# unifdef returns 1 when it makes a change.  In that case decomment processes
+# the partial output; a failed fallback must stop header installation.
 #
 install_mi_std_hdrs: DSTROOT $(MIG_HFILES_EXP) $(MACH_DEBUG_HFILE)
-	@-for i in ${EXPORT}; 						\
+	@for i in ${EXPORT}; 						\
 	do								\
-	    EXPDIR=`pwd`/exports;					\
-	    [ -d $$EXPDIR ] || $(MKDIRS) $$EXPDIR;				\
-	    rm -f $$EXPDIR/*;						\
-	    (cd $(SOURCE_DIR)/$$i;					\
+	    object_dir=`pwd` || exit 1;					\
+	    EXPDIR="$$object_dir/exports";				\
+	    [ -d "$$EXPDIR" ] || $(MKDIRS) "$$EXPDIR" || exit 1;	\
+	    rm -f "$$EXPDIR"/* || exit 1;				\
+	    (cd "$(SOURCE_DIR)/$$i" || exit 1;				\
 		hdrs=`echo *.h`;					\
 		if [ "$$hdrs" = '*.h' ]; then				\
 		    echo No header files in $$i;			\
 		else							\
 		    for j in $$hdrs; 					\
 		    do							\
-			DSTDIR=$(DSTROOT)$(INCDIR)/$$i;			\
-			[ -d $$DSTDIR ] || $(MKDIRS) $$DSTDIR;		\
-			echo garbage > $$EXPDIR/$$j.strip;		\
+			DSTDIR="$(DSTROOT)$(INCDIR)/$$i";		\
+			[ -d "$$DSTDIR" ] || $(MKDIRS) "$$DSTDIR" || exit 1; \
+			echo garbage > "$$EXPDIR/$$j.strip" || exit 1;	\
+			unifdef_status=0;				\
 			$(UNIFDEF) -UKERNEL_PRIVATE -UDRIVER_PRIVATE	\
-				$$j > $$EXPDIR/$$j || 			\
-				$(DECOMMENT) $$EXPDIR/$$j  r > 		\
-				$$EXPDIR/$$j.strip; 			\
-			if [ -s $$EXPDIR/$$j.strip ]; 			\
+				"$$j" > "$$EXPDIR/$$j" || unifdef_status=$$?; \
+			if [ $$unifdef_status -eq 1 ]; then		\
+				"$(DECOMMENT)" "$$EXPDIR/$$j"  r > 	\
+				"$$EXPDIR/$$j.strip" || exit 1; 	\
+			elif [ $$unifdef_status -ne 0 ]; then		\
+				exit 1;					\
+			fi;						\
+			if [ -s "$$EXPDIR/$$j.strip" ]; 		\
 			then (						\
-			    cd $$EXPDIR;				\
-			    install $(INSTALL_FLAGS) $$j $$DSTDIR;	\
+			    cd "$$EXPDIR" || exit 1;			\
+			    install $(INSTALL_FLAGS) "$$j" "$$DSTDIR";	\
 			);						\
+			install_status=$$?;				\
+			if [ $$install_status -ne 0 ]; then		\
+			    rm -f "$$EXPDIR/$$j.strip";		\
+			    exit 1;					\
+			fi;						\
 			else 						\
 			    echo Header file $$i/$$j not exported;	\
 			fi;						\
-			rm -f $$EXPDIR/$$j.strip;			\
+			rm -f "$$EXPDIR/$$j.strip" || exit 1;	\
 		    done;						\
 		fi;							\
-	    );								\
+	    ) || exit 1;						\
 	done
 	for i in ${EXPORT_LIB};						\
 	do								\
@@ -959,35 +970,46 @@ install_md_hdrs: DSTROOT install_md_std_hdrs \
 	$(MACHINE_INSTALLHDRS)
 
 install_md_std_hdrs: DSTROOT
-	@-for i in `echo ${MACHINE_EXPORT}`; 				\
+	@for i in `echo ${MACHINE_EXPORT}`; 				\
 	do								\
-	    EXPDIR=`pwd`/exports;					\
-	    [ -d $$EXPDIR ] || $(MKDIRS) $$EXPDIR;				\
-	    rm -f $$EXPDIR/*;						\
-	    (cd $(SOURCE_DIR)/$$i;					\
+	    object_dir=`pwd` || exit 1;					\
+	    EXPDIR="$$object_dir/exports";				\
+	    [ -d "$$EXPDIR" ] || $(MKDIRS) "$$EXPDIR" || exit 1;	\
+	    rm -f "$$EXPDIR"/* || exit 1;				\
+	    (cd "$(SOURCE_DIR)/$$i" || exit 1;				\
 		hdrs=`echo *.h`;					\
 		if [ "$$hdrs" = '*.h' ]; then				\
 		    echo No header files in $$i;			\
 		else							\
 		    for j in $$hdrs; 					\
 		    do							\
-			DSTDIR=$(DSTROOT)$(INCDIR)/$$i;			\
-			[ -d $$DSTDIR ] || $(MKDIRS) $$DSTDIR;		\
-			echo garbage > $$EXPDIR/$$j.strip;		\
-			$(UNIFDEF) -UKERNEL_PRIVATE -UDRIVER_PRIVATE $$j > $$EXPDIR/$$j || \
-			$(DECOMMENT) $$EXPDIR/$$j  r > $$EXPDIR/$$j.strip; \
-			if [ -s $$EXPDIR/$$j.strip ]; 			\
+			DSTDIR="$(DSTROOT)$(INCDIR)/$$i";		\
+			[ -d "$$DSTDIR" ] || $(MKDIRS) "$$DSTDIR" || exit 1; \
+			echo garbage > "$$EXPDIR/$$j.strip" || exit 1;	\
+			unifdef_status=0;				\
+			$(UNIFDEF) -UKERNEL_PRIVATE -UDRIVER_PRIVATE "$$j" > "$$EXPDIR/$$j" || unifdef_status=$$?; \
+			if [ $$unifdef_status -eq 1 ]; then		\
+			"$(DECOMMENT)" "$$EXPDIR/$$j"  r > "$$EXPDIR/$$j.strip" || exit 1; \
+			elif [ $$unifdef_status -ne 0 ]; then		\
+				exit 1;					\
+			fi;						\
+			if [ -s "$$EXPDIR/$$j.strip" ]; 		\
 			then (						\
-			    cd $$EXPDIR;				\
-			    install $(INSTALL_FLAGS) $$j $$DSTDIR;	\
+			    cd "$$EXPDIR" || exit 1;			\
+			    install $(INSTALL_FLAGS) "$$j" "$$DSTDIR";	\
 			);						\
+			install_status=$$?;				\
+			if [ $$install_status -ne 0 ]; then		\
+			    rm -f "$$EXPDIR/$$j.strip";		\
+			    exit 1;					\
+			fi;						\
 			else 						\
 			    echo Header file $$i/$$j not exported;	\
 			fi;						\
-			rm -f $$EXPDIR/$$j.strip;			\
+			rm -f "$$EXPDIR/$$j.strip" || exit 1;	\
 		    done;						\
 		fi;							\
-	    );								\
+	    ) || exit 1;						\
 	done
 	for i in ${MACHINE_MIGDIRS};					\
 	do 								\
@@ -1105,6 +1127,14 @@ subr_prof.o: $(SOURCE_DIR)/bsd/kern/subr_prof.c
 #
 
 %RULES
+
+#
+# Work around reproducible Apple cc1obj ICE (fatal signal 11) when compiling
+# fdesc_vnops.c at -O2 on ppc. Keep the object in the link; just drop opt.
+#
+fdesc_vnops.o: $(SOURCE_DIR)/bsd/miscfs/fdesc/fdesc_vnops.c
+	$(KCC) -c -g -O0 $(CPP_FLAGS) $(MACHINE_CFLAGS) \
+		$(SOURCE_DIR)/bsd/miscfs/fdesc/fdesc_vnops.c
 
 #
 # Lord only knows what this is for, but config spit's out a reference

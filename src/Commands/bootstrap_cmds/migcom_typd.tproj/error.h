@@ -112,10 +112,6 @@ extern void error(const char *format, ...);
 #endif	/* defined(__GNUC__) */
 
 extern const char *unix_error_string(int error_num);
-extern int sys_nerr;
-
-extern const char * const sys_errlist[];
-
 
 extern int errors;
 extern void set_program_name(const char *name);

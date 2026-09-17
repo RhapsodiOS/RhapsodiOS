@@ -64,4 +64,3 @@ CallTVector(
     current_thread()->recover = (vm_offset_t)tmpbuf;
     return( err);
 }
-

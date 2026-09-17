@@ -1,10 +1,6 @@
 #
-# used by geninfo: DRIVER_NAME is the name which appears on the
+# used by geninfo: DRIVER_NAME is the names which appears on the
 # installer window
 #
-DRIVER_NAME="PCIC"
-DRIVER_VERSION_330="3.3";
-DRIVER_VERSION_400="4.0";
-DRIVER_VERSION_410="4.0";
-DRIVER_VERSION_420="4.0";
-DEFAULT_DRIVER_VERSION="5.01";
+DRIVER_NAME="Intel 82365 PCMCIA Adapter"
+DEFAULT_DRIVER_VERSION="5.00";

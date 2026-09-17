@@ -1,5 +1,6 @@
 "Title" = "Floppy";
 "Family" = "Disk";
+"Version" = "5.10";
 "Location" = "";
 "Instance" = "0";
 "Driver Name" = "Floppy";
@@ -8,7 +9,7 @@
 "IRQ Levels" = "6";
 "I/O Ports" = "0x3f2-0x3f7";
 "Memory Maps" = "";
-"Boot Driver" = "";
+"Boot Driver";
 "Valid DMA Channels" = "2";
 "Valid IRQ Levels" = "6";
 "Help File" = "Floppy.rtfd";

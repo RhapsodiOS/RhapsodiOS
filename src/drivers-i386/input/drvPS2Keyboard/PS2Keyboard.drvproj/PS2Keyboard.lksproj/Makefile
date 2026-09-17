@@ -17,7 +17,7 @@ CLASSES = PS2Keyboard.m PS2Controller.m
 
 HFILES = PS2Keyboard.h PS2Controller.h
 
-OTHERSRCS = Makefile.preamble Makefile Makefile.postamble
+OTHERSRCS = Makefile.preamble Makefile Makefile.postamble Load_Commands.sect Unload_Commands.sect
 
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
@@ -28,7 +28,7 @@ DEBUG_LIBS = $(LIBS)
 PROF_LIBS = $(LIBS)
 
 
-NEXTSTEP_PB_CFLAGS = -Wno-format
+NEXTSTEP_PB_CFLAGS = -Wno-format -DDRIVER_PRIVATE
 
 
 NEXTSTEP_OBJCPLUS_COMPILER = /usr/bin/cc

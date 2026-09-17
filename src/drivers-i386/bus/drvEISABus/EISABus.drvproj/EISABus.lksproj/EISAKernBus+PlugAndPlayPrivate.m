@@ -269,12 +269,34 @@ static int isolateCardsWithReadPort(unsigned short readPort)
     /* Try to get PnP read port from config table */
     configPort = configTableLookupServerAttribute("EISABus", "PnP Read Port");
     if (configPort == NULL) {
-        /* No config attribute - auto-scan for read port */
-        /* Try read ports from 0x20B to 0x277 in steps of 4 */
-        /* Note: 0x203 is what the PnP Spec says to start with, but things like a standard joystick occupy the lower port addresses. */
-        readPort = 0x20B;
+        /*
+         * No config attribute - auto-scan for read port.
+         * The reference scans 0x203 through 0x277 inclusive in steps of 4,
+         * which is what the PnP Specification prescribes.
+         *
+         * Hazard: the first two candidates overlap the standard PC gameport,
+         * which decodes 0x200-0x207, so 0x203 and 0x207 are read from the
+         * joystick if one is installed.  That is a real concern -- reading
+         * those ports is harmless, but a joystick answering them can make a
+         * candidate look live.  What keeps it safe is the isolation protocol
+         * itself: isolateCard() reads 64 identifier bits, accumulates the
+         * running checksum over them, then reads the 8 checksum bits the
+         * card sends and rejects the card unless the two agree.  A gameport
+         * answering these ports cannot satisfy that, so a bad read port
+         * isolates no cards and the scan simply moves on.
+         */
+        readPort = 0x203;
 
         do {
+            /*
+             * isolateCard() samples the isolation bits through
+             * readIsolationBit(), which reads the *global* pnpReadPort --
+             * not the candidate passed down here.  The reference makes
+             * pnpReadPort itself the loop variable, so publish the
+             * candidate before running the protocol.
+             */
+            pnpReadPort = readPort;
+
             /* Send PnP initiation sequence */
             sendPnPInitiationKey();
 
@@ -285,7 +307,6 @@ static int isolateCardsWithReadPort(unsigned short readPort)
 
             /* If we found cards, we're done */
             if (cardsFound != 0) {
-                pnpReadPort = readPort;
                 break;
             }
 
@@ -345,23 +366,31 @@ static int isolateCardsWithReadPort(unsigned short readPort)
     char vendorStr[8];
     const char *errorStr;
 
-    /* Error string table for BIOS error codes */
-    static const char *biosErrors[] = {
-        "SUCCESS",                          /* 0x00 */
-        "not supported",                    /* 0x81 */
-        "invalid function",                 /* 0x82 */
-        "function not supported",           /* 0x83 */
-        "invalid parameter",                /* 0x84 */
-        "set failed",                       /* 0x85 */
-        "events not supported",             /* 0x86 */
-        "hardware error",                   /* 0x87 */
-        "invalid CSN",                      /* 0x88 */
-        "can't set CSN",                    /* 0x89 */
-        "buffer too small",                 /* 0x8a */
-        "no ISA PnP cards",                 /* 0x8b */
-        "unable to determine dock status",  /* 0x8c */
-        "config change failed (docked)",    /* 0x8d */
-        "config change failed (too many)"   /* 0x8e */
+    /*
+     * PnP BIOS return-code names, indexed by [code - 0x80].
+     *
+     * The reference table holds only the fifteen 0x81..0x8f entries; its
+     * "PNPB_R_SUCCESS" string is emitted into __cstring but has no code or
+     * data reference, so its original site is unrecoverable.  It is kept
+     * here as the 0x80 slot, which is never selected by the guard below.
+     */
+    static const char *errorstrings[] = {
+        "PNPB_R_SUCCESS",                               /* 0x80 */
+        "PNPB_R_UNKNOWN_FUNCTION",                      /* 0x81 */
+        "PNPB_R_FUNCTION_NOT_SUPPORTED",                /* 0x82 */
+        "PNPB_R_INVALID_HANDLE",                        /* 0x83 */
+        "PNPB_R_BAD_PARAMETER",                         /* 0x84 */
+        "PNPB_R_SET_FAILED",                            /* 0x85 */
+        "PNPB_R_EVENTS_NOT_PENDING",                    /* 0x86 */
+        "PNPB_R_SYSTEM_NOT_DOCKED",                     /* 0x87 */
+        "PNPB_R_NO_ISA_PNP_CARDS",                      /* 0x88 */
+        "PNPB_R_UNABLE_TO_DETERMINE_DOCK_CAPABILITIES", /* 0x89 */
+        "PNPB_R_CONFIG_CHANGE_FAILED_NO_BATTERY",       /* 0x8a */
+        "PNPB_R_CONFIG_CHANGE_FAILED_RESOURCE_CONFLICT",/* 0x8b */
+        "PNPB_R_BUFFER_TOO_SMALL",                      /* 0x8c */
+        "PNPB_R_USE_ESCD_SUPPORT",                      /* 0x8d */
+        "PNPB_R_MESSAGE_NOT_SUPPORTED",                 /* 0x8e */
+        "PNPB_R_HARDWARE_ERROR"                         /* 0x8f */
     };
 
     /* Check if PnP is disabled in config table */
@@ -385,26 +414,26 @@ static int isolateCardsWithReadPort(unsigned short readPort)
         }
     }
 
-    IOLog("PnP: Initializing Plug and Play support\n");
+    IOLog("PnP: Plug and Play support enabled\n");
 
     /* Try to initialize PnP BIOS */
     pnpBios = [[PnPBios alloc] init];
     if (pnpBios == nil) {
-        IOLog("PnP: Plug and Play support not found\n");
-
-        /* No BIOS support - fall back to manual enumeration */
-        result = [self initializeNoBIOS];
-        if (result == NO) {
-            return NO;
-        }
-    } else {      
+        /*
+         * No BIOS support - fall back to manual enumeration.  There is
+         * nothing to test here: initializeNoBIOS returns (maxPnPCard != 0),
+         * so the common test below decides, once the read port has been
+         * logged as the reference does.
+         */
+        [self initializeNoBIOS];
+    } else {
         /* BIOS available - get PnP configuration */
         biosResult = [pnpBios getPnPConfig:&configData];
 
         if (biosResult != 0) {
             /* BIOS call failed */
             if ((biosResult >= 0x81) && (biosResult <= 0x8f)) {
-                errorStr = biosErrors[biosResult - 0x81 + 1];
+                errorStr = errorstrings[biosResult - 0x80];
             }
             else {
                 errorStr = "unknown error code";
@@ -414,16 +443,39 @@ static int isolateCardsWithReadPort(unsigned short readPort)
             [pnpBios free];
             pnpBios = nil;
 
-            /* Fall back to manual enumeration (which does its own setup and returns) */
-            result = [self initializeNoBIOS];
-            return result;
+            /*
+             * Deliberate divergence from the reference, which logs, frees the
+             * PnPBios and returns NO here (0x2716).  That branch was dead code
+             * in the shipped module: __bios32PnP recovers its register-block
+             * pointer from save_edx, __PnPEntry clobbers that slot, so the
+             * status write-back never landed and _call_bios always returned
+             * the zero -setupSegments left in bb->eax.  getPnPConfig could not
+             * fail, so giving up here cost nothing.
+             *
+             * With the save_bb fix in bios.c the real status arrives, and a
+             * BIOS that does not implement function 0x40 answers 0x82
+             * PNPB_R_FUNCTION_NOT_SUPPORTED - SeaBIOS does exactly this.  That
+             * is a perfectly ordinary machine, not a broken one, and the ISA
+             * PnP path is precisely what it needs.
+             *
+             * Fall through to isolation and then continue down the common path
+             * below: initializeNoBIOS only isolates, setting maxPnPCard and
+             * pnpReadPort.  Returning here instead would skip setReadPort:,
+             * the device table and the enumeration loop, so any cards it found
+             * would be isolated and then silently discarded.
+             *
+             * Its return value is (maxPnPCard != 0), which the common test
+             * below already makes, so it is not checked here -- that keeps the
+             * read port logged on this path exactly as the reference logs it.
+             */
+            [self initializeNoBIOS];
         }
-
-        /* BIOS call succeeded - extract configuration from result */
-        maxPnPCard = *((unsigned char *)configData + 1);
-        pnpReadPort = *((unsigned short *)configData + 1);
-
-        IOLog("PnP: Plug and Play support enabled\n");
+        else {
+            /* BIOS call succeeded - extract configuration from result */
+            maxPnPCard = *((unsigned char *)configData + 1);
+            pnpReadPort = *((unsigned short *)configData + 1);
+            IOLog("PnP: Plug and Play BIOS present\n");
+        }
     }
 
     /* Log configuration */

@@ -1,0 +1,35 @@
+{
+  "schema_version": "profile-v1",
+  "name": "SCSITape ppc loader bundle",
+  "architecture": "ppc",
+  "endianness": "big",
+  "reference": {
+    "path": "${BINRECON_REFERENCE}"
+  },
+  "analyzers": {
+    "ida": {
+      "enabled": true,
+      "executable": "C:/Program Files/IDA Professional 9.2/idat.exe",
+      "timeout_seconds": 900,
+      "version": "9.2"
+    },
+    "ghidra": {
+      "enabled": false,
+      "executable": "D:/ghidra/support/analyzeHeadless.bat",
+      "timeout_seconds": 900,
+      "version": "12.1"
+    },
+    "angr": {
+      "enabled": false,
+      "executable": ".venv-binrecon/Scripts/python.exe",
+      "timeout_seconds": 900,
+      "version": "9.3.0"
+    }
+  },
+  "comparison": {
+    "acceptance": "normalized-functions",
+    "ignore_metadata": [],
+    "entry_points": []
+  },
+  "output_dir": "../out/scsitape-bundle-ppc"
+}

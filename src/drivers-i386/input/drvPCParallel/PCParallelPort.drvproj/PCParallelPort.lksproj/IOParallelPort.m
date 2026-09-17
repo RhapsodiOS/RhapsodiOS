@@ -31,17 +31,33 @@
 #import "IOParallelPortKern.h"
 #import <driverkit/i386/ioPorts.h>
 #import <driverkit/IODeviceDescription.h>
+#import <driverkit/i386/IOEISADeviceDescription.h>
+#import <driverkit/IOConfigTable.h>
 #import <driverkit/interruptMsg.h>
 #import <driverkit/align.h>
 #import <driverkit/devsw.h>
 #import <driverkit/generalFuncs.h>
-#import <objc/objc.h>
-#import <objc/objc-runtime.h>
+#import <machkit/NXLock.h>
+#import <sys/buf.h>
+#import <sys/systm.h>
 #import <string.h>
-#import <stdio.h>
 
-// Global pointer to parallel port software control structure
-static void *pp_softc = NULL;
+/*
+ * Parallel-port specific returns.  The reference driver returns two codes that
+ * <driverkit/return.h> has no name for: -737 (return.h spends that number on
+ * IO_R_MSG_TOO_LARGE) and -738.  Every other code it returns is a stock
+ * driverkit one - IO_R_IO (-714), IO_R_BUSY (-725), IO_R_TIMEOUT (-726).
+ * Note that the reference never returns IO_R_OFFLINE (-727) or
+ * IO_R_NOT_READY (-728); do not reach for those names here.
+ */
+#ifndef IO_R_NO_PAPER
+#define IO_R_NO_PAPER (-737)
+#endif
+#ifndef IO_R_PRINTER_OFFLINE
+#define IO_R_PRINTER_OFFLINE (-738)
+#endif
+/* Kernel sprintf lives in <sys/systm.h>; do not import <stdio.h> (conflicts). */
+extern int sprintf(char *str, const char *fmt, ...);
 
 @implementation IOParallelPort
 
@@ -69,233 +85,212 @@ static void *pp_softc = NULL;
 
 - initFromDeviceDescription:(IODeviceDescription *)deviceDescription
 {
+    IOEISADeviceDescription *eisaDesc = (IOEISADeviceDescription *)deviceDescription;
     id configTable;
-    const char *deviceName;
     const char *minorDevStr;
     const char *driverName;
-    const char *location;
-    unsigned int numRanges;
     IORange *portRanges;
-    unsigned int baseAddr;
-    unsigned int rangeSize;
+    BOOL validRange;
     int majorDev;
     char nameBuffer[12];
-    IOReturn result;
 
     // Call superclass initialization
     if ([super initFromDeviceDescription:deviceDescription] == nil)
-        return nil;
+        return [self free];
 
     // Get config table from device description
     configTable = [deviceDescription configTable];
 
-    // Get device name (like "ParallelPort0")
-    deviceName = [deviceDescription name];
-
-    // Extract minor device number (last character)
-    minorDevStr = deviceName + strlen(deviceName) - 1;
+    // Get minor device number from the config table
+    minorDevStr = [configTable valueForStringKey:"Minor Device Number"];
 
     // Check if minor device number is "0"
     if (strcmp(minorDevStr, "0") != 0) {
         IOLog("Nonzero Minor Device Number - only one dev this version\n");
-        [self free];
-        return nil;
+        return [self free];
     }
 
     // Get port ranges
-    numRanges = [deviceDescription numPortRanges];
-    if (numRanges >= 2) {
+    if ([eisaDesc numPortRanges] > 1) {
         IOLog("IOParallelPort not allocated: too many register ranges\n");
-        [self free];
-        return nil;
+        return [self free];
     }
 
-    // Get the port range list
-    portRanges = [deviceDescription portRangeList];
-    baseAddr = portRanges[0].start;
-    rangeSize = portRanges[0].size;
-
-    // Validate port address and size
-    if ((baseAddr == 0x378 && rangeSize == 8) ||
-        (baseAddr == 0x278 && rangeSize == 8) ||
-        (baseAddr == 0x3bc && rangeSize == 4)) {
-        // Valid port configuration
-
-        // Set up register addresses
-        dataReg = baseAddr;
-        statusReg = baseAddr + 1;
-        controlReg = baseAddr + 2;
-
-        // Probe for controller
-        if ([self probeForController] != IO_R_SUCCESS) {
-            IOLog("IOParallelPort: parallel port at 0x%x not found\n", baseAddr);
-            [configTable freeString:(char *)deviceName];
-            [self free];
-            return nil;
-        }
-
-        // Add to character device switch
-        majorDev = IOAddToCdevsw((void *)ppopen, (void *)ppclose, (void *)enodev,
-                                 (void *)ppwrite, (void *)ppioctl, (void *)enodev);
-        if (majorDev < 0) {
-            IOLog("IOParallelPort: could not add to device switch\n");
-            [self free];
-            return nil;
-        }
-
-        majorDevNum = majorDev;
-
-        // Set device name (e.g., "pp0")
-        sprintf(nameBuffer, "%s%s", "pp", minorDevStr);
-        [self setName:nameBuffer];
-
-        // Get and set driver name
-        driverName = [configTable valueForStringKey:"Driver Name"];
-        [self setDriverName:driverName];
-        [configTable freeString:(char *)driverName];
-
-        // Set location
-        location = [configTable valueForStringKey:"Location"];
-        [self setLocation:location];
-        [configTable freeString:(char *)location];
-
-        // Initialize device parameters
-        busyMaxRetries = 10;
-        busyRetryInterval = 1000;
-        autofeedOutput = NO;
-        waitForever = NO;
-        initialized = NO;
-        blockSize = 0x200;     // 512 bytes
-        minPhys = 0x200;       // 512 bytes
-        inUse = NO;
-
-        // Set global software control pointer
-        pp_softc = (void *)self;
-
-        // Set I/O timeout
-        ioTimeout = 2000;
-
-        // Create condition lock for command queue
-        cmdBufLock = [objc_getClass("NXConditionLock") new];
-
-        // Initialize command queue (circular linked list)
-        cmdBufTail = (PPCommandBuffer *)&cmdBufHead;
-        cmdBufHead = (PPCommandBuffer *)&cmdBufHead;
-
-        threadID = 0;
-
-        // Allocate buffers
-        physbuf = IOMalloc(0x80);      // 128 bytes
-        cmdBuf = IOMalloc(0x2000);     // 8192 bytes
-        dataBuffer = IOMalloc(blockSize);
-
-        // Create interrupt port
-        result = [self attachInterruptPort];
-        if (result != IO_R_SUCCESS) {
-            IOLog("IOParallelPort: could not enable interrupts\n");
-            [self free];
-            return nil;
-        }
-
-        interruptPortHandle = [self interruptPort];
-
-        // Set interrupt message type
-        [self setInterruptMessage:0x54e];
-
-        // Enable all interrupts
-        result = [self enableAllInterrupts];
-        if (result != IO_R_SUCCESS) {
-            IOLog("IOParallelPort: could not enable interrupts\n");
-            [self free];
-            return nil;
-        }
-
-        // Register device
-        result = [self registerDevice];
-        if (result != IO_R_SUCCESS) {
-            IOLog("IOParallelPort: could not register device\n");
-            [self free];
-            return nil;
-        }
-
-        return self;
+    // Get the port range list and validate address and size
+    portRanges = [eisaDesc portRangeList];
+    validRange = NO;
+    switch (portRanges[0].start) {
+    case 0x378:
+    case 0x278:
+        validRange = (portRanges[0].size == 8);
+        break;
+    case 0x3bc:
+        validRange = (portRanges[0].size == 4);
+        break;
     }
 
-    // Invalid port range
-    IOLog("IOParallelPort not allocated: register range is invalid\n");
-    [self free];
-    return nil;
+    if (!validRange) {
+        IOLog("IOParallelPort not allocated: register range is invalid\n");
+        return [self free];
+    }
+
+    // Set up register addresses
+    dataRegister = (char *)portRanges[0].start;
+    statusRegister = (char *)(portRanges[0].start + 1);
+    controlRegister = (char *)(portRanges[0].start + 2);
+
+    // Probe for controller
+    if (![self probeForController]) {
+        IOLog("IOParallelPort not allocated: controller not detected at address 0x%x\n",
+              (unsigned short)portRanges[0].start);
+        [configTable freeString:minorDevStr];
+        return [self free];
+    }
+
+    // Add to character device switch (11 IOSwitchFunc args)
+    majorDev = IOAddToCdevsw((void *)ppopen, (void *)ppclose, (void *)enodev,
+                             (void *)ppwrite, (void *)ppioctl, (void *)enodev,
+                             (void *)enodev, (void *)seltrue, (void *)enodev,
+                             (void *)enodev, (void *)enodev);
+    if (majorDev < 0) {
+        IOLog("IOParallelPort: could not add to device switch\n");
+        return [self free];
+    }
+
+    majorDevNum = majorDev;
+
+    // Set device name (e.g., "pp0")
+    sprintf(nameBuffer, "%s%s", "pp", minorDevStr);
+    [self setName:nameBuffer];
+
+    // Get and set driver name
+    driverName = [configTable valueForStringKey:"Driver Name"];
+    [self setDeviceKind:driverName];
+    [configTable freeString:minorDevStr];
+    [configTable freeString:driverName];
+
+    [self setMinorDevNum:0];
+
+    // Initialize device parameters
+    busyMaxRetries = 10;
+    busyRetryInterval = 1000;
+    autofeedOutput = 0;
+    IOThreadDelay = 1;
+    intHandlerDelay = 1;
+    minPhys = 0x200;       // 512 bytes
+    blockSize = 0x200;     // 512 bytes
+    writing = NO;
+
+    // Publish this instance for the character device entry points
+    pp_softc[0].device = self;
+
+    // Set I/O timeout
+    ioTimeout = 2000;
+
+    // Create condition lock for the command queue and empty the queue
+    ioQueueLock = [NXConditionLock new];
+    ioQueue.prev = (struct queue_entry *)&ioQueue;
+    ioQueue.next = (struct queue_entry *)&ioQueue;
+
+    ioTaskThread = NULL;
+
+    // Allocate buffers
+    physbuf = (struct buf *)IOMalloc(0x80);            // 128 bytes
+    interruptMessage = (msg_header_t *)IOMalloc(0x2000);  // 8192 bytes
+    dataBuffer = IOMalloc(minPhys);
+
+    // Create the buffer-size lock.  IODirectDevice's initFromDeviceDescription:
+    // has already attached the interrupt port, which ran -attachInterruptPort
+    // and forked the I/O thread.
+    sizeLock = [[NXLock alloc] init];
+    [sizeLock unlock];
+
+    // Enable all interrupts
+    if ([self enableAllInterrupts] != IO_R_SUCCESS) {
+        IOLog("IOParallelPort: could not enable interrupts\n");
+        return [self free];
+    }
+
+    // Register device.  -registerDevice returns nil on failure, not an IOReturn.
+    if ([self registerDevice] == nil) {
+        IOLog("IOParallelPort: could not register device\n");
+        return [self free];
+    }
+
+    return self;
 }
 
-- (IOReturn)probeForController
+- (BOOL)probeForController
 {
     unsigned char controlValue;
     unsigned char readValue;
 
-    // Read current control register value
-    controlValue = inb(controlReg);
+    // Read the current control register value.  The reference discards it and
+    // builds each test pattern bit by bit; only bits 0-5 are defined.
+    (void)inb(PP_PORT(controlRegister));
 
-    // Set control register to test pattern 0x1e
-    // (SELECT=0x08, INIT=0x04, AUTOFEED=0x02, preserve other bits)
-    controlValue = (controlValue & 0xDE) | 0x1E;
-    outb(controlReg, controlValue);
+    // First test pattern 0x1e:
+    // STROBE=0, AUTOFEED=1, INIT=1, SELECT=1, IRQ_EN=1, DIR=0
+    controlValue = PP_CONTROL_AUTOFEED | PP_CONTROL_INIT |
+                   PP_CONTROL_SELECT | PP_CONTROL_IRQ_EN;
+    outb(PP_PORT(controlRegister), controlValue);
 
     // Read back and verify
-    readValue = inb(controlReg);
+    readValue = inb(PP_PORT(controlRegister));
     if ((readValue & 0x1F) != 0x1E) {
-        return IO_R_UNSUPPORTED;
+        return NO;
     }
 
-    // Set control register to different test pattern 0x04
-    // (only INIT set, SELECT and AUTOFEED cleared)
-    controlValue = (controlValue & 0xE5) | 0x04;
-    outb(controlReg, controlValue);
+    // Second test pattern 0x04: only INIT set
+    controlValue = PP_CONTROL_INIT;
+    outb(PP_PORT(controlRegister), controlValue);
 
     // Read back and verify
-    readValue = inb(controlReg);
+    readValue = inb(PP_PORT(controlRegister));
     if ((readValue & 0x15) != 0x04) {
-        return IO_R_UNSUPPORTED;
+        return NO;
     }
 
     // Controller found and verified
-    return IO_R_SUCCESS;
+    return YES;
 }
 
 - (IOReturn)initDevice
 {
     unsigned char controlValue;
     unsigned char statusValue;
-    BOOL isReady = NO;
+    BOOL isReady;
 
     // Setup control register value:
     // - Set SELECT (0x08) and INIT (0x04) bits
     // - Set AUTOFEED (0x02) if enabled
     controlValue = PP_CONTROL_SELECT | PP_CONTROL_INIT;
-    if (autofeedOutput) {
+    if (autofeedOutput & 1) {
         controlValue |= PP_CONTROL_AUTOFEED;
     }
 
     // Write initial control value
-    outb(controlReg, controlValue);
+    outb(PP_PORT(controlRegister), controlValue);
 
     // Read status register (initial check)
-    statusValue = inb(statusReg);
+    statusValue = inb(PP_PORT(statusRegister));
 
     // Wait for device to be ready (non-blocking check)
     [self _waitForDevice:NO isReady:&isReady];
 
     // Set control register defaults with IRQ enabled
-    controlRegDefaults = controlValue | PP_CONTROL_IRQ_EN;
+    controlValue |= PP_CONTROL_IRQ_EN;
+    controlRegisterDefaults = controlValue;
 
     // Write control value with IRQ enabled
-    outb(controlReg, controlRegDefaults);
+    outb(PP_PORT(controlRegister), controlValue);
 
     // Read status register again
-    statusValue = inb(statusReg);
+    statusValue = inb(PP_PORT(statusRegister));
 
     // Check ERROR bit (bit 3, 0x08)
     if ((statusValue & PP_STATUS_ERROR) == 0) {
-        // Error line is low (printer has no error condition)
+        // Error line is low (printer has an error condition)
         statusWord |= PP_SW_NO_ERROR;
         statusWord &= ~PP_SW_INITIALIZED;
 
@@ -308,7 +303,7 @@ static void *pp_softc = NULL;
         // Check for offline/not selected (bit 4, 0x10)
         if ((statusValue & PP_STATUS_SELECT) == 0) {
             statusWord |= PP_SW_OFFLINE;
-            return IO_R_OFFLINE;  // -738
+            return IO_R_PRINTER_OFFLINE;  // -738
         }
 
         // Check for busy (bit 7, 0x80)
@@ -319,7 +314,7 @@ static void *pp_softc = NULL;
 
         // If device indicated ready during wait
         if (isReady) {
-            return IO_R_TIMEOUT;  // -714
+            return IO_R_IO;  // -714
         }
 
         // Device not ready
@@ -328,7 +323,6 @@ static void *pp_softc = NULL;
         // Error line is high (normal idle state)
         if (isReady) {
             statusWord |= PP_SW_INITIALIZED;
-            initialized = YES;
             return IO_R_SUCCESS;
         }
 
@@ -337,119 +331,108 @@ static void *pp_softc = NULL;
     }
 
     // Device not ready error
-    return IO_R_NOT_READY;  // -726
+    return IO_R_TIMEOUT;  // -726
 }
 
-- (void)printerInit
+- (IOReturn)printerInit
 {
     unsigned char controlValue;
 
     // Get control register defaults and clear INIT bit (0x04)
-    controlValue = controlRegDefaults & ~PP_CONTROL_INIT;
+    controlValue = controlRegisterDefaults & ~PP_CONTROL_INIT;
 
     // Write to control register with INIT low
-    outb(controlReg, controlValue);
+    outb(PP_PORT(controlRegister), controlValue);
 
     // Wait 10 milliseconds
     IOSleep(10);
 
     // Set INIT bit high (restore normal operation)
-    outb(controlReg, controlValue | PP_CONTROL_INIT);
+    controlValue |= PP_CONTROL_INIT;
+    outb(PP_PORT(controlRegister), controlValue);
+
+    return IO_R_SUCCESS;
 }
 
-- (void)free
+- free
 {
     PPCommandBuffer *cmdBuffer;
 
-    // If I/O thread is running, send shutdown command
-    if (threadID != 0) {
-        cmdBuffer = (PPCommandBuffer *)[self cmdBufAlloc];
-        if (cmdBuffer != NULL) {
-            cmdBuffer->commandType = 1;  // Shutdown command
-            [self cmdBufExec:cmdBuffer];
-            [self cmdBufFree:cmdBuffer];
-        }
+    // If the I/O thread is running, send it the shutdown command
+    if (ioTaskThread != NULL) {
+        cmdBuffer = [self cmdBufAlloc];
+        cmdBuffer->commandType = 1;  // Shutdown command
+        [self cmdBufExec:cmdBuffer];
+        [self cmdBufFree:cmdBuffer];
     }
 
     // Free physical buffer if allocated (128 bytes)
     if (physbuf != NULL) {
         IOFree(physbuf, 0x80);
-        physbuf = NULL;
     }
 
-    // Free command buffer if allocated (8192 bytes)
-    if (cmdBuf != NULL) {
-        IOFree(cmdBuf, 0x2000);
-        cmdBuf = NULL;
+    // Free the interrupt receive buffer if allocated (8192 bytes)
+    if (interruptMessage != NULL) {
+        IOFree(interruptMessage, 0x2000);
     }
 
     // Free data buffer if allocated
     if (dataBuffer != NULL) {
-        IOFree(dataBuffer, blockSize);
-        dataBuffer = NULL;
+        IOFree(dataBuffer, minPhys);
     }
 
-    // Free interrupt port handle if exists
-    if (interruptPortHandle != NULL) {
-        [interruptPortHandle free];
-        interruptPortHandle = NULL;
-    }
-
-    // Free command buffer lock
-    if (cmdBufLock != nil) {
-        [cmdBufLock free];
-        cmdBufLock = nil;
-    }
+    [sizeLock free];
+    [ioQueueLock free];
 
     // Call superclass free
-    [super free];
+    return [super free];
 }
 
 //
 // Register access
 //
 
-- (unsigned int)dataRegister
+- (const char *)dataRegister
 {
-    return dataReg;
+    return dataRegister;
 }
 
-- setDataRegister:(unsigned int)reg
+- setDataRegister:(const char *)reg
 {
-    dataReg = reg;
+    dataRegister = (char *)reg;
     return self;
 }
 
-- (unsigned int)statusRegister
+- (const char *)statusRegister
 {
-    return statusReg;
+    return statusRegister;
 }
 
-- setStatusRegister:(unsigned int)reg
+- setStatusRegister:(const char *)reg
 {
-    statusReg = reg;
+    statusRegister = (char *)reg;
     return self;
 }
 
-- (unsigned int)controlRegister
+- (const char *)controlRegister
 {
-    return controlReg;
+    return controlRegister;
 }
 
-- setControlRegister:(unsigned int)reg
+- setControlRegister:(const char *)reg
 {
-    controlReg = reg;
+    controlRegister = (char *)reg;
     return self;
 }
 
-- (unsigned int)configRegister
+- (const char *)configRegister
 {
-    return configReg;
+    return configRegister;
 }
 
-- setConfigRegister:(unsigned int)reg
+- setConfigRegister:(const char *)reg
 {
-    configReg = reg;
+    configRegister = (char *)reg;
     return self;
 }
 
@@ -460,26 +443,26 @@ static void *pp_softc = NULL;
 - (unsigned char)controlRegisterContents
 {
     // Read the current value from the hardware control register
-    return inb(controlReg);
+    return inb(PP_PORT(controlRegister));
 }
 
 - (unsigned char)controlRegisterDefaults
 {
-    return controlRegDefaults;
+    return controlRegisterDefaults;
 }
 
 - (unsigned char)statusRegisterContents
 {
     // Read the current value from the hardware status register
-    return inb(statusReg);
+    return inb(PP_PORT(statusRegister));
 }
 
-- (unsigned short)statusWord
+- (unsigned int)statusWord
 {
     return statusWord;
 }
 
-- setStatusWord:(unsigned short)word
+- setStatusWord:(unsigned int)word
 {
     statusWord = word;
     return self;
@@ -499,13 +482,13 @@ static void *pp_softc = NULL;
 {
     PPCommandBuffer *cmdBuffer;
     IOReturn returnCode;
-    unsigned short status;
+    unsigned int status;
 
-    // Mark device as in use
-    inUse = YES;
+    // Mark a write as being in progress; the interrupt handler gates on this
+    writing = YES;
 
     // Allocate command buffer
-    cmdBuffer = (PPCommandBuffer *)[self cmdBufAlloc];
+    cmdBuffer = [self cmdBufAlloc];
 
     // Set command type to 0 (write operation)
     cmdBuffer->commandType = 0;
@@ -516,59 +499,61 @@ static void *pp_softc = NULL;
     // Execute the command
     [self cmdBufExec:cmdBuffer];
 
+    // Success unless an arm below propagates the command's return code
+    returnCode = IO_R_SUCCESS;
+
     // Get current status word and clear bits 1-5 (0x3e)
-    status = [self statusWord];
-    status = status & 0xFFC1;  // Keep only bits 0, 6, 7, and 8+
+    status = [self statusWord] & ~0x3E;
 
-    // Set status bits based on return code
-    returnCode = cmdBuffer->returnCode;
-
-    switch (returnCode) {
-    case IO_R_NOT_READY:  // -726 (0xfffffd2a = -0x2d6)
+    // Set status bits based on the command's return code.  The arms are
+    // selected by value: our IO_R_* comments state the expansion.
+    switch (cmdBuffer->returnCode) {
+    case IO_R_TIMEOUT:  // -726
         status |= PP_SW_NOT_READY;  // 0x10
+        [self setStatusWord:status];
         break;
 
-    case IO_R_OFFLINE:  // -738 (0xfffffd1e = -0x2e2)
+    case IO_R_PRINTER_OFFLINE:  // -738
         status |= PP_SW_OFFLINE;  // 0x08
+        [self setStatusWord:status];
         break;
 
-    case IO_R_NO_PAPER:  // -737 (0xfffffd1f = -0x2e1)
+    case IO_R_NO_PAPER:  // -737
         status |= PP_SW_PAPER_OUT;  // 0x04
+        [self setStatusWord:status];
         break;
 
-    case IO_R_TIMEOUT:  // -714 (0xfffffd36 = -0x2ca)
-        status |= PP_SW_NO_ERROR;  // 0x20
-        returnCode = cmdBuffer->returnCode;  // Keep original return code
-        break;
-
-    case IO_R_BUSY:  // -725 (0xfffffd2b = -0x2d5)
+    case IO_R_BUSY:  // -725
         status |= PP_SW_BUSY;  // 0x02
+        [self setStatusWord:status];
         break;
 
     case IO_R_SUCCESS:  // 0
-        // No additional status bits
+        [self setStatusWord:status];
+        break;
+
+    case IO_R_IO:  // -714
+        status |= PP_SW_NO_ERROR;  // 0x20
+        [self setStatusWord:status];
+        returnCode = cmdBuffer->returnCode;
         break;
 
     default:
-        // For unknown errors, keep return code
+        // For unknown errors, keep the return code and leave the status word
         returnCode = cmdBuffer->returnCode;
         break;
     }
 
-    // Update status word
-    [self setStatusWord:status];
-
     // If error flag is set, add NO_ERROR bit
     if (cmdBuffer->errorFlag != 0) {
-        status = [self statusWord];
-        [self setStatusWord:status | PP_SW_NO_ERROR];
+        [self setStatusWord:[self statusWord] | PP_SW_NO_ERROR];
     }
 
     // Free command buffer
     [self cmdBufFree:cmdBuffer];
 
-    // Mark device as not in use
-    inUse = NO;
+    // The write is over
+    writing = NO;
 
     return returnCode;
 }
@@ -605,12 +590,12 @@ static void *pp_softc = NULL;
     return self;
 }
 
-- (BOOL)autofeedOutput
+- (int)autofeedOutput
 {
     return autofeedOutput;
 }
 
-- setAutofeedOutput:(BOOL)flag
+- setAutofeedOutput:(int)flag
 {
     autofeedOutput = flag;
     return self;
@@ -653,22 +638,20 @@ static void *pp_softc = NULL;
 
 - setBlockSize:(unsigned int)size
 {
-    // Only reallocate if size is different from current unlockSize
-    if (unlockSize != size) {
+    // Only reallocate if the size actually changes
+    if (blockSize != size) {
         // Lock for thread safety
         [self lockSize];
 
         // Free old data buffer
-        if (dataBuffer != NULL) {
-            IOFree(dataBuffer, blockSize);
-        }
+        IOFree(dataBuffer, minPhys);
 
         // Set new sizes
+        minPhys = size;
         blockSize = size;
-        unlockSize = size;
 
         // Allocate new buffer
-        dataBuffer = IOMalloc(blockSize);
+        dataBuffer = IOMalloc(minPhys);
 
         // Unlock
         [self unlockSize];
@@ -679,15 +662,13 @@ static void *pp_softc = NULL;
 
 - lockSize
 {
-    // Lock the interrupt port handle and return self
-    [interruptPortHandle lock];
+    [sizeLock lock];
     return self;
 }
 
 - unlockSize
 {
-    // Unlock the interrupt port handle and return self
-    [interruptPortHandle unlock];
+    [sizeLock unlock];
     return self;
 }
 
@@ -698,22 +679,20 @@ static void *pp_softc = NULL;
 
 - setMinPhys:(unsigned int)size
 {
-    // Only reallocate if size is different from current blockSize
-    if (blockSize != size) {
+    // Only reallocate if the size actually changes
+    if (minPhys != size) {
         // Lock for thread safety
         [self lockSize];
 
         // Free old data buffer
-        if (dataBuffer != NULL) {
-            IOFree(dataBuffer, blockSize);
-        }
+        IOFree(dataBuffer, minPhys);
 
-        // Set new sizes (minPhys is stored in blockSize ivar at offset 0x158)
+        // Set new sizes
+        minPhys = size;
         blockSize = size;
-        unlockSize = size;
 
         // Allocate new buffer
-        dataBuffer = IOMalloc(blockSize);
+        dataBuffer = IOMalloc(minPhys);
 
         // Unlock
         [self unlockSize];
@@ -727,12 +706,12 @@ static void *pp_softc = NULL;
     return dataBuffer;
 }
 
-- (void *)physbuf
+- (struct buf *)physbuf
 {
     return physbuf;
 }
 
-- setPhysbuf:(void *)buf
+- setPhysbuf:(struct buf *)buf
 {
     physbuf = buf;
     return self;
@@ -764,12 +743,12 @@ static void *pp_softc = NULL;
     return self;
 }
 
-- (unsigned int)ioTimeout
+- (int)ioTimeout
 {
     return ioTimeout;
 }
 
-- setIoTimeout:(unsigned int)timeout
+- setIoTimeout:(int)timeout
 {
     ioTimeout = timeout;
     return self;
@@ -788,12 +767,12 @@ static void *pp_softc = NULL;
 
 - (unsigned int)IOThreadDelay
 {
-    return ioThreadDelay;
+    return IOThreadDelay;
 }
 
 - setIOThreadDelay:(unsigned int)delay
 {
-    ioThreadDelay = delay;
+    IOThreadDelay = delay;
     return self;
 }
 
@@ -810,31 +789,26 @@ static void *pp_softc = NULL;
 
     if (result == IO_R_SUCCESS) {
         // Fork a thread to handle I/O operations
-        threadID = IOForkThread((void (*)(id))IOParallelPortThread, self);
+        ioTaskThread = IOForkThread((IOThreadFunc)IOParallelPortThread, self);
     }
 
     return result;
 }
 
-- (unsigned int)interruptMessage
+- (msg_header_t *)interruptMessage
 {
     return interruptMessage;
 }
 
-- setInterruptMessage:(unsigned int)msg
+- setInterruptMessage:(msg_header_t *)msg
 {
     interruptMessage = msg;
     return self;
 }
 
-- (void *)interruptPort
-{
-    return interruptPortHandle;
-}
-
 - (BOOL)getHandler:(IOInterruptHandler *)handler
             level:(unsigned int *)ipl
-         argument:(void **)arg
+         argument:(unsigned int *)arg
      forInterrupt:(unsigned int)localInterrupt
 {
     // Set the interrupt handler function
@@ -843,8 +817,8 @@ static void *pp_softc = NULL;
     // Set interrupt priority level to 3
     *ipl = 3;
 
-    // Set the argument to physbufArg (contains physbuf pointer value)
-    *arg = (void *)physbufArg;
+    // The handler's third argument is the minor device number
+    *arg = minorDevNum;
 
     return YES;
 }
@@ -853,35 +827,44 @@ static void *pp_softc = NULL;
 // Device waiting
 //
 
-- (void)_waitForDevice:(BOOL)waitForever isReady:(BOOL *)isReady
+- (BOOL)_waitForDevice:(BOOL)wait isReady:(BOOL *)isReady
 {
-    // TODO: Implement device waiting logic
-    // - If waitForever is YES, wait indefinitely for device to become ready
-    // - If waitForever is NO, check device status and return immediately
-    // - Set *isReady to YES if device is ready, NO otherwise
-    // - Read status register and check for ready conditions
+    unsigned int tries = 0;
+    unsigned char status;
+    BOOL slept = NO;
 
-    if (isReady != NULL) {
-        *isReady = NO;  // Default to not ready
+    // Poll the status register for (BUSY|PAPER_OUT|SELECT|ERROR) == ready,
+    // bounded by busyMaxRetries, or forever when the caller says so.
+    while (busyMaxRetries > tries || wait == YES) {
+        status = inb(PP_PORT(statusRegister));
+        if ((status & 0xB8) == 0x98) {
+            *isReady = YES;
+            return slept;
+        }
+
+        IOSleep(busyRetryInterval);
+        slept = YES;
+        tries++;
     }
+
+    *isReady = NO;
+    return slept;
 }
 
 //
 // Command buffer operations
 //
 
-- (void *)cmdBufAlloc
+- (PPCommandBuffer *)cmdBufAlloc
 {
     PPCommandBuffer *cmdBuffer;
     id conditionLock;
 
     // Allocate command buffer structure (0x1c = 28 bytes)
     cmdBuffer = (PPCommandBuffer *)IOMalloc(sizeof(PPCommandBuffer));
-    if (cmdBuffer == NULL)
-        return NULL;
 
     // Create an NXConditionLock
-    conditionLock = [objc_getClass("NXConditionLock") new];
+    conditionLock = [NXConditionLock new];
     cmdBuffer->conditionLock = conditionLock;
 
     // Lock and then unlock with condition 0
@@ -891,59 +874,52 @@ static void *pp_softc = NULL;
     return cmdBuffer;
 }
 
-- (void)cmdBufFree:(void *)buf
+- (void)cmdBufFree:(PPCommandBuffer *)cmdBuffer
 {
-    PPCommandBuffer *cmdBuffer = (PPCommandBuffer *)buf;
-
     // Free the condition lock
     [cmdBuffer->conditionLock free];
 
-    // Free the command buffer structure (0x1c = 28 bytes = sizeof(PPCommandBuffer))
-    IOFree(buf, 0x1c);
+    // Free the command buffer structure (0x1c = 28 bytes)
+    IOFree(cmdBuffer, 0x1c);
 }
 
-- (IOReturn)cmdBufExec:(void *)buf
+- (void)cmdBufExec:(PPCommandBuffer *)cmdBuffer
 {
-    PPCommandBuffer *cmdBuffer = (PPCommandBuffer *)buf;
     PPCommandBuffer *oldTail;
 
     // Lock the command queue
-    [cmdBufLock lock];
+    [ioQueueLock lock];
 
-    oldTail = cmdBufTail;
+    oldTail = (PPCommandBuffer *)ioQueue.prev;
 
-    // Check if queue is empty (tail points to head slot)
-    if ((PPCommandBuffer *)&cmdBufHead == oldTail) {
+    // Check if queue is empty (tail points to the queue head itself)
+    if ((struct queue_entry *)&ioQueue == ioQueue.prev) {
         // Queue is empty, this becomes the first element
-        cmdBufHead = cmdBuffer;
+        ioQueue.next = (struct queue_entry *)cmdBuffer;
     } else {
         // Queue has elements, append to tail
-        oldTail->next = cmdBuffer;
+        oldTail->link.next = (struct queue_entry *)cmdBuffer;
     }
 
     // Set up the new buffer's links
-    cmdBuffer->next = (PPCommandBuffer *)&cmdBufHead;  // Back reference to queue head
-    cmdBuffer->prev = oldTail;  // Previous element (or head slot if first)
+    cmdBuffer->link.next = (struct queue_entry *)&ioQueue;
+    cmdBuffer->link.prev = (struct queue_entry *)oldTail;
 
     // Update tail to point to new buffer
-    cmdBufTail = cmdBuffer;
+    ioQueue.prev = (struct queue_entry *)cmdBuffer;
 
     // Unlock the command queue with condition 1
-    [cmdBufLock unlockWith:1];
+    [ioQueueLock unlockWith:1];
 
     // Wait for command to complete (lockWhen:1 waits for completion signal)
     [cmdBuffer->conditionLock lockWhen:1];
 
     // Unlock the command buffer
     [cmdBuffer->conditionLock unlock];
-
-    return IO_R_SUCCESS;
 }
 
-- (void)cmdBufComplete:(void *)buf
+- (void)cmdBufComplete:(PPCommandBuffer *)cmdBuffer
 {
-    PPCommandBuffer *cmdBuffer = (PPCommandBuffer *)buf;
-
     // Lock the command buffer's condition lock
     [cmdBuffer->conditionLock lock];
 
@@ -954,39 +930,39 @@ static void *pp_softc = NULL;
 - (void *)waitForCmdBuf
 {
     PPCommandBuffer *cmdBuffer;
-    PPCommandBuffer *prevBuffer;
-    PPCommandBuffer *nextBuffer;
+    struct queue_entry *prevBuffer;
+    struct queue_entry *nextBuffer;
 
     // Wait for a command buffer to be available (lockWhen:1)
-    [cmdBufLock lockWhen:1];
+    [ioQueueLock lockWhen:1];
 
     // Get the head of the command queue
-    cmdBuffer = cmdBufHead;
+    cmdBuffer = (PPCommandBuffer *)ioQueue.next;
 
     // Get previous and next pointers
-    prevBuffer = cmdBuffer->prev;
-    nextBuffer = cmdBuffer->next;
+    nextBuffer = cmdBuffer->link.next;
+    prevBuffer = cmdBuffer->link.prev;
 
     // Update the queue pointers to remove this buffer
-    if ((PPCommandBuffer *)&cmdBufHead == prevBuffer) {
-        // This was first in queue, update tail
-        cmdBufTail = nextBuffer;
-    } else {
-        // Update previous buffer's next pointer
-        prevBuffer->next = nextBuffer;
-    }
-
-    if ((PPCommandBuffer *)&cmdBufHead == nextBuffer) {
-        // This was last in queue, update head
-        cmdBufHead = prevBuffer;
+    if ((struct queue_entry *)&ioQueue == nextBuffer) {
+        // This was last in queue, update tail
+        ioQueue.prev = prevBuffer;
     } else {
         // Update next buffer's prev pointer
-        nextBuffer->prev = prevBuffer;
+        ((PPCommandBuffer *)nextBuffer)->link.prev = prevBuffer;
     }
 
-    // Unlock with condition based on whether queue is now empty
-    // Condition 1 if queue not empty, 0 if empty
-    [cmdBufLock unlockWith:(cmdBufHead != (PPCommandBuffer *)&cmdBufHead) ? 1 : 0];
+    if ((struct queue_entry *)&ioQueue == prevBuffer) {
+        // This was first in queue, update head
+        ioQueue.next = nextBuffer;
+    } else {
+        // Update previous buffer's next pointer
+        ((PPCommandBuffer *)prevBuffer)->link.next = nextBuffer;
+    }
+
+    // Unlock with condition based on whether the queue is now empty
+    [ioQueueLock unlockWith:
+        (ioQueue.next != (struct queue_entry *)&ioQueue) ? 1 : 0];
 
     return cmdBuffer;
 }
@@ -1029,6 +1005,11 @@ static void *pp_softc = NULL;
 // Message handling
 //
 
+//
+// The PP_MSG_* names describe the interrupt message code, not the return code
+// it maps to; the two do not line up.  The mapping below is the one the port
+// actually implements, so the values are what matter here, not the names.
+//
 - (IOReturn)msgTypeToIOReturn:(int)msgType
 {
     switch (msgType) {
@@ -1036,10 +1017,10 @@ static void *pp_softc = NULL;
         return IO_R_SUCCESS;  // 0
 
     case PP_MSG_NOT_READY:    // 0x232323
-        return IO_R_NOT_READY;  // -726 (0xfffffd2a)
+        return IO_R_TIMEOUT;  // -726 (0xfffffd2a)
 
     case PP_MSG_TIMEOUT:      // 0x232336
-        return IO_R_TIMEOUT;  // -714 (0xfffffd36)
+        return IO_R_IO;  // -714 (0xfffffd36)
 
     case PP_MSG_NO_PAPER:     // 0x232337
         return IO_R_NO_PAPER;  // -737 (0xfffffd1f)
@@ -1048,10 +1029,10 @@ static void *pp_softc = NULL;
         return IO_R_BUSY;  // -725 (0xfffffd2b)
 
     case PP_MSG_OFFLINE:      // 0x232339
-        return IO_R_OFFLINE;  // -738 (0xfffffd1e)
+        return IO_R_PRINTER_OFFLINE;  // -738 (0xfffffd1e)
 
     default:
-        return IO_R_TIMEOUT;  // -714 (0xfffffd36)
+        return IO_R_IO;  // -714 (0xfffffd36)
     }
 }
 

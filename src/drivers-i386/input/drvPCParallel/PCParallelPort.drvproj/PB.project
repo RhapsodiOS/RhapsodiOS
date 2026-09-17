@@ -1,0 +1,17 @@
+FILESTABLE = {
+    OTHER_SOURCES = (Makefile.preamble, Makefile, DriverInfo);
+    OTHER_RESOURCES = (Default.table);
+    STRINGS_FILES = (Localizable.strings);
+    TOOLS = (PCParallelPort.lksproj, PostLoad.tproj, PreLoad.tproj);
+    SUBPROJECTS = ();
+};
+LANGUAGE = English;
+LOCALIZABLE_FILES = {
+    Localizable.strings;
+};
+PROJECTVERSION = 2.6;
+INSTALLDIR = "$(NEXT_ROOT)/private/Drivers";
+PROJECTTYPE = Bundle;
+PROJECTNAME = ParallelPort;
+GENERATEMAIN = YES;
+BUNDLE_EXTENSION = config;

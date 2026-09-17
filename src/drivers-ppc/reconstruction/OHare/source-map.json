@@ -1,0 +1,33 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 92,
+      "reference_names": [
+        "-[AppleOHare initFromDeviceDescription:]"
+      ],
+      "size": 332,
+      "source_line": 45,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvOHare/ohare.m"
+    }
+  ],
+  "reference_sha256": "56FD92D69B400F8BAB5B4453BAAAF8B4E009C615DF27B026D9B31E8E826C794A",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 472,
+      "reference_names": [
+        "+[drvPPCOHareKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 20
+    },
+    {
+      "address": 492,
+      "reference_names": [
+        "+[drvPPCOHareVersion driverKitVersionFordrvPPCOHare]"
+      ],
+      "size": 16
+    }
+  ]
+}

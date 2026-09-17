@@ -28,7 +28,8 @@
 
 @interface IOPortSession : Object
 {
-    /* Instance variables - TODO: determine actual layout from decompiled code */
+    /* Session state block (0x34 bytes), allocated by initForDevice:result: */
+    void *_priv;
 }
 
 /* Class methods */
@@ -42,11 +43,11 @@
 - init;
 
 /* Initialize port session for specific device
- * device: Device name string (const char *)
+ * device: Device name string
  * result: Pointer to result code (output parameter)
- * Returns: initialized session or nil on failure
+ * Returns: initialized session, or [self free]'s result on failure
  */
-- initForDevice:(const char *)device result:(int *)result;
+- initForDevice:(char *)device result:(int *)result;
 
 /* Cleanup */
 - free;
@@ -57,15 +58,18 @@
  * sleep: Whether to sleep if port is busy
  * Returns: Result code (0 on success)
  */
-- (int)acquire:(int)sleep;
+- (int)acquire:(BOOL)sleep;
 
 /* Acquire port with audit (extended acquisition)
+ * sleep: Whether to sleep if port is busy
  * Returns: Result code (0 on success)
  */
-- (int)acquireAudit;
+- (int)acquireAudit:(BOOL)sleep;
 
-/* Release port session */
-- (void)release;
+/* Release port session
+ * Returns: Result code (0 on success)
+ */
+- (int)release;
 
 /* Port information */
 
@@ -84,38 +88,42 @@
 /* Get current port state
  * Returns: Current state value
  */
-- (unsigned int)getState;
+- (unsigned long)getState;
 
 /* Set port state with mask
  * state: New state value
  * mask: Bits to modify
+ * Returns: Result code (0 on success)
  */
-- (void)setState:(unsigned int)state mask:(unsigned int)mask;
+- (int)setState:(unsigned long)state mask:(unsigned long)mask;
 
 /* Watch for state changes
  * state: Pointer to receive state (output parameter)
  * mask: State bits to watch
+ * Returns: Result code (0 on success)
  */
-- (void)watchState:(unsigned int *)state mask:(unsigned int)mask;
+- (int)watchState:(unsigned long *)state mask:(unsigned long)mask;
 
 /* Event operations */
 
 /* Execute immediate event
  * event: Event code
  * data: Event data
+ * Returns: Result code (0 on success)
  */
-- (void)executeEvent:(unsigned int)event data:(unsigned int)data;
+- (int)executeEvent:(unsigned long)event data:(unsigned long)data;
 
 /* Request event data
  * event: Event code
  * data: Pointer to receive data (output parameter)
+ * Returns: Result code (0 on success)
  */
-- (void)requestEvent:(unsigned int)event data:(unsigned int *)data;
+- (int)requestEvent:(unsigned long)event data:(unsigned long *)data;
 
 /* Get next pending event
  * Returns: Next event code
  */
-- (unsigned int)nextEvent;
+- (unsigned long)nextEvent;
 
 /* Enqueue event with data
  * event: Event code
@@ -123,7 +131,7 @@
  * sleep: Whether to sleep if queue is full
  * Returns: Result code (0 on success)
  */
-- (int)enqueueEvent:(unsigned int)event data:(unsigned int)data sleep:(int)sleep;
+- (int)enqueueEvent:(unsigned long)event data:(unsigned long)data sleep:(BOOL)sleep;
 
 /* Dequeue event with data
  * event: Pointer to receive event code (output parameter)
@@ -131,7 +139,7 @@
  * sleep: Whether to sleep if queue is empty
  * Returns: Result code (0 on success)
  */
-- (int)dequeueEvent:(unsigned int *)event data:(unsigned int *)data sleep:(int)sleep;
+- (int)dequeueEvent:(unsigned long *)event data:(unsigned long *)data sleep:(BOOL)sleep;
 
 /* Data transfer operations */
 
@@ -142,10 +150,10 @@
  * sleep: Whether to sleep if buffer is full
  * Returns: Result code (0 on success)
  */
-- (int)enqueueData:(void *)buffer 
-        bufferSize:(unsigned int)bufferSize 
-     transferCount:(unsigned int *)transferCount 
-             sleep:(int)sleep;
+- (int)enqueueData:(char *)buffer
+        bufferSize:(unsigned int)bufferSize
+     transferCount:(unsigned int *)transferCount
+             sleep:(BOOL)sleep;
 
 /* Dequeue received data
  * buffer: Buffer to receive data
@@ -154,9 +162,9 @@
  * minCount: Minimum bytes required before returning
  * Returns: Result code (0 on success)
  */
-- (int)dequeueData:(void *)buffer 
-        bufferSize:(unsigned int)bufferSize 
-     transferCount:(unsigned int *)transferCount 
+- (int)dequeueData:(char *)buffer
+        bufferSize:(unsigned int)bufferSize
+     transferCount:(unsigned int *)transferCount
           minCount:(unsigned int)minCount;
 
 @end
@@ -173,24 +181,24 @@
  * sleep: Whether to sleep if port is busy
  * Returns: Result code (0 on success)
  */
-- (int)_acquirePort:(int)type sleep:(int)sleep;
+- (int)acquirePort:(int)type sleep:(BOOL)sleep;
 
-/* Private: Get current port type
- * type: Pointer to receive type (output parameter)
+/* Private: Release acquired port */
+- (void)releasePort;
+
+/* Private: Take ownership of the port at the given type
+ * type: Port type
  * sleep: Whether to sleep if operation would block
  * Returns: Result code (0 on success)
  */
-- (int)_getType:(int *)type sleep:(int)sleep;
-
-/* Private: Release acquired port */
-- (void)_releasePort;
+- (int)getType:(int)type sleep:(BOOL)sleep;
 
 /* Private: Request port type change
  * type: Requested port type
  * sleep: Whether to sleep if operation would block
  * Returns: Result code (0 on success)
  */
-- (int)_requestType:(int)type sleep:(int)sleep;
+- (int)requestType:(int)type sleep:(BOOL)sleep;
 
 @end
 

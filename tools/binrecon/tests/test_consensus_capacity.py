@@ -1,25 +1,44 @@
 import pytest
 
 from binrecon.consensus import ConsensusError, validate_consensus
-from binrecon.schema import preflight_json
+from binrecon.schema import (
+    CONSENSUS_MAX_JSON_NODES, DEFAULT_MAX_JSON_NODES, MAX_JSON_COLLECTION, preflight_json,
+)
+
+# Each edge contributes six JSON values.  Edges are split across multiple
+# claims so no single "edges" list approaches MAX_JSON_COLLECTION even when
+# the total edge count is sized for a multi-million node budget.
+_EDGE_NODE_COUNT = 6
+_CHUNK_SIZE = MAX_JSON_COLLECTION // 2
 
 
-def _consensus_shaped_edges(count):
+def _consensus_shaped_edges(total_edges):
     edge = {
         "source": {"kind": "unresolved"},
         "target": {"kind": "unresolved"},
         "kind": "flow",
     }
+    claims = []
+    remaining = total_edges
+    while remaining > 0:
+        chunk = min(remaining, _CHUNK_SIZE)
+        claims.append({"edges": [edge] * chunk})
+        remaining -= chunk
     return {
         "schema_version": "consensus-v1",
-        "groups": [{"claims": [{"edges": [edge] * count}]}],
+        "groups": [{"claims": claims}],
     }
 
 
+def _edges_for_node_budget(node_budget):
+    # Edge count whose serialized node total safely exceeds node_budget:
+    # wrapper nodes (document, groups list, group dict, claims list, plus
+    # two nodes per claim dict/edges-list pair) only add to the margin.
+    return node_budget // _EDGE_NODE_COUNT + 1
+
+
 def test_consensus_preflight_accepts_realistic_aggregate_above_generic_node_limit():
-    # Each edge contributes six JSON values.  This represents 1,000,009
-    # serialized nodes without retaining 166,667 separately allocated copies.
-    document = _consensus_shaped_edges(166_667)
+    document = _consensus_shaped_edges(_edges_for_node_budget(DEFAULT_MAX_JSON_NODES))
 
     with pytest.raises(ConsensusError, match="invalid consensus object fields"):
         validate_consensus(document)
@@ -29,7 +48,7 @@ def test_consensus_preflight_accepts_realistic_aggregate_above_generic_node_limi
 
 
 def test_consensus_preflight_rejects_document_over_aggregate_node_budget():
-    document = _consensus_shaped_edges(416_667)
+    document = _consensus_shaped_edges(_edges_for_node_budget(CONSENSUS_MAX_JSON_NODES))
 
     with pytest.raises(ConsensusError, match="JSON node limit exceeded"):
         validate_consensus(document)

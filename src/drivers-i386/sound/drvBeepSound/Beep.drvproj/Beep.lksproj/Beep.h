@@ -34,6 +34,7 @@
 
 #import <driverkit/IOAudio.h>
 #import <driverkit/NXSoundParameterTags.h>
+#import <machdep/i386/timer.h>
 
 /* Beep sequence structure - 16 bytes total */
 typedef struct {
@@ -47,29 +48,32 @@ typedef struct {
 {
 @private
     /* Instance variables - actual offsets determined by IOAudio base class */
-    /* _pitCommand at offset 0x185 */
-    /* _defaultFrequency at offset 0x188 */
-    /* _defaultDuration at offset 0x18c */
-    /* _beepSequence at offset 0x190 */
-    unsigned char _pitCommand;        /* PIT command byte (0xB6) */
-    unsigned int _defaultFrequency;   /* Default frequency in Hz */
-    unsigned int _defaultDuration;    /* Default duration in ms */
-    BeepSequence *_beepSequence;      /* Pointer to beep sequence */
+    /* isMute at offset 0x184 */
+    /* timer at offset 0x185 */
+    /* frequency at offset 0x188 */
+    /* duration at offset 0x18c */
+    /* currentBeepSequence at offset 0x190 */
+    char isMute;                      /* Unused; declared for ivar layout */
+    timer_ctl_reg_t timer;            /* PIT control register image (0xB6) */
+    unsigned int frequency;           /* Default frequency in Hz */
+    unsigned int duration;            /* Default duration in ms */
+    BeepSequence *currentBeepSequence; /* Pointer to beep sequence */
 }
 
 /* Initialization and lifecycle */
++ (BOOL)probe:deviceDescription;
 - initFromDeviceDescription:deviceDescription;
 - (BOOL)reset;
 
 /* Sound output */
-- (IOReturn)beep;
+- (void)beep;
 
 /* IODevice parameter methods */
 - (IOReturn)getIntValues:(unsigned *)parameterArray
             forParameter:(IOParameterName)parameterName
                    count:(unsigned *)count;
 
-- (IOReturn)getCharValues:(unsigned char *)parameterArray
+- (IOReturn)getCharValues:(char *)parameterArray
              forParameter:(IOParameterName)parameterName
                     count:(unsigned *)count;
 
@@ -77,7 +81,7 @@ typedef struct {
             forParameter:(IOParameterName)parameterName
                    count:(unsigned)count;
 
-- (IOReturn)setCharValues:(unsigned char *)parameterArray
+- (IOReturn)setCharValues:(char *)parameterArray
              forParameter:(IOParameterName)parameterName
                     count:(unsigned)count;
 

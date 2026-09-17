@@ -2,7 +2,19 @@
 #  NeXT Makefile.preamble
 ###############################################################################
 
-OTHER_CFLAGS = -g -Wall -Wno-format
+# Bare gnumake on the PPC guest defaults RC_ARCHS to the host. This is an
+# i386 Kernel Server; INCLUDED_ARCHS matches drvAMDPCSCSIDriver.
+INCLUDED_ARCHS = i386
+RC_ARCHS = i386
+
+# Live System.framework on this guest has no PrivateHeaders. Kernel driver
+# headers are in the bootstrap sysroot (objc/zone.h, machkit, driverkit).
+BOOTSTRAP_SYS = /build/bootstrap-root/System/Library/Frameworks/System.framework/Versions/B
+# HIM6X60.c / AIC6X60Sequencer.c are CFILES but call objc_msgSend and
+# include ObjC headers (ControllerPrivate). Compile them as ObjC.
+OTHER_CFLAGS = -g -Wall -Wno-format -ObjC \
+	-I$(BOOTSTRAP_SYS)/PrivateHeaders \
+	-I$(BOOTSTRAP_SYS)/Headers
 OTHER_LDFLAGS =
 OTHER_LIBS =
 LIBS =

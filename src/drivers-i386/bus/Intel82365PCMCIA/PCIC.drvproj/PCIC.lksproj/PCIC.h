@@ -31,32 +31,24 @@
 
 #import <driverkit/IODirectDevice.h>
 #import <driverkit/IODeviceDescription.h>
+#import <driverkit/i386/IOPCIDeviceDescription.h>
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
+#import <driverkit/IOPower.h>
+#import <driverkit/i386/PCMCIA.h>
 
 /* Forward declarations */
+@class List;
 @class PCMCIAKernBus;
 @class PCICSocket;
 @class PCICWindow;
 
-/*
- * Protocol for PCMCIA status change notifications
- */
-@protocol PCMCIAStatusChange
-
-- statusChangedForSocket:socket changedStatus:(unsigned int)status;
-
-@end
-
-@interface PCIC : IODirectDevice
+@interface PCIC : IODirectDevice <PCMCIAAdapter, IOPower>
 {
-    unsigned int basePort;
-    unsigned int numSockets;
-    unsigned int irqLevel;
-    BOOL isCirrusChip;         /* Flag indicating Cirrus Logic chip detection */
-    id socketList;             /* List of PCICSocket instances */
-    id windowList;             /* List of PCICWindow instances */
-    id statusChangeHandler;    /* Status change handler object (offset 0x134) */
+    BOOL CirrusCompatible;     /* Flag indicating Cirrus Logic chip detection (offset 0x128) */
+    List *sockets;             /* List of PCICSocket instances (offset 0x12C) */
+    List *windows;             /* List of PCICWindow instances (offset 0x130) */
+    id statusHandler;          /* Status change handler object (offset 0x134) */
 }
 
 /* Class methods */
@@ -72,14 +64,25 @@
 - (void)setStatusChangeHandler:handler;
 
 /* Power management */
-- (IOReturn)setPowerState:(int)powerState;
-- (IOReturn)getPowerState:(int *)state;
-- (IOReturn)setPowerManagement:(int)flags;
-- (IOReturn)getPowerManagement:(int *)flags;
+- (IOReturn)setPowerState:(PMPowerState)powerState;
+- (IOReturn)getPowerState:(PMPowerState *)state;
+- (IOReturn)setPowerManagement:(PMPowerManagementState)flags;
+- (IOReturn)getPowerManagement:(PMPowerManagementState *)flags;
 
 /* Socket and window list access */
 - sockets;
 - windows;
+
+@end
+
+/*
+ * PCMCIA adapter behind a PCI-to-PCMCIA bridge (Cirrus Logic PD6832)
+ * Recovers the adapter's I/O base from PCI configuration space, then defers
+ * to PCIC for everything else
+ */
+@interface PCIC_PCI : PCIC
+
+- initFromDeviceDescription:(IOPCIDeviceDescription *)deviceDescription;
 
 @end
 

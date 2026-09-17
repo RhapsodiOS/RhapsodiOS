@@ -13,8 +13,10 @@ import sys
 import tempfile
 from typing import Callable
 
+from binrecon.arch import ArchitectureError, architecture_for_name
 from binrecon.identity import InputIdentity, assert_identity
 from binrecon.macho import MachOFormatError, read_macho
+from binrecon.profile import analysis_scope
 from binrecon.schema import (
     validate_analysis_semantics,
     validate_document,
@@ -25,7 +27,8 @@ class IdaAdapterError(RuntimeError):
     """Raised when IDA cannot produce a trustworthy analysis snapshot."""
 
 
-_MAX_ANALYSIS_BYTES = 16 * 1024 * 1024
+# Bounds raw analyzer output read into memory, sized for ~1.4 MB kernel images.
+_MAX_ANALYSIS_BYTES = 64 * 1024 * 1024
 _READ_CHUNK_SIZE = 1024 * 1024
 
 
@@ -66,9 +69,23 @@ def _script_command(script: Path, output: Path, identity: InputIdentity,
     )
 
 
-def _mapping_manifest(profile, identity: InputIdentity) -> dict:
+def _architecture(profile):
+    name = profile.document.get("architecture", "i386")
+    try:
+        return architecture_for_name(name)
+    except ArchitectureError as error:
+        raise IdaAdapterError(str(error)) from error
+
+
+def _mapping_manifest(profile, identity: InputIdentity, artifact: str = "reference") -> dict:
+    architecture = _architecture(profile)
     try:
         macho = read_macho(identity.path)
+        if macho["input"]["architecture"] != architecture.name:
+            raise IdaAdapterError(
+                f"profile architecture {architecture.name!r} does not match "
+                f"artifact architecture {macho['input']['architecture']!r}"
+            )
         sources = macho["extensions"]["macho"]["segments"]
         runs = [{"address": item["address"], "offset": item["offset"],
                  "size": min(item["size"], item["file_size"])} for item in sources]
@@ -79,11 +96,17 @@ def _mapping_manifest(profile, identity: InputIdentity) -> dict:
                   key=lambda item: (item["address"], item["offset"], item["size"]))
     if not runs:
         raise IdaAdapterError("no authoritative artifact mapping runs are available")
-    return {"schema_version": "ida-mapping-v1",
-            "input": {"size": identity.size, "sha256": identity.sha256,
-                      "architecture": profile.document.get("architecture", "i386"),
-                      "endianness": profile.document.get("endianness", "little")},
-            "runs": runs}
+    manifest = {"schema_version": "ida-mapping-v1",
+                "input": {"size": identity.size, "sha256": identity.sha256,
+                          "architecture": architecture.name,
+                          "endianness": architecture.endianness,
+                          "ida_processor": architecture.ida_processor},
+                "runs": runs}
+    scope = analysis_scope(profile, artifact)
+    if scope:
+        manifest["analysis_scope"] = [{"start": start, "end": end}
+                                      for start, end in scope]
+    return manifest
 
 
 def _write_log(path: Path, native_log: Path, stdout, stderr) -> None:
@@ -137,8 +160,32 @@ def _diagnostic_text(value) -> str:
     return str(value)
 
 
+def _preserve_oversized_output(path: Path, artifact: str) -> Path | None:
+    """Copy a rejected oversized output into the run's output directory.
+
+    The staging workspace is deleted after rejection, so without this the
+    only evidence of an oversized analyzer output is its byte count. Copies
+    by streaming; swallows any failure so a diagnostic never masks the
+    original size error.
+    """
+    try:
+        preserved = path.parent.parent.parent / f"rejected-ida-{artifact}.json"
+        shutil.copyfile(path, preserved)
+        return preserved
+    except OSError:
+        return None
+
+
+def _oversize_error_message(base_message: str, path: Path, artifact: str) -> str:
+    preserved = _preserve_oversized_output(path, artifact)
+    if preserved is None:
+        return base_message
+    return f"{base_message}; rejected output saved to {preserved}"
+
+
 def _read_analysis_snapshot(
     path: Path,
+    artifact: str,
     *,
     opener=os.open,
     fstat=os.fstat,
@@ -167,7 +214,10 @@ def _read_analysis_snapshot(
         if getattr(initial, "st_file_attributes", 0) & reparse_flag:
             raise IdaAdapterError("IDA output is a reparse point")
         if initial.st_size > _MAX_ANALYSIS_BYTES:
-            raise IdaAdapterError("IDA output exceeds maximum JSON size")
+            raise IdaAdapterError(_oversize_error_message(
+                f"IDA output exceeds maximum JSON size ({initial.st_size:,} bytes; "
+                f"cap {_MAX_ANALYSIS_BYTES:,})", path, artifact
+            ))
         chunks = []
         total = 0
         while True:
@@ -177,7 +227,10 @@ def _read_analysis_snapshot(
             chunks.append(chunk)
             total += len(chunk)
             if total > _MAX_ANALYSIS_BYTES:
-                raise IdaAdapterError("IDA output exceeds maximum JSON size")
+                raise IdaAdapterError(_oversize_error_message(
+                    f"IDA output exceeds maximum JSON size (more than {_MAX_ANALYSIS_BYTES:,} bytes; "
+                    f"cap {_MAX_ANALYSIS_BYTES:,})", path, artifact
+                ))
         final = fstat(descriptor)
         stable_fields = (
             "st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns", "st_nlink"
@@ -272,12 +325,13 @@ def export_with_ida(
         mapping = workspace / "mapping.json"
         database = workspace / "analysis.i64"
         native_log = workspace / "ida-native.log"
-        manifest = _mapping_manifest(profile, identity)
+        manifest = _mapping_manifest(profile, identity, artifact)
         mapping_raw = (json.dumps(manifest, sort_keys=True, separators=(",", ":")) + "\n").encode("utf-8")
         _atomic_text(mapping, mapping_raw.decode("utf-8"))
         mapping_sha256 = hashlib.sha256(mapping_raw).hexdigest().upper()
         argv = [
-            str(executable), "-c", "-A", f"-o{database}", f"-L{native_log}",
+            str(executable), "-c", "-A", f"-p{_architecture(profile).ida_processor}",
+            f"-o{database}", f"-L{native_log}",
             "-S" + _script_command(script.resolve(), temporary, identity, mapping,
                                     mapping_sha256),
             str(identity.path),
@@ -304,7 +358,7 @@ def export_with_ida(
         if not temporary.is_file():
             raise IdaAdapterError("IDA did not produce a fresh analysis output")
         try:
-            document = _read_analysis_snapshot(temporary)
+            document = _read_analysis_snapshot(temporary, artifact)
             validate_document("analysis-v1", document)
             validate_analysis_semantics(document)
         except Exception as error:

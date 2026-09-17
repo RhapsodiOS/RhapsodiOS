@@ -28,6 +28,13 @@ bundle: all
 
 all:
 
+# Installing the makefile resources does not require the helper programs.
+# Keeping them out of this goal also avoids remaking dependency files before
+# installhdrs has created its derived-source directory.
+ifeq "installhdrs" "$(strip $(MAKECMDGOALS))"
+CFILES =
+endif
+
 #
 # This isn't really a bundle...
 #
@@ -57,4 +64,3 @@ AFTER_INSTALLHDRS = install-resources
 DISABLE_RESOURCE_COPYING = YES
 INSTALLDIR = $(SYSTEM_DEVELOPER_DIR)/Makefiles/pb_makefiles
 DSTROOT = $(NEXT_ROOT)
-

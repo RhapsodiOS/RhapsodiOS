@@ -1,0 +1,331 @@
+{
+  "entries": [
+    {
+      "address": 0,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure",
+          "full disassembly read instruction by instruction against source; divergences found (divergences.md Findings 2, 3, 11, 14)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PS2Mouse mouseInit:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 179,
+      "source_line": 450,
+      "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 180,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure; Ghidra records no calls for the indirect _func_list dispatches (see divergences.md, analyzer disagreement)",
+          "full disassembly read instruction by instruction against source; command sequence and resolution readback match exactly, but our added _func_list null guard has no counterpart in the reference (divergences.md Finding 13)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PS2Mouse isMousePresent]"
+      ],
+      "reason": "divergences.md Finding 13, accepted: our source keeps a controllerFunctions == NULL early return that the reference does not have. The reference loads _func_list and dereferences it immediately, with no test against zero anywhere in the binary. The guard turns a would-be null dereference into a quiet NO and cannot change behaviour when the pointer is valid. Every other divergence in this function was fixed; the emitted body is otherwise the reference shape.",
+      "reviewer": "Pat Raynor",
+      "size": 109,
+      "source_line": 248,
+      "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
+      "status": "intentional-mismatch"
+    },
+    {
+      "address": 292,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure; Ghidra records no calls for the indirect _func_list dispatches (see divergences.md, analyzer disagreement)",
+          "full disassembly read instruction by instruction against source; the 0xF6/0xF4 command pair matches exactly, but the method returns void in the reference and our added null guard has no counterpart (divergences.md Findings 2, 13)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PS2Mouse resetMouse]"
+      ],
+      "reason": "divergences.md Finding 13, accepted: our source keeps a controllerFunctions == NULL early return that the reference does not have. The return type was corrected to void per Finding 2 and the 0xF6/0xF4 command pair already matched; the null guard is the only remaining difference from the reference.",
+      "reviewer": "Pat Raynor",
+      "size": 37,
+      "source_line": 337,
+      "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
+      "status": "intentional-mismatch"
+    },
+    {
+      "address": 332,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure; Ghidra records no calls for the indirect _func_list dispatches (see divergences.md, analyzer disagreement)",
+          "full disassembly read instruction by instruction against source; divergences found (divergences.md Findings 2, 4, 7, 13). Finding 4 confirms the Force Detection gate at 418-425 matches our source and needs no inversion"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PS2Mouse initWithController:]"
+      ],
+      "reason": "divergences.md Finding 13, accepted: our source keeps six per-slot func_list != NULL guards that the reference does not have, so a partially populated table would silently skip hardware initialization rather than fault. Findings 2 and 7 were fixed (BOOL return, 8042 command bytes 0x20 and 0x60); Finding 4 confirmed the force_detection gate already matches and it was deliberately left uninverted.",
+      "reviewer": "Pat Raynor",
+      "size": 350,
+      "source_line": 355,
+      "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
+      "status": "intentional-mismatch"
+    },
+    {
+      "address": 684,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure",
+          "full disassembly read instruction by instruction against source; divergences found (divergences.md Findings 2, 3, 8, 11). Finding 4 confirms the Force Detection parse at 716-760 is byte-for-byte what our source does"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PS2Mouse readConfigTable:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 214,
+      "source_line": 289,
+      "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 900,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure; Ghidra records no calls for the indirect _func_list dispatches (see divergences.md, analyzer disagreement)",
+          "full disassembly read instruction by instruction against source; the resync state machine, the 64-bit 250ms timeout and the seqBeingProcessed/seqInProgress branch structure all match, but the event buffer layout, log strings and null guard diverge (divergences.md Findings 5, 11, 13, 14)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_PS2MouseIntHandler"
+      ],
+      "reason": "divergences.md Findings 13 and 14, accepted: our source keeps a controllerFunctions == NULL early return the reference does not have, and the handler is declared to return unsigned int and returns 0 where the reference returns void and never writes eax. DriverKit discards the handler return value, so it is inert. Findings 5 and 11 were fixed: the three event buffers are now 12-byte PCPointerEvent objects in the reference bss order and both log strings match.",
+      "reviewer": "Pat Raynor",
+      "size": 525,
+      "source_line": 115,
+      "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
+      "status": "intentional-mismatch"
+    },
+    {
+      "address": 1428,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure",
+          "full disassembly read instruction by instruction against source; control-flow shape matches but the dispatchPointerEvent: argument is wrong in our source (divergences.md Finding 6)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PS2Mouse interruptOccurred]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 50,
+      "source_line": 494,
+      "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 1480,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure",
+          "full disassembly read instruction by instruction; emitted code reproduces the reference exactly. The declared type of the argument: parameter differs (^I vs ^^v), which is metadata only (divergences.md Finding 2)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PS2Mouse getHandler:level:argument:forInterrupt:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 39,
+      "source_line": 482,
+      "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 1520,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure",
+          "full disassembly read instruction by instruction; emitted code reproduces the reference exactly. The declared return type differs (int vs unsigned int) and the ivar offset 0x12c depends on divergences.md Finding 1"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PS2Mouse getResolution]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 16,
+      "source_line": 556,
+      "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 1536,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure",
+          "fix pass: the hand-unrolled character-compare loop was replaced with strcmp against RESOLUTION and INVERTED, which is what the reference compiles from. The rebuilt stream was disassembled and read against the reference at 1536-1628: identical instruction sequence and identical encoding lengths throughout, including repe cmpsb with ecx = 11 then ecx = 9, resolution read from +0x12C and inverted sign-extended from the byte at +0x130. The only byte differences are the scratch register gcc picked for the value (eax where the reference used edx) and the __cstring addresses. Size is now exactly the reference's 96, down from 128 (divergences.md Finding 15)",
+          "full disassembly read instruction by instruction against source; both repe cmpsb compares match, but the no-match return is IO_R_UNSUPPORTED not IO_R_INVALID_ARG (divergences.md Finding 9)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PS2Mouse getIntValues:forParameter:count:]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 93,
+      "source_line": 508,
+      "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 1632,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address, size and block structure",
+          "fix pass: rebuilt stream disassembled and compared instruction by instruction against the reference; only the reference's stack spill of the compare count and of parameterArray remains (divergences.md Findings 15, 16)",
+          "full disassembly read instruction by instruction against source; divergences found (divergences.md Findings 9, 10)"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[PS2Mouse setIntValues:forParameter:count:]"
+      ],
+      "reason": "Finding 16 fixed: the target != nil guards around both dispatches were removed, because the reference messages target unconditionally on both branches and merges them into one shared objc_msgSend tail. Finding 15 fixed: the compares are now strcmp. The rebuilt stream was disassembled and read against the reference at 1632-1777; every instruction corresponds, including repe cmpsb at 11 and 9, resolution written to +0x12C and re-read through [self getResolution], inverted written to +0x130 and forwarded sign-extended, and the single unguarded objc_msgSend to target at +0x128 shared by both branches. Residual, accepted: ours is 12 bytes SMALLER (136 against 148) because gcc hoists the parameterArray load and keeps the compare count as an immediate where the reference spilled both to the stack. This is a code-generation difference with no source-level counterpart; drvBusMouse's verified setIntValues: lands on the same 136. Down from 204.",
+      "reviewer": "Pat Raynor",
+      "size": 146,
+      "source_line": 526,
+      "source_path": "src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m",
+      "status": "intentional-mismatch"
+    },
+    {
+      "address": 1780,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA and angr agree on address and size; Ghidra does not detect this function at all (see divergences.md, analyzer disagreement). IDA is authoritative for the partition"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[PS2MouseKernelServerInstance kernelServerInstance]"
+      ],
+      "reason": "build-generated Kernel Server glue emitted by the Kernel Server project type and Load_Commands.sect, not present in source; returns &_PS2Mouse_instance",
+      "reviewer": "binrecon-task-3",
+      "size": 12,
+      "source_line": null,
+      "source_path": null,
+      "status": "intentional-mismatch"
+    },
+    {
+      "address": 1792,
+      "analyzer_agreement": {
+        "analyzers": [
+          "Ghidra",
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA, Ghidra and angr agree on address and size"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[PS2MouseVersion driverKitVersionForPS2Mouse]"
+      ],
+      "reason": "build-generated Kernel Server glue emitted by the Kernel Server project type and Load_Commands.sect, not present in source; returns the DriverKit version 500",
+      "reviewer": "binrecon-task-3",
+      "size": 12,
+      "source_line": null,
+      "source_path": null,
+      "status": "intentional-mismatch"
+    }
+  ],
+  "rebuilt_sha256": null,
+  "reference_sha256": "4C43D8A9AE0B83ACD1BA4D17340A4C6BF5FDACD84634CE5C7FC457D97DE11A7E",
+  "schema_version": "ledger-v1"
+}

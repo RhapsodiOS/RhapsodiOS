@@ -3,6 +3,13 @@ INCLUDED_ARCHS = i386 ppc
 OTHER_PRIVATE_HEADERS := $(PUBLIC_HEADERS)
 PUBLIC_HEADERS =
 
+# MiG interface for the IOSCSISession Mach RPC surface. Only the generated
+# server side is compiled; IOSCSISessionMigUser.c is deliberately left out
+# of CFILES and OTHER_GENERATED_OFILES because the 18 IOSCSISession_*
+# wrapper functions already provide the client-facing symbols by hand.
+DEFSFILES = IOSCSISessionMig.defs
+OTHER_GENERATED_OFILES += IOSCSISessionMigServer.o
+
 VERSION_DIR = Versions/B
 SYSTEM_VERS_FRAMEWORK = $(SYSTEM_FRAMEWORK)/$(VERSION_DIR)
 

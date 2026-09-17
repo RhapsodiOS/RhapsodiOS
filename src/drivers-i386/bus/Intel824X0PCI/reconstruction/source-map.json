@@ -1,0 +1,42 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 0,
+      "reference_names": [
+        "+[Intel824X0 probe:]"
+      ],
+      "size": 61,
+      "source_line": 45,
+      "source_path": "src/drivers-i386/bus/Intel824X0PCI/Intel824X0.drvproj/Intel824X0.lksproj/Intel824X0.m"
+    },
+    {
+      "address": 64,
+      "reference_names": [
+        "-[Intel824X0 initFromDeviceDescription:]"
+      ],
+      "size": 459,
+      "source_line": 61,
+      "source_path": "src/drivers-i386/bus/Intel824X0PCI/Intel824X0.drvproj/Intel824X0.lksproj/Intel824X0.m"
+    }
+  ],
+  "reference_sha256": "2056748F5588CD447F79989689BD6C8B1232A8D7CF2037FD6D4B5E7CDE4998A0",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 524,
+      "reference_names": [
+        "+[Intel824X0KernelServerInstance kernelServerInstance]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 536,
+      "reference_names": [
+        "+[Intel824X0Version driverKitVersionForIntel824X0]"
+      ],
+      "size": 12
+    }
+  ]
+}

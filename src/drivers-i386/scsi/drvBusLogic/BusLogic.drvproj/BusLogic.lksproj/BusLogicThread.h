@@ -11,7 +11,7 @@
 #import "BusLogicController.h"
 #import "BusLogicControllerPrivate.h"
 
-@interface BLController(IOThread)
+@interface BLCController(IOThread)
 
 - (int)threadExecuteRequest	: (BLCommandBuf *)cmdBuf;
 - (void)threadResetBus		: (BLCommandBuf *)cmdBuf;
@@ -20,7 +20,7 @@
 - runPendingCommands;
 - (void)commandCompleted	: (struct ccb *)ccb
 			  reason : (completeStatus)reason;
-- (struct ccb *)allocCcb	: (BOOL)doDMA;
+- (struct ccb *)allocCcb;
 - (void)freeCcb			: (struct ccb *)ccb;
 - (void)completeDMA		: (IOEISADMABuffer *)dmaList
 			  length : (unsigned int)xferLen;

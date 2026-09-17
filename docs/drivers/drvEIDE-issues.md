@@ -151,6 +151,439 @@ polled mode instead of failing. Fixes **A** and **B** remove the zero-progress
 loop that made the failure permanent, and **D** stops the retry path from
 destroying the configuration it is supposed to be recovering.
 
+### QEMU trace evidence: IRQ 14 is never reasserted after the failing command
+
+Reproduced under `vm/start-vm.cmd -trace` (`ide_*`/`pci_cfg_*` trace events plus
+`-d int`), correlated against the guest console captured headlessly with
+`vm/qemu-shot.py`, sampled to 140s wall-clock. Three candidate mechanisms were
+in play: (a) QEMU never raises IRQ 14 again after the failing command; (b) it
+raises it but the driver never reads the primary Status register to acknowledge
+it; (c) the driver sets `nIEN` (bit 1 of the Device Control register, port
+`0x3F6`) and leaves it set.
+
+**(c) is ruled out.** The `ide_ctrl_write` immediately before the failing
+command is issued clears the Device Control register, not sets it:
+
+```
+ide_ctrl_write IDE PIO wr @ 0x3f6 (Device Control); val 0x00; bus 000002bcfa720b40
+ide_ioport_write IDE PIO wr @ 0x1f7 (Command); val 0xc4; bus 000002bcfa720b40 IDEState 000002bcfa720bc8
+ide_bus_exec_cmd IDE exec cmd: bus 000002bcfa720b40; state 000002bcfa720bc8; cmd 0xc4
+ide_sector_read sector=97120 nsectors=16
+```
+
+`nIEN` is clear (`val 0x00`, interrupts enabled) at the moment the fatal Read
+Multiple is issued.
+
+**The trace supports (a).** QEMU's PIC emulation logs `Servicing hardware
+INT=0x4e` every time it actually delivers IRQ 14 to the CPU (identified by
+correlation: this line fires immediately after every *successful* `cmd 0xc4`'s
+`ide_sector_read`, 25 times total across the boot). The last one appears two
+lines before the setup for the command that hangs:
+
+```
+ide_sector_read sector=97488 nsectors=2
+Servicing hardware INT=0x4e
+```
+
+That is the last IRQ 14 ever delivered in the entire trace. After it, the
+driver sets up and issues the command that wedges (`sector=97120 nsectors=16`,
+matching the console's `secNum=0x70 cyl=0x17b` after the 16-sector
+auto-increment), and `Servicing hardware INT=0x4e` does not appear again
+anywhere in the remaining ~205,000 lines — through the timeout, the software
+reset, the IDENTIFY retry, and a subsequent RECALIBRATE retry. This is not a
+general interrupt-delivery failure: IRQ 0 (`Servicing hardware INT=0x40`) fires
+over 10,000 more times, and one IRQ 15 (`0x4f`) fires, in that same span, so the
+PIC and CPU interrupt path are demonstrably still live.
+
+During the timeout the driver's poll loop also only ever reads the **Alternate**
+Status register at `0x3F6`, never the primary Status register at port `0x1F7`:
+
+```
+ide_ioport_read IDE PIO rd @ 0x1f6 (Device/Head); val 0xe0; bus 000002bcfa720b40 IDEState 000002bcfa720bc8
+ide_status_read IDE PIO rd @ 0x3f6 (Alt Status); val 0x58; bus 000002bcfa720b40; IDEState 000002bcfa720bc8
+```
+
+repeated twice before the driver gives up and writes SRST
+(`ide_ctrl_write ... val 0x04`, producing the console's `Resetting drives...`).
+Reading Alt Status does not clear a pending INTRQ per the ATA spec, so this is
+a real, independently worth-fixing gap in the timeout path. That gap does not,
+however, leave room for a competing theory in which the wedge is really a
+*stale*, unacknowledged INTRQ left over from the previous command rather than
+QEMU failing to reassert the line for this one. On an edge-triggered ISA IRQ,
+the device only deasserts INTRQ when the host reads the **primary** Status
+register at `0x1F7`; reading Alternate Status (`0x3F6`) does not. Had the
+driver's interrupt handler never read `0x1F7` for the *preceding* command, the
+line would have stayed asserted and no new edge could ever be generated for
+the next one — a failure mode that looks identical to (a) in the
+interrupt-timeout evidence alone. It did not: immediately after the last
+`Servicing hardware INT=0x4e` at line 1748253, the driver's handler for that
+(successful) command reads primary Status:
+
+```
+1748273: ide_ioport_read IDE PIO rd @ 0x1f7 (Status); val 0x58; bus 000002bcfa720b40 IDEState 000002bcfa720bc8
+```
+
+That is the correct acknowledgement register, so INTRQ was properly deasserted
+going into the command that hangs. A stale, unread INTRQ is therefore ruled
+out as the cause of the missing interrupt. The evidence points at (a): the
+device model itself stops reasserting the line for the failing command, rather
+than the driver missing an interrupt that was actually raised or leaving a
+prior one unacknowledged. It does not explain *why* QEMU's IDE model stops —
+nothing in the `ide_*`/`-d int` trace surface used here exposes the model's
+internal DRQ/INTRQ bookkeeping, so the §2 sector-vs-block accounting
+hypothesis remains plausible but unconfirmed. This is TCG-emulated PIIX3 IDE
+only; real hardware is not addressed by this trace.
+
+### Addendum: was SET MULTIPLE MODE (0xC6) ever issued?
+
+The console prints `hd0: using multisector (16) transfers.`, which only
+happens if the driver believes multi-sector transfers were successfully
+negotiated. That requires **SET MULTIPLE MODE** (`0xC6`) to have been issued
+first — QEMU's IDE model tracks the negotiated block size in `mult_sectors`,
+and a READ MULTIPLE (`0xC4`) issued without a prior, accepted `0xC6` is
+operating against an unconfigured value.
+
+**`0xC6` was issued, once, on the primary channel.** Searching the full trace
+for `ide_bus_exec_cmd` events with `cmd 0xc6`, and for `0x1f7 (Command)`
+writes with `val 0xc6`, both find exactly one hit, at line 1694036 (port
+write at line 1694035):
+
+```
+1694035: ide_ioport_write IDE PIO wr @ 0x1f7 (Command); val 0xc6; bus 000002bcfa720b40 IDEState 000002bcfa720bc8
+1694036: ide_bus_exec_cmd IDE exec cmd: bus 000002bcfa720b40; state 000002bcfa720bc8; cmd 0xc6
+```
+
+The Sector Count register (`0x1F2`), which for `0xC6` carries the requested
+block size, was written immediately before it:
+
+```
+1694033: ide_ioport_write IDE PIO wr @ 0x1f2 (Sector Count); val 0x10; bus 000002bcfa720b40 IDEState 000002bcfa720bc8
+```
+
+`0x10` = 16, matching the console's "multisector (16)". The command also
+completed cleanly: an IRQ 14 fires immediately (`Servicing hardware
+INT=0x4e`, line 1694037) and the following Status reads are `0x50`
+(`DRDY | DSC`, no `ERR`, no `DRQ`) — a normal successful completion, not a
+rejection.
+
+**This weakens, rather than supports, the "multisector was never configured"
+explanation.** `0xC6` was issued once, accepted, and matches the sector count
+the driver later uses. It is not the case that `0xC4` is being sent to a
+device with `mult_sectors` unset.
+
+For the record, what QEMU's model did immediately after the fatal `0xc4` at
+line 1748798 (`ide_bus_exec_cmd`, cmd 0xc4) — the next `ide_*` trace event of
+any kind does not appear until line 1808840, roughly 60,000 lines later, when
+the driver's timeout handler starts polling:
+
+```
+1748798: ide_bus_exec_cmd IDE exec cmd: bus 000002bcfa720b40; state 000002bcfa720bc8; cmd 0xc4
+1748799: ide_sector_read sector=97120 nsectors=16
+1808840: ide_ioport_read IDE PIO rd @ 0x1f1 (Error); val 0x00; bus 000002bcfa720b40 IDEState 000002bcfa720bc8
+1808841: ide_ioport_read IDE PIO rd @ 0x1f2 (Sector Count); val 0x00; bus 000002bcfa720b40 IDEState 000002bcfa720bc8
+1808842: ide_ioport_read IDE PIO rd @ 0x1f3 (Sector Number); val 0x70; bus 000002bcfa720b40 IDEState 000002bcfa720bc8
+1808843: ide_ioport_read IDE PIO rd @ 0x1f4 (Cylinder Low); val 0x7b; bus 000002bcfa720b40 IDEState 000002bcfa720bc8
+1808844: ide_ioport_read IDE PIO rd @ 0x1f5 (Cylinder High); val 0x01; bus 000002bcfa720b40 IDEState 000002bcfa720bc8
+1808845: ide_ioport_read IDE PIO rd @ 0x1f6 (Device/Head); val 0xe0; bus 000002bcfa720b40 IDEState 000002bcfa720bc8
+1808846: ide_status_read IDE PIO rd @ 0x3f6 (Alt Status); val 0x58; bus 000002bcfa720b40; IDEState 000002bcfa720bc8
+```
+
+So on this trace surface QEMU does not abort the command, does not report an
+error, and generates no further logged IDE bus activity at all after setting
+up the sector read — it is simply silent (`ide_*` trace points do not cover
+internal DRQ/`mult_sectors` state transitions). When the driver eventually
+polls, the device is still sitting at `DRDY | DSC | DRQ`, unchanged from the
+state described earlier in this section. This is consistent with, but does
+not by itself prove, an internal `mult_sectors`/block-boundary accounting
+issue in QEMU's read-multiple path — a hypothesis to be tested by Task 7
+(disable multi-sector transfers), not an established conclusion here.
+
+### Task 7 result: disabling multi-sector transfers does not fix the boot
+
+`vm/rhap_inject.py set-key` was used to flip `"Multiple Sectors"` from
+`"Yes"` to `"No"` in
+`/private/Drivers/i386/EIDE.config/Instance0.table` on a reset working
+image, and the guest was booted headlessly with `vm/qemu-shot.py`,
+capturing the VGA console out to 180 seconds.
+
+The write landed and took effect: the console now prints `hd0: using
+single sector transfers.` in place of `hd0: using multisector (16)
+transfers.`, confirming the driver reads the table key rather than
+falling back to a compiled-in default.
+
+**The guest still does not boot — outcome 2, a different failure.** The
+`0xC4` (READ MULTIPLE) timeout is gone, but a new one appears on `0x20`
+(READ SECTOR(S)) shortly afterward:
+
+```
+hd0: using single sector transfers.
+...
+rootdev 300, howto 40000
+hc0: interrupt timeout, cmd: 0x20
+hc0: ATA command 20 failed. Retrying...
+hc0: ATA Command: error=0x0 secCnt=0xd secNum=0x53 cyl=0x5 drhd=0xe0 status=0x58
+hc0: Resetting drives...
+hc0: interrupt timeout, cmd: 0xec
+hc0: ATA drive 0 is not present.
+```
+
+After this the driver cycles indefinitely through `RESTORE` (`0x10`),
+`READ SECTOR(S)` (`0x20`) and drive resets, each attempt timing out the
+same way, with no further progress visible through 180 seconds.
+
+**Reading:** the multisector hypothesis was at least partly right — the
+specific command that stops getting an IRQ changed from `0xC4` to `0x20`
+once multi-sector was disabled — but the underlying mechanism is not
+command-specific. Something about the driver's read path past
+`rootdev`/root-mount time stops receiving IRQ 14 regardless of which read
+command it uses. This does **not** change Tasks 8-11: the sacrificial-inode
+graft and rebuilt-driver injection plan stands, since no config-table
+workaround alone resolves the wedge.
+
+### Pre-branch baseline: the stock driver's original console failure
+
+Before any change on this branch, the guest was booted once with the stock
+kernel and the stock `drvEIDE-28` / `5.01` to establish what the unmodified
+failure actually looked like. This was **observed on the guest console under
+QEMU, transcribed from screenshots rather than captured to a log file** — no
+`qemu-shot.py`/serial-log tooling was in use yet at that point in the branch's
+history. Two limitations follow directly from that: it is a manual
+transcription, not a machine-captured log, and the earlier part of the boot
+had already scrolled off-screen before the failure was captured, so the
+device bring-up shown below is the tail of what was still on screen, not the
+full sequence from power-on.
+
+What was still visible of the normal bring-up:
+
+```
+hd0: using multisector (16) transfers.
+hd0: Device Capacity: 8063 MB
+hd0: Disk Label: Disk
+```
+
+along with controller/drive detection on `hc1`, and registration of
+`ISASerialPort0` (`Base=0x03f8, IRQ=4, Type=16550AF/C/CF, FIFO=16`),
+`PS2Controller`, `PCI0`, `EISA0`, `event0`, and `kmDevice0`.
+
+The failure itself:
+
+```
+rootdev 300, howto 40000
+WARNING: preposterous time in Real Time Clock -- CHECK AND RESET THE DATE!
+hc0: interrupt timeout, cmd: 0xc4
+hc0: Read Multiple: error=0x0 secCnt=0x30 secNum=0xe0 cyl=0x373 drhd=0xe0 status=0x58
+hc0: ATA command c4 failed. Retrying...
+hc0: ATA Command: error=0x0 secCnt=0x30 secNum=0xe0 cyl=0x373 drhd=0xe0 status=0x58
+hc0: Resetting drives...
+hc1: interrupt timeout, cmd: 0x0
+hc1: FATAL: ATAPI Drive: 0 Command 0 failed.
+hc1: ATAPI Command: error=0x20 secCnt=0x3 secNum=0x1 cyl=0x800 drhd=0xe0 status=0x41
+hc0: interrupt timeout, cmd: 0xec
+hc1: interrupt timeout, cmd: 0x0
+hc1: FATAL: ATAPI Drive: 0 Command 0 failed.
+hc1: ATAPI Command: error=0x20 secCnt=0x3 secNum=0x1 cyl=0x800 drhd=0xe0 status=0x41
+hc0: ATA drive 0 is not present.
+```
+
+**The significant detail this establishes: the original, stock-driver failure
+had already reached `rootdev 300, howto 40000`** — i.e. root-device I/O had
+begun — before wedging on `cmd: 0xc4` with `status=0x58`. This is the fact
+against which any later "did the rebuilt driver get further" claim must be
+checked, and it is the baseline used in the Task 9 comparison below.
+
+### Task 9 result: the rebuilt driver does not fix the multisector wedge
+
+The i386 `drvEIDE` (findings A-G above) was built on the PPC toolchain host
+as unstripped `kl_ld` output (`EIDE_reloc`, 856,404 bytes — about 7x the
+stock 121,056-byte binary; the userspace `PostLoad` helper did not link on
+that host, so only `EIDE_reloc` was replaced). It replaced the image's
+installed **`drvEIDE-28` / version `5.01`** (`Instance0.table`'s `Driver
+Version` string: `PROGRAM:EIDE PROJECT:drvEIDE-28 DEVELOPER:root
+BUILT:Sat Mar 28 22:23:22 PST 1998`). Since it exceeds the target's
+121,856-byte writable bound, it was installed via the sacrificial-inode
+graft from Task 8, onto `InterfaceBuilderGuide.pdf` (kept separate from the
+donor Task 11 uses for the kernel), and verified byte-for-byte identical
+after a read-back.
+
+**With `"Multiple Sectors" = "No"`**, the rebuilt driver's boot trace is
+identical to Task 7's stock-driver baseline: `using single sector
+transfers.`, then `hc0: interrupt timeout, cmd: 0x20` shortly after
+`rootdev 300, howto 40000`, cycling through resets/retries with no boot
+inside 180 seconds. The larger unstripped binary loads and runs with no
+regression.
+
+**With `"Multiple Sectors" = "Yes"` — the real test.** `hd0: using
+multisector (16) transfers.` appears, and the boot continues through
+device-attribute printing, serial/keyboard/PCI/EISA registration, and into
+`rootdev 300, howto 40000` — all without an interrupt timeout. The wedge
+then appears at the start of root-device I/O: `hc0: interrupt timeout, cmd:
+0xc4`, `status=0x58` (`DRDY|DSC|DRQ`, `error=0x0`), followed by the same
+permanent reset/retry cycle (`RESTORE`/`READ MULTIPLE`/`ATA drive 0 is not
+present`) with no progress through 180 seconds.
+
+**Reading, against the pre-branch baseline recorded above:** the baseline's
+stock-driver failure had also already reached `rootdev 300, howto 40000`
+before wedging on `cmd: 0xc4` with the same `status=0x58`. The rebuilt
+driver reaches that same point and fails on the same command with the same
+status. **The rebuilt `drvEIDE` (drvEIDE-33 / v5.04, replacing the image's
+drvEIDE-28 / v5.01) does not fix this failure under QEMU.** Two things are
+genuinely established, though: the 856,404-byte unstripped binary loaded and
+initialised correctly, so binary size was not a barrier to booting; and with
+multi-sector disabled, it reproduced the prior (Task 7) baseline exactly.
+Findings A-G's recovery logic (particularly C,
+`-recoverFromLostInterrupt:command:`) does not resolve the root cause QEMU's
+IDE trace identified — IRQ 14 simply stops being reasserted for a `cmd:
+0xc4`, and no amount of driver-side recovery logic can wait out an interrupt
+the device model never raises. The serial console in Tasks 10-11 remains the
+priority for `IOLog` visibility into exactly where in
+`-recoverFromLostInterrupt:` or the retry path this instance of the wedge is
+being hit.
+
+### Task 11 result: serial console verified; driver debug log adds one new fact
+
+The Task 10 kernel (with the polled i386 serial console and `printf`/`panic`/
+`IOLog` routed to it) was grafted onto `/mach_kernel` (sacrificial-inode graft
+onto `ProjectBuilder.pdf`, same mechanism as Task 9) and booted headlessly
+with `vm/qemu-shot.py`, which now also captures COM2 to `serial.log`.
+
+**Checkpoint 1 (banner before any VGA output) passes.** `serial.log`'s first
+line, before anything else, is `serial_dbg: i386 kernel console up`.
+
+**Checkpoint 2 (`printf` reaches serial) passes, and serial carries more than
+the screen does.** The full boot trace - PCI enumeration, `hc0`/`hd0`
+registration, `rootdev 300, howto 40000`, and the `interrupt timeout, cmd:
+0xc4` wedge - appears in `serial.log`, matching the reference failure in this
+section exactly. It does **not** all appear on VGA: once boot reaches the
+graphical "Starting Rhapsody" splash (around the time `hc0` starts
+registering), the text console is replaced by a static bitmap, so the PCI
+list, disk registration and the entire interrupt-timeout/reset/retry loop are
+visible **only** on serial from that point on. Serial is not a redundant
+mirror here - for this failure mode it is the only channel that shows
+anything past the splash.
+
+**Checkpoint 3 (panic reaches serial) could not be produced, and should not
+be assumed passing.** Booting `mach_kernel rootdev=9999 -v` does not panic
+this kernel: `getargs()` (`machdep/i386/i386_init.c`) parses a purely-numeric
+`rootdev=` value as an integer via its `kernargs` table and stores the raw 4
+bytes into `swapgeneric.m`'s `char rootdevice[8]`, not the string `"9999"`.
+`setconf()` then fails to match any of `sd`/`hd`/`fd`/`en`/`tr` against those
+bytes and falls into `bsd/kern/init_main.c`'s mountroot loop, which sets
+`RB_ASKNAME` and retries indefinitely rather than calling `panic()` - the
+observed console text is an interactive `root device?` prompt, repeating
+forever, not a crash. This is correct, intentional kernel behavior, not a
+bug. An attempt to force a real crash by overflowing `setconf()`'s unbounded
+`gets()` into a 128-byte stack buffer (400 characters typed at the `root
+device?` prompt) produced no fault either - the loop is re-entered before the
+corrupted frame is ever returned from. What **is** confirmed by code
+inspection: `panic()` (`bsd/kern/subr_prf.c`) formats into `"panic: %s"` and
+calls `prf(..., TOCONS, ...)`, which reaches `putchar()`'s serial tap through
+the exact same `TOCONS` path already verified live in Checkpoint 2 - so a
+panic reaching serial is architecturally expected, but this is inference from
+the shared code path, not a directly observed `panic:` line, and should be
+reported as such rather than assumed.
+
+**Checkpoint 4 (`serial=0` disables output) passes.** Booting `mach_kernel
+serial=0 -v` produces a `serial.log` of 0 bytes while the VGA console
+continues showing the normal verbose boot text, including the `cmd: 0xc4`
+failure.
+
+**Checkpoint 5 (`IOLog` after `syslogd` opens `/dev/klog`) is unreachable**,
+as expected: the guest never leaves single-user boot because of the disk
+wedge, so `syslogd` never runs and `/dev/klog` is never opened. This was not
+attempted and is not claimed to have passed.
+
+**Checkpoint 5a: the driver's own debug output was captured for the first
+time.** With `"Debug" = "Yes"` set on
+`/private/Drivers/i386/EIDE.config/Instance0.table`, a full boot to well past
+the wedge was captured. The extra lines are all `IOLog` calls gated on the
+driver's own `_ide_debug` flag (`IdeCntCmds.m`, `IdeDiskInternal.m`), and they
+reach serial pre-`syslogd` via the same `!log_open` `TOCONS` fallback pass
+described in `bsd/kern/subr_prf.c`'s `putchar()`. Around the failure:
+
+```
+hc0: interrupt timeout, cmd: 0xc4
+hc0: Read Multiple: error=0x0 secCnt=0x0 secNum=0x42 cyl=0x85 drhd=0xe0 status=0x58
+hc0: ATA command c4 failed. Retrying...
+hc0: ATA Command: error=0x0 secCnt=0x0 secNum=0x42 cyl=0x85 drhd=0xe0 status=0x58
+hc0: Resetting drives...
+hc0: interrupt timeout, cmd: 0xec
+ideReadGetInfoCommon: ideWaitForInterrupt
+ATA: ideReadGetInfoCommon failed.
+hc0: ATA drive 0 is not present.
+hc0: interrupt timeout, cmd: 0x10
+hc0: Restore: error=0x0 secCnt=0x1 secNum=0x1 cyl=0x0 drhd=0xe0 status=0x50
+```
+
+**New fact this reveals:** after the `0xc4` timeout, the driver's reset path
+retries with `cmd: 0xec` (IDENTIFY DEVICE, issued through
+`ideReadGetInfoCommon:client:addr:command:` as part of re-probing the drive),
+and that recovery command **also** times out waiting for an interrupt -
+`ideReadGetInfoCommon: ideWaitForInterrupt` fires from the `_ide_debug`
+branch at `IdeCntCmds.m:357`, immediately followed by `IdeCntInit.m`'s `ATA:
+ideReadGetInfoCommon failed.` when the caller gives up. This is the first
+direct, driver-side confirmation - previously only inferred from the QEMU
+`ide_*` trace in the "QEMU trace evidence" subsection above - that QEMU stops
+delivering IRQ 14 for the guest generally after the failing command, not only
+for the specific command that first wedged: even the driver's own recovery
+IDENTIFY, issued moments later, gets no interrupt either. What the driver
+*believed* was happening going into the original `0xc4` timeout is still not
+visible - there is no `_ide_debug` logging on the successful path immediately
+before it wedges, only on failure - so this narrows the unknown to "the
+recovery path also can't get an interrupt" without yet explaining why the
+first one was lost.
+
+**The next command in the same reset sequence times out too, and shows a
+different status shape.** Immediately after the `ATA drive 0 is not present`
+line, the driver issues `cmd: 0x10` (RESTORE, part of the retry loop after
+the failed IDENTIFY) and it also gets `hc0: interrupt timeout, cmd: 0x10` -
+no interrupt again. But the status word left behind, `status=0x50`, is not
+the `0x58` shape seen in every other timeout quoted in this document. By the
+decoding already established above (`0x58` = `DRDY | DSC | DRQ`), `0x50` is
+`DRDY | DSC` with neither `DRQ` nor `ERR` set: the drive reports itself ready
+and idle, not sitting with data pending. That reads as a command the device
+had already finished, with nothing left in-flight, rather than the
+in-progress data-transfer handshake `0x58` represents elsewhere in this file.
+RESTORE also has no data phase to begin with, so there is no transfer for it
+to be "stuck" in the middle of.
+
+This is worth flagging as a lead, not a conclusion. Every other case in this
+document is the "device holding data, host never told" shape; this is a
+"command already completed, no interrupt arrived to say so" shape instead.
+If that distinction holds up under more observation, it would point more
+toward IRQ 14 delivery itself being lost - independent of what the command
+was doing - rather than something specific to the read/multisector transfer
+path. But it is a single instance from one debug capture, in a system this
+document has already documented as varying between runs, and it does not by
+itself explain why interrupts stop arriving.
+
+The exact `cmd: 0x10` / `status=0x50` pairing (same register values:
+`secCnt=0x1 secNum=0x1 cyl=0x0 drhd=0xe0`) also appears in the other
+full-length debug capture, `vm/shots-task11-boot1/serial.log` (lines 60-61),
+so it is not a one-off within this run either - it reproduced across the two
+captures that got far enough to reach it. It did not appear in the two
+shorter captures (`vm/shots-task11-debug`, `vm/shots-task11-debug2`), which
+wedged earlier during initial drive setup and never reach this retry stage,
+nor in the non-`_ide_debug` captures (`vm/shots-task11-panic`,
+`-panic2`, `-serial0`). Notably, a *second* `cmd: 0x10` timeout later in the
+same `shots-task11-debug3` run (lines 74-75) instead shows `status=0x58` -
+so a RESTORE timeout does not always land on `0x50`; the two shapes can both
+occur for the same command within one boot. With only two runs reaching this
+stage, this is not enough to call the `0x50` shape reproducible in general,
+only that it has been seen more than once.
+
+One caveat worth recording plainly: two earlier, shorter capture attempts
+with the identical `"Debug" = "Yes"` config wedged much earlier and on
+different commands - `interrupt timeout, cmd: 0x91` (SET PARAMS), `cmd: 0xc6`
+(SET MULTIPLE MODE) and `cmd: 0xef` (SET FEATURES), all during initial drive
+setup, before multisector was even negotiated (`hd0: using single sector
+transfers.` instead of the usual multisector line). A full-length rerun of
+the same configuration reproduced the standard `rootdev`-time `cmd: 0xc4`
+baseline exactly instead. `vm/README.md` already notes that QEMU TCG timing
+is not comparable between runs; this is a concrete instance of that
+non-determinism reaching far enough to change *which* command loses its
+interrupt, not just when. It is reported here as an observation, not a new
+conclusion about root cause.
+
 ---
 
 ## 3. Verification status
@@ -218,3 +651,67 @@ Hang fixes (§2):
 | `b4d49e08` | D — lightweight `recoverDrives` in the command retry path |
 | `12907a6e` | E, F, G — legacy PIO cap, zeroed taskfile, per-drive multisector disable |
 | `61886ca9` | D — escalate to full reinit before the final retry so a failing mode still demotes |
+
+### Resolved: the interrupt loss is a kernel PIC bug, not a driver bug
+
+The `interrupt timeout` failures documented above are not caused by `drvEIDE`.
+QEMU's PIC state at the wedge shows the master 8259's in-service register with
+the cascade bit (IRQ 2) set and never cleared, which blocks every slave
+interrupt (IRQ 8-15) while the higher-priority IRQ 0 keeps being delivered. The
+disk is asserting IRQ 14 and the slave has it pending and unmasked; the master
+simply refuses to forward it.
+
+The defect is in `machdep/i386/intr.c`: a spurious slave interrupt (IRQ 15)
+returned without acknowledging the cascade the master had already accepted.
+
+Full evidence and the fix are in
+[`docs/kernel/i8259-spurious-slave-irq.md`](../kernel/i8259-spurious-slave-irq.md).
+
+This also explains why none of the driver-side experiments helped: disabling
+multi-sector transfers only moved which command was in flight when the PIC
+wedged, and the rebuilt driver could not fix an interrupt that never arrives.
+
+## 3. `IdeController` and `AtapiController` diverge from Apple's ivar layout (accepted)
+
+Found by an instance-size audit across every driver with a reference binary,
+run after two heap overflows in `drvPCMCIABus` traced to classes whose ivars
+were never declared to match offsets the code already used.
+
+| Class | Reference | Ours |
+| --- | --- | --- |
+| `IdeController` | 1528 | 552 — 976 short |
+| `AtapiController` | 3224 | 3272 — 48 over |
+
+**Neither is that bug, and neither is dangerous.** The distinguishing check is
+whether anything addresses ivars by raw byte offset: in `drvPCMCIABus` two
+classes did, against a layout that no longer matched, and wrote off the end of
+the object. **`drvEIDE` contains no `(char *)self + 0x…` access at all.** Every
+field is reached by name, so the object is internally consistent whatever its
+size, and the compiler places and reads each ivar in the same place.
+
+`IdeController`'s superclass is already right — `IODirectDevice` on both sides —
+and its first five ivars match exactly, `_ideCmdLock` at +296 through
+`_interruptTimeOut` at +360. The divergence is one of representation. Apple
+keeps per-drive state in flat parallel two-element arrays:
+
+```
++364   [2c]        _biosGeometry          +1444  [2c]   _dmaSupported
++368   [2{...}]    _ideInfo               +1446  [2S]   _dmaMode
++418   [2c]        _ideIdentifyInfoSupported
++420   [2{...}]    _ideIdentifyInfo       <- +420..+1444, 1024 bytes
+```
+
+thirty-four ivars in all, of which `_ideIdentifyInfo` alone is two 512-byte
+IDENTIFY DEVICE buffers held in the object. Ours groups the same state into a
+single `_drives[2]` array of a per-drive struct at +368, 128 bytes total, and
+does not retain the full IDENTIFY data — that is essentially the whole 976-byte
+difference.
+
+**Left as it is, deliberately.** Matching Apple would mean rewriting 182
+`_drives[…]` references and adding roughly a kilobyte of per-object storage, in
+a driver marked complete and working, to fix nothing. The value of the audit was
+separating this case from the two that were genuine corruption; recorded so the
+size mismatch is not rediscovered later and mistaken for one of those.
+
+`AtapiController` is the same call: identical superclass, the same seven ivar
+names, ours 48 bytes larger through a differently sized member. Not chased.

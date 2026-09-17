@@ -11,4 +11,4 @@ Extra_Configure_Flags = --program-prefix="g"
 Extra_LD_Flags        = -read_only_relocs warning
 
 # It's a GNU Source project
-include /System/Developer/Makefiles/CoreOS/ReleaseControl/GNUSource.make
+include $(MAKEFILEPATH)/CoreOS/ReleaseControl/GNUSource.make

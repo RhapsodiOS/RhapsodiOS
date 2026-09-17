@@ -19,7 +19,7 @@
 #import "BusLogicTypes.h"
 
 
-@interface BLController : IOSCSIController
+@interface BLCController : IOSCSIController
 {
 	/*
 	 * Hardware info.
@@ -76,6 +76,10 @@
 
 	port_t		interruptPortKern;	/* kernel version of
 						 * interruptPort */
+
+	int		busType;		/* BL_BUS_* */
+	unsigned char	targetsPerBus;		/* targets this board
+						 * supports */
 }
 
 /*
@@ -84,6 +88,7 @@
 + (BOOL)probe:deviceDescription;
 - initFromDeviceDescription	: deviceDescription;
 - (unsigned)maxTransfer;
+- (int)numberOfTargets;
 - free;
 - (void)interruptOccurred;
 - (void)interruptOccurredAt:(int)localNum;

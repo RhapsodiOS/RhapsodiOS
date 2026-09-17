@@ -27,6 +27,25 @@
 
 #define	IOAUDIO_MAXIMUM_TIMEOUT		UINT_MAX
 
+/*
+ * FIXME: These tags should be incorporated in NXSoundParameterTags.
+ * Drivers need the values in order to implement setInput:enable: and
+ * setOutput:enable: without duplicating IOAudio's private numbering.
+ */
+typedef enum {
+    NX_SoundDeviceLineOut = NX_SoundDeviceParameterKeyBase + 25,
+    NX_SoundDeviceSpeakerOut,
+    NX_SoundDeviceCDOut,
+    NX_SoundDeviceAux1Out,
+    NX_SoundDeviceAux2Out,
+
+    NX_SoundDeviceMicIn,
+    NX_SoundDeviceLineIn,
+    NX_SoundDeviceCDIn,
+    NX_SoundDeviceAux1In,
+    NX_SoundDeviceAux2In,
+} NXSoundParameterTagExtra;
+
 typedef struct {
     ns_time_t 	_outputStartTime;
     ns_time_t 	_timestampBuffer;
@@ -144,6 +163,7 @@ typedef struct {
 - (ns_time_t)_outputStartTime;
 
 - (void) _setInputFor:(NXSoundParameterTag)ptag to:(BOOL)enable;
+- (void) _setInputReportFor:(NXSoundParameterTag)ptag to:(BOOL)enable;
 - (void) _setOutputFor:(NXSoundParameterTag)ptag to:(BOOL)enable;
 
 // convenience methods

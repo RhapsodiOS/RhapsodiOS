@@ -61,11 +61,10 @@
  ***************************************************/
 
 #include <mach/message.h>
-#include <varargs.h>
+#include <stdarg.h>
 #include "write.h"
 #include "utils.h"
 #include "global.h"
-#include <stdarg.h>
 
 #define _doprnt(a, b, c) vfprintf( (c), (a), (b) )
 
@@ -473,14 +472,10 @@ WriteStaticDecl(file, it, dealloc, longform, name)
 /*ARGSUSED*/
 /*VARARGS4*/
 void
-WriteCopyType(file, it, left, right, va_alist)
-    FILE *file;
-    ipc_type_t *it;
-    char *left, *right;
-    va_dcl
+WriteCopyType(FILE *file, ipc_type_t *it, char *left, char *right, ...)
 {
     va_list pvar;
-    va_start(pvar);
+    va_start(pvar, right);
 
     if (it->itStruct)
     {
@@ -581,16 +576,11 @@ WritePackMsgTypeShort(file, it, dealloc, longform, left, pvar)
 /*ARGSUSED*/
 /*VARARGS4*/
 void
-WritePackMsgType(file, it, dealloc, longform, left, right, va_alist)
-    FILE *file;
-    ipc_type_t *it;
-    boolean_t dealloc;
-    boolean_t longform;
-    char *left, *right;
-    va_dcl
+WritePackMsgType(FILE *file, ipc_type_t *it, boolean_t dealloc,
+	boolean_t longform, char *left, char *right, ...)
 {
     va_list pvar;
-    va_start(pvar);
+    va_start(pvar, right);
 
     fprintf(file, "#if\tUseStaticMsgType\n");
     fprintf(file, "\t");

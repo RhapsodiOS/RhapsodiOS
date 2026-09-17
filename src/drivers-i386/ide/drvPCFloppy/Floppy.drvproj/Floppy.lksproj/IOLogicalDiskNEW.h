@@ -5,20 +5,21 @@
  */
 
 #import "IODiskNew.h"
+#import "IODiskProtocols.h"
 
 #ifdef	KERNEL
 #import <driverkit/kernelDiskMethods.h>
 #import <bsd/dev/ldd.h>
 #endif	KERNEL
 
-@interface IOLogicalDiskNEW : IODiskNEW
+@interface IOLogicalDiskNEW : IODiskNEW <IODiskReadingAndWriting>
 {
 @private
 	id		_physicalDisk;		// physical disk object
 	unsigned	_partitionBase;		// base offset of partition
 	BOOL		_instanceOpen;		// instance open flag
 
-	int		_IOLogicalDiskNEW_reserved[4];
+	int		_IOLogicalDisk_reserved[4];
 }
 
 /*
@@ -29,61 +30,61 @@
 /*
  * Free method.
  */
-- _free;
+- free;
 
 /*
  * Get physical disk.
  */
-- _physicalDisk;
+- physicalDisk;
 
 /*
  * Check if instance is open.
  */
-- (BOOL)_isInstanceOpen;
+- (BOOL)isInstanceOpen;
 
 /*
  * Set instance open flag.
  */
-- (void)_setInstanceOpen : (BOOL)openFlag;
+- (void)setInstanceOpen : (BOOL)openFlag;
 
 /*
  * Check if disk is open.
  */
-- (BOOL)_isOpen;
+- (BOOL)isOpen;
 
 /*
  * Check if any other instance is open.
  */
-- (BOOL)_isAnyOtherOpen;
+- (BOOL)isAnyOtherOpen;
 
 /*
  * Set partition base offset.
  */
-- (void)_setPartitionBase : (unsigned)base;
+- (void)setPartitionBase : (unsigned)base;
 
 /*
  * Read/Write methods.
  */
 #ifdef KERNEL
-- (IOReturn)_readAt : (unsigned)offset
+- (IOReturn)readAt : (unsigned)offset
 	     length : (unsigned)length
 	     buffer : (unsigned char *)buffer
        actualLength : (unsigned *)actualLength
 	     client : (vm_task_t)client;
 
-- (IOReturn)_readAsyncAt : (unsigned)offset
+- (IOReturn)readAsyncAt : (unsigned)offset
 		  length : (unsigned)length
 		  buffer : (unsigned char *)buffer
 		 pending : (void *)pending
 		  client : (vm_task_t)client;
 
-- (IOReturn)_writeAt : (unsigned)offset
+- (IOReturn)writeAt : (unsigned)offset
 	      length : (unsigned)length
 	      buffer : (unsigned char *)buffer
         actualLength : (unsigned *)actualLength
 	      client : (vm_task_t)client;
 
-- (IOReturn)_writeAsyncAt : (unsigned)offset
+- (IOReturn)writeAsyncAt : (unsigned)offset
 		   length : (unsigned)length
 		   buffer : (unsigned char *)buffer
 		  pending : (void *)pending
@@ -95,12 +96,12 @@
 /*
  * Private methods category.
  */
-@interface IOLogicalDiskNEW(Private)
+@interface IOLogicalDiskNEW(private)
 
 /*
  * Common disk parameter validation.
  */
-- (IOReturn)__diskParamCommon : (unsigned)offset
+- (IOReturn)_diskParamCommon : (unsigned)offset
 		        length : (unsigned)length
 		  deviceOffset : (unsigned *)deviceOffset
 		   bytesToMove : (unsigned *)bytesToMove;

@@ -6,15 +6,17 @@
 
 #import "IOFloppyDrive.h"
 #import "FloppyDriveInt.h"
+#import "IOFloppyDisk.h"
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
+#import "FloppyVm.h"
 
 // External references for VM functions
-extern unsigned int __page_size;
-extern unsigned int __page_mask;
-extern vm_map_t __kernel_map;
-extern vm_map_t _vm_map_pmap_EXTERNAL(vm_map_t map, vm_address_t address);
-extern vm_offset_t _pmap_resident_extract(pmap_t pmap, vm_address_t address);
+extern unsigned int page_size;
+extern unsigned int page_mask;
+extern vm_map_t kernel_map;
+extern vm_map_t vm_map_pmap_EXTERNAL(vm_map_t map);
+extern vm_offset_t pmap_resident_extract(pmap_t pmap, vm_address_t address);
 
 /*
  * floppyMalloc - Allocate page-aligned memory for DMA
@@ -40,9 +42,9 @@ extern vm_offset_t _pmap_resident_extract(pmap_t pmap, vm_address_t address);
  *   3. Calculating the offset to the next page boundary
  *   4. Returning a pointer that ensures the requested size fits in one page
  */
-static void *floppyMalloc(unsigned int size,
-                          vm_address_t *allocAddrOut,
-                          unsigned int *allocSizeOut)
+void *floppyMalloc(unsigned int size,
+                    vm_address_t *allocAddrOut,
+                    unsigned int *allocSizeOut)
 {
 	vm_address_t allocAddr;
 	vm_address_t returnAddr;
@@ -52,7 +54,7 @@ static void *floppyMalloc(unsigned int size,
 	int offsetToNextPage;
 
 	// Check if requested size exceeds page size
-	if (__page_size < size) {
+	if (page_size < size) {
 		return NULL;
 	}
 
@@ -66,14 +68,14 @@ static void *floppyMalloc(unsigned int size,
 	*allocSizeOut = allocSize;
 
 	// Get physical address of the allocation
-	pmap = _vm_map_pmap_EXTERNAL(__kernel_map, allocAddr);
-	physAddr = _pmap_resident_extract(pmap, allocAddr);
+	pmap = vm_map_pmap_EXTERNAL(kernel_map);
+	physAddr = pmap_resident_extract(pmap, allocAddr);
 
 	// Calculate offset from physical address to next page boundary
-	// (-__page_size & physAddr) rounds down to page boundary
-	// Adding __page_size gives next page boundary
+	// (-page_size & physAddr) rounds down to page boundary
+	// Adding page_size gives next page boundary
 	// Subtracting physAddr gives offset to next boundary
-	offsetToNextPage = ((-__page_size & physAddr) + __page_size) - physAddr;
+	offsetToNextPage = ((-page_size & physAddr) + page_size) - physAddr;
 
 	// If the offset to the next page boundary is less than the requested size,
 	// we need to move forward to ensure the buffer doesn't cross a page
@@ -88,7 +90,7 @@ static void *floppyMalloc(unsigned int size,
 }
 
 /*
- * _fdTimer - Timer callback for floppy motor control
+ * fdTimer - Timer callback for floppy motor control
  * From decompiled code: timer callback that checks motor state.
  *
  * This function is called by the system timer to handle motor timeout.
@@ -102,7 +104,7 @@ static void *floppyMalloc(unsigned int size,
  *   - Bit 0 set: timer is active/pending
  *   - Bit 0 clear: timer has fired or is inactive
  */
-static void _fdTimer(id drive)
+void fdTimer(id drive)
 {
 	unsigned char *timerFlagPtr;
 
@@ -145,7 +147,7 @@ static void _fdTimer(id drive)
  *   0x16 -> IO_R_NO_MEDIA (0xfffffd2c = -724)
  *   default -> IO_R_INVALID (0xfffffd37 = -713)
  */
-static IOReturn fdrToIo(unsigned int fdrCode)
+IOReturn fdrToIo(unsigned int fdrCode)
 {
 	switch (fdrCode) {
 	case 0x00:
@@ -214,7 +216,7 @@ static IOReturn fdrToIo(unsigned int fdrCode)
  * Allocate disk structure.
  * From decompiled code: determines disk type from geometry and allocates IOFloppyDisk.
  */
-- (IOReturn)_allocateDisk
+- (IOReturn)allocateDisk
 {
 	id diskObject;
 	unsigned diskType = 1;  // Default type
@@ -263,25 +265,29 @@ static IOReturn fdrToIo(unsigned int fdrCode)
 	
 	// Get ejectable flag from bit 2 of flags (offset 0x18c)
 	isEjectable = (_flags >> 2) & 1;
-	
+
 	// Allocate IOFloppyDisk object
-	// Call: [[IOFloppyDisk alloc] initFromDeviceDescription:drive:type:isEjectable:]
+	// Call: [[IOFloppyDisk alloc] initFromDeviceDescription::::]
 	diskObject = [[IOFloppyDisk alloc] initFromDeviceDescription:_deviceDescription
-	                                                        drive:self
-	                                                         type:diskType
-	                                                  isEjectable:isEjectable];
-	
+	                                                            :self
+	                                                            :diskType
+	                                                            :isEjectable];
+
 	// Store disk object at offset 0x108
 	_nextLogicalDisk = diskObject;
-	
-	return (diskObject != nil) ? IO_R_SUCCESS : IO_R_NO_MEMORY;
+
+	// Disassembly (0x39a3-0x39a8) returns a plain boolean: 1 if diskObject was
+	// allocated, 0 if not (setnz al). IO_R_SUCCESS is 0, so returning it here
+	// on success made the caller's "if (allocated)" check read success as
+	// failure. Return the boolean the caller actually expects.
+	return (diskObject != nil);
 }
 
 /*
  * Format a track.
  * From decompiled code: formats a track with C/H/R/N sector descriptors.
  */
-- (IOReturn)_fdFormatTrack : (unsigned)track
+- (IOReturn)fdFormatTrack : (unsigned)track
 		       head : (unsigned)head
 {
 	IOReturn result;
@@ -312,7 +318,7 @@ static IOReturn fdrToIo(unsigned int fdrCode)
 	}
 	
 	// Seek to track
-	result = [self _fdSeek:track head:head];
+	result = [self fdSeek:track head:head];
 	if (result != IO_R_SUCCESS) {
 		IOFree(allocAddr, allocSize);
 		return result;
@@ -322,33 +328,31 @@ static IOReturn fdrToIo(unsigned int fdrCode)
 	bzero(cmdBuffer, 0x60);
 	
 	// Set command parameters at specific offsets
-	cmdBuffer[0] = _fdcNumber;                      // FDC controller number (offset 400)
+	cmdBuffer[0] = _fdcNumber;                      // FDC controller number
 	*(unsigned *)(cmdBuffer + 4) = 5000;            // Timeout (5000ms)
-	*(unsigned *)(cmdBuffer + 8) = 1;               // Command length
-	*(unsigned *)(cmdBuffer + 0x14) = 6;            // Phase: format track
+	*(unsigned *)(cmdBuffer + 8) = 1;               // fcCmdXfr: op selector (1 = raw FDC bytes)
+	*(unsigned *)(cmdBuffer + 0x1c) = 6;            // Command byte count (6 for FORMAT TRACK)
+	*(unsigned char **)(cmdBuffer + 0x20) = formatBuffer;  // Buffer pointer
+	*(int *)(cmdBuffer + 0x24) = bufferSize;        // Expected byte count
 	*(unsigned *)(cmdBuffer + 0x58) = kernel_map;   // Kernel memory map
-	*(unsigned *)(cmdBuffer + 0x5c) = 7;            // Result bytes expected
-	*(unsigned *)(cmdBuffer + 0x60) = 0;            // Initial result value
-	
+	*(unsigned *)(cmdBuffer + 0x38) = 7;            // Result bytes expected
+	*(unsigned *)(cmdBuffer + 0x3c) = 0;            // Initial result value
+
 	// FDC command bytes
-	cmdBuffer[0x24] = 0x0D |                        // FORMAT TRACK command
+	cmdBuffer[0x0c] = 0x0D |                        // FORMAT TRACK command
 	                  ((_writePrecomp & 1) << 6);   // Write precomp flag (offset 0x198)
-	cmdBuffer[0x25] = ((unsigned char)head & 1) << 2; // Head select
-	cmdBuffer[0x26] = _sectorSizeCode;              // N - sector size code (offset 0x1a0)
-	cmdBuffer[0x27] = _sectorsPerTrack;             // Sectors per track (offset 0x1a4)
-	cmdBuffer[0x28] = _formatGapLength;             // Gap length (offset 0x1a9)
-	cmdBuffer[0x29] = 0x5A;                         // Fill byte (format pattern)
-	
-	// Set buffer pointer and size
-	*(unsigned char **)(cmdBuffer + 0x30) = formatBuffer;
-	*(int *)(cmdBuffer + 0x34) = bufferSize;
-	
+	cmdBuffer[0x0d] = ((unsigned char)head & 1) << 2; // Head select
+	cmdBuffer[0x0e] = _sectorSizeCode;              // N - sector size code (offset 0x1a0)
+	cmdBuffer[0x0f] = _sectorsPerTrack;             // Sectors per track (offset 0x1a4)
+	cmdBuffer[0x10] = _formatGapLength;             // Gap length (offset 0x1a9)
+	cmdBuffer[0x11] = 0x5A;                         // Fill byte (format pattern)
+
 	// Send command to FDC
-	result = [self _fdSendCmd:cmdBuffer];
-	
+	result = [self fdSendCmd:cmdBuffer];
+
 	if (result == IO_R_SUCCESS) {
 		// Convert FDC result to IO error code
-		result = fdrToIo(*(unsigned *)(cmdBuffer + 0x58));
+		result = fdrToIo(*(unsigned *)(cmdBuffer + 0x40));
 	}
 	
 	// Free format buffer
@@ -361,7 +365,7 @@ static IOReturn fdrToIo(unsigned int fdrCode)
  * Generate read/write command.
  * From decompiled code: builds FDC READ/WRITE DATA command structure.
  */
-- (IOReturn)_fdGenRwCmd : (unsigned)startBlock
+- (IOReturn)fdGenRwCmd : (unsigned)startBlock
 	       blockCount : (unsigned)blockCount
 		 fdIoReq : (void *)fdIoReq
 		 readFlag : (BOOL)readFlag
@@ -371,17 +375,17 @@ static IOReturn fdrToIo(unsigned int fdrCode)
 	unsigned char unit;
 	unsigned char command;
 
-	// The command bytes are at offset 0x9 + 3 in the structure
-	// Based on decompiled code: field3_0x9[3..11] are the FDC command bytes
-	// This corresponds to offset 0x24 in the command buffer (matching format track)
-	cmdBytes = cmdStruct + 0x24;
+	// Disassembly: "lea esi, [edi+0Ch]" - the command bytes start at +0x0C,
+	// the same base fdFormatTrack:head:, fdRecal, fdSeek:head: and
+	// fdReadId:statp: use, not +0x24.
+	cmdBytes = cmdStruct + 0x0c;
 
 	// Clear 9 bytes of command
 	bzero(cmdBytes, 9);
 
 	// Convert logical block to physical C/H/R
 	// This fills in cmdBytes[2], cmdBytes[3], cmdBytes[4] (C, H, R)
-	[self _fdLogToPhys:startBlock cmdp:cmdBytes];
+	[self fdLogToPhys:startBlock cmdp:cmdBytes];
 
 	// Build command byte 0: command code with flags
 	// READ DATA = 6 (0x06), WRITE DATA = 5 (0x05)
@@ -400,9 +404,9 @@ static IOReturn fdrToIo(unsigned int fdrCode)
 	cmdBytes[1] = (cmdBytes[1] & 0xfc) | (unit & 3);  // Unit number
 
 	// Build remaining FDC READ/WRITE DATA command bytes
-	// cmdBytes[2] = C (cylinder) - already set by _fdLogToPhys
-	// cmdBytes[3] = H (head) - already set by _fdLogToPhys
-	// cmdBytes[4] = R (sector) - already set by _fdLogToPhys
+	// cmdBytes[2] = C (cylinder) - already set by fdLogToPhys
+	// cmdBytes[3] = H (head) - already set by fdLogToPhys
+	// cmdBytes[4] = R (sector) - already set by fdLogToPhys
 	cmdBytes[5] = _sectorSizeCode;  // N - sector size code (offset 0x1a0)
 	cmdBytes[6] = cmdBytes[4] + (unsigned char)blockCount - 1;  // EOT - end sector
 	cmdBytes[7] = _readWriteGapLength;  // GPL - gap length (offset 0x1a8)
@@ -435,7 +439,7 @@ static IOReturn fdrToIo(unsigned int fdrCode)
  * Get floppy controller status.
  * From decompiled code: sends SENSE DRIVE STATUS command to FDC.
  */
-- (IOReturn)_fdGetStatus : (unsigned char *)status
+- (IOReturn)fdGetStatus : (unsigned char *)status
 {
 	IOReturn result;
 	unsigned char cmdBuffer[0x60];
@@ -444,17 +448,17 @@ static IOReturn fdrToIo(unsigned int fdrCode)
 	bzero(cmdBuffer, 0x60);
 	
 	// Set command parameters
-	// Offset 0x5c (local_5c): command type = 5 (SENSE DRIVE STATUS)
-	// Offset 0x60 (local_60): timeout = 5000ms
-	*(unsigned *)(cmdBuffer + 0x5c) = 5;
-	*(unsigned *)(cmdBuffer + 0x60) = 5000;
-	
+	// Offset 0x08: fcCmdXfr: op selector = 5 (SENSE DRIVE STATUS)
+	// Offset 0x04: timeout = 5000ms
+	*(unsigned *)(cmdBuffer + 0x08) = 5;
+	*(unsigned *)(cmdBuffer + 0x04) = 5000;
+
 	// Send command to FDC
-	result = [self _fdSendCmd:cmdBuffer];
-	
-	// Copy status from offset 0x14 (local_14) to output parameter
+	result = [self fdSendCmd:cmdBuffer];
+
+	// Copy status from offset 0x50 to output parameter
 	if (status != NULL) {
-		*status = cmdBuffer[0x14];
+		*status = cmdBuffer[0x50];
 	}
 	
 	return result;
@@ -464,7 +468,7 @@ static IOReturn fdrToIo(unsigned int fdrCode)
  * Convert logical block to physical cylinder/head/sector.
  * From decompiled code: converts LBA to CHS addressing for FDC commands.
  */
-- (IOReturn)_fdLogToPhys : (unsigned)logicalBlock
+- (IOReturn)fdLogToPhys : (unsigned)logicalBlock
 		     cmdp : (void *)cmdp
 {
 	unsigned char *cmd = (unsigned char *)cmdp;
@@ -498,7 +502,7 @@ static IOReturn fdrToIo(unsigned int fdrCode)
  * Read sector ID.
  * From decompiled code: sends READ ID command to get current sector's C/H/R/N.
  */
-- (IOReturn)_fdReadId : (unsigned)head
+- (IOReturn)fdReadId : (unsigned)head
 		statp : (unsigned char *)statp
 {
 	IOReturn result;
@@ -508,13 +512,13 @@ static IOReturn fdrToIo(unsigned int fdrCode)
 	bzero(cmdBuffer, 0x60);
 	
 	// Build READ ID command (0x0A)
-	cmdBuffer[0x24] = 0x0A |                        // READ ID command
+	cmdBuffer[0x0c] = 0x0A |                        // READ ID command
 	                  ((_writePrecomp & 1) << 6);   // Write precomp flag (offset 0x198)
-	cmdBuffer[0x24] = cmdBuffer[0x24] & 0x80 | 10 | ((_writePrecomp & 1) << 6);
-	
+	cmdBuffer[0x0c] = cmdBuffer[0x0c] & 0x80 | 10 | ((_writePrecomp & 1) << 6);
+
 	// Set head selection
-	cmdBuffer[0x25] = cmdBuffer[0x25] & 0xfb;       // Clear bit 2
-	cmdBuffer[0x25] = cmdBuffer[0x25] | ((head & 1) << 2);  // Head select
+	cmdBuffer[0x0d] = cmdBuffer[0x0d] & 0xfb;       // Clear bit 2
+	cmdBuffer[0x0d] = cmdBuffer[0x0d] | ((head & 1) << 2);  // Head select
 	
 	// Set command parameters
 	*(unsigned *)(cmdBuffer + 4) = 20000;           // Timeout (20000ms)
@@ -526,7 +530,7 @@ static IOReturn fdrToIo(unsigned int fdrCode)
 	*(unsigned *)(cmdBuffer + 0x3c) = 0;
 	
 	// Send command to FDC
-	result = [self _fdSendCmd:cmdBuffer];
+	result = [self fdSendCmd:cmdBuffer];
 	
 	if (result == IO_R_SUCCESS) {
 		// Convert FDC result to IO error code
@@ -552,7 +556,7 @@ static IOReturn fdrToIo(unsigned int fdrCode)
  * Recalibrate drive (seek to track 0).
  * From decompiled code: sends RECALIBRATE command to move heads to track 0.
  */
-- (IOReturn)_fdRecal
+- (IOReturn)fdRecal
 {
 	IOReturn result;
 	unsigned char cmdBuffer[0x60];
@@ -562,12 +566,12 @@ static IOReturn fdrToIo(unsigned int fdrCode)
 	bzero(cmdBuffer, 0x60);
 	
 	// Build RECALIBRATE command (0x07)
-	cmdBuffer[0x24] = 7;  // RECALIBRATE command
-	
+	cmdBuffer[0x0c] = 7;  // RECALIBRATE command
+
 	// Get unit number and set in command byte 1
 	unit = [self unit];
-	cmdBuffer[0x25] = cmdBuffer[0x25] & 3;  // Clear upper bits
-	cmdBuffer[0x25] = (cmdBuffer[0x25] & 0xfc) | (unit & 3);  // Set unit bits
+	cmdBuffer[0x0d] = cmdBuffer[0x0d] & 3;  // Clear upper bits
+	cmdBuffer[0x0d] = (cmdBuffer[0x0d] & 0xfc) | (unit & 3);  // Set unit bits
 	
 	// Set command parameters
 	*(unsigned *)(cmdBuffer + 4) = 20000;   // Timeout (20000ms)
@@ -578,7 +582,7 @@ static IOReturn fdrToIo(unsigned int fdrCode)
 	*(unsigned *)(cmdBuffer + 0x38) = 2;    // Result bytes expected
 	
 	// Send command to FDC
-	result = [self _fdSendCmd:cmdBuffer];
+	result = [self fdSendCmd:cmdBuffer];
 	
 	if (result == IO_R_SUCCESS) {
 		// Convert FDC result to IO error code
@@ -592,7 +596,7 @@ static IOReturn fdrToIo(unsigned int fdrCode)
  * Seek to specific track and head.
  * From decompiled code: sends SEEK command to position heads at specified track.
  */
-- (IOReturn)_fdSeek : (unsigned)track
+- (IOReturn)fdSeek : (unsigned)track
 		 head : (unsigned)head
 {
 	IOReturn result;
@@ -603,14 +607,14 @@ static IOReturn fdrToIo(unsigned int fdrCode)
 	bzero(cmdBuffer, 0x60);
 	
 	// Build SEEK command (0x0F)
-	cmdBuffer[0x24] = 0x0F;  // SEEK command
-	
+	cmdBuffer[0x0c] = 0x0F;  // SEEK command
+
 	// Set head and unit in command byte 1
-	cmdBuffer[0x25] = cmdBuffer[0x25] & 3;  // Clear upper bits
-	cmdBuffer[0x25] = cmdBuffer[0x25] | ((head & 1) << 2);  // Set head bit
-	
+	cmdBuffer[0x0d] = cmdBuffer[0x0d] & 3;  // Clear upper bits
+	cmdBuffer[0x0d] = cmdBuffer[0x0d] | ((head & 1) << 2);  // Set head bit
+
 	// Set track/cylinder in command byte 2
-	cmdBuffer[0x26] = (unsigned char)track;
+	cmdBuffer[0x0e] = (unsigned char)track;
 	
 	// Get FDC number from offset 400 (_fdcNumber), default to 2 if 0
 	fdcNumber = _fdcNumber;
@@ -628,7 +632,7 @@ static IOReturn fdrToIo(unsigned int fdrCode)
 	*(unsigned *)(cmdBuffer + 0x38) = 2;    // Result bytes expected
 	
 	// Send command to FDC
-	result = [self _fdSendCmd:cmdBuffer];
+	result = [self fdSendCmd:cmdBuffer];
 	
 	if (result == IO_R_SUCCESS) {
 		// Convert FDC result to IO error code
@@ -642,7 +646,7 @@ static IOReturn fdrToIo(unsigned int fdrCode)
  * Send command to floppy controller.
  * From decompiled code: sends command buffer to FDC via controller object.
  */
-- (IOReturn)_fdSendCmd : (unsigned char *)cmd
+- (IOReturn)fdSendCmd : (unsigned char *)cmd
 {
 	IOReturn result;
 	char fdcNumber;
@@ -657,12 +661,12 @@ static IOReturn fdrToIo(unsigned int fdrCode)
 		cmd[0] = 2;
 	}
 	
-	// Get unit number and store at offset 0x10 (field after field2_0x5)
+	// Get unit number and store at offset 0x5c (disasm: "mov [esi+5Ch], al")
 	unit = [self unit];
-	cmd[0x10] = unit;
+	cmd[0x5c] = unit;
 	
-	// Get timestamp and store at offset 0x170
-	IOGetTimestamp((unsigned long long *)((char *)self + 0x170));
+	// Get timestamp and store in lastAccess
+	IOGetTimestamp(&lastAccess);
 	
 	// Call fcCmdXfr: method on FDC controller object (offset 0x164)
 	result = [_fdController fcCmdXfr:cmd];
@@ -687,7 +691,7 @@ static IOReturn fdrToIo(unsigned int fdrCode)
  * Raw read from disk (internal).
  * From decompiled code: performs raw sector read using FDC commands.
  */
-- (IOReturn)_rawReadInt : (unsigned)startSector
+- (IOReturn)rawReadInt : (unsigned)startSector
 	       sectCount : (unsigned)sectCount
 		  buffer : (unsigned char *)buffer
 {
@@ -700,26 +704,26 @@ static IOReturn fdrToIo(unsigned int fdrCode)
 	bzero(cmdBuffer, 0x60);
 	
 	// Generate read command
-	[self _fdGenRwCmd:startSector
+	[self fdGenRwCmd:startSector
 	       blockCount:sectCount
 		 fdIoReq:cmdBuffer
 		 readFlag:YES];  // 1 = read operation
 	
-	// Set buffer pointer at offset 0x30
-	*(unsigned char **)(cmdBuffer + 0x30) = buffer;
-	
+	// Set buffer pointer at offset 0x20
+	*(unsigned char **)(cmdBuffer + 0x20) = buffer;
+
 	// Calculate expected byte count (sectCount * sectorSize)
 	expectedBytes = sectCount * _sectorSize;  // offset 0x19c
-	*(unsigned *)(cmdBuffer + 0x34) = expectedBytes;
-	
+	*(unsigned *)(cmdBuffer + 0x24) = expectedBytes;
+
 	// Set VM task (kernel task)
-	*(unsigned *)(cmdBuffer + 0x54) = IOVmTaskSelf();
-	
+	*(unsigned *)(cmdBuffer + 0x58) = IOVmTaskSelf();
+
 	// Send command to FDC
-	result = [self _fdSendCmd:cmdBuffer];
-	
+	result = [self fdSendCmd:cmdBuffer];
+
 	// Check if actual bytes transferred matches expected
-	actualBytes = *(unsigned *)(cmdBuffer + 0x3c);
+	actualBytes = *(unsigned *)(cmdBuffer + 0x48);
 	if ((result == IO_R_SUCCESS) && (expectedBytes != actualBytes)) {
 		// Set error if byte count mismatch
 		result = (IOReturn)0x13;  // Error code for transfer mismatch
@@ -732,7 +736,7 @@ static IOReturn fdrToIo(unsigned int fdrCode)
  * Read/write block count operation.
  * From decompiled code: adjusts block count to not exceed track boundary.
  */
-- (IOReturn)_rwBlockCount : (unsigned)startBlock
+- (IOReturn)rwBlockCount : (unsigned)startBlock
 	       blockCount : (unsigned)blockCount
 {
 	unsigned char cmd[16];
@@ -740,7 +744,7 @@ static IOReturn fdrToIo(unsigned int fdrCode)
 	unsigned adjustedCount;
 	
 	// Convert logical block to physical C/H/R
-	[self _fdLogToPhys:startBlock cmdp:cmd];
+	[self fdLogToPhys:startBlock cmdp:cmd];
 	
 	// Get sector number from cmd[4] (R - sector is 1-based)
 	sector = cmd[4];
@@ -761,7 +765,7 @@ static IOReturn fdrToIo(unsigned int fdrCode)
  * Update drive ready state (internal).
  * From decompiled code: checks drive status and returns ready state.
  */
-- (void)_updateReadyStateInt
+- (int)updateReadyStateInt
 {
 	IOReturn result;
 	unsigned char cmdBuffer[0x60];
@@ -772,16 +776,16 @@ static IOReturn fdrToIo(unsigned int fdrCode)
 	bzero(cmdBuffer, 0x60);
 	
 	// Set command parameters for SENSE DRIVE STATUS
-	// Offset 0x5c: command type = 5 (SENSE DRIVE STATUS)
-	// Offset 0x60: timeout = 5000ms
-	*(unsigned *)(cmdBuffer + 0x5c) = 5;
-	*(unsigned *)(cmdBuffer + 0x60) = 5000;
-	
+	// Offset 0x08: fcCmdXfr: op selector = 5 (SENSE DRIVE STATUS)
+	// Offset 0x04: timeout = 5000ms
+	*(unsigned *)(cmdBuffer + 0x08) = 5;
+	*(unsigned *)(cmdBuffer + 0x04) = 5000;
+
 	// Send command to FDC
-	result = [self _fdSendCmd:cmdBuffer];
-	
-	// Get status byte from offset 0x14
-	status = cmdBuffer[0x14];
+	result = [self fdSendCmd:cmdBuffer];
+
+	// Get status byte from offset 0x50
+	status = cmdBuffer[0x50];
 	
 	if (result == IO_R_SUCCESS) {
 		// Check status bits:
@@ -799,9 +803,7 @@ static IOReturn fdrToIo(unsigned int fdrCode)
 		readyState = 1;
 	}
 	
-	// Store ready state (assuming there's a field for this)
-	// The decompiled code returns the state, but this is a void method
-	// so we might be storing it in an instance variable
+	return readyState;
 }
 
 @end

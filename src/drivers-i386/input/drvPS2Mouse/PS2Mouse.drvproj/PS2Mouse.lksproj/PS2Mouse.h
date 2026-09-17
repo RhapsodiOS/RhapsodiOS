@@ -34,23 +34,27 @@
 #import <driverkit/IOPower.h>
 #import <driverkit/IOEventSource.h>
 #import <kernserv/queue.h>
+#import <bsd/dev/i386/PCPointer.h>
+#import <bsd/dev/i386/PCPointerDefs.h>
 
-@interface PS2Mouse : IODirectDevice
+/*
+ * target (0x128), resolution (0x12c) and inverted (0x130) are inherited from
+ * PCPointer, which also reserves 0x134-0x143.  This class adds only the two
+ * ivars below, giving an instance size of 332 (0x14c).
+ */
+@interface PS2Mouse : PCPointer
 {
 @private
-    unsigned int resolution;
-    BOOL inverted;
-    id mouseEventPort;
-    id controller;
-    BOOL skipDetection;  /* Skip mouse presence detection if YES */
+    id controller;         /* 0x144 */
+    BOOL force_detection;  /* 0x148 - attach without probing for a mouse */
 }
 
 /* Configuration */
 - (BOOL)isMousePresent;
-- (BOOL)readConfigTable:(IODeviceDescription *)deviceDescription;
-- (IOReturn)mouseInit:(IODeviceDescription *)deviceDescription;
-- (IOReturn)initWithController:(id)controllerDevice;
-- (IOReturn)resetMouse;
+- (BOOL)readConfigTable:(IOConfigTable *)configTable;
+- (BOOL)mouseInit:(IODeviceDescription *)deviceDescription;
+- (BOOL)initWithController:(id)controllerDevice;
+- (void)resetMouse;
 
 /* Parameters */
 - (IOReturn)getIntValues:(unsigned *)parameterArray
@@ -61,12 +65,12 @@
             forParameter:(IOParameterName)parameterName
                    count:(unsigned)count;
 
-- (unsigned int)getResolution;
+- (int)getResolution;
 
 /* Interrupt handling */
 - (BOOL)getHandler:(IOInterruptHandler *)handler
              level:(unsigned int *)ipl
-          argument:(void **)arg
+          argument:(unsigned int *)arg
       forInterrupt:(unsigned int)localInterrupt;
 
 - (void)interruptOccurred;

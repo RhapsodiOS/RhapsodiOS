@@ -13,9 +13,11 @@ PROJECTVERSION = 2.7
 PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
-CLASSES = ac97.m IntelAC97Driver.m
+CLASSES = IntelAC97Driver.m
 
-HFILES = ac97reg.h ac97var.h IntelAC97Driver.h
+CFILES = ac97.c ICHAC97Controller.c
+
+HFILES = ac97reg.h ac97var.h ICHAC97Controller.h IntelAC97Driver.h
 
 OTHERSRCS = Makefile.preamble Makefile Makefile.postamble Load_Commands.sect
 

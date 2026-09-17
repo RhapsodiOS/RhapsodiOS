@@ -1,0 +1,158 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 6300,
+      "reference_names": [
+        "_main"
+      ],
+      "size": 624,
+      "source_line": 27,
+      "source_path": "src/drvSCSITape/stblocksize.tproj/stblocksize.c"
+    },
+    {
+      "address": 6924,
+      "reference_names": [
+        "_read_block_limits"
+      ],
+      "size": 148,
+      "source_line": 131,
+      "source_path": "src/drvSCSITape/stblocksize.tproj/stblocksize.c"
+    },
+    {
+      "address": 7072,
+      "reference_names": [
+        "_do_ioc"
+      ],
+      "size": 228,
+      "source_line": 170,
+      "source_path": "src/drvSCSITape/stblocksize.tproj/stblocksize.c"
+    },
+    {
+      "address": 7300,
+      "reference_names": [
+        "_usage"
+      ],
+      "size": 56,
+      "source_line": 195,
+      "source_path": "src/drvSCSITape/stblocksize.tproj/stblocksize.c"
+    }
+  ],
+  "reference_sha256": "E36D1320E5543E9F8B46D522D19150DC6BA21B348C6ECAB8D13AE9CF83BC7648",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 5752,
+      "reference_names": [
+        "start"
+      ],
+      "size": 48
+    },
+    {
+      "address": 5804,
+      "reference_names": [
+        "__start"
+      ],
+      "size": 320
+    },
+    {
+      "address": 6124,
+      "reference_names": [
+        "__call_mod_init_funcs"
+      ],
+      "size": 76
+    },
+    {
+      "address": 6200,
+      "reference_names": [
+        "__dyld_init_check"
+      ],
+      "size": 60
+    },
+    {
+      "address": 6260,
+      "reference_names": [
+        "dyld_stub_binding_helper"
+      ],
+      "size": 24
+    },
+    {
+      "address": 6284,
+      "reference_names": [
+        "__dyld_func_lookup"
+      ],
+      "size": 16
+    },
+    {
+      "address": 7892,
+      "reference_names": [
+        "_exit"
+      ],
+      "size": 36
+    },
+    {
+      "address": 7928,
+      "reference_names": [
+        "_perror"
+      ],
+      "size": 36
+    },
+    {
+      "address": 7964,
+      "reference_names": [
+        "_bzero"
+      ],
+      "size": 36
+    },
+    {
+      "address": 8000,
+      "reference_names": [
+        "_close"
+      ],
+      "size": 36
+    },
+    {
+      "address": 8036,
+      "reference_names": [
+        "_ioctl"
+      ],
+      "size": 36
+    },
+    {
+      "address": 8072,
+      "reference_names": [
+        "_printf"
+      ],
+      "size": 36
+    },
+    {
+      "address": 8108,
+      "reference_names": [
+        "_open"
+      ],
+      "size": 36
+    },
+    {
+      "address": 8144,
+      "reference_names": [
+        "_atoi"
+      ],
+      "size": 36
+    },
+    {
+      "address": 8180,
+      "reference_names": [
+        "_strlen"
+      ],
+      "size": 36
+    },
+    {
+      "address": 8216,
+      "reference_names": [
+        "_strcmp"
+      ],
+      "size": 36
+    }
+  ]
+}

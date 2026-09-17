@@ -21,8 +21,8 @@ from binrecon.compare import compare_artifacts, validate_comparison_report
 from binrecon.consensus import build_consensus, validate_consensus
 from binrecon.identity import assert_identity
 from binrecon.ledger import LedgerLock, merge_evidence, update_ledger
-from binrecon.normalize import preflight_json
-from binrecon.schema import validate_analysis_semantics, validate_document
+from binrecon.normalize import NormalizationError, preflight_json
+from binrecon.schema import json_node_counts, validate_analysis_semantics, validate_document
 
 
 class RunnerError(RuntimeError):
@@ -286,7 +286,17 @@ def _load_analysis(path, profile, artifact, expected_name):
     except (UnicodeDecodeError,json.JSONDecodeError,RecursionError) as error:
         raise RunnerError(f"invalid analysis JSON: {error}") from error
     if not isinstance(document,dict): raise RunnerError("analysis JSON root is not an object")
-    preflight_json(document); validate_document("analysis-v1", document); validate_analysis_semantics(document)
+    try:
+        preflight_json(document)
+    except NormalizationError as error:
+        total, breakdown = json_node_counts(document)
+        largest = sorted(breakdown.items(), key=lambda item: item[1], reverse=True)[:3]
+        largest_text = ", ".join(f"{key} {count:,}" for key, count in largest)
+        raise RunnerError(
+            f"{artifact} {expected_name} analysis rejected: {error} "
+            f"({total:,} nodes; largest: {largest_text})"
+        ) from error
+    validate_document("analysis-v1", document); validate_analysis_semantics(document)
     identity=getattr(profile, artifact + "_identity")
     source=document["input"]
     architecture = getattr(profile, "architecture", profile.document.get("architecture"))

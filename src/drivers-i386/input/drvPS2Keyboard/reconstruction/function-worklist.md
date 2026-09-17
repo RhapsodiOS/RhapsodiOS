@@ -1,7 +1,9 @@
-# drvPS2Keyboard instruction-stream baseline
+# drvPS2Keyboard instruction-stream finish
 
-Date: 2026-09-16
+Date: 2026-09-17
 Branch: `drvps2keyboard-binrecon-finish`
+
+Campaign close after Task 4. Hardware testing is still out.
 
 Angr was disabled because rebuilt decode at 0x10 failed normalization.
 
@@ -32,6 +34,8 @@ Read from the rebuilt `_reloc` with `binrecon.macho.read_macho` (`__OBJC,__class
 
 ## `binrecon function --list` (IDA)
 
+Re-run 2026-09-17 against kept rebuilt `66A9030C…5D140D89` and reference `AB413CA3…6A6BE02A`.
+
 ```
   diff    ref    new  flags       name
 
@@ -49,6 +53,8 @@ Read from the rebuilt `_reloc` with `binrecon.macho.read_macho` (`__OBJC,__class
      0      7      7  identical   -[PS2Keyboard interfaceId]
      0     13     13  masked-eq   _unlock_controller
      1     21     21  masked-eq   -[PS2Controller setManualDataHandling:]
+     1     29     29  identical   -[PS2Keyboard enqueueKeyEvent:goingDown:atTime:]
+     1     68     68              -[PS2Keyboard initWithController:]
      1     16     16  masked-eq   _clearOutputBuffer
      1      9      9  masked-eq   _disableMouse
      1      9      9  masked-eq   _enableMouse
@@ -57,49 +63,49 @@ Read from the rebuilt `_reloc` with `binrecon.macho.read_macho` (`__OBJC,__class
      1     15     15  masked-eq   _resendControllerData
      2     16     17              -[PS2Keyboard setAlphaLockFeedback:]
      2     28     28  masked-eq   __PS2KeyboardNumKeysDown
+     2     19     19  masked-eq   _getKeyboardDataIfPresent
+     2     24     24  masked-eq   _getMouseDataIfPresent
      2     19     19  masked-eq   _reallyGetKeyboardData
      2     25     25  masked-eq   _sendControllerCommand
      2     26     26  masked-eq   _sendControllerData
+     2     19     19  identical   _sendMouseCommand
      3     56     56  masked-eq   +[PS2Keyboard probe:]
+     3     32     32  masked-eq   -[PS2Keyboard desireOwnership:]
      3     34     34  masked-eq   _NewStealKeyboardEvent
      3     32     32  masked-eq   _interruptHandler
      4     19     19              _resetEscapes
-     4     19     17              _sendMouseCommand
-     6     32     32              -[PS2Keyboard desireOwnership:]
+     4     34     34  identical   _undoEscape
+     5     69     69  masked-eq   -[PS2Keyboard becomeOwner:]
+     5     63     63  masked-eq   -[PS2Keyboard dispatchKeyboardEvents]
      6     22     22              _lock_controller
      7     36     35              +[PS2Controller probe:]
-     7     68     67              -[PS2Keyboard initWithController:]
+     8     50     50  masked-eq   -[PS2Keyboard interruptOccurred]
+     9     43     42              _enqueueKeyboardData
     10     50     50              -[PS2Keyboard readConfigTable:]
-    10     34     34              _undoEscape
-    12     19     20              _getKeyboardDataIfPresent
-    13     43     43              _enqueueKeyboardData
-    14     24     29              _getMouseDataIfPresent
     20     63     63              -[PS2Keyboard relinquishOwnership:]
-    27     63     63              -[PS2Keyboard dispatchKeyboardEvents]
-    31     29     24              -[PS2Keyboard enqueueKeyEvent:goingDown:atTime:]
-    32     50     51              -[PS2Keyboard interruptOccurred]
-    37     41     45              _getKeyboardData
-    40     73     70              _isEscape
-    43     69     69              -[PS2Keyboard becomeOwner:]
-    48     74     60              -[PS2Controller initFromDeviceDescription:]
-    50     61     65              _doEscape
-   102    112    110              _scancodeToKeyEvent
+    31     41     41              _getKeyboardData
+    44     73     74              _isEscape
+    49     61     59              _doEscape
+    54     74     70              -[PS2Controller initFromDeviceDescription:]
+    93    112    104              _scancodeToKeyEvent
 
-49 functions: 5 byte-identical, 44 differing, 0 unpaired
+49 functions: 8 byte-identical, 41 differing, 0 unpaired
 ```
 
 `--list` counts every non-`raw_equal` row as differing, including `masked-eq`. Split:
 
-- **identical (`raw_equal`):** 5
-- **masked-eq (not identical):** 22
-- **open (empty flags, not masked-eq):** 22
+- **identical (`raw_equal`):** 8
+- **masked-eq (not identical):** 28
+- **accepted leftovers (empty flags):** 13
 - **unpaired:** 0
 
-The two Kernel Server glue methods are instruction-identical here. Task 3 still keeps them `intentional-mismatch`.
+Hand-written functions = 47 (exclude two Kernel Server glue methods). The glue methods are instruction-identical here but not hand-written; Task 3 still keeps them `intentional-mismatch`.
 
-Task 8 regression-gate rows at this baseline: `deviceStyle` / `handlerId` / `interfaceId` identical; `getHandler:level:argument:forInterrupt:` / `setLEDs:` / `_clearOutputBuffer` masked-eq; `setAlphaLockFeedback:` and `relinquishOwnership:` still open.
+**34/47** hand-written functions are byte-identical under relocation masking (`identical` + `masked-eq` minus glue). Remainder accepted as compiler-shaped. Hardware testing is still out.
 
-## Cheapest open rows (empty flags)
+Task 8 regression-gate rows at close: `deviceStyle` / `handlerId` / `interfaceId` identical; `getHandler:level:argument:forInterrupt:` / `setLEDs:` / `_clearOutputBuffer` masked-eq; `setAlphaLockFeedback:` and `relinquishOwnership:` accepted leftovers.
+
+## Cheapest open rows (empty flags) — Phase 1 snapshot
 
 | diff | name |
 | --- | --- |

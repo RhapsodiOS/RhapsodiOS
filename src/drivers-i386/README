@@ -22,7 +22,7 @@ input
  * drvBusMouse - compiles; reconstructed against the reference binary, fixes applied, not yet tested
  * drvISASerialPort - needs compiled and then tested
  * drvPCParallel - compiles; reconstructed against the reference binary, fixes applied, not yet tested
- * drvPS2Keyboard - compiles; reconstructed against the reference binary, fixes applied, not yet tested
+ * drvPS2Keyboard - compiles; reconstructed against the reference binary, 34/47 hand-written functions byte-identical under relocation masking, remainder accepted as compiler-shaped; not yet tested
  * drvPS2Mouse - compiles; reconstructed against the reference binary, fixes applied, not yet tested
  * drvSerialPointingDevice - compiles; reconstructed against the reference binary, fixes applied, not yet tested
 

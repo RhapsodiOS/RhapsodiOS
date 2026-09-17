@@ -480,8 +480,9 @@ Accepted leftover: rebuilt `49863885A11EC0AE2FFD49F9297D54E0702CBC364C1ABEB398D7
 
 Star: extra `esi` / separate lock local; Apple keeps the buffer in `ebx` and
 sends `lock` with the `new` result still in `eax`.
+Matched: rebuilt `EC622A557A0FD4AB3D3B444F6C4B731747B10FC83B1EC02844990F84F7B895C3`.
 
-1. Drop `conditionLock` local; use `cmdBuffer->conditionLock` as the expression
+1. Drop `conditionLock` local; use `cmdBuffer->conditionLock` as the expression — **kept, masked_equal**
 2. Assign `conditionLock` after `new`, then send through that local only
 3. Declaration order: lock local before buffer local
 

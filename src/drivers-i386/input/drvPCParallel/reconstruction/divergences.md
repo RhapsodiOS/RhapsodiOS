@@ -1177,14 +1177,26 @@ Parity 0/0. Previously identical rows stayed identical. Ledger 3896
   mov [ebx+16Ch], esi                     mov [ebx+16Ch], esi
 ```
 
+### Task 8 — `cmdBufAlloc` dropped lock local (`masked_equal`)
+
+`cmdBufAlloc` now stores `[NXConditionLock new]` straight into
+`cmdBuffer->conditionLock` and sends `lock` / `unlockWith:0` through that
+ivar. gcc keeps the buffer in `ebx` and the `new` result in `eax` for the
+`lock` send, matching Apple. `--name` `masked_equal=True` (no starred
+mnemonics). Rebuilt SHA-256
+`EC622A557A0FD4AB3D3B444F6C4B731747B10FC83B1EC02844990F84F7B895C3` (165576 bytes).
+Parity 0/0. Previously identical rows stayed identical. Ledger 3780
+`assembly-matched`. source-map relined 6 later `IOParallelPort.m` sites
+(73 mapped / 2 unmapped).
+
 ### 8.9 The status rule used
 
-- `assembly-matched` (56) - the reference's full instruction stream was read and our
+- `assembly-matched` (57) - the reference's full instruction stream was read and our
   source is a statement-for-statement transliteration of it with no remaining difference,
   and the function's emitted metadata was verified identical in the rebuilt binary. Used
-  for the accessors and the short bodies. Task 8 promoted `msgTypeToIOReturn:` after the
-  OFFLINE/BUSY case-order edit (`masked_equal`).
-- `control-flow-confirmed` (11) - the reference's full instruction stream was read and our
+  for the accessors and the short bodies. Task 8 promoted `msgTypeToIOReturn:` and
+  `cmdBufAlloc` (`masked_equal`).
+- `control-flow-confirmed` (10) - the reference's full instruction stream was read and our
   source reproduces its block structure, every call target and every constant, but the
   rebuilt output was **not** itself disassembled and compared instruction by instruction.
   Used for the larger functions.

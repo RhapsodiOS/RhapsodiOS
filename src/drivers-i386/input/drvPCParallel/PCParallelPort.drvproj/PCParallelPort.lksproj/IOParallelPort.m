@@ -859,18 +859,14 @@ extern int sprintf(char *str, const char *fmt, ...);
 - (PPCommandBuffer *)cmdBufAlloc
 {
     PPCommandBuffer *cmdBuffer;
-    id conditionLock;
 
     // Allocate command buffer structure (0x1c = 28 bytes)
     cmdBuffer = (PPCommandBuffer *)IOMalloc(sizeof(PPCommandBuffer));
 
-    // Create an NXConditionLock
-    conditionLock = [NXConditionLock new];
-    cmdBuffer->conditionLock = conditionLock;
-
-    // Lock and then unlock with condition 0
-    [conditionLock lock];
-    [conditionLock unlockWith:0];
+    // Create an NXConditionLock, lock it, then unlock with condition 0
+    cmdBuffer->conditionLock = [NXConditionLock new];
+    [cmdBuffer->conditionLock lock];
+    [cmdBuffer->conditionLock unlockWith:0];
 
     return cmdBuffer;
 }

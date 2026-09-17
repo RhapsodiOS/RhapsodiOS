@@ -80,7 +80,7 @@
         "-[IOParallelPort getIntValues:forParameter:count:]"
       ],
       "size": 163,
-      "source_line": 975,
+      "source_line": 971,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m"
     },
     {
@@ -494,7 +494,7 @@
         "-[IOParallelPort msgTypeToIOReturn:]"
       ],
       "size": 197,
-      "source_line": 1014,
+      "source_line": 1010,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m"
     },
     {
@@ -539,7 +539,7 @@
         "-[IOParallelPort cmdBufFree:]"
       ],
       "size": 37,
-      "source_line": 878,
+      "source_line": 874,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m"
     },
     {
@@ -548,7 +548,7 @@
         "-[IOParallelPort cmdBufExec:]"
       ],
       "size": 143,
-      "source_line": 887,
+      "source_line": 883,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m"
     },
     {
@@ -557,7 +557,7 @@
         "-[IOParallelPort waitForCmdBuf]"
       ],
       "size": 141,
-      "source_line": 931,
+      "source_line": 927,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m"
     },
     {
@@ -566,7 +566,7 @@
         "-[IOParallelPort cmdBufComplete:]"
       ],
       "size": 46,
-      "source_line": 922,
+      "source_line": 918,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m"
     },
     {

@@ -11,11 +11,20 @@
 BOOTFW=/build/bootstrap-root/System/Library/Frameworks/System.framework/Versions/B
 LIVEFW=/System/Library/Frameworks/System.framework
 if [ ! -e "$LIVEFW/PrivateHeaders" ]; then
-	ln -s "$BOOTFW/PrivateHeaders" "$LIVEFW/PrivateHeaders"
+	if [ ! -d "$BOOTFW/PrivateHeaders" ]; then
+		echo "build-i386-input-recon: missing $BOOTFW/PrivateHeaders" >&2
+		exit 1
+	fi
+	ln -s "$BOOTFW/PrivateHeaders" "$LIVEFW/PrivateHeaders" || exit 1
 	echo "planted $LIVEFW/PrivateHeaders -> $BOOTFW/PrivateHeaders"
 fi
 if [ ! -e "$LIVEFW/Headers/objc/zone.h" ]; then
-	ln -s "$BOOTFW/Headers/objc/zone.h" "$LIVEFW/Headers/objc/zone.h"
+	if [ ! -f "$BOOTFW/Headers/objc/zone.h" ]; then
+		echo "build-i386-input-recon: missing $BOOTFW/Headers/objc/zone.h" >&2
+		exit 1
+	fi
+	mkdir -p "$LIVEFW/Headers/objc"
+	ln -s "$BOOTFW/Headers/objc/zone.h" "$LIVEFW/Headers/objc/zone.h" || exit 1
 	echo "planted $LIVEFW/Headers/objc/zone.h -> $BOOTFW/Headers/objc/zone.h"
 fi
 

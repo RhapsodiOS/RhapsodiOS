@@ -13,9 +13,9 @@ Analyzer: IDA 9.2 only (`analyzers.angr.enabled` is false; Ghidra stays off).
 | | SHA-256 | size |
 | --- | --- | --- |
 | Reference | `AB413CA3919950F22A1F5D10B0BF1167387FEF320C9FB82A3EA66E586A6BE02A` | 43460 |
-| Rebuilt | `AF59A809360F8ADBC6010ECDC5781E9FD247D2F9A375A817356DF631E9310BAD` | 157620 |
+| Rebuilt | `71A852D8F98F4393FBEF6ED141A0A499794645D762B0368B157769BF7F2237DD` | 157596 |
 
-`__TEXT,__text`: reference 4952, rebuilt 4668.
+`__TEXT,__text`: reference 4952, rebuilt 4664.
 
 `parity_check.py`: `missing_strings (0)`, `missing_symbols (0)`. Extra symbols 54 (stabs / file names on the unstripped guest `_reloc`).
 
@@ -229,6 +229,9 @@ Task 8 regression gate. `--name` shows then/else order on `respondsTo:`, but do 
 ### `-[PS2Keyboard interruptOccurred]` (diff 32)
 
 1. Keep `scancode` as `unsigned int` (signedness of a local) so the `scancodeToKeyEvent` argument is `and eax, 0FFh` / `push eax` rather than `movzx`.
+   **Tried, STOP:** `--list` grew unpaired (`missing-rebuilt __PS2KeyboardNumKeysDown`, `missing-reference _resetEscapes`). Diff 32 → 35. Reverted. Do not repeat.
+2. Struct-assign `pendingEvents[index] = *event` so the slot copy is four dwords.
+   **Match:** `masked_equal` after rebuild `71A852D8F98F4393FBEF6ED141A0A499794645D762B0368B157769BF7F2237DD`. Ledger `assembly-matched`.
 
 ### `_getKeyboardData` (diff 37)
 

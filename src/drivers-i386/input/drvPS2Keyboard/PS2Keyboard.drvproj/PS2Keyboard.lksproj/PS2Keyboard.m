@@ -186,11 +186,7 @@ static unsigned int _kbdBitVector[4];
             }
 
             index = numEvents;
-
-            pendingEvents[index].timeStamp = event->timeStamp;
-            pendingEvents[index].keyCode = event->keyCode;
-            pendingEvents[index].goingDown = event->goingDown;
-
+            pendingEvents[index] = *event;
             numEvents++;
         }
 

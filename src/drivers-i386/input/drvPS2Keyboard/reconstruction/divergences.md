@@ -2038,6 +2038,10 @@ Signed `i` / `savedEventCount` yield `jge`/`jl`; the n==1 path is a struct copy 
 
 Scalar parked locals were copy-propagated. A `PS2KeyboardEvent` local filled then struct-assigned into the slot yields `sub esp, 10h` and the four dword stores. `--name` is `raw_equal`. Rebuilt `AF59A809360F8ADBC6010ECDC5781E9FD247D2F9A375A817356DF631E9310BAD`. Task 8 gates unchanged. Unpaired 0.
 
+### `-[PS2Keyboard interruptOccurred]` (2968) — `masked_equal`
+
+`unsigned int scancode` grew unpaired `--list` and was reverted. Struct-assign `pendingEvents[index] = *event` copies goingDown as a dword and also laid `and eax, 0FFh`. `--name` differs only by jump labels. Rebuilt `71A852D8F98F4393FBEF6ED141A0A499794645D762B0368B157769BF7F2237DD`. Task 8 gates unchanged. Unpaired 0. Do not repeat the unsigned-int scancode local.
+
 ## Task 4 stop (unpaired growth)
 
 `readConfigTable:` ivar-in-branch experiment made `--list` report 50 functions / 2 unpaired (`missing-rebuilt __PS2KeyboardNumKeysDown`, `missing-reference _resetEscapes`). That is a layout or linkage finding. Experiment reverted. After rebuild, SHA is again `20C8BD6E1243FE4CB6D1CDCC51654CBADF65E118370ACBF8D49EBE05B3631C07`, `--list` 49 / 0 unpaired. Do not repeat the ivar-in-NULL-branch store. Campaign continues on other functions.

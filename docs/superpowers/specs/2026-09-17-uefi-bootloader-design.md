@@ -211,7 +211,8 @@ may need an `OvmfPkgIa32` build from edk2. Both are explicit setup tasks.
 A new `vm/build-uefi-image.sh`, separate from `rhap_image.py` and
 `ufs_build.py`, produces a hybrid **MBR** disk:
 
-- Partition 1: EFI System (type `0xEF`), FAT16, holding `/EFI/BOOT/BOOTIA32.EFI`
+- Partition 1: EFI System (type `0xEF`), FAT32, holding `/EFI/BOOT/BOOTIA32.EFI`
+  (`mformat -F`; FAT32 is what the UEFI spec expects on a fixed disk)
 - Partition 2: the existing Rhapsody partition, unchanged
 
 MBR rather than GPT specifically so `read_label`'s fdisk-table walk keeps

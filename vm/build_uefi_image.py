@@ -1,4 +1,4 @@
-"""Build a hybrid MBR disk: a FAT16 EFI System Partition holding the UEFI
+"""Build a hybrid MBR disk: a FAT32 EFI System Partition holding the UEFI
 loader, followed by an existing Rhapsody partition copied verbatim.
 
 MBR rather than GPT, so read_label() in boot-2's disk.c keeps finding the

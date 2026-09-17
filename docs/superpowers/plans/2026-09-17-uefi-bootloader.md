@@ -29,7 +29,7 @@
 
 | File | Responsibility |
 |---|---|
-| `vm/build_uefi_image.py` | Build a hybrid MBR disk: FAT16 ESP + the Rhapsody partition |
+| `vm/build_uefi_image.py` | Build a hybrid MBR disk: FAT32 ESP + the Rhapsody partition |
 | `vm/test_build_uefi_image.py` | Tests for the above |
 | `vm/run-q35-uefi.sh` | Boot the hybrid image under QEMU with IA32 OVMF |
 | `src/bootefi-1/Makefile` | Host build of `BOOTIA32.EFI` and the spike |
@@ -64,7 +64,7 @@ prerequisite for every OVMF test that follows.
 **Background.** The output disk uses an **MBR** partition table, not GPT, so that
 `read_label()` in `src/boot-2/i386/libsaio/disk.c` keeps finding the Rhapsody
 partition by scanning for `systid == FDISK_NEXTNAME` (`0xA7`). Partition 1 is an
-EFI System Partition (`systid 0xEF`, FAT16) holding `/EFI/BOOT/BOOTIA32.EFI`.
+EFI System Partition (`systid 0xEF`, FAT32) holding `/EFI/BOOT/BOOTIA32.EFI`.
 Partition 2 is the byte-for-byte copy of the existing Rhapsody image. UEFI
 supports MBR ESPs, so OVMF will find and launch the app.
 
@@ -75,7 +75,8 @@ which uses `relsect` (the LBA start); fill them with `0xFE 0xFF 0xFF`, the
 conventional "out of CHS range" marker. The signature `0x55AA` goes at offset
 510.
 
-FAT16 formatting uses `mtools` (`mformat`, `mmd`, `mcopy`). If those binaries are
+FAT32 formatting uses `mtools` (`mformat -F`, `mmd`, `mcopy`) — note `-F` means
+"format as FAT32", not "force FAT16". If those binaries are
 absent, raise `RuntimeError` with an actionable message rather than producing a
 broken image.
 
@@ -181,7 +182,7 @@ Expected: `ModuleNotFoundError: No module named 'build_uefi_image'`.
 Create `vm/build_uefi_image.py`:
 
 ```python
-"""Build a hybrid MBR disk: a FAT16 EFI System Partition holding the UEFI
+"""Build a hybrid MBR disk: a FAT32 EFI System Partition holding the UEFI
 loader, followed by an existing Rhapsody partition copied verbatim.
 
 MBR rather than GPT, so read_label() in boot-2's disk.c keeps finding the

@@ -78,5 +78,49 @@ class TestBuildUefiImage(unittest.TestCase):
                                    self.efi, self.out, esp_mb=16)
 
 
+class TestBuildEspOnly(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="uefi-esp-test-")
+        self.addCleanup(shutil.rmtree, self.tmp)
+        self.efi = os.path.join(self.tmp, "BOOTIA32.EFI")
+        with open(self.efi, "wb") as f:
+            f.write(b"MZ" + b"\0" * 1022)
+        self.out = os.path.join(self.tmp, "esp.img")
+
+    @unittest.skipUnless(_have_mtools(), "mtools not installed")
+    def test_partition_1_is_esp_at_lba_2048(self):
+        build_uefi_image.build_esp(self.efi, self.out, esp_mb=64)
+        with open(self.out, "rb") as f:
+            mbr = f.read(SECTOR)
+        self.assertEqual(mbr[510:512], b"\x55\xaa")
+        systid, lba, count = _part(mbr, 0)
+        self.assertEqual(systid, EFI_SYSTEM)
+        self.assertEqual(lba, 2048)
+        self.assertEqual(count, 64 * 1024 * 1024 // SECTOR)
+
+    @unittest.skipUnless(_have_mtools(), "mtools not installed")
+    def test_no_second_partition(self):
+        build_uefi_image.build_esp(self.efi, self.out, esp_mb=64)
+        with open(self.out, "rb") as f:
+            mbr = f.read(SECTOR)
+        self.assertEqual(_part(mbr, 1), (0, 0, 0))
+
+    @unittest.skipUnless(_have_mtools(), "mtools not installed")
+    def test_efi_app_present_at_boot_path(self):
+        build_uefi_image.build_esp(self.efi, self.out, esp_mb=64)
+        with open(self.out, "rb") as f:
+            mbr = f.read(SECTOR)
+        _, lba, _ = _part(mbr, 0)
+        listing = subprocess.check_output(
+            ["mdir", "-i", "%s@@%d" % (self.out, lba * SECTOR), "::/EFI/BOOT"],
+            stderr=subprocess.STDOUT).decode()
+        self.assertIn("BOOTIA32", listing)
+
+    def test_missing_efi_app_raises(self):
+        with self.assertRaises(RuntimeError):
+            build_uefi_image.build_esp(os.path.join(self.tmp, "nope.efi"),
+                                       self.out, esp_mb=64)
+
+
 if __name__ == "__main__":
     unittest.main()

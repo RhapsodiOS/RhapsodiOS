@@ -1,7 +1,9 @@
 #!/bin/sh
-# Boot a hybrid UEFI image under QEMU with IA32 OVMF.  The source image is
-# only copied; every writable disk lives in vm/work.  COM1 is recorded in
-# vm/logs/uefi-serial.log.
+# Boot the two-disk UEFI layout under QEMU with IA32 OVMF: disk 0 is the
+# Rhapsody filesystem image (attached whole, so boot-2's read_label() sees
+# part_offset == 0), disk 1 is an ESP-only disk holding the UEFI loader that
+# OVMF boots from.  The Rhapsody source image is only copied; every writable
+# disk lives in vm/work.  COM1 is recorded in vm/logs/uefi-serial.log.
 
 set -eu
 
@@ -38,15 +40,17 @@ die()
 
 usage()
 {
-    echo "usage: $0 SOURCE_HYBRID_IMAGE vm/work/IMAGE" >&2
+    echo "usage: $0 SOURCE_RHAPSODY_IMAGE ESP_IMAGE vm/work/IMAGE" >&2
     exit 2
 }
 
-[ $# -eq 2 ] || usage
+[ $# -eq 3 ] || usage
 src_image=$1
-dst_image=$2
+esp_image=$2
+dst_image=$3
 
 [ -f "$src_image" ] || die "no such image: $src_image"
+[ -f "$esp_image" ] || die "no such image: $esp_image"
 [ -f "$code_fd" ] || die "missing firmware: $code_fd"
 [ -f "$vars_fd" ] || die "missing firmware: $vars_fd"
 
@@ -70,8 +74,10 @@ exec "$qemu" \
     -drive if=pflash,format=raw,unit=0,readonly=on,file="$code_fd" \
     -drive if=pflash,format=raw,unit=1,file="$vars_copy" \
     -drive id=disk0,file="$dst_image",format=raw,if=none \
+    -drive id=disk1,file="$esp_image",format=raw,if=none \
     -device ich9-ahci,id=ahci \
     -device ide-hd,drive=disk0,bus=ahci.0 \
+    -device ide-hd,drive=disk1,bus=ahci.1 \
     -serial "file:$serial_log" \
     -display none \
     -vga std

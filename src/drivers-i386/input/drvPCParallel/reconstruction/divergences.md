@@ -1019,6 +1019,35 @@ One item can now be closed: `-[IOParallelPort waitForCmdBuf]`'s return type cann
 determined, because the reference's encoding for it is uniqued with `-dataBuffer`'s
 `^v8@8:12`. It is left as `void *`.
 
+---
+
+## Finish campaign (2026-09-16)
+
+Instruction-stream baseline against Apple's `ParallelPort_reloc`, measured after Tasks
+1–3 with no reloc shape edits and no guest rebuild. Rebuilt SHA-256:
+`FA106F9173FC78D431579AA8CCD458C8FF2FC35B2AA5036F8FDD42B6DBB51D56` (165552 bytes,
+unstripped guest `kl_ld` image).
+
+IDA `--list` on this reloc: **36** `raw_equal` (byte-identical) and **14** `masked_equal`
+(instruction streams match under the binrecon mask). Task 5 promoted every paired row in
+those classes to `assembly-matched` except the two Kernel Server glue methods
+(`+[ParallelPortKernelServerInstance kernelServerInstance]`,
+`+[ParallelPortVersion driverKitVersionForParallelPort]`), the `physbuf` / `setPhysbuf:`
+pair (Finding 14 / `struct buf` encoding), and compiler-shaped leftovers
+(`+[IOParallelPort probe:]`, `controlRegisterContents`, `statusRegisterContents`,
+`isInitialized`, and the swapped accessor name-pairing rows). Five former
+`control-flow-confirmed` entries that were already `masked_equal` — `free`,
+`getIntValues:forParameter:count:`, `setMinPhys:`, `setBlockSize:`, and `_ppread` — were
+advanced forward-only to `assembly-matched`. Ledger counts after the transition: **55**
+`assembly-matched`, **13** `control-flow-confirmed`, **7** `intentional-mismatch`.
+
+`_ParallelPort_VERS_STRING` and `_ParallelPort_VERS_NUM` were checked: the reference holds
+them in `__TEXT,__const`; the rebuilt reloc has no `__const` section and neither symbol.
+
+Tools: `InstallPPDev` was not staged — PreLoad `gnumake` failed on `IODeviceMaster.m`
+(`illegal expression, found unsigned`). `RemovePPDev` was staged but is a Mach-O **ppc**
+executable, not i386. Phase 3 / Task 10 converts both tproj trees to `tool.make`.
+
 ### 8.9 The status rule used
 
 - `assembly-matched` (50) - the reference's full instruction stream was read and our

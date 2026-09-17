@@ -190,7 +190,7 @@
       "size": 237,
       "source_line": 357,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "control-flow-confirmed"
+      "status": "assembly-matched"
     },
     {
       "address": 1980,
@@ -214,7 +214,7 @@
       "size": 163,
       "source_line": 974,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "control-flow-confirmed"
+      "status": "assembly-matched"
     },
     {
       "address": 2144,
@@ -1174,7 +1174,7 @@
       "size": 105,
       "source_line": 680,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "control-flow-confirmed"
+      "status": "assembly-matched"
     },
     {
       "address": 3008,
@@ -1222,7 +1222,7 @@
       "size": 105,
       "source_line": 639,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "control-flow-confirmed"
+      "status": "assembly-matched"
     },
     {
       "address": 3132,
@@ -1654,7 +1654,7 @@
       "size": 134,
       "source_line": 124,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
-      "status": "control-flow-confirmed"
+      "status": "assembly-matched"
     },
     {
       "address": 5828,
@@ -1801,7 +1801,7 @@
       "status": "intentional-mismatch"
     }
   ],
-  "rebuilt_sha256": null,
+  "rebuilt_sha256": "FA106F9173FC78D431579AA8CCD458C8FF2FC35B2AA5036F8FDD42B6DBB51D56",
   "reference_sha256": "D188A4D909005683B0C943C84CD99514C14A84AD1D378425B3B1DB343F1EAAA2",
   "schema_version": "ledger-v1"
 }

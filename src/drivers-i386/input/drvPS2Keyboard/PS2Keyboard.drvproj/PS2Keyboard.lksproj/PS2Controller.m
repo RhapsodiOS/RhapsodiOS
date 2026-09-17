@@ -223,23 +223,29 @@ static void unlock_controller(void)
     [self registerDevice];
 
     /* Initialize keyboard free queue as a circular doubly-linked list */
-    keyboardFreeQueue.next = KBD_FREE_QUEUE;
     keyboardFreeQueue.prev = KBD_FREE_QUEUE;
+    keyboardFreeQueue.next = KBD_FREE_QUEUE;
 
     /* Add all queue elements to the free queue */
     for (i = 0; i < KEYBOARD_QUEUE_SIZE; i++) {
-        element = &keyboardQueueElements[i];
-
-        /* Insert element at the tail of the free queue */
-        element->next = KBD_FREE_QUEUE;
-        element->prev = keyboardFreeQueue.prev;
-        keyboardFreeQueue.prev->next = element;
-        keyboardFreeQueue.prev = element;
+        if (keyboardFreeQueue.next == KBD_FREE_QUEUE) {
+            element = &keyboardQueueElements[i];
+            keyboardFreeQueue.next = element;
+            keyboardFreeQueue.prev = element;
+            element->next = KBD_FREE_QUEUE;
+            element->prev = KBD_FREE_QUEUE;
+        } else {
+            element = &keyboardQueueElements[i];
+            element->prev = keyboardFreeQueue.prev;
+            element->next = KBD_FREE_QUEUE;
+            keyboardFreeQueue.prev = element;
+            element->prev->next = element;
+        }
     }
 
     /* Initialize keyboard data queue as a circular doubly-linked list */
-    keyboardQueue.next = KBD_QUEUE;
     keyboardQueue.prev = KBD_QUEUE;
+    keyboardQueue.next = KBD_QUEUE;
 
     /* Start the I/O thread for handling interrupts */
     [self startIOThread];

@@ -13,7 +13,7 @@ Analyzer: IDA 9.2 only (`analyzers.angr.enabled` is false; Ghidra stays off).
 | | SHA-256 | size |
 | --- | --- | --- |
 | Reference | `AB413CA3919950F22A1F5D10B0BF1167387FEF320C9FB82A3EA66E586A6BE02A` | 43460 |
-| Rebuilt | `52AB2AE532AA87FEBB04829BF8B30630CCD1F61B71072B64B2E27569E3652752` | 157520 |
+| Rebuilt | `920B1D08B4592B04A390A3FA592798C349EE2D4035A6127A6BAD5B1BA24DF302` | 157660 |
 
 `__TEXT,__text`: reference 4952, rebuilt 4660.
 
@@ -262,7 +262,8 @@ Task 8 regression gate. `--name` shows then/else order on `respondsTo:`, but do 
 
 ### `-[PS2Controller initFromDeviceDescription:]` (diff 48)
 
-1. Inside the free-queue fill loop, branch empty vs non-empty insert (`if (keyboardFreeQueue.next == KBD_FREE_QUEUE)` set both links, else tail-insert).
+1. Inside the free-queue fill loop, branch empty vs non-empty insert (`if (keyboardFreeQueue.next == KBD_FREE_QUEUE)` set both links, else tail-insert). Store `prev` before `next` when initializing both queues. Compare emptiness before taking the element address.
+   **Kept, leftover accepted:** queue `prev`/`next` init order and the empty `cmp`/`jnz` now match. Remaining starred rows are extra `edi`, `self` in `ebx` vs `esi`, `stru_40F0.ext` vs `super_class`, and duplicated `lea` in the else path. Rebuild `920B1D08B4592B04A390A3FA592798C349EE2D4035A6127A6BAD5B1BA24DF302`. `intentional-mismatch`.
 
 ### `_doEscape` (diff 50)
 

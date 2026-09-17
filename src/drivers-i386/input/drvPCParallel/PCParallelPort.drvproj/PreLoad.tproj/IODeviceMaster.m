@@ -36,17 +36,8 @@
 
 static IODeviceMaster *thisTasksId = nil;
 
-/*
- * Apple's InstallPPDev nlist names the mach-port MIG stub _IOCreateMachPort
- * (three arguments). Darwin driverServer.defs renamed that routine to
- * _IOServerConnect and added clientTask. Keep the Darwin stub and expose
- * Apple's symbol as a wrapper so the names pair without -lDriver.
- */
-IOReturn
-_IOCreateMachPort(port_t deviceMaster, IOObjectNumber objectNumber, port_t *machPort)
-{
-	return _IOServerConnect(deviceMaster, objectNumber, task_self(), machPort);
-}
+IOReturn _IOCreateMachPort(port_t deviceMaster, IOObjectNumber objectNumber,
+	port_t *machPort);
 
 @implementation IODeviceMaster
 
@@ -141,3 +132,16 @@ _IOCreateMachPort(port_t deviceMaster, IOObjectNumber objectNumber, port_t *mach
 }
 
 @end
+
+/*
+ * Apple's InstallPPDev nlist names the mach-port MIG stub _IOCreateMachPort
+ * (three arguments). Darwin driverServer.defs renamed that routine to
+ * _IOServerConnect and added clientTask. Defined after @end so the class
+ * methods keep Apple's text order (_main, +new, getters, createMachPort,
+ * then this wrapper). Keep the Darwin stub; do not -lDriver.
+ */
+IOReturn
+_IOCreateMachPort(port_t deviceMaster, IOObjectNumber objectNumber, port_t *machPort)
+{
+	return _IOServerConnect(deviceMaster, objectNumber, task_self(), machPort);
+}

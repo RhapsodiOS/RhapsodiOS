@@ -1132,23 +1132,28 @@ Skipped: invented temps to pick PIC slots; dummy stack; `-lDriver`; renaming the
 ### Final `--list`
 
 Rebuilt 137008 bytes, SHA-256
-`1FF88BC974C510B33ECB748E8757630C268A4D2A2818D693AA3ADC9D38F23F69`.
-Reloc SHA still `F31C01A0…`. RemovePPDev SHA still `BE525C85…`
+`BEF20B96FAF67BC488C72B74EAB5FEC4A609877CC03B558013B29D2B47DF7B65`.
+Reloc SHA still `F31C01A0FBB4F010AADC205C8CAE011A501FD6D5016BFCEC10022AA65E2BA9DC`.
+RemovePPDev SHA still `BE525C8553C7EC73390AE84BDD4EE4118465BB824827FC1B6DF2B0E1844DC16A`
 (`--list` 12 identical / 3 differing / 0 unpaired, `_main` accepted).
+
+`_IOCreateMachPort` wrapper lives after `@end` so IODeviceMaster methods keep
+Apple's text order. `getIntValues:` and `getCharValues:` pair again (0-diff).
 
 ```
   diff    ref    new  flags       name
 
      0     13     13              -[IODeviceMaster createMachPort:objectNumber:]
      0      6      6  identical   -[IODeviceMaster free]
+     0     19     19              -[IODeviceMaster getCharValues:forParameter:objectNumber:count:]
+     0     19     19              -[IODeviceMaster getIntValues:forParameter:objectNumber:count:]
      0     15     15              -[IODeviceMaster lookUpByDeviceName:objectNumber:deviceKind:]
-     0     15     15  identical   -[IODeviceMaster lookUpByObjectNumber:deviceKind:deviceName:]
+     0     15     15              -[IODeviceMaster lookUpByObjectNumber:deviceKind:deviceName:]
      0     17     17              -[IODeviceMaster setCharValues:forParameter:objectNumber:count:]
      0     17     17              -[IODeviceMaster setIntValues:forParameter:objectNumber:count:]
      0      1      1              __dyld_func_lookup
      0      2      2              dyld_stub_binding_helper
      0     12     12  identical   start
-     1     19     19              -[IODeviceMaster getCharValues:forParameter:objectNumber:count:]
      1     15     15              __call_mod_init_funcs
      1      4      4              __objcInit
      1      4      4              _atoi
@@ -1191,19 +1196,16 @@ Reloc SHA still `F31C01A0…`. RemovePPDev SHA still `BE525C85…`
     99    135    142              __IOGetIntValues
    134    172    178              __IOCallDeviceMethod
    213    229    245              __IOGetEISADeviceConfig
-     -      -     19  missing-reference  -[IODeviceMaster getCharValues:forParameter:objectNumber:count:]
-     -     19      -  missing-rebuilt  -[IODeviceMaster getIntValues:forParameter:objectNumber:count:]
      -      -    144  missing-reference  __IOGetByteProperty
      -      -    144  missing-reference  __IOGetStringPropertyList
      -      -    138  missing-reference  __IOLookUpByStringPropertyList
      -      -     81  missing-reference  __IOServerConnect
      -      -      4  missing-reference  _mig_get_reply_port
 
-59 functions: 3 byte-identical, 49 differing, 7 unpaired
+58 functions: 2 byte-identical, 51 differing, 5 unpaired
 ```
 
-`_main` accepted (PIC leftover). `createMachPort:` 0-diff, accepted call-target.
-`+[IODeviceMaster new]` accepted PIC. `__IOCreateMachPort` paired as a 19-insn
-wrapper vs Apple's 75-insn MIG stub; accepted, reviewer Pat Raynor.
-`getIntValues:` / extra `getCharValues:` are IDA name-pairing of near-identical
-bodies (`--name` streams still match). Darwin extras stay unpaired.
+Identical: `-[IODeviceMaster free]`, `start`. Every other paired row accepted
+with full live `--name` dump in `divergences.md`. `__IOCreateMachPort` is the
+19-insn local wrapper vs Apple's 75-insn MIG stub. Darwin extras stay unpaired.
+Reviewer Pat Raynor.

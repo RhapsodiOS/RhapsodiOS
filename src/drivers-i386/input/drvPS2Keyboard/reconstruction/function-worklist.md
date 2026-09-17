@@ -173,6 +173,7 @@ Task 8 regression gate. Do not apply the BOOL / `and eax, 0FFh` typed rewrite. A
 ### `-[PS2Keyboard readConfigTable:]` (diff 10)
 
 1. Store the Interface/Handler defaults into the ivars inside each NULL branch (`interfaceId = 3`, `handlerId = 0`) instead of through `interfaceValue` / `handlerValue` locals.
+   **Tried, STOP:** `--list` grew unpaired (`missing-rebuilt __PS2KeyboardNumKeysDown`, `missing-reference _resetEscapes`). Layout/linkage finding. Reverted. Do not grind further.
 
 ### `_undoEscape` (diff 10)
 

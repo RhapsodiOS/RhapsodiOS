@@ -1998,3 +1998,7 @@ Three-statement command-byte edit matches the reference `or`/`and`/`or`. Remaini
   starred leftover:
 * mov edx, ds:stru_40F0.ext               mov edx, ds:stru_40F0.super_class
 ```
+
+## Task 4 stop (unpaired growth)
+
+`readConfigTable:` ivar-in-branch experiment made `--list` report 50 functions / 2 unpaired (`missing-rebuilt __PS2KeyboardNumKeysDown`, `missing-reference _resetEscapes`). That is a layout or linkage finding. Experiment reverted. After rebuild, SHA is again `20C8BD6E1243FE4CB6D1CDCC51654CBADF65E118370ACBF8D49EBE05B3631C07`, `--list` 49 / 0 unpaired. No further grind.

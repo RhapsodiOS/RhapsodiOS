@@ -1690,3 +1690,42 @@ Staged unstripped `BusMouse_reloc` is **99112** bytes, SHA-256
 `extra_strings` **0**, `extra_symbols` **17**. `__TEXT,__text` is 1584;
 `__TEXT,__const` is still absent. This `_reloc` is not kept as the campaign
 result; `rebuilt_sha256` is unchanged. See `function-worklist.md`.
+
+## Phase 2 / Task 3: Kernel Server `VERS_OFILE`
+
+2026-09-16. Created
+`BusMouse.drvproj/BusMouse.lksproj/Makefile.postamble` as the single line
+`OTHER_GENERATED_OFILES += $(VERS_OFILE)` (trailing newline, LF). No
+Driver-project postamble. `driverTools` and guest-installed makefiles were
+not edited. `BusMouse.m` was not edited.
+
+Guest rebuild: `=== input-recon done fail=0 built: drvBusMouse ===`
+(`make exit=0`). Host SHA-256 of the staged unstripped `BusMouse_reloc` is
+still `5DC76B2EF94D3C24A8DBEAB4D1B7307B7A70C66D4A02ED0D3AB0448C48429A38`
+(99112 bytes) — byte-identical to the Phase 1 object. `__TEXT,__text` is
+still 1584. `__TEXT,__const` is still absent.
+`_BusMouse_VERS_STRING` and `_BusMouse_VERS_NUM` are **MISSING** from the
+nlist. `parity_check.py` is unchanged (`missing_strings` 0,
+`missing_symbols` 0, `extra_strings` 0, `extra_symbols` 17). All seven
+locked regression-gate methods still have `masked-eq` or `identical`.
+
+**Guest evidence for the unmet existence gate.** The postamble is on the
+guest (40 bytes, exact contents). `gnumake -p` in the lksproj shows
+`VERSIONING_SYSTEM = next-sgs` and
+`OTHER_GENERATED_OFILES = $(INSTANCE_OBJFILE) $(VERS_OFILE)` — the
+postamble was included — but there is no `VERS_OFILE =` assignment.
+`/System/Developer/Makefiles/VersioningSystems` contains only
+`apple-generic.make` and `next-cvs.make`; there is no `next-sgs.make`, so
+`common.make`'s `-include` of that path is silent and `$(VERS_OFILE)`
+expands empty. `find` under the driver tree returned no `*vers*` files.
+The object directory has `BusMouse.o` and `BusMouse_instance.o` only.
+`kl_ld` line (no `*_vers.o`):
+
+```
+/usr/bin/kl_ld -o /build/src/drivers-i386/input/drvBusMouse/BusMouse.config/BusMouse_reloc -n BusMouse  -i BusMouse_instance -l Load_Commands.sect -u Unload_Commands.sect  -arch i386  /build/src/drivers-i386/input/drvBusMouse/BusMouse.build/objects-optimized/BusMouse.drvproj/BusMouse.lksproj/BusMouse.o             /build/src/drivers-i386/input/drvBusMouse/BusMouse.build/objects-optimized/BusMouse.drvproj/BusMouse.lksproj/BusMouse_instance.o
+```
+
+Existence stays unmet. The postamble line is kept (diagnosed reconstruction,
+not an experiment). No later local makefile fix is in this task. See
+`function-worklist.md`.
+

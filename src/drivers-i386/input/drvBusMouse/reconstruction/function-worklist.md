@@ -1,6 +1,8 @@
 # drvBusMouse function worklist
 
-Phase 1 baseline. 2026-09-16. Source was not edited for this snapshot.
+Task 3 / Phase 2 snapshot. 2026-09-16. Kernel Server `Makefile.postamble`
+wires `OTHER_GENERATED_OFILES += $(VERS_OFILE)`. Source was not otherwise
+edited.
 
 ## Reloc
 
@@ -12,8 +14,10 @@ Phase 1 baseline. 2026-09-16. Source was not edited for this snapshot.
 Guest `sh /build/source/vm/build-i386-input-recon.sh drvBusMouse` ended
 `=== input-recon done fail=0 built: drvBusMouse ===` (`make exit=0`). The
 staged object is unstripped Mach-O preload i386. `__TEXT,__text` is 1584
-bytes; `__TEXT,__const` is absent. This `_reloc` is not the campaign result;
-`ledger.json` `rebuilt_sha256` is left unset.
+bytes; `__TEXT,__const` is still absent. SHA-256 is unchanged from the
+Phase 1 baseline: `$(VERS_OFILE)` expanded empty, so `kl_ld` did not link
+vers objects. This `_reloc` is not the campaign result; `ledger.json`
+`rebuilt_sha256` is left unset.
 
 The published IDA trio under `tools/binrecon/out/busmouse/published/` is from
 this rebuilt SHA. Ghidra and angr stayed disabled.
@@ -33,7 +37,9 @@ unstripped symbols are not a failure.
 
 ## `binrecon function --list`
 
-13 functions: 3 byte-identical, 10 differing, 0 unpaired.
+13 functions: 3 byte-identical, 10 differing, 0 unpaired. Identical to the
+Phase 1 table. No locked regression-gate method lost `masked-eq` /
+`identical`.
 
 ```
   diff    ref    new  flags       name
@@ -59,15 +65,17 @@ Regression gate on this run: `validConfiguration:`, `interruptHandler`,
 `_BusMouseThread`, `mouseInit:`, `free`,
 `getHandler:level:argument:forInterrupt:` are `masked-eq`; `getResolution`
 is `identical`. `getIntValues:forParameter:count:` still has 7 instruction
-diffs (no `masked-eq`), matching the sibling drvPS2Mouse baseline. Glue stays
+diffs (no `masked-eq`); that is not a Task 3 regression. Glue stays
 generated.
 
 ## Is this reachable?
 
-This snapshot is pre-Phase-2. `VERS_OFILE` is still unwired, so
-`_BusMouse_VERS_STRING` / `_BusMouse_VERS_NUM` and `__TEXT,__const` are
-absent. Findings 1–19 stay closed. The three named compiler residuals
-(`_GetIRQFromBoard`, `_MouseIntHandler`,
-`-[BusMouse setIntValues:forParameter:count:]`) remain for Phase 3. This
-worklist is the regression baseline to measure those phases against, not a
-claim that the remaining diffs are already closed.
+The Kernel Server postamble is in tree. `_BusMouse_VERS_STRING` /
+`_BusMouse_VERS_NUM` and `__TEXT,__const` are still absent: guest
+`VERSIONING_SYSTEM` is `next-sgs`, `/System/Developer/Makefiles/VersioningSystems`
+has `apple-generic.make` and `next-cvs.make` only, so `$(VERS_OFILE)` is
+empty. `BusMouse_vers.c` / `.o` were not generated and do not appear on the
+`kl_ld` line. `driverTools` was not edited. Existence stays unmet; the
+postamble line is kept. Findings 1–19 stay closed. The three named compiler
+residuals (`_GetIRQFromBoard`, `_MouseIntHandler`,
+`-[BusMouse setIntValues:forParameter:count:]`) remain for Phase 3.

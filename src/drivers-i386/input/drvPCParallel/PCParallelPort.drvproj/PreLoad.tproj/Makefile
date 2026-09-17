@@ -17,7 +17,7 @@ CLASSES = InstallPPDev.m IODeviceMaster.m
 
 HFILES = IODeviceMaster.h
 
-OTHERSRCS = Makefile Makefile.preamble Makefile.postamble
+OTHERSRCS = Makefile Makefile.preamble Makefile.postamble driverServer.defs
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC

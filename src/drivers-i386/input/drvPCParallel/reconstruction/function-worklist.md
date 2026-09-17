@@ -63,7 +63,7 @@ the drvproj-level and lksproj-level links; the i386 preload reloc still wrote.
 
 | File | Staged | Size | Type |
 |---|---|---:|---|
-| `InstallPPDev` | yes | 68820 | Mach-O executable **i386** |
+| `InstallPPDev` | yes | 129768 | Mach-O executable **i386** |
 | `RemovePPDev` | yes | 21904 | Mach-O executable **i386** |
 
 ## Task 10 — InstallPPDev nlist decision
@@ -124,10 +124,13 @@ I386_SYSROOT = /build/bootstrap-root
 OTHER_LDFLAGS = -nostdlib $(I386_SYSROOT)/lib/crt1.o -L$(I386_SYSROOT)/usr/lib -F$(I386_SYSROOT)/System/Library/Frameworks -framework System
 ```
 
-PreLoad also appends `-lDriver` from that sysroot so the local TU can resolve
-`_IOGetCharValues` and friends (`_objc_msgSend` came from System; no extra
-`-lobjc`). `createMachPort:` calls Darwin `_IOServerConnect` (bootstrap
-libDriver has no `_IOCreateMachPort`).
+PreLoad does **not** use `-lDriver`. `driverServer.defs` is copied into
+`PreLoad.tproj/`; preamble `DEFSFILES = driverServer.defs` and
+`OTHER_OFILES = driverServerUser.o` compile the MIG user stubs into the
+tool (`ALL_MIGFLAGS = -arch i386 -server /dev/null`). Makefile `LIBS`
+stays empty. Darwin defs name the mach-port routine `_IOServerConnect`
+(not Apple's `_IOCreateMachPort`); `createMachPort:` calls that.
+`_objc_msgSend` comes from System (no extra `-lobjc`).
 
 Deleted leftover ppc `RemovePPDev` under SRC/STAGE, then harness rebuild:
 
@@ -143,6 +146,27 @@ staged RemovePPDev
 Reloc SHA-256 still
 `F31C01A0FBB4F010AADC205C8CAE011A501FD6D5016BFCEC10022AA65E2BA9DC`
 (165880 bytes). No `WARNING: no InstallPPDev` / `RemovePPDev`.
+
+Copied-back rebuilt `InstallPPDev` nlist (`binrecon.macho.read_macho`):
+`__IOGetCharValues` is `external` in `__TEXT,__text`, not `None`:
+
+```
+external __TEXT,__text __IOLookupByObjectNumber
+external __TEXT,__text __IOLookupByDeviceName
+external __TEXT,__text __IOGetIntValues
+external __TEXT,__text __IOGetCharValues
+external __TEXT,__text __IOSetIntValues
+external __TEXT,__text __IOSetCharValues
+external __TEXT,__text __IOGetEISADeviceConfig
+external __TEXT,__text __IOProbeDriver
+external __TEXT,__text __IOGetSystemConfig
+external __TEXT,__text __IOUnloadDriver
+external __TEXT,__text __IOGetDriverConfig
+external __TEXT,__text __IOServerConnect
+```
+
+The `-lDriver` link had `__IOGetCharValues` as `external None` (import).
+Compiling the stubs into the tool matches Apple's defined-in-text shape.
 
 ## `--list` counts (IDA)
 

@@ -1530,8 +1530,16 @@ profiles: `tools/binrecon/profiles/installppdev.json` and `removeppdev.json`.
 
 Live `/lib/crt1.o` stayed ppc. Tools link with `I386_SYSROOT=/build/bootstrap-root`
 and `OTHER_LDFLAGS = -nostdlib $(I386_SYSROOT)/lib/crt1.o -L$(I386_SYSROOT)/usr/lib -F$(I386_SYSROOT)/System/Library/Frameworks -framework System`.
-PreLoad also uses `-lDriver` from that sysroot for MIG stubs (not for the
-ObjC class). `createMachPort:` calls `_IOServerConnect`. Guest `file`:
+PreLoad does not use `-lDriver`: `driverServer.defs` is compiled into
+InstallPPDev (`DEFSFILES` / `OTHER_OFILES = driverServerUser.o`). Makefile
+`LIBS` stays empty. Darwin MIG emits `_IOServerConnect` instead of Apple's
+`_IOCreateMachPort`. Copied-back nlist:
+
+```
+external __TEXT,__text __IOGetCharValues
+```
+
+not `external None`. Guest `file`:
 
 ```
 ParallelPort_reloc: Mach-O preload executable i386

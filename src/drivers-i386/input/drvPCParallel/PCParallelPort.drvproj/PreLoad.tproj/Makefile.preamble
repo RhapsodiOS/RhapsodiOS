@@ -138,4 +138,7 @@ DSTROOT = $(HOME)
 
 INCLUDED_ARCHS = i386
 I386_SYSROOT = /build/bootstrap-root
-OTHER_LDFLAGS = -nostdlib $(I386_SYSROOT)/lib/crt1.o -L$(I386_SYSROOT)/usr/lib -F$(I386_SYSROOT)/System/Library/Frameworks -framework System -lDriver
+OTHER_LDFLAGS = -nostdlib $(I386_SYSROOT)/lib/crt1.o -L$(I386_SYSROOT)/usr/lib -F$(I386_SYSROOT)/System/Library/Frameworks -framework System
+DEFSFILES = driverServer.defs
+OTHER_OFILES = driverServerUser.o
+ALL_MIGFLAGS = -arch i386 -server /dev/null

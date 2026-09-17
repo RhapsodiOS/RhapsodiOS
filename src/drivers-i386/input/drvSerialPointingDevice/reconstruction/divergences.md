@@ -1628,3 +1628,7 @@ sweep 1200/2400/4800/9600 sending `executeEvent:0x33` at
 * jz loc_7A3                              jz loc_62
 ```
 
+## Task 6: Campaign close
+
+Instruction-stream finish. Last kept `SerialPointingDevice_reloc` is 111660 bytes, SHA-256 `D6D751BA6A1015D93B65CD72CD18F61924A6517CC67279B1129E38EB1939D30F`. `--list` is 3 identical + 9 further masked = 12 `masked_equal`, 6 accepted compiler-shaped leftovers, 2 generated glue, 0 unpaired. `_SerialPointingDevice_VERS_STRING` / `_SerialPointingDevice_VERS_NUM` still MISSING (Task 4 accepted gap). Hardware untested.
+

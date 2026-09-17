@@ -13,8 +13,8 @@ Source was not edited for this snapshot.
 Guest `sh /build/source/vm/build-i386-input-recon.sh drvSerialPointingDevice` ended
 `=== input-recon done fail=0 built: drvSerialPointingDevice ===`. The staged
 object is unstripped Mach-O preload i386. This Finish `_reloc` is 112064 bytes
-and supersedes July's 112072. It is not the campaign result; `ledger.json`
-`rebuilt_sha256` is left unset.
+and supersedes July's 112072. It is not the campaign result; see Campaign
+close for the kept Task 5 reloc and `ledger.json` `rebuilt_sha256`.
 
 `validate` printed `reference ... sha256=59C0C95C5A4D93456BDD6667970AC4A3605A961FEAC2CF7CE97F586D3A958F59`.
 IDA-only analyze: `complete: true`, `normalized-functions=FAIL` (expected),
@@ -195,9 +195,44 @@ layout/linkage growth.
    239    404    405              -[SerialPointingDevice detect]
 ```
 
-18 functions: 3 identical + 8 further masked = **11 `masked_equal` total**,
-5 remaining accepted as compiler-shaped leftovers, 0 unpaired.
+18 functions: 3 identical + 9 further masked = **12 `masked_equal` total**,
+6 remaining accepted as compiler-shaped leftovers, 2 generated glue
+(`--list` matched; ledger `intentional-mismatch`), 0 unpaired.
 
 Stop condition: unpaired is only the two generated glue methods; every other
 hand-written row is identical, masked_equal, or accepted. No unexamined
 hand-written function.
+
+## Campaign close
+
+2026-09-17. Instruction-stream finish. No further source-shape edits.
+
+| | size (bytes) | SHA-256 |
+| --- | --- | --- |
+| Reference `SerialPointingDevice_reloc` | 39928 | `59C0C95C5A4D93456BDD6667970AC4A3605A961FEAC2CF7CE97F586D3A958F59` |
+| Rebuilt `SerialPointingDevice_reloc` | 111660 | `D6D751BA6A1015D93B65CD72CD18F61924A6517CC67279B1129E38EB1939D30F` |
+
+`ledger.json` `rebuilt_sha256` is that kept reloc. Guest `fail=0`.
+`parity_check.py` 0 / 0.
+
+### `__TEXT,__text`
+
+| | size (bytes) |
+| --- | --- |
+| Reference | 4468 |
+| Rebuilt | 4548 |
+
+Away from 4468 after all accepts; recorded, not a failure. No
+`__TEXT,__const`. `_SerialPointingDevice_VERS_STRING` /
+`_SerialPointingDevice_VERS_NUM` still **MISSING** (Task 4 accepted gap).
+
+### `binrecon function --list`
+
+18 functions: 3 identical + 9 further masked = **12 `masked_equal` total**,
+6 accepted compiler-shaped leftovers, 2 generated glue (ledger
+`intentional-mismatch`; `--list` matched), 0 unpaired.
+
+10/16 hand-written functions assembly-matched (nine baseline gates +
+`getIntValues:`). Remainder accepted: `getByte:sleep:`, `setIntValues:`,
+`FiveBProtocol`, `mouseInit:`, `MSProtocol`, `detect`. Hardware testing
+still out.

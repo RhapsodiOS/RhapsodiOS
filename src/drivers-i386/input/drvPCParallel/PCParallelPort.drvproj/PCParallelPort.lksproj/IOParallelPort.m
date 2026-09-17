@@ -86,8 +86,8 @@ extern int sprintf(char *str, const char *fmt, ...);
 - initFromDeviceDescription:(IODeviceDescription *)deviceDescription
 {
     IOEISADeviceDescription *eisaDesc = (IOEISADeviceDescription *)deviceDescription;
-    id configTable;
     const char *minorDevStr;
+    id configTable;
     const char *driverName;
     IORange *portRanges;
     BOOL validRange;

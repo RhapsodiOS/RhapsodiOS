@@ -600,17 +600,19 @@ Accepted leftover: rebuilt `1276E0E5BFDA0E577ED4949E842DAE136BF3CA16588143A32960
 
 ### `-[IOParallelPort initFromDeviceDescription:]` (diff 201)
 
-Star: extra `var_20=0`; `strcmp` inlined with different length/pointer setup;
-error-path `free` register choice.
-Accepted leftover: rebuilt `C439A3442A4B9600B5C0281A3877C2645A3C979EE472234505BD6CA88248FB7F`
-(compiler-shaped frame / `strcmp` setup; list not rebuilt-tried item-by-item).
+Star from current `--name`: extra `sub esp,24h` / `mov [ebp+var_20],0`;
+`validRange` in `dl`/`setz` vs Apple's stack slot; strcmp length `edx=2`
+vs `[ebp+var_24]`; configTable in `var_18` vs `var_1C`.
 
-1. `strcmp(minorDevStr, "0")` vs length-2 `cmpsb` locals (`int n = 2`)
-2. Declaration order: `configTable` / `minorDevStr` / `driverName` / `portRanges`
-3. Invert each early-return `if` so the success path is the `else`
-4. `numPortRanges > 1` vs `!= 1` vs `>= 2`
-5. Keep `self` in a local vs using `self` throughout
-6. `validRange` test as else-if vs nested if
+1. `int validRange` so gcc spills the flag like Apple's `var_20` — **tried, regression** (38 identical, 2 unpaired `blockSize` / `intHandlerDelay`)
+2. `strcmp` length as `int n = 2` stack local — **skipped** (same extra-slot unpaired risk as 1)
+3. Declaration order: `minorDevStr` before `configTable` — **kept** (both use `var_1C` / `var_18`; diff 201→193)
+4. Invert each early-return `if` so the success path is the `else` — **skipped** (super `jz` already matches)
+5. `numPortRanges > 1` vs `!= 1` vs `>= 2` — already `cmp 1` / `jbe`
+6. Keep `self` in a local vs using `self` throughout — **skipped** (invented slot)
+7. `validRange` test as else-if vs nested if — **skipped** (leftover is BOOL in `dl`)
+Accepted leftover: rebuilt `C61ABDE8F2360A74AEFAE11B5CED36E8F0F998D133F40C503889A313E85D242D`
+(compiler-shaped frame / register / `strcmp` length in `edx` vs `[ebp+var_24]`).
 
 ### `_IOParallelPortThread` (diff 210)
 

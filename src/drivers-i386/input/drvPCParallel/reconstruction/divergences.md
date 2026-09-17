@@ -1415,6 +1415,30 @@ _ppioctl
   lea eax, [ebx+ebx*4]                    lea eax, [ebx+ebx*4]
 ```
 
+### Task 8 — `initFromDeviceDescription:` frame leftover
+
+`minorDevStr` declared before `configTable` so both sides store the table in
+`var_1C` and the minor string in `var_18`. `int validRange` unpaired
+`blockSize` / `intHandlerDelay` (reverted). Leftover is gcc 2.x `sub esp,20h`
+vs Apple's `24h`/`mov [ebp+var_20],0`, `strcmp` length in `edx` vs
+`[ebp+var_24]`, and error-path `free` register choice. Rebuilt SHA-256
+`C61ABDE8F2360A74AEFAE11B5CED36E8F0F998D133F40C503889A313E85D242D`.
+Parity 0/0. Previously identical rows stayed identical (40). Ledger 456
+`intentional-mismatch`, reviewer Pat Raynor, reason
+`compiler-shaped leftover after exhausted source-shape list`.
+
+```
+-[IOParallelPort initFromDeviceDescription:]
+  status=different raw_equal=False masked_equal=False
+* sub esp, 24h                            sub esp, 20h
+  mov [ebp+var_1C], eax                   mov [ebp+var_1C], eax
+  mov [ebp+var_18], eax                   mov [ebp+var_18], eax
+* mov edi, offset a0                      mov [ebp+var_20], offset a0
+* mov [ebp+var_24], 2                     mov edx, 2
+  cmp eax, 1                              cmp eax, 1
+* jbe loc_294                             jbe loc_100
+```
+
 ### Task 8 — remaining large functions
 
 ### 8.9 The status rule used
@@ -1439,7 +1463,8 @@ _ppioctl
   if/else dequeue; leftover is `add esp,0Ch` scheduling and else-block placement), 4232
   (`_strobeChar` load-then-test reversed; leftover is gcc 2.x CSE / register allocation),
   5520 (`_ppopen` nested signed initDevice range; leftover is `jl` vs `jge`),
-  456 (`initFromDeviceDescription:` extra `var_20` / register choice), 4512
+  456 (`initFromDeviceDescription:` `minorDevStr` before `configTable`; leftover is
+  extra `var_20` / `strcmp` length slot), 4512
   (`_IOParallelPortThread` commandType test vs cmp / status slot), 5240
   (`_IOParallelPortInterruptHandler` decode invert; leftover is `inb` slot vs `dl`), 5828
   (`_ppwrite` signed initDevice range without pre-zeroed locals; leftover is

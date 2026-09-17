@@ -81,7 +81,8 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "rewritten against 456-1451. setDeviceKind: replaces setDriverName:, the Location read and setLocation: are gone, [deviceDescription name] is gone, the Minor Device Number string is freed on both the not-found path (828) and the success path (1028) with no NULL fallback, setMinorDevNum:0 is sent, IOThreadDelay and intHandlerDelay are initialised to 1, cdevsw slot 8 is seltrue, dataBuffer is sized from minPhys, the log text and its 16-bit address argument match __cstring at 7608, the explicit attachInterruptPort / interruptPort / setInterruptMessage: block is gone because IODirectDevice attaches the port, sizeLock is an NXLock, and registerDevice is tested for nil rather than against IO_R_SUCCESS (Findings 18-27, 61)"
+          "rewritten against 456-1451. setDeviceKind: replaces setDriverName:, the Location read and setLocation: are gone, [deviceDescription name] is gone, the Minor Device Number string is freed on both the not-found path (828) and the success path (1028) with no NULL fallback, setMinorDevNum:0 is sent, IOThreadDelay and intHandlerDelay are initialised to 1, cdevsw slot 8 is seltrue, dataBuffer is sized from minPhys, the log text and its 16-bit address argument match __cstring at 7608, the explicit attachInterruptPort / interruptPort / setInterruptMessage: block is gone because IODirectDevice attaches the port, sizeLock is an NXLock, and registerDevice is tested for nil rather than against IO_R_SUCCESS (Findings 18-27, 61)",
+      "Task 8: minorDevStr declared before configTable so slots match var_1C/var_18; leftover is extra var_20 / strcmp length"
         ],
         "status": "agreed"
       },
@@ -1805,7 +1806,7 @@
       "status": "intentional-mismatch"
     }
   ],
-  "rebuilt_sha256": "1276E0E5BFDA0E577ED4949E842DAE136BF3CA16588143A32960915448A88D4E",
+  "rebuilt_sha256": "C61ABDE8F2360A74AEFAE11B5CED36E8F0F998D133F40C503889A313E85D242D",
   "reference_sha256": "D188A4D909005683B0C943C84CD99514C14A84AD1D378425B3B1DB343F1EAAA2",
   "schema_version": "ledger-v1"
 }

@@ -1,0 +1,6 @@
+pkgname = cdis
+pkgver = 156.1
+pkgdesc = Installation tools
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base, drveide-hdrs

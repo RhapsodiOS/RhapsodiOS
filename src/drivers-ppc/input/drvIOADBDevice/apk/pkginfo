@@ -1,0 +1,6 @@
+pkgname = drvioadbdevice
+pkgver = 2
+pkgdesc = ADB device server driver (reconstructed from the shipped binary; not compile-verified)
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base, drivertools, driverkit, machkit, kernload, libstreams

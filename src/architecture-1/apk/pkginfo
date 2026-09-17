@@ -1,0 +1,6 @@
+pkgname = architecture
+pkgver = 226
+pkgdesc = Architecture-specific headers.
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base

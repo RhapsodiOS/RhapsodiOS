@@ -1,0 +1,7 @@
+pkgname = tcp-wrappers
+pkgver = 7.6
+pkgdesc = TCP security wrappers
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+url = ftp://ftp.win.tue.nl/pub/security/tcp_wrappers-7.6.tar.gz
+makedepends = build-base

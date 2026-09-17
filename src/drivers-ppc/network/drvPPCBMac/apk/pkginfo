@@ -1,0 +1,6 @@
+pkgname = drvppcbmac
+pkgver = 2
+pkgdesc = BMac ethernet device driver
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base, drivertools, driverkit, machkit, kernload, libstreams

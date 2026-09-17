@@ -1,0 +1,6 @@
+pkgname = libkvm
+pkgver = 9.1
+pkgdesc = Kernel virtual memory library
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base

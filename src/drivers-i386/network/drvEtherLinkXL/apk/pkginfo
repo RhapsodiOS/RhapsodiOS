@@ -1,0 +1,6 @@
+pkgname = etherlinkxl
+pkgver = 5
+pkgdesc = 3Com EtherLink XL ethernet device driver
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base, drivertools, driverkit, kernload

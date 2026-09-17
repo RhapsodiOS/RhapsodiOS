@@ -1,0 +1,6 @@
+pkgname = libinfo
+pkgver = 44.2
+pkgdesc = NetInfo library
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base, librpcsvc-hdrs, libinfo-hdrs

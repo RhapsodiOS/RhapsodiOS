@@ -1,6 +1,0 @@
-Package: libcurses
-Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
-Vendor: Apple Computer, Inc.
-Version: 19
-Description: Text-mode display library
-Build-Depends: build-base

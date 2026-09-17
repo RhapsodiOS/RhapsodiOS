@@ -1,6 +1,0 @@
-Package: objc
-Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
-Vendor: Apple Computer
-Version: 210
-Description: In-kernel Objective-C runtime
-Build-Depends: build-base, libstreams-hdrs

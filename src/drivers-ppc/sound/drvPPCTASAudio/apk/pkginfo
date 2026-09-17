@@ -1,0 +1,6 @@
+pkgname = drvppctasaudio
+pkgver = 1
+pkgdesc = PowerPC I2S TAS audio device driver
+maintainer = RhapsodiOS Developers
+license = unknown
+makedepends = build-base, drivertools, driverkit, machkit, kernload, libstreams

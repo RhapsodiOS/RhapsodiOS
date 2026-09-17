@@ -1,0 +1,6 @@
+pkgname = sounds
+pkgver = 15
+pkgdesc = System sounds
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base

@@ -1,4 +1,5 @@
-apk
+apk/*
+!apk/pkginfo
 *.o
 *.d
 *.cmd

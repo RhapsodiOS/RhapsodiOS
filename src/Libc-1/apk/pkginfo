@@ -1,0 +1,6 @@
+pkgname = libc
+pkgver = 78.8
+pkgdesc = C library
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base, driverkit-hdrs

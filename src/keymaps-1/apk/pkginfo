@@ -1,0 +1,6 @@
+pkgname = keymaps
+pkgver = 25.1
+pkgdesc = Key mappings
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base

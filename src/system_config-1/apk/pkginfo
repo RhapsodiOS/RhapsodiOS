@@ -1,0 +1,6 @@
+pkgname = system-config
+pkgver = 46
+pkgdesc = Device driver configuration
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base

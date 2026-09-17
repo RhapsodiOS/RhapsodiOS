@@ -1,0 +1,6 @@
+pkgname = files
+pkgver = 282.0
+pkgdesc = Miscellaneous system files
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base, adv-cmds

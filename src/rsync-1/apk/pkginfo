@@ -1,0 +1,7 @@
+pkgname = rsync
+pkgver = 1.6.8
+pkgdesc = Remote file syncronizer
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+url = http://samba.anu.edu.au/cgi-bin/rsync
+makedepends = build-base

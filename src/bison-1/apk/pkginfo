@@ -1,0 +1,6 @@
+pkgname = bison
+pkgver = 1.25
+pkgdesc = Bison parser generator
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base, perl

@@ -1,0 +1,7 @@
+pkgname = yacc
+pkgver = 1998.10.12
+pkgdesc = Yet Another Compiler Compiler
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+url = http://www.netbsd.org/
+makedepends = build-base

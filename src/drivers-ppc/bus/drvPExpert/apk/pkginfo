@@ -1,0 +1,6 @@
+pkgname = drvpexpert
+pkgver = 29
+pkgdesc = Platform Expert
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base, drivertools, kernload

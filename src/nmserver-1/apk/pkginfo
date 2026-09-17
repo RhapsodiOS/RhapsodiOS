@@ -1,0 +1,6 @@
+pkgname = nmserver
+pkgver = 28
+pkgdesc = Mach network message server
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base

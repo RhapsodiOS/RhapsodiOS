@@ -1,0 +1,6 @@
+pkgname = soundblaster128pci
+pkgver = 1.2
+pkgdesc = Sound Blaster 128, ES1371, and ES1373 sound device driver
+maintainer = Jens Heise
+license = unknown
+makedepends = build-base, drivertools, driverkit, kernload

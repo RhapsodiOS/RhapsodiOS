@@ -1,0 +1,7 @@
+pkgname = patch-cmds
+pkgver = 2.5
+pkgdesc = Patch file applicator
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+url = ftp://prep.ai.mit.edu/pub/gnu/patch-2.5.tar.gz
+makedepends = build-base

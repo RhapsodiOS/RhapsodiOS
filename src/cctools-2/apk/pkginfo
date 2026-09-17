@@ -1,0 +1,6 @@
+pkgname = cctools
+pkgver = 295
+pkgdesc = Compiler tools
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base, adv-cmds, libstreams-hdrs, libc, libm

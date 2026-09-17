@@ -12,8 +12,9 @@ Source was not edited for this snapshot.
 
 Guest `sh /build/source/vm/build-i386-input-recon.sh drvSerialPointingDevice` ended
 `=== input-recon done fail=0 built: drvSerialPointingDevice ===`. The staged
-object is unstripped Mach-O preload i386. This `_reloc` is not the campaign
-result; `ledger.json` `rebuilt_sha256` is left unset.
+object is unstripped Mach-O preload i386. This Finish `_reloc` is 112064 bytes
+and supersedes July's 112072. It is not the campaign result; `ledger.json`
+`rebuilt_sha256` is left unset.
 
 `validate` printed `reference ... sha256=59C0C95C5A4D93456BDD6667970AC4A3605A961FEAC2CF7CE97F586D3A958F59`.
 IDA-only analyze: `complete: true`, `normalized-functions=FAIL` (expected),
@@ -48,7 +49,7 @@ local Objective-C method labels. Extra unstripped symbols are not a failure.
 
 ## `binrecon function --list`
 
-18 functions: 3 byte-identical (`raw_equal`), 8 further `masked_equal`,
+18 functions: 3 identical + 8 further masked = **11 `masked_equal` total**,
 7 remaining, 0 unpaired.
 
 ```
@@ -76,20 +77,31 @@ local Objective-C method labels. Extra unstripped symbols are not a failure.
 
 No ledger status was advanced from this table.
 
-## July `assembly-matched` regression gate
+## Baseline regression gate
 
-All five July claims are `raw_equal` or `masked_equal` on this `_reloc`:
+Any hand-written row that is `raw_equal` or `masked_equal` is a gate.
+The nine non-glue equals:
 
 | Address | Function | This run |
 | --- | --- | --- |
 | 1016 | `-[SerialPointingDevice getResolution]` | `identical` (`raw_equal`) |
+| 0 | `_mainLoop` | `identical` (`raw_equal`) |
 | 3700 | `-[SerialPointingDevice MPlusProtocol]` | `masked-eq` |
 | 4324 | `-[SerialPointingDevice MMProtocol]` | `masked-eq` |
 | 4364 | `-[SerialPointingDevice RBProtocol]` | `masked-eq` |
 | 4404 | `-[SerialPointingDevice UnknownProtocol]` | `masked-eq` |
+| 1032 | `-[SerialPointingDevice setEventTarget:]` | `masked-eq` |
+| 908 | `-[SerialPointingDevice free]` | `masked-eq` |
+| 1464 | `-[SerialPointingDevice mainLoop:]` | `masked-eq` |
 
-Those five plus `_mainLoop` (`identical`) are the instruction-stream
-regression gate. The two glue methods stay generated (`intentional-mismatch`).
+The two glue methods stay generated (`intentional-mismatch`) and are not
+grind targets: `+[SerialPointingDeviceKernelServerInstance kernelServerInstance]`
+(`masked-eq`) and `+[SerialPointingDeviceVersion driverKitVersionForSerialPointingDevice]`
+(`identical`).
+
+July's five `assembly-matched` rows all held and sit inside this nine.
+`_mainLoop`, `setEventTarget:`, `free`, and `mainLoop:` are the additional
+hand-written equals from this baseline.
 
 ## Is this reachable?
 
@@ -98,6 +110,7 @@ Cheapest remaining rows, source-shaped vs compiler-shaped:
 - `getByte:sleep:` (7 diffs, 43/43). Compiler-shaped. CFG already matches
   Finding 8's `do`/`while`. The live diffs are `data` at `[ebp+var_8]` vs
   `[ebp+var_5]` and jump labels — stack-slot packing of `unsigned char data`.
+  One declaration-order try (`IOReturn ret`, `int eventType`, `unsigned char data`), then accept as stack packing.
 - `getIntValues:forParameter:count:` (42 diffs, 36 vs 56). Source-shaped.
   Reference is `cld`/`cmpsb` against `"Resolution"` / `"Inverted"`; ours is
   the counted char loop. Same class of rewrite drvPS2Mouse landed with
@@ -118,6 +131,11 @@ Cheapest remaining rows, source-shaped vs compiler-shaped:
   function: same frame size, instruction counts nearly equal, first diff is
   `xor edi,edi` moved a few slots.
 
-`setEventTarget:`, `free`, and `mainLoop:` already `masked_equal` (display
-`diff` 2 / 3 / 15 is unmasked labels / relocs). They are not grind targets
-for source edits.
+Source-shaped grind order after `getByte:sleep:`'s one-shot:
+
+- `getIntValues:forParameter:count:`
+- `setIntValues:forParameter:count:`
+- `FiveBProtocol`
+
+`mouseInit:`, `MSProtocol`, and `detect` stay compiler-shaped leftovers,
+not grind targets unless a later dump shows a source-level hole.

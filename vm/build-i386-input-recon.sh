@@ -22,7 +22,8 @@ esac
 
 ROOT="${SRCROOT:-/build/source}"
 SRC="$ROOT/src/drivers-i386/input/$DRV"
-STAGE="$ROOT/out/i386/$DRV/${NAME}.config"
+OUT=/build/out/i386
+STAGE="$OUT/$DRV/${NAME}.config"
 
 if [ ! -d "$SRC" ]; then
 	echo "build-i386-input-recon: missing $SRC" >&2

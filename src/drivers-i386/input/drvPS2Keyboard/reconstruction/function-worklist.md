@@ -124,3 +124,95 @@ From `binrecon function --name` of the cheapest open rows:
 - **`-[PS2Keyboard desireOwnership:]` (diff 6) — source-shaped.** Same lock / owner / `0xFFFFFD2B` pieces; the if/else blocks are in opposite order (`jz`/`jz` vs `jz`/`jnz`). Candidate for `if` vs `else if` or reversed `cmp`.
 - **`_lock_controller` (diff 6) — compiler-shaped.** `cmp dword ptr [edx], 0` vs `mov`/`test`, and `xor eax, 1`/`test` vs `cmp eax, 1`. Register vs memory compare and test-vs-cmp on the spinlock; not a missing call.
 - **`+[PS2Controller probe:]` (diff 7) — mixed, first try source-shaped.** `add eax, 4` then `mov [eax], 0` vs `mov [eax+4], 0` (how the kalloc'd lock is zeroed) plus a `test eax` vs `mov ebx, eax` / `test ebx` return. Try the store shape before accepting the register move.
+
+## Task 4 experiment lists
+
+One idea per remaining empty-flag row, cheapest first. Add more only after a miss. Task 8 gate bodies are not rewritten.
+
+### `-[PS2Keyboard setAlphaLockFeedback:]` (diff 2) — empty by policy
+
+Task 8 regression gate. Do not apply the BOOL / `and eax, 0FFh` typed rewrite. Accept without a source edit.
+
+### `_resetEscapes` (diff 4) — empty; compiler-shaped confirmed
+
+`--name` 2026-09-16: same mnemonics; starred rows are jump labels and `ds:off_2078` vs `ds:off_2080`. Reloc / layout masking, not a wrong constant or missing call. Accept without a source experiment.
+
+### `_sendMouseCommand` (diff 4)
+
+1. Rewrite `return (response == 0xFA)` as an if/else that returns 1 or 0 (`jnz` / `mov eax, 1` / `xor eax, eax` vs `setz`).
+
+### `-[PS2Keyboard desireOwnership:]` (diff 6)
+
+1. Invert the if/else: test the conflict (`_desiredOwner != nil && _desiredOwner != owner`) first so the `-725` store is laid out before the success store (`jz`/`jz` vs `jz`/`jnz`).
+
+### `_lock_controller` (diff 6) — empty; compiler-shaped confirmed
+
+`--name` 2026-09-16: `cmp dword ptr [edx], 0` vs `mov`/`test`, and `xor eax, 1`/`test` vs `cmp eax, 1`. Equivalent gcc 2.x spinlock shape; no missing call. Accept without a source experiment.
+
+### `+[PS2Controller probe:]` (diff 7)
+
+1. Zero the kalloc'd lock flag through a pointer increment (`eax += 4; *eax = 0`) instead of `controller_lock[1] = 0`.
+
+### `-[PS2Keyboard initWithController:]` (diff 7)
+
+1. Apply the command-byte edit as three statements (`|= 0x40`, `&= 0xEF`, `|= 1`) immediately after `getKeyboardData()`, before `sendControllerCommand(0x60)`.
+
+### `-[PS2Keyboard readConfigTable:]` (diff 10)
+
+1. Store the Interface/Handler defaults into the ivars inside each NULL branch (`interfaceId = 3`, `handlerId = 0`) instead of through `interfaceValue` / `handlerValue` locals.
+
+### `_undoEscape` (diff 10)
+
+1. Drop the `scancode` local; enqueue `sequence->keys[index * 2] | 0x80` as an expression after testing the extended byte, so gcc does not park the scancode in `[ebp+var_4]` before the `0xE0` test.
+
+### `_getKeyboardDataIfPresent` (diff 12)
+
+1. Branch on `keyboardDataPresent()` before the matching unlock, with explicit `return 1` / `return 0` on each path, instead of parking the BOOL and always unlocking first.
+
+### `_enqueueKeyboardData` (diff 13)
+
+1. Compare `keyboardFreeQueue.next == KBD_FREE_QUEUE` before loading `element`, matching the reference's `cmp ds:_keyboardFreeQueue` before `mov edx, ds:_keyboardFreeQueue`.
+
+### `_getMouseDataIfPresent` (diff 14)
+
+1. Replace the inverted `noMouseData` BOOL with `if (status & 0x20)` / else, returning 1 or 0 on each path (`test al, 20h` / `jz` vs `shr`/`xor`/`and`).
+
+### `-[PS2Keyboard relinquishOwnership:]` (diff 20) — empty by policy
+
+Task 8 regression gate. `--name` shows then/else order on `respondsTo:`, but do not rewrite the body. Accept without a source edit.
+
+### `-[PS2Keyboard dispatchKeyboardEvents]` (diff 27)
+
+1. Signedness of the dispatch loop index: declare `i` as `int` so the count compare is `jl`/`jge` rather than `jb`/`jnb`.
+
+### `-[PS2Keyboard enqueueKeyEvent:goingDown:atTime:]` (diff 31)
+
+1. Park `timestamp`, `keyCode`, and `goingDown` in locals before computing the slot address (`sub esp, 10h` then four stores vs immediate indexed stores).
+
+### `-[PS2Keyboard interruptOccurred]` (diff 32)
+
+1. Keep `scancode` as `unsigned int` (signedness of a local) so the `scancodeToKeyEvent` argument is `and eax, 0FFh` / `push eax` rather than `movzx`.
+
+### `_getKeyboardData` (diff 37)
+
+1. Invert the empty-queue if/else so the hardware read is the `jnz` fall-through and the dequeue unlink is the taken path.
+
+### `_isEscape` (diff 40)
+
+1. Do not hoist `scancodeChar` / `extendedChar` locals; compare `key` bytes in place after the `currentSequence` test (`cmp byte ptr [ebp+arg_0]` vs stack extracts).
+
+### `-[PS2Keyboard becomeOwner:]` (diff 43)
+
+1. Invert the `_owner == nil` if/else so the already-owned / `respondsTo:` path is laid out first (`jz` to the grant vs `jnz` to the ask).
+
+### `-[PS2Controller initFromDeviceDescription:]` (diff 48)
+
+1. Inside the free-queue fill loop, branch empty vs non-empty insert (`if (keyboardFreeQueue.next == KBD_FREE_QUEUE)` set both links, else tail-insert).
+
+### `_doEscape` (diff 50)
+
+1. Test `data == 0xE0` before copying `lastExtended` into a local, matching the reference's `cmp dl, 0E0h` before the `mov al, ds:_lastExtended` else path.
+
+### `_scancodeToKeyEvent` (diff 102)
+
+1. Store each jump-table keycode into `event.keyCode` in the case body instead of a `keyCode` local (`mov ds:dword_213C, 62h` vs `mov bl, 62h`).

@@ -144,9 +144,16 @@ bootstrap or kernel compile. No produced i386 program was executed or booted.
 
 ### Step 4: live repo inspection
 
+After the one-shot `vm/rename-repo-apk-arch` rename, `/build/repo` APKs use
+`{pkgname}-{pkgver}-{token}.apk` (for example `csu-23.1-1-universal.apk`).
+rbuild lookup requires that stem; unsuffixed names such as `csu-23.1-1.apk`
+are not consulted.
+
 All 68 APKs under `/build/repo` declared `arch = universal-apple-rhapsody`
-(count `TOTAL=68 UNIVERSAL=68 OTHER=0`). Sample `lipo -info` on the bootstrap
-sysroot:
+(count `TOTAL=68 UNIVERSAL=68 OTHER=0`). Rhapsody `/usr/bin/tar` / `gnutar`
+does not extract the metadata member (tar name `./.PKGINFO`); inspect with
+`gzip -dc FILE.apk | tr '\0' '\n' | grep '^arch ='`. Sample `lipo -info` on
+the bootstrap sysroot:
 
 ```
 Architectures in the fat file: /build/bootstrap-root/lib/crt1.o are: i386 ppc
@@ -160,7 +167,10 @@ Architectures in the fat file: /build/bootstrap-root/usr/bin/ld are: i386 ppc
 ```
 
 `/build/bootstrap-root/usr/bin/mig` is a Bourne shell script. The bootstrap log
-ends `BOOTSTRAP_COMPLETE`.
+ends `BOOTSTRAP_COMPLETE`. After review, guest `/build/src/rbuild-1` `make test`
+and `make trace-test` were re-run: `TEST_RC=0`, `TRACE_RC=0` (logs
+`/build/state/logs/task9-rbuild-test.out` and
+`task9-rbuild-trace-test.out`).
 
 ### Step 5: ordinary universal `buildpackage`
 

@@ -54,9 +54,11 @@ explicit `ld_flags_ready` marker exists. Products, cached APKs, and dependencies
 are checked by content. No probe executable is run, and there is no host-only
 fallback. Dry-run prints the checks and commands without creating build roots.
 
-Use separate destination repositories for universal and thin variants: APK
-filenames do not encode architecture. Incompatible cached artifacts are
-quarantined as `.invalid` before rebuilding. `missing` only inspects them.
+Published APK filenames encode architecture as
+`<pkgname>-<pkgver>-<universal|i386|ppc>.apk`; universal and thin variants
+can coexist in the same repository when their tokens differ. Incompatible
+cached artifacts are quarantined as `.invalid` before rebuilding. `missing`
+only inspects them.
 
 See [architecture policy and verification](../../docs/build/rbuild-universal.md)
 for object collections, dependency compatibility, state migration, and the
@@ -65,7 +67,8 @@ bounded native guest acceptance evidence.
 ## Notes
 
 - Source type is always `dir`; `--cvs` is rejected (support removed).
-- Produces `<name>.apk`, `<name>-hdrs.apk`, `<name>-obj.apk`.
+- Publishes `<pkgname>-<pkgver>-<universal|i386|ppc>.apk` and matching
+  `-hdrs`/`-obj` companions; `.PKGINFO` `arch` remains `*-apple-rhapsody`.
 - `.PKGINFO` carries a custom `builddepends` field (apk ignores unknown keys).
 - Depends at runtime on `tar`, `gzip`, `apk`, `make`, `chroot`, `rsync`,
   `mkdir`, `cp`, `rm` on `PATH`.

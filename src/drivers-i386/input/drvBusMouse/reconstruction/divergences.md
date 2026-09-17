@@ -1761,3 +1761,108 @@ The `__const` section gap is closed; the leftover is the apple-generic
 symbol names, same as Cirrus. Do not compare the 160-byte SGS string to
 Apple's. See `function-worklist.md`.
 
+## Task 4 / Phase 3: cheapest-first grinding
+
+2026-09-16. Ranking from `--list` (ignore glue; ignore raw_equal /
+masked_equal / identical) superseded the plan's starter order:
+`getIntValues:` (7), `setIntValues:` (20), `_MouseIntHandler` (22),
+`_GetIRQFromBoard` (24). `BusMouse.m` was not kept-changed. Locked
+regression gates stayed `masked-eq` / `identical` on every measured
+rebuild. Glue is still only the two generated class methods.
+
+Final accepted-source reloc: 100372 bytes, SHA-256
+`55BB1C543C383A311E57447DDD6B722D251ED577D2769BC9ECD0475334C9815D`
+(vers timestamp differs from Task 3's `2EAA0112…`).
+`parity_check.py`: `missing_strings` 0, `missing_symbols` 0.
+Ledger after this pass: **7 `assembly-matched`**, **6 `intentional-mismatch`**,
+**0 `unexamined`**.
+
+### `-[BusMouse getIntValues:forParameter:count:]` — accept (gcc spill)
+
+Capstone had this assembly-matched; IDA shows 7 diffs. `--name` dump
+(status=different; `instruction layout differs`):
+
+```
+  reference                               rebuilt
+  … same prologue, same mov esi/edi, mov ecx,0Bh, cld, test al,0, cmpsb …
+* jnz loc_558                             jnz loc_55C
+* mov edx, [edx+12Ch]                     mov eax, [edx+12Ch]
+* jmp loc_57B                             jmp loc_57F
+  … same Inverted cmpsb ecx=9 …
+* jz loc_574                              jz loc_578
+  mov eax, 0FFFFFD39h                     mov eax, 0FFFFFD39h
+* jmp loc_57F                             jmp loc_583
+* movsx edx, byte ptr [edx+130h]          movsx eax, byte ptr [edx+130h]
+* mov [ebx], edx                          mov [ebx], eax
+  xor eax, eax                            xor eax, eax
+  lea esp, [ebp-0Ch]                      lea esp, [ebp-0Ch]
+  … same epilogue …
+```
+
+Same calls, same constants, same offsets 0x12C / 0x130, same
+`IO_R_UNSUPPORTED`. Leftover is the stored value in `edx` vs `eax` and
+the jump labels that follow. Dummy locals were not added.
+
+**Disposition:** accept. Ledger `intentional-mismatch`, reviewer
+`Pat Raynor`, reason gcc spill.
+
+### `-[BusMouse setIntValues:forParameter:count:]` — accept (gcc spill)
+
+`--name` differs only by gcc hoist/spill of `parameterArray` / compare
+count (ours smaller, 49 vs 53 instructions). No missing call, no wrong
+offset. Starter list treated as empty; Exp 1/2 were not run. Dummy
+spills were not added to chase 148.
+
+```
+  reference                               rebuilt
+* sub esp, 4
+  …
+* mov eax, [ebp+arg_C]                    mov eax, [ebp+arg_8]
+* mov esi, eax                            mov esi, [ebp+arg_C]
+* mov [ebp+var_4], 0Bh                    mov ecx, 0Bh
+* mov ecx, [ebp+var_4]
+  … same cmpsb, [ebx+12Ch] store, getResolution send, shared unguarded
+    tail to [ebx+128h], IO_R_UNSUPPORTED, both objc_msgSend present …
+* lea esp, [ebp-10h]                      lea esp, [ebp-0Ch]
+```
+
+**Disposition:** accept. Ledger `intentional-mismatch`, reviewer
+`Pat Raynor`, reason gcc spill.
+
+### `_MouseIntHandler` — accept / unreachable
+
+Starter experiments, each rebuilt and measured; gates never lost
+`masked-eq` / `identical`. Source restored after every miss.
+
+| Exp | change | result |
+| --- | --- | --- |
+| 1 | widen left before `^= 1` | miss, 22→21 diffs, no regression; reverted |
+| 2 | `unsigned char temp` for `buttonByte >> 5` | miss, 22 diffs (gcc elided `temp`); reverted |
+| 3 | `right = ((buttonByte >> 5) & 1) ^ 1` | miss, 21 diffs (spilled `var_8`, dropped extra `and al,1`); reverted |
+
+Empty list. Leftover is register allocation / scheduling: `sub esp,10h`
+vs `0Ch`, xor-before-movzx on left, no `[ebp-8]` spill of the right
+shift, extra `and al,1` on the bitfield store. Same ten port accesses,
+doubled `outb(0x23e, 0x80)`, busy-accumulate vs post-and-clear.
+
+**Disposition:** accept as unreachable. Ledger `intentional-mismatch`,
+reviewer `Pat Raynor`.
+
+### `_GetIRQFromBoard` — accept / unreachable
+
+Port 0x23E, 0xF000 count, and the 5/4/3/2/0 ladder were not changed
+except inside named experiments, all reverted.
+
+| Exp | change | result |
+| --- | --- | --- |
+| 1 | drop `lowBits`, inline `(changed & 0x0f)` | miss, 24→18 diffs; gcc dropped the mask and tested `bl`; reverted |
+| 2 | `if (lowBits & 1)` | miss, 24 diffs (`test bl, 1` still); reverted |
+| 3 | `unsigned int lowBits` | miss, 24→22 diffs; mask in `esi`, extra `push esi`; reverted |
+| 4 | flatten IRQ-2 `else if` | miss, 24 diffs (same dump as original); reverted |
+
+Empty list. Leftover is gcc spilling the masked nibble to `[ebp-8]` and
+putting the IRQ in `ecx` instead of `ebx`. Dummy locals were not added.
+
+**Disposition:** accept as unreachable. Ledger `intentional-mismatch`,
+reviewer `Pat Raynor`.
+

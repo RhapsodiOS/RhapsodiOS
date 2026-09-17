@@ -48,12 +48,12 @@ four `Loaded Server` sections our build emits. Three differ:
 | `__TEXT,__const` | 170 | *absent* | `_PS2Mouse_VERS_STRING` (160 bytes) and `_PS2Mouse_VERS_NUM` (10 bytes) |
 | `Loaded Server,Unload Commands` | 102 | *absent* | recorded above |
 
-The `__const` gap is new information from the fix pass and is the same class of build-system
-gap as `Unload Commands`: those two symbols are emitted by NeXT's `vers_string` machinery, not
-written by hand, and **no driver in this repository produces them** — of the twelve `_reloc`
-artifacts currently staged under `out/i386/`, the only ones with a `__TEXT,__const` section at
-all (drvEIDE, drvISASerialPort, drvPCMCIABus) have it for ordinary `const` data of their own,
-not for version constants. Recorded, not fixed; out of scope for the same reason.
+The `__const` gap is the same class of build-system gap as `Unload Commands`: those two
+symbols are emitted by NeXT's `vers_string` machinery, not written by hand. Task 5 added the
+Kernel Server `Makefile.postamble` line `OTHER_GENERATED_OFILES += $(VERS_OFILE)`. The
+symbols are still absent: the guest has no `next-sgs.make`, so `$(VERS_OFILE)` expands empty,
+`PS2Mouse_vers.c` / `.o` were never generated, and they do not appear on `kl_ld`.
+`driverTools` was not edited. **Accepted with guest evidence;** see Task 5.
 
 ### Follow-up pass: the `__text` overshoot was mis-attributed
 
@@ -120,12 +120,11 @@ not made.
 **Follow-up pass outcome.** Findings 15 and 16 were fixed and Finding 10's acceptance was
 reversed. The rebuilt `__text` for both parameter methods *was* disassembled and re-compared
 instruction for instruction against the reference, so `-[PS2Mouse getIntValues:forParameter:
-count:]` advances from `control-flow-confirmed` to `assembly-matched` (now exactly the
-reference's 96 bytes), and `-[PS2Mouse setIntValues:forParameter:count:]` stays
-`intentional-mismatch` with its reason rewritten: the nil guards are gone, and the only residual
-is the reference's stack spill of the compare count and of `parameterArray`, which leaves ours
-12 bytes smaller. Counts are now `assembly-matched` 3, `control-flow-confirmed` 3,
-`intentional-mismatch` 7.
+count:]` was advanced from `control-flow-confirmed` to `assembly-matched` (exactly the
+reference's 96 bytes). Task 6 reversed that: IDA `--name` is 7 diffs (`edx` vs `eax`).
+`-[PS2Mouse setIntValues:forParameter:count:]` stayed `intentional-mismatch` with its
+reason rewritten: the nil guards are gone, and the only residual is the reference's stack
+spill of the compare count and of `parameterArray`, which leaves ours 12 bytes smaller.
 
 Beyond the function bodies, the object's Objective-C metadata was decoded directly from the
 Mach-O (`__class`, `__instance_vars`, `__inst_meth`, `__cls_meth`, `__meth_var_types`,
@@ -947,37 +946,57 @@ reference.
 
 ## Finding 13: defensive null guards the reference does not have
 
-**Source:** `src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m:132`,
-`:274`, `:365`, `:407`, `:430`, `:432`, `:437`, `:444`, `:451`
+**Source:** `src/drivers-i386/input/drvPS2Mouse/PS2Mouse.drvproj/PS2Mouse.lksproj/PS2Mouse.m:127`,
+`:253`, `:334`, `:367`, `:389`
 
 **Reference behaviour:** `_PS2MouseIntHandler` (915), `-[PS2Mouse isMousePresent]` (184),
 `-[PS2Mouse resetMouse]` (295) and `-[PS2Mouse initWithController:]` (405, 451, 462, 480, 491)
 all load `_func_list` and immediately dereference it. There is no `test`/`cmp` against zero on
 `_func_list` or on any of its slots anywhere in the binary.
 
-**Our source:** four `if (controllerFunctions == NULL)` early returns plus six per-slot
-`!= NULL` guards inside `initWithController:`.
+**Our source (before Task 3):** four `if (controllerFunctions == NULL)` early returns plus six
+per-slot `!= NULL` guards inside `initWithController:`.
 
-**Disposition:** accept
+**Disposition:** fix
 
 **Rationale:** `_func_list` is set from `[controller controllerAccessFunctions]` before any of
-these run, and the reference simply trusts it. Our guards convert a would-be null dereference
-into a quiet failure, which is strictly safer and cannot change behaviour when the pointer is
-valid. Recorded because it is real added code the reference does not contain, and because the
-per-slot guards in `initWithController:` mean a partially-populated table would silently skip
-hardware initialization rather than fault — worth knowing if that path is ever suspected.
+these run, and the reference simply trusts it. The guards were real added code the reference
+does not contain. Parity with the shipped binary is the point of this reconstruction, so they
+come out.
 
-**Resolution (Task 4):** accepted unchanged. All four early returns and all six per-slot
-guards remain. This is most of the 152-byte `__TEXT,__text` excess our build carries over the
-reference. Ledger: `-[PS2Mouse isMousePresent]`, `-[PS2Mouse resetMouse]`,
-`-[PS2Mouse initWithController:]` and `_PS2MouseIntHandler` are `intentional-mismatch`,
-reviewed by Pat Raynor, for this reason.
+**Resolution (Task 4):** accepted unchanged at the time. That acceptance is reversed below.
 
-**Correction (follow-up pass):** the sentence above was wrong when written. The guards were 76
-of the 152 bytes, not "most" of them; the other 88 belonged to Findings 15 and 16 in the two
-parameter methods, now fixed. With those gone the guards are 76 bytes against a 52-byte residual
-overshoot — the only source-level excess left in the driver. The disposition is unchanged: still
-accepted, still `intentional-mismatch`.
+**Correction (follow-up pass):** the Task 4 sentence that the guards were "most" of the 152-byte
+`__text` excess was wrong when written. The guards were 76 of those 152 bytes; the other 88
+belonged to Findings 15 and 16, now fixed.
+
+**Resolution (Task 3):** fixed. The three `controllerFunctions == NULL` early returns in
+`_PS2MouseIntHandler`, `isMousePresent` and `resetMouse` are gone. In `initWithController:`
+the drain is now an unguarded `reserved[3]()` call and the 8042 read/mask/write sandwich is
+four unguarded slot-0/1/0/4 calls, with no outer `controllerFunctions != NULL` and no
+`else { statusByte = 0; }`. `if (controllerDevice == nil)` and `if (!force_detection)` were
+left alone; Force Detection was not inverted. `Select-String` for
+`controllerFunctions == NULL|controllerFunctions != NULL|reserved[[0-9]] != NULL` has no
+matches.
+
+Guest rebuild `fail=0`, staged unstripped `_reloc` 94416 bytes. `--list` against the Task 2
+baseline (diffs 11/4/83/133):
+
+| Function | Task 2 | Task 3 |
+| --- | --- | --- |
+| `-[PS2Mouse isMousePresent]` | 11 / 37 / 39 | **9 / 37 / 37 `masked-eq`** |
+| `-[PS2Mouse resetMouse]` | 4 / 13 / 15 | **2 / 13 / 13 `masked-eq`** |
+| `-[PS2Mouse initWithController:]` | 83 / 108 / 125 | **35 / 108 / 108** |
+| `_PS2MouseIntHandler` | 133 / 120 / 114 | **133 / 120 / 112** |
+
+`--name` confirms `masked_equal=True` for `isMousePresent` and `resetMouse` (the remaining
+instruction diffs are `_func_list` vs `_controllerFunctions` and jump targets). Those two
+advance to `assembly-matched`. `initWithController:` and `_PS2MouseIntHandler` still differ
+and stay `intentional-mismatch` for Task 4/6; the edit is kept even though those extents did
+not fully close. Residual on the handler is Finding 14 (`unsigned int` / `return 0`).
+
+Regression gate held: `getHandler:level:argument:forInterrupt:` stayed `masked-eq`,
+`getResolution` stayed `identical`, `getIntValues:forParameter:count:` stayed at 7 diffs.
 
 ## Finding 14: `_PS2MouseIntHandler` return value and `mouseInit:` initialization set
 
@@ -1033,10 +1052,50 @@ rewrote this region anyway, the dead stores went with it, and `mouseInit:` now i
 exactly the reference's six locations (`seqInProgress`, `seqBeingProcessed`,
 `indexInSequence`, `summedEvent.data.buf[2]`, `summedEvent.data.buf[1]`, `resolution = 0x96`)
 and no longer pre-sets `inverted` or `force_detection` or clears the event buffers. The
-handler-return half was **accepted unchanged**: `PS2MouseIntHandler` still returns
-`unsigned int` and still returns 0, which DriverKit discards. Ledger: `_PS2MouseIntHandler`
-is `intentional-mismatch` (jointly with Finding 13); `-[PS2Mouse mouseInit:]` is
-`control-flow-confirmed` with no residual divergence.
+handler-return half was **accepted unchanged** at the time: `PS2MouseIntHandler` still
+returned `unsigned int` and still returned 0, which DriverKit discards. Ledger:
+`_PS2MouseIntHandler` is `intentional-mismatch` (jointly with Finding 13);
+`-[PS2Mouse mouseInit:]` is `control-flow-confirmed` with no residual divergence.
+
+**Resolution (this campaign, Task 4):** Finding 14 handler-return half **fixed**. Do not
+reopen the already-fixed `mouseInit:` half. `PS2MouseIntHandler` is now `static void`;
+every `return 0` inside the handler is a bare `return`. `-getHandler:…` still assigns
+`*handler = (IOInterruptHandler)PS2MouseIntHandler`. Guest rebuild `fail=0`, staged
+unstripped `_reloc` 94408 bytes. `--list` vs Task 3: `_PS2MouseIntHandler` 133/120/112 →
+**119/120/111**. Rebuilt epilogue is `mov esp,ebp; pop ebp; retn` with no `xor eax,eax`
+(the reference never wrote eax either). Not `raw_equal` / `masked_equal`; leftover is
+Task 6. `--name` (prologue + epilogue):
+
+```
+_PS2MouseIntHandler
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+* sub esp, 14h                            sub esp, 0Ch
+* push edi
+* push esi
+  push ebx                                push ebx
+* mov edi, [ebp+arg_0]                    mov edx, ds:_controllerFunctions
+* mov esi, [ebp+arg_4]
+* mov edx, ds:_func_list
+  ...
+* lea esp, [ebp-20h]
+* pop ebx
+* pop esi
+* pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+Residual diffs are `_func_list` vs `_controllerFunctions`, the smaller frame (no
+edi/esi save), timestamp spill, and inverted `seqBeingProcessed` branch layout.
 
 ## Finding 15: the parameter-name compares are `strcmp`, not a hand-unrolled loop
 
@@ -1080,7 +1139,8 @@ break; i--; match = (*param == *key); param++; key++; } while (match);` — whic
 `getIntValues:` is **exactly** the reference's 96 bytes and its instruction stream matches the
 reference one for one — same opcodes, same encoding lengths, `repe cmpsb` at 11 then 9 — the only
 byte differences being the scratch register gcc chose for the value (`eax` where the reference
-used `edx`) and the `__cstring` addresses. Ledger: `assembly-matched`.
+used `edx`) and the `__cstring` addresses. Ledger was `assembly-matched` here; Task 6 reversed
+that to `intentional-mismatch` (same `edx` vs `eax` leftover, 7 IDA diffs).
 
 ## Finding 16: `setIntValues:` messages `target` unconditionally
 
@@ -1125,14 +1185,662 @@ Raynor, with its reason rewritten from the now-obsolete nil-guard text to this o
 ## Functions examined with no divergence found
 
 Instruction-level match (`assembly-matched` in the ledger):
-`-[PS2Mouse getHandler:level:argument:forInterrupt:]` (1480),
-`-[PS2Mouse getResolution]` (1520), and — since the follow-up pass —
-`-[PS2Mouse getIntValues:forParameter:count:]` (1536), whose stream was re-read against the
-reference after Finding 15 was fixed. The first two still carry declaration-level
+`-[PS2Mouse getHandler:level:argument:forInterrupt:]` (1480) and
+`-[PS2Mouse getResolution]` (1520). Both still carry declaration-level
 divergences recorded under Finding 2 (`getResolution` returns `int` not `unsigned int`;
 `getHandler:`'s `argument:` is `unsigned int *` not `void **`), and `getResolution`'s single
 `mov eax, [eax+0x12c]` only lands on the right ivar once Finding 1 is applied. Neither
 divergence appears in the code, which is why the status is `assembly-matched` rather than
 `unexamined`.
 
+`-[PS2Mouse getIntValues:forParameter:count:]` (1536) was listed here after Finding 15
+as `assembly-matched`. Task 6 reversed that: IDA `--name` is 7 diffs, all `edx` vs `eax`
+register allocation. It is `intentional-mismatch`, reviewer Pat Raynor; see Task 6.
+
 No function in this driver was reviewed at control-flow level only.
+
+## Phase 1 baseline
+
+2026-09-16 guest rebuild of the current tree, no `PS2Mouse.m` edits. Live
+`System.framework` has no `PrivateHeaders`; `gnumake` was given bootstrap-root
+`-I` for `Versions/B/PrivateHeaders` and `Versions/B/Headers`. Guest log:
+`=== input-recon done fail=0 built: drvPS2Mouse ===`. Staged unstripped
+`PS2Mouse_reloc` is **94604** bytes, SHA-256
+`78273466617EE2960E4912D22F386BDBA295DB7863E985D172A1D063B3899473`.
+`parity_check.py`: `missing_strings` **0**, `missing_symbols` **0**,
+`extra_strings` **0**, `extra_symbols` **16**. This `_reloc` is not kept as
+the campaign result; `rebuilt_sha256` is unchanged. Finding 13/14/VERS are
+still in source. See `function-worklist.md`.
+
+## Task 3: Finding 13 guards dropped
+
+2026-09-16 guest rebuild after removing every `controllerFunctions` null guard.
+Guest log: `=== input-recon done fail=0 built: drvPS2Mouse ===`. Staged unstripped
+`PS2Mouse_reloc` is **94416** bytes, SHA-256
+`6817E812FFD0B853FB403D58FC6C883AF2544DF63AE59669A73C91B4486E8365`.
+`parity_check.py`: `missing_strings` **0**, `missing_symbols` **0**,
+`extra_strings` **0**, `extra_symbols` **16**. Finding 14's handler return and the
+missing `VERS_OFILE` line are still in source. See `function-worklist.md`.
+
+## Task 4: Finding 14 handler declared void
+
+2026-09-16 guest rebuild after changing `PS2MouseIntHandler` to `static void` and
+replacing every `return 0` in the handler with `return`. Guest log:
+`=== input-recon done fail=0 built: drvPS2Mouse ===`. Staged unstripped
+`PS2Mouse_reloc` is **94408** bytes, SHA-256
+`30CB12E57AB8774148915AA5954328A0C644D66407343ECA8877C0F350DBBA94`.
+`parity_check.py`: `missing_strings` **0**, `missing_symbols` **0**,
+`extra_strings` **0**, `extra_symbols` **16**. Finding 14 handler-return half is
+**fixed**; the `mouseInit:` half was already fixed and was not reopened. Residual
+on `_PS2MouseIntHandler` (119 diffs, not masked-eq) is left for Task 6. The
+missing `VERS_OFILE` line is still in source. See `function-worklist.md`.
+
+## Task 5: Kernel Server `VERS_OFILE` postamble
+
+2026-09-16 guest rebuild after creating
+`PS2Mouse.lksproj/Makefile.postamble` as the single line
+`OTHER_GENERATED_OFILES += $(VERS_OFILE)`. No Driver-project postamble, no
+`PS2Mouse.m` edit, no `driverTools` edit. Guest log:
+`=== input-recon done fail=0 built: drvPS2Mouse ===`. Staged unstripped
+`PS2Mouse_reloc` is still **94408** bytes, SHA-256
+`30CB12E57AB8774148915AA5954328A0C644D66407343ECA8877C0F350DBBA94` — identical
+to Task 4, because nothing that `kl_ld` consumes changed.
+
+Gate **unmet.** `__TEXT,__const` is still absent. `_PS2Mouse_VERS_STRING` and
+`_PS2Mouse_VERS_NUM` are both **MISSING**. Guest evidence:
+
+- `kl_ld` linked `PS2Mouse.o` and `PS2Mouse_instance.o` only; no `PS2Mouse_vers.o`.
+- Object dir has `PS2Mouse.o` / `PS2Mouse_instance.o` (and `.i386.o`); no `*vers*`.
+- Derived src has `PS2Mouse_instance.m` only; no `PS2Mouse_vers.c`.
+- `/System/Developer/Makefiles/VersioningSystems` has `apple-generic.make` and
+  `next-cvs.make` only. There is no `next-sgs.make` there or under
+  `pb_makefiles`. `common.make` `-include`s `$(VERSIONING_SYSTEM).make`; with
+  that file missing, `$(VERS_OFILE)` expands empty, so the postamble appends
+  nothing.
+
+No remaining local makefile fix: setting `VERSIONING_SYSTEM = next-sgs` in this
+driver would still include a file the guest does not have. Installing
+`next-sgs.make` is a guest-installed makefile / `driverTools` change, which this
+task forbids. **Accepted.** Do not compare the 160-byte string to Apple's.
+
+`--list` is unchanged vs Task 4 (same SHA). Regression gate held:
+`getHandler:…` `masked-eq`, `getResolution` `identical`, `getIntValues:` still
+7 diffs, `isMousePresent` and `resetMouse` `masked-eq`. See
+`function-worklist.md`.
+
+## Task 6: cheapest-first grinding
+
+2026-09-17. Guest rebuild `fail=0` after the kept `readConfigTable:` edit.
+Staged unstripped `_reloc` **94408** bytes, SHA-256
+`948DCB8066528D89F8E83B03C62B988769A9B92A0DFF6C2DF6B40AFB989EE771`.
+`parity_check.py`: `missing_strings` **0**, `missing_symbols` **0**,
+`extra_strings` **0**, `extra_symbols` **16**. Glue is still only the two
+generated `+[` methods.
+
+Regression gate held: `getHandler:…` `masked-eq`, `getResolution` `identical`,
+`isMousePresent` `masked-eq`, `resetMouse` `masked-eq`, `interruptOccurred`
+`masked-eq`, `getIntValues:` stayed at 7 diffs.
+
+### `-[PS2Mouse getIntValues:forParameter:count:]` — accepted, compiler-shaped
+
+`--name` before any Task 6 edit. Same prologue, `repe cmpsb` at 11 then 9,
+`IO_R_UNSUPPORTED` (`0xFFFFFD39`), offsets `+12Ch` / `+130h`. Leftover is
+register allocation:
+
+```
+  reference                               rebuilt
+* mov edx, [edx+12Ch]                     mov eax, [edx+12Ch]
+* movsx edx, byte ptr [edx+130h]          movsx eax, byte ptr [edx+130h]
+* mov [ebx], edx                          mov [ebx], eax
+```
+
+Jump labels differ only as layout. No missing call, no wrong offset. Did not
+add dummy locals.
+
+**Disposition: accept.** Ledger: `intentional-mismatch`, reviewer Pat Raynor.
+This reverses the earlier `assembly-matched` claim; IDA still shows 7 diffs.
+
+### `-[PS2Mouse readConfigTable:]` — matched
+
+`--name` showed inverted NULL/`y`/`Y` branch layout (ours `jz` to store 1 and
+an inline store-0; reference `jnz` to store 0 with store-1 fall-through).
+Force Detection sense was not inverted.
+
+Experiment: rewrite both Force Detection and Inverted to the positive form
+already used by drvBusMouse:
+
+```
+if ((str != NULL) && ((*str == 'y') || (*str == 'Y'))) {
+    flag = YES;
+} else {
+    flag = NO;
+}
+```
+
+Kept. `--list` 18/65 → **12/65 `masked-eq`**. `--name` `masked_equal=True`;
+remaining diffs are jump labels. Commit
+`drvPS2Mouse: match readConfigTable y/Y branch layout to the reference`.
+Declaration-order experiment not tried; not needed.
+
+### `-[PS2Mouse setIntValues:forParameter:count:]` — accepted, gcc spill
+
+`--name` from the kept reloc (SHA `948DCB80…`). Ours is smaller (49 vs 53
+instructions). Same calls (`getResolution`, shared `setResolution:` /
+`setInverted:` tail), same constants (11, 9, `0xFFFFFD39`), same offsets
+(`+12Ch`, `+130h`, `+128h`). The leftover is gcc hoist/spill of
+`parameterArray` and the compare count. No dummy spills.
+
+**Disposition: accept.** Ledger: `intentional-mismatch`, reviewer Pat Raynor.
+
+```
+-[PS2Mouse setIntValues:forParameter:count:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+* sub esp, 4
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  mov ebx, [ebp+self]                     mov ebx, [ebp+self]
+* mov eax, [ebp+arg_C]                    mov eax, [ebp+arg_8]
+* mov esi, eax                            mov esi, [ebp+arg_C]
+  mov edi, offset aResolution             mov edi, offset aResolution
+* mov [ebp+var_4], 0Bh                    mov ecx, 0Bh
+* mov ecx, [ebp+var_4]
+  cld                                     cld
+  test al, 0                              test al, 0
+  cmpsb                                   cmpsb
+* jnz loc_6A8                             jnz loc_674
+* mov edx, [ebp+arg_8]                    mov eax, [eax]
+* mov edx, [edx]                          mov [ebx+12Ch], eax
+* mov [ebx+12Ch], edx                     mov edx, ds:paGetresolution
+* mov ecx, ds:paGetresolution             push edx
+* push ecx
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  push eax                                push eax
+  mov edx, ds:paSetresolution             mov edx, ds:paSetresolution
+* jmp loc_6D9                             jmp loc_6A2
+* mov esi, eax                            mov esi, [ebp+arg_C]
+  mov edi, offset aInverted               mov edi, offset aInverted
+  mov ecx, 9                              mov ecx, 9
+  cld                                     cld
+  test al, 0                              test al, 0
+  cmpsb                                   cmpsb
+* jz loc_6C4                              jz loc_690
+  mov eax, 0FFFFFD39h                     mov eax, 0FFFFFD39h
+* jmp loc_6E8                             jmp loc_6B1
+* mov ecx, [ebp+arg_8]                    mov al, [eax]
+* mov cl, [ecx]                           mov [ebx+130h], al
+* mov [ebx+130h], cl                      movsx eax, al
+* movsx eax, cl
+  push eax                                push eax
+  mov edx, ds:paSetinverted               mov edx, ds:paSetinverted
+  push edx                                push edx
+  mov ebx, [ebx+128h]                     mov ebx, [ebx+128h]
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  xor eax, eax                            xor eax, eax
+* lea esp, [ebp-10h]                      lea esp, [ebp-0Ch]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+### `-[PS2Mouse mouseInit:]` — accepted unreachable
+
+`--name` from the kept reloc (SHA `948DCB80…`). Store order already matches
+(`seqInProgress`, `seqBeingProcessed`, `indexInSequence`, `byte_4026` /
+`byte_2026`, `byte_4025` / `byte_2025`, `resolution = 0x96`). Starter list
+items (2) BOOL as 0 and (3) resolution as 150 do not match the dump.
+
+The leftover is the `jz`/`jnz` error path: reference `test eax, eax; jz loc_6C`
+then an inline `stringFromReturn:` / `IOLog` / `xor eax, eax`, then
+`test al, al; jnz loc_98` over a second `xor`/`jmp`. Ours `jnz loc_554` /
+`jz loc_56D` and parks both fail tails after `initWithController:`. Same
+calls, same constants, same offsets. Empty list.
+
+**Disposition: accept.** Ledger: `intentional-mismatch`, reviewer Pat Raynor.
+
+```
+-[PS2Mouse mouseInit:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 4                              sub esp, 4
+  push ebx                                push ebx
+  mov ebx, [ebp+self]                     mov ebx, [ebp+self]
+  mov ds:_seqInProgress, 0                mov ds:_seqInProgress, 0
+  mov ds:_seqBeingProcessed, 0            mov ds:_seqBeingProcessed, 0
+  mov ds:_indexInSequence, 0              mov ds:_indexInSequence, 0
+* mov ds:byte_4026, 0                     mov ds:byte_2026, 0
+* mov ds:byte_4025, 0                     mov ds:byte_2025, 0
+  mov dword ptr [ebx+12Ch], 96h           mov dword ptr [ebx+12Ch], 96h
+  lea eax, [ebp+var_4]                    lea eax, [ebp+var_4]
+  push eax                                push eax
+  push offset aPs2controller              push offset aPs2controller
+  call near ptr _IOGetObjectForDeviceName  call near ptr _IOGetObjectForDeviceName
+  add esp, 8                              add esp, 8
+  test eax, eax                           test eax, eax
+* jz loc_6C                               jnz loc_554
+* push eax
+* mov edx, ds:paStringfromretu
+* push edx
+* push ebx
+* call near ptr _objc_msgSend
+* push eax
+* push offset aInitpointerCan
+* call near ptr _IOLog
+* xor eax, eax
+* jmp loc_AC
+  mov edx, ds:paConfigtable               mov edx, ds:paConfigtable
+  push edx                                push edx
+  mov edx, [ebp+arg_8]                    mov edx, [ebp+arg_8]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  push eax                                push eax
+  mov edx, ds:paReadconfigtabl            mov edx, ds:paReadconfigtabl
+  push edx                                push edx
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 14h                            add esp, 14h
+  test al, al                             test al, al
+* jnz loc_98                              jz loc_56D
+* xor eax, eax
+* jmp loc_AC
+  mov edx, [ebp+var_4]                    mov edx, [ebp+var_4]
+  push edx                                push edx
+  mov edx, ds:paInitwithcontro            mov edx, ds:paInitwithcontro
+  push edx                                push edx
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  movsx eax, al                           movsx eax, al
+*                                         jmp loc_56F
+*                                         push eax
+*                                         mov edx, ds:paStringfromretu
+*                                         push edx
+*                                         push ebx
+*                                         call near ptr _objc_msgSend
+*                                         push eax
+*                                         push offset aInitpointerCan
+*                                         call near ptr _IOLog
+*                                         xor eax, eax
+  mov ebx, [ebp+var_8]                    mov ebx, [ebp+var_8]
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+### `-[PS2Mouse initWithController:]` — tried and/or split, then accepted
+
+`--name` from the kept reloc (SHA `948DCB80…`), after the and/or split was
+reverted. Packet/8042 command order (0x20 read, read byte, 0x60 write, write
+data) already matches. Force Detection was not inverted.
+
+Tried: split the mask into `statusByte &= 0xDF; statusByte |= 0x02` after
+the command-byte read, then pass `statusByte`. Guest rebuild `fail=0`,
+reloc 94432 bytes. `--list` `initWithController:` 35→30, not `masked-eq`.
+Gates held. **Reverted.** Marked tried.
+
+Leftover on this dump: `_func_list` vs `_controllerFunctions`,
+`isMousePresent` `jz loc_280` (fail at tail) vs `jnz loc_404` (fail inline),
+and 8042 mask `and bl, 0DFh; or bl, 2; movzx eax, bl` vs
+`mov eax, ebx; or al, 2; and eax, 0DFh`. Empty list.
+
+**Disposition: accept.** Ledger: `intentional-mismatch`, reviewer Pat Raynor.
+
+```
+-[PS2Mouse initWithController:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push esi                                push esi
+  push ebx                                push ebx
+  mov esi, [ebp+self]                     mov esi, [ebp+self]
+  mov eax, [ebp+arg_8]                    mov eax, [ebp+arg_8]
+  test eax, eax                           test eax, eax
+* jnz loc_168                             jnz loc_384
+  push offset aPs2mouseNoPs2c             push offset aPs2mouseNoPs2c
+* jmp loc_29A                             jmp loc_3F5
+  mov [esi+144h], eax                     mov [esi+144h], eax
+  mov ecx, ds:paControlleracce            mov ecx, ds:paControlleracce
+  push ecx                                push ecx
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+* mov ds:_func_list, eax                  mov ds:_controllerFunctions, eax
+  push 1                                  push 1
+  mov ecx, ds:paSetmanualdatah            mov ecx, ds:paSetmanualdatah
+  push ecx                                push ecx
+  mov ecx, [esi+144h]                     mov ecx, [esi+144h]
+  push ecx                                push ecx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+* mov eax, ds:_func_list                  mov eax, ds:_controllerFunctions
+  mov eax, [eax+0Ch]                      mov eax, [eax+0Ch]
+  call eax                                call eax
+  add esp, 14h                            add esp, 14h
+  cmp byte ptr [esi+148h], 0              cmp byte ptr [esi+148h], 0
+* jnz loc_1C3                             jnz loc_404
+  mov ecx, ds:paIsmousepresent            mov ecx, ds:paIsmousepresent
+  push ecx                                push ecx
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  test al, al                             test al, al
+* jz loc_280                              jnz loc_404
+* mov eax, ds:_func_list                  push 0
+*                                         mov ecx, ds:paSetmanualdatah
+*                                         push ecx
+*                                         mov esi, [esi+144h]
+*                                         push esi
+*                                         call near ptr _objc_msgSend
+*                                         push offset aPs2mouseCouldn
+*                                         call near ptr _IOLog
+*                                         xor eax, eax
+*                                         jmp loc_4BC
+*                                         mov eax, ds:_controllerFunctions
+  push 20h                                push 20h
+  mov eax, [eax]                          mov eax, [eax]
+  call eax                                call eax
+* mov eax, ds:_func_list                  mov eax, ds:_controllerFunctions
+  mov eax, [eax+4]                        mov eax, [eax+4]
+  call eax                                call eax
+  mov bl, al                              mov bl, al
+* and bl, 0DFh                            mov eax, ds:_controllerFunctions
+* or bl, 2
+* mov eax, ds:_func_list
+  push 60h                                push 60h
+  mov eax, [eax]                          mov eax, [eax]
+  call eax                                call eax
+* mov edx, ds:_func_list                  mov edx, ds:_controllerFunctions
+* movzx eax, bl                           mov eax, ebx
+*                                         or al, 2
+*                                         and eax, 0DFh
+  push eax                                push eax
+  mov eax, [edx+10h]                      mov eax, [edx+10h]
+  call eax                                call eax
+  mov ecx, ds:paResetmouse                mov ecx, ds:paResetmouse
+  push ecx                                push ecx
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  push esi                                push esi
+  mov ecx, ds:paSetmouseobject            mov ecx, ds:paSetmouseobject
+  push ecx                                push ecx
+  mov ecx, [esi+144h]                     mov ecx, [esi+144h]
+  push ecx                                push ecx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 20h                            add esp, 20h
+  push offset aPs2mouse                   push offset aPs2mouse
+  mov ecx, ds:paSetname                   mov ecx, ds:paSetname
+  push ecx                                push ecx
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  push offset aPs2mouse                   push offset aPs2mouse
+  mov ecx, ds:paSetdevicekind             mov ecx, ds:paSetdevicekind
+  push ecx                                push ecx
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  push 0                                  push 0
+  mov ecx, ds:paSetmanualdatah            mov ecx, ds:paSetmanualdatah
+  push ecx                                push ecx
+  mov ecx, [esi+144h]                     mov ecx, [esi+144h]
+  push ecx                                push ecx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 24h                            add esp, 24h
+  mov ecx, ds:paEnableallinter            mov ecx, ds:paEnableallinter
+  push ecx                                push ecx
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  push 1Ch                                push 1Ch
+  mov ecx, ds:paStartiothreadw            mov ecx, ds:paStartiothreadw
+  push ecx                                push ecx
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov eax, 1                              mov eax, 1
+* jmp loc_2A1
+* push 0
+* mov ecx, ds:paSetmanualdatah
+* push ecx
+* mov esi, [esi+144h]
+* push esi
+* call near ptr _objc_msgSend
+* push offset aPs2mouseCouldn
+* call near ptr _IOLog
+* xor eax, eax
+  lea esp, [ebp-8]                        lea esp, [ebp-8]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+### `_PS2MouseIntHandler` — accepted, compiler/ABI-shaped
+
+`--name` from the kept reloc (SHA `948DCB80…`). Leftover is `_func_list` vs
+`_controllerFunctions`, frame (`sub esp, 14h` + `push edi`/`push esi` vs
+`sub esp, 0Ch` + `ebx` only), timestamp copy through extra stack slots, and
+inverted `seqBeingProcessed` `jz`/`jnz`. Did not reorder resync / timeout /
+`seqBeingProcessed` / `seqInProgress` branches. Did not add dummy locals.
+
+**Disposition: accept.** Ledger: `intentional-mismatch`, reviewer Pat Raynor.
+
+```
+_PS2MouseIntHandler
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+* sub esp, 14h                            sub esp, 0Ch
+* push edi
+* push esi
+  push ebx                                push ebx
+* mov edi, [ebp+arg_0]                    mov edx, ds:_controllerFunctions
+* mov esi, [ebp+arg_4]
+* mov edx, ds:_func_list
+  lea ecx, [ebp+var_1]                    lea ecx, [ebp+var_1]
+  push ecx                                push ecx
+  mov edx, [edx+1Ch]                      mov edx, [edx+1Ch]
+  call edx                                call edx
+  add esp, 4                              add esp, 4
+  test eax, eax                           test eax, eax
+* jz loc_587                              jz loc_1F2
+  cmp [ebp+var_1], 0AAh                   cmp [ebp+var_1], 0AAh
+* jnz loc_3C4                             jnz loc_38
+  cmp ds:_indexInSequence, 0              cmp ds:_indexInSequence, 0
+* jnz loc_3C4                             jnz loc_38
+  push offset aPs2mouseMouseR             push offset aPs2mouseMouseR
+* jmp loc_40E                             jmp loc_82
+  lea edx, [ebp+var_C]                    lea edx, [ebp+var_C]
+  push edx                                push edx
+  call near ptr _IOGetTimestamp           call near ptr _IOGetTimestamp
+  add esp, 4                              add esp, 4
+  cmp ds:_indexInSequence, 0              cmp ds:_indexInSequence, 0
+* jz loc_434                              jz loc_A8
+  mov edx, [ebp+var_C]                    mov edx, [ebp+var_C]
+  mov ecx, [ebp+var_8]                    mov ecx, [ebp+var_8]
+  sub edx, ds:_lastTimeStamp              sub edx, ds:_lastTimeStamp
+* sbb ecx, ds:dword_402C                  sbb ecx, ds:dword_202C
+  test ecx, ecx                           test ecx, ecx
+* ja loc_3F9                              ja loc_6D
+* jnz loc_434                             jnz loc_A8
+  cmp edx, 0EE6B280h                      cmp edx, 0EE6B280h
+* jbe loc_434                             jbe loc_A8
+  mov ds:_indexInSequence, 0              mov ds:_indexInSequence, 0
+  cmp [ebp+var_1], 0AAh                   cmp [ebp+var_1], 0AAh
+* jnz loc_434                             jnz loc_A8
+  push offset aPs2mouseMouseR_0           push offset aPs2mouseMouseR_0
+  call near ptr _IOLog                    call near ptr _IOLog
+* mov edx, ds:_func_list                  mov edx, ds:_controllerFunctions
+  mov edx, [edx+18h]                      mov edx, [edx+18h]
+  call edx                                call edx
+* mov edx, ds:_func_list                  mov edx, ds:_controllerFunctions
+  push 0F4h                               push 0F4h
+  mov edx, [edx+14h]                      mov edx, [edx+14h]
+  call edx                                call edx
+* jmp loc_587                             jmp loc_1F2
+* mov ebx, [ebp+var_C]                    mov edx, [ebp+var_C]
+* mov [ebp+var_14], ebx                   mov ecx, [ebp+var_8]
+* mov ebx, [ebp+var_8]                    mov ds:_lastTimeStamp, edx
+* mov [ebp+var_10], ebx                   mov ds:dword_202C, ecx
+* mov ebx, [ebp+var_14]
+* mov ds:_lastTimeStamp, ebx
+* mov ebx, [ebp+var_10]
+* mov ds:dword_402C, ebx
+  cmp ds:_seqBeingProcessed, 0            cmp ds:_seqBeingProcessed, 0
+* jz loc_4B4                              jnz loc_1A4
+*                                         cmp ds:_seqInProgress, 0
+*                                         jnz loc_10C
+*                                         mov edx, ds:_indexInSequence
+*                                         mov bl, [ebp+var_1]
+*                                         mov [edx+200Ch], bl
+*                                         inc ds:_indexInSequence
+*                                         cmp ds:_indexInSequence, 2
+*                                         jle loc_1F2
+*                                         mov bl, ds:byte_2025
+*                                         add ds:byte_200D, bl
+*                                         mov bl, ds:byte_2026
+*                                         add ds:byte_200E, bl
+*                                         jmp loc_15E
+*                                         mov edx, ds:_indexInSequence
+*                                         mov bl, [ebp+var_1]
+*                                         mov [edx+2018h], bl
+*                                         inc ds:_indexInSequence
+*                                         cmp ds:_indexInSequence, 3
+*                                         jnz loc_1F2
+*                                         mov bl, ds:byte_2018
+*                                         mov ds:byte_200C, bl
+*                                         mov bl, ds:byte_2025
+*                                         add bl, ds:byte_2019
+*                                         mov ds:byte_200D, bl
+*                                         mov bl, ds:byte_2026
+*                                         add bl, ds:byte_201A
+*                                         mov ds:byte_200E, bl
+*                                         mov edx, [ebp+var_C]
+*                                         mov ecx, [ebp+var_8]
+*                                         mov ds:_currentEvent, edx
+*                                         mov ds:dword_2008, ecx
+*                                         push 232325h
+*                                         mov ebx, [ebp+arg_4]
+*                                         push ebx
+*                                         mov ebx, [ebp+arg_0]
+*                                         push ebx
+*                                         call near ptr _IOSendInterrupt
+*                                         mov ds:_seqBeingProcessed, 1
+*                                         mov ds:byte_2026, 0
+*                                         mov ds:byte_2025, 0
+*                                         mov ds:_indexInSequence, 0
+*                                         jmp loc_1F2
+  mov ds:_seqInProgress, 1                mov ds:_seqInProgress, 1
+  mov edx, ds:_indexInSequence            mov edx, ds:_indexInSequence
+  mov bl, [ebp+var_1]                     mov bl, [ebp+var_1]
+* mov [edx+4018h], bl                     mov [edx+2018h], bl
+  inc ds:_indexInSequence                 inc ds:_indexInSequence
+  cmp ds:_indexInSequence, 3              cmp ds:_indexInSequence, 3
+* jnz loc_587                             jnz loc_1F2
+* mov bl, ds:byte_4019                    mov bl, ds:byte_2019
+* add ds:byte_4025, bl                    add ds:byte_2025, bl
+* mov bl, ds:byte_401A                    mov bl, ds:byte_201A
+* add ds:byte_4026, bl                    add ds:byte_2026, bl
+  mov ds:_indexInSequence, 0              mov ds:_indexInSequence, 0
+  mov ds:_seqInProgress, 0                mov ds:_seqInProgress, 0
+* jmp loc_587
+* cmp ds:_seqInProgress, 0
+* jz loc_514
+* mov edx, ds:_indexInSequence
+* mov bl, [ebp+var_1]
+* mov [edx+4018h], bl
+* inc ds:_indexInSequence
+* cmp ds:_indexInSequence, 3
+* jnz loc_587
+* mov bl, ds:byte_4018
+* mov ds:byte_400C, bl
+* mov bl, ds:byte_4025
+* add bl, ds:byte_4019
+* mov ds:byte_400D, bl
+* mov bl, ds:byte_4026
+* add bl, ds:byte_401A
+* mov ds:byte_400E, bl
+* jmp loc_54A
+* mov edx, ds:_indexInSequence
+* mov bl, [ebp+var_1]
+* mov [edx+400Ch], bl
+* inc ds:_indexInSequence
+* cmp ds:_indexInSequence, 2
+* jle loc_587
+* mov bl, ds:byte_4025
+* add ds:byte_400D, bl
+* mov bl, ds:byte_4026
+* add ds:byte_400E, bl
+* mov ebx, [ebp+var_14]
+* mov ds:_currentEvent, ebx
+  mov ebx, [ebp+var_10]                   mov ebx, [ebp+var_10]
+* mov ds:dword_4008, ebx
+* push 232325h
+* push esi
+* push edi
+* call near ptr _IOSendInterrupt
+* mov ds:_seqBeingProcessed, 1
+* mov ds:byte_4026, 0
+* mov ds:byte_4025, 0
+* mov ds:_indexInSequence, 0
+* lea esp, [ebp-20h]
+* pop ebx
+* pop esi
+* pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+### Already matching (skipped)
+
+`getHandler:level:argument:forInterrupt:` `masked-eq`, `getResolution`
+`identical`, `interruptOccurred` `masked-eq` (promoted to
+`assembly-matched` in the ledger), `isMousePresent` `masked-eq`,
+`resetMouse` `masked-eq`. Both `+[` glue methods stay generated.
+
+## Closing
+
+Campaign grinding is complete. 6/11 hand-written functions are IDA
+masked-eq or identical: `-[PS2Mouse getHandler:level:argument:forInterrupt:]`,
+`-[PS2Mouse getResolution]`, `-[PS2Mouse interruptOccurred]`,
+`-[PS2Mouse resetMouse]`, `-[PS2Mouse isMousePresent]`,
+`-[PS2Mouse readConfigTable:]`. Five leftovers were accepted as compiler-shaped:
+`-[PS2Mouse getIntValues:forParameter:count:]` (7 diffs, edx vs eax),
+`-[PS2Mouse setIntValues:forParameter:count:]` (20 diffs, 53 vs 49, gcc spill),
+`-[PS2Mouse mouseInit:]` (26 diffs, 54 vs 52, gcc early-return vs inline-error layout),
+`-[PS2Mouse initWithController:]` (35/108, `_func_list` vs `_controllerFunctions` and jz/jnz / and-or layout),
+`_PS2MouseIntHandler` (119/120 vs 111, `_func_list` vs `_controllerFunctions` and frame shape).
+Two Kernel Server glue methods remain generated (`kernelServerInstance` masked-eq,
+`driverKitVersionForPS2Mouse` identical). Last kept rebuilt `PS2Mouse_reloc` is
+94408 bytes, SHA-256
+`948DCB8066528D89F8E83B03C62B988769A9B92A0DFF6C2DF6B40AFB989EE771`.
+`__TEXT,__const` is still absent: Task 5 wired `OTHER_GENERATED_OFILES += $(VERS_OFILE)`
+but the guest has no `next-sgs.make`, so `$(VERS_OFILE)` expands empty and
+`_PS2Mouse_VERS_STRING` / `_VERS_NUM` were not emitted. Not yet tested on hardware.

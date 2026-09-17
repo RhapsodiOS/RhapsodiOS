@@ -1498,7 +1498,7 @@ _IOParallelPortThread
   GET-then-SET grouping; leftover is getter/setter tail-merge),
   7392 and 7404, untouched from the report pass. Task 9 demoted 396
   (`+[IOParallelPort probe:]`, BOOL `setnz` / `and eax, 0FFh` vs `jz` / `mov eax,1` /
-  `xor eax,eax`), 2252 and 2320 (`controlRegisterContents` / `statusRegisterContents`,
+  `xor eax,eax`), 2252 and 2320 (`statusRegisterContents` / `controlRegisterContents`,
   reference spills `in al, dx` to `[ebp+var_1]` with `sub esp, 4`; rebuilt leaves the
   byte in `eax`), and 2788 (`isInitialized`, same BOOL materialization as `probe:`).
 

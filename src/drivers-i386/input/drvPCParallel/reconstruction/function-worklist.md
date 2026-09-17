@@ -1,7 +1,8 @@
 # drvPCParallel instruction-stream baseline
 
-Phase 1 snapshot after Tasks 1–3. No reloc shape edits. IDA 9.2 comparison
-against Apple's `ParallelPort_reloc`. Measured 2026-09-16.
+Reconstruction record through Task 9 reloc close (`F31C01A0…`, 165880 bytes).
+IDA 9.2 comparison against Apple's `ParallelPort_reloc`. Phase 1 notes and
+historical `--list` dumps below.
 
 ## Reloc hashes
 
@@ -90,33 +91,21 @@ This snapshot is **IDA-only**. Analyze exit 1 with
 | unpaired | 0 |
 | **total** | **75** |
 
-Summary line from `--list` (Task 8 close reloc `F31C01A0…`):
+Summary line from live `--list` (Task 9 close reloc `F31C01A0…`):
 
 ```
 75 functions: 40 byte-identical, 35 differing, 0 unpaired
 ```
 
 The summary's "differing" includes the 17 `masked-eq` rows. The 18 remaining
-`different` rows are ledger `intentional-mismatch` (16 Task 8 acceptances plus
-the two `struct buf` encodings); the four pre-Task-8 compiler-shaped skips
-(`probe:`, `isInitialized`, `controlRegisterContents`, `statusRegisterContents`)
-were demoted in Task 9. No unpaired glue: accessor name-pairing closed in Task 6;
-the two Kernel Server stubs pair and stay `intentional-mismatch` by design.
-
-Unpaired:
-
-| Status | Name |
-|---|---|
-| missing-reference | `-[IOParallelPort autofeedOutput]` |
-| missing-rebuilt | `-[IOParallelPort minPhys]` |
-| missing-reference | `-[IOParallelPort setControlRegister:]` |
-| missing-rebuilt | `-[IOParallelPort setInUse:]` |
-
-The comparison also name-pairs reference `autofeedOutput` with rebuilt
-`minPhys`, and reference `setControlRegister:` with rebuilt `setInUse:`.
-Those paired rows are identical instruction streams (ivar getter at `+14Ch`,
-ivar setter at `+13Ch`); the leftover unpaired names are the swapped
-accessors.
+`different` rows (no `masked-eq` flag) are ledger `intentional-mismatch`
+compiler-shaped acceptances and demotions, including the four Task 9 demotions
+(`probe:`, `isInitialized`, `controlRegisterContents`, `statusRegisterContents`).
+`physbuf` / `setPhysbuf:` are byte-identical instruction streams; ledger marks
+them `intentional-mismatch` for `struct buf` type encoding only (Finding 14).
+Ledger 22 `intentional-mismatch` = 18 `--list` different + 2 encoding-only
+accessors + 2 Kernel Server stubs. This reloc has **0 unpaired** (Task 6 closed
+the Phase 1 accessor name-pairing; see Phase 1 `--list` below).
 
 ## Ledger close (Task 9)
 
@@ -175,7 +164,12 @@ Source-shaped signal starts at `msgTypeToIOReturn:` (jump-table slot values
 `writeToPort`, the `_pp*` entry points) remain the grind set. Do not grind
 the accessor pairing or the inb stack-slot leftovers.
 
-## Full `--list`
+## Phase 1 — full `--list` (historical, 4 unpaired)
+
+Phase 1 accessor name-pairing left four unpaired names until Task 6 closed them.
+The comparison name-paired reference `autofeedOutput` with rebuilt `minPhys`, and
+reference `setControlRegister:` with rebuilt `setInUse:`; the leftover unpaired
+names were the swapped accessors.
 
 ```
   diff    ref    new  flags       name
@@ -673,6 +667,9 @@ Four compiler-shaped rows skipped in Task 8 were demoted from
 `--name` on the final reloc is `masked_equal=False` for all four. See
 `divergences.md` Task 9 notes. Ledger: **53** / **0** / **22**.
 
+Live `--list` on this reloc (`binrecon function --profile
+tools/binrecon/profiles/parallelport.json --list`):
+
 ```
   diff    ref    new  flags       name
 
@@ -683,6 +680,7 @@ Four compiler-shaped rows skipped in Task 8 were demoted from
      0      7      7  identical   -[IOParallelPort blockSize]
      0      7      7  identical   -[IOParallelPort busyMaxRetries]
      0      7      7  identical   -[IOParallelPort busyRetryInterval]
+     0     27     27  masked-eq   -[IOParallelPort cmdBufAlloc]
      0     19     19  masked-eq   -[IOParallelPort cmdBufComplete:]
      0     16     16  masked-eq   -[IOParallelPort cmdBufFree:]
      0      7      7  identical   -[IOParallelPort configRegister]
@@ -728,29 +726,29 @@ Four compiler-shaped rows skipped in Task 8 were demoted from
      1     34     34  masked-eq   -[IOParallelPort setMinPhys:]
      1     18     18  masked-eq   _ppminphys
      2     11      9              -[IOParallelPort controlRegisterContents]
+     2     35     35  masked-eq   -[IOParallelPort msgTypeToIOReturn:]
      2     11      9              -[IOParallelPort statusRegisterContents]
      2     48     48  masked-eq   _ppread
-     4     23     21  masked-eq   -[IOParallelPort msgTypeToIOReturn:]
      4     23     21              +[IOParallelPort probe:]
+     4     46     46              -[IOParallelPort cmdBufExec:]
      4     71     71  masked-eq   -[IOParallelPort free]
      5     59     59  masked-eq   -[IOParallelPort getIntValues:forParameter:count:]
-     6     46     46              -[IOParallelPort cmdBufExec:]
      8     13     11              -[IOParallelPort isInitialized]
-    11     27     30  masked-eq   -[IOParallelPort cmdBufAlloc]
-    13     47     46              -[IOParallelPort waitForCmdBuf]
+    11     45     44              -[IOParallelPort _waitForDevice:isReady:]
+    11     47     47              -[IOParallelPort waitForCmdBuf]
+    11     43     42              _ppopen
+    11     73     73  masked-eq   _ppstrategy
     14     24     23              -[IOParallelPort printerInit]
-    17     45     43              -[IOParallelPort _waitForDevice:isReady:]
-    22     43     41              _ppopen
-    27     93     95              -[IOParallelPort writeToPort]
+    16     93     93              -[IOParallelPort writeToPort]
+    40     87     82              _IOParallelPortInterruptHandler
     55     84     80              __strobeChar
     60     76     73              -[IOParallelPort initDevice]
-    61     87     85              _IOParallelPortInterruptHandler
     68     52     48              -[IOParallelPort probeForController]
     77    172    188              _ppioctl
-    80    139    141              _ppwrite
-    83     73     81  masked-eq   _ppstrategy
+    80    139    134              _ppwrite
    193    277    278              -[IOParallelPort initFromDeviceDescription:]
-   203    208    203              _IOParallelPortThread
+   207    208    204              _IOParallelPortThread
 
 75 functions: 40 byte-identical, 35 differing, 0 unpaired
 ```
+

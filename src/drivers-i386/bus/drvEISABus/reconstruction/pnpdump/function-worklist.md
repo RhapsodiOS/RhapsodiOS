@@ -285,7 +285,7 @@ Accepted 2026-09-17: remaining `none` hand-written rows are `intentional-mismatc
 - `__start` (tool-only, diff 17): none — CRT/dyld/libc glue; not hand-written
 - `-[PnPResources init]` (shared, diff 20; reloc different d=6): none — PIC selector leftover
 - `-[pnpMemory matches:]` (shared, diff 20; reloc different d=19): loop shape / `if` vs `else if` on the channel compare — **tried, kept**; reloc **masked_equal**; tool leftover is PIC selector; **accepted** compiler-shaped
-- `-[pnpMemory setControl:]` (shared, diff 22; reloc different d=21): if vs else if on the bit-width flags
+- `-[pnpMemory setControl:]` (shared, diff 22; reloc different d=21): if vs else if — **tried, miss**; omit reciprocal zeros plus omit return self — **tried, kept**; leftover is char-arg vs Apple pointer reload plus PIC/jpt register; **accepted** compiler-shaped on both
 - `-[PnPDeviceResources setDeviceName:Length:]` (shared, diff 24; reloc different d=24): ivars plus `if (_deviceNameLength == 0)` plus signed min 0x4f — **tried, kept**; leftover is IDA `__src` vs `arg_8` plus jump labels; reloc **masked_equal**; tool **accepted** compiler-shaped
 - `-[PnPResources print]` (shared, diff 24; reloc different d=18): none — Apple tool `_printf` vs rebuilt `_IOLog`; reloc both `_IOLog`
 - `-[pnpIRQ initFrom:Length:]` (shared, diff 26; reloc different d=22): loop shape of the mask walk; signedness of the bit index local

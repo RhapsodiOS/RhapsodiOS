@@ -2037,3 +2037,63 @@ Keep `_alignment` in a local and compute the aligned base only when it is nonzer
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+### Task 6 `-[pnpMemory setControl:]` omit width zeros (2026-09-17)
+
+Omit reciprocal `_bit16=0`/`_bit8=0` stores and the explicit `return self` so the width cases share Apple's tails. Leftover is char-arg vs Apple pointer reload plus jump labels. Accepted compiler-shaped leftover (reviewer Pat Raynor). Reloc SHA `03B7AB6C624D764E9413BA971A56D9EE20C8B7376353F3426FC640C9D2D7D6BC` (603660). Previously identical rows stayed matched (46). Unpaired count unchanged (11). Kernel-only reloc statuses were not reopened.
+
+```
+-[pnpMemory setControl:]
+  status=different raw_equal=False masked_equal=False
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  mov edx, [ebp+self]                     mov edx, [ebp+self]
+* mov ecx, [ebp+arg_8]                    mov cl, [ebp+arg_8]
+* mov al, [ecx]                           mov al, cl
+  shr al, 3                               shr al, 3
+  and eax, 3                              and eax, 3
+  cmp eax, 1                              cmp eax, 1
+* jz loc_479C                             jz loc_5314
+* jg loc_4790                             jg loc_5308
+  test eax, eax                           test eax, eax
+* jz loc_47A8                             jz loc_5320
+* jmp loc_47B4                            jmp loc_532C
+  cmp eax, 2                              cmp eax, 2
+* jz loc_47A4                             jz loc_531C
+  cmp eax, 3                              cmp eax, 3
+* jz loc_47B0                             jz loc_5328
+* jmp loc_47B4                            jmp loc_532C
+  mov byte ptr [edx+1Ah], 1               mov byte ptr [edx+1Ah], 1
+* jmp loc_47B4                            jmp loc_532C
+  mov byte ptr [edx+1Ah], 1               mov byte ptr [edx+1Ah], 1
+  mov byte ptr [edx+19h], 1               mov byte ptr [edx+19h], 1
+* jmp loc_47B4                            jmp loc_532C
+  mov byte ptr [edx+1Bh], 1               mov byte ptr [edx+1Bh], 1
+* mov al, [ecx]                           mov al, cl
+  shr al, 6                               shr al, 6
+  and al, 1                               and al, 1
+  mov [edx+14h], al                       mov [edx+14h], al
+* mov al, [ecx]                           mov al, cl
+  shr al, 5                               shr al, 5
+  and al, 1                               and al, 1
+  mov [edx+15h], al                       mov [edx+15h], al
+* mov al, [ecx]                           mov al, cl
+  shr al, 2                               shr al, 2
+  and al, 1                               and al, 1
+  mov [edx+16h], al                       mov [edx+16h], al
+* mov al, [ecx]                           mov al, cl
+  shr al, 1                               shr al, 1
+  and al, 1                               and al, 1
+  mov [edx+17h], al                       mov [edx+17h], al
+* mov cl, [ecx]
+  and cl, 1                               and cl, 1
+  mov [edx+18h], cl                       mov [edx+18h], cl
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

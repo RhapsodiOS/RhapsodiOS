@@ -301,12 +301,10 @@ extern char verbose;
     case 0:
         /* 8-bit only */
         _bit8 = 1;
-        _bit16 = 0;
         break;
     case 1:
         /* 16-bit only */
         _bit16 = 1;
-        _bit8 = 0;
         break;
     case 2:
         /* 8-bit and 16-bit */
@@ -325,8 +323,6 @@ extern char verbose;
     _highAddressDecode = (control >> 2) & 1;
     _padding = (control >> 1) & 1;  /* Reserved bit at 0x17 */
     _ROM = control & 1;
-
-    return self;
 }
 
 /*

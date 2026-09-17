@@ -5002,3 +5002,71 @@ Keep `_alignment` in a local and compute the aligned base only when it is nonzer
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+### Task 6 `-[pnpMemory setControl:]` omit width zeros (2026-09-17)
+
+Omit reciprocal `_bit16=0`/`_bit8=0` stores and the explicit `return self` so the width cases share Apple's tails. Leftover is char-arg vs Apple pointer reload, PIC jump-table register, and jump labels. Accepted compiler-shaped leftover (reviewer Pat Raynor). Tool SHA `B07D6F3DA59E6C35CFAA59ECEE240873675F6070219B2A45C248D3E7DE5D1854` (299324). Previously identical rows stayed matched (45). Unpaired count unchanged (10). Tool-only; reloc SHA unchanged.
+
+```
+-[pnpMemory setControl:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 4                              sub esp, 4
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  call $+5                                call $+5
+  pop esi                                 pop esi
+  mov ecx, [ebp+self]                     mov ecx, [ebp+self]
+* mov edi, [ebp+arg_8]                    mov dl, [ebp+arg_8]
+* mov al, [edi]                           mov [ebp+var_4], dl
+*                                         mov al, dl
+  shr al, 3                               shr al, 3
+* mov edx, eax                            mov edi, 3
+* and edx, 3                              and edi, eax
+* mov [ebp+var_4], edx                    cmp edi, 3
+* cmp edx, 3                              ja def_6D1A
+* ja def_4AAC                             lea eax, (jpt_6D1A - 6CF6h)[esi]
+* lea eax, (jpt_4AAC - 4A8Ah)[esi]        add eax, ds:(jpt_6D1A - 6D1Ch)[eax+edi*4]
+* add eax, ds:(jpt_4AAC - 4AB0h)[eax+edx*4]
+  jmp eax                                 jmp eax
+  mov byte ptr [ecx+1Ah], 1               mov byte ptr [ecx+1Ah], 1
+* jmp def_4AAC                            jmp def_6D1A
+  mov byte ptr [ecx+1Ah], 1               mov byte ptr [ecx+1Ah], 1
+  mov byte ptr [ecx+19h], 1               mov byte ptr [ecx+19h], 1
+* jmp def_4AAC                            jmp def_6D1A
+  mov byte ptr [ecx+1Bh], 1               mov byte ptr [ecx+1Bh], 1
+* mov al, [edi]                           mov al, [ebp+var_4]
+  shr al, 6                               shr al, 6
+  and al, 1                               and al, 1
+  mov [ecx+14h], al                       mov [ecx+14h], al
+* mov al, [edi]                           mov al, [ebp+var_4]
+  shr al, 5                               shr al, 5
+  and al, 1                               and al, 1
+  mov [ecx+15h], al                       mov [ecx+15h], al
+* mov al, [edi]                           mov al, [ebp+var_4]
+  shr al, 2                               shr al, 2
+  and al, 1                               and al, 1
+  mov [ecx+16h], al                       mov [ecx+16h], al
+* mov al, [edi]                           mov al, [ebp+var_4]
+  shr al, 1                               shr al, 1
+  and al, 1                               and al, 1
+  mov [ecx+17h], al                       mov [ecx+17h], al
+* mov dl, [edi]                           mov dl, [ebp+var_4]
+  and dl, 1                               and dl, 1
+  mov [ecx+18h], dl                       mov [ecx+18h], dl
+  lea esp, [ebp-10h]                      lea esp, [ebp-10h]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

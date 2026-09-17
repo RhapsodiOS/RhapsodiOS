@@ -830,7 +830,7 @@
         "-[pnpMemory print]"
       ],
       "size": 213,
-      "source_line": 335,
+      "source_line": 331,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m"
     },
     {
@@ -956,7 +956,7 @@
         "-[pnpMemory writePnPConfig:Index:]"
       ],
       "size": 989,
-      "source_line": 387,
+      "source_line": 383,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m"
     },
     {
@@ -1463,21 +1463,24 @@
       "reference_names": [
         "bios_rtn"
       ],
-      "size": 20
+      "size": 20,
+      "source_line": null
     },
     {
       "address": 28784,
       "reference_names": [
         "+[EISABusKernelServerInstance kernelServerInstance]"
       ],
-      "size": 12
+      "size": 12,
+      "source_line": null
     },
     {
       "address": 28796,
       "reference_names": [
         "+[EISABusVersion driverKitVersionForEISABus]"
       ],
-      "size": 12
+      "size": 12,
+      "source_line": null
     }
   ]
 }

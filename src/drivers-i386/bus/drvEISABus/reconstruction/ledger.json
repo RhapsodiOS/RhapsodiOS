@@ -2156,7 +2156,7 @@
       "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 213,
-      "source_line": 335,
+      "source_line": 331,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
       "status": "intentional-mismatch"
     },
@@ -2404,26 +2404,24 @@
     {
       "address": 18288,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 6 omit reciprocal width zeros plus omit return self; leftover is char-arg vs Apple pointer reload plus jump labels"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[pnpMemory setControl:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 119,
       "source_line": 293,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 18408,
@@ -2493,7 +2491,7 @@
       "reason": null,
       "reviewer": null,
       "size": 989,
-      "source_line": 387,
+      "source_line": 383,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
       "status": "unexamined"
     },
@@ -3943,7 +3941,7 @@
       "status": "unexamined"
     }
   ],
-  "rebuilt_sha256": "ED488370D3F6326FAA6B49863D0D61D023F4015CFE6FB9379E26B664AD96536B",
+  "rebuilt_sha256": "03B7AB6C624D764E9413BA971A56D9EE20C8B7376353F3426FC640C9D2D7D6BC",
   "reference_sha256": "8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23",
   "schema_version": "ledger-v1"
 }

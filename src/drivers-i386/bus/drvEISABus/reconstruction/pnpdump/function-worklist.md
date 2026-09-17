@@ -249,9 +249,9 @@ functions and have no experiment list.
 - `_vsprintf` (tool-only, diff 1): none — CRT/dyld/libc glue; not hand-written
 - `+[PnPDeviceResources setVerbose:]` (shared, diff 2; reloc masked-eq d=1): none — extra PIC load of extern `_verbose_ptr`; reloc already masked-eq
 - `-[NXLock unlock]` (tool-only, diff 2): none — jump labels only
-- `-[pnpDMA addDMAToList:]` (shared, diff 2; reloc different d=2): omit explicit `return self` so eax is not copied from edx (local vs expression)
+- `-[pnpDMA addDMAToList:]` (shared, diff 2; reloc different d=2): omit explicit `return self` so eax is not copied from edx (local vs expression) — **MATCHED** tool+reloc `raw_equal` (Task 6)
 - `-[pnpIOPort initWithBase:Length:]` (shared, diff 2; reloc different d=1): none — PIC / objc super_class displacement only
-- `-[pnpIRQ addToIRQList:]` (shared, diff 2; reloc different d=2): omit explicit `return self` so eax is not copied from edx (local vs expression)
+- `-[pnpIRQ addToIRQList:]` (shared, diff 2; reloc different d=2): omit explicit `return self` so eax is not copied from edx (local vs expression) — **MATCHED** tool+reloc `raw_equal` (Task 6)
 - `-[pnpMemory initWithBase:Length:Bit16:Bit32:HighAddr:Is32:]` (shared, diff 2; reloc different d=1): none — PIC / objc class-pointer displacement only
 - `_IOPanic` (tool-only, diff 2): none — PIC leftover
 - `__dyld_init_check` (tool-only, diff 2): none — CRT/dyld/libc glue; not hand-written

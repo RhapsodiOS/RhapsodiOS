@@ -19,3 +19,49 @@ No instruction-shape edits in this pass. `parity_check.py` is missing 0 / 0 on b
 ### Task 5 baseline identical set (2026-09-17)
 
 IDA `--list` after Task 4: **43** tool rows already `raw_equal` (41 shared nine-class names plus `-[IODeviceMaster free]` and `start`); **0** masked-only. **45** shared reloc rows already `raw_equal` or `masked_equal`. All were advanced to `assembly-matched` in the ledgers (reviewer Pat Raynor). Compiler-shaped differing rows were left unchanged.
+
+### Task 6 omit `return self` on add-to-list (2026-09-17)
+
+Rebuilt tool SHA `0B8B3593E3D22E53D415CA32D3109648A6331CB5064800CF3C58CEF0A34A5920` (299660). Both `-[pnpDMA addDMAToList:]` and `-[pnpIRQ addToIRQList:]` are IDA `raw_equal` / `masked_equal` on the tool. Previously identical Task 5 rows stayed matched. Unpaired count unchanged (10).
+
+```
+-[pnpDMA addDMAToList:]
+  status=different raw_equal=True masked_equal=True
+  reason: cfg differs
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  mov edx, [ebp+self]                     mov edx, [ebp+self]
+  cmp dword ptr [edx+24h], 7              cmp dword ptr [edx+24h], 7
+* jg loc_460D                             jg loc_6189
+  mov eax, [edx+24h]                      mov eax, [edx+24h]
+  mov ecx, [ebp+arg_8]                    mov ecx, [ebp+arg_8]
+  mov [edx+eax*4+4], ecx                  mov [edx+eax*4+4], ecx
+  inc dword ptr [edx+24h]                 inc dword ptr [edx+24h]
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+```
+-[pnpIRQ addToIRQList:]
+  status=different raw_equal=True masked_equal=True
+  reason: cfg differs
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  mov edx, [ebp+self]                     mov edx, [ebp+self]
+  cmp dword ptr [edx+44h], 0Fh            cmp dword ptr [edx+44h], 0Fh
+* jg loc_42F1                             jg loc_6851
+  mov eax, [edx+44h]                      mov eax, [edx+44h]
+  mov ecx, [ebp+arg_8]                    mov ecx, [ebp+arg_8]
+  mov [edx+eax*4+4], ecx                  mov [edx+eax*4+4], ecx
+  inc dword ptr [edx+44h]                 inc dword ptr [edx+44h]
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

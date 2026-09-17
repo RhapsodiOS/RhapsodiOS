@@ -179,7 +179,6 @@ extern char verbose;
         _irqs[_count] = (int)list;
         _count++;
     }
-    return self;
 }
 
 /*

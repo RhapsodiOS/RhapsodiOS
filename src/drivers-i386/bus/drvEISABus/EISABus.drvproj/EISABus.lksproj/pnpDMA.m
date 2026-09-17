@@ -122,7 +122,6 @@ extern char verbose;
         _dmaChannels[_count] = (int)list;
         _count++;
     }
-    return self;
 }
 
 /*

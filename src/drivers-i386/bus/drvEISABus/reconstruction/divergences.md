@@ -635,3 +635,49 @@ nine-class names were already `raw_equal` or `masked_equal`; those reloc ledger 
 `assembly-matched` (reviewer Pat Raynor). Kernel-only reloc statuses were not changed. The tool
 side recorded **43** baseline-identical rows in `reconstruction/pnpdump/ledger.json` (see
 `reconstruction/pnpdump/divergences.md`).
+
+### Task 6 omit `return self` on add-to-list (2026-09-17)
+
+Rebuilt reloc SHA `BBD159B9E775073D3F1571C95746D4B2F13D48D9F171C161DB5D7FB1FCF88B7D` (603928). Kernel-only reloc statuses were not reopened. `-[pnpDMA addDMAToList:]` and `-[pnpIRQ addToIRQList:]` are IDA `raw_equal` / `masked_equal`.
+
+```
+-[pnpDMA addDMAToList:]
+  status=different raw_equal=True masked_equal=True
+  reason: cfg differs
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  mov edx, [ebp+self]                     mov edx, [ebp+self]
+  cmp dword ptr [edx+24h], 7              cmp dword ptr [edx+24h], 7
+* jg loc_4219                             jg loc_44C5
+  mov eax, [edx+24h]                      mov eax, [edx+24h]
+  mov ecx, [ebp+arg_8]                    mov ecx, [ebp+arg_8]
+  mov [edx+eax*4+4], ecx                  mov [edx+eax*4+4], ecx
+  inc dword ptr [edx+24h]                 inc dword ptr [edx+24h]
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+```
+-[pnpIRQ addToIRQList:]
+  status=different raw_equal=True masked_equal=True
+  reason: cfg differs
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  mov edx, [ebp+self]                     mov edx, [ebp+self]
+  cmp dword ptr [edx+44h], 0Fh            cmp dword ptr [edx+44h], 0Fh
+* jg loc_3EE5                             jg loc_4AE5
+  mov eax, [edx+44h]                      mov eax, [edx+44h]
+  mov ecx, [ebp+arg_8]                    mov ecx, [ebp+arg_8]
+  mov [edx+eax*4+4], ecx                  mov [edx+eax*4+4], ecx
+  inc dword ptr [edx+44h]                 inc dword ptr [edx+44h]
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

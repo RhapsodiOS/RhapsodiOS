@@ -36,3 +36,6 @@ ledger.json.lock
 /vm/install/rhapsody_dr2_x86.iso
 /vm/install/rhapsody_dr2_x86_DriverDisk.img
 /vm/install/rhapsody_dr2_x86_InstallationFloppy.img
+
+# UEFI firmware build output (see docs/superpowers/plans/2026-09-17-uefi-bootloader.md)
+vm/firmware/

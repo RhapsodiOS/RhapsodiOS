@@ -621,7 +621,15 @@ Star: `commandType` loaded then `test`/`cmp 1` vs `cmp dword, 1`; status in
 Accepted leftover: rebuilt `C439A3442A4B9600B5C0281A3877C2645A3C979EE472234505BD6CA88248FB7F`
 (compiler-shaped load/test vs cmp / status slot; list not rebuilt-tried item-by-item).
 
-1. `if (commandType == 1) exit; if (commandType != 0) goto complete;` as load-to-local first
+1. `if (commandType == 0) write; if (commandType == 1) exit;` load-to-local first — **kept** (`test eax,eax` / `jz` write)
+2. `switch (commandType)` — **skipped** (same tree as kept ifs)
+3. Store `statusByte` then mask — **skipped** (`inb` slot unpaired risk)
+4. Invert first not-ready paper test: `(status & 0x20) == 0` first — **tried, reverted** (still `jnz`)
+5. Second decode: `errorFlag = 0` then `if (!(status & 8))` — leftover is slot/`bl`
+6. `ioTimeout` / `elapsedTime` / `timeout` declaration order — **skipped** (register leftover)
+7. `while (msgResult != 0)` vs `while (1)` with breaks — **skipped** (leftover is `inb` slot)
+Accepted leftover: rebuilt `F31C01A0FBB4F010AADC205C8CAE011A501FD6D5016BFCEC10022AA65E2BA9DC`
+(compiler-shaped `inb` slot vs `bl` / `ebx` vs `esi` / `cmp 1` `jnz` complete).
 2. `switch (commandType)`
 3. Store `statusByte` then mask (force stack slot)
 4. Invert first not-ready `(status & 8)` if/else

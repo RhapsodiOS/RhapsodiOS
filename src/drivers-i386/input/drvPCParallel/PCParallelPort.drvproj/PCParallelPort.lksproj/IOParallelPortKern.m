@@ -510,6 +510,7 @@ void IOParallelPortThread(void *portObject)
     int timeout;
     int ioTimeout;
     int elapsedTime;
+    int commandType;
 
     // The interrupt receive buffer is the 8192-byte allocation made at init
     interruptMsg = [port interruptMessage];
@@ -519,18 +520,16 @@ void IOParallelPortThread(void *portObject)
         // Wait for command buffer
         cmdBuf = (PPCommandBuffer *)[port waitForCmdBuf];
 
-        // Check command type
-        if (cmdBuf->commandType == 1) {
-            // Exit command
+        commandType = cmdBuf->commandType;
+        if (commandType == 0)
+            goto write_command;
+        if (commandType == 1) {
             [port cmdBufComplete:cmdBuf];
             IOExitThread();
         }
+        goto complete_command;
 
-        if (cmdBuf->commandType != 0) {
-            // Unknown command
-            goto complete_command;
-        }
-
+write_command:
         // Read status register
         statusByte = inb(PP_PORT([port statusRegister]));
 

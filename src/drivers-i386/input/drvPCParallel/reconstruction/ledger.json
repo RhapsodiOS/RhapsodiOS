@@ -1532,10 +1532,10 @@
       "names": [
         "__strobeChar"
       ],
-      "reason": "reversed load-then-test so the device pointer and three registers load before testing pp_softc[portNum].count, matching 4263-4308. Leftover is gcc 2.x CSE / register allocation (one pp_softc load vs Apple three; control byte in bl vs [ebp+var_1])",
-      "reviewer": "Pat Raynor",
-      "size": 280,
-      "source_line": 653,
+  "reason": "reversed load-then-test so the device pointer and three registers load before testing pp_softc[portNum].count, matching 4263-4308. Leftover is gcc 2.x CSE / register allocation (one pp_softc load vs Apple three; control byte in bl vs [ebp+var_1])",
+  "reviewer": "Pat Raynor",
+  "size": 280,
+  "source_line": 649,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
       "status": "intentional-mismatch"
     },
@@ -1548,18 +1548,19 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "rewritten against 4512-5239: [self interruptMessage] is fetched once and that buffer is what msg_receive fills, the nested [self _waitForDevice:[self waitForever] isReady:&ready] is a single statement at both sites, and the first not-ready decode uses its own shape - errorFlag set, then paper-out -737, select-set clears errorFlag and gives -726, otherwise -738 (Findings 46, 47, 48)"
+          "rewritten against 4512-5239: [self interruptMessage] is fetched once and that buffer is what msg_receive fills, the nested [self _waitForDevice:[self waitForever] isReady:&ready] is a single statement at both sites, and the first not-ready decode uses its own shape - errorFlag set, then paper-out -737, select-set clears errorFlag and gives -726, otherwise -738 (Findings 46, 47, 48)",
+      "Task 8: commandType loaded then ==0 write / ==1 exit; leftover is inb slot vs bl"
         ],
         "status": "agreed"
       },
       "artifacts": [],
-      "names": [
-        "_IOParallelPortThread"
-      ],
-      "reason": "compiler-shaped leftover after exhausted source-shape list",
-      "reviewer": "Pat Raynor",
-      "size": 728,
-      "source_line": 507,
+  "names": [
+    "_IOParallelPortThread"
+  ],
+  "reason": "compiler-shaped leftover after exhausted source-shape list",
+  "reviewer": "Pat Raynor",
+  "size": 728,
+  "source_line": 502,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
       "status": "intentional-mismatch"
     },
@@ -1577,13 +1578,13 @@
         "status": "agreed"
       },
       "artifacts": [],
-      "names": [
-        "_IOParallelPortInterruptHandler"
-      ],
-      "reason": "compiler-shaped leftover after exhausted source-shape list",
-      "reviewer": "Pat Raynor",
-      "size": 279,
-      "source_line": 434,
+  "names": [
+    "_IOParallelPortInterruptHandler"
+  ],
+  "reason": "compiler-shaped leftover after exhausted source-shape list",
+  "reviewer": "Pat Raynor",
+  "size": 279,
+  "source_line": 429,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
       "status": "intentional-mismatch"
     },
@@ -1697,13 +1698,13 @@
         "status": "agreed"
       },
       "artifacts": [],
-      "names": [
-        "_ppminphys"
-      ],
-      "reason": null,
-      "reviewer": "Pat Raynor",
-      "size": 49,
-      "source_line": 414,
+  "names": [
+    "_ppminphys"
+  ],
+  "reason": null,
+  "reviewer": "Pat Raynor",
+  "size": 49,
+  "source_line": 409,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
       "status": "assembly-matched"
     },
@@ -1722,13 +1723,13 @@
         "status": "agreed"
       },
       "artifacts": [],
-      "names": [
-        "_ppstrategy"
-      ],
-      "reason": null,
-      "reviewer": "Pat Raynor",
-      "size": 404,
-      "source_line": 352,
+  "names": [
+    "_ppstrategy"
+  ],
+  "reason": null,
+  "reviewer": "Pat Raynor",
+  "size": 404,
+  "source_line": 347,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
       "status": "assembly-matched"
     },
@@ -1806,7 +1807,7 @@
       "status": "intentional-mismatch"
     }
   ],
-  "rebuilt_sha256": "C61ABDE8F2360A74AEFAE11B5CED36E8F0F998D133F40C503889A313E85D242D",
+  "rebuilt_sha256": "F31C01A0FBB4F010AADC205C8CAE011A501FD6D5016BFCEC10022AA65E2BA9DC",
   "reference_sha256": "D188A4D909005683B0C943C84CD99514C14A84AD1D378425B3B1DB343F1EAAA2",
   "schema_version": "ledger-v1"
 }

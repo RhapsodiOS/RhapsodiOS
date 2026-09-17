@@ -1441,6 +1441,30 @@ Parity 0/0. Previously identical rows stayed identical (40). Ledger 456
 
 ### Task 8 — remaining large functions
 
+### Task 8 — `_IOParallelPortThread` commandType leftover
+
+Load `commandType` then `if (commandType == 0) write; if (commandType == 1)
+exit`. `--name` now matches `test eax,eax` / `jz` write / `cmp eax,1`.
+Inverted paper test still emitted `jnz` (reverted). Leftover is gcc 2.x `inb`
+in `bl` vs Apple's `[ebp+var_1]`, `esi` vs `ebx`, and `cmp 1` / `jnz`
+complete vs `jz` exit. Rebuilt SHA-256
+`F31C01A0FBB4F010AADC205C8CAE011A501FD6D5016BFCEC10022AA65E2BA9DC`.
+Parity 0/0. Previously identical rows stayed identical (40). Ledger 4512
+`intentional-mismatch`, reviewer Pat Raynor, reason
+`compiler-shaped leftover after exhausted source-shape list`. source-map
+relined later `IOParallelPortKern.m` sites (73 mapped / 2 unmapped).
+
+```
+_IOParallelPortThread
+  status=different raw_equal=False masked_equal=False
+  test eax, eax                           test eax, eax
+* jz loc_11E8                             jz loc_1900
+  cmp eax, 1                              cmp eax, 1
+* jz loc_144C                             jnz loc_1B3B
+  in al, dx                               in al, dx
+* mov [ebp+var_1], al                     mov bl, al
+```
+
 ### 8.9 The status rule used
 
 - `assembly-matched` (57) - the reference's full instruction stream was read and our
@@ -1465,7 +1489,8 @@ Parity 0/0. Previously identical rows stayed identical (40). Ledger 456
   5520 (`_ppopen` nested signed initDevice range; leftover is `jl` vs `jge`),
   456 (`initFromDeviceDescription:` `minorDevStr` before `configTable`; leftover is
   extra `var_20` / `strcmp` length slot), 4512
-  (`_IOParallelPortThread` commandType test vs cmp / status slot), 5240
+  (`_IOParallelPortThread` commandType ==0 write then ==1 exit; leftover is
+  `inb` slot vs `bl`), 5240
   (`_IOParallelPortInterruptHandler` decode invert; leftover is `inb` slot vs `dl`), 5828
   (`_ppwrite` signed initDevice range without pre-zeroed locals; leftover is
   `esi` vs `ebx` and Apple's extra zeroing), 6708 (`_ppioctl` signed `int cmd` /

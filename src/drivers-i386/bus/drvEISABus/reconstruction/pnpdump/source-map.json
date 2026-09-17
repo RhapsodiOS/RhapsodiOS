@@ -1257,7 +1257,7 @@
         "-[NXLock free]"
       ],
       "size": 97,
-      "source_line": 82,
+      "source_line": 80,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/NXLock.m"
     },
     {
@@ -1266,7 +1266,7 @@
         "-[NXLock lock]"
       ],
       "size": 82,
-      "source_line": 104,
+      "source_line": 102,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/NXLock.m"
     },
     {
@@ -1275,7 +1275,7 @@
         "-[NXLock unlock]"
       ],
       "size": 69,
-      "source_line": 132,
+      "source_line": 130,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/NXLock.m"
     },
     {

@@ -263,7 +263,7 @@ Accepted 2026-09-17: remaining `none` hand-written rows are `intentional-mismatc
 - `_IOCopyMemory` (tool-only, diff 4): none — PIC leftover
 - `_IOSleep` (tool-only, diff 5): local vs expression for the msg_receive timeout block — **tried, kept**; leftover is PIC displacement of `_sleepPort`; **accepted** compiler-shaped
 - `-[IODeviceMaster createMachPort:objectNumber:]` (tool-only, diff 6): return the MIG call result instead of `self` (local vs expression) — **tried, kept**; mnemonic stream matches; leftover is call-site PIC; **accepted** compiler-shaped
-- `-[NXLock init]` (tool-only, diff 6): declaration order of the existing mutex/cond zeroing stores
+- `-[NXLock init]` (tool-only, diff 6): declaration order of the existing mutex/cond zeroing stores — **tried, kept**; leftover is PIC selector / super_class; **accepted** compiler-shaped
 - `-[PnPResources free]` (shared, diff 6; reloc different d=1): none — PIC selector / objc super_class vs ext leftover
 - `-[PnPResource free]` (shared, diff 8; reloc different d=3): none — extra PIC selector push plus super_class vs ext leftover
 - `-[PnPResource init]` (shared, diff 8; reloc different d=3): none — PIC selector leftover; jump labels only besides PIC

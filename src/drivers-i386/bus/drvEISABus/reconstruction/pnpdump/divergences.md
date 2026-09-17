@@ -4765,3 +4765,47 @@ _IOSleep
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+### Task 6 `-[NXLock init]` zeroing order (2026-09-17)
+
+Zero mutex/condition/reserved2/waiters/locked in Apple store order and omit unused reserved1/reserved3 stores. Leftover is PIC selector / super_class displacement. Accepted compiler-shaped leftover (reviewer Pat Raynor). Tool SHA `CEE7E77323946BD2C64A6F1DD296FB41904563274ACCC5479DD6FA9DCE7410AE` (299532). Previously identical rows stayed matched (45). Unpaired count unchanged (10). Tool-only; reloc SHA unchanged.
+
+```
+-[NXLock init]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 8                              sub esp, 8
+  push ebx                                push ebx
+  call $+5                                call $+5
+  pop eax                                 pop eax
+  mov ebx, [ebp+self]                     mov ebx, [ebp+self]
+  mov edx, eax                            mov edx, eax
+* mov edx, [edx+3160h]                    mov edx, [edx+6BDCh]
+  push edx                                push edx
+  mov [ebp+var_8.receiver], ebx           mov [ebp+var_8.receiver], ebx
+* mov eax, ds:(off_C2B0 - 8EF8h)[eax]     mov eax, ds:(stru_A0F4.ext - 3428h)[eax]
+  mov [ebp+var_8.super_class], eax        mov [ebp+var_8.super_class], eax
+  lea eax, [ebp+var_8]                    lea eax, [ebp+var_8]
+  push eax                                push eax
+  call _objc_msgSendSuper                 call _objc_msgSendSuper
+  push 1Ch                                push 1Ch
+  call _malloc                            call _malloc
+  mov [ebx+4], eax                        mov [ebx+4], eax
+* mov dword ptr ds:(loc_8EF8 - 8EF8h)[eax], 0  mov dword ptr ds:(loc_3428 - 3428h)[eax], 0
+  mov dword ptr [eax+8], 0                mov dword ptr [eax+8], 0
+  mov dword ptr [eax+10h], 0              mov dword ptr [eax+10h], 0
+  mov dword ptr [eax+0Ch], 0              mov dword ptr [eax+0Ch], 0
+  mov byte ptr [eax+18h], 0               mov byte ptr [eax+18h], 0
+  mov eax, ebx                            mov eax, ebx
+  mov ebx, [ebp+var_C]                    mov ebx, [ebp+var_C]
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

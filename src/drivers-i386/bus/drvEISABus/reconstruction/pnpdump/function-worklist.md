@@ -291,7 +291,7 @@ Accepted 2026-09-17: remaining `none` hand-written rows are `intentional-mismatc
 - `-[pnpIRQ initFrom:Length:]` (shared, diff 26; reloc different d=22): mask and flags as buffer expressions — **tried, kept**; leftover is extra buffer-pointer copy / PIC / IDA names; **accepted** compiler-shaped on both
 - `-[pnpIOPort matches:]` (shared, diff 30; reloc different d=27): alignment local plus 16-bit `otherBase` — **tried, kept**; leftover is PIC / register vs stack; **accepted** compiler-shaped on both
 - `-[pnpIRQ print]` (shared, diff 31; reloc different d=16): none — Apple tool `_printf` vs rebuilt `_IOLog`; reloc both `_IOLog`
-- `-[PnPResource objectAt:Using:]` (shared, diff 32; reloc different d=25): if vs else if on the type dispatch
+- `-[PnPResource objectAt:Using:]` (shared, diff 32; reloc different d=25): if vs else if on the type dispatch — **tried, kept**; leftover is usingList local / nested list plus inner jump polarity; **accepted** compiler-shaped on both
 - `_IOInitGeneralFuncs` (tool-only, diff 32): statement order of the existing assignments
 - `-[pnpDMA initFrom:Length:]` (shared, diff 33; reloc different d=22): loop shape of the channel-mask walk
 - `_IODelay` (tool-only, diff 36): local vs expression for the timestamp add

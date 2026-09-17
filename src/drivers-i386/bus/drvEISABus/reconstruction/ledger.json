@@ -2511,7 +2511,7 @@
       "reason": null,
       "reviewer": null,
       "size": 164,
-      "source_line": 128,
+      "source_line": 120,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResource.m",
       "status": "unexamined"
     },
@@ -2614,26 +2614,24 @@
     {
       "address": 20332,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 6 if/else if index dispatch matches Apple jle polarity; leftover is usingList local vs nested [list] plus inner jl/jge and PIC"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[PnPResource objectAt:Using:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 138,
       "source_line": 97,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResource.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 20472,
@@ -3937,7 +3935,7 @@
       "status": "unexamined"
     }
   ],
-  "rebuilt_sha256": "5AEF7E33F96356FF7D824FE2CDEAECA68BC420D5550E06D2B24A6DF620E03350",
+  "rebuilt_sha256": "28B80C9E5FA1BB95EF62F525D4B48A532BDAC434650B438AC63601CC9A1B42AC",
   "reference_sha256": "8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23",
   "schema_version": "ledger-v1"
 }

@@ -2235,3 +2235,86 @@ Keep `_alignment` in a 32-bit local, `otherBase` 16-bit, and skip the div when a
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+### Task 6 -[PnPResource objectAt:Using:] if/else if dispatch (2026-09-17)
+
+Flatten index dispatch to if (index < _depStart) / else if / else so the outer compare is Apple jle. Leftover is the usingList local versus Apple nested [list] plus inner jl/jge polarity. Accepted compiler-shaped leftover (reviewer Pat Raynor). Reloc SHA 28B80C9E5FA1BB95EF62F525D4B48A532BDAC434650B438AC63601CC9A1B42AC (603620). Previously identical rows stayed matched (46). Unpaired count unchanged (11). Kernel-only reloc statuses were not reopened.
+
+`
+-[PnPResource objectAt:Using:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  mov esi, [ebp+self]                     mov esi, [ebp+self]
+  mov ebx, [ebp+arg_8]                    mov ebx, [ebp+arg_8]
+* mov edi, [ebp+arg_C]                    mov edx, ds:paList_0
+* mov ecx, ds:paCount                     push edx
+* push ecx                                mov edx, [ebp+arg_C]
+* mov ecx, ds:paList_0                    push edx
+* push ecx                                call near ptr _objc_msgSend
+*                                         mov edi, eax
+*                                         mov edx, ds:paCount
+*                                         push edx
+  push edi                                push edi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+* add esp, 8                              add esp, 10h
+* push eax
+* call near ptr _objc_msgSend
+* mov edx, eax
+* add esp, 8
+  cmp [esi+8], ebx                        cmp [esi+8], ebx
+* jle loc_4FA8                            jle loc_57A0
+  push ebx                                push ebx
+* jmp loc_4FDC                            mov edx, ds:paObjectat
+* mov eax, edx                            push edx
+*                                         mov esi, [esi+4]
+*                                         push esi
+*                                         jmp loc_57C6
+  add eax, [esi+8]                        add eax, [esi+8]
+  cmp ebx, eax                            cmp ebx, eax
+* jge loc_4FD4                            jl loc_57B8
+*                                         add eax, ebx
+*                                         push eax
+*                                         mov edx, ds:paObjectat
+*                                         push edx
+*                                         mov esi, [esi+4]
+*                                         push esi
+*                                         jmp loc_57C6
+  mov eax, ebx                            mov eax, ebx
+  sub eax, [esi+8]                        sub eax, [esi+8]
+  push eax                                push eax
+* mov ecx, ds:paObjectat                  mov edx, ds:paObjectat
+* push ecx                                push edx
+* mov ecx, ds:paList_0
+* push ecx
+  push edi                                push edi
+* call near ptr _objc_msgSend
+* add esp, 8
+* push eax
+* jmp loc_4FE7
+* mov eax, edx
+* add eax, [esi+8]
+* add eax, ebx
+* push eax
+* mov ecx, ds:paObjectat
+* push ecx
+* mov esi, [esi+4]
+* push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  lea esp, [ebp-0Ch]                      lea esp, [ebp-0Ch]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+`

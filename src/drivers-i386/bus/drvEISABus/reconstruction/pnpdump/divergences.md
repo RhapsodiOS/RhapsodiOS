@@ -5217,3 +5217,94 @@ Keep `_alignment` in a 32-bit local, `otherBase` 16-bit, and skip the div when a
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+### Task 6 -[PnPResource objectAt:Using:] if/else if dispatch (2026-09-17)
+
+Flatten index dispatch to if (index < _depStart) / else if / else so the outer compare is Apple jle. Leftover is the usingList local versus Apple nested [list] plus inner jl/jge polarity and PIC. Accepted compiler-shaped leftover (reviewer Pat Raynor). Tool SHA 37C59B6941A1C1EF6DBA48590CB7607337817E9A429BFEE96FC50386E3FC6ADD (299280). Previously identical rows stayed matched (45). Unpaired count unchanged (10).
+
+`
+-[PnPResource objectAt:Using:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+*                                         sub esp, 4
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  call $+5                                call $+5
+  pop ebx                                 pop ebx
+  mov edi, [ebp+self]                     mov edi, [ebp+self]
+  mov esi, [ebp+arg_8]                    mov esi, [ebp+arg_8]
+* mov ecx, ebx                            mov edx, ebx
+* mov ecx, [ecx+7125h]                    mov edx, [edx+4E66h]
+* push ecx                                push edx
+* mov ecx, ebx                            mov edx, [ebp+arg_C]
+* mov ecx, [ecx+714Dh]                    push edx
+* push ecx
+* mov ecx, [ebp+arg_C]
+* push ecx
+  call _objc_msgSend                      call _objc_msgSend
+* add esp, 8                              mov [ebp+var_4], eax
+* push eax                                mov edx, ebx
+*                                         mov edx, [edx+4E0Eh]
+*                                         push edx
+*                                         mov edx, [ebp+var_4]
+*                                         push edx
+  call _objc_msgSend                      call _objc_msgSend
+* mov edx, eax                            add esp, 10h
+* add esp, 8
+  cmp [edi+8], esi                        cmp [edi+8], esi
+* jle loc_4F58                            jle loc_5260
+  push esi                                push esi
+* jmp loc_4F90                            mov ebx, ds:(paObjectat - 521Ah)[ebx]
+* mov eax, edx                            push ebx
+*                                         mov edi, [edi+4]
+*                                         push edi
+*                                         jmp loc_5289
+  add eax, [edi+8]                        add eax, [edi+8]
+  cmp esi, eax                            cmp esi, eax
+* jge loc_4F88                            jl loc_5278
+*                                         add eax, esi
+*                                         push eax
+*                                         mov ebx, ds:(paObjectat - 521Ah)[ebx]
+*                                         push ebx
+*                                         mov edi, [edi+4]
+*                                         push edi
+*                                         jmp loc_5289
+  mov eax, esi                            mov eax, esi
+  sub eax, [edi+8]                        sub eax, [edi+8]
+  push eax                                push eax
+* mov ecx, ebx                            mov ebx, ds:(paObjectat - 521Ah)[ebx]
+* mov ecx, [ecx+711Dh]
+* push ecx
+* mov ebx, ds:(paList_0 - 4F1Fh)[ebx]
+  push ebx                                push ebx
+* mov ecx, [ebp+arg_C]                    mov edx, [ebp+var_4]
+* push ecx                                push edx
+  call _objc_msgSend                      call _objc_msgSend
+* add esp, 8                              lea esp, [ebp-10h]
+* push eax
+* jmp loc_4F9B
+* mov eax, edx
+* add eax, [edi+8]
+* add eax, esi
+* push eax
+* mov ebx, ds:(off_C03C - 4F1Fh)[ebx]
+* push ebx
+* mov edi, [edi+4]
+* push edi
+* call _objc_msgSend
+* lea esp, [ebp-0Ch]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+`

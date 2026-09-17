@@ -710,7 +710,7 @@ IOThreadFunc mainLoop(id driver)
             return;
         }
 
-        switch (byteIndex) {
+        switch (byteIndex++) {
             case 0:
                 /* First byte: sync byte with button states */
                 IOGetTimestamp(&lastTimeStamp);
@@ -720,7 +720,8 @@ IOThreadFunc mainLoop(id driver)
                     /* Extract button states (inverted) */
                     leftButton = ((byte >> 2) ^ 1) & 1;
                     rightButton = (byte ^ 1) & 1;
-                    byteIndex++;
+                } else {
+                    byteIndex = 0;
                 }
                 break;
 
@@ -728,48 +729,55 @@ IOThreadFunc mainLoop(id driver)
             case 3:
                 /* Bytes 2 and 4: store for later use */
                 savedByte = byte;
-                byteIndex++;
                 break;
 
             case 2:
-            case 4:
-                /* Bytes 3 and 5: complete packet, dispatch event */
+                /* Byte 3: complete packet, dispatch, restart the packet clock */
                 IOGetTimestamp(&currentTimeStamp);
 
-                /* Build event structure */
                 pointerEvent.timeStamp = lastTimeStamp;
-
-                /* Set button states */
                 pointerEvent.data.buf[0] =
                     (pointerEvent.data.buf[0] & 0xFE) | (leftButton != 0);
                 pointerEvent.data.buf[0] =
                     (pointerEvent.data.buf[0] & 0xFD) | ((rightButton != 0) * 2);
                 pointerEvent.data.buf[0] = pointerEvent.data.buf[0] & 3;
-
-                /* Set deltas */
                 pointerEvent.data.buf[1] = savedByte;
                 pointerEvent.data.buf[2] = byte;
 
-                /* Dispatch only if the packet assembled in under 40ms */
                 if (target != nil) {
                     if (currentTimeStamp - lastTimeStamp < 40000000) {
                         [target dispatchPointerEvent:&pointerEvent];
                     }
                 }
 
-                /* After byte 5, reset to start.  Only the byte-3 case restarts
-                 * the packet clock; byte 5 leaves it for case 0 to retake.
+                lastTimeStamp = currentTimeStamp;
+                break;
+
+            case 4:
+                /* Byte 5: complete packet, dispatch, reset index.  lastTimeStamp
+                 * stays so case 0 retakes the clock.
                  */
-                if (byteIndex == 4) {
-                    byteIndex = 0;
-                } else {
-                    lastTimeStamp = currentTimeStamp;
-                    byteIndex++;
+                IOGetTimestamp(&currentTimeStamp);
+
+                pointerEvent.timeStamp = lastTimeStamp;
+                pointerEvent.data.buf[0] =
+                    (pointerEvent.data.buf[0] & 0xFE) | (leftButton != 0);
+                pointerEvent.data.buf[0] =
+                    (pointerEvent.data.buf[0] & 0xFD) | ((rightButton != 0) * 2);
+                pointerEvent.data.buf[0] = pointerEvent.data.buf[0] & 3;
+                pointerEvent.data.buf[1] = savedByte;
+                pointerEvent.data.buf[2] = byte;
+
+                if (target != nil) {
+                    if (currentTimeStamp - lastTimeStamp < 40000000) {
+                        [target dispatchPointerEvent:&pointerEvent];
+                    }
                 }
+
+                byteIndex = 0;
                 break;
 
             default:
-                byteIndex++;
                 break;
         }
     }

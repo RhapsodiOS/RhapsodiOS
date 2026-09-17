@@ -134,7 +134,7 @@
         "-[SerialPointingDevice RBProtocol]"
       ],
       "size": 40,
-      "source_line": 781,
+      "source_line": 789,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m"
     },
     {
@@ -143,7 +143,7 @@
         "-[SerialPointingDevice UnknownProtocol]"
       ],
       "size": 40,
-      "source_line": 793,
+      "source_line": 801,
       "source_path": "src/drivers-i386/input/drvSerialPointingDevice/SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/SerialPointingDevice.m"
     }
   ],

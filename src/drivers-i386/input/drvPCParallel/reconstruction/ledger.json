@@ -89,12 +89,12 @@
       "names": [
         "-[IOParallelPort initFromDeviceDescription:]"
       ],
-      "reason": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 996,
       "source_line": 86,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "control-flow-confirmed"
+      "status": "intentional-mismatch"
     },
     {
       "address": 1452,
@@ -1534,7 +1534,7 @@
       "reason": "reversed load-then-test so the device pointer and three registers load before testing pp_softc[portNum].count, matching 4263-4308. Leftover is gcc 2.x CSE / register allocation (one pp_softc load vs Apple three; control byte in bl vs [ebp+var_1])",
       "reviewer": "Pat Raynor",
       "size": 280,
-      "source_line": 647,
+      "source_line": 654,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
       "status": "intentional-mismatch"
     },
@@ -1555,12 +1555,12 @@
       "names": [
         "_IOParallelPortThread"
       ],
-      "reason": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 728,
-      "source_line": 498,
+      "source_line": 508,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
-      "status": "control-flow-confirmed"
+      "status": "intentional-mismatch"
     },
     {
       "address": 5240,
@@ -1579,12 +1579,12 @@
       "names": [
         "_IOParallelPortInterruptHandler"
       ],
-      "reason": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 279,
-      "source_line": 424,
+      "source_line": 434,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
-      "status": "control-flow-confirmed"
+      "status": "intentional-mismatch"
     },
     {
       "address": 5520,
@@ -1630,7 +1630,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 38,
-      "source_line": 112,
+      "source_line": 123,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
       "status": "assembly-matched"
     },
@@ -1654,7 +1654,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 134,
-      "source_line": 132,
+      "source_line": 135,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
       "status": "assembly-matched"
     },
@@ -1675,12 +1675,12 @@
       "names": [
         "_ppwrite"
       ],
-      "reason": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 424,
-      "source_line": 154,
+      "source_line": 157,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
-      "status": "control-flow-confirmed"
+      "status": "intentional-mismatch"
     },
     {
       "address": 6252,
@@ -1702,7 +1702,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 49,
-      "source_line": 404,
+      "source_line": 414,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
       "status": "assembly-matched"
     },
@@ -1723,12 +1723,12 @@
       "names": [
         "_ppstrategy"
       ],
-      "reason": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 404,
-      "source_line": 342,
+      "source_line": 352,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
-      "status": "control-flow-confirmed"
+      "status": "intentional-mismatch"
     },
     {
       "address": 6708,
@@ -1747,12 +1747,12 @@
       "names": [
         "_ppioctl"
       ],
-      "reason": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 683,
-      "source_line": 240,
+      "source_line": 250,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
-      "status": "control-flow-confirmed"
+      "status": "intentional-mismatch"
     },
     {
       "address": 7392,
@@ -1803,7 +1803,7 @@
       "status": "intentional-mismatch"
     }
   ],
-  "rebuilt_sha256": "D13D6D48DA5CB5B131E2F1BBF6A56A59B68EEC72583A7A74FC18880CF159C6EF",
+  "rebuilt_sha256": "C439A3442A4B9600B5C0281A3877C2645A3C979EE472234505BD6CA88248FB7F",
   "reference_sha256": "D188A4D909005683B0C943C84CD99514C14A84AD1D378425B3B1DB343F1EAAA2",
   "schema_version": "ledger-v1"
 }

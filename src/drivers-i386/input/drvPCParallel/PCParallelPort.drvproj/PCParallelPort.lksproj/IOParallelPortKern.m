@@ -157,14 +157,13 @@ int ppread(dev_t dev, void *uio, int ioflag)
 int ppwrite(dev_t dev, void *uio, int ioflag)
 {
     IOParallelPort *port;
-    struct uio *uioPtr = (struct uio *)uio;
-    struct iovec *iov = NULL;
+    struct iovec *iov;
     int result;
     IOReturn initResult;
-    BOOL dataCopied = NO;
-    void *tempBuffer = NULL;
-    int copySize = 0;
-    int savedSegflg = 0;
+    BOOL dataCopied;
+    void *tempBuffer;
+    int copySize;
+    int savedSegflg;
     char *savedBase;
     int savedLen;
 
@@ -178,16 +177,24 @@ int ppwrite(dev_t dev, void *uio, int ioflag)
 
         // The same four printer conditions ppopen accepts mean "nothing to
         // write about"; the reference returns 0 without writing.
-        if ((initResult >= PP_TIMEOUT_ERROR && initResult <= PP_BUSY_ERROR) ||
-            (initResult >= PP_OFFLINE_ERROR && initResult <= PP_PAPER_OUT_ERROR))
-            return 0;
-        if (initResult != 0)
-            return EIO;
+        if (initResult > PP_BUSY_ERROR) {
+            if (initResult != 0)
+                return EIO;
+        } else {
+            if (initResult >= PP_TIMEOUT_ERROR)
+                return 0;
+            else if (initResult > PP_PAPER_OUT_ERROR)
+                return EIO;
+            else if (initResult < PP_OFFLINE_ERROR)
+                return EIO;
+            else
+                return 0;
+        }
     }
 
     // Check if data is in user space (not kernel space)
-    if (uioPtr->uio_segflg != UIO_SYSSPACE) {
-        iov = uioPtr->uio_iov;
+    if (((struct uio *)uio)->uio_segflg != UIO_SYSSPACE) {
+        iov = ((struct uio *)uio)->uio_iov;
         copySize = iov->iov_len;
 
         // Limit copy size to 0x8000 (32KB)
@@ -200,12 +207,12 @@ int ppwrite(dev_t dev, void *uio, int ioflag)
         copyin(iov->iov_base, tempBuffer, copySize);
 
         // Save original values
-        savedSegflg = uioPtr->uio_segflg;
+        savedSegflg = ((struct uio *)uio)->uio_segflg;
         savedBase = iov->iov_base;
         savedLen = iov->iov_len;
 
         // Update to kernel space
-        uioPtr->uio_segflg = UIO_SYSSPACE;
+        ((struct uio *)uio)->uio_segflg = UIO_SYSSPACE;
         iov->iov_base = tempBuffer;
         iov->iov_len = copySize;
 
@@ -227,14 +234,14 @@ int ppwrite(dev_t dev, void *uio, int ioflag)
 
     // If we copied data, restore original values and free temp buffer
     if (dataCopied) {
-        uioPtr->uio_segflg = savedSegflg;
+        ((struct uio *)uio)->uio_segflg = savedSegflg;
         iov->iov_base = savedBase;
         iov->iov_len = savedLen;
 
         IOFree(tempBuffer, copySize);
 
         // Account for the bytes the clamp above left behind
-        uioPtr->uio_resid += (iov->iov_len - copySize);
+        ((struct uio *)uio)->uio_resid += (iov->iov_len - copySize);
     }
 
     return result;

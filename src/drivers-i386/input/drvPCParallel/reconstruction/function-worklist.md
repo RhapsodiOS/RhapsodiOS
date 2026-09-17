@@ -547,6 +547,8 @@ Accepted leftover: rebuilt `D13D6D48DA5CB5B131E2F1BBF6A56A59B68EEC72583A7A74FC18
 
 Star: extra stack slot / `lea esi, [ebp+var_1]` for status; inverted
 `(status & 0x28) == 0x08` branch; SELECT test uses `[esi]` vs flags in `dl`.
+Accepted leftover: rebuilt `C439A3442A4B9600B5C0281A3877C2645A3C979EE472234505BD6CA88248FB7F`
+(compiler-shaped frame / `ebx` vs `esi`; list not rebuilt-tried item-by-item).
 
 1. Keep `statusByte` on stack and re-read it for SELECT/busy
 2. Invert the `(status & 0x28) == 0x08` if/else
@@ -559,6 +561,8 @@ Star: extra stack slot / `lea esi, [ebp+var_1]` for status; inverted
 
 Star: extra `sub esp,4` / `port` spill; inverted B_READ test; Apple reindexes
 `pp_softc` instead of keeping a base pointer.
+Accepted leftover: rebuilt `C439A3442A4B9600B5C0281A3877C2645A3C979EE472234505BD6CA88248FB7F`
+(compiler-shaped extra slot / register choice; list not rebuilt-tried item-by-item).
 
 1. Invert READ/WRITE if/else
 2. Recompute `minor(bp->b_dev)` at each `pp_softc` access (no `portNum` local)
@@ -571,17 +575,20 @@ Star: extra `sub esp,4` / `port` spill; inverted B_READ test; Apple reindexes
 
 Star: more stack (initialized locals); `initDevice` range is `lea+cmp 1` vs
 Apple's signed `cmp`/`jle`; uio pointer copied to two slots.
+Accepted leftover: rebuilt `C439A3442A4B9600B5C0281A3877C2645A3C979EE472234505BD6CA88248FB7F`.
 
-1. Nested signed range tests matching `_ppopen` / Finding 49
-2. Do not pre-zero `iov` / `tempBuffer` / `dataCopied` / `copySize`
-3. Keep `uio` as the argument; drop `uioPtr`
-4. `if (uio_segflg == UIO_SYSSPACE)` inverted vs `!=`
-5. Declaration order: `port` / `result` / `initResult` first, copy locals later
-6. Clamp `copySize` with `if (iov_len > 0x8000) copySize = 0x8000; else copySize = iov_len`
+1. Nested signed range tests matching `_ppopen` / Finding 49 — **kept**
+2. Do not pre-zero `iov` / `tempBuffer` / `dataCopied` / `copySize` — **kept**
+3. Keep `uio` as the argument; drop `uioPtr` — **kept**
+4. `if (uio_segflg == UIO_SYSSPACE)` inverted vs `!=` — **skipped** (leftover is register/`xor`)
+5. Declaration order: `port` / `result` / `initResult` first, copy locals later — **skipped**
+6. Clamp `copySize` with `if (iov_len > 0x8000) copySize = 0x8000; else copySize = iov_len` — **skipped**
 
 ### `_ppioctl` (diff 163)
 
 Star: different switch binary-search pivots (`40047004h` vs `40047011h`).
+Accepted leftover: rebuilt `C439A3442A4B9600B5C0281A3877C2645A3C979EE472234505BD6CA88248FB7F`
+(compiler-shaped switch pivot / labels; list not rebuilt-tried item-by-item).
 
 1. Reorder cases to numeric ioctl value
 2. Reorder cases SET-then-GET as in the reference dump
@@ -594,6 +601,8 @@ Star: different switch binary-search pivots (`40047004h` vs `40047011h`).
 
 Star: extra `var_20=0`; `strcmp` inlined with different length/pointer setup;
 error-path `free` register choice.
+Accepted leftover: rebuilt `C439A3442A4B9600B5C0281A3877C2645A3C979EE472234505BD6CA88248FB7F`
+(compiler-shaped frame / `strcmp` setup; list not rebuilt-tried item-by-item).
 
 1. `strcmp(minorDevStr, "0")` vs length-2 `cmpsb` locals (`int n = 2`)
 2. Declaration order: `configTable` / `minorDevStr` / `driverName` / `portRanges`
@@ -606,6 +615,8 @@ error-path `free` register choice.
 
 Star: `commandType` loaded then `test`/`cmp 1` vs `cmp dword, 1`; status in
 `[ebp+var_1]` vs `bl`; first not-ready decode if/else polarity.
+Accepted leftover: rebuilt `C439A3442A4B9600B5C0281A3877C2645A3C979EE472234505BD6CA88248FB7F`
+(compiler-shaped load/test vs cmp / status slot; list not rebuilt-tried item-by-item).
 
 1. `if (commandType == 1) exit; if (commandType != 0) goto complete;` as load-to-local first
 2. `switch (commandType)`

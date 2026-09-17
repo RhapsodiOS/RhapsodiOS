@@ -1321,6 +1321,45 @@ Parity 0/0. Previously identical rows stayed identical. Ledger 3212
   mov edi, [ebx+0Ch]                      mov edi, [ebx+0Ch]
 ```
 
+### Task 8 — `_ppwrite` signed range, no pre-zero
+
+Nested signed `initDevice` compares (`cmp 0FFFFFD2Bh` / `jle`) plus dropping
+pre-zeroed `uioPtr` / `iov` / `tempBuffer` locals. Diff 112→80. Leftover is
+gcc 2.x `ebx` vs Apple's `esi` and Apple's extra prologue zeros. Rebuilt
+SHA-256 `C439A3442A4B9600B5C0281A3877C2645A3C979EE472234505BD6CA88248FB7F`.
+Parity 0/0. Previously identical rows stayed identical. Ledger 5828
+`intentional-mismatch`. source-map Kern.m sites resynced (73 mapped / 2 unmapped).
+
+```
+_ppwrite
+  status=different raw_equal=False masked_equal=False
+* sub esp, 18h                            sub esp, 14h
+  movzx eax, byte ptr [ebp+dev]           movzx eax, byte ptr [ebp+dev]
+* mov esi, ds:_pp_softc[eax*4]            mov ebx, ds:_pp_softc[eax*4]
+* xor ebx, ebx                            test ebx, ebx
+```
+
+### Task 8 — remaining large functions (compiler-shaped leftover)
+
+`--name` on the current reloc for `_IOParallelPortInterruptHandler`,
+`_ppstrategy`, `_ppioctl`, `initFromDeviceDescription:`, and
+`_IOParallelPortThread` shows register choice, extra `inb`/frame slots,
+`strcmp` setup, and switch-pivot scheduling — not wrong constants, missing
+calls, inverted business-logic branches, or wrong ivar offsets. Ledger
+456 / 4512 / 5240 / 6304 / 6708 `intentional-mismatch`, reviewer Pat Raynor,
+reason `compiler-shaped leftover after exhausted source-shape list`.
+Final reloc SHA-256
+`C439A3442A4B9600B5C0281A3877C2645A3C979EE472234505BD6CA88248FB7F`.
+`--list`: 40 byte-identical, 16 masked-eq, 0 unpaired.
+
+```
+_IOParallelPortInterruptHandler  * sub esp, 10h vs 0Ch; ebx vs esi; lea [ebp+var_1]
+_ppstrategy                      * extra sub esp,4; edi vs esi
+_ppioctl                         * labels / switch binary-search pivot
+initFromDeviceDescription:       * sub esp, 24h vs 20h; extra var_20=0
+_IOParallelPortThread            * commandType test vs cmp dword,1; status slot
+```
+
 ### 8.9 The status rule used
 
 - `assembly-matched` (56) - the reference's full instruction stream was read and our
@@ -1328,11 +1367,11 @@ Parity 0/0. Previously identical rows stayed identical. Ledger 3212
   and the function's emitted metadata was verified identical in the rebuilt binary. Used
   for the accessors and the short bodies. Task 8 promoted `msgTypeToIOReturn:` and
   `cmdBufAlloc` (`masked_equal`).
-- `control-flow-confirmed` (6) - the reference's full instruction stream was read and our
+- `control-flow-confirmed` (0) - the reference's full instruction stream was read and our
   source reproduces its block structure, every call target and every constant, but the
   rebuilt output was **not** itself disassembled and compared instruction by instruction.
   Used for the larger functions.
-- `intentional-mismatch` (13) - a deliberate difference remains: 0 (`_waitForDevice:isReady:`
+- `intentional-mismatch` (19) - a deliberate difference remains: 0 (`_waitForDevice:isReady:`
   for-loop with `tries < busyMaxRetries`; leftover is the `inb` stack slot), 112 and 1452
   (Finding 53, uninitialized control byte reconstructed; leftover is gcc 2.x zero-fill /
   immediate fold), 2372 and 2388 (`struct buf` encoding), 3132 (`printerInit` control byte
@@ -1342,6 +1381,11 @@ Parity 0/0. Previously identical rows stayed identical. Ledger 3212
   prev-link stored first; leftover is `add esp,8` scheduling), 4040 (`waitForCmdBuf`
   if/else dequeue; leftover is `add esp,0Ch` scheduling and else-block placement), 4232
   (`_strobeChar` load-then-test reversed; leftover is gcc 2.x CSE / register allocation),
-  5520 (`_ppopen` nested signed initDevice range; leftover is `jl` vs `jge` on
-  the offline bound and EIO epilogue placement), and the two build-generated glue
-  functions at 7392 and 7404, untouched from the report pass.
+  5520 (`_ppopen` nested signed initDevice range; leftover is `jl` vs `jge`),
+  456 (`initFromDeviceDescription:` extra `var_20` / register choice), 4512
+  (`_IOParallelPortThread` commandType test vs cmp / status slot), 5240
+  (`_IOParallelPortInterruptHandler` inb slot / `ebx` vs `esi`), 5828
+  (`_ppwrite` signed initDevice range without pre-zeroed locals; leftover is
+  `esi` vs `ebx` and Apple's extra zeroing), 6304 (`_ppstrategy` extra
+  `sub esp,4` / register choice), 6708 (`_ppioctl` switch-pivot / labels),
+  7392 and 7404, untouched from the report pass.

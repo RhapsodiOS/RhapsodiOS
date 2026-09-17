@@ -151,6 +151,7 @@ Task 8 regression gate. Do not apply the BOOL / `and eax, 0FFh` typed rewrite. A
 ### `-[PS2Keyboard desireOwnership:]` (diff 6)
 
 1. Invert the if/else: test the conflict (`_desiredOwner != nil && _desiredOwner != owner`) first so the `-725` store is laid out before the success store (`jz`/`jz` vs `jz`/`jnz`).
+   **Match:** `masked_equal` after rebuild `4FC38265802F44ADCD416DC55FED02E5138218867A93433CDDBAB6C15B74DA62`. Ledger `assembly-matched`.
 
 ### `_lock_controller` (diff 6) — empty; compiler-shaped confirmed
 

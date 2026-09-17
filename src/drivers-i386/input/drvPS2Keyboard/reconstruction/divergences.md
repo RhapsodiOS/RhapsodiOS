@@ -1931,3 +1931,7 @@ Then/else order on `respondsTo:` is compiler-shaped leftover under the gate. Bod
 ### `_sendMouseCommand` (2208) — `masked_equal`
 
 Inverted `if (response != 0xFA) return 0; else return 1;` (experiment 2). `--name` differs only by jump labels. Rebuilt `C2B45245EE841E1851BA1FFCB9C8E20F9929D390A6E64AF97995202029A32CF1`. Task 8 gate rows stayed identical / masked-eq. Glue still instruction-identical. Unpaired 0.
+
+### `-[PS2Keyboard desireOwnership:]` (4828) — `masked_equal`
+
+Inverted the conflict test first (`_desiredOwner != nil && _desiredOwner != owner`). `--name` differs only by jump labels. Rebuilt `4FC38265802F44ADCD416DC55FED02E5138218867A93433CDDBAB6C15B74DA62`. `_sendMouseCommand` stayed masked-eq. Task 8 gates unchanged. Unpaired 0.

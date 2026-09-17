@@ -468,12 +468,12 @@ PS2KeyboardEvent *scancodeToKeyEvent(unsigned char scancode)
 
     [_ownerLock lock];
 
-    if (_desiredOwner == nil || _desiredOwner == owner) {
-        _desiredOwner = owner;
-        result = 0;
-    } else {
+    if (_desiredOwner != nil && _desiredOwner != owner) {
         /* Someone else is already next in line */
         result = 0xFFFFFD2B;  /* -725 */
+    } else {
+        _desiredOwner = owner;
+        result = 0;
     }
 
     [_ownerLock unlock];

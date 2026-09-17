@@ -1,6 +1,6 @@
 {
   "schema_version": "profile-v1",
-  "name": "drvPS2Keyboard reconstruction",
+  "name": "drvPS2Keyboard reconstruction (IDA only; angr decode at 0x10 fails rebuilt normalize)",
   "architecture": "i386",
   "endianness": "little",
   "reference": {

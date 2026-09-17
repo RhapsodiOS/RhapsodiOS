@@ -4733,3 +4733,35 @@ __IOGetEISADeviceConfig
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+### Task 6 `_IOSleep` msg_header local (2026-09-17)
+
+Initialize a 24-byte `msg_header` local (`local_port = sleepPort`, `size = sizeof(msg)`) and pass `&msg` to `msg_receive`. `sleepPort` is file-static so gcc emits a direct PIC load. Leftover is PIC displacement of `_sleepPort`. Accepted compiler-shaped leftover (reviewer Pat Raynor). Tool SHA `CBB7ACF7C34F165F03B0DD5F1AABCF1A8B3DDC2E304F2114BD9EB6C270C868A3` (299556). Previously identical rows stayed matched (45). Unpaired count unchanged (10). Tool-only; reloc SHA unchanged.
+
+```
+_IOSleep
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 18h                            sub esp, 18h
+  call $+5                                call $+5
+  pop eax                                 pop eax
+* mov eax, ds:(_sleepPort - 6C27h)[eax]   mov eax, ds:(_sleepPort - 3813h)[eax]
+  mov [ebp+var_C], eax                    mov [ebp+var_C], eax
+  mov [ebp+var_14], 18h                   mov [ebp+var_14], 18h
+  mov edx, [ebp+arg_0]                    mov edx, [ebp+arg_0]
+  push edx                                push edx
+  push 500h                               push 500h
+  lea eax, [ebp+var_18]                   lea eax, [ebp+var_18]
+  push eax                                push eax
+  call _msg_receive                       call _msg_receive
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

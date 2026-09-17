@@ -67,7 +67,7 @@ typedef struct CalloutEntry {
 
 CalloutEntry *calloutChain;
 id calloutLock;
-int sleepPort;
+static int sleepPort;
 
 /* C function implementations */
 
@@ -234,13 +234,18 @@ void IOSuspendThread(int *threadPtr)
  */
 void IOSleep(unsigned int timeout)
 {
-    char msgBuf[4];
-    int msgSize;
-    int port;
+    struct {
+        unsigned int unused;
+        unsigned int size;
+        unsigned int type;
+        int local_port;
+        int remote_port;
+        int id;
+    } null_msg;
 
-    port = sleepPort;
-    msgSize = 0x18;
-    msg_receive(msgBuf, 0x500, timeout);
+    null_msg.local_port = sleepPort;
+    null_msg.size = sizeof(null_msg);
+    msg_receive(&null_msg, 0x500, timeout);
 }
 
 /*

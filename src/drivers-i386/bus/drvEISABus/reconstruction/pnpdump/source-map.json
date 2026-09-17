@@ -19,7 +19,8 @@
       "reference_names": [
         "_bail"
       ],
-      "size": 59
+      "size": 59,
+      "source_line": null
     },
     {
       "address": 15736,
@@ -39,7 +40,8 @@
       "reference_names": [
         "_main"
       ],
-      "size": 824
+      "size": 824,
+      "source_line": null
     }
   ],
   "mapped": [
@@ -913,7 +915,7 @@
         "_IOCopyMemory"
       ],
       "size": 28,
-      "source_line": 455,
+      "source_line": 460,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -922,7 +924,7 @@
         "_IOForkThread"
       ],
       "size": 20,
-      "source_line": 341,
+      "source_line": 346,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -940,7 +942,7 @@
         "_IOResumeThread"
       ],
       "size": 19,
-      "source_line": 317,
+      "source_line": 322,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -949,7 +951,7 @@
         "_IOExitThread"
       ],
       "size": 14,
-      "source_line": 420,
+      "source_line": 425,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -967,7 +969,7 @@
         "_IODelay"
       ],
       "size": 70,
-      "source_line": 429,
+      "source_line": 434,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -976,7 +978,7 @@
         "_IOScheduleFunc"
       ],
       "size": 388,
-      "source_line": 250,
+      "source_line": 255,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -985,7 +987,7 @@
         "_calloutThread"
       ],
       "size": 255,
-      "source_line": 460,
+      "source_line": 465,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1021,7 +1023,7 @@
         "_IOPanic"
       ],
       "size": 34,
-      "source_line": 326,
+      "source_line": 331,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1030,7 +1032,7 @@
         "_IOFindNameForValue"
       ],
       "size": 76,
-      "source_line": 388,
+      "source_line": 393,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1039,7 +1041,7 @@
         "_IOFindValueForName"
       ],
       "size": 78,
-      "source_line": 352,
+      "source_line": 357,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1057,7 +1059,7 @@
         "__IOLookupByObjectNumber"
       ],
       "size": 362,
-      "source_line": 490,
+      "source_line": 495,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1066,7 +1068,7 @@
         "__IOLookupByDeviceName"
       ],
       "size": 298,
-      "source_line": 489,
+      "source_line": 494,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1075,7 +1077,7 @@
         "__IOGetIntValues"
       ],
       "size": 546,
-      "source_line": 487,
+      "source_line": 492,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1084,7 +1086,7 @@
         "__IOGetCharValues"
       ],
       "size": 543,
-      "source_line": 484,
+      "source_line": 489,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1093,7 +1095,7 @@
         "__IOSetIntValues"
       ],
       "size": 413,
-      "source_line": 495,
+      "source_line": 500,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1102,7 +1104,7 @@
         "__IOSetCharValues"
       ],
       "size": 405,
-      "source_line": 494,
+      "source_line": 499,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1111,7 +1113,7 @@
         "__IOGetEISADeviceConfig"
       ],
       "size": 851,
-      "source_line": 486,
+      "source_line": 491,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1120,7 +1122,7 @@
         "__IOMapEISADevicePorts"
       ],
       "size": 186,
-      "source_line": 492,
+      "source_line": 497,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1129,7 +1131,7 @@
         "__IOUnMapEISADevicePorts"
       ],
       "size": 186,
-      "source_line": 496,
+      "source_line": 501,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1138,7 +1140,7 @@
         "__IOMapEISADeviceMemory"
       ],
       "size": 311,
-      "source_line": 491,
+      "source_line": 496,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1147,7 +1149,7 @@
         "__IOProbeDriver"
       ],
       "size": 301,
-      "source_line": 493,
+      "source_line": 498,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1156,7 +1158,7 @@
         "__IOGetSystemConfig"
       ],
       "size": 384,
-      "source_line": 488,
+      "source_line": 493,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1165,7 +1167,7 @@
         "__IOUnloadDriver"
       ],
       "size": 301,
-      "source_line": 497,
+      "source_line": 502,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1174,7 +1176,7 @@
         "__IOGetDriverConfig"
       ],
       "size": 384,
-      "source_line": 485,
+      "source_line": 490,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1183,7 +1185,7 @@
         "__PMSetPowerState"
       ],
       "size": 202,
-      "source_line": 502,
+      "source_line": 507,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1192,7 +1194,7 @@
         "__PMGetPowerEvent"
       ],
       "size": 207,
-      "source_line": 498,
+      "source_line": 503,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1201,7 +1203,7 @@
         "__PMGetPowerStatus"
       ],
       "size": 227,
-      "source_line": 499,
+      "source_line": 504,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1210,7 +1212,7 @@
         "__PMSetPowerManagement"
       ],
       "size": 202,
-      "source_line": 501,
+      "source_line": 506,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1219,7 +1221,7 @@
         "__PMRestoreDefaults"
       ],
       "size": 166,
-      "source_line": 500,
+      "source_line": 505,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1228,7 +1230,7 @@
         "__IOCallDeviceMethod"
       ],
       "size": 691,
-      "source_line": 483,
+      "source_line": 488,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1237,7 +1239,7 @@
         "__IOCreateMachPort"
       ],
       "size": 223,
-      "source_line": 474,
+      "source_line": 479,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1282,7 +1284,7 @@
         "__IOCopyMemory"
       ],
       "size": 249,
-      "source_line": 464,
+      "source_line": 469,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     }
   ],
@@ -1294,259 +1296,296 @@
       "reference_names": [
         "start"
       ],
-      "size": 38
+      "size": 38,
+      "source_line": null
     },
     {
       "address": 15364,
       "reference_names": [
         "__start"
       ],
-      "size": 194
+      "size": 194,
+      "source_line": null
     },
     {
       "address": 15564,
       "reference_names": [
         "__call_mod_init_funcs"
       ],
-      "size": 37
+      "size": 37,
+      "source_line": null
     },
     {
       "address": 15604,
       "reference_names": [
         "__dyld_init_check"
       ],
-      "size": 52
+      "size": 52,
+      "source_line": null
     },
     {
       "address": 15656,
       "reference_names": [
         "dyld_stub_binding_helper"
       ],
-      "size": 11
+      "size": 11,
+      "source_line": null
     },
     {
       "address": 15668,
       "reference_names": [
         "__dyld_func_lookup"
       ],
-      "size": 6
+      "size": 6,
+      "source_line": null
     },
     {
       "address": 39871,
       "reference_names": [
         "_exit"
       ],
-      "size": 14
+      "size": 14,
+      "source_line": null
     },
     {
       "address": 39897,
       "reference_names": [
         "__objcInit"
       ],
-      "size": 14
+      "size": 14,
+      "source_line": null
     },
     {
       "address": 39923,
       "reference_names": [
         "_printf"
       ],
-      "size": 14
+      "size": 14,
+      "source_line": null
     },
     {
       "address": 39949,
       "reference_names": [
         "_objc_msgSend"
       ],
-      "size": 14
+      "size": 14,
+      "source_line": null
     },
     {
       "address": 39975,
       "reference_names": [
         "_fprintf"
       ],
-      "size": 14
+      "size": 14,
+      "source_line": null
     },
     {
       "address": 40001,
       "reference_names": [
         "_sprintf"
       ],
-      "size": 14
+      "size": 14,
+      "source_line": null
     },
     {
       "address": 40027,
       "reference_names": [
         "_strncpy"
       ],
-      "size": 14
+      "size": 14,
+      "source_line": null
     },
     {
       "address": 40053,
       "reference_names": [
         "_objc_msgSendSuper"
       ],
-      "size": 14
+      "size": 14,
+      "source_line": null
     },
     {
       "address": 40079,
       "reference_names": [
         "_device_master_self"
       ],
-      "size": 14
+      "size": 14,
+      "source_line": null
     },
     {
       "address": 40105,
       "reference_names": [
         "_port_allocate"
       ],
-      "size": 14
+      "size": 14,
+      "source_line": null
     },
     {
       "address": 40131,
       "reference_names": [
         "_strcmp"
       ],
-      "size": 14
+      "size": 14,
+      "source_line": null
     },
     {
       "address": 40157,
       "reference_names": [
         "_syslog"
       ],
-      "size": 14
+      "size": 14,
+      "source_line": null
     },
     {
       "address": 40183,
       "reference_names": [
         "_vsprintf"
       ],
-      "size": 14
+      "size": 14,
+      "source_line": null
     },
     {
       "address": 40209,
       "reference_names": [
         "_kern_timestamp"
       ],
-      "size": 14
+      "size": 14,
+      "source_line": null
     },
     {
       "address": 40235,
       "reference_names": [
         "_msg_receive"
       ],
-      "size": 14
+      "size": 14,
+      "source_line": null
     },
     {
       "address": 40261,
       "reference_names": [
         "_cthread_exit"
       ],
-      "size": 14
+      "size": 14,
+      "source_line": null
     },
     {
       "address": 40287,
       "reference_names": [
         "_thread_resume"
       ],
-      "size": 14
+      "size": 14,
+      "source_line": null
     },
     {
       "address": 40313,
       "reference_names": [
         "_thread_suspend"
       ],
-      "size": 14
+      "size": 14,
+      "source_line": null
     },
     {
       "address": 40339,
       "reference_names": [
         "_cthread_fork"
       ],
-      "size": 14
+      "size": 14,
+      "source_line": null
     },
     {
       "address": 40365,
       "reference_names": [
         "_free"
       ],
-      "size": 14
+      "size": 14,
+      "source_line": null
     },
     {
       "address": 40391,
       "reference_names": [
         "_malloc"
       ],
-      "size": 14
+      "size": 14,
+      "source_line": null
     },
     {
       "address": 40417,
       "reference_names": [
         "_bcopy"
       ],
-      "size": 14
+      "size": 14,
+      "source_line": null
     },
     {
       "address": 40443,
       "reference_names": [
         "_mig_dealloc_reply_port"
       ],
-      "size": 14
+      "size": 14,
+      "source_line": null
     },
     {
       "address": 40469,
       "reference_names": [
         "_msg_rpc"
       ],
-      "size": 14
+      "size": 14,
+      "source_line": null
     },
     {
       "address": 40495,
       "reference_names": [
         "_mig_get_reply_port"
       ],
-      "size": 14
+      "size": 14,
+      "source_line": null
     },
     {
       "address": 40521,
       "reference_names": [
         "_cond_signal"
       ],
-      "size": 14
+      "size": 14,
+      "source_line": null
     },
     {
       "address": 40547,
       "reference_names": [
         "_condition_wait"
       ],
-      "size": 14
+      "size": 14,
+      "source_line": null
     },
     {
       "address": 40573,
       "reference_names": [
         "_mutex_wait_lock"
       ],
-      "size": 14
+      "size": 14,
+      "source_line": null
     },
     {
       "address": 40599,
       "reference_names": [
         "_mutex_try_lock"
       ],
-      "size": 14
+      "size": 14,
+      "source_line": null
     },
     {
       "address": 40625,
       "reference_names": [
         "_spin_lock"
       ],
-      "size": 14
+      "size": 14,
+      "source_line": null
     },
     {
       "address": 40651,
       "reference_names": [
         "_cond_broadcast"
       ],
-      "size": 14
+      "size": 14,
+      "source_line": null
     }
   ]
 }

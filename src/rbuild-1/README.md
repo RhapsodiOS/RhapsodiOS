@@ -36,16 +36,16 @@ packages successfully.
 
 Ordinary builds default to `universal-apple-rhapsody` (i386 + PPC), independent
 of the host. Explicit `i386` / `i386-apple-rhapsody` and `ppc` /
-`ppc-apple-rhapsody` source labels select thin output. A missing Architecture
-field means universal; an empty or unsupported field is an error.
+`ppc-apple-rhapsody` source labels select thin output. A missing or omitted
+`arch` field means universal; an empty or unsupported field is an error.
 
 Bootstrap uses the toolchain profile's thin `target_arch`; kernel commands
 use `--arch i386` or `--arch ppc`. `buildpackage --arch` selects that same thin
 target (`RC_ARCHS` / `-arch`) and copies `/usr/libexec/<arch>` into the chroot
 so `cc` can find that arch's `cc1obj` / `cpp-precomp`. A universal source
 permits either operation, but an explicit conflicting thin source is rejected.
-Metadata records the canonical effective architecture without rewriting source
-control files.
+Metadata records the canonical effective architecture without rewriting
+`apk/pkginfo`.
 
 `bootstrap-universal` is the primary bootstrap method for a dual-architecture
 repository: it walks `BootstrapRuntimeManifest` (Csu through Libsystem) and
@@ -73,7 +73,8 @@ bounded native guest acceptance evidence.
 - Source type is always `dir`; `--cvs` is rejected (support removed).
 - Publishes `<pkgname>-<pkgver>-<universal|i386|ppc>.apk` and matching
   `-hdrs`/`-obj` companions; `.PKGINFO` `arch` remains `*-apple-rhapsody`.
-- `.PKGINFO` carries a custom `builddepends` field (apk ignores unknown keys).
+- Source metadata is `apk/pkginfo`. Packaged `.PKGINFO` uses the same keys
+  (`makedepends`, `license`, `url`, …). apk ignores unknown keys.
 - Depends at runtime on `tar`, `gzip`, `apk`, `make`, `chroot`, `rsync`,
   `mkdir`, `cp`, `rm` on `PATH`.
 

@@ -1,109 +1,87 @@
 /*
- * InstallPPDev.m - Install parallel port device node
- *
- * This tool is called during driver load to create the device node
- * in /dev/ and set appropriate permissions.
+ * InstallPPDev.m - Pre-Load tool: create /dev/ppN
  */
 
 #import "IODeviceMaster.h"
-#import <stdio.h>
-#import <stdlib.h>
-#import <string.h>
-#import <unistd.h>
+#import <driverkit/IODevice.h>
 #import <errno.h>
-#import <sys/stat.h>
+#import <libc.h>
 
 #define PROGRAM_NAME "Error initializing parallel port driver"
-#define DEVICE_NAME_FORMAT "ParallelPort%d"
+#define PATH_NAME_SIZE 10
+#define DEV_STRING "/dev/"
 
-// Global path buffer
-static char path[10];
+char path[PATH_NAME_SIZE];
 
-int main(int argc, char *argv[])
+int
+main(int argc, char **argv)
 {
-    unsigned int instanceNum;
-    char deviceName[80];
-    IODeviceMaster *deviceMaster;
-    int objectNumber;
-    const char *deviceKind;
-    int majorDevNum;
-    unsigned int minorDevNum;
-    unsigned int count;
-    kern_return_t result;
+    IOString		kind;
+    IOObjectNumber	tag;
+    int			major;
+    unsigned int	count = 1;
+    int			minor;
+    IOReturn		ret;
+    IODeviceMaster	*devMaster;
+    unsigned int	instanceNum;
 
-    // Check last argument for "Instance=N"
-    if (argc < 2 || strncmp(argv[argc - 1], "Instance=", 9) != 0) {
-        printf("%s: can't find Instance number\n", PROGRAM_NAME);
-        return 0xffffffff;
+    if (strncmp(argv[argc - 1], "Instance=", 9) != 0) {
+	printf("%s: can't find Instance number\n", PROGRAM_NAME);
+	return -1;
     }
 
-    // Parse the instance number
     instanceNum = atoi(argv[argc - 1] + 9);
-
-    // Validate instance number
-    if (instanceNum >= 10) {
-        printf("%s: invalid instance number\n", PROGRAM_NAME);
-        return 0xffffffff;
+    if (instanceNum > 9) {
+	printf("%s: invalid instance number\n", PROGRAM_NAME);
+	return -1;
     }
 
-    // Build device path
-    bzero(path, 10);
-    sprintf(path, "%s%s%d", "/dev/", "pp", instanceNum);
+    bzero(path, PATH_NAME_SIZE);
+    sprintf(path, "%s%s%d", DEV_STRING, "pp", instanceNum);
 
-    // Create device master
-    deviceMaster = [IODeviceMaster new];
+    devMaster = [IODeviceMaster new];
 
-    // Look up the parallel port device by name
-    sprintf(deviceName, DEVICE_NAME_FORMAT, instanceNum);
-    result = [deviceMaster lookUpByDeviceName:deviceName
-                                 objectNumber:&objectNumber
-                                   deviceKind:&deviceKind];
-    if (result != 0) {
-        printf("%s: couldn't find driver. Returned %d\n", PROGRAM_NAME, result);
-        return 0xffffffff;
+    ret = [devMaster lookUpByDeviceName:path + 5
+	    objectNumber:&tag
+	    deviceKind:&kind];
+    if (ret != IO_R_SUCCESS) {
+	printf("%s: couldn't find driver. Returned %d\n", PROGRAM_NAME, ret);
+	return -1;
     }
 
-    // Get major device number
-    majorDevNum = -1;
-    count = 1;
-    result = [deviceMaster getIntValues:(unsigned int *)&majorDevNum
-                           forParameter:"IOMajorDevice"
-                           objectNumber:objectNumber
-                                  count:&count];
-    if (result != 0) {
-        printf("%s: couldn't get major number:  Returned %d.\n", PROGRAM_NAME, result);
-        return 0xffffffff;
+    major = -1;
+    ret = [devMaster getIntValues:&major
+	    forParameter:"IOMajorDevice" objectNumber:tag
+	    count:&count];
+    if (ret != IO_R_SUCCESS) {
+	printf("%s: couldn't get major number:  Returned %d.\n",
+	    PROGRAM_NAME, ret);
+	return -1;
     }
 
-    // Get minor device number
-    minorDevNum = 0xffffffff;
-    count = 1;
-    result = [deviceMaster getIntValues:&minorDevNum
-                           forParameter:"IOMinorDevice"
-                           objectNumber:objectNumber
-                                  count:&count];
-    if (result != 0) {
-        printf("%s: couldn't get minor dev.  Returned %d.\n", PROGRAM_NAME, result);
-        return 0xffffffff;
+    minor = -1;
+    ret = [devMaster getIntValues:&minor
+	    forParameter:"IOMinorDevice" objectNumber:tag
+	    count:&count];
+    if (ret != IO_R_SUCCESS) {
+	printf("%s: couldn't get minor dev.  Returned %d.\n",
+	    PROGRAM_NAME, ret);
+	return -1;
     }
 
-    // Remove old device node (allow ENOENT error)
-    result = unlink(path);
-    if (result != 0 && errno != 2) {  // errno 2 = ENOENT
-        printf("%s: could not delete old %s.  Errno is %d\n", PROGRAM_NAME, path, errno);
-        return 0xffffffff;
+    if (unlink(path)) {
+	if (errno != ENOENT) {
+	    printf("%s: could not delete old %s.  Errno is %d\n",
+		PROGRAM_NAME, path, errno);
+	    return -1;
+	}
     }
 
-    // Set umask to allow full permissions
     umask(0);
-
-    // Create character device node
-    // 0x21b6 = S_IFCHR (0x2000) | 0666 (0x1b6)
-    // Manual makedev: major << 8 | minor
-    if (mknod(path, 0x21b6, majorDevNum << 8 | minorDevNum) != 0) {
-        printf("%s: could not create %s.  Errno is %d\n", PROGRAM_NAME, path, errno);
-        return 0xffffffff;
+    if (mknod(path, 0x21b6, (major << 8) | minor)) {
+	printf("%s: could not create %s.  Errno is %d\n",
+	    PROGRAM_NAME, path, errno);
+	return -1;
     }
-
     return 0;
 }

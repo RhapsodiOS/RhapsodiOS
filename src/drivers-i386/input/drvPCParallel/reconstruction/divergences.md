@@ -1637,3 +1637,58 @@ _main
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+## Task 12 — reconstruct InstallPPDev
+
+Reference 37364 bytes, SHA-256
+`3B0EECB6934DA0717985C59B2457DE5CD99E4A547E6D8BB074FD05EE63CD9AE5`.
+Kept rebuilt 137008 bytes, SHA-256
+`1FF88BC974C510B33ECB748E8757630C268A4D2A2818D693AA3ADC9D38F23F69`.
+Reloc SHA unchanged `F31C01A0FBB4F010AADC205C8CAE011A501FD6D5016BFCEC10022AA65E2BA9DC`.
+RemovePPDev SHA unchanged `BE525C8553C7EC73390AE84BDD4EE4118465BB824827FC1B6DF2B0E1844DC16A`
+(12 identical / 3 differing / 0 unpaired; `_main` still the only accepted paired row).
+
+Invented `main` (`ParallelPort%d`, `deviceName[80]`, `argc < 2`) is replaced with
+the SCSI Tape PostLoad shape: `PROGRAM_NAME` `"Error initializing parallel port driver"`,
+external `char path[10]`, `argv[argc-1]` + `Instance=` / `atoi`, `unsigned int instanceNum`
+so `cmp edi, 9` / `jbe`, `count = 1` once, `lookUpByDeviceName: path+5` (`ppN`),
+`IOMajorDevice` / `IOMinorDevice`, `unlink` ENOENT, `umask(0)`, `mknod 0x21b6`.
+No extra keys. No `_strlen`.
+
+`createMachPort:` calls a local `_IOCreateMachPort` wrapper around Darwin
+`_IOServerConnect(..., task_self(), ...)`. `--name` insn stream matches (13 vs 13).
+`__IOCreateMachPort` pairs as a 19-insn wrapper vs Apple's 75-insn MIG stub.
+Cannot close the MIG body without `-lDriver` or subsetting defs. Extra Darwin MIG
+names stay unpaired. Reviewer Pat Raynor.
+
+`--name _main` leftover is PIC only (`3AEEh` vs `32BEh`, selector slots, path GOT).
+Same CFG, calls, constants, `jbe`, `add ebx, 5`, `sub esp, 60h`, 182 vs 182.
+
+```
+_main
+  status=different raw_equal=False masked_equal=False
+  reason: function range bytes differ
+  reason: instruction semantics differ
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 60h                            sub esp, 60h
+  ... argc/argv, count=1, strncmp Instance= ...
+  cmp edi, 9                              cmp edi, 9
+* jbe loc_3B60                            jbe loc_3330
+  ... bzero(path, 0Ah), sprintf /dev/ pp, [IODeviceMaster new] ...
+  add ebx, 5                              add ebx, 5
+  ... lookUp / IOMajorDevice / IOMinorDevice / unlink / umask / mknod 21B6h ...
+  lea esp, [ebp-6Ch]                      lea esp, [ebp-6Ch]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+Guest note: first harness+build SSH after the MachPort edit hung when 10.10.0.241
+went unreachable. Retried after reboot; artifact copies use the throwaway
+`UserKnownHostsFile` because the DSA host key rotated.

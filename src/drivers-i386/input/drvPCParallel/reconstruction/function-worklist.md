@@ -1009,3 +1009,201 @@ renaming the binary.
 `_main` accepted `intentional-mismatch` (compiler-shaped `jg`+`jmp` vs `jle`
 and `ecx` vs `edx`). `__call_mod_init_funcs` / `__start` are crt, unpaired.
 
+## InstallPPDev
+
+Reference `C:\Users\raynorpat\Downloads\test\Drivers\i386\ParallelPort.config\InstallPPDev`
+37364 bytes. Rebuilt (Task 10 local-TU, invented `main`) 129768 bytes, SHA-256
+`35F763105F9C1960C98A899FF9A3C8B71C7312FE75C2C819637DB4B017DF406A`,
+Mach-O executable i386. Reloc SHA still
+`F31C01A0FBB4F010AADC205C8CAE011A501FD6D5016BFCEC10022AA65E2BA9DC`.
+RemovePPDev SHA still
+`BE525C8553C7EC73390AE84BDD4EE4118465BB824827FC1B6DF2B0E1844DC16A`.
+
+IDA-only `installppdev.json`. Source-map pairs hand-written names to
+`InstallPPDev.m` / `IODeviceMaster.m`. libc / crt stay unpaired. Extra
+Darwin MIG names stay unpaired; do not subset `driverServer.defs`.
+
+Apple defines `__IOCreateMachPort` (75 insns). Rebuilt defines
+`__IOServerConnect` (81) from Darwin defs. `createMachPort:` on Apple is a
+3-arg `_IOCreateMachPort` call; rebuilt passes `task_self()` into
+`_IOServerConnect`.
+
+### Baseline `--list` (invented ParallelPort%d main)
+
+```
+  diff    ref    new  flags       name
+
+     0      6      6  identical   -[IODeviceMaster free]
+     0     19     19              -[IODeviceMaster getCharValues:forParameter:objectNumber:count:]
+     0     19     19              -[IODeviceMaster getIntValues:forParameter:objectNumber:count:]
+     0     15     15              -[IODeviceMaster lookUpByDeviceName:objectNumber:deviceKind:]
+     0     15     15              -[IODeviceMaster lookUpByObjectNumber:deviceKind:deviceName:]
+     0     17     17              -[IODeviceMaster setCharValues:forParameter:objectNumber:count:]
+     0     17     17              -[IODeviceMaster setIntValues:forParameter:objectNumber:count:]
+     0      1      1  identical   __dyld_func_lookup
+     0      2      2  identical   dyld_stub_binding_helper
+     0     12     12  identical   start
+     1     15     15              __call_mod_init_funcs
+     1      4      4              __objcInit
+     1      4      4              _atoi
+     1      4      4              _bcopy
+     1      4      4              _bzero
+     1      4      4              _device_master_self
+     1      4      4              _exit
+     1      4      4              _mig_dealloc_reply_port
+     1      4      4              _mig_get_reply_port
+     1      4      4              _mknod
+     1      4      4              _msg_rpc
+     1      4      4              _objc_msgSend
+     1      4      4              _printf
+     1      4      4              _sprintf
+     1      4      4              _strncmp
+     1      4      4              _umask
+     1      4      4              _unlink
+     2     14     14              __dyld_init_check
+     6     23     23              +[IODeviceMaster new]
+    14     13     20              -[IODeviceMaster createMachPort:objectNumber:]
+    17     67     67              __start
+    27     56     59              __PMRestoreDefaults
+    29     61     64              __IOMapEISADevicePorts
+    29     61     64              __IOUnMapEISADevicePorts
+    29     70     71              __PMGetPowerEvent
+    29     76     77              __PMGetPowerStatus
+    31     66     69              __PMSetPowerManagement
+    31     66     69              __PMSetPowerState
+    46    101    102              __IOMapEISADeviceMemory
+    56     82     89              __IOProbeDriver
+    56     82     89              __IOUnloadDriver
+    63    100    108              __IOSetIntValues
+    72    111    116              __IOGetDriverConfig
+    72     93    104              __IOLookupByDeviceName
+    72     92    103              __IOLookupByObjectNumber
+    73    101    107              __IOSetCharValues
+    74    108    110              __IOGetSystemConfig
+    86    182    191              _main
+    94    136    142              __IOGetCharValues
+    99    135    142              __IOGetIntValues
+   134    172    178              __IOCallDeviceMethod
+   213    229    245              __IOGetEISADeviceConfig
+     -     75      -  missing-rebuilt  __IOCreateMachPort
+     -      -    144  missing-reference  __IOGetByteProperty
+     -      -    144  missing-reference  __IOGetStringPropertyList
+     -      -    138  missing-reference  __IOLookUpByStringPropertyList
+     -      -     81  missing-reference  __IOServerConnect
+     -      -      4  missing-reference  _mig_get_reply_port
+
+58 functions: 4 byte-identical, 48 differing, 6 unpaired
+```
+
+0-diff IODeviceMaster getters/setters/lookups: `--name` streams match; leftover
+is call-target / PIC layout, not source. `free` is `raw_equal`. libc/crt and
+paired MIG stubs are not ground (defs stay whole). Extra Darwin MIG:
+`__IOGetByteProperty`, `__IOGetStringPropertyList`,
+`__IOLookUpByStringPropertyList`, `__IOServerConnect`, extra
+`_mig_get_reply_port`.
+
+### Ranked grind set
+
+### `+[IODeviceMaster new]` (diff 6)
+
+Star: PIC displacements only (`_thisTasksId`, `alloc` sel). Source already
+`[self alloc]` + `device_master_self` into `_deviceMasterPort`.
+
+1. Invert `if (thisTasksId == nil)` so the hit path is the taken branch — skipped (would flip Apple's `jnz`). Leftover is PIC. Accepted.
+
+### `-[IODeviceMaster createMachPort:objectNumber:]` (diff 14)
+
+Star: Apple 3-arg `__IOCreateMachPort`; rebuilt `task_self` + `__IOServerConnect`.
+
+1. Expose `_IOCreateMachPort` as a local-TU wrapper around `_IOServerConnect(..., task_self(), ...)` and call it from `createMachPort:` — **kept** (0-diff, 13 vs 13; call-target leftover)
+
+### `_main` (diff 86)
+
+Star: invented `ParallelPort%d` / `deviceName[80]` / `argc < 2`; Apple
+`count=1` once, `add ebx, 5` lookup (`ppN`), `bzero(path, 0Ah)`, no `_strlen`.
+
+1. SCSI Tape shape: global `char path[10]`, `argv[argc-1]` `Instance=` + `atoi`,
+   lookup `path+5`, `IOMajorDevice` / `IOMinorDevice`, `unlink` / `umask` /
+   `mknod 0x21b6` — **kept** (diff 86→46, 191→182 insns, `sub esp, 60h`)
+2. `unsigned int instanceNum` so `cmp edi, 9` uses `jbe` not `jle` — **kept** (mnemonic matches; leftover is PIC `3AEEh` vs `32BEh`)
+
+Skipped: invented temps to pick PIC slots; dummy stack; `-lDriver`; renaming the binary; subsetting defs.
+
+### Final `--list`
+
+Rebuilt 137008 bytes, SHA-256
+`1FF88BC974C510B33ECB748E8757630C268A4D2A2818D693AA3ADC9D38F23F69`.
+Reloc SHA still `F31C01A0…`. RemovePPDev SHA still `BE525C85…`
+(`--list` 12 identical / 3 differing / 0 unpaired, `_main` accepted).
+
+```
+  diff    ref    new  flags       name
+
+     0     13     13              -[IODeviceMaster createMachPort:objectNumber:]
+     0      6      6  identical   -[IODeviceMaster free]
+     0     15     15              -[IODeviceMaster lookUpByDeviceName:objectNumber:deviceKind:]
+     0     15     15  identical   -[IODeviceMaster lookUpByObjectNumber:deviceKind:deviceName:]
+     0     17     17              -[IODeviceMaster setCharValues:forParameter:objectNumber:count:]
+     0     17     17              -[IODeviceMaster setIntValues:forParameter:objectNumber:count:]
+     0      1      1              __dyld_func_lookup
+     0      2      2              dyld_stub_binding_helper
+     0     12     12  identical   start
+     1     19     19              -[IODeviceMaster getCharValues:forParameter:objectNumber:count:]
+     1     15     15              __call_mod_init_funcs
+     1      4      4              __objcInit
+     1      4      4              _atoi
+     1      4      4              _bcopy
+     1      4      4              _bzero
+     1      4      4              _device_master_self
+     1      4      4              _exit
+     1      4      4              _mig_dealloc_reply_port
+     1      4      4              _mig_get_reply_port
+     1      4      4              _mknod
+     1      4      4              _msg_rpc
+     1      4      4              _objc_msgSend
+     1      4      4              _printf
+     1      4      4              _sprintf
+     1      4      4              _strncmp
+     1      4      4              _umask
+     1      4      4              _unlink
+     2     14     14              __dyld_init_check
+     6     23     23              +[IODeviceMaster new]
+    17     67     67              __start
+    27     56     59              __PMRestoreDefaults
+    29     61     64              __IOMapEISADevicePorts
+    29     61     64              __IOUnMapEISADevicePorts
+    29     70     71              __PMGetPowerEvent
+    29     76     77              __PMGetPowerStatus
+    31     66     69              __PMSetPowerManagement
+    31     66     69              __PMSetPowerState
+    46    101    102              __IOMapEISADeviceMemory
+    46    182    182              _main
+    56     82     89              __IOProbeDriver
+    56     82     89              __IOUnloadDriver
+    63    100    108              __IOSetIntValues
+    65     75     19              __IOCreateMachPort
+    72    111    116              __IOGetDriverConfig
+    72     93    104              __IOLookupByDeviceName
+    72     92    103              __IOLookupByObjectNumber
+    73    101    107              __IOSetCharValues
+    74    108    110              __IOGetSystemConfig
+    94    136    142              __IOGetCharValues
+    99    135    142              __IOGetIntValues
+   134    172    178              __IOCallDeviceMethod
+   213    229    245              __IOGetEISADeviceConfig
+     -      -     19  missing-reference  -[IODeviceMaster getCharValues:forParameter:objectNumber:count:]
+     -     19      -  missing-rebuilt  -[IODeviceMaster getIntValues:forParameter:objectNumber:count:]
+     -      -    144  missing-reference  __IOGetByteProperty
+     -      -    144  missing-reference  __IOGetStringPropertyList
+     -      -    138  missing-reference  __IOLookUpByStringPropertyList
+     -      -     81  missing-reference  __IOServerConnect
+     -      -      4  missing-reference  _mig_get_reply_port
+
+59 functions: 3 byte-identical, 49 differing, 7 unpaired
+```
+
+`_main` accepted (PIC leftover). `createMachPort:` 0-diff, accepted call-target.
+`+[IODeviceMaster new]` accepted PIC. `__IOCreateMachPort` paired as a 19-insn
+wrapper vs Apple's 75-insn MIG stub; accepted, reviewer Pat Raynor.
+`getIntValues:` / extra `getCharValues:` are IDA name-pairing of near-identical
+bodies (`--name` streams still match). Darwin extras stay unpaired.

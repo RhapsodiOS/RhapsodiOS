@@ -1,0 +1,249 @@
+{
+  "entries": [
+    {
+      "address": 15072,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA-only profile; Ghidra and angr disabled for InstallPPDev"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_main"
+      ],
+      "reason": "reconstructed against Apple 564-byte _main: PROGRAM_NAME Error initializing parallel port driver, global char path[10], argv[argc-1] Instance= + atoi, count=1 once, lookUpByDeviceName path+5 (ppN), IOMajorDevice / IOMinorDevice, unlink ENOENT, umask 0, mknod 0x21b6. Leftover after exhausted source-shape list is gcc 2.x PIC displacements (3AEEh vs 32BEh, selector slots, path GOT). Same CFG, calls, constants, jbe after unsigned instanceNum. Reviewer Pat Raynor.",
+      "reviewer": "Pat Raynor",
+      "size": 564,
+      "source_line": 17,
+      "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PreLoad.tproj/InstallPPDev.m",
+      "status": "intentional-mismatch"
+    },
+    {
+      "address": 15636,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA-only profile; Ghidra and angr disabled for InstallPPDev"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "+[IODeviceMaster new]"
+      ],
+      "reason": "libDriver-shaped [self alloc] + device_master_self into _deviceMasterPort. Leftover is PIC thisTasksId / alloc-sel displacements. Reviewer Pat Raynor.",
+      "reviewer": "Pat Raynor",
+      "size": 72,
+      "source_line": 53,
+      "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PreLoad.tproj/IODeviceMaster.m",
+      "status": "intentional-mismatch"
+    },
+    {
+      "address": 15708,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA-only profile; Ghidra and angr disabled for InstallPPDev"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[IODeviceMaster free]"
+      ],
+      "reason": "raw_equal return-self.",
+      "reviewer": "Pat Raynor",
+      "size": 10,
+      "source_line": 62,
+      "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PreLoad.tproj/IODeviceMaster.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 15720,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA-only profile; Ghidra and angr disabled for InstallPPDev"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[IODeviceMaster lookUpByObjectNumber:deviceKind:deviceName:]"
+      ],
+      "reason": "--list identical.",
+      "reviewer": "Pat Raynor",
+      "size": 31,
+      "source_line": 67,
+      "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PreLoad.tproj/IODeviceMaster.m",
+      "status": "assembly-matched"
+    },
+    {
+      "address": 15752,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA-only profile; Ghidra and angr disabled for InstallPPDev"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[IODeviceMaster lookUpByDeviceName:objectNumber:deviceKind:]"
+      ],
+      "reason": "compiler-shaped leftover after exhausted source-shape list: 0 insn-diff, call-target / PIC layout. Reviewer Pat Raynor.",
+      "reviewer": "Pat Raynor",
+      "size": 31,
+      "source_line": 77,
+      "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PreLoad.tproj/IODeviceMaster.m",
+      "status": "intentional-mismatch"
+    },
+    {
+      "address": 15784,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA-only profile; Ghidra and angr disabled for InstallPPDev"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[IODeviceMaster getIntValues:forParameter:objectNumber:count:]"
+      ],
+      "reason": "compiler-shaped leftover after exhausted source-shape list: --name streams match __IOGetIntValues; IDA name-pairs a second getCharValues copy as missing-rebuilt. Reviewer Pat Raynor.",
+      "reviewer": "Pat Raynor",
+      "size": 38,
+      "source_line": 87,
+      "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PreLoad.tproj/IODeviceMaster.m",
+      "status": "intentional-mismatch"
+    },
+    {
+      "address": 15824,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA-only profile; Ghidra and angr disabled for InstallPPDev"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[IODeviceMaster getCharValues:forParameter:objectNumber:count:]"
+      ],
+      "reason": "compiler-shaped leftover after exhausted source-shape list: --name streams match; 1-diff is call-target. Reviewer Pat Raynor.",
+      "reviewer": "Pat Raynor",
+      "size": 38,
+      "source_line": 100,
+      "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PreLoad.tproj/IODeviceMaster.m",
+      "status": "intentional-mismatch"
+    },
+    {
+      "address": 15864,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA-only profile; Ghidra and angr disabled for InstallPPDev"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[IODeviceMaster setIntValues:forParameter:objectNumber:count:]"
+      ],
+      "reason": "compiler-shaped leftover after exhausted source-shape list: 0 insn-diff, call-target / PIC layout. Reviewer Pat Raynor.",
+      "reviewer": "Pat Raynor",
+      "size": 35,
+      "source_line": 113,
+      "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PreLoad.tproj/IODeviceMaster.m",
+      "status": "intentional-mismatch"
+    },
+    {
+      "address": 15900,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA-only profile; Ghidra and angr disabled for InstallPPDev"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[IODeviceMaster setCharValues:forParameter:objectNumber:count:]"
+      ],
+      "reason": "compiler-shaped leftover after exhausted source-shape list: 0 insn-diff, call-target / PIC layout. Reviewer Pat Raynor.",
+      "reviewer": "Pat Raynor",
+      "size": 35,
+      "source_line": 125,
+      "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PreLoad.tproj/IODeviceMaster.m",
+      "status": "intentional-mismatch"
+    },
+    {
+      "address": 15936,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA-only profile; Ghidra and angr disabled for InstallPPDev"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "-[IODeviceMaster createMachPort:objectNumber:]"
+      ],
+      "reason": "3-arg _IOCreateMachPort wrapper call matches Apple insn stream (13 vs 13). Leftover is call-target bytes. Reviewer Pat Raynor.",
+      "reviewer": "Pat Raynor",
+      "size": 27,
+      "source_line": 137,
+      "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PreLoad.tproj/IODeviceMaster.m",
+      "status": "intentional-mismatch"
+    },
+    {
+      "address": 23164,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA-only profile; Ghidra and angr disabled for InstallPPDev"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "__IOCreateMachPort"
+      ],
+      "reason": "local-TU wrapper around Darwin _IOServerConnect(task_self) so the nlist name pairs. Cannot match Apple 75-insn MIG stub without -lDriver or subsetting defs. Reviewer Pat Raynor.",
+      "reviewer": "Pat Raynor",
+      "size": 223,
+      "source_line": 45,
+      "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PreLoad.tproj/IODeviceMaster.m",
+      "status": "intentional-mismatch"
+    }
+  ],
+  "rebuilt_sha256": "1FF88BC974C510B33ECB748E8757630C268A4D2A2818D693AA3ADC9D38F23F69",
+  "reference_sha256": "3B0EECB6934DA0717985C59B2457DE5CD99E4A547E6D8BB074FD05EE63CD9AE5",
+  "schema_version": "ledger-v1"
+}

@@ -1,9 +1,11 @@
 # Host-built IA32 UEFI loader.  Not part of the Rhapsody guest build, and
 # deliberately not listed in src/Manifest.
 
-LLVM_BIN ?= /opt/homebrew/opt/llvm/bin
-CC       := $(LLVM_BIN)/clang
-LINK     := $(LLVM_BIN)/lld-link
+# Homebrew ships lld as a SEPARATE formula from llvm, and the prefix differs
+# between Apple Silicon (/opt/homebrew) and Intel (/usr/local).  Resolve both
+# from PATH by default; override either variable to pin a specific install.
+CC       ?= clang
+LINK     ?= lld-link
 
 BUILD    := BUILD
 BOOT2    := ../boot-2/i386

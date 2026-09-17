@@ -1679,3 +1679,14 @@ stream exactly.
 - `intentional-mismatch` - a named residual remains: `_GetIRQFromBoard`, `_MouseIntHandler` and
   `setIntValues:forParameter:count:` for the register-allocation differences described above,
   plus the two build-generated glue methods, which keep task 11's reviewer.
+
+## Phase 1 baseline
+
+2026-09-16 guest rebuild of the current tree, no `BusMouse.m` edits. Guest
+log: `=== input-recon done fail=0 built: drvBusMouse ===` (`make exit=0`).
+Staged unstripped `BusMouse_reloc` is **99112** bytes, SHA-256
+`5DC76B2EF94D3C24A8DBEAB4D1B7307B7A70C66D4A02ED0D3AB0448C48429A38`.
+`parity_check.py`: `missing_strings` **0**, `missing_symbols` **0**,
+`extra_strings` **0**, `extra_symbols` **17**. `__TEXT,__text` is 1584;
+`__TEXT,__const` is still absent. This `_reloc` is not kept as the campaign
+result; `rebuilt_sha256` is unchanged. See `function-worklist.md`.

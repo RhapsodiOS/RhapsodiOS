@@ -45,16 +45,16 @@ network
  * drvVMwareVMXNet - complete
 
 scsi
- (see docs/drivers/scsi-reconstruction.md - four of these are stubs on the
-  wrong hardware model, not partial reconstructions)
- * drvAdaptec6X60 - stub on the wrong architecture; reconstruction in progress
+ (see docs/drivers/scsi-reconstruction.md — two complete, three reconstructed
+  and guest-compiled but untested, two stubs)
+ * drvAdaptec6X60 - reconstructed against the reference binary, compiled; not hardware-tested
  * drvAdaptec1542B - reconstructed against the reference binary, no divergences; not yet compiled
  * drvAdaptec2940 - stub, 10/170 reference functions; missing the whole SCSIBus class
  * drvAMDPCSCSIDriver - complete
  * drvBusLogic - reconstructed against the reference binary, fixes applied; not yet compiled
  * drvBusLogicFP - stub, 7/123 reference functions
  * drvDPT2000 - reconstructed against the reference binary, compiled on the ppc rbuild guest; not hardware-tested
- * drvSym53C8xx - stub, 12/158 reference functions; reference is a 136-function CAM/SIM
+ * drvSym53C8xx - reconstructed against the reference binary, compiled; not hardware-tested
 
 sound
  * drvBeepSound - compiles; reconstructed against the reference binary, fixes applied, not yet tested
@@ -68,8 +68,8 @@ video
  * drv3DfxVoodooVSA - needs compiled and then tested
  * drvATIMach64
  * drvATIRage
- * drvCirrusLogicGD5434 - builds and links against the reference binary, 17/21 functions byte-identical, no version bundle emitted yet; not yet tested
- * drvIBMThinkPad760EDDisplay - reconstructed in part, last verified build at fd0e7355; 29 of the driver's functions compile and produce a `_reloc`, but only 17 match the reference and `vidBIOS.m`/`_emu486` remain deferred to drvVGA; not yet tested
+ * drvCirrusLogicGD5434 - builds and links against the reference binary, 19/21 functions byte-identical, apple-generic version bundle present, SGS VERS_STRING/VERS_NUM unmet, setMode: and setPCIConfiguration unmatched; not hardware-tested
+ * drvIBMThinkPad760EDDisplay - reconstructed against the reference binary, built, ledger advanced; not hardware-tested
  * drvMatroxMGA - complete
  * drvNVidiaRiva - needs compiled and then tested
  * drvS3Generic - complete

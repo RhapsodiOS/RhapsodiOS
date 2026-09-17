@@ -28,22 +28,27 @@ typedef enum {
 
 /*
  * Command struct passed from exported methods (executeRequest and
- * resetSCSIBus) to the I/O thread. This struct is passed via commandQ.
+ * resetSCSIBus) to the I/O thread.
  */
 typedef struct {
-	AIC6X60Op	op;		// AO_Execute, etc.
-
-	/*
-	 * The following 3 fields are only valid if op == AO_Execute.
-	 */
-	IOSCSIRequest	*scsiReq;
-	void		*buffer;
-	vm_task_t	client;
-
-	sc_status_t	result;		// status upon completion
-	NXConditionLock	*cmdLock;	// client waits on this
-	queue_chain_t	link;		// for enqueueing on commandQ
+	AIC6X60Op	op;		/* +0x00 */
+	IOSCSIRequest	*scsiReq;	/* +0x04 */
+	void		*buffer;	/* +0x08 */
+	vm_task_t	client;		/* +0x0c */
+	unsigned int	_reserved0;	/* +0x10 */
+	unsigned int	_reserved1;	/* +0x14 */
+	sc_status_t	result;		/* +0x18 */
+	NXConditionLock	*cmdLock;	/* +0x1c */
+	queue_chain_t	link;		/* +0x20 */
 } AIC6X60CommandBuf;
+
+typedef struct {
+	msg_header_t		header;
+	unsigned int		unused;
+	AIC6X60CommandBuf	*cmdBuf;
+} AIC6X60ThreadMsg;
+
+#define HIM_MESSAGE_ID		0x232343	/* receiveMsg cmp to this */
 
 /*
  * Condition variable states for AIC6X60CommandBuf.cmdLock.
@@ -74,37 +79,9 @@ typedef struct {
 
 
 /*
- * Public low-level routines in AIC6X60Routines.m.
- */
-extern void aic_reset_board(unsigned short base,
-	unsigned char 	aic_board_id);
-boolean_t aic_setup_mb_area(unsigned short base,
-	struct aic_mb_area *aic_mb_area,
-	struct ccb 	*aic_ccb);
-extern void aic_start_scsi(unsigned short base);
-extern void aic_unlock_mb(unsigned short base);
-extern boolean_t aic_cmd(unsigned short	base,
-	unsigned char	cmd,
-	unsigned char	*args,
-	int		arglen,
-	unsigned char	*reply,
-	int		replylen,
-	boolean_t	polled
-);
-extern boolean_t aic_probe_cmd(
-	unsigned short	base,
-	unsigned char	cmd,
-	unsigned char	*args,
-	int		arglen,
-	unsigned char	*reply,
-	int		replylen,
-	boolean_t	polled
-);
-
-/*
- * Block transfer primitives in AIC6X60Routines.m.  Each moves "count"
- * items of the named width to or from the single port "port"; the
- * count is an item count, not a byte count.
+ * Block transfer primitives. Each moves "count" items of the named
+ * width to or from the single port "port"; the count is an item
+ * count, not a byte count. Definition sites move to the sequencer.
  */
 extern int repinsb(IOEISAPortAddress port, unsigned char *addr, int count);
 extern int repinsw(IOEISAPortAddress port, unsigned short *addr, int count);
@@ -112,4 +89,3 @@ extern int repinsd(IOEISAPortAddress port, unsigned long *addr, int count);
 extern int repoutsb(IOEISAPortAddress port, unsigned char *addr, int count);
 extern int repoutsw(IOEISAPortAddress port, unsigned short *addr, int count);
 extern int repoutsd(IOEISAPortAddress port, unsigned long *addr, int count);
-

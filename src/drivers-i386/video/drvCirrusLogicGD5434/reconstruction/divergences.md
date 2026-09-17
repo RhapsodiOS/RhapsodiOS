@@ -18,11 +18,15 @@ The Mach-O header carries `cpu_type = 7` (i386), `cpu_subtype = 3` (`CPU_SUBTYPE
 `__TEXT,__text` is 4388 bytes at address 0.
 
 **Every one of the 19 hand-written functions has now been examined against our
-source, and 17 of the binary's 21 are byte-for-byte identical to the reference
+source, and 19 of the binary's 21 are byte-for-byte identical to the reference
 under relocation masking** — see "Per-function findings" and "Build and parity"
-below. That was not true when this report was first written, and the next three
-paragraphs describe the pre-rewrite state; they are retained because the
-`mapped`/`unmapped` history below is unreadable without them.
+below. That was not true when this report was first written, and the three
+paragraphs after the rebuilt SHA describe the pre-rewrite state; they are
+retained because the `mapped`/`unmapped` history below is unreadable without
+them.
+
+Rebuilt `$REBUILT` from the Task 8 clean-tree guest rebuild is 160912 bytes,
+SHA-256 `D8FB7EE758197E6CD3A9DF686D0F16723D22DA9A970930854A5DB2FA574F468C`.
 
 **At the report pass, no function had been examined against our source, because
 our source implemented none of the reference's behaviour.** Our
@@ -1158,7 +1162,7 @@ arrives through the argument.
 {
     if (mode < 0 || mode >= self->modeTableCount)
         return NO;
-    if (self->modeTable[mode].memorySize > self->installedVRAMBytes)
+    if (self->installedVRAMBytes < self->modeTable[mode].memorySize)
         return NO;
     if (self->modeTable[mode].width > 1024 &&
         self->installedVRAMBytes <= 0x1FFFFF)
@@ -1566,28 +1570,38 @@ is `local` on both sides, so the `static` on it in `ProgramDAC.m` is correct, an
 `defaultMode`/`modeTableCount` scalars are `external` on both sides.
 
 Going past what `parity_check.py` can see, all 21 `__TEXT,__text` functions were
-disassembled and compared against the reference individually. **17 of 21 are
+disassembled and compared against the reference individually. **19 of 21 are
 byte-for-byte identical** once 32-bit relocation operands are masked — necessarily
-masked, because of the `__TEXT,__const` inversion above. `__TEXT,__text` is 4348
-bytes against the reference's 4388, and the whole 40-byte difference is accounted
-for by four functions:
+masked, because of the `__TEXT,__const` inversion above. After replacing the
+`"Bus Type"` `strncmp` with `strcmp` (see Task 1 result below), `__TEXT,__text`
+is 4404 bytes against the reference's 4388, and the remaining 16-byte difference
+is accounted for by two functions (`setMode:` 12 bytes smaller, `setPCIConfiguration`
+28 bytes larger). `determineConfiguration` was the eighteenth to close, in Task 4;
+`setPendingDisplayMode:` was the nineteenth, in Task 6. The two above them are
+the ones that remain:
 
 | Function | Ref | Rebuilt | Nature of the difference |
 | --- | --- | --- | --- |
-| `setMode:` | 1020 | 1008 | Identical branch structure and an identical port-I/O sequence of 67 `in`/`out` instructions. gcc strength-reduced the register loops to a walking pointer in the reference where our build uses indexed addressing. |
-| `setPendingDisplayMode:` | 140 | 140 | Same size, same branches, same call target. The `memorySize` test is `cmp memorySize, installedVRAM / ja` in the reference and the operand-reversed `cmp installedVRAM, memorySize / jb` here — the same predicate — and one fewer callee-saved register is spilled. |
-| `setPCIConfiguration` | 584 | 612 | The same 19 calls — 15 `_objc_msgSend` and 4 `_IOLog` — but reordered by block placement, not in the same order. The "Incorrect number of address ranges" error block is out of line at the end in the reference and inline here, which moves the `_IOLog` calls from reference positions 4, 11, 14, 16 to 4, 10, 13, 16 and pushes two `_objc_msgSend` calls one slot later (reference 10 and 13 against 11 and 14 here); the reference has 11 branch instructions to our 12. Also `IORange range[3]` is at `ebp-0x18` in the reference against `ebp-0x118` here, i.e. the two locals are assigned to the frame in the opposite order. |
-| `determineConfiguration` | 768 | 712 | The one genuine divergence. See below. |
+| `setMode:` | 1020 | 1008 | Identical branch structure and an identical port-I/O sequence of 67 `in`/`out` instructions. gcc strength-reduced the register loops to a walking pointer in the reference where our build uses indexed addressing. Task 5 exhausted spec §7.2 without a `MATCH`; see the Task 5 result below. The source is still the indexed `for` loops. |
+| `setPendingDisplayMode:` | 140 | 140 | **Byte-for-byte identical after Task 6.** Spec §7.3 experiment 1 — `if (installedVRAMBytes < modeTable[mode].memorySize)` — closed the operand-reversed `cmp`. Now `assembly-matched`. |
+| `setPCIConfiguration` | 584 | 612 | The same 19 calls — 15 `_objc_msgSend` and 4 `_IOLog` — but reordered by block placement, not in the same order. The "Incorrect number of address ranges" error block is out of line at the end in the reference and inline here, which moves the `_IOLog` calls from reference positions 4, 11, 14, 16 to 4, 10, 13, 16 and pushes two `_objc_msgSend` calls one slot later (reference 10 and 13 against 11 and 14 here); the reference has 11 branch instructions to our 12. Also `IORange range[3]` is at `ebp-0x18` in the reference against `ebp-0x118` here, i.e. the two locals are assigned to the frame in the opposite order. Task 7 exhausted the frame-shape campaign without a `MATCH`; see the Task 7 result below. The source is still `IOPCIConfigSpace` then `IORange range[3]`, with indexed `for` copies and an early return on `rangeCount != 3`. |
+| `determineConfiguration` | 768 | 768 | **Byte-for-byte identical after Task 4.** See the Task 4 result below: an `unsigned int` local for the `chipType` range tests, an `IOConfigTable *` local for the `"Bus Type"` test, and the `memorySize > installedVRAMBytes` operand order together closed it. Now `assembly-matched`. |
 
-**`determineConfiguration` is the only function whose control flow does not
-match.** Two things differ. First, the reference expands the `"Bus Type"`
-`strncmp` inline as a `repe cmpsb` sequence while our build emits `call
-_strncmp`, so the ordered call-target lists differ by one entry — 7 calls in the
-reference against 8 here. Second, the two `chipType` range tests are signed here
+**`determineConfiguration` still does not match byte for byte.** *(Superseded by
+the Task 4 result below, which closed this function. The reading of the two
+divergences recorded here was correct; what follows is the state after Task 1.)*
+Before the `strcmp` edit, two things differed. First, the reference expands the `"Bus Type"`
+test inline as a `repe cmpsb` sequence while our build emitted `call
+_strncmp`, so the ordered call-target lists differed by one entry — 7 calls in the
+reference against 8 here. That call is gone: the source now uses `strcmp`, the
+rebuilt extent has no `_strncmp` relocation, and the seven pc-relative call
+targets are `_objc_msgSend`, `_IOLog`, `_objc_msgSend`, `_IOLog`, then three
+`_objc_msgSend`. Second, the two `chipType` range tests are signed here
 and unsigned in the reference: `cmp ecx, 1 / ja` and `cmp ecx, 4 / ja` at 1147
 and 1184 in the reference against `cmp dword [esi+0x258], 1 / jg` and
 `cmp dword [esi+0x258], 4 / jg` at 1135 and 1176 here. That is the whole of the
-signedness divergence, and it is confined to those two branches.
+signedness divergence, and it is confined to those two branches. The extent
+gap that remains is those `ja`/`jg` tests plus block placement.
 
 The two other comparisons in this function that might look related are not
 divergences of that kind. The `cmp dword [reg+0x228], 0x1fffff` guard is `ja` on
@@ -1691,6 +1705,17 @@ the block placement and the two `ja`/`jg` tests already recorded above, and
 closing it is a separate question. Confidence: **high** — the diagnosis rests on
 a corpus-wide numeric regularity, not on a single reading.
 
+**Task 1 result.** `strcmp` is in source at the `"Bus Type"` test
+(`CirrusLogicGD5434DisplayDriver.m:1077`). The rebuilt `determineConfiguration`
+extent no longer relocates `_strncmp`; the pc-relative call list is seven
+entries and matches the reference's mix of `_objc_msgSend` and `_IOLog`. The
+function is still `DIFF` under masked compare (768 vs 768): the remaining gap
+is the `ja`/`jg` `chipType` tests plus block placement. It is **not**
+assembly-matched. `failed_matched` stayed 0; the other three campaign functions
+are unchanged `DIFF`. The 56-byte size gap closed even though the 21-byte
+call-vs-inline estimate predicted it would not; the leftover mismatch is still
+not a missing `_strncmp`.
+
 Note also `test al, 0` at +476. It is a two-byte no-op emitted by the
 `cmpstrqi_1` pattern between `cld` and the string op; it carries no meaning for
 the source and should not be read as part of the comparison.
@@ -1713,52 +1738,409 @@ taking the function from 14 conditional branches to 15 and moving it *away* from
 the reference's block shape. The change was reverted; the restored build is
 byte-identical to the pre-experiment build across all 21 functions. The `ja`
 against `jg` divergence is therefore not reachable from the ivar's declared type
-and not from a `switch`, and is left as it stands. Do not repeat either attempt.
+and not from a `switch`. Do not repeat either attempt — but the divergence *is*
+reachable from a local, which is what Task 4 below found.
+
+### Task 4 result — `determineConfiguration` is closed
+
+**The function is now byte-for-byte identical to the reference** under 32-bit
+relocation masking: `compare_cirrus.py` reports `MATCH` at 768 against 768 and a
+byte-level diff of the masked extent reports no differing offsets.
+`failed_matched` stayed 0 and the 17 previously matched functions are unchanged.
+The ledger entry at 892 is `assembly-matched`.
+
+Three source changes were needed, all inside `-determineConfiguration`, and none
+of them touches the `chipType` ivar's declared type:
+
+```c
+    IOConfigTable *configTable;
+    const char *chipName;
+    unsigned int kind;
+    int i;
+    ...
+    kind = chipType;
+    if (kind <= 1) {
+	...GD5434...
+    } else if (kind <= 4) {
+	...GD5446...
+    }
+    ...
+    configTable = [[self deviceDescription] configTable];
+    if (strcmp([configTable valueForStringKey:"Bus Type"], "PCI") == 0)
+    ...
+	if (modeTable[i].memorySize > installedVRAMBytes)
+```
+
+1. **`unsigned int kind`, assigned from `chipType` after the `switch`.** This is
+   what turns the two `jg` into `ja`. It also makes gcc load the ivar once into
+   `ecx` and compare the register — `mov ecx, [edx+0x258]` / `cmp ecx, 1` / `ja`
+   and `cmp ecx, 4` / `ja` — which is exactly the reference's shape, and which
+   reading the ivar's memory operand twice never produced. The ivar stays
+   `int chipType` (`'i'` in `__OBJC,__instance_vars`), so the section that was
+   already identical stays identical. The `switch` still assigns `chipType`
+   directly; `kind` is a read-side temporary only.
+2. **`IOConfigTable *configTable`, hoisted out of the `strcmp` line.** With the
+   three message sends nested in the `if`, the extra live value from `kind`
+   raised register pressure enough that gcc hoisted the `push "Bus Type"` above
+   the `[self deviceDescription]` send and switched `a1`/`8b 55 08` to
+   `8b 15`/`8b 75 08`, perturbing 94 bytes in the +406…+500 window. Hoisting the
+   config table into its own statement restores the reference's order exactly.
+   `strcmp` and the inline `repe cmpsb` are untouched by this — the call-target
+   list stays at seven entries with no `_strncmp`.
+3. **`modeTable[i].memorySize > installedVRAMBytes`**, the operand order of the
+   needs-more-memory test. The reference emits `mov eax, [ecx+edi+0x68]` /
+   `cmp [edx+0x228], eax` / `jae`; `installedVRAMBytes < modeTable[i].memorySize`
+   emits the operand-reversed `mov eax, [edx+0x228]` / `cmp [ecx+edi+0x68], eax`
+   / `jbe`. Both are unsigned and both compute the same predicate — this was
+   already recorded above as "not a signedness question" — but only the first
+   form matches the reference's bytes. **This is the same pattern still open in
+   `setPendingDisplayMode:`**, where the reference is `cmp memorySize, VRAM / ja`
+   against our `cmp VRAM, memorySize / jb`.
+
+   **This swap does not close that function, and Task 4 makes no claim that it
+   does.** The change was made inside `-determineConfiguration` only.
+   `setPendingDisplayMode:` was not touched by Task 4 and still had its own
+   operand-reversed `cmp` after that task; it stayed `control-flow-confirmed`
+   until Task 6. What Task 4 established is only that the pattern is real
+   and that swapping the operands is what fixed it here, which made the same
+   swap the obvious first thing for Task 6 to try — but it had to be built on
+   the guest and compared on that function before anything could be claimed for
+   it. Nothing about `setPendingDisplayMode:` followed from this section by
+   inference. *(Superseded by the Task 6 result below: experiment 1, the
+   reversed C form `installedVRAMBytes < modeTable[mode].memorySize`, matched
+   and the function is now `assembly-matched`.)*
+
+**Experiment log.** Spec §7.1 listed seven candidate shapes for the `chipType`
+tests. Experiment 1 — the assignment wrapped in a bare inner block,
+`{ unsigned int kind = chipType; ... }` — was built on the guest and **got the
+two `ja` right on the first try**, closing offsets +240…+320 completely. It was
+still `DIFF`, but only at three places: the frame size (`83 ec 1c` against the
+reference's `83 ec 18`, with the matching `8d 65 d8`/`8d 65 dc` in the epilogue),
+the +406…+500 `strcmp` window, and the +713…+722 `memorySize` test.
+
+**No §7.1 candidate matched on its own, experiment 1 included.** The two guest
+rebuilds after experiment 1 were not further §7.1 candidates. They were
+same-function source-shape steps inside `-determineConfiguration`, each one
+needed to close residue that introducing the `kind` local had itself created —
+the extra live value raised register pressure, and that is what moved the
+`strcmp` argument pushes and grew the frame. In the order they were built: the
+second rebuild added the `configTable` hoist, which closed the +406…+500
+`strcmp` window and left only the frame size and the one `cmp` operand order;
+the third rebuild moved the declaration out of the bare inner block into the
+function's local block — experiment 4's placement, with the assignment left
+after the `switch` where it belongs, which closed the frame size, because a
+local declared in a bare inner block costs a stack slot the reference's frame
+does not have — and swapped the `memorySize` operands, which closed +713…+722.
+That third rebuild is the one that reported `MATCH`. The result is the sum of the
+three source changes listed above plus getting the declaration's placement right;
+no one of them matches the reference alone.
+
+Experiments 2, 3 and 5 through 7 were therefore never built, and the reason
+matters: **they were skipped because a `MATCH` already existed once those
+same-function steps were in, not because any §7.1 item MATCHed by itself.** By
+that point the comparison form was demonstrably already correct — the two `ja`
+were right from experiment 1 onward — and the remaining residue was not a
+comparison question at all, so there was nothing left for the alternative
+comparison shapes to fix. A later reader should not take the skip as evidence
+that shapes 2, 3 and 5 through 7 were ruled out on their own merits; they were
+never tested.
+
+**What the two locals cost.** The reference `_reloc` is stripped, so nothing about
+its source-level locals can be read from it; the byte equality of the extent is
+the whole of the evidence that this shape is the reference's. The rebuilt objects
+are compiled `-g`, and their stabs confirm the one thing that had to be true for
+the frame to match: both locals are register-allocated and neither takes a stack
+slot. `kind` is `kind:r4`, a register `unsigned int`, and `configTable` is
+`configTable:r282=*167`, a register `IOConfigTable *`. Whether Apple spelled them
+this way is not recoverable. What the reference does fix is that two read-side
+temporaries of these two types were there, that neither was spilled, and that the
+`chipType` ivar itself stayed signed.
+
+### Task 5 result — `setMode:` register-loop campaign exhausted
+
+`setMode:` stays `control-flow-confirmed` at address 2276. No ledger
+transition: none of the five §7.2 shapes produced a `MATCH`. Source is the
+indexed `for` loops that were in HEAD. The 67 `in`/`out` operations were not
+reordered. `setPendingDisplayMode:` and `setPCIConfiguration` were not
+edited. `failed_matched` stayed 0 on every successful rebuild; the 17
+previously matched functions plus glue stayed `MATCH`, and
+`determineConfiguration` stayed `MATCH` at 768.
+
+**Experiment 1 — walking pointers, inner-block `for`.** Replaced the four
+indexed loops with
+
+```c
+    {
+	const unsigned char *p = mode->seq;
+	for (i = 1; i <= 4; i++)
+	    outw(0x3C4, (*p++ << 8) | i);
+    }
+```
+
+and the matching `crtc` / `attr` / `gfx` blocks. Guest rebuild `make exit=0`.
+`compare_cirrus.py`: `DIFF  -[CirrusLogicGD5434DisplayDriver setMode:] ref 1020 reb 1008`.
+Size gap unchanged. `failed_matched` 0. Reverted.
+
+**Experiment 2 — walking pointers, inner-block `while (i <= N)`.** Same
+pointers as experiment 1, with `i = start; while (i <= N) { ...; i++; }`
+instead of `for` (seq 1..4, crtc 0..24, attr 0..20, gfx 0..8). Guest rebuild
+`make exit=0`. Reloc grew 160912 → 161276.
+`compare_cirrus.py`: `DIFF  -[CirrusLogicGD5434DisplayDriver setMode:] ref 1020 reb 1020`.
+The 12-byte extent gap closed; the masked bytes still differ.
+`failed_matched` 0. Reverted.
+
+**Experiment 3 — indexed `while`, no walking pointer.**
+`i = 1; while (i <= 4) { outw(..., mode->seq[i - 1] ...); i++; }` and the
+analogous indexed `while` for crtc / attr / gfx. Guest rebuild `make exit=0`.
+`compare_cirrus.py`: `DIFF  -[CirrusLogicGD5434DisplayDriver setMode:] ref 1020 reb 1008`.
+Size gap reopened. `failed_matched` 0. Reverted.
+
+**Experiment 4 — one `const unsigned char *p` next to `value` / `i`.**
+Assign `p = mode->seq` (then crtc / attr / gfx) immediately before each
+`for`; walking `*p++`. Guest rebuild `make exit=0`. Reloc back to 160912.
+`compare_cirrus.py`: `DIFF  -[CirrusLogicGD5434DisplayDriver setMode:] ref 1020 reb 1008`.
+`failed_matched` 0. Reverted.
+
+**Experiment 5 — pointer declared immediately before the first loop as a
+statement, no extra inner `{ }`.** `const unsigned char *p = mode->seq;`
+after the video-off `outb`, then `p = mode->crtc` / `attr` / `gfx` before
+the later `for`s. Guest `cc` rejected it: `CirrusLogicGD5434DisplayDriver.m:1197: illegal expression, found \`const\``
+(C89: a declaration after statements, without a new block). `make exit=2`,
+`fail=1`. No reloc to compare. Reverted.
+
+Only experiment 2 closed the 12-byte extent gap, and even then the masked
+stream stayed `DIFF`. Walking `for` (experiments 1 and 4) compiled to the
+same 1008-byte extent as the indexed `for` baseline. Indexed `while`
+(experiment 3) also stayed 1008. The remaining residue is not a `for` /
+`while` or inner-block vs function-scope pointer question that §7.2 can
+reach. Leave `setMode:` at `control-flow-confirmed`. Do not mark it
+`assembly-matched`.
+
+### Task 6 result — `setPendingDisplayMode:` compare shape closed
+
+`setPendingDisplayMode:` is `assembly-matched` at address 3388. Spec §7.3
+experiment 1 matched on the first guest rebuild; experiments 2–5 were not
+built. `setMode:` and `setPCIConfiguration` were not edited.
+`failed_matched` stayed 0. `determineConfiguration` stayed `MATCH` at 768.
+
+**Experiment 1 — reversed compare.** Replaced
+
+```c
+    if (modeTable[mode].memorySize > installedVRAMBytes)
+	return NO;
+```
+
+with
+
+```c
+    if (installedVRAMBytes < modeTable[mode].memorySize)
+	return NO;
+```
+
+Guest rebuild `make exit=0`. `compare_cirrus.py`:
+`MATCH -[CirrusLogicGD5434DisplayDriver setPendingDisplayMode:] ref 140 reb 140`.
+`failed_matched` 0. That is the opposite C operand order from the form that
+closed `determineConfiguration` in Task 4 (`memorySize > installedVRAMBytes`).
+Here gcc needed `installedVRAMBytes < memorySize` to emit the reference's
+`cmp memorySize, VRAM / ja` rather than `cmp VRAM, memorySize / jb`.
+
+Experiments 2–5 (`needed` local, top-of-function `needed`, negated `<=`,
+`needed` plus reversed compare) were skipped because a `MATCH` already
+existed.
+
+### Task 7 result — `setPCIConfiguration` frame shape exhausted
+
+`setPCIConfiguration` stays `control-flow-confirmed` at address 1692. No
+ledger transition: none of the four built shapes produced a `MATCH`.
+Experiment 5 was skipped because experiment 2 already tried the trailing
+else-`IOLog`. Source is the `IOPCIConfigSpace configSpace;` then
+`IORange range[3];` locals and the indexed `for` copy loops that were in
+HEAD. `setMode:` is still the indexed `for` loops.
+`setPendingDisplayMode:` is still
+`installedVRAMBytes < modeTable[mode].memorySize`.
+`determineConfiguration` extras were not edited. `failed_matched` stayed 0
+on every successful rebuild; the previously matched functions plus glue
+stayed `MATCH`, `determineConfiguration` stayed `MATCH` at 768, and
+`setPendingDisplayMode:` stayed `MATCH` at 140.
+
+**Experiment 1 — swap the two locals.** `IORange range[3];` declared
+before `IOPCIConfigSpace configSpace;`. Guest rebuild `make exit=0`.
+`compare_cirrus.py`:
+`DIFF  -[CirrusLogicGD5434DisplayDriver setPCIConfiguration] ref 584 reb 588`.
+The 28-byte extent gap narrowed to 4 bytes; the masked stream stayed
+`DIFF`. `failed_matched` 0. Reverted (`IOPCIConfigSpace configSpace;`
+before `IORange range[3];`).
+
+**Experiment 2 — trailing else-`IOLog` inside the
+`isValidPCIAssignedBaseAddress:` guard.** Replaced the early
+`if (rangeCount != 3) { IOLog ...; return NO; }` with
+`if (rangeCount == 3) { existing success body } else { IOLog Incorrect
+number...; return NO; }`. Guest rebuild `make exit=0`.
+`compare_cirrus.py`:
+`DIFF  -[CirrusLogicGD5434DisplayDriver setPCIConfiguration] ref 584 reb 608`.
+`failed_matched` 0. Reverted.
+
+**Experiment 3 — both copy loops as `while`.**
+`i = 0; while (i < rangeCount) { range[i] = rangeList[i]; i++; }` on
+both copies. Experiment 1 stayed reverted. Guest rebuild `make exit=0`.
+Reloc grew 160912 → 160960.
+`compare_cirrus.py`:
+`DIFF  -[CirrusLogicGD5434DisplayDriver setPCIConfiguration] ref 584 reb 612`.
+`failed_matched` 0. Reverted.
+
+**Experiment 4 — `while` on the first copy only.** Second copy stayed
+`for`. Guest rebuild `make exit=0`. Reloc 160936.
+`compare_cirrus.py`:
+`DIFF  -[CirrusLogicGD5434DisplayDriver setPCIConfiguration] ref 584 reb 612`.
+`failed_matched` 0. Reverted.
+
+**Experiment 5 — skipped.** Experiment 2 already built the trailing
+else-`IOLog`.
+
+Only experiment 1 closed most of the extent gap (612 → 588), and even
+then the masked stream stayed `DIFF`. The `rangeCount == 3` / trailing
+else shape (experiment 2) landed at 608. Both-`while` and first-copy
+`while` (experiments 3 and 4) rebuilt at 612, the same size as the
+indexed-`for` baseline. The remaining residue is not a local-order,
+trailing-else, or `for`/`while` copy-loop question that this campaign
+can reach. Leave `setPCIConfiguration` at `control-flow-confirmed`. Do
+not mark it `assembly-matched`.
 
 Two further gaps, neither of them in the driver source:
 
-- The build prints `WARNING: no CirrusLogicGD5434DisplayDriver version bundle
-  produced`. Apple's `.config` directory carries a 16728-byte
-  `CirrusLogicGD5434DisplayDriver` alongside the reloc; our build produces only
-  the reloc.
-- Correspondingly, `_CirrusLogicGD5434DisplayDriver_VERS_STRING` (160 bytes) and
-  `_..._VERS_NUM` (4 bytes) are absent from the rebuilt `__TEXT,__const`, which
-  is 2392 bytes against the reference's 2562 — a 170-byte difference that is
-  exactly those two symbols plus their padding.
+- The build still printed `WARNING: no CirrusLogicGD5434DisplayDriver version bundle
+  produced` through Task 2. Apple's `.config` directory carries a 16728-byte
+  `CirrusLogicGD5434DisplayDriver` alongside the reloc.
+- `_CirrusLogicGD5434DisplayDriver_VERS_STRING` and `_..._VERS_NUM` were still
+  absent from the rebuilt nlist after Task 2. The 170-byte `__TEXT,__const`
+  shortfall (2392 vs the reference's 2562) is still those two symbols plus
+  padding. The spec gate for those SGS-named symbols on the `_reloc` remains
+  unmet after Task 3; see the Task 3 result below.
 
-**The missing version symbols are an unexplained build-configuration gap, not an
-expected omission.** It is tempting to wave them away as build-generated content
-encoding a 1998 host and timestamp, but that reasoning is self-contradictory: if
-they are build-generated, *our* build should have generated its own pair with a
-2026 timestamp. It generated neither, and emitted no version bundle at all. The
-version-file step is simply not running. Two things follow. First,
-`parity_check.py` cannot detect this and its green result is narrower than it
-looks — `parity_check.py:13-14` scope it to `__TEXT,__cstring` and
-`__TEXT,__text` and the symbol comparison at `parity_check.py:33` filters on the
-text section, so `__TEXT,__const` is outside what it inspects at all. Second, the
-runtime impact is low, because neither symbol is referenced by any function in
-either binary. The gap will recur identically on the ThinkPad 760ED track, which
-uses the same project machinery, and should be diagnosed before that track
-starts rather than rediscovered there.
+**Task 2 result.** The Kernel Server `Makefile.postamble` is now exactly
+`OTHER_GENERATED_OFILES += $(VERS_OFILE)`. Guest rebuild `make exit=0`.
+`compare_cirrus.py` `failed_matched` stayed 0. The nlist is still `[]` for
+`VERS`. `$(NAME)_vers.c` was not generated; the lksproj object directory has
+`CirrusLogicGD5434DisplayDriver.o`, `ProgramDAC.o` and
+`CirrusLogicGD5434DisplayDriver_instance.o` only.
+
+`gnumake -p` on the guest shows `VERSIONING_SYSTEM = next-sgs` and
+`OTHER_GENERATED_OFILES = $(INSTANCE_OBJFILE) $(VERS_OFILE)`, but no
+`VERS_OFILE =` assignment. `/System/Developer/Makefiles/VersioningSystems`
+contains `apple-generic.make` and `next-cvs.make` only — there is no
+`next-sgs.make`, and `common.make`'s `-include` of that path is silent.
+`$(VERS_OFILE)` therefore expands empty. `VERSIONING_SYSTEM` was not set
+(Task 2 instruction). `driverTools` was not edited. Contents of the version
+symbols, once they exist, may carry a 2026 timestamp; existence is what this
+task was measuring.
+
+Guest log excerpt (Task 2 rebuild):
+
+```
+/usr/bin/kl_ld -o /build/src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434DisplayDriver.config/CirrusLogicGD5434DisplayDriver_reloc -n CirrusLogicGD5434DisplayDriver  -i CirrusLogicGD5434DisplayDriver_instance -l Load_Commands.sect   -arch i386  /build/src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.build/objects-optimized/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/CirrusLogicGD5434DisplayDriver.o /build/src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.build/objects-optimized/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/ProgramDAC.o             /build/src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.build/objects-optimized/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/CirrusLogicGD5434DisplayDriver_instance.o
+make exit=0 for CirrusLogicGD5434DisplayDriver
+WARNING: no CirrusLogicGD5434DisplayDriver version bundle produced
+staged /build/out/i386/drvCirrusLogicGD5434/CirrusLogicGD5434DisplayDriver.config
+```
+
+No `*_vers.o` on the `kl_ld` line. `parity_check.py` still cannot see this
+gap: it scopes to `__TEXT,__cstring` and `__TEXT,__text`. Runtime impact is
+low; neither symbol is referenced by any function in either binary.
+
+**Task 3, first rebuild (Driver-project `VERS_OFILE` only).** The Driver-project
+`Makefile.postamble` is `OTHER_GENERATED_OFILES += $(VERS_OFILE)` with no
+`VERSIONING_SYSTEM` yet. Guest rebuild `make exit=0`. `VERS` nlist still `[]`.
+No `*vers*` files under the driver tree. `kl_ld` is unchanged from Task 2 (no
+`*_vers.o`). Driver-project `driver.make` never ran `ld -bundle`: `LOADABLES`
+is empty when `$(VERS_OFILE)` is unset, so `$(INNER_PRODUCT)` (the MH_BUNDLE
+`CirrusLogicGD5434DisplayDriver`) is not linked.
+
+```
+/usr/bin/kl_ld -o /build/src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434DisplayDriver.config/CirrusLogicGD5434DisplayDriver_reloc -n CirrusLogicGD5434DisplayDriver  -i CirrusLogicGD5434DisplayDriver_instance -l Load_Commands.sect   -arch i386  /build/src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.build/objects-optimized/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/CirrusLogicGD5434DisplayDriver.o /build/src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.build/objects-optimized/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/ProgramDAC.o             /build/src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.build/objects-optimized/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/CirrusLogicGD5434DisplayDriver_instance.o
+make exit=0 for CirrusLogicGD5434DisplayDriver
+WARNING: no CirrusLogicGD5434DisplayDriver version bundle produced
+```
+
+No Driver-project `ld` line appears in the log. `driverTools` was not edited.
+
+**Task 3, `VERSIONING_SYSTEM` retries.** Setting `VERSIONING_SYSTEM` only in
+`Makefile.postamble` is too late: `common.make` already `-include`d
+`$(VERSIONING_SYSTEM).make` (missing `next-sgs.make`) before the postamble is
+read. Re-including from the postamble puts `vers.o` on `LOADABLES` but does not
+run `BEFORE_PREBUILD` / `OTHER_GENERATED_SRCFILES`, so `vers.c` is never
+written.
+
+- `next-cvs` in both postambles: `kl_ld` listed
+  `CirrusLogicGD5434DisplayDriver_vers.o` as a bare filename;
+  `ld: can't open: CirrusLogicGD5434DisplayDriver_vers.o`. `next-cvs.make`
+  depends on `CVSVersionInfo.txt`, which this project does not have, and does
+  not add `OTHER_GENERATED_SRCFILES`. No `vers.c`. Reloc missing; build script
+  `fail=1`.
+- `apple-generic` in both postambles: same `can't open` / no `vers.c`.
+
+`VERSIONING_SYSTEM = apple-generic` in both **preambles** (so `common.make`
+includes `apple-generic.make` in time) produced `vers.o`. Guest
+`make exit=0`, `fail=0`. Log contains `staged version bundle
+CirrusLogicGD5434DisplayDriver` and no missing-bundle WARNING.
+
+```
+/usr/bin/kl_ld -o .../CirrusLogicGD5434DisplayDriver_reloc ... CirrusLogicGD5434DisplayDriver.o ... ProgramDAC.o ... CirrusLogicGD5434DisplayDriver_instance.o .../CirrusLogicGD5434DisplayDriver_vers.o
+/usr/bin/cc ... -bundle -undefined suppress ... -arch i386 -o .../CirrusLogicGD5434DisplayDriver.config/CirrusLogicGD5434DisplayDriver .../CirrusLogicGD5434DisplayDriver_vers.o
+```
+
+Host `$BUNDLE` is 9552 bytes, Mach-O `file_type = 8` (`MH_BUNDLE`). That is
+progress: the bundle exists and `compare_cirrus.py` `failed_matched` stayed 0.
+`parity_check.py` missing strings/symbols 0. Rebuilt nlist `__TEXT,__const`
+has apple-generic `_CirrusLogicGD5434DisplayDriverVersionString` and
+`_CirrusLogicGD5434DisplayDriverVersionNumber`. The spec gate —
+`_CirrusLogicGD5434DisplayDriver_VERS_STRING` and `_..._VERS_NUM` on the
+`_reloc` — is still unmet. `driverTools` was not edited.
+`apple-generic.make` produced `vers.o`.
+
+A later Cirrus-local `next-sgs` attempt copied `src/pb_makefiles-1/next-sgs.make`
+into `$DRV/VersioningSystems` and set `VERSIONING_SYSTEM = next-sgs` plus
+`LOCAL_VERSIONING_SYSTEM_MAKEFILEDIR` to that guest path in both preambles.
+`vers_string` exists on the guest (`/usr/bin/vers_string`), but `next-sgs.make`
+does not add `OTHER_GENERATED_SRCFILES`, so `vers.c` was not compiled.
+`kl_ld` listed a bare `CirrusLogicGD5434DisplayDriver_vers.o` and failed
+`ld: can't open`. The copy and preamble experiment were reverted; apple-generic
+preambles were restored. The SGS-named `_VERS_STRING` / `_VERS_NUM` symbols
+remain unmet. `driverTools` and `/System/Developer` were not edited.
+
+### Task 8 result — final rebuild SHA and public status
+
+Clean-tree guest rebuild from HEAD `39c86b02f`. `make exit=0`, `fail=0`.
+`$REBUILT` SHA-256
+`D8FB7EE758197E6CD3A9DF686D0F16723D22DA9A970930854A5DB2FA574F468C`,
+stamped into `ledger.json` `rebuilt_sha256`. `compare_cirrus.py`:
+`failed_matched` 0; campaign `MATCH` on `determineConfiguration` (768/768)
+and `setPendingDisplayMode:` (140/140); `DIFF` on `setMode:` (1020 vs 1008)
+and `setPCIConfiguration` (584 vs 612). Nineteen of twenty-one functions
+byte-identical under relocation masking. `parity_check.py`: 0 missing
+strings, 0 missing symbols. Host `$BUNDLE` exists (9552 bytes, MH_BUNDLE
+`file_type = 8`). SGS `_CirrusLogicGD5434DisplayDriver_VERS_STRING` /
+`_VERS_NUM` still unmet (apple-generic `VersionString`/`VersionNumber`
+instead). Not hardware-tested.
 
 ### Ledger status distribution
 
 | Status | Count |
 | --- | --- |
-| `assembly-matched` | 15 |
-| `control-flow-confirmed` | 3 |
-| `signature-confirmed` | 1 |
+| `assembly-matched` | 17 |
+| `control-flow-confirmed` | 2 |
 | `unexamined` | 2 |
 
-The 15 at `assembly-matched` are the hand-written functions whose rebuilt
+The 17 at `assembly-matched` are the hand-written functions whose rebuilt
 instruction stream was read against the reference and found byte-identical under
 relocation masking; that is the strongest claim available and it is claimed only
-where whole-body byte equality was actually demonstrated. `setMode:`,
-`setPendingDisplayMode:` and `setPCIConfiguration` are held at
-`control-flow-confirmed` because their block shape and call targets were compared
-and agree, but their instruction streams do not match byte for byte.
-`determineConfiguration` is held at `signature-confirmed` because its call-target
-list does not match, so control flow was checked and *not* confirmed. The two
+where whole-body byte equality was actually demonstrated. `setMode:` and
+`setPCIConfiguration` are held at `control-flow-confirmed` because their block
+shape and call targets were compared and agree, but their instruction streams
+do not match byte for byte. `determineConfiguration` joined the
+`assembly-matched` set in Task 4 and `setPendingDisplayMode:` joined it in
+Task 6 — both passed through `control-flow-confirmed` on the way, since the
+ledger forbids skipping a state — and there are no `signature-confirmed`
+entries left. The two
 `unexamined` entries are the build-generated glue at 4364 and 4376, which
 `source-map.json` lists as unmapped: they have no reconstructed source to review,
 and are left untouched even though both are byte-identical to the reference.
@@ -1789,11 +2171,15 @@ that defines them and the `__DATA,__common` symbol
 **They must not be written by hand.** If they are absent from the rebuilt binary,
 the fault is in the project's `NAME`/`PROJECTVERSION`/`DriverKitVersion`
 declarations or in the project type, not in the driver source. `_..._VERS_STRING`
-and `_..._VERS_NUM` are likewise not hand-written source, but their absence is an
-open build-configuration defect rather than a deliberate omission — see the
-version-symbol gap recorded under "Build and parity" above. Their *contents*
-would carry our own build host and timestamp, not Apple's 1998 pair, so byte
-parity on those 164 bytes is not achievable; their existence is.
+and `_..._VERS_NUM` are likewise not hand-written source. Task 2 wired
+`OTHER_GENERATED_OFILES += $(VERS_OFILE)` into the Kernel Server postamble;
+Task 3 set `VERSIONING_SYSTEM = apple-generic` in both preambles so `vers.c` is
+generated and a 9552-byte MH_BUNDLE exists. The rebuilt symbols are
+`_...VersionString` / `_...VersionNumber`. The SGS-named
+`_CirrusLogicGD5434DisplayDriver_VERS_STRING` and `_..._VERS_NUM` on the
+`_reloc` are still unmet. Their *contents*, once those names exist, would
+carry our own build host and timestamp, not Apple's 1998 pair, so byte
+parity on those bytes is not achievable.
 
 Also not reconstructed, and deliberately so:
 

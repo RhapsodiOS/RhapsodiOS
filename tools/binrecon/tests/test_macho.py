@@ -305,6 +305,53 @@ def test_rejects_unsupported_scattered_relocation_type(tmp_path):
         read_macho(write_fixture(tmp_path, bytes(blob)))
 
 
+def _i386_scattered(address, value, *, kind, length=2, pcrel=0):
+    """Little-endian scattered relocation_info: GENERIC_RELOC_* in r_type."""
+    word = (0x80000000 | ((pcrel & 1) << 30) | ((length & 3) << 28)
+            | ((kind & 0xF) << 24) | (address & 0xFFFFFF))
+    return struct.pack("<II", word, value)
+
+
+def test_i386_scattered_sectdiff_consumes_pair(tmp_path):
+    # GENERIC_RELOC_SECTDIFF=2 + GENERIC_RELOC_PAIR=1 (PAIR is type 1, not 3).
+    # field = (__data - __text) + 8 = 0x1004 - 0x1000 + 8 = 0xC
+    text = struct.pack("<I", 0x0000000C)
+    relocations = (
+        _i386_scattered(0, 0x1004, kind=2)
+        + _i386_scattered(0, 0x1000, kind=1)
+    )
+    blob = build_macho_fixture(text=text, relocations=relocations)
+
+    analysis = read_macho(write_fixture(tmp_path, blob))
+    raw = analysis["extensions"]["macho"]["relocations"]
+    semantic = analysis["relocations"]
+
+    assert len(semantic) == 1
+    assert semantic[0] == {
+        "address": 0x1000,
+        "kind": "i386-sectdiff-32-absolute",
+        "target": "__DATA,__data",
+        "addend": 8,
+    }
+    assert raw[0]["type"] == 2
+    assert raw[0]["width"] == 4
+    assert raw[0]["target_section_ordinal"] == 2
+
+
+def test_i386_sectdiff_rejects_type_3_follower(tmp_path):
+    # Type 3 is GENERIC_RELOC_PB_LA_PTR, not PAIR. A SECTDIFF principal
+    # still requires a scattered PAIR (type 1).
+    text = struct.pack("<I", 0x0000000C)
+    relocations = (
+        _i386_scattered(0, 0x1004, kind=2)
+        + _i386_scattered(0, 0x1000, kind=3)
+    )
+    blob = build_macho_fixture(text=text, relocations=relocations)
+
+    with pytest.raises(MachOFormatError, match="SECTDIFF requires a scattered PAIR"):
+        read_macho(write_fixture(tmp_path, blob))
+
+
 @pytest.mark.parametrize(
     ("address", "length"),
     [(3, 0), (2, 1), (0, 2)],

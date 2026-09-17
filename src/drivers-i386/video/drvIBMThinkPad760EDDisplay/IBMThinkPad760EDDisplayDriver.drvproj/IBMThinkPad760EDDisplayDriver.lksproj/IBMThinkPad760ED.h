@@ -15,7 +15,40 @@
 
 #import <driverkit/IOFrameBufferDisplay.h>
 
-@class vidBIOS;
+#import <objc/Object.h>
+#import <driverkit/driverTypes.h>
+
+typedef struct {
+    unsigned int	eax, ecx, edx, ebx;
+    unsigned int	esp, ebp, esi, edi;
+    unsigned int	eip, eflags;
+    unsigned int	es, cs, ss, ds, fs, gs;
+} emu486regs_t;
+
+extern int	emu486(void *lowMemBase, const emu486regs_t *inregs,
+		       emu486regs_t *outregs, const char *pagePerm,
+		       const char *ioPerm, unsigned int smmport);
+
+@interface vidBIOS : Object
+{
+    void	       *biosStackVirtual;
+    unsigned int	biosStackPhysical;
+    unsigned int	lowMem;
+}
+- init;
+- free;
+- (int)int10	: (const emu486regs_t *)inregs
+	outregs	: (emu486regs_t *)outregs
+	iorange	: (const IORange *)ranges
+	  ionum	: (int)nranges;
+- (int)int10	: (const emu486regs_t *)inregs
+	outregs	: (emu486regs_t *)outregs
+	iorange	: (const IORange *)ranges
+	  ionum	: (int)nranges
+	smmport	: (unsigned int)smmport;
+- (unsigned int)scratchSegment;
+- (void *)realToVirtual:(unsigned int)segment :(unsigned int)offset;
+@end
 
 /* The register block the SMAPI trap loads before entering system
  * management mode and stores again on the way out. `smapi_asm' reads and

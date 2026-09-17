@@ -1342,6 +1342,95 @@ def test_name_paired_functions_of_unequal_size_are_compared_not_rejected(tmp_pat
     assert "function range bytes differ" in record["reasons"]
 
 
+def test_name_paired_functions_mask_relocated_immediates_independently(tmp_path):
+    """Same call, different displacement and target offset, paired by name.
+
+    Offset-paired masking already zeros fields whose portable semantics match.
+    Independently linked binaries never match those semantics, which is why
+    floppy's eight identical-stream functions still report masked_equal False.
+    """
+    reference = bytearray(b"\x90" * 64)
+    rebuilt = bytearray(b"\x90" * 64)
+    reference[0:5] = b"\xe8\x78\x56\x34\x12"
+    rebuilt[16:21] = b"\xe8\x11\x11\x11\x11"
+    rp, bp, left, right = _case(tmp_path, bytes(reference), bytes(rebuilt))
+
+    def place(document, artifact, offset, displacement_hex, callee_offset):
+        address = 0x1000 + offset
+        document["sections"][0].update(
+            size=64, sha256=hashlib.sha256(artifact.read_bytes()).hexdigest())
+        document["symbols"] = [{"name": "callee", "address": 0x1000 + callee_offset,
+                                "binding": "global", "section": ".text"}]
+        document["relocations"] = [{"address": address + 1,
+                                    "kind": "i386-vanilla-32-pc-relative",
+                                    "target": "callee", "addend": -4}]
+        document["functions"] = [{
+            "address": address, "size": 5, "names": ["alpha"],
+            "blocks": [{"address": address, "size": 5, "successors": []}],
+            "instructions": [{"address": address, "bytes": "E8" + displacement_hex,
+                              "mnemonic": "call", "operands": "callee",
+                              "normalized_operands": "callee", "relocations": [0]}],
+            "calls": [{"address": address, "target": 0x1000 + callee_offset, "name": "callee"}],
+            "confidence": 1.0}]
+        document["references"] = [{"address": address, "target": 0x1000 + callee_offset,
+                                   "kind": "call"}]
+        document["extensions"] = {"macho": {"relocations": [
+            {"address": address + 1, "target": "callee", "width": 4}]}}
+
+    place(left, rp, 0, "78563412", 0x20)
+    place(right, bp, 16, "11111111", 0x30)
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+
+    validate_comparison_report(report)
+    record = report["functions"][0]
+    assert record["pairing"] == "name"
+    assert record["raw_equal"] is False
+    assert record["masked_equal"] is True
+
+
+def test_name_paired_functions_ignore_envelope_padding(tmp_path):
+    """Listed instructions match; trailing envelope bytes do not.
+
+    Envelope comparison is for offset-paired functions. Name-paired equality
+    is the instruction stream.
+    """
+    reference = bytearray(b"\x90" + b"\xcc" * 7 + b"\x90" * 56)
+    rebuilt = bytearray(b"\x90" * 16 + b"\x90" + b"\xdd" * 7 + b"\x90" * 40)
+    rp, bp, left, right = _case(tmp_path, bytes(reference), bytes(rebuilt))
+    section = {"name": ".text", "address": 0x1000, "offset": 0, "size": 64,
+               "permissions": "rx", "sha256": hashlib.sha256(rp.read_bytes()).hexdigest()}
+    right_section = dict(section)
+    right_section["sha256"] = hashlib.sha256(bp.read_bytes()).hexdigest()
+
+    def function(offset, size):
+        address = 0x1000 + offset
+        return {"address": address, "size": size, "names": ["alpha"],
+                "blocks": [{"address": address, "size": size, "successors": []}],
+                "instructions": [{"address": address, "bytes": "90", "mnemonic": "nop",
+                                  "operands": "", "normalized_operands": "",
+                                  "relocations": []}],
+                "calls": [], "confidence": 1.0}
+
+    left["sections"] = [section]
+    right["sections"] = [right_section]
+    left["functions"] = [function(0, 8)]
+    right["functions"] = [function(16, 8)]
+    for document in (left, right):
+        document["symbols"] = []
+        document["relocations"] = []
+        document["references"] = []
+        document["extensions"] = {}
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+
+    validate_comparison_report(report)
+    record = report["functions"][0]
+    assert record["pairing"] == "name"
+    assert record["raw_equal"] is True
+    assert record["masked_equal"] is True
+
+
 def test_report_validator_rejects_forged_pairing_basis(tmp_path):
     rp, bp, left, right = _name_pairing_case(tmp_path, [(0, ["alpha"])], [(16, ["alpha"])])
     report = compare_artifacts(rp, bp, left, right, "normalized-functions")

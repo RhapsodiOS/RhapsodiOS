@@ -19,7 +19,8 @@ HFILES = IBMThinkPad760ED.h
 
 OTHERLINKED = smapi.s
 
-OTHERSRCS = Makefile.preamble Makefile Makefile.postamble Load_Commands.sect
+OTHERSRCS = Makefile.preamble Makefile Makefile.postamble Load_Commands.sect\
+            vidBIOS.m emu486.s
 
 OTHERLINKEDOFILES = smapi.o
 

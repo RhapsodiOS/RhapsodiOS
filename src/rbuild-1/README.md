@@ -13,7 +13,8 @@ instead of dpkg `.deb`.
 
 ## Usage
 
-    rbuild buildpackage [--dir] [--target {all|headers|objs|local}] \
+    rbuild buildpackage [--state DIR] [--arch ARCH] [--dir] \
+        [--target {all|headers|objs|local}] \
         <source> <repository> <dstdir>
     rbuild buildall <srclist> <repository> <dstdir>
     rbuild kernel [--state DIR] --arch ARCH \
@@ -39,9 +40,12 @@ of the host. Explicit `i386` / `i386-apple-rhapsody` and `ppc` /
 field means universal; an empty or unsupported field is an error.
 
 Bootstrap uses the toolchain profile's thin `target_arch`; kernel commands
-use `--arch i386` or `--arch ppc`. A universal source permits either operation,
-but an explicit conflicting thin source is rejected. Metadata records the
-canonical effective architecture without rewriting source control files.
+use `--arch i386` or `--arch ppc`. `buildpackage --arch` selects that same thin
+target (`RC_ARCHS` / `-arch`) and copies `/usr/libexec/<arch>` into the chroot
+so `cc` can find that arch's `cc1obj` / `cpp-precomp`. A universal source
+permits either operation, but an explicit conflicting thin source is rejected.
+Metadata records the canonical effective architecture without rewriting source
+control files.
 
 `bootstrap-universal` is the primary bootstrap method for a dual-architecture
 repository: it walks `BootstrapRuntimeManifest` (Csu through Libsystem) and

@@ -2,10 +2,10 @@
 
 Findings from comparing our sources against Apple's shipped `*_reloc` binaries
 with `tools/binrecon`. The headline is that the eight drivers are not eight
-partial reconstructions at different stages. Three are reconstructed against
-their reference, one is a modern addition with no reference, and the other
-four are stubs — and two of those are built on the wrong hardware model, so
-they could not work even if completed as written.
+partial reconstructions at different stages. Two are essentially complete,
+three are reconstructed against their reference and guest-compiled but not
+hardware-tested, one is a modern addition with no reference, and the other two
+are stubs.
 
 ## Coverage
 
@@ -20,10 +20,10 @@ project type and are correctly absent from source.
 | --- | --- | --- | --- |
 | drvAdaptec1542B | 36 | 34 | complete; only build glue absent |
 | drvBusLogic | 37 | 35 | complete; only build glue absent |
-| drvAdaptec6X60 | 79 | 18 | stub, wrong architecture |
+| drvAdaptec6X60 | 79 | 77 | reconstructed; guest `_reloc`; 54 functions unexamined; not hardware-tested |
 | drvDPT2000 | 56 | 54 | reconstructed against the reference; guest `_reloc` produced on the ppc rbuild guest; not hardware-tested |
 | drvBusLogicFP | 123 | 7 | stub |
-| drvSym53C8xx | 158 | 12 | stub, wrong architecture |
+| drvSym53C8xx | 158 | 158 | reconstructed against the reference; guest `_reloc` produced; not hardware-tested |
 | drvAdaptec2940 | 170 | 10 | stub; missing the `SCSIBus` class |
 
 `drvAMDPCSCSIDriver` has no reference bundle. It is a modern addition rather
@@ -31,69 +31,57 @@ than a reconstruction and is out of scope here.
 
 ## The class-name divergence
 
-Four of the seven still name their principal class differently from the
+Two of the seven still name their principal class differently from the
 reference. This is the same pattern already resolved in drvPCMCIABus, and it
 is why those drivers initially resolved **zero** symbols — a total mismatch
-rather than a partial one.
+rather than a partial one. drvAdaptec6X60, drvDPT2000, and drvSym53C8xx now
+match.
 
 | Driver | Ours | Reference |
 | --- | --- | --- |
-| drvAdaptec6X60 | `AIC6X60Controller` | `AIC6X60` |
+| drvAdaptec6X60 | `AIC6X60` | `AIC6X60` |
 | drvBusLogic | `BLController` | `BLCController` |
 | drvBusLogicFP | `BusLogicFPSCSI` | `BLFPController` |
 | drvDPT2000 | `EATAController` (+ `EATASCSIBus`) | `EATAController` (+ `EATASCSIBus`) |
-| drvSym53C8xx | `SYM53c8Controller` | `SYM53c8` |
+| drvSym53C8xx | `SYM53c8` | `SYM53c8` |
 
-drvAdaptec1542B (`AHAController`), drvAdaptec2940 (`Adaptec2940`), and
-drvDPT2000 (`EATAController` + `EATASCSIBus`) already match. The
-`(PrivateMethods)` and `(IOThread)` category split is correct in every
-driver, and the `*Controller.m` / `*Routines.m` / `*Thread.m` file layout
-mirrors it — that part was reconstructed well throughout.
+drvAdaptec1542B (`AHAController`), drvAdaptec6X60 (`AIC6X60`), drvAdaptec2940
+(`Adaptec2940`), and drvDPT2000 (`EATAController` + `EATASCSIBus`) already
+match. The `(PrivateMethods)` and `(IOThread)` category split is correct in
+the other drivers. drvAdaptec6X60 no longer has `AIC6X60Routines.m` after the
+HIM rewrite. drvSym53C8xx folded IOThread methods onto the main
+`@implementation SYM53c8` (empty `SYM53c8(IOThread)` remains so `SYM53c8Thread.m`
+stays in `CLASSES`) and deleted `SYM53c8Routines.m`.
 
 Renaming is necessary but sufficient only for drvBusLogic, where it took the
 count from 26 to 30 and left five genuinely missing functions.
 
-## The architecture problem
+## Closed architecture mismatches
 
-Two drivers do not merely lack functions. They implement a different hardware
-interface from the chip they target.
+`drvAdaptec6X60` used to implement an AHA-154x mailbox instead of the AIC-6X60
+HIM; that rewrite is done (see below). `drvSym53C8xx` used to be a BusLogic CCB
+clone vs CAM/SIM + SCRIPTS; that reconstruction closed in Tasks 6–11.
 
 ### drvAdaptec6X60
 
-`AIC6X60Routines.m` programs a **mailbox interface**: `AIC_CMD_INIT` carrying
-`mb_cnt`, in and out mailbox arrays, `AIC_CMD_START_SCSI`,
-`AIC_CMD_SET_MB_ENABLE`, `AIC_CMD_GET_BIOS_INFO`. That is the AHA-154x host
-adapter command protocol, for a board whose onboard processor accepts mailbox
-commands. The driver was cloned from drvAdaptec1542B and kept its architecture.
+Reconstructed against `AIC6X60SCSI_reloc`. The AHA-154x mailbox clone
+(`AIC6X60Routines.m`, `aic_cmd`, `allocCcb:`, `runPendingCommands`) is gone.
+The live tree is a DriverKit `AIC6X60` class plus an Adaptec HIM
+(`HIM6X60.c`) and SCSI sequencer (`AIC6X60Sequencer.c`) that program
+AIC-6260/6360 ports directly: selection, reselection, message and data
+phases, SDTR, PIO and DMA. The reconstruction ledger is 13
+assembly-matched, 10 control-flow-confirmed, 54 unexamined, and 2 Kernel
+Server glue. A guest `Adaptec6X60_reloc` was produced. Not
+hardware-tested. Linux `aic6x60` was not used as a template.
 
-The AIC-6260/6360 has no onboard processor and no mailbox interface. It is a
-low-level SCSI protocol chip: the host drives selection, reselection, message
-and data phases directly. Apple's driver does exactly that — of its 79
-functions, 54 are C functions forming an Adaptec HIM plus a SCSI sequencer:
-
-    _HIM6X60Initialize  _HIM6X60ISR        _HIM6X60QueueSCB    _HIM6X60AbortSCB
-    _selection          _reselection       _scsiBusFree        _scsiBusReset
-    _targetREQuest      _samePhaseREQuest  _interpretMessageIn _prepareMessageOut
-    _negotiateSDTR      _updateSDTR        _resetSDTR
-    _dataInPIO          _dataOutPIO        _dataPhaseDMA
-    _repinsb _repinsw _repinsd  _repoutsb _repoutsw _repoutsd
-
-Our 18 resolved symbols are DriverKit method shells, not the engine. Sixteen
-symbols exist in our source that the reference does not have — `_aic_cmd`,
-`_aic_probe_cmd`, `_aicTimeout`, and the mailbox-era `allocCcb:`,
-`ccbFromCmd:ccb:`, `freeCcb:`, `runPendingCommands` — all residue of the wrong
-model.
-
-Our driver sends commands the chip does not implement, so it cannot work on
-real hardware regardless of how much of the remainder is filled in.
-
-### drvSym53C8xx
+## drvSym53C8xx
 
 The reference contains 136 C functions forming a CAM/SIM implementation, with
 Symbios's own naming: `_CCBInSIMQueue`, `_AddToDeviceList`,
 `_DeletePathFromDeviceTable`, `_FCalcSync`, `_FSetWide`, `_FWideInit`,
-`_FResumeXFer`, `_FSendMsg`, `_AutosenseSetup`, `_BeginScan`. Our source
-resolves 12 of 158.
+`_FResumeXFer`, `_FSendMsg`, `_AutosenseSetup`, `_BeginScan`. Those names now
+resolve in `SYM53c8SIM.c` / `SYM53c8CAM.c`. Guest `_reloc` produced; not
+hardware-tested.
 
 This one matters beyond completeness: QEMU emulates `lsi53c895a`, a member of
 this chip family, so a working drvSym53C8xx would be the natural SCSI path for

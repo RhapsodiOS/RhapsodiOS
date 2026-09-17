@@ -6,6 +6,8 @@
 
 #import "IOFloppyDisk.h"
 #import "Bsd.h"
+#import "kernelDiskMethodsNEW.h"
+#import "IODiskPartitionNEW.h"
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
 #import <machkit/NXLock.h>
@@ -439,7 +441,7 @@ static int HandleBsdIoctl(dev_t dev, unsigned int cmd, int *data)
 							result = -0x2c7;
 						} else {
 							[deviceInfo detachBsdDiskInterfaceFromDrive:drive];
-							result = [disk setFormatted:NO];
+							result = [(IODiskPartitionNEW *)disk setFormatted:NO];
 
 							if (result != 0) {
 								[deviceInfo attachBsdDiskInterfaceToDrive:drive];
@@ -1623,7 +1625,7 @@ static int HandleBsdWrite(dev_t dev, struct uio *uio)
 		Drives[driveNumber].devInfo.charDev = (charDevMajor << 8) | charDevMinor;
 	} else {
 		// Device info already exists, get existing info
-		sourceDevInfo = [self _getDevInfo];
+		sourceDevInfo = [self devAndIdInfo];
 
 		// Check if it's not already the same pointer
 		if (sourceDevInfo != devInfoPtr) {
@@ -1633,7 +1635,7 @@ static int HandleBsdWrite(dev_t dev, struct uio *uio)
 	}
 
 	// Set device and ID info on the drive
-	[self setDevAndIdInfo:devInfoPtr];
+	[self setDevAndIdInfo:(IODevAndIdInfoNEW *)devInfoPtr];
 
 	// Set bit 2 in flags byte (marks as attached)
 	flagsPtr = &Drives[driveNumber].flags;

@@ -13,9 +13,11 @@ PROJECTVERSION = 2.7
 PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
-CLASSES = AIC6X60Controller.m AIC6X60Routines.m AIC6X60Thread.m
+CLASSES = AIC6X60Controller.m AIC6X60Thread.m
 
-HFILES = scsivar.h AIC6X60Controller.h AIC6X60ControllerPrivate.h AIC6X60Inline.h AIC6X60Thread.h AIC6X60Types.h
+CFILES = HIM6X60.c AIC6X60Sequencer.c
+
+HFILES = scsivar.h AIC6X60Controller.h AIC6X60ControllerPrivate.h AIC6X60Inline.h AIC6X60Thread.h AIC6X60Types.h HIM6X60.h
 
 OTHERSRCS = Makefile.preamble Makefile Makefile.postamble Load_Commands.sect
 

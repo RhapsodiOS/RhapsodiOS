@@ -214,6 +214,11 @@ reached and diagnosed.
 
 #### `rebuilt_sha256` in the committed ledger is a placeholder, not a rebuild
 
+**Task 4 supersession:** this heading is the Task 6 placeholder history. After
+the Phase 1 freeze, `ledger.json`'s `rebuilt_sha256` is the guest `_reloc`
+`45C7EF9A52153EF1D8A8B776B423A557EC5979A2C2A1779A604520CBD6C9F269`, not the
+reference hash. See **Task 4 Phase 1 freeze** below.
+
 Task 6 gave `thinkpad760ed.json` a `rebuilt` artifact so that Tasks 8 and 9 can
 run `binrecon compare`. `profile.py` resolves that artifact eagerly, so **every**
 `binrecon` subcommand — `validate` included — fails outright unless
@@ -2699,6 +2704,13 @@ reference has it. Confidence: **high** — mechanism, byte arithmetic and a
 corpus-wide occurrence split all agree, and the negative side is confirmed
 against Cirrus source we hold.
 
+**Task 2 result — still open.** Nested RMW was rebuilt with `rbuild
+buildpackage --arch i386`. Both methods stayed **152**. The nested expression
+did not force the `mov ebx, 0x3c5` materialization. Source reverted to the
+split `value = inb(...); outb(..., value | 0x80)` form. SHA-256 of that
+failed rebuild: `72A1E60B2F6221F3D7F1F9E7F58990CA6E3EE5C30AB7CBB24596BB85246423A7`
+(164588 bytes).
+
 #### `initFromDeviceDescription:`, +8 — explained, not a defect
 
 **Observation.** At +293 the reference is `E9 65 01 00 00`, `jmp 0x2c7`, and
@@ -2834,6 +2846,10 @@ them — but that is an argument, not a measurement. **The next pass must rebuil
 and re-measure all 29 before any of this is treated as closed.**
 
 ### Ledger status
+
+**Task 4 supersession:** this heading is historical (placeholder-rebuild era).
+After the Phase 1 freeze, MATCH and accepted-compiler entries have advanced and
+`rebuilt_sha256` names the guest `_reloc`. See **Task 4 Phase 1 freeze** below.
 
 All 40 entries remain **`unexamined`**, which is the only defensible status. The
 strongest evidence available is name-level parity, and *no* entry has been
@@ -2971,3 +2987,403 @@ installed on the guest. Checking whether it exists there settles it.
 stay so until a real rebuilt binary is compared against the reference.
 `rebuilt_sha256` is still the placeholder described above and has to be
 regenerated from a genuine build at the same time.
+
+## Phase 1 baseline (this rebuild)
+
+Guest `10.10.0.241` is Rhapsody PPC. Standalone `rbuild buildpackage` defaults
+to `RC_ARCHS=ppc`. This rebuild used `rbuild buildpackage --arch i386` against
+the DriverKit chroot (not live `System.framework`). The chroot's compiler apk
+only ships ppc `cc1obj`; host `/usr/libexec/i386` (`cc1obj`, `cpp-precomp`,
+`specs`) had to be copied into the leftover chroot before `cc -arch i386` could
+compile Objective-C. `kl_ld` then produced the `_reloc`. `make install`
+afterward failed on an unrelated `English.lproj/DriverHelp` rename; that does
+not affect the reloc.
+
+The rbuild chroot **does** install `kernelserver.make.preamble`, so this link
+includes `IBMThinkPad760EDDisplayDriver_vers.o` after `_instance.o`. The
+July live-system rebuild did not.
+
+- Unstripped `_reloc`: 164612 bytes, `Mach-O preload executable i386`
+- SHA-256: `FBD8CF5DFAB62CEBEFB646E0F7EE617FC72D052330D68E78CE8771CB2ABAFE99`
+  (must not equal the reference `47539E03…`)
+- `__text` size 6516 (reference 18204 includes `vidBIOS`/`_emu486`; in-scope
+  reference span is 6552)
+- `parity_check.py`: 8 missing strings and `_emu486` (expected until Phase 2);
+  extra `__text` names are `-g` stabs
+- `1cb44e28` compiled. Extent closures vs the last measured rebuild (`fd0e7355`):
+  `name` 56→60, `updateModeTable` 116→128, `determineConfiguration:` 404→396.
+  `setPendingDisplayMode:` 484→528 (still −16 vs ref 544).
+
+Campaign extents (next-symbol size, stabs ignored):
+
+| Function | ref | rebuilt | Δ |
+| --- | --- | --- | --- |
+| `initFromDeviceDescription:` | 780 | 788 | +8 |
+| `updateModeTable` | 128 | 128 | 0 |
+| `revertToVGAMode` | 216 | 212 | −4 |
+| `getModeInfo:` | 168 | 164 | −4 |
+| `determineConfiguration:` | 396 | 396 | 0 |
+| `setPCIConfiguration` | 676 | 664 | −12 |
+| `setPendingDisplayMode:` | 544 | 528 | −16 |
+| `setDisplayDeviceState:` | 80 | 76 | −4 |
+| `unlockRegisters` | 168 | 152 | −16 |
+| `lockRegisters` | 168 | 152 | −16 |
+| `reportSystemConfiguration` | 1088 | 1116 | +28 |
+| `name` | 60 | 60 | 0 |
+
+`unlockRegisters` / `lockRegisters` are still 152 vs 168. Task 2 nested
+RMW (`outb(0x3C5, inb(0x3C5) | 0x80)` / `& 0x7F`) did not close them;
+source reverted. 152→168 still open.
+`initFromDeviceDescription:` remains +8 (accepted gcc `IOLog` tail merge).
+
+Same-size `compare_thinkpad.py` DIFF remains on several previously extent-matched
+functions (`_set555Mode`, `selectMode`, `enterLinearMode`, TransferTable
+methods, glue). Four matched byte-for-byte:
+`isValidPCIAssignedBaseAddress:`, `displayMemorySize`, `ramdacSpeed`,
+`_smapi_asm`. `failed_matched_or_glue` is 15, not 0. Those same-size DIFFs are
+reloc-masking / rbuild/`-g` codegen residuals, not missing statements; Task 3
+did not close the byte streams. They stay DIFF through this Phase 1 freeze
+and are not `assembly-matched`. The Version glue extent is 12 here vs 1168 in
+the reference because `vers.o` now sits immediately after `_instance.o`
+instead of a gap before `vidBIOS`.
+
+## Task 3 campaign (guest `10.10.0.241`)
+
+One experiment per rebuild. Misses reverted before the next edit.
+`unlockRegisters` / `lockRegisters` were not touched. Final unstripped
+`_reloc` is 164636 bytes, SHA-256
+`45C7EF9A52153EF1D8A8B776B423A557EC5979A2C2A1779A604520CBD6C9F269`
+(not the reference `47539E03…`). `failed_matched_or_glue` is still 15.
+
+**1. `setDisplayDeviceState:` — reverted.** `((state & 3) << 8) | 0x8000`
+did emit the reference HImode (`and ax,3` / `shl ax,8` / `or ah,0x80`) but
+the extent stayed **76** (ref 80). The missing 4 bytes are still `push ebx`
+/ `mov ebx,[ebp-4]` holding `&reg`; this build keeps `add edx,0x25c`.
+Source restored to `((state & 3) | 0x80) << 8`.
+
+**2. `reportSystemConfiguration` — no source change.** The rebuilt prologue
+(Task 2 reloc, before any Task 3 edit of this method) is `55 89 e5 53`
+(`push ebp` / `mov ebp,esp` / `push ebx`) with **no `sub esp`**. Spill of
+`vendor` / `panelType` / `panelSize` is not confirmed. Did not inline the
+string literals. Extent remains **1116** (ref 1088, +28).
+
+**3. `setPCIConfiguration` — both experiments reverted.** Rebuilt frame
+already matches the reference `sub esp, 0x124`. The −12 is
+`deviceDescription` in `edi` (`89 c7`) versus a stack spill to
+`[ebp-0x124]`. Declaring `IORange range[3]` before `IOPCIConfigSpace
+configSpace` shrank the extent **664 → 640** (file also dropped 8 KiB);
+reverted. Cirrus `rangeCount == 3` success-path shape (logs and call
+targets unchanged; command restore still falls through) grew it
+**664 → 700**, past ref 676; reverted. Extent remains **664**.
+
+**4. `getModeInfo:` — kept.** The dump named the BOOL return, not `bzero`
+size (`push 0x40` both sides) or `int10:` arguments (`push 0, 0, edi, edi`
+both sides). Replacing `return A && B` with `if (A && B) return YES;
+return NO` closed the extent **164 → 168**. Rebuilt tail is now `cmp` /
+`jne` / `test` / `je` / `mov eax,1` / `jmp` / `nop` / `xor eax,eax`, the
+reference sequence. Same-size byte DIFF may remain after reloc masking.
+
+**4b. `revertToVGAMode` — no source edit.** `bzero` is already `push 0x40`
+and `int10:` already `iorange:0 ionum:0`. The −4 is delayed stack cleanup:
+rebuild folds `smapi_asm`'s `add esp,4` into a later `add esp,0x28`; the
+reference emits `add esp,4` then `add esp,0x24`. Did not invent a barrier
+or retry holding `&regs` in a callee-saved register. Extent remains **212**
+(ref 216).
+
+**5. Re-measure of `1cb44e28` methods.**
+
+| Function | ref | rebuilt | Δ | note |
+| --- | --- | --- | --- | --- |
+| `name` | 60 | 60 | 0 | ternary already; instruction stream matches aside from immediates |
+| `updateModeTable` | 128 | 128 | 0 | subscript already; remaining DIFF is `cmp displayMemorySize, row` vs swapped operands (`jae` vs `jbe`) |
+| `determineConfiguration:` | 396 | 396 | 0 | CR2A already on the common path; same-size DIFF |
+| `setPendingDisplayMode:` | 544 | 528 | −16 | 0x100D already duplicated; remaining gap is `savedState` in `edi` / `sub esp,0x10` vs stack `[ebp-0x14]` / `sub esp,0x14`, plus early `lea`/`add esp,4` on the first SMAPI. Not rewritten. |
+
+Campaign extents after Task 3 (next-symbol size, stabs ignored):
+
+| Function | ref | rebuilt | Δ |
+| --- | --- | --- | --- |
+| `initFromDeviceDescription:` | 780 | 788 | +8 |
+| `updateModeTable` | 128 | 128 | 0 |
+| `revertToVGAMode` | 216 | 212 | −4 |
+| `getModeInfo:` | 168 | 168 | 0 |
+| `determineConfiguration:` | 396 | 396 | 0 |
+| `setPCIConfiguration` | 676 | 664 | −12 |
+| `setPendingDisplayMode:` | 544 | 528 | −16 |
+| `setDisplayDeviceState:` | 80 | 76 | −4 |
+| `unlockRegisters` | 168 | 152 | −16 |
+| `lockRegisters` | 168 | 152 | −16 |
+| `reportSystemConfiguration` | 1088 | 1116 | +28 |
+| `name` | 60 | 60 | 0 |
+
+## Task 4 Phase 1 freeze
+
+Documentation and ledger freeze against the Task 3 guest `_reloc` (164636
+bytes, SHA-256
+`45C7EF9A52153EF1D8A8B776B423A557EC5979A2C2A1779A604520CBD6C9F269`). No source
+shape experiments. `compare_thinkpad.py` was re-run against that file; byte
+MATCH after reloc masking is only:
+
+- `isValidPCIAssignedBaseAddress:` (32/32)
+- `displayMemorySize` (16/16)
+- `ramdacSpeed` (12/12)
+- `_smapi_asm` (88/88)
+
+`failed_matched_or_glue` is still 15. GLUE remains DIFF (`kernelServerInstance`
+12 vs 12; Version 1168 vs 12 because `vers.o` sits after `_instance.o`).
+`getModeInfo:` is extent 168==168 and still DIFF — extent equality is not
+`assembly-matched`.
+
+### Identity rewrite
+
+`ledger.json`'s `rebuilt_sha256` was still the placeholder copy of
+`$REFSHA` (`47539E03…`). `load_ledger` refuses a guest file whose SHA-256
+differs from that field, and `write_ledger` does not rewrite the identity.
+One-shot edit before the first transition: set `rebuilt_sha256` to the guest
+file hash `45C7EF9A…` with `BINRECON_REBUILT` pointing at that same file.
+`reference_sha256` stays `$REFSHA`. After the first `write_ledger`, the JSON
+is canonicalized (sorted keys, one object). That is expected.
+
+### Accepted compiler-only deltas
+
+Remaining campaign `DIFF` functions with a named compiler mechanism. Ledger:
+`control-flow-confirmed` (not `assembly-matched`). `initFromDeviceDescription:`
+stays; this rebuild did not MATCH it.
+
+| Function | ref | reb | Δ | mechanism |
+| --- | --- | --- | --- | --- |
+| `initFromDeviceDescription:` | 780 | 788 | +8 | gcc merged two IOLog tails |
+| `getModeInfo:` | 168 | 168 | 0 | BOOL split closed extent; remaining same-size byte DIFF after reloc masking |
+| `revertToVGAMode` | 216 | 212 | −4 | delayed `add esp,4` folded into later `add esp,0x28` |
+| `setPCIConfiguration` | 676 | 664 | −12 | `deviceDescription` in `edi` vs `[ebp-0x124]`; frame already `sub esp,0x124` |
+| `setDisplayDeviceState:` | 80 | 76 | −4 | missing `push ebx` holding `&reg`; HImode experiment reverted |
+| `setPendingDisplayMode:` | 544 | 528 | −16 | `savedState` in `edi` / `sub esp,0x10` vs stack `[ebp-0x14]` / `sub esp,0x14` |
+| `name` | 60 | 60 | 0 | ternary already; same-size DIFF on immediates |
+| `updateModeTable` | 128 | 128 | 0 | subscript already; `jae` vs `jbe` operand swap |
+| `determineConfiguration:` | 396 | 396 | 0 | CR2A already common-path; remaining same-size DIFF |
+
+Not on this list (no named compiler-only close; ledger stays `unexamined`):
+
+- `unlockRegisters` / `lockRegisters`: Task 2 nested RMW failed; 152 vs 168
+  still open. No third source shape.
+- `reportSystemConfiguration`: rebuilt prologue `55 89 e5 53`, **no `sub
+  esp`**; +28 cause not named. Task 3 would have allowed
+  `control-flow-confirmed` only if statement-for-statement identity held; it
+  was not claimed.
+
+Also left `unexamined`: `vidBIOS` cluster, `_emu486`, unnamed 15796 / 15877
+(Phase 2); Version / instance GLUE; MATCHED_NAMES that are still byte DIFF
+(`_set555Mode`, `selectMode`, `defaultMode`, `enterLinearMode`,
+`getDisplayDeviceState`, `free`, `displayModeCount`, `displayModes`,
+`readCMOS:`, TransferTable methods). Task 3 did not name compiler mechanisms
+for TransferTable / `_set555Mode`.
+
+### Ledger promotions (Task 4)
+
+| Status | Names |
+| --- | --- |
+| `assembly-matched` | `isValidPCIAssignedBaseAddress:`, `displayMemorySize`, `ramdacSpeed`, `_smapi_asm` |
+| `control-flow-confirmed` | the nine accepted-compiler functions above, including `getModeInfo:` |
+| `unexamined` | everything else (27 entries), including unlock/lock, `reportSystemConfiguration`, GLUE, vidBIOS/`_emu486`/15796/15877 |
+
+`source-map.json` `source_line` values for `IBMThinkPad760ED.m` were restamped
+to the current `- (` / `- name` declaration lines (Task 3 inserted two lines
+inside `getModeInfo:`, and earlier edits drifted later methods). TransferTable
+lines were verified unchanged. No new mappings for unmapped smapi/glue/vidBIOS/
+`_emu486`.
+
+## Task 5: `vidBIOS.m` from this reloc
+
+Phase 2 reconstructs the six `vidBIOS` methods from **this** `_reloc` at
+6552–7708. VGA's `vidBIOS.m` is a read-only cross-check. Capstone of both
+`__TEXT,__text` slices (ThinkPad file offset 8948, VGA 8860) gives **399
+instructions on each side**. 1078 of 1156 bytes are identical; the 78
+differing bytes sit on the 57 GENERIC_RELOC_VANILLA sites plus two absolute
+loads of `vidBIOS->super_class` (ThinkPad 33104 / VGA 33076), which are
+class-layout addresses, not opcode differences. Control flow, strings, and
+calls match. Keep ThinkPad.
+
+### Method extents (half-open)
+
+| Method | ThinkPad | VGA | Size |
+| --- | --- | --- | --- |
+| `-[vidBIOS init]` | 6552 | 6396 | 268 |
+| `-[vidBIOS free]` | 6820 | 6664 | 108 |
+| `-[vidBIOS int10:outregs:iorange:ionum:smmport:]` | 6928 | 6772 | 696 |
+| `-[vidBIOS int10:outregs:iorange:ionum:]` | 7624 | 7468 | 44 |
+| `-[vidBIOS scratchSegment]` | 7668 | 7512 | 16 |
+| `-[vidBIOS realToVirtual::]` | 7684 | 7528 | 24 |
+
+`realToVirtual::` is 22 bytes of code plus two padding zeros before `_emu486`
+at 7708; VGA is the same 22+2 at 7528–7552. `init`/`free` include one
+trailing nop each, which is why VGA's findings sometimes quote 267 / 107.
+
+### Disagreements with VGA — keep ThinkPad
+
+| What | ThinkPad | VGA |
+| --- | --- | --- |
+| `ioPorts.h` in `vidBIOS.m` | **included.** gcc emits the unused `_xxx.8` / `_xxx.11` / `_xxx.14` triple at `__bss` 26596 / 26600 / 26604. No `inb`/`outb` in this TU; the header is present so the triple exists. | **omitted.** VGA `__bss` has one triple, and it belongs to `IOVGADisplay.m` (`_xxx.100` / `.103` / `.106`). VGA 6396–7552 has no corresponding counters. |
+| Shared header | `IBMThinkPad760ED.h` (this driver's TU) | `IOVGADisplayReloc.h` |
+| `emu486` call | ThinkPad 7346, PC-relative to `_emu486` at 7708 | VGA 7190, PC-relative to `_emu486` at 7552 |
+| Four `init` IOLogs | `__cstring` 19296, 19334, 19377, 19428 | VGA's own `__cstring` (same four format strings) |
+| Four `int10:…smmport:` IOLogs | `__cstring` 19453, 19493, 19534, 19575 | VGA's own `__cstring` (same four format strings) |
+| `[super …]` class pointer | `mov edx, [0x8150]` at 6745 (`init`) and 6902 (`free`) — `vidBIOS.super_class` at 33104 | `mov edx, [0x8134]` at 6589 and 6746 — VGA `vidBIOS.super_class` at 33076 |
+
+No method-body disagreement: both binaries take `IOMallocLow` / `IOPhysicalFromVirtual` / `IOMapPhysicalIntoIOTask` in `-init` with four separate `return [self free]` tails (no shared `fail:`), `IOFreeLow` / `IOUnmapPhysicalFromIOTask` in `-free`, `pagePerm[256]` plus `IOMalloc(0x2000)` `ioPerm` in the five-argument `-int10:`, `cmp ebx, 0xffff / ja` (unsigned) at ThinkPad 7116 / VGA 6960, `smmport:0x10000` forwarder, `scratchSegment` as `biosStackPhysical >> 4`, `realToVirtual::` as `(segment << 4) + lowMem + offset`.
+
+`vidBIOS.m` is **not** on `CLASSES`. Link order is Task 7. `_emu486` is Task 6.
+
+## Task 6: `emu486.s` from this reloc
+
+Phase 2 transcribes `_emu486` from **this** `_reloc` at `__text` 7708–18204 (10496 bytes, `binrecon.macho.read_macho` slice; size matches the symbol-table gap). `_emu486` is the only exported symbol in the range. The unnamed bodies at 15796 and 15877 stay in this file as `L3db4` and `L3e05`, not `.globl`.
+
+VGA's `emu486.s` is a second copy of the same source 156 bytes lower (`__text` 7552–18048). After masking the 1604 four-byte relocs (same file offsets on both sides), the **instruction stream matches**: 0 non-reloc byte diffs. Reloc addends differ as expected:
+
+| Reloc class | Count | Addend delta (ThinkPad − VGA) |
+| --- | --- | --- |
+| text absolute + text PC-relative + 1 scattered text | 1004 | **+156** |
+| data absolute + scattered data | 600 | **+1808** |
+
+The +1808 is the 92-byte unnamed state block sitting at a different place in `__DATA,__data`: ThinkPad `24576+1904` = **26480–26572** (end of this driver's 1996-byte `__data`); VGA `24576+96` = 24672–24764. Data labels in `emu486.s` stay symbolic (`Lstate`, `Lregs`, …). Do not copy VGA data addresses.
+
+Three Apple defects, transcribed at ThinkPad VAs (VGA + 156), confirmed in this dump:
+
+1. `Ltab_46dc` slot 11 (linked addend **15857** = `L3df1`) is `setno` (`0F 91 C0 C3`) instead of `setnp`.
+2. 32-bit CMPS repeat-prefix test at `L2b1d` is `jne L2b73` (`75 4D`) — the middle of 32-bit TEST — not `L2b2a`.
+3. 32-bit SCAS repeat-prefix test at `L2da2` is `0F 85 35 01 00 00` (`jne L2ee4`, 32-bit ROL) with **no relocation**. Unreachable `L2b2a` / `L2db3` kept.
+
+`cmpxchg` is i486 A-step `0F A6` at 0x37a6 and `0F A7` at 0x37cb. Accumulator `moffs` forms are pinned as `.byte`/`.long` (7× `8A 05`, 17× `88 05`, same counts as VGA).
+
+`emu486.s` is **not** on `OTHERLINKED` (that would place it before `_instance.o`). Link order is Task 7. Host GNU `as` for i386 was not available; guest assembly is Task 8.
+
+## Task 8: Phase 2 guest rebuild, parity, compare
+
+Guest `10.10.0.241`. Rebuild path: **Task 7 harness inside the leftover DriverKit chroot** (`/private/tmp/roots/drvibmthinkpad760eddisplay-7.roots/drvibmthinkpad760eddisplay-7.root`), not live `System.framework` (still missing `objc/zone.h`) and not bare `rbuild buildpackage` (guest `/build/tools/bin/rbuild` has no `buildpackage --arch`; extras env would be empty anyway).
+
+`/usr/libexec/i386` was already in that chroot from Phase 1. Synced sources were copied to `$ROOT/build/src/...`, `/build/source/src` → `/build/src`, `MAKEFILEPATH=/System/Developer/Makefiles`, then `sh /tmp/bvideo.sh drvIBMThinkPad760EDDisplay`. `make install` still failed on `English.lproj/DriverHelp` → `Help`; `kl_ld` had already produced the `_reloc`. Gates: `.objc_class_name_vidBIOS` not undefined, `_emu486` defined, both `VERS_*` symbols present.
+
+### Task 7 artifacts measured here
+
+`kernelserver.make` is `kl_ld … $(KL_LDFLAGS including OPTIONAL_LDFLAGS) … $(LOADABLES)`, so objects on `OPTIONAL_LDFLAGS` land **before** the in-scope files. `Makefile.postamble` now does `LOADABLES += $(VIDBIOS_I386) $(EMU486_I386)`. Putting `$(VERS_OFILE)` in `Makefile.preamble` as well as the chroot's `kernelserver.make.preamble` expanded the lazy `$(VERS_OFILE)` twice and `kl_ld` died on duplicate `_VERS_STRING` / `_VERS_NUM`. The lksproj preamble only sets `VERSIONING_SYSTEM = next-sgs`; the installed preamble supplies one `vers.o` **after** `_instance.o`.
+
+Guest Apple `as` rejects a prefix and a string opcode on one line (`rep movsl`) and rejects `aam $0xa` / `aad $0xa`. `emu486.s` uses `rep; movsl` / `repne; cmpsb` and bare `aam`/`aad` (same encodings: `F3 A5`, `D4 0A`, `D5 0A`).
+
+### `kl_ld` object order (verbatim)
+
+```
+IBMThinkPad760ED.o TransferTable.o smapi.o
+IBMThinkPad760EDDisplayDriver_instance.o
+IBMThinkPad760EDDisplayDriver_vers.o
+vidBIOS.i386.o emu486.i386.o
+```
+
+`vers.o` is after `_instance.o`, not between `smapi.o` and `_instance.o`. `vers.o` has no `__text`, so it does not shift instance/vidBIOS. In-scope campaign deltas still sum to −32, so rebuilt addresses are 32 bytes low until `-[vidBIOS int10:…smmport:]` (+28), then 4 bytes low through `_emu486`:
+
+| Symbol | ref | rebuilt |
+| --- | --- | --- |
+| instance glue | 6528 | 6496 |
+| `-[vidBIOS init]` | 6552 | 6520 (`0x1978`) |
+| `_emu486` | 7708 | 7704 (`0x1e18`) |
+| `__text` size | 18204 | 18200 |
+
+Do not pad reconstructed functions for that −32.
+
+### Reloc identity
+
+Unstripped `_reloc`: **216976** bytes, SHA-256
+`4DD10AC0A20D35F60C4687D9F1A5400591C429E6AD64CF071B6BAA69C1870A13`
+(must not equal the reference `47539E03…`).
+
+### `parity_check.py`
+
+| Bucket | Count | Contents |
+| --- | --- | --- |
+| `missing_symbols` | **0** | `_emu486` is present |
+| `missing_strings` | **0** | the eight `vidBIOS` strings are present |
+| `extra_strings` | 0 | — |
+| `extra_symbols` | 49 | `-g` stabs (`…:f19` and friends), source paths, `vidBIOS.m`, and `-[vidBIOS …]` nlists Apple's reloc does not export (those methods live in objc metadata on the reference) |
+
+### `compare_thinkpad.py`
+
+Semantic Mach-O relocs have no `width`; the Phase 1 script's `width != 4` test masked **nothing**, which is why `failed_matched_or_glue` was 15. This run masks 32-bit sites by `kind` and unions reference/rebuilt **relative** offsets per function so Apple's intra-file PC-relative relocs (guest `as` resolves those and emits no reloc) zero both sides.
+
+`failed_matched_or_glue` is **4**, not 0 and not the Phase 1 15:
+
+| Name | ref | reb | note |
+| --- | --- | --- | --- |
+| `enterLinearMode` | 628 | 628 | same-size DIFF; Phase 1 residual |
+| `getDisplayDeviceState` | 84 | 84 | same-size DIFF; Phase 1 residual |
+| `setGammaTable` | 232 | 232 | same-size DIFF; Phase 1 residual |
+| Version glue | 1168 | 12 | reference next `__text` nlist is `_emu486` (vidBIOS methods unnamed); rebuilt Version is 12 bytes |
+
+MATCHED_NAMES that are now MATCH (14): `_set555Mode`, `selectMode`, `defaultMode`, `isValidPCIAssignedBaseAddress:`, `free`, `displayModeCount`, `displayModes`, `displayMemorySize`, `ramdacSpeed`, `readCMOS:`, TransferTable `setTransferTable:count:` / `setBrightness:token:` / `SetGammaValueRed:Green:Blue:Level:`, `_smapi_asm`. Glue `kernelServerInstance` MATCH (12/12).
+
+Campaign accepted-compiler list stays DIFF except `getModeInfo:` and `name`, which MATCH after real masking. `unlockRegisters` / `lockRegisters` / `reportSystemConfiguration` still open (152 vs 168, +28).
+
+Phase 2 names:
+
+| Name | result | ref | reb |
+| --- | --- | --- | --- |
+| `-[vidBIOS init]` | **MATCH** | 268 | 268 |
+| `-[vidBIOS free]` | **MATCH** | 108 | 108 |
+| `-[vidBIOS int10:outregs:iorange:ionum:smmport:]` | DIFF | 696 | 724 |
+| `-[vidBIOS int10:outregs:iorange:ionum:]` | **MATCH** | 44 | 44 |
+| `-[vidBIOS scratchSegment]` | **MATCH** | 16 | 16 |
+| `-[vidBIOS realToVirtual::]` | DIFF | 24 | 24 |
+| `_emu486` | **MATCH** | 10496 | 10496 |
+
+`int10:…smmport:` is +28: rebuilt prologue is `sub esp, 0x14c` vs reference `sub esp, 0x148` (`pagePerm[256]` + `IOMalloc(0x2000)` frame). Compiler-only; not padded. `realToVirtual::` is 22 bytes of identical code plus two padding zeros in the reference vs two `nop`s (`90 90`) before `_emu486`. Compiler-only alignment; not padded.
+
+### `binrecon compare` / `acceptance.passed`
+
+The plan's `python -m binrecon compare --profile` needs `--reference-analysis`, `--rebuilt-analysis`, and `--output`. `binrecon analyze --profile` runs IDA on both and writes `acceptance.passed`.
+
+`read_macho` on this rebuilt needed i386 scattered `GENERIC_RELOC_SECTDIFF` (type 2) + PAIR; `_emu486` jump tables emit those. That decoder is in `tools/binrecon/binrecon/macho.py` on this branch. Keeping it is a spec exception: the original plan said not to change binrecon, but compare cannot parse this rebuilt without it (24 SECTDIFF relocs). Phase 1 `failed_matched_or_glue` 15 was the uncommitted compare script's `width` check on semantic relocs (they have no `width`), not macho.py.
+
+`binrecon analyze --profile` was retried against `$REF` and this guest `$REBUILT` with the worktree decoder. It still **failed** before writing a comparison report:
+
+```
+relocation 875 is outside its instruction: relocation covers 0x4180..0x4184 (width 4, kind ida-off32-32) but the instruction covers 0x4180..0x4182 — IDA on ...IBMThinkPad760EDDisplayDriver_reloc: instruction at 0x4180 (2 bytes, in al, (offset loc_1A+4))
+```
+
+IDA treats `_emu486` moffs (`in al, (offset …)`) as a 2-byte instruction and then overlays a 4-byte `ida-off32`. `emu486.s` encodings were not rewritten to please IDA. No `acceptance.passed` file exists; the boolean is **unavailable**, not `false`. `compare_thinkpad.py` remains the Phase 2 compare record.
+
+## Task 9: source map and ledger
+
+`rebuilt_sha256` is now the guest artifact
+`4DD10AC0A20D35F60C4687D9F1A5400591C429E6AD64CF071B6BAA69C1870A13`
+(not the reference `47539E03…`). `$IDA_REF` is absent (gitignored), so the
+source map was restamped by hand from the current tree rather than by
+`binrecon source-map`.
+
+| Bucket | Count |
+| --- | --- |
+| `mapped` | **38** |
+| `unmapped` | **2** (instance glue only) |
+
+`_smapi_asm` → `smapi.s:32`. vidBIOS methods → `vidBIOS.m` declaration lines.
+`_emu486` → `emu486.s:92` (`_emu486:`). Unnamed 15796 / 15877 → `L3db4` /
+`L3e05`. `IBMThinkPad760ED.m` `source_line` values restamped to current
+declarations (`_set555Mode` at 35, methods 11 lines earlier than the Phase 1
+map).
+
+The two Kernel Server glue functions stay `unmapped`, matching Cirrus/VGA.
+Mapping them to generated `IBMThinkPad760EDDisplayDriver_instance.m` fails
+`source-map-v1` semantic validation (`source_path … is not a file`). The spec
+forbids writing that file by hand, so the schema cannot be satisfied. Ledger
+entries for both still advanced: `kernelServerInstance` and Version are
+`assembly-matched` with null `source_path` (generated glue). Version is a fair
+12-vs-12 MATCH (`55 89 e5 b8 f4 01 00 00 89 ec 5d c3`); `compare_thinkpad.py`'s
+DIFF was the next-nlist stretch to `_emu486` (1168 vs 12).
+
+Ledger (`binrecon ledger` with no `--address` loads): 40 entries, **0
+`unexamined`**.
+
+| Status | Count | Who |
+| --- | --- | --- |
+| `assembly-matched` | 25 | MATCH after kind-based mask, including Version 12/12, `_emu486` 10496, interior 15796/15877, instance glue |
+| `control-flow-confirmed` | 9 | named compiler-only: Task 4 list minus `getModeInfo:`/`name`; Phase 2 `int10:…smmport:` and `realToVirtual::` |
+| `signature-confirmed` | 6 | `enterLinearMode`, `getDisplayDeviceState`, `setGammaTable` (same-size DIFF residuals; not AM); `reportSystemConfiguration` (+28, prologue `55 89 e5 53`, Task 4 forbade CFC); `unlockRegisters`/`lockRegisters` (Task 2 nested RMW failed, 152 vs 168 still open — not a named compiler-only close) |
+
+IDA `binrecon compare` is still unavailable (emu486 moffs vs `ida-off32`).
+Reviewer `Pat Raynor`.

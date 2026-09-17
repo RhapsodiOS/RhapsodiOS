@@ -646,8 +646,45 @@ def _unequal_range_result(pair, left_offset, left_size, right_offset, right_size
                 sample(pair.right, right_offset, right_size))}
 
 
+def _compare_name_paired_instructions(left_instructions, right_instructions,
+                                      left_map, right_map, printable, section):
+    def stream(instructions, section_map):
+        raw = bytearray(); masked = bytearray()
+        for instruction, actual, _ in instructions:
+            raw.extend(actual)
+            masked.extend(_masked(instruction, actual, section_map)[0])
+        return bytes(raw), bytes(masked)
+
+    left_raw, left_masked = stream(left_instructions, left_map)
+    right_raw, right_masked = stream(right_instructions, right_map)
+    evidence = None
+    if left_masked != right_masked:
+        width = max(len(left_masked), len(right_masked))
+        left_pad = left_masked.ljust(width, b"\0")
+        right_pad = right_masked.ljust(width, b"\0")
+        index = next((i for i, (a, b) in enumerate(zip(left_pad, right_pad)) if a != b),
+                     min(len(left_masked), len(right_masked)))
+        end = index + 1
+        while end < width and left_pad[end] != right_pad[end]:
+            end += 1
+        evidence = _instruction_evidence(
+            "function-range", "code", "function range bytes differ", printable, section,
+            index, end, left_masked[index:index + 32].hex().upper(),
+            right_masked[index:index + 32].hex().upper())
+    return {"raw_equal": left_raw == right_raw, "masked_equal": left_masked == right_masked,
+            "reference_sha256": hashlib.sha256(left_raw).hexdigest().upper(),
+            "rebuilt_sha256": hashlib.sha256(right_raw).hexdigest().upper(),
+            "reference_masked_sha256": hashlib.sha256(left_masked).hexdigest().upper(),
+            "rebuilt_masked_sha256": hashlib.sha256(right_masked).hexdigest().upper(),
+            "evidence": evidence}
+
+
 def _compare_function_range(left_function, right_function, left_instructions, right_instructions,
-                            left_map, right_map, pair, printable):
+                            left_map, right_map, pair, printable, pairing):
+    if pairing == "name":
+        return _compare_name_paired_instructions(
+            left_instructions, right_instructions, left_map, right_map, printable,
+            _section_tag(left_function["range"]["section"], left_map))
     left_info = _section_info(left_map, left_function["range"]["section"])
     right_info = _section_info(right_map, right_function["range"]["section"])
     if left_info["zero"] or right_info["zero"]:
@@ -769,7 +806,8 @@ def _compare_functions(left, right, left_map, right_map, pair, categories):
                 reasons.append("cfg differs")
             calls_equal = _canonical_calls(a["calls"], left_map) == _canonical_calls(b["calls"], right_map)
             if not calls_equal: reasons.append("calls differ")
-            range_result = _compare_function_range(a, b, ai, bi, left_map, right_map, pair, printable)
+            range_result = _compare_function_range(a, b, ai, bi, left_map, right_map, pair, printable,
+                                                   pairing)
             if range_result["masked_equal"]:
                 for candidate in relocation_candidates:
                     _add(categories, candidate)

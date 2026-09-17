@@ -12,6 +12,7 @@ void package_init(Package *p) {
 void package_free(Package *p) {
     free(p->package); free(p->version); free(p->architecture);
     free(p->source); free(p->description); free(p->maintainer);
+    free(p->url); free(p->license);
     free(p->provides); free(p->conflicts); free(p->replaces);
     free(p->revision); free(p->package_revision);
     strlist_free(&p->build_depends);

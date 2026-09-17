@@ -1,13 +1,91 @@
 #include "pkginfo.h"
+#include "architecture.h"
 #include "strutil.h"
 #include "exec.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+
+static char *slurp_file(const char *path) {
+    FILE *f = fopen(path, "r");
+    sbuf s;
+    char buf[1024];
+    size_t n;
+    char *out;
+    if (!f) return 0;
+    sbuf_init(&s);
+    while ((n = fread(buf, 1, sizeof(buf), f)) > 0) sbuf_putn(&s, buf, n);
+    fclose(f);
+    out = sbuf_steal(&s);
+    sbuf_free(&s);
+    return out;
+}
+
+int pkginfo_read(Package *p, const char *path) {
+    char *data;
+    char *cursor;
+    unsigned mask;
+    data = slurp_file(path);
+    if (!data) return 1;
+    cursor = data;
+    while (*cursor) {
+        char *line = cursor;
+        char *nl = strchr(cursor, '\n');
+        char *eq;
+        char *key;
+        char *val;
+        if (nl) { *nl = '\0'; cursor = nl + 1; }
+        else cursor += strlen(cursor);
+        line = str_trim(line);
+        if (line[0] == '\0' || line[0] == '#') continue;
+        eq = strchr(line, '=');
+        if (!eq) continue;
+        *eq = '\0';
+        key = str_trim(line);
+        val = str_trim(eq + 1);
+        if (strcmp(key, "pkgname") == 0) package_set(&p->package, val);
+        else if (strcmp(key, "pkgver") == 0) package_set(&p->version, val);
+        else if (strcmp(key, "arch") == 0) package_set(&p->architecture, val);
+        else if (strcmp(key, "pkgdesc") == 0) package_set(&p->description, val);
+        else if (strcmp(key, "url") == 0) package_set(&p->url, val);
+        else if (strcmp(key, "maintainer") == 0) package_set(&p->maintainer, val);
+        else if (strcmp(key, "license") == 0) package_set(&p->license, val);
+        else if (strcmp(key, "origin") == 0) package_set(&p->source, val);
+        else if (strcmp(key, "provides") == 0) package_set(&p->provides, val);
+        else if (strcmp(key, "replaces") == 0) package_set(&p->replaces, val);
+        else if (strcmp(key, "makedepends") == 0 ||
+                 strcmp(key, "depend") == 0) {
+            if (strcmp(key, "makedepends") == 0) {
+                strlist_free(&p->build_depends);
+                strlist_init(&p->build_depends);
+                str_split_chars(val, " ,", &p->build_depends);
+                p->has_build_depends = 1;
+            }
+            /* depend: accept (do not error); do not treat as makedepends */
+        }
+        /* unknown keys ignored */
+    }
+    free(data);
+    if (!p->package) {
+        fprintf(stderr, "error: package file does not contain 'pkgname' entry\n");
+        return 2;
+    }
+    if (!p->version) {
+        fprintf(stderr, "error: package file does not contain 'pkgver' entry\n");
+        return 2;
+    }
+    if (architecture_parse(p->architecture, &mask) != 0) {
+        fprintf(stderr, "rbuild: %s: invalid arch: '%s'\n",
+                path, p->architecture);
+        return 2;
+    }
+    return 0;
+}
 
 static void emit(FILE *f, const char *key, const char *value) {
     if (value) fprintf(f, "%s = %s\n", key, value);

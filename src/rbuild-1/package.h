@@ -10,6 +10,8 @@ typedef struct {
     char *source;
     char *description;
     char *maintainer;
+    char *url;
+    char *license;
     char *provides;
     char *conflicts;
     char *replaces;

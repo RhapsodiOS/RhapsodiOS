@@ -1,6 +1,6 @@
 # drvPS2Mouse function worklist
 
-Task 4 (Finding 14 handler-return half: `void`). 2026-09-16.
+Task 5 (Kernel Server `VERS_OFILE` postamble). 2026-09-16.
 
 ## Reloc
 
@@ -12,10 +12,18 @@ Task 4 (Finding 14 handler-return half: `void`). 2026-09-16.
 Guest `sh /build/source/vm/build-i386-input-recon.sh drvPS2Mouse` ended
 `=== input-recon done fail=0 built: drvPS2Mouse ===`. The staged object is
 unstripped Mach-O preload i386. `gnumake` used the same bootstrap-root `-I`
-pair as Task 2/3 (guest copy of the harness only).
+pair as Task 2/3/4 (guest copy of the harness only). SHA matches Task 4.
 
 Live `System.framework` on the guest has no `PrivateHeaders`. The published IDA
 trio under `tools/binrecon/out/ps2mouse/published/` is from this rebuilt SHA.
+
+## VERS_OFILE
+
+`PS2Mouse.lksproj/Makefile.postamble` is `OTHER_GENERATED_OFILES += $(VERS_OFILE)`.
+`__TEXT,__const` is still **absent**. `_PS2Mouse_VERS_STRING` and
+`_PS2Mouse_VERS_NUM` are both **MISSING**. `PS2Mouse_vers.c` / `.o` were not
+generated and do not appear on `kl_ld`. Guest has no `next-sgs.make`. Gap
+accepted; see `divergences.md` Task 5.
 
 ## parity_check.py
 
@@ -51,9 +59,8 @@ methods. Extra unstripped symbols are not a failure.
    119    120    111              _PS2MouseIntHandler
 ```
 
-Vs Task 3: `_PS2MouseIntHandler` 133/120/112 → **119/120/111**. Not
-`raw_equal` / `masked_equal`; stays `intentional-mismatch` for Task 6.
-`--name` rebuilt epilogue is `mov esp,ebp; pop ebp; retn` with no `xor eax,eax`.
+Unchanged vs Task 4 (same SHA). `_PS2MouseIntHandler` stays
+`intentional-mismatch` for Task 6.
 
 ## Regression gate
 
@@ -63,5 +70,5 @@ Vs Task 3: `_PS2MouseIntHandler` 133/120/112 → **119/120/111**. Not
 - `isMousePresent` stayed `masked-eq`
 - `resetMouse` stayed `masked-eq`
 
-Finding 14's handler-return half is now `void`. The missing `VERS_OFILE` line
-is still in source.
+The Kernel Server postamble is in tree. The `__TEXT,__const` / VERS symbols
+gap is accepted with guest evidence (`next-sgs.make` missing).

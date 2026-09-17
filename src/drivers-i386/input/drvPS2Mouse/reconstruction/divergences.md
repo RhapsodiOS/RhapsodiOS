@@ -48,12 +48,12 @@ four `Loaded Server` sections our build emits. Three differ:
 | `__TEXT,__const` | 170 | *absent* | `_PS2Mouse_VERS_STRING` (160 bytes) and `_PS2Mouse_VERS_NUM` (10 bytes) |
 | `Loaded Server,Unload Commands` | 102 | *absent* | recorded above |
 
-The `__const` gap is new information from the fix pass and is the same class of build-system
-gap as `Unload Commands`: those two symbols are emitted by NeXT's `vers_string` machinery, not
-written by hand, and **no driver in this repository produces them** — of the twelve `_reloc`
-artifacts currently staged under `out/i386/`, the only ones with a `__TEXT,__const` section at
-all (drvEIDE, drvISASerialPort, drvPCMCIABus) have it for ordinary `const` data of their own,
-not for version constants. Recorded, not fixed; out of scope for the same reason.
+The `__const` gap is the same class of build-system gap as `Unload Commands`: those two
+symbols are emitted by NeXT's `vers_string` machinery, not written by hand. Task 5 added the
+Kernel Server `Makefile.postamble` line `OTHER_GENERATED_OFILES += $(VERS_OFILE)`. The
+symbols are still absent: the guest has no `next-sgs.make`, so `$(VERS_OFILE)` expands empty,
+`PS2Mouse_vers.c` / `.o` were never generated, and they do not appear on `kl_ld`.
+`driverTools` was not edited. **Accepted with guest evidence;** see Task 5.
 
 ### Follow-up pass: the `__text` overshoot was mis-attributed
 
@@ -1232,3 +1232,36 @@ replacing every `return 0` in the handler with `return`. Guest log:
 **fixed**; the `mouseInit:` half was already fixed and was not reopened. Residual
 on `_PS2MouseIntHandler` (119 diffs, not masked-eq) is left for Task 6. The
 missing `VERS_OFILE` line is still in source. See `function-worklist.md`.
+
+## Task 5: Kernel Server `VERS_OFILE` postamble
+
+2026-09-16 guest rebuild after creating
+`PS2Mouse.lksproj/Makefile.postamble` as the single line
+`OTHER_GENERATED_OFILES += $(VERS_OFILE)`. No Driver-project postamble, no
+`PS2Mouse.m` edit, no `driverTools` edit. Guest log:
+`=== input-recon done fail=0 built: drvPS2Mouse ===`. Staged unstripped
+`PS2Mouse_reloc` is still **94408** bytes, SHA-256
+`30CB12E57AB8774148915AA5954328A0C644D66407343ECA8877C0F350DBBA94` — identical
+to Task 4, because nothing that `kl_ld` consumes changed.
+
+Gate **unmet.** `__TEXT,__const` is still absent. `_PS2Mouse_VERS_STRING` and
+`_PS2Mouse_VERS_NUM` are both **MISSING**. Guest evidence:
+
+- `kl_ld` linked `PS2Mouse.o` and `PS2Mouse_instance.o` only; no `PS2Mouse_vers.o`.
+- Object dir has `PS2Mouse.o` / `PS2Mouse_instance.o` (and `.i386.o`); no `*vers*`.
+- Derived src has `PS2Mouse_instance.m` only; no `PS2Mouse_vers.c`.
+- `/System/Developer/Makefiles/VersioningSystems` has `apple-generic.make` and
+  `next-cvs.make` only. There is no `next-sgs.make` there or under
+  `pb_makefiles`. `common.make` `-include`s `$(VERSIONING_SYSTEM).make`; with
+  that file missing, `$(VERS_OFILE)` expands empty, so the postamble appends
+  nothing.
+
+No remaining local makefile fix: setting `VERSIONING_SYSTEM = next-sgs` in this
+driver would still include a file the guest does not have. Installing
+`next-sgs.make` is a guest-installed makefile / `driverTools` change, which this
+task forbids. **Accepted.** Do not compare the 160-byte string to Apple's.
+
+`--list` is unchanged vs Task 4 (same SHA). Regression gate held:
+`getHandler:…` `masked-eq`, `getResolution` `identical`, `getIntValues:` still
+7 diffs, `isMousePresent` and `resetMouse` `masked-eq`. See
+`function-worklist.md`.

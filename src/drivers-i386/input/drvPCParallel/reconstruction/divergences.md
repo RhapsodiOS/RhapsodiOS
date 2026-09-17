@@ -1267,6 +1267,34 @@ Parity 0/0. Previously identical rows stayed identical. Ledger 0
   and al, 0B8h                            and al, 0B8h
 ```
 
+### Task 8 — `_ppopen` nested signed initDevice range
+
+Replaced the combined range predicate with Apple's signed compare tree
+(`result <= BUSY` then timeout/paper/offline bounds, else `result != 0`).
+`--name` now matches `cmp 0FFFFFD2Bh` / `jg` / `cmp 0FFFFFD2Ah` / `jge`.
+Leftover is gcc 2.x `jge` vs Apple's `jl` on the offline bound and where
+`mov eax, 5` is placed. Rebuilt SHA-256
+`5F8A0FDE2A167B1DF11035829FA2D2117D5D101357BFE2EB6BEC5D33D70AD624`.
+Parity 0/0. Previously identical rows stayed identical. Ledger 5520
+`intentional-mismatch`, reviewer Pat Raynor, reason
+`compiler-shaped leftover after exhausted source-shape list`. source-map
+relined 8 later `IOParallelPortKern.m` sites (73 mapped / 2 unmapped).
+
+```
+_ppopen
+  status=different raw_equal=False masked_equal=False
+  cmp eax, 0FFFFFD2Bh                     cmp eax, 0FFFFFD2Bh
+* jg loc_15F0                             jg loc_10A4
+  cmp eax, 0FFFFFD2Ah                     cmp eax, 0FFFFFD2Ah
+* jge loc_15F4                            jge loc_10A8
+  cmp eax, 0FFFFFD1Fh                     cmp eax, 0FFFFFD1Fh
+* jg loc_1608                             jg loc_109C
+  cmp eax, 0FFFFFD1Eh                     cmp eax, 0FFFFFD1Eh
+* jl loc_1608                             jge loc_10A8
+* jmp loc_15F4                            mov eax, 5
+  test eax, eax                           test eax, eax
+```
+
 ### 8.9 The status rule used
 
 - `assembly-matched` (56) - the reference's full instruction stream was read and our
@@ -1274,11 +1302,11 @@ Parity 0/0. Previously identical rows stayed identical. Ledger 0
   and the function's emitted metadata was verified identical in the rebuilt binary. Used
   for the accessors and the short bodies. Task 8 promoted `msgTypeToIOReturn:` and
   `cmdBufAlloc` (`masked_equal`).
-- `control-flow-confirmed` (8) - the reference's full instruction stream was read and our
+- `control-flow-confirmed` (7) - the reference's full instruction stream was read and our
   source reproduces its block structure, every call target and every constant, but the
   rebuilt output was **not** itself disassembled and compared instruction by instruction.
   Used for the larger functions.
-- `intentional-mismatch` (11) - a deliberate difference remains: 0 (`_waitForDevice:isReady:`
+- `intentional-mismatch` (12) - a deliberate difference remains: 0 (`_waitForDevice:isReady:`
   for-loop with `tries < busyMaxRetries`; leftover is the `inb` stack slot), 112 and 1452
   (Finding 53, uninitialized control byte reconstructed; leftover is gcc 2.x zero-fill /
   immediate fold), 2372 and 2388 (`struct buf` encoding), 3132 (`printerInit` control byte
@@ -1286,5 +1314,6 @@ Parity 0/0. Previously identical rows stayed identical. Ledger 0
   prev-link stored first; leftover is `add esp,8` scheduling), 4040 (`waitForCmdBuf`
   if/else dequeue; leftover is `add esp,0Ch` scheduling and else-block placement), 4232
   (`_strobeChar` load-then-test reversed; leftover is gcc 2.x CSE / register allocation),
-  and the two build-generated glue functions at 7392 and 7404, untouched from the report
-  pass.
+  5520 (`_ppopen` nested signed initDevice range; leftover is `jl` vs `jge` on
+  the offline bound and EIO epilogue placement), and the two build-generated glue
+  functions at 7392 and 7404, untouched from the report pass.

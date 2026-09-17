@@ -103,10 +103,18 @@ int ppopen(dev_t dev, int flags, int devtype, void *p)
     // Accept success and the four printer conditions the caller can act on:
     // busy (-725), not ready (-726), paper out (-737) and offline (-738).
     result = [port initDevice];
-    if (!(result == 0 ||
-          (result >= PP_TIMEOUT_ERROR && result <= PP_BUSY_ERROR) ||
-          (result >= PP_OFFLINE_ERROR && result <= PP_PAPER_OUT_ERROR)))
-        return EIO;
+    if (result <= PP_BUSY_ERROR) {
+        if (result >= PP_TIMEOUT_ERROR) {
+            /* busy or timeout: accept */
+        } else if (result > PP_PAPER_OUT_ERROR) {
+            return EIO;
+        } else if (result < PP_OFFLINE_ERROR) {
+            return EIO;
+        }
+    } else {
+        if (result != 0)
+            return EIO;
+    }
 
     [port setInUse:YES];
     return 0;

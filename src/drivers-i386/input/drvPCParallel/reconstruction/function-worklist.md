@@ -524,11 +524,12 @@ Accepted leftover: rebuilt `76CA62E75C2467B5E0BFA25A61BB433DF1385F389D0D4DA66E98
 ### `_ppopen` (diff 22)
 
 Star: Apple two-range signed `cmp`/`jg`/`jge` vs our `lea`/`cmp 1`/`jbe`.
+Accepted leftover: rebuilt `5F8A0FDE2A167B1DF11035829FA2D2117D5D101357BFE2EB6BEC5D33D70AD624`.
 
-1. Nested `if (result > -725) { if (result != 0) return EIO; } else { ... }`
-2. `if (result > PP_BUSY_ERROR)` then `test` zero; else `>= TIMEOUT` accept; else `> PAPER` reject; else `< OFFLINE` reject
-3. Operand-reversed `result < 0` first
-4. Keep `result` in a signed `int` and compare constants in Apple's order
+1. Nested `if (result > -725) { if (result != 0) return EIO; } else { ... }` — **kept** (inverted to `<= BUSY` so `jg` matches)
+2. `if (result > PP_BUSY_ERROR)` then `test` zero; else `>= TIMEOUT` accept; else `> PAPER` reject; else `< OFFLINE` reject — **kept**
+3. Operand-reversed `result < 0` first — **skipped** (would invert the matched tree)
+4. Keep `result` in a signed `int` and compare constants in Apple's order — **already the source**
 
 ### `-[IOParallelPort writeToPort]` (diff 27)
 

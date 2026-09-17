@@ -575,7 +575,7 @@
         "__strobeChar"
       ],
       "size": 280,
-      "source_line": 639,
+      "source_line": 647,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m"
     },
     {
@@ -584,7 +584,7 @@
         "_IOParallelPortThread"
       ],
       "size": 728,
-      "source_line": 490,
+      "source_line": 498,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m"
     },
     {
@@ -593,7 +593,7 @@
         "_IOParallelPortInterruptHandler"
       ],
       "size": 279,
-      "source_line": 416,
+      "source_line": 424,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m"
     },
     {
@@ -602,7 +602,7 @@
         "_ppopen"
       ],
       "size": 132,
-      "source_line": 90,
+      "source_line": 93,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m"
     },
     {
@@ -620,7 +620,7 @@
         "_ppread"
       ],
       "size": 134,
-      "source_line": 124,
+      "source_line": 132,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m"
     },
     {
@@ -629,7 +629,7 @@
         "_ppwrite"
       ],
       "size": 424,
-      "source_line": 146,
+      "source_line": 154,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m"
     },
     {
@@ -638,7 +638,7 @@
         "_ppminphys"
       ],
       "size": 49,
-      "source_line": 396,
+      "source_line": 404,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m"
     },
     {
@@ -647,7 +647,7 @@
         "_ppstrategy"
       ],
       "size": 404,
-      "source_line": 334,
+      "source_line": 342,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m"
     },
     {
@@ -656,7 +656,7 @@
         "_ppioctl"
       ],
       "size": 683,
-      "source_line": 232,
+      "source_line": 240,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m"
     }
   ],

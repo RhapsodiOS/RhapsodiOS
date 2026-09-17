@@ -8,7 +8,7 @@ against Apple's `ParallelPort_reloc`. Measured 2026-09-16.
 | Artifact | Size | SHA-256 |
 |---|---:|---|
 | Reference | 45312 | `D188A4D909005683B0C943C84CD99514C14A84AD1D378425B3B1DB343F1EAAA2` |
-| Rebuilt | 165576 | `F31C01A0FBB4F010AADC205C8CAE011A501FD6D5016BFCEC10022AA65E2BA9DC` |
+| Rebuilt | 165880 | `F31C01A0FBB4F010AADC205C8CAE011A501FD6D5016BFCEC10022AA65E2BA9DC` |
 
 `binrecon validate` printed the reference sha256 above. Rebuilt is the unstripped
 guest `kl_ld` image. `IOParallelPort` `instance_size` is **404** on both
@@ -19,7 +19,7 @@ guest `kl_ld` image. `IOParallelPort` `instance_size` is **404** on both
 
 | Section | Reference | Rebuilt |
 |---|---:|---:|
-| `__TEXT,__text` | 7416 | 7120 |
+| `__TEXT,__text` | 7416 | 7292 |
 | `__TEXT,__cstring` | 476 | 476 |
 | `__TEXT,__const` | 170 | **absent** |
 | `__OBJC,__instance_vars` | 328 | 328 |
@@ -650,9 +650,10 @@ Accepted leftover: rebuilt `F31C01A0FBB4F010AADC205C8CAE011A501FD6D5016BFCEC1002
 
 Final kept reloc SHA-256
 `F31C01A0FBB4F010AADC205C8CAE011A501FD6D5016BFCEC10022AA65E2BA9DC`
-(165576 bytes, unstripped guest `kl_ld`). Parity: `missing_strings (0):`,
-`missing_symbols (0):`. No guest rebuild; comparison read from the Task 8
-published `comparison-ida.json` against this reloc.
+(165880 bytes, unstripped guest `kl_ld`). Parity: `missing_strings (0):`,
+`missing_symbols (0):`. Sizes confirmed from
+`tools/binrecon/out/parallelport/published/comparison-ida.json` and
+`out/i386/drvPCParallel/ParallelPort.config/ParallelPort_reloc`.
 
 | `--list` class | Count |
 |---|---:|
@@ -661,9 +662,9 @@ published `comparison-ida.json` against this reloc.
 | differing (accepted / demoted) | 18 |
 | unpaired | 0 |
 
-Sections unchanged from the Task 1–3 baseline on this driver: reference
-`__TEXT,__text` 7416, rebuilt 7120; reference `__TEXT,__const` 170,
-rebuilt **absent** (`_ParallelPort_VERS_*` still missing). Tools still open:
+Sections on this reloc (published comparison): reference `__TEXT,__text`
+7416, rebuilt **7292**; reference `__TEXT,__const` 170, rebuilt **absent**
+(`_ParallelPort_VERS_*` still missing). Tools still open:
 `InstallPPDev` not staged (PreLoad `IODeviceMaster.m` compile failure);
 `RemovePPDev` staged as Mach-O **ppc**, not i386.
 

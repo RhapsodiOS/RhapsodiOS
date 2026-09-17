@@ -665,9 +665,13 @@ python3 vm/build_uefi_image.py vm/work/rhapsody.img src/bootefi-1/BUILD/BOOTIA32
 sh vm/run-q35-uefi.sh vm/work/hybrid.img vm/work/hybrid-run.img
 ```
 
-Expected: QEMU's display shows `RhapsodiOS UEFI loader` and hangs in the spin
-loop. Kill QEMU with Ctrl-C. If OVMF drops to its shell instead, the ESP or the
-`/EFI/BOOT/BOOTIA32.EFI` path is wrong — re-check Task 1's `mdir` test.
+Expected: the script runs with `-display none`, so watch `vm/logs/uefi-serial.log`
+instead of a display — stock OVMF's console splitter includes the serial port
+in ConOut, so `RhapsodiOS UEFI loader` and the spin loop should appear there.
+Kill QEMU with Ctrl-C. If the serial log shows nothing, first check whether the
+firmware's ConOut actually includes serial. If OVMF drops to its shell instead,
+the ESP or the `/EFI/BOOT/BOOTIA32.EFI` path is wrong — re-check Task 1's `mdir`
+test.
 
 - [ ] **Step 7: Commit**
 

@@ -54,7 +54,7 @@ exec "$qemu" \
     -machine q35 \
     -m 256 \
     -drive if=pflash,format=raw,unit=0,readonly=on,file="$code_fd" \
-    -drive if=pflash,format=raw,unit=1,format=raw,file="$vars_copy" \
+    -drive if=pflash,format=raw,unit=1,file="$vars_copy" \
     -drive id=disk0,file="$dst_image",format=raw,if=none \
     -device ich9-ahci,id=ahci \
     -device ide-hd,drive=disk0,bus=ahci.0 \

@@ -8,7 +8,7 @@ instead of dpkg `.deb`.
 
     make            # builds ./rbuild
     make test       # unit tests and bootstrap integration checks
-    make trace-test # planned universal flags vs Perl; thin/dry-run assertions
+    make trace-test # rbuild APK dry-run: universal probes and thin RC_*
     make install    # installs to $(DSTROOT)/usr/bin/rbuild
 
 ## Usage
@@ -78,8 +78,7 @@ bounded native guest acceptance evidence.
 - Depends at runtime on `tar`, `gzip`, `apk`, `make`, `chroot`, `rsync`,
   `mkdir`, `cp`, `rm` on `PATH`.
 
-The `buildtools-2` Perl remains the command-flag oracle for `make trace-test`.
-That test compares the first project header command with rbuild's dry-run plan,
-excluding probe commands and preserving architecture values and CFLAGS spacing.
-Its empty dependency archives are planning/shim fixtures, not valid packages;
+`make trace-test` is an rbuild `-n` dry-run against empty APK seeds: universal
+i386+ppc probes, thin `RC_*` policy, no build root, no live-host bootstrap
+seeds. Empty dependency archives are planning fixtures, not valid packages;
 actual payload validation and native builds are tested separately.

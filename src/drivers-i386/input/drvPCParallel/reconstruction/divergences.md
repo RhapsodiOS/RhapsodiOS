@@ -1549,3 +1549,91 @@ RemovePPDev: Mach-O executable i386
 
 Reloc SHA-256 unchanged
 `F31C01A0FBB4F010AADC205C8CAE011A501FD6D5016BFCEC10022AA65E2BA9DC`.
+
+### Task 11 — RemovePPDev `_main`
+
+Reference 17272 bytes
+(`ADE6C2176D8FDE1EF8AC6EE6A1F3EC72ECC7B7FE74813320AEEF1C12929353A8`).
+Rebuilt 21756 bytes
+(`BE525C8553C7EC73390AE84BDD4EE4118465BB824827FC1B6DF2B0E1844DC16A`),
+Mach-O executable i386. Reloc SHA after the last guest rebuild still
+`F31C01A0FBB4F010AADC205C8CAE011A501FD6D5016BFCEC10022AA65E2BA9DC`.
+
+The invented Post-Load main (stack `devicePath[20]`, `"Parallel Port Post-Load"`,
+`Instance=%u`, sscanf-return check, two invalid-instance strings) is replaced
+with Apple's Pre-Load tool: `PROGRAM_NAME` `"Parallel Port Pre-Load"`, external
+`char path[20]`, `"Instance=%d"` / `"%s%s%d"`, one `"%s: invalid instance number\n"`
+arm (`cmp [ebp+var_4], 9` / `jbe`), `unlink` then `errno != 2` with `strerror`.
+
+`--name _main` on the kept rebuild: `status=different`, `masked_equal=False`,
+diff 35, 105 vs 105. Exhausted allowed source-shape list (for-loop kept;
+goto-around-if and while-loop reverted). Accept as compiler-shaped, reviewer
+Pat Raynor.
+
+Leftover: reference encodes `if (argc > 1)` as `jg` + `jmp` and parks the
+`instanceArg = argv[i]; break;` block in that hole; rebuilt falls through with
+`jle`. Same calls and constants. `lea ecx` vs `lea edx` for the loop-invariant
+`"Instance="` slot; PIC displacements `3CEEh` vs `3CF2h` follow the extra jmp.
+
+```
+_main
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+  reason: instruction references differ
+  reason: instruction semantics differ
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 8                              sub esp, 8
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  call $+5                                call $+5
+  pop esi                                 pop esi
+  xor edi, edi                            xor edi, edi
+  cmp [ebp+argc], 1                       cmp [ebp+argc], 1
+* jg loc_3D04                             jle loc_3D35
+* jmp loc_3D41
+* mov edx, [ebp+argv]
+* mov edi, [edx+ebx*4]
+* jmp loc_3D3D
+  mov ebx, 1                              mov ebx, 1
+  cmp [ebp+argc], ebx                     cmp [ebp+argc], ebx
+* jle loc_3D3D                            jle loc_3D35
+* lea ecx, (aInstance - 3CEEh)[esi]       lea edx, (aInstance - 3CF2h)[esi]
+* mov [ebp+__s2], ecx                     mov [ebp+__s2], edx
+  nop                                     nop
+* mov edx, [ebp+argv]                     nop
+* cmp dword ptr [edx+ebx*4], 0            mov ecx, [ebp+argv]
+* jz loc_3D37                             cmp dword ptr [ecx+ebx*4], 0
+*                                         jz loc_3D2F
+  push 9                                  push 9
+* mov ecx, [ebp+__s2]                     mov edx, [ebp+__s2]
+*                                         push edx
+*                                         mov ecx, [ecx+ebx*4]
+  push ecx                                push ecx
+* mov edx, [edx+ebx*4]
+* push edx
+  call _strncmp                           call _strncmp
+  add esp, 0Ch                            add esp, 0Ch
+  test eax, eax                           test eax, eax
+* jz loc_3CFC                             jz loc_3D60
+  inc ebx                                 inc ebx
+  cmp [ebp+argc], ebx                     cmp [ebp+argc], ebx
+* jg loc_3D18                             jg loc_3D10
+  test edi, edi                           test edi, edi
+  jnz loc_3D68                            jnz loc_3D68
+  ... sscanf / invalid instance / bzero(path, 14h) / sprintf / unlink ...
+  xor eax, eax                            xor eax, eax
+  lea esp, [ebp-14h]                      lea esp, [ebp-14h]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

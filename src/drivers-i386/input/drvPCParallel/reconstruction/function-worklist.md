@@ -851,3 +851,161 @@ tools/binrecon/profiles/parallelport.json --list`):
 75 functions: 40 byte-identical, 35 differing, 0 unpaired
 ```
 
+## RemovePPDev
+
+Reference `C:\Users\raynorpat\Downloads\test\Drivers\i386\ParallelPort.config\RemovePPDev`
+17272 bytes, SHA-256
+`ADE6C2176D8FDE1EF8AC6EE6A1F3EC72ECC7B7FE74813320AEEF1C12929353A8`.
+Rebuilt 21756 bytes, SHA-256
+`BE525C8553C7EC73390AE84BDD4EE4118465BB824827FC1B6DF2B0E1844DC16A`,
+Mach-O executable i386. Reloc SHA after the last tool rebuild still
+`F31C01A0FBB4F010AADC205C8CAE011A501FD6D5016BFCEC10022AA65E2BA9DC`.
+
+IDA-only `removeppdev.json`. libc / crt stay unpaired in
+`removeppdev-source-map.json`. The grind set is `_main` only.
+
+### Baseline `--list` (invented stack-buffer main)
+
+```
+  diff    ref    new  flags       name
+
+     0      1      1              __dyld_func_lookup
+     0      2      2              dyld_stub_binding_helper
+     0     12     12  identical   start
+     1     15     15              __call_mod_init_funcs
+     1      4      4              _bzero
+     1      4      4              _exit
+     1      4      4              _printf
+     1      4      4              _sprintf
+     1      4      4              _sscanf
+     1      4      4              _strerror
+     1      4      4              _strncmp
+     1      4      4              _unlink
+     2     14     14              __dyld_init_check
+    17     67     67              __start
+    53    105    111              _main
+
+15 functions: 1 byte-identical, 14 differing, 0 unpaired
+```
+
+### Task 11 experiments (`_main`)
+
+1. Rewrite to the reference strings and shape: `"Parallel Port Pre-Load"`,
+   `char path[20]` in `__DATA,__common`, `"Instance=%d"` / `"%s%s%d"`, drop
+   sscanf-return / extra format message, `bzero(path, 20)`, `unlink` then
+   `errno != ENOENT` with `strerror` — **kept** (diff 53→35, 111→105 insns,
+   frame `sub esp, 8`).
+2. `if (argc > 1) goto scan; goto after;` to force `jg`/`jmp` — **reverted**
+   (gcc -O folded it back to `jle`).
+3. `while (i < argc)` + `argv[i] == NULL` continue — **reverted** (same 35-diff
+   `_main` dump; STABS-only size 21780).
+
+Skipped: invented temps to pick `ecx` vs `edx`; dummy stack junk; `-lDriver`;
+renaming the binary.
+
+### Final `--list`
+
+```
+  diff    ref    new  flags       name
+
+     0      1      1  identical   __dyld_func_lookup
+     0      4      4  identical   _bzero
+     0      4      4  identical   _exit
+     0      4      4  identical   _sprintf
+     0      4      4  identical   _sscanf
+     0      4      4  identical   _strerror
+     0      4      4  identical   _unlink
+     0      2      2  identical   dyld_stub_binding_helper
+     0     12     12  identical   start
+     1     15     15              __call_mod_init_funcs
+     1     14     14  identical   __dyld_init_check
+     1      4      4  identical   _printf
+     1      4      4  identical   _strncmp
+    17     67     67              __start
+    35    105    105              _main
+
+15 functions: 12 byte-identical, 3 differing, 0 unpaired
+```
+
+`_main` accepted `intentional-mismatch` (compiler-shaped `jg`+`jmp` vs `jle`
+and `ecx` vs `edx`). `__call_mod_init_funcs` / `__start` are crt, unpaired.
+
+## RemovePPDev
+
+Reference `C:\Users\raynorpat\Downloads\test\Drivers\i386\ParallelPort.config\RemovePPDev`
+17272 bytes, SHA-256
+`ADE6C2176D8FDE1EF8AC6EE6A1F3EC72ECC7B7FE74813320AEEF1C12929353A8`.
+Rebuilt 21756 bytes, SHA-256
+`BE525C8553C7EC73390AE84BDD4EE4118465BB824827FC1B6DF2B0E1844DC16A`,
+Mach-O executable i386. Reloc SHA after the last tool rebuild still
+`F31C01A0FBB4F010AADC205C8CAE011A501FD6D5016BFCEC10022AA65E2BA9DC`.
+
+IDA-only `removeppdev.json`. libc / crt stay unpaired in
+`removeppdev-source-map.json`. The grind set is `_main` only.
+
+### Baseline `--list` (invented stack-buffer main)
+
+```
+  diff    ref    new  flags       name
+
+     0      1      1              __dyld_func_lookup
+     0      2      2              dyld_stub_binding_helper
+     0     12     12  identical   start
+     1     15     15              __call_mod_init_funcs
+     1      4      4              _bzero
+     1      4      4              _exit
+     1      4      4              _printf
+     1      4      4              _sprintf
+     1      4      4              _sscanf
+     1      4      4              _strerror
+     1      4      4              _strncmp
+     1      4      4              _unlink
+     2     14     14              __dyld_init_check
+    17     67     67              __start
+    53    105    111              _main
+
+15 functions: 1 byte-identical, 14 differing, 0 unpaired
+```
+
+### Task 11 experiments (`_main`)
+
+1. Rewrite to the reference strings and shape: `"Parallel Port Pre-Load"`,
+   `char path[20]` in `__DATA,__common`, `"Instance=%d"` / `"%s%s%d"`, drop
+   sscanf-return / extra format message, `bzero(path, 20)`, `unlink` then
+   `errno != ENOENT` with `strerror` — **kept** (diff 53→35, 111→105 insns,
+   frame `sub esp, 8`).
+2. `if (argc > 1) goto scan; goto after;` to force `jg`/`jmp` — **reverted**
+   (gcc -O folded it back to `jle`).
+3. `while (i < argc)` + `argv[i] == NULL` continue — **reverted** (same 35-diff
+   `_main` dump; STABS-only size 21780).
+
+Skipped: invented temps to pick `ecx` vs `edx`; dummy stack junk; `-lDriver`;
+renaming the binary.
+
+### Final `--list`
+
+```
+  diff    ref    new  flags       name
+
+     0      1      1  identical   __dyld_func_lookup
+     0      4      4  identical   _bzero
+     0      4      4  identical   _exit
+     0      4      4  identical   _sprintf
+     0      4      4  identical   _sscanf
+     0      4      4  identical   _strerror
+     0      4      4  identical   _unlink
+     0      2      2  identical   dyld_stub_binding_helper
+     0     12     12  identical   start
+     1     15     15              __call_mod_init_funcs
+     1     14     14  identical   __dyld_init_check
+     1      4      4  identical   _printf
+     1      4      4  identical   _strncmp
+    17     67     67              __start
+    35    105    105              _main
+
+15 functions: 12 byte-identical, 3 differing, 0 unpaired
+```
+
+`_main` accepted `intentional-mismatch` (compiler-shaped `jg`+`jmp` vs `jle`
+and `ecx` vs `edx`). `__call_mod_init_funcs` / `__start` are crt, unpaired.
+

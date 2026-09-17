@@ -1,0 +1,29 @@
+{
+  "entries": [
+    {
+      "address": 15584,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA-only profile; Ghidra and angr disabled for RemovePPDev"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
+      "names": [
+        "_main"
+      ],
+      "reason": "reconstructed against Apple's 308-byte _main: PROGRAM_NAME is Parallel Port Pre-Load, global char path[20], Instance=%d / %s%s%d, sscanf return unchecked, one invalid-instance printf, unlink ENOENT via strerror. Leftover after exhausted source-shape list is gcc 2.x if-layout: reference jg+jmp with the break block parked in the hole, rebuilt jle fall-through; ecx vs edx for the Instance= CSE slot; PIC lea displacement 3CEEh vs 3CF2h. Same calls, constants, and CFG. Reviewer Pat Raynor.",
+      "reviewer": "Pat Raynor",
+      "size": 308,
+      "source_line": 15,
+      "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PostLoad.tproj/RemovePPDev.c",
+      "status": "intentional-mismatch"
+    }
+  ],
+  "rebuilt_sha256": "BE525C8553C7EC73390AE84BDD4EE4118465BB824827FC1B6DF2B0E1844DC16A",
+  "reference_sha256": "ADE6C2176D8FDE1EF8AC6EE6A1F3EC72ECC7B7FE74813320AEEF1C12929353A8",
+  "schema_version": "ledger-v1"
+}

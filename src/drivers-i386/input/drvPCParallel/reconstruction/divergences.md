@@ -1050,11 +1050,11 @@ executable, not i386. Phase 3 / Task 10 converts both tproj trees to `tool.make`
 
 ### 8.9 The status rule used
 
-- `assembly-matched` (50) - the reference's full instruction stream was read and our
+- `assembly-matched` (55) - the reference's full instruction stream was read and our
   source is a statement-for-statement transliteration of it with no remaining difference,
   and the function's emitted metadata was verified identical in the rebuilt binary. Used
   for the accessors and the short bodies.
-- `control-flow-confirmed` (18) - the reference's full instruction stream was read and our
+- `control-flow-confirmed` (13) - the reference's full instruction stream was read and our
   source reproduces its block structure, every call target and every constant, but the
   rebuilt output was **not** itself disassembled and compared instruction by instruction.
   Used for the larger functions.

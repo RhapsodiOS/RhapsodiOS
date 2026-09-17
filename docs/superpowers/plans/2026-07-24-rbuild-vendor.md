@@ -37,7 +37,7 @@
 | `src/rbuild-1/tests/test_builder.c` | Modify: `builder_apkdir` and apk-vs-dpkg metadata selection. |
 | `src/rbuild-1/README.md` | Modify: document the two new files and the `patch` dependency. |
 | `src/files-5/apk/` | **Create** (`pkginfo`, `pre-install`, `post-install`); delete `src/files-5/dpkg/`. |
-| `src/zlib/apk/` | **Create** (`pkginfo`, `vendor`); add `zlib-1.1.3.tar.gz` + `patches/`; delete `src/zlib/zlib/` and `src/zlib/dpkg/`. |
+| `src/zlib-1/apk/` | **Create** (`pkginfo`, `vendor`); add `zlib-1.1.3.tar.gz` + `patches/`; delete `src/zlib-1/zlib/` and `src/zlib-1/dpkg/`. |
 
 ---
 
@@ -1624,12 +1624,12 @@ git commit -m "files: convert package metadata and maintainer scripts to apk nam
 
 This is the pilot. `zlib/Makefile` sets `Project = zlib`, so GNUSource.make resolves `Sources = $(SRCROOT)/zlib` — exactly the `directory` the descriptor names. **The Makefile is not modified.**
 
-The in-tree delta is small: `src/zlib/zlib/configure` carries `Darwin*)` and `Rhapsody*)` cases setting `SHAREDEXT='.dylib'` (lines 118-125) that upstream 1.1.3 does not have.
+The in-tree delta is small: `src/zlib-1/zlib/configure` carries `Darwin*)` and `Rhapsody*)` cases setting `SHAREDEXT='.dylib'` (lines 118-125) that upstream 1.1.3 does not have.
 
 **Files:**
-- Create: `src/zlib/apk/pkginfo`, `src/zlib/apk/vendor`
-- Create: `src/zlib/zlib-1.1.3.tar.gz`, `src/zlib/patches/0001-rhapsody-port.patch`
-- Delete: `src/zlib/zlib/` (102 files), `src/zlib/dpkg/control`
+- Create: `src/zlib-1/apk/pkginfo`, `src/zlib-1/apk/vendor`
+- Create: `src/zlib-1/zlib-1.1.3.tar.gz`, `src/zlib-1/patches/0001-rhapsody-port.patch`
+- Delete: `src/zlib-1/zlib/` (102 files), `src/zlib-1/dpkg/control`
 
 **Interfaces:**
 - Consumes: everything from Tasks 1-7.
@@ -1651,14 +1651,14 @@ gzip -dc zlib-1.1.3.tar.gz | tar -tf - | head -3 && gzip -dc zlib-1.1.3.tar.gz |
 
 Expected: the archive's sole top-level directory is `zlib-1.1.3/`, and `zlib.h` declares `#define ZLIB_VERSION "1.1.3"` — matching `src/zlib/zlib/zlib.h:40`.
 
-Then place it: `mv zlib-1.1.3.tar.gz src/zlib/`
+Then place it: `mv zlib-1.1.3.tar.gz src/zlib-1/`
 
 - [ ] **Step 2: Generate the patch series**
 
 Run this from the repository root; `REPO` captures it so the `cd` does not lose the path:
 
 ```bash
-REPO="$(pwd)" && rm -rf /tmp/zvendor && mkdir -p /tmp/zvendor && cd /tmp/zvendor && gzip -dc "$REPO/src/zlib/zlib-1.1.3.tar.gz" | tar -xf - && cp -R "$REPO/src/zlib/zlib" ./zlib && diff -urN zlib-1.1.3 zlib > 0001-rhapsody-port.patch; echo "diff exit $? (1 = differences found, expected)"
+REPO="$(pwd)" && rm -rf /tmp/zvendor && mkdir -p /tmp/zvendor && cd /tmp/zvendor && gzip -dc "$REPO/src/zlib-1/zlib-1.1.3.tar.gz" | tar -xf - && cp -R "$REPO/src/zlib-1/zlib" ./zlib && diff -urN zlib-1.1.3 zlib > 0001-rhapsody-port.patch; echo "diff exit $? (1 = differences found, expected)"
 ```
 
 - [ ] **Step 3: Review the patch before accepting it**
@@ -1672,17 +1672,17 @@ Expected: `configure` appears. If files you did not expect show up — object fi
 - [ ] **Step 4: Install the patch and the descriptor**
 
 ```bash
-cd src/zlib && mkdir -p apk patches && cp /tmp/zvendor/0001-rhapsody-port.patch patches/
+cd src/zlib-1 && mkdir -p apk patches && cp /tmp/zvendor/0001-rhapsody-port.patch patches/
 ```
 
-Write `src/zlib/apk/vendor`:
+Write `src/zlib-1/apk/vendor`:
 
 ```
 tarball = zlib-1.1.3.tar.gz
 directory = zlib
 ```
 
-Write `src/zlib/apk/pkginfo` (translated from `dpkg/control`, with the multi-line `Description` folded onto one line — the whole point of the format change):
+Write `src/zlib-1/apk/pkginfo` (translated from `dpkg/control`, with the multi-line `Description` folded onto one line — the whole point of the format change):
 
 ```
 pkgname = zlib
@@ -1699,7 +1699,7 @@ url = http://www.cdrom.com/pub/infozip/zlib/
 Again from the repository root:
 
 ```bash
-REPO="$(pwd)" && rm -rf /tmp/zcheck && mkdir -p /tmp/zcheck && cd /tmp/zcheck && gzip -dc "$REPO/src/zlib/zlib-1.1.3.tar.gz" | tar -xf - && mv zlib-1.1.3 zlib && patch -p1 -d zlib < "$REPO/src/zlib/patches/0001-rhapsody-port.patch" && diff -r zlib "$REPO/src/zlib/zlib" && echo "IDENTICAL"
+REPO="$(pwd)" && rm -rf /tmp/zcheck && mkdir -p /tmp/zcheck && cd /tmp/zcheck && gzip -dc "$REPO/src/zlib-1/zlib-1.1.3.tar.gz" | tar -xf - && mv zlib-1.1.3 zlib && patch -p1 -d zlib < "$REPO/src/zlib-1/patches/0001-rhapsody-port.patch" && diff -r zlib "$REPO/src/zlib-1/zlib" && echo "IDENTICAL"
 ```
 
 Expected: `patch` reports only successful hunks, `diff -r` prints nothing, and `IDENTICAL` is printed. If `diff -r` prints anything, the patch is incomplete — go back to Step 2.
@@ -1709,13 +1709,13 @@ Expected: `patch` reports only successful hunks, `diff -r` prints nothing, and `
 Only after Step 5 printed `IDENTICAL`:
 
 ```bash
-cd src && git rm -r --quiet zlib/zlib && git rm zlib/dpkg/control
+cd src && git rm -r --quiet zlib-1/zlib && git rm zlib-1/dpkg/control
 ```
 
 - [ ] **Step 7: Verify the dry-run trace**
 
 ```bash
-cd src && mkdir -p /tmp/emptydst && rbuild-1/rbuild -n buildpackage --dir zlib /tmp/emptydst /tmp/emptydst 2>&1 | head -30
+cd src && mkdir -p /tmp/emptydst && rbuild-1/rbuild -n buildpackage --dir zlib-1 /tmp/emptydst /tmp/emptydst 2>&1 | head -30
 ```
 
 Expected: among the printed commands, in this order — the `rsync` line carrying `--exclude=zlib-1.1.3.tar.gz --exclude=patches/`, then `vendoring zlib-1.1.3.tar.gz into .../zlib`, the `gzip -dc ... | tar -C ... -xf -` line, `mv .../.vendor-tmp/zlib-1.1.3 .../zlib`, and `applying .../patches/0001-rhapsody-port.patch`.
@@ -1725,7 +1725,7 @@ Expected: among the printed commands, in this order — the `rsync` line carryin
 This is the acceptance test and must run on the guest, where `cc`, `make`, and the seed repository live. Use the same repository and destination you normally pass to `rbuild buildall`.
 
 ```bash
-rbuild buildpackage --dir zlib <repository> <dstdir>
+rbuild buildpackage --dir zlib-1 <repository> <dstdir>
 ```
 
 Expected: `zlib-1.1.3.apk` and `zlib-hdrs-1.1.3.apk` appear in `<dstdir>`, and the build log shows the vendoring lines before the first `make` invocation.
@@ -1733,7 +1733,7 @@ Expected: `zlib-1.1.3.apk` and `zlib-hdrs-1.1.3.apk` appear in `<dstdir>`, and t
 - [ ] **Step 9: Compare against a pre-conversion build**
 
 ```bash
-gzip -dc <dstdir>/zlib-1.1.3.apk | tar -tf - | sort > /tmp/after.txt && git stash && rbuild buildpackage --dir zlib <repository> /tmp/beforedst && gzip -dc /tmp/beforedst/zlib-1.1.3.apk | tar -tf - | sort > /tmp/before.txt && git stash pop && diff /tmp/before.txt /tmp/after.txt && echo "PACKAGE CONTENTS MATCH"
+gzip -dc <dstdir>/zlib-1.1.3.apk | tar -tf - | sort > /tmp/after.txt && git stash && rbuild buildpackage --dir zlib-1 <repository> /tmp/beforedst && gzip -dc /tmp/beforedst/zlib-1.1.3.apk | tar -tf - | sort > /tmp/before.txt && git stash pop && diff /tmp/before.txt /tmp/after.txt && echo "PACKAGE CONTENTS MATCH"
 ```
 
 Expected: `PACKAGE CONTENTS MATCH`. If the lists differ, the vendored tree is not equivalent to the old one — return to Step 2 rather than accepting the difference.
@@ -1743,7 +1743,7 @@ Expected: `PACKAGE CONTENTS MATCH`. If the lists differ, the vendored tree is no
 Put the checksum from Step 1 in the message body so the tarball's provenance is recorded:
 
 ```bash
-git add src/zlib
+git add src/zlib-1
 git commit -m "zlib: vendor pristine 1.1.3 tarball with the Rhapsody port as a patch
 
 Upstream zlib-1.1.3.tar.gz sha1 <paste from step 1>."
@@ -1811,7 +1811,7 @@ ascending filename order. The project's Makefile then builds normally and
 needs no knowledge of any of this. Tarballs must contain exactly one
 top-level directory.
 
-See `src/zlib` for a worked example.
+See `src/zlib-1` for a worked example.
 ```
 
 - [ ] **Step 2: Verify the file reads correctly**
@@ -1850,7 +1850,7 @@ Spec coverage check against `docs/specs/2026-07-24-rbuild-vendor-design.md`:
 | Vendor step after rsync, before `make` | 6 |
 | apk dotted script names, `conffiles` dropped | 7 |
 | `files-5` conversion | 8 |
-| `zlib` pilot, expanded tree removed | 9 |
+| `zlib-1` pilot, expanded tree removed | 9 |
 | Manual verification: dry-run trace, real build, package-content comparison | 9 |
 | `patch`/bootstrap constraint documented | 10 |
-| No `Manifest` change needed | — none required; `dir zlib all` already works |
+| No `Manifest` change needed | — none required; `dir zlib-1 all` already works |

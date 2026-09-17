@@ -37,6 +37,7 @@ TEST(test_pkgname) {
 }
 
 TEST(test_match_pkgfile) {
+    CHECK_INT(builder_match_pkgfile("foo-1.0-universal.apk", "foo"), 1);
     CHECK_INT(builder_match_pkgfile("foo-1.0.apk", "foo"), 1);
     CHECK_INT(builder_match_pkgfile("foo-hdrs-1.0.apk", "foo"), 0);
     CHECK_INT(builder_match_pkgfile("foo-hdrs-1.0.apk", "foo-hdrs"), 1);
@@ -1203,15 +1204,15 @@ TEST(test_cache_checks_payload_architecture) {
     f=fopen("/tmp/rb-cache-policy/content/tool","wb"); CHECK(f!=0);
     if (!f) return;
     fwrite(code,1,sizeof(code),f); fclose(f);
-    CHECK_INT(system("(cd /tmp/rb-cache-policy/content && /usr/bin/gnutar --posix -cf - .) | /usr/bin/gzip -9 > /tmp/rb-cache-policy/repo/cache-1.apk"),0);
+    CHECK_INT(system("(cd /tmp/rb-cache-policy/content && /usr/bin/gnutar --posix -cf - .) | /usr/bin/gzip -9 > /tmp/rb-cache-policy/repo/cache-1-universal.apk"),0);
     package_init(&pkg); package_set(&pkg.package,"cache"); package_set(&pkg.version,"1");
     package_set(&pkg.architecture,"universal-apple-rhapsody");
     found=builder_exists(&pkg,"any","/tmp/rb-cache-policy/repo");
     CHECK(found==0); free(found);
-    CHECK(access("/tmp/rb-cache-policy/repo/cache-1.apk",F_OK)==0);
-    CHECK(access("/tmp/rb-cache-policy/repo/cache-1.apk.invalid",F_OK)!=0);
+    CHECK(access("/tmp/rb-cache-policy/repo/cache-1-universal.apk",F_OK)==0);
+    CHECK(access("/tmp/rb-cache-policy/repo/cache-1-universal.apk.invalid",F_OK)!=0);
     unlink("/tmp/rb-cache-policy/content/tool");
-    CHECK_INT(system("(cd /tmp/rb-cache-policy/content && /usr/bin/gnutar --posix -cf - .) | /usr/bin/gzip -9 > /tmp/rb-cache-policy/repo/cache-2.apk"),0);
+    CHECK_INT(system("(cd /tmp/rb-cache-policy/content && /usr/bin/gnutar --posix -cf - .) | /usr/bin/gzip -9 > /tmp/rb-cache-policy/repo/cache-2-universal.apk"),0);
     found=builder_exists(&pkg,"exact","/tmp/rb-cache-policy/repo");
     CHECK(found==0);free(found);
     found=builder_exists(&pkg,"any","/tmp/rb-cache-policy/repo");
@@ -1221,8 +1222,10 @@ TEST(test_cache_checks_payload_architecture) {
 
 TEST(test_cache_accepts_covering_architecture) {
     Toolchain tc;
+    Package pkg;
     FILE *f;
-    unsigned char b[104];
+    static unsigned char b[104];
+    char *found;
     int exists, i;
     CHECK_INT(system("rm -rf /tmp/rb-cache-cover && mkdir -p /tmp/rb-cache-cover/content /tmp/rb-cache-cover/repo"),0);
     f=fopen("/tmp/rb-cache-cover/content/.PKGINFO","w"); CHECK(f!=0);
@@ -1236,15 +1239,40 @@ TEST(test_cache_accepts_covering_architecture) {
     f=fopen("/tmp/rb-cache-cover/content/tool","wb"); CHECK(f!=0);
     if (!f) return;
     CHECK_INT(fwrite(b,1,sizeof(b),f),sizeof(b)); fclose(f);
-    CHECK_INT(system("(cd /tmp/rb-cache-cover/content && /usr/bin/gnutar --posix -cf - .) | /usr/bin/gzip -9 > /tmp/rb-cache-cover/repo/cover-1.apk"),0);
+    CHECK_INT(system("(cd /tmp/rb-cache-cover/content && /usr/bin/gnutar --posix -cf - .) | /usr/bin/gzip -9 > /tmp/rb-cache-cover/repo/cover-1-universal.apk"),0);
     toolchain_init(&tc); tc.tar="tar"; tc.gzip="gzip";
     exists=0;
-    CHECK_INT(builder_cache_status("/tmp/rb-cache-cover/repo/cover-1.apk",&tc,"cover","1",RB_ARCH_PPC,0,&exists),0);
+    CHECK_INT(builder_cache_status("/tmp/rb-cache-cover/repo/cover-1-universal.apk",&tc,"cover","1",RB_ARCH_PPC,0,&exists),0);
     CHECK_INT(exists,1);
-    CHECK(access("/tmp/rb-cache-cover/repo/cover-1.apk.invalid",F_OK)!=0);
+    CHECK(access("/tmp/rb-cache-cover/repo/cover-1-universal.apk.invalid",F_OK)!=0);
     exists=0;
-    CHECK_INT(builder_cache_status("/tmp/rb-cache-cover/repo/cover-1.apk",&tc,"cover","1",RB_ARCH_UNIVERSAL,0,&exists),0);
+    CHECK_INT(builder_cache_status("/tmp/rb-cache-cover/repo/cover-1-universal.apk",&tc,"cover","1",RB_ARCH_UNIVERSAL,0,&exists),0);
     CHECK_INT(exists,1);
+    package_init(&pkg);
+    package_set(&pkg.package,"cover");
+    package_set(&pkg.version,"1");
+    package_set(&pkg.architecture,"ppc-apple-rhapsody");
+    found=builder_exists(&pkg,"any","/tmp/rb-cache-cover/repo");
+    CHECK(found!=0);
+    CHECK(strstr(found,"cover-1-universal.apk")!=0);
+    free(found);
+    package_set(&pkg.architecture,"universal-apple-rhapsody");
+    found=builder_exists(&pkg,"any","/tmp/rb-cache-cover/repo");
+    CHECK(found!=0);
+    CHECK(strstr(found,"cover-1-universal.apk")!=0);
+    free(found);
+    CHECK_INT(system("touch /tmp/rb-cache-cover/repo/cover-1.apk"),0);
+    package_set(&pkg.architecture,"ppc-apple-rhapsody");
+    found=builder_exists(&pkg,"any","/tmp/rb-cache-cover/repo");
+    CHECK(found!=0);
+    CHECK(strstr(found,"cover-1-universal.apk")!=0);
+    free(found);
+    CHECK_INT(system("(cd /tmp/rb-cache-cover/content && /usr/bin/gnutar --posix -cf - .) | /usr/bin/gzip -9 > /tmp/rb-cache-cover/repo/cover-1-ppc.apk"),0);
+    exists=0;
+    CHECK_INT(builder_cache_status("/tmp/rb-cache-cover/repo/cover-1-ppc.apk",&tc,"cover","1",RB_ARCH_UNIVERSAL,0,&exists),0);
+    CHECK_INT(exists,0);
+    CHECK(access("/tmp/rb-cache-cover/repo/cover-1-ppc.apk",F_OK)!=0);
+    CHECK(access("/tmp/rb-cache-cover/repo/cover-1-ppc.apk.invalid",F_OK)==0);
     f=fopen("/tmp/rb-cache-cover/content/.PKGINFO","w"); CHECK(f!=0);
     if (f) { fputs("pkgname = cover\npkgver = 1\narch = ppc-apple-rhapsody\n",f); fclose(f); }
     unlink("/tmp/rb-cache-cover/content/tool");
@@ -1253,12 +1281,13 @@ TEST(test_cache_accepts_covering_architecture) {
         memset(b,0,28); b[0]=0xfe;b[1]=0xed;b[2]=0xfa;b[3]=0xce;b[7]=18;b[15]=1;
         fwrite(b,1,28,f); fclose(f);
     }
-    CHECK_INT(system("(cd /tmp/rb-cache-cover/content && /usr/bin/gnutar --posix -cf - .) | /usr/bin/gzip -9 > /tmp/rb-cache-cover/repo/thin-1.apk"),0);
+    CHECK_INT(system("(cd /tmp/rb-cache-cover/content && /usr/bin/gnutar --posix -cf - .) | /usr/bin/gzip -9 > /tmp/rb-cache-cover/repo/thin-1-ppc.apk"),0);
     exists=0;
-    CHECK_INT(builder_cache_status("/tmp/rb-cache-cover/repo/thin-1.apk",&tc,"cover","1",RB_ARCH_UNIVERSAL,0,&exists),0);
+    CHECK_INT(builder_cache_status("/tmp/rb-cache-cover/repo/thin-1-ppc.apk",&tc,"cover","1",RB_ARCH_UNIVERSAL,0,&exists),0);
     CHECK_INT(exists,0);
-    CHECK(access("/tmp/rb-cache-cover/repo/thin-1.apk",F_OK)!=0);
-    CHECK(access("/tmp/rb-cache-cover/repo/thin-1.apk.invalid",F_OK)==0);
+    CHECK(access("/tmp/rb-cache-cover/repo/thin-1-ppc.apk",F_OK)!=0);
+    CHECK(access("/tmp/rb-cache-cover/repo/thin-1-ppc.apk.invalid",F_OK)==0);
+    package_free(&pkg);
     system("rm -rf /tmp/rb-cache-cover");
 }
 
@@ -1267,6 +1296,8 @@ static void cache_fixture(const char *repo, const char *name, const char *versio
     char command[1024], path[256];
     FILE *f;
     unsigned char code[28];
+    unsigned mask = 0;
+    const char *token;
     CHECK_INT(system("mkdir -p /tmp/rb-cache-fixture"),0);
     f=fopen("/tmp/rb-cache-fixture/.PKGINFO","w"); CHECK(f!=0); if(!f)return;
     fprintf(f,"pkgname = %s\npkgver = %s\narch = %s\n",name,version,arch); fclose(f);
@@ -1276,7 +1307,10 @@ static void cache_fixture(const char *repo, const char *name, const char *versio
         fwrite(code,1,sizeof(code),f);
     } else fputs("data fixture",f);
     fclose(f);
-    sprintf(path,"%s/%s-%s.apk",repo,name,version);
+    CHECK_INT(architecture_parse(arch, &mask), 0);
+    token = architecture_filename_token(mask);
+    CHECK(token != 0);
+    sprintf(path,"%s/%s-%s-%s.apk",repo,name,version,token);
     sprintf(command,"(cd /tmp/rb-cache-fixture && /usr/bin/gnutar --posix -cf - .) | /usr/bin/gzip -9 > %s",path);
     CHECK_INT(system(command),0);
 }
@@ -1295,7 +1329,7 @@ TEST(test_dependency_fallback_and_reinstallation) {
     if(f){fputs("dep-2\n",f);fclose(f);}
     CHECK_INT(builder_makeroot(&pkg,"/tmp/rb-dep-policy/root",&repo,0),0);
     CHECK(access("/tmp/rb-dep-policy/root/tool",F_OK)==0);
-    unlink("/tmp/rb-dep-policy/first/dep-2.apk");
+    unlink("/tmp/rb-dep-policy/first/dep-2-i386.apk");
     cache_fixture("/tmp/rb-dep-policy/second","dep","3","i386",7);
     CHECK_INT(builder_makeroot(&pkg,"/tmp/rb-dep-policy/root",&repo,0),0);
     package_set(&pkg.architecture,"universal-apple-rhapsody");
@@ -1304,7 +1338,7 @@ TEST(test_dependency_fallback_and_reinstallation) {
     CHECK(builder_makeroot(&pkg,"/tmp/rb-dep-policy/root",&repo,0)!=0);
     f=fopen("/tmp/rb-dep-policy/root/tool","r"); CHECK(f!=0);
     if(f){data[0]=0;fgets(data,sizeof(data),f);fclose(f);CHECK_STR(data,"untouched");}
-    cache_fixture("/tmp/rb-dep-policy/second","dep","3","ppc",0);
+    cache_fixture("/tmp/rb-dep-policy/second","dep","3","universal-apple-rhapsody",0);
     CHECK_INT(builder_makeroot(&pkg,"/tmp/rb-dep-policy/root",&repo,0),0);
     package_free(&pkg);strlist_free(&repo);
     system("rm -rf /tmp/rb-dep-policy /tmp/rb-cache-fixture");
@@ -1322,9 +1356,9 @@ TEST(test_direct_publication_quarantines_collision) {
     params.PACKAGEDIR=xstrdup("/tmp/rb-publish-policy/repo");
     opt.force=1;
     CHECK_INT(builder_buildpackage(&pkg,&params,"binary",&opt),0);
-    CHECK(access("/tmp/rb-publish-policy/repo/collision-1.apk.invalid",F_OK)==0);
-    unlink("/tmp/rb-publish-policy/repo/collision-1.apk");
-    CHECK_INT(symlink("/tmp/rb-publish-policy/outside","/tmp/rb-publish-policy/repo/collision-1.apk"),0);
+    CHECK(access("/tmp/rb-publish-policy/repo/collision-1-universal.apk.invalid",F_OK)==0);
+    unlink("/tmp/rb-publish-policy/repo/collision-1-universal.apk");
+    CHECK_INT(symlink("/tmp/rb-publish-policy/outside","/tmp/rb-publish-policy/repo/collision-1-universal.apk"),0);
     CHECK_INT(builder_buildpackage(&pkg,&params,"binary",&opt),0);
     CHECK(access("/tmp/rb-publish-policy/outside",F_OK)!=0);
     params_free(&params);package_free(&pkg);
@@ -1349,17 +1383,17 @@ TEST(test_base_cache_does_not_hide_incompatible_companions) {
     tc.tar="tar";tc.gzip="gzip";
     strlist_init(&repo);
     CHECK(builder_build("dir","/tmp/rb-companions/source",&repo,"all","/tmp/rb-companions/repo",&opt)!=0);
-    CHECK(access("/tmp/rb-companions/repo/companions-obj-1.apk.invalid",F_OK)==0);
+    CHECK(access("/tmp/rb-companions/repo/companions-obj-1-universal.apk.invalid",F_OK)==0);
     /* Absent companions are optional and do not invalidate a valid base. */
     CHECK_INT(builder_build("dir","/tmp/rb-companions/source",&repo,"all","/tmp/rb-companions/repo",&opt),0);
     cache_fixture("/tmp/rb-companions/repo","companions-hdrs","1","universal-apple-rhapsody",7);
     CHECK(builder_build("dir","/tmp/rb-companions/source",&repo,"headers","/tmp/rb-companions/repo",&opt)!=0);
-    CHECK(access("/tmp/rb-companions/repo/companions-hdrs-1.apk.invalid",F_OK)==0);
+    CHECK(access("/tmp/rb-companions/repo/companions-hdrs-1-universal.apk.invalid",F_OK)==0);
     cache_fixture("/tmp/rb-companions/repo","companions","1","universal-apple-rhapsody",7);
-    f=fopen("/tmp/rb-companions/repo/companions-1.apk.invalid","w");CHECK(f!=0);
+    f=fopen("/tmp/rb-companions/repo/companions-1-universal.apk.invalid","w");CHECK(f!=0);
     if(f){fputs("preserve old quarantine",f);fclose(f);}
     CHECK(builder_build("dir","/tmp/rb-companions/source",&repo,"binary","/tmp/rb-companions/repo",&opt)!=0);
-    CHECK(access("/tmp/rb-companions/repo/companions-1.apk",F_OK)==0);
+    CHECK(access("/tmp/rb-companions/repo/companions-1-universal.apk",F_OK)==0);
     for(i=0;envs[i];i++)unsetenv(envs[i]);
     strlist_free(&repo);system("rm -rf /tmp/rb-companions /tmp/rb-cache-fixture");
 }

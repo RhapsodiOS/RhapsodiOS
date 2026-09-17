@@ -108,33 +108,77 @@ char *builder_resolve_dependency(const char *name, const strlist *repository) {
     return 0;
 }
 
+static char *apk_name_for_mask(const char *name, const char *version,
+                               unsigned mask) {
+    const char *token = architecture_filename_token(mask);
+    if (!token) return 0;
+    return str_cats(name, "-", version, "-", token, ".apk", (char *)0);
+}
+
+static char *open_arch_package(const char *dir, const char *filename,
+                               const char *name, const char *version,
+                               unsigned required, int dependency,
+                               const Toolchain *tc) {
+    char *path = path_join(dir, filename);
+    if (!exec_dry_run && apk_use_arch(path, 0, tc, name, version,
+            required, str_has_suffix(name, "-obj"), dependency) == 0)
+        return path;
+    if (exec_dry_run) printf("validate APK %s for %s\n", path,
+                            architecture_label(required));
+    free(path);
+    return 0;
+}
+
 /* Inspect every candidate in repository order; incompatible files do not hide
  * compatible versions later in the same directory or a later repository. */
 static char *find_arch_package(const char *dir, const char *name,
                                const char *version, unsigned required,
                                int dependency, const Toolchain *tc) {
-    DIR *d = opendir(dir);
-    struct dirent *de;
-    char *found = 0;
-    char *exact_name;
-    if (!d) return 0;
-    exact_name = version ? str_cats(name, "-", version, ".apk", (char *)0) : 0;
-    while ((de = readdir(d)) != 0) {
-        char *path;
-        if (exact_name && strcmp(de->d_name, exact_name) != 0) continue;
-        if (!builder_match_pkgfile(de->d_name, name)) continue;
-        path = path_join(dir, de->d_name);
-        if (!exec_dry_run && apk_use_arch(path, 0, tc, name, version,
-                required, str_has_suffix(name, "-obj"), dependency) == 0) {
-            found = path; break;
+    unsigned try_mask[2];
+    unsigned tries = 0;
+    unsigned i;
+    if (version) {
+        if (required == RB_ARCH_I386 || required == RB_ARCH_PPC) {
+            try_mask[tries++] = required;
+            try_mask[tries++] = RB_ARCH_UNIVERSAL;
+        } else {
+            try_mask[tries++] = RB_ARCH_UNIVERSAL;
         }
-        if (exec_dry_run) printf("validate APK %s for %s\n", path,
-                                architecture_label(required));
-        free(path);
+        for (i = 0; i < tries; i++) {
+            char *exact = apk_name_for_mask(name, version, try_mask[i]);
+            char *found;
+            struct stat st;
+            char *path;
+            if (!exact) continue;
+            path = path_join(dir, exact);
+            if (stat(path, &st) != 0) {
+                free(path);
+                free(exact);
+                continue;
+            }
+            free(path);
+            found = open_arch_package(dir, exact, name, version, required,
+                                      dependency, tc);
+            free(exact);
+            if (found) return found;
+        }
+        return 0;
     }
-    closedir(d);
-    free(exact_name);
-    return found;
+    /* version == 0: scan, new names only via apk_use_arch token check */
+    {
+        DIR *d = opendir(dir);
+        struct dirent *de;
+        char *found = 0;
+        if (!d) return 0;
+        while ((de = readdir(d)) != 0) {
+            if (!builder_match_pkgfile(de->d_name, name)) continue;
+            found = open_arch_package(dir, de->d_name, name, version,
+                                      required, dependency, tc);
+            if (found) break;
+        }
+        closedir(d);
+        return found;
+    }
 }
 
 char *builder_exists(const Package *pkg, const char *type, const char *dir) {
@@ -143,7 +187,7 @@ char *builder_exists(const Package *pkg, const char *type, const char *dir) {
     if (architecture_parse(pkg->architecture, &required) != 0) return 0;
     if (strcmp(type, "exact") == 0) version = package_canon_version(pkg);
     else if (strcmp(type, "any") != 0) return 0;
-    found = find_arch_package(dir, pkg->package, version, required, 0, 0);
+    found = find_arch_package(dir, pkg->package, version, required, 1, 0);
     free(version);
     return found;
 }
@@ -1289,6 +1333,7 @@ static int buildpackage(const Package *spkg, const Params *params,
 
     /* Assemble <PACKAGEDIR>/<canon_name>.apk */
     canon = package_canon_name(&pkg);
+    if (canon == 0) { rc = 1; goto done; }
     apk_path = str_cats(params->PACKAGEDIR, "/", canon, ".apk", (char *)0);
     version = package_canon_version(&pkg);
     rc = builder_cache_status(apk_path, resolved_opt.toolchain, pkg.package,
@@ -1613,19 +1658,32 @@ int builder_build(const char *srctype, const char *srcname,
     }
     hdrfilename = package_canon_name(&hdrpkg);
     filename = package_canon_name(&pkg);
+    if (!hdrfilename || !filename) {
+        rc = 1;
+        free(hdrfilename);
+        free(filename);
+        package_free(&hdrpkg);
+        package_free(&pkg);
+        params_free(&bparams);
+        return 1;
+    }
 
     if (do_hdr || do_bin) {
         char *names[3];
         char *version = package_canon_version(&pkg);
         int exists[3], was[3], i, count = 0, invalid = 0;
         struct stat st;
+        const char *token = architecture_filename_token(opt->effective_arch);
         names[count++] = xstrdup(strcmp(target, "headers") == 0 ? hdrpkg.package : pkg.package);
         if (strcmp(target, "all") == 0 || strcmp(target, "binary") == 0) {
             names[count++] = xstrdup(hdrpkg.package);
             names[count++] = str_cats(pkg.package, "-obj", (char *)0);
         }
         for (i = 0; i < count; i++) {
-            char *path = str_cats(dstdir, "/", names[i], "-", version, ".apk", (char *)0);
+            char *path;
+            if (token == 0) { rc = 1; break; }
+            path = str_cats(dstdir, "/", names[i], "-", version, "-", token, ".apk",
+                            (char *)0);
             was[i] = lstat(path, &st) == 0;
             if (builder_cache_status(path, opt->toolchain, names[i], version,
                     opt->effective_arch, str_has_suffix(names[i], "-obj"), &exists[i]) != 0)

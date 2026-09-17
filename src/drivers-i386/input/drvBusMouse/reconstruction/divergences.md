@@ -13,11 +13,11 @@ Analyses: IDA 9.2, Ghidra 12.1, angr 9.3.0 (all three enabled; `run-summary.json
 | duplicate_candidates | 0 |
 | boundary_disputed | 0 |
 
-Ledger status distribution **after Task 12's fix pass**: **8 `assembly-matched`**,
-**5 `intentional-mismatch`**, **0 `unexamined`**. The report pass that produced everything
+Ledger status distribution **after Task 4**: **7 `assembly-matched`**,
+**6 `intentional-mismatch`**, **0 `unexamined`**. The report pass that produced everything
 above this line left 2 `assembly-matched`, 9 `unexamined` and 2 `intentional-mismatch`. See
-the "Fix pass (Task 12): results" section at the end of this document for the resolution of
-every finding, the per-function size comparison and the emitted section sizes.
+the "Fix pass (Task 12): results" section and Task 4 at the end of this document for the
+resolution of every finding, the per-function size comparison and the emitted section sizes.
 
 **The body of this document is the report pass. Task 12 rewrote all 11 hand-written
 functions as a unit** under the spec's §4.3 approved exception. The reason is stated plainly:
@@ -1670,12 +1670,218 @@ stream exactly.
 
 ## Ledger
 
-13 entries, **0 `unexamined`**: 8 `assembly-matched`, 5 `intentional-mismatch`.
+13 entries, **0 `unexamined`**: 7 `assembly-matched`, 6 `intentional-mismatch`.
 
 - `assembly-matched` - the rebuilt instruction stream was disassembled and compared against the
   reference's and is identical once link-time addresses are normalized:
   `validConfiguration:`, `interruptHandler`, `BusMouseThread`, `mouseInit:`, `free`,
-  `getHandler:level:argument:forInterrupt:`, `getResolution`, `getIntValues:forParameter:count:`.
-- `intentional-mismatch` - a named residual remains: `_GetIRQFromBoard`, `_MouseIntHandler` and
-  `setIntValues:forParameter:count:` for the register-allocation differences described above,
-  plus the two build-generated glue methods, which keep task 11's reviewer.
+  `getHandler:level:argument:forInterrupt:`, `getResolution`.
+- `intentional-mismatch` - a named residual remains: `_GetIRQFromBoard`, `_MouseIntHandler`,
+  `getIntValues:forParameter:count:` and `setIntValues:forParameter:count:` for the
+  register-allocation differences described above (and in Task 4), plus the two
+  build-generated glue methods, which keep task 11's reviewer.
+
+## Phase 1 baseline
+
+2026-09-16 guest rebuild of the current tree, no `BusMouse.m` edits. Guest
+log: `=== input-recon done fail=0 built: drvBusMouse ===` (`make exit=0`).
+Staged unstripped `BusMouse_reloc` is **99112** bytes, SHA-256
+`5DC76B2EF94D3C24A8DBEAB4D1B7307B7A70C66D4A02ED0D3AB0448C48429A38`.
+`parity_check.py`: `missing_strings` **0**, `missing_symbols` **0**,
+`extra_strings` **0**, `extra_symbols` **17**. `__TEXT,__text` is 1584;
+`__TEXT,__const` is still absent. This `_reloc` is not kept as the campaign
+result; `rebuilt_sha256` is unchanged. See `function-worklist.md`.
+
+## Phase 2 / Task 3: Kernel Server `VERS_OFILE`
+
+2026-09-16. Created
+`BusMouse.drvproj/BusMouse.lksproj/Makefile.postamble` as the single line
+`OTHER_GENERATED_OFILES += $(VERS_OFILE)` (trailing newline, LF). No
+Driver-project postamble. `driverTools` and guest-installed makefiles were
+not edited. `BusMouse.m` was not edited.
+
+Guest rebuild: `=== input-recon done fail=0 built: drvBusMouse ===`
+(`make exit=0`). Host SHA-256 of the staged unstripped `BusMouse_reloc` is
+still `5DC76B2EF94D3C24A8DBEAB4D1B7307B7A70C66D4A02ED0D3AB0448C48429A38`
+(99112 bytes) — byte-identical to the Phase 1 object. `__TEXT,__text` is
+still 1584. `__TEXT,__const` is still absent.
+`_BusMouse_VERS_STRING` and `_BusMouse_VERS_NUM` are **MISSING** from the
+nlist. `parity_check.py` is unchanged (`missing_strings` 0,
+`missing_symbols` 0, `extra_strings` 0, `extra_symbols` 17). All seven
+locked regression-gate methods still have `masked-eq` or `identical`.
+
+**Guest evidence for the unmet existence gate.** The postamble is on the
+guest (40 bytes, exact contents). `gnumake -p` in the lksproj shows
+`VERSIONING_SYSTEM = next-sgs` and
+`OTHER_GENERATED_OFILES = $(INSTANCE_OBJFILE) $(VERS_OFILE)` — the
+postamble was included — but there is no `VERS_OFILE =` assignment.
+`/System/Developer/Makefiles/VersioningSystems` contains only
+`apple-generic.make` and `next-cvs.make`; there is no `next-sgs.make`, so
+`common.make`'s `-include` of that path is silent and `$(VERS_OFILE)`
+expands empty. `find` under the driver tree returned no `*vers*` files.
+The object directory has `BusMouse.o` and `BusMouse_instance.o` only.
+`kl_ld` line (no `*_vers.o`):
+
+```
+/usr/bin/kl_ld -o /build/src/drivers-i386/input/drvBusMouse/BusMouse.config/BusMouse_reloc -n BusMouse  -i BusMouse_instance -l Load_Commands.sect -u Unload_Commands.sect  -arch i386  /build/src/drivers-i386/input/drvBusMouse/BusMouse.build/objects-optimized/BusMouse.drvproj/BusMouse.lksproj/BusMouse.o             /build/src/drivers-i386/input/drvBusMouse/BusMouse.build/objects-optimized/BusMouse.drvproj/BusMouse.lksproj/BusMouse_instance.o
+```
+
+Existence stays unmet. The postamble line is kept (diagnosed reconstruction,
+not an experiment). See `function-worklist.md`.
+
+### Task 3 follow-up: `VERSIONING_SYSTEM = apple-generic`
+
+2026-09-16. In-tree Kernel Server preamble now starts with
+`VERSIONING_SYSTEM = apple-generic`; existing preamble contents kept.
+Postamble still `OTHER_GENERATED_OFILES += $(VERS_OFILE)`. `driverTools`
+and guest-installed makefiles were not edited.
+
+Guest rebuild: `=== input-recon done fail=0 built: drvBusMouse ===`
+(`make exit=0`). Log shows `Creating .../BusMouse_vers.c` (twice, with
+`*** Warning: the CURRENT_PROJECT_VERSION variable is not set.`), compile of
+`BusMouse_vers.i386.o`, and `kl_ld` with `BusMouse_vers.o` after
+`_instance.o`:
+
+```
+/usr/bin/kl_ld -o /build/src/drivers-i386/input/drvBusMouse/BusMouse.config/BusMouse_reloc -n BusMouse  -i BusMouse_instance -l Load_Commands.sect -u Unload_Commands.sect  -arch i386  /build/src/drivers-i386/input/drvBusMouse/BusMouse.build/objects-optimized/BusMouse.drvproj/BusMouse.lksproj/BusMouse.o             /build/src/drivers-i386/input/drvBusMouse/BusMouse.build/objects-optimized/BusMouse.drvproj/BusMouse.lksproj/BusMouse_instance.o /build/src/drivers-i386/input/drvBusMouse/BusMouse.build/objects-optimized/BusMouse.drvproj/BusMouse.lksproj/BusMouse_vers.o
+```
+
+Host staged unstripped `BusMouse_reloc` is **100372** bytes, SHA-256
+`2EAA0112FDA184A6F13305EB6438E2A20C6125D1DF37FB370868824D8C2FC1F9`.
+`__TEXT,__text` is still 1584. `__TEXT,__const` is **present, 92 bytes**.
+`parity_check.py`: `missing_strings` 0, `missing_symbols` 0,
+`extra_strings` 0, `extra_symbols` **18** (the extra stab is generated
+`BusMouse_vers.c`). All seven locked regression-gate methods still have
+`masked-eq` or `identical`. `--list` instruction-diff table is unchanged
+from Phase 1. `rebuilt_sha256` is not set.
+
+Nlist in `__TEXT,__const`: `_BusMouseVersionString` and
+`_BusMouseVersionNumber` (both external). SGS names
+`_BusMouse_VERS_STRING` and `_BusMouse_VERS_NUM` are still **MISSING**.
+The `__const` section gap is closed; the leftover is the apple-generic
+symbol names, same as Cirrus. Do not compare the 160-byte SGS string to
+Apple's. See `function-worklist.md`.
+
+## Task 4 / Phase 3: cheapest-first grinding
+
+2026-09-16. Ranking from `--list` (ignore glue; ignore raw_equal /
+masked_equal / identical) superseded the plan's starter order:
+`getIntValues:` (7), `setIntValues:` (20), `_MouseIntHandler` (22),
+`_GetIRQFromBoard` (24). `BusMouse.m` was not kept-changed. Locked
+regression gates stayed `masked-eq` / `identical` on every measured
+rebuild. Glue is still only the two generated class methods.
+
+Final accepted-source reloc: 100372 bytes, SHA-256
+`55BB1C543C383A311E57447DDD6B722D251ED577D2769BC9ECD0475334C9815D`
+(vers timestamp differs from Task 3's `2EAA0112…`).
+`parity_check.py`: `missing_strings` 0, `missing_symbols` 0.
+Ledger after this pass: **7 `assembly-matched`**, **6 `intentional-mismatch`**,
+**0 `unexamined`**.
+
+### `-[BusMouse getIntValues:forParameter:count:]` — accept (gcc spill)
+
+Capstone had this assembly-matched; IDA shows 7 diffs. `--name` dump
+(status=different; `instruction layout differs`):
+
+```
+  reference                               rebuilt
+  … same prologue, same mov esi/edi, mov ecx,0Bh, cld, test al,0, cmpsb …
+* jnz loc_558                             jnz loc_55C
+* mov edx, [edx+12Ch]                     mov eax, [edx+12Ch]
+* jmp loc_57B                             jmp loc_57F
+  … same Inverted cmpsb ecx=9 …
+* jz loc_574                              jz loc_578
+  mov eax, 0FFFFFD39h                     mov eax, 0FFFFFD39h
+* jmp loc_57F                             jmp loc_583
+* movsx edx, byte ptr [edx+130h]          movsx eax, byte ptr [edx+130h]
+* mov [ebx], edx                          mov [ebx], eax
+  xor eax, eax                            xor eax, eax
+  lea esp, [ebp-0Ch]                      lea esp, [ebp-0Ch]
+  … same epilogue …
+```
+
+Same calls, same constants, same offsets 0x12C / 0x130, same
+`IO_R_UNSUPPORTED`. Leftover is the stored value in `edx` vs `eax` and
+the jump labels that follow. Dummy locals were not added.
+
+**Disposition:** accept. Ledger `intentional-mismatch`, reviewer
+`Pat Raynor`, reason gcc spill.
+
+### `-[BusMouse setIntValues:forParameter:count:]` — accept (gcc spill)
+
+`--name` differs only by gcc hoist/spill of `parameterArray` / compare
+count (ours smaller, 49 vs 53 instructions). No missing call, no wrong
+offset. Starter list treated as empty; Exp 1/2 were not run. Dummy
+spills were not added to chase 148.
+
+```
+  reference                               rebuilt
+* sub esp, 4
+  …
+* mov eax, [ebp+arg_C]                    mov eax, [ebp+arg_8]
+* mov esi, eax                            mov esi, [ebp+arg_C]
+* mov [ebp+var_4], 0Bh                    mov ecx, 0Bh
+* mov ecx, [ebp+var_4]
+  … same cmpsb, [ebx+12Ch] store, getResolution send, shared unguarded
+    tail to [ebx+128h], IO_R_UNSUPPORTED, both objc_msgSend present …
+* lea esp, [ebp-10h]                      lea esp, [ebp-0Ch]
+```
+
+**Disposition:** accept. Ledger `intentional-mismatch`, reviewer
+`Pat Raynor`, reason gcc spill.
+
+### `_MouseIntHandler` — accept / unreachable
+
+Starter experiments, each rebuilt and measured; gates never lost
+`masked-eq` / `identical`. Source restored after every miss.
+
+| Exp | change | result |
+| --- | --- | --- |
+| 1 | widen left before `^= 1` | miss, 22→21 diffs, no regression; reverted |
+| 2 | `unsigned char temp` for `buttonByte >> 5` | miss, 22 diffs (gcc elided `temp`); reverted |
+| 3 | `right = ((buttonByte >> 5) & 1) ^ 1` | miss, 21 diffs (spilled `var_8`, dropped extra `and al,1`); reverted |
+
+Empty list. Leftover is register allocation / scheduling: `sub esp,10h`
+vs `0Ch`, xor-before-movzx on left, no `[ebp-8]` spill of the right
+shift, extra `and al,1` on the bitfield store. Same ten port accesses,
+doubled `outb(0x23e, 0x80)`, busy-accumulate vs post-and-clear.
+
+**Disposition:** accept as unreachable. Ledger `intentional-mismatch`,
+reviewer `Pat Raynor`.
+
+### `_GetIRQFromBoard` — accept / unreachable
+
+Port 0x23E, 0xF000 count, and the 5/4/3/2/0 ladder were not changed
+except inside named experiments, all reverted.
+
+| Exp | change | result |
+| --- | --- | --- |
+| 1 | drop `lowBits`, inline `(changed & 0x0f)` | miss, 24→18 diffs; gcc dropped the mask and tested `bl`; reverted |
+| 2 | `if (lowBits & 1)` | miss, 24 diffs (`test bl, 1` still); reverted |
+| 3 | `unsigned int lowBits` | miss, 24→22 diffs; mask in `esi`, extra `push esi`; reverted |
+| 4 | flatten IRQ-2 `else if` | miss, 24 diffs (same dump as original); reverted |
+
+Empty list. Leftover is gcc spilling the masked nibble to `[ebp-8]` and
+putting the IRQ in `ecx` instead of `ebx`. Dummy locals were not added.
+
+**Disposition:** accept as unreachable. Ledger `intentional-mismatch`,
+reviewer `Pat Raynor`.
+
+## Closing
+
+Campaign grinding is complete. 7/11 hand-written functions are IDA
+masked-eq or identical: `-[BusMouse validConfiguration:]`,
+`-[BusMouse interruptHandler]`, `_BusMouseThread`, `-[BusMouse mouseInit:]`,
+`-[BusMouse free]`, `-[BusMouse getHandler:level:argument:forInterrupt:]`,
+`-[BusMouse getResolution]`. Four leftovers were accepted as gcc 2.7
+register allocation / spill / scheduling:
+`-[BusMouse getIntValues:forParameter:count:]` (edx vs eax store),
+`-[BusMouse setIntValues:forParameter:count:]` (parameterArray/count hoist),
+`_MouseIntHandler` (button-decode scheduling), `_GetIRQFromBoard`
+(masked-nibble spill). Two Kernel Server glue methods remain generated.
+Last kept rebuilt `BusMouse_reloc` is 100372 bytes, SHA-256
+`55BB1C543C383A311E57447DDD6B722D251ED577D2769BC9ECD0475334C9815D`.
+`__TEXT,__const` is 92 bytes with apple-generic `_BusMouseVersionString` /
+`_BusMouseVersionNumber`; SGS `_BusMouse_VERS_*` names are absent
+(documented leftover, same as Cirrus). Not yet tested on hardware.
+

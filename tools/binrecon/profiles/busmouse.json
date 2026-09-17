@@ -1,10 +1,13 @@
 {
   "schema_version": "profile-v1",
-  "name": "drvBusMouse reconstruction",
+  "name": "drvBusMouse reconstruction (IDA only)",
   "architecture": "i386",
   "endianness": "little",
   "reference": {
     "path": "${BINRECON_REFERENCE}"
+  },
+  "rebuilt": {
+    "path": "${BINRECON_REBUILT}"
   },
   "analyzers": {
     "ida": {
@@ -14,13 +17,13 @@
       "version": "9.2"
     },
     "ghidra": {
-      "enabled": true,
+      "enabled": false,
       "executable": "D:/ghidra/support/analyzeHeadless.bat",
       "timeout_seconds": 900,
       "version": "12.1"
     },
     "angr": {
-      "enabled": true,
+      "enabled": false,
       "executable": ".venv-binrecon/Scripts/python.exe",
       "timeout_seconds": 900,
       "version": "9.3.0"

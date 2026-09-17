@@ -182,30 +182,20 @@ extern char verbose;
 - (BOOL)matches:(id)otherPort
 {
     unsigned short otherBase;
-    unsigned short alignedBase;
+    unsigned int alignedBase;
+    unsigned int alignment;
 
-    /* Get the other port's minimum base address */
     otherBase = [otherPort min_base];
-
-    /* Calculate aligned base address */
-    if (_alignment != 0) {
-        /* Round up to next alignment boundary */
-        alignedBase = _alignment * ((_alignment - 1 + otherBase) / _alignment);
-    } else {
-        alignedBase = otherBase;
+    alignment = _alignment;
+    alignedBase = otherBase;
+    if (alignment != 0) {
+        alignedBase = ((alignment - 1 + otherBase) / alignment) * alignment;
     }
-
-    /* Check if:
-     * 1. Base is already aligned
-     * 2. Base is >= our minimum
-     * 3. Base is <= our maximum
-     */
     if ((otherBase == alignedBase) &&
         (_min_base <= otherBase) &&
         (otherBase <= _max_base)) {
         return YES;
     }
-
     return NO;
 }
 

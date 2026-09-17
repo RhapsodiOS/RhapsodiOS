@@ -1914,33 +1914,31 @@
       "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 45,
-      "source_line": 215,
+      "source_line": 205,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
       "status": "intentional-mismatch"
     },
     {
       "address": 17088,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 6 alignment local plus 16-bit otherBase; leftover is PIC selector / register vs stack for alignment plus jump labels"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[pnpIOPort matches:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 108,
       "source_line": 182,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 17196,
@@ -2130,7 +2128,7 @@
       "reason": null,
       "reviewer": null,
       "size": 231,
-      "source_line": 228,
+      "source_line": 218,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
       "status": "unexamined"
     },
@@ -3939,7 +3937,7 @@
       "status": "unexamined"
     }
   ],
-  "rebuilt_sha256": "9F4690F3B9178CA88EA6C50FB73C3D68F29A6C304C153D950EF5E3EE90495FF1",
+  "rebuilt_sha256": "5AEF7E33F96356FF7D824FE2CDEAECA68BC420D5550E06D2B24A6DF620E03350",
   "reference_sha256": "8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23",
   "schema_version": "ledger-v1"
 }

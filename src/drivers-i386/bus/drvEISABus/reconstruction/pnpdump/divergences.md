@@ -5154,3 +5154,66 @@ Load the IRQ mask and flag byte from the buffer expression instead of locals so 
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+### Task 6 `-[pnpIOPort matches:]` alignment local (2026-09-17)
+
+Keep `_alignment` in a 32-bit local, `otherBase` 16-bit, and skip the div when alignment is zero. Leftover is PIC selector plus register vs stack for the divisor. Accepted compiler-shaped leftover (reviewer Pat Raynor). Tool SHA `A4B5420B1CA4D7E6C320DE35742323181872B8C6E784EA4457CBEF766D2D60A8` (299280). Previously identical rows stayed matched (45). Unpaired count unchanged (10).
+
+```
+-[pnpIOPort matches:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 4                              sub esp, 4
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  call $+5                                call $+5
+* pop eax                                 pop ecx
+* mov esi, [ebp+self]                     mov ebx, [ebp+self]
+* mov eax, ds:(paMinBase - 467Ah)[eax]    mov ecx, ds:(paMinBase_0 - 6596h)[ecx]
+*                                         push ecx
+*                                         mov eax, [ebp+arg_8]
+  push eax                                push eax
+* mov edx, [ebp+arg_8]
+* push edx
+  call _objc_msgSend                      call _objc_msgSend
+* mov ebx, eax                            mov ecx, eax
+* movzx ecx, bx                           movzx edi, word ptr [ebx+8]
+* mov eax, ecx                            movzx esi, cx
+* movzx edx, word ptr [esi+8]             test edi, edi
+* mov [ebp+var_4], edx                    jz loc_65C6
+* test edx, edx                           lea esi, [edi+esi-1]
+* jnz loc_46A4                            mov eax, esi
+* mov edi, ecx
+* jmp loc_46B6
+* mov edx, [ebp+var_4]
+* lea eax, [edx+eax-1]
+  xor edx, edx                            xor edx, edx
+* div [ebp+var_4]                         div edi
+* mov edi, [ebp+var_4]                    mov esi, eax
+* imul edi, eax                           imul esi, edi
+* cmp ecx, edi                            movzx eax, cx
+* jnz loc_46D0                            cmp eax, esi
+* cmp [esi+4], bx                         jnz loc_65E0
+* ja loc_46D0                             cmp [ebx+4], cx
+* cmp [esi+6], bx                         ja loc_65E0
+* jb loc_46D0                             cmp [ebx+6], cx
+*                                         jb loc_65E0
+  mov eax, 1                              mov eax, 1
+* jmp loc_46D2                            jmp loc_65E2
+  xor eax, eax                            xor eax, eax
+  lea esp, [ebp-10h]                      lea esp, [ebp-10h]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

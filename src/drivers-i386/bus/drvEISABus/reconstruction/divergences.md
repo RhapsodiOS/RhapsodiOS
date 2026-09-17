@@ -2176,3 +2176,62 @@ Load the IRQ mask and flag byte from the buffer expression instead of locals. Le
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+### Task 6 `-[pnpIOPort matches:]` alignment local (2026-09-17)
+
+Keep `_alignment` in a 32-bit local, `otherBase` 16-bit, and skip the div when alignment is zero. Leftover is register vs stack for the divisor plus jump labels. Accepted compiler-shaped leftover (reviewer Pat Raynor). Reloc SHA `5AEF7E33F96356FF7D824FE2CDEAECA68BC420D5550E06D2B24A6DF620E03350` (603612). Previously identical rows stayed matched (46). Unpaired count unchanged (11). Kernel-only reloc statuses were not reopened.
+
+```
+-[pnpIOPort matches:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 4                              sub esp, 4
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+* mov esi, [ebp+self]                     mov ebx, [ebp+self]
+* mov edx, ds:paMinBase                   mov eax, ds:paMinBase
+* push edx                                push eax
+  mov edx, [ebp+arg_8]                    mov edx, [ebp+arg_8]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+* mov ebx, eax                            mov ecx, eax
+* movzx ecx, bx                           movzx edi, word ptr [ebx+8]
+* mov eax, ecx                            movzx esi, cx
+* movzx edx, word ptr [esi+8]             test edi, edi
+* mov [ebp+var_4], edx                    jz loc_485B
+* test edx, edx                           lea esi, [edi+esi-1]
+* jnz loc_42F4                            mov eax, esi
+* mov edi, ecx
+* jmp loc_4306
+* mov edx, [ebp+var_4]
+* lea eax, [edx+eax-1]
+  xor edx, edx                            xor edx, edx
+* div [ebp+var_4]                         div edi
+* mov edi, [ebp+var_4]                    mov esi, eax
+* imul edi, eax                           imul esi, edi
+* cmp ecx, edi                            movzx eax, cx
+* jnz loc_4320                            cmp eax, esi
+* cmp [esi+4], bx                         jnz loc_4878
+* ja loc_4320                             cmp [ebx+4], cx
+* cmp [esi+6], bx                         ja loc_4878
+* jb loc_4320                             cmp [ebx+6], cx
+*                                         jb loc_4878
+  mov eax, 1                              mov eax, 1
+* jmp loc_4322                            jmp loc_487A
+  xor eax, eax                            xor eax, eax
+  lea esp, [ebp-10h]                      lea esp, [ebp-10h]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

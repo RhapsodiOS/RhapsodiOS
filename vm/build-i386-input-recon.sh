@@ -40,10 +40,21 @@ if [ ! -d "$DRVPROJ" ]; then
 	exit 1
 fi
 
-echo "======== build $NAME ($DRV) ========"
+LKS="$DRVPROJ/PCParallelPort.lksproj"
+if [ ! -d "$LKS" ]; then
+	echo "FAILED: no PCParallelPort.lksproj" >&2
+	exit 1
+fi
+
+echo "======== build $NAME Kernel Server ========"
+cd "$LKS" || exit 1
+gnumake RC_ARCHS=i386 INCLUDED_ARCHS=i386
+echo "lks make exit=$?"
+
+echo "======== build $NAME Driver (tools) ========"
 cd "$DRVPROJ" || exit 1
 gnumake RC_ARCHS=i386 INCLUDED_ARCHS=i386
-echo "make exit=$?"
+echo "drvproj make exit=$?"
 
 RELOC=`find "$SRC" -name "${NAME}_reloc" -type f 2>/dev/null | head -1`
 if [ -z "$RELOC" ] || [ ! -f "$RELOC" ]; then

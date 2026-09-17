@@ -296,28 +296,25 @@ static unsigned short readPort = 0;
  */
 - setDeviceName:(const char *)name Length:(int)length
 {
-    char *nameBuffer = (char *)((unsigned char *)self + 8);
-    int *nameLengthPtr = (int *)((unsigned char *)self + 0x58);
     int copyLength;
 
     /* Check if name is already set */
-    if (*nameLengthPtr != 0) {
-        return nil;
+    if (_deviceNameLength == 0) {
+        copyLength = 0x4f;
+        if (copyLength > length)
+            copyLength = length;
+        _deviceNameLength = copyLength;
+
+        /* Copy name to inline buffer */
+        strncpy(_deviceName, name, copyLength);
+
+        /* Null terminate */
+        _deviceName[_deviceNameLength] = '\0';
+
+        return YES;
     }
 
-    /* Limit length to 79 bytes (0x4F) to leave room for null terminator */
-    copyLength = (length < 0x4F) ? length : 0x4F;
-
-    /* Store length */
-    *nameLengthPtr = copyLength;
-
-    /* Copy name to inline buffer */
-    strncpy(nameBuffer, name, copyLength);
-
-    /* Null terminate */
-    nameBuffer[copyLength] = '\0';
-
-    return self;
+    return nil;
 }
 
 /*

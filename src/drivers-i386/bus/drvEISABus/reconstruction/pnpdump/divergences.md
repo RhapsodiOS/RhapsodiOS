@@ -105,3 +105,83 @@ Inverted the outer test to `if (high)`. Apple `jz` polarity and flag offsets (`4
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+### Task 6 `setDeviceName:Length:` min and zero-length test (2026-09-17)
+
+`if (_deviceNameLength == 0)` plus signed `copyLength = 0x4f; if (copyLength > length)`. Reloc IDA `masked_equal` on both methods. Tool leftover is IDA `__src` vs `arg_8` plus jump labels; accepted compiler-shaped leftover (reviewer Pat Raynor). Tool SHA `B8EBBF270EB65058FBCF1DC835D0029440B63E3DE2E63DD271108323529576D0` (299680). Previously identical Task 5 rows stayed matched. Unpaired count unchanged (10).
+
+```
+-[PnPLogicalDevice setDeviceName:Length:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push ebx                                push ebx
+  mov ebx, [ebp+self]                     mov ebx, [ebp+self]
+  mov edx, [ebp+arg_C]                    mov edx, [ebp+arg_C]
+  cmp dword ptr [ebx+54h], 0              cmp dword ptr [ebx+54h], 0
+* jnz loc_5A54                            jnz loc_4E60
+  mov eax, 4Fh                            mov eax, 4Fh
+  cmp eax, edx                            cmp eax, edx
+* jle loc_5A33                            jle loc_4E3F
+  mov eax, edx                            mov eax, edx
+  mov [ebx+54h], eax                      mov [ebx+54h], eax
+  push eax                                push eax
+* mov ecx, [ebp+__src]                    mov ecx, [ebp+arg_8]
+  push ecx                                push ecx
+  lea eax, [ebx+4]                        lea eax, [ebx+4]
+  push eax                                push eax
+  call _strncpy                           call _strncpy
+  mov eax, [ebx+54h]                      mov eax, [ebx+54h]
+  mov byte ptr [eax+ebx+4], 0             mov byte ptr [eax+ebx+4], 0
+  mov eax, 1                              mov eax, 1
+* jmp loc_5A56                            jmp loc_4E62
+  xor eax, eax                            xor eax, eax
+  mov ebx, [ebp+var_4]                    mov ebx, [ebp+var_4]
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+```
+-[PnPDeviceResources setDeviceName:Length:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push ebx                                push ebx
+  mov ebx, [ebp+self]                     mov ebx, [ebp+self]
+  mov edx, [ebp+arg_C]                    mov edx, [ebp+arg_C]
+  cmp dword ptr [ebx+58h], 0              cmp dword ptr [ebx+58h], 0
+* jnz loc_5B58                            jnz loc_40AC
+  mov eax, 4Fh                            mov eax, 4Fh
+  cmp eax, edx                            cmp eax, edx
+* jle loc_5B37                            jle loc_408B
+  mov eax, edx                            mov eax, edx
+  mov [ebx+58h], eax                      mov [ebx+58h], eax
+  push eax                                push eax
+* mov ecx, [ebp+__src]                    mov ecx, [ebp+arg_8]
+  push ecx                                push ecx
+  lea eax, [ebx+8]                        lea eax, [ebx+8]
+  push eax                                push eax
+  call _strncpy                           call _strncpy
+  mov eax, [ebx+58h]                      mov eax, [ebx+58h]
+  mov byte ptr [eax+ebx+8], 0             mov byte ptr [eax+ebx+8], 0
+  mov eax, 1                              mov eax, 1
+* jmp loc_5B5A                            jmp loc_40AE
+  xor eax, eax                            xor eax, eax
+  mov ebx, [ebp+var_4]                    mov ebx, [ebp+var_4]
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

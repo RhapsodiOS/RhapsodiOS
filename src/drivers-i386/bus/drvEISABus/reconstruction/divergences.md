@@ -721,3 +721,81 @@ Kernel-only reloc statuses were not reopened. Reloc SHA `1F1DBE7981F9EB97E47E261
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+### Task 6 `setDeviceName:Length:` min and zero-length test (2026-09-17)
+
+Kernel-only reloc statuses were not reopened. Reloc SHA `2AD36AEF5E4934EBD7C9F8447D5204EADFBB4449524BD9B5E14B3EFD9F19A874` (603952). Both `-[PnPLogicalDevice setDeviceName:Length:]` and `-[PnPDeviceResources setDeviceName:Length:]` are IDA `masked_equal`. Leftover on the tool side is IDA `__src` vs `arg_8`.
+
+```
+-[PnPLogicalDevice setDeviceName:Length:]
+  status=different raw_equal=False masked_equal=True
+  reason: calls differ
+  reason: cfg differs
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push ebx                                push ebx
+  mov ebx, [ebp+self]                     mov ebx, [ebp+self]
+  mov edx, [ebp+arg_C]                    mov edx, [ebp+arg_C]
+  cmp dword ptr [ebx+54h], 0              cmp dword ptr [ebx+54h], 0
+* jnz loc_5ED4                            jnz loc_4DC4
+  mov eax, 4Fh                            mov eax, 4Fh
+  cmp eax, edx                            cmp eax, edx
+* jle loc_5EB3                            jle loc_4DA3
+  mov eax, edx                            mov eax, edx
+  mov [ebx+54h], eax                      mov [ebx+54h], eax
+  push eax                                push eax
+* mov ecx, [ebp+__src]                    mov ecx, [ebp+arg_8]
+  push ecx                                push ecx
+  lea eax, [ebx+4]                        lea eax, [ebx+4]
+  push eax                                push eax
+  call near ptr _strncpy                  call near ptr _strncpy
+  mov eax, [ebx+54h]                      mov eax, [ebx+54h]
+  mov byte ptr [eax+ebx+4], 0             mov byte ptr [eax+ebx+4], 0
+  mov eax, 1                              mov eax, 1
+* jmp loc_5ED6                            jmp loc_4DC6
+  xor eax, eax                            xor eax, eax
+  mov ebx, [ebp+var_4]                    mov ebx, [ebp+var_4]
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+```
+-[PnPDeviceResources setDeviceName:Length:]
+  status=different raw_equal=False masked_equal=True
+  reason: calls differ
+  reason: cfg differs
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push ebx                                push ebx
+  mov ebx, [ebp+self]                     mov ebx, [ebp+self]
+  mov edx, [ebp+arg_C]                    mov edx, [ebp+arg_C]
+  cmp dword ptr [ebx+58h], 0              cmp dword ptr [ebx+58h], 0
+* jnz loc_5FD0                            jnz loc_3A4C
+  mov eax, 4Fh                            mov eax, 4Fh
+  cmp eax, edx                            cmp eax, edx
+* jle loc_5FAF                            jle loc_3A2B
+  mov eax, edx                            mov eax, edx
+  mov [ebx+58h], eax                      mov [ebx+58h], eax
+  push eax                                push eax
+* mov ecx, [ebp+__src]                    mov ecx, [ebp+arg_8]
+  push ecx                                push ecx
+  lea eax, [ebx+8]                        lea eax, [ebx+8]
+  push eax                                push eax
+  call near ptr _strncpy                  call near ptr _strncpy
+  mov eax, [ebx+58h]                      mov eax, [ebx+58h]
+  mov byte ptr [eax+ebx+8], 0             mov byte ptr [eax+ebx+8], 0
+  mov eax, 1                              mov eax, 1
+* jmp loc_5FD2                            jmp loc_3A4E
+  xor eax, eax                            xor eax, eax
+  mov ebx, [ebp+var_4]                    mov ebx, [ebp+var_4]
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

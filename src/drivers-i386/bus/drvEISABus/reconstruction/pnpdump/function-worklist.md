@@ -274,7 +274,7 @@ functions and have no experiment list.
 - `-[PnPDeviceResources deviceWithID:]` (shared, diff 12; reloc different d=10): loop shape: `if ([device ID] != id) { index++; continue; } return device` instead of break
 - `-[pnpIOPort print]` (shared, diff 12; reloc different d=9): none — Apple tool calls `_printf`, reloc both call `_IOLog`; dual-bar forbids swapping
 - `-[PnPDeviceResources initForBufNoHeader:Length:CSN:]` (shared, diff 13; reloc different d=6): none — PIC selectors plus `_printf` vs `_IOLog` on the error path
-- `-[PnPLogicalDevice setDeviceName:Length:]` (shared, diff 14; reloc different d=14): operand-reversed min `(0x4f < length) ? 0x4f : length` plus `if (_deviceNameLength == 0)` body
+- `-[PnPLogicalDevice setDeviceName:Length:]` (shared, diff 14; reloc different d=14): `if (_deviceNameLength == 0)` plus signed `copyLength = 0x4f; if (copyLength > length)` — **tried, kept**; leftover is IDA `__src` vs `arg_8` plus jump labels; reloc **masked_equal**; tool **accepted** compiler-shaped
 - `+[IODeviceMaster new]` (tool-only, diff 15): local vs expression for the allocated object
 - `-[PnPResources addDMA:]` (shared, diff 15; reloc different d=9): omit explicit `return self` (local vs expression)
 - `-[PnPResources addIOPort:]` (shared, diff 15; reloc different d=9): omit explicit `return self` (local vs expression)
@@ -284,7 +284,7 @@ functions and have no experiment list.
 - `-[PnPResources init]` (shared, diff 20; reloc different d=6): none — PIC selector leftover
 - `-[pnpMemory matches:]` (shared, diff 20; reloc different d=19): loop shape / `if` vs `else if` on the channel compare
 - `-[pnpMemory setControl:]` (shared, diff 22; reloc different d=21): if vs else if on the bit-width flags
-- `-[PnPDeviceResources setDeviceName:Length:]` (shared, diff 24; reloc different d=24): operand-reversed min `(0x4f < length) ? 0x4f : length` plus `if (_deviceNameLength == 0)` body
+- `-[PnPDeviceResources setDeviceName:Length:]` (shared, diff 24; reloc different d=24): ivars plus `if (_deviceNameLength == 0)` plus signed min 0x4f — **tried, kept**; leftover is IDA `__src` vs `arg_8` plus jump labels; reloc **masked_equal**; tool **accepted** compiler-shaped
 - `-[PnPResources print]` (shared, diff 24; reloc different d=18): none — Apple tool `_printf` vs rebuilt `_IOLog`; reloc both `_IOLog`
 - `-[pnpIRQ initFrom:Length:]` (shared, diff 26; reloc different d=22): loop shape of the mask walk; signedness of the bit index local
 - `-[pnpIOPort matches:]` (shared, diff 30; reloc different d=27): local vs expression for the aligned-base calculation

@@ -598,7 +598,7 @@
         "-[PnPLogicalDevice addCompatID:]"
       ],
       "size": 36,
-      "source_line": 180,
+      "source_line": 182,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m"
     },
     {
@@ -634,7 +634,7 @@
         "-[PnPLogicalDevice setLogicalDeviceNumber:]"
       ],
       "size": 16,
-      "source_line": 171,
+      "source_line": 172,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m"
     },
     {
@@ -733,7 +733,7 @@
         "-[PnPDeviceResources parseConfig:Length:]"
       ],
       "size": 2827,
-      "source_line": 328,
+      "source_line": 325,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m"
     },
     {

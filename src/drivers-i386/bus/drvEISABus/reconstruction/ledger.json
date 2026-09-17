@@ -3068,7 +3068,7 @@
       "reason": null,
       "reviewer": null,
       "size": 440,
-      "source_line": 192,
+      "source_line": 194,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
       "status": "unexamined"
     },
@@ -3129,7 +3129,8 @@
         ],
         "reasons": [
           "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
+          "not examined in this pass",
+          "Task 6 if==0 plus signed min 0x4f matches Apple jnz/jle stream; tool leftover is IDA __src vs arg_8; reloc IDA masked_equal"
         ],
         "status": "agreed"
       },
@@ -3138,11 +3139,11 @@
         "-[PnPLogicalDevice setDeviceName:Length:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 69,
       "source_line": 146,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 24288,
@@ -3188,7 +3189,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 30,
-      "source_line": 180,
+      "source_line": 182,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
       "status": "assembly-matched"
     },
@@ -3284,7 +3285,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 171,
+      "source_line": 172,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
       "status": "assembly-matched"
     },
@@ -3393,7 +3394,8 @@
         ],
         "reasons": [
           "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
+          "not examined in this pass",
+          "Task 6 if==0 plus signed min 0x4f matches Apple jnz/jle stream; tool leftover is IDA __src vs arg_8; reloc IDA masked_equal"
         ],
         "status": "agreed"
       },
@@ -3402,11 +3404,11 @@
         "-[PnPDeviceResources setDeviceName:Length:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 69,
       "source_line": 297,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 24540,
@@ -3548,7 +3550,7 @@
       "reason": null,
       "reviewer": null,
       "size": 2570,
-      "source_line": 328,
+      "source_line": 325,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
       "status": "unexamined"
     },
@@ -3935,7 +3937,7 @@
       "status": "unexamined"
     }
   ],
-  "rebuilt_sha256": "1F1DBE7981F9EB97E47E261B99CCB57FDC56EECF3F8F6EEC97183C254918A730",
+  "rebuilt_sha256": "2AD36AEF5E4934EBD7C9F8447D5204EADFBB4449524BD9B5E14B3EFD9F19A874",
   "reference_sha256": "8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23",
   "schema_version": "ledger-v1"
 }

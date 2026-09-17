@@ -412,14 +412,12 @@ static void undoEscape(EscapeSequence *escape)
 {
     KeySequenceEntry *sequence;
     int index;
-    unsigned char scancode;
     unsigned char extended;
 
     sequence = escape->matchedSequence;
 
     if (sequence != NULL) {
         for (index = 0; index < sequence->count; index++) {
-            scancode = sequence->keys[index * 2];
             extended = sequence->keys[index * 2 + 1];
 
             /* If extended flag is set, enqueue the 0xE0 prefix */
@@ -428,7 +426,7 @@ static void undoEscape(EscapeSequence *escape)
             }
 
             /* Bit 7 turns the press into a release */
-            enqueueKeyboardData(scancode | 0x80);
+            enqueueKeyboardData(sequence->keys[index * 2] | 0x80);
         }
     }
 }

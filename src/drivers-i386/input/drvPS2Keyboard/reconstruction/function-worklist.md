@@ -180,6 +180,7 @@ Task 8 regression gate. Do not apply the BOOL / `and eax, 0FFh` typed rewrite. A
 ### `_undoEscape` (diff 10)
 
 1. Drop the `scancode` local; enqueue `sequence->keys[index * 2] | 0x80` as an expression after testing the extended byte, so gcc does not park the scancode in `[ebp+var_4]` before the `0xE0` test.
+   **Match:** `masked_equal` after rebuild `C3AB80B5D295E5DBBBA30A3228C75D047CC578A0D38899BAA874E3B53DC68B23`. Ledger `assembly-matched`.
 
 ### `_getKeyboardDataIfPresent` (diff 12)
 

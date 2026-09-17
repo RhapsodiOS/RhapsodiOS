@@ -1999,6 +1999,10 @@ Three-statement command-byte edit matches the reference `or`/`and`/`or`. Remaini
 * mov edx, ds:stru_40F0.ext               mov edx, ds:stru_40F0.super_class
 ```
 
+### `_undoEscape` (1020) — `masked_equal`
+
+Dropped the `scancode` local; enqueue `sequence->keys[index * 2] | 0x80` as an expression after the extended-byte test. `--name` differs only by jump labels. Rebuilt `C3AB80B5D295E5DBBBA30A3228C75D047CC578A0D38899BAA874E3B53DC68B23`. Task 8 gate rows stayed identical / masked-eq. Glue still instruction-identical. Unpaired 0.
+
 ## Task 4 stop (unpaired growth)
 
 `readConfigTable:` ivar-in-branch experiment made `--list` report 50 functions / 2 unpaired (`missing-rebuilt __PS2KeyboardNumKeysDown`, `missing-reference _resetEscapes`). That is a layout or linkage finding. Experiment reverted. After rebuild, SHA is again `20C8BD6E1243FE4CB6D1CDCC51654CBADF65E118370ACBF8D49EBE05B3631C07`, `--list` 49 / 0 unpaired. Do not repeat the ivar-in-NULL-branch store. Campaign continues on other functions.

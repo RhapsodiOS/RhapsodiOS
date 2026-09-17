@@ -1,0 +1,6 @@
+pkgname = libcurses
+pkgver = 19
+pkgdesc = Text-mode display library
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base

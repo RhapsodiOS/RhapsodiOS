@@ -1,0 +1,6 @@
+pkgname = objc
+pkgver = 210
+pkgdesc = In-kernel Objective-C runtime
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base, libstreams-hdrs

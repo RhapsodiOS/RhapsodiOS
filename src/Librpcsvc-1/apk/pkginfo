@@ -1,0 +1,6 @@
+pkgname = librpcsvc
+pkgver = 8
+pkgdesc = Remote procedure call library
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base, libinfo

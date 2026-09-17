@@ -1003,6 +1003,9 @@ static int use_artifact(const char *path, const char *root,
         (pkgver && strcmp(identity.pkgver, pkgver) != 0) ||
         (!superset && strcmp(identity.architecture, architecture_label(required)) != 0)))
         result = 1;
+    if (!result && required &&
+        !architecture_path_has_token(path, declared))
+        result = 1;
     if (!result) result = tar_pipeline(artifact_fd, stage, 0, tc);
     if (!result && required) {
         result = products_validate(stage, declared, objects, 0);

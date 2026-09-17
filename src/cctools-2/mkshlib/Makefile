@@ -1,8 +1,8 @@
 OFLAG = -O
 ifeq "mwcc" "$(notdir $(CC))"
-  CFLAGS = $(OFLAG) -g -I../include
+  CFLAGS = $(OFLAG) -g -I../include $(LOCAL_CFLAGS)
 else
-  CFLAGS = $(OFLAG) -g -Wall -I../include -Wno-precomp
+  CFLAGS = $(OFLAG) -g -Wall -I../include -Wno-precomp $(LOCAL_CFLAGS)
 endif
 LIBSTUFF = -L$(SYMROOT)/../libstuff -lstuff
 
@@ -47,21 +47,21 @@ mkshlib.NEW: $(MKOBJS) vers.o
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r \
 		-o $(OBJROOT)/mkshlib.private.o \
 		$(MKOBJS) $(OFILE_DIR)/vers.o $(LIBSTUFF)
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/mkshlib.NEW \
+	$(CC) $(CFLAGS) $(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress -o $(SYMROOT)/mkshlib.NEW \
 		$(OFILE_DIR)/mkshlib.private.o
 
 cmpshlib.NEW:  $(CMPOBJS) vers.o
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r \
 		-o $(OBJROOT)/cmpshlib.private.o \
 		$(CMPOBJS) $(OFILE_DIR)/vers.o $(LIBSTUFF)
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/cmpshlib.NEW \
+	$(CC) $(CFLAGS) $(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress -o $(SYMROOT)/cmpshlib.NEW \
 		$(OFILE_DIR)/cmpshlib.private.o
 
 hack_libgcc.NEW:  $(HACKOBJS) vers.o
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r \
 		-o $(OBJROOT)/hack_libgcc.private.o \
 		$(HACKOBJS) $(OFILE_DIR)/vers.o $(LIBSTUFF)
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/hack_libgcc.NEW \
+	$(CC) $(CFLAGS) $(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress -o $(SYMROOT)/hack_libgcc.NEW \
 		$(OFILE_DIR)/hack_libgcc.private.o
 
 clean: shlib_clean

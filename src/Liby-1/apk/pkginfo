@@ -1,0 +1,6 @@
+pkgname = liby
+pkgver = 10
+pkgdesc = y library
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base

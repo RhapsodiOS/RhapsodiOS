@@ -1,6 +1,0 @@
-Package: drvibmthinkpad760eddisplay
-Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
-Vendor: Apple Computer
-Version: 7
-Description: IBM ThinkPad 560/760ED Trident display driver
-Build-Depends: build-base, drivertools, driverkit, machkit, kernload, libstreams

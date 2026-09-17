@@ -1,0 +1,6 @@
+pkgname = drvadaptec2940
+pkgver = 17
+pkgdesc = Adaptec 2940 SCSI device driver
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base, drivertools, driverkit, machkit, kernload, libstreams

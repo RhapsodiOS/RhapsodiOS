@@ -1,0 +1,6 @@
+pkgname = drvppcmace
+pkgver = 2
+pkgdesc = Mace ethernet device driver
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base, drivertools, driverkit, machkit, kernload, libstreams

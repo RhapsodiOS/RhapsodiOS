@@ -27,13 +27,14 @@ test: rbuild $(TESTS)
 		[ $$fail -eq 0 ] && echo "ALL TESTS PASSED" || (echo "TESTS FAILED"; exit 1)
 	MAKE=$(MAKE) sh tests/bootstrap-resume.sh
 	MAKE=$(MAKE) sh tests/bootstrap-closure.sh
+	MAKE=$(MAKE) sh tests/bootstrap-runtime-manifest.sh
 
 test_products_OBJS = products.o macho.o architecture.o strutil.o
 test_macho_OBJS = macho.o
 test_architecture_OBJS = architecture.o
 
 test_strutil_OBJS = strutil.o
-test_package_OBJS = strutil.o package.o
+test_package_OBJS = strutil.o package.o architecture.o
 test_manifest_OBJS = strutil.o manifest.o
 test_builder_OBJS = strutil.o package.o exec.o toolchain.o pkginfo.o builder.o architecture.o products.o macho.o apk.o
 test_exec_OBJS = strutil.o exec.o

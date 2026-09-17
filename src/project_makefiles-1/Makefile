@@ -128,7 +128,7 @@ endif
 DSTROOT = $(NEXT_ROOT)
 OFILE_DIR = $(OBJROOT)/$(PLATFORM_OS)_obj
 
-CFLAGS = -g -O -Wmost -I. -I$(OFILE_DIR) $(OTHER_CFLAGS) $(RC_CFLAGS) 
+CFLAGS = -g -O -Wmost -I. -I$(OFILE_DIR) $(OTHER_CFLAGS) $(LOCAL_CFLAGS) $(RC_CFLAGS) 
 
 .c.o:
 	$(CC) $(CFLAGS) -c $*.c -o $(OFILE_DIR)/$*.o

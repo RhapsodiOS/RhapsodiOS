@@ -1,8 +1,8 @@
 OFLAG = -O
 ifeq "mwcc" "$(notdir $(CC))"
-  CFLAGS = -g $(OFLAG) -DBUILTIN_FAT
+  CFLAGS = -g $(OFLAG) -DBUILTIN_FAT $(LOCAL_CFLAGS)
 else
-  CFLAGS = -g $(OFLAG) -Wall -DBUILTIN_FAT
+  CFLAGS = -g $(OFLAG) -Wall -DBUILTIN_FAT $(LOCAL_CFLAGS)
 endif
 
 ifneq "" "$(wildcard /bin/mkdirs)"
@@ -40,7 +40,7 @@ PRODUCT = file
 all: $(OFILE_DIR) $(SYMROOT) $(PRODUCT).NEW magic
 
 $(PRODUCT).NEW:	$(OFILE_DIR) $(SYMROOT) $(OBJS)
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/$@ $(OBJS)
+	$(CC) $(CFLAGS) $(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress -o $(SYMROOT)/$@ $(OBJS)
 
 magic: $(MAGFILES)
 	cat $(MAGFILES) > $(OFILE_DIR)/magic

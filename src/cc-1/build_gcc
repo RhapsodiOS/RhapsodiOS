@@ -531,6 +531,7 @@ for host in $HOSTS; do
 			 else echo ./xgcc -B./ -traditional-cpp; fi`" \
 	BISON="$BISON" \
 	CFLAGS="$OPTIMIZE $CFLAGS" \
+	LDFLAGS="${OTHER_LDFLAGS} -undefined suppress" \
 	BOOT_CFLAGS="$OPTIMIZE $CFLAGS \
 	  `if [ $TARGET_OS != win32 ]; then echo -traditional-cpp; fi`" \
 	CC="`if [ $TARGET_OS = win32 ]; then echo gcc; \
@@ -830,12 +831,21 @@ for target in $TARGETS; do
     $RM -f $TEMP/make.$$
   done
 
-  install_newer $sym/$host/lib/$target/specs \
-		$fat/$libexec/$target`if [ "$RHAPSODY" ]; then echo /$gcc_version; fi`/specs \
-		"-m 444"
-  if [ "$RHAPSODY" ]; then
+  specs_dst=$fat/$libexec/$target`if [ "$RHAPSODY" ]; then echo /$gcc_version; fi`/specs
+  specs_src=$sym/$arch/lib/$target/specs
+  if [ ! -f "$specs_src" ]; then
+    if [ -f /usr/libexec/$target/$gcc_version/specs ]; then
+      specs_src=/usr/libexec/$target/$gcc_version/specs
+    elif [ -f /usr/libexec/$target/specs ]; then
+      specs_src=/usr/libexec/$target/specs
+    elif [ -f /lib/$target/specs ]; then
+      specs_src=/lib/$target/specs
+    fi
+  fi
+  install_newer "$specs_src" "$specs_dst" "-m 444"
+  if [ "$RHAPSODY" -a -f "$specs_dst" ]; then
     # Make this symbolic link so cpp-precomp can find the specs file.
-    (cd $fat/$libexec/$target && ln -s $gcc_version/specs .)
+    (cd $fat/$libexec/$target && rm -f specs && ln -s $gcc_version/specs specs)
   fi
 done
 
@@ -913,6 +923,7 @@ for library in libcc.a libcc_dynamic.a; do
     thin_files="$thin_files $OBJROOT/cc-$target-on-$host/libgcc.a"
   done
   $MKDIRS $DSTROOT/lib
+  $MKDIRS $DSTROOT/usr/lib
   $RM -f $DSTROOT/lib/$library
   $RM -f $TEMP/make.$$
   touch -f $TEMP/make.$$
@@ -923,6 +934,11 @@ for library in libcc.a libcc_dynamic.a; do
   echo "	chmod 444  $DSTROOT/lib/$library"		>>$TEMP/make.$$
   safe_exec $make -f $TEMP/make.$$
   $RM -f $TEMP/make.$$
+  # Bootstrap sets NEXT_ROOT, which skips the later fat usr/lib install.
+  # -lcc_dynamic searches usr/lib, so publish the same archive there.
+  $RM -f $DSTROOT/usr/lib/$library
+  cp $DSTROOT/lib/$library $DSTROOT/usr/lib/$library
+  chmod 444 $DSTROOT/usr/lib/$library
   extra_cflags=''
 done
 }
@@ -945,10 +961,16 @@ if [ "$result" = lib_ofiles -o "$NEXT_ROOT" -a "$result" != thins ]; then
   build_lib_ofiles
   if [ "$result" = lib_ofiles ]; then exit 0; fi
   # Copy the builder's specs files because the executables the builder creates
-  # don't run on the builder.
+  # don't run on the builder. Rhapsody keeps them under usr/libexec.
   for target in $TARGETS; do
     $MKDIRS $DSTROOT/lib/$target
-    install_newer /lib/$target/specs $DSTROOT/lib/$target/specs "-m 444"
+    if [ -f /lib/$target/specs ]; then
+      install_newer /lib/$target/specs $DSTROOT/lib/$target/specs "-m 444"
+    elif [ -f /usr/libexec/$target/$gcc_version/specs ]; then
+      install_newer /usr/libexec/$target/$gcc_version/specs $DSTROOT/lib/$target/specs "-m 444"
+    elif [ -f /usr/libexec/$target/specs ]; then
+      install_newer /usr/libexec/$target/specs $DSTROOT/lib/$target/specs "-m 444"
+    fi
   done
 fi
 

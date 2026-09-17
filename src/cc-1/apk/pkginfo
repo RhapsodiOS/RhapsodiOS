@@ -1,0 +1,6 @@
+pkgname = cc
+pkgver = 783.1
+pkgdesc = C compiler
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base, gnudiff

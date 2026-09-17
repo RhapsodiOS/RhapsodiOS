@@ -1,0 +1,7 @@
+pkgname = openssl
+pkgver = 0.9.5a
+pkgdesc = SSL library
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+url = http://www.openssl.org/
+makedepends = build-base, perl

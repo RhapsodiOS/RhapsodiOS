@@ -128,14 +128,25 @@ TEST(test_pkginfo_write) {
     strlist_push(&p.build_depends, "cc");
     strlist_push(&p.build_depends, "gnumake");
     p.has_build_depends = 1;
-
+    package_set(&p.license, "unknown");
+    package_set(&p.url, "http://example.com/make");
     CHECK_INT(pkginfo_write(&p, "/tmp/rbtest.PKGINFO"), 0);
     out = slurp("/tmp/rbtest.PKGINFO");
     CHECK(out != 0);
     CHECK(strstr(out, "pkgname = gnumake\n") != 0);
     CHECK(strstr(out, "pkgver = 3.79\n") != 0);
     CHECK(strstr(out, "arch = universal-apple-rhapsody\n") != 0);
-    CHECK(strstr(out, "builddepends = cc gnumake\n") != 0);
+    CHECK(strstr(out, "makedepends = cc gnumake\n") != 0);
+    CHECK(strstr(out, "license = unknown\n") != 0);
+    CHECK(strstr(out, "url = http://example.com/make\n") != 0);
+    CHECK(strstr(out, "builddepends =") == 0);
+    CHECK(strstr(out, "pkgrel") == 0);
+
+    package_set(&p.license, 0);
+    CHECK_INT(pkginfo_write(&p, "/tmp/rbtest.PKGINFO"), 0);
+    out = slurp("/tmp/rbtest.PKGINFO");
+    CHECK(out != 0);
+    CHECK(strstr(out, "license = unknown\n") != 0);
     package_free(&p);
     remove("/tmp/rbtest.PKGINFO");
 }
@@ -315,8 +326,72 @@ TEST(test_build_apk_without_toolchain_uses_legacy_generic_argv) {
     CHECK_INT(exec_runv("/bin/rm", "-rf", scratch, (char *)0), 0);
 }
 
+static void write_file(const char *path, const char *body) {
+    FILE *f = fopen(path, "w");
+    CHECK(f != 0);
+    if (f) { fputs(body, f); fclose(f); }
+}
+
+TEST(test_pkginfo_read_basic) {
+    Package p;
+    mkdir("/tmp/rb-pkginfo-read", 0700);
+    write_file("/tmp/rb-pkginfo-read/pkginfo",
+        "pkgname = grep\n"
+        "pkgver = 2.1\n"
+        "pkgdesc = Get-Regular-Expression-and-Print tool\n"
+        "maintainer = Darwin Developers <d@x>\n"
+        "license = unknown\n"
+        "url = http://example.com/grep\n"
+        "makedepends = build-base, libstreams-hdrs architecture-hdrs\n"
+        "# comment\n"
+        "\n"
+        "vendor = ignored\n");
+    package_init(&p);
+    CHECK_INT(pkginfo_read(&p, "/tmp/rb-pkginfo-read/pkginfo"), 0);
+    CHECK_STR(p.package, "grep");
+    CHECK_STR(p.version, "2.1");
+    CHECK_STR(p.description, "Get-Regular-Expression-and-Print tool");
+    CHECK_STR(p.maintainer, "Darwin Developers <d@x>");
+    CHECK_STR(p.license, "unknown");
+    CHECK_STR(p.url, "http://example.com/grep");
+    CHECK_INT(p.has_build_depends, 1);
+    CHECK_INT(p.build_depends.count, 3);
+    CHECK_STR(p.build_depends.items[0], "build-base");
+    CHECK_STR(p.build_depends.items[2], "architecture-hdrs");
+    CHECK(p.architecture == 0 || p.architecture[0] == '\0');
+    package_free(&p);
+}
+
+TEST(test_pkginfo_read_missing_file) {
+    Package p;
+    package_init(&p);
+    CHECK_INT(pkginfo_read(&p, "/tmp/rb-pkginfo-read/no-such"), 1);
+    package_free(&p);
+}
+
+TEST(test_pkginfo_read_missing_pkgname) {
+    Package p;
+    write_file("/tmp/rb-pkginfo-read/nopkg", "pkgver = 1\n");
+    package_init(&p);
+    CHECK_INT(pkginfo_read(&p, "/tmp/rb-pkginfo-read/nopkg"), 2);
+    package_free(&p);
+}
+
+TEST(test_pkginfo_read_invalid_arch) {
+    Package p;
+    write_file("/tmp/rb-pkginfo-read/badarch",
+        "pkgname = bad\npkgver = 1\narch = m68k\n");
+    package_init(&p);
+    CHECK_INT(pkginfo_read(&p, "/tmp/rb-pkginfo-read/badarch"), 2);
+    package_free(&p);
+}
+
 static void run_all(void) {
     RUN(test_pkginfo_write);
+    RUN(test_pkginfo_read_basic);
+    RUN(test_pkginfo_read_missing_file);
+    RUN(test_pkginfo_read_missing_pkgname);
+    RUN(test_pkginfo_read_invalid_arch);
     RUN(test_build_apk_is_posix_ustar_and_extracts);
     RUN(test_build_apk_without_toolchain_uses_legacy_generic_argv);
 }

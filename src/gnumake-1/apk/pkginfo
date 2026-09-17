@@ -1,0 +1,6 @@
+pkgname = gnumake
+pkgver = 67
+pkgdesc = NeXT make
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base, perl

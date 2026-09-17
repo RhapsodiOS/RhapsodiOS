@@ -1,0 +1,6 @@
+pkgname = dpkg
+pkgver = 1.4.1.0.2
+pkgdesc = The `dpkg' package-management tool
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base, perl, gnudiff

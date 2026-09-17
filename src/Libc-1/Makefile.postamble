@@ -121,6 +121,20 @@ all::
 
 after_install::
 	$(MKDIRS) $(LIBROOT)
+	@(lipo_args="" ; count=0 ; \
+	  for arch in $(RC_ARCHS) none ; do \
+	    if [ "$$arch" = "none" ] ; then break ; fi ; \
+	    thin="$(SYMROOT)/libc.$${arch}_static.a" ; \
+	    if [ -f "$$thin" ] ; then \
+	      lipo_args="$$lipo_args -arch $$arch $$thin" ; \
+	      count=`expr $$count + 1` ; \
+	    fi ; \
+	  done ; \
+	  if [ $$count -gt 1 ] ; then \
+	    $(RM) -f $(SYMROOT)/libc_static.a ; \
+	    cmd="$(LIPO) -create $$lipo_args -o $(SYMROOT)/libc_static.a" ; \
+	    echo $$cmd ; $$cmd || exit 1 ; \
+	  fi)
 	$(INSTALL) $(LIBRARY_INSTALL_OPTS) -m 555 -o $(INSTALL_AS_USER) -g $(INSTALL_AS_GROUP) $(SYMROOT)/libc_static.a $(LIBROOT)/libc_static.a
 	$(RM) -f $(LIBROOT)/libsys_s.a
 	$(TRANSMOGRIFY) $(LIBROOT)/libc_static.a $(LIBROOT)/libsys_s.a

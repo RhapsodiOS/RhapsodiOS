@@ -1,0 +1,6 @@
+pkgname = dpkg-scriptlib
+pkgver = 0.2
+pkgdesc = Perl and Python interfaces to dpkg
+maintainer = Klee Dienes <kdienes@apple.com>
+license = unknown
+makedepends = build-base, gnuzip

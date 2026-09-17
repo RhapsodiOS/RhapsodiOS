@@ -1,0 +1,6 @@
+pkgname = drvbusmouse
+pkgver = 6
+pkgdesc = Bus Mouse device driver
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base, drivertools, driverkit, machkit, kernload, libstreams

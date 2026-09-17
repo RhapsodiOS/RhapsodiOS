@@ -240,13 +240,10 @@ static unsigned long entry_fingerprint(const ManifestEntry *entry,
 
 static char *variant_canon(const Package *pkg, const char *suffix) {
     Package variant;
-    char *data;
     char *name;
     char *canon;
     package_init(&variant);
-    data = package_unparse(pkg);
-    package_parse(&variant, data);
-    free(data);
+    package_copy(&variant, pkg);
     name = str_cats(variant.package, suffix, (char *)0);
     package_set(&variant.package, name);
     free(name);
@@ -323,7 +320,7 @@ static int check_state(const char *path, const RunnerOptions *opt,
     unsigned long stored_entry;
     int line_no = 0, field = 0, format = 1;
     int saw_policy = 0, saw_architecture = 0;
-    int policy_current = 0, architecture_current = 0;
+    int policy_current = 0, architecture_current = 0, architecture_covers = 0;
     struct stat state_stat;
     memset(info, 0, sizeof(*info));
     if (lstat(path, &state_stat) == 0 && !S_ISREG(state_stat.st_mode)) {
@@ -364,6 +361,13 @@ static int check_state(const char *path, const RunnerOptions *opt,
             saw_architecture = 1;
             line[strlen(line) - 1] = '\0';
             architecture_current = strcmp(line + 23, architecture) == 0;
+            if (!architecture_current) {
+                unsigned stored_arch = 0, wanted_arch = 0;
+                if (architecture_parse(line + 23, &stored_arch) == 0 &&
+                    architecture_parse(architecture, &wanted_arch) == 0 &&
+                    wanted_arch != 0 && (stored_arch & wanted_arch) == wanted_arch)
+                    architecture_covers = 1;
+            }
             continue;
         }
         field++;
@@ -396,10 +400,14 @@ static int check_state(const char *path, const RunnerOptions *opt,
         }
     }
     if (ferror(f) || field != (format == 1 ? 6 : 7)) goto corrupt;
-    info->legacy = format != 3 || !policy_current || !architecture_current;
+    info->legacy = format != 3 || !policy_current ||
+                   (!architecture_current && !architecture_covers);
     /* Old records have an older entry hash. Classify staleness first, but
-     * retain the existing mismatch failure for current policy records. */
-    if (!info->legacy && stored_entry != entry_hash) goto mismatch;
+     * retain the existing mismatch failure for current policy records.
+     * A covering architecture (universal vs thin) changes the entry hash
+     * without making the cached APK stale. */
+    if (!info->legacy && stored_entry != entry_hash && !architecture_covers)
+        goto mismatch;
     info->exists = 1;
     fclose(f);
     free(expected_package); free(expected_target); free(expected_source);
@@ -473,7 +481,7 @@ static int replay(const char *path, const RunnerOptions *opt,
         unsigned required;
         if (architecture_parse(architecture, &required) != 0) return 1;
         return apk_use_arch(path, opt->sysroot, opt->toolchain, pkgname,
-                             pkgver, required, str_has_suffix(pkgname, "-obj"), 0);
+                             pkgver, required, str_has_suffix(pkgname, "-obj"), 1);
     }
 }
 
@@ -901,7 +909,14 @@ int runner_kernel(const char *srcdir, const char *seeddir, const char *dstdir,
     strlist_init(&packages);
     if (kernel_core_packages(arch, &packages) != 0) goto done;
     for (i = 0; i < packages.count; i++) {
+        struct stat st;
         path = path_join(srcdir, packages.items[i]);
+        if (stat(path, &st) != 0 || !S_ISDIR(st.st_mode)) {
+            printf("rbuild: skip missing kernel source %s\n", packages.items[i]);
+            fflush(stdout);
+            free(path);
+            continue;
+        }
         if (buildpackage_for_arch("dir", path, seeddir, "all", dstdir,
                                   state_dir, operation_arch, arch) != 0) {
             fprintf(stderr, "rbuild: kernel failed: %s\n", packages.items[i]);

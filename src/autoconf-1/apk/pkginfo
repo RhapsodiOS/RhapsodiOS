@@ -1,0 +1,7 @@
+pkgname = autoconf
+pkgver = 2.12
+pkgdesc = GNU source configuration tool
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+url = ftp://prep.ai.mit.edu/pub/gnu/autoconf-2.12.tar.gz
+makedepends = build-base, gm4, perl

@@ -1,0 +1,6 @@
+pkgname = volfs
+pkgver = 0
+pkgdesc = volfs commands
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base, drivertools, kernload

@@ -76,9 +76,9 @@ entry_number=0
 while read source target; do
     test -n "$source" || continue
     entry_number=`expr "$entry_number" + 1`
-    control="$src_dir/$source/dpkg/control"
-    if test ! -f "$control"; then
-        say_fail "manifest source has no dpkg/control: $source"
+    pkginfo="$src_dir/$source/apk/pkginfo"
+    if test ! -f "$pkginfo"; then
+        say_fail "manifest source has no apk/pkginfo: $source"
         continue
     fi
     if ! awk -v source="$source" '
@@ -87,9 +87,9 @@ while read source target; do
     ' "$tmp/scan"; then
         say_fail "rbuild did not scan manifest source: $source"
     fi
-    package=`awk '$1 == "Package:" { print $2; exit }' "$control"`
+    package=`awk -F ' = ' '$1 == "pkgname" { print $2; exit }' "$pkginfo"`
     if test -z "$package"; then
-        say_fail "source has no Package field: $source"
+        say_fail "source has no pkgname: $source"
         continue
     fi
     if test "$target" = all; then
@@ -161,13 +161,13 @@ fi
 
 # Keep a small synthetic mapping independent of the real package names.  A
 # legacy two-column row retains the historical all-target meaning.
-mkdir -p "$tmp/header-src/dpkg" "$tmp/base-src/dpkg" "$tmp/synthetic-repo"
-printf 'Package: sample-header\nVersion: 1\n' >"$tmp/header-src/dpkg/control"
-printf 'Package: sample-base\nVersion: 1\n' >"$tmp/base-src/dpkg/control"
+mkdir -p "$tmp/header-src/apk" "$tmp/base-src/apk" "$tmp/synthetic-repo"
+printf 'pkgname = sample-header\npkgver = 1\n' >"$tmp/header-src/apk/pkginfo"
+printf 'pkgname = sample-base\npkgver = 1\n' >"$tmp/base-src/apk/pkginfo"
 printf 'dir %s headers\ndir %s\n' "$tmp/header-src" "$tmp/base-src" \
     >"$tmp/synthetic.manifest"
-make_fixture_apk sample-header-hdrs 1 "$tmp/synthetic-repo/sample-header-hdrs-1.apk"
-make_fixture_apk sample-base 1 "$tmp/synthetic-repo/sample-base-1.apk"
+make_fixture_apk sample-header-hdrs 1 "$tmp/synthetic-repo/sample-header-hdrs-1-universal.apk"
+make_fixture_apk sample-base 1 "$tmp/synthetic-repo/sample-base-1-universal.apk"
 if ! "$rbuild_dir/rbuild" missing "$tmp/synthetic.manifest" \
         "$tmp/synthetic-repo" >"$tmp/synthetic.scan" \
         2>"$tmp/synthetic.err"; then
@@ -178,24 +178,24 @@ elif test -s "$tmp/synthetic.scan"; then
     say_fail "synthetic target-correct artifacts are reported missing"
 fi
 # Inspection reports invalid cache without changing it or the source.
-printf broken >"$tmp/synthetic-repo/sample-base-1.apk"
+printf broken >"$tmp/synthetic-repo/sample-base-1-universal.apk"
 if ! "$rbuild_dir/rbuild" missing "$tmp/synthetic.manifest" "$tmp/synthetic-repo" >"$tmp/invalid.scan" 2>"$tmp/invalid.err"; then
     say_fail "readonly incompatible-cache inspection failed"
 fi
-if ! grep 'must build sample-base-1.apk' "$tmp/invalid.scan" >/dev/null ||
-    test "`cat "$tmp/synthetic-repo/sample-base-1.apk"`" != broken ||
-    test -e "$tmp/synthetic-repo/sample-base-1.apk.invalid"; then
+if ! grep 'must build sample-base-1-universal.apk' "$tmp/invalid.scan" >/dev/null ||
+    test "`cat "$tmp/synthetic-repo/sample-base-1-universal.apk"`" != broken ||
+    test -e "$tmp/synthetic-repo/sample-base-1-universal.apk.invalid"; then
     say_fail "missing changed or accepted an incompatible artifact"
 fi
-make_fixture_apk sample-base 1 "$tmp/synthetic-repo/sample-base-1.apk"
-mkdir -p "$tmp/bad-source/dpkg"
-printf 'Package: bad\nVersion: 1\nArchitecture: m68k\n' >"$tmp/bad-source/dpkg/control"
+make_fixture_apk sample-base 1 "$tmp/synthetic-repo/sample-base-1-universal.apk"
+mkdir -p "$tmp/bad-source/apk"
+printf 'pkgname = bad\npkgver = 1\narch = m68k\n' >"$tmp/bad-source/apk/pkginfo"
 printf 'dir %s all\n' "$tmp/bad-source" >"$tmp/bad.manifest"
 if "$rbuild_dir/rbuild" missing "$tmp/bad.manifest" "$tmp/synthetic-repo" >"$tmp/bad.scan" 2>"$tmp/bad.err"; then
     say_fail "missing returned success for an invalid source architecture"
 fi
 
-rm -f "$tmp/synthetic-repo/sample-header-hdrs-1.apk"
+rm -f "$tmp/synthetic-repo/sample-header-hdrs-1-universal.apk"
 if ! "$rbuild_dir/rbuild" missing "$tmp/synthetic.manifest" \
         "$tmp/synthetic-repo" >"$tmp/synthetic-one.scan" \
         2>"$tmp/synthetic-one.err"; then

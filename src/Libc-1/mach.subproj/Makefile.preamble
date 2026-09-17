@@ -107,7 +107,7 @@ DEFSFILES = $(MACHDEFSFILES) $(SERVERDEFSFILES)
 # makefiles' defaults.
 ifneq ($(strip $(CONFIG_DIR)),)
 override MIG = $(CONFIG_DIR)/mig
-MIGFLAGS = $(RC_CFLAGS)
+MIGFLAGS = $(RC_CFLAGS) $(LOCAL_CFLAGS)
 endif
 
 INITIAL_INITIAL_TARGETS = $(UNTYPEDDEFSFILES:.defs=User.o)

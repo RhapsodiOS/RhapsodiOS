@@ -89,14 +89,14 @@ driver_build:	$(OBJROOT)/driver_dir
 	@if [ $(SRCROOT) = . ];						\
 	then								\
 	    cd driver_dir;  $(MAKE) -f ../Makefile driver VPATH=..	\
-		OFILE_DIR=. CFLAGS="-g -O -I../../include $(GCC_FLAGS)" \
+		OFILE_DIR=. CFLAGS="-g -O -I../../include $(GCC_FLAGS) $(LOCAL_CFLAGS)" \
 		VERS_STRING_FLAGS="$(VERS_STRING_FLAGS)"		\
 		RC_FLAGS="$(RC_CFLAGS)" DEP_DIR=driver_dir;		\
 	else								\
 	    cd $(OBJROOT)/driver_dir; $(MAKE) -f $(SRCROOT)/Makefile	\
 		driver VPATH=$(SRCROOT) OFILE_DIR=$(OBJROOT)/driver_dir \
 		SYMROOT=$(SYMROOT)/driver_dir SRCROOT=$(SRCROOT)	\
-		CFLAGS="-g -O -I$(SRCROOT)/../include $(GCC_FLAGS)"	\
+		CFLAGS="-g -O -I$(SRCROOT)/../include $(GCC_FLAGS) $(LOCAL_CFLAGS)"	\
 		VERS_STRING_FLAGS="$(VERS_STRING_FLAGS)"		\
 		RC_FLAGS="$(RC_CFLAGS)" DEP_DIR=driver_dir;		\
 	fi
@@ -249,14 +249,14 @@ asparc_test: asparc_dir
 	cd asparc_dir; $(MAKE) -f ../Makefile test
 
 driver:	driver.o apple_version.o
-	$(CC) $(COPTS) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/driver \
+	$(CC) $(COPTS) $(CFLAGS) $(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress -o $(SYMROOT)/driver \
 		$(OFILE_DIR)/driver.o $(OFILE_DIR)/apple_version.o $(LIBSTUFF)
 
 as:	$(OBJS) $(TARGET_OBJS) makeUser.o
 	$(CC) $(COPTS) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r \
 		-o $(SYMROOT)/as.private.o $(OBJS) $(TARGET_OBJS) \
 		makeUser.o $(LIBSTUFF)
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/as $(SYMROOT)/as.private.o
+	$(CC) $(CFLAGS) $(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress -o $(SYMROOT)/as $(SYMROOT)/as.private.o
 
 makeUser.c messages.c: make.h
 

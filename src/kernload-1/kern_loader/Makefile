@@ -18,7 +18,7 @@ MIGDIR=$(SRCDIR)/../include/kernserv
 
 SYSTEM_FRAMEWORK_DIR = $(SYSTEM_LIBRARY_DIR)/Frameworks/System.framework
 CFLAGS= -g -O -MD -Wall -I${INCDIR} -I${SYMDIR} -I${SYMROOT}/include -I$(SYSTEM_FRAMEWORK_DIR)/PrivateHeaders  -I$(SYSTEM_FRAMEWORK_DIR)/Headers \
-	-DMACH ${RC_CFLAGS} 
+	-DMACH ${RC_CFLAGS} ${LOCAL_CFLAGS} 
 
 #
 # Options for release builds

@@ -6,9 +6,11 @@
 #include "package.h"
 #include "runner.h"
 #include "toolchain.h"
+#include "architecture.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 static const char *USAGE =
     "usage:\n"
@@ -17,6 +19,8 @@ static const char *USAGE =
     " <source> <repository> <dstdir>\n"
     "  rbuild buildall [--state DIR] <srclist> <repository> <dstdir>\n"
     "  rbuild bootstrap --sysroot ROOT --toolchain FILE --state DIR"
+    " <srclist> <repository> <dstdir>\n"
+    "  rbuild bootstrap-universal --sysroot ROOT --toolchain FILE --state DIR"
     " <srclist> <repository> <dstdir>\n"
     "  rbuild kernel [--state DIR] --arch ARCH"
     " <srcdir> <repository> <dstdir>\n"
@@ -94,6 +98,85 @@ static int cmd_buildall(int argc, char **argv) {
     return runner_manifest(argv[i], argv[i + 1], argv[i + 2], &opt);
 }
 
+static int cmd_bootstrap_args(int argc, char **argv, const char **sysroot,
+                              const char **profile, const char **state,
+                              int *arg_i) {
+    int i = 0;
+    *sysroot = 0;
+    *profile = 0;
+    *state = 0;
+    while (i < argc && strncmp(argv[i], "--", 2) == 0) {
+        const char *name = argv[i++];
+        const char *value;
+        if (i >= argc) { usage(); return 1; }
+        value = argv[i++];
+        if (strcmp(name, "--sysroot") == 0) *sysroot = value;
+        else if (strcmp(name, "--toolchain") == 0) *profile = value;
+        else if (strcmp(name, "--state") == 0) *state = value;
+        else { usage(); return 1; }
+    }
+    if (argc - i != 3 || *sysroot == 0 || *profile == 0 || *state == 0) {
+        usage(); return 1;
+    }
+    if ((*sysroot)[0] != '/' || (*state)[0] != '/') {
+        fprintf(stderr, "rbuild: sysroot and state directory must be absolute\n");
+        return 1;
+    }
+    *arg_i = i;
+    return 0;
+}
+
+static char *sibling_path(const char *srclist, const char *name) {
+    const char *slash = strrchr(srclist, '/');
+    if (!slash) return xstrdup(name);
+    {
+        size_t n = (size_t)(slash - srclist);
+        char *dir = xmalloc(n + 1);
+        memcpy(dir, srclist, n);
+        dir[n] = '\0';
+        {
+            char *out = path_join(dir, name);
+            free(dir);
+            return out;
+        }
+    }
+}
+
+static int bootstrap_sysroot_ready(const Toolchain *tc, const char *sysroot) {
+    char *marker;
+    char *indr;
+    int rc = 0;
+    marker = 0;
+    if (tc->ld_flags_ready) {
+        const char *p = tc->ld_flags_ready;
+        const char *m = "@SYSROOT@";
+        sbuf expanded;
+        const char *hit;
+        sbuf_init(&expanded);
+        while ((hit = strstr(p, m)) != 0) {
+            sbuf_putn(&expanded, p, (size_t)(hit - p));
+            sbuf_puts(&expanded, sysroot ? sysroot : "");
+            p = hit + sizeof("@SYSROOT@") - 1;
+        }
+        sbuf_puts(&expanded, p);
+        marker = sbuf_steal(&expanded);
+        sbuf_free(&expanded);
+    }
+    if (!marker || access(marker, F_OK) != 0) {
+        fprintf(stderr, "rbuild: bootstrap-universal requires thin sysroot marker %s\n",
+                marker ? marker : "(missing ld_flags_ready)");
+        rc = 1;
+    }
+    indr = str_cats(sysroot, "/usr/local/bin/indr", (char *)0);
+    if (!rc && access(indr, X_OK) != 0) {
+        fprintf(stderr, "rbuild: bootstrap-universal requires %s\n", indr);
+        rc = 1;
+    }
+    free(marker);
+    free(indr);
+    return rc;
+}
+
 static int cmd_bootstrap(int argc, char **argv) {
     const char *sysroot = 0;
     const char *profile = 0;
@@ -102,23 +185,8 @@ static int cmd_bootstrap(int argc, char **argv) {
     RunnerOptions opt;
     int i = 0;
     int rc;
-    while (i < argc && strncmp(argv[i], "--", 2) == 0) {
-        const char *name = argv[i++];
-        const char *value;
-        if (i >= argc) { usage(); return 1; }
-        value = argv[i++];
-        if (strcmp(name, "--sysroot") == 0) sysroot = value;
-        else if (strcmp(name, "--toolchain") == 0) profile = value;
-        else if (strcmp(name, "--state") == 0) state = value;
-        else { usage(); return 1; }
-    }
-    if (argc - i != 3 || sysroot == 0 || profile == 0 || state == 0) {
-        usage(); return 1;
-    }
-    if (sysroot[0] != '/' || state[0] != '/') {
-        fprintf(stderr, "rbuild: sysroot and state directory must be absolute\n");
+    if (cmd_bootstrap_args(argc, argv, &sysroot, &profile, &state, &i) != 0)
         return 1;
-    }
     toolchain_init(&tc);
     if (toolchain_load(&tc, profile) != 0 || toolchain_validate(&tc) != 0) {
         toolchain_free(&tc); return 1;
@@ -130,6 +198,43 @@ static int cmd_bootstrap(int argc, char **argv) {
     opt.toolchain = &tc;
     opt.toolchain_file = profile;
     rc = runner_manifest(argv[i], argv[i + 1], argv[i + 2], &opt);
+    toolchain_free(&tc);
+    return rc;
+}
+
+static int cmd_bootstrap_universal(int argc, char **argv) {
+    const char *sysroot = 0;
+    const char *profile = 0;
+    const char *state = 0;
+    Toolchain tc;
+    RunnerOptions opt;
+    char *runtime;
+    int i = 0;
+    int rc;
+    if (cmd_bootstrap_args(argc, argv, &sysroot, &profile, &state, &i) != 0)
+        return 1;
+    toolchain_init(&tc);
+    if (toolchain_load(&tc, profile) != 0 || toolchain_validate(&tc) != 0) {
+        toolchain_free(&tc); return 1;
+    }
+    if (bootstrap_sysroot_ready(&tc, sysroot) != 0) { toolchain_free(&tc); return 1; }
+    runtime = sibling_path(argv[i], "BootstrapRuntimeManifest");
+    if (access(runtime, R_OK) != 0) {
+        fprintf(stderr, "rbuild: missing BootstrapRuntimeManifest beside %s\n",
+                argv[i]);
+        free(runtime); toolchain_free(&tc); return 1;
+    }
+    memset(&opt, 0, sizeof(opt));
+    opt.bootstrap = 1;
+    opt.sysroot = sysroot;
+    opt.state_dir = state;
+    opt.toolchain = &tc;
+    opt.toolchain_file = profile;
+    opt.operation_arch = RB_ARCH_UNIVERSAL;
+    rc = runner_manifest(runtime, argv[i + 1], argv[i + 2], &opt);
+    if (rc == 0)
+        rc = runner_manifest(argv[i], argv[i + 1], argv[i + 2], &opt);
+    free(runtime);
     toolchain_free(&tc);
     return rc;
 }
@@ -247,6 +352,8 @@ int main(int argc, char **argv) {
         return cmd_buildall(argc - i, argv + i);
     if (strcmp(sub, "bootstrap") == 0)
         return cmd_bootstrap(argc - i, argv + i);
+    if (strcmp(sub, "bootstrap-universal") == 0)
+        return cmd_bootstrap_universal(argc - i, argv + i);
     if (strcmp(sub, "kernel") == 0)
         return cmd_kernel(argc - i, argv + i, 0);
     if (strcmp(sub, "kerneldrivers") == 0)

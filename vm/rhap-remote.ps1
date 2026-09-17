@@ -23,7 +23,9 @@ $script:RhapLegacySshOptions = @(
     '-o', 'MACs=hmac-sha1',
     '-o', 'PubkeyAuthentication=no',
     '-o', 'StrictHostKeyChecking=no',
-    '-o', "UserKnownHostsFile=$rhapKnownHostsOpt"
+    '-o', "UserKnownHostsFile=$rhapKnownHostsOpt",
+    '-o', 'ServerAliveInterval=30',
+    '-o', 'ServerAliveCountMax=120'
 )
 
 function Write-RhapDie {

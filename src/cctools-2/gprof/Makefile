@@ -37,7 +37,7 @@ all: $(OFILE_DIR) $(SYMROOT) $(PRODUCT).NEW
 $(PRODUCT).NEW:	$(OFILE_DIR) $(SYMROOT) $(OBJS)
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r \
 		-o $(SYMROOT)/$@.private.o $(OBJS) $(LIBSTUFF)
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/$@ $(SYMROOT)/$@.private.o
+	$(CC) $(CFLAGS) $(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress -o $(SYMROOT)/$@ $(SYMROOT)/$@.private.o
 
 vers.c:
 	vers_string -c $(VERS_STRING_FLAGS) $(PRODUCT) > $(OFILE_DIR)/$@

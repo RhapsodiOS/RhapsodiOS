@@ -13,7 +13,7 @@ SYMROOT=$(SYMDIR)/../..
 LIBS=$(SYMROOT)/libkernload/libkernload.a
 
 CFLAGS= -g -O $(DEBUG) -MD -Wimplicit -I${INCDIR} \
-	-I${SYMROOT}/include ${RC_CFLAGS} 
+	-I${SYMROOT}/include ${RC_CFLAGS} ${LOCAL_CFLAGS} 
 
 #
 # Options for release builds

@@ -1,0 +1,7 @@
+pkgname = bsdmake
+pkgver = 1997.11.10
+pkgdesc = BSD build driver ("make")
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+url = http://www.netbsd.org/
+makedepends = build-base

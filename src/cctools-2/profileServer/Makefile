@@ -1,10 +1,10 @@
 OFLAG = -O
 ifeq "mwcc" "$(notdir $(CC))"
   CFLAGS = $(OFLAG) -g \
-	 -I$(SRCROOT) -I$(SRCROOT)/../include -I$(OFILE_DIR)
+	 -I$(SRCROOT) -I$(SRCROOT)/../include -I$(OFILE_DIR) $(LOCAL_CFLAGS)
 else
   CFLAGS = $(OFLAG) -g -Wall -Wno-precomp \
-	 -I$(SRCROOT) -I$(SRCROOT)/../include -I$(OFILE_DIR)
+	 -I$(SRCROOT) -I$(SRCROOT)/../include -I$(OFILE_DIR) $(LOCAL_CFLAGS)
 endif
 LIBSTUFF = -L$(SYMROOT)/../libstuff -lstuff
 
@@ -48,14 +48,14 @@ dylibprof.NEW: dylibprof.o vers.o
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r \
 		-o $(OBJROOT)/dylibprof.private.o \
 		$(OFILE_DIR)/dylibprof.o $(OFILE_DIR)/vers.o $(LIBSTUFF)
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/dylibprof.NEW \
+	$(CC) $(CFLAGS) $(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress -o $(SYMROOT)/dylibprof.NEW \
 		$(OFILE_DIR)/dylibprof.private.o
 
 profileServer.NEW: profileServer.o vers.o
 	$(CC) $(CFLAGS) $(RC_CFLAGS) -nostdlib -r \
 		-o $(OBJROOT)/profileServer.private.o \
 		$(OFILE_DIR)/profileServer.o $(OFILE_DIR)/vers.o $(LIBSTUFF)
-	$(CC) $(CFLAGS) $(RC_CFLAGS) -o $(SYMROOT)/profileServer.NEW \
+	$(CC) $(CFLAGS) $(RC_CFLAGS) $(OTHER_LDFLAGS) -undefined suppress -o $(SYMROOT)/profileServer.NEW \
 		$(OFILE_DIR)/profileServer.private.o
 
 clean: shlib_clean

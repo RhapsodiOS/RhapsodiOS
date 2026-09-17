@@ -1,0 +1,6 @@
+pkgname = buildtools
+pkgver = 0.1
+pkgdesc = Build tools
+maintainer = Klee Dienes <kdienes@apple.com>
+license = unknown
+makedepends = build-base, gnuzip

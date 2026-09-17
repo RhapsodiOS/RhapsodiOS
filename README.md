@@ -51,7 +51,7 @@ make CC=/usr/bin/cc clean test all
 
 ## Bootstrap
 
-Stage-0 seed: resume `src/BootstrapManifest` into `/build/bootstrap-root` and `/build/repo`. `-Rbuild` and `-Bootstrap` cannot be combined.
+Stage-0 seed: resume `src/BootstrapManifest` into `/build/bootstrap-root` and `/build/repo`. `-Bootstrap` runs thin `rbuild bootstrap` and then `rbuild bootstrap-universal` with the same sysroot, toolchain, state, and manifest; thin-only bootstrap is not enough for ordinary universal builds. `-Rbuild` and `-Bootstrap` cannot be combined.
 
 ```powershell
 powershell -NoProfile -File vm\build-src.ps1 -Bootstrap

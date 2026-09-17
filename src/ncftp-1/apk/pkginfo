@@ -1,0 +1,7 @@
+pkgname = ncftp
+pkgver = 2.4.3
+pkgdesc = Better ftp client
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+url = ftp://ftp.ncftp.com/pub/ncftp/
+makedepends = build-base

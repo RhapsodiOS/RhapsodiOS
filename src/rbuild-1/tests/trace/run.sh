@@ -24,7 +24,7 @@ zsh tcsh file-cmds text-cmds shell-cmds developer-cmds awk grep gnutar \
 patch-cmds libsystem libc-hdrs architecture-hdrs kernel-hdrs csu objc4-hdrs \
 files basic-cmds bootstrap-cmds system-cmds"
 for d in $basedeps; do
-  : > "$seed/$d-1.0.apk"
+  : > "$seed/$d-1.0-universal.apk"
   : > "$seed/${d}_1.0.deb"
 done
 

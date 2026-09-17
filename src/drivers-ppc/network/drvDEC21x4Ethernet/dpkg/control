@@ -1,6 +1,0 @@
-Package: drvdec21x4ethernet
-Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
-Vendor: Apple Computer
-Version: 2
-Description: STUB - DEC 21x4 PCI Ethernet adapter driver (no in-tree source; scaffolded from shipped binary metadata)
-Build-Depends: build-base, drivertools, driverkit, machkit, kernload, libstreams

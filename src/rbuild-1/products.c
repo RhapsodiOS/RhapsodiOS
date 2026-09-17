@@ -51,14 +51,53 @@ static void record(validation *v, const char *key, unsigned mask) {
     v->groups = g;
 }
 
+/* i386/ppc and Project Builder i386.subproj/ppc.subproj after the source
+ * name are the same CPU buckets. Repeated same-CPU names are one bucket. */
+static int object_arch_component(const char *p, size_t n, unsigned *bucket) {
+    if ((n == 4 && strncmp(p, "i386", 4) == 0) ||
+        (n == 12 && strncmp(p, "i386.subproj", 12) == 0)) {
+        if (bucket) *bucket = RB_ARCH_I386;
+        return 1;
+    }
+    if ((n == 3 && strncmp(p, "ppc", 3) == 0) ||
+        (n == 11 && strncmp(p, "ppc.subproj", 11) == 0)) {
+        if (bucket) *bucket = RB_ARCH_PPC;
+        return 1;
+    }
+    return 0;
+}
+
+static void strip_object_arch_components(char *dir, char *source_end) {
+    char *read = source_end + 1;
+    char *write = source_end + 1;
+    int wrote = 0;
+    while (*read) {
+        char *slash = strchr(read, '/');
+        size_t n;
+        unsigned unused = 0;
+        if (!slash) slash = read + strlen(read);
+        n = (size_t)(slash - read);
+        if (!object_arch_component(read, n, &unused)) {
+            if (wrote) *write++ = '/';
+            memmove(write, read, n);
+            write += n;
+            wrote = 1;
+        }
+        if (*slash == '\0') break;
+        read = slash + 1;
+    }
+    if (!wrote) *source_end = '\0';
+    else *write = '\0';
+}
+
 /* Only architecture directory components after the source name count.
  * Directory buckets take precedence over per-object .i386.o/.ppc.o pairs. */
 static int code_file(validation *v, const char *rel, unsigned mask) {
     static const char prefix[] = "usr/local/lib/objs/";
-    char *dir, *source_end, *p, *end, *arch = 0, *dynamic = 0, *key;
+    char *dir, *source_end, *p, *end, *dynamic = 0, *key;
     const char *name;
-    unsigned bucket = 0, suffix = 0;
-    size_t n, archlen = 0;
+    unsigned bucket = 0, suffix = 0, seen = 0, component = 0;
+    size_t n;
     int count = 0, rc = 0;
     if (!v->objects || strncmp(rel, prefix, sizeof(prefix)-1) != 0)
         return covers(mask, v->required, v->superset) ? 0 :
@@ -75,12 +114,11 @@ static int code_file(validation *v, const char *rel, unsigned mask) {
             if (!end) end = p + strlen(p);
             n = (size_t)(end-p);
             if (n == 11 && strncmp(p, "dynamic_obj", 11) == 0) dynamic = p;
-            if ((n == 4 && strncmp(p, "i386", 4) == 0) ||
-                (n == 3 && strncmp(p, "ppc", 3) == 0)) {
-                count++;
-                arch = p;
-                archlen = n;
-                bucket = n == 4 ? RB_ARCH_I386 : RB_ARCH_PPC;
+            if (object_arch_component(p, n, &component)) {
+                if (seen && component != seen) count = 2;
+                else count = 1;
+                seen = component;
+                bucket = component;
             }
         }
     }
@@ -96,15 +134,12 @@ static int code_file(validation *v, const char *rel, unsigned mask) {
     if (count > 1) {
         rc = failure(v, rel, "ambiguous architecture path", mask, v->required);
     } else if (bucket) {
-        if (mask != bucket || (suffix && suffix != bucket)) {
+        if ((mask & bucket) != bucket || (suffix && suffix != bucket)) {
             rc = failure(v, rel, "object CPU/suffix disagrees with directory bucket",
                          mask, bucket);
         } else {
-            /* Remove exactly the CPU component; preserve source and variant. */
-            if (arch[archlen] == '/')
-                memmove(arch, arch+archlen+1, strlen(arch+archlen+1)+1);
-            else
-                arch[-1] = 0;
+            /* Drop every CPU directory; keep source and remaining variant. */
+            strip_object_arch_components(dir, source_end);
             key = str_cats("directory:", dir, (char *)0);
             record(v, key, bucket);
             free(key);
@@ -189,7 +224,7 @@ int products_validate(const char *root, unsigned required,
     rc = walk(&v, "");
     for (g = v.groups; g; g = next) {
         next = g->next;
-        if (!rc && !covers(g->mask, required, allow_superset))
+        if (!rc && !covers(g->mask, required, allow_superset || v.objects))
             rc = failure(&v, g->key, "incomplete object architecture coverage",
                          g->mask, required);
         free(g->key);

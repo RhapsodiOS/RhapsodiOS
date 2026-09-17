@@ -1,8 +1,8 @@
 OFLAG = -O
 ifeq "mwcc" "$(notdir $(CC))"
-  CFLAGS = $(OFLAG) -g -I../include -I$(SRCROOT)
+  CFLAGS = $(OFLAG) -g -I../include -I$(SRCROOT) $(LOCAL_CFLAGS)
 else
-  CFLAGS = -static $(OFLAG) -g -Wall -Wno-precomp -I../include -I$(SRCROOT)
+  CFLAGS = -static $(OFLAG) -g -Wall -Wno-precomp -I../include -I$(SRCROOT) $(LOCAL_CFLAGS)
 endif
 LIBSTUFF = -L$(SYMROOT)/../libstuff -lstuff
 

@@ -1,0 +1,6 @@
+pkgname = intelac97sound
+pkgver = 1
+pkgdesc = Intel AC97 generic sound device driver
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base, drivertools, driverkit, kernload

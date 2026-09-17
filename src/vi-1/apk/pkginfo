@@ -1,0 +1,7 @@
+pkgname = vi
+pkgver = 1.79
+pkgdesc = nvi text editor
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+url = http://www.bostic.com/vi
+makedepends = build-base, libcurses

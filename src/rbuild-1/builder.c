@@ -108,33 +108,77 @@ char *builder_resolve_dependency(const char *name, const strlist *repository) {
     return 0;
 }
 
+static char *apk_name_for_mask(const char *name, const char *version,
+                               unsigned mask) {
+    const char *token = architecture_filename_token(mask);
+    if (!token) return 0;
+    return str_cats(name, "-", version, "-", token, ".apk", (char *)0);
+}
+
+static char *open_arch_package(const char *dir, const char *filename,
+                               const char *name, const char *version,
+                               unsigned required, int dependency,
+                               const Toolchain *tc) {
+    char *path = path_join(dir, filename);
+    if (!exec_dry_run && apk_use_arch(path, 0, tc, name, version,
+            required, str_has_suffix(name, "-obj"), dependency) == 0)
+        return path;
+    if (exec_dry_run) printf("validate APK %s for %s\n", path,
+                            architecture_label(required));
+    free(path);
+    return 0;
+}
+
 /* Inspect every candidate in repository order; incompatible files do not hide
  * compatible versions later in the same directory or a later repository. */
 static char *find_arch_package(const char *dir, const char *name,
                                const char *version, unsigned required,
-                               int dependency) {
-    DIR *d = opendir(dir);
-    struct dirent *de;
-    char *found = 0;
-    char *exact_name;
-    if (!d) return 0;
-    exact_name = version ? str_cats(name, "-", version, ".apk", (char *)0) : 0;
-    while ((de = readdir(d)) != 0) {
-        char *path;
-        if (exact_name && strcmp(de->d_name, exact_name) != 0) continue;
-        if (!builder_match_pkgfile(de->d_name, name)) continue;
-        path = path_join(dir, de->d_name);
-        if (!exec_dry_run && apk_use_arch(path, 0, 0, name, version,
-                required, str_has_suffix(name, "-obj"), dependency) == 0) {
-            found = path; break;
+                               int dependency, const Toolchain *tc) {
+    unsigned try_mask[2];
+    unsigned tries = 0;
+    unsigned i;
+    if (version) {
+        if (required == RB_ARCH_I386 || required == RB_ARCH_PPC) {
+            try_mask[tries++] = required;
+            try_mask[tries++] = RB_ARCH_UNIVERSAL;
+        } else {
+            try_mask[tries++] = RB_ARCH_UNIVERSAL;
         }
-        if (exec_dry_run) printf("validate APK %s for %s\n", path,
-                                architecture_label(required));
-        free(path);
+        for (i = 0; i < tries; i++) {
+            char *exact = apk_name_for_mask(name, version, try_mask[i]);
+            char *found;
+            struct stat st;
+            char *path;
+            if (!exact) continue;
+            path = path_join(dir, exact);
+            if (stat(path, &st) != 0) {
+                free(path);
+                free(exact);
+                continue;
+            }
+            free(path);
+            found = open_arch_package(dir, exact, name, version, required,
+                                      dependency, tc);
+            free(exact);
+            if (found) return found;
+        }
+        return 0;
     }
-    closedir(d);
-    free(exact_name);
-    return found;
+    /* version == 0: scan, new names only via apk_use_arch token check */
+    {
+        DIR *d = opendir(dir);
+        struct dirent *de;
+        char *found = 0;
+        if (!d) return 0;
+        while ((de = readdir(d)) != 0) {
+            if (!builder_match_pkgfile(de->d_name, name)) continue;
+            found = open_arch_package(dir, de->d_name, name, version,
+                                      required, dependency, tc);
+            if (found) break;
+        }
+        closedir(d);
+        return found;
+    }
 }
 
 char *builder_exists(const Package *pkg, const char *type, const char *dir) {
@@ -143,7 +187,7 @@ char *builder_exists(const Package *pkg, const char *type, const char *dir) {
     if (architecture_parse(pkg->architecture, &required) != 0) return 0;
     if (strcmp(type, "exact") == 0) version = package_canon_version(pkg);
     else if (strcmp(type, "any") != 0) return 0;
-    found = find_arch_package(dir, pkg->package, version, required, 0);
+    found = find_arch_package(dir, pkg->package, version, required, 1, 0);
     free(version);
     return found;
 }
@@ -287,7 +331,8 @@ int builder_resolve_architecture(Package *pkg, BuildOptions *opt) {
         if (!opt->toolchain ||
             architecture_parse(opt->toolchain->target_arch, &profile_arch) != 0 ||
             (profile_arch != RB_ARCH_I386 && profile_arch != RB_ARCH_PPC) ||
-            (operation && operation != profile_arch)) {
+            (operation && operation != profile_arch &&
+             operation != RB_ARCH_UNIVERSAL)) {
             fprintf(stderr, "rbuild: %s: invalid or conflicting bootstrap architecture '%s' for operation '%s'\n",
                     pkg->source ? pkg->source :
                     (pkg->package ? pkg->package : "(unknown)"),
@@ -297,7 +342,8 @@ int builder_resolve_architecture(Package *pkg, BuildOptions *opt) {
                     architecture_label(operation) : "(invalid)") : "bootstrap");
             return 1;
         }
-        operation = profile_arch;
+        if (operation != RB_ARCH_UNIVERSAL)
+            operation = profile_arch;
     }
     if (architecture_parse(pkg->architecture, &source) != 0 ||
         architecture_resolve(source, operation, &effective) != 0) {
@@ -348,6 +394,32 @@ static int toolchain_ready(const char *marker, const char *sysroot) {
     path = expand_toolchain_value(marker, sysroot);
     ready = access(path, F_OK) == 0;
     free(path);
+    return ready;
+}
+
+static int file_has_slice(const char *path, unsigned slice) {
+    unsigned mask;
+    int code;
+    if (!path || macho_file_arches(path, &mask, &code) != 0 || !code)
+        return 0;
+    return (mask & slice) == slice;
+}
+
+static int slice_link_ready(const BuildOptions *opt, unsigned slice) {
+    char *system_path;
+    char *crt_path;
+    int ready;
+    if (!opt || !opt->bootstrap || !opt->toolchain) return 1;
+    if (!opt->toolchain->ld_flags_ready) return 1;
+    if (!toolchain_ready(opt->toolchain->ld_flags_ready, opt->sysroot))
+        return 0;
+    system_path = expand_toolchain_value(opt->toolchain->ld_flags_ready,
+                                         opt->sysroot);
+    crt_path = str_cats(opt->sysroot ? opt->sysroot : "", "/lib/crt1.o",
+                        (char *)0);
+    ready = file_has_slice(system_path, slice) && file_has_slice(crt_path, slice);
+    free(system_path);
+    free(crt_path);
     return ready;
 }
 
@@ -429,9 +501,17 @@ void builder_buildflags(const Params *params, const char *target, strlist *out,
         strlist include_words;
         int cpp_ready = 1;
         char *other_cflags;
+        const char *slice_flags;
         strlist_init(&words);
         strlist_init(&include_words);
-        expand_toolchain_words(tc->arch_flags, opt->sysroot, &words);
+        /* Universal install must pass both -arch flags so Csu/etc. produce
+         * fat objects. Thin bootstrap still follows the profile arch_flags. */
+        if (effective == RB_ARCH_UNIVERSAL)
+            slice_flags = architecture_cflags(effective);
+        else
+            slice_flags = 0;
+        if (!slice_flags) slice_flags = tc->arch_flags;
+        expand_toolchain_words(slice_flags, opt->sysroot, &words);
         if (tc->cpp_flags_ready) {
             char *path = expand_toolchain_value(
                 tc->cpp_flags_ready, opt->sysroot);
@@ -527,11 +607,15 @@ void builder_buildflags(const Params *params, const char *target, strlist *out,
                     const char *root = w + strlen(prefix);
                     char *dash_f = str_cats("-F", root,
                         "/System/Library/Frameworks", (char *)0);
+                    char *dash_local = str_cats("-L", root, "/usr/local/lib",
+                        (char *)0);
                     char *dash_l = str_cats("-L", root, "/usr/lib",
                         (char *)0);
                     strlist_push(&rewritten, dash_f);
+                    strlist_push(&rewritten, dash_local);
                     strlist_push(&rewritten, dash_l);
                     free(dash_f);
+                    free(dash_local);
                     free(dash_l);
                 } else {
                     strlist_push(&rewritten, w);
@@ -598,7 +682,7 @@ static const char *DEFAULT_MAINT =
     "Anonymous <darwin-development@public.lists.apple.com>";
 static const char *ARCH = "universal-apple-rhapsody";
 
-static void makecontrol(Package *pkg, const char *pname) {
+static void makepkginfo(Package *pkg, const char *pname) {
     package_set(&pkg->package, pname);
     package_set(&pkg->version, "0");
     package_set(&pkg->architecture, ARCH);
@@ -611,75 +695,29 @@ static void makecontrol(Package *pkg, const char *pname) {
     pkg->has_build_depends = 1;
 }
 
-/* Read <path> into a string; returns malloc'd or NULL. */
-static char *slurp_file(const char *path) {
-    FILE *f = fopen(path, "r");
-    sbuf s;
-    char buf[1024];
-    size_t n;
-    char *out;
-    if (!f) return 0;
-    sbuf_init(&s);
-    while ((n = fread(buf, 1, sizeof(buf), f)) > 0) sbuf_putn(&s, buf, n);
-    fclose(f);
-    out = sbuf_steal(&s);
-    sbuf_free(&s);
-    return out;
-}
-
-/* Returns 0 on success, 1 for fallback, 2 for invalid architecture. */
-static int readcontrol(Package *pkg, const char *control_path) {
-    unsigned mask;
-    char *data = slurp_file(control_path);
-    if (!data) return 1;
-    package_parse(pkg, data);
-    free(data);
-    if (architecture_parse(pkg->architecture, &mask) != 0) {
-        fprintf(stderr, "rbuild: %s: invalid Architecture: '%s'\n",
-                control_path, pkg->architecture);
-        return 2;
-    }
-    if (!pkg->package) {
-        fprintf(stderr, "error: package file does not contain 'Package:' entry\n");
-        return 1;
-    }
-    if (!pkg->version) {
-        fprintf(stderr, "error: package file does not contain 'Version:' entry\n");
-        return 1;
-    }
-    if (!pkg->description) package_set(&pkg->description, DEFAULT_DESC);
-    if (!pkg->maintainer) package_set(&pkg->maintainer, DEFAULT_MAINT);
-    if (!pkg->architecture) package_set(&pkg->architecture, ARCH);
-    package_set(&pkg->source, pkg->package);
-    return 0;
-}
-
 int builder_scan_dir(const char *source, Package *pkg, Params *params) {
     char *pbase = 0, *pname = 0, *rev = 0;
-    char *control_path;
+    char *pkginfo_path;
     char *projname;
     int rc;
 
     builder_dir2name(source, &pbase, &pname, &rev);
 
-    control_path = str_cats(source, "/dpkg/control", (char *)0);
-    rc = readcontrol(pkg, control_path);
+    pkginfo_path = str_cats(source, "/apk/pkginfo", (char *)0);
+    rc = pkginfo_read(pkg, pkginfo_path);
     if (rc == 2) {
-        free(control_path);
+        free(pkginfo_path);
         free(pbase); free(pname); free(rev);
         return 1;
     }
-    if (rc != 0) {
-        /* Synthesize legacy defaults without discarding a validated explicit
-         * architecture from a partial control file. */
-        char *architecture = pkg->architecture ? xstrdup(pkg->architecture) : 0;
-        package_free(pkg);
-        package_init(pkg);
-        makecontrol(pkg, pname);
-        if (architecture) package_set(&pkg->architecture, architecture);
-        free(architecture);
+    if (rc == 1) {
+        makepkginfo(pkg, pname);
+    } else {
+        if (!pkg->description) package_set(&pkg->description, DEFAULT_DESC);
+        if (!pkg->maintainer) package_set(&pkg->maintainer, DEFAULT_MAINT);
+        if (!pkg->architecture) package_set(&pkg->architecture, ARCH);
     }
-    free(control_path);
+    free(pkginfo_path);
 
     package_set(&pkg->source, pbase);
     if (rev) {
@@ -742,7 +780,7 @@ static char *deb_to_name(const char *path) {
 }
 
 int builder_makeroot(const Package *pkg, const char *buildroot,
-                     const strlist *repository) {
+                     const strlist *repository, const Toolchain *tc) {
     strlist deps;       /* expanded, deduped dependency names */
     strlist depnames;   /* resolved package basenames (no .apk) */
     strlist depfiles;   /* resolved full paths, parallel to depnames */
@@ -787,7 +825,7 @@ int builder_makeroot(const Package *pkg, const char *buildroot,
         size_t ri;
         for (ri = 0; ri < repository->count && !file; ri++)
             file = find_arch_package(repository->items[ri], deps.items[i],
-                                     0, required, 1);
+                                     0, required, 1, tc);
         if (exec_dry_run && !file) {
             printf("validate and install dependency %s for %s\n", deps.items[i],
                    architecture_label(required));
@@ -809,7 +847,7 @@ int builder_makeroot(const Package *pkg, const char *buildroot,
     for (i = 0; i < depnames.count; i++) {
         printf("\tinstalling %s\n", depfiles.items[i]);
         fflush(stdout);
-        if (apk_use_arch(depfiles.items[i], buildroot, 0, deps.items[i], 0,
+        if (apk_use_arch(depfiles.items[i], buildroot, tc, deps.items[i], 0,
                          required, str_has_suffix(deps.items[i], "-obj"), 1) != 0) {
             rc = 1; free(listpath); goto cleanup;
         }
@@ -859,6 +897,12 @@ cleanup:
 
 static int mkdirp(const char *path) {
     return exec_runv("mkdir", "-p", path, (char *)0);
+}
+
+static int rmtree_dir(const char *path) {
+    if (path == 0 || path[0] == '\0' || strcmp(path, "/") == 0)
+        return 0;
+    return exec_runv("rm", "-rf", path, (char *)0);
 }
 
 static int path_is_inside(const char *root, const char *path) {
@@ -1001,6 +1045,14 @@ int builder_setupdirs(const Package *pkg, const Params *params,
     int bootstrap = opt && opt->bootstrap;
     (void) srcname;   /* only used by the dropped cvs branch */
 
+    if (exec_check(rmtree_dir(params->OBJROOT))) return 1;
+    if (exec_check(rmtree_dir(params->SYMROOT))) return 1;
+    if (exec_check(rmtree_dir(params->DSTROOT))) return 1;
+    if (exec_check(rmtree_dir(params->HDRROOT))) return 1;
+    if (exec_check(rmtree_dir(params->LIBCOBJROOT))) return 1;
+    if (exec_check(rmtree_dir(params->SRCROOT))) return 1;
+    if (exec_check(rmtree_dir(params->PACKAGEROOT))) return 1;
+
     if (exec_check(mkdirp(params->OBJROOT))) return 1;
     if (exec_check(mkdirp(params->SYMROOT))) return 1;
     if (bootstrap) {
@@ -1016,7 +1068,8 @@ int builder_setupdirs(const Package *pkg, const Params *params,
     /* Bootstrap builds run on the host root: no chroot to create or populate. */
     if (!bootstrap) {
         if (exec_check(mkdirp(params->BUILDROOT))) return 1;
-        if (builder_makeroot(pkg, params->BUILDROOT, repository) != 0) return 1;
+        if (builder_makeroot(pkg, params->BUILDROOT, repository,
+                             opt ? opt->toolchain : 0) != 0) return 1;
         /* cc -arch <not-host> needs that arch's cc1obj/cpp-precomp. The
          * compiler apk only seeds the host arch; copy the host's
          * /usr/libexec/<arch> when --arch asked for another. */
@@ -1099,7 +1152,7 @@ static int validate_products(const char *root, unsigned required,
     }
     if (optional && root && lstat(root, &st) != 0 && errno == ENOENT)
         return 0;
-    return products_validate(root, required, objects, 0);
+    return products_validate(root, required, objects, objects);
 }
 
 int builder_cache_status(const char *path, const Toolchain *tc,
@@ -1113,7 +1166,7 @@ int builder_cache_status(const char *path, const Toolchain *tc,
     }
     if (lstat(path, &st) != 0) return errno == ENOENT ? 0 : 1;
     if (S_ISREG(st.st_mode) &&
-        apk_use_arch(path, 0, tc, name, version, required, objects, 0) == 0) {
+        apk_use_arch(path, 0, tc, name, version, required, objects, 1) == 0) {
         *exists = 1; return 0;
     }
     fprintf(stderr, "rbuild: invalid APK %s; quarantining\n", path);
@@ -1123,7 +1176,7 @@ int builder_cache_status(const char *path, const Toolchain *tc,
 /* Ancillary package files are products too: stage before architecture checks. */
 static int stage_ancillary_files(const Params *params) {
     static const char *names[] =
-        { "conffiles", "preinst", "postinst", "prerm", "postrm", 0 };
+        { ".pre-install", ".post-install", ".pre-deinstall", ".post-deinstall", 0 };
     int i;
     struct stat st;
     if (!params->SRCDIR) return 0;
@@ -1135,14 +1188,13 @@ static int stage_ancillary_files(const Params *params) {
         return 1;
     }
     for (i = 0; names[i]; i++) {
-        char *extra = str_cats(params->SRCDIR, "/dpkg/", names[i], (char *)0);
+        char *extra = str_cats(params->SRCDIR, "/apk/", names[i], (char *)0);
         if (file_exists(extra)) {
             char *dest = str_cats(params->DSTROOT, "/", names[i], (char *)0);
-            const char *mode = strcmp(names[i], "conffiles") == 0 ? "644" : "755";
             printf("copying %s\n", names[i]);
             fflush(stdout);
             if (exec_runv("cp", "-p", extra, dest, (char *)0) != 0 ||
-                exec_runv("chmod", mode, dest, (char *)0) != 0) {
+                exec_runv("chmod", "755", dest, (char *)0) != 0) {
                 free(extra); free(dest); return 1;
             }
             free(dest);
@@ -1158,7 +1210,6 @@ static int buildpackage(const Package *spkg, const Params *params,
     Package pkg;
     const char *dstroot;
     char *pname;
-    char *unparsed;
     char *canon;
     char *pkginfo_path;
     char *apk_path;
@@ -1168,14 +1219,9 @@ static int buildpackage(const Package *spkg, const Params *params,
     int rc = 0;
     BuildOptions resolved_opt;
 
-    /* Clone spkg by round-tripping through unparse/parse (matches Perl). */
+    /* Clone spkg. */
     package_init(&pkg);
-    unparsed = package_unparse(spkg);
-    package_parse(&pkg, unparsed);
-    free(unparsed);
-    /* Serialization represents an absent field as empty; keep their distinct
-     * architecture semantics for direct callers. */
-    if (!spkg->architecture) package_set(&pkg.architecture, 0);
+    package_copy(&pkg, spkg);
     /* Direct callers share normal build architecture resolution. */
     build_options_init(&resolved_opt);
     if (opt) resolved_opt = *opt;
@@ -1264,6 +1310,7 @@ static int buildpackage(const Package *spkg, const Params *params,
 
     /* Assemble <PACKAGEDIR>/<canon_name>.apk */
     canon = package_canon_name(&pkg);
+    if (canon == 0) { rc = 1; goto done; }
     apk_path = str_cats(params->PACKAGEDIR, "/", canon, ".apk", (char *)0);
     version = package_canon_version(&pkg);
     rc = builder_cache_status(apk_path, resolved_opt.toolchain, pkg.package,
@@ -1429,13 +1476,19 @@ static int run_make(strlist *cmd, const BuildOptions *opt) {
     }
     {
         const char *path = "/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin";
+        const char *old_path = getenv("PATH");
+        char *saved_path = old_path ? xstrdup(old_path) : 0;
         if (opt && opt->toolchain && opt->toolchain->path)
             path = opt->toolchain->path;
         setenv("PATH", path, 1);
         printf("UNAME_SYSNAME=Rhapsody PATH=%s ", path);
+        exec_printcmd(argv);
+        rc = exec_run_checked(argv);
+        if (saved_path) {
+            setenv("PATH", saved_path, 1);
+            free(saved_path);
+        }
     }
-    exec_printcmd(argv);
-    rc = exec_run_checked(argv);
     free(argv);
     return rc;
 }
@@ -1463,11 +1516,9 @@ int builder_probe_toolchain(const Params *params, const Params *bparams,
     char *parent = 0, *dir = 0, *guest_parent = 0;
     const char *stage = "setup";
     unsigned slice = 0;
-    int attempt, made = 0, rc = 1, link_ready = 1;
+    int attempt, made = 0, rc = 1;
     if (!opt || !architecture_label(opt->effective_arch) ||
         !params->OBJROOT || !bparams->OBJROOT) return 1;
-    if (opt->bootstrap && opt->toolchain)
-        link_ready = toolchain_ready(opt->toolchain->ld_flags_ready, opt->sysroot);
     for (attempt = 0; attempt < 100; attempt++) {
         sprintf(name, ".rbuild-probe-%ld-%d", (long)getpid(), attempt);
         parent = path_join(params->OBJROOT, name);
@@ -1483,6 +1534,7 @@ int builder_probe_toolchain(const Params *params, const Params *bparams,
     for (slice = RB_ARCH_I386; slice <= RB_ARCH_PPC; slice <<= 1) {
         Params probe_params = *bparams;
         BuildOptions probe_opt = *opt;
+        Toolchain probe_tc;
         char *guest_dir;
         int pass;
         if (!(opt->effective_arch & slice)) continue;
@@ -1491,10 +1543,18 @@ int builder_probe_toolchain(const Params *params, const Params *bparams,
         guest_dir = path_join(guest_parent, architecture_archs(slice));
         probe_params.SRCROOT = guest_dir;
         probe_opt.effective_arch = slice;
+        if (opt->bootstrap && opt->effective_arch == RB_ARCH_UNIVERSAL &&
+            opt->toolchain) {
+            probe_tc = *opt->toolchain;
+            probe_tc.arch_flags = architecture_cflags(slice);
+            probe_opt.toolchain = &probe_tc;
+        }
         rc = 0;
         if (!exec_dry_run && (mkdir(dir, 0700) != 0 ||
             probe_write(dir, "probe.c", "int main(void) { return 0; }\n") ||
             probe_write(dir, "Makefile", makefile))) rc = 1;
+        {
+        int link_ready = slice_link_ready(opt, slice);
         for (pass = 0; !rc && pass < (link_ready ? 2 : 1); pass++) {
             strlist cmd;
             char *output;
@@ -1514,6 +1574,7 @@ int builder_probe_toolchain(const Params *params, const Params *bparams,
                     rc = 1;
                 free(output);
             }
+        }
         }
         free(guest_dir);
         free(dir); dir = 0;
@@ -1563,30 +1624,41 @@ int builder_build(const char *srctype, const char *srcname,
 
     /* hdrpackage = clone(pkg); name += "-hdrs" */
     {
-        char *u = package_unparse(&pkg);
         char *h;
         package_init(&hdrpkg);
-        package_parse(&hdrpkg, u);
-        free(u);
+        package_copy(&hdrpkg, &pkg);
         h = str_cats(hdrpkg.package, "-hdrs", (char *)0);
         package_set(&hdrpkg.package, h);
         free(h);
     }
     hdrfilename = package_canon_name(&hdrpkg);
     filename = package_canon_name(&pkg);
+    if (!hdrfilename || !filename) {
+        rc = 1;
+        free(hdrfilename);
+        free(filename);
+        package_free(&hdrpkg);
+        package_free(&pkg);
+        params_free(&bparams);
+        return 1;
+    }
 
     if (do_hdr || do_bin) {
         char *names[3];
         char *version = package_canon_version(&pkg);
         int exists[3], was[3], i, count = 0, invalid = 0;
         struct stat st;
+        const char *token = architecture_filename_token(opt->effective_arch);
         names[count++] = xstrdup(strcmp(target, "headers") == 0 ? hdrpkg.package : pkg.package);
         if (strcmp(target, "all") == 0 || strcmp(target, "binary") == 0) {
             names[count++] = xstrdup(hdrpkg.package);
             names[count++] = str_cats(pkg.package, "-obj", (char *)0);
         }
         for (i = 0; i < count; i++) {
-            char *path = str_cats(dstdir, "/", names[i], "-", version, ".apk", (char *)0);
+            char *path;
+            if (token == 0) { rc = 1; break; }
+            path = str_cats(dstdir, "/", names[i], "-", version, "-", token, ".apk",
+                            (char *)0);
             was[i] = lstat(path, &st) == 0;
             if (builder_cache_status(path, opt->toolchain, names[i], version,
                     opt->effective_arch, str_has_suffix(names[i], "-obj"), &exists[i]) != 0)

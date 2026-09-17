@@ -13,17 +13,17 @@ static int is_dir(const char *path) {
     return S_ISDIR(st.st_mode);
 }
 
-static int has_control(const char *srcdir, const char *rel) {
+static int has_pkginfo(const char *srcdir, const char *rel) {
     char *full;
-    char *control;
+    char *pkginfo;
     struct stat st;
     int ok = 0;
 
     full = path_join(srcdir, rel);
-    control = path_join(full, "dpkg/control");
-    if (stat(control, &st) == 0 && S_ISREG(st.st_mode)) ok = 1;
+    pkginfo = path_join(full, "apk/pkginfo");
+    if (stat(pkginfo, &st) == 0 && S_ISREG(st.st_mode)) ok = 1;
     free(full);
-    free(control);
+    free(pkginfo);
     return ok;
 }
 
@@ -128,7 +128,7 @@ int kernel_scan_drivers(const char *srcdir, const char *arch, strlist *out) {
                 if (!driver_name_ok(proj->d_name)) continue;
                 if (strcmp(proj->d_name, "drvPExpert") == 0) continue;
                 rel = path_join(cat_rel, proj->d_name);
-                if (has_control(srcdir, rel)) strlist_push(out, rel);
+                if (has_pkginfo(srcdir, rel)) strlist_push(out, rel);
                 free(rel);
             }
             closedir(projects);
@@ -139,10 +139,10 @@ int kernel_scan_drivers(const char *srcdir, const char *arch, strlist *out) {
     }
     free(arch_root);
 
-    if (has_control(srcdir, "drvBPF")) strlist_push(out, "drvBPF");
-    if (has_control(srcdir, "drvPortServer")) strlist_push(out, "drvPortServer");
-    if (has_control(srcdir, "drvSCSIServer")) strlist_push(out, "drvSCSIServer");
-    if (has_control(srcdir, "drvSCSITape")) strlist_push(out, "drvSCSITape");
+    if (has_pkginfo(srcdir, "drvBPF")) strlist_push(out, "drvBPF");
+    if (has_pkginfo(srcdir, "drvPortServer")) strlist_push(out, "drvPortServer");
+    if (has_pkginfo(srcdir, "drvSCSIServer")) strlist_push(out, "drvSCSIServer");
+    if (has_pkginfo(srcdir, "drvSCSITape")) strlist_push(out, "drvSCSITape");
     strlist_sort_unique(out);
     return 0;
 }

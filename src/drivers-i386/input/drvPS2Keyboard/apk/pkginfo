@@ -1,0 +1,6 @@
+pkgname = drvPS2Keyboard
+pkgver = 11
+pkgdesc = PS2 Keyboard device driver
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base, drivertools, driverkit, machkit, kernload, libstreams

@@ -24,7 +24,7 @@ MIGHFILES= kern_loader.h kern_loader_reply_handler.h kern_server.h \
 SOURCEFILES= $(MAKEFILE) $(CFILES)
 
 SYMROOT=$(SYMDIR)/..
-CFLAGS= -g -O -MD -Wall -DMACH -I${INCDIR} -I${SYMROOT}/include ${RC_CFLAGS} 
+CFLAGS= -g -O -MD -Wall -DMACH -I${INCDIR} -I${SYMROOT}/include ${RC_CFLAGS} ${LOCAL_CFLAGS} 
 IFLAGS= -c -m 644
 OFILES= $(CFILES:.c=.o) $(MIGCFILES:.c=.o)
 STRIPFLAGS= -x

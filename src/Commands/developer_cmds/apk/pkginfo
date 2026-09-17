@@ -1,0 +1,7 @@
+pkgname = developer-cmds
+pkgver = 1998.10.05
+pkgdesc = Developer commands
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+url = http://www.netbsd.org/
+makedepends = build-base, libinfo-hdrs

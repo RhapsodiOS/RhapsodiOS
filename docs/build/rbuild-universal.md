@@ -11,10 +11,10 @@
 | Empty or any other value | Error | Error |
 
 `all`, `any`, `universal`, and whitespace-separated CPU lists are not source
-architecture labels. Existing legacy synthesis for incomplete control files
-preserves a valid explicit architecture. Source control files are never
-rewritten; each operation resolves a local package copy and emits canonical
-`*-apple-rhapsody` metadata.
+architecture labels. Existing legacy synthesis for incomplete `apk/pkginfo`
+files preserves a valid explicit architecture. Source `apk/pkginfo` files are
+never rewritten; each operation resolves a local package copy and emits
+canonical `*-apple-rhapsody` metadata.
 
 Ordinary `RC_ARCHS`, `RC_CFLAGS`, `RC_i386`, and `RC_ppc` reflect the resolved
 architecture, independently of the host. Unselected RC switches are explicitly
@@ -48,10 +48,12 @@ Symlinks are not followed by the product walker. Missing optional header/object
 trees are allowed; the installed product root must exist.
 
 Only harvested `usr/local/lib/objs/<source>/.../dynamic_obj/...` collections
-allow CPU coverage across separate objects. CPU directory buckets are grouped
-by source and remaining variant path; different source filenames may occur in
-each CPU bucket. Without such buckets, `.i386.o` and `.ppc.o` pair by the same
-base path. Directory CPU, filename suffix, and object contents must agree.
+allow CPU coverage across separate objects. CPU directory buckets (`i386`,
+`ppc`, and Project Builder `i386.subproj`/`ppc.subproj`) are grouped by source
+and remaining variant path; different source filenames may occur in each CPU
+bucket. Repeated same-CPU names in one path are still one bucket. Without such
+buckets, `.i386.o` and `.ppc.o` pair by the same base path. Directory CPU,
+filename suffix, and object contents must agree.
 Coverage cannot be borrowed from another source or build variant. Code outside
 these collections must itself contain the required architectures.
 
@@ -59,8 +61,12 @@ these collections must itself contain the required architectures.
 
 APK use pins an immutable private copy, validates tar members and identity,
 extracts privately, checks products, then optionally merges that same stage.
-Exact reuse requires the expected name/version, canonical architecture label,
-and matching payload. Existing companion header/object APKs must also validate;
+Cache reuse requires the expected name/version and a payload that covers the
+requested architecture. A universal APK satisfies a thin lookup; a thin APK
+does not satisfy a universal lookup and is quarantined. A bootstrap state
+record whose effective architecture covers the current walk is not stale.
+Object harvest directory buckets may contain extra CPUs; they must still
+cover the requested architecture. Existing companion header/object APKs must also validate;
 absent optional companions do not prevent reuse. Dependency selection validates
 code against the package's own declared architecture first, then checks that it
 covers the consumer. Thus a valid universal code dependency can serve a thin
@@ -93,6 +99,123 @@ validated seed APKs to establish state. Mandatory corruption, changed profile
 or toolchain fingerprint, and a mismatched current entry fingerprint remain
 errors requiring the existing `-Fresh` workflow. State publication stays atomic.
 
+## Repository bootstrap
+
+Live repository bootstrap is a three-walk sequence driven by the host
+`-Bootstrap` phase:
+
+1. **Thin bootstrap** — `rbuild bootstrap` with the profile's thin
+   `target_arch` walks the full `BootstrapManifest` once. This stages the
+   profile CPU, build tools, and the thin sysroot marker required by the
+   universal walk.
+2. **Universal runtime bootstrap** — `rbuild bootstrap-universal` loads the
+   sibling `BootstrapRuntimeManifest` beside the caller's manifest and walks
+   Csu through Libsystem with `RB_ARCH_UNIVERSAL`.
+3. **Universal full manifest** — the same `bootstrap-universal` invocation
+   then walks the caller-supplied full `BootstrapManifest`.
+
+Per-CPU link readiness applies on every walk: rbuild compiles every requested
+CPU slice, but links a CPU only when the sysroot already provides that slice's
+`crt1.o` and `System` framework. Until both exist, compile-only probing is
+allowed. Each `must_build` wipes that package's OBJROOT, SYMROOT, DSTROOT,
+HDRROOT, object-harvest, package, and SRCROOT trees before rsync and probes,
+so a thin leftover cannot skip a later universal compile. No `golden.img` seeds or other read-only guest image inputs are used;
+bootstrap products come only from the synced source tree and resumable state.
+
+Kernel, kernel drivers, and world (`buildall`) are out of scope for bootstrap.
+The host orchestrator runs them in separate phases after bootstrap completes.
+
+## Live guest evidence (Task 9)
+
+Recorded on the configured PPC guest (`vm/vm.conf`, Rhapsody 5.6) against
+`/build/repo` and `/build/bootstrap-root` without wiping those trees and
+without `golden.img` or `-All`. Guest `rbuild` was
+`/build/tools/bin/rbuild` (115624 bytes). The sources in that binary match
+commit `4095d32304901e0462b53e495712be04bc7c2efc` (`rbuild: keep pax-gnutar
+for chroot extracts and finish i386 kernel proof`). Earlier fat-link and
+sysroot commits still on the branch include `1399a2288` (cc specs),
+`f4e1a8eae` (libcc in usr/lib), `c4ed3ba31` (Libsystem per-arch links),
+`e73039984` / `55199076d` (`-undefined suppress`), and `c02231fcd` /
+`446724709` / `617d6741b` (LOCAL_CFLAGS / top lipo).
+
+Long walks used one guest `nohup` writing `/build/state/logs/task9-bootstrap.out`
+then `/build/state/logs/task9-kernel.out`. Host SSH was not used for the
+bootstrap or kernel compile. No produced i386 program was executed or booted.
+
+### Step 4: live repo inspection
+
+After the one-shot `vm/rename-repo-apk-arch` rename, `/build/repo` APKs use
+`{pkgname}-{pkgver}-{token}.apk` (for example `csu-23.1-1-universal.apk`).
+rbuild lookup requires that stem; unsuffixed names such as `csu-23.1-1.apk`
+are not consulted.
+
+All 68 APKs under `/build/repo` declared `arch = universal-apple-rhapsody`
+(count `TOTAL=68 UNIVERSAL=68 OTHER=0`). Rhapsody `/usr/bin/tar` / `gnutar`
+does not extract the metadata member (tar name `./.PKGINFO`); inspect with
+`gzip -dc FILE.apk | tr '\0' '\n' | grep '^arch ='`. Sample `lipo -info` on
+the bootstrap sysroot:
+
+```
+Architectures in the fat file: /build/bootstrap-root/lib/crt1.o are: i386 ppc
+Architectures in the fat file: /build/bootstrap-root/usr/lib/dyld are: ppc i386
+Architectures in the fat file: /build/bootstrap-root/System/Library/Frameworks/System.framework/Versions/B/System are: i386 ppc
+Architectures in the fat file: /build/bootstrap-root/usr/bin/bison are: i386 ppc
+Architectures in the fat file: /build/bootstrap-root/usr/bin/cc are: ppc i386
+Architectures in the fat file: /build/bootstrap-root/bin/gnumake are: i386 ppc
+Architectures in the fat file: /build/bootstrap-root/usr/bin/as are: i386 ppc
+Architectures in the fat file: /build/bootstrap-root/usr/bin/ld are: i386 ppc
+```
+
+`/build/bootstrap-root/usr/bin/mig` is a Bourne shell script. The bootstrap log
+ends `BOOTSTRAP_COMPLETE`. After review, guest `/build/src/rbuild-1` `make test`
+and `make trace-test` were re-run: `TEST_RC=0`, `TRACE_RC=0` (logs
+`/build/state/logs/task9-rbuild-test.out` and
+`task9-rbuild-trace-test.out`).
+
+### Step 5: ordinary universal `buildpackage`
+
+A private copy of `patch-1` named `task9-patch-proof` was built with ordinary
+(non-bootstrap) `rbuild buildpackage --dir --target all` against seed
+`/build/repo` and dest `/tmp/task9-proof-apks`. Log
+`/build/state/logs/task9-proof.out`:
+
+```
+FIRST_RC=0 Tue Sep 15 05:24:30 EDT 2026
+pkgname = task9-patch-proof
+pkgver = 2.5-1
+arch = universal-apple-rhapsody
+Architectures in the fat file: /tmp/task9-proof-info/usr/bin/patch are: ppc i386
+package file for "task9-patch-proof-2.5-1" already exists; not building
+SECOND_RC=0 Tue Sep 15 05:24:31 EDT 2026
+PROOF_COMPLETE rc1=0 rc2=0
+```
+
+The produced binary was inspected with `lipo`, not executed.
+
+### Step 6: `rbuild kernel --arch i386`
+
+```
+rbuild kernel --state /build/state --arch i386 \
+  /build/src /build/repo /build/rbuild-i386-kernel-proof
+```
+
+Log `/build/state/logs/task9-kernel.out` ends `rbuild: kernel complete` and
+`KERNEL_PROOF_COMPLETE rc=0`. Dest APKs (all `arch = i386-apple-rhapsody`):
+`driverkit-139.1-3`, `drivertools-24-1`, `kernload-60-1`, `kernel-154.5.1-7`
+plus matching `-hdrs` companions. There is no `drivers-i386/bus/drvPExpert`
+source in this tree; rbuild skipped that missing core path and `kernel-7` no
+longer lists `drvpexpert` as a Build-Depends. Inspected Mach-O (not booted):
+
+```
+/tmp/kext/mach_kernel: Mach-O executable i386
+Non-fat file: /tmp/kext/mach_kernel is architecture: i386
+Non-fat file: /tmp/kl/usr/sbin/kern_loader is architecture: i486
+Non-fat file: /tmp/kl/usr/lib/libkernload.a is architecture: i386
+Architectures in the fat file: /tmp/dk/usr/lib/libDriver.A.dylib are: i386
+```
+
+i486 is the i386 CPU family. No i386 kernel or tool was executed.
+
 ## Verification environment and scope
 
 The 2026-09-12 acceptance run used implementation commit
@@ -123,7 +246,11 @@ Prepared environment provenance is in the local, untracked files
 The earlier `initial-rbuild-evidence.md` describes Tasks1-5 only and is not final
 acceptance for probes or state migration.
 
-## Executed acceptance matrix
+## Fixture acceptance matrix
+
+The table below records the 2026-09-12 bounded fixture run. It is acceptance
+evidence for rbuild's architecture policy and probe behavior, not evidence that
+the live repository bootstrap path above has completed on a guest.
 
 Current rbuild was compiled natively in
 `/tmp/rbuild-universal-final-20260912/src/rbuild-1`. The full command was:

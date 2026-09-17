@@ -72,13 +72,25 @@ Assert-Match $texi2htmlIndex '^100755 ' 'CoreOS texi2html is tracked executable'
 $ccBuildGccText = Get-Content -Raw (Join-Path $repoRoot 'src\cc-1\build_gcc')
 Assert-Match $ccBuildGccText '-print-prog-name=cc1' 'cc bootstrap discovers the configured GCC backend instead of assuming a host layout'
 Assert-Match $ccBuildGccText '-arch \$host -c' 'cc bootstrap compile-probes when -print-prog-name returns a basename'
+Assert-Match $ccBuildGccText 'LDFLAGS="\$\{OTHER_LDFLAGS\} -undefined suppress"' 'cc fat xgcc links before System is universal'
 Assert-NotMatch $ccBuildGccText 'if \[ -d /`if \[ "\$RHAPSODY" \]; then echo usr/libexec; else echo lib; fi`/\$host \]' 'cc bootstrap does not require the historical fixed compiler directory'
+Assert-NotMatch $ccBuildGccText 'install_newer \$sym/\$host/lib/\$target/specs' 'cc fat install does not take specs from leftover HOSTS iterator'
+Assert-Match $ccBuildGccText 'install_newer "\$specs_src"' 'cc fat install copies a resolved per-target specs file into libexec'
+Assert-Match $ccBuildGccText '\$sym/\$arch/lib/\$target/specs' 'cc fat install prefers specs from the build-host SYMROOT'
+Assert-Match $ccBuildGccText '/usr/libexec/\$target/\$gcc_version/specs' 'cc fat install falls back to Rhapsody host libexec specs'
+Assert-Match $ccBuildGccText 'rm -f specs && ln -s \$gcc_version/specs specs' 'cc fat install replaces libexec specs symlink only after the real file exists'
 $ccMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\cc-1\cc\Makefile.in')
 Assert-Equal ([regex]::Matches($ccMakefileText, '\$\(MAKE\).*BISON="\$\(BISON\)"').Count) 6 'cc self-bootstrap propagates configured bison through every compiler-stage submake'
+$ccTopMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\cc-1\Makefile')
+Assert-Match $ccTopMakefileText 'CFLAGS="-O \$\(RC_CFLAGS\) \$\(OTHER_CFLAGS\) \$\(LOCAL_CFLAGS\)"' 'cc bundled bison compiles with bootstrap LOCAL_CFLAGS'
+Assert-Match $ccTopMakefileText 'LDFLAGS="\$\(RC_CFLAGS\) \$\(OTHER_LDFLAGS\) -undefined suppress' 'cc bundled bison fat-links before System is universal'
+Assert-Match $ccTopMakefileText '\$\(RC_CFLAGS\) \$\(OTHER_CFLAGS\) \$\(LOCAL_CFLAGS\)"' 'cc fat bootstrap compiles with bootstrap LOCAL_CFLAGS'
 $gnumakeMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\gnumake-1\Makefile')
 Assert-Match $gnumakeMakefileText 'source_root="\$\(SRCROOT\)"' 'gnumake preserves its configured source root across the object-directory chdir'
 Assert-Match $gnumakeMakefileText '\$\$source_root/\$\(MAKE_SRC_DIR\)/configure' 'gnumake configures from the preserved source tree'
 Assert-NotMatch $gnumakeMakefileText 'PWD=`pwd`' 'gnumake does not repurpose the shell-maintained PWD variable for its source root'
+Assert-Match $gnumakeMakefileText '"CFLAGS = \$\(RC_CFLAGS\) \$\(\$\(RC_OS\)_CFLAGS\) \$\(LOCAL_CFLAGS\)"' 'gnumake recursive compile uses bootstrap LOCAL_CFLAGS'
+Assert-Match $gnumakeMakefileText '"LDFLAGS= \$\(RC_CFLAGS\) \$\(OTHER_LDFLAGS\)"' 'gnumake recursive link uses bootstrap OTHER_LDFLAGS'
 $csuMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\Csu-1\Makefile')
 Assert-Match $csuMakefileText '(?m)^crt1\.o:.*\$\(OBJROOT\)/dyld\.stub' 'Csu builds the dylinker stub before merging crt1'
 Assert-Match $csuMakefileText '(?m)^gcrt1\.o:.*\$\(OBJROOT\)/dyld\.stub' 'Csu builds the dylinker stub before merging gcrt1'
@@ -86,6 +98,8 @@ Assert-Match $csuMakefileText '(?m)^pscrt1\.o:.*\$\(OBJROOT\)/dyld\.stub' 'Csu b
 Assert-NotMatch $csuMakefileText 'as \$\(RC_CFLAGS\)' 'Csu does not pass compiler defines to as for the dylinker stub'
 Assert-Match $csuMakefileText '\$\(CC\).*\$\(SRCROOT\)/dyld_stub\.s' 'Csu assembles the dylinker stub with the C compiler driver'
 Assert-Match $csuMakefileText '\$\(DSTROOT\)/usr/lib/dyld' 'Csu packages a runnable /usr/lib/dyld for chroot build roots'
+Assert-Match $csuMakefileText 'findstring i386,\$\(RC_ARCHS\)' 'Csu lipos host ppc dyld with an i386 stub only when RC_ARCHS includes i386'
+Assert-Match $csuMakefileText '(?s)ifneq.*findstring i386.*LIPO.*else.*usr/lib/dyld' 'thin Csu install copies host ppc dyld instead of creating a fat product'
 $csuStubText = Get-Content -Raw (Join-Path $repoRoot 'src\Csu-1\dyld_stub.s')
 Assert-NotMatch $csuStubText "`r" 'Csu dylinker stub uses Unix line endings'
 $bootstrapManifestText = Get-Content -Raw (Join-Path $repoRoot 'src\BootstrapManifest')
@@ -98,15 +112,28 @@ Assert-Match $bootstrapManifestText '(?s)dir\s+Libc-1\s+headers.*dir\s+cc-1\s+he
 Assert-Match $bootstrapManifestText '(?s)dir\s+machkit-1\s+headers.*dir\s+machkit-1\s+all.*dir\s+driverkit-3\s+all' 'machkit library is packaged after its headers and before driverkit'
 Assert-Match $bootstrapManifestText '(?s)dir\s+architecture-1\s+headers.*dir\s+architecture-1\s+all' 'architecture headers are published before the architecture package'
 Assert-Match $bootstrapManifestText '(?s)dir\s+Libstreams-1\s+all.*dir\s+objc-1\s+all' 'in-kernel objc is packaged after libstreams'
+Assert-Match $bootstrapManifestText '(?s)dir\s+Csu-1\s+all.*dir\s+Libc-1\s+all.*dir\s+objc4-1\s+all.*dir\s+Libsystem-2\s+all' 'Csu and Libc are packaged before objc4 all and Libsystem'
 Assert-Match $bootstrapManifestText '(?s)dir\s+Libcurses-1\s+all.*dir\s+Commands/adv_cmds\s+all.*dir\s+files-5\s+all' 'adv-cmds is packaged after libcurses and before files and later chroot consumers'
 Assert-Match $bootstrapManifestText '(?s)dir\s+driverkit-3\s+all.*dir\s+kernload-1\s+all' 'kernload is packaged after driverkit'
+Assert-Match $bootstrapManifestText '(?s)dir\s+Libsystem-2\s+all.*dir\s+kernload-1\s+all' 'kernload is packaged after Libsystem so fat System exists for i386 links'
+$bootstrapRuntimeManifestText = Get-Content -Raw (Join-Path $repoRoot 'src\BootstrapRuntimeManifest')
+Assert-NotMatch $bootstrapRuntimeManifestText '(?m)^dir\s+kernload-1\s' 'runtime walk does not link kernload before fat System'
+Assert-Match $bootstrapRuntimeManifestText '(?s)dir\s+cctools-2\s+all.*dir\s+cc-1\s+all.*dir\s+Libsystem-2\s+all' 'runtime walk rebuilds fat cctools and cc before Libsystem harvests them'
+Assert-Match $bootstrapManifestText '(?s)dir\s+driverkit-3\s+all.*dir\s+cctools-2\s+all.*dir\s+cc-1\s+all.*dir\s+Libsystem-2\s+all' 'full manifest rebuilds fat cctools and cc immediately before Libsystem'
 Assert-Match $bootstrapManifestText '(?m)^dir\s+gnudiff-1\s+all\s*$' 'gnudiff is packaged for later kernel chroot builds'
-Assert-Match $bootstrapManifestText '(?s)dir\s+Librpcsvc-1\s+headers.*dir\s+Libinfo-1\s+all' 'librpcsvc headers are published before libinfo and system_cmds include rpcsvc/yppasswd.h'
+Assert-Match $bootstrapManifestText '(?s)dir\s+Librpcsvc-1\s+headers.*dir\s+Libinfo-1\s+headers.*dir\s+Libinfo-1\s+all' 'librpcsvc and libinfo headers are published before libinfo compiles dns against netinfo/ni.h'
 $driverkitLibMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\driverkit-3\libDriver\Makefile')
 Assert-Match $driverkitLibMakefileText '(?m)^HEADER_ROOT=\$\(HDRROOT\)$' 'driverkit libDriver prefers HDRROOT for System.framework includes'
 Assert-Match $driverkitLibMakefileText '-I\$\(HEADER_ROOT\)\$\(SYSTEM_LIBRARY_DIR\)/Frameworks/System.framework/Versions/B/Headers' 'driverkit libDriver compiles against versioned sysroot System.framework headers'
+Assert-Match $driverkitLibMakefileText '-undefined suppress' 'driverkit user dylib allows unresolved System symbols until fat Libsystem exists'
+Assert-Match $driverkitLibMakefileText 'OTHER_LDFLAGS' 'driverkit user dylib link uses bootstrap OTHER_LDFLAGS'
 $projectCommonMakeText = Get-Content -Raw (Join-Path $repoRoot 'src\project_makefiles-1\common.make')
 Assert-Match $projectCommonMakeText 'ALL_CFLAGS = .*\$\(LOCAL_CFLAGS\)' 'project_makefiles compile with bootstrap LOCAL_CFLAGS after the local -I.'
+$coreosCommonMakeText = Get-Content -Raw (Join-Path $repoRoot 'src\CoreOSMakefiles-1\ReleaseControl\Common.make')
+Assert-Match $coreosCommonMakeText 'Extra_CC_Flags \+= \$\(RC_CFLAGS\) \$\(LOCAL_CFLAGS\)' 'GNUSource projects compile with bootstrap LOCAL_CFLAGS'
+Assert-Match $coreosCommonMakeText 'Extra_LD_Flags \+= \$\(OTHER_LDFLAGS\)' 'GNUSource projects link with bootstrap OTHER_LDFLAGS'
+$projectMakefilesMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\project_makefiles-1\Makefile')
+Assert-Match $projectMakefilesMakefileText '(?m)^CFLAGS = .*\$\(LOCAL_CFLAGS\)' 'project_makefiles tools compile with bootstrap LOCAL_CFLAGS'
 $libcDriversPostambleText = Get-Content -Raw (Join-Path $repoRoot 'src\Libc-1\drivers.subproj\Makefile.postamble')
 Assert-Match $libcDriversPostambleText '(?m)^MIG_DIR=\$\(HDRROOT\)/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders/driverkit$' 'libc Event MIG reads driverkit defs from the bootstrap sysroot'
 Assert-NotMatch $libcDriversPostambleText 'MIG_DIR=/System/Library' 'libc Event MIG does not hardcode live host PrivateHeaders'
@@ -124,13 +151,45 @@ Assert-Match $cctoolsLdMakefileText '-I\$\(HDRROOT\)/System/Library/Frameworks/S
 Assert-Match $cctoolsGprofMakefileText '-I\$\(HDRROOT\)/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders' 'cctools gprof reads PrivateHeaders from the bootstrap sysroot'
 Assert-NotMatch $cctoolsAsMakefileText '-I\$\(NEXT_ROOT\)/System/Library/Frameworks/System.framework/PrivateHeaders' 'cctools as does not wait for NEXT_ROOT/System.framework'
 Assert-Match $cctoolsAsMakefileText '\$\(LOCAL_CFLAGS\)' 'cctools as compiles with bootstrap LOCAL_CFLAGS'
+Assert-Equal ([regex]::Matches($cctoolsAsMakefileText, 'CFLAGS="-g -O[^"]*\$\(LOCAL_CFLAGS\)"').Count) 2 'cctools as driver_build recursive CFLAGS keep LOCAL_CFLAGS'
 Assert-Match $cctoolsLdMakefileText '\$\(LOCAL_CFLAGS\)' 'cctools ld compiles with bootstrap LOCAL_CFLAGS'
 Assert-Match $cctoolsGprofMakefileText '\$\(LOCAL_CFLAGS\)' 'cctools gprof compiles with bootstrap LOCAL_CFLAGS'
+foreach ($cctoolsDir in @('ar', 'file', 'otool', 'misc', 'mkshlib', 'profileServer', 'dyld', 'libstuff', 'libmacho', 'libdyld')) {
+    $cctoolsMakefileText = Get-Content -Raw (Join-Path $repoRoot ("src\cctools-2\{0}\Makefile" -f $cctoolsDir))
+    Assert-Match $cctoolsMakefileText '\$\(LOCAL_CFLAGS\)' ("cctools {0} compiles with bootstrap LOCAL_CFLAGS" -f $cctoolsDir)
+}
+$cctoolsArMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\cctools-2\ar\Makefile')
+$cctoolsFileMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\cctools-2\file\Makefile')
+$cctoolsMiscMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\cctools-2\misc\Makefile')
+$cctoolsMkshlibMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\cctools-2\mkshlib\Makefile')
+$cctoolsProfileServerMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\cctools-2\profileServer\Makefile')
+$cctoolsFatToolLink = '\$\(RC_CFLAGS\) \$\(OTHER_LDFLAGS\) -undefined suppress -o'
+Assert-Match $cctoolsArMakefileText $cctoolsFatToolLink 'cctools ar fat-links before System is universal'
+Assert-Match $cctoolsFileMakefileText $cctoolsFatToolLink 'cctools file fat-links before System is universal'
+Assert-Match $cctoolsAsMakefileText $cctoolsFatToolLink 'cctools as fat-links before System is universal'
+Assert-Match $cctoolsLdMakefileText $cctoolsFatToolLink 'cctools ld fat-links before System is universal'
+Assert-Match $cctoolsGprofMakefileText $cctoolsFatToolLink 'cctools gprof fat-links before System is universal'
+Assert-Match $cctoolsMiscMakefileText $cctoolsFatToolLink 'cctools misc fat-links before System is universal'
+Assert-Match $cctoolsMkshlibMakefileText $cctoolsFatToolLink 'cctools mkshlib fat-links before System is universal'
+Assert-Match $cctoolsProfileServerMakefileText $cctoolsFatToolLink 'cctools profileServer fat-links before System is universal'
+Assert-Equal ([regex]::Matches($cctoolsArMakefileText, '-undefined suppress').Count) 1 'cctools ar only suppresses on the executable link'
+Assert-Equal ([regex]::Matches($cctoolsAsMakefileText, '-undefined suppress').Count) 2 'cctools as suppresses driver and as, not relocatable -r'
 $kernloadKernservMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\kernload-1\include\kernserv\Makefile')
 $kernloadLibMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\kernload-1\libkernload\Makefile')
 Assert-Equal ([regex]::Matches($kernloadKernservMakefileText, '(?m)^install:').Count) 1 'kernserv headers have one install target'
 Assert-Match $kernloadKernservMakefileText 'MIG_GENERATED_INSTALL' 'kernserv install publishes MIG-generated headers'
 Assert-Match $kernloadLibMakefileText '-I\$\{SYMROOT\}/include' 'libkernload compiles against SYMROOT-generated kernserv headers'
+Assert-Match $kernloadLibMakefileText '\$\{LOCAL_CFLAGS\}' 'libkernload compiles with bootstrap LOCAL_CFLAGS'
+$kernloadLoaderMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\kernload-1\kern_loader\Makefile')
+$kernloadLoadedServerMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\kernload-1\loaded_server\Makefile')
+$kernloadKlLogMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\kernload-1\cmds\kl_log\Makefile')
+$kernloadKlUtilMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\kernload-1\cmds\kl_util\Makefile')
+Assert-Match $kernloadLoaderMakefileText '\$\{LOCAL_CFLAGS\}' 'kern_loader compiles with bootstrap LOCAL_CFLAGS'
+Assert-Match $kernloadLoadedServerMakefileText '\$\{LOCAL_CFLAGS\}' 'loaded_server compiles with bootstrap LOCAL_CFLAGS'
+Assert-Match $kernloadLoadedServerMakefileText "CFLAGS=-static.*LOCAL_CFLAGS" 'loaded_server generated MIG compile uses bootstrap LOCAL_CFLAGS'
+Assert-Match $kernloadLoadedServerMakefileText '(?m)^Makefile\.gen:.*Makefile' 'loaded_server regenerates Makefile.gen when the parent Makefile changes'
+Assert-Match $kernloadKlLogMakefileText '\$\{LOCAL_CFLAGS\}' 'kl_log compiles with bootstrap LOCAL_CFLAGS'
+Assert-Match $kernloadKlUtilMakefileText '\$\{LOCAL_CFLAGS\}' 'kl_util compiles with bootstrap LOCAL_CFLAGS'
 $iondrvHeaderText = Get-Content -Raw (Join-Path $repoRoot 'src\driverkit-3\libDriver\ppc\IONDRVFramebuffer.h')
 $iondrvImplText = Get-Content -Raw (Join-Path $repoRoot 'src\driverkit-3\libDriver\ppc\IONDRVFramebuffer.m')
 Assert-Match $iondrvHeaderText '(?s)@interface IOATIMACH64NDRV:IOATINDRV\s*\{[^}]*engineInitialized' 'Mach64 NDRV declares engineInitialized in the class interface'
@@ -141,16 +200,35 @@ Assert-Match $iondrvImplText 'getPixelInformationForDisplayMode:modeID andDepthI
 $pexpertGestaltText = Get-Content -Raw (Join-Path $repoRoot 'src\drivers-ppc\bus\drvPExpert\powermac\powermac_gestalt.h')
 Assert-Match $pexpertGestaltText 'gestaltSawtooth\s*=\s*1000' 'PExpert gestalt table includes NewWorld Sawtooth machines'
 $libcMachPreambleText = Get-Content -Raw (Join-Path $repoRoot 'src\Libc-1\mach.subproj\Makefile.preamble')
+$libsystemMakeText = Get-Content -Raw (Join-Path $repoRoot 'src\Libsystem-2\Makefile')
 $libsystemPostambleText = Get-Content -Raw (Join-Path $repoRoot 'src\Libsystem-2\Makefile.postamble')
+Assert-NotMatch $libsystemMakeText 'System\.order\.\$\(TARGET_ARCH\)' 'Libsystem does not bind a single TARGET_ARCH order file at parse time'
+Assert-Match $libsystemPostambleText 'TARGET_ARCHS' 'Libsystem harvest links iterate TARGET_ARCHS'
+Assert-Match $libsystemPostambleText 'LINK_ARCHS = \$\(TARGET_ARCH\)' 'empty TARGET_ARCHS falls back to project_makefiles TARGET_ARCH'
+Assert-Match $libsystemPostambleText 'for arch in \$\(LINK_ARCHS\)' 'make_links iterates LINK_ARCHS so a per-arch recurse still harvests'
+Assert-Match $libsystemPostambleText 'foreach A,\$\(LINK_ARCHS\)' 'sectorder uses LINK_ARCHS instead of empty TARGET_ARCHS'
+Assert-NotMatch $libsystemPostambleText 'for arch in \$\(TARGET_ARCHS\); do' 'make_links does not iterate possibly-empty TARGET_ARCHS'
 Assert-Match $libsystemPostambleText 'after_install::' 'Libsystem installs compatibility dylibs after System.framework'
 Assert-Match $libsystemPostambleText 'usr/lib/\$\$lib\.dylib' 'Libsystem compatibility dylibs live in /usr/lib'
 Assert-Match $libsystemPostambleText 'libkvm' 'Libsystem publishes libkvm.dylib as a System.framework compatibility link'
+Assert-NotMatch $libsystemPostambleText 'libcompat' 'Libsystem does not alias unharvested libcompat onto System.framework'
 $nvramPostambleText = Get-Content -Raw (Join-Path $repoRoot 'src\Commands\system_cmds\nvram.tproj\Makefile.postamble')
+$fbalertSourceText = Get-Content -Raw (Join-Path $repoRoot 'src\Commands\system_cmds\fbalert.tproj\fbalert.c')
 Assert-Match $nvramPostambleText '\$\(LN\) -f PowerSurge' 'nvram machine aliases force-replace so bootstrap resume does not fail with File exists'
 Assert-NotMatch $nvramPostambleText '\$\(LN\) -s ' 'nvram does not pass extra -s; bootstrap LN is already /bin/ln -s'
+Assert-Match $fbalertSourceText '#include <bsd/dev/kmreg_com.h>' 'fbalert includes kmreg_com.h from System PrivateHeaders/bsd'
+Assert-NotMatch $fbalertSourceText '#include <dev/kmreg_com.h>' 'fbalert does not use the kernel-relative kmreg_com.h path'
+$topPostambleText = Get-Content -Raw (Join-Path $repoRoot 'src\Commands\system_cmds\top.tproj\Makefile.postamble')
+Assert-Match $topPostambleText 'lipo -create -output \./commands\.o' 'top fat-links commands.o from per-arch objects'
+Assert-NotMatch $topPostambleText 'commands\.ppc\.o \./commands\.o' 'top does not copy a ppc-only commands.o into a fat link'
 Assert-NotMatch $libsystemPostambleText '\$\(LN\) \$\$name/\$\$\{obj_dir\}_obj/\$\$name\.ofileList' 'Libsystem ofileList symlink is not cwd-relative (dangling with ln -s)'
 Assert-Match $libcMachPreambleText 'override\s+MIG\s*=\s*\$\(CONFIG_DIR\)/mig' 'libc Mach headers override inherited host MIG with the configured private tool'
-Assert-Match $libcMachPreambleText 'MIGFLAGS\s*=\s*\$\(RC_CFLAGS\)' 'libc Mach MIG preprocessing uses the isolated target header flags'
+Assert-Match $libcMachPreambleText 'MIGFLAGS\s*=\s*\$\(RC_CFLAGS\)\s+\$\(LOCAL_CFLAGS\)' 'libc Mach MIG preprocessing uses isolated RC flags and bootstrap LOCAL_CFLAGS includes'
+$libcPostambleText = Get-Content -Raw (Join-Path $repoRoot 'src\Libc-1\Makefile.postamble')
+Assert-Match $libcPostambleText '\$\(LIPO\) -create' 'Libc lipos per-arch static archives before installing libc_static.a'
+Assert-Match $libcPostambleText '\$\(RM\) -f \$\(SYMROOT\)/libc_static\.a' 'Libc breaks the last-arch hardlink before lipo of libc_static.a'
+Assert-Match $libcPostambleText 'libc\.\$\$\{arch\}_static\.a' 'Libc finds per-arch static archives as libc.<arch>_static.a'
+Assert-Match $libcPostambleText 'count -gt 1' 'Libc only lipos libc_static.a when more than one architecture archive exists'
 
 $buildScriptText = Get-Content -Raw (Join-Path $VmDir 'build-src.ps1')
 $remoteScriptText = Get-Content -Raw (Join-Path $VmDir 'rhap-remote.ps1')
@@ -165,9 +243,22 @@ $pkginfoSourceText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\pkginfo
 $apkSourceText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\apk.c')
 $apkTestSourceText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\tests\test_apk.c')
 $builderSourceText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\builder.c')
+Assert-Match $builderSourceText 'char \*saved_path = old_path \? xstrdup\(old_path\) : 0;' 'run_make saves PATH before the make environment'
+Assert-Match $builderSourceText '(?s)rc = exec_run_checked\(argv\);\s+if \(saved_path\) \{\s+setenv\("PATH", saved_path, 1\);' 'run_make restores PATH so later APK extracts keep host tar'
+Assert-Match $builderSourceText 'builder_makeroot\(pkg, params->BUILDROOT, repository,\s+opt \? opt->toolchain : 0\)' 'ordinary chroot extract uses the toolchain tar wrapper'
+Assert-Match $builderSourceText 'apk_use_arch\(path, 0, tc, name, version,' 'package lookup uses toolchain tar for architecture checks'
+$productsSourceText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\products.c')
 $rbuildMainText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\main.c')
 $rbuildKernelText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\kernel.c')
 $rbuildRunnerText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\runner.c')
+Assert-Match $rbuildRunnerText 'skip missing kernel source' 'kernel walk skips a core package whose source directory is absent'
+$kernelControlText = Get-Content -Raw (Join-Path $repoRoot 'src\kernel-7\dpkg\control')
+Assert-NotMatch $kernelControlText 'drvpexpert' 'kernel-7 does not require a Platform Expert APK that i386 does not ship'
+$ataHdRegistryText = Get-Content -Raw (Join-Path $repoRoot 'src\kernel-7\bsd\dev\ata_hd_registry.m')
+Assert-Match $ataHdRegistryText '(?s)#import <sys/param.h>.*#import <sys/proc.h>' 'i386 ATA registry includes param.h before proc.h'
+$kernelI386MakeText = Get-Content -Raw (Join-Path $repoRoot 'src\kernel-7\conf\Makefile.i386')
+Assert-Match $kernelI386MakeText '(?m)^LIBS= -lcc$' 'i386 kernel links against fat libcc instead of a missing helper object'
+Assert-NotMatch $kernelI386MakeText 'libcc_i386_helpers' 'i386 kernel does not require a PPC-only libcc workaround object'
 $rbuildMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\Makefile')
 $rbuildBlacklistPath = Join-Path $repoRoot 'src\rbuild-1\kernel-drivers-blacklist.json'
 $rbuildBlacklistText = Get-Content -Raw $rbuildBlacklistPath
@@ -255,6 +346,8 @@ foreach ($apkCase in @(
     Assert-Equal ($typesIdx -lt $direntIdx) $true "$($apkCase.Name) includes sys/types.h before dirent.h"
 }
 Assert-Match $builderSourceText 'ReleaseControl/Common.make' 'bootstrap waits for CoreOS Common.make before CoreOSMakefiles='
+Assert-Match $builderSourceText 'rmtree_dir\(params->SYMROOT\)' 'must_build wipes leftover SYMROOT before rsync and probes'
+Assert-Match $builderSourceText 'rmtree_dir\(params->OBJROOT\)' 'must_build wipes leftover OBJROOT before rsync and probes'
 Assert-Match $rbuildMainText 'rbuild kernel \[--state DIR\] --arch ARCH' 'rbuild usage includes kernel'
 Assert-Match $rbuildMainText 'rbuild kerneldrivers \[--state DIR\] --arch ARCH' 'rbuild usage includes kerneldrivers'
 Assert-Match $rbuildMainText 'strcmp\(sub, "kernel"\)' 'rbuild dispatches kernel'
@@ -291,9 +384,20 @@ Assert-Match $builderSourceText 'access\(coreos_common, F_OK\)' 'bootstrap probe
 Assert-Match $builderSourceText 'cpp_flags_ready' 'bootstrap waits for compiler headers before isolated -nostdinc'
 Assert-Match $builderSourceText 'push_kv\(out, "HDRROOT", opt->sysroot\)' 'bootstrap make uses the target sysroot as HDRROOT'
 Assert-Match $builderSourceText 'str_cats\(\s*opt->sysroot, "/usr/local/lib/objs"' 'bootstrap SUBLIBROOTS points at harvested objects in the sysroot'
-Assert-Match $builderSourceText 'str_cats\(tc->ln, " -s"' 'bootstrap LN follows Darwin SYMLINK and creates symbolic links'
+Assert-Match $builderSourceText 'architecture_cflags\(effective\)' 'universal bootstrap RC_CFLAGS uses both -arch flags, not the profile arch_flags'
+Assert-Match $builderSourceText 'apk_use_arch\(path, 0, tc, name, version, required, objects, 1\)' 'bootstrap cache reuse accepts a covering architecture'
+Assert-Match $builderSourceText 'products_validate\(root, required, objects, objects\)' 'object harvest allows extra CPU coverage in directory buckets'
+Assert-Match $rbuildRunnerText 'architecture_covers' 'thin bootstrap reuses state whose architecture covers the requested CPU'
+Assert-Match $productsSourceText 'i386\.subproj' 'object harvest treats Project Builder i386.subproj as an i386 CPU bucket'
+Assert-Match $productsSourceText 'allow_superset \|\| v\.objects' 'object collections accept extra CPU coverage'
+Assert-Match $productsSourceText '\(mask & bucket\) != bucket' 'directory buckets accept fat objects that still cover the bucket CPU'
+$libsystemPostambleText = Get-Content -Raw (Join-Path $repoRoot 'src\Libsystem-2\Makefile.postamble')
+Assert-Match $libsystemPostambleText '\$\(SYMROOT\)/libsystem-links/\$\(BUILD_TARGET\)/\$\(TARGET_ARCH\)' 'Libsystem make_links staging is per-arch so ppc does not reuse i386 object links'
+Assert-NotMatch $libsystemPostambleText '\$\(OFILE_DIR\)/links' 'Libsystem make_links does not harvest foreign-arch objects under OFILE_DIR'
+Assert-NotMatch $libsystemPostambleText '\$\(OBJROOT\)/libsystem-links' 'Libsystem make_links is not under OBJROOT harvest'
 Assert-Match $builderSourceText 'builder_relativize_symlinks\(dstroot\)' 'APK packaging rewrites DSTROOT absolute aliases to relative symlinks'
 Assert-Match $builderSourceText '-Wl,-syslibroot,' 'bootstrap rewrites syslibroot linker flags for Rhapsody ld'
+Assert-Match $builderSourceText 'str_cats\("-L", root, "/usr/local/lib"' 'bootstrap linker search includes sysroot /usr/local/lib for libcompat.a'
 Assert-Match $builderSourceText '/usr/local/bin/indr' 'bootstrap selects sysroot indr for Csu after cctools'
 Assert-NotMatch $bootstrapResumeText 'mktemp' 'bootstrap-resume creates temps without mktemp'
 Assert-Match $bootstrapResumeText 'umask 077 && mkdir' 'bootstrap-resume claims a private temp directory atomically'
@@ -456,6 +560,8 @@ Assert-NotMatch $bootstrapCommand '/usr/bin/mig|/usr/libexec/migcom|NEXT_ROOT|bo
 Assert-Equal ($bootstrapCommand.IndexOf('/usr/bin/install -d') -lt $bootstrapCommand.IndexOf('/build/tools/bin/rbuild bootstrap')) $true 'bootstrap creates outputs before rbuild'
 Assert-Match $bootstrapCommand ([regex]::Escape('&& cd /build/src && CONFIG_DIR=/build/tools/bin')) 'bootstrap starts from synced source root'
 Assert-Match $bootstrapCommand ([regex]::Escape('/build/tools/bin/rbuild bootstrap --sysroot /build/bootstrap-root --toolchain /build/src/rbuild-1/toolchains/gcc-darwin.conf --state /build/state /build/src/BootstrapManifest /build/repo /build/repo')) 'bootstrap uses resumable CLI'
+Assert-Match $bootstrapCommand ([regex]::Escape('/build/tools/bin/rbuild bootstrap-universal --sysroot /build/bootstrap-root --toolchain /build/src/rbuild-1/toolchains/gcc-darwin.conf --state /build/state /build/src/BootstrapManifest /build/repo /build/repo')) 'bootstrap-universal is the primary second walk'
+Assert-Equal ($bootstrapCommand.IndexOf('/build/tools/bin/rbuild bootstrap --sysroot') -lt $bootstrapCommand.IndexOf('/build/tools/bin/rbuild bootstrap-universal --sysroot')) $true 'thin bootstrap runs before bootstrap-universal'
 $alternateSourceArgs = $phaseArgs.Clone()
 $alternateSourceArgs.SourceRoot = '/srv/synced source'
 $alternateBootstrap = New-RhapBuildPhaseCommand -Phase 'bootstrap' @alternateSourceArgs

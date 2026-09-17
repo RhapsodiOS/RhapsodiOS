@@ -1,0 +1,7 @@
+pkgname = cvs
+pkgver = 1.10
+pkgdesc = Concurrent Versions System
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+url = http://www.cyclic.com/cvs/info.html
+makedepends = build-base, perl

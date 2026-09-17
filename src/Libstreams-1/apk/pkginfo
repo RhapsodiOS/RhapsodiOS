@@ -1,0 +1,6 @@
+pkgname = libstreams
+pkgver = 15.2
+pkgdesc = Streams library
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base

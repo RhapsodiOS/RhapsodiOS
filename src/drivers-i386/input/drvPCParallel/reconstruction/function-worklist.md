@@ -501,11 +501,12 @@ Accepted leftover: rebuilt `D9B5138F47C5CFFF3682FE9D7FBBD6BD1E7D05CFCC11A3F78F6E
 ### `-[IOParallelPort printerInit]` (diff 14)
 
 Star: control byte in `[ebp+var_1]` vs `bl`; Apple keeps `self` in `ebx`.
+Accepted leftover: rebuilt `D9B5138F47C5CFFF3682FE9D7FBBD6BD1E7D05CFCC11A3F78F6E7D6FE3DF440A`.
 
-1. Split `controlValue = defaults & ~INIT` into load then `&=`
-2. Write `outb(..., controlValue)` after a separate `controlValue |= INIT`
-3. Reload `controlRegister` from `self` between the two `outb`s by naming `self->`
-4. Declare `controlValue` after a dummy-width sibling is forbidden; try `int` vs `unsigned char`
+1. Split `controlValue = defaults & ~INIT` into load then `&=` — **tried, no codegen change**
+2. Write `outb(..., controlValue)` after a separate `controlValue |= INIT` — **already the source**
+3. Reload `controlRegister` from `self` between the two `outb`s by naming `self->` — **already the source**
+4. Declare `controlValue` after a dummy-width sibling is forbidden; try `int` vs `unsigned char` — **tried, regression** (38 identical, 2 unpaired)
 
 ### `-[IOParallelPort _waitForDevice:isReady:]` (diff 17)
 

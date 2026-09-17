@@ -1217,9 +1217,34 @@ Parity 0/0. Previously identical rows stayed identical. Ledger 4040
   push 0                                  push 0
 ```
 
+### Task 8 — `printerInit` compiler-shaped leftover
+
+Source-shape list exhausted. Split load/`&=` did not change codegen; `int`
+`controlValue` shrank `__text` and unpaired `blockSize` / `intHandlerDelay`
+(reverted). Leftover is gcc 2.x keeping the control byte in `bl` vs Apple's
+`[ebp+var_1]` and `self` in `ebx`. Rebuilt SHA-256
+`D9B5138F47C5CFFF3682FE9D7FBBD6BD1E7D05CFCC11A3F78F6E7D6FE3DF440A`.
+Parity 0/0. Previously identical rows stayed identical. Ledger 3132
+`intentional-mismatch`, reviewer Pat Raynor, reason
+`compiler-shaped leftover after exhausted source-shape list`.
+
+```
+-[IOParallelPort printerInit]
+  status=different raw_equal=False masked_equal=False
+* sub esp, 4
+  push ebx                                push ebx
+* mov ebx, [ebp+self]                     mov eax, [ebp+self]
+* mov cl, [ebx+140h]                      mov bl, [eax+140h]
+* mov [ebp+var_1], cl                     and bl, 0FBh
+* and [ebp+var_1], 0FBh                   mov dx, [eax+13Ch]
+* mov dx, [ebx+13Ch]                      mov al, bl
+* mov al, [ebp+var_1]
+  out dx, al                              out dx, al
+```
+
 ### 8.9 The status rule used
 
-- `assembly-matched` (57) - the reference's full instruction stream was read and our
+- `assembly-matched` (56) - the reference's full instruction stream was read and our
   source is a statement-for-statement transliteration of it with no remaining difference,
   and the function's emitted metadata was verified identical in the rebuilt binary. Used
   for the accessors and the short bodies. Task 8 promoted `msgTypeToIOReturn:` and
@@ -1228,10 +1253,11 @@ Parity 0/0. Previously identical rows stayed identical. Ledger 4040
   source reproduces its block structure, every call target and every constant, but the
   rebuilt output was **not** itself disassembled and compared instruction by instruction.
   Used for the larger functions.
-- `intentional-mismatch` (9) - a deliberate difference remains: 112 and 1452 (Finding 53,
+- `intentional-mismatch` (10) - a deliberate difference remains: 112 and 1452 (Finding 53,
   uninitialized control byte reconstructed; leftover is gcc 2.x zero-fill / immediate fold),
-  2372 and 2388 (`struct buf` encoding), 3896 (`cmdBufExec:` prev-link stored first; leftover
-  is `add esp,8` scheduling), 4040 (`waitForCmdBuf` if/else dequeue; leftover is
-  `add esp,0Ch` scheduling and else-block placement), 4232 (`_strobeChar` load-then-test reversed;
-  leftover is gcc 2.x CSE / register allocation), and the two build-generated glue
-  functions at 7392 and 7404, untouched from the report pass.
+  2372 and 2388 (`struct buf` encoding), 3132 (`printerInit` control byte in `bl` vs
+  `[ebp+var_1]`; leftover is gcc 2.x register allocation), 3896 (`cmdBufExec:` prev-link
+  stored first; leftover is `add esp,8` scheduling), 4040 (`waitForCmdBuf` if/else dequeue;
+  leftover is `add esp,0Ch` scheduling and else-block placement), 4232 (`_strobeChar`
+  load-then-test reversed; leftover is gcc 2.x CSE / register allocation), and the two
+  build-generated glue functions at 7392 and 7404, untouched from the report pass.

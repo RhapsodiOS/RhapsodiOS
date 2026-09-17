@@ -1726,6 +1726,38 @@ The object directory has `BusMouse.o` and `BusMouse_instance.o` only.
 ```
 
 Existence stays unmet. The postamble line is kept (diagnosed reconstruction,
-not an experiment). No later local makefile fix is in this task. See
-`function-worklist.md`.
+not an experiment). See `function-worklist.md`.
+
+### Task 3 follow-up: `VERSIONING_SYSTEM = apple-generic`
+
+2026-09-16. In-tree Kernel Server preamble now starts with
+`VERSIONING_SYSTEM = apple-generic`; existing preamble contents kept.
+Postamble still `OTHER_GENERATED_OFILES += $(VERS_OFILE)`. `driverTools`
+and guest-installed makefiles were not edited.
+
+Guest rebuild: `=== input-recon done fail=0 built: drvBusMouse ===`
+(`make exit=0`). Log shows `Creating .../BusMouse_vers.c` (twice, with
+`*** Warning: the CURRENT_PROJECT_VERSION variable is not set.`), compile of
+`BusMouse_vers.i386.o`, and `kl_ld` with `BusMouse_vers.o` after
+`_instance.o`:
+
+```
+/usr/bin/kl_ld -o /build/src/drivers-i386/input/drvBusMouse/BusMouse.config/BusMouse_reloc -n BusMouse  -i BusMouse_instance -l Load_Commands.sect -u Unload_Commands.sect  -arch i386  /build/src/drivers-i386/input/drvBusMouse/BusMouse.build/objects-optimized/BusMouse.drvproj/BusMouse.lksproj/BusMouse.o             /build/src/drivers-i386/input/drvBusMouse/BusMouse.build/objects-optimized/BusMouse.drvproj/BusMouse.lksproj/BusMouse_instance.o /build/src/drivers-i386/input/drvBusMouse/BusMouse.build/objects-optimized/BusMouse.drvproj/BusMouse.lksproj/BusMouse_vers.o
+```
+
+Host staged unstripped `BusMouse_reloc` is **100372** bytes, SHA-256
+`2EAA0112FDA184A6F13305EB6438E2A20C6125D1DF37FB370868824D8C2FC1F9`.
+`__TEXT,__text` is still 1584. `__TEXT,__const` is **present, 92 bytes**.
+`parity_check.py`: `missing_strings` 0, `missing_symbols` 0,
+`extra_strings` 0, `extra_symbols` **18** (the extra stab is generated
+`BusMouse_vers.c`). All seven locked regression-gate methods still have
+`masked-eq` or `identical`. `--list` instruction-diff table is unchanged
+from Phase 1. `rebuilt_sha256` is not set.
+
+Nlist in `__TEXT,__const`: `_BusMouseVersionString` and
+`_BusMouseVersionNumber` (both external). SGS names
+`_BusMouse_VERS_STRING` and `_BusMouse_VERS_NUM` are still **MISSING**.
+The `__const` section gap is closed; the leftover is the apple-generic
+symbol names, same as Cirrus. Do not compare the 160-byte SGS string to
+Apple's. See `function-worklist.md`.
 

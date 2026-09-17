@@ -671,26 +671,23 @@ unsigned char getMouseData(void)
 BOOL getMouseDataIfPresent(unsigned char *data)
 {
     unsigned char status;
-    BOOL noMouseData;
 
     lock_controller();
 
     status = inb(PS2_STATUS_PORT);
 
     /* Bit 5 (0x20) marks auxiliary device (mouse) data */
-    noMouseData = (status & 0x20) == 0;
-
-    if (noMouseData) {
+    if (!(status & 0x20)) {
         unlock_controller();
+        return 0;
     } else {
         IODelay(7);
 
         *data = inb(PS2_DATA_PORT);
 
         unlock_controller();
+        return 1;
     }
-
-    return !noMouseData;
 }
 
 /* Helper function: Clear the PS/2 controller output buffer */

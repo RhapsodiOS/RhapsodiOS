@@ -2026,6 +2026,10 @@ _enqueueKeyboardData
 * movzx eax, [ebp+var_4]
 ```
 
+### `_getMouseDataIfPresent` (1892) — `masked_equal`
+
+Dropped the inverted `noMouseData` BOOL; `if (!(status & 0x20))` returns 0 after unlock so the `jz` failure path is laid after the success read. `--name` differs only by jump labels. Rebuilt `89C796C24C9B73175F9C5C2B644C454665ED2D49B349BDC2E8BC16E2925C2764`. Task 8 gates unchanged. Unpaired 0.
+
 ## Task 4 stop (unpaired growth)
 
 `readConfigTable:` ivar-in-branch experiment made `--list` report 50 functions / 2 unpaired (`missing-rebuilt __PS2KeyboardNumKeysDown`, `missing-reference _resetEscapes`). That is a layout or linkage finding. Experiment reverted. After rebuild, SHA is again `20C8BD6E1243FE4CB6D1CDCC51654CBADF65E118370ACBF8D49EBE05B3631C07`, `--list` 49 / 0 unpaired. Do not repeat the ivar-in-NULL-branch store. Campaign continues on other functions.

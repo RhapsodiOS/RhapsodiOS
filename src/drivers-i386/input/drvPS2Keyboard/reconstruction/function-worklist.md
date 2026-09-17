@@ -200,6 +200,9 @@ Task 8 regression gate. Do not apply the BOOL / `and eax, 0FFh` typed rewrite. A
 ### `_getMouseDataIfPresent` (diff 14)
 
 1. Replace the inverted `noMouseData` BOOL with `if (status & 0x20)` / else, returning 1 or 0 on each path (`test al, 20h` / `jz` vs `shr`/`xor`/`and`).
+   **Tried, miss:** `if (status & 0x20) { delay; read; unlock; return 1; } else { unlock; return 0; }` laid the return-0 path first (`jnz` to success). Diff 14 → 7. No closed-function regression.
+2. Invert: `if (!(status & 0x20)) { unlock; return 0; } else { delay; read; unlock; return 1; }` so the `jz` failure path matches the reference.
+   **Match:** `masked_equal` after rebuild `89C796C24C9B73175F9C5C2B644C454665ED2D49B349BDC2E8BC16E2925C2764`. Ledger `assembly-matched`.
 
 ### `-[PS2Keyboard relinquishOwnership:]` (diff 20) — empty by policy
 

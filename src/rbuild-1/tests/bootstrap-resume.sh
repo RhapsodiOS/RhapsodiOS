@@ -63,8 +63,8 @@ arch = ppc-apple-rhapsody
 EOF
 : > "$base/base/usr/bin/foo"
 : > "$base/hdr/System/Headers/foo.h"
-(cd "$base/base" && /usr/bin/gnutar --posix -cf - .) | /usr/bin/gzip -9 > "$repo/foo-1.0.apk"
-(cd "$base/hdr" && /usr/bin/gnutar --posix -cf - .) | /usr/bin/gzip -9 > "$repo/foo-hdrs-1.0.apk"
+(cd "$base/base" && /usr/bin/gnutar --posix -cf - .) | /usr/bin/gzip -9 > "$repo/foo-1.0-ppc.apk"
+(cd "$base/hdr" && /usr/bin/gnutar --posix -cf - .) | /usr/bin/gzip -9 > "$repo/foo-hdrs-1.0-ppc.apk"
 echo "dir $src all" > "$base/Manifest"
 
 write_profile() {
@@ -206,16 +206,16 @@ fi
 mkdir "$base/real-parent"
 ln -s "$base/real-parent" "$base/parent-link"
 mkdir "$base/dry-repo"
-printf dry-broken > "$base/dry-repo/foo-1.0.apk"
-dry_sum=`cksum "$base/dry-repo/foo-1.0.apk"`
+printf dry-broken > "$base/dry-repo/foo-1.0-ppc.apk"
+dry_sum=`cksum "$base/dry-repo/foo-1.0-ppc.apk"`
 ./rbuild -n bootstrap --sysroot "$base/parent-link/dry-root" \
     --toolchain "$profile" --state "$base/parent-link/dry-state" \
     "$base/Manifest" "$base/dry-repo" "$base/dry-repo" \
     > "$base/dry-run.out" 2>&1
 test ! -e "$base/real-parent/dry-root"
 test ! -e "$base/real-parent/dry-state"
-test "$dry_sum" = "`cksum "$base/dry-repo/foo-1.0.apk"`"
-test ! -e "$base/dry-repo/foo-1.0.apk.invalid"
+test "$dry_sum" = "`cksum "$base/dry-repo/foo-1.0-ppc.apk"`"
+test ! -e "$base/dry-repo/foo-1.0-ppc.apk.invalid"
 grep '/usr/bin/rsync' "$base/dry-run.out" > /dev/null
 echo "dir $src ../invalid" > "$base/BadTargetManifest"
 if ./rbuild bootstrap --sysroot "$root" --toolchain "$profile" \
@@ -266,8 +266,8 @@ fi
 test ! -e "$base/escape.apk"
 mkdir -p "$state/projects"
 echo untouched > "$base/temp-victim"
-ln -s "$base/temp-victim" "$state/projects/foo-1.0-all.done.tmp"
-ln -s "$base/temp-victim" "$state/projects/foo-1.0-all.done"
+ln -s "$base/temp-victim" "$state/projects/foo-1.0-ppc-all.done.tmp"
+ln -s "$base/temp-victim" "$state/projects/foo-1.0-ppc-all.done"
 if ./rbuild bootstrap --sysroot "$root" --toolchain "$profile" \
     --state "$state" "$base/Manifest" "$repo" "$repo" \
     > "$base/state-symlink.out" 2>&1; then
@@ -276,14 +276,14 @@ if ./rbuild bootstrap --sysroot "$root" --toolchain "$profile" \
 fi
 grep 'unsafe state record' "$base/state-symlink.out" > /dev/null
 test "`cat "$base/temp-victim"`" = untouched
-rm "$state/projects/foo-1.0-all.done"
+rm "$state/projects/foo-1.0-ppc-all.done"
 ./rbuild bootstrap --sysroot "$root" --toolchain "$profile" \
     --state "$state" "$base/Manifest" "$repo" "$repo"
 test -f "$root/usr/bin/foo"
 test -f "$root/System/Headers/foo.h"
-test -f "$state/projects/foo-1.0-all.done"
+test -f "$state/projects/foo-1.0-ppc-all.done"
 test "`cat "$base/temp-victim"`" = untouched
-test -L "$state/projects/foo-1.0-all.done.tmp"
+test -L "$state/projects/foo-1.0-ppc-all.done.tmp"
 
 # Generic world validation must honor PATH rather than hardcoded host tools.
 mkdir "$base/wrappers"
@@ -307,38 +307,38 @@ grep '^gzip$' "$base/wrapper.log" > /dev/null
 
 # Symlink APKs are invalid artifacts, even when their targets are valid. The
 # exact link is quarantined and rebuilt without modifying its target.
-cp "$repo/foo-1.0.apk" "$base/outside.apk"
+cp "$repo/foo-1.0-ppc.apk" "$base/outside.apk"
 outside_sum=`cksum "$base/outside.apk"`
-rm "$repo/foo-1.0.apk"
-ln -s "$base/outside.apk" "$repo/foo-1.0.apk"
+rm "$repo/foo-1.0-ppc.apk"
+ln -s "$base/outside.apk" "$repo/foo-1.0-ppc.apk"
 ./rbuild bootstrap --sysroot "$root" --toolchain "$profile" \
     --state "$state" "$base/Manifest" "$repo" "$repo"
-test ! -L "$repo/foo-1.0.apk"
-test -f "$repo/foo-1.0.apk"
-test -f "$repo/foo-1.0.apk.invalid"
+test ! -L "$repo/foo-1.0-ppc.apk"
+test -f "$repo/foo-1.0-ppc.apk"
+test -f "$repo/foo-1.0-ppc.apk.invalid"
 mkdir "$base/metadata"
-(cd "$base/metadata" && /usr/bin/gzip -dc "$repo/foo-1.0.apk" | /usr/bin/gnutar -xf -)
+(cd "$base/metadata" && /usr/bin/gzip -dc "$repo/foo-1.0-ppc.apk" | /usr/bin/gnutar -xf -)
 grep '^arch = ppc-apple-rhapsody$' "$base/metadata/.PKGINFO" > /dev/null
 grep '^Architecture: universal-apple-rhapsody$' "$src/dpkg/control" > /dev/null
-grep 'symlink' "$repo/foo-1.0.apk.invalid" > /dev/null
-if grep 'MAKEFILEDIR=' "$state/logs/foo-1.0-all.log" > /dev/null; then
+grep 'symlink' "$repo/foo-1.0-ppc.apk.invalid" > /dev/null
+if grep 'MAKEFILEDIR=' "$state/logs/foo-1.0-ppc-all.log" > /dev/null; then
     echo 'bootstrap-resume: MAKEFILEDIR command-line override escaped'
     exit 1
 fi
 grep "MAKEFILEPATH=$root/System/Developer/Makefiles" \
-    "$state/logs/foo-1.0-all.log" > /dev/null
+    "$state/logs/foo-1.0-ppc-all.log" > /dev/null
 test "$outside_sum" = "`cksum "$base/outside.apk"`"
-rm "$repo/foo-1.0.apk.invalid" "$repo/foo-1.0.apk"
-ln -s "$base/missing-outside.apk" "$repo/foo-1.0.apk"
+rm "$repo/foo-1.0-ppc.apk.invalid" "$repo/foo-1.0-ppc.apk"
+ln -s "$base/missing-outside.apk" "$repo/foo-1.0-ppc.apk"
 ./rbuild bootstrap --sysroot "$root" --toolchain "$profile" \
     --state "$state" "$base/Manifest" "$repo" "$repo"
-test ! -L "$repo/foo-1.0.apk"
-test -f "$repo/foo-1.0.apk"
+test ! -L "$repo/foo-1.0-ppc.apk"
+test -f "$repo/foo-1.0-ppc.apk"
 test ! -e "$base/missing-outside.apk"
-rm "$repo/foo-1.0.apk.invalid"
+rm "$repo/foo-1.0-ppc.apk.invalid"
 
-cp "$state/projects/foo-1.0-all.done" "$base/done.saved"
-sed 's/^companions=.*/companions=invalid/' "$base/done.saved" > "$state/projects/foo-1.0-all.done"
+cp "$state/projects/foo-1.0-ppc-all.done" "$base/done.saved"
+sed 's/^companions=.*/companions=invalid/' "$base/done.saved" > "$state/projects/foo-1.0-ppc-all.done"
 if ./rbuild bootstrap --sysroot "$root" --toolchain "$profile" \
     --state "$state" "$base/Manifest" "$repo" "$repo" \
     > "$base/corrupt.out" 2>&1; then
@@ -346,48 +346,48 @@ if ./rbuild bootstrap --sysroot "$root" --toolchain "$profile" \
     exit 1
 fi
 grep 'corrupt state record' "$base/corrupt.out" > /dev/null
-mv "$base/done.saved" "$state/projects/foo-1.0-all.done"
+mv "$base/done.saved" "$state/projects/foo-1.0-ppc-all.done"
 
-base_time=`perl -e 'print((stat($ARGV[0]))[9])' "$repo/foo-1.0.apk"`
-hdr_time=`perl -e 'print((stat($ARGV[0]))[9])' "$repo/foo-hdrs-1.0.apk"`
-base_sum=`cksum "$repo/foo-1.0.apk"`
-hdr_sum=`cksum "$repo/foo-hdrs-1.0.apk"`
+base_time=`perl -e 'print((stat($ARGV[0]))[9])' "$repo/foo-1.0-ppc.apk"`
+hdr_time=`perl -e 'print((stat($ARGV[0]))[9])' "$repo/foo-hdrs-1.0-ppc.apk"`
+base_sum=`cksum "$repo/foo-1.0-ppc.apk"`
+hdr_sum=`cksum "$repo/foo-hdrs-1.0-ppc.apk"`
 rm -rf "$root"
 ./rbuild bootstrap --sysroot "$root" --toolchain "$profile" \
     --state "$state" "$base/Manifest" "$repo" "$repo"
 test -f "$root/usr/bin/foo"
 test -f "$root/System/Headers/foo.h"
-test "$base_time" = "`perl -e 'print((stat($ARGV[0]))[9])' "$repo/foo-1.0.apk"`"
-test "$hdr_time" = "`perl -e 'print((stat($ARGV[0]))[9])' "$repo/foo-hdrs-1.0.apk"`"
-test "$base_sum" = "`cksum "$repo/foo-1.0.apk"`"
-test "$hdr_sum" = "`cksum "$repo/foo-hdrs-1.0.apk"`"
+test "$base_time" = "`perl -e 'print((stat($ARGV[0]))[9])' "$repo/foo-1.0-ppc.apk"`"
+test "$hdr_time" = "`perl -e 'print((stat($ARGV[0]))[9])' "$repo/foo-hdrs-1.0-ppc.apk"`"
+test "$base_sum" = "`cksum "$repo/foo-1.0-ppc.apk"`"
+test "$hdr_sum" = "`cksum "$repo/foo-hdrs-1.0-ppc.apk"`"
 
-printf broken > "$repo/foo-hdrs-1.0.apk"
+printf broken > "$repo/foo-hdrs-1.0-ppc.apk"
 rm -rf "$root"
 ./rbuild bootstrap --sysroot "$root" --toolchain "$profile" \
     --state "$state" "$base/Manifest" "$repo" "$repo"
-test -f "$repo/foo-hdrs-1.0.apk.invalid"
+test -f "$repo/foo-hdrs-1.0-ppc.apk.invalid"
 test -f "$root/usr/bin/foo"
 test -f "$root/System/Headers/foo.h"
 find "$root/usr/local/lib/objs" -name dynamic_obj -type f | grep . > /dev/null
-grep 'companions=hdr,obj' "$state/projects/foo-1.0-all.done" > /dev/null
-grep 'System/Headers' "$state/logs/foo-1.0-all.log" > /dev/null
-grep '^command:' "$state/logs/foo-1.0-all.log" > /dev/null
-grep '^status: exited successfully' "$state/logs/foo-1.0-all.log" > /dev/null
+grep 'companions=hdr,obj' "$state/projects/foo-1.0-ppc-all.done" > /dev/null
+grep 'System/Headers' "$state/logs/foo-1.0-ppc-all.log" > /dev/null
+grep '^command:' "$state/logs/foo-1.0-ppc-all.log" > /dev/null
+grep '^status: exited successfully' "$state/logs/foo-1.0-ppc-all.log" > /dev/null
 
-rm "$repo/foo-hdrs-1.0.apk"
+rm "$repo/foo-hdrs-1.0-ppc.apk"
 rm -rf "$root"
 ./rbuild bootstrap --sysroot "$root" --toolchain "$profile" \
     --state "$state" "$base/Manifest" "$repo" "$repo"
 test -f "$root/System/Headers/foo.h"
-test -f "$repo/foo-hdrs-1.0.apk"
+test -f "$repo/foo-hdrs-1.0-ppc.apk"
 
-rm "$repo/foo-obj-1.0.apk"
+rm "$repo/foo-obj-1.0-ppc.apk"
 rm -rf "$root"
 ./rbuild bootstrap --sysroot "$root" --toolchain "$profile" \
     --state "$state" "$base/Manifest" "$repo" "$repo"
 find "$root/usr/local/lib/objs" -name dynamic_obj -type f | grep . > /dev/null
-test -f "$repo/foo-obj-1.0.apk"
+test -f "$repo/foo-obj-1.0-ppc.apk"
 
 make_wrong_apk() {
     wrong_name=$1
@@ -405,31 +405,31 @@ EOF
         /usr/bin/gzip -9 > "$wrong_output"
 }
 
-make_wrong_apk unrelated 1.0 ppc-apple-rhapsody "$repo/foo-1.0.apk"
+make_wrong_apk unrelated 1.0 ppc-apple-rhapsody "$repo/foo-1.0-ppc.apk"
 ./rbuild bootstrap --sysroot "$root" --toolchain "$profile" \
     --state "$state" "$base/Manifest" "$repo" "$repo"
-test -f "$repo/foo-1.0.apk.invalid"
+test -f "$repo/foo-1.0-ppc.apk.invalid"
 
-rm -f "$repo/foo-hdrs-1.0.apk.invalid"
-make_wrong_apk foo-hdrs 9.9 ppc-apple-rhapsody "$repo/foo-hdrs-1.0.apk"
+rm -f "$repo/foo-hdrs-1.0-ppc.apk.invalid"
+make_wrong_apk foo-hdrs 9.9 ppc-apple-rhapsody "$repo/foo-hdrs-1.0-ppc.apk"
 ./rbuild bootstrap --sysroot "$root" --toolchain "$profile" \
     --state "$state" "$base/Manifest" "$repo" "$repo"
-test -f "$repo/foo-hdrs-1.0.apk.invalid"
+test -f "$repo/foo-hdrs-1.0-ppc.apk.invalid"
 
-rm -f "$repo/foo-hdrs-1.0.apk.invalid"
-make_wrong_apk foo 1.0 ppc-apple-rhapsody "$repo/foo-hdrs-1.0.apk"
+rm -f "$repo/foo-hdrs-1.0-ppc.apk.invalid"
+make_wrong_apk foo 1.0 ppc-apple-rhapsody "$repo/foo-hdrs-1.0-ppc.apk"
 ./rbuild bootstrap --sysroot "$root" --toolchain "$profile" \
     --state "$state" "$base/Manifest" "$repo" "$repo"
-test -f "$repo/foo-hdrs-1.0.apk.invalid"
+test -f "$repo/foo-hdrs-1.0-ppc.apk.invalid"
 
-make_wrong_apk foo-obj 1.0 wrong-architecture "$repo/foo-obj-1.0.apk"
+make_wrong_apk foo-obj 1.0 wrong-architecture "$repo/foo-obj-1.0-ppc.apk"
 ./rbuild bootstrap --sysroot "$root" --toolchain "$profile" \
     --state "$state" "$base/Manifest" "$repo" "$repo"
-test -f "$repo/foo-obj-1.0.apk.invalid"
+test -f "$repo/foo-obj-1.0-ppc.apk.invalid"
 
 ./rbuild buildpackage --state "$state" --dir --target all \
     "$base/world-source" "$repo" "$repo"
-test -f "$state/logs/foo-1.0-all.log"
+test -f "$state/logs/foo-1.0-ppc-all.log"
 ./rbuild buildall --state "$state" "$base/WorldManifest" "$repo" "$repo"
 
 headers_base=$base/headers-case
@@ -450,9 +450,9 @@ EOF
 : > "$headers_base/base/usr/bin/stale-base"
 : > "$headers_base/hdr/System/Headers/foo.h"
 : > "$headers_base/obj/usr/local/lib/objs/stale-obj"
-(cd "$headers_base/base" && /usr/bin/gnutar --posix -cf - .) | /usr/bin/gzip -9 > "$headers_repo/foo-1.0.apk"
-(cd "$headers_base/hdr" && /usr/bin/gnutar --posix -cf - .) | /usr/bin/gzip -9 > "$headers_repo/foo-hdrs-1.0.apk"
-(cd "$headers_base/obj" && /usr/bin/gnutar --posix -cf - .) | /usr/bin/gzip -9 > "$headers_repo/foo-obj-1.0.apk"
+(cd "$headers_base/base" && /usr/bin/gnutar --posix -cf - .) | /usr/bin/gzip -9 > "$headers_repo/foo-1.0-ppc.apk"
+(cd "$headers_base/hdr" && /usr/bin/gnutar --posix -cf - .) | /usr/bin/gzip -9 > "$headers_repo/foo-hdrs-1.0-ppc.apk"
+(cd "$headers_base/obj" && /usr/bin/gnutar --posix -cf - .) | /usr/bin/gzip -9 > "$headers_repo/foo-obj-1.0-ppc.apk"
 echo "dir $src headers" > "$headers_base/Manifest"
 ./rbuild bootstrap --sysroot "$headers_root" --toolchain "$profile" \
     --state "$headers_state" "$headers_base/Manifest" \
@@ -461,33 +461,33 @@ test -f "$headers_root/System/Headers/foo.h"
 test ! -f "$headers_root/usr/bin/stale-base"
 test ! -f "$headers_root/usr/local/lib/objs/stale-obj"
 
-printf broken > "$headers_repo/foo-1.0.apk"
+printf broken > "$headers_repo/foo-1.0-ppc.apk"
 rm -rf "$headers_root"
 ./rbuild bootstrap --sysroot "$headers_root" --toolchain "$profile" \
     --state "$headers_state" "$headers_base/Manifest" \
     "$headers_repo" "$headers_repo"
 test -f "$headers_root/System/Headers/foo.h"
-test ! -f "$headers_repo/foo-1.0.apk.invalid"
-test "`cat "$headers_repo/foo-1.0.apk"`" = broken
+test ! -f "$headers_repo/foo-1.0-ppc.apk.invalid"
+test "`cat "$headers_repo/foo-1.0-ppc.apk"`" = broken
 
 echo "dir $base/world-source headers" > "$headers_base/WorldManifest"
 ./rbuild buildall "$headers_base/WorldManifest" "$headers_repo" "$headers_repo"
-test "`cat "$headers_repo/foo-1.0.apk"`" = broken
-test ! -f "$headers_repo/foo-1.0.apk.invalid"
+test "`cat "$headers_repo/foo-1.0-ppc.apk"`" = broken
+test ! -f "$headers_repo/foo-1.0-ppc.apk.invalid"
 
 world_base=$base/world-case
 mkdir -p "$world_base/repo"
-cp "$repo/foo-1.0.apk" "$world_base/repo/foo-1.0.apk"
-cp "$repo/foo-hdrs-1.0.apk" "$world_base/repo/foo-hdrs-1.0.apk"
-cp "$repo/foo-obj-1.0.apk" "$world_base/repo/foo-obj-1.0.apk"
-printf broken > "$world_base/repo/foo-1.0.apk"
+cp "$repo/foo-1.0-ppc.apk" "$world_base/repo/foo-1.0-ppc.apk"
+cp "$repo/foo-hdrs-1.0-ppc.apk" "$world_base/repo/foo-hdrs-1.0-ppc.apk"
+cp "$repo/foo-obj-1.0-ppc.apk" "$world_base/repo/foo-obj-1.0-ppc.apk"
+printf broken > "$world_base/repo/foo-1.0-ppc.apk"
 echo "dir $base/world-source all" > "$world_base/Manifest"
 if ./rbuild buildall "$world_base/Manifest" "$world_base/repo" \
     "$world_base/repo" > "$world_base/build.out" 2>&1; then
     echo 'bootstrap-resume: corrupt world artifact unexpectedly succeeded'
     exit 1
 fi
-test -f "$world_base/repo/foo-1.0.apk.invalid"
+test -f "$world_base/repo/foo-1.0-ppc.apk.invalid"
 
 # Existing completion records must attest the current architecture policy.
 # Exercise both target paths with valid cached artifacts: a stale state must
@@ -498,7 +498,7 @@ check_policy_migration() {
     policy_repo=$3
     policy_root=$4
     policy_state=$5
-    policy_record=$policy_state/projects/foo-1.0-$policy_target.done
+    policy_record=$policy_state/projects/foo-1.0-ppc-$policy_target.done
     policy_saved=$base/policy-$policy_target.saved
     cp "$policy_record" "$policy_saved"
     grep '^format=3$' "$policy_saved" > /dev/null
@@ -532,7 +532,7 @@ check_policy_migration() {
             ;;
         esac
         ./rbuild bootstrap --sysroot "$policy_root" --toolchain "$profile"             --state "$policy_state" "$policy_manifest" "$policy_repo" "$policy_repo"             > "$base/policy-rebuild.out" 2>&1
-        grep 'must build foo-1.0.apk' "$base/policy-rebuild.out" > /dev/null
+        grep 'must build foo-1.0-ppc.apk' "$base/policy-rebuild.out" > /dev/null
         grep '^format=3$' "$policy_record" > /dev/null
         grep '^architecture_policy=1$' "$policy_record" > /dev/null
         grep '^effective_architecture=ppc-apple-rhapsody$' "$policy_record" > /dev/null
@@ -631,8 +631,8 @@ chmod +x "$univ_root/usr/local/bin/indr"
     --state "$univ_state" "$univ/Manifest" "$univ_repo" "$univ_repo" \
     > "$univ/dry.out" 2>&1
 if awk '
-    /must build rt-1.0.apk using dir / { if (!r) r = NR }
-    /must build later-1.0.apk using dir / { if (!f) f = NR }
+    /must build rt-1.0-universal.apk using dir / { if (!r) r = NR }
+    /must build later-1.0-universal.apk using dir / { if (!f) f = NR }
     END { exit (r && f && r < f) ? 0 : 1 }
 ' "$univ/dry.out"; then
     :
@@ -645,14 +645,14 @@ rm -f "$univ_root/System"
 ./rbuild bootstrap --sysroot "$univ_root" --toolchain "$univ_profile" \
     --state "$univ_state" "$univ/Manifest" "$univ_repo" "$univ_repo"
 grep '^effective_architecture=ppc-apple-rhapsody$' \
-    "$univ_state/projects/later-1.0-all.done" > /dev/null
-test -f "$univ_repo/later-1.0.apk"
-make_wrong_apk rt 1.0 universal-apple-rhapsody "$univ_repo/rt-1.0.apk"
+    "$univ_state/projects/later-1.0-ppc-all.done" > /dev/null
+test -f "$univ_repo/later-1.0-ppc.apk"
+make_wrong_apk rt 1.0 universal-apple-rhapsody "$univ_repo/rt-1.0-universal.apk"
 
 ./rbuild bootstrap-universal --sysroot "$univ_root" --toolchain "$univ_profile" \
     --state "$univ_state" "$univ/Manifest" "$univ_repo" "$univ_repo" \
     > "$univ/live.out" 2>&1 || :
-grep 'must build later-1.0.apk' "$univ/live.out" > /dev/null
+grep 'must build later-1.0-universal.apk' "$univ/live.out" > /dev/null
 
 write_profile '-nostdinc -DCHANGED -I@SYSROOT@/System/Headers'
 if ./rbuild bootstrap --sysroot "$root" --toolchain "$profile" \

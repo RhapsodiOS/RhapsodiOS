@@ -68,9 +68,9 @@ TEST(test_replay_rejects_required_artifact_replaced_by_symlink) {
     sprintf(profile, "%s/toolchain.conf", scratch);
     sprintf(control, "%s/dpkg/control", source);
     sprintf(pkginfo, "%s/.PKGINFO", content);
-    sprintf(replay_artifact, "%s/foo-hdrs-1.0.apk", repo);
+    sprintf(replay_artifact, "%s/foo-hdrs-1.0-ppc.apk", repo);
     sprintf(replay_target, "%s/outside.apk", scratch);
-    sprintf(state_file, "%s/projects/foo-1.0-headers.done", state);
+    sprintf(state_file, "%s/projects/foo-1.0-ppc-headers.done", state);
     sprintf(command, "rm -rf %s && mkdir -p %s/dpkg %s %s", scratch,
             source, content, repo);
     CHECK_INT(system(command), 0);

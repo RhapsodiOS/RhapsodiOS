@@ -24,7 +24,7 @@ input
  * drvPCParallel - compiles; reconstructed against the reference binary, fixes applied, not yet tested
  * drvPS2Keyboard - compiles; reconstructed against the reference binary, fixes applied, not yet tested
  * drvPS2Mouse - compiles; reconstructed against the reference binary, fixes applied, not yet tested
- * drvSerialPointingDevice - compiles; reconstructed against the reference binary, fixes applied, not yet tested
+ * drvSerialPointingDevice - compiles; reconstructed against the reference binary, 10/16 hand-written functions byte-identical under relocation masking, remainder accepted as compiler-shaped; Kernel Server vers_string objects still unmet on this guest; not yet tested
 
 network
  * drvAMDPCNet32II - complete

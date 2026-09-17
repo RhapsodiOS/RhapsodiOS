@@ -174,6 +174,13 @@ Start the instruction-stream campaign on the compiler-shaped PIC/call-target row
 
 `python -m binrecon source-map` against the Apple tool + `PnPDump.tproj` + `EISABus.lksproj` (`--objc-methods`): mapped 138, unmapped 37 (CRT/dyld/libc), duplicate_candidates 2 (`_bail` and `_main` also match `dumpConfig.m`), boundary_disputed 0.
 
+## Waivers (2026-09-17)
+
+Human decision after Task 4 review:
+
+- **`-DDRIVER_PRIVATE` on the tool is a compile gate, not an identity chase.** Keep it. Shared `PnPResources.m` imports `KernDeviceDescription.h`, which is empty without the flag. Do not remove it in later tasks to “match the old plan line.”
+- **Reloc `--list` / `--name` is IDA-only for the rest of this campaign.** Ghidra stays enabled on `eisabus.json` but rebuilt Ghidra/angr failures are accepted. Do not spend later tasks getting those two analyzers green.
+
 ## Concerns
 
 - Reloc rebuilt **angr** failed (`block at address 1444 is outside function at address 1465`). Reloc rebuilt **Ghidra** failed (`Ghidra relocation operand metadata is ambiguous`). Reloc dual-run `complete: true` is IDA-only. Apple reloc Ghidra/angr reference at `D:\RhapsodiOS\tools\binrecon\out\eisabus\` is unchanged.

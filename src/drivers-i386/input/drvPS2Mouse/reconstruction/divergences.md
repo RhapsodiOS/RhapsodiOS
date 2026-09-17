@@ -1807,7 +1807,7 @@ _PS2MouseIntHandler
 * call near ptr _IOSendInterrupt
 * mov ds:_seqBeingProcessed, 1
 * mov ds:byte_4026, 0
-* mov ds:byte_2025, 0
+* mov ds:byte_4025, 0
 * mov ds:_indexInSequence, 0
 * lea esp, [ebp-20h]
 * pop ebx

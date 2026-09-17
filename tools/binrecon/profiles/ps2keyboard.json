@@ -6,6 +6,9 @@
   "reference": {
     "path": "${BINRECON_REFERENCE}"
   },
+  "rebuilt": {
+    "path": "${BINRECON_REBUILT}"
+  },
   "analyzers": {
     "ida": {
       "enabled": true,

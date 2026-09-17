@@ -8,7 +8,7 @@ against Apple's `ParallelPort_reloc`. Measured 2026-09-16.
 | Artifact | Size | SHA-256 |
 |---|---:|---|
 | Reference | 45312 | `D188A4D909005683B0C943C84CD99514C14A84AD1D378425B3B1DB343F1EAAA2` |
-| Rebuilt | 165552 | `FA106F9173FC78D431579AA8CCD458C8FF2FC35B2AA5036F8FDD42B6DBB51D56` |
+| Rebuilt | 165576 | `F31C01A0FBB4F010AADC205C8CAE011A501FD6D5016BFCEC10022AA65E2BA9DC` |
 
 `binrecon validate` printed the reference sha256 above. Rebuilt is the unstripped
 guest `kl_ld` image. `IOParallelPort` `instance_size` is **404** on both
@@ -84,19 +84,24 @@ This snapshot is **IDA-only**. Analyze exit 1 with
 
 | Class | Count |
 |---|---:|
-| identical (`raw_equal`) | 36 |
-| `masked_equal` (not raw) | 14 |
-| differing (neither) | 23 |
-| unpaired | 4 |
-| **total** | **77** |
+| identical (`raw_equal`) | 40 |
+| `masked_equal` (not raw) | 17 |
+| differing (accepted) | 18 |
+| unpaired | 0 |
+| **total** | **75** |
 
-Summary line from `--list`:
+Summary line from `--list` (Task 8 close reloc `F31C01A0…`):
 
 ```
-77 functions: 36 byte-identical, 37 differing, 4 unpaired
+75 functions: 40 byte-identical, 35 differing, 0 unpaired
 ```
 
-The summary's "differing" includes the 14 `masked-eq` rows.
+The summary's "differing" includes the 17 `masked-eq` rows. The 18 remaining
+`different` rows are ledger `intentional-mismatch` (16 Task 8 acceptances plus
+the two `struct buf` encodings); the four pre-Task-8 compiler-shaped skips
+(`probe:`, `isInitialized`, `controlRegisterContents`, `statusRegisterContents`)
+were demoted in Task 9. No unpaired glue: accessor name-pairing closed in Task 6;
+the two Kernel Server stubs pair and stay `intentional-mismatch` by design.
 
 Unpaired:
 
@@ -113,10 +118,14 @@ Those paired rows are identical instruction streams (ivar getter at `+14Ch`,
 ivar setter at `+13Ch`); the leftover unpaired names are the swapped
 accessors.
 
-## 18 `control-flow-confirmed` plus three reopened
+## Ledger close (Task 9)
 
-Ledger still has 50 `assembly-matched` / 18 `control-flow-confirmed` / 7
-`intentional-mismatch`. `--list` against this reloc:
+After Task 8 grind and Task 9 reloc close: **53** `assembly-matched` / **0**
+`control-flow-confirmed` / **22** `intentional-mismatch`. Task 8 promoted
+`msgTypeToIOReturn:`, `cmdBufAlloc`, and `_ppstrategy` from `masked_equal`;
+Task 9 demoted the four compiler-shaped skips that stayed `different` on the
+final reloc. Historical `--list` against the Phase 1 reloc (below) showed 18
+`control-flow-confirmed` rows; all were either promoted or accepted by Task 8.
 
 | Ledger | Name | `--list` |
 |---|---|---|
@@ -636,3 +645,111 @@ Accepted leftover: rebuilt `F31C01A0FBB4F010AADC205C8CAE011A501FD6D5016BFCEC1002
 5. Second decode: `errorFlag = 0` then `if (!(status & 8)) errorFlag = 1` as separate statements
 6. `ioTimeout` / `elapsedTime` / `timeout` declaration order
 7. `while (msgResult != 0)` vs `while (1)` with breaks
+
+## Task 9 — reloc instruction-stream close
+
+Final kept reloc SHA-256
+`F31C01A0FBB4F010AADC205C8CAE011A501FD6D5016BFCEC10022AA65E2BA9DC`
+(165576 bytes, unstripped guest `kl_ld`). Parity: `missing_strings (0):`,
+`missing_symbols (0):`. No guest rebuild; comparison read from the Task 8
+published `comparison-ida.json` against this reloc.
+
+| `--list` class | Count |
+|---|---:|
+| identical (`raw_equal`) | 40 |
+| `masked_equal` | 17 |
+| differing (accepted / demoted) | 18 |
+| unpaired | 0 |
+
+Sections unchanged from the Task 1–3 baseline on this driver: reference
+`__TEXT,__text` 7416, rebuilt 7120; reference `__TEXT,__const` 170,
+rebuilt **absent** (`_ParallelPort_VERS_*` still missing). Tools still open:
+`InstallPPDev` not staged (PreLoad `IODeviceMaster.m` compile failure);
+`RemovePPDev` staged as Mach-O **ppc**, not i386.
+
+Four compiler-shaped rows skipped in Task 8 were demoted from
+`assembly-matched` to `intentional-mismatch` (reviewer Pat Raynor) because
+`--name` on the final reloc is `masked_equal=False` for all four. See
+`divergences.md` Task 9 notes. Ledger: **53** / **0** / **22**.
+
+```
+  diff    ref    new  flags       name
+
+     0      6      6  masked-eq   +[ParallelPortKernelServerInstance kernelServerInstance]
+     0      6      6  identical   +[ParallelPortVersion driverKitVersionForParallelPort]
+     0      7      7  identical   -[IOParallelPort IOThreadDelay]
+     0      7      7  identical   -[IOParallelPort autofeedOutput]
+     0      7      7  identical   -[IOParallelPort blockSize]
+     0      7      7  identical   -[IOParallelPort busyMaxRetries]
+     0      7      7  identical   -[IOParallelPort busyRetryInterval]
+     0     19     19  masked-eq   -[IOParallelPort cmdBufComplete:]
+     0     16     16  masked-eq   -[IOParallelPort cmdBufFree:]
+     0      7      7  identical   -[IOParallelPort configRegister]
+     0      7      7  identical   -[IOParallelPort controlRegisterDefaults]
+     0      7      7  identical   -[IOParallelPort controlRegister]
+     0      7      7  identical   -[IOParallelPort dataBuffer]
+     0      7      7  identical   -[IOParallelPort dataRegister]
+     0     16     16  masked-eq   -[IOParallelPort getHandler:level:argument:forInterrupt:]
+     0      7      7  identical   -[IOParallelPort intHandlerDelay]
+     0      7      7  identical   -[IOParallelPort interruptMessage]
+     0      7      7  identical   -[IOParallelPort ioTimeout]
+     0      7      7  identical   -[IOParallelPort isInUse]
+     0     14     14  masked-eq   -[IOParallelPort lockSize]
+     0      7      7  identical   -[IOParallelPort majorDevNum]
+     0      7      7  identical   -[IOParallelPort minPhys]
+     0      7      7  identical   -[IOParallelPort minorDevNum]
+     0      7      7  identical   -[IOParallelPort physbuf]
+     0      6      6  identical   -[IOParallelPort readFromPort]
+     0      8      8  identical   -[IOParallelPort setAutofeedOutput:]
+     0      8      8  identical   -[IOParallelPort setBusyMaxRetries:]
+     0      8      8  identical   -[IOParallelPort setBusyRetryInterval:]
+     0      8      8  identical   -[IOParallelPort setConfigRegister:]
+     0      8      8  identical   -[IOParallelPort setControlRegister:]
+     0      8      8  identical   -[IOParallelPort setDataRegister:]
+     0      8      8  identical   -[IOParallelPort setIOThreadDelay:]
+     0      8      8  identical   -[IOParallelPort setInUse:]
+     0      8      8  identical   -[IOParallelPort setIntHandlerDelay:]
+     0      8      8  identical   -[IOParallelPort setInterruptMessage:]
+     0      8      8  identical   -[IOParallelPort setIoTimeout:]
+     0      8      8  identical   -[IOParallelPort setMajorDevNum:]
+     0      8      8  identical   -[IOParallelPort setMinorDevNum:]
+     0      8      8  identical   -[IOParallelPort setPhysbuf:]
+     0      8      8  identical   -[IOParallelPort setStatusRegister:]
+     0      8      8  identical   -[IOParallelPort setStatusWord:]
+     0      8      8  identical   -[IOParallelPort setWaitForever:]
+     0      7      7  identical   -[IOParallelPort statusRegister]
+     0      7      7  identical   -[IOParallelPort statusWord]
+     0     14     14  masked-eq   -[IOParallelPort unlockSize]
+     0      7      7  identical   -[IOParallelPort waitForever]
+     0     14     14  masked-eq   _ppclose
+     1     29     29  masked-eq   -[IOParallelPort attachInterruptPort]
+     1     34     34  masked-eq   -[IOParallelPort setBlockSize:]
+     1     34     34  masked-eq   -[IOParallelPort setMinPhys:]
+     1     18     18  masked-eq   _ppminphys
+     2     11      9              -[IOParallelPort controlRegisterContents]
+     2     11      9              -[IOParallelPort statusRegisterContents]
+     2     48     48  masked-eq   _ppread
+     4     23     21  masked-eq   -[IOParallelPort msgTypeToIOReturn:]
+     4     23     21              +[IOParallelPort probe:]
+     4     71     71  masked-eq   -[IOParallelPort free]
+     5     59     59  masked-eq   -[IOParallelPort getIntValues:forParameter:count:]
+     6     46     46              -[IOParallelPort cmdBufExec:]
+     8     13     11              -[IOParallelPort isInitialized]
+    11     27     30  masked-eq   -[IOParallelPort cmdBufAlloc]
+    13     47     46              -[IOParallelPort waitForCmdBuf]
+    14     24     23              -[IOParallelPort printerInit]
+    17     45     43              -[IOParallelPort _waitForDevice:isReady:]
+    22     43     41              _ppopen
+    27     93     95              -[IOParallelPort writeToPort]
+    55     84     80              __strobeChar
+    60     76     73              -[IOParallelPort initDevice]
+    61     87     85              _IOParallelPortInterruptHandler
+    68     52     48              -[IOParallelPort probeForController]
+    77    172    188              _ppioctl
+    80    139    141              _ppwrite
+    83     73     81  masked-eq   _ppstrategy
+   193    277    278              -[IOParallelPort initFromDeviceDescription:]
+   203    208    203              _IOParallelPortThread
+
+75 functions: 40 byte-identical, 35 differing, 0 unpaired
+```

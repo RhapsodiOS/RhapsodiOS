@@ -1467,16 +1467,17 @@ _IOParallelPortThread
 
 ### 8.9 The status rule used
 
-- `assembly-matched` (57) - the reference's full instruction stream was read and our
+- `assembly-matched` (53) - the reference's full instruction stream was read and our
   source is a statement-for-statement transliteration of it with no remaining difference,
   and the function's emitted metadata was verified identical in the rebuilt binary. Used
   for the accessors and the short bodies. Task 8 promoted `msgTypeToIOReturn:`,
-  `cmdBufAlloc`, and `_ppstrategy` (`masked_equal`).
+  `cmdBufAlloc`, and `_ppstrategy` (`masked_equal`). Task 9 demoted the four
+  compiler-shaped skips that stayed `different` on reloc `F31C01A0…`.
 - `control-flow-confirmed` (0) - the reference's full instruction stream was read and our
   source reproduces its block structure, every call target and every constant, but the
   rebuilt output was **not** itself disassembled and compared instruction by instruction.
   Used for the larger functions.
-- `intentional-mismatch` (18) - a deliberate difference remains: 0 (`_waitForDevice:isReady:`
+- `intentional-mismatch` (22) - a deliberate difference remains: 0 (`_waitForDevice:isReady:`
   for-loop with `tries < busyMaxRetries`; leftover is the `inb` stack slot), 112 and 1452
   (Finding 53, uninitialized control byte reconstructed; leftover is gcc 2.x zero-fill /
   immediate fold), 2372 and 2388 (`struct buf` encoding), 3132 (`printerInit` control byte
@@ -1495,4 +1496,25 @@ _IOParallelPortThread
   (`_ppwrite` signed initDevice range without pre-zeroed locals; leftover is
   `esi` vs `ebx` and Apple's extra zeroing), 6708 (`_ppioctl` signed `int cmd` /
   GET-then-SET grouping; leftover is getter/setter tail-merge),
-  7392 and 7404, untouched from the report pass.
+  7392 and 7404, untouched from the report pass. Task 9 demoted 396
+  (`+[IOParallelPort probe:]`, BOOL `setnz` / `and eax, 0FFh` vs `jz` / `mov eax,1` /
+  `xor eax,eax`), 2252 and 2320 (`controlRegisterContents` / `statusRegisterContents`,
+  reference spills `in al, dx` to `[ebp+var_1]` with `sub esp, 4`; rebuilt leaves the
+  byte in `eax`), and 2788 (`isInitialized`, same BOOL materialization as `probe:`).
+
+### Task 9 — four skipped compiler-shaped rows
+
+Task 8 deliberately skipped these four; on final reloc `F31C01A0…` all four remain
+`status=different`, `masked_equal=False`. Demoted to `intentional-mismatch`, reviewer
+Pat Raynor, reason `compiler-shaped leftover after exhausted source-shape list`.
+
+`--name +[IOParallelPort probe:]` (diff 4): reference `jz` / `mov eax, 1` /
+`xor eax, eax`; rebuilt `setnz` / `and eax, 0FFh`.
+
+`--name -[IOParallelPort isInitialized]` (diff 8): reference `jnz` / `mov eax, 1` /
+`xor eax, eax`; rebuilt `xor edx, edx` / `jz` / `inc edx` / `mov eax, edx`.
+
+`--name -[IOParallelPort controlRegisterContents]` and
+`--name -[IOParallelPort statusRegisterContents]` (diff 2 each): reference
+`sub esp, 4` / `in al, dx` / `mov [ebp+var_1], al` / `movzx eax, [ebp+var_1]`;
+rebuilt `in al, dx` / `movzx eax, al` with no stack slot.

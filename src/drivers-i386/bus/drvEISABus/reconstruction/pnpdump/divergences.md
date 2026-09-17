@@ -4912,3 +4912,41 @@ _IOFindNameForValue
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+### Task 6 `+[IODeviceMaster new]` self alloc (2026-09-17)
+
+Allocate the singleton with `[self alloc]` instead of `[super alloc]` so the tool calls `_objc_msgSend` like Apple. Leftover is PIC displacement of `_thisTasksId` and the alloc selector. Accepted compiler-shaped leftover (reviewer Pat Raynor). Tool SHA `D540CDBB13174DE4F60CBFBDEBB70714F3DEAFCCFFB0E1B15BAD1A017441B7F4` (299372). Previously identical rows stayed matched (45). Unpaired count unchanged (10). Tool-only; reloc SHA unchanged.
+
+```
++[IODeviceMaster new]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push ebx                                push ebx
+  call $+5                                call $+5
+  pop ebx                                 pop ebx
+* cmp ds:(_thisTasksId - 6A55h)[ebx], 0   cmp ds:(_thisTasksId - 32DDh)[ebx], 0
+* jnz loc_6A87                            jnz loc_330F
+  mov ecx, ebx                            mov ecx, ebx
+* mov ecx, [ecx+55DBh]                    mov ecx, [ecx+6D23h]
+  push ecx                                push ecx
+  mov ecx, [ebp+arg_0]                    mov ecx, [ebp+arg_0]
+  push ecx                                push ecx
+  call _objc_msgSend                      call _objc_msgSend
+* mov ds:(_thisTasksId - 6A55h)[ebx], eax  mov ds:(_thisTasksId - 32DDh)[ebx], eax
+  call _device_master_self                call _device_master_self
+  mov edx, eax                            mov edx, eax
+* mov eax, ds:(_thisTasksId - 6A55h)[ebx]  mov eax, ds:(_thisTasksId - 32DDh)[ebx]
+  mov [eax+4], edx                        mov [eax+4], edx
+* mov eax, ds:(_thisTasksId - 6A55h)[ebx]  mov eax, ds:(_thisTasksId - 32DDh)[ebx]
+  mov ebx, [ebp+var_4]                    mov ebx, [ebp+var_4]
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

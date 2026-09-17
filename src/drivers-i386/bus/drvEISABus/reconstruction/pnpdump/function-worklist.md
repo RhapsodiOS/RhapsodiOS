@@ -277,7 +277,7 @@ Accepted 2026-09-17: remaining `none` hand-written rows are `intentional-mismatc
 - `-[pnpIOPort print]` (shared, diff 12; reloc different d=9): none — Apple tool calls `_printf`, reloc both call `_IOLog`; dual-bar forbids swapping
 - `-[PnPDeviceResources initForBufNoHeader:Length:CSN:]` (shared, diff 13; reloc different d=6): none — PIC selectors plus `_printf` vs `_IOLog` on the error path
 - `-[PnPLogicalDevice setDeviceName:Length:]` (shared, diff 14; reloc different d=14): `if (_deviceNameLength == 0)` plus signed `copyLength = 0x4f; if (copyLength > length)` — **tried, kept**; leftover is IDA `__src` vs `arg_8` plus jump labels; reloc **masked_equal**; tool **accepted** compiler-shaped
-- `+[IODeviceMaster new]` (tool-only, diff 15): local vs expression for the allocated object
+- `+[IODeviceMaster new]` (tool-only, diff 15): local vs expression for the allocated object — **tried, kept**; leftover is PIC of `_thisTasksId` / alloc selector; **accepted** compiler-shaped
 - `-[PnPResources addDMA:]` (shared, diff 15; reloc different d=9): nested `[[_dma list] addObject:]` (local vs expression) — **tried, kept**; reloc **masked_equal**; tool leftover is PIC selector displacements; **accepted** compiler-shaped
 - `-[PnPResources addIOPort:]` (shared, diff 15; reloc different d=9): nested `[[_port list] addObject:]` (local vs expression) — **tried, kept**; reloc **masked_equal**; tool leftover is PIC selector displacements; **accepted** compiler-shaped
 - `-[PnPResources addIRQ:]` (shared, diff 15; reloc different d=9): nested `[[_irq list] addObject:]` (local vs expression) — **tried, kept**; reloc **masked_equal**; tool leftover is PIC selector displacements; **accepted** compiler-shaped

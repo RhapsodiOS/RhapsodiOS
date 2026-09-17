@@ -58,7 +58,7 @@ static id thisTasksId = nil;
 + new
 {
     if (thisTasksId == nil) {
-        thisTasksId = [super alloc];
+        thisTasksId = [self alloc];
         ((IODeviceMaster *)thisTasksId)->deviceMasterPort = device_master_self();
     }
     return thisTasksId;

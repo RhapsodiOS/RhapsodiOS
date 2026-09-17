@@ -13,7 +13,6 @@ dir     bison-1               all
 dir     boot-2                all
 dir     bootstrap_cmds-1      all
 dir     bsdmake-1             all
-dir     buildtools-2          all
 dir     cc-1                  all
 dir     cctools-2             all
 dir     cdis-3                all
@@ -23,8 +22,6 @@ dir     cvs-1                 all
 dir     developer_cmds-1      all
 dir     diskdev_cmds-1        all
 dir     doc_cmds-1            all
-dir     dpkg_scriptlib-1      all
-dir     dpkg-3                all
 dir     driverkit-3           all
 dir     driverTools-1         all
 dir     enscript-1            all

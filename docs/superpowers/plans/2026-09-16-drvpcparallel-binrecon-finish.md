@@ -14,7 +14,7 @@
 
 | File | Responsibility |
 |---|---|
-| `vm/build-i386-input-recon.sh` | Guest harness. Restore if missing; keep a sibling copy and add `drvPCParallel` otherwise. Builds from the `.drvproj` so PreLoad/PostLoad run. Stages `_reloc` plus tools. |
+| `vm/build-i386-input-recon.sh` | Guest harness. Restore if missing; keep a sibling copy and add `drvPCParallel` otherwise. Builds `.lksproj` first (reloc gate), then attempts `.drvproj` for tools. Stages `_reloc` plus tools. |
 | `tools/binrecon/profiles/parallelport.json` | Add `rebuilt` path. IDA on, Ghidra off, angr stays on for the reference. |
 | `tools/binrecon/profiles/installppdev.json` | Phase 3. IDA-only. |
 | `tools/binrecon/profiles/removeppdev.json` | Phase 3. IDA-only. |
@@ -149,7 +149,7 @@ If `vm/build-i386-input-recon.sh` is already in the worktree with another driver
 
 - [ ] **Step 2: Write or extend the harness**
 
-POSIX Bourne only. No `local`. No bashisms. Do not use `set -e` on predicates (Rhapsody `/bin/sh` applies `set -e` inside `if`). Prefer no `set -e` at all. CR-strip Makefiles. `gnumake RC_ARCHS=i386 INCLUDED_ARCHS=i386`. Gate on `ParallelPort_reloc` presence, not `gnumake`'s exit code. Build from the `.drvproj` directory so `TOOLS` recurse into PreLoad/PostLoad. Stage under `/build/out/i386/drvPCParallel/ParallelPort.config/`. Copy `InstallPPDev` and `RemovePPDev` if they exist; warn if they do not; do not fail the arm.
+POSIX Bourne only. No `local`. No bashisms. Do not use `set -e` on predicates (Rhapsody `/bin/sh` applies `set -e` inside `if`). Prefer no `set -e` at all. CR-strip Makefiles. `gnumake RC_ARCHS=i386 INCLUDED_ARCHS=i386`. Gate on `ParallelPort_reloc` presence, not `gnumake`'s exit code. Build the Kernel Server `.lksproj` first (required); then attempt the `.drvproj` for tools (optional — do not fail the arm if drvproj/tools die). Stage under `/build/out/i386/drvPCParallel/ParallelPort.config/`. Copy `InstallPPDev` and `RemovePPDev` if they exist; warn if they do not; do not fail the arm.
 
 If creating the file from scratch, this is the whole script:
 
@@ -196,10 +196,21 @@ if [ ! -d "$DRVPROJ" ]; then
 	exit 1
 fi
 
-echo "======== build $NAME ($DRV) ========"
+LKS="$DRVPROJ/PCParallelPort.lksproj"
+if [ ! -d "$LKS" ]; then
+	echo "FAILED: no PCParallelPort.lksproj" >&2
+	exit 1
+fi
+
+echo "======== build $NAME Kernel Server ========"
+cd "$LKS" || exit 1
+gnumake RC_ARCHS=i386 INCLUDED_ARCHS=i386
+echo "lks make exit=$?"
+
+echo "======== build $NAME Driver (tools) ========"
 cd "$DRVPROJ" || exit 1
 gnumake RC_ARCHS=i386 INCLUDED_ARCHS=i386
-echo "make exit=$?"
+echo "drvproj make exit=$?"
 
 RELOC=`find "$SRC" -name "${NAME}_reloc" -type f 2>/dev/null | head -1`
 if [ -z "$RELOC" ] || [ ! -f "$RELOC" ]; then
@@ -228,7 +239,7 @@ echo "=== input-recon done fail=0 built: $DRV ==="
 ls -l "$STAGE"
 ```
 
-If the file already exists, add a `drvPCParallel)` arm with `NAME=ParallelPort` and `PROJ=PCParallelPort.drvproj`. That arm must `cd` into the `.drvproj` (not only the `.lksproj`) and stage tools as above, even if sibling arms still build from their `.lksproj`. Keep existing arms and their stage paths. Do not change another driver's `NAME`/`PROJ`.
+If the file already exists, add a `drvPCParallel)` arm with `NAME=ParallelPort` and `PROJ=PCParallelPort.drvproj`. That arm must build the `.lksproj` first, then attempt the `.drvproj` for tools, and stage tools as above, even if sibling arms still build only from their `.lksproj`. Keep existing arms and their stage paths. Do not change another driver's `NAME`/`PROJ`.
 
 LF line endings. No CRLF.
 

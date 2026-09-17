@@ -65,3 +65,43 @@ Rebuilt tool SHA `0B8B3593E3D22E53D415CA32D3109648A6331CB5064800CF3C58CEF0A34A59
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+### Task 6 `setHigh:Level:` if-shape (2026-09-17)
+
+Inverted the outer test to `if (high)`. Apple `jz` polarity and flag offsets (`4Ah`/`48h`/`4Bh`/`49h`) now match. Leftover is register allocation (`edx`/`al` vs `eax`/`dl`). Accepted as compiler-shaped leftover (reviewer Pat Raynor). Tool SHA `0342C57793A44AAED54A639A34BF13828476773C3E70E6495C0CF403C8440766`.
+
+```
+-[pnpIRQ setHigh:Level:]
+  status=different raw_equal=False masked_equal=False
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+* mov edx, [ebp+self]                     mov eax, [ebp+self]
+* mov al, [ebp+arg_C]                     mov dl, [ebp+arg_C]
+  cmp [ebp+arg_8], 0                      cmp [ebp+arg_8], 0
+* jz loc_431C                             jz loc_6824
+* test al, al                             test dl, dl
+* jz loc_4314                             jz loc_681C
+* mov byte ptr [edx+4Ah], 1               mov byte ptr [eax+4Ah], 1
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+* mov byte ptr [edx+48h], 1               mov byte ptr [eax+48h], 1
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+* test al, al                             test dl, dl
+* jz loc_4328                             jz loc_6830
+* mov byte ptr [edx+4Bh], 1               mov byte ptr [eax+4Bh], 1
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+* mov byte ptr [edx+49h], 1               mov byte ptr [eax+49h], 1
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

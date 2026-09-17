@@ -1673,12 +1673,12 @@
       "names": [
         "-[pnpIRQ setHigh:Level:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 56,
       "source_line": 153,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIRQ.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 16164,
@@ -3935,7 +3935,7 @@
       "status": "unexamined"
     }
   ],
-  "rebuilt_sha256": "BBD159B9E775073D3F1571C95746D4B2F13D48D9F171C161DB5D7FB1FCF88B7D",
+  "rebuilt_sha256": "1F1DBE7981F9EB97E47E261B99CCB57FDC56EECF3F8F6EEC97183C254918A730",
   "reference_sha256": "8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23",
   "schema_version": "ledger-v1"
 }

@@ -269,7 +269,7 @@ functions and have no experiment list.
 - `_IOFindValueForName` (tool-only, diff 9): loop shape of the table walk
 - `-[PnPLogicalDevice free]` (shared, diff 10; reloc different d=3): none — extra PIC selector push plus super_class vs ext leftover
 - `-[PnPLogicalDevice init]` (shared, diff 11; reloc different d=1): none — PIC selector leftover; reloc is class-pointer names only
-- `-[pnpIRQ setHigh:Level:]` (shared, diff 11; reloc different d=11): invert outer test to `if (high)` / `else` (if vs else if)
+- `-[pnpIRQ setHigh:Level:]` (shared, diff 11; reloc different d=11): invert outer test to `if (high)` / `else` (if vs else if) — **tried, kept**; leftover is register allocation (`edx`/`al` vs `eax`/`dl`); **accepted** compiler-shaped on both
 - `_IOFindNameForValue` (tool-only, diff 11): loop shape of the table walk
 - `-[PnPDeviceResources deviceWithID:]` (shared, diff 12; reloc different d=10): loop shape: `if ([device ID] != id) { index++; continue; } return device` instead of break
 - `-[pnpIOPort print]` (shared, diff 12; reloc different d=9): none — Apple tool calls `_printf`, reloc both call `_IOLog`; dual-bar forbids swapping

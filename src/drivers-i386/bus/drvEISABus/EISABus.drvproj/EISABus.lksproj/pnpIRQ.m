@@ -152,17 +152,17 @@ extern char verbose;
  */
 - setHigh:(BOOL)high Level:(BOOL)level
 {
-    if (!high) {
-        if (level) {
-            _flag3 = 1;  /* low, level */
-        } else {
-            _flag1 = 1;  /* low, edge */
-        }
-    } else {
+    if (high) {
         if (level) {
             _flag2 = 1;  /* high, level */
         } else {
             _highLevel = 1;  /* high, edge */
+        }
+    } else {
+        if (level) {
+            _flag3 = 1;  /* low, level */
+        } else {
+            _flag1 = 1;  /* low, edge */
         }
     }
 

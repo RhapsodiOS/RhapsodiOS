@@ -24,7 +24,7 @@ CFLAGS := -target i386-unknown-windows -std=gnu89 -ffreestanding \
           -Wno-implicit-int -Wno-implicit-function-declaration \
           -D__ARCHITECTURE__=\"i386\" -D_KERNEL -DDONT_USE_ASM \
           -I. -I$(BOOT2)/libsaio -I$(BOOT2)/libsa -I$(BOOT2)/util \
-          -Ivendor_includes -I$(KERNEL7) -I$(KERNEL7)/bsd -I$(CCTOOLS) \
+          -I$(KERNEL7) -I$(KERNEL7)/bsd -I$(CCTOOLS) -Ivendor_includes \
           -include bootefi_memory_override.h
 
 # sys.c's own `#define BIG_ENDIAN_INTEL_FS __LITTLE_ENDIAN__` is always true

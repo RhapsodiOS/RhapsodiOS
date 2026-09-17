@@ -10,7 +10,8 @@
 #define MAX_DISKS       8
 #define FIRST_BIOSDEV   0x80
 
-/* Sector number of the NeXT disk label (matches disk.c's own DISKLABEL). */
+/* Sector number of the NeXT disk label (matches disk.c's own DISKLABEL).
+ * Mirrors src/boot-2/i386/libsaio/disk.c's DISKLABEL; keep in sync. */
 #define DISKLABEL       15
 
 static EFI_GUID gBlockIoGuid = EFI_BLOCK_IO_PROTOCOL_GUID;
@@ -43,6 +44,8 @@ static int looks_like_rhapsody(EFI_BLOCK_IO_PROTOCOL *bio)
     if (EFI_ERROR(bio->ReadBlocks(bio, bio->Media->MediaId, DISKLABEL,
                                   sizeof(label), label)))
         return 0;
+    /* DL_V3 ("dlV3"), raw big-endian bytes -- mirrors the pattern checked
+     * against dl_version in src/boot-2/i386/libsaio/disk.c; keep in sync. */
     return label[0] == 0x64 && label[1] == 0x6c &&
            label[2] == 0x56 && label[3] == 0x33;
 }
@@ -55,7 +58,7 @@ int efi_disk_init(void)
     UINTN size = 0, i;
     EFI_STATUS st;
     EFI_BLOCK_IO_PROTOCOL *cand[MAX_DISKS];
-    int ncand, rhapsody_idx = -1;
+    int ncand, rhapsody_idx = -1, nmatches = 0;
 
     st = gBS->LocateHandle(ByProtocol, &gBlockIoGuid, 0, &size, 0);
     if (st != EFI_BUFFER_TOO_SMALL)
@@ -76,11 +79,25 @@ int efi_disk_init(void)
             continue;
         if (!bio->Media->MediaPresent || bio->Media->LogicalPartition)
             continue;
-        if (rhapsody_idx < 0 && looks_like_rhapsody(bio))
-            rhapsody_idx = ncand;
+        if (looks_like_rhapsody(bio)) {
+            if (rhapsody_idx < 0)
+                rhapsody_idx = ncand;
+            nmatches++;
+        }
         cand[ncand++] = bio;
     }
     gBS->FreePool(handles);
+
+    if (rhapsody_idx >= 0) {
+        printf("rhapsody disk: handle %d selected for biosdev 0x80\n",
+               rhapsody_idx);
+        if (nmatches > 1)
+            printf("warning: %d handles matched the Rhapsody disk label; "
+                   "using the first\n", nmatches);
+    } else {
+        printf("rhapsody disk: no handle matched the disk label; "
+               "falling back to enumeration order\n");
+    }
 
     ndisks = 0;
     if (rhapsody_idx >= 0)

@@ -2097,3 +2097,82 @@ Omit reciprocal `_bit16=0`/`_bit8=0` stores and the explicit `return self` so th
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+### Task 6 `-[pnpIRQ initFrom:Length:]` mask/flags expressions (2026-09-17)
+
+Load the IRQ mask and flag byte from the buffer expression instead of locals. Leftover is extra edi buffer copy, IDA class-pointer / verbose names, and jump labels. Accepted compiler-shaped leftover (reviewer Pat Raynor). Reloc SHA `9F4690F3B9178CA88EA6C50FB73C3D68F29A6C304C153D950EF5E3EE90495FF1` (603588). Previously identical rows stayed matched (46). Unpaired count unchanged (11). Kernel-only reloc statuses were not reopened.
+
+```
+-[pnpIRQ initFrom:Length:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 8                              sub esp, 8
+* push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  mov ebx, [ebp+self]                     mov ebx, [ebp+self]
+  mov esi, [ebp+arg_8]                    mov esi, [ebp+arg_8]
+  mov ecx, ds:paInit                      mov ecx, ds:paInit
+  push ecx                                push ecx
+  mov [ebp+var_8.receiver], ebx           mov [ebp+var_8.receiver], ebx
+* mov ecx, ds:stru_A584.ext               mov ecx, ds:stru_A4F0.ext
+  mov [ebp+var_8.super_class], ecx        mov [ebp+var_8.super_class], ecx
+  lea eax, [ebp+var_8]                    lea eax, [ebp+var_8]
+  push eax                                push eax
+  call near ptr _objc_msgSendSuper        call near ptr _objc_msgSendSuper
+* mov edi, esi
+  mov dword ptr [ebx+44h], 0              mov dword ptr [ebx+44h], 0
+  xor edx, edx                            xor edx, edx
+  add esp, 8                              add esp, 8
+  nop                                     nop
+  nop                                     nop
+* nop                                     movzx eax, word ptr [esi]
+* movzx eax, word ptr [edi]
+  bt eax, edx                             bt eax, edx
+* jnb loc_3E5E                            jnb loc_49A2
+  mov eax, [ebx+44h]                      mov eax, [ebx+44h]
+  mov [ebx+eax*4+4], edx                  mov [ebx+eax*4+4], edx
+  inc dword ptr [ebx+44h]                 inc dword ptr [ebx+44h]
+  inc edx                                 inc edx
+  cmp edx, 0Fh                            cmp edx, 0Fh
+* jle loc_3E4C                            jle loc_4990
+  mov byte ptr [ebx+48h], 1               mov byte ptr [ebx+48h], 1
+  cmp [ebp+arg_C], 2                      cmp [ebp+arg_C], 2
+* jle loc_3E97                            jle loc_49DB
+  mov cl, [esi+2]                         mov cl, [esi+2]
+  and cl, 1                               and cl, 1
+  mov [ebx+48h], cl                       mov [ebx+48h], cl
+  mov al, [esi+2]                         mov al, [esi+2]
+  shr al, 1                               shr al, 1
+  and al, 1                               and al, 1
+  mov [ebx+49h], al                       mov [ebx+49h], al
+  mov al, [esi+2]                         mov al, [esi+2]
+  shr al, 2                               shr al, 2
+  and al, 1                               and al, 1
+  mov [ebx+4Ah], al                       mov [ebx+4Ah], al
+  mov al, [esi+2]                         mov al, [esi+2]
+  shr al, 3                               shr al, 3
+  and al, 1                               and al, 1
+  mov [ebx+4Bh], al                       mov [ebx+4Bh], al
+* cmp ds:_verbose_0, 0                    cmp ds:_verbose, 0
+* jz loc_3EAD                             jz loc_49F1
+  mov ecx, ds:paPrint                     mov ecx, ds:paPrint
+  push ecx                                push ecx
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov eax, ebx                            mov eax, ebx
+* lea esp, [ebp-14h]                      lea esp, [ebp-10h]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+* pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

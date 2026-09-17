@@ -48,7 +48,6 @@ extern char verbose;
 - initFrom:(void *)buffer Length:(int)length
 {
     unsigned char *data = (unsigned char *)buffer;
-    unsigned short irqMask;
     int i;
 
     /* Call superclass init */
@@ -57,12 +56,9 @@ extern char verbose;
     /* Initialize count */
     _count = 0;
 
-    /* Parse IRQ mask (first 2 bytes) */
-    irqMask = *(unsigned short *)data;
-
-    /* Add each set bit as an IRQ */
+    /* Add each set bit in the IRQ mask as an IRQ */
     for (i = 0; i < 16; i++) {
-        if ((irqMask >> i) & 1) {
+        if ((*(unsigned short *)data >> i) & 1) {
             _irqs[_count] = i;
             _count++;
         }
@@ -73,11 +69,10 @@ extern char verbose;
 
     /* Parse flags byte if present (length > 2) */
     if (length > 2) {
-        unsigned char flags = data[2];
-        _highLevel = flags & 1;
-        _flag1 = (flags >> 1) & 1;
-        _flag2 = (flags >> 2) & 1;
-        _flag3 = (flags >> 3) & 1;
+        _highLevel = data[2] & 1;
+        _flag1 = (data[2] >> 1) & 1;
+        _flag2 = (data[2] >> 2) & 1;
+        _flag3 = (data[2] >> 3) & 1;
     }
 
     /* Print if verbose */

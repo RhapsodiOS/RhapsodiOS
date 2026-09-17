@@ -6,6 +6,28 @@ EFI_SYSTEM_TABLE  *gST;
 EFI_BOOT_SERVICES *gBS;
 EFI_HANDLE         gImageHandle;
 
+/* Follow-up diagnostic: is the 0x100000-0x700000 refusal self-collision
+ * with our own loaded image, and what alternatives exist?  Diagnostic-only
+ * additions, not part of the loader. */
+#define EFI_LOADED_IMAGE_PROTOCOL_GUID \
+  {0x5b1b31a1,0x9562,0x11d2,{0x8e,0x3f,0x00,0xa0,0xc9,0x69,0x72,0x3b}}
+
+typedef struct {
+    UINT32      Revision;
+    EFI_HANDLE  ParentHandle;
+    void       *SystemTable;
+    EFI_HANDLE  DeviceHandle;
+    void       *FilePath;
+    void       *Reserved;
+    UINT32      LoadOptionsSize;
+    void       *LoadOptions;
+    void       *ImageBase;
+    UINT64      ImageSize;
+    UINT32      ImageCodeType;
+    UINT32      ImageDataType;
+    void       *Unload;
+} EFI_LOADED_IMAGE_PROTOCOL;
+
 static void puts16(CHAR16 *s)
 {
     gST->ConOut->OutputString(gST->ConOut, s);
@@ -87,6 +109,85 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
         puts16(EFI_ERROR(st) ? L"REFUSED " : L"granted ");
         puthex(st);
         puts16(L"\r\n");
+    }
+
+    /* --- Follow-up diagnostic 1: where is our own image loaded? --- */
+    {
+        EFI_GUID guid = EFI_LOADED_IMAGE_PROTOCOL_GUID;
+        EFI_LOADED_IMAGE_PROTOCOL *li = 0;
+        EFI_STATUS st = gBS->HandleProtocol(gImageHandle, &guid,
+                                             (void **)&li);
+        puts16(L"LoadedImage: ");
+        if (EFI_ERROR(st)) {
+            puts16(L"HandleProtocol failed "); puthex(st); puts16(L"\r\n");
+        } else {
+            puts16(L"ImageBase "); puthex((UINT64)(UINTN)li->ImageBase);
+            puts16(L" ImageSize "); puthex(li->ImageSize);
+            puts16(L"\r\n");
+        }
+    }
+
+    /* --- Follow-up diagnostic 2: 1MB sub-blocks across 0x100000-0x700000 */
+    puts16(L"Sub-block reservations 0x100000-0x700000:\r\n");
+    {
+        EFI_PHYSICAL_ADDRESS base;
+        for (base = 0x100000; base < 0x700000; base += 0x100000) {
+            EFI_PHYSICAL_ADDRESS addr = base;
+            EFI_STATUS st = gBS->AllocatePages(AllocateAddress, EfiLoaderData,
+                                               0x100000 / 4096, &addr);
+            puts16(L"  "); puthex(base); puts16(L" ");
+            puts16(EFI_ERROR(st) ? L"REFUSED " : L"granted ");
+            puthex(st);
+            puts16(L"\r\n");
+        }
+    }
+
+    /* --- Follow-up diagnostic 3: relocation candidates above the conflict */
+    puts16(L"Relocation candidates:\r\n");
+    {
+        EFI_PHYSICAL_ADDRESS addr = 0x1000000;
+        EFI_STATUS st = gBS->AllocatePages(AllocateAddress, EfiLoaderData,
+                                           0x100000 / 4096, &addr);
+        puts16(L"  AllocateAddress 0x1000000 (1MB) ");
+        puts16(EFI_ERROR(st) ? L"REFUSED " : L"granted ");
+        puthex(st);
+        puts16(L"\r\n");
+    }
+    {
+        EFI_PHYSICAL_ADDRESS addr = 0x10000000; /* max address ceiling */
+        EFI_STATUS st = gBS->AllocatePages(AllocateMaxAddress, EfiLoaderData,
+                                           0x100000 / 4096, &addr);
+        puts16(L"  AllocateMaxAddress <=0x10000000 (1MB) ");
+        puts16(EFI_ERROR(st) ? L"REFUSED " : L"granted ");
+        puthex(st);
+        puts16(L" got "); puthex(addr);
+        puts16(L"\r\n");
+    }
+    {
+        EFI_PHYSICAL_ADDRESS addr = 0;
+        EFI_STATUS st = gBS->AllocatePages(AllocateAnyPages, EfiLoaderData,
+                                           0x100000 / 4096, &addr);
+        puts16(L"  AllocateAnyPages (1MB) ");
+        puts16(EFI_ERROR(st) ? L"REFUSED " : L"granted ");
+        puthex(st);
+        puts16(L" got "); puthex(addr);
+        puts16(L"\r\n");
+    }
+
+    /* --- Follow-up diagnostic 4: finer-grain null-page probe --- */
+    puts16(L"Null-page fine probe:\r\n");
+    {
+        EFI_PHYSICAL_ADDRESS pages3[3] = { 0x0, 0x1000, 0x2000 };
+        int i;
+        for (i = 0; i < 3; i++) {
+            EFI_PHYSICAL_ADDRESS addr = pages3[i];
+            EFI_STATUS st = gBS->AllocatePages(AllocateAddress, EfiLoaderData,
+                                               1, &addr);
+            puts16(L"  "); puthex(pages3[i]); puts16(L" ");
+            puts16(EFI_ERROR(st) ? L"REFUSED " : L"granted ");
+            puthex(st);
+            puts16(L"\r\n");
+        }
     }
 
     for (;;)

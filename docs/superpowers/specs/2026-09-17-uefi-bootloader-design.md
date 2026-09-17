@@ -111,7 +111,23 @@ reprograms the VGA hardware itself (`src/kernel-7/bsd/dev/i386/BasicConsole.c`
 ### The disk seam
 
 `efi_disk.c` supplies `ebiosread` as a `BLOCK_IO->ReadBlocks` call and keeps
-everything above it, `Biosread` included. `read_label`'s MBR and Rhapsody disklabel walk, the UFS
+everything above it, `Biosread` included.
+
+### Filesystem byte order
+
+`sys.c` defines `BIG_ENDIAN_INTEL_FS` as `__LITTLE_ENDIAN__`, which is always true
+on i386, and that gates the superblock, inode and directory-block swaps. It must be
+**off** for this target, so `sys.c`'s translation unit alone is compiled with
+`-D__LITTLE_ENDIAN__=0`.
+
+This is not a bug introduced here. The source is the Darwin 0.3 drop, which was
+PPC-oriented, and Apple's UFS was big-endian on every architecture. Authentic
+Rhapsody DR2 Intel media, from the NeXT lineage, is little-endian: the original
+guest disk's superblock magic is stored as `54 19 01 00`, little-endian `0x011954`.
+The two eras of the codebase disagree, and our target is the older one.
+
+The flag is scoped to `sys.c` rather than applied build-wide, because other headers
+in that translation unit may also consult `__LITTLE_ENDIAN__` for struct layout. `read_label`'s MBR and Rhapsody disklabel walk, the UFS
 superblock and inode logic in `sys.c`, and `hd(0,a)/mach_kernel` path parsing
 all come across untouched.
 

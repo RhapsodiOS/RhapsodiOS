@@ -2062,6 +2062,10 @@ Inlined key compares, reversed `index >= count`, and a signed `extendedHalf` yie
 
 Inverted `_owner != nil` and `respondsTo:` so grant / IOLog are the `jz` targets. Inlined `IOLog(..., [self name], [_owner name])` so ownerName stays on the stack (`push eax` / `add esp, 14h`) instead of `ebx`. `--name` differs only by jump labels. Rebuilt `E59F9DD4DCA17A66F7881219E3A43063D744E0A495A3BCBF54CCCDC9A19ADD09`. Task 8 gates unchanged. Unpaired 0.
 
+### `_doEscape` (1100) — accepted leftover
+
+`0xE0` is tested before copying `lastExtended`. `lastKey` compares are byte `cmp` plus `sar` of `currentKey`. Remaining leftover is extra `edi`, last-conjunct `jz` vs `jnz`+`jmp`, and `push esi` vs `add esp,-2; push si`. Rebuilt `52AB2AE532AA87FEBB04829BF8B30630CCD1F61B71072B64B2E27569E3652752`. Task 8 gates unchanged. Unpaired 0.
+
 ## Task 4 stop (unpaired growth)
 
 `readConfigTable:` ivar-in-branch experiment made `--list` report 50 functions / 2 unpaired (`missing-rebuilt __PS2KeyboardNumKeysDown`, `missing-reference _resetEscapes`). That is a layout or linkage finding. Experiment reverted. After rebuild, SHA is again `20C8BD6E1243FE4CB6D1CDCC51654CBADF65E118370ACBF8D49EBE05B3631C07`, `--list` 49 / 0 unpaired. Do not repeat the ivar-in-NULL-branch store. Campaign continues on other functions.

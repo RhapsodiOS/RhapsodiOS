@@ -13,7 +13,7 @@ Analyzer: IDA 9.2 only (`analyzers.angr.enabled` is false; Ghidra stays off).
 | | SHA-256 | size |
 | --- | --- | --- |
 | Reference | `AB413CA3919950F22A1F5D10B0BF1167387FEF320C9FB82A3EA66E586A6BE02A` | 43460 |
-| Rebuilt | `E59F9DD4DCA17A66F7881219E3A43063D744E0A495A3BCBF54CCCDC9A19ADD09` | 157520 |
+| Rebuilt | `52AB2AE532AA87FEBB04829BF8B30630CCD1F61B71072B64B2E27569E3652752` | 157520 |
 
 `__TEXT,__text`: reference 4952, rebuilt 4660.
 
@@ -267,6 +267,9 @@ Task 8 regression gate. `--name` shows then/else order on `respondsTo:`, but do 
 ### `_doEscape` (diff 50)
 
 1. Test `data == 0xE0` before copying `lastExtended` into a local, matching the reference's `cmp dl, 0E0h` before the `mov al, ds:_lastExtended` else path.
+   **Kept:** prefix compare is immediate.
+2. Byte-compare `lastKey` against `data` / `sar` of `currentKey` instead of `(lastKey & 0xFF)` and unsigned `>> 8`.
+   **Kept, leftover accepted:** `cmp byte ptr` / `sar` match. Remaining starred rows are extra `edi`, `jz` vs `jnz`+`jmp` on the last conjunct, `push esi` vs `push si`, and register names. Rebuild `52AB2AE532AA87FEBB04829BF8B30630CCD1F61B71072B64B2E27569E3652752`. `intentional-mismatch`.
 
 ### `_scancodeToKeyEvent` (diff 102)
 

@@ -440,14 +440,13 @@ static BOOL doEscape(unsigned char data)
     unsigned short currentKey;
     EscapeSequence *escapePtr;
 
-    previousExtended = lastExtended;
-
     /* Check if this is the extended scancode prefix (0xE0) */
     if (data == 0xE0) {
         lastExtended = 1;
         return NO;
     }
 
+    previousExtended = lastExtended;
     lastExtended = 0;
 
     /* Combine extended flag with scancode to form a 16-bit key value */
@@ -455,7 +454,8 @@ static BOOL doEscape(unsigned char data)
                  (unsigned short)data;
 
     /* Ignore a repeat of the key we last looked at */
-    if ((lastKey & 0xFF) != data || (lastKey >> 8) != previousExtended) {
+    if ((unsigned char)lastKey != data ||
+        (unsigned char)((short)currentKey >> 8) != (unsigned char)(lastKey >> 8)) {
         lastKey = currentKey;
 
         for (escapePtr = escapes; escapePtr->callback != NULL; escapePtr++) {

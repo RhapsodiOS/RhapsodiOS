@@ -2042,6 +2042,18 @@ Scalar parked locals were copy-propagated. A `PS2KeyboardEvent` local filled the
 
 `unsigned int scancode` grew unpaired `--list` and was reverted. Struct-assign `pendingEvents[index] = *event` copies goingDown as a dword and also laid `and eax, 0FFh`. `--name` differs only by jump labels. Rebuilt `71A852D8F98F4393FBEF6ED141A0A499794645D762B0368B157769BF7F2237DD`. Task 8 gates unchanged. Unpaired 0. Do not repeat the unsigned-int scancode local.
 
+### `_getKeyboardData` (1608) — accepted leftover
+
+Free-queue insert is now `jz` to empty; non-empty stores and tempPtr dequeue unlink match. Remaining leftover is empty-insert block placement plus registers. `--name`:
+
+```
+_getKeyboardData
+  status=different raw_equal=False masked_equal=False
+  leftover: empty free-queue insert is laid after the non-empty tail (reference lays it before dequeue as loc_668); tempPtr uses edx where the reference uses eax.
+```
+
+Rebuilt `924B8B12ACB1F6C1F87536930504C244AC75C3460B56E918DDE092906C171FF9`. Task 8 gates unchanged. Unpaired 0.
+
 ## Task 4 stop (unpaired growth)
 
 `readConfigTable:` ivar-in-branch experiment made `--list` report 50 functions / 2 unpaired (`missing-rebuilt __PS2KeyboardNumKeysDown`, `missing-reference _resetEscapes`). That is a layout or linkage finding. Experiment reverted. After rebuild, SHA is again `20C8BD6E1243FE4CB6D1CDCC51654CBADF65E118370ACBF8D49EBE05B3631C07`, `--list` 49 / 0 unpaired. Do not repeat the ivar-in-NULL-branch store. Campaign continues on other functions.

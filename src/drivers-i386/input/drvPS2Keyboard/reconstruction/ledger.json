@@ -473,12 +473,12 @@
       "names": [
         "_getKeyboardData"
       ],
-      "reason": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 158,
       "source_line": 574,
       "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
-      "status": "control-flow-confirmed"
+      "status": "intentional-mismatch"
     },
     {
       "address": 1768,
@@ -1177,7 +1177,7 @@
       "status": "intentional-mismatch"
     }
   ],
-  "rebuilt_sha256": "71A852D8F98F4393FBEF6ED141A0A499794645D762B0368B157769BF7F2237DD",
+  "rebuilt_sha256": "924B8B12ACB1F6C1F87536930504C244AC75C3460B56E918DDE092906C171FF9",
   "reference_sha256": "AB413CA3919950F22A1F5D10B0BF1167387FEF320C9FB82A3EA66E586A6BE02A",
   "schema_version": "ledger-v1"
 }

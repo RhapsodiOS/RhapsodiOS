@@ -579,6 +579,7 @@ unsigned char getKeyboardData(void)
     PS2QueueElement *element;
     PS2QueueElement *nextElement;
     PS2QueueElement *prevElement;
+    PS2QueueElement *tempPtr;
     unsigned char data;
 
     /* Lock the controller for the entire operation */
@@ -594,31 +595,32 @@ unsigned char getKeyboardData(void)
         nextElement = element->next;
         prevElement = element->prev;
 
+        tempPtr = KBD_QUEUE;
         if (nextElement != KBD_QUEUE) {
-            nextElement->prev = prevElement;
-        } else {
-            keyboardQueue.prev = prevElement;
+            tempPtr = nextElement;
         }
+        tempPtr->prev = prevElement;
 
+        tempPtr = KBD_QUEUE;
         if (prevElement != KBD_QUEUE) {
-            prevElement->next = nextElement;
-        } else {
-            keyboardQueue.next = nextElement;
+            tempPtr = prevElement;
         }
+        tempPtr->next = nextElement;
 
         data = element->data;
 
         /* Return the element to the free queue */
-        if (keyboardFreeQueue.next == KBD_FREE_QUEUE) {
+        if (keyboardFreeQueue.next != KBD_FREE_QUEUE) {
+            prevElement = keyboardFreeQueue.prev;
+            element->prev = prevElement;
+            element->next = KBD_FREE_QUEUE;
+            keyboardFreeQueue.prev = element;
+            prevElement->next = element;
+        } else {
             keyboardFreeQueue.next = element;
             keyboardFreeQueue.prev = element;
             element->next = KBD_FREE_QUEUE;
             element->prev = KBD_FREE_QUEUE;
-        } else {
-            element->prev = keyboardFreeQueue.prev;
-            element->next = KBD_FREE_QUEUE;
-            keyboardFreeQueue.prev->next = element;
-            keyboardFreeQueue.prev = element;
         }
     }
 

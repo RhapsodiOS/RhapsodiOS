@@ -13,9 +13,9 @@ Analyzer: IDA 9.2 only (`analyzers.angr.enabled` is false; Ghidra stays off).
 | | SHA-256 | size |
 | --- | --- | --- |
 | Reference | `AB413CA3919950F22A1F5D10B0BF1167387FEF320C9FB82A3EA66E586A6BE02A` | 43460 |
-| Rebuilt | `71A852D8F98F4393FBEF6ED141A0A499794645D762B0368B157769BF7F2237DD` | 157596 |
+| Rebuilt | `924B8B12ACB1F6C1F87536930504C244AC75C3460B56E918DDE092906C171FF9` | 157624 |
 
-`__TEXT,__text`: reference 4952, rebuilt 4664.
+`__TEXT,__text`: reference 4952, rebuilt 4652.
 
 `parity_check.py`: `missing_strings (0)`, `missing_symbols (0)`. Extra symbols 54 (stabs / file names on the unstripped guest `_reloc`).
 
@@ -236,6 +236,13 @@ Task 8 regression gate. `--name` shows then/else order on `respondsTo:`, but do 
 ### `_getKeyboardData` (diff 37)
 
 1. Invert the empty-queue if/else so the hardware read is the `jnz` fall-through and the dequeue unlink is the taken path.
+   **Already the compiled shape.** `if (next == QUEUE)` already lays `jnz` to dequeue. Not inverted.
+2. Invert the free-queue insert (`if (next != FREE)` tail-insert else empty) so the compare is `jz` to the empty insert.
+   **Kept:** free-queue `jz` now matches.
+3. Park `keyboardFreeQueue.prev` in existing `prevElement` and store `prev = element` before `prev->next = element`.
+   **Kept:** non-empty insert store order matches; instruction count 45 → 41.
+4. Unlink the data-queue element through `tempPtr` like `_enqueueKeyboardData`.
+   **Kept, leftover accepted:** dequeue cmp/jz/tempPtr stores now match. Remaining starred rows are empty-insert block placement (reference lays it before dequeue) and register names. Rebuild `924B8B12ACB1F6C1F87536930504C244AC75C3460B56E918DDE092906C171FF9`. `intentional-mismatch`.
 
 ### `_isEscape` (diff 40)
 

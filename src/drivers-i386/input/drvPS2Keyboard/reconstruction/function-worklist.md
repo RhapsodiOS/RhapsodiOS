@@ -13,9 +13,9 @@ Analyzer: IDA 9.2 only (`analyzers.angr.enabled` is false; Ghidra stays off).
 | | SHA-256 | size |
 | --- | --- | --- |
 | Reference | `AB413CA3919950F22A1F5D10B0BF1167387FEF320C9FB82A3EA66E586A6BE02A` | 43460 |
-| Rebuilt | `967883F054B1FC06D89EB5F0BF9E59D8CB973DC61749941686B9042F49E3A1B7` | 157632 |
+| Rebuilt | `20C8BD6E1243FE4CB6D1CDCC51654CBADF65E118370ACBF8D49EBE05B3631C07` | 157692 |
 
-`__TEXT,__text`: reference 4952, rebuilt 4652.
+`__TEXT,__text`: reference 4952, rebuilt 4664.
 
 `parity_check.py`: `missing_strings (0)`, `missing_symbols (0)`. Extra symbols 54 (stabs / file names on the unstripped guest `_reloc`).
 
@@ -173,7 +173,9 @@ Task 8 regression gate. Do not apply the BOOL / `and eax, 0FFh` typed rewrite. A
 ### `-[PS2Keyboard readConfigTable:]` (diff 10)
 
 1. Store the Interface/Handler defaults into the ivars inside each NULL branch (`interfaceId = 3`, `handlerId = 0`) instead of through `interfaceValue` / `handlerValue` locals.
-   **Tried, STOP:** `--list` grew unpaired (`missing-rebuilt __PS2KeyboardNumKeysDown`, `missing-reference _resetEscapes`). Layout/linkage finding. Reverted. Do not grind further.
+   **Tried, STOP:** `--list` grew unpaired (`missing-rebuilt __PS2KeyboardNumKeysDown`, `missing-reference _resetEscapes`). Layout/linkage finding. Reverted. Do not repeat.
+2. Remaining leftover is the join-store (`mov eax, 3` / `xor eax, eax` then `mov [esi+21xh], eax`) versus in-branch ivar stores, plus Interface-path `add esp, 4` scheduling. Other allowed transforms (signedness of the two int locals, inverted NULL tests, declaration order) cannot produce those stores without repeating experiment 1.
+   **Accepted** 2026-09-17: `intentional-mismatch`, compiler-shaped leftover after exhausted source-shape list.
 
 ### `_undoEscape` (diff 10)
 

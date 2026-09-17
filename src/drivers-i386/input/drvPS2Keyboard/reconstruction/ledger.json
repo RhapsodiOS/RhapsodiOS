@@ -833,12 +833,12 @@
       "names": [
         "-[PS2Keyboard readConfigTable:]"
       ],
-      "reason": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 170,
       "source_line": 82,
       "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Keyboard.m",
-      "status": "control-flow-confirmed"
+      "status": "intentional-mismatch"
     },
     {
       "address": 2760,

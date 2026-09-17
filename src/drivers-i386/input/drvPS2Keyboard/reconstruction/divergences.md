@@ -1736,7 +1736,7 @@ Two Task 8 gate names remain open on `--list` (`setAlphaLockFeedback:`, `relinqu
 
 Empty source-shape lists. Reason on each ledger row:
 `compiler-shaped leftover after exhausted source-shape list`. Reviewer: Pat Raynor.
-Rebuilt SHA still `967883F054B1FC06D89EB5F0BF9E59D8CB973DC61749941686B9042F49E3A1B7`.
+Rebuilt SHA `20C8BD6E1243FE4CB6D1CDCC51654CBADF65E118370ACBF8D49EBE05B3631C07`.
 
 ### `-[PS2Keyboard setAlphaLockFeedback:]` (4372) — Task 8 gate, empty by policy
 
@@ -2001,4 +2001,70 @@ Three-statement command-byte edit matches the reference `or`/`and`/`or`. Remaini
 
 ## Task 4 stop (unpaired growth)
 
-`readConfigTable:` ivar-in-branch experiment made `--list` report 50 functions / 2 unpaired (`missing-rebuilt __PS2KeyboardNumKeysDown`, `missing-reference _resetEscapes`). That is a layout or linkage finding. Experiment reverted. After rebuild, SHA is again `20C8BD6E1243FE4CB6D1CDCC51654CBADF65E118370ACBF8D49EBE05B3631C07`, `--list` 49 / 0 unpaired. No further grind.
+`readConfigTable:` ivar-in-branch experiment made `--list` report 50 functions / 2 unpaired (`missing-rebuilt __PS2KeyboardNumKeysDown`, `missing-reference _resetEscapes`). That is a layout or linkage finding. Experiment reverted. After rebuild, SHA is again `20C8BD6E1243FE4CB6D1CDCC51654CBADF65E118370ACBF8D49EBE05B3631C07`, `--list` 49 / 0 unpaired. Do not repeat the ivar-in-NULL-branch store. Campaign continues on other functions.
+
+### `-[PS2Keyboard readConfigTable:]` (2588) — accepted leftover
+
+In-branch `interfaceId = 3` / `handlerId = 0` is the matching source shape and is forbidden after the unpaired `--list` growth. Remaining starred rows are that join-store versus in-branch ivar stores, plus Interface-path `add esp, 4` scheduling. `--name`:
+
+```
+-[PS2Keyboard readConfigTable:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push esi                                push esi
+  push ebx                                push ebx
+  mov esi, [ebp+self]                     mov esi, [ebp+self]
+  mov ebx, [ebp+arg_8]                    mov ebx, [ebp+arg_8]
+  test ebx, ebx                           test ebx, ebx
+* jnz loc_A3C                             jnz loc_D8
+  push offset aPs2keyboardKbd             push offset aPs2keyboardKbd
+  call near ptr _IOLog                    call near ptr _IOLog
+  xor eax, eax                            xor eax, eax
+* jmp loc_ABD                             jmp loc_14D
+  push offset aInterface                  push offset aInterface
+  mov edx, ds:paValueforstring            mov edx, ds:paValueforstring
+  push edx                                push edx
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 0Ch                            add esp, 0Ch
+  test eax, eax                           test eax, eax
+* jnz loc_A6C                             jnz loc_104
+  push offset aPs2keyboardKbd_0           push offset aPs2keyboardKbd_0
+  call near ptr _IOLog                    call near ptr _IOLog
+* mov dword ptr [esi+210h], 3             mov eax, 3
+* jmp loc_A78                             jmp loc_10A
+  push eax                                push eax
+  call near ptr _PCPatoi                  call near ptr _PCPatoi
+*                                         add esp, 4
+  mov [esi+210h], eax                     mov [esi+210h], eax
+* add esp, 4
+  push offset aHandlerId                  push offset aHandlerId
+  mov edx, ds:paValueforstring            mov edx, ds:paValueforstring
+  push edx                                push edx
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 0Ch                            add esp, 0Ch
+  test eax, eax                           test eax, eax
+* jnz loc_AAC                             jnz loc_13C
+  push offset aPs2keyboardKbd_1           push offset aPs2keyboardKbd_1
+  call near ptr _IOLog                    call near ptr _IOLog
+* mov dword ptr [esi+214h], 0             xor eax, eax
+* jmp loc_AB8                             jmp loc_142
+  push eax                                push eax
+  call near ptr _PCPatoi                  call near ptr _PCPatoi
+  mov [esi+214h], eax                     mov [esi+214h], eax
+  mov eax, 1                              mov eax, 1
+  lea esp, [ebp-8]                        lea esp, [ebp-8]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

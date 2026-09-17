@@ -103,7 +103,9 @@ int pkginfo_write(const Package *p, const char *path) {
     emit(f, "pkgver", ver);
     emit(f, "arch", p->architecture);
     emit(f, "pkgdesc", p->description);
+    emit(f, "url", p->url);
     emit(f, "maintainer", p->maintainer);
+    emit(f, "license", p->license && p->license[0] ? p->license : "unknown");
     emit(f, "origin", p->source);
     emit(f, "provides", p->provides);
     emit(f, "replaces", p->replaces);
@@ -117,7 +119,7 @@ int pkginfo_write(const Package *p, const char *path) {
             sbuf_puts(&s, p->build_depends.items[i]);
         }
         joined = sbuf_steal(&s);
-        emit(f, "builddepends", joined);
+        emit(f, "makedepends", joined);
         free(joined);
         sbuf_free(&s);
     }

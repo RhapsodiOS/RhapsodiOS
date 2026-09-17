@@ -128,14 +128,25 @@ TEST(test_pkginfo_write) {
     strlist_push(&p.build_depends, "cc");
     strlist_push(&p.build_depends, "gnumake");
     p.has_build_depends = 1;
-
+    package_set(&p.license, "unknown");
+    package_set(&p.url, "http://example.com/make");
     CHECK_INT(pkginfo_write(&p, "/tmp/rbtest.PKGINFO"), 0);
     out = slurp("/tmp/rbtest.PKGINFO");
     CHECK(out != 0);
     CHECK(strstr(out, "pkgname = gnumake\n") != 0);
     CHECK(strstr(out, "pkgver = 3.79\n") != 0);
     CHECK(strstr(out, "arch = universal-apple-rhapsody\n") != 0);
-    CHECK(strstr(out, "builddepends = cc gnumake\n") != 0);
+    CHECK(strstr(out, "makedepends = cc gnumake\n") != 0);
+    CHECK(strstr(out, "license = unknown\n") != 0);
+    CHECK(strstr(out, "url = http://example.com/make\n") != 0);
+    CHECK(strstr(out, "builddepends =") == 0);
+    CHECK(strstr(out, "pkgrel") == 0);
+
+    package_set(&p.license, 0);
+    CHECK_INT(pkginfo_write(&p, "/tmp/rbtest.PKGINFO"), 0);
+    out = slurp("/tmp/rbtest.PKGINFO");
+    CHECK(out != 0);
+    CHECK(strstr(out, "license = unknown\n") != 0);
     package_free(&p);
     remove("/tmp/rbtest.PKGINFO");
 }

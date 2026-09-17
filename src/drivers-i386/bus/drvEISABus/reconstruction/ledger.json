@@ -1553,12 +1553,12 @@
       "names": [
         "-[pnpIRQ print]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 176,
       "source_line": 187,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIRQ.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 15760,
@@ -1745,12 +1745,12 @@
       "names": [
         "-[pnpDMA print]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 252,
       "source_line": 175,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 16556,
@@ -1913,12 +1913,12 @@
       "names": [
         "-[pnpIOPort print]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 45,
       "source_line": 215,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 17088,
@@ -1961,12 +1961,12 @@
       "names": [
         "-[pnpIOPort initWithBase:Length:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 72,
       "source_line": 125,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 17268,
@@ -2153,12 +2153,12 @@
       "names": [
         "-[pnpMemory print]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 213,
       "source_line": 345,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 18064,
@@ -2441,12 +2441,12 @@
       "names": [
         "-[pnpMemory initWithBase:Length:Bit16:Bit32:HighAddr:Is32:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 117,
       "source_line": 156,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 18528,
@@ -2537,12 +2537,12 @@
       "names": [
         "-[PnPResource init]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 116,
       "source_line": 43,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResource.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 20220,
@@ -2561,12 +2561,12 @@
       "names": [
         "-[PnPResource free]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 77,
       "source_line": 65,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResource.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 20300,
@@ -2657,12 +2657,12 @@
       "names": [
         "-[PnPResources print]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 144,
       "source_line": 540,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 20616,
@@ -2681,12 +2681,12 @@
       "names": [
         "-[PnPResources init]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 245,
       "source_line": 50,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 20864,
@@ -2753,12 +2753,12 @@
       "names": [
         "-[PnPResources free]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 112,
       "source_line": 72,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 22740,
@@ -3093,12 +3093,12 @@
       "names": [
         "-[PnPLogicalDevice init]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 161,
       "source_line": 52,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 24104,
@@ -3117,12 +3117,12 @@
       "names": [
         "-[PnPLogicalDevice free]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 109,
       "source_line": 70,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 24216,
@@ -3623,12 +3623,12 @@
       "names": [
         "-[PnPDeviceResources initForBufNoHeader:Length:CSN:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 156,
       "source_line": 151,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 27768,
@@ -3671,12 +3671,12 @@
       "names": [
         "-[PnPDeviceResources free]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 86,
       "source_line": 178,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 27872,

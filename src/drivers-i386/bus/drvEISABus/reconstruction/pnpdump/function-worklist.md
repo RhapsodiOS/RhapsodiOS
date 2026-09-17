@@ -198,6 +198,8 @@ CRT/dyld/libc rows are not hand-written; they are listed so the paired-tool set 
 then left alone. Unpaired `missing-reference` shared-class names are **not** paired tool
 functions and have no experiment list.
 
+Accepted 2026-09-17: remaining `none` hand-written rows are `intentional-mismatch` in the PnPDump ledger (shared names also on reloc unless already `assembly-matched`). Experiment lists below were not rewritten.
+
 - `-[IODeviceMaster getCharValues:forParameter:objectNumber:count:]` (tool-only, diff 0): none — identical mnemonic stream; `calls differ` only
 - `-[IODeviceMaster getIntValues:forParameter:objectNumber:count:]` (tool-only, diff 0): none — identical mnemonic stream; `calls differ` only
 - `-[IODeviceMaster lookUpByDeviceName:objectNumber:deviceKind:]` (tool-only, diff 0): none — identical mnemonic stream; `calls differ` only

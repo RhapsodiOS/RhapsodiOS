@@ -73,7 +73,7 @@ old Rhapsody toolchain, so `src/boot-2` continues to build unchanged.
 | Component | Origin | Responsibility |
 |---|---|---|
 | `efi_main.c` | new | Entry point, protocol handles, `boot:` prompt, orchestration |
-| `efi_disk.c` | new | `devopen`/`devread` over `EFI_BLOCK_IO_PROTOCOL`; `biosdev` to handle map |
+| `efi_disk.c` | new | `ebiosread` over `EFI_BLOCK_IO_PROTOCOL`, plus the BIOS-layer symbols `disk.c` calls; `biosdev` to handle map |
 | `efi_console.c` | new | `putchar`/`getc`/`printf` backend over `SIMPLE_TEXT_INPUT`/`OUTPUT` |
 | `efi_memory.c` | new | EFI memory map to `convmem`/`extmem`; fixed-address reservation; `malloc`/`free` over `AllocatePool` |
 | `efi.h` | new | Minimal hand-written UEFI headers |
@@ -110,8 +110,8 @@ reprograms the VGA hardware itself (`src/kernel-7/bsd/dev/i386/BasicConsole.c`
 
 ### The disk seam
 
-`efi_disk.c` reimplements `Biosread` as a `BLOCK_IO->ReadBlocks` call and keeps
-everything above it. `read_label`'s MBR and Rhapsody disklabel walk, the UFS
+`efi_disk.c` supplies `ebiosread` as a `BLOCK_IO->ReadBlocks` call and keeps
+everything above it, `Biosread` included. `read_label`'s MBR and Rhapsody disklabel walk, the UFS
 superblock and inode logic in `sys.c`, and `hd(0,a)/mach_kernel` path parsing
 all come across untouched.
 
@@ -124,12 +124,23 @@ loader's **first** action, before any other allocation, is
 
 | Range | Size | Holds |
 |---|---|---|
+| `0x000000`–`0x003000` | 12K | `disk.c`'s sector cache `intbuf`, pinned at `BIOS_ADDR` |
 | `0x011000`–`0x020000` | 60K | `KERNBOOTSTRUCT` |
 | `0x030000`–`0x0A0000` | 448K | `sarld` (`RLD_ADDR`) |
 | `0x100000`–`0x700000` | 6M | Kernel, linked drivers, `sarld` scratch heap (`RLD_MEM_ADDR`), `libsa` arena (`ZALLOC_ADDR`) |
 
-The third range extends to `0x700000` rather than `0x600000` because `sarld`'s
+The last range extends to `0x700000` rather than `0x600000` because `sarld`'s
 statically linked `libsa` allocator initializes its arena at `ZALLOC_ADDR`.
+
+The first range exists because `disk.c` is compiled unchanged rather than
+replaced. `Biosread()` already has a flat-LBA path, taken when
+`uses_ebios[biosdev - 0x80]` is set, which calls `ebiosread(biosdev, secno,
+nsecs)` — exactly the shape an EFI backend wants. Supplying `ebiosread` and
+forcing that path reuses `read_label`, `devopen`, `devread` and the sector
+cache with no edits to `src/boot-2`, at the cost of reserving that fixed cache
+buffer. The range starts at physical 0, which firmware often withholds for
+null-pointer detection; the contingency is to drop `static` from `read_label()`
+and supply a private sector buffer instead.
 
 If firmware refuses a range, the loader aborts and dumps the conflicting
 memory-map descriptor rather than continuing. Whether OVMF grants these ranges

@@ -575,7 +575,7 @@
         "__strobeChar"
       ],
       "size": 280,
-      "source_line": 636,
+      "source_line": 639,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m"
     },
     {

@@ -995,7 +995,7 @@ Now `if ([self registerDevice] == nil)`.
 | 48 | Fixed. `[port interruptMessage]` is fetched once and that 8192-byte buffer is what `msg_receive` fills; the stack struct is gone. |
 | 49 | Fixed. The four accepted codes return 0 without writing, the ranges are exactly -726 to -725 and -738 to -737, and the `ENOMEM` check is gone. |
 | 50 | Fixed. `pp_strobe_count` deleted. |
-| 51 | Fixed, deliberately. Every `PP_KERN_MAX_PORTS` bounds check removed; NULL checks kept in exactly the four functions that have one in the reference - `ppread`, `ppwrite`, `ppioctl`, `ppstrategy` - and removed from `ppopen`, `ppclose`, `ppminphys`, `_strobeChar` and the interrupt handler. One ordering difference survives in `_strobeChar`; see the ledger entry at 4232. |
+| 51 | Fixed, deliberately. Every `PP_KERN_MAX_PORTS` bounds check removed; NULL checks kept in exactly the four functions that have one in the reference - `ppread`, `ppwrite`, `ppioctl`, `ppstrategy` - and removed from `ppopen`, `ppclose`, `ppminphys`, `_strobeChar` and the interrupt handler. **Task 7 reversed the leftover `_strobeChar` ordering:** the device pointer and three registers now load before testing `pp_softc[portNum].count`, so a nil device with leftover count faults like Apple. Ledger 4232 stays `intentional-mismatch`; leftover is gcc 2.x CSE / register allocation. |
 | 52 | Fixed. The `initialized` ivar is gone; `-isInitialized` reads bit 0 of `statusWord`. |
 | 53 | **Reversed.** `probeForController` and `initDevice` now `and`/`or` an uninitialized `controlValue` with Apple's immediates (`0xFE`/`0x02`/`0x04`/`0x08`/`0x10`/`0xDF`, then `0xFE`/`0xFD`/`0x04`/`0xF7`/`0xEF`/`0xDF` in probe; `0xFE`/`0xFD`, autofeed `<< 1`, `0x04`/`0x08`/`0xEF`/`0xDF` in initDevice). Guest gcc 2.x `-O` folds those immediates (`or …, 1Eh`, `and …, 0C7h`, `and bl, 0FCh` / `or bl, 0Ch`) and does not emit the unused first `inb` store, so both rows stay `intentional-mismatch`. Leftover is compiler-shaped, not a missing reconstruction. |
 | 54 | **Corrected and accepted** - see 8.3. No source change. |
@@ -1091,6 +1091,33 @@ keeps the autofeed `and al, 1` / `add al, al` but holds the byte in `bl` and fol
 `and bl, 0FCh` / `or bl, al` / `or bl, 0Ch` / `and bl, 0CFh`. `IO_R_*` immediates
 (`0xFFFFFD1F`, `0xFFFFFD1E`, `0xFFFFFD2B`, `0xFFFFFD36`, `0xFFFFFD2A`) are unchanged.
 
+### Task 7 — `_strobeChar` load-then-test reversed
+
+`_strobeChar` now loads `pp_softc[portNum].device` and the three register values
+(`controlRegisterDefaults`, `controlRegister`, `dataRegister`) before testing
+`pp_softc[portNum].count`. A nil device with leftover count faults like Apple. `useSpl` /
+`spl3`, the second count check, the three `outb`/`IODelay` strobes, and pointer/count
+advance are unchanged. Rebuilt SHA-256
+`562D9829B43605A045C84FA4253C90206BECE0E236695BB3782B2E9D5A867A1E` (165620 bytes).
+`parity_check.py`: `missing_strings (0):`, `missing_symbols (0):`. Previously identical
+and `masked_equal` rows stayed equal (40 `raw_equal`, 14 `masked_equal`, 0 unpaired).
+
+`--name __strobeChar` after the rewrite:
+
+```
+status=different raw_equal=False masked_equal=False
+reason: calls differ
+reason: cfg differs
+reason: function range bytes differ
+reason: instruction shape differs
+```
+
+Both sides now load the device pointer and three ivars before `cmp dword ptr [eax+2004h], 0`.
+Diff count dropped from 70 to 55 (84 vs 80 instructions). Leftover is compiler-shaped: Apple
+`sub esp, 10h` and reloads `_pp_softc[eax]` three times, keeping the control byte at
+`[ebp+var_1]` via `ebx`; gcc 2.x `-O` uses `sub esp, 14h`, one `_pp_softc` load into `edx`,
+and holds the control byte in `bl`. Ledger 4232 stays `intentional-mismatch`.
+
 ### 8.9 The status rule used
 
 - `assembly-matched` (55) - the reference's full instruction stream was read and our
@@ -1103,5 +1130,6 @@ keeps the autofeed `and al, 1` / `add al, al` but holds the byte in `bl` and fol
   Used for the larger functions.
 - `intentional-mismatch` (7) - a deliberate difference remains: 112 and 1452 (Finding 53,
   uninitialized control byte reconstructed; leftover is gcc 2.x zero-fill / immediate fold),
-  2372 and 2388 (`struct buf` encoding), 4232 (`_strobeChar` ordering), and the two
-  build-generated glue functions at 7392 and 7404, untouched from the report pass.
+  2372 and 2388 (`struct buf` encoding), 4232 (`_strobeChar` load-then-test reversed;
+  leftover is gcc 2.x CSE / register allocation), and the two build-generated glue
+  functions at 7392 and 7404, untouched from the report pass.

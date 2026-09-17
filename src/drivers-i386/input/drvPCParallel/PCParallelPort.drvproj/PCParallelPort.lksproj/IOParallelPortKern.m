@@ -644,15 +644,13 @@ int _strobeChar(int portNum, unsigned int delay, char useSpl)
     IOEISAPortAddress controlRegAddr;
     int savedPriority = 0;
 
-    // Nothing to send?
-    if (pp_softc[portNum].count <= 0)
-        return 0;
-
-    // Read register addresses and take a local copy of the control value
     port = (IOParallelPort *)pp_softc[portNum].device;
     controlRegValue = port->controlRegisterDefaults;
     controlRegAddr = PP_PORT(port->controlRegister);
     dataRegAddr = PP_PORT(port->dataRegister);
+
+    if (pp_softc[portNum].count <= 0)
+        return 0;
 
     // Raise interrupt priority if requested
     if (useSpl != 0) {

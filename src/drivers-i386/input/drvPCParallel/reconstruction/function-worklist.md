@@ -348,3 +348,100 @@ Accessor name-pairing unpaired rows closed: `--list` is now 75 functions, 0 unpa
 
 75 functions: 40 byte-identical, 35 differing, 0 unpaired
 ```
+
+## Task 7 — reverse `_strobeChar` load-then-test
+
+Guest rebuild after loading the device pointer and three registers before testing
+`pp_softc[portNum].count`. Reloc SHA-256
+`562D9829B43605A045C84FA4253C90206BECE0E236695BB3782B2E9D5A867A1E` (165620 bytes).
+Parity: `missing_strings (0):`, `missing_symbols (0):`.
+
+`--name __strobeChar`: `status=different`, `masked_equal=False`. Both sides now load
+before `cmp dword ptr [eax+2004h], 0`. Diff 70 → 55 (84 vs 80). Leftover is gcc 2.x
+CSE / register allocation (`bl` vs `[ebp+var_1]`; one `_pp_softc` load vs three).
+Ledger 4232 stays `intentional-mismatch` (compiler-shaped accept).
+
+Regression: every Task 6 `identical` and `masked-eq` row stayed equal (0 lost).
+`--list` remains 75 functions, 40 identical, 14 masked-eq, 0 unpaired.
+
+```
+  diff    ref    new  flags       name
+
+     0      6      6  masked-eq   +[ParallelPortKernelServerInstance kernelServerInstance]
+     0      6      6  identical   +[ParallelPortVersion driverKitVersionForParallelPort]
+     0      7      7  identical   -[IOParallelPort IOThreadDelay]
+     0      7      7  identical   -[IOParallelPort autofeedOutput]
+     0      7      7  identical   -[IOParallelPort blockSize]
+     0      7      7  identical   -[IOParallelPort busyMaxRetries]
+     0      7      7  identical   -[IOParallelPort busyRetryInterval]
+     0     19     19  masked-eq   -[IOParallelPort cmdBufComplete:]
+     0     16     16  masked-eq   -[IOParallelPort cmdBufFree:]
+     0      7      7  identical   -[IOParallelPort configRegister]
+     0      7      7  identical   -[IOParallelPort controlRegisterDefaults]
+     0      7      7  identical   -[IOParallelPort controlRegister]
+     0      7      7  identical   -[IOParallelPort dataBuffer]
+     0      7      7  identical   -[IOParallelPort dataRegister]
+     0     16     16  masked-eq   -[IOParallelPort getHandler:level:argument:forInterrupt:]
+     0      7      7  identical   -[IOParallelPort intHandlerDelay]
+     0      7      7  identical   -[IOParallelPort interruptMessage]
+     0      7      7  identical   -[IOParallelPort ioTimeout]
+     0      7      7  identical   -[IOParallelPort isInUse]
+     0     14     14  masked-eq   -[IOParallelPort lockSize]
+     0      7      7  identical   -[IOParallelPort majorDevNum]
+     0      7      7  identical   -[IOParallelPort minPhys]
+     0      7      7  identical   -[IOParallelPort minorDevNum]
+     0      7      7  identical   -[IOParallelPort physbuf]
+     0      6      6  identical   -[IOParallelPort readFromPort]
+     0      8      8  identical   -[IOParallelPort setAutofeedOutput:]
+     0      8      8  identical   -[IOParallelPort setBusyMaxRetries:]
+     0      8      8  identical   -[IOParallelPort setBusyRetryInterval:]
+     0      8      8  identical   -[IOParallelPort setConfigRegister:]
+     0      8      8  identical   -[IOParallelPort setControlRegister:]
+     0      8      8  identical   -[IOParallelPort setDataRegister:]
+     0      8      8  identical   -[IOParallelPort setIOThreadDelay:]
+     0      8      8  identical   -[IOParallelPort setInUse:]
+     0      8      8  identical   -[IOParallelPort setIntHandlerDelay:]
+     0      8      8  identical   -[IOParallelPort setInterruptMessage:]
+     0      8      8  identical   -[IOParallelPort setIoTimeout:]
+     0      8      8  identical   -[IOParallelPort setMajorDevNum:]
+     0      8      8  identical   -[IOParallelPort setMinorDevNum:]
+     0      8      8  identical   -[IOParallelPort setPhysbuf:]
+     0      8      8  identical   -[IOParallelPort setStatusRegister:]
+     0      8      8  identical   -[IOParallelPort setStatusWord:]
+     0      8      8  identical   -[IOParallelPort setWaitForever:]
+     0      7      7  identical   -[IOParallelPort statusRegister]
+     0      7      7  identical   -[IOParallelPort statusWord]
+     0     14     14  masked-eq   -[IOParallelPort unlockSize]
+     0      7      7  identical   -[IOParallelPort waitForever]
+     0     14     14  masked-eq   _ppclose
+     1     29     29  masked-eq   -[IOParallelPort attachInterruptPort]
+     1     34     34  masked-eq   -[IOParallelPort setBlockSize:]
+     1     34     34  masked-eq   -[IOParallelPort setMinPhys:]
+     1     18     18  masked-eq   _ppminphys
+     2     11      9              -[IOParallelPort controlRegisterContents]
+     2     11      9              -[IOParallelPort statusRegisterContents]
+     2     48     48  masked-eq   _ppread
+     4     23     21              +[IOParallelPort probe:]
+     4     71     71  masked-eq   -[IOParallelPort free]
+     4     35     35              -[IOParallelPort msgTypeToIOReturn:]
+     5     59     59  masked-eq   -[IOParallelPort getIntValues:forParameter:count:]
+     6     46     46              -[IOParallelPort cmdBufExec:]
+     8     13     11              -[IOParallelPort isInitialized]
+    11     27     30              -[IOParallelPort cmdBufAlloc]
+    13     47     46              -[IOParallelPort waitForCmdBuf]
+    14     24     23              -[IOParallelPort printerInit]
+    17     45     43              -[IOParallelPort _waitForDevice:isReady:]
+    22     43     41              _ppopen
+    27     93     95              -[IOParallelPort writeToPort]
+    55     84     80              __strobeChar
+    60     76     73              -[IOParallelPort initDevice]
+    61     87     85              _IOParallelPortInterruptHandler
+    68     52     48              -[IOParallelPort probeForController]
+    83     73     81              _ppstrategy
+   112    139    141              _ppwrite
+   163    172    188              _ppioctl
+   201    277    278              -[IOParallelPort initFromDeviceDescription:]
+   210    208    203              _IOParallelPortThread
+
+75 functions: 40 byte-identical, 35 differing, 0 unpaired
+```

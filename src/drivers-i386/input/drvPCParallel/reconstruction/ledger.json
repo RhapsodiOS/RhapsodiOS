@@ -1521,7 +1521,7 @@
         ],
         "reasons": [
           "IDA and angr agree on this function's start address and size exactly; angr additionally reports 112 interior addresses as function starts because CFGFast splits basic blocks more finely, but records the same call targets. Ghidra is disabled for this driver (see divergences.md, stated limitation), so the analyzer set is IDA + angr only",
-          "rewritten against 4232-4511: the invented pp_strobe_count is gone (the lock inc after each outb comes from the outb() macro in <driverkit/i386/ioPorts.h>), the strobe reads and advances pp_softc[].data by value, and the bounds check is gone. One deliberate difference: the reference loads the device pointer and its three registers before testing the byte count (4263-4308); ours tests the count first, so a nil device with nothing to send returns 0 where the reference would fault. No difference on any path the driver actually takes (Findings 36, 43, 50, 51)"
+          "reversed load-then-test so the device pointer and three registers load before testing pp_softc[portNum].count, matching 4263-4308. Leftover is gcc 2.x CSE / register allocation (one pp_softc load vs Apple three; control byte in bl vs [ebp+var_1])"
         ],
         "status": "agreed"
       },
@@ -1529,10 +1529,10 @@
       "names": [
         "__strobeChar"
       ],
-      "reason": "rewritten against 4232-4511: the invented pp_strobe_count is gone (the lock inc after each outb comes from the outb() macro in <driverkit/i386/ioPorts.h>), the strobe reads and advances pp_softc[].data by value, and the bounds check is gone. One deliberate difference: the reference loads the device pointer and its three registers before testing the byte count (4263-4308); ours tests the count first, so a nil device with nothing to send returns 0 where the reference would fault. No difference on any path the driver actually takes (Findings 36, 43, 50, 51)",
+      "reason": "reversed load-then-test so the device pointer and three registers load before testing pp_softc[portNum].count, matching 4263-4308. Leftover is gcc 2.x CSE / register allocation (one pp_softc load vs Apple three; control byte in bl vs [ebp+var_1])",
       "reviewer": "Pat Raynor",
       "size": 280,
-      "source_line": 636,
+      "source_line": 639,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPortKern.m",
       "status": "intentional-mismatch"
     },
@@ -1801,7 +1801,7 @@
       "status": "intentional-mismatch"
     }
   ],
-  "rebuilt_sha256": "F1FDFD0943E86BA99F2AA510DF54AFE1CD1A9F7ACB675CA17755CC32DBDD6883",
+  "rebuilt_sha256": "562D9829B43605A045C84FA4253C90206BECE0E236695BB3782B2E9D5A867A1E",
   "reference_sha256": "D188A4D909005683B0C943C84CD99514C14A84AD1D378425B3B1DB343F1EAAA2",
   "schema_version": "ledger-v1"
 }

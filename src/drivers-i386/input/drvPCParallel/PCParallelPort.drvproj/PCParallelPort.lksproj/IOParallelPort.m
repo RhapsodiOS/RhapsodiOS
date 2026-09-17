@@ -949,17 +949,19 @@ extern int sprintf(char *str, const char *fmt, ...);
         ((PPCommandBuffer *)nextBuffer)->link.prev = prevBuffer;
     }
 
-    if ((struct queue_entry *)&ioQueue == prevBuffer) {
-        // This was first in queue, update head
-        ioQueue.next = nextBuffer;
-    } else {
+    if ((struct queue_entry *)&ioQueue != prevBuffer) {
         // Update previous buffer's next pointer
         ((PPCommandBuffer *)prevBuffer)->link.next = nextBuffer;
+    } else {
+        // This was first in queue, update head
+        ioQueue.next = nextBuffer;
     }
 
     // Unlock with condition based on whether the queue is now empty
-    [ioQueueLock unlockWith:
-        (ioQueue.next != (struct queue_entry *)&ioQueue) ? 1 : 0];
+    if (ioQueue.next == (struct queue_entry *)&ioQueue)
+        [ioQueueLock unlockWith:0];
+    else
+        [ioQueueLock unlockWith:1];
 
     return cmdBuffer;
 }

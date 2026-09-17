@@ -212,7 +212,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 163,
-      "source_line": 971,
+      "source_line": 973,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1317,7 +1317,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 197,
-      "source_line": 1010,
+      "source_line": 1012,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
       "status": "assembly-matched"
     },
@@ -1483,12 +1483,12 @@
       "names": [
         "-[IOParallelPort waitForCmdBuf]"
       ],
-      "reason": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 141,
       "source_line": 927,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m",
-      "status": "control-flow-confirmed"
+      "status": "intentional-mismatch"
     },
     {
       "address": 4184,
@@ -1803,7 +1803,7 @@
       "status": "intentional-mismatch"
     }
   ],
-  "rebuilt_sha256": "EC622A557A0FD4AB3D3B444F6C4B731747B10FC83B1EC02844990F84F7B895C3",
+  "rebuilt_sha256": "D9B5138F47C5CFFF3682FE9D7FBBD6BD1E7D05CFCC11A3F78F6E7D6FE3DF440A",
   "reference_sha256": "D188A4D909005683B0C943C84CD99514C14A84AD1D378425B3B1DB343F1EAAA2",
   "schema_version": "ledger-v1"
 }

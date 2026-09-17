@@ -490,12 +490,13 @@ Matched: rebuilt `EC622A557A0FD4AB3D3B444F6C4B731747B10FC83B1EC02844990F84F7B895
 
 Star: `setnz` ternary for `unlockWith:` vs `push 0`/`push 1` if/else; inverted
 `jz`/`jnz` on the prev-link arm.
+Accepted leftover: rebuilt `D9B5138F47C5CFFF3682FE9D7FBBD6BD1E7D05CFCC11A3F78F6E7D6FE3DF440A`.
 
-1. Replace ternary with if/else `unlockWith:1` / `unlockWith:0`
-2. Invert the prev-buffer if/else arms (`if (prev == &ioQueue)` first)
-3. Invert the next-buffer if/else arms
-4. Load `next` before `prev`
-5. Signedness of queue pointer locals
+1. Replace ternary with if/else `unlockWith:1` / `unlockWith:0` — **kept** (empty→0)
+2. Invert the prev-buffer if/else arms (`if (prev == &ioQueue)` first) — **kept** (`prev !=` first)
+3. Invert the next-buffer if/else arms — **not needed** (already matched)
+4. Load `next` before `prev` — **already the source**
+5. Signedness of queue pointer locals — **skipped** (leftover is scheduling)
 
 ### `-[IOParallelPort printerInit]` (diff 14)
 

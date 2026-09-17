@@ -80,7 +80,7 @@
         "-[IOParallelPort getIntValues:forParameter:count:]"
       ],
       "size": 163,
-      "source_line": 971,
+      "source_line": 973,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m"
     },
     {
@@ -494,7 +494,7 @@
         "-[IOParallelPort msgTypeToIOReturn:]"
       ],
       "size": 197,
-      "source_line": 1010,
+      "source_line": 1012,
       "source_path": "src/drivers-i386/input/drvPCParallel/PCParallelPort.drvproj/PCParallelPort.lksproj/IOParallelPort.m"
     },
     {

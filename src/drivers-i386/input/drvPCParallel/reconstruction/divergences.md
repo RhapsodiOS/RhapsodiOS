@@ -1189,6 +1189,34 @@ Parity 0/0. Previously identical rows stayed identical. Ledger 3780
 `assembly-matched`. source-map relined 6 later `IOParallelPort.m` sites
 (73 mapped / 2 unmapped).
 
+### Task 8 — `waitForCmdBuf` if/else dequeue (compiler-shaped leftover)
+
+Replaced the `unlockWith:` ternary with if/else (`empty → 0`, else `1`) and inverted
+the prev-link arms so `prev != &ioQueue` updates `prev->next` first. `--name`
+still `masked_equal=False`. Leftover is gcc 2.x `add esp, 0Ch` scheduling after
+`lockWhen:` and else-block placement of the head store. Rebuilt SHA-256
+`D9B5138F47C5CFFF3682FE9D7FBBD6BD1E7D05CFCC11A3F78F6E7D6FE3DF440A`.
+Parity 0/0. Previously identical rows stayed identical. Ledger 4040
+`intentional-mismatch`, reviewer Pat Raynor, reason
+`compiler-shaped leftover after exhausted source-shape list`.
+
+```
+-[IOParallelPort waitForCmdBuf]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+* add esp, 0Ch                            (scheduled after lea vs immediately after lockWhen)
+  cmp eax, edx                            cmp eax, edx
+* jz loc_102C                             jz loc_E98
+  mov [edx+14h], ecx                      mov [edx+14h], ecx
+*                                         jmp loc_E9E / mov [ebx+168h], ecx
+  cmp [ebx+168h], eax                     cmp [ebx+168h], eax
+* jnz loc_1034                            jnz loc_EB0
+  push 0                                  push 0
+```
+
 ### 8.9 The status rule used
 
 - `assembly-matched` (57) - the reference's full instruction stream was read and our
@@ -1196,13 +1224,14 @@ Parity 0/0. Previously identical rows stayed identical. Ledger 3780
   and the function's emitted metadata was verified identical in the rebuilt binary. Used
   for the accessors and the short bodies. Task 8 promoted `msgTypeToIOReturn:` and
   `cmdBufAlloc` (`masked_equal`).
-- `control-flow-confirmed` (10) - the reference's full instruction stream was read and our
+- `control-flow-confirmed` (9) - the reference's full instruction stream was read and our
   source reproduces its block structure, every call target and every constant, but the
   rebuilt output was **not** itself disassembled and compared instruction by instruction.
   Used for the larger functions.
-- `intentional-mismatch` (8) - a deliberate difference remains: 112 and 1452 (Finding 53,
+- `intentional-mismatch` (9) - a deliberate difference remains: 112 and 1452 (Finding 53,
   uninitialized control byte reconstructed; leftover is gcc 2.x zero-fill / immediate fold),
   2372 and 2388 (`struct buf` encoding), 3896 (`cmdBufExec:` prev-link stored first; leftover
-  is `add esp,8` scheduling), 4232 (`_strobeChar` load-then-test reversed;
+  is `add esp,8` scheduling), 4040 (`waitForCmdBuf` if/else dequeue; leftover is
+  `add esp,0Ch` scheduling and else-block placement), 4232 (`_strobeChar` load-then-test reversed;
   leftover is gcc 2.x CSE / register allocation), and the two build-generated glue
   functions at 7392 and 7404, untouched from the report pass.

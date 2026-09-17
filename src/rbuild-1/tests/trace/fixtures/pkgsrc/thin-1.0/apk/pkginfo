@@ -1,0 +1,7 @@
+pkgname = thin
+pkgver = 1.0
+pkgdesc = Thin trace fixture
+maintainer = Test <t@x>
+license = unknown
+makedepends = build-base
+arch = i386

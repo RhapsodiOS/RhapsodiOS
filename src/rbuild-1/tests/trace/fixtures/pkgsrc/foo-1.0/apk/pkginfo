@@ -1,0 +1,6 @@
+pkgname = foo
+pkgver = 1.0
+pkgdesc = Test package
+maintainer = Test <t@x>
+license = unknown
+makedepends = build-base

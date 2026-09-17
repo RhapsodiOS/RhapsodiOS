@@ -29,30 +29,33 @@ static int setup_tree(void) {
     sprintf(scratch, "/tmp/rbuild-kernel-%ld", (long)getpid());
     sprintf(command,
             "rm -rf %s && mkdir -p "
-            "%s/drivers-ppc/bus/drvPExpert/dpkg "
-            "%s/drivers-ppc/bus/drvPPCOHare/dpkg "
+            "%s/drivers-ppc/bus/drvPExpert/apk "
+            "%s/drivers-ppc/bus/drvPPCOHare/apk "
             "%s/drivers-ppc/storage/drvSwimFloppy "
-            "%s/drivers-ppc/network/Intel82557/dpkg "
-            "%s/drivers-ppc/sound/notADriver/dpkg "
-            "%s/drivers-i386/bus/drvEISABus/dpkg "
-            "%s/drvBPF/dpkg "
-            "%s/drvSCSIServer/dpkg "
-            "%s/drvSCSITape/dpkg "
+            "%s/drivers-ppc/network/Intel82557/apk "
+            "%s/drivers-ppc/sound/notADriver/apk "
+            "%s/drivers-i386/bus/drvEISABus/apk "
+            "%s/drvBPF/apk "
+            "%s/drvSCSIServer/apk "
+            "%s/drvSCSITape/apk "
             "%s/drvPortServer",
             scratch, scratch, scratch, scratch, scratch, scratch,
             scratch, scratch, scratch, scratch, scratch);
     if (system(command) != 0) return -1;
-    write_rel("drivers-ppc/bus/drvPExpert/dpkg/control", "Package: PExpert\n");
-    write_rel("drivers-ppc/bus/drvPPCOHare/dpkg/control", "Package: PPCOHare\n");
+    write_rel("drivers-ppc/bus/drvPExpert/apk/pkginfo",
+              "pkgname = PExpert\npkgver = 0\n");
+    write_rel("drivers-ppc/bus/drvPPCOHare/apk/pkginfo",
+              "pkgname = PPCOHare\npkgver = 0\n");
     write_rel("drivers-ppc/storage/drvSwimFloppy/Makefile", "all:\n");
-    write_rel("drivers-ppc/network/Intel82557/dpkg/control",
-              "Package: Intel82557\n");
-    write_rel("drivers-ppc/sound/notADriver/dpkg/control",
-              "Package: notADriver\n");
-    write_rel("drivers-i386/bus/drvEISABus/dpkg/control", "Package: EISABus\n");
-    write_rel("drvBPF/dpkg/control", "Package: BPF\n");
-    write_rel("drvSCSIServer/dpkg/control", "Package: SCSIServer\n");
-    write_rel("drvSCSITape/dpkg/control", "Package: SCSITape\n");
+    write_rel("drivers-ppc/network/Intel82557/apk/pkginfo",
+              "pkgname = Intel82557\npkgver = 0\n");
+    write_rel("drivers-ppc/sound/notADriver/apk/pkginfo",
+              "pkgname = notADriver\npkgver = 0\n");
+    write_rel("drivers-i386/bus/drvEISABus/apk/pkginfo",
+              "pkgname = EISABus\npkgver = 0\n");
+    write_rel("drvBPF/apk/pkginfo", "pkgname = BPF\npkgver = 0\n");
+    write_rel("drvSCSIServer/apk/pkginfo", "pkgname = SCSIServer\npkgver = 0\n");
+    write_rel("drvSCSITape/apk/pkginfo", "pkgname = SCSITape\npkgver = 0\n");
     write_rel("drvPortServer/Makefile", "all:\n");
     return 0;
 }

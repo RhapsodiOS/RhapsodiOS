@@ -771,12 +771,13 @@ TEST(test_scan_dir) {
     Package pkg;
     Params params;
     int rc;
-    system("rm -rf /tmp/rbtest_src && mkdir -p /tmp/rbtest_src/objc4-174/dpkg");
+    system("rm -rf /tmp/rbtest_src && mkdir -p /tmp/rbtest_src/objc4-174/apk");
     {
-        FILE *f = fopen("/tmp/rbtest_src/objc4-174/dpkg/control", "w");
-        fputs("Package: objc4\nVersion: 174\n"
-              "Description: Objective-C runtime\n"
-              "Build-Depends: build-base\n", f);
+        FILE *f = fopen("/tmp/rbtest_src/objc4-174/apk/pkginfo", "w");
+        fputs("pkgname = objc4\npkgver = 174\n"
+              "pkgdesc = Objective-C runtime\n"
+              "license = unknown\n"
+              "makedepends = build-base\n", f);
         fclose(f);
     }
     package_init(&pkg);
@@ -875,15 +876,15 @@ TEST(test_relativize_absolute_symlinks_inside_dstroot) {
 }
 
 
-/* Each fixture is a real source control file consumed through builder_scan. */
+/* Each fixture is a real source pkginfo file consumed through builder_scan. */
 TEST(test_scan_architecture_labels) {
     static const char *labels[] = { "i386", "ppc", "i386-apple-rhapsody",
         "ppc-apple-rhapsody", "universal-apple-rhapsody", 0 };
     char root[128], control[160], command[256];
     unsigned i;
     sprintf(root, "/tmp/rb-scan-arch-%ld", (long)getpid());
-    sprintf(control, "%s/dpkg/control", root);
-    sprintf(command, "mkdir -p %s/dpkg", root);
+    sprintf(control, "%s/apk/pkginfo", root);
+    sprintf(command, "mkdir -p %s/apk", root);
     CHECK_INT(system(command), 0);
     for (i = 0; i < sizeof(labels) / sizeof(labels[0]); i++) {
         Package pkg;
@@ -891,8 +892,8 @@ TEST(test_scan_architecture_labels) {
         FILE *f = fopen(control, "w");
         CHECK(f != 0);
         if (!f) continue;
-        fputs("Package: fixture\nVersion: 1\n", f);
-        if (labels[i]) fprintf(f, "Architecture: %s\n", labels[i]);
+        fputs("pkgname = fixture\npkgver = 1\n", f);
+        if (labels[i]) fprintf(f, "arch = %s\n", labels[i]);
         fclose(f);
         package_init(&pkg);
         params_init(&params);
@@ -922,8 +923,8 @@ TEST(test_scan_rejects_invalid_architecture) {
     char root[128], control[160], command[256];
     unsigned i;
     sprintf(root, "/tmp/rb-scan-bad-arch-%ld", (long)getpid());
-    sprintf(control, "%s/dpkg/control", root);
-    sprintf(command, "mkdir -p %s/dpkg", root);
+    sprintf(control, "%s/apk/pkginfo", root);
+    sprintf(command, "mkdir -p %s/apk", root);
     CHECK_INT(system(command), 0);
     for (i = 0; i < sizeof(labels) / sizeof(labels[0]); i++) {
         Package pkg;
@@ -931,9 +932,9 @@ TEST(test_scan_rejects_invalid_architecture) {
         FILE *f = fopen(control, "w");
         CHECK(f != 0);
         if (!f) continue;
-        /* Also omit Package/Version once: fallback must not hide a bad arch. */
-        if (i != 3) fputs("Package: fixture\nVersion: 1\n", f);
-        fprintf(f, "Architecture: %s\n", labels[i]);
+        /* Also omit pkgname/pkgver once: fallback must not hide a bad arch. */
+        if (i != 3) fputs("pkgname = fixture\npkgver = 1\n", f);
+        fprintf(f, "arch = %s\n", labels[i]);
         fclose(f);
         package_init(&pkg);
         params_init(&params);
@@ -1029,11 +1030,11 @@ TEST(test_build_rejects_unsupported_bootstrap_architecture) {
     Toolchain tc;
     strlist repo;
     FILE *f;
-    CHECK_INT(system("mkdir -p /tmp/rbuild-policy-source/dpkg /tmp/rbuild-policy-output"), 0);
-    f = fopen("/tmp/rbuild-policy-source/dpkg/control", "w");
+    CHECK_INT(system("mkdir -p /tmp/rbuild-policy-source/apk /tmp/rbuild-policy-output"), 0);
+    f = fopen("/tmp/rbuild-policy-source/apk/pkginfo", "w");
     CHECK(f != 0);
     if (!f) return;
-    fputs("Package: policy\nVersion: 1.0\nDescription: policy\n", f);
+    fputs("pkgname = policy\npkgver = 1.0\npkgdesc = policy\nlicense = unknown\n", f);
     fclose(f);
     build_options_init(&opt);
     toolchain_fixture(&tc);
@@ -1103,20 +1104,20 @@ TEST(test_packaging_rejects_wrong_products) {
     for(i=0;targets[i];i++)
         CHECK_INT(builder_buildpackage(&pkg,&params,targets[i],&opt),0);
     exec_dry_run=0;
-    CHECK_INT(system("mkdir -p /tmp/rb-package-products/source/dpkg && "
+    CHECK_INT(system("mkdir -p /tmp/rb-package-products/source/apk && "
                      "mv /tmp/rb-package-products/root/tool "
-                     "/tmp/rb-package-products/source/dpkg/postinst"), 0);
+                     "/tmp/rb-package-products/source/apk/.post-install"), 0);
     params.SRCDIR = xstrdup("/tmp/rb-package-products/source");
     CHECK_INT(builder_buildpackage(&pkg, &params, "binary", &opt), 1);
     CHECK(access("/tmp/rb-package-products/root/.PKGINFO", F_OK) != 0);
-    CHECK(access("/tmp/rb-package-products/root/postinst", F_OK) == 0);
+    CHECK(access("/tmp/rb-package-products/root/.post-install", F_OK) == 0);
     unlink("/tmp/rb-package-products/root/.PKGINFO");
-    unlink("/tmp/rb-package-products/root/postinst");
+    unlink("/tmp/rb-package-products/root/.post-install");
     rmdir("/tmp/rb-package-products/root");
     CHECK_INT(builder_buildpackage(&pkg,&params,"objects",&opt),0);
     CHECK_INT(builder_buildpackage(&pkg,&params,"headers",&opt),0);
     CHECK_INT(builder_buildpackage(&pkg,&params,"local",&opt),1);
-    f = fopen("/tmp/rb-package-products/source/dpkg/postinst", "w");
+    f = fopen("/tmp/rb-package-products/source/apk/.post-install", "w");
     CHECK(f != 0);
     if (f) { fputs("#!/bin/sh\nexit 0\n", f); fclose(f); }
     CHECK_INT(builder_buildpackage(&pkg, &params, "binary", &opt), 1);
@@ -1136,10 +1137,10 @@ TEST(test_build_validates_all_roots_before_packaging) {
     static const char *dirs[] = {"build","src","obj","sym","dst","hdr","objs","pkg"};
     int i;
     char path[256];
-    system("rm -rf /tmp/rb-products-build && mkdir -p /tmp/rb-products-build/source/dpkg /tmp/rb-products-build/apks");
-    f=fopen("/tmp/rb-products-build/source/dpkg/control","w");
+    system("rm -rf /tmp/rb-products-build && mkdir -p /tmp/rb-products-build/source/apk /tmp/rb-products-build/apks");
+    f=fopen("/tmp/rb-products-build/source/apk/pkginfo","w");
     CHECK(f!=0); if (!f) return;
-    fputs("Package: products\nVersion: 1\nDescription: products\n",f); fclose(f);
+    fputs("pkgname = products\npkgver = 1\npkgdesc = products\nlicense = unknown\n",f); fclose(f);
     memset(code,0,sizeof(code));
     code[0]=0xfe; code[1]=0xed; code[2]=0xfa; code[3]=0xce;
     code[7]=18; code[15]=1;
@@ -1173,9 +1174,9 @@ TEST(test_build_validates_all_roots_before_packaging) {
                             "all","/tmp/rb-products-build/apks",&opt),1);
     CHECK(access("/tmp/rb-products-build/hdr/.PKGINFO",F_OK)!=0);
     CHECK(access("/tmp/rb-products-build/dst/.PKGINFO",F_OK)!=0);
-    /* The installed tool now matches, but an ancillary postinst is wrong. */
+    /* The installed tool now matches, but an ancillary .post-install is wrong. */
     CHECK_INT(system("cp /tmp/rb-products-build/wrong "
-                     "/tmp/rb-products-build/source/dpkg/postinst"), 0);
+                     "/tmp/rb-products-build/source/apk/.post-install"), 0);
     code[7] = 7;
     f = fopen("/tmp/rb-products-build/wrong", "wb");
     CHECK(f != 0);
@@ -1184,7 +1185,7 @@ TEST(test_build_validates_all_roots_before_packaging) {
                             "all", "/tmp/rb-products-build/apks", &opt), 1);
     CHECK(access("/tmp/rb-products-build/hdr/.PKGINFO", F_OK) != 0);
     CHECK(access("/tmp/rb-products-build/dst/.PKGINFO", F_OK) != 0);
-    CHECK(access("/tmp/rb-products-build/dst/postinst", F_OK) == 0);
+    CHECK(access("/tmp/rb-products-build/dst/.post-install", F_OK) == 0);
     for(i=0;envs[i];i++) unsetenv(envs[i]);
     strlist_free(&repo);
     system("rm -rf /tmp/rb-products-build");
@@ -1418,9 +1419,9 @@ TEST(test_base_cache_does_not_hide_incompatible_companions) {
     static const char *envs[]={"BUILDROOT","SRCROOT","OBJROOT","SYMROOT","DSTROOT","HDRROOT","LIBCOBJROOT","PACKAGEROOT",0};
     static const char *dirs[]={"build","src","obj","sym","dst","hdr","objs","pkg"};
     char path[256];int i;
-    CHECK_INT(system("rm -rf /tmp/rb-companions && mkdir -p /tmp/rb-companions/source/dpkg /tmp/rb-companions/repo"),0);
-    f=fopen("/tmp/rb-companions/source/dpkg/control","w");CHECK(f!=0);if(!f)return;
-    fputs("Package: companions\nVersion: 1\nBuild-Depends:\n",f);fclose(f);
+    CHECK_INT(system("rm -rf /tmp/rb-companions && mkdir -p /tmp/rb-companions/source/apk /tmp/rb-companions/repo"),0);
+    f=fopen("/tmp/rb-companions/source/apk/pkginfo","w");CHECK(f!=0);if(!f)return;
+    fputs("pkgname = companions\npkgver = 1\nlicense = unknown\nmakedepends =\n",f);fclose(f);
     cache_fixture("/tmp/rb-companions/repo","companions","1","universal-apple-rhapsody",0);
     cache_fixture("/tmp/rb-companions/repo","companions-obj","1","universal-apple-rhapsody",7);
     for(i=0;envs[i];i++){sprintf(path,"/tmp/rb-companions/%s",dirs[i]);setenv(envs[i],path,1);}
@@ -1574,9 +1575,9 @@ TEST(test_probe_failure_precedes_project_make) {
     static const char *dirs[]={"build","src","obj","sym","dst","hdr","objs","pkg"};
     char path[256]; int i;
     probe_fixture();
-    CHECK_INT(system("mkdir -p /tmp/rb-probe-tools/source/dpkg /tmp/rb-probe-tools/repo"),0);
-    f=fopen("/tmp/rb-probe-tools/source/dpkg/control","w"); CHECK(f!=0);if(!f)return;
-    fputs("Package: probes\nVersion: 1\nBuild-Depends:\n",f);fclose(f);
+    CHECK_INT(system("mkdir -p /tmp/rb-probe-tools/source/apk /tmp/rb-probe-tools/repo"),0);
+    f=fopen("/tmp/rb-probe-tools/source/apk/pkginfo","w"); CHECK(f!=0);if(!f)return;
+    fputs("pkgname = probes\npkgver = 1\nlicense = unknown\nmakedepends =\n",f);fclose(f);
     f=fopen("/tmp/rb-probe-tools/make","w");CHECK(f!=0);if(!f)return;
     fputs("#!/bin/sh\nfor arg do\ncase $arg in probe.o|probe) exec /bin/make \"$@\";; esac\ndone\n"
           "echo project >> /tmp/rb-probe-tools/project\nexit 1\n",f);
@@ -1601,13 +1602,13 @@ TEST(test_probe_failure_precedes_project_make) {
 }
 
 TEST(test_fallback_preserves_explicit_architecture) {
-    static const char *controls[]={"Package: fallback\nArchitecture: i386\n",
-        "Version: 1\nArchitecture: ppc\n"};
+    static const char *controls[]={"pkgname = fallback\npkgver = 1\narch = i386\n",
+        "pkgname = fallback\npkgver = 1\narch = ppc\n"};
     static const char *labels[]={"i386","ppc"};
     Package pkg;Params params;FILE *f;int i;
-    CHECK_INT(system("mkdir -p /tmp/rb-thin-fallback-1/dpkg"),0);
+    CHECK_INT(system("mkdir -p /tmp/rb-thin-fallback-1/apk"),0);
     for(i=0;i<2;i++) {
-        f=fopen("/tmp/rb-thin-fallback-1/dpkg/control","w");CHECK(f!=0);if(!f)return;
+        f=fopen("/tmp/rb-thin-fallback-1/apk/pkginfo","w");CHECK(f!=0);if(!f)return;
         fputs(controls[i],f);fclose(f);package_init(&pkg);params_init(&params);
         CHECK_INT(builder_scan("dir","/tmp/rb-thin-fallback-1",&pkg,&params),0);
         CHECK_STR(pkg.architecture,labels[i]);

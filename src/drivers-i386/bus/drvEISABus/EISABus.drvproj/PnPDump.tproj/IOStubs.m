@@ -408,18 +408,20 @@ void IOExitThread(void)
 void IODelay(unsigned int microseconds)
 {
     unsigned int currentTime[2];
-    unsigned long long targetTime;
+    unsigned int origLow;
     unsigned int targetTime_low;
     unsigned long long delayNS;
 
     /* Get current timestamp */
     IOGetTimestamp(currentTime);
 
-    /* Convert microseconds to nanoseconds and add to current time */
+    /* Convert microseconds to nanoseconds and add in place */
     delayNS = (unsigned long long)microseconds * 1000;
-    targetTime = ((unsigned long long)currentTime[1] << 32) | currentTime[0];
-    targetTime += delayNS;
-    targetTime_low = (unsigned int)targetTime;
+    origLow = currentTime[0];
+    currentTime[0] = currentTime[0] + (unsigned int)delayNS;
+    currentTime[1] = currentTime[1] + (unsigned int)(delayNS >> 32) +
+                     ((currentTime[0] < origLow) ? 1 : 0);
+    targetTime_low = currentTime[0];
 
     /* Busy-wait until target time reached */
     do {

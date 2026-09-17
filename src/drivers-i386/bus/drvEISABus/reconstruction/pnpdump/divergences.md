@@ -5475,3 +5475,61 @@ Walk the DMA channel mask with a do-while so the compiler still emits Apple `bt`
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+### Task 6 `_IODelay` in-place timestamp add (2026-09-17)
+
+Add the microsecond delay into the timestamp locals instead of building a 64-bit expression. Leftover is explicit carry versus Apple `adc`, loop buffer reuse, extra `esi`, and `jns` versus `test`/`jge`. Accepted compiler-shaped leftover (reviewer Pat Raynor). Tool SHA `2EDFF182FD04C99A502E9F65C78C1B2A0017135A2CFE86FF99CCC0DEFEA93088` (299328). Previously identical rows stayed matched (45). Unpaired count unchanged (10). Tool-only; reloc SHA unchanged.
+
+```
+_IODelay
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+* sub esp, 14h                            sub esp, 18h
+*                                         push esi
+  push ebx                                push ebx
+  mov ebx, [ebp+arg_0]                    mov ebx, [ebp+arg_0]
+  lea eax, [ebp+var_8]                    lea eax, [ebp+var_8]
+  push eax                                push eax
+  call _IOGetTimestamp                    call _IOGetTimestamp
+  mov eax, 3E8h                           mov eax, 3E8h
+  mul ebx                                 mul ebx
+* mov ecx, eax                            mov ebx, eax
+* mov ebx, edx                            mov esi, edx
+* add [ebp+var_8], ecx                    mov edx, [ebp+var_8]
+* adc [ebp+var_4], ebx                    add [ebp+var_8], ebx
+  add esp, 4                              add esp, 4
+* lea ebx, [ebp+var_10]                   mov ebx, esi
+* nop                                     xor esi, esi
+*                                         mov [ebp+var_18], ebx
+*                                         mov [ebp+var_14], esi
+*                                         mov ecx, [ebp+var_18]
+*                                         add ecx, [ebp+var_4]
+*                                         cmp [ebp+var_8], edx
+*                                         jnb loc_3ABE
+*                                         inc ecx
+*                                         mov [ebp+var_4], ecx
+*                                         mov esi, [ebp+var_8]
+*                                         lea ebx, [ebp+var_8]
+  nop                                     nop
+  push ebx                                push ebx
+  call _IOGetTimestamp                    call _IOGetTimestamp
+* mov edx, [ebp+var_8]
+* sub edx, [ebp+var_10]
+  add esp, 4                              add esp, 4
+* test edx, edx                           mov edx, esi
+* jge loc_6C7C                            sub edx, [ebp+var_8]
+* mov ebx, [ebp+var_18]                   jns loc_3AC8
+*                                         lea esp, [ebp-20h]
+*                                         pop ebx
+*                                         pop esi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

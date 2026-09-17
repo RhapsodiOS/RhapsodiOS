@@ -3735,7 +3735,8 @@
         ],
         "reasons": [
           "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
+          "not examined in this pass",
+          "Task 6 if(device) plus != continue matches Apple jz-nil; leftover is inverted ID-compare jump (equivalent CFG)"
         ],
         "status": "agreed"
       },
@@ -3743,12 +3744,12 @@
       "names": [
         "-[PnPDeviceResources deviceWithID:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 84,
       "source_line": 255,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 28000,
@@ -3941,7 +3942,7 @@
       "status": "unexamined"
     }
   ],
-  "rebuilt_sha256": "C471FE4013DF9F95FFD3DE61F11183C049347E8812EFCB65B2F29851EC746C42",
+  "rebuilt_sha256": "F9875D7FFCF001691C92E33C910CEBEDA040E004D476F067773CDC83F445F799",
   "reference_sha256": "8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23",
   "schema_version": "ledger-v1"
 }

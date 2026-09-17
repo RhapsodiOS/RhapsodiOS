@@ -249,3 +249,121 @@ Dropped the `List *list` temporary on `addIRQ:`/`addDMA:`/`addIOPort:`/`addMemor
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+### Task 6 `deviceWithID:` loop polarity (2026-09-17)
+
+`if (device)` plus `if (ID != id) continue; return device`. Apple `jz` on nil now matches. Leftover is the inverted ID-compare jump (`jnz` continue vs `jz` return; equivalent CFG). Accepted compiler-shaped leftover on both (reviewer Pat Raynor). Tool SHA `E93BDF316FA5E6A2ECD4430426E94564D8DEA990BCCADF9D2EC0A9544969CF24` (299424). Previously identical rows stayed matched. Unpaired count unchanged (10).
+
+```
+-[PnPDeviceResources deviceWithID:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  call $+5                                call $+5
+  pop edi                                 pop edi
+  xor esi, esi                            xor esi, esi
+  nop                                     nop
+  nop                                     nop
+  push esi                                push esi
+  mov edx, edi                            mov edx, edi
+* mov edx, [edx+5641h]                    mov edx, [edx+600Dh]
+  push edx                                push edx
+  mov ecx, [ebp+self]                     mov ecx, [ebp+self]
+  mov ecx, [ecx+4]                        mov ecx, [ecx+4]
+  push ecx                                push ecx
+  call _objc_msgSend                      call _objc_msgSend
+  mov ebx, eax                            mov ebx, eax
+  add esp, 0Ch                            add esp, 0Ch
+  test ebx, ebx                           test ebx, ebx
+* jz loc_6A40                             jz loc_4064
+  mov edx, edi                            mov edx, edi
+* mov edx, [edx+56B9h]                    mov edx, [edx+5FFDh]
+  push edx                                push edx
+  push ebx                                push ebx
+  call _objc_msgSend                      call _objc_msgSend
+  add esp, 8                              add esp, 8
+  cmp [ebp+arg_8], eax                    cmp [ebp+arg_8], eax
+* jnz loc_6A3C                            jz loc_4060
+*                                         inc esi
+*                                         jmp loc_4024
+  mov eax, ebx                            mov eax, ebx
+* jmp loc_6A42                            jmp loc_4066
+* inc esi
+* jmp loc_6A00
+  xor eax, eax                            xor eax, eax
+  lea esp, [ebp-0Ch]                      lea esp, [ebp-0Ch]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+### Task 6 `deviceWithID:` loop polarity (2026-09-17)
+
+`if (device)` plus `if (ID != id) continue; return device`. Apple `jz` on nil now matches. Leftover is the inverted ID-compare jump (`jnz` continue vs `jz` return; equivalent CFG). Accepted compiler-shaped leftover on both (reviewer Pat Raynor). Tool SHA `E93BDF316FA5E6A2ECD4430426E94564D8DEA990BCCADF9D2EC0A9544969CF24` (299424). Previously identical rows stayed matched. Unpaired count unchanged (10).
+
+```
+-[PnPDeviceResources deviceWithID:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  call $+5                                call $+5
+  pop edi                                 pop edi
+  xor esi, esi                            xor esi, esi
+  nop                                     nop
+  nop                                     nop
+  push esi                                push esi
+  mov edx, edi                            mov edx, edi
+* mov edx, [edx+5641h]                    mov edx, [edx+600Dh]
+  push edx                                push edx
+  mov ecx, [ebp+self]                     mov ecx, [ebp+self]
+  mov ecx, [ecx+4]                        mov ecx, [ecx+4]
+  push ecx                                push ecx
+  call _objc_msgSend                      call _objc_msgSend
+  mov ebx, eax                            mov ebx, eax
+  add esp, 0Ch                            add esp, 0Ch
+  test ebx, ebx                           test ebx, ebx
+* jz loc_6A40                             jz loc_4064
+  mov edx, edi                            mov edx, edi
+* mov edx, [edx+56B9h]                    mov edx, [edx+5FFDh]
+  push edx                                push edx
+  push ebx                                push ebx
+  call _objc_msgSend                      call _objc_msgSend
+  add esp, 8                              add esp, 8
+  cmp [ebp+arg_8], eax                    cmp [ebp+arg_8], eax
+* jnz loc_6A3C                            jz loc_4060
+*                                         inc esi
+*                                         jmp loc_4024
+  mov eax, ebx                            mov eax, ebx
+* jmp loc_6A42                            jmp loc_4066
+* inc esi
+* jmp loc_6A00
+  xor eax, eax                            xor eax, eax
+  lea esp, [ebp-0Ch]                      lea esp, [ebp-0Ch]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

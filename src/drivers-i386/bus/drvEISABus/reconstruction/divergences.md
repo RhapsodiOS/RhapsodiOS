@@ -831,3 +831,113 @@ Kernel-only reloc statuses were not reopened. Reloc SHA `C471FE4013DF9F95FFD3DE6
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+### Task 6 `deviceWithID:` loop polarity (2026-09-17)
+
+Kernel-only reloc statuses were not reopened. Reloc SHA `F9875D7FFCF001691C92E33C910CEBEDA040E004D476F067773CDC83F445F799` (603708). Same leftover as the tool: inverted ID-compare jump after matching Apple `jz` on nil. Accepted compiler-shaped leftover (reviewer Pat Raynor).
+
+```
+-[PnPDeviceResources deviceWithID:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  mov edi, [ebp+arg_8]                    mov edi, [ebp+arg_8]
+  xor esi, esi                            xor esi, esi
+  nop                                     nop
+  push esi                                push esi
+  mov edx, ds:paObjectat                  mov edx, ds:paObjectat
+  push edx                                push edx
+  mov ecx, [ebp+self]                     mov ecx, [ebp+self]
+  mov ecx, [ecx+4]                        mov ecx, [ecx+4]
+  push ecx                                push ecx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov ebx, eax                            mov ebx, eax
+  add esp, 0Ch                            add esp, 0Ch
+  test ebx, ebx                           test ebx, ebx
+* jz loc_6D54                             jz loc_39F0
+  mov edx, ds:paId                        mov edx, ds:paId
+  push edx                                push edx
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  cmp eax, edi                            cmp eax, edi
+* jnz loc_6D50                            jz loc_39EC
+*                                         inc esi
+*                                         jmp loc_39B8
+  mov eax, ebx                            mov eax, ebx
+* jmp loc_6D56                            jmp loc_39F2
+* inc esi
+* jmp loc_6D18
+  xor eax, eax                            xor eax, eax
+  lea esp, [ebp-0Ch]                      lea esp, [ebp-0Ch]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+### Task 6 `deviceWithID:` loop polarity (2026-09-17)
+
+Kernel-only reloc statuses were not reopened. Reloc SHA `F9875D7FFCF001691C92E33C910CEBEDA040E004D476F067773CDC83F445F799` (603708). Same leftover as the tool: inverted ID-compare jump after matching Apple `jz` on nil. Accepted compiler-shaped leftover (reviewer Pat Raynor).
+
+```
+-[PnPDeviceResources deviceWithID:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  mov edi, [ebp+arg_8]                    mov edi, [ebp+arg_8]
+  xor esi, esi                            xor esi, esi
+  nop                                     nop
+  push esi                                push esi
+  mov edx, ds:paObjectat                  mov edx, ds:paObjectat
+  push edx                                push edx
+  mov ecx, [ebp+self]                     mov ecx, [ebp+self]
+  mov ecx, [ecx+4]                        mov ecx, [ecx+4]
+  push ecx                                push ecx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov ebx, eax                            mov ebx, eax
+  add esp, 0Ch                            add esp, 0Ch
+  test ebx, ebx                           test ebx, ebx
+* jz loc_6D54                             jz loc_39F0
+  mov edx, ds:paId                        mov edx, ds:paId
+  push edx                                push edx
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  cmp eax, edi                            cmp eax, edi
+* jnz loc_6D50                            jz loc_39EC
+*                                         inc esi
+*                                         jmp loc_39B8
+  mov eax, ebx                            mov eax, ebx
+* jmp loc_6D56                            jmp loc_39F2
+* inc esi
+* jmp loc_6D18
+  xor eax, eax                            xor eax, eax
+  lea esp, [ebp-0Ch]                      lea esp, [ebp-0Ch]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

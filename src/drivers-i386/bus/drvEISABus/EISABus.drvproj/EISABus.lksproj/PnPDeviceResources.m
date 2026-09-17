@@ -261,22 +261,16 @@ static unsigned short readPort = 0;
     while (1) {
         /* Get device at current index */
         device = [_deviceList objectAt:index];
-
-        /* If no device found at this index, search failed */
-        if (device == nil) {
-            return nil;
+        if (device) {
+            /* Check if this device's ID matches */
+            if ([device ID] != logicalDeviceID) {
+                index++;
+                continue;
+            }
+            return device;
         }
-
-        /* Check if this device's ID matches */
-        if ([device ID] == logicalDeviceID) {
-            break;
-        }
-
-        /* Try next index */
-        index++;
+        return nil;
     }
-
-    return device;
 }
 
 /*

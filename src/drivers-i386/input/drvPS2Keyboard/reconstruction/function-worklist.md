@@ -168,6 +168,7 @@ Task 8 regression gate. Do not apply the BOOL / `and eax, 0FFh` typed rewrite. A
 ### `-[PS2Keyboard initWithController:]` (diff 7)
 
 1. Apply the command-byte edit as three statements (`|= 0x40`, `&= 0xEF`, `|= 1`) immediately after `getKeyboardData()`, before `sendControllerCommand(0x60)`.
+   **Kept, leftover accepted:** three-instruction form now matches; remaining starred row is `stru_40F0.ext` vs `super_class` (objc_super operand). Diff 7 → 1, not masked-eq. Rebuild `20C8BD6E1243FE4CB6D1CDCC51654CBADF65E118370ACBF8D49EBE05B3631C07`. `intentional-mismatch`.
 
 ### `-[PS2Keyboard readConfigTable:]` (diff 10)
 

@@ -1987,3 +1987,14 @@ Pointer-increment store still compiled to `mov dword ptr [eax+4], 0`. Remaining:
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+### `-[PS2Keyboard initWithController:]` (2760) — kept source, leftover accepted
+
+Three-statement command-byte edit matches the reference `or`/`and`/`or`. Remaining `--name` star is `ds:stru_40F0.ext` vs `super_class`. Diff 1. Rebuilt `20C8BD6E1243FE4CB6D1CDCC51654CBADF65E118370ACBF8D49EBE05B3631C07`.
+
+```
+-[PS2Keyboard initWithController:]
+  status=different raw_equal=False masked_equal=False
+  starred leftover:
+* mov edx, ds:stru_40F0.ext               mov edx, ds:stru_40F0.super_class
+```

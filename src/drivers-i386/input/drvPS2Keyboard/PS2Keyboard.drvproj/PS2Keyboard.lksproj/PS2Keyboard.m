@@ -132,14 +132,13 @@ static unsigned int _kbdBitVector[4];
     sendControllerCommand(0x20);  /* Command: Read Command Byte */
     commandByte = getKeyboardData();
 
+    commandByte |= 0x40;
+    commandByte &= 0xEF;
+    commandByte |= 1;
+
     /* Write the modified command byte back to the controller */
     sendControllerCommand(0x60);  /* Command: Write Command Byte */
-
-    /*
-     * & 0xEF clears bit 4 (enable the keyboard interface)
-     * | 0x41 sets bit 0 (keyboard interrupt) and bit 6 (translate scancodes)
-     */
-    sendControllerData(commandByte & 0xEF | 0x41);
+    sendControllerData(commandByte);
 
     /* Register ourselves with the controller as the keyboard object */
     [controller setKeyboardObject:self];

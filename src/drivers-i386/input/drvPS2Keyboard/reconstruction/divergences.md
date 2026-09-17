@@ -2049,14 +2049,153 @@ Free-queue insert is now `jz` to empty; non-empty stores and tempPtr dequeue unl
 ```
 _getKeyboardData
   status=different raw_equal=False masked_equal=False
-  leftover: empty free-queue insert is laid after the non-empty tail (reference lays it before dequeue as loc_668); tempPtr uses edx where the reference uses eax.
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push ebx                                push ebx
+  call _lock_controller                   call _lock_controller
+  cmp ds:_keyboardQueue, offset _keyboardQueue  cmp ds:_keyboardQueue, offset _keyboardQueue
+* jnz loc_684                             jnz loc_1004
+  call _reallyGetKeyboardData             call _reallyGetKeyboardData
+  mov bl, al                              mov bl, al
+* jmp loc_6D7                             jmp loc_106F
+* mov ds:_keyboardFreeQueue, ecx          mov eax, ds:_keyboardQueue
+* mov ds:dword_2124, ecx                  mov ebx, [eax]
+* mov dword ptr [ecx], offset _keyboardFreeQueue  mov ecx, [eax+4]
+* mov dword ptr [ecx+4], offset _keyboardFreeQueue  mov edx, offset _keyboardQueue
+* jmp loc_6D7
+* mov ecx, ds:_keyboardQueue
+* mov ebx, [ecx]
+* mov edx, [ecx+4]
+* mov eax, offset _keyboardQueue
+  cmp ebx, offset _keyboardQueue          cmp ebx, offset _keyboardQueue
+* jz loc_69E                              jz loc_101D
+* mov eax, ebx                            mov edx, ebx
+* mov [eax+4], edx                        mov [edx+4], ecx
+* mov eax, offset _keyboardQueue          mov edx, offset _keyboardQueue
+* cmp edx, offset _keyboardQueue          cmp ecx, offset _keyboardQueue
+* jz loc_6B0                              jz loc_102F
+* mov eax, edx                            mov edx, ecx
+* mov [eax], ebx                          mov [edx], ebx
+* mov bl, [ecx+8]                         mov bl, [eax+8]
+  cmp ds:_keyboardFreeQueue, offset _keyboardFreeQueue  cmp ds:_keyboardFreeQueue, offset _keyboardFreeQueue
+* jz loc_668                              jz loc_1058
+* mov eax, ds:dword_2124                  mov ecx, ds:dword_2148
+* mov [ecx+4], eax                        mov [eax+4], ecx
+* mov dword ptr [ecx], offset _keyboardFreeQueue  mov dword ptr [eax], offset _keyboardFreeQueue
+* mov ds:dword_2124, ecx                  mov ds:dword_2148, eax
+* mov [eax], ecx                          mov [ecx], eax
+*                                         jmp loc_106F
+*                                         mov ds:_keyboardFreeQueue, eax
+*                                         mov ds:dword_2148, eax
+*                                         mov dword ptr [eax], offset _keyboardFreeQueue
+*                                         mov dword ptr [eax+4], offset _keyboardFreeQueue
+  call _unlock_controller                 call _unlock_controller
+  movzx eax, bl                           movzx eax, bl
+  mov ebx, [ebp+var_4]                    mov ebx, [ebp+var_4]
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
 ```
 
 Rebuilt `924B8B12ACB1F6C1F87536930504C244AC75C3460B56E918DDE092906C171FF9`. Task 8 gates unchanged. Unpaired 0.
 
 ### `_isEscape` (756) — accepted leftover
 
-Inlined key compares, reversed `index >= count`, and a signed `extendedHalf` yield `sar` / `sub esp, 4` / matching completion `jg`. Remaining leftover is `esi` vs `edi`, `cmp byte ptr [ebp+arg_0]` vs a register, and cursor addressing. `_undoEscape` became `identical` as a side effect. Rebuilt `ECFE96B1136F8EDF6EEA601C99713F288E9515AD5983848E0C4CB3344E5C74A1`. Task 8 gates unchanged. Unpaired 0.
+Inlined key compares, reversed `index >= count`, and a signed `extendedHalf` yield `sar` / `sub esp, 4` / matching completion `jg`. Remaining leftover is `esi` vs `edi`, `cmp byte ptr [ebp+arg_0]` vs a register, and cursor addressing. `_undoEscape` became `identical` as a side effect. Rebuilt `ECFE96B1136F8EDF6EEA601C99713F288E9515AD5983848E0C4CB3344E5C74A1`. Task 8 gates unchanged. Unpaired 0. `--name`:
+
+```
+_isEscape
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 4                              sub esp, 4
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+* mov esi, [ebp+arg_4]                    mov edi, [ebp+arg_4]
+* cmp dword ptr [esi+28h], 0              mov si, [ebp+arg_0]
+* jnz loc_348                             cmp dword ptr [edi+28h], 0
+* mov [ebp+var_4], esi                    jnz loc_CE4
+* cmp dword ptr [esi], 0                  mov ecx, esi
+* jz loc_3B6                              sar cx, 8
+* mov di, [ebp+arg_0]                     mov [ebp+var_4], cx
+* sar di, 8                               mov edx, edi
+*                                         cmp dword ptr [edi], 0
+*                                         jz loc_D56
+  nop                                     nop
+* nop                                     mov ebx, [edx]
+* mov ecx, [ebp+var_4]
+* mov ebx, [ecx]
+  mov ecx, [ebx+4]                        mov ecx, [ebx+4]
+  mov eax, ecx                            mov eax, ecx
+  add eax, ecx                            add eax, ecx
+* lea edx, [ebx+eax+8]                    lea eax, [ebx+eax+8]
+* mov cl, [edx]                           mov ecx, esi
+* cmp byte ptr [ebp+arg_0], cl            cmp [eax], cl
+* jnz loc_33A                             jnz loc_CD7
+* mov ecx, edi                            mov cl, byte ptr [ebp+var_4]
+* cmp [edx+1], cl                         cmp [eax+1], cl
+* jz loc_398                              jz loc_D38
+* add [ebp+var_4], 4                      add edx, 4
+* mov ecx, [ebp+var_4]                    cmp dword ptr [edx], 0
+* cmp dword ptr [ecx], 0                  jnz loc_CBC
+* jnz loc_31C                             jmp loc_D56
+* jmp loc_3B6                             mov ebx, [edi+28h]
+* mov ebx, [esi+28h]
+  mov ecx, [ebx+4]                        mov ecx, [ebx+4]
+  mov eax, ecx                            mov eax, ecx
+  add eax, ecx                            add eax, ecx
+* lea edx, [ebx+eax+8]                    lea eax, [ebx+eax+8]
+* mov cl, [edx]                           mov ecx, esi
+* cmp byte ptr [ebp+arg_0], cl            sar cx, 8
+* jnz loc_3A8                             mov [ebp+var_4], cx
+* mov ax, [ebp+arg_0]                     mov ecx, esi
+* sar ax, 8                               cmp [eax], cl
+* cmp [edx+1], al                         jnz loc_D48
+* jnz loc_3A8                             mov cl, byte ptr [ebp+var_4]
+*                                         cmp [eax+1], cl
+*                                         jnz loc_D48
+  inc dword ptr [ebx+4]                   inc dword ptr [ebx+4]
+  mov eax, [ebx+4]                        mov eax, [ebx+4]
+  cmp [ebx], eax                          cmp [ebx], eax
+* jg loc_3B6                              jg loc_D56
+  mov dword ptr [ebx+4], 0                mov dword ptr [ebx+4], 0
+* mov dword ptr [esi+28h], 0              mov dword ptr [edi+28h], 0
+  call __PS2KeyboardNumKeysDown           call __PS2KeyboardNumKeysDown
+  mov edx, eax                            mov edx, eax
+  mov eax, [ebx]                          mov eax, [ebx]
+  dec eax                                 dec eax
+  cmp edx, eax                            cmp edx, eax
+* jnz loc_3B6                             jnz loc_D56
+  mov eax, 1                              mov eax, 1
+* jmp loc_3B8                             jmp loc_D58
+* mov [esi+2Ch], ebx                      mov [edi+2Ch], ebx
+* mov [esi+28h], ebx                      mov [edi+28h], ebx
+  mov dword ptr [ebx+4], 1                mov dword ptr [ebx+4], 1
+* jmp loc_3B6                             jmp loc_D56
+  mov dword ptr [ebx+4], 0                mov dword ptr [ebx+4], 0
+* mov dword ptr [esi+28h], 0              mov dword ptr [edi+28h], 0
+  xor eax, eax                            xor eax, eax
+  lea esp, [ebp-10h]                      lea esp, [ebp-10h]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
 
 ### `-[PS2Keyboard becomeOwner:]` (4416) — `masked_equal`
 
@@ -2064,15 +2203,329 @@ Inverted `_owner != nil` and `respondsTo:` so grant / IOLog are the `jz` targets
 
 ### `_doEscape` (1100) — accepted leftover
 
-`0xE0` is tested before copying `lastExtended`. `lastKey` compares are byte `cmp` plus `sar` of `currentKey`. Remaining leftover is extra `edi`, last-conjunct `jz` vs `jnz`+`jmp`, and `push esi` vs `add esp,-2; push si`. Rebuilt `52AB2AE532AA87FEBB04829BF8B30630CCD1F61B71072B64B2E27569E3652752`. Task 8 gates unchanged. Unpaired 0.
+`0xE0` is tested before copying `lastExtended`. `lastKey` compares are byte `cmp` plus `sar` of `currentKey`. Remaining leftover is extra `edi`, last-conjunct `jz` vs `jnz`+`jmp`, and `push esi` vs `add esp,-2; push si`. Rebuilt `52AB2AE532AA87FEBB04829BF8B30630CCD1F61B71072B64B2E27569E3652752`. Task 8 gates unchanged. Unpaired 0. `--name`:
+
+```
+_doEscape
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+*                                         push edi
+  push esi                                push esi
+  push ebx                                push ebx
+* mov dl, [ebp+arg_0]                     mov cl, [ebp+arg_0]
+* cmp dl, 0E0h                            cmp cl, 0E0h
+* jnz loc_468                             jnz loc_E38
+  mov ds:_lastExtended_117, 1             mov ds:_lastExtended_117, 1
+* jmp loc_4FF                             jmp loc_E9B
+* mov al, ds:_lastExtended_117
+* mov ds:_lastExtended_117, 0
+* shl ax, 8
+* movzx si, dl
+* or si, ax
+* mov ecx, esi
+* cmp byte ptr ds:_lastKey_118, cl
+* jnz loc_4CC
+* mov eax, esi
+* sar ax, 8
+* cmp byte ptr ds:_lastKey_118+1, al
+* jnz loc_4CC
+* jmp loc_4FF
+  call _disableMouse                      call _disableMouse
+* mov ecx, [ebx+24h]                      mov edi, [ebx+24h]
+* push ecx                                push edi
+* mov ecx, [ebx+20h]                      mov edi, [ebx+20h]
+* push ecx                                push edi
+* mov ecx, [ebx+1Ch]                      mov edi, [ebx+1Ch]
+* push ecx                                push edi
+  mov eax, [ebx+18h]                      mov eax, [ebx+18h]
+  call eax                                call eax
+  call _enableMouse                       call _enableMouse
+  push ebx                                push ebx
+  call _undoEscape                        call _undoEscape
+  call _resetEscapes                      call _resetEscapes
+  mov eax, 1                              mov eax, 1
+* jmp loc_501                             jmp loc_E9D
+* mov ds:_lastKey_118, si                 mov al, ds:_lastExtended_117
+*                                         mov ds:_lastExtended_117, 0
+*                                         mov edx, eax
+*                                         shl dx, 8
+*                                         movzx ax, cl
+*                                         or dx, ax
+*                                         cmp byte ptr ds:_lastKey_118, cl
+*                                         jnz loc_E68
+*                                         mov eax, edx
+*                                         sar ax, 8
+*                                         cmp byte ptr ds:_lastKey_118+1, al
+*                                         jz loc_E9B
+*                                         mov ds:_lastKey_118, dx
+  mov ebx, offset _escapes                mov ebx, offset _escapes
+* cmp ds:off_2078, 0                      cmp ds:off_2080, 0
+* jz loc_4FF                              jz loc_E9B
+* nop                                     movzx esi, dx
+* nop
+* nop
+  push ebx                                push ebx
+* add esp, 0FFFFFFFEh                     push esi
+* push si
+  call _isEscape                          call _isEscape
+  add esp, 8                              add esp, 8
+  test al, al                             test al, al
+* jnz loc_49C                             jnz loc_E08
+  add ebx, 30h                            add ebx, 30h
+  cmp dword ptr [ebx+18h], 0              cmp dword ptr [ebx+18h], 0
+* jnz loc_4E4                             jnz loc_E80
+  xor eax, eax                            xor eax, eax
+* lea esp, [ebp-8]                        lea esp, [ebp-0Ch]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+*                                         pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
 
 ### `-[PS2Controller initFromDeviceDescription:]` (208) — accepted leftover
 
-Free-queue fill branches empty vs tail; both queues store `prev` before `next`. Remaining leftover is extra `edi`, `self` register, `stru_40F0.ext` vs `super_class`, and duplicated element `lea`. Rebuilt `920B1D08B4592B04A390A3FA592798C349EE2D4035A6127A6BAD5B1BA24DF302`. Task 8 gates unchanged. Unpaired 0.
+Free-queue fill branches empty vs tail; both queues store `prev` before `next`. Remaining leftover is extra `edi`, `self` register, `stru_40F0.ext` vs `super_class`, and duplicated element `lea`. Rebuilt `920B1D08B4592B04A390A3FA592798C349EE2D4035A6127A6BAD5B1BA24DF302`. Task 8 gates unchanged. Unpaired 0. `--name`:
+
+```
+-[PS2Controller initFromDeviceDescription:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 8                              sub esp, 8
+* push edi
+  push esi                                push esi
+  push ebx                                push ebx
+* mov esi, [ebp+self]                     mov ebx, [ebp+self]
+* mov edi, [ebp+arg_8]                    mov esi, [ebp+arg_8]
+* push edi                                push esi
+* mov edi, ds:paInitfromdevice            mov esi, ds:paInitfromdevice
+* push edi                                push esi
+* mov [ebp+var_8.receiver], esi           mov [ebp+var_8.receiver], ebx
+* mov edi, ds:stru_40F0.super_class       mov esi, ds:stru_40F0.ext
+* mov [ebp+var_8.super_class], edi        mov [ebp+var_8.super_class], esi
+  lea eax, [ebp+var_8]                    lea eax, [ebp+var_8]
+  push eax                                push eax
+  call near ptr _objc_msgSendSuper        call near ptr _objc_msgSendSuper
+  push offset aPs2controller              push offset aPs2controller
+* mov edi, ds:paSetname                   mov esi, ds:paSetname
+* push edi
+  push esi                                push esi
+*                                         push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  push offset aPs2controller              push offset aPs2controller
+* mov edi, ds:paSetdevicekind             mov esi, ds:paSetdevicekind
+* push edi
+  push esi                                push esi
+*                                         push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 24h                            add esp, 24h
+* mov edi, ds:paRegisterdevice            mov esi, ds:paRegisterdevice
+* push edi
+  push esi                                push esi
+*                                         push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+* mov ds:dword_2124, offset _keyboardFreeQueue  mov ds:dword_2148, offset _keyboardFreeQueue
+  mov ds:_keyboardFreeQueue, offset _keyboardFreeQueue  mov ds:_keyboardFreeQueue, offset _keyboardFreeQueue
+  xor ecx, ecx                            xor ecx, ecx
+  add esp, 8                              add esp, 8
+* mov ebx, offset _keyboardQueueElements
+* nop
+* nop
+  cmp ds:_keyboardFreeQueue, offset _keyboardFreeQueue  cmp ds:_keyboardFreeQueue, offset _keyboardFreeQueue
+* jnz loc_188                             jnz loc_B28
+* lea edx, [ecx+ecx*2]
+* shl edx, 2
+* lea eax, _keyboardQueueElements[edx]
+* mov ds:_keyboardFreeQueue, eax
+* mov ds:dword_2124, eax
+* mov ds:_keyboardQueueElements[edx], offset _keyboardFreeQueue
+* mov dword ptr [ebx+edx+4], offset _keyboardFreeQueue
+* jmp loc_1AE
+* mov edx, ds:dword_2124
+  lea eax, [ecx+ecx*2]                    lea eax, [ecx+ecx*2]
+  shl eax, 2                              shl eax, 2
+* mov [ebx+eax+4], edx                    lea edx, _keyboardQueueElements[eax]
+*                                         mov ds:_keyboardFreeQueue, edx
+*                                         mov ds:dword_2148, edx
+  mov ds:_keyboardQueueElements[eax], offset _keyboardFreeQueue  mov ds:_keyboardQueueElements[eax], offset _keyboardFreeQueue
+* add eax, offset _keyboardQueueElements  mov dword ptr [edx+4], offset _keyboardFreeQueue
+* mov ds:dword_2124, eax                  jmp loc_B52
+* mov [edx], eax                          lea eax, [ecx+ecx*2]
+*                                         shl eax, 2
+*                                         lea edx, _keyboardQueueElements[eax]
+*                                         mov esi, ds:dword_2148
+*                                         mov [edx+4], esi
+*                                         mov ds:_keyboardQueueElements[eax], offset _keyboardFreeQueue
+*                                         mov ds:dword_2148, edx
+*                                         mov eax, [edx+4]
+*                                         mov [eax], edx
+  inc ecx                                 inc ecx
+  cmp ecx, 1Fh                            cmp ecx, 1Fh
+* jle loc_150                             jle loc_AF0
+* mov ds:dword_211C, offset _keyboardQueue  mov ds:dword_2140, offset _keyboardQueue
+  mov ds:_keyboardQueue, offset _keyboardQueue  mov ds:_keyboardQueue, offset _keyboardQueue
+* mov edi, ds:paStartiothread             mov esi, ds:paStartiothread
+* push edi
+  push esi                                push esi
+*                                         push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+* mov eax, esi                            mov eax, ebx
+* lea esp, [ebp-14h]                      lea esp, [ebp-10h]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+* pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
 
 ### `_scancodeToKeyEvent` (3520) — accepted leftover
 
-Case bodies store `event.keyCode` directly; `extendCount == 0` lays the normal mask first. Remaining leftover is jump-table body order, NumLock byte test vs shift, and key-up `rol` vs `not`. Rebuilt `66A9030CBB92CCC4DEA81267E51AFFA76E33E85231CEF265B5AED6FC5D140D89`. Task 8 gates unchanged. Unpaired 0.
+Case bodies store `event.keyCode` directly; `extendCount == 0` lays the normal mask first. Remaining leftover is jump-table body order, NumLock byte test vs shift, and key-up `rol` vs `not`. Rebuilt `66A9030CBB92CCC4DEA81267E51AFFA76E33E85231CEF265B5AED6FC5D140D89`. Task 8 gates unchanged. Unpaired 0. `--name`:
+
+```
+_scancodeToKeyEvent
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push esi                                push esi
+  push ebx                                push ebx
+  mov bl, [ebp+arg_0]                     mov bl, [ebp+arg_0]
+  cmp bl, 0E0h                            cmp bl, 0E0h
+* jnz loc_DDC                             jnz loc_46C
+* mov ds:_extendCount_101, 1              mov ds:_extendCount_99, 1
+  xor eax, eax                            xor eax, eax
+* jmp loc_10E9                            jmp loc_74D
+  cmp bl, 0E1h                            cmp bl, 0E1h
+* jnz loc_DF4                             jnz loc_484
+* cmp ds:_extendCount_101, 0              cmp ds:_extendCount_99, 0
+* jnz loc_E10                             jnz loc_4A0
+* mov ds:_extendCount_101, 5              mov ds:_extendCount_99, 5
+* jmp def_E25                             jmp def_4B5
+* cmp ds:_extendCount_101, 0              cmp ds:_extendCount_99, 0
+* jnz loc_E10                             jnz loc_4A0
+  mov esi, ebx                            mov esi, ebx
+  and esi, 7Fh                            and esi, 7Fh
+* mov ds:dword_213C, esi                  mov ds:dword_2100, esi
+* jmp loc_1036                            jmp loc_6C6
+* dec ds:_extendCount_101                 dec ds:_extendCount_99
+* jnz def_E25                             jnz def_4B5
+  mov eax, ebx                            mov eax, ebx
+  and eax, 7Fh                            and eax, 7Fh
+  add eax, 0FFFFFFE4h                     add eax, 0FFFFFFE4h
+  cmp eax, 41h                            cmp eax, 41h
+* ja def_E25                              ja def_4B5
+* jmp ds:jpt_E25[eax*4]                   jmp ds:jpt_4B5[eax*4]
+* mov ds:dword_213C, 60h                  mov ds:dword_2100, 62h
+* jmp loc_1036                            jmp loc_6C6
+* mov ds:dword_213C, 61h                  mov ds:dword_2100, 60h
+* jmp loc_1036                            jmp loc_6C6
+* mov ds:dword_213C, 62h                  mov ds:dword_2100, 63h
+* jmp loc_1036                            jmp loc_6C6
+* mov ds:dword_213C, 63h                  mov ds:dword_2100, 6Eh
+* jmp loc_1036                            jmp loc_6C6
+* mov ds:dword_213C, 64h                  mov ds:dword_2100, 61h
+* jmp loc_1036                            jmp loc_6C6
+* mov ds:dword_213C, 65h                  mov ds:dword_2100, 6Fh
+* jmp loc_1036                            jmp loc_6C6
+* mov ds:dword_213C, 66h                  mov ds:dword_2100, 6Ch
+* jmp loc_1036                            jmp loc_6C6
+* mov ds:dword_213C, 67h                  mov ds:dword_2100, 64h
+* jmp loc_1036                            jmp loc_6C6
+* mov ds:dword_213C, 68h                  mov ds:dword_2100, 6Ah
+* jmp loc_1036                            jmp loc_6C6
+* mov ds:dword_213C, 69h                  mov ds:dword_2100, 66h
+* jmp loc_1036                            jmp loc_6C6
+* mov ds:dword_213C, 6Ah                  mov ds:dword_2100, 67h
+* jmp loc_1036                            jmp loc_6C6
+* mov ds:dword_213C, 6Bh                  mov ds:dword_2100, 6Dh
+* jmp loc_1036                            jmp loc_6C6
+* mov ds:dword_213C, 6Ch                  mov ds:dword_2100, 65h
+* jmp loc_1036                            jmp loc_6C6
+* mov ds:dword_213C, 6Dh                  mov ds:dword_2100, 6Bh
+* jmp loc_1036                            jmp loc_6C6
+* mov ds:dword_213C, 6Eh                  mov ds:dword_2100, 68h
+* jmp loc_1036                            jmp loc_6C6
+* mov ds:dword_213C, 6Fh                  mov ds:dword_2100, 69h
+* jmp loc_1036                            jmp loc_6C6
+* mov ds:dword_213C, 70h                  mov ds:dword_2100, 70h
+* jmp loc_1036                            jmp loc_6C6
+* mov ds:dword_213C, 71h                  mov ds:dword_2100, 71h
+* jmp loc_1036                            jmp loc_6C6
+* mov ds:dword_213C, 72h                  mov ds:dword_2100, 72h
+* cmp ds:dword_213C, 0                    cmp ds:dword_2100, 0
+* jz def_E25                              jz def_4B5
+* push offset _event_100                  push offset _event_98
+  call near ptr _IOGetTimestamp           call near ptr _IOGetTimestamp
+* mov al, bl                              mov dl, bl
+* shr al, 7                               shr dl, 7
+*                                         xor dl, 1
+*                                         mov ds:byte_2104, dl
+*                                         cmp ds:dword_2100, 6Fh
+*                                         jnz loc_709
+*                                         mov eax, ds:dword_2118
+*                                         shr eax, 0Fh
+  xor al, 1                               xor al, 1
+* mov ds:byte_2140, al                    mov dl, al
+* cmp ds:dword_213C, 6Fh                  and dl, 1
+* jnz loc_1073                            mov ds:byte_2104, dl
+* test ds:byte_2155, 80h                  mov ebx, ds:dword_2100
+* setz al                                 shr ebx, 5
+* mov ds:byte_2140, al                    mov cl, byte ptr ds:dword_2100
+* cmp ds:byte_2140, 0
+* jz loc_10C4
+* mov edx, ds:dword_213C
+* shr edx, 5
+* mov ecx, ds:dword_213C
+  and ecx, 1Fh                            and ecx, 1Fh
+  mov eax, 1                              mov eax, 1
+  shl eax, cl                             shl eax, cl
+* test ds:__kbdBitVector[edx*4], eax      test dl, dl
+* jnz def_E25                             jnz loc_734
+* mov edx, ds:dword_213C                  not eax
+* shr edx, 5                              and ds:__kbdBitVector[ebx*4], eax
+* mov ecx, ds:dword_213C                  jmp loc_748
+* and ecx, 1Fh                            test ds:__kbdBitVector[ebx*4], eax
+* mov eax, 1                              jnz def_4B5
+* shl eax, cl                             or ds:__kbdBitVector[ebx*4], eax
+* or ds:__kbdBitVector[edx*4], eax        mov eax, offset _event_98
+* jmp loc_10E4
+* mov edx, ds:dword_213C
+* shr edx, 5
+* mov ecx, ds:dword_213C
+* and ecx, 1Fh
+* mov eax, 0FFFFFFFEh
+* rol eax, cl
+* and ds:__kbdBitVector[edx*4], eax
+* mov eax, offset _event_100
+  lea esp, [ebp-8]                        lea esp, [ebp-8]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
 
 ## Task 4 stop (unpaired growth)
 

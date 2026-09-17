@@ -1136,3 +1136,16 @@ divergence appears in the code, which is why the status is `assembly-matched` ra
 `unexamined`.
 
 No function in this driver was reviewed at control-flow level only.
+
+## Phase 1 baseline
+
+2026-09-16 guest rebuild of the current tree, no `PS2Mouse.m` edits. Live
+`System.framework` has no `PrivateHeaders`; `gnumake` was given bootstrap-root
+`-I` for `Versions/B/PrivateHeaders` and `Versions/B/Headers`. Guest log:
+`=== input-recon done fail=0 built: drvPS2Mouse ===`. Staged unstripped
+`PS2Mouse_reloc` is **94604** bytes, SHA-256
+`78273466617EE2960E4912D22F386BDBA295DB7863E985D172A1D063B3899473`.
+`parity_check.py`: `missing_strings` **0**, `missing_symbols` **0**,
+`extra_strings` **0**, `extra_symbols` **16**. This `_reloc` is not kept as
+the campaign result; `rebuilt_sha256` is unchanged. Finding 13/14/VERS are
+still in source. See `function-worklist.md`.

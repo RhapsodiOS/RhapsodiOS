@@ -110,8 +110,8 @@
         ],
         "reasons": [
           "IDA, Ghidra and angr agree on address, size and block structure",
-          "full disassembly read instruction by instruction against source; divergences found (divergences.md Findings 2, 3, 8, 11). Finding 4 confirms the Force Detection parse at 716-760 is byte-for-byte what our source does",
-          "Task 6: NULL-or-not-y/Y branch rewritten to the positive form (str != NULL && (*str == 'y' || *str == 'Y')) for Force Detection and Inverted. --name is masked_equal; remaining diffs are jump labels"
+          "Task 6: NULL-or-not-y/Y branch rewritten to the positive form (str != NULL && (*str == 'y' || *str == 'Y')) for Force Detection and Inverted. --name is masked_equal; remaining diffs are jump labels",
+          "full disassembly read instruction by instruction against source; divergences found (divergences.md Findings 2, 3, 8, 11). Finding 4 confirms the Force Detection parse at 716-760 is byte-for-byte what our source does"
         ],
         "status": "agreed"
       },
@@ -326,7 +326,7 @@
       "status": "intentional-mismatch"
     }
   ],
-  "rebuilt_sha256": null,
+  "rebuilt_sha256": "948DCB8066528D89F8E83B03C62B988769A9B92A0DFF6C2DF6B40AFB989EE771",
   "reference_sha256": "4C43D8A9AE0B83ACD1BA4D17340A4C6BF5FDACD84634CE5C7FC457D97DE11A7E",
   "schema_version": "ledger-v1"
 }

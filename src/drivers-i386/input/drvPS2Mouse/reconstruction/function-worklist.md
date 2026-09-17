@@ -74,3 +74,23 @@ Glue is still only the two generated `+[` methods. Do not hand-write them.
 - `resetMouse` stayed `masked-eq`
 - `interruptOccurred` stayed `masked-eq`
 - `getIntValues:forParameter:count:` stayed at 7 diffs
+
+## Closing
+
+6/11 hand-written functions are IDA masked-eq or identical:
+`-[PS2Mouse getHandler:level:argument:forInterrupt:]`,
+`-[PS2Mouse getResolution]`, `-[PS2Mouse interruptOccurred]`,
+`-[PS2Mouse resetMouse]`, `-[PS2Mouse isMousePresent]`,
+`-[PS2Mouse readConfigTable:]`. Five leftovers were accepted as compiler-shaped:
+`-[PS2Mouse getIntValues:forParameter:count:]` (7 diffs, edx vs eax),
+`-[PS2Mouse setIntValues:forParameter:count:]` (20 diffs, 53 vs 49, gcc spill),
+`-[PS2Mouse mouseInit:]` (26 diffs, 54 vs 52, gcc early-return vs inline-error layout),
+`-[PS2Mouse initWithController:]` (35/108, `_func_list` vs `_controllerFunctions` and jz/jnz / and-or layout),
+`_PS2MouseIntHandler` (119/120 vs 111, `_func_list` vs `_controllerFunctions` and frame shape).
+Two Kernel Server glue methods are generated (`kernelServerInstance` masked-eq,
+`driverKitVersionForPS2Mouse` identical). Last kept rebuilt `PS2Mouse_reloc`
+SHA-256 `948DCB8066528D89F8E83B03C62B988769A9B92A0DFF6C2DF6B40AFB989EE771`
+(94408 bytes). `__TEXT,__const` is still absent: Task 5 wired
+`OTHER_GENERATED_OFILES += $(VERS_OFILE)` but the guest has no
+`next-sgs.make`, so `_PS2Mouse_VERS_STRING` / `_VERS_NUM` were not emitted.
+Not yet tested on hardware.

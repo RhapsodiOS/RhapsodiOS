@@ -63,12 +63,14 @@ extern char verbose;
     channelMask = data[0];
 
     /* Add each set bit as a DMA channel */
-    for (i = 0; i < 8; i++) {
+    i = 0;
+    do {
         if ((channelMask >> i) & 1) {
             _dmaChannels[_count] = i;
             _count++;
         }
-    }
+        i++;
+    } while (i < 8);
 
     /* Parse flags byte (second byte) */
     flags = data[1];

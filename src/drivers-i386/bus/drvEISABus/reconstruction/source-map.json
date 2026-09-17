@@ -677,7 +677,7 @@
         "-[pnpDMA print]"
       ],
       "size": 252,
-      "source_line": 176,
+      "source_line": 177,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m"
     },
     {
@@ -686,7 +686,7 @@
         "-[pnpDMA matches:]"
       ],
       "size": 126,
-      "source_line": 142,
+      "source_line": 143,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m"
     },
     {
@@ -704,7 +704,7 @@
         "-[pnpDMA addDMAToList:]"
       ],
       "size": 29,
-      "source_line": 119,
+      "source_line": 121,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m"
     },
     {
@@ -713,7 +713,7 @@
         "-[pnpDMA number]"
       ],
       "size": 13,
-      "source_line": 132,
+      "source_line": 133,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m"
     },
     {
@@ -722,7 +722,7 @@
         "-[pnpDMA dmaChannels]"
       ],
       "size": 13,
-      "source_line": 110,
+      "source_line": 112,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m"
     },
     {
@@ -731,7 +731,7 @@
         "-[pnpDMA writePnPConfig:Index:]"
       ],
       "size": 80,
-      "source_line": 240,
+      "source_line": 241,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m"
     },
     {

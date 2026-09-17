@@ -1746,7 +1746,7 @@
       "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 252,
-      "source_line": 175,
+      "source_line": 177,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m",
       "status": "intentional-mismatch"
     },
@@ -1770,33 +1770,31 @@
       "reason": null,
       "reviewer": null,
       "size": 126,
-      "source_line": 141,
+      "source_line": 143,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m",
       "status": "unexamined"
     },
     {
       "address": 16684,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 6 do-while channel-mask walk keeps Apple bt/jle stream; leftover is _count zero plus buffer-pointer walk versus data[1] reload and PIC verbose"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[pnpDMA initFrom:Length:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 210,
       "source_line": 49,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 16896,
@@ -1818,7 +1816,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 29,
-      "source_line": 119,
+      "source_line": 121,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m",
       "status": "assembly-matched"
     },
@@ -1842,7 +1840,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 13,
-      "source_line": 131,
+      "source_line": 133,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m",
       "status": "assembly-matched"
     },
@@ -1866,7 +1864,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 13,
-      "source_line": 110,
+      "source_line": 112,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m",
       "status": "assembly-matched"
     },
@@ -1890,7 +1888,7 @@
       "reason": null,
       "reviewer": null,
       "size": 80,
-      "source_line": 239,
+      "source_line": 241,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m",
       "status": "unexamined"
     },
@@ -3935,7 +3933,7 @@
       "status": "unexamined"
     }
   ],
-  "rebuilt_sha256": "28B80C9E5FA1BB95EF62F525D4B48A532BDAC434650B438AC63601CC9A1B42AC",
+  "rebuilt_sha256": "25DC982C3EE8B344B7239162BC99532E17574BC8095051E2B12F0A7D7E0EE516",
   "reference_sha256": "8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23",
   "schema_version": "ledger-v1"
 }

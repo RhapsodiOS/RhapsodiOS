@@ -251,7 +251,7 @@
         "_sendMouseCommand"
       ],
       "size": 53,
-      "source_line": 780,
+      "source_line": 784,
       "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m"
     },
     {
@@ -260,7 +260,7 @@
         "_disableMouse"
       ],
       "size": 26,
-      "source_line": 797,
+      "source_line": 805,
       "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m"
     },
     {
@@ -269,7 +269,7 @@
         "_enableMouse"
       ],
       "size": 26,
-      "source_line": 805,
+      "source_line": 813,
       "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m"
     },
     {
@@ -278,7 +278,7 @@
         "_NewStealKeyboardEvent"
       ],
       "size": 83,
-      "source_line": 816,
+      "source_line": 824,
       "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m"
     },
     {

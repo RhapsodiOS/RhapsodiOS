@@ -144,6 +144,9 @@ Task 8 regression gate. Do not apply the BOOL / `and eax, 0FFh` typed rewrite. A
 ### `_sendMouseCommand` (diff 4)
 
 1. Rewrite `return (response == 0xFA)` as an if/else that returns 1 or 0 (`jnz` / `mov eax, 1` / `xor eax, eax` vs `setz`).
+   **Tried, miss:** `if (response == 0xFA) return 1; else return 0;` laid the `xor eax, eax` path first (`jz` to `mov eax, 1`). Diff 4 → 5. No closed-function regression. Reverted.
+2. Invert the compare: `if (response != 0xFA) return 0; else return 1;` so the `jnz` failure path matches the reference.
+   **Match:** `masked_equal` after rebuild `C2B45245EE841E1851BA1FFCB9C8E20F9929D390A6E64AF97995202029A32CF1`. Ledger `assembly-matched`.
 
 ### `-[PS2Keyboard desireOwnership:]` (diff 6)
 

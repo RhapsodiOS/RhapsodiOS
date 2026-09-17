@@ -668,9 +668,9 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 53,
-      "source_line": 780,
+      "source_line": 784,
       "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
-      "status": "control-flow-confirmed"
+      "status": "assembly-matched"
     },
     {
       "address": 2264,
@@ -692,7 +692,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 26,
-      "source_line": 797,
+      "source_line": 805,
       "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
       "status": "assembly-matched"
     },
@@ -716,7 +716,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 26,
-      "source_line": 805,
+      "source_line": 813,
       "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
       "status": "assembly-matched"
     },
@@ -740,7 +740,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 83,
-      "source_line": 816,
+      "source_line": 824,
       "source_path": "src/drivers-i386/input/drvPS2Keyboard/PS2Keyboard.drvproj/PS2Keyboard.lksproj/PS2Controller.m",
       "status": "assembly-matched"
     },
@@ -1177,7 +1177,7 @@
       "status": "intentional-mismatch"
     }
   ],
-  "rebuilt_sha256": "967883F054B1FC06D89EB5F0BF9E59D8CB973DC61749941686B9042F49E3A1B7",
+  "rebuilt_sha256": "C2B45245EE841E1851BA1FFCB9C8E20F9929D390A6E64AF97995202029A32CF1",
   "reference_sha256": "AB413CA3919950F22A1F5D10B0BF1167387FEF320C9FB82A3EA66E586A6BE02A",
   "schema_version": "ledger-v1"
 }

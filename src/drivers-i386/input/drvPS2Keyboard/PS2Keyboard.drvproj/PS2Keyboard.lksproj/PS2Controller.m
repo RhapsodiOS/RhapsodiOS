@@ -794,7 +794,11 @@ BOOL sendMouseCommand(unsigned char command)
     /* Read the mouse's acknowledgment response */
     response = getMouseData();
 
-    return (response == 0xFA);
+    if (response != 0xFA) {
+        return 0;
+    } else {
+        return 1;
+    }
 }
 
 /* Disable mouse data reporting */

@@ -1925,3 +1925,9 @@ Then/else order on `respondsTo:` is compiler-shaped leftover under the gate. Bod
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+## Task 4 matches
+
+### `_sendMouseCommand` (2208) — `masked_equal`
+
+Inverted `if (response != 0xFA) return 0; else return 1;` (experiment 2). `--name` differs only by jump labels. Rebuilt `C2B45245EE841E1851BA1FFCB9C8E20F9929D390A6E64AF97995202029A32CF1`. Task 8 gate rows stayed identical / masked-eq. Glue still instruction-identical. Unpaired 0.

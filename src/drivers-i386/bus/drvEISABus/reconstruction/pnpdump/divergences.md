@@ -6831,3 +6831,199 @@ Reorder header locals to `serialNum`, `deviceID`, `idValue`, `vendorID`. Leftove
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+### Task 6 `_IOScheduleFunc` for-loop tail walk (2026-09-17)
+
+Walk the prev-chain with a for-loop to find the insert tail instead of only using the sentinel+4 tail pointer. Leftover is Apple's direct tail-pointer insert, `shld` multiply by 1e9 versus `mul`, and PIC. Accepted compiler-shaped leftover (reviewer Pat Raynor). Tool SHA `2BF1107328101AC6C3E7826849C64310646201A5D9F9F5AB76D2B1CDFE9810BC` (299832). Previously identical rows stayed matched (45). Unpaired count unchanged (10).
+
+```
+_IOScheduleFunc
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 14h                            sub esp, 14h
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  call $+5                                call $+5
+* pop [ebp+var_4]                         pop esi
+*                                         mov edi, [ebp+arg_4]
+  cmp [ebp+arg_8], 0                      cmp [ebp+arg_8], 0
+* jnz loc_6CDC                            jnz loc_3770
+* mov ebx, [ebp+arg_4]                    push edi
+* push ebx                                mov eax, [ebp+arg_0]
+* mov esi, [ebp+arg_0]                    call eax
+* call esi                                jmp loc_3854
+* jmp loc_6E12
+* mov ebx, [ebp+var_4]
+* mov [ebx+3E9Eh], edi
+* mov [ebx+3EA2h], edi
+* mov [edi+10h], ecx
+* mov [edi+14h], ecx
+* jmp loc_6DF3
+  push 18h                                push 18h
+  call _IOMalloc                          call _IOMalloc
+* mov edi, eax                            mov ebx, eax
+* mov esi, [ebp+arg_0]                    mov edx, [ebp+arg_0]
+* mov [edi], esi                          mov [ebx], edx
+* mov ebx, [ebp+arg_4]                    mov [ebx+4], edi
+* mov [edi+4], ebx                        lea eax, [ebp+var_8]
+* mov esi, [ebp+var_4]                    push eax
+* mov esi, [ebp+var_4]                    call _IOGetTimestamp
+* mov esi, [esi+543Eh]                    mov eax, 3B9ACA00h
+* push esi                                mul [ebp+arg_8]
+* mov ebx, [ebp+var_4]                    mov [ebp+var_14], eax
+* mov ebx, [ebp+var_4]                    mov [ebp+var_10], edx
+* mov ebx, [ebx+3EA6h]                    mov edx, [ebp+var_14]
+* push ebx                                mov [ebp+var_C], edx
+*                                         mov eax, [ebp+var_14]
+*                                         mov edx, [ebp+var_10]
+*                                         mov eax, edx
+*                                         xor edx, edx
+*                                         mov [ebp+var_14], eax
+*                                         mov [ebp+var_10], edx
+*                                         mov edx, [ebp+var_14]
+*                                         mov [ebp+var_14], edx
+*                                         mov ecx, [ebp+var_8]
+*                                         mov eax, [ebp+var_C]
+*                                         add [ebp+var_8], eax
+*                                         add esp, 8
+*                                         mov edi, [ebp+var_14]
+*                                         add edi, [ebp+var_4]
+*                                         cmp [ebp+var_8], ecx
+*                                         jnb loc_37CC
+*                                         inc edi
+*                                         mov [ebp+var_4], edi
+*                                         mov edx, [ebp+var_8]
+*                                         mov [ebx+8], edx
+*                                         mov eax, [ebp+var_4]
+*                                         mov [ebx+0Ch], eax
+*                                         mov edx, esi
+*                                         mov edx, [edx+68B2h]
+*                                         push edx
+*                                         mov eax, ds:(off_8028 - 375Ah)[esi]
+*                                         mov eax, [eax]
+*                                         push eax
+  call _objc_msgSend                      call _objc_msgSend
+* lea edx, [edi+8]                        mov ecx, ds:(off_802C - 375Ah)[esi]
+*                                         add esp, 8
+*                                         cmp [ecx], ecx
+*                                         jnz loc_380C
+*                                         mov [ecx], ebx
+*                                         mov [ecx+4], ebx
+*                                         mov [ebx+10h], ecx
+*                                         mov [ebx+14h], ecx
+*                                         jmp loc_383A
+*                                         mov edx, ds:(off_802C - 375Ah)[esi]
+*                                         mov ecx, [edx]
+*                                         cmp [ecx+10h], edx
+*                                         jz loc_3828
+*                                         mov edi, ds:(off_802C - 375Ah)[esi]
+*                                         nop
+*                                         mov ecx, [ecx+10h]
+*                                         cmp [ecx+10h], edi
+*                                         jnz loc_3820
+*                                         mov [ebx+14h], ecx
+*                                         mov edx, ds:(off_802C - 375Ah)[esi]
+*                                         mov [ebx+10h], edx
+*                                         mov [ecx+10h], ebx
+*                                         mov [edx+4], ebx
+*                                         mov edx, esi
+*                                         mov edx, [edx+68B6h]
+  push edx                                push edx
+* call _IOGetTimestamp                    mov esi, ds:(off_8028 - 375Ah)[esi]
+* mov ebx, [ebp+arg_8]                    mov [ebp+var_14], esi
+* mov esi, ebx                            mov eax, dword ptr ds:(loc_375A - 375Ah)[esi]
+* sar esi, 1Fh                            push eax
+* mov [ebp+var_C], ebx
+* mov [ebp+var_8], esi
+* mov edx, ebx
+* mov ecx, esi
+* shld ecx, edx, 5
+* shl edx, 5
+* mov ebx, edx
+* mov esi, ecx
+* sub ebx, [ebp+var_C]
+* sbb esi, [ebp+var_8]
+* mov [ebp+var_14], ebx
+* mov [ebp+var_10], esi
+* mov edx, ebx
+* mov ecx, esi
+* shld ecx, edx, 6
+* shl edx, 6
+* sub edx, [ebp+var_14]
+* sbb ecx, [ebp+var_10]
+* shld ecx, edx, 3
+* shl edx, 3
+* mov ebx, edx
+* mov esi, ecx
+* add ebx, [ebp+var_C]
+* adc esi, [ebp+var_8]
+* mov [ebp+var_14], ebx
+* mov [ebp+var_10], esi
+* mov edx, ebx
+* mov ecx, esi
+* shld ecx, edx, 2
+* shl edx, 2
+* mov ebx, [ebp+var_14]
+* mov esi, [ebp+var_10]
+* add ebx, edx
+* adc esi, ecx
+* mov [ebp+var_14], ebx
+* mov [ebp+var_10], esi
+* mov edx, ebx
+* mov ecx, esi
+* shld ecx, edx, 2
+* shl edx, 2
+* mov ebx, [ebp+var_14]
+* mov esi, [ebp+var_10]
+* add ebx, edx
+* adc esi, ecx
+* mov [ebp+var_14], ebx
+* mov [ebp+var_10], esi
+* mov edx, ebx
+* mov ecx, esi
+* shld ecx, edx, 2
+* shl edx, 2
+* add edx, [ebp+var_14]
+* adc ecx, [ebp+var_10]
+* shld ecx, edx, 9
+* shl edx, 9
+* mov [ebp+var_C], edx
+* mov [ebp+var_8], ecx
+* add [edi+8], edx
+* adc [edi+0Ch], ecx
+* add esp, 10h
+* mov ecx, [ebp+var_4]
+* add ecx, 3E9Eh
+* mov esi, [ebp+var_4]
+* cmp [esi+3E9Eh], ecx
+* jz loc_6CC0
+* mov edx, [esi+3EA2h]
+* mov [edi+14h], edx
+* mov [edi+10h], ecx
+* mov [esi+3EA2h], edi
+* mov [edx+10h], edi
+* mov ebx, [ebp+var_4]
+* mov ebx, [ebp+var_4]
+* mov ebx, [ebx+5442h]
+* push ebx
+* mov esi, [ebp+var_4]
+* mov esi, [ebp+var_4]
+* mov esi, [esi+3EA6h]
+* push esi
+  call _objc_msgSend                      call _objc_msgSend
+  lea esp, [ebp-20h]                      lea esp, [ebp-20h]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

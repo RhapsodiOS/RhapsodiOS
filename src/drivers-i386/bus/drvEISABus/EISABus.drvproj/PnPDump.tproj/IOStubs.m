@@ -290,7 +290,7 @@ void IOScheduleFunc(void (*func)(void *), void *arg, unsigned int delayMS)
     /* Lock the callout chain */
     [calloutLock lock];
 
-    /* Insert at end of chain */
+    /* Insert by walking to the prev-chain tail */
     if (calloutChain == (CalloutEntry *)&calloutChain) {
         /* Chain is empty */
         calloutChain = entry;
@@ -299,11 +299,17 @@ void IOScheduleFunc(void (*func)(void *), void *arg, unsigned int delayMS)
         entry->prev = (CalloutEntry *)&calloutChain;
         entry->next = (CalloutEntry *)&calloutChain;
     } else {
-        /* Insert at tail */
-        chainPtr = (CalloutEntry **)((char *)&calloutChain + 4);
-        entry->next = (CalloutEntry *)*chainPtr;
+        CalloutEntry *tail;
+
+        for (tail = calloutChain;
+             tail->prev != (CalloutEntry *)&calloutChain;
+             tail = tail->prev) {
+            ;
+        }
+        entry->next = tail;
         entry->prev = (CalloutEntry *)&calloutChain;
-        (*chainPtr)->prev = entry;
+        tail->prev = entry;
+        chainPtr = (CalloutEntry **)((char *)&calloutChain + 4);
         *chainPtr = entry;
     }
 

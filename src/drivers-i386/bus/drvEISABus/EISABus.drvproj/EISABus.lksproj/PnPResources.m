@@ -41,6 +41,9 @@
 /* External verbose flag */
 extern char verbose;
 
+/* Keep the PnP BIOS signature in __cstring (Apple EISABus_reloc). */
+const char * const pnpBiosSignatureString = "$PnP";
+
 @implementation PnPResources
 
 /*
@@ -117,8 +120,7 @@ extern char verbose;
  */
 - (id)addIRQ:(id)irqObject
 {
-    List *list = [_irq list];
-    return [list addObject:irqObject];
+    return [[_irq list] addObject:irqObject];
 }
 
 /*
@@ -127,8 +129,7 @@ extern char verbose;
  */
 - (id)addDMA:(id)dmaObject
 {
-    List *list = [_dma list];
-    return [list addObject:dmaObject];
+    return [[_dma list] addObject:dmaObject];
 }
 
 /*
@@ -137,8 +138,7 @@ extern char verbose;
  */
 - (id)addIOPort:(id)portObject
 {
-    List *list = [_port list];
-    return [list addObject:portObject];
+    return [[_port list] addObject:portObject];
 }
 
 /*
@@ -147,8 +147,7 @@ extern char verbose;
  */
 - (id)addMemory:(id)memoryObject
 {
-    List *list = [_memory list];
-    return [list addObject:memoryObject];
+    return [[_memory list] addObject:memoryObject];
 }
 
 /*
@@ -158,28 +157,11 @@ extern char verbose;
  */
 - markStartDependentResources
 {
-    int count;
-    List *list;
-
-    /* Set IRQ dependent start */
-    list = [_irq list];
-    count = [list count];
-    [_irq setDepStart:count];
-
-    /* Set DMA dependent start */
-    list = [_dma list];
-    count = [list count];
-    [_dma setDepStart:count];
-
-    /* Set port dependent start */
-    list = [_port list];
-    count = [list count];
-    [_port setDepStart:count];
-
-    /* Set memory dependent start */
-    list = [_memory list];
-    count = [list count];
-    [_memory setDepStart:count];
+    /* Set dependent start for each resource type */
+    [_irq setDepStart:[[_irq list] count]];
+    [_dma setDepStart:[[_dma list] count]];
+    [_port setDepStart:[[_port list] count]];
+    [_memory setDepStart:[[_memory list] count]];
 
     return self;
 }
@@ -380,7 +362,8 @@ extern char verbose;
     }
 
     /* Parse I/O ports (8 slots) */
-    for (i = 0; i < 8; i++) {
+    i = 0;
+    do {
         portBase = (registers->field2_0x38[i][0] << 8) | registers->field2_0x38[i][1];
 
         if (portBase != 0) {
@@ -395,10 +378,11 @@ extern char verbose;
                 [portObject print];
             }
         }
-    }
+    } while (++i < 8);
 
     /* Parse IRQs (2 slots) */
-    for (i = 0; i < 2; i++) {
+    i = 0;
+    do {
         irqNum = registers->field3_0x48[i][0];
 
         /* IRQ 2 redirects to IRQ 9 */
@@ -422,10 +406,11 @@ extern char verbose;
                 [irqObject print];
             }
         }
-    }
+    } while (++i < 2);
 
     /* Parse DMA channels (2 slots) */
-    for (i = 0; i < 2; i++) {
+    i = 0;
+    do {
         dmaChannel = registers->field4_0x4c[i][0];
 
         if (dmaChannel != 4) {
@@ -441,10 +426,11 @@ extern char verbose;
                 [dmaObject print];
             }
         }
-    }
+    } while (++i < 2);
 
     /* Parse 24-bit memory (4 slots) */
-    for (i = 0; i < 4; i++) {
+    i = 0;
+    do {
         memBase24 = ((unsigned int)registers->field0_0x0[i][0] << 16) |
                     ((unsigned int)registers->field0_0x0[i][1] << 8);
 
@@ -481,7 +467,7 @@ extern char verbose;
                 [memoryObject print];
             }
         }
-    }
+    } while (++i < 4);
 
     /* Check if we already have 32-bit memory */
     memList = [_memory list];
@@ -489,7 +475,8 @@ extern char verbose;
 
     if (memCount == 0) {
         /* Parse 32-bit memory (4 slots) */
-        for (i = 0; i < 4; i++) {
+        i = 0;
+        do {
             memBase32 = ((unsigned int)registers->field1_0x14[i][0] << 24) |
                         ((unsigned int)registers->field1_0x14[i][1] << 16) |
                         ((unsigned int)registers->field1_0x14[i][2] << 8) |
@@ -527,7 +514,7 @@ extern char verbose;
                     [memoryObject print];
                 }
             }
-        }
+        } while (++i < 4);
     }
 
     return self;

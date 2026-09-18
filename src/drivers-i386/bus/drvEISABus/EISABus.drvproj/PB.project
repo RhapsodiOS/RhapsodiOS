@@ -6,7 +6,7 @@
         FRAMEWORKSEARCH = ("$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks", /System/Library/PrivateFrameworks);
         OTHER_RESOURCES = (Default.table, Localizable.strings);
         OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble);
-        SUBPROJECTS = (EISABus.lksproj);
+        SUBPROJECTS = (EISABus.lksproj, PnPDump.tproj);
     };
     LANGUAGE = English;
     LOCALIZABLE_FILES = {};

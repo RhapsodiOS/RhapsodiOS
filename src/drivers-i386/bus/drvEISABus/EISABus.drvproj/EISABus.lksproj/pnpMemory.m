@@ -56,11 +56,14 @@ extern char verbose;
  */
 - initFrom:(void *)buffer Length:(int)length Type:(int)type
 {
-    unsigned char *data = (unsigned char *)buffer;
     unsigned int *data32;
+    unsigned char *data = (unsigned char *)buffer;
 
     /* Call superclass init */
     [super init];
+
+    /* data32 addresses the payload after the control byte */
+    data32 = (unsigned int *)(data + 1);
 
     /* Initialize flags */
     _bit32 = 0;
@@ -84,7 +87,6 @@ extern char verbose;
         [self setControl:data[0]];
 
         /* Parse addresses */
-        data32 = (unsigned int *)(data + 1);
         _min_base = data32[0];
         _max_base = data32[1];
         _alignment = data32[2];
@@ -108,7 +110,6 @@ extern char verbose;
         [self setControl:data[0]];
 
         /* Parse base and length (fixed address) */
-        data32 = (unsigned int *)(data + 1);
         _min_base = data32[0];
         _max_base = data32[0];
         _length = data32[1];
@@ -131,10 +132,10 @@ extern char verbose;
         [self setControl:data[0]];
 
         /* Parse addresses (in 256-byte units) */
-        _min_base = (unsigned int)(*(unsigned short *)(data + 1)) << 8;
-        _max_base = (unsigned int)(*(unsigned short *)(data + 3)) << 8;
-        _alignment = (unsigned int)(*(unsigned short *)(data + 5));
-        _length = (unsigned int)(*(unsigned short *)(data + 7)) << 8;
+        _min_base = (unsigned int)(*(unsigned short *)data32) << 8;
+        _max_base = (unsigned int)(*(unsigned short *)((char *)data32 + 2)) << 8;
+        _alignment = (unsigned int)(*(unsigned short *)((char *)data32 + 4));
+        _length = (unsigned int)(*(unsigned short *)((char *)data32 + 6)) << 8;
 
         /* If alignment is 0, use 64K */
         if (_alignment == 0) {
@@ -263,29 +264,19 @@ extern char verbose;
 {
     unsigned int otherBase;
     unsigned int alignedBase;
+    unsigned int alignment;
 
-    /* Get the other memory's minimum base address */
     otherBase = [otherMemory min_base];
-
-    /* Calculate aligned base address */
-    if (_alignment != 0) {
-        /* Round up to next alignment boundary */
-        alignedBase = ((_alignment - 1 + otherBase) / _alignment) * _alignment;
-    } else {
-        alignedBase = otherBase;
+    alignment = _alignment;
+    alignedBase = otherBase;
+    if (alignment != 0) {
+        alignedBase = ((alignment - 1 + otherBase) / alignment) * alignment;
     }
-
-    /* Check if:
-     * 1. Base is already aligned
-     * 2. Base is >= our minimum
-     * 3. Base is <= our maximum
-     */
     if ((otherBase == alignedBase) &&
         (_min_base <= otherBase) &&
         (otherBase <= _max_base)) {
         return YES;
     }
-
     return NO;
 }
 
@@ -311,12 +302,10 @@ extern char verbose;
     case 0:
         /* 8-bit only */
         _bit8 = 1;
-        _bit16 = 0;
         break;
     case 1:
         /* 16-bit only */
         _bit16 = 1;
-        _bit8 = 0;
         break;
     case 2:
         /* 8-bit and 16-bit */
@@ -335,8 +324,6 @@ extern char verbose;
     _highAddressDecode = (control >> 2) & 1;
     _padding = (control >> 1) & 1;  /* Reserved bit at 0x17 */
     _ROM = control & 1;
-
-    return self;
 }
 
 /*

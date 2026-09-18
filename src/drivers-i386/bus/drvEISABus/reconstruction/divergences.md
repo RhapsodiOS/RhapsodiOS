@@ -625,3 +625,4138 @@ These are the natural next targets for a follow-up pass, in roughly this priorit
 PnP resource-allocation methods (most likely to interact with the calling-convention findings
 above, since they consume the results of the BIOS calls), then `getEISASlotNumber:...` and the
 rest of `EISAKernBus.m`, then the `pnp*.m`/`PnP*Resources.m` family.
+
+## Finish campaign
+
+Date: 2026-09-17. Branch: `pnpdump-binrecon-finish`.
+
+Task 5 IDA `--list` against the Task 4 rebuilt reloc (`4430CA7B…`): **45** of the 93 shared
+nine-class names were already `raw_equal` or `masked_equal`; those reloc ledger rows are now
+`assembly-matched` (reviewer Pat Raynor). Kernel-only reloc statuses were not changed. The tool
+side recorded **43** baseline-identical rows in `reconstruction/pnpdump/ledger.json` (see
+`reconstruction/pnpdump/divergences.md`).
+
+### Task 6 omit `return self` on add-to-list (2026-09-17)
+
+Rebuilt reloc SHA `BBD159B9E775073D3F1571C95746D4B2F13D48D9F171C161DB5D7FB1FCF88B7D` (603928). Kernel-only reloc statuses were not reopened. `-[pnpDMA addDMAToList:]` and `-[pnpIRQ addToIRQList:]` are IDA `raw_equal` / `masked_equal`.
+
+```
+-[pnpDMA addDMAToList:]
+  status=different raw_equal=True masked_equal=True
+  reason: cfg differs
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  mov edx, [ebp+self]                     mov edx, [ebp+self]
+  cmp dword ptr [edx+24h], 7              cmp dword ptr [edx+24h], 7
+* jg loc_4219                             jg loc_44C5
+  mov eax, [edx+24h]                      mov eax, [edx+24h]
+  mov ecx, [ebp+arg_8]                    mov ecx, [ebp+arg_8]
+  mov [edx+eax*4+4], ecx                  mov [edx+eax*4+4], ecx
+  inc dword ptr [edx+24h]                 inc dword ptr [edx+24h]
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+```
+-[pnpIRQ addToIRQList:]
+  status=different raw_equal=True masked_equal=True
+  reason: cfg differs
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  mov edx, [ebp+self]                     mov edx, [ebp+self]
+  cmp dword ptr [edx+44h], 0Fh            cmp dword ptr [edx+44h], 0Fh
+* jg loc_3EE5                             jg loc_4AE5
+  mov eax, [edx+44h]                      mov eax, [edx+44h]
+  mov ecx, [ebp+arg_8]                    mov ecx, [ebp+arg_8]
+  mov [edx+eax*4+4], ecx                  mov [edx+eax*4+4], ecx
+  inc dword ptr [edx+44h]                 inc dword ptr [edx+44h]
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+### Task 6 `setHigh:Level:` if-shape (2026-09-17)
+
+Kernel-only reloc statuses were not reopened. Reloc SHA `1F1DBE7981F9EB97E47E261B99CCB57FDC56EECF3F8F6EEC97183C254918A730`. Same leftover as the tool: register allocation after matching Apple `jz` polarity and flag offsets. Accepted compiler-shaped leftover (reviewer Pat Raynor).
+
+```
+-[pnpIRQ setHigh:Level:]
+  status=different raw_equal=False masked_equal=False
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+* mov edx, [ebp+self]                     mov eax, [ebp+self]
+* mov al, [ebp+arg_C]                     mov dl, [ebp+arg_C]
+  cmp [ebp+arg_8], 0                      cmp [ebp+arg_8], 0
+* jz loc_3F10                             jz loc_4AB8
+* test al, al                             test dl, dl
+* jz loc_3F08                             jz loc_4AB0
+* mov byte ptr [edx+4Ah], 1               mov byte ptr [eax+4Ah], 1
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+* mov byte ptr [edx+48h], 1               mov byte ptr [eax+48h], 1
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+* test al, al                             test dl, dl
+* jz loc_3F1C                             jz loc_4AC4
+* mov byte ptr [edx+4Bh], 1               mov byte ptr [eax+4Bh], 1
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+* mov byte ptr [edx+49h], 1               mov byte ptr [eax+49h], 1
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+### Task 6 `setDeviceName:Length:` min and zero-length test (2026-09-17)
+
+Kernel-only reloc statuses were not reopened. Reloc SHA `2AD36AEF5E4934EBD7C9F8447D5204EADFBB4449524BD9B5E14B3EFD9F19A874` (603952). Both `-[PnPLogicalDevice setDeviceName:Length:]` and `-[PnPDeviceResources setDeviceName:Length:]` are IDA `masked_equal`. Leftover on the tool side is IDA `__src` vs `arg_8`.
+
+```
+-[PnPLogicalDevice setDeviceName:Length:]
+  status=different raw_equal=False masked_equal=True
+  reason: calls differ
+  reason: cfg differs
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push ebx                                push ebx
+  mov ebx, [ebp+self]                     mov ebx, [ebp+self]
+  mov edx, [ebp+arg_C]                    mov edx, [ebp+arg_C]
+  cmp dword ptr [ebx+54h], 0              cmp dword ptr [ebx+54h], 0
+* jnz loc_5ED4                            jnz loc_4DC4
+  mov eax, 4Fh                            mov eax, 4Fh
+  cmp eax, edx                            cmp eax, edx
+* jle loc_5EB3                            jle loc_4DA3
+  mov eax, edx                            mov eax, edx
+  mov [ebx+54h], eax                      mov [ebx+54h], eax
+  push eax                                push eax
+* mov ecx, [ebp+__src]                    mov ecx, [ebp+arg_8]
+  push ecx                                push ecx
+  lea eax, [ebx+4]                        lea eax, [ebx+4]
+  push eax                                push eax
+  call near ptr _strncpy                  call near ptr _strncpy
+  mov eax, [ebx+54h]                      mov eax, [ebx+54h]
+  mov byte ptr [eax+ebx+4], 0             mov byte ptr [eax+ebx+4], 0
+  mov eax, 1                              mov eax, 1
+* jmp loc_5ED6                            jmp loc_4DC6
+  xor eax, eax                            xor eax, eax
+  mov ebx, [ebp+var_4]                    mov ebx, [ebp+var_4]
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+```
+-[PnPDeviceResources setDeviceName:Length:]
+  status=different raw_equal=False masked_equal=True
+  reason: calls differ
+  reason: cfg differs
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push ebx                                push ebx
+  mov ebx, [ebp+self]                     mov ebx, [ebp+self]
+  mov edx, [ebp+arg_C]                    mov edx, [ebp+arg_C]
+  cmp dword ptr [ebx+58h], 0              cmp dword ptr [ebx+58h], 0
+* jnz loc_5FD0                            jnz loc_3A4C
+  mov eax, 4Fh                            mov eax, 4Fh
+  cmp eax, edx                            cmp eax, edx
+* jle loc_5FAF                            jle loc_3A2B
+  mov eax, edx                            mov eax, edx
+  mov [ebx+58h], eax                      mov [ebx+58h], eax
+  push eax                                push eax
+* mov ecx, [ebp+__src]                    mov ecx, [ebp+arg_8]
+  push ecx                                push ecx
+  lea eax, [ebx+8]                        lea eax, [ebx+8]
+  push eax                                push eax
+  call near ptr _strncpy                  call near ptr _strncpy
+  mov eax, [ebx+58h]                      mov eax, [ebx+58h]
+  mov byte ptr [eax+ebx+8], 0             mov byte ptr [eax+ebx+8], 0
+  mov eax, 1                              mov eax, 1
+* jmp loc_5FD2                            jmp loc_3A4E
+  xor eax, eax                            xor eax, eax
+  mov ebx, [ebp+var_4]                    mov ebx, [ebp+var_4]
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+### Task 6 nested `[[list] addObject:]` (2026-09-17)
+
+Kernel-only reloc statuses were not reopened. Reloc SHA `C471FE4013DF9F95FFD3DE61F11183C049347E8812EFCB65B2F29851EC746C42` (603708). All four add methods are IDA `masked_equal`. `addIOPort:`/`addIRQ:`/`addMemory:` match `addDMA:` aside from the ivar offset.
+
+```
+-[PnPResources addDMA:]
+  status=different raw_equal=False masked_equal=True
+  reason: calls differ
+  reason: cfg differs
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  mov eax, [ebp+self]                     mov eax, [ebp+self]
+  mov edx, [ebp+arg_8]                    mov edx, [ebp+arg_8]
+  push edx                                push edx
+  mov edx, ds:paAddobject                 mov edx, ds:paAddobject
+  push edx                                push edx
+  mov edx, ds:paList_0                    mov edx, ds:paList_0
+  push edx                                push edx
+  mov eax, [eax+8]                        mov eax, [eax+8]
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+### Task 6 `deviceWithID:` loop polarity (2026-09-17)
+
+Kernel-only reloc statuses were not reopened. Reloc SHA `F9875D7FFCF001691C92E33C910CEBEDA040E004D476F067773CDC83F445F799` (603708). Same leftover as the tool: inverted ID-compare jump after matching Apple `jz` on nil. Accepted compiler-shaped leftover (reviewer Pat Raynor).
+
+```
+-[PnPDeviceResources deviceWithID:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  mov edi, [ebp+arg_8]                    mov edi, [ebp+arg_8]
+  xor esi, esi                            xor esi, esi
+  nop                                     nop
+  push esi                                push esi
+  mov edx, ds:paObjectat                  mov edx, ds:paObjectat
+  push edx                                push edx
+  mov ecx, [ebp+self]                     mov ecx, [ebp+self]
+  mov ecx, [ecx+4]                        mov ecx, [ecx+4]
+  push ecx                                push ecx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov ebx, eax                            mov ebx, eax
+  add esp, 0Ch                            add esp, 0Ch
+  test ebx, ebx                           test ebx, ebx
+* jz loc_6D54                             jz loc_39F0
+  mov edx, ds:paId                        mov edx, ds:paId
+  push edx                                push edx
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  cmp eax, edi                            cmp eax, edi
+* jnz loc_6D50                            jz loc_39EC
+*                                         inc esi
+*                                         jmp loc_39B8
+  mov eax, ebx                            mov eax, ebx
+* jmp loc_6D56                            jmp loc_39F2
+* inc esi
+* jmp loc_6D18
+  xor eax, eax                            xor eax, eax
+  lea esp, [ebp-0Ch]                      lea esp, [ebp-0Ch]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+### Task 6 `deviceWithID:` loop polarity (2026-09-17)
+
+Kernel-only reloc statuses were not reopened. Reloc SHA `F9875D7FFCF001691C92E33C910CEBEDA040E004D476F067773CDC83F445F799` (603708). Same leftover as the tool: inverted ID-compare jump after matching Apple `jz` on nil. Accepted compiler-shaped leftover (reviewer Pat Raynor).
+
+```
+-[PnPDeviceResources deviceWithID:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  mov edi, [ebp+arg_8]                    mov edi, [ebp+arg_8]
+  xor esi, esi                            xor esi, esi
+  nop                                     nop
+  push esi                                push esi
+  mov edx, ds:paObjectat                  mov edx, ds:paObjectat
+  push edx                                push edx
+  mov ecx, [ebp+self]                     mov ecx, [ebp+self]
+  mov ecx, [ecx+4]                        mov ecx, [ecx+4]
+  push ecx                                push ecx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov ebx, eax                            mov ebx, eax
+  add esp, 0Ch                            add esp, 0Ch
+  test ebx, ebx                           test ebx, ebx
+* jz loc_6D54                             jz loc_39F0
+  mov edx, ds:paId                        mov edx, ds:paId
+  push edx                                push edx
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  cmp eax, edi                            cmp eax, edi
+* jnz loc_6D50                            jz loc_39EC
+*                                         inc esi
+*                                         jmp loc_39B8
+  mov eax, ebx                            mov eax, ebx
+* jmp loc_6D56                            jmp loc_39F2
+* inc esi
+* jmp loc_6D18
+  xor eax, eax                            xor eax, eax
+  lea esp, [ebp-0Ch]                      lea esp, [ebp-0Ch]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+### Task 6 accept remaining empty-list leftovers (2026-09-17)
+
+Shared nine-class `none` names that were still `unexamined` on reloc are now `intentional-mismatch` (reviewer Pat Raynor). Names already `assembly-matched` from Task 5/6 were left matched. Kernel-only reloc statuses were not reopened. Reloc SHA `F9875D7FFCF001691C92E33C910CEBEDA040E004D476F067773CDC83F445F799`. Dumps are current published IDA `--name`.
+
+#### `+[PnPDeviceResources setReadPort:]`
+
+Reloc already `assembly-matched`; dump recorded for dual-bar evidence.
+
+```
++[PnPDeviceResources setReadPort:]
+  status=different raw_equal=False masked_equal=True
+  reason: cfg differs
+  reason: instruction layout differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  mov ax, [ebp+arg_8]                     mov ax, [ebp+arg_8]
+  mov ds:_readPort, ax                    mov ds:_readPort, ax
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+#### `-[PnPDeviceResources deviceCount]`
+
+Reloc already `assembly-matched`; dump recorded for dual-bar evidence.
+
+```
+-[PnPDeviceResources deviceCount]
+  status=different raw_equal=False masked_equal=True
+  reason: calls differ
+  reason: cfg differs
+  reason: instruction layout differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  mov eax, [ebp+self]                     mov eax, [ebp+self]
+  mov edx, ds:paCount                     mov edx, ds:paCount
+  push edx                                push edx
+  mov eax, [eax+4]                        mov eax, [eax+4]
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+#### `-[PnPLogicalDevice addCompatID:]`
+
+Reloc already `assembly-matched`; dump recorded for dual-bar evidence.
+
+```
+-[PnPLogicalDevice addCompatID:]
+  status=different raw_equal=False masked_equal=True
+  reason: calls differ
+  reason: cfg differs
+  reason: instruction layout differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  mov eax, [ebp+self]                     mov eax, [ebp+self]
+  mov edx, [ebp+arg_8]                    mov edx, [ebp+arg_8]
+  push edx                                push edx
+  mov edx, ds:paAddobject                 mov edx, ds:paAddobject
+  push edx                                push edx
+  mov eax, [eax+5Ch]                      mov eax, [eax+5Ch]
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+#### `+[PnPDeviceResources setVerbose:]`
+
+Reloc already `assembly-matched`; dump recorded for dual-bar evidence.
+
+```
++[PnPDeviceResources setVerbose:]
+  status=different raw_equal=False masked_equal=True
+  reason: cfg differs
+  reason: instruction layout differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  mov al, [ebp+arg_8]                     mov al, [ebp+arg_8]
+* mov ds:_verbose_0, al                   mov ds:_verbose, al
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+#### `-[pnpIOPort initWithBase:Length:]`
+
+Accepted `intentional-mismatch` (compiler-shaped leftover after exhausted source-shape list).
+
+```
+-[pnpIOPort initWithBase:Length:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 8                              sub esp, 8
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  mov edi, [ebp+self]                     mov edi, [ebp+self]
+  mov bx, [ebp+arg_8]                     mov bx, [ebp+arg_8]
+  mov si, [ebp+arg_C]                     mov si, [ebp+arg_C]
+  mov edx, ds:paInit                      mov edx, ds:paInit
+  push edx                                push edx
+  mov [ebp+var_8.receiver], edi           mov [ebp+var_8.receiver], edi
+* mov edx, ds:stru_A534.ext               mov edx, ds:stru_A4F0.super_class
+  mov [ebp+var_8.super_class], edx        mov [ebp+var_8.super_class], edx
+  lea eax, [ebp+var_8]                    lea eax, [ebp+var_8]
+  push eax                                push eax
+  call near ptr _objc_msgSendSuper        call near ptr _objc_msgSendSuper
+  mov [edi+6], bx                         mov [edi+6], bx
+  mov [edi+4], bx                         mov [edi+4], bx
+  mov [edi+0Ah], si                       mov [edi+0Ah], si
+  mov eax, edi                            mov eax, edi
+  lea esp, [ebp-14h]                      lea esp, [ebp-14h]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+#### `-[pnpMemory initWithBase:Length:Bit16:Bit32:HighAddr:Is32:]`
+
+Accepted `intentional-mismatch` (compiler-shaped leftover after exhausted source-shape list).
+
+```
+-[pnpMemory initWithBase:Length:Bit16:Bit32:HighAddr:Is32:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 14h                            sub esp, 14h
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  mov edi, [ebp+self]                     mov edi, [ebp+self]
+  mov esi, [ebp+arg_C]                    mov esi, [ebp+arg_C]
+  mov bl, [ebp+arg_10]                    mov bl, [ebp+arg_10]
+  mov dl, [ebp+arg_14]                    mov dl, [ebp+arg_14]
+  mov [ebp+var_C], dl                     mov [ebp+var_C], dl
+  mov dl, [ebp+arg_18]                    mov dl, [ebp+arg_18]
+  mov [ebp+var_10], dl                    mov [ebp+var_10], dl
+  mov dl, [ebp+arg_1C]                    mov dl, [ebp+arg_1C]
+  mov [ebp+var_14], dl                    mov [ebp+var_14], dl
+  mov edx, ds:paInit                      mov edx, ds:paInit
+  push edx                                push edx
+  mov [ebp+var_8.receiver], edi           mov [ebp+var_8.receiver], edi
+* mov edx, ds:stru_A534.super_class       mov edx, ds:stru_A540.ext
+  mov [ebp+var_8.super_class], edx        mov [ebp+var_8.super_class], edx
+  lea eax, [ebp+var_8]                    lea eax, [ebp+var_8]
+  push eax                                push eax
+  call near ptr _objc_msgSendSuper        call near ptr _objc_msgSendSuper
+  mov edx, [ebp+arg_8]                    mov edx, [ebp+arg_8]
+  mov [edi+8], edx                        mov [edi+8], edx
+  mov [edi+4], edx                        mov [edi+4], edx
+  mov [edi+10h], esi                      mov [edi+10h], esi
+  test bl, bl                             test bl, bl
+  setz al                                 setz al
+  mov [edi+19h], al                       mov [edi+19h], al
+  mov [edi+1Ah], bl                       mov [edi+1Ah], bl
+  mov dl, [ebp+var_C]                     mov dl, [ebp+var_C]
+  mov [edi+1Bh], dl                       mov [edi+1Bh], dl
+  mov dl, [ebp+var_14]                    mov dl, [ebp+var_14]
+  mov [edi+1Ch], dl                       mov [edi+1Ch], dl
+  mov dl, [ebp+var_10]                    mov dl, [ebp+var_10]
+  mov [edi+16h], dl                       mov [edi+16h], dl
+  mov eax, edi                            mov eax, edi
+  lea esp, [ebp-20h]                      lea esp, [ebp-20h]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+#### `-[PnPResources free]`
+
+Accepted `intentional-mismatch` (compiler-shaped leftover after exhausted source-shape list).
+
+```
+-[PnPResources free]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 8                              sub esp, 8
+  push ebx                                push ebx
+  mov ebx, [ebp+self]                     mov ebx, [ebp+self]
+  mov edx, ds:paFree                      mov edx, ds:paFree
+  push edx                                push edx
+  mov edx, [ebx+4]                        mov edx, [ebx+4]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov edx, ds:paFree                      mov edx, ds:paFree
+  push edx                                push edx
+  mov edx, [ebx+8]                        mov edx, [ebx+8]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov edx, ds:paFree                      mov edx, ds:paFree
+  push edx                                push edx
+  mov edx, [ebx+0Ch]                      mov edx, [ebx+0Ch]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov edx, ds:paFree                      mov edx, ds:paFree
+  push edx                                push edx
+  mov edx, [ebx+10h]                      mov edx, [ebx+10h]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 20h                            add esp, 20h
+  mov edx, ds:paFree                      mov edx, ds:paFree
+  push edx                                push edx
+  mov [ebp+var_8.receiver], ebx           mov [ebp+var_8.receiver], ebx
+* mov edx, ds:stru_A4E4.super_class       mov edx, ds:stru_A590.ext
+  mov [ebp+var_8.super_class], edx        mov [ebp+var_8.super_class], edx
+  lea eax, [ebp+var_8]                    lea eax, [ebp+var_8]
+  push eax                                push eax
+  call near ptr _objc_msgSendSuper        call near ptr _objc_msgSendSuper
+  mov ebx, [ebp+var_C]                    mov ebx, [ebp+var_C]
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+#### `-[PnPResource free]`
+
+Accepted `intentional-mismatch` (compiler-shaped leftover after exhausted source-shape list).
+
+```
+-[PnPResource free]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 8                              sub esp, 8
+  push ebx                                push ebx
+  mov ebx, [ebp+self]                     mov ebx, [ebp+self]
+  mov edx, ds:paFree                      mov edx, ds:paFree
+  push edx                                push edx
+*                                         push edx
+  mov edx, ds:paFreeobjects               mov edx, ds:paFreeobjects
+  push edx                                push edx
+  mov edx, [ebx+4]                        mov edx, [ebx+4]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+* add esp, 8                              add esp, 0Ch
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov edx, ds:paFree                      mov edx, ds:paFree
+  push edx                                push edx
+  mov [ebp+var_8.receiver], ebx           mov [ebp+var_8.receiver], ebx
+* mov edx, ds:stru_A4E4.ext               mov edx, ds:stru_A590.super_class
+  mov [ebp+var_8.super_class], edx        mov [ebp+var_8.super_class], edx
+  lea eax, [ebp+var_8]                    lea eax, [ebp+var_8]
+  push eax                                push eax
+  call near ptr _objc_msgSendSuper        call near ptr _objc_msgSendSuper
+  mov ebx, [ebp+var_C]                    mov ebx, [ebp+var_C]
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+#### `-[PnPResource init]`
+
+Accepted `intentional-mismatch` (compiler-shaped leftover after exhausted source-shape list).
+
+```
+-[PnPResource init]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 8                              sub esp, 8
+  push ebx                                push ebx
+  mov ebx, [ebp+self]                     mov ebx, [ebp+self]
+  mov edx, ds:paInit                      mov edx, ds:paInit
+  push edx                                push edx
+  mov [ebp+var_8.receiver], ebx           mov [ebp+var_8.receiver], ebx
+* mov edx, ds:stru_A4E4.ext               mov edx, ds:stru_A590.super_class
+  mov [ebp+var_8.super_class], edx        mov [ebp+var_8.super_class], edx
+  lea eax, [ebp+var_8]                    lea eax, [ebp+var_8]
+  push eax                                push eax
+  call near ptr _objc_msgSendSuper        call near ptr _objc_msgSendSuper
+  mov edx, ds:paInit                      mov edx, ds:paInit
+  push edx                                push edx
+  mov edx, ds:paAlloc                     mov edx, ds:paAlloc
+  push edx                                push edx
+  mov edx, ds:paList                      mov edx, ds:paList
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov [ebx+4], eax                        mov [ebx+4], eax
+  mov dword ptr [ebx+8], 0                mov dword ptr [ebx+8], 0
+  add esp, 10h                            add esp, 10h
+  cmp dword ptr [ebx+4], 0                cmp dword ptr [ebx+4], 0
+* jz loc_4EE8                             jz loc_5700
+  mov eax, ebx                            mov eax, ebx
+* jmp loc_4EF5                            jmp loc_570D
+  mov edx, ds:paFree                      mov edx, ds:paFree
+  push edx                                push edx
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov ebx, [ebp+var_C]                    mov ebx, [ebp+var_C]
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+#### `-[PnPDeviceResources free]`
+
+Accepted `intentional-mismatch` (compiler-shaped leftover after exhausted source-shape list).
+
+```
+-[PnPDeviceResources free]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 8                              sub esp, 8
+  push ebx                                push ebx
+  mov ebx, [ebp+self]                     mov ebx, [ebp+self]
+  cmp dword ptr [ebx+4], 0                cmp dword ptr [ebx+4], 0
+* jz loc_6CBB                             jz loc_390C
+  mov edx, ds:paFree                      mov edx, ds:paFree
+*                                         push edx
+  push edx                                push edx
+  mov edx, ds:paFreeobjects               mov edx, ds:paFreeobjects
+  push edx                                push edx
+  mov edx, [ebx+4]                        mov edx, [ebx+4]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+* add esp, 8                              add esp, 0Ch
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  mov edx, ds:paFree                      mov edx, ds:paFree
+  push edx                                push edx
+  mov [ebp+var_8.receiver], ebx           mov [ebp+var_8.receiver], ebx
+* mov edx, ds:stru_A444.ext               mov edx, ds:stru_A4A0.super_class
+  mov [ebp+var_8.super_class], edx        mov [ebp+var_8.super_class], edx
+  lea eax, [ebp+var_8]                    lea eax, [ebp+var_8]
+  push eax                                push eax
+  call near ptr _objc_msgSendSuper        call near ptr _objc_msgSendSuper
+  mov ebx, [ebp+var_C]                    mov ebx, [ebp+var_C]
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+#### `-[PnPLogicalDevice free]`
+
+Accepted `intentional-mismatch` (compiler-shaped leftover after exhausted source-shape list).
+
+```
+-[PnPLogicalDevice free]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 8                              sub esp, 8
+  push ebx                                push ebx
+  mov ebx, [ebp+self]                     mov ebx, [ebp+self]
+  mov edx, ds:paFree                      mov edx, ds:paFree
+  push edx                                push edx
+  mov edx, [ebx+60h]                      mov edx, [ebx+60h]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov edx, ds:paFree                      mov edx, ds:paFree
+  push edx                                push edx
+*                                         push edx
+  mov edx, ds:paFreeobjects               mov edx, ds:paFreeobjects
+  push edx                                push edx
+  mov edx, [ebx+64h]                      mov edx, [ebx+64h]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+* add esp, 8                              add esp, 0Ch
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov edx, ds:paFree                      mov edx, ds:paFree
+  push edx                                push edx
+  mov edx, [ebx+5Ch]                      mov edx, [ebx+5Ch]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov edx, ds:paFree                      mov edx, ds:paFree
+  push edx                                push edx
+  mov [ebp+var_8.receiver], ebx           mov [ebp+var_8.receiver], ebx
+* mov edx, ds:stru_A494.super_class       mov edx, ds:stru_A540.super_class
+  mov [ebp+var_8.super_class], edx        mov [ebp+var_8.super_class], edx
+  lea eax, [ebp+var_8]                    lea eax, [ebp+var_8]
+  push eax                                push eax
+  call near ptr _objc_msgSendSuper        call near ptr _objc_msgSendSuper
+  mov ebx, [ebp+var_C]                    mov ebx, [ebp+var_C]
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+#### `-[PnPLogicalDevice init]`
+
+Accepted `intentional-mismatch` (compiler-shaped leftover after exhausted source-shape list).
+
+```
+-[PnPLogicalDevice init]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 8                              sub esp, 8
+  push ebx                                push ebx
+  mov ebx, [ebp+self]                     mov ebx, [ebp+self]
+  mov edx, ds:paInit                      mov edx, ds:paInit
+  push edx                                push edx
+  mov [ebp+var_8.receiver], ebx           mov [ebp+var_8.receiver], ebx
+* mov edx, ds:stru_A494.super_class       mov edx, ds:stru_A540.super_class
+  mov [ebp+var_8.super_class], edx        mov [ebp+var_8.super_class], edx
+  lea eax, [ebp+var_8]                    lea eax, [ebp+var_8]
+  push eax                                push eax
+  call near ptr _objc_msgSendSuper        call near ptr _objc_msgSendSuper
+  mov edx, ds:paInit                      mov edx, ds:paInit
+  push edx                                push edx
+  mov edx, ds:paAlloc                     mov edx, ds:paAlloc
+  push edx                                push edx
+  mov edx, ds:paPnpresources              mov edx, ds:paPnpresources
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov [ebx+60h], eax                      mov [ebx+60h], eax
+  mov edx, ds:paInit                      mov edx, ds:paInit
+  push edx                                push edx
+  mov edx, ds:paAlloc                     mov edx, ds:paAlloc
+  push edx                                push edx
+  mov edx, ds:paList                      mov edx, ds:paList
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov [ebx+64h], eax                      mov [ebx+64h], eax
+  mov edx, ds:paInit                      mov edx, ds:paInit
+  push edx                                push edx
+  mov edx, ds:paAlloc                     mov edx, ds:paAlloc
+  push edx                                push edx
+  mov edx, ds:paList                      mov edx, ds:paList
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov [ebx+5Ch], eax                      mov [ebx+5Ch], eax
+  mov eax, ebx                            mov eax, ebx
+  mov ebx, [ebp+var_C]                    mov ebx, [ebp+var_C]
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+#### `-[pnpIOPort print]`
+
+Accepted `intentional-mismatch` (compiler-shaped leftover after exhausted source-shape list).
+
+```
+-[pnpIOPort print]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+* mov edx, [ebp+self]                     push ebx
+* movzx eax, byte ptr [edx+0Ch]           mov ebx, [ebp+self]
+*                                         movzx eax, byte ptr [ebx+0Ch]
+  push eax                                push eax
+* movzx eax, word ptr [edx+0Ah]           movzx eax, word ptr [ebx+0Ah]
+  push eax                                push eax
+* movzx eax, word ptr [edx+8]             movzx eax, word ptr [ebx+8]
+  push eax                                push eax
+* movzx eax, word ptr [edx+6]             movzx eax, word ptr [ebx+6]
+  push eax                                push eax
+* movzx eax, word ptr [edx+4]             movzx eax, word ptr [ebx+4]
+  push eax                                push eax
+  push offset aIOPort0xX0xXAl             push offset aIOPort0xX0xXAl
+  call near ptr _IOLog                    call near ptr _IOLog
+*                                         mov eax, ebx
+*                                         mov ebx, [ebp+var_4]
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+#### `-[PnPDeviceResources initForBufNoHeader:Length:CSN:]`
+
+Accepted `intentional-mismatch` (compiler-shaped leftover after exhausted source-shape list).
+
+```
+-[PnPDeviceResources initForBufNoHeader:Length:CSN:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 8                              sub esp, 8
+  push esi                                push esi
+  push ebx                                push ebx
+  mov esi, [ebp+self]                     mov esi, [ebp+self]
+  mov ebx, [ebp+arg_10]                   mov ebx, [ebp+arg_10]
+  mov edx, ds:paInit                      mov edx, ds:paInit
+  push edx                                push edx
+  mov [ebp+var_8.receiver], esi           mov [ebp+var_8.receiver], esi
+* mov edx, ds:stru_A444.ext               mov edx, ds:stru_A4A0.super_class
+  mov [ebp+var_8.super_class], edx        mov [ebp+var_8.super_class], edx
+  lea eax, [ebp+var_8]                    lea eax, [ebp+var_8]
+  push eax                                push eax
+  call near ptr _objc_msgSendSuper        call near ptr _objc_msgSendSuper
+  mov [esi+64h], ebx                      mov [esi+64h], ebx
+  mov edx, ds:paInit                      mov edx, ds:paInit
+  push edx                                push edx
+  mov edx, ds:paAlloc                     mov edx, ds:paAlloc
+  push edx                                push edx
+  mov edx, ds:paList                      mov edx, ds:paList
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov [esi+4], eax                        mov [esi+4], eax
+  add esp, 10h                            add esp, 10h
+  test eax, eax                           test eax, eax
+* jz loc_6C58                             jz loc_38B8
+  mov edx, [ebp+arg_C]                    mov edx, [ebp+arg_C]
+  push edx                                push edx
+  mov edx, [ebp+arg_8]                    mov edx, [ebp+arg_8]
+  push edx                                push edx
+  mov edx, ds:paParseconfigLen            mov edx, ds:paParseconfigLen
+  push edx                                push edx
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 10h                            add esp, 10h
+* test al, al                             test eax, eax
+* jz loc_6C62                             jz loc_38C2
+  mov eax, esi                            mov eax, esi
+* jmp loc_6C6F                            jmp loc_38CF
+* push offset aPnpdeviceresou_13          push offset aPnpdeviceresou_0
+  call near ptr _IOLog                    call near ptr _IOLog
+  mov edx, ds:paFree                      mov edx, ds:paFree
+  push edx                                push edx
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  lea esp, [ebp-10h]                      lea esp, [ebp-10h]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+#### `-[PnPResources init]`
+
+Accepted `intentional-mismatch` (compiler-shaped leftover after exhausted source-shape list).
+
+```
+-[PnPResources init]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 8                              sub esp, 8
+  push ebx                                push ebx
+  mov ebx, [ebp+self]                     mov ebx, [ebp+self]
+  mov edx, ds:paInit                      mov edx, ds:paInit
+  push edx                                push edx
+  mov [ebp+var_8.receiver], ebx           mov [ebp+var_8.receiver], ebx
+* mov edx, ds:stru_A4E4.super_class       mov edx, ds:stru_A590.ext
+  mov [ebp+var_8.super_class], edx        mov [ebp+var_8.super_class], edx
+  lea eax, [ebp+var_8]                    lea eax, [ebp+var_8]
+  push eax                                push eax
+  call near ptr _objc_msgSendSuper        call near ptr _objc_msgSendSuper
+  mov edx, ds:paInit                      mov edx, ds:paInit
+  push edx                                push edx
+  mov edx, ds:paAlloc                     mov edx, ds:paAlloc
+  push edx                                push edx
+  mov edx, ds:paPnpresource               mov edx, ds:paPnpresource
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov [ebx+4], eax                        mov [ebx+4], eax
+  mov edx, ds:paInit                      mov edx, ds:paInit
+  push edx                                push edx
+  mov edx, ds:paAlloc                     mov edx, ds:paAlloc
+  push edx                                push edx
+  mov edx, ds:paPnpresource               mov edx, ds:paPnpresource
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov [ebx+8], eax                        mov [ebx+8], eax
+  mov edx, ds:paInit                      mov edx, ds:paInit
+  push edx                                push edx
+  mov edx, ds:paAlloc                     mov edx, ds:paAlloc
+  push edx                                push edx
+  mov edx, ds:paPnpresource               mov edx, ds:paPnpresource
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov [ebx+0Ch], eax                      mov [ebx+0Ch], eax
+  add esp, 20h                            add esp, 20h
+  mov edx, ds:paInit                      mov edx, ds:paInit
+  push edx                                push edx
+  mov edx, ds:paAlloc                     mov edx, ds:paAlloc
+  push edx                                push edx
+  mov edx, ds:paPnpresource               mov edx, ds:paPnpresource
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov [ebx+10h], eax                      mov [ebx+10h], eax
+  add esp, 8                              add esp, 8
+  cmp dword ptr [ebx+4], 0                cmp dword ptr [ebx+4], 0
+* jz loc_5162                             jz loc_5966
+  cmp dword ptr [ebx+8], 0                cmp dword ptr [ebx+8], 0
+* jz loc_5162                             jz loc_5966
+  cmp dword ptr [ebx+0Ch], 0              cmp dword ptr [ebx+0Ch], 0
+* jz loc_5162                             jz loc_5966
+  test eax, eax                           test eax, eax
+* jnz loc_5174                            jnz loc_5978
+  mov edx, ds:paFree                      mov edx, ds:paFree
+  push edx                                push edx
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+* jmp loc_5176                            jmp loc_597A
+  mov eax, ebx                            mov eax, ebx
+  mov ebx, [ebp+var_C]                    mov ebx, [ebp+var_C]
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+#### `-[PnPResources print]`
+
+Accepted `intentional-mismatch` (compiler-shaped leftover after exhausted source-shape list).
+
+```
+-[PnPResources print]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+* sub esp, 20h                            sub esp, 10h
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  mov eax, [ebp+self]                     mov eax, [ebp+self]
+  mov edx, [eax+0Ch]                      mov edx, [eax+0Ch]
+* mov [ebp+var_20], edx                   mov [ebp+var_10], edx
+  mov edx, [eax+4]                        mov edx, [eax+4]
+* mov [ebp+var_1C], edx                   mov [ebp+var_C], edx
+  mov edx, [eax+10h]                      mov edx, [eax+10h]
+* mov [ebp+var_18], edx                   mov [ebp+var_8], edx
+  mov eax, [eax+8]                        mov eax, [eax+8]
+* mov [ebp+var_14], eax                   mov [ebp+var_4], eax
+* mov edx, [ebp+var_20]
+* mov [ebp+var_10], edx
+* mov edx, [ebp+var_1C]
+* mov [ebp+var_C], edx
+* mov edx, [ebp+var_18]
+* mov [ebp+var_8], edx
+* mov edx, [ebp+var_14]
+* mov [ebp+var_4], edx
+  xor esi, esi                            xor esi, esi
+  nop                                     nop
+  nop                                     nop
+  mov edx, ds:paList_0                    mov edx, ds:paList_0
+  push edx                                push edx
+  mov edx, [ebp+esi*4+var_10]             mov edx, [ebp+esi*4+var_10]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov edi, eax                            mov edi, eax
+  xor ebx, ebx                            xor ebx, ebx
+  add esp, 8                              add esp, 8
+  push ebx                                push ebx
+  mov edx, ds:paObjectat                  mov edx, ds:paObjectat
+  push edx                                push edx
+  push edi                                push edi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 0Ch                            add esp, 0Ch
+  test eax, eax                           test eax, eax
+* jz loc_5078                             jz loc_63DC
+  mov edx, ds:paPrint                     mov edx, ds:paPrint
+  push edx                                push edx
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+* add esp, 8
+  inc ebx                                 inc ebx
+* jmp loc_5050                            jmp loc_63B1
+  inc esi                                 inc esi
+  cmp esi, 3                              cmp esi, 3
+* jle loc_5038                            jle loc_639C
+* lea esp, [ebp-2Ch]                      lea esp, [ebp-1Ch]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+#### `-[pnpIRQ print]`
+
+Accepted `intentional-mismatch` (compiler-shaped leftover after exhausted source-shape list).
+
+```
+-[pnpIRQ print]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 4                              sub esp, 4
+  push esi                                push esi
+  push ebx                                push ebx
+  mov esi, [ebp+self]                     mov esi, [ebp+self]
+  mov [ebp+var_4], 1                      mov [ebp+var_4], 1
+  push offset aIrq                        push offset aIrq
+  call near ptr _IOLog                    call near ptr _IOLog
+  xor ebx, ebx                            xor ebx, ebx
+  add esp, 4                              add esp, 4
+  cmp [esi+44h], ebx                      cmp [esi+44h], ebx
+* jle loc_3D31                            jle loc_4B39
+  nop                                     nop
+*                                         mov eax, offset asc_7854
+*                                         cmp [ebp+var_4], 0
+*                                         jz loc_4B1C
+*                                         mov eax, offset unk_6FCB
+  mov edx, [esi+ebx*4+4]                  mov edx, [esi+ebx*4+4]
+  push edx                                push edx
+* mov eax, offset asc_77D8
+* cmp [ebp+var_4], 0
+* jz loc_3D19
+* mov eax, offset unk_7676
+  push eax                                push eax
+  push offset aSD                         push offset aSD
+  call near ptr _IOLog                    call near ptr _IOLog
+  mov [ebp+var_4], 0                      mov [ebp+var_4], 0
+  add esp, 0Ch                            add esp, 0Ch
+  inc ebx                                 inc ebx
+  cmp [esi+44h], ebx                      cmp [esi+44h], ebx
+* jg loc_3D04                             jg loc_4B0C
+  cmp byte ptr [esi+48h], 0               cmp byte ptr [esi+48h], 0
+* jz loc_3D44                             jz loc_4B4C
+  push offset aHighEdge                   push offset aHighEdge
+  call near ptr _IOLog                    call near ptr _IOLog
+  add esp, 4                              add esp, 4
+  cmp byte ptr [esi+49h], 0               cmp byte ptr [esi+49h], 0
+* jz loc_3D57                             jz loc_4B5F
+  push offset aLowEdge                    push offset aLowEdge
+  call near ptr _IOLog                    call near ptr _IOLog
+  add esp, 4                              add esp, 4
+  cmp byte ptr [esi+4Ah], 0               cmp byte ptr [esi+4Ah], 0
+* jz loc_3D6A                             jz loc_4B72
+  push offset aHighLevel                  push offset aHighLevel
+  call near ptr _IOLog                    call near ptr _IOLog
+  add esp, 4                              add esp, 4
+  cmp byte ptr [esi+4Bh], 0               cmp byte ptr [esi+4Bh], 0
+* jz loc_3D7D                             jz loc_4B85
+  push offset aLowLevel                   push offset aLowLevel
+  call near ptr _IOLog                    call near ptr _IOLog
+  add esp, 4                              add esp, 4
+* push offset asc_7818                    push offset asc_76B4
+  call near ptr _IOLog                    call near ptr _IOLog
+*                                         mov eax, esi
+  lea esp, [ebp-0Ch]                      lea esp, [ebp-0Ch]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+#### `-[pnpMemory print]`
+
+Accepted `intentional-mismatch` (compiler-shaped leftover after exhausted source-shape list).
+
+```
+-[pnpMemory print]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push ebx                                push ebx
+  mov ebx, [ebp+self]                     mov ebx, [ebp+self]
+*                                         mov eax, offset a24
+*                                         cmp byte ptr [ebx+1Ch], 0
+*                                         jz loc_538F
+*                                         mov eax, offset a32
+  mov edx, [ebx+10h]                      mov edx, [ebx+10h]
+  push edx                                push edx
+  mov edx, [ebx+0Ch]                      mov edx, [ebx+0Ch]
+  push edx                                push edx
+  mov edx, [ebx+8]                        mov edx, [ebx+8]
+  push edx                                push edx
+  mov edx, [ebx+4]                        mov edx, [ebx+4]
+  push edx                                push edx
+* mov eax, offset a24
+* cmp byte ptr [ebx+1Ch], 0
+* jz loc_45DF
+* mov eax, offset a32
+  push eax                                push eax
+  push offset aMemS0xLx0xLxAl             push offset aMemS0xLx0xLxAl
+  call near ptr _IOLog                    call near ptr _IOLog
+  add esp, 18h                            add esp, 18h
+  cmp byte ptr [ebx+19h], 0               cmp byte ptr [ebx+19h], 0
+* jz loc_4600                             jz loc_53C0
+  push offset a8Bit_0                     push offset a8Bit_0
+  call near ptr _IOLog                    call near ptr _IOLog
+  add esp, 4                              add esp, 4
+  cmp byte ptr [ebx+1Ah], 0               cmp byte ptr [ebx+1Ah], 0
+* jz loc_4613                             jz loc_53D3
+  push offset a16Bit_0                    push offset a16Bit_0
+  call near ptr _IOLog                    call near ptr _IOLog
+  add esp, 4                              add esp, 4
+  cmp byte ptr [ebx+1Bh], 0               cmp byte ptr [ebx+1Bh], 0
+* jz loc_4626                             jz loc_53E6
+  push offset a32Bit                      push offset a32Bit
+  call near ptr _IOLog                    call near ptr _IOLog
+  add esp, 4                              add esp, 4
+  cmp byte ptr [ebx+14h], 0               cmp byte ptr [ebx+14h], 0
+* jz loc_4639                             jz loc_53F9
+  push offset aExprom                     push offset aExprom
+  call near ptr _IOLog                    call near ptr _IOLog
+  add esp, 4                              add esp, 4
+  cmp byte ptr [ebx+15h], 0               cmp byte ptr [ebx+15h], 0
+* jz loc_464C                             jz loc_540C
+  push offset aShadow                     push offset aShadow
+  call near ptr _IOLog                    call near ptr _IOLog
+  add esp, 4                              add esp, 4
+*                                         mov eax, offset aRange
+  cmp byte ptr [ebx+16h], 0               cmp byte ptr [ebx+16h], 0
+* jz loc_465C                             jz loc_541C
+* push offset aHiAddr                     mov eax, offset aHiAddr
+* jmp loc_4661                            push eax
+* push offset aRange
+  call near ptr _IOLog                    call near ptr _IOLog
+  add esp, 4                              add esp, 4
+  cmp byte ptr [ebx+18h], 0               cmp byte ptr [ebx+18h], 0
+* jnz loc_467C                            jnz loc_5438
+  push offset aRom                        push offset aRom
+  call near ptr _IOLog                    call near ptr _IOLog
+  add esp, 4                              add esp, 4
+* push offset asc_7818                    push offset asc_76B4
+  call near ptr _IOLog                    call near ptr _IOLog
+*                                         mov eax, ebx
+  mov ebx, [ebp+var_4]                    mov ebx, [ebp+var_4]
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+#### `-[pnpDMA print]`
+
+Accepted `intentional-mismatch` (compiler-shaped leftover after exhausted source-shape list).
+
+```
+-[pnpDMA print]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 4                              sub esp, 4
+  push esi                                push esi
+  push ebx                                push ebx
+  mov esi, [ebp+self]                     mov esi, [ebp+self]
+  mov [ebp+var_4], 1                      mov [ebp+var_4], 1
+  push offset aDmaChannel                 push offset aDmaChannel
+  call near ptr _IOLog                    call near ptr _IOLog
+  xor ebx, ebx                            xor ebx, ebx
+  add esp, 4                              add esp, 4
+  cmp [esi+24h], ebx                      cmp [esi+24h], ebx
+* jle loc_4001                            jle loc_4599
+  nop                                     nop
+*                                         mov eax, offset asc_7854
+*                                         cmp [ebp+var_4], 0
+*                                         jz loc_457C
+*                                         mov eax, offset unk_6FCB
+  mov edx, [esi+ebx*4+4]                  mov edx, [esi+ebx*4+4]
+  push edx                                push edx
+* mov eax, offset asc_77D8
+* cmp [ebp+var_4], 0
+* jz loc_3FE9
+* mov eax, offset unk_7676
+  push eax                                push eax
+  push offset aSD                         push offset aSD
+  call near ptr _IOLog                    call near ptr _IOLog
+  mov [ebp+var_4], 0                      mov [ebp+var_4], 0
+  add esp, 0Ch                            add esp, 0Ch
+  inc ebx                                 inc ebx
+  cmp [esi+24h], ebx                      cmp [esi+24h], ebx
+* jg loc_3FD4                             jg loc_456C
+* push offset asc_7848                    push offset asc_785C
+  call near ptr _IOLog                    call near ptr _IOLog
+  add esp, 4                              add esp, 4
+  cmp byte ptr [esi+28h], 0               cmp byte ptr [esi+28h], 0
+* jz loc_4021                             jz loc_45B9
+  push offset a8Bit                       push offset a8Bit
+  call near ptr _IOLog                    call near ptr _IOLog
+  add esp, 4                              add esp, 4
+  cmp byte ptr [esi+29h], 0               cmp byte ptr [esi+29h], 0
+* jz loc_4034                             jz loc_45CC
+  push offset a16Bit                      push offset a16Bit
+  call near ptr _IOLog                    call near ptr _IOLog
+  add esp, 4                              add esp, 4
+  push offset aBusMaster                  push offset aBusMaster
+  call near ptr _IOLog                    call near ptr _IOLog
+  push offset aByte                       push offset aByte
+  call near ptr _IOLog                    call near ptr _IOLog
+  push offset aWord                       push offset aWord
+  call near ptr _IOLog                    call near ptr _IOLog
+  add esp, 0Ch                            add esp, 0Ch
+  movzx eax, byte ptr [esi+2Dh]           movzx eax, byte ptr [esi+2Dh]
+  cmp eax, 1                              cmp eax, 1
+* jz loc_407C                             jz loc_4614
+* jg loc_4068                             jg loc_4600
+  test eax, eax                           test eax, eax
+* jz loc_4074                             jz loc_460C
+* jmp loc_4099                            jmp loc_462C
+  cmp eax, 2                              cmp eax, 2
+* jz loc_4084                             jz loc_461C
+  cmp eax, 3                              cmp eax, 3
+* jz loc_408C                             jz loc_4624
+* jmp loc_4099                            jmp loc_462C
+* push offset aCompat                     mov eax, offset aCompat
+* jmp loc_4091                            jmp loc_462E
+* push offset aTypeA                      mov eax, offset aTypeA
+* jmp loc_4091                            jmp loc_462E
+* push offset aTypeB                      mov eax, offset aTypeB
+* jmp loc_4091                            jmp loc_462E
+* push offset aTypeF                      mov eax, offset aTypeF
+*                                         jmp loc_462E
+*                                         xor eax, eax
+*                                         test eax, eax
+*                                         jz loc_463B
+*                                         push eax
+  call near ptr _IOLog                    call near ptr _IOLog
+  add esp, 4                              add esp, 4
+* push offset asc_7818                    push offset asc_76B4
+  call near ptr _IOLog                    call near ptr _IOLog
+*                                         mov eax, esi
+  lea esp, [ebp-0Ch]                      lea esp, [ebp-0Ch]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+### Task 6 `-[pnpMemory matches:]` alignment local (2026-09-17)
+
+Keep `_alignment` in a local and compute the aligned base only when it is nonzero. Reloc IDA `masked_equal`. Kernel-only reloc statuses were not reopened. Reloc SHA `ED488370D3F6326FAA6B49863D0D61D023F4015CFE6FB9379E26B664AD96536B` (603720). Unpaired count unchanged (11).
+
+```
+-[pnpMemory matches:]
+  status=different raw_equal=False masked_equal=True
+  reason: calls differ
+  reason: cfg differs
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  mov ebx, [ebp+self]                     mov ebx, [ebp+self]
+  mov edx, ds:paMinBase                   mov edx, ds:paMinBase
+  push edx                                push edx
+  mov edx, [ebp+arg_8]                    mov edx, [ebp+arg_8]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov ecx, eax                            mov ecx, eax
+  mov edi, [ebx+0Ch]                      mov edi, [ebx+0Ch]
+  test edi, edi                           test edi, edi
+* jz loc_46BD                             jz loc_52C5
+  lea eax, [edi+ecx-1]                    lea eax, [edi+ecx-1]
+  xor edx, edx                            xor edx, edx
+  div edi                                 div edi
+  imul eax, edi                           imul eax, edi
+  cmp ecx, eax                            cmp ecx, eax
+* jnz loc_46D4                            jnz loc_52DC
+  cmp [ebx+4], ecx                        cmp [ebx+4], ecx
+* ja loc_46D4                             ja loc_52DC
+  cmp [ebx+8], ecx                        cmp [ebx+8], ecx
+* jb loc_46D4                             jb loc_52DC
+  mov eax, 1                              mov eax, 1
+* jmp loc_46D6                            jmp loc_52DE
+  xor eax, eax                            xor eax, eax
+  lea esp, [ebp-0Ch]                      lea esp, [ebp-0Ch]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+### Task 6 `-[pnpMemory setControl:]` omit width zeros (2026-09-17)
+
+Omit reciprocal `_bit16=0`/`_bit8=0` stores and the explicit `return self` so the width cases share Apple's tails. Leftover is char-arg vs Apple pointer reload plus jump labels. Accepted compiler-shaped leftover (reviewer Pat Raynor). Reloc SHA `03B7AB6C624D764E9413BA971A56D9EE20C8B7376353F3426FC640C9D2D7D6BC` (603660). Previously identical rows stayed matched (46). Unpaired count unchanged (11). Kernel-only reloc statuses were not reopened.
+
+```
+-[pnpMemory setControl:]
+  status=different raw_equal=False masked_equal=False
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  mov edx, [ebp+self]                     mov edx, [ebp+self]
+* mov ecx, [ebp+arg_8]                    mov cl, [ebp+arg_8]
+* mov al, [ecx]                           mov al, cl
+  shr al, 3                               shr al, 3
+  and eax, 3                              and eax, 3
+  cmp eax, 1                              cmp eax, 1
+* jz loc_479C                             jz loc_5314
+* jg loc_4790                             jg loc_5308
+  test eax, eax                           test eax, eax
+* jz loc_47A8                             jz loc_5320
+* jmp loc_47B4                            jmp loc_532C
+  cmp eax, 2                              cmp eax, 2
+* jz loc_47A4                             jz loc_531C
+  cmp eax, 3                              cmp eax, 3
+* jz loc_47B0                             jz loc_5328
+* jmp loc_47B4                            jmp loc_532C
+  mov byte ptr [edx+1Ah], 1               mov byte ptr [edx+1Ah], 1
+* jmp loc_47B4                            jmp loc_532C
+  mov byte ptr [edx+1Ah], 1               mov byte ptr [edx+1Ah], 1
+  mov byte ptr [edx+19h], 1               mov byte ptr [edx+19h], 1
+* jmp loc_47B4                            jmp loc_532C
+  mov byte ptr [edx+1Bh], 1               mov byte ptr [edx+1Bh], 1
+* mov al, [ecx]                           mov al, cl
+  shr al, 6                               shr al, 6
+  and al, 1                               and al, 1
+  mov [edx+14h], al                       mov [edx+14h], al
+* mov al, [ecx]                           mov al, cl
+  shr al, 5                               shr al, 5
+  and al, 1                               and al, 1
+  mov [edx+15h], al                       mov [edx+15h], al
+* mov al, [ecx]                           mov al, cl
+  shr al, 2                               shr al, 2
+  and al, 1                               and al, 1
+  mov [edx+16h], al                       mov [edx+16h], al
+* mov al, [ecx]                           mov al, cl
+  shr al, 1                               shr al, 1
+  and al, 1                               and al, 1
+  mov [edx+17h], al                       mov [edx+17h], al
+* mov cl, [ecx]
+  and cl, 1                               and cl, 1
+  mov [edx+18h], cl                       mov [edx+18h], cl
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+### Task 6 `-[pnpIRQ initFrom:Length:]` mask/flags expressions (2026-09-17)
+
+Load the IRQ mask and flag byte from the buffer expression instead of locals. Leftover is extra edi buffer copy, IDA class-pointer / verbose names, and jump labels. Accepted compiler-shaped leftover (reviewer Pat Raynor). Reloc SHA `9F4690F3B9178CA88EA6C50FB73C3D68F29A6C304C153D950EF5E3EE90495FF1` (603588). Previously identical rows stayed matched (46). Unpaired count unchanged (11). Kernel-only reloc statuses were not reopened.
+
+```
+-[pnpIRQ initFrom:Length:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 8                              sub esp, 8
+* push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  mov ebx, [ebp+self]                     mov ebx, [ebp+self]
+  mov esi, [ebp+arg_8]                    mov esi, [ebp+arg_8]
+  mov ecx, ds:paInit                      mov ecx, ds:paInit
+  push ecx                                push ecx
+  mov [ebp+var_8.receiver], ebx           mov [ebp+var_8.receiver], ebx
+* mov ecx, ds:stru_A584.ext               mov ecx, ds:stru_A4F0.ext
+  mov [ebp+var_8.super_class], ecx        mov [ebp+var_8.super_class], ecx
+  lea eax, [ebp+var_8]                    lea eax, [ebp+var_8]
+  push eax                                push eax
+  call near ptr _objc_msgSendSuper        call near ptr _objc_msgSendSuper
+* mov edi, esi
+  mov dword ptr [ebx+44h], 0              mov dword ptr [ebx+44h], 0
+  xor edx, edx                            xor edx, edx
+  add esp, 8                              add esp, 8
+  nop                                     nop
+  nop                                     nop
+* nop                                     movzx eax, word ptr [esi]
+* movzx eax, word ptr [edi]
+  bt eax, edx                             bt eax, edx
+* jnb loc_3E5E                            jnb loc_49A2
+  mov eax, [ebx+44h]                      mov eax, [ebx+44h]
+  mov [ebx+eax*4+4], edx                  mov [ebx+eax*4+4], edx
+  inc dword ptr [ebx+44h]                 inc dword ptr [ebx+44h]
+  inc edx                                 inc edx
+  cmp edx, 0Fh                            cmp edx, 0Fh
+* jle loc_3E4C                            jle loc_4990
+  mov byte ptr [ebx+48h], 1               mov byte ptr [ebx+48h], 1
+  cmp [ebp+arg_C], 2                      cmp [ebp+arg_C], 2
+* jle loc_3E97                            jle loc_49DB
+  mov cl, [esi+2]                         mov cl, [esi+2]
+  and cl, 1                               and cl, 1
+  mov [ebx+48h], cl                       mov [ebx+48h], cl
+  mov al, [esi+2]                         mov al, [esi+2]
+  shr al, 1                               shr al, 1
+  and al, 1                               and al, 1
+  mov [ebx+49h], al                       mov [ebx+49h], al
+  mov al, [esi+2]                         mov al, [esi+2]
+  shr al, 2                               shr al, 2
+  and al, 1                               and al, 1
+  mov [ebx+4Ah], al                       mov [ebx+4Ah], al
+  mov al, [esi+2]                         mov al, [esi+2]
+  shr al, 3                               shr al, 3
+  and al, 1                               and al, 1
+  mov [ebx+4Bh], al                       mov [ebx+4Bh], al
+* cmp ds:_verbose_0, 0                    cmp ds:_verbose, 0
+* jz loc_3EAD                             jz loc_49F1
+  mov ecx, ds:paPrint                     mov ecx, ds:paPrint
+  push ecx                                push ecx
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov eax, ebx                            mov eax, ebx
+* lea esp, [ebp-14h]                      lea esp, [ebp-10h]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+* pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+### Task 6 `-[pnpIOPort matches:]` alignment local (2026-09-17)
+
+Keep `_alignment` in a 32-bit local, `otherBase` 16-bit, and skip the div when alignment is zero. Leftover is register vs stack for the divisor plus jump labels. Accepted compiler-shaped leftover (reviewer Pat Raynor). Reloc SHA `5AEF7E33F96356FF7D824FE2CDEAECA68BC420D5550E06D2B24A6DF620E03350` (603612). Previously identical rows stayed matched (46). Unpaired count unchanged (11). Kernel-only reloc statuses were not reopened.
+
+```
+-[pnpIOPort matches:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 4                              sub esp, 4
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+* mov esi, [ebp+self]                     mov ebx, [ebp+self]
+* mov edx, ds:paMinBase                   mov eax, ds:paMinBase
+* push edx                                push eax
+  mov edx, [ebp+arg_8]                    mov edx, [ebp+arg_8]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+* mov ebx, eax                            mov ecx, eax
+* movzx ecx, bx                           movzx edi, word ptr [ebx+8]
+* mov eax, ecx                            movzx esi, cx
+* movzx edx, word ptr [esi+8]             test edi, edi
+* mov [ebp+var_4], edx                    jz loc_485B
+* test edx, edx                           lea esi, [edi+esi-1]
+* jnz loc_42F4                            mov eax, esi
+* mov edi, ecx
+* jmp loc_4306
+* mov edx, [ebp+var_4]
+* lea eax, [edx+eax-1]
+  xor edx, edx                            xor edx, edx
+* div [ebp+var_4]                         div edi
+* mov edi, [ebp+var_4]                    mov esi, eax
+* imul edi, eax                           imul esi, edi
+* cmp ecx, edi                            movzx eax, cx
+* jnz loc_4320                            cmp eax, esi
+* cmp [esi+4], bx                         jnz loc_4878
+* ja loc_4320                             cmp [ebx+4], cx
+* cmp [esi+6], bx                         ja loc_4878
+* jb loc_4320                             cmp [ebx+6], cx
+*                                         jb loc_4878
+  mov eax, 1                              mov eax, 1
+* jmp loc_4322                            jmp loc_487A
+  xor eax, eax                            xor eax, eax
+  lea esp, [ebp-10h]                      lea esp, [ebp-10h]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+### Task 6 -[PnPResource objectAt:Using:] if/else if dispatch (2026-09-17)
+
+Flatten index dispatch to if (index < _depStart) / else if / else so the outer compare is Apple jle. Leftover is the usingList local versus Apple nested [list] plus inner jl/jge polarity. Accepted compiler-shaped leftover (reviewer Pat Raynor). Reloc SHA 28B80C9E5FA1BB95EF62F525D4B48A532BDAC434650B438AC63601CC9A1B42AC (603620). Previously identical rows stayed matched (46). Unpaired count unchanged (11). Kernel-only reloc statuses were not reopened.
+
+`
+-[PnPResource objectAt:Using:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  mov esi, [ebp+self]                     mov esi, [ebp+self]
+  mov ebx, [ebp+arg_8]                    mov ebx, [ebp+arg_8]
+* mov edi, [ebp+arg_C]                    mov edx, ds:paList_0
+* mov ecx, ds:paCount                     push edx
+* push ecx                                mov edx, [ebp+arg_C]
+* mov ecx, ds:paList_0                    push edx
+* push ecx                                call near ptr _objc_msgSend
+*                                         mov edi, eax
+*                                         mov edx, ds:paCount
+*                                         push edx
+  push edi                                push edi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+* add esp, 8                              add esp, 10h
+* push eax
+* call near ptr _objc_msgSend
+* mov edx, eax
+* add esp, 8
+  cmp [esi+8], ebx                        cmp [esi+8], ebx
+* jle loc_4FA8                            jle loc_57A0
+  push ebx                                push ebx
+* jmp loc_4FDC                            mov edx, ds:paObjectat
+* mov eax, edx                            push edx
+*                                         mov esi, [esi+4]
+*                                         push esi
+*                                         jmp loc_57C6
+  add eax, [esi+8]                        add eax, [esi+8]
+  cmp ebx, eax                            cmp ebx, eax
+* jge loc_4FD4                            jl loc_57B8
+*                                         add eax, ebx
+*                                         push eax
+*                                         mov edx, ds:paObjectat
+*                                         push edx
+*                                         mov esi, [esi+4]
+*                                         push esi
+*                                         jmp loc_57C6
+  mov eax, ebx                            mov eax, ebx
+  sub eax, [esi+8]                        sub eax, [esi+8]
+  push eax                                push eax
+* mov ecx, ds:paObjectat                  mov edx, ds:paObjectat
+* push ecx                                push edx
+* mov ecx, ds:paList_0
+* push ecx
+  push edi                                push edi
+* call near ptr _objc_msgSend
+* add esp, 8
+* push eax
+* jmp loc_4FE7
+* mov eax, edx
+* add eax, [esi+8]
+* add eax, ebx
+* push eax
+* mov ecx, ds:paObjectat
+* push ecx
+* mov esi, [esi+4]
+* push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  lea esp, [ebp-0Ch]                      lea esp, [ebp-0Ch]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+`
+
+### Task 6 `-[pnpDMA initFrom:Length:]` do-while mask walk (2026-09-17)
+
+Walk the DMA channel mask with a do-while so the compiler still emits Apple `bt` / `cmp 7` / `jle`. Leftover is explicit `_count = 0` plus `data[1]` versus Apple's post-increment buffer pointer. Accepted compiler-shaped leftover (reviewer Pat Raynor). Reloc SHA `25DC982C3EE8B344B7239162BC99532E17574BC8095051E2B12F0A7D7E0EE516` (603644). Previously identical rows stayed matched (46). Unpaired count unchanged (11). Kernel-only reloc statuses were not reopened.
+
+```
+-[pnpDMA initFrom:Length:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 8                              sub esp, 8
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  mov ebx, [ebp+self]                     mov ebx, [ebp+self]
+  mov esi, [ebp+arg_8]                    mov esi, [ebp+arg_8]
+  mov edi, ds:paInit                      mov edi, ds:paInit
+  push edi                                push edi
+  mov [ebp+var_8.receiver], ebx           mov [ebp+var_8.receiver], ebx
+* mov edi, ds:stru_A584.super_class       mov edi, ds:stru_A4A0.ext
+  mov [ebp+var_8.super_class], edi        mov [ebp+var_8.super_class], edi
+  lea eax, [ebp+var_8]                    lea eax, [ebp+var_8]
+  push eax                                push eax
+  call near ptr _objc_msgSendSuper        call near ptr _objc_msgSendSuper
+* mov al, [esi]                           mov dword ptr [ebx+24h], 0
+* inc esi
+  xor edx, edx                            xor edx, edx
+  add esp, 8                              add esp, 8
+* movzx ecx, al                           movzx ecx, byte ptr [esi]
+  nop                                     nop
+  nop                                     nop
+  bt ecx, edx                             bt ecx, edx
+* jnb loc_4173                            jnb loc_440B
+  mov eax, [ebx+24h]                      mov eax, [ebx+24h]
+  mov [ebx+eax*4+4], edx                  mov [ebx+eax*4+4], edx
+  inc dword ptr [ebx+24h]                 inc dword ptr [ebx+24h]
+  inc edx                                 inc edx
+  cmp edx, 7                              cmp edx, 7
+* jle loc_4164                            jle loc_43FC
+* mov edx, esi                            mov dl, [esi+1]
+* mov al, [edx]                           mov eax, edx
+  and eax, 3                              and eax, 3
+  cmp eax, 1                              cmp eax, 1
+* jz loc_41A4                             jz loc_443C
+* jg loc_4190                             jg loc_4428
+  test eax, eax                           test eax, eax
+* jz loc_4198                             jz loc_4430
+* jmp loc_41B4                            jmp loc_444C
+  cmp eax, 2                              cmp eax, 2
+* jz loc_41AC                             jz loc_4444
+* jmp loc_41B4                            jmp loc_444C
+  mov byte ptr [ebx+28h], 1               mov byte ptr [ebx+28h], 1
+  mov byte ptr [ebx+29h], 0               mov byte ptr [ebx+29h], 0
+* jmp loc_41B4                            jmp loc_444C
+  mov byte ptr [ebx+28h], 1               mov byte ptr [ebx+28h], 1
+* jmp loc_41B0                            jmp loc_4448
+  mov byte ptr [ebx+28h], 0               mov byte ptr [ebx+28h], 0
+  mov byte ptr [ebx+29h], 1               mov byte ptr [ebx+29h], 1
+* mov al, [edx]                           mov al, dl
+  shr al, 2                               shr al, 2
+  and al, 1                               and al, 1
+  mov [ebx+2Ah], al                       mov [ebx+2Ah], al
+* mov al, [edx]                           mov al, dl
+  shr al, 3                               shr al, 3
+  and al, 1                               and al, 1
+  mov [ebx+2Bh], al                       mov [ebx+2Bh], al
+* mov al, [edx]                           mov al, dl
+  shr al, 4                               shr al, 4
+  and al, 1                               and al, 1
+  mov [ebx+2Ch], al                       mov [ebx+2Ch], al
+* mov al, [edx]                           mov al, dl
+  shr al, 5                               shr al, 5
+  and al, 3                               and al, 3
+  mov [ebx+2Dh], al                       mov [ebx+2Dh], al
+* cmp ds:_verbose_0, 0                    cmp ds:_verbose, 0
+* jz loc_41F2                             jz loc_448A
+  mov edi, ds:paPrint                     mov edi, ds:paPrint
+  push edi                                push edi
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov eax, ebx                            mov eax, ebx
+  lea esp, [ebp-14h]                      lea esp, [ebp-14h]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+### Task 6 -[PnPResource matches:Using:] count==0 else-wrap (2026-09-17)
+
+Same else-wrap as the tool. Leftover is Apple's list/count and nested `[list objectAt:]` stack reuse versus a `configList` local. Accepted compiler-shaped leftover (reviewer Pat Raynor). Reloc SHA 2CA61BA37A7EF5A8D33FFB885D1A7C516DD6A58779288B1EFBC5AD038C67A0F0 (603644). Previously identical rows stayed matched (46). Unpaired count unchanged (11).
+
+`
+-[PnPResource matches:Using:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+* mov edi, [ebp+arg_8]                    mov edx, ds:paList_0
+*                                         push edx
+*                                         mov edx, [ebp+arg_8]
+*                                         push edx
+*                                         call near ptr _objc_msgSend
+*                                         mov edi, eax
+  mov edx, ds:paCount                     mov edx, ds:paCount
+* push edx
+* mov edx, ds:paList_0
+  push edx                                push edx
+  push edi                                push edi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+* add esp, 8                              add esp, 10h
+* push eax
+* call near ptr _objc_msgSend
+* add esp, 8
+  test eax, eax                           test eax, eax
+* jnz loc_4E1C                            jnz loc_5810
+  mov eax, 1                              mov eax, 1
+* jmp loc_4E7E                            jmp loc_5862
+  xor eax, eax                            xor eax, eax
+* jmp loc_4E7E                            jmp loc_5862
+  xor ebx, ebx                            xor ebx, ebx
+  nop                                     nop
+  nop                                     nop
+  mov edx, [ebp+arg_C]                    mov edx, [ebp+arg_C]
+  push edx                                push edx
+  push ebx                                push ebx
+  mov edx, ds:paObjectatUsing             mov edx, ds:paObjectatUsing
+  push edx                                push edx
+  mov edx, [ebp+self]                     mov edx, [ebp+self]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov esi, eax                            mov esi, eax
+  add esp, 10h                            add esp, 10h
+  test esi, esi                           test esi, esi
+* jz loc_4E74                             jz loc_5858
+  push ebx                                push ebx
+  mov edx, ds:paObjectat                  mov edx, ds:paObjectat
+  push edx                                push edx
+* mov edx, ds:paList_0
+* push edx
+  push edi                                push edi
+* call near ptr _objc_msgSend
+* add esp, 8
+* push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  push eax                                push eax
+  mov edx, ds:paMatches                   mov edx, ds:paMatches
+  push edx                                push edx
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 18h                            add esp, 18h
+  test al, al                             test al, al
+* jz loc_4E18                             jz loc_580C
+  inc ebx                                 inc ebx
+* jmp loc_4E20                            jmp loc_5814
+  test ebx, ebx                           test ebx, ebx
+  setnle al                               setnle al
+  and eax, 0FFh                           and eax, 0FFh
+  lea esp, [ebp-0Ch]                      lea esp, [ebp-0Ch]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+`
+
+### Task 6 -[pnpDMA matches:] else-if on otherCount (2026-09-17)
+
+Same else-if as the tool. Leftover is Apple's double `[number]` and in-loop `dmaChannels` versus locals plus register scheduling. Accepted compiler-shaped leftover (reviewer Pat Raynor). Reloc SHA 7903D28185A72DADE601548D5447579C6EC2636D95BB1ABFEC9D3135B152903D (603644). Previously identical rows stayed matched (46). Unpaired count unchanged (11).
+
+`
+-[pnpDMA matches:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+* mov esi, [ebp+self]                     mov ebx, [ebp+self]
+* mov edi, [ebp+arg_8]                    mov esi, [ebp+arg_8]
+* mov edx, ds:paNumber                    mov edi, ds:paNumber
+* push edx
+  push edi                                push edi
+*                                         push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  test eax, eax                           test eax, eax
+* jz loc_411E                             jz loc_453A
+* mov edx, ds:paNumber
+* push edx
+* push edi
+* call near ptr _objc_msgSend
+* add esp, 8
+  cmp eax, 1                              cmp eax, 1
+* jz loc_40F8                             jz loc_4514
+  push offset aPnpdmaCanOnlyM             push offset aPnpdmaCanOnlyM
+  call near ptr _IOLog                    call near ptr _IOLog
+* jmp loc_411E                            jmp loc_453A
+  mov eax, 1                              mov eax, 1
+* jmp loc_4120                            jmp loc_453C
+* xor ebx, ebx                            mov edi, ds:paDmachannels
+* cmp [esi+24h], ebx                      push edi
+* jle loc_411E                            push esi
+*                                         call near ptr _objc_msgSend
+*                                         mov ecx, eax
+*                                         xor edx, edx
+*                                         cmp [ebx+24h], edx
+*                                         jle loc_453A
+  nop                                     nop
+* mov edx, ds:paDmachannels               nop
+* push edx                                mov eax, [ebx+edx*4+4]
+* push edi                                cmp [ecx], eax
+* call near ptr _objc_msgSend             jz loc_450C
+* add esp, 8                              inc edx
+* mov eax, [eax]                          cmp [ebx+24h], edx
+* cmp [esi+ebx*4+4], eax                  jg loc_452C
+* jz loc_40F0
+* inc ebx
+* cmp [esi+24h], ebx
+* jg loc_4100
+  xor eax, eax                            xor eax, eax
+  lea esp, [ebp-0Ch]                      lea esp, [ebp-0Ch]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+`
+
+### Task 6 -[pnpIRQ matches:] else-if on otherCount (2026-09-17)
+
+Same else-if as the tool. Leftover is Apple's double `[number]` and in-loop `irqs` versus locals plus register scheduling. Accepted compiler-shaped leftover (reviewer Pat Raynor). Reloc SHA 0588D62FCE54FB6EF7D1FB9C65C783E51160FD8DFE8BD8D30DF0FC6E4FB77A5C (603644). Previously identical rows stayed matched (46). Unpaired count unchanged (11).
+
+`
+-[pnpIRQ matches:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+* mov esi, [ebp+self]                     mov ebx, [ebp+self]
+* mov edi, [ebp+arg_8]                    mov esi, [ebp+arg_8]
+* mov edx, ds:paNumber                    mov edi, ds:paNumber
+* push edx
+  push edi                                push edi
+*                                         push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  test eax, eax                           test eax, eax
+* jz loc_3E02                             jz loc_4A72
+* mov edx, ds:paNumber
+* push edx
+* push edi
+* call near ptr _objc_msgSend
+* add esp, 8
+  cmp eax, 1                              cmp eax, 1
+* jz loc_3DDC                             jz loc_4A4C
+  push offset aPnpirqCanOnlyM             push offset aPnpirqCanOnlyM
+  call near ptr _IOLog                    call near ptr _IOLog
+* jmp loc_3E02                            jmp loc_4A72
+  mov eax, 1                              mov eax, 1
+* jmp loc_3E04                            jmp loc_4A74
+* xor ebx, ebx                            mov edi, ds:paIrqs
+* cmp [esi+44h], ebx                      push edi
+* jle loc_3E02                            push esi
+*                                         call near ptr _objc_msgSend
+*                                         mov ecx, eax
+*                                         xor edx, edx
+*                                         cmp [ebx+44h], edx
+*                                         jle loc_4A72
+  nop                                     nop
+* mov edx, ds:paIrqs                      nop
+* push edx                                mov eax, [ebx+edx*4+4]
+* push edi                                cmp [ecx], eax
+* call near ptr _objc_msgSend             jz loc_4A44
+* add esp, 8                              inc edx
+* mov eax, [eax]                          cmp [ebx+44h], edx
+* cmp [esi+ebx*4+4], eax                  jg loc_4A64
+* jz loc_3DD4
+* inc ebx
+* cmp [esi+44h], ebx
+* jg loc_3DE4
+  xor eax, eax                            xor eax, eax
+  lea esp, [ebp-0Ch]                      lea esp, [ebp-0Ch]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+`
+
+### Task 6 -[PnPResources markStartDependentResources] nested walks (2026-09-17)
+
+Same nested walks as the tool. Reloc stream nearly matches Apple; leftover is the final `[ebx+10h]` push register versus ebx clobber plus explicit return self. Accepted compiler-shaped leftover (reviewer Pat Raynor). Reloc SHA 27E6FFC4C2875ECCD322AD6FA55AD5D8B6F8256DF1B4DBDB55CA3A7950B7E805 (603492). Previously identical rows stayed matched (46). Unpaired count unchanged (11).
+
+`
+-[PnPResources markStartDependentResources]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push ebx                                push ebx
+  mov ebx, [ebp+self]                     mov ebx, [ebp+self]
+  mov edx, ds:paCount                     mov edx, ds:paCount
+  push edx                                push edx
+  mov edx, ds:paList_0                    mov edx, ds:paList_0
+  push edx                                push edx
+  mov edx, [ebx+4]                        mov edx, [ebx+4]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  push eax                                push eax
+  mov edx, ds:paSetdepstart               mov edx, ds:paSetdepstart
+  push edx                                push edx
+  mov edx, [ebx+4]                        mov edx, [ebx+4]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov edx, ds:paCount                     mov edx, ds:paCount
+  push edx                                push edx
+  mov edx, ds:paList_0                    mov edx, ds:paList_0
+  push edx                                push edx
+  mov edx, [ebx+8]                        mov edx, [ebx+8]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  push eax                                push eax
+  mov edx, ds:paSetdepstart               mov edx, ds:paSetdepstart
+  push edx                                push edx
+  mov edx, [ebx+8]                        mov edx, [ebx+8]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 28h                            add esp, 28h
+  mov edx, ds:paCount                     mov edx, ds:paCount
+  push edx                                push edx
+  mov edx, ds:paList_0                    mov edx, ds:paList_0
+  push edx                                push edx
+  mov edx, [ebx+0Ch]                      mov edx, [ebx+0Ch]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  push eax                                push eax
+  mov edx, ds:paSetdepstart               mov edx, ds:paSetdepstart
+  push edx                                push edx
+  mov edx, [ebx+0Ch]                      mov edx, [ebx+0Ch]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov edx, ds:paCount                     mov edx, ds:paCount
+  push edx                                push edx
+  mov edx, ds:paList_0                    mov edx, ds:paList_0
+  push edx                                push edx
+  mov edx, [ebx+10h]                      mov edx, [ebx+10h]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  push eax                                push eax
+  mov edx, ds:paSetdepstart               mov edx, ds:paSetdepstart
+  push edx                                push edx
+* mov ebx, [ebx+10h]                      mov edx, [ebx+10h]
+* push ebx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+*                                         mov eax, ebx
+  mov ebx, [ebp+var_4]                    mov ebx, [ebp+var_4]
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+`
+
+### Task 6 `-[pnpIOPort initFrom:Length:Type:]` declaration order after header (2026-09-17)
+
+Same declaration-order experiment as the tool. Leftover is type-8/9 layout polarity, flags-bit jump polarity, and verbose symbol naming. Accepted compiler-shaped leftover (reviewer Pat Raynor). Reloc SHA `90981EC419B4016D184F560CD065F8D7CEA6070E3398F1FEC6F479E3B707A212` (603504). Previously identical rows stayed matched (46). Unpaired count unchanged (11). Kernel-only reloc statuses were not reopened.
+
+```
+-[pnpIOPort initFrom:Length:Type:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 8                              sub esp, 8
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  mov esi, [ebp+self]                     mov esi, [ebp+self]
+*                                         mov edi, [ebp+arg_C]
+  mov ebx, [ebp+arg_8]                    mov ebx, [ebp+arg_8]
+* mov edi, [ebp+arg_C]
+  mov ecx, ds:paInit                      mov ecx, ds:paInit
+  push ecx                                push ecx
+  mov [ebp+var_8.receiver], esi           mov [ebp+var_8.receiver], esi
+* mov ecx, ds:stru_A534.ext               mov ecx, ds:stru_A4F0.super_class
+  mov [ebp+var_8.super_class], ecx        mov [ebp+var_8.super_class], ecx
+  lea eax, [ebp+var_8]                    lea eax, [ebp+var_8]
+  push eax                                push eax
+  call near ptr _objc_msgSendSuper        call near ptr _objc_msgSendSuper
+  add esp, 8                              add esp, 8
+  cmp [ebp+arg_10], 8                     cmp [ebp+arg_10], 8
+* jz loc_43FC                             jnz loc_4718
+* cmp [ebp+arg_10], 9                     cmp edi, 7
+* jnz loc_4472                            jz loc_46CC
+* cmp edi, 3
+* jz loc_43C4
+  push edi                                push edi
+* push offset aPnpdeviceresou             push offset aPnpdeviceresou_9
+* jmp loc_4407                            jmp loc_4729
+* mov ax, [ebx]
+* and ah, 3
+* mov [esi+6], ax
+* mov [esi+4], ax
+* movzx ax, byte ptr [ebx+2]
+* mov [esi+0Ah], ax
+* mov [esi+8], ax
+* mov byte ptr [esi+0Ch], 0Ah
+* cmp ds:_verbose_0, 0
+* jz loc_4472
+* push offset aFixed
+* call near ptr _IOLog
+* jmp loc_4465
+* cmp edi, 7
+* jz loc_441C
+* push edi
+* push offset aPnpdeviceresou_0
+* call near ptr _IOLog
+* mov ecx, ds:paFree
+* push ecx
+* push esi
+* call near ptr _objc_msgSend
+* jmp loc_4474
+  mov dl, [ebx]                           mov dl, [ebx]
+  inc ebx                                 inc ebx
+  mov cx, [ebx]                           mov cx, [ebx]
+  mov [esi+4], cx                         mov [esi+4], cx
+  mov cx, [ebx+2]                         mov cx, [ebx+2]
+  mov [esi+6], cx                         mov [esi+6], cx
+  movzx cx, byte ptr [ebx+5]              movzx cx, byte ptr [ebx+5]
+  mov [esi+0Ah], cx                       mov [esi+0Ah], cx
+  movzx ax, byte ptr [ebx+4]              movzx ax, byte ptr [ebx+4]
+  mov [esi+8], ax                         mov [esi+8], ax
+  test ax, ax                             test ax, ax
+* jnz loc_444D                            jnz loc_46FD
+  mov cx, [esi+0Ah]                       mov cx, [esi+0Ah]
+  mov [esi+8], cx                         mov [esi+8], cx
+  test dl, 1                              test dl, 1
+* jz loc_4458                             jnz loc_4708
+*                                         mov byte ptr [esi+0Ch], 0Ah
+*                                         jmp loc_470C
+  mov byte ptr [esi+0Ch], 10h             mov byte ptr [esi+0Ch], 10h
+* jmp loc_445C                            cmp ds:_verbose, 0
+*                                         jz loc_477F
+*                                         jmp loc_4772
+*                                         cmp [ebp+arg_10], 9
+*                                         jnz loc_477F
+*                                         cmp edi, 3
+*                                         jz loc_4740
+*                                         push edi
+*                                         push offset aPnpdeviceresou_10
+*                                         call near ptr _IOLog
+*                                         mov ecx, ds:paFree
+*                                         push ecx
+*                                         push esi
+*                                         call near ptr _objc_msgSend
+*                                         jmp loc_4781
+*                                         mov ax, [ebx]
+*                                         and ah, 3
+*                                         mov [esi+6], ax
+*                                         mov [esi+4], ax
+*                                         movzx ax, byte ptr [ebx+2]
+*                                         mov [esi+0Ah], ax
+*                                         mov [esi+8], ax
+  mov byte ptr [esi+0Ch], 0Ah             mov byte ptr [esi+0Ch], 0Ah
+* cmp ds:_verbose_0, 0                    cmp ds:_verbose, 0
+* jz loc_4472                             jz loc_477F
+*                                         push offset aFixed
+*                                         call near ptr _IOLog
+  mov ecx, ds:paPrint                     mov ecx, ds:paPrint
+  push ecx                                push ecx
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov eax, esi                            mov eax, esi
+  lea esp, [ebp-14h]                      lea esp, [ebp-14h]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+### Task 6 `-[pnpMemory initFrom:Length:Type:]` early data32 (2026-09-17)
+
+Same early `data32` experiment as the tool. Leftover is type-switch layout and extra flag zeros. Accepted compiler-shaped leftover (reviewer Pat Raynor). Reloc SHA `56457B5FF7AE8D62AA4C9AF8C1FAD048B9D7BFFFBDFF2DD0F38BE1729F319D69` (603536). Previously identical rows stayed matched (46). Unpaired count unchanged (11). Kernel-only reloc statuses were not reopened.
+
+```
+-[pnpMemory initFrom:Length:Type:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 8                              sub esp, 8
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+* mov esi, [ebp+self]                     mov ebx, [ebp+self]
+* mov ebx, [ebp+arg_8]                    mov edi, [ebp+arg_8]
+* mov edi, [ebp+arg_10]                   mov edx, ds:paInit
+* mov ecx, ds:paInit                      push edx
+* push ecx                                mov [ebp+var_8.receiver], ebx
+* mov [ebp+var_8.receiver], esi           mov edx, ds:stru_A540.ext
+* mov ecx, ds:stru_A534.super_class       mov [ebp+var_8.super_class], edx
+* mov [ebp+var_8.super_class], ecx
+  lea eax, [ebp+var_8]                    lea eax, [ebp+var_8]
+  push eax                                push eax
+  call near ptr _objc_msgSendSuper        call near ptr _objc_msgSendSuper
+* mov eax, ebx                            lea esi, [edi+1]
+* lea ebx, [eax+1]                        mov byte ptr [ebx+1Bh], 0
+* mov byte ptr [esi+1Bh], 0               mov byte ptr [ebx+1Ah], 0
+* mov byte ptr [esi+1Ah], 0               mov byte ptr [ebx+19h], 0
+* mov byte ptr [esi+19h], 0               mov byte ptr [ebx+1Ch], 0
+* mov byte ptr [esi+1Ch], 0               mov byte ptr [ebx+14h], 0
+*                                         mov byte ptr [ebx+15h], 0
+*                                         mov byte ptr [ebx+18h], 0
+  add esp, 8                              add esp, 8
+* cmp edi, 5                              cmp [ebp+arg_10], 5
+* jz loc_4934                             jnz loc_507C
+* jg loc_48BC                             mov byte ptr [ebx+1Ch], 1
+* cmp edi, 1                              cmp [ebp+arg_C], 11h
+* jz loc_48CC                             jz loc_503C
+* jmp loc_49F6                            mov edx, [ebp+arg_C]
+* cmp edi, 6                              push edx
+* jz loc_498C                             push offset aPnpdeviceresou_11
+* jmp loc_49F6                            jmp loc_5101
+*                                         movzx eax, byte ptr [edi]
+*                                         push eax
+*                                         mov edx, ds:paSetcontrol
+*                                         push edx
+*                                         push ebx
+*                                         call near ptr _objc_msgSend
+*                                         mov edx, [esi]
+*                                         mov [ebx+4], edx
+*                                         mov edx, [esi+4]
+*                                         mov [ebx+8], edx
+*                                         mov edx, [esi+8]
+*                                         mov [ebx+0Ch], edx
+*                                         mov esi, [esi+0Ch]
+*                                         mov [ebx+10h], esi
+*                                         add esp, 0Ch
+*                                         cmp dword ptr [ebx+0Ch], 0
+*                                         jnz loc_515D
+*                                         mov [ebx+0Ch], esi
+*                                         jmp loc_515D
+*                                         cmp [ebp+arg_10], 6
+*                                         jnz loc_50EC
+*                                         mov byte ptr [ebx+1Ch], 1
+  cmp [ebp+arg_C], 9                      cmp [ebp+arg_C], 9
+* jz loc_48E0                             jz loc_5098
+* mov ecx, [ebp+arg_C]                    mov edx, [ebp+arg_C]
+* push ecx                                push edx
+* push offset aPnpdeviceresou_1           push offset aPnpdeviceresou_12
+* jmp loc_499F                            jmp loc_5101
+*                                         movzx eax, byte ptr [edi]
+  push eax                                push eax
+* mov ecx, ds:paSetcontrol                mov edx, ds:paSetcontrol
+* push ecx                                push edx
+* push esi                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+* mov edx, ebx                            mov edx, [esi]
+* movzx eax, word ptr [ebx]               mov [ebx+4], edx
+* shl eax, 8                              mov edx, [esi]
+* mov [esi+4], eax                        mov [ebx+8], edx
+* movzx eax, word ptr [ebx+2]             mov edx, [esi+4]
+* shl eax, 8                              mov [ebx+10h], edx
+* mov [esi+8], eax                        mov esi, [esi+4]
+* movzx eax, word ptr [ebx+4]             mov [ebx+0Ch], esi
+* mov [esi+0Ch], eax
+  add esp, 0Ch                            add esp, 0Ch
+* test eax, eax                           cmp ds:_verbose, 0
+* jnz loc_4918                            jz loc_5179
+* mov dword ptr [esi+0Ch], 10000h
+* movzx eax, word ptr [edx+6]
+* shl eax, 8
+* mov [esi+10h], eax
+* cmp ds:_verbose_0, 0
+* jz loc_49F6
+* jmp loc_49E9
+* mov byte ptr [esi+1Ch], 1
+* cmp [ebp+arg_C], 11h
+* jz loc_494C
+* mov ecx, [ebp+arg_C]
+* push ecx
+* push offset aPnpdeviceresou_2
+* jmp loc_499F
+* push eax
+* mov ecx, ds:paSetcontrol
+* push ecx
+* push esi
+* call near ptr _objc_msgSend
+* mov ecx, [ebx]
+* mov [esi+4], ecx
+* mov ecx, [ebx+4]
+* mov [esi+8], ecx
+* mov ecx, [ebx+0Ch]
+* mov [esi+10h], ecx
+* mov ebx, [ebx+8]
+* mov [esi+0Ch], ebx
+* add esp, 0Ch
+* test ebx, ebx
+* jnz loc_497E
+* mov ecx, [esi+10h]
+* mov [esi+0Ch], ecx
+* cmp ds:_verbose_0, 0
+* jz loc_49F6
+* jmp loc_49E9
+* mov byte ptr [esi+1Ch], 1
+* cmp [ebp+arg_C], 9
+* jz loc_49B4
+* mov ecx, [ebp+arg_C]
+* push ecx
+* push offset aPnpdeviceresou_3
+* call near ptr _IOLog
+* mov ecx, ds:paFree
+* push ecx
+* push esi
+* call near ptr _objc_msgSend
+* jmp loc_49F8
+* push eax
+* mov ecx, ds:paSetcontrol
+* push ecx
+* push esi
+* call near ptr _objc_msgSend
+* mov eax, [ebx]
+* mov [esi+8], eax
+* mov [esi+4], eax
+* mov ebx, [ebx+4]
+* mov [esi+10h], ebx
+* mov [esi+0Ch], ebx
+* add esp, 0Ch
+* cmp ds:_verbose_0, 0
+* jz loc_49F6
+  push offset aFixed                      push offset aFixed
+  call near ptr _IOLog                    call near ptr _IOLog
+* mov ecx, ds:paPrint                     mov edx, ds:paPrint
+* push ecx                                push edx
+* push esi                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+* mov eax, esi                            add esp, 0Ch
+*                                         jmp loc_515D
+*                                         cmp [ebp+arg_10], 1
+*                                         jnz loc_515D
+*                                         cmp [ebp+arg_C], 9
+*                                         jz loc_5118
+*                                         mov edx, [ebp+arg_C]
+*                                         push edx
+*                                         push offset aPnpdeviceresou_13
+*                                         call near ptr _IOLog
+*                                         mov edx, ds:paFree
+*                                         push edx
+*                                         push ebx
+*                                         call near ptr _objc_msgSend
+*                                         jmp loc_517B
+*                                         movzx eax, byte ptr [edi]
+*                                         push eax
+*                                         mov edx, ds:paSetcontrol
+*                                         push edx
+*                                         push ebx
+*                                         call near ptr _objc_msgSend
+*                                         movzx eax, word ptr [esi]
+*                                         shl eax, 8
+*                                         mov [ebx+4], eax
+*                                         movzx eax, word ptr [esi+2]
+*                                         shl eax, 8
+*                                         mov [ebx+8], eax
+*                                         movzx edx, word ptr [esi+4]
+*                                         mov [ebx+0Ch], edx
+*                                         movzx eax, word ptr [esi+6]
+*                                         shl eax, 8
+*                                         mov [ebx+10h], eax
+*                                         add esp, 0Ch
+*                                         cmp dword ptr [ebx+0Ch], 0
+*                                         jnz loc_515D
+*                                         mov dword ptr [ebx+0Ch], 10000h
+*                                         cmp ds:_verbose, 0
+*                                         jz loc_5179
+*                                         cmp [ebp+arg_10], 6
+*                                         jz loc_5179
+*                                         mov edx, ds:paPrint
+*                                         push edx
+*                                         push ebx
+*                                         call near ptr _objc_msgSend
+*                                         mov eax, ebx
+  lea esp, [ebp-14h]                      lea esp, [ebp-14h]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+### Task 6 `-[PnPDeviceResources initForBuf:Length:CSN:]` header locals (2026-09-17)
+
+Same header-local reorder as the tool. Leftover is Apple's byte-copy ID loop versus shift-or. Accepted compiler-shaped leftover (reviewer Pat Raynor). Reloc SHA `8D19FE9A6A75FA0D1CDF13C706E8CF1C2734BFC33699C395AB03E1232B9A94C7` (603536). Previously identical rows stayed matched (46). Unpaired count unchanged (11). Kernel-only reloc statuses were not reopened.
+
+```
+-[PnPDeviceResources initForBuf:Length:CSN:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+* sub esp, 1Ch                            sub esp, 20h
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+* mov ebx, [ebp+self]                     mov edi, [ebp+arg_8]
+* mov esi, [ebp+arg_8]
+* mov edi, [ebp+arg_C]
+  mov ecx, ds:paInit                      mov ecx, ds:paInit
+  push ecx                                push ecx
+*                                         mov ebx, [ebp+self]
+  mov [ebp+var_14.receiver], ebx          mov [ebp+var_14.receiver], ebx
+* mov ecx, ds:stru_A444.ext               mov ecx, ds:stru_A4A0.super_class
+  mov [ebp+var_14.super_class], ecx       mov [ebp+var_14.super_class], ecx
+  lea eax, [ebp+var_14]                   lea eax, [ebp+var_14]
+  push eax                                push eax
+  call near ptr _objc_msgSendSuper        call near ptr _objc_msgSendSuper
+  add esp, 8                              add esp, 8
+* cmp edi, 8                              cmp [ebp+arg_C], 8
+* ja loc_6A94                             jg loc_36E8
+  push 9                                  push 9
+* push edi                                mov ebx, [ebp+arg_C]
+* push offset aPnpdeviceresou_12          push ebx
+*                                         push offset aPnpdeviceresou
+  call near ptr _IOLog                    call near ptr _IOLog
+  xor eax, eax                            xor eax, eax
+* jmp loc_6BCF                            jmp loc_3830
+* mov [ebp+var_1C], esi                   mov dl, [edi+3]
+* lea edx, [ebp+var_15]                   shl edx, 18h
+* mov eax, 3                              movzx eax, byte ptr [edi+2]
+* nop                                     shl eax, 10h
+* mov ecx, [ebp+var_1C]                   or edx, eax
+* mov cl, [ecx]                           movzx eax, byte ptr [edi+1]
+* mov [edx], cl                           shl eax, 8
+* inc [ebp+var_1C]                        or edx, eax
+* dec edx                                 movzx eax, byte ptr [edi]
+* dec eax                                 or edx, eax
+* cmp eax, 0FFFFFFFFh                     mov ebx, [ebp+arg_10]
+* jnz loc_6AA0                            mov ecx, [ebp+self]
+* mov ecx, [ebp+arg_10]                   mov [ecx+64h], ebx
+* mov [ebx+64h], ecx                      push edx
+* mov ecx, [ebp-18h]
+* push ecx
+  mov ecx, ds:paSetid                     mov ecx, ds:paSetid
+  push ecx                                push ecx
+*                                         mov ebx, [ebp+self]
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+* mov ecx, [esi+4]                        mov ecx, [edi+4]
+*                                         mov [ebp+var_18], ecx
+  push ecx                                push ecx
+* mov ecx, ds:paSetserialnumbe            mov ebx, ds:paSetserialnumbe
+*                                         push ebx
+*                                         mov ecx, [ebp+self]
+  push ecx                                push ecx
+*                                         call near ptr _objc_msgSend
+*                                         add esp, 18h
+*                                         cmp ds:_verbose, 0
+*                                         jz loc_37B3
+*                                         mov bl, [edi+8]
+*                                         mov [ebp+var_1C], bl
+*                                         mov ecx, ds:paId
+*                                         push ecx
+*                                         mov ebx, [ebp+self]
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+* add esp, 18h                            mov esi, eax
+* cmp ds:_verbose_0, 1                    shr eax, 1Ah
+* jnz loc_6B6E                            and al, 1Fh
+* movzx eax, byte ptr [esi+8]             add al, 40h
+*                                         mov [ebp+var_C], al
+*                                         mov eax, esi
+*                                         shr eax, 15h
+*                                         and al, 1Fh
+*                                         add al, 40h
+*                                         mov [ebp+var_B], al
+*                                         mov eax, esi
+*                                         shr eax, 10h
+*                                         and al, 1Fh
+*                                         add al, 40h
+*                                         mov [ebp+var_A], al
+*                                         movzx eax, si
+  push eax                                push eax
+* mov ecx, ds:paSerialnumber              push offset a04x
+*                                         lea ecx, [ebp+var_C]
+*                                         mov [ebp+var_20], ecx
+*                                         lea eax, [ebp+var_9]
+*                                         push eax
+*                                         call near ptr _sprintf
+*                                         mov [ebp+var_5], 0
+*                                         movzx eax, [ebp+var_1C]
+*                                         push eax
+*                                         mov ebx, [ebp+var_18]
+*                                         push ebx
+*                                         push esi
+*                                         mov ecx, [ebp+var_20]
+  push ecx                                push ecx
+*                                         push offset aVendorIdS0xLxS
+*                                         call near ptr _IOLog
+*                                         add esp, 28h
+*                                         mov ebx, ds:paInit
+*                                         push ebx
+*                                         mov ecx, ds:paAlloc
+*                                         push ecx
+*                                         mov ebx, ds:paList
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+* mov ecx, ds:paId
+* push ecx
+* push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+* add esp, 8                              mov ecx, [ebp+self]
+* push eax                                mov [ecx+4], eax
+* mov ecx, ds:paId
+* push ecx
+* push ebx
+* call near ptr _objc_msgSend
+* add esp, 8
+* mov edx, eax
+* shr eax, 1Ah
+* and al, 1Fh
+* add al, 40h
+* mov [ebp+var_C], al
+* mov eax, edx
+* shr eax, 15h
+* and al, 1Fh
+* add al, 40h
+* mov [ebp+var_B], al
+* mov eax, edx
+* shr eax, 10h
+* and al, 1Fh
+* add al, 40h
+* mov [ebp+var_A], al
+* movzx eax, dx
+* push eax
+* push offset a04x
+* lea eax, [ebp+var_9]
+* push eax
+* call near ptr _sprintf
+* mov [ebp+var_5], 0
+* lea eax, [ebp+var_C]
+* add esp, 0Ch
+* push eax
+* push offset aVendorIdS0xLxS
+* call near ptr _IOLog
+* add esp, 14h
+* mov ecx, ds:paInit
+* push ecx
+* mov ecx, ds:paAlloc
+* push ecx
+* mov ecx, ds:paList
+* push ecx
+* call near ptr _objc_msgSend
+* add esp, 8
+* push eax
+* call near ptr _objc_msgSend
+* mov [ebx+4], eax
+  add esp, 8                              add esp, 8
+  test eax, eax                           test eax, eax
+* jz loc_6BB8                             jnz loc_37FC
+* push edi                                push offset aPnpdeviceresou_0
+* lea eax, [esi+9]                        call near ptr _IOLog
+*                                         mov ebx, ds:paFree
+*                                         push ebx
+*                                         mov ecx, [ebp+self]
+*                                         push ecx
+*                                         jmp loc_382B
+*                                         mov ebx, [ebp+arg_C]
+*                                         push ebx
+*                                         lea eax, [edi+9]
+  push eax                                push eax
+  mov ecx, ds:paParseconfigLen            mov ecx, ds:paParseconfigLen
+  push ecx                                push ecx
+*                                         mov ebx, [ebp+self]
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 10h                            add esp, 10h
+* test al, al                             test eax, eax
+* jz loc_6BC2                             jz loc_3820
+* mov eax, ebx                            mov eax, [ebp+self]
+* jmp loc_6BCF                            jmp loc_3830
+* push offset aPnpdeviceresou_13
+* call near ptr _IOLog
+  mov ecx, ds:paFree                      mov ecx, ds:paFree
+  push ecx                                push ecx
+*                                         mov ebx, [ebp+self]
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+* lea esp, [ebp-28h]                      lea esp, [ebp-2Ch]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+### Task 6 `-[PnPResources initFromRegisters:]` do-while walks (2026-09-17)
+
+Same do-while register walks as the tool. Leftover is verbose / selector PIC. Accepted compiler-shaped leftover (reviewer Pat Raynor). Reloc SHA `1CF72ADC5E1827867389CB5D7B90780D14BAF9E74E1D926F750B49D4E20542D4` (603536). Previously identical rows stayed matched (46). Unpaired count unchanged (11). Kernel-only reloc statuses were not reopened.
+
+```
+-[PnPResources initFromRegisters:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 10h                            sub esp, 10h
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  mov ecx, ds:paInit                      mov ecx, ds:paInit
+  push ecx                                push ecx
+  mov esi, [ebp+self]                     mov esi, [ebp+self]
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  test eax, eax                           test eax, eax
+* jnz loc_548C                            jnz loc_5F98
+  xor eax, eax                            xor eax, eax
+* jmp loc_5857                            jmp loc_6358
+  mov ecx, ds:paFree                      mov ecx, ds:paFree
+  push ecx                                push ecx
+  mov esi, [ebp+self]                     mov esi, [ebp+self]
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+* jmp loc_5857                            jmp loc_6358
+  xor edi, edi                            xor edi, edi
+  nop                                     nop
+  nop                                     nop
+  lea eax, [edi+edi]                      lea eax, [edi+edi]
+  mov ecx, [ebp+arg_8]                    mov ecx, [ebp+arg_8]
+  mov dl, [eax+ecx+38h]                   mov dl, [eax+ecx+38h]
+  shl dx, 8                               shl dx, 8
+  movzx ax, byte ptr [eax+ecx+39h]        movzx ax, byte ptr [eax+ecx+39h]
+  or ax, dx                               or ax, dx
+* jz loc_550A                             jz loc_6016
+  push 0                                  push 0
+  and eax, 0FFFFh                         and eax, 0FFFFh
+  push eax                                push eax
+* mov esi, ds:paInitwithbaseLe_0          mov esi, ds:paInitwithbaseLe
+  push esi                                push esi
+  mov ecx, ds:paAlloc                     mov ecx, ds:paAlloc
+  push ecx                                push ecx
+  mov esi, ds:paPnpioport                 mov esi, ds:paPnpioport
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov ebx, eax                            mov ebx, eax
+  add esp, 10h                            add esp, 10h
+  test ebx, ebx                           test ebx, ebx
+* jz loc_5474                             jz loc_5F80
+  push ebx                                push ebx
+  mov ecx, ds:paAddioport                 mov ecx, ds:paAddioport
+  push ecx                                push ecx
+  mov esi, [ebp+self]                     mov esi, [ebp+self]
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 0Ch                            add esp, 0Ch
+* cmp ds:_verbose_0, 0                    cmp ds:_verbose, 0
+* jz loc_550A                             jz loc_6016
+  mov ecx, ds:paPrint                     mov ecx, ds:paPrint
+  push ecx                                push ecx
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  inc edi                                 inc edi
+  cmp edi, 7                              cmp edi, 7
+* jle loc_5490                            jle loc_5F9C
+  xor edi, edi                            xor edi, edi
+  nop                                     nop
+  nop                                     nop
+  mov esi, [ebp+arg_8]                    mov esi, [ebp+arg_8]
+  mov bl, [esi+edi*2+48h]                 mov bl, [esi+edi*2+48h]
+  cmp bl, 2                               cmp bl, 2
+* jnz loc_5522                            jnz loc_602E
+  mov bl, 9                               mov bl, 9
+  mov ecx, [ebp+arg_8]                    mov ecx, [ebp+arg_8]
+  mov cl, [ecx+edi*2+49h]                 mov cl, [ecx+edi*2+49h]
+  mov [ebp+var_4], cl                     mov [ebp+var_4], cl
+  test bl, bl                             test bl, bl
+* jz loc_55C4                             jz loc_60D0
+  mov esi, ds:paInit                      mov esi, ds:paInit
+  push esi                                push esi
+  mov ecx, ds:paAlloc                     mov ecx, ds:paAlloc
+  push ecx                                push ecx
+  mov esi, ds:paPnpirq                    mov esi, ds:paPnpirq
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov [ebp+var_10], eax                   mov [ebp+var_10], eax
+  add esp, 8                              add esp, 8
+  test eax, eax                           test eax, eax
+* jz loc_5474                             jz loc_5F80
+  movzx eax, bl                           movzx eax, bl
+  push eax                                push eax
+  mov ecx, ds:paAddtoirqlist              mov ecx, ds:paAddtoirqlist
+  push ecx                                push ecx
+  mov esi, [ebp+var_10]                   mov esi, [ebp+var_10]
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov al, [ebp+var_4]                     mov al, [ebp+var_4]
+  and eax, 1                              and eax, 1
+  push eax                                push eax
+  mov al, [ebp+var_4]                     mov al, [ebp+var_4]
+  and eax, 2                              and eax, 2
+  push eax                                push eax
+  mov ecx, ds:paSethighLevel              mov ecx, ds:paSethighLevel
+  push ecx                                push ecx
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  push esi                                push esi
+  mov esi, ds:paAddirq                    mov esi, ds:paAddirq
+  push esi                                push esi
+  mov ecx, [ebp+self]                     mov ecx, [ebp+self]
+  push ecx                                push ecx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 28h                            add esp, 28h
+* cmp ds:_verbose_0, 0                    cmp ds:_verbose, 0
+* jz loc_55C4                             jz loc_60D0
+  mov esi, ds:paPrint                     mov esi, ds:paPrint
+  push esi                                push esi
+  mov ecx, [ebp+var_10]                   mov ecx, [ebp+var_10]
+  push ecx                                push ecx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  inc edi                                 inc edi
+  cmp edi, 1                              cmp edi, 1
+* jle loc_5514                            jle loc_6020
+  xor edi, edi                            xor edi, edi
+  mov ecx, [ebp+arg_8]                    mov ecx, [ebp+arg_8]
+* mov cl, [edi+ecx+4Ch]                   mov cl, [ecx+edi*2+4Ch]
+  mov [ebp+var_8], cl                     mov [ebp+var_8], cl
+  cmp cl, 4                               cmp cl, 4
+* jz loc_564E                             jz loc_615A
+  mov esi, ds:paInit                      mov esi, ds:paInit
+  push esi                                push esi
+  mov ecx, ds:paAlloc                     mov ecx, ds:paAlloc
+  push ecx                                push ecx
+  mov esi, ds:paPnpdma                    mov esi, ds:paPnpdma
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov ebx, eax                            mov ebx, eax
+  add esp, 8                              add esp, 8
+  test ebx, ebx                           test ebx, ebx
+* jz loc_5474                             jz loc_5F80
+  movzx eax, [ebp+var_8]                  movzx eax, [ebp+var_8]
+  push eax                                push eax
+  mov ecx, ds:paAdddmatolist              mov ecx, ds:paAdddmatolist
+  push ecx                                push ecx
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  push ebx                                push ebx
+  mov esi, ds:paAdddma                    mov esi, ds:paAdddma
+  push esi                                push esi
+  mov ecx, [ebp+self]                     mov ecx, [ebp+self]
+  push ecx                                push ecx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 18h                            add esp, 18h
+* cmp ds:_verbose_0, 0                    cmp ds:_verbose, 0
+* jz loc_564E                             jz loc_615A
+  mov esi, ds:paPrint                     mov esi, ds:paPrint
+  push esi                                push esi
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  inc edi                                 inc edi
+  cmp edi, 1                              cmp edi, 1
+* jle loc_55D0                            jle loc_60DC
+  xor edi, edi                            xor edi, edi
+  nop                                     nop
+  nop                                     nop
+  lea ecx, [edi+edi*4]                    lea ecx, [edi+edi*4]
+  mov [ebp+var_C], ecx                    mov [ebp+var_C], ecx
+  mov esi, [ebp+arg_8]                    mov esi, [ebp+arg_8]
+  movzx edx, byte ptr [ecx+esi]           movzx edx, byte ptr [ecx+esi]
+  shl edx, 10h                            shl edx, 10h
+  movzx eax, byte ptr [ecx+esi+1]         movzx eax, byte ptr [ecx+esi+1]
+  shl eax, 8                              shl eax, 8
+  or edx, eax                             or edx, eax
+  mov [ebp+var_10], edx                   mov [ebp+var_10], edx
+* jz loc_5727                             jz loc_622F
+* mov bl, [ecx+esi+2]                     movzx ebx, byte ptr [ecx+esi+2]
+  movzx edx, byte ptr [ecx+esi+3]         movzx edx, byte ptr [ecx+esi+3]
+  shl edx, 10h                            shl edx, 10h
+  movzx eax, byte ptr [ecx+esi+4]         movzx eax, byte ptr [ecx+esi+4]
+  shl eax, 8                              shl eax, 8
+  or eax, edx                             or eax, edx
+  xor edx, edx                            xor edx, edx
+  test eax, eax                           test eax, eax
+* jz loc_56B5                             jz loc_61BD
+  test bl, 1                              test bl, 1
+* jz loc_56A8                             jnz loc_61B8
+*                                         mov edx, eax
+*                                         xor edx, 0FFFFFFh
+*                                         inc edx
+*                                         jmp loc_61BD
+  mov edx, eax                            mov edx, eax
+  sub edx, [ebp+var_10]                   sub edx, [ebp+var_10]
+* jmp loc_56B5
+* and eax, 0FFFFFFh
+* xor eax, 0FFFFFFh
+* lea edx, [eax+1]
+  push 0                                  push 0
+  mov eax, ebx                            mov eax, ebx
+  and eax, 1                              and eax, 1
+  push eax                                push eax
+  push 0                                  push 0
+  mov eax, ebx                            mov eax, ebx
+  and eax, 2                              and eax, 2
+  push eax                                push eax
+  push edx                                push edx
+  mov ecx, [ebp+var_10]                   mov ecx, [ebp+var_10]
+  push ecx                                push ecx
+* mov esi, ds:paInitwithbaseLe            mov esi, ds:paInitwithbaseLe_0
+  push esi                                push esi
+  mov ecx, ds:paAlloc                     mov ecx, ds:paAlloc
+  push ecx                                push ecx
+  mov esi, ds:paPnpmemory                 mov esi, ds:paPnpmemory
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov ebx, eax                            mov ebx, eax
+  add esp, 20h                            add esp, 20h
+  test ebx, ebx                           test ebx, ebx
+* jz loc_5474                             jz loc_5F80
+  push ebx                                push ebx
+  mov ecx, ds:paAddmemory                 mov ecx, ds:paAddmemory
+  push ecx                                push ecx
+  mov esi, [ebp+self]                     mov esi, [ebp+self]
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 0Ch                            add esp, 0Ch
+* cmp ds:_verbose_0, 0                    cmp ds:_verbose, 0
+* jz loc_5727                             jz loc_622F
+  mov ecx, ds:paPrint                     mov ecx, ds:paPrint
+  push ecx                                push ecx
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  inc edi                                 inc edi
+  cmp edi, 3                              cmp edi, 3
+* jle loc_565C                            jle loc_6168
+*                                         mov esi, ds:paList_0
+*                                         push esi
+*                                         mov ecx, [ebp+self]
+*                                         mov ecx, [ecx+10h]
+*                                         push ecx
+*                                         call near ptr _objc_msgSend
+  mov esi, ds:paCount                     mov esi, ds:paCount
+  push esi                                push esi
+* mov ecx, ds:paList_0
+* push ecx
+* mov esi, [ebp+self]
+* mov esi, [esi+10h]
+* push esi
+* call near ptr _objc_msgSend
+* add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+* add esp, 8                              add esp, 10h
+  test eax, eax                           test eax, eax
+* jnz loc_5854                            jnz loc_6355
+  xor edi, edi                            xor edi, edi
+  nop                                     nop
+  nop                                     nop
+* nop                                     lea ecx, [edi+edi*8]
+* lea ebx, [edi+edi*8]                    mov [ebp+var_C], ecx
+* mov ecx, [ebp+arg_8]                    mov esi, [ebp+arg_8]
+* mov dl, [ebx+ecx+14h]                   mov dl, [ecx+esi+14h]
+  shl edx, 18h                            shl edx, 18h
+* movzx eax, byte ptr [ebx+ecx+15h]       movzx eax, byte ptr [ecx+esi+15h]
+  shl eax, 10h                            shl eax, 10h
+  or edx, eax                             or edx, eax
+* movzx eax, byte ptr [ebx+ecx+16h]       movzx eax, byte ptr [ecx+esi+16h]
+  shl eax, 8                              shl eax, 8
+  or edx, eax                             or edx, eax
+* movzx eax, byte ptr [ebx+ecx+17h]       movzx eax, byte ptr [ecx+esi+17h]
+  or edx, eax                             or edx, eax
+  mov [ebp+var_10], edx                   mov [ebp+var_10], edx
+* jz loc_584A                             jz loc_634B
+* mov dl, [ebx+ecx+18h]                   movzx ebx, byte ptr [ecx+esi+18h]
+* mov cl, [ebx+ecx+19h]                   mov dl, [ecx+esi+19h]
+* shl ecx, 18h                            shl edx, 18h
+* mov esi, [ebp+arg_8]                    movzx eax, byte ptr [ecx+esi+1Ah]
+* movzx eax, byte ptr [ebx+esi+1Ah]
+  shl eax, 10h                            shl eax, 10h
+* or ecx, eax                             or edx, eax
+* movzx eax, byte ptr [ebx+esi+1Bh]       movzx eax, byte ptr [ecx+esi+1Bh]
+  shl eax, 8                              shl eax, 8
+* or ecx, eax                             or edx, eax
+* movzx eax, byte ptr [ebx+esi+1Ch]       movzx eax, byte ptr [ecx+esi+1Ch]
+* or ecx, eax                             or eax, edx
+* mov [ebp+var_C], ecx                    xor edx, edx
+* xor ebx, ebx                            test eax, eax
+* test ecx, ecx                           jz loc_62DD
+* jz loc_57DC                             test bl, 1
+* test dl, 1                              jnz loc_62D8
+* jz loc_57D4                             mov edx, eax
+* mov ebx, ecx                            not edx
+* sub ebx, [ebp+var_10]                   inc edx
+* jmp loc_57DC                            jmp loc_62DD
+* mov eax, [ebp+var_C]                    mov edx, eax
+* not eax                                 sub edx, [ebp+var_10]
+* lea ebx, [eax+1]
+  push 1                                  push 1
+* mov eax, edx                            mov eax, ebx
+  and eax, 1                              and eax, 1
+  push eax                                push eax
+* mov eax, edx                            mov eax, ebx
+  and eax, 4                              and eax, 4
+  push eax                                push eax
+* mov eax, edx                            mov eax, ebx
+  and eax, 2                              and eax, 2
+  push eax                                push eax
+* push ebx                                push edx
+  mov ecx, [ebp+var_10]                   mov ecx, [ebp+var_10]
+  push ecx                                push ecx
+* mov esi, ds:paInitwithbaseLe            mov esi, ds:paInitwithbaseLe_0
+  push esi                                push esi
+  mov ecx, ds:paAlloc                     mov ecx, ds:paAlloc
+  push ecx                                push ecx
+  mov esi, ds:paPnpmemory                 mov esi, ds:paPnpmemory
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov ebx, eax                            mov ebx, eax
+  add esp, 20h                            add esp, 20h
+  push ebx                                push ebx
+  mov ecx, ds:paAddmemory                 mov ecx, ds:paAddmemory
+  push ecx                                push ecx
+  mov esi, [ebp+self]                     mov esi, [ebp+self]
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 0Ch                            add esp, 0Ch
+* cmp ds:_verbose_0, 0                    cmp ds:_verbose, 0
+* jz loc_584A                             jz loc_634B
+  mov ecx, ds:paPrint                     mov ecx, ds:paPrint
+  push ecx                                push ecx
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  inc edi                                 inc edi
+  cmp edi, 3                              cmp edi, 3
+* jle loc_5764                            jle loc_6268
+  mov eax, [ebp+self]                     mov eax, [ebp+self]
+  lea esp, [ebp-1Ch]                      lea esp, [ebp-1Ch]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+### Task 6 `-[PnPDeviceResources parseConfig:Length:]` do-while tag walk (2026-09-17)
+
+Same do-while tag walk as the tool. Leftover is large-body jump-table / PIC. Accepted compiler-shaped leftover (reviewer Pat Raynor). Reloc SHA `4A2889879B19B4DC315813BFD4443CE35FB45A6EC1714EEC4924817976BA91E9` (603536). Previously identical rows stayed matched (46). Unpaired count unchanged (11). Kernel-only reloc statuses were not reopened.
+
+```
+-[PnPDeviceResources parseConfig:Length:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+* sub esp, 3Ch                            sub esp, 28h
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+*                                         mov ecx, [ebp+arg_8]
+*                                         mov [ebp+var_10], ecx
+*                                         mov edi, [ebp+arg_C]
+*                                         mov [ebp+var_14], edi
+  mov [ebp+var_1C], 0                     mov [ebp+var_1C], 0
+*                                         mov [ebp+var_20], 0
+  mov [ebp+var_24], 0                     mov [ebp+var_24], 0
+* mov [ebp+var_28], 0                     test edi, edi
+* mov ecx, [ebp+arg_C]                    jz loc_43B1
+* mov [ebp+var_18], ecx
+* mov esi, [ebp+arg_8]
+* mov [ebp+var_20], esi
+* test ecx, ecx
+* jle loc_6A27
+  nop                                     nop
+  nop                                     nop
+* mov edx, [ebp+var_20]                   mov ecx, [ebp+var_10]
+* inc [ebp+var_20]                        mov bl, [ecx]
+* dec [ebp+var_18]                        inc ecx
+* cmp byte ptr [edx], 0                   mov [ebp+var_10], ecx
+* jl loc_674C                             dec [ebp+var_14]
+* mov cl, [edx]                           test bl, bl
+* and ecx, 7                              jge loc_3D08
+* mov [ebp+var_2C], ecx                   cmp [ebp+var_14], 1
+* mov al, [edx]                           ja loc_3AAC
+*                                         push offset aPnpdeviceresou_1
+*                                         jmp loc_42FB
+*                                         mov edi, [ebp+var_10]
+*                                         mov di, [edi]
+*                                         mov [ebp+var_28], di
+*                                         add [ebp+var_10], 2
+*                                         add [ebp+var_14], 0FFFFFFFEh
+*                                         movzx ecx, di
+*                                         mov [ebp+var_18], ecx
+*                                         cmp [ebp+var_14], ecx
+*                                         jnb loc_3AD8
+*                                         mov edi, [ebp+var_14]
+*                                         push edi
+*                                         push ecx
+*                                         push offset aPnpdeviceresou_2
+*                                         jmp loc_3D36
+*                                         mov eax, ebx
+*                                         and eax, 7Fh
+*                                         dec eax
+*                                         cmp eax, 5
+*                                         ja def_3AE7
+*                                         jmp ds:jpt_3AE7[eax*4]
+*                                         mov eax, ebx
+*                                         and eax, 7Fh
+*                                         push eax
+*                                         movzx eax, [ebp+var_28]
+*                                         push eax
+*                                         mov ecx, [ebp+var_10]
+*                                         push ecx
+*                                         mov edi, ds:paInitfromLength
+*                                         push edi
+*                                         mov ecx, ds:paAlloc
+*                                         push ecx
+*                                         mov edi, ds:paPnpmemory
+*                                         push edi
+*                                         call near ptr _objc_msgSend
+*                                         add esp, 8
+*                                         push eax
+*                                         call near ptr _objc_msgSend
+*                                         add esp, 14h
+*                                         test eax, eax
+*                                         jnz loc_3B4C
+*                                         push offset aFailedToInitMe
+*                                         jmp loc_42FB
+*                                         cmp [ebp+var_20], 0
+*                                         jnz loc_3B74
+*                                         push eax
+*                                         mov ecx, ds:paAddmemory
+*                                         push ecx
+*                                         mov edi, ds:paResources
+*                                         push edi
+*                                         mov ecx, [ebp+var_1C]
+*                                         push ecx
+*                                         call near ptr _objc_msgSend
+*                                         add esp, 8
+*                                         push eax
+*                                         jmp loc_4338
+*                                         push eax
+*                                         mov edi, ds:paAddmemory
+*                                         push edi
+*                                         mov ecx, [ebp+var_24]
+*                                         push ecx
+*                                         jmp loc_4338
+*                                         movzx ebx, [ebp+var_28]
+*                                         push ebx
+*                                         mov edi, [ebp+var_10]
+*                                         push edi
+*                                         mov ecx, ds:paSetdevicenameL
+*                                         push ecx
+*                                         mov edi, [ebp+self]
+*                                         push edi
+*                                         call near ptr _objc_msgSend
+*                                         add esp, 10h
+*                                         test eax, eax
+*                                         jnz loc_3BC0
+*                                         push ebx
+*                                         mov ecx, [ebp+var_10]
+*                                         push ecx
+*                                         mov edi, ds:paSetdevicenameL
+*                                         push edi
+*                                         mov ecx, [ebp+var_1C]
+*                                         push ecx
+*                                         call near ptr _objc_msgSend
+*                                         add esp, 10h
+*                                         cmp ds:_verbose, 0
+*                                         jz def_3AE7
+*                                         movzx ebx, [ebp+var_28]
+*                                         push ebx
+*                                         push offset aIdStringD
+*                                         call near ptr _IOLog
+*                                         xor esi, esi
+*                                         add esp, 8
+*                                         cmp esi, ebx
+*                                         jge loc_3C06
+*                                         movzx ebx, [ebp+var_28]
+*                                         nop
+*                                         nop
+*                                         nop
+*                                         mov edi, [ebp+var_10]
+*                                         movzx eax, byte ptr [esi+edi]
+*                                         push eax
+*                                         push offset aC
+*                                         call near ptr _IOLog
+*                                         add esp, 8
+*                                         inc esi
+*                                         cmp esi, ebx
+*                                         jl loc_3BEC
+*                                         push offset asc_7572
+*                                         jmp loc_439A
+*                                         movzx eax, [ebp+var_28]
+*                                         lea esi, [eax-2]
+*                                         push esi
+*                                         mov ebx, [ebp+var_10]
+*                                         add ebx, 2
+*                                         push ebx
+*                                         mov ecx, ds:paSetdevicenameL
+*                                         push ecx
+*                                         mov edi, [ebp+self]
+*                                         push edi
+*                                         call near ptr _objc_msgSend
+*                                         add esp, 10h
+*                                         test eax, eax
+*                                         jnz loc_3C4B
+*                                         push esi
+*                                         push ebx
+*                                         mov ecx, ds:paSetdevicenameL
+*                                         push ecx
+*                                         mov edi, [ebp+var_1C]
+*                                         push edi
+*                                         call near ptr _objc_msgSend
+*                                         add esp, 10h
+*                                         cmp ds:_verbose, 0
+*                                         jz def_3AE7
+*                                         movzx ebx, [ebp+var_28]
+*                                         push ebx
+*                                         push offset aUnicodeIdStrin
+*                                         call near ptr _IOLog
+*                                         xor esi, esi
+*                                         add esp, 8
+*                                         add ebx, 0FFFFFFFEh
+*                                         cmp esi, ebx
+*                                         jge loc_3C97
+*                                         movzx eax, [ebp+var_28]
+*                                         lea ebx, [eax-2]
+*                                         nop
+*                                         nop
+*                                         mov ecx, [ebp+var_10]
+*                                         movzx eax, byte ptr [ecx+esi+2]
+*                                         push eax
+*                                         push offset aC
+*                                         call near ptr _IOLog
+*                                         add esp, 8
+*                                         inc esi
+*                                         cmp esi, ebx
+*                                         jl loc_3C7C
+*                                         push offset asc_7572
+*                                         jmp loc_439A
+*                                         cmp ds:_verbose, 0
+*                                         jz def_3AE7
+*                                         movzx ebx, [ebp+var_28]
+*                                         push ebx
+*                                         push offset aVendorDefinedD
+*                                         call near ptr _IOLog
+*                                         xor esi, esi
+*                                         add esp, 8
+*                                         cmp esi, ebx
+*                                         jge loc_4395
+*                                         nop
+*                                         nop
+*                                         nop
+*                                         mov edi, [ebp+var_10]
+*                                         mov dl, [esi+edi]
+*                                         mov al, dl
+*                                         add al, 0E0h
+*                                         mov bl, 2Eh
+*                                         cmp al, 5Fh
+*                                         ja loc_3CE2
+*                                         mov bl, dl
+*                                         movzx eax, dl
+*                                         push eax
+*                                         movzx eax, bl
+*                                         push eax
+*                                         push offset aCXh
+*                                         call near ptr _IOLog
+*                                         add esp, 0Ch
+*                                         inc esi
+*                                         movzx eax, [ebp+var_28]
+*                                         cmp esi, eax
+*                                         jl loc_3CD0
+*                                         jmp loc_4395
+*                                         mov edi, ebx
+*                                         and edi, 7
+*                                         mov [ebp+var_18], edi
+*                                         mov dl, bl
+*                                         shr dl, 3
+*                                         and dl, 0Fh
+*                                         mov al, bl
+  and al, 78h                             and al, 78h
+  cmp al, 78h                             cmp al, 78h
+* jz loc_6A27                             jz loc_43B1
+* mov esi, [ebp+var_2C]
+* cmp [ebp+var_18], esi
+* jge loc_60A0
+* push esi
+  mov ecx, [ebp+var_18]                   mov ecx, [ebp+var_18]
+*                                         cmp [ebp+var_14], ecx
+*                                         jnb loc_3D44
+  push ecx                                push ecx
+* push offset aPnpdeviceresou_4           mov edi, [ebp+var_14]
+* jmp loc_677E                            push edi
+* mov al, [edx]                           push offset aPnpdeviceresou_3
+* shr al, 3                               call near ptr _IOLog
+* and eax, 0Fh                            xor eax, eax
+*                                         jmp loc_43B4
+*                                         movzx eax, dl
+  dec eax                                 dec eax
+  cmp eax, 0Dh                            cmp eax, 0Dh
+* ja def_60B2                             ja def_3AE7
+* jmp ds:jpt_60B2[eax*4]                  jmp ds:jpt_3D51[eax*4]
+* mov esi, [ebp+var_20]                   cmp ds:_verbose, 0
+* mov bl, [esi]                           jz def_3AE7
+* mov dl, [esi+1]                         mov ecx, [ebp+var_10]
+* cmp ds:_verbose_0, 1                    mov al, [ecx+1]
+* jnz def_60B2
+* mov eax, edx
+  and eax, 0Fh                            and eax, 0Fh
+  push eax                                push eax
+* mov al, dl                              mov al, [ecx+1]
+  shr al, 4                               shr al, 4
+  and eax, 0FFh                           and eax, 0FFh
+  push eax                                push eax
+* mov eax, ebx                            mov al, [ecx]
+  and eax, 0Fh                            and eax, 0Fh
+  push eax                                push eax
+* mov al, bl                              mov al, [ecx]
+  shr al, 4                               shr al, 4
+  and eax, 0FFh                           and eax, 0FFh
+  push eax                                push eax
+  push offset aPlugAndPlayVer             push offset aPlugAndPlayVer
+  call near ptr _IOLog                    call near ptr _IOLog
+  add esp, 14h                            add esp, 14h
+* jmp def_60B2                            jmp def_3AE7
+* mov ecx, ds:paInit                      mov edi, ds:paInit
+*                                         push edi
+*                                         mov ecx, ds:paAlloc
+  push ecx                                push ecx
+* mov esi, ds:paAlloc                     mov edi, ds:paPnplogicaldevi
+* push esi                                push edi
+* mov ecx, ds:paPnplogicaldevi
+* push ecx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov [ebp+var_1C], eax                   mov [ebp+var_1C], eax
+  add esp, 8                              add esp, 8
+  test eax, eax                           test eax, eax
+* jnz loc_6178                            jnz loc_3E10
+* push offset aPnpdeviceresou_5           push offset aPnpdeviceresou_4
+* jmp loc_67F9                            jmp loc_42FB
+* mov esi, ds:paCount                     mov ecx, ds:paCount
+* push esi
+* mov ecx, [ebp+self]
+* mov ecx, [ecx+4]
+  push ecx                                push ecx
+*                                         mov edi, [ebp+self]
+*                                         mov edi, [edi+4]
+*                                         push edi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  push eax                                push eax
+* mov esi, ds:paSetlogicaldevi            mov ecx, ds:paSetlogicaldevi
+* push esi
+* mov ecx, [ebp+var_1C]
+  push ecx                                push ecx
+*                                         mov edi, [ebp+var_1C]
+*                                         push edi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+* mov esi, [ebp+var_1C]                   push edi
+* push esi
+  mov ecx, ds:paAddobject                 mov ecx, ds:paAddobject
+  push ecx                                push ecx
+* mov esi, [ebp+self]                     mov edi, [ebp+self]
+* mov esi, [esi+4]                        mov edi, [edi+4]
+* push esi                                push edi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+*                                         mov ecx, [ebp+var_10]
+*                                         mov cl, [ecx+3]
+*                                         shl ecx, 18h
+*                                         mov esi, ecx
+*                                         mov edi, [ebp+var_10]
+*                                         movzx eax, byte ptr [edi+2]
+*                                         shl eax, 10h
+*                                         or esi, eax
+*                                         movzx eax, byte ptr [edi+1]
+*                                         shl eax, 8
+*                                         or esi, eax
+*                                         movzx eax, byte ptr [edi]
+*                                         or esi, eax
+  add esp, 20h                            add esp, 20h
+* mov ebx, [ebp+var_20]
+* lea edx, [ebp+var_D]
+* mov eax, 3
+* nop
+* nop
+* nop
+* mov cl, [ebx]
+* mov [edx], cl
+* inc ebx
+* dec edx
+* dec eax
+* cmp eax, 0FFFFFFFFh
+* jnz loc_61C4
+* mov esi, [ebp-10h]
+  push esi                                push esi
+  mov ecx, ds:paSetid                     mov ecx, ds:paSetid
+  push ecx                                push ecx
+* mov esi, [ebp+var_1C]                   mov edi, [ebp+var_1C]
+* push esi                                push edi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 0Ch                            add esp, 0Ch
+* cmp ds:_verbose_0, 1                    cmp ds:_verbose, 0
+* jnz loc_6277                            jz loc_3EEA
+* mov ecx, ds:paId                        mov eax, esi
+* push ecx
+* push esi
+* call near ptr _objc_msgSend
+* push eax
+* mov esi, ds:paId
+* push esi
+* mov ecx, [ebp+var_1C]
+* push ecx
+* call near ptr _objc_msgSend
+* add esp, 8
+* mov edx, eax
+  shr eax, 1Ah                            shr eax, 1Ah
+  and al, 1Fh                             and al, 1Fh
+  add al, 40h                             add al, 40h
+  mov [ebp+var_C], al                     mov [ebp+var_C], al
+* mov eax, edx                            mov eax, esi
+  shr eax, 15h                            shr eax, 15h
+  and al, 1Fh                             and al, 1Fh
+  add al, 40h                             add al, 40h
+  mov [ebp+var_B], al                     mov [ebp+var_B], al
+* mov eax, edx                            mov eax, esi
+  shr eax, 10h                            shr eax, 10h
+  and al, 1Fh                             and al, 1Fh
+  add al, 40h                             add al, 40h
+  mov [ebp+var_A], al                     mov [ebp+var_A], al
+* movzx eax, dx                           movzx eax, si
+  push eax                                push eax
+  push offset a04x                        push offset a04x
+*                                         lea ebx, [ebp+var_C]
+  lea eax, [ebp+var_9]                    lea eax, [ebp+var_9]
+  push eax                                push eax
+  call near ptr _sprintf                  call near ptr _sprintf
+  mov [ebp+var_5], 0                      mov [ebp+var_5], 0
+* lea eax, [ebp+var_C]
+* add esp, 0Ch
+* push eax
+* mov esi, ds:paLogicaldevicen
+  push esi                                push esi
+* mov ecx, [ebp+var_1C]                   push ebx
+*                                         mov ecx, ds:paLogicaldevicen
+  push ecx                                push ecx
+*                                         push edi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  push offset aLogicalDeviceD             push offset aLogicalDeviceD
+  call near ptr _IOLog                    call near ptr _IOLog
+* add esp, 18h                            add esp, 1Ch
+* mov ecx, [ebp+var_20]                   cmp [ebp+var_18], 4
+* mov cl, [ecx+4]                         jbe loc_3F77
+* mov [ebp+var_30], cl                    mov edi, [ebp+var_10]
+* test cl, 1                              mov bl, [edi+4]
+* jz loc_629B                             test bl, 1
+* cmp ds:_verbose_0, 1                    jz loc_3F15
+* jnz loc_629B                            cmp ds:_verbose, 0
+*                                         jz loc_3F15
+  push offset aBootProcessPar             push offset aBootProcessPar
+  call near ptr _IOLog                    call near ptr _IOLog
+  add esp, 4                              add esp, 4
+* test [ebp+var_30], 0FEh                 test bl, 0FEh
+* jz loc_6308                             jz loc_3F77
+* cmp ds:_verbose_0, 1                    cmp ds:_verbose, 0
+* jnz loc_62B7                            jz loc_3F30
+  push offset aRegisterSuppor             push offset aRegisterSuppor
+  call near ptr _IOLog                    call near ptr _IOLog
+  add esp, 4                              add esp, 4
+* mov ebx, 1                              mov esi, 1
+* mov [ebp+var_38], 31h                   and ebx, 0FFh
+* movzx edi, [ebp+var_30]
+  nop                                     nop
+* nop                                     bt ebx, esi
+* bt edi, ebx                             jnb loc_3F5B
+* jnb loc_62E8                            cmp ds:_verbose, 0
+* cmp ds:_verbose_0, 1                    jz loc_3F5B
+* jnz loc_62E8                            lea eax, [esi+30h]
+* movzx eax, [ebp+var_38]
+  push eax                                push eax
+  push offset a0xX                        push offset a0xX
+  call near ptr _IOLog                    call near ptr _IOLog
+  add esp, 8                              add esp, 8
+* inc ebx                                 inc esi
+* inc [ebp+var_38]                        cmp esi, 7
+* cmp ebx, 7                              jle loc_3F3C
+* jle loc_62C8                            cmp ds:_verbose, 0
+* cmp ds:_verbose_0, 1                    jz loc_3F77
+* jnz loc_6308                            push offset asc_76A4
+* push offset asc_7818
+  call near ptr _IOLog                    call near ptr _IOLog
+  add esp, 4                              add esp, 4
+* cmp [ebp+var_2C], 5                     cmp [ebp+var_18], 5
+* jle def_60B2                            jbe def_3AE7
+* mov ecx, [ebp+var_20]                   mov ecx, [ebp+var_10]
+* mov cl, [ecx+5]                         mov bl, [ecx+5]
+* mov [ebp+var_30], cl                    test bl, bl
+* test cl, cl                             jz def_3AE7
+* jz def_60B2                             cmp ds:_verbose, 0
+* cmp ds:_verbose_0, 1                    jz loc_3FA5
+* jnz loc_6339
+  push offset aRegisterSuppor             push offset aRegisterSuppor
+  call near ptr _IOLog                    call near ptr _IOLog
+  add esp, 4                              add esp, 4
+* xor ebx, ebx                            xor esi, esi
+* mov [ebp+var_38], 38h                   and ebx, 0FFh
+* movzx edi, [ebp+var_30]
+  nop                                     nop
+  nop                                     nop
+  nop                                     nop
+* bt edi, ebx                             bt ebx, esi
+* jnb loc_6368                            jnb loc_3FCF
+* cmp ds:_verbose_0, 1                    cmp ds:_verbose, 0
+* jnz loc_6368                            jz loc_3FCF
+* movzx eax, [ebp+var_38]                 lea eax, [esi+38h]
+  push eax                                push eax
+  push offset a0xX                        push offset a0xX
+  call near ptr _IOLog                    call near ptr _IOLog
+  add esp, 8                              add esp, 8
+* inc ebx                                 inc esi
+* inc [ebp+var_38]                        cmp esi, 7
+* cmp ebx, 7                              jle loc_3FB0
+* jle loc_6348                            cmp ds:_verbose, 0
+* cmp ds:_verbose_0, 1                    jz def_3AE7
+* jnz def_60B2                            push offset asc_76A4
+* push offset asc_7818                    jmp loc_439A
+* jmp loc_6729                            mov ecx, [ebp+var_10]
+* mov ebx, [ebp+var_20]                   mov cl, [ecx+3]
+* lea edx, [ebp+var_11]                   shl ecx, 18h
+* mov eax, 3                              mov esi, ecx
+* nop                                     mov edi, [ebp+var_10]
+* mov cl, [ebx]                           movzx eax, byte ptr [edi+2]
+* mov [edx], cl                           shl eax, 10h
+* inc ebx                                 or esi, eax
+* dec edx                                 movzx eax, byte ptr [edi+1]
+* dec eax                                 shl eax, 8
+* cmp eax, 0FFFFFFFFh                     or esi, eax
+* jnz loc_6398                            movzx eax, byte ptr [edi]
+* cmp ds:_verbose_0, 1                    or esi, eax
+* jnz loc_6405                            cmp ds:_verbose, 0
+* mov esi, [ebp-14h]                      jz loc_4066
+* push esi                                mov eax, esi
+* mov edx, [ebp-14h]
+* mov eax, edx
+  shr eax, 1Ah                            shr eax, 1Ah
+  and al, 1Fh                             and al, 1Fh
+  add al, 40h                             add al, 40h
+  mov [ebp+var_C], al                     mov [ebp+var_C], al
+* mov eax, edx                            mov eax, esi
+  shr eax, 15h                            shr eax, 15h
+  and al, 1Fh                             and al, 1Fh
+  add al, 40h                             add al, 40h
+  mov [ebp+var_B], al                     mov [ebp+var_B], al
+* mov eax, edx                            mov eax, esi
+  shr eax, 10h                            shr eax, 10h
+  and al, 1Fh                             and al, 1Fh
+  add al, 40h                             add al, 40h
+  mov [ebp+var_A], al                     mov [ebp+var_A], al
+* and edx, 0FFFFh                         movzx eax, si
+* push edx                                push eax
+  push offset a04x                        push offset a04x
+*                                         lea ebx, [ebp+var_C]
+  lea eax, [ebp+var_9]                    lea eax, [ebp+var_9]
+  push eax                                push eax
+  call near ptr _sprintf                  call near ptr _sprintf
+  mov [ebp+var_5], 0                      mov [ebp+var_5], 0
+* lea eax, [ebp+var_C]                    push esi
+* add esp, 0Ch                            push ebx
+* push eax
+  push offset aCompatibleDevi             push offset aCompatibleDevi
+  call near ptr _IOLog                    call near ptr _IOLog
+* add esp, 0Ch                            add esp, 18h
+* mov ecx, [ebp-14h]                      push esi
+*                                         mov ecx, ds:paAddcompatid
+  push ecx                                push ecx
+* mov esi, ds:paAddcompatid               mov edi, [ebp+var_1C]
+* push esi                                push edi
+* mov ecx, [ebp+var_1C]
+* push ecx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 0Ch                            add esp, 0Ch
+* jmp def_60B2                            jmp def_3AE7
+* mov esi, [ebp+var_2C]                   mov ecx, [ebp+var_18]
+* push esi
+* mov ecx, [ebp+var_20]
+  push ecx                                push ecx
+* mov esi, ds:paInitfromLength_0          mov edi, [ebp+var_10]
+* push esi                                push edi
+* mov ecx, ds:paAlloc                     mov ecx, ds:paInitfromLength_0
+  push ecx                                push ecx
+* mov esi, ds:paPnpirq                    mov edi, ds:paAlloc
+* push esi                                push edi
+*                                         mov ecx, ds:paPnpirq
+*                                         push ecx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 10h                            add esp, 10h
+  test eax, eax                           test eax, eax
+* jnz loc_6460                            jnz loc_40BC
+* push offset aPnpdeviceresou_6           push offset aPnpdeviceresou_5
+* jmp loc_67F9                            jmp loc_42FB
+*                                         cmp [ebp+var_20], 0
+*                                         jnz loc_40E4
+*                                         push eax
+*                                         mov edi, ds:paAddirq
+*                                         push edi
+*                                         mov ecx, ds:paResources
+*                                         push ecx
+*                                         mov edi, [ebp+var_1C]
+*                                         push edi
+*                                         call near ptr _objc_msgSend
+*                                         add esp, 8
+*                                         push eax
+*                                         jmp loc_4338
+  push eax                                push eax
+  mov ecx, ds:paAddirq                    mov ecx, ds:paAddirq
+*                                         jmp loc_4333
+*                                         mov ecx, [ebp+var_18]
+  push ecx                                push ecx
+* cmp [ebp+var_24], 0                     mov edi, [ebp+var_10]
+* jz loc_6682                             push edi
+* jmp loc_6698                            mov ecx, ds:paInitfromLength_0
+* mov esi, [ebp+var_2C]
+* push esi
+* mov ecx, [ebp+var_20]
+  push ecx                                push ecx
+* mov esi, ds:paInitfromLength_0          mov edi, ds:paAlloc
+* push esi                                push edi
+* mov ecx, ds:paAlloc                     mov ecx, ds:paPnpdma
+  push ecx                                push ecx
+* mov esi, ds:paPnpdma
+* push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 10h                            add esp, 10h
+  test eax, eax                           test eax, eax
+* jnz loc_64B4                            jnz loc_412C
+* push offset aPnpdeviceresou_7           push offset aPnpdeviceresou_6
+* jmp loc_67F9                            jmp loc_42FB
+*                                         cmp [ebp+var_20], 0
+*                                         jnz loc_4154
+*                                         push eax
+*                                         mov edi, ds:paAdddma
+*                                         push edi
+*                                         mov ecx, ds:paResources
+*                                         push ecx
+*                                         mov edi, [ebp+var_1C]
+*                                         push edi
+*                                         call near ptr _objc_msgSend
+*                                         add esp, 8
+*                                         push eax
+*                                         jmp loc_4338
+  push eax                                push eax
+  mov ecx, ds:paAdddma                    mov ecx, ds:paAdddma
+* jmp loc_6467                            jmp loc_4333
+* cmp ds:_verbose_0, 1                    cmp ds:_verbose, 0
+* jnz loc_64DA                            jz loc_417A
+* mov esi, [ebp+var_24]                   mov ecx, [ebp+var_20]
+* push esi                                push ecx
+  push offset aStartDependent             push offset aStartDependent
+  call near ptr _IOLog                    call near ptr _IOLog
+  add esp, 8                              add esp, 8
+* inc [ebp+var_24]                        inc [ebp+var_20]
+* mov ecx, ds:paInit                      mov edi, ds:paInit
+*                                         push edi
+*                                         mov ecx, ds:paAlloc
+  push ecx                                push ecx
+* mov esi, ds:paAlloc                     mov edi, ds:paPnpdependentre
+* push esi                                push edi
+* mov ecx, ds:paPnpdependentre            call near ptr _objc_msgSend
+*                                         add esp, 8
+*                                         push eax
+*                                         call near ptr _objc_msgSend
+*                                         mov [ebp+var_24], eax
+*                                         add esp, 8
+*                                         test eax, eax
+*                                         jnz loc_41B4
+*                                         push offset aPnpdeviceresou_7
+*                                         jmp loc_42FB
+*                                         mov ecx, ds:paMarkstartdepen
+*                                         push ecx
+*                                         mov edi, ds:paResources
+*                                         push edi
+*                                         mov ecx, [ebp+var_1C]
+  push ecx                                push ecx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+* mov [ebp+var_28], eax                   mov edi, [ebp+var_24]
+* add esp, 8                              push edi
+* test eax, eax                           mov ecx, ds:paAddobject
+* jnz loc_6514
+* push offset aPnpdeviceresou_8
+* jmp loc_67F9
+* mov esi, ds:paMarkstartdepen
+* push esi
+* mov ecx, ds:paResources
+  push ecx                                push ecx
+* mov esi, [ebp+var_1C]                   mov edi, ds:paDepresources
+* push esi                                push edi
+* call near ptr _objc_msgSend             mov ecx, [ebp+var_1C]
+* add esp, 8
+* push eax
+* call near ptr _objc_msgSend
+* mov ecx, [ebp+var_28]
+  push ecx                                push ecx
+* mov esi, ds:paAddobject
+* push esi
+* mov ecx, ds:paDepresources
+* push ecx
+* mov esi, [ebp+var_1C]
+* push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  push 1                                  push 1
+*                                         mov edi, ds:paSetgoodconfig
+*                                         push edi
+*                                         mov ecx, [ebp+var_24]
+*                                         push ecx
+*                                         call near ptr _objc_msgSend
+*                                         add esp, 20h
+*                                         cmp [ebp+var_18], 0
+*                                         jz loc_427B
+*                                         mov edi, [ebp+var_10]
+*                                         mov al, [edi]
+*                                         test al, al
+*                                         jnz loc_4230
+*                                         cmp ds:_verbose, 0
+*                                         jz def_3AE7
+*                                         push offset aGoodConfigurat
+*                                         jmp loc_4273
+*                                         cmp al, 1
+*                                         jnz loc_4248
+*                                         cmp ds:_verbose, 0
+*                                         jz def_3AE7
+*                                         push offset aAcceptableConf
+*                                         jmp loc_4273
+*                                         cmp al, 2
+*                                         jnz loc_427B
+*                                         push 0
+  mov ecx, ds:paSetgoodconfig             mov ecx, ds:paSetgoodconfig
+  push ecx                                push ecx
+* mov esi, [ebp+var_28]                   mov edi, [ebp+var_24]
+* push esi                                push edi
+* call near ptr _objc_msgSend
+* add esp, 20h
+* cmp [ebp+var_2C], 0
+* jz loc_65E7
+* mov ecx, [ebp+var_20]
+* movzx eax, byte ptr [ecx]
+* cmp eax, 1
+* jz loc_65A4
+* jg loc_6588
+* test eax, eax
+* jz loc_6590
+* jmp loc_65E7
+* cmp eax, 2
+* jz loc_65B8
+* jmp loc_65E7
+* cmp ds:_verbose_0, 1
+* jnz def_60B2
+* push offset aGoodConfigurat
+* jmp loc_65DF
+* cmp ds:_verbose_0, 1
+* jnz def_60B2
+* push offset aAcceptableConf
+* jmp loc_65DF
+* push 0
+* mov esi, ds:paSetgoodconfig
+* push esi
+* mov ecx, [ebp+var_28]
+* push ecx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 0Ch                            add esp, 0Ch
+* cmp ds:_verbose_0, 1                    cmp ds:_verbose, 0
+* jnz def_60B2                            jz def_3AE7
+  push offset aSuboptimalConf             push offset aSuboptimalConf
+  call near ptr _IOLog                    call near ptr _IOLog
+  add esp, 4                              add esp, 4
+* cmp ds:_verbose_0, 1                    cmp ds:_verbose, 0
+* jnz def_60B2                            jz def_3AE7
+* push offset asc_7818                    push offset asc_76A4
+* jmp loc_6729                            jmp loc_439A
+* cmp ds:_verbose_0, 1                    cmp ds:_verbose, 0
+* jnz loc_6616                            jz loc_42AA
+  push offset aEndOfDependent             push offset aEndOfDependent
+  call near ptr _IOLog                    call near ptr _IOLog
+  add esp, 4                              add esp, 4
+*                                         mov [ebp+var_20], 0
+  mov [ebp+var_24], 0                     mov [ebp+var_24], 0
+* mov [ebp+var_28], 0                     jmp def_3AE7
+* jmp def_60B2                            movzx eax, dl
+* mov al, [edx]
+* shr al, 3
+* and eax, 0Fh
+  push eax                                push eax
+* mov esi, [ebp+var_2C]                   mov ecx, [ebp+var_18]
+* push esi
+* mov ecx, [ebp+var_20]
+  push ecx                                push ecx
+* mov esi, ds:paInitfromLength            mov edi, [ebp+var_10]
+* push esi                                push edi
+* mov ecx, ds:paAlloc                     mov ecx, ds:paInitfromLength
+  push ecx                                push ecx
+* mov esi, ds:paPnpioport                 mov edi, ds:paAlloc
+* push esi                                push edi
+*                                         mov ecx, ds:paPnpioport
+*                                         push ecx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 14h                            add esp, 14h
+  test eax, eax                           test eax, eax
+* jnz loc_6674                            jnz loc_4308
+* push offset aPnpdeviceresou_9           push offset aPnpdeviceresou_8
+* jmp loc_67F9                            call near ptr _IOLog
+*                                         xor eax, eax
+*                                         jmp loc_43B4
+*                                         cmp [ebp+var_20], 0
+*                                         jnz loc_432C
+*                                         push eax
+*                                         mov edi, ds:paAddioport
+*                                         push edi
+*                                         mov ecx, ds:paResources
+*                                         push ecx
+*                                         mov edi, [ebp+var_1C]
+*                                         push edi
+*                                         call near ptr _objc_msgSend
+*                                         add esp, 8
+*                                         push eax
+*                                         jmp loc_4338
+  push eax                                push eax
+  mov ecx, ds:paAddioport                 mov ecx, ds:paAddioport
+  push ecx                                push ecx
+* cmp [ebp+var_24], 0                     mov edi, [ebp+var_24]
+* jnz loc_6698                            push edi
+* mov esi, ds:paResources
+* push esi
+* mov ecx, [ebp+var_1C]
+* push ecx
+* call near ptr _objc_msgSend
+* add esp, 8
+* jmp loc_669B
+* mov eax, [ebp+var_28]
+* push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 0Ch                            add esp, 0Ch
+* jmp def_60B2                            jmp def_3AE7
+* cmp ds:_verbose_0, 1                    cmp ds:_verbose, 0
+* jnz loc_66C6                            jz def_3AE7
+* mov esi, [ebp+var_2C]                   mov ecx, [ebp+var_18]
+* push esi                                push ecx
+* push offset aVendorDefinedD             push offset aVendorDefinedD_0
+  call near ptr _IOLog                    call near ptr _IOLog
+*                                         xor esi, esi
+  add esp, 8                              add esp, 8
+* xor ebx, ebx                            cmp [ebp+var_18], esi
+* cmp [ebp+var_2C], ebx                   jbe loc_4395
+* jle loc_671B
+  nop                                     nop
+  nop                                     nop
+  nop                                     nop
+* mov ecx, [ebp+var_20]                   mov edi, [ebp+var_10]
+* mov cl, [ebx+ecx]                       mov dl, [esi+edi]
+* mov [ebp+var_34], cl                    mov al, dl
+* cmp ds:_verbose_0, 1                    add al, 0E0h
+* jnz loc_6715                            mov bl, 2Eh
+* movzx eax, cl                           cmp al, 5Fh
+*                                         ja loc_437A
+*                                         mov bl, dl
+*                                         movzx eax, dl
+  push eax                                push eax
+* mov al, [ebp+var_34]                    movzx eax, bl
+* add al, 0E0h
+* cmp al, 5Fh
+* ja loc_66F8
+* mov edx, 1
+* jmp loc_66FA
+* xor edx, edx
+* mov eax, 2Eh
+* test dl, dl
+* jz loc_6707
+* movzx eax, [ebp+var_34]
+  push eax                                push eax
+  push offset aCXh                        push offset aCXh
+  call near ptr _IOLog                    call near ptr _IOLog
+  add esp, 0Ch                            add esp, 0Ch
+* inc ebx                                 inc esi
+* cmp [ebp+var_2C], ebx                   cmp [ebp+var_18], esi
+* jg loc_66D0                             ja loc_4368
+* cmp ds:_verbose_0, 1                    push offset asc_75B1
+* jnz def_60B2
+* push offset asc_7D4D
+  call near ptr _IOLog                    call near ptr _IOLog
+  add esp, 4                              add esp, 4
+* cmp [ebp+var_2C], 0                     mov ecx, [ebp+var_18]
+* jz loc_6A1D                             add [ebp+var_10], ecx
+* mov esi, [ebp+var_2C]                   sub [ebp+var_14], ecx
+* add [ebp+var_20], esi                   jnz loc_3A88
+* sub [ebp+var_18], esi                   mov eax, [ebp+self]
+* jmp loc_6A1D                            lea esp, [ebp-34h]
+* cmp [ebp+var_18], 1
+* jg loc_675C
+* push offset aPnpdeviceresou_10
+* jmp loc_67F9
+* mov ecx, [ebp+var_20]
+* mov di, [ecx]
+* add ecx, 2
+* mov [ebp+var_20], ecx
+* add [ebp+var_18], 0FFFFFFFEh
+* movzx eax, di
+* cmp [ebp+var_18], eax
+* jge loc_678C
+* mov esi, [ebp+var_18]
+* push esi
+* push eax
+* push offset aPnpdeviceresou_11
+* call near ptr _IOLog
+* xor eax, eax
+* jmp loc_6A2C
+* mov al, [edx]
+* and eax, 7Fh
+* dec eax
+* cmp eax, 5
+* ja def_679B
+* jmp ds:jpt_679B[eax*4]
+* mov al, [edx]
+* and eax, 7Fh
+* push eax
+* movzx eax, di
+* push eax
+* mov ecx, [ebp+var_20]
+* push ecx
+* mov esi, ds:paInitfromLength
+* push esi
+* mov ecx, ds:paAlloc
+* push ecx
+* mov esi, ds:paPnpmemory
+* push esi
+* call near ptr _objc_msgSend
+* add esp, 8
+* push eax
+* call near ptr _objc_msgSend
+* add esp, 14h
+* test eax, eax
+* jnz loc_6808
+* push offset aFailedToInitMe
+* call near ptr _IOLog
+* xor eax, eax
+* jmp loc_6A2C
+* push eax
+* mov ecx, ds:paAddmemory
+* push ecx
+* cmp [ebp+var_24], 0
+* jnz loc_682C
+* mov esi, ds:paResources
+* push esi
+* mov ecx, [ebp+var_1C]
+* push ecx
+* call near ptr _objc_msgSend
+* add esp, 8
+* jmp loc_682F
+* mov eax, [ebp+var_28]
+* push eax
+* call near ptr _objc_msgSend
+* add esp, 0Ch
+* jmp def_679B
+* movzx ebx, di
+* push ebx
+* mov esi, [ebp+var_20]
+* push esi
+* mov ecx, ds:paSetdevicenameL
+* push ecx
+* mov esi, [ebp+self]
+* push esi
+* call near ptr _objc_msgSend
+* add esp, 10h
+* test al, al
+* jnz loc_6877
+* push ebx
+* mov ecx, [ebp+var_20]
+* push ecx
+* mov esi, ds:paSetdevicenameL
+* push esi
+* mov ecx, [ebp+var_1C]
+* push ecx
+* call near ptr _objc_msgSend
+* add esp, 10h
+* cmp ds:_verbose_0, 1
+* jnz loc_6891
+* movzx eax, di
+* push eax
+* push offset aIdStringD
+* call near ptr _IOLog
+* add esp, 8
+* xor ebx, ebx
+* test di, di
+* jz loc_68C4
+* movzx esi, di
+* mov [ebp+var_3C], esi
+* nop
+* nop
+* cmp ds:_verbose_0, 1
+* jnz loc_68BE
+* mov ecx, [ebp+var_20]
+* movzx eax, byte ptr [ebx+ecx]
+* push eax
+* push offset aC
+* call near ptr _IOLog
+* add esp, 8
+* inc ebx
+* cmp [ebp+var_3C], ebx
+* jg loc_68A0
+* cmp ds:_verbose_0, 1
+* jnz def_679B
+* push offset asc_7DD3
+* jmp loc_6A07
+* movzx eax, di
+* add eax, 0FFFFFFFEh
+* mov [ebp+var_3C], eax
+* push eax
+* mov ebx, [ebp+var_20]
+* add ebx, 2
+* push ebx
+* mov esi, ds:paSetdevicenameL
+* push esi
+* mov ecx, [ebp+self]
+* push ecx
+* call near ptr _objc_msgSend
+* add esp, 10h
+* test al, al
+* jnz loc_691C
+* mov esi, [ebp+var_3C]
+* push esi
+* push ebx
+* mov ecx, ds:paSetdevicenameL
+* push ecx
+* mov esi, [ebp+var_1C]
+* push esi
+* call near ptr _objc_msgSend
+* add esp, 10h
+* cmp ds:_verbose_0, 1
+* jnz loc_6936
+* movzx eax, di
+* push eax
+* push offset aUnicodeIdStrin
+* call near ptr _IOLog
+* add esp, 8
+* xor ebx, ebx
+* movzx eax, di
+* add eax, 0FFFFFFFEh
+* cmp ebx, eax
+* jge loc_6971
+* movzx eax, di
+* add eax, 0FFFFFFFEh
+* mov [ebp+var_3C], eax
+* nop
+* cmp ds:_verbose_0, 1
+* jnz loc_696B
+* mov ecx, [ebp+var_20]
+* movzx eax, byte ptr [ecx+ebx+2]
+* push eax
+* push offset aC
+* call near ptr _IOLog
+* add esp, 8
+* inc ebx
+* cmp [ebp+var_3C], ebx
+* jg loc_694C
+* cmp ds:_verbose_0, 1
+* jnz def_679B
+* push offset asc_7DD3
+* jmp loc_6A07
+* cmp ds:_verbose_0, 1
+* jnz loc_69A2
+* movzx eax, di
+* push eax
+* push offset aVendorDefinedD_0
+* call near ptr _IOLog
+* add esp, 8
+* xor ebx, ebx
+* test di, di
+* jz loc_69F9
+* nop
+* nop
+* nop
+* mov ecx, [ebp+var_20]
+* mov cl, [ebx+ecx]
+* mov [ebp+var_34], cl
+* cmp ds:_verbose_0, 1
+* jnz loc_69F1
+* movzx eax, cl
+* push eax
+* mov al, [ebp+var_34]
+* add al, 0E0h
+* cmp al, 5Fh
+* ja loc_69D4
+* mov edx, 1
+* jmp loc_69D6
+* xor edx, edx
+* mov eax, 2Eh
+* test dl, dl
+* jz loc_69E3
+* movzx eax, [ebp+var_34]
+* push eax
+* push offset aCXh
+* call near ptr _IOLog
+* add esp, 0Ch
+* inc ebx
+* movzx eax, di
+* cmp ebx, eax
+* jl loc_69AC
+* cmp ds:_verbose_0, 1
+* jnz def_679B
+* push offset asc_7D4D
+* call near ptr _IOLog
+* add esp, 4
+* test di, di
+* jz loc_6A1D
+* movzx eax, di
+* add [ebp+var_20], eax
+* sub [ebp+var_18], eax
+* cmp [ebp+var_18], 0
+* jg loc_6060
+* mov eax, 1
+* lea esp, [ebp-48h]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

@@ -1,6 +1,6 @@
 {
   "schema_version": "profile-v1",
-  "name": "drvEISABus reconstruction",
+  "name": "PnPDump reconstruction",
   "architecture": "i386",
   "endianness": "little",
   "reference": {
@@ -17,7 +17,7 @@
       "version": "9.2"
     },
     "ghidra": {
-      "enabled": true,
+      "enabled": false,
       "executable": "D:/ghidra/support/analyzeHeadless.bat",
       "timeout_seconds": 900,
       "version": "12.1"
@@ -34,5 +34,5 @@
     "ignore_metadata": [],
     "entry_points": []
   },
-  "output_dir": "../out/eisabus"
+  "output_dir": "../out/pnpdump"
 }

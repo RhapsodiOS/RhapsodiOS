@@ -86,10 +86,10 @@ static unsigned short readPort = 0;
 - initForBuf:(void *)buffer Length:(int)length CSN:(int)csn
 {
     unsigned char *data = (unsigned char *)buffer;
-    unsigned int deviceID;
     unsigned int serialNum;
-    char vendorID[9];
+    unsigned int deviceID;
     unsigned int idValue;
+    char vendorID[9];
 
     /* Call superclass init */
     [super init];
@@ -261,22 +261,16 @@ static unsigned short readPort = 0;
     while (1) {
         /* Get device at current index */
         device = [_deviceList objectAt:index];
-
-        /* If no device found at this index, search failed */
-        if (device == nil) {
-            return nil;
+        if (device) {
+            /* Check if this device's ID matches */
+            if ([device ID] != logicalDeviceID) {
+                index++;
+                continue;
+            }
+            return device;
         }
-
-        /* Check if this device's ID matches */
-        if ([device ID] == logicalDeviceID) {
-            break;
-        }
-
-        /* Try next index */
-        index++;
+        return nil;
     }
-
-    return device;
 }
 
 /*
@@ -296,28 +290,25 @@ static unsigned short readPort = 0;
  */
 - setDeviceName:(const char *)name Length:(int)length
 {
-    char *nameBuffer = (char *)((unsigned char *)self + 8);
-    int *nameLengthPtr = (int *)((unsigned char *)self + 0x58);
     int copyLength;
 
     /* Check if name is already set */
-    if (*nameLengthPtr != 0) {
-        return nil;
+    if (_deviceNameLength == 0) {
+        copyLength = 0x4f;
+        if (copyLength > length)
+            copyLength = length;
+        _deviceNameLength = copyLength;
+
+        /* Copy name to inline buffer */
+        strncpy(_deviceName, name, copyLength);
+
+        /* Null terminate */
+        _deviceName[_deviceNameLength] = '\0';
+
+        return YES;
     }
 
-    /* Limit length to 79 bytes (0x4F) to leave room for null terminator */
-    copyLength = (length < 0x4F) ? length : 0x4F;
-
-    /* Store length */
-    *nameLengthPtr = copyLength;
-
-    /* Copy name to inline buffer */
-    strncpy(nameBuffer, name, copyLength);
-
-    /* Null terminate */
-    nameBuffer[copyLength] = '\0';
-
-    return self;
+    return nil;
 }
 
 /*
@@ -341,7 +332,8 @@ static unsigned short readPort = 0;
     int i;
 
     /* Parse resource data stream */
-    while (bytesLeft > 0) {
+    if (bytesLeft > 0) {
+    do {
         /* Read tag byte */
         tag = *data;
         data++;
@@ -652,6 +644,7 @@ static unsigned short readPort = 0;
             data += itemLength;
             bytesLeft -= itemLength;
         }
+    } while (bytesLeft > 0);
     }
 
     return self;

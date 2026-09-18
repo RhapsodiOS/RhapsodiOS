@@ -15,7 +15,7 @@ LANGUAGE = English
 
 CFILES =
 
-MFILES = R.m IODeviceMaster.m NXLock.m
+MFILES = PnPDump.m IODeviceMaster.m NXLock.m IOStubs.m PnPDependentResources.m PnPDeviceResources.m PnPLogicalDevice.m PnPResource.m PnPResources.m pnpDMA.m pnpIOPort.m pnpIRQ.m pnpMemory.m
 
 HFILES = IODeviceMaster.h NXLock.h
 

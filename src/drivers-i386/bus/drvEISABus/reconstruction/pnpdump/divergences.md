@@ -7909,3 +7909,931 @@ _main
   push 0                                  push 0
   call _exit                              call _exit
 ```
+
+### Task 6 `-[PnPDeviceResources parseConfig:Length:]` do-while tag walk (2026-09-17)
+
+One large-body idea: wrap the tag walk as `if (bytesLeft > 0) do { ... } while (bytesLeft > 0)`. Still unequal; leftover is large-body PIC / tool `_printf` versus `_IOLog` and jump-table layout. Accepted compiler-shaped leftover (reviewer Pat Raynor). Tool SHA `DF66A4B85E5A905647B6004E981A6C9739C3A8FF591731539D5B6BE65C5E8A4F` (299892). Previously identical rows stayed matched (45). Unpaired count unchanged (10).
+
+```
+-[PnPDeviceResources parseConfig:Length:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+* sub esp, 58h                            sub esp, 48h
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  call $+5                                call $+5
+* pop edi                                 pop [ebp+var_10]
+* mov [ebp+var_1C], 0                     mov edx, [ebp+arg_8]
+* mov [ebp+var_24], 0                     mov [ebp+var_14], edx
+*                                         mov ecx, [ebp+arg_C]
+*                                         mov dword ptr [ebp+var_18], ecx
+  mov [ebp+var_28], 0                     mov [ebp+var_28], 0
+* mov edx, [ebp+arg_C]                    mov [ebp+var_2C], 0
+* mov [ebp+var_18], edx                   mov [ebp+var_30], 0
+* mov ecx, [ebp+arg_8]                    test ecx, ecx
+* mov [ebp+var_20], ecx                   jz loc_4C7F
+* test edx, edx                           nop
+* jle loc_66B0                            nop
+* mov esi, [ebp+var_20]                   mov edx, [ebp+var_14]
+* inc [ebp+var_20]                        mov dl, [edx]
+* dec [ebp+var_18]                        mov [ebp+var_1C], dl
+* cmp byte ptr [esi], 0                   inc [ebp+var_14]
+* jl loc_6374                             dec dword ptr [ebp+var_18]
+* mov dl, [esi]                           test dl, dl
+* and edx, 7                              jge loc_442C
+* mov [ebp+var_2C], edx                   cmp dword ptr [ebp+var_18], 1
+* mov al, [esi]                           ja loc_4144
+*                                         mov eax, [ebp+var_10]
+*                                         add eax, 35A1h
+*                                         jmp loc_4B9D
+*                                         mov ecx, [ebp+var_14]
+*                                         mov cx, [ecx]
+*                                         mov [ebp+var_24], cx
+*                                         add [ebp+var_14], 2
+*                                         add dword ptr [ebp+var_18], 0FFFFFFFEh
+*                                         movzx edx, cx
+*                                         mov dword ptr [ebp+var_20], edx
+*                                         cmp dword ptr [ebp+var_18], edx
+*                                         jnb loc_4174
+*                                         mov ecx, dword ptr [ebp+var_18]
+*                                         push ecx
+*                                         push edx
+*                                         mov eax, [ebp+var_10]
+*                                         add eax, 35C8h
+*                                         jmp loc_4463
+*                                         mov al, [ebp+var_1C]
+*                                         and eax, 7Fh
+*                                         lea esi, [eax-1]
+*                                         cmp esi, 5
+*                                         ja loc_4C70
+*                                         mov eax, [ebp+var_10]
+*                                         lea eax, [eax+0AAh]
+*                                         add eax, [eax+esi*4]
+*                                         jmp eax
+*                                         mov cl, [ebp+var_1C]
+*                                         and ecx, 7
+*                                         mov dword ptr [ebp+var_20], ecx
+*                                         mov dl, [ebp+var_1C]
+*                                         shr dl, 3
+*                                         and dl, 0Fh
+*                                         mov [ebp+var_44], dl
+*                                         mov al, [ebp+var_1C]
+  and al, 78h                             and al, 78h
+  cmp al, 78h                             cmp al, 78h
+* jz loc_66B0                             jz loc_4C7F
+* mov ecx, [ebp+var_2C]                   mov ecx, dword ptr [ebp+var_20]
+* cmp [ebp+var_18], ecx                   cmp dword ptr [ebp+var_18], ecx
+* jge loc_5C34                            jnb loc_4470
+  push ecx                                push ecx
+* mov edx, [ebp+var_18]                   mov edx, dword ptr [ebp+var_18]
+  push edx                                push edx
+* lea eax, (aPnpdeviceresou_4 - 5BC2h)[edi]  mov eax, [ebp+var_10]
+*                                         add eax, 3666h
+  push eax                                push eax
+* call _printf                            call _IOLog
+  xor eax, eax                            xor eax, eax
+* jmp loc_66B5                            jmp loc_4C82
+* mov al, [esi]                           movzx eax, [ebp+var_44]
+* shr al, 3                               lea esi, [eax-1]
+* and eax, 0Fh                            cmp esi, 0Dh
+* dec eax                                 ja loc_4C70
+* mov [ebp+var_58], eax                   mov eax, [ebp+var_10]
+* cmp eax, 0Dh                            lea eax, [eax+3A6h]
+* ja def_5C54                             add eax, [eax+esi*4]
+* mov ecx, eax
+* lea eax, (jpt_5C54 - 5BC2h)[edi]
+* add eax, ds:(jpt_5C54 - 5C58h)[eax+ecx*4]
+  jmp eax                                 jmp eax
+* mov edx, [ebp+var_20]                   jmp loc_4C70
+* mov dl, [edx]                           movzx eax, [ebp+var_44]
+* mov [ebp+var_50], dl
+* mov ecx, [ebp+var_20]
+* mov cl, [ecx+1]
+* mov [ebp+var_54], cl
+* cmp ds:(_verbose - 5BC2h)[edi], 1
+* jnz def_5C54
+* mov al, cl
+* and eax, 0Fh
+  push eax                                push eax
+* mov al, [ebp+var_54]                    mov edx, dword ptr [ebp+var_20]
+* shr al, 4
+* and eax, 0FFh
+* push eax
+* mov al, [ebp+var_50]
+* and eax, 0Fh
+* push eax
+* mov al, [ebp+var_50]
+* shr al, 4
+* and eax, 0FFh
+* push eax
+* lea eax, (aPlugAndPlayVer - 5BC2h)[edi]
+* push eax
+* call _printf
+* add esp, 14h
+* jmp def_5C54
+* mov edx, edi
+* mov edx, [edx+6496h]
+  push edx                                push edx
+* mov ecx, edi
+* mov ecx, [ecx+646Eh]
+* push ecx
+* mov edx, edi
+* mov edx, [edx+654Eh]
+* push edx
+* call _objc_msgSend
+* add esp, 8
+* push eax
+* call _objc_msgSend
+* mov [ebp+var_1C], eax
+* add esp, 8
+* test eax, eax
+* jnz loc_5D28
+* lea eax, (aPnpdeviceresou_5 - 5BC2h)[edi]
+* jmp loc_6441
+* mov ecx, edi
+* mov ecx, [ecx+6482h]
+* push ecx
+* mov edx, [ebp+self]
+* mov edx, [edx+4]
+* push edx
+* call _objc_msgSend
+* push eax
+* mov ecx, edi
+* mov ecx, [ecx+64E6h]
+* push ecx
+* mov edx, [ebp+var_1C]
+* push edx
+* call _objc_msgSend
+* mov ecx, [ebp+var_1C]
+* push ecx
+* mov edx, edi
+* mov edx, [edx+64DEh]
+* push edx
+* mov ecx, [ebp+self]
+* mov ecx, [ecx+4]
+* push ecx
+* call _objc_msgSend
+* add esp, 20h
+* mov esi, [ebp+var_20]
+* lea edx, [ebp+var_D]
+* mov [ebp+var_58], edx
+* mov eax, 3
+* nop
+* nop
+* mov cl, [esi]
+* mov edx, [ebp+var_58]
+* mov [edx], cl
+* inc esi
+* dec edx
+* mov [ebp+var_58], edx
+* dec eax
+* cmp eax, 0FFFFFFFFh
+* jnz loc_5D7C
+* mov ecx, [ebp-10h]
+* push ecx
+* mov edx, edi
+* mov edx, [edx+64EAh]
+* push edx
+* mov ecx, [ebp+var_1C]
+* push ecx
+* call _objc_msgSend
+* add esp, 0Ch
+* cmp ds:(_verbose - 5BC2h)[edi], 1
+* jnz loc_5E44
+* mov edx, edi
+* mov edx, [edx+64F2h]
+* push edx
+* mov ecx, [ebp+var_1C]
+* push ecx
+* call _objc_msgSend
+* push eax
+* mov edx, edi
+* mov edx, [edx+64F2h]
+* push edx
+* mov ecx, [ebp+var_1C]
+* push ecx
+* call _objc_msgSend
+* add esp, 8
+* mov esi, eax
+* shr eax, 1Ah
+* and al, 1Fh
+* add al, 40h
+* mov [ebp+var_C], al
+* mov eax, esi
+* shr eax, 15h
+* and al, 1Fh
+* add al, 40h
+* mov [ebp+var_B], al
+* mov eax, esi
+* shr eax, 10h
+* and al, 1Fh
+* add al, 40h
+* mov [ebp+var_A], al
+* movzx eax, si
+* push eax
+* lea eax, (a04x - 5BC2h)[edi]
+* push eax
+* lea eax, [ebp+var_9]
+* push eax
+* call _sprintf
+* mov [ebp+var_5], 0
+* lea eax, [ebp+var_C]
+* add esp, 0Ch
+* push eax
+* mov edx, edi
+* mov edx, [edx+64EEh]
+* push edx
+* mov ecx, [ebp+var_1C]
+* push ecx
+* call _objc_msgSend
+* add esp, 8
+* push eax
+* lea eax, (aLogicalDeviceD - 5BC2h)[edi]
+* push eax
+* call _printf
+* add esp, 18h
+* mov edx, [ebp+var_20]
+* mov dl, [edx+4]
+* mov [ebp+var_30], dl
+* test dl, 1
+* jz loc_5E6A
+* cmp ds:(_verbose - 5BC2h)[edi], 1
+* jnz loc_5E6A
+* lea eax, (aBootProcessPar - 5BC2h)[edi]
+* push eax
+* call _printf
+* add esp, 4
+* test [ebp+var_30], 0FEh
+* jz loc_5EDC
+* cmp ds:(_verbose - 5BC2h)[edi], 1
+* jnz loc_5E88
+* lea eax, (aRegisterSuppor - 5BC2h)[edi]
+* push eax
+* call _printf
+* add esp, 4
+* mov esi, 1
+* mov [ebp+var_34], 31h
+* nop
+* movzx eax, [ebp+var_30]
+* bt eax, esi
+* jnb loc_5EBA
+* cmp ds:(_verbose - 5BC2h)[edi], 1
+* jnz loc_5EBA
+* movzx eax, [ebp+var_34]
+* push eax
+* lea eax, (a0xX - 5BC2h)[edi]
+* push eax
+* call _printf
+* add esp, 8
+* inc esi
+* inc [ebp+var_34]
+* cmp esi, 7
+* jle loc_5E94
+* cmp ds:(_verbose - 5BC2h)[edi], 1
+* jnz loc_5EDC
+* lea eax, (asc_93D3 - 5BC2h)[edi]
+* push eax
+* call _printf
+* add esp, 4
+* cmp [ebp+var_2C], 5
+* jle def_5C54
+* mov ecx, [ebp+var_20]
+* mov cl, [ecx+5]
+* mov [ebp+var_30], cl
+* test cl, cl
+* jz def_5C54
+* cmp ds:(_verbose - 5BC2h)[edi], 1
+* jnz loc_5F0F
+* lea eax, (aRegisterSuppor - 5BC2h)[edi]
+* push eax
+* call _printf
+* add esp, 4
+* xor esi, esi
+* mov [ebp+var_34], 38h
+* nop
+* movzx eax, [ebp+var_30]
+* bt eax, esi
+* jnb loc_5F3E
+* cmp ds:(_verbose - 5BC2h)[edi], 1
+* jnz loc_5F3E
+* movzx eax, [ebp+var_34]
+* push eax
+* lea eax, (a0xX - 5BC2h)[edi]
+* push eax
+* call _printf
+* add esp, 8
+* inc esi
+* inc [ebp+var_34]
+* cmp esi, 7
+* jle loc_5F18
+* cmp ds:(_verbose - 5BC2h)[edi], 1
+* jnz def_5C54
+* lea eax, (asc_93D3 - 5BC2h)[edi]
+* jmp loc_6351
+* mov esi, [ebp+var_20]
+* lea edx, [ebp+var_14+3]
+* mov [ebp+var_58], edx
+* mov eax, 3
+* nop
+* nop
+* mov cl, [esi]
+* mov edx, [ebp+var_58]
+* mov [edx], cl
+* inc esi
+* dec edx
+* mov [ebp+var_58], edx
+* dec eax
+* cmp eax, 0FFFFFFFFh
+* jnz loc_5F70
+* cmp ds:(_verbose - 5BC2h)[edi], 1
+* jnz loc_5FE5
+  mov ecx, [ebp+var_14]                   mov ecx, [ebp+var_14]
+  push ecx                                push ecx
+* mov eax, [ebp+var_14]                   mov edx, [ebp+var_10]
+* shr eax, 1Ah                            mov edx, [ebp+var_10]
+* and al, 1Fh                             mov edx, [edx+5F46h]
+* add al, 40h
+* mov [ebp+var_C], al
+* mov eax, [ebp+var_14]
+* shr eax, 15h
+* and al, 1Fh
+* add al, 40h
+* mov [ebp+var_B], al
+* mov eax, [ebp+var_14]
+* shr eax, 10h
+* and al, 1Fh
+* add al, 40h
+* mov [ebp+var_A], al
+* movzx edx, word ptr [ebp+var_14]
+  push edx                                push edx
+* lea eax, (a04x - 5BC2h)[edi]            mov ecx, [ebp+var_10]
+* push eax                                mov ecx, [ebp+var_10]
+* lea eax, [ebp+var_9]                    mov ecx, [ecx+5F16h]
+* push eax
+* call _sprintf
+* mov [ebp+var_5], 0
+* lea eax, [ebp+var_C]
+* add esp, 0Ch
+* push eax
+* lea eax, (aCompatibleDevi - 5BC2h)[edi]
+* push eax
+* call _printf
+* add esp, 0Ch
+* mov ecx, [ebp+var_14]
+  push ecx                                push ecx
+* mov edx, edi                            mov edx, [ebp+var_10]
+* mov edx, [edx+64F6h]                    mov edx, [ebp+var_10]
+* push edx                                mov edx, [edx+5FFEh]
+* mov ecx, [ebp+var_1C]
+* push ecx
+* call _objc_msgSend
+* add esp, 0Ch
+* jmp def_5C54
+* mov edx, [ebp+var_2C]
+* push edx
+* mov ecx, [ebp+var_20]
+* push ecx
+* mov edx, edi
+* mov edx, [edx+64FAh]
+* push edx
+* mov ecx, edi
+* mov ecx, [ecx+646Eh]
+* push ecx
+* mov edx, edi
+* mov edx, [edx+6542h]
+* push edx
+* call _objc_msgSend
+* add esp, 8
+* push eax
+* call _objc_msgSend
+* add esp, 10h
+* test eax, eax
+* jnz loc_6048
+* lea eax, (aPnpdeviceresou_6 - 5BC2h)[edi]
+* jmp loc_6441
+* push eax
+* mov ecx, edi
+* mov ecx, [ecx+64CAh]
+* push ecx
+* cmp [ebp+var_24], 0
+* jz loc_629C
+* jmp loc_62B4
+* mov edx, [ebp+var_2C]
+* push edx
+* mov ecx, [ebp+var_20]
+* push ecx
+* mov edx, edi
+* mov edx, [edx+64FAh]
+* push edx
+* mov ecx, edi
+* mov ecx, [ecx+646Eh]
+* push ecx
+* mov edx, edi
+* mov edx, [edx+6546h]
+* push edx
+* call _objc_msgSend
+* add esp, 8
+* push eax
+* call _objc_msgSend
+* add esp, 10h
+* test eax, eax
+* jnz loc_60A8
+* lea eax, (aPnpdeviceresou_7 - 5BC2h)[edi]
+* jmp loc_6441
+* push eax
+* mov ecx, edi
+* mov ecx, [ecx+64D2h]
+* jmp loc_6051
+* cmp ds:(_verbose - 5BC2h)[edi], 1
+* jnz loc_60D0
+* mov edx, [ebp+var_24]
+* push edx
+* lea eax, (aStartDependent - 5BC2h)[edi]
+* push eax
+* call _printf
+* add esp, 8
+* inc [ebp+var_24]
+* mov ecx, edi
+* mov ecx, [ecx+6496h]
+* push ecx
+* mov edx, edi
+* mov edx, [edx+646Eh]
+* push edx
+* mov ecx, edi
+* mov ecx, [ecx+6552h]
+* push ecx
+* call _objc_msgSend
+* add esp, 8
+* push eax
+* call _objc_msgSend
+* mov [ebp+var_28], eax
+* add esp, 8
+* test eax, eax
+* jnz loc_6114
+* lea eax, (aPnpdeviceresou_8 - 5BC2h)[edi]
+* jmp loc_6441
+* mov edx, edi
+* mov edx, [edx+6502h]
+* push edx
+* mov ecx, edi
+* mov ecx, [ecx+64FEh]
+* push ecx
+* mov edx, [ebp+var_1C]
+* push edx
+* call _objc_msgSend
+* add esp, 8
+* push eax
+* call _objc_msgSend
+* mov ecx, [ebp+var_28]
+* push ecx
+* mov edx, edi
+* mov edx, [edx+64DEh]
+* push edx
+* mov ecx, edi
+* mov ecx, [ecx+6506h]
+* push ecx
+* mov edx, [ebp+var_1C]
+* push edx
+* call _objc_msgSend
+* add esp, 8
+* push eax
+* call _objc_msgSend
+* push 1
+* mov ecx, edi
+* mov ecx, [ecx+650Ah]
+* push ecx
+* mov edx, [ebp+var_28]
+* push edx
+* call _objc_msgSend
+* add esp, 20h
+* cmp [ebp+var_2C], 0
+* jz loc_61FB
+* mov ecx, [ebp+var_20]
+* movzx eax, byte ptr [ecx]
+* cmp eax, 1
+* jz loc_61B0
+* jg loc_6190
+* test eax, eax
+* jz loc_6198
+* jmp loc_61FB
+* cmp eax, 2
+* jz loc_61C8
+* jmp loc_61FB
+* cmp ds:(_verbose - 5BC2h)[edi], 1
+* jnz def_5C54
+* lea eax, (aGoodConfigurat - 5BC2h)[edi]
+* jmp loc_61F2
+* cmp ds:(_verbose - 5BC2h)[edi], 1
+* jnz def_5C54
+* lea eax, (aAcceptableConf - 5BC2h)[edi]
+* jmp loc_61F2
+* push 0
+* mov edx, edi
+* mov edx, [edx+650Ah]
+* push edx
+* mov ecx, [ebp+var_28]
+* push ecx
+* call _objc_msgSend
+* add esp, 0Ch
+* cmp ds:(_verbose - 5BC2h)[edi], 1
+* jnz def_5C54
+* lea eax, (aSuboptimalConf - 5BC2h)[edi]
+* push eax
+* call _printf
+* add esp, 4
+* cmp ds:(_verbose - 5BC2h)[edi], 1
+* jnz def_5C54
+* lea eax, (asc_93D3 - 5BC2h)[edi]
+* jmp loc_6351
+* cmp ds:(_verbose - 5BC2h)[edi], 1
+* jnz loc_622C
+* lea eax, (aEndOfDependent - 5BC2h)[edi]
+* push eax
+* call _printf
+* add esp, 4
+* mov [ebp+var_24], 0
+* mov [ebp+var_28], 0
+* jmp def_5C54
+* mov al, [esi]
+* shr al, 3
+* and eax, 0Fh
+* push eax
+* mov edx, [ebp+var_2C]
+* push edx
+* mov ecx, [ebp+var_20]
+* push ecx
+* mov edx, edi
+* mov edx, [edx+650Eh]
+* push edx
+* mov ecx, edi
+* mov ecx, [ecx+646Eh]
+* push ecx
+* mov edx, edi
+* mov edx, [edx+653Eh]
+  push edx                                push edx
+  call _objc_msgSend                      call _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call _objc_msgSend                      call _objc_msgSend
+  add esp, 14h                            add esp, 14h
+  test eax, eax                           test eax, eax
+* jnz loc_628C                            jnz loc_4BAC
+* lea eax, (aPnpdeviceresou_9 - 5BC2h)[edi]  mov eax, [ebp+var_10]
+* jmp loc_6441                            add eax, 387Fh
+* push eax
+* mov ecx, edi
+* mov ecx, [ecx+64BEh]
+* push ecx
+* cmp [ebp+var_24], 0
+* jnz loc_62B4
+* mov edx, edi
+* mov edx, [edx+64FEh]
+* push edx
+* mov ecx, [ebp+var_1C]
+* push ecx
+* call _objc_msgSend
+* add esp, 8
+* jmp loc_62B7
+* mov eax, [ebp+var_28]
+* push eax
+* call _objc_msgSend
+* add esp, 0Ch
+* jmp def_5C54
+* cmp ds:(_verbose - 5BC2h)[edi], 1
+* jnz loc_62E4
+* mov edx, [ebp+var_2C]
+* push edx
+* lea eax, (aVendorDefinedD - 5BC2h)[edi]
+* push eax
+* call _printf
+* add esp, 8
+* xor esi, esi
+* cmp [ebp+var_2C], esi
+* jle loc_6342
+* nop
+* mov ecx, [ebp+var_20]
+* mov cl, [esi+ecx]
+* mov [ebp+var_50], cl
+* cmp ds:(_verbose - 5BC2h)[edi], 1
+* jnz loc_633C
+* movzx eax, cl
+* push eax
+* mov al, [ebp+var_50]
+* add al, 0E0h
+* cmp al, 5Fh
+* ja loc_6318
+* mov edx, 1
+* mov byte ptr [ebp+var_58], dl
+* jmp loc_631D
+* xor ecx, ecx
+* mov byte ptr [ebp+var_58], cl
+* mov eax, 2Eh
+* cmp byte ptr [ebp+var_58], 0
+* jz loc_632C
+* movzx eax, [ebp+var_50]
+* push eax
+* lea eax, (aCXh - 5BC2h)[edi]
+* push eax
+* call _printf
+* add esp, 0Ch
+* inc esi
+* cmp [ebp+var_2C], esi
+* jg loc_62EC
+* cmp ds:(_verbose - 5BC2h)[edi], 1
+* jnz def_5C54
+* lea eax, (asc_9A08 - 5BC2h)[edi]
+* push eax
+* call _printf
+* add esp, 4
+* cmp [ebp+var_2C], 0
+* jz loc_66A6
+* mov edx, [ebp+var_2C]
+* add [ebp+var_20], edx
+* sub [ebp+var_18], edx
+* jmp loc_66A6
+* cmp [ebp+var_18], 1
+* jg loc_6390
+* lea eax, (aPnpdeviceresou_10 - 5BC2h)[edi]
+  push eax                                push eax
+  call _IOLog                             call _IOLog
+  xor eax, eax                            xor eax, eax
+* jmp loc_66B5                            jmp loc_4C82
+* mov ecx, [ebp+var_20]                   cmp [ebp+var_2C], 0
+* mov cx, [ecx]                           jnz loc_4BDC
+* mov [ebp+var_38], cx                    push eax
+* add [ebp+var_20], 2                     mov ecx, [ebp+var_10]
+* add [ebp+var_18], 0FFFFFFFEh            mov ecx, [ebp+var_10]
+* movzx eax, cx                           mov ecx, [ecx+5F7Eh]
+* cmp [ebp+var_18], eax                   push ecx
+* jge loc_63C4                            mov edx, [ebp+var_10]
+* mov edx, [ebp+var_18]                   mov edx, [ebp+var_10]
+*                                         mov edx, [edx+5F4Ah]
+  push edx                                push edx
+* push eax                                mov ecx, [ebp+var_28]
+* lea eax, (aPnpdeviceresou_11 - 5BC2h)[edi]
+* push eax
+* call _IOLog
+* xor eax, eax
+* jmp loc_66B5
+* mov al, [esi]
+* and eax, 7Fh
+* dec eax
+* mov [ebp+var_58], eax
+* cmp eax, 5
+* ja def_63E1
+* mov ecx, eax
+* lea eax, (jpt_63E1 - 5BC2h)[edi]
+* add eax, ds:(jpt_63E1 - 63E4h)[eax+ecx*4]
+* jmp eax
+* mov al, [esi]
+* and eax, 7Fh
+* push eax
+* movzx eax, [ebp+var_38]
+* push eax
+* mov edx, [ebp+var_20]
+* push edx
+* mov ecx, edi
+* mov ecx, [ecx+650Eh]
+* push ecx
+* mov edx, edi
+* mov edx, [edx+646Eh]
+* push edx
+* mov ecx, edi
+* mov ecx, [ecx+654Ah]
+  push ecx                                push ecx
+  call _objc_msgSend                      call _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+* call _objc_msgSend                      jmp loc_4BEE
+* add esp, 14h
+* test eax, eax
+* jnz loc_6450
+* lea eax, (aFailedToInitMe - 5BC2h)[edi]
+  push eax                                push eax
+* call _printf                            mov edx, [ebp+var_10]
+* xor eax, eax                            mov edx, [ebp+var_10]
+* jmp loc_66B5                            mov edx, [edx+5F7Eh]
+* push eax
+* mov edx, edi
+* mov edx, [edx+64DAh]
+  push edx                                push edx
+* cmp [ebp+var_24], 0                     mov ecx, [ebp+var_30]
+* jnz loc_6478
+* mov ecx, edi
+* mov ecx, [ecx+64FEh]
+  push ecx                                push ecx
+* mov edx, [ebp+var_1C]
+* push edx
+* call _objc_msgSend
+* add esp, 8
+* jmp loc_647B
+* mov eax, [ebp+var_28]
+* push eax
+  call _objc_msgSend                      call _objc_msgSend
+  add esp, 0Ch                            add esp, 0Ch
+* jmp def_63E1                            jmp loc_4C70
+* movzx esi, [ebp+var_38]                 mov edx, [ebp+var_10]
+* push esi                                mov eax, [edx+3FCEh]
+* mov ecx, [ebp+var_20]                   cmp byte ptr [eax], 0
+*                                         jz loc_4C70
+*                                         mov ecx, dword ptr [ebp+var_20]
+  push ecx                                push ecx
+* mov edx, edi                            mov eax, [ebp+var_10]
+* mov edx, [edx+6512h]                    add eax, 38ABh
+* push edx
+* mov ecx, [ebp+self]
+* push ecx
+* call _objc_msgSend
+* add esp, 10h
+* test al, al
+* jnz loc_64C8
+* push esi
+* mov edx, [ebp+var_20]
+* push edx
+* mov ecx, edi
+* mov ecx, [ecx+6512h]
+* push ecx
+* mov edx, [ebp+var_1C]
+* push edx
+* call _objc_msgSend
+* add esp, 10h
+* cmp ds:(_verbose - 5BC2h)[edi], 1
+* jnz loc_64E5
+* movzx eax, [ebp+var_38]
+  push eax                                push eax
+* lea eax, (aIdStringD - 5BC2h)[edi]      call _IOLog
+* push eax                                xor edi, edi
+* call _printf
+  add esp, 8                              add esp, 8
+* xor esi, esi                            cmp dword ptr [ebp+var_20], edi
+* cmp [ebp+var_38], 0                     jbe loc_4C5F
+* jz loc_6523
+* lea ecx, (aC - 5BC2h)[edi]
+* mov [ebp+var_40], ecx
+* movzx edx, [ebp+var_38]
+* mov [ebp+var_3C], edx
+  nop                                     nop
+  nop                                     nop
+* cmp ds:(_verbose - 5BC2h)[edi], 1       mov edx, [ebp+var_14]
+* jnz loc_651D                            mov dl, [edi+edx]
+* mov ecx, [ebp+var_20]                   mov [ebp+var_48], dl
+* movzx eax, byte ptr [esi+ecx]           mov al, dl
+*                                         add al, 0E0h
+*                                         mov [ebp+var_44], 2Eh
+*                                         cmp al, 5Fh
+*                                         ja loc_4C3E
+*                                         mov cl, dl
+*                                         mov [ebp+var_44], cl
+*                                         movzx eax, [ebp+var_48]
+  push eax                                push eax
+* mov edx, [ebp+var_40]                   movzx eax, [ebp+var_44]
+* push edx
+* call _printf
+* add esp, 8
+* inc esi
+* cmp [ebp+var_3C], esi
+* jg loc_6500
+* cmp ds:(_verbose - 5BC2h)[edi], 1
+* jnz def_63E1
+* lea eax, (asc_9A8E - 5BC2h)[edi]
+* jmp loc_668C
+* movzx eax, [ebp+var_38]
+* add eax, 0FFFFFFFEh
+* mov [ebp+var_44], eax
+  push eax                                push eax
+* mov esi, [ebp+var_20]                   mov eax, [ebp+var_10]
+* add esi, 2                              add eax, 3657h
+* push esi
+* mov ecx, edi
+* mov ecx, [ecx+6512h]
+* push ecx
+* mov edx, [ebp+self]
+* push edx
+* call _objc_msgSend
+* add esp, 10h
+* test al, al
+* jnz loc_6581
+* mov ecx, [ebp+var_44]
+* push ecx
+* push esi
+* mov edx, edi
+* mov edx, [edx+6512h]
+* push edx
+* mov ecx, [ebp+var_1C]
+* push ecx
+* call _objc_msgSend
+* add esp, 10h
+* cmp ds:(_verbose - 5BC2h)[edi], 1
+* jnz loc_659E
+* movzx eax, [ebp+var_38]
+  push eax                                push eax
+* lea eax, (aUnicodeIdStrin - 5BC2h)[edi]  call _IOLog
+*                                         add esp, 0Ch
+*                                         inc edi
+*                                         cmp dword ptr [ebp+var_20], edi
+*                                         ja loc_4C24
+*                                         mov eax, [ebp+var_10]
+*                                         add eax, 3662h
+  push eax                                push eax
+* call _printf                            call _IOLog
+* add esp, 8
+* xor esi, esi
+* movzx eax, [ebp+var_38]
+* add eax, 0FFFFFFFEh
+* cmp esi, eax
+* jge loc_65E4
+* lea edx, (aC - 5BC2h)[edi]
+* mov [ebp+var_4C], edx
+* movzx eax, [ebp+var_38]
+* add eax, 0FFFFFFFEh
+* mov [ebp+var_48], eax
+* nop
+* nop
+* cmp ds:(_verbose - 5BC2h)[edi], 1
+* jnz loc_65DE
+* mov ecx, [ebp+var_20]
+* movzx eax, byte ptr [ecx+esi+2]
+* push eax
+* mov edx, [ebp+var_4C]
+* push edx
+* call _printf
+* add esp, 8
+* inc esi
+* cmp [ebp+var_48], esi
+* jg loc_65C0
+* cmp ds:(_verbose - 5BC2h)[edi], 1
+* jnz def_63E1
+* lea eax, (asc_9A8E - 5BC2h)[edi]
+* jmp loc_668C
+* cmp ds:(_verbose - 5BC2h)[edi], 1
+* jnz loc_6619
+* movzx eax, [ebp+var_38]
+* push eax
+* lea eax, (aVendorDefinedD_0 - 5BC2h)[edi]
+* push eax
+* call _printf
+* add esp, 8
+* xor esi, esi
+* cmp [ebp+var_38], 0
+* jz loc_667D
+* nop
+* nop
+* mov ecx, [ebp+var_20]
+* mov cl, [esi+ecx]
+* mov [ebp+var_50], cl
+* cmp ds:(_verbose - 5BC2h)[edi], 1
+* jnz loc_6674
+* movzx eax, cl
+* push eax
+* mov al, [ebp+var_50]
+* add al, 0E0h
+* cmp al, 5Fh
+* ja loc_6650
+* mov edx, 1
+* mov byte ptr [ebp+var_58], dl
+* jmp loc_6655
+* xor ecx, ecx
+* mov byte ptr [ebp+var_58], cl
+* mov eax, 2Eh
+* cmp byte ptr [ebp+var_58], 0
+* jz loc_6664
+* movzx eax, [ebp+var_50]
+* push eax
+* lea eax, (aCXh - 5BC2h)[edi]
+* push eax
+* call _printf
+* add esp, 0Ch
+* inc esi
+* movzx eax, [ebp+var_38]
+* cmp esi, eax
+* jl loc_6624
+* cmp ds:(_verbose - 5BC2h)[edi], 1
+* jnz def_63E1
+* lea eax, (asc_9A08 - 5BC2h)[edi]
+* push eax
+* call _printf
+  add esp, 4                              add esp, 4
+* cmp [ebp+var_38], 0                     mov edx, dword ptr [ebp+var_20]
+* jz loc_66A6                             add [ebp+var_14], edx
+* movzx eax, [ebp+var_38]                 sub dword ptr [ebp+var_18], edx
+* add [ebp+var_20], eax                   jnz loc_4118
+* sub [ebp+var_18], eax                   mov eax, [ebp+self]
+* cmp [ebp+var_18], 0                     lea esp, [ebp-54h]
+* jg loc_5BEC
+* mov eax, 1
+* lea esp, [ebp-64h]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

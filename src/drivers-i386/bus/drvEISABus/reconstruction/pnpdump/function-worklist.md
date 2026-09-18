@@ -332,4 +332,4 @@ Accepted 2026-09-17: remaining `none` hand-written rows are `intentional-mismatc
 - `-[PnPResources initFromRegisters:]` (shared, diff 173; reloc different d=91): loop shape of the register walk — **tried, kept**; leftover is verbose PIC / selector displacements; **accepted** compiler-shaped on both
 - `__IOGetEISADeviceConfig` (tool-only, diff 224): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
 - `_main` (tool-only, diff 357): statement order of the existing option/dispatch blocks (large body; one idea only) — **tried, kept**; leftover is large-body PIC / sel_getUid; **accepted** compiler-shaped
-- `-[PnPDeviceResources parseConfig:Length:]` (shared, diff 857; reloc different d=890): loop shape of the tag walk (large body; one idea only)
+- `-[PnPDeviceResources parseConfig:Length:]` (shared, diff 857; reloc different d=890): loop shape of the tag walk (large body; one idea only) — **tried, kept**; leftover is large-body PIC / tool `_printf`; **accepted** compiler-shaped on both

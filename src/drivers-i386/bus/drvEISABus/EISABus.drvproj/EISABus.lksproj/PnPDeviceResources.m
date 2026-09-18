@@ -332,7 +332,8 @@ static unsigned short readPort = 0;
     int i;
 
     /* Parse resource data stream */
-    while (bytesLeft > 0) {
+    if (bytesLeft > 0) {
+    do {
         /* Read tag byte */
         tag = *data;
         data++;
@@ -643,6 +644,7 @@ static unsigned short readPort = 0;
             data += itemLength;
             bytesLeft -= itemLength;
         }
+    } while (bytesLeft > 0);
     }
 
     return self;

@@ -3514,26 +3514,24 @@
     {
       "address": 24620,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 6 do-while tag walk (one large-body idea); leftover is large-body PIC / _printf vs _IOLog and jump-table layout"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[PnPDeviceResources parseConfig:Length:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 2570,
       "source_line": 319,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 27192,
@@ -3917,7 +3915,7 @@
       "status": "unexamined"
     }
   ],
-  "rebuilt_sha256": "1CF72ADC5E1827867389CB5D7B90780D14BAF9E74E1D926F750B49D4E20542D4",
+  "rebuilt_sha256": "4A2889879B19B4DC315813BFD4443CE35FB45A6EC1714EEC4924817976BA91E9",
   "reference_sha256": "8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23",
   "schema_version": "ledger-v1"
 }

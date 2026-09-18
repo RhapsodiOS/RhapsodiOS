@@ -436,6 +436,51 @@ void IOCopyMemory(void *dest, const void *src, unsigned int count, unsigned int 
 
 void calloutThread(void *arg)
 {
+    CalloutEntry *entry;
+    CalloutEntry *savedPrev;
+    CalloutEntry *prev;
+    CalloutEntry *next;
+    CalloutEntry *prevLink;
+    CalloutEntry *nextLink;
+    unsigned int now[2];
+
+    (void)arg;
+    for (;;) {
+        [calloutLock lock];
+        for (entry = calloutChain;
+             entry != (CalloutEntry *)&calloutChain;
+             entry = savedPrev) {
+            savedPrev = entry->prev;
+            IOGetTimestamp(now);
+            if (entry->timestamp_high > now[1] ||
+                (entry->timestamp_high == now[1] &&
+                 entry->timestamp_low > now[0])) {
+                continue;
+            }
+
+            prev = entry->prev;
+            next = entry->next;
+
+            prevLink = prev;
+            if (prev != (CalloutEntry *)&calloutChain) {
+                prevLink = (CalloutEntry *)&prev->prev;
+            }
+            prevLink->next = next;
+
+            nextLink = next;
+            if (next != (CalloutEntry *)&calloutChain) {
+                nextLink = (CalloutEntry *)&next->prev;
+            }
+            nextLink->prev = prev;
+
+            [calloutLock unlock];
+            (*entry->func)(entry->arg);
+            IOFree(entry, 0x18);
+            [calloutLock lock];
+        }
+        [calloutLock unlock];
+        IOSleep(1000);
+    }
 }
 
 void _IOCopyMemory(void *dest, const void *src, unsigned int count, unsigned int flags)

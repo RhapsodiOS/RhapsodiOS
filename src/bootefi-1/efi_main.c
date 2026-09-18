@@ -46,11 +46,6 @@ extern void efi_exit_and_start(unsigned int entry);
 char *LoadableFamilies;
 void *PCISlotInfo;
 
-/* Set the first time ebiosread() runs, to prove the BIOS_ADDR override in
- * bootefi_memory_override.h actually reached disk.c's translation unit
- * (intbuf == biosbuf at that point, before any sector data is copied in). */
-extern unsigned long gFirstBiosbuf;
-
 static entry_t kernelEntry;
 
 /* Reproduces execKernel()'s load call and bookkeeping (src/boot-2/i386/
@@ -110,9 +105,6 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
     if (load_kernel("hd(0,a)/mach_kernel") != 0)
         for (;;) ;
 
-    /* gFirstBiosbuf is only set once disk.c's Biosread() actually runs a
-     * cache miss, which load_kernel()'s open()/loadprog() above just did. */
-    printf("intbuf address: %x\n", gFirstBiosbuf);
     printf("kaddr %x ksize %x entry %x\n",
            kernBootStruct->kaddr, kernBootStruct->ksize,
            (unsigned int)kernelEntry);

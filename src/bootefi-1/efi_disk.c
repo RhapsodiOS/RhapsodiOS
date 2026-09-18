@@ -112,14 +112,6 @@ int efi_disk_init(void)
 
 int efi_disk_count(void) { return ndisks; }
 
-/* Captured the first time ebiosread() runs: at that point disk.c's
- * Biosread() has just set biosbuf = intbuf (the full-buffer, cache-miss
- * path), so this is intbuf's actual runtime address -- proof that the
- * BIOS_ADDR override in bootefi_memory_override.h reached disk.c's
- * translation unit rather than silently falling back to 0xC00. */
-unsigned long gFirstBiosbuf;
-static int got_first_biosbuf;
-
 /* disk.c's Biosread() calls this for every LBA read, having already
  * pointed biosbuf at intbuf (BIOS_ADDR, redirected to 0x20000 by
  * bootefi_memory_override.h) before the call. */
@@ -130,11 +122,6 @@ int ebiosread(int biosdev, int secno, int nsecs)
     int idx = biosdev - FIRST_BIOSDEV;
     UINT64 lba;
     UINTN bytes = (UINTN)nsecs * BPS;
-
-    if (!got_first_biosbuf) {
-        gFirstBiosbuf = (unsigned long)biosbuf;
-        got_first_biosbuf = 1;
-    }
 
     if (idx < 0 || idx >= ndisks)
         return -1;

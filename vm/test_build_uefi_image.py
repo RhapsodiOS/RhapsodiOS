@@ -16,7 +16,7 @@ EFI_SYSTEM = 0xEF
 
 
 def _have_mtools():
-    return all(shutil.which(t) for t in ("mformat", "mmd", "mcopy"))
+    return all(shutil.which(t) for t in ("mformat", "mmd", "mcopy", "mdir"))
 
 
 def _part(mbr, n):
@@ -43,7 +43,7 @@ class TestBuildUefiImage(unittest.TestCase):
 
     @unittest.skipUnless(_have_mtools(), "mtools not installed")
     def test_mbr_has_esp_and_rhapsody_partitions(self):
-        build_uefi_image.build(self.rhapsody, self.efi, self.out, esp_mb=16)
+        build_uefi_image.build(self.rhapsody, self.efi, self.out, esp_mb=64)
         with open(self.out, "rb") as f:
             mbr = f.read(SECTOR)
         self.assertEqual(mbr[510:512], b"\x55\xaa")
@@ -52,7 +52,7 @@ class TestBuildUefiImage(unittest.TestCase):
 
     @unittest.skipUnless(_have_mtools(), "mtools not installed")
     def test_rhapsody_partition_is_copied_verbatim_at_its_lba(self):
-        build_uefi_image.build(self.rhapsody, self.efi, self.out, esp_mb=16)
+        build_uefi_image.build(self.rhapsody, self.efi, self.out, esp_mb=64)
         with open(self.out, "rb") as f:
             mbr = f.read(SECTOR)
             _, lba, count = _part(mbr, 1)
@@ -63,7 +63,7 @@ class TestBuildUefiImage(unittest.TestCase):
 
     @unittest.skipUnless(_have_mtools(), "mtools not installed")
     def test_esp_contains_the_efi_app_at_the_removable_media_path(self):
-        build_uefi_image.build(self.rhapsody, self.efi, self.out, esp_mb=16)
+        build_uefi_image.build(self.rhapsody, self.efi, self.out, esp_mb=64)
         with open(self.out, "rb") as f:
             mbr = f.read(SECTOR)
         _, lba, _ = _part(mbr, 0)
@@ -75,7 +75,7 @@ class TestBuildUefiImage(unittest.TestCase):
     def test_missing_rhapsody_image_raises(self):
         with self.assertRaises(RuntimeError):
             build_uefi_image.build(os.path.join(self.tmp, "nope.img"),
-                                   self.efi, self.out, esp_mb=16)
+                                   self.efi, self.out, esp_mb=64)
 
 
 class TestBuildEspOnly(unittest.TestCase):

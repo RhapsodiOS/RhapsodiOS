@@ -211,11 +211,80 @@ class TestFileCreation(unittest.TestCase):
         import hashlib
         digest = hashlib.sha256(open(self.img, "rb").read(1 << 20)).hexdigest()
         with ufs_alloc.Allocator(self.img, writable=True) as a:
+            limit = a.max_file_bytes()
             with self.assertRaises(ufs_alloc.SafetyError) as cm:
-                a.write_new_file(b"\0" * (ufs_alloc.MAX_FILE_BYTES + 1))
+                a.write_new_file(b"\0" * (limit + 1))
             self.assertIn("16", str(cm.exception))
         after = hashlib.sha256(open(self.img, "rb").read(1 << 20)).hexdigest()
         self.assertEqual(digest, after, "image was modified despite refusal")
+
+    def test_growing_a_file_with_a_hole_does_not_free_fragment_zero(self):
+        # Simulate a pre-existing sparse file: create a 3-block file, then
+        # release the middle block and poke a 0 (a hole) into its db entry,
+        # the way a file NOT laid out by this module's own convention could
+        # look.  grow_file must not mistake that hole for a real block
+        # starting at fragment 0 -- the boot block / superblock area.
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            bsize = a.g.bsize
+            frag = a.g.frag
+            ino = a.write_new_file(b"X" * (3 * bsize))
+            a.flush()
+
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            mode, nlink, size, db, ib = a._read_dinode(ino)
+            hole_start = db[1]
+            self.assertNotEqual(hole_start, 0)
+            a.free_frags([hole_start + k for k in range(frag)])
+            db[1] = 0
+            a.write_inode(ino, mode=mode, size=size, db=db, ib=ib,
+                          nlink=nlink, mtime=1234567890)
+            a.flush()
+        self.assertEqual(ufs_check.check(self.img), [])
+
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            grown = b"Y" * (5 * a.g.bsize)
+            a.grow_file(ino, grown)
+            a.flush()
+
+        with ufs_alloc.Allocator(self.img) as a:
+            self.assertFalse(
+                a.frag_is_free(0),
+                "grow_file freed fragment 0 while reconstructing a sparse "
+                "file's old fragments")
+        self.assertEqual(ufs_check.check(self.img), [])
+        with rhap_image.Image(self.img) as img:
+            self.assertEqual(img.read_file(ino), grown)
+
+    def test_growing_an_indirect_file_twice_without_flushing(self):
+        # Two grow_file calls in one session, with no flush() between them,
+        # must not have the second one read a stale/garbage indirect block
+        # straight off disk while the first call's indirect block still
+        # only exists in the pending data cache.
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            ino = a.write_new_file(b"S" * 1000)
+            a.flush()
+
+        first = b"F" * (150 * 1024)    # over 96 KB: needs an indirect block
+        second = b"G" * (250 * 1024)   # also needs one, and is bigger
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            a.grow_file(ino, first)
+            # first's indirect block only exists in _data_cache right now
+            # (nothing has been flushed).  The second grow_file must see
+            # those pending pointers, not whatever stale bytes are still on
+            # disk at that fragment -- which, read raw, decode as a run of
+            # zero/garbage pointers and cause old blocks (including
+            # fragment 0) to be freed by mistake.
+            a.grow_file(ino, second)
+            a.flush()
+
+        with ufs_alloc.Allocator(self.img) as a:
+            self.assertFalse(
+                a.frag_is_free(0),
+                "grow_file freed fragment 0 after reading a stale "
+                "indirect block straight off disk")
+        self.assertEqual(ufs_check.check(self.img), [])
+        with rhap_image.Image(self.img) as img:
+            self.assertEqual(img.read_file(ino), second)
 
 
 if __name__ == "__main__":

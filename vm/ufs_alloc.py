@@ -17,11 +17,13 @@ import ufs_cg
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-# bsize=8192 and fsize=1024 (so frag=8) on this filesystem; one indirect
-# block holds bsize // 4 = 2048 pointers.  Double indirect is out of scope.
-_BSIZE = 8192
-_NINDIR = _BSIZE // 4
-MAX_FILE_BYTES = (rhap_image.NDADDR + _NINDIR) * _BSIZE
+# bsize=8192 and fsize=1024 (so frag=8) on golden.img; one indirect block
+# holds bsize // 4 = 2048 pointers.  Double indirect is out of scope.  This
+# module-level constant matches golden.img's own geometry and exists only so
+# callers that don't have an Allocator handy (e.g. tests) have something to
+# reference; Allocator.max_file_bytes() is authoritative and derives the
+# real limit from self.g, so it stays correct for any image's geometry.
+MAX_FILE_BYTES = (rhap_image.NDADDR + 2048) * 8192
 
 CG_CS_OFF = 24          # struct csum inside the cg header
 CG_OFFSETS_OFF = 84     # cg_btotoff, cg_boff, cg_iusedoff, cg_freeoff
@@ -88,6 +90,12 @@ class Allocator(object):
 
     def close(self):
         self.img.close()
+
+    def max_file_bytes(self):
+        """Largest file representable with direct plus single-indirect
+        blocks, derived from this filesystem's own geometry (not the
+        golden.img-shaped module constant MAX_FILE_BYTES)."""
+        return (rhap_image.NDADDR + self.g.nindir) * self.g.bsize
 
     def _cg_frag(self, c):
         return rhap_image._cgstart(self.img, c) + self.g.cblkno
@@ -487,7 +495,15 @@ class Allocator(object):
 
             for idx, start in enumerate(block_starts):
                 offset = idx * bsize
-                self._write_data(start, data[offset:offset + bsize])
+                chunk = data[offset:offset + bsize]
+                if idx == len(block_starts) - 1:
+                    # Zero the rest of the tail block's allocated fragments
+                    # so a previously freed file's bytes don't leak into
+                    # space the new file now owns.
+                    want = tail_frags * fsize
+                    if len(chunk) < want:
+                        chunk = chunk + bytes(want - len(chunk))
+                self._write_data(start, chunk)
 
             ndaddr = rhap_image.NDADDR
             db = block_starts[:ndaddr]
@@ -525,6 +541,10 @@ class Allocator(object):
         belonging to a file previously written by this module, based on
         our own layout: every block but the last is a full fs_frag-sized
         block, the last is sized to just cover the remainder.
+
+        A block pointer of 0 means a hole (a sparse block) and occupies no
+        space on disk -- it must never be handed to free_frags, or fragment
+        0 (the boot block / superblock area) gets marked free.
         """
         if size == 0:
             return []
@@ -535,16 +555,20 @@ class Allocator(object):
         nblocks = (size + bsize - 1) // bsize
         block_starts = list(db[:min(nblocks, ndaddr)])
         if nblocks > ndaddr:
-            ind = self.img.read_frag(ib[0], bsize)
+            ind = self._data_cache.get(ib[0])
+            if ind is None:
+                ind = self.img.read_frag(ib[0], bsize)
             ptrs = struct.unpack_from("<%di" % self.g.nindir, ind, 0)
             block_starts += list(ptrs[:nblocks - ndaddr])
         tail_bytes = size - (nblocks - 1) * bsize
         tail_frags = (tail_bytes + fsize - 1) // fsize
         out = []
         for idx, start in enumerate(block_starts):
+            if start == 0:
+                continue  # hole: no space to release
             count = frag if idx < nblocks - 1 else tail_frags
             out.extend(start + k for k in range(count))
-        if nblocks > ndaddr:
+        if nblocks > ndaddr and ib[0] != 0:
             out.extend(ib[0] + k for k in range(frag))
         return out
 
@@ -554,10 +578,11 @@ class Allocator(object):
         MAX_FILE_BYTES before allocating anything.
         """
         self._require_writable("write_new_file")
-        if len(data) > MAX_FILE_BYTES:
+        limit = self.max_file_bytes()
+        if len(data) > limit:
             raise SafetyError(
                 "file is %d bytes, over the %d-byte (16 MB) limit for "
-                "direct plus single-indirect blocks" % (len(data), MAX_FILE_BYTES))
+                "direct plus single-indirect blocks" % (len(data), limit))
         ino = self.alloc_inode()
         try:
             db, ib, total_frags = self._alloc_and_write_blocks(data)
@@ -576,10 +601,11 @@ class Allocator(object):
         surplus when it shrinks.
         """
         self._require_writable("grow_file")
-        if len(data) > MAX_FILE_BYTES:
+        limit = self.max_file_bytes()
+        if len(data) > limit:
             raise SafetyError(
                 "file is %d bytes, over the %d-byte (16 MB) limit for "
-                "direct plus single-indirect blocks" % (len(data), MAX_FILE_BYTES))
+                "direct plus single-indirect blocks" % (len(data), limit))
         mode, nlink, old_size, old_db, old_ib = self._read_dinode(ino)
         old_frags = self._old_file_frags(old_size, old_db, old_ib)
         db, ib, total_frags = self._alloc_and_write_blocks(data)

@@ -201,7 +201,7 @@ static EFI_MEMORY_DESCRIPTOR *efi_desc_at(EFI_MEMORY_DESCRIPTOR *map,
  * so the allocator can walk into an ACPI-reclaim or reserved hole. */
 void efi_sizemem(int *convmem_kb, int *extmem_kb)
 {
-    UINTN size = 0, key, dsize;
+    UINTN size = 0, key, dsize = sizeof(EFI_MEMORY_DESCRIPTOR);
     UINT32 dver;
     EFI_MEMORY_DESCRIPTOR *map = 0;
     UINTN off;
@@ -210,13 +210,26 @@ void efi_sizemem(int *convmem_kb, int *extmem_kb)
     UINT64 span_end;
     EFI_MEMORY_DESCRIPTOR *stop_desc;
     int tries;
+    EFI_STATUS sizing_st;
 
     /* AllocatePool() for the map buffer itself perturbs the live memory
      * map (it can split/retype the descriptor it allocates from), so the
      * size GetMemoryMap first reports can be stale by the time we come
      * back to fill the buffer. Retry with the freshly reported size
-     * (plus slack) instead of trusting a single guess. */
-    gBS->GetMemoryMap(&size, 0, &key, &dsize, &dver);
+     * (plus slack) instead of trusting a single guess.
+     *
+     * This first call is purely to size the buffer, so its own return is
+     * normally EFI_BUFFER_TOO_SMALL with size/dsize now filled in. dsize
+     * is pre-initialized above in case the call instead returns some
+     * other error (e.g. EFI_INVALID_PARAMETER) without touching it --
+     * without that, size += 8 * dsize below would scale a real size by
+     * garbage. Treat any other status as the unexpected case it is. */
+    sizing_st = gBS->GetMemoryMap(&size, 0, &key, &dsize, &dver);
+    if (sizing_st != EFI_BUFFER_TOO_SMALL) {
+        *convmem_kb = 640;
+        *extmem_kb = 0;
+        return;
+    }
     for (tries = 0; ; tries++) {
         EFI_STATUS st;
 

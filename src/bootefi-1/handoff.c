@@ -34,10 +34,11 @@ extern struct gdt_descriptor gdt_desc;
 
 void efi_exit_and_start(unsigned int entry)
 {
-    UINTN size = 0, key, dsize;
+    UINTN size = 0, key, dsize = sizeof(EFI_MEMORY_DESCRIPTOR);
     UINT32 dver;
     EFI_MEMORY_DESCRIPTOR *map = 0;
     int tries;
+    EFI_STATUS sizing_st;
 
     gdt_desc.base = (unsigned long)Gdt;
 
@@ -48,8 +49,20 @@ void efi_exit_and_start(unsigned int entry)
      * buffer is filled; efi_memory.c's efi_sizemem() hit this exact
      * EFI_BUFFER_TOO_SMALL cycle and fixed it by growing the buffer by a
      * fixed slack on every retry rather than re-measuring a bare minimum
-     * each time. Reused here for the same reason. */
-    gBS->GetMemoryMap(&size, 0, &key, &dsize, &dver);
+     * each time. Reused here for the same reason.
+     *
+     * dsize is pre-initialized above and the return checked below: this
+     * call's only job is to size the buffer, and it is expected to come
+     * back EFI_BUFFER_TOO_SMALL. If it returns anything else, dsize may
+     * never have been written, and size += 8 * dsize would scale off
+     * garbage -- with no diagnostics available on this side of the boot
+     * to catch it later. */
+    sizing_st = gBS->GetMemoryMap(&size, 0, &key, &dsize, &dver);
+    if (sizing_st != EFI_BUFFER_TOO_SMALL) {
+        printf("GetMemoryMap sizing call failed: %x\n", (unsigned)sizing_st);
+        for (;;)
+            ;
+    }
     for (tries = 0; tries < 8; tries++) {
         EFI_STATUS st;
 
@@ -66,6 +79,18 @@ void efi_exit_and_start(unsigned int entry)
         }
         st = gBS->ExitBootServices(gImageHandle, key);
         if (!EFI_ERROR(st)) {
+            /* Boot services -- and the firmware's own interrupt handlers
+             * -- are gone as of the line above, but IF and the firmware's
+             * IDT are both still live until efi_handoff's own `cli`. That
+             * `cli` runs only after efi_vga_reset_text_mode()'s several
+             * hundred VGA port writes and 8K text-buffer clear, so an
+             * interrupt landing in that window would vector into a
+             * handler whose owning code is no longer guaranteed to be
+             * mapped or valid. Disable interrupts here, immediately after
+             * ExitBootServices succeeds and before any of that runs;
+             * efi_handoff's own `cli` stays too, as a harmless no-op on
+             * this path and the sole guard on any other. */
+            __asm__ volatile("cli");
             efi_vga_reset_text_mode();
             efi_handoff(entry);     /* never returns */
         }

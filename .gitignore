@@ -39,3 +39,7 @@ ledger.json.lock
 
 # UEFI firmware build output (see docs/superpowers/plans/2026-09-17-uefi-bootloader.md)
 vm/firmware/
+
+# bootefi-1 build output: object files and the linked BOOTIA32.EFI, not source
+src/bootefi-1/BUILD/
+src/bootefi-1/tests/BUILD/

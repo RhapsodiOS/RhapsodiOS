@@ -151,6 +151,18 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
         }
     }
 
+    /* Re-derive first_addr0 from the live configEnd here, unconditionally.
+     * efi_init_bootstruct() set a provisional value before any config was
+     * loaded; loadOtherConfigs()/loadBootDrivers() above (mirroring
+     * boot-2's stringTable.c:749 and drivers.c:759) refresh it to match
+     * the config data actually read -- but only on the loadStandaloneLinker()
+     * success path above. If that call failed, first_addr0 is still the
+     * provisional value while loadSystemConfig(0,0) has since grown
+     * kernBootStruct->config, so it would point into live config bytes
+     * instead of past them. Recomputing it here from the current
+     * configEnd keeps it correct on every path. */
+    kernBootStruct->first_addr0 = (int)kernBootStruct->configEnd + 1024;
+
     removeLinkEditSegment((struct mach_header *)kernBootStruct->kaddr);
     printf("Starting Rhapsody\n");
     efi_exit_and_start((unsigned int)kernelEntry);

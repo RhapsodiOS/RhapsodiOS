@@ -111,8 +111,78 @@ static int efi_usable(UINT32 type)
         || type == EfiLoaderData;
 }
 
+static const char *efi_type_name(UINT32 type)
+{
+    switch (type) {
+    case EfiReservedMemoryType:      return "Reserved";
+    case EfiLoaderCode:              return "LoaderCode";
+    case EfiLoaderData:              return "LoaderData";
+    case EfiBootServicesCode:        return "BootServicesCode";
+    case EfiBootServicesData:        return "BootServicesData";
+    case EfiRuntimeServicesCode:     return "RuntimeServicesCode";
+    case EfiRuntimeServicesData:     return "RuntimeServicesData";
+    case EfiConventionalMemory:      return "Conventional";
+    case EfiUnusableMemory:          return "Unusable";
+    case EfiACPIReclaimMemory:       return "ACPIReclaim";
+    case EfiACPIMemoryNVS:           return "ACPIMemoryNVS";
+    case EfiMemoryMappedIO:          return "MMIO";
+    case EfiMemoryMappedIOPortSpace: return "MMIOPortSpace";
+    case EfiPalCode:                 return "PalCode";
+    case EfiPersistentMemory:        return "Persistent";
+    default:                         return "?";
+    }
+}
+
+/* Diagnostic only: dump every descriptor in the live map, not just the
+ * sub-8MB slice spike_memmap.c looked at. */
+static void efi_dump_map(EFI_MEMORY_DESCRIPTOR *map, UINTN size, UINTN dsize)
+{
+    UINTN off;
+
+    printf("EFI memory map:\n");
+    for (off = 0; off < size; off += dsize) {
+        EFI_MEMORY_DESCRIPTOR *d =
+            (EFI_MEMORY_DESCRIPTOR *)((char *)map + off);
+        UINT64 start = d->PhysicalStart;
+        UINT64 end = start + d->NumberOfPages * 4096;
+        printf("  type %d (%s) start %x pages %x end %x\n",
+               (int)d->Type, efi_type_name(d->Type), (unsigned)start,
+               (unsigned)d->NumberOfPages, (unsigned)end);
+    }
+}
+
+/* Find the descriptor covering physical address addr, if any. The map is
+ * not guaranteed sorted by PhysicalStart, so this scans the whole thing. */
+static EFI_MEMORY_DESCRIPTOR *efi_desc_at(EFI_MEMORY_DESCRIPTOR *map,
+                                           UINTN size, UINTN dsize,
+                                           UINT64 addr)
+{
+    UINTN off;
+
+    for (off = 0; off < size; off += dsize) {
+        EFI_MEMORY_DESCRIPTOR *d =
+            (EFI_MEMORY_DESCRIPTOR *)((char *)map + off);
+        UINT64 start = d->PhysicalStart;
+        UINT64 end = start + d->NumberOfPages * 4096;
+        if (addr >= start && addr < end)
+            return d;
+    }
+    return 0;
+}
+
 /* KERNBOOTSTRUCT wants two scalars, not a map: conventional memory below
- * 640K, and total usable memory above 1M, both in KB. */
+ * 640K, and the length (in KB) of the CONTIGUOUS run of usable memory
+ * starting at 1M.
+ *
+ * This must be a contiguous span, not a sum: size_memory() in
+ * src/kernel-7/machdep/i386/i386_init.c takes extmem and builds
+ * [first_addr, trunc_page(KB(extmem))) as ONE region for the bump
+ * allocator (vm/vm_mem_region.c), handing out physical pages linearly
+ * across it with no reference to any memory map. Summing usable bytes
+ * across a fragmented UEFI map (as an earlier version of this function
+ * did, to mirror boot-2's E820 sizememory()) can report a total that
+ * includes memory the kernel never actually gets to walk contiguously,
+ * so the allocator can walk into an ACPI-reclaim or reserved hole. */
 void efi_sizemem(int *convmem_kb, int *extmem_kb)
 {
     UINTN size = 0, key, dsize;
@@ -121,6 +191,8 @@ void efi_sizemem(int *convmem_kb, int *extmem_kb)
     UINTN off;
     UINT64 conv_top = 0;
     UINT64 ext_sum = 0;
+    UINT64 span_end;
+    EFI_MEMORY_DESCRIPTOR *stop_desc;
     int tries;
 
     /* AllocatePool() for the map buffer itself perturbs the live memory
@@ -151,17 +223,12 @@ void efi_sizemem(int *convmem_kb, int *extmem_kb)
         }
     }
 
+    efi_dump_map(map, size, dsize);
+
     /* Conventional top below 640K (that range is reliably one contiguous
-     * descriptor in practice), then SUM usable memory above 1M. This
-     * mirrors what boot-2's own sizememory()/getMemoryMap() actually does
-     * for the BIOS E820 case (src/boot-2/i386/boot2/sizememory.c): it
-     * totals every E820_RAM entry above 1MB and does not require the
-     * region to be one contiguous run. A strict contiguous-growth walk
-     * (the original approach here) undercounts badly, because real EFI
-     * maps interleave ACPI/runtime-owned descriptors among otherwise
-     * free RAM well below the top of memory -- confirmed on this OVMF/
-     * qemu combination, where a contiguous walk stalled around 8MB
-     * instead of reaching anywhere near the actual -m 256 size. */
+     * descriptor in practice). Also total usable bytes above 1M purely
+     * for the diagnostic print below -- ext_sum is NOT what gets reported
+     * as extmem_kb; see the function comment. */
     for (off = 0; off < size; off += dsize) {
         EFI_MEMORY_DESCRIPTOR *d =
             (EFI_MEMORY_DESCRIPTOR *)((char *)map + off);
@@ -177,9 +244,39 @@ void efi_sizemem(int *convmem_kb, int *extmem_kb)
         }
     }
 
+    /* Walk the CONTIGUOUS usable run starting at 1M. The map is not
+     * guaranteed sorted, so rather than assume ascending PhysicalStart,
+     * repeatedly look up whatever descriptor covers the current frontier
+     * address and extend the frontier by that descriptor's extent. Stop
+     * at the first descriptor that isn't usable, or at the first address
+     * no descriptor covers at all (a true gap in the map). */
+    span_end = 0x100000;
+    stop_desc = 0;
+    for (;;) {
+        EFI_MEMORY_DESCRIPTOR *d = efi_desc_at(map, size, dsize, span_end);
+        if (!d)
+            break;
+        if (!efi_usable(d->Type)) {
+            stop_desc = d;
+            break;
+        }
+        span_end = d->PhysicalStart + d->NumberOfPages * 4096;
+    }
+
+    if (stop_desc) {
+        printf("contiguous span stopped: type %d (%s) start %x\n",
+               (int)stop_desc->Type, efi_type_name(stop_desc->Type),
+               (unsigned)stop_desc->PhysicalStart);
+    } else {
+        printf("contiguous span stopped: no descriptor covers %x "
+               "(gap in map)\n", (unsigned)span_end);
+    }
+    printf("contiguous extmem_kb %d, sum-of-usable would have been %d\n",
+           (int)((span_end - 0x100000) / 1024), (int)(ext_sum / 1024));
+
     gBS->FreePool(map);
     *convmem_kb = (int)(conv_top / 1024);
-    *extmem_kb = (int)(ext_sum / 1024);
+    *extmem_kb = (int)((span_end - 0x100000) / 1024);
 }
 
 /* Mirrors getKernBootStruct() in src/boot-2/i386/libsaio/bootstruct.c, with

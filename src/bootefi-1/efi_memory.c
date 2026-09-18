@@ -149,8 +149,9 @@ static const char *efi_type_name(UINT32 type)
     }
 }
 
-/* Diagnostic only: dump every descriptor in the live map, not just the
- * sub-8MB slice spike_memmap.c looked at. */
+/* Diagnostic only: dump every descriptor in the live map.  Worth keeping:
+ * the contiguous span the kernel can be given is bounded by whatever
+ * descriptor terminates it, and that is invisible without this. */
 static void efi_dump_map(EFI_MEMORY_DESCRIPTOR *map, UINTN size, UINTN dsize)
 {
     UINTN off;

@@ -56,11 +56,14 @@ extern char verbose;
  */
 - initFrom:(void *)buffer Length:(int)length Type:(int)type
 {
-    unsigned char *data = (unsigned char *)buffer;
     unsigned int *data32;
+    unsigned char *data = (unsigned char *)buffer;
 
     /* Call superclass init */
     [super init];
+
+    /* data32 addresses the payload after the control byte */
+    data32 = (unsigned int *)(data + 1);
 
     /* Initialize flags */
     _bit32 = 0;
@@ -84,7 +87,6 @@ extern char verbose;
         [self setControl:data[0]];
 
         /* Parse addresses */
-        data32 = (unsigned int *)(data + 1);
         _min_base = data32[0];
         _max_base = data32[1];
         _alignment = data32[2];
@@ -108,7 +110,6 @@ extern char verbose;
         [self setControl:data[0]];
 
         /* Parse base and length (fixed address) */
-        data32 = (unsigned int *)(data + 1);
         _min_base = data32[0];
         _max_base = data32[0];
         _length = data32[1];
@@ -131,10 +132,10 @@ extern char verbose;
         [self setControl:data[0]];
 
         /* Parse addresses (in 256-byte units) */
-        _min_base = (unsigned int)(*(unsigned short *)(data + 1)) << 8;
-        _max_base = (unsigned int)(*(unsigned short *)(data + 3)) << 8;
-        _alignment = (unsigned int)(*(unsigned short *)(data + 5));
-        _length = (unsigned int)(*(unsigned short *)(data + 7)) << 8;
+        _min_base = (unsigned int)(*(unsigned short *)data32) << 8;
+        _max_base = (unsigned int)(*(unsigned short *)((char *)data32 + 2)) << 8;
+        _alignment = (unsigned int)(*(unsigned short *)((char *)data32 + 4));
+        _length = (unsigned int)(*(unsigned short *)((char *)data32 + 6)) << 8;
 
         /* If alignment is 0, use 64K */
         if (_alignment == 0) {

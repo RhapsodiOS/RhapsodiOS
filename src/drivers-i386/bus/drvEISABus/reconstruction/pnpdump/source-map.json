@@ -249,7 +249,7 @@
         "-[pnpMemory print]"
       ],
       "size": 245,
-      "source_line": 331,
+      "source_line": 332,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m"
     },
     {
@@ -258,7 +258,7 @@
         "-[pnpMemory matches:]"
       ],
       "size": 84,
-      "source_line": 262,
+      "source_line": 263,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m"
     },
     {
@@ -267,7 +267,7 @@
         "-[pnpMemory is32]"
       ],
       "size": 14,
-      "source_line": 243,
+      "source_line": 244,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m"
     },
     {
@@ -276,7 +276,7 @@
         "-[pnpMemory min_base]"
       ],
       "size": 13,
-      "source_line": 187,
+      "source_line": 188,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m"
     },
     {
@@ -285,7 +285,7 @@
         "-[pnpMemory max_base]"
       ],
       "size": 13,
-      "source_line": 195,
+      "source_line": 196,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m"
     },
     {
@@ -294,7 +294,7 @@
         "-[pnpMemory alignment]"
       ],
       "size": 13,
-      "source_line": 203,
+      "source_line": 204,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m"
     },
     {
@@ -303,7 +303,7 @@
         "-[pnpMemory length]"
       ],
       "size": 13,
-      "source_line": 211,
+      "source_line": 212,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m"
     },
     {
@@ -312,7 +312,7 @@
         "-[pnpMemory bit8]"
       ],
       "size": 14,
-      "source_line": 219,
+      "source_line": 220,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m"
     },
     {
@@ -321,7 +321,7 @@
         "-[pnpMemory bit16]"
       ],
       "size": 14,
-      "source_line": 227,
+      "source_line": 228,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m"
     },
     {
@@ -330,7 +330,7 @@
         "-[pnpMemory bit32]"
       ],
       "size": 14,
-      "source_line": 235,
+      "source_line": 236,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m"
     },
     {
@@ -339,7 +339,7 @@
         "-[pnpMemory highAddressDecode]"
       ],
       "size": 14,
-      "source_line": 251,
+      "source_line": 252,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m"
     },
     {
@@ -348,7 +348,7 @@
         "-[pnpMemory setControl:]"
       ],
       "size": 149,
-      "source_line": 293,
+      "source_line": 294,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m"
     },
     {
@@ -357,7 +357,7 @@
         "-[pnpMemory initWithBase:Length:Bit16:Bit32:HighAddr:Is32:]"
       ],
       "size": 125,
-      "source_line": 156,
+      "source_line": 157,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m"
     },
     {

@@ -2144,7 +2144,7 @@
       "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 213,
-      "source_line": 331,
+      "source_line": 332,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
       "status": "intentional-mismatch"
     },
@@ -2169,7 +2169,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 80,
-      "source_line": 262,
+      "source_line": 263,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
       "status": "assembly-matched"
     },
@@ -2193,7 +2193,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 14,
-      "source_line": 243,
+      "source_line": 244,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
       "status": "assembly-matched"
     },
@@ -2217,7 +2217,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 13,
-      "source_line": 187,
+      "source_line": 188,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
       "status": "assembly-matched"
     },
@@ -2241,7 +2241,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 13,
-      "source_line": 195,
+      "source_line": 196,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
       "status": "assembly-matched"
     },
@@ -2265,7 +2265,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 13,
-      "source_line": 203,
+      "source_line": 204,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
       "status": "assembly-matched"
     },
@@ -2289,7 +2289,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 13,
-      "source_line": 211,
+      "source_line": 212,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
       "status": "assembly-matched"
     },
@@ -2313,7 +2313,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 14,
-      "source_line": 219,
+      "source_line": 220,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
       "status": "assembly-matched"
     },
@@ -2337,7 +2337,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 14,
-      "source_line": 227,
+      "source_line": 228,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
       "status": "assembly-matched"
     },
@@ -2361,7 +2361,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 14,
-      "source_line": 235,
+      "source_line": 236,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
       "status": "assembly-matched"
     },
@@ -2385,7 +2385,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 14,
-      "source_line": 251,
+      "source_line": 252,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
       "status": "assembly-matched"
     },
@@ -2407,7 +2407,7 @@
       "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 119,
-      "source_line": 293,
+      "source_line": 294,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
       "status": "intentional-mismatch"
     },
@@ -2431,33 +2431,31 @@
       "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 117,
-      "source_line": 156,
+      "source_line": 157,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
       "status": "intentional-mismatch"
     },
     {
       "address": 18528,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 6 declaration order: data32 before data, early data+1 payload pointer after super; leftover is type switch layout, extra flag zeros, tool _printf vs _IOLog / verbose PIC"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[pnpMemory initFrom:Length:Type:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 418,
       "source_line": 57,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 18948,
@@ -2479,7 +2477,7 @@
       "reason": null,
       "reviewer": null,
       "size": 989,
-      "source_line": 383,
+      "source_line": 384,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
       "status": "unexamined"
     },
@@ -3923,7 +3921,7 @@
       "status": "unexamined"
     }
   ],
-  "rebuilt_sha256": "90981EC419B4016D184F560CD065F8D7CEA6070E3398F1FEC6F479E3B707A212",
+  "rebuilt_sha256": "56457B5FF7AE8D62AA4C9AF8C1FAD048B9D7BFFFBDFF2DD0F38BE1729F319D69",
   "reference_sha256": "8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23",
   "schema_version": "ledger-v1"
 }

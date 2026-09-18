@@ -6361,3 +6361,264 @@ _IOGetTimestamp
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+### Task 6 `-[pnpMemory initFrom:Length:Type:]` early data32 (2026-09-17)
+
+Declare `data32` before `data` and form the post-control payload pointer immediately after `[super init]`. Leftover is type-switch layout, extra flag zeros, and tool `_printf` / verbose PIC. Accepted compiler-shaped leftover (reviewer Pat Raynor). Tool SHA `A246805FABE50F87B3C7E73A5D92A9F9F90B6A2D6543D1BE2F438C1C4DE414EB` (299756). Previously identical rows stayed matched (45). Unpaired count unchanged (10).
+
+```
+-[pnpMemory initFrom:Length:Type:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+* sub esp, 8                              sub esp, 0Ch
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  call $+5                                call $+5
+  pop edi                                 pop edi
+* mov esi, [ebp+self]                     mov ebx, [ebp+self]
+* mov ebx, [ebp+arg_8]                    mov edx, [ebp+arg_8]
+* mov ecx, edi                            mov [ebp+var_C], edx
+* mov ecx, [ecx+74B6h]                    mov edx, edi
+* push ecx                                mov edx, [edx+364Eh]
+* mov [ebp+var_8.receiver], esi           push edx
+* mov ecx, edi                            mov [ebp+var_8.receiver], ebx
+* mov ecx, [ecx+7646h]                    mov edx, edi
+* mov [ebp+var_8.super_class], ecx        mov edx, [edx+38D2h]
+*                                         mov [ebp+var_8.super_class], edx
+  lea eax, [ebp+var_8]                    lea eax, [ebp+var_8]
+  push eax                                push eax
+  call _objc_msgSendSuper                 call _objc_msgSendSuper
+* mov eax, ebx                            mov esi, [ebp+var_C]
+* lea ebx, [eax+1]                        inc esi
+* mov byte ptr [esi+1Bh], 0               mov byte ptr [ebx+1Bh], 0
+* mov byte ptr [esi+1Ah], 0               mov byte ptr [ebx+1Ah], 0
+* mov byte ptr [esi+19h], 0               mov byte ptr [ebx+19h], 0
+* mov byte ptr [esi+1Ch], 0               mov byte ptr [ebx+1Ch], 0
+*                                         mov byte ptr [ebx+14h], 0
+*                                         mov byte ptr [ebx+15h], 0
+*                                         mov byte ptr [ebx+18h], 0
+  add esp, 8                              add esp, 8
+  cmp [ebp+arg_10], 5                     cmp [ebp+arg_10], 5
+* jz loc_4C78                             jnz loc_6A68
+* jg loc_4BF8                             mov byte ptr [ebx+1Ch], 1
+*                                         cmp dword ptr [ebp+arg_C], 11h
+*                                         jz loc_6A24
+*                                         mov edx, dword ptr [ebp+arg_C]
+*                                         push edx
+*                                         lea eax, (aPnpdeviceresou_12 - 69B6h)[edi]
+*                                         jmp loc_6AFA
+*                                         mov edx, [ebp+var_C]
+*                                         movzx eax, byte ptr [edx]
+*                                         push eax
+*                                         mov edx, edi
+*                                         mov edx, [edx+3716h]
+*                                         push edx
+*                                         push ebx
+*                                         call _objc_msgSend
+*                                         mov edx, [esi]
+*                                         mov [ebx+4], edx
+*                                         mov edx, [esi+4]
+*                                         mov [ebx+8], edx
+*                                         mov edx, [esi+8]
+*                                         mov [ebx+0Ch], edx
+*                                         mov esi, [esi+0Ch]
+*                                         mov [ebx+10h], esi
+*                                         add esp, 0Ch
+*                                         cmp dword ptr [ebx+0Ch], 0
+*                                         jnz loc_6B5A
+*                                         mov [ebx+0Ch], esi
+*                                         jmp loc_6B5A
+*                                         cmp [ebp+arg_10], 6
+*                                         jnz loc_6AE4
+*                                         mov byte ptr [ebx+1Ch], 1
+*                                         cmp dword ptr [ebp+arg_C], 9
+*                                         jz loc_6A84
+*                                         mov edx, dword ptr [ebp+arg_C]
+*                                         push edx
+*                                         lea eax, (aPnpdeviceresou_13 - 69B6h)[edi]
+*                                         jmp loc_6AFA
+*                                         mov edx, [ebp+var_C]
+*                                         movzx eax, byte ptr [edx]
+*                                         push eax
+*                                         mov edx, edi
+*                                         mov edx, [edx+3716h]
+*                                         push edx
+*                                         push ebx
+*                                         call _objc_msgSend
+*                                         mov edx, [esi]
+*                                         mov [ebx+4], edx
+*                                         mov edx, [esi]
+*                                         mov [ebx+8], edx
+*                                         mov edx, [esi+4]
+*                                         mov [ebx+10h], edx
+*                                         mov esi, [esi+4]
+*                                         mov [ebx+0Ch], esi
+*                                         mov eax, ds:(_verbose_ptr - 69B6h)[edi]
+*                                         add esp, 0Ch
+*                                         cmp byte ptr [eax], 0
+*                                         jz loc_6B5A
+*                                         lea eax, (aFixed - 69B6h)[edi]
+*                                         push eax
+*                                         call _IOLog
+*                                         mov edx, edi
+*                                         mov edx, [edx+36FEh]
+*                                         push edx
+*                                         push ebx
+*                                         call _objc_msgSend
+*                                         add esp, 0Ch
+*                                         jmp loc_6B5A
+  cmp [ebp+arg_10], 1                     cmp [ebp+arg_10], 1
+* jz loc_4C08                             jnz loc_6B5A
+* jmp loc_4D42                            cmp dword ptr [ebp+arg_C], 9
+*                                         jz loc_6B10
+*                                         mov edx, dword ptr [ebp+arg_C]
+*                                         push edx
+*                                         lea eax, (aPnpdeviceresou_14 - 69B6h)[edi]
+*                                         push eax
+*                                         call _IOLog
+*                                         mov edi, ds:(paFree_0 - 69B6h)[edi]
+*                                         push edi
+*                                         push ebx
+*                                         call _objc_msgSend
+*                                         jmp loc_6B7A
+*                                         mov edx, [ebp+var_C]
+*                                         movzx eax, byte ptr [edx]
+*                                         push eax
+*                                         mov edx, edi
+*                                         mov edx, [edx+3716h]
+*                                         push edx
+*                                         push ebx
+*                                         call _objc_msgSend
+*                                         movzx eax, word ptr [esi]
+*                                         shl eax, 8
+*                                         mov [ebx+4], eax
+*                                         movzx eax, word ptr [esi+2]
+*                                         shl eax, 8
+*                                         mov [ebx+8], eax
+*                                         movzx edx, word ptr [esi+4]
+*                                         mov [ebx+0Ch], edx
+*                                         movzx eax, word ptr [esi+6]
+*                                         shl eax, 8
+*                                         mov [ebx+10h], eax
+*                                         add esp, 0Ch
+*                                         cmp dword ptr [ebx+0Ch], 0
+*                                         jnz loc_6B5A
+*                                         mov dword ptr [ebx+0Ch], 10000h
+*                                         mov eax, ds:(_verbose_ptr - 69B6h)[edi]
+*                                         cmp byte ptr [eax], 0
+*                                         jz loc_6B78
+  cmp [ebp+arg_10], 6                     cmp [ebp+arg_10], 6
+* jz loc_4CD0                             jz loc_6B78
+* jmp loc_4D42                            mov edi, ds:(paPrint - 69B6h)[edi]
+* cmp [ebp+arg_C], 9                      push edi
+* jz loc_4C20                             push ebx
+* mov ecx, [ebp+arg_C]
+* push ecx
+* lea eax, (aPnpdeviceresou_1 - 4BA2h)[edi]
+* jmp loc_4CE4
+* push eax
+* mov ecx, edi
+* mov ecx, [ecx+74C6h]
+* push ecx
+* push esi
+  call _objc_msgSend                      call _objc_msgSend
+* mov edx, ebx                            mov eax, ebx
+* movzx eax, word ptr [ebx]               lea esp, [ebp-18h]
+* shl eax, 8
+* mov [esi+4], eax
+* movzx eax, word ptr [ebx+2]
+* shl eax, 8
+* mov [esi+8], eax
+* movzx eax, word ptr [ebx+4]
+* mov [esi+0Ch], eax
+* add esp, 0Ch
+* test eax, eax
+* jnz loc_4C5A
+* mov dword ptr [esi+0Ch], 10000h
+* movzx eax, word ptr [edx+6]
+* shl eax, 8
+* mov [esi+10h], eax
+* cmp ds:(_verbose - 4BA2h)[edi], 0
+* jz loc_4D42
+* jmp loc_4D35
+* mov byte ptr [esi+1Ch], 1
+* cmp [ebp+arg_C], 11h
+* jz loc_4C90
+* mov ecx, [ebp+arg_C]
+* push ecx
+* lea eax, (aPnpdeviceresou_2 - 4BA2h)[edi]
+* jmp loc_4CE4
+* push eax
+* mov ecx, edi
+* mov ecx, [ecx+74C6h]
+* push ecx
+* push esi
+* call _objc_msgSend
+* mov ecx, [ebx]
+* mov [esi+4], ecx
+* mov ecx, [ebx+4]
+* mov [esi+8], ecx
+* mov ecx, [ebx+0Ch]
+* mov [esi+10h], ecx
+* mov ebx, [ebx+8]
+* mov [esi+0Ch], ebx
+* add esp, 0Ch
+* test ebx, ebx
+* jnz loc_4CC4
+* mov ecx, [esi+10h]
+* mov [esi+0Ch], ecx
+* cmp ds:(_verbose - 4BA2h)[edi], 0
+* jz loc_4D42
+* jmp loc_4D35
+* mov byte ptr [esi+1Ch], 1
+* cmp [ebp+arg_C], 9
+* jz loc_4CFC
+* mov ecx, [ebp+arg_C]
+* push ecx
+* lea eax, (aPnpdeviceresou_3 - 4BA2h)[edi]
+* push eax
+* call _printf
+* mov edi, ds:(off_C048 - 4BA2h)[edi]
+* push edi
+* push esi
+* call _objc_msgSend
+* jmp loc_4D44
+* push eax
+* mov ecx, edi
+* mov ecx, [ecx+74C6h]
+* push ecx
+* push esi
+* call _objc_msgSend
+* mov eax, [ebx]
+* mov [esi+8], eax
+* mov [esi+4], eax
+* mov ebx, [ebx+4]
+* mov [esi+10h], ebx
+* mov [esi+0Ch], ebx
+* add esp, 0Ch
+* cmp ds:(_verbose - 4BA2h)[edi], 0
+* jz loc_4D42
+* lea eax, (aFixed - 4BA2h)[edi]
+* push eax
+* call _printf
+* mov edi, ds:(paPrint - 4BA2h)[edi]
+* push edi
+* push esi
+* call _objc_msgSend
+* mov eax, esi
+* lea esp, [ebp-14h]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

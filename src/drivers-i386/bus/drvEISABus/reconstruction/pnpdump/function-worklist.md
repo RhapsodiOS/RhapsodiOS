@@ -323,7 +323,7 @@ Accepted 2026-09-17: remaining `none` hand-written rows are `intentional-mismatc
 - `_IOGetTimestamp` (tool-only, diff 102): local vs expression for the 64-bit store — **tried, miss** (`*1000ULL` local store regressed `--list`); leftover is hand-rolled scale versus Apple `shld`/`adc`; **accepted** compiler-shaped
 - `__IOGetSystemConfig` (tool-only, diff 103): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
 - `__IOGetDriverConfig` (tool-only, diff 106): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
-- `-[pnpMemory initFrom:Length:Type:]` (shared, diff 119; reloc different d=161): declaration order of existing locals after the header parse
+- `-[pnpMemory initFrom:Length:Type:]` (shared, diff 119; reloc different d=161): declaration order of existing locals after the header parse — **tried, kept**; leftover is type-switch layout / extra zeros / tool `_printf`; **accepted** compiler-shaped on both
 - `__IOGetIntValues` (tool-only, diff 130): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
 - `__IOGetCharValues` (tool-only, diff 131): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
 - `-[PnPDeviceResources initForBuf:Length:CSN:]` (shared, diff 134; reloc different d=149): declaration order of the header locals

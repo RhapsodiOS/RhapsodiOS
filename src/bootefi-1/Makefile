@@ -39,7 +39,7 @@ CFLAGS := -target i386-unknown-windows -std=gnu89 -ffreestanding \
 SYS_CFLAGS := $(CFLAGS) -D__LITTLE_ENDIAN__=0
 
 LDFLAGS := /machine:x86 /subsystem:efi_application /nodefaultlib /entry:efi_main \
-           /base:0x08000000 /fixed
+           /base:0x08000000 /fixed /safeseh:no
 
 BOOT2_SRCS := $(BOOT2)/libsaio/disk.c \
               $(BOOT2)/libsaio/ufs_byteorder.c \
@@ -49,7 +49,8 @@ BOOT2_SRCS := $(BOOT2)/libsaio/disk.c \
               $(BOOT2)/libsa/prf.c \
               $(BOOT2)/libsa/string1.c \
               $(BOOT2)/libsa/memcpy.c \
-              $(BOOT2)/libsa/getsegbyname.c
+              $(BOOT2)/libsa/getsegbyname.c \
+              $(BOOT2)/libsaio/table.c
 # libsa/memset.c is NOT included: its unconditional `simple_char_set`
 # inline asm (invalid "&c" input constraint under clang) and lvalue-cast
 # assignments (`UNS(dst) += ...`) do not compile under any modern compiler
@@ -57,10 +58,10 @@ BOOT2_SRCS := $(BOOT2)/libsaio/disk.c \
 # load.c's LC_SEGMENT handling and efi_main.c's load_kernel() both call)
 # is instead implemented directly in efi_memory.c.
 
-EFI_SRCS := efi_main.c efi_console.c efi_disk.c efi_memory.c $(BOOT2_SRCS)
+EFI_SRCS := efi_main.c efi_console.c efi_disk.c efi_memory.c handoff.c $(BOOT2_SRCS)
 
 EFI_OBJS := $(patsubst %.c,$(BUILD)/%.obj,$(notdir $(EFI_SRCS))) \
-            $(BUILD)/sys.obj
+            $(BUILD)/sys.obj $(BUILD)/handoff_tramp.obj
 
 VPATH := $(BOOT2)/libsaio:$(BOOT2)/libsa
 
@@ -74,6 +75,9 @@ $(BUILD)/sys.obj: $(BOOT2)/libsaio/sys.c | $(BUILD)
 
 $(BUILD)/%.obj: %.c | $(BUILD)
 	$(CC) $(CFLAGS) -c -o $@ $<
+
+$(BUILD)/handoff_tramp.obj: handoff.S | $(BUILD)
+	$(CC) $(CFLAGS) -c -o $@ handoff.S
 
 $(BUILD)/BOOTIA32.EFI: $(EFI_OBJS)
 	$(LINK) $(LDFLAGS) /out:$@ $(EFI_OBJS)

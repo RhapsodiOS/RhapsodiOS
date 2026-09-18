@@ -24,6 +24,15 @@ extern int loadprog(int dev, int fd, struct mach_header *headOut,
                      entry_t *entry, char **addr, int *size);
 extern int bzero(char *b, int length);
 
+/* libsaio/load.c; declared in saio_internal.h, which pulls in the full BSD
+ * header chain this translation unit otherwise avoids -- redeclared here
+ * instead, same as loadprog() above. */
+extern void removeLinkEditSegment(struct mach_header *mhp);
+
+/* handoff.c: retries ExitBootServices, then jumps via handoff.S.  Never
+ * returns. */
+extern void efi_exit_and_start(unsigned int entry);
+
 /* Set the first time ebiosread() runs, to prove the BIOS_ADDR override in
  * bootefi_memory_override.h actually reached disk.c's translation unit
  * (intbuf == biosbuf at that point, before any sector data is copied in). */
@@ -101,7 +110,9 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
            kernBootStruct->bootString, kernBootStruct->kernDev,
            kernBootStruct->magicCookie, kernBootStruct->graphicsMode);
 
-    for (;;)
-        ;
+    removeLinkEditSegment((struct mach_header *)kernBootStruct->kaddr);
+    printf("Starting Rhapsody\n");
+    efi_exit_and_start((unsigned int)kernelEntry);
+    /* not reached */
     return EFI_SUCCESS;
 }

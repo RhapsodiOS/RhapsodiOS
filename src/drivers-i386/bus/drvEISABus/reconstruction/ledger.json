@@ -1746,33 +1746,31 @@
       "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 252,
-      "source_line": 177,
+      "source_line": 175,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m",
       "status": "intentional-mismatch"
     },
     {
       "address": 16556,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 6 else-if on otherCount != 1; leftover is Apple tool _printf vs _IOLog, double [number] / in-loop dmaChannels versus local otherChannels, plus PIC / register scheduling"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[pnpDMA matches:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 126,
       "source_line": 143,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 16684,
@@ -1888,7 +1886,7 @@
       "reason": null,
       "reviewer": null,
       "size": 80,
-      "source_line": 241,
+      "source_line": 239,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m",
       "status": "unexamined"
     },
@@ -3931,7 +3929,7 @@
       "status": "unexamined"
     }
   ],
-  "rebuilt_sha256": "2CA61BA37A7EF5A8D33FFB885D1A7C516DD6A58779288B1EFBC5AD038C67A0F0",
+  "rebuilt_sha256": "7903D28185A72DADE601548D5447579C6EC2636D95BB1ABFEC9D3135B152903D",
   "reference_sha256": "8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23",
   "schema_version": "ledger-v1"
 }

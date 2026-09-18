@@ -677,7 +677,7 @@
         "-[pnpDMA print]"
       ],
       "size": 252,
-      "source_line": 177,
+      "source_line": 175,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m"
     },
     {
@@ -731,7 +731,7 @@
         "-[pnpDMA writePnPConfig:Index:]"
       ],
       "size": 80,
-      "source_line": 241,
+      "source_line": 239,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m"
     },
     {

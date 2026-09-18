@@ -2500,3 +2500,73 @@ Same else-wrap as the tool. Leftover is Apple's list/count and nested `[list obj
   pop ebp                                 pop ebp
   retn                                    retn
 `
+
+### Task 6 -[pnpDMA matches:] else-if on otherCount (2026-09-17)
+
+Same else-if as the tool. Leftover is Apple's double `[number]` and in-loop `dmaChannels` versus locals plus register scheduling. Accepted compiler-shaped leftover (reviewer Pat Raynor). Reloc SHA 7903D28185A72DADE601548D5447579C6EC2636D95BB1ABFEC9D3135B152903D (603644). Previously identical rows stayed matched (46). Unpaired count unchanged (11).
+
+`
+-[pnpDMA matches:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+* mov esi, [ebp+self]                     mov ebx, [ebp+self]
+* mov edi, [ebp+arg_8]                    mov esi, [ebp+arg_8]
+* mov edx, ds:paNumber                    mov edi, ds:paNumber
+* push edx
+  push edi                                push edi
+*                                         push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  test eax, eax                           test eax, eax
+* jz loc_411E                             jz loc_453A
+* mov edx, ds:paNumber
+* push edx
+* push edi
+* call near ptr _objc_msgSend
+* add esp, 8
+  cmp eax, 1                              cmp eax, 1
+* jz loc_40F8                             jz loc_4514
+  push offset aPnpdmaCanOnlyM             push offset aPnpdmaCanOnlyM
+  call near ptr _IOLog                    call near ptr _IOLog
+* jmp loc_411E                            jmp loc_453A
+  mov eax, 1                              mov eax, 1
+* jmp loc_4120                            jmp loc_453C
+* xor ebx, ebx                            mov edi, ds:paDmachannels
+* cmp [esi+24h], ebx                      push edi
+* jle loc_411E                            push esi
+*                                         call near ptr _objc_msgSend
+*                                         mov ecx, eax
+*                                         xor edx, edx
+*                                         cmp [ebx+24h], edx
+*                                         jle loc_453A
+  nop                                     nop
+* mov edx, ds:paDmachannels               nop
+* push edx                                mov eax, [ebx+edx*4+4]
+* push edi                                cmp [ecx], eax
+* call near ptr _objc_msgSend             jz loc_450C
+* add esp, 8                              inc edx
+* mov eax, [eax]                          cmp [ebx+24h], edx
+* cmp [esi+ebx*4+4], eax                  jg loc_452C
+* jz loc_40F0
+* inc ebx
+* cmp [esi+24h], ebx
+* jg loc_4100
+  xor eax, eax                            xor eax, eax
+  lea esp, [ebp-0Ch]                      lea esp, [ebp-0Ch]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+`

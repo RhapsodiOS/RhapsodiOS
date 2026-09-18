@@ -150,10 +150,8 @@ extern char verbose;
     otherCount = [otherDMA number];
     if (otherCount == 0) {
         return NO;
-    }
-
-    /* Only support matching against single DMA channel */
-    if (otherCount != 1) {
+    } else if (otherCount != 1) {
+        /* Only support matching against single DMA channel */
         IOLog("pnpDMA: can only match one DMA\n");
         return NO;
     }

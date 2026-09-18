@@ -297,7 +297,7 @@ Accepted 2026-09-17: remaining `none` hand-written rows are `intentional-mismatc
 - `_IODelay` (tool-only, diff 36): local vs expression for the timestamp add — **tried, kept**; leftover is explicit carry vs `adc` plus loop buffer reuse; **accepted** compiler-shaped
 - `-[PnPResource matches:Using:]` (shared, diff 37; reloc different d=23): count==0 else-wrap — **tried, kept**; leftover is Apple list/count stack-trick vs configList local / PIC; **accepted** compiler-shaped on both
 - `-[pnpMemory print]` (shared, diff 38; reloc different d=21): none — Apple tool `_printf` vs rebuilt `_IOLog`; reloc both `_IOLog`
-- `-[pnpDMA matches:]` (shared, diff 44; reloc different d=33): if vs else if on `otherCount != 1`; Apple tool `_printf` vs `_IOLog`
+- `-[pnpDMA matches:]` (shared, diff 44; reloc different d=33): if vs else if on `otherCount != 1` — **tried, kept**; leftover is Apple tool `_printf` vs `_IOLog`, double `[number]` / in-loop `dmaChannels` vs local; **accepted** compiler-shaped on both
 - `-[pnpIRQ matches:]` (shared, diff 44; reloc different d=33): if vs else if on `otherCount != 1`; Apple tool `_printf` vs `_IOLog`
 - `-[pnpDMA print]` (shared, diff 48; reloc different d=34): none — Apple tool `_printf` vs rebuilt `_IOLog`; reloc both `_IOLog`
 - `__PMRestoreDefaults` (tool-only, diff 51): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub

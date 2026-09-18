@@ -5,7 +5,7 @@
 #import <driverkit/return.h>
 #import <driverkit/driverTypes.h>
 #import <driverkit/IODeviceDescription.h>
-#import <machkit/NXConditionLock.h>
+#import <machkit/NXLock.h>
 #import "AHCIShared.h"
 #import "AHCIPortLogic.h"
 

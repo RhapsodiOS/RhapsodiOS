@@ -1,0 +1,6 @@
+pkgname = drvahci
+pkgver = 1
+pkgdesc = AHCI SATA device driver
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base, drivertools, driverkit, machkit, kernload, libstreams

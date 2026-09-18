@@ -3389,7 +3389,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 69,
-      "source_line": 297,
+      "source_line": 291,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
       "status": "assembly-matched"
     },
@@ -3437,7 +3437,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 13,
-      "source_line": 286,
+      "source_line": 280,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
       "status": "assembly-matched"
     },
@@ -3533,7 +3533,7 @@
       "reason": null,
       "reviewer": null,
       "size": 2570,
-      "source_line": 325,
+      "source_line": 319,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
       "status": "unexamined"
     },
@@ -3564,26 +3564,24 @@
     {
       "address": 27208,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 6 header-local declaration order (serialNum/deviceID/idValue/vendorID); leftover is Apple byte-copy ID loop versus shift-or, _printf vs _IOLog, verbose PIC"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[PnPDeviceResources initForBuf:Length:CSN:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 401,
       "source_line": 86,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 27612,
@@ -3921,7 +3919,7 @@
       "status": "unexamined"
     }
   ],
-  "rebuilt_sha256": "56457B5FF7AE8D62AA4C9AF8C1FAD048B9D7BFFFBDFF2DD0F38BE1729F319D69",
+  "rebuilt_sha256": "8D19FE9A6A75FA0D1CDF13C706E8CF1C2734BFC33699C395AB03E1232B9A94C7",
   "reference_sha256": "8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23",
   "schema_version": "ledger-v1"
 }

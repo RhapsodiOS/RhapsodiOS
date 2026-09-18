@@ -86,10 +86,10 @@ static unsigned short readPort = 0;
 - initForBuf:(void *)buffer Length:(int)length CSN:(int)csn
 {
     unsigned char *data = (unsigned char *)buffer;
-    unsigned int deviceID;
     unsigned int serialNum;
-    char vendorID[9];
+    unsigned int deviceID;
     unsigned int idValue;
+    char vendorID[9];
 
     /* Call superclass init */
     [super init];

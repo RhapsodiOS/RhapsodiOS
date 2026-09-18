@@ -326,7 +326,7 @@ Accepted 2026-09-17: remaining `none` hand-written rows are `intentional-mismatc
 - `-[pnpMemory initFrom:Length:Type:]` (shared, diff 119; reloc different d=161): declaration order of existing locals after the header parse — **tried, kept**; leftover is type-switch layout / extra zeros / tool `_printf`; **accepted** compiler-shaped on both
 - `__IOGetIntValues` (tool-only, diff 130): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
 - `__IOGetCharValues` (tool-only, diff 131): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
-- `-[PnPDeviceResources initForBuf:Length:CSN:]` (shared, diff 134; reloc different d=149): declaration order of the header locals
+- `-[PnPDeviceResources initForBuf:Length:CSN:]` (shared, diff 134; reloc different d=149): declaration order of the header locals — **tried, kept**; leftover is Apple byte-copy ID loop / tool `_printf`; **accepted** compiler-shaped on both
 - `_IOScheduleFunc` (tool-only, diff 162): loop shape of the insertion walk
 - `__IOCallDeviceMethod` (tool-only, diff 167): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
 - `-[PnPResources initFromRegisters:]` (shared, diff 173; reloc different d=91): loop shape of the register walk

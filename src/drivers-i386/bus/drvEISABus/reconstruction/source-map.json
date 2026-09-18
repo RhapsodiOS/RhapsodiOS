@@ -1298,7 +1298,7 @@
         "-[PnPDeviceResources setDeviceName:Length:]"
       ],
       "size": 69,
-      "source_line": 297,
+      "source_line": 291,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m"
     },
     {
@@ -1316,7 +1316,7 @@
         "-[PnPDeviceResources deviceName]"
       ],
       "size": 13,
-      "source_line": 286,
+      "source_line": 280,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m"
     },
     {
@@ -1352,7 +1352,7 @@
         "-[PnPDeviceResources parseConfig:Length:]"
       ],
       "size": 2570,
-      "source_line": 325,
+      "source_line": 319,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m"
     },
     {

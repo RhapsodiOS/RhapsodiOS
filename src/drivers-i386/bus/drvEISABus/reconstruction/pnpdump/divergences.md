@@ -6622,3 +6622,212 @@ Declare `data32` before `data` and form the post-control payload pointer immedia
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+### Task 6 `-[PnPDeviceResources initForBuf:Length:CSN:]` header locals (2026-09-17)
+
+Reorder header locals to `serialNum`, `deviceID`, `idValue`, `vendorID`. Leftover is Apple's byte-copy ID construction versus shift-or, plus tool `_printf` / verbose PIC. Accepted compiler-shaped leftover (reviewer Pat Raynor). Tool SHA `F0D3FA514B5B65D0F1C18F80778A0514A376F8B99D05B273A4047ABD69DEA537` (299756). Previously identical rows stayed matched (45). Unpaired count unchanged (10).
+
+```
+-[PnPDeviceResources initForBuf:Length:CSN:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+* sub esp, 1Ch                            sub esp, 24h
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  call $+5                                call $+5
+* pop ebx                                 pop esi
+* mov esi, [ebp+self]                     mov ecx, [ebp+arg_8]
+* mov edi, [ebp+arg_8]                    mov [ebp+var_18], ecx
+* mov ecx, ebx                            mov ebx, esi
+* mov ecx, [ecx+5972h]                    mov ebx, [ebx+6336h]
+* push ecx                                push ebx
+* mov [ebp+var_14.receiver], esi          mov ecx, [ebp+self]
+* mov ecx, ebx                            mov [ebp+var_14.receiver], ecx
+* mov ecx, [ecx+5A3Ah]                    mov ebx, esi
+* mov [ebp+var_14.super_class], ecx       mov ebx, [ebx+64A2h]
+*                                         mov [ebp+var_14.super_class], ebx
+  lea eax, [ebp+var_14]                   lea eax, [ebp+var_14]
+  push eax                                push eax
+  call _objc_msgSendSuper                 call _objc_msgSendSuper
+  add esp, 8                              add esp, 8
+* cmp [ebp+arg_C], 8                      cmp dword ptr [ebp+arg_C], 8
+* ja loc_6730                             jg loc_3D1C
+  push 9                                  push 9
+* mov ecx, [ebp+arg_C]                    mov ecx, dword ptr [ebp+arg_C]
+  push ecx                                push ecx
+* lea eax, (aPnpdeviceresou_12 - 66E6h)[ebx]  lea eax, (aPnpdeviceresou_0 - 3CCEh)[esi]
+  push eax                                push eax
+* call _printf                            call _IOLog
+  xor eax, eax                            xor eax, eax
+* jmp loc_6889                            jmp loc_3E78
+* mov [ebp+var_1C], edi                   mov ebx, [ebp+var_18]
+* lea edx, [ebp+var_15]                   mov dl, [ebx+3]
+* mov eax, 3                              shl edx, 18h
+* nop                                     movzx eax, byte ptr [ebx+2]
+* mov ecx, [ebp+var_1C]                   shl eax, 10h
+* mov cl, [ecx]                           or edx, eax
+* mov [edx], cl                           movzx eax, byte ptr [ebx+1]
+* inc [ebp+var_1C]                        shl eax, 8
+* dec edx                                 or edx, eax
+* dec eax                                 movzx eax, byte ptr [ebx]
+* cmp eax, 0FFFFFFFFh                     or edx, eax
+* jnz loc_673C                            mov ebx, [ebp+arg_10]
+* mov ecx, [ebp+arg_10]                   mov ecx, [ebp+self]
+* mov [esi+64h], ecx                      mov [ecx+64h], ebx
+* mov ecx, [ebp-18h]                      push edx
+*                                         mov ecx, esi
+*                                         mov ecx, [ecx+6346h]
+  push ecx                                push ecx
+* mov ecx, ebx                            mov ebx, [ebp+self]
+* mov ecx, [ecx+59C6h]                    push ebx
+*                                         call _objc_msgSend
+*                                         mov ecx, [ebp+var_18]
+*                                         mov ecx, [ecx+4]
+*                                         mov [ebp+var_1C], ecx
+  push ecx                                push ecx
+* push esi                                mov ebx, esi
+*                                         mov ebx, [ebx+634Ah]
+*                                         push ebx
+*                                         mov ecx, [ebp+self]
+*                                         push ecx
+  call _objc_msgSend                      call _objc_msgSend
+* mov ecx, [edi+4]                        mov eax, ds:(_verbose_ptr - 3CCEh)[esi]
+*                                         add esp, 18h
+*                                         cmp byte ptr [eax], 0
+*                                         jz loc_3DFC
+*                                         mov ebx, [ebp+var_18]
+*                                         mov bl, [ebx+8]
+*                                         mov [ebp+var_20], bl
+*                                         mov ecx, esi
+*                                         mov ecx, [ecx+634Eh]
+  push ecx                                push ecx
+* mov ecx, ebx                            mov ebx, [ebp+self]
+* mov ecx, [ecx+59F2h]                    push ebx
+* push ecx
+* push esi
+  call _objc_msgSend                      call _objc_msgSend
+* add esp, 18h                            mov edi, eax
+* cmp ds:(_verbose - 66E6h)[ebx], 1
+* jnz loc_6818
+* movzx eax, byte ptr [edi+8]
+* push eax
+* mov ecx, ebx
+* mov ecx, [ecx+59F6h]
+* push ecx
+* push esi
+* call _objc_msgSend
+* add esp, 8
+* push eax
+* mov ecx, ebx
+* mov ecx, [ecx+59CEh]
+* push ecx
+* push esi
+* call _objc_msgSend
+* add esp, 8
+* push eax
+* mov ecx, ebx
+* mov ecx, [ecx+59CEh]
+* push ecx
+* push esi
+* call _objc_msgSend
+* add esp, 8
+* mov edx, eax
+  shr eax, 1Ah                            shr eax, 1Ah
+  and al, 1Fh                             and al, 1Fh
+  add al, 40h                             add al, 40h
+  mov [ebp+var_C], al                     mov [ebp+var_C], al
+* mov eax, edx                            mov eax, edi
+  shr eax, 15h                            shr eax, 15h
+  and al, 1Fh                             and al, 1Fh
+  add al, 40h                             add al, 40h
+  mov [ebp+var_B], al                     mov [ebp+var_B], al
+* mov eax, edx                            mov eax, edi
+  shr eax, 10h                            shr eax, 10h
+  and al, 1Fh                             and al, 1Fh
+  add al, 40h                             add al, 40h
+  mov [ebp+var_A], al                     mov [ebp+var_A], al
+* movzx eax, dx                           movzx eax, di
+  push eax                                push eax
+* lea eax, (a04x - 66E6h)[ebx]            lea eax, (a04x - 3CCEh)[esi]
+  push eax                                push eax
+*                                         lea ecx, [ebp+var_C]
+*                                         mov dword ptr [ebp+var_24], ecx
+  lea eax, [ebp+var_9]                    lea eax, [ebp+var_9]
+  push eax                                push eax
+  call _sprintf                           call _sprintf
+  mov [ebp+var_5], 0                      mov [ebp+var_5], 0
+* lea eax, [ebp+var_C]                    movzx eax, [ebp+var_20]
+* add esp, 0Ch
+  push eax                                push eax
+* lea eax, (aVendorIdS0xLxS - 66E6h)[ebx]  mov ebx, [ebp+var_1C]
+*                                         push ebx
+*                                         push edi
+*                                         mov ecx, dword ptr [ebp+var_24]
+*                                         push ecx
+*                                         lea eax, (aVendorIdS0xLxS - 3CCEh)[esi]
+  push eax                                push eax
+* call _printf                            call _IOLog
+* add esp, 14h                            add esp, 28h
+* mov ecx, ebx                            mov ebx, esi
+* mov ecx, [ecx+5972h]                    mov ebx, [ebx+6336h]
+*                                         push ebx
+*                                         mov ecx, esi
+*                                         mov ecx, [ecx+6332h]
+  push ecx                                push ecx
+* mov ecx, ebx                            mov ebx, esi
+* mov ecx, [ecx+594Ah]                    mov ebx, [ebx+6402h]
+* push ecx                                push ebx
+* mov ecx, ebx
+* mov ecx, [ecx+5A12h]
+* push ecx
+  call _objc_msgSend                      call _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call _objc_msgSend                      call _objc_msgSend
+* mov [esi+4], eax                        mov ecx, [ebp+self]
+*                                         mov [ecx+4], eax
+  add esp, 8                              add esp, 8
+  test eax, eax                           test eax, eax
+* jz loc_6870                             jz loc_3E5C
+* mov ecx, [ebp+arg_C]                    mov ecx, dword ptr [ebp+arg_C]
+  push ecx                                push ecx
+* lea eax, [edi+9]                        mov eax, [ebp+var_18]
+*                                         add eax, 9
+  push eax                                push eax
+* mov ecx, ebx                            mov ebx, esi
+* mov ecx, [ecx+59FAh]                    mov ebx, [ebx+6352h]
+*                                         push ebx
+*                                         mov ecx, [ebp+self]
+  push ecx                                push ecx
+* push esi
+  call _objc_msgSend                      call _objc_msgSend
+  add esp, 10h                            add esp, 10h
+* test al, al                             test eax, eax
+* jz loc_687C                             jz loc_3E68
+* mov eax, esi                            mov eax, [ebp+self]
+* jmp loc_6889                            jmp loc_3E78
+* lea eax, (aPnpdeviceresou_13 - 66E6h)[ebx]  lea eax, (aPnpdeviceresou_1 - 3CCEh)[esi]
+  push eax                                push eax
+* call _printf                            call _IOLog
+* mov ebx, ds:(off_C048 - 66E6h)[ebx]     mov esi, ds:(paFree_0 - 3CCEh)[esi]
+*                                         push esi
+*                                         mov ebx, [ebp+self]
+  push ebx                                push ebx
+* push esi
+  call _objc_msgSend                      call _objc_msgSend
+* lea esp, [ebp-28h]                      lea esp, [ebp-30h]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

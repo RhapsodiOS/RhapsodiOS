@@ -72,10 +72,10 @@ int main(int argc, char **argv)
             if (**argv == '-') {
                 argPtr = *argv;
                 while (argPtr = argPtr + 1, *argPtr != '\0') {
-                    if (*argPtr == 'c') {
-                        dumpCards = 1;
-                    } else if (*argPtr == 'd') {
+                    if (*argPtr == 'd') {
                         dumpConfig = 1;
+                    } else if (*argPtr == 'c') {
+                        dumpCards = 1;
                     } else {
                         bail("invalid option\n", 0);
                     }

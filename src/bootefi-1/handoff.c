@@ -18,6 +18,13 @@ extern struct seg_desc Gdt[6];
 
 extern void efi_handoff(unsigned int entry);
 
+/* efi_vga.c: resets the VGA card to standard text mode 3 (register
+ * programming + font reload + buffer clear) so the kernel's own VGA
+ * console setup lands on hardware left in a known-good state, matching
+ * what SeaBIOS/boot1 leave behind on the legacy path. Direct port/memory
+ * I/O only -- safe to call after ExitBootServices. */
+extern void efi_vga_reset_text_mode(void);
+
 struct gdt_descriptor {
     unsigned short limit;
     unsigned long  base;
@@ -58,8 +65,10 @@ void efi_exit_and_start(unsigned int entry)
             continue;
         }
         st = gBS->ExitBootServices(gImageHandle, key);
-        if (!EFI_ERROR(st))
+        if (!EFI_ERROR(st)) {
+            efi_vga_reset_text_mode();
             efi_handoff(entry);     /* never returns */
+        }
         /* ExitBootServices rejected the key -- get a fresh map and retry. */
     }
 

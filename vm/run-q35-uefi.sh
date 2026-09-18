@@ -67,10 +67,15 @@ cp "$vars_fd" "$vars_copy"
 # QEMU's default i386 CPU model lacks paging/NX support this OVMF DEBUG
 # build asserts on during DXE startup (before BDS even runs); Nehalem has
 # what it needs. (Task 3 finding.)
+#
+# disable_s3 tells OVMF that S3 (suspend-to-RAM) is unavailable, which
+# suppresses its low ACPI NVS S3 save-state reservation -- otherwise that
+# reservation caps the contiguous span the kernel can be given at ~7MB.
 exec "$qemu" \
     -machine q35 \
     -cpu Nehalem \
     -m 256 \
+    -global ICH9-LPC.disable_s3=1 \
     -drive if=pflash,format=raw,unit=0,readonly=on,file="$code_fd" \
     -drive if=pflash,format=raw,unit=1,file="$vars_copy" \
     -drive id=disk0,file="$dst_image",format=raw,if=none \

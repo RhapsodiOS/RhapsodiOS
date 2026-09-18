@@ -297,7 +297,14 @@ void efi_init_bootstruct(void)
     kernBootStruct->magicCookie = KERNBOOTMAGIC;
     kernBootStruct->configEnd = kernBootStruct->config;
     kernBootStruct->graphicsMode = TEXT_MODE;
-    kernBootStruct->first_addr0 = 0;
+    /* Must land above the live bootstruct contents: the kernel's
+     * pmap_bootstrap alloc_cnvmem() bump-allocates the IDT page and then
+     * its page directory/tables starting at first_addr0, and with this at
+     * 0 it builds page tables straight over KERNBOOTSTRUCT while the
+     * kernel is still reading it. Mirrors boot2's own two sites that set
+     * this the same way: src/boot-2/i386/libsaio/stringTable.c:749 and
+     * src/boot-2/i386/libsaio/drivers.c:759. */
+    kernBootStruct->first_addr0 = (int)kernBootStruct->configEnd + 1024;
 
     /* The kernel's setconf() reads rootdev from here, and -v turns on the
      * verbose output later tasks check for. kernDev is NOT set here: sys.c's

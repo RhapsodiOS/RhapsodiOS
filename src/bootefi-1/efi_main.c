@@ -106,6 +106,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
     printf("convmem %d extmem %d numIDEs %d\n",
            kernBootStruct->convmem, kernBootStruct->extmem,
            kernBootStruct->numIDEs);
+    printf("first_addr0 %x\n", kernBootStruct->first_addr0);
     printf("bootString '%s' kernDev %x magicCookie %x graphicsMode %d\n",
            kernBootStruct->bootString, kernBootStruct->kernDev,
            kernBootStruct->magicCookie, kernBootStruct->graphicsMode);

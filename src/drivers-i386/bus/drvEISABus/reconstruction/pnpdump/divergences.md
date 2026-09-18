@@ -5983,3 +5983,138 @@ Collapse each resource walk to `setDepStart:[[list] count]` in irq/dma/port/memo
   pop ebp                                 pop ebp
   retn                                    retn
 `
+
+### Task 6 `-[pnpIOPort initFrom:Length:Type:]` declaration order after header (2026-09-17)
+
+Reorder locals (`base` before `flags`), advance `data` after the flags byte, store `_length` before `_alignment`, and assign `_max_base` before `_min_base` on the fixed path. Leftover is type-8/9 block layout polarity, flags-bit jump polarity, and tool `_printf` / `_verbose` PIC versus reloc `_IOLog`. Accepted compiler-shaped leftover (reviewer Pat Raynor). Tool SHA `D54019890C601EE74DB643D35EA1E565DFFEDAABA24670B91DDC95F14B0946F2` (299180). Previously identical rows stayed matched (45). Unpaired count unchanged (10).
+
+```
+-[pnpIOPort initFrom:Length:Type:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 8                              sub esp, 8
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  call $+5                                call $+5
+  pop edi                                 pop edi
+  mov esi, [ebp+self]                     mov esi, [ebp+self]
+  mov ebx, [ebp+arg_8]                    mov ebx, [ebp+arg_8]
+  mov ecx, edi                            mov ecx, edi
+* mov ecx, [ecx+791Eh]                    mov ecx, [ecx+3C2Ah]
+  push ecx                                push ecx
+  mov [ebp+var_8.receiver], esi           mov [ebp+var_8.receiver], esi
+  mov ecx, edi                            mov ecx, edi
+* mov ecx, [ecx+7AD6h]                    mov ecx, [ecx+3E5Eh]
+  mov [ebp+var_8.super_class], ecx        mov [ebp+var_8.super_class], ecx
+  lea eax, [ebp+var_8]                    lea eax, [ebp+var_8]
+  push eax                                push eax
+  call _objc_msgSendSuper                 call _objc_msgSendSuper
+  add esp, 8                              add esp, 8
+  cmp [ebp+arg_10], 8                     cmp [ebp+arg_10], 8
+* jz loc_47C4                             jnz loc_646C
+* cmp [ebp+arg_10], 9                     cmp dword ptr [ebp+arg_C], 7
+* jnz loc_4842                            jz loc_641C
+* cmp [ebp+arg_C], 3                      mov ecx, dword ptr [ebp+arg_C]
+* jz loc_4788
+* mov ecx, [ebp+arg_C]
+  push ecx                                push ecx
+* lea eax, (aPnpdeviceresou - 473Ah)[edi]  lea eax, (aPnpdeviceresou_10 - 63DAh)[edi]
+* jmp loc_47D4                            jmp loc_6482
+* mov ax, [ebx]
+* and ah, 3
+* mov [esi+6], ax
+* mov [esi+4], ax
+* movzx ax, byte ptr [ebx+2]
+* mov [esi+0Ah], ax
+* mov [esi+8], ax
+* mov byte ptr [esi+0Ch], 0Ah
+* cmp ds:(_verbose - 473Ah)[edi], 0
+* jz loc_4842
+* lea eax, (aFixed - 473Ah)[edi]
+* push eax
+* call _printf
+* jmp loc_4835
+* cmp [ebp+arg_C], 7
+* jz loc_47EC
+* mov ecx, [ebp+arg_C]
+* push ecx
+* lea eax, (aPnpdeviceresou_0 - 473Ah)[edi]
+* push eax
+* call _printf
+* mov edi, ds:(off_C048 - 473Ah)[edi]
+* push edi
+* push esi
+* call _objc_msgSend
+* jmp loc_4844
+  mov dl, [ebx]                           mov dl, [ebx]
+  inc ebx                                 inc ebx
+  mov cx, [ebx]                           mov cx, [ebx]
+  mov [esi+4], cx                         mov [esi+4], cx
+  mov cx, [ebx+2]                         mov cx, [ebx+2]
+  mov [esi+6], cx                         mov [esi+6], cx
+  movzx cx, byte ptr [ebx+5]              movzx cx, byte ptr [ebx+5]
+  mov [esi+0Ah], cx                       mov [esi+0Ah], cx
+  movzx ax, byte ptr [ebx+4]              movzx ax, byte ptr [ebx+4]
+  mov [esi+8], ax                         mov [esi+8], ax
+  test ax, ax                             test ax, ax
+* jnz loc_481D                            jnz loc_644D
+  mov cx, [esi+0Ah]                       mov cx, [esi+0Ah]
+  mov [esi+8], cx                         mov [esi+8], cx
+  test dl, 1                              test dl, 1
+* jz loc_4828                             jnz loc_6458
+*                                         mov byte ptr [esi+0Ch], 0Ah
+*                                         jmp loc_645C
+  mov byte ptr [esi+0Ch], 10h             mov byte ptr [esi+0Ch], 10h
+* jmp loc_482C                            mov eax, ds:(_verbose_ptr - 63DAh)[edi]
+*                                         cmp byte ptr [eax], 0
+*                                         jz loc_64DB
+*                                         jmp loc_64CE
+*                                         cmp [ebp+arg_10], 9
+*                                         jnz loc_64DB
+*                                         cmp dword ptr [ebp+arg_C], 3
+*                                         jz loc_6498
+*                                         mov ecx, dword ptr [ebp+arg_C]
+*                                         push ecx
+*                                         lea eax, (aPnpdeviceresou_11 - 63DAh)[edi]
+*                                         push eax
+*                                         call _IOLog
+*                                         mov edi, ds:(paFree_0 - 63DAh)[edi]
+*                                         push edi
+*                                         push esi
+*                                         call _objc_msgSend
+*                                         jmp loc_64DD
+*                                         mov ax, [ebx]
+*                                         and ah, 3
+*                                         mov [esi+6], ax
+*                                         mov [esi+4], ax
+*                                         movzx ax, byte ptr [ebx+2]
+*                                         mov [esi+0Ah], ax
+*                                         mov [esi+8], ax
+  mov byte ptr [esi+0Ch], 0Ah             mov byte ptr [esi+0Ch], 0Ah
+* cmp ds:(_verbose - 473Ah)[edi], 0       mov eax, ds:(_verbose_ptr - 63DAh)[edi]
+* jz loc_4842                             cmp byte ptr [eax], 0
+* mov edi, ds:(paPrint - 473Ah)[edi]      jz loc_64DB
+*                                         lea eax, (aFixed - 63DAh)[edi]
+*                                         push eax
+*                                         call _IOLog
+*                                         mov edi, ds:(paPrint - 63DAh)[edi]
+  push edi                                push edi
+  push esi                                push esi
+  call _objc_msgSend                      call _objc_msgSend
+  mov eax, esi                            mov eax, esi
+  lea esp, [ebp-14h]                      lea esp, [ebp-14h]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

@@ -1908,7 +1908,7 @@
       "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 45,
-      "source_line": 205,
+      "source_line": 204,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
       "status": "intentional-mismatch"
     },
@@ -1930,7 +1930,7 @@
       "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 108,
-      "source_line": 182,
+      "source_line": 181,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
       "status": "intentional-mismatch"
     },
@@ -1954,33 +1954,31 @@
       "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 72,
-      "source_line": 125,
+      "source_line": 124,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
       "status": "intentional-mismatch"
     },
     {
       "address": 17268,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 6 declaration order after header parse (base before flags; post-increment data; length before alignment; max before min); leftover is type-8/9 layout polarity, flags-bit jump polarity, verbose PIC / _printf vs _IOLog on tool"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[pnpIOPort initFrom:Length:Type:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 266,
       "source_line": 50,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 17536,
@@ -2002,7 +2000,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 14,
-      "source_line": 139,
+      "source_line": 138,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
       "status": "assembly-matched"
     },
@@ -2026,7 +2024,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 14,
-      "source_line": 147,
+      "source_line": 146,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
       "status": "assembly-matched"
     },
@@ -2050,7 +2048,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 14,
-      "source_line": 155,
+      "source_line": 154,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
       "status": "assembly-matched"
     },
@@ -2074,7 +2072,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 14,
-      "source_line": 163,
+      "source_line": 162,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
       "status": "assembly-matched"
     },
@@ -2098,7 +2096,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 14,
-      "source_line": 171,
+      "source_line": 170,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
       "status": "assembly-matched"
     },
@@ -2122,7 +2120,7 @@
       "reason": null,
       "reviewer": null,
       "size": 231,
-      "source_line": 218,
+      "source_line": 217,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
       "status": "unexamined"
     },
@@ -3925,7 +3923,7 @@
       "status": "unexamined"
     }
   ],
-  "rebuilt_sha256": "27E6FFC4C2875ECCD322AD6FA55AD5D8B6F8256DF1B4DBDB55CA3A7950B7E805",
+  "rebuilt_sha256": "90981EC419B4016D184F560CD065F8D7CEA6070E3398F1FEC6F479E3B707A212",
   "reference_sha256": "8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23",
   "schema_version": "ledger-v1"
 }

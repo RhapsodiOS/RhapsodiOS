@@ -50,8 +50,8 @@ extern char verbose;
 - initFrom:(void *)buffer Length:(int)length Type:(int)type
 {
     unsigned char *data = (unsigned char *)buffer;
-    unsigned char flags;
     unsigned short base;
+    unsigned char flags;
 
     /* Call superclass init */
     [super init];
@@ -63,14 +63,13 @@ extern char verbose;
             return [self free];
         }
 
-        /* Parse flags byte */
-        flags = data[0];
-
-        /* Parse addresses and sizes */
-        _min_base = *(unsigned short *)(data + 1);
-        _max_base = *(unsigned short *)(data + 3);
-        _alignment = (unsigned short)data[5];
-        _length = (unsigned short)data[6];
+        /* Locals after header parse: flags, then length before alignment */
+        flags = *data;
+        data++;
+        _min_base = *(unsigned short *)data;
+        _max_base = *(unsigned short *)(data + 2);
+        _length = (unsigned short)data[5];
+        _alignment = (unsigned short)data[4];
 
         /* If alignment is 0, use length */
         if (_alignment == 0) {
@@ -96,10 +95,10 @@ extern char verbose;
             return [self free];
         }
 
-        /* Parse base address (mask to 10 bits) */
+        /* Parse base address (mask to 10 bits); max before min */
         base = *(unsigned short *)data & 0x3FF;
-        _min_base = base;
         _max_base = base;
+        _min_base = base;
 
         /* Parse length */
         _length = (unsigned short)data[2];

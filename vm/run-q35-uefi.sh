@@ -3,7 +3,9 @@
 # Rhapsody filesystem image (attached whole, so boot-2's read_label() sees
 # part_offset == 0), disk 1 is an ESP-only disk holding the UEFI loader that
 # OVMF boots from.  The Rhapsody source image is only copied; every writable
-# disk lives in vm/work.  COM1 is recorded in vm/logs/uefi-serial.log.
+# disk lives in vm/work.  COM1 is recorded in vm/logs/uefi-serial.log (OVMF
+# firmware and the loader); COM2, the Rhapsody kernel's console, is recorded
+# in vm/logs/uefi-kernel.log.
 
 set -eu
 
@@ -18,6 +20,7 @@ work_root=$repo_root/vm/work
 logs_dir=$repo_root/vm/logs
 firmware_dir=${UEFI_FIRMWARE_DIR:-$repo_root/vm/firmware}
 serial_log=$logs_dir/uefi-serial.log
+kernel_log=$logs_dir/uefi-kernel.log
 # Homebrew's qemu formula does not build on this host: it compiles every
 # target, and the ARM board files fail under clang 15.  An i386-only source
 # build lives in ~/opt/qemu-i386.  Prefer it, fall back to PATH.
@@ -84,5 +87,6 @@ exec "$qemu" \
     -device ide-hd,drive=disk0,bus=ahci.0 \
     -device ide-hd,drive=disk1,bus=ahci.1 \
     -serial "file:$serial_log" \
+    -serial "file:$kernel_log" \
     -display none \
     -vga std

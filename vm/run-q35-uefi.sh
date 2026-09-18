@@ -1,4 +1,13 @@
 #!/bin/sh
+# LOADER-LEVEL TESTING ONLY -- not the primary runner (see
+# run-pc-uefi-virtio-esp.sh for that) and not redundant with it: this is
+# q35 with an ICH9 AHCI controller, which exercises the UEFI LOADER's own
+# EFI_BLOCK_IO path against a different disk controller than the primary
+# runner uses. The Rhapsody KERNEL cannot find its disk here -- there is no
+# legacy IDE at port 0x1f0 on q35, and the media has no AHCI driver -- so
+# this is useful for checking the loader itself, not for kernel-level work
+# such as root-mount testing.
+#
 # Boot the two-disk UEFI layout under QEMU with IA32 OVMF: disk 0 is the
 # Rhapsody filesystem image (attached whole, so boot-2's read_label() sees
 # part_offset == 0), disk 1 is an ESP-only disk holding the UEFI loader that

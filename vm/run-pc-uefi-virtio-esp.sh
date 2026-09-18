@@ -1,16 +1,24 @@
 #!/bin/sh
-# Same as run-pc-uefi.sh (i440FX/PIIX3 IDE for the Rhapsody disk), but the
-# ESP disk is attached as virtio-blk instead of secondary IDE -- an
-# experiment from task 10 (.superpowers/sdd/task-10-rootmount-report.md) to
-# check whether the ESP's presence on the second IDE channel was
-# interfering with the EIDE boot driver's probe of the first.  It was not:
-# root-mount reaches the identical "interrupt timeout, cmd: 0xc4" /
-# "ATA drive 0 is not present" failure either way, matching the kernel PIC
-# bug documented in docs/kernel/i8259-spurious-slave-irq.md.  Freeing the
-# secondary IDE channel entirely does let the EIDE driver reach further
-# (a clean "hc1: no devices detected at port 0x170" and an actual root-read
-# attempt at a real cyl/sector) before hitting that same bug, so this
-# variant is kept as the better diagnostic harness for that area.
+# DEFAULT/PRIMARY runner for kernel-level work. i440FX with PIIX3 IDE for
+# the Rhapsody disk -- the controller the media's EIDE boot driver can
+# actually probe -- and the ESP on virtio-blk instead of a second IDE
+# channel, so the ESP does not occupy a channel the EIDE driver might walk.
+# Use this whenever the goal is exercising the kernel's own disk/root-mount
+# path, as opposed to the loader's EFI_BLOCK_IO path (see run-q35-uefi.sh
+# for that).
+#
+# This originated as an experiment from task 10
+# (.superpowers/sdd/task-10-rootmount-report.md) to check whether the ESP's
+# presence on the second IDE channel was interfering with the EIDE boot
+# driver's probe of the first. It was not: root-mount reaches the identical
+# "interrupt timeout, cmd: 0xc4" / "ATA drive 0 is not present" failure
+# either way, matching the kernel PIC bug documented in
+# docs/kernel/i8259-spurious-slave-irq.md. Freeing the secondary IDE channel
+# entirely does let the EIDE driver reach further (a clean "hc1: no devices
+# detected at port 0x170" and an actual root-read attempt at a real
+# cyl/sector) before hitting that same bug, which is why this variant
+# replaced the plain i440FX/PIIX-IDE-ESP runner (formerly run-pc-uefi.sh,
+# removed) as the better harness for kernel-level work.
 
 set -eu
 
@@ -72,7 +80,14 @@ cp "$src_image" "$dst_image"
 vars_copy=$work_root/OVMF32_VARS.fd
 cp "$vars_fd" "$vars_copy"
 
-# See run-pc-uefi.sh for the Nehalem/disable_s3 rationale (unchanged here).
+# QEMU's default i386 CPU model lacks paging/NX support this OVMF DEBUG
+# build asserts on during DXE startup (before BDS even runs); Nehalem has
+# what it needs. disable_s3 tells the platform that S3 (suspend-to-RAM) is
+# unavailable, which suppresses OVMF's low ACPI NVS S3 save-state
+# reservation -- otherwise that reservation caps the contiguous span the
+# kernel can be given at ~7MB. On i440FX the ACPI/PM function lives in the
+# PIIX4 PM device rather than ICH9-LPC; PIIX4_PM.disable_s3 is its
+# equivalent.
 exec "$qemu" \
     -machine pc \
     -cpu Nehalem \

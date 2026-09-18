@@ -14,6 +14,21 @@ efi_handoff:
         movl    %cr0, %eax
         andl    $0x7FFFFFFF, %eax
         movl    %eax, %cr0
+
+        /* UEFI firmware runs IA32 with CR4.PAE (and other firmware-era
+         * bits: MCE, OSFXSR, OSXMMEXCPT) set.  This 1999 kernel predates
+         * PAE and builds a classic two-level (non-PAE) page directory; if
+         * CR4.PAE is still set when it loads CR3 and re-enables paging,
+         * the CPU parses its page tables in the wrong format entirely.
+         * Zero CR4 to match the CR4==0 BIOS-era environment this kernel
+         * was written for.  CR4.PAE cannot be changed while paging is
+         * enabled, so this must happen after CR0.PG is cleared above and
+         * before CR3/paging are touched again -- do not delete this as
+         * redundant.
+         */
+        xorl    %eax, %eax
+        movl    %eax, %cr4
+
         xorl    %eax, %eax
         movl    %eax, %cr3
 

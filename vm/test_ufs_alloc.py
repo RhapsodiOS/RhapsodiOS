@@ -9,6 +9,7 @@ import subprocess
 import tempfile
 import unittest
 
+import rhap_image
 import ufs_alloc
 import ufs_check
 
@@ -82,6 +83,63 @@ class TestFragmentAllocation(unittest.TestCase):
                                  "fragment %d still marked free" % f)
             a.flush()
         self.assertEqual(ufs_check.check(self.img), [])
+
+
+class TestInodeAllocation(unittest.TestCase):
+    def setUp(self):
+        if not _present(GOLDEN):
+            self.skipTest("golden.img not present")
+        self.tmp = tempfile.mkdtemp(prefix="ufsalloc-", dir=os.path.join(HERE, "work"))
+        self.addCleanup(shutil.rmtree, self.tmp)
+        self.img = os.path.join(self.tmp, "test.img")
+        clone(GOLDEN, self.img)
+
+    def test_inode_allocation_then_release_restores_counts(self):
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            before = a.fs_cstotal()
+            ino = a.alloc_inode()
+            self.assertGreater(ino, 2)
+            a.flush()
+        self.assertEqual(ufs_check.check(self.img), [])
+
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            a.free_inode(ino)
+            a.flush()
+        self.assertEqual(ufs_check.check(self.img), [])
+        with ufs_alloc.Allocator(self.img) as a:
+            self.assertEqual(a.fs_cstotal(), before)
+
+    def test_directory_inode_bumps_ndir(self):
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            ndir_before = a.fs_cstotal()[0]
+            a.alloc_inode(is_dir=True)
+            a.flush()
+        with ufs_alloc.Allocator(self.img) as a:
+            self.assertEqual(a.fs_cstotal()[0], ndir_before + 1)
+        self.assertEqual(ufs_check.check(self.img), [])
+
+    def test_write_inode_round_trips_and_sets_blocks(self):
+        db = [0] * 12
+        ib = [0, 0, 0]
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            ino = a.alloc_inode()
+            a.write_inode(ino, mode=0o100644, size=1024, db=db, ib=ib,
+                          nlink=1, mtime=1234567890)
+            a.set_inode_blocks(ino, 2)
+            a.flush()
+        self.assertEqual(ufs_check.check(self.img), [])
+        with rhap_image.Image(self.img) as img:
+            n = img.inode(ino)
+            self.assertEqual(n.mode, 0o100644)
+            self.assertEqual(n.nlink, 1)
+            self.assertEqual(n.size, 1024)
+            self.assertEqual(n.mtime, 1234567890)
+            self.assertEqual(n.db, db)
+            self.assertEqual(n.ib, ib)
+            self.assertEqual(n.blocks, 2)
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            a.free_inode(ino)
+            a.flush()
 
 
 if __name__ == "__main__":

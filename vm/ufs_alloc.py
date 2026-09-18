@@ -70,6 +70,7 @@ class Allocator(object):
         self._cg_cache = {}        # cg index -> mutable header-block bytearray
         self._sb_cache = None      # mutable copy of the superblock block
         self._cstable_cache = None  # mutable copy of the fs_csaddr table
+        self._inode_cache = {}     # fragment number -> mutable dinode-block bytearray
 
     def __enter__(self):
         return self
@@ -217,6 +218,105 @@ class Allocator(object):
         nffree += tables.nffree - old_nffree
         struct.pack_into("<4i", sb, SB_CSTOTAL_OFF, ndir, nbfree, nifree, nffree)
 
+    def _dirty_inode_block(self, frag):
+        """The live, mutable cached dinode-block buffer covering fragment
+        `frag` (frag-aligned, self.g.bsize bytes -- the same unit
+        rhap_image._inode_location and Image.read_frag(..., bsize) use).
+        """
+        if frag not in self._inode_cache:
+            self._inode_cache[frag] = bytearray(
+                self.img.read_frag(frag, self.g.bsize))
+        return self._inode_cache[frag]
+
+    def _apply_inode_delta(self, c, local_indices, to_used, is_dir):
+        """Flip inodes in group c's used-inode bitmap and update cg_cs,
+        this group's fs_csaddr slot, and fs_cstotal -- the same three
+        places _apply_group_delta keeps in step for fragments.  Pending
+        only; nothing touches disk until flush().
+        """
+        buf = self._dirty_cg(c)
+        iusedoff = struct.unpack_from("<i", buf, CG_OFFSETS_OFF + 8)[0]
+        nbytes = (self.g.ipg + 7) // 8
+        inosused = bytearray(buf[iusedoff:iusedoff + nbytes])
+        for i in local_indices:
+            byte, bit = divmod(i, 8)
+            if to_used:
+                inosused[byte] |= (1 << bit)
+            else:
+                inosused[byte] &= ~(1 << bit) & 0xFF
+        buf[iusedoff:iusedoff + nbytes] = inosused
+
+        old_ndir, old_nbfree, old_nifree, old_nffree = struct.unpack_from(
+            "<4i", buf, CG_CS_OFF)
+        n = len(local_indices)
+        nifree_delta = -n if to_used else n
+        ndir_delta = (n if to_used else -n) if is_dir else 0
+        new_ndir = old_ndir + ndir_delta
+        new_nifree = old_nifree + nifree_delta
+        struct.pack_into("<4i", buf, CG_CS_OFF,
+                          new_ndir, old_nbfree, new_nifree, old_nffree)
+
+        cstable = self._dirty_cstable()
+        struct.pack_into("<4i", cstable, c * 16,
+                          new_ndir, old_nbfree, new_nifree, old_nffree)
+
+        sb = self._dirty_sb()
+        ndir, nbfree, nifree, nffree = struct.unpack_from(
+            "<4i", sb, SB_CSTOTAL_OFF)
+        ndir += ndir_delta
+        nifree += nifree_delta
+        struct.pack_into("<4i", sb, SB_CSTOTAL_OFF, ndir, nbfree, nifree, nffree)
+
+    def alloc_inode(self, is_dir=False):
+        """Claim the lowest-numbered free inode (never 0, 1 or 2 -- those
+        are reserved and already marked used on any real filesystem).
+        Updates the group's inode bitmap, cs_nifree, and cs_ndir when
+        is_dir.  Returns the inode number.
+        """
+        self._require_writable("alloc_inode")
+        for c in range(self.cg_count):
+            inosused = self.inosused(c)
+            for local in range(self.g.ipg):
+                ino = c * self.g.ipg + local
+                if ino < 3:
+                    continue
+                if not ufs_cg.bit_is_set(inosused, local):
+                    self._apply_inode_delta(c, [local], to_used=True,
+                                             is_dir=is_dir)
+                    return ino
+        raise SafetyError("no free inode in any cylinder group")
+
+    def free_inode(self, ino, is_dir=False):
+        """Release an inode previously returned by alloc_inode."""
+        self._require_writable("free_inode")
+        c, local = divmod(ino, self.g.ipg)
+        self._apply_inode_delta(c, [local], to_used=False, is_dir=is_dir)
+
+    def write_inode(self, ino, mode, size, db, ib, nlink, mtime):
+        """Write a 128-byte dinode.  db is the 12 direct block pointers,
+        ib the 3 indirect ones (rhap_image.Inode's layout: mode at 0,
+        nlink at 2, size at 8, mtime at 24, db at 40, ib at 88).
+        """
+        self._require_writable("write_inode")
+        if len(db) != rhap_image.NDADDR:
+            raise ValueError("db must have %d entries" % rhap_image.NDADDR)
+        if len(ib) != rhap_image.NIADDR:
+            raise ValueError("ib must have %d entries" % rhap_image.NIADDR)
+        frag, entry = rhap_image._inode_location(self.img, ino)
+        buf = self._dirty_inode_block(frag)
+        struct.pack_into("<Hh", buf, entry, mode, nlink)
+        struct.pack_into("<Q", buf, entry + 8, size)
+        struct.pack_into("<i", buf, entry + 24, mtime)
+        struct.pack_into("<%di" % rhap_image.NDADDR, buf, entry + 40, *db)
+        struct.pack_into("<%di" % rhap_image.NIADDR, buf, entry + 88, *ib)
+
+    def set_inode_blocks(self, ino, nsectors):
+        """Set di_blocks, which counts 512-byte sectors (not fragments)."""
+        self._require_writable("set_inode_blocks")
+        frag, entry = rhap_image._inode_location(self.img, ino)
+        buf = self._dirty_inode_block(frag)
+        struct.pack_into("<i", buf, entry + 104, nsectors)
+
     def alloc_frags(self, n):
         """Allocate n fragments, as whole fs_frag-sized blocks plus at most
         one partial tail block for the remainder, all from a single
@@ -283,10 +383,14 @@ class Allocator(object):
             off = self.img.part_start + self.g.csaddr * self.g.fsize
             f.seek(off)
             f.write(bytes(self._cstable_cache))
+        for frag, buf in self._inode_cache.items():
+            f.seek(self.img.frag_offset(frag))
+            f.write(bytes(buf))
         f.flush()
         self._cg_cache.clear()
         self._sb_cache = None
         self._cstable_cache = None
+        self._inode_cache.clear()
 
     def validate(self):
         """Refuse to proceed unless our model already matches a good filesystem."""

@@ -48,6 +48,39 @@ def check(image_path):
                     "cg %d: recomputed cg_frsum %s != recorded %s"
                     % (c, tables.frsum, recorded_frsum))
 
+            btotoff, boff, _iusedoff, _freeoff = struct.unpack_from(
+                "<4i", buf, ufs_alloc.CG_OFFSETS_OFF)
+            recorded_blktot = struct.unpack_from("<%di" % g.cpg, buf, btotoff)
+            if list(tables.blktot) != list(recorded_blktot):
+                problems.append(
+                    "cg %d: recomputed cg_btot %s != recorded %s"
+                    % (c, tables.blktot, recorded_blktot))
+            recorded_blks = struct.unpack_from(
+                "<%dh" % (g.cpg * g.nrpos), buf, boff)
+            if list(tables.blks) != list(recorded_blks):
+                problems.append(
+                    "cg %d: recomputed cg_blks %s != recorded %s"
+                    % (c, tables.blks, recorded_blks))
+
+            if g.contigsumsize > 0:
+                clustersumoff, clusteroff, nclusterblks = struct.unpack_from(
+                    "<3i", buf, 104)
+                clustersfree, clustersum = ufs_cg.recompute_cluster_maps(
+                    g, blksfree, nclusterblks)
+                nclusterbytes = (g.fpg // g.frag + 7) // 8
+                recorded_clustersfree = bytes(
+                    buf[clusteroff:clusteroff + nclusterbytes])
+                if clustersfree != recorded_clustersfree:
+                    problems.append(
+                        "cg %d: recomputed cg_clustersfree %s != recorded %s"
+                        % (c, clustersfree, recorded_clustersfree))
+                recorded_clustersum = struct.unpack_from(
+                    "<%di" % len(clustersum), buf, clustersumoff)
+                if list(clustersum) != list(recorded_clustersum):
+                    problems.append(
+                        "cg %d: recomputed cg_clustersum %s != recorded %s"
+                        % (c, clustersum, recorded_clustersum))
+
             inosused = a.inosused(c)
             used = _popcount(inosused, g.ipg)
             computed_nifree = g.ipg - used

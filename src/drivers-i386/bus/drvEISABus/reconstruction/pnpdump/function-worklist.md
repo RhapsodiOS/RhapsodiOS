@@ -3,25 +3,34 @@
 Date: 2026-09-17
 Branch: `pnpdump-binrecon-finish`
 
-First dual guest rebuild after the Task 3 source split. No instruction-shape edits in this pass.
+Task 7 campaign close. Instruction-stream stop condition met (original 27 closed; accept-pass leftovers closed). No further source-shape edits. Hardware testing is still out of scope.
 
-## Identities
+## Identities (last kept rebuild)
 
 ### Tool (`PnPDump`)
 
 | Side | SHA-256 | Size | `__TEXT,__text` |
 | --- | --- | --- | --- |
 | Reference | `006DC6BB73CEBC6243DA669E5199AEC808F309E72C3EE617A3FD8ED310364772` | 59260 | 21865 |
-| Rebuilt | `04B61B40568C6830F076C83D45FE7511EE2FE04AE68C0043BF4BCF5B3E2EF8B9` | 299684 | 17391 |
+| Rebuilt | `DF66A4B85E5A905647B6004E981A6C9739C3A8FF591731539D5B6BE65C5E8A4F` | 299892 | 17583 |
 
 ### Reloc (`EISABus_reloc`)
 
 | Side | SHA-256 | Size | `__TEXT,__text` |
 | --- | --- | --- | --- |
 | Reference | `8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23` | 100752 | 28808 |
-| Rebuilt | `4430CA7B3DE0161164445D54DAF584B88CB0D48DFF5E7D55F565670A900E41F8` | 603952 | 27424 |
+| Rebuilt | `4A2889879B19B4DC315813BFD4443CE35FB45A6EC1714EEC4924817976BA91E9` | 603536 | 27404 |
 
-Rebuilt Mach-Os are the guest copies under `out/i386/drvEISABus/EISABus.config/` (magic `CE FA ED FE`). Size growth vs Apple is unstripped debug, not a finding.
+Rebuilt Mach-Os are the guest copies under `out/i386/drvEISABus/EISABus.config/` (magic `CE FA ED FE`). Size growth vs Apple is unstripped debug, not a finding. Both ledger `rebuilt_sha256` fields match these last-kept artifacts.
+
+## Final `--list` (IDA)
+
+| Profile | Functions | Identical | Masked-eq | Accepted (`intentional-mismatch`) | Shared nine-class on reloc |
+| --- | --- | --- | --- | --- | --- |
+| Tool (`PnPDump`) | 186 | **45** | **0** | **96** (PnPDump ledger) | n/a (see reloc) |
+| Reloc (`EISABus_reloc`) | 175 | **46** | **20** | **31** shared-class in reloc ledger | **43** identical + **10** masked-eq among the 93 shared names |
+
+Footer differing counts (131 tool / 118 reloc) fold masked-eq into the non-identical paired bucket. Unpaired unchanged: tool **10**, reloc **11**.
 
 ## Parity
 
@@ -150,7 +159,38 @@ Present on the tool `--list` and **not** in the nine-class shared set:
 
 ## Tool `--list` summary (IDA)
 
-186 functions: **43** byte-identical, **0** masked-eq, **133** remaining differing, **10** unpaired.
+186 functions: **45** byte-identical, **0** masked-eq, **131** remaining differing, **10** unpaired.
+
+## Task 7 rbuild gate
+
+Guest sync: `vm\sync-src.ps1 -Path drivers-i386/bus/drvEISABus` only (not `-All`), then one:
+
+```sh
+export PATH=/build/tools/bin:/build/bin:/usr/local/bin:/bin:/usr/bin
+rbuild buildpackage --arch i386 --dir /build/source/src/drivers-i386/bus/drvEISABus /build/repo /build/built
+```
+
+via `Invoke-RhapSshScript` (`/build/tools/bin/rbuild`).
+
+**Exit status:** `1` (rbuild reported `failed with status 2`). Packaging is **not** done; did not hand-extract an APK.
+
+**Last log lines:**
+
+```
+make: Entering directory `/private/tmp/roots/drveisabus-0.roots/drveisabus-0'
+make: javaconfig: Command not found
+== Making installhdrs for i386 in EISABus.drvproj ==
+make[1]: Entering directory `/private/tmp/roots/drveisabus-0.roots/drveisabus-0/EISABus.drvproj'
+make[1]: Leaving directory `/private/tmp/roots/drveisabus-0.roots/drveisabus-0/EISABus.drvproj'
+/bin/shMakefile:46: /System/Developer/Makefiles/pb_makefiles/driver.make: No such file or directory
+make: Leaving directory `/private/tmp/roots/drveisabus-0.roots/drveisabus-0'
+make[1]: *** No rule to make target `installhdrs'.  Stop.
+RBUILD_EXIT=1
+make: *** [installhdrs@EISABus.drvproj] Error 2
+rbuild: failed with status 2
+```
+
+Failure is missing `driver.make` / DriverKit packaging deps in the build root, not an instruction-stream regression. Reconstruction campaign still closes.
 
 ## Reachability
 

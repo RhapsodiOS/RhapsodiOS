@@ -183,36 +183,32 @@ void IOUnscheduleFunc(void (*func)(void *), void *arg)
     [calloutLock lock];
 
     /* Walk the callout chain looking for matching entry */
-    entry = calloutChain;
-    if (entry != (CalloutEntry *)&calloutChain) {
-        do {
-            if ((entry->func == func) && (entry->arg == arg)) {
-                /* Found matching entry, unlink it */
-                prev = entry->prev;
-                next = entry->next;
+    for (entry = calloutChain;
+         entry != (CalloutEntry *)&calloutChain;
+         entry = entry->prev) {
+        if ((entry->func == func) && (entry->arg == arg)) {
+            /* Found matching entry, unlink it */
+            prev = entry->prev;
+            next = entry->next;
 
-                /* Update prev's next pointer */
-                prevLink = prev;
-                if (prev != (CalloutEntry *)&calloutChain) {
-                    prevLink = (CalloutEntry *)&prev->prev;
-                }
-                prevLink->next = next;
-
-                /* Update next's prev pointer */
-                nextLink = next;
-                if (next != (CalloutEntry *)&calloutChain) {
-                    nextLink = (CalloutEntry *)&next->prev;
-                }
-                nextLink->prev = prev;
-
-                /* Free the entry */
-                IOFree(entry, 0x18);
-                break;
+            /* Update prev's next pointer */
+            prevLink = prev;
+            if (prev != (CalloutEntry *)&calloutChain) {
+                prevLink = (CalloutEntry *)&prev->prev;
             }
+            prevLink->next = next;
 
-            /* Move to next entry */
-            entry = *(CalloutEntry **)&entry->prev;
-        } while (entry != (CalloutEntry *)&calloutChain);
+            /* Update next's prev pointer */
+            nextLink = next;
+            if (next != (CalloutEntry *)&calloutChain) {
+                nextLink = (CalloutEntry *)&next->prev;
+            }
+            nextLink->prev = prev;
+
+            /* Free the entry */
+            IOFree(entry, 0x18);
+            break;
+        }
     }
 
     /* Unlock the callout chain */

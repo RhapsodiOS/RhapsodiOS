@@ -301,7 +301,7 @@ Accepted 2026-09-17: remaining `none` hand-written rows are `intentional-mismatc
 - `-[pnpIRQ matches:]` (shared, diff 44; reloc different d=33): if vs else if on `otherCount != 1` — **tried, kept**; leftover is Apple tool `_printf` vs `_IOLog`, double `[number]` / in-loop `irqs` vs local; **accepted** compiler-shaped on both
 - `-[pnpDMA print]` (shared, diff 48; reloc different d=34): none — Apple tool `_printf` vs rebuilt `_IOLog`; reloc both `_IOLog`
 - `__PMRestoreDefaults` (tool-only, diff 51): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
-- `_IOUnscheduleFunc` (tool-only, diff 52): loop shape of the callout-chain walk
+- `_IOUnscheduleFunc` (tool-only, diff 52): loop shape of the callout-chain walk — **tried, kept**; leftover is PIC GOT vs lea plus unlink addr math; **accepted** compiler-shaped
 - `__IOMapEISADevicePorts` (tool-only, diff 56): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
 - `__IOUnMapEISADevicePorts` (tool-only, diff 56): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
 - `__PMSetPowerManagement` (tool-only, diff 61): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub

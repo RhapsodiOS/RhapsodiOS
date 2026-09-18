@@ -915,7 +915,7 @@
         "_IOCopyMemory"
       ],
       "size": 28,
-      "source_line": 436,
+      "source_line": 432,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -924,7 +924,7 @@
         "_IOForkThread"
       ],
       "size": 20,
-      "source_line": 346,
+      "source_line": 342,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -933,7 +933,7 @@
         "_IOSuspendThread"
       ],
       "size": 19,
-      "source_line": 226,
+      "source_line": 222,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -942,7 +942,7 @@
         "_IOResumeThread"
       ],
       "size": 19,
-      "source_line": 322,
+      "source_line": 318,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -951,7 +951,7 @@
         "_IOExitThread"
       ],
       "size": 14,
-      "source_line": 399,
+      "source_line": 395,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -960,7 +960,7 @@
         "_IOSleep"
       ],
       "size": 50,
-      "source_line": 235,
+      "source_line": 231,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -969,7 +969,7 @@
         "_IODelay"
       ],
       "size": 70,
-      "source_line": 408,
+      "source_line": 404,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -978,7 +978,7 @@
         "_IOScheduleFunc"
       ],
       "size": 388,
-      "source_line": 255,
+      "source_line": 251,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -987,7 +987,7 @@
         "_calloutThread"
       ],
       "size": 255,
-      "source_line": 441,
+      "source_line": 437,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1023,7 +1023,7 @@
         "_IOPanic"
       ],
       "size": 34,
-      "source_line": 331,
+      "source_line": 327,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1032,7 +1032,7 @@
         "_IOFindNameForValue"
       ],
       "size": 76,
-      "source_line": 379,
+      "source_line": 375,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1041,7 +1041,7 @@
         "_IOFindValueForName"
       ],
       "size": 78,
-      "source_line": 357,
+      "source_line": 353,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1059,7 +1059,7 @@
         "__IOLookupByObjectNumber"
       ],
       "size": 362,
-      "source_line": 471,
+      "source_line": 467,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1068,7 +1068,7 @@
         "__IOLookupByDeviceName"
       ],
       "size": 298,
-      "source_line": 470,
+      "source_line": 466,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1077,7 +1077,7 @@
         "__IOGetIntValues"
       ],
       "size": 546,
-      "source_line": 468,
+      "source_line": 464,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1086,7 +1086,7 @@
         "__IOGetCharValues"
       ],
       "size": 543,
-      "source_line": 465,
+      "source_line": 461,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1095,7 +1095,7 @@
         "__IOSetIntValues"
       ],
       "size": 413,
-      "source_line": 476,
+      "source_line": 472,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1104,7 +1104,7 @@
         "__IOSetCharValues"
       ],
       "size": 405,
-      "source_line": 475,
+      "source_line": 471,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1113,7 +1113,7 @@
         "__IOGetEISADeviceConfig"
       ],
       "size": 851,
-      "source_line": 467,
+      "source_line": 463,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1122,7 +1122,7 @@
         "__IOMapEISADevicePorts"
       ],
       "size": 186,
-      "source_line": 473,
+      "source_line": 469,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1131,7 +1131,7 @@
         "__IOUnMapEISADevicePorts"
       ],
       "size": 186,
-      "source_line": 477,
+      "source_line": 473,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1140,7 +1140,7 @@
         "__IOMapEISADeviceMemory"
       ],
       "size": 311,
-      "source_line": 472,
+      "source_line": 468,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1149,7 +1149,7 @@
         "__IOProbeDriver"
       ],
       "size": 301,
-      "source_line": 474,
+      "source_line": 470,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1158,7 +1158,7 @@
         "__IOGetSystemConfig"
       ],
       "size": 384,
-      "source_line": 469,
+      "source_line": 465,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1167,7 +1167,7 @@
         "__IOUnloadDriver"
       ],
       "size": 301,
-      "source_line": 478,
+      "source_line": 474,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1176,7 +1176,7 @@
         "__IOGetDriverConfig"
       ],
       "size": 384,
-      "source_line": 466,
+      "source_line": 462,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1185,7 +1185,7 @@
         "__PMSetPowerState"
       ],
       "size": 202,
-      "source_line": 483,
+      "source_line": 479,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1194,7 +1194,7 @@
         "__PMGetPowerEvent"
       ],
       "size": 207,
-      "source_line": 479,
+      "source_line": 475,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1203,7 +1203,7 @@
         "__PMGetPowerStatus"
       ],
       "size": 227,
-      "source_line": 480,
+      "source_line": 476,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1212,7 +1212,7 @@
         "__PMSetPowerManagement"
       ],
       "size": 202,
-      "source_line": 482,
+      "source_line": 478,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1221,7 +1221,7 @@
         "__PMRestoreDefaults"
       ],
       "size": 166,
-      "source_line": 481,
+      "source_line": 477,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1230,7 +1230,7 @@
         "__IOCallDeviceMethod"
       ],
       "size": 691,
-      "source_line": 464,
+      "source_line": 460,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1239,7 +1239,7 @@
         "__IOCreateMachPort"
       ],
       "size": 223,
-      "source_line": 455,
+      "source_line": 451,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     },
     {
@@ -1284,7 +1284,7 @@
         "__IOCopyMemory"
       ],
       "size": 249,
-      "source_line": 450,
+      "source_line": 446,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
     }
   ],

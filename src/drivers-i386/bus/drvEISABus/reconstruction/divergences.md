@@ -2640,3 +2640,92 @@ Same else-if as the tool. Leftover is Apple's double `[number]` and in-loop `irq
   pop ebp                                 pop ebp
   retn                                    retn
 `
+
+### Task 6 -[PnPResources markStartDependentResources] nested walks (2026-09-17)
+
+Same nested walks as the tool. Reloc stream nearly matches Apple; leftover is the final `[ebx+10h]` push register versus ebx clobber plus explicit return self. Accepted compiler-shaped leftover (reviewer Pat Raynor). Reloc SHA 27E6FFC4C2875ECCD322AD6FA55AD5D8B6F8256DF1B4DBDB55CA3A7950B7E805 (603492). Previously identical rows stayed matched (46). Unpaired count unchanged (11).
+
+`
+-[PnPResources markStartDependentResources]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push ebx                                push ebx
+  mov ebx, [ebp+self]                     mov ebx, [ebp+self]
+  mov edx, ds:paCount                     mov edx, ds:paCount
+  push edx                                push edx
+  mov edx, ds:paList_0                    mov edx, ds:paList_0
+  push edx                                push edx
+  mov edx, [ebx+4]                        mov edx, [ebx+4]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  push eax                                push eax
+  mov edx, ds:paSetdepstart               mov edx, ds:paSetdepstart
+  push edx                                push edx
+  mov edx, [ebx+4]                        mov edx, [ebx+4]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov edx, ds:paCount                     mov edx, ds:paCount
+  push edx                                push edx
+  mov edx, ds:paList_0                    mov edx, ds:paList_0
+  push edx                                push edx
+  mov edx, [ebx+8]                        mov edx, [ebx+8]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  push eax                                push eax
+  mov edx, ds:paSetdepstart               mov edx, ds:paSetdepstart
+  push edx                                push edx
+  mov edx, [ebx+8]                        mov edx, [ebx+8]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 28h                            add esp, 28h
+  mov edx, ds:paCount                     mov edx, ds:paCount
+  push edx                                push edx
+  mov edx, ds:paList_0                    mov edx, ds:paList_0
+  push edx                                push edx
+  mov edx, [ebx+0Ch]                      mov edx, [ebx+0Ch]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  push eax                                push eax
+  mov edx, ds:paSetdepstart               mov edx, ds:paSetdepstart
+  push edx                                push edx
+  mov edx, [ebx+0Ch]                      mov edx, [ebx+0Ch]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov edx, ds:paCount                     mov edx, ds:paCount
+  push edx                                push edx
+  mov edx, ds:paList_0                    mov edx, ds:paList_0
+  push edx                                push edx
+  mov edx, [ebx+10h]                      mov edx, [ebx+10h]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  push eax                                push eax
+  mov edx, ds:paSetdepstart               mov edx, ds:paSetdepstart
+  push edx                                push edx
+* mov ebx, [ebx+10h]                      mov edx, [ebx+10h]
+* push ebx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+*                                         mov eax, ebx
+  mov ebx, [ebp+var_4]                    mov ebx, [ebp+var_4]
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+`

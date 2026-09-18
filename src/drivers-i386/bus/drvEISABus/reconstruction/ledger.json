@@ -2645,7 +2645,7 @@
       "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 144,
-      "source_line": 540,
+      "source_line": 523,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
       "status": "intentional-mismatch"
     },
@@ -2693,7 +2693,7 @@
       "reason": null,
       "reviewer": null,
       "size": 713,
-      "source_line": 246,
+      "source_line": 229,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
       "status": "unexamined"
     },
@@ -2717,7 +2717,7 @@
       "reason": null,
       "reviewer": null,
       "size": 1045,
-      "source_line": 364,
+      "source_line": 347,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
       "status": "unexamined"
     },
@@ -2944,26 +2944,24 @@
     {
       "address": 22996,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 6 nested [[list] count] setDepStart walks in irq/dma/port/memory order; leftover is PIC / last-push register vs ebx clobber plus explicit return self"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[PnPResources markStartDependentResources]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 213,
       "source_line": 158,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 23212,
@@ -2985,7 +2983,7 @@
       "reason": null,
       "reviewer": null,
       "size": 256,
-      "source_line": 192,
+      "source_line": 175,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
       "status": "unexamined"
     },
@@ -3927,7 +3925,7 @@
       "status": "unexamined"
     }
   ],
-  "rebuilt_sha256": "0588D62FCE54FB6EF7D1FB9C65C783E51160FD8DFE8BD8D30DF0FC6E4FB77A5C",
+  "rebuilt_sha256": "27E6FFC4C2875ECCD322AD6FA55AD5D8B6F8256DF1B4DBDB55CA3A7950B7E805",
   "reference_sha256": "8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23",
   "schema_version": "ledger-v1"
 }

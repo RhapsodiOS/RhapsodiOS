@@ -157,28 +157,11 @@ const char * const pnpBiosSignatureString = "$PnP";
  */
 - markStartDependentResources
 {
-    int count;
-    List *list;
-
-    /* Set IRQ dependent start */
-    list = [_irq list];
-    count = [list count];
-    [_irq setDepStart:count];
-
-    /* Set DMA dependent start */
-    list = [_dma list];
-    count = [list count];
-    [_dma setDepStart:count];
-
-    /* Set port dependent start */
-    list = [_port list];
-    count = [list count];
-    [_port setDepStart:count];
-
-    /* Set memory dependent start */
-    list = [_memory list];
-    count = [list count];
-    [_memory setDepStart:count];
+    /* Set dependent start for each resource type */
+    [_irq setDepStart:[[_irq list] count]];
+    [_dma setDepStart:[[_dma list] count]];
+    [_port setDepStart:[[_port list] count]];
+    [_memory setDepStart:[[_memory list] count]];
 
     return self;
 }

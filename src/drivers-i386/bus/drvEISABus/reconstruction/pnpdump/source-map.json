@@ -429,7 +429,7 @@
         "-[PnPResources print]"
       ],
       "size": 160,
-      "source_line": 543,
+      "source_line": 526,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m"
     },
     {
@@ -447,7 +447,7 @@
         "-[PnPResources initFromRegisters:]"
       ],
       "size": 1210,
-      "source_line": 367,
+      "source_line": 350,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m"
     },
     {

@@ -5876,3 +5876,110 @@ _IOUnscheduleFunc
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+### Task 6 -[PnPResources markStartDependentResources] nested walks (2026-09-17)
+
+Collapse each resource walk to `setDepStart:[[list] count]` in irq/dma/port/memory order. Leftover is PIC selector loads, the final setDepStart push register, and explicit `return self`. Accepted compiler-shaped leftover (reviewer Pat Raynor). Tool SHA E1BB129535A0C359D6B7EE3F4EF8A791CB309BD3B712B7A7704845CE252B544F (299168). Previously identical rows stayed matched (45). Unpaired count unchanged (10).
+
+`
+-[PnPResources markStartDependentResources]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push esi                                push esi
+  push ebx                                push ebx
+  call $+5                                call $+5
+* pop esi                                 pop ebx
+* mov ebx, [ebp+self]                     mov esi, [ebp+self]
+* mov edx, esi                            mov edx, ebx
+* mov edx, [edx+6876h]                    mov edx, [edx+4A22h]
+  push edx                                push edx
+* mov edx, esi                            mov edx, ebx
+* mov edx, [edx+689Eh]                    mov edx, [edx+4A7Ah]
+  push edx                                push edx
+* mov edx, [ebx+4]                        mov edx, [esi+4]
+  push edx                                push edx
+  call _objc_msgSend                      call _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call _objc_msgSend                      call _objc_msgSend
+  push eax                                push eax
+* mov edx, esi                            mov edx, ebx
+* mov edx, [edx+68D6h]                    mov edx, [edx+4A86h]
+  push edx                                push edx
+* mov edx, [ebx+4]                        mov edx, [esi+4]
+  push edx                                push edx
+  call _objc_msgSend                      call _objc_msgSend
+* mov edx, esi                            mov edx, ebx
+* mov edx, [edx+6876h]                    mov edx, [edx+4A22h]
+  push edx                                push edx
+* mov edx, esi                            mov edx, ebx
+* mov edx, [edx+689Eh]                    mov edx, [edx+4A7Ah]
+  push edx                                push edx
+* mov edx, [ebx+8]                        mov edx, [esi+8]
+  push edx                                push edx
+  call _objc_msgSend                      call _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call _objc_msgSend                      call _objc_msgSend
+  push eax                                push eax
+* mov edx, esi                            mov edx, ebx
+* mov edx, [edx+68D6h]                    mov edx, [edx+4A86h]
+  push edx                                push edx
+* mov edx, [ebx+8]                        mov edx, [esi+8]
+  push edx                                push edx
+  call _objc_msgSend                      call _objc_msgSend
+  add esp, 28h                            add esp, 28h
+* mov edx, esi                            mov edx, ebx
+* mov edx, [edx+6876h]                    mov edx, [edx+4A22h]
+  push edx                                push edx
+* mov edx, esi                            mov edx, ebx
+* mov edx, [edx+689Eh]                    mov edx, [edx+4A7Ah]
+  push edx                                push edx
+* mov edx, [ebx+0Ch]                      mov edx, [esi+0Ch]
+  push edx                                push edx
+  call _objc_msgSend                      call _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call _objc_msgSend                      call _objc_msgSend
+  push eax                                push eax
+* mov edx, esi                            mov edx, ebx
+* mov edx, [edx+68D6h]                    mov edx, [edx+4A86h]
+  push edx                                push edx
+* mov edx, [ebx+0Ch]                      mov edx, [esi+0Ch]
+  push edx                                push edx
+  call _objc_msgSend                      call _objc_msgSend
+* mov edx, esi                            mov edx, ebx
+* mov edx, [edx+6876h]                    mov edx, [edx+4A22h]
+  push edx                                push edx
+* mov edx, esi                            mov edx, ebx
+* mov edx, [edx+689Eh]                    mov edx, [edx+4A7Ah]
+  push edx                                push edx
+* mov edx, [ebx+10h]                      mov edx, [esi+10h]
+  push edx                                push edx
+  call _objc_msgSend                      call _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call _objc_msgSend                      call _objc_msgSend
+  push eax                                push eax
+* mov esi, ds:(paSetdepstart - 57CEh)[esi]  mov ebx, ds:(paSetdepstart - 5606h)[ebx]
+* push esi
+* mov ebx, [ebx+10h]
+  push ebx                                push ebx
+*                                         mov edx, [esi+10h]
+*                                         push edx
+  call _objc_msgSend                      call _objc_msgSend
+*                                         mov eax, esi
+  lea esp, [ebp-8]                        lea esp, [ebp-8]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+`

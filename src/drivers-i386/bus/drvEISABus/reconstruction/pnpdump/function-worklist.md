@@ -311,7 +311,7 @@ Accepted 2026-09-17: remaining `none` hand-written rows are `intentional-mismatc
 - `__PMGetPowerStatus` (tool-only, diff 71): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
 - `__IOProbeDriver` (tool-only, diff 77): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
 - `__IOUnloadDriver` (tool-only, diff 77): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
-- `-[PnPResources markStartDependentResources]` (shared, diff 78; reloc different d=22): statement order of the four list walks
+- `-[PnPResources markStartDependentResources]` (shared, diff 78; reloc different d=22): statement order of the four list walks — **tried, kept** as nested `[[list] count]` setDepStart; leftover is PIC / last-push register plus return self; **accepted** compiler-shaped on both
 - `-[pnpIOPort initFrom:Length:Type:]` (shared, diff 84; reloc different d=72): declaration order of existing locals after the header parse
 - `_calloutThread` (tool-only, diff 85): loop shape of the callout dispatch
 - `__IOCopyMemory` (tool-only, diff 86): none — Apple full body vs local stub

@@ -320,7 +320,7 @@ Accepted 2026-09-17: remaining `none` hand-written rows are `intentional-mismatc
 - `__IOSetIntValues` (tool-only, diff 95): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
 - `__IOMapEISADeviceMemory` (tool-only, diff 96): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
 - `__IOSetCharValues` (tool-only, diff 96): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
-- `_IOGetTimestamp` (tool-only, diff 102): local vs expression for the 64-bit store
+- `_IOGetTimestamp` (tool-only, diff 102): local vs expression for the 64-bit store — **tried, miss** (`*1000ULL` local store regressed `--list`); leftover is hand-rolled scale versus Apple `shld`/`adc`; **accepted** compiler-shaped
 - `__IOGetSystemConfig` (tool-only, diff 103): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
 - `__IOGetDriverConfig` (tool-only, diff 106): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
 - `-[pnpMemory initFrom:Length:Type:]` (shared, diff 119; reloc different d=161): declaration order of existing locals after the header parse

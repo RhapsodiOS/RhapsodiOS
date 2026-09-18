@@ -6230,3 +6230,134 @@ _calloutThread
   add esp, 0Ch                            add esp, 0Ch
 * jmp loc_6E34                            jmp loc_3A18
 ```
+
+### Task 6 `_IOGetTimestamp` 64-bit store experiment (2026-09-17)
+
+Tried a local `nanos = kern_ts * 1000ULL` then half-word store; rebuilt gained an extra unpaired function and lost an identical row, so the change was reverted. Leftover is the hand-rolled lea/or scale versus Apple's `shld`/`adc` multiply-by-1000. Accepted compiler-shaped leftover (reviewer Pat Raynor). Tool SHA `0909DDE38D80E6A4189A9832B3A92ED56FD61AAB609F70C3BB883E7EEE7404BA` (299704). Previously identical rows stayed matched (45). Unpaired count unchanged (10).
+
+```
+_IOGetTimestamp
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 10h                            sub esp, 10h
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+*                                         lea eax, [ebp+var_8]
+*                                         push eax
+*                                         call _kern_timestamp
+*                                         mov esi, [ebp+var_8]
+*                                         mov [ebp+var_10], esi
+*                                         mov ecx, [ebp+var_4]
+*                                         lea eax, ds:0[ecx*4]
+*                                         mov edx, esi
+*                                         shr edx, 1Eh
+*                                         or eax, edx
+*                                         lea edx, ds:0[esi*4]
+*                                         add eax, ecx
+*                                         mov [ebp+var_C], eax
+*                                         cmp edx, esi
+*                                         jnb loc_353C
+*                                         inc [ebp+var_C]
+*                                         mov edi, [ebp+var_C]
+*                                         lea eax, ds:0[edi*4]
+*                                         mov esi, [ebp+var_10]
+*                                         lea ecx, [esi+esi*4]
+*                                         mov edx, ecx
+*                                         shr edx, 1Eh
+*                                         or eax, edx
+*                                         lea edx, ds:0[ecx*4]
+*                                         add edi, eax
+*                                         mov [ebp+var_C], edi
+*                                         cmp ecx, edx
+*                                         jnb loc_3567
+*                                         inc edi
+*                                         mov [ebp+var_C], edi
+*                                         mov edi, [ebp+var_10]
+*                                         lea ebx, [edi+edi*4]
+*                                         lea ebx, [ebx+ebx*4]
+*                                         lea ebx, [ebx+ebx*4]
+*                                         lea edi, ds:0[ebx*8]
+*                                         mov esi, [ebp+arg_0]
+*                                         mov [esi], edi
+*                                         mov esi, [ebp+var_C]
+*                                         lea eax, ds:0[esi*4]
+*                                         mov edi, [ebp+var_10]
+*                                         lea ecx, [edi+edi*4]
+*                                         lea ecx, [ecx+ecx*4]
+*                                         mov edx, ecx
+*                                         shr edx, 1Eh
+*                                         or edx, eax
+*                                         add edx, esi
+*                                         lea eax, ds:0[ecx*4]
+*                                         shr ebx, 1Dh
+*                                         cmp eax, ecx
+*                                         jnb loc_35BC
+*                                         lea eax, ds:8[edx*8]
+*                                         or eax, ebx
+*                                         mov esi, [ebp+arg_0]
+*                                         mov [esi+4], eax
+*                                         jmp loc_35CB
+*                                         lea eax, ds:0[edx*8]
+*                                         or eax, ebx
+  mov edi, [ebp+arg_0]                    mov edi, [ebp+arg_0]
+* lea edx, [ebp+var_8]                    mov [edi+4], eax
+* push edx
+* call _kern_timestamp
+* mov edx, 0
+* mov ecx, 0
+* mov ecx, [ebp+var_4]
+* mov eax, [ebp+var_8]
+* mov ebx, eax
+* xor esi, esi
+* mov [ebp+var_10], ebx
+* mov [ebp+var_C], esi
+* add edx, [ebp+var_10]
+* adc ecx, [ebp+var_C]
+* mov ebx, edx
+* mov esi, ecx
+* shld esi, ebx, 2
+* shl ebx, 2
+* mov [ebp+var_10], ebx
+* mov [ebp+var_C], esi
+* mov ebx, [ebp+var_10]
+* mov esi, [ebp+var_C]
+* add ebx, edx
+* adc esi, ecx
+* mov [ebp+var_10], ebx
+* mov [ebp+var_C], esi
+* mov edx, ebx
+* mov ecx, esi
+* shld ecx, edx, 2
+* shl edx, 2
+* mov ebx, [ebp+var_10]
+* mov esi, [ebp+var_C]
+* add ebx, edx
+* adc esi, ecx
+* mov [ebp+var_10], ebx
+* mov [ebp+var_C], esi
+* mov edx, ebx
+* mov ecx, esi
+* shld ecx, edx, 2
+* shl edx, 2
+* add edx, [ebp+var_10]
+* adc ecx, [ebp+var_C]
+* shld ecx, edx, 3
+* shl edx, 3
+* mov [edi], edx
+* mov [edi+4], ecx
+  lea esp, [ebp-1Ch]                      lea esp, [ebp-1Ch]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

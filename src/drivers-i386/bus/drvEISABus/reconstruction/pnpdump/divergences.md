@@ -7466,3 +7466,446 @@ Walk port/IRQ/DMA/24-bit/32-bit register slots with do-while `++i < N`. Leftover
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+### Task 6 `_main` option dispatch order (2026-09-17)
+
+One large-body idea: check `-d` before `-c` in the option loop. Still unequal; leftover is PIC / runtime `sel_getUid` versus Apple selector tables and a smaller stack frame. Accepted compiler-shaped leftover (reviewer Pat Raynor). Tool SHA `A091EADC53283F8C6E53A770A216D8187782FD45D1218EDA33B30FC376A4852C` (299892). Previously identical rows stayed matched (45). Unpaired count unchanged (10).
+
+```
+_main
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+* sub esp, 80h                            sub esp, 34h
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  call $+5                                call $+5
+  pop esi                                 pop esi
+  mov edi, [ebp+argc]                     mov edi, [ebp+argc]
+  mov edx, [ebp+argv]                     mov edx, [ebp+argv]
+  mov edx, [edx]                          mov edx, [edx]
+* mov ds:(_progname - 3D89h)[esi], edx    mov ds:(_progname - 2DFEh)[esi], edx
+  cmp edi, 1                              cmp edi, 1
+* jnz loc_3DA8                            jnz loc_2E24
+* mov [ebp+var_6C], 1                     mov [ebp+var_10], 1
+* mov [ebp+var_68], 1                     mov [ebp+var_14], 1
+* jmp loc_3DFE                            jmp loc_2E8F
+* mov [ebp+var_6C], 0                     mov [ebp+var_10], 0
+* mov [ebp+var_68], 0                     mov [ebp+var_14], 0
+* jmp loc_3DFB                            dec edi
+*                                         jz loc_2E8F
+*                                         lea ecx, (aInvalidOption - 2DFEh)[esi]
+*                                         mov [ebp+var_2C], ecx
+*                                         nop
+*                                         nop
+  add [ebp+argv], 4                       add [ebp+argv], 4
+* mov ecx, [ebp+argv]                     mov edx, [ebp+argv]
+* mov eax, [ecx]                          mov eax, [edx]
+  cmp byte ptr [eax], 2Dh                 cmp byte ptr [eax], 2Dh
+* jnz loc_3DFB                            jnz loc_2E8C
+* mov ebx, [ecx]                          lea ebx, [eax+1]
+* jmp loc_3DF5                            cmp byte ptr [ebx], 0
+* mov al, [ebx]                           jz loc_2E8C
+* cmp al, 63h                             nop
+* jz loc_3DD4                             nop
+* cmp al, 64h                             cmp byte ptr [ebx], 64h
+* jz loc_3DDC                             jnz loc_2E68
+* jmp loc_3DE4                            mov [ebp+var_10], 1
+* mov [ebp+var_68], 1                     jmp loc_2E86
+* jmp loc_3DF5                            cmp byte ptr [ebx], 63h
+* mov [ebp+var_6C], 1                     jnz loc_2E78
+* jmp loc_3DF5                            mov [ebp+var_14], 1
+*                                         jmp loc_2E86
+  push 0                                  push 0
+* lea eax, (aInvalidOption - 3D89h)[esi]  mov ecx, [ebp+var_2C]
+* push eax                                push ecx
+  call _bail                              call _bail
+  add esp, 8                              add esp, 8
+  inc ebx                                 inc ebx
+  cmp byte ptr [ebx], 0                   cmp byte ptr [ebx], 0
+* jnz loc_3DC8                            jnz loc_2E58
+  dec edi                                 dec edi
+* jnz loc_3DB4                            jnz loc_2E40
+* mov edx, esi                            lea eax, (aNew - 2DFEh)[esi]
+* mov edx, [edx+8297h]                    push eax
+*                                         call _sel_getUid
+*                                         push eax
+*                                         lea eax, (aIodevicemaster - 2DFEh)[esi]
+*                                         push eax
+*                                         call _objc_getClass
+*                                         add esp, 4
+*                                         push eax
+*                                         call _objc_msgSend
+*                                         mov [ebp+var_18], eax
+*                                         lea eax, [ebp+var_8]
+*                                         push eax
+*                                         lea eax, [ebp+var_4]
+*                                         push eax
+*                                         lea eax, (aEisa0 - 2DFEh)[esi]
+*                                         push eax
+*                                         lea eax, (aLookupbydevice - 2DFEh)[esi]
+*                                         push eax
+*                                         call _sel_getUid
+*                                         add esp, 4
+*                                         push eax
+*                                         mov edx, [ebp+var_18]
+  push edx                                push edx
+* mov ecx, esi
+* mov ecx, [ecx+8363h]
+* push ecx
+  call _objc_msgSend                      call _objc_msgSend
+* mov [ebp+var_70], eax                   mov ebx, eax
+* lea eax, [ebp+var_50]                   add esp, 20h
+* push eax                                test ebx, ebx
+* lea eax, [ebp+var_54]                   jz loc_2EF5
+* push eax                                push ebx
+* lea eax, (aEisa0 - 3D89h)[esi]          lea eax, (aLookupEisa0Fai - 2DFEh)[esi]
+* push eax
+* mov edx, esi
+* mov edx, [edx+829Bh]
+* push edx
+* mov ecx, [ebp+var_70]
+* push ecx
+* call _objc_msgSend
+* add esp, 1Ch
+* test eax, eax
+* jz loc_3E50
+* push eax
+* lea eax, (aLookupEisa0Fai - 3D89h)[esi]
+  push eax                                push eax
+  call _bail                              call _bail
+  add esp, 8                              add esp, 8
+*                                         lea eax, (aPnpdeviceresou - 2DFEh)[esi]
+*                                         push eax
+*                                         call _objc_getClass
+*                                         mov [ebp+var_1C], eax
+*                                         lea eax, (aPnpresources - 2DFEh)[esi]
+*                                         push eax
+*                                         call _objc_getClass
+*                                         mov [ebp+var_20], eax
+  push 1                                  push 1
+* mov edx, esi                            lea eax, (aSetverbose - 2DFEh)[esi]
+* mov edx, [edx+829Fh]                    push eax
+* push edx                                call _sel_getUid
+* mov ecx, esi                            add esp, 4
+* mov ecx, [ecx+8367h]                    push eax
+*                                         mov ecx, [ebp+var_1C]
+  push ecx                                push ecx
+  call _objc_msgSend                      call _objc_msgSend
+* mov edi, 1                              mov [ebp+var_24], 1
+* add esp, 0Ch                            add esp, 14h
+* lea edx, (_cmd_124 - 3D89h)[esi]        lea edx, (_cmdBuffer - 2DFEh)[esi]
+* mov [ebp+var_78], edx                   mov [ebp+var_30], edx
+* lea ecx, (_value_125 - 3D89h)[esi]      lea ecx, (_valueBuffer - 2DFEh)[esi]
+* mov [ebp+var_7C], ecx                   mov [ebp+var_34], ecx
+  nop                                     nop
+* mov [ebp+var_58], 200h                  nop
+* cmp [ebp+var_68], 0                     mov [ebp+var_C], 200h
+* jz loc_3F98                             cmp [ebp+var_14], 0
+* push edi                                jz loc_309C
+* lea eax, (aGetpnpinfo - 3D89h)[esi]     mov edx, [ebp+var_24]
+*                                         push edx
+*                                         lea eax, (aGetpnpinfo - 2DFEh)[esi]
+  push eax                                push eax
+* lea eax, (aSD - 3D89h)[esi]             lea eax, (aSD - 2DFEh)[esi]
+  push eax                                push eax
+* mov edx, [ebp+var_78]                   mov ecx, [ebp+var_30]
+*                                         push ecx
+*                                         call _sprintf
+*                                         lea eax, [ebp+var_C]
+*                                         push eax
+*                                         mov edx, [ebp+var_4]
+  push edx                                push edx
+* call _sprintf                           mov ecx, [ebp+var_30]
+* lea eax, [ebp+var_58]                   push ecx
+*                                         mov edx, [ebp+var_34]
+*                                         push edx
+*                                         lea eax, (aGetcharvaluesF - 2DFEh)[esi]
+  push eax                                push eax
+* mov ecx, [ebp+var_54]                   call _sel_getUid
+* push ecx                                add esp, 4
+* mov edx, [ebp+var_78]                   push eax
+* push edx                                mov ecx, [ebp+var_18]
+* mov ecx, [ebp+var_7C]
+* push ecx
+* mov edx, esi
+* mov edx, [edx+82A3h]
+* push edx
+* mov ecx, [ebp+var_70]
+  push ecx                                push ecx
+  call _objc_msgSend                      call _objc_msgSend
+*                                         mov ebx, eax
+  add esp, 28h                            add esp, 28h
+* test eax, eax                           test ebx, ebx
+* jnz loc_409C                            jnz loc_31CC
+* lea eax, (asc_93D3 - 3D89h)[esi]        lea eax, (asc_7261 - 2DFEh)[esi]
+  push eax                                push eax
+  call _printf                            call _printf
+* lea eax, (asc_93D5 - 3D89h)[esi]        lea eax, (asc_7263 - 2DFEh)[esi]
+  push eax                                push eax
+  call _printf                            call _printf
+* push edi                                mov edx, [ebp+var_24]
+* lea eax, (aCsnD - 3D89h)[esi]           push edx
+*                                         lea eax, (aCsnD - 2DFEh)[esi]
+  push eax                                push eax
+  call _printf                            call _printf
+* lea ebx, (asc_9419 - 3D89h)[esi]        lea ebx, (asc_72A7 - 2DFEh)[esi]
+  push ebx                                push ebx
+  call _printf                            call _printf
+* lea eax, (aResourceDescri - 3D89h)[esi]  lea eax, (aResourceDescri - 2DFEh)[esi]
+  push eax                                push eax
+  call _printf                            call _printf
+  push ebx                                push ebx
+  call _printf                            call _printf
+*                                         lea eax, (aAlloc - 2DFEh)[esi]
+*                                         push eax
+*                                         call _sel_getUid
+*                                         push eax
+*                                         mov ecx, [ebp+var_1C]
+*                                         push ecx
+*                                         call _objc_msgSend
+*                                         mov ebx, eax
+*                                         add esp, 28h
+*                                         mov edx, [ebp+var_24]
+*                                         push edx
+*                                         mov ecx, [ebp+var_C]
+*                                         push ecx
+*                                         mov edx, [ebp+var_34]
+*                                         push edx
+*                                         lea eax, (aInitforbufLeng - 2DFEh)[esi]
+*                                         push eax
+*                                         call _sel_getUid
+*                                         add esp, 4
+*                                         push eax
+*                                         push ebx
+*                                         call _objc_msgSend
+*                                         mov ebx, eax
+*                                         lea eax, (aParseconfig - 2DFEh)[esi]
+*                                         push eax
+*                                         call _sel_getUid
+*                                         push eax
+*                                         push ebx
+*                                         call _objc_msgSend
+*                                         mov ebx, eax
+*                                         add esp, 20h
+*                                         test ebx, ebx
+*                                         jnz loc_3058
+*                                         push 1
+*                                         call _exit
+*                                         lea eax, (aDevicelist - 2DFEh)[esi]
+*                                         push eax
+*                                         call _sel_getUid
+*                                         push eax
+*                                         push ebx
+*                                         call _objc_msgSend
+*                                         mov edi, eax
+*                                         lea eax, (aCount - 2DFEh)[esi]
+*                                         push eax
+*                                         call _sel_getUid
+*                                         push eax
+  push edi                                push edi
+* mov edx, [ebp+var_58]                   call _objc_msgSend
+*                                         mov [ebp+var_28], eax
+*                                         lea eax, (aFree - 2DFEh)[esi]
+*                                         push eax
+*                                         call _sel_getUid
+*                                         push eax
+*                                         push ebx
+*                                         call _objc_msgSend
+*                                         add esp, 24h
+*                                         jmp loc_30A3
+*                                         mov [ebp+var_28], 0Ah
+*                                         cmp [ebp+var_10], 0
+*                                         jz loc_31CC
+*                                         cmp [ebp+var_28], 0
+*                                         jle loc_31CC
+*                                         xor edi, edi
+*                                         cmp [ebp+var_28], edi
+*                                         jle loc_31CC
+*                                         nop
+*                                         nop
+*                                         push edi
+*                                         mov ecx, [ebp+var_24]
+*                                         push ecx
+*                                         lea eax, (aGetpnpdevicecf - 2DFEh)[esi]
+*                                         push eax
+*                                         lea eax, (aSDD - 2DFEh)[esi]
+*                                         push eax
+*                                         mov edx, [ebp+var_30]
+  push edx                                push edx
+* mov ecx, [ebp+var_7C]                   call _sprintf
+*                                         mov [ebp+var_C], 200h
+*                                         lea eax, [ebp+var_C]
+*                                         push eax
+*                                         mov ecx, [ebp+var_4]
+  push ecx                                push ecx
+* mov edx, esi                            mov edx, [ebp+var_30]
+* mov edx, [edx+82ABh]
+  push edx                                push edx
+* mov ecx, esi                            mov ecx, [ebp+var_34]
+* mov ecx, [ecx+82A7h]
+  push ecx                                push ecx
+* mov edx, esi                            lea eax, (aGetcharvaluesF - 2DFEh)[esi]
+* mov edx, [edx+8367h]                    push eax
+*                                         call _sel_getUid
+*                                         add esp, 4
+*                                         push eax
+*                                         mov edx, [ebp+var_18]
+  push edx                                push edx
+  call _objc_msgSend                      call _objc_msgSend
+* add esp, 8                              mov ebx, eax
+*                                         add esp, 2Ch
+*                                         test ebx, ebx
+*                                         jnz loc_31C2
+*                                         lea eax, (asc_7261 - 2DFEh)[esi]
+  push eax                                push eax
+*                                         call _printf
+*                                         lea ebx, (asc_732E - 2DFEh)[esi]
+*                                         push ebx
+*                                         call _printf
+*                                         push edi
+*                                         lea eax, (aCurrentConfigu - 2DFEh)[esi]
+*                                         push eax
+*                                         call _printf
+*                                         push ebx
+*                                         call _printf
+*                                         lea eax, (aAlloc - 2DFEh)[esi]
+*                                         push eax
+*                                         call _sel_getUid
+*                                         push eax
+*                                         mov ecx, [ebp+var_20]
+*                                         push ecx
+  call _objc_msgSend                      call _objc_msgSend
+  mov ebx, eax                            mov ebx, eax
+* add esp, 30h                            add esp, 20h
+* test ebx, ebx                           mov edx, [ebp+var_34]
+* jnz loc_3F60
+* push 1
+* call _exit
+* mov ecx, esi
+* mov ecx, [ecx+82BBh]
+* push ecx
+* mov edx, esi
+* mov edx, [edx+82AFh]
+  push edx                                push edx
+*                                         lea eax, (aInitfromregist - 2DFEh)[esi]
+*                                         push eax
+*                                         call _sel_getUid
+*                                         add esp, 4
+*                                         push eax
+  push ebx                                push ebx
+  call _objc_msgSend                      call _objc_msgSend
+* add esp, 8                              mov ebx, eax
+*                                         lea eax, (aParseconfig - 2DFEh)[esi]
+  push eax                                push eax
+* call _objc_msgSend                      call _sel_getUid
+* mov [ebp+var_74], eax                   push eax
+* mov ecx, esi
+* mov ecx, [ecx+82BFh]
+* push ecx
+  push ebx                                push ebx
+  call _objc_msgSend                      call _objc_msgSend
+* add esp, 10h                            mov ebx, eax
+* jmp loc_3F9F                            add esp, 18h
+* mov [ebp+var_74], 0Ah                   test ebx, ebx
+* cmp [ebp+var_6C], 0                     jnz loc_31AC
+* jz loc_409C                             lea eax, (aConfigIsNilCon - 2DFEh)[esi]
+* xor ebx, ebx
+* cmp [ebp+var_74], ebx
+* jle loc_409C
+* lea edx, (asc_9465 - 3D89h)[esi]
+* mov [ebp+var_80], edx
+* nop
+* nop
+* nop
+* push ebx
+* push edi
+* lea eax, (aGetpnpdevicecf - 3D89h)[esi]
+* push eax
+* lea eax, (aSDD - 3D89h)[esi]
+* push eax
+* mov ecx, [ebp+var_78]
+* push ecx
+* call _sprintf
+* mov [ebp+var_58], 200h
+* lea eax, [ebp+var_58]
+* push eax
+* mov edx, [ebp+var_54]
+* push edx
+* mov ecx, [ebp+var_78]
+* push ecx
+* mov edx, [ebp+var_7C]
+* push edx
+* mov ecx, esi
+* mov ecx, [ecx+82A3h]
+* push ecx
+* mov edx, [ebp+var_70]
+* push edx
+* call _objc_msgSend
+* add esp, 2Ch
+* test eax, eax
+* jnz loc_4092
+* lea eax, (asc_93D3 - 3D89h)[esi]
+* push eax
+* call _printf
+* mov ecx, [ebp+var_80]
+* push ecx
+* call _printf
+* push ebx
+* lea eax, (aCurrentConfigu - 3D89h)[esi]
+* push eax
+* call _printf
+* mov edx, [ebp+var_80]
+* push edx
+* call _printf
+* mov ecx, [ebp+var_7C]
+* push ecx
+* mov edx, esi
+* mov edx, [edx+82C3h]
+* push edx
+* mov ecx, esi
+* mov ecx, [ecx+82A7h]
+* push ecx
+* mov edx, esi
+* mov edx, [edx+836Bh]
+* push edx
+* call _objc_msgSend
+* add esp, 8
+* push eax
+* call _objc_msgSend
+* add esp, 20h
+* test eax, eax
+* jnz loc_4080
+* lea eax, (aConfigIsNilCon - 3D89h)[esi]
+  push eax                                push eax
+  call _printf                            call _printf
+  add esp, 4                              add esp, 4
+* jmp loc_4092                            jmp loc_31C2
+* mov ecx, esi                            lea eax, (aFree - 2DFEh)[esi]
+* mov ecx, [ecx+82BFh]
+* push ecx
+  push eax                                push eax
+*                                         call _sel_getUid
+*                                         push eax
+*                                         push ebx
+  call _objc_msgSend                      call _objc_msgSend
+* add esp, 8                              add esp, 0Ch
+* inc ebx
+* cmp [ebp+var_74], ebx
+* jg loc_3FC0
+  inc edi                                 inc edi
+* cmp edi, 0FEh                           cmp [ebp+var_28], edi
+* jbe loc_3E84                            jg loc_30C4
+*                                         inc [ebp+var_24]
+*                                         cmp [ebp+var_24], 0FEh
+*                                         jbe loc_2F4C
+  push 0                                  push 0
+  call _exit                              call _exit
+```

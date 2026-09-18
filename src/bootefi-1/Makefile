@@ -44,15 +44,18 @@ LDFLAGS := /machine:x86 /subsystem:efi_application /nodefaultlib /entry:efi_main
 BOOT2_SRCS := $(BOOT2)/libsaio/disk.c \
               $(BOOT2)/libsaio/ufs_byteorder.c \
               $(BOOT2)/libsaio/cache.c \
+              $(BOOT2)/libsaio/load.c \
               $(BOOT2)/libsa/sprintf.c \
               $(BOOT2)/libsa/prf.c \
               $(BOOT2)/libsa/string1.c \
-              $(BOOT2)/libsa/memcpy.c
-# libsa/memset.c is NOT included: nothing this loader compiles calls
-# memset()/bzero() (confirmed by grep), and memset.c's unconditional
-# `simple_char_set` inline asm (invalid "&c" input constraint under clang)
-# and lvalue-cast assignments (`UNS(dst) += ...`) do not compile under any
-# modern compiler flag short of editing the file, which src/boot-2 forbids.
+              $(BOOT2)/libsa/memcpy.c \
+              $(BOOT2)/libsa/getsegbyname.c
+# libsa/memset.c is NOT included: its unconditional `simple_char_set`
+# inline asm (invalid "&c" input constraint under clang) and lvalue-cast
+# assignments (`UNS(dst) += ...`) do not compile under any modern compiler
+# flag short of editing the file, which src/boot-2 forbids. bzero() (which
+# load.c's LC_SEGMENT handling and efi_main.c's load_kernel() both call)
+# is instead implemented directly in efi_memory.c.
 
 EFI_SRCS := efi_main.c efi_console.c efi_disk.c efi_memory.c $(BOOT2_SRCS)
 

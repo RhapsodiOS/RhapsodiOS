@@ -89,4 +89,5 @@ exec "$qemu" \
     -serial "file:$serial_log" \
     -serial "file:$kernel_log" \
     -display none \
-    -vga std
+    -vga cirrus \
+    -qmp "tcp:127.0.0.1:${UEFI_QMP_PORT:-4446},server=on,wait=off"

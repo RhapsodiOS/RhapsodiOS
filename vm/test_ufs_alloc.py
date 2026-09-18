@@ -44,5 +44,45 @@ class TestCylinderGroupAccess(unittest.TestCase):
             ufs_alloc.Allocator(GOLDEN, writable=True)
 
 
+class TestFragmentAllocation(unittest.TestCase):
+    def setUp(self):
+        if not _present(GOLDEN):
+            self.skipTest("golden.img not present")
+        self.tmp = tempfile.mkdtemp(prefix="ufsalloc-", dir=os.path.join(HERE, "work"))
+        self.addCleanup(shutil.rmtree, self.tmp)
+        self.img = os.path.join(self.tmp, "test.img")
+        clone(GOLDEN, self.img)
+
+    def test_allocation_then_release_restores_every_count(self):
+        before = None
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            a.validate()
+            before = a.fs_cstotal()
+            frags = a.alloc_frags(9)       # one whole block plus a tail
+            self.assertEqual(len(frags), 9)
+            self.assertEqual(len(set(frags)), 9)
+            a.flush()
+        self.assertEqual(ufs_check.check(self.img), [])
+
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            after_alloc = a.fs_cstotal()
+            self.assertNotEqual(after_alloc, before)
+            a.free_frags(frags)
+            a.flush()
+        self.assertEqual(ufs_check.check(self.img), [])
+
+        with ufs_alloc.Allocator(self.img) as a:
+            self.assertEqual(a.fs_cstotal(), before)
+
+    def test_allocated_fragments_are_marked_used(self):
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            frags = a.alloc_frags(8)
+            for f in frags:
+                self.assertFalse(a.frag_is_free(f),
+                                 "fragment %d still marked free" % f)
+            a.flush()
+        self.assertEqual(ufs_check.check(self.img), [])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -8,7 +8,7 @@ paths live in `src/rbuild-1/kernel-drivers-blacklist.json` and are skipped until
 promoted out of that list.
 
 bus
- * drvEISABus - crashing; reconstructed against the reference binary, PnPDump 45/186 functions byte-identical under relocation masking with 96 hand-written leftovers accepted as compiler-shaped, EISABus_reloc shared PnP class methods 53/93 identical or masked-eq; not yet retested
+ * drvEISABus - crashing; reconstructed against the reference binary, PnPDump 45/186 functions byte-identical with 96 hand-written leftovers accepted in the PnPDump ledger (compiler-shaped / stub / dual-bar), EISABus_reloc shared PnP class methods 53/93 identical or masked-eq; not yet retested
  * drvPCIBus - reconstructed against the reference binary, fixes applied; its testIDs:dev:fun:bus: prototype now matches Apple's, and PCIResourceDriver inherits IODirectDevice, but neither fix has been compiled or tested
  * drvPCMCIABus - compiles; reconstructed against the reference binary, fixes applied, not yet tested; protocol records, every class instance size and ivar layout are byte-identical to the reference; two heap overflows from undeclared ivars fixed
  * Intel824X0PCI - reconstructed against the reference binary, fixes applied, not yet compiled or tested

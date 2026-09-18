@@ -42,7 +42,7 @@
 | `vm/build_uefi_image.py` | Build a hybrid MBR disk: FAT32 ESP + the Rhapsody partition |
 | `vm/test_build_uefi_image.py` | Tests for the above |
 | `vm/run-q35-uefi.sh` | Boot the hybrid image under QEMU with IA32 OVMF |
-| `src/bootefi-1/Makefile` | Host build of `BOOTIA32.EFI` and the spike |
+| `src/bootefi-1/Makefile` | Host build of `BOOTIA32.EFI` (formerly also the spike; see below) |
 | `src/bootefi-1/efi.h` | Minimal hand-written UEFI type and protocol declarations |
 | `src/bootefi-1/efi_console.c` | `printf`/`error`/`verbose`/`message`/`getc` over EFI text protocols |
 | `src/bootefi-1/efi_memory.c` | Fixed-address reservation, `convmem`/`extmem`, `malloc`/`free` |
@@ -50,7 +50,7 @@
 | `src/bootefi-1/efi_main.c` | Entry point, boot prompt, orchestration |
 | `src/bootefi-1/handoff.c` | Bootstruct finalization and the call into the trampoline |
 | `src/bootefi-1/handoff.S` | `ExitBootServices` aftermath: paging off, GDT, `lret` |
-| `src/bootefi-1/spike_memmap.c` | Phase 0 go/no-go probe (kept as a diagnostic target) |
+| `src/bootefi-1/spike_memmap.c` | Phase 0 go/no-go probe; removed after serving its purpose (see Task 3) |
 | `src/bootefi-1/tests/Makefile` | Host build of the UFS reader test |
 | `src/bootefi-1/tests/host_devread.c` | POSIX file-backed `ebiosread` and BIOS stubs for the host test |
 | `src/bootefi-1/tests/ufs_host_test.c` | Extracts a file from a disk image via the reused reader |
@@ -861,6 +861,11 @@ written. Report which range was refused and which memory-map entry covers it.
 git add src/bootefi-1/spike_memmap.c src/bootefi-1/Makefile
 git commit -m "bootefi: add a spike that probes the fixed low-memory reservations"
 ```
+
+**Post-cleanup note:** `spike_memmap.c` and the `spike` make target have since
+been removed -- the go/no-go question they existed to answer is settled and
+recorded above (all four ranges granted). `make -C src/bootefi-1 spike` no
+longer works; the commands in Step 3 above are historical.
 
 ---
 

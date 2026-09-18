@@ -140,7 +140,7 @@ loader's **first** action, before any other allocation, is
 
 | Range | Size | Holds |
 |---|---|---|
-| `0x011000`–`0x0A0000` | 596K | `KERNBOOTSTRUCT`, `disk.c`'s sector cache, `sarld` |
+| `0x011000`–`0x0A0000` | 572K | `KERNBOOTSTRUCT`, `disk.c`'s sector cache, `sarld` |
 | `0x100000`–`0x700000` | 6M | Kernel, linked drivers, `sarld` scratch heap, `libsa` arena |
 
 **These two ranges are measured, not assumed.** The phase 0 spike ran under IA32 OVMF
@@ -205,7 +205,7 @@ sources are gone.
 | `convmem`, `extmem` | Walked from the EFI memory map. Conventional memory is capped at 640K; extended memory is contiguous KB above 1MB. |
 | `magicCookie` | `KERNBOOTMAGIC` |
 | `configEnd` | `config`, as in the BIOS path |
-| `first_addr0` | `0`, matching the BIOS path when no EISA config is present |
+| `first_addr0` | `configEnd + 1024`, recomputed from the live `configEnd` immediately before handoff (see below) |
 | `kernDev` | Synthesized with `boot2`'s encoding so `setconf()` matches its generic `hd`/`sd` prefixes |
 | `rootdev` | From the boot string, e.g. `rootdev=hd0a` |
 | `diskInfo[4]` | Zeroed. This is BIOS CHS geometry with no EFI equivalent. |
@@ -213,6 +213,18 @@ sources are gone.
 | `graphicsMode` | `TEXT_MODE` |
 | `boot_video`, `pciInfo`, `eisaSlotInfo`, `eisaConfigFunctions`, `apm_config` | Zeroed |
 | `kaddr`, `ksize`, `rld_entry`, `driverConfig`, `numBootDrivers` | Filled by the reused `load.c` and `drivers.c` |
+
+`efi_init_bootstruct()` sets `first_addr0` to `configEnd + 1024` before any
+config data is loaded, purely so it is never `0` (pmap_bootstrap's bump
+allocator would otherwise build page tables straight over the live
+`KERNBOOTSTRUCT`). `configEnd` then grows as `loadSystemConfig()`,
+`loadOtherConfigs()` and `loadBootDrivers()` read config data in, and boot-2's
+own `stringTable.c`/`drivers.c` re-derive `first_addr0` from the grown
+`configEnd` once drivers are linked -- but only on the success path of
+`loadStandaloneLinker()`. If that call fails, the loader still proceeds to
+handoff, so `first_addr0` is recomputed one more time from the live
+`configEnd` right before `efi_exit_and_start()`, unconditionally, so it is
+correct whether or not driver linking succeeded.
 
 ## Build
 
@@ -233,22 +245,34 @@ may need an `OvmfPkgIa32` build from edk2. Both are explicit setup tasks.
 
 ## Disk image
 
-A new `vm/build-uefi-image.sh`, separate from `rhap_image.py` and
-`ufs_build.py`, produces a hybrid **MBR** disk:
+`vm/build_uefi_image.py`, separate from `rhap_image.py` and `ufs_build.py`,
+builds the FAT32 EFI System Partition holding `/EFI/BOOT/BOOTIA32.EFI`
+(`mformat -F`; FAT32 is what the UEFI spec expects on a fixed disk). It
+defaults to **64MB**: a 16MB FAT32 volume has too few clusters to be valid,
+and EDK2's FAT driver silently declines to mount it — it prints nothing and
+simply never binds, and BDS then reports that it cannot boot.
 
-- Partition 1: EFI System (type `0xEF`), FAT32, holding `/EFI/BOOT/BOOTIA32.EFI`
-  (`mformat -F`; FAT32 is what the UEFI spec expects on a fixed disk). The ESP
-  defaults to **64MB**: a 16MB FAT32 volume has too few clusters to be valid, and
-  EDK2's FAT driver silently declines to mount it — it prints nothing and simply
-  never binds, and BDS then reports that it cannot boot.
-- Partition 2: the existing Rhapsody partition, unchanged
+The layout is **two separate disks**, not one hybrid MBR disk, because
+`read_label()` applies `part_offset` asymmetrically (added when reading
+label-relative sectors, omitted from the label's own `p_base`): a Rhapsody
+filesystem embedded at a nonzero LBA reads short. `build()` still produces
+the original hybrid MBR disk (ESP partition followed by the Rhapsody
+partition) for callers that want it, but the runner in current use instead
+takes:
+
+- **Disk 0**: the existing Rhapsody image, attached whole and untouched at
+  LBA 0 (`part_offset == 0`, avoiding the `read_label()` bug above).
+- **Disk 1**: an ESP-only MBR disk (`build_esp()`), a single `0xEF`/FAT32
+  partition holding `/EFI/BOOT/BOOTIA32.EFI` and nothing else -- it exists
+  only to give OVMF something to boot the loader from.
 
 MBR rather than GPT specifically so `read_label`'s fdisk-table walk keeps
 working. UEFI supports MBR EFI System Partitions.
 
-`vm/run-q35-uefi.sh` mirrors `run-q35-ahci.sh`: serial logging, QMP key
-injection for the `boot:` prompt, and per-run temporary image copies. It passes
-`-cpu Nehalem`, without which this OVMF DEBUG build asserts before BDS runs.
+The current best runner is `vm/run-pc-uefi-virtio-esp.sh` (i440FX/PIIX3 IDE
+for the Rhapsody disk, ESP disk attached as virtio-blk): serial logging and
+per-run temporary image copies. It passes `-cpu Nehalem`, without which this
+OVMF DEBUG build asserts before BDS runs.
 
 Note on qemu: Homebrew's formula does not build on the development host, because
 it compiles every target and the ARM board files fail under clang 15. An
@@ -262,8 +286,8 @@ from a disk image, and assert the result matches `vm/ufs_extract.py`'s output.
 This exercises the largest reused component with no QEMU in the loop and is the
 first test to write.
 
-**Python tests** for `build-uefi-image.sh`, in `vm/tests`, following the
-existing `test_ufs_build.py` style.
+**Python tests** for `build_uefi_image.py`, in `vm/test_build_uefi_image.py`,
+following the existing `test_ufs_build.py` style.
 
 **QEMU integration:** assert root-mount evidence in the serial log.
 

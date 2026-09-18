@@ -1556,33 +1556,31 @@
       "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 176,
-      "source_line": 182,
+      "source_line": 180,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIRQ.m",
       "status": "intentional-mismatch"
     },
     {
       "address": 15760,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 6 else-if on otherCount != 1; leftover is Apple tool _printf vs _IOLog, double [number] / in-loop irqs versus local otherIRQs, plus PIC / register scheduling"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[pnpIRQ matches:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 126,
       "source_line": 109,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIRQ.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 15888,
@@ -1650,7 +1648,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 29,
-      "source_line": 171,
+      "source_line": 169,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIRQ.m",
       "status": "assembly-matched"
     },
@@ -1674,7 +1672,7 @@
       "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 56,
-      "source_line": 148,
+      "source_line": 146,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIRQ.m",
       "status": "intentional-mismatch"
     },
@@ -1722,7 +1720,7 @@
       "reason": null,
       "reviewer": null,
       "size": 122,
-      "source_line": 221,
+      "source_line": 219,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIRQ.m",
       "status": "unexamined"
     },
@@ -3929,7 +3927,7 @@
       "status": "unexamined"
     }
   ],
-  "rebuilt_sha256": "7903D28185A72DADE601548D5447579C6EC2636D95BB1ABFEC9D3135B152903D",
+  "rebuilt_sha256": "0588D62FCE54FB6EF7D1FB9C65C783E51160FD8DFE8BD8D30DF0FC6E4FB77A5C",
   "reference_sha256": "8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23",
   "schema_version": "ledger-v1"
 }

@@ -116,10 +116,8 @@ extern char verbose;
     otherCount = [otherIRQ number];
     if (otherCount == 0) {
         return NO;
-    }
-
-    /* Only support matching against single IRQ */
-    if (otherCount != 1) {
+    } else if (otherCount != 1) {
+        /* Only support matching against single IRQ */
         IOLog("pnpIRQ: can only match one IRQ\n");
         return NO;
     }

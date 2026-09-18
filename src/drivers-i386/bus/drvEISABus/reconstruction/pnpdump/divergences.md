@@ -5707,3 +5707,81 @@ Use `else if (otherCount != 1)` after the zero-count return. Do not swap `_print
   pop ebp                                 pop ebp
   retn                                    retn
 `
+
+### Task 6 -[pnpIRQ matches:] else-if on otherCount (2026-09-17)
+
+Use `else if (otherCount != 1)` after the zero-count return. Do not swap `_printf`/`_IOLog`. Leftover is Apple's double `[number]` and in-loop `irqs` versus locals, plus tool `_printf` vs `_IOLog` and PIC / register scheduling. Accepted compiler-shaped leftover (reviewer Pat Raynor). Tool SHA 2897B573A7D2D8C2D05A218713E8312674B609C98A09C84010EC76DB708AA61B (299328). Previously identical rows stayed matched (45). Unpaired count unchanged (10).
+
+`
+-[pnpIRQ matches:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  call $+5                                call $+5
+* pop esi                                 pop ebx
+* mov edi, [ebp+self]                     mov esi, [ebp+self]
+* mov edx, esi                            mov edi, [ebp+arg_8]
+* mov edx, [edx+7EC1h]                    mov ecx, ebx
+* push edx                                mov ecx, [ecx+3911h]
+* mov edx, [ebp+arg_8]                    push ecx
+* push edx                                push edi
+  call _objc_msgSend                      call _objc_msgSend
+  add esp, 8                              add esp, 8
+  test eax, eax                           test eax, eax
+* jz loc_4207                             jz loc_680A
+* mov edx, esi                            cmp eax, 1
+* mov edx, [edx+7EC1h]                    jz loc_67E4
+* push edx                                lea eax, (aPnpirqCanOnlyM - 67ABh)[ebx]
+* mov edx, [ebp+arg_8]                    push eax
+* push edx                                call _IOLog
+*                                         jmp loc_680A
+*                                         mov eax, 1
+*                                         jmp loc_680C
+*                                         mov ebx, ds:(paIrqs_0 - 67ABh)[ebx]
+*                                         push ebx
+*                                         push edi
+  call _objc_msgSend                      call _objc_msgSend
+* add esp, 8                              mov ebx, eax
+* cmp eax, 1                              xor edx, edx
+* jz loc_41DC                             cmp [esi+44h], edx
+* lea eax, (aPnpirqCanOnlyM - 418Fh)[esi]  jle loc_680A
+* push eax
+* call _printf
+* jmp loc_4207
+* mov eax, 1
+* jmp loc_4209
+* xor ebx, ebx
+* cmp [edi+44h], ebx
+* jle loc_4207
+  nop                                     nop
+* mov edx, esi                            nop
+* mov edx, [edx+7EC5h]                    mov eax, [esi+edx*4+4]
+* push edx                                cmp dword ptr ds:(loc_67AB - 67ABh)[ebx], eax
+* mov edx, [ebp+arg_8]                    jz loc_67DC
+* push edx                                inc edx
+* call _objc_msgSend                      cmp [esi+44h], edx
+* add esp, 8                              jg loc_67FC
+* mov eax, [eax]
+* cmp [edi+ebx*4+4], eax
+* jz loc_41D4
+* inc ebx
+* cmp [edi+44h], ebx
+* jg loc_41E4
+  xor eax, eax                            xor eax, eax
+  lea esp, [ebp-0Ch]                      lea esp, [ebp-0Ch]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+`

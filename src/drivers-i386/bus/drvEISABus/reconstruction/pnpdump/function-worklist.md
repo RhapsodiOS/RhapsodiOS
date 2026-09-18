@@ -5,6 +5,8 @@ Branch: `pnpdump-binrecon-finish`
 
 Task 7 campaign close. Instruction-stream stop condition met (original 27 closed; accept-pass leftovers closed). No further source-shape edits. Hardware testing is still out of scope.
 
+After final review: seven shared-name reloc rows that are Apple PnPDump `missing-reference` unpaired (`writePnPConfig:Index:` ×4, `configure:Using:`, `initFromDeviceDescription:`, `findMatchingDependentFunction:ForConfig:`) are ledger `intentional-mismatch` with reason `unpaired missing-reference on Apple PnPDump; not a dual-bar grind target` (reviewer Pat Raynor). `-[PnPDependentResources init]` stays off the reloc ledger — Apple reference has no body to map. README **53/93** is the final reloc `--list` identical+masked-eq count among the 93 shared names (ledger `assembly-matched` can be one higher after earlier keeps).
+
 ## Identities (last kept rebuild)
 
 ### Tool (`PnPDump`)
@@ -28,7 +30,7 @@ Rebuilt Mach-Os are the guest copies under `out/i386/drvEISABus/EISABus.config/`
 | Profile | Functions | Identical | Masked-eq | Accepted (`intentional-mismatch`) | Shared nine-class on reloc |
 | --- | --- | --- | --- | --- | --- |
 | Tool (`PnPDump`) | 186 | **45** | **0** | **96** (PnPDump ledger) | n/a (see reloc) |
-| Reloc (`EISABus_reloc`) | 175 | **46** | **20** | **31** shared-class in reloc ledger | **43** identical + **10** masked-eq among the 93 shared names |
+| Reloc (`EISABus_reloc`) | 175 | **46** | **20** | **38** shared-class in reloc ledger (31 grind accepts + 7 unpaired missing-reference) | **43** identical + **10** masked-eq among the 93 shared names |
 
 Footer differing counts (131 tool / 118 reloc) fold masked-eq into the non-identical paired bucket. Unpaired unchanged: tool **10**, reloc **11**.
 

@@ -1703,26 +1703,24 @@
     {
       "address": 16180,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 7 close: Apple PnPDump nlist/comparison has no reference body; shared compile emits into reloc (and rebuilt tool) only"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[pnpIRQ writePnPConfig:Index:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "unpaired missing-reference on Apple PnPDump; not a dual-bar grind target",
+      "reviewer": "Pat Raynor",
       "size": 122,
       "source_line": 219,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIRQ.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 16304,
@@ -1867,26 +1865,24 @@
     {
       "address": 16960,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 7 close: Apple PnPDump nlist/comparison has no reference body; shared compile emits into reloc (and rebuilt tool) only"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[pnpDMA writePnPConfig:Index:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "unpaired missing-reference on Apple PnPDump; not a dual-bar grind target",
+      "reviewer": "Pat Raynor",
       "size": 80,
       "source_line": 239,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 17040,
@@ -2103,26 +2099,24 @@
     {
       "address": 17616,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 7 close: Apple PnPDump nlist/comparison has no reference body; shared compile emits into reloc (and rebuilt tool) only"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[pnpIOPort writePnPConfig:Index:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "unpaired missing-reference on Apple PnPDump; not a dual-bar grind target",
+      "reviewer": "Pat Raynor",
       "size": 231,
       "source_line": 217,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 17848,
@@ -2460,26 +2454,24 @@
     {
       "address": 18948,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 7 close: Apple PnPDump nlist/comparison has no reference body; shared compile emits into reloc (and rebuilt tool) only"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[pnpMemory writePnPConfig:Index:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "unpaired missing-reference on Apple PnPDump; not a dual-bar grind target",
+      "reviewer": "Pat Raynor",
       "size": 989,
       "source_line": 384,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 19940,
@@ -2672,26 +2664,24 @@
     {
       "address": 20864,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 7 close: Apple PnPDump nlist/comparison has no reference body; shared compile emits into reloc (and rebuilt tool) only"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[PnPResources initFromDeviceDescription:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "unpaired missing-reference on Apple PnPDump; not a dual-bar grind target",
+      "reviewer": "Pat Raynor",
       "size": 713,
       "source_line": 228,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 21580,
@@ -2960,26 +2950,24 @@
     {
       "address": 23212,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 7 close: Apple PnPDump nlist/comparison has no reference body; shared compile emits into reloc (and rebuilt tool) only"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[PnPResources configure:Using:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "unpaired missing-reference on Apple PnPDump; not a dual-bar grind target",
+      "reviewer": "Pat Raynor",
       "size": 256,
       "source_line": 174,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 23468,
@@ -3032,26 +3020,24 @@
     {
       "address": 23500,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 7 close: Apple PnPDump nlist/comparison has no reference body; shared compile emits into reloc (and rebuilt tool) only"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[PnPLogicalDevice findMatchingDependentFunction:ForConfig:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "unpaired missing-reference on Apple PnPDump; not a dual-bar grind target",
+      "reviewer": "Pat Raynor",
       "size": 440,
       "source_line": 194,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 23940,

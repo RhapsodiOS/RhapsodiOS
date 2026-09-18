@@ -34,6 +34,61 @@ The transfer routine takes an entry offset, sets data segments, pushes selector 
 
 The loader can load a standalone linker and conditionally call `loadBootDrivers()` before transfer. **Inferred:** this is a distinct stage from later kernel DriverKit probing; no one-to-one correspondence is established. **Source anchor:** `src/boot-2/i386/boot2/boot.c` `execKernel()`; `src/kernel-7/driverkit/autoconfCommon.m` `autoconfInt()`.
 
+## UEFI loader entry path (`src/bootefi-1`)
+
+**Alternative entry, same handoff contract.** `src/bootefi-1` is a
+from-scratch IA32 UEFI application (`BOOTIA32.EFI`) that reaches the same
+`_start` entry point as the BIOS `boot2` path above, reusing `boot2`'s own
+`libsaio`/`libsa` sources unmodified wherever the EFI environment allows
+it. `efi_main()` fixes two physical-address ranges before doing anything
+else -- `0x011000`-`0x0A0000` and `0x100000`-`0x700000` -- matching the
+BIOS path's low-memory layout (`RLD_ADDR` at `0x030000`, the kernel load
+address at `0x100000`, `ZALLOC_ADDR` at `0x600000`-`0x700000`) so that
+`loadprog()`, `loadStandaloneLinker()` and `loadBootDrivers()` can be
+reused verbatim. **Source anchor:** `src/bootefi-1/efi_main.c`
+`efi_main()`; `src/bootefi-1/efi_memory.c` `efi_reserve_ranges()`;
+`src/boot-2/i386/libsa/memory.h` `RLD_ADDR`, `ZALLOC_ADDR`.
+
+`efi_main() → loadprog()`: after synthesizing `KERNBOOTSTRUCT` from the
+platform's EFI memory map, `load_kernel()` opens `hd(0,a)/mach_kernel`
+through boot2's own `disk.c`/`sys.c` UFS reader and calls `loadprog()`,
+the same Mach-O loader `execKernel()` uses. **Source anchor:**
+`src/bootefi-1/efi_main.c` `load_kernel()`; `src/boot-2/i386/libsaio/
+load.c` `loadprog()`.
+
+`efi_main() → loadStandaloneLinker() / loadOtherConfigs() /
+loadBootDrivers()`: mirrors `execKernel()`'s driver sequence --
+`loadSystemConfig(0, 0)` (reading `System.config/Instance0.table`'s
+`"Boot Drivers"` key), `loadStandaloneLinker("/usr/standalone/i386/
+sarld", ...)`, `loadOtherConfigs(0)`, then `loadBootDrivers(0, 0, 0)`
+(non-prompting: `askFirst` and `installMode` both `0`). **Source
+anchor:** `src/bootefi-1/efi_main.c` `efi_main()`; `src/boot-2/i386/
+boot2/boot.c` `execKernel()`; `src/boot-2/i386/libsaio/drivers.c`
+`loadBootDrivers()`.
+
+`efi_main() → kernel entry`: `removeLinkEditSegment()` runs on the
+loaded kernel header (as `execKernel()` does), then `efi_exit_and_start()`
+retries `ExitBootServices()` to a stable success and calls
+`efi_handoff()`, an assembly trampoline that clears `CR0.PG`, zeroes
+`CR4` (UEFI leaves `CR4.PAE` set; this kernel predates PAE and builds a
+non-PAE page directory), zeroes `CR3`, loads boot2's own flat GDT
+(selector `0x20` data / `0x28` code) via `lgdt`, sets `esp` to `0xFFF0`,
+and `lret`s to the kernel's entry point -- the same selector pair and
+calling convention `_startprog`'s `lret` uses in the BIOS path.
+**Source anchor:** `src/bootefi-1/handoff.c` `efi_exit_and_start()`;
+`src/bootefi-1/handoff.S` `efi_handoff()`; `src/boot-2/i386/libsaio/
+asm.s` `_startprog`.
+
+**Verified outcome (this tree, this task):** the kernel executes past
+handoff with paging re-enabled and no CPU faults; `loadBootDrivers()`
+reports `numBootDrivers` non-zero (`6`, matching `System.config`'s
+`"Boot Drivers"` list on the test image). **Research gap:** no
+kernel-authored console output was captured on either serial port or the
+emulated display in this configuration, so a concrete `vfs_mountroot()`
+success or failure is not established from this entry path -- the same
+research gap the BIOS-path trace already carries at that step (see
+"BSD initialization and root filesystem" above).
+
 ## Architecture entry and early machine setup
 
 `_start` clears the direction flag, calls `gdt_init` and `idt_init`, far-jumps to the new GDT, and loads data segments. **Source anchor:** `src/kernel-7/machdep/i386/start.s` `_start`, `start1`.

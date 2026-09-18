@@ -10,11 +10,18 @@ refusals happen before the first byte is written.
 """
 import os
 import struct
+import time
 
 import rhap_image
 import ufs_cg
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+
+# bsize=8192 and fsize=1024 (so frag=8) on this filesystem; one indirect
+# block holds bsize // 4 = 2048 pointers.  Double indirect is out of scope.
+_BSIZE = 8192
+_NINDIR = _BSIZE // 4
+MAX_FILE_BYTES = (rhap_image.NDADDR + _NINDIR) * _BSIZE
 
 CG_CS_OFF = 24          # struct csum inside the cg header
 CG_OFFSETS_OFF = 84     # cg_btotoff, cg_boff, cg_iusedoff, cg_freeoff
@@ -71,6 +78,7 @@ class Allocator(object):
         self._sb_cache = None      # mutable copy of the superblock block
         self._cstable_cache = None  # mutable copy of the fs_csaddr table
         self._inode_cache = {}     # fragment number -> mutable dinode-block bytearray
+        self._data_cache = {}      # fragment number -> pending file-content bytes
 
     def __enter__(self):
         return self
@@ -386,11 +394,15 @@ class Allocator(object):
         for frag, buf in self._inode_cache.items():
             f.seek(self.img.frag_offset(frag))
             f.write(bytes(buf))
+        for frag, buf in self._data_cache.items():
+            f.seek(self.img.frag_offset(frag))
+            f.write(buf)
         f.flush()
         self._cg_cache.clear()
         self._sb_cache = None
         self._cstable_cache = None
         self._inode_cache.clear()
+        self._data_cache.clear()
 
     def validate(self):
         """Refuse to proceed unless our model already matches a good filesystem."""
@@ -404,3 +416,174 @@ class Allocator(object):
                 "summed cylinder-group summaries %s disagree with fs_cstotal %s; "
                 "the on-disk layout is not what this tool expects"
                 % (tuple(totals), tuple(recorded)))
+
+    def _write_data(self, frag_start, chunk):
+        self._data_cache[frag_start] = bytes(chunk)
+
+    def _zero_dinode(self, ino):
+        """Clear a dinode's 128 bytes before write_inode fills it in, so a
+        reused inode never inherits a dead occupant's uid/gid/times/etc.
+        """
+        frag, entry = rhap_image._inode_location(self.img, ino)
+        buf = self._dirty_inode_block(frag)
+        buf[entry:entry + rhap_image.DINODE_SIZE] = bytes(rhap_image.DINODE_SIZE)
+
+    def _alloc_whole_blocks(self, nblocks, allocated):
+        """Allocate `nblocks` whole fs_frag-fragment blocks, spread across
+        as many cylinder groups as necessary (alloc_frags only ever
+        searches one group per call).  Every raw fragment handed back is
+        appended to `allocated`, for rollback on failure.  Returns the
+        list of block-start fragment numbers, one per block.
+        """
+        frag = self.g.frag
+        starts = []
+        remaining = nblocks
+        while remaining > 0:
+            chunk = remaining
+            got = None
+            while chunk > 0:
+                try:
+                    got = self.alloc_frags(chunk * frag)
+                    break
+                except SafetyError:
+                    chunk = chunk // 2
+            if not got:
+                raise SafetyError(
+                    "not enough free space across any cylinder group to "
+                    "allocate %d more block(s)" % remaining)
+            allocated.extend(got)
+            for i in range(chunk):
+                starts.append(got[i * frag])
+            remaining -= chunk
+        return starts
+
+    def _alloc_tail_block(self, tail_frags, allocated):
+        """Allocate the single, possibly-partial final block of a file."""
+        got = self.alloc_frags(tail_frags)
+        allocated.extend(got)
+        return got[0]
+
+    def _alloc_and_write_blocks(self, data):
+        """Allocate whole blocks for all but the tail, write `data` into
+        them, and allocate/fill a single indirect block once the file
+        needs more than NDADDR blocks.  Returns (db, ib, total_frags),
+        where total_frags is every fragment allocated (content plus the
+        indirect block itself) for di_blocks accounting.
+        """
+        bsize = self.g.bsize
+        size = len(data)
+        allocated = []
+        try:
+            block_starts = []
+            if size > 0:
+                nblocks = (size + bsize - 1) // bsize
+                nfull = nblocks - 1
+                tail_bytes = size - nfull * bsize
+                fsize = self.g.fsize
+                tail_frags = (tail_bytes + fsize - 1) // fsize
+                if nfull > 0:
+                    block_starts += self._alloc_whole_blocks(nfull, allocated)
+                block_starts.append(self._alloc_tail_block(tail_frags, allocated))
+
+            for idx, start in enumerate(block_starts):
+                offset = idx * bsize
+                self._write_data(start, data[offset:offset + bsize])
+
+            ndaddr = rhap_image.NDADDR
+            db = block_starts[:ndaddr]
+            db += [0] * (ndaddr - len(db))
+            ib = [0, 0, 0]
+            if len(block_starts) > ndaddr:
+                indirect = self._alloc_whole_blocks(1, allocated)
+                ib[0] = indirect[0]
+                ptrs = block_starts[ndaddr:]
+                ptrs += [0] * (self.g.nindir - len(ptrs))
+                self._write_data(ib[0],
+                                  struct.pack("<%di" % self.g.nindir, *ptrs))
+
+            return db, ib, len(allocated)
+        except SafetyError:
+            self.free_frags(allocated)
+            raise
+
+    def _read_dinode(self, ino):
+        """(mode, nlink, size, db, ib) for an existing inode, honoring any
+        pending (unflushed) write in this session.
+        """
+        frag, entry = rhap_image._inode_location(self.img, ino)
+        buf = self._inode_cache.get(frag)
+        if buf is None:
+            buf = self.img.read_frag(frag, self.g.bsize)
+        mode, nlink = struct.unpack_from("<Hh", buf, entry)
+        size = struct.unpack_from("<Q", buf, entry + 8)[0]
+        db = list(struct.unpack_from("<%di" % rhap_image.NDADDR, buf, entry + 40))
+        ib = list(struct.unpack_from("<%di" % rhap_image.NIADDR, buf, entry + 88))
+        return mode, nlink, size, db, ib
+
+    def _old_file_frags(self, size, db, ib):
+        """Every fragment (content blocks plus the indirect block, if any)
+        belonging to a file previously written by this module, based on
+        our own layout: every block but the last is a full fs_frag-sized
+        block, the last is sized to just cover the remainder.
+        """
+        if size == 0:
+            return []
+        bsize = self.g.bsize
+        fsize = self.g.fsize
+        frag = self.g.frag
+        ndaddr = rhap_image.NDADDR
+        nblocks = (size + bsize - 1) // bsize
+        block_starts = list(db[:min(nblocks, ndaddr)])
+        if nblocks > ndaddr:
+            ind = self.img.read_frag(ib[0], bsize)
+            ptrs = struct.unpack_from("<%di" % self.g.nindir, ind, 0)
+            block_starts += list(ptrs[:nblocks - ndaddr])
+        tail_bytes = size - (nblocks - 1) * bsize
+        tail_frags = (tail_bytes + fsize - 1) // fsize
+        out = []
+        for idx, start in enumerate(block_starts):
+            count = frag if idx < nblocks - 1 else tail_frags
+            out.extend(start + k for k in range(count))
+        if nblocks > ndaddr:
+            out.extend(ib[0] + k for k in range(frag))
+        return out
+
+    def write_new_file(self, data, mode=0o100644):
+        """Allocate a fresh inode and fragments, write `data` as its
+        contents, and return the inode number.  Refuses anything over
+        MAX_FILE_BYTES before allocating anything.
+        """
+        self._require_writable("write_new_file")
+        if len(data) > MAX_FILE_BYTES:
+            raise SafetyError(
+                "file is %d bytes, over the %d-byte (16 MB) limit for "
+                "direct plus single-indirect blocks" % (len(data), MAX_FILE_BYTES))
+        ino = self.alloc_inode()
+        try:
+            db, ib, total_frags = self._alloc_and_write_blocks(data)
+        except Exception:
+            self.free_inode(ino)
+            raise
+        self._zero_dinode(ino)
+        self.write_inode(ino, mode=mode, size=len(data), db=db, ib=ib,
+                          nlink=1, mtime=int(time.time()))
+        self.set_inode_blocks(ino, total_frags * (self.g.fsize // 512))
+        return ino
+
+    def grow_file(self, ino, data):
+        """Replace an existing file's contents, allocating more fragments
+        when `data` exceeds its current allocation and releasing the
+        surplus when it shrinks.
+        """
+        self._require_writable("grow_file")
+        if len(data) > MAX_FILE_BYTES:
+            raise SafetyError(
+                "file is %d bytes, over the %d-byte (16 MB) limit for "
+                "direct plus single-indirect blocks" % (len(data), MAX_FILE_BYTES))
+        mode, nlink, old_size, old_db, old_ib = self._read_dinode(ino)
+        old_frags = self._old_file_frags(old_size, old_db, old_ib)
+        db, ib, total_frags = self._alloc_and_write_blocks(data)
+        self.free_frags(old_frags)
+        self.write_inode(ino, mode=mode, size=len(data), db=db, ib=ib,
+                          nlink=nlink, mtime=int(time.time()))
+        self.set_inode_blocks(ino, total_frags * (self.g.fsize // 512))

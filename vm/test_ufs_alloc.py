@@ -142,5 +142,81 @@ class TestInodeAllocation(unittest.TestCase):
             a.flush()
 
 
+class TestFileCreation(unittest.TestCase):
+    def setUp(self):
+        if not _present(GOLDEN):
+            self.skipTest("golden.img not present")
+        self.tmp = tempfile.mkdtemp(prefix="ufsalloc-", dir=os.path.join(HERE, "work"))
+        self.addCleanup(shutil.rmtree, self.tmp)
+        self.img = os.path.join(self.tmp, "test.img")
+        clone(GOLDEN, self.img)
+
+    def _roundtrip(self, payload):
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            ino = a.write_new_file(payload)
+            a.flush()
+        self.assertEqual(ufs_check.check(self.img), [])
+        import rhap_image
+        with rhap_image.Image(self.img) as img:
+            self.assertEqual(img.read_file(ino), payload)
+
+    def test_small_file_uses_direct_blocks(self):
+        self._roundtrip(b"A" * 5000)
+
+    def test_file_spanning_every_direct_block(self):
+        self._roundtrip(bytes(range(256)) * 384)      # 96 KB exactly
+
+    def test_file_needing_an_indirect_block(self):
+        self._roundtrip(b"Z" * (200 * 1024))          # past 96 KB
+
+    def test_large_file_spans_multiple_cylinder_groups(self):
+        # fs_fpg is 16128 fragments = 15.8 MB per group, while
+        # MAX_FILE_BYTES is ~16.09 MB -- a file this size cannot fit in a
+        # single cylinder group even if that group were entirely empty, so
+        # this exercises alloc_frags being called repeatedly across groups.
+        block = os.urandom(65536)
+        size = ufs_alloc.MAX_FILE_BYTES - 8192
+        payload = (block * (size // len(block) + 1))[:size]
+        self._roundtrip(payload)
+
+    def test_growing_a_file_past_its_allocation(self):
+        # The case rhap_inject refuses: /mach_kernel has 704 bytes of slack,
+        # so growing it at all requires real allocation.
+        import rhap_image
+        big = b"G" * 300000
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            ino = a.write_new_file(b"small")
+            a.flush()
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            a.grow_file(ino, big)
+            a.flush()
+        self.assertEqual(ufs_check.check(self.img), [])
+        with rhap_image.Image(self.img) as img:
+            self.assertEqual(img.read_file(ino), big)
+
+    def test_shrinking_a_file_releases_its_surplus(self):
+        import rhap_image
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            before = a.fs_cstotal()
+            ino = a.write_new_file(b"B" * 200000)
+            a.flush()
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            a.grow_file(ino, b"tiny")
+            a.flush()
+        self.assertEqual(ufs_check.check(self.img), [])
+        with rhap_image.Image(self.img) as img:
+            self.assertEqual(img.read_file(ino), b"tiny")
+
+    def test_oversized_file_is_refused_before_writing(self):
+        import hashlib
+        digest = hashlib.sha256(open(self.img, "rb").read(1 << 20)).hexdigest()
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            with self.assertRaises(ufs_alloc.SafetyError) as cm:
+                a.write_new_file(b"\0" * (ufs_alloc.MAX_FILE_BYTES + 1))
+            self.assertIn("16", str(cm.exception))
+        after = hashlib.sha256(open(self.img, "rb").read(1 << 20)).hexdigest()
+        self.assertEqual(digest, after, "image was modified despite refusal")
+
+
 if __name__ == "__main__":
     unittest.main()

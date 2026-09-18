@@ -362,7 +362,8 @@ const char * const pnpBiosSignatureString = "$PnP";
     }
 
     /* Parse I/O ports (8 slots) */
-    for (i = 0; i < 8; i++) {
+    i = 0;
+    do {
         portBase = (registers->field2_0x38[i][0] << 8) | registers->field2_0x38[i][1];
 
         if (portBase != 0) {
@@ -377,10 +378,11 @@ const char * const pnpBiosSignatureString = "$PnP";
                 [portObject print];
             }
         }
-    }
+    } while (++i < 8);
 
     /* Parse IRQs (2 slots) */
-    for (i = 0; i < 2; i++) {
+    i = 0;
+    do {
         irqNum = registers->field3_0x48[i][0];
 
         /* IRQ 2 redirects to IRQ 9 */
@@ -404,10 +406,11 @@ const char * const pnpBiosSignatureString = "$PnP";
                 [irqObject print];
             }
         }
-    }
+    } while (++i < 2);
 
     /* Parse DMA channels (2 slots) */
-    for (i = 0; i < 2; i++) {
+    i = 0;
+    do {
         dmaChannel = registers->field4_0x4c[i][0];
 
         if (dmaChannel != 4) {
@@ -423,10 +426,11 @@ const char * const pnpBiosSignatureString = "$PnP";
                 [dmaObject print];
             }
         }
-    }
+    } while (++i < 2);
 
     /* Parse 24-bit memory (4 slots) */
-    for (i = 0; i < 4; i++) {
+    i = 0;
+    do {
         memBase24 = ((unsigned int)registers->field0_0x0[i][0] << 16) |
                     ((unsigned int)registers->field0_0x0[i][1] << 8);
 
@@ -463,7 +467,7 @@ const char * const pnpBiosSignatureString = "$PnP";
                 [memoryObject print];
             }
         }
-    }
+    } while (++i < 4);
 
     /* Check if we already have 32-bit memory */
     memList = [_memory list];
@@ -471,7 +475,8 @@ const char * const pnpBiosSignatureString = "$PnP";
 
     if (memCount == 0) {
         /* Parse 32-bit memory (4 slots) */
-        for (i = 0; i < 4; i++) {
+        i = 0;
+        do {
             memBase32 = ((unsigned int)registers->field1_0x14[i][0] << 24) |
                         ((unsigned int)registers->field1_0x14[i][1] << 16) |
                         ((unsigned int)registers->field1_0x14[i][2] << 8) |
@@ -509,7 +514,7 @@ const char * const pnpBiosSignatureString = "$PnP";
                     [memoryObject print];
                 }
             }
-        }
+        } while (++i < 4);
     }
 
     return self;

@@ -329,7 +329,7 @@ Accepted 2026-09-17: remaining `none` hand-written rows are `intentional-mismatc
 - `-[PnPDeviceResources initForBuf:Length:CSN:]` (shared, diff 134; reloc different d=149): declaration order of the header locals — **tried, kept**; leftover is Apple byte-copy ID loop / tool `_printf`; **accepted** compiler-shaped on both
 - `_IOScheduleFunc` (tool-only, diff 162): loop shape of the insertion walk — **tried, kept**; leftover is Apple tail-pointer / shld*1e9 versus mul; **accepted** compiler-shaped
 - `__IOCallDeviceMethod` (tool-only, diff 167): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
-- `-[PnPResources initFromRegisters:]` (shared, diff 173; reloc different d=91): loop shape of the register walk
+- `-[PnPResources initFromRegisters:]` (shared, diff 173; reloc different d=91): loop shape of the register walk — **tried, kept**; leftover is verbose PIC / selector displacements; **accepted** compiler-shaped on both
 - `__IOGetEISADeviceConfig` (tool-only, diff 224): none — Apple 60–200+ instruction MIG/PM body vs local 6-instruction `return -1` stub
 - `_main` (tool-only, diff 357): statement order of the existing option/dispatch blocks (large body; one idea only)
 - `-[PnPDeviceResources parseConfig:Length:]` (shared, diff 857; reloc different d=890): loop shape of the tag walk (large body; one idea only)

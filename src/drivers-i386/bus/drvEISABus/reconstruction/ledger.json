@@ -2641,7 +2641,7 @@
       "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 144,
-      "source_line": 523,
+      "source_line": 527,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
       "status": "intentional-mismatch"
     },
@@ -2665,7 +2665,7 @@
       "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 245,
-      "source_line": 50,
+      "source_line": 53,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
       "status": "intentional-mismatch"
     },
@@ -2689,33 +2689,31 @@
       "reason": null,
       "reviewer": null,
       "size": 713,
-      "source_line": 229,
+      "source_line": 228,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
       "status": "unexamined"
     },
     {
       "address": 21580,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 6 do-while register walks (port/IRQ/DMA/24-bit/32-bit); leftover is verbose PIC / selector displacements and length-mode xor versus not"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[PnPResources initFromRegisters:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 1045,
-      "source_line": 347,
+      "source_line": 346,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 22628,
@@ -2737,7 +2735,7 @@
       "reason": "compiler-shaped leftover after exhausted source-shape list",
       "reviewer": "Pat Raynor",
       "size": 112,
-      "source_line": 72,
+      "source_line": 75,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
       "status": "intentional-mismatch"
     },
@@ -2761,7 +2759,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 13,
-      "source_line": 85,
+      "source_line": 88,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
       "status": "assembly-matched"
     },
@@ -2785,7 +2783,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 13,
-      "source_line": 93,
+      "source_line": 96,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
       "status": "assembly-matched"
     },
@@ -2809,7 +2807,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 13,
-      "source_line": 101,
+      "source_line": 104,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
       "status": "assembly-matched"
     },
@@ -2833,7 +2831,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 13,
-      "source_line": 109,
+      "source_line": 112,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
       "status": "assembly-matched"
     },
@@ -2858,7 +2856,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 46,
-      "source_line": 118,
+      "source_line": 121,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
       "status": "assembly-matched"
     },
@@ -2933,7 +2931,7 @@
       "reason": null,
       "reviewer": "Pat Raynor",
       "size": 46,
-      "source_line": 147,
+      "source_line": 148,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
       "status": "assembly-matched"
     },
@@ -2979,7 +2977,7 @@
       "reason": null,
       "reviewer": null,
       "size": 256,
-      "source_line": 175,
+      "source_line": 174,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
       "status": "unexamined"
     },
@@ -3919,7 +3917,7 @@
       "status": "unexamined"
     }
   ],
-  "rebuilt_sha256": "8D19FE9A6A75FA0D1CDF13C706E8CF1C2734BFC33699C395AB03E1232B9A94C7",
+  "rebuilt_sha256": "1CF72ADC5E1827867389CB5D7B90780D14BAF9E74E1D926F750B49D4E20542D4",
   "reference_sha256": "8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23",
   "schema_version": "ledger-v1"
 }

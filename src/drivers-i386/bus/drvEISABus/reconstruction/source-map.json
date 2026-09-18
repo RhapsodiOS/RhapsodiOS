@@ -1019,7 +1019,7 @@
         "-[PnPResources print]"
       ],
       "size": 144,
-      "source_line": 523,
+      "source_line": 527,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m"
     },
     {
@@ -1028,7 +1028,7 @@
         "-[PnPResources init]"
       ],
       "size": 245,
-      "source_line": 50,
+      "source_line": 53,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m"
     },
     {
@@ -1037,7 +1037,7 @@
         "-[PnPResources initFromDeviceDescription:]"
       ],
       "size": 713,
-      "source_line": 229,
+      "source_line": 228,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m"
     },
     {
@@ -1046,7 +1046,7 @@
         "-[PnPResources initFromRegisters:]"
       ],
       "size": 1045,
-      "source_line": 347,
+      "source_line": 346,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m"
     },
     {
@@ -1055,7 +1055,7 @@
         "-[PnPResources free]"
       ],
       "size": 112,
-      "source_line": 72,
+      "source_line": 75,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m"
     },
     {
@@ -1064,7 +1064,7 @@
         "-[PnPResources irq]"
       ],
       "size": 13,
-      "source_line": 85,
+      "source_line": 88,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m"
     },
     {
@@ -1073,7 +1073,7 @@
         "-[PnPResources dma]"
       ],
       "size": 13,
-      "source_line": 93,
+      "source_line": 96,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m"
     },
     {
@@ -1082,7 +1082,7 @@
         "-[PnPResources port]"
       ],
       "size": 13,
-      "source_line": 101,
+      "source_line": 104,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m"
     },
     {
@@ -1091,7 +1091,7 @@
         "-[PnPResources memory]"
       ],
       "size": 13,
-      "source_line": 109,
+      "source_line": 112,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m"
     },
     {
@@ -1100,7 +1100,7 @@
         "-[PnPResources addIRQ:]"
       ],
       "size": 46,
-      "source_line": 118,
+      "source_line": 121,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m"
     },
     {
@@ -1127,7 +1127,7 @@
         "-[PnPResources addMemory:]"
       ],
       "size": 46,
-      "source_line": 147,
+      "source_line": 148,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m"
     },
     {
@@ -1145,7 +1145,7 @@
         "-[PnPResources configure:Using:]"
       ],
       "size": 256,
-      "source_line": 175,
+      "source_line": 174,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m"
     },
     {

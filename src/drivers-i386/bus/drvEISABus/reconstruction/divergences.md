@@ -3281,3 +3281,377 @@ Same header-local reorder as the tool. Leftover is Apple's byte-copy ID loop ver
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+### Task 6 `-[PnPResources initFromRegisters:]` do-while walks (2026-09-17)
+
+Same do-while register walks as the tool. Leftover is verbose / selector PIC. Accepted compiler-shaped leftover (reviewer Pat Raynor). Reloc SHA `1CF72ADC5E1827867389CB5D7B90780D14BAF9E74E1D926F750B49D4E20542D4` (603536). Previously identical rows stayed matched (46). Unpaired count unchanged (11). Kernel-only reloc statuses were not reopened.
+
+```
+-[PnPResources initFromRegisters:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt                               
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 10h                            sub esp, 10h
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  mov ecx, ds:paInit                      mov ecx, ds:paInit
+  push ecx                                push ecx
+  mov esi, [ebp+self]                     mov esi, [ebp+self]
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  test eax, eax                           test eax, eax
+* jnz loc_548C                            jnz loc_5F98
+  xor eax, eax                            xor eax, eax
+* jmp loc_5857                            jmp loc_6358
+  mov ecx, ds:paFree                      mov ecx, ds:paFree
+  push ecx                                push ecx
+  mov esi, [ebp+self]                     mov esi, [ebp+self]
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+* jmp loc_5857                            jmp loc_6358
+  xor edi, edi                            xor edi, edi
+  nop                                     nop
+  nop                                     nop
+  lea eax, [edi+edi]                      lea eax, [edi+edi]
+  mov ecx, [ebp+arg_8]                    mov ecx, [ebp+arg_8]
+  mov dl, [eax+ecx+38h]                   mov dl, [eax+ecx+38h]
+  shl dx, 8                               shl dx, 8
+  movzx ax, byte ptr [eax+ecx+39h]        movzx ax, byte ptr [eax+ecx+39h]
+  or ax, dx                               or ax, dx
+* jz loc_550A                             jz loc_6016
+  push 0                                  push 0
+  and eax, 0FFFFh                         and eax, 0FFFFh
+  push eax                                push eax
+* mov esi, ds:paInitwithbaseLe_0          mov esi, ds:paInitwithbaseLe
+  push esi                                push esi
+  mov ecx, ds:paAlloc                     mov ecx, ds:paAlloc
+  push ecx                                push ecx
+  mov esi, ds:paPnpioport                 mov esi, ds:paPnpioport
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov ebx, eax                            mov ebx, eax
+  add esp, 10h                            add esp, 10h
+  test ebx, ebx                           test ebx, ebx
+* jz loc_5474                             jz loc_5F80
+  push ebx                                push ebx
+  mov ecx, ds:paAddioport                 mov ecx, ds:paAddioport
+  push ecx                                push ecx
+  mov esi, [ebp+self]                     mov esi, [ebp+self]
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 0Ch                            add esp, 0Ch
+* cmp ds:_verbose_0, 0                    cmp ds:_verbose, 0
+* jz loc_550A                             jz loc_6016
+  mov ecx, ds:paPrint                     mov ecx, ds:paPrint
+  push ecx                                push ecx
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  inc edi                                 inc edi
+  cmp edi, 7                              cmp edi, 7
+* jle loc_5490                            jle loc_5F9C
+  xor edi, edi                            xor edi, edi
+  nop                                     nop
+  nop                                     nop
+  mov esi, [ebp+arg_8]                    mov esi, [ebp+arg_8]
+  mov bl, [esi+edi*2+48h]                 mov bl, [esi+edi*2+48h]
+  cmp bl, 2                               cmp bl, 2
+* jnz loc_5522                            jnz loc_602E
+  mov bl, 9                               mov bl, 9
+  mov ecx, [ebp+arg_8]                    mov ecx, [ebp+arg_8]
+  mov cl, [ecx+edi*2+49h]                 mov cl, [ecx+edi*2+49h]
+  mov [ebp+var_4], cl                     mov [ebp+var_4], cl
+  test bl, bl                             test bl, bl
+* jz loc_55C4                             jz loc_60D0
+  mov esi, ds:paInit                      mov esi, ds:paInit
+  push esi                                push esi
+  mov ecx, ds:paAlloc                     mov ecx, ds:paAlloc
+  push ecx                                push ecx
+  mov esi, ds:paPnpirq                    mov esi, ds:paPnpirq
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov [ebp+var_10], eax                   mov [ebp+var_10], eax
+  add esp, 8                              add esp, 8
+  test eax, eax                           test eax, eax
+* jz loc_5474                             jz loc_5F80
+  movzx eax, bl                           movzx eax, bl
+  push eax                                push eax
+  mov ecx, ds:paAddtoirqlist              mov ecx, ds:paAddtoirqlist
+  push ecx                                push ecx
+  mov esi, [ebp+var_10]                   mov esi, [ebp+var_10]
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov al, [ebp+var_4]                     mov al, [ebp+var_4]
+  and eax, 1                              and eax, 1
+  push eax                                push eax
+  mov al, [ebp+var_4]                     mov al, [ebp+var_4]
+  and eax, 2                              and eax, 2
+  push eax                                push eax
+  mov ecx, ds:paSethighLevel              mov ecx, ds:paSethighLevel
+  push ecx                                push ecx
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  push esi                                push esi
+  mov esi, ds:paAddirq                    mov esi, ds:paAddirq
+  push esi                                push esi
+  mov ecx, [ebp+self]                     mov ecx, [ebp+self]
+  push ecx                                push ecx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 28h                            add esp, 28h
+* cmp ds:_verbose_0, 0                    cmp ds:_verbose, 0
+* jz loc_55C4                             jz loc_60D0
+  mov esi, ds:paPrint                     mov esi, ds:paPrint
+  push esi                                push esi
+  mov ecx, [ebp+var_10]                   mov ecx, [ebp+var_10]
+  push ecx                                push ecx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  inc edi                                 inc edi
+  cmp edi, 1                              cmp edi, 1
+* jle loc_5514                            jle loc_6020
+  xor edi, edi                            xor edi, edi
+  mov ecx, [ebp+arg_8]                    mov ecx, [ebp+arg_8]
+* mov cl, [edi+ecx+4Ch]                   mov cl, [ecx+edi*2+4Ch]
+  mov [ebp+var_8], cl                     mov [ebp+var_8], cl
+  cmp cl, 4                               cmp cl, 4
+* jz loc_564E                             jz loc_615A
+  mov esi, ds:paInit                      mov esi, ds:paInit
+  push esi                                push esi
+  mov ecx, ds:paAlloc                     mov ecx, ds:paAlloc
+  push ecx                                push ecx
+  mov esi, ds:paPnpdma                    mov esi, ds:paPnpdma
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov ebx, eax                            mov ebx, eax
+  add esp, 8                              add esp, 8
+  test ebx, ebx                           test ebx, ebx
+* jz loc_5474                             jz loc_5F80
+  movzx eax, [ebp+var_8]                  movzx eax, [ebp+var_8]
+  push eax                                push eax
+  mov ecx, ds:paAdddmatolist              mov ecx, ds:paAdddmatolist
+  push ecx                                push ecx
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  push ebx                                push ebx
+  mov esi, ds:paAdddma                    mov esi, ds:paAdddma
+  push esi                                push esi
+  mov ecx, [ebp+self]                     mov ecx, [ebp+self]
+  push ecx                                push ecx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 18h                            add esp, 18h
+* cmp ds:_verbose_0, 0                    cmp ds:_verbose, 0
+* jz loc_564E                             jz loc_615A
+  mov esi, ds:paPrint                     mov esi, ds:paPrint
+  push esi                                push esi
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  inc edi                                 inc edi
+  cmp edi, 1                              cmp edi, 1
+* jle loc_55D0                            jle loc_60DC
+  xor edi, edi                            xor edi, edi
+  nop                                     nop
+  nop                                     nop
+  lea ecx, [edi+edi*4]                    lea ecx, [edi+edi*4]
+  mov [ebp+var_C], ecx                    mov [ebp+var_C], ecx
+  mov esi, [ebp+arg_8]                    mov esi, [ebp+arg_8]
+  movzx edx, byte ptr [ecx+esi]           movzx edx, byte ptr [ecx+esi]
+  shl edx, 10h                            shl edx, 10h
+  movzx eax, byte ptr [ecx+esi+1]         movzx eax, byte ptr [ecx+esi+1]
+  shl eax, 8                              shl eax, 8
+  or edx, eax                             or edx, eax
+  mov [ebp+var_10], edx                   mov [ebp+var_10], edx
+* jz loc_5727                             jz loc_622F
+* mov bl, [ecx+esi+2]                     movzx ebx, byte ptr [ecx+esi+2]
+  movzx edx, byte ptr [ecx+esi+3]         movzx edx, byte ptr [ecx+esi+3]
+  shl edx, 10h                            shl edx, 10h
+  movzx eax, byte ptr [ecx+esi+4]         movzx eax, byte ptr [ecx+esi+4]
+  shl eax, 8                              shl eax, 8
+  or eax, edx                             or eax, edx
+  xor edx, edx                            xor edx, edx
+  test eax, eax                           test eax, eax
+* jz loc_56B5                             jz loc_61BD
+  test bl, 1                              test bl, 1
+* jz loc_56A8                             jnz loc_61B8
+*                                         mov edx, eax
+*                                         xor edx, 0FFFFFFh
+*                                         inc edx
+*                                         jmp loc_61BD
+  mov edx, eax                            mov edx, eax
+  sub edx, [ebp+var_10]                   sub edx, [ebp+var_10]
+* jmp loc_56B5
+* and eax, 0FFFFFFh
+* xor eax, 0FFFFFFh
+* lea edx, [eax+1]
+  push 0                                  push 0
+  mov eax, ebx                            mov eax, ebx
+  and eax, 1                              and eax, 1
+  push eax                                push eax
+  push 0                                  push 0
+  mov eax, ebx                            mov eax, ebx
+  and eax, 2                              and eax, 2
+  push eax                                push eax
+  push edx                                push edx
+  mov ecx, [ebp+var_10]                   mov ecx, [ebp+var_10]
+  push ecx                                push ecx
+* mov esi, ds:paInitwithbaseLe            mov esi, ds:paInitwithbaseLe_0
+  push esi                                push esi
+  mov ecx, ds:paAlloc                     mov ecx, ds:paAlloc
+  push ecx                                push ecx
+  mov esi, ds:paPnpmemory                 mov esi, ds:paPnpmemory
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov ebx, eax                            mov ebx, eax
+  add esp, 20h                            add esp, 20h
+  test ebx, ebx                           test ebx, ebx
+* jz loc_5474                             jz loc_5F80
+  push ebx                                push ebx
+  mov ecx, ds:paAddmemory                 mov ecx, ds:paAddmemory
+  push ecx                                push ecx
+  mov esi, [ebp+self]                     mov esi, [ebp+self]
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 0Ch                            add esp, 0Ch
+* cmp ds:_verbose_0, 0                    cmp ds:_verbose, 0
+* jz loc_5727                             jz loc_622F
+  mov ecx, ds:paPrint                     mov ecx, ds:paPrint
+  push ecx                                push ecx
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  inc edi                                 inc edi
+  cmp edi, 3                              cmp edi, 3
+* jle loc_565C                            jle loc_6168
+*                                         mov esi, ds:paList_0
+*                                         push esi
+*                                         mov ecx, [ebp+self]
+*                                         mov ecx, [ecx+10h]
+*                                         push ecx
+*                                         call near ptr _objc_msgSend
+  mov esi, ds:paCount                     mov esi, ds:paCount
+  push esi                                push esi
+* mov ecx, ds:paList_0
+* push ecx
+* mov esi, [ebp+self]
+* mov esi, [esi+10h]
+* push esi
+* call near ptr _objc_msgSend
+* add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+* add esp, 8                              add esp, 10h
+  test eax, eax                           test eax, eax
+* jnz loc_5854                            jnz loc_6355
+  xor edi, edi                            xor edi, edi
+  nop                                     nop
+  nop                                     nop
+* nop                                     lea ecx, [edi+edi*8]
+* lea ebx, [edi+edi*8]                    mov [ebp+var_C], ecx
+* mov ecx, [ebp+arg_8]                    mov esi, [ebp+arg_8]
+* mov dl, [ebx+ecx+14h]                   mov dl, [ecx+esi+14h]
+  shl edx, 18h                            shl edx, 18h
+* movzx eax, byte ptr [ebx+ecx+15h]       movzx eax, byte ptr [ecx+esi+15h]
+  shl eax, 10h                            shl eax, 10h
+  or edx, eax                             or edx, eax
+* movzx eax, byte ptr [ebx+ecx+16h]       movzx eax, byte ptr [ecx+esi+16h]
+  shl eax, 8                              shl eax, 8
+  or edx, eax                             or edx, eax
+* movzx eax, byte ptr [ebx+ecx+17h]       movzx eax, byte ptr [ecx+esi+17h]
+  or edx, eax                             or edx, eax
+  mov [ebp+var_10], edx                   mov [ebp+var_10], edx
+* jz loc_584A                             jz loc_634B
+* mov dl, [ebx+ecx+18h]                   movzx ebx, byte ptr [ecx+esi+18h]
+* mov cl, [ebx+ecx+19h]                   mov dl, [ecx+esi+19h]
+* shl ecx, 18h                            shl edx, 18h
+* mov esi, [ebp+arg_8]                    movzx eax, byte ptr [ecx+esi+1Ah]
+* movzx eax, byte ptr [ebx+esi+1Ah]
+  shl eax, 10h                            shl eax, 10h
+* or ecx, eax                             or edx, eax
+* movzx eax, byte ptr [ebx+esi+1Bh]       movzx eax, byte ptr [ecx+esi+1Bh]
+  shl eax, 8                              shl eax, 8
+* or ecx, eax                             or edx, eax
+* movzx eax, byte ptr [ebx+esi+1Ch]       movzx eax, byte ptr [ecx+esi+1Ch]
+* or ecx, eax                             or eax, edx
+* mov [ebp+var_C], ecx                    xor edx, edx
+* xor ebx, ebx                            test eax, eax
+* test ecx, ecx                           jz loc_62DD
+* jz loc_57DC                             test bl, 1
+* test dl, 1                              jnz loc_62D8
+* jz loc_57D4                             mov edx, eax
+* mov ebx, ecx                            not edx
+* sub ebx, [ebp+var_10]                   inc edx
+* jmp loc_57DC                            jmp loc_62DD
+* mov eax, [ebp+var_C]                    mov edx, eax
+* not eax                                 sub edx, [ebp+var_10]
+* lea ebx, [eax+1]
+  push 1                                  push 1
+* mov eax, edx                            mov eax, ebx
+  and eax, 1                              and eax, 1
+  push eax                                push eax
+* mov eax, edx                            mov eax, ebx
+  and eax, 4                              and eax, 4
+  push eax                                push eax
+* mov eax, edx                            mov eax, ebx
+  and eax, 2                              and eax, 2
+  push eax                                push eax
+* push ebx                                push edx
+  mov ecx, [ebp+var_10]                   mov ecx, [ebp+var_10]
+  push ecx                                push ecx
+* mov esi, ds:paInitwithbaseLe            mov esi, ds:paInitwithbaseLe_0
+  push esi                                push esi
+  mov ecx, ds:paAlloc                     mov ecx, ds:paAlloc
+  push ecx                                push ecx
+  mov esi, ds:paPnpmemory                 mov esi, ds:paPnpmemory
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  mov ebx, eax                            mov ebx, eax
+  add esp, 20h                            add esp, 20h
+  push ebx                                push ebx
+  mov ecx, ds:paAddmemory                 mov ecx, ds:paAddmemory
+  push ecx                                push ecx
+  mov esi, [ebp+self]                     mov esi, [ebp+self]
+  push esi                                push esi
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 0Ch                            add esp, 0Ch
+* cmp ds:_verbose_0, 0                    cmp ds:_verbose, 0
+* jz loc_584A                             jz loc_634B
+  mov ecx, ds:paPrint                     mov ecx, ds:paPrint
+  push ecx                                push ecx
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  inc edi                                 inc edi
+  cmp edi, 3                              cmp edi, 3
+* jle loc_5764                            jle loc_6268
+  mov eax, [ebp+self]                     mov eax, [ebp+self]
+  lea esp, [ebp-1Ch]                      lea esp, [ebp-1Ch]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```

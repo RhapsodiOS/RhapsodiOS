@@ -10,6 +10,14 @@ kernel in the state the kernel already expects.
 **Done when:** under QEMU with IA32 OVMF, the loader boots the kernel and
 `vfs_mountroot()` succeeds. Userland startup beyond that point is out of scope.
 
+**Status: met (2026-09-18).** The loader boots to the Rhapsody Setup Assistant —
+root mounted and userland running. This required a kernel built from the current
+tree: the `mach_kernel` on the original media predates the i8259 spurious-slave-IRQ
+fix (`machdep/i386/intr.c`), without which a stalled PIC cascade starves the disk's
+IRQ 14 and the mount fails. The legacy BIOS path failed identically with that stale
+binary, so the loader was never implicated. With a current kernel the log shows
+`intr: phantom IRQ 15, EOI to master` a handful of times and then proceeds.
+
 ## Scope
 
 Target is QEMU plus IA32 OVMF only. Real UEFI hardware is not a goal; the

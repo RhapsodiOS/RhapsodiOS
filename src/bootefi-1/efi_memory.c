@@ -23,6 +23,22 @@ void free(char *p)
         gBS->FreePool(p);
 }
 
+/* libsaio/misc.c's newString(), reimplemented here instead of pulling in
+ * that whole translation unit -- its other two functions (sleep(),
+ * turnOffFloppy()) would collide with the EFI-safe versions this loader
+ * already defines in efi_console.c/efi_disk.c. drivers.c/stringTable.c
+ * need this one. */
+extern int strlen(const char *s);
+extern char *strcpy(char *s1, const char *s2);
+
+char *newString(char *oldString)
+{
+    if (oldString)
+        return strcpy(malloc(strlen(oldString) + 1), oldString);
+    else
+        return 0;
+}
+
 /* Not called by any boot-2 source directly; clang can lower a large
  * struct/array assignment to a call to memmove() (seen from sys.c), and
  * nothing in this freestanding build provides one. */

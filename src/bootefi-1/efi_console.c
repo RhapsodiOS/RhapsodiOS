@@ -107,6 +107,20 @@ void sleep(int seconds)
     gBS->Stall((UINTN)seconds * 1000000);
 }
 
+/* choose.c's interactive picker (chooseDriverFromList/chooseSimple) calls
+ * gets() to read a typed choice.  Both callers are on the prompting path
+ * that loadBootDrivers(0, 0, 0)'s non-prompting arguments never reach, so
+ * this loader has no keyboard-line-editing gets() of its own (boot-2's
+ * gets.c needs the real-mode time18()/readKeyboardStatus() BIOS calls this
+ * EFI build doesn't have) -- a stub that reports "no input" is enough to
+ * link and is never exercised. */
+int gets(char *buf, int len)
+{
+    if (len > 0)
+        buf[0] = '\0';
+    return 0;
+}
+
 /* halt() is real-mode assembly in boot-2 (asm.s, not part of this build)
  * with no EFI equivalent; sys.c calls it on an unrecoverable device error.
  * panic() is not called by boot-2 directly, but is pulled in via two

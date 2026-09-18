@@ -3,6 +3,7 @@
 #include <mach-o/loader.h>
 #include "load.h"
 #include <memory.h>	/* RLD_MEM_ADDR */
+#include "sarld.h"	/* sa_rld_t */
 
 EFI_SYSTEM_TABLE  *gST;
 EFI_BOOT_SERVICES *gBS;
@@ -32,6 +33,18 @@ extern void removeLinkEditSegment(struct mach_header *mhp);
 /* handoff.c: retries ExitBootServices, then jumps via handoff.S.  Never
  * returns. */
 extern void efi_exit_and_start(unsigned int entry);
+
+/* loadStandaloneLinker(), newStringForKey(), loadOtherConfigs() and
+ * loadBootDrivers() are already declared by saio_static.h / saio_internal.h,
+ * both pulled in transitively via load.h -> libsaio.h above. */
+
+/* boot2/boot.c globals that drivers.c/stringTable.c reference as extern.
+ * boot.c itself is not part of this build (it is boot2's own main loop);
+ * reproduced as plain data here since nothing sets either one -- this
+ * loader has no EISA/PCI auto-detect or installer driver-family UI, so
+ * both stay in their "none configured" state. */
+char *LoadableFamilies;
+void *PCISlotInfo;
 
 /* Set the first time ebiosread() runs, to prove the BIOS_ADDR override in
  * bootefi_memory_override.h actually reached disk.c's translation unit
@@ -110,6 +123,33 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
     printf("bootString '%s' kernDev %x magicCookie %x graphicsMode %d\n",
            kernBootStruct->bootString, kernBootStruct->kernDev,
            kernBootStruct->magicCookie, kernBootStruct->graphicsMode);
+
+    /* boot2's boot() loads the system config (System.config/Instance0.table
+     * off the default device) once, before ever calling execKernel() --
+     * that is where the "Boot Drivers" key loadOtherConfigs() reads below
+     * comes from. This loader has no boot-arg "config=" parsing and no
+     * instance selection, so it always takes loadSystemConfig()'s own
+     * argument-less default path (which=0, size=0), same as an
+     * unconfigured real boot. Without this call kernBootStruct->config
+     * stays empty and loadOtherConfigs() finds nothing to load. */
+    printf("loadSystemConfig: %d\n", loadSystemConfig(0, 0));
+
+    {
+        char *linkerPath = newStringForKey("Linker");
+        if (linkerPath == 0)
+            linkerPath = "/usr/standalone/i386/sarld";
+        if (loadStandaloneLinker(linkerPath,
+                                  (sa_rld_t **)&kernBootStruct->rld_entry)
+            == -1) {
+            printf("Couldn't load standalone linker; "
+                   "unable to load boot drivers.\n");
+        } else {
+            loadOtherConfigs(0);
+            loadBootDrivers(0, 0, 0);
+            printf("boot drivers linked: %d\n",
+                   kernBootStruct->numBootDrivers);
+        }
+    }
 
     removeLinkEditSegment((struct mach_header *)kernBootStruct->kaddr);
     printf("Starting Rhapsody\n");

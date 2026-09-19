@@ -15,6 +15,7 @@ bus
  * Intel82365PCMCIA - compiles; reconstructed against the reference binary, all fixes applied; its five ObjC protocol records and four adoptions are byte-identical to the reference, not yet tested
 
 ide
+ * drvAHCI - newly written rather than reconstructed: Rhapsody predates AHCI, so no Apple reference binary exists. Tested working - boots to userland under QEMU q35 on the built-in ICH9 SATA controller (8086:2922), with both ports detecting their disks, hd0/hd1 registering and root mounting over AHCI. Needs the UEFI loader's PCI config-mechanism report to bind; do not attach a second ich9-ahci controller or it binds to the empty one. Not yet tested on hardware
  * drvEIDE - complete
  * drvPCFloppy - reconstructed against Apple's Floppy_reloc; not yet tested on hardware
 

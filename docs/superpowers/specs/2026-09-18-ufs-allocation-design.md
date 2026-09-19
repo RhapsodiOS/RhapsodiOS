@@ -109,8 +109,9 @@ checks.
    array at `fs_csaddr`.
 4. The sum of all per-group summaries agrees with the superblock's
    `fs_cstotal`.
-5. An inode's `di_blocks`, counted in 512-byte sectors, agrees with the
-   fragments its block pointers actually reference.
+5. An inode's `di_blocks` (`total_frags * g.nspf`, not a hardcoded
+   512-byte-sector count) agrees with the fragments its block pointers
+   actually reference.
 
 ### Invariant 4 as a precondition
 
@@ -129,8 +130,11 @@ known to be good.
   matching UFS policy. Any other packing would be internally legal but would
   leave fragment accounting that disagrees with what the kernel and fsck
   expect.
-- `alloc_inode(kind)` claims a free inode, initialises the dinode, and bumps
-  `cs_ndir` for directories.
+- `alloc_inode(kind)` claims a free inode and bumps `cs_ndir` for
+  directories; it does not touch the dinode itself, so callers zero it
+  (`_zero_dinode`) before `write_inode` fills it in, and `free_inode` zeroes
+  it again on release so a freed inode never leaves a stale `di_mode` (and
+  stale block pointers) behind for fsck to trip over.
 - `add_dirent(dir, name, ino, type)` walks the `reclen` chain looking for slack
   inside an existing entry — how UFS packs directories — and grows the
   directory only when no entry has room.
@@ -158,9 +162,10 @@ Every refusal raises `SafetyError`. Three preconditions run before any write:
   unrecognised geometry.
 - **The `fs_cstotal` cross-check** described above.
 
-Mutations are collected as a set of `(offset, bytes)` writes and applied only
-after every step has succeeded, so a failure during computation leaves the image
-byte-identical. This is not crash safety — nothing here is — but it means out of
+Mutations are collected in five typed pending caches (cylinder-group headers,
+the superblock, the summary table, dinode blocks, and file-content fragments)
+and applied only after every step has succeeded, so a failure during
+computation leaves the image byte-identical. This is not crash safety — nothing here is — but it means out of
 space, directory full and oversized file cannot leave a half-allocated
 filesystem. Every refusal happens before the first byte is written.
 

@@ -1,0 +1,6 @@
+pkgname = bootp
+pkgver = 1
+pkgdesc = BOOTP/DHCP server and client
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = APSL
+makedepends = build-base

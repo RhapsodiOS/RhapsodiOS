@@ -1,0 +1,6 @@
+pkgname = isoutil
+pkgver = 1
+pkgdesc = ISO 9660 filesystem utilities
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = APSL
+makedepends = build-base

@@ -39,13 +39,12 @@ extern void efi_exit_and_start(unsigned int entry);
  * loadBootDrivers() are already declared by saio_static.h / saio_internal.h,
  * both pulled in transitively via load.h -> libsaio.h above. */
 
-/* boot2/boot.c globals that drivers.c/stringTable.c reference as extern.
+/* boot2/boot.c global that drivers.c/stringTable.c references as extern.
  * boot.c itself is not part of this build (it is boot2's own main loop);
- * reproduced as plain data here since nothing sets either one -- this
- * loader has no EISA/PCI auto-detect or installer driver-family UI, so
- * both stay in their "none configured" state. */
+ * reproduced as plain data here since nothing sets it -- this loader has no
+ * installer driver-family UI, so it stays "none configured".  PCISlotInfo
+ * is not stubbed here any more: efi_pci.c defines and fills it. */
 char *LoadableFamilies;
-void *PCISlotInfo;
 
 static entry_t kernelEntry;
 
@@ -106,7 +105,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
     /* After efi_init_bootstruct() has zeroed kernBootStruct, and before the
      * kernel reads pciInfo out of it.  Without this the kernel's PCI bus
      * driver decides there is no PCI bus and frees itself; see efi_pci.c. */
-    printf("pci config mechanism: %d\n", efi_pci_init());
+    printf("pci devices: %d\n", efi_pci_init());
 
     if (load_kernel("hd(0,a)/mach_kernel") != 0)
         for (;;) ;

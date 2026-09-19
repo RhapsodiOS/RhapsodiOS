@@ -7,7 +7,12 @@
 #import <mach/mach_interface.h>
 #import <string.h>
 
-extern unsigned int vm_page_size;
+/* The kernel's page size variable (vm/vm_resident.c:115).  Use this, not the
+ * user-space Mach spelling with the vm_ prefix: mach/vm_param.h declares
+ * that one only outside KERNEL builds, so referencing it leaves sarld with
+ * an undefined symbol when it links this driver against mach_kernel at
+ * boot.  The Floppy boot driver uses page_size for the same reason. */
+extern unsigned int page_size;
 
 typedef struct {
     vm_task_t task;
@@ -135,8 +140,8 @@ static int AHCIPortPacketCheckCondition(
     self = [super init];
     if (self == nil)
         return nil;
-    if (context == 0 || number >= 32U || vm_page_size < 1024U ||
-        (vm_page_size & (vm_page_size - 1U)) != 0) {
+    if (context == 0 || number >= 32U || page_size < 1024U ||
+        (page_size & (page_size - 1U)) != 0) {
         [self free];
         return nil;
     }
@@ -150,14 +155,14 @@ static int AHCIPortPacketCheckCondition(
     }
     AHCICommandArbiterInit(&commandArbiter);
     AHCITimeoutChainInit(&timeoutChain);
-    rawArenaBytes = AHCI_PORT_ARENA_USABLE_BYTES + vm_page_size - 1U;
+    rawArenaBytes = AHCI_PORT_ARENA_USABLE_BYTES + page_size - 1U;
     rawArena = IOMallocLow(rawArenaBytes);
     if (rawArena == 0) {
         [self free];
         return nil;
     }
     result = AHCIPortPrepareArena((unsigned long)rawArena, rawArenaBytes,
-                                  vm_page_size, AHCIPortTranslateAddress, 0,
+                                  page_size, AHCIPortTranslateAddress, 0,
                                   &arena);
     if (result != AHCI_PORT_SUCCESS) {
         [self free];
@@ -604,7 +609,7 @@ static int AHCIPortPacketCheckCondition(
     segmentCount = 0;
     translation.task = client;
     if (length != 0 &&
-        AHCIPortBuildSegments((unsigned long)buffer, length, vm_page_size,
+        AHCIPortBuildSegments((unsigned long)buffer, length, page_size,
                               AHCIPortTranslateAddress, &translation,
                               segments, 32U,
                               &segmentCount) != AHCI_PORT_SUCCESS) {

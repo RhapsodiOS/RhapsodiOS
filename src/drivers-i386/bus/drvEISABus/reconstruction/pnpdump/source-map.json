@@ -19,8 +19,7 @@
       "reference_names": [
         "_bail"
       ],
-      "size": 59,
-      "source_line": null
+      "size": 59
     },
     {
       "address": 15736,
@@ -40,8 +39,7 @@
       "reference_names": [
         "_main"
       ],
-      "size": 824,
-      "source_line": null
+      "size": 824
     }
   ],
   "mapped": [
@@ -1296,296 +1294,259 @@
       "reference_names": [
         "start"
       ],
-      "size": 38,
-      "source_line": null
+      "size": 38
     },
     {
       "address": 15364,
       "reference_names": [
         "__start"
       ],
-      "size": 194,
-      "source_line": null
+      "size": 194
     },
     {
       "address": 15564,
       "reference_names": [
         "__call_mod_init_funcs"
       ],
-      "size": 37,
-      "source_line": null
+      "size": 37
     },
     {
       "address": 15604,
       "reference_names": [
         "__dyld_init_check"
       ],
-      "size": 52,
-      "source_line": null
+      "size": 52
     },
     {
       "address": 15656,
       "reference_names": [
         "dyld_stub_binding_helper"
       ],
-      "size": 11,
-      "source_line": null
+      "size": 11
     },
     {
       "address": 15668,
       "reference_names": [
         "__dyld_func_lookup"
       ],
-      "size": 6,
-      "source_line": null
+      "size": 6
     },
     {
       "address": 39871,
       "reference_names": [
         "_exit"
       ],
-      "size": 14,
-      "source_line": null
+      "size": 14
     },
     {
       "address": 39897,
       "reference_names": [
         "__objcInit"
       ],
-      "size": 14,
-      "source_line": null
+      "size": 14
     },
     {
       "address": 39923,
       "reference_names": [
         "_printf"
       ],
-      "size": 14,
-      "source_line": null
+      "size": 14
     },
     {
       "address": 39949,
       "reference_names": [
         "_objc_msgSend"
       ],
-      "size": 14,
-      "source_line": null
+      "size": 14
     },
     {
       "address": 39975,
       "reference_names": [
         "_fprintf"
       ],
-      "size": 14,
-      "source_line": null
+      "size": 14
     },
     {
       "address": 40001,
       "reference_names": [
         "_sprintf"
       ],
-      "size": 14,
-      "source_line": null
+      "size": 14
     },
     {
       "address": 40027,
       "reference_names": [
         "_strncpy"
       ],
-      "size": 14,
-      "source_line": null
+      "size": 14
     },
     {
       "address": 40053,
       "reference_names": [
         "_objc_msgSendSuper"
       ],
-      "size": 14,
-      "source_line": null
+      "size": 14
     },
     {
       "address": 40079,
       "reference_names": [
         "_device_master_self"
       ],
-      "size": 14,
-      "source_line": null
+      "size": 14
     },
     {
       "address": 40105,
       "reference_names": [
         "_port_allocate"
       ],
-      "size": 14,
-      "source_line": null
+      "size": 14
     },
     {
       "address": 40131,
       "reference_names": [
         "_strcmp"
       ],
-      "size": 14,
-      "source_line": null
+      "size": 14
     },
     {
       "address": 40157,
       "reference_names": [
         "_syslog"
       ],
-      "size": 14,
-      "source_line": null
+      "size": 14
     },
     {
       "address": 40183,
       "reference_names": [
         "_vsprintf"
       ],
-      "size": 14,
-      "source_line": null
+      "size": 14
     },
     {
       "address": 40209,
       "reference_names": [
         "_kern_timestamp"
       ],
-      "size": 14,
-      "source_line": null
+      "size": 14
     },
     {
       "address": 40235,
       "reference_names": [
         "_msg_receive"
       ],
-      "size": 14,
-      "source_line": null
+      "size": 14
     },
     {
       "address": 40261,
       "reference_names": [
         "_cthread_exit"
       ],
-      "size": 14,
-      "source_line": null
+      "size": 14
     },
     {
       "address": 40287,
       "reference_names": [
         "_thread_resume"
       ],
-      "size": 14,
-      "source_line": null
+      "size": 14
     },
     {
       "address": 40313,
       "reference_names": [
         "_thread_suspend"
       ],
-      "size": 14,
-      "source_line": null
+      "size": 14
     },
     {
       "address": 40339,
       "reference_names": [
         "_cthread_fork"
       ],
-      "size": 14,
-      "source_line": null
+      "size": 14
     },
     {
       "address": 40365,
       "reference_names": [
         "_free"
       ],
-      "size": 14,
-      "source_line": null
+      "size": 14
     },
     {
       "address": 40391,
       "reference_names": [
         "_malloc"
       ],
-      "size": 14,
-      "source_line": null
+      "size": 14
     },
     {
       "address": 40417,
       "reference_names": [
         "_bcopy"
       ],
-      "size": 14,
-      "source_line": null
+      "size": 14
     },
     {
       "address": 40443,
       "reference_names": [
         "_mig_dealloc_reply_port"
       ],
-      "size": 14,
-      "source_line": null
+      "size": 14
     },
     {
       "address": 40469,
       "reference_names": [
         "_msg_rpc"
       ],
-      "size": 14,
-      "source_line": null
+      "size": 14
     },
     {
       "address": 40495,
       "reference_names": [
         "_mig_get_reply_port"
       ],
-      "size": 14,
-      "source_line": null
+      "size": 14
     },
     {
       "address": 40521,
       "reference_names": [
         "_cond_signal"
       ],
-      "size": 14,
-      "source_line": null
+      "size": 14
     },
     {
       "address": 40547,
       "reference_names": [
         "_condition_wait"
       ],
-      "size": 14,
-      "source_line": null
+      "size": 14
     },
     {
       "address": 40573,
       "reference_names": [
         "_mutex_wait_lock"
       ],
-      "size": 14,
-      "source_line": null
+      "size": 14
     },
     {
       "address": 40599,
       "reference_names": [
         "_mutex_try_lock"
       ],
-      "size": 14,
-      "source_line": null
+      "size": 14
     },
     {
       "address": 40625,
       "reference_names": [
         "_spin_lock"
       ],
-      "size": 14,
-      "source_line": null
+      "size": 14
     },
     {
       "address": 40651,
       "reference_names": [
         "_cond_broadcast"
       ],
-      "size": 14,
-      "source_line": null
+      "size": 14
     }
   ]
 }

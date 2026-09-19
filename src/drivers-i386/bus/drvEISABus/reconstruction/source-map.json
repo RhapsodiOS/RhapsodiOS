@@ -1463,24 +1463,21 @@
       "reference_names": [
         "bios_rtn"
       ],
-      "size": 20,
-      "source_line": null
+      "size": 20
     },
     {
       "address": 28784,
       "reference_names": [
         "+[EISABusKernelServerInstance kernelServerInstance]"
       ],
-      "size": 12,
-      "source_line": null
+      "size": 12
     },
     {
       "address": 28796,
       "reference_names": [
         "+[EISABusVersion driverKitVersionForEISABus]"
       ],
-      "size": 12,
-      "source_line": null
+      "size": 12
     }
   ]
 }

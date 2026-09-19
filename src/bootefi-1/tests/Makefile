@@ -53,7 +53,7 @@ BOOT2_OBJS := $(BUILD)/ufs_host_test.o \
         $(BUILD)/ufs_byteorder.o \
         $(BUILD)/cache.o
 
-all: $(BUILD)/ufs_host_test
+all: $(BUILD)/ufs_host_test $(BUILD)/efi_pci_acpi_test
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -79,7 +79,19 @@ $(BUILD)/cache.o: $(BOOT2)/libsaio/cache.c | $(BUILD)
 $(BUILD)/ufs_host_test: $(BOOT2_OBJS) $(BUILD)/host_devread.o
 	$(CC) $(BOOT2_CFLAGS) -o $@ $(BOOT2_OBJS) $(BUILD)/host_devread.o
 
+# The ACPI parser is pure C with no boot-2 or EFI dependencies, so it is
+# built with plain strict flags rather than COMMON_FLAGS' boot-2 include
+# paths and host_bios_addr.h force-include.
+ACPI_TEST_CFLAGS := -std=gnu89 -g -O0 -Wall -Werror -I..
+
+$(BUILD)/efi_pci_acpi_test: efi_pci_acpi_test.c ../efi_pci_acpi.c \
+		../efi_pci_acpi.h | $(BUILD)
+	$(CC) $(ACPI_TEST_CFLAGS) -o $@ efi_pci_acpi_test.c ../efi_pci_acpi.c
+
+test-acpi: $(BUILD)/efi_pci_acpi_test
+	$(BUILD)/efi_pci_acpi_test
+
 clean:
 	rm -rf $(BUILD)
 
-.PHONY: all clean
+.PHONY: all clean test-acpi

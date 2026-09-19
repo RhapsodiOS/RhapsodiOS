@@ -495,9 +495,9 @@ function New-RhapBuildPhaseCommand {
         return "set -e; test -d $repo || { echo 'build-src: repository missing: $RepoDir' >&2; exit 1; }; /usr/bin/install -d $built $state && cd $source && $rbuild buildall --state $state Manifest $repo $built"
     }
     if ($Phase -eq 'kernel') {
-        return "set -e; test -d $repo || { echo 'build-src: repository missing: $RepoDir' >&2; exit 1; }; /usr/bin/install -d $built $state && cd $source && $rbuild kernel --state $state --arch $targetArch $source $repo $built"
+        return "set -e; test -d $repo || { echo 'build-src: repository missing: $RepoDir' >&2; exit 1; }; /usr/bin/install -d $built $state && cd $source && $rbuild kernel --state $state --toolchain $profilePath --arch $targetArch $source $repo $built"
     }
-    return "set -e; test -d $repo || { echo 'build-src: repository missing: $RepoDir' >&2; exit 1; }; /usr/bin/install -d $built $state && cd $source && $rbuild kerneldrivers --state $state --arch $targetArch $source $repo $built"
+    return "set -e; test -d $repo || { echo 'build-src: repository missing: $RepoDir' >&2; exit 1; }; /usr/bin/install -d $built $state && cd $source && $rbuild kerneldrivers --state $state --toolchain $profilePath --arch $targetArch $source $repo $built"
 }
 
 function New-RhapFreshCommand {

@@ -252,8 +252,8 @@ $rbuildMainText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\main.c')
 $rbuildKernelText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\kernel.c')
 $rbuildRunnerText = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\runner.c')
 Assert-Match $rbuildRunnerText 'skip missing kernel source' 'kernel walk skips a core package whose source directory is absent'
-$kernelControlText = Get-Content -Raw (Join-Path $repoRoot 'src\kernel-7\dpkg\control')
-Assert-NotMatch $kernelControlText 'drvpexpert' 'kernel-7 does not require a Platform Expert APK that i386 does not ship'
+$kernelPkginfoText = Get-Content -Raw (Join-Path $repoRoot 'src\kernel-7\apk\pkginfo')
+Assert-NotMatch $kernelPkginfoText 'drvpexpert' 'kernel-7 does not require a Platform Expert APK that i386 does not ship'
 $ataHdRegistryText = Get-Content -Raw (Join-Path $repoRoot 'src\kernel-7\bsd\dev\ata_hd_registry.m')
 Assert-Match $ataHdRegistryText '(?s)#import <sys/param.h>.*#import <sys/proc.h>' 'i386 ATA registry includes param.h before proc.h'
 $kernelI386MakeText = Get-Content -Raw (Join-Path $repoRoot 'src\kernel-7\conf\Makefile.i386')
@@ -348,8 +348,8 @@ foreach ($apkCase in @(
 Assert-Match $builderSourceText 'ReleaseControl/Common.make' 'bootstrap waits for CoreOS Common.make before CoreOSMakefiles='
 Assert-Match $builderSourceText 'rmtree_dir\(params->SYMROOT\)' 'must_build wipes leftover SYMROOT before rsync and probes'
 Assert-Match $builderSourceText 'rmtree_dir\(params->OBJROOT\)' 'must_build wipes leftover OBJROOT before rsync and probes'
-Assert-Match $rbuildMainText 'rbuild kernel \[--state DIR\] --arch ARCH' 'rbuild usage includes kernel'
-Assert-Match $rbuildMainText 'rbuild kerneldrivers \[--state DIR\] --arch ARCH' 'rbuild usage includes kerneldrivers'
+Assert-Match $rbuildMainText 'rbuild kernel \[--state DIR\] \[--toolchain FILE\] --arch ARCH' 'rbuild usage includes kernel'
+Assert-Match $rbuildMainText 'rbuild kerneldrivers \[--state DIR\] \[--toolchain FILE\] --arch ARCH' 'rbuild usage includes kerneldrivers'
 Assert-Match $rbuildMainText 'strcmp\(sub, "kernel"\)' 'rbuild dispatches kernel'
 Assert-Match $rbuildMainText 'strcmp\(sub, "kerneldrivers"\)' 'rbuild dispatches kerneldrivers'
 Assert-Match $rbuildKernelText 'driverkit-3' 'kernel core starts at driverkit'
@@ -592,23 +592,23 @@ $kernelCommand = New-RhapBuildPhaseCommand -Phase 'kernel' @phaseArgs
 Assert-Match $kernelCommand ([regex]::Escape('test -d /build/repo')) 'kernel requires existing repository input'
 Assert-Match $kernelCommand ([regex]::Escape('/usr/bin/install -d /build/built /build/state')) 'kernel creates owned output directories'
 Assert-Equal ($kernelCommand.IndexOf('/usr/bin/install -d /build/built') -lt $kernelCommand.IndexOf('rbuild kernel')) $true 'kernel creates outputs before rbuild kernel'
-Assert-Match $kernelCommand ([regex]::Escape('cd /build/src && /build/tools/bin/rbuild kernel --state /build/state --arch ppc /build/src /build/repo /build/built')) 'kernel uses dedicated rbuild command'
+Assert-Match $kernelCommand ([regex]::Escape('cd /build/src && /build/tools/bin/rbuild kernel --state /build/state --toolchain /build/src/rbuild-1/toolchains/gcc-darwin.conf --arch ppc /build/src /build/repo /build/built')) 'kernel uses dedicated rbuild command'
 Assert-NotMatch $kernelCommand 'buildpackage|--dir driverkit-3|kerneldrivers' 'kernel phase does not inline package loops or optional drivers'
 $kernelDriversCommand = New-RhapBuildPhaseCommand -Phase 'kernel-drivers' @phaseArgs
 Assert-Match $kernelDriversCommand ([regex]::Escape('test -d /build/repo')) 'kernel-drivers requires existing repository input'
 Assert-Match $kernelDriversCommand ([regex]::Escape('/usr/bin/install -d /build/built /build/state')) 'kernel-drivers creates owned output directories'
 Assert-Equal ($kernelDriversCommand.IndexOf('/usr/bin/install -d /build/built') -lt $kernelDriversCommand.IndexOf('rbuild kerneldrivers')) $true 'kernel-drivers creates outputs before rbuild kerneldrivers'
-Assert-Match $kernelDriversCommand ([regex]::Escape('cd /build/src && /build/tools/bin/rbuild kerneldrivers --state /build/state --arch ppc /build/src /build/repo /build/built')) 'kernel-drivers uses dedicated rbuild command'
+Assert-Match $kernelDriversCommand ([regex]::Escape('cd /build/src && /build/tools/bin/rbuild kerneldrivers --state /build/state --toolchain /build/src/rbuild-1/toolchains/gcc-darwin.conf --arch ppc /build/src /build/repo /build/built')) 'kernel-drivers uses dedicated rbuild command'
 Assert-NotMatch $kernelDriversCommand 'buildpackage|--dir driverkit-3| rbuild kernel ' 'kernel-drivers phase does not inline the kernel core list'
 $i386KernelArgs = $phaseArgs.Clone()
 $i386KernelArgs.TargetArch = 'i386'
 $i386KernelCommand = New-RhapBuildPhaseCommand -Phase 'kernel' @i386KernelArgs
-Assert-Match $i386KernelCommand ([regex]::Escape('rbuild kernel --state /build/state --arch i386 /build/src /build/repo /build/built')) 'i386 kernel selects the profile architecture'
+Assert-Match $i386KernelCommand ([regex]::Escape('rbuild kernel --state /build/state --toolchain /build/src/rbuild-1/toolchains/gcc-darwin.conf --arch i386 /build/src /build/repo /build/built')) 'i386 kernel selects the profile architecture'
 Assert-NotMatch $i386KernelCommand 'drivers-ppc' 'i386 kernel command does not mention the ppc driver tree'
 $i386KernelDriversCommand = New-RhapBuildPhaseCommand -Phase 'kernel-drivers' @i386KernelArgs
-Assert-Match $i386KernelDriversCommand ([regex]::Escape('rbuild kerneldrivers --state /build/state --arch i386 /build/src /build/repo /build/built')) 'i386 kernel-drivers selects the profile architecture'
+Assert-Match $i386KernelDriversCommand ([regex]::Escape('rbuild kerneldrivers --state /build/state --toolchain /build/src/rbuild-1/toolchains/gcc-darwin.conf --arch i386 /build/src /build/repo /build/built')) 'i386 kernel-drivers selects the profile architecture'
 $spacedKernel = New-RhapBuildPhaseCommand -Phase 'kernel' @spacedPhaseArgs
-Assert-Match $spacedKernel ([regex]::Escape("'/srv/build tree/tools'/bin/rbuild kernel --state '/srv/build tree/state' --arch ppc '/srv/build tree/src' '/srv/build tree/repo' '/srv/build tree/built output'")) 'kernel safely quotes alternate source and output paths'
+Assert-Match $spacedKernel ([regex]::Escape("'/srv/build tree/tools'/bin/rbuild kernel --state '/srv/build tree/state' --toolchain '/srv/build tree/profile.conf' --arch ppc '/srv/build tree/src' '/srv/build tree/repo' '/srv/build tree/built output'")) 'kernel safely quotes alternate source and output paths'
 $worldCommand = New-RhapBuildPhaseCommand -Phase 'world' @phaseArgs
 Assert-Match $worldCommand ([regex]::Escape('test -d /build/repo')) 'world requires existing repository input'
 Assert-Match $worldCommand ([regex]::Escape('/usr/bin/install -d /build/built /build/state')) 'world creates owned output directories'

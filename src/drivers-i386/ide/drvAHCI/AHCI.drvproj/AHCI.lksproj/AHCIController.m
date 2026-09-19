@@ -121,6 +121,7 @@ static int AHCIVersionIsCommon(AHCIU32 version)
               atRegister:AHCI_PCI_CLASS_REGISTER
               withDeviceDescription:deviceDescription] != IO_R_SUCCESS ||
         ((classRevision >> 8) & 0x00ffffff) != AHCI_PCI_CLASS_CODE) {
+        IOLog("AHCI: PCI identity or class register is not ICH9-AHCI.\n");
         [self free];
         return nil;
     }
@@ -130,6 +131,7 @@ static int AHCIVersionIsCommon(AHCIU32 version)
               withDeviceDescription:deviceDescription] != IO_R_SUCCESS ||
         AHCIPCIValidateBAR5((AHCIU32)bar5, AHCI_ABAR_LENGTH,
                             &abarPhysical) != AHCI_PCI_SUCCESS) {
+        IOLog("AHCI: BAR5 is missing or not a usable ABAR.\n");
         [self free];
         return nil;
     }
@@ -137,6 +139,7 @@ static int AHCIVersionIsCommon(AHCIU32 version)
     if ([IODirectDevice getPCIConfigData:&command
               atRegister:AHCI_PCI_COMMAND_REGISTER
               withDeviceDescription:deviceDescription] != IO_R_SUCCESS) {
+        IOLog("AHCI: cannot read the PCI command register.\n");
         [self free];
         return nil;
     }
@@ -144,6 +147,7 @@ static int AHCIVersionIsCommon(AHCIU32 version)
     if (AHCIPCIPlanCommand(originalPCIConfig, &enabledCommand,
                            &pciCommandRestore, &commandChanged) !=
         AHCI_PCI_SUCCESS) {
+        IOLog("AHCI: cannot plan the PCI command register update.\n");
         [self free];
         return nil;
     }
@@ -153,6 +157,7 @@ static int AHCIVersionIsCommon(AHCIU32 version)
         if ([IODirectDevice setPCIConfigData:enabledCommand
                   atRegister:AHCI_PCI_COMMAND_REGISTER
                   withDeviceDescription:deviceDescription] != IO_R_SUCCESS) {
+            IOLog("AHCI: cannot enable PCI memory space and bus mastering.\n");
             [self free];
             return nil;
         }
@@ -162,6 +167,7 @@ static int AHCIVersionIsCommon(AHCIU32 version)
               withDeviceDescription:deviceDescription] != IO_R_SUCCESS ||
         AHCIPCIValidateCommandReadback((AHCIU32)commandReadback) !=
             AHCI_PCI_SUCCESS) {
+        IOLog("AHCI: PCI command register did not hold the enabled bits.\n");
         [self free];
         return nil;
     }
@@ -169,6 +175,7 @@ static int AHCIVersionIsCommon(AHCIU32 version)
     if ([IODirectDevice getPCIConfigData:&interruptConfig
               atRegister:AHCI_PCI_INTERRUPT_REGISTER
               withDeviceDescription:deviceDescription] != IO_R_SUCCESS) {
+        IOLog("AHCI: cannot read the PCI interrupt register.\n");
         [self free];
         return nil;
     }
@@ -176,6 +183,7 @@ static int AHCIVersionIsCommon(AHCIU32 version)
             AHCI_PCI_SUCCESS ||
         [deviceDescription setInterruptList:&interruptLine num:1] !=
             IO_R_SUCCESS) {
+        IOLog("AHCI: no usable PCI interrupt line.\n");
         [self free];
         return nil;
     }
@@ -184,16 +192,19 @@ static int AHCIVersionIsCommon(AHCIU32 version)
     memoryRange.size = AHCI_ABAR_LENGTH;
     if ([deviceDescription setMemoryRangeList:&memoryRange num:1] !=
         IO_R_SUCCESS) {
+        IOLog("AHCI: cannot register the ABAR memory range.\n");
         [self free];
         return nil;
     }
 
     if ([super initFromDeviceDescription:deviceDescription] == nil) {
+        IOLog("AHCI: IODirectDevice initialisation failed.\n");
         [self free];
         return nil;
     }
     recoveryLock = [[NXLock alloc] init];
     if (recoveryLock == nil) {
+        IOLog("AHCI: cannot allocate the recovery lock.\n");
         [self free];
         return nil;
     }
@@ -204,11 +215,13 @@ static int AHCIVersionIsCommon(AHCIU32 version)
     mapResult = [self mapMemoryRange:0 to:&abarAddress findSpace:YES
                       cache:IO_CacheOff];
     if (mapResult != IO_R_SUCCESS) {
+        IOLog("AHCI: cannot map the ABAR into kernel space.\n");
         [self free];
         return nil;
     }
     abarMapped = YES;
     if (abarAddress == 0 || (abarAddress & 3U) != 0) {
+        IOLog("AHCI: mapped ABAR address is null or misaligned.\n");
         [self free];
         return nil;
     }
@@ -220,6 +233,7 @@ static int AHCIVersionIsCommon(AHCIU32 version)
     ops.delay = AHCIDelayMilliseconds;
     ops.barrier = AHCIMMIOBarrier;
     if (AHCIHBAInitialize(&ops, &hbaInfo) != AHCI_HBA_SUCCESS) {
+        IOLog("AHCI: HBA reset and initialisation failed.\n");
         [self free];
         return nil;
     }
@@ -227,6 +241,7 @@ static int AHCIVersionIsCommon(AHCIU32 version)
     implementedCount = AHCIPortCollectImplemented(
         hbaInfo.portsImplemented, implementedPorts, AHCI_MAX_PORTS);
     if (implementedCount == 0 || implementedCount > AHCI_MAX_PORTS) {
+        IOLog("AHCI: HBA reports no usable implemented ports.\n");
         [self free];
         return nil;
     }
@@ -236,6 +251,7 @@ static int AHCIVersionIsCommon(AHCIU32 version)
                                                 port:(unsigned int)port
                                         capabilities:hbaInfo.capabilities];
         if (ports[port] == nil) {
+            IOLog("AHCI: cannot allocate a port object.\n");
             [self free];
             return nil;
         }
@@ -252,15 +268,18 @@ static int AHCIVersionIsCommon(AHCIU32 version)
             IOLog("%s: port %d empty\n", [self name], port);
     }
     if (portCount != implementedCount) {
+        IOLog("AHCI: port count disagrees with the implemented mask.\n");
         [self free];
         return nil;
     }
     if ([self startIOThread] != IO_R_SUCCESS) {
+        IOLog("AHCI: cannot start the I/O thread.\n");
         [self free];
         return nil;
     }
     if ([self enableAllInterrupts] != IO_R_SUCCESS) {
         [self disableAllInterrupts];
+        IOLog("AHCI: cannot enable controller interrupts.\n");
         [self free];
         return nil;
     }

@@ -197,3 +197,33 @@ copies by default. Full copies previously accumulated to 320GB.
 - Double and triple indirect blocks (see the size bound).
 - Multi-group support in `ufs_build.py`; it keeps its `ncg == 1` restriction.
 - Any change to `rhap_inject.py`'s behaviour.
+
+## Outcome
+
+Task 8 could not reach the fsck gate. `install-driver.py` produced a clean
+image (`ufs_check.check()` empty) after adding the AHCI bundle, and the
+grafted kernel booted the loader correctly (`kaddr 100000`, `intbuf`-equivalent
+`extmem 253876` matched expectations exactly). But under `run-q35-uefi.sh`
+the boot-time standalone linker failed to link the AHCI driver itself:
+
+```
+Loading binary for AHCI device driver.
+Error occurred while linking driver AHCI:
+rld(): Undefined symbols:
+_vm_page_size
+Error linking AHCI device Driver.
+...
+boot drivers linked: 6
+```
+
+`vm_page_size` is referenced by `AHCIDiskInternal.m` and `AHCIPort.m` under
+`src/drivers-i386/ide/drvAHCI` but is not resolvable by the boot-time linker's
+symbol table, so the driver never configures, no disk is registered (q35 has
+no legacy IDE at 0x1f0 for the kernel to fall back to), and `root on hd0a`
+fails with `errno = 19`, dropping into the kernel's interactive
+`root device?` retry loop. This is a driver-link/kernel-export gap, not a
+filesystem-allocation defect, and is out of scope for this plan (no source
+under `src/` was touched). The UFS allocator itself is not implicated: the
+image it produced is clean by both the Python checker and by the loader
+successfully reading and linking every other driver and the kernel image
+from it. Guest fsck was never reached and remains outstanding.

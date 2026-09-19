@@ -89,6 +89,42 @@ powershell -NoProfile -File vm\clean-build.ps1
 
 Exactly one of `-All`, `-Rbuild`, `-Bootstrap`, `-Kernel`, `-KernelDrivers`, or `-World` is required. `-Rbuild` cannot be combined with `-Bootstrap`. Defaults (override in `vm.conf`): `RemoteRoot=/build`, `RepoDir=/build/repo`, `BuiltDir=/build/built`. Typical fresh-box order: `-Rbuild` → `-Bootstrap` → `-Kernel` → `-KernelDrivers` / `-World`, or a single `-All`. `clean-build.ps1` performs the `-Fresh` output reset without starting a rebuild.
 
+### `build-src.ps1` only builds ppc
+
+The `<arch>` in the table above comes from the toolchain profile, which
+defaults to `src/rbuild-1/toolchains/gcc-darwin.conf` (`ToolchainProfile` in
+`rhap-remote.ps1`, overridable in `vm.conf`). That file sets
+`target_arch=ppc`, and it is the only profile in the tree — so `-Kernel` and
+`-KernelDrivers` build **ppc regardless of what you are testing**, with no
+warning. The give-away is `ppc` in the log names under `/build/state/logs`,
+by which point you have spent the build.
+
+For i386, call `rbuild` on the guest directly:
+
+```sh
+PATH=/build/tools/bin:/usr/bin:/bin:/usr/sbin:/sbin; export PATH
+rbuild kernel --state /build/state --arch i386 /build/src /build/repo /build/<dst>
+rbuild buildpackage --state /build/state --arch i386 --dir --target all \
+    /build/src/drivers-i386/ide/drvAHCI /build/repo /build/<dst>
+```
+
+`rbuild` and `relpath` live in `/build/tools/bin`, which is **not** on the
+default login `PATH`; without the export the build dies early with
+`relpath: not found` and `Must define DSTROOT`.
+
+Output is apks in `/build/<dst>`, not a loose binary. The kernel is inside
+`kernel-*-i386.apk` at `./private/tftpboot/mach_kernel`; the apk is a gzipped
+tar, so this gets it out:
+
+```sh
+gzip -dc /build/<dst>/kernel-154.5.1-7-i386.apk |
+    tar xf - ./private/tftpboot/mach_kernel
+```
+
+To make `-Kernel` usable for i386 instead, add an i386 toolchain conf beside
+`gcc-darwin.conf` and point `ToolchainProfile=` at it in `vm.conf` — the
+config parser accepts that key, there is just no such profile written yet.
+
 ## Image chain
 
 | File | Role |

@@ -231,9 +231,33 @@ from it. Guest fsck was never reached and remains outstanding.
 Routing around the AHCI link failure via `run-pc-uefi-virtio-esp.sh` (PIIX
 IDE, so the EIDE driver finds the disk instead) and a single-user loader
 build reached the gate: root mounted and `/sbin/fsck -n /dev/hd0a` ran at a
-single-user shell. The verdict is **not clean** — Phase 1 reports
-systematic 2x block-count mismatches from low inode numbers up, Phase 2
-finds unreferenced files, a link-count mismatch, and Phase 5 reports the
-superblock free-block count, bitmaps, and summary information all wrong.
-Full output and analysis are in
-`.superpowers/sdd/task-8-report.md` under "fsck gate via PIIX IDE".
+single-user shell. That first run's verdict was **not clean** — Phase 1
+reported systematic 2x block-count mismatches from low inode numbers up
+and two unreferenced files, and Phase 5 reported the superblock free-block
+count, bitmaps, and summary information all wrong. A control run against
+an image with only the kernel graft applied (no `install-driver.py`, no
+allocator writes) showed the block-count mismatches and unreferenced files
+were absent there, isolating them as allocator bugs, while the link-count
+and Phase 5 complaints reproduced identically with no allocator
+involvement at all, isolating those as pre-existing artifacts of
+`graft-kernel.py`/`rhap_inject`'s kernel graft.
+
+Both allocator bugs were fixed in `vm/ufs_alloc.py`: `di_blocks` was
+exactly 2x too large (wrong unit; corrected to `total_frags * g.nspf`),
+and directory-entry record sizes omitted `DIRSIZ`'s "+1" for the name's
+NUL terminator, undersizing entries whose name length was a multiple of 4
+(e.g. "AHCI", "PostLoad") and causing the real kernel fsck to discard the
+remainder of that directory block, orphaning everything after it.
+
+Re-running the identical gate after both fixes: `INCORRECT BLOCK COUNT`
+and `UNREF FILE` are now **gone** — captured via screendump every 0.5s
+across the full `fsck -n` run with no gap between frames, so no output was
+missed. The only complaints remaining are exactly the four pre-existing,
+graft-caused ones identified by the control run (`UNKNOWN FILE
+TYPE`/`BAD TYPE VALUE` on the graft donor inode, `LINK COUNT FILE
+I=1253202`, and the three Phase 5 superblock/bitmap/summary complaints).
+Nothing new appeared. By the narrow question this gate was designed to
+answer — does the allocator produce a filesystem the guest's own fsck
+accepts as correctly accounted — the allocator now passes. Full output and
+analysis are in `.superpowers/sdd/task-8-report.md` under "fsck gate via
+PIIX IDE", "fsck-found fixes", and "fsck gate re-run after fixes".

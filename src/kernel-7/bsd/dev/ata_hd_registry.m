@@ -670,6 +670,7 @@ static int
 ata_hd_close(dev_t dev, int flag, int devtype, struct proc *proc)
 {
     id disk;
+    id flushOwner;
     ata_hd_flush_fn flush;
     unsigned char *openState;
     unsigned int partition;
@@ -690,6 +691,11 @@ ata_hd_close(dev_t dev, int flag, int devtype, struct proc *proc)
     unit = IO_DISK_UNIT(dev);
     partition = IO_DISK_PART(dev);
     flush = ata_hd_units[unit].transportFlush;
+    /* ata_hd_set_flush only accepts a callback from the unit's registry
+     * owner, so the callback expects that owner -- the physical disk -- and
+     * not whatever object this dev_t maps to.  For a partition dev, `disk`
+     * above is an IODiskPartition, which implements no -flushCache. */
+    flushOwner = (id)ATAHDRegistryOwner(&ata_hd_core, unit);
     result = ATAHDRegistryOpen(&ata_hd_core, unit, partition);
     if (result == ATA_HD_REGISTRY_SUCCESS) {
         result = ATAHDRegistryCloseIfPresent(&ata_hd_core, unit, partition,
@@ -709,7 +715,7 @@ ata_hd_close(dev_t dev, int flag, int devtype, struct proc *proc)
     [ata_hd_lock unlock];
     if (flush != NULL) {
         if (result == ATA_HD_REGISTRY_SUCCESS)
-            flushResult = flush(disk);
+            flushResult = flush(flushOwner);
     }
     if (flushResult != IO_R_SUCCESS)
         flushError = [disk errnoFromReturn:flushResult];

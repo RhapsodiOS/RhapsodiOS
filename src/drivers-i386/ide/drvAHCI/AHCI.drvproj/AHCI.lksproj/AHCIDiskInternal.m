@@ -53,8 +53,10 @@ extern unsigned int page_size;
     IOReturn result;
 
     words = (unsigned short *)[_port identifyBuffer];
-    if (words == 0)
+    if (words == 0) {
+        IOLog("AHCIDisk: port has no DMA arena; cannot run IDENTIFY.\n");
         return NO;
+    }
     bzero(words, AHCI_DISK_SECTOR_BYTES);
     bzero(fis, sizeof(fis));
     fis[0] = 0x27U;
@@ -65,9 +67,25 @@ extern unsigned int page_size;
                          client:IOVmTaskSelf()
                         timeout:AHCI_DISK_COMMAND_TIMEOUT_SECONDS
                     transferred:&transferred];
-    if (result != IO_R_SUCCESS || transferred != AHCI_DISK_SECTOR_BYTES)
+    if (result != IO_R_SUCCESS || transferred != AHCI_DISK_SECTOR_BYTES) {
+        IOLog("AHCIDisk: IDENTIFY DEVICE command failed (result %d, "
+              "%u of %u bytes).\n",
+              result, transferred, AHCI_DISK_SECTOR_BYTES);
         return NO;
-    return [self reidentifyFromWords:words];
+    }
+    if (![self reidentifyFromWords:words]) {
+        /* The words themselves, because AHCIDiskParseIdentify rejects for
+         * three separate reasons -- no LBA support (w49 bit 9), a logical
+         * sector that is not 256 words (w106/w117/w118), and a zero
+         * capacity -- and the caller cannot tell them apart. */
+        IOLog("AHCIDisk: IDENTIFY data rejected: w49 %04x w83 %04x "
+              "w106 %04x w117 %04x w118 %04x lba28 %04x%04x "
+              "lba48 %04x%04x\n",
+              words[49], words[83], words[106], words[117], words[118],
+              words[61], words[60], words[101], words[100]);
+        return NO;
+    }
+    return YES;
 }
 
 - (BOOL)reidentifyFromWords:(const unsigned short *)words

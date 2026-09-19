@@ -13,8 +13,7 @@ import struct
 
 import rhap_image
 import ufs_cg
-from ufs_cg import (SB_FIELDS, Geometry, CgTables, UfsError,
-                    bit_is_set, cbtocylno, cbtorpos,
+from ufs_cg import (CgTables, UfsError, bit_is_set,
                     recompute_cg_tables, recompute_cluster_maps)
 
 # Existing callers catch BuildError; it is the same class now.

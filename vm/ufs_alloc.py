@@ -70,6 +70,34 @@ class SafetyError(Exception):
     pass
 
 
+def _encode_name(name):
+    """ASCII-encode a directory-entry name, raising SafetyError (not
+    UnicodeEncodeError) for anything that can't round-trip, and SafetyError
+    (not struct.error) for anything too long for the on-disk d_namlen byte.
+    """
+    try:
+        nameb = name.encode("ascii")
+    except UnicodeEncodeError:
+        raise SafetyError("name %r is not representable in ASCII" % name)
+    if len(nameb) > 255:
+        raise SafetyError("name %r is too long (max 255 bytes)" % name)
+    return nameb
+
+
+def _split_path(path):
+    """(parent_path, name) for a leaf operation (mkdir/create_file/unlink/
+    rmdir), raising SafetyError instead of str.rsplit's ValueError when
+    `path` has no parent component to split off (e.g. "foo" or "/").
+    """
+    stripped = path.rstrip("/")
+    if "/" not in stripped:
+        raise SafetyError("path %r must be absolute" % path)
+    parent_path, name = stripped.rsplit("/", 1)
+    if not name:
+        raise SafetyError("path %r has no final component" % path)
+    return parent_path, name
+
+
 def _refuse_master(path):
     """Refuse the read-only master and anything outside vm/work."""
     real = os.path.realpath(path)
@@ -273,13 +301,24 @@ class Allocator(object):
         this group's fs_csaddr slot, and fs_cstotal -- the same three
         places _apply_group_delta keeps in step for fragments.  Pending
         only; nothing touches disk until flush().
+
+        Idempotent: an index whose bit already matches `to_used` (e.g. a
+        double free_inode, or the wrong is_dir on a repeat call) is left
+        alone and does not perturb cs_nifree/cs_ndir a second time --
+        mirroring _apply_group_delta, which recomputes its counters from
+        the bitmap instead of applying a blind delta.
         """
         buf = self._dirty_cg(c)
         iusedoff = struct.unpack_from("<i", buf, CG_OFFSETS_OFF + 8)[0]
         nbytes = (self.g.ipg + 7) // 8
         inosused = bytearray(buf[iusedoff:iusedoff + nbytes])
+        changed = []
         for i in local_indices:
             byte, bit = divmod(i, 8)
+            was_used = bool(inosused[byte] & (1 << bit))
+            if was_used == to_used:
+                continue
+            changed.append(i)
             if to_used:
                 inosused[byte] |= (1 << bit)
             else:
@@ -288,7 +327,7 @@ class Allocator(object):
 
         old_ndir, old_nbfree, old_nifree, old_nffree = struct.unpack_from(
             "<4i", buf, CG_CS_OFF)
-        n = len(local_indices)
+        n = len(changed)
         nifree_delta = -n if to_used else n
         ndir_delta = (n if to_used else -n) if is_dir else 0
         new_ndir = old_ndir + ndir_delta
@@ -327,10 +366,18 @@ class Allocator(object):
         raise SafetyError("no free inode in any cylinder group")
 
     def free_inode(self, ino, is_dir=False):
-        """Release an inode previously returned by alloc_inode."""
+        """Release an inode previously returned by alloc_inode.
+
+        Also zeroes the dinode itself: the guest's fsck (pass1.c) decides
+        allocated-vs-free from di_mode, not from the cg bitmap, and treats
+        a nonzero di_mode on a bitmap-free inode as UNREF/PARTIALLY
+        ALLOCATED, plus counts its stale di_db/di_ib pointers as still in
+        use (DUP BLKS once those fragments are handed out again).
+        """
         self._require_writable("free_inode")
         c, local = divmod(ino, self.g.ipg)
         self._apply_inode_delta(c, [local], to_used=False, is_dir=is_dir)
+        self._zero_dinode(ino)
 
     def write_inode(self, ino, mode, size, db, ib, nlink, mtime):
         """Write a 128-byte dinode.  db is the 12 direct block pointers,
@@ -413,7 +460,14 @@ class Allocator(object):
             "needed)" % (n, blocks_needed))
 
     def free_frags(self, frags):
-        """Release fragments previously returned by alloc_frags."""
+        """Release fragments previously returned by alloc_frags.
+
+        Also drops any pending _data_cache entry for a freed block-start
+        fragment.  Without this, a caller that catches SafetyError after a
+        partial allocation (see _alloc_and_write_blocks's rollback) and
+        later calls flush() would write content into fragments the
+        filesystem now believes are free.
+        """
         self._require_writable("free_frags")
         by_group = {}
         for f in frags:
@@ -421,6 +475,8 @@ class Allocator(object):
             by_group.setdefault(c, []).append(i)
         for c, indices in by_group.items():
             self._apply_group_delta(c, indices, to_used=False)
+        for f in frags:
+            self._data_cache.pop(f, None)
 
     def _claim_frags(self, frags):
         """Mark specific, already-known-free fragments used.  The in-place
@@ -597,6 +653,11 @@ class Allocator(object):
         """
         if size == 0:
             return []
+        if size > self.max_file_bytes() or ib[1] != 0 or ib[2] != 0:
+            raise SafetyError(
+                "inode uses double/triple-indirect blocks or exceeds the "
+                "%d-byte direct-plus-single-indirect limit; this module "
+                "cannot enumerate its fragments" % self.max_file_bytes())
         bsize = self.g.bsize
         fsize = self.g.fsize
         frag = self.g.frag
@@ -706,7 +767,13 @@ class Allocator(object):
     def _read_block_at(self, start, length):
         """`length` bytes starting at fragment `start`, honoring any
         pending (unflushed) write to that fragment in this session.
+
+        A block pointer of 0 is a hole (see _old_file_frags) and must read
+        back as zeros, never as fragment 0 -- the boot block / superblock
+        area.
         """
+        if start == 0:
+            return bytes(length)
         cached = self._data_cache.get(start)
         if cached is not None:
             if len(cached) < length:
@@ -815,7 +882,7 @@ class Allocator(object):
         Reads through _read_file_data, so it sees this session's own
         pending (unflushed) mkdir/create_file/unlink/rmdir calls.
         """
-        nameb = name.encode("ascii")
+        nameb = _encode_name(name)
         _, _, _, _, _, data = self._read_file_data(dir_ino)
         p = 0
         while p < len(data):
@@ -851,7 +918,7 @@ class Allocator(object):
         directory by one whole DIRBLKSIZ chunk only when nothing fits.
         """
         self._require_writable("add_dirent")
-        nameb = name.encode("ascii")
+        nameb = _encode_name(name)
         namlen = len(nameb)
         need = _dirent_reclen(namlen)
         if need > DIRBLKSIZ:
@@ -878,6 +945,8 @@ class Allocator(object):
                     struct.pack_into("<IHBB", data, newp, ino, free,
                                       dtype, namlen)
                     data[newp + 8:newp + 8 + namlen] = nameb
+                    data[newp + 8 + namlen:newp + need] = bytes(
+                        need - (8 + namlen))
                     self._patch_block(layout, data, p)
                     return
             else:
@@ -885,6 +954,8 @@ class Allocator(object):
                     struct.pack_into("<IHBB", data, p, ino, e_reclen,
                                       dtype, namlen)
                     data[p + 8:p + 8 + namlen] = nameb
+                    data[p + 8 + namlen:p + e_reclen] = bytes(
+                        e_reclen - (8 + namlen))
                     self._patch_block(layout, data, p)
                     return
             p += e_reclen
@@ -912,7 +983,7 @@ class Allocator(object):
         SafetyError if `name` isn't actually present -- callers always
         check that first via _lookup.
         """
-        nameb = name.encode("ascii")
+        nameb = _encode_name(name)
         mode, nlink, size, db, ib, data = self._read_file_data(dir_ino)
         layout = self._block_layout(size, db, ib)
         data = bytearray(data)
@@ -936,7 +1007,7 @@ class Allocator(object):
         second link to the parent).  Returns the new inode number.
         """
         self._require_writable("mkdir")
-        parent_path, name = path.rstrip("/").rsplit("/", 1)
+        parent_path, name = _split_path(path)
         parent_ino = self._resolve(parent_path or "/")
         if self._lookup(parent_ino, name) is not None:
             raise SafetyError("%s already exists" % path)
@@ -970,7 +1041,7 @@ class Allocator(object):
         directory.  Returns the new inode number.
         """
         self._require_writable("create_file")
-        parent_path, name = path.rstrip("/").rsplit("/", 1)
+        parent_path, name = _split_path(path)
         parent_ino = self._resolve(parent_path or "/")
         if self._lookup(parent_ino, name) is not None:
             raise SafetyError("%s already exists" % path)
@@ -983,7 +1054,7 @@ class Allocator(object):
         directory entry.
         """
         self._require_writable("unlink")
-        parent_path, name = path.rstrip("/").rsplit("/", 1)
+        parent_path, name = _split_path(path)
         parent_ino = self._resolve(parent_path or "/")
         ino = self._lookup(parent_ino, name)
         if ino is None:
@@ -1002,7 +1073,7 @@ class Allocator(object):
         reverses the di_nlink bump mkdir applied to the parent.
         """
         self._require_writable("rmdir")
-        parent_path, name = path.rstrip("/").rsplit("/", 1)
+        parent_path, name = _split_path(path)
         parent_ino = self._resolve(parent_path or "/")
         ino = self._lookup(parent_ino, name)
         if ino is None:

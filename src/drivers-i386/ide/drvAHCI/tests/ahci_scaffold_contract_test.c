@@ -426,9 +426,9 @@ static int valid_controller_source(const char *text)
            has_scoped_expression(text, initializer, "- free",
                "AHCIPCIPlanCommand(originalPCIConfig, &enabledCommand, &pciCommandRestore, &commandChanged) != AHCI_PCI_SUCCESS") &&
            has_scoped_expression(text, initializer, "- free",
-               "if (pciCommandChanged) { pciCommandWriteAttempted = YES; if ([IODirectDevice setPCIConfigData:enabledCommand atRegister:AHCI_PCI_COMMAND_REGISTER withDeviceDescription:deviceDescription] != IO_R_SUCCESS) { [self free]; return nil; } }") &&
+               "if (pciCommandChanged) { pciCommandWriteAttempted = YES; if ([IODirectDevice setPCIConfigData:enabledCommand atRegister:AHCI_PCI_COMMAND_REGISTER withDeviceDescription:deviceDescription] != IO_R_SUCCESS) { IOLog(\"AHCI: cannot enable PCI memory space and bus mastering.\\n\"); [self free]; return nil; } }") &&
            has_scoped_expression(text, initializer, "- free",
-               "if ([IODirectDevice getPCIConfigData:&commandReadback atRegister:AHCI_PCI_COMMAND_REGISTER withDeviceDescription:deviceDescription] != IO_R_SUCCESS || AHCIPCIValidateCommandReadback((AHCIU32)commandReadback) != AHCI_PCI_SUCCESS) { [self free]; return nil; }") &&
+               "if ([IODirectDevice getPCIConfigData:&commandReadback atRegister:AHCI_PCI_COMMAND_REGISTER withDeviceDescription:deviceDescription] != IO_R_SUCCESS || AHCIPCIValidateCommandReadback((AHCIU32)commandReadback) != AHCI_PCI_SUCCESS) { IOLog(\"AHCI: PCI command register did not hold the enabled bits.\\n\"); [self free]; return nil; }") &&
            has_scoped_expression(text, initializer, "- free",
                "memoryRange.start = abarPhysical;") &&
            has_scoped_expression(text, initializer, "- free",
@@ -438,9 +438,9 @@ static int valid_controller_source(const char *text)
            has_scoped_expression(text, initializer, "- free",
                "[super initFromDeviceDescription:deviceDescription] == nil") &&
            has_scoped_expression(text, initializer, "- free",
-               "mapResult = [self mapMemoryRange:0 to:&abarAddress findSpace:YES cache:IO_CacheOff]; if (mapResult != IO_R_SUCCESS) { [self free]; return nil; } abarMapped = YES; if (abarAddress == 0 || (abarAddress & 3U) != 0) { [self free]; return nil; }") &&
+               "mapResult = [self mapMemoryRange:0 to:&abarAddress findSpace:YES cache:IO_CacheOff]; if (mapResult != IO_R_SUCCESS) { IOLog(\"AHCI: cannot map the ABAR into kernel space.\\n\"); [self free]; return nil; } abarMapped = YES; if (abarAddress == 0 || (abarAddress & 3U) != 0) { IOLog(\"AHCI: mapped ABAR address is null or misaligned.\\n\"); [self free]; return nil; }") &&
            has_scoped_expression(text, initializer, "- free",
-               "if (AHCIHBAInitialize(&ops, &hbaInfo) != AHCI_HBA_SUCCESS) { [self free]; return nil; }") &&
+               "if (AHCIHBAInitialize(&ops, &hbaInfo) != AHCI_HBA_SUCCESS) { IOLog(\"AHCI: HBA reset and initialisation failed.\\n\"); [self free]; return nil; }") &&
            has_scoped_expression(text, initializer, "- free",
                "mmio.base = (volatile unsigned char *)abarAddress; mmio.length = AHCI_ABAR_LENGTH; ops.context = &mmio; ops.read = AHCIMMIORead; ops.write = AHCIMMIOWrite; ops.delay = AHCIDelayMilliseconds; ops.barrier = AHCIMMIOBarrier;") &&
            has_scoped_expression(text, initializer, "- free",
@@ -472,12 +472,12 @@ static int valid_task9_interrupt_lifecycle(const char *text)
                "if ([self startIOThread] != IO_R_SUCCESS)",
                "if ([self enableAllInterrupts] != IO_R_SUCCESS)") &&
            has_scoped_expression(text, initializer, "- free",
-               "if ([self startIOThread] != IO_R_SUCCESS) { [self free]; return nil; }") &&
+               "if ([self startIOThread] != IO_R_SUCCESS) { IOLog(\"AHCI: cannot start the I/O thread.\\n\"); [self free]; return nil; }") &&
            has_scoped_ordered_pair(text, initializer, "- free",
                "if ([self enableAllInterrupts] != IO_R_SUCCESS)",
                "ghc | AHCI_GHC_AE | AHCI_GHC_IE") &&
            has_scoped_expression(text, initializer, "- free",
-               "[self disableAllInterrupts]; [self free]; return nil;") &&
+               "[self disableAllInterrupts]; IOLog(\"AHCI: cannot enable controller interrupts.\\n\"); [self free]; return nil;") &&
            has_scoped_expression(text, initializer, "- free",
                "driverKitInterruptsEnabled = YES;") &&
            has_scoped_ordered_pair(text, initializer, "- free",
@@ -688,24 +688,24 @@ static void test_validator_mutations(void)
         "originalPCIConfig = (AHCIU32)command;\n"
         "if (AHCIPCIPlanCommand(originalPCIConfig, &enabledCommand, &pciCommandRestore, &commandChanged) != AHCI_PCI_SUCCESS) return nil;\n"
         "if (pciCommandChanged) { pciCommandWriteAttempted = YES;\n"
-        "if ([IODirectDevice setPCIConfigData:enabledCommand atRegister:AHCI_PCI_COMMAND_REGISTER withDeviceDescription:deviceDescription] != IO_R_SUCCESS) { [self free]; return nil; } }\n");
+        "if ([IODirectDevice setPCIConfigData:enabledCommand atRegister:AHCI_PCI_COMMAND_REGISTER withDeviceDescription:deviceDescription] != IO_R_SUCCESS) { IOLog(\"AHCI: cannot enable PCI memory space and bus mastering.\\n\"); [self free]; return nil; } }\n");
     strcat(controller_ok,
         "if ([IODirectDevice getPCIConfigData:&commandReadback atRegister:AHCI_PCI_COMMAND_REGISTER withDeviceDescription:deviceDescription] != IO_R_SUCCESS ||\n"
-        "AHCIPCIValidateCommandReadback((AHCIU32)commandReadback) != AHCI_PCI_SUCCESS) { [self free]; return nil; }\n");
+        "AHCIPCIValidateCommandReadback((AHCIU32)commandReadback) != AHCI_PCI_SUCCESS) { IOLog(\"AHCI: PCI command register did not hold the enabled bits.\\n\"); [self free]; return nil; }\n");
     strcat(controller_ok,
         "memoryRange.start = abarPhysical;\nmemoryRange.size = AHCI_ABAR_LENGTH;\n"
         "if ([deviceDescription setMemoryRangeList:&memoryRange num:1] != IO_R_SUCCESS) return nil;\n"
         "if ([super initFromDeviceDescription:deviceDescription] == nil) return nil;\n");
     strcat(controller_ok,
         "mapResult = [self mapMemoryRange:0 to:&abarAddress findSpace:YES cache:IO_CacheOff];\n"
-        "if (mapResult != IO_R_SUCCESS) { [self free]; return nil; }\n"
+        "if (mapResult != IO_R_SUCCESS) { IOLog(\"AHCI: cannot map the ABAR into kernel space.\\n\"); [self free]; return nil; }\n"
         "abarMapped = YES;\n"
-        "if (abarAddress == 0 || (abarAddress & 3U) != 0) { [self free]; return nil; }\n");
+        "if (abarAddress == 0 || (abarAddress & 3U) != 0) { IOLog(\"AHCI: mapped ABAR address is null or misaligned.\\n\"); [self free]; return nil; }\n");
     strcat(controller_ok,
         "mmio.base = (volatile unsigned char *)abarAddress; mmio.length = AHCI_ABAR_LENGTH;\n"
         "ops.context = &mmio; ops.read = AHCIMMIORead; ops.write = AHCIMMIOWrite;\n"
         "ops.delay = AHCIDelayMilliseconds; ops.barrier = AHCIMMIOBarrier;\n"
-        "if (AHCIHBAInitialize(&ops, &hbaInfo) != AHCI_HBA_SUCCESS) { [self free]; return nil; }\n");
+        "if (AHCIHBAInitialize(&ops, &hbaInfo) != AHCI_HBA_SUCCESS) { IOLog(\"AHCI: HBA reset and initialisation failed.\\n\"); [self free]; return nil; }\n");
     strcat(controller_ok,
         "IOLog(\"%s: Intel AHCI 8086:2922 class 01:06:01 version %x CAP %08x CAP2 %08x PI %08x attached\\n\", [self name], hbaInfo.version, hbaInfo.capabilities, hbaInfo.capabilities2, hbaInfo.portsImplemented);\n"
         "return self;\n}\n- free { if (abarMapped) { [self unmapMemoryRange:0 from:abarAddress]; }\n"
@@ -985,8 +985,8 @@ static void test_task9_interrupt_mutations(void)
 
     strcpy(accepted,
         "- initFromDeviceDescription:(IOPCIDeviceDescription *)deviceDescription {\n"
-        "if ([self startIOThread] != IO_R_SUCCESS) { [self free]; return nil; }\n"
-        "if ([self enableAllInterrupts] != IO_R_SUCCESS) { [self disableAllInterrupts]; [self free]; return nil; }\n");
+        "if ([self startIOThread] != IO_R_SUCCESS) { IOLog(\"AHCI: cannot start the I/O thread.\\n\"); [self free]; return nil; }\n"
+        "if ([self enableAllInterrupts] != IO_R_SUCCESS) { [self disableAllInterrupts]; IOLog(\"AHCI: cannot enable controller interrupts.\\n\"); [self free]; return nil; }\n");
     strcat(accepted,
         "driverKitInterruptsEnabled = YES; globalInterruptsEnabled = YES;\n"
         "ghc | AHCI_GHC_AE | AHCI_GHC_IE;\n}\n"
@@ -1029,8 +1029,8 @@ static void test_task9_interrupt_mutations(void)
         expect_invalid("I/O thread failure check inverted",
                        valid_task9_interrupt_lifecycle, mutation);
     if (!replace_once(mutation, bytes, source,
-                      "if ([self startIOThread] != IO_R_SUCCESS) {\n        [self free];\n        return nil;\n    }\n    if ([self enableAllInterrupts] != IO_R_SUCCESS) {",
-                      "if ([self enableAllInterrupts] != IO_R_SUCCESS) {\n        [self free];\n        return nil;\n    }\n    if ([self startIOThread] != IO_R_SUCCESS) {"))
+                      "if ([self startIOThread] != IO_R_SUCCESS) {\n        IOLog(\"AHCI: cannot start the I/O thread.\\n\");\n        [self free];\n        return nil;\n    }\n    if ([self enableAllInterrupts] != IO_R_SUCCESS) {",
+                      "if ([self enableAllInterrupts] != IO_R_SUCCESS) {\n        IOLog(\"AHCI: cannot start the I/O thread.\\n\");\n        [self free];\n        return nil;\n    }\n    if ([self startIOThread] != IO_R_SUCCESS) {"))
         ++failures;
     else
         expect_invalid("I/O thread start moved after interrupt enable",

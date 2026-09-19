@@ -287,5 +287,56 @@ class TestFileCreation(unittest.TestCase):
             self.assertEqual(img.read_file(ino), second)
 
 
+class TestDirectoryOperations(unittest.TestCase):
+    def setUp(self):
+        if not _present(GOLDEN):
+            self.skipTest("golden.img not present")
+        self.tmp = tempfile.mkdtemp(prefix="ufsalloc-", dir=os.path.join(HERE, "work"))
+        self.addCleanup(shutil.rmtree, self.tmp)
+        self.img = os.path.join(self.tmp, "test.img")
+        clone(GOLDEN, self.img)
+
+    def test_created_directory_and_file_are_visible_to_the_reader(self):
+        import rhap_image
+        payload = b"hello rhapsody" * 100
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            a.mkdir("/private/Drivers/i386/TEST.config")
+            a.create_file("/private/Drivers/i386/TEST.config/TEST_reloc", payload)
+            a.flush()
+        self.assertEqual(ufs_check.check(self.img), [])
+        with rhap_image.Image(self.img) as img:
+            ino = img.resolve("/private/Drivers/i386/TEST.config/TEST_reloc")
+            self.assertIsNotNone(ino)
+            self.assertEqual(img.read_file(ino), payload)
+            names = [e[0] for e in img.listdir("/private/Drivers/i386/TEST.config")]
+            self.assertIn(".", names)
+            self.assertIn("..", names)
+
+    def test_create_then_remove_restores_the_free_counts(self):
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            before = a.fs_cstotal()
+            a.flush()
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            a.mkdir("/private/Drivers/i386/TEST.config")
+            a.create_file("/private/Drivers/i386/TEST.config/TEST_reloc", b"x" * 9000)
+            a.flush()
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            a.unlink("/private/Drivers/i386/TEST.config/TEST_reloc")
+            a.rmdir("/private/Drivers/i386/TEST.config")
+            a.flush()
+        self.assertEqual(ufs_check.check(self.img), [])
+        with ufs_alloc.Allocator(self.img) as a:
+            self.assertEqual(a.fs_cstotal(), before)
+
+    def test_rmdir_refuses_a_non_empty_directory(self):
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            a.mkdir("/private/Drivers/i386/TEST.config")
+            a.create_file("/private/Drivers/i386/TEST.config/f", b"x")
+            a.flush()
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            with self.assertRaises(ufs_alloc.SafetyError):
+                a.rmdir("/private/Drivers/i386/TEST.config")
+
+
 if __name__ == "__main__":
     unittest.main()

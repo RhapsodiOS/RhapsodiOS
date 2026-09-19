@@ -25,6 +25,13 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 # real limit from self.g, so it stays correct for any image's geometry.
 MAX_FILE_BYTES = (rhap_image.NDADDR + 2048) * 8192
 
+# src/kernel-7/bsd/ufs/ufs/dir.h:102 - Apple's UFS packs directory entries
+# into 1024-byte chunks (not DEV_BSIZE, and not fs_bsize); no entry may
+# straddle a chunk boundary, and the last entry in a chunk is stretched to
+# reach it.  ufs_build.py's _dir_block does the same packing on the
+# from-scratch build path.
+DIRBLKSIZ = 1024
+
 CG_CS_OFF = 24          # struct csum inside the cg header
 CG_OFFSETS_OFF = 84     # cg_btotoff, cg_boff, cg_iusedoff, cg_freeoff
 
@@ -613,3 +620,297 @@ class Allocator(object):
         self.write_inode(ino, mode=mode, size=len(data), db=db, ib=ib,
                           nlink=nlink, mtime=int(time.time()))
         self.set_inode_blocks(ino, total_frags * (self.g.fsize // 512))
+
+    # -- directory operations -----------------------------------------
+
+    def _bump_nlink(self, ino, delta):
+        """Patch di_nlink in place, honoring any pending inode-block write."""
+        frag, entry = rhap_image._inode_location(self.img, ino)
+        buf = self._dirty_inode_block(frag)
+        nlink = struct.unpack_from("<h", buf, entry + 2)[0]
+        struct.pack_into("<h", buf, entry + 2, nlink + delta)
+
+    def _block_layout(self, size, db, ib):
+        """[(block_start, byte_offset, length)] covering an inode's content,
+        using this module's own tail-block convention (every block but the
+        last is a full fs_frag-sized block; the last is sized to just cover
+        the remainder -- the same convention _old_file_frags documents).
+        """
+        if size == 0:
+            return []
+        bsize = self.g.bsize
+        fsize = self.g.fsize
+        ndaddr = rhap_image.NDADDR
+        nblocks = (size + bsize - 1) // bsize
+        block_starts = list(db[:min(nblocks, ndaddr)])
+        if nblocks > ndaddr:
+            ind = self._data_cache.get(ib[0])
+            if ind is None:
+                ind = self.img.read_frag(ib[0], bsize)
+            ptrs = struct.unpack_from("<%di" % self.g.nindir, ind, 0)
+            block_starts += list(ptrs[:nblocks - ndaddr])
+        layout = []
+        for idx, start in enumerate(block_starts):
+            off = idx * bsize
+            if idx == len(block_starts) - 1:
+                tail_bytes = size - off
+                tail_frags = (tail_bytes + fsize - 1) // fsize
+                length = tail_frags * fsize
+            else:
+                length = bsize
+            layout.append((start, off, length))
+        return layout
+
+    def _read_block_at(self, start, length):
+        """`length` bytes starting at fragment `start`, honoring any
+        pending (unflushed) write to that fragment in this session.
+        """
+        cached = self._data_cache.get(start)
+        if cached is not None:
+            if len(cached) < length:
+                return cached + bytes(length - len(cached))
+            return cached
+        return self.img.read_frag(start, length)
+
+    def _read_file_data(self, ino):
+        """(mode, nlink, size, db, ib, data) for any inode's current
+        content, honoring this session's pending (unflushed) writes -- so a
+        directory just mkdir'd or add_dirent'd earlier in this session
+        reads back correctly before flush().
+        """
+        mode, nlink, size, db, ib = self._read_dinode(ino)
+        layout = self._block_layout(size, db, ib)
+        buf = bytearray()
+        for start, _off, length in layout:
+            buf += self._read_block_at(start, length)
+        return mode, nlink, size, db, ib, bytes(buf[:size])
+
+    def _patch_block(self, layout, data, at):
+        """Write back just the one block in `layout` covering byte offset
+        `at`, without touching (or reallocating) any other block -- the
+        in-place path add_dirent and _remove_dirent use whenever an edit
+        doesn't change the directory's total size.
+        """
+        for start, off, length in layout:
+            if off <= at < off + length:
+                self._write_data(start, bytes(data[off:off + length]))
+                return
+        raise SafetyError("offset %d not covered by any block" % at)
+
+    def _lookup(self, dir_ino, name):
+        """Inode number for `name` in directory `dir_ino`, or None.
+
+        Reads through _read_file_data, so it sees this session's own
+        pending (unflushed) mkdir/create_file/unlink/rmdir calls.
+        """
+        nameb = name.encode("ascii")
+        _, _, _, _, _, data = self._read_file_data(dir_ino)
+        p = 0
+        while p < len(data):
+            e_ino, e_reclen = struct.unpack_from("<IH", data, p)
+            e_namlen = data[p + 7]
+            if e_reclen == 0:
+                break
+            if e_ino and data[p + 8:p + 8 + e_namlen] == nameb:
+                return e_ino
+            p += e_reclen
+        return None
+
+    def _resolve(self, path):
+        """Like rhap_image.Image.resolve, but pending-write aware.  Raises
+        SafetyError (rather than returning None) since every caller here
+        needs the parent directory to exist to proceed.
+        """
+        ino = 2
+        for part in path.strip("/").split("/"):
+            if not part:
+                continue
+            nxt = self._lookup(ino, part)
+            if nxt is None:
+                raise SafetyError(
+                    "path component %r not found resolving %s" % (part, path))
+            ino = nxt
+        return ino
+
+    def add_dirent(self, dir_ino, name, ino, dtype):
+        """Add one directory entry, splitting an existing record's slack
+        when one is big enough (patched in place -- a pre-existing
+        directory's other blocks are never disturbed) and growing the
+        directory by one whole DIRBLKSIZ chunk only when nothing fits.
+        """
+        self._require_writable("add_dirent")
+        nameb = name.encode("ascii")
+        namlen = len(nameb)
+        need = (8 + namlen + 3) & ~3
+        if need > DIRBLKSIZ:
+            raise SafetyError("name %r is too long for a directory entry" % name)
+
+        mode, nlink, size, db, ib, data = self._read_file_data(dir_ino)
+        layout = self._block_layout(size, db, ib)
+        data = bytearray(data)
+
+        p = 0
+        while p < len(data):
+            e_ino, e_reclen = struct.unpack_from("<IH", data, p)
+            e_dtype = data[p + 6]
+            e_namlen = data[p + 7]
+            if e_reclen == 0:
+                break
+            if e_ino != 0:
+                actual = (8 + e_namlen + 3) & ~3
+                free = e_reclen - actual
+                if free >= need:
+                    struct.pack_into("<IHBB", data, p, e_ino, actual,
+                                      e_dtype, e_namlen)
+                    newp = p + actual
+                    struct.pack_into("<IHBB", data, newp, ino, free,
+                                      dtype, namlen)
+                    data[newp + 8:newp + 8 + namlen] = nameb
+                    self._patch_block(layout, data, p)
+                    return
+            else:
+                if e_reclen >= need:
+                    struct.pack_into("<IHBB", data, p, ino, e_reclen,
+                                      dtype, namlen)
+                    data[p + 8:p + 8 + namlen] = nameb
+                    self._patch_block(layout, data, p)
+                    return
+            p += e_reclen
+
+        # Nothing fits in any existing chunk: grow the directory by one
+        # whole DIRBLKSIZ chunk, whose sole entry's reclen runs to its end.
+        # This is the one case that must reallocate (via grow_file), since
+        # the directory's total size is actually increasing.
+        chunk = bytearray(DIRBLKSIZ)
+        struct.pack_into("<IHBB", chunk, 0, ino, DIRBLKSIZ, dtype, namlen)
+        chunk[8:8 + namlen] = nameb
+        data += chunk
+        self.grow_file(dir_ino, bytes(data))
+
+    def _remove_dirent(self, dir_ino, name):
+        """Zero out an entry's d_ino in place, leaving its reclen as free
+        space for a later add_dirent to reuse.  Never changes the
+        directory's size, so it never reallocates -- a pre-existing
+        directory's blocks stay exactly where they were.  Raises
+        SafetyError if `name` isn't actually present -- callers always
+        check that first via _lookup.
+        """
+        nameb = name.encode("ascii")
+        mode, nlink, size, db, ib, data = self._read_file_data(dir_ino)
+        layout = self._block_layout(size, db, ib)
+        data = bytearray(data)
+        p = 0
+        while p < len(data):
+            e_ino, e_reclen = struct.unpack_from("<IH", data, p)
+            e_namlen = data[p + 7]
+            if e_reclen == 0:
+                break
+            if e_ino and data[p + 8:p + 8 + e_namlen] == nameb:
+                struct.pack_into("<I", data, p, 0)
+                self._patch_block(layout, data, p)
+                return
+            p += e_reclen
+        raise SafetyError(
+            "dirent %r not found in directory inode %d" % (name, dir_ino))
+
+    def mkdir(self, path, mode=0o040755):
+        """Create a directory, with `.` and `..` entries, add it to its
+        parent, and bump the parent's di_nlink (the child's `..` is a
+        second link to the parent).  Returns the new inode number.
+        """
+        self._require_writable("mkdir")
+        parent_path, name = path.rstrip("/").rsplit("/", 1)
+        parent_ino = self._resolve(parent_path or "/")
+        if self._lookup(parent_ino, name) is not None:
+            raise SafetyError("%s already exists" % path)
+
+        ino = self.alloc_inode(is_dir=True)
+        content = bytearray(DIRBLKSIZ)
+        dot_reclen = (8 + 1 + 3) & ~3        # "." : namlen 1
+        struct.pack_into("<IHBB", content, 0, ino, dot_reclen, 4, 1)
+        content[8:9] = b"."
+        dotdot_reclen = DIRBLKSIZ - dot_reclen   # runs to the chunk's end
+        struct.pack_into("<IHBB", content, dot_reclen, parent_ino,
+                          dotdot_reclen, 4, 2)
+        content[dot_reclen + 8:dot_reclen + 10] = b".."
+
+        try:
+            db, ib, total_frags = self._alloc_and_write_blocks(bytes(content))
+        except Exception:
+            self.free_inode(ino, is_dir=True)
+            raise
+        self._zero_dinode(ino)
+        self.write_inode(ino, mode=mode, size=len(content), db=db, ib=ib,
+                          nlink=2, mtime=int(time.time()))
+        self.set_inode_blocks(ino, total_frags * (self.g.fsize // 512))
+
+        self.add_dirent(parent_ino, name, ino, 4)
+        self._bump_nlink(parent_ino, +1)
+        return ino
+
+    def create_file(self, path, data, mode=0o100644):
+        """Allocate a regular file (nlink=1) and add it to its parent
+        directory.  Returns the new inode number.
+        """
+        self._require_writable("create_file")
+        parent_path, name = path.rstrip("/").rsplit("/", 1)
+        parent_ino = self._resolve(parent_path or "/")
+        if self._lookup(parent_ino, name) is not None:
+            raise SafetyError("%s already exists" % path)
+        ino = self.write_new_file(data, mode=mode)
+        self.add_dirent(parent_ino, name, ino, 8)
+        return ino
+
+    def unlink(self, path):
+        """Remove a regular file: frees its fragments, its inode, and its
+        directory entry.
+        """
+        self._require_writable("unlink")
+        parent_path, name = path.rstrip("/").rsplit("/", 1)
+        parent_ino = self._resolve(parent_path or "/")
+        ino = self._lookup(parent_ino, name)
+        if ino is None:
+            raise SafetyError("%s not found" % path)
+        mode, nlink, size, db, ib = self._read_dinode(ino)
+        if (mode & 0o170000) == 0o040000:
+            raise SafetyError("%s is a directory; use rmdir" % path)
+        frags = self._old_file_frags(size, db, ib)
+        self.free_frags(frags)
+        self.free_inode(ino, is_dir=False)
+        self._remove_dirent(parent_ino, name)
+
+    def rmdir(self, path):
+        """Remove an empty directory: refuses unless only `.` and `..`
+        remain, then frees its blocks, its inode, its directory entry, and
+        reverses the di_nlink bump mkdir applied to the parent.
+        """
+        self._require_writable("rmdir")
+        parent_path, name = path.rstrip("/").rsplit("/", 1)
+        parent_ino = self._resolve(parent_path or "/")
+        ino = self._lookup(parent_ino, name)
+        if ino is None:
+            raise SafetyError("%s not found" % path)
+        mode, nlink, size, db, ib = self._read_dinode(ino)
+        if (mode & 0o170000) != 0o040000:
+            raise SafetyError("%s is not a directory" % path)
+
+        _, _, _, _, _, data = self._read_file_data(ino)
+        names = set()
+        p = 0
+        while p < len(data):
+            e_ino, e_reclen = struct.unpack_from("<IH", data, p)
+            e_namlen = data[p + 7]
+            if e_reclen == 0:
+                break
+            if e_ino:
+                names.add(data[p + 8:p + 8 + e_namlen].decode("ascii", "replace"))
+            p += e_reclen
+        if names - {".", ".."}:
+            raise SafetyError("%s is not empty" % path)
+
+        frags = self._old_file_frags(size, db, ib)
+        self.free_frags(frags)
+        self.free_inode(ino, is_dir=True)
+        self._remove_dirent(parent_ino, name)
+        self._bump_nlink(parent_ino, -1)
+

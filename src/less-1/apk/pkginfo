@@ -2,6 +2,6 @@ pkgname = less
 pkgver = 332
 pkgdesc = Text pager
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = GPL
 url = ftp://prep.ai.mit.edu/pub/gnu/less-332.tar.gz
 makedepends = build-base

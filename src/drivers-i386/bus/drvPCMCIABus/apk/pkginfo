@@ -2,5 +2,5 @@ pkgname = drvpcmciabus
 pkgver = 15
 pkgdesc = PCMCIA Bus device driver
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = APSL
 makedepends = build-base, drivertools, driverkit, machkit, kernload, libstreams

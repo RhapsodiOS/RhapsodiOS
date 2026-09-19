@@ -2,5 +2,5 @@ pkgname = machkit
 pkgver = 318.2
 pkgdesc = Mach Kit
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = APSL
 makedepends = build-base

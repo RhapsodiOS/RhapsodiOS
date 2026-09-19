@@ -2,5 +2,5 @@ pkgname = drvppcdec21040
 pkgver = 2
 pkgdesc = Dec21040 ethernet device driver
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = APSL
 makedepends = build-base, drivertools, driverkit, machkit, kernload, libstreams

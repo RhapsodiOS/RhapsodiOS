@@ -2,5 +2,5 @@ pkgname = drvibmthinkpad760eddisplay
 pkgver = 7
 pkgdesc = IBM ThinkPad 560/760ED Trident display driver
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = APSL
 makedepends = build-base, drivertools, driverkit, machkit, kernload, libstreams

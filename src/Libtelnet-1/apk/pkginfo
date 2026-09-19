@@ -2,5 +2,5 @@ pkgname = libtelnet
 pkgver = 11
 pkgdesc = Telnet library
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = APSL
 makedepends = build-base

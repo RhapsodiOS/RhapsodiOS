@@ -2,5 +2,5 @@ pkgname = boot
 pkgver = 64
 pkgdesc = Kernel booter
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = APSL
 makedepends = build-base, adv-cmds, gawk, drivertools, libc, driverkit

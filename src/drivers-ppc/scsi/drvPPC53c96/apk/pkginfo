@@ -2,5 +2,5 @@ pkgname = drvppc53c96
 pkgver = 2
 pkgdesc = 53c96 SCSI controller driver
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = APSL
 makedepends = build-base, drivertools, driverkit, machkit, kernload, libstreams

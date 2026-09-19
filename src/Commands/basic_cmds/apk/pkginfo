@@ -2,5 +2,5 @@ pkgname = basic-cmds
 pkgver = 25
 pkgdesc = Basic user commands.
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = APSL
 makedepends = build-base, libcompat, yacc, libedit-hdrs

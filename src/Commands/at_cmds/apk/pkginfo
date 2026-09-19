@@ -2,5 +2,5 @@ pkgname = at-cmds
 pkgver = 15.1
 pkgdesc = AppleTalk commands
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = APSL
 makedepends = build-base, libcat, libcurses-hdrs

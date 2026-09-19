@@ -2,6 +2,6 @@ pkgname = perl
 pkgver = 5.004_04
 pkgdesc = Practical Extraction and Reporting Language
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = GPL
 url = http://www.perl.com/
 makedepends = build-base

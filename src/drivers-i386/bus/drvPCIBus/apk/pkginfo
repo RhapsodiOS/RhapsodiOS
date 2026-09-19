@@ -2,5 +2,5 @@ pkgname = drvpcibus
 pkgver = 13
 pkgdesc = PCI Bus device driver
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = APSL
 makedepends = build-base, drivertools, driverkit, machkit, kernload, libstreams

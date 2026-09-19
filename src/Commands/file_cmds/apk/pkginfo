@@ -2,6 +2,6 @@ pkgname = file-cmds
 pkgver = 1998.10.06
 pkgdesc = File commands
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = APSL
 url = http://www.netbsd.org/
 makedepends = build-base

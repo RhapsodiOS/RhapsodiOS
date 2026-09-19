@@ -2,4 +2,4 @@ pkgname = libgpp
 pkgver = 100.1
 pkgdesc = GNU standard C++ library
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = LGPL

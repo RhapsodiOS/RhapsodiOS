@@ -2,5 +2,5 @@ pkgname = bpf
 pkgver = 3
 pkgdesc = Berkely Packet Filter device driver
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = APSL
 makedepends = build-base, drivertools, driverkit, kernload, libstreams

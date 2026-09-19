@@ -2,6 +2,6 @@ pkgname = awk
 pkgver = 1998.10.20
 pkgdesc = AWK programming language interpreter
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = GPL
 url = http://cm.bell-labs.com/who/bwk/awktar.gz
 makedepends = build-base, yacc

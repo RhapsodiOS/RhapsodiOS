@@ -2,5 +2,5 @@ pkgname = coreosmakefiles
 pkgver = 9.1
 pkgdesc = Core OS Makefiles
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = APSL
 makedepends = build-base

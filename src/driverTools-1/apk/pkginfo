@@ -2,5 +2,5 @@ pkgname = drivertools
 pkgver = 24
 pkgdesc = Driverkit developer tools
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = APSL
 makedepends = build-base

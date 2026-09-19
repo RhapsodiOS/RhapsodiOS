@@ -2,5 +2,5 @@ pkgname = gdb
 pkgver = 142
 pkgdesc = The GNU Debugger
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = LGPL
 makedepends = build-base, flex, bison, gnudiff, perl

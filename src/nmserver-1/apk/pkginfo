@@ -2,5 +2,5 @@ pkgname = nmserver
 pkgver = 28
 pkgdesc = Mach network message server
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = APSL
 makedepends = build-base

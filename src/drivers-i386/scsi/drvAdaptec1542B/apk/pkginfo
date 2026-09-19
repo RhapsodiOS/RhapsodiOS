@@ -2,5 +2,5 @@ pkgname = drvadaptec1542b
 pkgver = 17
 pkgdesc = Adaptec 1542B SCSI device driver
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = APSL
 makedepends = build-base, drivertools, driverkit, machkit, kernload, libstreams

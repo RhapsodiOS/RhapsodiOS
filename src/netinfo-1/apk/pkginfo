@@ -2,5 +2,5 @@ pkgname = netinfo
 pkgver = 2.6
 pkgdesc = NetInfo server daemon and tools
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = APSL
 makedepends = build-base

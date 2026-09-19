@@ -2,5 +2,5 @@ pkgname = objc4
 pkgver = 174
 pkgdesc = Objective-C runtime
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = APSL
 makedepends = build-base, libstreams-hdrs, architecture-hdrs

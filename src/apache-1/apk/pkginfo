@@ -2,5 +2,5 @@ pkgname = apache
 pkgver = 1.3.6
 pkgdesc = Apache HTTP server
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = Apache
 makedepends = build-base, perl

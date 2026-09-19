@@ -2,5 +2,5 @@ pkgname = network-cmds
 pkgver = 57
 pkgdesc = Network commands
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = APSL
 makedepends = build-base, yacc, flex, libcat, librpcsvc-hdrs, libinfo, libcurses-hdrs, libtelnet

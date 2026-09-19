@@ -2,5 +2,5 @@ pkgname = driverkit
 pkgver = 139.1
 pkgdesc = Driver Kit
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = APSL
 makedepends = build-base, machkit-hdrs, adv-cmds, libstreams-hdrs, driverkit-hdrs

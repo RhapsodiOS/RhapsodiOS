@@ -2,5 +2,5 @@ pkgname = kernload
 pkgver = 60
 pkgdesc = Kernel loader
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = APSL
 makedepends = build-base, adv-cmds, kernload-hdrs, libstreams-hdrs, driverkit-hdrs

@@ -3,4 +3,4 @@ pkgver = 5.00-1
 arch = i386
 pkgdesc = Intel EtherExpress 16 Ethernet Driver Driver for Intel EtherExpress 16 ISA Ethernet adapters.
 maintainer = RhapsodiOS Project
-license = unknown
+license = APSL

@@ -2,6 +2,6 @@ pkgname = m4
 pkgver = 1998.10.06
 pkgdesc = Macro preprocessor
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = GPL
 url = http://www.netbsd.org/
 makedepends = build-base

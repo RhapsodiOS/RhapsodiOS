@@ -2,5 +2,5 @@ pkgname = libedit
 pkgver = 13
 pkgdesc = Editing library
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = APSL
 makedepends = build-base

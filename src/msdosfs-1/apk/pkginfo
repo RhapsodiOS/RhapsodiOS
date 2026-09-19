@@ -2,5 +2,5 @@ pkgname = msdosfs
 pkgver = 1.0
 pkgdesc = MSDOS FAT filesystem commands (mount, newfs, fsck, util)
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = BSD
 makedepends = build-base

@@ -2,5 +2,5 @@ pkgname = pb-makefiles
 pkgver = 89.5.1
 pkgdesc = ProjectBuilder makefiles
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = APSL
 makedepends = build-base

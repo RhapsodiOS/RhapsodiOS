@@ -2,5 +2,5 @@ pkgname = diskdev-cmds
 pkgver = 65.0
 pkgdesc = Disk device commands
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = APSL
 makedepends = build-base, driverkit, drveide-hdrs, libinfo-hdrs

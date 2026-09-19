@@ -2,5 +2,5 @@ pkgname = bootstrap-cmds
 pkgver = 13.2
 pkgdesc = Developer commands needed to bootstrap the OS
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = APSL
 makedepends = build-base, yacc, flex

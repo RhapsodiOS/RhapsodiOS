@@ -2,5 +2,5 @@ pkgname = foo
 pkgver = 1.0
 pkgdesc = Test package
 maintainer = Test <t@x>
-license = unknown
+license = APSL
 makedepends = build-base

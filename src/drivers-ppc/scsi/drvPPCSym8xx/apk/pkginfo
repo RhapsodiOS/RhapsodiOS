@@ -2,5 +2,5 @@ pkgname = drvppcsym8xx
 pkgver = 2
 pkgdesc = Symbios 8xx SCSI controller driver
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = APSL
 makedepends = build-base, drivertools, driverkit, machkit, kernload, libstreams

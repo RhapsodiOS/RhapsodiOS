@@ -2,5 +2,5 @@ pkgname = kernel
 pkgver = 154.5.1
 pkgdesc = Mach+BSD kernel
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = APSL
 makedepends = build-base, architecture, driverkit, kernel-hdrs, libstreams-hdrs, machkit, objc, adv-cmds, gnudiff

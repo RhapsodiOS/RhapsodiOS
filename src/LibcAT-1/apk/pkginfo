@@ -2,5 +2,5 @@ pkgname = libcat
 pkgver = 27.1
 pkgdesc = AppleTalk library
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = APSL
 makedepends = build-base

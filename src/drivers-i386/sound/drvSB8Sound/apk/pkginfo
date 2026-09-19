@@ -2,5 +2,5 @@ pkgname = soundblaster8
 pkgver = 1
 pkgdesc = Sound Blaster and Sound Blaster Pro sound device driver
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = APSL
 makedepends = build-base, drivertools, driverkit, kernload

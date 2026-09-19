@@ -2,5 +2,5 @@ pkgname = intel824x0pci
 pkgver = 12
 pkgdesc = Intel 824x0 PCI Controller Driver
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = unknown
+license = APSL
 makedepends = build-base, drivertools, driverkit, machkit, kernload, libstreams

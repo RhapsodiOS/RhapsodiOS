@@ -113,15 +113,35 @@ static int AHCIVersionIsCommon(AHCIU32 version)
     AHCIU32 ghc;
 
     pciDeviceDescription = deviceDescription;
+    /* Reported separately, with the values actually read.  A single combined
+     * test cannot say whether the config read failed or merely mismatched,
+     * which left AHCI bring-up unable to distinguish four different faults. */
     if ([IODirectDevice getPCIConfigData:&pciID
               atRegister:AHCI_PCI_ID_REGISTER
-              withDeviceDescription:deviceDescription] != IO_R_SUCCESS ||
-        pciID != AHCI_ICH9_PCI_ID ||
-        [IODirectDevice getPCIConfigData:&classRevision
+              withDeviceDescription:deviceDescription] != IO_R_SUCCESS) {
+        IOLog("AHCI: cannot read PCI ID register (0x%x); no PCI device description?\n",
+              AHCI_PCI_ID_REGISTER);
+        [self free];
+        return nil;
+    }
+    if (pciID != AHCI_ICH9_PCI_ID) {
+        IOLog("AHCI: PCI ID is 0x%x, expected 0x%x.\n",
+              pciID, AHCI_ICH9_PCI_ID);
+        [self free];
+        return nil;
+    }
+    if ([IODirectDevice getPCIConfigData:&classRevision
               atRegister:AHCI_PCI_CLASS_REGISTER
-              withDeviceDescription:deviceDescription] != IO_R_SUCCESS ||
-        ((classRevision >> 8) & 0x00ffffff) != AHCI_PCI_CLASS_CODE) {
-        IOLog("AHCI: PCI identity or class register is not ICH9-AHCI.\n");
+              withDeviceDescription:deviceDescription] != IO_R_SUCCESS) {
+        IOLog("AHCI: cannot read PCI class register (0x%x).\n",
+              AHCI_PCI_CLASS_REGISTER);
+        [self free];
+        return nil;
+    }
+    if (((classRevision >> 8) & 0x00ffffff) != AHCI_PCI_CLASS_CODE) {
+        IOLog("AHCI: PCI class is 0x%x (register 0x%x), expected 0x%x.\n",
+              (classRevision >> 8) & 0x00ffffff, classRevision,
+              AHCI_PCI_CLASS_CODE);
         [self free];
         return nil;
     }

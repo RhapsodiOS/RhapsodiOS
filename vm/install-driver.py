@@ -59,7 +59,7 @@ def _add_boot_driver(out_image, name):
     """Add `name` to the Boot Drivers key of System.config/Instance0.table.
 
     Returns "set_table_key" or "grow_file" depending on which path actually
-    wrote the change.
+    wrote the change, or "unchanged" if `name` was already listed.
     """
     key = "Boot Drivers"
     with rhap_image.Image(out_image) as img:
@@ -67,7 +67,10 @@ def _add_boot_driver(out_image, name):
         if ino is None:
             raise ufs_alloc.SafetyError("%s does not exist" % BOOT_DRIVERS_TABLE)
         text = img.read_file(ino)
-    new_value = _current_value(text, key) + " " + name
+    current = _current_value(text, key)
+    if name in current.split():
+        return "unchanged"
+    new_value = current + " " + name
 
     try:
         with rhap_image.Image(out_image, writable=True) as img:
@@ -92,6 +95,7 @@ def install_driver(src_image, driver_dir, out_image):
     path (set_table_key or grow_file) wrote the Boot Drivers change.
     """
     name = _driver_name(driver_dir)
+    ufs_alloc._refuse_master(out_image)
     subprocess.check_call(["cp", "-c", src_image, out_image])
 
     base = "/private/Drivers/i386/%s.config" % name
@@ -117,7 +121,11 @@ def main(argv):
     except (ufs_alloc.SafetyError, rhap_inject.SafetyError) as e:
         print("install-driver: %s" % e, file=sys.stderr)
         return 1
-    print("Boot Drivers updated via %s" % via)
+    if via == "unchanged":
+        print("%s already listed as a boot driver; leaving unchanged"
+              % _driver_name(driver_dir))
+    else:
+        print("Boot Drivers updated via %s" % via)
     return 0
 
 

@@ -452,6 +452,7 @@ class TestDriverInstall(unittest.TestCase):
             ["python3", os.path.join(HERE, "install-driver.py"),
              GOLDEN, os.path.join(HERE, "AHCI.config"), out])
         self.assertEqual(ufs_check.check(out), [])
+        import rhap_inject
         with rhap_image.Image(out) as img:
             base = "/private/Drivers/i386/AHCI.config"
             for name in ("AHCI_reloc", "Default.table", "Instance0.table"):
@@ -459,9 +460,17 @@ class TestDriverInstall(unittest.TestCase):
             reloc = img.read_file(img.resolve(base + "/AHCI_reloc"))
             self.assertEqual(
                 reloc, open(os.path.join(HERE, "AHCI.config/AHCI_reloc"), "rb").read())
+            default_src = open(
+                os.path.join(HERE, "AHCI.config/Default.table"), "rb").read()
+            default_table = img.read_file(img.resolve(base + "/Default.table"))
+            instance0_table = img.read_file(img.resolve(base + "/Instance0.table"))
+            self.assertEqual(default_table, default_src)
+            self.assertEqual(instance0_table, default_src)
             sysconf = img.read_file(img.resolve(
                 "/private/Drivers/i386/System.config/Instance0.table"))
-            self.assertIn(b"AHCI", sysconf)
+            boot_drivers, _ = rhap_inject._replace_table_key(
+                sysconf, "Boot Drivers", "")
+            self.assertIn("AHCI", boot_drivers.split())
 
 
 if __name__ == "__main__":

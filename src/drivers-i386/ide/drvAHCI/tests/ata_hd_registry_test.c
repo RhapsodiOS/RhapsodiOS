@@ -115,7 +115,16 @@ static void test_registry_integration_source_contract(void)
     CHECK(strstr(registry,
                  "ATAHDRegistryIsActive(&ata_hd_core, unit)") != NULL);
     CHECK(strstr(registry, "return map->liveId;") != NULL);
-    CHECK(strstr(registry, "flushResult = flush(disk);") != NULL);
+    /* The flush callback belongs to the physical disk that registered it
+     * (ata_hd_set_flush only accepts the registry owner), so it must be
+     * handed that owner.  Passing the per-dev object hands it an
+     * IODiskPartition, which does not implement -flushCache, and the
+     * objc runtime panics on close. */
+    CHECK(strstr(registry,
+                 "flushOwner = (id)ATAHDRegistryOwner(&ata_hd_core, unit);")
+          != NULL);
+    CHECK(strstr(registry, "flushResult = flush(flushOwner);") != NULL);
+    CHECK(strstr(registry, "flushResult = flush(disk);") == NULL);
     CHECK(strstr(registry, "ioCount") != NULL);
     CHECK(strstr(registry, "ata_hd_async_complete(token);") != NULL);
     strategy = strstr(registry,
@@ -139,7 +148,7 @@ static void test_registry_integration_source_contract(void)
     closePin = closeMethod == NULL ? NULL :
                strstr(closeMethod, "result = ATAHDRegistryOpen(");
     flushCall = closePin == NULL ? NULL :
-                strstr(closePin, "flushResult = flush(disk);");
+                strstr(closePin, "flushResult = flush(flushOwner);");
     flushErrorMap = flushCall == NULL ? NULL :
                     strstr(flushCall,
                            "flushError = [disk errnoFromReturn:flushResult]");

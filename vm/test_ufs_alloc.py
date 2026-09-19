@@ -665,5 +665,246 @@ class TestDriverInstallLinksEveryInode(unittest.TestCase):
             "(orphaned): %r" % sorted(newly_allocated - reachable))
 
 
+class TestFreeInodeClearsDinode(unittest.TestCase):
+    """Regression test for Critical 1: free_inode must zero the dinode, not
+    just the bitmap bit.  The guest's fsck (pass1.c) decides
+    allocated-vs-free from di_mode, so a stale nonzero mode on a
+    bitmap-free inode reads as UNREF/PARTIALLY ALLOCATED, and its stale
+    di_db/di_ib pointers get double-counted as DUP BLKS once reused.
+    Read back through the INDEPENDENT reader (rhap_image), never
+    ufs_check, which never inspects dinodes at all.
+    """
+
+    def setUp(self):
+        if not _present(GOLDEN):
+            self.skipTest("golden.img not present")
+        self.tmp = tempfile.mkdtemp(prefix="ufsalloc-", dir=os.path.join(HERE, "work"))
+        self.addCleanup(shutil.rmtree, self.tmp)
+        self.img = os.path.join(self.tmp, "test.img")
+        clone(GOLDEN, self.img)
+
+    def test_unlinked_files_dinode_is_zeroed(self):
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            a.mkdir("/private/Drivers/i386/TEST.config")
+            ino = a.create_file(
+                "/private/Drivers/i386/TEST.config/f", b"hello rhapsody")
+            a.flush()
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            a.unlink("/private/Drivers/i386/TEST.config/f")
+            a.flush()
+        with rhap_image.Image(self.img) as img:
+            inode = img.inode(ino)
+            self.assertEqual(inode.mode, 0,
+                              "free_inode left the dinode's di_mode set")
+
+    def test_removed_directorys_dinode_is_zeroed(self):
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            ino = a.mkdir("/private/Drivers/i386/TEST.config")
+            a.flush()
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            a.rmdir("/private/Drivers/i386/TEST.config")
+            a.flush()
+        with rhap_image.Image(self.img) as img:
+            inode = img.inode(ino)
+            self.assertEqual(inode.mode, 0,
+                              "free_inode left the dinode's di_mode set")
+
+
+class TestAddDirentTerminatorOnReuse(unittest.TestCase):
+    """Regression test for Critical 2: writing a name into a reused (or
+    slack-split) directory-entry slot must zero out the rest of the
+    record, including the byte immediately after the name that the real
+    kernel fsck's dircheck() requires to be NUL.  _remove_dirent only
+    zeroes d_ino, so reusing that slot for a SHORTER name leaves a stale
+    non-NUL byte where the terminator must be.  Checked with the existing
+    _fsck_style_entries helper, which is the one parser here that actually
+    enforces the terminator rule (ufs_check and rhap_image.iter_dir do
+    not).
+    """
+
+    def setUp(self):
+        if not _present(GOLDEN):
+            self.skipTest("golden.img not present")
+        self.tmp = tempfile.mkdtemp(prefix="ufsalloc-", dir=os.path.join(HERE, "work"))
+        self.addCleanup(shutil.rmtree, self.tmp)
+        self.img = os.path.join(self.tmp, "test.img")
+        clone(GOLDEN, self.img)
+
+    def test_shorter_name_in_a_reused_slot_gets_a_nul_terminator(self):
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            a.mkdir("/private/Drivers/i386/TEST.config")
+            a.create_file(
+                "/private/Drivers/i386/TEST.config/longname", b"x")
+            a.unlink("/private/Drivers/i386/TEST.config/longname")
+            # Shorter than "longname": lands in the freed slot, with stale
+            # name bytes past it, exercising the reuse branch.
+            a.create_file("/private/Drivers/i386/TEST.config/ab", b"y")
+            a.flush()
+        self.assertEqual(ufs_check.check(self.img), [])
+        with rhap_image.Image(self.img) as img:
+            dir_ino = img.resolve("/private/Drivers/i386/TEST.config")
+            data = img.read_file(dir_ino)
+            names = dict(_fsck_style_entries(data))
+            self.assertIn(
+                "ab", names,
+                "the real fsck's dircheck() would reject this entry "
+                "(missing NUL terminator after the name) and discard the "
+                "rest of its DIRBLKSIZ chunk")
+
+
+class TestOldFileFragsRefusesWhatItCannotDescribe(unittest.TestCase):
+    """Regression test for Important 3: _old_file_frags only follows
+    ib[0], caps at nindir pointers, and never checked the file's own size
+    against max_file_bytes() -- so a pre-existing file bigger than direct
+    plus single-indirect capacity, or one using ib[1]/ib[2], would leak
+    every block past that point instead of being refused.
+    """
+
+    def setUp(self):
+        if not _present(GOLDEN):
+            self.skipTest("golden.img not present")
+        self.tmp = tempfile.mkdtemp(prefix="ufsalloc-", dir=os.path.join(HERE, "work"))
+        self.addCleanup(shutil.rmtree, self.tmp)
+        self.img = os.path.join(self.tmp, "test.img")
+        clone(GOLDEN, self.img)
+
+    def test_refuses_a_file_using_double_indirect(self):
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            db = [0] * rhap_image.NDADDR
+            with self.assertRaises(ufs_alloc.SafetyError):
+                a._old_file_frags(a.g.bsize, db, [0, 5, 0])
+
+    def test_refuses_a_file_using_triple_indirect(self):
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            db = [0] * rhap_image.NDADDR
+            with self.assertRaises(ufs_alloc.SafetyError):
+                a._old_file_frags(a.g.bsize, db, [0, 0, 7])
+
+    def test_refuses_a_file_larger_than_max_file_bytes(self):
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            db = [0] * rhap_image.NDADDR
+            with self.assertRaises(ufs_alloc.SafetyError):
+                a._old_file_frags(a.max_file_bytes() + 1, db, [0, 0, 0])
+
+
+class TestRollbackDropsPendingWrites(unittest.TestCase):
+    """Regression test for Important 4: free_frags must drop any pending
+    _data_cache entry for a fragment it releases, or a caller that catches
+    SafetyError after a partial allocation and later calls flush() would
+    write content into fragments the filesystem now believes are free.
+    """
+
+    def setUp(self):
+        if not _present(GOLDEN):
+            self.skipTest("golden.img not present")
+        self.tmp = tempfile.mkdtemp(prefix="ufsalloc-", dir=os.path.join(HERE, "work"))
+        self.addCleanup(shutil.rmtree, self.tmp)
+        self.img = os.path.join(self.tmp, "test.img")
+        clone(GOLDEN, self.img)
+
+    def test_free_frags_drops_the_data_cache_entry(self):
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            frags = a.alloc_frags(a.g.frag)
+            a._write_data(frags[0], b"x" * a.g.fsize)
+            self.assertIn(frags[0], a._data_cache)
+            a.free_frags(frags)
+            self.assertNotIn(
+                frags[0], a._data_cache,
+                "a freed fragment's pending write survived; flush() would "
+                "write into space the filesystem now believes is free")
+
+
+class TestInodeDeltaIsIdempotent(unittest.TestCase):
+    """Regression test for Important 5: _apply_inode_delta must check each
+    bit's prior state, like _apply_group_delta does for fragments, instead
+    of applying a blind +-n.  A double free_inode (or one called with the
+    wrong is_dir) must not perturb cs_nifree/cs_ndir a second time.
+    """
+
+    def setUp(self):
+        if not _present(GOLDEN):
+            self.skipTest("golden.img not present")
+        self.tmp = tempfile.mkdtemp(prefix="ufsalloc-", dir=os.path.join(HERE, "work"))
+        self.addCleanup(shutil.rmtree, self.tmp)
+        self.img = os.path.join(self.tmp, "test.img")
+        clone(GOLDEN, self.img)
+
+    def test_double_free_inode_does_not_double_count(self):
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            ino = a.alloc_inode()
+            a.free_inode(ino)
+            once_freed = a.fs_cstotal()
+            a.free_inode(ino)  # already free: must be a no-op on counters
+            self.assertEqual(a.fs_cstotal(), once_freed)
+
+    def test_free_inode_with_wrong_is_dir_after_already_freed_is_a_noop(self):
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            ino = a.alloc_inode(is_dir=True)
+            a.free_inode(ino, is_dir=True)
+            once_freed = a.fs_cstotal()
+            # A second free with a mismatched is_dir must not further
+            # perturb cs_ndir, because the inode is already free.
+            a.free_inode(ino, is_dir=False)
+            self.assertEqual(a.fs_cstotal(), once_freed)
+
+
+class TestSparseHoleReadsAsZero(unittest.TestCase):
+    """Minor fix for symmetry with _old_file_frags: a block pointer of 0
+    is a hole and must read back as zeros, never as fragment 0 (the boot
+    block / superblock area).
+    """
+
+    def setUp(self):
+        if not _present(GOLDEN):
+            self.skipTest("golden.img not present")
+        self.tmp = tempfile.mkdtemp(prefix="ufsalloc-", dir=os.path.join(HERE, "work"))
+        self.addCleanup(shutil.rmtree, self.tmp)
+        self.img = os.path.join(self.tmp, "test.img")
+        clone(GOLDEN, self.img)
+
+    def test_read_block_at_zero_returns_zero_bytes(self):
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            self.assertEqual(a._read_block_at(0, 256), bytes(256))
+
+
+class TestSafetyErrorForBadArguments(unittest.TestCase):
+    """Minor fix: every refusal here should raise SafetyError, per the
+    module's own docstring -- not ValueError/struct.error/
+    UnicodeEncodeError leaking out of str.rsplit/struct.pack/str.encode.
+    """
+
+    def setUp(self):
+        if not _present(GOLDEN):
+            self.skipTest("golden.img not present")
+        self.tmp = tempfile.mkdtemp(prefix="ufsalloc-", dir=os.path.join(HERE, "work"))
+        self.addCleanup(shutil.rmtree, self.tmp)
+        self.img = os.path.join(self.tmp, "test.img")
+        clone(GOLDEN, self.img)
+
+    def test_mkdir_without_leading_slash(self):
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            with self.assertRaises(ufs_alloc.SafetyError):
+                a.mkdir("foo")
+
+    def test_rmdir_root(self):
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            with self.assertRaises(ufs_alloc.SafetyError):
+                a.rmdir("/")
+
+    def test_name_over_255_bytes(self):
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            a.mkdir("/private/Drivers/i386/TEST.config")
+            with self.assertRaises(ufs_alloc.SafetyError):
+                a.create_file(
+                    "/private/Drivers/i386/TEST.config/" + "x" * 300, b"y")
+
+    def test_non_ascii_name(self):
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            a.mkdir("/private/Drivers/i386/TEST.config")
+            with self.assertRaises(ufs_alloc.SafetyError):
+                a.create_file(
+                    "/private/Drivers/i386/TEST.config/café", b"y")
+
+
 if __name__ == "__main__":
     unittest.main()

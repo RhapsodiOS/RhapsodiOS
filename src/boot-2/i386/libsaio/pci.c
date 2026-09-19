@@ -114,7 +114,7 @@ PCI_Bus_Init(
 	
     nslots = scanBus(maxBusNum, maxDevNum, method, NULL);
     slot_array = (_pci_slot_info_t *)
-	malloc(sizeof(_pci_slot_info_t) * nslots +1);
+	malloc(sizeof(_pci_slot_info_t) * (nslots + 1));
     (void)scanBus(maxBusNum, maxDevNum, method, slot_array);
     slot_array[nslots].pid = 0x00;
     slot_array[nslots].sid = 0x00;

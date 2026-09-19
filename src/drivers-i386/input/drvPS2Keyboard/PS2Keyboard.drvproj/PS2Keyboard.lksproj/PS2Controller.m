@@ -223,23 +223,29 @@ static void unlock_controller(void)
     [self registerDevice];
 
     /* Initialize keyboard free queue as a circular doubly-linked list */
-    keyboardFreeQueue.next = KBD_FREE_QUEUE;
     keyboardFreeQueue.prev = KBD_FREE_QUEUE;
+    keyboardFreeQueue.next = KBD_FREE_QUEUE;
 
     /* Add all queue elements to the free queue */
     for (i = 0; i < KEYBOARD_QUEUE_SIZE; i++) {
-        element = &keyboardQueueElements[i];
-
-        /* Insert element at the tail of the free queue */
-        element->next = KBD_FREE_QUEUE;
-        element->prev = keyboardFreeQueue.prev;
-        keyboardFreeQueue.prev->next = element;
-        keyboardFreeQueue.prev = element;
+        if (keyboardFreeQueue.next == KBD_FREE_QUEUE) {
+            element = &keyboardQueueElements[i];
+            keyboardFreeQueue.next = element;
+            keyboardFreeQueue.prev = element;
+            element->next = KBD_FREE_QUEUE;
+            element->prev = KBD_FREE_QUEUE;
+        } else {
+            element = &keyboardQueueElements[i];
+            element->prev = keyboardFreeQueue.prev;
+            element->next = KBD_FREE_QUEUE;
+            keyboardFreeQueue.prev = element;
+            element->prev->next = element;
+        }
     }
 
     /* Initialize keyboard data queue as a circular doubly-linked list */
-    keyboardQueue.next = KBD_QUEUE;
     keyboardQueue.prev = KBD_QUEUE;
+    keyboardQueue.next = KBD_QUEUE;
 
     /* Start the I/O thread for handling interrupts */
     [self startIOThread];
@@ -290,14 +296,14 @@ static void enqueueKeyboardData(unsigned char data)
     PS2QueueElement *prevElement;
     PS2QueueElement *tempPtr;
 
-    /* Get a free queue element from the head of the free queue */
-    element = keyboardFreeQueue.next;
-
     /* Check if we have a free element (not pointing to the queue head) */
-    if (element == KBD_FREE_QUEUE) {
+    if (keyboardFreeQueue.next == KBD_FREE_QUEUE) {
         /* No free elements - queue is full */
         return;
     }
+
+    /* Get a free queue element from the head of the free queue */
+    element = keyboardFreeQueue.next;
 
     /* Remove element from free queue */
     nextElement = element->next;
@@ -325,10 +331,11 @@ static void enqueueKeyboardData(unsigned char data)
         element->next = KBD_QUEUE;
         element->prev = KBD_QUEUE;
     } else {
-        element->prev = keyboardQueue.prev;
+        tempPtr = keyboardQueue.prev;
+        element->prev = tempPtr;
         element->next = KBD_QUEUE;
-        keyboardQueue.prev->next = element;
         keyboardQueue.prev = element;
+        tempPtr->next = element;
     }
 }
 
@@ -341,23 +348,20 @@ static void enqueueKeyboardData(unsigned char data)
 /* Check if a key matches an escape sequence */
 static BOOL isEscape(unsigned short key, EscapeSequence *escape)
 {
-    unsigned char scancodeChar;
-    unsigned char extendedChar;
     KeySequenceEntry **cursor;
     KeySequenceEntry *currentSeq;
     unsigned char *keyBytes;
-
-    /* Extract scancode and extended flag from the 16-bit key */
-    scancodeChar = (unsigned char)(key & 0xFF);
-    extendedChar = (unsigned char)((key >> 8) & 0xFF);
+    short extendedHalf;
 
     if (escape->currentSequence == NULL) {
         /* Not currently matching - try every alternative in this entry */
+        extendedHalf = (short)key >> 8;
         for (cursor = escape->sequences; *cursor != NULL; cursor++) {
             currentSeq = *cursor;
             keyBytes = &currentSeq->keys[currentSeq->index * 2];
 
-            if (keyBytes[0] == scancodeChar && keyBytes[1] == extendedChar) {
+            if ((unsigned char)key == keyBytes[0] &&
+                (unsigned char)extendedHalf == keyBytes[1]) {
                 /* Found a matching sequence - start tracking it */
                 escape->matchedSequence = currentSeq;
                 escape->currentSequence = currentSeq;
@@ -370,11 +374,13 @@ static BOOL isEscape(unsigned short key, EscapeSequence *escape)
         /* Currently matching a sequence - check the next key */
         currentSeq = escape->currentSequence;
         keyBytes = &currentSeq->keys[currentSeq->index * 2];
+        extendedHalf = (short)key >> 8;
 
-        if (keyBytes[0] == scancodeChar && keyBytes[1] == extendedChar) {
+        if ((unsigned char)key == keyBytes[0] &&
+            (unsigned char)extendedHalf == keyBytes[1]) {
             currentSeq->index++;
 
-            if (currentSeq->count <= currentSeq->index) {
+            if (currentSeq->index >= currentSeq->count) {
                 /* Sequence complete */
                 currentSeq->index = 0;
                 escape->currentSequence = NULL;
@@ -412,14 +418,12 @@ static void undoEscape(EscapeSequence *escape)
 {
     KeySequenceEntry *sequence;
     int index;
-    unsigned char scancode;
     unsigned char extended;
 
     sequence = escape->matchedSequence;
 
     if (sequence != NULL) {
         for (index = 0; index < sequence->count; index++) {
-            scancode = sequence->keys[index * 2];
             extended = sequence->keys[index * 2 + 1];
 
             /* If extended flag is set, enqueue the 0xE0 prefix */
@@ -428,7 +432,7 @@ static void undoEscape(EscapeSequence *escape)
             }
 
             /* Bit 7 turns the press into a release */
-            enqueueKeyboardData(scancode | 0x80);
+            enqueueKeyboardData(sequence->keys[index * 2] | 0x80);
         }
     }
 }
@@ -442,14 +446,13 @@ static BOOL doEscape(unsigned char data)
     unsigned short currentKey;
     EscapeSequence *escapePtr;
 
-    previousExtended = lastExtended;
-
     /* Check if this is the extended scancode prefix (0xE0) */
     if (data == 0xE0) {
         lastExtended = 1;
         return NO;
     }
 
+    previousExtended = lastExtended;
     lastExtended = 0;
 
     /* Combine extended flag with scancode to form a 16-bit key value */
@@ -457,7 +460,8 @@ static BOOL doEscape(unsigned char data)
                  (unsigned short)data;
 
     /* Ignore a repeat of the key we last looked at */
-    if ((lastKey & 0xFF) != data || (lastKey >> 8) != previousExtended) {
+    if ((unsigned char)lastKey != data ||
+        (unsigned char)((short)currentKey >> 8) != (unsigned char)(lastKey >> 8)) {
         lastKey = currentKey;
 
         for (escapePtr = escapes; escapePtr->callback != NULL; escapePtr++) {
@@ -580,6 +584,7 @@ unsigned char getKeyboardData(void)
     PS2QueueElement *element;
     PS2QueueElement *nextElement;
     PS2QueueElement *prevElement;
+    PS2QueueElement *tempPtr;
     unsigned char data;
 
     /* Lock the controller for the entire operation */
@@ -595,31 +600,32 @@ unsigned char getKeyboardData(void)
         nextElement = element->next;
         prevElement = element->prev;
 
+        tempPtr = KBD_QUEUE;
         if (nextElement != KBD_QUEUE) {
-            nextElement->prev = prevElement;
-        } else {
-            keyboardQueue.prev = prevElement;
+            tempPtr = nextElement;
         }
+        tempPtr->prev = prevElement;
 
+        tempPtr = KBD_QUEUE;
         if (prevElement != KBD_QUEUE) {
-            prevElement->next = nextElement;
-        } else {
-            keyboardQueue.next = nextElement;
+            tempPtr = prevElement;
         }
+        tempPtr->next = nextElement;
 
         data = element->data;
 
         /* Return the element to the free queue */
-        if (keyboardFreeQueue.next == KBD_FREE_QUEUE) {
+        if (keyboardFreeQueue.next != KBD_FREE_QUEUE) {
+            prevElement = keyboardFreeQueue.prev;
+            element->prev = prevElement;
+            element->next = KBD_FREE_QUEUE;
+            keyboardFreeQueue.prev = element;
+            prevElement->next = element;
+        } else {
             keyboardFreeQueue.next = element;
             keyboardFreeQueue.prev = element;
             element->next = KBD_FREE_QUEUE;
             element->prev = KBD_FREE_QUEUE;
-        } else {
-            element->prev = keyboardFreeQueue.prev;
-            element->next = KBD_FREE_QUEUE;
-            keyboardFreeQueue.prev->next = element;
-            keyboardFreeQueue.prev = element;
         }
     }
 
@@ -631,19 +637,16 @@ unsigned char getKeyboardData(void)
 /* Helper function: Check if keyboard data is present and read it */
 BOOL getKeyboardDataIfPresent(unsigned char *data)
 {
-    BOOL hasData;
-
     lock_controller();
 
-    hasData = keyboardDataPresent();
-
-    unlock_controller();
-
-    if (hasData) {
+    if (!keyboardDataPresent()) {
+        unlock_controller();
+        return 0;
+    } else {
+        unlock_controller();
         *data = getKeyboardData();
+        return 1;
     }
-
-    return hasData;
 }
 
 /* Helper function: Read data from the PS/2 mouse */
@@ -675,26 +678,23 @@ unsigned char getMouseData(void)
 BOOL getMouseDataIfPresent(unsigned char *data)
 {
     unsigned char status;
-    BOOL noMouseData;
 
     lock_controller();
 
     status = inb(PS2_STATUS_PORT);
 
     /* Bit 5 (0x20) marks auxiliary device (mouse) data */
-    noMouseData = (status & 0x20) == 0;
-
-    if (noMouseData) {
+    if (!(status & 0x20)) {
         unlock_controller();
+        return 0;
     } else {
         IODelay(7);
 
         *data = inb(PS2_DATA_PORT);
 
         unlock_controller();
+        return 1;
     }
-
-    return !noMouseData;
 }
 
 /* Helper function: Clear the PS/2 controller output buffer */
@@ -794,7 +794,11 @@ BOOL sendMouseCommand(unsigned char command)
     /* Read the mouse's acknowledgment response */
     response = getMouseData();
 
-    return (response == 0xFA);
+    if (response != 0xFA) {
+        return 0;
+    } else {
+        return 1;
+    }
 }
 
 /* Disable mouse data reporting */

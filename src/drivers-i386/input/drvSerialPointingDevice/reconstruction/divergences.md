@@ -74,9 +74,9 @@ Three scaffolding facts the report pass recorded for the fix pass to check:
   section below.
 - The reference carries a `__TEXT,__const` section of **170 bytes** holding
   `_SerialPointingDevice_VERS_STRING` (160 bytes at 5330) and `_SerialPointingDevice_VERS_NUM`
-  (10 bytes at 5490). Those are emitted by NeXT's `vers_string` machinery, not written by hand,
-  and no driver in this repository produces them. Still recorded, not fixed: unlike the section
-  gaps it is not reachable from `OTHERSRCS`.
+  (10 bytes at 5490). Those are emitted by NeXT's `vers_string` machinery, not written by hand.
+  **Task 4** wired `OTHER_GENERATED_OFILES += $(VERS_OFILE)` in the Kernel Server
+  postamble; the symbols are still absent. See the Task 4 section below.
 
 ## `Loaded Server` sections: exact parity
 
@@ -1215,3 +1215,420 @@ Verified directly against the rebuilt `SerialPointingDevice_reloc`:
 comparison of the rebuilt functions against the reference. `binrecon` was not asked to analyze
 the rebuilt artifact — spec §1.3 puts that out of scope — so no function's status was raised to
 `assembly-matched` on the strength of this pass's work.
+
+## Finish campaign
+
+2026-09-16 Phase 1 baseline, no `SerialPointingDevice.m` / `.h` edits. Guest
+`=== input-recon done fail=0 built: drvSerialPointingDevice ===`. Staged
+unstripped `SerialPointingDevice_reloc` is **112064** bytes, SHA-256
+`7A0D1052C9178CFE8DCD576605DA163ECF0835A4A28F04309CB30D459E7C8E64`.
+This Finish `_reloc` is 112064 bytes and supersedes July's 112072.
+`parity_check.py`: `missing_strings` **0**, `missing_symbols` **0**.
+`SerialPointingDevice` `instance_size` is still **356**. IDA `--list`: 3
+identical + 8 further masked = **11 `masked_equal` total**, 7 remaining.
+
+Baseline regression gate is every hand-written `raw_equal` / `masked_equal`
+row (nine, glue excluded): `getResolution`, `_mainLoop`, `MPlusProtocol`,
+`MMProtocol`, `RBProtocol`, `UnknownProtocol`, `setEventTarget:`, `free`,
+`mainLoop:`. July's five `assembly-matched` rows all held; they sit inside
+that nine. Glue stays unmatched and is not a grind target. See
+`function-worklist.md`. This `_reloc` is not kept as the campaign result;
+`rebuilt_sha256` is unchanged.
+
+Task 3 (2026-09-16): promoted the nine hand-written identical / `masked_equal`
+rows to `assembly-matched` against rebuilt `_reloc`
+`7A0D1052C9178CFE8DCD576605DA163ECF0835A4A28F04309CB30D459E7C8E64`. Four
+were `control-flow-confirmed` (`_mainLoop`, `free`, `setEventTarget:`,
+`mainLoop:`); five already were `assembly-matched` (`getResolution`,
+`MPlusProtocol`, `MMProtocol`, `RBProtocol`, `UnknownProtocol`) and were
+left there with reviewer/reason refreshed to cite this baseline. Kernel
+Server glue stays `intentional-mismatch` even though `--list` matched.
+The remaining seven stay `control-flow-confirmed`: `getByte:sleep:`,
+`getIntValues:`, `mouseInit:`, `MSProtocol`, `setIntValues:`,
+`FiveBProtocol`, `detect`.
+
+## Task 4: Kernel Server `VERS_OFILE` (accepted gap)
+
+2026-09-16. Created
+`SerialPointingDevice.drvproj/SerialPointingDevice.lksproj/Makefile.postamble`
+with the single line `OTHER_GENERATED_OFILES += $(VERS_OFILE)`. Guest
+`sh /build/source/vm/build-i386-input-recon.sh drvSerialPointingDevice`
+ended `=== input-recon done fail=0 built: drvSerialPointingDevice ===`.
+`kl_ld` ran; `Makefile.postamble` is on the guest (40 bytes).
+
+The `__TEXT,__const` gap is **accepted, not closed**. Guest evidence:
+
+- `SerialPointingDevice_vers.c` / `.o` were **not** generated. `find` under
+  the driver tree returned no `*vers*` path. `derived_src` holds only
+  `SerialPointingDevice_instance.m`. The object directory is
+  `SerialPointingDevice.o`, `SerialPointingDevice_instance.o`, and their
+  `.i386.o` siblings.
+- The `kl_ld` line linked those two objects only. No vers object appeared.
+- `VERSIONING_SYSTEM` is unset in both in-tree preambles (this pass must
+  not edit `Makefile` / `Makefile.preamble`). Guest
+  `/System/Developer/Makefiles/VersioningSystems` has `apple-generic.make`
+  and `next-cvs.make` but **no** `next-sgs.make`. `common.make` only
+  `-include`s `$(VERSIONING_SYSTEM).make`; with the variable empty,
+  `VERS_OFILE` is never assigned, so `OTHER_GENERATED_OFILES += $(VERS_OFILE)`
+  is a no-op. `driverTools` was not edited.
+
+`_SerialPointingDevice_VERS_STRING` and `_SerialPointingDevice_VERS_NUM`
+remain **MISSING**. There is no `__TEXT,__const` section. The rebuilt
+`_reloc` is still **112064** bytes, SHA-256
+`7A0D1052C9178CFE8DCD576605DA163ECF0835A4A28F04309CB30D459E7C8E64`
+(byte-identical to the Task 2 baseline). The nine hand-written `--list`
+gates still `identical` / `masked-eq`. `parity_check.py` stays
+`missing_strings` 0 / `missing_symbols` 0. The postamble stays.
+
+## Task 5: cheapest-first instruction-shape grind
+
+### `getByte:sleep:` — accepted (stack packing)
+
+One declaration-order try moved `unsigned char data` ahead of `IOReturn ret`
+and `int eventType` (live order was already ret/eventType/data). Guest
+`fail=0`. `--list` still 7 diffs / 43 vs 43; the nine gates stayed
+`identical` / `masked-eq`. `parity_check.py` 0 / 0. Reverted.
+
+Leftover is gcc packing `data` at `[ebp+var_5]` against the reference's
+`[ebp+var_8]`, plus jump labels. CFG, `do`/`while (active)`, and the
+`0x55` / `0` / `_active` tests match.
+
+```
+-[SerialPointingDevice getByte:sleep:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction layout differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 8                              sub esp, 8
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  mov esi, [ebp+self]                     mov esi, [ebp+self]
+  mov edi, [ebp+arg_8]                    mov edi, [ebp+arg_8]
+  mov bl, [ebp+arg_C]                     mov bl, [ebp+arg_C]
+  nop                                     nop
+  nop                                     nop
+  movsx eax, bl                           movsx eax, bl
+  push eax                                push eax
+* lea eax, [ebp+var_8]                    lea eax, [ebp+var_5]
+  push eax                                push eax
+  lea eax, [ebp+var_4]                    lea eax, [ebp+var_4]
+  push eax                                push eax
+  mov edx, ds:paDequeueeventDa            mov edx, ds:paDequeueeventDa
+  push edx                                push edx
+  mov edx, [esi+154h]                     mov edx, [esi+154h]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 14h                            add esp, 14h
+  test eax, eax                           test eax, eax
+* jnz loc_747                             jnz loc_BC7
+  cmp [ebp+var_4], 55h                    cmp [ebp+var_4], 55h
+* jnz loc_738                             jnz loc_BB8
+* mov dl, [ebp+var_8]                     mov dl, [ebp+var_5]
+  mov [edi], dl                           mov [edi], dl
+  mov eax, 1                              mov eax, 1
+* jmp loc_749                             jmp loc_BC9
+  cmp [ebp+var_4], 0                      cmp [ebp+var_4], 0
+* jz loc_747                              jz loc_BC7
+  cmp ds:_active, 0                       cmp ds:_active, 0
+* jnz loc_700                             jnz loc_B80
+  xor eax, eax                            xor eax, eax
+  lea esp, [ebp-14h]                      lea esp, [ebp-14h]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+### `getIntValues:forParameter:count:` — matched (`masked_equal`)
+
+Replaced the counted char loops with `strcmp(parameterName, RESOLUTION)` /
+`INVERTED`, then stored through `*parameterArray` without a `value` local.
+Guest `fail=0`. `--list` 4 diffs / 36 vs 36 `masked-eq` (jump labels only).
+`repe cmpsb` with `ecx = 0Bh` then `ecx = 9`. Nine gates held.
+`parity_check.py` 0 / 0. Rebuilt SHA-256
+`9F66998CC2307F50F1663729B5FC1B48FB8DFFA9903053D4ACB3764284C89235`.
+
+### `setIntValues:forParameter:count:` — accepted (compiler-shaped leftover)
+
+Same `strcmp` rewrite. Diffs 80/85/108 → 31/85/81. `repe cmpsb` now matches
+the reference. Leftover is gcc spilling the Resolution compare count to
+`[ebp+var_4]` (`sub esp, 4`) plus selector register allocation. Dummy spills
+are forbidden. Nine gates held, including `getIntValues:` still `masked-eq`.
+
+```
+-[SerialPointingDevice setIntValues:forParameter:count:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+* sub esp, 4
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  mov ebx, [ebp+self]                     mov ebx, [ebp+self]
+* mov eax, [ebp+arg_C]                    mov eax, [ebp+arg_8]
+* mov esi, eax                            mov esi, [ebp+arg_C]
+  mov edi, offset aResolution             mov edi, offset aResolution
+* mov [ebp+var_4], 0Bh                    mov ecx, 0Bh
+* mov ecx, [ebp+var_4]
+  cld                                     cld
+  test al, 0                              test al, 0
+  cmpsb                                   cmpsb
+* jnz loc_534                             jnz loc_A34
+* mov edx, [ebp+arg_8]                    mov eax, [eax]
+* mov edx, [edx]                          mov [ebx+12Ch], eax
+* mov [ebx+12Ch], edx                     mov edx, ds:paGetresolution
+* mov ecx, ds:paGetresolution             push edx
+* push ecx
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  push eax                                push eax
+  mov edx, ds:paSetresolution             mov edx, ds:paSetresolution
+  push edx                                push edx
+* mov ecx, [ebx+128h]                     mov edx, [ebx+128h]
+* push ecx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 14h                            add esp, 14h
+  cmp byte ptr [ebx+144h], 0              cmp byte ptr [ebx+144h], 0
+* jz loc_5A4                              jz loc_AA2
+  mov edx, [ebx+12Ch]                     mov edx, [ebx+12Ch]
+  push edx                                push edx
+* mov ecx, ds:paName                      mov edx, ds:paName
+* push ecx                                push edx
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  push offset aSResolutionD               push offset aSResolutionD
+* jmp loc_59F                             jmp loc_A9D
+* mov esi, eax                            mov esi, [ebp+arg_C]
+  mov edi, offset aInverted               mov edi, offset aInverted
+  mov ecx, 9                              mov ecx, 9
+  cld                                     cld
+  test al, 0                              test al, 0
+  cmpsb                                   cmpsb
+* jnz loc_5A8                             jnz loc_AA8
+* mov edx, [ebp+arg_8]                    mov al, [eax]
+* mov dl, [edx]                           mov [ebx+130h], al
+* mov [ebx+130h], dl                      movsx eax, al
+* movsx eax, dl
+  push eax                                push eax
+* mov ecx, ds:paSetinverted               mov edx, ds:paSetinverted
+* push ecx                                push edx
+  mov edx, [ebx+128h]                     mov edx, [ebx+128h]
+  push edx                                push edx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 0Ch                            add esp, 0Ch
+  cmp byte ptr [ebx+144h], 0              cmp byte ptr [ebx+144h], 0
+* jz loc_5A4                              jz loc_AA2
+  mov eax, offset aNo                     mov eax, offset aNo
+  cmp byte ptr [ebx+130h], 0              cmp byte ptr [ebx+130h], 0
+* jz loc_588                              jz loc_A86
+  mov eax, offset aYes                    mov eax, offset aYes
+  push eax                                push eax
+* mov ecx, ds:paName                      mov edx, ds:paName
+* push ecx                                push edx
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 8                              add esp, 8
+  push eax                                push eax
+  push offset aSInvertS                   push offset aSInvertS
+  call near ptr _IOLog                    call near ptr _IOLog
+  xor eax, eax                            xor eax, eax
+* jmp loc_5AD                             jmp loc_AAD
+  mov eax, 0FFFFFD39h                     mov eax, 0FFFFFD39h
+* lea esp, [ebp-10h]                      lea esp, [ebp-0Ch]
+  pop ebx                                 pop ebx
+  pop esi                                 pop esi
+  pop edi                                 pop edi
+  mov esp, ebp                            mov esp, ebp
+  pop ebp                                 pop ebp
+  retn                                    retn
+```
+
+### `FiveBProtocol` — kept split + post-increment; leftover accepted
+
+Combined `case 2:`/`case 4:` was split so gcc emits a 5-entry jump table.
+`switch (byteIndex++)` matches reference `mov edx,esi` / `inc esi` /
+`cmp edx,4` / `jmp ds:jpt_*[edx*4]`. `lastTimeStamp = currentTimeStamp`
+stays in case 2 only; case 4 resets `byteIndex` and leaves the clock.
+40ms unsigned 64-bit gate. No `IOLog`. Sync-if polarity try was a no-op
+and was reverted. Diffs 118/161/112 → 103/161/177. Nine gates held.
+`parity_check.py` 0 / 0.
+
+Leftover is compiler-shaped: frame `sub esp,24h` vs `28h`, `and dl,0F8h`
+vs `and edx`, `setnz` vs `if`, plus extra spills. Source-shape list
+exhausted. Accepted. Reviewer Pat Raynor. Rebuilt SHA-256
+`D6D751BA6A1015D93B65CD72CD18F61924A6517CC67279B1129E38EB1939D30F`.
+
+```
+-[SerialPointingDevice FiveBProtocol]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+* sub esp, 24h                            sub esp, 28h
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+* xor esi, esi                            mov [ebp+var_18], 0
+* xor edi, edi                            mov [ebp+var_1C], 0
+* mov [ebp+var_1], 0                      mov [ebp+var_20], 0
+  mov [ebp+var_C], 0                      mov [ebp+var_C], 0
+  mov [ebp+var_8], 0                      mov [ebp+var_8], 0
+  mov [ebp+var_14], 0                     mov [ebp+var_14], 0
+  mov [ebp+var_10], 0                     mov [ebp+var_10], 0
+* mov [ebp+var_18], 0                     xor esi, esi
+* mov [ebp+var_1C], 0
+* nop
+* nop
+  nop                                     nop
+  push 1                                  push 1
+  lea edx, [ebp+var_1]                    lea edx, [ebp+var_1]
+  push edx                                push edx
+  mov ecx, ds:paGetbyteSleep              mov ecx, ds:paGetbyteSleep
+  push ecx                                push ecx
+  mov ebx, [ebp+self]                     mov ebx, [ebp+self]
+  push ebx                                push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+  add esp, 10h                            add esp, 10h
+  test al, al                             test al, al
+* jz loc_10D8                             jz loc_1150
+  mov edx, esi                            mov edx, esi
+  inc esi                                 inc esi
+  cmp edx, 4                              cmp edx, 4
+* ja def_EED                              ja def_F11
+* jmp ds:jpt_EED[edx*4]                   jmp ds:jpt_F11[edx*4]
+```
+
+### `mouseInit:` — accepted (compiler-shaped leftover)
+
+`--name` shows shared vs in-place failure epilogue and cstring reloc
+suffixes. No wrong constant, missing call, or inverted branch. Load-bearing
+`acquire:nil`, `PCPatoi`, BOOL polarity YES success unchanged. 58 diffs /
+248 vs 249. Accepted. Reviewer Pat Raynor.
+
+```
+-[SerialPointingDevice mouseInit:]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  mov esi, [ebp+self]                     mov esi, [ebp+self]
+  cmp ds:_active, 0                       cmp ds:_active, 0
+* jz loc_40                               jz loc_614
+* push offset aSerialpointing             push offset aSerialpointing_0
+  call near ptr _IOLog                    call near ptr _IOLog
+* jmp loc_380                             xor eax, eax
+*                                         jmp loc_950
+  mov ds:_active, 0                       mov ds:_active, 0
+```
+
+### `MSProtocol` — accepted (compiler-shaped leftover)
+
+`--name` leftover is frame `sub esp,28h` vs `30h` and `esi` vs stack.
+In-place `byte &= 0x7F` and `switch (byteIndex++)` tried; diffs rose
+74 → 75 / 80. Both reverted. 3-byte packet, 40ms unsigned 64-bit gate,
+no `IOLog` unchanged. Accepted. Reviewer Pat Raynor.
+
+```
+-[SerialPointingDevice MSProtocol]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+* sub esp, 28h                            sub esp, 30h
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+* xor esi, esi                            mov esi, [ebp+self]
+*                                         mov [ebp+var_1C], 0
+*                                         mov [ebp+var_20], 0
+  xor edi, edi                            xor edi, edi
+* mov [ebp+var_18], 0                     mov [ebp+var_24], 0
+* mov [ebp+var_1], 0
+  mov [ebp+var_C], 0                      mov [ebp+var_C], 0
+  mov [ebp+var_8], 0                      mov [ebp+var_8], 0
+  mov [ebp+var_14], 0                     mov [ebp+var_14], 0
+  mov [ebp+var_10], 0                     mov [ebp+var_10], 0
+* mov [ebp+var_1C], 0                     mov [ebp+var_30], 0
+* mov [ebp+var_20], 0
+  push 1                                  push 1
+  lea edx, [ebp+var_1]                    lea edx, [ebp+var_1]
+  push edx                                push edx
+  mov ecx, ds:paGetbyteSleep              mov ecx, ds:paGetbyteSleep
+  push ecx                                push ecx
+* mov ebx, [ebp+self]                     push esi
+* push ebx
+  call near ptr _objc_msgSend             call near ptr _objc_msgSend
+```
+
+### `detect` — accepted (compiler-shaped leftover)
+
+`--name` leftover is `xor edi,edi` moved a few slots. Four-iteration baud
+sweep 1200/2400/4800/9600 sending `executeEvent:0x33` at
+2400/4800/9600/19200; `M`/`M3`/`*?` mouseType 1–4; `C` at 5 unchanged.
+239 diffs / 404 vs 405. Accepted. Reviewer Pat Raynor.
+
+```
+-[SerialPointingDevice detect]
+  status=different raw_equal=False masked_equal=False
+  reason: calls differ
+  reason: cfg differs
+  reason: function range bytes differ
+  reason: instruction shape differs
+
+  reference                               rebuilt
+  push ebp                                push ebp
+  mov ebp, esp                            mov ebp, esp
+  sub esp, 18h                            sub esp, 18h
+  push edi                                push edi
+  push esi                                push esi
+  push ebx                                push ebx
+  mov esi, [ebp+self]                     mov esi, [ebp+self]
+  mov [ebp+var_8], 0                      mov [ebp+var_8], 0
+  mov [ebp+var_C], 0                      mov [ebp+var_C], 0
+  mov [ebp+var_10], 0                     mov [ebp+var_10], 0
+* xor edi, edi
+  mov [ebp+var_14], 0                     mov [ebp+var_14], 0
+  mov [ebp+var_18], 0                     mov [ebp+var_18], 0
+*                                         xor edi, edi
+  cmp byte ptr [esi+144h], 0              cmp byte ptr [esi+144h], 0
+* jz loc_7A3                              jz loc_62
+```
+
+## Task 6: Campaign close
+
+Instruction-stream finish. Last kept `SerialPointingDevice_reloc` is 111660 bytes, SHA-256 `D6D751BA6A1015D93B65CD72CD18F61924A6517CC67279B1129E38EB1939D30F`. `--list` is 3 identical + 9 further masked = 12 `masked_equal`, 6 accepted compiler-shaped leftovers, 2 generated glue, 0 unpaired. `_SerialPointingDevice_VERS_STRING` / `_SerialPointingDevice_VERS_NUM` still MISSING (Task 4 accepted gap). Hardware untested.
+

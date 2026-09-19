@@ -1,0 +1,6 @@
+pkgname = csu
+pkgver = 23.1
+pkgdesc = C startup library
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base

@@ -66,18 +66,19 @@ TEST(test_replay_rejects_required_artifact_replaced_by_symlink) {
     sprintf(state, "%s/state", scratch);
     sprintf(manifest, "%s/Manifest", scratch);
     sprintf(profile, "%s/toolchain.conf", scratch);
-    sprintf(control, "%s/dpkg/control", source);
+    sprintf(control, "%s/apk/pkginfo", source);
     sprintf(pkginfo, "%s/.PKGINFO", content);
     sprintf(replay_artifact, "%s/foo-hdrs-1.0-ppc.apk", repo);
     sprintf(replay_target, "%s/outside.apk", scratch);
     sprintf(state_file, "%s/projects/foo-1.0-ppc-headers.done", state);
-    sprintf(command, "rm -rf %s && mkdir -p %s/dpkg %s %s", scratch,
+    sprintf(command, "rm -rf %s && mkdir -p %s/apk %s %s", scratch,
             source, content, repo);
     CHECK_INT(system(command), 0);
     f = fopen(control, "w");
     CHECK(f != 0);
     if (f != 0) {
-        fputs("Package: foo\nVersion: 1.0\nDescription: replay race\n", f);
+        fputs("pkgname = foo\npkgver = 1.0\n"
+              "pkgdesc = replay race\nlicense = unknown\n", f);
         fclose(f);
     }
     f = fopen(pkginfo, "w");
@@ -155,9 +156,9 @@ TEST(test_replay_rejects_required_artifact_replaced_by_symlink) {
         CHECK(strstr(saved, "format=3\n") != 0);
         CHECK(strstr(saved, "architecture_policy=1\n") != 0);
         CHECK(strstr(saved, "effective_architecture=ppc-apple-rhapsody\n") != 0);
-        sprintf(control, "%s/dpkg/control", source);
+        sprintf(control, "%s/apk/pkginfo", source);
         f = fopen(control, "a"); CHECK(f != 0);
-        if (f) { fputs("Architecture: ppc\n", f); fclose(f); }
+        if (f) { fputs("arch = ppc\n", f); fclose(f); }
         /* Default universal source and explicit ppc resolve to the same
          * canonical bootstrap architecture, so no rebuild is needed. */
         CHECK_INT(runner_manifest(manifest, repo, repo, &opt), 0);
@@ -169,7 +170,7 @@ TEST(test_replay_rejects_required_artifact_replaced_by_symlink) {
         }
         f = fopen(control, "w"); CHECK(f != 0);
         if (f) {
-            fputs("Package: foo\nVersion: 1.0\nArchitecture: i386\n", f);
+            fputs("pkgname = foo\npkgver = 1.0\narch = i386\n", f);
             fclose(f);
         }
         CHECK(runner_manifest(manifest, repo, repo, &opt) != 0);
@@ -203,13 +204,14 @@ TEST(test_kernel_architecture_controls_build_commands) {
     if (!f) return;
     fputs("{\"skip\": []}\n", f); fclose(f);
     for (i = 0; projects[i]; i++) {
-        sprintf(command, "mkdir -p /tmp/rbuild-kernel-policy/%s/dpkg", projects[i]);
+        sprintf(command, "mkdir -p /tmp/rbuild-kernel-policy/%s/apk", projects[i]);
         CHECK_INT(system(command), 0);
-        sprintf(path, "/tmp/rbuild-kernel-policy/%s/dpkg/control", projects[i]);
+        sprintf(path, "/tmp/rbuild-kernel-policy/%s/apk/pkginfo", projects[i]);
         f = fopen(path, "w");
         CHECK(f != 0);
         if (!f) return;
-        fprintf(f, "Package: policy%d\nVersion: 1.0\nDescription: policy\nBuild-Depends:\n", i);
+        fprintf(f, "pkgname = policy%d\npkgver = 1.0\n"
+                   "pkgdesc = policy\nlicense = unknown\nmakedepends =\n", i);
         fclose(f);
     }
     for (drivers = 0; drivers < 2; drivers++) {
@@ -229,10 +231,10 @@ TEST(test_kernel_architecture_controls_build_commands) {
         CHECK(strstr(output, "RC_ARCHS=i386") != 0);
         CHECK(strstr(output, "RC_ppc= ") != 0);
         CHECK(strstr(output, "-arch ppc") == 0);
-        sprintf(path, "/tmp/rbuild-kernel-policy/%s/dpkg/control",
+        sprintf(path, "/tmp/rbuild-kernel-policy/%s/apk/pkginfo",
                 drivers ? "drvBPF" : "driverkit-3");
         f = fopen(path, "a"); CHECK(f != 0);
-        if (f) { fputs("Architecture: ppc\n", f); fclose(f); }
+        if (f) { fputs("arch = ppc\n", f); fclose(f); }
         f = tmpfile(); CHECK(f != 0);
         if (!f) return;
         fflush(stdout); saved_stdout = dup(1); dup2(fileno(f), 1);
@@ -260,13 +262,14 @@ TEST(test_kernel_skips_missing_core_source) {
     size_t n;
     CHECK_INT(system("mkdir -p /tmp/rbuild-kernel-skip/repo /tmp/rbuild-kernel-skip/rbuild-1"), 0);
     for (i = 0; projects[i]; i++) {
-        sprintf(command, "mkdir -p /tmp/rbuild-kernel-skip/%s/dpkg", projects[i]);
+        sprintf(command, "mkdir -p /tmp/rbuild-kernel-skip/%s/apk", projects[i]);
         CHECK_INT(system(command), 0);
-        sprintf(path, "/tmp/rbuild-kernel-skip/%s/dpkg/control", projects[i]);
+        sprintf(path, "/tmp/rbuild-kernel-skip/%s/apk/pkginfo", projects[i]);
         f = fopen(path, "w");
         CHECK(f != 0);
         if (!f) return;
-        fprintf(f, "Package: skip%d\nVersion: 1.0\nDescription: skip\nBuild-Depends:\n", i);
+        fprintf(f, "pkgname = skip%d\npkgver = 1.0\n"
+                   "pkgdesc = skip\nlicense = unknown\nmakedepends =\n", i);
         fclose(f);
     }
     f = tmpfile();

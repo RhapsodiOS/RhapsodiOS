@@ -80,6 +80,7 @@ tests/test_kernel: tests/test_kernel.c $(test_kernel_OBJS)
 tests/test_runner: tests/test_runner.c $(test_runner_OBJS)
 	$(CC) $(CFLAGS) -DRBUILD_RUNNER_TESTING -I. -o $@ tests/test_runner.c $(test_runner_OBJS)
 
+# rbuild APK dry-run: universal probes and thin RC_*
 trace-test: rbuild
 	sh tests/trace/run.sh
 

@@ -63,12 +63,14 @@ extern char verbose;
     channelMask = data[0];
 
     /* Add each set bit as a DMA channel */
-    for (i = 0; i < 8; i++) {
+    i = 0;
+    do {
         if ((channelMask >> i) & 1) {
             _dmaChannels[_count] = i;
             _count++;
         }
-    }
+        i++;
+    } while (i < 8);
 
     /* Parse flags byte (second byte) */
     flags = data[1];
@@ -122,7 +124,6 @@ extern char verbose;
         _dmaChannels[_count] = (int)list;
         _count++;
     }
-    return self;
 }
 
 /*
@@ -149,10 +150,8 @@ extern char verbose;
     otherCount = [otherDMA number];
     if (otherCount == 0) {
         return NO;
-    }
-
-    /* Only support matching against single DMA channel */
-    if (otherCount != 1) {
+    } else if (otherCount != 1) {
+        /* Only support matching against single DMA channel */
         IOLog("pnpDMA: can only match one DMA\n");
         return NO;
     }

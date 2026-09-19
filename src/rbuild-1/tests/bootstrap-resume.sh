@@ -26,15 +26,16 @@ root=$base/root
 state=$base/state
 profile=$base/toolchain.conf
 
-mkdir -p "$src/dpkg" "$repo" "$base/base/usr/bin" \
+mkdir -p "$src/apk" "$repo" "$base/base/usr/bin" \
     "$base/hdr/System/Headers"
-cat > "$src/dpkg/control" <<'EOF'
-Package: foo
-Maintainer: Test <test@example.invalid>
-Version: 1.0
-Architecture: universal-apple-rhapsody
-Description: resume fixture
-Build-Depends:
+cat > "$src/apk/pkginfo" <<'EOF'
+pkgname = foo
+pkgver = 1.0
+pkgdesc = resume fixture
+maintainer = Test <test@example.invalid>
+license = unknown
+makedepends =
+arch = universal-apple-rhapsody
 EOF
 cat > "$src/Makefile" <<'EOF'
 MAKEFILEDIR = source-selected
@@ -224,11 +225,12 @@ if ./rbuild bootstrap --sysroot "$root" --toolchain "$profile" \
     echo 'bootstrap-resume: unsafe target accepted'
     exit 1
 fi
-mkdir -p "$base/badpkg/dpkg"
-cat > "$base/badpkg/dpkg/control" <<'EOF'
-Package: ../../escape
-Version: 1.0
-Description: unsafe identity
+mkdir -p "$base/badpkg/apk"
+cat > "$base/badpkg/apk/pkginfo" <<'EOF'
+pkgname = ../../escape
+pkgver = 1.0
+pkgdesc = unsafe identity
+license = unknown
 EOF
 if ./rbuild -n buildpackage --dir --target local "$base/badpkg" \
     "$repo" "$repo" > "$base/bad-standalone.out" 2>&1; then
@@ -241,20 +243,22 @@ if ./rbuild buildpackage --state "$base/bad-state" --dir --target local \
     exit 1
 fi
 test ! -e "$base/bad-state"
-cat > "$base/badpkg/dpkg/control" <<'EOF'
-Package: safe-name
-Version: ../../escape
-Description: unsafe standalone version
+cat > "$base/badpkg/apk/pkginfo" <<'EOF'
+pkgname = safe-name
+pkgver = ../../escape
+pkgdesc = unsafe standalone version
+license = unknown
 EOF
 if ./rbuild -n buildpackage --dir --target local "$base/badpkg" \
     "$repo" "$repo" > "$base/bad-version.out" 2>&1; then
     echo 'bootstrap-resume: unsafe standalone version accepted'
     exit 1
 fi
-cat > "$base/badpkg/dpkg/control" <<'EOF'
-Package: ../../escape
-Version: 1.0
-Description: unsafe identity
+cat > "$base/badpkg/apk/pkginfo" <<'EOF'
+pkgname = ../../escape
+pkgver = 1.0
+pkgdesc = unsafe identity
+license = unknown
 EOF
 echo "dir $base/badpkg all" > "$base/BadPackageManifest"
 if ./rbuild bootstrap --sysroot "$root" --toolchain "$profile" \
@@ -298,8 +302,8 @@ echo gzip >> "$base/wrapper.log"
 exec /usr/bin/gzip "\$@"
 EOF
 chmod +x "$base/wrappers/tar" "$base/wrappers/gzip"
-mkdir -p "$base/world-source/dpkg"
-sed 's/universal-apple-rhapsody/ppc-apple-rhapsody/' "$src/dpkg/control" > "$base/world-source/dpkg/control"
+mkdir -p "$base/world-source/apk"
+sed 's/universal-apple-rhapsody/ppc-apple-rhapsody/' "$src/apk/pkginfo" > "$base/world-source/apk/pkginfo"
 echo "dir $base/world-source all" > "$base/WorldManifest"
 PATH="$base/wrappers:$PATH" ./rbuild buildall "$base/WorldManifest" "$repo" "$repo"
 grep '^tar$' "$base/wrapper.log" > /dev/null
@@ -319,7 +323,7 @@ test -f "$repo/foo-1.0-ppc.apk.invalid"
 mkdir "$base/metadata"
 (cd "$base/metadata" && /usr/bin/gzip -dc "$repo/foo-1.0-ppc.apk" | /usr/bin/gnutar -xf -)
 grep '^arch = ppc-apple-rhapsody$' "$base/metadata/.PKGINFO" > /dev/null
-grep '^Architecture: universal-apple-rhapsody$' "$src/dpkg/control" > /dev/null
+grep '^arch = universal-apple-rhapsody$' "$src/apk/pkginfo" > /dev/null
 grep 'symlink' "$repo/foo-1.0-ppc.apk.invalid" > /dev/null
 if grep 'MAKEFILEDIR=' "$state/logs/foo-1.0-ppc-all.log" > /dev/null; then
     echo 'bootstrap-resume: MAKEFILEDIR command-line override escaped'
@@ -594,15 +598,16 @@ univ_root=$univ/root
 univ_state=$univ/state
 univ_repo=$univ/repo
 univ_profile=$univ/toolchain.conf
-mkdir -p "$univ/rt/dpkg" "$univ/later/dpkg" "$univ_repo" "$univ_root"
+mkdir -p "$univ/rt/apk" "$univ/later/apk" "$univ_repo" "$univ_root"
 for pkg in rt later; do
-    cat > "$univ/$pkg/dpkg/control" <<EOF
-Package: $pkg
-Maintainer: Test <test@example.invalid>
-Version: 1.0
-Architecture: universal-apple-rhapsody
-Description: universal $pkg fixture
-Build-Depends:
+    cat > "$univ/$pkg/apk/pkginfo" <<EOF
+pkgname = $pkg
+pkgver = 1.0
+pkgdesc = universal $pkg fixture
+maintainer = Test <test@example.invalid>
+license = unknown
+makedepends =
+arch = universal-apple-rhapsody
 EOF
     cp "$src/Makefile" "$univ/$pkg/Makefile"
 done

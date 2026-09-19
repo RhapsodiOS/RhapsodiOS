@@ -1553,60 +1553,56 @@
       "names": [
         "-[pnpIRQ print]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 176,
-      "source_line": 188,
+      "source_line": 180,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIRQ.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 15760,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 6 else-if on otherCount != 1; leftover is Apple tool _printf vs _IOLog, double [number] / in-loop irqs versus local otherIRQs, plus PIC / register scheduling"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[pnpIRQ matches:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 126,
-      "source_line": 114,
+      "source_line": 109,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIRQ.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 15888,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 6 mask and flags as buffer expressions; leftover is extra buffer-pointer copy / PIC / IDA class-pointer and verbose names plus jump labels"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[pnpIRQ initFrom:Length:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 169,
       "source_line": 48,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIRQ.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 16060,
@@ -1626,11 +1622,11 @@
         "-[pnpIRQ irqs]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
-      "source_line": 95,
+      "source_line": 90,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIRQ.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 16076,
@@ -1650,11 +1646,11 @@
         "-[pnpIRQ addToIRQList:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 29,
-      "source_line": 176,
+      "source_line": 169,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIRQ.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 16108,
@@ -1673,12 +1669,12 @@
       "names": [
         "-[pnpIRQ setHigh:Level:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 56,
-      "source_line": 153,
+      "source_line": 146,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIRQ.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 16164,
@@ -1698,35 +1694,33 @@
         "-[pnpIRQ number]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
-      "source_line": 104,
+      "source_line": 99,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIRQ.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 16180,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 7 close: Apple PnPDump nlist/comparison has no reference body; shared compile emits into reloc (and rebuilt tool) only"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[pnpIRQ writePnPConfig:Index:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "unpaired missing-reference on Apple PnPDump; not a dual-bar grind target",
+      "reviewer": "Pat Raynor",
       "size": 122,
-      "source_line": 227,
+      "source_line": 219,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIRQ.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 16304,
@@ -1745,60 +1739,56 @@
       "names": [
         "-[pnpDMA print]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 252,
-      "source_line": 176,
+      "source_line": 175,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 16556,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 6 else-if on otherCount != 1; leftover is Apple tool _printf vs _IOLog, double [number] / in-loop dmaChannels versus local otherChannels, plus PIC / register scheduling"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[pnpDMA matches:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 126,
-      "source_line": 142,
+      "source_line": 143,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 16684,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 6 do-while channel-mask walk keeps Apple bt/jle stream; leftover is _count zero plus buffer-pointer walk versus data[1] reload and PIC verbose"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[pnpDMA initFrom:Length:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 210,
       "source_line": 49,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 16896,
@@ -1818,11 +1808,11 @@
         "-[pnpDMA addDMAToList:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 29,
-      "source_line": 119,
+      "source_line": 121,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 16928,
@@ -1842,11 +1832,11 @@
         "-[pnpDMA number]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
-      "source_line": 132,
+      "source_line": 133,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 16944,
@@ -1866,35 +1856,33 @@
         "-[pnpDMA dmaChannels]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
-      "source_line": 110,
+      "source_line": 112,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 16960,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 7 close: Apple PnPDump nlist/comparison has no reference body; shared compile emits into reloc (and rebuilt tool) only"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[pnpDMA writePnPConfig:Index:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "unpaired missing-reference on Apple PnPDump; not a dual-bar grind target",
+      "reviewer": "Pat Raynor",
       "size": 80,
-      "source_line": 240,
+      "source_line": 239,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 17040,
@@ -1913,36 +1901,34 @@
       "names": [
         "-[pnpIOPort print]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 45,
-      "source_line": 215,
+      "source_line": 204,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 17088,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 6 alignment local plus 16-bit otherBase; leftover is PIC selector / register vs stack for alignment plus jump labels"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[pnpIOPort matches:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 108,
-      "source_line": 182,
+      "source_line": 181,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 17196,
@@ -1961,36 +1947,34 @@
       "names": [
         "-[pnpIOPort initWithBase:Length:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 72,
-      "source_line": 125,
+      "source_line": 124,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 17268,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 6 declaration order after header parse (base before flags; post-increment data; length before alignment; max before min); leftover is type-8/9 layout polarity, flags-bit jump polarity, verbose PIC / _printf vs _IOLog on tool"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[pnpIOPort initFrom:Length:Type:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 266,
       "source_line": 50,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 17536,
@@ -2010,11 +1994,11 @@
         "-[pnpIOPort min_base]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 14,
-      "source_line": 139,
+      "source_line": 138,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 17552,
@@ -2034,11 +2018,11 @@
         "-[pnpIOPort max_base]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 14,
-      "source_line": 147,
+      "source_line": 146,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 17568,
@@ -2058,11 +2042,11 @@
         "-[pnpIOPort alignment]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 14,
-      "source_line": 155,
+      "source_line": 154,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 17584,
@@ -2082,11 +2066,11 @@
         "-[pnpIOPort length]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 14,
-      "source_line": 163,
+      "source_line": 162,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 17600,
@@ -2106,35 +2090,33 @@
         "-[pnpIOPort lines_decoded]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 14,
-      "source_line": 171,
+      "source_line": 170,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 17616,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 7 close: Apple PnPDump nlist/comparison has no reference body; shared compile emits into reloc (and rebuilt tool) only"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[pnpIOPort writePnPConfig:Index:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "unpaired missing-reference on Apple PnPDump; not a dual-bar grind target",
+      "reviewer": "Pat Raynor",
       "size": 231,
-      "source_line": 228,
+      "source_line": 217,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 17848,
@@ -2153,12 +2135,12 @@
       "names": [
         "-[pnpMemory print]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 213,
-      "source_line": 345,
+      "source_line": 332,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 18064,
@@ -2169,7 +2151,8 @@
         ],
         "reasons": [
           "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
+          "not examined in this pass",
+          "Task 6 alignment local plus if!=0; reloc IDA masked_equal"
         ],
         "status": "agreed"
       },
@@ -2178,11 +2161,11 @@
         "-[pnpMemory matches:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 80,
-      "source_line": 262,
+      "source_line": 263,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 18144,
@@ -2202,11 +2185,11 @@
         "-[pnpMemory is32]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 14,
-      "source_line": 243,
+      "source_line": 244,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 18160,
@@ -2226,11 +2209,11 @@
         "-[pnpMemory min_base]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
-      "source_line": 187,
+      "source_line": 188,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 18176,
@@ -2250,11 +2233,11 @@
         "-[pnpMemory max_base]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
-      "source_line": 195,
+      "source_line": 196,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 18192,
@@ -2274,11 +2257,11 @@
         "-[pnpMemory alignment]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
-      "source_line": 203,
+      "source_line": 204,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 18208,
@@ -2298,11 +2281,11 @@
         "-[pnpMemory length]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
-      "source_line": 211,
+      "source_line": 212,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 18224,
@@ -2322,11 +2305,11 @@
         "-[pnpMemory bit8]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 14,
-      "source_line": 219,
+      "source_line": 220,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 18240,
@@ -2346,11 +2329,11 @@
         "-[pnpMemory bit16]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 14,
-      "source_line": 227,
+      "source_line": 228,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 18256,
@@ -2370,11 +2353,11 @@
         "-[pnpMemory bit32]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 14,
-      "source_line": 235,
+      "source_line": 236,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 18272,
@@ -2394,35 +2377,33 @@
         "-[pnpMemory highAddressDecode]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 14,
-      "source_line": 251,
+      "source_line": 252,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 18288,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions, blocks and call targets are byte-identical",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 6 omit reciprocal width zeros plus omit return self; leftover is char-arg vs Apple pointer reload plus jump labels"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[pnpMemory setControl:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 119,
-      "source_line": 303,
+      "source_line": 294,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 18408,
@@ -2441,84 +2422,78 @@
       "names": [
         "-[pnpMemory initWithBase:Length:Bit16:Bit32:HighAddr:Is32:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 117,
-      "source_line": 156,
+      "source_line": 157,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 18528,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 6 declaration order: data32 before data, early data+1 payload pointer after super; leftover is type switch layout, extra flag zeros, tool _printf vs _IOLog / verbose PIC"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[pnpMemory initFrom:Length:Type:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 418,
       "source_line": 57,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 18948,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 7 close: Apple PnPDump nlist/comparison has no reference body; shared compile emits into reloc (and rebuilt tool) only"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[pnpMemory writePnPConfig:Index:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "unpaired missing-reference on Apple PnPDump; not a dual-bar grind target",
+      "reviewer": "Pat Raynor",
       "size": 989,
-      "source_line": 397,
+      "source_line": 384,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 19940,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 6 else-wrap on count==0; leftover is Apple list/count stack-trick vs configList local plus PIC / register scheduling"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[PnPResource matches:Using:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 164,
-      "source_line": 128,
+      "source_line": 120,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResource.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 20104,
@@ -2537,12 +2512,12 @@
       "names": [
         "-[PnPResource init]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 116,
       "source_line": 43,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResource.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 20220,
@@ -2561,12 +2536,12 @@
       "names": [
         "-[PnPResource free]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 77,
       "source_line": 65,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResource.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 20300,
@@ -2586,11 +2561,11 @@
         "-[PnPResource list]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 76,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResource.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 20316,
@@ -2610,35 +2585,33 @@
         "-[PnPResource setDepStart:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 16,
       "source_line": 85,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResource.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 20332,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 6 if/else if index dispatch matches Apple jle polarity; leftover is usingList local vs nested [list] plus inner jl/jge and PIC"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[PnPResource objectAt:Using:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 138,
       "source_line": 97,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResource.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 20472,
@@ -2657,12 +2630,12 @@
       "names": [
         "-[PnPResources print]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 144,
-      "source_line": 540,
+      "source_line": 527,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 20616,
@@ -2681,60 +2654,56 @@
       "names": [
         "-[PnPResources init]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 245,
-      "source_line": 50,
+      "source_line": 53,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 20864,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 7 close: Apple PnPDump nlist/comparison has no reference body; shared compile emits into reloc (and rebuilt tool) only"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[PnPResources initFromDeviceDescription:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "unpaired missing-reference on Apple PnPDump; not a dual-bar grind target",
+      "reviewer": "Pat Raynor",
       "size": 713,
-      "source_line": 246,
+      "source_line": 228,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 21580,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 6 do-while register walks (port/IRQ/DMA/24-bit/32-bit); leftover is verbose PIC / selector displacements and length-mode xor versus not"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[PnPResources initFromRegisters:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 1045,
-      "source_line": 364,
+      "source_line": 346,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 22628,
@@ -2753,12 +2722,12 @@
       "names": [
         "-[PnPResources free]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 112,
-      "source_line": 72,
+      "source_line": 75,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 22740,
@@ -2778,11 +2747,11 @@
         "-[PnPResources irq]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
-      "source_line": 85,
+      "source_line": 88,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 22756,
@@ -2802,11 +2771,11 @@
         "-[PnPResources dma]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
-      "source_line": 93,
+      "source_line": 96,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 22772,
@@ -2826,11 +2795,11 @@
         "-[PnPResources port]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
-      "source_line": 101,
+      "source_line": 104,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 22788,
@@ -2850,11 +2819,11 @@
         "-[PnPResources memory]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
-      "source_line": 109,
+      "source_line": 112,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 22804,
@@ -2865,7 +2834,8 @@
         ],
         "reasons": [
           "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
+          "not examined in this pass",
+          "Task 6 nested [[list] addObject:]; reloc IDA masked_equal; tool leftover is PIC selector displacements"
         ],
         "status": "agreed"
       },
@@ -2874,11 +2844,11 @@
         "-[PnPResources addIRQ:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 46,
-      "source_line": 118,
+      "source_line": 121,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 22852,
@@ -2889,7 +2859,8 @@
         ],
         "reasons": [
           "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
+          "not examined in this pass",
+          "Task 6 nested [[list] addObject:]; reloc IDA masked_equal; tool leftover is PIC selector displacements"
         ],
         "status": "agreed"
       },
@@ -2898,11 +2869,11 @@
         "-[PnPResources addDMA:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 46,
-      "source_line": 128,
+      "source_line": 130,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 22900,
@@ -2913,7 +2884,8 @@
         ],
         "reasons": [
           "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
+          "not examined in this pass",
+          "Task 6 nested [[list] addObject:]; reloc IDA masked_equal; tool leftover is PIC selector displacements"
         ],
         "status": "agreed"
       },
@@ -2922,11 +2894,11 @@
         "-[PnPResources addIOPort:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 46,
-      "source_line": 138,
+      "source_line": 139,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 22948,
@@ -2937,7 +2909,8 @@
         ],
         "reasons": [
           "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
+          "not examined in this pass",
+          "Task 6 nested [[list] addObject:]; reloc IDA masked_equal; tool leftover is PIC selector displacements"
         ],
         "status": "agreed"
       },
@@ -2946,59 +2919,55 @@
         "-[PnPResources addMemory:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 46,
       "source_line": 148,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 22996,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 6 nested [[list] count] setDepStart walks in irq/dma/port/memory order; leftover is PIC / last-push register vs ebx clobber plus explicit return self"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[PnPResources markStartDependentResources]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 213,
-      "source_line": 159,
+      "source_line": 158,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 23212,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 7 close: Apple PnPDump nlist/comparison has no reference body; shared compile emits into reloc (and rebuilt tool) only"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[PnPResources configure:Using:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "unpaired missing-reference on Apple PnPDump; not a dual-bar grind target",
+      "reviewer": "Pat Raynor",
       "size": 256,
-      "source_line": 192,
+      "source_line": 174,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 23468,
@@ -3018,11 +2987,11 @@
         "-[PnPDependentResources setGoodConfig:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 16,
       "source_line": 58,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDependentResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 23484,
@@ -3042,35 +3011,33 @@
         "-[PnPDependentResources goodConfig]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 14,
       "source_line": 49,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDependentResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 23500,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 7 close: Apple PnPDump nlist/comparison has no reference body; shared compile emits into reloc (and rebuilt tool) only"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[PnPLogicalDevice findMatchingDependentFunction:ForConfig:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "unpaired missing-reference on Apple PnPDump; not a dual-bar grind target",
+      "reviewer": "Pat Raynor",
       "size": 440,
-      "source_line": 192,
+      "source_line": 194,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 23940,
@@ -3089,12 +3056,12 @@
       "names": [
         "-[PnPLogicalDevice init]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 161,
       "source_line": 52,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 24104,
@@ -3113,12 +3080,12 @@
       "names": [
         "-[PnPLogicalDevice free]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 109,
       "source_line": 70,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 24216,
@@ -3129,7 +3096,8 @@
         ],
         "reasons": [
           "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
+          "not examined in this pass",
+          "Task 6 if==0 plus signed min 0x4f matches Apple jnz/jle stream; tool leftover is IDA __src vs arg_8; reloc IDA masked_equal"
         ],
         "status": "agreed"
       },
@@ -3138,11 +3106,11 @@
         "-[PnPLogicalDevice setDeviceName:Length:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 69,
       "source_line": 146,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 24288,
@@ -3162,11 +3130,11 @@
         "-[PnPLogicalDevice compatIDs]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 128,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 24304,
@@ -3186,11 +3154,11 @@
         "-[PnPLogicalDevice addCompatID:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 30,
-      "source_line": 180,
+      "source_line": 182,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 24336,
@@ -3210,11 +3178,11 @@
         "-[PnPLogicalDevice deviceName]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 96,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 24352,
@@ -3234,11 +3202,11 @@
         "-[PnPLogicalDevice setID:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 16,
       "source_line": 136,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 24368,
@@ -3258,11 +3226,11 @@
         "-[PnPLogicalDevice ID]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 87,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 24384,
@@ -3282,11 +3250,11 @@
         "-[PnPLogicalDevice setLogicalDeviceNumber:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 16,
-      "source_line": 171,
+      "source_line": 172,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 24400,
@@ -3306,11 +3274,11 @@
         "-[PnPLogicalDevice logicalDeviceNumber]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 104,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 24416,
@@ -3330,11 +3298,11 @@
         "-[PnPLogicalDevice depResources]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 120,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 24432,
@@ -3354,11 +3322,11 @@
         "-[PnPLogicalDevice resources]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 112,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 24448,
@@ -3378,11 +3346,11 @@
         "+[PnPDeviceResources setReadPort:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 17,
       "source_line": 64,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 24468,
@@ -3393,7 +3361,8 @@
         ],
         "reasons": [
           "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
+          "not examined in this pass",
+          "Task 6 if==0 plus signed min 0x4f matches Apple jnz/jle stream; tool leftover is IDA __src vs arg_8; reloc IDA masked_equal"
         ],
         "status": "agreed"
       },
@@ -3402,11 +3371,11 @@
         "-[PnPDeviceResources setDeviceName:Length:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 69,
-      "source_line": 297,
+      "source_line": 291,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 24540,
@@ -3426,11 +3395,11 @@
         "-[PnPDeviceResources setID:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 16,
       "source_line": 201,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 24556,
@@ -3450,11 +3419,11 @@
         "-[PnPDeviceResources deviceName]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
-      "source_line": 286,
+      "source_line": 280,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 24572,
@@ -3474,11 +3443,11 @@
         "-[PnPDeviceResources ID]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 193,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 24588,
@@ -3498,11 +3467,11 @@
         "-[PnPDeviceResources setSerialNumber:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 16,
       "source_line": 218,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 24604,
@@ -3522,35 +3491,33 @@
         "-[PnPDeviceResources serialNumber]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 210,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 24620,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 6 do-while tag walk (one large-body idea); leftover is large-body PIC / _printf vs _IOLog and jump-table layout"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[PnPDeviceResources parseConfig:Length:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 2570,
-      "source_line": 328,
+      "source_line": 319,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 27192,
@@ -3570,35 +3537,33 @@
         "+[PnPDeviceResources setVerbose:]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 16,
       "source_line": 73,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 27208,
       "analyzer_agreement": {
+        "status": "agreed",
         "analyzers": [
-          "Ghidra",
           "IDA"
         ],
         "reasons": [
-          "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
-        ],
-        "status": "agreed"
+          "Task 6 header-local declaration order (serialNum/deviceID/idValue/vendorID); leftover is Apple byte-copy ID loop versus shift-or, _printf vs _IOLog, verbose PIC"
+        ]
       },
       "artifacts": [],
       "names": [
         "-[PnPDeviceResources initForBuf:Length:CSN:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 401,
       "source_line": 86,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 27612,
@@ -3617,12 +3582,12 @@
       "names": [
         "-[PnPDeviceResources initForBufNoHeader:Length:CSN:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 156,
       "source_line": 151,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 27768,
@@ -3642,11 +3607,11 @@
         "-[PnPDeviceResources csn]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 228,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 27784,
@@ -3665,12 +3630,12 @@
       "names": [
         "-[PnPDeviceResources free]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 86,
       "source_line": 178,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 27872,
@@ -3690,11 +3655,11 @@
         "-[PnPDeviceResources deviceList]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 13,
       "source_line": 246,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 27888,
@@ -3714,11 +3679,11 @@
         "-[PnPDeviceResources deviceCount]"
       ],
       "reason": null,
-      "reviewer": null,
+      "reviewer": "Pat Raynor",
       "size": 26,
       "source_line": 237,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
-      "status": "unexamined"
+      "status": "assembly-matched"
     },
     {
       "address": 27916,
@@ -3729,7 +3694,8 @@
         ],
         "reasons": [
           "IDA and Ghidra instructions are byte-identical; call-site classification differs slightly because Ghidra does not resolve external call targets to an address (not a body disagreement)",
-          "not examined in this pass"
+          "not examined in this pass",
+          "Task 6 if(device) plus != continue matches Apple jz-nil; leftover is inverted ID-compare jump (equivalent CFG)"
         ],
         "status": "agreed"
       },
@@ -3737,12 +3703,12 @@
       "names": [
         "-[PnPDeviceResources deviceWithID:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "compiler-shaped leftover after exhausted source-shape list",
+      "reviewer": "Pat Raynor",
       "size": 84,
       "source_line": 255,
       "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m",
-      "status": "unexamined"
+      "status": "intentional-mismatch"
     },
     {
       "address": 28000,
@@ -3935,7 +3901,7 @@
       "status": "unexamined"
     }
   ],
-  "rebuilt_sha256": null,
+  "rebuilt_sha256": "4A2889879B19B4DC315813BFD4443CE35FB45A6EC1714EEC4924817976BA91E9",
   "reference_sha256": "8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23",
   "schema_version": "ledger-v1"
 }

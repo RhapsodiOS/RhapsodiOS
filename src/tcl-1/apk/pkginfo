@@ -1,0 +1,7 @@
+pkgname = tcl
+pkgver = 8.0.4
+pkgdesc = Tool Command Language
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+url = http://www.scriptics.com/software/install.html
+makedepends = build-base

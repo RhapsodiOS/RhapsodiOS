@@ -8,7 +8,7 @@ paths live in `src/rbuild-1/kernel-drivers-blacklist.json` and are skipped until
 promoted out of that list.
 
 bus
- * drvEISABus - crashing; reconstructed against the reference binary, fixes applied, not yet retested
+ * drvEISABus - crashing; reconstructed against the reference binary, PnPDump 45/186 functions byte-identical with 96 hand-written leftovers accepted in the PnPDump ledger (compiler-shaped / stub / dual-bar), EISABus_reloc shared PnP class methods 53/93 identical or masked-eq; not yet retested
  * drvPCIBus - reconstructed against the reference binary, fixes applied; its testIDs:dev:fun:bus: prototype now matches Apple's, and PCIResourceDriver inherits IODirectDevice, but neither fix has been compiled or tested
  * drvPCMCIABus - compiles; reconstructed against the reference binary, fixes applied, not yet tested; protocol records, every class instance size and ivar layout are byte-identical to the reference; two heap overflows from undeclared ivars fixed
  * Intel824X0PCI - reconstructed against the reference binary, fixes applied, not yet compiled or tested
@@ -19,12 +19,12 @@ ide
  * drvPCFloppy - reconstructed against Apple's Floppy_reloc; not yet tested on hardware
 
 input
- * drvBusMouse - compiles; reconstructed against the reference binary, fixes applied, not yet tested
+ * drvBusMouse - compiles; 7/11 hand-written functions masked-equal to BusMouse_reloc, apple-generic version objects emitted; not yet tested on hardware
  * drvISASerialPort - needs compiled and then tested
  * drvPCParallel - compiles; reconstructed against the reference binary, 40/75 reloc functions byte-identical, 17 masked-equal, remainder accepted compiler-shaped; both tools rebuilt and compared; not yet tested
- * drvPS2Keyboard - compiles; reconstructed against the reference binary, fixes applied, not yet tested
- * drvPS2Mouse - compiles; reconstructed against the reference binary, fixes applied, not yet tested
- * drvSerialPointingDevice - compiles; reconstructed against the reference binary, fixes applied, not yet tested
+ * drvPS2Keyboard - compiles; reconstructed against the reference binary, 34/47 hand-written functions byte-identical under relocation masking, remainder accepted as compiler-shaped; not yet tested
+ * drvPS2Mouse - compiles; 6/11 hand-written functions masked-equal to PS2Mouse_reloc, five compiler-shaped leftovers accepted, SGS VERS_STRING/VERS_NUM unmet (guest lacks next-sgs.make); not yet tested on hardware
+ * drvSerialPointingDevice - compiles; reconstructed against the reference binary, 10/16 hand-written functions byte-identical under relocation masking, remainder accepted as compiler-shaped; Kernel Server vers_string objects still unmet on this guest; not yet tested
 
 network
  * drvAMDPCNet32II - complete

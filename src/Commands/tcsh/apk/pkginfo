@@ -1,0 +1,7 @@
+pkgname = tcsh
+pkgver = 6.08.00
+pkgdesc = Turbo C-Shell
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+url = ftp://ftp.gw.com/pub/unix/tcsh/tcsh-6.08.tar.gz
+makedepends = build-base

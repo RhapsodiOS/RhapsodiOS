@@ -1,0 +1,6 @@
+pkgname = intel82365pcmcia
+pkgver = 13
+pkgdesc = Intel 82365 PCMCIA Controller Driver
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base, drivertools, driverkit, machkit, kernload, libstreams

@@ -19,7 +19,7 @@
       "names": [
         "_GetIRQFromBoard"
       ],
-      "reason": "Rebuilt stream disassembled and compared against the reference: same 44-instruction sequence, same port 0x23E, same 0xF000 count, same masked-copy and 5/4/3/2/0 ladder. Residual: gcc spills the masked nibble copy to [ebp-8] where the reference keeps it in cl, costing 8 extra instructions and 12 bytes (124 vs 112). Register allocation only; no structural difference remains.",
+      "reason": "gcc spill of the masked nibble copy. IDA --name still 24 diffs: reference keeps the 0x0F mask in cl and the IRQ result in ebx; gcc 2.7 spills the mask to [ebp-8], reloads it before each later bit test, and puts the result in ecx. Same port 0x23E, same 0xF000 count, same 5/4/3/2/0 ladder. Task 4 Exp 1 (inline mask) dropped the and 0x0F and tested bl directly (18 diffs, smaller). Exp 2 (lowBits & 1) compiled as test bl,1. Exp 3 (unsigned int lowBits) used esi for the mask and pushed esi (22 diffs). Exp 4 (flatten IRQ-2) matched the original dump. All four reverted. Unreachable without dummy spills.",
       "reviewer": "Pat Raynor",
       "size": 109,
       "source_line": 71,
@@ -71,7 +71,7 @@
       "names": [
         "_MouseIntHandler"
       ],
-      "reason": "Rebuilt stream disassembled and compared against the reference: all ten port accesses, the doubled outb(0x23E,0x80), the split-nibble X, the negated Y, the four-way change test, the busy-accumulate and post-and-clear paths and every _bss offset match. Residual: ours is 8 bytes SMALLER (400 vs 408) because gcc widens the left-button value after the XOR rather than before and keeps the right-button intermediate in a register where the reference spilled it to [ebp-8], offset by one extra mask in the rightButton bitfield store.",
+      "reason": "gcc scheduling of the button decode. IDA --name still 22 diffs: reference movzx-then-xor on left and spills the shifted right-button byte to [ebp-8]; gcc xors at byte width, keeps the right shift in a register, emits an extra and al,1 on the bitfield store, and uses a 0x10 frame instead of 0x0C. Same ten port accesses, doubled outb(0x23E,0x80), busy-accumulate vs post-and-clear, every _bss offset. Task 4 Exp 1 (widen left before xor) landed 21 diffs. Exp 2 (unsigned char temp for right shift) was elided by gcc (22 diffs). Exp 3 ((shift&1)^1) spilled var_8 and dropped the extra and al,1 but still 21 diffs. All three reverted. Unreachable without dummy spills.",
       "reviewer": "Pat Raynor",
       "size": 406,
       "source_line": 147,
@@ -242,7 +242,8 @@
         ],
         "reasons": [
           "IDA, Ghidra and angr agree on address, size and block structure; angr additionally reports one-to-three-byte fragments on the inter-function and interior nop alignment padding as function starts and splits basic blocks more finely (see divergences.md, analyzer agreement)",
-          "fix pass: the no-match path now returns IO_R_UNSUPPORTED, emitting mov eax, 0FFFFFD39h like the reference (divergences.md Finding 10), the re-parent puts resolution at +0x12C and inverted at +0x130 (Finding 1), and the hand-unrolled character-compare loop was replaced by strcmp against RESOLUTION and INVERTED, which is what the reference's cld; repe cmpsb expansion actually compiles from (Finding 18). The rebuilt stream was disassembled with capstone and compared against the reference at 1324-1416: identical instruction sequence and identical encoding lengths, including repe cmpsb with ecx = 11 then ecx = 9 and the sign-extended byte read of inverted. Size is exactly the reference's 96, down from 128",
+          "Task 4: IDA --name shows 7 instruction diffs that capstone treated as matched. They are register allocation of the stored value (edx vs eax) and jump labels. Same calls, constants and offsets. Accepted as gcc spill; status moved to intentional-mismatch",
+          "fix pass: the no-match path now returns IO_R_UNSUPPORTED, emitting mov eax, 0FFFFFD39h like the reference (divergences.md Finding 10), the re-parent puts resolution at +0x12C and inverted at +0x130 (Finding 1), and the hand-unrolled character-compare loop was replaced by strcmp against RESOLUTION and INVERTED, which is what the reference's cld; repe cmpsb expansion actually compiles from (Finding 18). The rebuilt stream was disassembled with capstone and compared against the reference at 1324-1416: Capstone-only, this looked like an identical instruction sequence of size 96 (down from 128), including repe cmpsb with ecx = 11 then ecx = 9 and the sign-extended byte read of inverted. That Capstone observation is not an IDA masked-eq/identical result; see the Task 4 reason above",
           "full disassembly read instruction by instruction at 1324-1416: fixed-length repe cmpsb against Resolution with ecx = 11 then Inverted with ecx = 9, both including the terminating NUL; resolution read from 0x12C, inverted sign-extended from the byte at 0x130; count never touched. Pre-fix survey: the no-match path returns IO_R_UNSUPPORTED (-711) where ours returned IO_R_INVALID_ARG (-706), and both ivar displacements were one slot off (divergences.md Findings 1, 10). Both were corrected; see the fix-pass reason above. Identical to drvPS2Mouse's at the identical reference size of 96"
         ],
         "status": "agreed"
@@ -251,12 +252,12 @@
       "names": [
         "-[BusMouse getIntValues:forParameter:count:]"
       ],
-      "reason": null,
-      "reviewer": null,
+      "reason": "gcc spill/allocation. Capstone had called this assembly-matched; IDA --name shows 7 diffs that are only the stored value in edx vs eax (mov [edx+12Ch] / movsx [edx+130h] / mov [ebx], …) and the jump labels that follow. Same repe cmpsb counts 11 then 9, same ivar offsets, same IO_R_UNSUPPORTED. Dummy locals not added.",
+      "reviewer": "Pat Raynor",
       "size": 93,
       "source_line": 319,
       "source_path": "src/drivers-i386/input/drvBusMouse/BusMouse.drvproj/BusMouse.lksproj/BusMouse.m",
-      "status": "assembly-matched"
+      "status": "intentional-mismatch"
     },
     {
       "address": 1420,
@@ -277,7 +278,7 @@
       "names": [
         "-[BusMouse setIntValues:forParameter:count:]"
       ],
-      "reason": "Rebuilt stream disassembled and compared against the reference: both repe cmpsb comparisons at 11 and 9 bytes, resolution written to +0x12C and re-read through [self getResolution], inverted written to +0x130 and forwarded sign-extended, and the single unguarded objc_msgSend to target at +0x128 shared by both branches. Residual: ours is 12 bytes SMALLER (136 vs 148) because gcc hoists the parameterArray load and keeps the compare count immediate where the reference spilled both to the stack.",
+      "reason": "gcc spill of parameterArray and the compare count. IDA --name: reference sub esp,4 / [ebp-4]=0Bh then reload, and reloads parameterArray from the stack; gcc hoists parameterArray into eax and uses mov ecx,0Bh. Ours smaller (49 vs 53 instructions, 136 vs 148 bytes). Both objc_msgSend calls present (getResolution then unguarded shared tail), offsets 0x12C/0x130/0x128 correct, IO_R_UNSUPPORTED correct. Task 4 treated the starter list as empty. Dummy spills not added.",
       "reviewer": "Pat Raynor",
       "size": 146,
       "source_line": 337,
@@ -334,7 +335,7 @@
       "status": "intentional-mismatch"
     }
   ],
-  "rebuilt_sha256": null,
+  "rebuilt_sha256": "55BB1C543C383A311E57447DDD6B722D251ED577D2769BC9ECD0475334C9815D",
   "reference_sha256": "A1AAB49F4D9F2BA90B4D7105F3D76BBF054F6D2D150B041D2156FC4F75E71864",
   "schema_version": "ledger-v1"
 }

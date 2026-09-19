@@ -1,0 +1,6 @@
+pkgname = adv-cmds
+pkgver = 24.1
+pkgdesc = Advanced user commands
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base, yacc, flex, libcurses-hdrs

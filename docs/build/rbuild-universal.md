@@ -11,10 +11,10 @@
 | Empty or any other value | Error | Error |
 
 `all`, `any`, `universal`, and whitespace-separated CPU lists are not source
-architecture labels. Existing legacy synthesis for incomplete control files
-preserves a valid explicit architecture. Source control files are never
-rewritten; each operation resolves a local package copy and emits canonical
-`*-apple-rhapsody` metadata.
+architecture labels. Existing legacy synthesis for incomplete `apk/pkginfo`
+files preserves a valid explicit architecture. Source `apk/pkginfo` files are
+never rewritten; each operation resolves a local package copy and emits
+canonical `*-apple-rhapsody` metadata.
 
 Ordinary `RC_ARCHS`, `RC_CFLAGS`, `RC_i386`, and `RC_ppc` reflect the resolved
 architecture, independently of the host. Unselected RC switches are explicitly

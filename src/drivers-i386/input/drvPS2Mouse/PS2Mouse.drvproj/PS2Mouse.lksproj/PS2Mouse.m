@@ -94,7 +94,7 @@ typedef struct {
 static PS2ControllerFunctions *controllerFunctions;
 
 /* Forward declarations */
-static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_2);
+static void PS2MouseIntHandler(unsigned int param_1, unsigned int param_2);
 
 /**
  * PS2MouseIntHandler - Low-level interrupt handler for PS/2 mouse
@@ -110,20 +110,13 @@ static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_
  *
  * @param param_1 - Device parameter (passed to IOSendInterrupt)
  * @param param_2 - Context parameter (passed to IOSendInterrupt)
- * @return always 0.  Every exit path returns 0; there is no error return.  The
- *         reference is void and never writes eax, and DriverKit discards the
- *         value either way (divergences.md Finding 14).
+ * @return void. DriverKit discards the handler result; the reference never writes eax.
  */
-static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_2)
+static void PS2MouseIntHandler(unsigned int param_1, unsigned int param_2)
 {
     int status;
     unsigned char dataByte;
     ns_time_t newStamp;
-
-    /* Check if controller functions are available */
-    if (controllerFunctions == NULL) {
-        return 0;
-    }
 
     /* Read a byte from the PS/2 controller
      * This calls the controller's readDataPort method or equivalent.
@@ -132,7 +125,7 @@ static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_
     status = controllerFunctions->readMouseByte(&dataByte);
     if (status == 0) {
         /* No data available */
-        return 0;
+        return;
     }
 
     /* Check for self-test passed response (0xAA) at start of sequence */
@@ -145,7 +138,7 @@ static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_
          */
         controllerFunctions->readMouseByteSimple();
         controllerFunctions->sendMouseCommand(PS2_CMD_ENABLE);
-        return 0;
+        return;
     }
 
     /* Get current timestamp for timeout detection */
@@ -163,7 +156,7 @@ static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_
             IOLog("PS2Mouse: mouse reset after resync\n");
             controllerFunctions->readMouseByteSimple();
             controllerFunctions->sendMouseCommand(PS2_CMD_ENABLE);
-            return 0;
+            return;
         }
     }
 
@@ -182,7 +175,7 @@ static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_
 
             if (indexInSequence < MOUSE_SEQUENCE_LENGTH) {
                 /* Need more bytes to complete packet */
-                return 0;
+                return;
             }
 
             /* Packet complete - fold in the accumulated movement deltas */
@@ -197,7 +190,7 @@ static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_
 
             if (indexInSequence != MOUSE_SEQUENCE_LENGTH) {
                 /* Need more bytes */
-                return 0;
+                return;
             }
 
             /* Pending packet complete - copy to current, folding in the deltas */
@@ -242,7 +235,7 @@ static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_
         }
     }
 
-    return 0;
+    return;
 }
 
 @implementation PS2Mouse
@@ -251,11 +244,6 @@ static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_
 {
     int status;
     unsigned char responseByte;
-
-    /* Check if controller functions are available */
-    if (controllerFunctions == NULL) {
-        return NO;
-    }
 
     /* Send SET_RESOLUTION command (0xE8) to the mouse
      * This should return ACK if a mouse is present
@@ -304,22 +292,22 @@ static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_
      * If set to 'y' or 'Y', bypass mouse presence detection
      */
     forceDetectionStr = [configTable valueForStringKey:"Force Detection"];
-    if ((forceDetectionStr == NULL) ||
-        ((*forceDetectionStr != 'y') && (*forceDetectionStr != 'Y'))) {
-        force_detection = NO;
-    } else {
+    if ((forceDetectionStr != NULL) &&
+        ((*forceDetectionStr == 'y') || (*forceDetectionStr == 'Y'))) {
         force_detection = YES;
+    } else {
+        force_detection = NO;
     }
 
     /* Read "Inverted" parameter (offset 0x130)
      * If set to 'y' or 'Y', invert the mouse axes
      */
     invertedStr = [configTable valueForStringKey:INVERTED];
-    if ((invertedStr == NULL) ||
-        ((*invertedStr != 'y') && (*invertedStr != 'Y'))) {
-        inverted = NO;
-    } else {
+    if ((invertedStr != NULL) &&
+        ((*invertedStr == 'y') || (*invertedStr == 'Y'))) {
         inverted = YES;
+    } else {
+        inverted = NO;
     }
 
     /* Read "Resolution" parameter (offset 0x12c)
@@ -338,11 +326,6 @@ static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_
 
 - (void)resetMouse
 {
-    /* Check if controller functions are available */
-    if (controllerFunctions == NULL) {
-        return;
-    }
-
     /* Send SET_DEFAULTS command (0xF6)
      * This resets the mouse to default settings
      */
@@ -379,9 +362,7 @@ static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_
     /* Drain any stale byte out of the 8042 output buffer via the function
      * table.  Slot 3 is clearOutputBuffer (see PS2Controller.h).
      */
-    if (controllerFunctions != NULL && controllerFunctions->reserved[3] != NULL) {
-        ((void (*)(void))controllerFunctions->reserved[3])();
-    }
+    ((void (*)(void))controllerFunctions->reserved[3])();
 
     /* Check if mouse is present (only if force_detection is not set).
      * "Force Detection = Yes" means force the attach and skip detection.
@@ -403,29 +384,10 @@ static unsigned int PS2MouseIntHandler(unsigned int param_1, unsigned int param_
      * [1] = getKeyboardData, read the data port 0x60
      * [4] = sendControllerData, write to the data port 0x60
      */
-    if (controllerFunctions != NULL) {
-        if (controllerFunctions->reserved[0] != NULL) {
-            ((void (*)(unsigned char))controllerFunctions->reserved[0])(K8042_READ_COMMAND_BYTE);
-        }
-
-        /* Read the command byte back off the data port */
-        if (controllerFunctions->reserved[1] != NULL) {
-            statusByte = ((unsigned char (*)(void))controllerFunctions->reserved[1])();
-        } else {
-            statusByte = 0;
-        }
-
-        if (controllerFunctions->reserved[0] != NULL) {
-            ((void (*)(unsigned char))controllerFunctions->reserved[0])(K8042_WRITE_COMMAND_BYTE);
-        }
-
-        /* Modify status byte and write it back
-         * Clear bit 5, set bit 1: (status & 0xDF) | 0x02
-         */
-        if (controllerFunctions->reserved[4] != NULL) {
-            ((void (*)(unsigned char))controllerFunctions->reserved[4])((statusByte & 0xDF) | 0x02);
-        }
-    }
+    ((void (*)(unsigned char))controllerFunctions->reserved[0])(K8042_READ_COMMAND_BYTE);
+    statusByte = ((unsigned char (*)(void))controllerFunctions->reserved[1])();
+    ((void (*)(unsigned char))controllerFunctions->reserved[0])(K8042_WRITE_COMMAND_BYTE);
+    ((void (*)(unsigned char))controllerFunctions->reserved[4])((statusByte & 0xDF) | 0x02);
 
     /* Reset the mouse to known state */
     [self resetMouse];

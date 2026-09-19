@@ -1,0 +1,6 @@
+pkgname = libcompat
+pkgver = 12
+pkgdesc = BSD compatibility library
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base

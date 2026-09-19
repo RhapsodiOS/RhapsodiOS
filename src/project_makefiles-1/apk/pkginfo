@@ -1,0 +1,6 @@
+pkgname = project-makefiles
+pkgver = 118.2.1
+pkgdesc = Legacy NeXT ProjectBuilder makefiles (obsolete)
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base, objc4-hdrs

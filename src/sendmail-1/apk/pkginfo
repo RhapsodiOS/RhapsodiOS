@@ -1,0 +1,7 @@
+pkgname = sendmail
+pkgver = 8.9.1
+pkgdesc = Mail server and tranport agent
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+url = http://www.sendmail.org/
+makedepends = build-base, m4, libinfo, groff

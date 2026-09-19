@@ -1,0 +1,6 @@
+pkgname = drvdpt2000
+pkgver = 17
+pkgdesc = DPT 2000 SCSI device driver
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+makedepends = build-base, drivertools, driverkit, machkit, kernload, libstreams

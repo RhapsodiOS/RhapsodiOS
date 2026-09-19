@@ -99,24 +99,16 @@
     int usingCount;
     id usingList;
 
-    /* Get count from the "using" resource */
     usingList = [otherResource list];
     usingCount = [usingList count];
 
-    /* If index is in dependent range */
-    if (index >= _depStart) {
-        /* If index falls within the dependent resource range */
-        if (index < (usingCount + _depStart)) {
-            /* Return object from "using" resource at adjusted index */
-            return [usingList objectAt:(index - _depStart)];
-        }
-
-        /* Index is past dependent resources - adjust for the inserted dependent items */
+    if (index < _depStart) {
+        return [_list objectAt:index];
+    } else if (index < (usingCount + _depStart)) {
+        return [usingList objectAt:(index - _depStart)];
+    } else {
         return [_list objectAt:(usingCount + _depStart + index)];
     }
-
-    /* Index is before dependent start - return from our list */
-    return [_list objectAt:index];
 }
 
 /*
@@ -138,31 +130,24 @@
     configList = [configResource list];
     count = [configList count];
 
-    /* If no resources to match, return YES */
     if (count == 0) {
         return YES;
-    }
+    } else {
+        for (i = 0; ; i++) {
+            ourObject = [self objectAt:i Using:depResource];
+            if (ourObject == nil) {
+                break;
+            }
 
-    /* Check each resource */
-    for (i = 0; ; i++) {
-        /* Get our resource (using dependent fallback) */
-        ourObject = [self objectAt:i Using:depResource];
-        if (ourObject == nil) {
-            break;
+            configObject = [configList objectAt:i];
+            match = [ourObject matches:configObject];
+            if (!match) {
+                return NO;
+            }
         }
 
-        /* Get config resource to match against */
-        configObject = [configList objectAt:i];
-
-        /* Check if they match */
-        match = [ourObject matches:configObject];
-        if (!match) {
-            return NO;
-        }
+        return (i > 0);
     }
-
-    /* Return YES if we processed at least one item */
-    return (i > 0);
 }
 
 @end

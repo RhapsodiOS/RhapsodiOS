@@ -1,0 +1,7 @@
+pkgname = grep
+pkgver = 2.1
+pkgdesc = Get-Regular-Expression-and-Print tool
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+url = ftp://prep.ai.mit.edu/pub/gnu/grep-2.1.tar.gz
+makedepends = build-base

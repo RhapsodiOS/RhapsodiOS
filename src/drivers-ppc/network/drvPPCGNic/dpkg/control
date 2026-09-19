@@ -1,6 +1,0 @@
-Package: drvppcgnic
-Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
-Vendor: Apple Computer
-Version: 2
-Description: GNic ethernet device driver
-Build-Depends: build-base, drivertools, driverkit, machkit, kernload, libstreams

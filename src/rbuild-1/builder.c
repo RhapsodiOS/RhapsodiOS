@@ -682,7 +682,7 @@ static const char *DEFAULT_MAINT =
     "Anonymous <darwin-development@public.lists.apple.com>";
 static const char *ARCH = "universal-apple-rhapsody";
 
-static void makecontrol(Package *pkg, const char *pname) {
+static void makepkginfo(Package *pkg, const char *pname) {
     package_set(&pkg->package, pname);
     package_set(&pkg->version, "0");
     package_set(&pkg->architecture, ARCH);
@@ -695,75 +695,29 @@ static void makecontrol(Package *pkg, const char *pname) {
     pkg->has_build_depends = 1;
 }
 
-/* Read <path> into a string; returns malloc'd or NULL. */
-static char *slurp_file(const char *path) {
-    FILE *f = fopen(path, "r");
-    sbuf s;
-    char buf[1024];
-    size_t n;
-    char *out;
-    if (!f) return 0;
-    sbuf_init(&s);
-    while ((n = fread(buf, 1, sizeof(buf), f)) > 0) sbuf_putn(&s, buf, n);
-    fclose(f);
-    out = sbuf_steal(&s);
-    sbuf_free(&s);
-    return out;
-}
-
-/* Returns 0 on success, 1 for fallback, 2 for invalid architecture. */
-static int readcontrol(Package *pkg, const char *control_path) {
-    unsigned mask;
-    char *data = slurp_file(control_path);
-    if (!data) return 1;
-    package_parse(pkg, data);
-    free(data);
-    if (architecture_parse(pkg->architecture, &mask) != 0) {
-        fprintf(stderr, "rbuild: %s: invalid Architecture: '%s'\n",
-                control_path, pkg->architecture);
-        return 2;
-    }
-    if (!pkg->package) {
-        fprintf(stderr, "error: package file does not contain 'Package:' entry\n");
-        return 1;
-    }
-    if (!pkg->version) {
-        fprintf(stderr, "error: package file does not contain 'Version:' entry\n");
-        return 1;
-    }
-    if (!pkg->description) package_set(&pkg->description, DEFAULT_DESC);
-    if (!pkg->maintainer) package_set(&pkg->maintainer, DEFAULT_MAINT);
-    if (!pkg->architecture) package_set(&pkg->architecture, ARCH);
-    package_set(&pkg->source, pkg->package);
-    return 0;
-}
-
 int builder_scan_dir(const char *source, Package *pkg, Params *params) {
     char *pbase = 0, *pname = 0, *rev = 0;
-    char *control_path;
+    char *pkginfo_path;
     char *projname;
     int rc;
 
     builder_dir2name(source, &pbase, &pname, &rev);
 
-    control_path = str_cats(source, "/dpkg/control", (char *)0);
-    rc = readcontrol(pkg, control_path);
+    pkginfo_path = str_cats(source, "/apk/pkginfo", (char *)0);
+    rc = pkginfo_read(pkg, pkginfo_path);
     if (rc == 2) {
-        free(control_path);
+        free(pkginfo_path);
         free(pbase); free(pname); free(rev);
         return 1;
     }
-    if (rc != 0) {
-        /* Synthesize legacy defaults without discarding a validated explicit
-         * architecture from a partial control file. */
-        char *architecture = pkg->architecture ? xstrdup(pkg->architecture) : 0;
-        package_free(pkg);
-        package_init(pkg);
-        makecontrol(pkg, pname);
-        if (architecture) package_set(&pkg->architecture, architecture);
-        free(architecture);
+    if (rc == 1) {
+        makepkginfo(pkg, pname);
+    } else {
+        if (!pkg->description) package_set(&pkg->description, DEFAULT_DESC);
+        if (!pkg->maintainer) package_set(&pkg->maintainer, DEFAULT_MAINT);
+        if (!pkg->architecture) package_set(&pkg->architecture, ARCH);
     }
-    free(control_path);
+    free(pkginfo_path);
 
     package_set(&pkg->source, pbase);
     if (rev) {
@@ -1222,7 +1176,7 @@ int builder_cache_status(const char *path, const Toolchain *tc,
 /* Ancillary package files are products too: stage before architecture checks. */
 static int stage_ancillary_files(const Params *params) {
     static const char *names[] =
-        { "conffiles", "preinst", "postinst", "prerm", "postrm", 0 };
+        { ".pre-install", ".post-install", ".pre-deinstall", ".post-deinstall", 0 };
     int i;
     struct stat st;
     if (!params->SRCDIR) return 0;
@@ -1234,14 +1188,13 @@ static int stage_ancillary_files(const Params *params) {
         return 1;
     }
     for (i = 0; names[i]; i++) {
-        char *extra = str_cats(params->SRCDIR, "/dpkg/", names[i], (char *)0);
+        char *extra = str_cats(params->SRCDIR, "/apk/", names[i], (char *)0);
         if (file_exists(extra)) {
             char *dest = str_cats(params->DSTROOT, "/", names[i], (char *)0);
-            const char *mode = strcmp(names[i], "conffiles") == 0 ? "644" : "755";
             printf("copying %s\n", names[i]);
             fflush(stdout);
             if (exec_runv("cp", "-p", extra, dest, (char *)0) != 0 ||
-                exec_runv("chmod", mode, dest, (char *)0) != 0) {
+                exec_runv("chmod", "755", dest, (char *)0) != 0) {
                 free(extra); free(dest); return 1;
             }
             free(dest);
@@ -1257,7 +1210,6 @@ static int buildpackage(const Package *spkg, const Params *params,
     Package pkg;
     const char *dstroot;
     char *pname;
-    char *unparsed;
     char *canon;
     char *pkginfo_path;
     char *apk_path;
@@ -1267,14 +1219,9 @@ static int buildpackage(const Package *spkg, const Params *params,
     int rc = 0;
     BuildOptions resolved_opt;
 
-    /* Clone spkg by round-tripping through unparse/parse (matches Perl). */
+    /* Clone spkg. */
     package_init(&pkg);
-    unparsed = package_unparse(spkg);
-    package_parse(&pkg, unparsed);
-    free(unparsed);
-    /* Serialization represents an absent field as empty; keep their distinct
-     * architecture semantics for direct callers. */
-    if (!spkg->architecture) package_set(&pkg.architecture, 0);
+    package_copy(&pkg, spkg);
     /* Direct callers share normal build architecture resolution. */
     build_options_init(&resolved_opt);
     if (opt) resolved_opt = *opt;
@@ -1677,11 +1624,9 @@ int builder_build(const char *srctype, const char *srcname,
 
     /* hdrpackage = clone(pkg); name += "-hdrs" */
     {
-        char *u = package_unparse(&pkg);
         char *h;
         package_init(&hdrpkg);
-        package_parse(&hdrpkg, u);
-        free(u);
+        package_copy(&hdrpkg, &pkg);
         h = str_cats(hdrpkg.package, "-hdrs", (char *)0);
         package_set(&hdrpkg.package, h);
         free(h);

@@ -1,0 +1,1591 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [
+    {
+      "address": 15676,
+      "candidates": [
+        {
+          "source_line": 36,
+          "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/PnPDump.m"
+        },
+        {
+          "source_line": 71,
+          "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/dumpConfig.m"
+        }
+      ],
+      "reasons": [
+        "symbol name resolves to multiple definitions"
+      ],
+      "reference_names": [
+        "_bail"
+      ],
+      "size": 59,
+      "source_line": null
+    },
+    {
+      "address": 15736,
+      "candidates": [
+        {
+          "source_line": 42,
+          "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/PnPDump.m"
+        },
+        {
+          "source_line": 184,
+          "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/dumpConfig.m"
+        }
+      ],
+      "reasons": [
+        "symbol name resolves to multiple definitions"
+      ],
+      "reference_names": [
+        "_main"
+      ],
+      "size": 824,
+      "source_line": null
+    }
+  ],
+  "mapped": [
+    {
+      "address": 16560,
+      "reference_names": [
+        "-[pnpIRQ print]"
+      ],
+      "size": 211,
+      "source_line": 180,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIRQ.m"
+    },
+    {
+      "address": 16772,
+      "reference_names": [
+        "-[pnpIRQ matches:]"
+      ],
+      "size": 143,
+      "source_line": 109,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIRQ.m"
+    },
+    {
+      "address": 16916,
+      "reference_names": [
+        "-[pnpIRQ initFrom:Length:]"
+      ],
+      "size": 180,
+      "source_line": 48,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIRQ.m"
+    },
+    {
+      "address": 17096,
+      "reference_names": [
+        "-[pnpIRQ irqs]"
+      ],
+      "size": 13,
+      "source_line": 90,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIRQ.m"
+    },
+    {
+      "address": 17112,
+      "reference_names": [
+        "-[pnpIRQ addToIRQList:]"
+      ],
+      "size": 29,
+      "source_line": 169,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIRQ.m"
+    },
+    {
+      "address": 17144,
+      "reference_names": [
+        "-[pnpIRQ setHigh:Level:]"
+      ],
+      "size": 56,
+      "source_line": 146,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIRQ.m"
+    },
+    {
+      "address": 17200,
+      "reference_names": [
+        "-[pnpIRQ number]"
+      ],
+      "size": 13,
+      "source_line": 99,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIRQ.m"
+    },
+    {
+      "address": 17216,
+      "reference_names": [
+        "-[pnpDMA print]"
+      ],
+      "size": 317,
+      "source_line": 175,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m"
+    },
+    {
+      "address": 17536,
+      "reference_names": [
+        "-[pnpDMA matches:]"
+      ],
+      "size": 143,
+      "source_line": 143,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m"
+    },
+    {
+      "address": 17680,
+      "reference_names": [
+        "-[pnpDMA initFrom:Length:]"
+      ],
+      "size": 226,
+      "source_line": 49,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m"
+    },
+    {
+      "address": 17908,
+      "reference_names": [
+        "-[pnpDMA addDMAToList:]"
+      ],
+      "size": 29,
+      "source_line": 121,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m"
+    },
+    {
+      "address": 17940,
+      "reference_names": [
+        "-[pnpDMA number]"
+      ],
+      "size": 13,
+      "source_line": 133,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m"
+    },
+    {
+      "address": 17956,
+      "reference_names": [
+        "-[pnpDMA dmaChannels]"
+      ],
+      "size": 13,
+      "source_line": 112,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpDMA.m"
+    },
+    {
+      "address": 17972,
+      "reference_names": [
+        "-[pnpIOPort print]"
+      ],
+      "size": 53,
+      "source_line": 204,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m"
+    },
+    {
+      "address": 18028,
+      "reference_names": [
+        "-[pnpIOPort matches:]"
+      ],
+      "size": 112,
+      "source_line": 181,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m"
+    },
+    {
+      "address": 18140,
+      "reference_names": [
+        "-[pnpIOPort initWithBase:Length:]"
+      ],
+      "size": 80,
+      "source_line": 124,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m"
+    },
+    {
+      "address": 18220,
+      "reference_names": [
+        "-[pnpIOPort initFrom:Length:Type:]"
+      ],
+      "size": 290,
+      "source_line": 50,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m"
+    },
+    {
+      "address": 18512,
+      "reference_names": [
+        "-[pnpIOPort min_base]"
+      ],
+      "size": 14,
+      "source_line": 138,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m"
+    },
+    {
+      "address": 18528,
+      "reference_names": [
+        "-[pnpIOPort max_base]"
+      ],
+      "size": 14,
+      "source_line": 146,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m"
+    },
+    {
+      "address": 18544,
+      "reference_names": [
+        "-[pnpIOPort alignment]"
+      ],
+      "size": 14,
+      "source_line": 154,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m"
+    },
+    {
+      "address": 18560,
+      "reference_names": [
+        "-[pnpIOPort length]"
+      ],
+      "size": 14,
+      "source_line": 162,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m"
+    },
+    {
+      "address": 18576,
+      "reference_names": [
+        "-[pnpIOPort lines_decoded]"
+      ],
+      "size": 14,
+      "source_line": 170,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpIOPort.m"
+    },
+    {
+      "address": 18592,
+      "reference_names": [
+        "-[pnpMemory print]"
+      ],
+      "size": 245,
+      "source_line": 332,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m"
+    },
+    {
+      "address": 18840,
+      "reference_names": [
+        "-[pnpMemory matches:]"
+      ],
+      "size": 84,
+      "source_line": 263,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m"
+    },
+    {
+      "address": 18924,
+      "reference_names": [
+        "-[pnpMemory is32]"
+      ],
+      "size": 14,
+      "source_line": 244,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m"
+    },
+    {
+      "address": 18940,
+      "reference_names": [
+        "-[pnpMemory min_base]"
+      ],
+      "size": 13,
+      "source_line": 188,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m"
+    },
+    {
+      "address": 18956,
+      "reference_names": [
+        "-[pnpMemory max_base]"
+      ],
+      "size": 13,
+      "source_line": 196,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m"
+    },
+    {
+      "address": 18972,
+      "reference_names": [
+        "-[pnpMemory alignment]"
+      ],
+      "size": 13,
+      "source_line": 204,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m"
+    },
+    {
+      "address": 18988,
+      "reference_names": [
+        "-[pnpMemory length]"
+      ],
+      "size": 13,
+      "source_line": 212,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m"
+    },
+    {
+      "address": 19004,
+      "reference_names": [
+        "-[pnpMemory bit8]"
+      ],
+      "size": 14,
+      "source_line": 220,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m"
+    },
+    {
+      "address": 19020,
+      "reference_names": [
+        "-[pnpMemory bit16]"
+      ],
+      "size": 14,
+      "source_line": 228,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m"
+    },
+    {
+      "address": 19036,
+      "reference_names": [
+        "-[pnpMemory bit32]"
+      ],
+      "size": 14,
+      "source_line": 236,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m"
+    },
+    {
+      "address": 19052,
+      "reference_names": [
+        "-[pnpMemory highAddressDecode]"
+      ],
+      "size": 14,
+      "source_line": 252,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m"
+    },
+    {
+      "address": 19068,
+      "reference_names": [
+        "-[pnpMemory setControl:]"
+      ],
+      "size": 149,
+      "source_line": 294,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m"
+    },
+    {
+      "address": 19220,
+      "reference_names": [
+        "-[pnpMemory initWithBase:Length:Bit16:Bit32:HighAddr:Is32:]"
+      ],
+      "size": 125,
+      "source_line": 157,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m"
+    },
+    {
+      "address": 19348,
+      "reference_names": [
+        "-[pnpMemory initFrom:Length:Type:]"
+      ],
+      "size": 442,
+      "source_line": 57,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/pnpMemory.m"
+    },
+    {
+      "address": 19792,
+      "reference_names": [
+        "-[PnPResource matches:Using:]"
+      ],
+      "size": 188,
+      "source_line": 120,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResource.m"
+    },
+    {
+      "address": 19980,
+      "reference_names": [
+        "-[PnPResource init]"
+      ],
+      "size": 138,
+      "source_line": 43,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResource.m"
+    },
+    {
+      "address": 20120,
+      "reference_names": [
+        "-[PnPResource free]"
+      ],
+      "size": 92,
+      "source_line": 65,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResource.m"
+    },
+    {
+      "address": 20212,
+      "reference_names": [
+        "-[PnPResource list]"
+      ],
+      "size": 13,
+      "source_line": 76,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResource.m"
+    },
+    {
+      "address": 20228,
+      "reference_names": [
+        "-[PnPResource setDepStart:]"
+      ],
+      "size": 16,
+      "source_line": 85,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResource.m"
+    },
+    {
+      "address": 20244,
+      "reference_names": [
+        "-[PnPResource objectAt:Using:]"
+      ],
+      "size": 150,
+      "source_line": 97,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResource.m"
+    },
+    {
+      "address": 20396,
+      "reference_names": [
+        "-[PnPResources print]"
+      ],
+      "size": 160,
+      "source_line": 527,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m"
+    },
+    {
+      "address": 20556,
+      "reference_names": [
+        "-[PnPResources init]"
+      ],
+      "size": 279,
+      "source_line": 53,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m"
+    },
+    {
+      "address": 20836,
+      "reference_names": [
+        "-[PnPResources initFromRegisters:]"
+      ],
+      "size": 1210,
+      "source_line": 346,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m"
+    },
+    {
+      "address": 22048,
+      "reference_names": [
+        "-[PnPResources free]"
+      ],
+      "size": 131,
+      "source_line": 75,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m"
+    },
+    {
+      "address": 22180,
+      "reference_names": [
+        "-[PnPResources irq]"
+      ],
+      "size": 13,
+      "source_line": 88,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m"
+    },
+    {
+      "address": 22196,
+      "reference_names": [
+        "-[PnPResources dma]"
+      ],
+      "size": 13,
+      "source_line": 96,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m"
+    },
+    {
+      "address": 22212,
+      "reference_names": [
+        "-[PnPResources port]"
+      ],
+      "size": 13,
+      "source_line": 104,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m"
+    },
+    {
+      "address": 22228,
+      "reference_names": [
+        "-[PnPResources memory]"
+      ],
+      "size": 13,
+      "source_line": 112,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m"
+    },
+    {
+      "address": 22244,
+      "reference_names": [
+        "-[PnPResources addIRQ:]"
+      ],
+      "size": 54,
+      "source_line": 121,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m"
+    },
+    {
+      "address": 22300,
+      "reference_names": [
+        "-[PnPResources addDMA:]"
+      ],
+      "size": 54,
+      "source_line": 130,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m"
+    },
+    {
+      "address": 22356,
+      "reference_names": [
+        "-[PnPResources addIOPort:]"
+      ],
+      "size": 54,
+      "source_line": 139,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m"
+    },
+    {
+      "address": 22412,
+      "reference_names": [
+        "-[PnPResources addMemory:]"
+      ],
+      "size": 54,
+      "source_line": 148,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m"
+    },
+    {
+      "address": 22468,
+      "reference_names": [
+        "-[PnPResources markStartDependentResources]"
+      ],
+      "size": 244,
+      "source_line": 158,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPResources.m"
+    },
+    {
+      "address": 22712,
+      "reference_names": [
+        "-[PnPDependentResources setGoodConfig:]"
+      ],
+      "size": 16,
+      "source_line": 58,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDependentResources.m"
+    },
+    {
+      "address": 22728,
+      "reference_names": [
+        "-[PnPDependentResources goodConfig]"
+      ],
+      "size": 14,
+      "source_line": 49,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDependentResources.m"
+    },
+    {
+      "address": 22744,
+      "reference_names": [
+        "-[PnPLogicalDevice init]"
+      ],
+      "size": 190,
+      "source_line": 52,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m"
+    },
+    {
+      "address": 22936,
+      "reference_names": [
+        "-[PnPLogicalDevice free]"
+      ],
+      "size": 128,
+      "source_line": 70,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m"
+    },
+    {
+      "address": 23064,
+      "reference_names": [
+        "-[PnPLogicalDevice setDeviceName:Length:]"
+      ],
+      "size": 69,
+      "source_line": 146,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m"
+    },
+    {
+      "address": 23136,
+      "reference_names": [
+        "-[PnPLogicalDevice compatIDs]"
+      ],
+      "size": 13,
+      "source_line": 128,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m"
+    },
+    {
+      "address": 23152,
+      "reference_names": [
+        "-[PnPLogicalDevice addCompatID:]"
+      ],
+      "size": 36,
+      "source_line": 182,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m"
+    },
+    {
+      "address": 23188,
+      "reference_names": [
+        "-[PnPLogicalDevice deviceName]"
+      ],
+      "size": 13,
+      "source_line": 96,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m"
+    },
+    {
+      "address": 23204,
+      "reference_names": [
+        "-[PnPLogicalDevice setID:]"
+      ],
+      "size": 16,
+      "source_line": 136,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m"
+    },
+    {
+      "address": 23220,
+      "reference_names": [
+        "-[PnPLogicalDevice ID]"
+      ],
+      "size": 13,
+      "source_line": 87,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m"
+    },
+    {
+      "address": 23236,
+      "reference_names": [
+        "-[PnPLogicalDevice setLogicalDeviceNumber:]"
+      ],
+      "size": 16,
+      "source_line": 172,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m"
+    },
+    {
+      "address": 23252,
+      "reference_names": [
+        "-[PnPLogicalDevice logicalDeviceNumber]"
+      ],
+      "size": 13,
+      "source_line": 104,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m"
+    },
+    {
+      "address": 23268,
+      "reference_names": [
+        "-[PnPLogicalDevice depResources]"
+      ],
+      "size": 13,
+      "source_line": 120,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m"
+    },
+    {
+      "address": 23284,
+      "reference_names": [
+        "-[PnPLogicalDevice resources]"
+      ],
+      "size": 13,
+      "source_line": 112,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPLogicalDevice.m"
+    },
+    {
+      "address": 23300,
+      "reference_names": [
+        "+[PnPDeviceResources setReadPort:]"
+      ],
+      "size": 24,
+      "source_line": 64,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m"
+    },
+    {
+      "address": 23324,
+      "reference_names": [
+        "-[PnPDeviceResources setDeviceName:Length:]"
+      ],
+      "size": 69,
+      "source_line": 291,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m"
+    },
+    {
+      "address": 23396,
+      "reference_names": [
+        "-[PnPDeviceResources setID:]"
+      ],
+      "size": 16,
+      "source_line": 201,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m"
+    },
+    {
+      "address": 23412,
+      "reference_names": [
+        "-[PnPDeviceResources deviceName]"
+      ],
+      "size": 13,
+      "source_line": 280,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m"
+    },
+    {
+      "address": 23428,
+      "reference_names": [
+        "-[PnPDeviceResources ID]"
+      ],
+      "size": 13,
+      "source_line": 193,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m"
+    },
+    {
+      "address": 23444,
+      "reference_names": [
+        "-[PnPDeviceResources setSerialNumber:]"
+      ],
+      "size": 16,
+      "source_line": 218,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m"
+    },
+    {
+      "address": 23460,
+      "reference_names": [
+        "-[PnPDeviceResources serialNumber]"
+      ],
+      "size": 13,
+      "source_line": 210,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m"
+    },
+    {
+      "address": 23476,
+      "reference_names": [
+        "-[PnPDeviceResources parseConfig:Length:]"
+      ],
+      "size": 2827,
+      "source_line": 319,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m"
+    },
+    {
+      "address": 26304,
+      "reference_names": [
+        "+[PnPDeviceResources setVerbose:]"
+      ],
+      "size": 22,
+      "source_line": 73,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m"
+    },
+    {
+      "address": 26328,
+      "reference_names": [
+        "-[PnPDeviceResources initForBuf:Length:CSN:]"
+      ],
+      "size": 443,
+      "source_line": 86,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m"
+    },
+    {
+      "address": 26772,
+      "reference_names": [
+        "-[PnPDeviceResources initForBufNoHeader:Length:CSN:]"
+      ],
+      "size": 179,
+      "source_line": 151,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m"
+    },
+    {
+      "address": 26952,
+      "reference_names": [
+        "-[PnPDeviceResources csn]"
+      ],
+      "size": 13,
+      "source_line": 228,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m"
+    },
+    {
+      "address": 26968,
+      "reference_names": [
+        "-[PnPDeviceResources free]"
+      ],
+      "size": 101,
+      "source_line": 178,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m"
+    },
+    {
+      "address": 27072,
+      "reference_names": [
+        "-[PnPDeviceResources deviceList]"
+      ],
+      "size": 13,
+      "source_line": 246,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m"
+    },
+    {
+      "address": 27088,
+      "reference_names": [
+        "-[PnPDeviceResources deviceCount]"
+      ],
+      "size": 32,
+      "source_line": 237,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m"
+    },
+    {
+      "address": 27120,
+      "reference_names": [
+        "-[PnPDeviceResources deviceWithID:]"
+      ],
+      "size": 92,
+      "source_line": 255,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/EISABus.lksproj/PnPDeviceResources.m"
+    },
+    {
+      "address": 27212,
+      "reference_names": [
+        "+[IODeviceMaster new]"
+      ],
+      "size": 72,
+      "source_line": 58,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IODeviceMaster.m"
+    },
+    {
+      "address": 27284,
+      "reference_names": [
+        "-[IODeviceMaster free]"
+      ],
+      "size": 10,
+      "source_line": 79,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IODeviceMaster.m"
+    },
+    {
+      "address": 27296,
+      "reference_names": [
+        "-[IODeviceMaster lookUpByObjectNumber:deviceKind:deviceName:]"
+      ],
+      "size": 31,
+      "source_line": 111,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IODeviceMaster.m"
+    },
+    {
+      "address": 27328,
+      "reference_names": [
+        "-[IODeviceMaster lookUpByDeviceName:objectNumber:deviceKind:]"
+      ],
+      "size": 31,
+      "source_line": 103,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IODeviceMaster.m"
+    },
+    {
+      "address": 27360,
+      "reference_names": [
+        "-[IODeviceMaster getIntValues:forParameter:objectNumber:count:]"
+      ],
+      "size": 38,
+      "source_line": 95,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IODeviceMaster.m"
+    },
+    {
+      "address": 27400,
+      "reference_names": [
+        "-[IODeviceMaster getCharValues:forParameter:objectNumber:count:]"
+      ],
+      "size": 38,
+      "source_line": 87,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IODeviceMaster.m"
+    },
+    {
+      "address": 27440,
+      "reference_names": [
+        "-[IODeviceMaster setIntValues:forParameter:objectNumber:count:]"
+      ],
+      "size": 35,
+      "source_line": 127,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IODeviceMaster.m"
+    },
+    {
+      "address": 27476,
+      "reference_names": [
+        "-[IODeviceMaster setCharValues:forParameter:objectNumber:count:]"
+      ],
+      "size": 35,
+      "source_line": 119,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IODeviceMaster.m"
+    },
+    {
+      "address": 27512,
+      "reference_names": [
+        "-[IODeviceMaster createMachPort:objectNumber:]"
+      ],
+      "size": 27,
+      "source_line": 70,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IODeviceMaster.m"
+    },
+    {
+      "address": 27540,
+      "reference_names": [
+        "_IOMalloc"
+      ],
+      "size": 16,
+      "source_line": 78,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 27556,
+      "reference_names": [
+        "_IOFree"
+      ],
+      "size": 16,
+      "source_line": 87,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 27572,
+      "reference_names": [
+        "_IOCopyMemory"
+      ],
+      "size": 28,
+      "source_line": 432,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 27600,
+      "reference_names": [
+        "_IOForkThread"
+      ],
+      "size": 20,
+      "source_line": 342,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 27620,
+      "reference_names": [
+        "_IOSuspendThread"
+      ],
+      "size": 19,
+      "source_line": 222,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 27640,
+      "reference_names": [
+        "_IOResumeThread"
+      ],
+      "size": 19,
+      "source_line": 318,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 27660,
+      "reference_names": [
+        "_IOExitThread"
+      ],
+      "size": 14,
+      "source_line": 395,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 27676,
+      "reference_names": [
+        "_IOSleep"
+      ],
+      "size": 50,
+      "source_line": 231,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 27728,
+      "reference_names": [
+        "_IODelay"
+      ],
+      "size": 70,
+      "source_line": 404,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 27800,
+      "reference_names": [
+        "_IOScheduleFunc"
+      ],
+      "size": 388,
+      "source_line": 251,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 28188,
+      "reference_names": [
+        "_calloutThread"
+      ],
+      "size": 255,
+      "source_line": 443,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 28444,
+      "reference_names": [
+        "_IOUnscheduleFunc"
+      ],
+      "size": 188,
+      "source_line": 174,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 28632,
+      "reference_names": [
+        "_IOGetTimestamp"
+      ],
+      "size": 152,
+      "source_line": 118,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 28784,
+      "reference_names": [
+        "_IOLog"
+      ],
+      "size": 64,
+      "source_line": 96,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 28848,
+      "reference_names": [
+        "_IOPanic"
+      ],
+      "size": 34,
+      "source_line": 327,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 28884,
+      "reference_names": [
+        "_IOFindNameForValue"
+      ],
+      "size": 76,
+      "source_line": 375,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 28960,
+      "reference_names": [
+        "_IOFindValueForName"
+      ],
+      "size": 78,
+      "source_line": 353,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 29040,
+      "reference_names": [
+        "_IOInitGeneralFuncs"
+      ],
+      "size": 121,
+      "source_line": 145,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 29164,
+      "reference_names": [
+        "__IOLookupByObjectNumber"
+      ],
+      "size": 362,
+      "source_line": 467,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 29528,
+      "reference_names": [
+        "__IOLookupByDeviceName"
+      ],
+      "size": 298,
+      "source_line": 466,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 29828,
+      "reference_names": [
+        "__IOGetIntValues"
+      ],
+      "size": 546,
+      "source_line": 464,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 30376,
+      "reference_names": [
+        "__IOGetCharValues"
+      ],
+      "size": 543,
+      "source_line": 461,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 30920,
+      "reference_names": [
+        "__IOSetIntValues"
+      ],
+      "size": 413,
+      "source_line": 472,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 31336,
+      "reference_names": [
+        "__IOSetCharValues"
+      ],
+      "size": 405,
+      "source_line": 471,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 31744,
+      "reference_names": [
+        "__IOGetEISADeviceConfig"
+      ],
+      "size": 851,
+      "source_line": 463,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 32596,
+      "reference_names": [
+        "__IOMapEISADevicePorts"
+      ],
+      "size": 186,
+      "source_line": 469,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 32784,
+      "reference_names": [
+        "__IOUnMapEISADevicePorts"
+      ],
+      "size": 186,
+      "source_line": 473,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 32972,
+      "reference_names": [
+        "__IOMapEISADeviceMemory"
+      ],
+      "size": 311,
+      "source_line": 468,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 33284,
+      "reference_names": [
+        "__IOProbeDriver"
+      ],
+      "size": 301,
+      "source_line": 470,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 33588,
+      "reference_names": [
+        "__IOGetSystemConfig"
+      ],
+      "size": 384,
+      "source_line": 465,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 33972,
+      "reference_names": [
+        "__IOUnloadDriver"
+      ],
+      "size": 301,
+      "source_line": 474,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 34276,
+      "reference_names": [
+        "__IOGetDriverConfig"
+      ],
+      "size": 384,
+      "source_line": 462,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 34660,
+      "reference_names": [
+        "__PMSetPowerState"
+      ],
+      "size": 202,
+      "source_line": 479,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 34864,
+      "reference_names": [
+        "__PMGetPowerEvent"
+      ],
+      "size": 207,
+      "source_line": 475,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 35072,
+      "reference_names": [
+        "__PMGetPowerStatus"
+      ],
+      "size": 227,
+      "source_line": 476,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 35300,
+      "reference_names": [
+        "__PMSetPowerManagement"
+      ],
+      "size": 202,
+      "source_line": 478,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 35504,
+      "reference_names": [
+        "__PMRestoreDefaults"
+      ],
+      "size": 166,
+      "source_line": 477,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 35672,
+      "reference_names": [
+        "__IOCallDeviceMethod"
+      ],
+      "size": 691,
+      "source_line": 460,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 36364,
+      "reference_names": [
+        "__IOCreateMachPort"
+      ],
+      "size": 223,
+      "source_line": 451,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    },
+    {
+      "address": 36588,
+      "reference_names": [
+        "-[NXLock init]"
+      ],
+      "size": 96,
+      "source_line": 57,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/NXLock.m"
+    },
+    {
+      "address": 36684,
+      "reference_names": [
+        "-[NXLock free]"
+      ],
+      "size": 97,
+      "source_line": 80,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/NXLock.m"
+    },
+    {
+      "address": 36784,
+      "reference_names": [
+        "-[NXLock lock]"
+      ],
+      "size": 82,
+      "source_line": 102,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/NXLock.m"
+    },
+    {
+      "address": 36868,
+      "reference_names": [
+        "-[NXLock unlock]"
+      ],
+      "size": 69,
+      "source_line": 130,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/NXLock.m"
+    },
+    {
+      "address": 36940,
+      "reference_names": [
+        "__IOCopyMemory"
+      ],
+      "size": 249,
+      "source_line": 446,
+      "source_path": "src/drivers-i386/bus/drvEISABus/EISABus.drvproj/PnPDump.tproj/IOStubs.m"
+    }
+  ],
+  "reference_sha256": "006DC6BB73CEBC6243DA669E5199AEC808F309E72C3EE617A3FD8ED310364772",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 15324,
+      "reference_names": [
+        "start"
+      ],
+      "size": 38,
+      "source_line": null
+    },
+    {
+      "address": 15364,
+      "reference_names": [
+        "__start"
+      ],
+      "size": 194,
+      "source_line": null
+    },
+    {
+      "address": 15564,
+      "reference_names": [
+        "__call_mod_init_funcs"
+      ],
+      "size": 37,
+      "source_line": null
+    },
+    {
+      "address": 15604,
+      "reference_names": [
+        "__dyld_init_check"
+      ],
+      "size": 52,
+      "source_line": null
+    },
+    {
+      "address": 15656,
+      "reference_names": [
+        "dyld_stub_binding_helper"
+      ],
+      "size": 11,
+      "source_line": null
+    },
+    {
+      "address": 15668,
+      "reference_names": [
+        "__dyld_func_lookup"
+      ],
+      "size": 6,
+      "source_line": null
+    },
+    {
+      "address": 39871,
+      "reference_names": [
+        "_exit"
+      ],
+      "size": 14,
+      "source_line": null
+    },
+    {
+      "address": 39897,
+      "reference_names": [
+        "__objcInit"
+      ],
+      "size": 14,
+      "source_line": null
+    },
+    {
+      "address": 39923,
+      "reference_names": [
+        "_printf"
+      ],
+      "size": 14,
+      "source_line": null
+    },
+    {
+      "address": 39949,
+      "reference_names": [
+        "_objc_msgSend"
+      ],
+      "size": 14,
+      "source_line": null
+    },
+    {
+      "address": 39975,
+      "reference_names": [
+        "_fprintf"
+      ],
+      "size": 14,
+      "source_line": null
+    },
+    {
+      "address": 40001,
+      "reference_names": [
+        "_sprintf"
+      ],
+      "size": 14,
+      "source_line": null
+    },
+    {
+      "address": 40027,
+      "reference_names": [
+        "_strncpy"
+      ],
+      "size": 14,
+      "source_line": null
+    },
+    {
+      "address": 40053,
+      "reference_names": [
+        "_objc_msgSendSuper"
+      ],
+      "size": 14,
+      "source_line": null
+    },
+    {
+      "address": 40079,
+      "reference_names": [
+        "_device_master_self"
+      ],
+      "size": 14,
+      "source_line": null
+    },
+    {
+      "address": 40105,
+      "reference_names": [
+        "_port_allocate"
+      ],
+      "size": 14,
+      "source_line": null
+    },
+    {
+      "address": 40131,
+      "reference_names": [
+        "_strcmp"
+      ],
+      "size": 14,
+      "source_line": null
+    },
+    {
+      "address": 40157,
+      "reference_names": [
+        "_syslog"
+      ],
+      "size": 14,
+      "source_line": null
+    },
+    {
+      "address": 40183,
+      "reference_names": [
+        "_vsprintf"
+      ],
+      "size": 14,
+      "source_line": null
+    },
+    {
+      "address": 40209,
+      "reference_names": [
+        "_kern_timestamp"
+      ],
+      "size": 14,
+      "source_line": null
+    },
+    {
+      "address": 40235,
+      "reference_names": [
+        "_msg_receive"
+      ],
+      "size": 14,
+      "source_line": null
+    },
+    {
+      "address": 40261,
+      "reference_names": [
+        "_cthread_exit"
+      ],
+      "size": 14,
+      "source_line": null
+    },
+    {
+      "address": 40287,
+      "reference_names": [
+        "_thread_resume"
+      ],
+      "size": 14,
+      "source_line": null
+    },
+    {
+      "address": 40313,
+      "reference_names": [
+        "_thread_suspend"
+      ],
+      "size": 14,
+      "source_line": null
+    },
+    {
+      "address": 40339,
+      "reference_names": [
+        "_cthread_fork"
+      ],
+      "size": 14,
+      "source_line": null
+    },
+    {
+      "address": 40365,
+      "reference_names": [
+        "_free"
+      ],
+      "size": 14,
+      "source_line": null
+    },
+    {
+      "address": 40391,
+      "reference_names": [
+        "_malloc"
+      ],
+      "size": 14,
+      "source_line": null
+    },
+    {
+      "address": 40417,
+      "reference_names": [
+        "_bcopy"
+      ],
+      "size": 14,
+      "source_line": null
+    },
+    {
+      "address": 40443,
+      "reference_names": [
+        "_mig_dealloc_reply_port"
+      ],
+      "size": 14,
+      "source_line": null
+    },
+    {
+      "address": 40469,
+      "reference_names": [
+        "_msg_rpc"
+      ],
+      "size": 14,
+      "source_line": null
+    },
+    {
+      "address": 40495,
+      "reference_names": [
+        "_mig_get_reply_port"
+      ],
+      "size": 14,
+      "source_line": null
+    },
+    {
+      "address": 40521,
+      "reference_names": [
+        "_cond_signal"
+      ],
+      "size": 14,
+      "source_line": null
+    },
+    {
+      "address": 40547,
+      "reference_names": [
+        "_condition_wait"
+      ],
+      "size": 14,
+      "source_line": null
+    },
+    {
+      "address": 40573,
+      "reference_names": [
+        "_mutex_wait_lock"
+      ],
+      "size": 14,
+      "source_line": null
+    },
+    {
+      "address": 40599,
+      "reference_names": [
+        "_mutex_try_lock"
+      ],
+      "size": 14,
+      "source_line": null
+    },
+    {
+      "address": 40625,
+      "reference_names": [
+        "_spin_lock"
+      ],
+      "size": 14,
+      "source_line": null
+    },
+    {
+      "address": 40651,
+      "reference_names": [
+        "_cond_broadcast"
+      ],
+      "size": 14,
+      "source_line": null
+    }
+  ]
+}

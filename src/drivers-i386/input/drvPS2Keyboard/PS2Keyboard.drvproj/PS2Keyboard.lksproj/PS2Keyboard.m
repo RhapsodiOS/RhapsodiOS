@@ -132,14 +132,13 @@ static unsigned int _kbdBitVector[4];
     sendControllerCommand(0x20);  /* Command: Read Command Byte */
     commandByte = getKeyboardData();
 
+    commandByte |= 0x40;
+    commandByte &= 0xEF;
+    commandByte |= 1;
+
     /* Write the modified command byte back to the controller */
     sendControllerCommand(0x60);  /* Command: Write Command Byte */
-
-    /*
-     * & 0xEF clears bit 4 (enable the keyboard interface)
-     * | 0x41 sets bit 0 (keyboard interrupt) and bit 6 (translate scancodes)
-     */
-    sendControllerData(commandByte & 0xEF | 0x41);
+    sendControllerData(commandByte);
 
     /* Register ourselves with the controller as the keyboard object */
     [controller setKeyboardObject:self];
@@ -187,11 +186,7 @@ static unsigned int _kbdBitVector[4];
             }
 
             index = numEvents;
-
-            pendingEvents[index].timeStamp = event->timeStamp;
-            pendingEvents[index].keyCode = event->keyCode;
-            pendingEvents[index].goingDown = event->goingDown;
-
+            pendingEvents[index] = *event;
             numEvents++;
         }
 
@@ -202,9 +197,9 @@ static unsigned int _kbdBitVector[4];
 - (void)dispatchKeyboardEvents
 {
     PS2KeyboardEvent localEventBuffer[MAX_KEYBOARD_EVENTS];
-    unsigned int savedEventCount;
+    int savedEventCount;
     int savedSPL;
-    unsigned int i;
+    int i;
 
     /* Raise to IPL 6 -- IPLDMA/IPLCLOCK/IPLSCHED in <kernserv/i386/spl.h>, not
      * IPLBIO, which is 3 -- and save previous level
@@ -213,9 +208,7 @@ static unsigned int _kbdBitVector[4];
 
     /* Copy events from the queue to the local buffer atomically */
     if (numEvents == 1) {
-        localEventBuffer[0].timeStamp = pendingEvents[0].timeStamp;
-        localEventBuffer[0].keyCode = pendingEvents[0].keyCode;
-        localEventBuffer[0].goingDown = pendingEvents[0].goingDown;
+        localEventBuffer[0] = pendingEvents[0];
     } else {
         bcopy(pendingEvents, localEventBuffer,
               numEvents * sizeof(PS2KeyboardEvent));
@@ -261,15 +254,15 @@ int _PS2KeyboardNumKeysDown(void)
                  atTime:(unsigned long long)timestamp
 {
     int index;
+    PS2KeyboardEvent event;
 
     /* Check if the queue is not full (max 16 events) */
     if (numEvents != MAX_KEYBOARD_EVENTS) {
+        event.keyCode = keyCode;
+        event.goingDown = goingDown;
+        event.timeStamp = timestamp;
         index = numEvents;
-
-        pendingEvents[index].timeStamp = timestamp;
-        pendingEvents[index].keyCode = keyCode;
-        pendingEvents[index].goingDown = goingDown;
-
+        pendingEvents[index] = event;
         numEvents++;
     }
     /* If the queue is full, the event is dropped */
@@ -280,11 +273,10 @@ PS2KeyboardEvent *scancodeToKeyEvent(unsigned char scancode)
 {
     static PS2KeyboardEvent event;
     static unsigned char extendCount;
-    unsigned char keyCode;
     unsigned char bitPosition;
     unsigned int wordIndex;
     unsigned int bitMask;
-    unsigned int isKeyDown;
+    unsigned char isKeyDown;
 
     /* Handle the extended scancode prefix 0xE0 */
     if (scancode == 0xE0) {
@@ -301,7 +293,10 @@ PS2KeyboardEvent *scancodeToKeyEvent(unsigned char scancode)
     }
 
     /* Process extended scancodes */
-    if (extendCount != 0) {
+    if (extendCount == 0) {
+        /* Normal scancode - just mask off the break bit */
+        event.keyCode = scancode & 0x7F;
+    } else {
         extendCount--;
 
         if (extendCount != 0) {
@@ -310,34 +305,31 @@ PS2KeyboardEvent *scancodeToKeyEvent(unsigned char scancode)
 
         /* Translate extended scancodes to ADB keycodes */
         switch (scancode & 0x7F) {
-            case 0x1C: keyCode = 0x62; break;  /* Keypad Enter */
-            case 0x1D: keyCode = 0x60; break;  /* Right Control */
-            case 0x35: keyCode = 0x63; break;  /* Keypad / */
-            case 0x37: keyCode = 0x6E; break;  /* Print Screen */
-            case 0x38: keyCode = 0x61; break;  /* Right Alt */
-            case 0x45: keyCode = 0x6F; break;  /* Num Lock */
-            case 0x47: keyCode = 0x6C; break;  /* Home */
-            case 0x48: keyCode = 0x64; break;  /* Up Arrow */
-            case 0x49: keyCode = 0x6A; break;  /* Page Up */
-            case 0x4B: keyCode = 0x66; break;  /* Left Arrow */
-            case 0x4D: keyCode = 0x67; break;  /* Right Arrow */
-            case 0x4F: keyCode = 0x6D; break;  /* End */
-            case 0x50: keyCode = 0x65; break;  /* Down Arrow */
-            case 0x51: keyCode = 0x6B; break;  /* Page Down */
-            case 0x52: keyCode = 0x68; break;  /* Insert */
-            case 0x53: keyCode = 0x69; break;  /* Delete */
-            case 0x5B: keyCode = 0x70; break;  /* Left Windows */
-            case 0x5C: keyCode = 0x71; break;  /* Right Windows */
-            case 0x5D: keyCode = 0x72; break;  /* Menu */
+            case 0x1C: event.keyCode = 0x62; break;  /* Keypad Enter */
+            case 0x1D: event.keyCode = 0x60; break;  /* Right Control */
+            case 0x35: event.keyCode = 0x63; break;  /* Keypad / */
+            case 0x37: event.keyCode = 0x6E; break;  /* Print Screen */
+            case 0x38: event.keyCode = 0x61; break;  /* Right Alt */
+            case 0x45: event.keyCode = 0x6F; break;  /* Num Lock */
+            case 0x47: event.keyCode = 0x6C; break;  /* Home */
+            case 0x48: event.keyCode = 0x64; break;  /* Up Arrow */
+            case 0x49: event.keyCode = 0x6A; break;  /* Page Up */
+            case 0x4B: event.keyCode = 0x66; break;  /* Left Arrow */
+            case 0x4D: event.keyCode = 0x67; break;  /* Right Arrow */
+            case 0x4F: event.keyCode = 0x6D; break;  /* End */
+            case 0x50: event.keyCode = 0x65; break;  /* Down Arrow */
+            case 0x51: event.keyCode = 0x6B; break;  /* Page Down */
+            case 0x52: event.keyCode = 0x68; break;  /* Insert */
+            case 0x53: event.keyCode = 0x69; break;  /* Delete */
+            case 0x5B: event.keyCode = 0x70; break;  /* Left Windows */
+            case 0x5C: event.keyCode = 0x71; break;  /* Right Windows */
+            case 0x5D: event.keyCode = 0x72; break;  /* Menu */
             default:
                 return NULL;  /* Unrecognized extended key */
         }
-    } else {
-        /* Normal scancode - just mask off the break bit */
-        keyCode = scancode & 0x7F;
     }
 
-    if (keyCode == 0) {
+    if (event.keyCode == 0) {
         return NULL;
     }
 
@@ -346,17 +338,17 @@ PS2KeyboardEvent *scancodeToKeyEvent(unsigned char scancode)
 
     /* Bit 7 of the scancode: 0 = key down, 1 = key up */
     isKeyDown = (scancode >> 7) ^ 1;
+    event.goingDown = isKeyDown;
 
     /* Num Lock toggles off its own recorded state rather than the break bit */
-    if (keyCode == 0x6F) {
+    if (event.keyCode == 0x6F) {
         isKeyDown = (_kbdBitVector[0x6F >> 5] & (1 << (0x6F & 0x1F))) == 0;
+        event.goingDown = isKeyDown;
     }
 
-    event.keyCode = keyCode;
-
     /* Update the keyboard bit vector */
-    bitPosition = (unsigned char)keyCode;
-    wordIndex = keyCode >> 5;
+    bitPosition = (unsigned char)event.keyCode;
+    wordIndex = event.keyCode >> 5;
     bitMask = 1 << (bitPosition & 0x1F);
 
     if (isKeyDown == 0) {
@@ -369,8 +361,6 @@ PS2KeyboardEvent *scancodeToKeyEvent(unsigned char scancode)
         }
         _kbdBitVector[wordIndex] = _kbdBitVector[wordIndex] | bitMask;
     }
-
-    event.goingDown = isKeyDown;
 
     return &event;
 }
@@ -403,30 +393,26 @@ PS2KeyboardEvent *scancodeToKeyEvent(unsigned char scancode)
 - (IOReturn)becomeOwner:(id)owner
 {
     IOReturn result;
-    const char *ownerName;
-    const char *selfName;
 
     [_ownerLock lock];
 
-    if (_owner == nil) {
-        /* No current owner - grant ownership immediately */
-        _owner = owner;
-        result = 0;
-    } else {
+    if (_owner != nil) {
         /* Already owned - ask the owner to relinquish */
-        if (![_owner respondsTo:@selector(relinquishOwnershipRequest:)]) {
-            ownerName = [_owner name];
-            selfName = [self name];
-            IOLog("%s: owner %s does not respond to relinquishOwnershipRequest:\n",
-                  selfName, ownerName);
-            result = 0xFFFFFD2B;  /* -725 */
-        } else {
+        if ([_owner respondsTo:@selector(relinquishOwnershipRequest:)]) {
             result = [_owner relinquishOwnershipRequest:self];
+        } else {
+            IOLog("%s: owner %s does not respond to relinquishOwnershipRequest:\n",
+                  [self name], [_owner name]);
+            result = 0xFFFFFD2B;  /* -725 */
         }
 
         if (result == 0) {
             _owner = owner;
         }
+    } else {
+        /* No current owner - grant ownership immediately */
+        _owner = owner;
+        result = 0;
     }
 
     [_ownerLock unlock];
@@ -468,12 +454,12 @@ PS2KeyboardEvent *scancodeToKeyEvent(unsigned char scancode)
 
     [_ownerLock lock];
 
-    if (_desiredOwner == nil || _desiredOwner == owner) {
-        _desiredOwner = owner;
-        result = 0;
-    } else {
+    if (_desiredOwner != nil && _desiredOwner != owner) {
         /* Someone else is already next in line */
         result = 0xFFFFFD2B;  /* -725 */
+    } else {
+        _desiredOwner = owner;
+        result = 0;
     }
 
     [_ownerLock unlock];

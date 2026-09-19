@@ -145,24 +145,25 @@
  */
 - (BOOL)setDeviceName:(const char *)name Length:(int)length
 {
-    size_t copyLength;
+    int copyLength;
 
     /* Check if already set */
-    if (_deviceNameLength != 0) {
-        return NO;
+    if (_deviceNameLength == 0) {
+        copyLength = 0x4f;
+        if (copyLength > length)
+            copyLength = length;
+        _deviceNameLength = copyLength;
+
+        /* Copy name to buffer */
+        strncpy(_deviceName, name, copyLength);
+
+        /* Null-terminate */
+        _deviceName[_deviceNameLength] = '\0';
+
+        return YES;
     }
 
-    /* Limit length to 79 bytes (0x4f) */
-    copyLength = (length < 0x4f) ? length : 0x4f;
-    _deviceNameLength = copyLength;
-
-    /* Copy name to buffer */
-    strncpy(_deviceName, name, copyLength);
-
-    /* Null-terminate */
-    _deviceName[_deviceNameLength] = '\0';
-
-    return YES;
+    return NO;
 }
 
 /*

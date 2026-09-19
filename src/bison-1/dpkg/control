@@ -1,6 +1,0 @@
-Package: bison
-Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
-Vendor: GNU Project
-Version: 1.25
-Description: Bison parser generator
-Build-Depends: build-base, perl

@@ -240,13 +240,10 @@ static unsigned long entry_fingerprint(const ManifestEntry *entry,
 
 static char *variant_canon(const Package *pkg, const char *suffix) {
     Package variant;
-    char *data;
     char *name;
     char *canon;
     package_init(&variant);
-    data = package_unparse(pkg);
-    package_parse(&variant, data);
-    free(data);
+    package_copy(&variant, pkg);
     name = str_cats(variant.package, suffix, (char *)0);
     package_set(&variant.package, name);
     free(name);

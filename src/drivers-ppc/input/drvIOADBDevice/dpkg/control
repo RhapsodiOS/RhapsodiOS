@@ -1,6 +1,0 @@
-Package: drvioadbdevice
-Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
-Vendor: Apple Computer
-Version: 2
-Description: ADB device server driver (reconstructed from the shipped binary; not compile-verified)
-Build-Depends: build-base, drivertools, driverkit, machkit, kernload, libstreams

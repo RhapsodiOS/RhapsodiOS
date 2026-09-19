@@ -1,0 +1,7 @@
+pkgname = mail-cmds
+pkgver = 1998.10.07
+pkgdesc = Mail commands
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+url = http://www.netbsd.org/
+makedepends = build-base, libcurses-hdrs

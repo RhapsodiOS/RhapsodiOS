@@ -1,0 +1,7 @@
+pkgname = gnutar
+pkgver = 1.12
+pkgdesc = GNU tape archive utility
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+url = ftp://prep.ai.mit.edu/pub/gnu/tar-1.12.tar.gz
+makedepends = build-base, network-cmds, perl

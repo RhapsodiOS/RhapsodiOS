@@ -1,0 +1,284 @@
+# drvPS2Keyboard instruction-stream finish
+
+Date: 2026-09-17
+Branch: `drvps2keyboard-binrecon-finish`
+
+Campaign close after Task 4. Hardware testing is still out.
+
+Angr was disabled because rebuilt decode at 0x10 failed normalization.
+
+Analyzer: IDA 9.2 only (`analyzers.angr.enabled` is false; Ghidra stays off).
+`binrecon analyze` published `complete: true` with `normalized-functions=FAIL` (exit 1 expected).
+
+## Identities
+
+| | SHA-256 | size |
+| --- | --- | --- |
+| Reference | `AB413CA3919950F22A1F5D10B0BF1167387FEF320C9FB82A3EA66E586A6BE02A` | 43460 |
+| Rebuilt | `66A9030CBB92CCC4DEA81267E51AFFA76E33E85231CEF265B5AED6FC5D140D89` | 157840 |
+
+`__TEXT,__text`: reference 4952, rebuilt 4884.
+
+`parity_check.py`: `missing_strings (0)`, `missing_symbols (0)`. Extra symbols 54 (stabs / file names on the unstripped guest `_reloc`).
+
+## `__OBJC,__class` instance sizes
+
+Read from the rebuilt `_reloc` with `binrecon.macho.read_macho` (`__OBJC,__class`, 40-byte `objc_class`, little-endian `instance_size` at word 5; names from the `name` pointer). Reference dump matches.
+
+| Class | Superclass | `instance_size` |
+| --- | --- | --- |
+| `PS2Controller` | `IODirectDevice` | **308** |
+| `PS2Keyboard` | `IODevice` | **548** |
+| `PS2KeyboardVersion` | `IODevice` | 264 |
+| `PS2KeyboardKernelServerInstance` | `Object` | 4 |
+
+## `binrecon function --list` (IDA)
+
+Re-run 2026-09-17 against kept rebuilt `66A9030C…5D140D89` and reference `AB413CA3…6A6BE02A`.
+
+```
+  diff    ref    new  flags       name
+
+     0      6      6  identical   +[PS2Keyboard deviceStyle]
+     0      6      6  masked-eq   +[PS2Keyboard requiredProtocols]
+     0      6      6  identical   +[PS2KeyboardKernelServerInstance kernelServerInstance]
+     0      6      6  identical   +[PS2KeyboardVersion driverKitVersionForPS2Keyboard]
+     0      6      6  masked-eq   -[PS2Controller controllerAccessFunctions]
+     0     12     12  masked-eq   -[PS2Controller getHandler:level:argument:forInterrupt:]
+     0     10     10  masked-eq   -[PS2Controller interruptOccurred]
+     0      7      7  masked-eq   -[PS2Controller setKeyboardObject:]
+     0     29     29  masked-eq   -[PS2Controller setLEDs:]
+     0      7      7  masked-eq   -[PS2Controller setMouseObject:]
+     0      7      7  identical   -[PS2Keyboard handlerId]
+     0      7      7  identical   -[PS2Keyboard interfaceId]
+     0     13     13  masked-eq   _unlock_controller
+     1     21     21  masked-eq   -[PS2Controller setManualDataHandling:]
+     1     29     29  identical   -[PS2Keyboard enqueueKeyEvent:goingDown:atTime:]
+     1     68     68              -[PS2Keyboard initWithController:]
+     1     16     16  masked-eq   _clearOutputBuffer
+     1      9      9  masked-eq   _disableMouse
+     1      9      9  masked-eq   _enableMouse
+     1     25     25  masked-eq   _getMouseData
+     1     14     14  masked-eq   _keyboardDataPresent
+     1     15     15  masked-eq   _resendControllerData
+     2     16     17              -[PS2Keyboard setAlphaLockFeedback:]
+     2     28     28  masked-eq   __PS2KeyboardNumKeysDown
+     2     19     19  masked-eq   _getKeyboardDataIfPresent
+     2     24     24  masked-eq   _getMouseDataIfPresent
+     2     19     19  masked-eq   _reallyGetKeyboardData
+     2     25     25  masked-eq   _sendControllerCommand
+     2     26     26  masked-eq   _sendControllerData
+     2     19     19  identical   _sendMouseCommand
+     3     56     56  masked-eq   +[PS2Keyboard probe:]
+     3     32     32  masked-eq   -[PS2Keyboard desireOwnership:]
+     3     34     34  masked-eq   _NewStealKeyboardEvent
+     3     32     32  masked-eq   _interruptHandler
+     4     19     19              _resetEscapes
+     4     34     34  identical   _undoEscape
+     5     69     69  masked-eq   -[PS2Keyboard becomeOwner:]
+     5     63     63  masked-eq   -[PS2Keyboard dispatchKeyboardEvents]
+     6     22     22              _lock_controller
+     7     36     35              +[PS2Controller probe:]
+     8     50     50  masked-eq   -[PS2Keyboard interruptOccurred]
+     9     43     42              _enqueueKeyboardData
+    10     50     50              -[PS2Keyboard readConfigTable:]
+    20     63     63              -[PS2Keyboard relinquishOwnership:]
+    31     41     41              _getKeyboardData
+    44     73     74              _isEscape
+    49     61     59              _doEscape
+    54     74     70              -[PS2Controller initFromDeviceDescription:]
+    93    112    104              _scancodeToKeyEvent
+
+49 functions: 8 byte-identical, 41 differing, 0 unpaired
+```
+
+`--list` counts every non-`raw_equal` row as differing, including `masked-eq`. Split:
+
+- **identical (`raw_equal`):** 8
+- **masked-eq (not identical):** 28
+- **accepted leftovers (empty flags):** 13
+- **unpaired:** 0
+
+Hand-written functions = 47 (exclude two Kernel Server glue methods). The glue methods are instruction-identical here but not hand-written; Task 3 still keeps them `intentional-mismatch`.
+
+**34/47** hand-written functions are byte-identical under relocation masking (`identical` + `masked-eq` minus glue). Remainder accepted as compiler-shaped. Hardware testing is still out.
+
+Task 8 regression-gate rows at close: `deviceStyle` / `handlerId` / `interfaceId` identical; `getHandler:level:argument:forInterrupt:` / `setLEDs:` / `_clearOutputBuffer` masked-eq; `setAlphaLockFeedback:` and `relinquishOwnership:` accepted leftovers.
+
+## Cheapest open rows (empty flags) — Phase 1 snapshot
+
+| diff | name |
+| --- | --- |
+| 2 | `-[PS2Keyboard setAlphaLockFeedback:]` |
+| 4 | `_resetEscapes` |
+| 4 | `_sendMouseCommand` |
+| 6 | `-[PS2Keyboard desireOwnership:]` |
+| 6 | `_lock_controller` |
+| 7 | `+[PS2Controller probe:]` |
+| 7 | `-[PS2Keyboard initWithController:]` |
+| 10 | `-[PS2Keyboard readConfigTable:]` |
+| 10 | `_undoEscape` |
+| 12+ | `_getKeyboardDataIfPresent` and the rest of the empty-flag list |
+
+## Reachability
+
+From `binrecon function --name` of the cheapest open rows:
+
+- **`-[PS2Keyboard setAlphaLockFeedback:]` (diff 2) — source-shaped.** Rebuilt inserts `and eax, 0FFh` after `mov eax, 4` on the true path (`calls differ` / `instruction shape differs`). Worth a typed rewrite of the LED / BOOL local; do not grind it as a Task 8 match unless that experiment is empty.
+- **`_resetEscapes` (diff 4) — compiler-shaped.** Same mnemonics; starred lines are jump targets and a `ds:` offset (`instruction layout differs`). Looks like reloc / label masking, not a wrong constant or missing call.
+- **`_sendMouseCommand` (diff 4) — source-shaped.** Reference is `jnz` / `mov eax, 1` / `jmp` / `xor eax, eax`; rebuilt is `setz al` / `and eax, 0FFh`. Classic comparison-as-return vs if/else.
+- **`-[PS2Keyboard desireOwnership:]` (diff 6) — source-shaped.** Same lock / owner / `0xFFFFFD2B` pieces; the if/else blocks are in opposite order (`jz`/`jz` vs `jz`/`jnz`). Candidate for `if` vs `else if` or reversed `cmp`.
+- **`_lock_controller` (diff 6) — compiler-shaped.** `cmp dword ptr [edx], 0` vs `mov`/`test`, and `xor eax, 1`/`test` vs `cmp eax, 1`. Register vs memory compare and test-vs-cmp on the spinlock; not a missing call.
+- **`+[PS2Controller probe:]` (diff 7) — mixed, first try source-shaped.** `add eax, 4` then `mov [eax], 0` vs `mov [eax+4], 0` (how the kalloc'd lock is zeroed) plus a `test eax` vs `mov ebx, eax` / `test ebx` return. Try the store shape before accepting the register move.
+
+## Task 4 experiment lists
+
+One idea per remaining empty-flag row, cheapest first. Add more only after a miss. Task 8 gate bodies are not rewritten.
+
+### `-[PS2Keyboard setAlphaLockFeedback:]` (diff 2) — empty by policy
+
+Task 8 regression gate. Do not apply the BOOL / `and eax, 0FFh` typed rewrite. Accept without a source edit.
+
+**Accepted** 2026-09-16: `intentional-mismatch`, compiler-shaped leftover after exhausted source-shape list.
+
+### `_resetEscapes` (diff 4) — empty; compiler-shaped confirmed
+
+`--name` 2026-09-16: same mnemonics; starred rows are jump labels and `ds:off_2078` vs `ds:off_2080`. Reloc / layout masking, not a wrong constant or missing call. Accept without a source experiment.
+
+**Accepted** 2026-09-16: `intentional-mismatch`, compiler-shaped leftover after exhausted source-shape list.
+
+### `_sendMouseCommand` (diff 4)
+
+1. Rewrite `return (response == 0xFA)` as an if/else that returns 1 or 0 (`jnz` / `mov eax, 1` / `xor eax, eax` vs `setz`).
+   **Tried, miss:** `if (response == 0xFA) return 1; else return 0;` laid the `xor eax, eax` path first (`jz` to `mov eax, 1`). Diff 4 → 5. No closed-function regression. Reverted.
+2. Invert the compare: `if (response != 0xFA) return 0; else return 1;` so the `jnz` failure path matches the reference.
+   **Match:** `masked_equal` after rebuild `C2B45245EE841E1851BA1FFCB9C8E20F9929D390A6E64AF97995202029A32CF1`. Ledger `assembly-matched`.
+
+### `-[PS2Keyboard desireOwnership:]` (diff 6)
+
+1. Invert the if/else: test the conflict (`_desiredOwner != nil && _desiredOwner != owner`) first so the `-725` store is laid out before the success store (`jz`/`jz` vs `jz`/`jnz`).
+   **Match:** `masked_equal` after rebuild `4FC38265802F44ADCD416DC55FED02E5138218867A93433CDDBAB6C15B74DA62`. Ledger `assembly-matched`.
+
+### `_lock_controller` (diff 6) — empty; compiler-shaped confirmed
+
+`--name` 2026-09-16: `cmp dword ptr [edx], 0` vs `mov`/`test`, and `xor eax, 1`/`test` vs `cmp eax, 1`. Equivalent gcc 2.x spinlock shape; no missing call. Accept without a source experiment.
+
+**Accepted** 2026-09-16: `intentional-mismatch`, compiler-shaped leftover after exhausted source-shape list.
+
+### `+[PS2Controller probe:]` (diff 7)
+
+1. Zero the kalloc'd lock flag through a pointer increment (`eax += 4; *eax = 0`) instead of `controller_lock[1] = 0`.
+   **Tried, miss:** extra `lockFlag` local still compiled to `mov dword ptr [eax+4], 0`. Diff stayed 7. No closed-function regression. Reverted.
+   **Accepted** 2026-09-16: leftover is addressing mode plus `test eax` vs `mov ebx, eax` / `test ebx`. `intentional-mismatch`, compiler-shaped leftover after exhausted source-shape list.
+
+### `-[PS2Keyboard initWithController:]` (diff 7)
+
+1. Apply the command-byte edit as three statements (`|= 0x40`, `&= 0xEF`, `|= 1`) immediately after `getKeyboardData()`, before `sendControllerCommand(0x60)`.
+   **Kept, leftover accepted:** three-instruction form now matches; remaining starred row is `stru_40F0.ext` vs `super_class` (objc_super operand). Diff 7 → 1, not masked-eq. Rebuild `20C8BD6E1243FE4CB6D1CDCC51654CBADF65E118370ACBF8D49EBE05B3631C07`. `intentional-mismatch`.
+
+### `-[PS2Keyboard readConfigTable:]` (diff 10)
+
+1. Store the Interface/Handler defaults into the ivars inside each NULL branch (`interfaceId = 3`, `handlerId = 0`) instead of through `interfaceValue` / `handlerValue` locals.
+   **Tried, STOP:** `--list` grew unpaired (`missing-rebuilt __PS2KeyboardNumKeysDown`, `missing-reference _resetEscapes`). Layout/linkage finding. Reverted. Do not repeat.
+2. Remaining leftover is the join-store (`mov eax, 3` / `xor eax, eax` then `mov [esi+21xh], eax`) versus in-branch ivar stores, plus Interface-path `add esp, 4` scheduling. Other allowed transforms (signedness of the two int locals, inverted NULL tests, declaration order) cannot produce those stores without repeating experiment 1.
+   **Accepted** 2026-09-17: `intentional-mismatch`, compiler-shaped leftover after exhausted source-shape list.
+
+### `_undoEscape` (diff 10)
+
+1. Drop the `scancode` local; enqueue `sequence->keys[index * 2] | 0x80` as an expression after testing the extended byte, so gcc does not park the scancode in `[ebp+var_4]` before the `0xE0` test.
+   **Match:** `masked_equal` after rebuild `C3AB80B5D295E5DBBBA30A3228C75D047CC578A0D38899BAA874E3B53DC68B23`. Ledger `assembly-matched`.
+
+### `_getKeyboardDataIfPresent` (diff 12)
+
+1. Branch on `keyboardDataPresent()` before the matching unlock, with explicit `return 1` / `return 0` on each path, instead of parking the BOOL and always unlocking first.
+   **Tried, miss:** `if (keyboardDataPresent()) { unlock; get; return 1; } unlock; return 0;` laid the return-0 path first (`jnz` to success). Diff 12 → 7. No closed-function regression.
+2. Explicit `else` on that `if`. Same `jnz` layout. Miss.
+3. Invert: `if (!keyboardDataPresent()) { unlock; return 0; } else { unlock; get; return 1; }` so the `jz` failure path matches the reference.
+   **Match:** `masked_equal` after rebuild `66F2CFBFA8781004505F3E4A2DA92FFE8EB9467C5EBF93118BDF7AD30A501496`. Ledger `assembly-matched`.
+
+### `_enqueueKeyboardData` (diff 13)
+
+1. Compare `keyboardFreeQueue.next == KBD_FREE_QUEUE` before loading `element`, matching the reference's `cmp ds:_keyboardFreeQueue` before `mov edx, ds:_keyboardFreeQueue`.
+   **Kept:** empty-check now matches. Diff 13 → 10. Leftover was insert-path store order plus a dead `movzx`.
+2. Capture `keyboardQueue.prev` in existing `tempPtr`, store `keyboardQueue.prev = element` before `tempPtr->next = element`.
+   **Kept, leftover accepted:** insert-path stores now match; remaining starred row is a dead `movzx eax, [ebp+var_4]` on the reference. Diff 10 → 9, not masked-eq. Rebuild `0ED264C35A59ED1EAECA13B36EA184596482F08B67DEBE9207B58B923C151FDE`. `intentional-mismatch`.
+
+### `_getMouseDataIfPresent` (diff 14)
+
+1. Replace the inverted `noMouseData` BOOL with `if (status & 0x20)` / else, returning 1 or 0 on each path (`test al, 20h` / `jz` vs `shr`/`xor`/`and`).
+   **Tried, miss:** `if (status & 0x20) { delay; read; unlock; return 1; } else { unlock; return 0; }` laid the return-0 path first (`jnz` to success). Diff 14 → 7. No closed-function regression.
+2. Invert: `if (!(status & 0x20)) { unlock; return 0; } else { delay; read; unlock; return 1; }` so the `jz` failure path matches the reference.
+   **Match:** `masked_equal` after rebuild `89C796C24C9B73175F9C5C2B644C454665ED2D49B349BDC2E8BC16E2925C2764`. Ledger `assembly-matched`.
+
+### `-[PS2Keyboard relinquishOwnership:]` (diff 20) — empty by policy
+
+Task 8 regression gate. `--name` shows then/else order on `respondsTo:`, but do not rewrite the body. Accept without a source edit.
+
+**Accepted** 2026-09-16: `intentional-mismatch`, compiler-shaped leftover after exhausted source-shape list.
+
+### `-[PS2Keyboard dispatchKeyboardEvents]` (diff 27)
+
+1. Signedness of the dispatch loop index: declare `i` as `int` so the count compare is `jl`/`jge` rather than `jb`/`jnb`.
+   **Tried, miss:** `unsigned int savedEventCount` still forced usual-arithmetic unsigned `jb`/`jnb`. Diff stayed 27.
+2. Also declare `savedEventCount` as `int`.
+   **Kept:** loop compares are now `jge`/`jl`. Leftover was the single-event `goingDown` byte store plus register allocation.
+3. Copy the n==1 event as a struct assignment (`localEventBuffer[0] = pendingEvents[0]`) so gcc lays four dword stores.
+   **Match:** `masked_equal` after rebuild `BD73917E3E2C0AFDD7F6A5E82A8D28B09A59415055533261C382D4B55A8F6359`. Ledger `assembly-matched`.
+
+### `-[PS2Keyboard enqueueKeyEvent:goingDown:atTime:]` (diff 31)
+
+1. Park `timestamp`, `keyCode`, and `goingDown` in locals before computing the slot address (`sub esp, 10h` then four stores vs immediate indexed stores).
+   **Tried, miss:** three scalar locals were copy-propagated; instruction stream unchanged. Diff stayed 31.
+2. Park a `PS2KeyboardEvent` local, then struct-assign into the slot.
+   **Match:** `identical` / `raw_equal` after rebuild `AF59A809360F8ADBC6010ECDC5781E9FD247D2F9A375A817356DF631E9310BAD`. Ledger `assembly-matched`.
+
+### `-[PS2Keyboard interruptOccurred]` (diff 32)
+
+1. Keep `scancode` as `unsigned int` (signedness of a local) so the `scancodeToKeyEvent` argument is `and eax, 0FFh` / `push eax` rather than `movzx`.
+   **Tried, STOP:** `--list` grew unpaired (`missing-rebuilt __PS2KeyboardNumKeysDown`, `missing-reference _resetEscapes`). Diff 32 → 35. Reverted. Do not repeat.
+2. Struct-assign `pendingEvents[index] = *event` so the slot copy is four dwords.
+   **Match:** `masked_equal` after rebuild `71A852D8F98F4393FBEF6ED141A0A499794645D762B0368B157769BF7F2237DD`. Ledger `assembly-matched`.
+
+### `_getKeyboardData` (diff 37)
+
+1. Invert the empty-queue if/else so the hardware read is the `jnz` fall-through and the dequeue unlink is the taken path.
+   **Already the compiled shape.** `if (next == QUEUE)` already lays `jnz` to dequeue. Not inverted.
+2. Invert the free-queue insert (`if (next != FREE)` tail-insert else empty) so the compare is `jz` to the empty insert.
+   **Kept:** free-queue `jz` now matches.
+3. Park `keyboardFreeQueue.prev` in existing `prevElement` and store `prev = element` before `prev->next = element`.
+   **Kept:** non-empty insert store order matches; instruction count 45 → 41.
+4. Unlink the data-queue element through `tempPtr` like `_enqueueKeyboardData`.
+   **Kept, leftover accepted:** dequeue cmp/jz/tempPtr stores now match. Remaining starred rows are empty-insert block placement (reference lays it before dequeue) and register names. Rebuild `924B8B12ACB1F6C1F87536930504C244AC75C3460B56E918DDE092906C171FF9`. `intentional-mismatch`.
+
+### `_isEscape` (diff 40)
+
+1. Do not hoist `scancodeChar` / `extendedChar` locals; compare `key` bytes in place after the `currentSequence` test (`cmp byte ptr [ebp+arg_0]` vs stack extracts).
+   **Kept:** inlined compares; instruction count 70 → 73. Leftover included `shr` vs `sar` and operand-reversed `count`/`index`.
+2. Reverse the byte compares and `index >= count` so `cmp [ebx], eax` / `jg` match.
+   **Kept:** completion test now matches.
+3. Park a `short extendedHalf = (short)key >> 8` so the high byte uses `sar`.
+   **Kept, leftover accepted:** `sar` and `sub esp, 4` now match. Remaining starred rows are `esi` vs `edi`, `cmp byte ptr [ebp+arg_0]` vs a register compare, and the cursor in `edx` rather than `[ebp+var_4]`. Rebuild `ECFE96B1136F8EDF6EEA601C99713F288E9515AD5983848E0C4CB3344E5C74A1`. `intentional-mismatch`.
+
+### `-[PS2Keyboard becomeOwner:]` (diff 43)
+
+1. Invert the `_owner == nil` if/else so the already-owned / `respondsTo:` path is laid out first (`jz` to the grant vs `jnz` to the ask). Also invert `respondsTo:` so the relinquish call is fall-through.
+   **Kept:** control-flow polarity now matches; leftover was `ownerName` parked in `ebx`.
+2. Inline `[self name]` / `[_owner name]` as `IOLog` arguments (no parked locals).
+   **Kept, matched:** `masked_equal`. Rebuild `E59F9DD4DCA17A66F7881219E3A43063D744E0A495A3BCBF54CCCDC9A19ADD09`.
+
+### `-[PS2Controller initFromDeviceDescription:]` (diff 48)
+
+1. Inside the free-queue fill loop, branch empty vs non-empty insert (`if (keyboardFreeQueue.next == KBD_FREE_QUEUE)` set both links, else tail-insert). Store `prev` before `next` when initializing both queues. Compare emptiness before taking the element address.
+   **Kept, leftover accepted:** queue `prev`/`next` init order and the empty `cmp`/`jnz` now match. Remaining starred rows are extra `edi`, `self` in `ebx` vs `esi`, `stru_40F0.ext` vs `super_class`, and duplicated `lea` in the else path. Rebuild `920B1D08B4592B04A390A3FA592798C349EE2D4035A6127A6BAD5B1BA24DF302`. `intentional-mismatch`.
+
+### `_doEscape` (diff 50)
+
+1. Test `data == 0xE0` before copying `lastExtended` into a local, matching the reference's `cmp dl, 0E0h` before the `mov al, ds:_lastExtended` else path.
+   **Kept:** prefix compare is immediate.
+2. Byte-compare `lastKey` against `data` / `sar` of `currentKey` instead of `(lastKey & 0xFF)` and unsigned `>> 8`.
+   **Kept, leftover accepted:** `cmp byte ptr` / `sar` match. Remaining starred rows are extra `edi`, `jz` vs `jnz`+`jmp` on the last conjunct, `push esi` vs `push si`, and register names. Rebuild `52AB2AE532AA87FEBB04829BF8B30630CCD1F61B71072B64B2E27569E3652752`. `intentional-mismatch`.
+
+### `_scancodeToKeyEvent` (diff 102)
+
+1. Store each jump-table keycode into `event.keyCode` in the case body instead of a `keyCode` local (`mov ds:dword_213C, 62h` vs `mov bl, 62h`). Invert `extendCount == 0` so the normal mask is the `jnz` fall-through. `unsigned char isKeyDown`.
+   **Kept, leftover accepted:** prologue, E0/E1, extendCount polarity, case stores into `event.keyCode`, and the zero-key `cmp`/`jz` now match. Remaining starred rows are jump-table body order, NumLock `test byte` vs `shr`, and key-up `rol` vs `not`. Rebuild `66A9030CBB92CCC4DEA81267E51AFFA76E33E85231CEF265B5AED6FC5D140D89`. `intentional-mismatch`.

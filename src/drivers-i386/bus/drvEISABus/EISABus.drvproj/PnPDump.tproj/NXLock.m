@@ -66,11 +66,9 @@ typedef struct {
 
     /* Initialize all fields to zero */
     data->mutex = 0;
-    data->reserved1 = 0;
     data->condition = 0;
-    data->waiters = 0;
     data->reserved2 = 0;
-    data->reserved3 = 0;
+    data->waiters = 0;
     data->locked = 0;
 
     return self;

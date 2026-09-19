@@ -1,6 +1,7 @@
 #import "AHCIDisk.h"
 #import "AHCIDiskInternal.h"
 #import "AHCIPort.h"
+#import "AHCIController.h"
 #import <bsd/dev/ata_hd_registry.h>
 #import <driverkit/generalFuncs.h>
 #import <bsd/stdio.h>
@@ -77,6 +78,16 @@
         return YES;
     }
     return YES;
+}
+
+static Protocol *protocols[] = {
+    @protocol(AHCIControllerPublic),
+    nil
+};
+
++ (Protocol **)requiredProtocols
+{
+    return protocols;
 }
 
 + (IODeviceStyle)deviceStyle

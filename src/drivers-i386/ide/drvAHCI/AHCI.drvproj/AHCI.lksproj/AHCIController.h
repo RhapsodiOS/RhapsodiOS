@@ -10,7 +10,15 @@
 #import "AHCIShared.h"
 #import "AHCIPort.h"
 
-@interface AHCIController : IODirectDevice
+/* Marker protocol so AHCIDisk, an IO_IndirectDevice, can name what it needs
+ * from its provider -- mirroring IdeControllerPublic in drvEIDE.  Disks are
+ * published directly by +[AHCIDisk publishForPort:deviceDescription:], so
+ * DriverKit's indirect-device auto-connect never has work to do here; this
+ * exists so +requiredProtocols can return something true. */
+@protocol AHCIControllerPublic
+@end
+
+@interface AHCIController : IODirectDevice <AHCIControllerPublic>
 {
     vm_address_t abarAddress;
     BOOL abarMapped;

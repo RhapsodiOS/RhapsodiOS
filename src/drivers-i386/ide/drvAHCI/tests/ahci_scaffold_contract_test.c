@@ -377,7 +377,8 @@ static int valid_default_table(const char *text)
 
 static int valid_controller_header(const char *text)
 {
-    return has_exact_line(text, "@interface AHCIController : IODirectDevice", 0) &&
+    return has_exact_line(text,
+               "@interface AHCIController : IODirectDevice <AHCIControllerPublic>", 0) &&
            has_exact_line(text, "+ (BOOL)probe:(IOPCIDeviceDescription *)deviceDescription;", 0) &&
            has_exact_line(text, "- initFromDeviceDescription:(IOPCIDeviceDescription *)deviceDescription;", 0) &&
            has_exact_line(text, "- (void)interruptOccurred;", 0);
@@ -625,12 +626,12 @@ static void test_validator_mutations(void)
         "\"Auto Detect IDs\" = \"0x29228086\";\n"
         "/* \"Boot Driver\"; */\n";
     static const char header_ok[] =
-        "@interface AHCIController : IODirectDevice\n"
+        "@interface AHCIController : IODirectDevice <AHCIControllerPublic>\n"
         "+ (BOOL)probe:(IOPCIDeviceDescription *)deviceDescription;\n"
         "- initFromDeviceDescription:(IOPCIDeviceDescription *)deviceDescription;\n"
         "- (void)interruptOccurred;\n";
     static const char header_no_interrupt[] =
-        "@interface AHCIController : IODirectDevice\n"
+        "@interface AHCIController : IODirectDevice <AHCIControllerPublic>\n"
         "+ (BOOL)probe:(IOPCIDeviceDescription *)deviceDescription;\n"
         "- initFromDeviceDescription:(IOPCIDeviceDescription *)deviceDescription;\n";
     char postload_ok[2048];

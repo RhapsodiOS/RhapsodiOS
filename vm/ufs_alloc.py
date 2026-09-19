@@ -10,6 +10,7 @@ refusals happen before the first byte is written.
 """
 import os
 import struct
+import sys
 import time
 
 import rhap_image
@@ -1001,3 +1002,37 @@ class Allocator(object):
         self._remove_dirent(parent_ino, name)
         self._bump_nlink(parent_ino, -1)
 
+
+def main(argv):
+    if len(argv) < 3:
+        print("usage: ufs_alloc.py IMAGE {mkdir PATH|put PATH LOCALFILE}",
+              file=sys.stderr)
+        return 2
+    image, cmd = argv[1], argv[2]
+    try:
+        with Allocator(image, writable=True) as a:
+            a.validate()
+            if cmd == "mkdir" and len(argv) == 4:
+                ino = a.mkdir(argv[3])
+                a.flush()
+                print("created directory %s (inode %d)" % (argv[3], ino))
+            elif cmd == "put" and len(argv) == 5:
+                path, local = argv[3], argv[4]
+                with open(local, "rb") as f:
+                    data = f.read()
+                ino = a.create_file(path, data)
+                a.flush()
+                print("created file %s (inode %d, %d bytes)"
+                      % (path, ino, len(data)))
+            else:
+                print("usage: ufs_alloc.py IMAGE {mkdir PATH|put PATH LOCALFILE}",
+                      file=sys.stderr)
+                return 2
+    except SafetyError as e:
+        print("ufs_alloc: %s" % e, file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv))

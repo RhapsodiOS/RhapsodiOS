@@ -440,5 +440,29 @@ class TestDirectoryOperations(unittest.TestCase):
                 self.assertEqual(img.read_file(ino), payload)
 
 
+class TestDriverInstall(unittest.TestCase):
+    @unittest.skipUnless(_present(GOLDEN, os.path.join(HERE, "AHCI.config")),
+                         "golden.img or AHCI.config not present")
+    def test_installs_the_driver_bundle_and_lists_it_as_a_boot_driver(self):
+        import rhap_image
+        tmp = tempfile.mkdtemp(prefix="ufsalloc-", dir=os.path.join(HERE, "work"))
+        self.addCleanup(shutil.rmtree, tmp)
+        out = os.path.join(tmp, "test.img")
+        subprocess.check_call(
+            ["python3", os.path.join(HERE, "install-driver.py"),
+             GOLDEN, os.path.join(HERE, "AHCI.config"), out])
+        self.assertEqual(ufs_check.check(out), [])
+        with rhap_image.Image(out) as img:
+            base = "/private/Drivers/i386/AHCI.config"
+            for name in ("AHCI_reloc", "Default.table", "Instance0.table"):
+                self.assertIsNotNone(img.resolve(base + "/" + name), name)
+            reloc = img.read_file(img.resolve(base + "/AHCI_reloc"))
+            self.assertEqual(
+                reloc, open(os.path.join(HERE, "AHCI.config/AHCI_reloc"), "rb").read())
+            sysconf = img.read_file(img.resolve(
+                "/private/Drivers/i386/System.config/Instance0.table"))
+            self.assertIn(b"AHCI", sysconf)
+
+
 if __name__ == "__main__":
     unittest.main()

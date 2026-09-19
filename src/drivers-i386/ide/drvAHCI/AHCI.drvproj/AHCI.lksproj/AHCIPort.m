@@ -184,6 +184,22 @@ static int AHCIPortPacketCheckCondition(
     }
     online = deviceKind == AHCI_DEVICE_SATA ||
              deviceKind == AHCI_DEVICE_ATAPI;
+    if (!online) {
+        /* An empty port needs no DMA arena, and IOMallocLow draws on a
+         * small shared pool of physically contiguous low memory.  Six
+         * implemented ports per controller across two controllers asked
+         * for twelve arenas and exhausted it, so the second controller's
+         * very first port could not allocate.  Hand an empty port's arena
+         * back once the hardware is stopped, keeping the object so the
+         * controller's port bookkeeping is unchanged. */
+        result = AHCIPortStopHardware(&ops, portNumber);
+        hardwareTouched = NO;
+        if (AHCIPortArenaMayRelease(result) && rawArena != 0) {
+            IOFreeLow(rawArena, rawArenaBytes);
+            rawArena = 0;
+            rawArenaBytes = 0;
+        }
+    }
     return self;
 }
 
@@ -316,6 +332,14 @@ static int AHCIPortPacketCheckCondition(
         return NO;
     }
     previousKind = deviceKind;
+    if (rawArena == 0) {
+        /* An empty port released its arena after init, so there is nothing
+         * to point the command list and FIS receive registers at.  Such a
+         * port has no device to recover and AHCIRecoveredKindValid would
+         * reject it anyway. */
+        [commandLock unlockWith:AHCI_LOCK_DONE];
+        return NO;
+    }
     AHCIPortFillOps(&ops, mmio);
     result = AHCIPortInitializeHardware(&ops, portNumber, portCapabilities,
                                         &arena, &recoveredKind);

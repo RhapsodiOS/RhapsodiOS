@@ -795,7 +795,8 @@ int runner_manifest(const char *srclist, const char *seeddir,
 static int buildpackage_for_arch(const char *type, const char *source,
                         const char *seeddir, const char *target,
                         const char *dstdir, const char *state_dir,
-                        unsigned operation_arch, const char *arch) {
+                        unsigned operation_arch, const char *arch,
+                        const Toolchain *tc) {
     strlist repository;
     BuildOptions opt;
     Package pkg;
@@ -831,6 +832,7 @@ static int buildpackage_for_arch(const char *type, const char *source,
     if (builder_scan(type, source, &pkg, &params) != 0) goto done_scanned;
     build_options_init(&opt);
     opt.operation_arch = operation_arch;
+    opt.toolchain = tc;
     if (builder_resolve_architecture(&pkg, &opt) != 0) {
         fprintf(stderr, "rbuild: architecture resolution failed for %s\n", source);
         goto done_scanned;
@@ -875,7 +877,7 @@ done:
 int runner_buildpackage(const char *type, const char *source,
                         const char *seeddir, const char *target,
                         const char *dstdir, const char *state_dir,
-                        const char *arch) {
+                        const char *arch, const Toolchain *tc) {
     unsigned operation_arch = 0;
     if (arch != 0) {
         if (architecture_parse(arch, &operation_arch) != 0 ||
@@ -888,11 +890,12 @@ int runner_buildpackage(const char *type, const char *source,
         }
     }
     return buildpackage_for_arch(type, source, seeddir, target, dstdir,
-                                 state_dir, operation_arch, arch);
+                                 state_dir, operation_arch, arch, tc);
 }
 
 int runner_kernel(const char *srcdir, const char *seeddir, const char *dstdir,
-                  const char *arch, const char *state_dir) {
+                  const char *arch, const char *state_dir,
+                  const Toolchain *tc) {
     strlist packages;
     size_t i;
     int rc = 1;
@@ -918,7 +921,7 @@ int runner_kernel(const char *srcdir, const char *seeddir, const char *dstdir,
             continue;
         }
         if (buildpackage_for_arch("dir", path, seeddir, "all", dstdir,
-                                  state_dir, operation_arch, arch) != 0) {
+                                  state_dir, operation_arch, arch, tc) != 0) {
             fprintf(stderr, "rbuild: kernel failed: %s\n", packages.items[i]);
             free(path);
             goto done;
@@ -935,7 +938,7 @@ done:
 
 int runner_kerneldrivers(const char *srcdir, const char *seeddir,
                          const char *dstdir, const char *arch,
-                         const char *state_dir) {
+                         const char *state_dir, const Toolchain *tc) {
     strlist packages;
     strlist failed;
     strlist found;
@@ -986,7 +989,7 @@ int runner_kerneldrivers(const char *srcdir, const char *seeddir,
     for (i = 0; i < packages.count; i++) {
         path = path_join(srcdir, packages.items[i]);
         if (buildpackage_for_arch("dir", path, seeddir, "all", dstdir,
-                                  state_dir, operation_arch, arch) != 0) {
+                                  state_dir, operation_arch, arch, tc) != 0) {
             fprintf(stderr, "rbuild: FAIL %s\n", packages.items[i]);
             strlist_push(&failed, packages.items[i]);
         } else {

@@ -28,6 +28,7 @@ test: rbuild $(TESTS)
 	MAKE=$(MAKE) sh tests/bootstrap-resume.sh
 	MAKE=$(MAKE) sh tests/bootstrap-closure.sh
 	MAKE=$(MAKE) sh tests/bootstrap-runtime-manifest.sh
+	MAKE=$(MAKE) sh tests/buildpackage-toolchain.sh
 
 test_products_OBJS = products.o macho.o architecture.o strutil.o
 test_macho_OBJS = macho.o

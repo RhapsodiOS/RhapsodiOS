@@ -31,7 +31,7 @@ TEST(test_buildpackage_scan_failure_clears_log) {
     CHECK_INT(exec_set_log(path), 0);
     CHECK(runner_buildpackage("invalid", "/no/such/source", "/tmp",
                               "all", "/tmp/rbuild-runner-output",
-                              "/tmp/rbuild-state", 0) != 0);
+                              "/tmp/rbuild-state", 0, 0) != 0);
     CHECK_INT(exec_run(cmd), 0);
     f = fopen(path, "r");
     CHECK(f != 0);
@@ -222,9 +222,9 @@ TEST(test_kernel_architecture_controls_build_commands) {
         exec_dry_run = 1;
         rc = drivers ? runner_kerneldrivers("/tmp/rbuild-kernel-policy",
                            "/tmp/rbuild-kernel-policy/repo",
-                           "/tmp/rbuild-kernel-policy/repo", "i386", 0) :
+                           "/tmp/rbuild-kernel-policy/repo", "i386", 0, 0) :
              runner_kernel("/tmp/rbuild-kernel-policy", "/tmp/rbuild-kernel-policy/repo",
-                           "/tmp/rbuild-kernel-policy/repo", "i386", 0);
+                           "/tmp/rbuild-kernel-policy/repo", "i386", 0, 0);
         fflush(stdout); dup2(saved_stdout, 1); close(saved_stdout);
         rewind(f); n = fread(output, 1, sizeof(output)-1, f); output[n] = '\0'; fclose(f);
         CHECK_INT(rc, 0);
@@ -240,9 +240,9 @@ TEST(test_kernel_architecture_controls_build_commands) {
         fflush(stdout); saved_stdout = dup(1); dup2(fileno(f), 1);
         rc = drivers ? runner_kerneldrivers("/tmp/rbuild-kernel-policy",
                            "/tmp/rbuild-kernel-policy/repo",
-                           "/tmp/rbuild-kernel-policy/repo", "i386", 0) :
+                           "/tmp/rbuild-kernel-policy/repo", "i386", 0, 0) :
              runner_kernel("/tmp/rbuild-kernel-policy", "/tmp/rbuild-kernel-policy/repo",
-                           "/tmp/rbuild-kernel-policy/repo", "i386", 0);
+                           "/tmp/rbuild-kernel-policy/repo", "i386", 0, 0);
         fflush(stdout); dup2(saved_stdout, 1); close(saved_stdout);
         rewind(f); n = fread(output, 1, sizeof(output)-1, f); output[n] = '\0'; fclose(f);
         CHECK(rc != 0);
@@ -278,7 +278,7 @@ TEST(test_kernel_skips_missing_core_source) {
     fflush(stdout); saved_stdout = dup(1); dup2(fileno(f), 1);
     exec_dry_run = 1;
     rc = runner_kernel("/tmp/rbuild-kernel-skip", "/tmp/rbuild-kernel-skip/repo",
-                       "/tmp/rbuild-kernel-skip/repo", "i386", 0);
+                       "/tmp/rbuild-kernel-skip/repo", "i386", 0, 0);
     fflush(stdout); dup2(saved_stdout, 1); close(saved_stdout);
     rewind(f); n = fread(output, 1, sizeof(output)-1, f); output[n] = '\0'; fclose(f);
     exec_dry_run = 0;

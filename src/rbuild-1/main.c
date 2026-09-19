@@ -14,7 +14,7 @@
 
 static const char *USAGE =
     "usage:\n"
-    "  rbuild buildpackage [--state DIR] [--arch ARCH] [--dir]"
+    "  rbuild buildpackage [--state DIR] [--arch ARCH] [--toolchain FILE] [--dir]"
     " [--target {all|headers|objs|local}]"
     " <source> <repository> <dstdir>\n"
     "  rbuild buildall [--state DIR] <srclist> <repository> <dstdir>\n"
@@ -22,9 +22,9 @@ static const char *USAGE =
     " <srclist> <repository> <dstdir>\n"
     "  rbuild bootstrap-universal --sysroot ROOT --toolchain FILE --state DIR"
     " <srclist> <repository> <dstdir>\n"
-    "  rbuild kernel [--state DIR] --arch ARCH"
+    "  rbuild kernel [--state DIR] [--toolchain FILE] --arch ARCH"
     " <srcdir> <repository> <dstdir>\n"
-    "  rbuild kerneldrivers [--state DIR] --arch ARCH"
+    "  rbuild kerneldrivers [--state DIR] [--toolchain FILE] --arch ARCH"
     " <srcdir> <repository> <dstdir>\n"
     "  rbuild missing   <srclist> <dstdir>\n"
     "  (global: -n/--dry-run)\n";
@@ -37,6 +37,8 @@ static int cmd_buildpackage(int argc, char **argv) {
     const char *source, *seeddir, *dstdir;
     const char *state_dir = 0;
     const char *arch = 0;
+    const char *profile = 0;
+    Toolchain tc;
     int i = 0;
     int rc;
 
@@ -62,6 +64,8 @@ static int cmd_buildpackage(int argc, char **argv) {
             target = argv[i++];
         } else if (strcmp(name, "--arch") == 0) {
             arch = argv[i++];
+        } else if (strcmp(name, "--toolchain") == 0) {
+            profile = argv[i++];
         } else {
             usage();
             return 1;
@@ -75,8 +79,17 @@ static int cmd_buildpackage(int argc, char **argv) {
     }
     source = argv[i]; seeddir = argv[i + 1]; dstdir = argv[i + 2];
 
+    if (profile != 0) {
+        toolchain_init(&tc);
+        if (toolchain_load(&tc, profile) != 0 || toolchain_validate(&tc) != 0) {
+            fprintf(stderr, "rbuild: unusable toolchain profile %s\n", profile);
+            toolchain_free(&tc);
+            return 1;
+        }
+    }
     rc = runner_buildpackage(type, source, seeddir, target, dstdir,
-                             state_dir, arch);
+                             state_dir, arch, profile ? &tc : 0);
+    if (profile != 0) toolchain_free(&tc);
     return rc;
 }
 
@@ -299,7 +312,10 @@ static int cmd_missing(int argc, char **argv) {
 static int cmd_kernel(int argc, char **argv, int drivers) {
     const char *state = 0;
     const char *arch = 0;
+    const char *profile = 0;
+    Toolchain tc;
     int i = 0;
+    int rc;
 
     while (i < argc && strncmp(argv[i], "--", 2) == 0) {
         const char *name = argv[i++];
@@ -308,6 +324,7 @@ static int cmd_kernel(int argc, char **argv, int drivers) {
         value = argv[i++];
         if (strcmp(name, "--state") == 0) state = value;
         else if (strcmp(name, "--arch") == 0) arch = value;
+        else if (strcmp(name, "--toolchain") == 0) profile = value;
         else { usage(); return 1; }
     }
     if (argc - i != 3 || arch == 0) { usage(); return 1; }
@@ -319,10 +336,22 @@ static int cmd_kernel(int argc, char **argv, int drivers) {
         fprintf(stderr, "rbuild: unsafe architecture \"%s\"\n", arch);
         return 1;
     }
+    if (profile != 0) {
+        toolchain_init(&tc);
+        if (toolchain_load(&tc, profile) != 0 || toolchain_validate(&tc) != 0) {
+            fprintf(stderr, "rbuild: unusable toolchain profile %s\n", profile);
+            toolchain_free(&tc);
+            return 1;
+        }
+    }
     if (drivers)
-        return runner_kerneldrivers(argv[i], argv[i + 1], argv[i + 2],
-                                    arch, state);
-    return runner_kernel(argv[i], argv[i + 1], argv[i + 2], arch, state);
+        rc = runner_kerneldrivers(argv[i], argv[i + 1], argv[i + 2],
+                                  arch, state, profile ? &tc : 0);
+    else
+        rc = runner_kernel(argv[i], argv[i + 1], argv[i + 2], arch, state,
+                           profile ? &tc : 0);
+    if (profile != 0) toolchain_free(&tc);
+    return rc;
 }
 
 int main(int argc, char **argv) {

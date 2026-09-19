@@ -26,7 +26,11 @@ static BOOL IOUpdateDescriptorFromNetBuf(netbuf_t nb, void *desc, BOOL isSetupFr
     unsigned int bufAddr;
     unsigned int physAddr1, physAddr2;
     vm_task_t task;
-    extern unsigned int vm_page_size;
+    /* The kernel's page size (vm/vm_resident.c:115).  Not the user-space Mach
+     * spelling with the vm_ prefix: mach/vm_param.h declares that one only
+     * outside KERNEL builds, so referencing it leaves an undefined symbol when
+     * this driver is linked against mach_kernel. */
+    extern unsigned int page_size;
 
     /* Get buffer size - setup frames are fixed size */
     if (isSetupFrame) {
@@ -59,9 +63,9 @@ static BOOL IOUpdateDescriptorFromNetBuf(netbuf_t nb, void *desc, BOOL isSetupFr
     descPtr[2] = physAddr1;
 
     /* Check if buffer crosses a page boundary */
-    if ((bufAddr & ~(vm_page_size - 1)) != ((bufAddr + bufSize) & ~(vm_page_size - 1))) {
+    if ((bufAddr & ~(page_size - 1)) != ((bufAddr + bufSize) & ~(page_size - 1))) {
         /* Buffer spans two pages - need to split descriptor */
-        unsigned int nextPageAddr = (bufAddr + vm_page_size) & ~(vm_page_size - 1);
+        unsigned int nextPageAddr = (bufAddr + page_size) & ~(page_size - 1);
         unsigned int firstSize = nextPageAddr - bufAddr;
         unsigned int secondSize = bufSize - firstSize;
 
@@ -235,13 +239,17 @@ static BOOL IOUpdateDescriptorFromNetBuf(netbuf_t nb, void *desc, BOOL isSetupFr
     unsigned int allocSize;
     void *memBase;
     vm_task_t task;
-    extern unsigned int vm_page_size;
+    /* The kernel's page size (vm/vm_resident.c:115).  Not the user-space Mach
+     * spelling with the vm_ prefix: mach/vm_param.h declares that one only
+     * outside KERNEL builds, so referencing it leaves an undefined symbol when
+     * this driver is linked against mach_kernel. */
+    extern unsigned int page_size;
     const char *driverName;
 
     /* Calculate total allocation size - must fit in one page */
     allocSize = 0x6F0;  /* 1776 bytes total */
 
-    if (vm_page_size < allocSize) {
+    if (page_size < allocSize) {
         driverName = [[self name] cString];
         IOLog("%s: 1 page limit exceeded for descriptor memory\n", driverName);
         return NO;

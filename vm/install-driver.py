@@ -2,8 +2,10 @@
 
 The loader opens /private/Drivers/i386/<Name>.config/<Name>_reloc
 (src/boot-2/i386/libsaio/load.c:382) and reads Instance0.table from the same
-directory. DRIVER_DIR ships Default.table but no Instance0.table, so
-Default.table's contents are also written under the Instance0.table name.
+directory. When DRIVER_DIR ships no Instance0.table, Default.table's
+contents are also written under that name. A bundle that ships its own
+Instance tables -- drvAHCI does, so a board with two controllers gets a
+driver for each -- keeps them as-is, and all of them are installed.
 <Name> must additionally appear in the "Boot Drivers" key of
 /private/Drivers/i386/System.config/Instance0.table, or the loader never
 looks for the bundle at all.
@@ -102,9 +104,13 @@ def install_driver(src_image, driver_dir, out_image):
     with ufs_alloc.Allocator(out_image, writable=True) as a:
         a.validate()
         _install_bundle(a, base, driver_dir)
-        with open(os.path.join(driver_dir, "Default.table"), "rb") as f:
-            default_data = f.read()
-        a.create_file(base + "/Instance0.table", default_data)
+        # _install_bundle already copied whatever tables the bundle ships.
+        # Only synthesise Instance0.table when it ships none, or the
+        # create_file below would be a second attempt at the same name.
+        if not os.path.exists(os.path.join(driver_dir, "Instance0.table")):
+            with open(os.path.join(driver_dir, "Default.table"), "rb") as f:
+                default_data = f.read()
+            a.create_file(base + "/Instance0.table", default_data)
         a.flush()
 
     return _add_boot_driver(out_image, name)

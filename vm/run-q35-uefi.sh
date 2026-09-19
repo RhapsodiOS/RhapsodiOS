@@ -1,12 +1,14 @@
 #!/bin/sh
-# LOADER-LEVEL TESTING ONLY -- not the primary runner (see
-# run-pc-uefi-virtio-esp.sh for that) and not redundant with it: this is
-# q35 with an ICH9 AHCI controller, which exercises the UEFI LOADER's own
-# EFI_BLOCK_IO path against a different disk controller than the primary
-# runner uses. The Rhapsody KERNEL cannot find its disk here -- there is no
-# legacy IDE at port 0x1f0 on q35, and the media has no AHCI driver -- so
-# this is useful for checking the loader itself, not for kernel-level work
-# such as root-mount testing.
+# q35 with AHCI: boots all the way to userland once drvAHCI is installed in
+# the image (see install-driver.py).  Also exercises the UEFI loader's own
+# EFI_BLOCK_IO path against a different controller than the PIIX IDE runner.
+#
+# The disks hang off q35's BUILT-IN ICH9 SATA controller (bus=ide.0/ide.1).
+# Do NOT add `-device ich9-ahci`: q35 already has one at 00:1f.2, so adding a
+# second produces two identical 8086:2922 controllers, and drvAHCI binds to
+# whichever it finds first.  When that was the empty added one, every port
+# reported "AHCI: port N empty" and root never mounted -- a confusing failure
+# that cost real time to diagnose.
 #
 # Boot the two-disk UEFI layout under QEMU with IA32 OVMF: disk 0 is the
 # Rhapsody filesystem image (attached whole, so boot-2's read_label() sees
@@ -92,9 +94,8 @@ exec "$qemu" \
     -drive if=pflash,format=raw,unit=1,file="$vars_copy" \
     -drive id=disk0,file="$dst_image",format=raw,if=none \
     -drive id=disk1,file="$esp_image",format=raw,if=none \
-    -device ich9-ahci,id=ahci \
-    -device ide-hd,drive=disk0,bus=ahci.0 \
-    -device ide-hd,drive=disk1,bus=ahci.1 \
+    -device ide-hd,drive=disk0,bus=ide.0 \
+    -device ide-hd,drive=disk1,bus=ide.1 \
     -serial "file:$serial_log" \
     -serial "file:$kernel_log" \
     -display none \

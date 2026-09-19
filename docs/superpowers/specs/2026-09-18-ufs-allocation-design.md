@@ -266,3 +266,24 @@ answer — does the allocator produce a filesystem the guest's own fsck
 accepts as correctly accounted — the allocator now passes. Full output and
 analysis are in `.superpowers/sdd/task-8-report.md` under "fsck gate via
 PIIX IDE", "fsck-found fixes", and "fsck gate re-run after fixes".
+
+A final whole-branch review then found two more Critical defects, both in
+the removal path, which no fsck run above had ever exercised (every prior
+run only created files): `free_inode` cleared the bitmap bit but left the
+dinode's `di_mode`/`di_db`/`di_ib` populated, so a removed file still
+looked allocated to fsck (`UNREF FILE`, and later `DUP BLKS` once its
+stale blocks were reused); and `add_dirent` still didn't zero a reused
+slot's tail, so it lacked the name's NUL terminator that `dircheck()`
+requires. Both were fixed (`free_inode` now zeroes the dinode; both
+dirent-reuse branches now zero the tail after the name) with unit tests,
+then the gate was re-run one more time specifically exercising removal:
+create a directory (with 4- and 8-letter names, e.g. "AHCI", "PostLoad"),
+unlink some of those files and create new, shorter-named files in the same
+directory (reusing freed dirent slots — the exact path that triggered the
+terminator bug), then remove the whole tree. `fs_cstotal()` returned
+exactly to its pre-exercise value. `fsck -n`, captured gaplessly, showed
+`INCORRECT BLOCK COUNT`, `UNREF FILE`, `PARTIALLY ALLOCATED INODE`, and
+`DUP BLKS` all absent, no complaint about the created/removed directory or
+its entries, and nothing new beyond the same four pre-existing
+graft-caused complaints. Removal is now exercised and clean. Full output
+is in `.superpowers/sdd/task-8-report.md` under "fsck gate with removal".

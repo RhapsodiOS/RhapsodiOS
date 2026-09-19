@@ -339,8 +339,13 @@ void efi_init_bootstruct(void)
     /* The kernel's setconf() reads rootdev from here, and -v turns on the
      * verbose output later tasks check for. kernDev is NOT set here: sys.c's
      * device parser writes it as a side effect of the first successful
-     * open(), which happens in load_kernel(). */
-    strncpy(kernBootStruct->bootString, "rootdev=hd0a -v",
+     * open(), which happens in load_kernel(). BOOTEFI_BOOT_STRING lets the
+     * Makefile override this at build time (e.g. to append -s); it defaults
+     * to the same string when not overridden. */
+#ifndef BOOTEFI_BOOT_STRING
+#define BOOTEFI_BOOT_STRING "rootdev=hd0a -v"
+#endif
+    strncpy(kernBootStruct->bootString, BOOTEFI_BOOT_STRING,
             BOOT_STRING_LEN - 1);
     /* diskInfo, video, pciInfo, eisaSlotInfo and apm_config stay zeroed:
      * they are BIOS-derived and have no EFI equivalent. */

@@ -7,6 +7,10 @@
 CC       ?= clang
 LINK     ?= lld-link
 
+# Boot string passed to the kernel; override to change kernel flags (e.g.
+# append -s for single-user) without editing efi_memory.c's default.
+BOOTEFI_BOOT_STRING ?= "rootdev=hd0a -v"
+
 BUILD    := BUILD
 BOOT2    := ../boot-2/i386
 KERNEL7  := ../kernel-7
@@ -26,7 +30,8 @@ CFLAGS := -target i386-unknown-windows -std=gnu89 -ffreestanding \
           -I. -I$(BOOT2)/libsaio -I$(BOOT2)/libsa -I$(BOOT2)/util \
           -I$(KERNEL7) -I$(KERNEL7)/bsd -I$(KERNEL7)/bsd/include \
           -I$(CCTOOLS) -Ivendor_includes \
-          -include bootefi_memory_override.h
+          -include bootefi_memory_override.h \
+          -DBOOTEFI_BOOT_STRING='$(BOOTEFI_BOOT_STRING)'
 
 # sys.c's own `#define BIG_ENDIAN_INTEL_FS __LITTLE_ENDIAN__` is always true
 # on i386 (clang predefines __LITTLE_ENDIAN__=1 for this target) and

@@ -315,7 +315,7 @@ git commit -m "bootefi: parse the ACPI bus-number range from a root bridge"
 
 ### Task 2: Fix the slot-array allocation overflow
 
-`PCI_Bus_Init` allocates one spare byte for a terminator that is 20 bytes wide. Dormant today only because nothing under UEFI calls this; Task 5 makes it live.
+`PCI_Bus_Init` allocates one spare byte for a terminator that is 20 bytes wide. This is **not** dormant: `src/boot-2/i386/boot2/boot.c:390` calls `PCI_Bus_Init()` unconditionally and `pci.o` is in `libsaio/Makefile:34`, so it has been overflowing on every legacy BIOS boot. Task 5 adds a second caller under UEFI.
 
 **Files:**
 - Modify: `src/boot-2/i386/libsaio/pci.c:116-117`

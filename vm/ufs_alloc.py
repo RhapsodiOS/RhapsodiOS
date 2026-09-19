@@ -1,0 +1,1138 @@
+"""Allocating writer for the Rhapsody disk image.
+
+Unlike rhap_inject.py, which never allocates and only rewrites already-mapped
+fragments, this module grows the filesystem: it claims fragments and inodes,
+creates directory entries, and maintains every summary the kernel and fsck
+rely on.  That power is why the safety rules here are strict.
+
+Never operates on vm/golden.img.  Every refusal raises SafetyError, and
+refusals happen before the first byte is written.
+"""
+import os
+import struct
+import sys
+import time
+
+import rhap_image
+import ufs_cg
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+
+# bsize=8192 and fsize=1024 (so frag=8) on golden.img; one indirect block
+# holds bsize // 4 = 2048 pointers.  Double indirect is out of scope.  This
+# module-level constant matches golden.img's own geometry and exists only so
+# callers that don't have an Allocator handy (e.g. tests) have something to
+# reference; Allocator.max_file_bytes() is authoritative and derives the
+# real limit from self.g, so it stays correct for any image's geometry.
+MAX_FILE_BYTES = (rhap_image.NDADDR + 2048) * 8192
+
+# src/kernel-7/bsd/ufs/ufs/dir.h:102 - Apple's UFS packs directory entries
+# into 1024-byte chunks (not DEV_BSIZE, and not fs_bsize); no entry may
+# straddle a chunk boundary, and the last entry in a chunk is stretched to
+# reach it.  ufs_build.py's _dir_block does the same packing on the
+# from-scratch build path.
+DIRBLKSIZ = 1024
+
+CG_CS_OFF = 24          # struct csum inside the cg header
+CG_OFFSETS_OFF = 84     # cg_btotoff, cg_boff, cg_iusedoff, cg_freeoff
+
+
+def _dirent_reclen(namlen):
+    """Minimum record length for a directory entry with this name length.
+
+    src/kernel-7/bsd/ufs/ufs/dir.h's DIRSIZ macro: the fixed 8-byte header
+    (d_ino/d_reclen/d_type/d_namlen) plus room for the name PLUS ITS
+    TERMINATING NUL BYTE (namlen + 1), rounded up to 4.  Leaving out the "+1"
+    (i.e. using roundup4(namlen) instead of roundup4(namlen + 1)) undersizes
+    the record by 4 bytes whenever namlen is itself a multiple of 4: the next
+    entry's own d_ino then lands where the kernel's fsck requires a NUL
+    terminator, which fails its dircheck() validation and silently discards
+    every entry after it in the same DIRBLKSIZ chunk (an on-disk-valid-looking
+    but unreachable, i.e. orphaned, inode).
+    """
+    return 8 + ((namlen + 1 + 3) & ~3)
+
+# struct fs in src/kernel-7/bsd/ufs/ffs/fs.h:241 (the "struct csum
+# fs_cstotal" member).  Counting every preceding int32-sized field (each
+# ufs_daddr_t/time_t on this platform is also 4 bytes, confirmed because
+# doing so lines up every later field with ufs_cg.SB_FIELDS' offsets, e.g.
+# fs_nindir at 116 and fs_fpg at 188) puts fs_cstotal at byte 192.
+# Allocator.validate() proves this against golden.img: the sum of all 510
+# per-group summaries must equal the value read from this offset exactly.
+SB_CSTOTAL_OFF = 192
+
+# cg_frsum[MAXFRAG] follows cg_rotor/cg_frotor/cg_irotor, which follow
+# cg_cs (CG_CS_OFF + 16 bytes).  MAXFRAG is 8 (src/kernel-7/bsd/sys/param.h).
+CG_FRSUM_OFF = CG_CS_OFF + 16 + 12
+
+
+class SafetyError(Exception):
+    pass
+
+
+def _encode_name(name):
+    """ASCII-encode a directory-entry name, raising SafetyError (not
+    UnicodeEncodeError) for anything that can't round-trip, and SafetyError
+    (not struct.error) for anything too long for the on-disk d_namlen byte.
+    """
+    try:
+        nameb = name.encode("ascii")
+    except UnicodeEncodeError:
+        raise SafetyError("name %r is not representable in ASCII" % name)
+    if len(nameb) > 255:
+        raise SafetyError("name %r is too long (max 255 bytes)" % name)
+    return nameb
+
+
+def _split_path(path):
+    """(parent_path, name) for a leaf operation (mkdir/create_file/unlink/
+    rmdir), raising SafetyError instead of str.rsplit's ValueError when
+    `path` has no parent component to split off (e.g. "foo" or "/").
+    """
+    stripped = path.rstrip("/")
+    if "/" not in stripped:
+        raise SafetyError("path %r must be absolute" % path)
+    parent_path, name = stripped.rsplit("/", 1)
+    if not name:
+        raise SafetyError("path %r has no final component" % path)
+    return parent_path, name
+
+
+def _refuse_master(path):
+    """Refuse the read-only master and anything outside vm/work."""
+    real = os.path.realpath(path)
+    golden = os.path.realpath(os.path.join(HERE, "golden.img"))
+    if real == golden:
+        raise SafetyError("refusing to write to the master image: %s" % path)
+    work = os.path.realpath(os.path.join(HERE, "work"))
+    if not real.startswith(work + os.sep):
+        raise SafetyError("writable images must live under %s: %s"
+                          % (work, path))
+
+
+class Allocator(object):
+    """Read (and, when writable, eventually write) a multi-group UFS image."""
+
+    def __init__(self, image_path, writable=False):
+        if writable:
+            _refuse_master(image_path)
+        self.path = image_path
+        self.writable = writable
+        self.img = rhap_image.Image(image_path, writable=writable)
+        self.g = ufs_cg.read_geometry(image_path)
+        self.cg_count = self.g.ncg
+
+        # Pending, unflushed writes.  Until flush() runs the image on disk is
+        # byte-identical; these caches are how a mutation (alloc_frags,
+        # free_frags) becomes visible to later reads in the same session
+        # without touching the file.  Keyed/populated lazily, and only for
+        # locations a mutation actually dirtied -- an untouched group is
+        # never copied in here, it's just read straight off disk.
+        self._cg_cache = {}        # cg index -> mutable header-block bytearray
+        self._sb_cache = None      # mutable copy of the superblock block
+        self._cstable_cache = None  # mutable copy of the fs_csaddr table
+        self._inode_cache = {}     # fragment number -> mutable dinode-block bytearray
+        self._data_cache = {}      # fragment number -> pending file-content bytes
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def close(self):
+        self.img.close()
+
+    def max_file_bytes(self):
+        """Largest file representable with direct plus single-indirect
+        blocks, derived from this filesystem's own geometry (not the
+        golden.img-shaped module constant MAX_FILE_BYTES)."""
+        return (rhap_image.NDADDR + self.g.nindir) * self.g.bsize
+
+    def _cg_frag(self, c):
+        return rhap_image._cgstart(self.img, c) + self.g.cblkno
+
+    def cg_header_offset(self, c):
+        """Absolute byte offset of group c's header block."""
+        return self.img.part_start + self._cg_frag(c) * self.g.fsize
+
+    def read_cg(self, c):
+        """The whole cylinder-group header block, as a bytearray.
+
+        Always a fresh copy, but if group c has a pending mutation this
+        reflects it: callers (including our own accessors below) see the
+        not-yet-flushed state, not stale disk contents.  Mutating the
+        returned bytearray has no effect -- go through alloc_frags /
+        free_frags to change anything.
+        """
+        if c in self._cg_cache:
+            return bytearray(self._cg_cache[c])
+        return bytearray(self.img.read_frag(self._cg_frag(c), self.g.bsize))
+
+    def _dirty_cg(self, c):
+        """The live, mutable cached header buffer for group c.
+
+        First touch loads it from disk; later touches (and later reads via
+        read_cg) reuse the same object, so this is the one and only place a
+        cylinder group's header is read-modify-written before flush()."""
+        if c not in self._cg_cache:
+            self._cg_cache[c] = bytearray(
+                self.img.read_frag(self._cg_frag(c), self.g.bsize))
+        return self._cg_cache[c]
+
+    def _dirty_sb(self):
+        if self._sb_cache is None:
+            self._sb_cache = bytearray(self.img._read_at(
+                self.img.part_start + rhap_image.SBOFF, rhap_image.SBOFF))
+        return self._sb_cache
+
+    def _dirty_cstable(self):
+        if self._cstable_cache is None:
+            off = self.img.part_start + self.g.csaddr * self.g.fsize
+            self._cstable_cache = bytearray(self.img._read_at(off, self.g.cssize))
+        return self._cstable_cache
+
+    def cg_summary(self, c):
+        """(ndir, nbfree, nifree, nffree) recorded in group c's own header."""
+        buf = self.read_cg(c)
+        return struct.unpack_from("<4i", buf, CG_CS_OFF)
+
+    def blksfree(self, c):
+        """Free-fragment bitmap for group c.  A set bit means free."""
+        buf = self.read_cg(c)
+        freeoff = struct.unpack_from("<i", buf, CG_OFFSETS_OFF + 12)[0]
+        n = (self.g.fpg + 7) // 8
+        return bytearray(buf[freeoff:freeoff + n])
+
+    def inosused(self, c):
+        """Used-inode bitmap for group c.  A set bit means in use."""
+        buf = self.read_cg(c)
+        iusedoff = struct.unpack_from("<i", buf, CG_OFFSETS_OFF + 8)[0]
+        n = (self.g.ipg + 7) // 8
+        return bytearray(buf[iusedoff:iusedoff + n])
+
+    def fs_cstotal(self):
+        """(ndir, nbfree, nifree, nffree) recorded in the superblock."""
+        if self._sb_cache is not None:
+            sb = self._sb_cache
+        else:
+            sb = self.img._read_at(self.img.part_start + rhap_image.SBOFF,
+                                    rhap_image.SBOFF)
+        return struct.unpack_from("<4i", sb, SB_CSTOTAL_OFF)
+
+    def frag_is_free(self, frag):
+        """True if absolute fragment number `frag` is free.
+
+        Reflects any pending, unflushed mutation to the owning group.
+        """
+        c, i = divmod(frag, self.g.fpg)
+        buf = self.read_cg(c)
+        freeoff = struct.unpack_from("<i", buf, CG_OFFSETS_OFF + 12)[0]
+        return bool(ufs_cg.bit_is_set(buf[freeoff:], i))
+
+    def _require_writable(self, what):
+        if not self.writable:
+            raise SafetyError("%s requires Allocator(writable=True)" % what)
+
+    def _apply_group_delta(self, c, local_indices, to_used):
+        """Flip fragments in group c's bitmap and update every downstream
+        summary that ufs_check.check verifies: cg_cs, cg_frsum, the
+        btot/blks tables, the cluster maps, this group's fs_csaddr slot,
+        and fs_cstotal.  All of it lands in the pending caches; nothing
+        touches disk until flush().
+        """
+        buf = self._dirty_cg(c)
+        freeoff = struct.unpack_from("<i", buf, CG_OFFSETS_OFF + 12)[0]
+        nbytes = (self.g.fpg + 7) // 8
+        blksfree = bytearray(buf[freeoff:freeoff + nbytes])
+        for i in local_indices:
+            byte, bit = divmod(i, 8)
+            if to_used:
+                blksfree[byte] &= ~(1 << bit) & 0xFF
+            else:
+                blksfree[byte] |= (1 << bit)
+        buf[freeoff:freeoff + nbytes] = blksfree
+
+        old_ndir, old_nbfree, old_nifree, old_nffree = struct.unpack_from(
+            "<4i", buf, CG_CS_OFF)
+        tables = ufs_cg.recompute_cg_tables(self.g, blksfree)
+        struct.pack_into("<4i", buf, CG_CS_OFF,
+                          old_ndir, tables.nbfree, old_nifree, tables.nffree)
+        struct.pack_into("<%di" % self.g.frag, buf, CG_FRSUM_OFF, *tables.frsum)
+
+        btotoff, boff, _iusedoff, _freeoff = struct.unpack_from(
+            "<4i", buf, CG_OFFSETS_OFF)
+        struct.pack_into("<%di" % self.g.cpg, buf, btotoff, *tables.blktot)
+        struct.pack_into("<%dh" % (self.g.cpg * self.g.nrpos), buf, boff,
+                          *tables.blks)
+
+        if self.g.contigsumsize > 0:
+            clustersumoff, clusteroff, nclusterblks = struct.unpack_from(
+                "<3i", buf, 104)
+            clustersfree, clustersum = ufs_cg.recompute_cluster_maps(
+                self.g, blksfree, nclusterblks)
+            struct.pack_into("<%di" % len(clustersum), buf, clustersumoff,
+                              *clustersum)
+            buf[clusteroff:clusteroff + len(clustersfree)] = clustersfree
+
+        cstable = self._dirty_cstable()
+        struct.pack_into("<4i", cstable, c * 16,
+                          old_ndir, tables.nbfree, old_nifree, tables.nffree)
+
+        sb = self._dirty_sb()
+        ndir, nbfree, nifree, nffree = struct.unpack_from(
+            "<4i", sb, SB_CSTOTAL_OFF)
+        nbfree += tables.nbfree - old_nbfree
+        nffree += tables.nffree - old_nffree
+        struct.pack_into("<4i", sb, SB_CSTOTAL_OFF, ndir, nbfree, nifree, nffree)
+
+    def _dirty_inode_block(self, frag):
+        """The live, mutable cached dinode-block buffer covering fragment
+        `frag` (frag-aligned, self.g.bsize bytes -- the same unit
+        rhap_image._inode_location and Image.read_frag(..., bsize) use).
+        """
+        if frag not in self._inode_cache:
+            self._inode_cache[frag] = bytearray(
+                self.img.read_frag(frag, self.g.bsize))
+        return self._inode_cache[frag]
+
+    def _apply_inode_delta(self, c, local_indices, to_used, is_dir):
+        """Flip inodes in group c's used-inode bitmap and update cg_cs,
+        this group's fs_csaddr slot, and fs_cstotal -- the same three
+        places _apply_group_delta keeps in step for fragments.  Pending
+        only; nothing touches disk until flush().
+
+        Idempotent: an index whose bit already matches `to_used` (e.g. a
+        double free_inode, or the wrong is_dir on a repeat call) is left
+        alone and does not perturb cs_nifree/cs_ndir a second time --
+        mirroring _apply_group_delta, which recomputes its counters from
+        the bitmap instead of applying a blind delta.
+        """
+        buf = self._dirty_cg(c)
+        iusedoff = struct.unpack_from("<i", buf, CG_OFFSETS_OFF + 8)[0]
+        nbytes = (self.g.ipg + 7) // 8
+        inosused = bytearray(buf[iusedoff:iusedoff + nbytes])
+        changed = []
+        for i in local_indices:
+            byte, bit = divmod(i, 8)
+            was_used = bool(inosused[byte] & (1 << bit))
+            if was_used == to_used:
+                continue
+            changed.append(i)
+            if to_used:
+                inosused[byte] |= (1 << bit)
+            else:
+                inosused[byte] &= ~(1 << bit) & 0xFF
+        buf[iusedoff:iusedoff + nbytes] = inosused
+
+        old_ndir, old_nbfree, old_nifree, old_nffree = struct.unpack_from(
+            "<4i", buf, CG_CS_OFF)
+        n = len(changed)
+        nifree_delta = -n if to_used else n
+        ndir_delta = (n if to_used else -n) if is_dir else 0
+        new_ndir = old_ndir + ndir_delta
+        new_nifree = old_nifree + nifree_delta
+        struct.pack_into("<4i", buf, CG_CS_OFF,
+                          new_ndir, old_nbfree, new_nifree, old_nffree)
+
+        cstable = self._dirty_cstable()
+        struct.pack_into("<4i", cstable, c * 16,
+                          new_ndir, old_nbfree, new_nifree, old_nffree)
+
+        sb = self._dirty_sb()
+        ndir, nbfree, nifree, nffree = struct.unpack_from(
+            "<4i", sb, SB_CSTOTAL_OFF)
+        ndir += ndir_delta
+        nifree += nifree_delta
+        struct.pack_into("<4i", sb, SB_CSTOTAL_OFF, ndir, nbfree, nifree, nffree)
+
+    def alloc_inode(self, is_dir=False):
+        """Claim the lowest-numbered free inode (never 0, 1 or 2 -- those
+        are reserved and already marked used on any real filesystem).
+        Updates the group's inode bitmap, cs_nifree, and cs_ndir when
+        is_dir.  Returns the inode number.
+        """
+        self._require_writable("alloc_inode")
+        for c in range(self.cg_count):
+            inosused = self.inosused(c)
+            for local in range(self.g.ipg):
+                ino = c * self.g.ipg + local
+                if ino < 3:
+                    continue
+                if not ufs_cg.bit_is_set(inosused, local):
+                    self._apply_inode_delta(c, [local], to_used=True,
+                                             is_dir=is_dir)
+                    return ino
+        raise SafetyError("no free inode in any cylinder group")
+
+    def free_inode(self, ino, is_dir=False):
+        """Release an inode previously returned by alloc_inode.
+
+        Also zeroes the dinode itself: the guest's fsck (pass1.c) decides
+        allocated-vs-free from di_mode, not from the cg bitmap, and treats
+        a nonzero di_mode on a bitmap-free inode as UNREF/PARTIALLY
+        ALLOCATED, plus counts its stale di_db/di_ib pointers as still in
+        use (DUP BLKS once those fragments are handed out again).
+        """
+        self._require_writable("free_inode")
+        c, local = divmod(ino, self.g.ipg)
+        self._apply_inode_delta(c, [local], to_used=False, is_dir=is_dir)
+        self._zero_dinode(ino)
+
+    def write_inode(self, ino, mode, size, db, ib, nlink, mtime):
+        """Write a 128-byte dinode.  db is the 12 direct block pointers,
+        ib the 3 indirect ones (rhap_image.Inode's layout: mode at 0,
+        nlink at 2, size at 8, mtime at 24, db at 40, ib at 88).
+        """
+        self._require_writable("write_inode")
+        if len(db) != rhap_image.NDADDR:
+            raise ValueError("db must have %d entries" % rhap_image.NDADDR)
+        if len(ib) != rhap_image.NIADDR:
+            raise ValueError("ib must have %d entries" % rhap_image.NIADDR)
+        frag, entry = rhap_image._inode_location(self.img, ino)
+        buf = self._dirty_inode_block(frag)
+        struct.pack_into("<Hh", buf, entry, mode, nlink)
+        struct.pack_into("<Q", buf, entry + 8, size)
+        struct.pack_into("<i", buf, entry + 24, mtime)
+        struct.pack_into("<%di" % rhap_image.NDADDR, buf, entry + 40, *db)
+        struct.pack_into("<%di" % rhap_image.NIADDR, buf, entry + 88, *ib)
+
+    def set_inode_blocks(self, ino, nunits):
+        """Set di_blocks, which counts units of `self.g.fsize / self.g.nspf`
+        bytes -- NOT a hardcoded 512-byte sector.  The kernel computes it as
+        btodb(bytes, devBlockSize), and for a UFS device devBlockSize is
+        fs_fsize / fsbtodb(fs, 1) == fs_fsize / NSPF(fs) (see
+        src/kernel-7/bsd/ufs/ffs/fs.h and src/Commands/diskdev_cmds/
+        fsck.tproj/setup.c:readsb, which computes dev_bsize identically).
+        So one di_blocks unit is `self.g.fsize // self.g.nspf` bytes, and a
+        fragment (self.g.fsize bytes) is worth `self.g.nspf` units.  On this
+        filesystem self.g.nspf is 1 (Apple's UFS counts NSPF in 1024-byte
+        units, not classic BSD's 512-byte DEV_BSIZE -- see the dir.h comment
+        cited in vm/ufs_build.py), so one di_blocks unit equals one whole
+        fragment; callers should pass `total_frags * self.g.nspf`, never a
+        hardcoded divide-by-two/512.
+        """
+        self._require_writable("set_inode_blocks")
+        frag, entry = rhap_image._inode_location(self.img, ino)
+        buf = self._dirty_inode_block(frag)
+        struct.pack_into("<i", buf, entry + 104, nunits)
+
+    def alloc_frags(self, n):
+        """Allocate n fragments, as whole fs_frag-sized blocks plus at most
+        one partial tail block for the remainder, all from a single
+        cylinder group.  Returns absolute fragment numbers.
+        """
+        self._require_writable("alloc_frags")
+        if n <= 0:
+            raise ValueError("n must be positive")
+        frag = self.g.frag
+        blocks_needed = (n + frag - 1) // frag
+        tail = n % frag
+
+        for c in range(self.cg_count):
+            buf = self.read_cg(c)
+            freeoff = struct.unpack_from("<i", buf, CG_OFFSETS_OFF + 12)[0]
+            nbytes = (self.g.fpg + 7) // 8
+            blksfree = buf[freeoff:freeoff + nbytes]
+
+            free_blocks = []
+            for base in range(0, self.g.fpg, frag):
+                if all(ufs_cg.bit_is_set(blksfree, base + i)
+                       for i in range(frag)):
+                    free_blocks.append(base)
+                    if len(free_blocks) == blocks_needed:
+                        break
+            if len(free_blocks) < blocks_needed:
+                continue
+
+            result = []
+            flip = []
+            for idx, base in enumerate(free_blocks):
+                take = frag if tail == 0 or idx < blocks_needed - 1 else tail
+                for k in range(take):
+                    flip.append(base + k)
+                    result.append(self.g.fpg * c + base + k)
+            self._apply_group_delta(c, flip, to_used=True)
+            return result
+
+        raise SafetyError(
+            "no cylinder group has %d free fragment(s) (%d whole block(s) "
+            "needed)" % (n, blocks_needed))
+
+    def free_frags(self, frags):
+        """Release fragments previously returned by alloc_frags.
+
+        Also drops any pending _data_cache entry for a freed block-start
+        fragment.  Without this, a caller that catches SafetyError after a
+        partial allocation (see _alloc_and_write_blocks's rollback) and
+        later calls flush() would write content into fragments the
+        filesystem now believes are free.
+        """
+        self._require_writable("free_frags")
+        by_group = {}
+        for f in frags:
+            c, i = divmod(f, self.g.fpg)
+            by_group.setdefault(c, []).append(i)
+        for c, indices in by_group.items():
+            self._apply_group_delta(c, indices, to_used=False)
+        for f in frags:
+            self._data_cache.pop(f, None)
+
+    def _claim_frags(self, frags):
+        """Mark specific, already-known-free fragments used.  The in-place
+        half of extending a fragmented tail block by one more fragment
+        (the companion fragments alloc_frags left free within the same
+        fs-block-aligned run it took a partial tail from)."""
+        by_group = {}
+        for f in frags:
+            c, i = divmod(f, self.g.fpg)
+            by_group.setdefault(c, []).append(i)
+        for c, indices in by_group.items():
+            self._apply_group_delta(c, indices, to_used=True)
+
+    def flush(self):
+        """Write every pending change to disk.  The only method that writes."""
+        self._require_writable("flush")
+        f = self.img._f
+        for c, buf in self._cg_cache.items():
+            f.seek(self.cg_header_offset(c))
+            f.write(bytes(buf))
+        if self._sb_cache is not None:
+            f.seek(self.img.part_start + rhap_image.SBOFF)
+            f.write(bytes(self._sb_cache))
+        if self._cstable_cache is not None:
+            off = self.img.part_start + self.g.csaddr * self.g.fsize
+            f.seek(off)
+            f.write(bytes(self._cstable_cache))
+        for frag, buf in self._inode_cache.items():
+            f.seek(self.img.frag_offset(frag))
+            f.write(bytes(buf))
+        for frag, buf in self._data_cache.items():
+            f.seek(self.img.frag_offset(frag))
+            f.write(buf)
+        f.flush()
+        self._cg_cache.clear()
+        self._sb_cache = None
+        self._cstable_cache = None
+        self._inode_cache.clear()
+        self._data_cache.clear()
+
+    def validate(self):
+        """Refuse to proceed unless our model already matches a good filesystem."""
+        totals = [0, 0, 0, 0]
+        for c in range(self.cg_count):
+            for i, v in enumerate(self.cg_summary(c)):
+                totals[i] += v
+        recorded = self.fs_cstotal()
+        if tuple(totals) != tuple(recorded):
+            raise SafetyError(
+                "summed cylinder-group summaries %s disagree with fs_cstotal %s; "
+                "the on-disk layout is not what this tool expects"
+                % (tuple(totals), tuple(recorded)))
+
+    def _write_data(self, frag_start, chunk):
+        self._data_cache[frag_start] = bytes(chunk)
+
+    def _zero_dinode(self, ino):
+        """Clear a dinode's 128 bytes before write_inode fills it in, so a
+        reused inode never inherits a dead occupant's uid/gid/times/etc.
+        """
+        frag, entry = rhap_image._inode_location(self.img, ino)
+        buf = self._dirty_inode_block(frag)
+        buf[entry:entry + rhap_image.DINODE_SIZE] = bytes(rhap_image.DINODE_SIZE)
+
+    def _alloc_whole_blocks(self, nblocks, allocated):
+        """Allocate `nblocks` whole fs_frag-fragment blocks, spread across
+        as many cylinder groups as necessary (alloc_frags only ever
+        searches one group per call).  Every raw fragment handed back is
+        appended to `allocated`, for rollback on failure.  Returns the
+        list of block-start fragment numbers, one per block.
+        """
+        frag = self.g.frag
+        starts = []
+        remaining = nblocks
+        while remaining > 0:
+            chunk = remaining
+            got = None
+            while chunk > 0:
+                try:
+                    got = self.alloc_frags(chunk * frag)
+                    break
+                except SafetyError:
+                    chunk = chunk // 2
+            if not got:
+                raise SafetyError(
+                    "not enough free space across any cylinder group to "
+                    "allocate %d more block(s)" % remaining)
+            allocated.extend(got)
+            for i in range(chunk):
+                starts.append(got[i * frag])
+            remaining -= chunk
+        return starts
+
+    def _alloc_tail_block(self, tail_frags, allocated):
+        """Allocate the single, possibly-partial final block of a file."""
+        got = self.alloc_frags(tail_frags)
+        allocated.extend(got)
+        return got[0]
+
+    def _alloc_and_write_blocks(self, data):
+        """Allocate whole blocks for all but the tail, write `data` into
+        them, and allocate/fill a single indirect block once the file
+        needs more than NDADDR blocks.  Returns (db, ib, total_frags),
+        where total_frags is every fragment allocated (content plus the
+        indirect block itself) for di_blocks accounting.
+        """
+        bsize = self.g.bsize
+        size = len(data)
+        allocated = []
+        try:
+            block_starts = []
+            if size > 0:
+                nblocks = (size + bsize - 1) // bsize
+                nfull = nblocks - 1
+                tail_bytes = size - nfull * bsize
+                fsize = self.g.fsize
+                tail_frags = (tail_bytes + fsize - 1) // fsize
+                if nfull > 0:
+                    block_starts += self._alloc_whole_blocks(nfull, allocated)
+                block_starts.append(self._alloc_tail_block(tail_frags, allocated))
+
+            for idx, start in enumerate(block_starts):
+                offset = idx * bsize
+                chunk = data[offset:offset + bsize]
+                if idx == len(block_starts) - 1:
+                    # Zero the rest of the tail block's allocated fragments
+                    # so a previously freed file's bytes don't leak into
+                    # space the new file now owns.
+                    want = tail_frags * fsize
+                    if len(chunk) < want:
+                        chunk = chunk + bytes(want - len(chunk))
+                self._write_data(start, chunk)
+
+            ndaddr = rhap_image.NDADDR
+            db = block_starts[:ndaddr]
+            db += [0] * (ndaddr - len(db))
+            ib = [0, 0, 0]
+            if len(block_starts) > ndaddr:
+                indirect = self._alloc_whole_blocks(1, allocated)
+                ib[0] = indirect[0]
+                ptrs = block_starts[ndaddr:]
+                ptrs += [0] * (self.g.nindir - len(ptrs))
+                self._write_data(ib[0],
+                                  struct.pack("<%di" % self.g.nindir, *ptrs))
+
+            return db, ib, len(allocated)
+        except SafetyError:
+            self.free_frags(allocated)
+            raise
+
+    def _read_dinode(self, ino):
+        """(mode, nlink, size, db, ib) for an existing inode, honoring any
+        pending (unflushed) write in this session.
+        """
+        frag, entry = rhap_image._inode_location(self.img, ino)
+        buf = self._inode_cache.get(frag)
+        if buf is None:
+            buf = self.img.read_frag(frag, self.g.bsize)
+        mode, nlink = struct.unpack_from("<Hh", buf, entry)
+        size = struct.unpack_from("<Q", buf, entry + 8)[0]
+        db = list(struct.unpack_from("<%di" % rhap_image.NDADDR, buf, entry + 40))
+        ib = list(struct.unpack_from("<%di" % rhap_image.NIADDR, buf, entry + 88))
+        return mode, nlink, size, db, ib
+
+    def _old_file_frags(self, size, db, ib):
+        """Every fragment (content blocks plus the indirect block, if any)
+        belonging to a file previously written by this module, based on
+        our own layout: every block but the last is a full fs_frag-sized
+        block, the last is sized to just cover the remainder.
+
+        A block pointer of 0 means a hole (a sparse block) and occupies no
+        space on disk -- it must never be handed to free_frags, or fragment
+        0 (the boot block / superblock area) gets marked free.
+        """
+        if size == 0:
+            return []
+        if size > self.max_file_bytes() or ib[1] != 0 or ib[2] != 0:
+            raise SafetyError(
+                "inode uses double/triple-indirect blocks or exceeds the "
+                "%d-byte direct-plus-single-indirect limit; this module "
+                "cannot enumerate its fragments" % self.max_file_bytes())
+        bsize = self.g.bsize
+        fsize = self.g.fsize
+        frag = self.g.frag
+        ndaddr = rhap_image.NDADDR
+        nblocks = (size + bsize - 1) // bsize
+        block_starts = list(db[:min(nblocks, ndaddr)])
+        if nblocks > ndaddr:
+            ind = self._data_cache.get(ib[0])
+            if ind is None:
+                ind = self.img.read_frag(ib[0], bsize)
+            ptrs = struct.unpack_from("<%di" % self.g.nindir, ind, 0)
+            block_starts += list(ptrs[:nblocks - ndaddr])
+        tail_bytes = size - (nblocks - 1) * bsize
+        tail_frags = (tail_bytes + fsize - 1) // fsize
+        out = []
+        for idx, start in enumerate(block_starts):
+            if start == 0:
+                continue  # hole: no space to release
+            count = frag if idx < nblocks - 1 else tail_frags
+            out.extend(start + k for k in range(count))
+        if nblocks > ndaddr and ib[0] != 0:
+            out.extend(ib[0] + k for k in range(frag))
+        return out
+
+    def write_new_file(self, data, mode=0o100644):
+        """Allocate a fresh inode and fragments, write `data` as its
+        contents, and return the inode number.  Refuses anything over
+        MAX_FILE_BYTES before allocating anything.
+        """
+        self._require_writable("write_new_file")
+        limit = self.max_file_bytes()
+        if len(data) > limit:
+            raise SafetyError(
+                "file is %d bytes, over the %d-byte (16 MB) limit for "
+                "direct plus single-indirect blocks" % (len(data), limit))
+        ino = self.alloc_inode()
+        try:
+            db, ib, total_frags = self._alloc_and_write_blocks(data)
+        except Exception:
+            self.free_inode(ino)
+            raise
+        self._zero_dinode(ino)
+        self.write_inode(ino, mode=mode, size=len(data), db=db, ib=ib,
+                          nlink=1, mtime=int(time.time()))
+        self.set_inode_blocks(ino, total_frags * self.g.nspf)
+        return ino
+
+    def grow_file(self, ino, data):
+        """Replace an existing file's contents, allocating more fragments
+        when `data` exceeds its current allocation and releasing the
+        surplus when it shrinks.
+        """
+        self._require_writable("grow_file")
+        limit = self.max_file_bytes()
+        if len(data) > limit:
+            raise SafetyError(
+                "file is %d bytes, over the %d-byte (16 MB) limit for "
+                "direct plus single-indirect blocks" % (len(data), limit))
+        mode, nlink, old_size, old_db, old_ib = self._read_dinode(ino)
+        old_frags = self._old_file_frags(old_size, old_db, old_ib)
+        db, ib, total_frags = self._alloc_and_write_blocks(data)
+        self.free_frags(old_frags)
+        self.write_inode(ino, mode=mode, size=len(data), db=db, ib=ib,
+                          nlink=nlink, mtime=int(time.time()))
+        self.set_inode_blocks(ino, total_frags * self.g.nspf)
+
+    # -- directory operations -----------------------------------------
+
+    def _bump_nlink(self, ino, delta):
+        """Patch di_nlink in place, honoring any pending inode-block write."""
+        frag, entry = rhap_image._inode_location(self.img, ino)
+        buf = self._dirty_inode_block(frag)
+        nlink = struct.unpack_from("<h", buf, entry + 2)[0]
+        struct.pack_into("<h", buf, entry + 2, nlink + delta)
+
+    def _block_layout(self, size, db, ib):
+        """[(block_start, byte_offset, length)] covering an inode's content,
+        using this module's own tail-block convention (every block but the
+        last is a full fs_frag-sized block; the last is sized to just cover
+        the remainder -- the same convention _old_file_frags documents).
+        """
+        if size == 0:
+            return []
+        bsize = self.g.bsize
+        fsize = self.g.fsize
+        ndaddr = rhap_image.NDADDR
+        nblocks = (size + bsize - 1) // bsize
+        block_starts = list(db[:min(nblocks, ndaddr)])
+        if nblocks > ndaddr:
+            ind = self._data_cache.get(ib[0])
+            if ind is None:
+                ind = self.img.read_frag(ib[0], bsize)
+            ptrs = struct.unpack_from("<%di" % self.g.nindir, ind, 0)
+            block_starts += list(ptrs[:nblocks - ndaddr])
+        layout = []
+        for idx, start in enumerate(block_starts):
+            off = idx * bsize
+            if idx == len(block_starts) - 1:
+                tail_bytes = size - off
+                tail_frags = (tail_bytes + fsize - 1) // fsize
+                length = tail_frags * fsize
+            else:
+                length = bsize
+            layout.append((start, off, length))
+        return layout
+
+    def _read_block_at(self, start, length):
+        """`length` bytes starting at fragment `start`, honoring any
+        pending (unflushed) write to that fragment in this session.
+
+        A block pointer of 0 is a hole (see _old_file_frags) and must read
+        back as zeros, never as fragment 0 -- the boot block / superblock
+        area.
+        """
+        if start == 0:
+            return bytes(length)
+        cached = self._data_cache.get(start)
+        if cached is not None:
+            if len(cached) < length:
+                return cached + bytes(length - len(cached))
+            return cached
+        return self.img.read_frag(start, length)
+
+    def _read_file_data(self, ino):
+        """(mode, nlink, size, db, ib, data) for any inode's current
+        content, honoring this session's pending (unflushed) writes -- so a
+        directory just mkdir'd or add_dirent'd earlier in this session
+        reads back correctly before flush().
+        """
+        mode, nlink, size, db, ib = self._read_dinode(ino)
+        layout = self._block_layout(size, db, ib)
+        buf = bytearray()
+        for start, _off, length in layout:
+            buf += self._read_block_at(start, length)
+        return mode, nlink, size, db, ib, bytes(buf[:size])
+
+    def _patch_block(self, layout, data, at):
+        """Write back just the one block in `layout` covering byte offset
+        `at`, without touching (or reallocating) any other block -- the
+        in-place path add_dirent and _remove_dirent use whenever an edit
+        doesn't change the directory's total size.
+        """
+        for start, off, length in layout:
+            if off <= at < off + length:
+                self._write_data(start, bytes(data[off:off + length]))
+                return
+        raise SafetyError("offset %d not covered by any block" % at)
+
+    def _set_block_ptr(self, db, ib, idx, frag_start):
+        """Point logical block `idx` (0-based, in bsize units) at
+        `frag_start`, allocating the single indirect block lazily if `idx`
+        is beyond the direct pointers.  Mutates and returns `db`, `ib`.
+        """
+        ndaddr = rhap_image.NDADDR
+        if idx < ndaddr:
+            db[idx] = frag_start
+            return db, ib
+        iidx = idx - ndaddr
+        if iidx >= self.g.nindir:
+            raise SafetyError(
+                "directory has grown past single-indirect capacity")
+        if ib[0] == 0:
+            allocated = []
+            indirect = self._alloc_whole_blocks(1, allocated)
+            ib[0] = indirect[0]
+            self._write_data(ib[0], bytes(self.g.bsize))
+        ind = bytearray(self._read_block_at(ib[0], self.g.bsize))
+        struct.pack_into("<i", ind, iidx * 4, frag_start)
+        self._write_data(ib[0], bytes(ind))
+        return db, ib
+
+    def _append_dir_chunk(self, size, db, ib, chunk):
+        """Extend a directory by exactly one DIRBLKSIZ chunk (`chunk`),
+        touching only the one block that's actually growing -- never any
+        other block the directory already has, however it was allocated.
+
+        While the current tail block still has fs-block room left (its
+        allocated fragment run is shorter than a whole bsize block), that
+        run is grown by one fragment: in place when the next physical
+        fragment is still free (the common case for a block this module
+        itself just allocated), otherwise relocated to a fresh run -- but
+        only that one block.  Once a block is full, growth starts a
+        brand-new block and every earlier block is left untouched.
+
+        Returns (db, ib); the caller is responsible for writing the new
+        size (`size + len(chunk)`) via write_inode.
+        """
+        bsize = self.g.bsize
+        fsize = self.g.fsize
+        db = list(db)
+        ib = list(ib)
+        block_idx = size // bsize
+        off_in_block = size % bsize
+
+        if off_in_block != 0:
+            layout = self._block_layout(size, db, ib)
+            old_start, _off, old_length = layout[-1]
+            old_frags = old_length // fsize
+            combined = self._read_block_at(old_start, old_length) + chunk
+            next_frag = old_start + old_frags
+            if self.frag_is_free(next_frag):
+                self._claim_frags([next_frag])
+                self._write_data(old_start, combined)
+            else:
+                new_start = self.alloc_frags(old_frags + 1)[0]
+                self._write_data(new_start, combined)
+                self.free_frags([old_start + k for k in range(old_frags)])
+                db, ib = self._set_block_ptr(db, ib, block_idx, new_start)
+            return db, ib
+
+        tail_frags = (len(chunk) + fsize - 1) // fsize
+        frag_start = self.alloc_frags(tail_frags)[0]
+        want = tail_frags * fsize
+        data = chunk if len(chunk) >= want else chunk + bytes(want - len(chunk))
+        self._write_data(frag_start, data)
+        db, ib = self._set_block_ptr(db, ib, block_idx, frag_start)
+        return db, ib
+
+    def _lookup(self, dir_ino, name):
+        """Inode number for `name` in directory `dir_ino`, or None.
+
+        Reads through _read_file_data, so it sees this session's own
+        pending (unflushed) mkdir/create_file/unlink/rmdir calls.
+        """
+        nameb = _encode_name(name)
+        _, _, _, _, _, data = self._read_file_data(dir_ino)
+        p = 0
+        while p < len(data):
+            e_ino, e_reclen = struct.unpack_from("<IH", data, p)
+            e_namlen = data[p + 7]
+            if e_reclen == 0:
+                break
+            if e_ino and data[p + 8:p + 8 + e_namlen] == nameb:
+                return e_ino
+            p += e_reclen
+        return None
+
+    def _resolve(self, path):
+        """Like rhap_image.Image.resolve, but pending-write aware.  Raises
+        SafetyError (rather than returning None) since every caller here
+        needs the parent directory to exist to proceed.
+        """
+        ino = 2
+        for part in path.strip("/").split("/"):
+            if not part:
+                continue
+            nxt = self._lookup(ino, part)
+            if nxt is None:
+                raise SafetyError(
+                    "path component %r not found resolving %s" % (part, path))
+            ino = nxt
+        return ino
+
+    def add_dirent(self, dir_ino, name, ino, dtype):
+        """Add one directory entry, splitting an existing record's slack
+        when one is big enough (patched in place -- a pre-existing
+        directory's other blocks are never disturbed) and growing the
+        directory by one whole DIRBLKSIZ chunk only when nothing fits.
+        """
+        self._require_writable("add_dirent")
+        nameb = _encode_name(name)
+        namlen = len(nameb)
+        need = _dirent_reclen(namlen)
+        if need > DIRBLKSIZ:
+            raise SafetyError("name %r is too long for a directory entry" % name)
+
+        mode, nlink, size, db, ib, data = self._read_file_data(dir_ino)
+        layout = self._block_layout(size, db, ib)
+        data = bytearray(data)
+
+        p = 0
+        while p < len(data):
+            e_ino, e_reclen = struct.unpack_from("<IH", data, p)
+            e_dtype = data[p + 6]
+            e_namlen = data[p + 7]
+            if e_reclen == 0:
+                break
+            if e_ino != 0:
+                actual = _dirent_reclen(e_namlen)
+                free = e_reclen - actual
+                if free >= need:
+                    struct.pack_into("<IHBB", data, p, e_ino, actual,
+                                      e_dtype, e_namlen)
+                    newp = p + actual
+                    struct.pack_into("<IHBB", data, newp, ino, free,
+                                      dtype, namlen)
+                    data[newp + 8:newp + 8 + namlen] = nameb
+                    data[newp + 8 + namlen:newp + need] = bytes(
+                        need - (8 + namlen))
+                    self._patch_block(layout, data, p)
+                    return
+            else:
+                if e_reclen >= need:
+                    struct.pack_into("<IHBB", data, p, ino, e_reclen,
+                                      dtype, namlen)
+                    data[p + 8:p + 8 + namlen] = nameb
+                    data[p + 8 + namlen:p + e_reclen] = bytes(
+                        e_reclen - (8 + namlen))
+                    self._patch_block(layout, data, p)
+                    return
+            p += e_reclen
+
+        # Nothing fits in any existing chunk: grow the directory by one
+        # whole DIRBLKSIZ chunk, whose sole entry's reclen runs to its end.
+        # Only the block actually growing is touched -- every other block
+        # the directory already has, however it was allocated (including
+        # by the original 1999 filesystem), is left exactly where it is.
+        chunk = bytearray(DIRBLKSIZ)
+        struct.pack_into("<IHBB", chunk, 0, ino, DIRBLKSIZ, dtype, namlen)
+        chunk[8:8 + namlen] = nameb
+        new_size = size + DIRBLKSIZ
+        db, ib = self._append_dir_chunk(size, db, ib, bytes(chunk))
+        self.write_inode(dir_ino, mode=mode, size=new_size, db=db, ib=ib,
+                          nlink=nlink, mtime=int(time.time()))
+        total_frags = len(self._old_file_frags(new_size, db, ib))
+        self.set_inode_blocks(dir_ino, total_frags * self.g.nspf)
+
+    def _remove_dirent(self, dir_ino, name):
+        """Zero out an entry's d_ino in place, leaving its reclen as free
+        space for a later add_dirent to reuse.  Never changes the
+        directory's size, so it never reallocates -- a pre-existing
+        directory's blocks stay exactly where they were.  Raises
+        SafetyError if `name` isn't actually present -- callers always
+        check that first via _lookup.
+        """
+        nameb = _encode_name(name)
+        mode, nlink, size, db, ib, data = self._read_file_data(dir_ino)
+        layout = self._block_layout(size, db, ib)
+        data = bytearray(data)
+        p = 0
+        while p < len(data):
+            e_ino, e_reclen = struct.unpack_from("<IH", data, p)
+            e_namlen = data[p + 7]
+            if e_reclen == 0:
+                break
+            if e_ino and data[p + 8:p + 8 + e_namlen] == nameb:
+                struct.pack_into("<I", data, p, 0)
+                self._patch_block(layout, data, p)
+                return
+            p += e_reclen
+        raise SafetyError(
+            "dirent %r not found in directory inode %d" % (name, dir_ino))
+
+    def mkdir(self, path, mode=0o040755):
+        """Create a directory, with `.` and `..` entries, add it to its
+        parent, and bump the parent's di_nlink (the child's `..` is a
+        second link to the parent).  Returns the new inode number.
+        """
+        self._require_writable("mkdir")
+        parent_path, name = _split_path(path)
+        parent_ino = self._resolve(parent_path or "/")
+        if self._lookup(parent_ino, name) is not None:
+            raise SafetyError("%s already exists" % path)
+
+        ino = self.alloc_inode(is_dir=True)
+        content = bytearray(DIRBLKSIZ)
+        dot_reclen = _dirent_reclen(1)       # "." : namlen 1
+        struct.pack_into("<IHBB", content, 0, ino, dot_reclen, 4, 1)
+        content[8:9] = b"."
+        dotdot_reclen = DIRBLKSIZ - dot_reclen   # runs to the chunk's end
+        struct.pack_into("<IHBB", content, dot_reclen, parent_ino,
+                          dotdot_reclen, 4, 2)
+        content[dot_reclen + 8:dot_reclen + 10] = b".."
+
+        try:
+            db, ib, total_frags = self._alloc_and_write_blocks(bytes(content))
+        except Exception:
+            self.free_inode(ino, is_dir=True)
+            raise
+        self._zero_dinode(ino)
+        self.write_inode(ino, mode=mode, size=len(content), db=db, ib=ib,
+                          nlink=2, mtime=int(time.time()))
+        self.set_inode_blocks(ino, total_frags * self.g.nspf)
+
+        self.add_dirent(parent_ino, name, ino, 4)
+        self._bump_nlink(parent_ino, +1)
+        return ino
+
+    def create_file(self, path, data, mode=0o100644):
+        """Allocate a regular file (nlink=1) and add it to its parent
+        directory.  Returns the new inode number.
+        """
+        self._require_writable("create_file")
+        parent_path, name = _split_path(path)
+        parent_ino = self._resolve(parent_path or "/")
+        if self._lookup(parent_ino, name) is not None:
+            raise SafetyError("%s already exists" % path)
+        ino = self.write_new_file(data, mode=mode)
+        self.add_dirent(parent_ino, name, ino, 8)
+        return ino
+
+    def unlink(self, path):
+        """Remove a regular file: frees its fragments, its inode, and its
+        directory entry.
+        """
+        self._require_writable("unlink")
+        parent_path, name = _split_path(path)
+        parent_ino = self._resolve(parent_path or "/")
+        ino = self._lookup(parent_ino, name)
+        if ino is None:
+            raise SafetyError("%s not found" % path)
+        mode, nlink, size, db, ib = self._read_dinode(ino)
+        if (mode & 0o170000) == 0o040000:
+            raise SafetyError("%s is a directory; use rmdir" % path)
+        frags = self._old_file_frags(size, db, ib)
+        self.free_frags(frags)
+        self.free_inode(ino, is_dir=False)
+        self._remove_dirent(parent_ino, name)
+
+    def rmdir(self, path):
+        """Remove an empty directory: refuses unless only `.` and `..`
+        remain, then frees its blocks, its inode, its directory entry, and
+        reverses the di_nlink bump mkdir applied to the parent.
+        """
+        self._require_writable("rmdir")
+        parent_path, name = _split_path(path)
+        parent_ino = self._resolve(parent_path or "/")
+        ino = self._lookup(parent_ino, name)
+        if ino is None:
+            raise SafetyError("%s not found" % path)
+        mode, nlink, size, db, ib = self._read_dinode(ino)
+        if (mode & 0o170000) != 0o040000:
+            raise SafetyError("%s is not a directory" % path)
+
+        _, _, _, _, _, data = self._read_file_data(ino)
+        names = set()
+        p = 0
+        while p < len(data):
+            e_ino, e_reclen = struct.unpack_from("<IH", data, p)
+            e_namlen = data[p + 7]
+            if e_reclen == 0:
+                break
+            if e_ino:
+                names.add(data[p + 8:p + 8 + e_namlen].decode("ascii", "replace"))
+            p += e_reclen
+        if names - {".", ".."}:
+            raise SafetyError("%s is not empty" % path)
+
+        frags = self._old_file_frags(size, db, ib)
+        self.free_frags(frags)
+        self.free_inode(ino, is_dir=True)
+        self._remove_dirent(parent_ino, name)
+        self._bump_nlink(parent_ino, -1)
+
+
+def main(argv):
+    if len(argv) < 3:
+        print("usage: ufs_alloc.py IMAGE {mkdir PATH|put PATH LOCALFILE}",
+              file=sys.stderr)
+        return 2
+    image, cmd = argv[1], argv[2]
+    try:
+        with Allocator(image, writable=True) as a:
+            a.validate()
+            if cmd == "mkdir" and len(argv) == 4:
+                ino = a.mkdir(argv[3])
+                a.flush()
+                print("created directory %s (inode %d)" % (argv[3], ino))
+            elif cmd == "put" and len(argv) == 5:
+                path, local = argv[3], argv[4]
+                with open(local, "rb") as f:
+                    data = f.read()
+                ino = a.create_file(path, data)
+                a.flush()
+                print("created file %s (inode %d, %d bytes)"
+                      % (path, ino, len(data)))
+            else:
+                print("usage: ufs_alloc.py IMAGE {mkdir PATH|put PATH LOCALFILE}",
+                      file=sys.stderr)
+                return 2
+    except SafetyError as e:
+        print("ufs_alloc: %s" % e, file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv))

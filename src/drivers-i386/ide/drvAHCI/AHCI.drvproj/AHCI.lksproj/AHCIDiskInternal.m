@@ -6,7 +6,12 @@
 #import <machkit/NXLock.h>
 #import <bsd/string.h>
 
-extern unsigned int vm_page_size;
+/* The kernel's page size variable (vm/vm_resident.c:115).  Use this, not the
+ * user-space Mach spelling with the vm_ prefix: mach/vm_param.h declares
+ * that one only outside KERNEL builds, so referencing it leaves sarld with
+ * an undefined symbol when it links this driver against mach_kernel at
+ * boot.  The Floppy boot driver uses page_size for the same reason. */
+extern unsigned int page_size;
 
 @implementation AHCIDisk(Internal)
 
@@ -258,8 +263,8 @@ static void AHCIDiskBuildFIS(unsigned char fis[20], unsigned int block,
                                  request->command == AHCI_DISK_WRITE,
                                  _identify.lba48,
                                  (unsigned int)((unsigned long)buffer &
-                                     (vm_page_size - 1U)),
-                                 vm_page_size, &segment))
+                                     (page_size - 1U)),
+                                 page_size, &segment))
             return IO_R_INVALID_ARG;
         extended = segment.command == AHCI_ATA_READ_DMA_EXT ||
                    segment.command == AHCI_ATA_WRITE_DMA_EXT;

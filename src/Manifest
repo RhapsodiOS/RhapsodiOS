@@ -87,5 +87,5 @@ dir     vi-1                  all
 dir     volfs-2               all
 dir     wget-1                all
 dir     yacc-1                all
-dir     zlib                  all
+dir     zlib-1                all
 dir     zsh-1                 all

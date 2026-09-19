@@ -123,7 +123,17 @@ int main(void)
     require_text(internalm, "completeTransfer:");
     require_text(internalm, "client:request->client");
     require_text(internalm, "_identify.lba48,");
-    require_text(internalm, "vm_page_size, &segment");
+    /* Kernel-loadable drivers must reference the kernel's page_size, not the
+     * user-space Mach name vm_page_size.  mach/vm_param.h declares page_size
+     * for KERNEL builds and vm_page_size only outside them, so referencing the
+     * user-space name leaves an undefined _vm_page_size that sarld cannot
+     * resolve against mach_kernel at boot:
+     *     rld(): Undefined symbols: _vm_page_size
+     * The Floppy boot driver uses page_size; EIDE names vm_page_size in a macro
+     * but never expands it, which is why only AHCI failed to link. */
+    require_text(internalm, "page_size, &segment");
+    require_absent(internalm, "vm_page_size");
+    require_absent(portm, "vm_page_size");
     require_text(internalm, "client:IOVmTaskSelf()");
     require_text(internalm, "ata_hd_unregister(_hdUnit)");
     require_text(diskm, "ata_hd_set_flush(_hdUnit,");

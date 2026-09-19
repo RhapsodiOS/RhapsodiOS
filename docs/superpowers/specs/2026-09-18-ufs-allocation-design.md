@@ -227,3 +227,13 @@ under `src/` was touched). The UFS allocator itself is not implicated: the
 image it produced is clean by both the Python checker and by the loader
 successfully reading and linking every other driver and the kernel image
 from it. Guest fsck was never reached and remains outstanding.
+
+Routing around the AHCI link failure via `run-pc-uefi-virtio-esp.sh` (PIIX
+IDE, so the EIDE driver finds the disk instead) and a single-user loader
+build reached the gate: root mounted and `/sbin/fsck -n /dev/hd0a` ran at a
+single-user shell. The verdict is **not clean** — Phase 1 reports
+systematic 2x block-count mismatches from low inode numbers up, Phase 2
+finds unreferenced files, a link-count mismatch, and Phase 5 reports the
+superblock free-block count, bitmaps, and summary information all wrong.
+Full output and analysis are in
+`.superpowers/sdd/task-8-report.md` under "fsck gate via PIIX IDE".

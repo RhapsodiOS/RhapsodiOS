@@ -230,7 +230,12 @@ static int AHCIVersionIsCommon(AHCIU32 version)
     memoryRange.size = AHCI_ABAR_LENGTH;
     if ([deviceDescription setMemoryRangeList:&memoryRange num:1] !=
         IO_R_SUCCESS) {
-        IOLog("AHCI: cannot register the ABAR memory range.\n");
+        /* Values included because the usual cause is a conflict with a
+         * range already reserved, and the address says at once whether the
+         * conflict is with another AHCI instance or with something else. */
+        IOLog("AHCI: %02x:%02x.%x cannot register ABAR %08x+%x; "
+              "already reserved?\n",
+              pciBus, pciDev, pciFunc, abarPhysical, AHCI_ABAR_LENGTH);
         [self free];
         return nil;
     }
@@ -349,8 +354,8 @@ static int AHCIVersionIsCommon(AHCIU32 version)
     /* Location included because a board can carry more than one 8086:2922,
      * and without it every line above is ambiguous about which one it came
      * from. */
-    IOLog("%s: Intel AHCI 8086:2922 class 01:06:01 at %02x:%02x.%x version %x CAP %08x CAP2 %08x PI %08x attached\n",
-          [self name], pciBus, pciDev, pciFunc,
+    IOLog("%s: Intel AHCI 8086:2922 class 01:06:01 at %02x:%02x.%x ABAR %08x version %x CAP %08x CAP2 %08x PI %08x attached\n",
+          [self name], pciBus, pciDev, pciFunc, abarPhysical,
           hbaInfo.version, hbaInfo.capabilities,
           hbaInfo.capabilities2, hbaInfo.portsImplemented);
     return self;

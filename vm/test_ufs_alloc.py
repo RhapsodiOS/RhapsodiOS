@@ -5,12 +5,14 @@ bitmaps.  The acceptance gate is the guest's own /sbin/fsck (see the plan).
 """
 import os
 import shutil
+import struct
 import subprocess
 import tempfile
 import unittest
 
 import rhap_image
 import ufs_alloc
+import ufs_cg
 import ufs_check
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -471,6 +473,196 @@ class TestDriverInstall(unittest.TestCase):
             boot_drivers, _ = rhap_inject._replace_table_key(
                 sysconf, "Boot Drivers", "")
             self.assertIn("AHCI", boot_drivers.split())
+
+
+def _expected_frags(size, g):
+    """Total fragments fsck expects ckinode to count for a file this size:
+    every content fragment, plus -- once the file needs one -- the whole
+    fs_frag-sized indirect block itself (fsck's pass1.c counts the indirect
+    block's own fragments before it recurses into what it points to)."""
+    if size == 0:
+        return 0
+    nblocks = (size + g.bsize - 1) // g.bsize
+    full = nblocks - 1
+    tail_bytes = size - full * g.bsize
+    tail_frags = (tail_bytes + g.fsize - 1) // g.fsize
+    frags = full * g.frag + tail_frags
+    if nblocks > rhap_image.NDADDR:
+        frags += g.frag
+    return frags
+
+
+class TestDiBlocksAccounting(unittest.TestCase):
+    """Regression test for bug 1: di_blocks was written as total_frags *
+    (fsize // 512), i.e. a count of 512-byte sectors.  fsck instead expects
+    di_blocks in units of `fs_fsize / NSPF(fs)` bytes (see
+    src/kernel-7/bsd/ufs/ffs/fs.h and src/Commands/diskdev_cmds/
+    fsck.tproj/setup.c:readsb, which derives dev_bsize from fs_fsize and
+    NSPF(fs) identically) -- i.e. `total_frags * g.nspf` units.  On
+    golden.img g.nspf is 1 (this UFS variant counts NSPF in 1024-byte units,
+    not classic BSD's 512-byte DEV_BSIZE), so the correct value equals
+    total_frags exactly, and the old code wrote exactly double.
+
+    ufs_check cannot catch this (it never inspects di_blocks), so each case
+    reads di_blocks back through the independent rhap_image.Image/Inode
+    reader and compares it against a value derived straight from this
+    filesystem's own geometry, not a hardcoded constant.
+    """
+
+    def setUp(self):
+        if not _present(GOLDEN):
+            self.skipTest("golden.img not present")
+        self.tmp = tempfile.mkdtemp(prefix="ufsalloc-", dir=os.path.join(HERE, "work"))
+        self.addCleanup(shutil.rmtree, self.tmp)
+        self.img = os.path.join(self.tmp, "test.img")
+        clone(GOLDEN, self.img)
+
+    def _check_blocks(self, payload):
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            g = a.g
+            ino = a.write_new_file(payload)
+            a.flush()
+        self.assertEqual(ufs_check.check(self.img), [])
+        expected = _expected_frags(len(payload), g) * g.nspf
+        with rhap_image.Image(self.img) as img:
+            n = img.inode(ino)
+            self.assertEqual(n.blocks, expected)
+        return expected
+
+    def test_small_file_one_fragment(self):
+        # 1 fragment (fsize=1024) worth of data, well under one fs_bsize
+        # block: before the fix this read back as 2, not 1.
+        expected = self._check_blocks(b"A" * 500)
+        self.assertEqual(expected, 1)
+
+    def test_file_spanning_several_blocks(self):
+        # Several whole fs_bsize blocks plus a partial tail, still within
+        # NDADDR direct pointers -- before the fix this read back as double
+        # the correct fragment count throughout.
+        payload = os.urandom(3 * 8192 + 4096)
+        expected = self._check_blocks(payload)
+        self.assertGreater(expected, rhap_image.NDADDR)  # sanity: multi-block
+
+    def test_file_needing_an_indirect_block(self):
+        # Past NDADDR direct blocks: di_blocks must also count the single
+        # indirect block's own fs_frag fragments, not just the content.
+        payload = os.urandom(200 * 1024)
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            self.assertGreater(
+                (len(payload) + a.g.bsize - 1) // a.g.bsize, rhap_image.NDADDR)
+        self._check_blocks(payload)
+
+
+DIRBLKSIZ = ufs_alloc.DIRBLKSIZ
+
+
+def _dirsiz(namlen):
+    """src/kernel-7/bsd/ufs/ufs/dir.h's DIRSIZ macro: header plus name PLUS
+    its NUL terminator (namlen + 1), rounded up to 4."""
+    return 8 + ((namlen + 1 + 3) & ~3)
+
+
+def _fsck_style_entries(data):
+    """Directory entries as the real kernel fsck's dircheck()/fsck_readdir()
+    would see them, not our own tools' more lenient parsing.
+
+    ufs_check and rhap_image.Image.iter_dir both just walk d_reclen chains
+    with no further validation, so they cannot catch a too-short record --
+    which is exactly bug 2 (an undersized record's reclen leaves no room for
+    the name's NUL terminator, so the byte the kernel's dircheck() requires
+    to be '\\0' lands on the next entry's own d_ino instead).  The real
+    fsck responds by treating the *rest of that DIRBLKSIZ chunk* as garbage
+    and discarding it -- so every entry after a too-short one, in the same
+    chunk, is silently orphaned.  This reproduces that specific behavior.
+    """
+    entries = []
+    loc = 0
+    while loc < len(data):
+        chunk_end = ((loc // DIRBLKSIZ) + 1) * DIRBLKSIZ
+        d_ino, d_reclen = struct.unpack_from("<IH", data, loc)
+        d_namlen = data[loc + 7]
+        if d_ino:
+            size = _dirsiz(d_namlen)
+            name = data[loc + 8:loc + 8 + d_namlen]
+            term = data[loc + 8 + d_namlen] if loc + 8 + d_namlen < len(data) else None
+            if d_reclen < size or term != 0:
+                # Corrupted from the real fsck's point of view: it discards
+                # everything from here to the end of this DIRBLKSIZ chunk.
+                loc = chunk_end
+                continue
+            entries.append((name.decode("ascii", "replace"), d_ino))
+        loc += d_reclen
+    return entries
+
+
+def _reachable_inodes(img, dir_ino):
+    """Every inode reachable by path from `dir_ino`, walked recursively with
+    fsck's own directory-entry validity rules -- including `dir_ino` itself.
+    """
+    found = {dir_ino}
+    data = img.read_file(dir_ino)
+    for name, ino in _fsck_style_entries(data):
+        if name in (".", ".."):
+            continue
+        n = img.inode(ino)
+        found.add(ino)
+        if n.is_dir():
+            found |= _reachable_inodes(img, ino)
+    return found
+
+
+def _used_inodes(image_path):
+    """Every inode currently marked used, across all cylinder groups."""
+    used = set()
+    with ufs_alloc.Allocator(image_path) as a:
+        for c in range(a.cg_count):
+            inosused = a.inosused(c)
+            for local in range(a.g.ipg):
+                if ufs_cg.bit_is_set(inosused, local):
+                    used.add(c * a.g.ipg + local)
+    return used
+
+
+class TestDriverInstallLinksEveryInode(unittest.TestCase):
+    """Regression test for bug 2: install-driver.py's own reclen formula
+    undersized any directory entry whose name length was a multiple of 4
+    (see ufs_alloc._dirent_reclen), which corrupted the *next* entry in the
+    same DIRBLKSIZ chunk from the real kernel fsck's point of view (its
+    dircheck() requires a NUL byte immediately after the name, which landed
+    on the next entry's own d_ino instead) -- silently discarding every
+    entry after it in that chunk, including ones our own tools still read
+    back fine.  The two AHCI.config entries after 'AHCI' (namlen 4) and
+    'PostLoad' (namlen 8) were exactly the ones fsck reported UNREF.
+
+    This walks the actual installed directory tree with the independent
+    rhap_image reader and confirms every inode the installer allocated is
+    reachable by path from it -- the same connectivity fsck's Phase 4 checks
+    for, which ufs_check does not.
+    """
+
+    @unittest.skipUnless(_present(GOLDEN, os.path.join(HERE, "AHCI.config")),
+                         "golden.img or AHCI.config not present")
+    def test_every_allocated_inode_is_reachable(self):
+        tmp = tempfile.mkdtemp(prefix="ufsalloc-", dir=os.path.join(HERE, "work"))
+        self.addCleanup(shutil.rmtree, tmp)
+        out = os.path.join(tmp, "test.img")
+
+        before = _used_inodes(GOLDEN)
+        subprocess.check_call(
+            ["python3", os.path.join(HERE, "install-driver.py"),
+             GOLDEN, os.path.join(HERE, "AHCI.config"), out])
+        self.assertEqual(ufs_check.check(out), [])
+        after = _used_inodes(out)
+        newly_allocated = after - before
+
+        with rhap_image.Image(out) as img:
+            base_ino = img.resolve("/private/Drivers/i386/AHCI.config")
+            reachable = _reachable_inodes(img, base_ino)
+
+        self.assertEqual(
+            newly_allocated, reachable,
+            "install-driver.py allocated inode(s) never reachable by path "
+            "(orphaned): %r" % sorted(newly_allocated - reachable))
 
 
 if __name__ == "__main__":

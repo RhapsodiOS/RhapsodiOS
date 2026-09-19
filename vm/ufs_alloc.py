@@ -36,6 +36,22 @@ DIRBLKSIZ = 1024
 CG_CS_OFF = 24          # struct csum inside the cg header
 CG_OFFSETS_OFF = 84     # cg_btotoff, cg_boff, cg_iusedoff, cg_freeoff
 
+
+def _dirent_reclen(namlen):
+    """Minimum record length for a directory entry with this name length.
+
+    src/kernel-7/bsd/ufs/ufs/dir.h's DIRSIZ macro: the fixed 8-byte header
+    (d_ino/d_reclen/d_type/d_namlen) plus room for the name PLUS ITS
+    TERMINATING NUL BYTE (namlen + 1), rounded up to 4.  Leaving out the "+1"
+    (i.e. using roundup4(namlen) instead of roundup4(namlen + 1)) undersizes
+    the record by 4 bytes whenever namlen is itself a multiple of 4: the next
+    entry's own d_ino then lands where the kernel's fsck requires a NUL
+    terminator, which fails its dircheck() validation and silently discards
+    every entry after it in the same DIRBLKSIZ chunk (an on-disk-valid-looking
+    but unreachable, i.e. orphaned, inode).
+    """
+    return 8 + ((namlen + 1 + 3) & ~3)
+
 # struct fs in src/kernel-7/bsd/ufs/ffs/fs.h:241 (the "struct csum
 # fs_cstotal" member).  Counting every preceding int32-sized field (each
 # ufs_daddr_t/time_t on this platform is also 4 bytes, confirmed because
@@ -334,12 +350,25 @@ class Allocator(object):
         struct.pack_into("<%di" % rhap_image.NDADDR, buf, entry + 40, *db)
         struct.pack_into("<%di" % rhap_image.NIADDR, buf, entry + 88, *ib)
 
-    def set_inode_blocks(self, ino, nsectors):
-        """Set di_blocks, which counts 512-byte sectors (not fragments)."""
+    def set_inode_blocks(self, ino, nunits):
+        """Set di_blocks, which counts units of `self.g.fsize / self.g.nspf`
+        bytes -- NOT a hardcoded 512-byte sector.  The kernel computes it as
+        btodb(bytes, devBlockSize), and for a UFS device devBlockSize is
+        fs_fsize / fsbtodb(fs, 1) == fs_fsize / NSPF(fs) (see
+        src/kernel-7/bsd/ufs/ffs/fs.h and src/Commands/diskdev_cmds/
+        fsck.tproj/setup.c:readsb, which computes dev_bsize identically).
+        So one di_blocks unit is `self.g.fsize // self.g.nspf` bytes, and a
+        fragment (self.g.fsize bytes) is worth `self.g.nspf` units.  On this
+        filesystem self.g.nspf is 1 (Apple's UFS counts NSPF in 1024-byte
+        units, not classic BSD's 512-byte DEV_BSIZE -- see the dir.h comment
+        cited in vm/ufs_build.py), so one di_blocks unit equals one whole
+        fragment; callers should pass `total_frags * self.g.nspf`, never a
+        hardcoded divide-by-two/512.
+        """
         self._require_writable("set_inode_blocks")
         frag, entry = rhap_image._inode_location(self.img, ino)
         buf = self._dirty_inode_block(frag)
-        struct.pack_into("<i", buf, entry + 104, nsectors)
+        struct.pack_into("<i", buf, entry + 104, nunits)
 
     def alloc_frags(self, n):
         """Allocate n fragments, as whole fs_frag-sized blocks plus at most
@@ -612,7 +641,7 @@ class Allocator(object):
         self._zero_dinode(ino)
         self.write_inode(ino, mode=mode, size=len(data), db=db, ib=ib,
                           nlink=1, mtime=int(time.time()))
-        self.set_inode_blocks(ino, total_frags * (self.g.fsize // 512))
+        self.set_inode_blocks(ino, total_frags * self.g.nspf)
         return ino
 
     def grow_file(self, ino, data):
@@ -632,7 +661,7 @@ class Allocator(object):
         self.free_frags(old_frags)
         self.write_inode(ino, mode=mode, size=len(data), db=db, ib=ib,
                           nlink=nlink, mtime=int(time.time()))
-        self.set_inode_blocks(ino, total_frags * (self.g.fsize // 512))
+        self.set_inode_blocks(ino, total_frags * self.g.nspf)
 
     # -- directory operations -----------------------------------------
 
@@ -824,7 +853,7 @@ class Allocator(object):
         self._require_writable("add_dirent")
         nameb = name.encode("ascii")
         namlen = len(nameb)
-        need = (8 + namlen + 3) & ~3
+        need = _dirent_reclen(namlen)
         if need > DIRBLKSIZ:
             raise SafetyError("name %r is too long for a directory entry" % name)
 
@@ -840,7 +869,7 @@ class Allocator(object):
             if e_reclen == 0:
                 break
             if e_ino != 0:
-                actual = (8 + e_namlen + 3) & ~3
+                actual = _dirent_reclen(e_namlen)
                 free = e_reclen - actual
                 if free >= need:
                     struct.pack_into("<IHBB", data, p, e_ino, actual,
@@ -873,7 +902,7 @@ class Allocator(object):
         self.write_inode(dir_ino, mode=mode, size=new_size, db=db, ib=ib,
                           nlink=nlink, mtime=int(time.time()))
         total_frags = len(self._old_file_frags(new_size, db, ib))
-        self.set_inode_blocks(dir_ino, total_frags * (self.g.fsize // 512))
+        self.set_inode_blocks(dir_ino, total_frags * self.g.nspf)
 
     def _remove_dirent(self, dir_ino, name):
         """Zero out an entry's d_ino in place, leaving its reclen as free
@@ -914,7 +943,7 @@ class Allocator(object):
 
         ino = self.alloc_inode(is_dir=True)
         content = bytearray(DIRBLKSIZ)
-        dot_reclen = (8 + 1 + 3) & ~3        # "." : namlen 1
+        dot_reclen = _dirent_reclen(1)       # "." : namlen 1
         struct.pack_into("<IHBB", content, 0, ino, dot_reclen, 4, 1)
         content[8:9] = b"."
         dotdot_reclen = DIRBLKSIZ - dot_reclen   # runs to the chunk's end
@@ -930,7 +959,7 @@ class Allocator(object):
         self._zero_dinode(ino)
         self.write_inode(ino, mode=mode, size=len(content), db=db, ib=ib,
                           nlink=2, mtime=int(time.time()))
-        self.set_inode_blocks(ino, total_frags * (self.g.fsize // 512))
+        self.set_inode_blocks(ino, total_frags * self.g.nspf)
 
         self.add_dirent(parent_ino, name, ino, 4)
         self._bump_nlink(parent_ino, +1)

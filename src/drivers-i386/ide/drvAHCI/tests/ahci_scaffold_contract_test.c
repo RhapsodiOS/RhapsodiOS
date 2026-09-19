@@ -421,7 +421,9 @@ static int valid_controller_source(const char *text)
            has_scoped_expression(text, initializer, "- free",
                "[IODirectDevice getPCIConfigData:&bar5 atRegister:AHCI_PCI_BAR5_REGISTER withDeviceDescription:deviceDescription] != IO_R_SUCCESS") &&
            has_scoped_expression(text, initializer, "- free",
-               "AHCIPCIValidateBAR5((AHCIU32)bar5, AHCI_ABAR_LENGTH, &abarPhysical) != AHCI_PCI_SUCCESS") &&
+               "AHCIPCIBarLength((AHCIU32)barSizeMask, AHCI_ABAR_LENGTH, &abarLength) != AHCI_PCI_SUCCESS") &&
+           has_scoped_expression(text, initializer, "- free",
+               "AHCIPCIValidateBAR5((AHCIU32)bar5, abarLength, &abarPhysical) != AHCI_PCI_SUCCESS") &&
            has_scoped_expression(text, initializer, "- free",
                "originalPCIConfig = (AHCIU32)command;") &&
            has_scoped_expression(text, initializer, "- free",
@@ -433,7 +435,7 @@ static int valid_controller_source(const char *text)
            has_scoped_expression(text, initializer, "- free",
                "memoryRange.start = abarPhysical;") &&
            has_scoped_expression(text, initializer, "- free",
-               "memoryRange.size = AHCI_ABAR_LENGTH;") &&
+               "memoryRange.size = abarLength;") &&
            has_scoped_expression(text, initializer, "- free",
                "[deviceDescription setMemoryRangeList:&memoryRange num:1] != IO_R_SUCCESS") &&
            has_scoped_expression(text, initializer, "- free",
@@ -443,7 +445,7 @@ static int valid_controller_source(const char *text)
            has_scoped_expression(text, initializer, "- free",
                "if (AHCIHBAInitialize(&ops, &hbaInfo) != AHCI_HBA_SUCCESS) { IOLog(\"AHCI: HBA reset and initialisation failed.\\n\"); [self free]; return nil; }") &&
            has_scoped_expression(text, initializer, "- free",
-               "mmio.base = (volatile unsigned char *)abarAddress; mmio.length = AHCI_ABAR_LENGTH; ops.context = &mmio; ops.read = AHCIMMIORead; ops.write = AHCIMMIOWrite; ops.delay = AHCIDelayMilliseconds; ops.barrier = AHCIMMIOBarrier;") &&
+               "mmio.base = (volatile unsigned char *)abarAddress; mmio.length = abarLength; ops.context = &mmio; ops.read = AHCIMMIORead; ops.write = AHCIMMIOWrite; ops.delay = AHCIDelayMilliseconds; ops.barrier = AHCIMMIOBarrier;") &&
            has_scoped_expression(text, initializer, "- free",
                "IOLog(\"%s: Intel AHCI 8086:2922 class 01:06:01 at %02x:%02x.%x ABAR %08x version %x CAP %08x CAP2 %08x PI %08x attached\\n\", [self name], pciBus, pciDev, pciFunc, abarPhysical, hbaInfo.version, hbaInfo.capabilities, hbaInfo.capabilities2, hbaInfo.portsImplemented);") &&
            has_scoped_expression(text, initializer, "- free", "return self;") &&
@@ -683,8 +685,12 @@ static void test_validator_mutations(void)
         "[IODirectDevice getPCIConfigData:&classRevision atRegister:AHCI_PCI_CLASS_REGISTER withDeviceDescription:deviceDescription] != IO_R_SUCCESS ||\n"
         "((classRevision >> 8) & 0x00ffffff) != AHCI_PCI_CLASS_CODE) return nil;\n");
     strcat(controller_ok,
-        "if ([IODirectDevice getPCIConfigData:&bar5 atRegister:AHCI_PCI_BAR5_REGISTER withDeviceDescription:deviceDescription] != IO_R_SUCCESS ||\n"
-        "AHCIPCIValidateBAR5((AHCIU32)bar5, AHCI_ABAR_LENGTH, &abarPhysical) != AHCI_PCI_SUCCESS) return nil;\n");
+        "if ([IODirectDevice getPCIConfigData:&bar5 atRegister:AHCI_PCI_BAR5_REGISTER withDeviceDescription:deviceDescription] != IO_R_SUCCESS) return nil;\n");
+    strcat(controller_ok,
+        "barProbeResult = [IODirectDevice getPCIConfigData:&barSizeMask atRegister:AHCI_PCI_BAR5_REGISTER withDeviceDescription:deviceDescription];\n"
+        "barRestoreResult = [IODirectDevice setPCIConfigData:bar5 atRegister:AHCI_PCI_BAR5_REGISTER withDeviceDescription:deviceDescription];\n"
+        "if (AHCIPCIBarLength((AHCIU32)barSizeMask, AHCI_ABAR_LENGTH, &abarLength) != AHCI_PCI_SUCCESS) return nil;\n"
+        "if (AHCIPCIValidateBAR5((AHCIU32)bar5, abarLength, &abarPhysical) != AHCI_PCI_SUCCESS) return nil;\n");
     strcat(controller_ok,
         "originalPCIConfig = (AHCIU32)command;\n"
         "if (AHCIPCIPlanCommand(originalPCIConfig, &enabledCommand, &pciCommandRestore, &commandChanged) != AHCI_PCI_SUCCESS) return nil;\n"
@@ -694,7 +700,7 @@ static void test_validator_mutations(void)
         "if ([IODirectDevice getPCIConfigData:&commandReadback atRegister:AHCI_PCI_COMMAND_REGISTER withDeviceDescription:deviceDescription] != IO_R_SUCCESS ||\n"
         "AHCIPCIValidateCommandReadback((AHCIU32)commandReadback) != AHCI_PCI_SUCCESS) { IOLog(\"AHCI: PCI command register did not hold the enabled bits.\\n\"); [self free]; return nil; }\n");
     strcat(controller_ok,
-        "memoryRange.start = abarPhysical;\nmemoryRange.size = AHCI_ABAR_LENGTH;\n"
+        "memoryRange.start = abarPhysical;\nmemoryRange.size = abarLength;\n"
         "if ([deviceDescription setMemoryRangeList:&memoryRange num:1] != IO_R_SUCCESS) return nil;\n"
         "if ([super initFromDeviceDescription:deviceDescription] == nil) return nil;\n");
     strcat(controller_ok,
@@ -703,7 +709,7 @@ static void test_validator_mutations(void)
         "abarMapped = YES;\n"
         "if (abarAddress == 0 || (abarAddress & 3U) != 0) { IOLog(\"AHCI: mapped ABAR address is null or misaligned.\\n\"); [self free]; return nil; }\n");
     strcat(controller_ok,
-        "mmio.base = (volatile unsigned char *)abarAddress; mmio.length = AHCI_ABAR_LENGTH;\n"
+        "mmio.base = (volatile unsigned char *)abarAddress; mmio.length = abarLength;\n"
         "ops.context = &mmio; ops.read = AHCIMMIORead; ops.write = AHCIMMIOWrite;\n"
         "ops.delay = AHCIDelayMilliseconds; ops.barrier = AHCIMMIOBarrier;\n"
         "if (AHCIHBAInitialize(&ops, &hbaInfo) != AHCI_HBA_SUCCESS) { IOLog(\"AHCI: HBA reset and initialisation failed.\\n\"); [self free]; return nil; }\n");
@@ -796,7 +802,7 @@ static void test_validator_mutations(void)
         ++failures;
     expect_invalid("BAR5 read removed", valid_controller_source, mutation);
     if (!replace_once(mutation, sizeof(mutation), controller_ok,
-                      "AHCIPCIValidateBAR5((AHCIU32)bar5, AHCI_ABAR_LENGTH, &abarPhysical)",
+                      "AHCIPCIValidateBAR5((AHCIU32)bar5, abarLength, &abarPhysical)",
                       "AHCI_PCI_SUCCESS"))
         ++failures;
     expect_invalid("PCI BAR helper removed", valid_controller_source,
@@ -814,7 +820,7 @@ static void test_validator_mutations(void)
     expect_invalid("PCI readback helper removed", valid_controller_source,
                    mutation);
     if (!replace_once(mutation, sizeof(mutation), controller_ok,
-                      "memoryRange.size = AHCI_ABAR_LENGTH;",
+                      "memoryRange.size = abarLength;",
                       "memoryRange.size = 0x1000U;"))
         ++failures;
     expect_invalid("ABAR span shortened", valid_controller_source, mutation);

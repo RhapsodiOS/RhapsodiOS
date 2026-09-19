@@ -112,6 +112,10 @@ static int AHCIVersionIsCommon(AHCIU32 version)
     int port;
     AHCIDeviceKind kind;
     AHCIU32 ghc;
+    AHCIU32 abarLength;
+    unsigned long barSizeMask;
+    IOReturn barProbeResult;
+    IOReturn barRestoreResult;
     unsigned char pciBus;
     unsigned char pciDev;
     unsigned char pciFunc;
@@ -166,8 +170,48 @@ static int AHCIVersionIsCommon(AHCIU32 version)
 
     if ([IODirectDevice getPCIConfigData:&bar5
               atRegister:AHCI_PCI_BAR5_REGISTER
-              withDeviceDescription:deviceDescription] != IO_R_SUCCESS ||
-        AHCIPCIValidateBAR5((AHCIU32)bar5, AHCI_ABAR_LENGTH,
+              withDeviceDescription:deviceDescription] != IO_R_SUCCESS) {
+        IOLog("AHCI: cannot read BAR5.\n");
+        [self free];
+        return nil;
+    }
+
+    /* Size BAR5 before enabling memory decode below: write all ones, see
+     * which bits the device leaves set, put the address back.  A
+     * controller with few ports decodes far less than AHCI's 0x1100
+     * maximum, and mapping the maximum regardless overlaps the next
+     * controller's registers. */
+    if ([IODirectDevice setPCIConfigData:0xffffffffUL
+              atRegister:AHCI_PCI_BAR5_REGISTER
+              withDeviceDescription:deviceDescription] != IO_R_SUCCESS) {
+        IOLog("AHCI: cannot write BAR5 to size it.\n");
+        [self free];
+        return nil;
+    }
+    barSizeMask = 0;
+    barProbeResult = [IODirectDevice getPCIConfigData:&barSizeMask
+                          atRegister:AHCI_PCI_BAR5_REGISTER
+                          withDeviceDescription:deviceDescription];
+    /* Restore before acting on the result: leaving all ones in BAR5 would
+     * park the device's registers at the top of memory. */
+    barRestoreResult = [IODirectDevice setPCIConfigData:bar5
+                            atRegister:AHCI_PCI_BAR5_REGISTER
+                            withDeviceDescription:deviceDescription];
+    if (barProbeResult != IO_R_SUCCESS ||
+        barRestoreResult != IO_R_SUCCESS) {
+        IOLog("AHCI: BAR5 size probe failed; BAR5 may not be restored.\n");
+        [self free];
+        return nil;
+    }
+    if (AHCIPCIBarLength((AHCIU32)barSizeMask, AHCI_ABAR_LENGTH,
+                         &abarLength) != AHCI_PCI_SUCCESS) {
+        IOLog("AHCI: BAR5 sizes to %08x, which is not a usable ABAR span.\n",
+              (AHCIU32)barSizeMask);
+        [self free];
+        return nil;
+    }
+
+    if (AHCIPCIValidateBAR5((AHCIU32)bar5, abarLength,
                             &abarPhysical) != AHCI_PCI_SUCCESS) {
         IOLog("AHCI: BAR5 is missing or not a usable ABAR.\n");
         [self free];
@@ -227,7 +271,7 @@ static int AHCIVersionIsCommon(AHCIU32 version)
     }
 
     memoryRange.start = abarPhysical;
-    memoryRange.size = AHCI_ABAR_LENGTH;
+    memoryRange.size = abarLength;
     if ([deviceDescription setMemoryRangeList:&memoryRange num:1] !=
         IO_R_SUCCESS) {
         /* Values included because the usual cause is a conflict with a
@@ -235,7 +279,7 @@ static int AHCIVersionIsCommon(AHCIU32 version)
          * conflict is with another AHCI instance or with something else. */
         IOLog("AHCI: %02x:%02x.%x cannot register ABAR %08x+%x; "
               "already reserved?\n",
-              pciBus, pciDev, pciFunc, abarPhysical, AHCI_ABAR_LENGTH);
+              pciBus, pciDev, pciFunc, abarPhysical, abarLength);
         [self free];
         return nil;
     }
@@ -269,7 +313,7 @@ static int AHCIVersionIsCommon(AHCIU32 version)
         return nil;
     }
     mmio.base = (volatile unsigned char *)abarAddress;
-    mmio.length = AHCI_ABAR_LENGTH;
+    mmio.length = abarLength;
     ops.context = &mmio;
     ops.read = AHCIMMIORead;
     ops.write = AHCIMMIOWrite;

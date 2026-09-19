@@ -135,6 +135,54 @@ static void test_legacy_interrupt_line(void)
         fail(name, "invalid interrupt line was accepted");
 }
 
+static void test_abar_length_from_bar_probe(void)
+{
+    static const char name[] = "ABAR length";
+    AHCIU32 length;
+
+    /* QEMU's ich9-ahci decodes 4 KiB, less than AHCI's 0x1100 maximum.
+     * Mapping the maximum anyway is what made a second controller's range
+     * overlap the first one's registers. */
+    length = 0;
+    if (AHCIPCIBarLength(0xfffff000U, 0x1100U, &length) !=
+        AHCI_PCI_SUCCESS)
+        fail(name, "a 4 KiB BAR was rejected");
+    if (length != 0x1000U)
+        fail(name, "a 4 KiB BAR did not decode to 0x1000");
+
+    /* The BAR's type bits are not part of the size. */
+    length = 0;
+    if (AHCIPCIBarLength(0xfffff00cU, 0x1100U, &length) !=
+            AHCI_PCI_SUCCESS ||
+        length != 0x1000U)
+        fail(name, "type bits were not masked out of the size");
+
+    /* A BAR wider than AHCI can use is clamped, never mapped whole. */
+    length = 0;
+    if (AHCIPCIBarLength(0xffff0000U, 0x1100U, &length) !=
+            AHCI_PCI_SUCCESS ||
+        length != 0x1100U)
+        fail(name, "an oversized BAR was not clamped to the maximum");
+
+    /* Too small to hold the generic host control plus one port. */
+    length = 1;
+    if (AHCIPCIBarLength(0xffffff80U, 0x1100U, &length) !=
+        AHCI_PCI_INVALID_BAR)
+        fail(name, "an undersized BAR was accepted");
+    if (length != 0)
+        fail(name, "a rejected BAR left a length behind");
+
+    /* An unimplemented BAR reads back all zero. */
+    length = 1;
+    if (AHCIPCIBarLength(0U, 0x1100U, &length) != AHCI_PCI_INVALID_BAR)
+        fail(name, "an unimplemented BAR was accepted");
+
+    if (AHCIPCIBarLength(0xfffff000U, 0x1100U, 0) != AHCI_PCI_BAD_ARGUMENT)
+        fail(name, "a null length pointer was accepted");
+    if (AHCIPCIBarLength(0xfffff000U, 0, &length) != AHCI_PCI_BAD_ARGUMENT)
+        fail(name, "a zero maximum was accepted");
+}
+
 int main(void)
 {
     test_valid_bar5();
@@ -144,6 +192,7 @@ int main(void)
     test_command_readback();
     test_command_plan_arguments();
     test_legacy_interrupt_line();
+    test_abar_length_from_bar_probe();
     if (failures != 0) {
         fprintf(stderr, "ahci_pci_test: %d failure(s)\n", failures);
         return EXIT_FAILURE;

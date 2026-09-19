@@ -30,8 +30,13 @@ typedef enum {
     AHCI_PCI_COMMAND_NOT_ENABLED
 } AHCIPCIResult;
 
+/* Smallest ABAR that can hold the generic host control plus one port. */
+#define AHCI_ABAR_MINIMUM_LENGTH     0x180U
+
 AHCIPCIResult AHCIPCIValidateBAR5(AHCIU32 bar5, AHCIU32 span,
                                   AHCIU32 *physicalBase);
+AHCIPCIResult AHCIPCIBarLength(AHCIU32 sizeMask, AHCIU32 maximum,
+                               AHCIU32 *length);
 AHCIPCIResult AHCIPCIPlanCommand(AHCIU32 originalConfig,
                                  AHCIU32 *enableWrite,
                                  AHCIU32 *restoreWrite,

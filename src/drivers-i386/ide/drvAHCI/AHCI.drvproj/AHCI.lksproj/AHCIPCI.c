@@ -21,6 +21,44 @@ AHCIPCIResult AHCIPCIValidateBAR5(AHCIU32 bar5, AHCIU32 span,
     return AHCI_PCI_SUCCESS;
 }
 
+/*
+ * How much address space BAR5 actually decodes, from the value read back
+ * after writing all ones to it.  The set bits above the type field are the
+ * ones the device leaves writable, so the size is the complement plus one.
+ *
+ * AHCI's register file is at most 0x1100 (0x100 of generic host control
+ * plus 32 ports of 0x80), but a controller that implements fewer ports
+ * decodes less -- QEMU's ich9-ahci decodes 4 KiB and places consecutive
+ * controllers 4 KiB apart.  Mapping the 0x1100 maximum regardless made a
+ * second controller's range run 0x100 bytes into the first one's
+ * registers, and the kernel refused the overlapping reservation.  So take
+ * whichever is smaller: what the BAR decodes, or what AHCI can use.
+ */
+AHCIPCIResult AHCIPCIBarLength(AHCIU32 sizeMask, AHCIU32 maximum,
+                               AHCIU32 *length)
+{
+    AHCIU32 decoded;
+
+    if (length == 0 || maximum == 0)
+        return AHCI_PCI_BAD_ARGUMENT;
+    *length = 0;
+
+    decoded = sizeMask & AHCI_PCI_BAR_MEMORY_MASK;
+    if (decoded == 0)
+        return AHCI_PCI_INVALID_BAR;
+    decoded = ~decoded + 1U;
+
+    /* A BAR decodes a power-of-two span; anything else means the readback
+     * was not a size probe. */
+    if (decoded == 0 || (decoded & (decoded - 1U)) != 0)
+        return AHCI_PCI_INVALID_BAR;
+    if (decoded < AHCI_ABAR_MINIMUM_LENGTH)
+        return AHCI_PCI_INVALID_BAR;
+
+    *length = decoded < maximum ? decoded : maximum;
+    return AHCI_PCI_SUCCESS;
+}
+
 AHCIPCIResult AHCIPCIPlanCommand(AHCIU32 originalConfig,
                                  AHCIU32 *enableWrite,
                                  AHCIU32 *restoreWrite,

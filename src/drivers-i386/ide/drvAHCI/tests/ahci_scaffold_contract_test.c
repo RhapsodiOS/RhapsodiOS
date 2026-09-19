@@ -445,7 +445,7 @@ static int valid_controller_source(const char *text)
            has_scoped_expression(text, initializer, "- free",
                "mmio.base = (volatile unsigned char *)abarAddress; mmio.length = AHCI_ABAR_LENGTH; ops.context = &mmio; ops.read = AHCIMMIORead; ops.write = AHCIMMIOWrite; ops.delay = AHCIDelayMilliseconds; ops.barrier = AHCIMMIOBarrier;") &&
            has_scoped_expression(text, initializer, "- free",
-               "IOLog(\"%s: Intel AHCI 8086:2922 class 01:06:01 version %x CAP %08x CAP2 %08x PI %08x attached\\n\", [self name], hbaInfo.version, hbaInfo.capabilities, hbaInfo.capabilities2, hbaInfo.portsImplemented);") &&
+               "IOLog(\"%s: Intel AHCI 8086:2922 class 01:06:01 at %02x:%02x.%x version %x CAP %08x CAP2 %08x PI %08x attached\\n\", [self name], pciBus, pciDev, pciFunc, hbaInfo.version, hbaInfo.capabilities, hbaInfo.capabilities2, hbaInfo.portsImplemented);") &&
            has_scoped_expression(text, initializer, "- free", "return self;") &&
            has_scoped_expression(text, "- free", "@end",
                "[self unmapMemoryRange:0 from:abarAddress]") &&
@@ -708,8 +708,10 @@ static void test_validator_mutations(void)
         "ops.delay = AHCIDelayMilliseconds; ops.barrier = AHCIMMIOBarrier;\n"
         "if (AHCIHBAInitialize(&ops, &hbaInfo) != AHCI_HBA_SUCCESS) { IOLog(\"AHCI: HBA reset and initialisation failed.\\n\"); [self free]; return nil; }\n");
     strcat(controller_ok,
-        "IOLog(\"%s: Intel AHCI 8086:2922 class 01:06:01 version %x CAP %08x CAP2 %08x PI %08x attached\\n\", [self name], hbaInfo.version, hbaInfo.capabilities, hbaInfo.capabilities2, hbaInfo.portsImplemented);\n"
-        "return self;\n}\n- free { if (abarMapped) { [self unmapMemoryRange:0 from:abarAddress]; }\n"
+        "IOLog(\"%s: Intel AHCI 8086:2922 class 01:06:01 at %02x:%02x.%x version %x CAP %08x CAP2 %08x PI %08x attached\\n\", [self name], pciBus, pciDev, pciFunc, hbaInfo.version, hbaInfo.capabilities, hbaInfo.capabilities2, hbaInfo.portsImplemented);\n"
+        "return self;\n}\n");
+    strcat(controller_ok,
+        "- free { if (abarMapped) { [self unmapMemoryRange:0 from:abarAddress]; }\n"
         "if (pciCommandWriteAttempted && pciCommandChanged) {\n"
         "[IODirectDevice setPCIConfigData:pciCommandRestore atRegister:AHCI_PCI_COMMAND_REGISTER withDeviceDescription:pciDeviceDescription]; }\n"
         "return [super free]; }\n@end\n");

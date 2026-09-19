@@ -1,6 +1,7 @@
 #import "AHCIController.h"
 #import <driverkit/generalFuncs.h>
 #import <driverkit/i386/IOPCIDirectDevice.h>
+#import <driverkit/i386/IOPCIDeviceDescription.h>
 #import "AHCIHBA.h"
 #import "AHCIPCI.h"
 #import "AHCIShared.h"
@@ -111,8 +112,25 @@ static int AHCIVersionIsCommon(AHCIU32 version)
     int port;
     AHCIDeviceKind kind;
     AHCIU32 ghc;
+    unsigned char pciBus;
+    unsigned char pciDev;
+    unsigned char pciFunc;
 
     pciDeviceDescription = deviceDescription;
+    pciBus = 0;
+    pciDev = 0;
+    pciFunc = 0;
+    /* A bundle ships more instance tables than a given board has
+     * controllers, so an instance with no PCI device behind it is normal,
+     * not a fault.  Say so plainly rather than letting it fall through to
+     * the config-space read and report an unreadable ID register. */
+    if ([deviceDescription getPCIdevice:&pciDev
+                               function:&pciFunc
+                                    bus:&pciBus] != IO_R_SUCCESS) {
+        IOLog("AHCI: no PCI device for this instance; nothing to attach.\n");
+        [self free];
+        return nil;
+    }
     /* Reported separately, with the values actually read.  A single combined
      * test cannot say whether the config read failed or merely mismatched,
      * which left AHCI bring-up unable to distinguish four different faults. */
@@ -328,8 +346,12 @@ static int AHCIVersionIsCommon(AHCIU32 version)
         IOLog("%s: AHCI version %x is newer or unknown; using common register subset\n",
               [self name], hbaInfo.version);
 
-    IOLog("%s: Intel AHCI 8086:2922 class 01:06:01 version %x CAP %08x CAP2 %08x PI %08x attached\n",
-          [self name], hbaInfo.version, hbaInfo.capabilities,
+    /* Location included because a board can carry more than one 8086:2922,
+     * and without it every line above is ambiguous about which one it came
+     * from. */
+    IOLog("%s: Intel AHCI 8086:2922 class 01:06:01 at %02x:%02x.%x version %x CAP %08x CAP2 %08x PI %08x attached\n",
+          [self name], pciBus, pciDev, pciFunc,
+          hbaInfo.version, hbaInfo.capabilities,
           hbaInfo.capabilities2, hbaInfo.portsImplemented);
     return self;
 }

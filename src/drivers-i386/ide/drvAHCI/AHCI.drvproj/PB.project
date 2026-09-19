@@ -2,7 +2,12 @@
     BUNDLE_EXTENSION = config;
     DYNAMIC_CODE_GEN = YES;
     FILESTABLE = {
-        OTHER_RESOURCES = (Default.table, Localizable.strings);
+        OTHER_RESOURCES = (
+            Default.table,
+            Instance0.table,
+            Instance1.table,
+            Localizable.strings
+        );
         OTHER_SOURCES = (Makefile, Makefile.preamble, DriverInfo);
         SUBPROJECTS = (AHCI.lksproj, PostLoad.tproj);
     };

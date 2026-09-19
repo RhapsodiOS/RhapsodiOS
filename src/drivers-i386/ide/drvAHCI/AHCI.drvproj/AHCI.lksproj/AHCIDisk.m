@@ -15,9 +15,17 @@
     AHCIDisk *disk;
 
     disk = [[self alloc] initFromDeviceDescription:description];
-    if (disk == nil)
+    if (disk == nil) {
+        IOLog("AHCIDisk: initFromDeviceDescription failed.\n");
         return nil;
-    if (![disk initResourcesForPort:port] || ![disk identifyDevice]) {
+    }
+    if (![disk initResourcesForPort:port]) {
+        IOLog("AHCIDisk: cannot allocate the port's disk resources.\n");
+        [disk free];
+        return nil;
+    }
+    if (![disk identifyDevice]) {
+        IOLog("AHCIDisk: IDENTIFY DEVICE failed or returned bad data.\n");
         [disk free];
         return nil;
     }
@@ -41,11 +49,19 @@
     char name[12];
 
     globalUnit = ata_hd_register(self, 0, &devAndIdInfo);
-    if (globalUnit < 0)
+    if (globalUnit < 0) {
+        /* No free hd unit, or the shared devsw is not ready -- the latter
+         * means some other disk driver claimed majors 3/15 first. */
+        IOLog("AHCIDisk: ata_hd_register refused this disk (%d).\n",
+              globalUnit);
         return NO;
+    }
     _hdUnit = globalUnit;
-    if (!ata_hd_set_flush(_hdUnit, self, AHCIDiskTransportFlush))
+    if (!ata_hd_set_flush(_hdUnit, self, AHCIDiskTransportFlush)) {
+        IOLog("AHCIDisk: cannot install the flush callback for hd%d.\n",
+              globalUnit);
         return NO;
+    }
     unit = (unsigned int)globalUnit;
     [self setDevAndIdInfo:devAndIdInfo];
     [self setUnit:unit];

@@ -337,6 +337,108 @@ class TestDirectoryOperations(unittest.TestCase):
             with self.assertRaises(ufs_alloc.SafetyError):
                 a.rmdir("/private/Drivers/i386/TEST.config")
 
+    def test_di_nlink_follows_all_four_rules(self):
+        # di_nlink isn't checked by ufs_check at all, so this is the only
+        # thing that would ever catch a regression here.  Read every value
+        # back through the independent reader (rhap_image), not the
+        # allocator's own accessors.
+        parent = "/private/Drivers/i386"
+        with rhap_image.Image(self.img) as img:
+            parent_nlink_before = img.inode(img.resolve(parent)).nlink
+
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            dir_ino = a.mkdir(parent + "/TEST.config")
+            file_ino = a.create_file(parent + "/TEST.config/f", b"x")
+            nested_ino = a.mkdir(parent + "/TEST.config/NESTED.config")
+            a.flush()
+        self.assertEqual(ufs_check.check(self.img), [])
+
+        with rhap_image.Image(self.img) as img:
+            # A newly created regular file: nlink == 1.
+            self.assertEqual(img.inode(file_ino).nlink, 1)
+            # A newly created directory: nlink == 2 (its name in the
+            # parent, plus its own ".").
+            self.assertEqual(img.inode(nested_ino).nlink, 2)
+            # Nesting: TEST.config started at 2, then gained a child
+            # directory (NESTED.config), whose ".." is a second link back
+            # to it -- so TEST.config must now read 3, not 2 (no
+            # double-counting) and not 4 (not missed).
+            self.assertEqual(img.inode(dir_ino).nlink, 3)
+            # mkdir increments the parent's nlink by exactly 1.
+            self.assertEqual(img.inode(img.resolve(parent)).nlink,
+                              parent_nlink_before + 1)
+
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            a.rmdir(parent + "/TEST.config/NESTED.config")
+            a.flush()
+        self.assertEqual(ufs_check.check(self.img), [])
+        with rhap_image.Image(self.img) as img:
+            # Removing the nested directory must bring TEST.config back to
+            # 2, on the nose.
+            self.assertEqual(img.inode(dir_ino).nlink, 2)
+
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            a.unlink(parent + "/TEST.config/f")
+            a.rmdir(parent + "/TEST.config")
+            a.flush()
+        self.assertEqual(ufs_check.check(self.img), [])
+        with rhap_image.Image(self.img) as img:
+            # rmdir decrements the parent's nlink back to its original
+            # value.
+            self.assertEqual(img.inode(img.resolve(parent)).nlink,
+                              parent_nlink_before)
+
+    def test_add_dirent_growth_path_extends_the_tail_in_place(self):
+        # /private/Drivers/i386 is a long-established, foreign (not
+        # allocated by this module) directory with many entries -- the
+        # scenario the next task exercises for real.  add_dirent's growth
+        # path (nothing fits in any existing record's slack) must extend
+        # or append only the one block that's actually growing; it must
+        # never relocate a block the directory already had.
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            a.mkdir("/private/Drivers/i386/TEST.config")
+            dir_ino = a._resolve("/private/Drivers/i386/TEST.config")
+            _, _, size_before, db_before, _ = a._read_dinode(dir_ino)
+            tail_block_before = db_before[0]
+
+            created = []
+            i = 0
+            while True:
+                name = "f%d" % i
+                payload = ("payload-%d" % i).encode("ascii")
+                a.create_file(
+                    "/private/Drivers/i386/TEST.config/%s" % name, payload)
+                created.append((name, payload))
+                i += 1
+                size_now = a._read_dinode(dir_ino)[2]
+                if size_now > size_before:
+                    break
+                self.assertLess(
+                    i, 300, "growth path never triggered "
+                    "(directory slack never got exhausted)")
+
+            _, _, _, db_after, _ = a._read_dinode(dir_ino)
+            self.assertEqual(
+                db_after[0], tail_block_before,
+                "add_dirent's growth path relocated the directory's "
+                "existing (pre-growth) block instead of extending or "
+                "appending in place")
+            a.flush()
+
+        self.assertEqual(ufs_check.check(self.img), [])
+        with rhap_image.Image(self.img) as img:
+            names = [e[0] for e in
+                     img.listdir("/private/Drivers/i386/TEST.config")]
+            self.assertIn(".", names)
+            self.assertIn("..", names)
+            # Every entry added before (and at) the growth is still
+            # intact, with its own data unharmed.
+            for name, payload in created:
+                ino = img.resolve(
+                    "/private/Drivers/i386/TEST.config/%s" % name)
+                self.assertIsNotNone(ino, "%s went missing" % name)
+                self.assertEqual(img.read_file(ino), payload)
+
 
 if __name__ == "__main__":
     unittest.main()

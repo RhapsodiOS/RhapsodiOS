@@ -392,6 +392,18 @@ class Allocator(object):
         for c, indices in by_group.items():
             self._apply_group_delta(c, indices, to_used=False)
 
+    def _claim_frags(self, frags):
+        """Mark specific, already-known-free fragments used.  The in-place
+        half of extending a fragmented tail block by one more fragment
+        (the companion fragments alloc_frags left free within the same
+        fs-block-aligned run it took a partial tail from)."""
+        by_group = {}
+        for f in frags:
+            c, i = divmod(f, self.g.fpg)
+            by_group.setdefault(c, []).append(i)
+        for c, indices in by_group.items():
+            self._apply_group_delta(c, indices, to_used=True)
+
     def flush(self):
         """Write every pending change to disk.  The only method that writes."""
         self._require_writable("flush")
@@ -697,6 +709,76 @@ class Allocator(object):
                 return
         raise SafetyError("offset %d not covered by any block" % at)
 
+    def _set_block_ptr(self, db, ib, idx, frag_start):
+        """Point logical block `idx` (0-based, in bsize units) at
+        `frag_start`, allocating the single indirect block lazily if `idx`
+        is beyond the direct pointers.  Mutates and returns `db`, `ib`.
+        """
+        ndaddr = rhap_image.NDADDR
+        if idx < ndaddr:
+            db[idx] = frag_start
+            return db, ib
+        iidx = idx - ndaddr
+        if iidx >= self.g.nindir:
+            raise SafetyError(
+                "directory has grown past single-indirect capacity")
+        if ib[0] == 0:
+            allocated = []
+            indirect = self._alloc_whole_blocks(1, allocated)
+            ib[0] = indirect[0]
+            self._write_data(ib[0], bytes(self.g.bsize))
+        ind = bytearray(self._read_block_at(ib[0], self.g.bsize))
+        struct.pack_into("<i", ind, iidx * 4, frag_start)
+        self._write_data(ib[0], bytes(ind))
+        return db, ib
+
+    def _append_dir_chunk(self, size, db, ib, chunk):
+        """Extend a directory by exactly one DIRBLKSIZ chunk (`chunk`),
+        touching only the one block that's actually growing -- never any
+        other block the directory already has, however it was allocated.
+
+        While the current tail block still has fs-block room left (its
+        allocated fragment run is shorter than a whole bsize block), that
+        run is grown by one fragment: in place when the next physical
+        fragment is still free (the common case for a block this module
+        itself just allocated), otherwise relocated to a fresh run -- but
+        only that one block.  Once a block is full, growth starts a
+        brand-new block and every earlier block is left untouched.
+
+        Returns (db, ib); the caller is responsible for writing the new
+        size (`size + len(chunk)`) via write_inode.
+        """
+        bsize = self.g.bsize
+        fsize = self.g.fsize
+        db = list(db)
+        ib = list(ib)
+        block_idx = size // bsize
+        off_in_block = size % bsize
+
+        if off_in_block != 0:
+            layout = self._block_layout(size, db, ib)
+            old_start, _off, old_length = layout[-1]
+            old_frags = old_length // fsize
+            combined = self._read_block_at(old_start, old_length) + chunk
+            next_frag = old_start + old_frags
+            if self.frag_is_free(next_frag):
+                self._claim_frags([next_frag])
+                self._write_data(old_start, combined)
+            else:
+                new_start = self.alloc_frags(old_frags + 1)[0]
+                self._write_data(new_start, combined)
+                self.free_frags([old_start + k for k in range(old_frags)])
+                db, ib = self._set_block_ptr(db, ib, block_idx, new_start)
+            return db, ib
+
+        tail_frags = (len(chunk) + fsize - 1) // fsize
+        frag_start = self.alloc_frags(tail_frags)[0]
+        want = tail_frags * fsize
+        data = chunk if len(chunk) >= want else chunk + bytes(want - len(chunk))
+        self._write_data(frag_start, data)
+        db, ib = self._set_block_ptr(db, ib, block_idx, frag_start)
+        return db, ib
+
     def _lookup(self, dir_ino, name):
         """Inode number for `name` in directory `dir_ino`, or None.
 
@@ -779,13 +861,18 @@ class Allocator(object):
 
         # Nothing fits in any existing chunk: grow the directory by one
         # whole DIRBLKSIZ chunk, whose sole entry's reclen runs to its end.
-        # This is the one case that must reallocate (via grow_file), since
-        # the directory's total size is actually increasing.
+        # Only the block actually growing is touched -- every other block
+        # the directory already has, however it was allocated (including
+        # by the original 1999 filesystem), is left exactly where it is.
         chunk = bytearray(DIRBLKSIZ)
         struct.pack_into("<IHBB", chunk, 0, ino, DIRBLKSIZ, dtype, namlen)
         chunk[8:8 + namlen] = nameb
-        data += chunk
-        self.grow_file(dir_ino, bytes(data))
+        new_size = size + DIRBLKSIZ
+        db, ib = self._append_dir_chunk(size, db, ib, bytes(chunk))
+        self.write_inode(dir_ino, mode=mode, size=new_size, db=db, ib=ib,
+                          nlink=nlink, mtime=int(time.time()))
+        total_frags = len(self._old_file_frags(new_size, db, ib))
+        self.set_inode_blocks(dir_ino, total_frags * (self.g.fsize // 512))
 
     def _remove_dirent(self, dir_ino, name):
         """Zero out an entry's d_ino in place, leaving its reclen as free

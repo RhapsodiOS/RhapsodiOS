@@ -532,3 +532,48 @@ void AHCICopyVolatileBytes(unsigned char *destination,
     for (index = 0; index < count; ++index)
         destination[index] = source[index];
 }
+
+/*
+ * Convert a 64-bit nanosecond timestamp, supplied as its two 32-bit halves,
+ * to whole seconds.
+ *
+ * The caller splits the timestamp rather than passing ns_time_t because the
+ * kernel exports no libgcc helpers: a 64-bit '/' anywhere in the driver
+ * leaves __udivdi3 undefined when rld() links the bundle.  drvEIDE avoids
+ * the problem by only ever subtracting timestamps; AHCI needs whole seconds
+ * for its command timeout arithmetic.  This file is also built under -ansi
+ * for the host tests, which has no 64-bit type at all.
+ *
+ * Restoring division across the two words, using nothing wider than 32
+ * bits.  Quotient bits from the high word land above bit 31 and are
+ * discarded: reaching them takes an uptime past 2^32 seconds, about 136
+ * years.
+ *
+ * Deliberately last in this file: the Task 10 contract test pins
+ * AHCIPortRecoveryIdentify as immediately followed by
+ * AHCIPortCountImplemented, so nothing may be inserted between them.
+ */
+unsigned long AHCITimestampSeconds(unsigned long high, unsigned long low)
+{
+    unsigned long remainder;
+    unsigned long quotient;
+    int bit;
+
+    remainder = 0UL;
+    for (bit = 31; bit >= 0; --bit) {
+        remainder = (remainder << 1) | ((high >> bit) & 1UL);
+        if (remainder >= AHCI_NANOSECONDS_PER_SECOND)
+            remainder -= AHCI_NANOSECONDS_PER_SECOND;
+    }
+
+    quotient = 0UL;
+    for (bit = 31; bit >= 0; --bit) {
+        remainder = (remainder << 1) | ((low >> bit) & 1UL);
+        quotient <<= 1;
+        if (remainder >= AHCI_NANOSECONDS_PER_SECOND) {
+            remainder -= AHCI_NANOSECONDS_PER_SECOND;
+            quotient |= 1UL;
+        }
+    }
+    return quotient;
+}

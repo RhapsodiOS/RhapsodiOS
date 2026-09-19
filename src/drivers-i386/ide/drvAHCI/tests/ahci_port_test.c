@@ -840,6 +840,46 @@ static void test_received_fis_snapshot_covers_d2h_and_pio(void)
     CHECK(snapshot[0xff] == 0xa5);
 }
 
+static void test_timestamp_seconds_without_64_bit_division(void)
+{
+    /* IOGetTimestamp yields 64-bit nanoseconds, but the kernel exports no
+     * libgcc helpers, so the driver cannot divide a 64-bit value.  The
+     * timestamp arrives here as its two 32-bit halves instead. */
+    CHECK(AHCITimestampSeconds(0x00000000UL, 0x00000000UL) == 0UL);
+    CHECK(AHCITimestampSeconds(0x00000000UL, 0x3B9AC9FFUL) == 0UL);
+    CHECK(AHCITimestampSeconds(0x00000000UL, 0x3B9ACA00UL) == 1UL);
+    CHECK(AHCITimestampSeconds(0x00000001UL, 0x2A05F200UL) == 5UL);
+
+    /* Either side of the 32-bit boundary, where a naive cast would wrap. */
+    CHECK(AHCITimestampSeconds(0x00000000UL, 0xFFFFFFFFUL) == 4UL);
+    CHECK(AHCITimestampSeconds(0x00000001UL, 0x00000000UL) == 4UL);
+
+    /* Uptimes a real machine reaches. */
+    CHECK(AHCITimestampSeconds(0x00000346UL, 0x30B8A000UL) == 3600UL);
+    CHECK(AHCITimestampSeconds(0x00004E94UL, 0x914F0000UL) == 86400UL);
+    CHECK(AHCITimestampSeconds(0x0132F457UL, 0x9C980000UL) == 86400000UL);
+}
+
+static void test_timestamp_seconds_is_monotonic_across_the_boundary(void)
+{
+    unsigned long previous;
+    unsigned long current;
+    unsigned long low;
+
+    /* The timeout arithmetic only works if the conversion never goes
+     * backwards as the low word wraps into the high word. */
+    previous = AHCITimestampSeconds(0UL, 0xFFFFFF00UL);
+    current = AHCITimestampSeconds(1UL, 0x00000000UL);
+    CHECK(current >= previous);
+
+    previous = 0UL;
+    for (low = 0UL; low < 0x40000000UL; low += 0x02000000UL) {
+        current = AHCITimestampSeconds(0UL, low);
+        CHECK(current >= previous);
+        previous = current;
+    }
+}
+
 int main(void)
 {
     test_arena_layout();
@@ -860,6 +900,8 @@ int main(void)
     test_recovery_identify_is_polling_only_and_validates_data();
     test_completion_interrupts_are_enabled();
     test_received_fis_snapshot_covers_d2h_and_pio();
+    test_timestamp_seconds_without_64_bit_division();
+    test_timestamp_seconds_is_monotonic_across_the_boundary();
     if (failures != 0)
         return 1;
     printf("ahci_port_test: all tests passed\n");

@@ -30,6 +30,7 @@
 #define AHCI_TFD_DRQ                        0x08U
 #define AHCI_TFD_BSY                        0x80U
 #define AHCI_MAX_TRANSFER_BYTES             (128U * 1024U)
+#define AHCI_NANOSECONDS_PER_SECOND         1000000000UL
 
 #define AHCI_PORT_INITIAL_IE_MASK \
     (AHCI_PXIS_DHRS | AHCI_PXIS_PSS | AHCI_PXIS_DSS | AHCI_PXIS_SDBS | \
@@ -100,6 +101,7 @@ AHCIPortResult AHCIPortRecoveryIdentify(
     const AHCIPortOps *ops, unsigned int port, const AHCIPortArena *arena,
     AHCICommandHeader *commandList, unsigned char *commandTable,
     unsigned short *identifyData, AHCIDeviceKind kind);
+unsigned long AHCITimestampSeconds(unsigned long high, unsigned long low);
 unsigned int AHCIPortCountImplemented(AHCIU32 pi);
 int AHCIPortImplemented(AHCIU32 pi, unsigned int port);
 unsigned int AHCIPortCollectImplemented(AHCIU32 pi, unsigned char *ports,

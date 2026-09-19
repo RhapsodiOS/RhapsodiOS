@@ -456,7 +456,8 @@ static int AHCIPortPacketCheckCondition(
         return;
     }
     IOGetTimestamp(&now);
-    nowSeconds = (unsigned long)(now / 1000000000ULL);
+    nowSeconds = AHCITimestampSeconds((unsigned long)(now >> 32),
+                                      (unsigned long)now);
     if (!AHCITimeoutChainCallbackMayEvaluate(&timeoutChain)) {
         IOScheduleFunc(AHCIPortTimeout, self, 1);
         [commandLock unlockWith:AHCI_LOCK_PENDING];
@@ -691,7 +692,8 @@ static int AHCIPortPacketCheckCondition(
                       AHCI_PORT_INITIAL_IE_MASK);
     IOGetTimestamp(&now);
     timeoutDeadlineSeconds =
-        (unsigned long)(now / 1000000000ULL) + seconds;
+        AHCITimestampSeconds((unsigned long)(now >> 32),
+                             (unsigned long)now) + seconds;
     if (!timeoutArmed) {
         timeoutArmed = YES;
         if (AHCITimeoutChainArm(&timeoutChain, generation))

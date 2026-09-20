@@ -94,7 +94,7 @@ _emu486:
 	movl	0x14(%esp),%esi
 	movl	$Lregs,%edi
 	movl	$0x10,%ecx
-	rep movsl
+	rep; movsl
 	shll	$4,Lsregs+12
 	addl	%eax,Lsregs+12
 	shll	$4,Lsregs
@@ -168,7 +168,7 @@ L1e58:
 	movl	$Lregs,%esi
 	movl	0x18(%esp),%edi
 	movl	$0x10,%ecx
-	rep movsl
+	rep; movsl
 	popl	%edi
 	popl	%esi
 	popl	%ebx
@@ -1045,7 +1045,7 @@ L29aa:
 	movzwl	Lregs+4,%ecx
 	cmpb	$1,Ldesc+2
 	jne	L29f3
-	repne cmpsb
+	repne; cmpsb
 	jmp	L29fe
 L29f3:
 	cmpb	$2,Ldesc+2
@@ -1082,7 +1082,7 @@ L2a24:
 	je	L2a81
 	cmpb	$1,Ldesc+2
 	jne	L2a73
-	repne cmpsw
+	repne; cmpsw
 	jmp	L2a99
 L2a73:
 	cmpb	$2,Ldesc+2
@@ -1100,7 +1100,7 @@ L2a7d:
 L2a81:
 	cmpb	$1,Ldesc+2
 	jne	L2ad7
-	repne cmpsl
+	repne; cmpsl
 	jmp	L2a99
 
 /* Unreachable because of the branch above, and kept so the byte
@@ -1258,7 +1258,7 @@ L2c5b:
 	movl	Lregs,%eax
 	cmpb	$1,Ldesc+2
 	jne	L2c93
-	repne scasb
+	repne; scasb
 	jmp	L2c9e
 L2c93:
 	cmpb	$2,Ldesc+2
@@ -1288,7 +1288,7 @@ L2cba:
 	je	L2d06
 	cmpb	$1,Ldesc+2
 	jne	L2cf8
-	repne scasw
+	repne; scasw
 	jmp	L2d22
 L2cf8:
 	cmpb	$2,Ldesc+2
@@ -1306,7 +1306,7 @@ L2d02:
 L2d06:
 	cmpb	$1,Ldesc+2
 	jne	L2e48
-	repne scasl
+	repne; scasl
 	jmp	L2d22
 
 /* Unreachable because of the branch above, and kept so the byte
@@ -1734,13 +1734,13 @@ L31ac:
 L31be:
 	incl	%esi
 	movl	Lregs,%eax
-	aam	$0xa
+	aam
 	movl	%eax,Lregs
 	jmp	L1e20
 L31d0:
 	incl	%esi
 	movl	Lregs,%eax
-	aad	$0xa
+	aad
 	movl	%eax,Lregs
 	jmp	L1e20
 L31e2:

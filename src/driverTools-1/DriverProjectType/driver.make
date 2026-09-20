@@ -29,6 +29,37 @@ INNER_PRODUCT = $(PRODUCT)/$(NAME)$(BUILD_TYPE_SUFFIX)
 # was not built fails install with "can't open file".
 STRIPPED_PRODUCTS = $(if $(LOADABLES),$(INNER_PRODUCT),)
 
+#
+# SGS version stamp.  Apple shipped a small MH_BUNDLE inside every driver
+# .config holding just <NAME>_VERS_STRING and <NAME>_VERS_NUM.  For a driver
+# whose code all lives in an .lksproj that stamp is the only thing that makes
+# LOADABLES non-empty, so without it the inner bundle is never linked and the
+# installed .config is missing a file Apple's has.
+#
+# next-sgs.make does the same job, but it derives the project version by
+# walking up for a directory named <project>-<rev>, which this tree does not
+# use -- Apple built PCIC from "drvIntel82365PCMCIA-13" while we keep it in
+# "Intel82365PCMCIA" -- and it installs under LocalDeveloper, which the build
+# box does not have.  A project opts in instead by naming the SGS project and
+# revision it was released as; projects that say nothing are unaffected.
+#
+ifdef SGS_PROJECT_VERSION
+VERS_FILE = $(NAME)_vers.c
+VERS_OFILE = $(NAME)_vers.o
+OTHER_GENERATED_SRCFILES += $(VERS_FILE)
+OTHER_GENERATED_OFILES += $(VERS_OFILE)
+
+# Bare target name, found through VPATH; the recipe writes into SFILE_DIR,
+# which is not defined until common.make below and so must stay out of the
+# target, where it would expand too early.
+$(VERS_FILE):
+	$(SILENT) $(MKDIRS) $(SFILE_DIR)
+	$(SILENT) (cname=`$(ECHO) $(NAME) | $(SED) 's/[^0-9A-Za-z]/_/g'`; \
+	    $(VERS_STRING) -c $(NAME) $(SGS_PROJECT_VERSION) \
+		| $(SED) s/SGS_VERS/$${cname}_VERS_STRING/ \
+		| $(SED) s/VERS_NUM/$${cname}_VERS_NUM/ > $(SFILE_DIR)/$(VERS_FILE))
+endif
+
 PROJTYPE_MFLAGS = -F$(PRODUCT_DIR)
 PROJTYPE_RESOURCES = ProjectTypes/Driver.projectType/Resources
 

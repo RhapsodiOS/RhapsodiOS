@@ -1,2 +1,8 @@
 INCLUDED_ARCHS = i386
 OTHER_CFLAGS = -I./Intel824X0.lksproj
+
+# SGS project and revision this driver shipped as, read out of the
+# Intel824X0_VERS_STRING in Apple's own Intel824X0 bundle. Note it does not
+# match this project's directory name, which is why driver.make cannot
+# derive it.
+SGS_PROJECT_VERSION = drvIntel824X0PCI-12

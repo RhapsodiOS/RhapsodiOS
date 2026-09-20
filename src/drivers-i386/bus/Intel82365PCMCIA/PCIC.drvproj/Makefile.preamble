@@ -1,2 +1,7 @@
 INCLUDED_ARCHS = i386
 OTHER_CFLAGS = -I./PCIC.lksproj
+
+# SGS project and revision this driver shipped as, read out of the
+# PCIC_VERS_STRING in Apple's own PCIC bundle. Note it does not match this
+# project's directory name, which is why driver.make cannot derive it.
+SGS_PROJECT_VERSION = drvIntel82365PCMCIA-13

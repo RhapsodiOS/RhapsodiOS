@@ -1,2 +1,7 @@
 INCLUDED_ARCHS = i386
 OTHER_CFLAGS = -I./EISABus.lksproj
+
+# SGS project and revision this driver shipped as, read out of the
+# EISABus_VERS_STRING in Apple's own EISABus bundle. Drives the version stamp
+# that makes the inner bundle link at all (see driver.make).
+SGS_PROJECT_VERSION = drvEISABus-20

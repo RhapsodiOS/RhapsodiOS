@@ -1,2 +1,7 @@
 INCLUDED_ARCHS = i386
 OTHER_CFLAGS = -I./PCIBus.lksproj
+
+# SGS project and revision this driver shipped as, read out of the
+# PCIBus_VERS_STRING in Apple's own PCIBus bundle. Drives the version stamp
+# that makes the inner bundle link at all (see driver.make).
+SGS_PROJECT_VERSION = drvPCIBus-13

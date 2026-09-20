@@ -11,9 +11,12 @@ Usage:
     python qemu-shot.py IMAGE OUTDIR [--at SECONDS[,SECONDS...]]
                          [--keys STRING] [--keys-at SECONDS] [--trace]
                          [--vga cirrus|std] [--pmemsave SECONDS:ADDR:LEN]...
+                         [--mem MB]
 
 --vga picks QEMU's display adapter. cirrus, the default, is what every
 earlier capture used; std is QEMU's Bochs VBE adapter.
+
+--mem sets the guest RAM in megabytes (QEMU -m); the default is 128.
 
 --pmemsave saves LEN bytes of guest physical memory from ADDR at SECONDS,
 as OUTDIR/pmem-<SECONDS>s-<ADDR>.bin, through QMP's pmemsave. Repeatable.
@@ -199,10 +202,10 @@ def find_free_port():
     return port
 
 
-def build_qemu_args(image, qmp_port, trace, serial_log, vga="cirrus"):
+def build_qemu_args(image, qmp_port, trace, serial_log, vga="cirrus", mem="128"):
     args = [
         "qemu-system-i386", "-M", "pc", "-cpu", "pentium", "-accel", "tcg",
-        "-m", "128", "-k", "en-us",
+        "-m", str(mem), "-k", "en-us",
         "-nodefaults", "-vga", vga, "-display", "none",
         "-drive", "file=%s,format=raw,if=ide,index=0,media=disk" % image,
         "-snapshot",
@@ -240,7 +243,8 @@ def parse_pmem(spec):
     return seconds, addr, length
 
 
-def run(image, outdir, at_points, keys, keys_at, trace, vga="cirrus", pmem=()):
+def run(image, outdir, at_points, keys, keys_at, trace, vga="cirrus", pmem=(),
+        mem="128"):
     try:
         rhap_inject.check_target(image)
     except rhap_inject.SafetyError as e:
@@ -257,7 +261,7 @@ def run(image, outdir, at_points, keys, keys_at, trace, vga="cirrus", pmem=()):
           "progress; under TCG they are not comparable between runs")
 
     qmp_port = find_free_port()
-    qemu_args = build_qemu_args(image, qmp_port, trace, serial_log, vga)
+    qemu_args = build_qemu_args(image, qmp_port, trace, serial_log, vga, mem)
 
     proc = subprocess.Popen(qemu_args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     start = time.monotonic()
@@ -349,12 +353,14 @@ def main():
     p.add_argument("--pmemsave", type=parse_pmem, action="append", default=[],
                     metavar="SECONDS:ADDR:LEN",
                     help="save guest physical memory at SECONDS; repeatable")
+    p.add_argument("--mem", default="128",
+                    help="guest RAM passed to qemu -m (default: 128)")
     args = p.parse_args(_fix_keys_arg(sys.argv[1:]))
 
     at_points = DEFAULT_AT if args.at is None else [float(s) for s in args.at.split(",")]
 
     run(args.image, args.outdir, at_points, args.keys, args.keys_at, args.trace,
-        args.vga, args.pmemsave)
+        args.vga, args.pmemsave, args.mem)
 
 
 if __name__ == "__main__":

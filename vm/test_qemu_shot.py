@@ -118,6 +118,16 @@ class TestBuildQemuArgs(unittest.TestCase):
         self.assertEqual(args[serial_positions[0] + 1], "null")
         self.assertEqual(args[serial_positions[1] + 1], "file:out/serial.log")
 
+    def test_mem_defaults_to_128(self):
+        args = qemu_shot.build_qemu_args("work/test.img", 1234, False, "out/serial.log")
+        self.assertIn("-m", args)
+        self.assertEqual(args[args.index("-m") + 1], "128")
+
+    def test_mem_is_overridable(self):
+        args = qemu_shot.build_qemu_args(
+            "work/test.img", 1234, False, "out/serial.log", mem="4096")
+        self.assertEqual(args[args.index("-m") + 1], "4096")
+
 
 class TestImageGuard(unittest.TestCase):
     """Finding 1: qemu-shot.py must refuse any image that is not

@@ -4219,3 +4219,80 @@ Stated plainly, without softening.
    phase has demonstrated is a static correspondence between our sources and
    Apple's bytes. That is a real result and it is not the same thing as a driver
    that works.
+
+## Verified build, 2026-09-20
+
+Phase 3b closed with six items unproven, all of them blocked on a build guest
+that was unreachable. The guest is back and all but the boot gate are now
+closed. Nothing in the reconstruction changed; what changed is that it was
+built and measured.
+
+### The harness had been deleted
+
+`vm/build-i386-vga.sh` was removed on 2026-07-30 by `d529b15f1`, a commit that
+consolidated the per-driver build scripts into `vm/build-src.ps1`. That sweep
+treated this one as generic, and it was not: it assembles `emu486.s` externally
+and hands the object to `kl_ld` through `EMU486_I386`, and it assembles
+`src/Csu-1/bundle1.s` for i386 and hands it to the bundle link through
+`BUNDLE1_I386`. Both `Makefile.preamble` files still referenced those two
+variables, so after the deletion `drvVGA` would have linked with both empty —
+`VGA_reloc` without its emulator and `VGA_psdrvr` without a `bundle1.o`. The
+script is restored.
+
+### The guest assembler rejected `emu486.s`, and the fix was byte-neutral
+
+Task 7 measured the file with clang because the guest was down, and recorded
+that as a conditional result. The condition failed: the guest's `as` rejected
+ten lines, all one syntax class.
+
+Eight were repeat-prefixed string operations written `rep movsl`, which that
+assembler parses as an instruction `rep` taking an operand. It wants the prefix
+as its own statement, `rep; movsl`. Two were `aam $0xa` and `aad $0xa`, which it
+accepts only bare.
+
+A probe on the guest confirmed the accepted spellings emit exactly the bytes the
+file needs — `f3 a5`, `f2 a6`, `f2 af`, `d4 0a`, `d5 0a` — so the ten edits
+change no byte of output. Task 7's byte stream was right; its syntax was clang's.
+
+### What the build measured
+
+Every section matches the reference exactly except two:
+
+| Section | Reference | Ours |
+| --- | --- | --- |
+| all five `Loaded Server` | 3, 164, 67, 12, 1 | identical |
+| all sixteen `__OBJC` | — | identical |
+| `__TEXT,__cstring` | 870 | 870 |
+| `__DATA,__data` | 188 | 188 |
+| `__DATA,__bss` | 56 | 56 |
+| `__DATA,__common` | 4 | 4 |
+| `__TEXT,__text` | 18048 | 18028 |
+| `__TEXT,__const` | 178 | 8 |
+
+`parity_check.py` reports `missing_strings 0` and `missing_symbols 0` for both
+binaries against genuinely rebuilt artifacts.
+
+**`_emu486` assembled to exactly 10496 bytes**, the reference's own size. Of
+those, 8734 are literally identical; the 1762 that differ resolve into 618 runs,
+and every run is an address field off by one of exactly two constant link
+displacements — `-7552` nineteen times, our text base against the reference's,
+and `-96` five hundred and ninety-nine times, our state block's offset within
+`__DATA`. **No instruction byte differs.** That is what Task 7 predicted from
+clang and it now holds against the real toolchain, so the three `emu486` ledger
+entries advance to `assembly-matched`.
+
+The `__TEXT,__text` shortfall of 20 bytes is the six remaining
+`control-flow-confirmed` bodies, whose residuals are register allocation:
+`getIntValues:` −12, `moveCursor:` +8, `showCursor:` +12, `int10:` −12,
+`_VGADisplayCursor` −44, and the five-argument `-[vidBIOS int10:…]` +28.
+
+`__TEXT,__const` remains 170 bytes short. Our generated `VGA_instance.m` emits
+no `_VGA_VERS_STRING`/`_VGA_VERS_NUM`. That is a build finding and is still open.
+
+### Still unproven
+
+**The QEMU boot gate has never been run.** It was deferred in Phase 2, again in
+Phase 3a, not attempted in Phase 3b, and not attempted here. Neither half of this
+driver has ever been executed, on hardware or under emulation. Everything
+demonstrated remains a static correspondence between our sources and Apple's
+bytes.

@@ -23,8 +23,8 @@ extern id _NSMethodExceptionProem(id object, SEL aSelector);
     paging, the per-thread storage, or the fixed-size-page layout -- is
     reconstructed here.  What is reconstructed is the externally
     observable contract established by the reference's own -release
-    (0x4250d648, calls _NSPopAutoreleasePool with this pool's _token) and
-    -initWithCapacity: (0x4250d5cc, calls _NSPushAutoreleasePool and
+    (0x4250d648, calls NSPopAutoreleasePool with this pool's _token) and
+    -initWithCapacity: (0x4250d5cc, calls NSPushAutoreleasePool and
     stores its result in _token): an object handed to
     -autorelease/+addObject: is recorded against the innermost active
     pool and released exactly once when that pool (or an enclosing one)
@@ -102,7 +102,7 @@ NSAutoreleasePoolFrameDrain(NSAutoreleasePoolFrame *frame)
 }
 
 /*	Pushes a new, empty pool frame and returns it -- the opaque token the
-	reference's own _NSPushAutoreleasePool returns and that
+	reference's own NSPushAutoreleasePool returns and that
 	-initWithCapacity: stores in _token.  `capacity` is the new frame's
 	initial array size: the reference reads it the same way
 	-initWithCapacity: itself does, the documented meaning of that
@@ -113,7 +113,7 @@ NSAutoreleasePoolFrameDrain(NSAutoreleasePoolFrame *frame)
 	file happens to call it.  No header declares it (see divergences.md)
 	-- claimed by name in reconstruction/symbols.json instead.  */
 void *
-_NSPushAutoreleasePool(unsigned capacity)
+NSPushAutoreleasePool(unsigned capacity)
 {
     NSAutoreleasePoolFrame *frame;
 
@@ -147,7 +147,7 @@ _NSPushAutoreleasePool(unsigned capacity)
 	declares it (see divergences.md) -- claimed by name in
 	reconstruction/symbols.json instead.  */
 void
-_NSPopAutoreleasePool(void *token)
+NSPopAutoreleasePool(void *token)
 {
     while (poolStackCount > 0) {
         NSAutoreleasePoolFrame *frame = poolStack[--poolStackCount];
@@ -166,7 +166,7 @@ _NSPopAutoreleasePool(void *token)
 	without an active pool, so the object is simply not tracked here --
 	documented, not exercised.
 
-	Not static, same as _NSPushAutoreleasePool/_NSPopAutoreleasePool
+	Not static, same as NSPushAutoreleasePool/NSPopAutoreleasePool
 	above: -[NSObject autorelease] and -[NSProxy autorelease] both call
 	this symbol directly (extern declarations in NSObject.m/NSProxy.m),
 	confirmed from each site's own disassembly (a real `call` to this
@@ -265,7 +265,7 @@ NSAutoreleaseObject(id anObject)
 
 + (void)releaseAllPools {
     if (poolStackCount > 0)
-        _NSPopAutoreleasePool(poolStack[0]);
+        NSPopAutoreleasePool(poolStack[0]);
 }
 
 - (id)init {
@@ -273,18 +273,18 @@ NSAutoreleaseObject(id anObject)
 }
 
 - (id)initWithCapacity:(unsigned)numSlots {
-    _token = _NSPushAutoreleasePool(numSlots);
+    _token = NSPushAutoreleasePool(numSlots);
     return self;
 }
 
 - (void)release {
-    _NSPopAutoreleasePool(_token);
+    NSPopAutoreleasePool(_token);
 }
 
 /*  Calling -dealloc directly bypasses the bookkeeping -release performs
     (popping this pool, and any pools still nested inside it, off the
     stack).  Confirmed directly from the reference's disassembly
-    (0x4257341c): this path does not call _NSPopAutoreleasePool, or the
+    (0x4257341c): this path does not call NSPopAutoreleasePool, or the
     superclass's -dealloc -- only the warning below.  */
 - (void)dealloc {
     id proem = _NSMethodExceptionProem(self, _cmd);

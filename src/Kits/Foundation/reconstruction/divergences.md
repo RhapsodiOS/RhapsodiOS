@@ -335,14 +335,17 @@ instance + 47 class methods, plus `_NSZombie`'s 9 instance methods = 93),
 + 15 class = 23) and `NSPrivate.m` (`_NSAutoreleasedMallocMemory`, 4
 instance + 1 class = 5).
 
-### Gate 1 — `abi-check`: 4 of 5 divergences fixed at the source; 1 wrongly "fixed" by hiding it, corrected below
+### Gate 1 — `abi-check`: PASS (`ABI matches`), after two rounds of corrections recorded below
 
 `--abi-dir` contains stage 1's three documents as well as stage 2a's five;
-`abi-check` reports any module with no `--built` object as a divergence, so
-the five 2a ABI documents (`NSObject.json`, `NSProxy.json`,
-`NSAutoreleasePool.json`, `NSPrivate.json`, `NSZone.json`) were copied to a
-scratch directory outside the repo and `--abi-dir` pointed there, rather
-than also passing stage 1's three objects.
+`abi-check` reports any module with no `--built` object as a divergence.
+The final verification run therefore compiles **all eight** modules and
+points `--abi-dir` at the committed
+`src/Kits/Foundation/reconstruction/abi` directly, which checks the whole
+branch's ABI surface in one pass rather than only stage 2a's share of it.
+(An earlier run copied just the five 2a documents to a scratch directory
+instead; passing all eight objects is strictly stronger and needs no
+scratch copy.)
 
 The first run against the five freshly-built i386 objects reported five
 divergences, all "unexpected exported symbol": `_NSAutoreleaseObject`,
@@ -417,6 +420,24 @@ external linkage in `NSAutoreleasePool.m`, and both — together with
 `_NSAutoreleaseObject` — are now claimed by name in
 `reconstruction/symbols.json` under `NSAutoreleasePool.m`.
 
+**That correction was necessary but not sufficient, and the guest re-run
+found the rest of it.** Restoring external linkage exposed a second,
+separate error the `static` had been masking: the C identifiers in
+`NSAutoreleasePool.m` were spelled `_NSPushAutoreleasePool` and
+`_NSPopAutoreleasePool`, *with* a leading underscore. i386 Mach-O prefixes
+another underscore when mangling, so those definitions emitted
+`__NSPushAutoreleasePool`/`__NSPopAutoreleasePool` — two symbols the
+reference does not have — while leaving the two the reference *does*
+export undefined. `abi-check` reported exactly that, as one missing and
+one unexpected symbol per function. Confirmed against the reference's
+symbol table: it contains `_NSPushAutoreleasePool` and
+`_NSPopAutoreleasePool` and no double-underscore variant of either, so the
+C-level names are `NSPushAutoreleasePool`/`NSPopAutoreleasePool`, matching
+`NSAutoreleaseObject` in this same file, which was already spelled
+correctly. Both were renamed at their definitions and their three call
+sites. No header declares either name, so no header changed. With that,
+`abi-check` reports `ABI matches` across all eight modules.
+
 **`_NSAutoreleaseObject`, defined in `NSAutoreleasePool.m`, is genuinely
 called directly (`call _NSAutoreleaseObject`, not `objc_msgSend`) from
 `-[NSObject autorelease]` and `-[NSProxy autorelease]`**, confirmed
@@ -456,25 +477,37 @@ analysis alone, without that check, and that inverted the project's own
 rule that the reference is the authority and source changes to match it,
 not the other way around.
 
-**This fix's own guest verification status.** The `-static` -> external
-linkage change and the `symbols.json`/`abi/NSAutoreleasePool.json` claim
-above are source-level corrections checked directly against the
-reference's own symbol table (not guesswork), and the regenerated
-`abi/NSAutoreleasePool.json` was diffed against its previous committed
-version to confirm it gains exactly the three `text_symbols` and nothing
-else. Re-running `abi-check` against freshly compiled i386 objects, and
-re-running the five test suites, both require the ppc guest at
-`10.10.0.241`; that guest was unreachable from this environment when this
-fix was made (network fabric to its subnet was up — the gateway answered
-pings — but the host itself did not respond to ICMP, TCP/22, or plink
-across repeated attempts). Neither gate was re-run with fresh evidence in
-this pass. The description below of Gate 1 as passing and Gate 2 as
-`PASSED: 0 failure(s)` reflects Task 11's original run (before this
-symbol-linkage fix); this fix changes only linkage/comments, not any
-function's logic, so there is no code-behavioural reason for either gate
-to regress, but that inference is not a substitute for actually re-running
-`abi-check` and the five suites against this exact tree, which remains
-open until the guest is reachable again.
+**Guest verification: done, against this exact tree.** The linkage fix was
+made while the ppc guest at `10.10.0.241` was powered off, so it was
+committed on the strength of the reference symbol table alone and both
+gates were left open. The guest has since returned and both were re-run
+from scratch:
+
+- All eight modules cross-compiled to i386 objects
+  (`cc -c -arch i386 -I.. -I/System/Library/Frameworks/System.framework/Headers`),
+  all eight clean.
+- `binrecon abi-check --abi-dir src/Kits/Foundation/reconstruction/abi`
+  with `--built` for all eight: **`ABI matches`, exit 0.**
+- All five suites rebuilt native ppc and run: **`PASSED: 0 failure(s)`**
+  each.
+
+That re-run is what surfaced the underscore-spelling error above, which
+neither the reference symbol-table check nor local reasoning had caught —
+the `static` had hidden it, and "this changes only linkage, not logic"
+was true and still missed a real ABI defect. Worth remembering for the
+remaining stages: a gate deferred because the hardware is down is *not*
+a gate that can be reasoned closed.
+
+One gap the re-run did expose and does **not** close: stage 1's three
+suites (`test_decimal`, `test_geometry`, `test_range`) still do not link
+against the committed `link_stubs.m`, which supplies `NSString`,
+`NSException`, `NSMethodSignature` and
+`_NSConstantStringClassReference` but not `NSCoder` or
+`_NSDecimalSeparator`. Those three were verified in stage 1 with stubs
+written on the guest and never committed, so they remain
+non-reproducible from the tree — the same non-reproducibility Task 6's
+`link_stubs.m` was created to end, fixed for stage 2a's five suites but
+not retrofitted to stage 1's three.
 
 ### Gate 2 — test suites: PASS, no divergence
 
@@ -650,7 +683,7 @@ resolved by any single stage.
   and the zombie class table (`NSZone.m`'s `zombieClasses` array) use
   private linear-scan arrays rather than `NSMapTable`, because
   `NSMapTable.m` is stage 4's territory.
-- `_NSPushAutoreleasePool`/`_NSPopAutoreleasePool`/`NSAutoreleaseObject`
+- `NSPushAutoreleasePool`/`NSPopAutoreleasePool`/`NSAutoreleaseObject`
   (`NSAutoreleasePool.m`) and `_NSAutoreleasedMallocMemory`'s cache
   (`NSPrivate.m`) use process-global single-threaded equivalents rather
   than the reference's per-thread storage, because `NSThread.m` is not

@@ -29,7 +29,7 @@ The real constraint is therefore:
 
     RAM + 64MB + zone + buffer <= 1GB
 
-which puts the practical ceiling near 780MB. Past that, `pmap_map()` walks
+which puts the practical ceiling at 823MB. Past that, `pmap_map()` walks
 `pmap_pd_entry()` off the end of the single kernel page-directory page and
 silently corrupts whatever allocation follows it. The failure surfaces later as
 an unrelated crash.
@@ -64,10 +64,10 @@ Alternatives considered and rejected:
   and every caller that assumes kernel VA equals physical address. Large,
   invasive, high regression risk for a machine class this OS will rarely meet.
 - **Clamp only, no split.** Phase 1 alone. Safe but never uses more than
-  ~780MB, which does not meet the goal.
-- **Split only, no clamp.** Moves the wall from ~780MB to ~1.75GB without
-  fixing the overflow, the E820 sum, or the silent corruption past the wall. A
-  4GB machine would still fail, just differently.
+  816MB, which does not meet the goal.
+- **Split only, no clamp.** Moves the wall from 823MB to 1784MB without fixing
+  the overflow, the E820 sum, or the silent corruption past the wall. A 4GB
+  machine would still fail, just differently.
 
 ## Phase 1: Survive large memory
 
@@ -176,16 +176,46 @@ Calling the real sizers this early would set `bufpages`, `nbuf` and `niobuf`,
 which `startup_early()` consumes later, so the estimator must not call them.
 The estimator rounds up wherever it is inexact.
 
-Since the reserve is monotonic in memory size, a plain descending loop
-converges:
+Since the reserve is monotonic in memory size, a descending loop converges:
 
 ```c
-while (end_of_memory + kmem_va_estimate(end_of_memory) > BUDGET)
-    end_of_memory -= 16 * 1024 * 1024;
+if (!fits(end_of_memory, BUDGET)) {
+    end_of_memory &= ~(CLAMP_STEP - 1);	/* round down first */
+
+    while (!fits(end_of_memory, BUDGET))
+	end_of_memory -= CLAMP_STEP;
+}
 ```
 
+Two details in that loop are load-bearing.
+
+**The fit test subtracts on the budget side.** Written as
+`end_of_memory + kmem_va_estimate(end_of_memory) > BUDGET`, the sum wraps in 32
+bits once `end_of_memory` is near 4GB — exactly the case the clamp exists to
+handle. `fits(m, b)` is therefore `m <= b && kmem_va_estimate(m) <= b - m`.
+
+**The round-down happens before stepping, and only when clamping.** Stepping
+down by 16MB preserves the detected size's residue modulo 16MB, so a saturated
+`0xFFFFF000` detection would settle on `0x32FFF000` while a clean 2GB detection
+settles on `0x33000000` — 4096 bytes apart, from the same budget. Rounding to a
+step boundary first makes the clamped result a function of the budget alone, so
+every over-budget machine reports an identical figure. It is inside the `if` so
+that a machine which already fits keeps its exact size rather than losing up to
+16MB to the rounding.
+
+**The step is unsigned.** The snippet above is illustrative; the real loop
+needs a `end_of_memory < CLAMP_STEP` guard before each `-=`, or a small enough
+budget would wrap it to near 4GB. That branch is unreachable with a 1GB or
+larger window — the estimate at 16MB of RAM is only ~79MB — but it is cheap and
+the loop is not obviously terminating without it.
+
+The rounding costs a little headroom: the true ceiling under a 1GB budget is
+823.64MB (`0x337A3000`), and the clamp gives back 816MB. Roughly 8MB is the
+price of a figure that is identical across every over-budget machine and can be
+asserted exactly in a test, which is worth more than the memory.
+
 `BUDGET` is `VM_MAX_KERNEL_ADDRESS - VM_MIN_KERNEL_ADDRESS`. Starting from 4GB
-at 16MB steps is at most ~200 iterations of pure integer arithmetic, negligible
+at 16MB steps is at most ~256 iterations of pure integer arithmetic, negligible
 at boot. Reading `BUDGET` from the symbol rather than a literal means Phase 2
 retargets the clamp for free.
 
@@ -240,29 +270,43 @@ image. Specifically:
 - The new `pmap_map()` guard does not panic at any size.
 - 4G in particular no longer reports 0MB.
 
-The clamped value is expected to land somewhere in the 750–850MB range; the
-criterion is that it is below 1GB and consistent across runs, not a specific
-number, since it falls out of the estimator's arithmetic.
+The clamped value is **816MB**, computed from the constants in 1c. Rounding to
+a step boundary before stepping (see 1c) is what makes it a specific number
+rather than a range: without it the figure would vary with the detected size.
 
 ## Phase 2: 2G/2G split
 
-Goal: raise the ceiling from ~780MB to ~1.75GB by giving the kernel a 2GB
-linear window.
+Goal: raise the ceiling from 816MB to 1776MB by giving the kernel a 2GB linear
+window.
 
-### 2a. Pre-flight check (gate)
+### 2a. Pre-flight check (gate) — measured, passes
 
-Before touching any constant: `otool -l` every dylib and framework in the test
-image and confirm no `__TEXT` vmaddr plus size reaches `0x80000000`.
-
-Processes lose 1GB of VA in this phase. Nothing in-tree is endangered — the
-highest fixed load address is driverkit at `0x66700000`, with libSystem at
-`0x41300000` and dyld at `0x41100000`. The exposure is the **binary** Rhapsody
+Processes lose 1GB of VA in this phase. Nothing in-tree was ever endangered —
+the highest fixed load address is driverkit at `0x66700000`, with libSystem at
+`0x41300000` and dyld at `0x41100000`. The exposure was the **binary** Rhapsody
 distribution: AppKit, Foundation and friends ship prebound at fixed addresses
 and are not built from this tree.
 
-If something does sit at or above `0x80000000`, Phase 2 stops here and the
-approach is reconsidered — the 3G/1G user layout would be load-bearing in a way
-the source tree does not reveal. Phase 1 remains delivered either way.
+This was measured against `golden.img` on 2026-09-20, reading the Mach-O load
+commands directly out of the image rather than via `otool`. **Both halves
+pass:**
+
+| Check | Result |
+| --- | --- |
+| 182 dylibs/frameworks under `/usr/lib`, `/System/Library` | **0** reach `0x80000000`. Highest is `Printing.framework` at `0x64B0CE28` (~1.6GB). |
+| 472 executables under `/bin`, `/usr/bin`, `/sbin`, `/usr/sbin` | **0** carry a non-zero `esp` in `LC_UNIXTHREAD`; all inherit the kernel default. Highest `__TEXT` end is `/usr/bin/emacs` at `0x000F0000`. |
+
+The second row was not in the original version of this check and matters more
+than the first. `pcb.c:1151` reads
+`*user_stack = state->esp ? state->esp : VM_MAX_ADDRESS;` — a binary carrying a
+3GB stack pointer in its `LC_UNIXTHREAD` would keep it verbatim and fault
+immediately under a 2GB segment limit, whatever its `__TEXT` address. Scanning
+segments alone would have missed that entirely.
+
+The gate is therefore closed and Phase 2 is viable. It should be re-run if the
+test image is ever replaced with one carrying different prebound binaries; if
+anything then sits at or above `0x80000000`, Phase 2 stops and the approach is
+reconsidered, with Phase 1 delivered either way.
 
 ### 2b. The constants
 
@@ -312,10 +356,10 @@ larger project.
 ### 2d. What Phase 1 already handles
 
 The clamp loop reads `BUDGET` from `VM_MAX_KERNEL_ADDRESS`, so it retargets
-itself to 2GB. At 1.7GB of RAM the reserve is roughly 64MB base + 128MB zone
-(at its cap) + ~72MB buffer, about 264MB, landing just under 2GB. The practical
-ceiling settles around **1.75GB**, and anything above clamps automatically
-rather than failing.
+itself to 2GB. At that ceiling the reserve is 64MB base + 128MB zone (at its
+cap) + ~72MB buffer, about 264MB, landing just under 2GB. The practical ceiling
+settles at **1776MB**, and anything above clamps automatically rather than
+failing.
 
 The `pmap_map()` panic guard likewise retargets and remains the backstop.
 
@@ -334,14 +378,14 @@ than a surprise.
 
 ### Phase 2 success criteria
 
-Pre-flight dylib scan passes, then the same QEMU matrix at 256M, 768M, 1G,
-1.5G, 2G and 4G:
+The pre-flight scan in 2a already passes, so the criteria are the QEMU matrix
+at 256M, 768M, 1G, 1.5G, 2G and 4G:
 
 - All sizes boot to userland.
 - 256M, 768M, 1G and 1.5G all report their full `-m` value — none of them
-  clamp any more.
-- 2G and 4G clamp to the same value, above 1.5GB and below 2GB (expected near
-  1.75GB).
+  clamp any more. 1.5G is the one that proves the phase: it reported 816MB
+  under Phase 1.
+- 2G and 4G both clamp to **1776MB**.
 - No panic from the `pmap_map()` guard at any size.
 
 ## Out of scope

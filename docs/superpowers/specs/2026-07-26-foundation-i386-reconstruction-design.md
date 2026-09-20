@@ -183,19 +183,51 @@ Each later stage gets its own design and plan.
 | --- | --- | --- | --- |
 | **1** | **Tooling, ABI baseline, proof slice** | NSGeometry, NSRange, NSDecimal | **8 KB** |
 | 2a | Object core | NSObject, NSProxy, NSAutoreleasePool, NSPrivate, NSZone | 10.4 KB |
-| 2b | Exceptions and runtime | NSException, NSObjCRuntime, NSFault | 6.6 KB |
-| 2c | Invocation and coding | NSInvocation, NSMethodSignature, NSCoder | 15.0 KB |
-| 3 | Strings | NSString, NSMutableString, NSSimpleCString, NSSimpleString, NSConstantString, NSCharConversion, NSStringEncodings, NSStringLocalizedCompare, NSStringArray | 60 KB |
-| 4 | Collections | NSArray, NSDictionary, NSSet, NSEnumerator, NSHashTable, NSMapTable, NSSimpleHashing | 65 KB |
-| 5 | Values, dates, formatters | NSValue, NSDecimalNumber, NSDate, NSCalendarDate, NSTimeZone, NSFormatter, NSNumberFormatter, NSDateFormatter, NSScanner, NSCharacterSet | 80 KB |
-| 6 | Data, files, archiving | NSData, NSFileManager, NSFileHandle, NSBundle, NSPathUtilities, NSSerialization, NSArchiver, NSObjCTypeSerialization | 65 KB |
-| 7 | Runloop, threads, processes | NSRunLoop, NSThread, NSLock, NSTimer, NSPort, NSTask, NSProcessInfo, NSHost, NSPlatform, NSPerformTimer, NSNotification, NSNotificationQueue, NSDistributedLock | 45 KB |
+| 2b | Exceptions and runtime | NSException, NSObjCRuntime | 1.3 KB + C |
+| 2c | Invocation, coding, faults | NSInvocation, NSMethodSignature, NSCoder, NSFault | 17.9 KB |
+| 3 | Strings | NSString, NSMutableString, NSSimpleCString, NSSimpleString, NSConstantString, NSCharConversion, NSStringEncodings, NSStringLocalizedCompare, NSStringArray | 60 KB **+ 26 KB** |
+| 4 | Collections | NSArray, NSDictionary, NSSet, NSEnumerator, NSHashTable, NSMapTable, NSSimpleHashing | 65 KB **+ 7 KB** |
+| 5 | Values, dates, formatters | NSValue, NSDecimalNumber, NSDate, NSCalendarDate, NSTimeZone, NSFormatter, NSNumberFormatter, NSDateFormatter, NSScanner, NSCharacterSet | 80 KB **+ 4 KB** |
+| 6 | Data, files, archiving | NSData, NSFileManager, NSFileHandle, NSBundle, NSPathUtilities, NSSerialization, NSArchiver, NSObjCTypeSerialization | 65 KB **+ 13 KB** |
+| 7 | Runloop, threads, processes | NSRunLoop, NSThread, NSLock, NSTimer, NSPort, NSTask, NSProcessInfo, NSHost, NSPlatform, NSPerformTimer, NSNotification, NSNotificationQueue, NSDistributedLock | 45 KB **+ 5 KB** |
 | 8 | Distributed Objects | NSConnection, NSDistantObject, NSDistantString, NSPortCoder, NSPortNameServer, NSProtocolChecker, NSDistributedNotificationCenter | 45 KB |
-| 9 | Defaults, parsing, misc | NSUserDefaults, NSParser, NSLanguageContext, NSLockedPropertyListFile, NSUndoManager, NSAttributedString, NSCompatibility, NSDebug, NSJavaSetup, NSURL, NSAbsoluteURL, NSURLPathUtilities | 65 KB |
+| 9 | Defaults, parsing, misc | NSUserDefaults, NSParser, NSLanguageContext, NSLockedPropertyListFile, NSUndoManager, NSAttributedString, NSCompatibility, NSDebug, NSJavaSetup, NSURL, NSAbsoluteURL, NSURLPathUtilities | 65 KB **+ 4 KB** |
 | 10 | URL/HTTP handles | NSURLHandle, NSFileURLHandle, NSHTTPURLHandle, NSHTTPConnection, NSHTTPRequest, NSHTTPSocket | MOSXS ppc only |
 
 Stage 10 has no i386 reference and therefore no compare loop, which is why it is
 last.
+
+### 3.1.1 Two scope decisions, settled after stage 2a
+
+**`NSFault` moves from 2b to 2c.** The original grouping read it as runtime
+machinery alongside `NSObjCRuntime`. Reading its actual ABI says otherwise:
+`NSFault` is a **third root class** — `super_class` null, an explicit `isa`
+ivar, exactly like `NSProxy` — and 50 of its 66 methods are the same root-class
+surface stage 2a already reconstructed twice (`retain`, `release`,
+`autorelease`, `retainCount`, `class`, `superclass`, `isKindOfClass:`,
+`respondsToSelector:`, `hash`, `isEqual:`, `zone`, `forward::`, `description`
+…). What distinguishes it — actually firing a fault — runs through
+`-[NSFault forwardInvocation:]`, `-[NSFaultHandler shouldPerformInvocation:]`
+and `-[NSFaultHandler methodSignatureForSelector:forFault:]`, all of which need
+`NSInvocation` and `NSMethodSignature`. Reconstructing it in 2b would repeat
+`NSProxy`'s "forwarding path documented but untestable" gap across 50 more
+methods and then need revisiting in 2c regardless. It is 2,908 bytes of method
+`__text`, so the move leaves 2b small and sharply testable and grows 2c by ~19%.
+
+**The unclaimed-export tail is absorbed stage by stage, not re-baselined
+programme-wide.** `binrecon symbol-audit` reports **345 exported C functions no
+module claims, totalling 85,832 bytes of `__text`** — about 18% on top of the
+~465 KB this table plans for, and invisible to the original sizing because that
+counted only Objective-C methods plus header-declared C functions. Bucketing
+those 345 by name shows the tail is **concentrated, not spread**: stage 3 and
+stage 6 carry most of it, stage 4 the next slice, and stages 2b/2c/8/10
+essentially none (2b's whole share is 20 functions / 4,076 bytes; 2c's is one
+function). A programme-wide re-baseline would therefore be ceremony. Instead the
+per-stage figures above carry the measured correction in bold, and each affected
+stage's own spec sizes from its real number. Re-run `symbol-audit` at the start
+of every stage: the count falls as modules claim their functions, and a stage
+whose share turns out larger than the figure above is a signal to re-check the
+attribution, not to silently overrun.
 
 ### 3.2 Acceptance bar
 

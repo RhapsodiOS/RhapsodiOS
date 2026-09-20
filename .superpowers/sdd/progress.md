@@ -550,13 +550,66 @@ starts fresh from here.
     the command in a .sh file, pscp it, and run `sh /tmp/x.sh`; plink also needs
     MSYS_NO_PATHCONV=1 or MSYS mangles a leading /bin/sh argument.
 
+STAGE 2A REVIEW: done, 8 findings, all applied. Commits eeae6248 (Foundation) and
+  ca409abb (binrecon). Re-verified: abi-check "ABI matches" across all 8 modules, five
+  suites PASSED 0 failures, binrecon 804 passed / 4 skipped, no header touched.
+  Findings were all in the SUBSTITUTED machinery (process-global stand-ins for NSThread /
+  NSMapTable), which no gate covers — worth remembering: gates 1-3 do not look at the
+  substitutions at all, so every stage that substitutes needs a deliberate read of that
+  code, not just green gates.
+  Two did not land as the finding proposed, both recorded in the code comments:
+   - NSPrivate -remainingCapacity: could NOT store a real capacity ivar — the reference
+     pins _NSAutoreleasedMallocMemory at instance_size 12 with exactly 2 ivars, so an
+     added field fails abi-check. Clamped the subtraction instead (kills the underflow).
+   - binrecon abi filter: making an unclaimed assignment key an error BROKE the happy
+     path, because NSZone.m is genuinely not an __OBJC module (verified: 80 modules in
+     the image, none named NSZone.m) — `binrecon abi --module NSZone.m` has never worked,
+     and abi/NSZone.json was not produced by that command. A typo and a deliberate
+     non-module home are indistinguishable from the data, so the drop is now REPORTED
+     rather than fatal. Residual: the document is still emitted with text_symbols []. To
+     close properly, symbols.json needs an explicit non-module allowlist.
+
+TWO PROGRAMME DECISIONS SETTLED (recorded in the programme spec 3.1 / new 3.1.1):
+ 1. NSFault MOVES FROM 2b TO 2c. It is a third root class (super_class null, explicit isa
+    ivar, like NSProxy); 50 of its 66 methods are the same root-class surface 2a already
+    built twice. Its distinguishing behaviour (fault firing) goes through
+    -[NSFault forwardInvocation:], -[NSFaultHandler shouldPerformInvocation:] and
+    -[NSFaultHandler methodSignatureForSelector:forFault:] — all NSInvocation /
+    NSMethodSignature, i.e. 2c. 2,908 bytes of method __text.
+ 2. THE UNCLAIMED TAIL IS ABSORBED STAGE BY STAGE, NOT RE-BASELINED PROGRAMME-WIDE.
+    Measured: 345 unclaimed exported C functions / 85,832 bytes ~= 18% on top of the
+    ~465 KB the ten-stage table plans. Bucketed by name it is CONCENTRATED, not spread:
+      2b 20 fns/4,076 B | 2c 1/168 | 3 strings 78/26,116 | 4 collections 56/7,096
+      5 values 1/388 | 6 data-files 48/13,212 | 7 runloop 17/5,452 | 9 defaults 9/4,028
+      8 and 10: zero | unattributed 115/25,296 (sample resolves overwhelmingly to
+      strings/char-conversion, NSMap*/NSHash*, and serialization — i.e. stages 3/4/6)
+    Largest single unclaimed function: __NSDeserializeObject at 3,944 bytes (stage 6).
+    Per-stage corrections are now in the spec table in bold. Re-run symbol-audit at the
+    START of every stage; a share larger than the table's figure means re-check the
+    attribution, not silently overrun.
+
 ## >>> RESUME HERE <<<
-Branch foundation-recon, HEAD 99ab617f (59 commits from stage-1 base c259aba3).
-Stage 1 COMPLETE. Stage 2a COMPLETE — all three gates passed against the current tree.
-Next: run the stage-2a whole-branch review, then stage 2b (NSException,
-NSObjCRuntime, NSFault — 97 functions / 6,624 bytes) via brainstorm -> spec -> plan.
-Open programme-level question flagged after 2a Task 2 and still unanswered: symbol-audit
-reports 348 exported C functions no module claims, 146 of them undeclared private exports
-the attribute-by-header rule can never reach. The ten-stage sizing counts only Obj-C methods
-plus header-declared C functions, so every remaining stage has a hidden tail. Decide whether
-to re-baseline the programme or absorb the tail stage by stage.
+Branch foundation-recon, HEAD ca409abb (61 commits from stage-1 base c259aba3).
+Stage 1 COMPLETE. Stage 2a COMPLETE — all three gates passed, whole-branch review done
+and all 8 findings applied.
+NOW STARTING: stage 2b (NSException, NSObjCRuntime — NSFault moved to 2c) via
+brainstorm -> spec -> plan. Measured scope: 22 Obj-C methods (NSException 13-/4+,
+NSAssertionHandler 2-/1+, two NSDetailedDescription categories 1-/1+) = 1,264 bytes of
+method __text, plus 21 header-declared C functions (NSException.h's 14 NSString * const
+exception names + _NSAddHandler2 / _NSRemoveHandler2 / _NSExceptionObjectFromHandler2 /
+NSGet+NSSetUncaughtExceptionHandler; NSObjCRuntime.h's NSStringFromSelector,
+NSSelectorFromString, NSClassFromString, NSStringFromClass, NSGetSizeAndAlignment, NSLog,
+NSLogv), plus 2b's 20-function / 4,076-byte share of the unclaimed tail.
+Tree state: NSException.m 63 lines / 11 TODO stubs, NSObjCRuntime.m 42 lines / 7 TODO
+stubs, no NSFault.m (2c will create it, like NSPrivate.m).
+KEY LEVERAGE: reconstruction/tests/link_stubs.m currently FAKES NSException, NSLog,
+_NSMethodExceptionProem, _NSObjectRaiseNullSelectorException, _NSProxyRaiseNullSelector-
+Exception, _NSIMPForSelector, _NSMethodDescriptionForSelector, _NSClassConformsToProtocol
+and _NSInitializePlatform — nearly all of them 2b's own content. Each one 2b makes real
+retroactively strengthens the five 2a suites, which today assert only that an abort()ing
+stub was reached. 2b should end with link_stubs.m materially smaller.
+KNOWN TENSION to settle in 2b's spec, not discover in a task: NSString is stage 3, but
+2b's shipped ABI includes 14 `NSString * const` globals, and NSStringFromSelector /
+NSStringFromClass return NSString * while NSLog takes one. Compiler-emitted
+NXConstantString plus _NSConstantStringClassReference is the likely route (it is what
+link_stubs.m already does), but the spec must decide it explicitly.

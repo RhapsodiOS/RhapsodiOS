@@ -125,7 +125,8 @@ def test_filtered_assignment_still_errors_for_a_requested_module_the_image_lacks
     assignment = {"NSGeometry.m": ["_NSUnionRange"]}
     requested_modules = ["NSGeometry.m"]
 
-    filtered = _filter_assignment_to_requested_modules(assignment, requested_modules)
+    filtered = _filter_assignment_to_requested_modules(
+        assignment, requested_modules, modules)
 
     with pytest.raises(ObjcAbiError, match="NSGeometry.m"):
         attach_symbols(modules, filtered, symbols)
@@ -148,8 +149,38 @@ def test_filtered_assignment_ignores_a_module_not_requested():
     }
     requested_modules = ["NSRange.m"]
 
-    filtered = _filter_assignment_to_requested_modules(assignment, requested_modules)
+    filtered = _filter_assignment_to_requested_modules(
+        assignment, requested_modules, modules)
 
     attach_symbols(modules, filtered, symbols)
 
     assert modules["NSRange.m"]["text_symbols"] == ["_NSUnionRange"]
+
+
+def test_filtered_assignment_reports_every_key_it_drops(capsys):
+    """A dropped key must never be silent.
+
+    Dropping quietly is what lets a misspelled key reach the emitted document
+    as an empty ``text_symbols``, which later reads as an unexplained
+    unexpected-export finding rather than as missing evidence.
+    """
+    modules = {
+        name: {
+            "schema_version": "abi-v1", "module": name,
+            "classes": [], "categories": [],
+            "text_symbols": [], "data_symbols": [],
+        }
+        for name in ("NSRange.m", "NSGeometry.m")
+    }
+    assignment = {
+        "NSRange.m": ["_NSUnionRange"],
+        "NSGeometry.m": ["_NSZeroRect"],
+        "NSZone.m": ["_NSZoneMalloc"],
+    }
+
+    _filter_assignment_to_requested_modules(assignment, ["NSRange.m"], modules)
+
+    reported = capsys.readouterr().err
+    assert "NSGeometry.m (defined by the image)" in reported
+    assert "NSZone.m (not an __OBJC module)" in reported
+    assert "NSRange.m" not in reported

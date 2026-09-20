@@ -260,7 +260,8 @@ def main(argv=None) -> int:
                 method_symbol_index(document),
             )
             assignment = json.loads(Path(args.symbols).read_text())
-            assignment = _filter_assignment_to_requested_modules(assignment, args.module)
+            assignment = _filter_assignment_to_requested_modules(
+                assignment, args.module, modules)
             attach_symbols(modules, assignment, document["symbols"])
 
             output = Path(args.output)
@@ -422,11 +423,27 @@ def _source_map_command(arguments) -> int:
     return 0
 
 
-def _filter_assignment_to_requested_modules(assignment: dict, requested_modules) -> dict:
+def _filter_assignment_to_requested_modules(assignment: dict, requested_modules,
+                                            modules) -> dict:
     """Drop assignment entries for modules this ``abi`` invocation is not
-    emitting, so ``attach_symbols`` still raises on a typo in a requested
-    module but ignores entries the image legitimately doesn't define (e.g. a
-    C-function home like ``NSZone.m`` that isn't an __OBJC module)."""
+    emitting, and report what was dropped.
+
+    Dropping silently is what makes a misspelled key dangerous: the entry goes
+    before ``attach_symbols`` can reject it, the requested module keeps the
+    empty ``text_symbols`` default, and the command still exits zero with a
+    schema-valid document that has quietly lost its C-function claims.
+    ``abi-check`` then reports those symbols as unexpected exports, which
+    reads like a source defect rather than missing evidence.
+
+    A dropped key cannot be told from a typo by data alone -- ``NSZone.m`` is
+    a deliberate C-function home the reference's ``__OBJC,__module_info`` does
+    not name, and a typo looks identical -- so both are printed, the ones the
+    image does define separately from the ones it does not.
+    """
+    dropped = sorted(name for name in assignment if name not in requested_modules)
+    for name in dropped:
+        known = "defined by the image" if name in modules else "not an __OBJC module"
+        print(f"binrecon: abi: not emitting {name} ({known})", file=sys.stderr)
     return {name: symbols for name, symbols in assignment.items()
             if name in requested_modules}
 

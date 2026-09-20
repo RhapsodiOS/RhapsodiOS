@@ -4308,8 +4308,18 @@ The binary extracted back out of the booted image hashes to ours, not Apple's.
 The full procedure, the control and the hashes are in
 [../../../../docs/drivers/drvVGA-boot-gate.md](../../../../docs/drivers/drvVGA-boot-gate.md).
 
-**Two things it does not establish.** `VGA_psdrvr` was not exercised — the
-Window Server loads it and this boot stops before any GUI login, so that half
-remains unexecuted and rests on the static correspondence alone. And the run used
-`Default.table`, so `enterSVGAMode:`, `int10:` and `_emu486` were never reached;
-the real-mode emulator has still never executed.
+**Both halves have now executed.** On the SVGA path the driver logs
+`VGADisplay: Mode Selected: 800 x 600 @ 60 Hz (BW:2)` and
+`VGADisplay: VESA mode selected: 0x6a`; that second line is reachable only
+through `enterSVGAMode:` → `int10:` → `vidBIOS` → `_emu486`, so the transcribed
+emulator ran a real-mode INT 10h call and returned cleanly. Answering the
+network prompt carries the boot to the GUI, which comes up at 800x600 in
+dithered 2bpp with a drawn cursor — that is `VGA_psdrvr` rendering through its
+own planar conversion routines. Both extracted binaries hash to ours, not
+Apple's.
+
+**What is still unexercised** is the cursor's erase-and-redraw path: the cursor
+was observed drawn, not moving, so `_VGASetCursor`, both bundle blitters,
+`moveCursor:frame:token:` and `_VGADisplayCursor`/`_VGARemoveCursor` are not
+proven by these runs, and neither is the 128-byte `save` write into a 64-byte
+field that both halves reproduce.

@@ -38,6 +38,26 @@ static struct {
 } namedZones[NSZoneMaxNamedZones];
 static int namedZoneCount = 0;
 
+/*	Drops `zone`'s entry, releasing the name the table retained.  A
+	recycled zone's storage returns to its parent, so a later
+	NXCreateChildZone can hand back the same address; leaving the entry
+	in place would make NSZoneName report the dead zone's name for the
+	new one, and would fill the table permanently.  */
+static void
+NSForgetZoneName(NSZone *zone)
+{
+    int i;
+
+    for (i = 0; i < namedZoneCount; i++) {
+        if (namedZones[i].zone == zone) {
+            [namedZones[i].name release];
+            namedZones[i] = namedZones[namedZoneCount - 1];
+            namedZoneCount--;
+            return;
+        }
+    }
+}
+
 /*	log2 of a power-of-two value, for NSLogPageSize.  */
 static int
 Log2(unsigned value)
@@ -87,8 +107,10 @@ NSRecycleZone(NSZone *zone)
     if (NSKeepAllocationStatistics)
         NSRecordAllocationEvent(NSZoneRecycledEvent, zone, 0, 0, 0);
 
-    if (zone != 0 && zone != NSDefaultMallocZone())
+    if (zone != 0 && zone != NSDefaultMallocZone()) {
+        NSForgetZoneName(zone);
         NXMergeZone((NXZone *)zone);
+    }
 }
 
 void
@@ -104,15 +126,22 @@ NSSetZoneName(NSZone *zone, NSString *name)
 
     NXNameZone((NXZone *)zone, cName);
 
+    /*	The table owns the name: NXNameZone copies the C string, but this
+	side table holds the NSString itself, and a caller that hands over
+	an autoreleased string would otherwise leave NSZoneName returning a
+	pointer to freed storage once the pool drained.  Retain before
+	releasing, so naming a zone with its own current name is safe.  */
     for (i = 0; i < namedZoneCount; i++) {
         if (namedZones[i].zone == zone) {
+            [name retain];
+            [namedZones[i].name release];
             namedZones[i].name = name;
             return;
         }
     }
     if (namedZoneCount < NSZoneMaxNamedZones) {
         namedZones[namedZoneCount].zone = zone;
-        namedZones[namedZoneCount].name = name;
+        namedZones[namedZoneCount].name = [name retain];
         namedZoneCount++;
     }
 }

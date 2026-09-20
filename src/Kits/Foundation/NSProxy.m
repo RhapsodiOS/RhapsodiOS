@@ -62,12 +62,24 @@ extern void _NSInitializePlatform(void);
         Method objectForward;
         Method proxyForward;
 
+        /*  Set before the work, not after: _NSInitializePlatform() below
+            is free to send a message to NSProxy, which would re-enter
+            this method and recurse without end.  */
+        initialized = YES;
+
         twoArgForward = sel_registerName("forward::");
         objectForward = class_getInstanceMethod(objc_lookUpClass("NSObject"), twoArgForward);
         proxyForward = class_getInstanceMethod(objc_lookUpClass("NSProxy"), twoArgForward);
-        proxyForward->method_imp = objectForward->method_imp;
+        /*  Both lookups can come back NULL -- objc_lookUpClass returns nil
+            for a class this image does not link (NSObject.m is not in every
+            binary NSProxy.m is), and class_getInstanceMethod returns NULL
+            for a class it was handed nil for.  Skipping the patch leaves
+            -[NSProxy forward::] below in place, which raises on its own;
+            dereferencing would fault inside +initialize, before any caller
+            could see why.  */
+        if (objectForward != NULL && proxyForward != NULL)
+            proxyForward->method_imp = objectForward->method_imp;
         _NSInitializePlatform();
-        initialized = YES;
     }
 }
 

@@ -102,7 +102,22 @@ static _NSAutoreleasedMallocMemory *currentMallocMemoryChunk = nil;
     return result;
 }
 
+/*  Headroom left in a full-size chunk.  The constant is the reference's
+    own (-remainingCapacity at 0x42518bb4 hard-codes 0x1F4), and it has to
+    be: the class carries exactly two ivars, mutableBytes and length, so
+    there is nowhere to record a chunk's real size without changing
+    instance_size away from the reference's 12 -- which the committed ABI
+    baseline pins.  The answer is therefore only meaningful for a chunk
+    allocated at the full size, which is why +mallocMemoryWithCapacity:
+    above caches nothing else: the two dedicated-chunk branches size a
+    chunk to one request and hand it straight back without ever consulting
+    this.  The clamp keeps a chunk allocated smaller than the constant from
+    turning that mismatch into an unsigned underflow, which would report
+    near-4GB of headroom and let the unchecked bump allocator above walk
+    off the end of the block.  */
 - (unsigned)remainingCapacity {
+    if (length >= NSAutoreleasedMallocMemoryChunkSize)
+        return 0;
     return NSAutoreleasedMallocMemoryChunkSize - length;
 }
 

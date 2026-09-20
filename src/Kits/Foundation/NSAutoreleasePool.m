@@ -101,6 +101,24 @@ NSAutoreleasePoolFrameDrain(NSAutoreleasePoolFrame *frame)
     NSZoneFree(0, frame);
 }
 
+/*	Whether `token` still names a frame on the live stack.  Draining an
+	enclosing pool also drains and frees every frame nested inside it,
+	while leaving those inner pools' own instances alive holding tokens
+	that now point at freed storage.  Anything acting on a caller-held
+	token has to rule that out first: NSPopAutoreleasePool would
+	otherwise never find its target and drain the whole stack looking
+	for it, and -addObject: would append into a freed frame.  */
+static BOOL
+NSAutoreleasePoolFrameIsLive(void *token)
+{
+    unsigned i;
+
+    for (i = 0; i < poolStackCount; i++)
+        if ((void *)poolStack[i] == token)
+            return YES;
+    return NO;
+}
+
 /*	Pushes a new, empty pool frame and returns it -- the opaque token the
 	reference's own NSPushAutoreleasePool returns and that
 	-initWithCapacity: stores in _token.  `capacity` is the new frame's
@@ -149,6 +167,9 @@ NSPushAutoreleasePool(unsigned capacity)
 void
 NSPopAutoreleasePool(void *token)
 {
+    if (!NSAutoreleasePoolFrameIsLive(token))
+        return;
+
     while (poolStackCount > 0) {
         NSAutoreleasePoolFrame *frame = poolStack[--poolStackCount];
         BOOL isTarget = ((void *)frame == token);
@@ -277,8 +298,16 @@ NSAutoreleaseObject(id anObject)
     return self;
 }
 
+/*  Frees the instance itself as well as popping its frame.  -dealloc
+    below deliberately does not (the reference's own -dealloc only warns),
+    so this is the only place a pool is reclaimed; without it every pool
+    ever created leaks, which a loop that opens and closes a pool per
+    iteration -- the idiomatic use -- turns into unbounded growth.  The
+    reference reclaims instances by recycling up to four of them through
+    its per-thread AP data (see +allocWithZone: below).  */
 - (void)release {
     NSPopAutoreleasePool(_token);
+    NSDeallocateObject(self);
 }
 
 /*  Calling -dealloc directly bypasses the bookkeeping -release performs
@@ -330,7 +359,7 @@ NSAutoreleaseObject(id anObject)
     NSAutoreleasePoolFrame *frame = (NSAutoreleasePoolFrame *)_token;
     NSAutoreleasePoolFrame *innermost;
 
-    if (anObject == 0 || frame == 0)
+    if (anObject == 0 || frame == 0 || !NSAutoreleasePoolFrameIsLive((void *)frame))
         return;
 
     NSAutoreleaseObject(anObject);

@@ -85,7 +85,7 @@ video
  * drvVBoxVideo - complete
  * drvVMWareVideo - complete
  * drvVGA - both halves reconstructed against Apple's binaries and verified against a
-   clean build; boot gate blocked by the open EIDE defect, never executed
+   clean build; kernel half boots and selects its mode, psdrvr and emu486 unexercised
 
 other - (these live at src/drvBPF and src/drvPortServer, not under drivers-i386)
  * drvBPF - reconstructed against the reference binary, fixes applied, not yet compiled or tested

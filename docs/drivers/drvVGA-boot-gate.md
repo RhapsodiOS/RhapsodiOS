@@ -1,79 +1,113 @@
-# drvVGA boot gate — attempted 2026-09-20, blocked
+# drvVGA boot gate — passed 2026-09-20
 
 The VGA reconstruction's plan specified a gating boot test: put the driver on
 screen under QEMU and confirm it logs
 `VGADisplay: Mode Selected: 640 x 480 @ 60 Hz (BW:2)`, the string its own
-`__cstring` carries. It was deferred in Phase 2 because the shared working image
-was in use, deferred again in Phase 3a, and not attempted in Phase 3b.
+`__cstring` carries. It was deferred in Phase 2, again in Phase 3a, and not
+attempted in Phase 3b.
 
-It has now been attempted. **The gate cannot be reached**, for a reason that has
-nothing to do with this driver.
+**It now passes.** The reconstructed `VGA_reloc` boots and produces output
+identical to Apple's shipped driver.
 
-## What was run
+## The blocker, and what cleared it
 
-```bash
-cd vm
-qemu-img convert -O raw golden.img work/test.img          # fresh scratch image
-MSYS_NO_PATHCONV=1 python rhap_inject.py work/test.img \
-    set-key /private/Drivers/i386/System.config/Instance0.table \
-    "Active Drivers" "VGA BusMouse NE2K"
-python qemu-shot.py work/test.img shots-vga-stock --at 25,50,80 --keys "mach_kernel -v\n"
-```
-
-Which drivers load is decided by that key, not by what is present in
-`/private/Drivers/i386`. The image ships Apple's own `VGA.config` with both
-reference binaries byte-identical to the ones this effort reconstructs against,
-so this run tests **Apple's stock driver**, deliberately: it establishes the gate
-before our build is ever substituted.
-
-## What happened
-
-The boot reaches DriverKit and registers the bus and storage drivers, then dies
-before any Active Driver is instantiated:
+With the image's stock `mach_kernel`, the boot never reaches a display driver at
+all. It dies in the open EIDE defect of [drvEIDE-issues.md](drvEIDE-issues.md):
 
 ```
-Registering: kmDevice0
 rootdev 300, howto 40000
 hc0: interrupt timeout, cmd: 0xc4
-hc0: Read Multiple: error=0x0 secCnt=0x0 secNum=0x60 cyl=0x1 drhd=0xe0 status=0x58
 hc0: ATA command c4 failed. Retrying...
-hc0: Resetting drives...
 hc0: interrupt timeout, cmd: 0xec
 hc0: ATA drive 0 is not present.
 ```
 
-That is the documented, open EIDE defect in
-[drvEIDE-issues.md](drvEIDE-issues.md) §2 — `cmd 0xc4` is READ MULTIPLE,
-`status 0x58` is `DRDY|DSC|DRQ`, and the driver enters a zero-progress
-interrupt-timeout loop and then disowns the disk. No display driver of any kind
-is reached, because Active Drivers are instantiated after the root device is up.
+A control boot with the shipped `CirrusLogicGD5434DisplayDriver` configured
+instead of `VGA` died at the identical point, so that failure was never about
+the display driver. Active Drivers are instantiated only after the root device
+is up.
 
-`shots-vga-stock/serial.log` is empty; the kernel's serial console emitted
-nothing on COM2 for this kernel, so the screenshots are the only channel.
+**Our rebuilt kernel clears it.** Grafting `vm/install/mach_kernel` (1486184
+bytes, built 2026-09-19) in place of the image's 1459520-byte one, the disk
+mounts, the filesystem comes up clean and the boot reaches multi-user. The
+kernel's interrupt handling is visibly different — the console now carries
+`intr: phantom IRQ 15, EOI to master` — which is consistent with the lost-IRQ
+mechanism that investigation describes, though this test does not establish the
+mechanism and does not try to.
 
-## The control
+Note the EIDE polled-mode fallback in `IdeCnt.m` is *not* what did it: that lives
+in the loadable `EIDE.config` bundle, and no rebuilt `EIDE_reloc` was injected
+here. Searching our kernel for its log strings finds nothing.
 
-To rule out the `Active Drivers` edit as the cause, the same image was booted
-again with the key restored to its shipped value
-`CirrusLogicGD5434DisplayDriver BusMouse NE2K`:
+## Procedure
 
 ```bash
-python qemu-shot.py work/test.img shots-vga-control --at 80 --keys "mach_kernel -v\n"
+cd vm
+MSYS_NO_PATHCONV=1 python graft-kernel.py golden.img install/mach_kernel work/test.img
+MSYS_NO_PATHCONV=1 python rhap_inject.py work/test.img \
+    set-key /private/Drivers/i386/System.config/Instance0.table \
+    "Active Drivers" "VGA BusMouse NE2K"
+python qemu-shot.py work/test.img shots-vga-newkern --at 30,60,95 --keys "mach_kernel -v\n"
 ```
 
-It dies at the same point, with the same `cmd 0xc4` timeout and the same
-`ATA drive 0 is not present`. The only difference is which sector the failed
-READ MULTIPLE names. **The failure is independent of the display driver
-configured**, and predates this effort entirely.
+`graft-kernel.py` rebuilds `work/test.img` from `golden.img`, so the
+`Active Drivers` edit must follow the graft, not precede it. Which drivers load
+is decided by that key, not by what is present in `/private/Drivers/i386`.
 
-## Consequence
+That run uses Apple's own `VGA.config`, which the image ships and whose binaries
+are byte-identical to the reference this effort reconstructs against. It
+establishes the gate before our build is substituted.
 
-Booting our rebuilt `VGA_reloc` and `VGA_psdrvr` would fail identically and would
-demonstrate nothing about them, so it was not attempted. The gate becomes
-runnable when the EIDE defect is fixed, and not before.
+To substitute ours, both binaries were stripped on the build guest — Apple linked
+the reference `ld -x`, ours is built `-g` — which brings them to 66812 and 26564
+bytes against Apple's 71112 and 26584. `rhap_inject` refuses any write that
+changes a file's fragment count, and the smaller kernel driver needed 66
+fragments where the file occupies 70, so it was zero-padded back to exactly
+71112. Its last section data ends at offset 43671, so the padding is inert.
 
-Nothing about the VGA reconstruction is implicated, and nothing about it is
-thereby confirmed either. **Neither half of this driver has ever been executed.**
-Everything the effort has established remains a static correspondence between our
-sources and Apple's bytes — a real result, and not the same thing as a driver
-that works.
+```bash
+MSYS_NO_PATHCONV=1 python rhap_inject.py work/test.img \
+    put /private/Drivers/i386/VGA.config/VGA_reloc  _vgastrip/VGA_reloc
+MSYS_NO_PATHCONV=1 python rhap_inject.py work/test.img \
+    put /private/Drivers/i386/VGA.config/VGA_psdrvr _vgastrip/VGA_psdrvr
+python qemu-shot.py work/test.img shots-vga-ours --at 30,60,95 --keys "mach_kernel -v\n"
+```
+
+## Result
+
+Both runs — Apple's driver and ours — produce the same three lines:
+
+```
+Configuring device drivers
+VGADisplay: Mode Selected: 640 x 480 @ 60 Hz (BW:2)
+Registering: VGADisplay0
+Using Default table for VGA
+```
+
+Because both files end up 71112 bytes, size does not prove which one ran. The
+copy extracted back out of the booted image hashes to ours, not Apple's, with the
+zero padding intact:
+
+```
+in image : 46425530859f3757
+ours     : 46425530859f3757   <-- match
+Apple    : 489d86652b871823
+```
+
+## What this does and does not establish
+
+It establishes that the reconstructed **kernel half** loads under DriverKit,
+initialises, selects its mode, registers as `VGADisplay0`, reads its config
+table, and emits exactly what Apple's does. That is the first time any part of
+this driver has been executed.
+
+It does **not** exercise `VGA_psdrvr`. That half is loaded by the Window Server,
+and this boot stops at `Continue without network? (y/n)`, before any GUI login.
+The Window Server half remains unexecuted, and its correctness still rests
+entirely on the static correspondence recorded in
+`src/drivers-i386/video/drvVGA/reconstruction/divergences.md`.
+
+It also does not exercise the SVGA path: this run uses `Default.table`, so
+`enterSVGAMode:`, `int10:` and `_emu486` — the whole real-mode BIOS machinery —
+were not reached. Booting `SVGABIOS.table` would be the next gate, and would be
+the first execution of the emulator.

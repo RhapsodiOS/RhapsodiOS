@@ -4291,17 +4291,25 @@ no `_VGA_VERS_STRING`/`_VGA_VERS_NUM`. That is a build finding and is still open
 
 ### Still unproven
 
-**The QEMU boot gate was attempted on 2026-09-20 and cannot be reached.** The
-boot dies before any Active Driver is instantiated, in the documented open EIDE
-defect — `interrupt timeout, cmd: 0xc4`, then `ATA drive 0 is not present`. A
-control boot with the shipped `CirrusLogicGD5434DisplayDriver` configured
-instead of `VGA` dies at exactly the same point, so the failure is independent
-of the display driver and predates this effort. The attempt, the commands and
-the control are recorded in
+**The QEMU boot gate passed on 2026-09-20.** With the image's stock kernel the
+boot dies before any display driver loads, in the open EIDE defect; a control
+boot with `CirrusLogicGD5434DisplayDriver` configured instead of `VGA` died at
+the same point, so that was never about this driver. Grafting our rebuilt
+`mach_kernel` clears it, and the reconstructed `VGA_reloc` then loads and emits
+exactly what Apple's does:
+
+```
+VGADisplay: Mode Selected: 640 x 480 @ 60 Hz (BW:2)
+Registering: VGADisplay0
+Using Default table for VGA
+```
+
+The binary extracted back out of the booted image hashes to ours, not Apple's.
+The full procedure, the control and the hashes are in
 [../../../../docs/drivers/drvVGA-boot-gate.md](../../../../docs/drivers/drvVGA-boot-gate.md).
 
-Booting our rebuilt binaries would fail identically and prove nothing, so it was
-not attempted. The gate becomes runnable when the EIDE defect is fixed.
-**Neither half of this driver has ever been executed**, on hardware or under
-emulation. Everything demonstrated remains a static correspondence between our
-sources and Apple's bytes.
+**Two things it does not establish.** `VGA_psdrvr` was not exercised — the
+Window Server loads it and this boot stops before any GUI login, so that half
+remains unexecuted and rests on the static correspondence alone. And the run used
+`Default.table`, so `enterSVGAMode:`, `int10:` and `_emu486` were never reached;
+the real-mode emulator has still never executed.

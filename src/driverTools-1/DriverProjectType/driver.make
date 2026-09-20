@@ -23,7 +23,11 @@ driver: all
 PRODUCT = $(PRODUCT_DIR)/$(NAME).$(BUNDLE_EXTENSION)
 PRODUCTS = $(PRODUCT)
 INNER_PRODUCT = $(PRODUCT)/$(NAME)$(BUILD_TYPE_SUFFIX)
-STRIPPED_PRODUCTS = $(INNER_PRODUCT)
+# Guarded exactly as the $(INNER_PRODUCT) rule below is: a driver whose code
+# all lives in an .lksproj has no LOADABLES, so the inner bundle is never
+# linked and only $(NAME)_reloc is produced.  Asking strip for the file that
+# was not built fails install with "can't open file".
+STRIPPED_PRODUCTS = $(if $(LOADABLES),$(INNER_PRODUCT),)
 
 PROJTYPE_MFLAGS = -F$(PRODUCT_DIR)
 PROJTYPE_RESOURCES = ProjectTypes/Driver.projectType/Resources

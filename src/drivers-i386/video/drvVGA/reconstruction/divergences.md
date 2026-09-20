@@ -4291,8 +4291,17 @@ no `_VGA_VERS_STRING`/`_VGA_VERS_NUM`. That is a build finding and is still open
 
 ### Still unproven
 
-**The QEMU boot gate has never been run.** It was deferred in Phase 2, again in
-Phase 3a, not attempted in Phase 3b, and not attempted here. Neither half of this
-driver has ever been executed, on hardware or under emulation. Everything
-demonstrated remains a static correspondence between our sources and Apple's
-bytes.
+**The QEMU boot gate was attempted on 2026-09-20 and cannot be reached.** The
+boot dies before any Active Driver is instantiated, in the documented open EIDE
+defect — `interrupt timeout, cmd: 0xc4`, then `ATA drive 0 is not present`. A
+control boot with the shipped `CirrusLogicGD5434DisplayDriver` configured
+instead of `VGA` dies at exactly the same point, so the failure is independent
+of the display driver and predates this effort. The attempt, the commands and
+the control are recorded in
+[../../../../docs/drivers/drvVGA-boot-gate.md](../../../../docs/drivers/drvVGA-boot-gate.md).
+
+Booting our rebuilt binaries would fail identically and prove nothing, so it was
+not attempted. The gate becomes runnable when the EIDE defect is fixed.
+**Neither half of this driver has ever been executed**, on hardware or under
+emulation. Everything demonstrated remains a static correspondence between our
+sources and Apple's bytes.

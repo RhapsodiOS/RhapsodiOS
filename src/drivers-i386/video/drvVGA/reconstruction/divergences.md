@@ -4318,8 +4318,15 @@ dithered 2bpp with a drawn cursor — that is `VGA_psdrvr` rendering through its
 own planar conversion routines. Both extracted binaries hash to ours, not
 Apple's.
 
-**What is still unexercised** is the cursor's erase-and-redraw path: the cursor
-was observed drawn, not moving, so `_VGASetCursor`, both bundle blitters,
-`moveCursor:frame:token:` and `_VGADisplayCursor`/`_VGARemoveCursor` are not
-proven by these runs, and neither is the 128-byte `save` write into a 64-byte
-field that both halves reproduce.
+**The cursor path is proven too.** Driving 110 relative motion events with
+`PS2Mouse` active, the cursor tracks across the desktop and over window content,
+and the first and last frames differ by 143 pixels of 480000 in exactly two
+clusters — the start position erased and the end position drawn, the latter
+clipped at the right screen edge. Every intermediate position was restored
+pixel-exactly, so the `VGAShmem_t` contract, the `save` round-trip including the
+128-bytes-into-64 arithmetic both halves reproduce, and the blitters' clipping
+all work end to end.
+
+**What is still unexercised**: `setIntValues:` traffic beyond registration, the
+unwind paths, and the reference defects reproduced verbatim, which by their
+nature only appear in situations these boots do not create.

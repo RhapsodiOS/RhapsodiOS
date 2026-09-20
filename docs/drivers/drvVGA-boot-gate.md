@@ -148,6 +148,41 @@ ours            : d3a5d8fa3e6e1073   <-- match
 Apple           : e785ba22f1121eaa
 ```
 
+## Third gate: cursor motion
+
+The earlier runs showed the cursor drawn but never moved, leaving the
+erase-and-redraw path unproven. `Active Drivers` was changed from `BusMouse` to
+`PS2Mouse` — the boot had been logging `Bus Mouse : No bus mouse installed.` and
+`PCPointer probe: mouseInit failure`, and `README.md` records this same swap as
+what gets a working pointer under QEMU. The two strings are the same length, so
+`set-key` writes in place.
+
+The scenario then boots, answers the network prompt, waits for the Window Server
+and sends three sweeps of relative motion events over QMP — 40 down-right, 40
+up-left, 30 right — capturing before and after each.
+
+The cursor tracks. It moves off the grey desktop and onto the Setup Assistant's
+white panel, drawn correctly against both, with no ghost at any position it
+left. Comparing the first frame against the last, after 110 motion events:
+
+```
+differing pixels: 143 of 480000
+clusters: 2
+    96 px  x  99..109  y  99..114     <- start position, erased
+    47 px  x 796..799  y 401..414     <- end position, drawn and clipped
+```
+
+Every intermediate position was restored pixel-exactly: the only difference
+between the two frames is the cursor having left one place and arrived at
+another. Nothing drifted, nothing smeared, and the end position is clipped at
+the right screen edge without wrapping onto the next row.
+
+That exercises the shared cursor contract the two halves agree on — the
+`VGAShmem_t` layout, the `save` buffer round-trip including the 128-bytes-into-64
+arithmetic both sides faithfully reproduce, and the blitters' clipping. A
+screenshot cannot distinguish which side's blitters did the drawing, so this
+confirms the contract works end to end rather than attributing it to one half.
+
 ## What this does and does not establish
 
 Both halves of the reconstruction have now executed.
@@ -160,14 +195,14 @@ does. On the SVGA path it also drives the real-mode BIOS through `vidBIOS` and
 The **Window Server half** is loaded by the Window Server, renders the desktop
 at 800x600 in 2bpp through its planar conversion routines, and draws the cursor.
 
-What remains unexercised is narrower than before but real. The cursor was
-observed drawn, not moving, so the erase-and-redraw path — `_VGASetCursor` and
-both blitters on the bundle side, `moveCursor:frame:token:` and
-`_VGADisplayCursor`/`_VGARemoveCursor` on the kernel side — is not proven by
-these runs. Neither is the 128-byte `save` write into a 64-byte field that both
-halves reproduce: it is latent at this geometry, and a cursor-motion test is what
-would exercise it. No SVGA-mode `getIntValues:`/`setIntValues:` traffic beyond
-registration was exercised either.
+What remains unexercised is now small. The three gates between them cover
+loading, initialisation, config-table reading, mode selection on both the VGA and
+VESA paths, the real-mode emulator, framebuffer rendering and the cursor
+round-trip. Not covered: any `setIntValues:` traffic beyond registration, the
+unwind paths (`free`, `unmap`, `revertToVGAMode`), and the several reference
+defects reproduced verbatim — `probe:` returning YES unconditionally,
+`setBrightness:token:`'s unguarded call, the two stranded `_emu486` handlers —
+which by their nature only show up in situations this boot does not create.
 
 Title notwithstanding, "passed" means the driver loads, initialises, sets modes
 and paints. It does not mean every reconstructed path has run.

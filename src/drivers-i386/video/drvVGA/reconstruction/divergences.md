@@ -4308,7 +4308,7 @@ The binary extracted back out of the booted image hashes to ours, not Apple's.
 The full procedure, the control and the hashes are in
 [../../../../docs/drivers/drvVGA-boot-gate.md](../../../../docs/drivers/drvVGA-boot-gate.md).
 
-**Two things it does not establish.** `VGA_psdrvr` was not exercised — the
+**Two things it does not establish.** `VGA_psdrvr` was not exercised â€” the
 Window Server loads it and this boot stops before any GUI login, so that half
 remains unexecuted and rests on the static correspondence alone. And the run used
 `Default.table`, so `enterSVGAMode:`, `int10:` and `_emu486` were never reached;

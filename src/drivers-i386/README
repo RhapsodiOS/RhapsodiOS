@@ -83,9 +83,8 @@ video
  * drvNVidiaRiva - needs compiled and then tested
  * drvS3Generic - complete
  * drvVBoxVideo - complete
+ * drvVGA - both halves reconstructed against Apple's binaries; VGA_reloc 29 of 38 ledger entries assembly-matched with 6 control-flow-confirmed, VGA_psdrvr 34 of 53 with the other 19 linker and dyld glue; emu486 is hand-written assembly and was transcribed rather than decompiled, assembling to the reference's exact 10496 bytes with every differing byte an address field off by a constant link displacement. Builds clean, no missing strings or symbols either half, every section matching bar __TEXT,__const's build-generated version strings. Boot-tested with the rebuilt kernel, which the stock one blocks by dying in the open EIDE defect first: loads and registers VGADisplay0, sets the VGA mode from Default.table and the VESA mode from SVGABIOS.table with the emulator driving a real-mode INT 10h, renders the GUI at 800x600 in 2bpp and round-trips the cursor pixel-exactly over 110 motion events. Not hardware-tested
  * drvVMWareVideo - complete
- * drvVGA - both halves reconstructed against Apple's binaries and verified against a
-   clean build; both halves boot, emu486 drives the VESA mode set, GUI and cursor work
 
 other - (these live at src/drvBPF and src/drvPortServer, not under drivers-i386)
  * drvBPF - reconstructed against the reference binary, fixes applied, not yet compiled or tested

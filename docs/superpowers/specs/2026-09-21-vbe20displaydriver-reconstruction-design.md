@@ -367,22 +367,38 @@ specs 2 or 3 until answered.
 | 0 | **Passed in Task 1.** Rhapsody's inherited chain measures 552 against the reference's 552; target fixed at byte-parity throughout (§6) |
 | 1 | `VBE20DisplayDriver_reloc` compiles and links against `driverkit-3` on the Rhapsody build guest |
 | 2 | binrecon ledger complete: every partition entry reviewed with a status and a reason, `reference_sha256` and `rebuilt_sha256` both real |
-| 3 | Boots under QEMU per `docs/drivers/drvVGA-boot-gate.md` |
+| 3 | **BLOCKED on spec 2 - do not run.** See below. Boots under QEMU per `docs/drivers/drvVGA-boot-gate.md` |
 
-Gate 3 follows the established procedure: `graft-kernel.py`, then
-`rhap_inject.py set-key` for `Active Drivers`, then `put` for the driver, then
-hash-verify the injected copy in the image before booting. The bus retest's PCIC
-near-miss showed a refused injection still yields a plausible-looking boot of
-somebody else's driver, so the hash check is not optional.
+### Gate 3 is blocked on spec 2 and must not be run
 
-**Gate 3's reachable depth is limited until spec 3 lands.** The booter does not
-currently enter a VBE mode — `"Graphics Mode"` is never set in any config table,
-so `setMode()` falls through to text. The driver will therefore take its
-`%s: Skipping framebuffer initialization (card not in VBE mode).` path. That
-still proves load, initialisation, config-table read, mode-list export and
-registration as `VBEDisplay0`, and it is the honest gate for this spec. The
-`%s: using VBE mode %d` path becomes reachable only after spec 3, and is gated
-there.
+`Default.table` marks this a Boot Driver, so the booter links it against the
+kernel with `sarld`. `_VBEModeInfo2IODisplayInfo` is undefined in our `_reloc`,
+nothing in `src/kernel-7` defines it, and no shipped Rhapsody kernel exports it
+— so the link fails. Per `docs/boot/sarld-driver-link-limit.md` that failure
+**cascades into every driver linked afterwards** and surfaces as
+`panic: Missing EISA kernel bus class`, which names none of the cause.
+
+**Spec 2 alone unblocks the gate as described below.** Spec 3 is required only
+for the deeper `%s: using VBE mode %d` path.
+
+The procedure lives in the plan's Task 9, not here. Note in particular that
+`rhap_inject.py` **cannot create the bundle**: it has only `set-key` and `put`,
+both of which repoint an *existing* directory entry, and
+`VBE20DisplayDriver.config` does not exist in `golden.img`. Use
+`vm/install-driver.py`, which allocates the bundle and registers it in
+`Boot Drivers`, matching this driver's `"Boot Driver" = "Yes"`. An earlier
+revision of this section prescribed the `rhap_inject.py` route; it cannot work.
+
+**What the gate will prove once unblocked.** The booter does not enter a VBE
+mode — `"Graphics Mode"` is never set in any config table, so `setMode()` falls
+through to text — and the 4.2 mode-array offsets land in `_reserved` regardless
+(section 3). The driver will therefore take its
+`%s: Skipping framebuffer initialization (card not in VBE mode).` path, proving
+load, initialisation, mode-list export and registration as `VBEDisplay0`.
+
+It does **not** prove a config-table read. Section 3 records that this driver
+has no config-table accessor at all — no `configTable`, no `valueForStringKey`.
+An earlier revision of this list claimed otherwise.
 
 Gate 3 looks for these two `__cstring` entries reaching the console, plus the
 DriverKit registration line:

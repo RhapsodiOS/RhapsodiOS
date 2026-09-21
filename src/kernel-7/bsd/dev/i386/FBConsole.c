@@ -1477,6 +1477,82 @@ void VBEModeInfo2IODisplayInfo(VBEModeRec *mode, IODisplayInfo *info)
     info->parameters = (void *)mode->modeNumber;
     info->memorySize = mode->yResolution * mode->bytesPerScanline;
 }
+
+//
+// Two fixed low-memory addresses inside KERNBOOTSTRUCT (0x11000), spelled as
+// bare integer constants because that is all the reference has: the i386
+// slice carries no relocation table at all, and 0x0019ECC4, 0x0019ECCE,
+// 0x0019ECE7 and 0x0019ECF1 all address these two words absolutely.
+//
+// VBE_BOOTER_MODE is kbs+0x1858, the record for the mode the booter put the
+// adapter into. Spec 1's VBE20DisplayDriver hard-codes the same address the
+// same way (VBE20DisplayDriver.m:79, VBE_BOOTER_MODE). The two spellings MUST
+// stay in agreement -- driver and kernel have to read one record, not two --
+// and reconciling them (a named KERNBOOTSTRUCT member, or neither) belongs to
+// spec 3, not here. In Rhapsody's KERNBOOTSTRUCT both offsets land inside
+// _reserved[7500], which getKernBootStruct() bzero's and nothing under src/
+// fills.
+//
+// VBE_FRAMEBUFFER_VIRT is kbs+0x1854. In 4.2 it is kernel-private: the
+// kernel's own pmap_bootstrap is its one writer (0x0018F1B4) and this
+// function its one reader, and the word holds the kernel virtual address of
+// the mapped linear frame buffer [INFERENCE -- the store into frameBuffer
+// below is measured, but the code producing the mapped address was not
+// traced]. Nothing in this tree writes it yet. The producer -- mapping the
+// frame buffer and publishing its virtual address -- arrives with spec 3, so
+// until then the second guard never passes and this function always returns
+// NIL. That is the intended state, not a stub: the console falls back to VGA,
+// which is what boots today anyway.
+//
+#define VBE_BOOTER_MODE		((VBEModeRec *)0x12858)
+#define VBE_FRAMEBUFFER_VIRT	(*(void **)0x12854)
+
+IOConsoleInfo *FBAllocateVBEConsole(void)
+// Build a frame-buffer console over the VBE mode the booter left the adapter
+// in, or return NIL if there is not one. Reconstructed from
+// _FBAllocateVBEConsole at 0x0019ECB8 in the i386 slice of the OPENSTEP 4.2
+// mach_kernel (212 bytes).
+//
+// STRUCTURAL PARITY ONLY, NOT BYTE PARITY. 44 of the reference's 212 bytes
+// are addresses that cannot match here -- four rel32 call operands and the
+// seven absolute vtable pointers.
+//
+// The reference's tail (+69..+196) carries its own copy of
+// FBAllocateConsole's body (+6..+135) rather than calling it: same two
+// IOMalloc sizes, same seven vtable stores, same "rep movsd" of 34 dwords to
+// priv+4, same priv+0 = 0. Measured, the two agree instruction for
+// instruction -- 34 non-nop instructions each, same mnemonics and operands,
+// differing only in branch displacements and one extra alignment nop. That
+// is what gcc 2.7.2.1 at -O3 emits for a call to a same-file function
+// [INFERENCE: -O3 implies -finline-functions, and the reference does not
+// call _FBAllocateConsole at 0x0019EC24; whether the 4.2 source said
+// "FBAllocateConsole(&info)" or repeated the body by hand is not decidable
+// from the binary]. Calling it is the honest spelling either way;
+// transcribing the body would duplicate console machinery that is already
+// right here in this file.
+{
+    IODisplayInfo info;
+
+    // 0x0019ECC4 then 0x0019ECCE: xResolution is tested first, the
+    // frame-buffer word second, and both must be non-zero.
+    if (VBE_BOOTER_MODE->xResolution == 0 || VBE_FRAMEBUFFER_VIRT == NIL)
+	return NIL;
+
+    // FAITHFUL TO THE REFERENCE: `info' is deliberately NOT zeroed. The 4.2
+    // prologue at 0x0019ECBB reserves 0x88 bytes and does nothing to them --
+    // no rep stos, and no call at all before the one at 0x0019ECEC -- so
+    // VBEModeInfo2IODisplayInfo's default arm ORs into stack residue and the
+    // fields it never stores are copied out as residue too. Adding a bzero
+    // here would be a behaviour change, not a repair.
+    VBEModeInfo2IODisplayInfo(VBE_BOOTER_MODE, &info);
+
+    // 0x0019ECF1/+57 and 0x0019ECF7/+63: overwrite the *physical* frameBuffer
+    // that VBEModeInfo2IODisplayInfo just took from the mode record with the
+    // mapped address, because the console writes pixels through this pointer.
+    info.frameBuffer = VBE_FRAMEBUFFER_VIRT;
+
+    return FBAllocateConsole(&info);
+}
 //
 // END:		Exported routines
 //

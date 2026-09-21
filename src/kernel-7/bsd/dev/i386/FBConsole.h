@@ -70,5 +70,6 @@ typedef struct {
 
 extern IOConsoleInfo *FBAllocateConsole(IODisplayInfo *display);
 extern void VBEModeInfo2IODisplayInfo(VBEModeRec *mode, IODisplayInfo *info);
+extern IOConsoleInfo *FBAllocateVBEConsole(void);
 
 #endif	/* DRIVER_PRIVATE */

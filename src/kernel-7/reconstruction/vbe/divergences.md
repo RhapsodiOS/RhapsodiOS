@@ -1124,3 +1124,388 @@ short; the compile and link commands used are the script's own.
 - **D4 is still an inference.** Placing the function in `FBConsole.c` followed
   Task 1's link-order argument. It built and linked with no friction, which is
   consistent with D4 but does not upgrade it to a measurement.
+
+---
+
+## Task 3: writing `FBAllocateVBEConsole`
+
+**Result: structural parity. Byte parity was never a target here**, for a
+reason that is measured rather than assumed — see "Why byte parity is out of
+reach" below. The function is defined and exported in the built kernel, and
+Task 2's 539-byte extent still matches.
+
+### The reference, decoded here rather than taken from the plan
+
+`_FBAllocateVBEConsole`, `0x0019ECB8`, **212 bytes**, all 212 decoded with no
+undecodable residue **[measured]**. The whole function, condensed:
+
+```
+fn+0    push ebp; mov ebp,esp; sub esp,0x88; push edi; push esi; push ebx
+fn+12   cmp  word  [0x1285C],0 ; je  fn+31       ; xResolution
+fn+22   cmp  dword [0x12854],0 ; jne fn+40
+fn+31   xor eax,eax ; jmp fn+197                 ; return NULL
+fn+38   nop nop                                  ; align fn+40
+fn+40   lea esi,[ebp-0x88]                       ; &info
+fn+46   push esi ; push 0x12858 ; call 0x0019ED8C  (VBEModeInfo2IODisplayInfo)
+fn+57   mov edx,[0x12854]
+fn+63   mov [ebp-0x74],edx                       ; info.frameBuffer, OVERWRITTEN
+fn+66   add esp,8
+fn+69   push 0x20   ; call 0x001A5448 (_IOMalloc) ; mov ebx,eax
+fn+81   test ebx,ebx ; jne fn+92 ; xor eax,eax ; jmp fn+197
+fn+89   nop nop nop                              ; align fn+92
+fn+92   push 0xE4   ; call 0x001A5448 (_IOMalloc) ; mov [ebx+0x1C],eax
+fn+108  test eax,eax ; jne fn+124
+fn+112  push 0x20 ; push ebx ; call 0x001A5458 (_IOFree) ; xor eax,eax ; jmp fn+197
+fn+124  <seven vtable stores, [ebx+0] .. [ebx+0x18]>
+fn+172  mov edi,[ebx+0x1C]; add edi,4; cld; mov ecx,0x22; rep movsd
+fn+186  mov eax,[ebx+0x1C]; mov dword [eax],0
+fn+195  mov eax,ebx
+fn+197  lea esp,[ebp-0x94]; pop ebx; pop esi; pop edi; mov esp,ebp; pop ebp; ret
+fn+210  nop nop                                  ; inter-function padding
+```
+
+The function takes **no arguments** — nothing reads `[ebp+8]` — and returns
+`IOConsoleInfo *` in `eax`. **[measured]**
+
+### The reference does not call `FBAllocateConsole`; it carries a copy of it
+
+This is the single most important structural fact, and it was measured, not
+assumed. `_FBAllocateConsole` sits at `0x0019EC24`, 148 bytes, and
+`FBAllocateVBEConsole` never calls it — its four `call`s go to
+`_VBEModeInfo2IODisplayInfo` once, `_IOMalloc` twice and `_IOFree` once.
+Instead, `FBAllocateVBEConsole`'s tail (`fn+69`..`fn+196`) **is**
+`FBAllocateConsole`'s body (`fn+6`..`fn+135`), normalised and diffed
+instruction by instruction:
+
+- both are **37 instructions**; excluding `nop`s and the one instruction with
+  no counterpart, both are **34 instructions**, and all 34 agree in mnemonic
+  and operands **[measured]**;
+- the seven that "differ" differ only in a displacement: the body's three
+  `call`s resolve to the **same absolute targets in both** (`0x001A5448`
+  twice, `0x001A5458` once), and the four intra-function branches land at the
+  same place within each body;
+- the one instruction without a counterpart is `mov esi,[ebp+8]` at
+  `FBAllocateConsole+114`, which loads the *parameter*.
+  `FBAllocateVBEConsole` instead does `lea esi,[ebp-0x88]` at `fn+40`, hoisted
+  to before the conversion call because it needs `&info` as an argument;
+- the pads differ by one byte — `FBAllocateConsole` has two `nop`s at its
+  `fn+26`, `FBAllocateVBEConsole` three at its `fn+89` — because the copies
+  start at different offsets (6 versus 69) within their functions, so the
+  4-byte alignment pad before the same label differs. **[measured]**
+
+**Why this matters for how we write it.** The kernel is built with `-O3`, and
+gcc 2.7.2.1 at `-O3` turns on `-finline-functions`, which inlines suitable
+same-file functions even when they are `extern` (it still emits the
+out-of-line copy, which is why `_FBAllocateConsole` exists as its own symbol).
+So a reference that duplicates the body is exactly what
+`return FBAllocateConsole(&info);` compiles to under this compiler.
+**[INFERENCE — that the 4.2 source said `FBAllocateConsole(&info)` rather than
+repeating the allocation by hand is NOT decidable from the binary; both spell
+the same instructions. What is measured is only that the reference does not
+call it and that the bodies correspond instruction for instruction.]**
+
+Either way, calling it is the right spelling for this tree: transcribing the
+body would duplicate console machinery that already sits in `FBConsole.c` a
+few lines above.
+
+### Why byte parity is out of reach, counted rather than asserted
+
+Of the 212 bytes, the ones that hold an address **[measured, by decoding every
+operand]**:
+
+| kind | count | bytes | can it match? |
+| --- | --- | --- | --- |
+| `rel32` call operands | **4** (not five) | 16 | **no** — `_IOMalloc`, `_IOFree` and `_VBEModeInfo2IODisplayInfo` all sit elsewhere in our kernel |
+| vtable `imm32` (the seven console ops) | 7 | 28 | **no** — all seven targets are nameless statics at different addresses |
+| `KERNBOOTSTRUCT` operands: `disp32` at fn+15, fn+24, fn+59 and `imm32` at fn+48 | 4 | 16 | **yes** — `0x1285C`, `0x12854`, `0x12858` are fixed low-memory constants and we hard-code the same ones |
+
+So **44 of 212 bytes cannot match** no matter how the source is written, and
+168 could in principle. That is why the target here is structural
+correspondence and not a byte count. The plan's figure of "five `rel32` calls"
+is one too many; there are four. **[measured]**
+
+No byte comparison of this function was run. Running one would report the 44
+bytes above plus whatever gcc chose for the call sequence, and would measure
+nothing that this table does not already state.
+
+### The structural correspondence, item by item
+
+**The guard.** The reference tests `xResolution` **first** and the
+frame-buffer word second (`fn+12` then `fn+22`), both against zero, falling
+into a shared `return NULL`. That is `A == 0 || B == 0` with `A` =
+`xResolution`, and it is the order ours uses. (The plan's sketch had the two
+operands the other way round; the reference is what was followed.)
+**[measured]**
+
+| reference | ours |
+| --- | --- |
+| `cmp word [0x1285C],0 ; je -> NULL` | `VBE_BOOTER_MODE->xResolution == 0` |
+| `cmp dword [0x12854],0 ; jne -> go` | `VBE_FRAMEBUFFER_VIRT == NIL` |
+| `push 0x12858 ; call _VBEModeInfo2IODisplayInfo` | `VBEModeInfo2IODisplayInfo(VBE_BOOTER_MODE, &info)` |
+| `mov edx,[0x12854] ; mov [ebp-0x74],edx` | `info.frameBuffer = VBE_FRAMEBUFFER_VIRT` |
+
+**The two `IOMalloc` sizes**, against the numbers D3 measured on the guest with
+the kernel build's own command line (not counted by hand):
+
+| reference | our expression | our measured value | same? |
+| --- | --- | --- | --- |
+| `push 0x20 ; call _IOMalloc` (fn+69) | `sizeof(IOConsoleInfo)` | **32** | yes |
+| `push 0xE4 ; call _IOMalloc` (fn+92) | `sizeof(ConsoleRep)` | **228** | yes |
+| `push 0x20 ; push ebx ; call _IOFree` (fn+112) | `IOFree(cso, sizeof(IOConsoleInfo))` | **32** | yes |
+| `mov ecx,0x22 ; rep movsd` to `priv+4` (fn+179) | `sizeof(IODisplayInfo)` = 34 dwords | **136** | yes |
+| `mov [ebx+0x1C],eax` | `offsetof(IOConsoleInfo, priv)` | **28** | yes |
+
+**The seven vtable stores.** The reference's order against our
+`IOConsoleInfo`'s seven slots (`ConsoleSupport.h:74-92`, read and confirmed
+here) and `FBAllocateConsole`'s seven assignments (`FBConsole.c`):
+
+| store | reference target | our slot | our assignment |
+| --- | --- | --- | --- |
+| `mov [ebx+0x00],0x0019EFA8` | the 228+32 freeing function one pad byte after `VBEModeInfo2IODisplayInfo` | `Free` | `cso->Free = Free` |
+| `mov [ebx+0x04],0x0019DF7C` | nameless static | `Init` | `cso->Init = Init` |
+| `mov [ebx+0x08],0x0019EFCC` | nameless static | `Restore` | `cso->Restore = Restore` |
+| `mov [ebx+0x0C],0x0019E23C` | nameless static | `DrawRect` | `cso->DrawRect = DrawRect` |
+| `mov [ebx+0x10],0x0019E7CC` | nameless static | `EraseRect` | `cso->EraseRect = EraseRect` |
+| `mov [ebx+0x14],0x0019F050` | nameless static | `PutC` | `cso->PutC = PutC` |
+| `mov [ebx+0x18],0x0019F068` | nameless static | `GetSize` | `cso->GetSize = GetSize` |
+
+Seven stores, seven slots, same order, offsets 0/4/8/0xC/0x10/0x14/0x18 against
+seven consecutive function pointers followed by `priv` at 28. **[measured for
+the offsets and the store order; that each nameless target is the console op
+named beside it is Task 1's D4 argument, which remains an inference for the
+five middle rows — only `0x0019EFA8` was independently identified, by its
+`IOFree(priv,228)` + `IOFree(cso,32)` body.]**
+
+In our tree all seven reach the freshly allocated struct through
+`FBAllocateConsole`, which performs the identical seven assignments. We do not
+repeat them in `FBAllocateVBEConsole`.
+
+**The tail.** `mov edi,[ebx+0x1C]; add edi,4; rep movsd` of 34 dwords is
+`((ConsolePtr)cso->priv)->display = *display` (D5: `display` at offset 4,
+measured both sides), and `mov dword [eax],0` is
+`window_type = SCM_UNINIT` (D5: offset 0, `SCM_UNINIT` = 0). Both live in
+`FBAllocateConsole` already.
+
+### The uninitialised local, verified independently
+
+The plan asserted it and this task re-checked it: between `sub esp,0x88` at
+`0x0019ECBB` and the `call` at `0x0019ECEC` the reference executes
+`push edi`, `push esi`, `push ebx`, two compares, two branches, a `lea` and two
+`push`es — **no `rep stos`, no `bzero`, and no call of any kind**.
+**[measured, from the full 212-byte decode above]** So
+`VBEModeInfo2IODisplayInfo`'s `default:` arm ORs its bit into stack residue,
+and the fields that arm never stores are copied into `priv+4` as residue too.
+Ours does the same: `info` is a plain local and is not zeroed. Both halves are
+now labelled in `FBConsole.c` — on the `default:` arm and on the call site.
+
+### `0x12854` has no producer in this tree, and that is the correct state
+
+Nothing under `src/` writes `kbs+0x1854`. In 4.2 the writer is the kernel's own
+`pmap_bootstrap` (D2: one writer, one reader); in Rhapsody's `KERNBOOTSTRUCT`
+the offset lands inside `_reserved[7500]`, which `getKernBootStruct()`
+`bzero`s. So `VBE_FRAMEBUFFER_VIRT` reads 0, the second guard fails, and
+`FBAllocateVBEConsole` returns `NIL` on every boot. **Spec 3 owns the
+producer** — mapping the linear frame buffer and publishing its kernel virtual
+address. Until it lands, Task 4's wiring falls through to the existing VGA
+console, which is what boots today regardless, so nothing observable changes.
+
+No placeholder producer was written, the address was not stubbed, and the
+guard was not weakened. The function compiles, links and exports, and is not
+reached.
+
+### Open for spec 3: two spellings of the same address must be reconciled
+
+`FBConsole.c` now hard-codes `#define VBE_BOOTER_MODE ((VBEModeRec *)0x12858)`,
+**the same spelling spec 1's driver uses** at
+`src/drivers-i386/video/drvVBE20DisplayDriver/VBE20DisplayDriver.drvproj/VBE20DisplayDriver_reloc.lksproj/VBE20DisplayDriver.m:79`.
+That is deliberate: driver and kernel must read one record, not two. Neither
+side invents a `KERNBOOTSTRUCT` member for it, because introducing one would
+have to change both at once.
+
+**Spec 3 must reconcile them.** Whatever it does — add a named member, keep the
+literals, or move the record — it has to change both sites together, and the
+kernel's `VBE_FRAMEBUFFER_VIRT` (`0x12854`) with them. If the two drift apart
+the driver and the console will read different memory and neither will say so.
+
+### The build: `rbuild kernel` needs `--toolchain`, and the documented line omits it
+
+The invocation in `docs/build/rbuild-universal.md:195`:
+
+```
+rbuild kernel --state /build/state --arch i386 /build/src /build/repo <dest>
+```
+
+**fails before compiling anything**, with:
+
+```
+Building build root:
+tar: Unable to set file uid/gid of ./usr/bin/chgrp <No such file or directory>
+tar: Unable to set file uid/gid of ./usr/bin/cpio <No such file or directory>
+tar: Unable to set file uid/gid of ./usr/bin/tar <No such file or directory>
+rbuild: unable to find dependency for "file-cmds"
+rbuild: kernel failed: driverkit-3
+```
+
+Diagnosed rather than worked around **[measured]**:
+
+- `file-cmds` is one of rbuild's built-in `basedeps`
+  (`src/rbuild-1/builder.c:747-759`), so this blocks **every** build root, not
+  just the kernel's.
+- `/build/repo/file-cmds-1998.10.06-universal.apk` does exist and does match by
+  name (`builder_match_pkgfile`). It is rejected by the *validation* step,
+  which extracts the APK to inspect it.
+- The package ships `usr/bin/chgrp`, `usr/bin/cpio` and `usr/bin/tar` as
+  **symlinks to `../../bin/pax`, which the package does not contain**.
+  Rhapsody's `/usr/bin/tar` follows each dangling symlink to set its uid/gid,
+  warns, and **exits 1**. rbuild reads that as "cannot validate" and then as
+  "cannot find".
+- With no `--toolchain`, rbuild falls back to plain `tar`
+  (`src/rbuild-1/apk.c:1050`, `fallback.tar = "tar"`). The toolchain profile
+  instead names `/build/src/rbuild-1/pax-gnutar.sh`.
+
+Measured side by side on the same APK:
+
+```
+gunzip -c file-cmds-...apk | tar -C /tmp/a -xf -             ->  rc 1  (3 warnings)
+gunzip -c file-cmds-...apk | pax-gnutar.sh -C /tmp/b -xf -   ->  rc 0
+```
+
+The project's own build driver **always** passes the flag —
+`vm/build-src-lib.ps1:498` is
+`rbuild kernel --state $state --toolchain $profilePath --arch $targetArch …` —
+so the doc line is the outlier, not the scripts. The working invocation, and
+the one this task used:
+
+```
+rbuild kernel --state /build/state \
+  --toolchain /build/src/rbuild-1/toolchains/gcc-darwin.conf \
+  --arch i386 /build/src /build/repo /tmp/task3-kvbe-dst
+```
+
+The profile's `target_arch=ppc` does not interfere: `--arch` selects the kernel
+architecture and the package set, while the profile supplies `tar`, `gzip`,
+`make` and `PATH`. No fallback to `gnumake` was used, and no repo file was
+changed — `file-cmds`'s dangling symlinks are still there and will bite the
+next caller who omits the flag.
+
+### A second blocker behind the first: the profile's `PATH` loses `relpath`
+
+With `--toolchain`, the build root assembles and driverkit, drivertools and
+kernload all build — then `kernel-7` dies in `installhdrs`, before compiling
+anything **[measured]**:
+
+```
+================= make installhdrs for conf =================
+relpath: not found
+relpath: not found
+make[1]: Entering directory `.../kernel-154.5.1-7/conf'
+Must define OBJROOT
+make[1]: *** [OBJROOT] Error 1
+```
+
+`src/kernel-7/MakeInc.dir:69-71` passes ``OBJROOT=`relpath -d $VERSDIR . $OBJROOT` ``
+and the same for `SYMROOT` into every subdirectory make. With `relpath`
+missing both backticks expand to nothing, the sub-make receives `OBJROOT=`,
+and `conf/Makefile:358` (`DSTROOT OBJROOT: ALWAYS`) prints `Must define
+OBJROOT` and exits 1. The two `relpath: not found` lines per recursion are the
+two backticks.
+
+`relpath` is **present** in the build root, at `/usr/local/bin/relpath`,
+installed there by the `bootstrap-cmds-13.2-universal.apk` basedep. It is the
+**`PATH` that is wrong**: `gcc-darwin.conf` has
+
+```
+path=/build/tools/bin:/usr/bin:/bin:/usr/sbin:/sbin
+```
+
+which omits `/usr/local/bin`, and `/build/tools` does not exist inside the
+chroot at all. With no `--toolchain` rbuild leaves `tc->path` unset and the
+ambient `PATH` (which does find `/usr/local/bin/relpath`) applies — which is
+why the two failure modes are complementary: **without** the flag the build
+root cannot be assembled, **with** it the kernel cannot configure.
+**[measured]**
+
+This task worked around it with a `sed` copy of the profile in `/tmp` adding
+`/usr/local/bin` to `path`, passed as `--toolchain /tmp/task3-gcc-darwin.conf`.
+**No repo file was changed** — as with Task 2's `libcc.a` override, the real
+fix belongs in guest provisioning or in the profile, and is not Task 3's to
+make.
+
+### The build that the results below come from
+
+```
+rbuild kernel --state /build/state --toolchain /tmp/task3-gcc-darwin.conf \
+  --arch i386 /build/src /build/repo /tmp/task3-kvbe-dst
+```
+
+ends `rbuild: kernel complete`, exit 0. Eight APKs, all `i386`:
+`driverkit-139.1-3`, `drivertools-24-1`, `kernload-60-1`, `kernel-154.5.1-7`
+and their `-hdrs` companions. The kernel was taken from
+`kernel-154.5.1-7-i386.apk`, not from a hand-run `gnumake` — `./mach_kernel`,
+1,490,352 bytes, SHA-256
+`1C0F8B804A5ECEF5124B3FCE9C3335356B7692B7C1FD11E2A40CFD6B87F7215D`, BSD `sum`
+**`39989 1456`** (printed on the guest and reproduced from the pulled bytes, as
+under A1 above). **[measured]**
+
+This is the **second** build of this source. The first differed only in a
+comment inside `FBAllocateVBEConsole`, corrected before commit, and the two
+make a useful control for the A1 inference above: the whole-kernel SHA-256
+changed (`81CA970C…EC4F` -> `1C0F8B80…215D`) and the `sum` with it
+(`26491 1456` -> `39989 1456`), while the **539-byte extent hashed identically
+across both** (`DE5CA40A…1E13`) and `nm` gave the same three addresses. A
+comment edit moves the embedded build timestamp and nothing else — which is
+exactly the relationship A1 could only infer for the vanished
+`AC2213A3…010F`, here measured on a pair that still exists. **[measured]**
+
+The only diagnostic from the new code is Task 2's known one, on the
+`(void *)mode->modeNumber` cast:
+
+```
+FBConsole.c:1477: warning: cast to pointer from integer of different size
+```
+
+### Symbols, and Task 2's extent re-checked against this kernel
+
+`nm` on the stripped kernel that ships in the APK **[measured]**:
+
+```
+001e8740 T _FBAllocateConsole
+001e87d4 T _VBEModeInfo2IODisplayInfo
+001e89f0 T _FBAllocateVBEConsole
+```
+
+All three defined (`T`) and external. Note the layout: ours puts
+`FBAllocateVBEConsole` *after* `VBEModeInfo2IODisplayInfo` (source order),
+where 4.2 has it before — an ordering difference with no behavioural
+consequence, recorded so nobody reads it as a discrepancy. As in the
+reference, exactly one pad byte separates the 539-byte function from the next
+one (`0x001E87D4 + 539 = 0x001E89EF`, and the next entry is `0x001E89F0`).
+
+`compare_kvbe.py <reference i386 slice> <this kernel>`, run against the kernel
+built from the committed source:
+
+```
+reference _VBEModeInfo2IODisplayInfo at 0x0019ed8c  (539 bytes)
+built     _VBEModeInfo2IODisplayInfo at 0x001e87d4  (539 bytes)
+masked 128 bytes (dispatch imm32 at fn+71, 31 table entries at fn+76); comparing 411
+masked region agrees: dispatch -> fn+76, 31 table targets identical relative to the entry
+MATCH: all 411 compared bytes identical
+```
+
+**Task 2 is not regressed.** The entry moved from `0x001E8804` to
+`0x001E87D4` — still `≡ 0 mod 4`, so the seven alignment-driven interior pads
+still line up — and the extent's SHA-256 changed with it, from
+`CFA460B3…C596` to
+`DE5CA40A4DFCA646FAAD2CE183FC301E394CD1DE86EBE9AFF63DC2DF7E381E13`. That
+change is **entirely** the 128 masked bytes, which hold absolute addresses into
+the function itself; the harness's relative check confirms the dispatch and all
+31 table targets are unchanged relative to the entry. A moved function is
+expected to re-hash. **[measured]**
+
+### Nothing calls it yet
+
+`FBAllocateVBEConsole` appears in exactly two places outside comments: its
+definition in `FBConsole.c` and its declaration in `FBConsole.h`. Task 4 owns
+the wiring. The diff for this task is **insertions only, zero deletions**, so
+no existing behaviour changed; adding a function shifts later addresses, which
+is relocation, not behaviour.

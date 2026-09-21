@@ -467,20 +467,20 @@ the driver's own debug format string:
  * named from the driver's own log string.
  */
 typedef struct {
-    unsigned short	modeNumber;
-    unsigned short	modeAttributes;
-    unsigned short	bytesPerScanline;
-    unsigned short	xResolution;
-    unsigned short	yResolution;
-    unsigned char	bitsPerPixel;
-    unsigned char	memoryModel;
-    unsigned char	redMaskSize;
-    unsigned char	greenMaskSize;
-    unsigned char	blueMaskSize;
-    unsigned char	redFieldPosition;
-    unsigned char	greenFieldPosition;
-    unsigned char	blueFieldPosition;
-    void		*frameBuffer;
+    unsigned short	modeNumber;		/* 0x00 */
+    unsigned short	modeAttributes;		/* 0x02 */
+    unsigned short	xResolution;		/* 0x04 */
+    unsigned short	yResolution;		/* 0x06 */
+    unsigned short	bytesPerScanline;	/* 0x08 */
+    unsigned char	bitsPerPixel;		/* 0x0A */
+    unsigned char	memoryModel;		/* 0x0B */
+    unsigned char	redMaskSize;		/* 0x0C */
+    unsigned char	redFieldPosition;	/* 0x0D */
+    unsigned char	greenMaskSize;		/* 0x0E */
+    unsigned char	greenFieldPosition;	/* 0x0F */
+    unsigned char	blueMaskSize;		/* 0x10 */
+    unsigned char	blueFieldPosition;	/* 0x11 */
+    void		*frameBuffer;		/* 0x14 */
 } VBEModeRec;
 
 @interface VBE20DisplayDriver : IOFrameBufferDisplay
@@ -688,7 +688,17 @@ the same way the Cirrus finish plan does — not `sync-src.ps1 -All`.
 Expected: `make exit=0`, `compiled … VBE20DisplayDriver.o`, `relocatable link
 produced …VBE20DisplayDriver_reloc`, and `$REBUILT` exists.
 
-- [ ] **Step 7: Confirm the kernel symbol stays undefined**
+- [ ] ~~**Step 7: Confirm the kernel symbol stays undefined**~~ — **moved to Task 5.**
+
+> Unsatisfiable here. Nothing in Task 3's four methods references
+> `_VBEModeInfo2IODisplayInfo`, so it cannot appear in the symbol table at all;
+> only Task 5's `initDisplayInfo:fromVBEModeInfo:` forwarder will pull it in.
+> **Do not write a stub to make it appear.** The link model is already proven
+> by the undefined externals that *are* present — `.objc_class_name_IODevice`,
+> `_IOFrameBufferDisplay` and `_Object` are all type `0x01` and the link
+> succeeded, so `kl_ld` leaves undefined externals alone as expected.
+
+<details><summary>Original step (run it in Task 5)</summary>
 
 ```bash
 $VENVPY -c "
@@ -711,6 +721,8 @@ Expected: `_VBEModeInfo2IODisplayInfo` present with type `0x01` (undefined
 external). A relocatable `_reloc` link does not resolve undefined externals, so
 this is correct and expected — spec 2 supplies the definition. **If the link
 fails on it instead, stop and report; the Kernel Server link flags are wrong.**
+
+</details>
 
 - [ ] **Step 8: Commit**
 
@@ -1139,6 +1151,19 @@ $VENVPY -m binrecon ledger --profile "$PROFILE" --ledger "$LEDGER" \
   --address 0x<addr> --status assembly-matched \
   --source-path "$LKS/VBE20DisplayDriver.m" --source-line <line>
 ```
+
+### Three build-generated divergences are exempt — decided, do not re-litigate
+
+Task 3's first link surfaced these at `__text` 2300..2324 and in the version
+data. No source change can close them, and closing two of them would be wrong.
+
+| Divergence | Ruling |
+| --- | --- |
+| `+driverKitVersionForVBE20DisplayDriver` returns `0x1F4` (500) where the reference returns `0x1A4` (420) | **Exempt, and must stay.** That is `IO_DRIVERKIT_VERSION` from `src/driverkit-3/driverkit/IODevice.h:45` — 500 in Rhapsody, 420 in DriverKit 4.2. It is the cross-release difference appearing exactly where it should. Forcing 420 would falsify the build. |
+| `_VBE20DisplayDriver_instance` is an unallocated common in the reference (undefined, `n_value` 4, external reloc); our link allocates it in `__common` at `0x2008` | **Exempt at ledger level, but flag it.** A build-generated Kernel Server symbol. It *may* matter at load time — Task 9's boot gate is what would reveal it. Record the possibility in `$DIVERGE` so a load failure there is not misdiagnosed. |
+| Version string `PROGRAM:VBE20DisplayDriver_reloc` under `_VBE20DisplayDriver_reloc_vers` (160 bytes) versus our 112-byte `…VersionString` | **Exempt, worth one look.** Generated from the project name at build time. If a `VERS_OFILE` or project-name setting closes it cheaply, take it; do not spend a phase on it. |
+
+Ledger all three `control-flow-confirmed` citing this table, not `assembly-matched`.
 
 Status vocabulary, matching Cirrus and ThinkPad:
 

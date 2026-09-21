@@ -128,13 +128,26 @@ mode num, Attrib, BytesPerScanline, FrameBuffer, XRes, YRes, BitsPerPixel,
 MemoryModel, RGB Mask Sizes (3), RGB Field Pos (3)
 ```
 
-Aligning the two by type gives:
+**The struct does not follow the print order** — an earlier draft of this spec
+assumed it did and got two things wrong. Task 3 recovered the real layout from
+the disassembly:
 
-| Type | Fields |
-| --- | --- |
-| 5 × `unsigned short` | mode number, ModeAttributes, BytesPerScanline, XResolution, YResolution |
-| 8 × `unsigned char` | BitsPerPixel, MemoryModel, R/G/B mask sizes, R/G/B field positions |
-| 1 × pointer | framebuffer physical address |
+| Offset | Type | Field |
+| --- | --- | --- |
+| 0x00 | `unsigned short` | `modeNumber` |
+| 0x02 | `unsigned short` | `modeAttributes` |
+| 0x04 | `unsigned short` | `xResolution` |
+| 0x06 | `unsigned short` | `yResolution` |
+| 0x08 | `unsigned short` | `bytesPerScanline` |
+| 0x0A | `unsigned char` | `bitsPerPixel` |
+| 0x0B | `unsigned char` | `memoryModel` |
+| 0x0C–0x11 | 6 × `unsigned char` | red mask/position, green mask/position, blue mask/position — **interleaved**, not grouped |
+| 0x12–0x13 | — | padding, untouched by either side |
+| 0x14 | pointer | `frameBuffer` |
+
+`bytesPerScanline` is fifth, not third, and the colour bytes pair each mask
+size with its field position rather than listing three sizes then three
+positions.
 
 **D1 is answered (Task 2), and the mapping is confirmed.**
 `initFromDeviceDescription:` passes two *unrelocated* absolute literals,

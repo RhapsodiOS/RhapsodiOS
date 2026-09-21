@@ -814,12 +814,21 @@ relocation operands, the same idea as `compare_thinkpad.py` in the ThinkPad
 plan:
 
 ```python
-"""Masked instruction-stream compare for drvVBE20DisplayDriver."""
-import sys
-from pathlib import Path
-from binrecon.macho import read_macho
+"""Masked instruction-stream compare for drvVBE20DisplayDriver.
 
-TEXT = "__TEXT,__text"
+Reads __text out of both Mach-O files and zeroes every 32-bit relocated
+operand before comparing, so __cstring addresses -- which legitimately
+differ between the reference and our build -- do not read as deltas.
+
+Handles BOTH relocation forms.  A scattered entry sets bit 31 of the first
+word and packs its address and length there; a reader that always takes the
+length from the second word leaves scattered operands unmasked and reports
+false diffs.  The reference carries three scattered relocations in __text,
+so the naive form fails on initFromDeviceDescription: specifically.
+"""
+import struct, sys
+
+# reference __text offsets; each size is the delta to the next entry
 EXTENTS = {
     0: "-[IOFrameBufferDisplay(UnnamedInitialization) initUnnamedFromDeviceDescription:]",
     144: "-[VBE20DisplayDriver initFromDeviceDescription:]",
@@ -834,21 +843,41 @@ EXTENTS = {
     2176: "-[VBE20DisplayDriver descriptionForVBEMode:]",
     2276: "-[VBE20DisplayDriver displayModeCount]",
     2288: "-[VBE20DisplayDriver displayModes]",
+    2300: "+[VBE20DisplayDriverKernelServerInstance kernelServerInstance]",
+    2312: "+[VBE20DisplayDriverVersion driverKitVersionForVBE20DisplayDriver]",
 }
 BOUNDS = sorted(EXTENTS) + [2324]
 
 def text(path):
-    m = read_macho(Path(path))
-    for s in m.sections:
-        if f"{s.segname},{s.sectname}" == TEXT:
-            return s.data, s.relocations
-    raise SystemExit(f"no {TEXT} in {path}")
+    d = open(path, "rb").read()
+    off, ncmds = 28, struct.unpack("<I", d[16:20])[0]
+    for _ in range(ncmds):
+        cmd, cs = struct.unpack("<2I", d[off:off + 8])
+        if cmd == 1:                                   # LC_SEGMENT
+            nsects = struct.unpack("<I", d[off + 48:off + 52])[0]
+            so = off + 56
+            for _ in range(nsects):
+                name = d[so:so + 16].split(b"\0")[0].decode()
+                addr, size, foff, _al, roff, nrel = struct.unpack(
+                    "<6I", d[so + 32:so + 56])
+                if name == "__text":
+                    rels = []
+                    for k in range(nrel):
+                        w0, w1 = struct.unpack("<2I", d[roff + k * 8:roff + k * 8 + 8])
+                        if w0 & 0x80000000:            # scattered
+                            rels.append((w0 & 0x00FFFFFF, (w0 >> 28) & 3))
+                        else:
+                            rels.append((w0, (w1 >> 25) & 3))
+                    return d[foff:foff + size], rels
+                so += 68
+        off += cs
+    raise SystemExit("no __TEXT,__text in " + path)
 
-def mask(data, relocs):
-    b = bytearray(data)
-    for r in relocs:
-        if r.length == 2:                 # 32-bit operand
-            b[r.address:r.address + 4] = b"\x00\x00\x00\x00"
+def mask(buf, rels):
+    b = bytearray(buf)
+    for addr, length in rels:
+        if length == 2 and addr + 4 <= len(b):         # 32-bit operand
+            b[addr:addr + 4] = b"\0\0\0\0"
     return bytes(b)
 
 ref, refrel = text(sys.argv[1])
@@ -859,9 +888,13 @@ for i, start in enumerate(sorted(EXTENTS)):
     if start not in only:
         continue
     end = BOUNDS[i + 1]
+    if end > len(new):
+        print("%5d %-28s %s" % (start, "NOT YET BUILT", EXTENTS[start]))
+        continue
     a, b = ref[start:end], new[start:end]
-    verdict = "MATCH" if a == b else f"DIFF ({len(a)} vs {len(b)} bytes)"
-    print(f"{start:5d} {verdict:28s} {EXTENTS[start]}")
+    n = sum(x != y for x, y in zip(a, b))
+    verdict = "MATCH" if a == b else "DIFF (%d bytes)" % n
+    print("%5d %-28s %s" % (start, verdict, EXTENTS[start]))
 ```
 
 Run it for this task's two extents:

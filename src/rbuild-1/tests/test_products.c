@@ -130,10 +130,39 @@ TEST(test_suffix_pairs) {
     put(OBJ "lib/variant2/dynamic_obj/a.ppc.o",2);
     CHECK_INT(products_validate(ROOT,3,1,0),1);
 }
+TEST(test_per_arch_install_dirs) {
+    /* A driver package installs thin binaries under private/Drivers/<arch>/,
+     * so a universal build is satisfied by the pair, not by fat files. */
+    reset();
+    put("private/Drivers/i386/BPF.config/BPF_reloc",1);
+    put("private/Drivers/i386/BPF.config/PostLoad",1);
+    put("private/Drivers/ppc/BPF.config/BPF_reloc",2);
+    put("private/Drivers/ppc/BPF.config/PostLoad",2);
+    CHECK_INT(products_validate(ROOT,3,0,0),0);
+    CHECK_INT(products_validate(ROOT,1,0,0),0);
+    CHECK_INT(products_validate(ROOT,2,0,0),0);
+    /* A fat binary in an arch directory still carries that arch. */
+    put("private/Drivers/i386/BPF.config/PostLoad",3);
+    CHECK_INT(products_validate(ROOT,3,0,0),0);
+    /* The wrong CPU under an arch directory is still caught. */
+    put("private/Drivers/i386/BPF.config/PostLoad",2);
+    CHECK_INT(products_validate(ROOT,3,0,0),1);
+    CHECK_INT(products_validate(ROOT,2,0,0),1);
+    /* Only the component directly below private/Drivers names the CPU. */
+    reset();
+    put("private/Drivers/BPF.config/tool",1);
+    CHECK_INT(products_validate(ROOT,3,0,0),1);
+    /* Code outside any arch directory must still cover what was asked. */
+    reset();
+    put("usr/bin/rcz",1);
+    CHECK_INT(products_validate(ROOT,3,0,0),1);
+    CHECK_INT(products_validate(ROOT,1,0,0),0);
+}
 static void run_all(void) {
     RUN(test_installed_code);
     RUN(test_directory_buckets);
     RUN(test_suffix_pairs);
+    RUN(test_per_arch_install_dirs);
     system("rm -rf " ROOT);
 }
 TEST_MAIN()

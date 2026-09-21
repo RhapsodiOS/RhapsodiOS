@@ -67,6 +67,24 @@ static int object_arch_component(const char *p, size_t n, unsigned *bucket) {
     return 0;
 }
 
+/* A driver installs its binaries under private/Drivers/<arch>/, thin for the
+ * CPU that directory names -- the layout driver.make's thin_architectures step
+ * produces and the one Apple ships.  A file there only has to carry the
+ * architecture its own directory names, whatever else is being built.  Only
+ * the component directly below private/Drivers counts, so this says nothing
+ * about object collections, which have their own pairing rules. */
+static unsigned install_arch_component(const char *rel) {
+    static const char drivers[] = "private/Drivers/";
+    const char *p, *end;
+    unsigned component;
+    if (strncmp(rel, drivers, sizeof(drivers)-1) != 0) return 0;
+    p = rel + sizeof(drivers)-1;
+    end = strchr(p, '/');
+    if (end == 0) return 0;
+    if (!object_arch_component(p, (size_t)(end - p), &component)) return 0;
+    return component;
+}
+
 static void strip_object_arch_components(char *dir, char *source_end) {
     char *read = source_end + 1;
     char *write = source_end + 1;
@@ -99,9 +117,14 @@ static int code_file(validation *v, const char *rel, unsigned mask) {
     unsigned bucket = 0, suffix = 0, seen = 0, component = 0;
     size_t n;
     int count = 0, rc = 0;
-    if (!v->objects || strncmp(rel, prefix, sizeof(prefix)-1) != 0)
+    if (!v->objects || strncmp(rel, prefix, sizeof(prefix)-1) != 0) {
+        unsigned want = install_arch_component(rel);
+        if (want != 0)
+            return covers(mask, want, 1) ? 0 :
+                failure(v, rel, "code architecture mismatch", mask, want);
         return covers(mask, v->required, v->superset) ? 0 :
             failure(v, rel, "code architecture mismatch", mask, v->required);
+    }
     dir = xstrdup(rel);
     p = strrchr(dir, '/');
     if (!p) { free(dir); return 1; }

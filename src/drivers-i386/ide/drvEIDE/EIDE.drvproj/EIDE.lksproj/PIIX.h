@@ -204,6 +204,6 @@ typedef union {
  * NOTE: the standard SFF-8038i bus-master IO space register offsets,
  * their bit definitions, and the PRD table format used to live here.
  * They are chipset-independent and have moved to IdeBMIDE.h (as
- * BMIDE_*/bmide_*). PIIX_BMIBA above is duplicated there as
+ * BMIDE_ and bmide_ prefixes). PIIX_BMIBA above is duplicated there as
  * BMIDE_BMIBA for use by the generic code.
  */

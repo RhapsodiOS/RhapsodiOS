@@ -42,6 +42,7 @@
 #import <bsd/dev/ata_hd_registry.h>
 
 #import "IdeCnt.h"
+#import "IdeCntInit.h"		/* for getIdeDriveInfo:'s ideDriveInfo_t return */
 #import "IdeDisk.h"
 #import "IdeDiskInternal.h"
 #import "IdeCntPublic.h"

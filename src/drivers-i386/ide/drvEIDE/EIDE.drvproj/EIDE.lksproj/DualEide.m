@@ -39,6 +39,7 @@
 
 #import <sys/systm.h>
 
+#import <driverkit/IODevice.h>		/* defines IO_DRIVERKIT_VERSION */
 #import <driverkit/KernBus.h>
 #import <driverkit/KernDevice.h>
 #import <driverkit/KernDeviceDescription.h>

@@ -224,13 +224,13 @@ static unsigned short lastCommand = 0;
 - (ide_return_t)ideWaitForInterrupt:(unsigned int)command
 			  ideStatus:(unsigned char *)status
 {
-	if (_pollMode)
-		return [self pollForCompletion:status];
-
 #ifdef NO_IRQ_MSG
 	ide_return_t	ret;
 	u_int 			s;
 	BOOL			_interruptOccurred;
+
+	if (_pollMode)
+		return [self pollForCompletion:status];
 
 	s = spldevice();
 
@@ -267,6 +267,9 @@ static unsigned short lastCommand = 0;
 
     msg_return_t result;
     msg_header_t msg;
+
+    if (_pollMode)
+		return [self pollForCompletion:status];
     
 	msg.msg_local_port = _ideInterruptPort;
     msg.msg_size = sizeof(msg);

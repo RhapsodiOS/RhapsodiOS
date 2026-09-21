@@ -1844,3 +1844,44 @@ Two Kernel Server glue methods remain generated (`kernelServerInstance` masked-e
 `__TEXT,__const` is still absent: Task 5 wired `OTHER_GENERATED_OFILES += $(VERS_OFILE)`
 but the guest has no `next-sgs.make`, so `$(VERS_OFILE)` expands empty and
 `_PS2Mouse_VERS_STRING` / `_VERS_NUM` were not emitted. Not yet tested on hardware.
+
+## Task 5 reversed: the `VERS_OFILE` postamble duplicated an entry already there
+
+2026-09-21. `PS2Mouse.lksproj/Makefile.postamble` is removed.
+
+Task 5 added it on the reading that `$(VERS_OFILE)` expands empty, so appending
+it costs nothing. That was true of the guest as it stood on 2026-09-16, and it
+is why the line looked harmless. It was never correct: `gnumake -p` in the
+lksproj already reported
+
+```
+OTHER_GENERATED_OFILES = $(INSTANCE_OBJFILE) $(VERS_OFILE)
+```
+
+so `+= $(VERS_OFILE)` appended a second copy of a variable the default value
+already contained. Empty plus empty is empty, which is the only reason it
+built.
+
+The guest now resolves its versioning system, `PS2Mouse_vers.o` is generated,
+and both copies resolve to the same path. `kl_ld` gets it twice and `ld`
+refuses:
+
+```
+ld: multiple definitions of symbol _PS2Mouse_VERS_NUM
+ld: multiple definitions of symbol _PS2Mouse_VERS_STRING
+```
+
+No `PS2Mouse_reloc` was produced at all, and the build then died in
+`strip-binaries` on the missing file. With the postamble gone the driver links
+and packages (`drvPS2Mouse-11-i386.apk`, `PS2Mouse_reloc` 30212 bytes against
+Apple's 30204).
+
+The gate Task 5 was chasing is unaffected: it wanted the SGS names
+`_PS2Mouse_VERS_STRING` / `_VERS_NUM`, and the apple-generic versioning that
+actually runs here emits `VersionString` / `VersionNumber` instead, as the
+drvBusMouse Task 3 follow-up already found. The postamble never moved that gate
+and could not have.
+
+`drvBusMouse` and `drvPCParallel` carry the same postamble line. Checked
+drvBusMouse on 2026-09-21: its lksproj generates no `*_vers.o` at all, so its
+`kl_ld` line has no duplicate and the line is still inert there. Left alone.

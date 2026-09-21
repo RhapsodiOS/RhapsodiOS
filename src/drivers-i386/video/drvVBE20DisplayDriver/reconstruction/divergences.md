@@ -537,11 +537,15 @@ offsets. So the first C argument is the `VBEModeRec *` and the second the
 `IODisplayInfo *`, as the forwarder implies, and the record's padding byte is
 untouched from this side too.
 
-The return type is `void`: the function's single exit is the epilogue at
-`0019EF9D..0019EFA6` (`8D65F4 5B 5E 5F 89EC 5D C3`), and no path assigns `eax`
-before reaching it -- the two paths that arrive leave `eax` holding a loop
-temporary (`[ebx+8]` on one, `[ebx+0Ah]-2` on the other). The Objective-C
-wrapper's own encoding begins `v` as well.
+The return type is **inferred** to be `void`: the function's single exit is the
+epilogue at `0019EF9D..0019EFA6` (`8D65F4 5B 5E 5F 89EC 5D C3`), and no path
+loads `eax` with a *result* before reaching it -- the two paths that arrive
+leave `eax` holding a loop temporary (`[ebx+8]` on one, `[ebx+0Ah]-2` on the
+other; see `0019EF93 0FB74308` in the listing above). `eax` is therefore
+written, but as scratch, so this is an inference from the absence of a
+deliberate return value rather than an observation of none. The Objective-C
+wrapper's own encoding begins `v`, and the driver ignores any return, so
+nothing in this binary would distinguish `void` from an ignored result.
 
 Two further facts, from the driver:
 
@@ -667,7 +671,9 @@ the binary, and the obvious guess is wrong in one respect worth recording --
 (`src/driverkit-3/libDriver/Kernel/IOFrameBufferDisplay.m` lines 1138 and 1146,
 declared in `driverkit/IOFrameBufferDisplay.h` lines 76 and 83 as methods
 "implemented by subclasses in a device specific way"), so these two override
-nothing that would otherwise do anything. Tasks 3-7 need only reproduce them as
+nothing that would otherwise do anything -- though that is read from *this
+tree's* Rhapsody `driverkit-3`, not from 4.2's `IOFrameBufferDisplay`, which is
+not available here. Tasks 3-7 need only reproduce them as
 empty; no rationale is claimed.
 
 ### D5: why the driver ships its own `atoi:`
@@ -706,7 +712,8 @@ _VBEModeInfo2IODisplayInfo  _VBE20DisplayDriver_instance
 
 Seventeen symbols, every `nlist` entry whose type field is `N_UNDF`: four
 superclass references, the kernel-server instance pointer, and twelve
-functions/data. Among the twelve are `sprintf` and five `str*` routines, but no
+functions/data. Among the twelve are `sprintf` and four `str*` routines
+(`_strcat`, `_strcpy`, `_strncmp`, `_strncpy`), but no
 `atoi`, `strtol`, `strtoul` or `sscanf`. Whether the 4.2 kernel exported one
 and Apple chose not to use it is not determinable from this binary; what is
 determinable is that this driver links against none.

@@ -847,9 +847,20 @@ Task 1 found.
 
 First guest build of the scaffold: `make exit=0`, `VBE20DisplayDriver.m` compiled
 to `VBE20DisplayDriver.i386.o`, `kl_ld` produced `VBE20DisplayDriver_reloc`
-(92316 bytes, unstripped `-g` build; the reference is stripped, 37984 bytes --
-the same expected size gap drvVGA and drvCirrus recorded). Only the four
-smallest methods are written; the other nine functions are missing.
+(92316 bytes, SHA-256
+`D7F8125A3DFD864BE2244D59A08CEA74B4EC848B45C2C9BAAB75F58BC27740AD`, an unstripped
+`-g` build with 1173 stab entries; the reference is stripped, 37984 bytes, 22
+symbol entries and no stabs). That size gap is expected and is not a finding.
+drvVGA and drvCirrus recorded the same unstripped-versus-stripped difference:
+`src/drivers-i386/video/drvVGA/reconstruction/divergences.md`, section "Baseline
+and rebuilt build" ("the `VGA_reloc` size difference is expected and is not a
+finding"), and
+`src/drivers-i386/video/drvCirrusLogicGD5434/reconstruction/divergences.md`,
+section "Build and parity" (the extra symbols on our side are "debug artefacts of
+an unstripped guest build"). Only the four smallest methods are written; the
+other nine functions are missing. How the hash, symbol counts and every offset
+below were obtained is under "Reproducing these measurements" at the end of this
+section.
 
 **The four methods are byte-identical to the reference.**
 `enterLinearMode` and `revertToVGAMode` (`5589e589ec5dc390`, 8 bytes each) match
@@ -887,29 +898,124 @@ failing -- the rebuilt `_reloc` carries `.objc_class_name_IODevice`,
 `0x01`, and links cleanly. The undefined-external check belongs to Task 5, after
 the forwarder exists. In the reference the symbol is index 11, type `0x01`.
 
+### Evidence that the scaffold matches the reference
+
+Two things beyond the four method bodies were checked byte for byte, because
+they are what shows the project files (rather than the source) are right.
+
+- **The whole `Loaded Server` segment is identical.** Each of its four sections
+  was extracted from both binaries by the section's file offset and size, and
+  the bytes compared: `Server Name` (18 bytes, `VBE20DisplayDriver`) at
+  `0x6000`, `Load Commands` (164 bytes, the `WIRE` block; SHA-256
+  `78FEAAD1F976BAF28AFE83EC73EC4393BA16F514FEB3EED3E67609FB29FFED7F`) at
+  `0x6012`, `Instance Var` (27 bytes, `VBE20DisplayDriver_instance`) at
+  `0x60B6` and `Server Version` (1 byte, `2`) at `0x60D1`. All four are equal,
+  as are the addresses and sizes. The segment's whole 8192-byte file image
+  (`vmsize` and `filesize` both 8192 in both files) is also equal, so the
+  padding matches too; that image hashes
+  `5FAB75726D09D0788182E9932FE6722290EF99756525EE2D8BC6FC624E121A7A`. This is
+  the scaffold's `Load_Commands.sect` (copied unchanged from drvCirrus) and the
+  project `NAME` producing this segment; it is a stronger result than matching
+  the section sizes alone.
+- **`English.lproj/Localizable.strings` is byte-identical to the reference's.**
+  The tree's copy, `git show HEAD:` of it, and the reference's
+  `English.lproj/Localizable.strings` all hash
+  `C2FDA3A61DAE9401149166FBC3E913AB4D605D222AFB109619D4D824AA54AF5A`
+  (SHA-256, 87 bytes), and `cmp` reports the two files identical.
+
 ### Link differences visible in the first `_reloc`, not caused by any source
 
-Both concern build-generated code that the source cannot change, so they are
+These concern build-generated code that the source cannot change, so they are
 recorded here for whoever reaches the Kernel Server functions.
 
 - **`_VBE20DisplayDriver_instance`.** In the reference it is an *unallocated
-  common*: symbol 10, `N_UNDF | N_EXT`, `n_value` 4, and `+kernelServerInstance`
-  reaches it through an `r_extern` relocation (`mov eax, 0`). Our `kl_ld` link
-  allocates it as a 4-byte `__DATA,__common` slot at `0x2008` and the same
-  instruction is `mov eax, 0x2008` with a section-relative relocation. This is
-  why the reference's `__bss` is exactly the 1104 bytes of the three static
-  buffers with no room for the instance slot.
-- **Version string.** The reference's `__const` holds one 160-byte
-  `@(#)PROGRAM:VBE20DisplayDriver_reloc  PROJECT:drvVBE20DisplayDriver-1
-  DEVELOPER:cfriesen  BUILT:NO DATE SET (-B used)` under a symbol named
-  `_VBE20DisplayDriver_reloc_vers`. Ours is 112 bytes of `__const` with
-  `_VBE20DisplayDriverVersionString` / `_VBE20DisplayDriverVersionNumber` and a
-  real build date, from `VERSIONING_SYSTEM = apple-generic` copied from Cirrus.
-  Same category as the `VERS_STRING` finding recorded for drvCirrus.
-- **`+driverKitVersionForVBE20DisplayDriver`'s constant.** The reference returns
-  `0x1A4` (`b8 a4010000`); the rebuilt method returns `0x1F4` (`b8 f4010000`).
-  The method is emitted by the Kernel Server project type, so no source can set
-  it; the guest build produces 0x1F4.
+  common*: symbol 10, `N_UNDF | N_EXT` (`n_type` 0x01), `n_sect` 0, `n_value`
+  4, and `+kernelServerInstance` reaches it through an `r_extern` relocation
+  (`mov eax, 0`, relocation at `__text` 2304 against symbol 10). Our `kl_ld`
+  link allocates it as a 4-byte `__DATA,__common` slot at `0x2008` and the same
+  instruction is `mov eax, 0x2008` with a section-relative relocation. The
+  generated source declares it as an uninitialised file-scope `kern_server_t`
+  (`src/driverTools-1/KernelServerProjectType/CreateKLLDInstance.sh:71`), i.e. a
+  C common, so the difference is in what each link did with the common, not in
+  the source. *Measured:* the reference symbol is in no section, so the
+  reference's `__bss` (1104 bytes at `0x2008`) cannot contain it, and the nine
+  local relocations from `__text` into `__bss` start at exactly three offsets,
+  +0, +80 and +592, the three static buffers Task 2 found. *Inferred, not
+  shown:* that those three buffers fill `__bss` and nothing else does. The third
+  buffer's 512 bytes is `1104 - 592`, the remainder to the end of the section,
+  not a boundary any relocation marks. So "the reference's `__bss` is exactly the
+  three static buffers" is consistent with an unallocated instance common but is
+  not demonstrated by it. *Unidentified:* why our `kl_ld` allocates the common
+  and the reference's link did not; no link flag was tried in Task 3.
+- **Version string: cause unidentified.** The reference's `__const` holds one
+  160-byte object, symbol `_VBE20DisplayDriver_reloc_vers`: a 118-character
+  string with no trailing newline, then zero bytes to 160.
+
+  ```
+  @(#)PROGRAM:VBE20DisplayDriver_reloc  PROJECT:drvVBE20DisplayDriver-1  DEVELOPER:cfriesen  BUILT:NO DATE SET (-B used)
+  ```
+
+  Ours is 112 bytes: a 101-character string plus a trailing newline (symbol
+  `_VBE20DisplayDriverVersionString`, `0x40`), then an 8-byte double 1.0 (symbol
+  `_VBE20DisplayDriverVersionNumber`, `0xA8`).
+
+  ```
+  @(#)PROGRAM:VBE20DisplayDriver  PROJECT:VBE20DisplayDriver-1  DEVELOPER:root  BUILT:09/20/26 10:43:45
+  ```
+
+  What differs: the symbol name; the `PROGRAM` field (`_reloc` suffix); the
+  `PROJECT` field (`drv` prefix); `DEVELOPER`; `BUILT` (a `-B` placeholder
+  against a real date); the trailing newline; and the object shape (one
+  160-byte string against a string plus a double). `DEVELOPER` and `BUILT` are
+  build-environment values (the builder's user name, and the clock or a `-B`
+  placeholder), not anything the driver source controls; drvCirrus recorded the
+  same about its own version bytes
+  (`src/drivers-i386/video/drvCirrusLogicGD5434/reconstruction/divergences.md`,
+  section "What is not reconstructed").
+
+  **The cause of the rest is unidentified. Do not edit `VERSIONING_SYSTEM` on
+  this evidence.** Our version symbols come from `VERSIONING_SYSTEM =
+  apple-generic`, copied from Cirrus, so that setting is the obvious suspect,
+  but the reference's own string uses the same four-field
+  `PROGRAM / PROJECT / DEVELOPER / BUILT` layout as ours, so the setting is
+  unlikely to explain the differences. What was ruled out, and what was not:
+
+  - The layout is not a difference; both are that four-field format.
+  - `next-sgs` does not reproduce the reference. `src/pb_makefiles-1/next-sgs.make`
+    names the symbol `_<name>_VERS_STRING`, which is what drvCirrus's
+    *reference* carries (`.../drvCirrusLogicGD5434/reconstruction/divergences.md`,
+    section "Static storage"); this reference's `_<name>_vers` is a third
+    convention.
+  - `src/Commands/bootstrap_cmds/vers_string.csh` reproduces two things: its `-B`
+    flag prints exactly `NO DATE SET (-B used)`, and its `-c` mode declares a
+    160-byte `SGS_VERS[160]` array, the size of this object. But `-c` puts a
+    trailing `\n` in the string, which the reference lacks. drvCirrus's
+    reference string does have that newline and a real date, so the two
+    references were not made the same way.
+  - So the leading suspect is a different generation of the version tool, or a
+    different symbol-naming step (the `_vers` suffix and the missing newline).
+    That is a lead, not a finding: it was not tested, and the cause is
+    unidentified. The related record for drvCirrus's version symbols is the
+    paragraph "Task 3, `VERSIONING_SYSTEM` retries" in the same Cirrus file
+    (`apple-generic` produced `..VersionString` / `..VersionNumber`; the
+    SGS-named symbols stayed unmet).
+- **`+driverKitVersionForVBE20DisplayDriver`'s constant: the cross-release
+  difference, and it must stay.** The reference returns `0x1A4` = 420
+  (`b8 a4010000` at `__text` 2315, immediate at 2316..2319); the rebuilt method
+  returns `0x1F4` = 500 (`b8 f4010000` at `0x37`, immediate at `0x38..0x3B`). It
+  is the only differing byte in that method (`a4` against `f4`). The method is
+  emitted by the Kernel Server project type, not by any source of ours:
+  `src/driverTools-1/KernelServerProjectType/CreateKLLDInstance.sh` (lines 95-97)
+  generates `+driverKitVersionFor<name>` as `return IO_DRIVERKIT_VERSION;`, and
+  `IO_DRIVERKIT_VERSION` is `500` (`0x1F4`) at
+  `src/driverkit-3/driverkit/IODevice.h:45`. In DriverKit 4.2 it was `420`
+  (`0x1A4`), which is the reference's constant. The 4.2 header is not in this
+  tree; the 420 side rests on the reference's own constant and on the
+  maintainer's ruling below. So the difference is the cross-release difference
+  appearing exactly where it should. **Ruling (maintainer, Task 3 review): it
+  must stay.** Forcing 420 would falsify the build. The ledger entry for this
+  method is `control-flow-confirmed`, never `assembly-matched`. The ruling covers
+  this method only; the instance-common difference above has not been ruled on.
 
 ### Scaffold choices that go beyond the brief's table
 
@@ -934,3 +1040,48 @@ recorded here for whoever reaches the Kernel Server functions.
   `Invoke-RhapRemote`-style `-tt`) failed with "This does not look like a tar
   archive". Running `ssh -T` with stdout redirected to a file by `Start-Process`
   and extracting from the file worked and gave a byte-exact 92316-byte `_reloc`.
+
+### Reproducing these measurements
+
+Every symbol, section, relocation and hash cited in this section was read with
+a short Python script that uses only `struct` and `hashlib` (no binrecon, no IDA)
+on the two files below. Nothing here needs the guest.
+
+- **Reference:** `VBE20DisplayDriver_reloc`, 37984 bytes, SHA-256
+  `9FBC2CAFBDD0124CC63B902161C86BBFEC0EF48D591DDA681A325FF7B68DADED`
+  (Conventions, above).
+- **Rebuilt:** `out/i386/drvVBE20DisplayDriver/VBE20DisplayDriver.config/VBE20DisplayDriver_reloc`,
+  92316 bytes, SHA-256
+  `D7F8125A3DFD864BE2244D59A08CEA74B4EC848B45C2C9BAAB75F58BC27740AD`. `out/` is
+  gitignored, so this file is not in the repository. The hash identifies this one
+  build only: `__const` embeds the build time (`BUILT:09/20/26 10:43:45`), so
+  rebuilding identical source gives a different hash. Compare the extents and
+  bytes instead, not the hash.
+- **Symbol dump.** Both are 32-bit little-endian Mach-O files with a 28-byte
+  header; `ncmds` is the `uint32` at byte 16. Walk the load commands
+  (`cmd`, `cmdsize` at each step). `LC_SEGMENT` (`cmd` 1) has the segment header
+  at +8 (56 bytes to the first section) and then 68 bytes per section
+  (`sectname`, `segname`, `addr`, `size`, `offset`, `align`, `reloff`, `nreloc`,
+  `flags`, two reserved), which gives every section's address, size, file offset
+  and relocation table. `LC_SYMTAB` (`cmd` 2) gives `symoff`, `nsyms`, `stroff`,
+  `strsize` at +8. Each `nlist` is 12 bytes, `struct.unpack('<IBBHI')` =
+  `n_strx, n_type, n_sect, n_desc, n_value`, and the name is the NUL-terminated
+  string at `stroff + n_strx`. Entries with `n_type & 0xE0` set are stabs and
+  were skipped. That leaves 22 entries in the reference (it has no stabs) and 17
+  in the rebuilt file (which has 1173 stabs, 1190 entries in all). The type
+  values quoted above are `n_type` verbatim: `0x0E` local in a section, `0x0F`
+  external in a section, `0x03` absolute external, `0x01` undefined external
+  (with a nonzero `n_value`, a common).
+- **Relocations.** Each entry is 8 bytes at `reloff`, two `uint32`. If bit 31 of
+  the first word is set it is scattered (the reference has three, all into
+  `__OBJC`, none into `__bss`). Otherwise the first word is `r_address` and the
+  second is `r_symbolnum` (low 24 bits), `r_pcrel` (bit 24), `r_length`
+  (bits 25-26), `r_extern` (bit 27), `r_type` (bits 28-31). For a local
+  relocation (`r_extern` 0), `r_symbolnum` is the target section's ordinal,
+  counted from 1 across all sections in load order (`__bss` is 5 in the
+  reference), and the 4-byte operand at `r_address` is the target address. The
+  three `__bss` offsets, +0, +80 and +592, are those operands minus `0x2008`
+  over the nine local relocations whose `r_symbolnum` is 5.
+- **Comparing sections.** `Loaded Server` bytes were compared as
+  `file[offset:offset+size]` for each section, and the segment as
+  `file[fileoff:fileoff+filesize]` from the `LC_SEGMENT` header.

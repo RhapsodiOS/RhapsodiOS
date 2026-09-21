@@ -12,13 +12,32 @@
 extern vm_offset_t	page_mask;
 
 /*
- * The booter leaves the mode it put the adapter in, and the table of modes
- * it found, at fixed addresses inside KERNBOOTSTRUCT (0x11000): one 24-byte
- * record at +0x1858 and the array at +0x1870.  The reference reaches both by
- * absolute address - none of its loads and neither of its two pushes
- * (reference __text 519 and 659) carries a relocation, while every __cstring
- * push in the same function does - so these have to stay plain integer
- * constants with no symbol behind them.
+ * The reference's booter (OPENSTEP 4.2 User Patch 4) leaves the mode it put
+ * the adapter in, and the table of modes it found, at fixed addresses inside
+ * KERNBOOTSTRUCT (0x11000): one 24-byte record at +0x1858 and the array at
+ * +0x1870.  The reference reaches both by absolute address - none of its
+ * loads and neither of its two pushes (reference __text 519 and 659)
+ * carries a relocation, while every __cstring push in the same function
+ * does - so these have to stay plain integer constants with no symbol
+ * behind them.
+ *
+ * This tree's booter does not write there.  In Rhapsody's KERNBOOTSTRUCT
+ * (src/boot-2/i386/libsa/kernBootStruct.h) both offsets fall inside
+ * _reserved[7500], which nothing under src/ writes; the booter's only
+ * video hand-off is kernBootStruct->video, at
+ * src/boot-2/i386/boot2/graphics.c:204-208.
+ */
+
+/*
+ * VBE_BOOTER_MODE is the one record for the mode the booter set the adapter
+ * to; VBE_BOOTER_MODES is the array of every mode it found.  Two different
+ * things one letter apart, not interchangeable: the record sits 0x18 bytes,
+ * one record, before the array.
+ *
+ * On a Rhapsody boot today both addresses are _reserved slack that
+ * getKernBootStruct() zeroes and nothing fills, so xResolution reads 0 and
+ * the driver takes the "card not in VBE mode" path and exports an empty mode
+ * list.
  */
 #define VBE_BOOTER_MODE		((VBEModeRec *)0x12858)
 #define VBE_BOOTER_MODES	((VBEModeRec *)0x12870)
@@ -53,6 +72,14 @@ static unsigned int	 vbeDisplayModeCount = 0;	/* __data + 4 */
 
 - (id)initUnnamedFromDeviceDescription:(IODeviceDescription *)devDesc
 {
+    /*
+     * "[super free]", not "[self free]", is the reference's, and it is not a
+     * typo: a category's super is IODisplay, so on this path
+     * IOFrameBufferDisplay's own -free is skipped.  Reference __text 130 is
+     * a call to _objc_msgSendSuper, whereas the three failure returns in
+     * initFromDeviceDescription: share one _objc_msgSend to self, at __text
+     * 598.  Writing [self free] here would change the emitted call.
+     */
     if ([super initFromDeviceDescription:devDesc] == nil)
 	return [super free];
 
@@ -115,14 +142,15 @@ static unsigned int	 vbeDisplayModeCount = 0;	/* __data + 4 */
     IOLog("%s: VESA video driver initialization.\n", [self name]);
 
     if (VBE_BOOTER_MODE->xResolution == 0) {
-	IOLog("%s: Skipping framebuffer initialization (card not in VBE mode).\n", [self name]);
+	IOLog("%s: Skipping framebuffer initialization "
+	      "(card not in VBE mode).\n", [self name]);
 	IOLog("%s: Driver loaded to export VBE mode list.\n", [self name]);
     } else {
 	displayInfo = [self displayInfo];
 	[self initDisplayInfo:displayInfo fromVBEModeInfo:VBE_BOOTER_MODE];
 
 	virtAddr = [self mapFrameBufferAtPhysicalAddress:range.start
-		    length:range.size];
+						  length:range.size];
 	if (virtAddr == 0) {
 	    IOLog("%s: Unable to map frame buffer\n", [self name]);
 	    return [self free];

@@ -1204,6 +1204,54 @@ the rebuilt `__text`:
   659        6870280100         push  12870h
 ```
 
+### Those addresses are OPENSTEP 4.2's; on Rhapsody they are reserved slack
+
+`0x12858` and `0x12870` are `KERNSTRUCT_ADDR` (`0x11000`) + `0x1858` and
+`0x1870` in the *4.2* booter's `KERNBOOTSTRUCT`, which is the struct the 4.2
+booter at `boot+27556..28263` writes (see D1). Rhapsody's struct is a different
+layout: `src/boot-2/i386/libsa/kernBootStruct.h` (and
+`src/kernel-7/machdep/i386/kernBootStruct.h`, which declares the same members in
+the same order up to and including `video`). Its offsets were measured with the
+guest's own compiler -- `offsetof` and `sizeof` in initialised globals,
+`cc -arch i386 -S`, values read from the emitted `.long` lines -- rather than
+counted by hand:
+
+| Member | Offset | Size | Ends at |
+| --- | --- | --- | --- |
+| `driverConfig[64]` | 360 (`0x168`) | 512 | 872 |
+| `apm_config` | 872 (`0x368`) | 36 | 908 |
+| `_reserved[7500]` | 908 (`0x38C`) | 7500 | 8408 (`0x20D8`) |
+| `video` (`boot_video`) | 8408 (`0x20D8`) | 24 | 8432 (`0x20F0`) |
+
+Both `0x1858` (6232) and `0x1870` (6256) fall inside `_reserved[7500]`. Nothing
+under `src/` writes them: `getKernBootStruct()` in
+`src/boot-2/i386/libsaio/bootstruct.c:84` `bzero`s the whole struct, and this
+booter's only video hand-off is `kernBootStruct->video` at
+`src/boot-2/i386/boot2/graphics.c:204-208`, reached only in `setMode()` when
+`mode == GRAPHICS_MODE` and the `G_MODE_KEY` string is present in the config.
+
+**Consequence.** Booted on Rhapsody today, the driver reads zeroed reserved
+slack, sees `xResolution == 0`, takes the "card not in VBE mode" path and
+exports an empty mode list. So the "card not in VBE mode" outcome that gate 3
+expects now has **two independent causes**, either of which would produce it on
+its own:
+
+1. the booter never enters a VBE mode (the design spec's gate 3 section records
+   that `"Graphics Mode"` is never set in any config table, so `setMode()` falls
+   through to text), and
+2. even if it did, it would not write where the driver reads: the record and the
+   array are not in `boot_video`, and nothing else fills `_reserved`.
+
+A related fact for whoever places the array: `0x1870` + `0x880` is `0x20F0`,
+which is exactly the end of `video`. The size the driver passes to
+`parseVESAModes:size:` therefore covers the tail of `_reserved` **and all of
+`boot_video`**, so mode records written into `_reserved` at the 4.2 offset would
+overlap `video` if the table were filled. Whether `parseVESAModes:size:` stops at
+a terminator before reaching that point is not known yet; it is unwritten.
+
+This file records the measurement; the choice between fixing those offsets as
+ABI inside `_reserved` and adding real members belongs to the follow-on spec.
+
 ### Ivar access from the category compiles
 
 `_currentDisplayMode`, `_pendingDisplayMode`, `_displayModeCount` and

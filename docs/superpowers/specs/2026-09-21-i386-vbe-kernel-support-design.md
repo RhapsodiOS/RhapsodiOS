@@ -226,7 +226,7 @@ Answered from the disassembly. None may be invented.
 | | Item | Why it matters |
 | --- | --- | --- |
 | D1 | The real extent of `VBEModeInfo2IODisplayInfo` | The symbol table is sparse — the next *named* symbol is 7,484 bytes on. Bound it via the jump table at `0x19EDD8`, not by symbol delta. |
-| D2 | ~~What `0x12854` is~~ **Answered in Task 1.** It is the kernel virtual address of the mapped VESA linear framebuffer, written by `pmap_bootstrap` (`0x0018F1B4`) and read by `FBAllocateVBEConsole` at `+57` to **overwrite** `IODisplayInfo.frameBuffer` with the virtual address in place of the physical one. **Kernel-private** - the 4.2 booter never references it. | This row previously said spec 3 has to write it. That was wrong, and it leaves the guard without a producer - see section 11. |
+| D2 | ~~What `0x12854` is~~ **Answered in Task 1, as a tightly-constrained inference — not a flat reading.** *Measured:* `pmap_bootstrap` writes it at `0x0018F1B4`, and `FBAllocateVBEConsole` reads it at `+57` into `IODisplayInfo.frameBuffer`, **overwriting** the physical address. *Inferred:* that the value is the mapped framebuffer's kernel virtual address — the reading that makes a pixel-writing console work, but the mapping code itself was not read. The 4.2 booter does not reference it. | This row previously said spec 3 has to write it. That was wrong, and it leaves the guard without a producer - see section 11. |
 | D3 | `sizeof(ConsoleRep)` in our tree versus the reference's 228 | If they differ, the console's private layout differs, which bears on §4's "same structure" claim. `ConsoleRep` is at `FBConsole.c:135`; measure with `offsetof` on the guest, not by hand — spec 1's hand layout of a struct was 12 bytes out. |
 | D4 | Whether both functions live in the FBConsole translation unit | They are adjacent in `__text`, which suggests one source file. Decides where our definitions go. |
 | D5 | Whether the reference's `ConsoleRep` puts `display` at offset 4 | The `rep movsd` writes to `priv + 4`. Ours assigns `((ConsolePtr)cso->priv)->display`. |
@@ -298,12 +298,19 @@ source defect.
 
 Task 1 answered D2 and the answer moved work between specs.
 
-`0x12854` holds the **kernel virtual address of the mapped VESA linear
-framebuffer**. In the 4.2 kernel it is written once, by `pmap_bootstrap` at
-`0x0018F1B4` (`mov ds:[0x12854],ecx`), after that routine page-maps the
-framebuffer. `FBAllocateVBEConsole` then reads it at `+57` and **overwrites**
-`IODisplayInfo.frameBuffer` with it — replacing the *physical* address
-`VBEModeInfo2IODisplayInfo` had just copied out of the mode record.
+`0x12854` holds — **on a tightly-constrained inference, not a flat reading** —
+the kernel virtual address of the mapped VESA linear framebuffer.
+
+**What is measured.** In the 4.2 kernel it is written once, by `pmap_bootstrap`
+at `0x0018F1B4` (`mov ds:[0x12854],ecx`). `FBAllocateVBEConsole` reads it at
+`+57` and **overwrites** `IODisplayInfo.frameBuffer` with it, replacing the
+*physical* address `VBEModeInfo2IODisplayInfo` had just copied out of the mode
+record.
+
+**What is inferred.** That the value is specifically a *mapped virtual* address.
+It is the reading that makes sense — a console writing pixels needs one, and
+`pmap_bootstrap` is where mapping happens — but Task 1 did not read the mapping
+code that produces `ecx`. Spec 3 should confirm it before depending on it.
 
 That makes sense: the booter records a physical address, and a console that
 writes pixels needs a mapped virtual one.

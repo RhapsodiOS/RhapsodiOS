@@ -185,6 +185,20 @@ exactly the end of `boot_video`. So the array the reference declares overlaps
 `video` in our layout. Whether `parseVESAModes:size:` would ever walk that far
 is unknown.
 
+**The kernel driver never reads its own config table.** Task 5 established
+this: the reference contains no `VBE Mode` string, no `configTable`, and no
+`valueForStringKey` — it has no config-table accessor at all. `VBEBooterMode`
+and `VBEMode` are present, but as `getCharValues:` parameter names, not table
+keys.
+
+So `"VBE Mode" = "257"` in `Default.table` is not consumed by this driver. The
+only remaining consumer is the **booter**, which loads Boot Drivers and their
+tables and which `Default.table` marks this driver as (`"Boot Driver" = "Yes"`).
+That closes the architecture: the Configure.app inspector writes the key, the
+booter reads it and enters that VBE mode, the booter fills the mode array, and
+the driver reads the array and describes the result to DriverKit. The driver is
+a pure consumer at both ends.
+
 Spec 3 therefore cannot simply adopt the 4.2 constants. It must either place
 the array where the driver already reads — inside `_reserved`, which fixes that
 offset as ABI — or add real members and accept that the reconstruction's

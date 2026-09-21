@@ -1532,3 +1532,277 @@ diagnostic.
   loop index is `edi`, `24*i` is `esi`, `136*i` is `ebx` (which also held
   `size` until the first loop ended), and `&modes[i]` is spilled to the
   single `[ebp-4]` slot that `sub esp, 4` at 695 reserves.
+
+## The description builders (Task 6)
+
+`modeStringForDisplayInfo:` (reference `__text` 1004..1192),
+`descriptionForDisplayInfo:` (1932..2176) and `descriptionForVBEMode:`
+(2176..2276) were written from the disassembly and rebuilt on the guest. All
+three are **byte-identical to the reference** once 32-bit relocation operands
+are masked, on the first build; no iteration was needed.
+
+| Extent | Body | Pad | Relocations in the body (ref / ours) | Raw differing bytes | Differing outside a relocated operand |
+| --- | --- | --- | --- | --- | --- |
+| 1004..1192 | 187 | 1 | 18 / 18 | 18 | 0 |
+| 1932..2176 | 242 | 2 | 21 / 21 | 38 | 0 |
+| 2176..2276 | 98 | 2 | 4 / 4 | 4 | 0 |
+
+The padding is `90` in every case and equal on both sides. Every raw
+difference is a `__cstring` or `__bss` address, or a `call` displacement, and
+our `__cstring` and `__bss` sit at different addresses only because
+`getCharValues:forParameter:count:` is still unwritten.
+
+**How each row was compared.** 1004..1192 was compared **in place**, at the
+reference's own offset. 1932 and 2176 were compared **by symbol**: with
+`getCharValues:forParameter:count:` (reference 1240..1916, 676 bytes) missing,
+the rebuilt `__text` is 1648 bytes and everything past `atoi:` sits 676 bytes
+low -- `descriptionForDisplayInfo:` at 1256 and `descriptionForVBEMode:` at
+1500. The by-symbol compare is sound here for the same reason Task 5 gave for
+`atoi:`, but it needs one extra step: unlike `atoi:` these two *do* carry
+relocations, so position-independence is not automatic. What makes it hold is
+that the relocations were masked **per file, at each file's own addresses,
+before slicing** -- the reference's at 1932.. and ours at 1256.. -- and that
+the two bodies carry the same number of relocations at the same body-relative
+offsets. With those operands zeroed on both sides the remaining bytes are
+position-independent, so where the body sits cannot change them.
+
+`descriptionForDisplayInfo:`'s 242-byte body includes the 24-byte jump table
+at reference `__text` 1960, which is data inside the function extent. Its six
+entries are relocated on both sides and are masked with everything else.
+
+### `atoi:` now matches in place
+
+Task 5 could only compare `atoi:` by symbol. Adding `modeStringForDisplayInfo:`
+converges the offsets: the rebuilt `atoi:` is now at 1192, the reference's own
+offset, and the in-place compare of 1192..1240 is `MATCH` with **zero** raw
+differing bytes. Extents 0, 144, 692 and 984 were re-checked in place and all
+still match, so nothing regressed.
+
+### The three static buffers land on the reference's `__bss` boundaries
+
+Declared as function-scope statics, 80, 512 and 512 bytes, in
+`modeStringForDisplayInfo:`, `descriptionForDisplayInfo:` and
+`descriptionForVBEMode:` respectively. The rebuilt symbol table puts them at
+
+```
+  t=0x0e sect=5  8200  _modeString.90      __bss + 0
+  t=0x0e sect=5  8280  _description.99     __bss + 80
+  t=0x0e sect=5  8792  _description.102    __bss + 592
+```
+
+(`__bss` is at `0x2008` = 8200), and the rebuilt `__bss` is 1104 bytes -- the
+reference's size. Those are exactly the three offsets Task 3 derived from the
+reference's nine local `__bss` relocations, so the first two sizes are now
+confirmed from the other direction. The third, 512, is **not** confirmed by
+this: 1104 - 592 = 512 is the remainder to the end of the section either way,
+so our build is consistent with it but does not measure it. That remains the
+inference Task 3 recorded.
+
+Whether Apple wrote them as function-scope or file-scope statics is not
+determinable -- file-scope statics in the same order give the same `__bss`
+layout and the same code. Function-scope was chosen because each buffer has
+exactly one user.
+
+### The label order and the struct order are opposites in `modeStringForDisplayInfo:`
+
+The format string is `Height:%d Width:%d Refresh:0Hz ColorSpace:`
+(`__cstring`+344), but the first value it prints is `IODisplayInfo`'s **second**
+field:
+
+```
+  1011  8B13     mov  edx, [ebx]       ; +0  width   -> pushed first
+  1013  52       push edx
+  1014  8B5304   mov  edx, [ebx+4]     ; +4  height  -> pushed second
+  1017  52       push edx
+  1018  68 ...   push offset __cstring+344
+  1023  68 ...   push offset __bss+0
+  1028  E8 ...   call _sprintf
+```
+
+`cdecl` pushes right to left, so the last push is argument one: the call is
+`sprintf(buf, fmt, info->height, info->width)`. Writing the arguments in the
+order the labels read would swap two `mov` displacements and lose parity. This
+is the same trap Task 5 recorded from the other side, and it is the reason the
+source comment names the loads rather than the labels.
+
+### Six of the eight `strcat` calls are cross-jumped into one
+
+Each arm of the colour-space test ends in a switch whose cases are
+`strcat(buf, "...")`, and because every one of them is followed by the same
+tail -- leave the switch, leave the `if`, return the buffer -- the compiler
+merged the shared `push buf; call _strcat` into the single copy at reference
+`__text` 1169..1179:
+
+```
+  1156  68 ...   push offset "2"
+  1161  EB06     jmp  1169
+  1164  68 ...   push offset "8"
+  1169  68 ...   push offset __bss+0
+  1174  E8 ...   call _strcat
+  1179  B8 ...   mov  eax, offset __bss+0
+```
+
+with **no** `add esp, 8` after it: the epilogue's `mov esp, ebp` at 1187 does
+the cleanup. The two prefix `strcat`s, `"RGB:"` at 1042 and `"BW:"` at 1124, are
+not merged and do carry their own `add esp, 8`, because code follows them.
+Nothing in the source expresses any of this; it is the same jump optimiser
+that merged the three `return [self free];` sites in Task 4.
+
+The three `jmp 1179` at 1075, 1090 and 1154 are the switches' missing cases
+going straight to the return, with the colour-space prefix already appended
+and nothing after it. **Neither switch has a default and neither lists every
+enumerator**, which is why the guest build now emits six
+`enumeration value ... not handled in switch` warnings against
+`modeStringForDisplayInfo:` -- two for the RGB switch (`IO_2BitsPerPixel`,
+`IO_VGA`) and four for the BW switch. They are the expected consequence of
+reproducing the reference's incomplete switches, not a defect on our side, and
+the obvious silencer -- adding `default: break;` -- would put a construct in
+the source that the binary does not show. `descriptionForDisplayInfo:` draws no
+such warning: its two switches do list every enumerator of their types.
+
+### Why one switch gets a jump table and three do not
+
+`descriptionForDisplayInfo:`'s `bitsPerPixel` switch has six cases, 0..5, and
+compiles to a bounds check plus an indirect jump:
+
+```
+  1944  837A1805        cmp  dword ptr [edx+18h], 5
+  1948  774F            ja   2029
+  1950  8B4218          mov  eax, [edx+18h]
+  1953  FF2485A8070000  jmp  ds:[1960 + eax*4]
+```
+
+The other three -- its `colorSpace` switch (cases 0, 1, 2, 5) and both of
+`modeStringForDisplayInfo:`'s (four cases and two) -- compile to compare trees.
+Six dense cases is over this compiler's jump-table threshold and four sparse or
+four dense ones are not; the source shape is the same `switch` in all four.
+
+Both compares are **unsigned** (`ja` at 1948, `jb` at 2037). That follows from
+switching on an enumeration all of whose enumerators are non-negative, so no
+cast is needed and none is written.
+
+### `descriptionForDisplayInfo:`'s two locals start as NULL, and the order is fixed
+
+```
+  1940  31C9  xor ecx, ecx      ; the bitsPerPixel string
+  1942  31DB  xor ebx, ebx      ; the colorSpace string
+```
+
+Both are zeroed before either switch runs, so both are declared `= NULL`; with
+no `default` in either switch, an out-of-range enum reaches the `sprintf` with
+a null `%s`. The declaration order is fixed by which register is cleared
+first and by which switch assigns it: `ecx` is cleared at 1940 and written by
+the `bitsPerPixel` switch, `ebx` at 1942 and written by the `colorSpace`
+switch, so the `bitsPerPixel` string is declared first.
+
+### The seventeen pushes, and the field `descriptionForDisplayInfo:` does not print
+
+Reference `__text` 2081..2144, in push order, then reversed into argument
+order: `IODisplayInfo` +0, +4, +8, +0Ch, +10h, +14h, the two switch results,
+`lea edx+20h`, +60h, +64h, +68h, +6Ch, +74h, +78h, +7Ch, +80h. Seventeen
+values against seventeen conversions in `__cstring`+691, in the same order.
+**+70h is absent**, which is `_reserved1` -- Task 2 recorded this from the
+reference and the rebuild reproduces it from a source that simply does not
+mention the field. The `lea` rather than a load is `pixelEncoding`, a
+`char[64]`, decaying to a pointer for `%s`.
+
+`descriptionForVBEMode:` needed no new reading: Task 2's `VBEModeRec` table was
+derived from exactly these 14 pushes, and writing the arguments in the format
+string's order reproduces them. The record's three mask sizes and three field
+positions are **interleaved** in memory (+0Ch size, +0Dh position, +0Eh size,
+and so on) but **grouped** in the output (`RGB Mask Sizes: (%d, %d, %d), RGB
+Field Pos: (%d, %d, %d)`), so the push order is +0Ch, +0Eh, +10h, +0Dh, +0Fh,
++11h and is not the record's own order.
+
+### `__cstring` is the reference's with one block excised
+
+The rebuilt `__cstring` is 1025 bytes and is **exactly** the reference's 1111
+bytes with 427..513 removed -- byte-for-byte, verified by comparison, not by
+spot-checking offsets. That 86-byte block is the six parameter names and the
+`%d` that `getCharValues:forParameter:count:` owns, which is unwritten. Every
+literal these three functions add therefore sits at the reference's own
+relative position, and the twelve they contribute -- `__cstring`+344, +387,
++392, +398, +405, +412, +419, +423, +425, then +513..+690 and +691, then +932
+-- confirm once more that `__cstring` order is a read-out of source order.
+
+`__OBJC,__meth_var_names` and `__OBJC,__meth_var_types` differ from the
+reference by exactly one entry each, `getCharValues:forParameter:count:` and
+its encoding `i20@8:12*16*20^I24`, and the order of every shared entry is the
+reference's. The three new methods' encodings match the reference's exactly:
+`*12@8:12^{?=iiiii^vii[64c]I^viiiiiiI[1I]}16` (shared by
+`modeStringForDisplayInfo:` and `descriptionForDisplayInfo:`, which have the
+same signature) and `*12@8:12^{?=SSSSSCCCCCCCC^v}16`. The leading `*` is
+`char *`, which is what the header declares for all three.
+
+### `sprintf` and `strcat` come from the standard headers
+
+`#import <stdio.h>` and `#import <string.h>`, which is what the two other
+reconstructed i386 video drivers in this tree do --
+`src/drivers-i386/video/drvCirrusLogicGD5434/CirrusLogicGD5434.drvproj/CirrusLogicGD5434DisplayDriver.lksproj/CirrusLogicGD5434DisplayDriver.m:7`
+imports `<string.h>` and
+`src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m:38-40`
+imports `<stdio.h>`, `<stdlib.h>` and `<string.h>`. Both are loadable kernel
+servers built the same way, so the headers are safe under `-DKERNEL`. Neither
+call was expanded inline: both appear as `call` sites with external
+relocations, as the reference has them. This is the opposite choice from
+`calloc`, which is declared in the `.m` only because no reachable header
+declares it at all.
+
+### Undefined externals after this task
+
+Still a strict subset of the reference's, with nothing extra. `_sprintf` and
+`_strcat` joined in this task:
+
+```
+  both:       .objc_class_name_{IODevice,IODisplay,IOFrameBufferDisplay,Object}
+              _IOLog  _VBEModeInfo2IODisplayInfo  _calloc  _objc_getOrigClass
+              _objc_msgSend  _objc_msgSendSuper  _page_mask  _sprintf  _strcat
+  reference   _strcpy  _strncmp  _strncpy  _VBE20DisplayDriver_instance
+  only:
+```
+
+The three remaining string routines belong to
+`getCharValues:forParameter:count:`; `_VBE20DisplayDriver_instance` is the link
+difference recorded under "Link differences visible in the first `_reloc`".
+
+### A build-environment difference in `__OBJC,__class_names`, found while checking
+
+Not caused by this task and not fixable from the driver source, but it is the
+reason `__class_names` is 321 bytes in the reference and 194 in ours, and Task
+8's parity check will meet it. Both sections hold nine strings; eight are
+identical and in the same order. The ninth is the source path the ObjC
+compiler records for the generated instance file:
+
+```
+  reference  /BRM1A/BinaryCache_Mario1A/drvVBE20DisplayDriver/Objects/
+             drvVBE20DisplayDriver-1.obj~2/i386_obj/
+             VBE20DisplayDriver_reloc.tproj/VBE20DisplayDriver_instance.m
+  ours       VBE20DisplayDriver_instance.m
+```
+
+(the reference's is one string; it is wrapped here to fit.) Apple compiled it
+by absolute path out of a build cache; our build script compiles it by a path
+that reduces to the bare file name. It is the same family as the version
+string and the `DEVELOPER` / `BUILT` fields already recorded -- a property of
+where the build ran, not of the driver.
+
+### Not determinable from the binary
+
+- Whether `modeStringForDisplayInfo:`'s colour-space test is an `if`/`else` or
+  a one-case `switch` with a `default`. Reference `__text` 1036 is a single
+  `cmp dword ptr [ebx+1Ch], 2` and one `jnz`; both source forms compile to it.
+  The reconstruction uses `if`/`else`.
+- Whether either function's switches carried an explicit `default: break;`.
+  An empty default emits nothing, so the binary cannot say. None is written,
+  which is why the six warnings above appear.
+- Whether the three buffers were file-scope or function-scope statics, as
+  above.
+- The local variable names, as before. Only the storage is observable: in
+  `modeStringForDisplayInfo:` the `IODisplayInfo *` lives in `ebx` across the
+  calls (`push ebx` at 1007, restored from `[ebp-4]` at 1184); in
+  `descriptionForDisplayInfo:` it lives in `edx`, which survives because the
+  only call is reached after its last use, the two strings are in `ecx` and
+  `ebx`, and `esi` is the scratch every push goes through (`push esi; push
+  ebx` at 1935 and `lea esp,[ebp-8]` at 2165 are those two saves); in
+  `descriptionForVBEMode:` nothing is saved at all, and only `eax`, `ecx` and
+  `edx` are used.

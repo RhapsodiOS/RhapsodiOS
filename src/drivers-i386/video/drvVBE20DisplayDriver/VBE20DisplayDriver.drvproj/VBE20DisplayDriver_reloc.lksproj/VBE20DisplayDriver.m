@@ -9,6 +9,9 @@
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
 
+#import <stdio.h>
+#import <string.h>
+
 extern vm_offset_t	page_mask;
 
 /*
@@ -262,6 +265,70 @@ static int		 vbeDisplayModeCount = 0;	/* __data + 4 */
 }
 
 /*
+ * Reference __text 1004, 188 bytes (187 of body and one 90 pad).  Builds the
+ * short human-readable mode string in the first of the driver's three static
+ * buffers, reference __bss+0, 80 bytes.
+ *
+ * Which IODisplayInfo field feeds which conversion is taken from the loads,
+ * not from the format string's wording: reference __text 1011 pushes [ebx+0]
+ * and 1014 pushes [ebx+4], and cdecl pushes right to left, so the argument
+ * printed by the *first* %d - the one labelled "Height:" - is the field at
+ * +4, height, and the second is +0, width.  The label order and the struct
+ * order are opposites here.
+ */
+- (char *)modeStringForDisplayInfo:(IODisplayInfo *)info
+{
+    static char	modeString[80];
+
+    sprintf(modeString, "Height:%d Width:%d Refresh:0Hz ColorSpace:",
+	    info->height, info->width);
+
+    /*
+     * Reference __text 1036 is "cmp dword ptr [ebx+1Ch], 2" against
+     * IODisplayInfo.colorSpace, then one jnz - a two-way test, not a switch.
+     * The six strcat calls inside the two switches are cross-jumped by the
+     * compiler into the single "push buf; call _strcat" at reference __text
+     * 1169, which is why that call has no stack cleanup after it: "mov esp,
+     * ebp" in the epilogue does it.  The two prefix strcats, "RGB:" at 1042
+     * and "BW:" at 1124, keep their own cleanup because code follows them.
+     * Nothing in the source expresses that merge.
+     *
+     * Neither switch has a default: on an unlisted bitsPerPixel the reference
+     * jumps straight to the return at __text 1179 with the colour-space
+     * prefix already appended and nothing after it.
+     */
+    if (info->colorSpace == IO_RGBColorSpace) {
+	strcat(modeString, "RGB:");
+	switch (info->bitsPerPixel) {
+	case IO_8BitsPerPixel:
+	    strcat(modeString, "256/8");
+	    break;
+	case IO_12BitsPerPixel:
+	    strcat(modeString, "444/16");
+	    break;
+	case IO_15BitsPerPixel:
+	    strcat(modeString, "555/16");
+	    break;
+	case IO_24BitsPerPixel:
+	    strcat(modeString, "888/32");
+	    break;
+	}
+    } else {
+	strcat(modeString, "BW:");
+	switch (info->bitsPerPixel) {
+	case IO_2BitsPerPixel:
+	    strcat(modeString, "2");
+	    break;
+	case IO_8BitsPerPixel:
+	    strcat(modeString, "8");
+	    break;
+	}
+    }
+
+    return modeString;
+}
+
+/*
  * Reference __text 1192, 48 bytes.  The driver's own, and narrower than C's
  * atoi: no sign, no leading whitespace, no base prefix, no overflow check.
  * The reference's undefined-symbol list holds no atoi, strtol, strtoul or
@@ -299,6 +366,114 @@ static int		 vbeDisplayModeCount = 0;	/* __data + 4 */
 /* Reference __text 1924, 8 bytes. */
 - (void)revertToVGAMode
 {
+}
+
+/*
+ * Reference __text 1932, 244 bytes (242 of body, including the 24-byte jump
+ * table at 1960, and two 90 pads).  Dumps one IODisplayInfo into the second
+ * static buffer, reference __bss+80, 512 bytes.
+ *
+ * Both locals start as NULL - reference __text 1940 and 1942 are "xor ecx,
+ * ecx" and "xor ebx, ebx" - and neither switch has a default, so an
+ * out-of-range enum reaches the sprintf with a null %s.
+ *
+ * The switch on bitsPerPixel compiles to a jump table (bounds check "cmp
+ * dword ptr [edx+18h], 5 / ja" at 1944 and the indirect jump at 1953), the
+ * one on colorSpace to a compare tree, because its cases 0, 1, 2 and 5 are
+ * not dense.  Both compares are unsigned, which is what switching on an
+ * all-non-negative enum gives.
+ *
+ * The seventeen values pushed at reference __text 2081..2144 are the
+ * IODisplayInfo fields at +0, +4, +8, +0Ch, +10h, +14h, the two strings,
+ * +20h, +60h, +64h, +68h, +6Ch, +74h, +78h, +7Ch and +80h.  +70h is absent:
+ * that is _reserved1, and the reference does not print it.
+ */
+- (char *)descriptionForDisplayInfo:(IODisplayInfo *)info
+{
+    static char	 description[512];
+    char	*bitsPerPixelString = NULL;
+    char	*colorSpaceString = NULL;
+
+    switch (info->bitsPerPixel) {
+    case IO_2BitsPerPixel:
+	bitsPerPixelString = "IO_2BitsPerPixel";
+	break;
+    case IO_8BitsPerPixel:
+	bitsPerPixelString = "IO_8BitsPerPixel";
+	break;
+    case IO_12BitsPerPixel:
+	bitsPerPixelString = "IO_12BitsPerPixel";
+	break;
+    case IO_15BitsPerPixel:
+	bitsPerPixelString = "IO_15BitsPerPixel";
+	break;
+    case IO_24BitsPerPixel:
+	bitsPerPixelString = "IO_24BitsPerPixel";
+	break;
+    case IO_VGA:
+	bitsPerPixelString = "IO_VGA";
+	break;
+    }
+
+    switch (info->colorSpace) {
+    case IO_OneIsBlackColorSpace:
+	colorSpaceString = "IO_OneIsBlackColorSpace";
+	break;
+    case IO_OneIsWhiteColorSpace:
+	colorSpaceString = "IO_OneIsWhiteColorSpace";
+	break;
+    case IO_RGBColorSpace:
+	colorSpaceString = "IO_RGBColorSpace";
+	break;
+    case IO_CMYKColorSpace:
+	colorSpaceString = "IO_CMYKColorSpace";
+	break;
+    }
+
+    sprintf(description,
+	    "width=%d height=%d totalWidth=%d rowBytes=%d refreshRate=%d "
+	    "frameBuffer=%x bitsPerPixel=%s colorSpace=%s pixelEncoding=%s "
+	    "flags=%x parameters=%x memorySize=%d scanRate=%d "
+	    "dotClockRate=%d screenWidth=%d screenHeight=%d "
+	    "modeUnavailableFlag=%x",
+	    info->width, info->height, info->totalWidth, info->rowBytes,
+	    info->refreshRate, info->frameBuffer, bitsPerPixelString,
+	    colorSpaceString, info->pixelEncoding, info->flags,
+	    info->parameters, info->memorySize, info->scanRate,
+	    info->dotClockRate, info->screenWidth, info->screenHeight,
+	    info->modeUnavailableFlag);
+
+    return description;
+}
+
+/*
+ * Reference __text 2176, 100 bytes (98 of body and two 90 pads).  Dumps one
+ * raw booter record into the third static buffer, reference __bss+592, 512
+ * bytes.  This is what the VBEBooterMode parameters answer with.
+ *
+ * The push widths at reference __text 2182..2249 are what fix VBEModeRec's
+ * field widths: five movzx from word (+0, +2, +4, +6, +8), eight movzx from
+ * byte (+0Ah..+11h) and one dword load (+14h).  The three mask sizes and the
+ * three field positions are interleaved in the record - size, position, size,
+ * position, size, position - but printed grouped, all three sizes and then
+ * all three positions, so the push order is +0Ch, +0Eh, +10h, +0Dh, +0Fh,
+ * +11h and not the record's own order.
+ */
+- (char *)descriptionForVBEMode:(VBEModeRec *)mode
+{
+    static char	description[512];
+
+    sprintf(description,
+	    "mode num: %d, Attrib: %x, BytesPerScanline: %d, FrameBuffer: %x,\n"
+	    "XRes: %d, YRes: %d, BitsPerPixel: %d, MemoryModel: %d,\n"
+	    "RGB Mask Sizes: (%d, %d, %d), RGB Field Pos: (%d, %d, %d)\n",
+	    mode->modeNumber, mode->modeAttributes, mode->bytesPerScanline,
+	    mode->frameBuffer, mode->xResolution, mode->yResolution,
+	    mode->bitsPerPixel, mode->memoryModel, mode->redMaskSize,
+	    mode->greenMaskSize, mode->blueMaskSize, mode->redFieldPosition,
+	    mode->greenFieldPosition, mode->blueFieldPosition);
+
+    return description;
 }
 
 /* Reference __text 2276, 12 bytes. */

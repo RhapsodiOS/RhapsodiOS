@@ -114,9 +114,10 @@ kernel driver.
 ## 3. The booter-to-driver contract
 
 `parseVESAModes:size:` has the ObjC type encoding
-`v16@8:12^{?=SSSSSCCCCCCCC^v}16I20` — it takes a pointer to a 22-byte packed
-record and an unsigned count. That record is **not** Apple's 256-byte
-`VBEModeInfoBlock` from `libsaio/vbe.h`; it is a distilled form.
+`v16@8:12^{?=SSSSSCCCCCCCC^v}16I20` — it takes a pointer to a fourteen-field
+record and an unsigned count. That is 22 bytes of data and **24 bytes with
+padding**, which is the stride the disassembly confirms. It is **not** Apple's
+256-byte `VBEModeInfoBlock` from `libsaio/vbe.h`; it is a distilled form.
 
 The struct encoding gives five `unsigned short`, eight `unsigned char` and one
 pointer — fourteen fields. The driver's own debug string names fourteen, in
@@ -135,9 +136,19 @@ Aligning the two by type gives:
 | 8 × `unsigned char` | BitsPerPixel, MemoryModel, R/G/B mask sizes, R/G/B field positions |
 | 1 × pointer | framebuffer physical address |
 
-This mapping is an inference from two independent sources that agree on the
-field count. Phase 1 confirms it against the disassembly before it is written
-down as fact anywhere else.
+**D1 is answered (Task 2), and the mapping is confirmed.**
+`initFromDeviceDescription:` passes two *unrelocated* absolute literals,
+`0x12858` and `0x12870`, while every other `push` in that function carries a
+relocation into `__cstring`. `KERNSTRUCT_ADDR` is `0x11000`, so those are
+`kernBootStruct + 0x1858` and `+ 0x1870` — 24 bytes apart, the record stride.
+The mode array is a hard-coded `KERNBOOTSTRUCT` member that the booter fills,
+and the reconstruction must emit plain integer constants carrying no symbol.
+
+**This is the hinge for spec 3, and it carries a caveat.** Those offsets are
+into *OPENSTEP 4.2*'s `KERNBOOTSTRUCT`. Rhapsody's layout in
+`machdep/i386/kernBootStruct.h` is a different struct, so `0x1870` does not
+necessarily name the same member there. Spec 3 must establish where the mode
+array lands in *our* struct rather than adopting the constant.
 
 `boot_video` in `machdep/i386/kernBootStruct.h` has six `unsigned long` and no
 room for an array of these. Where the array comes from is discovery item D1.

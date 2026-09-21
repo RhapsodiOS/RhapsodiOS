@@ -4,7 +4,7 @@
 
 **Goal:** Reconstruct `VBE20DisplayDriver_reloc` — thirteen hand-written functions over 2,324 bytes of `__text` — against Apple's OPENSTEP 4.2 Patch 4 binary, to a parity target fixed by measurement in Task 1.
 
-**Architecture:** Four phases. Phase 0 (Task 1) stages the reference out of the patch tarball, creates the binrecon profile, and measures Rhapsody's `IOFrameBufferDisplay` chain against the reference's `instance_size` of 552 to fix the parity target. Phase 1 (Task 2) runs IDA, commits the partition as a source map and seeded ledger, and answers the five discovery items. Phase 2 (Tasks 3–7) writes `VBE20DisplayDriver.m` in dependency order, rebuilding and comparing after each group. Phase 3 (Tasks 8–9) closes the ledger, runs the QEMU boot gate, and updates the status docs.
+**Architecture:** Four phases. Phase 0 (Task 1) stages the reference out of the patch tarball, creates the binrecon profile, and measures Rhapsody's `IOFrameBufferDisplay` chain against the reference's `instance_size` of 552 to fix the parity target. Phase 1 (Task 2) runs IDA, confirms the partition and answers the five discovery items; the source map and ledger are generated in Task 7, once source exists for them to point at. Phase 2 (Tasks 3–7) writes `VBE20DisplayDriver.m` in dependency order, rebuilding and comparing after each group. Phase 3 (Tasks 8–9) closes the ledger, runs the QEMU boot gate, and updates the status docs.
 
 **Tech Stack:** Python 3.12 in `.venv-binrecon`, `tools/binrecon` with IDA Professional 9.2, Rhapsody guest `gnumake` / `pb_makefiles` driven by `vm/sync-src.ps1` + `vm/build-i386-video-recon.sh`, QEMU via `vm/graft-kernel.py` / `vm/rhap_inject.py` / `vm/qemu-shot.py`.
 
@@ -330,9 +330,12 @@ export PYTHONPATH=tools/binrecon
 $VENVPY -m binrecon analyze --profile "$PROFILE" --output "$OUTDIR/run-summary.json"
 ```
 
-Expected: exit 0 and `$IDA_REF` written. A nonzero exit with a complete
-`analysis-reference-ida.json` is acceptable here — there is no rebuilt artifact
-yet, so the comparison arm cannot pass.
+Expected: exit 0 and `$IDA_REF` written.
+
+**Do not point `BINRECON_REBUILT` at `$REF`** for this run. Publication is
+all-or-nothing: when the two artifacts are the same file the run fails and
+publishes *nothing*, so `$IDA_REF` is never written. Point it at a scratch copy
+of the reference outside the repo instead — a different path is enough.
 
 - [ ] **Step 2: Check IDA's partition against the known method offsets**
 
@@ -364,31 +367,25 @@ immediate to `_VBE20DisplayDriver_instance`. That also corrects `displayModes`
 from 24 bytes to 12. IDA must agree with this table; if it does not, stop and
 report rather than adjusting the table to match IDA.
 
-- [ ] **Step 3: Write the source map**
+- [ ] ~~**Step 3: Write the source map**~~ — **moved to Task 3.**
 
-Create `$MAP` as a `source-map-v1` document with one entry per partition
-extent, `source_path` `$LKS/VBE20DisplayDriver.m` for all thirteen
-hand-written functions. Leave `source_line` bounds to be filled by Tasks 3–7 as
-each function is written; the two build-generated entries carry no source path.
+> This step was unwritable as specified and is deferred. `source-map-v1`
+> requires `source_line` on every `mapped` entry, and its semantic gate
+> additionally requires `source_path` to name a file that exists — neither is
+> true before Task 3 creates `VBE20DisplayDriver.m`. `binrecon source-map` is
+> also a *generator*, not a validator: it takes
+> `--binary --source-dir --repo-root --output` and none of the flags this step
+> named. Task 3 generates the map from the real source instead. Do not write a
+> placeholder all-`unmapped` map: it carries no information and Task 3
+> regenerates it.
 
-Validate it:
+- [ ] ~~**Step 4: Seed the ledger**~~ — **moved to Task 3**, for the same
+reason: `seed_ledger.py` seeds from the map, which does not exist yet.
 
-```bash
-$VENVPY -m binrecon source-map --profile "$PROFILE" --source-map "$MAP" \
-  --reference-analysis "$IDA_REF"
-```
-
-Expected: exit 0, partition covers 0–2324 with no gaps or overlaps.
-
-- [ ] **Step 4: Seed the ledger**
-
-```bash
-$VENVPY tools/binrecon/seed_ledger.py "$MAP" "$LEDGER"
-```
-
-Expected: every entry present with status `unreviewed` and
-`reference_sha256` equal to `$REFSHA`. `rebuilt_sha256` stays absent or null
-until Task 8 — **never a placeholder copy of the reference**.
+> When Task 3 runs it, the interface is three arguments, not two:
+> `seed_ledger.py MAP REF LEDGER`. The seeded status is **`unexamined`**, not
+> `unreviewed`. `rebuilt_sha256` stays absent or null until Task 8 — **never a
+> placeholder copy of the reference.**
 
 - [ ] **Step 5: Answer the discovery items**
 
@@ -413,11 +410,11 @@ as the cross-references spec 3 should use.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add "$MAP" "$LEDGER" "$DIVERGE"
-git commit -m "drvVBE20DisplayDriver: commit the reference partition and discovery answers
+git add "$DIVERGE"
+git commit -m "drvVBE20DisplayDriver: answer the five discovery items from the disassembly
 
-Fourteen extents over 2324 bytes of __text, seeded unreviewed, with the five
-discovery items answered from the disassembly."
+Fifteen extents over 2324 bytes of __text confirmed against IDA; the map and
+ledger are generated in Task 3, once source exists for them to point at."
 ```
 
 ---
@@ -433,7 +430,7 @@ discovery items answered from the disassembly."
 - Modify: `vm/build-i386-video-recon.sh`
 
 **Interfaces:**
-- Consumes: `$MAP` from Task 2; the signatures in Global Constraints.
+- Consumes: the partition table and discovery answers from Task 2; the signatures in Global Constraints.
 - Produces: `$REBUILT` — a linking `_reloc`; `VBEModeRec` typedef used by Tasks 5–7; `$LKS/VBE20DisplayDriver.m` for later tasks to extend.
 
 This task deliberately covers the four smallest methods so the deliverable is
@@ -779,6 +776,19 @@ VBEMode
 VBEBooterMode
 ```
 
+> **Reproduce Apple's defect verbatim.** Task 2 found that
+> `initFromDeviceDescription:` sizes the frame buffer as
+> `bytesPerScanLine * XResolution` where the correct term is `YResolution`.
+> It is a typo in the reference and it is **in scope to reproduce exactly** —
+> this tree reproduces reference defects rather than fixing them, as drvVGA
+> does for `probe:` returning YES unconditionally. Do not "fix" it, and record
+> it in `$DIVERGE` as a reproduced reference defect so a later reader does not
+> mistake it for ours.
+>
+> Task 2 also noted `VBEBooterMode<N>` is unbounded where the other three
+> indexed parameters are guarded. Check whether that belongs to this extent or
+> to `getCharValues:` (Task 7) and record it with the same treatment.
+
 - [ ] **Step 3: Rebuild on the guest**
 
 Repeat Task 3 Step 6 verbatim.
@@ -859,14 +869,13 @@ delta survives and its cause is understood and compiler-only, record it in
 `$DIVERGE` with the instruction-level evidence and mark it for
 `control-flow-confirmed` in Task 8. **Do not mark it matched.**
 
-- [ ] **Step 6: Fill in source-line bounds and commit**
+- [ ] **Step 6: Commit**
 
-Update `$MAP` with the real `source_line` bounds for both extents, then:
+`$MAP` is generated once from the complete source in Task 7; there is nothing
+to update here.
 
 ```bash
-$VENVPY -m binrecon source-map --profile "$PROFILE" --source-map "$MAP" \
-  --reference-analysis "$IDA_REF"
-git add "$LKS/VBE20DisplayDriver.m" "$MAP" "$DIVERGE"
+git add "$LKS/VBE20DisplayDriver.m" "$DIVERGE"
 git commit -m "drvVBE20DisplayDriver: reconstruct the init path
 
 The unnamed-initialisation category at __text 0 and
@@ -936,9 +945,7 @@ As Task 4 Step 5.
 - [ ] **Step 6: Commit**
 
 ```bash
-$VENVPY -m binrecon source-map --profile "$PROFILE" --source-map "$MAP" \
-  --reference-analysis "$IDA_REF"
-git add "$LKS/VBE20DisplayDriver.m" "$MAP" "$DIVERGE"
+git add "$LKS/VBE20DisplayDriver.m" "$DIVERGE"
 git commit -m "drvVBE20DisplayDriver: reconstruct the mode-list parse
 
 parseVESAModes:size:, the VBEModeInfo2IODisplayInfo forwarder and the
@@ -1002,9 +1009,7 @@ As Task 4 Step 5.
 - [ ] **Step 6: Commit**
 
 ```bash
-$VENVPY -m binrecon source-map --profile "$PROFILE" --source-map "$MAP" \
-  --reference-analysis "$IDA_REF"
-git add "$LKS/VBE20DisplayDriver.m" "$MAP" "$DIVERGE"
+git add "$LKS/VBE20DisplayDriver.m" "$DIVERGE"
 git commit -m "drvVBE20DisplayDriver: reconstruct the description builders
 
 modeStringForDisplayInfo:, descriptionForDisplayInfo: and
@@ -1059,12 +1064,32 @@ under a byte-parity target.
 
 As Task 4 Step 5.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 6: Generate the source map and seed the ledger**
+
+All thirteen functions exist now, so the map can finally be produced. Task 2
+deferred this because `source-map-v1` requires a `source_line` on every
+`mapped` entry *and* a `source_path` naming a real file.
+
+`binrecon source-map` is a **generator**, not a validator — it derives the map
+from the binary and the source tree, and takes none of the flags earlier drafts
+of this plan named:
 
 ```bash
-$VENVPY -m binrecon source-map --profile "$PROFILE" --source-map "$MAP" \
-  --reference-analysis "$IDA_REF"
-git add "$LKS/VBE20DisplayDriver.m" "$MAP" "$DIVERGE"
+$VENVPY -m binrecon source-map --binary "$REF"   --source-dir "$LKS" --repo-root . --output "$MAP"
+$VENVPY tools/binrecon/seed_ledger.py "$MAP" "$REF" "$LEDGER"
+```
+
+`seed_ledger.py` takes **three** arguments: map, reference, ledger.
+
+Expected: fifteen entries covering `__text` 0–2324 with no gaps, every ledger
+entry at status **`unexamined`**, `reference_sha256` equal to `$REFSHA`, and
+`rebuilt_sha256` absent or null. **Never seed `rebuilt_sha256` with a copy of
+the reference hash** — Task 8 fills it from the real rebuild.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add "$LKS/VBE20DisplayDriver.m" "$MAP" "$LEDGER" "$DIVERGE"
 git commit -m "drvVBE20DisplayDriver: reconstruct getCharValues:forParameter:count:
 
 The four VBE driver parameters the Configure.app inspector reads."

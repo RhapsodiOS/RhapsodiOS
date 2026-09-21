@@ -249,11 +249,18 @@ Expected: exit 0, and the printed reference SHA-256 equals `$REFSHA`.
 
 - [ ] **Step 5: Measure the Rhapsody ivar chain**
 
-Read `Object`, `IODevice`, `IODisplay` and `IOFrameBufferDisplay` ivar
-declarations and sum their sizes for i386 (all pointers and `int` are 4 bytes;
-`IOPixelEncoding` is `char[64]`):
+> **Done in execution — result recorded here so later tasks need not redo it.**
+> The chain is five classes, not four: `IOFrameBufferDisplay : IODisplay :
+> IODirectDevice : IODevice : Object`. Subtotals `Object` 4, `IODevice` 260,
+> `IODirectDevice` 32, `IODisplay` 212, `IOFrameBufferDisplay` 44 — **total
+> 552, equal to the reference.** An earlier draft of this step omitted
+> `IODirectDevice` and would have summed 520.
+
+Read the ivar declarations and sum their sizes for i386 (all pointers and `int`
+are 4 bytes; `IOPixelEncoding` is `char[64]`):
 
 - `src/driverkit-3/driverkit/IODevice.h`
+- `src/driverkit-3/driverkit/IODirectDevice.h`
 - `src/driverkit-3/driverkit/IODisplay.h`
 - `src/driverkit-3/driverkit/IOFrameBufferDisplay.h`
 
@@ -274,17 +281,16 @@ Create `$DIVERGE` with the result. If the totals agree:
 
 The reference declares no ivars of its own — `__OBJC,__instance_vars` is 0
 bytes — so its `instance_size` of 552 measures OPENSTEP 4.2's
-`Object` + `IODevice` + `IODisplay` + `IOFrameBufferDisplay` chain exactly.
+`Object` + `IODevice` + `IODirectDevice` + `IODisplay` + `IOFrameBufferDisplay`
+chain exactly.
 
-Rhapsody's same chain measures <N> bytes.
+Rhapsody's same chain measures <N> bytes, with per-class subtotals shown.
 
 <N == 552: the chain did not move between releases. Parity target for this
 reconstruction is byte-parity throughout.>
 
-<N != 552: the chain moved by <N-552> bytes. `displayModes` and
-`displayModeCount` read inherited ivars and will encode different offsets;
-both target function-parity citing this entry. The other eleven functions
-touch no ivars and target byte-parity.>
+<N != 552: the chain moved by <N-552> bytes. Record which functions encode a
+shifted offset and target function-parity for those only, citing this entry.>
 
 `IODisplayInfo` is layout-identical across the two releases; see the plan's
 Global Constraints for the field-by-field mapping.
@@ -313,7 +319,7 @@ measured against the reference's instance_size before any code is written."
 
 **Interfaces:**
 - Consumes: `$PROFILE`, `$REF` from Task 1.
-- Produces: `$MAP` with fourteen or fifteen entries covering `__text` 0–2324; `$LEDGER` seeded with every entry `unreviewed`; answers to D1–D5 in `$DIVERGE`.
+- Produces: `$MAP` with fifteen entries covering `__text` 0–2324; `$LEDGER` seeded with every entry `unreviewed`; answers to D1–D5 in `$DIVERGE`.
 
 - [ ] **Step 1: Run IDA over the reference**
 
@@ -347,13 +353,16 @@ names it cannot know:
 | 1932 | 244 | `-[VBE20DisplayDriver descriptionForDisplayInfo:]` |
 | 2176 | 100 | `-[VBE20DisplayDriver descriptionForVBEMode:]` |
 | 2276 | 12 | `-[VBE20DisplayDriver displayModeCount]` |
-| 2288 | 24 | `-[VBE20DisplayDriver displayModes]` |
+| 2288 | 12 | `-[VBE20DisplayDriver displayModes]` |
+| 2300 | 12 | `+[VBE20DisplayDriverKernelServerInstance kernelServerInstance]` |
 | 2312 | 12 | `+[VBE20DisplayDriver driverKitVersionForVBE20DisplayDriver]` |
 
-Resolve `+[VBE20DisplayDriverKernelServerInstance kernelServerInstance]`. It is
-the second build-generated symbol and sits in a second `__cls_meth` method list
-that the survey parse did not read. Either it shares the 2312 entry's extent or
-it adds a fifteenth. **Record which in `$DIVERGE`.**
+**Fifteen entries.** The 2300 entry was resolved during Task 1: it sits in a
+second `__cls_meth` method list the survey parse did not read, and its body is
+`55 89 e5 b8 00 00 00 00 89 ec 5d c3` with an external relocation on the
+immediate to `_VBE20DisplayDriver_instance`. That also corrects `displayModes`
+from 24 bytes to 12. IDA must agree with this table; if it does not, stop and
+report rather than adjusting the table to match IDA.
 
 - [ ] **Step 3: Write the source map**
 
@@ -527,6 +536,17 @@ positions.
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
 
+/*
+ * The mode list lives in two file statics, not in inherited ivars: the
+ * reference's displayModes and displayModeCount each load from
+ * __DATA,__data with a local relocation, and __data is exactly 8 bytes.
+ * The explicit initialisers are what place them in __data rather than
+ * __bss -- the same finding drvVGA recorded for IOVGADisplay.m.
+ * parseVESAModes:size: (Task 5) is what writes them.
+ */
+static IODisplayInfo	*vbeDisplayModes = 0;		/* __data + 0 */
+static unsigned int	 vbeDisplayModeCount = 0;	/* __data + 4 */
+
 @implementation VBE20DisplayDriver
 
 /* __text 1916, 8 bytes.  The booter owns the mode; nothing to do here. */
@@ -542,20 +562,30 @@ positions.
 /* __text 2276, 12 bytes. */
 - (unsigned int)displayModeCount
 {
-    return _displayModeCount;
+    return vbeDisplayModeCount;
 }
 
-/* __text 2288, 24 bytes. */
+/* __text 2288, 12 bytes. */
 - (IODisplayInfo *)displayModes
 {
-    return _displayModes;
+    return vbeDisplayModes;
 }
 
 @end
 ```
 
-The fifth small entry in that region, `+driverKitVersionForVBE20DisplayDriver`
-at 2312, is emitted by the Kernel Server project type and **is not written
+**Do not write `return _displayModeCount;` / `return _displayModes;`.** Those
+inherited ivars exist on Rhapsody's `IOFrameBufferDisplay`, so that version
+compiles — and silently fails parity, because the reference reads statics.
+Task 1 established this from the relocations; see the spec's §6.
+
+Confirm the static order against `__data` once built: `vbeDisplayModes` must
+land at `__data + 0` and `vbeDisplayModeCount` at `__data + 4`. If the compiler
+orders them the other way, swap the declarations.
+
+The two build-generated entries in this region,
+`+kernelServerInstance` at 2300 and `+driverKitVersionForVBE20DisplayDriver` at
+2312, are emitted by the Kernel Server project type and **are not written
 here**.
 
 - [ ] **Step 4: Write the build files**

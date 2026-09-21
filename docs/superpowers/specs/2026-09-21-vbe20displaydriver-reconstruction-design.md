@@ -162,16 +162,21 @@ entries.
 | 1932 | 244 | `-[VBE20DisplayDriver descriptionForDisplayInfo:]` |
 | 2176 | 100 | `-[VBE20DisplayDriver descriptionForVBEMode:]` |
 | 2276 | 12 | `-[VBE20DisplayDriver displayModeCount]` |
-| 2288 | 24 | `-[VBE20DisplayDriver displayModes]` |
+| 2288 | 12 | `-[VBE20DisplayDriver displayModes]` |
+| 2300 | 12 | `+[VBE20DisplayDriverKernelServerInstance kernelServerInstance]` |
 | 2312 | 12 | `+[VBE20DisplayDriver driverKitVersionForVBE20DisplayDriver]` |
 
-Thirteen functions are hand-written. `driverKitVersionForVBE20DisplayDriver` is
-emitted by the Kernel Server project type and is correctly absent from source,
-as `docs/drivers/video-reconstruction.md` records for every driver in the tree.
-`+[VBE20DisplayDriverKernelServerInstance kernelServerInstance]` is the second
-build-generated symbol; it lives in a second `__cls_meth` method list that the
-survey parse did not resolve, so the committed partition may carry fifteen
-entries rather than fourteen. Phase 1 settles the count.
+**Fifteen entries, thirteen of them hand-written.** The two build-generated ones
+are emitted by the Kernel Server project type and are correctly absent from
+source, as `docs/drivers/video-reconstruction.md` records for every driver in
+the tree.
+
+The entry at 2300 was resolved in Task 1, not the survey: it sits in a second
+`__cls_meth` method list the survey parse did not read, and its body is
+`push %ebp; mov %esp,%ebp; mov $0x0,%eax; mov %ebp,%esp; pop %ebp; ret` with an
+external relocation on the immediate to `_VBE20DisplayDriver_instance` — the
+shape `+kernelServerInstance` takes in every Kernel Server driver. That
+correction also takes `displayModes` from 24 bytes to 12.
 
 Classes and metaclasses, from `__OBJC,__class` and `__OBJC,__meta_class`:
 
@@ -225,42 +230,57 @@ convention and record the divergence.
 The `Loaded Server` segment (`Server Name`, `Load Commands`, `Instance Var`,
 `Server Version`) is produced from `Load_Commands.sect`, as in Cirrus.
 
-## 6. Parity policy
+## 6. Parity policy — resolved
 
-The reference was compiled against OPENSTEP 4.2's `IOFrameBufferDisplay`. We
-compile against Rhapsody's.
+> Phase 0 ran in Task 1 and settled this section. The original concern is kept
+> below the result because the measurement it produced is evidence specs 2 and 3
+> will want.
 
-`__OBJC,__instance_vars` in the reference is **0 bytes**: `VBE20DisplayDriver`
-declares no ivars of its own. Its `instance_size` of 552 is therefore entirely
-inherited, and it is a direct measurement of 4.2's
-`Object` + `IODevice` + `IODisplay` + `IOFrameBufferDisplay` chain.
+**Target: byte-parity throughout.** No function needs a function-parity
+exemption.
 
-That bounds the exposure. The driver cannot suffer a shift in its *own* ivars
-because it has none. What it can suffer is a shift in the *inherited* ones it
-reads — `displayModes` and `displayModeCount` return `_displayModes` and
-`_displayModeCount`, both declared on Rhapsody's `IOFrameBufferDisplay`. If the
-chain's layout moved between releases, those two functions (24 and 12 bytes)
-encode different offsets and will not byte-match. Every other function in the
-partition is untouched by the question.
+The worry was that the reference is compiled against OPENSTEP 4.2's
+`IOFrameBufferDisplay` while we compile against Rhapsody's, so a change in the
+inherited ivar block would shift every inherited-ivar access. Two findings
+retired it.
 
-Every other reconstruction in this tree targets a same-release reference, so
-the question is new even though its blast radius is small.
+**The chain did not move.** `__OBJC,__instance_vars` in the reference is 0
+bytes — `VBE20DisplayDriver` declares no ivars of its own — so its
+`instance_size` of 552 measures 4.2's inherited chain exactly. Rhapsody's same
+chain measures **552**, a delta of zero:
 
-**Phase 0** computes Rhapsody's `Object` + `IODevice` + `IODisplay` +
-`IOFrameBufferDisplay` instance size and compares it against 552.
+| Class | Bytes |
+| --- | --- |
+| `Object` | 4 |
+| `IODevice` | 260 |
+| `IODirectDevice` | 32 |
+| `IODisplay` | 212 (of which `IODisplayInfo` is 136) |
+| `IOFrameBufferDisplay` | 44 |
+| **Total** | **552** |
 
-- **If they agree**, the chain did not move; target byte-parity throughout,
-  tracked in `ledger.json` exactly as Cirrus and ThinkPad are.
-- **If they differ**, `divergences.md` records the delta and its cause once, up
-  front, and the two ivar-reading functions target function-parity citing that
-  root cause. The other eleven still target byte-parity.
+The chain is `IOFrameBufferDisplay : IODisplay : IODirectDevice : IODevice :
+Object`. Earlier drafts of this spec omitted `IODirectDevice` and summed 520;
+that was a drafting error, not a measurement. Two independent checks in the
+reference corroborate 552: `VBE20DisplayDriverVersion : IODevice` has
+`instance_size` 264 = 4 + 260, and the category initialiser stores to
++0x210/+0x214/+0x218/+0x21c, which are `_currentDisplayMode`,
+`_pendingDisplayMode`, `_displayModeCount` and `_displayModes` in the 552
+layout.
 
-Either way the measurement is recorded, because a 552-byte match is itself
-evidence about how much of DriverKit survived the 4.2-to-Rhapsody transition,
-and specs 2 and 3 will want it.
+**The driver reads no inherited ivars anyway.** `displayModes` and
+`displayModeCount` do not return `_displayModes` and `_displayModeCount`, as
+this spec previously asserted. They read two file statics in `__DATA,__data`
+(8 bytes, exactly two 4-byte slots) that `parseVESAModes:size:` writes:
 
-Phase 0 is cheap — it reads two headers and one number out of the reference —
-and it is a gate: no reconstruction work starts until the target is fixed.
+```
+displayModeCount  55 89 e5  a1 04 20 00 00  89 ec 5d c3   mov __data+4,%eax
+displayModes      55 89 e5  a1 00 20 00 00  89 ec 5d c3   mov __data+0,%eax
+```
+
+Both carry a local relocation into `__DATA,__data`. The reconstruction must
+therefore declare them as file statics with explicit initialisers — an explicit
+initialiser is what places a static in `__data` rather than `__bss` under this
+compiler, the same finding `drvVGA` recorded for `IOVGADisplay.m`.
 
 ## 7. Discovery items
 
@@ -279,7 +299,7 @@ specs 2 or 3 until answered.
 
 | Gate | Check |
 | --- | --- |
-| 0 | Rhapsody `IOFrameBufferDisplay` instance size measured against the reference's 552; parity target fixed in writing |
+| 0 | **Passed in Task 1.** Rhapsody's inherited chain measures 552 against the reference's 552; target fixed at byte-parity throughout (§6) |
 | 1 | `VBE20DisplayDriver_reloc` compiles and links against `driverkit-3` on the Rhapsody build guest |
 | 2 | binrecon ledger complete: every partition entry reviewed with a status and a reason, `reference_sha256` and `rebuilt_sha256` both real |
 | 3 | Boots under QEMU per `docs/drivers/drvVGA-boot-gate.md` |
@@ -315,8 +335,8 @@ prefix.
 
 ## 9. Risks
 
-**The inherited ivar-layout shift**, bounded by §6 to two functions totalling 36
-bytes, and measured before any code is written.
+~~**The inherited ivar-layout shift.**~~ Retired by Task 1: the chain measures
+552 on both sides and the driver reads no inherited ivars at all. See §6.
 
 **`initFromDeviceDescription:` at 548 bytes and
 `getCharValues:forParameter:count:` at 676** are over half the driver between

@@ -891,10 +891,15 @@ to the function entry.
 
 | | reference | ours |
 | --- | --- | --- |
-| binary | i386 slice, `33469393…F14890` | `BUILD/RELEASE_I386/mach_kernel`, 1,486,224 bytes, `605F6A3940464D3C2E40541A0ECA79480F88CDA1932B552EC7BD281748DD27C1` |
+| binary | i386 slice, `33469393C0843FC741942C3AE9D91D838467D72ABD647DCF2E5BF499A3F14890` | `BUILD/RELEASE_I386/mach_kernel`, 1,486,224 bytes, `605F6A3940464D3C2E40541A0ECA79480F88CDA1932B552EC7BD281748DD27C1` |
 | `_VBEModeInfo2IODisplayInfo` | `0x0019ED8C` | `0x001E8804` (`nm`: `T`, defined and external) |
 | entry alignment | `≡ 0 mod 4` | `≡ 0 mod 4` |
-| 539-byte SHA-256 | `BDDC94F5…2B21` (Task 1's value, re-confirmed) | `CFA460B379ABBE1E3B2DC9A808BCE5C1E74416327EBEEF4EA9CFE9AF6812C596` |
+| 539-byte SHA-256 | `BDDC94F5BF87EB434DCC0E72650CF9975528F2A1E7FE67CF1AC65D9079CD2B21` (Task 1's value, re-confirmed) | `CFA460B379ABBE1E3B2DC9A808BCE5C1E74416327EBEEF4EA9CFE9AF6812C596` |
+
+Both reference hashes are given in full above because the truncated forms they
+first appeared in (`33469393…F14890`, `BDDC94F5…2B21`) are not checkable. The
+full value of the slice hash is also in the "Conventions" section at the top of
+this file, and of the 539-byte extent hash under D1.
 
 The two function hashes differ **only** because the 128 masked bytes hold
 different absolute addresses; see the mask check below. **[measured]**
@@ -902,19 +907,68 @@ different absolute addresses; see the mask check below. **[measured]**
 **Where that kernel is, and an earlier hash you may run into.** It lives on the
 guest at `/build/src/kernel-7/BUILD/RELEASE_I386/mach_kernel` (equivalently
 `/build/source/src/kernel-7/…`; `/build/source/src` is a symlink). It is **not**
-at `vm/install/mach_kernel`: `vm/build-i386-kernel-ahci.sh` dies at the AHCI
-tests (item 4 below) long before its staging step, so nothing is ever staged
-there. The guest has no `sha256`, so the cheap post-pull check is BSD `sum`,
-which reports **`17135 1452`**. Pulling it over SSH needs the legacy options
-from `vm/rhap-remote.ps1` (`KexAlgorithms=diffie-hellman-group1-sha1`,
+at `vm/install/mach_kernel`: `vm/build-i386-kernel-ahci.sh` never reaches its
+staging step — under the guest's `/bin/sh` it stops at the very first
+`command -v` (item 2 below), and under `/bin/bash`, which does have
+`command -v`, it then stops at the AHCI tests (item 4). Either way nothing is
+ever staged there. Pulling the kernel over SSH needs the legacy options from
+`vm/rhap-remote.ps1` (`KexAlgorithms=diffie-hellman-group1-sha1`,
 `HostKeyAlgorithms=ssh-dss`, `Ciphers=3des-cbc`, `MACs=hmac-sha1`,
-`PubkeyAuthentication=no`). An earlier draft of this table carried
+`PubkeyAuthentication=no`).
+
+An earlier draft of this table carried
 `AC2213A3F4EBF7429708BD4B66DEDD1D960346CE97B7FEB12B7A2FB57245010F`, which is a
 **real but superseded artifact**: the kernel built before the source comments
 were finalised, differing from the one above only in the version string's
 embedded build timestamp and in comments, neither of which generates code. The
 539-byte comparison was re-run against both and both MATCH, 411/411.
-**[measured]**
+**[measured at the time]** That artifact no longer exists: a `find /` for
+`mach_kernel*` on the guest returns only the PPC `/mach_kernel` and its two
+copies, `/build/pull/kern/…`, and the `RELEASE_I386` pair, and no local copy
+was kept either. Nothing below can be re-measured against it. **[measured
+absence, Task 3]**
+
+### The BSD `sum` value, and which artifact it belongs to (re-measured, Task 3)
+
+The guest has no `sha256`, so the cheap post-pull integrity check is BSD `sum`.
+The value this record originally gave, `17135 1452`, was printed without saying
+which of the two kernels produced it. Re-measured, it belongs to the **current**
+one:
+
+| artifact | size | SHA-256 | BSD `sum` |
+| --- | --- | --- | --- |
+| `/build/src/kernel-7/BUILD/RELEASE_I386/mach_kernel`, as it stands | 1,486,224 | `605F6A3940464D3C2E40541A0ECA79480F88CDA1932B552EC7BD281748DD27C1` | **`17135 1452`** |
+| the superseded `AC2213A3…010F` | — | `AC2213A3F4EBF7429708BD4B66DEDD1D960346CE97B7FEB12B7A2FB57245010F` | **not measurable** — the artifact is gone (above) |
+
+Method, so the two columns are pinned to the same bytes **[measured]**: `sum`
+was run on the guest (`17135 1452`); the file was then pulled with `scp` and
+hashed locally (`605F6A39…27C1`, 1,486,224 bytes); and the historic 16-bit
+rotate-and-add checksum was reimplemented over the *pulled* bytes, reproducing
+`17135 1452`. So the `sum` value and the SHA-256 are two measurements of one
+byte stream, not two measurements that happen to sit in the same table row. The
+second field, `1452`, is only `ceil(1486224 / 1024)`, the 1 KiB block count; the
+discriminating half is `17135`.
+
+**This refutes the suspicion that `17135 1452` was the superseded kernel's.** It
+is the current kernel's. What the superseded kernel's `sum` was is now
+unknowable, and no claim is made about it.
+
+### The 539-byte extent hashes, re-measured (Task 3)
+
+Both were recomputed from the artifacts as they stand, with the same
+`compare_kvbe.py` extraction the Task 2 comparison used **[measured]**:
+
+| | entry | 539-byte SHA-256 |
+| --- | --- | --- |
+| reference i386 slice `33469393…F14890` | `0x0019ED8C` | `BDDC94F5BF87EB434DCC0E72650CF9975528F2A1E7FE67CF1AC65D9079CD2B21` |
+| ours, `605F6A39…27C1` | `0x001E8804` | `CFA460B379ABBE1E3B2DC9A808BCE5C1E74416327EBEEF4EA9CFE9AF6812C596` |
+
+Whether the superseded `AC2213A3…010F` also hashed its extent to
+`CFA460B3…C596` **cannot be measured** — the artifact is gone. It probably did:
+the two builds differ only in a fixed-width build-timestamp string and in
+comments, so `__TEXT` keeps its size, the function keeps its address, and the
+128 masked bytes (absolute addresses into the function itself) keep their
+values. **[inference; the artifact needed to check it no longer exists]**
 
 Our compiler is Apple `cc-783.1`, gcc 2.7.2.1 — the same family as the
 reference's — invoked with the kernel build's own line for `FBConsole.o`

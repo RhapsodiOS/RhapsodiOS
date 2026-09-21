@@ -1407,6 +1407,16 @@ void VBEModeInfo2IODisplayInfo(VBEModeRec *mode, IODisplayInfo *info)
     default:
 	// Everything else, in range or not, shares one body at 0x0019EE90
 	// that flags the mode and returns without filling anything below.
+	//
+	// FAITHFUL TO THE REFERENCE: this is |=, into a field the caller has
+	// not initialized. 0x0019EE90 is "or byte ptr [esi+0x80],0x10", and
+	// the 4.2 FBAllocateVBEConsole's local IODisplayInfo is never zeroed
+	// before the call (0x0019ECBB..0x0019ECEC contains nothing but
+	// pushes), so on an unrecognised depth this ORs a bit into stack
+	// residue and the caller then copies the whole struct out. Same
+	// family of defect as the unterminated pixelEncoding below.
+	// Reproduced, not repaired: making it "=" would drop a byte, and
+	// zeroing the caller's local would change the reference's behaviour.
 	info->modeUnavailableFlag |= IO_DISPLAY_MODE_OTHER_INVALID;
 	return;
     }
@@ -1420,8 +1430,16 @@ void VBEModeInfo2IODisplayInfo(VBEModeRec *mode, IODisplayInfo *info)
     // uninitialized stack IODisplayInfo, so the tail keeps whatever was on
     // the stack. Adding a terminator would be a behaviour change, not a
     // repair.
+    //
+    // Bit 3 of the VBE ModeAttributes word is the colour-mode bit: set means
+    // colour, clear means monochrome. The reference spells it as the bare
+    // "test byte ptr [ebx+2],8" at 0x0019EE9C, with no named constant.
     if (mode->modeAttributes & 8) {
 	info->colorSpace = IO_RGBColorSpace;
+	// VBE MemoryModel 4 is packed pixel, i.e. one palette index per
+	// pixel, which is why every byte of the encoding is 'P'. The
+	// reference's "cmp byte ptr [ebx+0xb],4" at 0x0019EEAD is likewise
+	// a bare literal.
 	if (mode->memoryModel == 4) {
 	    for (i = 0; i < mode->bitsPerPixel; i++)
 		info->pixelEncoding[i] = IO_SampleTypePseudoColor;

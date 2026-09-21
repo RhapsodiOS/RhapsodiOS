@@ -1,5 +1,19 @@
 # drvVBE20DisplayDriver divergences
 
+## Conventions for the offsets cited below
+
+`__text N` and `text+N` both mean byte offset `N` from the start of the
+reference's `__TEXT,__text` section. That section has address 0, file offset
+2328 and size 2324 (`VBE20DisplayDriver_reloc`, SHA-256
+`9FBC2CAFBDD0124CC63B902161C86BBFEC0EF48D591DDA681A325FF7B68DADED`, 37984
+bytes), so `text+N` is also file offset 2328+N and `__text` address N. Offsets
+are of an instruction's first opcode byte.
+
+`boot+N` means byte offset `N` into the 4.2 booter file, which is a headerless
+image; its text addresses equal its file offsets, and its data addresses are
+file offset + 0x3000 (calibrated in D1). Relocation offsets are `r_address`
+values from the section's relocation entries, i.e. the same `__text N` scale.
+
 ## Measurement: inherited ivar chain (Task 1)
 
 The reference declares no ivars of its own — `__OBJC,__instance_vars` is 0
@@ -122,16 +136,48 @@ order, not field names; types and order are what fix the layout.
 
 IDA Professional 9.2, via `binrecon analyze`, partitions `__text` into exactly
 the fifteen functions at exactly the fifteen start addresses the plan's table
-names, with the plan's names. IDA's sizes are instruction extents and exclude
-the 4-byte function alignment padding, so eight of them read 1-3 bytes short of
-the symbol-to-symbol deltas in that table (142/545/187/674/7/7/242/98 against
-144/548/188/676/8/8/244/100). Every committed source map in this tree records
-the instruction extent, so the padding shows up as a gap between entries; the
-last entry still ends at 2324.
+names. **Two of the names differ from the plan's**, and both differences are
+real, not IDA artefacts:
+
+- entry 0 is printed without its category, as
+  `-[IOFrameBufferDisplay initUnnamedFromDeviceDescription:]`; the category
+  `UnnamedInitialization` is in `__OBJC,__class_names`+47 and in the
+  `__OBJC,__category` record, not in the method list IDA names from.
+- entry 2312 is `+[VBE20DisplayDriverVersion driverKitVersionForVBE20DisplayDriver]`,
+  not `+[VBE20DisplayDriver ...]`. The binary has **three** classes, named in
+  `__OBJC,__class_names` at +0 `VBE20DisplayDriver`, +90
+  `VBE20DisplayDriverVersion` and +125
+  `VBE20DisplayDriverKernelServerInstance`. `VBE20DisplayDriver`'s metaclass
+  (`__OBJC,__meta_class` @16588) carries `methodLists` addend `0x0` -- no class
+  methods at all -- while `VBE20DisplayDriverVersion`'s metaclass (@16628) has
+  addend `0x4144` and `VBE20DisplayDriverKernelServerInstance`'s (@16668) has
+  `0x4158`. Those are the two 20-byte lists in `__OBJC,__cls_meth` (addr
+  16708, size 40): the list at 16708 holds `driverKitVersionForVBE20DisplayDriver`
+  (types `i8@8:12`, IMP 2312) and the list at 16728 holds `kernelServerInstance`
+  (types `^^{?}8@8:12`, IMP 2300). `docs/drivers/video-reconstruction.md:27`
+  records this three-class convention.
+
+IDA's sizes are instruction extents and exclude the 4-byte function alignment
+padding, so eight of them read 1-3 bytes short of the symbol-to-symbol deltas
+in that table (142/545/187/674/7/7/242/98 against 144/548/188/676/8/8/244/100).
+The padding is `90` nops -- e.g. `text+689..691` is `90 90 90` before
+`parseVESAModes:size:` at 692.
+
+The committed maps in this tree record the instruction extent, so the padding
+shows up as a gap between entries. Checked, rather than assumed, across all 56
+committed `source-map.json` files by sorting each map's entries and measuring
+`next.address - (address + size)`: all **31** i386 maps contain gaps of 1-3
+bytes; none of the 25 ppc maps does, which is what a 4-byte-wide instruction
+set gives. So the convention holds for every i386 precedent. The last entry
+here still ends at 2324.
 
 Answers below are from the reference's disassembly unless a paragraph says
-otherwise. Where an answer leans on the 4.2 booter, that is stated and the
-booter evidence is quoted.
+otherwise. Two answers lean on binaries outside the driver -- the 4.2 booter
+(D1, `VBEModeRec`) and the 4.2 kernel's i386 slice (D2). Where they do, the
+binary is identified by SHA-256 and the evidence is quoted at `boot+N` or at
+its kernel virtual address, so it can be re-read without redoing the
+disassembly. Neither binary is committed; both come out of
+`OS42MachUserPatch4.tar` via `vm/extract-os42-patch.py`.
 
 ### D1: where `parseVESAModes:size:` gets its mode array
 
@@ -141,17 +187,43 @@ carries a relocation:
 ```
   text+654  6880080000       push 880h      ; size  = 2176
   text+659  6870280100       push 12870h    ; modes = 0x12870
-  text+664  8B0D3C400000     mov  ecx, ds:paParsevesamodes
+  text+664  8B0D3C400000     mov  ecx, ds:[403Ch]  ; __message_refs+40,
+                                                   ; "parseVESAModes:size:"
   text+670  51 53            push ecx / push ebx
   text+672  E85BFDFFFF       call _objc_msgSend
 ```
 
-So `[self parseVESAModes:(VBEModeRec *)0x12870 size:0x880]`. The relocation
-table has entries at 642, 647, 666 and 673 and none at 655 or 660, so 0x12870
-and 0x880 are compile-time constants, not a symbol the link resolves. The same
-is true of every other reference to that region: `push 12858h` at 519 and 1732,
-`lea eax, ds:12870h[eax*8]` at 1687, and the absolute loads at 161, 175, 181,
-188 and 616 are all unrelocated.
+So `[self parseVESAModes:(VBEModeRec *)0x12870 size:0x880]`. Neither immediate
+is relocated, and the contrast that makes that meaningful is inside this same
+function: **all seven of its `__cstring` pushes carry a relocation, and these
+two pushes do not.**
+
+The seven pushes and their relocations, with the string each resolves to:
+
+| push at | bytes | reloc at | `__cstring` | string |
+| --- | --- | --- | --- | --- |
+| 294 | `68 1e090000` | 295 | +10 | `VBEDisplay: Error in setMemoryRangeList (%s)\n` |
+| 388 | `68 4c090000` | 389 | +56 | `VBEDisplay0` |
+| 423 | `68 58090000` | 424 | +68 | `%s: VESA video driver initialization.\n` |
+| 460 | `68 7f090000` | 461 | +107 | `%s: Skipping framebuffer initialization (card not in VBE mode).\n` |
+| 484 | `68 c0090000` | 485 | +172 | `%s: Driver loaded to export VBE mode list.\n` |
+| 580 | `68 ec090000` | 581 | +216 | `%s: Unable to map frame buffer\n` |
+| 641 | `68 0c0a0000` | 642 | +248 | `%s: using VBE mode %d\n` |
+| **654** | `68 80080000` | **none** | -- | immediate 0x880 |
+| **659** | `68 70280100` | **none** | -- | immediate 0x12870 |
+
+Each reloc sits on the push's 4-byte operand, one byte past the `68` opcode.
+
+To reproduce the list: read `__TEXT,__text`'s `reloff` / `nreloc` from the
+Mach-O load commands (35096 / 169), decode each 8-byte `relocation_info`, and
+keep the entries whose `r_address` falls in 144..692. There are 49; the seven
+above are exactly the ones with `r_extern` 0 and `r_symbolnum` 2, the section
+ordinal of `__cstring`.
+
+Nothing lands at 655 or 660, so 0x12870 and 0x880 are compile-time constants,
+not symbols the link resolves. The same is true of every other reference to
+that region: `push 12858h` at 519 and 1732, `lea eax, ds:12870h[eax*8]` at
+1687, and the absolute loads at 161, 175, 181, 188 and 616 are all unrelocated.
 
 A single 24-byte record sits immediately before the array, at 0x12858, and is
 passed to `initDisplayInfo:fromVBEModeInfo:` at `__text` 519..533. 0x12870 -
@@ -160,7 +232,7 @@ passed to `initDisplayInfo:fromVBEModeInfo:` at `__text` 519..533. 0x12870 -
 The array stride is 24, twice over:
 
 ```
-  text+740  8B1504200000     mov  edx, ds:__count
+  text+740  8B1504200000     mov  edx, ds:[2004h]       ; displayModeCount
   text+746  42               inc  edx
   text+747  8D0452           lea  eax, [edx+edx*2]      ; 3*(count+1)
   text+750  C1E003           shl  eax, 3                ; 24*(count+1)
@@ -174,31 +246,106 @@ The array stride is 24, twice over:
 and the loop terminates on `word ptr [modes + 24*i + 4] == 0` (`text+730` for
 i=0, `text+766` for the rest).
 
-**What fills that memory is the booter.** This is the one answer that needed a
-cross-reference outside the driver. In the 4.2 booter (SHA-256
+**What fills that memory is the booter, and the stores are located.** This is
+the one answer that needed a cross-reference outside the driver.
+
+The booter is the 4.2 one, SHA-256
 `925D35B683644CDA6C090B223B00C115F1C83116D466F230B71231B7AB75CBCE`, 44848
-bytes, extracted with `vm/extract-os42-patch.py` and not committed), addresses
-and file offsets coincide in the text and differ by 0x3000 in the data:
+bytes, extracted (not committed) with
 
 ```
-  boot+2652  8B1D7CDA0000     mov  ebx, dword ptr [0xda7c]
-  boot+2658  8DBB70180000     lea  edi, [ebx + 0x1870]
-  boot+2670  6856C90000       push 0xc956                 ; "Usable VBE modes:\n"
-  ...
-  boot+2835  83C318           add  ebx, 18h               ; stride 24, again
-  boot+2838  83854CFFFFFF18   add  dword ptr [ebp-0B4h], 18h
-
-  boot+28058 8B3D7CDA0000     mov  edi, dword ptr [0xda7c]
-  boot+28064 81C758180000     add  edi, 1858h
+vm/extract-os42-patch.py OS42MachUserPatch4.tar DEST ./usr/standalone/i386/boot
 ```
 
-and the global at address 0xda7c (file offset 43644) is initialised to
-0x00011000, which is `KERNSTRUCT_ADDR` -- `src/boot-2/i386/libsa/kernBootStruct.h`
-line 175 gives Rhapsody the same value. So:
+**Address calibration.** The image is headerless: text addresses equal file
+offsets, data addresses are file offset + 0x3000. The delta is fixed by
+resolving four string pointers that the code pushes and finding the strings in
+the file -- each pair differs by exactly 0x3000:
+
+| pushed address | string found at file offset | delta | string |
+| --- | --- | --- | --- |
+| 0xd464 | 42084 (0xa464) | 0x3000 | `VESA not available.\n` |
+| 0xc956 | 39254 (0x9956) | 0x3000 | `Usable VBE modes:\n` |
+| 0xcc96 | 40086 (0x9c96) | 0x3000 | `/private/Drivers/i386` |
+| 0xcc89 | 40073 (0x9c89) | 0x3000 | `/usr/Devices` |
+
+The pointer the VBE code dereferences is at address 0xda7c, i.e. file offset
+43644. **The four bytes there are `00 10 01 00`, little-endian 0x00011000** --
+`KERNSTRUCT_ADDR`; `src/boot-2/i386/libsa/kernBootStruct.h` line 175 gives
+Rhapsody the same value. So the chain `0xda7c -> file offset 43644 -> 0x11000`
+can be re-walked from the file alone, and:
 
 - 0x11000 + 0x1858 = 0x12858, the booter's own current-mode record;
 - 0x11000 + 0x1870 = 0x12870, the mode array;
 - 0x880 is that array's byte size.
+
+**The stores.** Every field of every 24-byte record is written by one leaf
+function at `boot+27556..27702`, through `ecx` = its first argument:
+
+```
+  boot+27563  8B4D08       mov  ecx, [ebp+8]        ; destination record
+  boot+27566  8B5510       mov  edx, [ebp+10h]      ; VESA ModeInfoBlock
+  boot+27569  668B5D0C     mov  bx,  [ebp+0Ch]      ; mode number
+  boot+27573  668919       mov  [ecx+00h], bx       ; <- mode number argument
+  boot+27579  66895902     mov  [ecx+02h], bx       ; <- MIB+00h ModeAttributes
+  boot+27587  66895904     mov  [ecx+04h], bx       ; <- MIB+12h XResolution
+  boot+27595  66895906     mov  [ecx+06h], bx       ; <- MIB+14h YResolution
+  boot+27603  66895908     mov  [ecx+08h], bx       ; <- MIB+10h BytesPerScanLine
+  boot+27610  88590A       mov  [ecx+0Ah], bl       ; <- MIB+19h BitsPerPixel
+  boot+27616  88590B       mov  [ecx+0Bh], bl       ; <- MIB+1Bh MemoryModel
+  boot+27622  88590C       mov  [ecx+0Ch], bl       ; <- MIB+1Fh RedMaskSize
+  boot+27628  88590D       mov  [ecx+0Dh], bl       ; <- MIB+20h RedFieldPosition
+  boot+27634  88590E       mov  [ecx+0Eh], bl       ; <- MIB+21h GreenMaskSize
+  boot+27640  88590F       mov  [ecx+0Fh], bl       ; <- MIB+22h GreenFieldPosition
+  boot+27646  885910       mov  [ecx+10h], bl       ; <- MIB+23h BlueMaskSize
+  boot+27652  885911       mov  [ecx+11h], bl       ; <- MIB+24h BlueFieldPosition
+  boot+27693  894114       mov  [ecx+14h], eax      ; <- MIB+28h..2Bh PhysBasePtr
+```
+
+Fourteen stores, no store to +0x12, and the destination offsets are exactly the
+fourteen `VBEModeRec` fields tabulated below. The four bytes at MIB+28h..2Bh
+are assembled byte-by-byte at `boot+27655..27693`
+(`shl ebx,18h` / `shl eax,10h` / `shl eax,8` / `or`), which is why the record's
++0x14 is a plain 32-bit physical address.
+
+Both regions are filled by that one function:
+
+```
+  boot+27852  8B3D7CDA0000   mov  edi, [0xda7c]
+  boot+27858  81C770180000   add  edi, 1870h          ; edi = 0x12870
+  ...
+  boot+27973  57             push edi                 ; destination
+  boot+27974  E859FEFFFF     call boot+27556          ; the record writer
+  boot+27979  83C718         add  edi, 18h            ; next record
+
+  boot+28058  8B3D7CDA0000   mov  edi, [0xda7c]
+  boot+28064  81C758180000   add  edi, 1858h          ; edi = 0x12858
+  ...
+  boot+28262  57             push edi
+  boot+28263  E838FDFFFF     call boot+27556          ; same writer
+```
+
+The enumerator at `boot+27704..28030` walks the VESA `VideoModePtr` list
+(`cmp word ptr [ebx+esi*2], 0FFFFh` at `boot+27992`) and carries its own bound:
+
+```
+  boot+27895  A17CDA0000     mov  eax, [0xda7c]
+  boot+27900  0540180000     add  eax, 1840h
+  boot+27905  89FA           mov  edx, edi
+  boot+27907  29C2           sub  edx, eax
+  boot+27909  89D0           mov  eax, edx
+  boot+27911  3D97080000     cmp  eax, 897h
+  boot+27916  7752           ja   <stop>
+```
+
+which stops once `edi - (base + 0x1840) > 0x897`, i.e. once the record index
+exceeds 89. That is the same 90-record ceiling the driver-side arithmetic below
+derives from 0x880, reached independently.
+
+The routine the previous revision of this document cited -- `boot+2652..2857`,
+which prints `"Usable VBE modes:\n"` -- is a **reader**, not the producer: it
+contains no store into the region. It is still useful as an independent reading
+of the record layout, and is quoted under `VBEModeRec` below.
 
 The driver reads a `KERNBOOTSTRUCT` member by hard-coded absolute address. For
 Tasks 3-7 this means the two immediates must be emitted as plain integer
@@ -227,8 +374,32 @@ XRes: %d, YRes: %d, BitsPerPixel: %d, MemoryModel: %d,
 RGB Mask Sizes: (%d, %d, %d), RGB Field Pos: (%d, %d, %d)
 ```
 
-and the pushes, in reverse order of issue, are +0, +2, +8, +0x14, +4, +6, +0xA,
-+0xB, +0xC, +0xE, +0x10, +0xD, +0xF, +0x11. That gives:
+(`__cstring`+932, pushed at `text+2250` as `68 b80c0000`), and the pushes, in
+reverse order of issue, are +0, +2, +8, +0x14, +4, +6, +0xA, +0xB, +0xC, +0xE,
++0x10, +0xD, +0xF, +0x11.
+
+The pushes themselves, with `edx` = the `VBEModeRec *` argument loaded at
+`text+2179` (`8B5510  mov edx, [ebp+10h]`). Issue order is last-argument-first;
+the width of each load is what fixes the field widths:
+
+```
+  text+2182  0FB64211  movzx eax, byte ptr [edx+11h]    text+2186  50  push eax
+  text+2187  0FB6420F  movzx eax, byte ptr [edx+0Fh]    text+2191  50  push eax
+  text+2192  0FB6420D  movzx eax, byte ptr [edx+0Dh]    text+2196  50  push eax
+  text+2197  0FB64210  movzx eax, byte ptr [edx+10h]    text+2201  50  push eax
+  text+2202  0FB6420E  movzx eax, byte ptr [edx+0Eh]    text+2206  50  push eax
+  text+2207  0FB6420C  movzx eax, byte ptr [edx+0Ch]    text+2211  50  push eax
+  text+2212  0FB6420B  movzx eax, byte ptr [edx+0Bh]    text+2216  50  push eax
+  text+2217  0FB6420A  movzx eax, byte ptr [edx+0Ah]    text+2221  50  push eax
+  text+2222  0FB74206  movzx eax, word ptr [edx+06h]    text+2226  50  push eax
+  text+2227  0FB74204  movzx eax, word ptr [edx+04h]    text+2231  50  push eax
+  text+2232  8B4A14    mov   ecx, dword ptr [edx+14h]   text+2235  51  push ecx
+  text+2236  0FB74208  movzx eax, word ptr [edx+08h]    text+2240  50  push eax
+  text+2241  0FB74202  movzx eax, word ptr [edx+02h]    text+2245  50  push eax
+  text+2246  0FB702    movzx eax, word ptr [edx]        text+2249  50  push eax
+```
+
+Five `word` loads, eight `byte` loads, one `dword` load. That gives:
 
 | Offset | Width | Field |
 | --- | --- | --- |
@@ -245,18 +416,46 @@ and the pushes, in reverse order of issue, are +0, +2, +8, +0x14, +4, +6, +0xA,
 | 0x0F | 1 | green field position |
 | 0x10 | 1 | blue mask size |
 | 0x11 | 1 | blue field position |
-| 0x12 | 2 | never read anywhere in `__text` |
+| 0x12 | 2 | padding; never read by the driver, never written by the booter |
 | 0x14 | 4 | frame buffer physical address |
 | | | total 0x18 = 24 |
 
-The booter agrees on the three offsets it touches: `cmp byte ptr [ebx+5], 6`
-and `cmp byte ptr [ebx+6], 8` with `ebx` = element + 6 are the memory model
-(6 = direct colour) at +0xB and the red mask size at +0xC, and `[ebx-2]` /
-`[ebx]` are XRes at +4 and YRes at +6.
+**0x12 is struct padding, not an unknown field.** The method's own type encoding
+in `__OBJC,__meth_var_types`+48 is `*12@8:12^{?=SSSSSCCCCCCCC^v}16`: the
+argument is a pointer to `{ unsigned short x5; unsigned char x8; void *; }`.
+Five shorts fill 0..9, eight chars fill 0xA..0x11, and the `void *` needs
+4-byte alignment, so the compiler inserts two bytes at 0x12 and places the
+pointer at 0x14 -- total 0x18. Nothing is missing from the record. The same
+encoding appears in `parseVESAModes:size:`
+(`v16@8:12^{?=SSSSSCCCCCCCC^v}16I20`, `__meth_var_types`+229) and as the second
+argument of `initDisplayInfo:fromVBEModeInfo:` (`__meth_var_types`+163). The
+booter's writer skipping +0x12 (above) confirms it from the producer side.
 
-The field names are the reference's own, from that format string. They are not
-inferred from the VESA 2.0 `ModeInfoBlock`, which this record is not -- it is a
-24-byte condensation of it.
+The booter agrees on the **five** offsets it reads, all in the reader routine at
+`boot+2652..2857`. It advances two cursors: `ebx`, set to `record + 6` at
+`boot+2697` (`81C376180000  add ebx, 1876h` after `mov ebx,[0xda7c]` at
+`boot+2652`), and `edi` = `record + 0`, held in `[ebp-0B4h]`:
+
+```
+  boot+2703  807B0506       cmp  byte ptr [ebx+5], 6      ; +0Bh memory model = 6
+  boot+2714  807B0608       cmp  byte ptr [ebx+6], 8      ; +0Ch red mask size = 8
+  boot+2733  0FB703         movzx eax, word ptr [ebx]     ; +06h YResolution
+  boot+2737  0FB743FE       movzx eax, word ptr [ebx-2]   ; +04h XResolution
+  boot+2742  8BBD4CFFFFFF   mov  edi, [ebp-0B4h]
+  boot+2748  0FB707         movzx eax, word ptr [edi]     ; +00h mode number
+  boot+2765  66817BFEE703   cmp  word ptr [ebx-2], 3E7h   ; +04h again
+  boot+2786  66813BE703     cmp  word ptr [ebx], 3E7h     ; +06h again
+  boot+2835  83C318         add  ebx, 18h                 ; stride 24
+  boot+2838  83854CFFFFFF18 add  dword ptr [ebp-0B4h], 18h
+```
+
+Memory model 6 is VESA's direct-colour model. Both cursors advance by 24, which
+is the stride, read from the consumer side this time.
+
+The field names are the reference's own, from that format string. The booter's
+writer independently corroborates them by showing which VESA 2.0
+`ModeInfoBlock` field each one is copied from, but the record itself is not a
+`ModeInfoBlock` -- it is a 24-byte condensation of one.
 
 ### D2: `VBEModeInfo2IODisplayInfo`'s signature
 
@@ -275,53 +474,170 @@ inferred from the VESA 2.0 `ModeInfoBlock`, which this record is not -- it is a
   1003  C3               retn
 ```
 
-Arguments are pushed right to left, so the last push is the first C argument:
+**Which frame slot holds which type** is not taken from the selector's wording.
+The method's type encoding, `__OBJC,__meth_var_types`+163, is
 
-```c
-VBEModeInfo2IODisplayInfo(VBEModeRec *mode, IODisplayInfo *info);
+```
+v16@8:12^{?=iiiii^vii[64c]I^viiiiiiI[1I]}16^{?=SSSSSCCCCCCCC^v}20
 ```
 
-The argument *order* is established; the *return type* is not. `eax` is never
-examined after the call and the Objective-C method's own encoding makes it
-`void`, so the C function may return anything. Declare it `void` unless the 4.2
-kernel says otherwise.
+so `self` is at frame 8, `_cmd` at 12, the `IODisplayInfo *` at 16 and the
+`VBEModeRec *` at 20 -- i.e. `[ebp+10h]` is the `IODisplayInfo *` and
+`[ebp+14h]` is the `VBEModeRec *`. The call site agrees: at `__text` 504..533
+the driver issues
 
-Two further facts about it, both from the driver:
+```
+   504  8B0D30400000   mov  ecx, ds:[4030h]   ; selector "displayInfo"
+   512  E8FBFDFFFF     call _objc_msgSend     ; eax = [self displayInfo]
+   517  89C6           mov  esi, eax
+   519  6858280100     push 12858h            ;   -> fromVBEModeInfo:
+   524  56             push esi               ;   -> initDisplayInfo:
+   525  8B0D34400000   mov  ecx, ds:[4034h]   ; "initDisplayInfo:fromVBEModeInfo:"
+   531  51             push ecx               ; _cmd
+   532  53             push ebx               ; self
+   533  E8E6FDFFFF     call _objc_msgSend
+```
+
+`objc_msgSend` pushes are right to left, so the earlier push (0x12858, a
+`VBEModeRec *` by D3) is the *second* method argument and `[self displayInfo]`
+(an `IODisplayInfo *`) is the first. The selector addresses come from
+`__OBJC,__message_refs`: +28 is `displayInfo` and +32 is
+`initDisplayInfo:fromVBEModeInfo:`.
+
+Arguments to the C function are pushed right to left, so the last push is the
+first C argument:
+
+```c
+void VBEModeInfo2IODisplayInfo(VBEModeRec *mode, IODisplayInfo *info);
+```
+
+**The callee confirms both the order and the return type.** `_VBEModeInfo2IODisplayInfo`
+is exported by the OPENSTEP 4.2 kernel: `mach_kernel` from the same patch
+package (`vm/extract-os42-patch.py PATCH DEST ./mach_kernel`) is a fat binary
+whose i386 slice is at offset 835584, length 1117920, SHA-256
+`33469393C0843FC741942C3AE9D91D838467D72ABD647DCF2E5BF499A3F14890`; its symbol
+table puts `_VBEModeInfo2IODisplayInfo` at `0x0019ED8C`. Its prologue reads
+
+```
+  0019ED8C  55          push ebp
+  0019ED8D  89E5        mov  ebp, esp
+  0019ED8F  57 56 53    push edi / esi / ebx
+  0019ED92  8B5D08      mov  ebx, [ebp+8]    ; first C argument
+  0019ED95  8B750C      mov  esi, [ebp+0Ch]  ; second C argument
+  0019ED98  0FB77B04    movzx edi, word ptr [ebx+4]
+  0019ED9C  893E        mov  [esi], edi
+```
+
+Over the whole function (`0019ED8C..0019EFA6`) `ebx` is only ever *read*, at
++0, +2, +4, +6, +8, +0Ah, +0Bh, +0Ch, +0Dh, +0Eh, +0Fh, +10h, +11h and +14h --
+exactly the fourteen `VBEModeRec` fields tabulated above, and never +12h. `esi`
+is only ever *written*, at +0, +4, +8, +0Ch, +10h, +14h, +18h, +1Ch, +20h
+onward (the `pixelEncoding` characters), +60h, +64h and +68h -- `IODisplayInfo`
+offsets. So the first C argument is the `VBEModeRec *` and the second the
+`IODisplayInfo *`, as the forwarder implies, and the record's padding byte is
+untouched from this side too.
+
+The return type is `void`: the function's single exit is the epilogue at
+`0019EF9D..0019EFA6` (`8D65F4 5B 5E 5F 89EC 5D C3`), and no path assigns `eax`
+before reaching it -- the two paths that arrive leave `eax` holding a loop
+temporary (`[ebx+8]` on one, `[ebx+0Ah]-2` on the other). The Objective-C
+wrapper's own encoding begins `v` as well.
+
+Two further facts, from the driver:
 
 - Its output element is 136 bytes. `parseVESAModes:size:` allocates the array
-  with `calloc(count, 0x88)` at `__text` 816..828 and indexes it by
-  `136*i` (`shl ebx,4; add ebx,edi; shl ebx,3` at 867..874). 136 is
-  `sizeof(IODisplayInfo)`, which corroborates Task 1's layout from a third
-  direction.
-- It writes the VBE mode number into `IODisplayInfo.parameters`, the field at
-  +0x64. `descriptionForDisplayInfo:` prints `[edx+64h]` under the label
-  `parameters=%x`; `getCharValues:` answers `VBEModeNumber<n>` with
-  `displayModes[n]` at +0x64 formatted `%d` (`__text` 1525) and `VBECurrentMode`
-  with `[[self displayInfo] + 64h]` the same way (`__text` 1343). The driver
-  never writes that field itself, so the external function must.
+  with `calloc(count, 0x88)` at `__text` 816..828 -- `6888000000 push 88h` at
+  816, `8B0D04200000 mov ecx, ds:[2004h]` at 821, `51 push ecx` at 827,
+  `E8BFFCFFFF call` at 828 with the external relocation naming `_calloc` at
+  829 -- and indexes it by `136*i` (`shl ebx,4; add ebx,edi; shl ebx,3` at
+  867..874). 136 is `sizeof(IODisplayInfo)`, which corroborates Task 1's layout
+  from a third direction.
+- **It is what writes the VBE mode number into `IODisplayInfo.parameters`, the
+  field at +0x64.** The store is in the kernel function:
+
+  ```
+    0019EF89  0FB73B    movzx edi, word ptr [ebx]        ; VBEModeRec +00h, mode number
+    0019EF8C  897E64    mov  dword ptr [esi+64h], edi    ; IODisplayInfo +64h
+  ```
+
+  The driver side is consistent and, on its own, could only have inferred this.
+  Recorded so a later reader need not redo it: **`__text` contains 30
+  memory-write instructions in total, and none has displacement 0x64** -- the
+  full set of write targets is `ds:[2000h]` (1), `ds:[2004h]` (2), `[eax]` (4),
+  nine distinct `[ebp-n]` locals (16), `[ebx]` (1), `[ebx+210h/214h/218h/21Ch]`
+  (4, the inherited-ivar stores of Task 1), `[esi]` (1) and `[esi+14h]` (1). To
+  reproduce: disassemble each of the fifteen functions from its start address
+  and collect every instruction with a written memory operand. Since the parsed
+  array comes from `calloc`, +0x64 would otherwise have stayed zero, and
+  `getCharValues:` reads it back as `VBEModeNumber<n>` (`__text` 1525,
+  `8B54D064  mov edx, [eax+edx*8+64h]`) and `VBECurrentMode` (`__text` 1343,
+  `8B4064  mov eax, [eax+64h]`), both formatted `%d`.
+  `descriptionForDisplayInfo:` prints the same field under the label
+  `parameters=%x`.
 
 ### D3: what `VBEBooterMode` is
 
-An `IOParameterName` `getCharValues:forParameter:count:` answers, in two forms
-(`__text` 1636..1727 and 1732..1766):
+An `IOParameterName` `getCharValues:forParameter:count:` answers, in two forms.
+A shared prologue at `__text` 1636..1660 matches the 13-character prefix and
+then splits on the character after it:
 
-- exactly `"VBEBooterMode"` (`cmp byte ptr [ebx+0Dh], 0` at 1656 takes this
-  branch) returns `[self descriptionForVBEMode:(VBEModeRec *)0x12858]` -- the
-  mode the booter left the adapter in;
-- `"VBEBooterMode<N>"` returns
+```
+  1636  6A0D           push 0Dh
+  1638  68070B0000     push 0B07h              ; __cstring+499 "VBEBooterMode"
+  1643  53             push ebx                ; parameterName
+  1644  E88FF9FFFF     call _strncmp
+  1652  85C0           test eax, eax
+  1654  7571           jne  1769               ; no match -> common tail
+  1656  807B0D00       cmp  byte ptr [ebx+0Dh], 0
+  1660  7446           je   1732               ; NUL -> bare form
+```
+
+The common tail at 1769 returns the answer buffer if it was filled and
+otherwise falls into `[super getCharValues:forParameter:count:]` at 1852
+(`cmp byte ptr [ebp-200h], 0` at 1769, `je 1852` at 1776).
+
+- **the numeric form `"VBEBooterMode<N>"` is `__text` 1662..1727** -- the
+  fall-through, taken when the byte at +13 is not NUL. It returns
   `[self descriptionForVBEMode:(VBEModeRec *)(0x12870 + 24*N)]`, with `N` from
-  `[self atoi:parameterName+13]` and the address formed by
-  `lea eax,[ecx+ecx*2]; lea eax, ds:12870h[eax*8]` at 1684..1687.
+  `[self atoi:parameterName+13]` (`8D430D lea eax,[ebx+0Dh]` at 1662, selector
+  `__message_refs`+44 at 1666) and the address formed at 1684..1687 by
+  `8D0449 lea eax,[ecx+ecx*2]` / `8D04C570280100 lea eax,[eax*8+12870h]`;
+- **the bare form `"VBEBooterMode"` is `__text` 1732..1766** -- the branch
+  target of the `je` at 1660. It returns
+  `[self descriptionForVBEMode:(VBEModeRec *)0x12858]` (`6858280100 push 12858h`
+  at 1732) -- the mode the booter left the adapter in.
 
 It is a debugging read-out of the booter's raw VBE data, distinct from the
 driver's own `VBEMode<N>` / `VBEModeNumber<N>` / `VBEModeDescription<N>`
 parameters, which index the parsed `IODisplayInfo` array instead.
 
-The numeric form is **not** bounds-checked. The other three indexed parameters
-all guard with `cmp ds:__count, ecx; jbe <fail>` (`__text` 1417, 1501, 1601);
-`VBEBooterMode<N>` has no such guard, so it reads 24*N bytes past 0x12870 for
-any N. Reproduce it that way -- the absence of the check is the reference's
-behaviour, not an oversight to be corrected.
+The numeric form is **not** bounds-checked. This is an absence, so here is what
+was looked for and what is there instead. The other three indexed parameters
+each place a guard between the `atoi:` call and the use of its result:
+
+```
+  1417  390D04200000   cmp  ds:[2004h], ecx    ; VBEModeDescription<N>
+  1423  0F8654010000   jbe  1769
+  1501  390D04200000   cmp  ds:[2004h], ecx    ; VBEModeNumber<N>
+  1507  0F8600010000   jbe  1769
+  1601  390D04200000   cmp  ds:[2004h], ecx    ; VBEMode<N>
+  1607  0F869C000000   jbe  1769
+```
+
+The same stretch of `VBEBooterMode<N>` runs straight through with no compare
+and no branch:
+
+```
+  1677  E86EF9FFFF     call _objc_msgSend      ; eax = [self atoi:name+13]
+  1682  89C1           mov  ecx, eax
+  1684  8D0449         lea  eax, [ecx+ecx*2]
+  1687  8D04C570280100 lea  eax, [eax*8+12870h]
+  1694  50             push eax
+```
+
+So it reads 24*N bytes past 0x12870 for any N. Reproduce it that way -- the
+absence of the check is the reference's behaviour, not an oversight to be
+corrected.
 
 The parameter names, in the order the method tests them, are `VBEModeCount`,
 `VBECurrentMode`, `VBEModeDescription`, `VBEModeNumber`, `VBEMode`,
@@ -342,9 +658,17 @@ of alignment padding:
 call is made, nothing is stored. The two `__inst_meth` entries at `__OBJC`
 16804 and 16816 name them `revertToVGAMode` and `enterLinearMode` and both
 point at the same type encoding, `__meth_var_types`+123 = `v8@8:12`: void
-return, `self` and `_cmd` only. They exist to override `IOFrameBufferDisplay`'s
-versions with nothing -- on a VBE linear-framebuffer adapter there is no mode
-switch to make.
+return, `self` and `_cmd` only.
+
+What the disassembly establishes is only that: two empty method bodies, present
+in the instance method list. *Why* they were written is not determinable from
+the binary, and the obvious guess is wrong in one respect worth recording --
+`IOFrameBufferDisplay` already supplies empty implementations of both
+(`src/driverkit-3/libDriver/Kernel/IOFrameBufferDisplay.m` lines 1138 and 1146,
+declared in `driverkit/IOFrameBufferDisplay.h` lines 76 and 83 as methods
+"implemented by subclasses in a device specific way"), so these two override
+nothing that would otherwise do anything. Tasks 3-7 need only reproduce them as
+empty; no rationale is claimed.
 
 ### D5: why the driver ships its own `atoi:`
 
@@ -367,27 +691,32 @@ No sign, no leading whitespace, no base prefix, no overflow handling, no
 `errno` -- narrower than C's `atoi`, which is all its four call sites need
 (they parse the digits after a fixed parameter-name prefix).
 
-The reason it is hand-written rather than called: **the reference's undefined
-symbol list contains no integer-parsing routine at all.** The complete set of
-externals this kernel server imports is
+What the binary shows, and all it shows: **the reference's undefined symbol
+list contains no integer-parsing routine at all**, so within this binary there
+was nothing to call. The complete set of externals this kernel server imports
+is
 
 ```
 _IOLog  _calloc  _sprintf  _strcat  _strcpy  _strncmp  _strncpy
 _page_mask  _objc_getOrigClass  _objc_msgSend  _objc_msgSendSuper
-_VBEModeInfo2IODisplayInfo
+_VBEModeInfo2IODisplayInfo  _VBE20DisplayDriver_instance
+.objc_class_name_Object  .objc_class_name_IODevice
+.objc_class_name_IODisplay  .objc_class_name_IOFrameBufferDisplay
 ```
 
--- `sprintf` and five `str*` routines, but no `atoi`, `strtol`, `strtoul` or
-`sscanf`. Whether the 4.2 kernel exported one and Apple chose not to use it is
-not determinable from this binary; what is determinable is that this driver
-links against none.
+Seventeen symbols, every `nlist` entry whose type field is `N_UNDF`: four
+superclass references, the kernel-server instance pointer, and twelve
+functions/data. Among the twelve are `sprintf` and five `str*` routines, but no
+`atoi`, `strtol`, `strtoul` or `sscanf`. Whether the 4.2 kernel exported one
+and Apple chose not to use it is not determinable from this binary; what is
+determinable is that this driver links against none.
 
 It is an Objective-C method rather than a static C function, so its four uses
 go through `objc_msgSend` with `__OBJC,__message_refs`+44 (`__text` 1396, 1480,
 1580, 1666). Tasks 3-7 must keep it a method; a static C function would change
 every one of those call sites.
 
-### Other observations recorded while answering the above
+### Reproduced reference defect: the frame-buffer length uses XResolution
 
 **`initFromDeviceDescription:` sizes the frame buffer with the wrong
 dimension.** At `__text` 181..195 it computes
@@ -399,11 +728,76 @@ dimension.** At `__text` 181..195 it computes
 ```
 
 that is, `bytesPerScanLine * XResolution`, where the frame buffer's extent is
-`bytesPerScanLine * YResolution`. For every landscape mode this over-maps (at
-640x480x8: 409600 instead of 307200) and for a portrait mode it would under-map.
-The field identification comes from `descriptionForVBEMode:` above and is
-corroborated by the booter. This is the reference's behaviour and must be
-reproduced verbatim; do not substitute +6.
+`bytesPerScanLine * YResolution`. Both operands are absolute loads out of the
+booter's current-mode record at 0x12858: 0x12860 is that record's +8 and
+0x1285C its +4. The field identification comes from `descriptionForVBEMode:`
+above, is corroborated by the booter's writer, and is corroborated a third time
+by the kernel: `_VBEModeInfo2IODisplayInfo` computes `IODisplayInfo.memorySize`
+for the same record as
+
+```
+  0019EF8F  0FB75306   movzx edx, word ptr [ebx+06h]   ; YResolution
+  0019EF93  0FB74308   movzx eax, word ptr [ebx+08h]   ; bytesPerScanLine
+  0019EF97  0FAFD0     imul  edx, eax
+  0019EF9A  895668     mov   [esi+68h], edx
+```
+
+-- the same product with +6, where the driver uses +4.
+
+**What consumes the product.** It is not dead; it becomes the mapped length.
+`_page_mask` (one of the driver's undefined symbols listed under D5, with
+external relocations at `__text` 200, 218 and 226) is used to build a
+page-aligned base and a page-rounded length in two stack slots:
+
+```
+  198  8B0D00000000   mov  ecx, ds:_page_mask    ; reloc at 200
+  204  F7D1           not  ecx
+  206  894DEC         mov  [ebp-14h], ecx        ; ~page_mask
+  209  21F9           and  ecx, edi              ; edi = frame buffer phys addr (+14h, loaded at 175)
+  211  894DF8         mov  [ebp-08h], ecx        ; base   = phys & ~page_mask
+  214  89FA           mov  edx, edi
+  216  231500000000   and  edx, ds:_page_mask    ; reloc at 218
+  222  01D0           add  eax, edx              ; the product + offset-in-page
+  224  030500000000   add  eax, ds:_page_mask    ; reloc at 226
+  230  2345EC         and  eax, [ebp-14h]
+  233  8945FC         mov  [ebp-04h], eax        ; length = round-up(product + offset)
+```
+
+That `{base, length}` pair is then handed to two methods:
+
+```
+  253  6A01           push 1
+  255  8D45F8         lea  eax, [ebp-08h]
+  258  50             push eax
+  259  8B0D1C400000   mov  ecx, ds:[401Ch]       ; "setMemoryRangeList:num:"
+  267  E8F0FEFFFF     call _objc_msgSend         ; [devDesc setMemoryRangeList:&range num:1]
+  ...
+  538  8B4DFC         mov  ecx, [ebp-04h]        ; length
+  541  51             push ecx
+  542  8B4DF8         mov  ecx, [ebp-08h]        ; base
+  545  51             push ecx
+  546  8B0D38400000   mov  ecx, ds:[4038h]       ; "mapFrameBufferAtPhysicalAddress:length:"
+  554  E8D1FDFFFF     call _objc_msgSend
+```
+
+(`__OBJC,__message_refs`+8 is `setMemoryRangeList:num:` and +36 is
+`mapFrameBufferAtPhysicalAddress:length:`; the failure path of the first logs
+`__cstring`+10, `VBEDisplay: Error in setMemoryRangeList (%s)\n`, and of the
+second `__cstring`+216, `%s: Unable to map frame buffer\n`.)
+
+So the consequence is a real over-map: for every landscape mode the driver
+reserves and maps more physical memory than the mode occupies (at 640x480x8,
+409600 bytes instead of 307200), and for a portrait mode it would map too
+little.
+
+**This is a reproduced reference defect. Task 4 must emit `+4` here, verbatim,
+and must not substitute `+6`.** Byte parity is the acceptance criterion for
+this reconstruction; correcting the arithmetic would change `0FB7155C280100`
+into `0FB7155E280100` and fail it. If the defect is ever to be fixed, that is a
+separate, later, deliberately-recorded divergence -- not something Task 4
+decides.
+
+### Other observations recorded while answering the above
 
 **`__DATA,__bss` is three static buffers**, 1104 bytes total, and the
 relocations fix their boundaries exactly: `+0` is the `modeStringForDisplayInfo:`

@@ -12,6 +12,30 @@
 extern vm_offset_t	page_mask;
 
 /*
+ * The one kernel routine this driver calls.  Its argument order is the
+ * reference's, not the selector's: the method's type encoding
+ * (v16@8:12^{IODisplayInfo}16^{VBEModeRec}20) puts the IODisplayInfo * at
+ * frame 16 and the VBEModeRec * at frame 20, and reference __text 987..994
+ * pushes frame 16 first and frame 20 second, so the record is the C call's
+ * first argument.  The kernel side only ever reads through the first and
+ * only ever writes through the second.  The return type is inferred void -
+ * no path in the callee loads a result - and nothing in the reference would
+ * distinguish void from an ignored result.
+ *
+ * It stays an undefined external: the relocatable Kernel Server link leaves
+ * it unresolved and the kernel supplies the definition at load time.
+ */
+extern void	VBEModeInfo2IODisplayInfo(VBEModeRec *mode,
+					  IODisplayInfo *info);
+
+/*
+ * parseVESAModes:size: allocates its IODisplayInfo array with the kernel's
+ * calloc - reference __text 828, with an external relocation naming _calloc
+ * at 829.  No driverkit header declares it, so the declaration is here.
+ */
+extern void	*calloc(size_t count, size_t size);
+
+/*
  * The reference's booter (OPENSTEP 4.2 User Patch 4) leaves the mode it put
  * the adapter in, and the table of modes it found, at fixed addresses inside
  * KERNBOOTSTRUCT (0x11000): one 24-byte record at +0x1858 and the array at
@@ -52,9 +76,16 @@ extern vm_offset_t	page_mask;
  * src/drivers-i386/video/drvVGA/VGA.drvproj/VGA.lksproj/IOVGADisplay.m.
  * In the reference the only stores to them are inside parseVESAModes:size:
  * (reference __text 692..984).
+ *
+ * The count is signed even though displayModeCount returns it as
+ * unsigned int (the reference's own encoding for that method is I8@8:12):
+ * parseVESAModes:size: walks its array with "cmp ds:2004h, edi" and
+ * jle / jg at reference __text 849 and 972, which are signed branches, so
+ * both the counter and the loop index are int.  IOFrameBufferDisplay does
+ * the same with its own _displayModeCount.
  */
 static IODisplayInfo	*vbeDisplayModes = 0;		/* __data + 0 */
-static unsigned int	 vbeDisplayModeCount = 0;	/* __data + 4 */
+static int		 vbeDisplayModeCount = 0;	/* __data + 4 */
 
 /*
  * Reference __text 0, 144 bytes.  A category's [super ...] resolves at run
@@ -165,6 +196,86 @@ static unsigned int	 vbeDisplayModeCount = 0;	/* __data + 4 */
     [self parseVESAModes:VBE_BOOTER_MODES size:VBE_BOOTER_MODES_SIZE];
 
     return self;
+}
+
+/*
+ * Reference __text 692, 292 bytes.  Counts the booter's mode records, then
+ * builds one IODisplayInfo per record.
+ *
+ * The bound is the array's byte size, not a record count: reference __text
+ * 747..755 forms 24 * (count + 1) and stops once it reaches size.  0x880 is
+ * not a multiple of 24, so the last 16 bytes are slack the check never lets
+ * the walk reach, and the ceiling is 90 records - the same ceiling the
+ * booter's own enumerator carries.
+ */
+- (void)parseVESAModes:(VBEModeRec *)modes size:(unsigned int)size
+{
+    int		i;
+
+    if (vbeDisplayModes != NULL)
+	return;
+
+    vbeDisplayModeCount = 0;
+    while (modes[vbeDisplayModeCount].xResolution != 0) {
+	if ((vbeDisplayModeCount + 1) * sizeof(VBEModeRec) >= size)
+	    break;
+	vbeDisplayModeCount++;
+    }
+
+    if (vbeDisplayModeCount == 0) {
+	IOLog("%s: No VBE modes found.\n", [self name]);
+	return;
+    }
+
+    vbeDisplayModes = calloc(vbeDisplayModeCount, sizeof(IODisplayInfo));
+
+    for (i = 0; i < vbeDisplayModeCount; i++) {
+	[self initDisplayInfo:&vbeDisplayModes[i] fromVBEModeInfo:&modes[i]];
+	IOLog("%s: VBE mode %d is width=%d, height=%d, bpp=%d\n",
+	      [self name], modes[i].modeNumber, vbeDisplayModes[i].width,
+	      vbeDisplayModes[i].height, modes[i].bitsPerPixel);
+    }
+}
+
+/*
+ * Reference __text 984, 20 bytes.  The whole body is the call.  The kernel
+ * routine is also what writes the VBE mode number into the info's
+ * parameters field (IODisplayInfo + 0x64): nothing in this driver stores
+ * there, and getCharValues:forParameter:count: reads it back.
+ */
+- (void)initDisplayInfo:(IODisplayInfo *)info fromVBEModeInfo:(VBEModeRec *)mode
+{
+    VBEModeInfo2IODisplayInfo(mode, info);
+}
+
+/*
+ * Reference __text 1192, 48 bytes.  The driver's own, and narrower than C's
+ * atoi: no sign, no leading whitespace, no base prefix, no overflow check.
+ * The reference's undefined-symbol list holds no atoi, strtol, strtoul or
+ * sscanf, so within that binary there was nothing to call; why it was
+ * hand-written is not determinable from the reference.  It has to stay a
+ * method: the reference reaches it through objc_msgSend on
+ * __OBJC,__message_refs+44 from all four of its uses.
+ */
+- (unsigned int)atoi:(const char *)s
+{
+    unsigned int	val = 0;
+
+    while (*s != '\0') {
+	if (*s < '0' || *s > '9')
+	    break;
+	/*
+	 * Unparenthesised: reference __text 1221..1224 reloads the digit
+	 * with movsx and folds both the add and the - '0' into one
+	 * "lea edx, [edx+eax-30h]".  Writing "+ (*s - '0')" instead lets
+	 * the compiler attach the constant to the multiply, which emits
+	 * the same four instructions in a different order.
+	 */
+	val = val * 10 + *s - '0';
+	s++;
+    }
+
+    return val;
 }
 
 /* Reference __text 1916, 8 bytes.  The reference body is empty. */

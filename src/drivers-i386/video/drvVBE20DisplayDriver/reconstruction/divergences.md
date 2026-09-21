@@ -1302,3 +1302,213 @@ uses.
   `[ebp-8]` and `[ebp-4]`, the `objc_super` struct `[ebp-10h]`, and
   `~page_mask` is spilled to `[ebp-14h]`. `sub esp, 14h` at `__text` 147 is
   exactly those 20 bytes.
+
+## The mode-list parse (Task 5)
+
+`parseVESAModes:size:` (reference `__text` 692..984),
+`initDisplayInfo:fromVBEModeInfo:` (984..1004) and `atoi:` (1192..1240) were
+written from the disassembly and rebuilt on the guest. All three are
+**byte-identical to the reference** once 32-bit relocation operands are
+masked; the 20- and 48-byte ones are identical even unmasked.
+
+| Extent | Body | Pad | Raw differing bytes | Differing outside a relocated operand |
+| --- | --- | --- | --- | --- |
+| 692..984 | 292 | 0 | 4 | 0 |
+| 984..1004 | 20 | 0 | 0 | 0 |
+| 1192..1240 | 48 | 0 | 0 | 0 |
+
+None of the three carries alignment padding: each body ends exactly on the
+next function's start. The four differing bytes in `parseVESAModes:size:` are
+the operands of its two `__cstring` pushes, which still point at a section
+starting at 1116 in the rebuilt file against 2324 in the reference, because
+four functions are still missing.
+
+`initFromDeviceDescription:` and the category initialiser were re-checked at
+reference offsets 0 and 144 after these were added, and both still match; the
+first four functions land at the reference's own `__text` offsets, so the
+plain-offset compare is still valid for them.
+
+### `__cstring` and `__message_refs` are byte-exact prefixes of the reference's
+
+Adding these three shifted nothing. The rebuilt `__cstring` is now 344 bytes
+and is a **byte-for-byte prefix** of the reference's 1111, with the two new
+literals at exactly the reference's offsets:
+
+```
+  __cstring+271  "%s: No VBE modes found.\n"
+  __cstring+296  "%s: VBE mode %d is width=%d, height=%d, bpp=%d\n"
+```
+
+`__OBJC,__message_refs` is likewise a prefix, 44 of the reference's 64 bytes,
+identical selector at identical offset. `parseVESAModes:size:` sends only
+`name` (+24) and `initDisplayInfo:fromVBEModeInfo:` (+32), both already
+emitted by `initFromDeviceDescription:`, so no new selector appeared.
+`atoi:` is defined here but not yet *sent*; the reference's `atoi:` entry at
++44 comes from `getCharValues:forParameter:count:`, which is unwritten.
+
+The three new `__OBJC,__meth_var_types` encodings also match the reference's
+exactly -- `v16@8:12^{?=SSSSSCCCCCCCC^v}16I20`,
+`v16@8:12^{?=iiiii^vii[64c]I^viiiiiiI[1I]}16^{?=SSSSSCCCCCCCC^v}20` and
+`I12@8:12r*16` -- which is independent confirmation of the argument types the
+header declares, including the `const` on `atoi:`'s.
+
+### `_VBEModeInfo2IODisplayInfo` is an undefined external, as the reference has it
+
+The check Task 3 could not run, because nothing referenced the kernel symbol
+until the forwarder existed. In the rebuilt `_reloc` the symbol is `n_type`
+0x01, `n_sect` 0, `n_value` 0 -- the same three values the reference carries.
+The relocatable Kernel Server link neither resolves it nor fails on it; the
+kernel supplies the definition at load time, and no stub was written.
+
+The rebuilt undefined-external set is still a strict subset of the
+reference's, with nothing extra. `_calloc` joined it this task; the six still
+missing are `_sprintf`, `_strcat`, `_strcpy`, `_strncmp` and `_strncpy` (the
+description and parameter methods, unwritten) and
+`_VBE20DisplayDriver_instance` (the link difference recorded under "Link
+differences visible in the first `_reloc`").
+
+### The mode counter is signed; only `displayModeCount`'s return type is not
+
+`parseVESAModes:size:` walks the parsed array with
+
+```
+  843  393D04200000   cmp  ds:[2004h], edi
+  849  7E7B           jle  <end>
+  966  393D04200000   cmp  ds:[2004h], edi
+  972  7F86           jg   <top>
+```
+
+`jle` / `jg` are **signed** branches, so both the counter static and the loop
+index are `int`. Had either been `unsigned`, the usual arithmetic conversions
+would have made the comparison unsigned and the compiler would have emitted
+`jbe` / `ja`. The reference's own encoding for the accessor is `I8@8:12`, so
+the method returns `unsigned int` while the storage behind it is signed --
+which is exactly what `IOFrameBufferDisplay` does with its own
+`int _displayModeCount` and `- (unsigned int)displayModeCount`
+(`src/driverkit-3/driverkit/IOFrameBufferDisplay.h` lines 63 and 156).
+
+The other two comparisons in the same function are unsigned, and consistently
+so: `size` is `I` in the method's encoding, and
+
+```
+  753  39D8   cmp  eax, ebx      ; 24*(count+1) against size
+  755  7311   jnb  <stop>
+```
+
+### The bound is a byte size, and the walk is a rotated `while` with a `break`
+
+```
+  717  C7050420000000000000   mov  ds:[2004h], 0
+  727  8B4D10                 mov  ecx, [ebp+10h]        ; modes
+  730  6683790400             cmp  word ptr [ecx+4], 0   ; modes[0].xResolution
+  735  7425                   jz   774
+  740  8B1504200000           mov  edx, ds:[2004h]
+  746  42                     inc  edx
+  747  8D0452                 lea  eax, [edx+edx*2]
+  750  C1E003                 shl  eax, 3                ; 24*(count+1)
+  753  39D8                   cmp  eax, ebx
+  755  7311                   jnb  774
+  757  891504200000           mov  ds:[2004h], edx
+  763  8B4D10                 mov  ecx, [ebp+10h]
+  766  66837C010400           cmp  word ptr [ecx+eax+4], 0
+  772  75DE                   jnz  740
+```
+
+The guard at 730 tests only the terminator and the loop top at 740 tests only
+the size, which is the shape of `while (A) { if (!B) break; count++; }` after
+loop rotation -- not of a two-term loop condition, which would have tested
+both in the guard. The terminator is `xResolution == 0`. The compiler
+constant-propagated the store of 0 at 717 into the guard, so 730 addresses
+`modes[0]` directly, while 766 reuses the `eax` the size check already built.
+
+`24 * (count + 1) >= size` also means the *last* record the walk can accept
+is index 89: 0x880 is 24 * 90 + 16, so the final 16 bytes are slack the check
+never lets it reach. That is the same 90-record ceiling the booter's own
+enumerator carries at `boot+27911`, reached from the other side.
+
+### What fills the `IODisplayInfo` array, and what the loop logs
+
+The per-record body is three things: the forwarder, then one `IOLog`.
+
+```
+  816  6888000000     push 88h                  ; sizeof(IODisplayInfo)
+  821  8B0D04200000   mov  ecx, ds:[2004h]
+  828  E8BFFCFFFF     call _calloc
+  833  A300200000     mov  ds:[2000h], eax
+  ...
+  866  51             push ecx                  ; &modes[i]      -> fromVBEModeInfo:
+  885  50             push eax                  ; &parsed[i]     -> initDisplayInfo:
+  905  0FB644310A     movzx eax, byte [ecx+esi+0Ah]   ; modes[i].bitsPerPixel
+  916  8B4C1804       mov  ecx, [eax+ebx+4]           ; parsed[i].height
+  921  8B1C18         mov  ebx, [eax+ebx]             ; parsed[i].width
+  928  0FB701         movzx eax, word ptr [ecx]       ; modes[i].modeNumber
+```
+
+`IODisplayInfo` +0 and +4 are `width` and `height`; the reference's own
+`descriptionForDisplayInfo:` format string (`__cstring`+691) names the first
+six fields in order as `width`, `height`, `totalWidth`, `rowBytes`,
+`refreshRate`, `frameBuffer`, which is
+`src/driverkit-3/driverkit/displayDefs.h`'s order. The two pushed values are
+therefore the *parsed* mode's dimensions, read back after the kernel filled
+them, not the booter record's -- the format string is
+`%s: VBE mode %d is width=%d, height=%d, bpp=%d\n` and its `%d`s are
+`modes[i].modeNumber`, `parsed[i].width`, `parsed[i].height` and
+`modes[i].bitsPerPixel`.
+
+### `atoi:`'s accumulate step: the constant binds to the add, not to the multiply
+
+The one byte-level iteration this task needed. Reference `__text` 1216..1227:
+
+```
+  1216  8D04D2     lea   eax, [edx+edx*8]      ; 9*val
+  1219  01D0       add   eax, edx              ; 10*val
+  1221  0FBE11     movsx edx, byte ptr [ecx]
+  1224  8D5402D0   lea   edx, [edx+eax-30h]    ; *s + 10*val - '0'
+```
+
+Writing the accumulate as `val = val * 10 + (*s - '0');` produced the same
+four instructions with the constant attached to the multiply instead --
+`lea eax,[edx+edx*8]` / `lea eax,[edx+eax-30h]` / `movsx edx,[ecx]` /
+`add edx,eax`, nine differing bytes over the same 48. Dropping the
+parentheses, `val = val * 10 + *s - '0';`, folds the add and the `- '0'` into
+the single `lea` at 1224 and matches. The two are arithmetically identical;
+only the association the compiler sees differs.
+
+The rest of the function is a rotated `while (*s) { if (!digit) break; ... }`:
+the NUL test is duplicated (guard at 1200, bottom test at 1229) and the digit
+test appears once, at the rotated loop top, which is what an inner `break`
+gives. The digit test itself is the compiler's range-test form of
+`*s < '0' || *s > '9'` -- `mov al,[ecx]` / `add al,0D0h` / `cmp al,9` / `ja`,
+an unsigned compare on the 8-bit difference.
+
+### `calloc` has no driverkit declaration
+
+The reference calls `_calloc` (external relocation at `__text` 829) with
+`(count, 0x88)`, `0x88` being `sizeof(IODisplayInfo)`. Nothing under
+`src/driverkit-3/driverkit/` declares it; the kernel defines it at
+`src/kernel-7/driverkit/objc_support.m:211` as
+`void *calloc(size_t num, size_t size)`. The reconstruction declares it in
+the `.m` alongside `page_mask`. `size_t` is reachable --
+`driverkit/driverTypes.h:36` imports `bsd/sys/types.h`, which typedefs it at
+line 122 -- and the guest's compiler accepted the declaration with no
+diagnostic.
+
+### Not determinable from the binary
+
+- Why the driver hand-wrote `atoi:` rather than calling something. D5 above
+  establishes only that it links no integer-parsing routine, so within this
+  binary there was nothing to call; whether the 4.2 kernel exported one is
+  not visible here. No rationale is written into the source.
+- `VBEModeInfo2IODisplayInfo`'s return type. Still the inference recorded
+  under D2 -- `void`, because no path in the callee loads `eax` with a
+  result. The forwarder ignores any return, so this side cannot distinguish
+  the two, and the extern is declared `void`.
+- Whether the first guard is `if (vbeDisplayModes != NULL) return;` or an
+  `if (vbeDisplayModes == NULL) { ... }` around the whole body, and likewise
+  whether the empty-list case is an early return or an `else`. Both forms
+  compile to the same `jnz` to the epilogue and the same `jmp` at 810; the
+  reconstruction uses the early-return form.
+- The local variable names, as before. Only the storage is observable: the
+  loop index is `edi`, `24*i` is `esi`, `136*i` is `ebx` (which also held
+  `size` until the first loop ended), and `&modes[i]` is spilled to the
+  single `[ebp-4]` slot that `sub esp, 4` at 695 reserves.

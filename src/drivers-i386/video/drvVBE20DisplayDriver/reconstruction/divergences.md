@@ -842,3 +842,95 @@ call.
 build-generated, and `+kernelServerInstance` loads external
 `_VBE20DisplayDriver_instance` through the relocation at `__text` 2304, as
 Task 1 found.
+
+## Scaffold and first link (Task 3)
+
+First guest build of the scaffold: `make exit=0`, `VBE20DisplayDriver.m` compiled
+to `VBE20DisplayDriver.i386.o`, `kl_ld` produced `VBE20DisplayDriver_reloc`
+(92316 bytes, unstripped `-g` build; the reference is stripped, 37984 bytes --
+the same expected size gap drvVGA and drvCirrus recorded). Only the four
+smallest methods are written; the other nine functions are missing.
+
+**The four methods are byte-identical to the reference.**
+`enterLinearMode` and `revertToVGAMode` (`5589e589ec5dc390`, 8 bytes each) match
+`__text` 1916..1932 exactly. `displayModeCount` and `displayModes` (12 bytes
+each) match `__text` 2276..2300 exactly, including the operands `a1 04200000` and
+`a1 00200000`: `vbeDisplayModes` landed at `__data + 0` and `vbeDisplayModeCount`
+at `__data + 4` with the declaration order the brief gives, and `__data` is 8
+bytes at `0x2000` in both binaries. The 12-byte extents also line up: in the
+rebuilt `__text` the four sit at 0x00, 0x08, 0x10, 0x1C and the two
+Kernel-Server-generated entries follow at 0x28 and 0x34, the same 12-byte
+strides the reference has at 2300 and 2312.
+
+**The brief's `VBEModeRec` field order disagreed with the disassembly, and the
+header follows the disassembly.** The brief listed `bytesPerScanline` before
+`xResolution`/`yResolution` and grouped the three mask sizes before the three
+field positions. `descriptionForVBEMode:`'s pushes (see `VBEModeRec` layout
+above) put XRes at +4, YRes at +6, BytesPerScanline at +8, and interleave the
+colour bytes as red size +0xC, red position +0xD, green size +0xE, green position
++0xF, blue size +0x10, blue position +0x11. The type encoding
+`{?=SSSSSCCCCCCCC^v}` fixes only widths and count, so both orders compile, but
+only the disassembly's order makes a later `mode->yResolution` load the word at
++6. The header also now says 22 bytes of fields / 24 with padding, not "22
+bytes"; the struct is not packed and the pointer forces two bytes at 0x12.
+Nothing in this task reads a field, so this changes no bytes yet.
+
+**`_VBEModeInfo2IODisplayInfo` is not in the rebuilt symbol table, and cannot be
+yet.** The brief's Step 7 expects it as an undefined external (type `0x01`). The
+only reference to it in the reference binary is the forwarder
+`initDisplayInfo:fromVBEModeInfo:` (Task 5). None of the four methods written in
+Task 3 calls it, so the compiler has nothing to emit. Inventing a call to make
+the symbol appear would corrupt the parity target, so none was written. What the
+link does establish: `kl_ld` leaves undefined externals unresolved rather than
+failing -- the rebuilt `_reloc` carries `.objc_class_name_IODevice`,
+`.objc_class_name_IOFrameBufferDisplay` and `.objc_class_name_Object` as type
+`0x01`, and links cleanly. The undefined-external check belongs to Task 5, after
+the forwarder exists. In the reference the symbol is index 11, type `0x01`.
+
+### Link differences visible in the first `_reloc`, not caused by any source
+
+Both concern build-generated code that the source cannot change, so they are
+recorded here for whoever reaches the Kernel Server functions.
+
+- **`_VBE20DisplayDriver_instance`.** In the reference it is an *unallocated
+  common*: symbol 10, `N_UNDF | N_EXT`, `n_value` 4, and `+kernelServerInstance`
+  reaches it through an `r_extern` relocation (`mov eax, 0`). Our `kl_ld` link
+  allocates it as a 4-byte `__DATA,__common` slot at `0x2008` and the same
+  instruction is `mov eax, 0x2008` with a section-relative relocation. This is
+  why the reference's `__bss` is exactly the 1104 bytes of the three static
+  buffers with no room for the instance slot.
+- **Version string.** The reference's `__const` holds one 160-byte
+  `@(#)PROGRAM:VBE20DisplayDriver_reloc  PROJECT:drvVBE20DisplayDriver-1
+  DEVELOPER:cfriesen  BUILT:NO DATE SET (-B used)` under a symbol named
+  `_VBE20DisplayDriver_reloc_vers`. Ours is 112 bytes of `__const` with
+  `_VBE20DisplayDriverVersionString` / `_VBE20DisplayDriverVersionNumber` and a
+  real build date, from `VERSIONING_SYSTEM = apple-generic` copied from Cirrus.
+  Same category as the `VERS_STRING` finding recorded for drvCirrus.
+- **`+driverKitVersionForVBE20DisplayDriver`'s constant.** The reference returns
+  `0x1A4` (`b8 a4010000`); the rebuilt method returns `0x1F4` (`b8 f4010000`).
+  The method is emitted by the Kernel Server project type, so no source can set
+  it; the guest build produces 0x1F4.
+
+### Scaffold choices that go beyond the brief's table
+
+- `DriverInfo` `DRIVER_NAME` is `"VBE20DisplayDriver"`. The brief's table did not
+  list it, but leaving Cirrus's value would put the wrong installer name in this
+  driver. `DEFAULT_DRIVER_VERSION` is left as copied.
+- `English.lproj/Help/` is an empty directory in the patch, so `Help` is not in
+  `LOCAL_RESOURCES` and no directory was created for it.
+- `English.lproj/DisplayInspector.nib` is in the reference bundle and is not
+  reproduced here; spec section 2 puts the inspector out of scope.
+- The section ordinals inside the `__text` relocations differ (`__data` is
+  section 3 in the rebuilt file, 4 in the reference) only because `__cstring` is
+  not yet emitted; they converge once the functions that own string literals
+  exist.
+
+### Guest tooling notes
+
+- The guest's `/build/source/vm/build-i386-video-recon.sh` was stale (5241
+  bytes, no VBE20 arm). The current script was streamed into `/tmp` on the guest
+  and run from there, leaving the shared guest copy alone.
+- The brief's Step 6 tar pull (`ssh ... | tar xf -` through `cmd /c` with
+  `Invoke-RhapRemote`-style `-tt`) failed with "This does not look like a tar
+  archive". Running `ssh -T` with stdout redirected to a file by `Start-Process`
+  and extracting from the file worked and gave a byte-exact 92316-byte `_reloc`.

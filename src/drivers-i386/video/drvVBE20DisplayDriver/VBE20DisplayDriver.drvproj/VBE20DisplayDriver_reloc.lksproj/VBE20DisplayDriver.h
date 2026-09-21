@@ -47,6 +47,16 @@ typedef struct {
 - (char *)descriptionForDisplayInfo:(IODisplayInfo *)info;
 - (char *)descriptionForVBEMode:(VBEModeRec *)mode;
 
+/*
+ * The answer buffer is char *, not IODevice.h's unsigned char *.  The
+ * reference's own type encoding for this method, __OBJC,__meth_var_types+131,
+ * is i20@8:12*16*20^I24, and * is char * where unsigned char * would encode
+ * as ^C.  Declaring it the header's way would change that encoding.
+ */
+- (IOReturn)getCharValues:(char *)array
+	     forParameter:(IOParameterName)parameterName
+		    count:(unsigned int *)count;
+
 @end
 
 @interface IOFrameBufferDisplay (UnnamedInitialization)

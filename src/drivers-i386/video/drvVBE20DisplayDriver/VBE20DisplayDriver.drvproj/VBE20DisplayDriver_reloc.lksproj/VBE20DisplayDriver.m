@@ -374,6 +374,128 @@ static int		 vbeDisplayModeCount = 0;	/* __data + 4 */
     return val;
 }
 
+/*
+ * Reference __text 1240, 676 bytes (674 of body and two 90 pads) - the
+ * largest function in the driver.  It answers six parameter names and hands
+ * everything else to IODevice.
+ *
+ * The names, in the order the reference tests them, are VBEModeCount,
+ * VBECurrentMode, VBEModeDescription<N>, VBEModeNumber<N>, VBEMode<N> and
+ * VBEBooterMode[<N>].  That order is not a preference: __cstring order reads
+ * out source order for this compiler, and the reference's block runs
+ * +427 "VBEModeCount", +440 "%d", +443 "VBECurrentMode", +458
+ * "VBEModeDescription", +477 "VBEModeNumber", +491 "VBEMode", +499
+ * "VBEBooterMode".  Reordering the tests - or hoisting the "%d" - moves every
+ * later literal and loses the string table.
+ *
+ * The first two are matched with strcmp and the other four with strncmp, and
+ * the reference shows which is which rather than leaving it to taste: at
+ * __text 1290 and 1323 it runs "repe cmpsb" over 13 and 15 bytes, the name
+ * plus its terminator, which is gcc's inline expansion of strcmp against a
+ * string constant, while at 1380, 1464, 1564 and 1644 it calls _strncmp with
+ * 18, 13, 7 and 13, the name without its terminator.  An exact match for the
+ * two unindexed names, a prefix match for the four indexed ones.
+ *
+ * The answer is built in a 512-byte stack buffer - the reference's frame is
+ * "sub esp, 20Ch" at __text 1243, which is 512 for the buffer, 8 for the
+ * compiler's objc_super and 4 for the spilled *count - and the buffer's first
+ * byte doubles as the "did anything answer" flag: __text 1266 clears it,
+ * __text 1769 tests it, and an empty buffer falls through to super.
+ */
+- (IOReturn)getCharValues:(char *)array
+	     forParameter:(IOParameterName)parameterName
+		    count:(unsigned int *)count
+{
+    char		 answer[512];
+    unsigned int	 maxLength = *count;
+    unsigned int	 length;
+    unsigned int	 index;
+
+    answer[0] = '\0';
+
+    if (strcmp(parameterName, "VBEModeCount") == 0) {
+	sprintf(answer, "%d", vbeDisplayModeCount);
+    } else if (strcmp(parameterName, "VBECurrentMode") == 0) {
+	/*
+	 * IODisplayInfo + 0x64 is parameters, which is where the kernel's
+	 * VBEModeInfo2IODisplayInfo puts the VBE mode number; nothing in
+	 * this driver stores there.  Reference __text 1343 is
+	 * "mov eax, [eax+64h]" on the result of [self displayInfo].
+	 */
+	sprintf(answer, "%d", [self displayInfo]->parameters);
+    } else if (strncmp(parameterName, "VBEModeDescription", 18) == 0) {
+	index = [self atoi:parameterName + 18];
+	/*
+	 * Written count-first because that is the operand order the
+	 * reference's compare has: __text 1417 is "cmp ds:2004h, ecx" with
+	 * the static as the destination operand (39 0D), and the branch
+	 * around the body is jbe.  Spelling it "index < vbeDisplayModeCount"
+	 * swaps the operands into "cmp ecx, ds:2004h" (3B 0D) and inverts the
+	 * branch to jnb - two bytes different, at each of the three sites
+	 * that carry this guard.  The comparison is unsigned because atoi:
+	 * returns unsigned int; that is a reading, not a choice.
+	 */
+	if (vbeDisplayModeCount > index)
+	    strcpy(answer,
+		   [self descriptionForDisplayInfo:&vbeDisplayModes[index]]);
+    } else if (strncmp(parameterName, "VBEModeNumber", 13) == 0) {
+	index = [self atoi:parameterName + 13];
+	if (vbeDisplayModeCount > index)
+	    sprintf(answer, "%d", vbeDisplayModes[index].parameters);
+    } else if (strncmp(parameterName, "VBEMode", 7) == 0) {
+	index = [self atoi:parameterName + 7];
+	if (vbeDisplayModeCount > index)
+	    strcpy(answer,
+		   [self modeStringForDisplayInfo:&vbeDisplayModes[index]]);
+    } else if (strncmp(parameterName, "VBEBooterMode", 13) == 0) {
+	if (parameterName[13] != '\0') {
+	    /*
+	     * Reproduced reference defect: this index is NOT bounds-checked.
+	     * The other three indexed names each put a compare against
+	     * vbeDisplayModeCount between the atoi: and the use of its
+	     * result (reference __text 1417, 1501 and 1601); the same
+	     * stretch here, __text 1662..1727, runs straight from the atoi:
+	     * call at 1677 into "lea eax, [ecx+ecx*2]" and
+	     * "lea eax, ds:12870h[eax*8]" at 1684 and 1687 with no compare
+	     * and no branch, so it reads 24*N bytes past the booter's array
+	     * for any N.  Adding a guard would emit instructions the
+	     * reference does not have and lose byte parity, exactly as
+	     * correcting the XResolution arithmetic in
+	     * initFromDeviceDescription: would.  The absence is the
+	     * reference's behaviour; see reconstruction/divergences.md.
+	     */
+	    index = [self atoi:parameterName + 13];
+	    strcpy(answer,
+		   [self descriptionForVBEMode:&VBE_BOOTER_MODES[index]]);
+	} else {
+	    strcpy(answer, [self descriptionForVBEMode:VBE_BOOTER_MODE]);
+	}
+    }
+
+    /*
+     * Reference __text 1778..1798 is gcc's inline strlen - "repne scasb" with
+     * ecx = -1, then "not eax" and "lea ebx, [eax-1]" - so strlen is expanded,
+     * not called, and _strlen is absent from the reference's undefined
+     * symbols.  The clamp is written maxLength-first for the same reason as
+     * the three guards above: __text 1801 is "cmp [ebp-20Ch], ebx" with the
+     * saved *count as the destination operand, and the branch around the body
+     * is ja.
+     */
+    if (answer[0] != '\0') {
+	length = strlen(answer);
+	if (maxLength <= length)
+	    length = maxLength - 1;
+	*count = length + 1;
+	strncpy(array, answer, length);
+	array[length] = '\0';
+	return IO_R_SUCCESS;
+    }
+
+    return [super getCharValues:array
+		   forParameter:parameterName
+			  count:count];
+}
+
 /* Reference __text 1916, 8 bytes.  The reference body is empty. */
 - (void)enterLinearMode
 {

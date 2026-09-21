@@ -1840,3 +1840,256 @@ where the build ran, not of the driver.
   ebx` at 1935 and `lea esp,[ebp-8]` at 2165 are those two saves); in
   `descriptionForVBEMode:` nothing is saved at all, and only `eax`, `ecx` and
   `edx` are used.
+
+## The parameter dispatch (Task 7)
+
+`getCharValues:forParameter:count:` (reference `__text` 1240..1916, 674 bytes
+of body and two `90` pads) was written from the disassembly and rebuilt on the
+guest. It is **byte-identical to the reference on the first build**, and with
+it in place **every one of the thirteen hand-written functions matches at the
+reference's own offset**. Nothing was compared by symbol this task.
+
+The extent has **zero raw differing bytes** -- not merely zero outside a masked
+operand. Once this function exists, `__cstring` and `__OBJC,__message_refs`
+sit at the reference's own addresses, so even the relocated operands hold the
+same values. Over the whole 2324-byte `__text` exactly **three** raw bytes
+differ, and all three were ruled on before this task:
+
+| `__text` | reference | rebuilt | What it is |
+| --- | --- | --- | --- |
+| 2304 | `00 00` | `58 24` | `_VBE20DisplayDriver_instance`: the reference leaves it an unallocated common with a zero addend, our `kl_ld` allocates it. Both sides carry a length-2 relocation there, so the masked compare of extent 2300 is `MATCH`. |
+| 2316 | `a4` | `f4` | `IO_DRIVERKIT_VERSION` 420 against 500, `driverkit-3/driverkit/IODevice.h:45`. Must stay; forcing 420 would falsify the build. |
+
+`__TEXT,__text` is 2324 bytes on both sides with 169 relocations on both
+sides, and the 43 relocations inside 1240..1916 are at the same offsets and of
+the same kinds. `__TEXT,__cstring` (1111 bytes), `__OBJC,__meth_var_types`
+(295) and `__OBJC,__meth_var_names` (465) are now **byte-identical** to the
+reference, as is `__DATA,__data` (8); `__DATA,__bss` is 1104 on both sides.
+The 86-byte `__cstring` hole Task 6 measured is filled exactly.
+
+### The answer buffer is `char *`, not `IODevice.h`'s `unsigned char *`
+
+The reference's own encoding for this method, `__OBJC,__meth_var_types`+131,
+is
+
+```
+i20@8:12*16*20^I24
+```
+
+`*` is `char *`; `unsigned char *` encodes as `^C`. So the first argument was
+declared `char *`, even though `src/driverkit-3/driverkit/IODevice.h:209`
+declares the inherited method with `(unsigned char *)parameterArray`. The
+reconstruction follows the encoding, and declares the method in
+`VBE20DisplayDriver.h` with that type; the guest build draws no diagnostic
+about it. Two other reconstructions in this tree made the same choice --
+`src/drivers-i386/bus/drvPCIBus/PCIBus.drvproj/PCIBus.lksproj/PCIResourceDriver.m:105`
+and
+`src/drivers-i386/sound/drvBeepSound/Beep.drvproj/Beep.lksproj/Beep.m:309`
+both write `char *` and both call `[super getCharValues:...]` with it. The
+rest of the encoding is `IOReturn` = `int` (`return.h:36`), `IOParameterName`
+decaying to `char *`, and `unsigned int *`.
+
+### The six names, and why their order is not a preference
+
+D3 above lists the names in test order. What this task adds is that the order
+is **forced**: `__cstring` order is a read-out of source order for this
+compiler, and the reference's block is
+
+```
+  +427  VBEModeCount          +458  VBEModeDescription     +491  VBEMode
+  +440  %d                    +477  VBEModeNumber          +499  VBEBooterMode
+  +443  VBECurrentMode
+```
+
+`%d` sits **between** the first and second name because the first branch's
+`sprintf` is the second literal the file reaches. Reordering the tests, or
+hoisting the format string to the top of the function, moves every later
+literal and breaks the string table. The rebuilt `__cstring` is byte-identical
+with the block written in exactly this order.
+
+Task 2 recorded that the first two names are matched by an inline compare and
+the other four by a call. The build confirms the source forms that produce
+that: `strcmp(parameterName, "...")` against a string constant is expanded by
+gcc into `repe cmpsb` over `strlen + 1` bytes (reference `__text` 1290 and
+1323, lengths 13 and 15), and `strncmp(parameterName, "...", n)` is a call with
+`n` = `strlen` (reference 1380, 1464, 1564, 1644, lengths 18, 13, 7, 13). The
+lengths are written as integer literals; `strlen("...")` would fold to the same
+value and cannot be distinguished.
+
+### Three cross-jumps the compiler made, and one it could not
+
+Nothing in the source expresses any of these; they are recorded so a later
+reader does not try to.
+
+1. **One `sprintf(buf, "%d", ...)` serves two branches.** `VBEModeCount` loads
+   the counter at `__text` 1294 and jumps to 1529; `VBEModeNumber` loads
+   `vbeDisplayModes[N].parameters` at 1525 and falls into the same place. Both
+   arrive with the value in `edx`, and 1529..1547 is the single
+   `push edx; push "%d"; lea buf; push; call _sprintf; add esp, 0Ch`.
+
+2. **One `strcpy(buf, [self <sel>:<ptr>])` serves three branches.**
+   `VBEModeDescription` jumps from 1450, `VBEMode` from 1634, and the bare
+   `VBEBooterMode` falls in from 1737 -- each having already loaded its own
+   selector into `esi` (`descriptionForDisplayInfo:` at 1444,
+   `modeStringForDisplayInfo:` at 1628, `descriptionForVBEMode:` at 1737) and
+   pushed its own pointer. The shared tail is 1743..1766.
+
+3. **`VBECurrentMode` shares only the stack cleanup.** Its own `sprintf` call
+   is at 1359, because at that point two `objc_msgSend` pushes are still
+   outstanding; it jumps to 1766, the `add esp, 14h` that suits five pending
+   pushes.
+
+4. **The numeric `VBEBooterMode<N>` could not share tail 2.** It carries three
+   more pending pushes (the `atoi:` send), so its cleanup is `add esp, 20h` at
+   1724 and it needs its own copy of the `strcpy` sequence at 1706..1724. This
+   is gcc's deferred-pop accounting, not a difference in the source.
+
+The same optimiser merged the six `strcat` sites in `modeStringForDisplayInfo:`
+and the three `return [self free];` sites in `initFromDeviceDescription:`.
+
+### Two comparisons written in the reference's operand order
+
+Both are **codegen-determined**: the two spellings are arithmetically
+identical and only the order gcc sees decides the bytes. gcc's `cmpsi`
+expander does not swap a memory operand against a register -- it only forces a
+register when *both* are memory -- so the source's operand order survives into
+the `cmp`, and `do_jump` emits the inverted branch to skip the body.
+
+- **`vbeDisplayModeCount > index`, not `index < vbeDisplayModeCount`.**
+  Reference `__text` 1417, 1501 and 1601 are `39 0D 04 20 00 00`
+  (`cmp ds:2004h, ecx`, opcode 39 = `CMP r/m32, r32`, so the static is the
+  destination operand) followed by `jbe`. The other spelling gives
+  `3B 0D 04 20 00 00` (`cmp ecx, ds:2004h`) and `jnb` -- **two bytes different
+  at each of the three sites, six in total.**
+- **`maxLength <= length`, not `length >= maxLength`.** Reference `__text`
+  1801 is `cmp [ebp-20Ch], ebx` with the saved `*count` as the destination
+  operand, and `ja` at 1807. The other spelling gives `cmp ebx, [ebp-20Ch]`
+  and `jb`, two bytes.
+
+The second is corroborated from outside the codegen: `Beep.m:331-337` in this
+tree writes the identical clamp -- `if (maxLen <= nameLen) nameLen = maxLen - 1;
+*count = nameLen + 1; strncpy(...); parameterArray[nameLen] = 0;` -- so the
+whole tail is Apple's house idiom for this method, not a shape fitted to
+bytes. The comparisons are **unsigned** (`jbe`, `ja`) because `atoi:` returns
+`unsigned int` and `maxLength` is `unsigned int`; that is a reading, not a
+choice -- a signed operand would have forced `jle` / `jg`, as it does in
+`parseVESAModes:size:`.
+
+### Reproduced reference defect: `VBEBooterMode<N>` is unbounded
+
+D3 above established the absence from the reference. This task reproduces it
+and labels it in the source the way Task 4 labelled the `bytesPerScanLine *
+XResolution` typo. The three other indexed names each put a compare against
+`vbeDisplayModeCount` between the `atoi:` and the use of its result; the
+`VBEBooterMode<N>` stretch, `__text` 1662..1727, runs from the `atoi:` call at
+1677 straight into `lea eax, [ecx+ecx*2]` at 1684 and
+`lea eax, ds:12870h[eax*8]` at 1687 with no compare and no branch, so it reads
+`24*N` bytes past the booter's array for any `N`. Adding a guard would emit a
+`cmp` and a `jbe` the reference does not have. **Do not "harden" it.**
+
+The two forms also differ in what they answer with: the bare `VBEBooterMode`
+returns the booter's current-mode record at 0x12858 (the push at 1732), the
+numeric form indexes the array at 0x12870. Both immediates are unrelocated, as
+D1 requires.
+
+### `strlen` is expanded, the other four string routines are called
+
+Reference `__text` 1778..1798 is gcc's inline `strlen` --
+`xor al, al; lea edi, buf; cld; mov ecx, 0FFFFFFFFh; repne scasb; mov eax, ecx;
+not eax; lea ebx, [eax-1]` -- which is why `_strlen` is absent from the
+reference's undefined symbols while `_strcpy`, `_strncpy` and `_strncmp` are
+present. `strcmp` is expanded too, because both its calls have a constant
+operand. This task's build reproduces that split exactly.
+
+### Undefined externals after this task
+
+`_strcpy`, `_strncmp` and `_strncpy` joined, which is the last of the
+reference's twelve function imports. The rebuilt set is now the reference's
+minus one:
+
+```
+  both:       .objc_class_name_{IODevice,IODisplay,IOFrameBufferDisplay,Object}
+              _IOLog  _VBEModeInfo2IODisplayInfo  _calloc  _objc_getOrigClass
+              _objc_msgSend  _objc_msgSendSuper  _page_mask  _sprintf  _strcat
+              _strcpy  _strncmp  _strncpy
+  reference   _VBE20DisplayDriver_instance
+  only:
+```
+
+Sixteen shared, nothing extra on our side. The one remaining difference is the
+link difference recorded under "Link differences visible in the first
+`_reloc`", the same one that accounts for the two raw bytes at `__text` 2304.
+
+### The source map and the ledger
+
+Generated in this task rather than Task 2, because `source-map-v1` requires a
+`source_path` naming a real file and a `source_line` on every mapped entry.
+
+**The generator's interface is not the one this plan's Task 7 step names.**
+`binrecon source-map` additionally requires `--reference-analysis`, which the
+documented command line omits; without it the tool exits with a usage error.
+The invocation that works is
+
+```bash
+$VENVPY -m binrecon source-map \
+  --reference-analysis "$IDA_REF" --binary "$REF" \
+  --source-dir "$LKS" --repo-root . --output "$MAP"
+$VENVPY tools/binrecon/seed_ledger.py "$MAP" "$REF" "$LEDGER"
+```
+
+`seed_ledger.py` does take three arguments, as documented, and seeds every
+entry at `unexamined` with `rebuilt_sha256` null.
+
+The result is **fifteen entries**, `__text` 0 through 2324, twelve of them
+mapped to `VBE20DisplayDriver.m` and three unmapped. Both documents validate
+against their schemas, and the map passes `validate_source_map_semantics`.
+
+The inter-entry gaps of 1-3 bytes at 142, 689, 1191, 1914, 1923, 1931, 2174
+and 2274 are the `90` alignment padding: the maps in this tree record the
+instruction extent, not the symbol-to-symbol delta, which Task 2 verified
+holds for all 31 committed i386 maps. The last entry still ends at 2324.
+
+**Three entries are unmapped, and two of them have no source to map to.**
+`+kernelServerInstance` (2300) and `+driverKitVersionForVBE20DisplayDriver`
+(2312) are generated by the Kernel Server project type, not written in
+`VBE20DisplayDriver.m`; every committed map in this tree has those same two
+unmapped.
+
+The third, `__text` 0, is a **tool limitation, not a missing source site**.
+`binrecon/source_map.py` keys a source site by
+`-[<class>(<category>) <selector>]` when the `@implementation` carries a
+category, so our site is
+`-[IOFrameBufferDisplay(UnnamedInitialization) initUnnamedFromDeviceDescription:]`,
+while the stripped reference names the same function
+`-[IOFrameBufferDisplay initUnnamedFromDeviceDescription:]` -- a Mach-O method
+list holds a category's methods under the bare class name, which is the same
+fact Task 2 recorded about IDA's naming. The two keys never meet.
+`--objc-methods` does not help: it resolves names from the same metadata and
+produces the same twelve mapped entries. The map was **not** hand-edited to
+paper over it; the entry stays in `unmapped`, with `source_path` and
+`source_line` null in the ledger, and Task 8 can decide whether to record it
+as reviewed by hand.
+
+### Not determinable from the binary
+
+- The names of the buffer and the three scalars. Only the storage is
+  observable: `parameterName` is in `ebx` across the whole dispatch, the
+  parsed index is in `ecx` (with a copy in `eax` for the address arithmetic),
+  the 512-byte answer buffer is at `[ebp-200h]`, `*count`'s entry value is
+  spilled to `[ebp-20Ch]`, and the compiler's `objc_super` occupies
+  `[ebp-208h]`. `sub esp, 20Ch` at `__text` 1243 is 512 + 8 + 4.
+- Why the buffer is 512 bytes. It is the frame size, and it matches the two
+  512-byte `__bss` buffers the description builders use, but nothing in the
+  binary states a reason.
+- Whether `*count` was read into its local by an initialiser or by an
+  assignment. Both emit the three instructions at 1255..1260, and both must
+  precede the store that clears the buffer's first byte at 1266, which is the
+  only ordering the binary fixes.
+- Whether the answer test is written with the copy inside the `if` and the
+  super send after it, or with an early `return [super ...]` and the copy
+  after. The binary fixes which block is laid out first -- the copy is at 1778
+  and the super send at 1852 -- and the reconstruction uses the spelling that
+  produces that layout directly; a compiler that reordered blocks could have
+  produced it from the other spelling, and this one does not.
+- Whether the four `strncmp` lengths were written as integers or as
+  `strlen("...")`. Constant folding makes the two indistinguishable.

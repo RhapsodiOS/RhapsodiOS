@@ -806,11 +806,16 @@ decides.
 
 ### Other observations recorded while answering the above
 
-**`__DATA,__bss` is three static buffers**, 1104 bytes total, and the
-relocations fix their boundaries exactly: `+0` is the `modeStringForDisplayInfo:`
+**`__DATA,__bss` is three static buffers**, 1104 bytes total. The relocations
+fix where each begins, exactly: `+0` is the `modeStringForDisplayInfo:`
 buffer, `+80` the `descriptionForDisplayInfo:` buffer, `+592` the
-`descriptionForVBEMode:` buffer. So 80, 512 and 512 bytes, declared in that
-order.
+`descriptionForVBEMode:` buffer, declared in that order. That measures the first
+two sizes, 80 and 512. The third buffer's 512 is an **inference**, not a
+measurement: `1104 - 592` is the remainder to the end of the section, and no
+relocation marks that end. The same holds for "these three fill `__bss` and
+nothing else does". Task 3 ("Link differences visible in the first `_reloc`")
+and Task 6 ("The three static buffers land on the reference's `__bss`
+boundaries") record the qualification.
 
 **`descriptionForDisplayInfo:` skips offset 0x70.** It prints +0x60, +0x64,
 +0x68, +0x6C, then +0x74, +0x78, +0x7C, +0x80 -- `flags`, `parameters`,
@@ -1853,7 +1858,9 @@ The extent has **zero raw differing bytes** -- not merely zero outside a masked
 operand. Once this function exists, `__cstring` and `__OBJC,__message_refs`
 sit at the reference's own addresses, so even the relocated operands hold the
 same values. Over the whole 2324-byte `__text` exactly **three** raw bytes
-differ, and all three were ruled on before this task:
+differ, and all three were recorded before this task. Only 2316 has a
+maintainer's ruling; the instance-common difference behind 2304 and 2305 was
+recorded in Task 3 as not ruled on:
 
 | `__text` | reference | rebuilt | What it is |
 | --- | --- | --- | --- |
@@ -2114,9 +2121,10 @@ extra_symbols (34):
 ```
 
 **Nothing the reference has is missing from our build** -- no string and no
-text symbol. The 34 extras are the unstripped `-g` build's own: the thirteen
-`__text` function symbols with their `:fN` frame-size companions, the two
-derived-source paths (`VBE20DisplayDriver_instance.m`, `VBE20DisplayDriver_vers.c`),
+text symbol. The 34 extras are the unstripped `-g` build's own: the fifteen
+`__text` function symbols (thirteen hand-written, two build-generated) with
+their `:fN` frame-size companions, the two derived-source paths
+(`VBE20DisplayDriver_instance.m`, `VBE20DisplayDriver_vers.c`),
 `VBE20DisplayDriver.m`, and one empty name. Extras are expected and are not
 findings. `extra_strings` being **0** is the stronger result: `__cstring` is
 not merely complete, it holds nothing the reference does not.
@@ -2159,10 +2167,13 @@ verdicts are what carry the parity claim:
 **Thirteen of fifteen extents are `raw_equal`** -- byte-for-byte, no masking
 involved -- and they are exactly the thirteen hand-written ones. The two that
 are not are exactly the two build-generated ones. This is independent
-corroboration of Task 7's `compare_vbe20.py` result, from a different tool with
-different masking rules. Read directly out of both Mach-O files, independently
-of either tool, `__TEXT,__text` is 2324 bytes on each side and differs in
-exactly three raw bytes -- 2304, 2305 and 2316 -- and nowhere else.
+corroboration of Task 7's masked compare, from a different tool with different
+masking rules. (That compare was `compare_vbe20.py`, a throwaway harness the
+plan specifies in its Task 4 and deliberately does not commit, so it is not in
+the repository; the two results below do not depend on it.) Read directly out
+of both Mach-O files, independently of either tool, `__TEXT,__text` is 2324
+bytes on each side and differs in exactly three raw bytes -- 2304, 2305 and
+2316 -- and nowhere else.
 
 **`status: different` on a `raw_equal: true` extent is not a byte finding.**
 binrecon's status folds in a symbolic layer: `calls differ`, `instruction
@@ -2175,11 +2186,12 @@ question and the symbolic layer does not overturn it.
 
 `2300` is worth one note. Task 7's masked compare called it `MATCH`; binrecon
 calls it `masked_equal: false`. Both are right about their own rule: the two
-differing bytes sit inside a relocated operand, which `compare_vbe20.py` masks,
-but binrecon additionally compares *relocation target semantics*, and an
-unallocated common with a zero addend is not the same target as a defined
-`__common` address. The underlying cause is the one already recorded, not a new
-one.
+differing bytes sit inside a relocated operand, which the plan's throwaway
+`compare_vbe20.py` (not committed) masks, but binrecon additionally compares
+*relocation target semantics*, and an unallocated common with a zero addend is
+not the same target as a defined `__common` address. The underlying difference
+is the one already recorded under "Link differences visible in the first
+`_reloc`", not a new one, and its cause is still unidentified.
 
 ### Ledger state
 
@@ -2190,8 +2202,12 @@ All fifteen entries reviewed, `reviewer` "Pat Raynor" throughout,
 - **Thirteen `assembly-matched`** -- the hand-written extents, each against
   `VBE20DisplayDriver.m` at the line the source map records.
 - **Two `control-flow-confirmed`** -- `2300` and `2312`, the build-generated
-  pair, ledgered without a source path, each citing the ruling already in this
-  file.
+  pair, ledgered without a source path, each citing what this file records. For
+  `2312` that is the maintainer's Task 3 ruling that the `IO_DRIVERKIT_VERSION`
+  difference must stay. For `2300` it is Task 3's record of the
+  instance-common difference, which that section says "has not been ruled on";
+  this file records no maintainer ruling on it, so its `control-flow-confirmed`
+  status and its exemption at ledger level are this task's classification.
 
 One tooling note, because the plan's command sequence does not run as written.
 `seed_ledger.py` always constructs its document with `rebuilt=None`, so a ledger
@@ -2257,10 +2273,18 @@ Recorded as unexplained rather than given a manufactured cause:
   and that gate is blocked on a separate kernel spec, so it will not run in
   this effort. A load failure there must not be misdiagnosed as a source
   defect.
-- **Why the version string is 160 bytes against our 112.** Generated from the
-  project name at build time. `VERSIONING_SYSTEM` was ruled out as the cause in
-  Task 3; the real cause is not identified. `__const` differs in size, 160
-  against 112, for this reason alone.
+- **Why the version object is 160 bytes against our 112.** Task 3 recorded what
+  differs -- the symbol name, the `PROGRAM`, `PROJECT`, `DEVELOPER` and `BUILT`
+  fields, the trailing newline, and one 160-byte string against a string plus a
+  double -- and could not identify the cause; nothing there shows the size
+  follows from the project name. `VERSIONING_SYSTEM` was **not tested**. Task 3
+  judged it unlikely to explain the differences, because the reference's string
+  has the same four-field layout as ours, but that is reasoning, not a result,
+  and it is **not ruled out**. Two things would settle it, and neither was
+  attempted: a build with `VERSIONING_SYSTEM` varied, and a version-string
+  generator of the reference's period. `__const` is 160 bytes in the reference
+  and 112 in ours, and on each side that section is exactly the version object
+  Task 3 describes, so this is the whole of its size difference.
 
 ### What this ledger does not claim
 

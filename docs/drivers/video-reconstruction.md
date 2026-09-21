@@ -30,6 +30,7 @@ project type and are correctly absent from source.
 | Driver | Reference binary | Partition entries | Mapped | Status |
 | --- | --- | --- | --- | --- |
 | drvCirrusLogicGD5434 | `CirrusLogicGD5434DisplayDriver_reloc` | 21 | 19 | **built, linked, parity clean**; 19/21 byte-identical; apple-generic MH_BUNDLE present; SGS VERS unmet |
+| drvVBE20DisplayDriver | `VBE20DisplayDriver_reloc`, from **OPENSTEP 4.2 User Patch 4** | 15 | 12 | **built, linked**; 13 hand-written entries byte-identical in place; **boot gate blocked on the kernel spec, do not run it** |
 | drvIBMThinkPad760EDDisplay | `IBMThinkPad760EDDisplayDriver_reloc` | 40 | 28 | compiles and links; 17/29 in-scope extents match |
 | drvVGA | `VGA_reloc` + `VGA_psdrvr` | 38 + 53 | 0 + 0 | analysed in full, **not yet rewritten** |
 | drvATIMach64 | `ATIMach64DisplayDriver_reloc` | — | — | no reconstruction pass |
@@ -88,6 +89,42 @@ Two things remain open. `setMode:` (2276) and `setPCIConfiguration` (1692) were
 exhausted through their campaigns and stay `control-flow-confirmed`; they are
 not byte-identical. The SGS `_VERS_STRING` / `_VERS_NUM` gate is still unmet.
 The driver has not been tested on hardware.
+
+## drvVBE20DisplayDriver — reconstructed, boot gate blocked
+
+The only driver in the tree reconstructed against a binary from a different OS
+release: the reference is `VBE20DisplayDriver_reloc` from OPENSTEP 4.2 User
+Patch 4, not Rhapsody. That is why `+driverKitVersionForVBE20DisplayDriver`
+returns 500 where the reference returns 420 (`IO_DRIVERKIT_VERSION`); the
+difference is the cross-release one appearing where it should, and it stays.
+
+What is verified:
+
+- 15 partition entries: 13 hand-written and 2 build-generated Kernel Server
+  methods. **All 13 hand-written entries are byte-identical in place**, at the
+  reference's own `__text` offsets. `__cstring` and `__data` are byte-identical.
+- The whole 2324-byte `__text` differs in 3 raw bytes, all in the two
+  build-generated methods: two in `+kernelServerInstance` (the reference leaves
+  `_VBE20DisplayDriver_instance` an unallocated common, our `kl_ld` allocates it,
+  cause unidentified) and one in `+driverKitVersionFor...`.
+- "Mapped" is 12 because entry 0 is unmapped as well as the two build-generated
+  ones: `source_map.py` keys a category implementation as `-[Class(Category) sel]`
+  and the stripped reference names it `-[Class sel]`. The ledger records it
+  against its real source line. Ledger: 13 `assembly-matched`, 2
+  `control-flow-confirmed`.
+- Builds and links; `parity_check.py` reports no missing string or symbol.
+
+What is not: **the boot gate has not been run, and must not be run until the
+kernel spec lands.** `Default.table` marks the driver `"Boot Driver" = "Yes"`, so
+the booter links it against the kernel with `sarld`. `_VBEModeInfo2IODisplayInfo`
+is undefined in the driver and no Rhapsody kernel exports it, so that link would
+fail, and a failed `sarld` link takes down every driver linked after it
+(`docs/boot/sarld-driver-link-limit.md`), surfacing as `panic: Missing EISA
+kernel bus class`, which names none of the cause. Running the gate now would
+produce a misleading panic, not a result. Two further differences are recorded
+as unidentified in the driver's `reconstruction/divergences.md`: the instance
+common above, which may matter at load time, and a 160-byte version object
+against our 112.
 
 ## drvIBMThinkPad760EDDisplay — reconstructed in part
 

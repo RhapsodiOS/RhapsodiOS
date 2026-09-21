@@ -600,7 +600,7 @@ static int		 vbeDisplayModeCount = 0;	/* __data + 4 */
 /*
  * Reference __text 2176, 100 bytes (98 of body and two 90 pads).  Dumps one
  * raw booter record into the third static buffer, reference __bss+592, 512
- * bytes.  This is what the VBEBooterMode parameters answer with.
+ * bytes (inferred as 1104 - 592, not measured).  VBEBooterMode answers with it.
  *
  * The push widths at reference __text 2182..2249 are what fix VBEModeRec's
  * field widths: five movzx from word (+0, +2, +4, +6, +8), eight movzx from

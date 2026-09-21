@@ -137,7 +137,14 @@
 DSTROOT = $(HOME)
 
 INCLUDED_ARCHS = i386
-I386_SYSROOT = /build/bootstrap-root
+
+# The host's own /lib/crt1.o is ppc-only, so an i386 tool will not link against
+# it and the startup object has to be named explicitly.  rbuild builds inside a
+# chroot whose root already supplies a fat /lib/crt1.o, /usr/lib and
+# /System/Library/Frameworks, so the prefix is empty there -- an absolute path
+# to a bootstrap root on the build host does not exist inside that chroot.
+# Override I386_SYSROOT on the make command line to build against one directly.
+I386_SYSROOT =
 OTHER_LDFLAGS = -nostdlib $(I386_SYSROOT)/lib/crt1.o -L$(I386_SYSROOT)/usr/lib -F$(I386_SYSROOT)/System/Library/Frameworks -framework System
 DEFSFILES = driverServer.defs
 OTHER_OFILES = driverServerUser.o

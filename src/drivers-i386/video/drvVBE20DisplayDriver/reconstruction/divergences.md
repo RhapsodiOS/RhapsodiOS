@@ -1857,7 +1857,8 @@ differ, and all three were ruled on before this task:
 
 | `__text` | reference | rebuilt | What it is |
 | --- | --- | --- | --- |
-| 2304 | `00 00` | `58 24` | `_VBE20DisplayDriver_instance`: the reference leaves it an unallocated common with a zero addend, our `kl_ld` allocates it. Both sides carry a length-2 relocation there, so the masked compare of extent 2300 is `MATCH`. |
+| 2304 | `00` | `58` | `_VBE20DisplayDriver_instance`: the reference leaves it an unallocated common with a zero addend, our `kl_ld` allocates it. Both sides carry a length-2 relocation there, so the masked compare of extent 2300 is `MATCH`. |
+| 2305 | `00` | `24` | The second byte of that same 4-byte immediate. `mov eax, imm32` at 2303 holds `00 00 00 00` in the reference against `58 24 00 00` (0x2458) in the rebuilt; 2306 and 2307 are `00` on both sides, so the operand accounts for two differing bytes, not one. |
 | 2316 | `a4` | `f4` | `IO_DRIVERKIT_VERSION` 420 against 500, `driverkit-3/driverkit/IODevice.h:45`. Must stay; forcing 420 would falsify the build. |
 
 `__TEXT,__text` is 2324 bytes on both sides with 169 relocations on both
@@ -2093,3 +2094,176 @@ as reviewed by hand.
   produced it from the other spelling, and this one does not.
 - Whether the four `strncmp` lengths were written as integers or as
   `strlen("...")`. Constant folding makes the two indistinguishable.
+
+## Closing the parity ledger (Task 8)
+
+No source changed in this task beyond two comments (below). The article under
+review is Task 7's build, `_reloc` 102412 bytes, SHA-256
+`77399531152E287487668F6222467CF9C1ECA449859B169A66352B608A3A36A1`, against the
+reference's 37984 bytes / `9FBC2CAF…68DADED`. The driver was not rebuilt.
+
+### String and symbol parity
+
+`tools/binrecon/parity_check.py` over the pair:
+
+```
+missing_strings (0):
+missing_symbols (0):
+extra_strings (0):
+extra_symbols (34):
+```
+
+**Nothing the reference has is missing from our build** -- no string and no
+text symbol. The 34 extras are the unstripped `-g` build's own: the thirteen
+`__text` function symbols with their `:fN` frame-size companions, the two
+derived-source paths (`VBE20DisplayDriver_instance.m`, `VBE20DisplayDriver_vers.c`),
+`VBE20DisplayDriver.m`, and one empty name. Extras are expected and are not
+findings. `extra_strings` being **0** is the stronger result: `__cstring` is
+not merely complete, it holds nothing the reference does not.
+
+### The full binrecon comparison
+
+`binrecon analyze` was re-run first, because the published rebuilt analysis
+still dated from Task 1, when `BINRECON_REBUILT` was a placeholder pointing at
+the reference itself -- the stale `run-summary.json` recorded `rebuilt_sha256`
+equal to the reference's. `binrecon compare` then reports:
+
+```
+normalized-functions: FAIL code=59 relocation=11 symbol-string-order=0
+                           layout=24 padding=610 metadata=504
+```
+
+`normalized-functions` cannot pass here and was never going to: acceptance is
+computed over the whole image, and our `_reloc` is 102412 unstripped bytes
+against 37984 stripped, so all 24 sections differ in layout. The per-extent
+verdicts are what carry the parity claim:
+
+| `__text` | size | `raw_equal` | `masked_equal` | binrecon status |
+| --- | --- | --- | --- | --- |
+| 0 | 142 | true | true | different |
+| 144 | 545 | true | true | different |
+| 692 | 292 | true | true | different |
+| 984 | 20 | true | true | different |
+| 1004 | 187 | true | true | different |
+| 1192 | 48 | true | true | assembly-matched |
+| 1240 | 674 | true | true | different |
+| 1916 | 7 | true | true | assembly-matched |
+| 1924 | 7 | true | true | assembly-matched |
+| 1932 | 242 | true | true | different |
+| 2176 | 98 | true | true | different |
+| 2276 | 12 | true | true | different |
+| 2288 | 12 | true | true | different |
+| 2300 | 12 | **false** | **false** | different |
+| 2312 | 12 | **false** | **false** | different |
+
+**Thirteen of fifteen extents are `raw_equal`** -- byte-for-byte, no masking
+involved -- and they are exactly the thirteen hand-written ones. The two that
+are not are exactly the two build-generated ones. This is independent
+corroboration of Task 7's `compare_vbe20.py` result, from a different tool with
+different masking rules. Read directly out of both Mach-O files, independently
+of either tool, `__TEXT,__text` is 2324 bytes on each side and differs in
+exactly three raw bytes -- 2304, 2305 and 2316 -- and nowhere else.
+
+**`status: different` on a `raw_equal: true` extent is not a byte finding.**
+binrecon's status folds in a symbolic layer: `calls differ`, `instruction
+references differ`, `instruction semantics differ`, `relocation target semantics
+differ`. Those fire because IDA resolves call and data targets to different
+absolute addresses in our unstripped, differently-laid-out image, even where the
+instruction bytes are identical. Where the reference and rebuilt SHA-256 of an
+extent are equal -- and for these thirteen they are -- the bytes settle the
+question and the symbolic layer does not overturn it.
+
+`2300` is worth one note. Task 7's masked compare called it `MATCH`; binrecon
+calls it `masked_equal: false`. Both are right about their own rule: the two
+differing bytes sit inside a relocated operand, which `compare_vbe20.py` masks,
+but binrecon additionally compares *relocation target semantics*, and an
+unallocated common with a zero addend is not the same target as a defined
+`__common` address. The underlying cause is the one already recorded, not a new
+one.
+
+### Ledger state
+
+All fifteen entries reviewed, `reviewer` "Pat Raynor" throughout,
+`reference_sha256` `9FBC2CAF…68DADED`, `rebuilt_sha256` the real
+`77399531…8A3A36A1` and not a copy of the reference's.
+
+- **Thirteen `assembly-matched`** -- the hand-written extents, each against
+  `VBE20DisplayDriver.m` at the line the source map records.
+- **Two `control-flow-confirmed`** -- `2300` and `2312`, the build-generated
+  pair, ledgered without a source path, each citing the ruling already in this
+  file.
+
+One tooling note, because the plan's command sequence does not run as written.
+`seed_ledger.py` always constructs its document with `rebuilt=None`, so a ledger
+seeded before the first successful link carries `rebuilt_sha256: null`. Once a
+real rebuilt exists, `load_ledger` rejects that document outright -- "ledger
+rebuilt identity differs from current artifact" -- and **every** `binrecon
+ledger` call, transition or plain read, fails. The hash had to be attached
+first, which was done through `binrecon.ledger.new_ledger` and `write_ledger`
+with both identities and the existing entries, so the only field that changed
+was `rebuilt_sha256`. Separately, `transition` forbids skipping states, so each
+entry was stepped `unexamined` -> `signature-confirmed` ->
+`control-flow-confirmed` (-> `assembly-matched`) rather than set in one hop.
+
+`binrecon analyze --ledger` proved safe for this ledger, against the risk
+`seed_ledger.py`'s own docstring warns about: all fifteen entries survived at
+their seeded boundaries, and `merge_evidence` replaced the seeded
+`analyzer_agreement.reasons` boilerplate ("IDA is the only analyzer that
+supports PowerPC", which is `seed_ledger.py` text on an i386 binary) with the
+run's real, empty reason list. That field was not hand-edited.
+
+### Entry 0 and the category key
+
+`__text` 0 stays `unmapped` in the generated source map, and the map was again
+not hand-edited -- doing so would fabricate provenance the generator cannot
+reproduce, and the next regeneration would undo it. The ledger's `reason` field
+carries the explanation instead: `source_map.py` keys a category implementation
+as `-[Class(Category) sel]` while the stripped reference names it
+`-[Class sel]`, so the two keys never meet. The entry is ledgered against
+`VBE20DisplayDriver.m:117`, the real source site inside `@implementation
+IOFrameBufferDisplay (UnnamedInitialization)`. Repairing `source_map.py` is a
+separate change and was not attempted here.
+
+### Two documentation corrections
+
+The byte table under "The parameter dispatch (Task 7)" said "exactly three" raw
+differing bytes but listed two rows, the first labelled `2304` while carrying
+two bytes. It now has three rows -- `2304`, `2305`, `2316` -- so the row count
+and the prose agree.
+
+The two reproduced-defect comments in `VBE20DisplayDriver.m` opened with
+different phrases: "Reference defect, reproduced verbatim" at `.m:155` and
+"Reproduced reference defect" at `.m:453`, so no single grep found both. Both
+now use **"Reproduced reference defect"**, which is also the heading form this
+file already uses for each of them, and each comment now carries the imperative
+in the source and not only here -- "Do not fix it" at `.m:155`, "Do not harden
+it" at `.m:453`. One grep for `Reproduced reference defect` finds all four
+sites.
+
+Both edits are comment-only. Proof: with all comments stripped and blank lines
+dropped, the source before and after is identical, SHA-256
+`0445b27af2876cf81986a256758a9ad19bd9660a9c7faf7b131f9a8f34f7003d` on both
+sides. The comment at `.m:453` was reflowed to hold its original line count, so
+the file stays 644 lines and every `source_line` the map and the ledger record
+still lands on its own method declaration.
+
+### Still unidentified, and still exempt
+
+Recorded as unexplained rather than given a manufactured cause:
+
+- **Why `kl_ld` allocates `_VBE20DisplayDriver_instance`** where Apple's link
+  left it an unallocated common. Build-generated, exempt at ledger level, and
+  flagged: it may matter at load time. The boot gate is what would reveal it,
+  and that gate is blocked on a separate kernel spec, so it will not run in
+  this effort. A load failure there must not be misdiagnosed as a source
+  defect.
+- **Why the version string is 160 bytes against our 112.** Generated from the
+  project name at build time. `VERSIONING_SYSTEM` was ruled out as the cause in
+  Task 3; the real cause is not identified. `__const` differs in size, 160
+  against 112, for this reason alone.
+
+### What this ledger does not claim
+
+It does not claim the driver loads or runs. Every statement in it is about bytes
+and symbols in a file. The boot gate that would test behaviour is Task 9, and it
+is blocked; this is the end of what static comparison can establish.

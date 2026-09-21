@@ -152,12 +152,12 @@ static int		 vbeDisplayModeCount = 0;	/* __data + 4 */
 	physAddr = (unsigned int)VBE_BOOTER_MODE->frameBuffer;
 
 	/*
-	 * Reference defect, reproduced verbatim: the extent of the frame
-	 * buffer is bytesPerScanline * yResolution, but reference __text
-	 * 188 reads the record's +4 (xResolution), not its +6.  The
-	 * kernel's own VBEModeInfo2IODisplayInfo uses +6 for the same
-	 * record.  Emitting +6 here would change 0FB7155C280100 into
-	 * 0FB7155E280100 and lose byte parity, so the defect stays; see
+	 * Reproduced reference defect: the extent of the frame buffer is
+	 * bytesPerScanline * yResolution, but reference __text 188 reads
+	 * the record's +4 (xResolution), not its +6.  The kernel's own
+	 * VBEModeInfo2IODisplayInfo uses +6 for the same record.  Emitting
+	 * +6 here would change 0FB7155C280100 into 0FB7155E280100 and lose
+	 * byte parity, so the defect stays.  Do not fix it; see
 	 * reconstruction/divergences.md.
 	 */
 	length = VBE_BOOTER_MODE->bytesPerScanline *
@@ -461,8 +461,8 @@ static int		 vbeDisplayModeCount = 0;	/* __data + 4 */
 	     * for any N.  Adding a guard would emit instructions the
 	     * reference does not have and lose byte parity, exactly as
 	     * correcting the XResolution arithmetic in
-	     * initFromDeviceDescription: would.  The absence is the
-	     * reference's behaviour; see reconstruction/divergences.md.
+	     * initFromDeviceDescription: would.  The absence is the reference's
+	     * behaviour.  Do not harden it; see reconstruction/divergences.md.
 	     */
 	    index = [self atoi:parameterName + 13];
 	    strcpy(answer,

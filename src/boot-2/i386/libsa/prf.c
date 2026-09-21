@@ -135,7 +135,11 @@ again:
 	case 'x': case 'X':
 		b = 16;
 		goto number;
-	case 'd':
+	case 'd': case 'u':
+		/* printn() has always formatted unsigned, so %u only ever
+		 * needed a case of its own; without one it printed nothing,
+		 * which is what left the booter reporting "K conventional /
+		 * K total memory". */
 		b = 10;
 		goto number;
 	case 'o': case 'O':

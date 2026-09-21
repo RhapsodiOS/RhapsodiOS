@@ -63,6 +63,7 @@
 #import "kernBootStruct.h"
 #import "stringConstants.h"
 #import <ufs/ffs/fs.h>
+#import "ufs_byteorder.h"
 
 char *gFilename;
 
@@ -73,7 +74,15 @@ static int ffs(register long mask);
 
 extern int label_secsize;
 
-#define BIG_ENDIAN_INTEL_FS __LITTLE_ENDIAN__
+/*
+ * UFS here may be written in either byte order: the filesystems NeXT's tools
+ * produced are big-endian, the ones this tree installs are not.  Picking one
+ * at compile time silently rejects the other -- a little-endian disk read as
+ * big-endian fails the superblock magic check and the booter finds no config
+ * files at all.  The kernel settles it at mount time by validating the
+ * superblock both ways (bsd/ufs/ffs/ffs_vfsops.c); do the same here.
+ */
+static int fs_rev_endian;
 
 #define DCACHE		1
 #define ICACHE		1
@@ -135,10 +144,8 @@ openi(int n, struct iob *io)
 	    for (i = max(ino_to_fsbo(io->i_ffs, n) - ICACHE_READAHEAD, 0),
 		 j = min(i+2*ICACHE_READAHEAD, INOPB(io->i_ffs)); i < j; i++) {
 		cacheFind(icache, n_round + i, 0, (char **)&ip);
-#if	BIG_ENDIAN_INTEL_FS
-#warning Building with Big Endian changes
-		byte_swap_dinode_in(&dp[i]);
-#endif	/* BIG_ENDIAN_INTEL_FS */
+		if (fs_rev_endian)
+			byte_swap_dinode_in(&dp[i]);
 		*ip = dp[i];
 		if (i == ino_to_fsbo(io->i_ffs, n)) {
 		    io->i_ino.i_din = *ip;
@@ -146,9 +153,8 @@ openi(int n, struct iob *io)
 	    }
 	}
 #else ICACHE
-#if     BIG_ENDIAN_INTEL_FS
-	byte_swap_dinode_in(&dp[ino_to_fsbo(io->i_ffs, n)]);
-#endif  /* BIG_ENDIAN_INTEL_FS */
+	if (fs_rev_endian)
+		byte_swap_dinode_in(&dp[ino_to_fsbo(io->i_ffs, n)]);
 	io->i_ino.i_din = dp[ino_to_fsbo(io->i_ffs, n)];
 #endif ICACHE
 	io->i_ino.i_number = n;
@@ -354,11 +360,7 @@ sbmap(struct iob *io, daddr_t bn)
 		bap = (daddr_t *)b[j];
 		sh /= NINDIR(io->i_ffs);
 		i = (bn / sh) % NINDIR(io->i_ffs);
-#if	BIG_ENDIAN_INTEL_FS
-		nb = NXSwapBigLongToHost(bap[i]);
-#else	/* BIG_ENDIAN_INTEL_FS */
-		nb = bap[i];
-#endif	/* BIG_ENDIAN_INTEL_FS */
+		nb = fs_rev_endian ? NXSwapBigLongToHost(bap[i]) : bap[i];
 		if(nb == 0) {
 #if	SYS_MESSAGES
 			error("bn void %d\n",bn);
@@ -509,9 +511,8 @@ readdir(struct dirstuff *dirp)
 #endif
 			    return (NULL);
 		    }
-#if	BIG_ENDIAN_INTEL_FS
-		    byte_swap_dir_block_in(io->i_buf, io->i_cc);
-#endif	/* BIG_ENDIAN_INTEL_FS */
+		    if (fs_rev_endian)
+			byte_swap_dir_block_in(io->i_buf, io->i_cc);
 #if DCACHE
 		    bcopy(io->i_buf + dirblkno * DIRBLKSIZ, bp, DIRBLKSIZ);
 		    dp = (struct direct *)(io->i_buf + off);
@@ -757,6 +758,18 @@ static int		fs_block_valid;
 
 #define SUPERBLOCK_ERROR	"Bad superblock: error %d\n"
 
+/*
+ * The same test the kernel uses to decide whether a superblock it just read
+ * makes sense; see ffs_mountfs().
+ */
+static int
+superblock_valid(struct fs *fs)
+{
+	return fs->fs_magic == FS_MAGIC &&
+	       fs->fs_bsize <= MAXBSIZE &&
+	       fs->fs_bsize >= sizeof(struct fs);
+}
+
 #if COMPRESSION
 int
 openmem(char *buf, int len)
@@ -840,32 +853,26 @@ gotfile:
 			    close(fdesc);
 			    return (-1);
 		    }
-#if	BIG_ENDIAN_INTEL_FS
-		    byte_swap_superblock(fs_block);
-#endif	/* BIG_ENDIAN_INTEL_FS */
-#if 0
-		printf("Read SB \n");
-		//sleep(1);
-#endif 1
+		    /*
+		     * Take the superblock as it came off the disk if it makes
+		     * sense, and only byte-swap it if it does not.  Whichever
+		     * way it validates is the order the rest of this file then
+		     * reads inodes and directories in.
+		     */
+		    fs_rev_endian = 0;
+		    if (!superblock_valid(fs_block)) {
+			byte_swap_superblock(fs_block);
+			if (!superblock_valid(fs_block)) {
+			    error(SUPERBLOCK_ERROR, 2);
+			    close(fdesc);
+			    return (-1);
+			}
+			fs_rev_endian = 1;
+		    }
 		    fs_block_valid = 1;
 		}
 		file->i_ffs = fs_block;
 		file->i_buf = malloc(MAXBSIZE);
-	}
-#if	BIG_ENDIAN_INTEL_FS
-#if 0
-		printf("IN BE_FS code \n");
-		//sleep(1);
-#endif 1
-
-	if (file->i_ffs->fs_magic != FS_MAGIC) {
-#if 0
-		printf("Bad magic in FS %d ; got %d\n", FS_MAGIC, file->i_ffs->fs_magic);
-		sleep(5);
-#endif 1
-		error(SUPERBLOCK_ERROR, 2);
-		close(fdesc);
-		return (-1);
 	}
 	/*
 	 *  The following is a gross hack to boot disks that have an actual
@@ -874,18 +881,19 @@ gotfile:
 	 *
 	 *  We can make this assumption because we can only boot disks with
 	 *  a 512 byte sector size.
+	 *
+	 *  Only the byte-swapped disks were ever fixed up this way, so leave
+	 *  the others reading exactly as they did before.
 	 */
-#if 0
-		printf("SB  magic ok \n");
-		//sleep(1);
-#endif 1
-	if (file->i_ffs->fs_fsize == 0) {
-		error(SUPERBLOCK_ERROR,3);
-		close(fdesc);
-		return (-1);
+	if (fs_rev_endian) {
+		if (file->i_ffs->fs_fsize == 0) {
+			error(SUPERBLOCK_ERROR, 3);
+			close(fdesc);
+			return (-1);
+		}
+		file->i_ffs->fs_fsbtodb =
+		    ffs(file->i_ffs->fs_fsize / DEV_BSIZE) - 1;
 	}
-	file->i_ffs->fs_fsbtodb = ffs(file->i_ffs->fs_fsize / DEV_BSIZE) - 1;
-#endif	/* BIG_ENDIAN_INTEL_FS */
 
 	if ((i = find(cp, file)) == 0) {
 #if 0

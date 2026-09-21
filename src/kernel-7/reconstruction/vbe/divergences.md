@@ -949,9 +949,14 @@ byte stream, not two measurements that happen to sit in the same table row. The
 second field, `1452`, is only `ceil(1486224 / 1024)`, the 1 KiB block count; the
 discriminating half is `17135`.
 
-**This refutes the suspicion that `17135 1452` was the superseded kernel's.** It
-is the current kernel's. What the superseded kernel's `sum` was is now
-unknowable, and no claim is made about it.
+**This establishes the attribution: `17135 1452` belongs to the current kernel**,
+`605F6A39…27C1`. The guest's `sum` and a local reimplementation over the pulled
+bytes both produce it from that one byte stream. It does **not** establish the
+provenance. A 16-bit sum can collide, so these measurements cannot show that
+Task 2 did not run `sum` on the superseded build and happen to obtain the same
+value; how Task 2 came by the number is not recoverable from here. What the
+superseded kernel's own `sum` was is now unknowable. No claim is made about
+either.
 
 ### The 539-byte extent hashes, re-measured (Task 3)
 
@@ -1327,6 +1332,24 @@ literals, or move the record — it has to change both sites together, and the
 kernel's `VBE_FRAMEBUFFER_VIRT` (`0x12854`) with them. If the two drift apart
 the driver and the console will read different memory and neither will say so.
 
+Neither `VBE_BOOTER_MODE` nor `VBE_FRAMEBUFFER_VIRT` is `volatile`. That is
+harmless today — boot is single-threaded and there is no producer — but once
+spec 3 supplies one, both become reads of a word written by unrelated code, so
+Task 4/5 and spec 3 should decide the question rather than inherit it. The code
+was deliberately left unchanged.
+
+**Spec 3's producer must also write `0x12854` after `getKernBootStruct()`'s
+`bzero` of `_reserved[7500]`, or narrow that `bzero` to exclude it.** Both
+`0x12854` and `0x12858` sit inside `_reserved[7500]` (see above), and that
+`bzero` is in the booter (`src/boot-2/i386/libsaio/bootstruct.c:79`, called
+early from `boot.c:414`). A write that lands before the zeroing is silently
+erased, and the failure would present as "the guard never passes" with nothing
+else visibly wrong. A booter-side producer is therefore the exposed one; a
+kernel-side producer, as 4.2's `pmap_bootstrap` is, runs after the booter has
+finished **[INFERENCE: from the booter-then-kernel order, not traced here]**.
+Whether anything else clears the word between the producer and this function's
+read was not checked.
+
 ### The build: `rbuild kernel` needs `--toolchain`, and the documented line omits it
 
 The invocation in `docs/build/rbuild-universal.md:195`:
@@ -1427,9 +1450,18 @@ root cannot be assembled, **with** it the kernel cannot configure.
 
 This task worked around it with a `sed` copy of the profile in `/tmp` adding
 `/usr/local/bin` to `path`, passed as `--toolchain /tmp/task3-gcc-darwin.conf`.
-**No repo file was changed** — as with Task 2's `libcc.a` override, the real
-fix belongs in guest provisioning or in the profile, and is not Task 3's to
-make.
+The copy is ephemeral, so here is the exact command, as run on the guest
+**[measured]** — it writes the copy and leaves the repo's profile untouched:
+
+```
+sed -e 's|^path=.*|path=/build/tools/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin|' \
+    /build/src/rbuild-1/toolchains/gcc-darwin.conf > /tmp/task3-gcc-darwin.conf
+```
+
+Its only effect is the one `path=` line; `grep '^path=' /tmp/task3-gcc-darwin.conf`
+afterwards should show `/usr/local/bin` as the last component. **No repo file
+was changed** — as with Task 2's `libcc.a` override, the real fix belongs in
+guest provisioning or in the profile, and is not Task 3's to make.
 
 ### The build that the results below come from
 
@@ -1463,6 +1495,31 @@ The only diagnostic from the new code is Task 2's known one, on the
 ```
 FBConsole.c:1477: warning: cast to pointer from integer of different size
 ```
+
+### Where the kernel these results come from is kept
+
+`/tmp/task3-kvbe-dst` and the guest's `/tmp` are ephemeral, which is exactly how
+`AC2213A3…010F` was lost (A1). The evidence below is **not** pinned to that
+path. A retained copy of the extracted kernel exists **outside the repo**, in
+a session scratchpad:
+
+```
+C:/Users/RAYNOR~2/AppData/Local/Temp/claude/D--RhapsodiOS/3240cc62-057c-4cc2-b38b-dd06f360ea4c/scratchpad/task3-mach_kernel-final
+```
+
+1,490,352 bytes; re-checked when this note was written: SHA-256
+`1C0F8B80…215D` and a reimplemented BSD `sum` of `39989 1456`, both equal to
+the values above **[measured]**. It is a session scratchpad, so it is retained
+for that session and is not a durable store; built kernels are deliberately not
+committed.
+
+Nor is the check re-runnable from the commit alone. A rebuild from this source
+with the commands above should reproduce the 539-byte extent hash
+(`DE5CA40A…1E13`) and the three `nm` addresses, and should **not** reproduce the
+whole-kernel SHA-256 or `sum`, which move with the embedded build timestamp
+**[INFERENCE: from the two-build control above; a third build was not run]**.
+`compare_kvbe.py` is not in the commit either — harnesses are not committed —
+so the 411/411 comparison needs that script supplied separately.
 
 ### Symbols, and Task 2's extent re-checked against this kernel
 

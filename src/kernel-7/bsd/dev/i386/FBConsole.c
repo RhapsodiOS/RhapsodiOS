@@ -1504,6 +1504,9 @@ void VBEModeInfo2IODisplayInfo(VBEModeRec *mode, IODisplayInfo *info)
 // NIL. That is the intended state, not a stub: the console falls back to VGA,
 // which is what boots today anyway.
 //
+// Neither define is volatile: harmless while boot is single-threaded and
+// there is no producer, but a question to settle once spec 3 supplies one.
+//
 #define VBE_BOOTER_MODE		((VBEModeRec *)0x12858)
 #define VBE_FRAMEBUFFER_VIRT	(*(void **)0x12854)
 
@@ -1513,9 +1516,10 @@ IOConsoleInfo *FBAllocateVBEConsole(void)
 // _FBAllocateVBEConsole at 0x0019ECB8 in the i386 slice of the OPENSTEP 4.2
 // mach_kernel (212 bytes).
 //
-// STRUCTURAL PARITY ONLY, NOT BYTE PARITY. 44 of the reference's 212 bytes
-// are addresses that cannot match here -- four rel32 call operands and the
-// seven absolute vtable pointers.
+// STRUCTURAL PARITY ONLY, NOT BYTE PARITY: some of the reference's bytes are
+// addresses that cannot match here. The count and the item-by-item
+// correspondence are in src/kernel-7/reconstruction/vbe/divergences.md, under
+// "Task 3: writing FBAllocateVBEConsole".
 //
 // The reference's tail (+69..+196) carries its own copy of
 // FBAllocateConsole's body (+6..+135) rather than calling it: same two

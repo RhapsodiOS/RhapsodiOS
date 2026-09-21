@@ -228,23 +228,36 @@ The `Loaded Server` segment (`Server Name`, `Load Commands`, `Instance Var`,
 ## 6. Parity policy
 
 The reference was compiled against OPENSTEP 4.2's `IOFrameBufferDisplay`. We
-compile against Rhapsody's. If the inherited ivar block changed size between the
-two releases, every ivar access in the reconstruction shifts by a constant and
-byte-parity fails across the whole driver from one root cause — not because the
-source is wrong.
+compile against Rhapsody's.
+
+`__OBJC,__instance_vars` in the reference is **0 bytes**: `VBE20DisplayDriver`
+declares no ivars of its own. Its `instance_size` of 552 is therefore entirely
+inherited, and it is a direct measurement of 4.2's
+`Object` + `IODevice` + `IODisplay` + `IOFrameBufferDisplay` chain.
+
+That bounds the exposure. The driver cannot suffer a shift in its *own* ivars
+because it has none. What it can suffer is a shift in the *inherited* ones it
+reads — `displayModes` and `displayModeCount` return `_displayModes` and
+`_displayModeCount`, both declared on Rhapsody's `IOFrameBufferDisplay`. If the
+chain's layout moved between releases, those two functions (24 and 12 bytes)
+encode different offsets and will not byte-match. Every other function in the
+partition is untouched by the question.
 
 Every other reconstruction in this tree targets a same-release reference, so
-this risk is new and is resolved by measurement before a target is chosen.
+the question is new even though its blast radius is small.
 
-**Phase 0** computes Rhapsody's `IODisplay` + `IOFrameBufferDisplay` instance
-size and compares it against the 552 the reference implies.
+**Phase 0** computes Rhapsody's `Object` + `IODevice` + `IODisplay` +
+`IOFrameBufferDisplay` instance size and compares it against 552.
 
-- **If they agree**, the spec targets byte-parity throughout, tracked in
-  `ledger.json` exactly as Cirrus and ThinkPad are.
+- **If they agree**, the chain did not move; target byte-parity throughout,
+  tracked in `ledger.json` exactly as Cirrus and ThinkPad are.
 - **If they differ**, `divergences.md` records the delta and its cause once, up
-  front. Functions that touch no ivars still target byte-parity; the rest target
-  function-parity, and each such ledger entry cites the shared root cause rather
-  than repeating it.
+  front, and the two ivar-reading functions target function-parity citing that
+  root cause. The other eleven still target byte-parity.
+
+Either way the measurement is recorded, because a 552-byte match is itself
+evidence about how much of DriverKit survived the 4.2-to-Rhapsody transition,
+and specs 2 and 3 will want it.
 
 Phase 0 is cheap — it reads two headers and one number out of the reference —
 and it is a gate: no reconstruction work starts until the target is fixed.
@@ -302,7 +315,8 @@ prefix.
 
 ## 9. Risks
 
-**The ivar-layout shift** is the main one, and §6 handles it by measuring first.
+**The inherited ivar-layout shift**, bounded by §6 to two functions totalling 36
+bytes, and measured before any code is written.
 
 **`initFromDeviceDescription:` at 548 bytes and
 `getCharValues:forParameter:count:` at 676** are over half the driver between

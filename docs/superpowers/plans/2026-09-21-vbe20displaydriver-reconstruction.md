@@ -1230,6 +1230,37 @@ both sides."
 
 ---
 
+## Task 9: Boot gate and status docs — BLOCKED ON SPEC 2, do not run yet
+
+> **This task cannot run until the kernel exports `_VBEModeInfo2IODisplayInfo`.**
+>
+> `Default.table` marks this driver `"Boot Driver" = "Yes"`, and the booter
+> links every boot driver against the kernel with `sarld`
+> (`docs/boot/sarld-driver-link-limit.md`). The symbol is undefined in our
+> `_reloc`, nothing in `src/kernel-7` defines it, and no shipped Rhapsody
+> kernel exports it — so the link fails.
+>
+> **The failure cascades.** That document records the same class of failure
+> taking down every driver linked afterwards:
+>
+> ```
+> Error occurred while linking driver EIDE:
+> Error occurred while linking driver ISASerialPort:
+> previous fatal errors occured, can no longer succeed
+> ... Floppy, PS2Keyboard, PCIBus, EISABus, all the same
+> ```
+>
+> and surfacing as `panic: Missing EISA kernel bus class`, which names none of
+> the cause. Running this task now would produce a misleading panic, not a gate.
+>
+> **What unblocks what.** Spec 2 (the kernel functions) is sufficient for the
+> gate as written below: the driver links, loads, reads the `bzero`'d
+> `_reserved` slack, sees `xResolution == 0`, takes the "card not in VBE mode"
+> path and registers. Spec 3 (the booter) is required only for the deeper
+> `using VBE mode %d` path, which this spec already scopes out.
+>
+> Task 8 is unaffected and closes spec 1 as far as it can go.
+
 ## Task 9: Boot gate and status docs
 
 **Files:**

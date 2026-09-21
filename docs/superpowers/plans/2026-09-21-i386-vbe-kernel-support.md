@@ -370,8 +370,17 @@ FBAllocateVBEConsole(void)
 }
 ```
 
-Fill both from `$DIVERGE`. If D2 came back "not determinable", **stop and
-report** rather than guessing at half a guard. **How
+Fill both from `$DIVERGE`.
+
+**D2 is answered, and the guard will never pass.** `0x12854` is the kernel
+virtual address of the mapped VESA framebuffer, written by `pmap_bootstrap` in
+the 4.2 kernel. **Spec 3 owns adding that mapping**, so on our side nothing
+writes it yet and this function will always return NULL.
+
+That is expected and correct. Write the guard as the reference has it, comment
+that its producer arrives with spec 3, and record it in `$DIVERGE`. **Do not
+write a placeholder producer**, do not stub the address, and do not weaken the
+guard to make the function appear live. **How
 that address is spelled in our tree is the open question**: spec 1's driver
 hard-codes `0x12858` because 4.2's `KERNBOOTSTRUCT` put it there, and spec 1
 established that in *our* struct that offset lands inside `_reserved[7500]`

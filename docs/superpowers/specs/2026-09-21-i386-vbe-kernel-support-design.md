@@ -327,6 +327,15 @@ Adding the mapping means touching `pmap_bootstrap` — early kernel
 initialisation, the riskiest code in the tree, and unexercised by any gate here.
 That is why it is called out rather than absorbed.
 
-**Owner undecided.** The candidates are: extend this spec, give it to spec 3
-alongside the booter work that produces the physical address, or make it a
-fourth spec covering the console path end to end.
+**Decided: spec 3 owns it.** It lands alongside the booter work that produces
+the physical address, so the framebuffer path arrives and is exercised as one
+piece rather than half here and half there. Early-init changes stay out of a
+spec that cannot test them.
+
+**Consequence for this spec, stated plainly.** `FBAllocateVBEConsole` ships
+correct in shape and **inert**: its second guard reads an address nothing
+writes, so it always returns NULL, so the Task 4 wiring always falls through to
+the existing VGA console. That is indistinguishable from the behaviour the
+invisibility requirement (§9) demands anyway, and it is the honest description
+of what this spec delivers. Do not write a placeholder producer to make it look
+live.

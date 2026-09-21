@@ -533,3 +533,33 @@ testIDs:ForAdapter:andSocket:]`, `-[PCMCIAKernBus entry:matchesUserIOPorts:]`,
 tupleListFromSocket:mappedAddress:]`, `+[PCMCIAResourceDriver probe:]`,
 `-[PCMCIAResourceDriver initFromDeviceDescription:]`, `-[PCMCIAResourceDriver
 getCharValues:forParameter:count:]`.
+
+## Duplicate PCMCIA0 registration — resolved 2026-09-20
+
+The driver registered `PCMCIA0` twice on every boot. This was recorded as a
+duplicate instantiation that was "not yet explained"; it is now explained, and
+it was ours.
+
+A control boot of Apple's own shipped `PCMCIABus_reloc`, on the same image and
+the same rebuilt kernel, registers `PCMCIA0` exactly once. Disassembling the
+reference settles where it registers:
+
+| Reference method | Selectors sent |
+| --- | --- |
+| `+[PCMCIAResourceDriver probe:]` (61 bytes) | `alloc`, `initFromDeviceDescription:` |
+| `-[PCMCIAResourceDriver initFromDeviceDescription:]` (112 bytes) | super, `setName:`, `setDeviceKind:`, `registerDevice` |
+
+Apple registers from `initFromDeviceDescription:` and **not** from `+probe:` —
+the opposite of the usual DriverKit convention, which is presumably why the
+reconstruction added the call to `+probe:` as well. Our
+`initFromDeviceDescription:` already matched the reference; the extra
+`[instance registerDevice]` in `+probe:` was the whole defect. It has been
+removed, and the rebuilt driver now registers once and reaches the desktop.
+
+Both methods were `control-flow-confirmed`, never `assembly-matched`, so no
+byte-identity claim was ever made for them. But an extra `registerDevice` is a
+differing call target, which is exactly what that status is supposed to cover —
+the check missed it. A sweep of every driver in `src/drivers-i386` found no
+other file sending `registerDevice` from both `+probe:` and
+`initFromDeviceDescription:`.
+

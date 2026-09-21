@@ -126,15 +126,14 @@ int LookForPCMCIAID(unsigned int instance, char *idBuffer, char *output, unsigne
 + (BOOL)probe:deviceDesc
 {
     id instance;
-    int result;
 
-    /* Allocate and initialize resource driver */
+    /* Allocate and initialize resource driver.  The reference registers the
+     * device from initFromDeviceDescription:, not from here; sending
+     * registerDevice again at this point registers PCMCIA0 a second time.
+     */
     instance = [[PCMCIAResourceDriver alloc] initFromDeviceDescription:deviceDesc];
 
-    /* Call registerDevice */
-    result = [instance registerDevice];
-
-    if (result == 0) {
+    if (instance == nil) {
         return NO;
     }
     return YES;

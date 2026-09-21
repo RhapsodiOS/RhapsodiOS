@@ -8,7 +8,13 @@ USRBIN = $(DSTROOT)/usr/bin
 INSTALLDIR = $(DSTROOT)/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders/standalone
 
 DEBUG = -O
-CFLAGS	= $(DEBUG) $(MORECPP) $(RC_CFLAGS) -g -Wmost -Wno-precomp
+# rcz is installed into the product as /usr/bin/rcz, so it has to be built for
+# the architectures being built rather than for whatever the build host is.
+# The arch-specific subdirectories name their own -arch, so the top-level
+# Makefile strips it out of RC_CFLAGS before anything down here sees it; take
+# it from RC_ARCHS instead.  Empty RC_ARCHS still builds for the host.
+RCZ_ARCHFLAGS = $(patsubst %,-arch %,$(RC_ARCHS))
+CFLAGS	= $(DEBUG) $(MORECPP) $(RC_CFLAGS) $(RCZ_ARCHFLAGS) -g -Wmost -Wno-precomp
 DEFINES=
 CONFIG = hd
 INC = -I. -I$(SYMROOT) -I$(UTILDIR) -I$(LIBSADIR)

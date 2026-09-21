@@ -48,7 +48,10 @@ ALLSRC = $(FOREIGNSRC) $(FOREIGNBIN) $(SFILES) $(CFILES) \
 	$(HFILES) $(OTHERFILES)
 DIRS_NEEDED = $(OBJROOT) $(SYMROOT)
 BOOT2ADDR = 3000
-MAXBOOTSIZE = 45056
+# boot1 loads boot2 from raw sectors and reads exactly LOADSZ of them, so that
+# is the real ceiling.  Read it out of boot1.s rather than keeping a second
+# copy here that can drift out of step with it.
+BOOT1SRC = ../boot1/boot1.s
 
 all: $(DIRS_NEEDED) boot
 
@@ -58,13 +61,22 @@ boot: machOconv $(OBJS) $(LIBS)
 	machOconv $(SYMROOT)/boot.sys $(SYMROOT)/boot
 	size $(SYMROOT)/boot.sys
 	ls -l $(SYMROOT)/boot
-	@( size=`ls -l $(SYMROOT)/boot | gawk '{ print $$5}'` ; \
-	  if expr "$$size" ">" "$(MAXBOOTSIZE)" > /dev/null ;\
+	@( max=`gawk '/^LOADSZ/ { print $$3 * 512 }' $(BOOT1SRC)` ; \
+	  if [ -z "$$max" ] ;\
 	  then \
-	    echo "Booter executable larger than $(MAXBOOTSIZE) bytes" ;\
+	    echo "Cannot read LOADSZ from $(BOOT1SRC)" ;\
 	    rm $(SYMROOT)/boot ;\
 	    exit 1;\
-	  fi)
+	  fi ;\
+	  size=`ls -l $(SYMROOT)/boot | gawk '{ print $$5}'` ; \
+	  if expr "$$size" ">" "$$max" > /dev/null ;\
+	  then \
+	    echo "Booter executable is $$size bytes; boot1 reads only $$max" ;\
+	    rm $(SYMROOT)/boot ;\
+	    exit 1;\
+	  fi ;\
+	  spare=`expr $$max - $$size` ; \
+	  echo "booter $$size bytes of $$max, $$spare to spare" )
 	
 
 prompt.o: vers.h

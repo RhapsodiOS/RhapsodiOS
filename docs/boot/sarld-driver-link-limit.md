@@ -125,14 +125,42 @@ Verified: our `boot2`, our `sarld` and our `drvEIDE` boot together to userland
 on our kernel, and the prompt reads `639K conventional / 129535K total memory`.
 
 Note that `boot2` is close to its ceiling. `boot1` reads `LOADSZ` sectors --
-88, or 45,056 bytes -- and our `boot2` is 44,576. There are 480 bytes of
-headroom, and nothing warns when they run out.
+88, or 45,056 bytes -- and our `boot2` is 44,576, leaving 480 bytes of headroom.
+
+`boot2/Makefile` has always failed the build when the booter went over, but it
+kept its own copy of the limit as `MAXBOOTSIZE = 45056`, which could drift away
+from `LOADSZ`, and it said nothing at all until the limit was already breached.
+It now reads `LOADSZ` out of `boot1.s` and prints the headroom on every build:
+
+```
+booter 44576 bytes of 45056, 480 to spare
+```
+
+It fails if the booter is too large, and also if `LOADSZ` cannot be read, so a
+rename in `boot1.s` cannot quietly disable the check.
+
+## Also fixed: rcz was built for the wrong architecture
+
+`rbuild buildpackage --arch i386 src/boot-2` built everything and then failed:
+
+```
+path usr/bin/rcz: code architecture mismatch
+(CPU ppc-apple-rhapsody; required i386-apple-rhapsody)
+```
+
+`rcz` is not just a build tool -- it ships, and Apple's own i386 install has
+`/usr/bin/rcz` as an i386 executable. `gen/rcz/Makefile` took its architecture
+entirely from `RC_CFLAGS`, but the top-level `Makefile` passes every
+subdirectory `RC_CFLAGS=$(ARCHLESS_RC_CFLAGS)`, with `-arch` stripped out,
+because the `i386` and `ppc` subdirectories name their own. Nothing then told
+`gen` what to build for, so it built for the host. It now takes the
+architectures from `RC_ARCHS`, which `gen/Makefile` already forwards.
+
+The package builds clean, and the `rcz` in it is `cputype 7` at 17,360 bytes
+against the 17,428 Apple shipped.
 
 ## Still open
 
-- `rbuild buildpackage --arch i386 src/boot-2` builds everything but then fails
-  its architecture check on `usr/bin/rcz`, a host tool the package installs into
-  the product root.
 - The big-endian path is now reachable only on a big-endian disk, and there is
   no such image here to test it against.
 

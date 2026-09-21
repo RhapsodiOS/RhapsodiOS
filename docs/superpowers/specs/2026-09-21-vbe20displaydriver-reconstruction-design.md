@@ -158,30 +158,37 @@ The mode array is a hard-coded `KERNBOOTSTRUCT` member that the booter fills,
 and the reconstruction must emit plain integer constants carrying no symbol.
 
 **This is the hinge for spec 3, and Task 4 measured the damage.** Those offsets
-are into *OPENSTEP 4.2*'s `KERNBOOTSTRUCT`. Laying out Rhapsody's struct from
-`src/boot-2/i386/libsa/kernBootStruct.h` field by field puts `_reserved[7500]`
-at `0x398..0x20E4` (920..8420) and `boot_video` at 8420:
+are into *OPENSTEP 4.2*'s `KERNBOOTSTRUCT`. Rhapsody's struct, measured on the
+build guest with `offsetof` and `cc -arch i386 -S` against
+`src/boot-2/i386/libsa/kernBootStruct.h` — not by hand; an earlier hand layout
+in this spec was 12 bytes out — places:
 
-| Address | Falls in |
+| Field | Range |
 | --- | --- |
-| `0x1858` (6232) | `_reserved[7500]` |
-| `0x1870` (6256) | `_reserved[7500]` |
+| `_reserved[7500]` | 908 (`0x38C`) .. 8408 (`0x20D8`) |
+| `boot_video` | 8408 .. 8432 |
 
-Both land in reserved slack. Nothing under `src/` writes them, and this
-booter's only video hand-off is `kernBootStruct->video` at
-`boot2/graphics.c:204-208`.
+Both `0x1858` (6232) and `0x1870` (6256) fall inside `_reserved`. Nothing under
+`src/` writes them, and this booter's only video hand-off is
+`kernBootStruct->video` at `boot2/graphics.c:204-208`.
 
 **The operational consequence:** booted on Rhapsody today, the driver reads
-uninitialised slack, sees `xResolution == 0`, takes the "card not in VBE mode"
-path and exports an empty mode list. That is the expected result of this spec's
-gate 3 — and it is expected for *two* independent reasons now, not one: the
-booter never enters a VBE mode, and even if it did, it would not write where
-the driver reads.
+`_reserved`, which `getKernBootStruct()` has `bzero`'d
+(`src/boot-2/i386/libsa/bootstruct.c:84`) — so it reads deterministic zeros,
+not garbage. `xResolution` is 0, the driver takes the "card not in VBE mode"
+path and exports an empty mode list. That is the expected result of gate 3, and
+it is now expected for *two* independent reasons: the booter never enters a VBE
+mode, and even if it did it would not write where the driver reads.
+
+One arithmetic coincidence worth flagging to spec 3: `0x1870 + 0x880` is 8432,
+exactly the end of `boot_video`. So the array the reference declares overlaps
+`video` in our layout. Whether `parseVESAModes:size:` would ever walk that far
+is unknown.
 
 Spec 3 therefore cannot simply adopt the 4.2 constants. It must either place
-the array where the driver already reads — inside `_reserved`, which means
-fixing that offset as ABI — or add real members and accept that the
-reconstruction's hard-coded addresses become a recorded divergence.
+the array where the driver already reads — inside `_reserved`, which fixes that
+offset as ABI — or add real members and accept that the reconstruction's
+hard-coded addresses become a recorded divergence.
 
 `boot_video` in `machdep/i386/kernBootStruct.h` has six `unsigned long` and no
 room for an array of these, which is why spec 3 has to find or make the space.

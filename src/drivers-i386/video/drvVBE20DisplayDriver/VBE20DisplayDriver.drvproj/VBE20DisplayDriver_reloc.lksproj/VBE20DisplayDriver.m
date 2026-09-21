@@ -275,6 +275,14 @@ static int		 vbeDisplayModeCount = 0;	/* __data + 4 */
  * printed by the *first* %d - the one labelled "Height:" - is the field at
  * +4, height, and the second is +0, width.  The label order and the struct
  * order are opposites here.
+ *
+ * "Refresh:0Hz" is the reference's own literal, not a slip in this
+ * transcription.  It is part of the format string at reference __cstring+344
+ * (address 0xA6C, pushed at __text 1018), and no argument feeds it:
+ * IODisplayInfo.refreshRate exists, and descriptionForDisplayInfo: does print
+ * it (the load at +10h, __text 2126), but nothing in this method's extent
+ * loads +10h through the info pointer.  The zero is hardcoded here exactly as
+ * it is in the reference.
  */
 - (char *)modeStringForDisplayInfo:(IODisplayInfo *)info
 {
@@ -293,9 +301,17 @@ static int		 vbeDisplayModeCount = 0;	/* __data + 4 */
      * and "BW:" at 1124, keep their own cleanup because code follows them.
      * Nothing in the source expresses that merge.
      *
-     * Neither switch has a default: on an unlisted bitsPerPixel the reference
-     * jumps straight to the return at __text 1179 with the colour-space
-     * prefix already appended and nothing after it.
+     * Neither switch has a default arm that does anything: on an unlisted
+     * bitsPerPixel the reference jumps straight to the return at __text 1179
+     * (the jmp at 1075, 1090 and 1154) with the colour-space prefix already
+     * appended and nothing after it.
+     *
+     * That is why the guest build prints six "enumeration value ... not
+     * handled in switch" (-Wswitch) warnings against this method, two for the
+     * RGB switch and four for the BW one.  They are expected.  Do not silence
+     * them: an empty "default: break;" emits no code, so the binary cannot say
+     * whether the original had one, and adding it would be a source construct
+     * chosen for build-output cosmetics rather than read from the binary.
      */
     if (info->colorSpace == IO_RGBColorSpace) {
 	strcat(modeString, "RGB:");
@@ -374,8 +390,16 @@ static int		 vbeDisplayModeCount = 0;	/* __data + 4 */
  * static buffer, reference __bss+80, 512 bytes.
  *
  * Both locals start as NULL - reference __text 1940 and 1942 are "xor ecx,
- * ecx" and "xor ebx, ebx" - and neither switch has a default, so an
- * out-of-range enum reaches the sprintf with a null %s.
+ * ecx" and "xor ebx, ebx" - and neither switch has a default arm that does
+ * anything, so an out-of-range enum reaches the sprintf with a null %s.  That
+ * is read from where the misses land: the bounds-check "ja" at 1948, the jump
+ * table's default, goes to 2029, and the colour-space tree's last "jmp" at
+ * 2049 goes to 2081.  Those are the first instructions after the bitsPerPixel
+ * switch and after the colorSpace switch, and no code sits on either path.
+ * An empty "default: break;" would emit nothing, so the binary cannot show
+ * whether the source had one.  This method draws no -Wswitch warning, because
+ * its switches list every enumerator; the six warnings come from
+ * modeStringForDisplayInfo:, and are explained there.
  *
  * The switch on bitsPerPixel compiles to a jump table (bounds check "cmp
  * dword ptr [edx+18h], 5 / ja" at 1944 and the indirect jump at 1953), the
@@ -383,10 +407,15 @@ static int		 vbeDisplayModeCount = 0;	/* __data + 4 */
  * not dense.  Both compares are unsigned, which is what switching on an
  * all-non-negative enum gives.
  *
- * The seventeen values pushed at reference __text 2081..2144 are the
- * IODisplayInfo fields at +0, +4, +8, +0Ch, +10h, +14h, the two strings,
- * +20h, +60h, +64h, +68h, +6Ch, +74h, +78h, +7Ch and +80h.  +70h is absent:
- * that is _reserved1, and the reference does not print it.
+ * cdecl pushes right to left, so the seventeen pushes at reference __text
+ * 2081..2144 run in the reverse of the argument order.  In push order they
+ * are IODisplayInfo +80h, +7Ch, +78h, +74h, +6Ch, +68h, +64h, +60h, "lea
+ * edx+20h", the colorSpace string (ebx), the bitsPerPixel string (ecx), then
+ * +14h, +10h, +0Ch, +8, +4 and +0.  The sprintf arguments, written below,
+ * are that list read back to front: the fields at +0, +4, +8, +0Ch, +10h,
+ * +14h, the two strings, +20h, +60h, +64h, +68h, +6Ch, +74h, +78h, +7Ch and
+ * +80h.  +70h is absent: that is _reserved1, and the reference does not print
+ * it.
  */
 - (char *)descriptionForDisplayInfo:(IODisplayInfo *)info
 {
@@ -456,8 +485,10 @@ static int		 vbeDisplayModeCount = 0;	/* __data + 4 */
  * byte (+0Ah..+11h) and one dword load (+14h).  The three mask sizes and the
  * three field positions are interleaved in the record - size, position, size,
  * position, size, position - but printed grouped, all three sizes and then
- * all three positions, so the push order is +0Ch, +0Eh, +10h, +0Dh, +0Fh,
- * +11h and not the record's own order.
+ * all three positions, so the arguments run +0Ch, +0Eh, +10h, +0Dh, +0Fh,
+ * +11h and not the record's own order.  cdecl pushes right to left, so the
+ * pushes run the other way: +11h, +0Fh, +0Dh, +10h, +0Eh, +0Ch, at reference
+ * __text 2186..2211.
  */
 - (char *)descriptionForVBEMode:(VBEModeRec *)mode
 {

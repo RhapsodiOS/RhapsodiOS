@@ -1620,10 +1620,23 @@ field:
 ```
 
 `cdecl` pushes right to left, so the last push is argument one: the call is
-`sprintf(buf, fmt, info->height, info->width)`. Writing the arguments in the
-order the labels read would swap two `mov` displacements and lose parity. This
-is the same trap Task 5 recorded from the other side, and it is the reason the
-source comment names the loads rather than the labels.
+`sprintf(buf, fmt, info->height, info->width)`. The arguments therefore
+**agree** with the format string's label order, `Height:` then `Width:`. What
+does not agree is the struct, where `width` is at +0 and `height` at +4:
+transcribing the `mov`/push order (+0 first), or writing the arguments in
+struct order, would give `info->width, info->height`, swap the two `mov`
+displacements and lose parity. The labels are no guide to field *offsets* in
+this function -- `descriptionForDisplayInfo:`'s format string, by contrast,
+does follow struct order -- which is why the source comment derives each field
+from the loads.
+
+The literal `Refresh:0Hz` in that format string is the reference's own text,
+not a transcription slip. It is part of the string at `__cstring`+344 (address
+`0xA6C`, the operand of the push at 1018), and no argument feeds it:
+`IODisplayInfo.refreshRate` exists, at +10h, and `descriptionForDisplayInfo:`
+does print it (the load at 2126), but nothing in 1004..1192 loads +10h through
+the info pointer. The zero is hardcoded in the source exactly as it is in the
+binary. Why it is hardcoded is not determinable from the reference.
 
 ### Six of the eight `strcat` calls are cross-jumped into one
 
@@ -1681,7 +1694,7 @@ Both compares are **unsigned** (`ja` at 1948, `jb` at 2037). That follows from
 switching on an enumeration all of whose enumerators are non-negative, so no
 cast is needed and none is written.
 
-### `descriptionForDisplayInfo:`'s two locals start as NULL, and the order is fixed
+### `descriptionForDisplayInfo:`'s two locals start as NULL
 
 ```
   1940  31C9  xor ecx, ecx      ; the bitsPerPixel string
@@ -1689,17 +1702,22 @@ cast is needed and none is written.
 ```
 
 Both are zeroed before either switch runs, so both are declared `= NULL`; with
-no `default` in either switch, an out-of-range enum reaches the `sprintf` with
-a null `%s`. The declaration order is fixed by which register is cleared
-first and by which switch assigns it: `ecx` is cleared at 1940 and written by
-the `bitsPerPixel` switch, `ebx` at 1942 and written by the `colorSpace`
-switch, so the `bitsPerPixel` string is declared first.
+no `default` arm that does anything in either switch, an out-of-range enum
+reaches the `sprintf` with a null `%s`. `ecx` is cleared at 1940 and written by
+the `bitsPerPixel` switch; `ebx` is cleared at 1942 and written by the
+`colorSpace` switch. The source declares the `bitsPerPixel` string first; the
+order of the two declarations is **not** something the binary establishes --
+see "Not determinable from the binary".
 
 ### The seventeen pushes, and the field `descriptionForDisplayInfo:` does not print
 
-Reference `__text` 2081..2144, in push order, then reversed into argument
-order: `IODisplayInfo` +0, +4, +8, +0Ch, +10h, +14h, the two switch results,
-`lea edx+20h`, +60h, +64h, +68h, +6Ch, +74h, +78h, +7Ch, +80h. Seventeen
+`cdecl` pushes right to left, so the seventeen pushes at reference `__text`
+2081..2144 run in the reverse of the argument order. In **push** order they are
+`IODisplayInfo` +80h, +7Ch, +78h, +74h, +6Ch, +68h, +64h, +60h, `lea edx+20h`,
+the `colorSpace` string (`ebx`), the `bitsPerPixel` string (`ecx`), then +14h,
++10h, +0Ch, +8, +4 and +0. Read back to front, that is the **argument** order
+the source writes: `IODisplayInfo` +0, +4, +8, +0Ch, +10h, +14h, the two switch
+results, `lea edx+20h`, +60h, +64h, +68h, +6Ch, +74h, +78h, +7Ch, +80h. Seventeen
 values against seventeen conversions in `__cstring`+691, in the same order.
 **+70h is absent**, which is `_reserved1` -- Task 2 recorded this from the
 reference and the rebuild reproduces it from a source that simply does not
@@ -1711,8 +1729,10 @@ derived from exactly these 14 pushes, and writing the arguments in the format
 string's order reproduces them. The record's three mask sizes and three field
 positions are **interleaved** in memory (+0Ch size, +0Dh position, +0Eh size,
 and so on) but **grouped** in the output (`RGB Mask Sizes: (%d, %d, %d), RGB
-Field Pos: (%d, %d, %d)`), so the push order is +0Ch, +0Eh, +10h, +0Dh, +0Fh,
-+11h and is not the record's own order.
+Field Pos: (%d, %d, %d)`), so the **argument** order is +0Ch, +0Eh, +10h,
++0Dh, +0Fh, +11h and is not the record's own order. `cdecl` pushes right to
+left, so the actual pushes at 2186..2211 run the other way: +11h, +0Fh, +0Dh,
++10h, +0Eh, +0Ch.
 
 ### `__cstring` is the reference's with one block excised
 
@@ -1793,8 +1813,22 @@ where the build ran, not of the driver.
   `cmp dword ptr [ebx+1Ch], 2` and one `jnz`; both source forms compile to it.
   The reconstruction uses `if`/`else`.
 - Whether either function's switches carried an explicit `default: break;`.
-  An empty default emits nothing, so the binary cannot say. None is written,
-  which is why the six warnings above appear.
+  An empty default emits nothing, so the binary cannot say. What it does show
+  is that no default arm does anything: in `modeStringForDisplayInfo:` the
+  missing cases go `jmp 1179` to the return, and in `descriptionForDisplayInfo:`
+  the jump table's default (the `ja` at 1948) lands at 2029 and the colour-space
+  tree's last `jmp` at 2049 lands at 2081, each the first instruction after its
+  switch. None is written, which is why the six warnings above appear; adding
+  `default: break;` to silence them would be a source construct chosen for
+  build-output cosmetics, not read from the binary, so the source comment tells
+  the next reader to leave them.
+- The order in which `descriptionForDisplayInfo:` declares its two locals. The
+  source declares the `bitsPerPixel` string first and the `colorSpace` string
+  second, and that build matches. `ecx` is cleared at 1940 and written by the
+  `bitsPerPixel` switch, `ebx` at 1942 by the `colorSpace` switch, but that the
+  declaration order is what fixed which register each got is an inference about
+  gcc's register allocation, not a reading: the swapped declaration order was
+  never built, and no byte cost of it is recorded.
 - Whether the three buffers were file-scope or function-scope statics, as
   above.
 - The local variable names, as before. Only the storage is observable: in

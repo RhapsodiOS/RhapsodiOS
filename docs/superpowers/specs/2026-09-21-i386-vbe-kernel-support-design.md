@@ -208,10 +208,16 @@ One of three pieces has a byte oracle. **The boot gate therefore carries
 proportionally more weight here than it did in spec 1** — which is acceptable,
 because this spec is what creates the gate.
 
-Use spec 1's scattered-relocation-aware masking. The reference kernel, like the
-driver, carries scattered relocations; a mask that reads every relocation's
-length from the second word leaves them unmasked and reports false diffs. Spec 1
-lost time to exactly that.
+**Do not reuse spec 1's relocation-aware masking.** An earlier revision of this
+section said the reference kernel carries scattered relocations and to mask from
+them. That is wrong: the i386 slice is `MH_EXECUTE`, `nreloc` is 0 in *every*
+section and there is no `LC_DYSYMTAB`. Our built kernel is likewise linked, so a
+relocation-driven mask silently masks nothing here.
+
+Mask **by pattern** instead, as the plan describes: the `imm32` of the
+`FF 24 85 <imm32>` dispatch, and the inline jump table's entries. Task 1
+measured both - the dispatch is at function offset **68**, so its operand sits
+at **71**, and the table is 31 entries at offset 76.
 
 ## 7. Discovery items
 
@@ -220,7 +226,7 @@ Answered from the disassembly. None may be invented.
 | | Item | Why it matters |
 | --- | --- | --- |
 | D1 | The real extent of `VBEModeInfo2IODisplayInfo` | The symbol table is sparse — the next *named* symbol is 7,484 bytes on. Bound it via the jump table at `0x19EDD8`, not by symbol delta. |
-| D2 | What `0x12854` is — read as a dword, four bytes before the `VBEModeRec` | It is half the guard. Spec 3 has to write whatever it is. |
+| D2 | ~~What `0x12854` is~~ **Answered in Task 1.** It is the kernel virtual address of the mapped VESA linear framebuffer, written by `pmap_bootstrap` (`0x0018F1B4`) and read by `FBAllocateVBEConsole` at `+57` to **overwrite** `IODisplayInfo.frameBuffer` with the virtual address in place of the physical one. **Kernel-private** - the 4.2 booter never references it. | This row previously said spec 3 has to write it. That was wrong, and it leaves the guard without a producer - see section 11. |
 | D3 | `sizeof(ConsoleRep)` in our tree versus the reference's 228 | If they differ, the console's private layout differs, which bears on §4's "same structure" claim. `ConsoleRep` is at `FBConsole.c:135`; measure with `offsetof` on the guest, not by hand — spec 1's hand layout of a struct was 12 bytes out. |
 | D4 | Whether both functions live in the FBConsole translation unit | They are adjacent in `__text`, which suggests one source file. Decides where our definitions go. |
 | D5 | Whether the reference's `ConsoleRep` puts `display` at offset 4 | The `rep movsd` writes to `priv + 4`. Ours assigns `((ConsolePtr)cso->priv)->display`. |
@@ -287,3 +293,40 @@ source defect.
    same output. The wiring must be invisible until spec 3.
 5. D1 through D5 answered in the evidence record, or explicitly recorded as
    not determinable with the reason.
+
+## 11. Open: the framebuffer mapping has no owner
+
+Task 1 answered D2 and the answer moved work between specs.
+
+`0x12854` holds the **kernel virtual address of the mapped VESA linear
+framebuffer**. In the 4.2 kernel it is written once, by `pmap_bootstrap` at
+`0x0018F1B4` (`mov ds:[0x12854],ecx`), after that routine page-maps the
+framebuffer. `FBAllocateVBEConsole` then reads it at `+57` and **overwrites**
+`IODisplayInfo.frameBuffer` with it — replacing the *physical* address
+`VBEModeInfo2IODisplayInfo` had just copied out of the mode record.
+
+That makes sense: the booter records a physical address, and a console that
+writes pixels needs a mapped virtual one.
+
+**The 4.2 booter never references `0x12854`.** Task 1 verified this by sweeping
+every 4-byte value in `[0x1800,0x1900)` of the booter. So it is kernel-private,
+and this spec's earlier D2 row — "spec 3 has to write it" — was wrong.
+
+**No task in this spec maps the framebuffer.** `FBAllocateVBEConsole`'s second
+guard therefore has no producer on our side: it will read whatever our kernel
+happens to have at that address, which is nothing, and the function will always
+return NULL.
+
+This does not block any of this spec's gates. Gate 2 (`sarld` links the driver)
+and gate 3 (the driver loads) need only `VBEModeInfo2IODisplayInfo`.
+`FBAllocateVBEConsole` is reached only from the Task 4 wiring, whose guard
+cannot pass until spec 3 supplies a mode anyway. But it does mean the console
+half of this spec is **present and shaped correctly, and inert**.
+
+Adding the mapping means touching `pmap_bootstrap` — early kernel
+initialisation, the riskiest code in the tree, and unexercised by any gate here.
+That is why it is called out rather than absorbed.
+
+**Owner undecided.** The candidates are: extend this spec, give it to spec 3
+alongside the booter work that produces the physical address, or make it a
+fourth spec covering the console path end to end.

@@ -1315,23 +1315,36 @@ masked; the 20- and 48-byte ones are identical even unmasked.
 | --- | --- | --- | --- | --- |
 | 692..984 | 292 | 0 | 4 | 0 |
 | 984..1004 | 20 | 0 | 0 | 0 |
-| 1192..1240 | 48 | 0 | 0 | 0 |
+| 1192..1240 (by symbol) | 48 | 0 | 0 | 0 |
+
+How each row was compared. The first two, `692..984` and `984..1004`, were
+compared in place, at the reference's own offsets. `1192..1240` was **not**:
+`modeStringForDisplayInfo:` (reference 1004..1192) did not yet exist at Task
+5, so the offsets had not converged and the rebuilt `atoi:` sat at 1004..1052.
+It was compared by symbol, the rebuilt bytes at 1004..1052 against the
+reference's at 1192..1240. That is as strong as an in-place match here, because those 48
+bytes carry no relocations at all: every branch is 8-bit relative, and there
+are no calls and no absolute operands, so the body is fully
+position-independent and where it sits cannot change any of its bytes.
 
 None of the three carries alignment padding: each body ends exactly on the
 next function's start. The four differing bytes in `parseVESAModes:size:` are
-the operands of its two `__cstring` pushes, which still point at a section
-starting at 1116 in the rebuilt file against 2324 in the reference, because
-four functions are still missing.
+the operands of its two `__cstring` pushes, which at Task 5 pointed at a
+`__cstring` starting at 1116 in the rebuilt file against 2324 in the
+reference, because four functions had not yet been written:
+`modeStringForDisplayInfo:`, `getCharValues:forParameter:count:`,
+`descriptionForDisplayInfo:` and `descriptionForVBEMode:`.
 
 `initFromDeviceDescription:` and the category initialiser were re-checked at
-reference offsets 0 and 144 after these were added, and both still match; the
-first four functions land at the reference's own `__text` offsets, so the
-plain-offset compare is still valid for them.
+reference offsets 0 and 144 after these were added, and both still matched.
+At Task 5 the first four functions landed at the reference's own `__text`
+offsets, so the plain-offset compare was valid for them; `atoi:` was the
+exception, as above.
 
-### `__cstring` and `__message_refs` are byte-exact prefixes of the reference's
+### `__cstring` and `__message_refs` were byte-exact prefixes of the reference's
 
-Adding these three shifted nothing. The rebuilt `__cstring` is now 344 bytes
-and is a **byte-for-byte prefix** of the reference's 1111, with the two new
+Adding these three shifted nothing. Afterwards the rebuilt `__cstring` was 344
+bytes, a **byte-for-byte prefix** of the reference's 1111, with the two new
 literals at exactly the reference's offsets:
 
 ```
@@ -1339,14 +1352,15 @@ literals at exactly the reference's offsets:
   __cstring+296  "%s: VBE mode %d is width=%d, height=%d, bpp=%d\n"
 ```
 
-`__OBJC,__message_refs` is likewise a prefix, 44 of the reference's 64 bytes,
+`__OBJC,__message_refs` was likewise a prefix, 44 of the reference's 64 bytes,
 identical selector at identical offset. `parseVESAModes:size:` sends only
 `name` (+24) and `initDisplayInfo:fromVBEModeInfo:` (+32), both already
 emitted by `initFromDeviceDescription:`, so no new selector appeared.
-`atoi:` is defined here but not yet *sent*; the reference's `atoi:` entry at
-+44 comes from `getCharValues:forParameter:count:`, which is unwritten.
+At Task 5 `atoi:` was defined but not yet *sent*; the reference's `atoi:` entry
+at +44 comes from `getCharValues:forParameter:count:`, which was not yet
+written.
 
-The three new `__OBJC,__meth_var_types` encodings also match the reference's
+The three new `__OBJC,__meth_var_types` encodings also matched the reference's
 exactly -- `v16@8:12^{?=SSSSSCCCCCCCC^v}16I20`,
 `v16@8:12^{?=iiiii^vii[64c]I^viiiiiiI[1I]}16^{?=SSSSSCCCCCCCC^v}20` and
 `I12@8:12r*16` -- which is independent confirmation of the argument types the
@@ -1360,9 +1374,9 @@ until the forwarder existed. In the rebuilt `_reloc` the symbol is `n_type`
 The relocatable Kernel Server link neither resolves it nor fails on it; the
 kernel supplies the definition at load time, and no stub was written.
 
-The rebuilt undefined-external set is still a strict subset of the
-reference's, with nothing extra. `_calloc` joined it this task; the six still
-missing are `_sprintf`, `_strcat`, `_strcpy`, `_strncmp` and `_strncpy` (the
+At Task 5 the rebuilt undefined-external set was a strict subset of the
+reference's, with nothing extra. `_calloc` joined it in this task; six were
+still missing: `_sprintf`, `_strcat`, `_strcpy`, `_strncmp` and `_strncpy` (the
 description and parameter methods, unwritten) and
 `_VBE20DisplayDriver_instance` (the link difference recorded under "Link
 differences visible in the first `_reloc`").
@@ -1422,9 +1436,15 @@ constant-propagated the store of 0 at 717 into the guard, so 730 addresses
 `modes[0]` directly, while 766 reuses the `eax` the size check already built.
 
 `24 * (count + 1) >= size` also means the *last* record the walk can accept
-is index 89: 0x880 is 24 * 90 + 16, so the final 16 bytes are slack the check
-never lets it reach. That is the same 90-record ceiling the booter's own
-enumerator carries at `boot+27911`, reached from the other side.
+is index 89: 0x880 is 24 * 90 + 16, so the final 16 bytes (+2160..+2175) are
+slack that is read from but never accepted. Once 90 records are counted, the
+terminator test at 766 reads `modes[90].xResolution` at `[ecx+eax+4]` with
+`eax` = 2160, that is +2164, inside that slack and inside `size`; if it is
+non-zero, the size check at 753 (24 * 91 = 2184 >= 2176) stops the walk with
+the count at 90. The array therefore has to reach at least +2165, and the
+`size` the driver is passed, 0x880, does. That is the same 90-record ceiling
+the booter's own enumerator carries at `boot+27911`, reached from the other
+side.
 
 ### What fills the `IODisplayInfo` array, and what the loop logs
 
@@ -1484,8 +1504,8 @@ an unsigned compare on the 8-bit difference.
 ### `calloc` has no driverkit declaration
 
 The reference calls `_calloc` (external relocation at `__text` 829) with
-`(count, 0x88)`, `0x88` being `sizeof(IODisplayInfo)`. Nothing under
-`src/driverkit-3/driverkit/` declares it; the kernel defines it at
+`(count, 0x88)`, `0x88` being `sizeof(IODisplayInfo)`. As of Task 5 nothing
+under `src/driverkit-3/driverkit/` declared it; the kernel defines it at
 `src/kernel-7/driverkit/objc_support.m:211` as
 `void *calloc(size_t num, size_t size)`. The reconstruction declares it in
 the `.m` alongside `page_mask`. `size_t` is reachable --
@@ -1499,7 +1519,7 @@ diagnostic.
   establishes only that it links no integer-parsing routine, so within this
   binary there was nothing to call; whether the 4.2 kernel exported one is
   not visible here. No rationale is written into the source.
-- `VBEModeInfo2IODisplayInfo`'s return type. Still the inference recorded
+- `VBEModeInfo2IODisplayInfo`'s return type. The inference recorded
   under D2 -- `void`, because no path in the callee loads `eax` with a
   result. The forwarder ignores any return, so this side cannot distinguish
   the two, and the extern is declared `void`.

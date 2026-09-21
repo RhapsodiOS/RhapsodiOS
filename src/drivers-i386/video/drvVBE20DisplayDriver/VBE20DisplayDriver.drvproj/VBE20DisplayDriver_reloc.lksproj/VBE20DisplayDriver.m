@@ -13,14 +13,24 @@ extern vm_offset_t	page_mask;
 
 /*
  * The one kernel routine this driver calls.  Its argument order is the
- * reference's, not the selector's: the method's type encoding
- * (v16@8:12^{IODisplayInfo}16^{VBEModeRec}20) puts the IODisplayInfo * at
- * frame 16 and the VBEModeRec * at frame 20, and reference __text 987..994
- * pushes frame 16 first and frame 20 second, so the record is the C call's
- * first argument.  The kernel side only ever reads through the first and
- * only ever writes through the second.  The return type is inferred void -
- * no path in the callee loads a result - and nothing in the reference would
- * distinguish void from an ignored result.
+ * reference's, not the selector's.  The forwarder's method type encoding,
+ * reference __OBJC,__meth_var_types+163, is
+ *
+ *	v16@8:12^{?=iiiii^vii[64c]I^viiiiiiI[1I]}16^{?=SSSSSCCCCCCCC^v}20
+ *
+ * where the first struct is IODisplayInfo and the second is VBEModeRec.  That
+ * puts the IODisplayInfo * at frame 16 and the VBEModeRec * at frame 20, and
+ * reference __text 987..994 pushes frame 16 first and frame 20 second, so the
+ * record is the C call's first argument.  The kernel side only ever reads
+ * through the first and only ever writes through the second.
+ *
+ * The callee is _VBEModeInfo2IODisplayInfo at 0x0019ED8C in the i386 slice of
+ * the OPENSTEP 4.2 User Patch 4 mach_kernel (slice SHA-256
+ * 33469393C0843FC741942C3AE9D91D838467D72ABD647DCF2E5BF499A3F14890);
+ * reconstruction/divergences.md, D2, has the listing.  The return type is
+ * inferred void - no path in that function, 0x0019ED8C..0x0019EFA6, loads eax
+ * with a result - and nothing in the reference would distinguish void from an
+ * ignored result.
  *
  * It stays an undefined external: the relocatable Kernel Server link leaves
  * it unresolved and the kernel supplies the definition at load time.
@@ -204,9 +214,12 @@ static int		 vbeDisplayModeCount = 0;	/* __data + 4 */
  *
  * The bound is the array's byte size, not a record count: reference __text
  * 747..755 forms 24 * (count + 1) and stops once it reaches size.  0x880 is
- * not a multiple of 24, so the last 16 bytes are slack the check never lets
- * the walk reach, and the ceiling is 90 records - the same ceiling the
- * booter's own enumerator carries.
+ * not a multiple of 24 - it is 24 * 90 + 16 - so the ceiling is 90 records
+ * accepted, indices 0..89, the same ceiling the booter's own enumerator
+ * carries.  The last 16 bytes (+2160..+2175) are slack that is read from but
+ * never accepted: once 90 records are counted, the terminator test reads
+ * modes[90].xResolution at +2164, inside that slack and inside size, and if
+ * it is non-zero the size check (24 * 91 >= size) stops the walk there.
  */
 - (void)parseVESAModes:(VBEModeRec *)modes size:(unsigned int)size
 {

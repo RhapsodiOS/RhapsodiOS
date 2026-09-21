@@ -891,13 +891,30 @@ to the function entry.
 
 | | reference | ours |
 | --- | --- | --- |
-| binary | i386 slice, `33469393…F14890` | `BUILD/RELEASE_I386/mach_kernel`, 1,486,224 bytes, `AC2213A3F4EBF7429708BD4B66DEDD1D960346CE97B7FEB12B7A2FB57245010F` |
+| binary | i386 slice, `33469393…F14890` | `BUILD/RELEASE_I386/mach_kernel`, 1,486,224 bytes, `605F6A3940464D3C2E40541A0ECA79480F88CDA1932B552EC7BD281748DD27C1` |
 | `_VBEModeInfo2IODisplayInfo` | `0x0019ED8C` | `0x001E8804` (`nm`: `T`, defined and external) |
 | entry alignment | `≡ 0 mod 4` | `≡ 0 mod 4` |
 | 539-byte SHA-256 | `BDDC94F5…2B21` (Task 1's value, re-confirmed) | `CFA460B379ABBE1E3B2DC9A808BCE5C1E74416327EBEEF4EA9CFE9AF6812C596` |
 
 The two function hashes differ **only** because the 128 masked bytes hold
 different absolute addresses; see the mask check below. **[measured]**
+
+**Where that kernel is, and an earlier hash you may run into.** It lives on the
+guest at `/build/src/kernel-7/BUILD/RELEASE_I386/mach_kernel` (equivalently
+`/build/source/src/kernel-7/…`; `/build/source/src` is a symlink). It is **not**
+at `vm/install/mach_kernel`: `vm/build-i386-kernel-ahci.sh` dies at the AHCI
+tests (item 4 below) long before its staging step, so nothing is ever staged
+there. The guest has no `sha256`, so the cheap post-pull check is BSD `sum`,
+which reports **`17135 1452`**. Pulling it over SSH needs the legacy options
+from `vm/rhap-remote.ps1` (`KexAlgorithms=diffie-hellman-group1-sha1`,
+`HostKeyAlgorithms=ssh-dss`, `Ciphers=3des-cbc`, `MACs=hmac-sha1`,
+`PubkeyAuthentication=no`). An earlier draft of this table carried
+`AC2213A3F4EBF7429708BD4B66DEDD1D960346CE97B7FEB12B7A2FB57245010F`, which is a
+**real but superseded artifact**: the kernel built before the source comments
+were finalised, differing from the one above only in the version string's
+embedded build timestamp and in comments, neither of which generates code. The
+539-byte comparison was re-run against both and both MATCH, 411/411.
+**[measured]**
 
 Our compiler is Apple `cc-783.1`, gcc 2.7.2.1 — the same family as the
 reference's — invoked with the kernel build's own line for `FBConsole.o`

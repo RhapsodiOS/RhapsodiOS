@@ -1085,3 +1085,172 @@ on the two files below. Nothing here needs the guest.
 - **Comparing sections.** `Loaded Server` bytes were compared as
   `file[offset:offset+size]` for each section, and the segment as
   `file[fileoff:fileoff+filesize]` from the `LC_SEGMENT` header.
+
+## The init path (Task 4)
+
+`initUnnamedFromDeviceDescription:` (reference `__text` 0..144) and
+`initFromDeviceDescription:` (144..692) were written from the disassembly and
+rebuilt on the guest. Both are **byte-identical to the reference** once 32-bit
+relocation operands are masked, and both land at the reference's own offsets
+(0 and 144) in the rebuilt `__text`, which is 756 bytes so far.
+
+Measured on the rebuilt `_reloc`
+(`out/i386/drvVBE20DisplayDriver/VBE20DisplayDriver.config/VBE20DisplayDriver_reloc`,
+96112 bytes, unstripped):
+
+| Extent | Body | Raw differing bytes | Differing outside a relocated operand |
+| --- | --- | --- | --- |
+| 0..144 | 142 + 2 `90` pad | 4 | 0 |
+| 144..692 | 545 + 3 `90` pad | 16 | 0 |
+
+The differing bytes are all `__cstring` addresses: our `__cstring` starts at
+756 because nine functions are still missing, the reference's at 2324. The
+padding bytes match (`90 90` and `90 90 90`). The `__cstring` *contents* and
+relative offsets already match the reference exactly -- `IODisplay` +0,
+`VBEDisplay: Error in setMemoryRangeList (%s)` +10, `VBEDisplay0` +56,
+`%s: VESA video driver initialization.` +68, `%s: Skipping framebuffer
+initialization (card not in VBE mode).` +107, `%s: Driver loaded to export VBE
+mode list.` +172, `%s: Unable to map frame buffer` +216, `%s: using VBE mode
+%d` +248 (each with its trailing newline, which is not written here).
+
+### `__cstring`+0 is `IODisplay`, and it is the *superclass* name
+
+`[super ...]` inside the `UnnamedInitialization` category does not load
+`_OBJC_CLASS_VBE20DisplayDriver.super_class` the way a class implementation
+does. It calls `_objc_getOrigClass` with a `__cstring` pointer and stores the
+**result itself** as `objc_super.super_class`, with no `->super_class`
+dereference:
+
+```
+   24  6814090000   push offset __cstring+0     ; "IODisplay"
+   29  E8DEFFFFFF   call _objc_getOrigClass
+   34  83C404       add  esp, 4
+   37  8945FC       mov  [ebp-4], eax           ; objc_super.super_class
+```
+
+so the string is `IOFrameBufferDisplay`'s superclass, not the category's own
+class. That is why `__cstring` opens with a nine-character string: the category
+is the first thing in the source file, and its two super sends
+(`initFromDeviceDescription:` at `__text` 24, `free` at 110) emit it before any
+of the driver's own literals. Two consequences, both load-bearing for the rest
+of the reconstruction: the category implementation must precede
+`@implementation VBE20DisplayDriver` in the single source file, and the
+`__cstring` order is a direct read-out of source order, which is how the seven
+literals above were placed inside `initFromDeviceDescription:`.
+
+`__OBJC,__message_refs` corroborates the same ordering. It is 64 bytes at
+`0x4014`, sixteen selectors in first-use order, and the first two -- `+0`
+`initFromDeviceDescription:` and `+4` `free` -- are the category's, followed by
+`setMemoryRangeList:num:` +8, `stringFromReturn:` +12,
+`initUnnamedFromDeviceDescription:` +16, `setName:` +20, `name` +24,
+`displayInfo` +28, `initDisplayInfo:fromVBEModeInfo:` +32,
+`mapFrameBufferAtPhysicalAddress:length:` +36, `parseVESAModes:size:` +40,
+`atoi:` +44.
+
+### Two tails the compiler merged, not two code paths
+
+`initFromDeviceDescription:` has three `return [self free];` sites and two
+two-argument `IOLog` calls that the compiler cross-jumped into one copy each,
+so the disassembly reads as a jump into the middle of another statement:
+
+- `__text` 299 is `E919010000 jmp 585`, and 585 is the `call _IOLog` that
+  `__text` 580's `push offset __cstring+216` belongs to. The two calls merged
+  are the `setMemoryRangeList` failure log and the `Unable to map frame buffer`
+  log; each pushes its own two arguments and then falls or jumps into the
+  shared call.
+- `__text` 590..603 is the single `[self free]`; the branch at `__text` 340,
+  the `jz` at 382 and the fall-through from the merged `IOLog` all reach it.
+
+Nothing in the source expresses this; it is what the compiler's jump optimiser
+did to three ordinary `return [self free];` statements, and the rebuild
+reproduces it from the same three statements.
+
+### The `XResolution` defect was emitted deliberately
+
+Confirmed against the rebuilt binary: `__text` 188 is `0FB7155C280100`, the
+`movzx edx, word ptr ds:1285Ch` that reads the booter record's **+4**
+(`XResolution`) -- the same seven bytes the reference has. The neighbouring
+`0FB70560280100` at 181 (+8, `bytesPerScanLine`) and `0FAFC2` at 195 match too.
+The source carries a comment naming it as the reference's defect so a later
+reader does not correct it; why it is wrong, and what consumes the product, is
+under "Reproduced reference defect: the frame-buffer length uses XResolution"
+above.
+
+### `VBEBooterMode<N>`'s missing bound is not in these two extents
+
+Task 2 left open whether the unbounded indexed parameter belongs here or to
+`getCharValues:forParameter:count:`. It belongs to `getCharValues:`: the
+unguarded `atoi:` / `lea eax, [eax*8+12870h]` sequence is `__text` 1662..1727,
+inside that method's 1240..1916, and nothing in 0..692 indexes the mode array
+at all -- `initFromDeviceDescription:` only ever passes the array's base
+`0x12870` and its size `0x880` to `parseVESAModes:size:`. The same treatment
+applies (reproduce, do not add a bound), but the code that does it is not
+written yet.
+
+### Absolute, unrelocated constants reproduced
+
+Written in the source as three macros over integer literals, with no `extern`
+and no symbol, so nothing relocates them. Each was verified byte-for-byte in
+the rebuilt `__text`:
+
+```
+  161 / 436  66833D5C28010000   cmp   word ptr ds:1285Ch, 0    record +4
+  175        8B3D6C280100       mov   edi, ds:1286Ch           record +14h
+  181        0FB70560280100     movzx eax, word ptr ds:12860h  record +8
+  188        0FB7155C280100     movzx edx, word ptr ds:1285Ch  record +4
+  519        6858280100         push  12858h
+  616        0FB70558280100     movzx eax, word ptr ds:12858h  record +0
+  654        6880080000         push  880h
+  659        6870280100         push  12870h
+```
+
+### Ivar access from the category compiles
+
+`_currentDisplayMode`, `_pendingDisplayMode`, `_displayModeCount` and
+`_displayModes` are `@private` in
+`src/driverkit-3/driverkit/IOFrameBufferDisplay.h`, and the guest's compiler
+accepts them inside `@implementation IOFrameBufferDisplay
+(UnnamedInitialization)` without a diagnostic. The four stores come out as
+`c78314020000ffffffff`, `c78310020000ffffffff`, `c78318020000ffffffff` and
+`c7831c02000000000000` at `__text` 56, 66, 76 and 86, so the write order is
+`_pendingDisplayMode`, `_currentDisplayMode`, `_displayModeCount`,
+`_displayModes` -- what `_currentDisplayMode = _pendingDisplayMode = -1;`
+followed by the other two assignments compiles to, not ascending-address order.
+
+### Undefined externals after this task
+
+The rebuilt `_reloc`'s undefined-external set is now a strict subset of the
+reference's, with nothing extra:
+
+```
+  both:       .objc_class_name_{IODevice,IODisplay,IOFrameBufferDisplay,Object}
+              _IOLog  _objc_getOrigClass  _objc_msgSend  _objc_msgSendSuper
+              _page_mask
+  reference   _VBEModeInfo2IODisplayInfo  _calloc  _sprintf  _strcat
+  only:       _strcpy  _strncmp  _strncpy  _VBE20DisplayDriver_instance
+```
+
+The seven function symbols missing on our side belong to functions not yet
+written (`_VBEModeInfo2IODisplayInfo` and `_calloc` to the forwarder and
+`parseVESAModes:size:`, the string routines to the description and parameter
+methods). `_VBE20DisplayDriver_instance` is the link difference recorded under
+"Link differences visible in the first `_reloc`". `_page_mask` is declared in
+the source as `extern vm_offset_t page_mask;`, the form
+`src/drivers-i386/network/drvDECchip21040/DECchip21040.drvproj/DECchip21040.lksproj/DECchip2104xPrivate.m:15`
+uses.
+
+### Not determinable from the binary
+
+- Why `setMemoryRangeList:` is called twice, once with `(NULL, 0)` at `__text`
+  236..248 and then with `(&range, 1)` at 253..267. The first call's result is
+  discarded: the `test eax, eax` at 275 follows the second call's
+  `add esp, 20h` at 272. `src/driverkit-3/libDriver/ppc/IOMacRiscPCI.m:248` and
+  `src/driverkit-3/libDriver/ppc/IOFramebuffer.m:1192` do the same thing before
+  installing a real list, so the idiom is Apple's, but this binary does not say
+  what it is for. Reproduced as two calls because that is what the bytes are.
+- The local variable names. Only the storage is observable: three values live
+  in `ebx`, `esi` and `edi` (self; the device description and then the
+  `IODisplayInfo *`; the physical frame-buffer address), the `IORange` occupies
+  `[ebp-8]` and `[ebp-4]`, the `objc_super` struct `[ebp-10h]`, and
+  `~page_mask` is spilled to `[ebp-14h]`. `sub esp, 14h` at `__text` 147 is
+  exactly those 20 bytes.

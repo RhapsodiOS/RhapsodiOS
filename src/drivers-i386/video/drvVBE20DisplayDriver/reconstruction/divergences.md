@@ -867,13 +867,13 @@ section.
 `__text` 1916..1932 exactly. `displayModeCount` and `displayModes` (12 bytes
 each) match `__text` 2276..2300 exactly, including the operands `a1 04200000` and
 `a1 00200000`: `vbeDisplayModes` landed at `__data + 0` and `vbeDisplayModeCount`
-at `__data + 4` with the declaration order the brief gives, and `__data` is 8
+at `__data + 4` with the declaration order used in `VBE20DisplayDriver.m`, and `__data` is 8
 bytes at `0x2000` in both binaries. The 12-byte extents also line up: in the
 rebuilt `__text` the four sit at 0x00, 0x08, 0x10, 0x1C and the two
 Kernel-Server-generated entries follow at 0x28 and 0x34, the same 12-byte
 strides the reference has at 2300 and 2312.
 
-**The brief's `VBEModeRec` field order disagreed with the disassembly, and the
+**The reconstruction plan's `VBEModeRec` field order disagreed with the disassembly, and the
 header follows the disassembly.** The brief listed `bytesPerScanline` before
 `xResolution`/`yResolution` and grouped the three mask sizes before the three
 field positions. `descriptionForVBEMode:`'s pushes (see `VBEModeRec` layout
@@ -887,7 +887,7 @@ bytes"; the struct is not packed and the pointer forces two bytes at 0x12.
 Nothing in this task reads a field, so this changes no bytes yet.
 
 **`_VBEModeInfo2IODisplayInfo` is not in the rebuilt symbol table, and cannot be
-yet.** The brief's Step 7 expects it as an undefined external (type `0x01`). The
+yet.** The plan expected it as an undefined external (type `0x01`) at this stage. The
 only reference to it in the reference binary is the forwarder
 `initDisplayInfo:fromVBEModeInfo:` (Task 5). None of the four methods written in
 Task 3 calls it, so the compiler has nothing to emit. Inventing a call to make
@@ -1017,9 +1017,9 @@ recorded here for whoever reaches the Kernel Server functions.
   method is `control-flow-confirmed`, never `assembly-matched`. The ruling covers
   this method only; the instance-common difference above has not been ruled on.
 
-### Scaffold choices that go beyond the brief's table
+### Scaffold choices not dictated by the reference
 
-- `DriverInfo` `DRIVER_NAME` is `"VBE20DisplayDriver"`. The brief's table did not
+- `DriverInfo` `DRIVER_NAME` is `"VBE20DisplayDriver"`. The plan's table did not
   list it, but leaving Cirrus's value would put the wrong installer name in this
   driver. `DEFAULT_DRIVER_VERSION` is left as copied.
 - `English.lproj/Help/` is an empty directory in the patch, so `Help` is not in
@@ -1036,7 +1036,7 @@ recorded here for whoever reaches the Kernel Server functions.
 - The guest's `/build/source/vm/build-i386-video-recon.sh` was stale (5241
   bytes, no VBE20 arm). The current script was streamed into `/tmp` on the guest
   and run from there, leaving the shared guest copy alone.
-- The brief's Step 6 tar pull (`ssh ... | tar xf -` through `cmd /c` with
+- The documented tar pull (`ssh ... | tar xf -` through `cmd /c` with
   `Invoke-RhapRemote`-style `-tt`) failed with "This does not look like a tar
   archive". Running `ssh -T` with stdout redirected to a file by `Start-Process`
   and extracting from the file worked and gave a byte-exact 92316-byte `_reloc`.

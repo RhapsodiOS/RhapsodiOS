@@ -183,6 +183,48 @@ arithmetic both sides faithfully reproduce, and the blitters' clipping. A
 screenshot cannot distinguish which side's blitters did the drawing, so this
 confirms the contract works end to end rather than attributing it to one half.
 
+## Fourth gate: the full reconstructed stack
+
+The gates above swapped in one reconstruction at a time against an otherwise
+stock system. This run replaces everything this tree has rebuilt for the boot
+path at once: our `mach_kernel`, our `PCIBus_reloc` and `EISABus_reloc` (both
+Boot Drivers), and both halves of the VGA driver, with `SVGABIOS.table` in place
+so the emulator drives the mode set and `PS2Mouse` active so the pointer works.
+
+All four binaries were hash-verified in the image before the boot, after the
+PCIC near-miss in the bus retest showed that a refused injection still yields a
+plausible-looking boot of somebody else's driver:
+
+```
+PCIBus      78982b82c5e59ac3 MATCH
+EISABus     02a1b6661c4b66ce MATCH
+VGA_reloc   46425530859f3757 MATCH
+VGA_psdrvr  d3a5d8fa3e6e1073 MATCH
+```
+
+It boots to the Setup Assistant:
+
+```
+VGADisplay: Mode Selected: 800 x 600 @ 60 Hz (BW:2)
+VGADisplay: VESA mode selected: 0x6a
+Registering: VGADisplay0
+Using Default table for VGA
+Registering: PS2Mouse
+```
+
+and the cursor still round-trips cleanly — 163 differing pixels between the
+before and after frames, in two clusters, the start position erased and the end
+position drawn:
+
+```
+ 96 px  x  99..109  y  99..114
+ 67 px  x 328..337  y 271..286
+```
+
+So the reconstructed PCI and EISA bus drivers, the reconstructed display driver
+and its Window Server half, the transcribed real-mode emulator and the rebuilt
+kernel all run together and put a usable desktop on screen.
+
 ## What this does and does not establish
 
 Both halves of the reconstruction have now executed.

@@ -13,7 +13,7 @@ PROJECTVERSION = 2.6
 PROJECT_TYPE = Aggregate
 LANGUAGE = English
 
-BUNDLES = BPF.drvproj PostLoad.tproj
+BUNDLES = BPF.drvproj
 
 
 OTHERSRCS = Makefile

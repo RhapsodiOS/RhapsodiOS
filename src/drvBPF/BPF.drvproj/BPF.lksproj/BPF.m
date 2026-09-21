@@ -33,6 +33,7 @@
 #import "BPF.h"
 #import <driverkit/generalFuncs.h>
 #import <sys/types.h>
+#import <sys/param.h>	/* MAXCOMLEN, which sys/proc.h uses unguarded */
 #import <sys/uio.h>
 #import <sys/proc.h>
 #import <string.h>

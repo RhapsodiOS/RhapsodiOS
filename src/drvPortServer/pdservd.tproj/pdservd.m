@@ -20,6 +20,9 @@
  * argc: Argument count
  * argv: Argument vector
  */
+/* Defined here rather than further down the file: init() below uses it. */
+static const char *cmdName = NULL;
+
 void init(int argc, char **argv)
 {
     char *lastSlash;
@@ -93,7 +96,6 @@ static id instanceTable = nil;
 static int lastPort = 0x60;
 
 // Command name for logging
-static const char *cmdName = NULL;
 
 /*
  * Generate suffix by stripping known prefixes from device name

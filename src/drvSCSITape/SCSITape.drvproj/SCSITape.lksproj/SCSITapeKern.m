@@ -34,6 +34,7 @@
 #import <sys/uio.h>
 #import <sys/mtio.h>
 #import <bsd/dev/scsireg.h>
+#import <mach/vm_param.h>	/* PAGE_SIZE, for the FORCE_PAGE_ALIGN path */
 
 #import <driverkit/scsiTypes.h>
 #import <driverkit/align.h>

@@ -10,5 +10,11 @@
 "Support CTS" = "YES";     /* All ports support hardware handshaking */
 "Support Dialin" = "YES";  /* All ports support dialout (ttyd*) */
 "Support Dialout" = "YES"; /* All ports support dialin (cu*) */
-"Help File" = "PortServer_Main.rtfd";
+/* Apple's table names "PortServer_Main.rtfd" here, and their PortServer.config
+ * ships it under English.lproj/Help.  This reconstruction never carried that
+ * document -- English.lproj/DriverHelp holds only an empty TableOfContents.rtf
+ * -- and gentoc.sh refuses to build a driver whose table points at help that is
+ * not there.  Rather than ship invented help text, the key is left out until
+ * the document itself is recovered; restore it in the same breath as the file.
+ */
 "Server Name" = "PortServer";

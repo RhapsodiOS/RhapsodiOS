@@ -1,3 +1,9 @@
-MAKEFILEDIR = /NextDeveloper/Makefiles/driverkit
-MAKEFILE = Makefile.main_driver
-OTHER_CFLAGS= -I../ -I/LocalDeveloper/Headers
+# Additional compiler flags
+#
+# This used to point MAKEFILEDIR and MAKEFILE at /NextDeveloper/Makefiles/driverkit
+# and Makefile.main_driver, the pre-pb_makefiles driver build.  The preamble is
+# included before `include $(MAKEFILEDIR)/$(MAKEFILE)`, so those overrode the
+# Kernel Server settings in Makefile and the build stopped on a makefile that
+# does not exist here.  The parent project has been on pb_makefiles for years;
+# this subproject now follows it.
+OTHER_CFLAGS = -I../

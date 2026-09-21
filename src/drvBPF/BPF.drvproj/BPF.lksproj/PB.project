@@ -1,16 +1,29 @@
-FILESTABLE = {
-    OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble, Makefile.driver_preamble);
-    H_FILES = (BPF.h);
-    OTHER_LINKED = ();
-    CLASSES = (BPF.m);
-    C_FILES = (bpf.c, bpf_filter.c);
-};
-LOCALIZABLE_FILES = {
-};
-LANGUAGE = English;
-PROJECTVERSION = 1.0;
-INSTALLDIR = "";
-PROJECTTYPE = Tool;
-PROJECTNAME = BPF_reloc;
-GENERATEMAIN = YES;
-DOCICONFILES = ();
+{
+    DYNAMIC_CODE_GEN = NO;
+    FILESTABLE = {
+        CLASSES = (BPF.m);
+        C_FILES = (bpf.c, bpf_filter.c);
+        H_FILES = (BPF.h);
+        OTHER_LINKED = ();
+        OTHER_SOURCES = (
+            Makefile.preamble,
+            Makefile,
+            Makefile.postamble
+        );
+        SUBPROJECTS = ();
+    };
+    LANGUAGE = English;
+    LOCALIZABLE_FILES = {};
+    MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles";
+    NEXTSTEP_BUILDTOOL = /bin/gnumake;
+    NEXTSTEP_COMPILEROPTIONS = "-Wno-format";
+    NEXTSTEP_JAVA_COMPILER = /usr/bin/javac;
+    NEXTSTEP_OBJCPLUS_COMPILER = /usr/bin/cc;
+    PDO_UNIX_JAVA_COMPILER = "$(NEXTDEV_BIN)/javac";
+    PDO_UNIX_OBJCPLUS_COMPILER = "$(NEXTDEV_BIN)/gcc";
+    PROJECTNAME = BPF;
+    PROJECTTYPE = "Kernel Server";
+    PROJECTVERSION = 2.7;
+    WINDOWS_JAVA_COMPILER = "$(JDKBINDIR)/javac.exe";
+    WINDOWS_OBJCPLUS_COMPILER = "$(DEVDIR)/gcc";
+}

@@ -9,7 +9,8 @@
 
 NAME = BPF
 
-PROJECTVERSION = 1.1
+PROJECTVERSION = 2.7
+PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
 CLASSES = BPF.m
@@ -18,19 +19,28 @@ HFILES = BPF.h
 
 CFILES = bpf.c bpf_filter.c
 
-OTHERSRCS = Makefile.preamble Makefile Makefile.postamble Makefile.driver_preamble
+OTHERSRCS = Load_Commands.sect Makefile.preamble Makefile Makefile.postamble
 
 
-MAKEFILEDIR = /NextDeveloper/Makefiles/app
-MAKEFILE = tool.make
-SOURCEMODE = 444
-
+MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
+CODE_GEN_STYLE = DYNAMIC
+MAKEFILE = kernelserver.make
 LIBS =
 DEBUG_LIBS = $(LIBS)
 PROF_LIBS = $(LIBS)
 
 
+NEXTSTEP_PB_CFLAGS = -Wno-format -DDRIVER_PRIVATE
 
+
+NEXTSTEP_OBJCPLUS_COMPILER = /usr/bin/cc
+WINDOWS_OBJCPLUS_COMPILER = $(DEVDIR)/gcc
+PDO_UNIX_OBJCPLUS_COMPILER = $(NEXTDEV_BIN)/gcc
+NEXTSTEP_JAVA_COMPILER = /usr/bin/javac
+WINDOWS_JAVA_COMPILER = $(JDKBINDIR)/javac.exe
+PDO_UNIX_JAVA_COMPILER = $(NEXTDEV_BIN)/javac
+
+include $(MAKEFILEDIR)/platform.make
 
 -include Makefile.preamble
 

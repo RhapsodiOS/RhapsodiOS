@@ -23,7 +23,7 @@ static id _thisTasksId = nil;
         if (_thisTasksId != nil) {
             // Get the device master port from the kernel
             mach_port_t masterPort = device_master_self();
-            ((IODeviceMaster *)_thisTasksId)->_privateData = (void *)(uintptr_t)masterPort;
+            ((IODeviceMaster *)_thisTasksId)->_privateData = (void *)(unsigned long)masterPort;
         }
     }
     return _thisTasksId;
@@ -32,7 +32,7 @@ static id _thisTasksId = nil;
 - (mach_port_t)createMachPort:(int)objectNumber
 {
     mach_port_t port = MACH_PORT_NULL;
-    mach_port_t masterPort = (mach_port_t)(uintptr_t)_privateData;
+    mach_port_t masterPort = (mach_port_t)(unsigned long)_privateData;
 
     // Call IOCreateMachPort with the master port, object number, and port pointer
     IOCreateMachPort(masterPort, objectNumber, &port);
@@ -52,7 +52,7 @@ static id _thisTasksId = nil;
         objectNumber:(int)objectNumber
                count:(int *)count
 {
-    mach_port_t masterPort = (mach_port_t)(uintptr_t)_privateData;
+    mach_port_t masterPort = (mach_port_t)(unsigned long)_privateData;
 
     // Call IOGetCharValues with: masterPort, objectNumber, parameter, *count (in), values, count (out)
     IOGetCharValues(masterPort, objectNumber, parameter, *count, values, count);
@@ -65,7 +65,7 @@ static id _thisTasksId = nil;
        objectNumber:(int)objectNumber
               count:(int *)count
 {
-    mach_port_t masterPort = (mach_port_t)(uintptr_t)_privateData;
+    mach_port_t masterPort = (mach_port_t)(unsigned long)_privateData;
 
     // Call IOGetIntValues with: masterPort, objectNumber, parameter, *count (in), values, count (out)
     IOGetIntValues(masterPort, objectNumber, parameter, *count, values, count);
@@ -77,7 +77,7 @@ static id _thisTasksId = nil;
              objectNumber:(int *)objectNumber
                deviceKind:(const char **)deviceKind
 {
-    mach_port_t masterPort = (mach_port_t)(uintptr_t)_privateData;
+    mach_port_t masterPort = (mach_port_t)(unsigned long)_privateData;
 
     // Call IOLookupByDeviceName with: masterPort, deviceName, objectNumber, deviceKind
     IOLookupByDeviceName(masterPort, deviceName, objectNumber, deviceKind);
@@ -89,7 +89,7 @@ static id _thisTasksId = nil;
                  deviceKind:(const char **)deviceKind
                  deviceName:(const char **)deviceName
 {
-    mach_port_t masterPort = (mach_port_t)(uintptr_t)_privateData;
+    mach_port_t masterPort = (mach_port_t)(unsigned long)_privateData;
 
     // Call IOLookupByObjectNumber with: masterPort, objectNumber, deviceKind, deviceName
     IOLookupByObjectNumber(masterPort, objectNumber, deviceKind, deviceName);
@@ -102,7 +102,7 @@ static id _thisTasksId = nil;
         objectNumber:(int)objectNumber
                count:(int)count
 {
-    mach_port_t masterPort = (mach_port_t)(uintptr_t)_privateData;
+    mach_port_t masterPort = (mach_port_t)(unsigned long)_privateData;
 
     // Call IOSetCharValues with: masterPort, objectNumber, parameter, values, count
     IOSetCharValues(masterPort, objectNumber, parameter, values, count);
@@ -115,7 +115,7 @@ static id _thisTasksId = nil;
        objectNumber:(int)objectNumber
               count:(int)count
 {
-    mach_port_t masterPort = (mach_port_t)(uintptr_t)_privateData;
+    mach_port_t masterPort = (mach_port_t)(unsigned long)_privateData;
 
     // Call IOSetIntValues with: masterPort, objectNumber, parameter, values, count
     IOSetIntValues(masterPort, objectNumber, parameter, values, count);

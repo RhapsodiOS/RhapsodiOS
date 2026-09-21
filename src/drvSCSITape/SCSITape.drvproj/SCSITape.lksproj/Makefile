@@ -16,7 +16,7 @@ LANGUAGE = English
 CLASSES = SCSITape.m SCSITapeKern.m
 HFILES = SCSITape.h SCSITapeTypes.h
 
-OTHERSRCS = Makefile Makefile.preamble
+OTHERSRCS = Load_Commands.sect Makefile Makefile.preamble
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC

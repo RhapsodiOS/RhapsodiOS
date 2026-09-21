@@ -70,7 +70,14 @@ extern unsigned int _page_size;
  * the prototypes are transcribed from this tree's own kernel sources, cited
  * at each call site.
  */
-extern kern_return_t port_allocate(void *space, mach_port_t *name);
+/* port_allocate is the one of these that <mach/mach.h> also declares, as the
+ * user-space MIG stub taking a task_t.  The routine reached through the jump
+ * island is the kernel's, which takes an ipc_space_t, so the two prototypes
+ * cannot both stand.  Call it through a correctly typed pointer instead: the
+ * symbol imported is still _port_allocate.
+ */
+typedef kern_return_t (*kern_port_allocate_fn)(void *space, mach_port_t *name);
+#define KERN_PORT_ALLOCATE ((kern_port_allocate_fn)port_allocate)
 extern kern_return_t ipc_object_copyin_compat(void *space, mach_port_t name,
                                               int msgt_name, boolean_t dealloc,
                                               void **objectp);
@@ -212,7 +219,7 @@ int IOTaskPortAllocateName(mach_port_t name)
  */
 int IOTaskPortAllocate(mach_port_t *name)
 {
-    return port_allocate(IOTask_kern->itk_space, name);
+    return KERN_PORT_ALLOCATE(IOTask_kern->itk_space, name);
 }
 
 /*

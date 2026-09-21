@@ -12,6 +12,11 @@
 
 #import <driverkit/IODeviceMaster.h>
 #import <driverkit/IODevice.h>
+/* scsiTypes.h, reached through SCSITapeTypes.h, names IOMemoryDescriptor in a
+ * method signature without anything declaring it.  The kernel server gets the
+ * declaration from elsewhere in its include set; this tool does not, and a
+ * pointer parameter only needs the class to be known. */
+@class IOMemoryDescriptor;
 #import "SCSITapeTypes.h"
 #import <errno.h>
 #import <libc.h>

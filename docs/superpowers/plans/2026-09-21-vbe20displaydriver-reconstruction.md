@@ -358,7 +358,7 @@ names it cannot know:
 | 2276 | 12 | `-[VBE20DisplayDriver displayModeCount]` |
 | 2288 | 12 | `-[VBE20DisplayDriver displayModes]` |
 | 2300 | 12 | `+[VBE20DisplayDriverKernelServerInstance kernelServerInstance]` |
-| 2312 | 12 | `+[VBE20DisplayDriver driverKitVersionForVBE20DisplayDriver]` |
+| 2312 | 12 | `+[VBE20DisplayDriverVersion driverKitVersionForVBE20DisplayDriver]` |
 
 **Fifteen entries.** The 2300 entry was resolved during Task 1: it sits in a
 second `__cls_meth` method list the survey parse did not read, and its body is

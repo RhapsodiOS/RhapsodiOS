@@ -42,7 +42,7 @@ location, `C:\Users\raynorpat\Downloads\test\Drivers\i386\VBE20DisplayDriver.con
 | File size | 37,984 bytes |
 | SHA-256 | `9FBC2CAFBDD0124CC63B902161C86BBFEC0EF48D591DDA681A325FF7B68DADED` |
 | `cpu_subtype` | 3 (`CPU_SUBTYPE_386`) |
-| `__text` | 2,324 bytes, 14–15 partition entries (§4) |
+| `__text` | 2,324 bytes, 15 partition entries (§4) |
 | `__cstring` | 1,111 bytes, 38 strings |
 | Symbols | 22 (5 defined, 17 undefined) |
 | Relocations | 262, of which 169 in `__text` |
@@ -151,7 +151,7 @@ necessarily name the same member there. Spec 3 must establish where the mode
 array lands in *our* struct rather than adopting the constant.
 
 `boot_video` in `machdep/i386/kernBootStruct.h` has six `unsigned long` and no
-room for an array of these. Where the array comes from is discovery item D1.
+room for an array of these, which is why spec 3 has to find or make the space.
 
 ## 4. Function partition
 
@@ -175,7 +175,7 @@ entries.
 | 2276 | 12 | `-[VBE20DisplayDriver displayModeCount]` |
 | 2288 | 12 | `-[VBE20DisplayDriver displayModes]` |
 | 2300 | 12 | `+[VBE20DisplayDriverKernelServerInstance kernelServerInstance]` |
-| 2312 | 12 | `+[VBE20DisplayDriver driverKitVersionForVBE20DisplayDriver]` |
+| 2312 | 12 | `+[VBE20DisplayDriverVersion driverKitVersionForVBE20DisplayDriver]` |
 
 **Fifteen entries, thirteen of them hand-written.** The two build-generated ones
 are emitted by the Kernel Server project type and are correctly absent from

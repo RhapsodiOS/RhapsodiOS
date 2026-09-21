@@ -40,13 +40,17 @@ extern int APMPresent(void);
 extern int APMConnect32(void);
 extern int  memsize(int i);
 
-/* Memory map entry structure for the modern INT 0x15, E820h BIOS call*/
+/* Memory map entry structure for the modern INT 0x15, E820h BIOS call.
+ * The compiler that builds the booter does not accept __attribute__((packed)),
+ * and does not need to: 8 + 8 + 4 + 4 lays out with no padding on i386, so the
+ * struct already matches the 24 bytes the BIOS returns.
+ */
 typedef struct {
     unsigned long long base;
     unsigned long long length;
     unsigned long type;
     unsigned long acpi_extended;
-} __attribute__((packed)) e820_entry_t;
+} e820_entry_t;
 extern unsigned long getMemoryMap(e820_entry_t *map, int maxEntries, int *numEntries);
 extern unsigned long getExtendedMemoryE801(void);
 

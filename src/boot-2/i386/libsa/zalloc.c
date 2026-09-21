@@ -66,7 +66,9 @@ void malloc_init(char *start, int size, int nodes)
 	zavailable = (zmem *)start;
 	start += sizeof(zmem) * nodes;
 	zavailable[0].start = start;
-	zavailable[0].size = size;
+	// the two node tables come out of the same block, so they are not
+	// available to hand out
+	zavailable[0].size = size - (2 * sizeof(zmem) * nodes);
 	availableNodes = 1;
 	allocedNodes = 0;
 }
@@ -88,6 +90,12 @@ void * malloc(size_t size)
 		// this used to follow the bss but some bios' corrupted it...
 		malloc_init((char *)ZALLOC_ADDR, ZALLOC_LEN, ZALLOC_NODES);
 	}
+
+	// zallocate() appends to zalloced[] without checking, and zavailable[]
+	// follows it immediately, so the node after the last one would land on
+	// the free list head.  Report the block as unavailable instead.
+	if (allocedNodes >= totalNodes)
+		return 0;
 
 	size = ((size + 0xf) & ~0xf);
  

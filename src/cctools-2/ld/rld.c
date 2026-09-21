@@ -1611,10 +1611,13 @@ unsigned long      strsize)         /* sizeof the string table */
     struct segment_command *linkedit;
 
 	/*
-	 * Initialized the stand alone malloc package if needed.
+	 * Initialized the stand alone malloc package if needed.  1000 nodes is
+	 * not enough to link a driver much past 120k: the node table fills,
+	 * malloc starts failing, and because rld latches a fatal error every
+	 * driver the booter links after that one is refused too.
 	 */
 	if(sa_rld_malloc_initialized == FALSE){
-	    malloc_init(malloc_addr, malloc_len, 1000);
+	    malloc_init(malloc_addr, malloc_len, 8000);
 	    sa_rld_malloc_initialized = TRUE;
 	}
 

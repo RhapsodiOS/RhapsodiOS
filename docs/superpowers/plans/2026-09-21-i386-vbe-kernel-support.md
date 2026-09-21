@@ -102,8 +102,26 @@ repeat that.
 The documented invocation is `docs/build/rbuild-universal.md:195`:
 
 ```sh
-rbuild kernel --state /build/state --arch i386   /build/src /build/repo /build/rbuild-i386-kernel-proof
+rbuild kernel --state /build/state --arch i386 --toolchain <profile>   /build/src /build/repo /tmp/<your own dest>
 ```
+
+**`--toolchain` is required, and `docs/build/rbuild-universal.md:195` omits
+it.** Task 3 established why. Without it rbuild falls back to plain `tar`,
+which exits 1 on three dangling symlinks in
+`file-cmds-1998.10.06-universal.apk` (`usr/bin/{tar,cpio,chgrp}` →
+`../../bin/pax`, absent). `file-cmds` is a basedep, so that blocks *every*
+build root. `vm/build-src-lib.ps1:498` always passes `--toolchain`; the doc
+line is the outlier.
+
+**The stock profile also needs `/usr/local/bin` on its `path=`.** With
+`--toolchain` alone, `kernel-7` dies in `installhdrs`: `gcc-darwin.conf`'s
+`path=` omits the directory where `bootstrap-cmds` puts `relpath`, so
+`MakeInc.dir:69-71`'s ``OBJROOT=`relpath …` `` comes out empty and
+`conf/Makefile:358` aborts. Task 3 worked around it with a `/tmp` copy of the
+profile — a command-line override, no repo file changed.
+
+Both are provisioning defects, not yours. If either bites differently, report
+it; **still do not fall back to `gnumake`.**
 
 Guest `rbuild` is `/build/tools/bin/rbuild`. It produces an APK set —
 `kernel-154.5.1-7` and companions — from which the `mach_kernel` is extracted;

@@ -92,6 +92,40 @@ a new file.
 
 ---
 
+### Building the kernel on the guest — four known blockers
+
+`vm/build-i386-kernel-ahci.sh` does **not** run end to end on the guest as
+shipped. Task 2 hit all four and worked around every one **without changing a
+repo file**; Task 3 will hit the same wall. None is caused by this spec's
+changes. Filed as a follow-up task; until that lands, apply these:
+
+1. **`command -v` is absent from the guest's `/bin/sh`**, so the script reports
+   `required target build tool not found: gnumake` even though `/bin/gnumake`
+   is on `PATH`. Run the script under `/bin/bash`.
+2. **The script removes `BUILD/RELEASE_I386` but never creates `BUILD/`**, and
+   `conf/Makefile`'s `tools` target does `cd ${OBJROOT}` with no `mkdir`, so a
+   fresh sync always fails with `cd: can't cd to ../BUILD`. `mkdir BUILD`
+   first.
+3. **The portable AHCI tests — the script's first step — do not compile
+   natively.** `cc -ansi -pedantic -Wall -Werror` on `ahci_command_test.c`
+   gives `bsd/stdio.h:338: syntax error before 'int'`. Skip that step and run
+   the kernel half with the script's own commands.
+4. **`/usr/lib/libcc.a` on the guest is PPC-only**, so the link fails on
+   `__muldi3 __udivdi3 __divdi3 __moddi3 __umoddi3`. A fat i386+ppc archive
+   carrying exactly those five sits at `/build/bootstrap-root/usr/lib/libcc.a`.
+   Link with a make-command override:
+
+   ```sh
+   gnumake LIBS="-L/build/bootstrap-root/usr/lib -lcc"
+   ```
+
+   **Do not** wire `src/kernel-7/conf/libcc_i386_helpers.c` into the i386
+   kernel to dodge this — `vm/tests/test-build-src.ps1:261` deliberately
+   asserts it must not be, so the intended fix is a fat `libcc` on the default
+   path, which belongs in guest provisioning rather than in this spec.
+
+---
+
 ## Task 1: Stage the reference, profile it, answer the discovery items
 
 **Files:**

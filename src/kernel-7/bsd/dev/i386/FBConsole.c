@@ -1374,6 +1374,91 @@ IOConsoleInfo *FBAllocateConsole(IODisplayInfo *display)
     ((ConsolePtr)cso->priv)->window_type = SCM_UNINIT;
     return cso;
 }
+
+void VBEModeInfo2IODisplayInfo(VBEModeRec *mode, IODisplayInfo *info)
+// Translate one booter-supplied VBE mode record into an IODisplayInfo.
+// Reconstructed from _VBEModeInfo2IODisplayInfo at 0x0019ED8C in the i386
+// slice of the OPENSTEP 4.2 mach_kernel (539 bytes, a leaf). The VBE boot
+// driver calls this, so it has to stay an exported kernel symbol.
+{
+    int i;
+    int lsb;
+
+    info->width       = mode->xResolution;
+    info->height      = mode->yResolution;
+    info->totalWidth  = mode->xResolution;
+    info->rowBytes    = mode->bytesPerScanline;
+
+    // FAITHFUL TO THE REFERENCE, NOT AN OMISSION: 0x0019EDB3 stores a literal
+    // zero here and the mode record carries no refresh rate to store instead.
+    // This is why the VBE display driver reports "Refresh:0Hz". Do not "fix".
+    info->refreshRate = 0;
+
+    info->frameBuffer = mode->frameBuffer;
+
+    switch (mode->bitsPerPixel) {
+    case 2:  info->bitsPerPixel = IO_2BitsPerPixel;  break;
+    case 8:  info->bitsPerPixel = IO_8BitsPerPixel;  break;
+    case 12: info->bitsPerPixel = IO_12BitsPerPixel; break;
+    case 15:
+    case 16: info->bitsPerPixel = IO_15BitsPerPixel; break;
+    case 24:
+    case 32: info->bitsPerPixel = IO_24BitsPerPixel; break;
+    default:
+	// Everything else, in range or not, shares one body at 0x0019EE90
+	// that flags the mode and returns without filling anything below.
+	info->modeUnavailableFlag |= IO_DISPLAY_MODE_OTHER_INVALID;
+	return;
+    }
+
+    // pixelEncoding[0] is the most significant bit of a pixel, so the bit at
+    // VBE field position p lands at index bitsPerPixel - p - 1.
+    //
+    // FAITHFUL TO THE REFERENCE: only bitsPerPixel bytes are written and no
+    // terminating '\0' is appended, though displayDefs.h documents the array
+    // as NUL-terminated. The 4.2 FBAllocateVBEConsole hands in an
+    // uninitialized stack IODisplayInfo, so the tail keeps whatever was on
+    // the stack. Adding a terminator would be a behaviour change, not a
+    // repair.
+    if (mode->modeAttributes & 8) {
+	info->colorSpace = IO_RGBColorSpace;
+	if (mode->memoryModel == 4) {
+	    for (i = 0; i < mode->bitsPerPixel; i++)
+		info->pixelEncoding[i] = IO_SampleTypePseudoColor;
+	} else {
+	    for (i = 0; i < mode->bitsPerPixel; i++)
+		info->pixelEncoding[i] = IO_SampleTypeSkip;
+
+	    // CODEGEN-DRIVEN SHAPE, NOT A STYLE CHOICE: each lsb has to be its
+	    // own statement ahead of the loop. The reference computes it once
+	    // before the mask-size guard (0x0019EEEA-EEF6 for red, likewise at
+	    // EF12 and EF3A) and reloads only the mask size per iteration.
+	    // Measured: folding the expression into the subscript instead
+	    // still yields a 539-byte function, but 114 of its bytes differ --
+	    // gcc 2.7.2.1 then sinks the computation past the guard and
+	    // reloads bitsPerPixel and the field position inside the body.
+	    lsb = mode->bitsPerPixel - mode->redFieldPosition - 1;
+	    for (i = 0; i < mode->redMaskSize; i++)
+		info->pixelEncoding[lsb - i] = IO_SampleTypeRed;
+
+	    lsb = mode->bitsPerPixel - mode->greenFieldPosition - 1;
+	    for (i = 0; i < mode->greenMaskSize; i++)
+		info->pixelEncoding[lsb - i] = IO_SampleTypeGreen;
+
+	    lsb = mode->bitsPerPixel - mode->blueFieldPosition - 1;
+	    for (i = 0; i < mode->blueMaskSize; i++)
+		info->pixelEncoding[lsb - i] = IO_SampleTypeBlue;
+	}
+    } else {
+	info->colorSpace = IO_OneIsWhiteColorSpace;
+	for (i = 0; i < mode->bitsPerPixel; i++)
+	    info->pixelEncoding[i] = IO_SampleTypeGray;
+    }
+
+    info->flags      = IO_DISPLAY_NEEDS_SOFTWARE_GAMMA_CORRECTION;
+    info->parameters = (void *)mode->modeNumber;
+    info->memorySize = mode->yResolution * mode->bytesPerScanline;
+}
 //
 // END:		Exported routines
 //

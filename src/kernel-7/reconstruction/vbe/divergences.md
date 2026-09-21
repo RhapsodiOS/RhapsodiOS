@@ -878,3 +878,178 @@ The D3/D5 probe compiled on the Rhapsody guest in
 `gnumake -n FBConsole.o`, substituting a probe source that `#include`s
 `FBConsole.c` and appends the sentinel-wrapped `unsigned long[]`; the resulting
 `-arch i386` object was copied back and its `__data` read.
+
+---
+
+## Task 2: writing `VBEModeInfo2IODisplayInfo`
+
+**Result: byte-identical.** 411 of the 539 bytes compare equal; the other 128
+are the masked absolute operands, and those agree too once expressed relative
+to the function entry.
+
+### What was compared, and against what
+
+| | reference | ours |
+| --- | --- | --- |
+| binary | i386 slice, `33469393…F14890` | `BUILD/RELEASE_I386/mach_kernel`, 1,486,224 bytes, `AC2213A3F4EBF7429708BD4B66DEDD1D960346CE97B7FEB12B7A2FB57245010F` |
+| `_VBEModeInfo2IODisplayInfo` | `0x0019ED8C` | `0x001E8804` (`nm`: `T`, defined and external) |
+| entry alignment | `≡ 0 mod 4` | `≡ 0 mod 4` |
+| 539-byte SHA-256 | `BDDC94F5…2B21` (Task 1's value, re-confirmed) | `CFA460B379ABBE1E3B2DC9A808BCE5C1E74416327EBEEF4EA9CFE9AF6812C596` |
+
+The two function hashes differ **only** because the 128 masked bytes hold
+different absolute addresses; see the mask check below. **[measured]**
+
+Our compiler is Apple `cc-783.1`, gcc 2.7.2.1 — the same family as the
+reference's — invoked with the kernel build's own line for `FBConsole.o`
+(`-static -nostdinc -nostdlib -traditional-cpp -g -O3 -fno-omit-frame-pointer
+-arch i386 -fwritable-strings -fno-common -fpascal-strings`, plus the kernel's
+`-D` set). **[measured: recovered with `gnumake -n FBConsole.o`]**
+
+### The mask, and why masking does not hide a wrong answer
+
+`compare_kvbe.py` (harness, deliberately not committed) masks by pattern, as
+Task 1 requires — there are no relocations in either binary:
+
+- the dispatch `disp32` at function offsets **71–74**, after asserting that
+  `ff 24 85` really is at offset **68** in *both* binaries, so the mask cannot
+  drift onto the wrong bytes;
+- the **31** jump-table entries at offsets **76–199**.
+
+Masking those 128 bytes would by itself let a build with a *wrong* jump table
+compare clean. So the harness additionally re-expresses both masked regions
+relative to the function entry and compares them:
+
+```
+masked region agrees: dispatch -> fn+76, 31 table targets identical
+```
+
+All 31 relative targets match entry for entry — `[200, 260, 260, 260, 260,
+260, 212, …, 248]`, the table Task 1 tabulated. **[measured]**
+
+The harness was negative-tested with three mutations of our own object, each
+correctly reported: a compared code byte (`fn+43`), a jump-table entry (caught
+only by the relative check), and an interior pad byte (`fn+209`). The pads are
+**not** masked and do compare. **[measured]**
+
+### All seven interior pad runs reproduced, and why
+
+Task 1 left open "whether ours will emit the same runs". It does — all seven,
+with no source-side effort. The rule the reference's padding follows, and ours
+reproduces, is gcc 2.x's i386 4-byte code alignment applied in exactly two
+places **[inference from the addresses; the parity result is the measurement]**:
+
+- **after a barrier** (an unconditional `jmp`): the table at `0x0019EDD8`, the
+  case bodies at `0x0019EE60`/`EE6C`/`EE78`/`EE84`/`EE90`, and `0x0019EED4`;
+- **at a loop top**: `0x0019EEC0`, `0x0019EF00`, `0x0019EF28`, `0x0019EF50`,
+  `0x0019EF74`.
+
+Labels reached only by falling through get no alignment, which is why
+`0x0019EF12`, `0x0019EF3A` and `0x0019EF82` sit at `≡ 2 mod 4` with no pad
+before them. **[measured: those addresses, and the absence of a pad]**
+
+This is a property of the compiler and the function's own offsets, not of the
+source text, so it holds only while our entry stays 4-aligned — which the
+harness checks and reports.
+
+### The one source shape that is codegen-determined
+
+Everything else in the function follows from the disassembly directly. One
+construct does not, and it is called out on the line in `FBConsole.c`:
+
+```c
+lsb = mode->bitsPerPixel - mode->redFieldPosition - 1;
+for (i = 0; i < mode->redMaskSize; i++)
+    info->pixelEncoding[lsb - i] = IO_SampleTypeRed;
+```
+
+The invariant has to be **its own statement ahead of the loop**. The reference
+computes it before the mask-size guard (`0x0019EEEA`–`EEF6`, and likewise at
+`EF12` and `EF3A`) and reloads only the mask size per iteration.
+
+**The rejected alternative, measured rather than reasoned:** folding the
+expression into the subscript —
+`info->pixelEncoding[mode->bitsPerPixel - mode-><c>FieldPosition - 1 - i]` —
+compiles to a function of the **same 539 bytes** but with **114 differing
+bytes**. gcc 2.7.2.1 then sinks the computation past the guard and reloads
+`bitsPerPixel` and the field position inside the loop body, and switches the
+index register from `edx` to `ecx`. **[measured: both variants compiled with
+the kernel's own command line and compared with the harness; the two objects'
+`__TEXT` sizes are identical at 11,217 bytes, so size alone would not have
+caught this]**
+
+An earlier draft of that source comment asserted the alternative cost "3 extra
+instructions per loop, 9 for the three loops". That was reasoning, not
+measurement, and it was **wrong** — the cost is zero bytes and 114 changed
+ones. Recorded because it is the same unmarked-inference failure this project
+has now hit four times.
+
+### Reference behaviours reproduced deliberately
+
+Both are labelled in `FBConsole.c` so a later reader does not "repair" them:
+
+- **`refreshRate = 0`** (`0x0019EDB3`). The mode record carries no refresh
+  rate. This is the reason spec 1's driver prints `Refresh:0Hz`. **[measured]**
+- **`pixelEncoding` is never terminated.** Only `bitsPerPixel` bytes are
+  written and no `'\0'` follows, although `displayDefs.h` documents the array
+  as NUL-terminated and says `strlen` of it returns the pixel depth. Combined
+  with the 4.2 caller handing in an uninitialized stack `IODisplayInfo`
+  (recorded under the field map above), the tail is stack residue. Adding a
+  terminator would add bytes and change behaviour. **[measured: no store to
+  `[esi+0x20+bitsPerPixel]` exists]**
+
+A third, **not** reproduced because it is not present here: the
+`bytesPerScanLine * XResolution` transposition spec 1 found in the driver. This
+function's `memorySize` is `yResolution * bytesPerScanline`
+(`0x0019EF8F`–`EF9A`), which is correct. **[measured]**
+
+### `info->parameters` takes a cast
+
+`IODisplayInfo.parameters` is `void *`; the reference stores the 16-bit mode
+number into it zero-extended (`movzx edi, word ptr [ebx]` / `mov [esi+0x64],
+edi`). `info->parameters = (void *)mode->modeNumber;` reproduces that and draws
+one warning, `cast to pointer from integer of different size`, which is
+expected and harmless. **[measured]**
+
+### Guest environment, as found — none of this is a source problem
+
+Recorded so the next task does not re-diagnose it. The kernel half of
+`vm/build-i386-kernel-ahci.sh` was run directly after the script stopped
+short; the compile and link commands used are the script's own.
+
+1. **`/usr/lib/libcc.a` on the guest is PPC-only** (33,620 bytes, Feb 1999), so
+   the i386 link fails with undefined `__muldi3`, `__udivdi3`, `__divdi3`,
+   `__moddi3`, `__umoddi3` and `ld: warning … cputype (18, architecture ppc)
+   does not match cputype (7 architecture i386)`. A **fat** `libcc.a`
+   (i386+ppc) carrying exactly those five symbols does exist, at
+   `/build/bootstrap-root/usr/lib/libcc.a`. The link was completed with
+   `LIBS="-L/build/bootstrap-root/usr/lib -lcc"` on the make command line —
+   **an environment override only; no repo file was changed**, and
+   `vm/tests/test-build-src.ps1:261` deliberately asserts the i386 kernel must
+   *not* carry a workaround object, so the fix belongs in guest provisioning.
+   **[measured]**
+2. **`build-i386-kernel-ahci.sh` cannot run under the guest's `/bin/sh`.** It
+   uses `command -v`, which that shell lacks (`-v: not found`, rc 127); it runs
+   under `/bin/bash`. **[measured]**
+3. **The script never creates `BUILD/`.** It removes `BUILD/RELEASE_I386` but
+   `conf/Makefile`'s `tools` target does `cd ${OBJROOT}` with no `mkdir`, so on
+   a tree that has never been built — or one just re-synced, since `BUILD/` is
+   not in the repo — the build dies with `cd: can't cd to ../BUILD`.
+   **[measured]**
+4. **The portable AHCI tests fail before the kernel is reached**, unrelated to
+   anything here: they compile natively with `-ansi -pedantic -Wall -Werror`
+   and trip on `static __inline` at
+   `/System/Library/Frameworks/System.framework/Headers/bsd/stdio.h:338`.
+   **[measured]**
+
+### Still not determined
+
+- **The return type.** Unchanged from Task 1: `void` remains an inference. Our
+  `void` definition reproduces the reference's bytes, which is consistent with
+  `void` but does not prove it — a function returning a value it never sets
+  would compile the same. **[inference]**
+- **Whether the reference's `lsb` was one reused local or three.** Both spell
+  the same instructions; ours reuses one. Not decidable from the binary.
+  **[inference]**
+- **D4 is still an inference.** Placing the function in `FBConsole.c` followed
+  Task 1's link-order argument. It built and linked with no friction, which is
+  consistent with D4 but does not upgrade it to a measurement.

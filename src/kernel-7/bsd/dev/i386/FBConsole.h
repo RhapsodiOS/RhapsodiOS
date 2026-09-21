@@ -44,6 +44,31 @@
 #import <driverkit/displayDefs.h>
 #import	<bsd/dev/i386/ConsoleSupport.h>
 
+/*
+ * One VBE mode as the booter hands it over in KERNBOOTSTRUCT.  22 bytes of
+ * fields, 24 with the two bytes of alignment padding at 0x12 that the
+ * trailing pointer forces.  The layout is the 4.2 VBE20DisplayDriver's,
+ * confirmed a second time by the field offsets VBEModeInfo2IODisplayInfo
+ * itself reads (0x0019ED8C in the i386 slice of the OPENSTEP 4.2 kernel).
+ */
+typedef struct {
+    unsigned short	modeNumber;		/* 0x00 */
+    unsigned short	modeAttributes;		/* 0x02 */
+    unsigned short	xResolution;		/* 0x04 */
+    unsigned short	yResolution;		/* 0x06 */
+    unsigned short	bytesPerScanline;	/* 0x08 */
+    unsigned char	bitsPerPixel;		/* 0x0A */
+    unsigned char	memoryModel;		/* 0x0B */
+    unsigned char	redMaskSize;		/* 0x0C */
+    unsigned char	redFieldPosition;	/* 0x0D */
+    unsigned char	greenMaskSize;		/* 0x0E */
+    unsigned char	greenFieldPosition;	/* 0x0F */
+    unsigned char	blueMaskSize;		/* 0x10 */
+    unsigned char	blueFieldPosition;	/* 0x11 */
+    void		*frameBuffer;		/* 0x14 */
+} VBEModeRec;
+
 extern IOConsoleInfo *FBAllocateConsole(IODisplayInfo *display);
+extern void VBEModeInfo2IODisplayInfo(VBEModeRec *mode, IODisplayInfo *info);
 
 #endif	/* DRIVER_PRIVATE */

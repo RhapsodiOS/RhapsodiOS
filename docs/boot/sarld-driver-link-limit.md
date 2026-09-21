@@ -92,17 +92,49 @@ before. The same result was obtained first by patching the node count into
 Apple's own `sarld` binary, which isolates the change from the rest of our
 rebuild.
 
+## Also fixed: boot2 could not read the disk at all
+
+`boot2` built from this tree ran but found no config files, printing
+`Bad superblock: error 2` five times, and reported `K conventional / K total
+memory` with no numbers. Both are fixed; the two are unrelated to the `sarld`
+limit above and to each other.
+
+`sys.c` decided the filesystem's byte order at compile time:
+
+```c
+#define BIG_ENDIAN_INTEL_FS __LITTLE_ENDIAN__
+```
+
+which is true on i386, so the booter byte-swapped every superblock, inode and
+directory block it read. The filesystems NeXT's tools produced are big-endian
+and want that; the ones this tree installs are little-endian and do not. Swapping
+a little-endian superblock destroys the magic, so `open()` failed the check at
+what was then `sys.c:861` and no file could be opened. The stock booter is
+unaffected, which is why only our build showed it.
+
+The kernel has never guessed: `ffs_mountfs()` validates the superblock as read,
+byte-swaps and revalidates only if that fails, and records the answer as
+`rev_endian`. `sys.c` now does the same, with `fs_rev_endian` gating the four
+other swap sites. The disks that were previously fixed up for a 512-versus-1024
+blocksize mismatch still are; the ones that never were still are not.
+
+`prf.c` had no `case 'u'`, so `%u` printed nothing at all -- `printn()` has
+always formatted unsigned, so the case was all that was missing.
+
+Verified: our `boot2`, our `sarld` and our `drvEIDE` boot together to userland
+on our kernel, and the prompt reads `639K conventional / 129535K total memory`.
+
+Note that `boot2` is close to its ceiling. `boot1` reads `LOADSZ` sectors --
+88, or 45,056 bytes -- and our `boot2` is 44,576. There are 480 bytes of
+headroom, and nothing warns when they run out.
+
 ## Still open
 
-Two pre-existing defects in this tree's booter, both found on the way here and
-neither touched:
-
-- `boot2` built from this tree runs but cannot read the filesystem
-  (`Bad superblock: error 2`), and misreports conventional/total memory. The
-  stock `boot` is unaffected, and the `sarld` fix does not require replacing it.
 - `rbuild buildpackage --arch i386 src/boot-2` builds everything but then fails
   its architecture check on `usr/bin/rcz`, a host tool the package installs into
   the product root.
+- The big-endian path is now reachable only on a big-endian disk, and there is
+  no such image here to test it against.
 
 `src/boot-2/i386/libsaio/saio_internal.h` used `__attribute__((packed))`, which
 the compiler that builds the booter rejects outright, so `boot-2` could not be

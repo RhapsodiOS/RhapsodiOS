@@ -92,37 +92,44 @@ a new file.
 
 ---
 
-### Building the kernel on the guest — four known blockers
+### Building the kernel: use `rbuild`, not `build-i386-kernel-ahci.sh`
 
-`vm/build-i386-kernel-ahci.sh` does **not** run end to end on the guest as
-shipped. Task 2 hit all four and worked around every one **without changing a
-repo file**; Task 3 will hit the same wall. None is caused by this spec's
-changes. Filed as a follow-up task; until that lands, apply these:
+**This project builds with `rbuild`.** An earlier revision of this plan sent
+Task 2 at `vm/build-i386-kernel-ahci.sh`, a straight `gnumake` path, and it
+walked into four blockers in a script that is not the normal route. Do not
+repeat that.
 
-1. **`command -v` is absent from the guest's `/bin/sh`**, so the script reports
-   `required target build tool not found: gnumake` even though `/bin/gnumake`
-   is on `PATH`. Run the script under `/bin/bash`.
-2. **The script removes `BUILD/RELEASE_I386` but never creates `BUILD/`**, and
-   `conf/Makefile`'s `tools` target does `cd ${OBJROOT}` with no `mkdir`, so a
-   fresh sync always fails with `cd: can't cd to ../BUILD`. `mkdir BUILD`
-   first.
-3. **The portable AHCI tests — the script's first step — do not compile
-   natively.** `cc -ansi -pedantic -Wall -Werror` on `ahci_command_test.c`
-   gives `bsd/stdio.h:338: syntax error before 'int'`. Skip that step and run
-   the kernel half with the script's own commands.
-4. **`/usr/lib/libcc.a` on the guest is PPC-only**, so the link fails on
-   `__muldi3 __udivdi3 __divdi3 __moddi3 __umoddi3`. A fat i386+ppc archive
-   carrying exactly those five sits at `/build/bootstrap-root/usr/lib/libcc.a`.
-   Link with a make-command override:
+The documented invocation is `docs/build/rbuild-universal.md:195`:
 
-   ```sh
-   gnumake LIBS="-L/build/bootstrap-root/usr/lib -lcc"
-   ```
+```sh
+rbuild kernel --state /build/state --arch i386   /build/src /build/repo /build/rbuild-i386-kernel-proof
+```
 
-   **Do not** wire `src/kernel-7/conf/libcc_i386_helpers.c` into the i386
-   kernel to dodge this — `vm/tests/test-build-src.ps1:261` deliberately
-   asserts it must not be, so the intended fix is a fat `libcc` on the default
-   path, which belongs in guest provisioning rather than in this spec.
+Guest `rbuild` is `/build/tools/bin/rbuild`. It produces an APK set —
+`kernel-154.5.1-7` and companions — from which the `mach_kernel` is extracted;
+`rbuild-universal.md` records `/tmp/kext/mach_kernel` as the extraction point in
+its own proof run. Use an independently named destination under `/tmp` so no
+canonical runtime, boot image or golden image is touched, as that document's
+own acceptance runs do.
+
+`rbuild kernel` takes `kernel-7` from the source tree, so a `vm/sync-src.ps1
+-Path kernel-7` still precedes it.
+
+**If `rbuild kernel` fails, report it — do not fall back to `gnumake`.** A
+gnumake build is a different path with different flags and a different libcc
+resolution, so a binary produced that way is not evidence about the one this
+project ships. Task 2's result stands because the *function* was compared
+byte-for-byte against the reference, not because its build path was right.
+
+> **Known blockers on the `gnumake` path**, recorded only so nobody mistakes
+> them for rbuild problems. Task 2 hit all four and worked around each without
+> changing a repo file; a separate session is fixing them.
+> `command -v` is absent from the guest's `/bin/sh`; the script never `mkdir`s
+> `BUILD/`; the portable AHCI tests fail under `-ansi -pedantic`; and
+> `/usr/lib/libcc.a` is PPC-only, with a fat one at
+> `/build/bootstrap-root/usr/lib/libcc.a`. **Do not** wire
+> `src/kernel-7/conf/libcc_i386_helpers.c` in to dodge the last —
+> `vm/tests/test-build-src.ps1:261` asserts it must not be.
 
 ---
 
@@ -398,7 +405,14 @@ FBAllocateVBEConsole(void)
     if (<D2's word> == 0 || <mode record>->xResolution == 0)
 	return NULL;
 
-    bzero(&info, sizeof(info));
+    /*
+     * No bzero: the reference passes the local UNINITIALISED.  Verified -
+     * 0x0019ECB8's prologue has no rep stos and no call before the
+     * VBEModeInfo2IODisplayInfo at +52.  VBEModeInfo2IODisplayInfo's
+     * default: arm ORs into modeUnavailableFlag, so on an unrecognised
+     * depth it ORs into stack residue.  That is the reference's behaviour;
+     * reproduce it and label it, do not add a bzero to "fix" it.
+     */
     VBEModeInfo2IODisplayInfo(<mode record>, &info);
     return FBAllocateConsole(&info);
 }

@@ -47,6 +47,27 @@
 #import "AtapiCntCmds.h"
 #import "IDEAddressing.h"
 
+/*
+ * Generic SFF-8038i bus-master methods.  These are declared here because
+ * every caller already imports this header, but they are implemented in
+ * IdeBMIDE.m under IdeController(BMIDE), not by the PIIX category below --
+ * declaring them as PIIX methods left that category incomplete.
+ */
+@interface IdeController(BMIDE)
+
+- (ide_return_t)performDMA:(ideIoReq_t *)ideIoReq
+    taskfile:(const ideTaskfile_t *)taskfile command:(unsigned int)command;
+
+- (sc_status_t) performATAPIDMA:(atapiIoReq_t *)atapiIoReq
+	buffer:(void *)buffer
+	client:(struct vm_map *)client;
+
+- (BOOL) bmRegisterRange:(IOPCIDeviceDescription *)devDesc;
+
+- (BOOL) bmInitPRDTable;
+
+@end
+
 @interface IdeController(PIIX)
 
 /*
@@ -60,17 +81,6 @@
 - (BOOL) probePCIController:(IOPCIDeviceDescription *)devDesc;
 
 - (ideTransferWidth_t) getPIOTransferWidth;
-
-- (ide_return_t)performDMA:(ideIoReq_t *)ideIoReq
-    taskfile:(const ideTaskfile_t *)taskfile command:(unsigned int)command;
-
-- (sc_status_t) performATAPIDMA:(atapiIoReq_t *)atapiIoReq
-	buffer:(void *)buffer
-	client:(struct vm_map *)client;
-
-- (BOOL) bmRegisterRange:(IOPCIDeviceDescription *)devDesc;
-
-- (BOOL) bmInitPRDTable;
 
 /*
  * PIIX specific (private) methods. They all start with the 'PIIX' prefix.

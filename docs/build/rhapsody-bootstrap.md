@@ -136,3 +136,81 @@ To start the daemon now without rebooting:
 Confirm it is listening, then log in over SSH from another machine. A modern
 OpenSSH client must offer the algorithms this guest negotiates; see
 `vm/SSH CONNECTION.md`.
+
+## Bootstrapping the tree on the guest
+
+With SSH working, the box is ready to build RhapsodiOS. The three steps below
+run from a Windows workstation holding the repository; `vm.conf` supplies the
+host, credentials, and directory layout (copy `vm/vm.conf.example` first).
+
+Before the first bootstrap, `RepoDir` (default `/build/repo`) must already hold
+the seed APKs — `rbuild bootstrap` resumes against validated packages and
+cannot start from an empty repository.
+
+### 1. Sync `src/` to the guest
+
+```bat
+powershell -NoProfile -File vm\sync-src.ps1 -All
+```
+
+Lands the whole tree under `RemoteRoot/src` (default `/build/src`) by streaming
+a ustar archive over SSH — `scp` drops the connection against this guest. The
+script restores execute bits afterwards, which Windows `tar` drops and
+`./configure` needs. Re-sync one project later with
+`-Path <dir>` (for example `-Path rbuild-1`).
+
+### 2. Build and install `rbuild`
+
+```bat
+powershell -NoProfile -File vm\build-src.ps1 -Rbuild
+```
+
+Runs `gnumake clean test all` in `/build/src/rbuild-1`, installs the binary to
+`ToolsDir/bin/rbuild` (default `/build/tools/bin`), and builds the private
+helpers the bootstrap needs: `relpath`, `decomment`, `config`, and the three
+`migcom` variants plus the `mig` driver script. On the guest that is:
+
+```sh
+cd /build/src/rbuild-1
+gnumake CC=/usr/bin/cc clean test all
+/usr/bin/install -d /build/tools/bin
+/usr/bin/install -c -m 755 rbuild /build/tools/bin/rbuild
+```
+
+The helper builds are long and order-sensitive; use `-Rbuild` rather than
+reproducing them by hand.
+
+### 3. Bootstrap
+
+```bat
+powershell -NoProfile -File vm\build-src.ps1 -Bootstrap
+```
+
+This is two passes over the same manifest — thin first, then universal. A
+thin-only bootstrap is not enough for ordinary universal builds. On the guest:
+
+```sh
+/usr/bin/install -d /build/bootstrap-root /build/repo /build/state
+cd /build/src
+CONFIG_DIR=/build/tools/bin \
+DECOMMENT=/build/tools/bin/decomment \
+MIGCC=/usr/bin/cc MIGARCH=ppc MIGCOM_DIR=/build/tools/libexec \
+BISON=/build/bootstrap-root/usr/bin/bison \
+BISON_SIMPLE=/build/bootstrap-root/usr/share/bison.simple \
+/build/tools/bin/rbuild bootstrap \
+    --sysroot /build/bootstrap-root \
+    --toolchain /build/src/rbuild-1/toolchains/gcc-darwin.conf \
+    --state /build/state \
+    /build/src/BootstrapManifest /build/repo /build/repo
+```
+
+Then repeat the identical command with `bootstrap-universal` in place of
+`bootstrap`. Both passes write their packages back into `/build/repo`, so the
+second pass sees the thin results of the first.
+
+Per-project logs land in `/build/state/logs/<pkg>-<arch>-<target>.log`. The
+architecture in those filenames comes from the toolchain profile, which is
+`ppc` in the only profile the tree ships.
+
+After this, `-Kernel`, `-KernelDrivers`, and `-World` build the rest; see
+`vm/README.md` for the full flag table.

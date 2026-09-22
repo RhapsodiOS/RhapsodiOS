@@ -112,14 +112,13 @@ The universal profile avoids that on the ppc guest because it bootstraps with
 `gcc-darwin-ppc.conf` byte for byte. The ppc profile was renamed from
 `gcc-darwin.conf` without changing its bytes, so existing state stays valid.
 
-`src/drivers-i386/bus/drvPExpert` does not exist yet, and `build-src.ps1`
-requires every core package locally, so `-Kernel` with the i386 or universal
-profile stops with `core package source missing locally:
-drivers-i386/bus/drvPExpert`. Until it lands, build the i386 kernel by calling
-`rbuild` directly, which skips missing core sources.
+`-Kernel` requires every core package source locally except a platform
+expert: `src/drivers-i386/bus/drvPExpert` does not exist yet, so with the
+i386 or universal profile `build-src.ps1` prints `no local source for
+drivers-i386/bus/drvPExpert; rbuild will skip it` and rbuild builds the i386
+kernel without it. Any other missing core source still stops the phase.
 
-To build one package for one CPU, or the i386 kernel for now, call `rbuild`
-on the guest directly:
+To build one package for one CPU, call `rbuild` on the guest directly:
 
 ```sh
 PATH=/build/tools/bin:/usr/bin:/bin:/usr/sbin:/sbin; export PATH

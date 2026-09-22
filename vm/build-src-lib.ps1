@@ -185,6 +185,27 @@ function Get-RhapKernelCorePackages {
     )
 }
 
+# Every core source must exist locally except a platform expert, which rbuild
+# skips when missing (drivers-i386/bus/drvPExpert has no source yet). Returns
+# the platform experts that will be skipped.
+function Assert-RhapKernelCoreSources {
+    param(
+        [Parameter(Mandatory = $true)][string]$LocalSource,
+        [Parameter(Mandatory = $true)][string]$TargetArch
+    )
+
+    $skipped = @()
+    foreach ($package in @(Get-RhapKernelCorePackages -TargetArch $TargetArch)) {
+        if (Test-Path -LiteralPath (Join-Path $LocalSource $package) -PathType Container) { continue }
+        if ($package -like 'drivers-*/bus/drvPExpert') {
+            $skipped += $package
+            continue
+        }
+        throw "core package source missing locally: $package"
+    }
+    return $skipped
+}
+
 function Assert-RhapFreshMode {
     param(
         [switch]$All,

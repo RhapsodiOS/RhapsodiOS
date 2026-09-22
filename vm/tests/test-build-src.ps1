@@ -474,7 +474,24 @@ Assert-Match $buildScriptText ([regex]::Escape('-TargetArch $profileValues.targe
 Assert-Equal ((Get-RhapKernelCorePackages -TargetArch 'ppc') -join ',') 'driverkit-3,driverTools-1,kernload-1,drivers-ppc/bus/drvPExpert,kernel-7' 'ppc kernel core package order'
 Assert-Equal ((Get-RhapKernelCorePackages -TargetArch 'i386') -join ',') 'driverkit-3,driverTools-1,kernload-1,drivers-i386/bus/drvPExpert,kernel-7' 'i386 kernel core package order'
 Assert-Equal ((Get-RhapKernelCorePackages -TargetArch 'universal') -join ',') 'driverkit-3,driverTools-1,kernload-1,drivers-i386/bus/drvPExpert,drivers-ppc/bus/drvPExpert,kernel-7' 'universal kernel core packages cover both platform experts'
-Assert-Match $buildScriptText 'Get-RhapKernelCorePackages -TargetArch \$profileValues\.target_arch' 'kernel phase validates core sources for the selected architecture'
+Assert-Match $buildScriptText 'Assert-RhapKernelCoreSources -LocalSource \$localSrc -TargetArch \$profileValues\.target_arch' 'kernel phase validates core sources for the selected architecture'
+Assert-Match $buildScriptText 'rbuild will skip it' 'kernel phase says which missing platform expert rbuild will skip'
+$coreSourceDir = Join-Path $env:TEMP ("rhap-core-sources-{0}" -f [guid]::NewGuid().ToString('n'))
+try {
+    foreach ($package in @('driverkit-3', 'driverTools-1', 'kernload-1', 'drivers-ppc/bus/drvPExpert', 'kernel-7')) {
+        New-Item -ItemType Directory -Force -Path (Join-Path $coreSourceDir $package) | Out-Null
+    }
+    Assert-Equal (@(Assert-RhapKernelCoreSources -LocalSource $coreSourceDir -TargetArch 'ppc').Count) 0 'ppc kernel with every core source skips nothing'
+    Assert-Equal ((Assert-RhapKernelCoreSources -LocalSource $coreSourceDir -TargetArch 'i386') -join ',') 'drivers-i386/bus/drvPExpert' 'i386 kernel goes ahead without an i386 platform expert, as rbuild does'
+    Assert-Equal ((Assert-RhapKernelCoreSources -LocalSource $coreSourceDir -TargetArch 'universal') -join ',') 'drivers-i386/bus/drvPExpert' 'universal kernel goes ahead without only the missing platform expert'
+    Remove-Item -LiteralPath (Join-Path $coreSourceDir 'kernel-7') -Recurse -Force
+    Assert-Throws { Assert-RhapKernelCoreSources -LocalSource $coreSourceDir -TargetArch 'ppc' } 'a missing kernel-7 still stops the kernel phase'
+    New-Item -ItemType Directory -Force -Path (Join-Path $coreSourceDir 'kernel-7') | Out-Null
+    Remove-Item -LiteralPath (Join-Path $coreSourceDir 'driverkit-3') -Recurse -Force
+    Assert-Throws { Assert-RhapKernelCoreSources -LocalSource $coreSourceDir -TargetArch 'i386' } 'a missing driverkit-3 still stops the kernel phase'
+} finally {
+    Remove-Item -LiteralPath $coreSourceDir -Recurse -Force -ErrorAction SilentlyContinue
+}
 Assert-Match $buildScriptText "\`$phase -eq 'kernel'" 'kernel phase preflights core package sources'
 Assert-NotMatch $buildScriptText 'function Get-DriverProjectRels' 'optional driver scan lives in rbuild, not the host orchestrator'
 Assert-NotMatch $buildScriptText "@\('drivers-i386', 'drivers-ppc'\)" 'optional driver scan does not mix i386 and ppc trees'

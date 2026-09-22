@@ -290,23 +290,25 @@ test "`cat "$base/temp-victim"`" = untouched
 test -L "$state/projects/foo-1.0-ppc-all.done.tmp"
 
 # Generic world validation must honor PATH rather than hardcoded host tools.
+# With no toolchain profile the extractor is pax, not tar: Rhapsody's tar is
+# pax's tar personality and chowns through not-yet-extracted symlinks.
 mkdir "$base/wrappers"
-cat > "$base/wrappers/tar" <<EOF
+cat > "$base/wrappers/pax" <<EOF
 #!/bin/sh
-echo tar >> "$base/wrapper.log"
-exec /usr/bin/gnutar "\$@"
+echo pax >> "$base/wrapper.log"
+exec /bin/pax "\$@"
 EOF
 cat > "$base/wrappers/gzip" <<EOF
 #!/bin/sh
 echo gzip >> "$base/wrapper.log"
 exec /usr/bin/gzip "\$@"
 EOF
-chmod +x "$base/wrappers/tar" "$base/wrappers/gzip"
+chmod +x "$base/wrappers/pax" "$base/wrappers/gzip"
 mkdir -p "$base/world-source/apk"
 sed 's/universal-apple-rhapsody/ppc-apple-rhapsody/' "$src/apk/pkginfo" > "$base/world-source/apk/pkginfo"
 echo "dir $base/world-source all" > "$base/WorldManifest"
 PATH="$base/wrappers:$PATH" ./rbuild buildall "$base/WorldManifest" "$repo" "$repo"
-grep '^tar$' "$base/wrapper.log" > /dev/null
+grep '^pax$' "$base/wrapper.log" > /dev/null
 grep '^gzip$' "$base/wrapper.log" > /dev/null
 
 # Symlink APKs are invalid artifacts, even when their targets are valid. The

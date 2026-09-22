@@ -77,6 +77,18 @@ static struct dirent *read_directory(DIR *dir) {
 }
 #endif
 
+/* Extractor used when no toolchain profile names a tar. Rhapsody's tar is
+   pax's tar personality, which chowns through symlinks and so exits nonzero
+   on any archive whose symlink precedes its target (file-cmds ships
+   usr/bin/cpio -> ../../bin/pax). Ask for pax by name instead -- resolved on
+   PATH, like the tar it replaces -- and drive it the way the profile's
+   pax-gnutar.sh wrapper does. */
+#define FALLBACK_TAR "pax"
+
+static int tar_is_pax(const Toolchain *tc) {
+    return strcmp(tc->tar, FALLBACK_TAR) == 0;
+}
+
 static int valid_tools(const Toolchain *tc) {
     return tc != 0 && tc->tar != 0 && tc->tar[0] != '\0' &&
            tc->gzip != 0 && tc->gzip[0] != '\0';
@@ -501,9 +513,17 @@ static int tar_pipeline(int artifact_fd, const char *root, int list_only,
             int null_fd = open("/dev/null", O_WRONLY);
             if (null_fd < 0 || dup2(null_fd, STDOUT_FILENO) < 0) _exit(127);
             if (null_fd > STDERR_FILENO) close(null_fd);
-            argv[1] = "-tf";
-            argv[2] = "-";
-            argv[3] = 0;
+            if (tar_is_pax(tc)) {
+                argv[1] = 0;
+            } else {
+                argv[1] = "-tf";
+                argv[2] = "-";
+                argv[3] = 0;
+            }
+        } else if (tar_is_pax(tc)) {
+            if (chdir(root) != 0) _exit(127);
+            argv[1] = "-r";
+            argv[2] = 0;
         } else {
             argv[1] = "-C";
             argv[2] = (char *)root;
@@ -1047,7 +1067,7 @@ int apk_use_arch(const char *path, const char *root, const Toolchain *tc,
     }
     if (!tc) {
         toolchain_init(&fallback);
-        fallback.tar = "tar"; fallback.gzip = "gzip";
+        fallback.tar = FALLBACK_TAR; fallback.gzip = "gzip";
         tc = &fallback;
     }
     return use_artifact(path, root, tc, pkgname, pkgver, 0, required,

@@ -1209,6 +1209,39 @@ TEST(test_quarantine_symlink_preserves_target) {
 static void arch_word(unsigned char *p, unsigned long v) {
     int i; for(i=0;i<4;i++) p[3-i]=(unsigned char)(v>>(i*8));
 }
+/* Without a toolchain profile the default extractor has to cope with a
+   symlink stored ahead of its target (file-cmds ships usr/bin/cpio ->
+   ../../bin/pax). Rhapsody's /usr/bin/tar is pax's tar personality, which
+   chowns through the not-yet-extracted link and exits nonzero. */
+TEST(test_default_extractor_handles_forward_symlink) {
+    char scratch[160], apk[192], root[192], link[224], real[224];
+    unsigned char code[28];
+    struct stat st;
+    TarEntry entries[] = {
+        { ".PKGINFO", '0', 0,
+          "pkgname = code\npkgver = 1\narch = i386-apple-rhapsody\n", 0 },
+        { "usr/bin/link", '2', "real", "", 0 },
+        { "usr/bin/real", '0', 0, 0, 0 }
+    };
+
+    make_scratch(scratch, sizeof(scratch), "fwdlink");
+    sprintf(apk, "%s/test-i386.apk", scratch);
+    sprintf(root, "%s/root", scratch);
+    sprintf(link, "%s/usr/bin/link", root);
+    sprintf(real, "%s/usr/bin/real", root);
+    memset(code, 0, sizeof(code));
+    arch_word(code, 0xfeedfaceUL); arch_word(code + 4, 7);
+    arch_word(code + 12, 1);
+    entries[2].data = (char *)code;
+    entries[2].binary_size = sizeof(code);
+    CHECK_INT(make_apk(apk, entries, 3), 0);
+    CHECK_INT(apk_use_arch(apk, root, 0, "code", "1", 1, 0, 0), 0);
+    CHECK_INT(lstat(link, &st), 0);
+    CHECK(S_ISLNK(st.st_mode));
+    CHECK_INT(lstat(real, &st), 0);
+    CHECK_INT(exec_runv("/bin/rm", "-rf", scratch, (char *)0), 0);
+}
+
 TEST(test_architecture_use) {
     char scratch[160], apk[192], root[192], marker[224];
     unsigned char code[104];
@@ -1269,6 +1302,7 @@ TEST(test_architecture_use) {
 
 static void run_all(void) {
     RUN(test_architecture_use);
+    RUN(test_default_extractor_handles_forward_symlink);
     RUN(test_validate_extract_and_quarantine);
     RUN(test_configured_tools_are_used_without_tar_z);
     RUN(test_validation_rejects_unsafe_or_malformed_members);

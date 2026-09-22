@@ -271,19 +271,6 @@ static int validate_or_quarantine(const char *path, const Toolchain *tc,
                                  str_has_suffix(pkgname, "-obj"), exists);
 }
 
-static const Toolchain *validation_toolchain(const RunnerOptions *opt) {
-    static Toolchain fallback;
-    static int initialized = 0;
-    if (opt->toolchain != 0) return opt->toolchain;
-    if (!initialized) {
-        toolchain_init(&fallback);
-        fallback.tar = xstrdup("tar");
-        fallback.gzip = xstrdup("gzip");
-        initialized = 1;
-    }
-    return &fallback;
-}
-
 static int parse_hex(const char *text, unsigned long *value) {
     char *end;
     unsigned long result;
@@ -513,7 +500,8 @@ static int run_entry(const ManifestEntry *entry, const char *seeddir,
     char *version = 0;
     char *hdr_name = 0;
     char *obj_name = 0;
-    const Toolchain *validate_tc = validation_toolchain(opt);
+    /* Null when no profile was given; apk_use_arch supplies default tools. */
+    const Toolchain *validate_tc = opt->toolchain;
 
     package_init(&pkg); params_init(&params);
     memset(&state_info, 0, sizeof(state_info));

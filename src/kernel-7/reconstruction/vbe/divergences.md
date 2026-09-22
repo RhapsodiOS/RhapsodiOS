@@ -1566,3 +1566,257 @@ definition in `FBConsole.c` and its declaration in `FBConsole.h`. Task 4 owns
 the wiring. The diff for this task is **insertions only, zero deletions**, so
 no existing behaviour changed; adding a function shifts later addresses, which
 is relocation, not behaviour.
+
+---
+
+## Task 4: wiring `BasicAllocateConsole`
+
+### Correction to the brief: there *is* a reference, and it is ours
+
+Task 4's brief and its plan step both state that 4.2's `BasicAllocateConsole`
+"is not ours" and that the shape therefore has to be inferred from ppc. **Both
+are wrong, and the evidence is direct.** The reference kernel exports
+`_BasicAllocateConsole` at `0x00197C58`, it is 72 bytes
+(`0x00197C58`-`0x00197C9F`), and it is our function **[measured]**:
+
+```
+  00197c58  push     ebp
+  00197c59  mov      ebp, esp
+  00197c5b  sub      esp, 0x88
+  00197c61  push     ebx
+  00197c62  call     0x19ecb8      ; _FBAllocateVBEConsole
+  00197c67  test     eax, eax
+  00197c69  jne      0x197c96
+  00197c6b  push     0x88
+  00197c70  lea      ebx, [ebp - 0x88]
+  00197c76  push     ebx
+  00197c77  call     0x101600      ; _bzero
+  00197c7c  mov      dword ptr [ebp - 0x88], 0x280
+  00197c86  mov      dword ptr [ebp - 0x84], 0x1e0
+  00197c90  push     ebx
+  00197c91  call     0x19b760      ; _VGAAllocateConsole
+  00197c96  mov      ebx, dword ptr [ebp - 0x8c]
+  00197c9c  mov      esp, ebp
+  00197c9e  pop      ebp
+  00197c9f  ret
+```
+
+```
+  00197c58  55 89 e5 81 ec 88 00 00 00 53 e8 51 70 00 00 85
+  00197c68  c0 75 2b 68 88 00 00 00 8d 9d 78 ff ff ff 53 e8
+  00197c78  84 99 f6 ff c7 85 78 ff ff ff 80 02 00 00 c7 85
+  00197c88  7c ff ff ff e0 01 00 00 53 e8 ca 3a 00 00 8b 9d
+  00197c98  74 ff ff ff 89 ec 5d c3
+```
+
+`0x88` is `sizeof(IODisplayInfo)` exactly - 72 bytes of scalars plus
+`IOPixelEncoding pixelEncoding`, `char[IO_MAX_PIXEL_BITS]` with
+`IO_MAX_PIXEL_BITS` 64 (`src/driverkit-3/driverkit/displayDefs.h:118,120`), so
+136 = `0x88`. `0x280` is 640 and `0x1E0` is 480. That is `IODisplayInfo di;
+bzero(&di, sizeof(di)); di.width = 640; di.height = 480; return
+VGAAllocateConsole(&di);` - the body that was already in
+`bsd/dev/i386/BasicConsole.c` before this task.
+
+The two call targets were resolved from the slice's own symbol table, not
+guessed: `0x0019B760` is `_VGAAllocateConsole` and `0x00101600` is `_bzero`
+**[measured]**.
+
+### Our pre-Task-4 build is the reference minus exactly nine bytes
+
+Same function in the kernel built at the end of Task 3 (the retained artifact
+described under "Where the kernel these results come from is kept"),
+`_BasicAllocateConsole` at `0x001E214C`, **63 bytes** **[measured]**:
+
+```
+  001e214c  push     ebp
+  001e214d  mov      ebp, esp
+  001e214f  sub      esp, 0x88
+  001e2155  push     ebx
+  001e2156  push     0x88
+  001e215b  lea      ebx, [ebp - 0x88]
+  001e2161  push     ebx
+  001e2162  call     0x100c40      ; _bzero
+  001e2167  mov      dword ptr [ebp - 0x88], 0x280
+  001e2171  mov      dword ptr [ebp - 0x84], 0x1e0
+  001e217b  push     ebx
+  001e217c  call     0x1e5c68      ; _VGAAllocateConsole
+  001e2181  mov      ebx, dword ptr [ebp - 0x8c]
+  001e2187  mov      esp, ebp
+  001e2189  pop      ebp
+  001e218a  ret
+```
+
+72 minus 63 is 9, and the nine are precisely `e8 <rel32>` (5) plus `85 c0` (2)
+plus `75 2b` (2). Every other instruction agrees in mnemonic, operands and
+encoding, including the two `mov`s of 640 and 480 and the `[ebp-0x8c]` `ebx`
+restore. **The two functions differ by the `FBAllocateVBEConsole()` call and
+nothing else.** This is a far stronger statement than the brief expected to be
+available, and it is what the source change was written from.
+
+### Answering the design question: no outer `v_baseAddr` test
+
+The predecessor's uncommitted draft guarded the new arm with
+`if (kernbootstruct->video.v_baseAddr)`, mirroring ppc. **Dropped, on
+measurement, not on taste.**
+
+- The reference calls `_FBAllocateVBEConsole` **unconditionally, as the first
+  instruction after the prologue**. Nothing is tested before it **[measured]**.
+- The reference's `_BasicAllocateConsole` touches **no** part of
+  `KERNBOOTSTRUCT`: over its 72 bytes there is no memory operand in
+  `[0x11000, 0x13000)` and no argument access at `[ebp+8]` **[measured]**.
+- ppc's outer test is not a counter-example, it is a different situation:
+  `bsd/dev/ppc/kmDevice.m:150-167` tests `framebufferArgs->v_baseAddr` because
+  **the caller builds the `IODisplayInfo` inline** and then passes it to a
+  `BasicAllocateConsole(IODisplayInfo *)` that takes it as an argument
+  (`bsd/dev/ppc/FBConsole.c:1720`). i386's `BasicAllocateConsole` takes no
+  argument and `FBAllocateVBEConsole` encapsulates both the test and the
+  build, so there is no work to guard.
+- The two predicates are not even the same fact. `video.v_baseAddr` is the
+  *physical* linear-frame-buffer base, and on i386 **the booter already writes
+  it today** - `src/boot-2/i386/boot2/graphics.c:200-208`, in `setMode()`, on a
+  graphics-mode boot with a linear VBE mode. `FBAllocateVBEConsole`'s guards
+  read `kbs+0x1858` (`xResolution` of the booter's `VBEModeRec`) and
+  `kbs+0x1854` (the *mapped virtual* address), neither of which the booter
+  writes. Gating on `v_baseAddr` would therefore couple "the console may use a
+  frame buffer" to "the booter chose graphics mode", which is a different
+  question, and would let spec 3 be silently blocked if it published the mode
+  record without also setting `video.v_baseAddr`.
+
+The vestigial `KERNBOOTSTRUCT *kernbootstruct = KERNSTRUCT_ADDR;` therefore
+stays declared and unused, and the brief's "it becomes used" does not hold.
+Keeping it costs nothing measurable: our pre-Task-4 build already reserves the
+reference's `0x88` and no more, so gcc drops the unused local entirely.
+**Not determinable:** whether 4.2's source carried the same vestigial
+declaration - an unused local leaves no trace in the binary.
+
+### The reference's `kminit` calls it too; ours is not changed here
+
+`_kminit` at `0x00197514` is the second and only other caller of
+`_FBAllocateVBEConsole` in the reference **[measured]** - the scan decoded
+`__text` linearly and collected every `call rel32` whose target is
+`0x0019ECB8`; there are exactly two, this one and `_BasicAllocateConsole`'s.
+It reads:
+
+```
+  00197517  mov      dword ptr [0x1e777c], 1     ; initialized = TRUE
+  00197521  call     0x19ecb8                    ; _FBAllocateVBEConsole
+  00197526  mov      dword ptr [0x1f7b3c], eax   ; basicConsole = ...
+  0019752b  test     eax, eax
+  0019752d  jne      0x197539
+  0019752f  call     0x197c58                    ; _BasicAllocateConsole
+  00197534  mov      dword ptr [0x1f7b3c], eax
+  00197539  cmp      dword ptr [0x1114c], 0      ; kernbootstruct->graphicsMode
+```
+
+Our `kminit` (`bsd/dev/i386/km.m:494-510`, `_kminit` at `0x001E1A70` in the
+Task 3 kernel) is the same function without that first attempt: `initialized =
+TRUE`, `basicConsole = BasicAllocateConsole()`, then the identical
+`cmp dword ptr [0x1114c], 0` - **the same absolute address as the reference's**,
+which independently confirms `kbs+0x14c` is `graphicsMode` on both sides
+**[measured]**.
+
+This divergence is **left in place**. Once `BasicAllocateConsole` makes the
+call itself, the reference's extra attempt in `kminit` is a redundant duplicate
+with no behavioural effect, and `km.m` is not Task 4's file. Recorded for
+whoever owns `km.m` parity; it is not a defect in what Task 4 shipped.
+
+### The change, and why it is invisible today
+
+```c
+    console = FBAllocateVBEConsole();
+    if (console)
+	return console;
+```
+
+inserted ahead of an untouched `bzero`/640/480/`VGAAllocateConsole` tail, plus
+`#import <bsd/dev/i386/FBConsole.h>`. Insertions only; no pre-existing line
+changed.
+
+`FBAllocateVBEConsole` returns `NIL` on every boot in this tree, because
+nothing writes `kbs+0x1854` - spec 3 owns that producer, as recorded under
+"`0x12854` has no producer in this tree, and that is the correct state".
+**The new arm is unreachable until spec 3 exists**, and the VGA path below is
+what runs. No producer was stubbed, no guard weakened and no debug override
+added to make the arm reachable.
+
+Compile risk from the new `#import` was checked statically, since the build box
+was unavailable (below). `FBConsole.h` pulls `<mach/boolean.h>`,
+`<driverkit/displayDefs.h>` and `<bsd/dev/i386/ConsoleSupport.h>`.
+`ConsoleSupport.h` has no include guard, but `BasicConsole.c` **already**
+includes it twice today under two different spellings - `BasicConsole.h`
+imports `"ConsoleSupport.h"` and `VGAConsole.h` imports
+`<bsd/dev/i386/ConsoleSupport.h>` - and `displayDefs.h` likewise. FBConsole.h
+uses the same angle spelling `VGAConsole.h` does, so the new import adds no
+combination the translation unit does not already compile **[inference, from
+the existing include graph; not confirmed by a compile]**.
+
+### NOT VERIFIED: the build and the invisibility gate could not be run
+
+**This section is the honest state of Task 4 and must be read before Task 5
+starts.** Acceptance items 1-3 - kernel builds, Task 2's 539-byte extent still
+MATCHes, console output identical to the pre-Task-4 kernel - are **not
+demonstrated**, for an infrastructure reason:
+
+- The Rhapsody build box, `Host=10.10.0.241` in `vm/vm.conf`, the "legacy PPC
+  build box" of `vm/SSH CONNECTION.md`, **is powered off**. `vm/sync-src.ps1
+  -Path kernel-7` failed with `ssh: connect to host 10.10.0.241 port 22:
+  Connection timed out`; twelve pings in three batches spread over roughly
+  four minutes all timed out (one very first ping replied, then nothing --
+  stale ARP); the address is absent from the host's ARP table. It is a machine
+  on the LAN, not a VM this repo can start - there is no launcher for it under
+  `vm/` (`start-vm.cmd` boots `work/test.img`, the i386 boot-test image, and
+  nothing else), and no hypervisor process is running on the host
+  **[measured]**.
+- `rbuild` runs only on that guest, so no kernel could be produced; with no new
+  kernel there is nothing to graft into an image and nothing to compare against
+  a pre-Task-4 capture. Falling back to `gnumake` was not attempted and would
+  not have been evidence anyway.
+
+The retained pre-Task-4 kernel **was** re-verified, since that could be done
+locally: 1,490,352 bytes, SHA-256
+`1C0F8B804A5ECEF5124B3FCE9C3335356B7692B7C1FD11E2A40CFD6B87F7215D`, and
+`_FBAllocateConsole` `0x001E8740`, `_VBEModeInfo2IODisplayInfo` `0x001E87D4`,
+`_FBAllocateVBEConsole` `0x001E89F0` - all equal to the values this record and
+the brief carry **[measured]**. It is sound to compare against when the box
+returns.
+
+### What to run when the build box is back
+
+Task 3's two provisioning workarounds still apply verbatim (`--toolchain`, and
+`/usr/local/bin` on the profile's `path=`).
+
+```
+powershell -NoProfile -File vm/sync-src.ps1 -Path kernel-7
+# on the guest:
+sed -e 's|^path=.*|path=/build/tools/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin|' \
+    /build/src/rbuild-1/toolchains/gcc-darwin.conf > /tmp/task4-gcc-darwin.conf
+rbuild kernel --state /build/state --toolchain /tmp/task4-gcc-darwin.conf \
+  --arch i386 /build/src /build/repo /tmp/task4-kvbe-dst
+```
+
+Then three gates, the third of which this task's measurements make available
+and the brief did not expect to exist:
+
+1. `compare_kvbe.py <reference i386 slice> <built kernel>` still MATCHes on all
+   411 compared bytes. The function moves; a move is expected to re-hash.
+2. Boot the **unmodified** image with the new kernel and with
+   `task3-mach_kernel-final`, `--at 30,60,95 --keys "mach_kernel -v\n"`, on a
+   temporary work image. The two console captures must be **identical**.
+3. **New parity target.** `_BasicAllocateConsole` in the built kernel should be
+   **72 bytes**, and should match the reference's 72 bytes above with only the
+   three `e8` displacements differing - those are addresses and cannot agree.
+   A different length, or any other differing byte, means the emitted shape is
+   not the reference's.
+
+### Reproducing the Task 4 measurements
+
+Same tooling as the rest of this record - `capstone` 5.0.6 in
+`.venv-binrecon`, `CS_ARCH_X86` / `CS_MODE_32`, `file offset = va - 0x100000`.
+The caller scan disassembles `__text` linearly (restarting one byte past any
+undecodable run) and keeps every `call` with a literal target equal to
+`0x0019ECB8`; the containing function is the greatest `N_SECT` symbol address
+not exceeding the call site. `_BasicAllocateConsole` and `_kminit` were then
+listed from their entry to the first `ret`. The same listing was run against
+`task3-mach_kernel-final` for our side. The `KERNBOOTSTRUCT`-absence claim
+reuses the D2 filter - memory operands with `base == 0 && index == 0` and
+displacement in `[0x11000, 0x13000)` - restricted to the 72 bytes.

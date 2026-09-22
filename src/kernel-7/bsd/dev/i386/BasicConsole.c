@@ -29,6 +29,7 @@
 #import <bsd/i386/param.h>
 #import <bsd/dev/i386/BasicConsole.h>
 #import <bsd/dev/i386/VGAConsole.h>
+#import <bsd/dev/i386/FBConsole.h>
 #import <driverkit/displayDefs.h>
 #import <machdep/i386/kernBootStruct.h>
 #import <machdep/i386/io_inline.h>
@@ -242,7 +243,29 @@ IOConsoleInfo *BasicAllocateConsole()
 {
     IODisplayInfo di;
     KERNBOOTSTRUCT *kernbootstruct = KERNSTRUCT_ADDR;
-    
+    IOConsoleInfo *console;
+
+    // Put the console on the frame buffer the booter left us, when there is
+    // one.
+    //
+    // MEASURED, not inferred from ppc: 4.2 has this same function, as
+    // _BasicAllocateConsole at 0x00197C58 in the i386 slice of the OPENSTEP
+    // 4.2 mach_kernel (72 bytes). Below the call it is already exactly what
+    // stood here -- 0x88 of stack for the IODisplayInfo, bzero, 0x280,
+    // 0x1E0, VGAAllocateConsole -- so this call is the entire difference,
+    // and the reference makes it UNCONDITIONALLY as the first thing in the
+    // function. It tests nothing beforehand and reads no part of
+    // KERNBOOTSTRUCT at all; the guards live in FBAllocateVBEConsole, which
+    // reads kbs+0x1858 and kbs+0x1854, not video.v_baseAddr. Details in
+    // src/kernel-7/reconstruction/vbe/divergences.md, "Task 4".
+    //
+    // Nothing in this tree writes kbs+0x1854 yet -- that producer is spec
+    // 3's -- so FBAllocateVBEConsole returns NIL on every boot and this arm
+    // is unreachable today. The VGA path below is what runs, unchanged.
+    console = FBAllocateVBEConsole();
+    if (console)
+	return console;
+
     bzero(&di, sizeof(di));
     di.width = 640;
     di.height = 480;

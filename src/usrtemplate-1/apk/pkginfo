@@ -1,0 +1,6 @@
+pkgname = usrtemplate
+pkgver = 7.1
+pkgdesc = Template files
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = APSL
+makedepends = build-base

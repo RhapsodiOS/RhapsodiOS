@@ -658,7 +658,7 @@ Expected before the commit: `A` lines for `LOCAL-CHANGES`, `pico/makefile.rhp`, 
 
 **Interfaces:**
 - Consumes: Task 2's `makefile.rhp` target `pico`, with `EXTRACFLAGS`/`EXTRALDFLAGS`, and `$S/rx.ps1`.
-- Produces: `/build/out/pico-rbuild/pico-4.3l-universal.apk` on the guest.
+- Produces: `/build/out/pico-rbuild/pico-4.3l-1-universal.apk` on the guest.
 
 **Background:** rbuild runs `make install` in a chroot built from `/build/repo`, passing `SRCROOT`, `OBJROOT`, `SYMROOT`, `DSTROOT` and the `RC_*` variables. `Common.make`'s `install::` runs `build` first, and the `install::` rule below then appends to it. `INSTALL_PROGRAM` strips the binary. When this plan was written, another session was re-running `rbuild bootstrap` on the guest and `/build/repo` held only 7 thin apks. The universal build-base packages pico needs don't exist until that finishes, including its `bootstrap-universal` pass. Hence the precheck.
 
@@ -707,7 +707,7 @@ Create `$S/pkg-check.sh`:
 ```sh
 # Report on the pico buildpackage: running, failed, or check the apk.
 PATH=/build/tools/bin:/usr/bin:/bin:/usr/sbin:/sbin; export PATH
-APK=/build/out/pico-rbuild/pico-4.3l-universal.apk
+APK=/build/out/pico-rbuild/pico-4.3l-1-universal.apk
 X=/tmp/pico-apk-check
 if [ ! -f /tmp/pico-rbuild.rc ]; then
     echo PKG_BUILD_RUNNING
@@ -848,7 +848,7 @@ powershell -NoProfile -File "$(cygpath -w "$S/rx.ps1")" -ScriptFile "$(cygpath -
 
 Expected at the end:
 - `RBUILD_RC=0`.
-- `pico-4.3l-universal.apk` in the `ls -l` output (`pico-hdrs-…`/`pico-obj-…` companions may also appear).
+- `pico-4.3l-1-universal.apk` in the `ls -l` output (`pico-hdrs-…`/`pico-obj-…` companions may also appear).
 - The regular files are exactly `./usr/bin/pico`, `./usr/share/man/man1/pico.1` and apk metadata such as `.PKGINFO`.
 - `lipo -info` shows `Architectures in the fat file: usr/bin/pico are: ppc i386` (either order).
 - Both `otool -arch` blocks list only `/System/Library/Frameworks/System.framework/Versions/B/System (...)`.
@@ -882,8 +882,10 @@ powershell -NoProfile -File "$(cygpath -w "$S/rx.ps1")" -ScriptFile "$(cygpath -
 
 Expected: the apk listing and `exit=0`. The apk in `/build/out/pico-rbuild`, `/tmp/pico-rbuild.log` and `/build/state-pico` are kept as evidence.
 
+**Run note (2026-09-22):** this plan originally expected `pico-4.3l-universal.apk`. rbuild appends the source directory's version suffix (`pico-1` gives `-1`), so the real file is `pico-4.3l-1-universal.apk`, with `.PKGINFO` `pkgver = 4.3l-1`. The first `pkg-check.sh` run failed only on that name, even though `RBUILD_RC=0`. With the name corrected, it printed `PACKAGE_TEST_OK`: fat ppc+i386 `pico`, System as the only library for both, 0 warnings in the rbuild log, and no `-hdrs`/`-obj` companions. The RED run in Step 3 was skipped because Steps 4–6 had been written while the repo was blocked.
+
 ---
 
 ## After all tasks
 
-Use superpowers:finishing-a-development-branch to decide how `pico-editor` goes back to `master`. The branch holds four commits: the spec, the import, the port, and the packaging.
+Use superpowers:finishing-a-development-branch to decide how `pico-editor` goes back to `master`.

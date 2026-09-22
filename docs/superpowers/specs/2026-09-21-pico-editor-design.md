@@ -81,6 +81,11 @@ makedepends = build-base
 `build-base` already includes `libsystem`, which carries termcap, so no
 other dependency is needed.
 
+rbuild appends the source directory's version suffix (`pico-1` gives
+`-1`), just as `kernel-7` produces `kernel-154.5.1-7`. So the published
+package is `pico-4.3l-1-universal.apk`, and its `.PKGINFO` has
+`pkgver = 4.3l-1`.
+
 `src/Manifest` gains one line, placed alphabetically:
 
 ```
@@ -253,8 +258,8 @@ Build only; nothing is run.
    ```
    It must exit 0. The dedicated state and output directories keep this
    build away from other sessions' state and results on the shared guest.
-4. `/build/out/pico-rbuild/pico-4.3l-universal.apk` exists. In
-   `gzip -dc /build/out/pico-rbuild/pico-4.3l-universal.apk | tar tvf -`,
+4. `/build/out/pico-rbuild/pico-4.3l-1-universal.apk` exists. In
+   `gzip -dc /build/out/pico-rbuild/pico-4.3l-1-universal.apk | tar tvf -`,
    the only regular files are `./usr/bin/pico`,
    `./usr/share/man/man1/pico.1`, and apk metadata. Their parent
    directories may also be listed.

@@ -15,7 +15,7 @@
 - Work only in the worktree `D:\RhapsodiOS\.claude\worktrees\pico-editor` (branch `pico-editor`). Never run git commands in `D:\RhapsodiOS` itself, because other sessions share that checkout's index.
 - Project directory: `src/Commands/pico-1`.
 - The binary reports version `4.3L`. The apk `pkgver` is `4.3l`; apk-tools only accepts a lowercase letter suffix.
-- The only edit to an upstream file is `pico/pico.h`: `version = "4.3"` becomes `version = "4.3L"`.
+- The only edits to upstream files are `pico/pico.h` (`version = "4.3"` becomes `version = "4.3L"`) and `pico/osdep/unix` (`#define MAX` guarded with `#ifndef MAX`).
 - Ship pico only: no `pilot`.
 - Installed files are exactly `/usr/bin/pico` (fat ppc+i386, stripped) and `/usr/share/man/man1/pico.1`.
 - `apk/pkginfo`: `license = Pine`, `makedepends = build-base`.
@@ -643,6 +643,8 @@ cd "$W" && git add src/Commands/pico-1 && git status --short && git commit -q -m
 ```
 
 Expected before the commit: `A` lines for `LOCAL-CHANGES`, `pico/makefile.rhp`, `pico/osdep/os-rhp.h` and `pico/osdep/os-rhp.ic`, plus `M` for `pico/pico.h`. Nothing under `vm/`. After the commit: no status lines.
+
+**Post-review decision (2026-09-21):** the review found the NeXT `HAVE_WAIT_UNION` setting and upstream's unconditional `MAX` each produced a warning in both builds. The user chose to comment out `HAVE_WAIT_UNION` in `os-rhp.h` (as `os-neb.h` does) and guard `MAX` in `osdep/unix`; both are listed in `LOCAL-CHANGES`, and the port test then reported 0 warnings.
 
 ---
 

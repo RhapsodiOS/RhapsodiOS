@@ -26,7 +26,7 @@ Pine's `CPYRIGHT` allows free-of-charge redistribution and local
 modification. It asks that locally modified versions append "L" to the
 version number and list their local changes. We follow that request:
 
-- pico's version string becomes `4.3L`.
+- pico's version string becomes `4.3L`, and `pico/osdep/unix`'s unconditional `#define MAX` is guarded with `#ifndef MAX` — the two upstream edits.
 - `LOCAL-CHANGES` at the project root lists every change from upstream.
 - `CPYRIGHT` ships verbatim.
 
@@ -52,8 +52,10 @@ src/Commands/pico-1/
     osdep/os-rhp.ic    new
 ```
 
-The only edit to an upstream file is `pico/pico.h`, which changes
-`version = "4.3"` to `version = "4.3L"`.
+The only edits to upstream files are `pico/pico.h`, which changes
+`version = "4.3"` to `version = "4.3L"`, and `pico/osdep/unix`, whose
+unconditional `#define MAX` is guarded with `#ifndef MAX` (see Port
+settings).
 
 Four Cygwin- and Windows-only files ship with CRLF line endings:
 `pico/makefile.cyg`, `pico/osdep/os-cyg.h`, `pico/osdep/os-cyg.ic`, and
@@ -175,13 +177,14 @@ dependencies itself, as `makefile.nxt` does for `os-nxt.c`.
 
 ### `pico/osdep/os-rhp.h`
 
-`os-rhp.h` is a copy of `os-nxt.h` with exactly four changes:
+`os-rhp.h` is a copy of `os-nxt.h` with exactly five changes:
 
 | Setting | NeXT | Rhapsody | Reason |
 |---|---|---|---|
 | Terminal driver | `#include <sgtty.h>` | `#define HAVE_TERMIOS` and `#include <termios.h>` | termios is Rhapsody's native 4.4BSD API; sgtty would depend on the kernel's `compat_43` layer. The NetBSD port (`os-neb.h`) makes the same choice. |
 | `sys_errlist` and `sys_nerr` externs | declared | removed | `kernel-7/bsd/include/stdio.h` already declares `extern __const char *__const sys_errlist[]`. NeXT's `extern char *sys_errlist[]` conflicts with it and won't compile. |
 | `MAILDIR` | `"/usr/spool/mail"` | `"/var/mail"` | Matches `_PATH_MAILDIR` in `kernel-7/bsd/include/paths.h`. |
+| `HAVE_WAIT_UNION` | defined | not defined | Rhapsody's `wait()` takes `int *` (`kernel-7/bsd/sys/wait.h:178`); with `union wait` pico's call warns. `<sys/wait.h>`'s WIFEXITED/WEXITSTATUS work on an int. The NetBSD port makes the same choice. |
 | Header comment | "NeXT version" | "Rhapsody version" | |
 
 Everything else keeps NeXT's settings, since Rhapsody's userland comes from
@@ -194,7 +197,6 @@ NeXT's:
 - `QSType void`
 - `NON_BLOCKING_IO FNDELAY`
 - `USE_TERMCAP`
-- `HAVE_WAIT_UNION` (`union wait` exists in `kernel-7/bsd/sys/wait.h`)
 - `RESIZING` via `TIOCGWINSZ`/`SIGWINCH`. It stays enabled with termios:
   `<termios.h>` includes `<sys/termios.h>`, which includes
   `<sys/ttycom.h>` (where `TIOCGWINSZ` is defined) whenever

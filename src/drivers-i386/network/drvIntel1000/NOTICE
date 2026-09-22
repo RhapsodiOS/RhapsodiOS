@@ -1,0 +1,74 @@
+openstep-intel1000 — acknowledgements and third-party notices
+
+This driver is licensed under the BSD 2-Clause License; see LICENSE.
+This file records what was consulted while writing it, and what was not.
+
+The driver is original work written for OPENSTEP 4.2. Intel's manual for
+the controller family is its primary specification, and two existing
+BSD-licensed drivers were read while writing it. **No source code from
+either was copied into this work, and neither is redistributed here** —
+the local copies used during development live in `ref/`, which is
+excluded from both the repository and the distribution tarball. They are
+acknowledged because reading them saved real time, and because several
+decisions in this driver are cited to them in the source comments.
+
+
+Intel — "PCI/PCI-X Family of Gigabit Ethernet Controllers Software
+Developer's Manual" (317453, rev 4.0)
+
+    The primary specification. Register offsets and layouts, the
+    mandatory settling time after a global reset, the multicast hash,
+    the CSA interrupt-mask ordering requirement for the 82547, and the
+    statistics-register semantics all come from here.
+
+
+FreeBSD — sys/dev/e1000
+Copyright (c) 2001-2020, Intel Corporation. SPDX: BSD-3-Clause
+
+    The only readily available implementation that covers the 82547.
+    Consulted for which parts of the family need the PHY reset issued
+    before the MAC and which cannot accept a memory-space global reset
+    (e1000_82541.c gates both on mac.type), for the set of receive
+    descriptor error bits that mean a frame is bad
+    (E1000_RXD_ERR_FRAME_ERR_MASK), and for the multicast hash.
+
+    Its register headers were used as a second opinion: every offset in
+    this driver was written down only after FreeBSD's e1000_regs.h and
+    the Intel manual agreed on it.
+
+
+Minix 3 — minix/drivers/net/e1000
+Distributed under BSD-3-Clause. These files note that parts of them
+derive from DragonflyBSD/FreeBSD.
+
+    A compact implementation, useful as a structural reference for how
+    little is actually required to drive one of these parts. Its
+    treatment of the transmit-queue-empty and transmit-descriptor-written
+    interrupt causes as interchangeable is followed here. It does not
+    support the 82547.
+
+
+NeXT — SMC16 and AMDPCSCSIDriver DriverKit examples, and the NextDev
+documentation for loadable kernel servers
+
+    Taken from the OPENSTEP installation itself and used as
+    documentation of the platform's own conventions: the driver bundle
+    build chain, the load-command syntax, and the DMA and PCI
+    configuration-space idioms. NeXT's material, likewise not
+    redistributed here.
+
+
+On GPL sources
+
+    The project set out to treat BSD-licensed drivers as the
+    implementation reference and GPL ones (Linux, U-Boot) as background
+    reading only, never as something to copy from; the rule is recorded
+    in PLAN.md and ref/README.md. In the event no GPL e1000 source was
+    even available on the development machine, which carries Linux
+    headers but no driver sources. Nothing in this work derives from
+    them.
+
+
+If you later copy code from FreeBSD or Minix into this tree, their
+copyright notices and licence terms have to travel with it. Nothing here
+relieves that.

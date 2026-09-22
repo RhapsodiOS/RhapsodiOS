@@ -1,0 +1,17 @@
+"Title" = "Intel 82547EI Gigabit Ethernet";
+"Family" = "Network";
+"Instance" = "0";
+"Version" = "1.0";
+"Driver Name" = "Pro1000";
+"Server Name" = "Pro1000";
+"Class Names" = "Pro1000";
+"Bus Type" = "PCI";
+"Auto Detect IDs" = "0x10198086";
+"Network Interface" = "AUTO";
+"IRQ Levels" = "3";
+"Share IRQ Levels" = "YES";
+"DMA Channels" = "";
+"Memory Maps" = "";
+"I/O Ports" = "";
+"Location" = "Dev:1 Func:0 Bus:2";
+"Driver Version" = "Pro1000 1.0";

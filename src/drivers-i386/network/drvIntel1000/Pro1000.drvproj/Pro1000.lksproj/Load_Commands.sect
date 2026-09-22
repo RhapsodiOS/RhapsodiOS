@@ -1,0 +1,32 @@
+#
+# Load commands for the Pro1000 driver (P1).
+#
+# No CALL entry. During bring-up this module carried a staged diagnostic
+# harness reached through CALL, because DriverKit would not probe the
+# driver until driverLoader and the instance table were understood. That
+# is settled now - driverLoader calls +probe: and the driver runs as a
+# proper IOEthernet instance - so the harness and its entry point are
+# gone. The history is in pro1000/README.md.
+#
+WIRE
+START
+
+#
+# DETACH: 이 서버는 언로드하지 않는다.
+#
+# attachToNetworkWithAddress: 로 네트워크 스택에 붙고 나면 커널이 이
+# 모듈 안의 코드·데이터를 가리키게 된다. 그 상태에서 언로드하면
+# NextDev 문서가 명시한 그대로가 된다 —
+#
+#   "When the server is unloaded, no other part of the kernel can
+#    contain a reference to any code or data contained within the
+#    loadable server. If the kernel tries to refer to any code or data
+#    in an unloaded server, the system panics."
+#
+# 실제로 그렇게 패닉을 냈다(2026-07-20). DETACH가 있으면 kern_loader가
+# 언로드 요청을 오류로 처리하므로, 패닉 대신 실패로 끝난다.
+#
+# 대가: 드라이버를 고치면 재부팅해야 다시 로드할 수 있다. 패닉보다
+# 낫다.
+#
+DETACH

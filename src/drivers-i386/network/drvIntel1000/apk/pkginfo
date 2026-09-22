@@ -1,0 +1,8 @@
+pkgname = intel1000
+pkgver = 1.0
+arch = i386
+pkgdesc = Intel 8254x Gigabit Ethernet device driver
+maintainer = onionmixer
+license = BSD
+url = https://github.com/onionmixer/openstep-intel1000
+makedepends = build-base, drivertools, driverkit, kernload

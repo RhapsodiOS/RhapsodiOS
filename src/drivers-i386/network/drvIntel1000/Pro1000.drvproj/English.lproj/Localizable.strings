@@ -1,0 +1,10 @@
+/*
+ * Names shown by Configure.app.
+ *
+ * The key on the first line must match "Server Name" in Default.table;
+ * "Long Name" is the descriptive line. Without these Configure.app has
+ * nothing to look up and displays the key itself - which is why this
+ * driver first appeared there as "Long Name(v0.1)".
+ */
+"Pro1000" = "Intel 8254x Gigabit";
+"Long Name" = "Intel 8254x Gigabit Ethernet Adapter";

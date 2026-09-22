@@ -1,0 +1,7 @@
+###############################################################################
+#  NeXT Makefile.postamble
+###############################################################################
+
+# driver.make movehelp always mv's English.lproj/DriverHelp; this driver has none.
+movehelp:
+	@true

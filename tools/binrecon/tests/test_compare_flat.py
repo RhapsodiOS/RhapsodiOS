@@ -61,6 +61,16 @@ def test_internal_branch_to_a_different_offset_fails():
     assert not _run(ref, ours).match
 
 
+def test_branch_inside_in_one_image_but_outside_in_the_other_fails():
+    # jne +1 stays in this 8-byte function; jne +0x64 leaves it but still
+    # lands inside the booter window, so it must not be masked as an address.
+    ref = PROLOGUE + bytes.fromhex("7501") + b"\x90" + EPILOGUE
+    ours = PROLOGUE + bytes.fromhex("7564") + b"\x90" + EPILOGUE
+    res = _run(ref, ours)
+    assert not res.match
+    assert "leaves the function" in res.problems[0]
+
+
 def test_one_reference_address_mapped_two_ways_fails():
     ref = PROLOGUE + _push(0x9000) + _push(0x9000) + EPILOGUE
     ours = PROLOGUE + _push(0x9400) + _push(0x9800) + EPILOGUE

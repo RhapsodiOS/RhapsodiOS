@@ -95,6 +95,9 @@ def _compare_insn(r, o, ref_fn, ours_fn, size, windows, res):
         if in_r and in_o:
             if tr - ref_fn != to - ours_fn:
                 res.fail("%s: branch to +%d | +%d" % (where, tr - ref_fn, to - ours_fn))
+        elif in_r or in_o:
+            res.fail("%s: branch leaves the function in one image and stays in the function in the other (0x%x | 0x%x)"
+                     % (where, tr, to))
         elif _inside(tr, windows[0]) and _inside(to, windows[1]):
             res.map_address(tr, to, where)
         else:
@@ -145,7 +148,7 @@ def compare(ref, ref_base, ref_fn, ours, ours_base, ours_fn, size,
     for lo, hi in _regions(size, tables):
         ri = _decode(ref_code[lo:hi], ref_fn + lo)
         oi = _decode(ours_code[lo:hi], ours_fn + lo)
-        for insns, fn, label in ((ri, ref_fn, "reference"), (oi, ours_fn, "rebuilt")):
+        for insns, label in ((ri, "reference"), (oi, "rebuilt")):
             covered = sum(i.size for i in insns)
             if covered != hi - lo:
                 res.fail("%s does not decode at +%d" % (label, lo + covered))

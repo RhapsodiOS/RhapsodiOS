@@ -182,12 +182,15 @@ if (basicConsole == NULL)
     basicConsole = serialConsole;
 ```
 
-i386's `BasicAllocateConsole()` gains the equivalent: consult
-`kernBootStruct->video`, and when it names a framebuffer, build an
-`IODisplayInfo` and allocate a frame-buffer console instead of the hard-coded
-VGA one. **The existing VGA path stays as the fallback** — it is what runs today
-and what runs whenever the booter has not set a mode, which is every boot until
-spec 3.
+> **Superseded.** An earlier revision said i386's `BasicAllocateConsole()` should
+> consult `kernBootStruct->video` the way ppc does. The paragraph below corrects
+> it: the reference calls `FBAllocateVBEConsole()` unconditionally and reads no
+> boot struct at all.
+
+i386's `BasicAllocateConsole()` gains a call to `FBAllocateVBEConsole()`, whose
+own guards decide whether a frame-buffer console is possible. **The existing VGA
+path stays as the fallback** — it is what runs today, and what runs on every boot
+until spec 3 supplies a producer for `kbs+0x1854`.
 
 **There IS a reference, and an earlier revision of this section was wrong to say
 otherwise.** Task 4 measured it: `_BasicAllocateConsole` exists in the 4.2 i386
@@ -291,8 +294,10 @@ Registering: VBEDisplay0
 The `%s: using VBE mode %d` path becomes reachable only after spec 3.
 
 A boot gate here is also the first test of the console wiring — but only its
-*fallback* arm, since `video.v_baseAddr` will be zero. The frame-buffer arm
-cannot be exercised until spec 3 either.
+*fallback* arm, since nothing writes `kbs+0x1854` until spec 3. That holds on
+graphics-mode boots too, even though the booter writes `video.v_baseAddr` on
+those: `FBAllocateVBEConsole` does not read `video`. The frame-buffer arm cannot
+be exercised until spec 3.
 
 ## 9. Risks
 
@@ -302,7 +307,10 @@ new functions are additive: nothing calls them until something does. Changing
 mistake there turns a working boot into a silent one, and the console is how
 failures get reported — so a failure there is self-concealing. The fallback path
 must be preserved exactly, and the new arm must be reachable only when
-`video.v_baseAddr` is non-zero, which is never until spec 3.
+`FBAllocateVBEConsole`'s own guards pass, which is never until spec 3 supplies a
+producer for `kbs+0x1854`. **Not** when `video.v_baseAddr` is non-zero: the booter
+sets that on every graphics-mode boot (`boot-2/i386/boot2/graphics.c:204`), so a
+test on it would have been live, not dormant.
 
 **`FBAllocateConsole` has never run.** It is compiled but dead, so this spec is
 the first time its code executes. Bugs in it are Apple's or this tree's, latent

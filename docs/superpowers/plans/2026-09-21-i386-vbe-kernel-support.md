@@ -94,9 +94,10 @@ Captures: `vm/shots-t4c-preC/` (control), `vm/shots-t4c-post/`,
 
 **Task 4 changes what every i386 boot uses for its console.** The console is how
 failures get reported, so a mistake there is self-concealing. Success criterion:
-a boot with `video.v_baseAddr == 0` — which is every boot until spec 3 — must
+a boot on which nothing writes `kbs+0x1854` - every boot until spec 3 supplies
+that producer, **graphics-mode boots included** - must
 produce today's console and output, judged by the same-session A/B control
-above. The frame-buffer arm must be unreachable until then.
+above. The frame-buffer arm must be unreachable until then. An earlier revision defined this as `video.v_baseAddr == 0`. That is false: the booter writes `v_baseAddr` on any graphics-mode boot (`boot-2/i386/boot2/graphics.c:204`).
 
 ### Why the compare harness cannot use relocations
 
@@ -533,81 +534,39 @@ own shape, not a transcription of its 212 bytes."
 
 ---
 
-## Task 4: Wire `BasicAllocateConsole()`
+## Task 4: Wire `BasicAllocateConsole()` - DONE
 
-**Files:**
-- Modify: `$KDIR/BasicConsole.c`
-- Modify: `$DIVERGE`
+> **Complete.** Code `e2d02efe8`; verification in `$DIVERGE` under `## Task 4`.
+> This section is rewritten to what was actually done. An earlier version
+> prescribed a ppc-style `video.v_baseAddr` guard and a literal-identity console
+> gate. **Both were wrong. Do not reinstate either.**
 
-**Interfaces:**
-- Consumes: `FBAllocateVBEConsole` from Task 3.
-- Produces: the first i386 boot path that reads `kernBootStruct->video`.
+**What it does.** `BasicAllocateConsole()` calls `FBAllocateVBEConsole()`
+unconditionally and first, returning that console when non-NULL; otherwise it
+falls through to the unchanged `bzero` / 640 / 480 / `VGAAllocateConsole` tail.
+The vestigial `kernbootstruct` local stays declared and unused; the reference
+does not use it either.
 
-**This is the task that can break every boot.** Read the invisibility
-requirement in Global Constraints before writing anything.
+**Why that shape.** 4.2 has this function: `_BasicAllocateConsole` at
+`0x00197C58`, 72 bytes. Our pre-Task-4 function was it minus exactly nine bytes
+(`e8 rel32` + `85 c0` + `75 2b`). It calls `FBAllocateVBEConsole` with no
+boot-struct test and touches no `KERNBOOTSTRUCT`.
 
-- [ ] **Step 1: Read both sides**
+**Why no `v_baseAddr` guard.** Beyond not being the reference's shape, it would
+have been **live**: the booter writes `kernBootStruct->video.v_baseAddr` at
+`boot-2/i386/boot2/graphics.c:204` on any graphics-mode boot, so the guard would
+have coupled the console to graphics mode rather than lying dormant.
 
-Ours, `$KDIR/BasicConsole.c:241`:
+**Verified:** 72 bytes, all 60 unmasked bytes identical to the reference, with
+the three `e8` `rel32` operands (at fn+11/32/58; the opcodes are at fn+10/31/57)
+resolving to `_FBAllocateVBEConsole`, `_bzero`, `_VGAAllocateConsole`. Both
+kernel symbols defined; Task 2's extent still MATCHes. Console indistinguishable
+from a same-session control.
 
-```c
-IOConsoleInfo *BasicAllocateConsole()
-{
-    IODisplayInfo di;
-    KERNBOOTSTRUCT *kernbootstruct = KERNSTRUCT_ADDR;   /* declared, never used */
-
-    bzero(&di, sizeof(di));
-    di.width = 640;
-    di.height = 480;
-    return( VGAAllocateConsole(&di) );
-}
-```
-
-ppc's, `src/kernel-7/bsd/dev/ppc/kmDevice.m:150-167`, is the shape to mirror:
-test the boot framebuffer, build an `IODisplayInfo`, allocate a frame-buffer
-console, fall back when it returns NULL.
-
-There is **no reference** for our version — 4.2's `BasicAllocateConsole` is not
-ours. Justify from ppc's shape and say so in the record.
-
-- [ ] **Step 2: Write the boot-struct arm**
-
-Try `FBAllocateVBEConsole()` first; on NULL, fall through to **exactly today's
-code path, unchanged**. `FBAllocateVBEConsole` already returns NULL when the
-boot struct does not describe a VBE mode, so the guard lives there rather than
-being duplicated here.
-
-Do not delete the vestigial `kernbootstruct` declaration — it becomes used.
-
-- [ ] **Step 3: Build and prove invisibility**
-
-Build per Task 2 Step 4. Then boot the **unmodified** image — no driver
-injected, no config changes:
-
-```bash
-cd vm
-MSYS_NO_PATHCONV=1 python graft-kernel.py golden.img install/mach_kernel work/test.img
-python qemu-shot.py work/test.img shots-kvbe-invis --at 30,60,95 --keys "mach_kernel -v\n"
-```
-
-**Compare the console output against a run with the pre-Task-4 kernel.** They
-must be identical: same text, same console. `video.v_baseAddr` is zero on this
-image, so the frame-buffer arm must never be entered.
-
-If the outputs differ at all, stop. Either the fallback is not exactly the old
-path, or the guard is letting the new arm run. **Do not proceed to Task 5 with a
-changed baseline** — Task 5's gates cannot be read against a moving one.
-
-- [ ] **Step 4: Commit**
-
-```bash
-git add "$KDIR/BasicConsole.c" "$DIVERGE"
-git commit -m "kernel: let BasicAllocateConsole use the booter's framebuffer
-
-Mirrors what ppc already does; falls back to the existing VGA console
-whenever the boot struct names no framebuffer, which is every boot until
-the booter sets one."
-```
+**Not yet verified:** a **graphics-mode (non-`-v`) boot**. It is the default, and
+the only path on which the booter writes `v_baseAddr`. On paper it is covered,
+since `FBAllocateVBEConsole` reads `kbs+0x1854`/`0x185C` rather than `video` and
+the booter `bzero`s `_reserved`, but it was never booted. Task 5 covers it.
 
 ---
 
@@ -622,33 +581,68 @@ the booter sets one."
 - Consumes: everything above, plus spec 1's `$DRVBUILT`.
 - Produces: the evidence that spec 1's reconstruction and this kernel agree.
 
-- [ ] **Step 1: Gate 2 — `sarld` links the driver**
+### Before any boot
 
-This is the gate that matters most. Build the image with **both** the new kernel
-and spec 1's driver:
+- Record `git status src/kernel-7` at the moment of `vm/sync-src.ps1`. The sync
+  copies the **working tree**, not a commit, and the byte oracles cover only three
+  functions, so a dirty tree would go unnoticed.
+- Hash `golden.img` and record it. Task 4 attributed its cross-session drift
+  "not the image" on mtime alone; a hash is the stronger claim.
+- **Every comparison is a same-session A-B-A**: control, candidate, control, back
+  to back. One control cannot catch drift *within* a session.
+
+### The comparison, tightened
+
+The same-session gate was accepted in Task 4, but its first wording would let
+four things through. Use this form:
+
+1. **Serial line 4: mask only the date.** Line 4 is the kernel's `version[]`,
+   e.g. `Tue Sep 22 13:46:24 PDT 2026; root(rcbuilder):kernel-154.5.1-7.obj/RELEASE_I386`.
+   The date must differ between builds; the **config and version string must
+   not**. Excluding the whole line would hide a wrong config.
+2. **Serial, everything else: unsorted identity**, allowing only the named race.
+   The IDE probe block (`Registering: hc0`, `hd0: ...`) and the `intr: phantom
+   IRQ 15` lines may swap position. Any other reordering is a finding.
+3. **Frames: a fixed mask, not a judgement.** Mask the boot-clock digit cells in
+   rows 102..121. Everything outside the mask must be pixel-identical.
+
+- [ ] **Step 1: Gate 2 - `sarld` links the driver, on positive evidence**
+
+Build the image with **both** the new kernel and spec 1's driver:
 
 ```bash
 cd vm
-MSYS_NO_PATHCONV=1 python graft-kernel.py golden.img install/mach_kernel work/kern.img
+MSYS_NO_PATHCONV=1 python graft-kernel.py golden.img <new kernel> work/kern.img
 MSYS_NO_PATHCONV=1 python install-driver.py work/kern.img \
     ../out/i386/drvVBE20DisplayDriver/VBE20DisplayDriver.config work/test.img
 ```
 
-`install-driver.py` allocates the bundle and registers it in `Boot Drivers`,
-matching `"Boot Driver" = "Yes"`. **`rhap_inject.py` cannot create the bundle** —
-it has only `set-key` and `put`, both of which repoint an existing entry.
+`install-driver.py` allocates the bundle and registers it in `Boot Drivers`.
+**`rhap_inject.py` cannot create a bundle.** Name the final image
+`vm/work/test.img`, since `rhap_inject.check_target` refuses any other path.
+Hash-verify the installed `_reloc` against `$DRVBUILT` before booting.
 
-Hash-verify the installed `_reloc` against `$DRVBUILT` before booting. Spec 1
-records a near-miss where a refused injection produced a plausible-looking boot
-of somebody else's driver.
+**Do not pass this gate on the absence of an error.** The booter prints
+`Error occurred while linking driver ...` to its own screen, which the kernel
+scrolls away, and capture times are fixed `--at` offsets. Task 4 measured about
+15 guest seconds of unexplained drift between sessions, enough to land a capture
+after the booter screen has gone and turn "no link error seen" into a pass for
+the wrong reason.
 
-Boot and read the **booter's** output, before the kernel scrolls it away. Gate 2
-passes when there is **no** `Error occurred while linking driver VBE20DisplayDriver`
-and no cascade into the drivers linked after it.
+Pass it on **positive** evidence instead, from the kernel's serial log:
 
-- [ ] **Step 2: Gate 3 — the driver loads**
+- the driver's own messages appear (Gate 3's lines below). A driver that never
+  linked cannot print them.
+- every Boot Driver that registered in the control boot still registers, so
+  there is no cascade. List them from the control's `serial.log` and check each.
 
-From the same boot, look for:
+If you also capture the booter screen, **confirm its driver-loading lines are
+actually in the frame** before reading anything from it. A frame that does not
+show them is inconclusive, not a pass.
+
+- [ ] **Step 2: Gate 3 - the driver loads**
+
+From the same boot's `serial.log`:
 
 ```
 %s: VESA video driver initialization.
@@ -658,35 +652,43 @@ Registering: VBEDisplay0
 
 The `%s` is the driver's own `name`; match on the fixed text.
 
-**The "Skipping framebuffer initialization" path is the correct result**, for
-two independent reasons from spec 1: the booter never enters a VBE mode, and the
-4.2 mode-array offsets land in `_reserved`, which is `bzero`'d. The
-`using VBE mode %d` path needs spec 3.
+**The "Skipping framebuffer initialization" path is correct**, for two
+independent reasons from spec 1: the booter never enters a VBE mode, and the 4.2
+mode-array offsets land in `_reserved`, which the booter `bzero`s.
 
-If the driver *links* but fails to *load*, look at the
-`_VBE20DisplayDriver_instance` difference spec 1 recorded — the reference leaves
-it an unallocated common, our `kl_ld` allocates it. Spec 1 flagged it as a
-possible load-time hazard and this is the first test of it. **Do not misdiagnose
-it as a source defect in the reconstruction.**
+If the driver *links* but fails to *load*, look first at the
+`_VBE20DisplayDriver_instance` difference spec 1 recorded: the reference leaves
+it an unallocated common, our `kl_ld` allocates it. **Do not misdiagnose that as
+a source defect in the reconstruction.**
 
-- [ ] **Step 3: Write the gate record**
+- [ ] **Step 3: The graphics-mode boot**
+
+Every boot so far used `mach_kernel -v`. Graphics mode is the **default**, and
+the only path on which the booter writes `video.v_baseAddr`. Run one same-session
+A-B-A **without `-v`** and apply the frame comparison. Both kernels should show
+the booter's graphics panel and behave identically.
+
+Use `--keys-at 8`. `--keys-at 3.0` truncates the boot string to `mach_ke`.
+
+- [ ] **Step 4: Write the gate record**
 
 Create `docs/kernel/i386-vbe-console.md` in the shape of
-`docs/drivers/drvVGA-boot-gate.md`: the procedure, the hashes, the captured
-output, and an explicit "what this does and does not establish" section. It does
-**not** establish that the frame-buffer console works — nothing has exercised
-that arm.
+`docs/drivers/drvVGA-boot-gate.md`: procedure, hashes, captured output, and an
+explicit "what this does and does not establish" section. It does **not**
+establish that the frame-buffer console works; nothing has exercised that arm.
 
-- [ ] **Step 4: Unblock spec 1's gate notice**
+State plainly that captures are **not regenerable**: the build stamp changes on
+every rebuild, and cross-session drift means the same boot cannot be reproduced
+later. The committed hashes are the only durable trace.
 
-Spec 1's design doc and plan both carry a `BLOCKED ON SPEC 2` notice on gate 3.
-Amend the spec's §8 to record that this spec landed and what the gate produced.
-Leave the plan's Task 9 block in place but note the result beside it.
+- [ ] **Step 5: Unblock spec 1's gate notice**
 
-Update the `drvVBE20DisplayDriver` row in `src/drivers-i386/README`: it currently
-says the boot gate is blocked and must not be run. That is no longer true.
+Amend spec 1's design doc section 8 to record that this spec landed and what the
+gates produced. Leave spec 1's plan Task 9 block in place but note the result
+beside it. Update the `drvVBE20DisplayDriver` row in `src/drivers-i386/README`,
+which says the gate is blocked and must not be run.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add docs/kernel/ docs/superpowers/ src/drivers-i386/README "$DIVERGE"
@@ -699,6 +701,12 @@ registers as VBEDisplay0; the framebuffer path still waits on the booter."
 ---
 
 ## Follow-on
+
+**`BasicAllocateConsole` has two more callers in our tree**, `kmDevice.m:85` and
+`kmDevice.m:962` (the alert console, `kmAlertConsole`). Today both fall through to
+VGA. Once spec 3 supplies the `kbs+0x1854` producer, **each will get a frame-buffer
+console**, not just the boot console. Task 4 scanned 4.2 for callers of
+`FBAllocateVBEConsole`, not our tree for callers of `BasicAllocateConsole`.
 
 Spec 3 (the booter) is unblocked by Task 1's D2 answer and by Task 3's recorded
 mode-record address question. Its two hard problems are already known:

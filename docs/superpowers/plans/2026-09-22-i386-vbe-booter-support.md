@@ -803,6 +803,14 @@ Both were run against a copy on 2026-09-22: 11 tests passed. A
 self-comparison of the 4.2 record writer (`boot+27556`, 148 bytes) gave
 MATCH over 50 instructions.
 
+> **Corrected in review (`eae1e8786`).** The first version of this code let a
+> branch that stays inside the function in one image but leaves it in the
+> other fall through to the window check. It was then masked as an address,
+> so `jne +1` against `jne +0x64` reported MATCH. The `elif in_r or in_o`
+> clause below closes that, and a twelfth test,
+> `test_branch_inside_in_one_image_but_outside_in_the_other_fails`, covers
+> it. The committed tool, not this listing, is authoritative.
+
 - [ ] **Step 1: Write the failing tests**
 
 Create `tools/binrecon/tests/test_compare_flat.py`:
@@ -1026,6 +1034,9 @@ def _compare_insn(r, o, ref_fn, ours_fn, size, windows, res):
         if in_r and in_o:
             if tr - ref_fn != to - ours_fn:
                 res.fail("%s: branch to +%d | +%d" % (where, tr - ref_fn, to - ours_fn))
+        elif in_r or in_o:
+            res.fail("%s: branch stays in the function in one image and leaves the function in the other (0x%x | 0x%x)"
+                     % (where, tr, to))
         elif _inside(tr, windows[0]) and _inside(to, windows[1]):
             res.map_address(tr, to, where)
         else:

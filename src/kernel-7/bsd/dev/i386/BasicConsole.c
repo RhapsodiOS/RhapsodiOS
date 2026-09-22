@@ -248,20 +248,23 @@ IOConsoleInfo *BasicAllocateConsole()
     // Put the console on the frame buffer the booter left us, when there is
     // one.
     //
-    // MEASURED, not inferred from ppc: 4.2 has this same function, as
-    // _BasicAllocateConsole at 0x00197C58 in the i386 slice of the OPENSTEP
-    // 4.2 mach_kernel (72 bytes). Below the call it is already exactly what
-    // stood here -- 0x88 of stack for the IODisplayInfo, bzero, 0x280,
-    // 0x1E0, VGAAllocateConsole -- so this call is the entire difference,
-    // and the reference makes it UNCONDITIONALLY as the first thing in the
-    // function. It tests nothing beforehand and reads no part of
-    // KERNBOOTSTRUCT at all; the guards live in FBAllocateVBEConsole, which
-    // reads kbs+0x1858 and kbs+0x1854, not video.v_baseAddr. Details in
-    // src/kernel-7/reconstruction/vbe/divergences.md, "Task 4".
+    // The shape matches the reference's _BasicAllocateConsole at 0x00197C58
+    // in the i386 slice of the OPENSTEP 4.2 mach_kernel (72 bytes): this call
+    // is the only difference from what stood here before -- 0x88 of stack for
+    // the IODisplayInfo, bzero, 0x280, 0x1E0, VGAAllocateConsole are
+    // unchanged -- and the reference makes it unconditionally, as the first
+    // thing in the function.
     //
-    // Nothing in this tree writes kbs+0x1854 yet -- that producer is spec
-    // 3's -- so FBAllocateVBEConsole returns NIL on every boot and this arm
-    // is unreachable today. The VGA path below is what runs, unchanged.
+    // There is deliberately no test of KERNBOOTSTRUCT here: the reference
+    // reads none of it before this call, and the guards live inside
+    // FBAllocateVBEConsole, which reads kbs+0x1858 and kbs+0x1854, not
+    // video.v_baseAddr. (The `kernbootstruct` local declared above is a
+    // pre-existing unused vestige, untouched by this change.)
+    //
+    // This arm is unreachable in any tree where nothing writes kbs+0x1854;
+    // the VGA path below is what runs otherwise, unchanged. See
+    // src/kernel-7/reconstruction/vbe/divergences.md, "Task 4", for the
+    // measurements and the fuller record.
     console = FBAllocateVBEConsole();
     if (console)
 	return console;

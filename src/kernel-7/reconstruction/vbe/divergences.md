@@ -1729,8 +1729,11 @@ whoever owns `km.m` parity; it is not a defect in what Task 4 shipped.
 ```
 
 inserted ahead of an untouched `bzero`/640/480/`VGAAllocateConsole` tail, plus
-`#import <bsd/dev/i386/FBConsole.h>`. Insertions only; no pre-existing line
-changed.
+`#import <bsd/dev/i386/FBConsole.h>`. **Correction: not insertions only.** One
+pre-existing line was removed - the blank, whitespace-only line that stood
+immediately after the `kernbootstruct` declaration - to make room for the new
+`IOConsoleInfo *console;` local and the comment block. No other pre-existing
+line changed.
 
 `FBAllocateVBEConsole` returns `NIL` on every boot in this tree, because
 nothing writes `kbs+0x1854` - spec 3 owns that producer, as recorded under
@@ -1752,21 +1755,28 @@ the existing include graph; not confirmed by a compile]**.
 
 ### NOT VERIFIED: the build and the invisibility gate could not be run
 
+**[SUPERSEDED — see "Task 4: resolved" at the end of this section. Later
+passes got the build box back, checks 1-3 passed, and check 4 passes under
+the same-session A/B control substituted for the "must be identical" gate
+this section still assumes below. Task 4 is complete. The account below is
+left as written, for the infrastructure history it records.]**
+
 **This section is the honest state of Task 4 and must be read before Task 5
 starts.** Acceptance items 1-3 - kernel builds, Task 2's 539-byte extent still
 MATCHes, console output identical to the pre-Task-4 kernel - are **not
 demonstrated**, for an infrastructure reason:
 
 - The Rhapsody build box, `Host=10.10.0.241` in `vm/vm.conf`, the "legacy PPC
-  build box" of `vm/SSH CONNECTION.md`, **is powered off**. `vm/sync-src.ps1
-  -Path kernel-7` failed with `ssh: connect to host 10.10.0.241 port 22:
-  Connection timed out`; twelve pings in three batches spread over roughly
-  four minutes all timed out (one very first ping replied, then nothing --
-  stale ARP); the address is absent from the host's ARP table. It is a machine
-  on the LAN, not a VM this repo can start - there is no launcher for it under
-  `vm/` (`start-vm.cmd` boots `work/test.img`, the i386 boot-test image, and
-  nothing else), and no hypervisor process is running on the host
-  **[measured]**.
+  build box" of `vm/SSH CONNECTION.md`, **appears powered off**
+  **[inference: only unreachability was measured below, not the power state
+  itself]**. `vm/sync-src.ps1 -Path kernel-7` failed with `ssh: connect to
+  host 10.10.0.241 port 22: Connection timed out`; twelve pings in three
+  batches spread over roughly four minutes all timed out (one very first ping
+  replied, then nothing -- stale ARP); the address is absent from the host's
+  ARP table. It is a machine on the LAN, not a VM this repo can start - there
+  is no launcher for it under `vm/` (`start-vm.cmd` boots `work/test.img`, the
+  i386 boot-test image, and nothing else), and no hypervisor process is
+  running on the host **[measured]**.
 - `rbuild` runs only on that guest, so no kernel could be produced; with no new
   kernel there is nothing to graft into an image and nothing to compare against
   a pre-Task-4 capture. Falling back to `gnumake` was not attempted and would
@@ -1802,6 +1812,9 @@ and the brief did not expect to exist:
 2. Boot the **unmodified** image with the new kernel and with
    `task3-mach_kernel-final`, `--at 30,60,95 --keys "mach_kernel -v\n"`, on a
    temporary work image. The two console captures must be **identical**.
+   **[SUPERSEDED — impossible as stated; two boots of the same kernel are not
+   identical (measured below). Re-specified as a same-session A/B control -
+   see "Task 4: resolved" at the end of this section.]**
 3. **New parity target.** `_BasicAllocateConsole` in the built kernel should be
    **72 bytes**, and should match the reference's 72 bytes above with only the
    three `e8` displacements differing - those are addresses and cannot agree.
@@ -1971,7 +1984,18 @@ That is a sharper test than a hash comparison and it is not a weakening: the
 baseline pair proves the two allowed sources of variation are a probe race and
 a wall clock, neither of which `BasicAllocateConsole` can touch.
 
+**[SUPERSEDED — this "operative form" treats the morning `pre2`/`preB`
+capture as a fixed baseline good for later runs. Pass 3 measured that same
+baseline drifting 2,518 px from a same-day re-boot of the identical,
+unchanged kernel (see "Task 4 verification pass 3" below), so a fixed
+morning baseline is not trustworthy across sessions regardless of how sharp
+the comparison against it is. The gate was re-specified as a same-session A/B
+control - see "Task 4: resolved" at the end of this section.]**
+
 Retained, durable, in the worktree (not committed — captures are build output):
+**[SUPERSEDED — not durable. These are gitignored worktree files and do not
+survive a worktree cleanup; see pass 3's equivalent note below, which is the
+correct one.]**
 
 ```
 vm/shots-t4v-pre2/   serial.log  bf84f83ddcc092c6e078603d17db43ad3e3543e986bad98d9ae571baeca027db
@@ -1998,7 +2022,9 @@ to a scratchpad. **[measured, 2026-09-22]**
   displacements against the slice's own symbol table gives
   `fn+10 -> 0x0019ECB8 _FBAllocateVBEConsole`, `fn+31 -> 0x00101600 _bzero`,
   `fn+57 -> 0x0019B760 _VGAAllocateConsole` — the three names check 3 requires
-  our build to call.
+  our build to call. **[These offsets are the `e8` call-opcode bytes. Pass 3
+  below reports the same three calls by their rel32 operand, one byte later
+  — fn+11/32/58.]**
 
 #### Still owed
 
@@ -2006,6 +2032,10 @@ Checks 1, 2 and 3, and check 4's second half. Nothing in this pass changes what
 Task 4's code should be, and nothing in it is evidence that the code is right.
 **Task 5 must still not start until check 4 has actually been run**, against a
 built kernel, using the comparison form measured above.
+
+**[SUPERSEDED — check 4 has since been run (pass 3, below) and passes under
+the re-specified same-session A/B control. Task 4 is complete; see
+"Task 4: resolved" at the end of this section.]**
 
 ### Task 4 verification pass 3, 2026-09-22: built; checks 1-3 pass; check 4 as written fails
 
@@ -2059,14 +2089,26 @@ All **[measured]**:
 guest, `sum` gives `8583 1456` and `cksum` gives `3886786274 1490352`. The
 uudecoded local copy reproduces both. Its SHA-256 is
 `74B12FCD53E886AAFCBB29AD400C5DEDD10B26F04BBA0FBC6E02DAEFEA25CFF4`. The
-embedded banner reads `Tue Sep 22 13:46:24 PDT 2026` **[measured]**.
+embedded banner reads `Tue Sep 22 13:46:24 PDT 2026` **[measured]**. That is
+2h38m *before* the 16:24:54 guest-time build start recorded above under "The
+build" - the two are only consistent if the guest's shell clock (used for
+"guest time" throughout this pass) and the clock the build stamps into
+`version[]` differ by an unstated ~3 hours. **Not determined:** which clock is
+correct, or why they disagree; both readings are reported as measured from
+their respective sources.
 
 It is retained as a gitignored file in the worktree,
 `vm/work/task4c-mach_kernel`, with a second copy in the session scratchpad.
 The pre-Task-4 kernel was copied beside it as `vm/work/task3-mach_kernel-final`
 (SHA-256 `1C0F8B80...215D`, re-checked). **Both copies survive the session but
 not a worktree cleanup.** Neither is durable beyond that. If they are lost,
-the fallback is to rebuild from `e2d02efe8`.
+the fallback is to rebuild from `e2d02efe8` - **but that rebuild cannot
+reproduce the recorded SHA-256s**: the embedded `version[]` build stamp (serial
+line 4, and the clock-offset question noted above) changes on every rebuild,
+and the boot captures themselves cannot be regenerated either, because of the
+cross-session drift this pass measured (2,518 px between two boots of the
+identical pre-Task-4 kernel on the same day). The committed hashes in this
+record are the only durable trace of what was actually measured.
 
 #### Checks 1-3
 
@@ -2091,7 +2133,9 @@ the fallback is to rebuild from `e2d02efe8`.
   ```
 
   Masking the rel32s at fn+11, 32 and 58 leaves 60 bytes, all identical to
-  the reference. The three calls resolve against our own symbol table to
+  the reference. **[These offsets are the rel32 operands, one byte after
+  pass 2's `e8` opcode offsets fn+10/31/57 above; both are correct, just
+  different conventions.]** The three calls resolve against our own symbol table to
   `_FBAllocateVBEConsole` (`0x001E89F8`), `_bzero` (`0x00100C40`) and
   `_VGAAllocateConsole` (`0x001E5C70`), in that order. The `jne` lands on
   fn+62, as the reference's does. The eight bytes after the `ret`
@@ -2183,3 +2227,40 @@ vm/shots-t4c-post2/  serial.log  9807128aa606ae7d0abcbae617ec2248f782d7b596d00fb
 vm/shots-t4c-preC/   serial.log  ba96aebab0223c392852ef7fdf031cb1ac5ff1349175c8e410aac9c0a768c51e
                      shot-{30,60,95}s.png  125c4133b06bb46e8e3d06262ef225c9f44fb3ecce0bc933cf639ffbc4474f76
 ```
+
+### Task 4: resolved — the gate is a same-session A/B control, and check 4 passes
+
+The "someone decides" above has been decided, and on grounds that do not
+depend on the result: booting one kernel twice to get a fixed morning
+baseline cannot see rebuild artefacts (the `version[]` build stamp) or
+cross-session drift (this pass's own 2,518 px shift between two same-day
+boots of the unchanged pre-Task-4 kernel), so a gate built on that baseline
+was measuring the environment, not the kernel. The correction, and the
+reasoning for it, live in the plan, not here - see
+`docs/superpowers/plans/2026-09-21-i386-vbe-kernel-support.md`, the section
+headed **"The console comparison: a same-session A/B control"**. The gate is
+now: boot a pre-Task-4 control and the candidate back to back, in the same
+session, on the same unmodified image; the sorted `serial.log` diff excluding
+line 4 (the build stamp) must be empty, and frame differences must be
+confined to the boot-clock digits.
+
+**Under that gate, check 4 passes.** The measured numbers, controller-verified
+(same captures as above - `vm/shots-t4c-preC/`, `vm/shots-t4c-post/`,
+`vm/shots-t4c-post2/`):
+
+| Comparison | Serial, excl. line 4 | 60 s / 95 s frames |
+| --- | --- | --- |
+| old kernel, morning vs later (the control) | 0 lines | 2,518 px, rows 42..121 |
+| old vs new, same session, boot 1 | 0 lines, **0 even unsorted** | 30 px, rows 102..121 (clock) |
+| old vs new, same session, boot 2 | 0 lines | **0 px — pixel-identical** |
+
+The control row is what condemns the fixed-baseline gate: the pre-Task-4
+kernel, which cannot contain Task 4's change, fails the old gate's "identical
+to the morning capture" test just as badly as the new kernel did. Measured
+against the control instead - the only comparison that isolates Task 4's
+change from the environment - the new kernel differs from the pre-Task-4
+kernel by nothing but its own build stamp and, on one of two boots, the
+clock's seconds digits.
+
+With checks 1-3 already passing (verification pass 3, above) and check 4
+passing under this gate, **Task 4 is complete.**

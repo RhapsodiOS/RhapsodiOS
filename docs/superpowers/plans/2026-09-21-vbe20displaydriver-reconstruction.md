@@ -1261,11 +1261,17 @@ both sides."
 >
 > Task 8 is unaffected and closes spec 1 as far as it can go.
 
+> **Superseded by the result below: the cascade and panic predicted above did
+> not occur.** Only the undefined-symbol failure did.
+
 > **Result, 2026-09-22: run and passed, as spec 2's Task 5.** Against spec 2's
 > kernel, `sarld` links the driver. It logs
 > `VBEDisplay0: VESA video driver initialization.` and
 > `VBEDisplay0: Skipping framebuffer initialization (card not in VBE mode).`,
-> then `Registering: VBEDisplay0`, and no other boot driver is lost.
+> then `Registering: VBEDisplay0`, and no other boot driver is lost — though
+> that check cannot rule out a cascade by itself, since this driver links last
+> in `Boot Drivers` and an undefined-symbol failure would not cascade at any
+> position regardless (spec 2's design doc, §Motivation).
 > `Boot Drivers` alone was enough (Step 5's `Active Drivers` fallback was not
 > needed).
 >

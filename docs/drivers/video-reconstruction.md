@@ -118,12 +118,17 @@ What is verified:
 which exports `_VBEModeInfo2IODisplayInfo`. `sarld` links the driver as a Boot
 Driver, and it logs `VBEDisplay0: Skipping framebuffer initialization (card
 not in VBE mode).` and registers as `VBEDisplay0`. No other boot driver lost
-its registration. The instance-common difference below did not stop the load.
+its registration — a weak check by itself, since this driver links last and
+an undefined-symbol link failure would not cascade at any position anyway
+(see below). The instance-common difference below did not stop the load.
 The record is `docs/kernel/i386-vbe-console.md`. The framebuffer path waits
 on the booter spec, and the driver is not hardware-tested.
 
-What was said before the kernel spec landed, kept as written: **the boot gate
-has not been run, and must not be run until the kernel spec lands.**
+What was said before the kernel spec landed, kept as written — except that its
+cascade-and-panic prediction is superseded by the result above: only the
+undefined-symbol failure occurred, and it did not cascade or panic:
+**the boot gate has not been run, and must not be run until the kernel spec
+lands.**
 `Default.table` marks the driver `"Boot Driver" = "Yes"`, so
 the booter links it against the kernel with `sarld`. `_VBEModeInfo2IODisplayInfo`
 is undefined in the driver and no Rhapsody kernel exports it, so that link would

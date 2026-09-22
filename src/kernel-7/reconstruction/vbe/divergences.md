@@ -2309,9 +2309,14 @@ with it, then without it again (`A1`, `B`, `A2`). **[measured]**
   `VBEDisplay0: Driver loaded to export VBE mode list.`,
   `VBEDisplay0: No VBE modes found.`, `Registering: VBEDisplay0`.
 - Every one of the 12 devices `A1` and `A2` register is still registered in
-  `B`. That no-cascade check is structurally weak: the driver links last in
-  `Boot Drivers`, so a failure of its own link could not have removed an
-  earlier driver.
+  `B`. That no-cascade check is structurally weak, for two reasons: the driver
+  links last in `Boot Drivers`, so a failure of its own link could not have
+  removed an earlier driver; and, *[inference]*, an undefined-symbol failure
+  like this one does not cascade at any position — `docs/boot/sarld-driver-link-limit.md`'s
+  cascade is specific to a malloc fatal (`rld(): virtual memory exhausted`),
+  raised through `fatal()`/`cleanup()`, not through the `error()` path an
+  undefined symbol takes (`src/cctools-2/ld/symbols.c:3523`, `ld.c:2059`,
+  `rld.c:402-405`).
 - `B` against `A2`, in order, differs in the five driver lines and in line 9.
   Line 9 reads `vm_page_free_count` `3c8c`, becoming `3c8b` with the driver:
   one page fewer. *[inference]* That page is the booter's allocation for the
@@ -2385,6 +2390,9 @@ default graphics-mode boot, at 12, 16, 30 and 60 s, and a verbose boot, at
   this reaches the settled frame: 490 px in text row 4 between two
   no-driver boots of the same kernel. **[measured]** Outside those eight
   lines, every same-configuration pair matches line for line.
+- **No gate rests on this widened rule.** The planned A-B-A (`dC1`/`dN`/`dC2`)
+  passes the brief's unmodified rule with empty raw diffs; only the extra
+  pairs `dC2`/`dN2` and `dN2`/`dC3` needed the exclusion.
 
 ### The graphics-mode A-B-A
 

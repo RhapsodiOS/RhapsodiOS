@@ -10,11 +10,14 @@ gates that followed.
 
 - **Gate 2.** `sarld` links spec 1's reconstructed `VBE20DisplayDriver` against
   the new kernel. The evidence is positive: the driver's own messages appear in
-  the log, and no other boot driver is lost.
+  the log, and no other boot driver is lost — though that check is weak by
+  itself, since this driver links last in `Boot Drivers` and an
+  undefined-symbol link failure would not cascade at any position (see below).
 - **Gate 3.** The driver loads and prints all three expected lines, plus two
   more.
 - **Graphics mode.** Booted in graphics mode, the new kernel behaves exactly
-  like the pre-Task-4 kernel.
+  like the pre-Task-4 kernel, apart from the build date and the phantom-IRQ
+  race.
 
 A **negative control** shows the failure these gates were built to catch. The
 same driver on a kernel without the symbol fails at the booter with
@@ -31,7 +34,7 @@ its boot.
 | New kernel (Task 4 build of `e2d02efe8`) | `vm/work/task4c-mach_kernel` | 1,490,352 | `74B12FCD53E886AAFCBB29AD400C5DEDD10B26F04BBA0FBC6E02DAEFEA25CFF4` |
 | Control kernel (pre-Task-4) | `vm/work/task3-mach_kernel-final` | 1,490,352 | `1C0F8B804A5ECEF5124B3FCE9C3335356B7692B7C1FD11E2A40CFD6B87F7215D` |
 | Negative-control kernel (pre-spec-2) | `D:/RhapsodiOS/vm/install/mach_kernel`, built `Fri Sep 18 12:06:49 PDT 2026` | 1,486,184 | `9916E7C0BDAC2D4E28A5236AC303677A7A45A8ABFE229B307CEBEAC70721CF8D` |
-| Driver `_reloc` (spec 1's `$DRVBUILT`) | `vbe20-recon/out/i386/drvVBE20DisplayDriver/VBE20DisplayDriver.config/VBE20DisplayDriver_reloc` | 102,412 | `77399531152E287487668F6222467CF9C1ECA449859B169A66352B608A3A36A1` |
+| Driver `_reloc` (spec 1's `$DRVBUILT`) | `.worktrees/vbe20-recon/out/i386/drvVBE20DisplayDriver/VBE20DisplayDriver.config/VBE20DisplayDriver_reloc` | 102,412 | `77399531152E287487668F6222467CF9C1ECA449859B169A66352B608A3A36A1` |
 | Driver `Default.table` | same bundle | 482 | `02EF18A5D57FF8DA03543211DB8F12799803B6B2A0A7812114405A4B73C04C15` |
 | Master image | `D:/RhapsodiOS/vm/golden.img` | 8,589,934,592 | `E1968E3EF57F3060AA01CEAB8B4D5C49C067E6ACC5F8626EBABEEFE0E663879F` |
 | Booter in that image | `/usr/standalone/i386/boot`, also at image offsets 32768 and 98304 | 39,616 | `AA06C3C5BFE56C79573E36D20C662DA10CA67D0CEC5BE17F13A5B562F6B5F2C2` |
@@ -111,12 +114,20 @@ Code that never linked cannot print these lines.
 `Display0` and `en0`. `B` registers all 12, plus `VBEDisplay0`. None is
 missing.
 
-This check is weaker than it looks. `VBE20DisplayDriver` is last in
-`Boot Drivers`, and the cascade described in
+This check is weaker than it looks, for two independent reasons.
+`VBE20DisplayDriver` is last in `Boot Drivers`, and the cascade described in
 `docs/boot/sarld-driver-link-limit.md` only hits drivers linked *after* a
-failure. So a failure of this driver's link could not have shown up as a lost
-boot driver. Gate 2 therefore rests on the driver's own lines and on the
-negative control below.
+failure — so a failure of this driver's link could not have shown up as a
+lost boot driver. Separately, *[inference, from
+`src/cctools-2/ld/symbols.c:3523`/`ld.c:2059` and
+`rld.c:402-405`/`1493`/`1674-1676`]*: an undefined-symbol error is raised via
+`error()`, which unloads only the one driver, not via `fatal()`→`cleanup()`,
+which is what sets the cascade latch that `sarld-driver-link-limit.md`
+describes — and that document's cascade is specific to a malloc fatal
+(`rld(): virtual memory exhausted`), a different failure class from this
+driver's undefined symbol. So this failure would not have cascaded at any
+position, not merely because it linked last. Gate 2 therefore rests on the
+driver's own lines and on the negative control below.
 
 **`B` against `A2`, in order.** The logs match line for line, except for two
 things:
@@ -157,6 +168,14 @@ Driver VBE20DisplayDriver could not be configured
 
 Neither of those lines appears in `B`. `negB` still registers the other 12
 devices. That is expected, because this driver links last.
+
+**Provenance gap.** `negB`'s kernel is pre-spec-2 by build date (`Fri Sep 18
+12:06:49 PDT 2026`) and lacks both new symbols, but its exact source revision
+was not recorded, and it is 4,168 bytes smaller than the new kernel
+(1,486,184 vs 1,490,352) — a second, unexplained difference. This does not
+weaken the conclusion: the booter's own error names the missing symbol
+directly (`rld(): Undefined symbols: _VBEModeInfo2IODisplayInfo`), independent
+of whatever else differs between the two kernels.
 
 **The booter screen in the passing case is inconclusive, and is not used as
 evidence.** A second with-driver boot, `B2early`, captured every 0.1 s after
@@ -263,6 +282,13 @@ settled frames are pixel-identical to `dN`'s.
   inside the IDE probe block (`dC3`, line 37). Seen in `A1` against `A2`,
   `dN` against `dN2`, and `dC1` against `dC3`. Outside those eight lines,
   every same-configuration pair matches line for line.
+- **No gate rests on this widened rule.** The planned A-B-A triple
+  (`dC1`/`dN`/`dC2`) passes the brief's original, unmodified rule: their raw
+  serial diffs are empty even without excluding the phantom lines. Only the
+  two pairs added afterward to chase the timing anomaly, `dC2`/`dN2` and
+  `dN2`/`dC3`, needed the wider exclusion to read as identical. The table
+  below applies the widened rule uniformly for convenience, but no gate
+  depends on the widening.
 - **Frames.** The mask was fixed before the frames were compared. It covers
   the `HH:MM:SS` cells of the two boot-clock text rows, in pixel rows
   102..121: row 102..113 at x 72..135 (the `init:` line) and row 114..121 at
@@ -329,8 +355,9 @@ It establishes:
 - The new kernel exports what the driver needs. `sarld` links the
   reconstructed driver against it without error, and the driver instantiates,
   initialises, logs, reports an empty mode list and registers as
-  `VBEDisplay0`. The pre-spec-2 kernel, given the same bundle, fails exactly
-  as spec 1 predicted: an undefined `_VBEModeInfo2IODisplayInfo`.
+  `VBEDisplay0`. The pre-spec-2 kernel, given the same bundle, fails with the
+  undefined symbol spec 1 predicted, `_VBEModeInfo2IODisplayInfo`; the cascade
+  and panic spec 1 also predicted did not occur.
 - Linking the driver costs no other boot driver its registration. As noted
   under Gate 2, that check is structurally weak.
 - On the default graphics-mode path, the new kernel's console output matches

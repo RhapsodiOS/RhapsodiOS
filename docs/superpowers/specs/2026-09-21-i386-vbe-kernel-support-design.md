@@ -19,9 +19,12 @@ booter links it against the kernel with `sarld`
 ([sarld-driver-link-limit.md](../../boot/sarld-driver-link-limit.md)).
 `_VBEModeInfo2IODisplayInfo` is undefined in the `_reloc`, nothing in
 `src/kernel-7` defines it, and no shipped Rhapsody kernel exports it — so that
-link fails, and the failure **cascades into every driver linked afterwards**,
-surfacing as `panic: Missing EISA kernel bus class`, which names none of the
-cause.
+link fails. It does not cascade into later drivers or panic: an earlier
+version of this section predicted both, but Task 5's negative control found
+the booter prints `rld(): Undefined symbols: _VBEModeInfo2IODisplayInfo` to
+its own screen, the kernel logs `configureDriver: driver class
+'VBE20DisplayDriver' was not loaded`, and the boot continues with every other
+Boot Driver registered.
 
 There is a second, independent motivation. i386's boot console
 (`bsd/dev/i386/BasicConsole.c`) programs VGA registers directly for 640x480x4
@@ -215,11 +218,16 @@ instruction after the prologue, and touches **no** `KERNBOOTSTRUCT` — zero
 operands in `[0x11000,0x13000)`. So there is no outer guard to mirror from ppc;
 the guards live inside `FBAllocateVBEConsole` and the caller simply tries it.
 
-An outer `kernbootstruct->video.v_baseAddr` test would be wrong on two counts:
-it is not what the reference does, **and it would be live**. The i386 booter
-already writes that field today, at `boot-2/i386/boot2/graphics.c:204`, whenever
-graphics mode is entered — so such a guard would couple the console to
-graphics-mode boot rather than lying dormant until spec 3.
+An outer `kernbootstruct->video.v_baseAddr` test would be wrong: it is not what
+the reference does. The "it would be live" rationale is overstated —
+`src/boot-2` writes that field only inside `setMode()`'s `G_MODE_KEY` branch
+(`boot-2/i386/boot2/graphics.c:189-208`), gated on a `"Graphics Mode"` config
+key that no shipped config table sets, so `src/boot-2` as configured never
+enters graphics mode at all. The booter actually on the golden image is
+Apple's stock v5.0.41.1, and Task 5 measured (guest memory dump) that it
+leaves `v_baseAddr` zero even in graphics mode. So the guard would not have
+been live today either way; the primary objection — that it is not the
+reference's shape — is what rules it out.
 
 **Task 4 therefore has a byte oracle**, which §6 previously said it did not.
 The built `_BasicAllocateConsole` should be 72 bytes matching the reference with
@@ -277,7 +285,10 @@ Answered from the disassembly. None may be invented.
 **Gate 2 is the one that matters most.** It is the first direct evidence that
 spec 1's reconstruction and this kernel agree on the contract — and it is
 precisely the failure spec 1 is blocked on. It can be read from the booter's own
-output before the kernel takes over.
+output before the kernel takes over. **Annotated after Task 5:** in the
+passing case this did not hold — the `B2early` capture shows the kernel had
+already replaced the booter's screen before the link result appeared, so Gate
+2 was read from the kernel's serial log instead.
 
 **Gate 3 still reaches only the "card not in VBE mode" path.** Two independent
 reasons, both from spec 1: the booter never enters a VBE mode, and the 4.2
@@ -295,9 +306,11 @@ The `%s: using VBE mode %d` path becomes reachable only after spec 3.
 
 A boot gate here is also the first test of the console wiring — but only its
 *fallback* arm, since nothing writes `kbs+0x1854` until spec 3. That holds on
-graphics-mode boots too, even though the booter writes `video.v_baseAddr` on
-those: `FBAllocateVBEConsole` does not read `video`. The frame-buffer arm cannot
-be exercised until spec 3.
+graphics-mode boots too, regardless of whether the booter writes
+`video.v_baseAddr` there — it does not, on the booter actually in use, and
+`src/boot-2` only would with a `"Graphics Mode"` config key that no shipped
+config table sets: `FBAllocateVBEConsole` does not read `video` at all. The
+frame-buffer arm cannot be exercised until spec 3.
 
 ## 9. Risks
 
@@ -308,9 +321,13 @@ mistake there turns a working boot into a silent one, and the console is how
 failures get reported — so a failure there is self-concealing. The fallback path
 must be preserved exactly, and the new arm must be reachable only when
 `FBAllocateVBEConsole`'s own guards pass, which is never until spec 3 supplies a
-producer for `kbs+0x1854`. **Not** when `video.v_baseAddr` is non-zero: the booter
-sets that on every graphics-mode boot (`boot-2/i386/boot2/graphics.c:204`), so a
-test on it would have been live, not dormant.
+producer for `kbs+0x1854`. **Not** when `video.v_baseAddr` is non-zero:
+`src/boot-2` sets that only inside `setMode()`'s `G_MODE_KEY` branch, gated on
+a `"Graphics Mode"` config key that no shipped config table sets — and the
+booter actually in use is Apple's stock v5.0.41.1, which Task 5 measured
+leaves it zero even in graphics mode. A guard on it would not have been live
+today, but it is still not the reference's shape, which is reason enough to
+omit it.
 
 **`FBAllocateConsole` has never run.** It is compiled but dead, so this spec is
 the first time its code executes. Bugs in it are Apple's or this tree's, latent

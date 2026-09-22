@@ -97,7 +97,7 @@ failures get reported, so a mistake there is self-concealing. Success criterion:
 a boot on which nothing writes `kbs+0x1854` - every boot until spec 3 supplies
 that producer, **graphics-mode boots included** - must
 produce today's console and output, judged by the same-session A/B control
-above. The frame-buffer arm must be unreachable until then. An earlier revision defined this as `video.v_baseAddr == 0`. That is false: the booter writes `v_baseAddr` on any graphics-mode boot (`boot-2/i386/boot2/graphics.c:204`).
+above. The frame-buffer arm must be unreachable until then. An earlier revision defined this as `video.v_baseAddr == 0`. That is imprecise: `src/boot-2` writes `v_baseAddr` only inside `setMode()`'s `G_MODE_KEY` branch (`boot-2/i386/boot2/graphics.c:189-208`), gated on a `"Graphics Mode"` config key that no shipped config table sets, so `src/boot-2` as configured never enters graphics mode at all. The booter actually on the golden image is Apple's stock v5.0.41.1, not `src/boot-2`, and Task 5 measured (guest memory dump) that it leaves `v_baseAddr` zero even in graphics mode.
 
 ### Why the compare harness cannot use relocations
 
@@ -552,10 +552,16 @@ does not use it either.
 (`e8 rel32` + `85 c0` + `75 2b`). It calls `FBAllocateVBEConsole` with no
 boot-struct test and touches no `KERNBOOTSTRUCT`.
 
-**Why no `v_baseAddr` guard.** Beyond not being the reference's shape, it would
-have been **live**: the booter writes `kernBootStruct->video.v_baseAddr` at
-`boot-2/i386/boot2/graphics.c:204` on any graphics-mode boot, so the guard would
-have coupled the console to graphics mode rather than lying dormant.
+**Why no `v_baseAddr` guard.** The primary reason stands on its own: it is not
+the reference's shape. The "it would have been live" rationale is overstated —
+`src/boot-2` writes `kernBootStruct->video.v_baseAddr` only inside `setMode()`'s
+`G_MODE_KEY` branch (`boot-2/i386/boot2/graphics.c:189-208`), gated on a
+`"Graphics Mode"` config key that no shipped config table sets, so `src/boot-2`
+as configured never enters graphics mode at all. The booter actually on the
+golden image is Apple's stock v5.0.41.1, and Task 5 measured (guest memory
+dump) that it leaves `v_baseAddr` zero even in graphics mode. So the guard
+would not have been live today either way; the reference-shape argument is
+what actually rules it out.
 
 **Verified:** 72 bytes, all 60 unmasked bytes identical to the reference, with
 the three `e8` `rel32` operands (at fn+11/32/58; the opcodes are at fn+10/31/57)
@@ -563,10 +569,14 @@ resolving to `_FBAllocateVBEConsole`, `_bzero`, `_VGAAllocateConsole`. Both
 kernel symbols defined; Task 2's extent still MATCHes. Console indistinguishable
 from a same-session control.
 
-**Not yet verified:** a **graphics-mode (non-`-v`) boot**. It is the default, and
-the only path on which the booter writes `v_baseAddr`. On paper it is covered,
-since `FBAllocateVBEConsole` reads `kbs+0x1854`/`0x185C` rather than `video` and
-the booter `bzero`s `_reserved`, but it was never booted. Task 5 covers it.
+**Not yet verified:** a **graphics-mode (non-`-v`) boot**. It is the default.
+`src/boot-2` would write `v_baseAddr` there only if a `"Graphics Mode"` config
+key were set, which no shipped config table does; and the booter actually on
+the golden image is Apple's stock v5.0.41.1, which Task 5 measured leaves
+`v_baseAddr` zero even in graphics mode regardless. On paper the wiring is
+covered either way, since `FBAllocateVBEConsole` reads `kbs+0x1854`/`0x185C`
+rather than `video` and the booter `bzero`s `_reserved`, but it was never
+booted. Task 5 covers it.
 
 ---
 

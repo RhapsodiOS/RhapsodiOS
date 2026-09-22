@@ -132,11 +132,12 @@ multi-gigabyte images anywhere.
 | Undersized fragment | `fs_fsize = 256` | `ENOTSUP` | 3 |
 | Corrupt superblock | `fs_magic` garbage | `EINVAL`, superblock unmodified afterward | 4 |
 
-**Harness B — root overlay.** A qcow2 overlay over `golden.img` with
-`fs_clean` cleared, to exercise the root read-write upgrade and its interaction
-with `rc.boot`'s `fsck`. Overlays rather than copies: `graft-kernel.py` uses
-`shutil.copyfile`, and the APFS `clonefile` trick the allocation work relied on
-does not exist on this host.
+**Harness B — unclean root.** Clear `fs_clean` in `vm/work/test.img` and boot,
+to exercise the root read-write upgrade and its interaction with `rc.boot`'s
+`fsck`. A qcow2 overlay was the first idea and is not worth it: every `-drive`
+in the tree hardcodes `format=raw`, so an overlay means editing the runners,
+and the thing being changed is one byte in an image that `reset-image.cmd`
+already rebuilds from `golden.img` on demand.
 
 **Regression.** A `golden.img` clone boots, root mounts read-write, and
 `fsck -n` reports nothing beyond the four pre-existing graft-caused complaints

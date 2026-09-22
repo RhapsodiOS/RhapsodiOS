@@ -547,16 +547,80 @@ Append the early return immediately after it:
 Run the build cycle from Global Constraints.
 Expected: `rbuild kernel` completes and produces `kernel-154.5.1-7-i386.apk`. Any compiler error here is a typo in Steps 1-4; fix and rebuild before continuing.
 
-- [ ] **Step 6: Regression boot**
+- [ ] **Step 6: Graft the new kernel into this branch's image**
 
-```python
-# run from vm/
-g = gc.Guest("out/task3")   # same importlib preamble as Task 2
+```bash
+export RHAP_TEST_IMAGE=D:/RhapsodiOS/vm/work/ufs-backport.img
+python vm/graft-kernel.py D:/RhapsodiOS/vm/golden.img <path-to-mach_kernel> \
+    D:/RhapsodiOS/vm/work/ufs-backport.img
 ```
 
-Expected: the machine boots to multi-user, root mounts read-write. Check `vm/out/task3/serial.log` contains no new panic or error text versus a pre-change boot.
+Expected: it prints the donor inode, old and new size, and the headroom left.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 7: Boot plain, and confirm the evidence channel works**
+
+This is the step Task 2 could not do, because it had no kernel from this tree.
+Boot with no extra disk first — the lowest-risk configuration.
+
+```python
+# run from vm/, with RHAP_TEST_IMAGE exported
+import importlib.util, pathlib, time
+spec = importlib.util.spec_from_file_location("guest_console", pathlib.Path("guest-console.py"))
+gc = importlib.util.module_from_spec(spec); spec.loader.exec_module(gc)
+
+g = gc.Guest("out/task3")
+time.sleep(6)                 # REQUIRED before any g.line(); otherwise the
+g.line("")                    # first character is swallowed
+time.sleep(200)
+g.shot("multiuser")
+```
+
+Run: `grep "serial_dbg" vm/out/task3/serial.log`
+Expected: the banner `serial_dbg: i386 kernel console up`, emitted by
+`machdep/i386/i386_init.c:127`.
+
+**If that banner is absent, stop and report.** Every refusal in Tasks 4-7 is
+verified by grepping this file for a kernel `printf`. Without it the evidence
+strategy is void and the remaining tasks need redesigning — that is a finding,
+not a failure to work around.
+
+Also confirm from the screenshot that the machine reached multi-user with root
+mounted read-write. That doubles as the regression check for Steps 1-4: those
+three fixes must change nothing observable.
+
+- [ ] **Step 8: Boot single-user with a second disk, and confirm the device node**
+
+The other half of what Task 2 could not establish. Tasks 4-6 mount a malformed
+filesystem from a second disk, so both the single-user shell and the second disk
+have to work.
+
+```python
+g = gc.Guest("out/task3b", extra=(
+    "-drive", "file=work/good-control.img,format=raw,if=ide,index=1,media=disk",
+))
+time.sleep(6)
+g.line("-s")
+time.sleep(135)
+g.line("mount /dev/hd1a /mnt"); time.sleep(5); g.shot("mount-hd1a")
+g.line("df"); time.sleep(3); g.shot("df")
+```
+
+Build `work/good-control.img` first if it does not exist:
+`python -c "import make_badfs; make_badfs.build_good('work/good-control.img')"`
+
+Expected: the mount succeeds and `df` lists `/mnt`. If `mount` reports no such
+device, try `/dev/hd1b`, then `/dev/hd2a`.
+
+Task 2 saw this configuration wedge in an `hc0: interrupt timeout, cmd: 0xc4`
+ATA retry loop on the stock kernel. This tree carries EIDE fixes that the stock
+kernel does not, so it may simply work now. If it still wedges, report that —
+Harness A depends on it, and Tasks 4-6 would need a different way to present a
+malformed filesystem.
+
+- [ ] **Step 9: Record the device node and commit**
+
+Tasks 4 through 8 are written against `/dev/hd1a`. If Step 8 found a different
+node, edit them before they run.
 
 ```bash
 git add src/kernel-7/bsd/ufs/ffs/ffs_vfsops.c src/kernel-7/bsd/ufs/ufs/ufs_readwrite.c

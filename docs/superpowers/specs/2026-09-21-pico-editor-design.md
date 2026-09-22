@@ -13,9 +13,6 @@ Source: <https://ftp.gwdg.de/pub/gnu2/pine/old/pine4.50.tar.Z>
 
 - `pilot`, the file browser that pico's makefile also builds. It can be
   added later.
-- Fixing the 18 stale Commands entries in `src/Manifest` (`bash-1`,
-  `tcsh-1`, and so on). Those directories moved to `src/Commands/<name>`
-  and the Manifest was never updated. This is a separate job.
 - Running pico. For this work, "done" means a clean universal build with
   the right package contents. Running it on the guest or booting it in
   QEMU is out of scope.
@@ -29,6 +26,7 @@ version number and list their local changes. We follow that request:
 - pico's version string becomes `4.3L`, and `pico/osdep/unix`'s unconditional `#define MAX` is guarded with `#ifndef MAX` — the two upstream edits.
 - `LOCAL-CHANGES` at the project root lists every change from upstream.
 - `CPYRIGHT` ships verbatim.
+- The binary package installs `CPYRIGHT` and `LOCAL-CHANGES` in `/usr/share/doc/pico/`, because the permission notice must appear "in supporting documentation".
 
 The apk `pkgver` is `4.3l`. apk-tools only accepts a lowercase letter
 suffix (`islower` in `apk-tools/src/version.c`), so the package version
@@ -62,7 +60,8 @@ Four Cygwin- and Windows-only files ship with CRLF line endings:
 `pico/resource.h`. The repository's `.gitattributes` (`* text=auto eol=lf`)
 stores them with LF. `LOCAL-CHANGES` records this. All 186 files in
 `pico/` are plain text, with no symlinks and no names that collide on a
-case-insensitive filesystem.
+case-insensitive filesystem. `osdep/makedep` and `cc5.sol` keep upstream's
+executable bit.
 
 ## Packaging and hook-up
 
@@ -99,6 +98,8 @@ Installed files:
 
 - `/usr/bin/pico`: fat ppc+i386, stripped
 - `/usr/share/man/man1/pico.1`
+- `/usr/share/doc/pico/CPYRIGHT`
+- `/usr/share/doc/pico/LOCAL-CHANGES`
 
 ## Build flow
 
@@ -122,8 +123,11 @@ include $(MAKEFILEPATH)/CoreOS/ReleaseControl/Common.make
 install::
 	$(INSTALL_DIRECTORY) $(DSTROOT)$(USRBINDIR)
 	$(INSTALL_DIRECTORY) $(DSTROOT)$(MANDIR)/man1
+	$(INSTALL_DIRECTORY) $(DSTROOT)$(SHAREDIR)/doc/pico
 	$(INSTALL_PROGRAM)   $(BuildDirectory)/pico/pico $(DSTROOT)$(USRBINDIR)
-	$(INSTALL_FILE)      $(Sources)/doc/pico.1       $(DSTROOT)$(MANDIR)/man1
+	$(INSTALL_FILE) -c   $(Sources)/doc/pico.1       $(DSTROOT)$(MANDIR)/man1
+	$(INSTALL_FILE) -c   $(Sources)/CPYRIGHT         $(DSTROOT)$(SHAREDIR)/doc/pico
+	$(INSTALL_FILE) -c   $(Sources)/LOCAL-CHANGES    $(DSTROOT)$(SHAREDIR)/doc/pico
 
 build:: shadow_source
 	$(_v) $(MAKE) -C $(BuildDirectory)/pico -f makefile.rhp \
@@ -144,6 +148,9 @@ build:: shadow_source
   them in both `CC_Archs` and `RC_CFLAGS`.
 - `INSTALL_PROGRAM` includes `-s`. strip handles fat binaries, as it
   already does for tcp_wrappers.
+- Rhapsody's `install` moves its source unless given `-c`
+  (`file_cmds/install/xinstall.c:425`), so files installed straight from
+  the source tree use `-c`, as `tcp_wrappers-1` does.
 
 ### `pico/makefile.rhp`
 
@@ -166,7 +173,8 @@ build:: shadow_source
 
 Everything else carries over from `makefile.nxt` unchanged: the `OFILES`
 and `HFILES` lists, the header dependencies, and the `clean` target minus
-`pilot`.
+`pilot`. `clean` also removes the generated `osdep/os-rhp.c`, which
+`osdep/makefile`'s `clean` doesn't list.
 
 ### osdep generation
 
@@ -229,6 +237,13 @@ include(raw.ios)
 include(term.cap)
 ```
 
+### `pico/osdep/unix`
+
+`osdep/unix` defines `MAX(x,y)` unconditionally. Rhapsody's
+`<sys/param.h>` (`kernel-7/bsd/sys/param.h:217-219`) already defines an
+equivalent `MAX` behind its own `#ifndef`, so the redefinition warned.
+pico's define is now guarded with `#ifndef MAX`.
+
 ## Error handling
 
 If the link reports `tgetent` or another termcap symbol as undefined, set
@@ -261,7 +276,8 @@ Build only; nothing is run.
 4. `/build/out/pico-rbuild/pico-4.3l-1-universal.apk` exists. In
    `gzip -dc /build/out/pico-rbuild/pico-4.3l-1-universal.apk | tar tvf -`,
    the only regular files are `./usr/bin/pico`,
-   `./usr/share/man/man1/pico.1`, and apk metadata. Their parent
+   `./usr/share/man/man1/pico.1`, `./usr/share/doc/pico/CPYRIGHT`,
+   `./usr/share/doc/pico/LOCAL-CHANGES`, and apk metadata. Their parent
    directories may also be listed.
 5. Extract `usr/bin/pico` from the apk without running it:
    - `lipo -info` must report both `ppc` and `i386`.

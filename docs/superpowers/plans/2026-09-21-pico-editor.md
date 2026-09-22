@@ -17,7 +17,7 @@
 - The binary reports version `4.3L`. The apk `pkgver` is `4.3l`; apk-tools only accepts a lowercase letter suffix.
 - The only edits to upstream files are `pico/pico.h` (`version = "4.3"` becomes `version = "4.3L"`) and `pico/osdep/unix` (`#define MAX` guarded with `#ifndef MAX`).
 - Ship pico only: no `pilot`.
-- Installed files are exactly `/usr/bin/pico` (fat ppc+i386, stripped) and `/usr/share/man/man1/pico.1`.
+- Installed files are exactly `/usr/bin/pico` (fat ppc+i386, stripped), `/usr/share/man/man1/pico.1`, `/usr/share/doc/pico/CPYRIGHT` and `/usr/share/doc/pico/LOCAL-CHANGES`.
 - `apk/pkginfo`: `license = Pine`, `makedepends = build-base`.
 - Manifest line: `dir     Commands/pico-1       all`.
 - Commit messages start with `pico: `, are one or two lines, and carry **no trailers or metadata** (CLAUDE.md: "Do not add any metadata to commits").
@@ -45,6 +45,7 @@ W=/d/RhapsodiOS/.claude/worktrees/pico-editor
 | `pico/osdep/os-rhp.h` | 2 | Rhapsody OS settings (termios, `/var/mail`, no `sys_errlist` externs) |
 | `pico/osdep/os-rhp.ic` | 2 | Tells `includer` which osdep pieces make up `os-rhp.c` |
 | `pico/pico.h` (line 409) | 2 | Version string `4.3L` |
+| `pico/osdep/unix` | 2 | #define MAX guarded with #ifndef MAX (post-review) |
 | `LOCAL-CHANGES` | 2 | The change list Pine's license asks for |
 | `Makefile` | 3 | Common.make wrapper: shadow build, install |
 | `apk/pkginfo` | 3 | Package metadata |
@@ -887,5 +888,7 @@ Expected: the apk listing and `exit=0`. The apk in `/build/out/pico-rbuild`, `/t
 ---
 
 ## After all tasks
+
+**Final review decisions (2026-09-22):** the whole-branch review found that Rhapsody's `install` moves its source unless given `-c`, so the wrapper now installs files from the source tree with `-c`. At the user's direction, the package also installs `CPYRIGHT` and `LOCAL-CHANGES` in `/usr/share/doc/pico/` so Pine's permission notice ships with the binary; `osdep/makedep` and `cc5.sol` got upstream's exec bit back; and `makefile.rhp`'s `clean` also removes `osdep/os-rhp.c`. Task 2's Steps 5, 8 and 10 still show the pre-review text; the post-review note at the end of Task 2 supersedes them.
 
 Use superpowers:finishing-a-development-branch to decide how `pico-editor` goes back to `master`.

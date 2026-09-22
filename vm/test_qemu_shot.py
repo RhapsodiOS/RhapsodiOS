@@ -138,6 +138,44 @@ class TestImageGuard(unittest.TestCase):
                     qemu_shot.run(decoy, tmpdir, [5], None, 3.0, False)
 
 
+class TestVgaChoice(unittest.TestCase):
+    def test_vga_defaults_to_cirrus(self):
+        args = qemu_shot.build_qemu_args("work/test.img", 1234, False, "out/serial.log")
+        self.assertEqual(args[args.index("-vga") + 1], "cirrus")
+
+    def test_vga_std_is_passed_through(self):
+        args = qemu_shot.build_qemu_args("work/test.img", 1234, False, "out/serial.log", "std")
+        self.assertEqual(args[args.index("-vga") + 1], "std")
+
+
+class TestParsePmem(unittest.TestCase):
+    def test_parses_seconds_and_hex(self):
+        self.assertEqual(qemu_shot.parse_pmem("60:0x11000:0x2200"), (60.0, 0x11000, 0x2200))
+
+    def test_rejects_a_missing_field(self):
+        with self.assertRaises(ValueError):
+            qemu_shot.parse_pmem("60:0x11000")
+
+    def test_rejects_a_zero_length(self):
+        with self.assertRaises(ValueError):
+            qemu_shot.parse_pmem("60:0x11000:0")
+
+
+class TestPmemsaveEvent(unittest.TestCase):
+    def test_run_issues_pmemsave_with_an_absolute_path(self):
+        fake_qmp = mock.MagicMock()
+        with mock.patch.object(qemu_shot.rhap_inject, "check_target", lambda p: None), \
+                mock.patch.object(qemu_shot.subprocess, "Popen") as popen, \
+                mock.patch.object(qemu_shot, "QMP", return_value=fake_qmp):
+            with tempfile.TemporaryDirectory() as tmpdir:
+                qemu_shot.run("work/test.img", tmpdir, [], None, 3.0, False,
+                              vga="std", pmem=[(0.0, 0x11000, 0x2200)])
+                want = os.path.abspath(os.path.join(tmpdir, "pmem-0s-0x11000.bin"))
+        fake_qmp.execute.assert_any_call("pmemsave", val=0x11000, size=0x2200, filename=want)
+        launched = popen.call_args[0][0]
+        self.assertEqual(launched[launched.index("-vga") + 1], "std")
+
+
 class TestFixKeysArg(unittest.TestCase):
     def test_rewrites_dash_value_to_equals_form(self):
         # argparse would otherwise mistake "-v" for another option.

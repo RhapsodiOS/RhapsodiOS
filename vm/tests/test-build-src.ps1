@@ -473,6 +473,7 @@ Assert-Match $buildScriptText 'New-RhapFreshCommand[^\r\n]+-Profile \$cfg\.Toolc
 Assert-Match $buildScriptText ([regex]::Escape('-TargetArch $profileValues.target_arch')) 'phase generation consumes the selected profile architecture'
 Assert-Equal ((Get-RhapKernelCorePackages -TargetArch 'ppc') -join ',') 'driverkit-3,driverTools-1,kernload-1,drivers-ppc/bus/drvPExpert,kernel-7' 'ppc kernel core package order'
 Assert-Equal ((Get-RhapKernelCorePackages -TargetArch 'i386') -join ',') 'driverkit-3,driverTools-1,kernload-1,drivers-i386/bus/drvPExpert,kernel-7' 'i386 kernel core package order'
+Assert-Equal ((Get-RhapKernelCorePackages -TargetArch 'universal') -join ',') 'driverkit-3,driverTools-1,kernload-1,drivers-i386/bus/drvPExpert,drivers-ppc/bus/drvPExpert,kernel-7' 'universal kernel core packages cover both platform experts'
 Assert-Match $buildScriptText 'Get-RhapKernelCorePackages -TargetArch \$profileValues\.target_arch' 'kernel phase validates core sources for the selected architecture'
 Assert-Match $buildScriptText "\`$phase -eq 'kernel'" 'kernel phase preflights core package sources'
 Assert-NotMatch $buildScriptText 'function Get-DriverProjectRels' 'optional driver scan lives in rbuild, not the host orchestrator'
@@ -610,6 +611,33 @@ Assert-Match $i386KernelCommand ([regex]::Escape('rbuild kernel --state /build/s
 Assert-NotMatch $i386KernelCommand 'drivers-ppc' 'i386 kernel command does not mention the ppc driver tree'
 $i386KernelDriversCommand = New-RhapBuildPhaseCommand -Phase 'kernel-drivers' @i386KernelArgs
 Assert-Match $i386KernelDriversCommand ([regex]::Escape('rbuild kerneldrivers --state /build/state --toolchain /build/src/rbuild-1/toolchains/gcc-darwin-ppc.conf --arch i386 /build/src /build/repo /build/built')) 'i386 kernel-drivers selects the profile architecture'
+$universalPhaseArgs = $phaseArgs.Clone()
+$universalPhaseArgs.TargetArch = 'universal'
+$universalPhaseArgs.Profile = '/build/src/rbuild-1/toolchains/gcc-darwin-universal.conf'
+$universalKernelCommand = New-RhapBuildPhaseCommand -Phase 'kernel' @universalPhaseArgs
+Assert-Match $universalKernelCommand ([regex]::Escape('cd /build/src && /build/tools/bin/rbuild kernel --state /build/state --toolchain /build/src/rbuild-1/toolchains/gcc-darwin-universal.conf --arch i386 /build/src /build/repo /build/built && /build/tools/bin/rbuild kernel --state /build/state --toolchain /build/src/rbuild-1/toolchains/gcc-darwin-universal.conf --arch ppc /build/src /build/repo /build/built')) 'universal kernel builds i386, then ppc only if i386 succeeded'
+Assert-NotMatch $universalKernelCommand '--arch universal' 'universal kernel never asks rbuild for a universal kernel'
+$universalKernelDriversCommand = New-RhapBuildPhaseCommand -Phase 'kernel-drivers' @universalPhaseArgs
+Assert-Match $universalKernelDriversCommand ([regex]::Escape('cd /build/src && /build/tools/bin/rbuild kerneldrivers --state /build/state --toolchain /build/src/rbuild-1/toolchains/gcc-darwin-universal.conf --arch i386 /build/src /build/repo /build/built && /build/tools/bin/rbuild kerneldrivers --state /build/state --toolchain /build/src/rbuild-1/toolchains/gcc-darwin-universal.conf --arch ppc /build/src /build/repo /build/built')) 'universal kernel-drivers builds i386, then ppc only if i386 succeeded'
+Assert-NotMatch $universalKernelDriversCommand '--arch universal' 'universal kernel-drivers never asks rbuild for universal drivers'
+$universalRbuildCommand = New-RhapBuildPhaseCommand -Phase 'rbuild' @universalPhaseArgs
+Assert-Match $universalRbuildCommand ([regex]::Escape('GUEST_ARCH=$(/usr/bin/arch)')) 'universal rbuild asks the guest for its CPU'
+Assert-Match $universalRbuildCommand ([regex]::Escape('unsupported guest CPU')) 'universal rbuild refuses a guest CPU it has no profile for'
+Assert-Match $universalRbuildCommand ([regex]::Escape('MIGCC=/usr/bin/cc MIGARCH=$GUEST_ARCH MIGCOM_DIR=/build/tools/libexec')) 'universal rbuild smoke-tests MIG for the guest CPU'
+Assert-NotMatch $universalRbuildCommand 'MIGARCH=universal' 'universal rbuild never passes universal to MIG'
+$universalBootstrapCommand = New-RhapBuildPhaseCommand -Phase 'bootstrap' @universalPhaseArgs
+Assert-Match $universalBootstrapCommand ([regex]::Escape('GUEST_ARCH=$(/usr/bin/arch)')) 'universal bootstrap asks the guest for its CPU'
+Assert-Equal ($universalBootstrapCommand.IndexOf('GUEST_ARCH=$(/usr/bin/arch)') -lt $universalBootstrapCommand.IndexOf('rbuild bootstrap ')) $true 'universal bootstrap knows the guest CPU before rbuild runs'
+Assert-Match $universalBootstrapCommand ([regex]::Escape('rbuild bootstrap --sysroot /build/bootstrap-root --toolchain /build/src/rbuild-1/toolchains/gcc-darwin-$GUEST_ARCH.conf --state /build/state')) 'universal bootstrap hands rbuild the thin profile for the guest CPU'
+Assert-Match $universalBootstrapCommand ([regex]::Escape('rbuild bootstrap-universal --sysroot /build/bootstrap-root --toolchain /build/src/rbuild-1/toolchains/gcc-darwin-$GUEST_ARCH.conf --state /build/state')) 'universal second walk uses the same thin host profile'
+Assert-Match $universalBootstrapCommand ([regex]::Escape('MIGARCH=$GUEST_ARCH')) 'universal bootstrap runs MIG for the guest CPU'
+Assert-NotMatch $universalBootstrapCommand 'gcc-darwin-universal\.conf' 'universal bootstrap never hands rbuild the universal profile'
+Assert-NotMatch $universalBootstrapCommand 'MIGARCH=universal' 'universal bootstrap never passes universal to MIG'
+$misnamedUniversalArgs = $universalPhaseArgs.Clone()
+$misnamedUniversalArgs.Profile = '/build/src/rbuild-1/toolchains/both.conf'
+Assert-Throws { New-RhapBuildPhaseCommand -Phase 'bootstrap' @misnamedUniversalArgs } 'universal bootstrap refuses a profile not named *-universal.conf, since it cannot find the host profile'
+Assert-NotMatch $rbuildCommand 'GUEST_ARCH' 'thin rbuild phase is unchanged'
+Assert-NotMatch $bootstrapCommand 'GUEST_ARCH' 'thin bootstrap phase is unchanged'
 $spacedKernel = New-RhapBuildPhaseCommand -Phase 'kernel' @spacedPhaseArgs
 Assert-Match $spacedKernel ([regex]::Escape("'/srv/build tree/tools'/bin/rbuild kernel --state '/srv/build tree/state' --toolchain '/srv/build tree/profile.conf' --arch ppc '/srv/build tree/src' '/srv/build tree/repo' '/srv/build tree/built output'")) 'kernel safely quotes alternate source and output paths'
 $worldCommand = New-RhapBuildPhaseCommand -Phase 'world' @phaseArgs
@@ -883,6 +911,14 @@ Assert-Match $cmd 'make' 'make requirement'
 Assert-Match $cmd 'ln' 'ln requirement'
 Assert-Match $cmd 'test -x /usr/bin/yacc' 'kernel config yacc requirement'
 Assert-Match $cmd 'test -x /usr/bin/lex' 'kernel config lex requirement'
+$hostPhaseCheck = New-RhapHostPhaseCheckCommand
+Assert-Equal $cmd.Contains($hostPhaseCheck) $false 'kernel-only preflight does not inspect the guest CPU or bootstrap tools'
+$hostPreflight = New-RhapPreflightCommand -SourceRoot '/build/src' -ToolsDir '/build/tools' -BootstrapRoot '/build/bootstrap-root' -StateDir '/build/state' -Profile '/build/src/rbuild-1/toolchains/gcc-darwin-ppc.conf' -HostPhases
+Assert-Equal $hostPreflight.Contains($hostPhaseCheck) $true 'host-phase preflight runs the guest CPU and bootstrap tool check'
+Assert-Equal ($hostPreflight.IndexOf('TARGET_ARCH=$(profile_value target_arch)') -lt $hostPreflight.IndexOf($hostPhaseCheck)) $true 'host-phase check runs after the profile architecture is known'
+Assert-Equal ($hostPreflight.IndexOf($hostPhaseCheck) -lt $hostPreflight.IndexOf('set -f')) $true 'host-phase check globs bootstrap tools before pathname expansion is disabled'
+Assert-Match $buildScriptText ([regex]::Escape("-HostPhases:(@(`$phases) -contains 'rbuild' -or @(`$phases) -contains 'bootstrap')")) 'build-src runs the host-phase check only when -Rbuild or -Bootstrap will run'
+Assert-Equal $cmd.Contains((New-RhapTargetProbeCommand)) $true 'preflight runs the per-CPU target probe'
 Assert-Match $cmd 'config\.tproj/parser\.y' 'kernel config parser source requirement'
 Assert-Match $cmd 'config\.tproj/lexer\.l' 'kernel config lexer source requirement'
 Assert-Match $cmd 'config\.tproj/config\.h' 'kernel config header source requirement'
@@ -912,9 +948,10 @@ Assert-Match $cmd ([regex]::Escape("awk -v wanted=`"`$1`" 'BEGIN")) 'profile awk
 Assert-Match $cmd 'trap' 'probe cleanup trap'
 Assert-Match $cmd 'PROBE_PARENT=\$\(nearest_parent "\$BOOTSTRAP_ROOT"\)' 'case probe uses planned filesystem'
 Assert-Match $cmd '/usr/bin/file "\$PROBE/target\.o"' 'target object architecture inspection'
-Assert-Match $cmd 'Mach-O object \$TARGET_ARCH' 'target object profile architecture Mach-O requirement'
-Assert-Match $cmd ([regex]::Escape('*"Mach-O object $TARGET_ARCH"|*"Mach-O object $TARGET_ARCH "*|*"Mach-O object $TARGET_ARCH,"*')) 'generated target object check requires an exact architecture token boundary'
-Assert-NotMatch $cmd ([regex]::Escape('*"Mach-O object $TARGET_ARCH"*')) 'generated target object check rejects arbitrary architecture suffixes'
+Assert-Match $cmd ([regex]::Escape('else PROBE_ARCHS=$TARGET_ARCH; fi')) 'thin profiles probe exactly the profile architecture'
+Assert-Match $cmd 'Mach-O object \$PROBE_ARCH' 'target object profile architecture Mach-O requirement'
+Assert-Match $cmd ([regex]::Escape('*"Mach-O object $PROBE_ARCH"|*"Mach-O object $PROBE_ARCH "*|*"Mach-O object $PROBE_ARCH,"*')) 'generated target object check requires an exact architecture token boundary'
+Assert-NotMatch $cmd ([regex]::Escape('*"Mach-O object $PROBE_ARCH"*')) 'generated target object check rejects arbitrary architecture suffixes'
 $machOBoundaryCommand = New-RhapMachOValidationCommand
 $boundarySh = (Get-Command sh.exe -ErrorAction Stop).Source
 $boundaryScript = Join-Path $env:TEMP ("rhap-macho-boundary-{0}.sh" -f [guid]::NewGuid().ToString('n'))
@@ -939,6 +976,194 @@ try {
     Assert-Equal (Test-GeneratedMachOBoundary -Text '/tmp/probe.o: Mach-O object i386foo' -Arch i386) 1 'generated object check rejects i386 prefix collision'
 } finally {
     Remove-Item -LiteralPath $boundaryScript -Force -ErrorAction SilentlyContinue
+}
+
+function ConvertTo-TestShPath([string]$Path) {
+    $shPath = ([System.IO.Path]::GetFullPath($Path) -replace '\\', '/')
+    if ($shPath -match '^([A-Za-z]):') { $shPath = '/' + $Matches[1].ToLowerInvariant() + $shPath.Substring(2) }
+    return $shPath
+}
+$phaseSyntaxDir = Join-Path $env:TEMP ("rhap-phase-syntax-{0}" -f [guid]::NewGuid().ToString('n'))
+New-Item -ItemType Directory -Path $phaseSyntaxDir | Out-Null
+try {
+    $phaseSyntaxCases = [ordered]@{
+        'thin rbuild' = $rbuildCommand
+        'thin bootstrap' = $bootstrapCommand
+        'universal rbuild' = $universalRbuildCommand
+        'universal bootstrap' = $universalBootstrapCommand
+        'universal kernel' = $universalKernelCommand
+        'universal kernel-drivers' = $universalKernelDriversCommand
+        'kernel-only preflight' = $cmd
+        'host-phase preflight' = $hostPreflight
+    }
+    foreach ($name in $phaseSyntaxCases.Keys) {
+        $syntaxScript = Join-Path $phaseSyntaxDir (($name -replace ' ', '-') + '.sh')
+        Set-Content -LiteralPath $syntaxScript -Encoding ASCII -NoNewline -Value ($phaseSyntaxCases[$name] + "`n")
+        & $boundarySh -n (ConvertTo-TestShPath $syntaxScript) 2>$null
+        Assert-Equal $LASTEXITCODE 0 "$name phase command parses as sh"
+    }
+} finally {
+    Remove-Item -LiteralPath $phaseSyntaxDir -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+# The host-phase check runs on the guest. Exercise it with a fake /usr/bin/arch
+# and a fake /usr/bin/lipo whose answer each fixture tool file names on line 1.
+$hostCheckDir = Join-Path $env:TEMP ("rhap-host-check-{0}" -f [guid]::NewGuid().ToString('n'))
+New-Item -ItemType Directory -Path $hostCheckDir | Out-Null
+try {
+    function Write-HostCheckFile([string]$Path, [string]$Text) {
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $Path) | Out-Null
+        Set-Content -LiteralPath $Path -Encoding ASCII -NoNewline -Value (($Text -replace "`r`n", "`n") + "`n")
+    }
+    $fakeArch = Join-Path $hostCheckDir 'bin\arch'
+    $fakeLipo = Join-Path $hostCheckDir 'bin\lipo'
+    Write-HostCheckFile $fakeArch "#!/bin/sh`nprintf '%s' `"`$FAKE_GUEST_ARCH`""
+    Write-HostCheckFile $fakeLipo (@'
+#!/bin/sh
+test "$1" = -info || exit 2
+kind=$(sed -n 1p "$2")
+case "$kind" in
+    "FAT "*) echo "Architectures in the fat file: $2 are: ${kind#FAT } " ;;
+    "THIN "*) echo "Non-fat file: $2 is architecture: ${kind#THIN }" ;;
+    *) echo "lipo: can't figure out the architecture type of: $2" >&2; exit 1 ;;
+esac
+'@)
+    $hostCheck = (New-RhapHostPhaseCheckCommand).Replace('/usr/bin/arch', (ConvertTo-TestShPath $fakeArch)).Replace('/usr/bin/lipo', (ConvertTo-TestShPath $fakeLipo))
+    $hostCheckScript = Join-Path $hostCheckDir 'check.sh'
+    Write-HostCheckFile $hostCheckScript ((@'
+#!/bin/sh
+exec 2>&1
+set -e
+fail() { echo "FAIL: $*"; exit 1; }
+profile_value() { sed -n "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*//p" "$PROFILE" | sed -n 1p; }
+PROFILE=$1
+TARGET_ARCH=$2
+BOOTSTRAP_ROOT=$3
+FAKE_GUEST_ARCH=$4
+export FAKE_GUEST_ARCH
+'@) + "`n" + $hostCheck + "`necho PASS")
+
+    foreach ($fixture in @(
+        @('toolchains\gcc-darwin-ppc.conf', 'ppc'),
+        @('toolchains\gcc-darwin-i386.conf', 'i386'),
+        @('toolchains\gcc-darwin-universal.conf', 'universal'),
+        @('toolchains\both.conf', 'universal'),
+        @('lonely\gcc-darwin-universal.conf', 'universal'),
+        @('crossed\gcc-darwin-universal.conf', 'universal'),
+        @('crossed\gcc-darwin-ppc.conf', 'i386')
+    )) {
+        Write-HostCheckFile (Join-Path $hostCheckDir $fixture[0]) "profile=fixture`ntarget_arch=$($fixture[1])"
+    }
+    function New-HostCheckRoot([string]$Name, [hashtable]$Tools) {
+        $root = Join-Path $hostCheckDir "roots\$Name"
+        New-Item -ItemType Directory -Force -Path $root | Out-Null
+        foreach ($tool in $Tools.Keys) { Write-HostCheckFile (Join-Path $root "usr\bin\$tool") $Tools[$tool] }
+        return $root
+    }
+    function Invoke-HostCheck([string]$Profile, [string]$TargetArch, [string]$Root, [string]$Guest) {
+        $output = & $boundarySh (ConvertTo-TestShPath $hostCheckScript) (ConvertTo-TestShPath (Join-Path $hostCheckDir $Profile)) $TargetArch (ConvertTo-TestShPath $Root) $Guest
+        return [pscustomobject]@{ Code = $LASTEXITCODE; Text = ($output -join "`n") }
+    }
+    function Assert-HostCheck([string]$Profile, [string]$TargetArch, [string]$Root, [string]$Guest, [bool]$Pass, [string]$Reason, [string]$Name) {
+        $result = Invoke-HostCheck $Profile $TargetArch $Root $Guest
+        Assert-Equal ($result.Code -eq 0) $Pass "$Name (exit $($result.Code): $($result.Text))"
+        if ($Reason) { Assert-Match $result.Text $Reason "$Name reports why" }
+    }
+
+    $noRoot = Join-Path $hostCheckDir 'roots\absent'
+    $universalRoot = New-HostCheckRoot 'universal' @{ bison = 'FAT i386 ppc'; yacc = '#!/bin/sh' }
+    $subtypeRoot = New-HostCheckRoot 'subtype' @{ bison = 'FAT i486 ppc' }
+    $ppcSubtypeRoot = New-HostCheckRoot 'ppc-subtype' @{ bison = 'FAT i386 ppc750' }
+    $thinSubtypeRoot = New-HostCheckRoot 'thin-subtype' @{ bison = 'THIN pentium' }
+    $i386Root = New-HostCheckRoot 'i386' @{ bison = 'THIN i386' }
+    $ppcRoot = New-HostCheckRoot 'ppc' @{ bison = 'THIN ppc' }
+    $mixedRoot = New-HostCheckRoot 'mixed' @{ bison = 'FAT i386 ppc'; as = 'THIN i486' }
+    $scriptsRoot = New-HostCheckRoot 'scripts' @{ yacc = '#!/bin/sh' }
+    $foreignRoot = New-HostCheckRoot 'foreign' @{ bison = 'FAT i386 hppa' }
+    $emptyRoot = Join-Path $hostCheckDir 'roots\empty'
+    New-Item -ItemType Directory -Force -Path $emptyRoot | Out-Null
+
+    Assert-HostCheck 'toolchains\gcc-darwin-ppc.conf' 'ppc' $noRoot 'ppc' $true '' 'ppc profile on a ppc guest needs no bootstrap tools yet'
+    Assert-HostCheck 'toolchains\gcc-darwin-i386.conf' 'i386' $noRoot 'i386' $true '' 'i386 profile on an i386 guest needs no bootstrap tools yet'
+    Assert-HostCheck 'toolchains\gcc-darwin-i386.conf' 'i386' $universalRoot 'ppc' $true '' 'i386 profile on a ppc guest passes when the bootstrap tools are universal'
+    Assert-HostCheck 'toolchains\gcc-darwin-ppc.conf' 'ppc' $subtypeRoot 'i386' $true '' 'an i486 slice runs on an i386 guest'
+    Assert-HostCheck 'toolchains\gcc-darwin-i386.conf' 'i386' $ppcSubtypeRoot 'ppc' $true '' 'a ppc750 slice runs on a ppc guest'
+    Assert-HostCheck 'toolchains\gcc-darwin-ppc.conf' 'ppc' $thinSubtypeRoot 'i386' $true '' 'a thin pentium tool runs on an i386 guest'
+    Assert-HostCheck 'toolchains\gcc-darwin-i386.conf' 'i386' $i386Root 'ppc' $false 'cannot run on this ppc guest' 'i386 profile on a ppc guest refuses i386-only bootstrap tools'
+    Assert-HostCheck 'toolchains\gcc-darwin-i386.conf' 'i386' $ppcRoot 'ppc' $false 'needs universal bootstrap tools' 'i386 profile on a ppc guest refuses thin ppc bootstrap tools'
+    Assert-HostCheck 'toolchains\gcc-darwin-i386.conf' 'i386' $mixedRoot 'ppc' $false 'cannot run on this ppc guest' 'every bootstrap tool must be universal, not just one'
+    Assert-HostCheck 'toolchains\gcc-darwin-i386.conf' 'i386' $foreignRoot 'ppc' $false 'cannot run on this ppc guest' 'a fat tool without a guest slice is refused'
+    Assert-HostCheck 'toolchains\gcc-darwin-i386.conf' 'i386' $noRoot 'ppc' $false 'does not exist' 'i386 profile on a ppc guest refuses a missing bootstrap root'
+    Assert-HostCheck 'toolchains\gcc-darwin-i386.conf' 'i386' $emptyRoot 'ppc' $false 'does not exist' 'i386 profile on a ppc guest refuses a bootstrap root without usr/bin'
+    Assert-HostCheck 'toolchains\gcc-darwin-i386.conf' 'i386' $scriptsRoot 'ppc' $false 'no Mach-O tools' 'i386 profile on a ppc guest refuses a bootstrap root with no Mach-O tools'
+    Assert-HostCheck 'toolchains\gcc-darwin-ppc.conf' 'ppc' $i386Root 'i386' $true '' 'ppc profile on an i386 guest accepts i386 bootstrap tools'
+    Assert-HostCheck 'toolchains\gcc-darwin-ppc.conf' 'ppc' $ppcRoot 'i386' $false 'cannot run on this i386 guest' 'ppc profile on an i386 guest refuses ppc-only bootstrap tools'
+    Assert-HostCheck 'toolchains\gcc-darwin-universal.conf' 'universal' $noRoot 'ppc' $true '' 'universal profile on a ppc guest finds gcc-darwin-ppc.conf'
+    Assert-HostCheck 'toolchains\gcc-darwin-universal.conf' 'universal' $noRoot 'i386' $true '' 'universal profile on an i386 guest finds gcc-darwin-i386.conf'
+    Assert-HostCheck 'lonely\gcc-darwin-universal.conf' 'universal' $noRoot 'ppc' $false 'no host toolchain profile' 'universal profile refuses when the guest thin profile is missing'
+    Assert-HostCheck 'crossed\gcc-darwin-universal.conf' 'universal' $noRoot 'ppc' $false 'targets i386, not this ppc guest' 'universal profile refuses a thin host profile for the wrong CPU'
+    Assert-HostCheck 'toolchains\both.conf' 'universal' $noRoot 'ppc' $false 'must be named' 'universal profile refuses a name it cannot derive the host profile from'
+    Assert-HostCheck 'toolchains\gcc-darwin-ppc.conf' 'ppc' $noRoot 'm68k' $false 'unsupported guest CPU' 'guest CPUs without a profile are refused'
+} finally {
+    Remove-Item -LiteralPath $hostCheckDir -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+# The target probe compiles one object per CPU. Drive it with a fake compiler
+# that records the -arch flags it was given and a fake file(1) that reports a
+# thin object for one flag and a fat file for several.
+$probeDir = Join-Path $env:TEMP ("rhap-target-probe-{0}" -f [guid]::NewGuid().ToString('n'))
+New-Item -ItemType Directory -Path $probeDir | Out-Null
+try {
+    $fakeCc = Join-Path $probeDir 'bin\cc'
+    $fakeFile = Join-Path $probeDir 'bin\file'
+    New-Item -ItemType Directory -Force -Path (Join-Path $probeDir 'bin') | Out-Null
+    Set-Content -LiteralPath $fakeCc -Encoding ASCII -NoNewline -Value ((@'
+#!/bin/sh
+archs=
+out=
+while test $# -gt 0; do case "$1" in -arch) archs="$archs $2"; shift 2 ;; -o) out=$2; shift 2 ;; *) shift ;; esac; done
+for a in $archs; do if test "$a" = "$FAKE_CC_FAIL"; then exit 1; fi; done
+set -- $archs
+if test $# -eq 1; then echo "OBJ $1" > "$out"; else echo "FAT$archs" > "$out"; fi
+'@) -replace "`r`n", "`n")
+    Set-Content -LiteralPath $fakeFile -Encoding ASCII -NoNewline -Value ((@'
+#!/bin/sh
+kind=$(sed -n 1p "$1")
+case "$kind" in "OBJ "*) echo "$1: Mach-O object ${kind#OBJ }" ;; *) echo "$1: Mach-O fat file with 2 architectures" ;; esac
+'@) -replace "`r`n", "`n")
+    $probeScript = Join-Path $probeDir 'probe.sh'
+    Set-Content -LiteralPath $probeScript -Encoding ASCII -NoNewline -Value (((@'
+#!/bin/sh
+exec 2>&1
+set -e
+fail() { echo "FAIL: $*"; exit 1; }
+TARGET_CC=$1
+ARCH_FLAGS=$2
+TARGET_ARCH=$3
+FAKE_CC_FAIL=$4
+export FAKE_CC_FAIL
+PROBE=$5
+: > "$PROBE/probe.c"
+'@) + "`n" + (New-RhapTargetProbeCommand).Replace('/usr/bin/file', (ConvertTo-TestShPath $fakeFile)) + "`necho PASS`n") -replace "`r`n", "`n")
+    function Invoke-TargetProbe([string]$ArchFlags, [string]$TargetArch, [string]$FailArch) {
+        $output = & $boundarySh (ConvertTo-TestShPath $probeScript) (ConvertTo-TestShPath $fakeCc) $ArchFlags $TargetArch $FailArch (ConvertTo-TestShPath $probeDir)
+        return [pscustomobject]@{ Code = $LASTEXITCODE; Text = ($output -join "`n") }
+    }
+    $probe = Invoke-TargetProbe '-arch ppc' 'ppc' ''
+    Assert-Equal $probe.Code 0 "thin ppc profile probes one ppc object ($($probe.Text))"
+    $probe = Invoke-TargetProbe '-arch i386' 'i386' ''
+    Assert-Equal $probe.Code 0 "thin i386 profile probes one i386 object ($($probe.Text))"
+    $probe = Invoke-TargetProbe '-arch i386 -arch ppc' 'universal' ''
+    Assert-Equal $probe.Code 0 "universal profile probes i386 and ppc as separate thin objects ($($probe.Text))"
+    $probe = Invoke-TargetProbe '-arch i386 -arch ppc' 'universal' 'i386'
+    Assert-Equal ($probe.Code -ne 0) $true 'universal profile fails when the compiler cannot target i386'
+    Assert-Match $probe.Text 'i386' 'universal probe failure names the CPU it could not compile for'
+    $probe = Invoke-TargetProbe '-arch i386 -arch ppc' 'universal' 'ppc'
+    Assert-Equal ($probe.Code -ne 0) $true 'universal profile fails when the compiler cannot target ppc'
+    $probe = Invoke-TargetProbe '-arch i386' 'ppc' ''
+    Assert-Equal ($probe.Code -ne 0) $true 'thin profile still rejects an object for the wrong CPU'
+} finally {
+    Remove-Item -LiteralPath $probeDir -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 $decommentContractDir = Join-Path $env:TEMP ("rhap-decomment-contract-{0}" -f [guid]::NewGuid().ToString('n'))

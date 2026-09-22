@@ -69,7 +69,7 @@ if ($Fresh) {
     $freshCommand = New-RhapFreshCommand -RemoteRoot $cfg.RemoteRoot -SourceRoot $sourceRoot -Profile $cfg.ToolchainProfile -ToolsDir $cfg.ToolsDir -BootstrapRoot $cfg.BootstrapRoot -RepoDir $cfg.RepoDir -BuiltDir $cfg.BuiltDir -StateDir $cfg.StateDir
 }
 
-$preflight = New-RhapPreflightCommand -SourceRoot $sourceRoot -ToolsDir $cfg.ToolsDir -BootstrapRoot $cfg.BootstrapRoot -StateDir $cfg.StateDir -Profile $cfg.ToolchainProfile
+$preflight = New-RhapPreflightCommand -SourceRoot $sourceRoot -ToolsDir $cfg.ToolsDir -BootstrapRoot $cfg.BootstrapRoot -StateDir $cfg.StateDir -Profile $cfg.ToolchainProfile -HostPhases:(@($phases) -contains 'rbuild' -or @($phases) -contains 'bootstrap')
 $profileBody = New-RhapReadProfileCommand -Profile $cfg.ToolchainProfile
 $scriptInvoker = {
     param($name, $body, $stream)

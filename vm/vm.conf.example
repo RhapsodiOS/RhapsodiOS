@@ -16,5 +16,7 @@ BuiltDir=/build/built
 ToolsDir=/build/tools
 BootstrapRoot=/build/bootstrap-root
 StateDir=/build/state
+# Which CPU -Kernel/-KernelDrivers build: gcc-darwin-ppc.conf, gcc-darwin-i386.conf,
+# or gcc-darwin-universal.conf (i386, then ppc). See vm/README.md.
 ToolchainProfile=rbuild-1/toolchains/gcc-darwin-ppc.conf
 SyncPaths=src

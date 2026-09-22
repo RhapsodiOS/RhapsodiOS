@@ -1235,8 +1235,12 @@ both sides."
 > **Read the result first.** This gate was blocked on spec 2, which has now
 > landed; it ran and passed as spec 2's Task 5 (see the Result block below).
 > The notice that follows is kept as the pre-run record. **Its cascade-and-panic
-> prediction was wrong**: only the undefined-symbol failure occurred, and it
-> neither cascaded nor panicked. Everything else in it held.
+> prediction is contradicted by inference, not by the run.** The run observed
+> only the undefined-symbol failure, and no panic, but it linked the driver last
+> in `Boot Drivers`, where no cascade could show and `EISABus` (whose loss the
+> predicted panic names) had already linked. That an undefined-symbol failure
+> would not cascade at other positions either is an inference from `rld.c`;
+> see `docs/kernel/i386-vbe-console.md`, Gate 2. Everything else in it held.
 
 > **This task cannot run until the kernel exports `_VBEModeInfo2IODisplayInfo`.**
 >
@@ -1267,8 +1271,11 @@ both sides."
 >
 > Task 8 is unaffected and closes spec 1 as far as it can go.
 
-> **Superseded by the result below: the cascade and panic predicted above did
-> not occur.** Only the undefined-symbol failure did.
+> **Qualified by the result below.** Only the undefined-symbol failure
+> occurred, and nothing panicked, but with the driver linked last neither the
+> cascade nor the panic predicted above could have shown. That they would not
+> happen at other positions is an inference from `rld.c`
+> (`docs/kernel/i386-vbe-console.md`, Gate 2), not a measurement.
 
 > **Result, 2026-09-22: run and passed, as spec 2's Task 5.** Against spec 2's
 > kernel, `sarld` links the driver. It logs
@@ -1276,13 +1283,15 @@ both sides."
 > `VBEDisplay0: Skipping framebuffer initialization (card not in VBE mode).`,
 > then `Registering: VBEDisplay0`, and no other boot driver is lost — though
 > that check cannot rule out a cascade by itself, since this driver links last
-> in `Boot Drivers` and an undefined-symbol failure would not cascade at any
-> position regardless (spec 2's design doc, §Motivation).
+> in `Boot Drivers`. That an undefined-symbol failure would not cascade at any
+> position regardless is an inference from `rld.c`, not a measurement
+> (`docs/kernel/i386-vbe-console.md`, Gate 2).
 > `Boot Drivers` alone was enough (Step 5's `Active Drivers` fallback was not
 > needed).
 >
 > A pre-spec-2 kernel reproduces the predicted
-> `rld(): Undefined symbols: _VBEModeInfo2IODisplayInfo`.
+> `rld(): Undefined symbols: _VBEModeInfo2IODisplayInfo`, with the driver again
+> linked last.
 >
 > The record is `docs/kernel/i386-vbe-console.md`, not the
 > `docs/drivers/drvVBE20DisplayDriver-boot-gate.md` that Step 6 names.

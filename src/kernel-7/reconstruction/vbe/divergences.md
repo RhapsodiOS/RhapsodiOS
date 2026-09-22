@@ -456,6 +456,23 @@ The booter is the VBE-aware one — it carries the strings `Usable VBE modes:`
 (`boot+39254`), `VBE mode %d not supported.` (`boot+42105`), `Using VBE Mode
 %d.` (`boot+42133`), `No usable VBE mode. Reverting to VGA.` (`boot+42153`).
 
+**What the four hits are, from spec 1's record [measured there, by
+disassembly].** None of them reaches `kbs+0x1854`. Spec 1's record
+(`src/drivers-i386/video/drvVBE20DisplayDriver/reconstruction/divergences.md`,
+D1, "What fills that memory is the booter, and the stores are located")
+locates the booter's stores into this region: one leaf mode-record writer at
+`boot+27556..27702`, which stores only at `+0x00..+0x11` and `+0x14` of its
+destination record, called at `boot+27974` with `edi` = `kbs+0x1870` stepped
+by 24 and at `boot+28263` with `edi` = `kbs+0x1858`. Against the sweep:
+`0x1870` at `boot+0x6CD2` (27858) and `0x1858` at `boot+0x6DA0` (28064) are
+those two destination bases; `0x1870` at `boot+0x0A62` (2658) is in the routine
+at `boot+2652..2857`, which spec 1's record found stores nothing into the
+region; and `0x1840` at `boot+0x6CFC` (27900) is the mode enumerator's loop
+bound, `edi - (base + 0x1840)` compared against `0x897`. That is a subtracted
+operand, not a store base, so `0x1840 + 0x14 = 0x1854` describes no store.
+This accounts for every constant the sweep found; it does not close the blind
+spots named below, which are about addresses no sweep can see.
+
 **What both sweeps cannot see.** Both match **4-byte** little-endian values
 only. The booter can contain real-mode code (this record did not delineate the
 16-bit and 32-bit regions of the 44,848-byte headerless image), and a 16-bit
@@ -493,7 +510,9 @@ traced]**
 ### Correction: `0x12854` is not the booter's to write
 
 The design spec's D2 row says of `0x12854` that "Spec 3 has to write it." The
-evidence says otherwise: **`0x12854` is kernel-private.** The booter writes the
+evidence says otherwise: **`0x12854` is kernel-private** **[inference: from
+the one kernel writer, measured, and an absence in the booter that is measured
+only up to the blind spots named above]**. The booter writes the
 `VBEModeRec` at `kbs+0x1858`; the *kernel's* `pmap_bootstrap` writes the word at
 `kbs+0x1854` **[measured: the kernel has the one writer, and the booter has no
 reference found above]**, and by the inference under D2 that word is the
@@ -546,7 +565,7 @@ and in the function immediately after `VBEModeInfo2IODisplayInfo`, which
 
 ### Our number, measured on the guest, not by hand [measured]
 
-Per the brief, not computed by hand. A probe `#include`s
+Per the plan (Task 1 Step 5, D3), not computed by hand. A probe `#include`s
 `src/kernel-7/bsd/dev/i386/FBConsole.c` itself — so the real `ConsoleRep`
 definition is used, not a transcription — appends an initialised
 `unsigned long[]` of `sizeof`/`offsetof` values between two sentinels, and is
@@ -1308,7 +1327,11 @@ now labelled in `FBConsole.c` — on the `default:` arm and on the call site.
 Nothing under `src/` writes `kbs+0x1854`. In 4.2 the writer is the kernel's own
 `pmap_bootstrap` (D2: one writer, one reader); in Rhapsody's `KERNBOOTSTRUCT`
 the offset lands inside `_reserved[7500]`, which `getKernBootStruct()`
-`bzero`s. So `VBE_FRAMEBUFFER_VIRT` reads 0, the second guard fails, and
+`bzero`s **[QUALIFIED — `getKernBootStruct()` is `src/boot-2`'s. The booter
+that actually runs is Apple's stock v5.0.41.1, whose zeroing was not read; Task 5's
+`pmemsave` dump measured `kbs+0x1854` zero under it on both boot paths (Task
+5, "What the booter hands the kernel"), and that is the stronger basis]**. So
+`VBE_FRAMEBUFFER_VIRT` reads 0, the second guard fails, and
 `FBAllocateVBEConsole` returns `NIL` on every boot. **Spec 3 owns the
 producer** — mapping the linear frame buffer and publishing its kernel virtual
 address. Until it lands, Task 4's wiring falls through to the existing VGA
@@ -1500,13 +1523,9 @@ FBConsole.c:1477: warning: cast to pointer from integer of different size
 
 `/tmp/task3-kvbe-dst` and the guest's `/tmp` are ephemeral, which is exactly how
 `AC2213A3…010F` was lost (A1). The evidence below is **not** pinned to that
-path. A retained copy of the extracted kernel exists **outside the repo**, in
-a session scratchpad:
-
-```
-C:/Users/RAYNOR~2/AppData/Local/Temp/claude/D--RhapsodiOS/3240cc62-057c-4cc2-b38b-dd06f360ea4c/scratchpad/task3-mach_kernel-final
-```
-
+path. A retained copy of the extracted kernel, `task3-mach_kernel-final`,
+exists **outside the repo**, in a session scratchpad (its machine-local path is
+not recorded, since the scratchpad does not outlive the session):
 1,490,352 bytes; re-checked when this note was written: SHA-256
 `1C0F8B80…215D` and a reimplemented BSD `sum` of `39989 1456`, both equal to
 the values above **[measured]**. It is a session scratchpad, so it is retained
@@ -1571,11 +1590,12 @@ is relocation, not behaviour.
 
 ## Task 4: wiring `BasicAllocateConsole`
 
-### Correction to the brief: there *is* a reference, and it is ours
+### Correction to the plan: there *is* a reference, and it is ours
 
-Task 4's brief and its plan step both state that 4.2's `BasicAllocateConsole`
+Task 4's plan step, as committed up to `3188aa18d` (Step 1; the plan's Task 4
+was rewritten afterwards), states that 4.2's `BasicAllocateConsole`
 "is not ours" and that the shape therefore has to be inferred from ppc. **Both
-are wrong, and the evidence is direct.** The reference kernel exports
+claims are wrong, and the evidence is direct.** The reference kernel exports
 `_BasicAllocateConsole` at `0x00197C58`, it is 72 bytes
 (`0x00197C58`-`0x00197C9F`), and it is our function **[measured]**:
 
@@ -1650,8 +1670,9 @@ described under "Where the kernel these results come from is kept"),
 plus `75 2b` (2). Every other instruction agrees in mnemonic, operands and
 encoding, including the two `mov`s of 640 and 480 and the `[ebp-0x8c]` `ebx`
 restore. **The two functions differ by the `FBAllocateVBEConsole()` call and
-nothing else.** This is a far stronger statement than the brief expected to be
-available, and it is what the source change was written from.
+nothing else.** This is a far stronger statement than the plan's Task 4 step
+(as committed up to `3188aa18d`) expected to be available, and it is what the
+source change was written from.
 
 ### Answering the design question: no outer `v_baseAddr` test
 
@@ -1673,17 +1694,27 @@ measurement, not on taste.**
   build, so there is no work to guard.
 - The two predicates are not even the same fact. `video.v_baseAddr` is the
   *physical* linear-frame-buffer base, and on i386 **the booter already writes
-  it today** - `src/boot-2/i386/boot2/graphics.c:200-208`, in `setMode()`, on a
+  it today** **[QUALIFIED — true only of `src/boot-2`, and there only with a
+  `Graphics Mode` config key, which no shipped config sets; the booter actually
+  on the image, Apple's stock v5.0.41.1, leaves it zero even in graphics mode
+  (measured, Task 5 "Corrections")]** - `src/boot-2/i386/boot2/graphics.c:200-208`, in `setMode()`, on a
   graphics-mode boot with a linear VBE mode. `FBAllocateVBEConsole`'s guards
   read `kbs+0x1858` (`xResolution` of the booter's `VBEModeRec`) and
   `kbs+0x1854` (the *mapped virtual* address), neither of which the booter
-  writes. Gating on `v_baseAddr` would therefore couple "the console may use a
+  writes **[QUALIFIED — the word the first guard reads is `kbs+0x185C`,
+  `xResolution` at `+4` into the `VBEModeRec` at `kbs+0x1858`; that
+  `kbs+0x1854` holds a mapped virtual address is D2's inference; and "the
+  booter" here is `src/boot-2`, which writes neither word. The stock v5.0.41.1
+  booter that ran left both zero (measured, Task 5). OPENSTEP 4.2's own booter
+  does write the `VBEModeRec` at `kbs+0x1858`, `xResolution` included, but no
+  reference in it to `kbs+0x1854` was found (D2)]**. Gating on `v_baseAddr` would therefore couple "the console may use a
   frame buffer" to "the booter chose graphics mode", which is a different
   question, and would let spec 3 be silently blocked if it published the mode
   record without also setting `video.v_baseAddr`.
 
 The vestigial `KERNBOOTSTRUCT *kernbootstruct = KERNSTRUCT_ADDR;` therefore
-stays declared and unused, and the brief's "it becomes used" does not hold.
+stays declared and unused, and the plan's "it becomes used" (Task 4 Step 2, as
+committed up to `3188aa18d`) does not hold.
 Keeping it costs nothing measurable: our pre-Task-4 build already reserves the
 reference's `0x88` and no more, so gcc drops the unused local entirely.
 **Not determinable:** whether 4.2's source carried the same vestigial
@@ -1766,7 +1797,7 @@ starts.** Acceptance items 1-3 - kernel builds, Task 2's 539-byte extent still
 MATCHes, console output identical to the pre-Task-4 kernel - are **not
 demonstrated**, for an infrastructure reason:
 
-- The Rhapsody build box, `Host=10.10.0.241` in `vm/vm.conf`, the "legacy PPC
+- The Rhapsody build box named in the gitignored `vm/vm.conf`, the "legacy PPC
   build box" of `vm/SSH CONNECTION.md`, **appears powered off**
   **[inference: only unreachability was measured below, not the power state
   itself]**. `vm/sync-src.ps1 -Path kernel-7` failed with `ssh: connect to
@@ -1786,8 +1817,8 @@ The retained pre-Task-4 kernel **was** re-verified, since that could be done
 locally: 1,490,352 bytes, SHA-256
 `1C0F8B804A5ECEF5124B3FCE9C3335356B7692B7C1FD11E2A40CFD6B87F7215D`, and
 `_FBAllocateConsole` `0x001E8740`, `_VBEModeInfo2IODisplayInfo` `0x001E87D4`,
-`_FBAllocateVBEConsole` `0x001E89F0` - all equal to the values this record and
-the brief carry **[measured]**. It is sound to compare against when the box
+`_FBAllocateVBEConsole` `0x001E89F0` - all equal to the values this record
+carries **[measured]**. It is sound to compare against when the box
 returns.
 
 ### What to run when the build box is back
@@ -1805,7 +1836,8 @@ rbuild kernel --state /build/state --toolchain /tmp/task4-gcc-darwin.conf \
 ```
 
 Then three gates, the third of which this task's measurements make available
-and the brief did not expect to exist:
+and the plan's Task 4 step (as committed up to `3188aa18d`) did not expect to
+exist:
 
 1. `compare_kvbe.py <reference i386 slice> <built kernel>` still MATCHes on all
    411 compared bytes. The function moves; a move is expected to re-hash.
@@ -1941,7 +1973,7 @@ Two harness notes, both **[measured]**, both of which cost a boot to find:
 
 - `rhap_inject.check_target` permits exactly one destination, `vm/work/test.img`
   **relative to the `vm/` directory of the checkout the script is run from**.
-  The brief's `work/<your own name>.img` is refused. Run from a worktree this
+  Any other name, such as a per-session `work/<name>.img`, is refused. Run from a worktree this
   is already isolation: `<worktree>/vm/work/test.img` is a different file from
   the main checkout's, so no other session's image is touched. `golden.img` is
   only read, and was read from the main checkout because a worktree has no copy.
@@ -2010,7 +2042,7 @@ Both were checked before use, because this spec has already lost one artefact
 to a scratchpad. **[measured, 2026-09-22]**
 
 - **The retained pre-Task-4 kernel is intact and is what the record says.**
-  `…/scratchpad/task3-mach_kernel-final`, 1490352 bytes, SHA-256
+  The session-scratchpad copy of `task3-mach_kernel-final`, 1490352 bytes, SHA-256
   `1C0F8B804A5ECEF5124B3FCE9C3335356B7692B7C1FD11E2A40CFD6B87F7215D`,
   `_FBAllocateVBEConsole` `0x001E89F0`, `_VBEModeInfo2IODisplayInfo`
   `0x001E87D4`, `_BasicAllocateConsole` `0x001E214C`, all three `n_type 0x0F`.
@@ -2322,13 +2354,16 @@ with it, then without it again (`A1`, `B`, `A2`). **[measured]**
   one page fewer. *[inference]* That page is the booter's allocation for the
   linked driver.
 - **Negative control.** The pre-spec-2 kernel
-  (`D:/RhapsodiOS/vm/install/mach_kernel`, `9916E7C0...21CF8D`) has neither
+  (the main checkout's gitignored `vm/install/mach_kernel`, `9916E7C0...21CF8D`) has neither
   `_VBEModeInfo2IODisplayInfo` nor `_FBAllocateVBEConsole`. Booted with the
   same bundle, it stops at the booter with
   `rld(): Undefined symbols: _VBEModeInfo2IODisplayInfo`, captured in
   frame. The kernel then logs
   `configureDriver: driver class 'VBE20DisplayDriver' was not loaded`.
-  Spec 1's prediction of the blocked gate is now measured, not argued.
+  The undefined-symbol part of spec 1's prediction is now measured, not
+  argued. Its cascade and panic were not seen, but this run also linked the
+  driver last, where neither could show; that they would not occur elsewhere
+  rests on the *[inference]* in the no-cascade bullet above.
 
 ### What the booter hands the kernel, measured in guest memory
 
@@ -2391,7 +2426,7 @@ default graphics-mode boot, at 12, 16, 30 and 60 s, and a verbose boot, at
   no-driver boots of the same kernel. **[measured]** Outside those eight
   lines, every same-configuration pair matches line for line.
 - **No gate rests on this widened rule.** The planned A-B-A (`dC1`/`dN`/`dC2`)
-  passes the brief's unmodified rule with empty raw diffs; only the extra
+  passes the plan's rule 2 ("The comparison, tightened"), unmodified, with empty raw diffs; only the extra
   pairs `dC2`/`dN2` and `dN2`/`dC3` needed the exclusion.
 
 ### The graphics-mode A-B-A

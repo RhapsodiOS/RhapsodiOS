@@ -6,8 +6,9 @@ frame-buffer console machinery that already exists in this tree but which
 nothing calls.
 
 This is the second of three specs covering the i386 VESA boot path. Spec 1
-reconstructed the display driver and is complete; its boot gate is **blocked on
-this spec**. Spec 3 owns the booter.
+reconstructed the display driver and is complete; its boot gate was **blocked on
+this spec**, and passed once this spec landed (Task 5,
+`docs/kernel/i386-vbe-console.md`). Spec 3 owns the booter.
 
 **Spec 1:** [2026-09-21-vbe20displaydriver-reconstruction-design.md](2026-09-21-vbe20displaydriver-reconstruction-design.md)
 
@@ -19,12 +20,17 @@ booter links it against the kernel with `sarld`
 ([sarld-driver-link-limit.md](../../boot/sarld-driver-link-limit.md)).
 `_VBEModeInfo2IODisplayInfo` is undefined in the `_reloc`, nothing in
 `src/kernel-7` defines it, and no shipped Rhapsody kernel exports it — so that
-link fails. It does not cascade into later drivers or panic: an earlier
-version of this section predicted both, but Task 5's negative control found
-the booter prints `rld(): Undefined symbols: _VBEModeInfo2IODisplayInfo` to
-its own screen, the kernel logs `configureDriver: driver class
-'VBE20DisplayDriver' was not loaded`, and the boot continues with every other
-Boot Driver registered.
+link fails. An earlier version of this section predicted that the failure
+would also cascade into later drivers and panic. Task 5's negative control,
+with the driver linked last in `Boot Drivers`, observed only the
+undefined-symbol failure: the booter prints `rld(): Undefined symbols:
+_VBEModeInfo2IODisplayInfo` to its own screen, the kernel logs
+`configureDriver: driver class 'VBE20DisplayDriver' was not loaded`, the boot
+continues with every other Boot Driver registered, and nothing panics. That
+run could not show a cascade, because nothing links after the driver there.
+That an undefined-symbol failure would not cascade at other positions either
+is an inference from `rld.c`, not a measurement; it is recorded in
+`docs/kernel/i386-vbe-console.md`, Gate 2.
 
 There is a second, independent motivation. i386's boot console
 (`bsd/dev/i386/BasicConsole.c`) programs VGA registers directly for 640x480x4
@@ -82,8 +88,9 @@ Only one of the three pieces is absent code. The rest is connection work.
 
 `BasicAllocateConsole()` at `BasicConsole.c:241` still declares
 `KERNBOOTSTRUCT *kernbootstruct = KERNSTRUCT_ADDR;` and never uses it, then
-hands `VGAAllocateConsole` a hard-coded 640x480. That unused declaration is a
-vestige of the hook this spec restores.
+hands `VGAAllocateConsole` a hard-coded 640x480. An earlier revision called
+that unused declaration a vestige of the hook this spec restores. It is not:
+the restored call reads no boot struct (§5), and the local stays unused.
 
 ## 3. `VBEModeInfo2IODisplayInfo`
 
@@ -170,7 +177,8 @@ we already have, to reach a byte target that is unreachable anyway (§6).
 
 ## 5. The i386 wiring
 
-ppc's `kmDevice.m:150-167` is the shape to mirror:
+ppc's `kmDevice.m:150-167` was first taken as the shape to mirror (superseded
+below):
 
 ```c
 if (framebufferArgs->v_baseAddr) {
@@ -241,8 +249,8 @@ functions to a kernel we build ourselves, whose every other address differs.
 
 | Piece | Target | Why |
 | --- | --- | --- |
-| `VBEModeInfo2IODisplayInfo` | **Byte-parity**, 32-bit relocated operands masked | A leaf. No calls; only the jump-table base and its entries relocate. A genuine correctness oracle. |
-| `FBAllocateVBEConsole` | **Structural parity** | Five `rel32` calls and seven absolute vtable pointers into a kernel whose addresses all differ. Byte-parity is *unreachable*, not merely hard. |
+| `VBEModeInfo2IODisplayInfo` | **Byte-parity**, 32-bit absolute operands masked by pattern (there are no relocations; see below) | A leaf. No calls; only the jump-table base and its entries are absolute addresses that move with the function. A genuine correctness oracle. |
+| `FBAllocateVBEConsole` | **Structural parity** | Four `rel32` calls (Task 3's count; an earlier revision said five) and seven absolute vtable pointers into a kernel whose addresses all differ. Byte-parity is *unreachable*, not merely hard. |
 | The wiring | **Byte-parity** (corrected) | A reference *does* exist — `_BasicAllocateConsole` at `0x00197C58`, 72 bytes. An earlier revision of this spec claimed none. Only the three `e8` displacements may differ. |
 
 **Two of three pieces have a byte oracle**, not one — §5's correction moved the
@@ -268,7 +276,7 @@ Answered from the disassembly. None may be invented.
 | | Item | Why it matters |
 | --- | --- | --- |
 | D1 | The real extent of `VBEModeInfo2IODisplayInfo` | The symbol table is sparse — the next *named* symbol is 7,484 bytes on. Bound it via the jump table at `0x19EDD8`, not by symbol delta. |
-| D2 | ~~What `0x12854` is~~ **Answered in Task 1, as a tightly-constrained inference — not a flat reading.** *Measured:* `pmap_bootstrap` writes it at `0x0018F1B4`, and `FBAllocateVBEConsole` reads it at `+57` into `IODisplayInfo.frameBuffer`, **overwriting** the physical address. *Inferred:* that the value is the mapped framebuffer's kernel virtual address — the reading that makes a pixel-writing console work, but the mapping code itself was not read. The 4.2 booter does not reference it. | This row previously said spec 3 has to write it. That was wrong, and it leaves the guard without a producer - see section 11. |
+| D2 | ~~What `0x12854` is~~ **Answered in Task 1, as a tightly-constrained inference — not a flat reading.** *Measured:* `pmap_bootstrap` writes it at `0x0018F1B4`, and `FBAllocateVBEConsole` reads it at `+57` into `IODisplayInfo.frameBuffer`, **overwriting** the physical address. *Inferred:* that the value is the mapped framebuffer's kernel virtual address — the reading that makes a pixel-writing console work, but the mapping code itself was not read. No reference to it was found in the 4.2 booter (*measured absence*; byte scans cannot see a computed address), and none of the booter's located stores into this region reaches it (§11). | This row previously said spec 3 has to write it. That was wrong, and it leaves the guard without a producer - see section 11. |
 | D3 | `sizeof(ConsoleRep)` in our tree versus the reference's 228 | If they differ, the console's private layout differs, which bears on §4's "same structure" claim. `ConsoleRep` is at `FBConsole.c:135`; measure with `offsetof` on the guest, not by hand — spec 1's hand layout of a struct was 12 bytes out. |
 | D4 | Whether both functions live in the FBConsole translation unit | They are adjacent in `__text`, which suggests one source file. Decides where our definitions go. |
 | D5 | Whether the reference's `ConsoleRep` puts `display` at offset 4 | The `rep movsd` writes to `priv + 4`. Ours assigns `((ConsolePtr)cso->priv)->display`. |
@@ -293,7 +301,13 @@ already replaced the booter's screen before the link result appeared, so Gate
 **Gate 3 still reaches only the "card not in VBE mode" path.** Two independent
 reasons, both from spec 1: the booter never enters a VBE mode, and the 4.2
 mode-array offsets land inside Rhapsody's `_reserved[7500]` (908..8408), which
-`getKernBootStruct()` has `bzero`'d. The driver will read zeros. Expected
+`getKernBootStruct()` has `bzero`'d. The driver will read zeros.
+**Annotated after Task 5:** both reasons describe `src/boot-2`, not the booter
+that ran, Apple's stock v5.0.41.1. For that booter, "never enters a VBE mode"
+is an inference (what mode its graphics panel sets was not determined), and
+its zeroing was not read. The stronger basis is Task 5's `pmemsave` dump,
+which measured the words the driver reads, and all of `_reserved`, zero on
+both boot paths (`docs/kernel/i386-vbe-console.md`, Gate 3). Expected
 output:
 
 ```
@@ -329,9 +343,13 @@ leaves it zero even in graphics mode. A guard on it would not have been live
 today, but it is still not the reference's shape, which is reason enough to
 omit it.
 
-**`FBAllocateConsole` has never run.** It is compiled but dead, so this spec is
-the first time its code executes. Bugs in it are Apple's or this tree's, latent
-since 1999, and they will surface as *our* regression.
+**`FBAllocateConsole` has never run, and this spec does not change that.** It
+is compiled but dead. An earlier revision said this spec would be the first
+time its code executes; it is not, because the arm that calls it cannot be
+reached until spec 3 supplies a producer for `kbs+0x1854` (§11). So this risk
+passes to spec 3 unchanged. Bugs in it are Apple's or this tree's, latent
+since 1999, and they will surface as *our* regression the first time that arm
+runs.
 
 **Gate 3 may reveal the `_VBE20DisplayDriver_instance` hazard** that spec 1 could
 not test. If the driver fails to *load* rather than to link, look there first —
@@ -343,7 +361,9 @@ source defect.
 1. Both symbols exported by the built kernel, with `VBEModeInfo2IODisplayInfo`'s
    extent byte-identical to the reference under masking.
 2. `sarld` links the spec 1 driver without error, and no driver linked after it
-   is disturbed.
+   is disturbed. (Annotated after Task 5: the run's `Boot Drivers` listed the
+   driver last, so no driver linked after it and the second half held
+   vacuously; see `docs/kernel/i386-vbe-console.md`, Gate 2.)
 3. The driver loads under QEMU and logs the three lines of §8.
 4. A boot with no VBE mode set behaves exactly as it does today — same console,
    same output. The wiring must be invisible until spec 3.
@@ -368,12 +388,24 @@ It is the reading that makes sense — a console writing pixels needs one, and
 `pmap_bootstrap` is where mapping happens — but Task 1 did not read the mapping
 code that produces `ecx`. Spec 3 should confirm it before depending on it.
 
-That makes sense: the booter records a physical address, and a console that
-writes pixels needs a mapped virtual one.
+**No reference to `0x12854` was found in the 4.2 booter** *[measured absence,
+with named blind spots]*. Task 1 swept every 4-byte value in `[0x1800,0x1900)`
+of the booter and ran a 2-byte scan for `54 18`; neither finds it. A byte scan
+cannot see an address split into segment and offset, computed at run time, or
+carried in data, so this is not a proof of absence.
 
-**The 4.2 booter never references `0x12854`.** Task 1 verified this by sweeping
-every 4-byte value in `[0x1800,0x1900)` of the booter. So it is kernel-private,
-and this spec's earlier D2 row — "spec 3 has to write it" — was wrong.
+Spec 1's record narrows the gap with disassembly
+(`src/drivers-i386/video/drvVBE20DisplayDriver/reconstruction/divergences.md`,
+D1, "What fills that memory is the booter, and the stores are located"). The
+booter stores it locates in this region come from one mode-record writer at
+`boot+27556`, which writes only offsets `+0x00..+0x11` and `+0x14` of its
+destination and is called with `kbs+0x1858` and with `kbs+0x1870` stepped by
+24. The `add eax,1840h` at `boot+27900`, which Task 1's sweep counts as a
+positive control, is the enumerator's loop bound, subtracted from the cursor,
+not a store base, so `0x1840 + 0x14` is not a route to `0x1854`. The sweep's
+other three hits are that writer's two bases and a routine that only reads.
+*[inference, from that evidence]* So the word is kernel-private, and this
+spec's earlier D2 row — "spec 3 has to write it" — was wrong.
 
 **No task in this spec maps the framebuffer.** `FBAllocateVBEConsole`'s second
 guard therefore has no producer on our side: it will read whatever our kernel
@@ -382,8 +414,9 @@ return NULL.
 
 This does not block any of this spec's gates. Gate 2 (`sarld` links the driver)
 and gate 3 (the driver loads) need only `VBEModeInfo2IODisplayInfo`.
-`FBAllocateVBEConsole` is reached only from the Task 4 wiring, whose guard
-cannot pass until spec 3 supplies a mode anyway. But it does mean the console
+`FBAllocateVBEConsole` is reached only from the Task 4 wiring, which calls it
+unconditionally, and its own guards cannot pass until spec 3 supplies a mode
+anyway. But it does mean the console
 half of this spec is **present and shaped correctly, and inert**.
 
 Adding the mapping means touching `pmap_bootstrap` — early kernel

@@ -377,20 +377,23 @@ links this driver and the kernel's log shows all three lines below, as
 `VBEDisplay0: ...`. The driver also printed `Driver loaded to export VBE mode
 list.` and `No VBE modes found.` No other boot driver lost its registration —
 a check that cannot by itself rule out a cascade, since this driver links
-last in `Boot Drivers` and, as noted below, an undefined-symbol failure would
-not cascade at any position anyway.
+last in `Boot Drivers`; that an undefined-symbol failure would not cascade at
+any position anyway is the inference noted below, not a measurement.
 `Boot Drivers` alone was enough; `Active Drivers` did not need changing.
 
 The same bundle on a pre-spec-2 kernel fails with the undefined symbol this
-section predicted; the cascade and panic it also predicted did not occur. The
-booter shows `rld(): Undefined symbols: _VBEModeInfo2IODisplayInfo`, and the
-kernel logs `configureDriver: driver class 'VBE20DisplayDriver' was not
-loaded`. It did not cascade — both because the driver links last in `Boot
-Drivers`, and, on inference from `src/cctools-2/ld/symbols.c:3523`/`ld.c:2059`
-and `rld.c:402-405`/`1493`/`1674-1676`, because an undefined-symbol failure
-does not cascade at any position: it is raised via `error()`, which unloads
-only the one driver, not via `fatal()`→`cleanup()`, which is what
-`docs/boot/sarld-driver-link-limit.md`'s cascade (a malloc fatal) depends on.
+section predicted. The cascade and panic it also predicted were not seen, but
+that run could not have seen them: the driver links last in `Boot Drivers`, so
+nothing links after it, and `EISABus`, the driver whose loss the predicted
+panic names, links before it. The booter shows `rld(): Undefined symbols:
+_VBEModeInfo2IODisplayInfo`, and the kernel logs `configureDriver: driver
+class 'VBE20DisplayDriver' was not loaded`. That it would not cascade at other
+positions either is an inference, from
+`src/cctools-2/ld/symbols.c:3523`/`ld.c:2059` and
+`rld.c:402-405`/`1493`/`1674-1676`: an undefined-symbol failure is raised via
+`error()`, which unloads only the one driver, not via `fatal()`→`cleanup()`,
+which is what `docs/boot/sarld-driver-link-limit.md`'s cascade (a malloc
+fatal) depends on.
 
 The `_VBE20DisplayDriver_instance` difference did not stop the load.
 
@@ -398,8 +401,9 @@ The booter that ran is Apple's stock v5.0.41.1, not `src/boot-2`. The
 procedure, hashes and limits are in `docs/kernel/i386-vbe-console.md`.
 
 The text below is the pre-run notice, kept as written — except that its
-cascade-and-panic prediction is superseded by the result above: only the
-undefined-symbol failure occurred, and it did not cascade or panic.
+cascade-and-panic prediction is contradicted by the `rld.c` inference above,
+not by the run. The run saw only the undefined-symbol failure and no panic,
+in a position where neither a cascade nor that panic could show.
 
 `Default.table` marks this a Boot Driver, so the booter links it against the
 kernel with `sarld`. `_VBEModeInfo2IODisplayInfo` is undefined in our `_reloc`,

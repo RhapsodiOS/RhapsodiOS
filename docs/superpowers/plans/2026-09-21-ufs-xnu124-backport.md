@@ -212,6 +212,125 @@ git commit -m "vm: generate small UFS images with one corrupted superblock field
 
 ---
 
+### Task 2a: Per-session test image
+
+Added mid-execution. This machine routinely runs a dozen concurrent sessions,
+and `vm/work/test.img` is a single shared file that `guest-console.py`
+hardcodes and that `rhap_inject.check_target` treats as the sole permitted write
+target. Running Tasks 2-9 against it would clobber other sessions' boot testing
+and be clobbered in turn. CLAUDE.md section 6 asks for isolated images exactly
+here.
+
+The change is an opt-in override, not a relaxation: with the environment
+variable unset, behaviour is byte-identical to today, so no other session is
+affected.
+
+**Files:**
+- Modify: `vm/rhap_inject.py` (`check_target`, from `:23`)
+- Modify: `vm/guest-console.py:18` (`IMAGE`)
+- Test: `vm/test_rhap_inject.py`
+
+**Interfaces:**
+- Produces: the `RHAP_TEST_IMAGE` environment variable. Set to an absolute path,
+  `check_target` additionally accepts that path and `guest-console.Guest` boots
+  it. Unset, both behave exactly as before. Tasks 2-9 set it to
+  `D:/RhapsodiOS/vm/work/ufs-backport.img`.
+
+**The safety property that must not regress:** `check_target`'s second,
+independent check refuses any target resolving to the same underlying file as
+`golden.img` or `rhapsody.vmdk`. The override must not defeat it — pointing
+`RHAP_TEST_IMAGE` at `golden.img` must still be refused. The override widens
+which *path* is allowed, never which *file* may be destroyed.
+
+- [ ] **Step 1: Write the failing tests**
+
+Add to `vm/test_rhap_inject.py`, following the style of the existing
+`check_target` tests:
+
+```python
+def test_env_override_accepts_the_named_image(tmp_path, monkeypatch):
+    alt = tmp_path / "ufs-backport.img"
+    alt.write_bytes(b"")
+    monkeypatch.setenv("RHAP_TEST_IMAGE", str(alt))
+    rhap_inject.check_target(str(alt))  # must not raise
+
+
+def test_env_override_still_accepts_the_default_target(tmp_path, monkeypatch):
+    alt = tmp_path / "ufs-backport.img"
+    alt.write_bytes(b"")
+    monkeypatch.setenv("RHAP_TEST_IMAGE", str(alt))
+    rhap_inject.check_target(WORK)  # must not raise
+
+
+def test_env_override_cannot_authorise_golden(monkeypatch):
+    monkeypatch.setenv("RHAP_TEST_IMAGE", GOLDEN)
+    try:
+        rhap_inject.check_target(GOLDEN)
+    except rhap_inject.SafetyError:
+        return
+    raise AssertionError("override must not defeat the golden.img check")
+
+
+def test_unset_env_refuses_an_arbitrary_path(tmp_path, monkeypatch):
+    monkeypatch.delenv("RHAP_TEST_IMAGE", raising=False)
+    alt = tmp_path / "ufs-backport.img"
+    alt.write_bytes(b"")
+    try:
+        rhap_inject.check_target(str(alt))
+    except rhap_inject.SafetyError:
+        return
+    raise AssertionError("no override set, so this path must be refused")
+```
+
+- [ ] **Step 2: Run them and confirm they fail**
+
+Run from `vm/`: `python -m pytest test_rhap_inject.py -k "env_override or unset_env" -v`
+Expected: the three `env_override` tests FAIL (the override does not exist yet).
+`test_unset_env_refuses_an_arbitrary_path` should already PASS — that confirms
+the test is checking something real rather than passing vacuously.
+
+- [ ] **Step 3: Implement the override in `check_target`**
+
+Resolve `RHAP_TEST_IMAGE` through the same `os.path.realpath` plus
+`os.path.normcase` treatment the existing allowed path gets, and accept the
+target when it matches either the default or the override. Leave the
+`golden.img` / `rhapsody.vmdk` identity check exactly where it is and applying
+to both paths — it runs after the path decision, so an override aimed at
+`golden.img` is still refused. Update the docstring to record that an override
+exists and that it cannot authorise `golden.img`.
+
+- [ ] **Step 4: Honour the same variable in `guest-console.py`**
+
+`vm/guest-console.py:18` currently reads:
+
+```python
+IMAGE = os.path.join(HERE, "work", "test.img")
+```
+
+Replace with:
+
+```python
+IMAGE = os.environ.get("RHAP_TEST_IMAGE") or os.path.join(HERE, "work", "test.img")
+```
+
+- [ ] **Step 5: Prove nothing regressed**
+
+Run the whole existing suite, not just the new tests — these files are in live
+use by other sessions right now:
+
+Run from `vm/`: `python -m pytest test_rhap_inject.py -v`
+Expected: every pre-existing test still passes, plus the four new ones. A
+pre-existing failure means stop and report, not proceed.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add vm/rhap_inject.py vm/guest-console.py vm/test_rhap_inject.py
+git commit -m "vm: allow an opt-in per-session test image via RHAP_TEST_IMAGE"
+```
+
+---
+
 ### Task 2: Positive control — prove the second-disk harness works
 
 No kernel change. This runs the **current, unmodified** kernel and answers one question the rest of the plan depends on: what device node does a second disk get? Do not skip it; Tasks 4-6 cannot be interpreted without it.

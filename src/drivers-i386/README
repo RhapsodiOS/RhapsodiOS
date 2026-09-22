@@ -56,6 +56,7 @@ network
  * drvEtherExpress16 - needs compiled and then tested
  * drvEtherLink3 - needs compiled and then tested
  * drvEtherLinkXL - needs compiled and then tested
+ * drvIntel1000 - not a reconstruction: ported from the third-party onionmixer/openstep-intel1000 (BSD-2-Clause), wired up here as a Driver bundle/Kernel Server pair with apk/pkginfo. Covers the PCI/PCI-X 8254x gigabit family; its author verified it on real 82547EI hardware, the rest of the family only against the SDM and FreeBSD's e1000 code. Needs compiled and then tested here
  * drvIntel82556 - needs compiled and then tested
  * drvIntel82557 - needs compiled and then tested
  * drvIntel82595 - needs compiled and then tested

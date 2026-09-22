@@ -13,7 +13,7 @@ happen on purpose.
 **Done when:** a clone of `golden.img` still boots with root mounted and
 `fsck -n` no worse than its four known graft artifacts, and every refusal that
 can be triggered on demand has been observed returning its expected errno
-against a filesystem deliberately malformed to trigger it. Three of the eight
+against a filesystem deliberately malformed to trigger it. Two of the seven
 changes cannot be triggered on demand; they are named in "The gap worth naming"
 rather than quietly counted as done.
 
@@ -42,6 +42,7 @@ against the tree rather than assumed.
 | `fs_bsize > PAGE_SIZE` mount refusal | `golden.img` has `fs_bsize` 8192; `I386_PGBYTES` is 4096 (`mach/i386/vm_param.h:44`). A verbatim port refuses the root filesystem and the machine does not boot. The check guards xnu's page-backed bufs; `kernel-7` already bounds block size with `fs_bsize > MAXBSIZE` (`ffs_vfsops.c:535`) and has been serving 8K blocks all along. |
 | Two-phase `vflush(SKIPSWAP)` in `ffs_unmount` | `SKIPSWAP` does not exist in `kernel-7` — zero occurrences in the tree. It orders swap-backed vnodes ahead of the final flush, which matters only when UFS is backing swap. |
 | `ffs_radvisory` fragment-tail fix | `kernel-7`'s `advisory_read` takes a caller-computed `runt_size` (`bsd/vfs/vfs_cluster.c:561`, called from `ufs_vnops.c:690`). xnu-124's is offset-based and handles the runt internally. Porting the caller without its callee would break readahead rather than fix it. |
+| `extern int prtactive` in `ufs_inode.c` | In xnu-124 this stops UFS shadowing a VFS-wide variable. In `kernel-7` there is nothing to shadow: `ufs_inode.c:80` is the **only** definition in the tree, and HFS, cd9660, msdosfs and NFS all reference it as `extern`. Making UFS `extern` too leaves the symbol undefined and the kernel unlinkable. |
 
 The first of these is the reason this spec exists in written form rather than
 as a patch. It is not obvious from reading the xnu-124 diff, and it is fatal.
@@ -107,12 +108,6 @@ side that needs it.
 `WRITE` falls into the full allocation and locking path for a request that will
 move no bytes. Added after the bounds check at `ufs_readwrite.c:301`.
 
-**8. Stop shadowing the VFS-wide `prtactive`.**
-`ufs_inode.c:80` defines `int prtactive = 0;` at file scope while `:97`
-declares `extern int prtactive;` inside a function in the same file. The
-definition wins for UFS, so toggling the VFS-wide variable silently does not
-affect UFS reclaim tracing. Remove the definition.
-
 Note that `ufs_readwrite.c` is textually included (`ffs_vnops.c:266`) rather
 than compiled on its own, and carries `#define fs_maxfilesize lfs_maxfilesize`
 at `:79` for a parallel LFS build. Changes 6 and 7 therefore reach LFS as well.
@@ -143,18 +138,23 @@ with `rc.boot`'s `fsck`. Overlays rather than copies: `graft-kernel.py` uses
 `shutil.copyfile`, and the APFS `clonefile` trick the allocation work relied on
 does not exist on this host.
 
-**Userland probe.** A short program run in the guest covering changes 6 and 7 —
-a `pread` at a negative offset expecting `EINVAL`, and a zero-length `write`
-expecting success with no side effect.
-
 **Regression.** A `golden.img` clone boots, root mounts read-write, and
 `fsck -n` reports nothing beyond the four pre-existing graft-caused complaints
 catalogued during the UFS allocation work.
 
 ### The gap worth naming
 
-Three changes ship argued rather than demonstrated, and it is worth being
-precise about why.
+Four of the seven changes ship argued rather than demonstrated. The three that
+are demonstrated — the mount gate, the fragment-size check, and the magic
+pre-check — are the three that change what the kernel refuses, which is where
+the risk is. The rest are worth being precise about.
+
+Changes 6 and 7 would need a program in the guest calling `pread` at a negative
+offset and `write` with a count of zero. There is no way to get one there: the
+guest console accepts synthetic keystrokes whose keymap has no `#`, so C source
+cannot even be typed in, and no compiler or file-transfer path into a running
+guest exists. Both changes are two lines with no failure mode beyond returning
+a different errno, so they ship on inspection.
 
 Change 5 is a race. It follows from the code — `dounmount` sets the flag before
 calling `VFS_UNMOUNT`, so any `ffs_vget` that observes it is by definition too
@@ -168,10 +168,6 @@ disk bad enough to fail the read is too bad to have mounted. Doing it properly
 means injecting an I/O error at that specific read, which QEMU's `blkdebug`
 driver can do. That is a worthwhile harness and it is not part of this spec;
 if change 2 is ever suspected, `blkdebug` is the route.
-
-Change 8 is verified by inspection. Its whole observable effect is that a
-debugger-set `prtactive` now reaches UFS reclaim tracing, which does not earn a
-harness.
 
 ## Risks
 

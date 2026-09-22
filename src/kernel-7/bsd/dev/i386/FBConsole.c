@@ -1411,7 +1411,7 @@ void VBEModeInfo2IODisplayInfo(VBEModeRec *mode, IODisplayInfo *info)
 	// FAITHFUL TO THE REFERENCE: this is |=, into a field the caller has
 	// not initialized. 0x0019EE90 is "or byte ptr [esi+0x80],0x10", and
 	// the 4.2 FBAllocateVBEConsole's local IODisplayInfo is never zeroed
-	// before the call (0x0019ECBB..0x0019ECEC contains nothing but
+	// before the call (the only stores in 0x0019ECBB..0x0019ECEC are
 	// pushes), so on an unrecognised depth this ORs a bit into stack
 	// residue and the caller then copies the whole struct out. Same
 	// family of defect as the unterminated pixelEncoding below.
@@ -1490,19 +1490,23 @@ void VBEModeInfo2IODisplayInfo(VBEModeRec *mode, IODisplayInfo *info)
 // stay in agreement -- driver and kernel have to read one record, not two --
 // and reconciling them (a named KERNBOOTSTRUCT member, or neither) belongs to
 // spec 3, not here. In Rhapsody's KERNBOOTSTRUCT both offsets land inside
-// _reserved[7500], which getKernBootStruct() bzero's and nothing under src/
-// fills.
+// _reserved[7500], which src/boot-2's getKernBootStruct() bzero's and nothing
+// under src/ fills. The stock v5.0.41.1 booter on the test image was not
+// read, but guest memory dumps measured both words zero under it (see
+// divergences.md, "Task 5").
 //
-// VBE_FRAMEBUFFER_VIRT is kbs+0x1854. In 4.2 it is kernel-private: the
+// VBE_FRAMEBUFFER_VIRT is kbs+0x1854. In 4.2 it appears kernel-private: the
 // kernel's own pmap_bootstrap is its one writer (0x0018F1B4) and this
-// function its one reader, and the word holds the kernel virtual address of
-// the mapped linear frame buffer [INFERENCE -- the store into frameBuffer
-// below is measured, but the code producing the mapped address was not
-// traced]. Nothing in this tree writes it yet. The producer -- mapping the
-// frame buffer and publishing its virtual address -- arrives with spec 3, so
-// until then the second guard never passes and this function always returns
-// NIL. That is the intended state, not a stub: the console falls back to VGA,
-// which is what boots today anyway.
+// function its one reader, and no reference to it was found in the 4.2
+// booter [INFERENCE -- the booter half is a measured absence, and a byte
+// scan cannot see a computed address]. The word holds the kernel virtual
+// address of the mapped linear frame buffer [INFERENCE -- the store into
+// frameBuffer below is measured, but the code producing the mapped address
+// was not traced]. Nothing in this tree writes it yet. The producer --
+// mapping the frame buffer and publishing its virtual address -- arrives
+// with spec 3, so until then the second guard never passes and this function
+// always returns NIL. That is the intended state, not a stub: the console
+// falls back to VGA, which is what boots today anyway.
 //
 // Neither define is volatile: harmless while boot is single-threaded and
 // there is no producer, but a question to settle once spec 3 supplies one.
@@ -1525,9 +1529,12 @@ IOConsoleInfo *FBAllocateVBEConsole(void)
 // FBAllocateConsole's body (+6..+135) rather than calling it: same two
 // IOMalloc sizes, same seven vtable stores, same "rep movsd" of 34 dwords to
 // priv+4, same priv+0 = 0. Measured, the two agree instruction for
-// instruction -- 34 non-nop instructions each, same mnemonics and operands,
-// differing only in branch displacements and one extra alignment nop. That
-// is what gcc 2.7.2.1 at -O3 emits for a call to a same-file function
+// instruction -- 37 instructions each; leaving out the nops and
+// FBAllocateConsole's parameter load (mov esi,[ebp+8]), which has no
+// counterpart, 34 remain on each side with the same mnemonics and operands,
+// differing only in call and branch displacements, plus one extra alignment
+// nop here. That is what gcc 2.7.2.1 at -O3 emits for a call to a same-file
+// function
 // [INFERENCE: -O3 implies -finline-functions, and the reference does not
 // call _FBAllocateConsole at 0x0019EC24; whether the 4.2 source said
 // "FBAllocateConsole(&info)" or repeated the body by hand is not decidable

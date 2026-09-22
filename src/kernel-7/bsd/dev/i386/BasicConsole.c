@@ -257,8 +257,9 @@ IOConsoleInfo *BasicAllocateConsole()
     //
     // There is deliberately no test of KERNBOOTSTRUCT here: the reference
     // reads none of it before this call, and the guards live inside
-    // FBAllocateVBEConsole, which reads kbs+0x1858 and kbs+0x1854, not
-    // video.v_baseAddr. (The `kernbootstruct` local declared above is a
+    // FBAllocateVBEConsole, which reads kbs+0x185C (xResolution in the mode
+    // record at kbs+0x1858) and kbs+0x1854, not video.v_baseAddr. (The
+    // `kernbootstruct` local declared above is a
     // pre-existing unused vestige, untouched by this change.)
     //
     // This arm is unreachable in any tree where nothing writes kbs+0x1854;

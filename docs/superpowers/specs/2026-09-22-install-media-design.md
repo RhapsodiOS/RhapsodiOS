@@ -48,15 +48,30 @@ Each fact below is anchored to source or to a measured image.
 - **The BIOS booter has no CD support.** boot-2 has no El Torito or 2048-byte
   sector code.
 
-**Booter**
-- **`read_label()` drops the fdisk offset.** It finds the `0xA7` partition's
-  `relsect` into `part_offset` and reads the label at `DISKLABEL + part_offset`.
-  It then sets `*boff = dl_front + p_base` without `part_offset`
-  (`src/boot-2/gen/libsaio/disk.c:275`).
-- **The kernel does add the offset.** `IODiskPartition` returns `relsect` for
-  the `0xA7` entry (`src/driverkit-3/libDriver/IODiskPartition.m`).
-- **So only whole-disk media boot today.** `golden.img` works because its fdisk
-  table is empty.
+**Labels on fdisk disks**
+
+Inside an `0xA7` partition, the label's *location* is relative to the partition,
+but its *contents* are absolute. The booters, the kernel and `disk` all agree:
+- **`disk -i -b` writes absolute values.** Once `disk -i` finds an `0xA7` entry
+  it clears `force_blocksize` (`disk.tproj/disk.c:445`), so the label's
+  `secsize` is 512. `p_base` and `d_boot0_blkno[]` both include `dosbase`
+  (`hd.c`, `inferdisktab.c`), and boot1 goes at `dosbase`.
+- **boot1** reads the label at `relsect + 15`, then loads boot2 from
+  `d_boot0_blkno × secsize / 512`, counted from disk sector 0
+  (`src/boot-2/i386/boot1/boot1.asm`).
+- **boot2** reads the label at `part_offset + 15` and sets
+  `boff = dl_front + p_base` (`src/boot-2/i386/libsaio/disk.c` `read_label`,
+  which boot2 and `bootefi` both compile).
+- **The kernel** uses the fdisk offset only to find the label
+  (`IODiskPartition.m` `-readLabel`). The partition base it computes is
+  `(p_base + d_front) × d_secsize / physBlockSize`, which is absolute.
+- **`check_label` rejects a misplaced copy.** A copy whose `dl_label_blkno`
+  isn't the physical block it was read from fails with "Label in wrong
+  location" (`driverkit-3/libDriver/label_subr.c`).
+- **Why the old hybrid disk failed.** `vm/build_uefi_image.build()` copied a
+  whole-disk image, whose label holds whole-disk-relative values (`p_base` = 0,
+  `dl_label_blkno` = 15), into a partition at a nonzero LBA. The failure was in
+  that image, not in the booter.
 
 **UEFI loader**
 - **It only finds whole-disk labels.** `bootefi` picks its boot disk by probing
@@ -137,7 +152,7 @@ Each fact below is anchored to source or to a measured image.
               OpenSSL, OpenSSH, installer)
         │
         ▼
- host builder  vm/instmedia/  (pure Python + mtools, Windows host)
+ host builder  vm/instmedia/  (pure Python, Windows host)
    ├─ live root   : UFS = every apk unpacked + live overlay
    │                + /System/Installation/Packages/*.apk (the full set)
    ├─ ESP image   : FAT32 with /EFI/BOOT/BOOTIA32.EFI
@@ -155,9 +170,9 @@ Each fact below is anchored to source or to a measured image.
 
 | # | Phase | Done when | Needs |
 |---|---|---|---|
-| 1 | **Booter support for partitioned disks.** The fdisk offset fix in `disk.c`. `bootefi` boots from the disk it was loaded from and reads `Kernel Flags` (see *Booter changes*). | A hybrid disk reaches `vfs_mountroot` under SeaBIOS and under IA32 OVMF. The disk is built from a temp copy of an existing bootable image: ESP first, then the `0xA7` partition at a nonzero LBA, with an MBR carrying `boot0`, an active flag and LBA-assisted CHS. (`build_uefi_image.build()` writes out-of-range CHS today, which boot0 can't follow.) | none |
+| 1 | **Partitioned-disk boot.** Fix the hybrid test disk: `boot0`, an active flag, LBA-assisted CHS, and the copied label rebased to absolute addresses. In `bootefi`, boot from the disk the loader was read from, and read `Kernel Flags` (see *Booter changes*). Also make this Windows host able to do all of that: `vm/fat32.py` replaces mtools, `bootefi` builds with the local LLVM, and `vm/qemu_boot.py` runs SeaBIOS and QEMU's bundled IA32 edk2 firmware. | The rebased hybrid disk reaches `rootdev 300` and userland under SeaBIOS and under IA32 UEFI, and the old two-disk layout still boots | none |
 | 2 | **Packages missing from the world build.** Add `apk-tools-1`, OpenSSL and OpenSSH to `src/Manifest`, build them universal, and check off apk-tools' `PORTING.md` target list. | On a Rhapsody guest, `apk add --root <scratch> --initdb <all apks>` succeeds and `var/lib/apk/installed` lists every package; `sshd` starts and accepts a password login | none |
-| 3 | **General host UFS writer** (`vm/instmedia/ufs.py`). | Round-trips through `rhap_image` with label `secsize` 1024 and 2048; `fsck -n` passes on its output in a guest | none |
+| 3 | **General host UFS writer** (`vm/instmedia/ufs.py`). | Round-trips through `rhap_image` with label `secsize` 512 (fdisk disk) and 2048 (CD); `fsck -n` passes on its output in a guest | none |
 | 4 | **Pure-apk live root and hard-disk install media**, plus a pre-installed image. | The media reaches the installer menu under BIOS and UEFI. The pre-installed image boots multi-user to `login:` and accepts SSH | 1, 3 |
 | 5 | **Installer**: `src/installer-1/` with `mbrinst` and `rhapinstall`. | Milestone B, as defined under *Goal* | 2, 4 |
 | 6 | **El Torito CD**: ISO/El Torito writer, 2.88 MB BIOS floppy image, EFI catalog entry, 2048-byte reads in `bootefi`, `rootdev=cdrom`. | *Done*, as defined under *Goal* | 5 |
@@ -177,10 +192,10 @@ and ESP that `hdimage.py` does.
 |---|---|
 | LBA 0 | `boot0` plus the fdisk table. Entry 1: type `0xEF`, LBA 2048, 131072 sectors (64 MB). Entry 2: type `0xA7`, active, LBA 133120 to the last sector. CHS fields as described under *CHS values*. |
 | LBA 2048 | ESP: FAT32, 64 MB, containing only `/EFI/BOOT/BOOTIA32.EFI`. 64 MB because EDK2's FAT driver silently ignores a FAT32 volume with too few clusters (`build_uefi_image.py`). |
-| LBA 133120 | `0xA7` partition, with the interior `disk -i -b` writes (as in `golden.img`): `boot1` at partition sector 0, label copies at 15/30/45, two `boot2` copies at the label's `dl_boot0_blkno` locations, UFS at `dl_front`. |
+| LBA 133120 | `0xA7` partition, with the interior `disk -i -b` writes on an fdisk disk: `boot1` at LBA 133120; label copies at LBA 133120 + 15/30/45 with `secsize` 512 and absolute `p_base` and `d_boot0_blkno`; two `boot2` copies at those `d_boot0_blkno` locations; UFS at `(dl_front + p_base) × 512`. |
 
 - **BIOS boot:** `boot0`, the active `0xA7` entry, `boot1`, `boot2`, then
-  `read_label` with the offset fix. The kernel and boot drivers come from
+  `read_label` (unchanged). The kernel and boot drivers come from
   `/private/Drivers/i386/System.config/Instance0.table`.
 - **UEFI boot:** `BOOTIA32.EFI` from the ESP, then the same disk and the same
   files.
@@ -209,20 +224,15 @@ readers.
 
 ## Booter changes
 
-**Phase 1**
-- **The fdisk offset:** `read_label()` caches `part_offset`, and `devread()`
-  adds it after scaling: `sector = i_bn * (label_secsize / 512) + part_offset`.
-  `i_boff` stays counted in label sectors, as `sys.c` expects. Adding the offset
-  in 512-byte units, after the multiply, stays exact even when `part_offset`
-  isn't a multiple of the label sector size, which it wouldn't be for a DR2-era
-  disk with a partition at LBA 63 and 1024-byte label sectors. The change goes
-  into the shared `gen/libsaio/disk.c`, so boot2 and `bootefi` both get it.
-  boot2 must stay under boot1's `LOADSZ` cap of 88 sectors.
-- **`bootefi` boot-disk selection:** use the disk it was loaded from. Take
-  `LOADED_IMAGE->DeviceHandle` (the ESP partition handle), go up to its parent
-  whole-disk handle, and map that disk to biosdev `0x80`. The label probe walks
-  the fdisk table to `part_offset + 15`, and the current fallback, "first disk
-  with a label at LBA 15", is removed.
+**Phase 1.** boot0, boot1, boot2 and the kernel need no change; see *Labels on
+fdisk disks*.
+- **`bootefi` boot-disk selection:** prefer the disk the loader was read from.
+  Take `LOADED_IMAGE->DeviceHandle` (the ESP partition handle), find the
+  whole-disk handle whose device path is its parent, and map that disk to
+  biosdev `0x80`. The label probe walks the fdisk table to `relsect + 15`. If
+  the loaded-from disk carries no label, fall back to the first labelled disk.
+  The two-disk runner still depends on that fallback, because there the loader
+  sits on an ESP-only disk.
 - **`bootefi` boot string:** built from `Instance0.table`'s `Kernel Flags` after
   `loadSystemConfig()`, the way boot2's `boot.c` does it. The compiled-in string
   is used only when the key is absent.
@@ -248,8 +258,8 @@ python vm/instmedia/build.py --repo out/apks/i386 --efi BOOTIA32.EFI \
   tar stream into a node tree, and the tree goes directly into the UFS writer.
   The Windows filesystem can't hold device nodes or reliable symlinks, and it's
   case-insensitive.
-- **Standard library plus mtools only.** mtools is already needed by
-  `build_uefi_image.py`.
+- **Standard library only.** `vm/fat32.py` writes the ESP, because mtools isn't
+  available on the Windows host.
 - **Deterministic output:** sorted walks, apk mtimes preserved, no host
   timestamps.
 
@@ -259,8 +269,8 @@ python vm/instmedia/build.py --repo out/apks/i386 --efi BOOTIA32.EFI \
 | `rootfs.py` | Build a node tree from apk payloads: mode, uid/gid, mtime, symlinks, hard links, device nodes. Apply an overlay directory. Report every path claimed by two packages, since `apk add` would refuse them later. | none |
 | `live.py` | Compose the live root: every apk (`files` first), then the live overlay, then `/System/Installation/Packages/*.apk` and `/System/Installation/esp.img.gz`. With `--preinstalled`, it skips the overlay and applies the installed-system templates for `hd0` instead. | `rootfs` |
 | `ufs.py` | Phase 3 writer. Computes geometry the way `newfs` would (bsize 8192, fsize 1024 or 2048), handles several cylinder groups and single and double indirect blocks, and supports symlinks, hard links and device nodes. Little-endian by default, like DR2 media. | `ufs_cg.py` for cylinder-group tables |
-| `label.py` | NeXT `dlV3` label: copies at 15/30/45, checksum, boot-block locations. `secsize` 1024 for disks (what `disk -i` writes for IDE, per `golden.img`) or 2048 for the CD. | the label helpers in `ufs_build.py` |
-| `hdimage.py` | Hard-disk form: MBR, ESP, `0xA7` partition interior. | `build_uefi_image._make_esp_fat_image` |
+| `label.py` | NeXT `dlV3` label: three copies, checksum, boot-block locations. On an fdisk disk it writes what `disk -i -b` writes: `secsize` 512, absolute `p_base` and `d_boot0_blkno`, and `dl_label_blkno` = `relsect` + 15/30/45. On the CD: `secsize` 2048 with no fdisk table. | the label helpers in `ufs_build.py`, the rebase in `build_uefi_image.py` |
+| `hdimage.py` | Hard-disk form: MBR, ESP, `0xA7` partition interior. | `vm/fat32.py`; the MBR and CHS helpers in `build_uefi_image.py` |
 | `iso.py` | Phase 6: ISO 9660 and El Torito writer, plus the 2.88 MB floppy boot image. | `rcz.py` for `mach_kernel.rcz` |
 
 **Inputs**
@@ -425,18 +435,22 @@ doesn't compute the hash, because Python 3.13 has no `crypt` module.
 images in a per-run temp directory. Nothing boots or writes `golden.img` or
 `vm/work/test.img`.
 
-**Runners** follow `vm/run-pc-uefi-virtio-esp.sh`:
-- a serial log
-- `-cpu Nehalem` for IA32 OVMF
-- `-m 256` or more, which `bootefi`'s fixed `/base:0x08000000` requires
-- for SSH gates, `-device e1000 -netdev user,hostfwd=tcp::2222-:22`
-- `qemu-shot.py` and `guest-console.py` to read the console and type into it
+**Runner:** `vm/qemu_boot.py`, added in phase 1.
+- Python, because Git Bash doesn't convert `-serial file:/d/…` paths for native
+  QEMU.
+- Boots with SeaBIOS or with the IA32 edk2 firmware QEMU ships
+  (`share/edk2-i386-code.fd`).
+- `-m 256`, which `bootefi`'s fixed `/base:0x08000000` requires, and
+  `-cpu Nehalem` for UEFI.
+- Two logs: the firmware and loader console, and the kernel console on COM2.
+- Screenshots over QMP. Later phases add
+  `-device e1000 -netdev user,hostfwd=tcp::2222-:22` for the SSH gates.
 
 | # | Host tests | QEMU / guest gate |
 |---|---|---|
-| 1 | `bootefi` host test: the fdisk walk finds the label at `part_offset + 15`, and `devread` lands on the right sectors for a `part_offset` that isn't a multiple of the label sector size | The phase 1 hybrid disk reaches `vfs_mountroot` under SeaBIOS and IA32 OVMF |
+| 1 | `fat32` round-trip; `rhap_image` reads a file back out of a rebased hybrid disk; `bootefi` host tests for the fdisk label walk, the device-path parent check and the boot-string append | The rebased hybrid disk reaches `rootdev 300` and userland under SeaBIOS and IA32 UEFI; the two-disk layout still boots |
 | 2 | none | On the build guest: `apk add --root <tmp> --initdb <all>` succeeds and `installed` is complete; `sshd` accepts a login |
-| 3 | `unittest`: `rhap_image` round-trip with label `secsize` 1024 and 2048, with several cylinder groups, symlinks, hard links, device nodes and double-indirect files | `fsck -n` on the output, attached to a temp copy of an i386 guest |
+| 3 | `unittest`: `rhap_image` round-trip with label `secsize` 512 and 2048, with several cylinder groups, symlinks, hard links, device nodes and double-indirect files | `fsck -n` on the output, attached to a temp copy of an i386 guest |
 | 4 | `hdimage` layout; `rootfs` reports conflicting paths | The media reaches the installer menu under BIOS and UEFI. The `--preinstalled` image reaches `login:` and `ssh -p 2222 root@localhost` succeeds |
 | 5 | `mbrinst` compiled on the host against a file target: its MBR and ESP placement must be byte-identical to `hdimage.py`'s. `rhapinstall` runs under the host `sh` with stub tools on `PATH`, checking the command order and every failure-menu path | Install onto a blank temp disk, then boot that disk alone under BIOS and UEFI to `login:` and SSH with the step 3 password |
 | 6 | ISO 9660 and El Torito structures read back; the floppy image fits in 2.88 MB | `-cdrom` boots under BIOS and UEFI, the install completes, and the installed disk boots |
@@ -459,9 +473,7 @@ Most serious first.
 6. **Unknowns in the environment:** whether QEMU's slirp answers Rhapsody's
    plain-BOOTP `bootpc`, and whether NetInfo, if `netinfod` brings up a local
    domain, takes precedence over `master.passwd` for logins.
-7. **The boot2 size limit:** the `read_label()` fix must keep boot2 within
-   `LOADSZ` (88 sectors; `golden.img`'s boot2 is 78).
-8. **CD capacity:** installed tree plus apks might exceed 650 MB. The fallback
+7. **CD capacity:** installed tree plus apks might exceed 650 MB. The fallback
    is a `live.list` subset.
 
 ## Out of scope

@@ -44,35 +44,59 @@ travels with us so the boot gates can run.
 - **Commits:** `kernel: ` prefix, one to two lines, no metadata beyond the trailer.
 - **Reviewer:** `Pat Raynor`.
 
-### The measured boot-to-boot noise floor
+### The console comparison: a same-session A/B control
 
-**Literal identity is not achievable, and an earlier revision of this plan
-demanded it.** Task 4 measured the floor by booting the *same* pre-Task-4
-kernel twice:
+**This gate has been corrected twice, and the second correction was made after
+seeing a result — so the justification below is stated on grounds that do not
+depend on that result.**
 
-| Signal | Same-kernel variation |
-| --- | --- |
-| `serial.log` | 76 lines both runs; **identical as a sorted multiset**. Only *ordering* moves — the IDE probe block (`Registering: hc0`, `hd0: …`) and one `intr: phantom IRQ 15` line swap position, because the device probe races the interrupt. |
-| 60 s and 95 s frames | **48 pixels of 307200** (144 raw RGB bytes), confined to the seconds digits of the two boot-clock lines. |
+The first revision demanded literal identity. Task 4 showed two boots of the
+*same* kernel are not identical, so the second revision substituted a noise
+floor measured by booting one pre-Task-4 kernel twice in one morning session.
 
-So the comparison is:
+**That floor was measured the wrong way.** Booting one binary twice cannot see
+two things that matter:
 
-1. `diff <(sort a/serial.log) <(sort b/serial.log)` must be **empty**.
-2. Frame differences must stay confined to the boot-clock digits and be of that
-   order. Anything outside that region, or materially larger, is a real
-   difference — stop and report.
+- **Rebuild artefacts.** Serial line 4 is the kernel's embedded build stamp
+  (`Sun Sep 20 15:00:37 PDT 2026; root(rcbuilder):kernel-154.5.1-7.obj/RELEASE_I386`).
+  It differs between *any* two builds of byte-identical source.
+- **Cross-session drift.** Task 4's third pass booted the **pre-Task-4 kernel
+  again, later the same day**, and it differed from its own morning capture by
+  **2,518 pixels** across rows 42..121 — the eight `phantom IRQ 15` lines moved
+  and init arrived ~14 guest seconds earlier. The image and the kernel are ruled
+  out; the cause is not determined.
 
-Baseline captures are retained at `vm/shots-t4v-pre2/` and `vm/shots-t4v-preB/`
-(gitignored, **not durable** across a worktree cleanup); their SHA-256s are in
-the evidence record.
+**A gate that the known-good control fails is a broken gate.** The pre-Task-4
+kernel cannot contain Task 4's change, yet it failed against the morning
+baseline. So the baseline was measuring the environment, not the kernel.
+
+**The gate is therefore a same-session A/B:**
+
+1. Boot a **pre-Task-4 control** and the **candidate** back to back, in the
+   same session, on the same unmodified image.
+2. `serial.log`: diff **excluding line 4** (the build stamp) must be **empty**.
+   Sorted is sufficient; unsorted equality is stronger and should be reported.
+3. Frames: differences must be confined to the boot-clock digits and of that
+   order. Anything outside that region, or materially larger, is real.
+
+**Measured result for Task 4** (controller-verified):
+
+| Comparison | Serial, excl. line 4 | 60 s / 95 s frames |
+| --- | --- | --- |
+| old kernel, morning vs later (the control) | 0 lines | **2,518 px**, rows 42..121 |
+| old vs new, same session, boot 1 | 0 lines, **0 even unsorted** | 30 px, rows 102..121 (clock) |
+| old vs new, same session, boot 2 | 0 lines | **0 px — pixel-identical** |
+
+Captures: `vm/shots-t4c-preC/` (control), `vm/shots-t4c-post/`,
+`vm/shots-t4c-post2/`. Gitignored and **not durable** across a worktree cleanup.
 
 ### The invisibility requirement
 
 **Task 4 changes what every i386 boot uses for its console.** The console is how
 failures get reported, so a mistake there is self-concealing. Success criterion:
 a boot with `video.v_baseAddr == 0` — which is every boot until spec 3 — must
-produce today's console and output to within the measured boot-to-boot noise
-floor below. The frame-buffer arm must be unreachable until then.
+produce today's console and output, judged by the same-session A/B control
+above. The frame-buffer arm must be unreachable until then.
 
 ### Why the compare harness cannot use relocations
 

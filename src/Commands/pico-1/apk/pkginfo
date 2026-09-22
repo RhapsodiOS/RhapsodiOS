@@ -1,0 +1,7 @@
+pkgname = pico
+pkgver = 4.3l
+pkgdesc = Pico text editor
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = Pine
+url = https://ftp.gwdg.de/pub/gnu2/pine/old/pine4.50.tar.Z
+makedepends = build-base

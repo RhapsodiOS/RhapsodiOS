@@ -192,7 +192,7 @@ TEST(test_build_apk_is_posix_ustar_and_extracts) {
     CHECK_INT(mkdir(root, 0700), 0);
     CHECK_INT(symlink(root, root_alias), 0);
     toolchain_init(&tc);
-    CHECK_INT(toolchain_load(&tc, "toolchains/gcc-darwin.conf"), 0);
+    CHECK_INT(toolchain_load(&tc, "toolchains/gcc-darwin-ppc.conf"), 0);
     CHECK_INT(toolchain_validate(&tc), 0);
     strcpy(real_archive_create, tc.archive_create);
     fp = fopen(wrapper, "w");
@@ -293,7 +293,7 @@ TEST(test_build_apk_without_toolchain_uses_legacy_generic_argv) {
     sprintf(metadata, "%s/.PKGINFO", root);
     CHECK_INT(mkdir(root, 0700), 0);
     toolchain_init(&configured);
-    CHECK_INT(toolchain_load(&configured, "toolchains/gcc-darwin.conf"), 0);
+    CHECK_INT(toolchain_load(&configured, "toolchains/gcc-darwin-ppc.conf"), 0);
     fp = fopen(tar_wrapper, "w");
     CHECK(fp != 0);
     if (fp != 0) {

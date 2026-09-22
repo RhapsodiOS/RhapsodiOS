@@ -199,7 +199,7 @@ BISON=/build/bootstrap-root/usr/bin/bison \
 BISON_SIMPLE=/build/bootstrap-root/usr/share/bison.simple \
 /build/tools/bin/rbuild bootstrap \
     --sysroot /build/bootstrap-root \
-    --toolchain /build/src/rbuild-1/toolchains/gcc-darwin.conf \
+    --toolchain /build/src/rbuild-1/toolchains/gcc-darwin-ppc.conf \
     --state /build/state \
     /build/src/BootstrapManifest /build/repo /build/repo
 ```

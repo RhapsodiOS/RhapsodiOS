@@ -66,7 +66,9 @@ function Assert-EncodingSignature($Actual, $Expected, [string]$Name) {
 $VmDir = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $repoRoot = (Resolve-Path (Join-Path $VmDir '..')).Path
 . (Join-Path $VmDir 'build-src-lib.ps1')
-$realProfile = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\toolchains\gcc-darwin.conf')
+$realProfile = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\toolchains\gcc-darwin-ppc.conf')
+$i386Profile = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\toolchains\gcc-darwin-i386.conf')
+$universalProfile = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\toolchains\gcc-darwin-universal.conf')
 $texi2htmlIndex = (& git -C $repoRoot ls-files -s -- src/CoreOSMakefiles-1/ReleaseControl/texi2html) -join "`n"
 Assert-Match $texi2htmlIndex '^100755 ' 'CoreOS texi2html is tracked executable'
 $ccBuildGccText = Get-Content -Raw (Join-Path $repoRoot 'src\cc-1\build_gcc')
@@ -481,7 +483,7 @@ $phaseArgs = @{
     ToolsDir = '/build/tools'
     BootstrapRoot = '/build/bootstrap-root'
     StateDir = '/build/state'
-    Profile = '/build/src/rbuild-1/toolchains/gcc-darwin.conf'
+    Profile = '/build/src/rbuild-1/toolchains/gcc-darwin-ppc.conf'
     RepoDir = '/build/repo'
     BuiltDir = '/build/built'
     BuildCc = '/usr/bin/cc'
@@ -560,8 +562,8 @@ Assert-Match $spacedCompilerBootstrap ([regex]::Escape("MIGCC='/opt/gcc tools/bi
 Assert-NotMatch $bootstrapCommand '/usr/bin/mig|/usr/libexec/migcom|NEXT_ROOT|bootstrap-root/usr/libexec' 'bootstrap never selects live or sysroot MIG'
 Assert-Equal ($bootstrapCommand.IndexOf('/usr/bin/install -d') -lt $bootstrapCommand.IndexOf('/build/tools/bin/rbuild bootstrap')) $true 'bootstrap creates outputs before rbuild'
 Assert-Match $bootstrapCommand ([regex]::Escape('&& cd /build/src && CONFIG_DIR=/build/tools/bin')) 'bootstrap starts from synced source root'
-Assert-Match $bootstrapCommand ([regex]::Escape('/build/tools/bin/rbuild bootstrap --sysroot /build/bootstrap-root --toolchain /build/src/rbuild-1/toolchains/gcc-darwin.conf --state /build/state /build/src/BootstrapManifest /build/repo /build/repo')) 'bootstrap uses resumable CLI'
-Assert-Match $bootstrapCommand ([regex]::Escape('/build/tools/bin/rbuild bootstrap-universal --sysroot /build/bootstrap-root --toolchain /build/src/rbuild-1/toolchains/gcc-darwin.conf --state /build/state /build/src/BootstrapManifest /build/repo /build/repo')) 'bootstrap-universal is the primary second walk'
+Assert-Match $bootstrapCommand ([regex]::Escape('/build/tools/bin/rbuild bootstrap --sysroot /build/bootstrap-root --toolchain /build/src/rbuild-1/toolchains/gcc-darwin-ppc.conf --state /build/state /build/src/BootstrapManifest /build/repo /build/repo')) 'bootstrap uses resumable CLI'
+Assert-Match $bootstrapCommand ([regex]::Escape('/build/tools/bin/rbuild bootstrap-universal --sysroot /build/bootstrap-root --toolchain /build/src/rbuild-1/toolchains/gcc-darwin-ppc.conf --state /build/state /build/src/BootstrapManifest /build/repo /build/repo')) 'bootstrap-universal is the primary second walk'
 Assert-Equal ($bootstrapCommand.IndexOf('/build/tools/bin/rbuild bootstrap --sysroot') -lt $bootstrapCommand.IndexOf('/build/tools/bin/rbuild bootstrap-universal --sysroot')) $true 'thin bootstrap runs before bootstrap-universal'
 $alternateSourceArgs = $phaseArgs.Clone()
 $alternateSourceArgs.SourceRoot = '/srv/synced source'
@@ -593,21 +595,21 @@ $kernelCommand = New-RhapBuildPhaseCommand -Phase 'kernel' @phaseArgs
 Assert-Match $kernelCommand ([regex]::Escape('test -d /build/repo')) 'kernel requires existing repository input'
 Assert-Match $kernelCommand ([regex]::Escape('/usr/bin/install -d /build/built /build/state')) 'kernel creates owned output directories'
 Assert-Equal ($kernelCommand.IndexOf('/usr/bin/install -d /build/built') -lt $kernelCommand.IndexOf('rbuild kernel')) $true 'kernel creates outputs before rbuild kernel'
-Assert-Match $kernelCommand ([regex]::Escape('cd /build/src && /build/tools/bin/rbuild kernel --state /build/state --toolchain /build/src/rbuild-1/toolchains/gcc-darwin.conf --arch ppc /build/src /build/repo /build/built')) 'kernel uses dedicated rbuild command'
+Assert-Match $kernelCommand ([regex]::Escape('cd /build/src && /build/tools/bin/rbuild kernel --state /build/state --toolchain /build/src/rbuild-1/toolchains/gcc-darwin-ppc.conf --arch ppc /build/src /build/repo /build/built')) 'kernel uses dedicated rbuild command'
 Assert-NotMatch $kernelCommand 'buildpackage|--dir driverkit-3|kerneldrivers' 'kernel phase does not inline package loops or optional drivers'
 $kernelDriversCommand = New-RhapBuildPhaseCommand -Phase 'kernel-drivers' @phaseArgs
 Assert-Match $kernelDriversCommand ([regex]::Escape('test -d /build/repo')) 'kernel-drivers requires existing repository input'
 Assert-Match $kernelDriversCommand ([regex]::Escape('/usr/bin/install -d /build/built /build/state')) 'kernel-drivers creates owned output directories'
 Assert-Equal ($kernelDriversCommand.IndexOf('/usr/bin/install -d /build/built') -lt $kernelDriversCommand.IndexOf('rbuild kerneldrivers')) $true 'kernel-drivers creates outputs before rbuild kerneldrivers'
-Assert-Match $kernelDriversCommand ([regex]::Escape('cd /build/src && /build/tools/bin/rbuild kerneldrivers --state /build/state --toolchain /build/src/rbuild-1/toolchains/gcc-darwin.conf --arch ppc /build/src /build/repo /build/built')) 'kernel-drivers uses dedicated rbuild command'
+Assert-Match $kernelDriversCommand ([regex]::Escape('cd /build/src && /build/tools/bin/rbuild kerneldrivers --state /build/state --toolchain /build/src/rbuild-1/toolchains/gcc-darwin-ppc.conf --arch ppc /build/src /build/repo /build/built')) 'kernel-drivers uses dedicated rbuild command'
 Assert-NotMatch $kernelDriversCommand 'buildpackage|--dir driverkit-3| rbuild kernel ' 'kernel-drivers phase does not inline the kernel core list'
 $i386KernelArgs = $phaseArgs.Clone()
 $i386KernelArgs.TargetArch = 'i386'
 $i386KernelCommand = New-RhapBuildPhaseCommand -Phase 'kernel' @i386KernelArgs
-Assert-Match $i386KernelCommand ([regex]::Escape('rbuild kernel --state /build/state --toolchain /build/src/rbuild-1/toolchains/gcc-darwin.conf --arch i386 /build/src /build/repo /build/built')) 'i386 kernel selects the profile architecture'
+Assert-Match $i386KernelCommand ([regex]::Escape('rbuild kernel --state /build/state --toolchain /build/src/rbuild-1/toolchains/gcc-darwin-ppc.conf --arch i386 /build/src /build/repo /build/built')) 'i386 kernel selects the profile architecture'
 Assert-NotMatch $i386KernelCommand 'drivers-ppc' 'i386 kernel command does not mention the ppc driver tree'
 $i386KernelDriversCommand = New-RhapBuildPhaseCommand -Phase 'kernel-drivers' @i386KernelArgs
-Assert-Match $i386KernelDriversCommand ([regex]::Escape('rbuild kerneldrivers --state /build/state --toolchain /build/src/rbuild-1/toolchains/gcc-darwin.conf --arch i386 /build/src /build/repo /build/built')) 'i386 kernel-drivers selects the profile architecture'
+Assert-Match $i386KernelDriversCommand ([regex]::Escape('rbuild kerneldrivers --state /build/state --toolchain /build/src/rbuild-1/toolchains/gcc-darwin-ppc.conf --arch i386 /build/src /build/repo /build/built')) 'i386 kernel-drivers selects the profile architecture'
 $spacedKernel = New-RhapBuildPhaseCommand -Phase 'kernel' @spacedPhaseArgs
 Assert-Match $spacedKernel ([regex]::Escape("'/srv/build tree/tools'/bin/rbuild kernel --state '/srv/build tree/state' --toolchain '/srv/build tree/profile.conf' --arch ppc '/srv/build tree/src' '/srv/build tree/repo' '/srv/build tree/built output'")) 'kernel safely quotes alternate source and output paths'
 $worldCommand = New-RhapBuildPhaseCommand -Phase 'world' @phaseArgs
@@ -621,7 +623,7 @@ foreach ($generated in @($rbuildCommand, $bootstrapCommand, $kernelCommand, $ker
     Assert-NotMatch $generated '(?m)^\s*rm\s+-rf(?! /private/tmp/roots)' 'phase command never deletes build output trees'
 }
 
-$freshCommand = New-RhapFreshCommand -RemoteRoot '/build' -SourceRoot '/build/src' -Profile '/build/src/rbuild-1/toolchains/gcc-darwin.conf' -ToolsDir '/build/tools' -BootstrapRoot '/build/bootstrap-root' -RepoDir '/build/repo' -BuiltDir '/build/built' -StateDir '/build/state'
+$freshCommand = New-RhapFreshCommand -RemoteRoot '/build' -SourceRoot '/build/src' -Profile '/build/src/rbuild-1/toolchains/gcc-darwin-ppc.conf' -ToolsDir '/build/tools' -BootstrapRoot '/build/bootstrap-root' -RepoDir '/build/repo' -BuiltDir '/build/built' -StateDir '/build/state'
 Assert-Match $freshCommand ([regex]::Escape("rm -rf '/build/tools' '/build/bootstrap-root' '/build/repo' '/build/built' '/build/state'")) 'fresh removes exact configured outputs once'
 Assert-Match $freshCommand ([regex]::Escape("mkdir -p '/build'")) 'fresh recreates only default output parent'
 Assert-NotMatch $freshCommand ([regex]::Escape("mkdir -p '/build/tools")) 'fresh does not recreate output directories'
@@ -777,7 +779,7 @@ Assert-Throws { Get-RhapBuildPhases -All -World } 'reject all plus phase'
 Assert-Throws { Get-RhapBuildPhases -Rbuild -Bootstrap } 'reject two phases'
 Assert-Throws { Get-RhapBuildPhases -Kernel -KernelDrivers } 'reject kernel plus kernel-drivers'
 
-$cmd = New-RhapPreflightCommand -SourceRoot '/build/src' -ToolsDir '/build/tools' -BootstrapRoot '/build/bootstrap-root' -StateDir '/build/state' -Profile '/build/src/rbuild-1/toolchains/gcc-darwin.conf'
+$cmd = New-RhapPreflightCommand -SourceRoot '/build/src' -ToolsDir '/build/tools' -BootstrapRoot '/build/bootstrap-root' -StateDir '/build/state' -Profile '/build/src/rbuild-1/toolchains/gcc-darwin-ppc.conf'
 $profileValidatorStart = $cmd.IndexOf("awk 'BEGIN {")
 $profileValidatorEndMarker = ' || fail "invalid toolchain profile"'
 $profileValidatorEnd = $cmd.IndexOf($profileValidatorEndMarker, $profileValidatorStart)
@@ -832,13 +834,36 @@ Assert-Equal (Test-GeneratedProfileValidatorContract -Validator $profileValidato
 Assert-Equal (Test-GeneratedProfileValidatorContract -Validator $profileValidator -ProfileText ($realProfile -replace '(?m)^cpp_flags_ready=.*$', 'cpp_flags_ready=')) $false 'generated preflight rejects empty cpp readiness gate'
 Assert-Equal (Test-GeneratedProfileValidatorContract -Validator $profileValidator -ProfileText ($realProfile -replace '(?m)^cpp_flags_ready=.*$', 'cpp_flags_ready=   ')) $false 'generated preflight rejects whitespace cpp readiness gate'
 Assert-Equal (Test-GeneratedProfileValidatorContract -Validator $profileValidator -ProfileText ($realProfile + "unknown_key=value`n")) $false 'generated preflight rejects unknown profile key'
+Assert-Equal (Test-GeneratedProfileValidatorContract -Validator $profileValidator -ProfileText $i386Profile) $true 'generated preflight accepts the i386 profile'
+Assert-Equal (Test-GeneratedProfileValidatorContract -Validator $profileValidator -ProfileText $universalProfile) $true 'generated preflight accepts the universal profile'
+$ppcValues = ConvertFrom-RhapToolchainProfileText -Text $realProfile
+$i386Values = ConvertFrom-RhapToolchainProfileText -Text $i386Profile
+$universalValues = ConvertFrom-RhapToolchainProfileText -Text $universalProfile
+Assert-Equal $ppcValues.target_arch 'ppc' 'ppc profile targets ppc'
+Assert-Equal $i386Values.profile 'gcc-darwin-i386-macho' 'i386 profile has its own state identity'
+Assert-Equal $i386Values.target_arch 'i386' 'i386 profile targets i386'
+Assert-Equal $i386Values.arch_flags '-arch i386' 'i386 profile compiles for i386'
+Assert-Equal $i386Values.cpp_flags_ready '@SYSROOT@/Developer/Libraries/gcc-lib/i386/ginclude/stdarg.h' 'i386 cpp readiness follows the i386-hosted compiler install'
+Assert-Equal $universalValues.profile 'gcc-darwin-universal-macho' 'universal profile has its own state identity'
+Assert-Equal $universalValues.target_arch 'universal' 'universal profile is marked universal'
+Assert-Equal $universalValues.arch_flags '-arch i386 -arch ppc' 'universal profile names both CPUs'
+Assert-Equal $i386Values.Count $ppcValues.Count 'i386 profile has the same keys as the ppc profile'
+Assert-Equal $universalValues.Count $ppcValues.Count 'universal profile has the same keys as the ppc profile'
+foreach ($key in @($ppcValues.Keys)) {
+    if (@('profile', 'target_arch', 'arch_flags', 'cpp_flags_ready') -notcontains $key) {
+        Assert-Equal $i386Values[$key] $ppcValues[$key] "i386 profile shares $key with the ppc profile"
+    }
+    if (@('profile', 'target_arch', 'arch_flags') -notcontains $key) {
+        Assert-Equal $universalValues[$key] $ppcValues[$key] "universal profile shares $key with the ppc profile"
+    }
+}
 Assert-Match $cmd '^set -e' 'literal POSIX script body'
 Assert-Match $cmd 'test -f ' 'profile existence check'
 Assert-Match $cmd 'test -d "\$SOURCE_ROOT"' 'source root directory check'
 Assert-Match $cmd '"\$SOURCE_ROOT/BootstrapManifest"' 'bootstrap manifest source check'
 Assert-Match $cmd '"\$SOURCE_ROOT/rbuild-1/Makefile"' 'rbuild source check'
 Assert-Match $cmd '"\$SOURCE_ROOT/rbuild-1/toolchain\.c"' 'rbuild toolchain source check'
-Assert-Match $cmd 'gcc-darwin\.conf' 'configured profile path'
+Assert-Match $cmd 'gcc-darwin-ppc\.conf' 'configured profile path'
 Assert-Match $cmd 'test -x /usr/bin/cc' 'developer compiler check'
 Assert-Match $cmd '/usr/bin/cc -arch ppc -c' 'target compiler evidence'
 Assert-Match $cmd 'case-sensitive filesystem required' 'case sensitivity error'
@@ -1192,7 +1217,7 @@ try {
     Assert-Equal $cfg.ToolsDir '/build/tools' 'default tools directory'
     Assert-Equal $cfg.BootstrapRoot '/build/bootstrap-root' 'default bootstrap root'
     Assert-Equal $cfg.StateDir '/build/state' 'default state directory'
-    Assert-Equal $cfg.ToolchainProfile '/build/src/rbuild-1/toolchains/gcc-darwin.conf' 'relative profile resolution'
+    Assert-Equal $cfg.ToolchainProfile '/build/src/rbuild-1/toolchains/gcc-darwin-ppc.conf' 'relative profile resolution'
 
     Set-Content -LiteralPath (Join-Path $configDir 'vm.conf') -Encoding ASCII -Value @(
         'Host=example.invalid',
@@ -1276,7 +1301,7 @@ try {
             Assert-Equal ([System.Text.Encoding]::ASCII.GetString($bytes, 0, 3)) 'set' "$($transportCase.Name) begins with set"
         }
 
-        $profileTransportBody = New-RhapReadProfileCommand -Profile '/build/src/rbuild-1/toolchains/gcc-darwin.conf'
+        $profileTransportBody = New-RhapReadProfileCommand -Profile '/build/src/rbuild-1/toolchains/gcc-darwin-ppc.conf'
         $profileCapturePath = Join-Path $transportDir 'profile-capture.bin'
         $env:RHAP_STDIN_CAPTURE = $profileCapturePath
         $profileTransport = Invoke-RhapSshCapture -Cfg $cfg -Ssh $captureExe -ScriptBody $profileTransportBody
@@ -1314,7 +1339,7 @@ try {
         )
         $canonicalCapturePath = Join-Path $transportDir 'canonical-rbuild.bin'
         $env:RHAP_STDIN_CAPTURE = $canonicalCapturePath
-        $env:RHAP_STDIN_STDOUT_FILE = Join-Path $repoRoot 'src\rbuild-1\toolchains\gcc-darwin.conf'
+        $env:RHAP_STDIN_STDOUT_FILE = Join-Path $repoRoot 'src\rbuild-1\toolchains\gcc-darwin-ppc.conf'
         $env:RHAP_STDIN_STDOUT_MARKER = Join-Path $transportDir 'canonical-profile-emitted'
         $canonicalOutput = & powershell -NoProfile -File (Join-Path $canonicalVmDir 'build-src.ps1') -Rbuild 2>&1
         Assert-Equal $LASTEXITCODE 0 "canonical build-src -Rbuild transport exit: $($canonicalOutput -join ' | ')"

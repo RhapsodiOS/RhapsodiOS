@@ -92,7 +92,7 @@ Exactly one of `-All`, `-Rbuild`, `-Bootstrap`, `-Kernel`, `-KernelDrivers`, or 
 ### `build-src.ps1` only builds ppc
 
 The `<arch>` in the table above comes from the toolchain profile, which
-defaults to `src/rbuild-1/toolchains/gcc-darwin.conf` (`ToolchainProfile` in
+defaults to `src/rbuild-1/toolchains/gcc-darwin-ppc.conf` (`ToolchainProfile` in
 `rhap-remote.ps1`, overridable in `vm.conf`). That file sets
 `target_arch=ppc`, and it is the only profile in the tree — so `-Kernel` and
 `-KernelDrivers` build **ppc regardless of what you are testing**, with no
@@ -122,7 +122,7 @@ gzip -dc /build/<dst>/kernel-154.5.1-7-i386.apk |
 ```
 
 To make `-Kernel` usable for i386 instead, add an i386 toolchain conf beside
-`gcc-darwin.conf` and point `ToolchainProfile=` at it in `vm.conf` — the
+`gcc-darwin-ppc.conf` and point `ToolchainProfile=` at it in `vm.conf` — the
 config parser accepts that key, there is just no such profile written yet.
 
 ## Image chain

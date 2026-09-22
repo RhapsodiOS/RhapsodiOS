@@ -54,3 +54,12 @@ def test_corrupt_rejects_unknown_field():
         except ValueError:
             return
         raise AssertionError("expected ValueError")
+
+def test_corrupt_is_composable_after_bad_magic():
+    with tempfile.TemporaryDirectory() as d:
+        out = os.path.join(d, "compose.img")
+        make_badfs.build_good(out)
+        make_badfs.corrupt(out, "fs_magic", 0xDEADBEEF)
+        make_badfs.corrupt(out, "fs_clean", 0)
+        assert _sb(out, 209, "<b") == 0
+        assert _sb(out, 1372, "<I") == 0xDEADBEEF

@@ -44,13 +44,35 @@ travels with us so the boot gates can run.
 - **Commits:** `kernel: ` prefix, one to two lines, no metadata beyond the trailer.
 - **Reviewer:** `Pat Raynor`.
 
+### The measured boot-to-boot noise floor
+
+**Literal identity is not achievable, and an earlier revision of this plan
+demanded it.** Task 4 measured the floor by booting the *same* pre-Task-4
+kernel twice:
+
+| Signal | Same-kernel variation |
+| --- | --- |
+| `serial.log` | 76 lines both runs; **identical as a sorted multiset**. Only *ordering* moves — the IDE probe block (`Registering: hc0`, `hd0: …`) and one `intr: phantom IRQ 15` line swap position, because the device probe races the interrupt. |
+| 60 s and 95 s frames | **48 pixels of 307200** (144 raw RGB bytes), confined to the seconds digits of the two boot-clock lines. |
+
+So the comparison is:
+
+1. `diff <(sort a/serial.log) <(sort b/serial.log)` must be **empty**.
+2. Frame differences must stay confined to the boot-clock digits and be of that
+   order. Anything outside that region, or materially larger, is a real
+   difference — stop and report.
+
+Baseline captures are retained at `vm/shots-t4v-pre2/` and `vm/shots-t4v-preB/`
+(gitignored, **not durable** across a worktree cleanup); their SHA-256s are in
+the evidence record.
+
 ### The invisibility requirement
 
 **Task 4 changes what every i386 boot uses for its console.** The console is how
 failures get reported, so a mistake there is self-concealing. Success criterion:
 a boot with `video.v_baseAddr == 0` — which is every boot until spec 3 — must
-produce **exactly** today's console and output. The frame-buffer arm must be
-unreachable until then.
+produce today's console and output to within the measured boot-to-boot noise
+floor below. The frame-buffer arm must be unreachable until then.
 
 ### Why the compare harness cannot use relocations
 

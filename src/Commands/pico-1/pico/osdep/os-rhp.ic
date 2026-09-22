@@ -1,0 +1,15 @@
+;
+; Rhapsody os-rhp.ic file for building os-rhp.c.
+;
+; Boilerplate header.
+include(header)
+
+include(unix)
+
+include(spell.unx)
+
+include(read.sel)
+
+include(raw.ios)
+
+include(term.cap)

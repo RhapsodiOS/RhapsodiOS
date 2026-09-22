@@ -1,0 +1,34 @@
+Local changes to pico 4.3 for RhapsodiOS
+========================================
+
+This is pico 4.3L: pico 4.3 as released in pine 4.50, modified locally
+to build on Rhapsody (Mac OS X Server 1.x) for RhapsodiOS. As the
+University of Washington's legal notices (CPYRIGHT) request, the version
+number carries the "L" suffix and the local changes are listed here.
+
+Source: https://ftp.gwdg.de/pub/gnu2/pine/old/pine4.50.tar.Z
+        (pine4.50/pico, pine4.50/doc/pico.1, pine4.50/CPYRIGHT)
+
+Changed upstream file
+  pico/pico.h          version string "4.3" -> "4.3L"
+
+New files: a Rhapsody port alongside the existing ones
+  pico/makefile.rhp    derived from makefile.nxt.  Builds pico only (no
+                       pilot), links the objects directly instead of
+                       through libpico.a (ranlib can't index an archive
+                       of fat objects), and gets termcap from System
+                       instead of -ltermcap.
+  pico/osdep/os-rhp.h  derived from os-nxt.h.  POSIX termios instead of
+                       sgtty, MAILDIR /var/mail, and no sys_errlist or
+                       sys_nerr declarations (stdio.h declares them).
+  pico/osdep/os-rhp.ic derived from os-nxt.ic.  raw.ios instead of
+                       raw.brk, and libc's getcwd instead of
+                       osdep/getcwd.
+
+Line endings
+  pico/makefile.cyg, pico/osdep/os-cyg.h, pico/osdep/os-cyg.ic and
+  pico/resource.h (Cygwin and Windows only) are stored with LF line
+  endings instead of CRLF, as the repository's .gitattributes requires.
+
+Outside pico/
+  Makefile, apk/pkginfo and this file are RhapsodiOS build glue.

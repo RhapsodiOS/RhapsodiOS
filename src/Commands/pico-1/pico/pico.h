@@ -406,7 +406,7 @@ extern	void	kbdestroy PROTO((KBESC_T *));
  */
 #ifdef	maindef
 PICO	*Pmaster = NULL;		/* composer specific stuff */
-char	*version = "4.3";		/* PICO version number */
+char	*version = "4.3L";		/* PICO version number */
 
 #else
 extern	PICO *Pmaster;			/* composer specific stuff */

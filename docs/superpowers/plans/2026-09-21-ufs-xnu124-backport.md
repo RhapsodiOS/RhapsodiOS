@@ -71,12 +71,18 @@ rbuild kernel --state /build/state --arch i386 /build/src /build/repo /build/out
 gzip -dc /build/out/kernel-154.5.1-7-i386.apk | tar xf - ./private/tftpboot/mach_kernel
 ```
 
-Bring `mach_kernel` back to the host, then from `vm/`:
+Bring `mach_kernel` back to the host, then graft it into this branch's own
+image. `graft-kernel.py` copies the source image first, so this refreshes from
+`golden.img` every time and there is no `reset-image.cmd` step:
 
 ```bash
-cmd /c reset-image.cmd
-python graft-kernel.py golden.img <path-to-mach_kernel> work/test.img
+export RHAP_TEST_IMAGE=D:/RhapsodiOS/vm/work/ufs-backport.img
+python vm/graft-kernel.py D:/RhapsodiOS/vm/golden.img <path-to-mach_kernel> \
+    D:/RhapsodiOS/vm/work/ufs-backport.img
 ```
+
+Always graft from `golden.img`, never from an already-grafted image — re-grafting
+truncates at the shrunken donor size.
 
 ---
 
@@ -349,9 +355,22 @@ git commit -m "vm: allow an opt-in per-session test image via RHAP_TEST_IMAGE"
 
 ---
 
-### Task 2: Positive control — prove the second-disk harness works
+### Task 2: Positive control — SUPERSEDED, do not run
 
-No kernel change. This runs the **current, unmodified** kernel and answers one question the rest of the plan depends on: what device node does a second disk get? Do not skip it; Tasks 4-6 cannot be interpreted without it.
+Attempted and abandoned. It booted `golden.img`'s stock 1999 Apple kernel, which
+has no serial console (that is a RhapsodiOS addition to this tree —
+`subr_prf.c:751`, `i386_init.c:126`) and none of this tree's EIDE fixes. It
+therefore found no serial output and a single-user ATA wedge, neither of which
+tells us anything about the kernel Tasks 4-8 actually run.
+
+Its two questions — which device node a second disk gets, and whether kernel
+output reaches `serial.log` — are folded into Task 3, which is the first task to
+boot a kernel built from this tree.
+
+One real finding survives and is now applied throughout: `g.line("-s")` must be
+preceded by `time.sleep(6)`, or the leading `-` is swallowed and the loader
+looks for a kernel named `s`. `fix_mouse()` and `probe()` in
+`vm/guest-console.py` both do this; the earlier draft of this plan did not.
 
 **Files:**
 - Create: `vm/work/good-control.img` (generated, not committed)

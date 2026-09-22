@@ -9,8 +9,10 @@ number carries the "L" suffix and the local changes are listed here.
 Source: https://ftp.gwdg.de/pub/gnu2/pine/old/pine4.50.tar.Z
         (pine4.50/pico, pine4.50/doc/pico.1, pine4.50/CPYRIGHT)
 
-Changed upstream file
+Changed upstream files
   pico/pico.h          version string "4.3" -> "4.3L"
+  pico/osdep/unix      #define MAX guarded with #ifndef MAX; Rhapsody's
+                       <sys/param.h> already defines it.
 
 New files: a Rhapsody port alongside the existing ones
   pico/makefile.rhp    derived from makefile.nxt.  Builds pico only (no
@@ -19,8 +21,10 @@ New files: a Rhapsody port alongside the existing ones
                        of fat objects), and gets termcap from System
                        instead of -ltermcap.
   pico/osdep/os-rhp.h  derived from os-nxt.h.  POSIX termios instead of
-                       sgtty, MAILDIR /var/mail, and no sys_errlist or
-                       sys_nerr declarations (stdio.h declares them).
+                       sgtty, MAILDIR /var/mail, no sys_errlist or
+                       sys_nerr declarations (stdio.h declares them), and
+                       HAVE_WAIT_UNION off so wait() gets the int it is
+                       declared to take.
   pico/osdep/os-rhp.ic derived from os-nxt.ic.  raw.ios instead of
                        raw.brk, and libc's getcwd instead of
                        osdep/getcwd.

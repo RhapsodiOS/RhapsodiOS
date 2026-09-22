@@ -112,7 +112,7 @@ typedef unsigned short usign16_t;
 
 
 /*-- What argument does wait(2) take? Define this if it is a union -----*/
-#define HAVE_WAIT_UNION  /* the arg to wait is a union wait * */
+/* #define HAVE_WAIT_UNION */ /* the arg to wait is a union wait * */
 
 
 

@@ -2657,7 +2657,9 @@ int  *n;
 	return(NULL);
     } 
     else{
+#ifndef MAX
 #define MAX(x,y)        ((x) > (y) ? (x) : (y))
+#endif
 	/*
 	 * We'd like to use 512 * st_blocks as an initial estimate but
 	 * some systems have a stat struct with no st_blocks in it.

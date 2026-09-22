@@ -1230,7 +1230,13 @@ both sides."
 
 ---
 
-## Task 9: Boot gate and status docs — BLOCKED ON SPEC 2, do not run yet
+## Task 9: Boot gate and status docs - RUN AND PASSED 2026-09-22 (was blocked on spec 2)
+
+> **Read the result first.** This gate was blocked on spec 2, which has now
+> landed; it ran and passed as spec 2's Task 5 (see the Result block below).
+> The notice that follows is kept as the pre-run record. **Its cascade-and-panic
+> prediction was wrong**: only the undefined-symbol failure occurred, and it
+> neither cascaded nor panicked. Everything else in it held.
 
 > **This task cannot run until the kernel exports `_VBEModeInfo2IODisplayInfo`.**
 >

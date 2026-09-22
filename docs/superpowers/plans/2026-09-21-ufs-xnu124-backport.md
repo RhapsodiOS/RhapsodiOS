@@ -262,11 +262,16 @@ Tasks 4 through 8 are written against `/dev/hd1a`. If Step 4 found a different
 node, edit those tasks to match before running them — the mount commands are
 otherwise correct as written.
 
-- [ ] **Step 6: Commit the control image recipe note**
+- [ ] **Step 6: Commit only if the node differed**
+
+If Step 4 found `/dev/hd1a`, there is nothing to commit — the plan already says
+that. Skip this step.
+
+If it found a different node and you edited Tasks 4-8 in Step 5:
 
 ```bash
 git add docs/superpowers/plans/2026-09-21-ufs-xnu124-backport.md
-git commit -m "vm: record the confirmed second-disk device node for the UFS harness"
+git commit -m "vm: correct the second-disk device node in the UFS harness plan"
 ```
 
 ---
@@ -723,6 +728,14 @@ g.line("mount -w /"); time.sleep(10); g.shot("remount")
 ```
 
 Expected: `fsck` marks the filesystem clean and the subsequent read-write remount succeeds. This is the recovery path the spec promises; if it does not work, the gate is unusable and the task must be reconsidered rather than committed.
+
+`vm/README.md:287-300` says never to run `fsck` on a grafted image. Running it
+here is a deliberate, approved exception: `work/test.img` is disposable and
+`reset-image.cmd` rebuilds it from `golden.img`, and this is the only way to
+demonstrate that an operator can actually recover from the gate. Expect `fsck`
+to also "repair" the four known graft artifacts, and possibly to damage the
+grafted kernel — that costs one boot cycle and nothing else. Do not run `fsck -y`
+on any image you care about.
 
 - [ ] **Step 8: Restore the image and commit**
 

@@ -30,7 +30,7 @@ project type and are correctly absent from source.
 | Driver | Reference binary | Partition entries | Mapped | Status |
 | --- | --- | --- | --- | --- |
 | drvCirrusLogicGD5434 | `CirrusLogicGD5434DisplayDriver_reloc` | 21 | 19 | **built, linked, parity clean**; 19/21 byte-identical; apple-generic MH_BUNDLE present; SGS VERS unmet |
-| drvVBE20DisplayDriver | `VBE20DisplayDriver_reloc`, from **OPENSTEP 4.2 User Patch 4** | 15 | 12 | **built, linked**; 13 hand-written entries byte-identical in place; **boot gate blocked on the kernel spec, do not run it** |
+| drvVBE20DisplayDriver | `VBE20DisplayDriver_reloc`, from **OPENSTEP 4.2 User Patch 4** | 15 | 12 | **built, linked, boots**; 13 hand-written entries byte-identical in place; loads and registers as `VBEDisplay0` on the spec-2 kernel |
 | drvIBMThinkPad760EDDisplay | `IBMThinkPad760EDDisplayDriver_reloc` | 40 | 28 | compiles and links; 17/29 in-scope extents match |
 | drvVGA | `VGA_reloc` + `VGA_psdrvr` | 38 + 53 | 0 + 0 | analysed in full, **not yet rewritten** |
 | drvATIMach64 | `ATIMach64DisplayDriver_reloc` | — | — | no reconstruction pass |
@@ -90,7 +90,7 @@ exhausted through their campaigns and stay `control-flow-confirmed`; they are
 not byte-identical. The SGS `_VERS_STRING` / `_VERS_NUM` gate is still unmet.
 The driver has not been tested on hardware.
 
-## drvVBE20DisplayDriver — reconstructed, boot gate blocked
+## drvVBE20DisplayDriver — reconstructed, boot gate passed
 
 The only driver in the tree reconstructed against a binary from a different OS
 release: the reference is `VBE20DisplayDriver_reloc` from OPENSTEP 4.2 User
@@ -114,8 +114,17 @@ What is verified:
   `control-flow-confirmed`.
 - Builds and links; `parity_check.py` reports no missing string or symbol.
 
-What is not: **the boot gate has not been run, and must not be run until the
-kernel spec lands.** `Default.table` marks the driver `"Boot Driver" = "Yes"`, so
+**The boot gate passed on 2026-09-22** against the kernel that spec 2 built,
+which exports `_VBEModeInfo2IODisplayInfo`. `sarld` links the driver as a Boot
+Driver, and it logs `VBEDisplay0: Skipping framebuffer initialization (card
+not in VBE mode).` and registers as `VBEDisplay0`. No other boot driver lost
+its registration. The instance-common difference below did not stop the load.
+The record is `docs/kernel/i386-vbe-console.md`. The framebuffer path waits
+on the booter spec, and the driver is not hardware-tested.
+
+What was said before the kernel spec landed, kept as written: **the boot gate
+has not been run, and must not be run until the kernel spec lands.**
+`Default.table` marks the driver `"Boot Driver" = "Yes"`, so
 the booter links it against the kernel with `sarld`. `_VBEModeInfo2IODisplayInfo`
 is undefined in the driver and no Rhapsody kernel exports it, so that link would
 fail, and a failed `sarld` link takes down every driver linked after it

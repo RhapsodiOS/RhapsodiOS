@@ -670,6 +670,20 @@ the booter's graphics panel and behave identically.
 
 Use `--keys-at 8`. `--keys-at 3.0` truncates the boot string to `mach_ke`.
 
+> **Corrected by the run (2026-09-22).** Typing `mach_kernel` + Return
+> *without* `-v` still boots in text mode. Only an untouched countdown gives
+> the graphics panel, so the graphics-mode boots send **no keys**.
+>
+> The booter on `golden.img` is Apple's stock v5.0.41.1, not `src/boot-2`,
+> and it leaves `video.v_baseAddr` zero even in graphics mode. That was
+> measured with a guest memory dump.
+>
+> The phantom-IRQ race in rule 2 above is also wider than stated: the eight
+> `intr: phantom IRQ 15` lines float around `Power management is enabled.`
+> too, between boots of the same kernel.
+>
+> See `docs/kernel/i386-vbe-console.md`.
+
 - [ ] **Step 4: Write the gate record**
 
 Create `docs/kernel/i386-vbe-console.md` in the shape of

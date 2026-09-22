@@ -367,9 +367,29 @@ specs 2 or 3 until answered.
 | 0 | **Passed in Task 1.** Rhapsody's inherited chain measures 552 against the reference's 552; target fixed at byte-parity throughout (§6) |
 | 1 | `VBE20DisplayDriver_reloc` compiles and links against `driverkit-3` on the Rhapsody build guest |
 | 2 | binrecon ledger complete: every partition entry reviewed with a status and a reason, `reference_sha256` and `rebuilt_sha256` both real |
-| 3 | **BLOCKED on spec 2 - do not run.** See below. Boots under QEMU per `docs/drivers/drvVGA-boot-gate.md` |
+| 3 | **Passed 2026-09-22**, once spec 2 landed. Boots under QEMU per `docs/drivers/drvVGA-boot-gate.md`; record in `docs/kernel/i386-vbe-console.md` |
 
-### Gate 3 is blocked on spec 2 and must not be run
+### Gate 3 was blocked on spec 2; it has now run and passed
+
+**Result, 2026-09-22.** Spec 2 (`docs/superpowers/specs/2026-09-21-i386-vbe-kernel-support-design.md`)
+added `_VBEModeInfo2IODisplayInfo` to the kernel. With that kernel, `sarld`
+links this driver and the kernel's log shows all three lines below, as
+`VBEDisplay0: ...`. The driver also printed `Driver loaded to export VBE mode
+list.` and `No VBE modes found.` No other boot driver lost its registration.
+`Boot Drivers` alone was enough; `Active Drivers` did not need changing.
+
+The same bundle on a pre-spec-2 kernel fails exactly as this section
+predicted. The booter shows
+`rld(): Undefined symbols: _VBEModeInfo2IODisplayInfo`, and the kernel logs
+`configureDriver: driver class 'VBE20DisplayDriver' was not loaded`. It did
+not cascade there, because the driver links last in `Boot Drivers`.
+
+The `_VBE20DisplayDriver_instance` difference did not stop the load.
+
+The booter that ran is Apple's stock v5.0.41.1, not `src/boot-2`. The
+procedure, hashes and limits are in `docs/kernel/i386-vbe-console.md`.
+
+The text below is the pre-run notice, kept as written.
 
 `Default.table` marks this a Boot Driver, so the booter links it against the
 kernel with `sarld`. `_VBEModeInfo2IODisplayInfo` is undefined in our `_reloc`,

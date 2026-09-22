@@ -1261,6 +1261,20 @@ both sides."
 >
 > Task 8 is unaffected and closes spec 1 as far as it can go.
 
+> **Result, 2026-09-22: run and passed, as spec 2's Task 5.** Against spec 2's
+> kernel, `sarld` links the driver. It logs
+> `VBEDisplay0: VESA video driver initialization.` and
+> `VBEDisplay0: Skipping framebuffer initialization (card not in VBE mode).`,
+> then `Registering: VBEDisplay0`, and no other boot driver is lost.
+> `Boot Drivers` alone was enough (Step 5's `Active Drivers` fallback was not
+> needed).
+>
+> A pre-spec-2 kernel reproduces the predicted
+> `rld(): Undefined symbols: _VBEModeInfo2IODisplayInfo`.
+>
+> The record is `docs/kernel/i386-vbe-console.md`, not the
+> `docs/drivers/drvVBE20DisplayDriver-boot-gate.md` that Step 6 names.
+
 ## Task 9: Boot gate and status docs
 
 **Files:**

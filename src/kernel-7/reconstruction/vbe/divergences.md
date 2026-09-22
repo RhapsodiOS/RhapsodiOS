@@ -1820,3 +1820,189 @@ listed from their entry to the first `ret`. The same listing was run against
 `task3-mach_kernel-final` for our side. The `KERNBOOTSTRUCT`-absence claim
 reuses the D2 filter - memory operands with `base == 0 && index == 0` and
 displacement in `[0x11000, 0x13000)` - restricted to the 72 bytes.
+
+### Task 4 verification pass, 2026-09-22: the build guest starved mid-build
+
+A second session was given the verification half of Task 4 with the build box
+reported reachable. It was — briefly. The source change is unaltered
+(`e2d02efe8`); nothing in this pass touched it. The four checks split cleanly:
+
+| Check | Result |
+|---|---|
+| 1. `_VBEModeInfo2IODisplayInfo` / `_FBAllocateVBEConsole` defined and external in the build | **not run** — no build |
+| 2. Task 2's 539-byte extent still MATCHes | **not run** — no build |
+| 3. `_BasicAllocateConsole` is 72 bytes and matches bar the three `e8` displacements | **not run** — no build |
+| 4. Console output identical to the pre-Task-4 kernel | **half run** — the pre-Task-4 half is captured twice, with a measured noise floor; the post-Task-4 half needs the build |
+
+#### What did run on the guest, and where it stopped
+
+The guest was up. In sequence, all **[measured]**:
+
+- `uname -a` → `Rhapsody rhap2 5.6 ... RELEASE_PPC ... Power Macintosh`;
+  `/build/tools/bin/rbuild` present, 115900 bytes, dated Sep 22 08:07.
+- `/` (which carries `/build` and `/tmp`) had **993461 KB free of 2023269**,
+  48% used, before anything was built.
+- `vm/sync-src.ps1 -Path kernel-7` completed. The change is on the guest:
+  `/build/src/kernel-7/bsd/dev/i386/BasicConsole.c:32` has the `FBConsole.h`
+  import and `:265` has `console = FBAllocateVBEConsole();`.
+- Task 3's profile workaround was applied verbatim from the record above, to a
+  **differently named** copy so the two tasks cannot collide:
+
+  ```
+  sed -e 's|^path=.*|path=/build/tools/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin|' \
+      /build/src/rbuild-1/toolchains/gcc-darwin.conf > /tmp/task4b-gcc-darwin.conf
+  ```
+
+  `diff` against the repo profile shows exactly one changed line, line 16, the
+  `path=`. No repo file was changed.
+- The build was started at **09:47 local**, detached, logging to
+  `/tmp/task4b-build.log`:
+
+  ```
+  rbuild kernel --state /build/state --toolchain /tmp/task4b-gcc-darwin.conf \
+    --arch i386 /build/src /build/repo /tmp/task4b-kvbe-dst
+  ```
+
+  Five seconds in, the log read `building driverkit-139.1-3-i386 from
+  /build/src/driverkit-3:` / `Building build root:`. That is the last thing
+  ever read from this build.
+
+From roughly **10:25** onward every new SSH session was refused, and it stayed
+refused through **12:53** — two and a half hours — with no successful connection in
+between. The failure is specific and is *not* the Task 4 predecessor's
+"box is powered off":
+
+- `ping` → 3 of 3 replies, 5 ms. `Test-NetConnection -Port 22` → `True`.
+- `ssh -v` gets as far as `Local version string SSH-2.0-...` and then
+  **`kex_exchange_identification: Connection closed by remote host`** — the
+  server closes *before sending its own version banner*, i.e. before any key
+  exchange and long before authentication.
+
+That signature means sshd accepted the TCP connection and then could not get a
+child to the point of writing a banner. **[inference, marked as such]** The
+most likely cause is resource starvation on the guest — memory, swap or the
+process table — under an unsupervised `rbuild kernel`; the root filesystem's
+993 MB of free space is also within reach of a full build root plus kernel
+objects, and `/tmp/task3-kvbe-dst` from the previous task is still on it. Which
+of those it is **cannot be determined from off the box**, and nothing here
+should be read as having established it.
+
+Ruled out **[measured]**:
+
+- *Not* the client's legacy crypto options — the identical option set worked
+  repeatedly against this host at 09:41–09:47.
+- *Not* host-side connection exhaustion alone. Five abandoned `ssh.exe`
+  processes were found holding ESTABLISHED sessions (from concurrent polls that
+  the harness backgrounded on timeout); all five were killed, `netstat` then
+  showed zero connections to `10.10.0.241:22`, and the very next attempt failed
+  the same way. Holding several concurrent sessions open against this sshd is
+  still a bad idea and probably contributed to the first refusals.
+- *Not* another agent's build. The only other session touching this guest in
+  this run was checked; the peer sessions were idle.
+
+**Operational lesson for the next attempt, worth more than the diagnosis:**
+run `rbuild` **in the foreground of a single held SSH session** and let its
+output stream, rather than detaching it with `nohup` and polling over fresh
+connections. Task 3 did the former and finished. This pass did the latter, and
+when the guest stopped accepting new sessions it lost all contact with a build
+that may well have been running fine.
+
+#### Check 4's baseline half, and what "identical" can actually mean
+
+This is new measurement and it survives the outage, so it is recorded in full.
+The gate says the two console outputs "must be identical". Taken literally
+against the artefacts the harness produces, that is unachievable — so the
+noise floor was measured first, by booting the **same** kernel
+(`task3-mach_kernel-final`) twice and comparing the two captures. **[measured]**
+
+Method, exactly as run, from `vm/` in the `vbe20-kernel` worktree:
+
+```
+MSYS_NO_PATHCONV=1 python graft-kernel.py D:/RhapsodiOS/vm/golden.img \
+    <kernel> work/test.img
+python qemu-shot.py work/test.img shots-t4v-pre2 --at 30,60,95 \
+    --keys $'mach_kernel -v\n' --keys-at 8
+```
+
+Two harness notes, both **[measured]**, both of which cost a boot to find:
+
+- `rhap_inject.check_target` permits exactly one destination, `vm/work/test.img`
+  **relative to the `vm/` directory of the checkout the script is run from**.
+  The brief's `work/<your own name>.img` is refused. Run from a worktree this
+  is already isolation: `<worktree>/vm/work/test.img` is a different file from
+  the main checkout's, so no other session's image is touched. `golden.img` is
+  only read, and was read from the main checkout because a worktree has no copy.
+- **`--keys-at` must be raised.** At the default 3.0 s the boot loader received
+  only `mach_ke` — the tail of `mach_kernel -v\n`, including the Return, was
+  dropped — and the boot sat at `boot:` forever, 720x400, never entering the
+  kernel. `--keys-at 8` lands the whole string inside the 10-second countdown
+  and boots. The documented invocation in `docs/drivers/drvVGA-boot-gate.md:50`
+  omits `--keys-at`; anyone reusing it should not assume the default works.
+
+Results, two runs of the identical kernel (`shots-t4v-pre2`, `shots-t4v-preB`):
+
+- **`serial.log` (COM2, the kernel's own console) — 76 lines in both, and the
+  two line multisets are equal**: `diff <(sort a) <(sort b)` is empty. The only
+  difference is interleaving: a five-line IDE block (`Registering: hc0`,
+  `hd0: QEMU HARDDISK 2.5+`, geometry, multisector, `Registering: hd0`) and the
+  line `intr: phantom IRQ 15, EOI to master` swap places. A device-probe race,
+  not a content difference. SHA-256 of the two logs therefore differs
+  (`BF84F83D…7DB` vs `9263D43D…8FD`) — **hashing serial.log is the wrong
+  instrument**; the sorted line multiset is the right one.
+- **Screenshots** — at 60 s and 95 s the boot has settled at
+  `Continue without network? (y/n)` and the two runs' 640x480 frames differ in
+  **48 pixels of 307200**, in exactly two places: character column 14 of the
+  `May  8 05:00:2x init:` line and columns 17–18 of the
+  `Fri May  8 05:00:3x PDT 1998` line. Those are the seconds digits of the boot
+  clock. Every other pixel is identical. The 30 s frame is *not* comparable
+  between runs — the screen is still scrolling and 16399 pixels differ —
+  exactly as `qemu-shot.py`'s own banner warns.
+
+So the operative form of check 4, for whoever runs it, is **[inference from the
+above, marked]**:
+
+> The new kernel's `serial.log` must contain the **same 76 lines** as the
+> baseline's (order-insensitive compare), and its settled 60 s/95 s frames must
+> differ from the baseline's **only** in the two clock-second fields. Anything
+> else — one extra line, one missing line, a different word, a different pixel
+> outside those two fields — is a real difference and the gate fails.
+
+That is a sharper test than a hash comparison and it is not a weakening: the
+baseline pair proves the two allowed sources of variation are a probe race and
+a wall clock, neither of which `BasicAllocateConsole` can touch.
+
+Retained, durable, in the worktree (not committed — captures are build output):
+
+```
+vm/shots-t4v-pre2/   serial.log  bf84f83ddcc092c6e078603d17db43ad3e3543e986bad98d9ae571baeca027db
+                     shot-60s.png, shot-95s.png  0326ded733cae7b606451b1ee27d432aec34dfc39c79b9c3eb822c6eeb11eb01
+vm/shots-t4v-preB/   serial.log  9263d43d08c1c8a30fff4554b4b4baf387b83e7bb43b7c20832432d5206f8fdb
+                     shot-60s.png, shot-95s.png  8568f9fb751bf51640c32fc2621a4537bf5be81ca1550c33d6e70600faa28eae
+```
+
+#### The two inputs to the un-run checks, re-verified
+
+Both were checked before use, because this spec has already lost one artefact
+to a scratchpad. **[measured, 2026-09-22]**
+
+- **The retained pre-Task-4 kernel is intact and is what the record says.**
+  `…/scratchpad/task3-mach_kernel-final`, 1490352 bytes, SHA-256
+  `1C0F8B804A5ECEF5124B3FCE9C3335356B7692B7C1FD11E2A40CFD6B87F7215D`,
+  `_FBAllocateVBEConsole` `0x001E89F0`, `_VBEModeInfo2IODisplayInfo`
+  `0x001E87D4`, `_BasicAllocateConsole` `0x001E214C`, all three `n_type 0x0F`.
+  It is still in a **session scratchpad**, which is not durable; the fallback
+  remains a rebuild from `760961e1d`.
+- **The reference's 72 bytes reproduce exactly.** Read straight out of
+  `mach_kernel_i386` at `_BasicAllocateConsole` = `0x00197C58`, the 72 bytes
+  are byte-for-byte the dump recorded above. Resolving the three `e8`
+  displacements against the slice's own symbol table gives
+  `fn+10 -> 0x0019ECB8 _FBAllocateVBEConsole`, `fn+31 -> 0x00101600 _bzero`,
+  `fn+57 -> 0x0019B760 _VGAAllocateConsole` — the three names check 3 requires
+  our build to call.
+
+#### Still owed
+
+Checks 1, 2 and 3, and check 4's second half. Nothing in this pass changes what
+Task 4's code should be, and nothing in it is evidence that the code is right.
+**Task 5 must still not start until check 4 has actually been run**, against a
+built kernel, using the comparison form measured above.

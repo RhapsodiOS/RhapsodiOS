@@ -189,8 +189,38 @@ VGA one. **The existing VGA path stays as the fallback** — it is what runs tod
 and what runs whenever the booter has not set a mode, which is every boot until
 spec 3.
 
-There is no reference for this function: 4.2's `BasicAllocateConsole` is not
-ours. It is justified from ppc's shape, not transcribed.
+**There IS a reference, and an earlier revision of this section was wrong to say
+otherwise.** Task 4 measured it: `_BasicAllocateConsole` exists in the 4.2 i386
+slice at `0x00197C58`, 72 bytes, and our current function is that binary minus
+exactly nine bytes (`e8 rel32` + `85 c0` + `75 2b`).
+
+```
+5589E5 81EC88000000   push ebp; mov ebp,esp; sub esp,0x88   ; the local di
+53                    push ebx
+E851700000            call _FBAllocateVBEConsole   ; +10, UNCONDITIONAL
+85C0 752B             test eax,eax; jnz -> return it
+68 88000000 ...       push 136; lea ebx,[ebp-0x88]; push ebx; call _bzero
+C78578FFFFFF 80020000 mov [ebp-0x88],0x280         ; di.width  = 640
+C7857CFFFFFF E0010000 mov [ebp-0x7C],0x1E0         ; di.height = 480
+53 E8CA3A0000         push ebx; call _VGAAllocateConsole
+```
+
+Two consequences.
+
+**The reference calls `FBAllocateVBEConsole` unconditionally**, as the first
+instruction after the prologue, and touches **no** `KERNBOOTSTRUCT` — zero
+operands in `[0x11000,0x13000)`. So there is no outer guard to mirror from ppc;
+the guards live inside `FBAllocateVBEConsole` and the caller simply tries it.
+
+An outer `kernbootstruct->video.v_baseAddr` test would be wrong on two counts:
+it is not what the reference does, **and it would be live**. The i386 booter
+already writes that field today, at `boot-2/i386/boot2/graphics.c:204`, whenever
+graphics mode is entered — so such a guard would couple the console to
+graphics-mode boot rather than lying dormant until spec 3.
+
+**Task 4 therefore has a byte oracle**, which §6 previously said it did not.
+The built `_BasicAllocateConsole` should be 72 bytes matching the reference with
+only the three `e8` displacements differing.
 
 ## 6. Parity policy
 
@@ -202,10 +232,11 @@ functions to a kernel we build ourselves, whose every other address differs.
 | --- | --- | --- |
 | `VBEModeInfo2IODisplayInfo` | **Byte-parity**, 32-bit relocated operands masked | A leaf. No calls; only the jump-table base and its entries relocate. A genuine correctness oracle. |
 | `FBAllocateVBEConsole` | **Structural parity** | Five `rel32` calls and seven absolute vtable pointers into a kernel whose addresses all differ. Byte-parity is *unreachable*, not merely hard. |
-| The wiring | **No parity target** | No reference exists for it. |
+| The wiring | **Byte-parity** (corrected) | A reference *does* exist — `_BasicAllocateConsole` at `0x00197C58`, 72 bytes. An earlier revision of this spec claimed none. Only the three `e8` displacements may differ. |
 
-One of three pieces has a byte oracle. **The boot gate therefore carries
-proportionally more weight here than it did in spec 1** — which is acceptable,
+**Two of three pieces have a byte oracle**, not one — §5's correction moved the
+wiring into that column. The boot gate still carries more weight here than in
+spec 1 — which is acceptable,
 because this spec is what creates the gate.
 
 **Do not reuse spec 1's relocation-aware masking.** An earlier revision of this

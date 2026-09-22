@@ -19,7 +19,8 @@ New files: a Rhapsody port alongside the existing ones
                        pilot), links the objects directly instead of
                        through libpico.a (ranlib can't index an archive
                        of fat objects), and gets termcap from System
-                       instead of -ltermcap.
+                       instead of -ltermcap.  Its clean target also
+                       removes the generated osdep/os-rhp.c.
   pico/osdep/os-rhp.h  derived from os-nxt.h.  POSIX termios instead of
                        sgtty, MAILDIR /var/mail, no sys_errlist or
                        sys_nerr declarations (stdio.h declares them), and

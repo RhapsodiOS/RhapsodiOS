@@ -58,7 +58,7 @@ pico:		main.o $(OFILES)
 		$(CC) $(CFLAGS) main.o $(OFILES) $(LIBS) -o pico
 
 clean:
-		rm -f *.o *~ pico_os.c os.h pico
+		rm -f *.o *~ pico_os.c os.h pico osdep/os-rhp.c
 		cd osdep; $(MAKE) clean; cd ..
 
 os.h:		osdep/os-rhp.h

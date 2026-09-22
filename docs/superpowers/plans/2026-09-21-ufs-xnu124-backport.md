@@ -244,60 +244,75 @@ which *path* is allowed, never which *file* may be destroyed.
 
 - [ ] **Step 1: Write the failing tests**
 
-Add to `vm/test_rhap_inject.py`, following the style of the existing
-`check_target` tests:
+`vm/test_rhap_inject.py` is `unittest`-based, not pytest-fixture based, and its
+`TestSafety` class is gated `@unittest.skipUnless(os.path.exists(WORK))`. These
+new tests must NOT go in that class: `check_target` is purely path-based and
+tolerates missing files (`rhap_inject.py:48-58` skips the `samefile` check when
+either side is absent), so they need no images and must run in a worktree that
+has none. Add a new ungated class:
 
 ```python
-def test_env_override_accepts_the_named_image(tmp_path, monkeypatch):
-    alt = tmp_path / "ufs-backport.img"
-    alt.write_bytes(b"")
-    monkeypatch.setenv("RHAP_TEST_IMAGE", str(alt))
-    rhap_inject.check_target(str(alt))  # must not raise
+class TestPerSessionImageOverride(unittest.TestCase):
+    def test_override_accepts_the_named_image(self):
+        with tempfile.TemporaryDirectory() as d:
+            alt = os.path.join(d, "ufs-backport.img")
+            with mock.patch.dict(os.environ, {"RHAP_TEST_IMAGE": alt}):
+                rhap_inject.check_target(alt)  # must not raise
 
+    def test_override_still_accepts_the_default_target(self):
+        with tempfile.TemporaryDirectory() as d:
+            alt = os.path.join(d, "ufs-backport.img")
+            with mock.patch.dict(os.environ, {"RHAP_TEST_IMAGE": alt}):
+                rhap_inject.check_target(WORK)  # must not raise
 
-def test_env_override_still_accepts_the_default_target(tmp_path, monkeypatch):
-    alt = tmp_path / "ufs-backport.img"
-    alt.write_bytes(b"")
-    monkeypatch.setenv("RHAP_TEST_IMAGE", str(alt))
-    rhap_inject.check_target(WORK)  # must not raise
+    def test_override_cannot_authorise_golden(self):
+        with mock.patch.dict(os.environ, {"RHAP_TEST_IMAGE": GOLDEN}):
+            with self.assertRaises(rhap_inject.SafetyError):
+                rhap_inject.check_target(GOLDEN)
 
+    def test_override_cannot_authorise_the_vmdk(self):
+        with mock.patch.dict(os.environ, {"RHAP_TEST_IMAGE": VMDK}):
+            with self.assertRaises(rhap_inject.SafetyError):
+                rhap_inject.check_target(VMDK)
 
-def test_env_override_cannot_authorise_golden(monkeypatch):
-    monkeypatch.setenv("RHAP_TEST_IMAGE", GOLDEN)
-    try:
-        rhap_inject.check_target(GOLDEN)
-    except rhap_inject.SafetyError:
-        return
-    raise AssertionError("override must not defeat the golden.img check")
-
-
-def test_unset_env_refuses_an_arbitrary_path(tmp_path, monkeypatch):
-    monkeypatch.delenv("RHAP_TEST_IMAGE", raising=False)
-    alt = tmp_path / "ufs-backport.img"
-    alt.write_bytes(b"")
-    try:
-        rhap_inject.check_target(str(alt))
-    except rhap_inject.SafetyError:
-        return
-    raise AssertionError("no override set, so this path must be refused")
+    def test_unset_override_refuses_an_arbitrary_path(self):
+        with tempfile.TemporaryDirectory() as d:
+            alt = os.path.join(d, "ufs-backport.img")
+            env = {k: v for k, v in os.environ.items() if k != "RHAP_TEST_IMAGE"}
+            with mock.patch.dict(os.environ, env, clear=True):
+                with self.assertRaises(rhap_inject.SafetyError):
+                    rhap_inject.check_target(alt)
 ```
 
 - [ ] **Step 2: Run them and confirm they fail**
 
-Run from `vm/`: `python -m pytest test_rhap_inject.py -k "env_override or unset_env" -v`
-Expected: the three `env_override` tests FAIL (the override does not exist yet).
-`test_unset_env_refuses_an_arbitrary_path` should already PASS — that confirms
-the test is checking something real rather than passing vacuously.
+Run from `vm/`: `python -m pytest test_rhap_inject.py -k PerSessionImageOverride -v`
+Expected: the first two FAIL (no override exists yet, so the alternate path is
+refused). `test_unset_override_refuses_an_arbitrary_path` should already PASS,
+confirming it is checking something real. The two "cannot authorise" tests will
+also pass at this point for the wrong reason — the path check refuses them
+because no override is honoured yet. They are the regression guard for Step 3,
+which is where they start being meaningful.
 
 - [ ] **Step 3: Implement the override in `check_target`**
 
 Resolve `RHAP_TEST_IMAGE` through the same `os.path.realpath` plus
-`os.path.normcase` treatment the existing allowed path gets, and accept the
-target when it matches either the default or the override. Leave the
-`golden.img` / `rhapsody.vmdk` identity check exactly where it is and applying
-to both paths — it runs after the path decision, so an override aimed at
-`golden.img` is still refused. Update the docstring to record that an override
-exists and that it cannot authorise `golden.img`.
+`os.path.normcase` treatment the default target gets, and accept the incoming
+target when it matches either the default or the override.
+
+The override must refuse to authorise the protected images **by resolved path**,
+not only through the existing `samefile` loop. That loop at `rhap_inject.py:48-58`
+skips whenever either file is absent, so on a checkout without `golden.img`
+present an override aimed at it would otherwise sail through — and the whole
+point of the guard is that it holds everywhere, not only where golden.img
+happens to exist. So: if the resolved override equals the resolved `golden.img`
+or `rhapsody.vmdk`, raise `SafetyError` regardless of existence.
+
+Leave the existing `samefile` loop exactly where it is and applying to both
+paths; it still catches links that resolve differently.
+
+Update the docstring to record that an override exists and that it cannot
+authorise `golden.img` or `rhapsody.vmdk`.
 
 - [ ] **Step 4: Honour the same variable in `guest-console.py`**
 
@@ -319,8 +334,10 @@ Run the whole existing suite, not just the new tests — these files are in live
 use by other sessions right now:
 
 Run from `vm/`: `python -m pytest test_rhap_inject.py -v`
-Expected: every pre-existing test still passes, plus the four new ones. A
-pre-existing failure means stop and report, not proceed.
+Expected: the five new tests pass. The pre-existing `TestSafety` class is
+skip-gated on `work/test.img`, which does not exist in this worktree, so expect
+those to report as skipped rather than passed — report the skip count. Any
+pre-existing test that *fails* (rather than skips) means stop and report.
 
 - [ ] **Step 6: Commit**
 

@@ -2692,7 +2692,7 @@ Expected: `COMPILE_STATUS=0` and ten objects.
 Fetch them into a scratch directory outside the repo, then:
 
 ```bash
-O=<your scratch dir>
+O=C:/Users/raynorpat/AppData/Local/Temp/foundation-2b-abi
 PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m binrecon abi-check \
   --abi-dir src/Kits/Foundation/reconstruction/abi \
   --built "NSZone.m=$O/NSZone.o" \
@@ -2715,7 +2715,7 @@ Expected: `abi-check: ABI matches`, exit 0.
 
 - [ ] **Step 4: Run the analysis and produce Gate 3's evidence**
 
-Create `tools/binrecon/profiles/foundation-i386-exceptions-runtime.json` by copying `foundation-i386-object-core.json` and replacing its `analysis_scope` with the ranges `binrecon module-scope` emits for these two modules:
+**Sub-step 4a — the scoped profile.** Create `tools/binrecon/profiles/foundation-i386-exceptions-runtime.json` by copying `foundation-i386-object-core.json`. Keep every field except `analysis_scope` and `output_dir`: set `output_dir` to `../out/foundation-i386-exceptions-runtime`, and replace `analysis_scope` with the ranges this emits:
 
 ```bash
 PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m binrecon module-scope \
@@ -2724,31 +2724,62 @@ PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m bin
   --symbols src/Kits/Foundation/reconstruction/symbols.json
 ```
 
-Then run the analysis **in the foreground** — a background `analyze` is killed when the turn ends, leaving stale locks and no published result:
+Commit this profile — it is evidence, the same as stage 2a's `foundation-i386-object-core.json`.
+
+**Sub-step 4b — the rebuilt artifact.** `binrecon compare` needs an analysis of *our* build alongside the reference's, and `binrecon analyze` produces both from one profile when that profile carries a `"rebuilt"` artifact (`profile-v1.json`'s schema, same shape as `"reference"`: `{"path": ..., "expected_size": ..., "expected_sha256": ...}`). Build one relocatable i386 object containing both this stage's modules together, matching how the reference itself packs `NSException.m` and `NSObjCRuntime.m` into one image:
 
 ```bash
-BINRECON_REFERENCE=... PYTHONPATH=tools/binrecon ... -m binrecon analyze \
-  --profile tools/binrecon/profiles/foundation-i386-exceptions-runtime.json
+cc -c -arch i386 -I.. -I/System/Library/Frameworks/System.framework/Headers \
+   -o /tmp/foundation-2b-rebuilt.o NSException.m NSObjCRuntime.m
 ```
 
-Then produce the evidence, writing into `reconstruction/exceptions-runtime/`:
+(a single `cc -c` with two `.m` inputs and one `-o` fails — compile each to its own object, then combine with `ld -r -arch i386 -o /tmp/foundation-2b-rebuilt.o NSException.o NSObjCRuntime.o`, or check whether this toolchain's `cc -c` accepts multiple sources with `-o` for a single relocatable output; confirm on the guest before relying on either).
+
+Fetch the combined object to the Windows side, compute its size and SHA-256, and add a `"rebuilt"` block to **an uncommitted working copy** of the 2b profile (the object's local path has no meaning outside this run, so it must never be committed):
 
 ```bash
-P=tools/binrecon/profiles/foundation-i386-exceptions-runtime.json
+python -c "
+import hashlib, json, pathlib
+obj = pathlib.Path('C:/Users/raynorpat/AppData/Local/Temp/foundation-2b-abi/foundation-2b-rebuilt.o')
+data = obj.read_bytes()
+profile = json.loads(pathlib.Path('tools/binrecon/profiles/foundation-i386-exceptions-runtime.json').read_text())
+profile['rebuilt'] = {'path': str(obj), 'expected_size': len(data), 'expected_sha256': hashlib.sha256(data).hexdigest().upper()}
+pathlib.Path('/tmp/foundation-2b-profile-with-rebuilt.json').write_text(json.dumps(profile, indent=1))
+"
+```
+
+**Sub-step 4c — analyze, in the foreground.** A background `analyze` is killed when the turn ends, leaving stale locks and no published result:
+
+```bash
+BINRECON_REFERENCE=C:/Users/raynorpat/Downloads/test/Foundation-i386 \
+PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m binrecon analyze \
+  --profile /tmp/foundation-2b-profile-with-rebuilt.json
+```
+
+Expected: `complete: true`, and both `tools/binrecon/out/foundation-i386-exceptions-runtime/published/analysis-reference-ida.json` and `analysis-rebuilt-ida.json` populated (the `output_dir` set in sub-step 4a, resolved relative to the profiles directory — confirm the actual path from the command's own output rather than assuming).
+
+**Sub-step 4d — compare, source-map, ledger.** `--reference-analysis` and `--rebuilt-analysis` take the two paths sub-step 4c produced; `--profile` here is the **committed** profile (without the local `"rebuilt"` path, which has no meaning to anyone re-running this later):
+
+```bash
 R=src/Kits/Foundation/reconstruction
+PUB=tools/binrecon/out/foundation-i386-exceptions-runtime/published
 
 BINRECON_REFERENCE=C:/Users/raynorpat/Downloads/test/Foundation-i386 \
 PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m binrecon compare \
-  --profile $P --rebuilt-analysis <the analyze output path> \
-  --output $R/exceptions-runtime/compare.json
+  --profile tools/binrecon/profiles/foundation-i386-exceptions-runtime.json \
+  --reference-analysis $PUB/analysis-reference-ida.json \
+  --rebuilt-analysis $PUB/analysis-rebuilt-ida.json \
+  --output $R/exceptions-runtime/ledger.json
 
-BINRECON_REFERENCE=C:/Users/raynorpat/Downloads/test/Foundation-i386 \
 PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m binrecon source-map \
-  --profile $P --symbols $R/symbols.json --ownership $R/ownership.json \
+  --reference-analysis $PUB/analysis-reference-ida.json \
+  --binary "C:/Users/raynorpat/Downloads/test/Foundation-i386" \
+  --source-dir src/Kits/Foundation --repo-root . --objc-methods \
+  --ownership $R/ownership.json \
   --output $R/exceptions-runtime/source-map.json
 ```
 
-`ledger` is driven one entry at a time by `binrecon ledger` transitions, exactly as stage 2a's Task 11 did for `object-core/ledger.json`; run `binrecon ledger --help` for the transition flags. **Budget ~1 s per ledger entry** — that figure was measured in stage 2a (189 s for 193 entries) and is the basis for this stage's estimate.
+`ledger` is driven one entry at a time by `binrecon ledger` transitions against `$R/exceptions-runtime/ledger.json`, exactly as stage 2a's Task 11 did for `object-core/ledger.json`; run `binrecon ledger --help` for the transition flags. Gate 3 is evidence only — instruction divergence between a relocatable-object excerpt and the reference's linked, profile-guided layout is expected and does not block the stage; review every entry and disposition it. **Budget ~1 s per ledger entry** — that figure was measured in stage 2a (189 s for 193 entries) and is the basis for this stage's estimate.
 
 - [ ] **Step 5: Write `divergences.md`'s 2b section**
 

@@ -2264,3 +2264,170 @@ clock's seconds digits.
 
 With checks 1-3 already passing (verification pass 3, above) and check 4
 passing under this gate, **Task 4 is complete.**
+
+## Task 5: the boot gates
+
+The full gate record is `docs/kernel/i386-vbe-console.md`: procedure, hashes
+of every input and capture, and what the gates do and do not establish. This
+section keeps the measurements that bear on the kernel functions, and the
+corrections to earlier statements in this record and in the plan.
+
+**Result: all three gates pass.** Gate 2 (`sarld` links spec 1's driver
+against the new kernel) and Gate 3 (it loads and registers as `VBEDisplay0`)
+pass on positive evidence from the kernel's `serial.log`. The default
+graphics-mode boot of the new kernel is indistinguishable from the pre-Task-4
+kernel's, over five alternating boots in one session.
+
+### Inputs, verified before use
+
+All **[measured]**, 2026-09-22, just before the first boot:
+
+- `git status src/kernel-7` at `f853aae61`: clean. No sync and no build in
+  this task. Comment-stripped `BasicConsole.c` is identical at `e2d02efe8` and
+  at `HEAD`, and no other kernel source changed between them, so the Task 4
+  kernel is the current source.
+- New kernel `vm/work/task4c-mach_kernel`, SHA-256 `74B12FCD...25CFF4`.
+  Control `vm/work/task3-mach_kernel-final` and its scratchpad twin, both
+  `1C0F8B80...215D`.
+- Driver `_reloc` `77399531...8A3A36A1`, equal to spec 1's ledger
+  `rebuilt_sha256`.
+- `golden.img` SHA-256 `E1968E3EF57F3060AA01CEAB8B4D5C49C067E6ACC5F8626EBABEEFE0E663879F`.
+  This replaces Task 4's mtime-only statement with a hash, though it cannot
+  say retroactively what the image held that morning.
+- Each boot image was read back after it was built: `/mach_kernel`, and for
+  the with-driver boots every installed bundle file, all hash-equal to their
+  sources.
+
+### Gate 2 and Gate 3, in brief
+
+Three verbose boots were run back to back: new kernel without the driver,
+with it, then without it again (`A1`, `B`, `A2`). **[measured]**
+
+- `B`'s log carries, after `Registering: EISA0`:
+  `VBEDisplay0: VESA video driver initialization.`,
+  `VBEDisplay0: Skipping framebuffer initialization (card not in VBE mode).`,
+  `VBEDisplay0: Driver loaded to export VBE mode list.`,
+  `VBEDisplay0: No VBE modes found.`, `Registering: VBEDisplay0`.
+- Every one of the 12 devices `A1` and `A2` register is still registered in
+  `B`. That no-cascade check is structurally weak: the driver links last in
+  `Boot Drivers`, so a failure of its own link could not have removed an
+  earlier driver.
+- `B` against `A2`, in order, differs in the five driver lines and in line 9.
+  Line 9 reads `vm_page_free_count` `3c8c`, becoming `3c8b` with the driver:
+  one page fewer. *[inference]* That page is the booter's allocation for the
+  linked driver.
+- **Negative control.** The pre-spec-2 kernel
+  (`D:/RhapsodiOS/vm/install/mach_kernel`, `9916E7C0...21CF8D`) has neither
+  `_VBEModeInfo2IODisplayInfo` nor `_FBAllocateVBEConsole`. Booted with the
+  same bundle, it stops at the booter with
+  `rld(): Undefined symbols: _VBEModeInfo2IODisplayInfo`, captured in
+  frame. The kernel then logs
+  `configureDriver: driver class 'VBE20DisplayDriver' was not loaded`.
+  Spec 1's prediction of the blocked gate is now measured, not argued.
+
+### What the booter hands the kernel, measured in guest memory
+
+This is the measurement that matters most for Tasks 3 and 4.
+
+A boot script saved guest physical `0x11000..0x131FF` with QMP `pmemsave`
+at fixed times. It uses the same QEMU arguments and QMP client as
+`qemu-shot.py`, imported from it. Two boots of the new kernel were dumped: the
+default graphics-mode boot, at 12, 16, 30 and 60 s, and a verbose boot, at
+12, 30 and 60 s. **[measured]**
+
+- **`kbs+0x1854` and `kbs+0x1858` are zero** at every sample on both boots,
+  as is the rest of `_reserved` (`0x1138C..0x130D7`). So
+  `FBAllocateVBEConsole`'s guard sees zero, as D2 and Task 3 argued. That
+  claim now rests on a measurement of the running guest, not only on reading
+  the booter's `bzero`.
+- **`boot_video` (`0x130D8`, 24 bytes) is zero on both boots**, including
+  `v_baseAddr`.
+- The graphics-mode and verbose dumps differ in two fields only:
+  - `bootString`: empty on the graphics boot, `" -v"` on the verbose one.
+  - `graphicsMode` at `0x1114C`: 1 on the graphics boot, 0 on the verbose one.
+
+  The graphics-mode boot hands the kernel no extra video information anywhere
+  in that range.
+- `magicCookie` at `0x110A4` reads `0xA7A7A7A7` and `numBootDrivers` at
+  `0x11154` reads 6. That is consistent with our `KERNBOOTSTRUCT` layout at
+  the front of the struct. *[inference]* That the booter's struct matches ours
+  as far as `boot_video` follows from that and is not independently checked.
+  The "only two fields differ" statement above does not depend on it.
+
+### Corrections
+
+- **The booter these boots run is not `src/boot-2`.** The booter on
+  `golden.img` is Apple's `boot` v5.0.41.1: 39,616 bytes, `AA06C3C5...F6B5F2C2`,
+  byte-identical to `/usr/standalone/i386/boot` and to both boot-area copies.
+  It contains no `Graphics Mode` string. **[measured]**
+- **The plan's "graphics mode ... the only path on which the booter writes
+  `video.v_baseAddr`" does not hold for that booter.** `v_baseAddr` is zero on
+  its graphics-mode boot. **[measured, above]**
+- **Task 4's statement about `v_baseAddr` needs one qualification.** Task 4's
+  design-question bullet says the booter "already writes it today"
+  (`graphics.c:200-208`). That is correct as a reading of `src/boot-2`,
+  *conditional* on its `setMode()` taking the VBE branch. That branch needs a
+  `Graphics Mode` key (`graphics.c:189-190`), which this image's
+  `System.config` does not set. **[read from source and from the table]** So
+  on this image the discarded guard would have been dormant under either
+  booter. The decision to drop it does not change: it rests on the
+  reference's shape, the first three bullets of that section.
+- **Typing a kernel name suppresses graphics mode on this booter.** Typing
+  `mach_kernel` and Return at 8 s gives a text-mode boot. Only an untouched
+  countdown gives the graphics panel. So the plan's "Use `--keys-at 8`" for
+  the graphics-mode step is wrong for that step: the graphics-mode boots here
+  sent no keys. **[measured]**
+- **The phantom-IRQ race is wider than the plan's comparison rule names.**
+  All 14 boots of this session log exactly eight
+  `intr: phantom IRQ 15, EOI to master` lines. Between boots of the *same*
+  kernel, those lines move: before or after `Power management is enabled.`,
+  split around it, or partly into the IDE probe block. On the verbose console
+  this reaches the settled frame: 490 px in text row 4 between two
+  no-driver boots of the same kernel. **[measured]** Outside those eight
+  lines, every same-configuration pair matches line for line.
+
+### The graphics-mode A-B-A
+
+The boots ran control, new, control, new, control (`dC1`, `dN`, `dC2`, `dN2`,
+`dC3`), with no keys. **[measured]**
+
+- Serial: identical for every adjacent pair once line 4's date is masked and
+  the phantom lines are left out of the order. Line 4's config and version
+  text is identical.
+- Settled frames at 45, 60, 95 and 120 s: **0 px for every pair**, no mask
+  needed. All five hash to `C0F78DDB...7C247ED`.
+- Transient frames vary with timing. At 24 s and 30 s `dN` was ahead of
+  both `dC1` and `dC2`. The extension was run to test that: `dN2` fell back
+  to the controls' timing and `dC3` showed `dN`'s lead. The lead is not a
+  property of either kernel.
+
+A graphics-mode boot with the driver (`dB`) prints the same five driver lines,
+and its settled frames are pixel-identical to `dN`'s.
+
+### `_VBE20DisplayDriver_instance`
+
+Spec 1 flagged this difference as the one that might matter at load time: the
+reference leaves the symbol an unallocated common, while our `kl_ld`
+allocates it in `__common`. **It caused no trouble.** The driver linked,
+instantiated, initialised and registered. **Not established:** whether
+anything read the symbol during these boots.
+
+### Harness notes
+
+- **`vm/install-driver.py` fails on this host.** It runs `cp -c`, a macOS
+  clone flag, and GNU cp 8.32 rejects it. This run used a scratch wrapper that
+  imports the tool unchanged and replaces only that call with
+  `shutil.copyfile`. The harness itself was not modified.
+- In the successful verbose boot, the booter screen survives under a second
+  after Return, and the last frame before the kernel console ends on
+  `Loading binary for VBE20DisplayDriver device driver.`, before the link
+  result. A frame capture cannot show that result in the passing case.
+  Hence the serial-only gate.
+
+### Still open
+
+- The frame-buffer console. Nothing has run `FBAllocateVBEConsole` past its
+  guard, and nothing will until spec 3 writes `kbs+0x1854`/`+0x1858`.
+- `VBEModeInfo2IODisplayInfo` at runtime. The driver links against it, but the
+  "Skipping" path never calls it.
+- These captures cannot be regenerated. See the gate record.

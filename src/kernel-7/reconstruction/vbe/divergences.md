@@ -2006,3 +2006,180 @@ Checks 1, 2 and 3, and check 4's second half. Nothing in this pass changes what
 Task 4's code should be, and nothing in it is evidence that the code is right.
 **Task 5 must still not start until check 4 has actually been run**, against a
 built kernel, using the comparison form measured above.
+
+### Task 4 verification pass 3, 2026-09-22: built; checks 1-3 pass; check 4 as written fails
+
+The source is unaltered (`e2d02efe8`). This pass built it, ran all four checks,
+and added one control boot when check 4 failed. **Check 4, in the form the
+previous pass wrote down, fails.** The control says why, but it does not change
+the verdict. Choosing a different gate is not this record's decision.
+
+| Check | Result |
+|---|---|
+| 1. both symbols defined and external | **pass** |
+| 2. Task 2's 539-byte extent | **pass**, MATCH 411/411 |
+| 3. `_BasicAllocateConsole` byte oracle | **pass**: 72 bytes, 60/60 unmasked bytes identical, all three targets correct |
+| 4. against `shots-t4v-pre2`/`-preB` | **FAIL**: one serial line differs after sorting, and the settled frames differ outside the clock (see below) |
+
+#### The build, and how the guest was kept alive
+
+All **[measured]**:
+
+- Before the build, the guest had been up 15 minutes. It had 50534 free pages
+  and 997020 KB free on `/`, and `ps aux` showed nothing busy. The load
+  averages still read 2.2-3.0, so that number means nothing on this box.
+- `vm/sync-src.ps1 -Path kernel-7` from this worktree completed. On the guest,
+  `BasicConsole.c:32` carries the import and `:265` the call.
+- The profile workaround is Task 3's `sed`, verbatim, writing
+  `/tmp/task4c-gcc-darwin.conf`. `diff` against the repo profile shows only
+  line 16, `path=`.
+- The build ran in the foreground of **one** SSH session, `ssh -T ...
+  /bin/sh -s`, with the script on stdin. The host ran it as a background job
+  and never polled it. rbuild's output went to `/tmp/task4c-build.log` on the
+  guest. The same session then printed that log in full, extracted the kernel
+  and printed it `uuencode`d, so no second session was needed to get it back.
+- The command:
+
+  ```
+  rbuild kernel --state /build/state --toolchain /tmp/task4c-gcc-darwin.conf \
+    --arch i386 /build/src /build/repo /tmp/task4c-kvbe-dst
+  ```
+
+  It ran from 16:24:54 to 16:47:55 guest time and ended with `rbuild: kernel
+  complete`, exit 0, producing eight APKs. `BasicConsole.c` compiled with
+  **no diagnostic**. The only diagnostic from `FBConsole.c` is Task 2's known
+  cast warning at line 1477.
+- **The guest stayed healthy.** Every SSH connection in this pass was accepted:
+  two pre-checks, the sync's two sessions and the build session. At the end of
+  the build the load averages read 3.05/3.25/3.29 and 40407 pages were free.
+
+#### The kernel
+
+`./mach_kernel` from `kernel-154.5.1-7-i386.apk` is 1490352 bytes. On the
+guest, `sum` gives `8583 1456` and `cksum` gives `3886786274 1490352`. The
+uudecoded local copy reproduces both. Its SHA-256 is
+`74B12FCD53E886AAFCBB29AD400C5DEDD10B26F04BBA0FBC6E02DAEFEA25CFF4`. The
+embedded banner reads `Tue Sep 22 13:46:24 PDT 2026` **[measured]**.
+
+It is retained as a gitignored file in the worktree,
+`vm/work/task4c-mach_kernel`, with a second copy in the session scratchpad.
+The pre-Task-4 kernel was copied beside it as `vm/work/task3-mach_kernel-final`
+(SHA-256 `1C0F8B80...215D`, re-checked). **Both copies survive the session but
+not a worktree cleanup.** Neither is durable beyond that. If they are lost,
+the fallback is to rebuild from `e2d02efe8`.
+
+#### Checks 1-3
+
+**[measured]** The results, check by check:
+
+- **Check 1.** Guest `nm` and the local Mach-O parse agree:
+  `_VBEModeInfo2IODisplayInfo` is at `0x001E87DC`, `_FBAllocateVBEConsole` at
+  `0x001E89F8` and `_BasicAllocateConsole` at `0x001E214C`. All three have
+  `n_type 0x0F`.
+- **Check 2.** `compare_kvbe.py` reports `MATCH: all 411 compared bytes
+  identical`, and the dispatch and all 31 table targets agree relative to the
+  entry. The extent moved by +8 (`0x001E87D4` to `0x001E87DC`), which is still
+  `0 mod 4`. Its SHA-256 is now
+  `6CA497348D3D3F7F1A90E8C849A87A576CB37438C84E10AD34DE459CD5599800`. As
+  before, the moved hash comes entirely from the masked absolute bytes.
+- **Check 3.** Decoding from the symbol to the first `ret` gives **72 bytes**:
+
+  ```
+  5589e581ec8800000053e89d68000085c0752b68880000008d9d78ffffff53e8
+  d0eaf1ffc78578ffffff80020000c7857cffffffe001000053e8e63a00008b9d
+  74ffffff89ec5dc3
+  ```
+
+  Masking the rel32s at fn+11, 32 and 58 leaves 60 bytes, all identical to
+  the reference. The three calls resolve against our own symbol table to
+  `_FBAllocateVBEConsole` (`0x001E89F8`), `_bzero` (`0x00100C40`) and
+  `_VGAAllocateConsole` (`0x001E5C70`), in that order. The `jne` lands on
+  fn+62, as the reference's does. The eight bytes after the `ret`
+  (`55 89 e5 83 ec 10 57 56`) also equal the reference's. The stripped kernel
+  has no local symbols, so the size comes from the decode. The distance to the
+  next symbol is not a size.
+
+#### Check 4 as written: fails, in two ways
+
+The method is the recorded one. `graft-kernel.py` wrote a fresh
+`vm/work/test.img`, and `/mach_kernel` read back from it matches the SHA-256
+above. Then `qemu-shot.py --at 30,60,95 --keys $'mach_kernel -v\n' --keys-at 8`
+captured the boot into `vm/shots-t4c-post/`. Both comparisons are against the
+morning baselines. **[measured]**
+
+1. **The sorted serial diff is not empty.** Exactly one line differs, serial
+   line 4: `Sun Sep 20 15:00:37 PDT 2026; root(rcbuilder):...` against
+   `Tue Sep 22 13:46:24 PDT 2026; ...`. This is the kernel's `version[]`
+   banner. It sits at file offset `0x13A102` in both kernels, and this
+   build's own log shows the build writing it (`char version[] = "Kernel
+   Release 5.3:\nTue Sep 22 13:46:24 PDT 2026; ...`). Every rebuild changes
+   this line. The noise floor was measured by booting one kernel twice, so it
+   could not show this line moving.
+2. **The settled frames differ outside the clock.** The 60 s and 95 s frames
+   differ by 2500 pixels from `pre2` and 2502 from `preB`, not 48. The top
+   five visible text rows are different text. The eight
+   `intr: phantom IRQ 15, EOI to master` lines now come *after*
+   `Power management is enabled.`, at serial lines 53-60. In the baselines
+   they fell inside the IDE probe: lines 28 and 33-39 in `pre2`, 37-44 in
+   `preB`. So they are what fills the top of the screen. The clock lines then
+   differ in the seconds field: init at `05:00:13` here against `05:00:28`
+   in `pre2`. The boot had also settled by 30 s (all three frames are
+   identical), where the morning's 30 s frames were still scrolling.
+
+#### The control that was added once check 4 failed
+
+Two more boots went through the same procedure, on this host, within minutes
+of the first. **[measured]**
+
+- `vm/shots-t4c-preC/` is the **pre-Task-4** kernel,
+  `task3-mach_kernel-final`, re-booted now. `/mach_kernel` in the image was
+  read back and verified.
+- `vm/shots-t4c-post2/` is the new kernel booted a second time.
+
+| Pair | serial | 60 s / 95 s frames |
+|---|---|---|
+| `preC` vs `pre2` | equal as sorted multisets | **2518 px**, the same five rows as above |
+| `preC` vs `post` | same 76 lines **in the same order**; only line 4, the banner, differs | 30 px, the clock ones digits only (text row 6 col 14, row 7 col 18) |
+| `preC` vs `post2` | same as above | **0 px**: pixel-identical, same PNG SHA-256 |
+| `post` vs `post2` | byte-identical | 30 px, the clock ones digits only |
+
+The pre-Task-4 kernel, booted today, shows the same shift from the morning
+baselines that the new kernel does. So difference 2 above is not a property
+of the Task 4 kernel. Booted side by side under the same conditions, the two
+kernels differ by exactly one serial line, the build banner, and by at most
+the clock digits on screen.
+
+**Not determined:** why today's boots reach init about 14 guest seconds sooner
+than the morning's, and why that moves the phantom-IRQ block. Two things were
+ruled out. It is not the image: `golden.img` was last modified 2026-07-24,
+before both sets of runs. It is not the kernel: the `preC` control rules that
+out. Any statement about host load at 10:02-10:08 would be a guess, and none
+is made here.
+
+#### What this does and does not settle
+
+- **As written, check 4 FAILS.** The gate named the `pre2`/`preB` captures as
+  its baseline and required an empty sorted diff. Neither condition holds.
+  Task 4 stays **BLOCKED** on check 4 until someone decides whether it may be
+  read as:
+  (i) the sorted serial diff, excluding the build-banner line, **and**
+  (ii) a pre-Task-4 control booted in the same session as the kernel under
+  test, standing in for a baseline captured at another time.
+- Read that way, the recorded captures pass. `post2` is pixel-identical to
+  `preC`, and `post`/`post2` differ from `preC` only in line 4 of `serial.log`.
+  **[inference: that conclusion depends on accepting (i) and (ii), which this
+  pass did not decide]**
+- Nothing here needed the new arm to run. No producer was stubbed, no guard
+  weakened and no debug override added.
+
+Captures retained in the worktree. They are gitignored and uncommitted, and
+all three frames of each run hash the same:
+
+```
+vm/shots-t4c-post/   serial.log  9807128aa606ae7d0abcbae617ec2248f782d7b596d00fb51a3e89454a53a262
+                     shot-{30,60,95}s.png  ceef59251f9788ea79a5b30342ddce4e9d6fbf86279004344d3a9ed13c70fae5
+vm/shots-t4c-post2/  serial.log  9807128aa606ae7d0abcbae617ec2248f782d7b596d00fb51a3e89454a53a262
+                     shot-{30,60,95}s.png  125c4133b06bb46e8e3d06262ef225c9f44fb3ecce0bc933cf639ffbc4474f76
+vm/shots-t4c-preC/   serial.log  ba96aebab0223c392852ef7fdf031cb1ac5ff1349175c8e410aac9c0a768c51e
+                     shot-{30,60,95}s.png  125c4133b06bb46e8e3d06262ef225c9f44fb3ecce0bc933cf639ffbc4474f76
+```

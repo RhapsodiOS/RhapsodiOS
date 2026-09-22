@@ -15,7 +15,7 @@ Usage:
 import json, os, socket, struct, subprocess, sys, time, zlib
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-IMAGE = os.path.join(HERE, "work", "test.img")
+IMAGE = os.environ.get("RHAP_TEST_IMAGE") or os.path.join(HERE, "work", "test.img")
 
 SHIFT_MAP = {
     "_": "minus", ":": "semicolon", "?": "slash", "~": "grave_accent",

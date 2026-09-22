@@ -99,6 +99,38 @@ class TestSafety(unittest.TestCase):
             img.close()
 
 
+class TestPerSessionImageOverride(unittest.TestCase):
+    def test_override_accepts_the_named_image(self):
+        with tempfile.TemporaryDirectory() as d:
+            alt = os.path.join(d, "ufs-backport.img")
+            with mock.patch.dict(os.environ, {"RHAP_TEST_IMAGE": alt}):
+                rhap_inject.check_target(alt)  # must not raise
+
+    def test_override_still_accepts_the_default_target(self):
+        with tempfile.TemporaryDirectory() as d:
+            alt = os.path.join(d, "ufs-backport.img")
+            with mock.patch.dict(os.environ, {"RHAP_TEST_IMAGE": alt}):
+                rhap_inject.check_target(WORK)  # must not raise
+
+    def test_override_cannot_authorise_golden(self):
+        with mock.patch.dict(os.environ, {"RHAP_TEST_IMAGE": GOLDEN}):
+            with self.assertRaises(rhap_inject.SafetyError):
+                rhap_inject.check_target(GOLDEN)
+
+    def test_override_cannot_authorise_the_vmdk(self):
+        with mock.patch.dict(os.environ, {"RHAP_TEST_IMAGE": VMDK}):
+            with self.assertRaises(rhap_inject.SafetyError):
+                rhap_inject.check_target(VMDK)
+
+    def test_unset_override_refuses_an_arbitrary_path(self):
+        with tempfile.TemporaryDirectory() as d:
+            alt = os.path.join(d, "ufs-backport.img")
+            env = {k: v for k, v in os.environ.items() if k != "RHAP_TEST_IMAGE"}
+            with mock.patch.dict(os.environ, env, clear=True):
+                with self.assertRaises(rhap_inject.SafetyError):
+                    rhap_inject.check_target(alt)
+
+
 class TestReplaceTableKeyParsing(unittest.TestCase):
     """Exercises the pure parse/replace helper against in-memory byte
     strings, so the malformed-input cases don't need to touch any image."""

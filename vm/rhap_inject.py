@@ -21,7 +21,8 @@ class SafetyError(Exception):
 
 
 def check_target(image_path):
-    """Refuse to write anything but vm/work/test.img.
+    """Refuse to write anything but vm/work/test.img, or the image named by
+    the RHAP_TEST_IMAGE environment variable, if set.
 
     Both sides are resolved with os.path.realpath (follows symlinks and
     Windows junctions/hardlinks) and normalised with os.path.normcase (folds
@@ -30,6 +31,14 @@ def check_target(image_path):
     "work/test.img" is refused, and a differently-spelled path to the real
     file (mixed separators, redundant "." or ".." components, different case)
     is accepted.
+
+    RHAP_TEST_IMAGE is an opt-in per-session override letting concurrent
+    sessions each use their own working image instead of contending for the
+    shared vm/work/test.img; unset, behaviour is unchanged. The override
+    cannot be used to authorise golden.img or rhapsody.vmdk: if the resolved
+    RHAP_TEST_IMAGE equals either of those, by resolved path, it is refused
+    regardless of whether the target is that same path or whether those
+    files even exist.
 
     As a second, independent check, the resolved target is also refused if it
     is the same underlying file as golden.img or rhapsody.vmdk (e.g. reached
@@ -40,9 +49,26 @@ def check_target(image_path):
         os.path.realpath(os.path.join(here, "work", "test.img"))
     )
     resolved = os.path.normcase(os.path.realpath(image_path))
-    if resolved != canonical_target:
+
+    protected_paths = [
+        os.path.normcase(os.path.realpath(os.path.join(here, name)))
+        for name in ("golden.img", "rhapsody.vmdk")
+    ]
+
+    override = os.environ.get("RHAP_TEST_IMAGE")
+    canonical_override = None
+    if override:
+        canonical_override = os.path.normcase(os.path.realpath(override))
+        if canonical_override in protected_paths:
+            raise SafetyError(
+                "refusing to write %s; RHAP_TEST_IMAGE cannot authorise "
+                "golden.img or rhapsody.vmdk" % image_path
+            )
+
+    if resolved != canonical_target and resolved != canonical_override:
         raise SafetyError(
-            "refusing to write %s; only vm/work/test.img may be modified" % image_path
+            "refusing to write %s; only vm/work/test.img (or RHAP_TEST_IMAGE, "
+            "if set) may be modified" % image_path
         )
 
     for name in ("golden.img", "rhapsody.vmdk"):

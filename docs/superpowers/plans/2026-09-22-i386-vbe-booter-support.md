@@ -1550,13 +1550,23 @@ hand-off.
 
 **Interfaces:**
 - Consumes: Task 3's budget and candidate list.
-- Produces: a `boot2` whose spare bytes are at least Task 3's budget plus 256
+- Produces: a `boot2` whose spare bytes are at least the budget plus 256
   bytes of margin, with unchanged behaviour.
+
+> **Revised after Task 3b (2026-09-22).** The budget is Task 3b's, not Task
+> 3's: at most **537** bytes after rounding. That figure includes the rebuilt
+> `setMode` panel path and excludes 4.2's palette, which the user chose not to
+> carry. The target is therefore **spare >= 537 + 256 = 793**, from 480 today,
+> so trim at least **313** bytes.
+>
+> **Candidate rank 1 (the 600-byte wait cursors) is no longer removable.**
+> 4.2's `message` reaches it on the panel path. The measured pool without it is
+> 718 bytes. Task 3b's section in `$BDIV` is authoritative.
 
 - [ ] **Step 1: Choose from the list, in order**
 
-Take candidates from Task 3 Step 6 in rank order until the spare bytes cover
-the budget plus 256. **Only `[measured]` candidates.** An `[inference]`
+Take candidates from Task 3 Step 6, as amended by Task 3b, in rank order until
+the spare bytes reach 793. **Only `[measured]` candidates.** An `[inference]`
 candidate needs its reason measured first, for example by showing a function
 has no caller in `nm` and no address taken.
 
@@ -1571,14 +1581,18 @@ evidence nothing needs it.
 - [ ] **Step 3: Build and read the size line**
 
 Build as in Task 3 Step 2, as `t5`. Expected: `booter N bytes of 45056, M to
-spare`, with `M >= budget + 256`.
+spare`, with `M >= 793`.
+
+**rbuild deletes its build tree after packaging** (Task 3, C7), so copy
+`boot.sys` and any object you need to size mid-build, as Task 3 did.
 
 **If the candidates run out first, stop and report to the user.** Do not
 reach for `[inference]` candidates, and do not change `boot1`.
 
 - [ ] **Step 4: Prove behaviour is unchanged**
 
-Run a same-session A-B-A on the verbose path, with the stock kernel:
+Run a same-session A-B-A on the verbose path, with `$KSPEC2` grafted. The
+golden image's own kernel hangs in `drvEIDE` under QEMU (Task 3, C7).
 - **A** is Task 3's booter;
 - **B** is the trimmed booter.
 
@@ -1663,10 +1677,21 @@ These are expected, per spec §4.3:
   Change only that constant, so the enumerator writes at most 89 records
   (indices 0-88). Derive the constant, show the arithmetic in `$BDIV`, and
   label it in source as a forced divergence, citing the `video` overlap.
-- **The version check, if Task 3 item 5 made it one.** Label it the same way.
+- **The palette, by the user's decision.** The mode setter keeps
+  `setupPalette(&palette, appleClut8)` where 4.2 passes its static table at
+  `0xDAAC`. Label it in source and in `$BDIV`. The two palettes agree only at
+  index 0 (black) and 255 (white).
+
+**The version check is not a divergence.** 4.2 tests `VESAVersion >= 0x200`
+(Task 3 item 5). Reproduce that, which also fixes our exact-match test.
 
 With these in, the comparison reports exactly these differences. Record the
 byte count.
+
+**One constant the comparator cannot guard.** `and eax,0xFFFF` at `boot+28212`
+has an immediate inside the booter window, so `compare_flat.py` would mask it
+rather than fail on it (Task 3, C6). Check that instruction by eye in the
+disassembly of our build, and record that you did.
 
 - [ ] **Step 6: Commit per function or per closely related pair**
 
@@ -1687,17 +1712,37 @@ build otherwise.
 **Files:**
 - Modify: `src/boot-2/i386/boot2/boot.c`, `src/boot-2/i386/boot2/graphics.c`,
   `src/boot-2/i386/boot2/boot.h` (the dead `G_MODE_KEY`)
+- Modify: `src/boot-2/i386/util/bitmap.h`, for 4.2's 24-byte `struct bitmap`
+  (Task 3b)
+- Modify: `vm/qemu-shot.py`, `vm/test_qemu_shot.py`. The key map gains
+  upper-case letters and `"`, so a capture can type `"VBE Check"=Yes`.
 - Modify: `$BDIV`: "Task 7"
+
+> **Revised after Task 3 and 3b (2026-09-22), by the user's decisions** (spec
+> §1). This task now rebuilds 4.2's `setMode`, including its mode-`0x12`
+> `Boot Graphics` panel path, alongside the VBE boot flow. Task 3b's section in
+> `$BDIV` inventories that path. Of its 23 functions, 16 already MATCH, 7
+> differ, and none is new. Our planar code (`set_video_mode`/`VGAMode12`,
+> `blitRow`, the font code) is byte-identical to 4.2's. What 4.2 does, as Task 3
+> measured:
+> - it enumerates modes on **every** boot;
+> - it sets the VBE mode **last**, just before `startprog`, after switching to
+>   text, and then stores `graphicsMode = 0`;
+> - it prints nothing on success, and never prints to serial;
+> - a `VBE Mode` the BIOS does not offer falls back to `modes[0]`.
 
 **Interfaces:**
 - Consumes: Task 6's functions; Task 3's rows for the region near the image's
-  top: the `VBE Mode` key, `VBE Check`, the adapter warning and `Boot Graphics`.
-- Produces: a booter that, with a `VBE Mode` key present:
-  - sets the mode;
-  - fills `vbeCurrentMode` and `vbeModes`;
-  - enters graphics.
-
-  Without a key, it behaves as Task 5's booter did.
+  top (the `VBE Mode` key, `VBE Check`, the adapter warning and
+  `Boot Graphics`); Task 3b's panel-path inventory.
+- Produces a booter that:
+  - on every boot, enumerates modes into `vbeModes`;
+  - with a `VBE Mode` key, sets that mode, or `modes[0]` on fallback, last in
+    `execKernel`, writes `vbeCurrentMode`, and hands the kernel
+    `graphicsMode = 0`;
+  - with `Boot Graphics` = Yes and no `-v`, shows 4.2's 352x264 mode-`0x12`
+    panel and hands the kernel `graphicsMode = 1` when no VBE mode is set
+    (Task 3b).
 
 - [ ] **Step 1: Reconstruct the boot-flow functions**
 
@@ -1706,17 +1751,59 @@ Use Task 6's procedure: read, write, build, compare, record. These include:
 - the `VBE Check` interaction that prints `Usable VBE modes:`
   (`boot+2652..2857` only reads the array);
 - the adapter warning;
-- the graphics-mode entry that replaces `setMode()`'s dead `"Graphics Mode"`
-  branch (`graphics.c:189-208`).
+- `execKernel`'s VBE path (`boot+1224..1263`) and the unconditional
+  enumerator call (`boot+956`);
+- **4.2's `setMode` and every function Task 3b lists on its panel path.**
+  Rebuild the 7 that differ. Re-compare the 16 that already MATCH after
+  building, to prove they still do.
 
-Remove that branch's `kernBootStruct->video` stores with it (spec §4.3).
-`G_MODE_KEY` goes when nothing uses it. Check with
+Replace our `setMode()`'s dead `"Graphics Mode"` branch (`graphics.c:189-208`)
+with 4.2's `setMode`. Its `kernBootStruct->video` stores go with it (spec
+§4.3). `G_MODE_KEY` goes when nothing uses it; check with
 `grep -rn G_MODE_KEY src/boot-2`.
 
-Our `setMode()` has no non-VBE graphics mode (`graphics.c:209-211`). What 4.2
-does after `Reverting to VGA` is Task 3 item 10. Reproduce that, and if it
-needs something our booter lacks, record it as a divergence rather than
+**Also remove `boot.c:503-506`** (Task 3b). Left in, it gives a typed `-v` boot
+the panel and `graphicsMode = 1`, which 4.2 does not do and G1's verbose check
+forbids.
+
+**`struct bitmap` takes 4.2's 24-byte layout** (Task 3b). The golden image's
+`Panel.image` is in that layout. `util/bitmap.h` is also included by the host
+tool `util/dumptiff.m`. Before changing the header, find out whether the
+boot-2 build compiles `dumptiff.m`:
+- if it does, the rbuild must still succeed;
+- if it does not, record that the host tool now reads the new layout.
+
+Item 10, as the Task 3 review corrected it: when no mode is usable, 4.2 sets no
+BIOS mode and writes no record. The screen stays in whatever text mode was
+current, since `setMode(0)` at `boot+1232` is a no-op when `graphicsMode` is
+already 0. Mode 2 is set only after a `Boot Graphics` panel. Reproduce that.
+If it needs something our booter lacks, record it as a divergence rather than
 inventing it.
+
+**Extend `qemu-shot.py`'s key map** so later steps can type the `VBE Check`
+prompt. Write a failing test first in `vm/test_qemu_shot.py`:
+
+```python
+class TestUpperCaseKeys(unittest.TestCase):
+    def test_accepts_the_vbe_check_prompt(self):
+        qemu_shot.chars_to_qcodes('"VBE Check"=Yes\n')  # must not raise
+
+    def test_upper_case_is_shifted(self):
+        self.assertEqual(qemu_shot.KEY_MAP["V"], ["shift", "v"])
+        self.assertEqual(qemu_shot.KEY_MAP['"'], ["shift", "apostrophe"])
+```
+
+Then add to `KEY_MAP`, after the digits loop:
+
+```python
+for _c in "abcdefghijklmnopqrstuvwxyz":
+    KEY_MAP[_c.upper()] = ["shift", _c]
+KEY_MAP['"'] = ["shift", "apostrophe"]
+```
+
+Run `$VENVPY -m unittest discover -s vm -p test_qemu_shot.py -v`: all pass.
+Task 3's scratch `t3qemu.py` did the same thing outside the tool; this
+replaces it.
 
 - [ ] **Step 2: Check the write order**
 
@@ -1740,34 +1827,54 @@ Boot on Task 3's adapter:
 MSYS_NO_PATHCONV=1 $VENVPY vm/qemu-shot.py vm/work/test.img vm/shots-t7-vbe --vga <adapter> --at 5,15,30,60,95 --pmemsave 30:0x11000:0x2200
 ```
 
-This sends no keys, so the boot takes the default graphics-mode path. If
-Task 3 item 7 found that 4.2 also enters VBE on a verbose boot, run a second
-capture with `--keys $'mach_kernel -v\n' --keys-at 8` as well.
+Use `--vga cirrus`, Task 3's G2 adapter, with the driver's `VBE Mode` = 257.
+This sends no keys, so the boot takes the default path. 4.2 enters the VBE
+mode whether or not `-v` is typed (Task 3 item 7), so also run a second
+capture with `--keys $'mach_kernel -v\n' --keys-at 8`.
 
 The dump starts at `kbs` (`0x11000`), so a dump offset is a `kbs` offset.
 
 Pass when all of these hold:
-- The booter prints `Using VBE Mode <N>.`
+- The first frame shows our banner. The booter prints nothing about the mode
+  on success: `Using VBE Mode` appears only on fallback.
 - In the dump:
-  - `vbeCurrentMode` (offset 6232) names N, with a non-zero `xResolution`;
-  - `vbeModes` holds 1 to 89 records, and the next record's `xResolution` is
-    zero;
+  - `vbeCurrentMode` (offset 6232) names 257, with a non-zero `xResolution`;
+  - `vbeModes` holds 1 to 89 records (Task 3 measured 8 on cirrus), and the
+    next record's `xResolution` is zero;
   - bytes 8408..8431 (`video`) are all zero;
-  - `vbeFrameBuffer` (6228) is zero, because spec 2's kernel has no producer.
-- Serial shows the driver's `using VBE mode <N>` line and one
+  - `vbeFrameBuffer` (6228) is zero, because spec 2's kernel has no producer;
+  - `graphicsMode` (`kbs+0x14C`) is 0.
+- Serial shows the driver's `using VBE mode 257` line and one
   `VBE mode ... is width=` line per record.
-- The kernel console is still VGA. `FBAllocateVBEConsole` still returns NULL,
-  because nothing writes `0x12854` yet.
+- **The screen after the mode set is not a pass criterion here.** The adapter
+  is in VBE mode 257, but spec 2's kernel still allocates the VGA text console
+  (`FBAllocateVBEConsole` returns NULL while `0x12854` is zero). That console
+  writes to `0xB8000`, so the screen is expected to be blank or garbage. Record
+  what it shows. Task 8 makes it readable.
 
-- [ ] **Step 5: Item 6, if Task 3 Step 7 was skipped**
+Then run the fallback once. Set `VBE Mode` to a mode the BIOS does not list,
+using `rhap_inject.py`'s `set-key` on the installed `Instance0.table`. The
+booter must print `VBE mode N not supported.` and `Using VBE Mode 257.`, and
+the dump must name 257.
 
-Run our `VBE Check` on `--vga cirrus` and `--vga std`. Record QEMU's VBE
-version and mode list in `$BDIV`, and settle G2's adapter.
+- [ ] **Step 5: `VBE Check` on both adapters**
+
+Type `"VBE Check"=Yes` at the prompt, using the extended key map, on
+`--vga cirrus` and `--vga std`. The listing must match Task 3's measured
+listing from 4.2's own booter on the same adapter: 8 modes on cirrus, 30 on
+std, `257 = 640x480x256` first. This is our reconstruction checked against
+4.2's behaviour on the same BIOS.
 
 - [ ] **Step 6: Commit**
 
+Commit the key map separately (`vm:`), then the booter:
+
 ```bash
-git add src/boot-2/i386/boot2/boot.c src/boot-2/i386/boot2/graphics.c src/boot-2/i386/boot2/boot.h "$BDIV"
+git add vm/qemu-shot.py vm/test_qemu_shot.py
+git commit -m "vm: let qemu-shot type upper-case letters and quotes
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git add src/boot-2/i386/boot2/boot.c src/boot-2/i386/boot2/graphics.c src/boot-2/i386/boot2/boot.h src/boot-2/i386/util/bitmap.h "$BDIV"
 git commit -m "boot: set the VBE mode from the VBE Mode key and hand it to the kernel
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
@@ -1792,12 +1899,34 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
   of the mapped linear frame buffer when `vbeCurrentMode.xResolution != 0`,
   and 0 otherwise.
 
+> **Measured by Task 3 (2026-09-22) [`$KDIV`, "Spec 3: the frame-buffer
+> mapping"].**
+> - 4.2's `pmap_bootstrap` (`0x0018EEE8..0x0018F32F`) inlines `pmap_map`.
+> - It writes `0x12854 = va + (fb & page_mask)` only when `xResolution != 0`.
+>
+> That confirms spec 2's D2 inference. In ours, the block goes between
+> `pmap.c:414` and `:416`, and calls `pmap_map` (`pmap.c:246`).
+
+- [ ] **Step 0: Ask the user about the frame buffer's virtual addresses**
+
+In 4.2 the mapping lies inside `[virt_avail, virt_end)`, which `kmem_init`
+(`vm/vm_kern.c:460-477`) then makes allocatable. A later kernel allocation
+could therefore `pmap_enter` over the frame buffer's page-table entries
+**[inference, Task 3 review M10]**.
+
+**Before writing code, the controller asks the user:**
+- **reproduce 4.2** (a labelled reference defect); or
+- **reserve the range**, for example by advancing `virtual_avail` past it,
+  recorded as a forced divergence.
+
+The implementer is told the answer. Do not choose it yourself.
+
 - [ ] **Step 1: Write the mapping**
 
 Write it in `pmap_bootstrap`, at the point Task 3 identified, using the
-primitive Task 3 named. Mirror 4.2's physical address, length and guard.
-**Mapping nothing when `xResolution` is zero is required** (spec §5), whatever
-4.2 does.
+primitive Task 3 named. Mirror 4.2's physical address, length and guard, and
+apply Step 0's answer. **Mapping nothing when `xResolution` is zero is
+required** (spec §5), and 4.2 does the same.
 
 Rewrite the `FBConsole.c` comment block to say:
 - where the producer is now (`pmap.c:<line>`);
@@ -1839,9 +1968,13 @@ Run it in one session, after `vm/sync-src.ps1 -Path kernel-7`. Extract
   `$GOLDEN` and boot `-v`, with `--pmemsave 60:0x11000:0x2200`. `0x12854`
   must read zero. Serial must match a spec 2 kernel's except line 4, in a
   same-session A-B.
-- **With Task 7's booter, the driver and this kernel:** boot on the G2
-  adapter with `--pmemsave 60:0x11000:0x2200`. `0x12854` must be non-zero,
-  and the console must render through the frame buffer at the mode's size.
+- **With Task 7's booter, the driver and this kernel:** boot on
+  `--vga cirrus` with `--pmemsave 60:0x11000:0x2200`. Pass when:
+  - `0x12854` is non-zero;
+  - the kernel's scrolling text console is readable, rendered through the
+    frame buffer at 640x480, where Task 7's boot showed a blank or garbage
+    screen.
+
   The full checks are in Task 9's G2.
 
 - [ ] **Step 5: Commit**
@@ -1871,8 +2004,17 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
   - Task 7's booter;
   - Task 8's kernel;
   - `$KSPEC2`;
-  - `$GOLDEN`'s stock kernel, for G5.
+  - `vm/work/negctl-mach_kernel`, for G5 (SHA-256
+    `9916E7C0BDAC2D4E28A5236AC303677A7A45A8ABFE229B307CEBEAC70721CF8D`).
+    This is spec 2's pre-spec-2 negative-control kernel. The golden image's own
+    kernel hangs in `drvEIDE` under QEMU (Task 3, C7).
 - Produces: the spec 3 gate record.
+
+> **Revised after Task 3 (2026-09-22).** G1, G2, G3 and G5 below follow the
+> spec's revised §7. The originals assumed three things 4.2 does not do:
+> - it draws a booter panel in the VBE mode;
+> - it prints `Using VBE Mode` on success;
+> - it keeps the mode array empty without a key.
 
 **Before any boot:** record `git status --short src/` (it must be clean, since
 the sync copies the working tree), `$GOLDENSHA` re-hashed, and the hash of
@@ -1882,39 +2024,60 @@ every kernel, booter and `_reloc` used.
 banner Task 3 Step 3 recorded for the booter that boot claims to use. A boot
 whose first frame does not show it proves nothing.
 
-- [ ] **Step 1: G1, nothing changes without a VBE mode**
+- [ ] **Step 1: G1, nothing changes for the kernel without a VBE mode**
 
-Build the image with no driver and no `VBE Mode` key. Run the verbose path
-with Task 8's kernel:
+Build the image with no driver and no `VBE Mode` key, and Task 8's kernel.
+
+**Verbose boots**, a same-session A-B-A:
 - **A** is Task 5's booter;
 - **B** is Task 7's booter;
 - then **A** again.
 
-Use `--pmemsave 60:0x11000:0x2200`. Pass when both hold:
-- the comparison rules hold, except the banner line if the two builds'
-  banners differ (record it);
-- `kbs+0x1854..0x20D7` is zero in every dump.
+Use `--pmemsave 60:0x11000:0x2200` and `--keys $'mach_kernel -v\n' --keys-at 8`.
+Pass when all of these hold:
+- serial matches except line 4;
+- the kernel-phase frames match;
+- the booter-phase frames are recorded, not compared: they differ by the
+  user's decision, since B has 4.2's `setMode` and the `VBE Check` prompt;
+- in every dump, `kbs+0x1854..0x186F` and `boot_video` (8408..8431) are zero,
+  and `graphicsMode` is 0;
+- B's dump may show a filled mode array, since 4.2 enumerates on every boot.
+  Record it.
+
+**Default boot** (no keys), B only. Record:
+- the panel, which is expected to be 4.2's 352x264 mode-`0x12` panel (Task 3b);
+- the `graphicsMode` the kernel received (expected 1);
+- that the boot proceeds.
 
 - [ ] **Step 2: G2, the VBE path**
 
-Use the driver, Task 7's booter and Task 8's kernel, on the chosen adapter.
-Boot verbose and in graphics mode, whichever item 7 says 4.2 used for the
-VBE console. Pass on all five checks of spec §7 G2:
-- the booter's panel is drawn in the VBE mode;
-- the dump shows `0x12854` non-zero, the record at `0x12858` naming N, 1 to
-  89 records from `0x12870`, and the next record zero;
-- serial shows `Using VBE Mode N`, `using VBE mode N` and the per-mode lines;
-- the console renders through the frame-buffer console at the mode's size;
-- `boot_video` matches G1's dump.
+Use the driver with `VBE Mode` = 257, Task 7's booter and Task 8's kernel, on
+`--vga cirrus`. Boot verbose, and default as well: 4.2 enters VBE either way.
+Pass on all five checks of spec §7 G2:
+- **the dump** shows `0x12854` non-zero, the record at `0x12858` naming 257,
+  8 records from `0x12870`, and the next record zero;
+- **serial** shows the driver's `using VBE mode 257` and one
+  `VBE mode ... is width=` line per record, and no booter lines;
+- **the kernel's scrolling text console** renders through the frame-buffer
+  console at 640x480;
+- **`boot_video`** matches G1's dump;
+- **the first frame** shows our banner.
 
 - [ ] **Step 3: G3, the fallback**
 
 Two cases:
-- the driver's table `VBE Mode` set to a mode the BIOS does not list;
-- an adapter with no usable VBE, if Task 3 found one.
+- **`VBE Mode` set to a mode the BIOS does not list.** Pass when the booter
+  prints `VBE mode N not supported.` and `Using VBE Mode 257.`, and the boot
+  then proceeds as in G2 with mode 257.
+- **An adapter with no usable VBE.** Try `-vga none -device isa-vga` or
+  another QEMU display device, and record which one, if any, offers no usable
+  VBE. Pass when the booter prints `VESA not available.` or
+  `No usable VBE mode. Reverting to VGA.`, writes no record, leaves
+  `graphicsMode` at 0, and the kernel's VGA text console appears after about
+  5 s. If no QEMU device lacks usable VBE, record the case as not exercised.
 
-Pass when the booter prints 4.2's message for each case, the boot continues
-on the VGA console, and `vbeCurrentMode.xResolution` is zero.
+`qemu-shot.py --vga` accepts only `cirrus` and `std`. A different device needs
+a one-off wrapper for this step. **Do not widen the tool for one run.**
 
 To edit the table in the image, use `rhap_inject.py`'s `set-key` on the
 installed `Instance0.table`, on `vm/work/test.img`.
@@ -1932,9 +2095,10 @@ Pass when these hold:
 
 - [ ] **Step 5: G5, link order**
 
-1. Build the image from `$GOLDEN` with **no kernel graft**. The stock kernel
-   lacks `_VBEModeInfo2IODisplayInfo`; confirm that from its symbol table
-   before relying on it.
+1. Build the image from `$GOLDEN`, grafting `vm/work/negctl-mach_kernel`.
+   Check its SHA-256, and confirm from its symbol table that it lacks
+   `_VBEModeInfo2IODisplayInfo` before relying on it. **[REVISED: this step
+   said "no kernel graft". The stock kernel hangs in `drvEIDE` under QEMU.]**
 2. `install-driver.py vm/work/kern.img "$DRV" vm/work/test.img --first`, then
    read `Boot Drivers` back. It must start with `VBE20DisplayDriver`.
 3. Boot verbose with the stock booter.

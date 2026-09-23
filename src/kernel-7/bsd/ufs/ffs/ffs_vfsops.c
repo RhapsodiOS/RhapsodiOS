@@ -79,6 +79,7 @@
 #include <sys/ioctl.h>
 #include <sys/errno.h>
 #include <sys/malloc.h>
+#include <sys/reboot.h>
 
 #include <miscfs/specfs/specdev.h>
 
@@ -204,6 +205,15 @@ ffs_mount(mp, path, data, ndp, p)
 		    (error = ffs_reload(mp, ndp->ni_cnd.cn_cred, p)))
 			return (error);
 		if (fs->fs_ronly && (mp->mnt_flag & MNT_WANTRDWR)) {
+			if (fs->fs_clean == 0) {
+				if ((boothowto & RB_SINGLE) &&
+				    (mp->mnt_flag & MNT_ROOTFS)) {
+					printf("ffs: root not cleanly unmounted, refusing read-write upgrade; run fsck\n");
+					return (EPERM);
+				}
+				printf("ffs: %s not cleanly unmounted; mounting read-write anyway\n",
+				    fs->fs_fsmnt);
+			}
 			/*
 			 * If upgrade to read-write by non-root, then verify
 			 * that user has necessary permissions on the device.

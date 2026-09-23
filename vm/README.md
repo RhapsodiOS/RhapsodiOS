@@ -146,12 +146,19 @@ gzip -dc /build/<dst>/kernel-154.5.1-7-i386.apk |
 |------|------|
 | `rhapsody.vmdk` | Original guest disk. Never opened for write, never booted. |
 | `golden.img` | Raw conversion of `rhapsody.vmdk` (`qemu-img convert -O raw`). The read-only master; never booted, never written. |
-| `work/test.img` | Writable scratch copy of `golden.img`. The **only** image any tool here will boot or write. Disposable - recreate it any time. |
+| `work/test.img` | Writable scratch copy of `golden.img`. The **only** image any tool here will boot or write, unless `RHAP_TEST_IMAGE` names another (below). Disposable - recreate it any time. |
 
 `golden.img` and `rhapsody.vmdk` are never written to directly: `rhap_inject.py`
 and `qemu-shot.py` both refuse any path that doesn't resolve to
 `vm/work/test.img` (`rhap_inject.check_target`), and `qemu-shot.py` additionally
 boots with `-snapshot` so QEMU itself can't write through to the backing file.
+
+Setting the opt-in `RHAP_TEST_IMAGE` environment variable to an absolute path
+lets a session use its own working image: `check_target` then accepts that
+path too, but still refuses `golden.img` and `rhapsody.vmdk` even if the
+variable names them. `guest-console.py` boots the `RHAP_TEST_IMAGE` image
+instead of `work/test.img`; it does not call `check_target`, so never point the
+variable at `golden.img` or `rhapsody.vmdk`.
 
 ## reset-image.cmd
 
@@ -185,9 +192,9 @@ python qemu-shot.py IMAGE OUTDIR [--at SECONDS[,SECONDS...]] [--keys STRING] [--
 
 Headless capture harness, standard library only:
 
-- `IMAGE` must resolve to `vm/work/test.img`; anything else (including
-  `golden.img`) is refused before QEMU is launched. The drive is also opened
-  with `-snapshot`.
+- `IMAGE` must resolve to `vm/work/test.img` (or `RHAP_TEST_IMAGE`, if set);
+  anything else (including `golden.img`) is refused before QEMU is launched.
+  The drive is also opened with `-snapshot`.
 - Writes `OUTDIR/shot-<seconds>s.png` at each `--at` point via QMP
   `screendump`. These filenames encode **host wall-clock seconds**, not
   guest boot progress - under TCG they are not comparable between runs.
@@ -221,9 +228,10 @@ bytes could be written in place before `rhap_inject.py` would refuse.
 python rhap_inject.py IMAGE {set-key|put} ...
 ```
 
-Only `vm/work/test.img` may be targeted; `check_target` is checked before the
-image is ever opened for write. Never allocates - it can only overwrite
-bytes within a file's already-allocated fragments.
+Only `vm/work/test.img` (or `RHAP_TEST_IMAGE`, if set) may be targeted;
+`check_target` is checked before the image is ever opened for write. Never
+allocates - it can only overwrite bytes within a file's already-allocated
+fragments.
 
 - `set-key PATH KEY VALUE` - rewrite one `"key" = "value";` entry in a
   DriverKit `.table` config file in place.
@@ -295,7 +303,7 @@ python guest-console.py --test-mouse   # boot multi-user, check the cursor moves
 ```
 
 Writes are discarded by default (`-snapshot`); pass `--persist` to let them
-reach `work/test.img`.
+reach `work/test.img` (or the `RHAP_TEST_IMAGE` image, if set).
 
 ## Things that are not obvious
 

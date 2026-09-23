@@ -554,8 +554,7 @@ ffs_mountfs(devvp, mp, p)
 		goto out;
 	}
 #if REV_ENDIAN_FS
-	if (fs->fs_magic != FS_MAGIC || fs->fs_bsize > MAXBSIZE ||
-	    fs->fs_bsize < sizeof(struct fs)) {
+	if (fs->fs_magic == FS_MAGIC_SWAPPED) {
 		byte_swap_sbin(fs);
 		if (fs->fs_magic != FS_MAGIC || fs->fs_bsize > MAXBSIZE ||
 	    		fs->fs_bsize < sizeof(struct fs)) {

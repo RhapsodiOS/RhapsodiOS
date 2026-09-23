@@ -334,8 +334,10 @@ ffs_reload(mountp, cred, p)
 	else
 		size = dpart.disklab->d_secsize;
 #endif
-	if (error = bread(devvp, (ufs_daddr_t)(SBOFF/size), SBSIZE, NOCRED,&bp))
+	if (error = bread(devvp, (ufs_daddr_t)(SBOFF/size), SBSIZE, NOCRED,&bp)) {
+		brelse(bp);
 		return (error);
+	}
 	newfs = (struct fs *)bp->b_data;
 #if REV_ENDIAN_FS
 	if (rev_endian) {
@@ -380,8 +382,10 @@ ffs_reload(mountp, cred, p)
 		if (i + fs->fs_frag > blks)
 			size = (blks - i) * fs->fs_fsize;
 		if (error = bread(devvp, fsbtodb(fs, fs->fs_csaddr + i), size,
-		    NOCRED, &bp))
+		    NOCRED, &bp)) {
+			brelse(bp);
 			return (error);
+		}
 #if REV_ENDIAN_FS
 		if (rev_endian) {
 			/* csum swaps */

@@ -142,6 +142,8 @@ READ(ap)
 		panic("%s: type %d", READ_S, vp->v_type);
 #endif
 	fs = ip->I_FS;
+	if (uio->uio_offset < 0)
+		return (EINVAL);
 	if ((u_int64_t)uio->uio_offset > fs->fs_maxfilesize)
 		return (EFBIG);
 
@@ -301,6 +303,8 @@ WRITE(ap)
 	if (uio->uio_offset < 0 ||
 	    (u_int64_t)uio->uio_offset + uio->uio_resid > fs->fs_maxfilesize)
 		return (EFBIG);
+	if (uio->uio_resid == 0)
+		return (0);
 
 #ifdef NeXT
 	VOP_DEVBLOCKSIZE(ip->i_devvp, &devBlockSize);

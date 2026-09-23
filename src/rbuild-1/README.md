@@ -75,6 +75,9 @@ bounded native guest acceptance evidence.
   `-hdrs`/`-obj` companions; `.PKGINFO` `arch` remains `*-apple-rhapsody`.
 - Source metadata is `apk/pkginfo`. Packaged `.PKGINFO` uses the same keys
   (`makedepends`, `license`, `url`, …). apk ignores unknown keys.
+- `makedepends_i386` / `makedepends_ppc` add build dependencies only when the
+  build includes that CPU (a universal build takes both), e.g. kernel-7's
+  `makedepends_ppc = drvpexpert`.
 - Depends at runtime on `tar`, `gzip`, `apk`, `make`, `chroot`, `rsync`,
   `mkdir`, `cp`, `rm` on `PATH`.
 

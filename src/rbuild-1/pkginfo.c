@@ -68,6 +68,16 @@ int pkginfo_read(Package *p, const char *path) {
             }
             /* depend: accept (do not error); do not treat as makedepends */
         }
+        else if (strcmp(key, "makedepends_i386") == 0) {
+            strlist_free(&p->build_depends_i386);
+            strlist_init(&p->build_depends_i386);
+            str_split_chars(val, " ,", &p->build_depends_i386);
+        }
+        else if (strcmp(key, "makedepends_ppc") == 0) {
+            strlist_free(&p->build_depends_ppc);
+            strlist_init(&p->build_depends_ppc);
+            str_split_chars(val, " ,", &p->build_depends_ppc);
+        }
         /* unknown keys ignored */
     }
     free(data);
@@ -91,6 +101,21 @@ static void emit(FILE *f, const char *key, const char *value) {
     if (value) fprintf(f, "%s = %s\n", key, value);
 }
 
+static void emit_list(FILE *f, const char *key, const strlist *l) {
+    sbuf s;
+    char *joined;
+    size_t i;
+    sbuf_init(&s);
+    for (i = 0; i < l->count; i++) {
+        if (i) sbuf_putc(&s, ' ');
+        sbuf_puts(&s, l->items[i]);
+    }
+    joined = sbuf_steal(&s);
+    emit(f, key, joined);
+    free(joined);
+    sbuf_free(&s);
+}
+
 int pkginfo_write(const Package *p, const char *path) {
     FILE *f = fopen(path, "w");
     char *ver;
@@ -109,20 +134,12 @@ int pkginfo_write(const Package *p, const char *path) {
     emit(f, "origin", p->source);
     emit(f, "provides", p->provides);
     emit(f, "replaces", p->replaces);
-    if (p->has_build_depends) {
-        sbuf s;
-        char *joined;
-        size_t i;
-        sbuf_init(&s);
-        for (i = 0; i < p->build_depends.count; i++) {
-            if (i) sbuf_putc(&s, ' ');
-            sbuf_puts(&s, p->build_depends.items[i]);
-        }
-        joined = sbuf_steal(&s);
-        emit(f, "makedepends", joined);
-        free(joined);
-        sbuf_free(&s);
-    }
+    if (p->has_build_depends)
+        emit_list(f, "makedepends", &p->build_depends);
+    if (p->build_depends_i386.count)
+        emit_list(f, "makedepends_i386", &p->build_depends_i386);
+    if (p->build_depends_ppc.count)
+        emit_list(f, "makedepends_ppc", &p->build_depends_ppc);
     free(ver);
     fclose(f);
     return 0;

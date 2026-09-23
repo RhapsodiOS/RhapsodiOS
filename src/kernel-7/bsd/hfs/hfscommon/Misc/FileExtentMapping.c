@@ -1273,6 +1273,13 @@ OSErr ExtendFileC (
 					foundIndex = 0;
 					
 					err = CreateExtentRecord(vcb, &foundKey, foundData, &hint);
+					if (err == fxOvFlErr || err == dskFulErr) {
+						//	We couldn't create an extent record because the extents B-tree
+						//	couldn't grow.  Deallocate the extent just allocated and
+						//	return a disk full error.
+						(void) BlockDeallocate(vcb, actualStartBlock, actualNumBlocks);
+						err = dskFulErr;
+					}
 					if (err != noErr) break;
 				}
 				else {

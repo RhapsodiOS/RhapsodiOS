@@ -7,6 +7,12 @@ The byte checks passed earlier (see
 `src/kernel-7/reconstruction/vbe/divergences.md`). This page records the boot
 gates that followed.
 
+Spec 3 (the booter enters a VBE mode and the kernel maps the frame buffer)
+extends this record: its gates G1 to G5, run 2026-09-23, are in
+[Spec 3](#spec-3-the-vbe-booter-and-the-frame-buffer-console-run-2026-09-23)
+at the end. Its G5 refutes one spec 2 inference below, and each place that
+states it is labelled.
+
 **All three gates pass.**
 
 - **Gate 2.** `sarld` links spec 1's reconstructed `VBE20DisplayDriver` against
@@ -15,6 +21,9 @@ gates that followed.
   itself, since this driver links last in `Boot Drivers`, so nothing links
   after it for a failure to take down. *[inference, see below]* An
   undefined-symbol link failure would not cascade at other positions either.
+  **[REFUTED — spec 3 G5, measured at the first position: the next link
+  fails with `rld(): virtual memory exhausted (malloc failed)`, every later
+  one is refused, and the kernel panics `Missing EISA kernel bus class`.]**
 - **Gate 3.** The driver loads and prints all three expected lines, plus two
   more.
 - **Graphics mode.** Booted in graphics mode, the new kernel behaves exactly
@@ -25,6 +34,9 @@ A **negative control** shows the failure these gates were built to catch. The
 same driver on a kernel without the symbol fails at the booter with
 `rld(): Undefined symbols: _VBEModeInfo2IODisplayInfo`, and the kernel logs
 `configureDriver: driver class 'VBE20DisplayDriver' was not loaded`.
+**[Stock booter only. Spec 3's booter no longer passes a driver that failed
+to link to the kernel, so this kernel line would not appear with it
+(*[inference, from the code]*, not booted); see spec 3's limits.]**
 
 ## What was booted
 
@@ -128,7 +140,11 @@ which is what sets the cascade latch that `sarld-driver-link-limit.md`
 describes — and that document's cascade is specific to a malloc fatal
 (`rld(): virtual memory exhausted`), a different failure class from this
 driver's undefined symbol. So this failure would not have cascaded at any
-position, not merely because it linked last. Gate 2 therefore rests on the
+position, not merely because it linked last. **[REFUTED — spec 3 G5: with
+the driver first, the undefined-symbol error is followed by exactly that
+malloc fatal on the next driver, EIDE, and the latch then refuses the other
+five. The `error()`/`fatal()` reading holds for the first error; what it
+missed is that the next link can fail on memory.]** Gate 2 therefore rests on the
 driver's own lines and on the negative control below. The negative control
 does not settle the cascade question either way, since it too links the driver
 last; commit `4d6f874bc`'s message says it "confirms" the no-cascade reading,
@@ -177,7 +193,8 @@ last: nothing links after it to be lost, and `EISABus`, the driver whose loss
 spec 1's predicted `panic: Missing EISA kernel bus class` names, links before
 it. So this run observed only the undefined-symbol failure, in a position
 where a cascade could not show. That it would not cascade elsewhere is the
-inference above, not a result of this run.
+inference above, not a result of this run. **[REFUTED for the first
+position — spec 3 G5.]**
 
 **Provenance gap.** `negB`'s kernel is pre-spec-2 by build date (`Fri Sep 18
 12:06:49 PDT 2026`) and lacks both new symbols, but its exact source revision
@@ -371,6 +388,8 @@ It establishes:
   and panic spec 1 also predicted were not seen, but with the driver linked
   last this run could not have seen them. That they would not occur at other
   positions is an inference from `rld.c`, recorded under Gate 2.
+  **[REFUTED for the first position — spec 3 G5 measured both the cascade
+  and the panic there.]**
 - Linking the driver costs no other boot driver its registration. As noted
   under Gate 2, that check is structurally weak.
 - On the default graphics-mode path, the new kernel's console output matches
@@ -387,11 +406,481 @@ It does **not** establish:
 
 - **That the frame-buffer console works.** Nothing has run
   `FBAllocateVBEConsole` past its guard. Nothing writes `0x12854`/`0x12858`
-  until spec 3 supplies a producer.
+  until spec 3 supplies a producer. **[UPDATED — spec 3 G2: it works on
+  QEMU, at VBE mode 257.]**
 - That `VBEModeInfo2IODisplayInfo` runs correctly. The driver links against
   it, but the "Skipping" path never calls it. Its evidence is still the byte
-  comparison.
+  comparison. **[UPDATED — spec 3 G2: it now runs, inside
+  `FBAllocateVBEConsole`, for one 8 bpp mode; see spec 3's limits.]**
 - Anything about the driver's `using VBE mode %d` path, its mode-list export
-  with a non-empty list, or its `getCharValues:` parameters.
+  with a non-empty list, or its `getCharValues:` parameters. **[UPDATED —
+  spec 3 G2 exercised the first two; `getCharValues:` is still untested.]**
 - Anything about `src/boot-2`. Every boot here ran Apple's v5.0.41.1 booter.
+  **[Spec 3's G1 to G3 ran `src/boot-2`.]**
 - Anything on hardware. These are QEMU `pc` boots with a Cirrus adapter.
+
+## Spec 3: the VBE booter and the frame-buffer console, run 2026-09-23
+
+Spec 3 gave our booter, `src/boot-2`, OPENSTEP 4.2 User Patch 4's VBE code.
+It enumerates the VBE modes on every boot into `vbeModes` (`kbs+0x1870`).
+When a loaded driver's table has a `VBE Mode` key, it sets that mode last,
+from text mode, and records it in `vbeCurrentMode` (`kbs+0x1858`). The
+kernel then maps that mode's frame buffer in `pmap_bootstrap`, reserves the
+range, and publishes the mapped address at `0x12854` (`kbs+0x1854`). So
+`FBAllocateVBEConsole` gets past its guard, and the boot console draws
+through the frame-buffer console. The byte and build evidence is in
+`src/boot-2/reconstruction/vbe/divergences.md` and
+`src/kernel-7/reconstruction/vbe/divergences.md`. This part records the boot
+gates of spec 3's design, §7, in the form revised after its Task 3.
+
+- **G1 passes. Without a VBE mode, nothing changes for the kernel.** The
+  new booter against Task 5's: identical serial, identical kernel-phase
+  frames, `kbs+0x1854..0x186F` and `boot_video` zero. As 4.2 does, the new
+  booter fills the mode array on every boot. A default boot shows 4.2's
+  mode-`0x12` panel and hands the kernel `graphicsMode` 1.
+- **G2 passes. The VBE path works on QEMU cirrus at mode 257.** The booter
+  records the mode and 8 mode records, and the kernel publishes
+  `0x0D3D4000`. The driver logs `using VBE mode 257` and eight mode lines,
+  and the kernel's scrolling console draws through the frame buffer at
+  640x480.
+- **G3 passes, both cases.** For `VBE Mode` = 999 the booter prints `VBE
+  mode 999 not supported.` and `Using VBE Mode 257.`, then boots as G2. On
+  QEMU's `isa-cirrus-vga` it prints `VESA not available.`, writes no record,
+  and the kernel's VGA console follows.
+- **G4 passes. With the stock booter, the new kernel matches spec 2's.**
+  The driver takes its "Skipping" path, the serial matches but for the build
+  date, and `0x12854` stays zero.
+- **G5 is measured: with the driver first and the symbol missing, the
+  failed link cascades.** The next driver's link fails with `rld(): virtual
+  memory exhausted (malloc failed)`, the other five are refused, no device
+  registers, and the kernel panics `Missing EISA kernel bus class`. This is
+  a finding about the stock `sarld`, not a failure of spec 3. It refutes
+  spec 2's no-cascade inference for the first position, and the four places
+  above that state it are labelled.
+
+### What was booted
+
+Every input was hashed before the first boot. Every image was rebuilt from
+`golden.img` and read back before its boot.
+
+| Role | File | Bytes | SHA-256 |
+| --- | --- | --- | --- |
+| Final booter (Task 7c build, the sources of `a0cc94d34`) | `vm/work/t7c-boot` | 45,008 | `8AA489F19C80875AE9149647C94C7AB526FD116338F1014B4AED464347547735` |
+| G1 control booter (Task 5 build, the sources of `3ba0a3466`) | `vm/work/t5-ours-boot` | 44,384 | `A75FCA09F27B28A46A5626289F4A36335FAB273F556341390E5461B9C556F31A` |
+| Final kernel (Task 8c build, the sources of `85636dc91`) | `vm/work/t8c-mach_kernel` | 1,490,352 | `56A4B3433A6E519018FA0631DA91B7731BB65C382EDEDDDC3BEE623701BE69E2` |
+| Spec 2 kernel (G4 control; spec 2's "new kernel") | `vm/work/task4c-mach_kernel` | 1,490,352 | `74B12FCD53E886AAFCBB29AD400C5DEDD10B26F04BBA0FBC6E02DAEFEA25CFF4` |
+| G5 kernel (spec 2's negative control) | `vm/work/negctl-mach_kernel` | 1,486,184 | `9916E7C0BDAC2D4E28A5236AC303677A7A45A8ABFE229B307CEBEAC70721CF8D` |
+| Driver `_reloc` | `VBE20DisplayDriver.config/VBE20DisplayDriver_reloc` (spec 2's bundle) | 102,412 | `77399531152E287487668F6222467CF9C1ECA449859B169A66352B608A3A36A1` |
+| Driver `Default.table` (`"VBE Mode" = "257"`) | same bundle | 482 | `02EF18A5D57FF8DA03543211DB8F12799803B6B2A0A7812114405A4B73C04C15` |
+| Driver `VBE20DisplayDriver` | same bundle | 9,472 | `B75EF6A698C443CD3621B052AA4B8BBBEE886789808681C5C600756B076B3901` |
+| Driver `English.lproj/Localizable.strings` | same bundle | 87 | `C2FDA3A61DAE9401149166FBC3E913AB4D605D222AFB109619D4D824AA54AF5A` |
+| Master image | `D:/RhapsodiOS/vm/golden.img` | 8,589,934,592 | `E1968E3EF57F3060AA01CEAB8B4D5C49C067E6ACC5F8626EBABEEFE0E663879F` |
+| Stock booter (G4, G5) | both boot slots of that image | 39,616 | `AA06C3C5BFE56C79573E36D20C662DA10CA67D0CEC5BE17F13A5B562F6B5F2C2` |
+| `sarld` (every boot) | `/usr/standalone/i386/sarld` in that image | 148,108 | `BBFB53F28725908DCC54E247EDEFD6BD78C9B5405D0C95E4B0D8B33D131AFEBA` |
+
+- The bundle also holds an empty `VBE20DisplayDriver_reloc.err`, which is
+  installed and read back with the rest.
+- `git status --short src/` was clean before the first boot. Nothing was
+  synced or built. No `src/boot-2` or `src/kernel-7` commit follows the
+  commits named above.
+- The negative-control kernel still has neither `_VBEModeInfo2IODisplayInfo`
+  nor `_FBAllocateVBEConsole`. The other two kernels define both.
+- **Which booter ran.** Ours prints `Rhapsody boot v5.0.2` on its 5 s frame,
+  the stock booter `Rhapsody boot v5.0.41.1`. Every boot below that counts
+  shows the right one. The banner cannot tell our two booters apart; the
+  boot-slot readback does.
+
+### Procedure
+
+All runs were made in the `vbe20-kernel` worktree, one QEMU at a time, on
+2026-09-23 between 12:08 and 13:23 EDT. Before every boot, `vm/work/test.img`
+was rebuilt from `golden.img` in this order:
+
+```bash
+MSYS_NO_PATHCONV=1 python graft-kernel.py D:/RhapsodiOS/vm/golden.img <kernel> work/test.img
+# with the driver; the intermediate copy was staged on another disk:
+MSYS_NO_PATHCONV=1 python install-driver.py <staged copy> <bundle> work/test.img [--first]
+# G3 case 1 only:
+MSYS_NO_PATHCONV=1 python rhap_inject.py work/test.img set-key \
+    /private/Drivers/i386/VBE20DisplayDriver.config/Instance0.table "VBE Mode" 999
+# with our booter; writes and verifies both boot slots:
+MSYS_NO_PATHCONV=1 python install-booter.py work/test.img <booter>
+```
+
+Then these were read back out of the image:
+- `/mach_kernel`, and every file of the bundle, against their sources;
+- `Instance0.table`, which equalled `Default.table`, with `999` in G3 case 1;
+- `Boot Drivers`, with the driver last, or first with `--first`;
+- `Active Drivers`, left as shipped: `CirrusLogicGD5434DisplayDriver
+  BusMouse NE2K`;
+- both boot slots: our booter followed by zeros, or byte-equal to
+  `golden.img`'s.
+
+All matched. System.config has no `VBE Mode`, `VBE Check` or `Query` key.
+The image was then hashed; the hashes are in the table below.
+
+- **Boots** used `qemu-shot.py --vga cirrus` with `--pmemsave
+  60:0x11000:0x2200`.
+- **Verbose runs** typed `--keys $'mach_kernel -v\n' --keys-at 8`.
+  **Default runs** sent no keys.
+- **One comparison, one `--at` list:** all runs in a comparison used the
+  same one.
+- **G3 case 2** used a throwaway wrapper. It loads `qemu-shot.py`
+  unchanged, and replaces only its `-vga cirrus` with `-vga none -device
+  <device>`.
+
+The comparison rules are spec 2's, with rule 4 as amended in spec 3's
+Task 5:
+- serial line 4 has only its date masked;
+- the IDE-probe line, `Power management is enabled.` and the eight
+  `intr: phantom IRQ 15, EOI to master` lines may change places;
+- frames are compared outside the clock-cell mask above. A candidate passes
+  when it equals a control there, or differs only where the two controls
+  differ from each other.
+
+### G1: nothing changes for the kernel without a VBE mode
+
+Final kernel, no driver, no `VBE Mode` key. Verbose A-B-A: `A1` Task 5's
+booter, `B` the final booter, `A2` Task 5's booter. Then `Bdef`, the final
+booter with no keys.
+
+- **Serial.** `A1` and `B` are byte-identical, line 4 included. `A2` moves
+  `Power management is enabled.` among the phantom lines, and is otherwise
+  identical.
+- **Kernel-phase frames.** `B` equals `A1` pixel for pixel at 15, 30, 60
+  and 120 s. `A2` differs from both by 980 px at 15 s and by 490 px in the
+  settled frames. That is the phantom-line race, the difference the amended
+  rule 4 allows.
+- **Booter-phase frames**, recorded, not compared. The 5 s prompt is one
+  frame in all three runs. A verbose boot draws no panel, even with the new
+  booter's panel code.
+- **Dumps.** `graphicsMode` is 0 in all three. `kbs+0x1854..0x186F` is zero
+  in all three. `boot_video` (`0x20D8..0x20EF`) is zero in all three.
+- **`A1` = `A2`,** with no VBE bytes.
+- **`B`'s mode array is filled, as 4.2 fills it on every boot.** It holds 8
+  records from `0x1870`:
+
+  | Mode | Size | Depth |
+  | --- | --- | --- |
+  | 257 | 640x480 | 8 |
+  | 272 | 640x480 | 15 |
+  | 259 | 800x600 | 8 |
+  | 275 | 800x600 | 15 |
+  | 261 | 1024x768 | 8 |
+  | 278 | 1024x768 | 15 |
+  | 263 | 1280x1024 | 8 |
+  | 281 | 1280x1024 | 15 |
+
+  - Every record has attributes `0x00BB` and frame buffer `0xFC000000`.
+  - The 9th record is zero, and so is everything after it.
+  - `A1` and `B` differ in 103 bytes, all inside `0x1870..0x192F`.
+- **Default boot (`Bdef`).**
+  - At 11 to 15 s it shows **4.2's 352x264 mode-`0x12` panel**, "Rhapsody
+    Developer Release 2 / Starting Rhapsody" with the wait cursor. Its
+    non-background pixels lie in x 152..494, y 108..370. The 13 s frame is
+    byte-identical to Task 7a's panel frame.
+  - From 20 s the kernel's graphical console follows. From 30 s it is
+    spec 2's settled `Configuring Network` frame.
+  - **The kernel receives `graphicsMode` 1**, Task 3b's reading of 4.2.
+    The dump differs from `B`'s only in `bootString` and `graphicsMode`.
+  - The serial is `B`'s, with one phantom line moved. It ends at `Continue
+    without network? (y/n)`.
+
+### G2: the VBE path
+
+Final booter, final kernel, and the driver last in `Boot Drivers` with
+`VBE Mode` = 257, on cirrus. Two runs: `g2-v` (verbose) and `g2-d`
+(default).
+
+- **Dump.** Both runs agree:
+  - `0x12854` = `0x0D3D4000`;
+  - the record at `0x12858` names **mode 257** (640x480, 640 bytes per
+    line, 8 bpp, model 4, frame buffer `0xFC000000`);
+  - **8 records** from `0x12870`, G1's eight, and the 9th is zero;
+  - `graphicsMode` is 0 on both, the default boot too.
+
+  The two dumps differ only in `bootString`. Each is byte-identical to
+  Task 8c's dump of the same boot.
+- **Serial**, 88 lines each. The driver's lines, straight after
+  `Registering: EISA0`:
+
+  ```
+  Display0: VESA video driver initialization.
+  Display0: using VBE mode 257
+  Display0: VBE mode 257 is width=640, height=480, bpp=8
+  Display0: VBE mode 272 is width=640, height=480, bpp=15
+  Display0: VBE mode 259 is width=800, height=600, bpp=8
+  Display0: VBE mode 275 is width=800, height=600, bpp=15
+  Display0: VBE mode 261 is width=1024, height=768, bpp=8
+  Display0: VBE mode 278 is width=1024, height=768, bpp=15
+  Display0: VBE mode 263 is width=1280, height=1024, bpp=8
+  Display0: VBE mode 281 is width=1280, height=1024, bpp=15
+  Registering: Display0
+  ```
+
+  That is one mode line per record. No line the booter prints appears in
+  the serial log. Set against G1's `B`, the other differences are:
+  - line 9, one page fewer (as in spec 2);
+  - the Cirrus driver now `Display1`, with one more line, `Display1: Can't
+    set memory range, using default.`. That line appears in every cirrus
+    boot where the driver takes the VBE path, since spec 3's Task 7, and in
+    none where it skips. *[inference]* The VBE driver already holds the same
+    frame buffer range.
+- **The kernel's scrolling text console draws through the frame-buffer
+  console at 640x480.** Every frame from 20 s on is 640x480: a white
+  480x360 window titled `Rhapsody Operating System` at (80, 60), black text,
+  on a slate `(103,103,152)` ground. The border runs x 77..562, y 57..422.
+  Both runs end on one frame, the text scrolled to `Continue without
+  network? (y/n)`. The default boot is also this text console: the booter
+  hands the kernel `graphicsMode` 0 and draws nothing in the VBE mode.
+- **`boot_video`** is zero, as in G1's dumps.
+- **First frame:** our banner, in both runs.
+- **Booter-phase frames**, recorded. `g2-d` shows the panel from 11 s,
+  with `Loading Rhapsody` and then `Reading Rhapsody configuration`.
+
+### G3: the fallback
+
+**Case 1, `VBE Mode` = 999** (`g3-999`, default boot, frames every second
+from 10 to 24 s):
+- Frames 13 to 18 s show the panel.
+- **Frames 19 to 23 s** show the booter's text screen, the 5 s pause:
+
+  ```
+  VBE mode 999 not supported.
+  Using VBE Mode 257.
+  ```
+
+- From 24 s on it is G2's console window, ending on G2's final frame.
+- **The dump is byte-identical to `g2-d`'s** (mode 257, 8 records,
+  `0x0D3D4000`).
+- The serial has `using VBE mode 257` and the eight mode lines. It differs
+  from `g2-d`'s only in where the IDE-probe and phantom lines fall.
+
+**Case 2, an adapter with no usable VBE.** Two QEMU devices were tried, each
+as `-vga none -device <device>` with G2's image, default boot.
+- **`isa-vga` offers usable VBE**, so it is not this case.
+  - The booter records 27 usable modes, every one with a linear frame
+    buffer at `0xE0000000` (8, 15 and 32 bpp, from 640x480 to 1920x1080).
+  - The booter sets mode 257, the driver logs `using VBE mode 257` and 27
+    mode lines, and the frame-buffer console window draws as on cirrus.
+  - So G2's path also ran on a second adapter model.
+- **`isa-cirrus-vga` offers no usable VBE.** This is the case.
+  - Frames 11 to 16 s show the panel.
+  - **Frames 17 to 21 s** show the single line **`VESA not available.`**
+  - **From 22 s the kernel's VGA console** appears, 640x480 in 16 colours.
+    It has the same geometry as G1's verbose frames, and ends at `Continue
+    without network? (y/n)`.
+  - **The dump has no record:** `0x1854..0x20D7` is zero, the current mode
+    included. **`graphicsMode` is 0**, although this default boot's panel
+    had set it to 1. `boot_video` is zero.
+  - The driver takes spec 2's path: `Skipping framebuffer initialization
+    (card not in VBE mode).`, `Driver loaded to export VBE mode list.`, `No
+    VBE modes found.`, `Registering: VBEDisplay0`.
+  - The Cirrus driver finds a `GD5430` and rejects it (`unsupported PCI
+    hardware`). `driverLoader` then registers `VGADisplay0`.
+  - Why this adapter has no usable mode was not determined. *[inference]*
+    Its BIOS lists modes without a linear frame buffer, because an ISA card
+    has no PCI BAR to report one, and `vbeModeIsUsable` requires that
+    attribute.
+- **`No usable VBE mode. Reverting to VGA.`** was not seen. *[inference,
+  `vbe.c:196-215`]* With this code it cannot be: it needs
+  `enumerateVBEModes()` to return non-zero while `vbeModes[0]` is empty.
+
+### G4: the kernel alone
+
+Stock booter and the driver, last. Verbose A-B-A: `A1` spec 2's kernel,
+`B2` the final kernel, `A2` spec 2's kernel.
+
+**One `B` run is void.** Its 5 s frame caught the stock booter before its
+banner (`Sizing memory... 131048K`), so by the rule it proves nothing. It
+was rerun at once as `B2`, with the same arguments. (Its serial and dump
+match `B2`'s under the rules.)
+
+- **Both kernels log `Skipping framebuffer initialization (card not in VBE
+  mode).`** They also log spec 2's other four driver lines, and neither logs
+  `using VBE mode`.
+- **Serial.** Line 4 differs only in its date. With phantom lines set aside,
+  `A1`, `B2` and `A2` are identical.
+- **`0x12854` is zero in `B2`'s dump.** All four dumps are one file:
+  `kbs+0x1854..0x20D7` zero, `graphicsMode` 0, `boot_video` zero. The stock
+  booter records nothing.
+- **Frames.**
+  - At 60 and 120 s, `B2` equals `A1` outside the clock mask. `A2` differs
+    from both by 490 px, in one text row: the phantom race.
+  - At 30 s, rule 4 reports 490 px in that row where `A1` and `A2` agree and
+    `B2` does not. **This is a methodology artefact, not a kernel
+    difference.** `A1` ran late: its 15 s frame is still the booter, and its
+    `init` stamp reads `05:00:21` against `05:00:14`. So its 30 s frame is
+    mid-boot, two text lines short of the settled screen, and 14,775 px from
+    its own 60 s frame. Scrolled two lines less, its row 4 happens to hold
+    a phantom line, as `A2`'s does. `B2`'s 30 s frame equals its own 60 s
+    frame.
+  - The 15 s frames are not comparable: `A1`'s is the booter's, the others
+    the kernel's.
+
+### G5: link order
+
+Negative-control kernel, stock booter, verbose. `C1` and `C2` had no driver.
+`N` had the driver installed with `install-driver.py --first`, and its
+`Boot Drivers` read back `VBE20DisplayDriver EIDE ISASerialPort Floppy
+PS2Keyboard PCIBus EISABus`. Frames were taken every 0.1 s from 8.2 to
+20 s, the same list for all three.
+
+**The booter's driver-loading lines are in `N`'s frames.** The 9.5 s frame
+shows:
+
+```
+Loading binary for VBE20DisplayDriver device driver.
+Error occurred while linking driver VBE20DisplayDriver:
+rld(): Undefined symbols:
+_VBEModeInfo2IODisplayInfo
+Error linking VBE20DisplayDriver device Driver.
+Reading configuration file '/private/Drivers/i386/VBE20DisplayDriver.config/Instance0.table'.
+Loading binary for EIDE device driver.
+Error occurred while linking driver EIDE:
+rld(): virtual memory exhausted (malloc failed)
+Error linking EIDE device Driver.
+Reading configuration file '/private/Drivers/i386/EIDE.config/Instance0.table'.
+Loading binary for ISASerialPort device driver.
+Error occurred while linking driver ISASerialPort:
+previous fatal errors occured, can no longer succeedError linking ISASerialPort device Driver.
+```
+
+The screen at 9.8 s stays up for the 10 s pause. On it, `Floppy`,
+`PS2Keyboard`, `PCIBus` and `EISABus` each fail with `previous fatal errors
+occured, can no longer succeed`. Then come `Errors encountered while
+starting up the computer.` and `Pausing 10 seconds...`.
+
+**`N`'s kernel log has 13 lines.** After the BSD copyright it reads
+`panic: Missing EISA kernel bus class`, with no `ISA bus`, no `DriverKit
+version`, and **no `Registering:` line**. The console shows `System Panic: /
+Missing EISA kernel bus class / (Type 'r' to reboot or 'm' for monitor)`.
+`C1` and `C2` each register spec 2's 12 devices: `hc0 hd0 ISASerialPort0
+fc0 PS2Controller PCKeyboard0 PCI0 EISA0 event0 kmDevice0 Display0 en0`.
+
+**So at the first position the failed link cascades, and takes down all
+six other boot drivers.**
+- The first failure is the undefined symbol. The booter reports it and moves
+  on to the next driver, as spec 2's `rld.c` reading said.
+- The next link, EIDE's, then fails on memory. That is a fatal error, and
+  `rld`'s latch refuses everything after it. This is the cascade in
+  `docs/boot/sarld-driver-link-limit.md`, with its panic, and it matches
+  spec 1's original prediction.
+- *[inference]* The failed link uses up nodes of the stock `sarld`'s
+  1,000-node allocator, the limit that document describes, and EIDE's link
+  runs past it. Whether the failed link leaks those nodes, or only uses
+  them, was not determined.
+- A successful first link does not do this. Spec 3's Task 7c booted the
+  driver first against spec 2's kernel, which has the symbol, with the
+  same `sarld`, and all seven boot drivers registered.
+- The rebuilt 8,000-node `sarld` that document describes is not on
+  `golden.img`, and was not tried.
+
+This is a finding about `sarld`, recorded, not a failure of spec 3. It turns
+spec 2's "an undefined-symbol link failure would not cascade at other
+positions either" from an inference into a refutation, **for the first
+position**. The middle positions were not tried.
+
+### Captures and hashes
+
+The captures are gitignored and live in the worktree's `vm/shots-t9-*/`.
+**They cannot be regenerated.** Boot timing under TCG drifts from session to
+session; this session ran slower than spec 3's earlier ones, and several
+15 s frames caught the booter. The hashes below are the only durable trace
+of what was measured.
+
+| Run | Kernel | Booter | Driver | Keys | `test.img` | `serial.log` lines, SHA-256 | 5 s frame | Last frame | Dump |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| G1 `A1` | final | Task 5 | no | `-v` | `6C28DE8B9EE73DBEA03C72D565726D55CF5EA92057C385A9472DD0E054336150` | 76, `D0962D4A7DDB11FD3553958C6A4FCD177E559BAC64DF23B615489ACD06F55E62` | `276180227B367AC76892E4879BF72C521E3677502B0B40A54469FB248862D91C` | `125C4133B06BB46E8E3D06262EF225C9F44FB3ECCE0BC933CF639FFBC4474F76` | `F9D7CC4D44A365EBE97AAE2A70071A4F3493C9670BCDC0B9E42FA01A33C29000` |
+| G1 `B` | final | final | no | `-v` | `E7AB2CE2EF710DF190A85DB95E8059EC6648B9A23BC03239AD4598E3047CF46A` | 76, same as `A1` | same | same as `A1` | `8F112EE8F4DB49617E6DD97AF6D6C8C252886D57EEF05071226E68DB860EC070` |
+| G1 `A2` | final | Task 5 | no | `-v` | same as `A1` | 76, `DC99B29330702DB57A70F2F5110AF78D705EC16FE36A5E74C28FFFC3794D20D6` | same | `6EFDC4D328C8A1CF53390B559185BCAF0ED76FCDC247060EF14B908C30CC1240` | same as `A1` |
+| G1 `Bdef` | final | final | no | none | same as `B` | 76, `96EE10C4BAFE85BD66A3936069DAA643790189D2DE7F79D49495C28A79FDBAFD` | same | `C0F78DDBF960E899952BBD309674B31E0C01E519A25D1B83D791092CF7C247ED` | `2091AB2920FBB508ABF58A133A6D6182E72F5399183BD5FF2AC85EA373A31C72` |
+| G2 `g2-v` | final | final | last | `-v` | `FD7B2E0EAEB3FAC1938171772527DB0A95C2EC648B9012799FEBBD515CBE14C0` | 88, `79AE61B62EC0139EA2C349BE9D6DF006C7E3057D84605F8F5D04D47996F8BE25` | same | `3CA1D670E7BE699CCE459AD980D2CDAEC105E7758BBA072B18EDD34465C630E5` | `037855BF30B96E8D9C9ADEB2E0D2A17F153A5D99F139221ECE1979C5A85515AD` |
+| G2 `g2-d` | final | final | last | none | `194628FEE03FF07A8320DB7288911847AE577B73883BA24477EE35EBD3F190E8` | 88, `C419BE0170B0E6A190E241791F071F42DDD3F48DA16B0587630EE2BC73FF5329` | same | same as `g2-v` | `22D0777219BA57D399852EBA281B21E713DB89E98EE7CA4405F74CAE2748BC8A` |
+| G3 `g3-999` | final | final | last, 999 | none | `5907B7D45611485999C7AFB0B0FABFDE2EE4188EE153D90BDB02194DE0291B77` | 88, `6E6553BE99B09006EA016758B6CC952BA11D39820E102181B8EABDF532C97F0D` | same | same as `g2-v` | same as `g2-d` |
+| G3 `isavga` | final | final | last | none | `19E9ABEC09AAEE9195EFBD1F96A8B785A35744A78FEEFDA0F6D305892D0AFD60` | 102, `877CC9CDC58F9E44E930F66625B1A2D3C3D0D07EE47EE24558D4979EDCE02BB6` | `5AF1FBA8AE70E687AF1B705A89057FA7D354CEFC01A9F1C0991731DC9B3E85C7` | `9FDDA6EA3BA425C28BE2FD9DC5BFCBC9A201BD47FD6279B26CC66F57B49E58C4` | `9EFB96D12A0D99DA2CDF777ECC9FA25EC783AE564B5295B2D3B88140B64E044E` |
+| G3 `isacirrus` | final | final | last | none | `28D9D89ED996994683B41486BC16CE33F5FF17DDFC9B5EA9895A189E2A209B6D` | 79, `C36C31C7597D93F3F873DDD437E58CBA920AAE690AC469AEB305E8349E9DD8C4` | `7643F82F88C5E55D7D3BFF2148401C0B0CB1F90D97492AECA6776F33F6D339CB` | `980D163B2258F4F7D58B051EF5B800EB71A56B66895FFFFDDB5C352CD7E80428` | `0563C39CFD56DF2D14D75C20CBE3C958396C9CA829280DC555D4B03A40B446F6` |
+| G4 `A1` | spec 2 | stock | last | `-v` | `B5F33C3F3F21ECEBDFF582EB2D69BE9F4C62BCF72716D172D46DFCD5BFBDC2F5` | 81, `8752382617A4C25020B2640C42EBA43114DB60CE1C22DBBC31B07E4F621E035F` | `A5149E2CC68FF382EB431953610182ED23190BEC7CAC38E2557C665AE95B5E70` | `3577E55423C69B8EE167DE65F058EAE2A652BB586DD7472B367FD4EB9DE056B8` | `E38F01A818D60C390AC4231AC823332E7C96FD3C7D302F80C5087CFC455D3AA3` |
+| G4 `B` (void) | final | stock | last | `-v` | `A0191872822AE2C864BDF311BF49FF2770248B9F81BD39C3DD4AB59D85FB568D` | 81, `4C584F8594A2DC8431F45721373E48016AA2858F9AD33727B4A92D73E0B73644` | `12B45462D217AFD6E90E9B97783B5D9FBAF1893D5D5F14BA2CB438E3D46E7718` (no banner) | `A940B0680871C7456CF23644C53D68BE4F3569DD232EA22F72A290AF3248367A` | same as `A1` |
+| G4 `B2` | final | stock | last | `-v` | `E87E4AF21B9942D998A9FCBBC54F04321BBE18A5D004BF40AE7E3FA1500EA0DF` | 81, `F4228F3DC4A0ED957E6CADAE2E09D57D1F204595CBB38EF2C12323269A12E387` | `A5149E2C...` | `6EFDC4D3...` (G1 `A2`'s) | same as `A1` |
+| G4 `A2` | spec 2 | stock | last | `-v` | `9E359B71B4CFF62DE72E8DA9134C2B1C20E95B4CF0821A5FA2EB8EEEC044635C` | 81, `10D60C78D670F30A458CC8876AC28B125C9227544DA3BB732035EB2E5499DB7E` | `A5149E2C...` | `125C4133...` (G1 `A1`'s) | same as `A1` |
+| G5 `C1` | negative control | stock | no | `-v` | `994A66C6E87D4F24A6BCA3AFDDA5BB908E38AC95C9F8B3356A48194610F7A3F9` | 76, `BB9B88CDC7D0E34FBE512AE1D798FD2EE9AA95E4715719D30DF45F85ED3F57CA` | `A5149E2C...` | `125C4133...` | `5F62165DC0E7585FB14418C2AB27D0C1EB90385B9875A494E447AB7EDA062C5C` |
+| G5 `N` | negative control | stock | first | `-v` | `BD9BB9626412B07E261D5EF1B9ABA799407538C416C26DC4333BC605EBE829C6` | 13, `5E2DFEFCBEDEBE08A449FD12A08B0964A5F79468C49210BAE51C0608DA8F3108` | `A5149E2C...` | `9A232CF2E374914794D9F0A4284724A3A73EE8416A8D4D02EA442ABC2D4812FB` | `CB8FC8ABE4FA60C629E8546BC98A014DBD8F581942F16951AE6F81228F09FEFB` |
+| G5 `C2` | negative control | stock | no | `-v` | same as `C1` | 76, `BED3D3B5EB53314CCAA9BD4CE8D23E8A96B3512E34E574D289C659889063D973` | `A5149E2C...` | `2627808805CD85BE8016F40EFAB5EB8384E0076C684E35C73EE9B12597C5E47E` | same as `C1` |
+
+- "Last frame" is the 120 s capture, or the 95 s or 90 s one where that was
+  the last. In every run it equals the 60 s frame.
+- Images with the driver differ in hash even when built the same way,
+  because the install stamps new inodes with the wall clock.
+- Dumps are 8,704 bytes of guest physical `0x11000..0x131FF`, taken at 60 s.
+
+Other frames cited above:
+- G1 `Bdef` 13 s, 4.2's panel:
+  `1CCB2F43C1F2D17FD0E2A773AFC8A0A93250D8B03F3CB805C10059621F07FDEA`.
+- G3 `g3-999` 19 s, the fallback messages:
+  `9B5D0FF4C65BFFB1B9BF4A7F804526E0747F71C744D58C2560F8D21B3B01EC1C`.
+- G3 `isacirrus` 17 s, `VESA not available.`:
+  `D54933C8950A4E132C05CF9944CBCAB4F0DBAE4F45438F3853A3DBD4017EA0CB`.
+- G5 `N` 9.5 s, the link errors:
+  `178B8C6D2081C952D95D4572A42AA1674A0529D22A928D6C04F55512615FBBCC`.
+- G5 `N` 9.8 s, the paused screen:
+  `C064D2337DE1F692B972AEC894F2B24AF4A7E0F4456157B8EC056E7EB301703E`.
+
+### What this does and does not establish
+
+It establishes, on QEMU:
+- **Without a VBE mode, our booter changes nothing the kernel sees except
+  the filled mode array.** The array is 4.2's behaviour, and the driver
+  reads it only when a mode is set.
+- **With a mode set, the whole path runs:**
+  - the booter records the mode;
+  - `pmap_bootstrap` maps the frame buffer and publishes the address;
+  - `FBAllocateVBEConsole` passes its guard and calls
+    `VBEModeInfo2IODisplayInfo`;
+  - the kernel's console draws through the frame buffer;
+  - the driver takes its `using VBE mode` path and exports a non-empty
+    mode list.
+
+  This held on cirrus, and on `isa-vga` at a different frame-buffer
+  address.
+- **Both fallbacks behave as 4.2's code says:** a mode the BIOS does not
+  list, and an adapter with no usable mode.
+- **With the stock booter, the final kernel behaves as spec 2's.**
+- **With the stock `sarld` and a kernel lacking the symbol, the driver
+  linked first cascades and panics.**
+
+It does **not** establish:
+- **Anything on hardware.** These are QEMU `pc` boots. The VBE path ran on
+  the cirrus and `isa-vga` adapters, the fallback on `isa-cirrus-vga`, and
+  QEMU's `std` VGA was not booted here.
+- **Any mode but 257.** It is an 8 bpp packed-pixel mode. Direct-colour
+  modes, other sizes, and the other arms of `VBEModeInfo2IODisplayInfo`
+  were not exercised.
+- **The alert-console consequence** (spec 3 §8). `kmDevice.m:85` (the
+  `AllocConsole()` macro) and `:962` (`kmAlertConsole`) call
+  `BasicAllocateConsole()`, so on a VBE boot their windows go through the
+  frame-buffer console too.
+  - A frame-buffer alert window opens only while `fbMode` is neither text
+    nor alert, that is, once the Window Server owns the screen. A VBE boot
+    stays in text mode until then.
+  - So no frame-buffer alert, and no VBE-boot panic, was observed. Spec 3's
+    Task 8c fix (the window type stored before the wipe test) is verified
+    by code reading and disassembly only. G5's panic was on the VGA console.
+- **The negative-control signature, with our booter.** Spec 3's Task 7c
+  rebuilt 4.2's `loadOtherConfigs`. With our booter, a boot driver whose
+  link fails no longer reaches `kernBootStruct->config` or the loaded-driver
+  list.
+  - So spec 2's kernel line `configureDriver: driver class ... was not
+    loaded` would not appear on a failed-link boot with our booter
+    *[inference, from the code; not booted]*.
+  - The same holds for such a driver's `VBE Mode`.
+  - G5 used the stock booter, so it is unaffected.
+- **The untried paths:**
+  - `loadBootDrivers`, the driver-floppy path, and its forced divergence;
+  - the `Query` prompt;
+  - `VBE Check`'s adapter warning, `The VBE video driver can not be used
+    with this display adapter.`;
+  - the driver's `getCharValues:`.
+- **The Window Server** on the VBE display.
+- **The cascade at any position but the first.** Also untried: the rebuilt
+  8,000-node `sarld`.

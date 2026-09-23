@@ -30,7 +30,7 @@ project type and are correctly absent from source.
 | Driver | Reference binary | Partition entries | Mapped | Status |
 | --- | --- | --- | --- | --- |
 | drvCirrusLogicGD5434 | `CirrusLogicGD5434DisplayDriver_reloc` | 21 | 19 | **built, linked, parity clean**; 19/21 byte-identical; apple-generic MH_BUNDLE present; SGS VERS unmet |
-| drvVBE20DisplayDriver | `VBE20DisplayDriver_reloc`, from **OPENSTEP 4.2 User Patch 4** | 15 | 12 | **built, linked, boots**; 13 hand-written entries byte-identical in place; loads and registers as `VBEDisplay0` on the spec-2 kernel |
+| drvVBE20DisplayDriver | `VBE20DisplayDriver_reloc`, from **OPENSTEP 4.2 User Patch 4** | 15 | 12 | **built, linked, boots**; 13 hand-written entries byte-identical in place; loads and registers as `VBEDisplay0` on the spec-2 kernel; its `using VBE mode` path runs under spec 3's booter (QEMU, mode 257) |
 | drvIBMThinkPad760EDDisplay | `IBMThinkPad760EDDisplayDriver_reloc` | 40 | 28 | compiles and links; 17/29 in-scope extents match |
 | drvVGA | `VGA_reloc` + `VGA_psdrvr` | 38 + 53 | 0 + 0 | analysed in full, **not yet rewritten** |
 | drvATIMach64 | `ATIMach64DisplayDriver_reloc` | — | — | no reconstruction pass |
@@ -121,13 +121,31 @@ not in VBE mode).` and registers as `VBEDisplay0`. No other boot driver lost
 its registration — a weak check by itself, since this driver links last.
 That an undefined-symbol link failure would not cascade at any position
 anyway is an inference from `rld.c`, not a measurement (the gate record's
-Gate 2). The instance-common difference below did not stop the load.
+Gate 2). **[REFUTED for the first position — spec 3's G5, 2026-09-23: with
+the driver first and a kernel lacking the symbol, the next link fails with
+`rld(): virtual memory exhausted (malloc failed)`, every later boot driver
+is refused, and the kernel panics `Missing EISA kernel bus class`.]** The
+instance-common difference below did not stop the load.
 The record is `docs/kernel/i386-vbe-console.md`. The framebuffer path waits
-on the booter spec, and the driver is not hardware-tested.
+on the booter spec, and the driver is not hardware-tested. **[UPDATED — the
+booter spec landed; see the next paragraph.]**
+
+**The `using VBE mode` path ran on 2026-09-23** (spec 3's G2 and G3, in the
+same record's "Spec 3" part). Our booter set VBE mode 257 from the driver's
+`"VBE Mode" = "257"` and recorded it, and the kernel mapped the frame
+buffer. The driver then logged `using VBE mode 257`, and one `VBE mode N is
+width=W, height=H, bpp=B` line for each mode the booter recorded: 8 on QEMU
+cirrus, 27 on QEMU `isa-vga`. It registered as `Display0`, and the kernel's
+console drew through the frame buffer at 640x480. On an adapter with no
+usable mode (QEMU `isa-cirrus-vga`) it kept the "Skipping" path. Still
+untested: `getCharValues:`, the Window Server on this display, any mode but
+257, and hardware.
 
 What was said before the kernel spec landed, kept as written — except that its
 cascade-and-panic claim is contradicted by that `rld.c` inference, not by the
-run. The negative-control run, with the driver linked last, saw only the
+run. **[That inference is itself refuted for the first position by spec 3's
+G5, which saw the cascade and the panic this paragraph predicts.]** The
+negative-control run, with the driver linked last, saw only the
 undefined-symbol failure and no panic, in a position where neither a cascade
 nor that panic could show:
 **the boot gate has not been run, and must not be run until the kernel spec

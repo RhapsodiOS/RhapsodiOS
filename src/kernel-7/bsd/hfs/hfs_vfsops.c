@@ -229,8 +229,15 @@ struct proc             *p;
             if (retval && ((mp->mnt_flag & MNT_FORCE) == 0))
                 goto error_exit;
 
-            /* hfs_sync may pass the catalog before its hfs_update calls dirty it */
+            /*
+             * hfs_sync may pass the catalog before its hfs_update calls dirty it;
+             * lock the catalog so no B-tree writer holds a busy node while we wait
+             */
+            retval = hfs_metafilelocking(hfsmp, kHFSCatalogFileID, LK_EXCLUSIVE, p);
+            if (retval)
+                goto error_exit;
             retval = VOP_FSYNC(HFSTOVCB(hfsmp)->catalogRefNum, NOCRED, MNT_WAIT, p);
+            (void) hfs_metafilelocking(hfsmp, kHFSCatalogFileID, LK_RELEASE, p);
             if (retval && ((mp->mnt_flag & MNT_FORCE) == 0))
                 goto error_exit;
 

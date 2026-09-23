@@ -12,12 +12,16 @@ TEST(test_package_copy) {
     package_set(&src.license, "unknown");
     strlist_push(&src.build_depends, "build-base");
     src.has_build_depends = 1;
+    strlist_push(&src.build_depends_i386, "i386only");
+    strlist_push(&src.build_depends_ppc, "ppconly");
     package_init(&dst);
     CHECK_INT(package_copy(&dst, &src), 0);
     CHECK_STR(dst.package, "foo");
     CHECK_STR(dst.url, "http://x");
     CHECK_STR(dst.license, "unknown");
     CHECK_INT(dst.build_depends.count, 1);
+    CHECK_INT(dst.build_depends_i386.count, 1);
+    CHECK_INT(dst.build_depends_ppc.count, 1);
     package_set(&src.package, "bar");
     CHECK_STR(dst.package, "foo");
     package_free(&src);

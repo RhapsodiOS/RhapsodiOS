@@ -825,6 +825,13 @@ int builder_makeroot(const Package *pkg, const char *buildroot,
         int j;
         for (j = 0; basedeps[j]; j++) set_add(&deps, basedeps[j]);
     }
+    /* makedepends_<arch> apply when the build includes that CPU slice. */
+    if (required & RB_ARCH_I386)
+        for (i = 0; i < pkg->build_depends_i386.count; i++)
+            set_add(&deps, pkg->build_depends_i386.items[i]);
+    if (required & RB_ARCH_PPC)
+        for (i = 0; i < pkg->build_depends_ppc.count; i++)
+            set_add(&deps, pkg->build_depends_ppc.items[i]);
 
     /* Resolve each dep to a package file. */
     for (i = 0; i < deps.count; i++) {

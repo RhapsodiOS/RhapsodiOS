@@ -19,6 +19,8 @@ typedef struct {
     char *package_revision;
     strlist build_depends;
     int has_build_depends;
+    strlist build_depends_i386;
+    strlist build_depends_ppc;
 } Package;
 
 void package_init(Package *p);

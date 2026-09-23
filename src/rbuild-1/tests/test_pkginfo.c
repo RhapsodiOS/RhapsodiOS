@@ -362,6 +362,44 @@ TEST(test_pkginfo_read_basic) {
     package_free(&p);
 }
 
+TEST(test_pkginfo_read_arch_makedepends) {
+    Package p;
+    mkdir("/tmp/rb-pkginfo-read", 0700);
+    write_file("/tmp/rb-pkginfo-read/archdeps",
+        "pkgname = kernel\n"
+        "pkgver = 1\n"
+        "makedepends = build-base, driverkit\n"
+        "makedepends_ppc = drvpexpert\n"
+        "makedepends_i386 = foo, bar\n");
+    package_init(&p);
+    CHECK_INT(pkginfo_read(&p, "/tmp/rb-pkginfo-read/archdeps"), 0);
+    CHECK_INT(p.build_depends.count, 2);
+    CHECK_INT(p.build_depends_ppc.count, 1);
+    if (p.build_depends_ppc.count == 1)
+        CHECK_STR(p.build_depends_ppc.items[0], "drvpexpert");
+    CHECK_INT(p.build_depends_i386.count, 2);
+    if (p.build_depends_i386.count == 2)
+        CHECK_STR(p.build_depends_i386.items[1], "bar");
+    package_free(&p);
+}
+
+TEST(test_pkginfo_write_arch_makedepends) {
+    Package p;
+    char *out;
+    package_init(&p);
+    package_set(&p.package, "kernel");
+    package_set(&p.version, "1");
+    strlist_push(&p.build_depends_ppc, "drvpexpert");
+    CHECK_INT(pkginfo_write(&p, "/tmp/rbtest.PKGINFO"), 0);
+    out = slurp("/tmp/rbtest.PKGINFO");
+    CHECK(out != 0);
+    if (out) {
+        CHECK(strstr(out, "makedepends_ppc = drvpexpert\n") != 0);
+        CHECK(strstr(out, "makedepends_i386") == 0);
+    }
+    package_free(&p);
+}
+
 TEST(test_pkginfo_read_missing_file) {
     Package p;
     package_init(&p);
@@ -389,6 +427,8 @@ TEST(test_pkginfo_read_invalid_arch) {
 static void run_all(void) {
     RUN(test_pkginfo_write);
     RUN(test_pkginfo_read_basic);
+    RUN(test_pkginfo_read_arch_makedepends);
+    RUN(test_pkginfo_write_arch_makedepends);
     RUN(test_pkginfo_read_missing_file);
     RUN(test_pkginfo_read_missing_pkgname);
     RUN(test_pkginfo_read_invalid_arch);

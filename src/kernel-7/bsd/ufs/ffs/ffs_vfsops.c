@@ -98,6 +98,7 @@
 #define	FS_MAGIC_SWAPPED	0x54190100	/* FS_MAGIC, bytes reversed */
 
 int ffs_sbupdate __P((struct ufsmount *, int));
+static void ffs_clampmaxfilesize __P((struct ufsmount *, struct fs *));
 
 struct vfsops ufs_vfsops = {
 	ffs_mount,
@@ -305,6 +306,27 @@ ffs_mount(mp, path, data, ndp, p)
 }
 
 /*
+ * Compute the maximum file size for a newly-read superblock, saving the
+ * unclamped on-disk value so ffs_sbupdate() can write it back unchanged.
+ */
+static void
+ffs_clampmaxfilesize(ump, fs)
+	struct ufsmount *ump;
+	struct fs *fs;
+{
+	u_int64_t maxfilesize;
+
+	ump->um_savedmaxfilesize = fs->fs_maxfilesize;		/* XXX */
+#ifdef NeXT
+	maxfilesize = (u_int64_t)0x100000000;                  /*4giga */
+#else
+	maxfilesize = (u_int64_t)0x40000000 * fs->fs_bsize - 1;	/* XXX */
+#endif /* NeXT */
+	if (fs->fs_maxfilesize > maxfilesize)			/* XXX */
+		fs->fs_maxfilesize = maxfilesize;		/* XXX */
+}
+
+/*
  * Reload all incore data for a filesystem (used after running fsck on
  * the root filesystem and finding things to fix). The filesystem must
  * be mounted read-only.
@@ -394,6 +416,7 @@ ffs_reload(mountp, cred, p)
 	brelse(bp);
 	mountp->mnt_maxsymlinklen = fs->fs_maxsymlinklen;
 	ffs_oldfscompat(fs);
+	ffs_clampmaxfilesize(VFSTOUFS(mountp), fs);
 	/*
 	 * Step 3: re-read summary information from disk.
 	 */
@@ -510,7 +533,6 @@ ffs_mountfs(devvp, mp, p)
 	int32_t *lp;
 	struct ucred *cred;
 	extern struct vnode *rootvp;
-	u_int64_t maxfilesize;					/* XXX */
 #if REV_ENDIAN_FS
 	int rev_endian=0;
 #endif /* REV_ENDIAN_FS */
@@ -717,14 +739,7 @@ ffs_mountfs(devvp, mp, p)
 		ump->um_quotas[i] = NULLVP;
 	devvp->v_specflags |= SI_MOUNTEDON;
 	ffs_oldfscompat(fs);
-	ump->um_savedmaxfilesize = fs->fs_maxfilesize;		/* XXX */
-#ifdef NeXT
-	maxfilesize = (u_int64_t)0x100000000;                  /*4giga */
-#else
-	maxfilesize = (u_int64_t)0x40000000 * fs->fs_bsize - 1;	/* XXX */
-#endif /* NeXT */
-	if (fs->fs_maxfilesize > maxfilesize)			/* XXX */
-		fs->fs_maxfilesize = maxfilesize;		/* XXX */
+	ffs_clampmaxfilesize(ump, fs);
 	if (ronly == 0) {
 		fs->fs_clean = 0;
 		(void) ffs_sbupdate(ump, MNT_WAIT);

@@ -160,6 +160,7 @@ extern void  clearRect(int x, int y, int w, int h, int c);
 extern struct bitmap * loadBitmap(char *filename);
 extern void set_video_mode(unsigned int mode);
 extern void set_linear_video_mode(unsigned short mode);
+extern int enumerateVBEModes(void);
 extern int reallyPrint(const char *fmt, ...);
 extern char *newString(char *oldString);
 extern int currentdev(void);

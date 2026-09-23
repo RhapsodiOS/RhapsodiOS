@@ -96,7 +96,12 @@ typedef struct {
 	unsigned char 	VideoModePtr_2;
 	unsigned char 	VideoModePtr_high;
 	unsigned short	TotalMemory;
-	unsigned char	Reserved[242];
+	/*
+	 * A VBE 2.0 BIOS fills 512 bytes when VESASignature is preset to
+	 * "VBE2", as enumerateVBEModes() does; 4.2's buffer is 0x200 bytes
+	 * (boot+27707).
+	 */
+	unsigned char	Reserved[492];
 } VBEInfoBlock;
 
 /*

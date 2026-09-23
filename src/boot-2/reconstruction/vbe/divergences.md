@@ -1258,3 +1258,89 @@ named here: `vbeModeIsUsable`, `vbeModeIsLargeEnough`, `recordVBEMode` and
   cmp al,1; jbe`).
 - Measured in build `t6b`, which also carries the enumerator; its size line
   and hashes are under the enumerator below.
+
+### The enumerator
+
+| | |
+| --- | --- |
+| reference | `boot+27704..28031`, 328 bytes (`0x9C38`) |
+| ours | `_enumerateVBEModes`, `0x99EC`, 328 bytes (next: `_set_linear_video_mode` at `0x9B34`) |
+| `compare_flat`, whole | `MISMATCH +207: byte 1 differs in cmp eax, 0x897 \| cmp eax, 0x880` |
+| `compare_flat`, `+0..+207` | `MATCH: 48 instructions, 171 bytes compared, 36 masked, 5 addresses mapped` |
+| `compare_flat`, `+212..+328` | `MATCH: 38 instructions, 96 bytes compared, 20 masked, 5 addresses mapped` |
+| outcome | **forced divergence, 1 byte**: the bound constant; every other byte matches |
+
+[measured]
+- **The one byte.** `compare_flat` stops at the first difference, so the
+  function was compared again on each side of the 5-byte `cmp` at `+207`
+  (`boot+27911`). That `cmp` is `3D 97 08 00 00` in 4.2 and
+  `3D 80 08 00 00` in ours: 1 byte differs.
+- **The branches that cross the split** are checked through the address
+  map. Each lands at the same offset on both sides:
+  - `0x9D60 -> 0x9B14`, `+296`;
+  - `0x9D72 -> 0x9B26`, `+314`;
+  - `0x9CF7 -> 0x9AAB`, `+191`.
+- **The other mapped addresses** name, by our `nm`, `_getVBEInfo`,
+  `_getVBEModeInfo`, `_kernBootStruct`, `_vbeModeCount`,
+  `_vbeModeIsLargeEnough` and `_recordVBEMode`.
+
+**The forced divergence: at most 89 records** [arithmetic, from the measured
+code].
+- 4.2 compares each record's start, `rec`, with the base
+  `kernBootStruct + 0x1840`. Record `i` starts at `0x1870 + 24i`, which is
+  `0x30 + 24i` past the base.
+- The base is where the `0x898` bytes that end at `video` begin:
+  `0x1840 + 0x898 = 0x20D8` = 8408.
+- **4.2**, `> 0x897`, which is `0x898 - 1`: a record may *start* anywhere in
+  those bytes.
+  - `0x30 + 24i <= 0x897` holds for `i <= 89`, so 90 records.
+  - Record 89 would be `kbs+0x20C8..0x20E0`, 8 bytes into `video`.
+- **Ours**, `> 0x880`, which is `0x898 - 0x18`: the whole record must *end*
+  inside those bytes.
+  - Index 88: `0x30 + 2112 = 0x870 <= 0x880`, so it is written, at
+    `kbs+0x20B0..0x20C8`.
+  - Index 89: `0x30 + 2136 = 0x888 > 0x880`, so the loop stops.
+  - At most 89 records, `BOOT_VBE_MAX_MODES`. Nothing is written at or
+    beyond 8408.
+- Any constant from `0x870` to `0x887` gives the same cap. `0x880` is the
+  one that states the rule.
+- The source labels it on the line. The base stays `kernBootStruct + 0x1840`,
+  so `add eax,1840h` still matches.
+
+**How the source reaches 4.2's code.**
+- **The base is its own statement**, `vbeArea = (char *)kernBootStruct +
+  0x1840`, so the sum is formed before the subtraction, as 4.2 forms it.
+  Written as one expression, the compiler may reassociate it [inference; not
+  tried].
+- **The bound is the first statement of the loop body, with `break`.** Only
+  the `0xFFFF` test is rotated to the bottom of the loop, as in 4.2.
+- **`VBEInfoBlock` grows to 512 bytes** (`vbe.h`, `Reserved[242]` to
+  `Reserved[492]`).
+  - 4.2's frame is `sub esp,308h`: `0x200` of info block at `[ebp-200h]`,
+    `0x100` of mode information at `[ebp-300h]`, and two spill slots
+    [measured].
+  - A VBE 2.0 BIOS fills 512 bytes once `VbeSignature` is preset to
+    `"VBE2"` [inference, from the VBE 2.0 definition of the block]. Our
+    262-byte struct would have overflowed.
+  - Outside `vbe.c`, nothing in the tree uses `VBEInfoBlock` [measured,
+    `git grep`]. Inside it, the old `set_linear_video_mode` has one on its
+    stack until the setter is rebuilt.
+- **The cache is `static int vbeModeCount = -1`**, 4 bytes of `__data`, as
+  4.2's at `0xDEAC`.
+
+**Reference defect, reproduced and labelled.** `VideoModePtr` is a real-mode
+segment and offset. It goes through `ADDRESS()`, which makes
+`(segment << 16) | offset`. That is the right address only when the segment is
+0, as it was on both QEMU adapters (item 6).
+
+**The version test.** `cmp word [ebp-1FCh],1FFh; ja` is reproduced, so the
+enumerator accepts `VESAVersion >= 0x200` (item 5). It is not a divergence.
+
+**The build, `t6b`** [measured]:
+- `booter 44992 bytes of 45056, 64 to spare`.
+- `boot`: `sum 4419 44`, `cksum 2768620739 44992`, SHA-256
+  `E5420415B440B60DD68D023959C562ADC306A326D15446F3BB718F92E977CD74`.
+- `boot.sys`: `cksum 3226043044 1077680`.
+- The package's `boot` is `cmp`-identical to the copy.
+- Both tests and the enumerator were built and compared together in `t6b`.
+- The file grew by 464 bytes over `t6a`, and by 608 over Task 5's 44,384.

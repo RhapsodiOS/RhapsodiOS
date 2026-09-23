@@ -41,6 +41,7 @@ void setupPalette(VBEPalette *p, const unsigned char *g);
  * Globals
  */
 static biosBuf_t bb;
+static int vbeModeCount = -1;	/* enumerateVBEModes()'s cache; 0xDEAC in 4.2 */
 
 static char *models[] = { "Text", 
 			  "CGA", 
@@ -118,6 +119,71 @@ recordVBEMode(boot_vbe_mode *rec, unsigned short mode, VBEModeInfoBlock *minfo)
 			       minfo->PhysBasePtr_1,
 			       minfo->PhysBasePtr_2,
 			       minfo->PhysBasePtr_high);
+}
+
+/*
+ * OPENSTEP 4.2 User Patch 4's enumerator (boot+27704..28031): fill
+ * kernBootStruct->vbeModes with every usable mode of at least 640x480, once,
+ * and return how many there are. No terminator is written; the array ends
+ * where getKernBootStruct()'s bzero left zeros.
+ */
+int
+enumerateVBEModes(void)
+{
+    VBEInfoBlock	vinfo;
+    VBEModeInfoBlock	minfo;
+    unsigned short	*modes;
+    boot_vbe_mode	*rec;
+    char		*vbeArea;
+    int			count, i;
+
+    if (vbeModeCount != -1)
+	return vbeModeCount;
+
+    vinfo.VESASignature[0] = 'V';
+    vinfo.VESASignature[1] = 'B';
+    vinfo.VESASignature[2] = 'E';
+    vinfo.VESASignature[3] = '2';
+    if (getVBEInfo(&vinfo) != errSuccess ||
+	vinfo.VESAVersion < MIN_VESA_VERSION) {
+	vbeModeCount = 0;
+	return 0;
+    }
+
+    /*
+     * Reference defect, reproduced: VideoModePtr is a real-mode segment and
+     * offset, but it is used as (segment << 16) | offset. That is the right
+     * address only when the segment is 0.
+     */
+    modes = (unsigned short *)ADDRESS(vinfo.VideoModePtr_low,
+				      vinfo.VideoModePtr_1,
+				      vinfo.VideoModePtr_2,
+				      vinfo.VideoModePtr_high);
+    rec = kernBootStruct->vbeModes;
+    count = 0;
+    for (i = 0; modes[i] != 0xFFFF; i++) {
+	/*
+	 * 4.2 measures each record from kernBootStruct + 0x1840, the start
+	 * of the 0x898 bytes that end at `video` (0x20D8), and stops once
+	 * the record no longer starts inside them (cmp eax,897h at
+	 * boot+27911). That admits 90 records, and the 90th would overwrite
+	 * video.v_baseAddr and v_display.
+	 * Forced divergence: stop once the record would not end inside them,
+	 * 0x898 - sizeof (boot_vbe_mode) = 0x880. Indices 0-88 pass, 89 does
+	 * not: at most BOOT_VBE_MAX_MODES records.
+	 */
+	vbeArea = (char *)kernBootStruct + 0x1840;
+	if ((unsigned long)((char *)rec - vbeArea) > 0x880)
+	    break;
+	if (getVBEModeInfo(modes[i], &minfo) == errSuccess &&
+	    vbeModeIsLargeEnough(&minfo)) {
+	    recordVBEMode(rec, modes[i], &minfo);
+	    rec++;
+	    count++;
+	}
+    }
+    vbeModeCount = count;
+    return count;
 }
 
 void

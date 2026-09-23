@@ -60,28 +60,37 @@ def write_png(path, w, h, rgb):
         + chunk(b"IEND", b""))
 
 
+def qemu_args(image, persist, port, com1, nic, extra, serial):
+    """The qemu-system-i386 command line a Guest runs.  nic is the -device
+    value without its netdev, e.g. "ne2k_pci" or "i82559er,addr=03.0"."""
+    args = [
+        "qemu-system-i386", "-M", "pc", "-cpu", "pentium", "-accel", "tcg",
+        "-m", "128", "-nodefaults", "-vga", "cirrus", "-display", "none",
+        "-drive", "file=%s,format=raw,if=ide,index=0,media=disk" % image,
+        "-netdev", "user,id=n0", "-device", "%s,netdev=n0" % nic,
+        "-serial", com1, "-serial", "file:%s" % serial,
+        "-rtc", "base=1998-05-08T12:00:00",
+        "-qmp", "tcp:127.0.0.1:%d,server,nowait" % port, "-boot", "order=c",
+    ]
+    args.extend(extra)
+    if not persist:
+        args.insert(args.index("-drive") + 2, "-snapshot")
+    return args
+
+
 class Guest(object):
-    def __init__(self, outdir, persist=False, port=4481, com1="null", extra=()):
+    def __init__(self, outdir, persist=False, port=4481, com1="null", extra=(),
+                 image=IMAGE, nic="ne2k_pci"):
         # com1 is the first serial port, which the kernel does not use -- pass
         # "msmouse" to put a Microsoft serial mouse on it.  extra appends raw
         # qemu arguments, for hardware a driver under test needs (e.g.
-        # "-parallel", "null").
+        # "-parallel", "null").  image and nic let a test boot an image of
+        # its own with a different network card.
         self.outdir = outdir
         os.makedirs(outdir, exist_ok=True)
         self.serial = os.path.join(outdir, "serial.log")
-        args = [
-            "qemu-system-i386", "-M", "pc", "-cpu", "pentium", "-accel", "tcg",
-            "-m", "128", "-nodefaults", "-vga", "cirrus", "-display", "none",
-            "-drive", "file=%s,format=raw,if=ide,index=0,media=disk" % IMAGE,
-            "-netdev", "user,id=n0", "-device", "ne2k_pci,netdev=n0",
-            "-serial", com1, "-serial", "file:%s" % self.serial,
-            "-rtc", "base=1998-05-08T12:00:00",
-            "-qmp", "tcp:127.0.0.1:%d,server,nowait" % port, "-boot", "order=c",
-        ]
-        args.extend(extra)
-        if not persist:
-            args.insert(args.index("-drive") + 2, "-snapshot")
-        self.proc = subprocess.Popen(args)
+        self.proc = subprocess.Popen(
+            qemu_args(image, persist, port, com1, nic, extra, self.serial))
         for _ in range(60):
             try:
                 self.sock = socket.create_connection(("127.0.0.1", port), timeout=5)

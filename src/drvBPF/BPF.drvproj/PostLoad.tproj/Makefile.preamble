@@ -1,1 +1,10 @@
 INCLUDED_ARCHS = i386 ppc
+
+# IODeviceMaster.m calls the _IO* client stubs MIG generates from this
+# subsystem.  -Uppc -Ui386 leaves out the defs file's per-architecture block:
+# PostLoad calls none of those routines, their IOPPC*/IOEISA* types have no C
+# typedef in the installed headers, and the skip statements there keep the
+# message IDs of the shared routines the same either way.
+DEFSFILES = driverServer.defs
+OTHER_OFILES = driverServerUser.o
+ALL_MIGFLAGS = -Uppc -Ui386 -server /dev/null

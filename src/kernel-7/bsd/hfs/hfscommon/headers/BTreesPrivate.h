@@ -398,6 +398,9 @@ OSStatus	GetNewNode				(BTreeControlBlockPtr	 btreePtr,
 OSStatus	ReleaseNode				(BTreeControlBlockPtr	 btreePtr,
 									 NodePtr				 nodePtr );
 
+OSStatus	TrashNode				(BTreeControlBlockPtr	 btreePtr,
+									 NodePtr				 nodePtr );
+
 OSStatus	UpdateNode				(BTreeControlBlockPtr	 btreePtr,
 									 NodePtr				 nodePtr );
 

@@ -333,7 +333,12 @@ fi
 # set up bison environment
 if [ "$BISON" = "" ]; then
   if [ "$RHAPSODY" -a "NEXT_ROOT" ]; then
-    BISON=/usr/local/bin/bison
+    # bison-1 installs into the sysroot as usr/bin/bison, and the bootstrap
+    # builds it immediately before cc for this step.  /usr/local/bin/bison is
+    # on neither the sysroot nor the host, so this used to stop the cc build
+    # dead at objc-parse.c.  An empty NEXT_ROOT leaves the host's own
+    # /usr/bin/bison, which is the same version.
+    BISON=$NEXT_ROOT/usr/bin/bison
   else
     BISON=$OBJROOT/bison_${arch}_obj/bison
     BISON_SIMPLE=$BISON.s1
@@ -931,6 +936,11 @@ for library in libcc.a libcc_dynamic.a; do
   echo "	$RM -f     $DSTROOT/lib/$library"		>>$TEMP/make.$$
   echo "	libtool -o $DSTROOT/lib/$library $thin_files"	>>$TEMP/make.$$
   echo "	strip -S   $DSTROOT/lib/$library"		>>$TEMP/make.$$
+  # Stripping an archive rewrites its members, which leaves the table of
+  # contents libtool just built stale; ld then refuses the archive with
+  # "table of contents ... is out of date; rerun ranlib(1)".  Rebuild it
+  # here, while the file is still writable.
+  echo "	ranlib     $DSTROOT/lib/$library"		>>$TEMP/make.$$
   echo "	chmod 444  $DSTROOT/lib/$library"		>>$TEMP/make.$$
   safe_exec $make -f $TEMP/make.$$
   $RM -f $TEMP/make.$$

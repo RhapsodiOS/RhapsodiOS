@@ -338,13 +338,15 @@ static OSErr DeallocateFork(
 	ExtendedVCB 		*vcb,
 	HFSCatalogNodeID	fileID,
 	UInt8				forkType,
-	HFSPlusExtentRecord	catalogExtents);
+	HFSPlusExtentRecord	catalogExtents,
+	Boolean				*recordDeleted);
 
 static OSErr TruncateExtents(
 	ExtendedVCB			*vcb,
 	UInt8				forkType,
 	UInt32				fileID,
-	UInt32				startBlock);
+	UInt32				startBlock,
+	Boolean				*recordDeleted);
 
 static OSErr UpdateExtentRecord (
 	const ExtendedVCB		*vcb,
@@ -772,7 +774,8 @@ static OSErr TruncateExtents(
 	ExtendedVCB		*vcb,
 	UInt8			forkType,
 	UInt32			fileID,
-	UInt32			startBlock)
+	UInt32			startBlock,
+	Boolean			*recordDeleted)
 {
 	OSErr				err;
 	UInt32				numberExtentsReleased;
@@ -795,6 +798,7 @@ static OSErr TruncateExtents(
 		err = DeleteExtentRecord(vcb, forkType, fileID, startBlock);
 		if (err != noErr) break;
 
+		*recordDeleted = true;
 		startBlock += numberExtentsReleased;
 	}
 	
@@ -813,7 +817,8 @@ static OSErr DeallocateFork(
 	ExtendedVCB 		*vcb,
 	HFSCatalogNodeID	fileID,
 	UInt8				forkType,
-	HFSPlusExtentRecord	catalogExtents)
+	HFSPlusExtentRecord	catalogExtents,
+	Boolean				*recordDeleted)	/* set true if an extent record was deleted */
 {
 	OSErr				err;
 	UInt32				numReleasedAllocationBlocks;
@@ -823,7 +828,7 @@ static OSErr DeallocateFork(
 	err = ReleaseExtents( vcb, catalogExtents, &numReleasedAllocationBlocks, &releasedLastExtent );
 	// Release the extra extents, if present
 	if (err == noErr && !releasedLastExtent)
-		err = TruncateExtents(vcb, forkType, fileID, numReleasedAllocationBlocks);
+		err = TruncateExtents(vcb, forkType, fileID, numReleasedAllocationBlocks, recordDeleted);
 
 	return( err );
 }
@@ -870,6 +875,9 @@ OSErr DeleteFile( ExtendedVCB *vcb, HFSCatalogNodeID parDirID, ConstUTF8Param ca
 	OSErr			errDF, errRF;
 	CatalogNodeData	catalogData;
 	FSSpec			fileSpec;	/* 264 bytes */
+	Boolean			recordDeleted;
+	
+	recordDeleted = false;
 	
 	// Find catalog data in catalog
 	err = GetCatalogNode( vcb, parDirID, catalogName, catalogHint, &fileSpec, &catalogData, &catalogHint);
@@ -898,12 +906,12 @@ OSErr DeleteFile( ExtendedVCB *vcb, HFSCatalogNodeID parDirID, ConstUTF8Param ca
 	//
 
 	// Deallocate data fork extents
-	errDF = DeallocateFork( vcb, catalogData.nodeID, kDataForkType, catalogData.dataExtents );
+	errDF = DeallocateFork( vcb, catalogData.nodeID, kDataForkType, catalogData.dataExtents, &recordDeleted );
 
 	// Deallocate resource fork extents
-	errRF = DeallocateFork( vcb, catalogData.nodeID, kResourceForkType, catalogData.rsrcExtents );
+	errRF = DeallocateFork( vcb, catalogData.nodeID, kResourceForkType, catalogData.rsrcExtents, &recordDeleted );
 
-	if ((errDF | errRF) == 0)
+	if (recordDeleted)
 		(void) FlushExtentFile( vcb );
 	
 Exit:
@@ -1088,6 +1096,7 @@ OSErr ExtendFileC (
 	UInt32				previousPEOF;
 	UInt32				numExtentsPerRecord;
 	UInt32				maximumBytes;
+	Boolean				needsFlush;
 	
 
 #if HFSInstrumentation
@@ -1105,6 +1114,7 @@ OSErr ExtendFileC (
 	InstLogTraceEvent( trace, eventTag, kInstStartEvent);
 #endif
 
+	needsFlush = false;
 	*actualBytesAdded = 0;
 	volumeBlockSize = vcb->blockSize;
 	allOrNothing = ((flags & kEFAllMask) != 0);
@@ -1273,7 +1283,16 @@ OSErr ExtendFileC (
 					foundIndex = 0;
 					
 					err = CreateExtentRecord(vcb, &foundKey, foundData, &hint);
+					if (err == fxOvFlErr || err == dskFulErr) {
+						//	We couldn't create an extent record because the extents B-tree
+						//	couldn't grow.  Deallocate the extent just allocated and
+						//	return a disk full error.
+						(void) BlockDeallocate(vcb, actualStartBlock, actualNumBlocks);
+						err = dskFulErr;
+					}
 					if (err != noErr) break;
+
+					needsFlush = true;		//	We need to update the B-tree header
 				}
 				else {
 					//	Add a new extent into this record and update.
@@ -1316,6 +1335,9 @@ OSErr ExtendFileC (
 ErrorExit:
 Exit:
 	*actualBytesAdded = fcb->fcbPLen - previousPEOF;
+
+	if (needsFlush)
+		(void) FlushExtentFile(vcb);
 
 #if HFSInstrumentation
 	InstLogTraceEvent( trace, eventTag, kInstEndEvent);
@@ -1372,6 +1394,7 @@ OSErr TruncateFileC (
 	UInt32				numExtentsPerRecord;
 	UInt8				forkType;
 	Boolean				extentChanged;	// true if we actually changed an extent
+	Boolean				recordDeleted;	// true if an extent record got deleted
 	
 #if HFSInstrumentation
 	InstTraceClassRef	trace;
@@ -1387,6 +1410,8 @@ OSErr TruncateFileC (
 	eventTag = InstCreateEventTag();
 	InstLogTraceEvent( trace, eventTag, kInstStartEvent);
 #endif
+
+	recordDeleted = false;
 
 	if (vcb->vcbSigWord == kHFSPlusSigWord)
 		numExtentsPerRecord = kHFSPlusExtentDensity;
@@ -1433,7 +1458,7 @@ OSErr TruncateFileC (
 		if (err != noErr) goto ErrorExit;	//	got some error, so return it
 		
 		//	Deallocate all the extents for this fork
-		err = DeallocateFork(vcb, fcb->fcbFlNm, forkType, extentRecord);
+		err = DeallocateFork(vcb, fcb->fcbFlNm, forkType, extentRecord, &recordDeleted);
 		if (err != noErr) goto ErrorExit;	//	got some error, so return it
 		
 		//	Update the catalog extent record (making sure it's zeroed out)
@@ -1520,10 +1545,13 @@ OSErr TruncateFileC (
 	//	blocks.
 	//
 	if (nextBlock < physNumBlocks)
-		err = TruncateExtents(vcb, forkType, fcb->fcbFlNm, nextBlock);
+		err = TruncateExtents(vcb, forkType, fcb->fcbFlNm, nextBlock, &recordDeleted);
 
 Done:
 ErrorExit:
+
+	if (recordDeleted)
+		(void) FlushExtentFile(vcb);
 
 #if HFSInstrumentation
 	InstLogTraceEvent( trace, eventTag, kInstEndEvent);

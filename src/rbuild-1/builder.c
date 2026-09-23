@@ -172,6 +172,14 @@ static char *find_arch_package(const char *dir, const char *name,
         if (!d) return 0;
         while ((de = readdir(d)) != 0) {
             if (!builder_match_pkgfile(de->d_name, name)) continue;
+            /* Same architectures the versioned branch above tries. Skipping
+               the rest by name keeps a sibling that cannot satisfy the
+               request from being extracted and reported as a mismatch while
+               its usable twin sits next to it in the repository. */
+            if (!architecture_path_has_token(de->d_name, required) &&
+                !(dependency &&
+                  architecture_path_has_token(de->d_name, RB_ARCH_UNIVERSAL)))
+                continue;
             found = open_arch_package(dir, de->d_name, name, version,
                                       required, dependency, tc);
             if (found) break;

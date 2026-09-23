@@ -70,6 +70,7 @@ dir     objc4-1               all
 dir     patch-1               all
 dir     pb_makefiles-1        all
 dir     perl-1                all
+dir     Commands/pico-1       all
 dir     project_makefiles-1   all
 dir     rcs-1                 all
 dir     rsync-1               all

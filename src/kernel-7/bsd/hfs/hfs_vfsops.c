@@ -218,18 +218,44 @@ struct proc             *p;
 
         hfsmp = VFSTOHFS(mp);
         if (hfsmp->hfs_fs_ronly == 0 && (mp->mnt_flag & MNT_RDONLY)) {
+            /*
+             * use VFS_SYNC to push out System (btree) files; hfs_update still
+             * writes pending catalog updates because hfs_fs_ronly is still 0
+             */
+            retval = VFS_SYNC(mp, MNT_WAIT, p->p_ucred, p);
+            if (retval && ((mp->mnt_flag & MNT_FORCE) == 0))
+                goto error_exit;
+
             flags = WRITECLOSE;
             if (mp->mnt_flag & MNT_FORCE)
                 flags |= FORCECLOSE;
             if ((retval = hfs_flushfiles(mp, flags)))
                 goto error_exit;
+
+            /*
+             * hfs_sync may pass the catalog before its hfs_update calls dirty it,
+             * and hfs_flushfiles' reclaims dirty it again; lock the catalog so no
+             * B-tree writer holds a busy node while we wait
+             */
+            retval = hfs_metafilelocking(hfsmp, kHFSCatalogFileID, LK_EXCLUSIVE, p);
+            if (retval)
+                goto error_exit;
+            retval = VOP_FSYNC(HFSTOVCB(hfsmp)->catalogRefNum, NOCRED, MNT_WAIT, p);
+            (void) hfs_metafilelocking(hfsmp, kHFSCatalogFileID, LK_RELEASE, p);
+            if (retval && ((mp->mnt_flag & MNT_FORCE) == 0))
+                goto error_exit;
+
             hfsmp->hfs_fs_clean = 1;
             hfsmp->hfs_fs_ronly = 1;
             if (HFSTOVCB(hfsmp)->vcbSigWord == kHFSPlusSigWord)
             	retval = hfs_flushvolumeheader(hfsmp, MNT_WAIT);
             else
             	retval = hfs_flushMDB(hfsmp, MNT_WAIT);
-            
+
+            /* also get the volume bitmap blocks */
+            if (!retval)
+                retval = VOP_FSYNC(hfsmp->hfs_devvp, NOCRED, MNT_WAIT, p);
+
             if (retval) {
                 hfsmp->hfs_fs_clean = 0;
                 hfsmp->hfs_fs_ronly = 0;
@@ -255,8 +281,6 @@ struct proc             *p;
                 }
                 VOP_UNLOCK(devvp, 0, p);
             }
-            hfsmp->hfs_fs_ronly = 0;
-            hfsmp->hfs_fs_clean = 0;
            	if (HFSTOVCB(hfsmp)->vcbSigWord == kHFSPlusSigWord)
 				retval = hfs_flushvolumeheader(hfsmp, MNT_WAIT);
 			else
@@ -264,6 +288,10 @@ struct proc             *p;
 
             if (retval != E_NONE)
                 goto error_exit;
+
+            /* only change hfs_fs_ronly after a successful write */
+            hfsmp->hfs_fs_ronly = 0;
+            hfsmp->hfs_fs_clean = 0;
         }
 
 #if 0   /* XXX PPD */
@@ -688,21 +716,30 @@ struct proc *p;
         return (retval);
 
 	/*
-	 *	Flush out the volume bitmap and MDB/Volume Header
+	 *	Flush out the b-trees, volume bitmap and MDB/Volume Header
 	 */
    if (hfsmp->hfs_fs_ronly == 0) {
-        hfsmp->hfs_fs_clean = 1;
-		HFSTOVCB(hfsmp)->vcbAtrb |=	kHFSVolumeUnmountedMask;
+		retval = VOP_FSYNC(HFSTOVCB(hfsmp)->catalogRefNum, NOCRED, MNT_WAIT, p);
+		if (retval == 0)
+			retval = VOP_FSYNC(HFSTOVCB(hfsmp)->extentsRefNum, NOCRED, MNT_WAIT, p);
+		if (retval == 0)
+			retval = VOP_FSYNC(hfsmp->hfs_devvp, NOCRED, MNT_WAIT, p);
+		if (retval && ((mntflags & MNT_FORCE) == 0))
+			return (retval);
+
+		/* only claim a clean unmount once everything above is on disk */
+		if (retval == 0) {
+			hfsmp->hfs_fs_clean = 1;
+			HFSTOVCB(hfsmp)->vcbAtrb |=	kHFSVolumeUnmountedMask;
+		}
         if (HFSTOVCB(hfsmp)->vcbSigWord == kHFSPlusSigWord)
         	retval = hfs_flushvolumeheader(hfsmp, MNT_WAIT);
         else
         	retval = hfs_flushMDB(hfsmp, MNT_WAIT);
-       
-        if (retval == 0)
-			retval = VOP_FSYNC(hfsmp->hfs_devvp, NOCRED, MNT_WAIT, p);
 
         if (retval) {
             hfsmp->hfs_fs_clean = 0;
+			HFSTOVCB(hfsmp)->vcbAtrb &= ~kHFSVolumeUnmountedMask;
             if ((mntflags & MNT_FORCE) == 0)
 				return (retval);	/* could not flush everything */
 		}
@@ -1130,14 +1167,11 @@ short hfs_flushfiles(struct mount *mp, unsigned short flags)
     DBG_FUNC_NAME("hfs_flushfiles");
     DBG_PRINT_FUNC_NAME();
 
-    retval = vflush(mp, VFSTOVCB(mp)->catalogRefNum, flags);
-	if (retval) return retval;
-	DBG_VFS(("\tAll files except Catalog is flushed\n"));
-
-	/* Now 'close' the catalog Btree, and then flush it */
-    VRELE(VFSTOVCB(mp)->catalogRefNum);
-    retval = vflush(mp, NULL, flags);
-    DBG_VFS(("\tCatalog is now flushed\n"));
+	/*
+	 * Skip the metadata vnodes (VSYSTEM): they stay in use for as long as
+	 * the volume is mounted and are released by hfsUnmount().
+	 */
+    retval = vflush(mp, NULLVP, SKIPSYSTEM | flags);
    return (retval);
 }
 

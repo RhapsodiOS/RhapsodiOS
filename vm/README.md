@@ -81,25 +81,44 @@ powershell -NoProfile -File vm\clean-build.ps1
 |------|----------------|
 | `-Rbuild` | `make CC=… clean test all` in `RemoteRoot/src/rbuild-1`, then install `rbuild` and private helpers into `ToolsDir` |
 | `-Bootstrap` | thin `rbuild bootstrap` then `rbuild bootstrap-universal` with the same `--sysroot BootstrapRoot --toolchain … --state StateDir` and full `BootstrapManifest RepoDir RepoDir` |
-| `-Kernel` | `rbuild kernel --state StateDir --arch <profile> SourceRoot RepoDir BuiltDir` for `driverkit-3`, `driverTools-1`, `kernload-1`, `drivers-<arch>/bus/drvPExpert`, `kernel-7` |
-| `-KernelDrivers` | `rbuild kerneldrivers --state StateDir --arch <profile> SourceRoot RepoDir BuiltDir` for remaining packaged `drv*` / `Intel*` projects under `drivers-<arch>` (plus `drvBPF` / `drvPortServer` / `drvSCSIServer` / `drvSCSITape` when they have `dpkg/control`). Paths in `src/rbuild-1/kernel-drivers-blacklist.json` are skipped until they package; rbuild exits non-zero if any non-skipped driver failed. |
+| `-Kernel` | `rbuild kernel --state StateDir --arch <profile> SourceRoot RepoDir BuiltDir` for `driverkit-3`, `driverTools-1`, `kernload-1`, `drivers-<arch>/bus/drvPExpert`, `kernel-7`; once per CPU, i386 then ppc, for the universal profile |
+| `-KernelDrivers` | `rbuild kerneldrivers --state StateDir --arch <profile> SourceRoot RepoDir BuiltDir` (i386 then ppc for the universal profile) for remaining packaged `drv*` / `Intel*` projects under `drivers-<arch>` (plus `drvBPF` / `drvPortServer` / `drvSCSIServer` / `drvSCSITape` when they have `dpkg/control`). Paths in `src/rbuild-1/kernel-drivers-blacklist.json` are skipped until they package; rbuild exits non-zero if any non-skipped driver failed. |
 | `-World` | `rbuild buildall --state StateDir Manifest RepoDir BuiltDir` |
 | `-All` | `-Rbuild`, `-Bootstrap`, `-Kernel`, `-KernelDrivers`, then `-World` |
 | `-Fresh` | With `-All` only: delete `ToolsDir`, `BootstrapRoot`, `RepoDir`, `BuiltDir`, and `StateDir`; keep `SourceRoot` |
 
 Exactly one of `-All`, `-Rbuild`, `-Bootstrap`, `-Kernel`, `-KernelDrivers`, or `-World` is required. `-Rbuild` cannot be combined with `-Bootstrap`. Defaults (override in `vm.conf`): `RemoteRoot=/build`, `RepoDir=/build/repo`, `BuiltDir=/build/built`. Typical fresh-box order: `-Rbuild` → `-Bootstrap` → `-Kernel` → `-KernelDrivers` / `-World`, or a single `-All`. `clean-build.ps1` performs the `-Fresh` output reset without starting a rebuild.
 
-### `build-src.ps1` only builds ppc
+### Choosing an architecture: toolchain profiles
 
-The `<arch>` in the table above comes from the toolchain profile, which
-defaults to `src/rbuild-1/toolchains/gcc-darwin.conf` (`ToolchainProfile` in
-`rhap-remote.ps1`, overridable in `vm.conf`). That file sets
-`target_arch=ppc`, and it is the only profile in the tree — so `-Kernel` and
-`-KernelDrivers` build **ppc regardless of what you are testing**, with no
-warning. The give-away is `ppc` in the log names under `/build/state/logs`,
-by which point you have spent the build.
+The `<arch>` in the table above comes from the toolchain profile, selected by
+`ToolchainProfile=` in `vm.conf` (default
+`rbuild-1/toolchains/gcc-darwin-ppc.conf`, set in `rhap-remote.ps1`). Three
+profiles ship in `src/rbuild-1/toolchains/`:
 
-For i386, call `rbuild` on the guest directly:
+| Profile | `-Kernel` / `-KernelDrivers` build | `-Rbuild` / `-Bootstrap` |
+|---------|------------------------------------|--------------------------|
+| `gcc-darwin-ppc.conf` | ppc | run as before on the ppc guest |
+| `gcc-darwin-i386.conf` | i386 | only on an i386 guest, or when every Mach-O tool in `BootstrapRoot/usr/bin` is universal; preflight refuses and stops otherwise |
+| `gcc-darwin-universal.conf` | i386, then ppc | hand rbuild `gcc-darwin-<guest cpu>.conf` from beside it, unchanged; the guest CPU comes from `/usr/bin/arch` |
+
+`-World` ignores the profile's CPU: `rbuild buildall` builds universal
+packages by default.
+
+Bootstrap state records a fingerprint of the exact profile file it ran with,
+so switching `-Bootstrap` between `gcc-darwin-ppc.conf` and
+`gcc-darwin-i386.conf` stops with `toolchain state mismatch; use -Fresh`.
+The universal profile avoids that on the ppc guest because it bootstraps with
+`gcc-darwin-ppc.conf` byte for byte. The ppc profile was renamed from
+`gcc-darwin.conf` without changing its bytes, so existing state stays valid.
+
+`-Kernel` requires every core package source locally except a platform
+expert: `src/drivers-i386/bus/drvPExpert` does not exist yet, so with the
+i386 or universal profile `build-src.ps1` prints `no local source for
+drivers-i386/bus/drvPExpert; rbuild will skip it` and rbuild builds the i386
+kernel without it. Any other missing core source still stops the phase.
+
+To build one package for one CPU, call `rbuild` on the guest directly:
 
 ```sh
 PATH=/build/tools/bin:/usr/bin:/bin:/usr/sbin:/sbin; export PATH
@@ -120,10 +139,6 @@ tar, so this gets it out:
 gzip -dc /build/<dst>/kernel-154.5.1-7-i386.apk |
     tar xf - ./private/tftpboot/mach_kernel
 ```
-
-To make `-Kernel` usable for i386 instead, add an i386 toolchain conf beside
-`gcc-darwin.conf` and point `ToolchainProfile=` at it in `vm.conf` — the
-config parser accepts that key, there is just no such profile written yet.
 
 ## Image chain
 

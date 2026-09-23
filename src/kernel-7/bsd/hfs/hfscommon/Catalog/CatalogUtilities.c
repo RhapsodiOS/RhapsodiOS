@@ -786,7 +786,9 @@ UpdateFolderCount( ExtendedVCB *volume, HFSCatalogNodeID parentID, const Catalog
 			DebugStr("\p UpdateFolder: found HFS folder on HFS+ volume!");
 
 		timeStamp = GetTimeUTC();
-		tempData.hfsPlusFolder.valence += valenceDelta;		// adjust valence
+		/* adjust valence, but don't go negative */
+		if (valenceDelta > 0 || tempData.hfsPlusFolder.valence != 0)
+			tempData.hfsPlusFolder.valence += valenceDelta;	// adjust valence
 		tempData.hfsPlusFolder.contentModDate = timeStamp;	// set date/time last modified
 		folderID = tempData.hfsPlusFolder.folderID;
 		recordSize = sizeof(tempData.hfsPlusFolder);
@@ -796,7 +798,9 @@ UpdateFolderCount( ExtendedVCB *volume, HFSCatalogNodeID parentID, const Catalog
 		if ( DEBUG_BUILD && tempData.recordType != kHFSFolderRecord )
 			DebugStr("\p UpdateFolder: found HFS+ folder on HFS volume!");
 
-		tempData.hfsFolder.valence += valenceDelta;				// adjust valence
+		/* adjust valence, but don't go negative */
+		if (valenceDelta > 0 || tempData.hfsFolder.valence != 0)
+			tempData.hfsFolder.valence += valenceDelta;			// adjust valence
 		tempData.hfsFolder.modifyDate = GetTimeLocal(true);		// set date/time last modified
 		folderID = tempData.hfsFolder.folderID;
 		recordSize = sizeof(tempData.hfsFolder);

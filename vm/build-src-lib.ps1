@@ -100,7 +100,9 @@ function Test-RhapMachOFileOutput {
 }
 
 function New-RhapMachOValidationCommand {
-    return 'case "$TARGET_FILE" in *"Mach-O object $TARGET_ARCH"|*"Mach-O object $TARGET_ARCH "*|*"Mach-O object $TARGET_ARCH,"*) ;; *) fail "TARGET_CC did not produce a $TARGET_ARCH Mach-O object: $TARGET_FILE" ;; esac'
+    param([string]$ArchVariable = 'TARGET_ARCH')
+    $arch = '$' + (Assert-RhapSafeIdentifier -Value $ArchVariable -Name 'ArchVariable')
+    return "case `"`$TARGET_FILE`" in *`"Mach-O object $arch`"|*`"Mach-O object $arch `"*|*`"Mach-O object $arch,`"*) ;; *) fail `"TARGET_CC did not produce a $arch Mach-O object: `$TARGET_FILE`" ;; esac"
 }
 
 function ConvertTo-RhapNormalizedRemotePath {
@@ -173,13 +175,35 @@ function Get-RhapKernelCorePackages {
     )
 
     $arch = Assert-RhapSafeIdentifier -Value $TargetArch -Name 'TargetArch'
+    $archs = if ($arch -eq 'universal') { @('i386', 'ppc') } else { @($arch) }
     return @(
         'driverkit-3',
         'driverTools-1',
-        'kernload-1',
-        "drivers-$arch/bus/drvPExpert",
+        'kernload-1'
+    ) + @($archs | ForEach-Object { "drivers-$_/bus/drvPExpert" }) + @(
         'kernel-7'
     )
+}
+
+# Every core source must exist locally except a platform expert, which rbuild
+# skips when missing (drivers-i386/bus/drvPExpert has no source yet). Returns
+# the platform experts that will be skipped.
+function Assert-RhapKernelCoreSources {
+    param(
+        [Parameter(Mandatory = $true)][string]$LocalSource,
+        [Parameter(Mandatory = $true)][string]$TargetArch
+    )
+
+    $skipped = @()
+    foreach ($package in @(Get-RhapKernelCorePackages -TargetArch $TargetArch)) {
+        if (Test-Path -LiteralPath (Join-Path $LocalSource $package) -PathType Container) { continue }
+        if ($package -like 'drivers-*/bus/drvPExpert') {
+            $skipped += $package
+            continue
+        }
+        throw "core package source missing locally: $package"
+    }
+    return $skipped
 }
 
 function Assert-RhapFreshMode {
@@ -285,13 +309,65 @@ function Assert-RhapSafeBuildTopology {
     return @($safe)
 }
 
+function New-RhapTargetProbeCommand {
+    return @(
+        'set --',
+        'case "$ARCH_FLAGS" in *[!A-Za-z0-9_./,+=\ -]*) fail "unsafe arch_flags" ;; esac',
+        'set -f',
+        'for rbuild_flag in $ARCH_FLAGS; do expr "$rbuild_flag" : "[-A-Za-z0-9_./,+=][-A-Za-z0-9_./,+=]*\$" >/dev/null || fail "unsafe arch_flags word: $rbuild_flag"; set -- "$@" "$rbuild_flag"; done',
+        # A universal profile's arch_flags build a fat object; probe each CPU thin.
+        'if test "$TARGET_ARCH" = universal; then PROBE_ARCHS="i386 ppc"; else PROBE_ARCHS=$TARGET_ARCH; fi',
+        ('for PROBE_ARCH in $PROBE_ARCHS; do if test "$TARGET_ARCH" = universal; then set -- -arch "$PROBE_ARCH"; fi; ' +
+            '"$TARGET_CC" "$@" -c "$PROBE/probe.c" -o "$PROBE/target.o" || fail "TARGET_CC compile failed for $PROBE_ARCH"; ' +
+            'test -s "$PROBE/target.o" || fail "TARGET_CC produced an empty object"; ' +
+            'TARGET_FILE=$(/usr/bin/file "$PROBE/target.o") || fail "could not inspect TARGET_CC object"; ' +
+            (New-RhapMachOValidationCommand -ArchVariable 'PROBE_ARCH') + '; done')
+    ) -join '; '
+}
+
+# -Rbuild and -Bootstrap run tools on the guest. A universal profile needs the
+# thin profile for the guest's CPU beside it. A thin profile for another CPU is
+# accepted only when every Mach-O tool in BOOTSTRAP_ROOT/usr/bin has a slice the
+# guest can run; lipo names subtypes (i486, ppc750), so slices map to families.
+function New-RhapHostPhaseCheckCommand {
+    return (@'
+GUEST_ARCH=$(/usr/bin/arch) || fail "cannot determine the guest CPU with /usr/bin/arch"
+case "$GUEST_ARCH" in i386|ppc) ;; *) fail "unsupported guest CPU: $GUEST_ARCH" ;; esac
+arch_family() { case "$1" in i386|i486|i486SX|pentium|i586|pentpro|pentIIm3|pentIIm5) echo i386 ;; ppc|ppc601|ppc603|ppc603e|ppc603ev|ppc604|ppc604e|ppc750) echo ppc ;; *) echo unknown ;; esac; }
+if test "$TARGET_ARCH" = universal; then
+    case "$PROFILE" in *-universal.conf) HOST_PROFILE="${PROFILE%-universal.conf}-$GUEST_ARCH.conf" ;; *) fail "universal profile must be named *-universal.conf so its host profile can be found: $PROFILE" ;; esac
+    test -f "$HOST_PROFILE" || fail "no host toolchain profile for this $GUEST_ARCH guest: $HOST_PROFILE"
+    HOST_TARGET_ARCH=$(PROFILE=$HOST_PROFILE; profile_value target_arch) || fail "host toolchain profile has no target_arch: $HOST_PROFILE"
+    test "$HOST_TARGET_ARCH" = "$GUEST_ARCH" || fail "host toolchain profile $HOST_PROFILE targets $HOST_TARGET_ARCH, not this $GUEST_ARCH guest"
+elif test "$TARGET_ARCH" != "$GUEST_ARCH"; then
+    test -x /usr/bin/lipo || fail "architecture inspection tool missing: /usr/bin/lipo"
+    test -d "$BOOTSTRAP_ROOT/usr/bin" || fail "the $TARGET_ARCH profile on this $GUEST_ARCH guest needs universal bootstrap tools, but $BOOTSTRAP_ROOT/usr/bin does not exist"
+    HOST_TOOLS=0
+    for HOST_TOOL in "$BOOTSTRAP_ROOT"/usr/bin/*; do
+        test -f "$HOST_TOOL" || continue
+        HOST_TOOL_INFO=$(/usr/bin/lipo -info "$HOST_TOOL" 2>/dev/null) || continue
+        HOST_TOOLS=1
+        HOST_TOOL_OK=0
+        case "$HOST_TOOL_INFO" in
+            "Architectures in the fat file: "*) for HOST_SLICE in $(echo "$HOST_TOOL_INFO" | /usr/bin/sed 's/.* are: //'); do if test "$(arch_family "$HOST_SLICE")" = "$GUEST_ARCH"; then HOST_TOOL_OK=1; fi; done ;;
+            "Non-fat file: "*) if test "$GUEST_ARCH" = i386 && test "$(arch_family "$(echo "$HOST_TOOL_INFO" | /usr/bin/sed 's/.* is architecture: //')")" = i386; then HOST_TOOL_OK=1; fi ;;
+            *) fail "unrecognized lipo output for $HOST_TOOL: $HOST_TOOL_INFO" ;;
+        esac
+        test "$HOST_TOOL_OK" = 1 || fail "$HOST_TOOL cannot run on this $GUEST_ARCH guest ($HOST_TOOL_INFO); the $TARGET_ARCH profile here needs universal bootstrap tools, so run -Rbuild and -Bootstrap with gcc-darwin-$GUEST_ARCH.conf or gcc-darwin-universal.conf"
+    done
+    test "$HOST_TOOLS" = 1 || fail "the $TARGET_ARCH profile on this $GUEST_ARCH guest needs universal bootstrap tools, but $BOOTSTRAP_ROOT/usr/bin has no Mach-O tools"
+fi
+'@).Replace("`r", '').TrimEnd("`n")
+}
+
 function New-RhapPreflightCommand {
     param(
         [Parameter(Mandatory = $true)][string]$SourceRoot,
         [Parameter(Mandatory = $true)][string]$ToolsDir,
         [Parameter(Mandatory = $true)][string]$BootstrapRoot,
         [Parameter(Mandatory = $true)][string]$StateDir,
-        [Parameter(Mandatory = $true)][string]$Profile
+        [Parameter(Mandatory = $true)][string]$Profile,
+        [switch]$HostPhases
     )
 
     Assert-RhapSafeCommandPath -Path $SourceRoot -Name 'SourceRoot'
@@ -309,6 +385,7 @@ function New-RhapPreflightCommand {
     $requiredKeys = ($script:RhapRequiredToolchainKeys | ForEach-Object { "required[`"$_`"] = 1" }) -join '; '
     $pairedKeys = 'paired["make_flags_ready"] = "make_flags"'
     $migMachHeaders = $script:RhapMigMachHeaders -join ' '
+    $hostPhaseParts = if ($HostPhases) { @(New-RhapHostPhaseCheckCommand) } else { @() }
 
     $parts = @(
         'set -e',
@@ -358,7 +435,8 @@ function New-RhapPreflightCommand {
         'test -f /usr/bin/lex && test -x /usr/bin/lex || fail "Developer Tools lex missing: /usr/bin/lex"',
         'test -f /bin/mv && test -x /bin/mv || fail "generated source rename tool missing: /bin/mv"',
         'test -f /usr/bin/file && test -x /usr/bin/file || fail "object inspection tool missing: /usr/bin/file"',
-        'for helper in /usr/bin/tee /usr/bin/cksum /usr/bin/sed /usr/bin/grep /bin/cat /bin/ln; do test -f "$helper" && test -x "$helper" || fail "build helper missing: $helper"; done',
+        'for helper in /usr/bin/tee /usr/bin/cksum /usr/bin/sed /usr/bin/grep /bin/cat /bin/ln; do test -f "$helper" && test -x "$helper" || fail "build helper missing: $helper"; done'
+    ) + $hostPhaseParts + @(
         'nearest_parent() { rbuild_parent=$1; while :; do test -e "$rbuild_parent" && break; rbuild_next=${rbuild_parent%/*}; test -n "$rbuild_next" || rbuild_next=/; if test "$rbuild_next" = "$rbuild_parent"; then break; fi; rbuild_parent=$rbuild_next; done; printf "%s\n" "$rbuild_parent"; }',
         'check_space() { rbuild_parent=$(nearest_parent "$1"); df -k "$rbuild_parent" | awk ''{ fields=NF; available=$4 } END { if (fields < 4 || (available + 0) < 1) exit 1 }'' || fail "no usable free space below $1"; }',
         "check_space $qTools",
@@ -378,14 +456,7 @@ function New-RhapPreflightCommand {
         'test -s "$PROBE/dev.o" || fail "Developer Tools PPC compiler produced an empty object"',
         '"$BUILD_CC" -c "$PROBE/probe.c" -o "$PROBE/build.o" || fail "BUILD_CC compile failed"',
         'test -s "$PROBE/build.o" || fail "BUILD_CC produced an empty object"',
-        'set --',
-        'case "$ARCH_FLAGS" in *[!A-Za-z0-9_./,+=\ -]*) fail "unsafe arch_flags" ;; esac',
-        'set -f',
-        'for rbuild_flag in $ARCH_FLAGS; do expr "$rbuild_flag" : "[-A-Za-z0-9_./,+=][-A-Za-z0-9_./,+=]*\$" >/dev/null || fail "unsafe arch_flags word: $rbuild_flag"; set -- "$@" "$rbuild_flag"; done',
-        '"$TARGET_CC" "$@" -c "$PROBE/probe.c" -o "$PROBE/target.o" || fail "TARGET_CC compile failed"',
-        'test -s "$PROBE/target.o" || fail "TARGET_CC produced an empty object"',
-        'TARGET_FILE=$(/usr/bin/file "$PROBE/target.o") || fail "could not inspect TARGET_CC object"',
-        (New-RhapMachOValidationCommand),
+        (New-RhapTargetProbeCommand),
         'echo "build-src preflight: ok"'
     )
     $body = $parts -join '; '
@@ -427,6 +498,12 @@ function New-RhapBuildPhaseCommand {
     $cc = ConvertTo-RhapShellLiteral $BuildCc
     $targetArchValue = Assert-RhapSafeIdentifier -Value $TargetArch -Name 'TargetArch'
     $targetArch = ConvertTo-RhapShellLiteral $targetArchValue
+    # A universal profile names no single CPU. -Rbuild and -Bootstrap run on
+    # the guest, so they use the guest's CPU and the thin profile beside the
+    # universal one: rbuild fingerprints bootstrap state by that file's bytes.
+    $universal = $targetArchValue -eq 'universal'
+    $guestArchSetup = 'GUEST_ARCH=$(/usr/bin/arch); case "$GUEST_ARCH" in i386|ppc) ;; *) echo "build-src: unsupported guest CPU: $GUEST_ARCH" >&2; exit 1 ;; esac'
+    $migArch = if ($universal) { '$GUEST_ARCH' } else { $targetArch }
     $makeTool = ConvertTo-RhapShellLiteral $Make
     if ($ToolPath -notmatch '^[A-Za-z0-9_./:+@=-]+$') { throw 'unsafe toolchain path' }
     $toolPath = ConvertTo-RhapShellLiteral $ToolPath
@@ -441,6 +518,7 @@ function New-RhapBuildPhaseCommand {
     if ($Phase -eq 'rbuild') {
         $commands = New-Object System.Collections.Generic.List[string]
         $commands.Add('set -e')
+        if ($universal) { $commands.Add($guestArchSetup) }
         $commands.Add("cd $source/rbuild-1")
         $commands.Add("$makeTool CC=$cc clean test all")
         $commands.Add("/usr/bin/install -d $tools/bin")
@@ -485,19 +563,32 @@ function New-RhapBuildPhaseCommand {
         $commands.Add("rm -rf $migSmoke")
         $commands.Add("/usr/bin/install -d $migSmoke")
         $commands.Add("cd $migSmoke")
-        $commands.Add("CONFIG_DIR=$tools/bin MIGCC=$cc MIGARCH=$targetArch MIGCOM_DIR=$tools/libexec $tools/bin/mig -typed -I$source/kernel-7 -DKERNEL -DKERNEL_SERVER -header /dev/null -user /dev/null -server mach_server.c $source/kernel-7/mach/mach.defs")
+        $commands.Add("CONFIG_DIR=$tools/bin MIGCC=$cc MIGARCH=$migArch MIGCOM_DIR=$tools/libexec $tools/bin/mig -typed -I$source/kernel-7 -DKERNEL -DKERNEL_SERVER -header /dev/null -user /dev/null -server mach_server.c $source/kernel-7/mach/mach.defs")
         return ($commands -join ' && ')
     }
     if ($Phase -eq 'bootstrap') {
-        return "set -e; /usr/bin/install -d $bootstrap $repo $state && cd $source && CONFIG_DIR=$tools/bin DECOMMENT=$tools/bin/decomment MIGCC=$cc MIGARCH=$targetArch MIGCOM_DIR=$tools/libexec BISON=$bootstrap/usr/bin/bison BISON_SIMPLE=$bootstrap/usr/share/bison.simple $rbuild bootstrap --sysroot $bootstrap --toolchain $profilePath --state $state $source/BootstrapManifest $repo $repo && CONFIG_DIR=$tools/bin DECOMMENT=$tools/bin/decomment MIGCC=$cc MIGARCH=$targetArch MIGCOM_DIR=$tools/libexec BISON=$bootstrap/usr/bin/bison BISON_SIMPLE=$bootstrap/usr/share/bison.simple $rbuild bootstrap-universal --sysroot $bootstrap --toolchain $profilePath --state $state $source/BootstrapManifest $repo $repo"
+        $bootstrapSetup = 'set -e'
+        $bootstrapProfile = $profilePath
+        if ($universal) {
+            $suffix = '-universal.conf'
+            if (-not $Profile.EndsWith($suffix)) {
+                throw "universal profile must be named *$suffix so its host profile can be found: $Profile"
+            }
+            $bootstrapSetup = "set -e; $guestArchSetup"
+            $bootstrapProfile = (ConvertTo-RhapShellLiteral $Profile.Substring(0, $Profile.Length - $suffix.Length)) + '-$GUEST_ARCH.conf'
+        }
+        return "$bootstrapSetup; /usr/bin/install -d $bootstrap $repo $state && cd $source && CONFIG_DIR=$tools/bin DECOMMENT=$tools/bin/decomment MIGCC=$cc MIGARCH=$migArch MIGCOM_DIR=$tools/libexec BISON=$bootstrap/usr/bin/bison BISON_SIMPLE=$bootstrap/usr/share/bison.simple $rbuild bootstrap --sysroot $bootstrap --toolchain $bootstrapProfile --state $state $source/BootstrapManifest $repo $repo && CONFIG_DIR=$tools/bin DECOMMENT=$tools/bin/decomment MIGCC=$cc MIGARCH=$migArch MIGCOM_DIR=$tools/libexec BISON=$bootstrap/usr/bin/bison BISON_SIMPLE=$bootstrap/usr/share/bison.simple $rbuild bootstrap-universal --sysroot $bootstrap --toolchain $bootstrapProfile --state $state $source/BootstrapManifest $repo $repo"
     }
     if ($Phase -eq 'world') {
         return "set -e; test -d $repo || { echo 'build-src: repository missing: $RepoDir' >&2; exit 1; }; /usr/bin/install -d $built $state && cd $source && $rbuild buildall --state $state Manifest $repo $built"
     }
-    if ($Phase -eq 'kernel') {
-        return "set -e; test -d $repo || { echo 'build-src: repository missing: $RepoDir' >&2; exit 1; }; /usr/bin/install -d $built $state && cd $source && $rbuild kernel --state $state --toolchain $profilePath --arch $targetArch $source $repo $built"
-    }
-    return "set -e; test -d $repo || { echo 'build-src: repository missing: $RepoDir' >&2; exit 1; }; /usr/bin/install -d $built $state && cd $source && $rbuild kerneldrivers --state $state --toolchain $profilePath --arch $targetArch $source $repo $built"
+    # rbuild builds one kernel CPU per run; a universal profile means both.
+    $kernelArchs = if ($targetArchValue -eq 'universal') { @('i386', 'ppc') } else { @($targetArch) }
+    $kernelCommand = if ($Phase -eq 'kernel') { 'kernel' } else { 'kerneldrivers' }
+    $kernelBuilds = ($kernelArchs | ForEach-Object {
+        "$rbuild $kernelCommand --state $state --toolchain $profilePath --arch $_ $source $repo $built"
+    }) -join ' && '
+    return "set -e; test -d $repo || { echo 'build-src: repository missing: $RepoDir' >&2; exit 1; }; /usr/bin/install -d $built $state && cd $source && $kernelBuilds"
 }
 
 function New-RhapFreshCommand {

@@ -69,7 +69,7 @@ if ($Fresh) {
     $freshCommand = New-RhapFreshCommand -RemoteRoot $cfg.RemoteRoot -SourceRoot $sourceRoot -Profile $cfg.ToolchainProfile -ToolsDir $cfg.ToolsDir -BootstrapRoot $cfg.BootstrapRoot -RepoDir $cfg.RepoDir -BuiltDir $cfg.BuiltDir -StateDir $cfg.StateDir
 }
 
-$preflight = New-RhapPreflightCommand -SourceRoot $sourceRoot -ToolsDir $cfg.ToolsDir -BootstrapRoot $cfg.BootstrapRoot -StateDir $cfg.StateDir -Profile $cfg.ToolchainProfile
+$preflight = New-RhapPreflightCommand -SourceRoot $sourceRoot -ToolsDir $cfg.ToolsDir -BootstrapRoot $cfg.BootstrapRoot -StateDir $cfg.StateDir -Profile $cfg.ToolchainProfile -HostPhases:(@($phases) -contains 'rbuild' -or @($phases) -contains 'bootstrap')
 $profileBody = New-RhapReadProfileCommand -Profile $cfg.ToolchainProfile
 $scriptInvoker = {
     param($name, $body, $stream)
@@ -95,11 +95,8 @@ $parseProfile = {
 $phaseFactory = {
     param($phase, $profileValues)
     if ($phase -eq 'kernel') {
-        $corePackages = @(Get-RhapKernelCorePackages -TargetArch $profileValues.target_arch)
-        foreach ($package in $corePackages) {
-            if (-not (Test-Path -LiteralPath (Join-Path $localSrc $package) -PathType Container)) {
-                throw "core package source missing locally: $package"
-            }
+        foreach ($package in @(Assert-RhapKernelCoreSources -LocalSource $localSrc -TargetArch $profileValues.target_arch)) {
+            Write-Host "build-src: no local source for $package; rbuild will skip it"
         }
     }
     return New-RhapBuildPhaseCommand -Phase $phase -SourceRoot $sourceRoot -ToolsDir $cfg.ToolsDir -BootstrapRoot $cfg.BootstrapRoot -StateDir $cfg.StateDir -Profile $cfg.ToolchainProfile -RepoDir $cfg.RepoDir -BuiltDir $cfg.BuiltDir -BuildCc $profileValues.build_cc -TargetArch $profileValues.target_arch -Make $profileValues.make -ToolPath $profileValues.path

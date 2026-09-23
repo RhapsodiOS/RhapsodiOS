@@ -549,37 +549,51 @@ struct vop_close_args /* {
     };
 
 	fcb = HTOFCB(hp);
-	leof = fcb->fcbEOF;
-	
-	if (leof != 0) {
-		blocksize = HTOVCB(hp)->blockSize;
-		blks = leof / blocksize;
-		if ((blks * blocksize) != leof)
-			blks++;
-	
-		/*
-		 * Shrink the peof to the smallest size neccessary to contain the leof.
-		 */
-		if ((blks * blocksize) < fcb->fcbPLen) {
-			vn_lock(vp, LK_EXCLUSIVE | LK_CANRECURSE, p);
-	 		retval = VOP_TRUNCATE(vp, leof, 0, ap->a_cred, p);
-			VOP_UNLOCK(vp, 0, p);
-		}
-	}
 
     /* File is already flushed, so just reset values */
     H_HINT(hp) = kNoHint;		/* reset catalog hint */
 
-    if (doclusterwrite) {
-            long devBlockSize = 0;
+	if (fcb->fcbEOF != 0 || doclusterwrite) {
+		enum vtype our_type = vp->v_type;
+		u_long our_id = vp->v_id;
 
-	    vn_lock(vp, LK_EXCLUSIVE | LK_CANRECURSE, p);
+		vn_lock(vp, LK_EXCLUSIVE | LK_CANRECURSE, p);
+		/*
+		 * Since we can context switch in vn_lock, our vnode
+		 * could get recycled (eg umount -f).  Double check
+		 * that it's still ours before touching it further.
+		 */
+		if (vp->v_type != our_type || vp->v_id != our_id) {
+			VOP_UNLOCK(vp, 0, p);
+			DBG_VOP_LOCKS_TEST(E_NONE);
+			return (E_NONE);
+		}
 
-            VOP_DEVBLOCKSIZE(hp->h_devvp, &devBlockSize);
-            cluster_close(vp, PAGE_SIZE, devBlockSize);
+		/* read the length under the lock: a writer may have grown the file while we slept */
+		leof = fcb->fcbEOF;
+		if (leof != 0) {
+			blocksize = HTOVCB(hp)->blockSize;
+			blks = leof / blocksize;
+			if ((blks * blocksize) != leof)
+				blks++;
 
-	    VOP_UNLOCK(vp, 0, p);
-    }
+			/*
+			 * Shrink the peof to the smallest size neccessary to contain the leof.
+			 */
+			if ((blks * blocksize) < fcb->fcbPLen) {
+		 		retval = VOP_TRUNCATE(vp, leof, 0, ap->a_cred, p);
+			}
+		}
+
+		if (doclusterwrite) {
+			long devBlockSize = 0;
+
+			VOP_DEVBLOCKSIZE(hp->h_devvp, &devBlockSize);
+			cluster_close(vp, PAGE_SIZE, devBlockSize);
+		}
+
+		VOP_UNLOCK(vp, 0, p);
+	}
 
     DBG_VOP_LOCKS_TEST(retval);
     return (retval);
@@ -2707,8 +2721,17 @@ struct vop_readdir_args /* {
     DBG_VOP_PRINT_VNODE_INFO(ap->a_vp);DBG_VOP_CONT(("\n"));
     DBG_HFS_NODE_CHECK(ap->a_vp);
 
-    /* We assume it's all one big buffer... */
-    if (uio->uio_iovcnt > 1) DEBUG_BREAK_MSG(("hfs_readdir: uio->uio_iovcnt = %d?\n", uio->uio_iovcnt));
+    /* We assume it's all one big buffer; reject anything else up front,
+     * and require room for at least one whole record before doing
+     * arithmetic on the (unsigned) request size below -- otherwise a
+     * buffer smaller than one record at a misaligned offset underflows
+     * count/uio_resid/iov_len to a huge value.
+     */
+    if (uio->uio_iovcnt > 1 || uio->uio_resid < sizeof(struct hfsdirentry)) {
+        DBG_ERR(("%s: Not enough buffer to read in entries\n",funcname));
+        DBG_VOP_LOCKS_TEST(EINVAL);
+        return (EINVAL);
+    }
 
     origOffset = uio->uio_offset;
     count = uio->uio_resid;
@@ -3825,7 +3848,8 @@ hfs_update(ap)
         return (0);
     }
 
-    if (VTOVFS(ap->a_vp)->mnt_flag & MNT_RDONLY) {
+    /* not MNT_RDONLY: mount(2) sets that before hfs_mount flushes a read-only remount */
+    if (VTOHFS(ap->a_vp)->hfs_fs_ronly) {
         hp->h_meta->h_nodeflags &= ~(IN_ACCESS | IN_CHANGE | IN_MODIFIED | IN_UPDATE);
         DBG_VOP_LOCKS_TEST(0);
         DBG_VOP(("hfs_update: returning 0 (all flags were cleared because the volume is read-only.\n"));

@@ -13,21 +13,23 @@ PROJECTVERSION = 2.6
 PROJECT_TYPE = Tool
 LANGUAGE = English
 
-CLASSES = PostLoad.m
+CLASSES = PostLoad.m IODeviceMaster.m
 
-OTHERSRCS = Makefile Makefile.preamble
+HFILES = IODeviceMaster.h
+
+OTHERSRCS = Makefile Makefile.preamble driverServer.defs
 
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC
 MAKEFILE = tool.make
 NEXTSTEP_INSTALLDIR = $(NEXT_ROOT)/private/Drivers
-LIBS = -lDriver
+LIBS =
 DEBUG_LIBS = $(LIBS)
 PROF_LIBS = $(LIBS)
 
 
-HEADER_PATHS = -I../BPF_reloc.tproj
+HEADER_PATHS = -I../BPF.lksproj
 NEXTSTEP_PB_CFLAGS = -DDRIVER_PRIVATE
 
 

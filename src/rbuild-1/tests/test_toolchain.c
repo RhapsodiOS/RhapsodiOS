@@ -305,6 +305,26 @@ TEST(test_validation_rejects_digit_leading_target_arch) {
     remove(path);
 }
 
+TEST(test_shipped_profiles_load) {
+    static const char *const paths[] = {
+        "toolchains/gcc-darwin-ppc.conf",
+        "toolchains/gcc-darwin-i386.conf",
+        "toolchains/gcc-darwin-universal.conf"
+    };
+    static const char *const archs[] = { "ppc", "i386", "universal" };
+    size_t i;
+
+    for (i = 0; i < sizeof(paths) / sizeof(paths[0]); i++) {
+        Toolchain tc;
+
+        toolchain_init(&tc);
+        CHECK_INT(toolchain_load(&tc, paths[i]), 0);
+        CHECK_INT(toolchain_validate(&tc), 0);
+        CHECK_STR(tc.target_arch, archs[i]);
+        toolchain_free(&tc);
+    }
+}
+
 TEST(test_expand_null_value_is_empty) {
     strlist words;
 
@@ -366,6 +386,7 @@ static void run_all(void) {
     RUN(test_validation_rejects_empty_ld_flags_gate);
     RUN(test_validation_accepts_cpp_flags_with_gate);
     RUN(test_validation_rejects_empty_cpp_flags_gate);
+    RUN(test_shipped_profiles_load);
     RUN(test_expand_null_value_is_empty);
     RUN(test_malformed_line_fails);
     RUN(test_unknown_key_fails);

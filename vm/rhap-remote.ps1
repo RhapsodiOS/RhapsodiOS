@@ -59,7 +59,7 @@ function Get-RhapVmConfig {
         ToolsDir   = '/build/tools'
         BootstrapRoot = '/build/bootstrap-root'
         StateDir   = '/build/state'
-        ToolchainProfile = 'rbuild-1/toolchains/gcc-darwin.conf'
+        ToolchainProfile = 'rbuild-1/toolchains/gcc-darwin-ppc.conf'
     }
     foreach ($k in $ExtraDefaults.Keys) { $cfg[$k] = $ExtraDefaults[$k] }
 

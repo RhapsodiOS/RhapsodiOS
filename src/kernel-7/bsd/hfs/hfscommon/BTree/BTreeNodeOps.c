@@ -269,7 +269,7 @@ OSStatus	GetNode		(BTreeControlBlockPtr	 btreePtr,
 				}
 			}
 			
-			(void) ReleaseNode (btreePtr, nodePtr);			// ignore error
+			(void) TrashNode (btreePtr, nodePtr);				// ignore error - discard corrupt buffer
 			goto ErrorExit;
 		}
 	}
@@ -379,6 +379,51 @@ OSStatus	ReleaseNode	(BTreeControlBlockPtr	 btreePtr,
 							   nodePtr,
 							   kReleaseBlock );
 		PanicIf (err, "\pReleaseNode: releaseNodeProc returned error.");
+		++btreePtr->numReleaseNodes;
+	}
+	
+	nodePtr->buffer			= nil;
+	nodePtr->blockHeader	= nil;
+	
+	LogEndTime(kTraceReleaseNode, err);
+
+	return err;
+}
+
+
+
+/*-------------------------------------------------------------------------------
+
+Routine:	TrashNode	-	Call FS Agent to release node obtained by GetNode, and
+							not store it...mark it as bad.
+
+Function:	Informs the FS Agent that a BTree node may be released and thrown away.
+
+Input:		btreePtr		- pointer to BTree control block
+			nodeNum			- number of node to release
+						
+Result:		noErr		- success
+			!= noErr	- failure
+-------------------------------------------------------------------------------*/
+
+OSStatus	TrashNode	(BTreeControlBlockPtr	 btreePtr,
+						 NodePtr				 nodePtr )
+{
+	OSStatus			 err;
+	ReleaseBlockProcPtr	 releaseNodeProc;
+	
+	
+	LogStartTime(kTraceReleaseNode);
+
+	err = noErr;
+	
+	if (nodePtr->buffer != nil)
+	{
+		releaseNodeProc = btreePtr->releaseBlockProc;
+		err = releaseNodeProc (btreePtr->fileRefNum,
+							   nodePtr,
+							   kReleaseBlock | kTrashBlock );
+		PanicIf (err, "\pTrashNode: releaseNodeProc returned error.");
 		++btreePtr->numReleaseNodes;
 	}
 	
@@ -558,6 +603,11 @@ OSStatus	CheckNode	(BTreeControlBlockPtr	 btreePtr, NodeDescPtr	 node )
 		
 		if (offset >= nodeSize)						// offset beyond end of node
 			return fsBTInvalidNodeErr;
+		
+		if ( (node->type == kLeafNode) &&
+			 (index < node->numRecords) &&				/* ignore free space record */
+			 (CalcKeySize(btreePtr, (KeyPtr) ((Ptr)node + offset)) > (UInt16)(prevOffset - offset)) )
+			return fsBTInvalidNodeErr;					// key overflows its record slot
 		
 	} while ( --index >= 0 );
 	

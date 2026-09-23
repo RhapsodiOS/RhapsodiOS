@@ -267,27 +267,6 @@ copyImage(
 	}
     }
     }
-    else
-    {
-	unsigned char *fb = frame_buffer;
-	unsigned int bytes_per_pixel, row_bytes, skip;
-	register int j, k;
-	unsigned char *data;
-
-	bytes_per_pixel = bits_per_pixel >> BYTE_SHIFT;
-	row_bytes = bytes_per_pixel * SCREEN_W;
-	data = bitmap->plane_data[0];
-	skip = bytes_per_pixel * (SCREEN_W - bitmap->width);
-
-	fb += (row_bytes * y) + (bytes_per_pixel * x);
-        for (j=0; j < bitmap->height; j++) {
-            for (k=0; k < bitmap->width; k++) {
-	        *fb++ = *data++;
-	    }
-	    fb += skip;
-        }
-	free(data);
-    }
 }
 
 /* Clear a rectangle on the screen;
@@ -303,7 +282,7 @@ clearRect(
     int c
 )
 {
-    register int j, k;
+    register int k;
 
     if (!in_linear_mode)
     {
@@ -317,23 +296,6 @@ clearRect(
 	    blitRow(x, y+k, w, 0, 0xff);
         }
         RestoreVGARegs();   
-    }
-    else
-    {
-	unsigned char *fb = frame_buffer;
-	unsigned int bytes_per_pixel, row_bytes, skip;
-
-	bytes_per_pixel = bits_per_pixel >> BYTE_SHIFT;
-	row_bytes = bytes_per_pixel * SCREEN_W;
-	skip = bytes_per_pixel * (SCREEN_W - w);
-
-	fb += (row_bytes * y) + (bytes_per_pixel * x);
-        for (j=0; j < h; j++) {
-            for (k=0; k < w; k++) {
-	        *fb++ = c;
-	    }
-	    fb += skip;
-        }
     }
 }
 

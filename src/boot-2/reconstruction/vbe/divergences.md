@@ -1505,3 +1505,166 @@ as `compare_flat` would; the eye check is what compares it.
 - **The overflow is one of order, not of total.** The setter needs 32 bytes
   that only Task 7's trims free: the wait cursors (-600) and the panel code.
   So it lands after them, in Task 7 (above).
+
+---
+
+## Task 7a: the `setMode` panel path, and the mode setter landed
+
+Task 7 was split. 7a rebuilds 4.2's `setMode` and its panel path (Task 3b's
+inventory), and lands Task 6's mode setter. 7b wires the VBE path into the
+boot flow.
+
+**Method.**
+- Each build is `rbuild` as Task 3 Step 2, after `vm/sync-src.ps1 -Path
+  boot-2`. A copy of `boot-64-2.sym/i386` is taken inside the chroot before
+  the cleanup.
+  - Every binary was checked by its guest `sum` and `cksum`, recomputed
+    locally from the decoded bytes.
+  - The package's `boot` is `cmp`-identical to the copy.
+- **The copy now waits for a `boot.sys` newer than the build's start.** The
+  first stage 1 build, `t7a1`, found a stale `boot.sys` left by Task 6's
+  failed `t6c` root, and copied nothing.
+  - Its package `boot` (`cksum 3835762470 44336`) is identical to the
+    rebuild's, `t7a1b` [measured].
+  - The symbols below are `t7a1b`'s. Both builds are called `t7a1` from here
+    on.
+- **`compare_flat.py`** was run as Task 3b ran it, with both images at base
+  `0x3000`.
+  - Our extent is the `nm -n` delta.
+  - The trailing `nop` or `00` pad is stripped on both sides. The pads were
+    then compared by eye.
+- **Each address map was read against our `nm`.** A mapped value that is not
+  an address is listed where it occurs.
+
+**The order.**
+1. **Stage 1, the panel path** (`t7a1`):
+   - 4.2's `struct bitmap` and its wait cursors;
+   - `copyImage`, `clearRect`, `message` and `clearActivityIndicator`.
+
+   `loadBitmap` and `spinActivityIndicator` change through the struct alone.
+2. **Stage 2** (`t7a2`): Task 6's setter patch.
+3. **`setMode`** and `boot.c:503-506` (`t7a3`, the final 7a booter).
+
+**Why `setMode` comes last: the link** [measured, `grep`; the consequence is
+checked in `t7a3` below].
+- The `Graphics Mode` branch calls `set_linear_video_mode`
+  (`graphics.c:198` at the start of 7a). That call is the only reference
+  from outside `vbe.c` into `vbe.o`.
+- Once 4.2's `setMode` replaces the branch, nothing in 7a calls into
+  `vbe.o`. So `ld` leaves that member of `libsaio.a` out.
+- The setter can therefore be compared, and its size measured, only while
+  the branch still links it.
+
+### Stage 1: the panel path [measured]
+
+| 4.2 function | extent | ours (`t7a1`) | `compare_flat` | outcome |
+| --- | --- | --- | --- | --- |
+| `loadBitmap` | `boot+30028..30243`, 216 | `_loadBitmap`, `0x9A90`, 216 | `MATCH: 84 instructions, 147 bytes compared, 69 masked, 8 addresses mapped` | **byte parity** |
+| `copyImage` | `boot+20024..20275`, 252 | `_copyImage`, `0x79C0`, 252 | `MATCH: 90 instructions, 205 bytes compared, 44 masked, 7 addresses mapped` | **byte parity** |
+| `clearRect` | `boot+20276..20547`, 272 | `_clearRect`, `0x7ABC`, 272 | `MATCH: 84 instructions, 207 bytes compared, 64 masked, 6 addresses mapped` | **byte parity** |
+| `message` | `boot+3764..4067`, 304 | `_message`, `0x3BB4`, 304 | `MATCH: 105 instructions, 220 bytes compared, 84 masked, 14 addresses mapped` | **byte parity** |
+| `spinActivityIndicator` | `boot+4596..4827`, 232 | `_spinActivityIndicator`, `0x3F4C`, 232 | `MATCH: 61 instructions, 132 bytes compared, 99 masked, 12 addresses mapped` | **byte parity** |
+| `clearActivityIndicator` | `boot+4828..4939`, 112 | `_clearActivityIndicator`, `0x4034`, 112 | `MATCH: 40 instructions, 83 bytes compared, 29 masked, 7 addresses mapped` | **byte parity** |
+
+- **The pads match.** In the table's order they are: none; `00`;
+  `90 90 90`; none; `90`; none. Both sides are the same.
+- **Mapped values that are not addresses** are equal on both sides:
+  - `copyImage`'s `and eax,3FFCh`, which rounds the `rowbuf[NCOLS]` array;
+  - `and eax,0FFFFh`, in `copyImage` and in `message`.
+- **Every other mapped value** names, by our `nm`, the expected symbol:
+  - functions: `blitRow`, `PackBitsDecode`, `copyImage`, `clearRect`,
+    `blit_clear`, `blit_string`, and the library functions;
+  - screen and panel state: `screen_width`, `screen_height`, `panel`,
+    `in_linear_mode`;
+  - VGA state: `savedGCRegisters`, `savedSEQRegisters+2`, and the two
+    inline-I/O counters;
+  - booter state: `showText`, `kernBootStruct`, `LanguageConfig`;
+  - the indicator: `currentIndicator`, `indicator`, `indicator_bitmap`,
+    `lastTickTime`, `string`.
+- **The four string operands** hold the same bytes on both sides:
+  `Error %d reading bitmap from '%s'\n`, `" "`, `"%s\n"` and `" \b"`.
+
+**What changed in the source.**
+- **`util/bitmap.h` takes 4.2's 24-byte `struct bitmap`.** It has six
+  `short`s, `short plane_len[2]` and two plane pointers. This is the layout
+  of `ppc/ppcMac/util/bitmap.h:39-47`.
+  - `loadBitmap` needed nothing else. It now `malloc`s and reads `0x18`
+    bytes, and takes the plane lengths as `short`s, as 4.2's does.
+  - `spinActivityIndicator` needed nothing else. It now reads the width at
+    `+8` and the height at `+0xA`, as 4.2's does.
+- **The wait cursors.**
+  - `boot2/bitmaps.c` imports `util/ns_wait{1,2,3}_bitmap.h` again.
+  - `indicator_bitmap` points at `ns_wait{1,2,3}_bitmap`.
+  - `graphics.c` no longer imports `util/spin_cursor.h`.
+- **`copyImage` and `clearRect`** lose their linear-frame-buffer branches.
+  - Each keeps its `if (!in_linear_mode)` test. So each returns at once in a
+    linear mode, as 4.2's does.
+  - `clearRect`'s `j` went with its branch.
+- **`message`** draws in the panel.
+  - It calls `blit_clear(BOX_W - 16, BOX_C_X, y, ..., TEXT_BG)` and
+    `blit_string(str, BOX_C_X, y, TEXT_FG, ...)`, with `y = MESSAGE_Y`.
+  - The `strwidth("9")` link workaround is gone. `blit_string` now links
+    `font.o`.
+- **`clearActivityIndicator`** clears the cursor with `clearRect(CURSOR_X,
+  CURSOR_Y, CURSOR_W, CURSOR_H, TEXT_BG)`.
+- **`boot2/graphics.h` takes 4.2's values**, which Task 3b read from the
+  call arguments:
+  - `TEXT_BG` is 2, `TEXT_FG` 0 and `SCREEN_BG` 1;
+  - `BOX_C_X` is `SCREEN_W / 2`, and `MESSAGE_Y` is `BOX_Y + BOX_H / 2`.
+  - The `COLOR_*` names keep their 8-bit values. Only the unbuilt
+    `popupBox` and `scrollbar.h` use them [measured, `grep`].
+
+**The wait cursors in the image [measured].**
+- Ours are at `0xDB2C..0xDC33`, 264 bytes. For each cursor there is plane 0
+  (32 bytes), then plane 1 (32), then the 24-byte struct. That is 4.2's order
+  at `0xD944..0xDA4B`.
+- **Against 4.2's 264 bytes, only 12 differ.**
+  - They are the six plane pointers.
+  - Each points at the plane of its own cursor, moved by the same `0x1E8`.
+- **`indicator_bitmap`** (`0xDAD8`) holds `0xDB6C`, `0xDBC4`, `0xDC1C` and 0.
+  - Those are 4.2's `0xD984`, `0xD9DC`, `0xDA34` and 0, mapped the same way.
+
+**`util/dumptiff.m`: the build does not compile it [measured, the Makefile
+and the `t7a1` log].**
+- `util/Makefile` sets `PROGRAMS = machOconv`, with `dumptiff` commented
+  out (`:36-37`).
+- Its `all` target reaches only `$(PROGRAMS)` and `Panel.image`.
+- The log's `make install for util` section compiles `machOconv.c` and
+  nothing else.
+- `dumptiff`, `dumptiff.m`, `BooterBitmap.[hm]` and `tif_packbits.c` appear
+  only in the log's source listing.
+
+**So the host tool now uses the new layout** [measured source].
+- `BooterBitmap.m:252-283`, linked into `dumptiff`, *writes* an `.image`
+  header with `fwrite(&bd, sizeof(bd), ...)`.
+- Built again, it would write 4.2's 24-byte header. That is the format of
+  `golden.img`'s `Panel.image`, and of the package's own `util/Panel.image`.
+- `dumptiff.m` itself only includes the header.
+
+**The build, `t7a1`** [measured]:
+- `booter 44336 bytes of 45056, 720 to spare`.
+- `boot`: `sum 57292 44`, `cksum 3835762470 44336`, SHA-256
+  `4109C1738482E74BECC1CED721C41C8479F726791E217A198479652BD2ED959A`.
+- `boot.sys`: `sum 40700 1052`, `cksum 666419113 1077012`.
+- **Warnings:** none new in the touched files. The `setMode` warning about
+  `convert_vbe_mode`'s argument, and `vbe.c`'s `models`, are as before.
+
+| section | `t6b` | `t7a1` | delta |
+| --- | --- | --- | --- |
+| `__text` | 37,817 | 37,761 | -56 |
+| `__cstring` | 4,208 | 4,206 | -2: `"9"` |
+| `__const` | 1,384 | 1,384 | 0 |
+| `__data` | 1,568 | 968 | -600: the cursors, 864 to 264 |
+| `boot` | 44,992 | 44,336 | **-656** |
+
+- **The `__text` delta, by `nm` extent:**
+  - `copyImage` -148, `clearRect` -108, `message` +104,
+    `clearActivityIndicator` +84 and `loadBitmap` +16. That is -52, Task
+    3b's rows exactly.
+  - `setMode` lost 4 more. `SCREEN_BG` is now 1, and `push 1` is 3 bytes
+    shorter than `push 80h`. The pad takes the fourth.
+- **Against Task 3b's -676** [arithmetic]:
+  - That figure includes `boot()`'s -24, which lands with `setMode`.
+  - Without it, the rows give -652. The file shrank by 656; `__TEXT` and
+    `__DATA` rounding take the difference.
+- **So stage 2 fits**: 720 spare against the setter's +96 (Task 6's `t6c`).

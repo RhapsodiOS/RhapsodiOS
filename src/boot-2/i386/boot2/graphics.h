@@ -39,7 +39,7 @@
 #define BOX_W_OFFSET 0
 #define BOX_X		((SCREEN_W - BOX_W) / 2)
 #define BOX_Y		((SCREEN_H - BOX_H) / 2)
-#define BOX_C_X		((SCREEN_W / 2) + 4)
+#define BOX_C_X		(SCREEN_W / 2)		/* 4.2's message, boot+3929 */
 
 #define POPUP_FRAME_MARGIN 3
 #define POPUP_W		(BOX_W - 32)
@@ -61,7 +61,7 @@
 #define CURSOR_X	(BOX_X + (BOX_W - CURSOR_W) / 2)
 #define CURSOR_Y	(BOX_Y + (148))
 
-#define MESSAGE_Y	(BOX_Y + (182))
+#define MESSAGE_Y	(BOX_Y + BOX_H / 2)	/* 4.2's message, boot+3878 */
 
 /* We must scramble the palette in order
  * to be able to write text with the correct
@@ -74,9 +74,14 @@
 #define COLOR_WHITE	0xFF
 #define COLOR_PLATNUM	0x80
 
-#define TEXT_BG		COLOR_LT_GREY
-#define TEXT_FG		COLOR_DK_GREY
-#define SCREEN_BG	COLOR_PLATNUM
+/*
+ * The mode-0x12 panel's colours, as 4.2 passes them (boot+3924, +3957,
+ * +4279). set_video_mode(0x12) loads colorData's four greys: 0 is black,
+ * 1 dark grey, 2 light grey and 3 white.
+ */
+#define TEXT_BG		2
+#define TEXT_FG		0
+#define SCREEN_BG	1
 
 #define POPUP_IN	0
 #define POPUP_OUT	1

@@ -38,7 +38,6 @@
 #import "graphics.h"
 #import "language.h"
 #import "bitmap_list.h"
-#import "spin_cursor.h"
 #import "vbe.h"
 #import "kernBootStruct.h"
 
@@ -60,7 +59,7 @@ message(
 )
 {
 	register int x;
-	//register int y;
+	register int y;
 	BOOL tshow = showText;
 	char *val = 0;
 	
@@ -71,14 +70,10 @@ message(
 	}
 	x = (NCOLS - strlen(str)) >> 1;
  	if (kernBootStruct->graphicsMode == GRAPHICS_MODE) {
-	    strwidth ("9");  // stupid!! must have this or it won't link
-	    /*
-	     *  Do nothing for now since it messes up the image
-	     *
+	    /* In the panel, as 4.2 draws it (boot+3878..3981). */
 	    y = MESSAGE_Y;
-	    blit_clear(BOX_W - 48, BOX_C_X, y, CENTER_V | CENTER_H, TEXT_BG);
+	    blit_clear(BOX_W - 16, BOX_C_X, y, CENTER_V | CENTER_H, TEXT_BG);
 	    blit_string(str, BOX_C_X, y, TEXT_FG, CENTER_V | CENTER_H);
-	     */
 	} else {
 	    showText = 1;
 	    if (centered)
@@ -272,9 +267,9 @@ int convert_vbe_mode(char *mode_name, int *mode)
 
 static char indicator[] = {'-', '\\', '|', '/', '-', '\\', '|', '/', '\0'};
 static const struct bitmap *indicator_bitmap[4] = {
-    &wait1_bitmap,
-    &wait2_bitmap,
-    &wait3_bitmap,
+    &ns_wait1_bitmap,
+    &ns_wait2_bitmap,
+    &ns_wait3_bitmap,
     0
 };
 
@@ -312,11 +307,8 @@ clearActivityIndicator( void )
     if (showText) {
 	reallyPrint(" \b");
     } else {
-	/*
-	 * Turn this off since it messes up the panel image. (the
-	 *  panel image is not necessarily TEXT_BG)
-	 */
-	//clearRect(CURSOR_X, CURSOR_Y, CURSOR_W, CURSOR_H, TEXT_BG);
+	/* 4.2 clears the cursor to the panel's light grey (boot+4854). */
+	clearRect(CURSOR_X, CURSOR_Y, CURSOR_W, CURSOR_H, TEXT_BG);
     }
 }
 

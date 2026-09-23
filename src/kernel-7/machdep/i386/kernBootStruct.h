@@ -200,9 +200,10 @@ struct boot_vbe_mode {
 typedef struct boot_vbe_mode boot_vbe_mode;
 
 /*
- * 4.2 allowed 90 records (0x880 bytes from 0x1870). In this struct the 90th
- * would overwrite `video`, so the booter stops at 89 and leaves the 90th
- * slot's xResolution zero for the driver's scan to stop on.
+ * 4.2 allowed 90 records (0x870 bytes from 0x1870; the driver scans 0x880
+ * bytes from there). In this struct the 90th would overwrite `video`, so
+ * the booter stops at 89 and leaves the 90th slot's xResolution zero for
+ * the driver's scan to stop on.
  */
 #define BOOT_VBE_MAX_MODES	89
 

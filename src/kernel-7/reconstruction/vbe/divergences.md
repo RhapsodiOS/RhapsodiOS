@@ -1384,6 +1384,17 @@ finished **[INFERENCE: from the booter-then-kernel order, not traced here]**.
 Whether anything else clears the word between the producer and this function's
 read was not checked.
 
+**[CLOSED — spec 3, labelled in the final review's fix pass.** Task 4 named
+both words in both `KERNBOOTSTRUCT` copies (`vbeFrameBuffer` at `0x1854`,
+`vbeCurrentMode` at `0x1858`), with offset assertions, and kept the bare
+constants in the driver and in `FBConsole.c`, because the 4.2 binaries use
+them. The booter writes only after `getKernBootStruct()`'s `bzero`, shown by
+call graph (`src/boot-2/reconstruction/vbe/divergences.md`, "Step 2: the
+write order"). The kernel-side producer is `pmap_bootstrap` (Task 8). The
+`volatile` question is answered in `FBConsole.c`'s comment on the two
+defines: the one write precedes paging and the reader, on the single boot
+thread.**]**
+
 ### The build: `rbuild kernel` needs `--toolchain`, and the documented line omits it
 
 The invocation in `docs/build/rbuild-universal.md:195`:
@@ -2501,6 +2512,13 @@ anything read the symbol during these boots.
   "Skipping" path never calls it.
 - These captures cannot be regenerated. See the gate record.
 
+**[CLOSED — spec 3 G2, for the first two items, labelled in the final
+review's fix pass.** With spec 3's booter and kernel, `FBAllocateVBEConsole`
+passes its guard and calls `VBEModeInfo2IODisplayInfo`, and the kernel's
+console draws through the frame buffer at 640x480, while the driver prints
+`using VBE mode 257` (`docs/kernel/i386-vbe-console.md`, "Spec 3", G2). The
+third item still holds.**]**
+
 ---
 
 ## Spec 3: the frame-buffer mapping
@@ -2632,12 +2650,19 @@ Its body matches `_pmap_map` step for step:
 buffer maps, so the frame buffer's virtual address will differ from 4.2's.
 Nothing reads it except through `0x12854` [measured source; the consequence
 is arithmetic].
+**[UPDATED — final review I2: the difference matters more than the address.
+The larger reservation also pushes the mapping toward
+`VM_MAX_KERNEL_ADDRESS` (1 GB), and past it the page directory overflows.
+The hazard is ours, not 4.2's. See "Final review fix: the 1 GB bound".]**
 
 **Expected outcome for Task 8: structural parity.** Byte parity is out of
 reach because the reference inlines `pmap_map` and ours calls it [inference].
 **[CORRECTED — Task 8: ours inlines it too. gcc 2.7.2.1 at `-O3` expands
 all three `pmap_map` calls in our `pmap_bootstrap` into loops, in spec 2's
-kernel as well [measured]. Structural parity is still the outcome. The
+kernel as well [measured].
+**[CORRECTED — final review (a Task 8 minor): spec 2's kernel has two
+`pmap_map` calls in `pmap_bootstrap`, not three; the third is Task 8's frame
+buffer. "As well" applies to those two.]** Structural parity is still the outcome. The
 reasons are register allocation and the reservation, not a call; see "Spec
 3 Task 8".]**
 
@@ -2732,6 +2757,11 @@ reserve the range. The source line is labelled.
   - its one reader is `vm/vm_init.c:81`;
   - `pmap_create_pd` copies every kernel PDE up to `VM_MAX_KERNEL_ADDRESS`,
     so user pmaps still carry the frame buffer's page table.
+    **[CORRECTED — final review I2: only while the mapping lies below
+    `VM_MAX_KERNEL_ADDRESS`. Task 8's block had no such bound. Past 1 GB the
+    kernel's own page directory overflows, and the copy stops short of the
+    mapping. Since the final fix pass, a mapping that would pass 1 GB is not
+    made; see "Final review fix: the 1 GB bound".]**
 
 ### The build [measured]
 
@@ -3414,3 +3444,104 @@ every installed file was read back and hashed.
     - A differs from both in two seconds digits, the `init` and `date`
       lines (44 pixels). That is TCG timing between the two controls.
   - **So the VGA path is untouched.**
+
+## Final review fix: the 1 GB bound
+
+The final whole-branch review (I2) found that Task 8's mapping has no bound
+against `VM_MAX_KERNEL_ADDRESS` (`0x40000000`, `mach/i386/vm_param.h:69`).
+The user asked for the bound. This is **our own fix, not a divergence from
+4.2**: the hazard comes from our larger reservation.
+
+**The hazard** [measured source; the effects are inference].
+- The mapping covers `[va, va + (end - start))`, where `va` is `phys_end`
+  plus 64 MB plus `zone_map_sizer()` plus `buffer_map_sizer()`
+  (`pmap.c:399-417`). 4.2 reserves a flat 64 MB (call 2 above). So ours sits
+  higher, and the frame buffer lowers our existing wall, RAM + reservation
+  <= 1 GB, by its own size plus up to a page.
+- Past 1 GB, `pmap_pt_entry` indexes beyond the single page-directory page,
+  since `kernel_pmap->root` is advanced 768 entries (`pmap.c:394-395`): the
+  silent corruption that `docs/superpowers/specs/2026-07-25-i386-large-memory-design.md`,
+  "The hard wall", describes. The kernel segments stop at 1 GB
+  (`gdt.c:71-78`), and `pmap_enable_pg` and `pmap_create_pd` copy kernel
+  PDEs only up to `VM_MAX_KERNEL_ADDRESS` (`pmap.c:317`, `:658`).
+- Today that needs a machine within a frame buffer's size of the wall. Once
+  the large-memory branch clamps machines of 816 MB or more to 816 MB, about
+  8 to 9 MB of VA remain above the reservation, and a frame buffer over that
+  (1920x1200x32 is 9.2 MB; `isa-vga` offers 1920x1080x32, 8.3 MB) would
+  reach past it [arithmetic, from that branch's 823.64 MB ceiling].
+
+**The fix** (`machdep/i386/pmap.c`, labelled on the line as our own bound).
+After `end` is computed, the publish and the map run only when `va + (end -
+start) <= VM_MAX_KERNEL_ADDRESS`. Otherwise nothing is mapped and
+`kbs+0x1854` keeps the zero the booter's `bzero` left, so
+`FBAllocateVBEConsole`'s second test returns NIL and the console falls back
+to VGA [inference, from the code: `FBConsole.c:1589`]. Its comment on the
+define now cites the new line and the bound. The screen stays in the VBE
+mode, so that console is not visible.
+
+**For whoever merges the large-memory branch:** its VA estimator has no
+frame-buffer term. It should add the frame buffer's extent, read from
+`kbs+0x1858` (`bytesPerScanline * yResolution`, plus a page). With this
+bound a miss costs the visible console, not memory.
+
+**The build, `tfin`** [measured]:
+- `vm/sync-src.ps1 -Path kernel-7`, then one session: the guest's
+  `gcc-darwin-ppc.conf` (`cksum 4287395951 1070`) with the plan's `sed`,
+  `diff` showing only `path=`; `rbuild kernel ... --toolchain
+  /tmp/tfin-gcc-darwin.conf`, `RBUILD_EXIT=0`, the same eight APKs.
+- The guest's sources equal the local ones: `pmap.c` `1878554600 43553`,
+  `FBConsole.c` `3307024106 51111`, `FBConsPriv.h` `1479914723 1764`,
+  `kernBootStruct.h` `2200997724 10316`.
+- Warnings: only the known ones (`pmap.c`'s `pmap_resident_extract`,
+  `FBConsole.c`'s cast in `VBEModeInfo2IODisplayInfo`).
+- `mach_kernel` 1,490,352 bytes, `sum 1504 1456`, `cksum 4040349399
+  1490352` on the guest and from the pulled bytes; SHA-256
+  `17D496898DF6891EC194EB57CEAC1D0EEB8BB9C915F635B05C9CBBE9C36C864B`. Kept as
+  `vm/work/tfin-mach_kernel`.
+- **Layout.** `_pmap_bootstrap` grows from 1,076 to 1,092 bytes. Our `ld`
+  places `__text` at the end of `__TEXT`, so `__text` now starts 16 bytes
+  earlier (`0x101780`), everything before the growth moves down 16 (for
+  example `_pmap_bootstrap` to `0x001DABEC`, `_pmap_map` to `0x001DAAEC`),
+  and everything after it keeps its address: `_pmap_init` `0x001DB030`,
+  `_BasicAllocateConsole` `0x001E30DC`, `FBPutC` `0x001E7440`, `Init`
+  `0x001E9424`, `_FBAllocateConsole` `0x001E9700`,
+  `_VBEModeInfo2IODisplayInfo` `0x001E9794`. All 4,462 symbols are present
+  in both kernels; those three runs are the only moves.
+
+**Oracles and re-checks** [measured]:
+- `compare_kvbe.py`: `MATCH: all 411 compared bytes identical`, 31 table
+  targets identical relative to the entry. `compare_flat --table 76:31`:
+  `MATCH: 145 instructions, 373 bytes compared, 166 masked, 1 addresses
+  mapped`.
+- `_BasicAllocateConsole`: raw, `60 of 60 unmasked bytes equal (12
+  masked)`; `compare_flat`: `MATCH: 19 instructions, 59 bytes compared, 13
+  masked, 3 addresses mapped`.
+- `FBPutC` against 4.2, `compare_flat --table 252:45`: `MATCH: 753
+  instructions, 1734 bytes compared, 562 masked, 8 addresses mapped`.
+- `Init` against Task 8c's: `MATCH: 206 instructions, 607 bytes compared,
+  101 masked, 5 addresses mapped`. `_pmap_map` is byte-identical to Task
+  8c's (256 bytes, 0 differ).
+- **The mapping block against Task 8c's** (`shapecmp.py`, registers and
+  frame slots normalised): 87 of 90 | 91 instructions aligned, branches
+  consistent. The only differences are **the bound's four instructions**,
+  `sub eax,edi; add eax,esi; cmp eax,40000000h; ja` to the block's end
+  (15 bytes), and three alignment `nop`s that Task 8c's block had and this
+  one does not. The block is 300 bytes against 288. Raw, the registers
+  differ: `va` is in `esi` where Task 8c had `edi`, `start` the other way
+  round, and `end` is spilled to `[ebp-14h]` rather than `[ebp-0Ch]`.
+- **The whole of `_pmap_bootstrap` against Task 8c's** (`shapecmp.py`): 323
+  of 338 | 346 aligned, branches consistent. Besides the block: the
+  switch's inline jump table (`+72..+113`), whose entries moved with the
+  function; and in the reservation's inlined loop, the same test in a new
+  shape (`cmp edi,eax; jae` against `cmp [ebp-14h],edi; jbe`, with a spill
+  and three `nop`s), the register allocator's knock-on.
+- **Against 4.2's block** (`shapecmp.py`, `0x0018F169`, 314 bytes): 73 of
+  92 | 91 aligned, against Task 8c's 74 of 92 | 90, with the bound's
+  instructions unaligned and the same two branch findings as Task 8. The
+  guard still matches: `compare_flat` over its 14 bytes, `MATCH: 2
+  instructions, 10 bytes compared, 4 masked, 1 addresses mapped`.
+
+**Boots.** The G2, G4 and G1 checks were re-run on this kernel and the
+final booter; see `docs/kernel/i386-vbe-console.md`, "After the gates: the
+final booter and kernel". No boot here comes near 1 GB, so the bound's
+refusal path is verified by code reading and disassembly only.

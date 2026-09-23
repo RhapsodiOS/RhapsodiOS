@@ -445,10 +445,19 @@ pmap_bootstrap(
 	end = round_page(mode->frameBuffer + size +
 			 (mode->frameBuffer - start));
 
-	/* 0x0018F1B4: published before the mapping is built. */
-	KERNSTRUCT_ADDR->vbeFrameBuffer = va + (mode->frameBuffer - start);
+	/*
+	 * Our own bound, not a divergence from 4.2: 4.2 reserves a flat 64 MB
+	 * above physical memory, and ours adds the zone and buffer maps, so
+	 * here the frame buffer can end past VM_MAX_KERNEL_ADDRESS, beyond
+	 * the one page directory. Then nothing is mapped and kbs+0x1854 stays
+	 * zero, so the console falls back to VGA.
+	 */
+	if (va + (end - start) <= VM_MAX_KERNEL_ADDRESS) {
+	    /* 0x0018F1B4: published before the mapping is built. */
+	    KERNSTRUCT_ADDR->vbeFrameBuffer = va + (mode->frameBuffer - start);
 
-	(void) pmap_map(va, start, end, VM_PROT_READ | VM_PROT_WRITE);
+	    (void) pmap_map(va, start, end, VM_PROT_READ | VM_PROT_WRITE);
+	}
     }
 
     /*

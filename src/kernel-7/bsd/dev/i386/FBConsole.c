@@ -1541,9 +1541,11 @@ void VBEModeInfo2IODisplayInfo(VBEModeRec *mode, IODisplayInfo *info)
 // va + (frameBuffer & page_mask), then maps trunc_page(frameBuffer) at va
 // (0x0018F1B4, 0x0018F1E4..0x0018F292) [measured; this confirms the reading
 // divergences.md records as D2]. Ours is written the same way, by
-// pmap_bootstrap (machdep/i386/pmap.c:449), and only when the booter set a
-// mode. On a boot without one the first test, xResolution == 0, returns NIL
-// and the frame-buffer word is never read; the console falls back to VGA.
+// pmap_bootstrap (machdep/i386/pmap.c:457), and only when the booter set a
+// mode whose mapping ends below VM_MAX_KERNEL_ADDRESS; otherwise the word
+// stays zero and the second test returns NIL. On a boot without a mode the
+// first test, xResolution == 0, returns NIL and the frame-buffer word is
+// never read. Either way the console falls back to VGA.
 //
 // Neither define is volatile: the one write is in pmap_bootstrap, before
 // paging is enabled and before this function can run, on the single boot

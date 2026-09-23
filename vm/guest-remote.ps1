@@ -21,7 +21,7 @@ if ([string]::IsNullOrEmpty($Run) -eq [string]::IsNullOrEmpty($Fetch)) {
     Write-RhapDie 'guest-remote' 'give exactly one of -Run or -Fetch'
 }
 $cfg = Get-RhapVmConfig -DiePrefix 'guest-remote'
-$ssh = Resolve-RhapTool -Name $cfg.Ssh -Kind 'ssh'
+$ssh = Resolve-RhapTool -NameOrPath $cfg.Ssh -DiePrefix 'guest-remote'
 
 if ($Run) {
     $body = Get-Content -LiteralPath $Run -Raw

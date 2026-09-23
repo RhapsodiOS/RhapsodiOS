@@ -82,15 +82,25 @@ before every upgrade of a read-only filesystem; this port confines it to the
 refusal path, so a normal boot never runs `ffs_reload`.
 
 **2. Release the buffer when `bread` fails during reload.**
-`ffs_reload` returns bare at `ffs_vfsops.c:337` and `:382` without releasing
-`bp`. `bread` returns a busy buffer even on failure, so each of these strands
-one permanently; later I/O hashing to the same block waits on it forever.
+`ffs_reload` has three `bread` calls that return without releasing `bp`: the
+superblock at `ffs_vfsops.c:337`, the cylinder-group summary at `:382`, and the
+per-vnode inode re-read in its Step 6 loop. `bread` sets `*bpp` before it waits
+(`bsd/vfs/vfs_bio.c:305-308`), so it returns a held buffer even on failure. Each
+of these strands one busy, and later I/O to the same block sleeps on it forever.
 
-Only these two sites. `ffs_mountfs` looked affected and is not — its error
-label at `ffs_vfsops.c:679` already does `if (bp) brelse(bp)`, and its
-cylinder-group read at `:561` releases explicitly. The research pass that found
-this reported three sites including one in `ffs_mountfs`; that was wrong, and
-checking it is the only reason the spec says two.
+`ffs_mountfs` is not affected: its error label already does `if (bp) brelse(bp)`,
+and its cylinder-group read releases explicitly. An earlier draft of this spec
+"corrected" the research pass's three sites down to two, having searched for
+only one spelling of the call. Review found the third, in Step 6. Since the
+Task 7 gate now calls `ffs_reload`, all three are reachable from one more path.
+
+`ffs_reload` needed two more fixes once the gate started calling it. Its copy
+of the on-disk superblock also overwrote `fs_ronly` (0 after any read-write
+mount) and the 4 GB `fs_maxfilesize` limit that `ffs_mountfs` imposes under
+`NeXT`. It now sets `fs_ronly` back to 1 — always correct there, since it
+refuses to run unless the mount is read-only — and re-applies the limit through
+a helper shared with `ffs_mountfs`. Both were pre-existing, and also affected
+`fsck`'s own reload of the root.
 
 **3. Reject a fragment size below `DIRBLKSIZ`.**
 Added beside the existing geometry checks in `ffs_mountfs`. `DIRBLKSIZ` is 1024

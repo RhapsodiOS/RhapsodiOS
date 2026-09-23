@@ -59,6 +59,11 @@ was originally planned.
   pre-existing out-of-bounds write that a native superblock with a bad block size
   could reach.
 - **Task 8 stays silent**; the global rule above was reworded to match.
+- **Task 3 — three leak sites, not two.** `ffs_reload`'s Step 6 inode re-read
+  leaked its buffer as well, and is fixed. While there, `ffs_reload` was made to
+  keep `fs_ronly` set and to re-apply the 4 GB file-size limit after its copy,
+  which lets the Task 7 gate drop its own `fs_ronly` restore. A reload failure at
+  the gate now logs an `ffs: ` line.
 
 ### Superblock field offsets
 

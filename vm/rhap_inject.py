@@ -59,7 +59,10 @@ def check_target(image_path):
     canonical_override = None
     if override:
         canonical_override = os.path.normcase(os.path.realpath(override))
-        if canonical_override in protected_paths:
+        # by name as well as by path: run from a git worktree, protected_paths
+        # names the worktree's copy, while the real golden.img is elsewhere
+        if (canonical_override in protected_paths or
+                os.path.basename(canonical_override) in ("golden.img", "rhapsody.vmdk")):
             raise SafetyError(
                 "refusing to write %s; RHAP_TEST_IMAGE cannot authorise "
                 "golden.img or rhapsody.vmdk" % image_path

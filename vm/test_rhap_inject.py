@@ -100,6 +100,21 @@ class TestSafety(unittest.TestCase):
 
 
 class TestPerSessionImageOverride(unittest.TestCase):
+    def test_override_cannot_authorise_a_golden_img_elsewhere(self):
+        # e.g. the main checkout's golden.img, seen from a git worktree
+        with tempfile.TemporaryDirectory() as d:
+            elsewhere = os.path.join(d, "golden.img")
+            with mock.patch.dict(os.environ, {"RHAP_TEST_IMAGE": elsewhere}):
+                with self.assertRaises(rhap_inject.SafetyError):
+                    rhap_inject.check_target(elsewhere)
+
+    def test_override_cannot_authorise_a_vmdk_elsewhere(self):
+        with tempfile.TemporaryDirectory() as d:
+            elsewhere = os.path.join(d, "rhapsody.vmdk")
+            with mock.patch.dict(os.environ, {"RHAP_TEST_IMAGE": elsewhere}):
+                with self.assertRaises(rhap_inject.SafetyError):
+                    rhap_inject.check_target(elsewhere)
+
     def test_override_accepts_the_named_image(self):
         with tempfile.TemporaryDirectory() as d:
             alt = os.path.join(d, "ufs-backport.img")

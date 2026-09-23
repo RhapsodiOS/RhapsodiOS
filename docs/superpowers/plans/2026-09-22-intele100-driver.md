@@ -39,7 +39,7 @@ These apply to every task.
   - Declarations only at the top of a block.
   - No libc in kernel code.
 - **Kernel code must not sleep in `-resetAndEnable:`.** Use bounded `IODelay` loops only; Pro1000 learned this by hanging the machine.
-- Test code compiles with `cc -ansi -pedantic -Wall -Werror` on the **PowerPC** build guest. Tests assert values, never little-endian byte images.
+- Test code compiles with `cc -ansi -pedantic -Wall -Werror -U__GNUC__` on the **PowerPC** build guest. `-U__GNUC__` works around the guest's `bsd/stdio.h`, which under `-ansi` still takes its `__GNUC__` branch and then rejects `__inline`. Tests assert values, never little-endian byte images.
 - **Log prefix:** every `IOLog` line starts `IntelE100: `.
 - **QEMU identity:** MAC `52:54:00:12:34:56`, PCI slot `addr=03.0`, gateway `10.0.2.2`.
 
@@ -1129,9 +1129,11 @@ The `e100_hw_test` target is added in Task 4. Recipe lines start with a TAB.
 ```make
 # Unit tests for drvIntelE100's plain C, built and run on the build guest:
 #   cd tests && gnumake check
-# Same flags as drvAHCI's tests.
+# drvAHCI's flags, plus -U__GNUC__: under -ansi the guest's bsd/stdio.h
+# takes its __GNUC__ branch and then rejects __inline; without __GNUC__
+# it uses its portable macro instead.
 CC = cc
-CFLAGS = -ansi -pedantic -Wall -Werror
+CFLAGS = -ansi -pedantic -Wall -Werror -U__GNUC__
 LKS = ../IntelE100.drvproj/IntelE100.lksproj
 INCLUDES = -I. -I$(LKS)
 
@@ -1983,9 +1985,11 @@ Change `all:` to build both tests, add the rule, and run both in `test:`. Recipe
 ```make
 # Unit tests for drvIntelE100's plain C, built and run on the build guest:
 #   cd tests && gnumake check
-# Same flags as drvAHCI's tests.
+# drvAHCI's flags, plus -U__GNUC__: under -ansi the guest's bsd/stdio.h
+# takes its __GNUC__ branch and then rejects __inline; without __GNUC__
+# it uses its portable macro instead.
 CC = cc
-CFLAGS = -ansi -pedantic -Wall -Werror
+CFLAGS = -ansi -pedantic -Wall -Werror -U__GNUC__
 LKS = ../IntelE100.drvproj/IntelE100.lksproj
 INCLUDES = -I. -I$(LKS)
 

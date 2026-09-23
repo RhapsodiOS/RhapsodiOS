@@ -404,10 +404,7 @@ void vm_object_terminate(object)
 	 *	with the object.
 	 */
 
-	while (object->paging_in_progress != 0) {
-		vm_object_sleep(object, object, FALSE);
-		vm_object_lock(object);
-	}
+	vm_object_paging_wait(object, FALSE);
 
 
 	/*

@@ -148,12 +148,12 @@ kern_return_t vm_fault(map, vaddr, fault_type, change_wiring)
 #endif	USE_VERSIONS
 
 #define	UNLOCK_THINGS	{				\
-	object->paging_in_progress--;			\
+	vm_object_paging_end(object);			\
 	vm_object_unlock(object);			\
 	if (object != first_object) {			\
 		vm_object_lock(first_object);		\
 		FREE_PAGE(first_m);			\
-		first_object->paging_in_progress--;	\
+		vm_object_paging_end(first_object);	\
 		vm_object_unlock(first_object);		\
 	}						\
 	UNLOCK_MAP;					\
@@ -202,7 +202,7 @@ kern_return_t vm_fault(map, vaddr, fault_type, change_wiring)
 #endif	!USE_VERSIONS
 
 	first_object->ref_count++;
-	first_object->paging_in_progress++;
+	vm_object_paging_begin(first_object);
 
 	/*
 	 *	INVARIANTS (through entire routine):
@@ -319,7 +319,7 @@ kern_return_t vm_fault(map, vaddr, fault_type, change_wiring)
 					if (object != first_object) {
 						m->busy = m->absent = FALSE;
 						FREE_PAGE(m);
-						object->paging_in_progress--;
+						vm_object_paging_end(object);
 						vm_object_unlock(object);
 						object = first_object;
 						offset = first_offset;
@@ -332,7 +332,7 @@ kern_return_t vm_fault(map, vaddr, fault_type, change_wiring)
 					m->absent = FALSE;
 				} else {
 					if (object != first_object) {
-						object->paging_in_progress--;
+						vm_object_paging_end(object);
 						FREE_PAGE(m);
 					} else {
 						first_m = m;
@@ -341,7 +341,7 @@ kern_return_t vm_fault(map, vaddr, fault_type, change_wiring)
 					vm_object_lock(next_object);
 					vm_object_unlock(object);
 					object = next_object;
-					object->paging_in_progress++;
+					vm_object_paging_begin(object);
 					continue;
 				}
 			}
@@ -548,7 +548,7 @@ kern_return_t vm_fault(map, vaddr, fault_type, change_wiring)
 			 *	in the top object with zeros.
 			 */
 			if (object != first_object) {
-				object->paging_in_progress--;
+				vm_object_paging_end(object);
 				vm_object_unlock(object);
 
 				object = first_object;
@@ -566,10 +566,10 @@ kern_return_t vm_fault(map, vaddr, fault_type, change_wiring)
 		else {
 			vm_object_lock(next_object);
 			if (object != first_object)
-				object->paging_in_progress--;
+				vm_object_paging_end(object);
 			vm_object_unlock(object);
 			object = next_object;
-			object->paging_in_progress++;
+			vm_object_paging_begin(object);
 		}
 	}
 
@@ -648,7 +648,7 @@ kern_return_t vm_fault(map, vaddr, fault_type, change_wiring)
 			 *	We no longer need the old page or object.
 			 */
 			PAGE_WAKEUP(m);
-			object->paging_in_progress--;
+			vm_object_paging_end(object);
 			vm_object_unlock(object);
 
 			/*
@@ -669,9 +669,9 @@ kern_return_t vm_fault(map, vaddr, fault_type, change_wiring)
 			 *	But we have to play ugly games with
 			 *	paging_in_progress to do that...
 			 */
-			object->paging_in_progress--;
+			vm_object_paging_end(object);
 			vm_object_collapse(object);
-			object->paging_in_progress++;
+			vm_object_paging_begin(object);
 		}
 		else {
 		    	prot &= (~VM_PROT_WRITE);
@@ -1401,7 +1401,7 @@ kern_return_t vm_fault_wire_fast(map, va, entry)
 
 #undef	UNLOCK_THINGS
 #define	UNLOCK_THINGS	{				\
-	object->paging_in_progress--;			\
+	vm_object_paging_end(object);			\
 	vm_object_unlock(object);			\
 }
 
@@ -1441,7 +1441,7 @@ kern_return_t vm_fault_wire_fast(map, va, entry)
 
 	vm_object_lock(object);
 	object->ref_count++;
-	object->paging_in_progress++;
+	vm_object_paging_begin(object);
 
 	/*
 	 *	INVARIANTS (through entire routine):

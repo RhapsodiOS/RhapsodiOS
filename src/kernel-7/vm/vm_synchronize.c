@@ -165,7 +165,7 @@ vm_pageout_page(vm_object_t object, vm_page_t m)
 		return PAGEOUT_RERUN;
 	}
 	
-	object->paging_in_progress++;
+	vm_object_paging_begin(object);
 	
 	m->busy = TRUE;
 	if (m->inactive)
@@ -177,7 +177,7 @@ vm_pageout_page(vm_object_t object, vm_page_t m)
 
 	vm_page_unlock_queues();
 	if (pager == vm_pager_null) {
-		object->paging_in_progress--;
+		vm_object_paging_end(object);
 		return PAGEOUT_ERROR;
 	}
 	vm_object_unlock(object);
@@ -194,7 +194,7 @@ vm_pageout_page(vm_object_t object, vm_page_t m)
 	m->busy = FALSE;
 	PAGE_WAKEUP(m);
 	
-	object->paging_in_progress--;
+	vm_object_paging_end(object);
 	vm_page_unlock_queues();
 	
 	return pageout_succeeded;
@@ -264,8 +264,7 @@ retry:
 		rtn = KERN_FAILURE;
 	
 	vm_object_unlock(object);
-	thread_wakeup(object);
-	
+
 	if (rtn == KERN_FAILURE || !allPageoutsSucceeded)
 	    	return KERN_FAILURE;
 	else

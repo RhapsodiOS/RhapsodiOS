@@ -198,7 +198,6 @@ deactivate_object(vm_object_t object, vm_offset_t start, vm_offset_t end, int te
 	deactivate_object(object->shadow, start, end, temperature);
 
 	vm_object_unlock(object);
-	thread_wakeup(object);
 }
 
 

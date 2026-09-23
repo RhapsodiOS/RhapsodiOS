@@ -250,6 +250,27 @@ void		vm_object_print();
 
 port_t		vm_object_request_port();
 vm_object_t	vm_object_request_object();
+
+/*
+ *	Paging-in-progress bookkeeping.  Waiters sleep on the object's
+ *	own address; the decrement that reaches zero wakes them.
+ */
+#define	vm_object_paging_begin(object)					\
+	((object)->paging_in_progress++)
+
+#define	vm_object_paging_end(object)					\
+	MACRO_BEGIN							\
+	if (--(object)->paging_in_progress == 0)			\
+		thread_wakeup((event_t)(object));			\
+	MACRO_END
+
+#define	vm_object_paging_wait(object, interruptible)			\
+	MACRO_BEGIN							\
+	while ((object)->paging_in_progress != 0) {			\
+		vm_object_sleep((object), (object), (interruptible));	\
+		vm_object_lock(object);					\
+	}								\
+	MACRO_END
 #else
 extern void		vm_object_bootstrap(void);
 extern void		vm_object_init(void);

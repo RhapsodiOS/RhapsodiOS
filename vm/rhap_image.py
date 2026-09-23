@@ -14,6 +14,8 @@ import sys
 
 LABEL_OFFSETS = (7680, 15360, 23040, 30720)
 LABEL_MAGIC = b"dlV3"
+MBR_PART_OFFSET = 446
+FDISK_NEXTNAME = 0xA7
 
 FS_MAGIC = 0x011954
 SBOFF = 8192
@@ -42,11 +44,29 @@ class Image(object):
         self._f.seek(offset)
         return self._f.read(n)
 
+    def _fdisk_base(self):
+        """Byte offset of the first 0xA7 fdisk partition, or 0 when sector 0
+        has none (a whole-disk label, like golden.img's).
+
+        Only the label's own location moves.  Inside an fdisk partition the
+        label's p_base is already absolute -- disk -i -b adds the partition
+        base when it writes it, and IODiskPartition uses it as-is -- so
+        part_start needs no further offset."""
+        mbr = self._read_at(0, 512)
+        if len(mbr) < 512 or mbr[510:512] != b"\x55\xaa":
+            return 0
+        for n in range(4):
+            entry = mbr[MBR_PART_OFFSET + 16 * n:MBR_PART_OFFSET + 16 * n + 16]
+            if entry[4] == FDISK_NEXTNAME:
+                return struct.unpack_from("<I", entry, 8)[0] * 512
+        return 0
+
     def _read_label(self):
+        base = self._fdisk_base()
         for off in LABEL_OFFSETS:
-            buf = self._read_at(off, 1024)
+            buf = self._read_at(base + off, 1024)
             if buf[:4] == LABEL_MAGIC:
-                self.label_offset = off
+                self.label_offset = base + off
                 return {
                     "blkno": struct.unpack_from(">i", buf, 4)[0],
                     "secsize": struct.unpack_from(">i", buf, 92)[0],

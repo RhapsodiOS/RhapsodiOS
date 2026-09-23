@@ -1238,3 +1238,23 @@ named here: `vbeModeIsUsable`, `vbeModeIsLargeEnough`, `recordVBEMode` and
   `boot.sys` `cksum 198241776 1075932`. The package's `boot` is
   `cmp`-identical to the copy. The file grew by 144 bytes over Task 5's
   44,384.
+
+### The two mode tests [measured]
+
+| | the mode-attributes test | the 640x480 test |
+| --- | --- | --- |
+| reference | `boot+27424..27515`, 92 bytes (`0x9B20`) | `boot+27516..27555`, 40 bytes (`0x9B7C`) |
+| ours | `_vbeModeIsUsable`, `0x98D4`, 92 bytes | `_vbeModeIsLargeEnough`, `0x9930`, 40 bytes (next: `_recordVBEMode` at `0x9958`) |
+| `compare_flat` | `MATCH: 39 instructions, 82 bytes compared, 10 masked, 0 addresses mapped` | `MATCH: 17 instructions, 34 bytes compared, 6 masked, 1 addresses mapped` (`map 0x9b20 -> 0x98d4`) |
+| outcome | **byte parity** | **byte parity** |
+
+- The masked bytes are relative branches. The first function's 10 are its ten
+  short conditional jumps, which `compare_flat` checks as function-relative
+  offsets. The second's 6 are its `call` to the first and its two short
+  jumps.
+- Each attribute bit is its own `if`, in 4.2's order: supported, linear,
+  graphics. The compiler narrows each to a byte test, as 4.2's does.
+- `BitsPerPixel != 15 && != 16` compiles to 4.2's range test (`add al,0F1h;
+  cmp al,1; jbe`).
+- Measured in build `t6b`, which also carries the enumerator; its size line
+  and hashes are under the enumerator below.

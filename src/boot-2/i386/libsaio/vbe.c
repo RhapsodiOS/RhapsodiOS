@@ -52,6 +52,49 @@ static char *models[] = { "Text",
 			  "YUV" };
 
 /*
+ * OPENSTEP 4.2 User Patch 4's mode test (boot+27424..27515): supported,
+ * graphics and linear; a direct colour mode must also have equal 5- or
+ * 8-bit masks and a depth of 15, 16 or 32.
+ */
+int
+vbeModeIsUsable(VBEModeInfoBlock *minfo)
+{
+    int usable = 1;
+
+    if (!(minfo->ModeAttributes & maModeIsSupportedBit))
+	usable = 0;
+    if (!(minfo->ModeAttributes & maLinearFrameBufferAvailBit))
+	usable = 0;
+    if (!(minfo->ModeAttributes & maGraphicsModeBit))
+	usable = 0;
+    if (minfo->MemoryModel == 6) {	/* direct colour */
+	if (minfo->RedMaskSize != minfo->GreenMaskSize ||
+	    minfo->RedMaskSize != minfo->BlueMaskSize)
+	    usable = 0;
+	if (minfo->RedMaskSize != 5 && minfo->RedMaskSize != 8)
+	    usable = 0;
+	if (minfo->BitsPerPixel != 15 && minfo->BitsPerPixel != 16 &&
+	    minfo->BitsPerPixel != 32)
+	    usable = 0;
+    }
+    return usable;
+}
+
+/*
+ * 4.2's test for the mode list (boot+27516..27555): usable, and at least
+ * 640x480.
+ */
+int
+vbeModeIsLargeEnough(VBEModeInfoBlock *minfo)
+{
+    int usable = vbeModeIsUsable(minfo);
+
+    if (minfo->YResolution < 480 || minfo->XResolution < 640)
+	usable = 0;
+    return usable;
+}
+
+/*
  * OPENSTEP 4.2 User Patch 4's record writer (boot+27556..27703): one
  * boot_vbe_mode from the BIOS's mode information, one store per field.
  */

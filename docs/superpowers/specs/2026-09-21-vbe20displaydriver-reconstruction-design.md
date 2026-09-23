@@ -379,6 +379,9 @@ list.` and `No VBE modes found.` No other boot driver lost its registration —
 a check that cannot by itself rule out a cascade, since this driver links
 last in `Boot Drivers`; that an undefined-symbol failure would not cascade at
 any position anyway is the inference noted below, not a measurement.
+**[REFUTED — spec 3 G5 (docs/kernel/i386-vbe-console.md, G5): linked first
+on a kernel without the symbol, the failure cascaded into all six other boot
+drivers and the kernel panicked `Missing EISA kernel bus class`.]**
 `Boot Drivers` alone was enough; `Active Drivers` did not need changing.
 
 The same bundle on a pre-spec-2 kernel fails with the undefined symbol this
@@ -394,6 +397,15 @@ positions either is an inference, from
 `error()`, which unloads only the one driver, not via `fatal()`→`cleanup()`,
 which is what `docs/boot/sarld-driver-link-limit.md`'s cascade (a malloc
 fatal) depends on.
+**[REFUTED — spec 3 G5 (docs/kernel/i386-vbe-console.md, G5): the
+conclusion, not the reading of `error()`. Linked first on a kernel without
+the symbol, with the stock booter and `sarld`, the undefined-symbol error was
+followed by EIDE's link failing with `rld(): virtual memory exhausted (malloc
+failed)`, the malloc fatal named above. The latch refused the other five, and
+the kernel panicked `Missing EISA kernel bus class`. The same order on a kernel with the
+symbol lost nothing. The error itself returns through `rld.c:402-405` and
+does not longjmp (`ld.c:2046-2064`), as read here; how the failed link leads
+to the malloc fatal was not determined.]**
 
 The `_VBE20DisplayDriver_instance` difference did not stop the load.
 
@@ -404,6 +416,9 @@ The text below is the pre-run notice, kept as written — except that its
 cascade-and-panic prediction is contradicted by the `rld.c` inference above,
 not by the run. The run saw only the undefined-symbol failure and no panic,
 in a position where neither a cascade nor that panic could show.
+**[REFUTED — spec 3 G5 (docs/kernel/i386-vbe-console.md, G5): that
+inference is refuted at the first position, where the cascade and the panic
+were both measured. The prediction below held there.]**
 
 `Default.table` marks this a Boot Driver, so the booter links it against the
 kernel with `sarld`. `_VBEModeInfo2IODisplayInfo` is undefined in our `_reloc`,
@@ -411,6 +426,14 @@ nothing in `src/kernel-7` defines it, and no shipped Rhapsody kernel exports it
 — so the link fails. Per `docs/boot/sarld-driver-link-limit.md` that failure
 **cascades into every driver linked afterwards** and surfaces as
 `panic: Missing EISA kernel bus class`, which names none of the cause.
+**[VINDICATED at the first position — spec 3 G5
+(docs/kernel/i386-vbe-console.md, G5): linked first on a kernel without the
+symbol, the failed link was followed by EIDE's `rld(): virtual memory
+exhausted (malloc failed)`, every later boot driver was refused, and the
+kernel panicked `Missing EISA kernel bus class`. Linked last, it took down
+nothing, since nothing links after it. The middle positions were not tried,
+and whether this is the node limit that document describes was not
+determined.]**
 
 **Spec 2 alone unblocks the gate as described below.** Spec 3 is required only
 for the deeper `%s: using VBE mode %d` path.

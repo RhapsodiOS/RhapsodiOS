@@ -2360,6 +2360,15 @@ with it, then without it again (`A1`, `B`, `A2`). **[measured]**
   raised through `fatal()`/`cleanup()`, not through the `error()` path an
   undefined symbol takes (`src/cctools-2/ld/symbols.c:3523`, `ld.c:2059`,
   `rld.c:402-405`).
+  **[REFUTED — spec 3 G5 (docs/kernel/i386-vbe-console.md, G5): linked
+  first on a kernel without the symbol, with the stock booter and `sarld`,
+  this failure did cascade. EIDE's link, next, failed with `rld(): virtual
+  memory exhausted (malloc failed)`, the other five boot drivers were
+  refused, and the kernel panicked `Missing EISA kernel bus class`. The same
+  order on a kernel with the symbol lost nothing. The `error()` reading
+  itself stands: the error returns through `rld.c:402-405` and does not
+  longjmp (`ld.c:2046-2064`). How the failed link leads to the malloc
+  failure was not determined.]**
 - `B` against `A2`, in order, differs in the five driver lines and in line 9.
   Line 9 reads `vm_page_free_count` `3c8c`, becoming `3c8b` with the driver:
   one page fewer. *[inference]* That page is the booter's allocation for the
@@ -2375,6 +2384,12 @@ with it, then without it again (`A1`, `B`, `A2`). **[measured]**
   argued. Its cascade and panic were not seen, but this run also linked the
   driver last, where neither could show; that they would not occur elsewhere
   rests on the *[inference]* in the no-cascade bullet above.
+  **[REFUTED — spec 3 G5 (docs/kernel/i386-vbe-console.md, G5): at the
+  first position both occurred. With the driver first on this kernel,
+  under the stock booter and `sarld`, EIDE's link failed
+  with `rld(): virtual memory exhausted (malloc failed)`, the other five
+  boot drivers were refused, and the kernel panicked `Missing EISA kernel
+  bus class`.]**
 
 ### What the booter hands the kernel, measured in guest memory
 

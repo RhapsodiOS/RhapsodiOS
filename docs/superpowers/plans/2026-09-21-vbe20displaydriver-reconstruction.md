@@ -1241,6 +1241,12 @@ both sides."
 > predicted panic names) had already linked. That an undefined-symbol failure
 > would not cascade at other positions either is an inference from `rld.c`;
 > see `docs/kernel/i386-vbe-console.md`, Gate 2. Everything else in it held.
+> **[REFUTED — spec 3 G5 (docs/kernel/i386-vbe-console.md, G5): that
+> inference is refuted at the first position. Linked first on a kernel without
+> the symbol, the failed link was followed by EIDE's `rld(): virtual memory
+> exhausted (malloc failed)`, every later boot driver was refused, and the
+> kernel panicked `Missing EISA kernel bus class`. The prediction held
+> there.]**
 
 > **This task cannot run until the kernel exports `_VBEModeInfo2IODisplayInfo`.**
 >
@@ -1262,6 +1268,12 @@ both sides."
 >
 > and surfacing as `panic: Missing EISA kernel bus class`, which names none of
 > the cause. Running this task now would produce a misleading panic, not a gate.
+> **[VINDICATED at the first position — spec 3 G5
+> (docs/kernel/i386-vbe-console.md, G5): linked first on a kernel without the
+> symbol, the failed link was followed by EIDE's `rld(): virtual memory
+> exhausted (malloc failed)`, `previous fatal errors occured, can no longer
+> succeed` for the other five, and `panic: Missing EISA kernel bus class`.
+> Linked last, it took down nothing. The middle positions were not tried.]**
 >
 > **What unblocks what.** Spec 2 (the kernel functions) is sufficient for the
 > gate as written below: the driver links, loads, reads the `bzero`'d
@@ -1276,6 +1288,9 @@ both sides."
 > cascade nor the panic predicted above could have shown. That they would not
 > happen at other positions is an inference from `rld.c`
 > (`docs/kernel/i386-vbe-console.md`, Gate 2), not a measurement.
+> **[REFUTED — spec 3 G5 (docs/kernel/i386-vbe-console.md, G5): at the first
+> position both happened, the cascade into all six other boot drivers and the
+> panic.]**
 
 > **Result, 2026-09-22: run and passed, as spec 2's Task 5.** Against spec 2's
 > kernel, `sarld` links the driver. It logs
@@ -1286,6 +1301,11 @@ both sides."
 > in `Boot Drivers`. That an undefined-symbol failure would not cascade at any
 > position regardless is an inference from `rld.c`, not a measurement
 > (`docs/kernel/i386-vbe-console.md`, Gate 2).
+> **[REFUTED — spec 3 G5 (docs/kernel/i386-vbe-console.md, G5): linked first
+> on a kernel without the symbol, it cascaded: EIDE's link failed with
+> `rld(): virtual memory exhausted (malloc failed)`, the other five were
+> refused, and the kernel panicked. The same order on a kernel with the symbol
+> lost nothing.]**
 > `Boot Drivers` alone was enough (Step 5's `Active Drivers` fallback was not
 > needed).
 >

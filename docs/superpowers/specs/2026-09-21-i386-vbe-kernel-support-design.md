@@ -31,6 +31,13 @@ run could not show a cascade, because nothing links after the driver there.
 That an undefined-symbol failure would not cascade at other positions either
 is an inference from `rld.c`, not a measurement; it is recorded in
 `docs/kernel/i386-vbe-console.md`, Gate 2.
+**[REFUTED — spec 3 G5 (docs/kernel/i386-vbe-console.md, G5): with the
+driver linked first on a kernel without the symbol, the stock booter and
+`sarld`, the next link (EIDE's) failed with `rld(): virtual memory exhausted
+(malloc failed)`, the other five boot drivers were refused, no device
+registered, and the kernel panicked `Missing EISA kernel bus class`, as the
+earlier version of this section predicted. The same order on a kernel with
+the symbol lost nothing. The middle positions were not tried.]**
 
 There is a second, independent motivation. i386's boot console
 (`bsd/dev/i386/BasicConsole.c`) programs VGA registers directly for 640x480x4

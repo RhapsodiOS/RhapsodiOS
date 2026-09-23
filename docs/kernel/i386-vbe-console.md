@@ -456,7 +456,11 @@ gates of spec 3's design, §7, in the form revised after its Task 3.
   registers, and the kernel panics `Missing EISA kernel bus class`. This is
   a finding about the stock `sarld`, not a failure of spec 3. It refutes
   spec 2's no-cascade inference for the first position, and the four places
-  above that state it are labelled.
+  above that state it are labelled. **The failed link, not the order, sets
+  it off** [measured, by a control boot added after review]: the same order
+  with the stock booter, on the final kernel, which has the symbol, links
+  all seven boot drivers and registers every device. How the failed link
+  leads to the next link's malloc failure was not determined.
 
 ### What was booted
 
@@ -493,7 +497,8 @@ Every input was hashed before the first boot. Every image was rebuilt from
 ### Procedure
 
 All runs were made in the `vbe20-kernel` worktree, one QEMU at a time, on
-2026-09-23 between 12:08 and 13:23 EDT. Before every boot, `vm/work/test.img`
+2026-09-23 between 12:08 and 13:23 EDT; G5's control boot, added after
+review, between 13:56 and 14:09 EDT. Before every boot, `vm/work/test.img`
 was rebuilt from `golden.img` in this order:
 
 ```bash
@@ -682,6 +687,12 @@ as `-vga none -device <device>` with G2's image, default boot.
     Its BIOS lists modes without a linear frame buffer, because an ISA card
     has no PCI BAR to report one, and `vbeModeIsUsable` requires that
     attribute.
+    - That is one cause among several. `VESA not available.` is printed
+      whenever `enumerateVBEModes()` returns 0 (`vbe.c:196-198`). It also
+      returns 0 when `getVBEInfo` fails, or when `VESAVersion` is below
+      `0x200` (`vbe.c:139-143`). And the reproduced `VideoModePtr` defect
+      (`vbe.c:145-153`) reads the mode list from the wrong address whenever
+      the BIOS's segment is not 0. Which of these held was not determined.
 - **`No usable VBE mode. Reverting to VGA.`** was not seen. *[inference,
   `vbe.c:196-215`]* With this code it cannot be: it needs
   `enumerateVBEModes()` to return non-zero while `vbeModes[0]` is empty.
@@ -694,7 +705,9 @@ Stock booter and the driver, last. Verbose A-B-A: `A1` spec 2's kernel,
 **One `B` run is void.** Its 5 s frame caught the stock booter before its
 banner (`Sizing memory... 131048K`), so by the rule it proves nothing. It
 was rerun at once as `B2`, with the same arguments. (Its serial and dump
-match `B2`'s under the rules.)
+match `B2`'s under the rules. Its settled frames, at 60 and 120 s, equal
+`A2`'s outside the clock mask. Its 30 s frame was mid-boot, 14,901 px from
+its own 60 s frame.)
 
 - **Both kernels log `Skipping framebuffer initialization (card not in VBE
   mode).`** They also log spec 2's other four driver lines, and neither logs
@@ -759,7 +772,8 @@ Missing EISA kernel bus class / (Type 'r' to reboot or 'm' for monitor)`.
 fc0 PS2Controller PCKeyboard0 PCI0 EISA0 event0 kmDevice0 Display0 en0`.
 
 **So at the first position the failed link cascades, and takes down all
-six other boot drivers.**
+six other boot drivers.** That the failed link, and not the order, is what
+sets it off is measured by the control boot below.
 - The first failure is the undefined symbol. The booter reports it and moves
   on to the next driver, as spec 2's `rld.c` reading said.
 - The next link, EIDE's, then fails on memory. That is a fatal error, and
@@ -772,7 +786,10 @@ six other boot drivers.**
   them, was not determined.
 - A successful first link does not do this. Spec 3's Task 7c booted the
   driver first against spec 2's kernel, which has the symbol, with the
-  same `sarld`, and all seven boot drivers registered.
+  same `sarld`, and all seven boot drivers registered. **Those boots
+  (`shots-t7c-red-first-b`, `shots-t7c-green-first`) ran our booter, not
+  the stock one.** The control boot below repeats the order with the stock
+  booter.
 - The rebuilt 8,000-node `sarld` that document describes is not on
   `golden.img`, and was not tried.
 
@@ -780,6 +797,78 @@ This is a finding about `sarld`, recorded, not a failure of spec 3. It turns
 spec 2's "an undefined-symbol link failure would not cascade at other
 positions either" from an inference into a refutation, **for the first
 position**. The middle positions were not tried.
+
+**The control boot, added after review: the driver first, with the
+symbol.** G5 as first run left one question open. Did the driver-first
+order set off the cascade, rather than the failed link? The clean
+driver-first boots above ran our booter. Both booters load the same `sarld`
+from the image, but the order had not been tried with the stock booter. So
+one more verbose A-B-A was run, with G5's `--at` list and a dump at 60 s:
+- **`A1` and `A2`:** the final kernel (`t8c`, which has the symbol), the
+  stock booter, and the driver last. This is G4's `B2` image.
+- **`B`:** the same, with the driver installed by `install-driver.py
+  --first`. `Boot Drivers` read back `VBE20DisplayDriver EIDE ISASerialPort
+  Floppy PS2Keyboard PCIBus EISABus`.
+
+Every readback matched, as in the procedure above. In addition,
+`/usr/standalone/i386/sarld` was read out of each image (`BBFB53F2...`),
+and both boot slots hashed as the stock booter (`AA06C3C5...`). All three
+5 s frames are `A5149E2C...`, `Rhapsody boot v5.0.41.1`.
+
+**All seven boot drivers link, and every device registers** [measured]:
+- **`B`'s booter lines are in frame.** Its last booter frame, at 9.9 s,
+  shows `Loading binary for VBE20DisplayDriver device driver.` and its
+  `Reading configuration file` line. Then EIDE, ISASerialPort, Floppy,
+  PS2Keyboard and PCIBus each load, then `Loading binary for EISABus device
+  driver.`, with no error line anywhere. By 10.0 s the kernel's console has
+  replaced it, so EISABus's own result is not in frame. There is no
+  `Pausing 10 seconds...`.
+- **The controls' booter lines are in frame too.** `A1`'s at 10.0 s and
+  `A2`'s at 9.7 s each show the six stock drivers and then
+  `VBE20DisplayDriver` loading, with no error, and `Starting Rhapsody`.
+- **Serial** (81 lines each). `B` registers 13 devices:
+  - `VBEDisplay0` first, straight after `DriverKit version 500`, with spec
+    2's five driver lines;
+  - then `hc0 hd0 ISASerialPort0 fc0 PS2Controller PCKeyboard0 PCI0 EISA0
+    event0 kmDevice0 Display0 en0`.
+
+  `A1` and `A2` register the same 13, with the driver's five lines after
+  `Registering: EISA0`. Against `A1`, with line 4's date masked, `B`
+  differs only in where those five lines fall. Line 9 is the same. No run
+  panics.
+- **Controls against each other and against G4.** `A1` against `A2`: the
+  phantom lines alone move. With the phantom lines set aside, `A1` and `A2`
+  are identical to G4's `B2`.
+- **Dumps.** `A1` = `A2` = G4's four (`E38F01A8...`). `B`'s differs from
+  them in 29 bytes, in `0x16C..0x19D`, the boot-driver bookkeeping.
+  `kbs+0x1854..0x20D7` and `boot_video` are zero, and `graphicsMode` is 0.
+- **Frames.**
+  - At 30, 60 and 120 s, rule 4 reports 94 px in text row 0 as a finding.
+    It is the moved driver lines. `B` shows `Registering: EISA0` there,
+    where both controls show `Registering: VBEDisplay0` (viewed). The rest
+    of `B`'s differences lie where `A1` and `A2` differ from each other,
+    the phantom race.
+  - The mid-boot frames at 22 and 25 s show the same thing, in text rows
+    0 to 2 at 25 s (viewed). The two controls there already differ from
+    each other by 18,297 and 3,101 px.
+
+**So the order alone does not cascade** [measured]. With the stock booter
+and `sarld`, the driver linked first costs no boot driver and no device.
+- The negative-control kernel with no driver loses nothing (`C1`, `C2`).
+- The driver first on a kernel with the symbol loses nothing (`B`).
+- Only the two together, where the driver's link fails, cascade (`N`).
+
+So G5's attribution, the failed link, is now measured rather than
+inferred. One qualification: `N` and `B` differ in the kernel, and the
+negative-control kernel differs from the final kernel by more than the
+symbol. It is 4,168 bytes smaller, for reasons spec 2's provenance gap left
+unrecorded. How the failed link leads to EIDE's malloc failure is still
+**not determined**. *[inference, from the code]* The undefined-symbol
+`error()` sets `errors` and returns (`ld.c:2046-2064`).
+`internal_rld_load` then unloads the one set through
+`internal_rld_unload` and returns 0 (`rld.c:402-405`), with no longjmp. So
+"unloads only the one driver" was right as a reading. The step from there
+to EIDE's malloc failure was not traced.
 
 ### Captures and hashes
 
@@ -807,6 +896,9 @@ of what was measured.
 | G5 `C1` | negative control | stock | no | `-v` | `994A66C6E87D4F24A6BCA3AFDDA5BB908E38AC95C9F8B3356A48194610F7A3F9` | 76, `BB9B88CDC7D0E34FBE512AE1D798FD2EE9AA95E4715719D30DF45F85ED3F57CA` | `A5149E2C...` | `125C4133...` | `5F62165DC0E7585FB14418C2AB27D0C1EB90385B9875A494E447AB7EDA062C5C` |
 | G5 `N` | negative control | stock | first | `-v` | `BD9BB9626412B07E261D5EF1B9ABA799407538C416C26DC4333BC605EBE829C6` | 13, `5E2DFEFCBEDEBE08A449FD12A08B0964A5F79468C49210BAE51C0608DA8F3108` | `A5149E2C...` | `9A232CF2E374914794D9F0A4284724A3A73EE8416A8D4D02EA442ABC2D4812FB` | `CB8FC8ABE4FA60C629E8546BC98A014DBD8F581942F16951AE6F81228F09FEFB` |
 | G5 `C2` | negative control | stock | no | `-v` | same as `C1` | 76, `BED3D3B5EB53314CCAA9BD4CE8D23E8A96B3512E34E574D289C659889063D973` | `A5149E2C...` | `2627808805CD85BE8016F40EFAB5EB8384E0076C684E35C73EE9B12597C5E47E` | same as `C1` |
+| G5 control `A1` | final | stock | last | `-v` | `E0D8A6E0D7F3E961E7265034751D5F9B79E8E56BA6B6C22DB5D10583B15B0999` | 81, `E7F83FB0F85EF8E38132851569E3CD9EB13E05377645D68CF27D727B6B7B0292` | `A5149E2C...` | `DF0E11C99322B9DD8B6DCD195CE0CD36E23EB58D06988ED393A0E1E0074DCEE8` | `E38F01A8...` (G4's) |
+| G5 control `B` | final | stock | first | `-v` | `C93F8911B5978C1D74B12231B89A05EC0BBD43C8190C207D41EA84524FE80FB0` | 81, `3FFE6ADC7AFB9D33B73D7E69CF45BCB5579156B7876929F8BB00C75FC0E113D5` | `A5149E2C...` | `7A54A50FBF6649DEB76B169274514FC34C48BF49FF5737C7914C260DB70D5DBA` | `BB04640DB8E6E42F71D9E750442CC4AB438605D5F9A9461DA62B95C6DF594E67` |
+| G5 control `A2` | final | stock | last | `-v` | `0B21939EAEE1D42CA4A6B6B20DBBDDB6BD46BDF81889761D680B6003B349C135` | 81, `7A111C7A7EA0B4576947985B3A1A13642BEDF27AC38A2C417C890A6C2CC52366` | `A5149E2C...` | `6EFDC4D3...` (G4 `B2`'s) | `E38F01A8...` (G4's) |
 
 - "Last frame" is the 120 s capture, or the 95 s or 90 s one where that was
   the last. In every run it equals the 60 s frame.
@@ -825,6 +917,11 @@ Other frames cited above:
   `178B8C6D2081C952D95D4572A42AA1674A0529D22A928D6C04F55512615FBBCC`.
 - G5 `N` 9.8 s, the paused screen:
   `C064D2337DE1F692B972AEC894F2B24AF4A7E0F4456157B8EC056E7EB301703E`.
+- G5 control `B` 9.9 s, the driver first and no error:
+  `4E71C13351BB008D911B8EB5D5A16BF26D6D7C7E766941366ADF388C2B5A8B51`.
+- G5 control `A1` 10.0 s and `A2` 9.7 s, the driver last and no error:
+  `B8A24A22367A37D7C0ED94F1F20CED74F05686DAD4F1101720F08E61098E65BC`,
+  `35446A20C1EA34ED5324B044354EBA35142A64E7D8132D9034AA9483AE817C89`.
 
 ### What this does and does not establish
 
@@ -847,7 +944,9 @@ It establishes, on QEMU:
   list, and an adapter with no usable mode.
 - **With the stock booter, the final kernel behaves as spec 2's.**
 - **With the stock `sarld` and a kernel lacking the symbol, the driver
-  linked first cascades and panics.**
+  linked first cascades and panics.** With the stock booter and a kernel
+  that has the symbol, the driver linked first costs nothing: the failed
+  link, not the order, sets the cascade off.
 
 It does **not** establish:
 - **Anything on hardware.** These are QEMU `pc` boots. The VBE path ran on
@@ -884,3 +983,4 @@ It does **not** establish:
 - **The Window Server** on the VBE display.
 - **The cascade at any position but the first.** Also untried: the rebuilt
   8,000-node `sarld`.
+- **How the failed link leads to the next link's malloc failure.**

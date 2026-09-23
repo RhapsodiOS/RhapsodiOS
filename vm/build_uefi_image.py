@@ -8,9 +8,9 @@ Rhapsody partition by its 0xA7 system id.
 import os
 import shutil
 import struct
-import subprocess
 import sys
-import tempfile
+
+import fat32
 
 SECTOR = 512
 MBR_PART_OFFSET = 446
@@ -18,17 +18,7 @@ FDISK_NEXTNAME = 0xA7
 EFI_SYSTEM = 0xEF
 ESP_LBA = 2048  # 1 MB in, the conventional alignment
 CHS_OUT_OF_RANGE = b"\xfe\xff\xff"
-
-MTOOLS = ("mformat", "mmd", "mcopy")
-
-
-def _require_mtools():
-    missing = [t for t in MTOOLS if shutil.which(t) is None]
-    if missing:
-        raise RuntimeError(
-            "missing mtools binaries: %s (install mtools, e.g. "
-            "'brew install mtools' or 'apt-get install mtools')"
-            % ", ".join(missing))
+ESP_BOOT_PATH = "EFI/BOOT/BOOTIA32.EFI"
 
 
 def _part_entry(systid, lba_start, nsectors):
@@ -36,24 +26,13 @@ def _part_entry(systid, lba_start, nsectors):
             + struct.pack("<II", lba_start, nsectors))
 
 
-def _run(argv):
-    proc = subprocess.run(argv, stdout=subprocess.PIPE,
-                          stderr=subprocess.STDOUT)
-    if proc.returncode != 0:
-        raise RuntimeError("%s failed: %s"
-                           % (argv[0], proc.stdout.decode(errors="replace")))
-
-
-def _make_esp_fat_image(efi_app, esp_path, esp_sectors):
-    """Format esp_path as a FAT32 volume of esp_sectors containing the EFI
-    app at /EFI/BOOT/BOOTIA32.EFI."""
-    with open(esp_path, "wb") as esp:
-        esp.truncate(esp_sectors * SECTOR)
-
-    _run(["mformat", "-i", esp_path, "-F", "-v", "RHAPEFI", "::"])
-    _run(["mmd", "-i", esp_path, "::/EFI"])
-    _run(["mmd", "-i", esp_path, "::/EFI/BOOT"])
-    _run(["mcopy", "-i", esp_path, efi_app, "::/EFI/BOOT/BOOTIA32.EFI"])
+def _esp_image(efi_app, esp_sectors):
+    """A FAT32 volume of esp_sectors holding the EFI app at the removable-
+    media path OVMF boots from."""
+    with open(efi_app, "rb") as f:
+        app = f.read()
+    return fat32.build(esp_sectors, {ESP_BOOT_PATH: app}, label="RHAPEFI",
+                       hidden_sectors=ESP_LBA)
 
 
 def build(rhapsody_image, efi_app, out_path, esp_mb=64):
@@ -61,7 +40,6 @@ def build(rhapsody_image, efi_app, out_path, esp_mb=64):
     for path in (rhapsody_image, efi_app):
         if not os.path.exists(path):
             raise RuntimeError("no such file: %s" % path)
-    _require_mtools()
 
     esp_sectors = esp_mb * 1024 * 1024 // SECTOR
     rhapsody_bytes = os.path.getsize(rhapsody_image)
@@ -72,32 +50,24 @@ def build(rhapsody_image, efi_app, out_path, esp_mb=64):
     rhapsody_lba = ESP_LBA + esp_sectors
     total_sectors = rhapsody_lba + rhapsody_sectors
 
-    esp_fd, esp_path = tempfile.mkstemp(prefix="rhapsody-esp-")
-    try:
-        os.close(esp_fd)
-        _make_esp_fat_image(efi_app, esp_path, esp_sectors)
+    with open(out_path, "wb") as out:
+        out.truncate(total_sectors * SECTOR)
 
-        with open(out_path, "wb") as out:
-            out.truncate(total_sectors * SECTOR)
+        mbr = bytearray(SECTOR)
+        entries = (_part_entry(EFI_SYSTEM, ESP_LBA, esp_sectors)
+                   + _part_entry(FDISK_NEXTNAME, rhapsody_lba,
+                                 rhapsody_sectors))
+        mbr[MBR_PART_OFFSET:MBR_PART_OFFSET + len(entries)] = entries
+        mbr[510:512] = b"\x55\xaa"
+        out.seek(0)
+        out.write(mbr)
 
-            mbr = bytearray(SECTOR)
-            entries = (_part_entry(EFI_SYSTEM, ESP_LBA, esp_sectors)
-                       + _part_entry(FDISK_NEXTNAME, rhapsody_lba,
-                                     rhapsody_sectors))
-            mbr[MBR_PART_OFFSET:MBR_PART_OFFSET + len(entries)] = entries
-            mbr[510:512] = b"\x55\xaa"
-            out.seek(0)
-            out.write(mbr)
+        out.seek(ESP_LBA * SECTOR)
+        out.write(_esp_image(efi_app, esp_sectors))
 
-            out.seek(ESP_LBA * SECTOR)
-            with open(esp_path, "rb") as esp:
-                shutil.copyfileobj(esp, out, length=1024 * 1024)
-
-            out.seek(rhapsody_lba * SECTOR)
-            with open(rhapsody_image, "rb") as src:
-                shutil.copyfileobj(src, out, length=1024 * 1024)
-    finally:
-        os.unlink(esp_path)
+        out.seek(rhapsody_lba * SECTOR)
+        with open(rhapsody_image, "rb") as src:
+            shutil.copyfileobj(src, out, length=1024 * 1024)
 
 
 def build_esp(efi_app, out_path, esp_mb=64):
@@ -113,31 +83,22 @@ def build_esp(efi_app, out_path, esp_mb=64):
     """
     if not os.path.exists(efi_app):
         raise RuntimeError("no such file: %s" % efi_app)
-    _require_mtools()
 
     esp_sectors = esp_mb * 1024 * 1024 // SECTOR
     total_sectors = ESP_LBA + esp_sectors
 
-    esp_fd, esp_path = tempfile.mkstemp(prefix="rhapsody-esp-")
-    try:
-        os.close(esp_fd)
-        _make_esp_fat_image(efi_app, esp_path, esp_sectors)
+    with open(out_path, "wb") as out:
+        out.truncate(total_sectors * SECTOR)
 
-        with open(out_path, "wb") as out:
-            out.truncate(total_sectors * SECTOR)
+        mbr = bytearray(SECTOR)
+        entries = _part_entry(EFI_SYSTEM, ESP_LBA, esp_sectors)
+        mbr[MBR_PART_OFFSET:MBR_PART_OFFSET + len(entries)] = entries
+        mbr[510:512] = b"\x55\xaa"
+        out.seek(0)
+        out.write(mbr)
 
-            mbr = bytearray(SECTOR)
-            entries = _part_entry(EFI_SYSTEM, ESP_LBA, esp_sectors)
-            mbr[MBR_PART_OFFSET:MBR_PART_OFFSET + len(entries)] = entries
-            mbr[510:512] = b"\x55\xaa"
-            out.seek(0)
-            out.write(mbr)
-
-            out.seek(ESP_LBA * SECTOR)
-            with open(esp_path, "rb") as esp:
-                shutil.copyfileobj(esp, out, length=1024 * 1024)
-    finally:
-        os.unlink(esp_path)
+        out.seek(ESP_LBA * SECTOR)
+        out.write(_esp_image(efi_app, esp_sectors))
 
 
 def main(argv):

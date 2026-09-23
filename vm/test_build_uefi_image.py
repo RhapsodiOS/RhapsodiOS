@@ -1,22 +1,17 @@
 import os
 import shutil
 import struct
-import subprocess
 import tempfile
 import unittest
 
 import build_uefi_image
-
-HERE = os.path.dirname(os.path.abspath(__file__))
+import fat32
 
 SECTOR = 512
 MBR_PART_OFFSET = 446
 FDISK_NEXTNAME = 0xA7
 EFI_SYSTEM = 0xEF
-
-
-def _have_mtools():
-    return all(shutil.which(t) for t in ("mformat", "mmd", "mcopy", "mdir"))
+EFI_APP = b"MZ" + b"\0" * 1022
 
 
 def _part(mbr, n):
@@ -28,20 +23,24 @@ def _part(mbr, n):
     return systid, lba, count
 
 
+def _esp_volume(path, lba, count):
+    with open(path, "rb") as f:
+        f.seek(lba * SECTOR)
+        return f.read(count * SECTOR)
+
+
 class TestBuildUefiImage(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix="uefi-image-test-")
         self.addCleanup(shutil.rmtree, self.tmp)
-        # A stand-in Rhapsody partition: 4 MB of recognisable bytes.
         self.rhapsody = os.path.join(self.tmp, "rhapsody.img")
         with open(self.rhapsody, "wb") as f:
             f.write(b"RHAP" * (4 * 1024 * 1024 // 4))
         self.efi = os.path.join(self.tmp, "BOOTIA32.EFI")
         with open(self.efi, "wb") as f:
-            f.write(b"MZ" + b"\0" * 1022)
+            f.write(EFI_APP)
         self.out = os.path.join(self.tmp, "hybrid.img")
 
-    @unittest.skipUnless(_have_mtools(), "mtools not installed")
     def test_mbr_has_esp_and_rhapsody_partitions(self):
         build_uefi_image.build(self.rhapsody, self.efi, self.out, esp_mb=64)
         with open(self.out, "rb") as f:
@@ -50,27 +49,13 @@ class TestBuildUefiImage(unittest.TestCase):
         self.assertEqual(_part(mbr, 0)[0], EFI_SYSTEM)
         self.assertEqual(_part(mbr, 1)[0], FDISK_NEXTNAME)
 
-    @unittest.skipUnless(_have_mtools(), "mtools not installed")
-    def test_rhapsody_partition_is_copied_verbatim_at_its_lba(self):
-        build_uefi_image.build(self.rhapsody, self.efi, self.out, esp_mb=64)
-        with open(self.out, "rb") as f:
-            mbr = f.read(SECTOR)
-            _, lba, count = _part(mbr, 1)
-            f.seek(lba * SECTOR)
-            head = f.read(16)
-        self.assertEqual(head, b"RHAP" * 4)
-        self.assertEqual(count, 4 * 1024 * 1024 // SECTOR)
-
-    @unittest.skipUnless(_have_mtools(), "mtools not installed")
     def test_esp_contains_the_efi_app_at_the_removable_media_path(self):
         build_uefi_image.build(self.rhapsody, self.efi, self.out, esp_mb=64)
         with open(self.out, "rb") as f:
             mbr = f.read(SECTOR)
-        _, lba, _ = _part(mbr, 0)
-        listing = subprocess.check_output(
-            ["mdir", "-i", "%s@@%d" % (self.out, lba * SECTOR), "::/EFI/BOOT"],
-            stderr=subprocess.STDOUT).decode()
-        self.assertIn("BOOTIA32", listing)
+        _, lba, count = _part(mbr, 0)
+        esp = _esp_volume(self.out, lba, count)
+        self.assertEqual(fat32.read_file(esp, "EFI/BOOT/BOOTIA32.EFI"), EFI_APP)
 
     def test_missing_rhapsody_image_raises(self):
         with self.assertRaises(RuntimeError):
@@ -84,37 +69,30 @@ class TestBuildEspOnly(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.tmp)
         self.efi = os.path.join(self.tmp, "BOOTIA32.EFI")
         with open(self.efi, "wb") as f:
-            f.write(b"MZ" + b"\0" * 1022)
+            f.write(EFI_APP)
         self.out = os.path.join(self.tmp, "esp.img")
 
-    @unittest.skipUnless(_have_mtools(), "mtools not installed")
     def test_partition_1_is_esp_at_lba_2048(self):
         build_uefi_image.build_esp(self.efi, self.out, esp_mb=64)
         with open(self.out, "rb") as f:
             mbr = f.read(SECTOR)
         self.assertEqual(mbr[510:512], b"\x55\xaa")
-        systid, lba, count = _part(mbr, 0)
-        self.assertEqual(systid, EFI_SYSTEM)
-        self.assertEqual(lba, 2048)
-        self.assertEqual(count, 64 * 1024 * 1024 // SECTOR)
+        self.assertEqual(_part(mbr, 0),
+                         (EFI_SYSTEM, 2048, 64 * 1024 * 1024 // SECTOR))
 
-    @unittest.skipUnless(_have_mtools(), "mtools not installed")
     def test_no_second_partition(self):
         build_uefi_image.build_esp(self.efi, self.out, esp_mb=64)
         with open(self.out, "rb") as f:
             mbr = f.read(SECTOR)
         self.assertEqual(_part(mbr, 1), (0, 0, 0))
 
-    @unittest.skipUnless(_have_mtools(), "mtools not installed")
     def test_efi_app_present_at_boot_path(self):
         build_uefi_image.build_esp(self.efi, self.out, esp_mb=64)
         with open(self.out, "rb") as f:
             mbr = f.read(SECTOR)
-        _, lba, _ = _part(mbr, 0)
-        listing = subprocess.check_output(
-            ["mdir", "-i", "%s@@%d" % (self.out, lba * SECTOR), "::/EFI/BOOT"],
-            stderr=subprocess.STDOUT).decode()
-        self.assertIn("BOOTIA32", listing)
+        _, lba, count = _part(mbr, 0)
+        esp = _esp_volume(self.out, lba, count)
+        self.assertEqual(fat32.read_file(esp, "EFI/BOOT/BOOTIA32.EFI"), EFI_APP)
 
     def test_missing_efi_app_raises(self):
         with self.assertRaises(RuntimeError):

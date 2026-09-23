@@ -33,17 +33,6 @@ CFLAGS := -target i386-unknown-windows -std=gnu89 -ffreestanding \
           -include bootefi_memory_override.h \
           -DBOOTEFI_BOOT_STRING='$(BOOTEFI_BOOT_STRING)'
 
-# sys.c's own `#define BIG_ENDIAN_INTEL_FS __LITTLE_ENDIAN__` is always true
-# on i386 (clang predefines __LITTLE_ENDIAN__=1 for this target) and
-# byte-swaps every superblock/inode/directory read as though it might be
-# PPC-written media.  golden.img's UFS payload is genuinely little-endian on
-# disk (only its NeXT disk label is big-endian, swapped unconditionally and
-# separately in disk.c/ufs_byteorder.c).  Overriding __LITTLE_ENDIAN__ to 0
-# for sys.c's translation unit ALONE disables just that mistaken payload
-# swap; Task 4's host test proved this exact override byte-perfect against
-# the same image.  Do not apply it build-wide.
-SYS_CFLAGS := $(CFLAGS) -D__LITTLE_ENDIAN__=0
-
 LDFLAGS := /machine:x86 /subsystem:efi_application /nodefaultlib /entry:efi_main \
            /base:0x08000000 /fixed /safeseh:no
 
@@ -63,7 +52,8 @@ BOOT2_SRCS := $(BOOT2)/libsaio/disk.c \
               $(BOOT2)/libsaio/localize.c \
               $(BOOT2)/libsa/bsearch.c \
               $(BOOT2)/libsa/qsort.c \
-              $(BOOT2)/libsa/strtol.c
+              $(BOOT2)/libsa/strtol.c \
+              $(BOOT2)/libsaio/sys.c
 # libsa/memset.c is NOT included: its unconditional `simple_char_set`
 # inline asm (invalid "&c" input constraint under clang) and lvalue-cast
 # assignments (`UNS(dst) += ...`) do not compile under any modern compiler
@@ -75,7 +65,7 @@ EFI_SRCS := efi_main.c efi_console.c efi_disk.c efi_memory.c efi_vga.c \
             efi_pci.c handoff.c $(BOOT2_SRCS)
 
 EFI_OBJS := $(patsubst %.c,$(BUILD)/%.obj,$(notdir $(EFI_SRCS))) \
-            $(BUILD)/sys.obj $(BUILD)/handoff_tramp.obj
+            $(BUILD)/handoff_tramp.obj
 
 VPATH := $(BOOT2)/libsaio:$(BOOT2)/libsa
 
@@ -83,9 +73,6 @@ all: $(BUILD)/BOOTIA32.EFI
 
 $(BUILD):
 	mkdir -p $(BUILD)
-
-$(BUILD)/sys.obj: $(BOOT2)/libsaio/sys.c | $(BUILD)
-	$(CC) $(SYS_CFLAGS) -c -o $@ $<
 
 $(BUILD)/%.obj: %.c | $(BUILD)
 	$(CC) $(CFLAGS) -c -o $@ $<

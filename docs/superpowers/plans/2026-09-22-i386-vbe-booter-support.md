@@ -198,7 +198,14 @@ Record the gap in the evidence record.
    (`Registering: hc0`, `hd0: ...`) and the `intr: phantom IRQ 15` lines may
    swap position; any other reordering is a finding.
 4. **Frames:** mask only the boot-clock digit cells. Everything outside the
-   mask must be pixel-identical.
+   mask must be pixel-identical, **with one allowance measured in Task 5**.
+   The on-screen `intr: phantom IRQ 15` lines race exactly as their serial
+   lines do (rule 3), so two boots of the *same* booter can differ where
+   those lines land. Task 5's A1 and A2 differed by 2,443 px that way.
+   - A candidate B passes when it equals at least one control pixel-for-pixel
+     outside the clock mask, or when it differs from both controls only where
+     A1 and A2 differ from each other.
+   - A difference in B that the control pair does not show is a finding.
 5. **Verbose boots:** type `--keys $'mach_kernel -v\n' --keys-at 8`. Never use
    `--keys-at 3`: it truncates the string to `mach_ke`.
 
@@ -1562,6 +1569,15 @@ hand-off.
 > **Candidate rank 1 (the 600-byte wait cursors) is no longer removable.**
 > 4.2's `message` reaches it on the panel path. The measured pool without it is
 > 718 bytes. Task 3b's section in `$BDIV` is authoritative.
+>
+> **Outcome (2026-09-22): 672 spare, accepted by the user.**
+> - Ranks 2, 6 and 7 (`strtol`, `slvprintf`, `realloc`) turned out to be
+>   linked by `sarld`, which is built from the same `libsa.a`, so they cannot
+>   leave the source. Task 3 had scanned only `boot`.
+> - The trim therefore reached 672 spare, not 793: the 537 budget plus a
+>   135-byte margin. The user accepted that.
+> - If Tasks 6-7 run short, the recorded fallback is to move `strtoul` into its
+>   own object, so `boot` stops linking `strtol` (about 400 bytes).
 
 - [ ] **Step 1: Choose from the list, in order**
 

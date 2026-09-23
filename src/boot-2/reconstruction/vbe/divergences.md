@@ -1366,6 +1366,12 @@ below), so its source is not in the tree.
     [measured].
 - Everything in this section describes that patch as `t6c` built it.
 
+**[UPDATED — Task 7a: landed.** The patch was applied unchanged in Task 7a's
+stage 2, after the panel-path trims. The build is `t7a2`: 44,432 bytes, 624
+spare. Every comparison in this section reproduced exactly, with the palette
+block, the 5 frame bytes and the 1 pad byte as the only differences. See
+"Task 7a", stage 2 [measured].**]**
+
 | | |
 | --- | --- |
 | reference | `boot+28032..28463`, 432 bytes (`0x9D80`) |
@@ -1668,3 +1674,98 @@ and the `t7a1` log].**
   - Without it, the rows give -652. The file shrank by 656; `__TEXT` and
     `__DATA` rounding take the difference.
 - **So stage 2 fits**: 720 spare against the setter's +96 (Task 6's `t6c`).
+
+### Stage 2: the mode setter lands [measured]
+
+**The patch.**
+- `vm/work/t6c-setter.patch` has SHA-256
+  `BC00C61C1B878F5F9117699A878ED3E6F342D2F19878BAA3D0E3A89A7C0B6758`, as
+  Task 6 recorded.
+- `git apply --check` passed on stage 1's commit, and the patch was applied
+  unchanged.
+- It gives `vbe.c` `cksum 2550206037 9925` and `saio_internal.h`
+  `cksum 1574063489 5961`: the sources `t6c` built. The guest printed the
+  same `cksum`s before `t7a2` built.
+
+**The build, `t7a2`:**
+- `booter 44432 bytes of 45056, 624 to spare`.
+- `boot`: `sum 58196 44`, `cksum 1074659886 44432`, SHA-256
+  `824A68E321361599243C970785FA5C7ED6A4202D8C20206170A13524338D481A`.
+- `boot.sys`: `sum 42833 1053`, `cksum 3264219760 1077304`.
+- **Warnings:** `vbe.c`'s `` `models' defined but not used `` is gone, and
+  nothing new appears.
+
+| section | `t7a1` | `t7a2` | delta |
+| --- | --- | --- | --- |
+| `__text` | 37,761 | 37,901 | +140: `set_linear_video_mode`, 304 to 444 |
+| `__cstring` | 4,206 | 4,202 | -4 |
+| `__data` | 968 | 936 | -32: `models[]` |
+| `boot` | 44,336 | 44,432 | **+96** |
+
+These are Task 6's `t6c` deltas exactly: +140, -4 and -32 for +96 of file.
+
+**The setter, compared again.** `_set_linear_video_mode` is at `0x9E00`, 444
+bytes (next: `_setupPalette` at `0x9FBC`).
+
+| `compare_flat` | Task 6 (`t6c`) | Task 7a (`t7a2`) |
+| --- | --- | --- |
+| whole, 432 against `--ours-size 444` | `MISMATCH size 432 \| 444`; no decode past `+429` | the same |
+| `+26..+263` | `MATCH: 67 instructions, 146 bytes compared, 91 masked, 16 addresses mapped` | the same |
+| reference `+290..+410` against ours `+303..+423` | `MATCH: 23 instructions, 88 bytes compared, 32 masked, 8 addresses mapped` | the same |
+| Task 6's aligner (`aligncmp.py`), with the palette block set aside | 289 equal, 124 masked, 5 differ; 1 reference-only byte | the same |
+
+- **The 5 differing bytes** are Task 6's. Each is `0x104` becoming `0x504`,
+  at `+3`, `+16`, `+280`/`+293`, `+410`/`+423` and `+416`/`+429`.
+- **The 1 reference-only byte** is 4.2's third pad `nop`.
+- **The palette block** is 4.2's 13 bytes against our 26, at `+263`. Ours
+  pushes `0xD498`, which is `_appleClut8`.
+- **So the outcome is Task 6's: forced divergence, the palette only.**
+- **Every mapped address names the expected symbol** by our `nm`:
+  - functions: `vbeModeIsUsable`, `recordVBEMode`, `enumerateVBEModes`,
+    `getVBEModeInfo`, `setVBEMode`, `sleep`, `reallyPrint`;
+  - globals: `kernBootStruct`, `screen_height`, `screen_width`,
+    `bits_per_pixel`, `frame_buffer`, `in_linear_mode`,
+    `bytes_per_scanline`.
+- **The six messages** are byte-identical to 4.2's.
+- **The eye check.** `25 FF FF 00 00` (`and eax,0FFFFh`) is at setter
+  `+180`, after `or ah,40h`, as at 4.2's `boot+28212`.
+
+**Task 6's other functions, compared again in `t7a2`, as Task 6 compared
+them** (whole extents):
+- the mode-attributes test, the 640x480 test and the record writer:
+  `MATCH`, with Task 6's counts (82/10, 34/6 and 148/0 bytes compared/masked);
+- the enumerator: `+0..+207` and `+212..+328` `MATCH` with Task 6's counts.
+  The one differing byte is the 89-record cap, as recorded.
+
+**The panel path in `t7a2`.** All 22 of Task 3b's functions other than
+`setMode`, and `putchar`, still `MATCH`.
+
+**Step 2, the write order: reachable in this build, and it holds.**
+- **Why it applies here.** The `Graphics Mode` branch still calls the
+  setter. So in `t7a2` a store into `vbeCurrentMode` and `vbeModes` is
+  reachable in the call graph, even though no config sets the key.
+- **Every VBE-area address is formed in two places.** A scan of every
+  instruction in `__text` for a displacement or immediate in `0x1840..0x20D7`
+  finds VBE-area address formations only here:
+  - `enumerateVBEModes`: `add edi,1870h` (`0x9D52`) and `add eax,1840h`
+    (`0x9D7C`, the bound's base);
+  - `set_linear_video_mode`: `add edi,1858h` (`0x9E20`).
+  - The scan's other hits are unrelated constants: the `0x2000` buffers, the
+    memory-size test's `0x1BFF`, and `read_label`'s `0x1E5C`.
+- **The stores go through `recordVBEMode`.** It is called from
+  `enumerateVBEModes` (`0x9DC6`) and from the setter (`0x9EE7`). The
+  enumerator is called only from the setter (`0x9E26`).
+- **The setter is called only from `setMode`** (`0x3DC9`), inside the
+  `mode == GRAPHICS_MODE` branch.
+- **`setMode(1)` is called at two sites:**
+  - `boot()` at `0x36AA`;
+  - `execKernel` at `0x33DC`. `execKernel` is called only from `boot()`, at
+    `0x3727`.
+- **`boot()` calls `getKernBootStruct` at `0x34CC`**, on its straight-line
+  entry path (`boot.c:406-414`), before the loop that holds both calls.
+- **The one earlier call, `setMode(0)` at `0x34C7`** (`boot.c:411`), takes
+  the text branch. It cannot reach the setter.
+- **So every store into `vbeCurrentMode` or `vbeModes` runs after
+  `getKernBootStruct()`.** The call path is `boot` →
+  (`execKernel` →) `setMode(1)` → `set_linear_video_mode` →
+  `enumerateVBEModes` / `recordVBEMode`.

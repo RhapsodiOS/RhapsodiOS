@@ -42,15 +42,7 @@ void setupPalette(VBEPalette *p, const unsigned char *g);
  */
 static biosBuf_t bb;
 static int vbeModeCount = -1;	/* enumerateVBEModes()'s cache; 0xDEAC in 4.2 */
-
-static char *models[] = { "Text", 
-			  "CGA", 
-			  "Hercules", 
-			  "Planar", 
-			  "Packed Pixel", 
-			  "Non-Chain 4", 
-			  "Direct Color", 
-			  "YUV" };
+unsigned short bytes_per_scanline;	/* 0xEB88 in 4.2: set here, read nowhere */
 
 /*
  * OPENSTEP 4.2 User Patch 4's mode test (boot+27424..27515): supported,
@@ -186,45 +178,60 @@ enumerateVBEModes(void)
     return count;
 }
 
-void
+/*
+ * OPENSTEP 4.2 User Patch 4's mode setter (boot+28032..28463). Set `mode`
+ * with its linear frame buffer or, when the BIOS does not offer it, the
+ * first enumerated mode. Record it in kernBootStruct->vbeCurrentMode, leave
+ * graphicsMode at text, and load the palette of a packed-pixel mode.
+ * Returns 1 when no mode was set or the palette failed, otherwise 0.
+ */
+int
 set_linear_video_mode(unsigned short mode)
 {
-    VBEInfoBlock	vinfo;
     VBEModeInfoBlock	minfo;
-    int 		err = 0;
     VBEPalette		palette;
+    int 		err, ret = 0;
+    boot_vbe_mode	*vmr = &kernBootStruct->vbeCurrentMode;
 
-    /*
-     * See if VESA is around
-     */
-    err = getVBEInfo(&vinfo);
-    if ((err != errSuccess) || (vinfo.VESAVersion != MIN_VESA_VERSION))
-    {
-	reallyPrint("VESA not available.  Using text mode\n");
-	return;
+    if (enumerateVBEModes() == 0) {
+	reallyPrint("VESA not available.\n");
+	return 1;
     }
-
-    /*
-     * See if this mode is supported
-     */
-    err = getVBEModeInfo(mode, &minfo);
-    if (!((err == errSuccess) && 
-         (minfo.ModeAttributes & maModeIsSupportedBit) &&
-	 (minfo.ModeAttributes & maGraphicsModeBit)    &&
-	 (minfo.ModeAttributes & maLinearFrameBufferAvailBit)))
-    {
-	reallyPrint("Mode %d not supported\n", mode);
-	return;
+    if (getVBEModeInfo(mode, &minfo) != errSuccess ||
+	!vbeModeIsUsable(&minfo)) {
+	reallyPrint("VBE mode %d not supported.\n", mode);
+	/*
+	 * vmr[1] is kernBootStruct->vbeModes[0], the first enumerated mode.
+	 * 4.2 reaches it through the current-mode pointer ([edi+18h] at
+	 * boot+28136).
+	 */
+	mode = vmr[1].modeNumber;
+	if (vmr[1].xResolution) {
+	    reallyPrint("Using VBE Mode %d.\n", mode);
+	    getVBEModeInfo(mode, &minfo);
+	    sleep(5);
+	} else {
+	    reallyPrint("No usable VBE mode. Reverting to VGA.\n");
+	    return 1;
+	}
     }
+    if ((err = setVBEMode(mode | kLinearFrameBufferBit)) != errSuccess) {
+	reallyPrint("Error in setting mode. VESA VBE error #%d\n", err);
+	return 1;
+    }
+    recordVBEMode(vmr, mode, &minfo);
+    kernBootStruct->graphicsMode = TEXT_MODE;
 
-    /*
-     * Set the mode
-     */
-    err = setVBEMode(mode | kLinearFrameBufferBit);
-    if (err != errSuccess)
-    {
-	reallyPrint("Error in setting mode.  Error #%d\n", err);
-	return;
+    if (minfo.MemoryModel == 4) {	/* packed pixel */
+	/*
+	 * Forced divergence, by decision: our palette, appleClut8, where 4.2
+	 * loads its own table at 0xDAAC. The two agree only at 0 and 255.
+	 */
+	setupPalette(&palette, appleClut8);
+	if ((err = setVBEPalette(palette)) != errSuccess) {
+	    ret = 1;
+	    reallyPrint("Error in setting palette. VESA VBE error #%d\n", err);
+	}
     }
 
     in_linear_mode = YES;
@@ -235,13 +242,8 @@ set_linear_video_mode(unsigned short mode)
 					   minfo.PhysBasePtr_1, 
 					   minfo.PhysBasePtr_2, 
 					   minfo.PhysBasePtr_high);
-
-    /*
-     * Set the palette
-     */
-    setupPalette(&palette, appleClut8);
-    if ((err = setVBEPalette(palette)) != errSuccess)
-	reallyPrint("Error in setting palette.  Error #%d\n", err);
+    bytes_per_scanline = minfo.BytesPerScanline;
+    return ret;
 }
 
 void setupPalette(VBEPalette *p, const unsigned char *g)

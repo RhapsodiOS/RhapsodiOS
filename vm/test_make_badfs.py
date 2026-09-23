@@ -1,5 +1,9 @@
 import os, struct, tempfile
+import pytest
 import make_badfs, rhap_image
+
+pytestmark = pytest.mark.skipif(not os.path.exists(make_badfs.TEMPLATE),
+                                reason="install floppy template not present")
 
 def _sb(path, off, fmt):
     # Manually compute partition offset by reading the disk label,

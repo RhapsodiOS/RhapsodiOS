@@ -66,6 +66,12 @@ class Guest(object):
         # "msmouse" to put a Microsoft serial mouse on it.  extra appends raw
         # qemu arguments, for hardware a driver under test needs (e.g.
         # "-parallel", "null").
+        if persist:
+            # a persistent boot writes IMAGE, so it obeys the same rule as every
+            # other writer: never golden.img or rhapsody.vmdk, whatever
+            # RHAP_TEST_IMAGE says
+            import rhap_inject
+            rhap_inject.check_target(IMAGE)
         self.outdir = outdir
         os.makedirs(outdir, exist_ok=True)
         self.serial = os.path.join(outdir, "serial.log")

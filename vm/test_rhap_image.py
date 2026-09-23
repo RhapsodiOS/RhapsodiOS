@@ -1,12 +1,11 @@
 import contextlib
-import gc
 import io
 import os
 import struct
 import sys
 import tempfile
 import unittest
-import warnings
+import unittest.mock as mock
 
 import rhap_image
 
@@ -316,11 +315,20 @@ class TestImageClosesOnFailure(unittest.TestCase):
         fd, path = tempfile.mkstemp(prefix="rhap-image-test-")
         os.write(fd, b"\0" * 65536)
         os.close(fd)
+        opened = []
+
+        def tracking_open(*args, **kwargs):
+            f = open(*args, **kwargs)
+            opened.append(f)
+            return f
+
         try:
-            with warnings.catch_warnings():
-                warnings.simplefilter("error", ResourceWarning)
+            with mock.patch("rhap_image.open", tracking_open, create=True):
                 with self.assertRaises(ValueError):
                     rhap_image.Image(path)
-                gc.collect()
+            self.assertEqual(len(opened), 1)
+            self.assertTrue(opened[0].closed)
         finally:
-            os.unlink(path)     # fails on Windows if the handle leaked
+            for f in opened:
+                f.close()
+            os.unlink(path)

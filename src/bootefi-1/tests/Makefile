@@ -34,19 +34,6 @@ BOOT2_CFLAGS := $(COMMON_FLAGS) \
 # needs __i386__ anyway (no byte_order.h / simple_lock.h in its chain).
 HOST_CFLAGS := $(COMMON_FLAGS)
 
-# sys.c's own `#define BIG_ENDIAN_INTEL_FS __LITTLE_ENDIAN__` assumes any
-# i386 host encounters cross-endian (PPC-written) UFS media and must swap
-# every superblock/indirect-block/directory-block read.  golden.img (like
-# real Rhapsody DR2 media, per vm/rhap_image.py's own header comment) has a
-# big-endian disk label but a *native little-endian* UFS payload -- swapping
-# it corrupts fs_nrpos/fs_cpc/fs_postbloff into garbage and crashes.  Disk
-# labels are swapped unconditionally in disk.c/ufs_byteorder.c regardless of
-# this flag, so overriding __LITTLE_ENDIAN__ to 0 only for sys.c's own
-# translation unit disables just the (mistaken, for this on-disk format)
-# payload swapping without touching label parsing or the swap primitives
-# ufs_byteorder.c provides for it.
-SYS_C_CFLAGS := $(BOOT2_CFLAGS) -D__LITTLE_ENDIAN__=0
-
 BOOT2_OBJS := $(BUILD)/ufs_host_test.o \
         $(BUILD)/disk.o \
         $(BUILD)/sys.o \
@@ -68,7 +55,7 @@ $(BUILD)/disk.o: $(BOOT2)/libsaio/disk.c | $(BUILD)
 	$(CC) $(BOOT2_CFLAGS) -c -o $@ $<
 
 $(BUILD)/sys.o: $(BOOT2)/libsaio/sys.c | $(BUILD)
-	$(CC) $(SYS_C_CFLAGS) -c -o $@ $<
+	$(CC) $(BOOT2_CFLAGS) -c -o $@ $<
 
 $(BUILD)/ufs_byteorder.o: $(BOOT2)/libsaio/ufs_byteorder.c | $(BUILD)
 	$(CC) $(BOOT2_CFLAGS) -c -o $@ $<

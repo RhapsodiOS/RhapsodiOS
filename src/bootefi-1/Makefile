@@ -31,7 +31,25 @@ CFLAGS := -target i386-unknown-windows -std=gnu89 -ffreestanding \
           -I$(KERNEL7) -I$(KERNEL7)/bsd -I$(KERNEL7)/bsd/include \
           -I$(CCTOOLS) -Ivendor_includes \
           -include bootefi_memory_override.h \
-          -DBOOTEFI_BOOT_STRING='$(BOOTEFI_BOOT_STRING)'
+          -DBOOTEFI_BOOT_STRING='$(BOOTEFI_BOOT_STRING)' \
+          -Wno-error=incompatible-function-pointer-types \
+          -Wno-error=int-conversion -Wno-error=incompatible-pointer-types
+
+# vendor_includes/architecture, vendor_includes/driverkit and
+# vendor_includes/objc/objc.h are symlinks.  A checkout without symlink
+# support (Windows with core.symlinks=false) turns them into small text
+# files naming their targets, so copy the real directories/file under
+# BUILD/ and search there first.  A real symlink makes the wildcard match
+# and none of this applies.  The staged path is prepended (not appended) so
+# it is found before vendor_includes/objc/objc.h, which "exists" as a real
+# file at that path -- just with the wrong (placeholder) content -- and
+# would otherwise shadow the staged copy.
+VENDOR_STAGE := $(BUILD)/vendor_includes
+ifeq ($(wildcard vendor_includes/architecture/.),)
+CFLAGS := -I$(VENDOR_STAGE) $(CFLAGS)
+STAGED_VENDOR := $(VENDOR_STAGE)/architecture $(VENDOR_STAGE)/driverkit \
+                 $(VENDOR_STAGE)/objc/objc.h
+endif
 
 LDFLAGS := /machine:x86 /subsystem:efi_application /nodefaultlib /entry:efi_main \
            /base:0x08000000 /fixed /safeseh:no
@@ -74,10 +92,22 @@ all: $(BUILD)/BOOTIA32.EFI
 $(BUILD):
 	mkdir -p $(BUILD)
 
-$(BUILD)/%.obj: %.c | $(BUILD)
+$(VENDOR_STAGE)/architecture: | $(BUILD)
+	mkdir -p $(VENDOR_STAGE)
+	cp -R ../architecture-1 $@
+
+$(VENDOR_STAGE)/driverkit: | $(BUILD)
+	mkdir -p $(VENDOR_STAGE)
+	cp -R ../driverkit-3/driverkit $@
+
+$(VENDOR_STAGE)/objc/objc.h: | $(BUILD)
+	mkdir -p $(VENDOR_STAGE)/objc
+	cp ../objc-1/objc.h $@
+
+$(BUILD)/%.obj: %.c | $(BUILD) $(STAGED_VENDOR)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-$(BUILD)/handoff_tramp.obj: handoff.S | $(BUILD)
+$(BUILD)/handoff_tramp.obj: handoff.S | $(BUILD) $(STAGED_VENDOR)
 	$(CC) $(CFLAGS) -c -o $@ handoff.S
 
 $(BUILD)/BOOTIA32.EFI: $(EFI_OBJS)

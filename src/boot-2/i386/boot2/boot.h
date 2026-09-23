@@ -35,4 +35,4 @@
 #define NUM_PROMPTS_KEY	"Driver Disk Prompts"
 #define ASK_KEY		"Ask For Drivers"
 #define INSTALL_KEY	"Install Mode"
-#define G_MODE_KEY	"Graphics Mode"
+#define VBE_MODE_KEY	"VBE Mode"

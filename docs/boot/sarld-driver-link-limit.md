@@ -9,6 +9,20 @@ reason that named none of this.
 Found 2026-09-21 while trying to boot `drvEIDE`, which is 131,264 bytes. Every
 driver Apple shipped stays under the limit -- the largest is `Floppy_reloc` at
 124,956 -- so stock installs never hit it.
+**[UPDATED — spec 3 G5 (docs/kernel/i386-vbe-console.md, G5): Apple's
+`sarld` did hit this failure with only Apple's boot drivers plus one
+102,412-byte driver, `VBE20DisplayDriver`, linked first, whose own link
+failed on an undefined symbol. EIDE's link, next, failed with `rld(): virtual
+memory exhausted (malloc failed)`, and the cascade and panic below followed.
+The same driver linked first on a kernel that has the symbol, so that its
+link succeeds, lost nothing. So there a failed link set it off, not size or
+order. Whether it did so through the node limit described below was not
+determined.]**
+**[CORRECTED — spec 3's final review, m3 and m4: "not size" overstates.
+EIDE's `_reloc` is 121,056 bytes, at this document's limit; read "not the
+driver's own size, and not the order". And the two runs differ in kernel as
+well as in the symbol: the negative-control kernel is 4,168 bytes smaller
+than the final one, for reasons spec 2's provenance gap left unrecorded.]**
 
 ## Symptom
 

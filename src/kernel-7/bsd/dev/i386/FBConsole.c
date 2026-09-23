@@ -529,6 +529,14 @@ int	repeat;
 int	i;
 
 	/*
+	 * A graphic-mode console has no text window: Init draws none and
+	 * sets no window geometry, so there is nowhere to put a character.
+	 * 4.2 tests this first (0x0019BFAF).
+	 */
+	if (console->window_type == SCM_GRAPHIC)
+		return;
+
+	/*
 	 * First deal with ANSI escape sequences.
 	 * This is a very bizarre implementation, copied from the m68k
 	 * version. 
@@ -1029,6 +1037,11 @@ static void Init(
     boolean_t initScreenOrSaveUnder,
     boolean_t initWindow,
     const char *title)
+// Rebuilt from the static Init at 0x0019DF7C in the i386 slice of the
+// OPENSTEP 4.2 mach_kernel (704 bytes). Byte parity except the 8 bpp colour
+// indices and the window-type store moved ahead of the wipe test; see
+// src/kernel-7/reconstruction/vbe/divergences.md, "Spec 3 Task 8b: the
+// console window" and "Spec 3 Task 8c: the alert wipe".
 {
     ConsolePtr console = (ConsolePtr)cso->priv;
     int i;
@@ -1036,12 +1049,18 @@ static void Init(
     switch (console->display.bitsPerPixel) {
         case IO_8BitsPerPixel:
 	    if (console->display.colorSpace == IO_OneIsWhiteColorSpace) {
-		console->baseground = 107;
+		console->baseground = 0x55;
 		console->background = 0xff;
 		console->foreground = 0x00;
 		console->dark_grey  = 0x55;
 		console->light_grey = 0xaa;
 	    } else {
+		// FORCED DIVERGENCE: these are palette indices, and the palette
+		// is the booter's. Ours loads appleClut8 (boot-2 libsaio/vbe.c,
+		// by decision) where 4.2 loads its own table, so 4.2's indices
+		// here (0x63, 0xef, 0x00, 0xf5, 0xfa) would draw black text on
+		// navy. These draw 4.2's design, black on a white window with
+		// grey bevels, on appleClut8.
 		console->baseground = 0x80;
 		console->background = 0xff;
 		console->foreground = 0x00;
@@ -1057,18 +1076,18 @@ static void Init(
 	    console->light_grey = 0xaaaf;
 	    break;
 	case IO_15BitsPerPixel:
-	    console->baseground = 0x3193;
-	    console->background = 0x7fff;
+	    console->baseground = 0x295f;
+	    console->background = 0x7bde;
 	    console->foreground = 0x0000;
 	    console->dark_grey  = 0x294a;
-	    console->light_grey = 0x6739;
+	    console->light_grey = 0x5294;
 	    break;
 	case IO_24BitsPerPixel:
-	    console->baseground = 0xff666699;
+	    console->baseground = 0xff5555ff;
 	    console->background = 0xffffffff;
 	    console->foreground = 0xff000000;
 	    console->dark_grey  = 0xff555555;
-	    console->light_grey = 0xffcccccc;
+	    console->light_grey = 0xffaaaaaa;
 	    break;
     }
     
@@ -1078,20 +1097,37 @@ static void Init(
 	}
     console->ansi_stack_p = &console->ansi_stack[1];	// FIXME - why not 0?
 
+    // FORCED DIVERGENCE from a 4.2 reference defect, fixed at the user's
+    // request: the window type is stored before the wipe test, as
+    // VGAConsole.c does. 4.2 tests the type the console is leaving
+    // (0x0019E101 reads [ebx] before 0x0019E1C4 stores mode there), and
+    // FBAllocateConsole leaves SCM_UNINIT, so every alert opened with
+    // save-under wiped the whole screen and then saved the blank.
+    console->window_type = mode;
+
     // Initialize the screen, if appropriate.
-    if (initScreenOrSaveUnder && (mode != SCM_ALERT)) {
+    if (initScreenOrSaveUnder && (console->window_type != SCM_ALERT)) {
 	WipeScreen(console, console->baseground);
     }
 
-    console->window_type = mode;
     switch(console->window_type) {
 	case SCM_TEXT:
-	    InitWindow(console,	TEXT_WIN_WIDTH, TEXT_WIN_HEIGHT,
+	    // Three quarters of the screen each way (0x0019E1E6..0x0019E207),
+	    // so the window and its border always fit. A fixed 640x480 window
+	    // does not fit a 640x480 screen: InitWindow clamps it, centres it
+	    // at x = 0 and draws the border from x = -3.
+	    InitWindow(console,
+		console->display.width * 3 / 4, console->display.height * 3 / 4,
 		title, initWindow, 0 /* Don't save under */);
 	    break;
+	case SCM_GRAPHIC:
+	    // No window; FBPutC drops characters in this mode.
+	    break;
 	case SCM_ALERT:
+	    // FAITHFUL TO THE REFERENCE: always save under (0x0019E20C pushes
+	    // 1), whatever initScreenOrSaveUnder says.
 	    InitWindow(console,	ALERT_WIN_WIDTH, ALERT_WIN_HEIGHT,
-		title, initWindow, initScreenOrSaveUnder);
+		title, initWindow, 1 /* Save under */);
 	    break;
 	default:
 	    panic("FBConsole/FBInitConsole: can't init");
@@ -1373,6 +1409,200 @@ IOConsoleInfo *FBAllocateConsole(IODisplayInfo *display)
     ((ConsolePtr)cso->priv)->display = *display;
     ((ConsolePtr)cso->priv)->window_type = SCM_UNINIT;
     return cso;
+}
+
+void VBEModeInfo2IODisplayInfo(VBEModeRec *mode, IODisplayInfo *info)
+// Translate one booter-supplied VBE mode record into an IODisplayInfo.
+// Reconstructed from _VBEModeInfo2IODisplayInfo at 0x0019ED8C in the i386
+// slice of the OPENSTEP 4.2 mach_kernel (539 bytes, a leaf). The VBE boot
+// driver calls this, so it has to stay an exported kernel symbol.
+{
+    int i;
+    int lsb;
+
+    info->width       = mode->xResolution;
+    info->height      = mode->yResolution;
+    info->totalWidth  = mode->xResolution;
+    info->rowBytes    = mode->bytesPerScanline;
+
+    // FAITHFUL TO THE REFERENCE, NOT AN OMISSION: 0x0019EDB3 stores a literal
+    // zero here and the mode record carries no refresh rate to store instead.
+    // This is why the VBE display driver reports "Refresh:0Hz". Do not "fix".
+    info->refreshRate = 0;
+
+    info->frameBuffer = mode->frameBuffer;
+
+    switch (mode->bitsPerPixel) {
+    case 2:  info->bitsPerPixel = IO_2BitsPerPixel;  break;
+    case 8:  info->bitsPerPixel = IO_8BitsPerPixel;  break;
+    case 12: info->bitsPerPixel = IO_12BitsPerPixel; break;
+    case 15:
+    case 16: info->bitsPerPixel = IO_15BitsPerPixel; break;
+    case 24:
+    case 32: info->bitsPerPixel = IO_24BitsPerPixel; break;
+    default:
+	// Everything else, in range or not, shares one body at 0x0019EE90
+	// that flags the mode and returns without filling anything below.
+	//
+	// FAITHFUL TO THE REFERENCE: this is |=, into a field the caller has
+	// not initialized. 0x0019EE90 is "or byte ptr [esi+0x80],0x10", and
+	// the 4.2 FBAllocateVBEConsole's local IODisplayInfo is never zeroed
+	// before the call (the only stores in 0x0019ECBB..0x0019ECEC are
+	// pushes), so on an unrecognised depth this ORs a bit into stack
+	// residue and the caller then copies the whole struct out. Same
+	// family of defect as the unterminated pixelEncoding below.
+	// Reproduced, not repaired: making it "=" would drop a byte, and
+	// zeroing the caller's local would change the reference's behaviour.
+	info->modeUnavailableFlag |= IO_DISPLAY_MODE_OTHER_INVALID;
+	return;
+    }
+
+    // pixelEncoding[0] is the most significant bit of a pixel, so the bit at
+    // VBE field position p lands at index bitsPerPixel - p - 1.
+    //
+    // FAITHFUL TO THE REFERENCE: only bitsPerPixel bytes are written and no
+    // terminating '\0' is appended, though displayDefs.h documents the array
+    // as NUL-terminated. The 4.2 FBAllocateVBEConsole hands in an
+    // uninitialized stack IODisplayInfo, so the tail keeps whatever was on
+    // the stack. Adding a terminator would be a behaviour change, not a
+    // repair.
+    //
+    // Bit 3 of the VBE ModeAttributes word is the colour-mode bit: set means
+    // colour, clear means monochrome. The reference spells it as the bare
+    // "test byte ptr [ebx+2],8" at 0x0019EE9C, with no named constant.
+    if (mode->modeAttributes & 8) {
+	info->colorSpace = IO_RGBColorSpace;
+	// VBE MemoryModel 4 is packed pixel, i.e. one palette index per
+	// pixel, which is why every byte of the encoding is 'P'. The
+	// reference's "cmp byte ptr [ebx+0xb],4" at 0x0019EEAD is likewise
+	// a bare literal.
+	if (mode->memoryModel == 4) {
+	    for (i = 0; i < mode->bitsPerPixel; i++)
+		info->pixelEncoding[i] = IO_SampleTypePseudoColor;
+	} else {
+	    for (i = 0; i < mode->bitsPerPixel; i++)
+		info->pixelEncoding[i] = IO_SampleTypeSkip;
+
+	    // CODEGEN-DRIVEN SHAPE, NOT A STYLE CHOICE: each lsb has to be its
+	    // own statement ahead of the loop. The reference computes it once
+	    // before the mask-size guard (0x0019EEEA-EEF6 for red, likewise at
+	    // EF12 and EF3A) and reloads only the mask size per iteration.
+	    // Measured: folding the expression into the subscript instead
+	    // still yields a 539-byte function, but 114 of its bytes differ --
+	    // gcc 2.7.2.1 then sinks the computation past the guard and
+	    // reloads bitsPerPixel and the field position inside the body.
+	    lsb = mode->bitsPerPixel - mode->redFieldPosition - 1;
+	    for (i = 0; i < mode->redMaskSize; i++)
+		info->pixelEncoding[lsb - i] = IO_SampleTypeRed;
+
+	    lsb = mode->bitsPerPixel - mode->greenFieldPosition - 1;
+	    for (i = 0; i < mode->greenMaskSize; i++)
+		info->pixelEncoding[lsb - i] = IO_SampleTypeGreen;
+
+	    lsb = mode->bitsPerPixel - mode->blueFieldPosition - 1;
+	    for (i = 0; i < mode->blueMaskSize; i++)
+		info->pixelEncoding[lsb - i] = IO_SampleTypeBlue;
+	}
+    } else {
+	info->colorSpace = IO_OneIsWhiteColorSpace;
+	for (i = 0; i < mode->bitsPerPixel; i++)
+	    info->pixelEncoding[i] = IO_SampleTypeGray;
+    }
+
+    info->flags      = IO_DISPLAY_NEEDS_SOFTWARE_GAMMA_CORRECTION;
+    info->parameters = (void *)mode->modeNumber;
+    info->memorySize = mode->yResolution * mode->bytesPerScanline;
+}
+
+//
+// Two fixed low-memory addresses inside KERNBOOTSTRUCT (0x11000), spelled as
+// bare integer constants because that is all the reference has: the i386
+// slice carries no relocation table at all, and 0x0019ECC4, 0x0019ECCE,
+// 0x0019ECE7 and 0x0019ECF1 all address these two words absolutely.
+//
+// VBE_BOOTER_MODE is kbs+0x1858, the record for the mode the booter put the
+// adapter into. Spec 1's VBE20DisplayDriver hard-codes the same address the
+// same way (VBE20DisplayDriver.m:79, VBE_BOOTER_MODE). The two spellings MUST
+// stay in agreement -- driver and kernel have to read one record, not two.
+// Spec 3 named both words in KERNBOOTSTRUCT (vbeCurrentMode, vbeFrameBuffer)
+// at these offsets, with offset assertions, and kept the bare constants here
+// and in the driver because the 4.2 binaries use them. src/boot-2's
+// getKernBootStruct() bzero's the struct, and its set_linear_video_mode()
+// (libsaio/vbe.c) then fills this record. The stock v5.0.41.1 booter on the
+// test image was not traced: its zeroing code was not read, only its
+// strings were scanned. Guest memory dumps measured both words zero under it
+// (see divergences.md, "Task 5").
+//
+// VBE_FRAMEBUFFER_VIRT is kbs+0x1854. In 4.2 it is kernel-private: the
+// kernel's own pmap_bootstrap is its one writer (0x0018F1B4) and this
+// function its one reader, and no store to it was found in the 4.2 booter
+// [measured, up to the blind spots divergences.md names]. The word holds the
+// kernel virtual address of the linear frame buffer: pmap_bootstrap stores
+// va + (frameBuffer & page_mask), then maps trunc_page(frameBuffer) at va
+// (0x0018F1B4, 0x0018F1E4..0x0018F292) [measured; this confirms the reading
+// divergences.md records as D2]. Ours is written the same way, by
+// pmap_bootstrap (machdep/i386/pmap.c:457), and only when the booter set a
+// mode whose mapping ends below VM_MAX_KERNEL_ADDRESS; otherwise the word
+// stays zero and the second test returns NIL. On a boot without a mode the
+// first test, xResolution == 0, returns NIL and the frame-buffer word is
+// never read. Either way the console falls back to VGA.
+//
+// Neither define is volatile: the one write is in pmap_bootstrap, before
+// paging is enabled and before this function can run, on the single boot
+// thread [from the call order in source].
+//
+#define VBE_BOOTER_MODE		((VBEModeRec *)0x12858)
+#define VBE_FRAMEBUFFER_VIRT	(*(void **)0x12854)
+
+IOConsoleInfo *FBAllocateVBEConsole(void)
+// Build a frame-buffer console over the VBE mode the booter left the adapter
+// in, or return NIL if there is not one. Reconstructed from
+// _FBAllocateVBEConsole at 0x0019ECB8 in the i386 slice of the OPENSTEP 4.2
+// mach_kernel (212 bytes).
+//
+// STRUCTURAL PARITY ONLY, NOT BYTE PARITY: some of the reference's bytes are
+// addresses that cannot match here. The count and the item-by-item
+// correspondence are in src/kernel-7/reconstruction/vbe/divergences.md, under
+// "Task 3: writing FBAllocateVBEConsole".
+//
+// The reference's tail (+69..+196) carries its own copy of
+// FBAllocateConsole's body (+6..+135) rather than calling it: same two
+// IOMalloc sizes, same seven vtable stores, same "rep movsd" of 34 dwords to
+// priv+4, same priv+0 = 0. Measured, the two agree instruction for
+// instruction -- 37 instructions each; leaving out the nops and
+// FBAllocateConsole's parameter load (mov esi,[ebp+8]), which has no
+// counterpart, 34 remain on each side with the same mnemonics and operands,
+// differing only in call and branch displacements, plus one extra alignment
+// nop here. That is what gcc 2.7.2.1 at -O3 emits for a call to a same-file
+// function
+// [INFERENCE: -O3 implies -finline-functions, and the reference does not
+// call _FBAllocateConsole at 0x0019EC24; whether the 4.2 source said
+// "FBAllocateConsole(&info)" or repeated the body by hand is not decidable
+// from the binary]. Calling it is the honest spelling either way;
+// transcribing the body would duplicate console machinery that is already
+// right here in this file.
+{
+    IODisplayInfo info;
+
+    // 0x0019ECC4 then 0x0019ECCE: xResolution is tested first, the
+    // frame-buffer word second, and both must be non-zero.
+    if (VBE_BOOTER_MODE->xResolution == 0 || VBE_FRAMEBUFFER_VIRT == NIL)
+	return NIL;
+
+    // FAITHFUL TO THE REFERENCE: `info' is deliberately NOT zeroed. The 4.2
+    // prologue at 0x0019ECBB reserves 0x88 bytes and does nothing to them --
+    // no rep stos, and no call at all before the one at 0x0019ECEC -- so
+    // VBEModeInfo2IODisplayInfo's default arm ORs into stack residue and the
+    // fields it never stores are copied out as residue too. Adding a bzero
+    // here would be a behaviour change, not a repair.
+    VBEModeInfo2IODisplayInfo(VBE_BOOTER_MODE, &info);
+
+    // 0x0019ECF1/+57 and 0x0019ECF7/+63: overwrite the *physical* frameBuffer
+    // that VBEModeInfo2IODisplayInfo just took from the mode record with the
+    // mapped address, because the console writes pixels through this pointer.
+    info.frameBuffer = VBE_FRAMEBUFFER_VIRT;
+
+    return FBAllocateConsole(&info);
 }
 //
 // END:		Exported routines

@@ -1,0 +1,522 @@
+# i386 VESA booter support and frame-buffer mapping: design
+
+Spec 3 of three. Spec 1 reconstructed OPENSTEP 4.2 User Patch 4's
+`VBE20DisplayDriver` (`docs/superpowers/specs/2026-09-21-vbe20displaydriver-reconstruction-design.md`).
+Spec 2 added the kernel half it links against, `VBEModeInfo2IODisplayInfo` and
+`FBAllocateVBEConsole`, and wired `BasicAllocateConsole()` to try the latter
+first (`docs/superpowers/specs/2026-09-21-i386-vbe-kernel-support-design.md`).
+
+Both halves read data that nothing in our tree produces yet. This spec adds the
+producers. The booter enters a VBE mode and records it. The kernel maps the
+frame buffer and publishes the mapped address. With both in place the
+frame-buffer console runs for the first time.
+
+Claims below are marked **[measured]** when read out of a binary, a file or a
+boot, and **[inference]** when reasoned from those readings.
+
+## 1. Decisions
+
+Settled with the user before this spec was written:
+
+| Question | Decision |
+| --- | --- |
+| Fidelity of the booter's VBE code | **Measure first, then byte parity per function**, as in specs 1 and 2. Forced departures are recorded, not hidden. |
+| When spec 3 is done | **Kernel frame-buffer console.** The booter enters a VBE mode and fills the mode record and array. The kernel maps the frame buffer. The boot console draws through the frame-buffer console. The driver logs `using VBE mode N` and exports a non-empty mode list. The desktop stays on today's VGA path. |
+| Booter size budget | **Measure, then trim boot2.** `boot1`, its 45,056-byte load limit and the disk layout stay as they are. If trimming cannot find the room, stop and bring it back to the user. |
+| Gate G5 | **In.** A negative-control boot with the driver linked first. |
+
+Settled with the user after Task 3's measurements, 2026-09-22:
+
+| Question | Decision |
+| --- | --- |
+| 4.2 enumerates VBE modes on every boot, with or without `VBE Mode` | **Follow 4.2.** The mode array may be filled on any boot; G1 is amended (§7). |
+| 4.2's `setMode` draws a VGA mode-`0x12` panel for `Boot Graphics`; ours has no panel | **Rebuild 4.2's `setMode`, panel path included.** This widens scope beyond VBE code; Task 3b measures its cost, and the §4.4 stop rule applies to it. |
+| 4.2's mode setter loads its own 1,024-byte palette; ours uses `appleClut8` | **Keep ours.** A forced divergence in the mode setter, recorded. The two palettes agree at index 0 (black) and 255 (white) and nowhere else **[measured]**. |
+
+Settled with the user during execution, 2026-09-22 and 2026-09-23 (added in
+the final review's fix pass; each row points to its record):
+
+| When | Question | Decision | Record |
+| --- | --- | --- | --- |
+| Task 5 | The trim reached 672 bytes spare, short of the plan's 793 target but over the 537-byte bound | **Accept 672.** The fallback, splitting out `strtoul`, was not needed. The final booter has 48 spare. | `src/boot-2/reconstruction/vbe/divergences.md`, "Task 5: the trim" |
+| Tasks 7b, 7c | `loaded_drivers[i].configTable`, which 7b's `VBE Mode` lookup reads, pointed at freed memory | **Fix it.** Rebuild 4.2's `loadOtherConfigs`, and close the `loadBootDrivers` path, which dangles in 4.2 too, with a labelled forced divergence (`pickDrivers` records `addConfig`'s copy). | `src/boot-2/reconstruction/vbe/divergences.md`, "Task 7c" |
+| Task 8, Step 0 | 4.2 maps the frame buffer inside `[virt_avail, virt_end)`, which `kmem_init` makes allocatable (§8) | **Reserve the range**, a forced divergence from a 4.2 reference defect. The block sits after `*virt_end = va`. | `src/kernel-7/reconstruction/vbe/divergences.md`, "Spec 3 Task 8" |
+| Task 8b's review | 4.2's console `Init` tests the window type before storing it, so a fresh frame-buffer alert with save-under wipes the screen | **Fix it**: store the type first, as `VGAConsole.c` does, a forced divergence from a 4.2 reference defect. | `src/kernel-7/reconstruction/vbe/divergences.md`, "Spec 3 Task 8c" |
+| Final review, I1 | `src/bootefi-1` compiles `stringTable.c`, whose rebuilt `Query` prompt calls `setMode`, which `bootefi-1` did not define: its link broke | **Add a no-op `setMode` stub to `src/bootefi-1`.** | `src/boot-2/reconstruction/vbe/divergences.md`, "Task 7c", "`bootefi-1`" |
+| Final review, I2 | The frame-buffer mapping had no bound against `VM_MAX_KERNEL_ADDRESS` (1 GB), and our reservation is larger than 4.2's | **Add the bound.** When the mapping would end past it, map nothing and leave `0x12854` zero, so the console falls back to VGA. Our own fix, not a 4.2 divergence. | `src/kernel-7/reconstruction/vbe/divergences.md`, "Final review fix: the 1 GB bound" |
+| Final review, I3 | 4.2 forms `VideoModePtr` as `(segment << 16) \| offset`, and the enumerator now runs on every boot | **Fix it**: `segment * 16 + offset`, a forced divergence from a 4.2 reference defect. | `src/boot-2/reconstruction/vbe/divergences.md`, "Final review fixes" |
+
+Work happens on branch `vbe20-booter`, cut from `vbe20-kernel` in the same
+worktree, `.worktrees/vbe20-kernel`. Neither parent branch is merged to master,
+so spec 1's driver and spec 2's kernel travel with it.
+
+## 2. Out of scope
+
+- **The Window Server.** The desktop keeps running on `VGA_psdrvr`. The 4.2
+  patch ships no Window Server half for this driver; its second binary is a
+  Configure.app inspector.
+- **Raising `boot1`'s load limit**, and any change to `boot1` or the disk label.
+- **The UEFI booter** in `src/bootefi-1`.
+  **[UPDATED — final review I1: out of scope for new work, not for breakage.
+  It compiles `libsaio`'s `stringTable.c` and `drivers.c`, so spec 3 broke
+  its link; the user's stub fixes that (§1).]**
+- **Hardware.** Every gate runs under QEMU.
+
+## 3. The contract: what the booter and kernel write
+
+The driver and the kernel already read four fixed addresses inside
+`KERNBOOTSTRUCT` (`0x11000`). Both hard-code them as integer constants, because
+the references do **[measured]**: `VBE20DisplayDriver.m:79-81` and
+`FBConsole.c:1510-1511`. They cannot move without losing byte parity, so the
+producers write exactly there.
+
+| Address | Offset | What | Written by |
+| --- | --- | --- | --- |
+| `0x12854` | 6228 | kernel virtual address of the mapped frame buffer | kernel, `pmap_bootstrap` |
+| `0x12858` | 6232 | 24-byte `VBEModeRec` for the mode the booter set | booter |
+| `0x12870` | 6256 | array of `VBEModeRec`, 0x880 bytes | booter |
+
+All three fall inside Rhapsody's `char _reserved[7500]`, bytes 908 to 8408.
+`boot_video` follows at 8408 to 8432 **[measured on the guest with `offsetof`,
+spec 1 §3]**.
+
+**Named fields, same offsets.** Both copies of the header gain named fields cut
+out of `_reserved`: `src/boot-2/i386/libsa/kernBootStruct.h` and the live
+struct in `src/kernel-7/machdep/i386/kernBootStruct.h` (the one after `#else`,
+not the dead `#if 0` copy). A negative-array-size `typedef` after each struct
+asserts three things:
+
+- the new fields sit at exactly 0x1854, 0x1858 and 0x1870;
+- the carved block still totals 7500 bytes;
+- so `video`, `pciInfo`, `eisaSlotInfo` and `config` do not move.
+
+This is the reconciliation spec 2 deferred to here. The driver and kernel keep
+their constants. The assertions tie those constants to the struct, and a
+comment beside each constant names the field it addresses.
+
+**At most 89 records. This is a forced divergence.** 4.2 accepts up to 90
+records. The driver's bound gives that count (`0x880 = 24 * 90 + 16`), and so
+does the 4.2 booter's own enumerator, independently: it stops once the record
+index exceeds 89 (`cmp eax, 897h` at `boot+27911`) **[measured, spec 1's record
+`src/drivers-i386/video/drvVBE20DisplayDriver/reconstruction/divergences.md`]**.
+In our layout, record 89 (the 90th) spans 8392 to 8416 and would overwrite
+`boot_video.v_baseAddr` and `v_display`. The invariant is therefore:
+**the booter writes nothing at or beyond offset 8408.** At most 89 records go
+in (indices 0 to 88). Index 89 is left as the booter's `bzero` left it, so the
+driver's scan reads `modes[89].xResolution` at offset 8396 as zero and stops at
+89 **[inference from the driver's loop, `VBE20DisplayDriver.m:235-239`]**.
+
+**Write order.** `getKernBootStruct()` (`src/boot-2/i386/libsaio/bootstruct.c:79`,
+called from `boot2/boot.c:414`) `bzero`s the whole struct at `:84`. A booter
+write that runs before it is silently erased and looks like "the guard never
+passes". The kernel's write runs long after it and is safe.
+
+**The large-memory branch.** `worktree-i386-large-memory` plans to cut
+`memMapCount` and `memMap[]` from the **front** of `_reserved`, 388 bytes at 908
+to 1296 (`docs/superpowers/plans/2026-09-20-i386-large-memory.md` on that
+branch, its Task 3 Steps 2-3; `BOOT_MEMMAP_MAX` is 32 and each range 12 bytes). It does not overlap 6228 to 8408. It has not been implemented yet
+**[measured: that branch's two headers do not differ from master]**. Whichever
+branch merges second must merge the two carve-outs and update the other's
+7500-byte assertion.
+**[UPDATED — final review I2: the struct carve-outs do not overlap, but the
+kernel VA does interact.** Our frame-buffer mapping sits above the 64 MB +
+zone + buffer reservation, so it lowers the "RAM + reservation <= 1 GB"
+wall by its own size. That branch clamps machines of 816 MB or more to
+816 MB, which leaves about 8-9 MB of kernel VA above the reservation, and
+its estimator has no frame-buffer term *[arithmetic, from the review]*.
+Since the final fix pass the kernel maps nothing past
+`VM_MAX_KERNEL_ADDRESS` (§5), so a larger frame buffer boots on the VGA
+console instead of overrunning the page directory. Whoever merges that
+branch should add the frame buffer's extent, from `kbs+0x1858`, to its
+estimator.**]**
+
+## 4. The booter
+
+### 4.1 What is known before measurement
+
+**The 4.2 booter** is `./usr/standalone/i386/boot` from the patch: 44,848 bytes,
+SHA-256 `925D35B6…75CBCE`. It is headerless, and it prints itself as
+`OPENSTEP boot v40.13.1.2` **[measured]**. Extract it with
+`vm/extract-os42-patch.py`.
+
+**It loads at `0x3000`, the same address as ours.** All twelve operands that
+name its eleven VBE-related strings (`VBE Mode` is named twice) resolve as
+absolute addresses at base `0x3000`, and none at bases 0, `0x1000` or `0x2000`
+**[measured]**. The 32-bit operands, by file offset:
+
+| String | Operand at |
+| --- | --- |
+| `VBE Mode` (config key) | `0x3D6`, `0x403` |
+| `VBE Check` | `0xA15` |
+| `Usable VBE modes:\n` | `0xA6F` |
+| `The VBE video driver can not be used with this display adapter.\n` | `0xB2F` |
+| `Boot Graphics` | `0xBD2` |
+| `VESA not available.\n` | `0x6DB0` |
+| `VBE mode %d not supported.\n` | `0x6DDF` |
+| `No usable VBE mode. Reverting to VGA.\n` | `0x6DF7` |
+| `Using VBE Mode %d.\n` | `0x6E0F` |
+| `Error in setting mode. VESA VBE error #%d\n` | `0x6E48` |
+| `Error in setting palette. VESA VBE error #%d\n` | `0x6EA4` |
+
+So the VBE code sits in two places. Near the top of the image is the key, the
+`VBE Check` listing and the adapter warning. Around `boot+0x6B00..0x6F00` are
+mode set, palette and messages. Spec 1's record has already mapped part of the
+second region **[measured there]**:
+
+- one record writer at `boot+27556` (`0x6BA4`) makes fourteen stores, one per
+  `VBEModeRec` field;
+- the enumerator at `boot+27704..28030` walks the BIOS's `VideoModePtr` list
+  and calls the writer once per record, starting at `kbs+0x1870`;
+- a later call writes the current mode's record at `kbs+0x1858`;
+- both reach the struct through a global pointer at `0xDA7C`;
+- after setting a mode, the booter also stores `graphicsMode = 0` (`kbs+0x14C`)
+  through the same pointer **[measured, Task 3]**.
+
+`boot+2652..2857`, which prints `Usable VBE modes:`, only reads the array.
+
+**Our booter.** `src/boot-2` builds to 44,576 bytes against a limit of 45,056,
+with 480 to spare (`docs/boot/sarld-driver-link-limit.md`). The limit is
+physical. `boot1` loads 88 sectors to `0:0x3000` and has moved itself to
+`0xE000`, which is exactly where 88 sectors end; its stack sits at `0:0xFFF0`
+(`boot1.s:38-40, 54, 76, 84, 209-210`). Apple's stock v5.0.41.1 booter, which is
+on `golden.img` today, is only 39,616 bytes
+(`docs/superpowers/plans/2026-09-20-i386-large-memory.md`, "Image slack"). So
+our build carries about 5 KB that Apple's did not.
+
+**Our booter's VBE path is dead today.** `setMode()` enters graphics only when
+a `"Graphics Mode"` key is set (`graphics.c:189-190`), and no config sets it.
+`set_linear_video_mode()` accepts only `VESAVersion == 0x200` (`vbe.c:66`), and
+it returns `void`, so its caller records success even when it failed
+(`graphics.c:198-208`). 4.2 replaces this path with the `VBE Mode` key and the
+messages above.
+
+### 4.2 Task 1 measures
+
+Each item has a stated use. Nothing here is written down as fact until it is
+measured.
+
+1. **Inventory of 4.2's VBE functions**: extents, calls, strings, and every
+   store into `KERNBOOTSTRUCT`. Gives the list of functions to reconstruct.
+2. **Their size built with our compiler.** Gives the byte budget trimming must
+   find.
+3. **Where our extra ~5 KB comes from**, against Apple's 39,616-byte booter:
+   per-object sizes, compiler flags, dead code. Gives the trimming candidates.
+4. **Where 4.2 reads `VBE Mode`**: the system config, the driver's own table, or
+   both. Spec 1's `Default.table` sets `"VBE Mode" = "257"`. Decides what a test
+   image must configure.
+5. **4.2's version test** against `VESAVersion`. Decides whether the version
+   check is a forced divergence.
+6. **What QEMU's VGA BIOS reports** on `-vga cirrus` and `-vga std`: VBE version,
+   modes with linear frame buffers, and mode 257 in particular. Picks the G2
+   adapter.
+7. **Whether 4.2 enters VBE mode on a `-v` boot.** Decides which console G2
+   observes, scrolling text or the graphics-mode panel.
+8. **Whether 4.2 writes a zero terminator record** after the last mode. If it
+   does, the terminator also counts against the 8408 invariant.
+9. **Which depths `FBConsole.c` can draw.** Mode 257 is 8 bits per pixel. G2's
+   mode must be one the console supports.
+10. **What 4.2 does after `Reverting to VGA`**: which video mode it sets, and
+    whether it sets `graphicsMode`. Our booter has no non-VBE graphics mode:
+    `setMode()` falls to text mode whenever its key is absent
+    (`graphics.c:209-211`). Gives G3 its expected output.
+
+### 4.3 Reconstruction
+
+For each function in the inventory, the per-function rule from specs 1 and 2
+applies. Build it with our compiler and compare it with the reference, masking
+only what must differ: absolute addresses of strings, globals and call targets,
+which the reconstruction's layout moves. Then record one outcome in the
+evidence record:
+
+- **Byte parity**: every unmasked byte matches; or
+- **Structural parity**: the same operations in the same order, with an exact
+  count of the bytes that cannot match and why; or
+- **Forced divergence**: the behaviour itself differs, with the reason on the
+  line in both source and record.
+
+Expected forced divergences:
+
+- the 89-record cap (§3);
+- **the palette**, by the user's decision in §1: our mode setter keeps
+  `setupPalette(appleClut8)` where 4.2 passes its own table.
+
+**[UPDATED — final review I5: the forced divergences as built,** each by a
+§1 decision, labelled on the line and in its record:
+- the 89-record cap, and the palette, as above;
+- the `pickDrivers` pointer (Task 7c);
+- the `VideoModePtr` address (final review I3);
+- in the kernel, the frame buffer's reserved range (Task 8);
+- in the kernel's console `Init`, the four 8 bpp colour indices, which follow
+  from the palette decision (Task 8b), and the window type stored before the
+  wipe test (Task 8c).
+
+The kernel's 1 GB bound (final review I2) is our own fix, not a divergence
+from 4.2.**]**
+
+**The version check is not a divergence** [measured, Task 3 item 5]. 4.2 tests
+`VESAVersion >= 0x200` (`cmp 1FFh; ja` at `boot+27782`), and QEMU reports
+`0x0300` on both adapters. Byte parity therefore fixes loader problem 2, our
+exact-match `== 0x200` test, on its own.
+
+**What parity brings with it** [measured, Task 3], by the user's §1 decisions:
+
+- **The mode enumerator runs on every boot** that reaches `execKernel`, with or
+  without `VBE Mode`, so the mode array may be filled on any boot.
+- **The mode is set last:** after `Starting OPENSTEP`, after APM, immediately
+  before `startprog`, and after switching to text. The booter then stores
+  `graphicsMode = 0`. So it draws nothing in the VBE mode, and the kernel
+  receives text mode. 4.2 does not test `-v` on this path [inference: read from
+  code; the 4.2 booter could not read `golden.img` to run it].
+- **The success path prints nothing.** `Using VBE Mode %d.` appears only on the
+  fallback. A `VBE Mode` the BIOS does not offer falls back to the first usable
+  mode, `modes[0]`: it prints `VBE mode N not supported.` then `Using VBE Mode M.`,
+  waits 5 s and sets M. `No usable VBE mode. Reverting to VGA.` appears only when
+  no mode is usable.
+- **4.2's `setMode`** is rebuilt, including its mode-`0x12` panel for `Boot
+  Graphics`. Our `setMode` never drew a panel. Default boots will therefore look
+  different from our booter's today, by decision.
+
+Reference defects are reproduced and labelled, as specs 1 and 2 did.
+
+The existing `"Graphics Mode"` path goes, replaced by 4.2's. It has never run,
+because no config sets its key. That includes its `kernBootStruct->video`
+stores (`graphics.c:203-208`). Nothing i386 under `src/` reads `video`
+**[measured: every `v_baseAddr` reader in the tree is ppc]**, and 4.2's booter is
+not known to write it.
+
+### 4.4 Trimming
+
+The trim comes out of what item 3 finds. The rules:
+
+- Nothing reconstructed for this spec is trimmed.
+- Every removal says what it removes and why nothing needs it.
+- The build's existing size check, which reads `LOADSZ` out of `boot1.s`, stays
+  the arbiter.
+- **Stop and bring it back to the user if trimming cannot make room without
+  removing something that runs.**
+
+## 5. The kernel: mapping the frame buffer
+
+`pmap_bootstrap` in the 4.2 kernel writes `0x12854` at `0x0018F1B4`
+(`mov ds:[0x12854],ecx`) **[measured, spec 2 Task 1]**. That the value is the
+*mapped virtual* address of the linear frame buffer is **[inference]**: spec 2
+never read the code that computes `ecx`. Task 1 reads it before anything
+depends on it: where the physical address and length come from, how the
+mapping is made, and what happens when there is no mode.
+
+The mapping is reconstructed under the same per-function rule. Byte parity is
+unlikely, because it sits inside a large function that differs between the two
+kernels. The expected outcome is structural parity, recorded as
+`FBAllocateVBEConsole`'s was.
+
+**No mode record, no mapping.** When `kbs+0x1858`'s `xResolution` is zero, the
+kernel maps nothing and leaves `0x12854` zero. So a boot with the stock booter,
+or with our booter on an adapter without VBE, behaves exactly as spec 2 left it
+(gate G4).
+**[UPDATED — final review I2: nor when the mapping would end past
+`VM_MAX_KERNEL_ADDRESS`. Then too the kernel maps nothing and leaves
+`0x12854` zero, and the console falls back to VGA (§1).]**
+
+**`FBAllocateConsole` runs for the first time.** On i386 it has never
+executed: spec 2's arm was unreachable by design. Nothing about the console
+code itself is assumed to work.
+
+## 6. Putting our booter on a test image
+
+**Copying the file is not enough.** `boot1` does not load
+`/usr/standalone/i386/boot`. It reads the NeXT label at sector 15, takes
+`dl_boot0_blkno[0]`, and loads 88 sectors from there (`boot1.s:60-68,
+185-210`). The file also has too little room: its slot on `golden.img` holds
+39,936 bytes, and our booter is 44,576.
+
+So Task 1 measures both boot-area copies on `golden.img`: where each starts and
+how much room each has. A small `vm/` tool then writes our `boot2` into both.
+The tool:
+
+- works only on `vm/work/test.img`, through the existing
+  `rhap_inject.check_target` guard;
+- refuses a booter that does not fit the measured room;
+- reads both copies back and checks their hash.
+
+**The boot area of `golden.img`**, measured during planning (2026-09-22). Task 3
+relied on these facts and exercised both slots when it installed and read back
+two booters; it did not re-read the label. `golden.img` is SHA-256
+`E1968E3EF57F3060AA01CEAB8B4D5C49C067E6ACC5F8626EBABEEFE0E663879F`.
+
+- **The label and the partition table [measured].** The NeXT label is at
+  sector 15 (byte 7,680). There is no fdisk partition: the MBR's four entries
+  are zero.
+- **The label's geometry [measured].** `d_secsize` is 1,024, `d_front` is
+  160, and `d_boot0_blkno` is (32, 96).
+- **The two boot copies [measured].**
+  - They start at bytes 32,768 and 98,304. Each slot is 65,536 bytes: the
+    second one runs to the end of the front porch, at 163,840.
+  - Both hold the stock `/usr/standalone/i386/boot`, followed by zeros. That
+    booter is v5.0.41.1: 39,616 bytes, SHA-256
+    `AA06C3C5BFE56C79573E36D20C662DA10CA67D0CEC5BE17F13A5B562F6B5F2C2`.
+- **The file is not what boots [measured].**
+  - `boot1` reads `d_boot0_blkno[0]` from the label.
+  - The file's own slot is 39,936 bytes, too small for our 44,576-byte
+    booter anyway.
+- **Both slots hold 45,056 bytes [measured].** 45,056 is `boot1`'s
+  `LOADSZ` limit. So §8's deployment risk does not arise.
+- **The 4.2 booter loads at `0x3000` [measured].** All twelve VBE string
+  operands resolve at that base, and none at 0, `0x1000` or `0x2000`.
+- **Writing a booter [measured].** `vm/install-booter.py` writes both
+  copies. Task 3 used it to install our booter and the 4.2 booter, and read
+  both slots back.
+- **Proof of which booter ran [measured].**
+  - It is the banner on the 5-second frame: ours prints `Rhapsody boot
+    v5.0.2`, the stock booter `Rhapsody boot v5.0.41.1`.
+  - Our `VBE Check` prompt cannot serve until the reconstruction adds it.
+  - The details are in `src/boot-2/reconstruction/vbe/divergences.md`.
+
+**Every boot proves which booter ran.** The capture must show something only
+our build prints. **[CORRECTED after Task 3: the banner serves, not the `VBE
+Check` prompt, which our booter lacks until Task 7.]** Ours prints `Rhapsody
+boot v5.0.2`; the stock booter prints `Rhapsody boot v5.0.41.1`.
+
+The booter is built with `rbuild`, as `vm/build-i386-booter.sh` does, and the
+kernel with `rbuild kernel --toolchain <profile>`. Neither is built with a
+direct `gnumake`.
+
+## 7. Gates
+
+Every comparison is a same-session A-B-A (control, candidate, control), on a
+temporary image, with the image's hash recorded. The same comparison rules as
+spec 2 apply:
+
+- serial line 4 has only its build date masked;
+- the IDE-probe and `phantom IRQ 15` lines may swap position;
+- frames have only the boot-clock digits masked.
+
+> **Revised after Task 3 (2026-09-22).** The first versions of G1, G2 and G3
+> assumed behaviour that 4.2's code does not have:
+> - G1 said all of `kbs+0x1854..0x20D8` stays zero;
+> - G2 said the booter draws its panel in the VBE mode and prints
+>   `Using VBE Mode N` to serial;
+> - G3 said a bad `VBE Mode` reverts to VGA.
+>
+> Task 3 measured otherwise (§4.3, "What parity brings with it"), and the user
+> chose to follow 4.2 (§1). The gates below replace them. G5 also changes
+> kernel: the golden image's own kernel hangs in `drvEIDE` under QEMU with
+> either booter **[measured, Task 3]**.
+
+- **G1. Nothing changes for the kernel without a VBE mode.** Control: our
+  booter built from this branch's base. Candidate: our booter with this spec.
+  Both run with no `VBE Mode` key set.
+  - **Verbose boots:** serial must match except line 4, and the kernel-phase
+    frames must match.
+  - **Booter-phase frames** will differ, by the user's decision: 4.2's rebuilt
+    `setMode` panel, and our new `VBE Check` prompt. Record them; do not
+    compare them.
+  - **Default boots:** record what `graphicsMode` the kernel receives, and
+    check it against Task 3b's reading of 4.2.
+  - **Memory dump:** `kbs+0x1854..0x186F` and `boot_video` (8408..8431) are
+    zero. The mode array may be filled, since 4.2 enumerates on every boot.
+- **G2. The VBE path.** Run on the adapter item 6 picked (cirrus, mode 257),
+  with the driver installed and `VBE Mode` set. Five checks:
+  - **The memory dump** shows `kbs+0x1854` non-zero, the record at `0x1858`
+    naming mode N, 1 to 89 records from `0x1870`, and a zero record after the
+    last one.
+  - **Serial** shows the driver's `using VBE mode N` and one
+    `VBE mode ... is width=` line per record. The booter itself prints nothing
+    on success, and never prints to serial.
+  - **The kernel's scrolling text console** renders through the frame-buffer
+    console at the mode's size, not VGA's. The booter hands over text mode
+    (`graphicsMode = 0`) and draws nothing in the VBE mode.
+  - **`boot_video`** (8408..8431) matches G1's dump. The VBE code writes nothing
+    at or beyond offset 8408.
+  - **The first frame** shows our banner.
+- **G3. Fallback.** Two cases.
+  - **`VBE Mode` names a mode the BIOS does not offer.** The booter must print
+    `VBE mode N not supported.` and then `Using VBE Mode M.` with M =
+    `modes[0]`, set M after 5 s, and write M's record. The kernel then proceeds
+    as in G2 with mode M.
+  - **No usable VBE.** The booter must print `VESA not available.` or
+    `No usable VBE mode. Reverting to VGA.`, write no record, leave
+    `graphicsMode` 0, and continue after 5 s on the VGA text console. Both
+    QEMU adapters offer VBE, so this case needs an adapter without it. If none
+    can be found, record the case as not exercised.
+- **G4. The kernel alone.** The new kernel with the stock booter must reproduce
+  spec 2's result: the driver's `Skipping framebuffer initialization` line, and
+  VGA console output matching a spec 2 kernel in the same session.
+- **G5. Link order.** A kernel without `_VBEModeInfo2IODisplayInfo`, with the
+  driver listed **first** in `Boot Drivers`. Use spec 2's pre-spec-2 negative
+  control kernel, kept at `vm/work/negctl-mach_kernel` (SHA-256
+  `9916E7C0BDAC2D4E28A5236AC303677A7A45A8ABFE229B307CEBEAC70721CF8D`). The stock
+  kernel hangs in `drvEIDE` under QEMU. `install-driver.py` always appends,
+  so the list has to be reordered. This turns spec 2's "does not cascade at any
+  position" from an inference into a measurement. Record the result whichever
+  way it falls. A cascade here is a finding about `sarld`, not a failure of
+  this spec.
+
+The record of these gates goes in `docs/kernel/i386-vbe-console.md`, extending
+spec 2's gate record. It includes the hashes, since the captures cannot be
+regenerated.
+
+## 8. Risks
+
+- **The alert console moves too.** `kmDevice.m:85` and `:962` (`kmAlertConsole`)
+  also call `BasicAllocateConsole()`, so they get a frame-buffer console once
+  `0x12854` has a producer. Panic output changes appearance on VBE boots. Record
+  this. One forced-panic boot is optional.
+  **[RESOLVED — recorded in the gate record's limits. A frame-buffer alert
+  window opens only once the Window Server owns the screen, so none was
+  seen. Task 8c fixed 4.2's alert wipe at the user's request (§1), verified
+  by disassembly.]**
+- **An early hang with no console.** A mapping mistake in `pmap_bootstrap` can
+  hang before any console exists. Serial capture is the backstop, and the
+  mapping is reachable only when the booter wrote a mode (§5).
+  **[RESOLVED — Task 8's first VBE boot did reset, in the console's window
+  sizing rather than the mapping. The dumps and serial found it, and Task
+  8b rebuilt 4.2's sizing. G2 passes.]**
+- **First run of the frame-buffer console code** (§5). A defect there is not a
+  defect in the reconstruction until shown to be.
+  **[RESOLVED — G2: the console draws through the frame buffer at 640x480.
+  The defects it showed were ours (Task 8b's window size) or 4.2's (Task
+  8c's alert wipe), each recorded.]**
+- **Trimming** may take more judgement than expected. The stop rule in §4.4
+  covers it. It also covers the added cost of rebuilding 4.2's `setMode` panel
+  path, which Task 3 did not measure; Task 3b does.
+  **[RESOLVED — Task 5 stopped at 672 spare and the user accepted it (§1).
+  The final booter is 45,008 bytes, 48 spare.]**
+- **The frame buffer's virtual addresses may not be reserved.** In 4.2 the
+  mapping lies inside `[virt_avail, virt_end)`, which `kmem_init` then makes
+  allocatable. A later kernel allocation could therefore overwrite the frame
+  buffer's page-table entries **[inference, Task 3 review M10]**. This is a
+  reference-defect candidate. Task 8 must bring it to the user: reproduce it,
+  or reserve the range as a recorded divergence. It is also the first suspect
+  if G2 fails late in boot.
+  **[RESOLVED — Task 8: the user chose to reserve the range (§1), and Task
+  8's review verified the reservation.]**
+- **The merge with the large-memory branch** (§3).
+  **[UPDATED — final review I2: it also meets the frame buffer's VA; see §3's
+  update. Still open, for whoever merges second.]**
+- **[ADDED — final review I2, RESOLVED.] The frame buffer against the 1 GB
+  kernel-VA wall.** Our reservation is 64 MB plus the zone and buffer maps,
+  larger than 4.2's flat 64 MB, so on a machine near the wall the mapping
+  could end past `VM_MAX_KERNEL_ADDRESS` and overrun the one page directory
+  silently. The kernel now maps nothing then (§1, §5).
+- **[ADDED — final review I3, RESOLVED.]
+  `VideoModePtr` as `(segment << 16) | offset`.** With a BIOS whose mode
+  list is in its ROM, 4.2's enumerator reads the wrong memory: zero modes,
+  or a long stall, and since it runs on every boot, on every boot
+  *[inference]*. The booter now forms `segment * 16 + offset` (§1). QEMU's
+  segment is 0, so no gate exercises it.
+- **Deployment** depends on Task 1's boot-area measurement. If the copies
+  cannot hold 45,056 bytes, stop and report. Do not move them.
+  **[RESOLVED — each boot-area slot on `golden.img` is 65,536 bytes, and
+  `vm/install-booter.py` writes and reads back both.]**
+
+## 9. Evidence records
+
+- `src/boot-2/reconstruction/vbe/divergences.md`, new. Booter functions, the
+  size budget and the trim. It follows the conventions of spec 2's record:
+  `[measured]` and `[inference]` on the line, `boot+N` file offsets, and
+  retracted text labelled in place rather than deleted.
+- `src/kernel-7/reconstruction/vbe/divergences.md`, extended with the
+  `pmap_bootstrap` mapping.
+- `docs/kernel/i386-vbe-console.md`, extended with G1 to G5.
+- Status rows in `docs/drivers/video-reconstruction.md` and
+  `src/drivers-i386/README` for the driver's `using VBE mode` path.

@@ -4,7 +4,7 @@
 
 **Goal:** Reconstruct `VBE20DisplayDriver_reloc` — thirteen hand-written functions over 2,324 bytes of `__text` — against Apple's OPENSTEP 4.2 Patch 4 binary, to a parity target fixed by measurement in Task 1.
 
-**Architecture:** Four phases. Phase 0 (Task 1) stages the reference out of the patch tarball, creates the binrecon profile, and measures Rhapsody's `IOFrameBufferDisplay` chain against the reference's `instance_size` of 552 to fix the parity target. Phase 1 (Task 2) runs IDA, commits the partition as a source map and seeded ledger, and answers the five discovery items. Phase 2 (Tasks 3–7) writes `VBE20DisplayDriver.m` in dependency order, rebuilding and comparing after each group. Phase 3 (Tasks 8–9) closes the ledger, runs the QEMU boot gate, and updates the status docs.
+**Architecture:** Four phases. Phase 0 (Task 1) stages the reference out of the patch tarball, creates the binrecon profile, and measures Rhapsody's `IOFrameBufferDisplay` chain against the reference's `instance_size` of 552 to fix the parity target. Phase 1 (Task 2) runs IDA, confirms the partition and answers the five discovery items; the source map and ledger are generated in Task 7, once source exists for them to point at. Phase 2 (Tasks 3–7) writes `VBE20DisplayDriver.m` in dependency order, rebuilding and comparing after each group. Phase 3 (Tasks 8–9) closes the ledger, runs the QEMU boot gate, and updates the status docs.
 
 **Tech Stack:** Python 3.12 in `.venv-binrecon`, `tools/binrecon` with IDA Professional 9.2, Rhapsody guest `gnumake` / `pb_makefiles` driven by `vm/sync-src.ps1` + `vm/build-i386-video-recon.sh`, QEMU via `vm/graft-kernel.py` / `vm/rhap_inject.py` / `vm/qemu-shot.py`.
 
@@ -249,11 +249,18 @@ Expected: exit 0, and the printed reference SHA-256 equals `$REFSHA`.
 
 - [ ] **Step 5: Measure the Rhapsody ivar chain**
 
-Read `Object`, `IODevice`, `IODisplay` and `IOFrameBufferDisplay` ivar
-declarations and sum their sizes for i386 (all pointers and `int` are 4 bytes;
-`IOPixelEncoding` is `char[64]`):
+> **Done in execution — result recorded here so later tasks need not redo it.**
+> The chain is five classes, not four: `IOFrameBufferDisplay : IODisplay :
+> IODirectDevice : IODevice : Object`. Subtotals `Object` 4, `IODevice` 260,
+> `IODirectDevice` 32, `IODisplay` 212, `IOFrameBufferDisplay` 44 — **total
+> 552, equal to the reference.** An earlier draft of this step omitted
+> `IODirectDevice` and would have summed 520.
+
+Read the ivar declarations and sum their sizes for i386 (all pointers and `int`
+are 4 bytes; `IOPixelEncoding` is `char[64]`):
 
 - `src/driverkit-3/driverkit/IODevice.h`
+- `src/driverkit-3/driverkit/IODirectDevice.h`
 - `src/driverkit-3/driverkit/IODisplay.h`
 - `src/driverkit-3/driverkit/IOFrameBufferDisplay.h`
 
@@ -274,17 +281,16 @@ Create `$DIVERGE` with the result. If the totals agree:
 
 The reference declares no ivars of its own — `__OBJC,__instance_vars` is 0
 bytes — so its `instance_size` of 552 measures OPENSTEP 4.2's
-`Object` + `IODevice` + `IODisplay` + `IOFrameBufferDisplay` chain exactly.
+`Object` + `IODevice` + `IODirectDevice` + `IODisplay` + `IOFrameBufferDisplay`
+chain exactly.
 
-Rhapsody's same chain measures <N> bytes.
+Rhapsody's same chain measures <N> bytes, with per-class subtotals shown.
 
 <N == 552: the chain did not move between releases. Parity target for this
 reconstruction is byte-parity throughout.>
 
-<N != 552: the chain moved by <N-552> bytes. `displayModes` and
-`displayModeCount` read inherited ivars and will encode different offsets;
-both target function-parity citing this entry. The other eleven functions
-touch no ivars and target byte-parity.>
+<N != 552: the chain moved by <N-552> bytes. Record which functions encode a
+shifted offset and target function-parity for those only, citing this entry.>
 
 `IODisplayInfo` is layout-identical across the two releases; see the plan's
 Global Constraints for the field-by-field mapping.
@@ -313,7 +319,7 @@ measured against the reference's instance_size before any code is written."
 
 **Interfaces:**
 - Consumes: `$PROFILE`, `$REF` from Task 1.
-- Produces: `$MAP` with fourteen or fifteen entries covering `__text` 0–2324; `$LEDGER` seeded with every entry `unreviewed`; answers to D1–D5 in `$DIVERGE`.
+- Produces: `$MAP` with fifteen entries covering `__text` 0–2324; `$LEDGER` seeded with every entry `unreviewed`; answers to D1–D5 in `$DIVERGE`.
 
 - [ ] **Step 1: Run IDA over the reference**
 
@@ -324,9 +330,12 @@ export PYTHONPATH=tools/binrecon
 $VENVPY -m binrecon analyze --profile "$PROFILE" --output "$OUTDIR/run-summary.json"
 ```
 
-Expected: exit 0 and `$IDA_REF` written. A nonzero exit with a complete
-`analysis-reference-ida.json` is acceptable here — there is no rebuilt artifact
-yet, so the comparison arm cannot pass.
+Expected: exit 0 and `$IDA_REF` written.
+
+**Do not point `BINRECON_REBUILT` at `$REF`** for this run. Publication is
+all-or-nothing: when the two artifacts are the same file the run fails and
+publishes *nothing*, so `$IDA_REF` is never written. Point it at a scratch copy
+of the reference outside the repo instead — a different path is enough.
 
 - [ ] **Step 2: Check IDA's partition against the known method offsets**
 
@@ -347,39 +356,36 @@ names it cannot know:
 | 1932 | 244 | `-[VBE20DisplayDriver descriptionForDisplayInfo:]` |
 | 2176 | 100 | `-[VBE20DisplayDriver descriptionForVBEMode:]` |
 | 2276 | 12 | `-[VBE20DisplayDriver displayModeCount]` |
-| 2288 | 24 | `-[VBE20DisplayDriver displayModes]` |
-| 2312 | 12 | `+[VBE20DisplayDriver driverKitVersionForVBE20DisplayDriver]` |
+| 2288 | 12 | `-[VBE20DisplayDriver displayModes]` |
+| 2300 | 12 | `+[VBE20DisplayDriverKernelServerInstance kernelServerInstance]` |
+| 2312 | 12 | `+[VBE20DisplayDriverVersion driverKitVersionForVBE20DisplayDriver]` |
 
-Resolve `+[VBE20DisplayDriverKernelServerInstance kernelServerInstance]`. It is
-the second build-generated symbol and sits in a second `__cls_meth` method list
-that the survey parse did not read. Either it shares the 2312 entry's extent or
-it adds a fifteenth. **Record which in `$DIVERGE`.**
+**Fifteen entries.** The 2300 entry was resolved during Task 1: it sits in a
+second `__cls_meth` method list the survey parse did not read, and its body is
+`55 89 e5 b8 00 00 00 00 89 ec 5d c3` with an external relocation on the
+immediate to `_VBE20DisplayDriver_instance`. That also corrects `displayModes`
+from 24 bytes to 12. IDA must agree with this table; if it does not, stop and
+report rather than adjusting the table to match IDA.
 
-- [ ] **Step 3: Write the source map**
+- [ ] ~~**Step 3: Write the source map**~~ — **moved to Task 3.**
 
-Create `$MAP` as a `source-map-v1` document with one entry per partition
-extent, `source_path` `$LKS/VBE20DisplayDriver.m` for all thirteen
-hand-written functions. Leave `source_line` bounds to be filled by Tasks 3–7 as
-each function is written; the two build-generated entries carry no source path.
+> This step was unwritable as specified and is deferred. `source-map-v1`
+> requires `source_line` on every `mapped` entry, and its semantic gate
+> additionally requires `source_path` to name a file that exists — neither is
+> true before Task 3 creates `VBE20DisplayDriver.m`. `binrecon source-map` is
+> also a *generator*, not a validator: it takes
+> `--binary --source-dir --repo-root --output` and none of the flags this step
+> named. Task 3 generates the map from the real source instead. Do not write a
+> placeholder all-`unmapped` map: it carries no information and Task 3
+> regenerates it.
 
-Validate it:
+- [ ] ~~**Step 4: Seed the ledger**~~ — **moved to Task 3**, for the same
+reason: `seed_ledger.py` seeds from the map, which does not exist yet.
 
-```bash
-$VENVPY -m binrecon source-map --profile "$PROFILE" --source-map "$MAP" \
-  --reference-analysis "$IDA_REF"
-```
-
-Expected: exit 0, partition covers 0–2324 with no gaps or overlaps.
-
-- [ ] **Step 4: Seed the ledger**
-
-```bash
-$VENVPY tools/binrecon/seed_ledger.py "$MAP" "$LEDGER"
-```
-
-Expected: every entry present with status `unreviewed` and
-`reference_sha256` equal to `$REFSHA`. `rebuilt_sha256` stays absent or null
-until Task 8 — **never a placeholder copy of the reference**.
+> When Task 3 runs it, the interface is three arguments, not two:
+> `seed_ledger.py MAP REF LEDGER`. The seeded status is **`unexamined`**, not
+> `unreviewed`. `rebuilt_sha256` stays absent or null until Task 8 — **never a
+> placeholder copy of the reference.**
 
 - [ ] **Step 5: Answer the discovery items**
 
@@ -404,11 +410,11 @@ as the cross-references spec 3 should use.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add "$MAP" "$LEDGER" "$DIVERGE"
-git commit -m "drvVBE20DisplayDriver: commit the reference partition and discovery answers
+git add "$DIVERGE"
+git commit -m "drvVBE20DisplayDriver: answer the five discovery items from the disassembly
 
-Fourteen extents over 2324 bytes of __text, seeded unreviewed, with the five
-discovery items answered from the disassembly."
+Fifteen extents over 2324 bytes of __text confirmed against IDA; the map and
+ledger are generated in Task 3, once source exists for them to point at."
 ```
 
 ---
@@ -424,7 +430,7 @@ discovery items answered from the disassembly."
 - Modify: `vm/build-i386-video-recon.sh`
 
 **Interfaces:**
-- Consumes: `$MAP` from Task 2; the signatures in Global Constraints.
+- Consumes: the partition table and discovery answers from Task 2; the signatures in Global Constraints.
 - Produces: `$REBUILT` — a linking `_reloc`; `VBEModeRec` typedef used by Tasks 5–7; `$LKS/VBE20DisplayDriver.m` for later tasks to extend.
 
 This task deliberately covers the four smallest methods so the deliverable is
@@ -461,20 +467,20 @@ the driver's own debug format string:
  * named from the driver's own log string.
  */
 typedef struct {
-    unsigned short	modeNumber;
-    unsigned short	modeAttributes;
-    unsigned short	bytesPerScanline;
-    unsigned short	xResolution;
-    unsigned short	yResolution;
-    unsigned char	bitsPerPixel;
-    unsigned char	memoryModel;
-    unsigned char	redMaskSize;
-    unsigned char	greenMaskSize;
-    unsigned char	blueMaskSize;
-    unsigned char	redFieldPosition;
-    unsigned char	greenFieldPosition;
-    unsigned char	blueFieldPosition;
-    void		*frameBuffer;
+    unsigned short	modeNumber;		/* 0x00 */
+    unsigned short	modeAttributes;		/* 0x02 */
+    unsigned short	xResolution;		/* 0x04 */
+    unsigned short	yResolution;		/* 0x06 */
+    unsigned short	bytesPerScanline;	/* 0x08 */
+    unsigned char	bitsPerPixel;		/* 0x0A */
+    unsigned char	memoryModel;		/* 0x0B */
+    unsigned char	redMaskSize;		/* 0x0C */
+    unsigned char	redFieldPosition;	/* 0x0D */
+    unsigned char	greenMaskSize;		/* 0x0E */
+    unsigned char	greenFieldPosition;	/* 0x0F */
+    unsigned char	blueMaskSize;		/* 0x10 */
+    unsigned char	blueFieldPosition;	/* 0x11 */
+    void		*frameBuffer;		/* 0x14 */
 } VBEModeRec;
 
 @interface VBE20DisplayDriver : IOFrameBufferDisplay
@@ -527,6 +533,17 @@ positions.
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
 
+/*
+ * The mode list lives in two file statics, not in inherited ivars: the
+ * reference's displayModes and displayModeCount each load from
+ * __DATA,__data with a local relocation, and __data is exactly 8 bytes.
+ * The explicit initialisers are what place them in __data rather than
+ * __bss -- the same finding drvVGA recorded for IOVGADisplay.m.
+ * parseVESAModes:size: (Task 5) is what writes them.
+ */
+static IODisplayInfo	*vbeDisplayModes = 0;		/* __data + 0 */
+static unsigned int	 vbeDisplayModeCount = 0;	/* __data + 4 */
+
 @implementation VBE20DisplayDriver
 
 /* __text 1916, 8 bytes.  The booter owns the mode; nothing to do here. */
@@ -542,20 +559,30 @@ positions.
 /* __text 2276, 12 bytes. */
 - (unsigned int)displayModeCount
 {
-    return _displayModeCount;
+    return vbeDisplayModeCount;
 }
 
-/* __text 2288, 24 bytes. */
+/* __text 2288, 12 bytes. */
 - (IODisplayInfo *)displayModes
 {
-    return _displayModes;
+    return vbeDisplayModes;
 }
 
 @end
 ```
 
-The fifth small entry in that region, `+driverKitVersionForVBE20DisplayDriver`
-at 2312, is emitted by the Kernel Server project type and **is not written
+**Do not write `return _displayModeCount;` / `return _displayModes;`.** Those
+inherited ivars exist on Rhapsody's `IOFrameBufferDisplay`, so that version
+compiles — and silently fails parity, because the reference reads statics.
+Task 1 established this from the relocations; see the spec's §6.
+
+Confirm the static order against `__data` once built: `vbeDisplayModes` must
+land at `__data + 0` and `vbeDisplayModeCount` at `__data + 4`. If the compiler
+orders them the other way, swap the declarations.
+
+The two build-generated entries in this region,
+`+kernelServerInstance` at 2300 and `+driverKitVersionForVBE20DisplayDriver` at
+2312, are emitted by the Kernel Server project type and **are not written
 here**.
 
 - [ ] **Step 4: Write the build files**
@@ -661,7 +688,17 @@ the same way the Cirrus finish plan does — not `sync-src.ps1 -All`.
 Expected: `make exit=0`, `compiled … VBE20DisplayDriver.o`, `relocatable link
 produced …VBE20DisplayDriver_reloc`, and `$REBUILT` exists.
 
-- [ ] **Step 7: Confirm the kernel symbol stays undefined**
+- [ ] ~~**Step 7: Confirm the kernel symbol stays undefined**~~ — **moved to Task 5.**
+
+> Unsatisfiable here. Nothing in Task 3's four methods references
+> `_VBEModeInfo2IODisplayInfo`, so it cannot appear in the symbol table at all;
+> only Task 5's `initDisplayInfo:fromVBEModeInfo:` forwarder will pull it in.
+> **Do not write a stub to make it appear.** The link model is already proven
+> by the undefined externals that *are* present — `.objc_class_name_IODevice`,
+> `_IOFrameBufferDisplay` and `_Object` are all type `0x01` and the link
+> succeeded, so `kl_ld` leaves undefined externals alone as expected.
+
+<details><summary>Original step (run it in Task 5)</summary>
 
 ```bash
 $VENVPY -c "
@@ -684,6 +721,8 @@ Expected: `_VBEModeInfo2IODisplayInfo` present with type `0x01` (undefined
 external). A relocatable `_reloc` link does not resolve undefined externals, so
 this is correct and expected — spec 2 supplies the definition. **If the link
 fails on it instead, stop and report; the Kernel Server link flags are wrong.**
+
+</details>
 
 - [ ] **Step 8: Commit**
 
@@ -749,6 +788,19 @@ VBEMode
 VBEBooterMode
 ```
 
+> **Reproduce Apple's defect verbatim.** Task 2 found that
+> `initFromDeviceDescription:` sizes the frame buffer as
+> `bytesPerScanLine * XResolution` where the correct term is `YResolution`.
+> It is a typo in the reference and it is **in scope to reproduce exactly** —
+> this tree reproduces reference defects rather than fixing them, as drvVGA
+> does for `probe:` returning YES unconditionally. Do not "fix" it, and record
+> it in `$DIVERGE` as a reproduced reference defect so a later reader does not
+> mistake it for ours.
+>
+> Task 2 also noted `VBEBooterMode<N>` is unbounded where the other three
+> indexed parameters are guarded. Check whether that belongs to this extent or
+> to `getCharValues:` (Task 7) and record it with the same treatment.
+
 - [ ] **Step 3: Rebuild on the guest**
 
 Repeat Task 3 Step 6 verbatim.
@@ -762,12 +814,21 @@ relocation operands, the same idea as `compare_thinkpad.py` in the ThinkPad
 plan:
 
 ```python
-"""Masked instruction-stream compare for drvVBE20DisplayDriver."""
-import sys
-from pathlib import Path
-from binrecon.macho import read_macho
+"""Masked instruction-stream compare for drvVBE20DisplayDriver.
 
-TEXT = "__TEXT,__text"
+Reads __text out of both Mach-O files and zeroes every 32-bit relocated
+operand before comparing, so __cstring addresses -- which legitimately
+differ between the reference and our build -- do not read as deltas.
+
+Handles BOTH relocation forms.  A scattered entry sets bit 31 of the first
+word and packs its address and length there; a reader that always takes the
+length from the second word leaves scattered operands unmasked and reports
+false diffs.  The reference carries three scattered relocations in __text,
+so the naive form fails on initFromDeviceDescription: specifically.
+"""
+import struct, sys
+
+# reference __text offsets; each size is the delta to the next entry
 EXTENTS = {
     0: "-[IOFrameBufferDisplay(UnnamedInitialization) initUnnamedFromDeviceDescription:]",
     144: "-[VBE20DisplayDriver initFromDeviceDescription:]",
@@ -782,21 +843,41 @@ EXTENTS = {
     2176: "-[VBE20DisplayDriver descriptionForVBEMode:]",
     2276: "-[VBE20DisplayDriver displayModeCount]",
     2288: "-[VBE20DisplayDriver displayModes]",
+    2300: "+[VBE20DisplayDriverKernelServerInstance kernelServerInstance]",
+    2312: "+[VBE20DisplayDriverVersion driverKitVersionForVBE20DisplayDriver]",
 }
 BOUNDS = sorted(EXTENTS) + [2324]
 
 def text(path):
-    m = read_macho(Path(path))
-    for s in m.sections:
-        if f"{s.segname},{s.sectname}" == TEXT:
-            return s.data, s.relocations
-    raise SystemExit(f"no {TEXT} in {path}")
+    d = open(path, "rb").read()
+    off, ncmds = 28, struct.unpack("<I", d[16:20])[0]
+    for _ in range(ncmds):
+        cmd, cs = struct.unpack("<2I", d[off:off + 8])
+        if cmd == 1:                                   # LC_SEGMENT
+            nsects = struct.unpack("<I", d[off + 48:off + 52])[0]
+            so = off + 56
+            for _ in range(nsects):
+                name = d[so:so + 16].split(b"\0")[0].decode()
+                addr, size, foff, _al, roff, nrel = struct.unpack(
+                    "<6I", d[so + 32:so + 56])
+                if name == "__text":
+                    rels = []
+                    for k in range(nrel):
+                        w0, w1 = struct.unpack("<2I", d[roff + k * 8:roff + k * 8 + 8])
+                        if w0 & 0x80000000:            # scattered
+                            rels.append((w0 & 0x00FFFFFF, (w0 >> 28) & 3))
+                        else:
+                            rels.append((w0, (w1 >> 25) & 3))
+                    return d[foff:foff + size], rels
+                so += 68
+        off += cs
+    raise SystemExit("no __TEXT,__text in " + path)
 
-def mask(data, relocs):
-    b = bytearray(data)
-    for r in relocs:
-        if r.length == 2:                 # 32-bit operand
-            b[r.address:r.address + 4] = b"\x00\x00\x00\x00"
+def mask(buf, rels):
+    b = bytearray(buf)
+    for addr, length in rels:
+        if length == 2 and addr + 4 <= len(b):         # 32-bit operand
+            b[addr:addr + 4] = b"\0\0\0\0"
     return bytes(b)
 
 ref, refrel = text(sys.argv[1])
@@ -807,9 +888,13 @@ for i, start in enumerate(sorted(EXTENTS)):
     if start not in only:
         continue
     end = BOUNDS[i + 1]
+    if end > len(new):
+        print("%5d %-28s %s" % (start, "NOT YET BUILT", EXTENTS[start]))
+        continue
     a, b = ref[start:end], new[start:end]
-    verdict = "MATCH" if a == b else f"DIFF ({len(a)} vs {len(b)} bytes)"
-    print(f"{start:5d} {verdict:28s} {EXTENTS[start]}")
+    n = sum(x != y for x, y in zip(a, b))
+    verdict = "MATCH" if a == b else "DIFF (%d bytes)" % n
+    print("%5d %-28s %s" % (start, verdict, EXTENTS[start]))
 ```
 
 Run it for this task's two extents:
@@ -829,14 +914,13 @@ delta survives and its cause is understood and compiler-only, record it in
 `$DIVERGE` with the instruction-level evidence and mark it for
 `control-flow-confirmed` in Task 8. **Do not mark it matched.**
 
-- [ ] **Step 6: Fill in source-line bounds and commit**
+- [ ] **Step 6: Commit**
 
-Update `$MAP` with the real `source_line` bounds for both extents, then:
+`$MAP` is generated once from the complete source in Task 7; there is nothing
+to update here.
 
 ```bash
-$VENVPY -m binrecon source-map --profile "$PROFILE" --source-map "$MAP" \
-  --reference-analysis "$IDA_REF"
-git add "$LKS/VBE20DisplayDriver.m" "$MAP" "$DIVERGE"
+git add "$LKS/VBE20DisplayDriver.m" "$DIVERGE"
 git commit -m "drvVBE20DisplayDriver: reconstruct the init path
 
 The unnamed-initialisation category at __text 0 and
@@ -906,9 +990,7 @@ As Task 4 Step 5.
 - [ ] **Step 6: Commit**
 
 ```bash
-$VENVPY -m binrecon source-map --profile "$PROFILE" --source-map "$MAP" \
-  --reference-analysis "$IDA_REF"
-git add "$LKS/VBE20DisplayDriver.m" "$MAP" "$DIVERGE"
+git add "$LKS/VBE20DisplayDriver.m" "$DIVERGE"
 git commit -m "drvVBE20DisplayDriver: reconstruct the mode-list parse
 
 parseVESAModes:size:, the VBEModeInfo2IODisplayInfo forwarder and the
@@ -972,9 +1054,7 @@ As Task 4 Step 5.
 - [ ] **Step 6: Commit**
 
 ```bash
-$VENVPY -m binrecon source-map --profile "$PROFILE" --source-map "$MAP" \
-  --reference-analysis "$IDA_REF"
-git add "$LKS/VBE20DisplayDriver.m" "$MAP" "$DIVERGE"
+git add "$LKS/VBE20DisplayDriver.m" "$DIVERGE"
 git commit -m "drvVBE20DisplayDriver: reconstruct the description builders
 
 modeStringForDisplayInfo:, descriptionForDisplayInfo: and
@@ -1029,12 +1109,32 @@ under a byte-parity target.
 
 As Task 4 Step 5.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 6: Generate the source map and seed the ledger**
+
+All thirteen functions exist now, so the map can finally be produced. Task 2
+deferred this because `source-map-v1` requires a `source_line` on every
+`mapped` entry *and* a `source_path` naming a real file.
+
+`binrecon source-map` is a **generator**, not a validator — it derives the map
+from the binary and the source tree, and takes none of the flags earlier drafts
+of this plan named:
 
 ```bash
-$VENVPY -m binrecon source-map --profile "$PROFILE" --source-map "$MAP" \
-  --reference-analysis "$IDA_REF"
-git add "$LKS/VBE20DisplayDriver.m" "$MAP" "$DIVERGE"
+$VENVPY -m binrecon source-map --binary "$REF"   --source-dir "$LKS" --repo-root . --output "$MAP"
+$VENVPY tools/binrecon/seed_ledger.py "$MAP" "$REF" "$LEDGER"
+```
+
+`seed_ledger.py` takes **three** arguments: map, reference, ledger.
+
+Expected: fifteen entries covering `__text` 0–2324 with no gaps, every ledger
+entry at status **`unexamined`**, `reference_sha256` equal to `$REFSHA`, and
+`rebuilt_sha256` absent or null. **Never seed `rebuilt_sha256` with a copy of
+the reference hash** — Task 8 fills it from the real rebuild.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add "$LKS/VBE20DisplayDriver.m" "$MAP" "$LEDGER" "$DIVERGE"
 git commit -m "drvVBE20DisplayDriver: reconstruct getCharValues:forParameter:count:
 
 The four VBE driver parameters the Configure.app inspector reads."
@@ -1085,6 +1185,19 @@ $VENVPY -m binrecon ledger --profile "$PROFILE" --ledger "$LEDGER" \
   --source-path "$LKS/VBE20DisplayDriver.m" --source-line <line>
 ```
 
+### Three build-generated divergences are exempt — decided, do not re-litigate
+
+Task 3's first link surfaced these at `__text` 2300..2324 and in the version
+data. No source change can close them, and closing two of them would be wrong.
+
+| Divergence | Ruling |
+| --- | --- |
+| `+driverKitVersionForVBE20DisplayDriver` returns `0x1F4` (500) where the reference returns `0x1A4` (420) | **Exempt, and must stay.** That is `IO_DRIVERKIT_VERSION` from `src/driverkit-3/driverkit/IODevice.h:45` — 500 in Rhapsody, 420 in DriverKit 4.2. It is the cross-release difference appearing exactly where it should. Forcing 420 would falsify the build. |
+| `_VBE20DisplayDriver_instance` is an unallocated common in the reference (undefined, `n_value` 4, external reloc); our link allocates it in `__common` at `0x2008` | **Exempt at ledger level, but flag it.** A build-generated Kernel Server symbol. It *may* matter at load time — Task 9's boot gate is what would reveal it. Record the possibility in `$DIVERGE` so a load failure there is not misdiagnosed. |
+| Version string `PROGRAM:VBE20DisplayDriver_reloc` under `_VBE20DisplayDriver_reloc_vers` (160 bytes) versus our 112-byte `…VersionString` | **Exempt, worth one look.** Generated from the project name at build time. If a `VERS_OFILE` or project-name setting closes it cheaply, take it; do not spend a phase on it. |
+
+Ledger all three `control-flow-confirmed` citing this table, not `assembly-matched`.
+
 Status vocabulary, matching Cirrus and ThinkPad:
 
 | Status | When |
@@ -1116,6 +1229,92 @@ both sides."
 ```
 
 ---
+
+## Task 9: Boot gate and status docs - RUN AND PASSED 2026-09-22 (was blocked on spec 2)
+
+> **Read the result first.** This gate was blocked on spec 2, which has now
+> landed; it ran and passed as spec 2's Task 5 (see the Result block below).
+> The notice that follows is kept as the pre-run record. **Its cascade-and-panic
+> prediction is contradicted by inference, not by the run.** The run observed
+> only the undefined-symbol failure, and no panic, but it linked the driver last
+> in `Boot Drivers`, where no cascade could show and `EISABus` (whose loss the
+> predicted panic names) had already linked. That an undefined-symbol failure
+> would not cascade at other positions either is an inference from `rld.c`;
+> see `docs/kernel/i386-vbe-console.md`, Gate 2. Everything else in it held.
+> **[REFUTED — spec 3 G5 (docs/kernel/i386-vbe-console.md, G5): that
+> inference is refuted at the first position. Linked first on a kernel without
+> the symbol, the failed link was followed by EIDE's `rld(): virtual memory
+> exhausted (malloc failed)`, every later boot driver was refused, and the
+> kernel panicked `Missing EISA kernel bus class`. The prediction held
+> there.]**
+
+> **This task cannot run until the kernel exports `_VBEModeInfo2IODisplayInfo`.**
+>
+> `Default.table` marks this driver `"Boot Driver" = "Yes"`, and the booter
+> links every boot driver against the kernel with `sarld`
+> (`docs/boot/sarld-driver-link-limit.md`). The symbol is undefined in our
+> `_reloc`, nothing in `src/kernel-7` defines it, and no shipped Rhapsody
+> kernel exports it — so the link fails.
+>
+> **The failure cascades.** That document records the same class of failure
+> taking down every driver linked afterwards:
+>
+> ```
+> Error occurred while linking driver EIDE:
+> Error occurred while linking driver ISASerialPort:
+> previous fatal errors occured, can no longer succeed
+> ... Floppy, PS2Keyboard, PCIBus, EISABus, all the same
+> ```
+>
+> and surfacing as `panic: Missing EISA kernel bus class`, which names none of
+> the cause. Running this task now would produce a misleading panic, not a gate.
+> **[VINDICATED at the first position — spec 3 G5
+> (docs/kernel/i386-vbe-console.md, G5): linked first on a kernel without the
+> symbol, the failed link was followed by EIDE's `rld(): virtual memory
+> exhausted (malloc failed)`, `previous fatal errors occured, can no longer
+> succeed` for the other five, and `panic: Missing EISA kernel bus class`.
+> Linked last, it took down nothing. The middle positions were not tried.]**
+>
+> **What unblocks what.** Spec 2 (the kernel functions) is sufficient for the
+> gate as written below: the driver links, loads, reads the `bzero`'d
+> `_reserved` slack, sees `xResolution == 0`, takes the "card not in VBE mode"
+> path and registers. Spec 3 (the booter) is required only for the deeper
+> `using VBE mode %d` path, which this spec already scopes out.
+>
+> Task 8 is unaffected and closes spec 1 as far as it can go.
+
+> **Qualified by the result below.** Only the undefined-symbol failure
+> occurred, and nothing panicked, but with the driver linked last neither the
+> cascade nor the panic predicted above could have shown. That they would not
+> happen at other positions is an inference from `rld.c`
+> (`docs/kernel/i386-vbe-console.md`, Gate 2), not a measurement.
+> **[REFUTED — spec 3 G5 (docs/kernel/i386-vbe-console.md, G5): at the first
+> position both happened, the cascade into all six other boot drivers and the
+> panic.]**
+
+> **Result, 2026-09-22: run and passed, as spec 2's Task 5.** Against spec 2's
+> kernel, `sarld` links the driver. It logs
+> `VBEDisplay0: VESA video driver initialization.` and
+> `VBEDisplay0: Skipping framebuffer initialization (card not in VBE mode).`,
+> then `Registering: VBEDisplay0`, and no other boot driver is lost — though
+> that check cannot rule out a cascade by itself, since this driver links last
+> in `Boot Drivers`. That an undefined-symbol failure would not cascade at any
+> position regardless is an inference from `rld.c`, not a measurement
+> (`docs/kernel/i386-vbe-console.md`, Gate 2).
+> **[REFUTED — spec 3 G5 (docs/kernel/i386-vbe-console.md, G5): linked first
+> on a kernel without the symbol, it cascaded: EIDE's link failed with
+> `rld(): virtual memory exhausted (malloc failed)`, the other five were
+> refused, and the kernel panicked. The same order on a kernel with the symbol
+> lost nothing.]**
+> `Boot Drivers` alone was enough (Step 5's `Active Drivers` fallback was not
+> needed).
+>
+> A pre-spec-2 kernel reproduces the predicted
+> `rld(): Undefined symbols: _VBEModeInfo2IODisplayInfo`, with the driver again
+> linked last.
+>
+> The record is `docs/kernel/i386-vbe-console.md`, not the
+> `docs/drivers/drvVBE20DisplayDriver-boot-gate.md` that Step 6 names.
 
 ## Task 9: Boot gate and status docs
 

@@ -10,6 +10,13 @@ left as -serial null because it belongs to the guest's drvISASerialPort.
 Usage:
     python qemu-shot.py IMAGE OUTDIR [--at SECONDS[,SECONDS...]]
                          [--keys STRING] [--keys-at SECONDS] [--trace]
+                         [--vga cirrus|std] [--pmemsave SECONDS:ADDR:LEN]...
+
+--vga picks QEMU's display adapter. cirrus, the default, is what every
+earlier capture used; std is QEMU's Bochs VBE adapter.
+
+--pmemsave saves LEN bytes of guest physical memory from ADDR at SECONDS,
+as OUTDIR/pmem-<SECONDS>s-<ADDR>.bin, through QMP's pmemsave. Repeatable.
 
 IMAGE must be a writable raw working image (e.g. vm/work/test.img), never
 the original vm/rhapsody.vmdk or vm/golden.img; this is enforced by
@@ -39,6 +46,7 @@ import rhap_inject
 
 DEFAULT_AT = [5, 15, 30, 60, 90, 120]
 DEFAULT_KEYS_AT = 3.0
+VGA_CHOICES = ("cirrus", "std")
 
 # RTC base date/time passed to QEMU's -rtc. Must land strictly after the
 # root filesystem's fs_time (epoch 894585442 = 1998-05-07T23:57:22Z) and
@@ -58,6 +66,9 @@ for _c in "abcdefghijklmnopqrstuvwxyz":
     KEY_MAP[_c] = [_c]
 for _c in "0123456789":
     KEY_MAP[_c] = [_c]
+for _c in "abcdefghijklmnopqrstuvwxyz":
+    KEY_MAP[_c.upper()] = ["shift", _c]
+KEY_MAP['"'] = ["shift", "apostrophe"]
 KEY_MAP["-"] = ["minus"]
 KEY_MAP["_"] = ["shift", "minus"]
 KEY_MAP["="] = ["equal"]
@@ -188,11 +199,11 @@ def find_free_port():
     return port
 
 
-def build_qemu_args(image, qmp_port, trace, serial_log):
+def build_qemu_args(image, qmp_port, trace, serial_log, vga="cirrus"):
     args = [
         "qemu-system-i386", "-M", "pc", "-cpu", "pentium", "-accel", "tcg",
         "-m", "128", "-k", "en-us",
-        "-nodefaults", "-vga", "cirrus", "-display", "none",
+        "-nodefaults", "-vga", vga, "-display", "none",
         "-drive", "file=%s,format=raw,if=ide,index=0,media=disk" % image,
         "-snapshot",
         "-netdev", "user,id=n0", "-device", "ne2k_pci,netdev=n0",
@@ -218,7 +229,18 @@ def fmt_seconds(t):
     return str(int(t)) if float(t).is_integer() else str(t)
 
 
-def run(image, outdir, at_points, keys, keys_at, trace):
+def parse_pmem(spec):
+    """Parse --pmemsave's SECONDS:ADDR:LEN, e.g. 60:0x11000:0x2200."""
+    parts = spec.split(":")
+    if len(parts) != 3:
+        raise ValueError("--pmemsave wants SECONDS:ADDR:LEN, got %r" % spec)
+    seconds, addr, length = float(parts[0]), int(parts[1], 0), int(parts[2], 0)
+    if seconds < 0 or addr < 0 or length <= 0:
+        raise ValueError("--pmemsave values out of range in %r" % spec)
+    return seconds, addr, length
+
+
+def run(image, outdir, at_points, keys, keys_at, trace, vga="cirrus", pmem=()):
     try:
         rhap_inject.check_target(image)
     except rhap_inject.SafetyError as e:
@@ -235,7 +257,7 @@ def run(image, outdir, at_points, keys, keys_at, trace):
           "progress; under TCG they are not comparable between runs")
 
     qmp_port = find_free_port()
-    qemu_args = build_qemu_args(image, qmp_port, trace, serial_log)
+    qemu_args = build_qemu_args(image, qmp_port, trace, serial_log, vga)
 
     proc = subprocess.Popen(qemu_args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     start = time.monotonic()
@@ -246,6 +268,8 @@ def run(image, outdir, at_points, keys, keys_at, trace):
         events = [(t, "shot", None) for t in at_points]
         if keys is not None:
             events.append((keys_at, "keys", keys))
+        for seconds, addr, length in pmem:
+            events.append((seconds, "pmem", (addr, length)))
         events.sort(key=lambda e: e[0])
 
         for target, kind, payload in events:
@@ -263,6 +287,12 @@ def run(image, outdir, at_points, keys, keys_at, trace):
                 write_png(png_path, w, h, pixels)
                 os.remove(ppm_path)
                 print("wrote %s (%dx%d)" % (png_path, w, h))
+            elif kind == "pmem":
+                addr, length = payload
+                pmem_path = os.path.abspath(os.path.join(
+                    outdir, "pmem-%ss-0x%x.bin" % (fmt_seconds(target), addr)))
+                qmp.execute("pmemsave", val=addr, size=length, filename=pmem_path)
+                print("wrote %s (%d bytes at 0x%x)" % (pmem_path, length, addr))
             else:
                 for ch in payload:
                     qmp.execute("send-key", keys=[{"type": "qcode", "data": code} for code in KEY_MAP[ch]])
@@ -314,11 +344,17 @@ def main():
                     help="seconds after launch to send --keys (default: %.1f)" % DEFAULT_KEYS_AT)
     p.add_argument("--trace", action="store_true",
                     help="add the ide_*/pci_cfg_* trace args start-vm.cmd -trace uses")
+    p.add_argument("--vga", choices=VGA_CHOICES, default="cirrus",
+                    help="QEMU display adapter (default: cirrus)")
+    p.add_argument("--pmemsave", type=parse_pmem, action="append", default=[],
+                    metavar="SECONDS:ADDR:LEN",
+                    help="save guest physical memory at SECONDS; repeatable")
     args = p.parse_args(_fix_keys_arg(sys.argv[1:]))
 
     at_points = DEFAULT_AT if args.at is None else [float(s) for s in args.at.split(",")]
 
-    run(args.image, args.outdir, at_points, args.keys, args.keys_at, args.trace)
+    run(args.image, args.outdir, at_points, args.keys, args.keys_at, args.trace,
+        args.vga, args.pmemsave)
 
 
 if __name__ == "__main__":

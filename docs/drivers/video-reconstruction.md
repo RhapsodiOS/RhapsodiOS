@@ -30,6 +30,7 @@ project type and are correctly absent from source.
 | Driver | Reference binary | Partition entries | Mapped | Status |
 | --- | --- | --- | --- | --- |
 | drvCirrusLogicGD5434 | `CirrusLogicGD5434DisplayDriver_reloc` | 21 | 19 | **built, linked, parity clean**; 19/21 byte-identical; apple-generic MH_BUNDLE present; SGS VERS unmet |
+| drvVBE20DisplayDriver | `VBE20DisplayDriver_reloc`, from **OPENSTEP 4.2 User Patch 4** | 15 | 12 | **built, linked, boots**; 13 hand-written entries byte-identical in place; loads and registers as `VBEDisplay0` on the spec-2 kernel; its `using VBE mode` path runs under spec 3's booter (QEMU, mode 257) |
 | drvIBMThinkPad760EDDisplay | `IBMThinkPad760EDDisplayDriver_reloc` | 40 | 28 | compiles and links; 17/29 in-scope extents match |
 | drvVGA | `VGA_reloc` + `VGA_psdrvr` | 38 + 53 | 0 + 0 | analysed in full, **not yet rewritten** |
 | drvATIMach64 | `ATIMach64DisplayDriver_reloc` | — | — | no reconstruction pass |
@@ -88,6 +89,77 @@ Two things remain open. `setMode:` (2276) and `setPCIConfiguration` (1692) were
 exhausted through their campaigns and stay `control-flow-confirmed`; they are
 not byte-identical. The SGS `_VERS_STRING` / `_VERS_NUM` gate is still unmet.
 The driver has not been tested on hardware.
+
+## drvVBE20DisplayDriver — reconstructed, boot gate passed
+
+The only driver in the tree reconstructed against a binary from a different OS
+release: the reference is `VBE20DisplayDriver_reloc` from OPENSTEP 4.2 User
+Patch 4, not Rhapsody. That is why `+driverKitVersionForVBE20DisplayDriver`
+returns 500 where the reference returns 420 (`IO_DRIVERKIT_VERSION`); the
+difference is the cross-release one appearing where it should, and it stays.
+
+What is verified:
+
+- 15 partition entries: 13 hand-written and 2 build-generated Kernel Server
+  methods. **All 13 hand-written entries are byte-identical in place**, at the
+  reference's own `__text` offsets. `__cstring` and `__data` are byte-identical.
+- The whole 2324-byte `__text` differs in 3 raw bytes, all in the two
+  build-generated methods: two in `+kernelServerInstance` (the reference leaves
+  `_VBE20DisplayDriver_instance` an unallocated common, our `kl_ld` allocates it,
+  cause unidentified) and one in `+driverKitVersionFor...`.
+- "Mapped" is 12 because entry 0 is unmapped as well as the two build-generated
+  ones: `source_map.py` keys a category implementation as `-[Class(Category) sel]`
+  and the stripped reference names it `-[Class sel]`. The ledger records it
+  against its real source line. Ledger: 13 `assembly-matched`, 2
+  `control-flow-confirmed`.
+- Builds and links; `parity_check.py` reports no missing string or symbol.
+
+**The boot gate passed on 2026-09-22** against the kernel that spec 2 built,
+which exports `_VBEModeInfo2IODisplayInfo`. `sarld` links the driver as a Boot
+Driver, and it logs `VBEDisplay0: Skipping framebuffer initialization (card
+not in VBE mode).` and registers as `VBEDisplay0`. No other boot driver lost
+its registration — a weak check by itself, since this driver links last.
+That an undefined-symbol link failure would not cascade at any position
+anyway is an inference from `rld.c`, not a measurement (the gate record's
+Gate 2). **[REFUTED for the first position — spec 3's G5, 2026-09-23: with
+the driver first and a kernel lacking the symbol, the next link fails with
+`rld(): virtual memory exhausted (malloc failed)`, every later boot driver
+is refused, and the kernel panics `Missing EISA kernel bus class`.]** The
+instance-common difference below did not stop the load.
+The record is `docs/kernel/i386-vbe-console.md`. The framebuffer path waits
+on the booter spec, and the driver is not hardware-tested. **[UPDATED — the
+booter spec landed; see the next paragraph.]**
+
+**The `using VBE mode` path ran on 2026-09-23** (spec 3's G2 and G3, in the
+same record's "Spec 3" part). Our booter set VBE mode 257 from the driver's
+`"VBE Mode" = "257"` and recorded it, and the kernel mapped the frame
+buffer. The driver then logged `using VBE mode 257`, and one `VBE mode N is
+width=W, height=H, bpp=B` line for each mode the booter recorded: 8 on QEMU
+cirrus, 27 on QEMU `isa-vga`. It registered as `Display0`, and the kernel's
+console drew through the frame buffer at 640x480. On an adapter with no
+usable mode (QEMU `isa-cirrus-vga`) it kept the "Skipping" path. Still
+untested: `getCharValues:`, the Window Server on this display, any mode but
+257, and hardware.
+
+What was said before the kernel spec landed, kept as written — except that its
+cascade-and-panic claim is contradicted by that `rld.c` inference, not by the
+run. **[That inference is itself refuted for the first position by spec 3's
+G5, which saw the cascade and the panic this paragraph predicts.]** The
+negative-control run, with the driver linked last, saw only the
+undefined-symbol failure and no panic, in a position where neither a cascade
+nor that panic could show:
+**the boot gate has not been run, and must not be run until the kernel spec
+lands.**
+`Default.table` marks the driver `"Boot Driver" = "Yes"`, so
+the booter links it against the kernel with `sarld`. `_VBEModeInfo2IODisplayInfo`
+is undefined in the driver and no Rhapsody kernel exports it, so that link would
+fail, and a failed `sarld` link takes down every driver linked after it
+(`docs/boot/sarld-driver-link-limit.md`), surfacing as `panic: Missing EISA
+kernel bus class`, which names none of the cause. Running the gate now would
+produce a misleading panic, not a result. Two further differences are recorded
+as unidentified in the driver's `reconstruction/divergences.md`: the instance
+common above, which may matter at load time, and a 160-byte version object
+against our 112.
 
 ## drvIBMThinkPad760EDDisplay — reconstructed in part
 

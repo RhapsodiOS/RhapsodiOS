@@ -28,8 +28,7 @@
 
 #import "bitmap.h"
 
-/* Not used currently
+/* The planar wait cursors, as 4.2 has them at 0xD944..0xDA4B. */
 #import "ns_wait1_bitmap.h"
 #import "ns_wait2_bitmap.h"
 #import "ns_wait3_bitmap.h"
-*/

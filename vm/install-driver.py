@@ -19,7 +19,7 @@ Allocator.grow_file, which is allowed to allocate.
 """
 import os
 import re
-import subprocess
+import shutil
 import sys
 
 import rhap_image
@@ -57,7 +57,15 @@ def _current_value(text, key):
     return m.group(1).decode("ascii")
 
 
-def _add_boot_driver(out_image, name):
+def _boot_drivers_value(current, name, first=False):
+    """Return the Boot Drivers value with `name` added -- at the end, or at
+    the front when `first` -- or None when `name` is already listed."""
+    if name in current.split():
+        return None
+    return name + " " + current if first else current + " " + name
+
+
+def _add_boot_driver(out_image, name, first=False):
     """Add `name` to the Boot Drivers key of System.config/Instance0.table.
 
     Returns "set_table_key" or "grow_file" depending on which path actually
@@ -69,10 +77,9 @@ def _add_boot_driver(out_image, name):
         if ino is None:
             raise ufs_alloc.SafetyError("%s does not exist" % BOOT_DRIVERS_TABLE)
         text = img.read_file(ino)
-    current = _current_value(text, key)
-    if name in current.split():
+    new_value = _boot_drivers_value(_current_value(text, key), name, first)
+    if new_value is None:
         return "unchanged"
-    new_value = current + " " + name
 
     try:
         with rhap_image.Image(out_image, writable=True) as img:
@@ -90,7 +97,7 @@ def _add_boot_driver(out_image, name):
     return "grow_file"
 
 
-def install_driver(src_image, driver_dir, out_image):
+def install_driver(src_image, driver_dir, out_image, first=False):
     """Clone src_image to out_image, install driver_dir's bundle under
     /private/Drivers/i386, add an Instance0.table alongside its
     Default.table, and list the driver as a boot driver.  Returns which
@@ -98,7 +105,7 @@ def install_driver(src_image, driver_dir, out_image):
     """
     name = _driver_name(driver_dir)
     ufs_alloc._refuse_master(out_image)
-    subprocess.check_call(["cp", "-c", src_image, out_image])
+    shutil.copyfile(src_image, out_image)
 
     base = "/private/Drivers/i386/%s.config" % name
     with ufs_alloc.Allocator(out_image, writable=True) as a:
@@ -113,17 +120,19 @@ def install_driver(src_image, driver_dir, out_image):
             a.create_file(base + "/Instance0.table", default_data)
         a.flush()
 
-    return _add_boot_driver(out_image, name)
+    return _add_boot_driver(out_image, name, first)
 
 
 def main(argv):
-    if len(argv) != 4:
-        print("usage: install-driver.py SRC_IMAGE DRIVER_DIR OUT_IMAGE",
+    first = "--first" in argv[1:]
+    args = [a for a in argv[1:] if a != "--first"]
+    if len(args) != 3:
+        print("usage: install-driver.py SRC_IMAGE DRIVER_DIR OUT_IMAGE [--first]",
               file=sys.stderr)
         return 2
-    src_image, driver_dir, out_image = argv[1], argv[2], argv[3]
+    src_image, driver_dir, out_image = args
     try:
-        via = install_driver(src_image, driver_dir, out_image)
+        via = install_driver(src_image, driver_dir, out_image, first)
     except (ufs_alloc.SafetyError, rhap_inject.SafetyError) as e:
         print("install-driver: %s" % e, file=sys.stderr)
         return 1

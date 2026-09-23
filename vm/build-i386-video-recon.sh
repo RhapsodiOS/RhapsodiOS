@@ -219,6 +219,9 @@ for d in $TARGETS; do
 	drvCirrusLogicGD5434)
 		build_reloc CirrusLogicGD5434DisplayDriver drvCirrusLogicGD5434 CirrusLogicGD5434.drvproj || fail=1
 		;;
+	drvVBE20DisplayDriver)
+		build_reloc VBE20DisplayDriver drvVBE20DisplayDriver VBE20DisplayDriver.drvproj || fail=1
+		;;
 	drvIBMThinkPad760EDDisplay)
 		if prebuild_thinkpad_extras; then
 			build_objects IBMThinkPad760EDDisplayDriver drvIBMThinkPad760EDDisplay \

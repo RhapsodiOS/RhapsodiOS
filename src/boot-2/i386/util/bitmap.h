@@ -36,13 +36,17 @@ typedef struct tiff {
 
 
 
+/*
+ * OPENSTEP 4.2 User Patch 4's 24-byte layout: the header of Panel.image and
+ * the wait cursors at 0xD944 are in it (width at +8, height at +0xA).
+ */
 struct bitmap {
-	long packed;
-	long bytes_per_plane;
+	short packed;
+	short bytes_per_plane;
 	short bytes_per_row;
 	short bits_per_pixel;
 	short width, height;
-	long plane_len[2];
+	short plane_len[2];
 	unsigned char *plane_data[2];
 };
 

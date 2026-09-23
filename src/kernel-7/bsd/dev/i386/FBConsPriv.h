@@ -47,11 +47,9 @@ extern char ohlfs12[96][CHAR_H];
 #define	PIXEL_MASK_32		0x00ffffff
 
 /*
- * Sizes (in pixels) for text and alert windows
+ * Size (in pixels) for alert windows. Text windows are sized from the
+ * screen, in FBConsole.c's Init.
  */
-#define TEXT_WIN_WIDTH		640
-#define TEXT_WIN_HEIGHT		480
-
 #define ALERT_WIN_WIDTH		320
 #define ALERT_WIN_HEIGHT	200
 

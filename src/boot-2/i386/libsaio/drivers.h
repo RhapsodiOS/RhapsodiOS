@@ -45,3 +45,5 @@ struct driver_info {
 #define DRIVER_VERSION_MISMATCH		0x1
 
 extern int driverMissing;
+extern struct driver_info *loaded_drivers;
+extern int num_loaded;

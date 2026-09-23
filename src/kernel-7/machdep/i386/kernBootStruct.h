@@ -174,7 +174,38 @@ typedef struct boot_video       boot_video;
 
 #define BOOT_STRING_LEN                160
 
+/*
+ * One VBE mode as OPENSTEP 4.2 User Patch 4 recorded it for the kernel and
+ * the VBE20DisplayDriver. 24 bytes; 0x12-0x13 are padding. The layout is
+ * spec 1's, confirmed by the driver's type encoding and by the kernel's
+ * VBEModeInfo2IODisplayInfo (0x0019ED8C in the 4.2 kernel).
+ */
+struct boot_vbe_mode {
+	unsigned short	modeNumber;		/* 0x00 */
+	unsigned short	modeAttributes;		/* 0x02 */
+	unsigned short	xResolution;		/* 0x04 */
+	unsigned short	yResolution;		/* 0x06 */
+	unsigned short	bytesPerScanline;	/* 0x08 */
+	unsigned char	bitsPerPixel;		/* 0x0A */
+	unsigned char	memoryModel;		/* 0x0B */
+	unsigned char	redMaskSize;		/* 0x0C */
+	unsigned char	redFieldPosition;	/* 0x0D */
+	unsigned char	greenMaskSize;		/* 0x0E */
+	unsigned char	greenFieldPosition;	/* 0x0F */
+	unsigned char	blueMaskSize;		/* 0x10 */
+	unsigned char	blueFieldPosition;	/* 0x11 */
+	unsigned long	frameBuffer;		/* 0x14, physical */
+};
 
+typedef struct boot_vbe_mode boot_vbe_mode;
+
+/*
+ * 4.2 allowed 90 records (0x870 bytes from 0x1870; the driver scans 0x880
+ * bytes from there). In this struct the 90th would overwrite `video`, so
+ * the booter stops at 89 and leaves the 90th slot's xResolution zero for
+ * the driver's scan to stop on.
+ */
+#define BOOT_VBE_MAX_MODES	89
 
 typedef struct {
     short   version;
@@ -198,7 +229,20 @@ typedef struct {
     driver_config_t driverConfig[NDRIVERS];
     APM_config_t apm_config;
 
-    char   _reserved[7500];
+    char   _reserved[5320];		// 908 .. 6228
+
+    /*
+     * VBE hand-off, at OPENSTEP 4.2 User Patch 4's offsets. The driver and
+     * the kernel address these as bare constants, because the 4.2 binaries
+     * do: VBE20DisplayDriver.m's VBE_BOOTER_MODE (0x12858) and
+     * VBE_BOOTER_MODES (0x12870), FBConsole.c's VBE_BOOTER_MODE and
+     * VBE_FRAMEBUFFER_VIRT (0x12854). The assertions below keep these
+     * members on those addresses.
+     */
+    unsigned long	vbeFrameBuffer;		// 0x1854: kernel virtual, pmap_bootstrap
+    boot_vbe_mode	vbeCurrentMode;		// 0x1858: the mode the booter set
+    boot_vbe_mode	vbeModes[BOOT_VBE_MAX_MODES];	// 0x1870
+    char   _reserved2[16];		// 8392 .. 8408, keeps `video` at 8408
 
     boot_video video;
 
@@ -209,6 +253,14 @@ typedef struct {
 
     char   config[CONFIG_SIZE];                // the config file contents
 } KERNBOOTSTRUCT;
+
+#define __KBS_OFF(f)	((unsigned long)&((KERNBOOTSTRUCT *)0)->f)
+typedef char __kbs_vbe_mode_size[(sizeof (boot_vbe_mode) == 24) ? 1 : -1];
+typedef char __kbs_vbe_fb[(__KBS_OFF(vbeFrameBuffer) == 0x1854) ? 1 : -1];
+typedef char __kbs_vbe_current[(__KBS_OFF(vbeCurrentMode) == 0x1858) ? 1 : -1];
+typedef char __kbs_vbe_modes[(__KBS_OFF(vbeModes) == 0x1870) ? 1 : -1];
+typedef char __kbs_video[(__KBS_OFF(video) == 8408) ? 1 : -1];
+
 #define KERNSTRUCT_ADDR   ((KERNBOOTSTRUCT *) 0x11000)
 #endif
 

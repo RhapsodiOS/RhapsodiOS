@@ -121,6 +121,11 @@ int gets(char *buf, int len)
     return 0;
 }
 
+/* stringTable.c's loadOtherConfigs() calls setMode() only on its "Query"
+ * prompt, to put boot-2's graphics panel back into text mode.  This console
+ * is always text, so there is nothing to switch. */
+void setMode(int mode) { (void)mode; }
+
 /* halt() is real-mode assembly in boot-2 (asm.s, not part of this build)
  * with no EFI equivalent; sys.c calls it on an unrecoverable device error.
  * panic() is not called by boot-2 directly, but is pulled in via two

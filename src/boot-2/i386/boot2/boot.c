@@ -165,6 +165,7 @@ execKernel(int fd, int installMode)
 	entry_t kernelEntry;
 	int ret, size;
 	int loadDrivers;
+	int vbeMode;
 	
 	while (*src && (*src != ' ' && *src != '\t'))
 		*dst++ = *src++;
@@ -309,6 +310,42 @@ insert_again:
 		}
 	}
 
+	/*
+	 * OPENSTEP 4.2 User Patch 4 (boot+949..1059): enumerate the VBE modes
+	 * on every boot, then take VBE Mode from the first loaded driver whose
+	 * table has it. A value on the boot line or in the system config
+	 * overrides the driver's.
+	 * configTable is valid here: loadOtherConfigs, rebuilt from 4.2
+	 * (boot+18813..18858), points it at the driver's tables in
+	 * kernBootStruct->config, and pickDrivers, in a forced divergence from
+	 * 4.2, points it at addConfig's copy there. One exception, a 4.2
+	 * reference defect kept: when the config area is full, loadOtherConfigs'
+	 * second loadConfigDir leaves configTable at the freed block.
+	 */
+	vbeMode = 0;
+	enumerateVBEModes();
+	{
+	    char *vbeVal;
+	    int vbeLen, i, found = 0;
+
+	    for (i = 0; i < num_loaded; i++) {
+		if (getValueForStringTableKey(loaded_drivers[i].configTable,
+			VBE_MODE_KEY, &vbeVal, &vbeLen) == YES) {
+		    found = 1;
+		    break;
+		}
+	    }
+	    if (found) {
+		char *s = newStringForKey(VBE_MODE_KEY);
+		/*
+		 * Candidate reference defect, reproduced: the driver's vbeVal is
+		 * not NUL-terminated, so a mode name there never matches
+		 * mode_table; only a number parses.
+		 */
+		convert_vbe_mode(s ? s : vbeVal, &vbeMode);
+	    }
+	}
+
 	if (errors)
 	{
 		setMode(TEXT_MODE);
@@ -334,6 +371,15 @@ localPrintf("Errors encountered while starting up the computer.\n");
 	    if (APMPresent()) {
 		APMConnect32();
 	    }
+	}
+	/*
+	 * 4.2 sets the VBE mode last, from text mode (boot+1224..1263). The
+	 * setter prints only on failure, and then we pause to show it.
+	 */
+	if (vbeMode) {
+	    setMode(TEXT_MODE);
+	    if (set_linear_video_mode(vbeMode))
+		sleep(5);
 	}
 	startprog(kernelEntry);
 	/* Not reached */
@@ -500,11 +546,6 @@ boot(int bootdev)
 		    continue;
 		}
 
-	    if (getBoolForKey("Boot Graphics"))
-	    {
-		wantBootGraphics = YES;
-	    } 
-
 	    if (getBoolForKey(INSTALL_KEY)) {
 		installMode = 1;
 		pickLanguage();
@@ -597,6 +638,40 @@ top:	cp = line;
 	if (!isKernel(cp))
 	{
 		printf("\n");
+
+		/*
+		 * OPENSTEP 4.2 User Patch 4 (boot+2556..2879): "VBE Check"=Yes
+		 * lists the usable VBE modes, three to a line, and prompts again.
+		 * Candidate reference defect, reproduced: count is not set when
+		 * the key is absent, so it is read uninitialised or stale, and a
+		 * positive value then reads *val with val == 0.
+		 */
+		val = 0;
+		getValueForBootKey(cp, "VBE Check", &val, &count);
+		if (count > 0 && (*val == 'Y' || *val == 'y')) {
+		    if ((count = enumerateVBEModes()) != 0) {
+			boot_vbe_mode *vmr = kernBootStruct->vbeModes;
+			int i;
+
+			localPrintf("Usable VBE modes:\n");
+			for (i = 0; i < count; i++, vmr++) {
+			    localPrintf("%d = %dx%dx%s     ", vmr->modeNumber,
+				vmr->xResolution, vmr->yResolution,
+				vmr->memoryModel == 6 ?
+				    (vmr->redMaskSize == 8 ? "888" : "555") :
+				    "256");
+			    if (vmr->xResolution < 1000)
+				localPrintf(" ");
+			    if (vmr->yResolution < 1000)
+				localPrintf(" ");
+			    if (i % 3 == 2)
+				localPrintf("\n");
+			}
+		    } else
+			localPrintf("The VBE video driver can not be used "
+			    "with this display adapter.\n");
+		    goto top;
+		}
 
 		val = 0;
 		getValueForBootKey(cp, "config", &val, &count);

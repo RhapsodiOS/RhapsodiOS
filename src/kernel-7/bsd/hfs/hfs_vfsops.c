@@ -226,9 +226,16 @@ struct proc             *p;
             if (retval && ((mp->mnt_flag & MNT_FORCE) == 0))
                 goto error_exit;
 
+            flags = WRITECLOSE;
+            if (mp->mnt_flag & MNT_FORCE)
+                flags |= FORCECLOSE;
+            if ((retval = hfs_flushfiles(mp, flags)))
+                goto error_exit;
+
             /*
-             * hfs_sync may pass the catalog before its hfs_update calls dirty it;
-             * lock the catalog so no B-tree writer holds a busy node while we wait
+             * hfs_sync may pass the catalog before its hfs_update calls dirty it,
+             * and hfs_flushfiles' reclaims dirty it again; lock the catalog so no
+             * B-tree writer holds a busy node while we wait
              */
             retval = hfs_metafilelocking(hfsmp, kHFSCatalogFileID, LK_EXCLUSIVE, p);
             if (retval)
@@ -238,11 +245,6 @@ struct proc             *p;
             if (retval && ((mp->mnt_flag & MNT_FORCE) == 0))
                 goto error_exit;
 
-            flags = WRITECLOSE;
-            if (mp->mnt_flag & MNT_FORCE)
-                flags |= FORCECLOSE;
-            if ((retval = hfs_flushfiles(mp, flags)))
-                goto error_exit;
             hfsmp->hfs_fs_clean = 1;
             hfsmp->hfs_fs_ronly = 1;
             if (HFSTOVCB(hfsmp)->vcbSigWord == kHFSPlusSigWord)

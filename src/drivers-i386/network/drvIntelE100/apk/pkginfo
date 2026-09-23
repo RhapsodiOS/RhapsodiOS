@@ -1,0 +1,7 @@
+pkgname = intele100
+pkgver = 1.0
+arch = i386
+pkgdesc = Intel 8255x (e100) 10/100 Ethernet device driver
+maintainer = Pat Raynor
+license = BSD
+makedepends = build-base, drivertools, driverkit, kernload

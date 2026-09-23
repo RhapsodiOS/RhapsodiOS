@@ -1,0 +1,6 @@
+#
+# used by geninfo: DRIVER_NAME is the name which appears on the
+# installer window
+#
+DRIVER_NAME="IntelE100"
+DEFAULT_DRIVER_VERSION="1.0";

@@ -1,0 +1,14 @@
+{
+    DYNAMIC_CODE_GEN = YES;
+    FILESTABLE = {
+        OTHER_SOURCES = (Makefile, Makefile.preamble);
+        SUBPROJECTS = (IntelE100.drvproj);
+    };
+    LANGUAGE = English;
+    LOCALIZABLE_FILES = {};
+    MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles";
+    NEXTSTEP_BUILDTOOL = /bin/gnumake;
+    PROJECTNAME = IntelE100;
+    PROJECTTYPE = Aggregate;
+    PROJECTVERSION = 2.6;
+}

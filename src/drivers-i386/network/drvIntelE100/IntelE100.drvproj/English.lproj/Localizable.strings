@@ -1,0 +1,3 @@
+/* The first key must match "Server Name" in Default.table. */
+"IntelE100" = "Intel 8255x 10/100";
+"Long Name" = "Intel 8255x (EtherExpress PRO/100) 10/100 Ethernet Adapter";

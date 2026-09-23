@@ -607,16 +607,6 @@ ffs_mountfs(devvp, mp, p)
 		error = EROFS;          /* needs translation */
 		goto out;
 	}
-	if (fs->fs_fsize < DIRBLKSIZ) {
-		printf("ffs: fragment size %d below DIRBLKSIZ, refusing\n",
-		    fs->fs_fsize);
-#if REV_ENDIAN_FS
-		if (rev_endian)
-			byte_swap_sbout(fs);
-#endif /* REV_ENDIAN_FS */
-		error = EOPNOTSUPP;
-		goto out;
-	}
 	if (!ronly && (mp->mnt_flag & MNT_ROOTFS) == 0 && fs->fs_clean == 0) {
 		printf("ffs: filesystem not cleanly unmounted, refusing; run fsck\n");
 #if REV_ENDIAN_FS

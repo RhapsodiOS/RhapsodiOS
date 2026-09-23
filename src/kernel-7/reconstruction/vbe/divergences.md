@@ -2880,6 +2880,15 @@ VBE boot reaches the network prompt on a readable frame-buffer console. See
 Until Task 8 published `kbs+0x1854`, `FBAllocateVBEConsole` always returned
 NIL. So no i386 code path had ever run `FBConsole.c`'s `Init`, `InitWindow`
 or `FBPutC`. Task 8's reset loop was the first run.
+**[CORRECTED — Task 8c, from 8b's review: overstated. It holds only for the
+boots tested. The same `Init`, `InitWindow` and `FBPutC` also run on a
+stock-booter system with any frame-buffer display driver, once the Window
+Server has run. Its `STDFB_FB_MAP` request calls `registerDisplay:`
+(`IOFrameBufferDisplay.m:803`). From then on, `kmDevice`'s `AllocConsole()`
+(`kmDevice.m:84-85`) and `canBecomeOwner` (`:896`) take their consoles from
+`allocateConsoleInfo`, which is `FBAllocateConsole`
+(`IOFrameBufferDisplay.m:762`). What Task 8 made new is the frame-buffer
+console as `basicConsole`, on VBE boots.]**
 
 ### The diagnosis, confirmed [measured]
 
@@ -2900,11 +2909,27 @@ or `FBPutC`. Task 8's reset loop was the first run.
     border: the border itself, `SetTitle`'s bar and bevels, `ClearWindow`,
     `ClearToEOL`, `FlipCursor`, `Erase`, `BltChar` and the scroll.
   - `w*3/4 <= w - 6` for any screen at least 24 pixels wide.
+    **[CORRECTED — Task 8c, from 8b's review: that clamp is not enough,
+    because `InitWindow` then rounds `x` down with `&= ~7`
+    (`FBConsole.c:908`). Any `x` below 8 becomes 0, and the border starts
+    at -3. A throwaway script ran `InitWindow`'s arithmetic for every size
+    from 1 to 4096 pixels [measured]. The border stays on screen for every
+    width of 56 or more. Some narrower widths fail, and the widest that
+    fails is 55. The height clamp keeps the border on screen at any height,
+    and a whole text row needs a height of 18 or more. So the window fits
+    for width >= 56 and height >= 18.]**
 - **A 4.2 limit, recorded and not patched.** A true 24 bpp VBE mode (3
   bytes per pixel) becomes `IO_24BitsPerPixel`, which the console writes at
   4 bytes per pixel. `WipeScreen` would then run a third past the mapping.
   4.2's `PixelAddress`, `Fill` and `VBEModeInfo2IODisplayInfo` are the same
   code.
+  **[CORRECTED — Task 8c, from 8b's review: our booter cannot reach this
+  limit with a direct-colour mode. `vbeModeIsUsable` (boot-2
+  `libsaio/vbe.c:63-72`) accepts direct colour (memory model 6) only at 15,
+  16 or 32 bpp, and `vbe.c:201` rejects an unusable chosen mode. That test
+  does not check the depth of other memory models. A BIOS that reported a
+  24 bpp mode under another model would still pass it [inference: no such
+  mode is known].]**
 
 ### 4.2's file, read [measured]
 
@@ -2959,16 +2984,33 @@ at `2c6c64e5d` (object comparison, below):
 - Our indices draw black on white with grey bevels on `appleClut8`: 4.2's
   design, on our palette.
 
+**[ADDED — Task 8c, from 8b's review: so the screen's base colour depends
+on the depth. At 8 bpp colour it is ours, index `0x80`, slate on
+`appleClut8` [measured on the Task 8b boots]. At 15 and 24 bpp it is 4.2's
+blue: `0x295F` is (10,10,31) as 5:5:5, and `0xFF5555FF` is (0x55,0x55,0xFF)
+[inference: this assumes the standard VBE field positions]. At 8 bpp
+one-is-white it is 4.2's grey `0x55`. At 12 bpp it is `0x55FF`, the same
+in both. Only the 8 bpp colour case, which the boots below use, draws
+ours.]**
+
 ### What was rebuilt, and the outcome [measured]
 
 - **`Init`: rebuilt from `0x0019DF7C`.**
   - All five differences are taken, except the 8 bpp colour indices. Those
     are kept, as a consequence of the palette decision, and labelled
     `FORCED DIVERGENCE` on the line.
+    **[CLARIFIED — Task 8c, from 8b's review: five indices are kept, but
+    only 4 bytes differ from 4.2. The foreground `0x00` is 4.2's value
+    too. The source's header comment said "the five 8 bpp colour indices",
+    and Task 8c rewords it.]**
   - Items 3 and 4 are labelled `FAITHFUL TO THE REFERENCE`.
+    **[SUPERSEDED — Task 8c: item 4 is now a forced divergence, fixed at
+    the user's request.]**
   - **Outcome: 704 = 704 bytes, with byte parity except the 4 bytes of
     those indices.** The fifth index, the foreground `0x00`, is equal on
     both sides.
+    **[SUPERSEDED — Task 8c: true of Task 8b's kernel. For `Init`'s
+    parity after the 8c fix, see "Spec 3 Task 8c: the alert wipe".]**
 - **`FBPutC`: 4.2's opening test is added.** `Init`'s new `SCM_GRAPHIC`
   case sets no window, so without the test a graphic-mode console would
   draw at uninitialised coordinates. **Outcome: byte parity**, 2296 = 2296.
@@ -2987,11 +3029,19 @@ at `2c6c64e5d` (object comparison, below):
   - a fresh console asked for an alert with save-under is wiped to
     `baseground` first, because the guard sees `SCM_UNINIT`. On i386 that
     is `kmDevice`'s alert path over a frame-buffer display;
+    **[RESOLVED — Task 8c: the user chose to fix this 4.2 defect. `Init`
+    now stores the window type before the wipe test, as `VGAConsole.c`
+    does. See "Spec 3 Task 8c: the alert wipe".]**
   - every alert saves under, including `kmAlertConsole`'s, which asks not
     to;
   - `Init(SCM_GRAPHIC, ...)` no longer panics. `kmDevice`'s pretty
     shutdown calls it on a frame-buffer display's console
     (`kmDevice.m:900-905`), and ours would have panicked there.
+    **[CORRECTED — Task 8c, from 8b's review: not the display's console.
+    `canBecomeOwner` takes `SCM_GRAPHIC` only when `prettyShutdown` is
+    set, and then `:892-894` call `returnToVGAMode` and choose
+    `basicConsole`. `basicConsole` is a frame-buffer console only on VBE
+    boots. On a stock-booter system it is VGA's.]**
   - **None of these runs on the boots below.** A VBE boot leaves
     `graphicsMode` at text (boot-2 `vbe.c:223`), so `kminit` takes
     `SCM_TEXT`.
@@ -3125,3 +3175,227 @@ read back and hashed.
     `date` line. B2 shows that is TCG timing;
   - at 15 s, a mid-boot capture, they differ by position.
 - **So the VGA path is untouched.**
+
+## Spec 3 Task 8c: the alert wipe
+
+**A forced divergence from a 4.2 reference defect, fixed at the user's
+request.** Task 8b rebuilt 4.2's `Init` with its guard order. Its review
+found that the order wipes the screen under every new frame-buffer alert.
+
+### The defect, in 4.2 and in Task 8b's kernel [measured]
+
+- **4.2** (`$KREF`, `Init` at `0x0019DF7C`):
+  - `0x0019E0F7` tests `initScreenOrSaveUnder`.
+  - `0x0019E101` `cmp dword ptr [ebx],3` tests `console->window_type`
+    (offset 0) against `SCM_ALERT` (3).
+  - The wipe (`WipeScreen`, inlined) runs to `0x0019E1BE`.
+  - Only then do `0x0019E1C1`/`0x0019E1C4` (`mov edi,[ebp+0xc]; mov
+    [ebx],edi`) store `mode`.
+
+  So the test reads the type the console is leaving.
+- **Task 8b's kernel** (`vm/work/t8b-mach_kernel`) has the same two
+  instructions at the same offsets (`+0x185`, `+0x248`).
+- **`FBAllocateConsole` sets `window_type = SCM_UNINIT`** (0), at
+  `FBConsole.c:1407` at `1df1f826e`. So a new console's first `Init` always
+  sees 0.
+  - `Init(SCM_ALERT, TRUE, ...)` on a new console therefore wipes the whole
+    screen to `baseground`.
+  - `InitWindow(..., 1)` then saves the blanked rectangle.
+  - `Restore` (via `DoRestore`) later copies that blank back, not what was
+    there.
+- **`VGAConsole.c:1064-1068` stores `mode` first** and tests after. The VGA
+  test is therefore in effect `mode != SCM_ALERT`. Ours before Task 8b tested
+  `mode` as well.
+
+**Which callers wipe with 4.2's order** [measured source]:
+
+| caller | `Init` call | wipes |
+| --- | --- | --- |
+| `kmOpen` O_ALERT (`kmDevice.m:327`) | `(ALERT, TRUE, TRUE)` on a new `AllocConsole()` | yes |
+| `DoAlert` (`:1030`), `alert()` (`km.m:441`), `kmpopup` (`km.m:405`) | `DoSafeAlert(.., TRUE)` -> `(ALERT, TRUE, TRUE)` (`kmDevice.m:1004`) | yes |
+| root-device prompt (`swapgeneric.m:136`) | `DoSafeAlert(.., TRUE)` | yes |
+| `mini_mon` restart (`machdep.c:135`) | `DoSafeAlert(.., restartMsg, TRUE)` | yes |
+| `mini_mon` panic and others (`machdep.c:138`), `trap.c:322` (`GDB` only) | `DoSafeAlert(.., FALSE)` | no |
+| `kmAlertConsole` (`kmDevice.m:962-965`) | `(ALERT, FALSE, TRUE)` | no |
+
+If `AllocConsole()` fails, `:317` and `:1002` fall back to `basicConsole`.
+Its type is `TEXT` or `GRAPHIC`, so 4.2's order wipes there too.
+
+### Where a frame-buffer alert can open [measured source]
+
+- **Every path above opens an alert window only when `fbMode` is neither
+  `SCM_TEXT` nor `SCM_ALERT`.** See `kmOpen` `kmDevice.m:272-283` and
+  `DoSafeAlert` `:976-1012`. In `SCM_TEXT` the text goes to the normal
+  console. Before `kmDevice` exists, `DoSafeAlert` prints to `basicConsole`
+  whenever `basicConsoleMode` is `TEXT` or `ALERT` (`:952-960`).
+- **A VBE boot is always `SCM_TEXT`.** The booter sets `graphicsMode =
+  TEXT_MODE` unconditionally (boot-2 `vbe.c:223`), so the probe sets
+  `fbMode = SCM_TEXT` (`kmDevice.m:119`, `:207`). It stays so until the
+  Window Server takes the screen (`SCM_OTHER`, `:805`).
+- **On a stock-booter system, the frame-buffer console is `display`'s.**
+  It exists only after the Window Server's `STDFB_FB_MAP` registers an
+  `IOFrameBufferDisplay` (`IOFrameBufferDisplay.m:803`).
+- **So the wipe is reachable only after the Window Server has run,** on
+  either kind of system.
+
+### RED: no alert can be provoked from boot arguments [measured]
+
+- **The boot:** `rootdev=zz` on a VBE boot of Task 8b's kernel. The image
+  was `$GOLDEN` + that kernel + `$DRV` + `t7c-boot` in both slots, run with
+  `--vga cirrus`.
+- **What it reached:** serial ends `Registering: kmDevice0` / `root on zz` /
+  `use sd%d, hd%d, fd%d, en%d or tr%d` / `root device? `. So `setconf` took
+  `DoSafeAlert("Root Device?", "", TRUE)` with `kmDevice` in `SCM_TEXT`.
+- **The frames:** from 20 s to 90 s they are identical (`23A69E7B...`).
+  - They show the 480x360 text window, its boot text intact, ending in the
+    prompt.
+  - There is no alert window and no wipe.
+- **So the defect cannot be shown on a VBE boot without code changes.** No
+  test code was added.
+- **The fix is verified by code reading and disassembly only.**
+
+### The fix [source]
+
+- **The change:** `Init` stores `console->window_type = mode` before the wipe
+  test, as `VGAConsole.c` does. The test itself is unchanged, and it now
+  reads the new type.
+- **The label:** the line is labelled `FORCED DIVERGENCE from a 4.2 reference
+  defect, fixed at the user's request`, citing `0x0019E101` and
+  `0x0019E1C4`. It replaces Task 8b's `FAITHFUL TO THE REFERENCE` on that
+  test.
+- **`Init`'s header comment** now names both divergences.
+- **Behaviour** [inference, from the code]:
+  - `Init(SCM_ALERT, TRUE, ...)` no longer wipes, so the alert saves and
+    later restores what was on the screen.
+  - `Init` with any other mode and `initScreenOrSaveUnder` TRUE now wipes,
+    whatever the old type. 4.2 skipped the wipe after `SCM_ALERT`. Only
+    `basicConsole`, reused after serving as the alert fallback, can
+    carry that type into a later `Init`. VGA does the same.
+  - The VBE boot's `kminit` (`SCM_TEXT` from `SCM_UNINIT`) wipes, as
+    before.
+
+### Parity: `Init` is 708 bytes against 4.2's 704 [measured]
+
+The kernel was built as below. `Init` still starts at `0x001E9424`, and
+`DrawRect` now starts at `0x001E96E8`.
+- **`compare_flat` with `--ours-size 708`:** `MISMATCH size 704 | 708`.
+- **An aligned comparison.** `compare_flat`'s rules were applied across a
+  `difflib` alignment of the two instruction streams. In-function targets
+  and in-window addresses were normalised, and strings were compared by
+  content.
+  - **190 of 4.2's 202 instructions align** with ours (206 instructions).
+    583 bytes are compared and 47 masked. The two calls map to `_panic` and
+    `InitWindow`.
+  - **12 of 4.2's instructions (60 bytes) and 16 of ours (64 bytes) do not
+    align:**
+
+    | 4.2 | ours | what |
+    | --- | --- | --- |
+    | | `+12` `8b550c` `mov edx,[ebp+0xc]` | `mode` loaded in the prologue |
+    | | `+42` `90` | alignment |
+    | `+128` `+138` `+158` `+168` (`0x63 0xEF 0xF5 0xFA`) | `+132` `+142` `+162` `+172` (`0x80 0xFF 0xFB 0x2B`) | the 8 bpp colour stores (Task 8b) |
+    | | `+383` `8913` `mov [ebx],edx` | the store, now before the guard |
+    | `+389` `833b03` `cmp [ebx],3` | `+395` `83fa03` `cmp edx,3` | the guard |
+    | `+434`, `+435` `90 90` | | alignment |
+    | `+581` `8b7d0c` `mov edi,[ebp+0xc]`, `+584` `893b` `mov [ebx],edi`, `+586` `83ff02` `cmp edi,2` | `+585` `8b03` `mov eax,[ebx]`, `+587` `83f802` `cmp eax,2` | the switch: 4.2 stores here; ours reloads the type |
+    | `+593` `83ff01` `cmp edi,1` | `+594` `83f801` `cmp eax,1` | the switch |
+    | `+600` `837d0c03` `cmp [ebp+0xc],3` | `+601..603` `90 90 90`, `+604` `83f803` `cmp eax,3` | the switch, and alignment |
+    | | `+611` `90` | alignment |
+
+  - **3 aligned branches land on unaligned targets.** The guard's two
+    `je`s go to the join after the wipe (4.2 `0x0019E1C1`, ours
+    `0x001E966D`), and the switch's `ja` goes to the `SCM_ALERT` compare.
+    They are the same points in the code, but the instructions there now
+    differ.
+- **Against Task 8b's kernel:** 8 against 12 instructions do not align (20
+  against 24 bytes), plus the same 3 branches. So every difference beyond
+  the 4 colour bytes comes from the reorder.
+- **The same comparison, run on Task 8b's `Init`, finds only the 4 colour
+  stores.** That agrees with Task 8b's result.
+- **Nothing else in `FBConsole` changed.**
+  - Before `Init`, one byte differs from Task 8b's kernel. It is
+    `SetTitle`'s call to `_IOLog`, which moved by 4.
+  - After `Init`, everything is 4 bytes later. There are 44 in-file
+    address words, all +4, and 3 `rel32` calls, all -4.
+
+### The build [measured]
+
+- **The command:** `rbuild kernel --state /build/state --toolchain
+  /tmp/t8c-gcc-darwin.conf --arch i386 /build/src /build/repo
+  /tmp/t8c-kvbe-dst`.
+  - The profile is `gcc-darwin-ppc.conf` (`cksum 4287395951 1070`), with
+    the plan's `sed` applied.
+  - `RBUILD_EXIT=0`, with the same eight APKs.
+- **Warnings:** only the known ones, `pmap.c`'s `pmap_resident_extract`
+  and `FBConsole.c:1513`'s cast.
+- **The synced `FBConsole.c`** has `cksum 917090898 50981` on the guest and
+  locally.
+- **`mach_kernel`,** 1,490,352 bytes:
+  - `sum 43409 1456` and `cksum 4125952152 1490352`, on the guest and from
+    the pulled bytes;
+  - SHA-256 `56A4B3433A6E519018FA0631DA91B7731BB65C382EDEDDDC3BEE623701BE69E2`;
+  - kept outside the repo, as `vm/work/t8c-mach_kernel`.
+- **Addresses:** `_FBAllocateConsole` is at `0x001E9700`,
+  `_VBEModeInfo2IODisplayInfo` at `0x001E9794` and `_FBAllocateVBEConsole`
+  at `0x001E99B0`, all +4.
+  - That shift ends before `__internal_object_copyFromZone`.
+  - `FBPutC` (`0x001E7440`), `_BasicAllocateConsole` (`0x001E30DC`),
+    `_pmap_map` and `_pmap_bootstrap` are where Task 8b had them.
+
+### Oracles and re-checks, on this kernel [measured]
+
+- **`VBEModeInfo2IODisplayInfo`:**
+  - `compare_kvbe.py` reports **`MATCH: all 411 compared bytes
+    identical`**. The dispatch is at fn+76, and all 31 table targets are
+    equal relative to the entry.
+  - `compare_flat --table 76:31` reports `MATCH: 145 instructions`.
+- **`_BasicAllocateConsole`:** **60 of 60 unmasked bytes are equal.**
+  `compare_flat` reports `MATCH`, with 3 addresses mapped (`_bzero`,
+  `_VGAAllocateConsole`, `_FBAllocateVBEConsole`).
+- **`FBPutC`:** `compare_flat --table 252:45` reports **`MATCH: 753
+  instructions`**.
+- **Task 8's mapping block is unchanged:**
+  - `pmap_map` and `pmap_bootstrap` are byte-identical to Task 8b's
+    kernel;
+  - the guard compares `MATCH`;
+  - the shape comparison prints Task 8b's output exactly;
+  - **so it is still structural parity.**
+
+### Boots [measured]
+
+Every image was rebuilt from `$GOLDEN`, with its intermediate on `C:`, and
+every installed file was read back and hashed.
+
+- **GREEN, `rootdev=zz`** (the RED boot with this kernel):
+  - serial differs from RED only at line 4, the build date;
+  - every frame from 20 s to 90 s is RED's `23A69E7B...` (so is GREEN's
+    15 s frame; RED's was still mid-boot);
+  - the 60 s dump is equal.
+
+  As on RED, the prompt goes to the text console. This path shows the fix
+  changes nothing it should not; it cannot show the fix itself.
+- **The VBE default boot** (`vm/shots-t8c-vbe`, frames 5 to 120 s):
+  - serial differs from Task 8b's only at line 4 and by one phantom-IRQ
+    line changing place;
+  - it still ends `Continue without network? (y/n)`;
+  - every frame from 30 s to 120 s is Task 8b's `3CA1D670...`, a readable
+    480x360 window on slate;
+  - the dump is byte-identical to Task 8b's (`kbs+0x1854` = `0x0D3D4000`,
+    mode 257).
+- **The VBE `-v` boot** (`vm/shots-t8c-vbe-v`):
+  - the same as above against Task 8b's `-v` boot;
+  - frames from 30 s are `3CA1D670...`;
+  - its dump differs from the default boot's only at `kbs+2..4`.
+  - Its first attempt died before booting: QEMU's QMP greeting timed out.
+    It was re-run from a rebuilt image.
+- **Stock booter, `-v`, in one session:** A (`$KSPEC2`), B (this kernel),
+  then A2 (`$KSPEC2`).
+  - **The dumps:** all three 60 s dumps are byte-identical
+    (`BF8E76C5...`). `kbs+0x1854` = 0, and `vbeModes` is all zero.
+  - **Serial:** B differs from A only at line 4, and A2 equals A.
+  - **Frames:**
+    - at 5 and 15 s, all three are identical;
+    - at 30, 60 and 95 s, **B equals A2 pixel for pixel**;
+    - A differs from both in two seconds digits, the `init` and `date`
+      lines (44 pixels). That is TCG timing between the two controls.
+  - **So the VGA path is untouched.**

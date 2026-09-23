@@ -1038,9 +1038,10 @@ static void Init(
     boolean_t initWindow,
     const char *title)
 // Rebuilt from the static Init at 0x0019DF7C in the i386 slice of the
-// OPENSTEP 4.2 mach_kernel (704 bytes). Byte parity except the five 8 bpp
-// colour indices; see src/kernel-7/reconstruction/vbe/divergences.md,
-// "Spec 3 Task 8b: the console window".
+// OPENSTEP 4.2 mach_kernel (704 bytes). Byte parity except the 8 bpp colour
+// indices and the window-type store moved ahead of the wipe test; see
+// src/kernel-7/reconstruction/vbe/divergences.md, "Spec 3 Task 8b: the
+// console window" and "Spec 3 Task 8c: the alert wipe".
 {
     ConsolePtr console = (ConsolePtr)cso->priv;
     int i;
@@ -1096,17 +1097,19 @@ static void Init(
 	}
     console->ansi_stack_p = &console->ansi_stack[1];	// FIXME - why not 0?
 
+    // FORCED DIVERGENCE from a 4.2 reference defect, fixed at the user's
+    // request: the window type is stored before the wipe test, as
+    // VGAConsole.c does. 4.2 tests the type the console is leaving
+    // (0x0019E101 reads [ebx] before 0x0019E1C4 stores mode there), and
+    // FBAllocateConsole leaves SCM_UNINIT, so every alert opened with
+    // save-under wiped the whole screen and then saved the blank.
+    console->window_type = mode;
+
     // Initialize the screen, if appropriate.
-    //
-    // FAITHFUL TO THE REFERENCE: the test is on the window type the console
-    // is leaving, not on `mode' (0x0019E101 reads [ebx] before 0x0019E1C4
-    // stores mode there). So a fresh console asked for an alert with
-    // save-under is wiped first.
     if (initScreenOrSaveUnder && (console->window_type != SCM_ALERT)) {
 	WipeScreen(console, console->baseground);
     }
 
-    console->window_type = mode;
     switch(console->window_type) {
 	case SCM_TEXT:
 	    // Three quarters of the screen each way (0x0019E1E6..0x0019E207),

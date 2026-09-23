@@ -2899,15 +2899,15 @@ getdirentryattr (p,uap,retval)
         auio.uio_segflg = UIO_USERSPACE;
         auio.uio_procp = p;
         auio.uio_resid = uap->buffersize;
+        auio.uio_offset = fp->f_offset;
 
         vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
         error = VOP_READDIRATTR (vp, &attributelist, &auio, &index, &eofflag,((u_long*)0), ((u_long **)0),fp->f_cred);
         fp->f_offset = auio.uio_offset;
+        VOP_UNLOCK(vp, 0, p);
 
 	if (error)
                 return (error);
-
-        VOP_UNLOCK(vp, 0, p);
 
 	if (error = copyout((caddr_t) &index, (caddr_t) uap->index, sizeof(index)))
 		return(error);

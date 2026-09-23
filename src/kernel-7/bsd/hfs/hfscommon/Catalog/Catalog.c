@@ -762,7 +762,7 @@ IterateCatalogNode( ExtendedVCB *volume, CatalogIterator *catalogIterator, UInt1
 	BTreeIterator		btreeIterator;
 	FSBufferDescriptor	btRecord;
 	FCB *				fcb;
-	SInt16				selectionIndex;
+	SInt32				selectionIndex;
 	UInt16				tempSize;
 	UInt16				operation;
 	OSErr				result;
@@ -805,7 +805,9 @@ IterateCatalogNode( ExtendedVCB *volume, CatalogIterator *catalogIterator, UInt1
 
 	//--- get offspring record (relative to catalogIterator's position)
 
-	selectionIndex = index - catalogIterator->currentIndex;
+	// currentIndex holds a UInt16 index in an SInt16: a 16-bit difference would turn a
+	// seek of more than 32767 entries into one the other way, so take it in 32 bits
+	selectionIndex = (SInt32) index - (UInt16) catalogIterator->currentIndex;
 
 	// now we have to map index into next/prev operations...
 	if (selectionIndex == 1)

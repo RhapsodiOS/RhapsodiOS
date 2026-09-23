@@ -378,15 +378,21 @@ kern_return_t vm_fault(map, vaddr, fault_type, change_wiring)
 			}
 #if	NeXT
 			if (m->free) {
+				int	spl;
+
 				/*
 				 * We only get here on reactivation of a free page,
 				 * vm_page_alloc takes care of this for us in the
 				 * typical case.
 				 */
+				spl = splimp();
+				simple_lock(&vm_page_queue_free_lock);
 				queue_remove(&vm_page_queue_free, m,
 						vm_page_t, pageq);
 				m->free = FALSE;
 				vm_page_free_count--;
+				simple_unlock(&vm_page_queue_free_lock);
+				splx(spl);
 				vm_stat.reactivations++;
 			}
 #endif	NeXT

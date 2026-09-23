@@ -1367,10 +1367,12 @@ below), so its source is not in the tree.
 - Everything in this section describes that patch as `t6c` built it.
 
 **[UPDATED — Task 7a: landed.** The patch was applied unchanged in Task 7a's
-stage 2, after the panel-path trims. The build is `t7a2`: 44,432 bytes, 624
-spare. Every comparison in this section reproduced exactly, with the palette
-block, the 5 frame bytes and the 1 pad byte as the only differences. See
-"Task 7a", stage 2 [measured].**]**
+stage 2, after the panel-path trims, at commit `f262e39b7`. The build is
+`t7a2`: 44,432 bytes, 624 spare. Every comparison in this section reproduced
+exactly, with the palette block, the 5 frame bytes and the 1 pad byte as the
+only differences. See "Task 7a", stage 2 [measured]. Once 4.2's `setMode`
+landed, nothing called the setter, so the final 7a booter does not link
+`vbe.o`. 7b's wiring links it again.**]**
 
 | | |
 | --- | --- |
@@ -1769,3 +1771,175 @@ them** (whole extents):
   `getKernBootStruct()`.** The call path is `boot` →
   (`execKernel` →) `setMode(1)` → `set_linear_video_mode` →
   `enumerateVBEModes` / `recordVBEMode`.
+
+### `setMode`, and `boot.c:503-506` removed [measured]
+
+**The source.**
+- **`setMode` is 4.2's.**
+  - The store `kernBootStruct->graphicsMode = mode` comes right after
+    `initMode`, on both branches (`boot+4207`).
+  - The graphics branch buffers the text, then calls `set_video_mode(0x12)`,
+    `clearRect(0, 0, SCREEN_W, SCREEN_H, SCREEN_BG)` and
+    `copyImage(bitmapList[PANEL_BITMAP].bitmap, BOX_X, BOX_Y)`.
+  - The text branch is unchanged.
+- **Gone with the old branch:**
+  - the `Graphics Mode` key test, `convert_vbe_mode`'s call, and the call to
+    `set_linear_video_mode`;
+  - the `kernBootStruct->graphicsMode` store inside that branch;
+  - the five `kernBootStruct->video` stores (spec §4.3).
+- **Left for 7b:** `convert_vbe_mode` and its `mode_table` stay in
+  `graphics.c`, now with no caller, and `G_MODE_KEY` stays in `boot.h`,
+  unused. 7b rebuilds `convert_vbe_mode` for the `VBE Mode` key (4.2's
+  `boot+4480`) and decides `G_MODE_KEY`.
+- **`boot.c:503-506`**, `boot()`'s second `Boot Graphics` test, is removed,
+  with the blank line after it.
+  - `getBootString`'s test (`boot.c:626-640` now) is the only one left, as
+    in 4.2.
+
+| 4.2 function | extent | ours (`t7a3`) | `compare_flat` | outcome |
+| --- | --- | --- | --- | --- |
+| `setMode` | `boot+4164..4459`, 296 | `_setMode`, `0x3D2C`, 296 | `MATCH: 81 instructions, 171 bytes compared, 124 masked, 17 addresses mapped` | **byte parity** |
+
+- The pad is one `nop` on both sides.
+- **Every mapped value names the expected symbol** by our `nm`. None is a
+  non-address.
+  - Functions: `initMode`, `currentMode`, `putchar`, `copyImage`,
+    `clearRect`, `set_video_mode`, `malloc`, `free`.
+  - Data: `bitmapList+4` (the panel's bitmap pointer), `currentIndicator`,
+    `kernBootStruct`, `showText`, `bufIndex`, `panel`, `screen_height`,
+    `screen_width`, `textBuf`.
+- **`boot()`** went from 712 to 688 bytes: the test was 24 bytes, as Task 3b
+  measured.
+  - 4.2's `boot()` is 700. The 12 left are the memory-size check that Task
+    3b found larger in 4.2, which is outside the panel path.
+
+**The build, `t7a3`, the final 7a booter:**
+- `booter 41600 bytes of 45056, 3456 to spare`.
+- `boot`: `sum 58230 41`, `cksum 3354394691 41600`, SHA-256
+  `4052B32941B6B66F060E8717A907B86F1D6400DB8E1021E79FA0F67D4EC798A1`.
+- `boot.sys`: `sum 63140 1012`, `cksum 1809611904 1036204`, SHA-256
+  `561D66AF4BEB366D9064B9C39E2202BF29C5CD78DE74D4F91697D61A25AE1FFA`.
+- Both are kept as `vm/work/t7a-boot` and `vm/work/t7a-boot.sys`.
+- **Warnings:** the `setMode` warning about `convert_vbe_mode`'s argument is
+  gone. Nothing new appears.
+
+**`vbe.o` is no longer linked, as predicted.**
+- `nm` has none of its symbols:
+  - the five 4.2 functions, `setupPalette` and the eight BIOS wrappers;
+  - `appleClut8`, `vbeModeCount` and `bytes_per_scanline`.
+- A caller scan finds no call from `__text` into any of them.
+
+| section | `t7a2` | `t7a3` | delta |
+| --- | --- | --- | --- |
+| `__text` | 37,901 | 36,037 | -1,864: `vbe.o` -1,720, `setMode` -120, `boot()` -24 |
+| `__cstring` | 4,202 | 3,991 | -211: the setter's six messages (197) and `Graphics Mode` (14) |
+| `__const` | 1,384 | 616 | -768: `appleClut8` |
+| `__data` | 936 | 932 | -4: `vbeModeCount` |
+| `boot` | 44,432 | 41,600 | **-2,832** |
+
+- **So the 3,456 spare is not 7b's room.** 7b's `execKernel` wiring calls
+  the enumerator and the setter, and that links `vbe.o` again.
+- **With `vbe.o` back, the booter would be about 44,288 bytes, 768 spare**
+  [arithmetic, from the rows above].
+  - That is `t7a3`'s sections plus `vbe.o`'s 1,720 of `__text`, 197 of
+    `__cstring`, 768 of `__const` and 4 of `__data`.
+  - `__const` is realigned to 4 bytes, and `__TEXT` rounded to 16.
+  - It is not measured.
+- **The same figure, from the budget** [arithmetic]:
+  - after Task 5, 672 spare;
+  - Task 6, +704;
+  - 7a: the panel path -680 (`t7a1`'s -656 and `boot()`'s -24), and
+    `setMode` -120.
+  - That leaves 768.
+  - Task 3's rows for 7b (`execKernel` +172, `getBootString` +324,
+    `convert_vbe_mode` +32, the name table -60, strings +120) add 588. That
+    would leave about 180.
+
+**The whole panel path in the final build.** All 23 of Task 3b's functions
+`MATCH`, and so does `putchar`.
+- The 16 that already matched still match, with the same counts as in
+  `t7a1`.
+- The 7 rebuilt are byte parity: `setMode`, `loadBitmap`, `copyImage`,
+  `clearRect`, `message`, `spinActivityIndicator` and
+  `clearActivityIndicator`.
+- Task 6's functions cannot be compared in `t7a3`, because they are not
+  linked. Their comparison in `t7a2` stands.
+
+**Step 2, the write order, in the final build.** No store into
+`vbeCurrentMode` or `vbeModes` is reachable, because nothing that makes one
+is linked. The check above, for `t7a2`, is the one that applied.
+
+### The behaviour check [measured]
+
+**Setup.**
+- Two boots, one QEMU at a time, on cirrus.
+- Before each boot, `vm/work/test.img` was rebuilt from `$GOLDEN`:
+  - `$GOLDEN` hashed `E1968E3E...0E663879F` and `$KSPEC2` hashed
+    `74B12FCD...25CFF4`;
+  - `$KSPEC2` was grafted, then `vm/work/t7a-boot` installed. No driver.
+  - `/mach_kernel` was read back (1,490,352 bytes, `74B12FCD...`, OK).
+  - Both boot slots read back as the booter followed by zeros.
+- Both images hashed `5DA27C7136463FAB50E5E32F088B3AB1C2ECAA188EDD89C41D1003570CD1541E`.
+
+**The default boot.**
+- The command: `qemu-shot.py vm/work/test.img vm/shots-t7a-default --at
+  5,15,30,60 --pmemsave 30:0x11000:0x2200`. No keys.
+- **5 s:** the countdown, with `Rhapsody boot v5.0.2`. The frame is
+  pixel-identical to Task 3's and Task 5's 5 s frames (`276180227B36...`).
+- **15 s: 4.2's panel, drawn by our booter.**
+  - The frame is 640x480, in four colours: `colorData`'s greys, (87,87,87),
+    (168,168,168), black and white.
+  - The background is colour 1, dark grey.
+  - Every non-background pixel lies in `(152..494, 108..370)`. That is inside
+    a 352x264 panel at (144, 108), centred as `BOX_X` and `BOX_Y` place it.
+  - `Starting Rhapsody`, `execKernel`'s message, is centred at y 240 on a
+    light-grey band from x 152 to 487. That is `blit_clear`'s `BOX_W - 16`
+    = 336 pixels, centred on 320.
+  - A 16x16 wait cursor is at (312, 256), `CURSOR_X` and `CURSOR_Y`.
+- **The band reaches 2 pixels past the panel's drawn border on each side**
+  (x 152..153 and 486..487). This is 4.2's arithmetic on this panel, not a
+  change of ours [inference].
+- **30 s and 60 s** are one image: the kernel's graphical console, with a
+  `Configuring Network` box and `Continue without network? (y/n)` over the
+  panel.
+- **The dump at 30 s** (`kbs` = `0x11000`):
+  - `graphicsMode` (`kbs+0x14C`) = **1**, as Task 3b predicted;
+  - `magicCookie` (`kbs+0xA4`) is `0xA7A7A7A7`, `numBootDrivers` is 6 and
+    `bootString` is empty, as spec 2 read for the stock booter;
+  - `kbs+0x1854..0x20D7` (the VBE area) and `video` (8408..8431) are all
+    zero.
+- **The serial** is 76 lines and ends at `Continue without network? (y/n)`.
+
+**The verbose boot.**
+- The command: `qemu-shot.py vm/work/test.img vm/shots-t7a-verbose --at
+  5,15,30,60,120 --keys $'mach_kernel -v\n' --keys-at 8 --pmemsave
+  30:0x11000:0x2200`.
+- **No panel.**
+  - The 5 s frame is the same `276180227B36...` banner frame.
+  - From 15 s on, the frames show the kernel's verbose text console.
+- **The dump at 30 s:** `graphicsMode` = **0** and `bootString` = `" -v"`.
+  - It differs from the default boot's dump in those two fields only:
+    offsets 2..4 and `0x14C`. Spec 2 found the same two fields for the stock
+    booter.
+- **The serial against Task 5's A-B-A** (`vm/shots-t5trim-{A1,B,A2}`):
+  - 76 lines, 8 of them phantom-IRQ lines.
+  - Line 4 is identical, date included: the same kernel.
+  - With line 4 and the phantom lines set aside, the log is identical to all
+    three of Task 5's, 68 lines each.
+  - The phantom lines sit at lines 37-44. That is a placement none of Task
+    5's three had, and rule 3 allows it.
+- **The frames against Task 5's, with the clock mask:**
+  - 5 s: 0 px against all three;
+  - 30, 60 and 120 s: 0 px against A1, and 2,443 px against B and A2. That is
+    the same race A1 and A2 show between themselves.
+  - 15 s: 3,913 px against A1 and 11,710 against A2. **303 px differ from
+    both controls and lie outside their own difference.**
+    - Those 303 px are one text row, y 162..171, x 16..292: 35 characters,
+      the width of `intr: phantom IRQ 15, EOI to master`.
+    - Ours prints all 8 phantom lines together (serial lines 37-44), where A1
+      had 1 and then 7.
+    - So it is the phantom-line race in a third placement, not a booter
+      difference [inference, from the serial]. By amended rule 4's letter it
+      is a finding at 15 s. The frames were not a pass criterion here.
+- **The default boot's serial** equals the verbose boot's, phantom lines
+  aside. The kernel's serial console does not show the difference.

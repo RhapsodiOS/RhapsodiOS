@@ -167,12 +167,14 @@ initMode(int mode)
     return YES;
 }
 
+/*
+ * OPENSTEP 4.2 User Patch 4's setMode (boot+4164..4459). Graphics mode is
+ * the Boot Graphics panel in VGA mode 0x12; text mode replays the text
+ * buffered while the panel was up.
+ */
 void
 setMode(int mode)
 {
-	unsigned short vmode;
-	char *vmode_name;
-
 	if (currentMode() == mode)
 	    return;
 
@@ -181,26 +183,15 @@ setMode(int mode)
 	    return;
 	}
 
-	if (mode == GRAPHICS_MODE &&
-		(vmode_name = newStringForKey(G_MODE_KEY)) != 0)
-	{
+	kernBootStruct->graphicsMode = mode;
+	if (mode == GRAPHICS_MODE) {
 	    textBuf = malloc(TEXTBUFSIZE);
 	    bufIndex = showText = 0;
 
-	    if (!convert_vbe_mode(vmode_name, &vmode))
-		vmode = mode1024x768x256;   /* default mode */
-
-	    set_linear_video_mode(vmode);
+	    set_video_mode(0x12);
 
 	    clearRect(0, 0, SCREEN_W, SCREEN_H, SCREEN_BG);
 	    copyImage(bitmapList[PANEL_BITMAP].bitmap, BOX_X, BOX_Y);
-
-	    kernBootStruct->graphicsMode = GRAPHICS_MODE;
-	    kernBootStruct->video.v_baseAddr    = (unsigned long)frame_buffer;
-	    kernBootStruct->video.v_width       = SCREEN_W;
-	    kernBootStruct->video.v_height      = SCREEN_H;
-	    kernBootStruct->video.v_depth       = bits_per_pixel;
-	    kernBootStruct->video.v_rowBytes    = (SCREEN_W * bits_per_pixel) >> BYTE_SHIFT;
 	} else {
 	    showText = 1;
 	    set_video_mode(2);

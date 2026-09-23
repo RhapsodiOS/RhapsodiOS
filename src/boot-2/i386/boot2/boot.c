@@ -500,11 +500,6 @@ boot(int bootdev)
 		    continue;
 		}
 
-	    if (getBoolForKey("Boot Graphics"))
-	    {
-		wantBootGraphics = YES;
-	    } 
-
 	    if (getBoolForKey(INSTALL_KEY)) {
 		installMode = 1;
 		pickLanguage();

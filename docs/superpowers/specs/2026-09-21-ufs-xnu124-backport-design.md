@@ -54,14 +54,32 @@ Line numbers are from the current tree and were verified individually.
 **1. Refuse to mount a filesystem that was not cleanly unmounted.**
 `fs_clean` is maintained correctly today — set at `ffs_vfsops.c:192`, `739` and
 cleared at `195`, `219`, `675`, `741` — and never once consulted before
-mounting. Two gates, matching xnu-124: the root read-write upgrade at
-`ffs_vfsops.c:203` refuses with `EPERM`, and `ffs_mountfs` refuses any non-root
-filesystem with `EOPNOTSUPP` (this kernel predates the POSIX name `ENOTSUP` that xnu-124 uses; `bsd/sys/errno.h:134` defines only `EOPNOTSUPP`). Written against `kernel-7`'s `mnt_flag &
-MNT_WANTRDWR` (`bsd/sys/mount.h:182`), not xnu's renamed `MNTK_` form.
+mounting. Two gates:
 
-Gating the upgrade rather than the initial read-only mount is what makes this
-safe: the standard boot sequence mounts root read-only, `rc.boot` runs `fsck`,
-and the upgrade then succeeds.
+- `ffs_mountfs` refuses a read-write mount of a non-root filesystem with
+  `EOPNOTSUPP`. This kernel predates the POSIX name `ENOTSUP` that xnu-124 uses;
+  `bsd/sys/errno.h:134` defines only `EOPNOTSUPP`. Read-only mounts are allowed,
+  and that exemption is load-bearing: root is first mounted through this same
+  function before `MNT_ROOTFS` is set (`bsd/kern/init_main.c:579`), so only the
+  `MNT_RDONLY` that `vfs_rootmountalloc` gives it tells the two apart. Without the
+  exemption a dirty root would be refused at boot. xnu-124 has no such exemption.
+- The root read-write upgrade refuses with `EPERM` — but, as in xnu-124, only
+  when the machine was booted single-user. In multi-user it prints a warning and
+  proceeds, so a normal boot is never stranded read-only. `issingleuser()` does
+  not exist here; `boothowto & RB_SINGLE` is its equivalent. Written against
+  `kernel-7`'s `mnt_flag & MNT_WANTRDWR` (`bsd/sys/mount.h:182`), not xnu's
+  renamed `MNTK_` form.
+
+The root gate cannot trust the in-memory `fs_clean`. Rhapsody's `fsck` marks the
+disk clean *without* reloading the root when that is its only repair —
+`src/Commands/diskdev_cmds/fsck.tproj/utilities.c:375-383` saves and restores
+`fsmodified` around the write, and `main.c:413` reloads only if `fsmodified` —
+which is the usual case after a crash. So on the one path that would refuse, the
+gate first rereads the superblock with `ffs_reload`, restores `fs_ronly` (the
+reload copies the on-disk value over it, and may already have done so when it
+fails), and refuses only if the disk is still dirty. xnu-124 forces that reload
+before every upgrade of a read-only filesystem; this port confines it to the
+refusal path, so a normal boot never runs `ffs_reload`.
 
 **2. Release the buffer when `bread` fails during reload.**
 `ffs_reload` returns bare at `ffs_vfsops.c:337` and `:382` without releasing
@@ -75,11 +93,17 @@ this reported three sites including one in `ffs_mountfs`; that was wrong, and
 checking it is the only reason the spec says two.
 
 **3. Reject a fragment size below `DIRBLKSIZ`.**
-Added beside the existing geometry checks at `ffs_vfsops.c:535`. Directory code
-throughout `ufs_lookup.c` assumes entries are packed and rounded per
-`DIRBLKSIZ`; a filesystem with a smaller fragment violates that and fails later,
-deep in directory traversal, instead of at mount. `golden.img` has `fs_fsize`
-1024 against a `DIRBLKSIZ` of 512 and is unaffected.
+Added beside the existing geometry checks in `ffs_mountfs`. `DIRBLKSIZ` is 1024
+in this build, not 512: the kernel compiles with `-D__APPLE__`
+(`conf/Makefile.template:104`), which selects it (`ufs/ufs/dir.h:102-103`).
+xnu-124 builds the same way, so its check is also `fs_fsize < 1024`. The effect
+is to refuse every UFS volume with fragments smaller than 1K — most plausibly one
+made by another BSD, whose 512-byte directory blocks this kernel's directory code
+would misread. `golden.img` has `fs_fsize` 1024 and passes, with no margin.
+
+That cost is accepted deliberately: a Rhapsody volume made with 512-byte
+fragments stops mounting, and a root like that would not boot, because this
+check has no read-only exemption.
 
 **4. Validate the superblock magic before byte-swapping it.**
 The `REV_ENDIAN_FS` path in `ffs_mountfs` at `ffs_vfsops.c:525` swaps the entire
@@ -91,6 +115,16 @@ corruption it first appears to be — but it still mutates a shared buffer that
 another thread can observe, for no reason. xnu-124 swaps only `fs_magic` into a
 local, checks that, and touches nothing else until it knows the volume is
 reverse-endian.
+
+The same block also held a genuine memory-safety bug. It entered
+`byte_swap_sbin` whenever the superblock merely looked wrong — including one with
+native `FS_MAGIC` and an out-of-range `fs_bsize`. `byte_swap_sbin` sizes part of
+its in-place swap from byte-swapped `fs_postbloff`, `fs_cpc` and `fs_nrpos`
+(`ufs/ufs/ufs_byte_order.c:97-101`), which are garbage for a native superblock,
+so a corrupt disk could drive a write outside the buffer. With the magic gate in
+front, the magic is known to be one of the two values, so the block now swaps
+only when it is `FS_MAGIC_SWAPPED`. A native superblock with a bad block size is
+rejected by the ordinary validation that follows.
 
 **5. Refuse `ffs_vget` during an unmount.**
 `ffs_vget` (`ffs_vfsops.c:922`) goes straight to `ufs_ihashget` with no check
@@ -175,9 +209,12 @@ if change 2 is ever suspected, `blkdebug` is the route.
 ## Risks
 
 Change 1 is the only one that alters the behaviour of a working system, and its
-failure mode is a machine that will not come up read-write. The hazard in this
-development loop specifically: a hard-killed QEMU leaves `fs_clean = 0` on that
-work image, and its next boot will refuse the upgrade until `fsck` has run.
+failure mode is a machine that will not come up read-write. The design keeps
+that failure narrow: the non-root gate spares every read-only mount, which is how
+root is first mounted, and the root gate refuses only in single-user. In this
+development loop, a hard-killed QEMU leaves `fs_clean = 0` on that work image; a
+multi-user boot of it warns and carries on, and a single-user boot refuses
+`mount -uw /` until `fsck` has run.
 
 This is recoverable and should be documented in the plan rather than designed
 around — boot single-user and run `fsck`, or discard the work image, which is a

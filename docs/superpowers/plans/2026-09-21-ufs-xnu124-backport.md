@@ -32,12 +32,33 @@ git worktree add .worktrees/ufs-backport HEAD
 - **The serial log is `<outdir>/serial.log`**, where `outdir` is the first argument to `Guest` — not `vm/logs/ahci-serial.log`, which only the `run-*.sh` runners write. The kernel console is on the second serial port; `Guest` wires that to this file.
 - **`Guest` runs with `-snapshot` unless `persist=True`.** Leave snapshots on: writes are discarded at exit, which is exactly what you want when deliberately mounting broken filesystems, and it keeps `work/test.img` reusable between tasks.
 - **Every boot task must export `RHAP_TEST_IMAGE=D:/RhapsodiOS/vm/work/ufs-backport.img` first** (Task 2a added the override). Without it, `Guest` boots the shared `vm/work/test.img` and fights roughly a dozen concurrent sessions for it. The image lives in the main checkout's `vm/work/` because that is where `golden.img` is; the worktree's code reads the absolute path from the variable, so it does not matter that the worktree has no images of its own.
-- **The guest cannot report errno to a script.** The serial console is output-only; input is synthetic keystrokes over QMP and the only output channel is a PNG screenshot. Every refusal added by this plan therefore emits a `printf`, because kernel `printf` does reach the serial log. Do not add a refusal without its log line.
+- **The guest cannot report errno to a script.** The serial console is output-only; input is synthetic keystrokes over QMP and the only output channel is a PNG screenshot. Every operator-facing refusal added by this plan therefore emits a `printf`, because kernel `printf` does reach the serial log. Do not add one without its log line. Task 8's refusal is deliberately silent: it fires when a lookup races an unmount, which nobody can act on.
 - **Every new log line starts with `ffs: `** so the serial log can be grepped.
 - **`graft-kernel.py` writes only to `vm/work/test.img`**, and always from a fresh copy — re-grafting an already-grafted image silently truncates at the shrunken donor size.
 - **Never `git add -A`.** The tree carries many untracked `vm/_*.sh` scratch files. Stage named paths only.
 - **Commits:** `kernel: ` prefix for kernel changes, `vm: ` for tooling, `docs: ` for the spec. One to two lines, no metadata.
 - **Do not port** the `fs_bsize > PAGE_SIZE` check, the `vflush(SKIPSWAP)` two-phase unmount, the `ffs_radvisory` fragment fix, or `extern int prtactive`. The spec's "What does not port" table explains each; the last two would break readahead and the kernel link respectively.
+
+### Deviations recorded during execution
+
+Review of the Task 3-8 code found problems in what this plan specified. The
+code on the branch reflects these decisions; the task text below is left as it
+was originally planned.
+
+- **Task 7 — targeted reload.** As written, the root gate refused `mount -uw /`
+  even after a successful `fsck`, because `fsck` marks the disk clean without
+  reloading the root when that is its only repair. The gate now calls
+  `ffs_reload` on the refusal path only, restores `fs_ronly`, and re-tests. The
+  task's claim that `fsck` "already reloads the root itself" holds only when it
+  repaired something else.
+- **Task 5 — `DIRBLKSIZ` is 1024, not 512**, so the check refuses every volume
+  with fragments below 1K, root included. Kept, as xnu-124 does. The include
+  Step 1 adds was redundant (`ufs/ufs/inode.h:66` already includes `dir.h`) and
+  has been removed.
+- **Task 4 — the swap now runs only for `FS_MAGIC_SWAPPED`**, closing a
+  pre-existing out-of-bounds write that a native superblock with a bad block size
+  could reach.
+- **Task 8 stays silent**; the global rule above was reworded to match.
 
 ### Superblock field offsets
 

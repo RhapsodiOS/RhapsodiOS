@@ -210,10 +210,7 @@ ffs_mount(mp, path, data, ndp, p)
 				 * fsck marks the disk clean without reloading when
 				 * that is its only repair, so this copy may be stale.
 				 */
-				error = ffs_reload(mp, ndp->ni_cnd.cn_cred, p);
-				/* reload copies the on-disk fs_ronly over ours, and may have before failing */
-				fs->fs_ronly = 1;
-				if (error)
+				if (error = ffs_reload(mp, ndp->ni_cnd.cn_cred, p))
 					return (error);
 				if (fs->fs_clean == 0) {
 					printf("ffs: root not cleanly unmounted, refusing read-write upgrade; run fsck\n");
@@ -385,6 +382,7 @@ ffs_reload(mountp, cred, p)
 	bcopy(&fs->fs_csp[0], &newfs->fs_csp[0], sizeof(fs->fs_csp));
 	newfs->fs_maxcluster = fs->fs_maxcluster;
 	bcopy(newfs, fs, (u_int)fs->fs_sbsize);
+	fs->fs_ronly = 1;	/* the copy took the on-disk value; we only reload read-only */
 	if (fs->fs_sbsize < SBSIZE)
 		bp->b_flags |= B_INVAL;
 #if REV_ENDIAN_FS

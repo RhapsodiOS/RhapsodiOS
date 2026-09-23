@@ -97,6 +97,15 @@ class TestCharsToQcodes(unittest.TestCase):
             qemu_shot.chars_to_qcodes("@")
 
 
+class TestUpperCaseKeys(unittest.TestCase):
+    def test_accepts_the_vbe_check_prompt(self):
+        qemu_shot.chars_to_qcodes('"VBE Check"=Yes\n')  # must not raise
+
+    def test_upper_case_is_shifted(self):
+        self.assertEqual(qemu_shot.KEY_MAP["V"], ["shift", "v"])
+        self.assertEqual(qemu_shot.KEY_MAP['"'], ["shift", "apostrophe"])
+
+
 class TestBuildQemuArgs(unittest.TestCase):
     def test_snapshot_and_serial_log_are_present(self):
         args = qemu_shot.build_qemu_args("work/test.img", 1234, False, "out/serial.log")

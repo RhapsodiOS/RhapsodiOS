@@ -66,6 +66,9 @@ for _c in "abcdefghijklmnopqrstuvwxyz":
     KEY_MAP[_c] = [_c]
 for _c in "0123456789":
     KEY_MAP[_c] = [_c]
+for _c in "abcdefghijklmnopqrstuvwxyz":
+    KEY_MAP[_c.upper()] = ["shift", _c]
+KEY_MAP['"'] = ["shift", "apostrophe"]
 KEY_MAP["-"] = ["minus"]
 KEY_MAP["_"] = ["shift", "minus"]
 KEY_MAP["="] = ["equal"]

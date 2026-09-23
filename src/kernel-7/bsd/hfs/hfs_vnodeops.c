@@ -2707,8 +2707,17 @@ struct vop_readdir_args /* {
     DBG_VOP_PRINT_VNODE_INFO(ap->a_vp);DBG_VOP_CONT(("\n"));
     DBG_HFS_NODE_CHECK(ap->a_vp);
 
-    /* We assume it's all one big buffer... */
-    if (uio->uio_iovcnt > 1) DEBUG_BREAK_MSG(("hfs_readdir: uio->uio_iovcnt = %d?\n", uio->uio_iovcnt));
+    /* We assume it's all one big buffer; reject anything else up front,
+     * and require room for at least one whole record before doing
+     * arithmetic on the (unsigned) request size below -- otherwise a
+     * buffer smaller than one record at a misaligned offset underflows
+     * count/uio_resid/iov_len to a huge value.
+     */
+    if (uio->uio_iovcnt > 1 || uio->uio_resid < sizeof(struct hfsdirentry)) {
+        DBG_ERR(("%s: Not enough buffer to read in entries\n",funcname));
+        DBG_VOP_LOCKS_TEST(EINVAL);
+        return (EINVAL);
+    }
 
     origOffset = uio->uio_offset;
     count = uio->uio_resid;

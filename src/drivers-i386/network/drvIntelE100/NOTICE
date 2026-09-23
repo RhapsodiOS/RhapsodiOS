@@ -1,0 +1,49 @@
+drvIntelE100 - acknowledgements and notices
+
+This driver is licensed under the BSD 2-Clause License; see LICENSE. This
+file records what was consulted while writing it, and what was not.
+
+The driver is original work written for RhapsodiOS. No source code from any
+of the works below was copied into it, and none of them is redistributed
+here. Where a decision rests on one of them, the source comment says so.
+
+
+Intel - "8255x 10/100 Mbps Ethernet Controller Family Open Source Software
+Developer Manual", revision 1.0 (January 2003)
+
+    The primary specification: the CSR layout, the SCB, the command and
+    receive units, the command block, TxCB and RFD formats, the configure
+    bytes, the PORT commands, the microwire EEPROM protocol, the MDI and
+    the statistics dump.
+
+
+FreeBSD - sys/dev/fxp (if_fxp.c, if_fxpreg.h, if_fxpvar.h)
+SPDX: BSD-2-Clause
+
+    Consulted for what the SDM leaves out:
+      - the list of device IDs, including the ICH-integrated parts
+      - the EEPROM word map, the 0xBABA checksum and the PHY word bits
+      - the rule for a part's effective revision
+      - the 82557 receive-lockup condition and its recovery
+      - the Dynamic Standby / CU-resume erratum (Intel 82801BA spec
+        update, erratum 30) and its CU NOP workaround
+      - the transmit-threshold policy
+    Its values were written down in this driver's own words and code.
+
+
+Linux - drivers/net/ethernet/intel/e100.c (GPL-2.0)
+
+    Background reading only. Nothing in this driver is copied from it or
+    derived from it, and it was not used as an implementation reference.
+
+
+RhapsodiOS - drvIntel1000 (Pro1000) and drvAHCI
+
+    The in-tree drivers whose conventions this one follows: the bundle
+    and kernel-server layout, the DMA allocation idiom, the interrupt
+    re-enable sequence, and plain-C logic with unit tests run on the build
+    guest.
+
+
+If you copy code from FreeBSD into this tree, its copyright notice and
+licence terms must travel with it. Nothing here relieves that.

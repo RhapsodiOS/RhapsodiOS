@@ -1,0 +1,17 @@
+{
+    DYNAMIC_CODE_GEN = NO;
+    FILESTABLE = {
+        C_FILES = (E100Hw.c, E100Logic.c);
+        CLASSES = (IntelE100.m);
+        H_FILES = (E100Regs.h, E100Logic.h, E100Hw.h, E100Port.h);
+        OTHER_SOURCES = (Load_Commands.sect, Makefile, Makefile.preamble);
+    };
+    LANGUAGE = English;
+    LOCALIZABLE_FILES = {};
+    MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles";
+    NEXTSTEP_BUILDTOOL = /bin/gnumake;
+    NEXTSTEP_INSTALLDIR = "$(NEXT_ROOT)/private/Drivers";
+    PROJECTNAME = IntelE100;
+    PROJECTTYPE = "Kernel Server";
+    PROJECTVERSION = 2.6;
+}

@@ -7,27 +7,24 @@
 # and Makefile.postamble (both optional), and Makefile will include them.
 #
 
-NAME = Intel82557
+NAME = IntelE100
 
-PROJECTVERSION = 5.00
+PROJECTVERSION = 2.6
+PROJECT_TYPE = Aggregate
 LANGUAGE = English
 
-LOCAL_RESOURCES =
+BUNDLES = IntelE100.drvproj
 
-GLOBAL_RESOURCES = Default.table
+OTHERSRCS = Makefile Makefile.preamble
 
-OTHERSRCS = Makefile.preamble Makefile Makefile.postamble
+MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
+CODE_GEN_STYLE = DYNAMIC
+MAKEFILE = aggregate.make
+LIBS =
+DEBUG_LIBS = $(LIBS)
+PROF_LIBS = $(LIBS)
 
-MAKEFILEDIR = /NextDeveloper/Makefiles/app
-MAKEFILE = bundle.make
-INSTALLDIR = /usr/Devices
-INSTALLFLAGS = -c -s -m 755
-SOURCEMODE = 444
-
-LIBS = -lIndexing_s
-PROF_LIBS = -lIndexing_s
-
-
+include $(MAKEFILEDIR)/platform.make
 
 -include Makefile.preamble
 

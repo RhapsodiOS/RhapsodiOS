@@ -361,6 +361,16 @@ direct-colour modes are rejected.
   `VideoModePtr` as `(segment << 16) | offset`, and with a zero segment that
   is the right address. Under a BIOS that returned a non-zero segment it
   would read the wrong memory [inference].
+  **[UPDATED — final review I3: "the wrong memory" understated the worst
+  case, and ours no longer reproduces the defect.** The booter's data
+  segment is flat (`libsaio/table.c:81`), so a ROM list at `C000:xxxx` is
+  read at physical `0xC000xxxx` with no fault. The loop stops only at a
+  `0xFFFF` word or after 89 records. So unassigned MMIO, reading `0xFFFF`,
+  gives zero modes and silently no VBE; RAM or an aperture costs one
+  `int 10h/4F01` per word until a `0xFFFF` turns up [inference, from the
+  code]. Since Task 7b the enumerator runs on every boot. At the user's
+  request ours now forms `segment * 16 + offset`, a forced divergence from
+  this reference defect: see "Final review fixes" at the end.**]**
 - **The on-screen listing matches the records** (`Usable VBE modes:`, three
   per line).
 - **The dumps.** `kbs+0x1854..0x186F` is zero. The array occupies
@@ -1270,6 +1280,11 @@ named here: `vbeModeIsUsable`, `vbeModeIsLargeEnough`, `recordVBEMode` and
 | `compare_flat`, `+212..+328` | `MATCH: 38 instructions, 96 bytes compared, 20 masked, 5 addresses mapped` |
 | outcome | **forced divergence, 1 byte**: the bound constant; every other byte matches |
 
+**[UPDATED — final review I3: this table is Task 6's build.** The final
+booter adds a second forced divergence, the `VideoModePtr` address, and the
+compiler's register choice moves with it. Its comparison is in "Final review
+fixes" at the end.**]**
+
 [measured]
 - **The one byte.** `compare_flat` stops at the first difference, so the
   function was compared again on each side of the 5-byte `cmp` at `+207`
@@ -1332,6 +1347,12 @@ code].
 segment and offset. It goes through `ADDRESS()`, which makes
 `(segment << 16) | offset`. That is the right address only when the segment is
 0, as it was on both QEMU adapters (item 6).
+**[SUPERSEDED — final review I3: fixed at the user's request.** The
+consequence was worse than recorded here (item 6's update: a ROM list is
+read at `0xC000xxxx`, giving zero modes or a long stall), and since Task 7b
+it would happen on every boot. Ours now forms `segment * 16 + offset`, a
+forced divergence from this reference defect. See "Final review fixes" at
+the end.**]**
 
 **The version test.** `cmp word [ebp-1FCh],1FFh; ja` is reproduced, so the
 enumerator accepts `VESAVersion >= 0x200` (item 5). It is not a divergence.
@@ -2595,3 +2616,107 @@ setup exactly):
 - **Nothing regressed.** The same drivers register as in 7b: `hc0`, `hd0`,
   `ISASerialPort0`, `fc0`, `PS2Controller`, `PCKeyboard0`, `PCI0`, `EISA0`,
   `Display0` and `Display1`.
+
+## Final review fixes: `VideoModePtr` and three comments
+
+The final whole-branch review found the enumerator's `VideoModePtr` defect
+(item 6, "The enumerator") recorded without its worst case, and made worse
+by running on every boot (review I3). The user asked for it to be fixed, as a
+labelled forced divergence. Three source comments the review listed as
+"record now, source later" were corrected in the same build.
+
+**The source.**
+- **`libsaio/vbe.c`, the enumerator.** `modes` is now `((byte 3 << 8 | byte
+  2) << 4) + (byte 1 << 8 | byte 0)` of `VideoModePtr`: segment * 16 +
+  offset, the real-mode address. It is labelled on the line as a forced
+  divergence from a 4.2 reference defect, fixed at the user's request.
+  `ADDRESS()` stays, for `PhysBasePtr` in `recordVBEMode`.
+- **Comments only:**
+  - `libsaio/vbe.h:102` cited `boot+27707`, the frame's `sub esp,308h`. It
+    now cites `boot+27763`, the `lea eax,[ebp-200h]` that passes the
+    0x200-byte block to `getVBEInfo`.
+  - `libsa/kernBootStruct.h:164`: "90 records (0x880 bytes from 0x1870)"
+    is now "90 records (0x870 bytes from 0x1870; the driver scans 0x880
+    bytes from there)". 90 records of 24 bytes are `0x870`; `0x880` is the
+    driver's scan size. The kernel's copy (`machdep/i386/kernBootStruct.h`)
+    carries the same text, changed in the kernel's commit.
+  - `boot2/boot.c:318-321`: "configTable is valid here" now names its one
+    exception. With the config area full, `loadOtherConfigs`' second
+    `loadConfigDir` leaves `configTable` at the freed block, the 4.2
+    reference defect Task 7c kept.
+
+**The build, `tfin1`** [measured]:
+- `rbuild`, after `vm/sync-src.ps1 -Path boot-2`. The guest's `cksum`s equal
+  the local ones: `vbe.c` `1992008536 10243`, `vbe.h` `842440211 6671`,
+  `kernBootStruct.h` `3566834117 7885`, `boot.c` `1951567425 19438`.
+  `stringTable.c`, `drivers.c` and `graphics.c` are `t7c2`'s.
+- **`booter 45008 bytes of 45056, 48 to spare`**, as `t7c2`. `size` gives
+  the same `__TEXT` (44,128) and `__DATA` (4,080), and `nm -n` lists every
+  symbol at `t7c2`'s address.
+- `boot`: `sum 64283 44`, `cksum 3006998098 45008`, SHA-256
+  `8B06C0A3B1F3B2FB07353F83FA87025370FAAB05AEFD0035FB76CD2C1BB8F675`.
+- `boot.sys`: `sum 46472 1054`, `cksum 1500543729 1078648`, SHA-256
+  `2AFA0646205B54EE5BE16CDC0C697832AB426698EC752BE6FAA9E0A874C04C48`.
+- Guest and local sums agree; the package's `boot` is `cmp`-identical to the
+  copy, and so is `macho2flat` of `boot.sys`. Kept as `vm/work/tfin-boot`
+  and `vm/work/tfin-boot.sys`.
+- No new warnings. `boot.c`'s old ones moved two lines down.
+- **Against `t7c2`'s `boot`, 192 bytes differ, all inside the enumerator**
+  (`0x69FB..0x6B27`). The comment edits changed no byte of `boot`.
+
+**The enumerator against 4.2** [measured]:
+
+| | |
+| --- | --- |
+| reference | `boot+27704..28031`, 328 bytes (`0x9C38`) |
+| ours | `_enumerateVBEModes`, `0x69E0`, 328 bytes (next: `_set_linear_video_mode` at `0x6B28`) |
+| `compare_flat`, whole | `MISMATCH +26: branch to +314 \| +315`: the epilogue is one byte later |
+| `compare_flat`, `+0..+26` | `MATCH: 9 instructions, 17 bytes compared, 9 masked, 2 addresses mapped` |
+| `compare_flat`, `+31..+106` | `MATCH: 15 instructions, 61 bytes compared, 14 masked, 4 addresses mapped` |
+| Task 7c's aligner, the address block set aside | aligned: 181 bytes equal, 52 masked, **1 differs** (the cap); unaligned: 52 reference-only and 51 ours-only bytes |
+| outcome | **two forced divergences**, the cap and the address, plus the register choice that follows from the address |
+
+Every byte, accounted:
+- **The address block**, 4.2 `+106..+147` (42 bytes) against ours
+  `+106..+148` (43 bytes).
+  - 4.2: `mov bl,[ebp-1EFh]; shl ebx,18h`, then bytes 2, 1 and 0 shifted by
+    16, 8 and 0 and `or`ed in: `(segment << 16) | offset`.
+  - Ours: `movzx ebx,[ebp-1EFh]; shl ebx,8; movzx eax,[ebp-1F0h]; or
+    ebx,eax; shl ebx,4`, then `movzx eax,[ebp-1F1h]; shl eax,8; movzx
+    edx,[ebp-1F2h]; or eax,edx; add ebx,eax`: segment * 16 + offset, in
+    `ebx` as before.
+- **The cap**, 1 byte, `cmp eax,897h` against `cmp eax,880h` at `+207` |
+  `+208`: Task 6's.
+- **The register choice**, 51 bytes on each side in six groups. Where 4.2
+  uses `edx` as the loop's scratch register, ours uses `ecx`: the `lea` and
+  its spill (`+179` | `+180`), `mov`/`sub`/`mov` before the cap (`+201` |
+  `+202`), the three `mov r,[ebp-308h]; push r` (`+214`, `+238`, `+257` |
+  `+215`, `+239`, `+258`), and the tail's `mov r,[ebp-304h]; mov
+  [vbeModeCount],r` (`+296` | `+297`). The lengths are equal and only the
+  register fields differ [measured]. The address block now holds a value in
+  `edx`, so the allocator took `ecx` for the loop [inference].
+- **The pad.** 4.2 has one `nop` at `+327`; ours has none. The extent is
+  328 on both sides.
+- **The branches the aligner flags** land at corresponding points: the `ja`
+  at `+87` to the address block's first instruction (`+106` on both sides),
+  and the loop's two exits (`+177` | `+178`, `+212` | `+213`) to the tail's
+  first instruction (`+296` | `+297`), one of the register-swapped ones.
+  The two `jmp`s to the epilogue (`+26`, `+101`) land at `+314` | `+315`.
+- **The mapped addresses** name, by our `nm`, `_vbeModeIsLargeEnough`,
+  `_recordVBEMode`, `_getVBEInfo`, `_getVBEModeInfo`, `_kernBootStruct` and
+  `_vbeModeCount`.
+- **Calibration.** The same aligner on `t7c2`'s enumerator finds only the
+  cap: 271 bytes equal, 56 masked, 1 differs, nothing unaligned.
+
+**Behaviour** [inference, from the code]. With segment 0 both forms give the
+same address, so QEMU's adapters (`0000:FD1A`, item 6) see no change; the
+G2 boot re-run on the final artifacts shows it (`$GATE`, "After the gates:
+the final booter and kernel"). A non-zero segment is not exercised: there is no such adapter here,
+and no hardware.
+
+**Nothing else moved** [measured, `tfin1`]. Task 7c's comparisons
+(`pairs7c.py`: 42 functions and `execKernel`'s two VBE blocks) give `t7c2`'s results and counts, addresses aside, except the
+enumerator. `execKernel`'s lookup is `MATCH: 37 instructions, 70 bytes
+compared, 41 masked, 8 addresses mapped` and its set block `13/26/14/4`;
+`getBootString` is `MATCH: 255 instructions, 652 bytes compared, 277 masked,
+35 addresses mapped`.

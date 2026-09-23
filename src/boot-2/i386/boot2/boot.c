@@ -318,7 +318,9 @@ insert_again:
 	 * configTable is valid here: loadOtherConfigs, rebuilt from 4.2
 	 * (boot+18813..18858), points it at the driver's tables in
 	 * kernBootStruct->config, and pickDrivers, in a forced divergence from
-	 * 4.2, points it at addConfig's copy there.
+	 * 4.2, points it at addConfig's copy there. One exception, a 4.2
+	 * reference defect kept: when the config area is full, loadOtherConfigs'
+	 * second loadConfigDir leaves configTable at the freed block.
 	 */
 	vbeMode = 0;
 	enumerateVBEModes();

@@ -143,14 +143,18 @@ enumerateVBEModes(void)
     }
 
     /*
-     * Reference defect, reproduced: VideoModePtr is a real-mode segment and
-     * offset, but it is used as (segment << 16) | offset. That is the right
-     * address only when the segment is 0.
+     * FORCED DIVERGENCE from a 4.2 reference defect, fixed at the user's
+     * request: VideoModePtr is a real-mode segment and offset, and 4.2 uses
+     * it as (segment << 16) | offset (boot+27810..27851), the right address
+     * only when the segment is 0. A BIOS that keeps its mode list in its
+     * own ROM, at C000:xxxx, would be read at 0xC000xxxx instead, and since
+     * this runs on every boot, on every boot. Ours takes the real-mode
+     * address, segment * 16 + offset.
      */
-    modes = (unsigned short *)ADDRESS(vinfo.VideoModePtr_low,
-				      vinfo.VideoModePtr_1,
-				      vinfo.VideoModePtr_2,
-				      vinfo.VideoModePtr_high);
+    modes = (unsigned short *)
+	((((unsigned long)vinfo.VideoModePtr_high << 8 |
+	   vinfo.VideoModePtr_2) << 4) +
+	 ((unsigned long)vinfo.VideoModePtr_1 << 8 | vinfo.VideoModePtr_low));
     rec = kernBootStruct->vbeModes;
     count = 0;
     for (i = 0; modes[i] != 0xFFFF; i++) {

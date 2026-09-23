@@ -559,6 +559,11 @@ OSStatus	CheckNode	(BTreeControlBlockPtr	 btreePtr, NodeDescPtr	 node )
 		if (offset >= nodeSize)						// offset beyond end of node
 			return fsBTInvalidNodeErr;
 		
+		if ( (node->type == kLeafNode) &&
+			 (index < node->numRecords) &&				/* ignore free space record */
+			 (CalcKeySize(btreePtr, (KeyPtr) ((Ptr)node + offset)) > (UInt16)(prevOffset - offset)) )
+			return fsBTInvalidNodeErr;					// key overflows its record slot
+		
 	} while ( --index >= 0 );
 	
 	

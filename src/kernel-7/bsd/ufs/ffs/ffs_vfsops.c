@@ -94,6 +94,8 @@
 #include <architecture/byte_order.h>
 #endif /* REV_ENDIAN_FS */
 
+#define	FS_MAGIC_SWAPPED	0x54190100	/* FS_MAGIC, bytes reversed */
+
 int ffs_sbupdate __P((struct ufsmount *, int));
 
 struct vfsops ufs_vfsops = {
@@ -523,6 +525,15 @@ ffs_mountfs(devvp, mp, p)
 	if (error = bread(devvp, (ufs_daddr_t)(SBOFF/size), SBSIZE, cred, &bp))
 		goto out;
 	fs = (struct fs *)bp->b_data;
+	/*
+	 * Refuse anything that is not FS_MAGIC in one byte order or the
+	 * other before byte_swap_sbin() rewrites the whole superblock.
+	 */
+	if (fs->fs_magic != FS_MAGIC && fs->fs_magic != FS_MAGIC_SWAPPED) {
+		printf("ffs: superblock magic invalid, refusing\n");
+		error = EINVAL;		/* XXX needs translation */
+		goto out;
+	}
 #if REV_ENDIAN_FS
 	if (fs->fs_magic != FS_MAGIC || fs->fs_bsize > MAXBSIZE ||
 	    fs->fs_bsize < sizeof(struct fs)) {

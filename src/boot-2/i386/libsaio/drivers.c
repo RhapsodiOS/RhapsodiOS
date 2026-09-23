@@ -41,8 +41,8 @@
 
 static void sort_names(struct driver_info *, int);
 extern char *LoadableFamilies;
-static struct driver_info *loaded_drivers;
-static int num_loaded;
+struct driver_info *loaded_drivers;	/* read by execKernel, as in 4.2 */
+int num_loaded;
 extern BOOL errors;
 
 static inline int isspace(char c)

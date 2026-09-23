@@ -50,7 +50,6 @@ const struct bitmap *panel;
 
 static BOOL loadAllBitmaps( void );
 static font_t *loadFont(char *fontname);
-int convert_vbe_mode(char *mode_name, int *mode);
 
 void
 message(
@@ -216,14 +215,12 @@ typedef struct {
     int  mode_val;
 } mode_table_t;
 
+/* 4.2's table (0xD7C8): no x16 modes */
 mode_table_t mode_table[] = {           
 { "640x400x256",   mode640x400x256 },
 { "640x480x256",   mode640x480x256 },
-{ "800x600x16",    mode800x600x16 },
 { "800x600x256",   mode800x600x256 },
-{ "1024x768x16",   mode1024x768x16 },
 { "1024x768x256",  mode1024x768x256 },
-{ "1280x1024x16",  mode1280x1024x16 },
 { "1280x1024x256", mode1280x1024x256 },
 { "640x480x555",   mode640x480x555 },
 { "640x480x888",   mode640x480x888 },
@@ -235,24 +232,35 @@ mode_table_t mode_table[] = {
 { "1280x1024x888", mode1280x1024x888 },
 { "", 0 }};
 
-int convert_vbe_mode(char *mode_name, int *mode)
+/*
+ * OPENSTEP 4.2 User Patch 4's convert_vbe_mode (boot+4480..4595): a name
+ * from mode_table or, failing that, the leading decimal digits. 0 if neither.
+ */
+void convert_vbe_mode(char *mode_name, int *mode)
 {
     mode_table_t *mtp = mode_table;
+    char *cp;
 
+    *mode = 0;
     if (mode_name == 0 || *mode_name == 0)
-	return 0;
+	return;
 
     while (*mtp->mode_name)
     {
 	if (strcmp(mtp->mode_name, mode_name) == 0)
 	{
 	    *mode =  mtp->mode_val;
-	    return 1;
+	    return;
 	}
 	mtp++;
     }
-    return 0;
-
+    /* if and do-while: a for or while loop does not give 4.2's boot+4550 */
+    if (*mode_name >= '0' && *mode_name <= '9') {
+	cp = mode_name;
+	do
+	    *mode = *mode * 10 + *cp++ - '0';
+	while (*cp >= '0' && *cp <= '9');
+    }
 }
 
 

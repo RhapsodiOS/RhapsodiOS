@@ -1791,6 +1791,9 @@ them** (whole extents):
   `graphics.c`, now with no caller, and `G_MODE_KEY` stays in `boot.h`,
   unused. 7b rebuilds `convert_vbe_mode` for the `VBE Mode` key (4.2's
   `boot+4480`) and decides `G_MODE_KEY`.
+  **[UPDATED — Task 7b: `convert_vbe_mode` and `mode_table` are kept and
+  rebuilt, since 4.2's `execKernel` calls them; `G_MODE_KEY` is gone. See
+  "Task 7b".]**
 - **`boot.c:503-506`**, `boot()`'s second `Boot Graphics` test, is removed,
   with the blank line after it.
   - `getBootString`'s test (`boot.c:626-640` now) is the only one left, as
@@ -1943,3 +1946,384 @@ is linked. The check above, for `t7a2`, is the one that applied.
       is a finding at 15 s. The frames were not a pass criterion here.
 - **The default boot's serial** equals the verbose boot's, phantom lines
   aside. The kernel's serial console does not show the difference.
+
+---
+
+## Task 7b: the VBE path in the boot flow
+
+7b adds 4.2's `VBE Mode` lookup and mode set to `execKernel`, the `VBE Check`
+listing and the adapter warning to `getBootString`, and rebuilds
+`convert_vbe_mode`. Stages 1 and 2 of Task 7 are 7a's.
+
+**Method.**
+- Each build is `rbuild` as in 7a, after `vm/sync-src.ps1 -Path boot-2`. The
+  copy of `boot-64-2.sym/i386` waits for a `boot.sys` newer than the build's
+  start.
+  - Every binary was checked by its guest `sum` and `cksum`, recomputed
+    locally from the decoded bytes.
+  - The package's `boot` is `cmp`-identical to the copy, and so is
+    `macho2flat` of the copied `boot.sys`.
+  - The guest printed each touched source's `cksum` before building. They
+    equal the local ones.
+- **Four builds.** `t7b1` wired the path. `t7b2` and `t7b3` changed only the
+  source shape of two loops, to reach 4.2's code. `t7b3` is the booter every
+  boot below ran. `t7b4` adds one comment and builds the same `boot`.
+- `compare_flat.py` ran with both images at base `0x3000`. The trailing pad
+  was stripped on both sides, and the pads were then compared by eye.
+- **Loop variants.** They were compiled standalone on the guest, with
+  `/usr/bin/cc` (`cc-783.1`, gcc 2.7.2.1) and the build's flags. The build
+  log's `graphics.c` line shows the same flags: `-O2 -arch i386 -g -Wmost
+  -Wno-precomp -munaligned-text -static`. The standalone compile of the
+  `t7b2` shape gives the `t7b2` build's code, so it stands for the build.
+
+### What changed in the source
+
+- **`execKernel`** (`boot.c`):
+  - 4.2's lookup (`boot+949..1059`) comes after the floppy check and before
+    the `errors` pause. It sets `vbeMode = 0` and calls `enumerateVBEModes()`
+    unconditionally.
+  - It then scans `loaded_drivers` for the first `configTable` that has
+    `VBE Mode`. When one does, it passes `newStringForKey("VBE Mode")`, or
+    failing that the driver's value, to `convert_vbe_mode`.
+  - 4.2's set block (`boot+1224..1263`) comes after APM, immediately before
+    `startprog`: `if (vbeMode) { setMode(TEXT_MODE); if
+    (set_linear_video_mode(vbeMode)) sleep(5); }`.
+- **`getBootString`** (`boot.c`): 4.2's `VBE Check` block (`boot+2556..2879`)
+  sits inside `!isKernel(cp)`, after the `printf("\n")` and before the
+  `config` lookup.
+  - `"VBE Check"=Yes` or `=yes` enumerates.
+  - If there are modes, it prints `Usable VBE modes:` and three per line, in
+    `localPrintf`'s `%d = %dx%dx%s     ` format. Otherwise it prints `The VBE
+    video driver can not be used with this display adapter.`
+  - Either way it prompts again (`goto top`).
+- **`convert_vbe_mode`** (`graphics.c`, `boot+4480..4595`):
+  - It returns `void` and stores `*mode = 0` first.
+  - It tries `mode_table`, then the leading decimal digits.
+  - `mode_table` loses its three `x16` entries. That gives 4.2's 13 entries
+    in 4.2's order (`0xD7C8`, item 1): 340 to 280 bytes.
+- **`libsaio/drivers.c`**: `loaded_drivers` and `num_loaded` lose `static`,
+  and `drivers.h` declares them.
+- **`boot.h`**: `G_MODE_KEY` (`"Graphics Mode"`) gives way to `VBE_MODE_KEY`
+  (`"VBE Mode"`). `graphics.h` gains `convert_vbe_mode`'s prototype, in place
+  of the local one in `graphics.c`.
+
+**The orphan rule, applied** [measured, `grep` and `nm`].
+- **`convert_vbe_mode` and `mode_table` are kept.** 4.2's `execKernel` calls
+  `convert_vbe_mode` (`boot+1052`), and that reads the table at `0xD7C8`.
+- **`G_MODE_KEY` is removed.** `grep -rn G_MODE_KEY src/boot-2` found no user
+  after 7a.
+- **`util/spin_cursor.h`**, left with no includer by 7a, is removed in its own
+  commit. `git grep spin_cursor` finds only this record.
+
+**`loaded_drivers` and `num_loaded` are commons in 4.2 too**
+[measured: addresses; inference: 4.2's linkage].
+- In `t7b3`, our `__common` holds, in alphabetical order:
+  - `driverMissing` at `0xE464`, `errors` `0xE468` and `gFilename` `0xE46C`;
+  - `loaded_drivers` `0xE470` and `num_loaded` `0xE474`;
+  - `sysConfigValid` `0xE478`, `useDefaultConfig` `0xE47C`, `verbose_mode`
+    `0xE480` and `wantBootGraphics` `0xE484`.
+- These are 4.2's addresses for the same names (item 1, and the address map
+  of `getBootString` below). 4.2's run is alphabetical as well, which is how
+  the linker lays out commons.
+
+### The comparisons, in `t7b3` [measured]
+
+| 4.2 function | extent | ours (`t7b3`) | `compare_flat` | outcome |
+| --- | --- | --- | --- | --- |
+| `convert_vbe_mode` | `boot+4480..4595`, 116 | `_convert_vbe_mode`, `0x403C`, 116 | `MATCH: 50 instructions, 95 bytes compared, 20 masked, 2 addresses mapped` | **byte parity** |
+| `getBootString` | `boot+2244..3175`, 932 | `_getBootString`, `0x37F4`, 932 | `MATCH: 255 instructions, 652 bytes compared, 277 masked, 35 addresses mapped` | **byte parity**, the whole function |
+| `execKernel`, the lookup | `boot+949..1059`, 111 | `0x33A1`, 111 | `MATCH: 37 instructions, 70 bytes compared, 41 masked, 8 addresses mapped` | **byte parity** |
+| `execKernel`, the set | `boot+1224..1263`, 40 | `0x34B4`, 40 | `MATCH: 13 instructions, 26 bytes compared, 14 masked, 4 addresses mapped` | **byte parity** |
+| `execKernel`, whole | `boot+184..1287`, 1104 | `_execKernel`, `0x30B8`, 1084 | aligner: 665 bytes equal, 409 masked, 0 differ | differs outside the VBE blocks only (below) |
+
+- **The pads match**: `90` for `convert_vbe_mode`, and `90 90 90` for
+  `getBootString`.
+- **Every mapped value names the expected symbol** by our `nm`. None is a
+  non-address.
+  - `convert_vbe_mode`: `strcmp` and `mode_table`.
+  - `execKernel`'s lookup: `enumerateVBEModes`, `getValueForStringTableKey`,
+    `newStringForKey`, `convert_vbe_mode`, `loaded_drivers`, `num_loaded`, the
+    `"VBE Mode"` string, and the block's exit.
+  - `execKernel`'s set: `setMode`, `set_linear_video_mode`, `sleep`, and the
+    block's exit.
+  - `getBootString`: 13 functions, `timeout`, `kernBootStruct`, five
+    commons, and 15 strings. The five commons are `errors`, `sysConfigValid`,
+    `useDefaultConfig`, `verbose_mode` and `wantBootGraphics`, at 4.2's own
+    addresses.
+  - **The 15 strings hold the same bytes on both sides.** Among them are
+    `VBE Check`, `Usable VBE modes:\n`, `888`, `555`, `256`, `%d = %dx%dx%s
+    `, `" "` and the adapter warning.
+- **`getBootString`'s other constants lie outside the masking window**, and
+  are compared: `lea edi,[ebx+1870h]`, `add ebx,1876h`, `cmp word
+  [ebx-2],3E7h` and `mov edi,3`.
+- **`execKernel` outside the VBE blocks.** The only unaligned code is 4.2's
+  standalone-linker retry loop (`boot+566..586`, 20 bytes): 4.2 prompts for a
+  linker floppy and retries, where ours prints an error and goes on. That
+  loop causes one register choice, `edi` against `edx` for `linkerPath` (10
+  bytes). This difference predates spec 3 and is not VBE code, so it is left
+  as it is.
+
+**How the source reaches 4.2's code.**
+- **The listing walks a pointer**: `for (i = 0; i < count; i++, vmr++)`, with
+  `vmr->` fields.
+  - `t7b1` indexed `vmr[i]`. That gave `[esi+ebx+disp]` addressing, and a
+    function 16 bytes shorter.
+  - 4.2 keeps `vmr` in `[ebp-0B4h]`, and a second register, `ebx`, at
+    `vmr + 6`.
+  - 4.2 increments `esi` (`i`), then `ebx`, then `[ebp-0B4h]`. That order is
+    a giv of the pointer biv, updated before the biv, after `i++` [inference,
+    from the order].
+  - With the pointer loop the whole function matches, including 4.2's use of
+    `edi` as scratch and its `sub esp,0B4h`.
+- **The decimal parse is an `if` and a `do`-`while` on a copy of
+  `mode_name`.**
+  - Nine `for` and `while` shapes all compile to a `jmp` into a test at the
+    bottom of the loop [measured, the standalone compiles]. They covered
+    loops on `mode_name` and on a copy, and several ways of writing the
+    arithmetic.
+  - Only the `if` and `do`-`while` form gives 4.2's test on `[edi]`, `ja`,
+    `mov ecx,edi`, `movsx eax,byte [ecx]` and `inc ecx`.
+  - Why the `for` and `while` shapes do not get 4.2's entry test was not
+    determined.
+- **The lookup's `found` flag** gives 4.2's `xor ecx,ecx; test ecx,ecx; je`
+  at `boot+1020` as written: a `found = 0` flag, set to 1 before `break`.
+- **`vbeVal` and `vbeLen` are their own locals**, at 4.2's `[ebp-14h]` and
+  `[ebp-18h]`, and `vbeMode` is at `[ebp-1Ch]`.
+
+**Reference defects, reproduced and labelled on the line.**
+- **`VBE Check` reads `count` when the key is absent.**
+  `getValueForBootKey` does not set `*len` on failure
+  (`libsaio/stringTable.c:321-347`), and 4.2 tests `count > 0` without
+  setting it first (`boot+2600`). On the first pass `count` is uninitialised,
+  and later it is stale. A positive value reads `*val` with `val` = 0 [measured
+  code; candidate defect, not observed].
+- **A mode name in a driver's table never matches** (item 4). The driver's
+  value is not NUL-terminated, so `strcmp` fails, and only digits parse
+  [inference, as item 4].
+
+### A divergence 7b exposes: the driver's table pointer [measured code; not fixed]
+
+**4.2's lookup reads `loaded_drivers[i].configTable`** (`boot+986..991`).
+- **4.2's `loadOtherConfigs` points that at persistent memory** [measured,
+  `boot+18808..18858`]:
+  1. after a driver loads and links, it frees the `malloc`ed table
+     (`boot+18817`);
+  2. it calls `loadConfigDir(name, useDefault, &table, NO)` (`boot+18841`),
+     which reads the tables into `kernBootStruct->config` and points `table`
+     there;
+  3. it passes that pointer to `driverWasLoaded` (`boot+18853`), and only for
+     a driver that linked.
+- **Ours passes the `malloc`ed table and then frees it**
+  (`libsaio/stringTable.c:727-729`). `addToLoadedDriverList` stores the
+  pointer (`libsaio/drivers.c:853`).
+  - So our lookup reads freed `zalloc` memory [measured source].
+  - `malloc` hands out the lowest free block first and zeroes it
+    (`libsa/zalloc.c:98-125`). A driver's table therefore stays readable only
+    until a later allocation reuses its block [inference].
+- **Before 7b nothing read `configTable` from `loaded_drivers`** [measured,
+  `grep`]. `drivers.c:152-156` reads `bundle`, `version` and `locationTag`.
+- **Why the boots below work** [inference].
+  - `install-driver.py` appends `VBE20DisplayDriver` to `Boot Drivers`, so
+    its table is the last one freed.
+  - Nothing allocates between that free and the lookup, unless
+    `loadBootDrivers` runs, which needs `Ask For Drivers` or a missing
+    driver.
+- **Where it would fail** [inference]:
+  - a driver installed first (`install-driver.py --first`, G5's negative
+    control);
+  - a boot that runs `loadBootDrivers`.
+  - In those cases the lookup may miss `VBE Mode`, or read another driver's
+    table.
+- **This is not changed here.** It is in `loadOtherConfigs`, outside Task
+  7's functions. The source labels it at the lookup. The fix would be to
+  rebuild 4.2's `loadOtherConfigs` tail, which changes when
+  `driverWasLoaded` runs. That is the user's call.
+  - Ours is 612 bytes (`t7b3`), 4.2's 716.
+  - 4.2's also has a `Query` prompt that ours lacks.
+
+### Step 2: the write order, in `t7b3` [measured]
+
+- **Where VBE-area addresses are formed.** A scan of `__text` for a
+  displacement or immediate in `0x1840..0x20D7` finds them in:
+  - `enumerateVBEModes`: `add edi,1870h` (`0x6A7A`) and `add eax,1840h`
+    (`0x6AA4`, the bound's base);
+  - `set_linear_video_mode`: `add edi,1858h` (`0x6B48`);
+  - `getBootString`: `lea edi,[ebx+1870h]` (`0x3992`) and `add ebx,1876h`
+    (`0x39B9`). These are the listing's two pointers, and it only loads and
+    compares through them.
+  - The scan's other hits are Task 7a's unrelated constants: the `0x2000`
+    buffers, `0x1BFF` and `0x1E5C`.
+- **The stores go through `recordVBEMode`.** It is called from
+  `enumerateVBEModes` (`0x6AEE`) and from `set_linear_video_mode`
+  (`0x6C0F`).
+- **Who calls the two writers** (all direct calls):
+  - `enumerateVBEModes` is called from `execKernel` (`0x33A8`),
+    `getBootString` (`0x3979`) and `set_linear_video_mode` (`0x6B4E`);
+  - `set_linear_video_mode` is called only from `execKernel` (`0x34C6`).
+- **`execKernel` and `getBootString` are called only from `boot()`**, at
+  `0x37A7` and `0x367C`, inside its loop.
+- **`boot()` calls `getKernBootStruct` first.** It does so at `0x3564`, on its
+  straight-line entry, after `zeroBSS`, `setA20` and `setMode(0)` (`0x355F`).
+  `setMode` calls none of the VBE functions.
+- **So every store into `vbeCurrentMode` or `vbeModes` runs after
+  `getKernBootStruct()`.** The call paths are:
+  - `boot` → `execKernel` → `enumerateVBEModes` / `set_linear_video_mode` →
+    `recordVBEMode`;
+  - `boot` → `getBootString` → `enumerateVBEModes` → `recordVBEMode`.
+
+### Task 6's functions and the panel path, compared again in `t7b3` [measured]
+
+- **Task 6's functions** show Task 6's counts:
+  - the mode-attributes test, `82/10`, the 640x480 test, `34/6`, and the
+    record writer, `148/0` (whole extents);
+  - the enumerator, `+0..+207` and `+212..+328` `MATCH`. The whole compare
+    stops at `+207` on the 89-record cap.
+- **The setter** gives the same results as in 7a:
+  - whole, `MISMATCH size 432 | 444`;
+  - both splits `MATCH` with Task 6's counts;
+  - the aligner, the palette block set aside: 289 equal, 124 masked, 5 differ
+    (the `0x104` to `0x504` frame bytes); 1 reference-only pad byte.
+- **The palette block's push** is now `0xD674`, `_appleClut8`.
+- **The eye check.** `25 FF FF 00 00` is at setter `+180`.
+- **Every mapped address names its symbol**, as in 7a.
+- **All 23 of Task 3b's panel-path functions, and `putchar`, still
+  `MATCH`**, with 7a's counts.
+- `vbe.o` is linked again. It is 1,720 bytes, `0x68C8..0x6F80`.
+
+### Step 3: size [measured]
+
+**`t7b3`, the final 7b booter:**
+- **`booter 44848 bytes of 45056, 208 to spare`.**
+- `boot`: `sum 30758 44`, `cksum 3293856388 44848`, SHA-256
+  `155DEA4F6F04ABBD4FE3BCDECD5F190A7C33E586186A79AB7B04A6EE755E342F`.
+- `boot.sys`: `sum 52318 1053`, `cksum 3392918704 1078248`, SHA-256
+  `19CB212D441C805A6B6ACCBF572C0E91F5FCBF32C9D6F60E3E4770C6DCFD12C3`.
+- **`t7b4`, the commit's sources.** It adds only the comment that labels the
+  `configTable` divergence at the lookup (below).
+  - Its `boot` is `cmp`-identical to `t7b3`'s, and its `nm -n` is identical.
+  - Its `boot.sys` differs in the debug stabs only: `sum 16215 1053`, `cksum
+    3880992221 1078248`, SHA-256
+    `71873FB86199D0B86967BEB2ADF78E2663EACBFC550DA02FAE3BE94C96301289`.
+    `macho2flat` of it equals `boot`.
+- They are kept as `vm/work/t7b-boot` (`t7b3`, which equals `t7b4`) and
+  `vm/work/t7b-boot.sys` (`t7b4`).
+- **Warnings**: none new in the touched files.
+
+| section | `t7a3` | `t7b3` | delta |
+| --- | --- | --- | --- |
+| `__text` | 36,037 | 38,257 | +2,220 |
+| `__cstring` | 3,991 | 4,322 | +331: the setter's six messages (197) and 7b's strings (134) |
+| `__const` | 616 | 1,384 | +768: `appleClut8` |
+| `__data` | 932 | 876 | -56: `mode_table` -60, `vbeModeCount` +4 |
+| `boot` | 41,600 | 44,848 | **+3,248** |
+
+**The `__text` delta, by `nm` extent:**
+- `vbe.o` +1,720;
+- `getBootString` +316 (616 to 932);
+- `execKernel` +152 (932 to 1084): 4.2's two VBE blocks are 151;
+- `convert_vbe_mode` +32 (84 to 116).
+
+That is 2,220.
+
+**Against 7a's projection** [arithmetic]:
+- 7a projected about 176 spare. It counted the rows `execKernel` +172,
+  `getBootString` +324, `convert_vbe_mode` +32, the name table -60 and
+  strings +134.
+- The measured rows are +152 and +316. `execKernel`'s other 20 are 4.2's
+  linker loop, which is not rebuilt. `getBootString`'s 324 was the block
+  alone, against a whole-function delta of 316.
+- The difference, and `__TEXT`'s rounding, leave 208.
+
+### Step 4: the VBE boot with spec 2's kernel [measured]
+
+**Setup.**
+- `vm/work/test.img` was rebuilt from `$GOLDEN` before every boot:
+  - `$GOLDEN` hashed `E1968E3E...0E663879F`;
+  - `$KSPEC2` was grafted. It hashed `74B12FCD...25CFF4`, and it read back as
+    `/mach_kernel`, 1,490,352 bytes, with the same hash;
+  - `$DRV` was installed. Its `_reloc` read back as `77399531...A36A1`, which
+    is `DRVSHA`. `Default.table`, the binary and `Localizable.strings` read
+    back equal;
+  - then `install-booter.py` wrote `vm/work/t7b-boot`, and both slots read
+    back as the booter followed by zeros.
+- **The config.**
+  - `Boot Drivers` = `EIDE ISASerialPort Floppy PS2Keyboard PCIBus EISABus
+    VBE20DisplayDriver`.
+  - The installed `Instance0.table` has `"VBE Mode" = "257"`.
+  - System.config has no `VBE Mode`.
+- **The runs**, each on `--vga cirrus`, with `--pmemsave 30:0x11000:0x2200`:
+  - `vm/shots-t7-vbe`: no keys, `--at 5,15,30,60,95`;
+  - `vm/shots-t7-vbe-verbose`: `--keys $'mach_kernel -v\n' --keys-at 8`;
+  - `vm/shots-t7-vbe-fallback` (below).
+
+**The default boot, and the verbose one.**
+- **5 s**: `Rhapsody boot v5.0.2`. The frame is `276180227B36...`, the frame of
+  Tasks 3, 5 and 7a.
+- **The dump at 30 s**, the same in both boots except `bootString` (offsets
+  2..4):
+  - `vbeCurrentMode` (6232): mode 257, attributes `0xBB`, 640x480, 640 bytes
+    per line, 8 bpp, model 4, frame buffer `0xFC000000`;
+  - `vbeModes`: **8 records**, 257, 272, 259, 275, 261, 278, 263 and 281.
+    Each has frame buffer `0xFC000000`. Record 8's `xResolution` is zero, as
+    is everything from the ninth record up to `0x20D8`;
+  - `video` (8408..8431): all zero;
+  - `vbeFrameBuffer` (6228): zero;
+  - `graphicsMode` (`kbs+0x14C`): **0** in both boots. The default boot had
+    the panel up (7a), so this 0 is the setter's store.
+  - The default boot's whole 8,704-byte dump has SHA-256
+    `C7153541...9F5EC37B`.
+- **Serial**: 88 lines in each boot, ending at `Continue without network?
+  (y/n)`.
+  - They include `Display0: using VBE mode 257` and eight `Display0: VBE mode
+    N is width=...` lines, one per record, in record order.
+  - The two logs differ only by `Power management is enabled.` swapping
+    places with a phantom-IRQ line, the race of rule 3.
+  - Against 7a's default boot, the differences are:
+    - the driver's lines;
+    - `Display1` for the Cirrus driver, which now loads second;
+    - `Can't set memory range, using default.`;
+    - `vm_page_free_count` one page lower.
+- **The success path prints nothing.** The requested 257 is offered, so the
+  setter's success path ran, and that path has no print [measured code]. In
+  the fallback run below, the text screen holds only the setter's two
+  fallback lines.
+- **The screen from 15 s to 95 s** is one static 640x480 frame,
+  `F1BD9500...1CD8D1CD`, the same in both boots:
+  - rows 0-119 white;
+  - rows 120-204 black, with one white pixel in every 8;
+  - rows 205-479 black;
+  - 7 pixels of (87,87,87).
+  - As expected, this is not readable. Spec 2's kernel keeps the VGA text
+    console, and Task 8 makes the screen readable.
+
+**The fallback.**
+- `rhap_inject.py set-key` set the installed `Instance0.table`'s `VBE Mode` to
+  `999`, a mode the BIOS does not list. The run used `--at
+  5,9,...,20,22,25,30,60`, with no keys.
+- **11 s**: 4.2's panel, with `Reading Rhapsody configuration` and the wait
+  cursor.
+- **12-15 s**: text mode, showing `VBE mode 999 not supported.` and `Using
+  VBE Mode 257.` at the top. The frames alternate with the cursor blink.
+- **16 s**: black at 640x480, just after the mode set.
+- **17 s on**: the static frame above.
+- **The 30 s dump is byte-identical to the default boot's**, naming 257.
+- The serial again has `using VBE mode 257` and eight `is width` lines.
+
+### Step 5: `VBE Check` on both adapters [measured]
+
+**The runs.** The image was as in Step 4. `"VBE Check"=Yes` and Return were
+typed at 8 s, with the extended key map. The runs are
+`vm/shots-t7-vbecheck-cirrus` and `vm/shots-t7-vbecheck-std`, 16 s frame.
+
+| | listing | against 4.2's own booter, same adapter (Task 3's `shots-t3-ref-*-v`, 11 s) |
+| --- | --- | --- |
+| `cirrus` | 8 modes: 257 = 640x480x256, 272, 259, 275, 261, 278, 263 and 281 = 1280x1024x555 | text rows 18-23 (the typed line to the listing's last row) **pixel-identical** |
+| `std` | 30 modes, from 257 = 640x480x256 to 408 = 2560x1440x888, 10 rows of three | text rows 10-23 **pixel-identical** |
+
+- **The rows that differ** are the banner (`Rhapsody` against `OPENSTEP`),
+  the memory sizes and, on the last row, the cursor's 18 pixels.
+- **Both listings are Task 3's**, in the same order.
+- After the listing the booter prompts again, as 4.2 does.
+- **Not exercised here**:
+  - the adapter warning, since both adapters have VBE 3.0;
+  - `No usable VBE mode. Reverting to VGA.`

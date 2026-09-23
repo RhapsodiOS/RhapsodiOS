@@ -100,6 +100,7 @@ extern void setMode(int mode);
 extern int currentMode(void);
 extern void spinActivityIndicator( void );
 extern void clearActivityIndicator( void );
+extern void convert_vbe_mode(char *mode_name, int *mode);
 
 
 

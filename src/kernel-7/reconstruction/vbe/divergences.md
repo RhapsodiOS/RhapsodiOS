@@ -28,6 +28,8 @@ from the same patch: 44,848 bytes, SHA-256
 `925D35B683644CDA6C090B223B00C115F1C83116D466F230B71231B7AB75CBCE`. It is a
 headerless image; the offsets quoted for it are **file offsets**, and its own
 load address was not calibrated (not needed for anything below).
+**[corrected: see "Spec 3: the frame-buffer mapping" — the load address is
+`0x3000`, measured in spec 3.]**
 
 `kbs+0xNNNN` means an offset into `KERNBOOTSTRUCT`, whose fixed address is
 `0x11000` (`src/kernel-7/machdep/i386/kernBootStruct.h:101`,
@@ -306,6 +308,8 @@ argued below.
   code that produces the `ecx` being stored was **not** traced back to its
   source: in particular where `[ebp-4]` gets its value before `0x0018F169` was
   not read. So this is not a measurement.
+  **[corrected: see "Spec 3: the frame-buffer mapping" — traced there; the
+  inference is now measured and correct.]**
 
 `0x12854` is `kbs+0x1854`, four bytes below the `VBEModeRec` at `kbs+0x1858`.
 
@@ -385,6 +389,8 @@ through `_kernel_pmap` at `0x001F63F0`, calls the nameless static at
 address that corresponds exactly to `fb_phys`.
 **[inference, from the loop's structure; where `[ebp-4]` gets its value before
 `0x0018F169` was not traced]**
+**[corrected: see "Spec 3: the frame-buffer mapping" — `[ebp-4]` is the
+virtual address the second inlined `pmap_map` returns; measured.]**
 
 `_page_mask` (`0x001E89EC`), `_kernel_pmap` (`0x001F63F0`), `_IOMalloc`
 (`0x001A5448`) and `_IOFree` (`0x001A5458`) are all exact symbol-table matches.
@@ -435,6 +441,8 @@ Scanned the whole 44,848-byte booter for the four-byte little-endian value of
 every address in `[0x1284C, 0x12878]`: **no hits for any of them.** The booter
 addresses the struct through a pointer instead. `boot+0xDA7C` holds the
 `kernBootStruct` pointer, and the booter adds a displacement to it:
+**[corrected: see "Spec 3: the frame-buffer mapping" — `0xDA7C` is an
+address, not a file offset; the word sits at `boot+0xAA7C`.]**
 
 ```
 boot+0x0A5C  8b1d7cda0000  mov ebx, dword ptr [0xda7c]
@@ -2488,6 +2496,12 @@ booter half is in `src/boot-2/reconstruction/vbe/divergences.md`.
 `_pmap_map` is at `0x0018EDE8`, and its loop is `0x0018EE28..0x0018EECE`.
 `_pmap_bootstrap` (`0x0018EEE8..0x0018F32F`) contains three loops that are
 that same instruction sequence. Each one:
+**[CORRECTED — Task 3b, review M6: they perform the same operations in the
+same order, but they are not the same instructions.]** [measured] The
+register allocation differs, and so do the constant-folded protection
+tests: call 1 tests the VGA hole with `add eax,0xFFF60000` (`0x0018F06B`)
+where `_pmap_map` uses `lea eax,[edi-0xA0000]` (`0x0018EE8C`), and call 2,
+whose protection is none, has no template increment at all.
 
 - finds the directory entry through `_kernel_pmap`, and on a miss calls the
   nameless static at `0x0018ECC0` with the virtual address, then looks again;
@@ -2577,10 +2591,14 @@ skeleton, with real calls instead of inlined ones [measured, source]:
 - `pmap_map(va, 0, 64 MB + zone_map_sizer() + buffer_map_sizer(),
   VM_PROT_NONE)` (`:409`);
 - `*virt_end = va` (`:415`);
+  **[CORRECTED — Task 3b, review M2: the statement is at `:416`; `:415` is
+  a blank line.]**
 - `pmap_enable_pg`.
 
 **Where the block goes.** The matching point for the frame-buffer block is
 between `:414` and `:415`.
+**[CORRECTED — Task 3b, review M2: after the second `pmap_map`
+(`:409-414`), before `*virt_end = va` (`:416`) [measured source].]**
 
 **The primitive our tree offers for the job** is `pmap_map` (`pmap.c:246`).
 Its body matches `_pmap_map` step for step:
@@ -2598,9 +2616,40 @@ is arithmetic].
 **Expected outcome for Task 8: structural parity.** Byte parity is out of
 reach because the reference inlines `pmap_map` and ours calls it [inference].
 
+### A named suspect for a late-boot G2 failure (added in Task 3b, review M10)
+
+**Suspect: the frame buffer's virtual range is allocatable** [inference].
+**A reference-defect candidate: Task 8 must bring it to the user.**
+- **Where the mapping lands** [measured, above]: 4.2 maps the frame buffer
+  inside `[virt_avail, virt_end)`, at the top of that range, because
+  `*virt_end` is stored after call 3.
+- **What makes that range allocatable** [measured source, ours]:
+  - `machdep/i386/i386_init.c:172` passes `&virtual_avail` and
+    `&virtual_end` to `pmap_bootstrap`;
+  - `vm/vm_init.c:81` calls `kmem_init(virtual_avail, virtual_end)`;
+  - `kmem_init` (`vm/vm_kern.c:460-477`) creates `kernel_map` over
+    `[VM_MIN_KERNEL_ADDRESS, end)` and reserves only
+    `[VM_MIN_KERNEL_ADDRESS, start)`.
+- **The hazard** [inference]: a kernel virtual allocation that reaches the
+  top of the reservation would be given the frame buffer's addresses. Its
+  `pmap_enter` would then overwrite the frame buffer's page-table entries.
+  The console's writes would land in that allocation's memory, not on the
+  screen.
+- **Why it is the reference's, not ours** [inference]: the placement is
+  4.2's. Task 8 reproduces it, so our kernel inherits the hazard. 4.2's own
+  `kmem_init` was not read here.
+- **What to do with it.** If G2 fails late in boot (the console going wrong
+  after it first rendered, or memory corruption near the frame buffer's
+  virtual addresses), check this first. Whether to diverge (for example, by
+  reserving the range in `kernel_map`) is the user's decision.
+
 ### Corrections to earlier text in this record
 
 Earlier text is left as it was.
+**[CORRECTED — Task 3b, review M8: the text is still left as it was, but a
+one-line `[corrected: see "Spec 3: the frame-buffer mapping"]` label now
+sits at each corrected place: "Conventions", D2's two `[inference]` notes,
+and D2's `boot+0xDA7C` label.]**
 
 - **"Conventions"** says the booter's "own load address was not calibrated".
   It is `0x3000` [measured, spec 3]: all twelve VBE string operands resolve

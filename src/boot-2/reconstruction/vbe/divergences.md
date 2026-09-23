@@ -14,6 +14,9 @@ OPENSTEP 4.2 User Patch 4 (`OS42MachUserPatch4.tar`).
   `0x3000`, so the address is `boot+N + 0x3000`.
   - This holds for the text and for the data: all twelve VBE string operands
     resolve at base `0x3000` and at no other base.
+    **[CORRECTED — Task 3b, review M6: "no other base" overstates. Only the
+    bases 0, `0x1000` and `0x2000` were tested, and the operands resolve at
+    none of them [measured].]**
 - A bare hex value such as `0xDA7C` is an **address**, not an offset.
   - Its file offset is the address minus `0x3000`: `0xDA7C` is `boot+43644`.
 - `kbs+0xNNNN` is an offset into `KERNBOOTSTRUCT`, which is at `0x11000`.
@@ -173,7 +176,7 @@ masks a 32-bit operand only when it lies in this window.
 | `0xD7C8` | 280 | mode-name table: 13 entries plus a terminator of `{char name[16]; int mode;}`, from `640x400x256` = 0x100 to `1280x1024x888` = 0x11B; no `x16` modes |
 | `0xDAAC` | 1,024 | 256-entry palette, `0x00RRGGBB` with 6-bit components |
 | `0xDEAC` | 4 | enumerator's cached count, initialised to -1 |
-| `0xE470`, `0xE474` | | `loaded_drivers`, `num_loaded` (bss) |
+| `0xE470`, `0xE474` | | `loaded_drivers`, `num_loaded` (bss) [names: inference, by correspondence with `libsaio/drivers.c:44-45` and the writer `addToLoadedDriverList`; added in Task 3b, review M6] |
 | `0xE498`, `0xE49C`, `0xEB7C`, `0xEB80`, `0xEB84` | | screen height, width, bits per pixel, frame buffer, `in_linear_mode` (bss) [names: inference, from `vbe.c:95-102`] |
 | `0xEB88` | 2 | bytes per scan line: a global with no counterpart in our tree |
 
@@ -251,6 +254,22 @@ item 6.
 `[0xDA7C]`. It followed every register derived from the pointer through
 `mov`, `lea` and `add imm`.
 
+**[CORRECTED — Task 3b, review M3: the coverage statement was imprecise; the
+conclusion is unchanged.]** [measured, re-read in Task 3b]
+- **There are 45 references to `0xDA7C`, not 43.** The 43 are loads. The
+  other two are `sub eax,[0xDA7C]` at `boot+17344` and `boot+17487`: each
+  computes `configEnd - kbs` and compares it with `0xD000` before printing
+  `No room in memory for config files`. They derive no pointer.
+- **Indexed stores, which the tracker also found.** There are two, and both
+  are bounded:
+  - `boot+489`, one byte (`' '`) into `bootString` at `kbs+2`, at an index
+    bounded by the string's length;
+  - `boot+19171`, `diskInfo[0..3]` at `kbs+0x13C..0x148`, in a loop bounded
+    by `cmp byte [ebp-4],3; jbe`.
+- **The `+0` pointer below is not outside the VBE area.** It is the
+  whole-struct `bzero(kbs, 0xF4FC)` at `boot+19079`, which runs before any
+  VBE store.
+
 **What it found.**
 - **Direct stores.** None into `[0x38C, 0x20D8)`. The highest is
   `kbs+0x388` (APM, `boot+8006`).
@@ -260,6 +279,8 @@ item 6.
 - **Other pointer arguments.** The remaining kbs-derived pointers handed to
   callees are `+0`, `+2`, `+0xB8`, `+0x15C`, `+0x160`, `+0x164` and
   `+0x24FC`. All of them are outside the VBE area.
+  **[CORRECTED — Task 3b, review M3: `+0` is the whole-struct `bzero`
+  above, so it covers the VBE area; the other six are outside it.]**
 
 **One more VBE store: `kbs+0x14C = 0`, that is `graphicsMode`,** at
 `boot+28273`. The mode setter makes it right after writing the current-mode
@@ -271,6 +292,14 @@ record. The only other store to `+0x14C` is `setMode`'s (`boot+4207`).
 
 **Not covered.** A pointer spilled to the stack, or copied through another
 global, is invisible to this method.
+- **One such copy exists** [measured, Task 3b, review M3]: `kbs+0x158`
+  (`configEnd`) receives the kbs-derived pointer `kbs+0x24FC` at
+  `boot+19217`, and later writes go through it. That is a copy into the
+  struct itself, of the kind this paragraph names.
+
+**What is covered, stated whole** [measured, Task 3b's re-reading agrees with
+the review's]: nothing stores into `[0x38C, 0x20D8)` except the record writer
+(through `kbs+0x1858` and `kbs+0x1870`) and the whole-struct `bzero`.
 
 ### The rest of the VBE path, as the code reads [measured from the disassembly]
 
@@ -346,6 +375,18 @@ direct-colour modes are rejected.
   `docs/boot/sarld-driver-link-limit.md` fixed in our `sys.c`. So
   `execKernel` never runs, and items 7 and 10 below rest on the code
   [measured].
+  **[CORRECTED — Task 3b, review M6: two claims in this bullet carried the
+  wrong tag.]**
+  - **Measured:** the messages above, and that the enumerator never ran: on
+    the plain runs `[0x1854, 0x20D8)` is all zero in the dumps.
+  - **Inference:** that it byte-swaps the superblock. That rests on the
+    message matching `docs/boot/sarld-driver-link-limit.md`, not on a
+    reading of 4.2's `sys` code.
+  - **Inference:** that `execKernel` never runs. With the config unread,
+    `boot()` loops back at `boot+1961..1968` before calling it. But
+    `execKernel` could also have been entered and have returned at
+    `boot+369..373`, before the enumerator, and the dumps cannot tell the
+    two apart.
 
 ### Item 7: VBE mode on a `-v` boot [inference, from the code above]
 
@@ -362,6 +403,23 @@ direct-colour modes are rejected.
 - **The screen stays in VGA text mode 2.** `execKernel`'s `setMode(0)` call
   (`boot+1232`) put it there: `setMode` sets video mode 2 at `boot+4361`, and
   sets `graphicsMode` 0 if it changed the mode.
+  **[CORRECTED — Task 3b, review M1: that mechanism holds only when the
+  `Boot Graphics` panel is up. The corrected bullet follows.]**
+- **The screen is in VGA text, by one of two routes** [inference, from the
+  code]:
+  - `setMode` returns at once when `currentMode() == mode`
+    (`boot+4172..4179`), and only two calls set a video mode, both in
+    `setMode`: `set_video_mode(0x12)` at `boot+4256` and
+    `set_video_mode(2)` at `boot+4363` [measured].
+  - **When the panel is not up** (a typed boot line, or no `Boot
+    Graphics`), `graphicsMode` is still 0 at `boot+1232`. `setMode(0)` then
+    does nothing, and the screen stays in the text mode the BIOS left.
+  - **When the panel is up** (nothing typed, `Boot Graphics` = Yes, as on
+    `golden.img`; see Task 3b), `graphicsMode` is 1 at `boot+1232`.
+    `setMode(0)` then writes `graphicsMode` 0 (`boot+4207`), sets mode 2
+    (`boot+4363`) and replays the text it buffered.
+  - Either way the outcome is the same: a VGA text console, no record,
+    `graphicsMode` 0.
 - **Then a 5 s pause** (`boot+1254`), and the kernel starts.
 - **`VESA not available.` takes the same path.**
 
@@ -417,6 +475,10 @@ reference size for a new function.
   16. **Budget: at most 1,355.**
 - **Spare today: 480** [measured]. **So trimming must find 875.**
 
+**[SUPERSEDED — Task 3b: after the user's decisions, the budget is 492, at
+most 537. The palette's +172 (the rows for the palette, `appleClut8` and
+`setupPalette`) leaves it, and the panel path adds -676. See "Task 3b".]**
+
 ## Item 3: where our extra ~5 KB comes from
 
 Measured against the stock booter on `golden.img`:
@@ -460,8 +522,8 @@ references, so an unreachable result is a strong claim.
 | 3 | 284 | `getVBEDACFormat`, `setVBEDACFormat`, `getVBEPalette`, `getVBECurrentMode` | unreachable here **and in 4.2** [measured]. They belong to the reference's `vbe.c`, so removing them is a departure. **Not counted** |
 | 4 | 116 | `loadModule` (`boot2/module.c:35`) | unreachable; its only caller is under `#if TEST` [measured] |
 | 5 | 76 | `swapBigIntsToHost`, `swapBigShortToHosts` (`libsaio/ufs_byteorder.c`) | unreachable; the callers are commented out [measured] |
-| 6 | 64 | `slvprintf` (`libsa/sprintf.c:66`) | unreachable [measured] |
-| 7 | 48 | `realloc` (`libsa/zalloc.c:251`) | unreachable. The callers are in unbuilt `libsaio/old` and in `nasm` [measured] |
+| 6 | 64 | `slvprintf` (`libsa/sprintf.c:66`) | unreachable [measured]. **[CORRECTED — Task 3b, review M7: its one caller, `tests/satest.c:44`, is a test program the booter does not build.]** |
+| 7 | 48 | `realloc` (`libsa/zalloc.c:251`) | unreachable. The callers are in unbuilt `libsaio/old` and in `nasm` [measured]. **[CORRECTED — Task 3b, review M7: the host-side callers are `nasm` and `util/mkfont.c:321`; neither is part of the booter.]** |
 | 8 | 6 | `__sp` (`libsaio/asm.s:282`) | unreachable [measured] |
 
 **Ranks 1, 2 and 4 to 8 total 1,318 bytes.** Each size includes the function's
@@ -475,6 +537,10 @@ Growth, at most 1,355, is less than spare plus the [measured] candidates:
 - **The gate passes, with 443 bytes to spare.**
 - It passes without rank 3 and without anything that runs.
 - Ranks 1, 2 and 4 alone give 1,124, which is more than the 875 needed.
+
+**[SUPERSEDED — Task 3b: re-evaluated after the panel decision. Rank 1
+becomes reachable through 4.2's `message`, so the pool is 718. The gate
+still passes: at most 537 against 480 + 718 = 1,198. See "Task 3b".]**
 
 ---
 
@@ -499,6 +565,10 @@ when the booter's record at `0x12858` has a non-zero `xResolution`
    `VBE Mode` key is set. 4.2 runs the enumerator on every boot that reaches
    `execKernel`, so on a VBE 2 adapter `kbs+0x1870..` is filled with or
    without the key. A byte-parity booter will fill it too.
+   **[CORRECTED — Task 3b, review M6: "every boot that reaches `execKernel`"
+   overstates. The call at `boot+956` is unconditional once the kernel has
+   loaded; `execKernel` returns earlier, at `boot+369..373`, when `loadprog`
+   fails. So it runs on every boot whose kernel load succeeds [measured].]**
    - Only `kbs+0x1854..0x186F` stays zero.
    - This was not observed at run time, because the 4.2 booter cannot read
      `golden.img` [measured code; inference for the run].
@@ -511,6 +581,15 @@ when the booter's record at `0x12858` has a non-zero `xResolution`
      `modes[0]`.
    - **Nothing on serial.** The booter prints to the screen, never to serial
      [measured code].
+     **[Method added in Task 3b, review M6.]** [measured] The only `int`
+     instruction the linear decode finds in `__text` is the trampoline's
+     `int 0` at `boot+31015` (function `boot+30924`), whose operand is
+     patched at run time with the interrupt number the caller stored. Its 19
+     callers store only 0x10, 0x12, 0x13, 0x15, 0x16 and 0x1A; none stores
+     0x14, the serial BIOS.
+     `__text` (`boot+0..38175`) holds no `0x3F8`, `0x2F8` or `0x2E8`
+     immediate. Its only `0x3E8` is `push 0x3e8`, the `spin(1000)` count in
+     `set_video_mode`.
 3. **G3 case 1.** When a `VBE Mode` names a mode the BIOS does not offer,
    4.2 does not revert to VGA if any usable mode exists. It prints `VBE mode
    N not supported.` and `Using VBE Mode M.`, then sets `modes[0]` and writes
@@ -520,9 +599,378 @@ when the booter's record at `0x12858` has a non-zero `xResolution`
    for `setMode` would therefore bring the VGA panel back on `Boot Graphics`
    boots, a visible change. The budget uses 4.2's size, -124. Deleting only
    our VBE branch would save more [inference].
+   **[SUPERSEDED — decided by the user after Task 3: rebuild 4.2's `setMode`,
+   panel path included. Task 3b measures it.]**
 5. **The spec's §4.1 omits the `graphicsMode = 0` store.** It lists the
    stores through `0xDA7C` as `+0x1858` and `+0x1870`. There is a third, in
    the mode setter: `kbs+0x14C = 0` [measured].
 6. **The palette.** Byte parity needs 4.2's own 1,024-byte palette, whose
    colours differ from `appleClut8`'s. That costs +172 net against
    `setupPalette` plus `appleClut8` [measured].
+   **[SUPERSEDED — decided by the user after Task 3: keep our palette
+   (`setupPalette(appleClut8)`), a forced divergence in the mode setter. The
+   +172 leaves the budget; see Task 3b.]**
+
+---
+
+## Task 3b: setMode and the Boot Graphics panel
+
+After Task 3, the user chose to rebuild 4.2's `setMode` with its VGA
+mode-`0x12` panel, and to keep our palette (spec §1). This section measures
+what that costs and what a default boot then does.
+
+**Inputs, re-hashed on 2026-09-22 [measured]:**
+- `$BREF`, `925D35B6...CBCE`;
+- our Task 3 booter, `1647E453...BC122`;
+- the stock booter, `AA06C3C5...F6B5F2C2`.
+
+**Method.**
+- The listings are Task 3's capstone listings, at base `0x3000`.
+- The call graph follows direct calls and absolute function references.
+- Pairs of functions were compared with `compare_flat`, with the trailing
+  `nop` or `00` pad stripped on both sides.
+- Nothing was built or booted.
+
+### What 4.2's `setMode` does [measured]
+
+```
+setMode(mode)                                    ; boot+4164..4459, 296 B
+  if (currentMode() == mode) return;             ; boot+4172..4179
+  if (!initMode(mode)) return;                   ; boot+4186
+  kernBootStruct->graphicsMode = mode;           ; boot+4207: both branches, before the mode set
+  if (mode == GRAPHICS_MODE) {
+      textBuf = malloc(0x600); showText = 0; bufIndex = 0;
+      set_video_mode(0x12);                      ; boot+4256
+      clearRect(0, 0, SCREEN_W, SCREEN_H, 1);    ; boot+4283
+      copyImage(bitmapList[0].bitmap,            ; boot+4347, the panel, centred
+                (SCREEN_W - panel->width) / 2, (SCREEN_H - panel->height) / 2);
+  } else {
+      showText = 1;
+      set_video_mode(2);                         ; boot+4363
+      if (textBuf) { replay bufIndex bytes through putchar; free(textBuf); textBuf = 0; }
+  }
+  currentIndicator = 0;                          ; boot+4440
+```
+
+- **`boot+4256` is not a BIOS call** [measured].
+  - `set_video_mode` first sets `SCREEN_W` and `SCREEN_H` to 640 and 480
+    (`boot+30343..30352`).
+  - It sends modes 2 and 3 to the BIOS through `video_mode` (`INT 10h`).
+  - It programs mode `0x12` itself, from the register table `VGAMode12` at
+    `0xD65C`.
+  - It then loads all 256 DAC entries with the four greys of `colorData`,
+    `{0x00, 0x15, 0x2A, 0x3F}`. This is the panel's whole palette.
+    The user's palette decision does not touch it.
+- **How ours differs** (`boot2/graphics.c:176-221`):
+  - Ours has no panel branch. Its graphics branch needs a `Graphics Mode` key
+    (`:189-190`) and sets a linear VBE mode.
+  - Without that key, ours takes the text branch, which never writes
+    `graphicsMode`. Ours writes it only in the VBE branch (`:203`).
+- **The callers** [measured]:
+  - `setMode(1)`: `boot+2042` in `boot()`, and `boot+1119` in `execKernel`;
+  - `setMode(0)`: `boot+605`, `+739`, `+778`, `+1071`, `+1232`, `+1571`,
+    `+1777` and `+18425`;
+  - `initMode(1)`: `boot+3051` in `getBootString`.
+
+### The `Boot Graphics` handling [measured]
+
+| where | 4.2 | ours |
+| --- | --- | --- |
+| `getBootString`, `boot+3007..3059` | if nothing was typed (`line[0] == 0`), `errors == 0` and `Boot Graphics` is Yes: `wantBootGraphics = 1` (`0xE484`), then `initMode(1)` | the same statement, `boot.c:631-641` |
+| `boot()`, `boot+2031..2042` | outside Install Mode: `if (wantBootGraphics) setMode(1)` | the same, `boot.c:518-519` |
+| `boot()`, after the config is loaded | **no `Boot Graphics` test** | **`boot.c:503-506` sets `wantBootGraphics` whenever the key is Yes, typed line or not**: 24 bytes at `0x364E..0x3665` in our build |
+| `execKernel`, `boot+1108..1124` | after the `errors` pause: `if (wantBootGraphics) setMode(1)` | the same, `boot.c:320-321` |
+
+**`boot.c:503-506` must go with the rebuild** [inference, from the code].
+- 4.2's `boot()` has no such test [measured].
+- Suppose only `setMode` were rebuilt. A typed `mach_kernel -v` boot would
+  then:
+  - show the panel;
+  - buffer its text instead of printing it;
+  - hand the kernel `graphicsMode` 1.
+- 4.2 keeps that boot in text, so G1's verbose comparison would fail.
+- Today the test is harmless: our `setMode` falls back to text.
+
+### Inventory: the panel path
+
+**How the path was found** [measured, call graph].
+- In 4.2, five functions have code that depends on the panel: `setMode`,
+  `initMode`, `message`, `spinActivityIndicator` and
+  `clearActivityIndicator`.
+- With those five cut from the call graph, 18 more functions become
+  unreachable from the entry at `boot+0`.
+- A scan of every byte offset of the image, for `E8`/`E9` rel32 targets and
+  for abs32 values, confirms it: every reference to the 18 is a call from
+  inside the path, and none is an address held in data.
+- These 23 functions, 4,180 bytes, are the panel path.
+
+**What is left out.** `setMode`'s own transitive closure is 88 functions.
+- The other 74 are the file system, disk, BIOS, `malloc`, `printf` and
+  string layers, which `loadFont` and `loadBitmap` reach through `open` and
+  `read`.
+- The booter reaches all of them without the panel, so they are not listed.
+
+| 4.2 function | extent | bytes | role | ours | compare |
+| --- | --- | --- | --- | --- | --- |
+| `setMode` | `boot+4164..4459` | 296 | text, or the mode-`0x12` panel | `boot2/graphics.c:176`, 420 | same lineage; ours has a VBE branch where 4.2 has the panel |
+| `currentMode` | `boot+4460..4479` | 20 | `kbs->graphicsMode` | `graphics.c:223`, 20 | **MATCH** |
+| `initMode` | `boot+4068..4163` | 96 | loads the panel and the font, once | `graphics.c:150`, 96 | **MATCH** |
+| `loadAllBitmaps` | `boot+4940..5083` | 144 | reads `Panel.image` | `graphics.c:324`, 144 | **MATCH** |
+| `loadFont` | `boot+5084..5271` | 188 | reads `Default.font` | `graphics.c:348`, 188 | **MATCH** |
+| `loadBitmap` | `boot+30028..30243` | 216 | reads a 24-byte header, then two planes | `libsaio/bitmap.c:37`, 200 | same lineage; differs only through `struct bitmap` (`sizeof` `0x18` against `0x20`, `short` against `long` fields) |
+| `PackBitsDecode` | `boot+33512..33675` | 164 | unpacks one plane row | `libsaio/unpackbits.c:60`, 164 | **MATCH** |
+| `set_video_mode` | `boot+30332..30923` | 592 | modes 2 and 3 by BIOS; `0x12` by registers; the grey DAC | `libsaio/vga.c:216`, 592 | **MATCH**; `VGAMode12` (61 B) and `colorData` (4 B) are byte-equal too |
+| `spin` | `boot+30300..30331` | 32 | the DAC write delay | `vga.c:209`, 32 | **MATCH** |
+| `video_mode` | `boot+6664..6707` | 44 | BIOS `INT 10h`, `AH=0` | `libsaio/biosfn.c:204`, 44 | **MATCH** |
+| `clearRect` | `boot+20276..20547` | 272 | planar fill; returns at once if `in_linear_mode` | `libsaio/console.c:298`, 380 | same lineage; ours adds a linear branch (`:321-337`) |
+| `copyImage` | `boot+20024..20275` | 252 | planar blit; returns at once if `in_linear_mode` | `console.c:241`, 400 | same lineage; the planar part differs only through `struct bitmap`; ours adds a linear branch (`:270-290`) |
+| `blitRow` | `boot+19580..20023` | 444 | one planar row, through the GC bit mask | `console.c:178`, 444 | **MATCH** |
+| `message` | `boot+3764..4067` | 304 | in graphics mode, `blit_clear` and `blit_string` in the panel; otherwise it prints | `graphics.c:57`, 200 | same lineage; ours comments the graphics branch out (`:75-81`) and calls `strwidth("9")` instead |
+| `spinActivityIndicator` | `boot+4596..4827` | 232 | in graphics mode, `copyImage` of the wait cursors | `graphics.c:286`, 232 | differs in two `struct bitmap` offsets only (`+8`/`+0xA` against `+0xC`/`+0xE`) |
+| `clearActivityIndicator` | `boot+4828..4939` | 112 | in graphics mode, `clearRect(cursor, 16, 16, 2)` | `graphics.c:310`, 28 | same lineage; ours comments the `clearRect` out (`:319`) |
+| `getbm` | `boot+29256..29291` | 36 | glyph lookup | `libsaio/font.c:60`, 36 | **MATCH** |
+| `blit_bm` | `boot+29292..29451` | 160 | draws a glyph through `clearRect` | `font.c:80`, 160 | **MATCH** |
+| `strwidth_internal` | `boot+29452..29567` | 116 | | `font.c:100`, 116 | **MATCH** |
+| `strwidth` | `boot+29568..29587` | 20 | | `font.c:125`, 20 | **MATCH** |
+| `strheight` | `boot+29588..29663` | 76 | | `font.c:140`, 76 | **MATCH** |
+| `blit_clear` | `boot+29664..29783` | 120 | clears a text line | `font.c:155`, 120 | **MATCH** |
+| `blit_string` | `boot+29784..30027` | 244 | draws a string | `font.c:167`, 244 | **MATCH** |
+
+- **Every function on the path has a counterpart in our tree, and no new
+  function is needed.**
+  - 16 of the 23 are byte-identical to ours today.
+  - The other 7 are same-lineage variants of ours.
+- `putchar` (`boot+19396`, 112 B, `console.c:79`) replays the buffered text.
+  It is also **MATCH**, but it is shared, not panel-only.
+
+**Data on the path.**
+
+| item | 4.2 | ours |
+| --- | --- | --- |
+| `struct bitmap` | 24 B: six `short`s (`packed`, `bytes_per_plane`, `bytes_per_row`, `bits_per_pixel`, `width`, `height`), `short plane_len[2]`, two plane pointers [measured offsets; the names by correspondence] | `util/bitmap.h:39-47`: 32 B, with `long` `packed`, `bytes_per_plane` and `plane_len[2]`. The 24-byte layout is in our tree at `src/boot-2/ppc/ppcMac/util/bitmap.h:39-47` |
+| wait cursors | `0xD944..0xDA4B`, 264 B: three of (64 B of two planes plus a 24 B struct). The plane bytes equal `util/ns_wait{1,2,3}_bitmap.h` [measured] | `0xD804..0xDB63`, 864 B: three of (a 256 B 8-bpp image plus a 32 B struct), from `util/spin_cursor.h` |
+| `indicator_bitmap[4]` | `0xD8EC`, 16 B | `0xDCD8`, 16 B |
+| `VGAMode12`, `colorData` | `0xD65C`, 61 + 4 B | `0xD5B0`, `0xD5ED`: byte-equal |
+| `leftMaskArray` | `0xDA85`, 8 B | `0xDD55`: byte-equal |
+| strings | `Panel.image`, `Default.font`, the two path formats, `English.lproj`, the four error messages | all present in ours [measured]; none added or removed |
+
+**What `golden.img` holds, read from the image without writing to it
+[measured]:**
+- **`Panel.image`**: 6,785 bytes, SHA-256
+  `654B3AF2EA437AA24DDACE21570A0EAAAECB77CDA234BC0A9163F490754F070E`.
+  - Its header, read with 4.2's layout, is `{1, 11616, 44, 1, 352, 264,
+    {3537, 3224}}`, and 24 + 3,537 + 3,224 = 6,785 exactly.
+  - Our 32-byte layout reads it as width 3,537, height 3,224 and plane
+    lengths `{0, 0}`.
+  - Drawn that way, it would write far outside the 64 KB VGA window
+    [inference, arithmetic].
+  - **So the rebuild needs 4.2's `struct bitmap`.** It also changes
+    `util/bitmap.h`, which the host tool `util/dumptiff.m` includes; Task 6
+    or 7 should check whether anything in the booter build runs that tool
+    [inference].
+- **`English.lproj/Default.font`**: 1,387 bytes, `17F5AB21...C25D53`. It is
+  read by the byte-identical `loadFont`.
+- **`Default.table` and `Instance0.table`** both set `"Boot Graphics" =
+  "Yes"`, and neither has a `VBE Mode` or `Graphics Mode` key.
+
+**Colours and geometry, read from 4.2's call arguments [measured; the macro
+names are ours, by correspondence].** Tasks 6 and 7 need these values.
+
+| constant | 4.2 | ours (`boot2/graphics.h`) |
+| --- | --- | --- |
+| `SCREEN_BG` | 1 (`clearRect`, `boot+4279`) | `COLOR_PLATNUM` 0x80 (`:79`) |
+| `TEXT_BG` | 2 (`blit_clear`, `boot+3924`; `clearActivityIndicator`, `boot+4854`) | `COLOR_LT_GREY` 0xFA (`:77`) |
+| `TEXT_FG` | 0 (`blit_string`, `boot+3957`) | `COLOR_DK_GREY` 0xFE (`:78`) |
+| the message's x | `SCREEN_W / 2` | `BOX_C_X` = `SCREEN_W / 2 + 4` (`:42`) |
+| the message's y | `BOX_Y + BOX_H / 2` | `MESSAGE_Y` = `BOX_Y + 182` (`:64`) |
+| the width `blit_clear` clears | `BOX_W - 16` | `BOX_W - 48`, in the commented-out code |
+| the cursor | `BOX_Y + 148` and centred, as ours | `CURSOR_Y` (`:62`) |
+
+With `colorData`'s greys, 0 is black, 1 dark grey, 2 light grey and 3
+white [inference].
+
+**The stock booter has the same panel.**
+- **What was measured:**
+  - its `setMode` (`stock+3616..3903`) pushes `0x12`;
+  - it reads the bitmap at `+8` and `+0xA`;
+  - it uses the constants 640 and 480 where 4.2 reads `SCREEN_W` and
+    `SCREEN_H`;
+  - its `VGAMode12` is byte-identical, at `stock+38676`.
+- **What follows** [inference]: the panel that spec 2 captured on
+  `golden.img` (`shots-t5-dC1`, 15 s) is VGA mode `0x12`.
+  `docs/kernel/i386-vbe-console.md` had left that mode undetermined.
+
+### Is there planar or mode-`0x12` drawing code in our tree? Yes [measured]
+
+**Coverage.**
+- `git grep -E "VGA_BUF_ADDR|VGAMode12|blitRow|set_video_mode|in_linear_mode|VGA_SEQ_ADDR|VGA_GC_ADDR"`
+  over all 32,370 tracked files under `src/`, and a reading of every hit.
+- The file lists of `src/boot-2/i386/util` and `src/boot-2/ppc/ppcMac`.
+- The only hits outside the booter are the kernel's VGA console
+  (`src/kernel-7/bsd/dev/i386/VGAConsole.c`, `VGAConsPriv.h`,
+  `BasicConsole.c`).
+
+**In the i386 booter, and built today:**
+- `libsaio/vga.c:109-130` (`VGAMode12`) and `:215-323` (`set_video_mode`):
+  byte-identical to 4.2;
+- `libsaio/console.c:178-234`, `blitRow`: byte-identical;
+- `console.c:247-269` and `:308-320`, the `!in_linear_mode` branches of
+  `copyImage` and `clearRect`: the planar code. They differ from 4.2 only
+  through `struct bitmap`;
+- `libsaio/font.c`, whose glyph drawing goes through `clearRect`:
+  byte-identical.
+
+None of this code runs today. Our `setMode` never calls
+`set_video_mode(0x12)` (`graphics.c:176-221`) [measured source].
+
+**In the tree, but not built:**
+- `util/ns_wait{1,2,3}_bitmap.h`: 4.2's planar wait cursors, byte-equal.
+  `boot2/bitmaps.c:31-35` comments out their `#import`s.
+- `ppc/ppcMac/util/bitmap.h:39-47`: 4.2's 24-byte `struct bitmap`.
+- `ppc/ppcMac/libsaio/console.c:170-287`: `blitRow`, `copyImage` and
+  `clearRect` with no linear branch.
+- `util/Panel.image`: a planar panel in the 24-byte format (5,584 B; not
+  golden's). `util/Newpanel.image` is the 32-byte, 8-bpp one.
+
+### The budget delta [measured sizes; the sums are arithmetic]
+
+**Task 3's budget included 4.2's palette, and it now leaves.** [measured, in
+item 2's table]
+- The table counts:
+  - the 1,024-byte palette (+1,024, in the "palette, count, name table" row);
+  - the removal of `appleClut8` (-768);
+  - the removal of `setupPalette` (-84).
+- The net is +172. Keeping our palette removes all three: 1,340 - 172 =
+  **1,168**.
+- The mode setter then calls `setupPalette(appleClut8)` where 4.2 passes its
+  table. How that changes the mode setter's own size cannot be measured
+  without a build [inference: a few bytes].
+
+**What the panel path adds on top.**
+
+| item | 4.2 | ours | growth |
+| --- | --- | --- | --- |
+| `setMode` | 296 | 420 | -124, already in Task 3's budget and not added again |
+| `copyImage` | 252 | 400 | -148 |
+| `clearRect` | 272 | 380 | -108 |
+| `loadBitmap` | 216 | 200 | +16 |
+| `message` | 304 | 200 | +104 |
+| `clearActivityIndicator` | 112 | 28 | +84 |
+| `spinActivityIndicator` | 232 | 232 | 0 |
+| `boot()`: drop the second `Boot Graphics` test | none | 24 | -24 |
+| the other 16 functions on the path | | | 0 (byte-identical) |
+| **code** | | | **-76** |
+| wait cursors | 264 | 864 | -600 |
+| the other data and the strings | | | 0 |
+| **panel path** | | | **-676** |
+
+- **The new budget: 1,168 - 676 = 492.**
+- **Rounding.** It can add about 45 bytes: 15 for `__TEXT`, and about 30 more
+  for `__DATA`'s file part and `__const`'s alignment (review M4). **So the
+  budget is at most 537.**
+- **The rest of `boot()`.** Byte parity for the whole of `boot()` would give
+  -12, not -24.
+  - The other 12 bytes are a memory-size check that is larger in 4.2, and
+    that check is outside the panel path.
+  - Counting -12 instead gives 504, at most 549. The verdict below does not
+    change.
+
+### The stop gate, re-evaluated
+
+- **The trim pool shrinks.** 4.2's `message` calls `blit_clear` and
+  `blit_string` (`boot+3950`, `boot+3976`), and `blit_string` calls
+  `blit_bm` and `strheight` [measured]. So all of rank 1 (600 bytes) becomes
+  reachable once `message` is rebuilt, and it leaves the pool. The pool is
+  now 1,318 - 600 = **718**, all [measured].
+- **Available:** 480 spare + 718 = **1,198**.
+- **Growth:** 492, at most 537.
+- **The gate passes:** 537 <= 1,198, with 661 bytes to spare.
+  - Trimming must find only 12 bytes, or 57 at the rounding bound.
+  - Rank 2 (`strtol`, 408) covers that alone.
+- **A narrower reading gives the same verdict.** Suppose only `setMode`'s
+  closure is rebuilt, and `message` and `clearActivityIndicator` stay ours.
+  - The code delta is then -264 and the data delta -600.
+  - The budget is 304, at most 349, which is under the 480 spare with no
+    trimming at all.
+  - Rank 1 then stays a trim.
+
+### The default boot after the rebuild [inference, from the code, unless tagged]
+
+**Setup.** `golden.img`'s config has `Boot Graphics` = Yes and no `VBE Mode`
+[measured above]. Nothing is typed.
+
+1. **`getBootString`.** The countdown expires with an empty line and no
+   errors, so it sets `wantBootGraphics` and calls `initMode(1)`, which loads
+   `Panel.image` and `Default.font` (`boot+3007..3059`).
+2. **`boot()`.** Outside Install Mode it calls `setMode(1)` (`boot+2042`),
+   which:
+   - writes `graphicsMode` = 1 (`boot+4207`);
+   - buffers the booter's text (`showText` = 0);
+   - programs VGA mode `0x12` (`boot+4256`);
+   - clears the screen to colour 1;
+   - copies the 352x264 panel to (144, 108).
+3. **While the panel is up**:
+   - `message` draws `Loading OPENSTEP` and the later messages in the panel,
+     centred at (320, 240);
+   - the wait cursor spins at (312, 256) during disk reads;
+   - `clearActivityIndicator` erases it.
+4. **`execKernel`.**
+   - The enumerator fills `kbs+0x1870..` (C1).
+   - No loaded driver carries `VBE Mode`, so the lookup is skipped
+     (`boot+1020`).
+   - `setMode(1)` at `boot+1119` is a no-op.
+   - The VBE set block is skipped, because the mode is 0 (`boot+1224..1228`).
+   - `startprog` then starts the kernel.
+5. **The kernel receives `graphicsMode` = 1**, with the screen still in mode
+   `0x12` showing the panel. `kbs+0x1854..0x186F` and `boot_video` are zero.
+6. **Mode 2 is never set on this path.**
+   - Only `setMode(0)`, called while `graphicsMode` is 1, sets mode 2
+     (`boot+4363`).
+   - The default path calls `setMode(0)` only at `boot+1571` and
+     `boot+1777`, both before the panel exists.
+   - The other `setMode(0)` calls (above) run only on one of these:
+     - errors (`+1071`);
+     - `Prompt For Driver Disk` (`+605`);
+     - `Ask For Drivers` (`+739`);
+     - a missing driver (`+778`);
+     - `Query` (`+18425`);
+     - a VBE mode (`+1232`).
+7. **The kernel side** [inference, from our source]:
+   - `kminit` (`bsd/dev/i386/km.m:501-504`) starts the basic console in
+     `SCM_GRAPHIC`;
+   - `kmEnableAnimation` (`kmDevice.m:594-608`) animates the wait cursor, and
+     the `kmDevice` probe also opens in `SCM_GRAPHIC` (`kmDevice.m:119`).
+
+**What corroborates this [measured, spec 2].** Spec 2 booted `golden.img`
+with the stock booter, whose `setMode` has the same shape.
+- The default boot handed the kernel `graphicsMode` 1, and the verbose boot 0.
+- `boot_video` was zero on both.
+- The default boot settled on the kernel's panel.
+- See `src/kernel-7/reconstruction/vbe/divergences.md`, "What the booter
+  hands the kernel, measured in guest memory".
+
+**Our booter today, on the same boot** [inference, from the source].
+`setMode(GRAPHICS_MODE)` finds no `Graphics Mode` key and takes the text
+branch (`graphics.c:189-211`). That sets mode 2 through the BIOS and leaves
+`graphicsMode` 0.
+
+**A typed `mach_kernel -v` boot in 4.2** [measured code]. `getBootString`
+skips the `Boot Graphics` test when the line is not empty
+(`boot+3007..3014`). So there is no panel, and the kernel gets
+`graphicsMode` 0, as spec 2 measured for the stock booter. Our rebuilt booter
+matches this only if `boot.c:503-506` goes.
+
+**For G1:**
+- **Default boots:** the control hands the kernel 0 and the candidate 1.
+  That difference is by design. The candidate's booter-phase frames show the
+  panel.
+- **Verbose boots:** both hand the kernel 0, and the kernel-phase frames must
+  match. That needs `boot.c:503-506` removed.
+- **The boot that settles this:** a no-keys boot of Task 7's booter on
+  `golden.img`, dumping `0x11000..` at about 15 s. It should show
+  `graphicsMode` = 1 at `0x1114C`, and the 15 s frame should show the panel.
+  A typed `-v` boot should show 0.
+- **With a `VBE Mode` on a default boot**, `setMode(0)` at `boot+1232` leaves
+  the panel for mode 2 and replays the buffered text. Then the mode setter
+  sets the VBE mode and writes `graphicsMode` 0. G2 therefore needs no typed
+  line [inference].

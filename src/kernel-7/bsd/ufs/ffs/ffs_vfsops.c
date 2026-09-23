@@ -220,12 +220,12 @@ ffs_mount(mp, path, data, ndp, p)
 				 */
 				if ((error = ffs_reload(mp, ndp->ni_cnd.cn_cred, p))) {
 					printf("ffs: %s superblock reload failed (%d), refusing read-write upgrade\n",
-					    (mp->mnt_flag & MNT_ROOTFS) ? "root" : (char *)fs->fs_fsmnt, error);
+					    (mp->mnt_flag & MNT_ROOTFS) ? "root" : mp->mnt_stat.f_mntonname, error);
 					return (error);
 				}
 				if (fs->fs_clean == 0) {
 					printf("ffs: %s not cleanly unmounted, refusing read-write upgrade; run fsck\n",
-					    (mp->mnt_flag & MNT_ROOTFS) ? "root" : (char *)fs->fs_fsmnt);
+					    (mp->mnt_flag & MNT_ROOTFS) ? "root" : mp->mnt_stat.f_mntonname);
 					return (EPERM);
 				}
 			}

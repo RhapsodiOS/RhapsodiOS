@@ -798,7 +798,7 @@ Immediately after its closing brace, insert:
 		if (rev_endian)
 			byte_swap_sbout(fs);
 #endif /* REV_ENDIAN_FS */
-		error = ENOTSUP;
+		error = EOPNOTSUPP;
 		goto out;
 	}
 ```
@@ -873,7 +873,7 @@ Immediately after Task 5's block, insert:
 		if (rev_endian)
 			byte_swap_sbout(fs);
 #endif /* REV_ENDIAN_FS */
-		error = ENOTSUP;
+		error = EOPNOTSUPP;
 		goto out;
 	}
 ```

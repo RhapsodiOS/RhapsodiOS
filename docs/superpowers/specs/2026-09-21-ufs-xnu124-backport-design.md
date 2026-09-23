@@ -56,7 +56,7 @@ Line numbers are from the current tree and were verified individually.
 cleared at `195`, `219`, `675`, `741` — and never once consulted before
 mounting. Two gates, matching xnu-124: the root read-write upgrade at
 `ffs_vfsops.c:203` refuses with `EPERM`, and `ffs_mountfs` refuses any non-root
-filesystem with `ENOTSUP`. Written against `kernel-7`'s `mnt_flag &
+filesystem with `EOPNOTSUPP` (this kernel predates the POSIX name `ENOTSUP` that xnu-124 uses; `bsd/sys/errno.h:134` defines only `EOPNOTSUPP`). Written against `kernel-7`'s `mnt_flag &
 MNT_WANTRDWR` (`bsd/sys/mount.h:182`), not xnu's renamed `MNTK_` form.
 
 Gating the upgrade rather than the initial read-only mount is what makes this
@@ -130,8 +130,8 @@ multi-gigabyte images anywhere.
 
 | Case | Mutation | Expected | Covers |
 |---|---|---|---|
-| Unclean non-root mount | `fs_clean = 0` | `ENOTSUP` | 1 |
-| Undersized fragment | `fs_fsize = 256` | `ENOTSUP` | 3 |
+| Unclean non-root mount | `fs_clean = 0` | `EOPNOTSUPP` | 1 |
+| Undersized fragment | `fs_fsize = 256` | `EOPNOTSUPP` | 3 |
 | Corrupt superblock | `fs_magic` garbage | `EINVAL`, superblock unmodified afterward | 4 |
 
 **Harness B — unclean root.** Clear `fs_clean` in `vm/work/test.img` and boot,

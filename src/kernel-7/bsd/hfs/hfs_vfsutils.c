@@ -1778,10 +1778,47 @@ void PackCommonCatalogInfoAttributeBlock(struct attrlist		*alist,
 	void			*varbufptr;
 	attrgroup_t		a;
 	u_long			attrlength;
+	Boolean			isHFSPlus;
+	Boolean			isDirectory;
+	uid_t			uid;
+	gid_t			gid;
+	mode_t			mode;
+	u_long			flags;
 	
 	hp			= VTOH(root_vp);
 	attrbufptr	= *attrbufptrptr;
 	varbufptr	= *varbufptrptr;
+	
+	/* Ownership, mode and flags as CopyCatalogToHFSNode gives a vnode: records
+	   without permissions (all of plain HFS) take them from the mount */
+	isHFSPlus	= (HTOVCB(hp)->vcbSigWord == kHFSPlusSigWord);
+	isDirectory	= (catalogInfo->nodeData.nodeType == kCatalogFolderNode);
+	if (isHFSPlus && (catalogInfo->nodeData.permissions.permissions & IFMT))
+	{
+		uid		= catalogInfo->nodeData.permissions.ownerID;
+		gid		= catalogInfo->nodeData.permissions.groupID;
+		mode	= (mode_t)(catalogInfo->nodeData.permissions.permissions & 0x0000FFFF);
+		flags	= ((catalogInfo->nodeData.permissions.permissions & 0xFF000000) >> 8) |	/* A */
+				  ((catalogInfo->nodeData.permissions.permissions & 0x00FF0000) >> 16);	/* B */
+	}
+	else
+	{
+		uid		= HTOHFS(hp)->hfs_uid;
+		gid		= HTOHFS(hp)->hfs_gid;
+		mode	= ACCESSPERMS & (isDirectory ? HTOHFS(hp)->hfs_dir_mask : HTOHFS(hp)->hfs_file_mask);
+		mode	|= isDirectory ? IFDIR : IFREG;
+		flags	= 0;
+	}
+	if (!isDirectory)										/* a locked file is immutable */
+	{
+		if (catalogInfo->nodeData.nodeFlags & kHFSFileLockedMask)
+		{
+			if ((flags & (SF_IMMUTABLE | UF_IMMUTABLE)) == 0)
+				flags |= UF_IMMUTABLE;
+		}
+		else
+			flags &= ~(SF_IMMUTABLE | UF_IMMUTABLE);
+	}
 	
 	if ((a = alist->commonattr) != 0)
 	{
@@ -1847,13 +1884,13 @@ void PackCommonCatalogInfoAttributeBlock(struct attrlist		*alist,
 		};
 		if (a & ATTR_CMN_CHGTIME)
 		{
-			((struct timespec *)attrbufptr)->tv_sec					= to_bsd_time(catalogInfo->nodeData.attributeModDate);
+			((struct timespec *)attrbufptr)->tv_sec					= to_bsd_time(isHFSPlus ? catalogInfo->nodeData.attributeModDate : catalogInfo->nodeData.contentModDate);
 			((struct timespec *)attrbufptr)->tv_nsec				= 0;
 			++((struct timespec *)attrbufptr);
 		};
 		if (a & ATTR_CMN_ACCTIME)
 		{
-			((struct timespec *)attrbufptr)->tv_sec					= to_bsd_time(catalogInfo->nodeData.accessDate);
+			((struct timespec *)attrbufptr)->tv_sec					= to_bsd_time(isHFSPlus ? catalogInfo->nodeData.accessDate : catalogInfo->nodeData.contentModDate);
 			((struct timespec *)attrbufptr)->tv_nsec				= 0;
 			++((struct timespec *)attrbufptr);
 		};
@@ -1870,9 +1907,9 @@ void PackCommonCatalogInfoAttributeBlock(struct attrlist		*alist,
 			bcopy (&catalogInfo->nodeData.extFinderInfo, attrbufptr, sizeof(catalogInfo->nodeData.extFinderInfo));
 			attrbufptr += sizeof(catalogInfo->nodeData.extFinderInfo);
 		};
-		if (a & ATTR_CMN_OWNERID) *((uid_t *)attrbufptr)++			= catalogInfo->nodeData.permissions.ownerID;
-		if (a & ATTR_CMN_GRPID) *((gid_t *)attrbufptr)++			= catalogInfo->nodeData.permissions.groupID;
-		if (a & ATTR_CMN_ACCESSMASK) *((u_long *)attrbufptr)++		= (u_long)(mode_t)(catalogInfo->nodeData.permissions.permissions & 0x0000FFFF);
+		if (a & ATTR_CMN_OWNERID) *((uid_t *)attrbufptr)++			= uid;
+		if (a & ATTR_CMN_GRPID) *((gid_t *)attrbufptr)++			= gid;
+		if (a & ATTR_CMN_ACCESSMASK) *((u_long *)attrbufptr)++		= (u_long)mode;
 		if (a & ATTR_CMN_NAMEDATTRCOUNT) *((u_long *)attrbufptr)++	= 0;			/* XXX PPD TBC */
 		if (a & ATTR_CMN_NAMEDATTRLIST)
 		{
@@ -1884,8 +1921,7 @@ void PackCommonCatalogInfoAttributeBlock(struct attrlist		*alist,
 			varbufptr += attrlength + ((4 - (attrlength & 3)) & 3);
 			++((struct attrreference *)attrbufptr);
 		};
-        if (a & ATTR_CMN_FLAGS) *((u_long *)attrbufptr)++			= (u_long)((((catalogInfo->nodeData.permissions.permissions & 0xFFFF0000) >> 8)  & 0x00FF0000) |
-                                                                               (((catalogInfo->nodeData.permissions.permissions & 0xFFFF0000) >> 24) & 0x000000FF));
+        if (a & ATTR_CMN_FLAGS) *((u_long *)attrbufptr)++			= flags;
 	};
 	
 	*attrbufptrptr	= attrbufptr;

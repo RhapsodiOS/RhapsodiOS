@@ -31,11 +31,15 @@ class Image(object):
     def __init__(self, path, writable=False):
         self.path = path
         self._f = open(path, "r+b" if writable else "rb")
-        self.label = self._read_label()
-        self.part_start = (self.label["front"] + self.label["p_base"]) * self.label[
-            "secsize"
-        ]
-        self._read_superblock()
+        try:
+            self.label = self._read_label()
+            self.part_start = (self.label["front"] + self.label["p_base"]) * self.label[
+                "secsize"
+            ]
+            self._read_superblock()
+        except BaseException:
+            self._f.close()
+            raise
 
     def close(self):
         self._f.close()

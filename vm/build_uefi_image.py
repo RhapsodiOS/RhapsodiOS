@@ -139,9 +139,6 @@ def _require_whole_disk(head, path):
 
 
 def _boot0_from(image_path):
-    # Raise after the except clause, not inside it: a chained traceback
-    # would keep the half-built Image's open file alive, and Windows then
-    # refuses to delete the image.
     try:
         with rhap_image.Image(image_path) as img:
             ino = img.resolve(BOOT0_PATH)

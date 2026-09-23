@@ -1,9 +1,12 @@
 import contextlib
+import gc
 import io
 import os
 import struct
 import sys
+import tempfile
 import unittest
+import warnings
 
 import rhap_image
 
@@ -306,3 +309,18 @@ class TestMainCLI(unittest.TestCase):
             self.assertEqual(out, b"")
             codes.add(rc)
         self.assertEqual(len(codes), 1)
+
+
+class TestImageClosesOnFailure(unittest.TestCase):
+    def test_file_is_closed_when_there_is_no_label(self):
+        fd, path = tempfile.mkstemp(prefix="rhap-image-test-")
+        os.write(fd, b"\0" * 65536)
+        os.close(fd)
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("error", ResourceWarning)
+                with self.assertRaises(ValueError):
+                    rhap_image.Image(path)
+                gc.collect()
+        finally:
+            os.unlink(path)     # fails on Windows if the handle leaked

@@ -36,12 +36,10 @@ def test_corrupt_fs_clean_clears_only_that_byte():
         assert _sb(out, 209, "<b") == 0
         assert _sb(out, 1372, "<i") == 0x00011954
 
-def test_corrupt_fs_fsize_and_magic():
+def test_corrupt_fs_magic():
     with tempfile.TemporaryDirectory() as d:
         out = os.path.join(d, "bad.img")
         make_badfs.build_good(out)
-        make_badfs.corrupt(out, "fs_fsize", 256)
-        assert _sb(out, 52, "<i") == 256
         make_badfs.corrupt(out, "fs_magic", 0xDEADBEEF)
         assert _sb(out, 1372, "<I") == 0xDEADBEEF
 

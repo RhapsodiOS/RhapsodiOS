@@ -14,7 +14,6 @@ TEMPLATE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
 
 # offset, struct format
 FIELDS = {
-    "fs_fsize": (52, "<i"),
     "fs_clean": (209, "<b"),
     "fs_magic": (1372, "<I"),
 }

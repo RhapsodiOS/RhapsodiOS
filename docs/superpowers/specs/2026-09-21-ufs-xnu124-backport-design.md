@@ -264,3 +264,82 @@ UBC is not on this list and will not be. Porting it means replacing the
 kernel's VM and buffer cache, which is not a filesystem project.
 
 Implementation happens in a dedicated worktree, not the main checkout.
+
+## Outcome
+
+Built and booted on 2026-09-23, from branch `xnu124-p0-integration` (these UFS
+changes plus the companion HFS backport, which touch disjoint files).
+
+### Builds
+
+**i386: clean.** The kernel compiled on the first attempt and was grafted into
+the branch's private image, `vm/work/ufs-backport.img`, leaving 592 bytes of
+headroom. The build logged 17 warnings in `bsd/ufs`, and all of them predate
+this work. One sits in code the series touched: `ffs_vfsops.c:321`, "integer
+constant out of range", which is the 4 GB `0x100000000` that change 2's helper
+moved verbatim out of `ffs_mountfs`. It cannot be truncating to 0, or every
+multi-call `read(2)` on this system would have failed with `EFBIG` for years.
+
+**ppc: compiled, but only in keep-going mode.** The full ppc build fails before
+it reaches UFS, and for reasons unrelated to this work. `conf/Makefile.ppc:61`
+uses a GNU Make target-specific variable (from `a5236b800`, the msdosfs work).
+The build box's GNU Make 3.74 cannot parse it and stops at `fdesc_vnops.o`. So
+master's ppc kernel does not build on that box at all, and that is filed
+separately. With `MAKEFLAGS=k`, every other object compiled, and both files
+this series changes built without errors. The ppc compiler raised exactly one
+warning on a new line: "suggest parentheses around assignment" on the root
+gate's `ffs_reload` call. That is fixed in `ad58db876`, which changes no
+generated code.
+
+### Boot harness
+
+All boots ran through `guest-console.py`'s `Guest`. Each used QMP port 4491,
+the private image named by `RHAP_TEST_IMAGE`, and QEMU's `-snapshot`. Kernel
+output was read from the serial log.
+
+| Run | What it tests | Result |
+|---|---|---|
+| 1 | The evidence channel | **Pass.** `serial_dbg: i386 kernel console up` reached the log. The stock kernel in `golden.img` cannot produce that line, and an earlier attempt that booted it produced an empty log. No `ffs: ` lines on a clean image. |
+| 2 | A second disk mounts single-user | **Pass**, as `/dev/hd1a`. The stock kernel wedges in this configuration (`hc0: interrupt timeout, cmd: 0xc4`), and this tree's EIDE work evidently fixes that. |
+| 3 | Change 4, corrupt magic | **Pass.** Exactly one `ffs: superblock magic invalid, refusing` line, and the mount failed cleanly. |
+| 4 | Change 1, dirty non-root | **Pass.** The read-write mount was refused with exactly one line, and the read-only mount succeeded. |
+| 5 | Change 5, unmount then remount | **Pass.** No hang, and no `ffs: ` lines. |
+| 6 | A dirty root boots multi-user | **Could not be tested on this image.** See below. |
+| 6b | Change 1, root gate outside single-user | **Pass.** `mount -uw /` logged `ffs: / not cleanly unmounted; mounting read-write anyway` and proceeded; `mount` then showed root read-write. |
+| 7 | Change 1, root gate in single-user | **Pass.** The first `mount -uw /` was refused with exactly one line. After `fsck -y`, the second went through silently, which proves the targeted `ffs_reload` picks up the clean flag `fsck` writes without reloading. |
+| 8a | Clean boot regression | **Pass.** No `ffs: ` lines. |
+| 8b | `fsck -n` baseline | **Pass.** It matched the known graft artifacts exactly: the donor inode's `UNKNOWN FILE TYPE`/`BAD TYPE VALUE`, `LINK COUNT FILE I=1253202`, and the three Phase 5 complaints. Nothing else. |
+
+So both gates in change 1 are demonstrated — the non-root refusal and both
+branches of the root gate — along with change 4's pre-check. Changes 2, 5, 6
+and 7 remain argued rather than demonstrated, for the reasons in "The gap worth
+naming". Run 5 shows only that change 5 does not break unmounting.
+
+### What Run 6 found
+
+With the root marked unclean, the boot never reached the kernel's gate.
+`rc.boot` runs `fsck -p`, which skips a cleanly unmounted disk but examines a
+dirty one. On this image it finds the graft's donor-inode inconsistency — the
+same one `fsck -n` reports in Run 8b — which preen will not fix, and exits 8.
+`rc.boot` then prints "Reboot failed - serious errors" and drops to a shell
+with root still read-only. That happens in userland, before any
+`mount -uw /`, and any kernel would behave identically on a grafted image.
+Run 6b used that shell to demonstrate the kernel's part directly.
+
+"A crashed machine comes up multi-user unattended" is therefore still
+unverified end to end. Showing it needs an image with the kernel installed as a
+proper file rather than grafted over a donor inode. `vm/ufs_alloc.py` can
+already do that, and it is the obvious next step.
+
+### Other observations
+
+- Runs 1 and 8a stopped at a "Continue without network? (y/n)" prompt rather
+  than reaching a login. The prompt comes from a program started after
+  `/etc/startup/0100_LocalMounts`, where root is remounted read-write, so it
+  sits past everything this work touches. The stock kernel reached a login in
+  the same configuration. Most likely the tree kernel is not bringing up QEMU's
+  NE2000 NIC; that has not been investigated.
+- The harness depends on the `RHAP_TEST_IMAGE` override added to
+  `rhap_inject.py` and `guest-console.py` in this series. master has since
+  given `Guest` an `image=` parameter of its own (`4f3288045`), and the two
+  need reconciling when this merges.

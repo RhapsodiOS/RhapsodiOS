@@ -84,3 +84,43 @@ exercised.
 - A3 and D4, above.
 - Everything from the original comparison that is not a P0: HFS Plus hard
   links, text encodings, endian safety, the unified buffer cache.
+
+## Outcome
+
+Compiled on 2026-09-23 from branch `xnu124-p0-integration` (this backport
+plus the companion UFS one, which touches disjoint files).
+
+**All six changed HFS files compiled for ppc without errors**:
+`hfs_vfsops.c`, `hfs_vnodeops.c`, `hfs_btreeio.c`, `BTreeNodeOps.c`,
+`CatalogUtilities.c` and `FileExtentMapping.c`. No warning falls on a line this
+series introduced. The only one inside a changed hunk is
+`hfs_vnodeops.c:579`'s implicit declaration of `cluster_close`, which is the
+old call moved verbatim into B2's single lock span.
+
+That needed keep-going mode. master's ppc kernel does not currently build on
+the build box: `conf/Makefile.ppc:61` uses a GNU Make target-specific variable
+that the box's GNU Make 3.74 cannot parse, so the build stops at
+`fdesc_vnops.o` before it reaches HFS. That is unrelated to this work and is
+filed separately. With `MAKEFLAGS=k`, every other object compiled; the final
+link failed only for want of `pexpertpowermac.o`, which it never reaches in a
+normal build anyway.
+
+**That compile is the only hard check these fixes have had, and it is the gate
+this spec set.** As the Verification section said, there is no ppc machine or
+emulator here to run them. Everything else rests on review.
+
+**Review.** The series went through three rounds.
+- Round one confirmed all ten patches against their research, hunk for hunk,
+  and found one Important issue: A1's sync discarded pending catalog updates.
+- Fixing that introduced a Critical one, caught in round two: an unlocked
+  catalog fsync that could spin forever on a non-preemptive kernel.
+- Round three approved the final design.
+
+**Deferred for the final whole-branch review**, all Minor or pre-existing:
+- The read-only remount does not fsync the extents B-tree under its lock.
+- D1 fixes the outer leak in `ExtendFileC`, but a nested extension of the
+  extents file still leaks, exactly as in xnu-124.
+- C2 does not clamp the volume-level root counts.
+- D3 keeps a dead `NULL` check, research-mandated for parity with xnu-124.
+- A2 prints lock warnings on DIAGNOSTIC kernels.
+- D3 may leave a small range unzeroed after an earlier partial extension.

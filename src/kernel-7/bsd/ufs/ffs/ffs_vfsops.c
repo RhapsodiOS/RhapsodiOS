@@ -210,8 +210,10 @@ ffs_mount(mp, path, data, ndp, p)
 				 * fsck marks the disk clean without reloading when
 				 * that is its only repair, so this copy may be stale.
 				 */
-				if (error = ffs_reload(mp, ndp->ni_cnd.cn_cred, p))
+				if (error = ffs_reload(mp, ndp->ni_cnd.cn_cred, p)) {
+					printf("ffs: root superblock reload failed (%d), refusing read-write upgrade\n", error);
 					return (error);
+				}
 				if (fs->fs_clean == 0) {
 					printf("ffs: root not cleanly unmounted, refusing read-write upgrade; run fsck\n");
 					return (EPERM);

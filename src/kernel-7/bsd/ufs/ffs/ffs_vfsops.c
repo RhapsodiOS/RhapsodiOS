@@ -576,6 +576,15 @@ ffs_mountfs(devvp, mp, p)
 		error = EOPNOTSUPP;
 		goto out;
 	}
+	if (!ronly && (mp->mnt_flag & MNT_ROOTFS) == 0 && fs->fs_clean == 0) {
+		printf("ffs: filesystem not cleanly unmounted, refusing; run fsck\n");
+#if REV_ENDIAN_FS
+		if (rev_endian)
+			byte_swap_sbout(fs);
+#endif /* REV_ENDIAN_FS */
+		error = EOPNOTSUPP;
+		goto out;
+	}
 
 #ifdef NeXT
 	/* If we are not mounting read only, then check for overlap 

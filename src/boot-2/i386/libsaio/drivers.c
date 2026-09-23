@@ -126,8 +126,16 @@ int pickDrivers(
 #endif 1
 		}
 	    if (ret >= 0) {
-		table = drivers[number].configTable;
-		addConfig(table);
+		/*
+		 * Forced divergence from a 4.2 reference defect, fixed at the
+		 * user's request: 4.2 records drivers[number].configTable
+		 * (boot+20768..20788), which freeDriverList frees
+		 * (boot+23677..23682), leaving a dangling pointer for
+		 * execKernel's VBE Mode lookup. Record addConfig's permanent
+		 * copy in kernBootStruct->config instead.
+		 */
+		table = kernBootStruct->configEnd;
+		addConfig(drivers[number].configTable);
 		driverWasLoaded(name, table, NULL);
 	    }
 	}
@@ -179,13 +187,18 @@ skip_driverload:
 	while(getc() != '\r');
 	printf("\n");
     } else {
-	table = drivers[number].configTable;
+	/*
+	 * Forced divergence from the same 4.2 reference defect
+	 * (boot+21219..21249), fixed at the user's request: record
+	 * addConfig's permanent copy, not the table freeDriverList frees.
+	 */
+	table = kernBootStruct->configEnd;
 #if 0
         printf(table);
         flushdev();
         while (getc() != '\r') continue;
 #endif
-	addConfig(table);
+	addConfig(drivers[number].configTable);
 	printf(" \n");
 	driverWasLoaded(name, table, NULL);
 	verbose("The driver was loaded successfully.\n");

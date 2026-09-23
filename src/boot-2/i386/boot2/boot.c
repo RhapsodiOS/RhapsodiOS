@@ -315,9 +315,10 @@ insert_again:
 	 * on every boot, then take VBE Mode from the first loaded driver whose
 	 * table has it. A value on the boot line or in the system config
 	 * overrides the driver's.
-	 * Divergence, not fixed: 4.2's loadOtherConfigs points configTable into
-	 * kernBootStruct->config (boot+18841); ours frees the table it points
-	 * at (stringTable.c), so this reads freed memory.
+	 * configTable is valid here: loadOtherConfigs, rebuilt from 4.2
+	 * (boot+18813..18858), points it at the driver's tables in
+	 * kernBootStruct->config, and pickDrivers, in a forced divergence from
+	 * 4.2, points it at addConfig's copy there.
 	 */
 	vbeMode = 0;
 	enumerateVBEModes();

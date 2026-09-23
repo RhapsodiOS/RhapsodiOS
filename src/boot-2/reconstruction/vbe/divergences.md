@@ -2103,11 +2103,21 @@ listing and the adapter warning to `getBootString`, and rebuilds
 
 ### A divergence 7b exposes: the driver's table pointer [measured code; not fixed]
 
+**[UPDATED — Task 7c: fixed. RED reproduced the failure with the driver
+first; see "Task 7c: the `configTable` fix".]**
+
 **4.2's lookup reads `loaded_drivers[i].configTable`** (`boot+986..991`).
 - **4.2's `loadOtherConfigs` points that at persistent memory** [measured,
   `boot+18808..18858`]:
   1. after a driver loads and links, it frees the `malloc`ed table
      (`boot+18817`);
+     **[CORRECTED — Task 7c, from 7b's review: 4.2 frees the table whether
+     or not the driver loads. `boot+18813..18817` is reached from all three
+     outcomes of the load attempt: `openDriverReloc` failing (`boot+18739`),
+     either error message (`boot+18806`), and success (`boot+18808`). Only
+     the reload and `driverWasLoaded` depend on the driver linking, through
+     the flag in `edi` (set at `boot+18808`, tested at `boot+18825`)
+     [measured].]**
   2. it calls `loadConfigDir(name, useDefault, &table, NO)` (`boot+18841`),
      which reads the tables into `kernBootStruct->config` and points `table`
      there;
@@ -2134,6 +2144,21 @@ listing and the adapter warning to `getBootString`, and rebuilds
   - a boot that runs `loadBootDrivers`.
   - In those cases the lookup may miss `VBE Mode`, or read another driver's
     table.
+- **[ADDED — Task 7c, from 7b's review] 4.2 dangles too, on the
+  `loadBootDrivers` path: a reference defect** [measured code].
+  - 4.2's `pickDrivers` (`boot+20548`) passes `drivers[number].configTable`
+    to `addConfig` and then to `driverWasLoaded`, on both of its load paths:
+    the automatic one (`boot+20768..20788`) and the chosen one
+    (`boot+21219..21249`).
+  - 4.2's `freeDriverList` (`boot+23624`) frees each entry's `+0xC` field,
+    `configTable` (`boot+23677..23682`), and `loadBootDrivers` calls it
+    before returning.
+  - So a driver loaded from a driver disk leaves a dangling
+    `loaded_drivers[i].configTable` in 4.2 as well. Only a boot that reaches
+    `pickDrivers` is affected: a missing driver loaded from a floppy, or
+    install mode [measured source, `boot.c` and `drivers.c`].
+  - Ours has the same code: in `t7b3` both `pickDrivers` and `freeDriverList`
+    match 4.2's byte for byte (Task 7c's comparisons).
 - **This is not changed here.** It is in `loadOtherConfigs`, outside Task
   7's functions. The source labels it at the lookup. The fix would be to
   rebuild 4.2's `loadOtherConfigs` tail, which changes when
@@ -2270,6 +2295,11 @@ That is 2,220.
   - `vbeFrameBuffer` (6228): zero;
   - `graphicsMode` (`kbs+0x14C`): **0** in both boots. The default boot had
     the panel up (7a), so this 0 is the setter's store.
+    **[CORRECTED — Task 7c, from 7b's review: the 0 cannot be attributed.
+    `execKernel`'s set block calls `setMode(TEXT_MODE)` first, and that
+    already stores 0 (`graphics.c:185`) before the setter's own store
+    (`vbe.c:223`). The dump cannot tell the two stores apart [measured
+    code].]**
   - The default boot's whole 8,704-byte dump has SHA-256
     `C7153541...9F5EC37B`.
 - **Serial**: 88 lines in each boot, ending at `Continue without network?
@@ -2327,3 +2357,241 @@ typed at 8 s, with the extended key map. The runs are
 - **Not exercised here**:
   - the adapter warning, since both adapters have VBE 3.0;
   - `No usable VBE mode. Reverting to VGA.`
+
+## Task 7c: the `configTable` fix
+
+7b's `VBE Mode` lookup reads `loaded_drivers[i].configTable`, and ours left
+that pointing at freed memory (7b's "A divergence 7b exposes"). The user asked
+for the bug to be fixed. 7c rebuilds 4.2's `loadOtherConfigs`, which fixes the
+`Boot Drivers` path as 4.2 does. It then closes the `loadBootDrivers` path,
+which dangles in 4.2 too, with a labelled forced divergence.
+
+**Method.**
+- Builds are `rbuild` as in 7b, after `vm/sync-src.ps1 -Path boot-2`. The
+  guest printed each touched source's `cksum` before building; they equal
+  the local ones. Every binary was checked by its guest `sum` and `cksum`,
+  recomputed locally. The package's `boot` is `cmp`-identical to the copy,
+  and so is `macho2flat` of the copied `boot.sys`.
+- **Two builds, one per commit.** `t7c1` has the `loadOtherConfigs` rebuild
+  alone, and is the first commit's sources. `t7c2` adds the `pickDrivers`
+  change and the label at the lookup, and is the second commit's. `t7c2` is
+  kept as `vm/work/t7c-boot` and `vm/work/t7c-boot.sys`.
+- `compare_flat.py` ran with both images at base `0x3000`, over the functions
+  7b compared plus nine driver and config functions. The pads were compared
+  by eye.
+- **Every boot** used `$GOLDEN` (`E1968E3E...`) + `$KSPEC2` + `$DRV` + the
+  booter under test, rebuilt before each boot, on `--vga cirrus` with `--at
+  5,15,30,60,95 --pmemsave 30:0x11000:0x2200`.
+  - `/mach_kernel` read back as `74B12FCD...`. The driver's files read back
+    equal to `$DRV`'s, and `_reloc` as `DRVSHA`. Both boot slots held the
+    booter followed by zeros.
+  - "Driver first" means `install-driver.py --first`: `Boot Drivers` =
+    `VBE20DisplayDriver EIDE ISASerialPort Floppy PS2Keyboard PCIBus
+    EISABus`. "Driver last" is 7b's order.
+
+### RED: 7b's booter, driver first [measured]
+
+`vm/shots-t7c-red-first-b`, booter `t7b-boot` (`155DEA4F...`).
+- **The dump at 30 s**:
+  - **`vbeCurrentMode` (`kbs+0x1858`) is all zero**;
+  - `vbeModes` holds 7b's 8 records, because the enumerator runs
+    unconditionally;
+  - **`graphicsMode` is 1**: the panel was never taken down, because the
+    set block did not run.
+- **Serial**: there is no `using VBE mode`. The driver, now `VBEDisplay0`,
+  prints `Skipping framebuffer initialization (card not in VBE mode).` and
+  `Driver loaded to export VBE mode list.`.
+- **So the lookup missed `VBE Mode`, and `vbeMode` stayed 0.** 7b's
+  prediction holds. That the block was reused by later drivers' allocations
+  is [inference], from `zalloc`'s lowest-first, zeroing allocator.
+- A first attempt, `vm/shots-t7c-red-first`, lost the harness at the 15 s
+  screendump (a QMP socket timeout) before any dump. Its partial serial
+  shows the same `Skipping framebuffer initialization` line.
+
+### 4.2's `loadOtherConfigs`, rebuilt [measured]
+
+**What 4.2's differs in.** 4.2's is `boot+18288..19003` (716 bytes); ours in
+`t7b3` was 612. Read side by side, three things differ:
+1. **A `Query` prompt** at the top of the loop (`boot+18406..18480`). If
+   `Query` is set, 4.2 calls `setMode(TEXT_MODE)`, then prints
+   `localPrintf("Load driver: \"%s\" ([y]/n)? ", string)`. It reads
+   `gets(buf, 16)` until the reply is empty, `y` or `n`. On `n` it goes back
+   to the loop top.
+   - `buf` is at `[ebp-18h]`, allocated after `val` and `count`. So it is an
+     array local to the block.
+2. **The load is an `else if` chain.** A failed `loadDriver` skips
+   `linkDriver`, and the two error messages share one `call _error` (the
+   cross-jump at `boot+18798`). `edi` is set to 1 only after a successful
+   link (`boot+18808`).
+3. **The tail** (`boot+18813..18858`):
+   - it frees the table on every outcome of the load attempt;
+   - then, only if `edi` is set, it calls `loadConfigDir(string,
+     useDefault, &table, NO)` and `driverWasLoaded(string, table, NULL)`.
+- **The tail cannot match without the prompt.** `buf`'s 16 bytes, and one
+  more spill (`tableName`, `[ebp-44h]`), move every stack slot. **So the
+  whole function is rebuilt.**
+
+**The source** (`libsaio/stringTable.c`):
+- the `Query` block, with `char buf[16]` declared inside it;
+- `int loaded = 0;` in the load block, then `else if` and `else loaded =
+  1;`;
+- the tail: `free(table); if (loaded) { loadConfigDir(..., &table, NO);
+  driverWasLoaded(...); }`;
+- `setMode` declared `extern` in the file, as `disk.c` declares
+  `spinActivityIndicator`.
+- **A reference defect, reproduced and labelled on the line**: on `n`,
+  `string` is not freed.
+
+**The comparison, in `t7c1` and again in `t7c2`:**
+- **`loadOtherConfigs` is at byte parity with the first build**: `MATCH:
+  241 instructions, 456 bytes compared, 258 masked, 37 addresses mapped`,
+  716 against 716. The pad is `00 00` on both sides.
+- **Every mapped value names the expected symbol**:
+  - the functions `setMode`, `gets`, `localPrintf`, `verbose`, `error`,
+    `getBoolForKey`, `getValueForKey`, `newStringFromList`,
+    `newStringForStringTableKey`, `usrDevices`, `currentdev`, `switchdev`,
+    `loadConfigFile`, `loadConfigDir`, `driverIsMissing`, `driverWasLoaded`,
+    `openDriverReloc`, `loadDriver`, `linkDriver`, `malloc`, `free`,
+    `strcmp` and `sprintf`;
+  - `kernBootStruct` and `sysconfig_dev`;
+  - 12 strings, which hold the same bytes on both sides. Among them are
+    `Query` and `Load driver: "%s" ([y]/n)? `.
+
+**What changes in behaviour, as 4.2** [measured code; inference for effect]:
+- **A driver that fails to open, load or link now gets no entry.** Its
+  tables no longer go into `kernBootStruct->config`, and it is not added to
+  `loaded_drivers`. Before 7c both happened for every driver whose table
+  loaded.
+  - On `$GOLDEN` every `Boot Drivers` bundle has a `_reloc` [measured].
+  - The GREEN boots below register the same drivers as 7b's.
+- **The recorded table is now the last instance table read.**
+  `loadConfigFile` sets `*table` for each `Instance<n>.table` that
+  `loadConfigDir` reads, and the lookup sees only that one table. Before
+  7c, ours recorded the `malloc`ed `Instance0.table`. The VBE driver has one
+  instance.
+- **`Query` now asks before each boot driver.** It is inert unless the key is
+  set, and it was not exercised.
+- **A residual 4.2 defect, not fixed**: if the second `loadConfigDir` loads
+  nothing, `table` keeps the freed pointer. That happens only when the
+  config area is full (`No room in memory for config files`).
+  `driverWasLoaded` would then record freed memory [inference, from the
+  code].
+
+### The `loadBootDrivers` path: a forced divergence [measured]
+
+**Ours dangles as 4.2 does.** In `t7b3`, `pickDrivers` (736 bytes) and
+`freeDriverList` (108) match 4.2's byte for byte (223 and 43 instructions).
+`pickDrivers` records `drivers[number].configTable`, and `freeDriverList`
+frees it before `loadBootDrivers` returns (`drivers.c:129-131`, `:182-190`,
+`:616` and `:760`, as of 7b).
+
+**The fix: record `addConfig`'s copy.** At both sites, the source now:
+1. reads `kernBootStruct->configEnd` into `table` before `addConfig`;
+2. passes `drivers[number].configTable` to `addConfig`, which copies it
+   there;
+3. passes `table` to `driverWasLoaded`.
+- So the recorded pointer is the permanent copy in `kernBootStruct->config`,
+  as `loadOtherConfigs` now records.
+- If `addConfig` has no room, it copies nothing, and `table` points at the
+  empty string at `configEnd`. That is not dangling [inference, from
+  `addConfig` and `loadConfigFile`].
+- **It is labelled in the source** as a forced divergence from a 4.2
+  reference defect, fixed at the user's request.
+
+**Why this and not "don't free a loaded driver's table"** [inference, from
+the code]:
+- `freeDriverList` cannot tell which entries were loaded.
+- Clearing `drivers[number].configTable` after each call needs the entry's
+  address formed again after two calls. That is about 19 bytes a site
+  (estimated, not built), against the 11 measured here.
+- Freeing no tables at all leaks every unchosen driver's table.
+
+**The cost, and what it moves:**
+- **`pickDrivers` grows from 735 to 757 bytes of code** (736 to 760 with
+  the pad). Each site adds `mov eax,[_kernBootStruct]; mov ebx,[eax+158h]`,
+  11 bytes. `ebx` holds `table` across `addConfig`, as before.
+- **The register choice changes throughout the function.** The aligner puts
+  412 bytes equal and 239 masked, with 0 differing. The unaligned bytes are
+  84 on 4.2's side and 106 on ours:
+  - the two 11-byte insertions;
+  - at each site, `mov eax,[ecx+eax+0Ch]; push eax` against 4.2's `mov
+    ebx,...; push ebx`;
+  - `esi` and `edi` swapped everywhere (`number` is `edi`, and the
+    `[ebp-94h]` pointer is `esi`). This is a knock-on of the allocator
+    [inference].
+  - The aligner reports six branch "problems". Each is a branch whose target
+    is one of those replaced instructions, and each lands on the same point
+    of the code in both streams (checked by eye: the `inc`, the `lea` of
+    `number`, the `cmp` with -2, the `dec`, and, for two of them, the start
+    of the second site).
+- `freeDriverList` is unchanged, and still `MATCH`es.
+
+**Not exercised under QEMU** [inference, from the code].
+- `pickDrivers` runs only for a missing driver the user loads from a floppy,
+  or in install mode.
+- Both paths read the drivers from `fd()`. `qemu-shot.py` attaches no
+  floppy, and there is no tool here to build a UFS floppy holding a driver.
+- The evidence for this path is therefore the source and the disassembly
+  above.
+
+### Size [measured]
+
+| build | contents | `__text` | `__cstring` | size line |
+| --- | --- | --- | --- | --- |
+| `t7b3` | 7b | 38,257 | 4,322 | `booter 44848 bytes of 45056, 208 to spare` |
+| `t7c1` | + `loadOtherConfigs` | 38,361 (+104) | 4,356 (+34) | `booter 44992 bytes of 45056, 64 to spare` |
+| `t7c2` | + `pickDrivers` | 38,385 (+24) | 4,356 | **`booter 45008 bytes of 45056, 48 to spare`** |
+
+- `t7c1`'s `+144` is the function's 104 bytes, the two new strings' 34 and
+  `__TEXT`'s rounding. 7b's record gave 612 against 716 for the function,
+  and did not count the strings.
+- `t7c2`'s `boot` has `sum 52083 44`, `cksum 2206134810 45008` and SHA-256
+  `8AA489F19C80875AE9149647C94C7AB526FD116338F1014B4AED464347547735`.
+- Its `boot.sys` has `sum 62341 1054`, `cksum 2757456854 1078660` and SHA-256
+  `AEA713646C83B94D46286F05945A42FD2C9AB5202E87353A03236358EFC82974`.
+- **Warnings**: nothing new. `stringTable.c` warns only about `strncat`, in
+  the unchanged `loadSystemConfig`. `drivers.c` has no warnings.
+
+### Nothing else moved [measured, `t7c2`]
+
+Every other function compared gives the result and counts it gave in
+`t7b3`, apart from addresses:
+- `execKernel`'s lookup (37/70/41/8) and set block (13/26/14/4);
+- `getBootString` (255/652/277/35) and `convert_vbe_mode`;
+- `setMode` and the other 22 panel-path functions, and `putchar`;
+- Task 6's five functions, including the enumerator's known stop at `+207`
+  and the setter's palette divergence;
+- `addConfig`, `loadConfigFile`, `loadConfigDir`, `driverIsMissing`,
+  `addToLoadedDriverList`, `isInteresting`, `driverWasLoaded` and
+  `freeDriverList`, which all `MATCH` 4.2.
+
+### GREEN [measured]
+
+**Driver first** (`vm/shots-t7c-green-first`, booter `t7c-boot`, the RED
+setup exactly):
+- **5 s**: `Rhapsody boot v5.0.2`, with the frame `276180227B36...`.
+- **The dump at 30 s**:
+  - **`vbeCurrentMode` = 257**: 640x480, 8 bpp, model 4, frame buffer
+    `0xFC000000`;
+  - **`vbeModes` holds 8 records from `0x1870`**, and the ninth is zero;
+  - `graphicsMode` is 0.
+  - The dump differs from 7b's driver-last dump only in `driverConfig[]`
+    (`kbs+0x16C..0x19D`, 29 bytes), because the load order changed.
+- **Serial**: **`Display0: using VBE mode 257`** and the eight mode lines.
+  The Cirrus driver becomes `Display1`.
+- **Frames 15-95 s**: `F1BD9500...`, 7b's static VBE frame.
+- `t7c1`, with the `loadOtherConfigs` rebuild alone
+  (`vm/shots-t7c1-first`), gives the same dump. Its serial differs only by a
+  phantom-IRQ line (rule 3). The `Boot Drivers` path is fixed by that
+  rebuild.
+
+**Driver last** (`vm/shots-t7c-green-last`, 7b's Step 4 setup):
+- **The dump is byte-identical to 7b's default boot** (`C7153541...`).
+- **Every frame is identical** to 7b's: `276180227B36...` at 5 s, then
+  `F1BD9500...`.
+- **The serial is identical once the phantom-IRQ lines are set aside**
+  (81 lines each). `Power management is enabled.` changes place among them,
+  the race of rule 3.
+- **Nothing regressed.** The same drivers register as in 7b: `hc0`, `hd0`,
+  `ISASerialPort0`, `fc0`, `PS2Controller`, `PCKeyboard0`, `PCI0`, `EISA0`,
+  `Display0` and `Display1`.

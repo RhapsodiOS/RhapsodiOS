@@ -1316,6 +1316,20 @@ kern_return_t vm_map_pageable(map, start, end, new_pageable)
 		 */
 
 		/*
+		 *	First ensure no entry in the range is already at the
+		 *	wiring limit, so a refusal leaves every count unchanged.
+		 */
+		entry = temp_entry;
+		while ((entry != vm_map_to_entry(map)) &&
+		       (entry->vme_start < end)) {
+		    if (entry->wired_count >= MAX_WIRE_COUNT) {
+			vm_map_unlock(map);
+			return(KERN_RESOURCE_SHORTAGE);
+		    }
+		    entry = entry->vme_next;
+		}
+
+		/*
 		 *	Pass 1.
 		 */
 		entry = temp_entry;

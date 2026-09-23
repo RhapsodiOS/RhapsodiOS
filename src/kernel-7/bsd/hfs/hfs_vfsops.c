@@ -219,13 +219,10 @@ struct proc             *p;
         hfsmp = VFSTOHFS(mp);
         if (hfsmp->hfs_fs_ronly == 0 && (mp->mnt_flag & MNT_RDONLY)) {
             /*
-             * use VFS_SYNC to push out System (btree) files; mount(2) has
-             * already set MNT_RDONLY, which would make hfs_update discard
-             * pending catalog updates, so clear it for the sync
+             * use VFS_SYNC to push out System (btree) files; hfs_update still
+             * writes pending catalog updates because hfs_fs_ronly is still 0
              */
-            mp->mnt_flag &= ~MNT_RDONLY;
             retval = VFS_SYNC(mp, MNT_WAIT, p->p_ucred, p);
-            mp->mnt_flag |= MNT_RDONLY;
             if (retval && ((mp->mnt_flag & MNT_FORCE) == 0))
                 goto error_exit;
 

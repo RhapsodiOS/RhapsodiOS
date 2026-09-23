@@ -3848,7 +3848,8 @@ hfs_update(ap)
         return (0);
     }
 
-    if (VTOVFS(ap->a_vp)->mnt_flag & MNT_RDONLY) {
+    /* not MNT_RDONLY: mount(2) sets that before hfs_mount flushes a read-only remount */
+    if (VTOHFS(ap->a_vp)->hfs_fs_ronly) {
         hp->h_meta->h_nodeflags &= ~(IN_ACCESS | IN_CHANGE | IN_MODIFIED | IN_UPDATE);
         DBG_VOP_LOCKS_TEST(0);
         DBG_VOP(("hfs_update: returning 0 (all flags were cleared because the volume is read-only.\n"));

@@ -1344,3 +1344,164 @@ enumerator accepts `VESAVersion >= 0x200` (item 5). It is not a divergence.
 - The package's `boot` is `cmp`-identical to the copy.
 - Both tests and the enumerator were built and compared together in `t6b`.
 - The file grew by 464 bytes over `t6a`, and by 608 over Task 5's 44,384.
+
+### The mode setter
+
+**Measured, not yet landed.** The setter below was built and compared in
+Task 6. With it, the booter is 45,088 bytes, 32 over the limit (see "Size",
+below), so its source is not in the tree.
+- **It lands in Task 7**, after Task 7's size-reducing panel-path changes:
+  4.2's 264-byte wait cursors against our 864, and 4.2's smaller `copyImage`
+  and `clearRect`. The controller decided this order on 2026-09-23.
+- **The source is kept as a patch** at `vm/work/t6c-setter.patch`
+  (gitignored), SHA-256
+  `BC00C61C1B878F5F9117699A878ED3E6F342D2F19878BAA3D0E3A89A7C0B6758`.
+  - It changes `vbe.c`, and `saio_internal.h` (`set_linear_video_mode`
+    returns `int`).
+  - It applies to `d4193bb2c`. That commit already carries the 512-byte
+    `VBEInfoBlock` in `vbe.h` (the enumerator, above), so `vbe.h` needs
+    nothing more.
+  - Applied there, it gives `vbe.c` `cksum 2550206037 9925` and
+    `saio_internal.h` `cksum 1574063489 5961`: the sources `t6c` built
+    [measured].
+- Everything in this section describes that patch as `t6c` built it.
+
+| | |
+| --- | --- |
+| reference | `boot+28032..28463`, 432 bytes (`0x9D80`) |
+| ours | `_set_linear_video_mode`, `0x9B34`, 444 bytes (next: `_setupPalette` at `0x9CF0`), build `t6c` |
+| `compare_flat`, whole | `MISMATCH size 432 \| 444`; it then cannot decode past `+429`, because the extents differ |
+| `compare_flat`, `+26..+263` | `MATCH: 67 instructions, 146 bytes compared, 91 masked, 16 addresses mapped` |
+| `compare_flat`, reference `+290..+410` against ours `+303..+423` | `MATCH: 23 instructions, 88 bytes compared, 32 masked, 8 addresses mapped` |
+| outcome | **forced divergence: the palette.** The palette block is 13 bytes in 4.2 and 26 in ours, and the 1,024-byte palette on our stack changes 5 frame bytes. Every other byte matches |
+
+**The whole function, accounted byte by byte** [measured]. `compare_flat`
+stops at the first difference, so a scratch aligner (not committed) paired the
+two instruction streams. It applies `compare_flat`'s masking rule and checks
+every in-function branch against the pairing. Its result, with the palette
+block set aside:
+- **Paired instructions: 289 bytes equal, 124 masked, 5 differ.**
+- **The 5 bytes** are the second byte of the frame size or of a frame
+  displacement, `0x01` in 4.2 and `0x05` in ours:
+
+  | offset (4.2 / ours) | 4.2 | ours |
+  | --- | --- | --- |
+  | `+3` | `sub esp,104h` | `sub esp,504h` |
+  | `+16` | `mov [ebp-104h],0` | `mov [ebp-504h],0` |
+  | `+280` / `+293` | `mov [ebp-104h],1` | `mov [ebp-504h],1` |
+  | `+410` / `+423` | `mov eax,[ebp-104h]` | `mov eax,[ebp-504h]` |
+  | `+416` / `+429` | `lea esp,[ebp-110h]` | `lea esp,[ebp-510h]` |
+
+  - The reason is our `VBEPalette palette` (1,024 bytes) on the stack, for
+    `setupPalette`.
+  - The return value is a spilled register. It moves from `[ebp-104h]` to
+    `[ebp-504h]`, below the palette.
+  - The mode information stays at `[ebp-100h]`, so every access to it
+    matches.
+- **The palette block**, `+263`, after `cmp byte [ebp-0E5h],4; jne`:
+  - 4.2, 13 bytes: `push 0DAACh; call setVBEPalette; add esp,4`.
+  - Ours, 26 bytes: `push appleClut8; lea ebx,[ebp-500h]; push ebx; call
+    setupPalette; push ebx; call setVBEPalette; add esp,0Ch`.
+- **The pad** is 2 `nop`s in ours and 3 in 4.2: 1 reference-only byte.
+- **In total**, 444 - 432 = 12: +13 in the palette block, -1 in the pad.
+- **Every mapped address** names, by our `nm`, the expected symbol:
+  - the three functions above, and `getVBEModeInfo`, `setVBEMode`, `sleep`
+    and `reallyPrint`;
+  - `kernBootStruct`, `screen_height`, `screen_width`, `bits_per_pixel`,
+    `frame_buffer`, `in_linear_mode` and `bytes_per_scanline`.
+- **The six messages** are byte-identical to 4.2's, and in 4.2's order in
+  `__cstring`. That order shows `Using VBE Mode` before `No usable VBE mode`
+  in the source; see "How the source reaches 4.2's code".
+
+**The one constant `compare_flat` cannot guard, checked by eye** [measured].
+`and eax,0FFFFh` is `25 FF FF 00 00` at 4.2's `boot+28212`. It is
+`25 FF FF 00 00` in ours, at `0x9BE8` (setter `+180`), between `or ah,40h`
+and the `push` for `setVBEMode`. The aligner masked it as `0xffff -> 0xffff`,
+as `compare_flat` would; the eye check is what compares it.
+
+**The forced divergence: the palette** (spec §1, by the user's decision).
+- 4.2 loads its own 1,024-byte table at `0xDAAC`. Ours converts `appleClut8`
+  with `setupPalette(&palette, appleClut8)`.
+- The palette is loaded only for memory model 4, as 4.2 does. Ours used to
+  load it for every mode.
+- The two tables agree only at 0 and 255 (Task 3).
+- Labelled on the line in the source.
+
+**How the source reaches 4.2's code.**
+- **The first enumerated mode is `vmr[1]`**, where `vmr =
+  &kernBootStruct->vbeCurrentMode`.
+  - 4.2 reads it as `[edi+18h]` and `[edi+1Ch]` from the current-mode pointer
+    (`boot+28136`, `+28143`).
+  - `kernBootStruct->vbeModes[0]` would reload the global after the calls.
+  - Task 4's assertions (`0x1858`, `0x1870`, 24-byte records) make `vmr[1]`
+    that element. The source says so on the line.
+  - So here 4.2's call structure overrides the rule of reaching the array
+    through `kernBootStruct->vbeModes`.
+- **The fallback is `if (vmr[1].xResolution) { Using ... } else { No usable
+  ...; return 1; }`**, in that order.
+  - The compiler puts the `else` arm first, as 4.2's code has it.
+  - The strings stay in source order, as 4.2's `__cstring` has them
+    [measured].
+- **`ret = 1` comes before the palette message**, as 4.2 stores it.
+- **The return type is `int`**, and the patch's `saio_internal.h` says so.
+  4.2 returns a status ("The rest of the VBE path"). Ours returned `void`, so
+  its caller could not tell a failure (spec §4.1).
+- **`bytes_per_scanline`** is a new global for 4.2's word at `0xEB88`. It is
+  stored here and read nowhere [measured: a raw scan of the 4.2 image finds
+  `88 EB 00 00` only at `boot+28438`, this store].
+- **`graphicsMode = TEXT_MODE`**, the third VBE store through the pointer.
+
+**What this changes from our old setter** [measured source].
+- It tests the version through the enumerator, `>= 0x200`, not `== 0x200`
+  (spec §4.3).
+- It falls back to the first enumerated mode, where ours returned.
+- It records the mode at `kbs+0x1858`.
+- **It no longer calls `getVBEInfo` itself**, so its `VBEInfoBlock` is gone.
+- **`models[]` is removed** (`vbe.c`: 32 bytes of `__data`, 67 of strings).
+  - It was never referenced: the compiler warned "`models' defined but not
+    used".
+  - 4.2's `vbe.c` has no such table.
+  - Task 3's budget counts its removal (item 2, the `appleClut8`, `models[]`
+    row).
+
+**The build, `t6c`** [measured].
+- `Booter executable is 45088 bytes; boot1 reads only 45056`. The Makefile
+  removed `boot`, and rbuild failed with status 2.
+- `boot.sys` was copied before the cleanup: `sum 23527 1053`, `cksum
+  1699282801 1077972`, both reproduced locally.
+- **The flat image was rebuilt from `boot.sys`** by a scratch copy of
+  `machOconv`'s rule: each segment in order, `__DATA` at its file size, the
+  others at their VM size.
+  - The same rebuild of `t6a`'s and `t6b`'s `boot.sys` is `cmp`-identical to
+    their shipped `boot`.
+  - The rebuilt `t6c` image is 45,088 bytes, the size the Makefile printed.
+    SHA-256 `56A3F2377AFCE180F9F746A0799F550AC12844569FEEF47ED82D7EA5A0EDA17C`.
+
+### Size [measured]
+
+| build | adds | `__text` | `__cstring` | `__data` | `boot` | spare |
+| --- | --- | --- | --- | --- | --- | --- |
+| Task 5 | | 37,209 | 4,208 | 1,564 | 44,384 | 672 |
+| `t6a` | the record writer | 37,357 (+148) | 4,208 | 1,564 | 44,528 | 528 |
+| `t6b` | the two tests and the enumerator | 37,817 (+460) | 4,208 | 1,568 (+4) | 44,992 | 64 |
+| `t6c` | the setter; `models[]` removed | 37,957 (+140) | 4,204 (-4) | 1,536 (-32) | **45,088** | **-32** |
+
+- **Task 6's growth is +704 bytes** of file.
+  - Task 3's item 2 predicts the same +704 for these rows [arithmetic]: 608
+    for the four new functions, +128 for the setter, +4 for the count, -32
+    for `models[]` and -4 of strings.
+  - Of that, 608 is in the tree (`t6b`, the committed state). The setter's
+    +96 lands in Task 7.
+- **The setter is 12 bytes over the row's 432**: the palette block, less one
+  pad `nop`. The file still grew by exactly 704.
+  - `__TEXT`'s 16-byte rounding slack fell from 15 bytes to 7.
+  - The 4-byte count filled `__data`'s file padding: 1,564 bytes in a
+    1,568-byte file part.
+- **The budget for Tasks 6 and 7 together is at most 537** (Task 3b). So
+  Task 7 must come out at -167 or less.
+  - Task 3's and Task 3b's rows for Task 7 give -212 [arithmetic]:
+    `execKernel` +172, `getBootString` +324, `convert_vbe_mode` +32, the
+    name table -60, `setMode` -124, strings +120, and the panel path -676.
+- **The overflow is one of order, not of total.** The setter needs 32 bytes
+  that only Task 7's trims free: the wait cursors (-600) and the panel code.
+  So it lands after them, in Task 7 (above).

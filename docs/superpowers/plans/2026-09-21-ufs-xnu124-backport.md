@@ -51,10 +51,13 @@ was originally planned.
   `ffs_reload` on the refusal path only and re-tests. The
   task's claim that `fsck` "already reloads the root itself" holds only when it
   repaired something else.
-- **Task 5 — `DIRBLKSIZ` is 1024, not 512**, so the check refuses every volume
-  with fragments below 1K, root included. Kept, as xnu-124 does. The include
-  Step 1 adds was redundant (`ufs/ufs/inode.h:66` already includes `dir.h`) and
-  has been removed.
+- **Task 5 — dropped.** `DIRBLKSIZ` is 1024 here, not 512, so the check refused
+  every volume with fragments below 1K, root included. It was kept at first for
+  fidelity to xnu-124, then removed once it turned out to guard no hazard in this
+  kernel. It passes other-BSD volumes, which default to 1K fragments, and it
+  would have made a `newfs -f 512` root unbootable. `make_badfs.py`'s `fs_fsize`
+  support, which existed only for this task's harness, went with it. Skip
+  Task 5 entirely.
 - **Task 4 — the swap now runs only for `FS_MAGIC_SWAPPED`**, closing a
   pre-existing out-of-bounds write that a native superblock with a bad block size
   could reach.
@@ -1178,7 +1181,7 @@ Expected: nothing beyond the four pre-existing graft-caused complaints catalogue
 
 - [ ] **Step 4: Write the Outcome section**
 
-Append an `## Outcome` section to the spec recording, for each of the seven changes: whether it was demonstrated or argued, the serial-log line or screenshot that evidences it, and anything that behaved differently from what the spec predicted. Follow the style of the outcome section in `2026-09-18-ufs-allocation-design.md` — specific, including what failed on the way.
+Append an `## Outcome` section to the spec recording, for each of the six changes: whether it was demonstrated or argued, the serial-log line or screenshot that evidences it, and anything that behaved differently from what the spec predicted. Follow the style of the outcome section in `2026-09-18-ufs-allocation-design.md` — specific, including what failed on the way.
 
 - [ ] **Step 5: Commit**
 

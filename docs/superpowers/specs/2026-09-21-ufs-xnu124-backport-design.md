@@ -13,8 +13,8 @@ happen on purpose.
 **Done when:** a clone of `golden.img` still boots with root mounted and
 `fsck -n` no worse than its four known graft artifacts, and every refusal that
 can be triggered on demand has been observed returning its expected errno
-against a filesystem deliberately malformed to trigger it. Two of the seven
-changes cannot be triggered on demand; they are named in "The gap worth naming"
+against a filesystem deliberately malformed to trigger it. Four of the six
+changes cannot be demonstrated here; they are named in "The gap worth naming"
 rather than quietly counted as done.
 
 ## Why these fixes, and why now
@@ -43,6 +43,7 @@ against the tree rather than assumed.
 | Two-phase `vflush(SKIPSWAP)` in `ffs_unmount` | `SKIPSWAP` does not exist in `kernel-7` — zero occurrences in the tree. It orders swap-backed vnodes ahead of the final flush, which matters only when UFS is backing swap. |
 | `ffs_radvisory` fragment-tail fix | `kernel-7`'s `advisory_read` takes a caller-computed `runt_size` (`bsd/vfs/vfs_cluster.c:561`, called from `ufs_vnops.c:690`). xnu-124's is offset-based and handles the runt internally. Porting the caller without its callee would break readahead rather than fix it. |
 | `extern int prtactive` in `ufs_inode.c` | In xnu-124 this stops UFS shadowing a VFS-wide variable. In `kernel-7` there is nothing to shadow: `ufs_inode.c:80` is the **only** definition in the tree, and HFS, cd9660, msdosfs and NFS all reference it as `extern`. Making UFS `extern` too leaves the symbol undefined and the kernel unlinkable. |
+| `fs_fsize < DIRBLKSIZ` mount refusal (was change 3) | `DIRBLKSIZ` is 1024 in this build, not 512: the kernel compiles with `-D__APPLE__` (`conf/Makefile.template:104`), which selects it (`ufs/ufs/dir.h:102-103`). xnu-124 builds the same way, but no hazard from 512-byte fragments was found in this kernel, and the check does not catch what it looks like it should: keying on fragment size, it passes a volume made by another BSD, since 4.4BSD's `newfs`, like this tree's (`src/Commands/diskdev_cmds/newfs.tproj/newfs.c:115`), defaults to 1K fragments. What it would do is refuse a `newfs -f 512` volume, and make a root like that unbootable. Ported, reviewed, then dropped. |
 
 The first of these is the reason this spec exists in written form rather than
 as a patch. It is not obvious from reading the xnu-124 diff, and it is fatal.
@@ -103,22 +104,9 @@ refuses to run unless the mount is read-only — and re-applies the limit throug
 a helper shared with `ffs_mountfs`. Both were pre-existing, and also affected
 `fsck`'s own reload of the root.
 
-**3. Reject a fragment size below `DIRBLKSIZ`.**
-Added beside the existing geometry checks in `ffs_mountfs`. `DIRBLKSIZ` is 1024
-in this build, not 512: the kernel compiles with `-D__APPLE__`
-(`conf/Makefile.template:104`), which selects it (`ufs/ufs/dir.h:102-103`).
-xnu-124 builds the same way, so its check is also `fs_fsize < 1024`. The effect
-is to refuse every UFS volume with fragments smaller than 1K. `golden.img` has
-`fs_fsize` 1024 and passes, with no margin.
-
-The check is kept for fidelity to xnu-124, not because it catches a known hazard
-here. It keys on fragment size, not directory format, so it does *not* catch a
-volume made by another BSD: 4.4BSD's `newfs`, like this tree's
-(`src/Commands/diskdev_cmds/newfs.tproj/newfs.c:115`), defaults to 1K fragments,
-so such a volume passes even though its 512-byte directory blocks differ from
-this kernel's. The same default means an ordinary Rhapsody volume passes too.
-The cost is accepted deliberately: a volume made with `newfs -f 512` stops mounting, and a root like that would not boot,
-because this check has no read-only exemption.
+**3. Dropped: a fragment size below `DIRBLKSIZ`.** Ported, reviewed, then
+removed. See "What does not port". The numbering of the other changes is kept
+so the plan's task references still line up.
 
 **4. Validate the superblock magic before byte-swapping it.**
 The `REV_ENDIAN_FS` path in `ffs_mountfs` at `ffs_vfsops.c:525` swaps the entire
@@ -185,7 +173,6 @@ multi-gigabyte images anywhere.
 | Case | Mutation | Expected | Covers |
 |---|---|---|---|
 | Unclean non-root mount | `fs_clean = 0` | `EOPNOTSUPP` | 1 |
-| Undersized fragment | `fs_fsize = 256` | `EOPNOTSUPP` | 3 |
 | Corrupt superblock | `fs_magic` garbage | `EINVAL`, superblock unmodified afterward | 4 |
 
 **Harness B — unclean root.** Clear `fs_clean` in `vm/work/test.img` and boot,
@@ -201,10 +188,9 @@ catalogued during the UFS allocation work.
 
 ### The gap worth naming
 
-Four of the seven changes ship argued rather than demonstrated. The three that
-are demonstrated — the mount gate, the fragment-size check, and the magic
-pre-check — are the three that change what the kernel refuses, which is where
-the risk is. The rest are worth being precise about.
+Four of the six changes ship argued rather than demonstrated. The two that are
+demonstrated — the mount gate and the magic pre-check — are the two that change
+what the kernel refuses, which is where the risk is. The rest are worth being precise about.
 
 Changes 6 and 7 would need a program in the guest calling `pread` at a negative
 offset and `write` with a count of zero. There is no way to get one there: the

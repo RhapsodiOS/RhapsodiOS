@@ -52,6 +52,8 @@
 
 #define FORCESYNCBTREEWRITES 0
 
+static int ClearBTNodes(struct vnode *vp, long blksize, off_t offset, off_t amount);
+
 OSStatus SetBTreeBlockSize(FileReference vp, ByteCount blockSize, ItemCount minBlockCount)
 {
     if (blockSize > MAXBSIZE )
@@ -236,6 +238,10 @@ OSStatus ExtendBTreeFile(FileReference vp, FSSize minEOF, FSSize maxEOF)
 		DBG_TREE((" ExtendBTreeFile: actualBytesAdded < bytesToAdd!"));
 		
 	filePtr->fcbEOF = filePtr->fcbPLen;		// new B-tree looks at fcbEOF
+
+	retval = ClearBTNodes(vp, btInfo.nodeSize, filePtr->fcbEOF - actualBytesAdded, actualBytesAdded);
+	if (retval)
+		return (retval);
 	
 	/*
 	 * Update the Alternate MDB or Alternate VolumeHeader
@@ -270,5 +276,38 @@ OSStatus ExtendBTreeFile(FileReference vp, FSSize minEOF, FSSize maxEOF)
 	
 	return retval;
 
+}
+
+
+/*
+ * Clear out (zero) new b-tree nodes on disk.
+ */
+static int
+ClearBTNodes(struct vnode *vp, long blksize, off_t offset, off_t amount)
+{
+	struct buf *bp = NULL;
+	daddr_t blk;
+	daddr_t blkcnt;
+
+	blk = offset / blksize;
+	blkcnt = amount / blksize;
+
+	while (blkcnt > 0) {
+		bp = getblk(vp, blk, blksize, 0, 0);
+		if (bp == NULL)
+			continue;
+		bzero((char *)bp->b_data, blksize);
+		bp->b_flags |= (B_DIRTY | B_AGE);
+
+		/* wait/yield every 32 blocks so we don't hog all the buffers */
+		if ((blk % 32) == 0)
+			bwrite(bp);
+		else
+			bawrite(bp);
+		--blkcnt;
+		++blk;
+	}
+
+	return (0);
 }
 

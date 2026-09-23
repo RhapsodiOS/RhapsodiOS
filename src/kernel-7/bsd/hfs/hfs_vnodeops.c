@@ -549,12 +549,11 @@ struct vop_close_args /* {
     };
 
 	fcb = HTOFCB(hp);
-	leof = fcb->fcbEOF;
 
     /* File is already flushed, so just reset values */
     H_HINT(hp) = kNoHint;		/* reset catalog hint */
 
-	if (leof != 0 || doclusterwrite) {
+	if (fcb->fcbEOF != 0 || doclusterwrite) {
 		enum vtype our_type = vp->v_type;
 		u_long our_id = vp->v_id;
 
@@ -570,6 +569,8 @@ struct vop_close_args /* {
 			return (E_NONE);
 		}
 
+		/* read the length under the lock: a writer may have grown the file while we slept */
+		leof = fcb->fcbEOF;
 		if (leof != 0) {
 			blocksize = HTOVCB(hp)->blockSize;
 			blks = leof / blocksize;

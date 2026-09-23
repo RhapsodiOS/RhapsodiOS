@@ -518,17 +518,21 @@ references, so an unreachable result is a strong claim.
 | rank | bytes | what | why nothing needs it |
 | --- | --- | --- | --- |
 | 1 | 600 | `blit_string`, `blit_bm`, `blit_clear`, `strheight` (`libsaio/font.c`) | unreachable. The callers are in `browser.c`, `button.c` and `questionbox.c`, which `boot2/Makefile:36-39` does not build, and in a comment at `graphics.c:74-80` [measured] |
-| 2 | 408 | `strtol` (`libsa/strtol.c:112`) | unreachable; no caller [measured]. `strtoul`, in the same object, is used |
+| 2 | 408 | `strtol` (`libsa/strtol.c:112`) | unreachable; no caller [measured]. `strtoul`, in the same object, is used. **[CORRECTED — Task 5: "no caller" holds for `boot` only. `libsa.a` is also linked into `sarld`, which the same package builds and ships, and `libsarld.a` has `U _strtol`. With `strtol` deleted, the `sarld` link failed with `Undefined symbols: _strtol` [measured]. Not removable from source; see "Task 5: the trim".]** |
 | 3 | 284 | `getVBEDACFormat`, `setVBEDACFormat`, `getVBEPalette`, `getVBECurrentMode` | unreachable here **and in 4.2** [measured]. They belong to the reference's `vbe.c`, so removing them is a departure. **Not counted** |
 | 4 | 116 | `loadModule` (`boot2/module.c:35`) | unreachable; its only caller is under `#if TEST` [measured] |
 | 5 | 76 | `swapBigIntsToHost`, `swapBigShortToHosts` (`libsaio/ufs_byteorder.c`) | unreachable; the callers are commented out [measured] |
-| 6 | 64 | `slvprintf` (`libsa/sprintf.c:66`) | unreachable [measured]. **[CORRECTED — Task 3b, review M7: its one caller, `tests/satest.c:44`, is a test program the booter does not build.]** |
-| 7 | 48 | `realloc` (`libsa/zalloc.c:251`) | unreachable. The callers are in unbuilt `libsaio/old` and in `nasm` [measured]. **[CORRECTED — Task 3b, review M7: the host-side callers are `nasm` and `util/mkfont.c:321`; neither is part of the booter.]** |
+| 6 | 64 | `slvprintf` (`libsa/sprintf.c:66`) | unreachable [measured]. **[CORRECTED — Task 3b, review M7: its one caller, `tests/satest.c:44`, is a test program the booter does not build.]** **[CORRECTED — Task 5: it has a caller in the package. `sarld` links `libsa.a`, and `libsarld.a` has `U _slvprintf`, from `vprint` (`src/cctools-2/ld/rld.c:1787`, under `SA_RLD`) [measured]. Not removable from source.]** |
+| 7 | 48 | `realloc` (`libsa/zalloc.c:251`) | unreachable. The callers are in unbuilt `libsaio/old` and in `nasm` [measured]. **[CORRECTED — Task 3b, review M7: the host-side callers are `nasm` and `util/mkfont.c:321`; neither is part of the booter.]** **[CORRECTED — Task 5: `sarld`, built by the same package from the same `libsa.a`, calls it. `libsarld.a` has `U _realloc`, from `reallocate` (`src/cctools-2/ld/rld.c:1823`, under `SA_RLD`) [measured]. Not removable from source.]** |
 | 8 | 6 | `__sp` (`libsaio/asm.s:282`) | unreachable [measured] |
 
 **Ranks 1, 2 and 4 to 8 total 1,318 bytes.** Each size includes the function's
 alignment pad. So the saving per object can differ by a few bytes once the
 alignment shifts [inference].
+**[CORRECTED — Task 5: the method scanned the linked `boot` only. Ranks 2, 6
+and 7 live in `libsa.a`, which `sarld` links too, and `sarld` needs all three
+[measured]. Only ranks 4, 5 and 8 (198 bytes) could be removed, and they saved
+192 bytes of file [measured]. See "Task 5: the trim".]**
 
 ### The stop gate
 
@@ -887,6 +891,12 @@ item 2's table]
 - **The gate passes:** 537 <= 1,198, with 661 bytes to spare.
   - Trimming must find only 12 bytes, or 57 at the rounding bound.
   - Rank 2 (`strtol`, 408) covers that alone.
+
+  **[CORRECTED — Task 5: the pool is not 718. Ranks 2, 6 and 7 are needed
+  by `sarld`, so the pool is ranks 4, 5 and 8: 198 by `nm`, 192 in the file
+  [measured]. Measured spare after them: **672**. The gate still passes,
+  537 <= 672, with 135 to spare, but the 256-byte margin is not met. Rank 2
+  does not cover it. See "Task 5: the trim".]**
 - **A narrower reading gives the same verdict.** Suppose only `setMode`'s
   closure is rebuilt, and `message` and `clearActivityIndicator` stay ours.
   - The code delta is then -264 and the data delta -600.
@@ -974,3 +984,211 @@ matches this only if `boot.c:503-506` goes.
   the panel for mode 2 and replays the buffered text. Then the mode setter
   sets the VBE mode and writes `graphicsMode` 0. G2 therefore needs no typed
   line [inference].
+
+---
+
+## Task 5: the trim
+
+**Target.** Spare of at least 793 bytes: Task 3b's budget of at most 537,
+plus a 256-byte margin. Spare before Task 5: 480 [measured, Task 3].
+
+**Result: the target is not met, and the user accepted that.**
+- The candidates that can be removed give **672** spare [measured]. That
+  covers the budget, with 135 bytes to spare instead of 256.
+- 793 was not reached because ranks 2, 6 and 7 are still linked by `sarld`
+  (below).
+- **The user accepted 672 spare on 2026-09-22**: the 537 budget with a
+  135-byte margin. See "The decision".
+
+### How each candidate's evidence was re-checked
+
+- **Our source.** It is Task 4's commit, whose build is byte-identical to
+  Task 3's `1647E453...BC122` [measured, Task 4]. So Task 3's binary evidence
+  applies to it.
+- **References in `boot`.** The control booter was re-scanned at every byte
+  offset for an `E8`/`E9`/`0F 8x` rel32, an `EB`/`7x` rel8 or an abs32 value
+  landing on each candidate's start. Every candidate got 0 hits [measured].
+- **Callers in source.** `git grep` over `src/boot-2/i386` [measured].
+- **Other programs that link the same archive (new in Task 5).**
+  - `libsa.a` is linked into two programs of this package: `boot`
+    (`boot2/Makefile:27`) and `sarld` (`sarld/Makefile:10`, `:25-28`: `-lsarld
+    $(LIBSA)` with `-nostdlib`). The package ships `sarld` as
+    `/usr/standalone/i386/sarld` [measured, the Makefiles and the package].
+  - The build root's `/usr/local/lib/libsarld.a` (2,549,964 bytes) has
+    `U _realloc`, `U _slvprintf`, `U _strtol` and `U _strtoul` [measured,
+    `nm -o`].
+  - Its sources are `src/cctools-2/ld`, built with `-DRLD -DSA_RLD`. Under
+    `SA_RLD`, `rld.c:1787` (`vprint`) calls `slvprintf` and `rld.c:1823`
+    (`reallocate`) calls `realloc` [measured source]. `pass1.c` calls
+    `strtol`; which of its calls survive `-DRLD` was not determined.
+  - Task 4's `sarld.sys` defines all four [measured, `nm -n`].
+  - `libsaio.a` and the `boot2` objects are linked into `boot` only. The one
+    other Makefile that names `libsaio.a`, `testmodule`'s, is not in
+    `i386/Makefile`'s `SUBDIRS` [measured].
+- **4.2.** A fuzzy match of our functions against `$BREF` (Task 3's
+  `match.py`) found each counterpart, and a raw scan looked for references to
+  it.
+
+| rank | bytes (`nm`) | candidate | taken? | evidence, re-checked |
+| --- | --- | --- | --- | --- |
+| 1 | 600 | `blit_string`, `blit_bm`, `blit_clear`, `strheight` | no | on 4.2's panel path, which a later task rebuilds: 4.2's `message` reaches them (Task 3b) |
+| 2 | 408 | `strtol` | **skipped** | no reference in `boot` [measured]. But `sarld` needs it: the first Task 5 build, with `strtol` deleted, failed at the `sarld` link with `/usr/bin/ld: Undefined symbols: _strtol`, `rbuild: failed with status 2` [measured]. 4.2 has a counterpart at `boot+35436` (472 B, similarity 0.91) with 0 references [measured] |
+| 3 | 284 | 4 VBE wrappers | no | part of 4.2's `vbe.c`. Tasks 6 and 7 rebuild it; all eight wrappers are byte-identical today (Task 3). Not counted by Task 3 either |
+| 4 | 116 | `loadModule` | **taken** | 0 references in `boot` [measured]. Its one caller, `module.c:56`, is under `#if TEST`, and `TEST` is not defined for the booter: `boot2/Makefile:9-11` sets no `-DTEST`, and the control's `nm` has no `_testModules` [measured]. 4.2's counterpart, `boot+3648` (116 B, similarity 1.00), has 0 references [measured]. Not on the VBE or panel path |
+| 5 | 76 | `swapBigIntsToHost`, `swapBigShortToHosts` | **taken** | 0 references in `boot` [measured]. The only mentions are in comments (`ufs_byteorder.c:127`, `:159`, before the edit) [measured]. 4.2 does call both, from `boot+31192` [measured]. That function is not on the VBE or panel path, and ours has no live call |
+| 6 | 64 | `slvprintf` | **skipped** | no reference in `boot` [measured], but `sarld` needs it (`U _slvprintf`, `rld.c:1787`) [measured] |
+| 7 | 48 | `realloc` | **skipped** | no reference in `boot` [measured], but `sarld` needs it (`U _realloc`, `rld.c:1823`) [measured] |
+| 8 | 6 | `__sp` | **taken** | 0 references in `boot` [measured]. The only other mention is a comment at `libsa/zalloc.c:121` [measured]. 4.2 has the same three bytes, `89 E0 C3`, at `boot+6334`, with 0 references [measured] |
+
+### The edits, one per candidate
+
+| rank | file:line (before the edit) | change |
+| --- | --- | --- |
+| 4 | `i386/boot2/Makefile:36` | `module.o` leaves `OBJS`. `module.c` holds only `loadModule` (`:34-50`) and the `#if TEST` block, so nothing else leaves |
+| 5 | `i386/libsaio/ufs_byteorder.c:71-89` | both functions deleted |
+| 8 | `i386/libsaio/asm.s:281-284` | `LABEL(__sp)` and its two instructions deleted |
+
+The rank 2 edit (`strtol.c:105-197` and its `libsa.h:67-71` prototype) was
+reverted after its build failed.
+
+### The build [measured]
+
+`rbuild` as Task 3 Step 2, with a mid-build copy of the symbol tree:
+
+```
+RC=0
+booter 44384 bytes of 45056, 672 to spare
+size boot.sys: __TEXT 42816  __DATA 4768
+```
+
+| file | bytes | guest `sum` | guest `cksum` | SHA-256 |
+| --- | --- | --- | --- | --- |
+| `boot` | 44,384 | `283 44` | `952813041 44384` | `A75FCA09F27B28A46A5626289F4A36335FAB273F556341390E5461B9C556F31A` |
+| `boot.sys` | 1,075,408 | `63720 1051` | `2204390520 1075408` | `D5C58CDAA826C293CC9289E3686EBFC97948C4A87F8FBED74275C4E4B21D3D8C` |
+
+- The package's `boot` is `cmp`-identical to the copy.
+- The local decode reproduces both `sum`s and both `cksum`s.
+- `sarld` (`2333113453 148108`) and `sarld.sys` (`1163817294 1414240`) are
+  `cmp`-identical to Task 4's.
+
+**Where the 192 bytes came from.**
+- `__text` went from 37,405 to 37,209 bytes, 196 fewer:
+  - `module.o`: -116;
+  - `ufs_byteorder.o`: -76;
+  - `asm.o`: -4, not 6. `__sp`'s 6-byte extent was 3 bytes of code and 3 of
+    pad, and `_startprog` now carries 2 bytes of pad.
+- `__TEXT` is rounded to 16 bytes: 43,008 became 42,816, 192 fewer. The file
+  shrank by the same 192.
+
+### Nothing else changed [measured]
+
+Every function and every data section of the trimmed `boot` was compared
+with the control's (`t3-ours-boot`), using both `boot.sys` symbol tables.
+- **Symbols.** Exactly four symbols are gone: `_loadModule`, `__sp`,
+  `_swapBigIntsToHost` and `_swapBigShortToHosts`. The other 363 are in the
+  same order.
+- **Functions.** 225 functions are in both.
+  - 55 are byte-identical.
+  - 170 differ only in 1,094 abs32 addresses and 365 rel32 targets. Each maps
+    to where the same symbol, string or offset moved. No byte is left
+    unexplained.
+- **`__data`.** It has 33 differing addresses, all mapped, and nothing else
+  differs. One of them is the GDT base inside the GDTR at `0xDD2C`, which is
+  unaligned.
+- **`__const`.** Byte-identical.
+- **`__cstring`.** The same 196 strings. `/usr/standalone/i386/%s` used to be
+  placed by `module.o` and is now placed by `graphics.o` (`graphics.c:335`),
+  so it and the 7 strings between those two places moved differently from the
+  rest.
+
+### The boot comparison: A-B-A on the verbose path [measured]
+
+**Setup.**
+- Three boots in one session: A1 = the control, B = the trimmed booter, A2 =
+  the control again.
+- Before each boot, `test.img` was rebuilt from `$GOLDEN`: `$KSPEC2` was
+  grafted, then the booter installed. `/mach_kernel` and both boot slots were
+  read back and matched.
+- `qemu-shot.py --at 5,15,30,60,120 --keys $'mach_kernel -v\n' --keys-at 8`,
+  on cirrus.
+- Captures: `vm/shots-t5trim-{A1,B,A2}`.
+
+**Which booter ran.** All three 5 s frames show `Rhapsody boot v5.0.2`. They
+are pixel-identical: `276180227B36...`, which is also Task 3's 5 s hash.
+
+**Serial.**
+- Each log has 76 lines, 8 of them `intr: phantom IRQ 15, EOI to master`.
+- Line 4 is identical in all three, date included, because the kernel is the
+  same.
+- With the 8 phantom lines removed, the three logs are identical (69 lines,
+  `54292347...`).
+- The phantom lines sit in different places in each boot:
+  - A1 has 1 after `hc0: device detected` and 7 after `Registering: hd0`,
+    all inside the IDE-probe block;
+  - B has the first of those, and 7 after `Power management is enabled.`;
+  - A2 has all 8 after `Power management is enabled.`.
+- Rule 3 allows this.
+
+**Frames.** Masked as rule 4 says: the `HH:MM:SS` cells, spec 2's mask.
+
+| pair | 5 s | 15 s | 30, 60 and 120 s |
+| --- | --- | --- | --- |
+| A1 / B | 0 px | 10,870 px | 2,443 px, text rows 0-4 |
+| B / A2 | 0 px | 9,669 px | **0 px, raw** |
+| A1 / A2 (control against control) | 0 px | 15,017 px | 2,443 px, text rows 0-4 |
+
+- **Rule 4 fails for A1 / B** at 15 s and in the settled frames.
+- **Each difference is where the phantom lines landed on screen.**
+  - All three 15 s frames are at the same stage, just after `Power management
+    is enabled.`, and differ only in where the phantom lines are.
+  - A1's settled frame scrolled its phantom lines off the top. B's and A2's
+    show five of them in text rows 0-4.
+- **A1 differs from A2, the same booter, by exactly the same 2,443 px.**
+  - B's settled frame and A2's are one image, `125C4133...`.
+- This is the verbose-mode race spec 2 recorded (`docs/kernel/i386-vbe-console.md`,
+  "The comparison rules as applied"), where a same-kernel pair also failed
+  rule 4.
+
+**Verdict: pass.** The controller ruled on 2026-09-22; this was a question
+of method, not of behaviour.
+- **B equals A2 pixel for pixel, with no mask,** in the 30, 60 and 120 s
+  frames [measured].
+- **The A1 differences are the phantom-IRQ placement race.** The A1 / A2
+  control pair differs by the same 2,443 px [measured].
+- **The serial matches under rule 3** [measured].
+- Rule 4 as written did not allow for the race on screen. The plan's rule is
+  being amended to match rule 3.
+- The static comparison above agrees: nothing changed beyond the removed
+  functions and the moved addresses.
+
+### A dead function Task 3's scan missed [measured]
+
+`setCursorPosition` (`libsaio/biosfn.c:362`, 60 bytes) has no reference in
+the trimmed `boot`.
+- In the control, its only raw hit is the rel32 of `call _free` at
+  `boot+14399` in `removeKeyFromTable`. The bytes `30 49 00 00` happen to
+  equal its address, `0x4930`: a false positive of the over-approximating
+  scan.
+- It is not in Task 3's list, so Task 5 did not remove it. It would add at
+  most 64 bytes, not the 121 still needed [arithmetic].
+
+### The decision
+
+The shortfall is 793 - 672 = 121 bytes [arithmetic].
+
+**On 2026-09-22 the user accepted 672 spare**, the 537 budget with a
+135-byte margin. The trim stays at ranks 4, 5 and 8.
+
+**A fallback, not taken:** split `strtoul` into its own object [inference].
+- `boot` would then link only `strtoul`, and `sarld` would still find
+  `strtol` in `libsa.a`.
+- That frees about 400 bytes for `boot`, if Tasks 6 and 7 run short.
+- `sarld` needs both symbols (`U _strtol`, `U _strtoul`), so it would link
+  two objects where it links one today. Whether its bytes change is not
+  measured.
+
+Two other options were raised and not taken:
+- separate objects for `slvprintf` and `realloc`, about 112 bytes
+  [inference];
+- removing `setCursorPosition`, up to 64 bytes, which is not on Task 3's
+  list.

@@ -282,8 +282,6 @@ struct proc             *p;
                 }
                 VOP_UNLOCK(devvp, 0, p);
             }
-            hfsmp->hfs_fs_ronly = 0;
-            hfsmp->hfs_fs_clean = 0;
            	if (HFSTOVCB(hfsmp)->vcbSigWord == kHFSPlusSigWord)
 				retval = hfs_flushvolumeheader(hfsmp, MNT_WAIT);
 			else
@@ -291,6 +289,10 @@ struct proc             *p;
 
             if (retval != E_NONE)
                 goto error_exit;
+
+            /* only change hfs_fs_ronly after a successful write */
+            hfsmp->hfs_fs_ronly = 0;
+            hfsmp->hfs_fs_clean = 0;
         }
 
 #if 0   /* XXX PPD */

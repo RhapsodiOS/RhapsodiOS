@@ -550,36 +550,49 @@ struct vop_close_args /* {
 
 	fcb = HTOFCB(hp);
 	leof = fcb->fcbEOF;
-	
-	if (leof != 0) {
-		blocksize = HTOVCB(hp)->blockSize;
-		blks = leof / blocksize;
-		if ((blks * blocksize) != leof)
-			blks++;
-	
-		/*
-		 * Shrink the peof to the smallest size neccessary to contain the leof.
-		 */
-		if ((blks * blocksize) < fcb->fcbPLen) {
-			vn_lock(vp, LK_EXCLUSIVE | LK_CANRECURSE, p);
-	 		retval = VOP_TRUNCATE(vp, leof, 0, ap->a_cred, p);
-			VOP_UNLOCK(vp, 0, p);
-		}
-	}
 
     /* File is already flushed, so just reset values */
     H_HINT(hp) = kNoHint;		/* reset catalog hint */
 
-    if (doclusterwrite) {
-            long devBlockSize = 0;
+	if (leof != 0 || doclusterwrite) {
+		enum vtype our_type = vp->v_type;
+		u_long our_id = vp->v_id;
 
-	    vn_lock(vp, LK_EXCLUSIVE | LK_CANRECURSE, p);
+		vn_lock(vp, LK_EXCLUSIVE | LK_CANRECURSE, p);
+		/*
+		 * Since we can context switch in vn_lock, our vnode
+		 * could get recycled (eg umount -f).  Double check
+		 * that it's still ours before touching it further.
+		 */
+		if (vp->v_type != our_type || vp->v_id != our_id) {
+			VOP_UNLOCK(vp, 0, p);
+			DBG_VOP_LOCKS_TEST(E_NONE);
+			return (E_NONE);
+		}
 
-            VOP_DEVBLOCKSIZE(hp->h_devvp, &devBlockSize);
-            cluster_close(vp, PAGE_SIZE, devBlockSize);
+		if (leof != 0) {
+			blocksize = HTOVCB(hp)->blockSize;
+			blks = leof / blocksize;
+			if ((blks * blocksize) != leof)
+				blks++;
 
-	    VOP_UNLOCK(vp, 0, p);
-    }
+			/*
+			 * Shrink the peof to the smallest size neccessary to contain the leof.
+			 */
+			if ((blks * blocksize) < fcb->fcbPLen) {
+		 		retval = VOP_TRUNCATE(vp, leof, 0, ap->a_cred, p);
+			}
+		}
+
+		if (doclusterwrite) {
+			long devBlockSize = 0;
+
+			VOP_DEVBLOCKSIZE(hp->h_devvp, &devBlockSize);
+			cluster_close(vp, PAGE_SIZE, devBlockSize);
+		}
+
+		VOP_UNLOCK(vp, 0, p);
+	}
 
     DBG_VOP_LOCKS_TEST(retval);
     return (retval);

@@ -41,7 +41,7 @@ It is not tested on real hardware.
   - Probe across the full ID list.
   - Read the MAC address from the EEPROM and check its checksum.
   - MII autonegotiation and link reporting.
-  - Simplified-mode receive and transmit.
+  - Simplified-mode receive and flexible-mode transmit (one TBD).
   - Multicast, promiscuous mode, and hardware statistics.
   - The errata a correct driver needs.
 - **Not in scope:**
@@ -193,10 +193,11 @@ The revision decides:
   | 6–11 | 82559 |
   | ≥ 12 | 82550/82551 |
 
-On 82550/82551 the driver runs the same simplified RFDs and standard TxCBs
-as on the other parts. The SDM describes simplified mode for the whole
+On 82550/82551 the driver runs the same simplified RFDs and flexible-mode
+TxCBs as on the other parts. The SDM describes both modes for the whole
 family. FreeBSD, however, only ever runs these two parts in their extended
-modes, so the driver logs that this combination is unverified.
+modes, so the driver logs that the simplified receive path is unverified on
+this generation.
 
 `Default.table` lists exactly the IDs in the chip table.
 
@@ -332,12 +333,20 @@ The blocks are:
 
 ### Transmit ring
 
-The transmit ring is 16 simplified-mode TxCBs:
+The transmit ring is 16 flexible-mode TxCBs, each with one TBD:
 - They are linked into a static circle when built and never relinked.
-- Each has SF = 0, a TBD pointer of `FFFFFFFF`, EOF set with the byte count,
-  and the frame data inline at offset `10h`.
+- Each has SF set, TCB byte count 0, TBD number 1, and a TBD at slot offset
+  `600h` (1536) pointing at the frame data, which stays inline at offset
+  `10h`.
 - The ring carries only frames and the initial NOP. Command CBs never go
   through it.
+
+Simplified-mode transmit (SF = 0, a TBD pointer of `FFFFFFFF`, EOF set with
+the byte count) is valid per the SDM, but the installed QEMU 11.1 is a
+Stefan Weil ar7-branch build whose simplified-mode transmit path never sets
+the outgoing packet length, so every frame goes out zero-length. Flexible
+mode with a single TBD is valid on every 8255x (SDM 6.4.2.5) and is how
+FreeBSD's fxp transmits, and it is unaffected by that bug.
 
 **`transmit:(netbuf_t)`**
 1. Reap completed slots.
@@ -367,10 +376,15 @@ The receive ring is 32 simplified-mode RFDs:
 **On FR or RNR:**
 1. Walk forward while C is set, at most one full ring.
 2. For each RFD:
-   - If it has OK and EOF, no error bits, and a length of 14 to 1,520 bytes:
+   - If it has OK, no error bits, and a length of 14 to 1,519 bytes:
      `nb_alloc`, copy, filter with `isUnwantedMulticastPacket:`, count it,
      and hand it up with `handleInputPacket:extra:`.
    - Otherwise count an error.
+
+   EOF is not checked: QEMU never sets it, and FreeBSD's fxp does not check
+   it either. Without it, a count equal to the 1,520-byte buffer size could
+   mean a truncated frame rather than one that exactly fills the buffer, so
+   a completely full RFD is treated as an error.
 3. Recycle the RFD:
    1. Clear its status and count.
    2. Set EL on it, making it the new tail.
@@ -536,7 +550,7 @@ reach the Setup Assistant.
   it is not hardware-tested, and the known limitations:
   - DP83840 duplex
   - Dynamic Standby left set in the EEPROM
-  - 82550/1 simplified mode unverified beyond QEMU
+  - 82550/1 simplified receive unverified beyond QEMU
 - **`NOTICE`:** the references and the rule that no code was copied.
 
 ## Out of scope
@@ -577,3 +591,11 @@ first approved:
 9. **Packaging.** The project layout mirrors drvAHCI, which has built
    successfully: `WIRE`-only load commands and a `DriverHelp` directory.
    Pro1000's `START`/`DETACH` and `movehelp` override have never been built.
+10. **Flexible-mode transmit.** The installed QEMU 11.1 (a Stefan Weil
+    ar7-branch build) sends zero-length frames from simplified-mode TxCBs.
+    The transmit ring now uses flexible mode with one TBD instead, which is
+    valid on every 8255x and is how FreeBSD's fxp transmits.
+11. **Receive EOF not checked.** QEMU never sets EOF in the RFD actual
+    count, and FreeBSD's fxp does not check it either, so the driver no
+    longer requires it. A completely full RFD is now treated as an error,
+    since without EOF that could mean a truncated frame.

@@ -62,8 +62,6 @@
 #define NRX             32      /* receive frame descriptors             */
 #define SLOT_BYTES      1544    /* one TxCB and its TBD, or one RFD      */
 #define TX_TBD_OFFSET   1536    /* the TBD, after the 1530-byte TxCB     */
-#define TX_CB_SF        0x0008  /* TxCB command: flexible mode           */
-#define TX_TBD_EL       0x00010000UL    /* TBD dword 1: last TBD         */
 #define CB_BYTES        256     /* configure, IA or multicast setup      */
 #define STATS_BYTES     (E100_STATS_DWORDS * 4)
 
@@ -353,8 +351,8 @@ freeDmaBlock(vm_address_t *alloc, int size)
         IOLog("IntelE100: EEPROM enables Dynamic Standby (82801BA erratum 30)"
               " - a CU NOP precedes every resume; the EEPROM is left alone\n");
     if (revision >= E100_REV_82550)
-        IOLog("IntelE100: %s runs in simplified mode here, which no reference"
-              " driver exercises on this part\n", chip->name);
+        IOLog("IntelE100: %s uses the simplified receive path here, which no"
+              " reference driver exercises on this part\n", chip->name);
 
     [self _findPhy:ee[E100_EEPROM_PHY]];
 
@@ -722,13 +720,13 @@ freeDmaBlock(vm_address_t *alloc, int size)
      * simplified-mode TxCBs as zero-length frames, while flexible mode
      * works on it, upstream QEMU and every 8255x (SDM 6.4.2.5). */
     tbd[0] = txPhys[txHead] + (unsigned long)(cb->data - (unsigned char *)cb);
-    tbd[1] = (unsigned long)length | TX_TBD_EL;
+    tbd[1] = (unsigned long)length | E100_TBD_EL;
     cb->hdr.status = 0;
     cb->tbdArray = txPhys[txHead] + TX_TBD_OFFSET;
     cb->byteCount = 0;
     cb->threshold = (unsigned char)txThreshold;
     cb->tbdNumber = 1;
-    cb->hdr.command = E100_CB_XMIT | TX_CB_SF | E100_CB_S;
+    cb->hdr.command = E100_CB_XMIT | E100_CB_SF | E100_CB_S;
 
     /* S on the new CB first, then off the previous one (SDM 8.2), so the
      * CU can never run past the end of what is ready. */
@@ -799,9 +797,11 @@ freeDmaBlock(vm_address_t *alloc, int size)
         length = rfd->actualCount & E100_RFD_COUNT_MASK;
 
         /* C with OK is the whole frame in a simplified RFD; EOF is not
-         * required, because QEMU writes the count without EOF or F. */
+         * required, because QEMU writes the count without EOF or F. Without
+         * EOF, a count equal to the buffer size may be a truncated frame,
+         * so a completely full RFD is treated as suspect. */
         if (!(status & E100_RFD_OK) || (status & E100_RFD_ERRORS)
-            || length < 14 || length > E100_RFD_BUF) {
+            || length < 14 || length >= E100_RFD_BUF) {
             rxBadFrames++;
             /* Bad frames only reach an RFD in promiscuous mode (configure
              * byte 6 bit 7), and the statistics dump counts them already. */

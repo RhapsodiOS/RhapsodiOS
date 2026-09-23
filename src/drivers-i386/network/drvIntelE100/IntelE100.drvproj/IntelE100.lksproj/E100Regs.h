@@ -112,6 +112,7 @@ typedef struct {
 #define E100_CB_OK              0x2000  /* status: no error               */
 #define E100_CB_EL               0x8000  /* command: end of list           */
 #define E100_CB_S               0x4000  /* command: suspend after this CB */
+#define E100_CB_SF              0x0008  /* command: flexible mode (SDM 6.4.2.5) */
 #define E100_CB_NOP             0x0000
 #define E100_CB_IAS             0x0001
 #define E100_CB_CONFIGURE       0x0002
@@ -121,17 +122,20 @@ typedef struct {
 #define E100_NO_LINK            0xFFFFFFFFUL
 #define E100_MAX_FRAME          1514    /* the chip appends the CRC       */
 
-/* Transmit CB in simplified mode: the frame follows inline (SDM 6.4.2.5) */
+/* Transmit CB in flexible mode, with one TBD (SDM 6.4.2.5): tbdArray is
+ * the physical address of the TBD, byteCount is 0 because the data comes
+ * from the TBD, and tbdNumber is 1. */
 typedef struct {
     E100CBHeader                hdr;
-    volatile unsigned long      tbdArray;       /* E100_NO_LINK           */
-    volatile unsigned short     byteCount;      /* 13:0 count, 15 EOF     */
+    volatile unsigned long      tbdArray;       /* physical address of the TBD */
+    volatile unsigned short     byteCount;      /* 0: data comes from the TBD */
     volatile unsigned char      threshold;      /* units of 8 bytes       */
-    volatile unsigned char      tbdNumber;
+    volatile unsigned char      tbdNumber;      /* 1                      */
     unsigned char               data[E100_MAX_FRAME];
 } E100TxCB;
 
-#define E100_TCB_EOF            0x8000
+/* TBD dword 1 (SDM 6.4.2.5): 13:0 count, bit 16 EL (last TBD) */
+#define E100_TBD_EL              0x00010000UL
 
 #define E100_CONFIG_BYTES       22
 
@@ -170,7 +174,6 @@ typedef struct {
 #define E100_RFD_OK             0x2000
 #define E100_RFD_ERRORS         0x0F80  /* CRC, align, no-res, overrun, short */
 #define E100_RFD_EL             0x8000
-#define E100_RFD_EOF            0x8000
 #define E100_RFD_COUNT_MASK     0x3FFF
 
 /* Statistics dump (SDM 6.3.2.4), indexed in dwords */

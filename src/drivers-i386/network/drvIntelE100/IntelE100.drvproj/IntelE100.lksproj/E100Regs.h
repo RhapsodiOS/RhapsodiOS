@@ -110,7 +110,7 @@ typedef struct {
 
 #define E100_CB_C               0x8000  /* status: complete               */
 #define E100_CB_OK              0x2000  /* status: no error               */
-#define E100_CB_EL               0x8000  /* command: end of list           */
+#define E100_CB_EL              0x8000  /* command: end of list           */
 #define E100_CB_S               0x4000  /* command: suspend after this CB */
 #define E100_CB_SF              0x0008  /* command: flexible mode (SDM 6.4.2.5) */
 #define E100_CB_NOP             0x0000
@@ -135,7 +135,7 @@ typedef struct {
 } E100TxCB;
 
 /* TBD dword 1 (SDM 6.4.2.5): 13:0 count, bit 16 EL (last TBD) */
-#define E100_TBD_EL              0x00010000UL
+#define E100_TBD_EL             0x00010000UL
 
 #define E100_CONFIG_BYTES       22
 

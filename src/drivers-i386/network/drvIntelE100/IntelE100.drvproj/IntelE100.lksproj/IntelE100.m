@@ -226,10 +226,29 @@ freeDmaBlock(vm_address_t *alloc, int size)
 
 @implementation IntelE100
 
+/*
+ * Check the PCI identity before allocating anything. [super
+ * initFromDeviceDescription:] registers an interface (enN) as soon as it
+ * runs, so if this driver only rejected a mismatched card from inside
+ * -initFromDeviceDescription:, a card this driver does not own (e.g. an
+ * NE2000 sharing the slot) would already have taken an enN slot by the
+ * time the rejection happened, shifting every other interface's number.
+ */
 + (BOOL)probe:(IODeviceDescription *)devDesc
 {
-    IntelE100 *dev = [self alloc];
+    IOPCIConfigSpace   config;
+    IntelE100          *dev;
 
+    if ([IODirectDevice getPCIConfigSpace:&config
+                    withDeviceDescription:devDesc] != IO_R_SUCCESS)
+        return NO;
+    if (config.VendorID != E100_VENDOR)
+        return NO;
+    if (e100ChipLookup(config.DeviceID, (unsigned char)config.RevisionID)
+        == 0)
+        return NO;
+
+    dev = [self alloc];
     if (dev == nil)
         return NO;
     return [dev initFromDeviceDescription:devDesc] != nil;
@@ -340,6 +359,10 @@ freeDmaBlock(vm_address_t *alloc, int size)
           chip->name, (unsigned int)config.DeviceID,
           (unsigned int)config.RevisionID, e100GenerationName(revision),
           (unsigned int)ioBase, (int)config.InterruptLine, irqCount);
+    if (irqCount > 0 && [devDesc interrupt] != (unsigned int)config.InterruptLine)
+        IOLog("IntelE100: IRQ Levels says %d but the card is on IRQ %d -"
+              " set \"IRQ Levels\" in Instance0.table\n",
+              (int)[devDesc interrupt], (int)config.InterruptLine);
     IOLog("IntelE100: MAC %02x:%02x:%02x:%02x:%02x:%02x, EEPROM %d words,"
           " checksum %s\n",
           mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], words,
@@ -352,7 +375,8 @@ freeDmaBlock(vm_address_t *alloc, int size)
               " - a CU NOP precedes every resume; the EEPROM is left alone\n");
     if (revision >= E100_REV_82550)
         IOLog("IntelE100: %s uses the simplified receive path here, which no"
-              " reference driver exercises on this part\n", chip->name);
+              " reference driver exercises on this part\n",
+              e100GenerationName(revision));
 
     [self _findPhy:ee[E100_EEPROM_PHY]];
 
@@ -842,7 +866,8 @@ freeDmaBlock(vm_address_t *alloc, int size)
                            (ether_header_t *)nb_map(pkt)]) {
                 nb_free(pkt);
             } else {
-                [network incrementInputPackets];
+                if (network != nil)
+                    [network incrementInputPackets];
                 [network handleInputPacket:pkt extra:0];
             }
         }

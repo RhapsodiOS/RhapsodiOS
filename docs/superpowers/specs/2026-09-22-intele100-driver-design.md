@@ -327,7 +327,10 @@ Every DMA block comes from Pro1000's idiom:
 3. Confirm physical contiguity with `IOPhysicalFromVirtual` at both ends.
 
 The blocks are:
-- 16 transmit slots and 32 receive slots of 1,536 bytes each
+- 16 transmit slots of 1,544 bytes each (a 1,536-byte TxCB area plus an
+  8-byte TBD), and 32 receive slots, also allocated at 1,544 bytes since
+  the code shares one SLOT_BYTES size for both rings (an RFD only needs
+  1,536)
 - one 256-byte command block
 - one statistics block
 

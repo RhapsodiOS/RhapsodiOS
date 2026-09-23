@@ -43,6 +43,7 @@
 #import <machdep/i386/pmap_private.h>
 #import <machdep/i386/pmap_inline.h>
 #import <machdep/i386/cpu_inline.h>
+#import <machdep/i386/kernBootStruct.h>
 
 /*
  * Setup structures to map from mach vm_prot_t
@@ -414,6 +415,41 @@ pmap_bootstrap(
 		   VM_PROT_NONE);
 		   
     *virt_end = va;
+
+    /*
+     * Map the VESA linear frame buffer the booter left the adapter in,
+     * and publish its kernel virtual address at kbs+0x1854 for
+     * FBAllocateVBEConsole. Reconstructed from the OPENSTEP 4.2 kernel's
+     * pmap_bootstrap (0x0018F169..0x0018F292), which inlines pmap_map.
+     * When xResolution is zero nothing is mapped and kbs+0x1854 is not
+     * written (0x0018F16C).
+     *
+     * Forced divergence from a 4.2 reference defect, at the user's
+     * request: 4.2 maps the frame buffer first and stores *virt_end after
+     * it (0x0018F29E), so the mapping lies inside [virt_avail, virt_end),
+     * which kmem_init makes allocatable. A later kernel allocation there
+     * would pmap_enter over the frame buffer's page-table entries. Here
+     * *virt_end is stored first, so kernel_map ends below the mapping.
+     */
+    if (KERNSTRUCT_ADDR->vbeCurrentMode.xResolution != 0) {
+	boot_vbe_mode	*mode = &KERNSTRUCT_ADDR->vbeCurrentMode;
+	vm_size_t	size = mode->bytesPerScanline * mode->yResolution;
+	vm_offset_t	start = trunc_page(mode->frameBuffer);
+	vm_offset_t	end;
+
+	/*
+	 * Candidate reference defect, reproduced (0x0018F1A3): the page
+	 * offset of the frame buffer is counted twice, so an unaligned one
+	 * maps up to a page more than it needs. An aligned one is exact.
+	 */
+	end = round_page(mode->frameBuffer + size +
+			 (mode->frameBuffer - start));
+
+	/* 0x0018F1B4: published before the mapping is built. */
+	KERNSTRUCT_ADDR->vbeFrameBuffer = va + (mode->frameBuffer - start);
+
+	(void) pmap_map(va, start, end, VM_PROT_READ | VM_PROT_WRITE);
+    }
 
     /*
      * Finish initialization

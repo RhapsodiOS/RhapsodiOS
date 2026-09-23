@@ -1487,29 +1487,31 @@ void VBEModeInfo2IODisplayInfo(VBEModeRec *mode, IODisplayInfo *info)
 // VBE_BOOTER_MODE is kbs+0x1858, the record for the mode the booter put the
 // adapter into. Spec 1's VBE20DisplayDriver hard-codes the same address the
 // same way (VBE20DisplayDriver.m:79, VBE_BOOTER_MODE). The two spellings MUST
-// stay in agreement -- driver and kernel have to read one record, not two --
-// and reconciling them (a named KERNBOOTSTRUCT member, or neither) belongs to
-// spec 3, not here. In Rhapsody's KERNBOOTSTRUCT both offsets land inside
-// _reserved[7500], which src/boot-2's getKernBootStruct() bzero's and nothing
-// under src/ fills. The stock v5.0.41.1 booter on the test image was not
-// read, but guest memory dumps measured both words zero under it (see
-// divergences.md, "Task 5").
+// stay in agreement -- driver and kernel have to read one record, not two.
+// Spec 3 named both words in KERNBOOTSTRUCT (vbeCurrentMode, vbeFrameBuffer)
+// at these offsets, with offset assertions, and kept the bare constants here
+// and in the driver because the 4.2 binaries use them. src/boot-2's
+// getKernBootStruct() bzero's the struct, and its set_linear_video_mode()
+// (libsaio/vbe.c) then fills this record. The stock v5.0.41.1 booter on the
+// test image was not traced: its zeroing code was not read, only its
+// strings were scanned. Guest memory dumps measured both words zero under it
+// (see divergences.md, "Task 5").
 //
-// VBE_FRAMEBUFFER_VIRT is kbs+0x1854. In 4.2 it appears kernel-private: the
+// VBE_FRAMEBUFFER_VIRT is kbs+0x1854. In 4.2 it is kernel-private: the
 // kernel's own pmap_bootstrap is its one writer (0x0018F1B4) and this
-// function its one reader, and no reference to it was found in the 4.2
-// booter [INFERENCE -- the booter half is a measured absence, and a byte
-// scan cannot see a computed address]. The word holds the kernel virtual
-// address of the mapped linear frame buffer [INFERENCE -- the store into
-// frameBuffer below is measured, but the code producing the mapped address
-// was not traced]. Nothing in this tree writes it yet. The producer --
-// mapping the frame buffer and publishing its virtual address -- arrives
-// with spec 3, so until then the second guard never passes and this function
-// always returns NIL. That is the intended state, not a stub: the console
-// falls back to VGA, which is what boots today anyway.
+// function its one reader, and no store to it was found in the 4.2 booter
+// [measured, up to the blind spots divergences.md names]. The word holds the
+// kernel virtual address of the linear frame buffer: pmap_bootstrap stores
+// va + (frameBuffer & page_mask), then maps trunc_page(frameBuffer) at va
+// (0x0018F1B4, 0x0018F1E4..0x0018F292) [measured; this confirms the reading
+// divergences.md records as D2]. Ours is written the same way, by
+// pmap_bootstrap (machdep/i386/pmap.c:449), and only when the booter set a
+// mode. On a boot without one the second guard fails, this function returns
+// NIL and the console falls back to VGA.
 //
-// Neither define is volatile: harmless while boot is single-threaded and
-// there is no producer, but a question to settle once spec 3 supplies one.
+// Neither define is volatile: the one write is in pmap_bootstrap, before
+// paging is enabled and before this function can run, on the single boot
+// thread [from the call order in source].
 //
 #define VBE_BOOTER_MODE		((VBEModeRec *)0x12858)
 #define VBE_FRAMEBUFFER_VIRT	(*(void **)0x12854)

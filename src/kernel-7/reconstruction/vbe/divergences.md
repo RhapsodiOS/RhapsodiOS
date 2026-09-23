@@ -1332,6 +1332,9 @@ now labelled in `FBConsole.c` — on the `default:` arm and on the call site.
 
 ### `0x12854` has no producer in this tree, and that is the correct state
 
+**[Superseded — spec 3 Task 8: `pmap_bootstrap` now writes it; see "Spec 3
+Task 8".]**
+
 Nothing under `src/` writes `kbs+0x1854`. In 4.2 the writer is the kernel's own
 `pmap_bootstrap` (D2: one writer, one reader); in Rhapsody's `KERNBOOTSTRUCT`
 the offset lands inside `_reserved[7500]`, which `getKernBootStruct()`
@@ -2599,6 +2602,8 @@ skeleton, with real calls instead of inlined ones [measured, source]:
 between `:414` and `:415`.
 **[CORRECTED — Task 3b, review M2: after the second `pmap_map`
 (`:409-414`), before `*virt_end = va` (`:416`) [measured source].]**
+**[Task 8: placed after `*virt_end = va` instead, for the reservation the
+user chose; see "Spec 3 Task 8".]**
 
 **The primitive our tree offers for the job** is `pmap_map` (`pmap.c:246`).
 Its body matches `_pmap_map` step for step:
@@ -2615,6 +2620,11 @@ is arithmetic].
 
 **Expected outcome for Task 8: structural parity.** Byte parity is out of
 reach because the reference inlines `pmap_map` and ours calls it [inference].
+**[CORRECTED — Task 8: ours inlines it too. gcc 2.7.2.1 at `-O3` expands
+all three `pmap_map` calls in our `pmap_bootstrap` into loops, in spec 2's
+kernel as well [measured]. Structural parity is still the outcome. The
+reasons are register allocation and the reservation, not a call; see "Spec
+3 Task 8".]**
 
 ### A named suspect for a late-boot G2 failure (added in Task 3b, review M10)
 
@@ -2642,6 +2652,8 @@ reach because the reference inlines `pmap_map` and ours calls it [inference].
   after it first rendered, or memory corruption near the frame buffer's
   virtual addresses), check this first. Whether to diverge (for example, by
   reserving the range in `kernel_map`) is the user's decision.
+  **[Task 8: the user chose to reserve the range. `kernel_map` now ends
+  below the mapping. See "Spec 3 Task 8".]**
 
 ### Corrections to earlier text in this record
 
@@ -2659,3 +2671,200 @@ and D2's `boot+0xDA7C` label.]**
   **address**. Its file offset is `boot+0xAA7C` (43644), where the bytes
   `00 10 01 00` sit [measured]. The disassembly quoted there reads
   `[0xda7c]` correctly; only the label is wrong.
+
+## Spec 3 Task 8: the mapping, written and booted
+
+### What was written
+
+The block is at `machdep/i386/pmap.c:419-452`, and `KERNSTRUCT_ADDR` comes
+from a new `#import <machdep/i386/kernBootStruct.h>`. It mirrors the block
+above [measured source]:
+- **the guard:** `xResolution != 0`. Otherwise nothing is mapped and
+  `kbs+0x1854` is not written;
+- **the length:** `bytesPerScanline * yResolution`;
+- **the start:** `trunc_page(frameBuffer)`, with `page_mask`;
+- **the end:** `round_page(frameBuffer + size + (frameBuffer - start))`.
+  This keeps 4.2's double-counted page offset, labelled on the line as a
+  candidate reference defect. It is exact for QEMU's page-aligned frame
+  buffers;
+- **the publish:** `vbeFrameBuffer = va + (frameBuffer - start)`, before
+  the map is built, as at `0x0018F1B4`;
+- **the map:** `pmap_map(va, start, end, READ|WRITE)`.
+
+**Forced divergence from a 4.2 reference defect, at the user's request: the
+range is reserved.** The M10 hazard above was put to the user, who chose to
+reserve the range. The source line is labelled.
+- **How** [measured source]: the block sits after `*virt_end = va`
+  (`:417`), not before it. 4.2 stores `*virt_end` after the map
+  (`0x0018F29E`). So `kmem_init(virtual_avail, virtual_end)` builds
+  `kernel_map` up to the end of the 64 MB + zone + buffer reservation, and
+  the frame buffer's virtual range lies above it, where no allocation can
+  reach.
+- **Cost:** no code. The reservation is only where the block sits. The
+  diff is 36 inserted lines and none deleted. The allocatable kernel VA is
+  the same with or without a mode set.
+- **Why not advance `virtual_avail`** [inference, from the layout]:
+  - The user's answer offered "advance `virtual_avail`, or an equivalently
+    small change".
+  - 4.2's mapping is at the *top* of `[virt_avail, virt_end)`. Advancing
+    `virtual_avail` past it would take the whole reservation out of
+    `kernel_map`, or would need the block moved below the reservation.
+  - Lowering the end keeps 4.2's placement.
+  - **This is the implementer's choice within that answer.**
+- **Nothing else is bounded by `virtual_end`** [measured source]:
+  - its one reader is `vm/vm_init.c:81`;
+  - `pmap_create_pd` copies every kernel PDE up to `VM_MAX_KERNEL_ADDRESS`,
+    so user pmaps still carry the frame buffer's page table.
+
+### The build [measured]
+
+- **`gcc-darwin.conf` is gone from the guest.** master's `df7fdea82`, synced
+  there after spec 2, renamed it `gcc-darwin-ppc.conf`, unchanged (git
+  similarity 100%). On the guest it has `cksum 4287395951 1070`, equal to
+  this branch's `src/rbuild-1/toolchains/gcc-darwin.conf`. The documented
+  `sed` was applied to that file, and `diff` shows only the `path=` line.
+  The first attempt, reading the old name, failed with `rbuild: toolchain
+  profile missing profile` and built nothing.
+- **`rbuild kernel --state /build/state --toolchain /tmp/t8-gcc-darwin.conf
+  --arch i386 /build/src /build/repo /tmp/t8-kvbe-dst`:** exit 0, `rbuild:
+  kernel complete`, and the same eight APKs as spec 2.
+- **Diagnostics:** the new code adds none. `pmap.c`'s
+  `pmap_resident_extract` warnings are the existing ones, 36 lines lower.
+- **`mach_kernel`,** from `kernel-154.5.1-7-i386.apk`:
+  - 1,490,352 bytes;
+  - `sum 41988 1456`, `cksum 3984636244 1490352`, printed on the guest and
+    reproduced from the pulled bytes;
+  - SHA-256 `41AC734137DA919EB6B3A1FB2C125E1E203078B7B7511B16BA5B02FFB5AE66BA`.
+  - It is kept outside the repo, as `vm/work/t8-mach_kernel`.
+- **Addresses:** `__TEXT` and `__DATA` both have `vmaddr - fileoff` =
+  `0x100000`. `_pmap_bootstrap` is `0x001DAC1C`, and the block runs
+  `0x001DAEA4..0x001DAFC4`.
+
+### Comparison against 4.2's block [measured]
+
+- **`compare_flat`** (bases `0x100000` both sides, windows
+  `0x100000:0x400000` and `0x100000:0x276000`):
+  - **the guard, 14 bytes** (`0x0018F16C` | `0x001DAEAB`): **`MATCH: 2
+    instructions, 10 bytes compared, 4 masked`**, with `je` mapping
+    `0x18F29B -> 0x1DAFC4`;
+  - **the whole block:** `MISMATCH` (297 bytes | 281). It stops at the
+    first register choice after the guard (`movzx edx` | `movzx eax`).
+- **By instruction shape** (general registers, `[ebp±n]` slots and
+  in-window addresses abstracted; immediates and `KERNBOOTSTRUCT` constants
+  kept): `0x0018F169..0x0018F2A3` (92 instructions) against
+  `0x001DAEA4..0x001DAFC4` (90). **74 align.** The rest are:
+  1. **the reservation.** 4.2 parks `va` in `[ebp-4]` and stores
+     `*virt_end` at the join (`0x0018F29B..0x0018F2A1`). Ours stores it
+     before the guard, so our `je` leaves the block entirely;
+  2. **the cursor's home.** 4.2 keeps `virt` in `[ebp-14h]`, and ours keeps
+     it in `edi`. The instructions that differ are:
+     - 4.2's `mov edi,[ebp-4]; mov [ebp-14h],edi`;
+     - four `mov eax,[ebp-14h]`, which are `mov eax,edi` in ours;
+     - 4.2's `mov ecx,[ebp-14h]` before `push`;
+     - `add [ebp-14h],1000h`, which is `add edi,1000h` in ours;
+     - 4.2's final `va = virt` pair;
+  3. **the evaluation order of `end` and of the published word.** 4.2 reads
+     `frameBuffer` twice and forms `lea eax,[edx+ecx*2]; sub eax,ebx`. Ours
+     reads it once and forms `add eax,edx; sub edx,esi; add eax,edx`. Both
+     values are the same expression;
+  4. **alignment `nop`s.**
+- **All five `KERNBOOTSTRUCT` operands are byte-identical:** `0x1285C`,
+  `0x12860`, `0x1285E`, `0x1286C` and `0x12854`.
+- **The rest of the loop is the same:**
+  - the protection word, `kernel_prot_codes[3]`;
+  - the template (`&3`, `*2`, `|1`, `| start & 0xFFFFF000`);
+  - the `cachewrt` window test;
+  - `pfn++`;
+  - the `cr3` reload.
+- **Outcome: structural parity, with the reservation as the one forced
+  divergence.**
+
+### Spec 2's oracles, re-run on this kernel [measured]
+
+- **`VBEModeInfo2IODisplayInfo`** (`0x001E978C`): `compare_kvbe.py`
+  reports **`MATCH: all 411 compared bytes identical`**, and the dispatch
+  and 31 table targets agree relative to the entry. `compare_flat --table
+  76:31` also reports `MATCH`.
+- **`BasicAllocateConsole`** (`0x001E30FC` against `0x00197C58`, 72 bytes):
+  **60 of 60 unmasked bytes are equal.** `compare_flat` reports `MATCH`, 3
+  calls mapped: `_FBAllocateVBEConsole`, `_bzero` and `_VGAAllocateConsole`.
+
+### Stock booter, no driver: G4 in miniature [measured]
+
+- **Setup:** `$GOLDEN` + the kernel, both boot slots equal to `$GOLDEN`'s.
+  The boots were `-v` on cirrus, with `pmemsave` at 60 s, in the same
+  session: `$KSPEC2` (A), this kernel (B), `$KSPEC2` (A2).
+- **`kbs+0x1854` is `00000000`** in B. `vbeCurrentMode` is all zero. The
+  8,704-byte dumps of A, B and A2 are byte-identical.
+- **Serial:** B against A differs **only at line 4**, the build date, and
+  does so even unsorted (76 lines each). A2 differs from both only by the
+  eight `phantom IRQ 15` lines changing place, which rule 3 allows.
+- **Frames:** at 5, 30, 60 and 95 s, **B equals A pixel for pixel**. A2
+  differs from both by 2,443 px, the on-screen phantom-line race of rule 4.
+  The 15 s frame is mid-boot, and all three differ there (A|A2 11,710 px).
+  B is one console line further along.
+
+### VBE boot: the mapping works, and the console then triple-faults [measured]
+
+**Setup:**
+- `$GOLDEN` + this kernel;
+- `$DRV`, last in `Boot Drivers`, `_reloc` = `DRVSHA`, `VBE Mode` = 257;
+- `vm/work/t7c-boot` in both slots;
+- `--vga cirrus`, no keys.
+
+**Result: a reset loop.** The serial log holds only `serial_dbg: i386 kernel
+console up`, eight times in 95 s. From 15 s on, every frame is the BIOS or
+the booter in 720x400 text. **The console is not readable.**
+
+**Traced** with QEMU `-d int,cpu_reset`, then with `-action
+reboot=shutdown,shutdown=pause` so that the first triple fault froze the
+machine for capture:
+- **The first exception:** `v=0e e=0002` (a write to a not-present page)
+  at `EIP 0x001E8A0C`, with `CR2 = 0xCD3D3FFD`. That is kernel VA
+  `0x0D3D3FFD`, because the segments are based at `0xC0000000`.
+  `ECX = 0x280`, `EDI = 0xFFFFFFFD`.
+- The page-fault vector itself faults, fetching at `0x80009340`. The IDT's
+  offsets are not yet usable this early. Then comes the triple fault.
+- **`kbs+0x1854 = 0x0D3D4000`.** The kernel published the mapping. The
+  faulting address is **3 bytes below it**, in the reservation's last page,
+  whose PTE is empty.
+- **The frame buffer:** all 307,200 bytes at physical `0xFC000000` are
+  `0x80`. That is `Init`'s 8 bpp `baseground` (`FBConsole.c:1045`), written
+  by `WipeScreen` through the new mapping. The paused screen is a solid
+  640x480 field in that colour.
+- **So the mapping, the publish and `FBAllocateVBEConsole` all work.** The
+  console's first full-screen fill lands where it should.
+
+**The defect is in `FBConsole.c`'s window geometry, not in the mapping**
+[measured]:
+- `0x001E8A0C` is the 8 bpp `Fill` loop inlined into `InitWindow`. That
+  function starts at `0x001E870C`, and its prologue's `/8*8` and `/12*12`
+  (`CHAR_W`, `CHAR_H`) identify it.
+- `Init` calls `InitWindow(console, TEXT_WIN_WIDTH, TEXT_WIN_HEIGHT, ...)`
+  (`:1089`). `FBConsPriv.h:52-53` makes those 640 and 480.
+- On a 640x480 display, `InitWindow` clamps the width to `640 - 6` (`:885`).
+  It then centres the window at `x = 3` (`:896`), and `&= ~7` rounds that
+  down to 0.
+- So the "outside top" border `Rect` (`:945`) starts at `(x-3, y-3)` =
+  `(-3, 0)`. Its 640-pixel run (`ECX`) begins 3 bytes before the frame
+  buffer, which is `EDI = -3`.
+- **4.2 does not do this.** Its `Init` (`0x0019DF7C..0x0019E23B`) passes
+  `display.width * 3 / 4` and `display.height * 3 / 4` for `SCM_TEXT`
+  (`0x0019E1E6..0x0019E207`), which is 480x360 at `(80, 60)` here. Only
+  `SCM_ALERT` passes constants (`push 0xC8; push 0x140`).
+- Its `Init` differs in two more ways, not acted on:
+  - **the 8/15/24 bpp colour constants.** For example, 8 bpp
+    not-one-is-white is `0x63/0xEF/0/0xF5/0xFA` against our
+    `0x80/0xFF/0/0xFB/0x2B`;
+  - **mode 2.** It is a no-op in 4.2; ours panics.
+
+**Not fixed here.** Task 8 may change only comments in `FBConsole.c`. The
+fault is not the reservation's. Under 4.2's placement the page below the
+mapping is the same empty reservation page [inference, from the layout; not
+built without the reservation]. The frame buffer's page offset is 0 on
+QEMU, so 4.2's layout would fault the same way.
+
+**Consequence.** Until `Init`'s window geometry is fixed, a VBE boot (our
+booter + the driver + a set mode) reset-loops. Before this change it reached
+the network prompt behind a garbage screen. Boots without a mode set are
+unaffected, as shown above.

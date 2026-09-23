@@ -462,6 +462,7 @@ loop:
 		if (error =
 		    bread(devvp, fsbtodb(fs, ino_to_fsba(fs, ip->i_number)),
 		    (int)fs->fs_bsize, NOCRED, &bp)) {
+			brelse(bp);
 			vput(vp);
 			return (error);
 		}

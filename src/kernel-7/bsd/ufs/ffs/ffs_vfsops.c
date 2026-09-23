@@ -230,7 +230,7 @@ ffs_mount(mp, path, data, ndp, p)
 				}
 			}
 			if (fs->fs_clean == 0)
-				printf("ffs: %s not cleanly unmounted; mounting read-write anyway\n",
+				printf("ffs: %s was unclean when mounted; mounting read-write anyway\n",
 				    fs->fs_fsmnt);
 			/*
 			 * If upgrade to read-write by non-root, then verify

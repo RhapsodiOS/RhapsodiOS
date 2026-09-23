@@ -3019,12 +3019,6 @@ struct vop_readdirattr_args /* {
         if (result != noErr) {
             if (result == cmNotFound) {
                 eofReached = TRUE;
-                if (origOffset == uio->uio_offset) {		/* we were already past eof */
-                    uio->uio_offset = 0;
-                    retval = E_NONE;
-                    (void) hfs_metafilelocking(VTOHFS(ap->a_vp), kHFSCatalogFileID, LK_RELEASE, p);
-                    goto Err_Exit;
-                }
                 result = noErr;
             }
             retval = MacToVFSError(result);

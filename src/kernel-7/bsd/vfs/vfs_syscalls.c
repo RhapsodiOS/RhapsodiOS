@@ -2837,7 +2837,7 @@ setattrlist (p,uap,retval)
 
 struct getdirentryattr_args {
       int fd;			/* file descriptor */
-      int *index;		/* Cookie from the user */
+      int *index;		/* returns where this read started, like getdirentries' basep */
       struct attrlist *alist;   /* bit map of requested attributes */
       void *attributebuffer;	/* buffer to hold returned attribute info */
       size_t buffersize; 	/* size of the return buffer */
@@ -2886,9 +2886,6 @@ getdirentryattr (p,uap,retval)
                 return(EINVAL);
 		}
 
-	if (error = copyin((caddr_t) uap->index, (caddr_t) &index, sizeof(index)))
-		return(error);
-
 	/* set up the uio structure which will contain the users return buffer */
 
         aiov.iov_base = uap->attributebuffer;
@@ -2899,10 +2896,10 @@ getdirentryattr (p,uap,retval)
         auio.uio_segflg = UIO_USERSPACE;
         auio.uio_procp = p;
         auio.uio_resid = uap->buffersize;
-        auio.uio_offset = fp->f_offset;
 
         vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
-        error = VOP_READDIRATTR (vp, &attributelist, &auio, &index, &eofflag,((u_long*)0), ((u_long **)0),fp->f_cred);
+        index = auio.uio_offset = fp->f_offset;
+        error = VOP_READDIRATTR (vp, &attributelist, &auio, index, &eofflag,((u_long*)0), ((u_long **)0),fp->f_cred);
         fp->f_offset = auio.uio_offset;
         VOP_UNLOCK(vp, 0, p);
 
@@ -2912,6 +2909,8 @@ getdirentryattr (p,uap,retval)
 	if (error = copyout((caddr_t) &index, (caddr_t) uap->index, sizeof(index)))
 		return(error);
 
+        /* as with getdirentries, the bytes read; 0 at the end of the directory */
+        *retval = uap->buffersize - auio.uio_resid;
         return (0);
 
 } /* end of getdirentryattr system call */

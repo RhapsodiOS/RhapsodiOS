@@ -2725,9 +2725,12 @@ struct vop_readdir_args /* {
      * and require room for at least one whole record before doing
      * arithmetic on the (unsigned) request size below -- otherwise a
      * buffer smaller than one record at a misaligned offset underflows
-     * count/uio_resid/iov_len to a huge value.
+     * count/uio_resid/iov_len to a huge value.  A negative offset
+     * (lseek allows one) would make the signed % below negative and
+     * grow count past uio_resid, so reject that too.
      */
-    if (uio->uio_iovcnt > 1 || uio->uio_resid < sizeof(struct hfsdirentry)) {
+    if (uio->uio_offset < 0 || uio->uio_iovcnt > 1 ||
+        uio->uio_resid < sizeof(struct hfsdirentry)) {
         DBG_ERR(("%s: Not enough buffer to read in entries\n",funcname));
         DBG_VOP_LOCKS_TEST(EINVAL);
         return (EINVAL);
@@ -2769,7 +2772,7 @@ struct vop_readdir_args /* {
         rootdots[0].fileno = dirID;
         rootdots[1].fileno = H_DIRID(hp);
 
-        retval = uiomove((caddr_t) (rootdots + uio->uio_offset), index * sizeof(struct hfsdirentry), uio);
+        retval = uiomove((caddr_t)rootdots + uio->uio_offset, index * sizeof(struct hfsdirentry), uio);
 		if (retval != 0)
 			goto Exit;
 

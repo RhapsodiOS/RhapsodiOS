@@ -2778,8 +2778,9 @@ struct vop_readdir_args /* {
 
     };
 
-    /* Compute the starting index in the directory */
-    index = (uio->uio_offset - sizeof(struct hfsdirentry)) / sizeof(struct hfsdirentry);
+    /* Compute the starting index in the directory, clamped so that a huge
+     * offset can't truncate back under the 16-bit limit checked below */
+    index = MIN((uio->uio_offset - sizeof(struct hfsdirentry)) / sizeof(struct hfsdirentry), 0x10000);
 
 	/* lock catalog b-tree */
 	retval = hfs_metafilelocking(VTOHFS(ap->a_vp), kHFSCatalogFileID, LK_SHARED, p);
@@ -2790,7 +2791,10 @@ struct vop_readdir_args /* {
     hint = kNoHint;
     while (uio->uio_resid > sizeof(struct hfsdirentry))
       {
-        result = GetCatalogOffspring(vcb, dirID, index, &fileSpec, &nodeData, &hint);
+        if (index > 0xFFFF)		/* GetCatalogOffspring's index is 16 bits: don't wrap onto the thread record */
+            result = cmNotFound;
+        else
+            result = GetCatalogOffspring(vcb, dirID, index, &fileSpec, &nodeData, &hint);
         if (result != noErr) {
             if (result == cmNotFound) {
                 eofReached = TRUE;

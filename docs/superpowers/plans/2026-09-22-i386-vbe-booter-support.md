@@ -1728,6 +1728,10 @@ build otherwise.
 **Files:**
 - Modify: `src/boot-2/i386/boot2/boot.c`, `src/boot-2/i386/boot2/graphics.c`,
   `src/boot-2/i386/boot2/boot.h` (the dead `G_MODE_KEY`)
+- Modify: `src/boot-2/i386/libsaio/vbe.c`, `vbe.h`, `saio_internal.h`, applying
+  Task 6's deferred mode setter from `vm/work/t6c-setter.patch`
+- Modify: whichever files hold the wait cursors and the panel-path functions
+  that Task 3b's inventory names
 - Modify: `src/boot-2/i386/util/bitmap.h`, for 4.2's 24-byte `struct bitmap`
   (Task 3b)
 - Modify: `vm/qemu-shot.py`, `vm/test_qemu_shot.py`. The key map gains
@@ -1761,6 +1765,28 @@ build otherwise.
     (Task 3b).
 
 - [ ] **Step 1: Reconstruct the boot-flow functions**
+
+> **Order within this task (revised 2026-09-23, after Task 6).** The booter
+> has only **64 bytes spare** after Task 6. Task 6's mode setter,
+> `set_linear_video_mode`, is measured but not landed: with it the booter is
+> 45,088 bytes, 32 over the limit. It is saved as `vm/work/t6c-setter.patch`,
+> and its measurements are in `$BDIV` "Task 6". Work in this order, building
+> after each stage:
+> 1. **The size-reducing panel-path rebuilds first:**
+>    - 4.2's 264-byte wait cursors in place of our 864;
+>    - 4.2's `copyImage` and `clearRect`;
+>    - the other panel-path functions Task 3b lists as smaller in 4.2.
+>
+>    Task 3b's rows put this at about -676 net.
+> 2. **Apply `vm/work/t6c-setter.patch`.** Check its SHA-256 against
+>    `$BDIV`'s, rebuild, and re-run the setter's `compare_flat` check. The
+>    result must match Task 6's recorded outcome: the palette divergence only,
+>    plus the 5 frame bytes and 1 pad byte.
+> 3. **Then** the `execKernel` wiring, the enumerator call, `setMode`, the key,
+>    `VBE Check` and the rest below.
+>
+> If stage 1 does not free enough for stage 2, stop and report. The `strtoul`
+> split is the user's call.
 
 Use Task 6's procedure: read, write, build, compare, record. These include:
 - where `VBE Mode` is read;

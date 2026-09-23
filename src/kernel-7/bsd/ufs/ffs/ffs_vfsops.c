@@ -205,15 +205,23 @@ ffs_mount(mp, path, data, ndp, p)
 		    (error = ffs_reload(mp, ndp->ni_cnd.cn_cred, p)))
 			return (error);
 		if (fs->fs_ronly && (mp->mnt_flag & MNT_WANTRDWR)) {
-			if (fs->fs_clean == 0) {
-				if ((boothowto & RB_SINGLE) &&
-				    (mp->mnt_flag & MNT_ROOTFS)) {
+			if (fs->fs_clean == 0 && (boothowto & RB_SINGLE) &&
+			    (mp->mnt_flag & MNT_ROOTFS)) {
+				/*
+				 * fsck marks the disk clean without reloading when
+				 * that is its only repair, so this copy may be stale.
+				 */
+				if (error = ffs_reload(mp, ndp->ni_cnd.cn_cred, p))
+					return (error);
+				fs->fs_ronly = 1;
+				if (fs->fs_clean == 0) {
 					printf("ffs: root not cleanly unmounted, refusing read-write upgrade; run fsck\n");
 					return (EPERM);
 				}
+			}
+			if (fs->fs_clean == 0)
 				printf("ffs: %s not cleanly unmounted; mounting read-write anyway\n",
 				    fs->fs_fsmnt);
-			}
 			/*
 			 * If upgrade to read-write by non-root, then verify
 			 * that user has necessary permissions on the device.

@@ -1,9 +1,7 @@
 """The reused boot2 UFS reader must extract the same bytes as rhap_image.py.
 
-This is the only test proving that ebiosread()/sys.c's reused UFS code, built
-with -D__LITTLE_ENDIAN__=0 for sys.c's translation unit (see the Makefile
-comment), reads a real Rhapsody UFS payload correctly on this little-endian
-disk format. It must actually run in a fresh checkout and in CI, not just
+This is the only test proving that ebiosread()/sys.c's reused UFS code reads
+a real Rhapsody UFS payload correctly on this little-endian disk format. It must actually run in a fresh checkout and in CI, not just
 report skips as green -- do not weaken _ready()/_require_image() to make
 missing prerequisites look like success.
 """

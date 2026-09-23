@@ -872,7 +872,6 @@ OSErr FlushExtentFile( ExtendedVCB *vcb )
 OSErr DeleteFile( ExtendedVCB *vcb, HFSCatalogNodeID parDirID, ConstUTF8Param catalogName, UInt32 catalogHint )
 {
 	OSErr			err;
-	OSErr			errDF, errRF;
 	CatalogNodeData	catalogData;
 	FSSpec			fileSpec;	/* 264 bytes */
 	Boolean			recordDeleted;
@@ -906,10 +905,10 @@ OSErr DeleteFile( ExtendedVCB *vcb, HFSCatalogNodeID parDirID, ConstUTF8Param ca
 	//
 
 	// Deallocate data fork extents
-	errDF = DeallocateFork( vcb, catalogData.nodeID, kDataForkType, catalogData.dataExtents, &recordDeleted );
+	(void) DeallocateFork( vcb, catalogData.nodeID, kDataForkType, catalogData.dataExtents, &recordDeleted );
 
 	// Deallocate resource fork extents
-	errRF = DeallocateFork( vcb, catalogData.nodeID, kResourceForkType, catalogData.rsrcExtents, &recordDeleted );
+	(void) DeallocateFork( vcb, catalogData.nodeID, kResourceForkType, catalogData.rsrcExtents, &recordDeleted );
 
 	if (recordDeleted)
 		(void) FlushExtentFile( vcb );

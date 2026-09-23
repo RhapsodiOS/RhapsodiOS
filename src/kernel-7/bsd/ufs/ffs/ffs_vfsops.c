@@ -86,6 +86,7 @@
 #include <ufs/ufs/ufsmount.h>
 #include <ufs/ufs/inode.h>
 #include <ufs/ufs/ufs_extern.h>
+#include <ufs/ufs/dir.h>
 
 #include <ufs/ffs/fs.h>
 #include <ufs/ffs/ffs_extern.h>
@@ -563,6 +564,16 @@ ffs_mountfs(devvp, mp, p)
 			byte_swap_sbout(fs);
 #endif /* REV_ENDIAN_FS */
 		error = EROFS;          /* needs translation */
+		goto out;
+	}
+	if (fs->fs_fsize < DIRBLKSIZ) {
+		printf("ffs: fragment size %d below DIRBLKSIZ, refusing\n",
+		    fs->fs_fsize);
+#if REV_ENDIAN_FS
+		if (rev_endian)
+			byte_swap_sbout(fs);
+#endif /* REV_ENDIAN_FS */
+		error = EOPNOTSUPP;
 		goto out;
 	}
 

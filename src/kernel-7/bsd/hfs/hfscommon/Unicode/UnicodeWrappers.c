@@ -1957,17 +1957,23 @@ ConvertUnicodeToUTF8(ByteCount srcLen, ConstUniCharArrayPtr srcStr, ByteCount ma
 	
 	result = ConvertUTF16toUTF8 (&sourceStart, sourceEnd, &targetStart, targetEnd);
 	
-	*actualDstLen = outputLength = targetStart - dstStr;
+	outputLength = targetStart - dstStr;
+
+	/* Null terminate even on failure, since not every caller checks.  A full buffer
+	 * loses its last character (they are always converted whole) to make room. */
+	if (outputLength >= maxDstLen)
+	{
+		result = targetExhausted;
+		while (outputLength > 0 && (dstStr[--outputLength] & 0xC0) == 0x80)
+			;
+	}
+	dstStr[outputLength] = 0;
+	*actualDstLen = outputLength;
 
 	if (result == targetExhausted)
 		return kTECOutputBufferFullStatus;
 	else if (result == sourceExhausted)
 		return kTECPartialCharErr;
-
-	if (outputLength >= maxDstLen)
-		return kTECOutputBufferFullStatus;
-		
-	dstStr[outputLength] = 0;	/* also add null termination */
 
 	return noErr;
 }

@@ -82,8 +82,10 @@ deep in directory traversal, instead of at mount. `golden.img` has `fs_fsize`
 1024 against a `DIRBLKSIZ` of 512 and is unaffected.
 
 **4. Validate the superblock magic before byte-swapping it.**
-The `REV_ENDIAN_FS` paths at `ffs_vfsops.c:342` and `:525` swap the entire
-in-memory superblock, then check whether the result looks sane. `kernel-7` does
+The `REV_ENDIAN_FS` path in `ffs_mountfs` at `ffs_vfsops.c:525` swaps the entire
+in-memory superblock, then checks whether the result looks sane. The reload path
+at `:342` is not affected: it swaps only a superblock already established as
+reverse-endian at mount time, so there is nothing speculative to guard. `kernel-7` does
 restore it with `byte_swap_sbout` when the check fails, so this is not the
 corruption it first appears to be — but it still mutates a shared buffer that
 another thread can observe, for no reason. xnu-124 swaps only `fs_magic` into a

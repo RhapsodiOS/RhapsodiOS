@@ -746,51 +746,77 @@ git commit -m "kernel: validate the UFS superblock magic before byte-swapping it
 Change 3.
 
 **Files:**
-- Modify: `src/kernel-7/bsd/ufs/ffs/ffs_vfsops.c:535-540`
+- Modify: `src/kernel-7/bsd/ufs/ffs/ffs_vfsops.c` — one include near `:85-93`, and
+  one refusal block after the 4.2-format check that ends at `:552`
 
 **Interfaces:**
-- Consumes: `make_badfs.corrupt(path, "fs_fsize", 256)`; the Task 2 device node.
+- Consumes: `make_badfs.corrupt(path, "fs_fsize", 256)`; the second-disk device
+  node confirmed in Task 3 Step 8.
 - Produces: the serial-log token `ffs: fragment size`.
 
-- [ ] **Step 1: Add the check beside the existing geometry validation**
+**Why each refusal swaps back before bailing.** Past the `REV_ENDIAN_FS` block at
+`:523-534`, a reverse-endian superblock has already been byte-swapped *in place*
+in the buffer cache. Jumping to `out:` without `byte_swap_sbout` leaves that
+swapped buffer cached, and the next mount of the same device reads native-endian
+magic off a reverse-endian filesystem. Every existing refusal in this function
+swaps back first — the bad-magic check at `:535-543` and the 4.2-format check at
+`:545-552`. New refusals follow the same idiom rather than inventing a new one.
 
-`ffs_vfsops.c:535` currently begins:
+- [ ] **Step 1: Add the include**
 
-```c
-	if (fs->fs_magic != FS_MAGIC || fs->fs_bsize > MAXBSIZE ||
-	    fs->fs_bsize < sizeof(struct fs)) {
-```
-
-Immediately **after** the closing brace of that existing validation block (the one that ends with `goto out;` and its `}`), insert:
-
-```c
-	if (fs->fs_fsize < DIRBLKSIZ) {
-		printf("ffs: fragment size %d below DIRBLKSIZ, refusing\n",
-		    fs->fs_fsize);
-		error = ENOTSUP;
-		goto out;
-	}
-```
-
-- [ ] **Step 2: Add the missing include**
-
-`DIRBLKSIZ` lives in `<ufs/ufs/dir.h>`, which `ffs_vfsops.c` does **not**
-currently include — verified: its `ufs/ufs/` includes are `quota.h`,
-`ufsmount.h`, `inode.h`, `ufs_extern.h` and `ufs_byte_order.h` only
-(`:85-93`). Add it beside them:
+`DIRBLKSIZ` lives in `<ufs/ufs/dir.h>`, which `ffs_vfsops.c` does not include —
+its `ufs/ufs/` includes are `quota.h`, `ufsmount.h`, `inode.h`, `ufs_extern.h`
+and `ufs_byte_order.h` (`:85-93`). Add beside them:
 
 ```c
 #include <ufs/ufs/dir.h>
 ```
 
-Without this the build fails with `DIRBLKSIZ undeclared`.
+- [ ] **Step 2: Add the refusal**
 
-- [ ] **Step 3: Build**
+`ffs_vfsops.c:545-552` currently reads:
 
-Run the build cycle.
-Expected: clean compile.
+```c
+	/* XXX updating 4.2 FFS superblocks trashes rotational layout tables */
+	if (fs->fs_postblformat == FS_42POSTBLFMT && !ronly) {
+#if REV_ENDIAN_FS
+		if (rev_endian)
+			byte_swap_sbout(fs);
+#endif /* REV_ENDIAN_FS */
+		error = EROFS;          /* needs translation */
+		goto out;
+	}
+```
 
-- [ ] **Step 4: Generate the undersized-fragment image**
+Immediately after its closing brace, insert:
+
+```c
+	if (fs->fs_fsize < DIRBLKSIZ) {
+		printf("ffs: fragment size %d below DIRBLKSIZ, refusing\n",
+		    fs->fs_fsize);
+#if REV_ENDIAN_FS
+		if (rev_endian)
+			byte_swap_sbout(fs);
+#endif /* REV_ENDIAN_FS */
+		error = ENOTSUP;
+		goto out;
+	}
+```
+
+The `printf` comes before the swap-back so it reports the native value.
+`golden.img` has `fs_fsize` 1024 against a `DIRBLKSIZ` of 512, so root is
+unaffected.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add src/kernel-7/bsd/ufs/ffs/ffs_vfsops.c
+git commit -m "kernel: refuse a UFS fragment size below DIRBLKSIZ at mount"
+```
+
+- [ ] **Step 4: Harness (after the build cycle)**
+
+Generate the image, boot with it as the IDE slave, attempt the mount:
 
 ```bash
 cd vm && python -c "
@@ -799,73 +825,71 @@ make_badfs.build_good('work/bad-fsize.img')
 make_badfs.corrupt('work/bad-fsize.img', 'fs_fsize', 256)"
 ```
 
-- [ ] **Step 5: Boot and attempt the mount**
-
-Boot with the malformed image as the IDE slave, using `Guest`'s `extra=`:
-
 ```python
-# run from vm/
-import importlib.util, pathlib, time
-spec = importlib.util.spec_from_file_location("guest_console", pathlib.Path("guest-console.py"))
-gc = importlib.util.module_from_spec(spec); spec.loader.exec_module(gc)
-
 g = gc.Guest("out/task5", extra=(
     "-drive", "file=work/bad-fsize.img,format=raw,if=ide,index=1,media=disk",
 ))
+time.sleep(6); g.line("-s"); time.sleep(135)
+g.line("mount /dev/hd1a /mnt"); time.sleep(5); g.shot("bad-fsize")
 ```
-
-Drive the guest as before, screenshotting as `bad-fsize`.
-
-- [ ] **Step 6: Confirm the refusal**
 
 Run: `grep "ffs: fragment size 256 below DIRBLKSIZ" vm/out/task5/serial.log`
-Expected: one matching line.
-
-- [ ] **Step 7: Confirm no regression on the good image**
-
-Boot once more with `--second-disk work/good-control.img` and mount it.
-Expected: still mounts. `golden.img`'s own fragment size is 1024, well above `DIRBLKSIZ` of 512, so root is unaffected.
-
-- [ ] **Step 8: Commit**
-
-```bash
-git add src/kernel-7/bsd/ufs/ffs/ffs_vfsops.c
-git commit -m "kernel: refuse a UFS fragment size below DIRBLKSIZ at mount"
-```
+Expected: one line. Then repeat with `work/good-control.img` and confirm it still
+mounts.
 
 ---
 
-### Task 6: Refuse an unclean non-root filesystem
+### Task 6: Refuse a read-write mount of an unclean non-root filesystem
 
-Change 1a — the `ffs_mountfs` half of the dirty-mount gate.
+Change 1, non-root half.
 
 **Files:**
-- Modify: `src/kernel-7/bsd/ufs/ffs/ffs_vfsops.c`, in `ffs_mountfs` after the geometry checks from Task 5
+- Modify: `src/kernel-7/bsd/ufs/ffs/ffs_vfsops.c`, immediately after Task 5's block
 
 **Interfaces:**
-- Consumes: `make_badfs.corrupt(path, "fs_clean", 0)`; the Task 2 device node.
+- Consumes: `make_badfs.corrupt(path, "fs_clean", 0)`; the Task 3 device node.
 - Produces: the serial-log token `ffs: filesystem not cleanly unmounted`.
 
-- [ ] **Step 1: Add the gate**
+**Why `!ronly` is load-bearing, and a deliberate departure from xnu-124.**
+xnu-124's version has no read-only guard:
+`((!(mp->mnt_flag & MNT_ROOTFS)) && (!fs->fs_clean))`. Ported verbatim into this
+kernel, it would refuse a dirty root at boot. `MNT_ROOTFS` is only set at
+`bsd/kern/init_main.c:579`, *after* `ffs_mountroot` returns — so during the
+root's own `ffs_mountfs` it is still clear and the root looks like any other
+filesystem. What saves it is that `vfs_rootmountalloc` mounts root with
+`MNT_RDONLY` (`bsd/vfs/vfs_subr.c`), making `ronly` true. Without `!ronly`, every
+unclean shutdown would leave a machine that cannot boot. A read-only mount of a
+dirty non-root disk also cannot compound its damage, so allowing it costs
+nothing and lets someone read data off a disk from a crashed machine.
 
-Immediately after the `fs_fsize` check added in Task 5, insert:
+- [ ] **Step 1: Add the refusal**
+
+Immediately after Task 5's block, insert:
 
 ```c
 	if (!ronly && (mp->mnt_flag & MNT_ROOTFS) == 0 && fs->fs_clean == 0) {
 		printf("ffs: filesystem not cleanly unmounted, refusing; run fsck\n");
+#if REV_ENDIAN_FS
+		if (rev_endian)
+			byte_swap_sbout(fs);
+#endif /* REV_ENDIAN_FS */
 		error = ENOTSUP;
 		goto out;
 	}
 ```
 
-`ronly` is already computed at `ffs_vfsops.c:505`. A read-only mount is still permitted — that is deliberate, and it is what lets `fsck` examine the volume. The root filesystem is excluded here and handled in Task 7.
+`ronly` is computed at `:505`. `fs_clean` is a single byte, so testing it before
+the swap-back is endian-safe. `bp` and `ump` are nulled at `:517-518`, so `out:`
+releases correctly from here.
 
-- [ ] **Step 2: Build**
+- [ ] **Step 2: Commit**
 
-Run the build cycle.
-Expected: clean compile.
+```bash
+git add src/kernel-7/bsd/ufs/ffs/ffs_vfsops.c
+git commit -m "kernel: refuse a read-write mount of an unclean UFS filesystem"
+```
 
-- [ ] **Step 3: Generate the unclean image**
+- [ ] **Step 3: Harness (after the build cycle)**
 
 ```bash
 cd vm && python -c "
@@ -874,53 +898,62 @@ make_badfs.build_good('work/dirty.img')
 make_badfs.corrupt('work/dirty.img', 'fs_clean', 0)"
 ```
 
-- [ ] **Step 4: Boot and attempt a read-write mount**
-
-Boot with the malformed image as the IDE slave, using `Guest`'s `extra=`:
-
 ```python
-# run from vm/
-import importlib.util, pathlib, time
-spec = importlib.util.spec_from_file_location("guest_console", pathlib.Path("guest-console.py"))
-gc = importlib.util.module_from_spec(spec); spec.loader.exec_module(gc)
-
 g = gc.Guest("out/task6", extra=(
     "-drive", "file=work/dirty.img,format=raw,if=ide,index=1,media=disk",
 ))
-```
-
-```python
-g.line("-s"); time.sleep(135)
+time.sleep(6); g.line("-s"); time.sleep(135)
 g.line("mount /dev/hd1a /mnt"); time.sleep(5); g.shot("dirty-rw")
 g.line("mount -r /dev/hd1a /mnt"); time.sleep(5); g.shot("dirty-ro")
 ```
 
-- [ ] **Step 5: Confirm the refusal and the read-only escape hatch**
-
-Run: `grep "ffs: filesystem not cleanly unmounted" vm/out/task6/serial.log`
-Expected: exactly one matching line — from the read-write attempt. The `dirty-ro.png` screenshot must show the read-only mount **succeeding**; if it also refused, the `!ronly` guard is wrong and must be fixed before committing.
-
-- [ ] **Step 6: Commit**
-
-```bash
-git add src/kernel-7/bsd/ufs/ffs/ffs_vfsops.c
-git commit -m "kernel: refuse a read-write mount of an unclean UFS filesystem"
-```
+Run: `grep -c "ffs: filesystem not cleanly unmounted" vm/out/task6/serial.log`
+Expected: exactly `1` — from the read-write attempt only. `dirty-ro.png` must show
+the read-only mount succeeding. The most important related check is the one
+Task 7 Step 4 makes: that a dirty *root* still boots.
 
 ---
 
-### Task 7: Refuse a read-write upgrade of an unclean root
+### Task 7: Refuse a single-user read-write upgrade of an unclean root
 
-Change 1b. The riskiest change in the plan: get it wrong and the machine will not come up read-write.
+Change 1, root half.
 
 **Files:**
-- Modify: `src/kernel-7/bsd/ufs/ffs/ffs_vfsops.c:203-221`
+- Modify: `src/kernel-7/bsd/ufs/ffs/ffs_vfsops.c` — one include, and a gate at `:203`
 
 **Interfaces:**
-- Consumes: nothing from Task 1 — this harness mutates `vm/work/test.img` directly.
-- Produces: the serial-log token `ffs: root not cleanly unmounted`.
+- Consumes: `make_badfs.corrupt` from Task 1, applied to this branch's root image.
+- Produces: serial-log tokens `ffs: root not cleanly unmounted` (refusal) and
+  `not cleanly unmounted; mounting read-write anyway` (warning).
 
-- [ ] **Step 1: Gate the upgrade**
+**What xnu-124 actually does, and why this is narrower than the first draft.**
+xnu-124 (`bsd/ufs/ffs/ffs_vfsops.c:207-223`) refuses only when the machine was
+booted single-user *and* the filesystem is root; otherwise it prints a warning
+and proceeds. Its own comment states the intent: stop someone who booted
+single-user from running `mount -uw /` without running `fsck` first. A normal
+multi-user boot must never be stranded read-only.
+
+xnu-124 also forces `ffs_reload` before every upgrade of a read-only filesystem,
+so that a repair made by `fsck` becomes visible in the in-core superblock. That
+is **not** ported: Rhapsody's `fsck` already reloads the root itself after
+repairing it (`src/Commands/diskdev_cmds/fsck.tproj/main.c:418-432`, issuing
+`MNT_UPDATE | MNT_RELOAD`), and forcing it in the kernel would run the
+rarely-exercised `ffs_reload` on every single boot.
+
+`issingleuser()` does not exist in this kernel. Its xnu-124 implementation just
+parses the `-s` boot argument; here the `-s` flag sets `RB_SINGLE` in
+`boothowto` (`machdep/i386/i386_init.c:555`). `boothowto` is declared in
+`sys/systm.h:120`, already included; `RB_SINGLE` needs `<sys/reboot.h>`.
+
+- [ ] **Step 1: Add the include**
+
+Add beside the other `sys/` includes near the top of `ffs_vfsops.c`:
+
+```c
+#include <sys/reboot.h>
+```
+
+- [ ] **Step 2: Add the gate**
 
 `ffs_vfsops.c:203` currently begins:
 
@@ -932,13 +965,18 @@ Change 1b. The riskiest change in the plan: get it wrong and the machine will no
 			 */
 ```
 
-Insert the gate as the first statement inside that block, before the permission check:
+Insert the gate as the first statement inside that block:
 
 ```c
 		if (fs->fs_ronly && (mp->mnt_flag & MNT_WANTRDWR)) {
 			if (fs->fs_clean == 0) {
-				printf("ffs: root not cleanly unmounted, refusing read-write upgrade; run fsck\n");
-				return (EPERM);
+				if ((boothowto & RB_SINGLE) &&
+				    (mp->mnt_flag & MNT_ROOTFS)) {
+					printf("ffs: root not cleanly unmounted, refusing read-write upgrade; run fsck\n");
+					return (EPERM);
+				}
+				printf("ffs: %s not cleanly unmounted; mounting read-write anyway\n",
+				    fs->fs_fsmnt);
 			}
 			/*
 			 * If upgrade to read-write by non-root, then verify
@@ -946,72 +984,64 @@ Insert the gate as the first statement inside that block, before the permission 
 			 */
 ```
 
-- [ ] **Step 2: Build**
+Returning here is clean: nothing has been modified yet (`fs_ronly` is still set,
+no superblock write), and `mount(2)` restores `mnt_flag` on error. Placing the
+gate inside the upgrade block — rather than before it, as xnu-124 does — means
+an update that keeps the filesystem read-only is never refused.
 
-Run the build cycle.
-Expected: clean compile.
-
-- [ ] **Step 3: Confirm the happy path still boots**
-
-```python
-# run from vm/  (same importlib preamble as Task 2)
-g = gc.Guest("out/task7a")
-g.line(""); time.sleep(200)   # let it boot unattended
-g.shot("clean-boot")
-```
-
-Expected: full multi-user boot. `work/test.img` has `fs_clean = 1`, so the gate must not fire. Run `grep "ffs: root not cleanly" vm/out/task7a/serial.log` and expect **no** match. If it matches, stop — the gate is inverted and would brick every boot.
-
-- [ ] **Step 4: Mark the root filesystem unclean**
+- [ ] **Step 3: Commit**
 
 ```bash
-cd vm && python -c "
-import make_badfs
-make_badfs.corrupt('work/test.img', 'fs_clean', 0)"
+git add src/kernel-7/bsd/ufs/ffs/ffs_vfsops.c
+git commit -m "kernel: refuse a single-user read-write upgrade of an unclean root"
 ```
 
-This reuses Task 1's `corrupt()` against the grafted work image. It is a single byte; `reset-image.cmd` restores the image if anything goes wrong.
+- [ ] **Step 4: Harness — a dirty root must still boot multi-user (after the build cycle)**
 
-- [ ] **Step 5: Boot and observe the refusal**
+This is the check that matters most in the whole plan.
+
+```bash
+cd vm && python -c "import make_badfs; make_badfs.corrupt('D:/RhapsodiOS/vm/work/ufs-backport.img', 'fs_clean', 0)"
+```
 
 ```python
-# run from vm/  (same importlib preamble as Task 2)
-g = gc.Guest("out/task7b")
-g.line(""); time.sleep(200)
-g.shot("dirty-root")
+g = gc.Guest("out/task7a")
+time.sleep(6); g.line(""); time.sleep(200); g.shot("dirty-multiuser")
 ```
 
-- [ ] **Step 6: Confirm**
+Expected: the machine reaches multi-user with root read-write. `rc.boot`'s `fsck`
+repairs and reloads the root before the upgrade, so the gate should not fire at
+all; if it does, it may only warn. Run
+`grep "ffs: root not cleanly unmounted" vm/out/task7a/serial.log` and expect **no**
+match. A match means the gate is stranding multi-user boots — stop.
+
+- [ ] **Step 5: Harness — single-user refuses, and `fsck` recovers**
+
+Re-graft first (the multi-user boot repaired the image), then mark it dirty again:
+
+```bash
+python vm/graft-kernel.py D:/RhapsodiOS/vm/golden.img <path-to-mach_kernel> \
+    D:/RhapsodiOS/vm/work/ufs-backport.img
+cd vm && python -c "import make_badfs; make_badfs.corrupt('D:/RhapsodiOS/vm/work/ufs-backport.img', 'fs_clean', 0)"
+```
+
+```python
+g = gc.Guest("out/task7b")
+time.sleep(6); g.line("-s"); time.sleep(135)
+g.line("mount -uw /"); time.sleep(5); g.shot("refused")
+g.line("fsck -y /dev/hd0a"); time.sleep(120); g.shot("fsck")
+g.line("mount -uw /"); time.sleep(10); g.shot("remounted")
+```
 
 Run: `grep "ffs: root not cleanly unmounted" vm/out/task7b/serial.log`
-Expected: one matching line, and the boot does not reach multi-user — it stops with root still read-only, which is the intended behaviour.
-
-- [ ] **Step 7: Confirm fsck clears it**
-
-At the single-user prompt:
-
-```python
-g.line("fsck -y /dev/hd0a"); time.sleep(120); g.shot("fsck")
-g.line("mount -w /"); time.sleep(10); g.shot("remount")
-```
-
-Expected: `fsck` marks the filesystem clean and the subsequent read-write remount succeeds. This is the recovery path the spec promises; if it does not work, the gate is unusable and the task must be reconsidered rather than committed.
+Expected: exactly one line, from the first `mount -uw /`. `remounted.png` must show
+the second attempt succeeding — `fsck` marks the root clean and reloads it, and
+the gate lets it through.
 
 `vm/README.md:287-300` says never to run `fsck` on a grafted image. Running it
-here is a deliberate, approved exception: `work/test.img` is disposable and
-`reset-image.cmd` rebuilds it from `golden.img`, and this is the only way to
-demonstrate that an operator can actually recover from the gate. Expect `fsck`
-to also "repair" the four known graft artifacts, and possibly to damage the
-grafted kernel — that costs one boot cycle and nothing else. Do not run `fsck -y`
-on any image you care about.
-
-- [ ] **Step 8: Restore the image and commit**
-
-```bash
-cd vm && cmd /c reset-image.cmd
-git add src/kernel-7/bsd/ufs/ffs/ffs_vfsops.c
-git commit -m "kernel: refuse a read-write upgrade of an unclean root filesystem"
-```
+here is a deliberate, approved exception: this image is this branch's own and is
+rebuilt from `golden.img` by every graft. Do not run `fsck -y` on any image you
+care about.
 
 ---
 

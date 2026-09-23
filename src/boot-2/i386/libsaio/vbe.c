@@ -51,6 +51,32 @@ static char *models[] = { "Text",
 			  "Direct Color", 
 			  "YUV" };
 
+/*
+ * OPENSTEP 4.2 User Patch 4's record writer (boot+27556..27703): one
+ * boot_vbe_mode from the BIOS's mode information, one store per field.
+ */
+void
+recordVBEMode(boot_vbe_mode *rec, unsigned short mode, VBEModeInfoBlock *minfo)
+{
+    rec->modeNumber = mode;
+    rec->modeAttributes = minfo->ModeAttributes;
+    rec->xResolution = minfo->XResolution;
+    rec->yResolution = minfo->YResolution;
+    rec->bytesPerScanline = minfo->BytesPerScanline;
+    rec->bitsPerPixel = minfo->BitsPerPixel;
+    rec->memoryModel = minfo->MemoryModel;
+    rec->redMaskSize = minfo->RedMaskSize;
+    rec->redFieldPosition = minfo->RedFieldPosition;
+    rec->greenMaskSize = minfo->GreenMaskSize;
+    rec->greenFieldPosition = minfo->GreenFieldPosition;
+    rec->blueMaskSize = minfo->BlueMaskSize;
+    rec->blueFieldPosition = minfo->BlueFieldPosition;
+    rec->frameBuffer = ADDRESS(minfo->PhysBasePtr_low,
+			       minfo->PhysBasePtr_1,
+			       minfo->PhysBasePtr_2,
+			       minfo->PhysBasePtr_high);
+}
+
 void
 set_linear_video_mode(unsigned short mode)
 {

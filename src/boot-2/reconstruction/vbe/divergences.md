@@ -1192,3 +1192,49 @@ Two other options were raised and not taken:
   [inference];
 - removing `setCursorPosition`, up to 64 bytes, which is not on Task 3's
   list.
+
+---
+
+## Task 6: 4.2's VBE functions in `libsaio/vbe.c`
+
+**What is rebuilt.** The five functions of the 4.2 image's
+`boot+0x6B00..0x6F30` region that our tree lacks or has only in part (item 1's
+table): the mode-attributes test, the 640x480 test, the record writer, the
+enumerator and the mode setter. `printf` (`boot+27392`) and the eight BIOS
+wrappers after the setter (`boot+28464..29047`) already match. They sit in
+4.2's order in `vbe.c`, ahead of `setupPalette` and the wrappers.
+
+**Method.**
+- Each build is `rbuild` as Task 3 Step 2, after `vm/sync-src.ps1 -Path
+  boot-2`, with a copy of `boot-64-2.sym/i386` taken from inside the chroot
+  before the cleanup. Each binary was checked by its guest `sum` and `cksum`,
+  recomputed locally from the decoded bytes.
+- Our function's extent is its `nm -n` delta in `boot.sys`, as in Task 3.
+- `compare_flat.py` compares it with the reference at base `0x3000` on both
+  sides.
+
+**Names.** Only the mode setter has a counterpart, `set_linear_video_mode`,
+and it keeps that name. The other four have none in our tree, so they are
+named here: `vbeModeIsUsable`, `vbeModeIsLargeEnough`, `recordVBEMode` and
+`enumerateVBEModes`. 4.2's own names are not in the image.
+
+### The record writer [measured]
+
+| | |
+| --- | --- |
+| reference | `boot+27556..27703`, 148 bytes (`0x9BA4`) |
+| ours | `_recordVBEMode`, `0x98D4`, 148 bytes (next: `_set_linear_video_mode` at `0x9968`) |
+| `compare_flat` | `MATCH: 50 instructions, 148 bytes compared, 0 masked, 0 addresses mapped` |
+| outcome | **byte parity** |
+
+- The signature is Task 3's, `(boot_vbe_mode *, unsigned short, VBEModeInfoBlock *)`,
+  with Task 4's type for the record.
+- The physical address goes through `vbe.h`'s `ADDRESS()` macro. It builds the
+  same byte-by-byte `shl`/`or` sequence as 4.2, including the spill to
+  `[ebp-4]`.
+- The build, `t6a`: `booter 44528 bytes of 45056, 528 to spare`; `boot`
+  `sum 10234 44`, `cksum 3300415786 44528`, SHA-256
+  `443A8AF8E4DDD6719E3A4961E8F76E5E2ED9E2139D6599A32FDEA730CABD6C06`;
+  `boot.sys` `cksum 198241776 1075932`. The package's `boot` is
+  `cmp`-identical to the copy. The file grew by 144 bytes over Task 5's
+  44,384.

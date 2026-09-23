@@ -262,6 +262,38 @@ The tool:
 - refuses a booter that does not fit the measured room;
 - reads both copies back and checks their hash.
 
+**The boot area of `golden.img`**, measured during planning and re-measured
+in spec 3 Task 3 (2026-09-22). `golden.img` is SHA-256
+`E1968E3EF57F3060AA01CEAB8B4D5C49C067E6ACC5F8626EBABEEFE0E663879F`.
+
+- **The label and the partition table [measured].** The NeXT label is at
+  sector 15 (byte 7,680). There is no fdisk partition: the MBR's four entries
+  are zero.
+- **The label's geometry [measured].** `d_secsize` is 1,024, `d_front` is
+  160, and `d_boot0_blkno` is (32, 96).
+- **The two boot copies [measured].**
+  - They start at bytes 32,768 and 98,304. Each slot is 65,536 bytes: the
+    second one runs to the end of the front porch, at 163,840.
+  - Both hold the stock `/usr/standalone/i386/boot`, followed by zeros. That
+    booter is v5.0.41.1: 39,616 bytes, SHA-256
+    `AA06C3C5BFE56C79573E36D20C662DA10CA67D0CEC5BE17F13A5B562F6B5F2C2`.
+- **The file is not what boots [measured].**
+  - `boot1` reads `d_boot0_blkno[0]` from the label.
+  - The file's own slot is 39,936 bytes, too small for our 44,576-byte
+    booter anyway.
+- **Both slots hold 45,056 bytes [measured].** 45,056 is `boot1`'s
+  `LOADSZ` limit. So §8's deployment risk does not arise.
+- **The 4.2 booter loads at `0x3000` [measured].** All twelve VBE string
+  operands resolve at that base, and none at 0, `0x1000` or `0x2000`.
+- **Writing a booter [measured].** `vm/install-booter.py` writes both
+  copies. Task 3 used it to install our booter and the 4.2 booter, and read
+  both slots back.
+- **Proof of which booter ran [measured].**
+  - It is the banner on the 5-second frame: ours prints `Rhapsody boot
+    v5.0.2`, the stock booter `Rhapsody boot v5.0.41.1`.
+  - Our `VBE Check` prompt cannot serve until the reconstruction adds it.
+  - The details are in `src/boot-2/reconstruction/vbe/divergences.md`.
+
 **Every boot proves which booter ran.** The capture must show something only
 our build prints. The `VBE Check` prompt serves. The stock booter has no such
 string.

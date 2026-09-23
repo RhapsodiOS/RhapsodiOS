@@ -2474,3 +2474,139 @@ anything read the symbol during these boots.
 - `VBEModeInfo2IODisplayInfo` at runtime. The driver links against it, but the
   "Skipping" path never calls it.
 - These captures cannot be regenerated. See the gate record.
+
+---
+
+## Spec 3: the frame-buffer mapping
+
+Spec 3 Task 3 read the code that D2 left untraced, in the same `$KREF` slice
+(SHA-256 `33469393...F14890`, re-hashed on 2026-09-22) [measured]. The
+booter half is in `src/boot-2/reconstruction/vbe/divergences.md`.
+
+### `pmap_bootstrap` inlines `pmap_map` three times [measured]
+
+`_pmap_map` is at `0x0018EDE8`, and its loop is `0x0018EE28..0x0018EECE`.
+`_pmap_bootstrap` (`0x0018EEE8..0x0018F32F`) contains three loops that are
+that same instruction sequence. Each one:
+
+- finds the directory entry through `_kernel_pmap`, and on a miss calls the
+  nameless static at `0x0018ECC0` with the virtual address, then looks again;
+- sets bit 3 (`cachewrt`) of the entry when the physical address is in
+  `[0xA0000, 0xFFFFF]`;
+- advances the template by `0x1000` unless the protection is none;
+- reloads `cr3`;
+- leaves the new virtual address as its result.
+
+About `0x0018ECC0`: it allocates and zeroes a page with `_alloc_pages` before
+`_pmap_initialized`, or with `_kmem_alloc_wired` after, and installs it as a
+page table. It panics if the directory entry is already present.
+
+The three calls, in order:
+
+| # | code | equivalent call | afterwards |
+| --- | --- | --- | --- |
+| 1 | `0x0018F004..0x0018F0B1` | `pmap_map(0, 0, phys_end, READ\|WRITE)`; `phys_end` is `arg0->[+0x18]` | `*arg2 = va` (`0x0018F0BA`); `arg2` is `virt_avail` |
+| 2 | `0x0018F0CC..0x0018F166` | `pmap_map(va, 0, 0x4000000, VM_PROT_NONE)`: 64 MB of empty entries, so later kernel VM has page tables | `ebx` = the new `va` |
+| 3 | `0x0018F1E4..0x0018F292` | the frame buffer, below | `*arg3 = va` (`0x0018F2A1`); `arg3` is `virt_end` |
+
+The protection code is read from `[0x1F7A8C]`, which is
+`_kernel_prot_codes[3]`: `0x1F7A80 + 3*4`, where 3 is `VM_PROT_READ |
+VM_PROT_WRITE`. So each entry is `pa | 2 | 1` [measured].
+
+### The frame-buffer block, whole [measured]
+
+```
+0018F169  mov [ebp-4], ebx              ; va after call 2 -- this is where [ebp-4] comes from
+0018F16C  cmp word [0x1285C], 0         ; booter record +4, xResolution
+0018F174  je  0x0018F29B                ; zero: map nothing, write nothing
+          size  = [0x12860] * [0x1285E] ; record +8 bytesPerScanline * record +6 yResolution
+          start = [0x1286C] & ~page_mask ; record +0x14 frameBuffer (physical)
+          end   = (size + 2*fb - start + page_mask) & ~page_mask
+0018F1B4  [0x12854] = va + fb - start   ; published BEFORE the map is built
+0018F1E4.. va = pmap_map(va, start, end, READ|WRITE)   ; inlined, call 3
+0018F29B  *virt_end = va
+```
+
+**Where `ecx` comes from.** `ecx` = `fb + [ebp-4] - trunc_page(fb)`, and
+`[ebp-4]` is the virtual address that call 2 returned. That is the first
+address after:
+- the physical-memory map, which starts at virtual 0;
+- the 64 MB page-table reservation.
+
+**What is mapped.** Physical `[trunc_page(fb), end)`, read-write, at that
+virtual address.
+- `fb` comes from `kbs+0x186C`.
+- The length is `kbs+0x1860 * kbs+0x185E`.
+- `end` counts `fb`'s page offset twice (the `lea eax,[edx+ecx*2]` D2
+  recorded). For a page-aligned frame buffer it is exact. QEMU's frame
+  buffers are page-aligned: `0xFC000000` on cirrus and `0xFD000000` on std,
+  measured in spec 3 Task 3.
+
+**The mapping primitive.** `pmap_map(virt, start, end, prot)`, inlined, with
+`virt` = the running cursor and `prot` = `READ|WRITE`. The mapping lands
+inside `[virt_avail, virt_end)`.
+
+**The guard.** When `xResolution` at `0x1285C` is 0:
+- nothing is mapped;
+- `0x12854` is not written, and stays as the booter's `bzero` left it;
+- `virt_end` is the end of the 64 MB reservation.
+
+### D2 is closed: the inference was correct
+
+D2 said `0x12854` holds "the kernel virtual address of the mapped VESA
+linear frame buffer" [inference]. It is now **[measured]**:
+- the word is written with `va + (fb & page_mask)`;
+- `va` is where call 3 then maps `trunc_page(fb)`;
+- so the word is the kernel virtual address of `fb` itself.
+
+D2's open question, where `[ebp-4]` gets its value before `0x0018F169`, is
+answered: from call 2.
+
+The booter half agrees. Spec 3 Task 3 swept every register derived from the
+4.2 booter's pointer at `0xDA7C` and found no store to `kbs+0x1854`
+[measured, with the blind spots stated in the booter record]. Combined with
+D2's byte sweeps, **the kernel writes `0x12854` and the booter does not**
+[measured up to those blind spots].
+
+### Our side
+
+`src/kernel-7/machdep/i386/pmap.c:347` `pmap_bootstrap` has the same
+skeleton, with real calls instead of inlined ones [measured, source]:
+- `pmap_map(VM_MIN_KERNEL_ADDRESS, 0, phys_end, READ|WRITE)` (`:399`);
+- `*virt_avail = va`;
+- `pmap_map(va, 0, 64 MB + zone_map_sizer() + buffer_map_sizer(),
+  VM_PROT_NONE)` (`:409`);
+- `*virt_end = va` (`:415`);
+- `pmap_enable_pg`.
+
+**Where the block goes.** The matching point for the frame-buffer block is
+between `:414` and `:415`.
+
+**The primitive our tree offers for the job** is `pmap_map` (`pmap.c:246`).
+Its body matches `_pmap_map` step for step:
+- `kernel_pmap_prot`;
+- `cachewrt` for 640K to 1M;
+- `pfn++` unless `VM_PROT_NONE`;
+- `pmap_kernel_pt_alloc` on a miss;
+- `flush_tlb`.
+
+**One difference that matters.** Our reservation is 64 MB plus the zone and
+buffer maps, so the frame buffer's virtual address will differ from 4.2's.
+Nothing reads it except through `0x12854` [measured source; the consequence
+is arithmetic].
+
+**Expected outcome for Task 8: structural parity.** Byte parity is out of
+reach because the reference inlines `pmap_map` and ours calls it [inference].
+
+### Corrections to earlier text in this record
+
+Earlier text is left as it was.
+
+- **"Conventions"** says the booter's "own load address was not calibrated".
+  It is `0x3000` [measured, spec 3]: all twelve VBE string operands resolve
+  there, as spec 1's record had already found for four others.
+- **D2, "No booter reference to `0x12854` was found"**, says
+  "`boot+0xDA7C` holds the `kernBootStruct` pointer". `0xDA7C` is an
+  **address**. Its file offset is `boot+0xAA7C` (43644), where the bytes
+  `00 10 01 00` sit [measured]. The disassembly quoted there reads
+  `[0xda7c]` correctly; only the label is wrong.

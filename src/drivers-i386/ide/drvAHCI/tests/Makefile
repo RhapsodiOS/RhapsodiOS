@@ -1,5 +1,10 @@
+# -traditional-cpp makes cc-783.1 use GNU cpp instead of cpp-precomp. Under
+# -ansi, cpp-precomp rewrites the system headers' __inline to inline, which
+# gcc 2.7.2.1 then rejects (bsd/stdio.h __sputc, bsd/ctype.h __istype).
+# -U__GNUC__ is not enough: ctype.h then wants an extern __istype that libc
+# does not export.
 CC = cc
-CFLAGS = -ansi -pedantic -Wall -Werror
+CFLAGS = -ansi -pedantic -Wall -Werror -traditional-cpp
 INCLUDES = -I../AHCI.drvproj/AHCI.lksproj \
 	-I../../../../kernel-7/bsd/dev \
 	-I../../../../kernel-7/machdep/i386

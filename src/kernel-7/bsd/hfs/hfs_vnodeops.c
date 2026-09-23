@@ -4537,6 +4537,7 @@ static int InsertMatch( struct vnode *root_vp, struct uio *a_uio, CatalogRecord 
 	rovingAttributesBuffer	= attributesBuffer + sizeof(u_long);		//	Reserve space for length field
 	rovingVariableBuffer	= variableBuffer;
 
+	bzero( &catalogInfo, sizeof(catalogInfo) );		//	HFS records don't set every field that gets packed
 	CopyCatalogNodeData( vcb, catalogRecord, &catalogInfo.nodeData );
 
 	catalogInfo.spec.parID = isHFSPlus ? key->hfsPlus.parentID : key->hfs.parentID;

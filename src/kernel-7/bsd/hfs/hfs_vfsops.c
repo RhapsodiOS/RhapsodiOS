@@ -697,21 +697,30 @@ struct proc *p;
         return (retval);
 
 	/*
-	 *	Flush out the volume bitmap and MDB/Volume Header
+	 *	Flush out the b-trees, volume bitmap and MDB/Volume Header
 	 */
    if (hfsmp->hfs_fs_ronly == 0) {
-        hfsmp->hfs_fs_clean = 1;
-		HFSTOVCB(hfsmp)->vcbAtrb |=	kHFSVolumeUnmountedMask;
+		retval = VOP_FSYNC(HFSTOVCB(hfsmp)->catalogRefNum, NOCRED, MNT_WAIT, p);
+		if (retval == 0)
+			retval = VOP_FSYNC(HFSTOVCB(hfsmp)->extentsRefNum, NOCRED, MNT_WAIT, p);
+		if (retval == 0)
+			retval = VOP_FSYNC(hfsmp->hfs_devvp, NOCRED, MNT_WAIT, p);
+		if (retval && ((mntflags & MNT_FORCE) == 0))
+			return (retval);
+
+		/* only claim a clean unmount once everything above is on disk */
+		if (retval == 0) {
+			hfsmp->hfs_fs_clean = 1;
+			HFSTOVCB(hfsmp)->vcbAtrb |=	kHFSVolumeUnmountedMask;
+		}
         if (HFSTOVCB(hfsmp)->vcbSigWord == kHFSPlusSigWord)
         	retval = hfs_flushvolumeheader(hfsmp, MNT_WAIT);
         else
         	retval = hfs_flushMDB(hfsmp, MNT_WAIT);
-       
-        if (retval == 0)
-			retval = VOP_FSYNC(hfsmp->hfs_devvp, NOCRED, MNT_WAIT, p);
 
         if (retval) {
             hfsmp->hfs_fs_clean = 0;
+			HFSTOVCB(hfsmp)->vcbAtrb &= ~kHFSVolumeUnmountedMask;
             if ((mntflags & MNT_FORCE) == 0)
 				return (retval);	/* could not flush everything */
 		}

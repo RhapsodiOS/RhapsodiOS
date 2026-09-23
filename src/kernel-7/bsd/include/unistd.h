@@ -213,7 +213,7 @@ int	lstatv __P((const char*,void*));
 int	fstatv __P((int, void*));
 int	getattrlist __P((const char*,void*,void*,size_t));
 int	setattrlist __P((const char*,void*,void*,size_t));
-int	getdirentryattr __P((int,void*,void*,size_t));
+int	getdirentryattr __P((int,int*,void*,void*,size_t));
 int 	exchangedata __P((const char*,const char*));
 int	checkuseraccess __P((const char*,uid_t,gid_t*,int,int));
 int	searchfs __P((const char*,void*,void*,unsigned long,unsigned long,void*));

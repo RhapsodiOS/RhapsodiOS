@@ -3027,8 +3027,10 @@ struct vop_readdirattr_args /* {
    /* Compute the starting index in the directory.  Attribute blocks vary in
     * size, so the offset counts entries in hfsdirentry units rather than bytes
     * (it is set that way after the loop).  Offspring are numbered from 1.
+    * Clamped so that a huge offset can't truncate back under the 16-bit
+    * limit checked in the loop.
     */
-    index = (uio->uio_offset / sizeof(struct hfsdirentry)) + 1;
+    index = MIN(uio->uio_offset / sizeof(struct hfsdirentry), 0xFFFF) + 1;
 
 	/* lock catalog b-tree */
 	retval = hfs_metafilelocking(VTOHFS(ap->a_vp), kHFSCatalogFileID, LK_SHARED, p);

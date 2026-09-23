@@ -48,7 +48,7 @@ was originally planned.
 - **Task 7 — targeted reload.** As written, the root gate refused `mount -uw /`
   even after a successful `fsck`, because `fsck` marks the disk clean without
   reloading the root when that is its only repair. The gate now calls
-  `ffs_reload` on the refusal path only, restores `fs_ronly`, and re-tests. The
+  `ffs_reload` on the refusal path only and re-tests. The
   task's claim that `fsck` "already reloads the root itself" holds only when it
   repaired something else.
 - **Task 5 — `DIRBLKSIZ` is 1024, not 512**, so the check refuses every volume

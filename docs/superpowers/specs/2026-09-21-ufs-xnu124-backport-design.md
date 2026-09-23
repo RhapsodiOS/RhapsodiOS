@@ -49,7 +49,8 @@ as a patch. It is not obvious from reading the xnu-124 diff, and it is fatal.
 
 ## The changes
 
-Line numbers are from the current tree and were verified individually.
+Line numbers are from the tree as it stood before this series, and were
+verified individually. They drift as the edits below land.
 
 **1. Refuse to mount a filesystem that was not cleanly unmounted.**
 `fs_clean` is maintained correctly today — set at `ffs_vfsops.c:192`, `739` and
@@ -75,9 +76,9 @@ disk clean *without* reloading the root when that is its only repair —
 `src/Commands/diskdev_cmds/fsck.tproj/utilities.c:375-383` saves and restores
 `fsmodified` around the write, and `main.c:413` reloads only if `fsmodified` —
 which is the usual case after a crash. So on the one path that would refuse, the
-gate first rereads the superblock with `ffs_reload`, restores `fs_ronly` (the
-reload copies the on-disk value over it, and may already have done so when it
-fails), and refuses only if the disk is still dirty. xnu-124 forces that reload
+gate first rereads the superblock with `ffs_reload` and refuses only if the
+disk is still dirty. (`ffs_reload` keeps `fs_ronly` set across its copy; see
+change 2.) xnu-124 forces that reload
 before every upgrade of a read-only filesystem; this port confines it to the
 refusal path, so a normal boot never runs `ffs_reload`.
 
@@ -107,13 +108,17 @@ Added beside the existing geometry checks in `ffs_mountfs`. `DIRBLKSIZ` is 1024
 in this build, not 512: the kernel compiles with `-D__APPLE__`
 (`conf/Makefile.template:104`), which selects it (`ufs/ufs/dir.h:102-103`).
 xnu-124 builds the same way, so its check is also `fs_fsize < 1024`. The effect
-is to refuse every UFS volume with fragments smaller than 1K — most plausibly one
-made by another BSD, whose 512-byte directory blocks this kernel's directory code
-would misread. `golden.img` has `fs_fsize` 1024 and passes, with no margin.
+is to refuse every UFS volume with fragments smaller than 1K. `golden.img` has
+`fs_fsize` 1024 and passes, with no margin.
 
-That cost is accepted deliberately: a Rhapsody volume made with 512-byte
-fragments stops mounting, and a root like that would not boot, because this
-check has no read-only exemption.
+The check is kept for fidelity to xnu-124, not because it catches a known hazard
+here. It keys on fragment size, not directory format, so it does *not* catch a
+volume made by another BSD: 4.4BSD's `newfs`, like this tree's
+(`src/Commands/diskdev_cmds/newfs.tproj/newfs.c:115`), defaults to 1K fragments,
+so such a volume passes even though its 512-byte directory blocks differ from
+this kernel's. The same default means an ordinary Rhapsody volume passes too.
+The cost is accepted deliberately: a volume made with `newfs -f 512` stops mounting, and a root like that would not boot,
+because this check has no read-only exemption.
 
 **4. Validate the superblock magic before byte-swapping it.**
 The `REV_ENDIAN_FS` path in `ffs_mountfs` at `ffs_vfsops.c:525` swaps the entire
@@ -135,6 +140,11 @@ so a corrupt disk could drive a write outside the buffer. With the magic gate in
 front, the magic is known to be one of the two values, so the block now swaps
 only when it is `FS_MAGIC_SWAPPED`. A native superblock with a bad block size is
 rejected by the ordinary validation that follows.
+
+What remains: a superblock that genuinely carries `FS_MAGIC_SWAPPED` but is
+otherwise corrupt still reaches `byte_swap_sbin`, whose swap is sized from the
+superblock's own fields and is not bounds-checked. Closing that means validating
+those fields before the swap, which is beyond this spec.
 
 **5. Refuse `ffs_vget` during an unmount.**
 `ffs_vget` (`ffs_vfsops.c:922`) goes straight to `ufs_ihashget` with no check
@@ -208,7 +218,8 @@ calling `VFS_UNMOUNT`, so any `ffs_vget` that observes it is by definition too
 late — but there is no way to schedule the two threads against each other on
 demand.
 
-Change 2 lives in `ffs_reload`, which runs only on `mount -u -o reload`, and
+Change 2 lives in `ffs_reload`, which runs when `fsck` reloads a repaired
+read-only root and from the single-user root gate, and
 triggering it needs the superblock read to fail on a filesystem that mounted
 successfully a moment earlier. A malformed disk cannot produce that, because a
 disk bad enough to fail the read is too bad to have mounted. Doing it properly

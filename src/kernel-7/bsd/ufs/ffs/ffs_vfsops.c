@@ -978,6 +978,11 @@ ffs_vget(mp, ino, vpp)
 	dev_t dev;
 	int i, type, error;
 
+	if (mp->mnt_flag & MNT_UNMOUNT) {
+		*vpp = NULL;
+		return (EPERM);
+	}
+
 	ump = VFSTOUFS(mp);
 	dev = ump->um_dev;
 	if ((*vpp = ufs_ihashget(dev, ino)) != NULL) {

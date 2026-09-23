@@ -2696,7 +2696,9 @@ range is reserved.** The M10 hazard above was put to the user, who chose to
 reserve the range. The source line is labelled.
 - **How** [measured source]: the block sits after `*virt_end = va`
   (`:417`), not before it. 4.2 stores `*virt_end` after the map
-  (`0x0018F29E`). So `kmem_init(virtual_avail, virtual_end)` builds
+  (`0x0018F2A1`). **[CORRECTED — Task 8 review: this said `0x0018F29E`,
+  which only loads the pointer (`mov ecx,[ebp+14h]`); the store is
+  `mov [ecx],edi` at `0x0018F2A1`.]** So `kmem_init(virtual_avail, virtual_end)` builds
   `kernel_map` up to the end of the 64 MB + zone + buffer reservation, and
   the frame buffer's virtual range lies above it, where no allocation can
   reach.
@@ -2868,3 +2870,258 @@ QEMU, so 4.2's layout would fault the same way.
 booter + the driver + a set mode) reset-loops. Before this change it reached
 the network prompt behind a garbage screen. Boots without a mode set are
 unaffected, as shown above.
+**[RESOLVED — Task 8b: `Init` now sizes the text window as 4.2 does, and a
+VBE boot reaches the network prompt on a readable frame-buffer console. See
+"Spec 3 Task 8b: the console window".]**
+
+## Spec 3 Task 8b: the console window
+
+**This is the first execution of `FBAllocateConsole`'s console on i386.**
+Until Task 8 published `kbs+0x1854`, `FBAllocateVBEConsole` always returned
+NIL. So no i386 code path had ever run `FBConsole.c`'s `Init`, `InitWindow`
+or `FBPutC`. Task 8's reset loop was the first run.
+
+### The diagnosis, confirmed [measured]
+
+- **Our arithmetic** (`FBConsole.c` at `2c6c64e5d`):
+  - `Init` passed `TEXT_WIN_WIDTH` x `TEXT_WIN_HEIGHT`, 640x480
+    (`FBConsPriv.h:52-53`).
+  - On a 640x480 screen, `InitWindow` clamps that to 634x474, to leave
+    room for the 3-pixel border. It centres the window at `(3, 3)`, and
+    `&= ~7` moves `x` to 0.
+  - So the outside-top border starts at `(-3, 0)`: 640 bytes from `fb - 3`.
+  - That is Task 8's fault exactly: `EDI = -3`, `ECX = 0x280`, and `CR2`
+    3 bytes below `kbs+0x1854`.
+- **Nothing else writes out of bounds** once the window fits [measured
+  source].
+  - `WipeScreen` fills `totalWidth * height` pixels. For mode 257 that is
+    the mapped 307,200 bytes.
+  - Every other drawing call stays inside the window and its 3-pixel
+    border: the border itself, `SetTitle`'s bar and bevels, `ClearWindow`,
+    `ClearToEOL`, `FlipCursor`, `Erase`, `BltChar` and the scroll.
+  - `w*3/4 <= w - 6` for any screen at least 24 pixels wide.
+- **A 4.2 limit, recorded and not patched.** A true 24 bpp VBE mode (3
+  bytes per pixel) becomes `IO_24BitsPerPixel`, which the console writes at
+  4 bytes per pixel. `WipeScreen` would then run a third past the mapping.
+  4.2's `PixelAddress`, `Fill` and `VBEModeInfo2IODisplayInfo` are the same
+  code.
+
+### 4.2's file, read [measured]
+
+`FBConsole.o`'s `__text` is `0x0019BA18..0x0019F0A0` in `$KREF`, and
+starts at `0x001E6ED8` in Task 8's kernel. The statics are nameless in
+`$KREF`; they were matched by panic string, callee and order. Against 4.2,
+at `2c6c64e5d` (object comparison, below):
+- **Nine functions already match byte for byte:** `FlipCursor`, `Erase`,
+  `BltChar`, `SetTitle`, `FBAllocateConsole`, `FBAllocateVBEConsole`,
+  `VBEModeInfo2IODisplayInfo`, `Free` and `PutC`. `GetSize` matches in all
+  53 of its bytes; 4.2's 3 more are alignment.
+- **`Init` (`0x0019DF7C`, 704 bytes against our 676)** differs in five
+  ways:
+  1. **the `SCM_TEXT` window is `display.width*3/4` by
+     `display.height*3/4`** (`0x0019E1E6..0x0019E207`, signed division);
+  2. `SCM_GRAPHIC` is an empty case (`cmp edi,2; je <return>`), where ours
+     panicked;
+  3. `SCM_ALERT` passes save-under 1 (`push 1` at `0x0019E20C`), not
+     `initScreenOrSaveUnder`;
+  4. the wipe guard reads `console->window_type` (`cmp dword ptr [ebx],3`
+     at `0x0019E101`), before `0x0019E1C4` stores `mode` there. Ours tested
+     `mode`;
+  5. the colours:
+
+     | depth | 4.2 | ours |
+     | --- | --- | --- |
+     | 8 bpp one-is-white, base | `0x55` | `0x6B` |
+     | 8 bpp colour | `0x63 0xEF 0 0xF5 0xFA` | `0x80 0xFF 0 0xFB 0x2B` |
+     | 15 bpp | `0x295F 0x7BDE 0 0x294A 0x5294` | `0x3193 0x7FFF 0 0x294A 0x6739` |
+     | 24 bpp, base | `0xFF5555FF` | `0xFF666699` |
+     | 24 bpp, light grey | `0xFFAAAAAA` | `0xFFCCCCCC` |
+- **`FBPutC` (`0x0019BFA0`, 2296 bytes against 2288)** opens with `cmp
+  dword ptr [esi],2; je <return>` (`0x0019BFAF`): a graphic-mode console
+  drops characters.
+- **`InitWindow` (3368 against 3376) and `Restore` (132 against 144)**
+  differ only in the alert save-under.
+  - 4.2 allocates with `IOMalloc` and frees with `IOFree`. It tests neither
+    pointer, and does not clear `saveBits`.
+  - Ours uses `kalloc_noblock` and `kfree`, with `if (save)` in both.
+- **`DrawRect` (1424) and `EraseRect` (1112)** are full implementations in
+  4.2. Ours are `return -1` stubs.
+
+**The 8 bpp colours are palette indices, and the palettes differ**
+[measured]:
+- Our booter loads `appleClut8`. Not loading 4.2's own table (at
+  `boot+0xDAAC`) is a forced divergence, by the user's decision, recorded
+  in boot-2's record.
+- 4.2's indices draw black on white on 4.2's palette, where `0xEF` is
+  (63,63,63).
+- On `appleClut8`, `0xEF` is (0,0,34), so the same indices draw black text
+  on navy.
+- Our indices draw black on white with grey bevels on `appleClut8`: 4.2's
+  design, on our palette.
+
+### What was rebuilt, and the outcome [measured]
+
+- **`Init`: rebuilt from `0x0019DF7C`.**
+  - All five differences are taken, except the 8 bpp colour indices. Those
+    are kept, as a consequence of the palette decision, and labelled
+    `FORCED DIVERGENCE` on the line.
+  - Items 3 and 4 are labelled `FAITHFUL TO THE REFERENCE`.
+  - **Outcome: 704 = 704 bytes, with byte parity except the 4 bytes of
+    those indices.** The fifth index, the foreground `0x00`, is equal on
+    both sides.
+- **`FBPutC`: 4.2's opening test is added.** `Init`'s new `SCM_GRAPHIC`
+  case sets no window, so without the test a graphic-mode console would
+  draw at uninitialised coordinates. **Outcome: byte parity**, 2296 = 2296.
+- **`FBConsPriv.h`:** `TEXT_WIN_WIDTH` and `TEXT_WIN_HEIGHT` are removed.
+  `Init` was their only user. ppc's `FBConsole.c` and `FBConsPriv.h` are
+  separate files, and are untouched.
+- **Not changed, and why:**
+  - **`InitWindow` and `Restore`** keep `kalloc_noblock`/`kfree` and their
+    NULL tests. They are the alert save-under path, not the fault. 4.2's
+    form would drop two NULL tests, so a failed allocation would be
+    written through. That is a reference-defect decision for the user.
+  - **`DrawRect` and `EraseRect`** stay stubs. They draw the graphic
+    panels, not the text console.
+- **Behaviour changes that come with 4.2's `Init`** [inference, from the
+  code]:
+  - a fresh console asked for an alert with save-under is wiped to
+    `baseground` first, because the guard sees `SCM_UNINIT`. On i386 that
+    is `kmDevice`'s alert path over a frame-buffer display;
+  - every alert saves under, including `kmAlertConsole`'s, which asks not
+    to;
+  - `Init(SCM_GRAPHIC, ...)` no longer panics. `kmDevice`'s pretty
+    shutdown calls it on a frame-buffer display's console
+    (`kmDevice.m:900-905`), and ours would have panicked there.
+  - **None of these runs on the boots below.** A VBE boot leaves
+    `graphicsMode` at text (boot-2 `vbe.c:223`), so `kminit` takes
+    `SCM_TEXT`.
+
+**The method** is spec 2's object loop, with a comparator that checks more:
+- `FBConsole.c` was compiled alone on the guest, with the kernel's own `cc`
+  line (`/tmp/t8-build.log:5824`), rooted at `/build/src/kernel-7`. No
+  `meta_features.h` survives on the guest, so an empty one was used.
+- **Calibration:** HEAD's source (`cksum 799686055 49054`) gives an
+  11,429-byte `__text` that equals Task 8's kernel at `0x001E6ED8` in every
+  byte outside its 920 relocation bytes.
+- **The comparator** compares each function in every byte outside the
+  object's relocation sites. At those sites:
+  - a jump-table word must be the same function-relative offset;
+  - a call must name the same callee;
+  - a string operand must point at the same bytes.
+- **Two experiment variants, not committed**, show that the differences
+  listed above are the only ones:
+  - with 4.2's 8 bpp indices, `Init` is at byte parity;
+  - adding `IOMalloc`/`IOFree` without the NULL tests brings `InitWindow`
+    and `Restore` to byte parity as well.
+
+### The build [measured]
+
+- **The command:** `rbuild kernel --state /build/state --toolchain
+  /tmp/t8b-gcc-darwin.conf --arch i386 /build/src /build/repo
+  /tmp/t8b-kvbe-dst`.
+  - The profile is the guest's `gcc-darwin-ppc.conf` (`cksum 4287395951
+    1070`), with the plan's `sed` applied.
+  - `RBUILD_EXIT=0`, and the same eight APKs as before.
+- **Warnings:** only the known ones. They are `pmap.c`'s
+  `pmap_resident_extract` and `FBConsole.c`'s cast in
+  `VBEModeInfo2IODisplayInfo`, now at `:1510`.
+- **The synced sources** are equal on the guest and locally:
+  - `FBConsole.c` `3228712620 50733`;
+  - `FBConsPriv.h` `1479914723 1764`;
+  - `pmap.c` `9291032 43150`.
+- **`mach_kernel`,** 1,490,352 bytes:
+  - `sum 23774 1456` and `cksum 3015947054 1490352`, on the guest and from
+    the pulled bytes;
+  - SHA-256 `AEFBF0D1669A295A937746FFF5679956670FE4AB9FBE477A48D18660C002D09D`;
+  - kept outside the repo, as `vm/work/t8b-mach_kernel`.
+- **The kernel's `FBConsole` code equals the object's** in every byte
+  outside a relocation.
+- **Addresses:** `__text` grew 32 bytes and now starts at `0x00101790`.
+  Every function before `FBConsole` moved by `-0x20`.
+  - `Init` is at `0x001E9424` and `FBPutC` at `0x001E7440`.
+  - `VBEModeInfo2IODisplayInfo` is at `0x001E9790`.
+  - `_BasicAllocateConsole` is at `0x001E30DC`.
+
+### Oracles and re-checks, on this kernel [measured]
+
+- **`VBEModeInfo2IODisplayInfo`:**
+  - `compare_kvbe.py` reports **`MATCH: all 411 compared bytes
+    identical`**. The dispatch and all 31 table targets are equal relative
+    to the entry.
+  - `compare_flat --table 76:31` reports `MATCH`, 145 instructions.
+- **`_BasicAllocateConsole`** (`0x001E30DC` against `0x00197C58`, 72
+  bytes): **60 of 60 unmasked bytes are equal.** `compare_flat` reports
+  `MATCH`. The three calls map to `_bzero`, `_VGAAllocateConsole` and
+  `_FBAllocateVBEConsole`.
+- **`Init`** (704 bytes, `compare_flat`'s rules without stopping at the
+  first difference): **4 instructions differ**, the four 8 bpp colour
+  stores at `+128`, `+138`, `+158` and `+168`. The other 198 match.
+- **`FBPutC`:** `compare_flat --table 252:45` reports **`MATCH`**, 753
+  instructions.
+- **Task 8's mapping block is unchanged:**
+  - `pmap_map` is byte-identical to Task 8's kernel;
+  - `pmap_bootstrap` differs from it in 9 bytes, all inside a jump table of
+    in-function addresses that moved by `-0x20`;
+  - the guard still compares `MATCH`;
+  - the shape comparison prints Task 8's output line for line (74 of 92 |
+    90 instructions aligned), addresses aside;
+  - **so the outcome is structural parity, as recorded.**
+
+### Boots [measured]
+
+Every image was rebuilt from `$GOLDEN`, with the intermediate on `C:`.
+`$GOLDEN` was re-hashed (`E1968E3E...0E663879F`). Every installed file was
+read back and hashed.
+
+**VBE boots:**
+- **The image:**
+  - `t7c-boot` (`8AA489F1...`) in both slots;
+  - `$DRV`, last in `Boot Drivers`, with `_reloc` = `DRVSHA` and `VBE
+    Mode` = 257;
+  - this kernel.
+- **The runs:** `--vga cirrus`, `--pmemsave 60:0x11000:0x2200`, and frames
+  from 5 s to 120 s. `vm/shots-t8b-vbe` is the default boot, and
+  `vm/shots-t8b-vbe-v` is `-v`.
+- **No reset loop.**
+  - Serial shows `Display0: using VBE mode 257`, in 89 lines.
+  - The last lines are `Server is not responding.` and `Continue without
+    network? (y/n)`: the network prompt, as far as Task 7's boots reached.
+  - The two boots' serial differs only by one phantom-IRQ line changing
+    place.
+- **The console is readable.** From 15 s every frame is 640x480. Each shows:
+  - a white 480x360 window with a black title bar, `Rhapsody Operating
+    System`;
+  - black text scrolling in the window;
+  - a slate `(103,103,152)` background and grey bevels.
+
+  On the 30 s frame the border spans x 77..562 and y 57..422, so the window
+  is at `(80, 60)`: 4.2's geometry.
+- **The default boot's frames show the boot's progress:**
+  - at 15 s, the PCI, disk and serial lines;
+  - at 20 s, `Display0: using VBE mode 257`, the mode list and `Checking
+    disk`;
+  - at 25 s, `Configuring device drivers`, the Cirrus probe and the NE2000;
+  - from 30 s to 120 s, `Continue without network? (y/n)` with the cursor.
+- **The dump:**
+  - `kbs+0x1854` = `0x0D3D4000`;
+  - `vbeCurrentMode` = 257: 640x480, 640 bytes per line, fb `0xFC000000`;
+  - the `-v` dump differs from the default boot's only at `kbs+2..4`.
+- **One message predates this task.** The `-v` boot's `init: unrecognized
+  flag '-?'` also appears with the stock booter and spec 2's kernel
+  (`vm/shots-t8-stock-B`).
+
+**Stock booter, `-v`, in one session:** A (`$KSPEC2`), B (this kernel), A2
+(`$KSPEC2`), then B2 (this kernel).
+- **The dumps:** `kbs+0x1854` = `00000000`, and `vbeCurrentMode` is all
+  zero. All four 60 s dumps are byte-identical (`BF8E76C5...`, as in Task
+  8).
+- **Serial:** B and B2 each differ from A **only at line 4**, the build
+  date, in a raw diff of 76 lines each. A2 equals A.
+- **Frames:**
+  - at 5 s, all four are identical;
+  - at 30, 60 and 95 s, **B2 equals A and A2 pixel for pixel**;
+  - B differs from A there in two seconds digits: `05:00:15` against
+    `05:00:14` in the `init` line, and `05:00:17` against `05:00:16` in the
+    `date` line. B2 shows that is TCG timing;
+  - at 15 s, a mid-boot capture, they differ by position.
+- **So the VGA path is untouched.**

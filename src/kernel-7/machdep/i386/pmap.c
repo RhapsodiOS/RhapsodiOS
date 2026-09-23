@@ -426,7 +426,7 @@ pmap_bootstrap(
      *
      * Forced divergence from a 4.2 reference defect, at the user's
      * request: 4.2 maps the frame buffer first and stores *virt_end after
-     * it (0x0018F29E), so the mapping lies inside [virt_avail, virt_end),
+     * it (0x0018F2A1), so the mapping lies inside [virt_avail, virt_end),
      * which kmem_init makes allocatable. A later kernel allocation there
      * would pmap_enter over the frame buffer's page-table entries. Here
      * *virt_end is stored first, so kernel_map ends below the mapping.

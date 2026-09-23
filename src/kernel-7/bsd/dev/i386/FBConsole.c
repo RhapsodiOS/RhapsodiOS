@@ -529,6 +529,14 @@ int	repeat;
 int	i;
 
 	/*
+	 * A graphic-mode console has no text window: Init draws none and
+	 * sets no window geometry, so there is nowhere to put a character.
+	 * 4.2 tests this first (0x0019BFAF).
+	 */
+	if (console->window_type == SCM_GRAPHIC)
+		return;
+
+	/*
 	 * First deal with ANSI escape sequences.
 	 * This is a very bizarre implementation, copied from the m68k
 	 * version. 
@@ -1029,6 +1037,10 @@ static void Init(
     boolean_t initScreenOrSaveUnder,
     boolean_t initWindow,
     const char *title)
+// Rebuilt from the static Init at 0x0019DF7C in the i386 slice of the
+// OPENSTEP 4.2 mach_kernel (704 bytes). Byte parity except the five 8 bpp
+// colour indices; see src/kernel-7/reconstruction/vbe/divergences.md,
+// "Spec 3 Task 8b: the console window".
 {
     ConsolePtr console = (ConsolePtr)cso->priv;
     int i;
@@ -1036,12 +1048,18 @@ static void Init(
     switch (console->display.bitsPerPixel) {
         case IO_8BitsPerPixel:
 	    if (console->display.colorSpace == IO_OneIsWhiteColorSpace) {
-		console->baseground = 107;
+		console->baseground = 0x55;
 		console->background = 0xff;
 		console->foreground = 0x00;
 		console->dark_grey  = 0x55;
 		console->light_grey = 0xaa;
 	    } else {
+		// FORCED DIVERGENCE: these are palette indices, and the palette
+		// is the booter's. Ours loads appleClut8 (boot-2 libsaio/vbe.c,
+		// by decision) where 4.2 loads its own table, so 4.2's indices
+		// here (0x63, 0xef, 0x00, 0xf5, 0xfa) would draw black text on
+		// navy. These draw 4.2's design, black on a white window with
+		// grey bevels, on appleClut8.
 		console->baseground = 0x80;
 		console->background = 0xff;
 		console->foreground = 0x00;
@@ -1057,18 +1075,18 @@ static void Init(
 	    console->light_grey = 0xaaaf;
 	    break;
 	case IO_15BitsPerPixel:
-	    console->baseground = 0x3193;
-	    console->background = 0x7fff;
+	    console->baseground = 0x295f;
+	    console->background = 0x7bde;
 	    console->foreground = 0x0000;
 	    console->dark_grey  = 0x294a;
-	    console->light_grey = 0x6739;
+	    console->light_grey = 0x5294;
 	    break;
 	case IO_24BitsPerPixel:
-	    console->baseground = 0xff666699;
+	    console->baseground = 0xff5555ff;
 	    console->background = 0xffffffff;
 	    console->foreground = 0xff000000;
 	    console->dark_grey  = 0xff555555;
-	    console->light_grey = 0xffcccccc;
+	    console->light_grey = 0xffaaaaaa;
 	    break;
     }
     
@@ -1079,19 +1097,34 @@ static void Init(
     console->ansi_stack_p = &console->ansi_stack[1];	// FIXME - why not 0?
 
     // Initialize the screen, if appropriate.
-    if (initScreenOrSaveUnder && (mode != SCM_ALERT)) {
+    //
+    // FAITHFUL TO THE REFERENCE: the test is on the window type the console
+    // is leaving, not on `mode' (0x0019E101 reads [ebx] before 0x0019E1C4
+    // stores mode there). So a fresh console asked for an alert with
+    // save-under is wiped first.
+    if (initScreenOrSaveUnder && (console->window_type != SCM_ALERT)) {
 	WipeScreen(console, console->baseground);
     }
 
     console->window_type = mode;
     switch(console->window_type) {
 	case SCM_TEXT:
-	    InitWindow(console,	TEXT_WIN_WIDTH, TEXT_WIN_HEIGHT,
+	    // Three quarters of the screen each way (0x0019E1E6..0x0019E207),
+	    // so the window and its border always fit. A fixed 640x480 window
+	    // does not fit a 640x480 screen: InitWindow clamps it, centres it
+	    // at x = 0 and draws the border from x = -3.
+	    InitWindow(console,
+		console->display.width * 3 / 4, console->display.height * 3 / 4,
 		title, initWindow, 0 /* Don't save under */);
 	    break;
+	case SCM_GRAPHIC:
+	    // No window; FBPutC drops characters in this mode.
+	    break;
 	case SCM_ALERT:
+	    // FAITHFUL TO THE REFERENCE: always save under (0x0019E20C pushes
+	    // 1), whatever initScreenOrSaveUnder says.
 	    InitWindow(console,	ALERT_WIN_WIDTH, ALERT_WIN_HEIGHT,
-		title, initWindow, initScreenOrSaveUnder);
+		title, initWindow, 1 /* Save under */);
 	    break;
 	default:
 	    panic("FBConsole/FBInitConsole: can't init");
@@ -1506,8 +1539,8 @@ void VBEModeInfo2IODisplayInfo(VBEModeRec *mode, IODisplayInfo *info)
 // (0x0018F1B4, 0x0018F1E4..0x0018F292) [measured; this confirms the reading
 // divergences.md records as D2]. Ours is written the same way, by
 // pmap_bootstrap (machdep/i386/pmap.c:449), and only when the booter set a
-// mode. On a boot without one the second guard fails, this function returns
-// NIL and the console falls back to VGA.
+// mode. On a boot without one the first test, xResolution == 0, returns NIL
+// and the frame-buffer word is never read; the console falls back to VGA.
 //
 // Neither define is volatile: the one write is in pmap_bootstrap, before
 // paging is enabled and before this function can run, on the single boot

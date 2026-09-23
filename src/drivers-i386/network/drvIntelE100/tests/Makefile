@@ -1,12 +1,12 @@
 # Unit tests for drvIntelE100's plain C, built and run on the build guest:
 #   cd tests && gnumake check
-# Same flags as drvAHCI's tests. -U__GNUC__ works around a cc-783.1/gcc
-# 2.7.2.1 bug: with -ansi it still takes bsd/stdio.h's "defined(__GNUC__)"
-# branch (a static __inline __sputc) but then rejects __inline as a
-# non-keyword identifier; undefining __GNUC__ picks stdio.h's portable
-# macro-only __sputc fallback instead, so no driver code is affected.
+# Same flags as drvAHCI's tests. -traditional-cpp makes cc-783.1 use GNU
+# cpp instead of cpp-precomp. Under -ansi, cpp-precomp rewrites the system
+# headers' __inline to inline, which gcc 2.7.2.1 then rejects (bsd/stdio.h
+# __sputc, bsd/ctype.h __istype). -U__GNUC__ is not enough once ctype.h is
+# included: it then wants an extern __istype that libc does not export.
 CC = cc
-CFLAGS = -ansi -pedantic -Wall -Werror -U__GNUC__
+CFLAGS = -ansi -pedantic -Wall -Werror -traditional-cpp
 LKS = ../IntelE100.drvproj/IntelE100.lksproj
 INCLUDES = -I. -I$(LKS)
 

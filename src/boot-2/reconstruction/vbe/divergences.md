@@ -555,6 +555,10 @@ Growth, at most 1,355, is less than spare plus the [measured] candidates:
 **[SUPERSEDED — Task 3b: re-evaluated after the panel decision. Rank 1
 becomes reachable through 4.2's `message`, so the pool is 718. The gate
 still passes: at most 537 against 480 + 718 = 1,198. See "Task 3b".]**
+**[CORRECTED — Task 5, labelled in the final review's fix pass: the pool is
+not 718. Ranks 2, 6 and 7 are needed by `sarld`, so the pool was ranks 4, 5
+and 8, and the measured spare after them was 672. The gate still passed,
+537 <= 672. See the corrected note in "Task 3b" and "Task 5: the trim".]**
 
 ---
 
@@ -1035,6 +1039,14 @@ plus a 256-byte margin. Spare before Task 5: 480 [measured, Task 3].
   - `libsaio.a` and the `boot2` objects are linked into `boot` only. The one
     other Makefile that names `libsaio.a`, `testmodule`'s, is not in
     `i386/Makefile`'s `SUBDIRS` [measured].
+    **[CORRECTED — final review I1: true of the archive, not of its
+    sources.** `testmodule/install/Makefile:27` names `libsaio.a` as well.
+    And `src/bootefi-1`, the host-built UEFI loader, compiles `libsaio`
+    sources itself (`src/bootefi-1/Makefile:50-66`): `disk.c`,
+    `ufs_byteorder.c`, `cache.c`, `load.c`, `table.c`, `drivers.c`,
+    `stringTable.c`, `choose.c`, `localize.c` and `sys.c` [measured]. The
+    swappers removed here have no caller there (Task 5's review). Task 7c's
+    `stringTable.c` did break its link; see "Task 7c", "`bootefi-1`".**]**
 - **4.2.** A fuzzy match of our functions against `$BREF` (Task 3's
   `match.py`) found each counterpart, and a raw scan looked for references to
   it.
@@ -1168,6 +1180,7 @@ of method, not of behaviour.
 - **The serial matches under rule 3** [measured].
 - Rule 4 as written did not allow for the race on screen. The plan's rule is
   being amended to match rule 3.
+  **[UPDATED — final review: done, in `ea1231a7a`.]**
 - The static comparison above agrees: nothing changed beyond the removed
   functions and the moved addresses.
 
@@ -1412,6 +1425,12 @@ block set aside:
 - **Paired instructions: 289 bytes equal, 124 masked, 5 differ.**
 - **The 5 bytes** are the second byte of the frame size or of a frame
   displacement, `0x01` in 4.2 and `0x05` in ours:
+  **[CORRECTED — final review (a Task 6 minor): that holds for the frame size
+  alone, `sub esp,104h` against `504h` at `+3`. The four displacements are
+  negative, so their second byte is `0xFE` in 4.2 and `0xFA` in ours:
+  `FC FE FF FF` against `FC FA FF FF` at `+16`, `+280` | `+293` and `+410` |
+  `+423`, and `F0 FE FF FF` against `F0 FA FF FF` for the `lea` at `+416` |
+  `+429` [measured, `tfin1`, the same setter bytes as Task 6's].]**
 
   | offset (4.2 / ours) | 4.2 | ours |
   | --- | --- | --- |
@@ -1462,6 +1481,8 @@ as `compare_flat` would; the eye check is what compares it.
   - 4.2 reads it as `[edi+18h]` and `[edi+1Ch]` from the current-mode pointer
     (`boot+28136`, `+28143`).
   - `kernBootStruct->vbeModes[0]` would reload the global after the calls.
+    **[TAGGED — final review: inference, from how gcc treats a global across
+    calls; that spelling was not built.]**
   - Task 4's assertions (`0x1858`, `0x1870`, 24-byte records) make `vmr[1]`
     that element. The source says so on the line.
   - So here 4.2's call structure overrides the rule of reaching the array
@@ -1597,6 +1618,10 @@ checked in `t7a3` below].
 
 - **The pads match.** In the table's order they are: none; `00`;
   `90 90 90`; none; `90`; none. Both sides are the same.
+  **[CORRECTED — final review (a Task 7a minor): `copyImage`'s and
+  `clearRect`'s are swapped above. In the table's order: none; `90 90 90`;
+  `00`; none; `90`; none [measured, `pairs7c.py` on `tfin1`, the same
+  functions]. Both sides are still the same.]**
 - **Mapped values that are not addresses** are equal on both sides:
   - `copyImage`'s `and eax,3FFCh`, which rounds the `rowbuf[NCOLS]` array;
   - `and eax,0FFFFh`, in `copyImage` and in `message`.
@@ -2027,6 +2052,13 @@ listing and the adapter warning to `getBootString`, and rebuilds
 - **`boot.h`**: `G_MODE_KEY` (`"Graphics Mode"`) gives way to `VBE_MODE_KEY`
   (`"VBE Mode"`). `graphics.h` gains `convert_vbe_mode`'s prototype, in place
   of the local one in `graphics.c`.
+
+**[ADDED — final review M1: the driver's comments are now stale, and stay.]**
+`VBE20DisplayDriver.m:61-66` and `:74-77` say that nothing under `src/`
+writes `0x12858` or `0x12870`, and that the booter's only video hand-off is
+`graphics.c:204-208`. Spec 3 removed those lines, and from 7b the booter
+fills both addresses. The file is not edited: spec 1's evidence is the
+`_reloc` hash (`DRVSHA`), and a comment edit shifts its stabs line numbers.
 
 **The orphan rule, applied** [measured, `grep` and `nm`].
 - **`convert_vbe_mode` and `mode_table` are kept.** 4.2's `execKernel` calls
@@ -2497,6 +2529,9 @@ which dangles in 4.2 too, with a labelled forced divergence.
   config area is full (`No room in memory for config files`).
   `driverWasLoaded` would then record freed memory [inference, from the
   code].
+  **[ADDED — final review: the label at the lookup (`boot.c:318-321`) said
+  "configTable is valid here" without this exception. It now names it; see
+  "Final review fixes".]**
 
 ### The `loadBootDrivers` path: a forced divergence [measured]
 
@@ -2616,6 +2651,28 @@ setup exactly):
 - **Nothing regressed.** The same drivers register as in 7b: `hc0`, `hd0`,
   `ISASerialPort0`, `fc0`, `PS2Controller`, `PCKeyboard0`, `PCI0`, `EISA0`,
   `Display0` and `Display1`.
+
+### `bootefi-1` [ADDED — final review I1]
+
+`src/bootefi-1`, the host-built IA32 UEFI loader, compiles `stringTable.c`
+and `drivers.c` from source and calls `loadOtherConfigs(0)`
+(`src/bootefi-1/efi_main.c:144`). So it inherits both of 7c's behaviour
+changes: `Query` prompts, and a boot driver that fails to open, load or link
+is dropped. And 7c's `Query` block calls `setMode`, which no `bootefi-1`
+source defined, so its link failed [measured, final review, by compile].
+- **Fixed at the user's request** (`bootefi:` commit `56bd2ba79`): a no-op
+  `setMode` beside the `gets` and `localPrintf` stubs in
+  `src/bootefi-1/efi_console.c`. That console is always text.
+- **Evidence** [measured, LLVM 22.1.8, bootefi-1's own `Makefile`]:
+  `stringTable.obj` needs `_setMode` at `1c04c16ac` and not at `b82b711b3`;
+  after the stub, `efi_console.obj` defines it.
+- **A break on master that is not spec 3's** [measured]. `lld-link` still
+  reports `_NXSwapBigLongToHost` undefined, from `sys.c:363`, on master
+  (`56af1af09`), on this branch's base and after the stub alike. `sys.c`
+  gained that call in `658b10eff` (2026-09-21), and bootefi-1 compiles
+  `sys.c` with `-D__LITTLE_ENDIAN__=0`, under which `byte_order.h` defines
+  neither version. With a scratch definition of that one symbol, master
+  links, `1c04c16ac` fails on `_setMode` alone, and the stub links.
 
 ## Final review fixes: `VideoModePtr` and three comments
 

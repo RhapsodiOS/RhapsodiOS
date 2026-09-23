@@ -33,6 +33,19 @@ Settled with the user after Task 3's measurements, 2026-09-22:
 | 4.2's `setMode` draws a VGA mode-`0x12` panel for `Boot Graphics`; ours has no panel | **Rebuild 4.2's `setMode`, panel path included.** This widens scope beyond VBE code; Task 3b measures its cost, and the §4.4 stop rule applies to it. |
 | 4.2's mode setter loads its own 1,024-byte palette; ours uses `appleClut8` | **Keep ours.** A forced divergence in the mode setter, recorded. The two palettes agree at index 0 (black) and 255 (white) and nowhere else **[measured]**. |
 
+Settled with the user during execution, 2026-09-22 and 2026-09-23 (added in
+the final review's fix pass; each row points to its record):
+
+| When | Question | Decision | Record |
+| --- | --- | --- | --- |
+| Task 5 | The trim reached 672 bytes spare, short of the plan's 793 target but over the 537-byte bound | **Accept 672.** The fallback, splitting out `strtoul`, was not needed. The final booter has 48 spare. | `src/boot-2/reconstruction/vbe/divergences.md`, "Task 5: the trim" |
+| Tasks 7b, 7c | `loaded_drivers[i].configTable`, which 7b's `VBE Mode` lookup reads, pointed at freed memory | **Fix it.** Rebuild 4.2's `loadOtherConfigs`, and close the `loadBootDrivers` path, which dangles in 4.2 too, with a labelled forced divergence (`pickDrivers` records `addConfig`'s copy). | `src/boot-2/reconstruction/vbe/divergences.md`, "Task 7c" |
+| Task 8, Step 0 | 4.2 maps the frame buffer inside `[virt_avail, virt_end)`, which `kmem_init` makes allocatable (§8) | **Reserve the range**, a forced divergence from a 4.2 reference defect. The block sits after `*virt_end = va`. | `src/kernel-7/reconstruction/vbe/divergences.md`, "Spec 3 Task 8" |
+| Task 8b's review | 4.2's console `Init` tests the window type before storing it, so a fresh frame-buffer alert with save-under wipes the screen | **Fix it**: store the type first, as `VGAConsole.c` does, a forced divergence from a 4.2 reference defect. | `src/kernel-7/reconstruction/vbe/divergences.md`, "Spec 3 Task 8c" |
+| Final review, I1 | `src/bootefi-1` compiles `stringTable.c`, whose rebuilt `Query` prompt calls `setMode`, which `bootefi-1` did not define: its link broke | **Add a no-op `setMode` stub to `src/bootefi-1`.** | `src/boot-2/reconstruction/vbe/divergences.md`, "Task 7c", "`bootefi-1`" |
+| Final review, I2 | The frame-buffer mapping had no bound against `VM_MAX_KERNEL_ADDRESS` (1 GB), and our reservation is larger than 4.2's | **Add the bound.** When the mapping would end past it, map nothing and leave `0x12854` zero, so the console falls back to VGA. Our own fix, not a 4.2 divergence. | `src/kernel-7/reconstruction/vbe/divergences.md`, "Final review fix: the 1 GB bound" |
+| Final review, I3 | 4.2 forms `VideoModePtr` as `(segment << 16) \| offset`, and the enumerator now runs on every boot | **Fix it**: `segment * 16 + offset`, a forced divergence from a 4.2 reference defect. | `src/boot-2/reconstruction/vbe/divergences.md`, "Final review fixes" |
+
 Work happens on branch `vbe20-booter`, cut from `vbe20-kernel` in the same
 worktree, `.worktrees/vbe20-kernel`. Neither parent branch is merged to master,
 so spec 1's driver and spec 2's kernel travel with it.
@@ -44,6 +57,9 @@ so spec 1's driver and spec 2's kernel travel with it.
   Configure.app inspector.
 - **Raising `boot1`'s load limit**, and any change to `boot1` or the disk label.
 - **The UEFI booter** in `src/bootefi-1`.
+  **[UPDATED — final review I1: out of scope for new work, not for breakage.
+  It compiles `libsaio`'s `stringTable.c` and `drivers.c`, so spec 3 broke
+  its link; the user's stub fixes that (§1).]**
 - **Hardware.** Every gate runs under QEMU.
 
 ## 3. The contract: what the booter and kernel write
@@ -102,6 +118,17 @@ branch, its Task 3 Steps 2-3; `BOOT_MEMMAP_MAX` is 32 and each range 12 bytes). 
 **[measured: that branch's two headers do not differ from master]**. Whichever
 branch merges second must merge the two carve-outs and update the other's
 7500-byte assertion.
+**[UPDATED — final review I2: the struct carve-outs do not overlap, but the
+kernel VA does interact.** Our frame-buffer mapping sits above the 64 MB +
+zone + buffer reservation, so it lowers the "RAM + reservation <= 1 GB"
+wall by its own size. That branch clamps machines of 816 MB or more to
+816 MB, which leaves about 8-9 MB of kernel VA above the reservation, and
+its estimator has no frame-buffer term *[arithmetic, from the review]*.
+Since the final fix pass the kernel maps nothing past
+`VM_MAX_KERNEL_ADDRESS` (§5), so a larger frame buffer boots on the VGA
+console instead of overrunning the page directory. Whoever merges that
+branch should add the frame buffer's extent, from `kbs+0x1858`, to its
+estimator.**]**
 
 ## 4. The booter
 
@@ -213,6 +240,19 @@ Expected forced divergences:
 - **the palette**, by the user's decision in §1: our mode setter keeps
   `setupPalette(appleClut8)` where 4.2 passes its own table.
 
+**[UPDATED — final review I5: the forced divergences as built,** each by a
+§1 decision, labelled on the line and in its record:
+- the 89-record cap, and the palette, as above;
+- the `pickDrivers` pointer (Task 7c);
+- the `VideoModePtr` address (final review I3);
+- in the kernel, the frame buffer's reserved range (Task 8);
+- in the kernel's console `Init`, the four 8 bpp colour indices, which follow
+  from the palette decision (Task 8b), and the window type stored before the
+  wipe test (Task 8c).
+
+The kernel's 1 GB bound (final review I2) is our own fix, not a divergence
+from 4.2.**]**
+
 **The version check is not a divergence** [measured, Task 3 item 5]. 4.2 tests
 `VESAVersion >= 0x200` (`cmp 1FFh; ja` at `boot+27782`), and QEMU reports
 `0x0300` on both adapters. Byte parity therefore fixes loader problem 2, our
@@ -273,6 +313,9 @@ kernels. The expected outcome is structural parity, recorded as
 kernel maps nothing and leaves `0x12854` zero. So a boot with the stock booter,
 or with our booter on an adapter without VBE, behaves exactly as spec 2 left it
 (gate G4).
+**[UPDATED — final review I2: nor when the mapping would end past
+`VM_MAX_KERNEL_ADDRESS`. Then too the kernel maps nothing and leaves
+`0x12854` zero, and the console falls back to VGA (§1).]**
 
 **`FBAllocateConsole` runs for the first time.** On i386 it has never
 executed: spec 2's arm was unreachable by design. Nothing about the console
@@ -418,14 +461,26 @@ regenerated.
   also call `BasicAllocateConsole()`, so they get a frame-buffer console once
   `0x12854` has a producer. Panic output changes appearance on VBE boots. Record
   this. One forced-panic boot is optional.
+  **[RESOLVED — recorded in the gate record's limits. A frame-buffer alert
+  window opens only once the Window Server owns the screen, so none was
+  seen. Task 8c fixed 4.2's alert wipe at the user's request (§1), verified
+  by disassembly.]**
 - **An early hang with no console.** A mapping mistake in `pmap_bootstrap` can
   hang before any console exists. Serial capture is the backstop, and the
   mapping is reachable only when the booter wrote a mode (§5).
+  **[RESOLVED — Task 8's first VBE boot did reset, in the console's window
+  sizing rather than the mapping. The dumps and serial found it, and Task
+  8b rebuilt 4.2's sizing. G2 passes.]**
 - **First run of the frame-buffer console code** (§5). A defect there is not a
   defect in the reconstruction until shown to be.
+  **[RESOLVED — G2: the console draws through the frame buffer at 640x480.
+  The defects it showed were ours (Task 8b's window size) or 4.2's (Task
+  8c's alert wipe), each recorded.]**
 - **Trimming** may take more judgement than expected. The stop rule in §4.4
   covers it. It also covers the added cost of rebuilding 4.2's `setMode` panel
   path, which Task 3 did not measure; Task 3b does.
+  **[RESOLVED — Task 5 stopped at 672 spare and the user accepted it (§1).
+  The final booter is 45,008 bytes, 48 spare.]**
 - **The frame buffer's virtual addresses may not be reserved.** In 4.2 the
   mapping lies inside `[virt_avail, virt_end)`, which `kmem_init` then makes
   allocatable. A later kernel allocation could therefore overwrite the frame
@@ -433,9 +488,26 @@ regenerated.
   reference-defect candidate. Task 8 must bring it to the user: reproduce it,
   or reserve the range as a recorded divergence. It is also the first suspect
   if G2 fails late in boot.
+  **[RESOLVED — Task 8: the user chose to reserve the range (§1), and Task
+  8's review verified the reservation.]**
 - **The merge with the large-memory branch** (§3).
+  **[UPDATED — final review I2: it also meets the frame buffer's VA; see §3's
+  update. Still open, for whoever merges second.]**
+- **[ADDED — final review I2, RESOLVED.] The frame buffer against the 1 GB
+  kernel-VA wall.** Our reservation is 64 MB plus the zone and buffer maps,
+  larger than 4.2's flat 64 MB, so on a machine near the wall the mapping
+  could end past `VM_MAX_KERNEL_ADDRESS` and overrun the one page directory
+  silently. The kernel now maps nothing then (§1, §5).
+- **[ADDED — final review I3, RESOLVED.]
+  `VideoModePtr` as `(segment << 16) | offset`.** With a BIOS whose mode
+  list is in its ROM, 4.2's enumerator reads the wrong memory: zero modes,
+  or a long stall, and since it runs on every boot, on every boot
+  *[inference]*. The booter now forms `segment * 16 + offset` (§1). QEMU's
+  segment is 0, so no gate exercises it.
 - **Deployment** depends on Task 1's boot-area measurement. If the copies
   cannot hold 45,056 bytes, stop and report. Do not move them.
+  **[RESOLVED — each boot-area slot on `golden.img` is 65,536 bytes, and
+  `vm/install-booter.py` writes and reads back both.]**
 
 ## 9. Evidence records
 

@@ -76,6 +76,11 @@ throwaway script. Stage files by name. Never use `git add -A` or `git add .`:
       /build/src/rbuild-1/toolchains/gcc-darwin.conf > /tmp/<task>-gcc-darwin.conf
   ```
   `$KDIV` "The build: `rbuild kernel` needs `--toolchain`" explains why.
+  **[UPDATED — final review M4: master's `df7fdea82`, synced to the guest,
+  renamed this profile `gcc-darwin-ppc.conf`, bytes unchanged (`cksum
+  4287395951 1070`). Tasks 8, 8b, 8c and the final fix pass applied the
+  same `sed` to that name. Master also adds `gcc-darwin-i386.conf`, whose
+  `path=` still lacks `/usr/local/bin`.]**
 - If either build fails, report it.
 
 **The guest.** The build guest is reached as `vm/vm.conf` describes.
@@ -1725,6 +1730,28 @@ build otherwise.
 
 ## Task 7: Wire the VBE path into the boot flow
 
+> **[OUTCOME — recorded in the final review's fix pass.]** Task 7 ran as
+> three dispatches, each recorded in `$BDIV` under its own heading:
+> - **7a**, the panel path and the setter: 4.2's planar panel drawing, wait
+>   cursors and 24-byte bitmap header (`cf4157abd`); Task 6's setter landed
+>   (`f262e39b7`); 4.2's `setMode`, and `boot()`'s second `Boot Graphics`
+>   test dropped (`60990633e`).
+> - **7b**, the boot flow: `qemu-shot.py`'s key map (`cb64f9eeb`), the
+>   orphaned `util/spin_cursor.h` removed (`223aa2eb3`), and the `execKernel`
+>   wiring, `VBE Mode`, `VBE Check` and `convert_vbe_mode` (`a47bde03b`).
+> - **7c**, the `configTable` use-after-free 7b exposed, fixed at the user's
+>   request: 4.2's whole `loadOtherConfigs` rebuilt (`54660bef7`), and the
+>   `loadBootDrivers` path closed by a forced divergence in `pickDrivers`
+>   (`a0cc94d34`). **7c also modified `src/boot-2/i386/libsaio/stringTable.c`
+>   and `drivers.c`, which the Files list below omits.**
+> - The final review's fix pass changed the enumerator's `VideoModePtr`
+>   address and three comments (`584f61abb`).
+>
+> The final booter is 45,008 bytes, 48 spare, both at 7c and after the fix
+> pass. The gates ran with `t7c-boot`; the final booter is `tfin-boot`,
+> re-checked by three boots (`$GATE`, "After the gates: the final booter and
+> kernel").
+
 **Files:**
 - Modify: `src/boot-2/i386/boot2/boot.c`, `src/boot-2/i386/boot2/graphics.c`,
   `src/boot-2/i386/boot2/boot.h` (the dead `G_MODE_KEY`)
@@ -1926,12 +1953,31 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ## Task 8: Map the frame buffer in `pmap_bootstrap`
 
+> **[OUTCOME — recorded in the final review's fix pass.]** Task 8 ran as
+> three dispatches, each recorded in `$KDIV` under its own heading:
+> - **8**, the mapping, with the reservation the user chose (`2c6c64e5d`).
+>   Its first VBE boot reset: the console window was 640x480, so its border
+>   fell at x = -3.
+> - **8b**, 4.2's console window size, `width*3/4` by `height*3/4`, and
+>   `FBPutC`'s graphic-mode guard (`1df1f826e`).
+> - **8c**, 4.2's alert wipe, fixed at the user's request (`85636dc91`).
+> - The final review's fix pass added the 1 GB bound (`ac27eb145`; `$KDIV`,
+>   "Final review fix: the 1 GB bound").
+>
+> The gates ran with `t8c-mach_kernel`; the final kernel is
+> `tfin-mach_kernel`, re-checked by three boots (`$GATE`, "After the gates:
+> the final booter and kernel").
+
 **Files:**
 - Modify: `src/kernel-7/machdep/i386/pmap.c`
 - Modify: `src/kernel-7/bsd/dev/i386/FBConsole.c`, **comments only**. The
   block above `VBE_BOOTER_MODE` / `VBE_FRAMEBUFFER_VIRT` (around lines
   1482-1511) still says nothing writes `0x12854` and that the producer
   arrives with spec 3.
+  **[CORRECTED — final review I5: not comments only in the end. Task 8b
+  changed `FBConsole.c`'s code (4.2's `Init` sizing, `FBPutC`'s guard) and
+  `src/kernel-7/bsd/dev/i386/FBConsPriv.h`, and Task 8c `Init`'s store
+  order.]**
 - Modify: `$KDIV`: "Spec 3 Task 8"
 
 **Interfaces:**
@@ -1961,6 +2007,11 @@ could therefore `pmap_enter` over the frame buffer's page-table entries
 - **reserve the range**, for example by advancing `virtual_avail` past it,
   recorded as a forced divergence.
 
+**[RESOLVED — the user chose to reserve the range. The work did not advance
+`virtual_avail`: it placed the block after `*virt_end = va`, so `kernel_map`
+ends below the mapping (`$KDIV`, "Spec 3 Task 8", "Why not advance
+`virtual_avail`").]**
+
 The implementer is told the answer. Do not choose it yourself.
 
 - [ ] **Step 1: Write the mapping**
@@ -1985,6 +2036,9 @@ sed -e 's|^path=.*|path=/build/tools/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/loca
 rbuild kernel --state /build/state --toolchain /tmp/t8-gcc-darwin.conf \
   --arch i386 /build/src /build/repo /tmp/t8-kvbe-dst > /tmp/t8-build.log 2>&1; echo RC=$?
 ```
+
+**[UPDATED — final review M4: on the guest the profile is now
+`gcc-darwin-ppc.conf` (see Global Constraints).]**
 
 Run it in one session, after `vm/sync-src.ps1 -Path kernel-7`. Extract
 `mach_kernel` from `kernel-154.5.1-7-i386.apk` and pull it `uuencode`d, with

@@ -461,6 +461,10 @@ gates of spec 3's design, §7, in the form revised after its Task 3.
   with the stock booter, on the final kernel, which has the symbol, links
   all seven boot drivers and registers every device. How the failed link
   leads to the next link's malloc failure was not determined.
+  **[QUALIFIED — final review m3: the two runs differ in the kernel as
+  well as in the symbol. The negative-control kernel is 4,168 bytes smaller
+  than the final one, for reasons spec 2's provenance gap left unrecorded.
+  The G5 section says so; this summary did not.]**
 
 ### What was booted
 
@@ -487,6 +491,11 @@ Every input was hashed before the first boot. Every image was rebuilt from
 - `git status --short src/` was clean before the first boot. Nothing was
   synced or built. No `src/boot-2` or `src/kernel-7` commit follows the
   commits named above.
+  **[UPDATED — after the final review: two source commits now follow, and
+  the final artifacts are `vm/work/tfin-boot` (`584f61abb`) and
+  `vm/work/tfin-mach_kernel` (`ac27eb145`), not the Task 7c and 8c builds in
+  this table. G1 to G5 ran with those. The final artifacts were re-checked
+  by three boots; see "After the gates: the final booter and kernel".]**
 - The negative-control kernel still has neither `_VBEModeInfo2IODisplayInfo`
   nor `_FBAllocateVBEConsole`. The other two kernels define both.
 - **Which booter ran.** Ours prints `Rhapsody boot v5.0.2` on its 5 s frame,
@@ -693,6 +702,10 @@ as `-vga none -device <device>` with G2's image, default boot.
       `0x200` (`vbe.c:139-143`). And the reproduced `VideoModePtr` defect
       (`vbe.c:145-153`) reads the mode list from the wrong address whenever
       the BIOS's segment is not 0. Which of these held was not determined.
+      **[UPDATED — after the final review: the final booter forms that
+      address as `segment * 16 + offset` (review I3). This case was not
+      re-run with it, so whether its result depended on the defect is still
+      not determined.]**
 - **`No usable VBE mode. Reverting to VGA.`** was not seen. *[inference,
   `vbe.c:196-215`]* With this code it cannot be: it needs
   `enumerateVBEModes()` to return non-zero while `vbeModes[0]` is empty.
@@ -848,9 +861,20 @@ and both boot slots hashed as the stock booter (`AA06C3C5...`). All three
     where both controls show `Registering: VBEDisplay0` (viewed). The rest
     of `B`'s differences lie where `A1` and `A2` differ from each other,
     the phantom race.
+    **[CORRECTED — final review m1: only `A1` shows `Registering:
+    VBEDisplay0` in text row 0; `A2`'s rows 0-3 are phantom-IRQ lines
+    (viewed again, 30 s). The 94 px lie in row 0 (rows 42..49, cols
+    120..204), at pixels where `A1`'s line and `A2`'s phantom line happen
+    to agree and `B`'s `Registering: EISA0` does not [measured, `cmp.py
+    aba`, re-run].]**
   - The mid-boot frames at 22 and 25 s show the same thing, in text rows
     0 to 2 at 25 s (viewed). The two controls there already differ from
     each other by 18,297 and 3,101 px.
+    **[CORRECTED — final review m2: at 22 s it is not the same thing. The
+    819 px outside the controls' difference span rows 42..461: the three
+    runs are at different points of the boot there, a boot-phase
+    difference. Only 25 s shows the moved driver lines (468 px, rows
+    42..73) [measured, `cmp.py aba`, re-run].]**
 
 **So the order alone does not cascade** [measured]. With the stock booter
 and `sarld`, the driver linked first costs no boot driver and no device.
@@ -929,6 +953,13 @@ It establishes, on QEMU:
 - **Without a VBE mode, our booter changes nothing the kernel sees except
   the filled mode array.** The array is 4.2's behaviour, and the driver
   reads it only when a mode is set.
+  **[CORRECTED — final review I4: the driver reads the array with no mode
+  set too.** `VBE20DisplayDriver.m:209` calls `parseVESAModes:` after both
+  arms. Task 7c's RED capture shows it: `vm/shots-t7c-red-first-b/
+  serial.log:28-37` has `Skipping framebuffer initialization` and then all
+  eight `VBE mode N is ...` lines. So with our booter, a system with the
+  driver installed but no mode set exports the enumerated list; see the
+  note after the negative-control signature below.**]**
 - **With a mode set, the whole path runs:**
   - the booter records the mode;
   - `pmap_bootstrap` maps the frame buffer and publishes the address;
@@ -947,6 +978,10 @@ It establishes, on QEMU:
   linked first cascades and panics.** With the stock booter and a kernel
   that has the symbol, the driver linked first costs nothing: the failed
   link, not the order, sets the cascade off.
+  **[QUALIFIED — final review m3: the two runs differ in the kernel as
+  well as in the symbol. The negative-control kernel is 4,168 bytes smaller
+  than the final one, for reasons spec 2's provenance gap left
+  unrecorded.]**
 
 It does **not** establish:
 - **Anything on hardware.** These are QEMU `pc` boots. The VBE path ran on
@@ -974,6 +1009,12 @@ It does **not** establish:
     *[inference, from the code; not booted]*.
   - The same holds for such a driver's `VBE Mode`.
   - G5 used the stock booter, so it is unaffected.
+  - **[ADDED — final review I4: a second change with our booter.** With the
+    driver installed but no mode set (no `VBE Mode` key, or a lookup miss),
+    the driver takes its "Skipping" path and still exports the booter's
+    enumerated modes (Task 7c's RED capture: eight). Spec 2's `No VBE modes
+    found.` then no longer appears. It still does when no mode is usable,
+    as in G3's `isa-cirrus-vga` run.**]**
 - **The untried paths:**
   - `loadBootDrivers`, the driver-floppy path, and its forced divergence;
   - the `Query` prompt;
@@ -984,3 +1025,105 @@ It does **not** establish:
 - **The cascade at any position but the first.** Also untried: the rebuilt
   8,000-node `sarld`.
 - **How the failed link leads to the next link's malloc failure.**
+- **[ADDED — final review I3.] A non-zero `VideoModePtr` segment.** Both
+  QEMU adapters report `0000:FD1A`, where 4.2's `(segment << 16) | offset`
+  and the real-mode address agree. With a BIOS that keeps its list in ROM
+  (`C000:xxxx`), 4.2's form reads physical `0xC000xxxx` on the booter's flat
+  data segment: zero modes, or one `int 10h/4F01` per word until a
+  `0xFFFF`, and since the enumerator runs on every boot, on every boot
+  *[inference, from the code]*. At the user's request the final booter
+  forms `segment * 16 + offset`, a forced divergence from that reference
+  defect. The fix is verified by disassembly only
+  (`src/boot-2/reconstruction/vbe/divergences.md`, "Final review fixes");
+  the gates ran before it.
+- **[ADDED — final review I2.] The frame buffer near 1 GB of kernel VA.**
+  These boots have 128 MB of RAM, far below the wall. The final kernel's
+  bound, which maps nothing and leaves `0x12854` zero when the mapping would
+  end past `VM_MAX_KERNEL_ADDRESS`, is verified by code reading and
+  disassembly only (`src/kernel-7/reconstruction/vbe/divergences.md`,
+  "Final review fix: the 1 GB bound"). Its effect, a VGA console behind a
+  VBE screen, was not seen.
+
+### After the gates: the final booter and kernel
+
+**The gates G1 to G5 above ran with `t7c-boot` and `t8c-mach_kernel`. The
+final artifacts are the `tfin` builds below.** The final whole-branch review
+led to two source changes, both by the user's decision, and to comment
+corrections that ride along with them:
+- **the booter** reads the BIOS mode list at `segment * 16 + offset`,
+  where 4.2 uses `(segment << 16) | offset` (review I3; `584f61abb`;
+  `src/boot-2/reconstruction/vbe/divergences.md`, "Final review fixes");
+- **the kernel** maps nothing, and leaves `0x12854` zero, when the frame
+  buffer would end past `VM_MAX_KERNEL_ADDRESS` (review I2; `ac27eb145`;
+  `src/kernel-7/reconstruction/vbe/divergences.md`, "Final review fix: the
+  1 GB bound").
+
+| Role | File | Bytes | SHA-256 |
+| --- | --- | --- | --- |
+| Final booter (the sources of `584f61abb`) | `vm/work/tfin-boot` | 45,008 | `8B06C0A3B1F3B2FB07353F83FA87025370FAAB05AEFD0035FB76CD2C1BB8F675` |
+| its `boot.sys` | `vm/work/tfin-boot.sys` | 1,078,648 | `2AFA0646205B54EE5BE16CDC0C697832AB426698EC752BE6FAA9E0A874C04C48` |
+| Final kernel (the sources of `ac27eb145`) | `vm/work/tfin-mach_kernel` | 1,490,352 | `17D496898DF6891EC194EB57CEAC1D0EEB8BB9C915F635B05C9CBBE9C36C864B` |
+
+Against the gated builds [measured]:
+- **The booter** differs from `t7c-boot` in 192 bytes, all inside the mode
+  enumerator. Its size, `booter 45008 bytes of 45056, 48 to spare`, and
+  every symbol address are `t7c`'s.
+- **The kernel** differs from `t8c-mach_kernel` in `_pmap_bootstrap`, which
+  gains the bound's four instructions (1,076 to 1,092 bytes), and in the
+  addresses of the code before it, which moves down 16 bytes. Spec 2's
+  oracles still match (`VBEModeInfo2IODisplayInfo` 411 of 411 bytes with
+  its 31 table entries; `_BasicAllocateConsole` 60 of 60), and so does
+  `FBPutC` against 4.2.
+
+**The re-check boots** [measured], on 2026-09-23 between 16:03 and 16:15
+EDT, one QEMU at a time, each on an image rebuilt from `golden.img` as in
+"Procedure" (the intermediate copy staged on another disk) and read back
+before its boot: `/mach_kernel` = the final kernel, the driver bundle equal
+to spec 2's (`_reloc` = `77399531...`), `sarld` `BBFB53F2...`, and both boot
+slots holding the final booter followed by zeros, or the stock booter
+(`AA06C3C5...`). All three were verbose (`mach_kernel -v` typed at 8 s) on
+`--vga cirrus`, with the dump at 60 s. The controls are Task 9's captures of
+the same runs, from the earlier session.
+
+| Run | Booter | Driver | `test.img` | `serial.log` lines, SHA-256 | 5 s frame | Last frame | Dump |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| G2 `tfin-g2-v` | final | last, `VBE Mode` 257 | `C07F17293F2DAC922A19543988A8F8E74D92CA036D293D75B7130E9EF3557D6A` | 88, `1201D0F7921210B1AA6922A27AFFF4C3307F5955D210C727174CFC39A845588A` | `276180227B36...` | `3CA1D670...` (G2's) | `037855BF...` (G2 `g2-v`'s) |
+| G4 `tfin-g4` | stock | last, `VBE Mode` 257 | `6FB8CA26358FF3A8004C2438B5D7F72CCB29EB95856462541D345CE4D795B6DA` | 81, `1358874D959369936F690891A827E8050B33DDBF5812F9DD2CE987F9DBE198BC` | `A5149E2C...` | `C636B60A5A665AEDAAEEC2B30E1B8258F45500C44DFC027BD78E496A3763F3F6` | `E38F01A8...` (G4's) |
+| G1 `tfin-g1` | final | no | `427F8FB51D8F4D82E240A94BE552DF0E55921649BCA00961AF78A93E6FD7ECC6` | 76, `F0C58220655304052E6DC08294ED316AF602460EB7F7351C20272817871DBADC` | `276180227B36...` | `C636B60A...` | `8F112EE8...` (G1 `B`'s) |
+
+- **G2, the VBE path.** The dump is byte-identical to G2's `g2-v`:
+  `0x12854` = `0x0D3D4000`, the current mode 257 (640x480, 8 bpp), 8 records
+  from `0x1870`, record 8 zero, `boot_video` zero, `graphicsMode` 0. The
+  serial has `Display0: using VBE mode 257` and the eight mode lines, and
+  equals `g2-v`'s but for line 4's date and one phantom line moving (rule
+  3). The 30, 60 and 120 s frames are G2's `3CA1D670...`, the kernel's
+  console readable in its window on the frame buffer (viewed at 60 s). The
+  earlier frames are mid-boot at different points in the two sessions.
+  QEMU reports segment 0 (`0000:FD1A`), so the `VideoModePtr` fix changes
+  nothing here, as the identical dump shows.
+- **G4 in miniature, the stock booter and the final kernel.** `0x12854` is
+  zero: the dump is G4's `E38F01A8...` (`kbs+0x1854..0x20D7` zero). The
+  driver takes its "Skipping" path and prints `No VBE modes found.`. Against
+  spec 2's kernel (G4 `A1`, `A2`) the serial differs only in line 4's date
+  and in phantom lines and `Power management is enabled.` changing place
+  (rule 3). Rule 4 against G4 `A1` and `A2`: 5 s identical; 30, 60 and
+  120 s equal `A2` outside the clock mask; 15 s is mid-boot in every run
+  and not comparable, as in G4.
+- **G1's verbose check, the final booter and kernel with no mode.** The
+  serial equals G1 `B`'s line for line but for line 4's date. The dump is
+  byte-identical to G1 `B`'s: the 8 records, `kbs+0x1854..0x186F` and
+  `boot_video` zero, `graphicsMode` 0. Every frame equals G1 `B`'s outside
+  the clock mask; rule 4 against G1 `A1` and `A2` passes at every capture.
+
+**So the final booter and kernel pass the three checks the fixes could
+touch.** The fixes' own paths, a non-zero `VideoModePtr` segment and a
+frame buffer near 1 GB of kernel VA, are not reached by any of these boots;
+see "What this does and does not establish". G3 and G5 were not re-run.
+G5 used the stock booter and the negative-control kernel, which neither fix
+touches, and G3's case 1 ran on cirrus, whose segment is 0. **G3's case 2
+could differ:** the cause of `isa-cirrus-vga`'s `VESA not available.` was
+not determined, and the old `VideoModePtr` form is one candidate (G3,
+above).
+
+The captures are in `vm/shots-tfin-*/`, gitignored, and like the others
+cannot be regenerated.

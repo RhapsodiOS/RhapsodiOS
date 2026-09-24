@@ -29,6 +29,7 @@
 #include <net/if.h>
 #include "dhcpcd.h"
 #include "client.h"
+#include "bootcompat.h"
 #include "signals.h"
 
 char		*ProgramName	=	NULL;
@@ -49,6 +50,7 @@ int		HostName_len	=	0;
 int		ReplResolvConf	=	1;
 int		SetDomainName	=	0;
 int		SetHostName	=	0;
+int		WaitFlag	=	0;
 /*****************************************************************************/
 int main(argn,argc,argv)
 int argn;
@@ -97,6 +99,10 @@ prgs: switch ( argc[i][s] )
 	  case 'R':
 	    s++;
 	    ReplResolvConf=0;
+	    goto prgs;
+	  case 'w':
+	    s++;
+	    WaitFlag=1;
 	    goto prgs;
 	  case 'c':
 	    i++;
@@ -153,7 +159,7 @@ usage:	    fprintf(stderr,"\
 DHCP Client Daemon v."PROGRAM_VERSION"\n\
 Copyright (C) 1996 - 1997 Yoichi Hariguchi <yoichi@fore.com>\n\
 Copyright (C) January, 1998 Sergei Viznyuk <sv@phystech.com>\n\
-Usage: dhcpcd [-dkrDHR] [-l leasetime] [-h hostname] [-t timeout]\n\
+Usage: dhcpcd [-dkrDHRw] [-l leasetime] [-h hostname] [-t timeout]\n\
        [-i vendorClassID] [-I ClientID] [-c filename] [interface]\n");
 	    exit(1);
 	}
@@ -177,6 +183,7 @@ Usage: dhcpcd [-dkrDHR] [-l leasetime] [-h hostname] [-t timeout]\n\
   alarm(0);
   if ( currState == NULL ) exit(1);
 #ifndef DEBUG
+  if ( WaitFlag ) bootcompatPrint();
   if ( fork() ) exit(0); /* got into bound state. */
   setsid();
 #endif

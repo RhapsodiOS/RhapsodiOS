@@ -1106,6 +1106,28 @@ git add src/dhcpcd-1/dhcpcd.tproj/bpfif.c src/dhcpcd-1/dhcpcd.tproj/bpfif.h
 git commit -m "dhcpcd-1: add BSD/BPF raw-Ethernet backend"
 ```
 
+#### Amendment after review (Task 4 fix commit)
+
+The review found two problems in the code above; both are fixed in a
+follow-up commit:
+
+- **Bring the interface up before binding BPF.** drvBPF's `bpf_setif`
+  returns ENETDOWN for a down interface, and the code above called
+  BIOCSETIF before SIOCSIFFLAGS. That fails at boot and on every restart
+  after upstream's `dhcpStop()`, which takes the interface down.
+  `bpfOpenForInterface()` now reads the hardware address, then sets IFF_UP
+  with a read-modify-write (SIOCGIFFLAGS, `|= IFF_UP`, SIOCSIFFLAGS, so
+  other flags such as IFF_PROMISC survive), then opens and binds
+  `/dev/bpf*`. It frees the read buffer from a previous open, and logs a
+  malloc failure.
+- **`bpfPeek()`.** One `read()` can return several frames, and `select()`
+  cannot see the ones left in `bpf_buf`. With the interface tapping our own
+  sends, a reply can sit unread behind our echoed frame while `peekfd()`
+  sleeps. `int bpfPeek(int bpf_fd, int tv_usec)` has `peekfd()`'s return
+  convention (0 readable, 1 timeout, -1 error), but returns 0 at once when
+  a frame is already buffered. `bpfif.c` includes `client.h` for
+  `peekfd()`'s prototype. Task 5 uses it for every wait on `dhcpSocket`.
+
 ---
 
 ### Task 5: Wire the BPF backend into client.c and arp.c
@@ -1115,9 +1137,14 @@ git commit -m "dhcpcd-1: add BSD/BPF raw-Ethernet backend"
 - Modify: `src/dhcpcd-1/dhcpcd.tproj/arp.c`
 
 **Interfaces:**
-- Consumes: `bpfOpenForInterface`, `bpfSendFrame`, `bpfRecvFrame` (Task 4).
+- Consumes: `bpfOpenForInterface`, `bpfSendFrame`, `bpfRecvFrame`, and
+  `int bpfPeek(int bpf_fd, int tv_usec)` (Task 4) — `bpfPeek` has
+  `peekfd()`'s return convention (0 readable, 1 timeout, -1 error) but also
+  counts frames already buffered in `bpfif.c`, which `select()` cannot see.
 - Produces: `client.c` and `arp.c` with no remaining `socket(AF_PACKET,...)`,
-  `SOCK_PACKET`, `sendto`, `recvfrom`, or `SIOCGIFHWADDR` references.
+  `SOCK_PACKET`, `sendto`, `recvfrom`, or `SIOCGIFHWADDR` references, and
+  every wait on `dhcpSocket` going through `bpfPeek()` instead of
+  `peekfd()`.
   `dhcpSocket`'s type and every other global/extern this file uses is
   unchanged, so Task 6 and any other consumer of `client.c` need no further
   adjustment.
@@ -1475,7 +1502,58 @@ from each function too, once its body no longer references `addr`. In
 `j=sizeof(struct sockaddr);` and the `&j` argument to the removed
 `recvfrom()`. Its declaration changes from `int j,i=0;` to `int i=0;`.
 
-- [ ] **Step 7: Verify no Linux raw-socket symbols remain**
+- [ ] **Step 7: Wait with `bpfPeek()` instead of `peekfd()`**
+
+`bpfRecvFrame()` hands back one frame at a time from a buffer that may hold
+several, and `select()` inside `peekfd()` cannot see the buffered ones. Each
+of the four waits on `dhcpSocket` changes only its function name; the
+arguments and return-value tests stay as they are.
+
+In `client.c`, `dhcpSendAndRecv()`:
+
+Old:
+```c
+      while ( peekfd(dhcpSocket,j+i%200000) );
+```
+
+New:
+```c
+      while ( bpfPeek(dhcpSocket,j+i%200000) );
+```
+
+Old:
+```c
+      while ( peekfd(dhcpSocket,j/2) == 0 );
+```
+
+New:
+```c
+      while ( bpfPeek(dhcpSocket,j/2) == 0 );
+```
+
+In `arp.c`, `arpCheck()`:
+
+Old:
+```c
+      while ( peekfd(dhcpSocket,50000) ); /* 50 msec timeout */
+```
+
+New:
+```c
+      while ( bpfPeek(dhcpSocket,50000) ); /* 50 msec timeout */
+```
+
+Old:
+```c
+      while ( peekfd(dhcpSocket,50000) == 0 );
+```
+
+New:
+```c
+      while ( bpfPeek(dhcpSocket,50000) == 0 );
+```
+
+- [ ] **Step 8: Verify no Linux raw-socket symbols remain**
 
 ```bash
 grep -n "SOCK_PACKET\|AF_PACKET\|SIOCGIFHWADDR\|sendto(\|recvfrom(" \
@@ -1504,7 +1582,15 @@ grep -n "struct sockaddr addr" \
 Expected: no output (every local `addr` declaration was removed along with
 its only uses).
 
-- [ ] **Step 8: Commit**
+```bash
+grep -n "peekfd(dhcpSocket" src/dhcpcd-1/dhcpcd.tproj/client.c src/dhcpcd-1/dhcpcd.tproj/arp.c
+grep -n "bpfPeek" src/dhcpcd-1/dhcpcd.tproj/client.c src/dhcpcd-1/dhcpcd.tproj/arp.c
+```
+
+Expected: the first prints nothing; the second prints exactly four lines,
+two in each file.
+
+- [ ] **Step 9: Commit**
 
 ```bash
 git add src/dhcpcd-1/dhcpcd.tproj/client.c src/dhcpcd-1/dhcpcd.tproj/arp.c

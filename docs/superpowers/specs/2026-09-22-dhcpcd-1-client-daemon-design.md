@@ -119,15 +119,17 @@ of this work.
    existing file as `resolv.conf.sv`, writes one from the DHCP server's DNS
    options, and restores the saved copy when it stops.
 3. **New BSD/BPF backend** (`bpfif.c`/`bpfif.h`, new files) replacing the
-   Linux-only raw-packet layer: opening `/dev/bpf*` and binding it to an
-   interface via `BIOCSETIF`/`BIOCIMMEDIATE`, reading the interface's MAC
-   address via the same `AF_LINK`/`struct sockaddr_dl`/`SIOCGIFCONF` idiom
+   Linux-only raw-packet layer: bringing the interface up (the BPF driver
+   refuses to bind a down interface), opening `/dev/bpf*` and binding it via
+   `BIOCSETIF`/`BIOCIMMEDIATE`, reading the interface's MAC address via the
+   same `AF_LINK`/`struct sockaddr_dl`/`SIOCGIFCONF` idiom
    `bootplib/interfaces.c` already uses, and send/receive functions that
-   replace the four `sendto`/`recvfrom` call sites in `client.c` and `arp.c`.
-   `dhcpSocket` stays a plain `int` fd throughout — BPF fds support ordinary
-   `read()`/`write()` plus `select()`, so `peekfd()` (already portable,
-   `select()`-based) and the rest of the send/receive call shape need no
-   change beyond swapping the four call sites themselves.
+   replace the `sendto`/`recvfrom` call sites in `client.c` and `arp.c`.
+   `dhcpSocket` stays a plain `int` fd throughout. One BPF `read()` can
+   return several frames, and `select()` cannot see the ones still buffered
+   in user space, so the four `peekfd()` waits on `dhcpSocket` go through a
+   `bpfPeek()` wrapper with the same return convention that also counts
+   buffered frames.
 4. **Boot-compat wait mode**: add a `-w` flag that blocks until the first
    DHCPACK is processed and the interface is configured, prints the same
    `key=value` fields bootpc's stdout produces today (exact field list

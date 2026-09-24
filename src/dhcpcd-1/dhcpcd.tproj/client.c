@@ -28,7 +28,6 @@
 #include <sys/utsname.h>
 #include <net/if.h>
 #include <net/if_arp.h>
-#include <net/route.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -41,6 +40,7 @@
 #include "buildmsg.h"
 #include "udpipgen.h"
 #include "pathnames.h"
+#include "rtsock.h"
 
 extern	char		*ProgramName,**ProgramEnviron,*Cfilename;
 extern	char		*IfName;
@@ -426,7 +426,6 @@ int dhcpConfig()
   FILE *f;
   char	cache_file[48];
   struct ifreq		ifr;
-  struct rtentry	rtent;
   struct sockaddr_in	*p = (struct sockaddr_in *)&(ifr.ifr_addr);
 
   s = socket(AF_INET,SOCK_DGRAM,0);
@@ -456,58 +455,7 @@ int dhcpConfig()
   if ( ioctl(s,SIOCSIFBRDADDR,&ifr) == -1 )
     syslog(LOG_ERR,"dhcpConfig: ioctl SIOCSIFBRDADDR: %m\n");
 
-  memset(&rtent,0,sizeof(struct rtentry));
-  p			=	(struct sockaddr_in *)&rtent.rt_dst;
-  p->sin_family		=	AF_INET;
-  p->sin_addr.s_addr	=	0;
-  p			=	(struct sockaddr_in *)&rtent.rt_gateway;
-  p->sin_family		=	AF_INET;
-  p->sin_addr.s_addr	=	DhcpIface.giaddr;
-  p			=	(struct sockaddr_in *)&rtent.rt_genmask;
-  p->sin_family		=	AF_INET;
-  p->sin_addr.s_addr	=	0;
-  rtent.rt_dev		=	IfName;
-  rtent.rt_metric	=	1;
-  rtent.rt_flags	=	RTF_UP|RTF_GATEWAY;
-  if ( ioctl(s,SIOCADDRT,&rtent) == -1 )
-    {
-      if ( errno == ENETUNREACH )    /* possibly gateway is over the bridge */
-        {                            /* try adding a route to gateway first */
-          memset(&rtent,0,sizeof(struct rtentry));
-          p                   =   (struct sockaddr_in *)&rtent.rt_dst;
-          p->sin_family	      =	  AF_INET;
-          p->sin_addr.s_addr  =	  DhcpIface.giaddr;
-	  p		      =	  (struct sockaddr_in *)&rtent.rt_gateway;
-	  p->sin_family	      =	  AF_INET;
-	  p->sin_addr.s_addr  =   0;
-          p		      =	  (struct sockaddr_in *)&rtent.rt_genmask;
-          p->sin_family	      =   AF_INET;
-          p->sin_addr.s_addr  =	  0xffffffff;
-          rtent.rt_dev	      =	  IfName;
-          rtent.rt_metric     =	  0;
-          rtent.rt_flags      =	  RTF_UP|RTF_HOST;
-          if ( ioctl(s,SIOCADDRT,&rtent) == 0 )
-	    {
-	      memset(&rtent,0,sizeof(struct rtentry));
-	      p			     =	(struct sockaddr_in *)&rtent.rt_dst;
-	      p->sin_family	     =	AF_INET;
-	      p->sin_addr.s_addr     =	0;
-	      p			     =	(struct sockaddr_in *)&rtent.rt_gateway;
-	      p->sin_family	     =	AF_INET;
-	      p->sin_addr.s_addr     =	DhcpIface.giaddr;
-	      p			     =	(struct sockaddr_in *)&rtent.rt_genmask;
-	      p->sin_family	     =	AF_INET;
-	      p->sin_addr.s_addr     =	0;
-	      rtent.rt_dev	     =	IfName;
-	      rtent.rt_metric	     =	1;
-	      rtent.rt_flags         =	RTF_UP|RTF_GATEWAY;
-	      if ( ioctl(s,SIOCADDRT,&rtent) == -1 )
-		syslog(LOG_ERR,"dhcpConfig: ioctl SIOCADDRT: %m\n");
-            }
-	}
-      else
-        syslog(LOG_ERR,"dhcpConfig: ioctl SIOCADDRT: %m\n");
-    }
+  rtsockAddDefault(DhcpIface.giaddr,DhcpIface.client_iaddr);
 
   close(s);
   arpInform();

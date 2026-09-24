@@ -23,7 +23,15 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
-#include <net/ethernet.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <net/if.h>
+#include <netinet/in.h>
+#include <netinet/if_ether.h>
+
+#ifndef ETHER_ADDR_LEN
+#define ETHER_ADDR_LEN		6
+#endif
 
 #define IPPACKET_SIZE		1500
 #define MAGIC_COOKIE		0x63825363

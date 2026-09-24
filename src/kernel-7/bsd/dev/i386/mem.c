@@ -83,6 +83,8 @@
 
 extern int loadpt;
 
+static char zero_page[I386_PGBYTES];	/* source for /dev/zero reads; BSS-zeroed */
+
 mmread(dev, uio)
 	dev_t dev;
 	struct uio *uio;
@@ -167,8 +169,17 @@ mmrw(dev, uio, rw)
 				return (0);
 			c = iov->iov_len;
 			break;
+
+/* minor device 3 is /dev/zero: reads return zeroed bytes, writes are discarded */
+		case 3:
+			if (rw == UIO_WRITE) {
+				c = iov->iov_len;
+				break;
+			}
+			c = min((u_int)iov->iov_len, I386_PGBYTES);
+			error = uiomove((caddr_t) zero_page, c, uio);
+			continue;
 		}
-/* minor device 3 is unibus memory (addressed by shorts) */
 		if (error)
 			break;
 		iov->iov_base += c;

@@ -146,5 +146,51 @@ class TestRunReportsQemuFailures(unittest.TestCase):
             self.assertTrue(opened[0].closed)
 
 
+class TestSecondDiskAndTyping(unittest.TestCase):
+    def test_hd1_is_the_primary_slave_and_snapshotted(self):
+        args = qemu_boot.build_args("bios", "a.img", "o", 1, "fw",
+                                    hd1="b.img")
+        self.assertIn("file=b.img,format=raw,if=ide,index=1,media=disk",
+                      args)
+        self.assertIn("-snapshot", args)
+
+    def test_parse_typed(self):
+        self.assertEqual(qemu_boot.parse_typed("70:fsck -n /dev/rhd1a"),
+                         (70.0, "fsck -n /dev/rhd1a"))
+        self.assertEqual(qemu_boot.parse_typed("6:-s"), (6.0, "-s"))
+
+    def test_parse_typed_refuses_bad_specs(self):
+        for spec in ("fsck", "5:a|b"):
+            with self.assertRaises(ValueError):
+                qemu_boot.parse_typed(spec)
+
+    def test_run_types_each_key_then_enter(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            image = os.path.join(tmp, "disk.img")
+            open(image, "w").close()
+            fake_qmp = mock.Mock()
+            with mock.patch("qemu_boot.subprocess.Popen"), \
+                 mock.patch("qemu_boot.qemu_shot.QMP",
+                            return_value=fake_qmp), \
+                 mock.patch("qemu_boot.time.sleep", return_value=None):
+                qemu_boot.run("bios", image, os.path.join(tmp, "out"), [],
+                              "fw", typed=[(5.0, "-s")])
+            keys = [c.kwargs["keys"] for c in fake_qmp.execute.call_args_list
+                    if c.args == ("send-key",)]
+            self.assertEqual(keys, [[{"type": "qcode", "data": "minus"}],
+                                    [{"type": "qcode", "data": "s"}],
+                                    [{"type": "qcode", "data": "ret"}]])
+
+    def test_main_passes_hd1_and_typed_to_run(self):
+        with mock.patch("qemu_boot.run") as run:
+            qemu_boot.main(["qemu_boot.py", "bios", "a.img", "out",
+                            "--hd1", "b.img", "--type", "6:-s",
+                            "--type", "70:fsck -n /dev/rhd1a",
+                            "--at", "90", "--firmware-dir", "fw"])
+        run.assert_called_once_with(
+            "bios", "a.img", "out", [90.0], "fw", esp=None, hd1="b.img",
+            typed=[(6.0, "-s"), (70.0, "fsck -n /dev/rhd1a")])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -46,60 +46,79 @@ handing off in `TEXT_MODE` (the splash would vanish at handoff, unlike legacy).
 
 ## Components
 
+### `src/bootefi-1/efi_vga.c`
+
+Gains `efi_vga_set_mode12()`: programs mode 0x12 from the kernel's own
+register tables (`BasicConsole.c` `VGASetGraphicsMode()`), clears the same
+Cirrus extension registers `efi_vga_reset_text_mode()` clears, and loads the
+kernel's 4-grey palette (`paletteVals`, index `i % 4` for all 16 DAC
+entries), so colours match the kernel exactly.
+
 ### `src/bootefi-1/efi_gfx.c` (new)
 
-Owns the screen in mode 0x12.
+The screen and the console window.
 
-- `efi_gfx_init()`: programs mode 0x12 from standard register tables, as
-  `efi_vga.c` does for mode 3, including clearing the Cirrus extension state
-  `efi_vga.c` already handles. Loads the kernel's 4-grey palette
-  (`BasicConsole.c` `paletteVals`, index `i % 4` for all 16 registers), so
-  colours match the kernel exactly.
-- Planar primitives `clearRect`, `copyImage`, `blitRow`, `setPixel`: EFI-side
-  copies of boot-2's `libsaio/console.c` versions. That file cannot be compiled
-  here because it also defines the BIOS `putchar`/`getc`, and `src/boot-2` is
-  not edited.
-- Window console: draws the dark grey background and the centred window with
-  its black title bar and "Rhapsody Operating System" title, geometry following
-  the kernel's `InitWindow` (size truncated to whole characters, origin x
-  aligned down to 8). Renders text with a copy of the kernel's `ohlfs12` font,
-  handles `\n`, `\r`, `\b` and `\t`, and scrolls by copying VRAM planes.
-- Splash: draws `Panel.image` centred and provides `message()`,
-  `spinActivityIndicator()` and `clearActivityIndicator()` with legacy
-  behaviour and positions (`boot2/graphics.h` `MESSAGE_Y`, `CURSOR_X`/`Y`).
-  The spin throttle keeps legacy's ~1/9 s minimum between frames using `rdtsc`,
-  calibrated once against `gBS->Stall` in `efi_gfx_init()`.
-- `setMode(mode)`: switches between splash and window. Entering the splash
-  buffers text (`textBuf`/`bufIndex`, as legacy); leaving it redraws the window
-  and replays the buffer.
+- `efi_gfx_init()`: calls `efi_vga_set_mode12()` and draws the empty window.
+- `clearRect()`: solid fill through set/reset, a port of the kernel's `rect()`.
+  Named and typed as boot-2's `libsaio/font.c` expects.
+- Window console: draws the dark grey background and the window with its
+  black title bar and "Rhapsody Operating System" title, ported from the
+  kernel's `InitWindow()`/`SetTitle()` (size truncated to whole characters,
+  origin x aligned down to 8). Renders text with the kernel's `ohlfs12` font,
+  handles `
+`, ``, `` and `	`, wraps, and scrolls by copying VRAM
+  through the latches. The kernel's block cursor is not drawn.
+
+### `src/bootefi-1/efi_splash.c` (new)
+
+The Boot Graphics panel and the entry points boot-2's libsaio calls.
+
+- `setMode(mode)`: entering the panel loads `Panel.image` and
+  `<Language>.lproj/Default.font` once, buffers text (`textBuf`/`bufIndex`,
+  1536 bytes, as legacy) and draws the panel centred; leaving it redraws the
+  window and replays the buffer. Writes `kernBootStruct->graphicsMode`.
+- `message()`, `spinActivityIndicator()`, `clearActivityIndicator()`: legacy
+  behaviour and positions (`boot2/graphics.h` `MESSAGE_Y`, `CURSOR_X`/`Y`,
+  the 4.2 layout: message at the panel's centre over a light grey bar) on the
+  panel; in the window, `message()` prints a line and there is no spinner, as
+  today. The spin throttle keeps legacy's ~110 ms between frames using
+  `rdtsc`, calibrated once against `gBS->Stall`.
+- `copyImage()`/`blitRow()`: EFI-side copies of boot-2's `libsaio/console.c`
+  versions (that file also defines the BIOS `putchar`/`getc`). `copyImage()`
+  turns set/reset off while it blits, since the kernel's register set enables
+  it.
+- `efi_screen_putc()`: where text goes once the screen is ours, the window
+  or the buffer.
+
+### `src/bootefi-1/efi_splash_rule.c` (new)
+
+`efi_want_splash()`, the rule below. Pure, host-tested.
 
 ### Reused from `src/boot-2` unmodified
 
 `libsaio/bitmap.c` (`loadBitmap`), `libsaio/unpackbits.c` (PackBits),
-`libsaio/font.c` (`blit_string`/`blit_clear` with `Default.font`), and
-`boot2/bitmaps.c` with `util/ns_wait*_bitmap.h` for the cursor frames. Each is
-added to `BOOT2_SRCS` if it compiles under the existing clang flags; any that
-does not gets a small EFI-side replacement, recorded in a comment in the
-Makefile like the existing `memset.c` note.
+`libsaio/font.c` (`blit_string`/`blit_clear`), and `boot2/bitmaps.c` with
+`util/ns_wait*_bitmap.h` for the cursor frames. All four compile under the
+existing flags.
 
 ### `src/bootefi-1/efi_console.c`
 
-- `putchar` writes every character to COM1 (port 0x3F8, polled on the LSR
-  transmit-empty bit). Before `efi_gfx_init()` it also writes to `ConOut`;
-  after, it writes to the window console instead (or the buffer while the
-  splash is up).
+- Before `efi_gfx_init()`, `putchar` writes to `ConOut` as today (OVMF mirrors
+  it to COM1). After, it writes to COM1 directly (port 0x3F8, bounded poll on
+  the LSR transmit-empty bit) and to `efi_screen_putc()`, and never to
+  `ConOut`, which would draw over the screen.
 - The `setMode` stub, `message()` and the empty activity-indicator stubs are
-  removed in favour of the `efi_gfx.c` versions.
+  removed in favour of the `efi_splash.c` versions.
 
 ### `src/bootefi-1/efi_main.c`
 
-- Calls `efi_gfx_init()` first thing.
-- After `loadSystemConfig()`, applies the splash rule below and, if it holds,
-  loads `Panel.image` and `Default.font` and calls `setMode(GRAPHICS_MODE)`.
-- Before handoff, on errors while the splash is up: `setMode(TEXT_MODE)`,
-  print "Errors encountered while starting up the computer." and pause
-  `BOOT_TIMEOUT` seconds, as `boot2/boot.c` does.
-- Shows `message("Starting Rhapsody")` in the active style.
+- Calls `efi_gfx_init()` first thing, in place of clearing `ConOut`.
+- After `loadSystemConfig()`, applies the splash rule and, if it holds, calls
+  `setMode(GRAPHICS_MODE)`. If the panel would not load, it is not retried.
+- Before handoff, as `boot2/boot.c` does: on errors, `setMode(TEXT_MODE)`,
+  print "Errors encountered while starting up the computer.", pause
+  `BOOT_TIMEOUT` (10) seconds; then back to the panel if it was chosen, and
+  `message("Starting Rhapsody", 0)` in the active style.
 
 ### `src/bootefi-1/handoff.c`
 
@@ -123,25 +142,27 @@ shows the window.
 
 ## Failure handling
 
-- `Panel.image` or `Default.font` cannot be loaded: stay in the window,
-  `graphicsMode` stays `TEXT_MODE`, and print legacy's
-  "Could not load all bitmaps; using text mode." The window needs nothing from
-  disk.
+- `Panel.image` cannot be loaded: stay in the window, `graphicsMode` stays
+  `TEXT_MODE`, and print legacy's "Could not load all bitmaps; using text
+  mode." The window needs nothing from disk.
+- `Default.font` cannot be loaded: stay in the window and report it through
+  `error()`, as legacy's `loadFont()` does; like any error, that brings the
+  10-second pause before handoff.
 - Firmware messages printed before `efi_gfx_init()` stay on the firmware
   console and are overwritten.
 
 ## Testing
 
-Under QEMU with OVMF, `-vga cirrus` and `-serial stdio`, on a temporary copy of
-the disk image:
+Under QEMU with IA32 OVMF, `-vga cirrus`, `vm/golden.img` opened with
+`-snapshot` (nothing written back), screenshots through QMP:
 
-1. Default `-v` build: the window appears from the first booter line; screenshots
-   before and after handoff show the same window continuing with kernel text.
-   COM1 carries the full booter log, matching today's `ConOut` output.
-2. Build without `-v`, with `Boot Graphics` = Yes: the panel shows
-   "Starting Rhapsody" and, after handoff, the kernel's wait cursor animates in
-   it, confirming the card was left in mode 0x12.
-3. As 2, with `Panel.image` removed: the booter falls back to the window and
-   prints the fallback message.
-4. The host tests in `src/bootefi-1/tests` still pass, and boot still reaches
-   `vfs_mountroot`.
+1. Default `-v` build: every capture is 640x480, and a capture taken while the
+   loader runs matches one taken after the kernel has drawn its window
+   everywhere outside the text area. COM1 carries the full loader log.
+2. Build without `-v` (`Boot Graphics` is already Yes on `golden.img`): the
+   panel shows "Starting Rhapsody", and later captures differ only where the
+   kernel's wait cursor animates, confirming the card was left in mode 0x12.
+3. As 2, with the panel path pointed at a file that does not exist: the loader
+   stays in the window and prints the fallback message once.
+4. `make test-acpi test-splash` in `src/bootefi-1/tests` pass, and the kernel
+   still reaches "root on hd0a".

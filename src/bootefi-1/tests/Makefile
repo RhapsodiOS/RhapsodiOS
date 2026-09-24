@@ -92,7 +92,18 @@ $(BUILD)/efi_disk_select_test: efi_disk_select_test.c ../efi_disk_select.c \
 test-disk-select: $(BUILD)/efi_disk_select_test
 	$(BUILD)/efi_disk_select_test
 
+# Unlike the two tests above, this one's harness calls strcpy(); clang's
+# resolution against the MSVC UCRT headers on this host marks that
+# deprecated, which -Werror above would then turn into a build failure.
+$(BUILD)/efi_bootargs_test: efi_bootargs_test.c ../efi_bootargs.c \
+		../efi_bootargs.h | $(BUILD)
+	$(CC) $(ACPI_TEST_CFLAGS) -D_CRT_SECURE_NO_WARNINGS -o $@ \
+		efi_bootargs_test.c ../efi_bootargs.c
+
+test-bootargs: $(BUILD)/efi_bootargs_test
+	$(BUILD)/efi_bootargs_test
+
 clean:
 	rm -rf $(BUILD)
 
-.PHONY: all clean test-acpi test-disk-select
+.PHONY: all clean test-acpi test-disk-select test-bootargs

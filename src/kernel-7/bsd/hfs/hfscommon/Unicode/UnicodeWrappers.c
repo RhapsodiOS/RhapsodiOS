@@ -1255,7 +1255,7 @@ CountFilenameExtensionChars( const unsigned char * filename )
 			break;
 		}
 
-		if ( Is7BitASCII(c) || IsSpecialASCIIChar(c) )
+		if ( EXTENSIONCHAR(c) )		// letters and digits, as GetMangledNameExtension copies (xnu-124)
 			++extChars;
 		else
 			break;

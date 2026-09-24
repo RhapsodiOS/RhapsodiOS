@@ -147,6 +147,16 @@ int main(void)
 	for (i = 0; i < 5; i++) s[n++] = 'a' + i;
 	check("ASCII name with 5-letter extension, ID 0xFFFFFFFF", s, n, 0xFFFFFFFF, 240, "#FFFFFFFF.abcde");
 
+	/* 249 'x' + ".ab" + 20 'y' (no extension: 22 letters follow the dot), ID
+	   0x1A.  "#1A" leaves 253: the prefix is 249 'x' + ".ab" (252), so the name
+	   ends ".ab#1A".  A parser that counts any printable ASCII as an extension
+	   character takes "ab#1A" for one and never finds the file ID. */
+	n = 0;
+	for (i = 0; i < 249; i++) s[n++] = 'x';
+	s[n++] = '.'; s[n++] = 'a'; s[n++] = 'b';
+	for (i = 0; i < 20; i++) s[n++] = 'y';
+	check("dot just before the file ID", s, n, 0x1A, 252, "#1A");
+
 	printf("%d failure(s)\n", failures);
 	return failures != 0;
 }

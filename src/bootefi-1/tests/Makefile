@@ -2,7 +2,12 @@ BUILD := BUILD
 BOOT2 := ../../boot-2/i386
 KERNEL7 := ../../kernel-7
 
-CC     ?= clang
+# GNU make predefines CC=cc (origin "default"), which ?= would leave in place;
+# this host has no cc.  An explicit CC=... on the command line or in the
+# environment still wins.
+ifeq ($(origin CC),default)
+CC := clang
+endif
 
 COMMON_FLAGS := -std=gnu89 -g -O0 -Wno-implicit-int \
           -Wno-implicit-function-declaration -Wno-return-type \

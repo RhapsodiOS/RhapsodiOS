@@ -149,34 +149,64 @@ whole I/O, so no one observes the big-endian bytes, and the read-side sentinel
 restores host order on next use. An all-zero buffer (never initialised) is
 left alone, as in xnu-124.
 
-The strategy hook must stay correct if a B-tree buffer is ever built by
-cluster code spanning several nodes. The plan confirms that this cannot happen
-for the extents and catalog vnodes, and the hook asserts
-`b_bcount == node size`.
+A host-order buffer whose size is not the tree's node size (from the file's
+`BTreeControlBlock`) is refused, so a buffer spanning several nodes can never be
+half-swapped.
+
+Unlike xnu-124, which panics, a node that fails validation is never swapped
+and never panics the kernel. The swap validates the whole node first (the
+offset table, then every key and record against the bounds of its slot), and
+only then changes any byte. On read, `GetBTreeBlock` invalidates the buffer
+and returns `EIO`. On write, `hfs_strategy` fails the I/O with `EIO`. Both log
+one `hfs: ` line. This matches the P0 series, which made corrupt nodes fail
+safely rather than crash.
+
+### 4a. B-tree node map words
+
+Map records, in the header node and in map nodes, are not swapped with the
+node; they stay big-endian, and the four places in
+`hfscommon/BTree/BTreeAllocate.c` that read or modify a map word swap that
+word (xnu-124 does the same). These are `AllocateNode`'s read and set, `FreeNode`'s
+clear, and `ExtendBTree`'s set.
+
+### 4b. Attributes B-tree
+
+`hfs_endian.c` knows the catalog and extents record formats only. On a
+little-endian host, `hfs_MountHFSPlusVolume` refuses, with `EINVAL` and one
+`hfs: ` line, an HFS Plus volume whose attributes B-tree is non-empty. Mac OS
+8 and 9 never create one, and neither does kernel-7.
 
 ### 5. MDB and volume header
 
-Every read and write of these structs gets explicit per-field `SWAP_BE*`:
+Each function that reads or writes one of these structs swaps the whole
+struct to host order in place right after its `bread`, and back to disk order
+right before the buffer is released or written. `SWAP_MDB(p)` and `SWAP_VH(p)`
+expand to self-inverse full-struct swaps on little-endian hosts and to nothing
+on ppc, so the existing field code, including the two MDB-to-VCB `bcopy`s in
+`hfs_MountHFSVolume`, is untouched and sees host-order values. The sites are:
 
-- `hfs_vfsops.c`: the mount probe (`:511-600`), `hfs_flushMDB` (`:1149`),
-  `hfs_flushvolumeheader` (`:1225`, including the wrapper MDB update at
-  `:1255-1266`).
-- `hfs_vfsutils.c`: `hfs_MountHFSVolume` (`:156`) and `hfs_MountHFSPlusVolume`
-  (`:296`), including their special-file extent and fork setup. The
-  `bcopy` at `:181` becomes a field-by-field copy.
-- `hfs_vnodeops.c:1341` in `hfs_setattrlist` (volume rename rewrites the MDB).
-- `hfscommon/Misc/VolumeRequests.c` and `VolumeCheck.c`: the plan first
-  establishes which of their MDB/VH sites are reachable in this kernel (much of
-  this is Mac OS File Manager code driven by `lowMemParamBlock`). Reachable
-  sites are swapped; unreachable ones are listed in the plan and left alone.
-- `HFSPlusForkData` in the volume header goes through
-  `hfs_swap_HFSPlusForkData`.
+- `hfs_vfsops.c`: `hfs_mountfs` (MDB probe, wrapperless and wrapped volume
+  headers), `hfs_flushMDB`, `hfs_flushvolumeheader` (including its wrapper
+  MDB update).
+- `hfs_vfsutils.c` needs no MDB/VH changes: `hfs_MountHFSVolume` and
+  `hfs_MountHFSPlusVolume` receive already-swapped structs.
+
+Checked and left alone: `hfs_vnodeops.c:1341` sits inside `#if 0`.
+`FlushAlternateVolumeControlBlock` copies the MDB or volume header block to its
+alternate location as raw bytes, which is endian-neutral because every other
+writer leaves those buffers in disk order. `CheckCreateDate` returns before
+touching the MDB. The remaining `VolumeRequests.c` MDB/VH code is Mac OS only
+(`TARGET_OS_MAC`) or unreachable from this kernel. Volume `drFndrInfo`, like
+all Finder information, stays big-endian.
 
 ### 6. Allocation bitmap
 
 `hfscommon/Misc/VolumeAllocation.c` reads and modifies the bitmap as 32-bit
-words (`:657-750`, `:1032-1145` and siblings). Each word load and store gets
-`SWAP_BE32`. xnu-124's `VolumeAllocation.c` (21 sites) is the checklist.
+words in eight functions. The kernel reads and writes the bitmap in 512-byte
+blocks of 4096 bits (`kBitsPerBlock`). Each of the 34 word loads, stores and
+masked compares gets `SWAP_BE32`; xnu-124's `VolumeAllocation.c` (21 sites) is
+the cross-check. The two sites that compare with or store zero are
+endian-neutral and are left alone.
 
 ### 7. FinderInfo field touches
 
@@ -191,10 +221,17 @@ The plan re-greps for any other `finderInfo` field access before closing.
 ### 8. `mount_hfs` for i386
 
 Build `src/hfs-1/hfs_mount` for i386. The top-level `Makefile.preamble` sets
-`INCLUDED_ARCHS = ppc`; the change lets `hfs_mount` build for i386 without
-opening the rest of `hfs-1`. Add `SWAP_BE16/32` to its three raw on-disk reads
-(`drSigWord`/`drEmbedSigWord`, `drCrDate`, `createDate`), following
-diskdev_cmds-143 `mount_hfs.c`. The tool's other behaviour is unchanged.
+`INCLUDED_ARCHS = ppc` and passes it to every subproject through
+`OTHER_RECURSIVE_VARIABLES`. Both lines move into the preambles of
+`hfs_glue`, `hfs_util` and `hfs_newfs`, which keep building for ppc only,
+while `hfs_mount` builds for every architecture (`pb_makefiles-1/recursion.make:75-84`
+filters per project and suppresses a project left with none). Add `SWAP_BE16/32` to
+the four raw on-disk reads in `getVolumeCreateDate`
+(`drSigWord` twice, `drEmbedSigWord`, `drCrDate`, `createDate`), following
+diskdev_cmds-143 `mount_hfs.c`, with the macros in a new local
+`hfs_mount/hfs_endian.h`. The tool's other behaviour is unchanged. golden.img
+has no `/sbin/mount_hfs` and the root image cannot take new files, so the
+tests run the binary from the results disk.
 
 ### The ppc invariant
 
@@ -234,12 +271,40 @@ format.
 
 ### Guest side
 
-Each test boots a fresh copy of the i386 image as `vm/work/test.img` with a
-fresh HFS image attached as a second QEMU disk, and drives the guest over the
-existing `guest-console.py` channel. File contents are generated
-deterministically from file names with tools already in the Rhapsody userland,
-and the host checker mirrors the generator, so only summaries and checksums
-cross the console.
+Each test boots the per-session root image (`RHAP_TEST_IMAGE`) through
+`guest-console.Guest` with two more IDE disks, both `snapshot=off`:
+
+- **index 1, the HFS volume under test**, as partition `a` of a NeXT disk
+  label, which the kernel opens as `/dev/hd1a`. The block device of a disk's
+  live partition cannot be opened (`bsd/dev/ata_hd_registry.m:585-589` returns
+  `nil` for it), so a label is required. The label must say `dl_secsize 512`:
+  a partition's block size is its label's `dl_secsize`
+  (`driverkit-3/libDriver/IODiskPartition.m:1531`), the ATA strategy passes
+  `b_blkno` through in those units (`ata_hd_registry.m:857`), and HFS
+  addresses the device in 512-byte blocks (`hfs_mountfs` sets
+  `hfs_phys_block_size` to 512). The images therefore copy the installation
+  floppy's label area and rewrite every label copy from 1024-byte to 512-byte
+  sectors.
+- **index 2, a small UFS results disk** (`/dev/hd2a`), built with
+  `vm/ufs_build.py`. It holds the guest script `run.sh`, the i386 `mount_hfs`
+  and an `h/` mount point. The guest mounts it at `/mnt`, runs `/mnt/run.sh`,
+  and leaves `out.txt`, `list.txt` (the `find` listing) and `sums.txt`
+  (`cksum` of each file) on it. The host reads them back with
+  `vm/rhap_image.py` after qemu exits. Nothing needs to cross the console,
+  which is output-only; kernel `printf`s still land in the serial log, which
+  the host also scans for `panic` and `hfs: ` lines.
+
+File contents are generated deterministically from file names (the name and a
+newline, repeated) by a one-line `perl` on the guest and by
+`tools/hfsimg/content.py` on the host.
+
+**Scope limit this exposes.** The HFS kernel assumes 512-byte device blocks.
+On i386 that holds only for a NeXT-labelled partition with
+`dl_secsize 512`. Standard i386 NeXT labels use 1024, Apple partition maps are
+read on ppc only (`GROK_APPLE`, `IODiskPartition.m:79`), and CD-ROMs have
+2048-byte sectors. Teaching HFS the device block size, as xnu-124's
+`hfs_mountfs` does with `DKIOCGETBLOCKSIZE`, is a separate follow-up; this
+spec does not attempt it.
 
 ### Matrix
 
@@ -249,7 +314,7 @@ cross the console.
 | T2 | built HFS | mount; walk; checksum everything | matches the manifest |
 | T3 | built HFS+ | same | same |
 | T4 | built wrapped HFS+ | same | same |
-| T5 | built HFS | read-write: create files and directories until catalog nodes split, rename, delete, write one file spanning bitmap words and blocks, set a volume name, unmount | host checker: zero errors; tree and contents match the guest script |
+| T5 | built HFS | read-write: create 150 files and 20 folders (enough to split catalog nodes and grow the catalog file), rename and move, delete, rewrite a file larger, delete the file with extents-overflow records, write one 20 MiB file spanning several bitmap blocks, unmount | host checker: zero errors; tree and contents match the guest script |
 | T6 | built HFS+ | same | same |
 | T7 | built wrapped HFS+ | same | same |
 | T8 | T5-T7 output | remount on i386 with a cold cache and re-read everything | matches T5-T7 |
@@ -257,29 +322,32 @@ cross the console.
 ### ppc regression
 
 Build the ppc kernel on the build box from the tree before and after the
-change, and compare `__TEXT` of every `bsd/hfs` object with
-`tools/binrecon/compare_text.py`. Expected: identical.
+change, and compare every `__TEXT` section, bytes and relocations, of every
+`bsd/hfs` object with `tools/hfsimg/macho_text.py`. Expected: identical. This
+is sound because RELEASE_PPC compiles in neither `MACH_ASSERT` (a `<test>`
+option in `conf/MASTER:119`) nor `DIAGNOSTIC`, so no `__LINE__` reaches ppc
+code and moved lines cannot show up as differences.
 
 ## Feasibility gates
 
-These are the first tasks in the plan. Each can change tooling, not the design.
-
-1. **Addressing the second disk.** The i386 disk drivers have a live partition
-   (`ATA_HD_LIVE_PART` in `bsd/dev/ata_hd_registry.m:22`; `SD_LIVE_PART`), but
-   whether its block device can be opened and mounted is unproven
-   (`ATADiskKernel.m:189` special-cases it). If it cannot, the builder wraps
-   the volume in a NeXT disk label with one partition, and the extracted
-   `devtools.toast` volume is wrapped the same way.
-2. **Kernel size.** Confirm an HFS-enabled i386 kernel still fits the graft
-   path (`vm/measure-kernel-fit.py`, `vm/graft-kernel.py`) before building on
-   that assumption.
+1. **Device nodes.** The first boot confirms that the HFS disk appears as
+   `/dev/hd1a` and the results disk as `/dev/hd2a`, that `snapshot=off` lets
+   the guest's writes reach both files while the root disk stays in snapshot
+   mode, and that the 512-byte label is accepted (`check_label` checks only
+   the magic number, location and checksum).
+2. **Graft.** The boot tests graft the kernel into `golden.img` through
+   `vm/graft-kernel.py`, whose donor is a 23 MB file. The spec's earlier
+   mention of `measure-kernel-fit.py` was wrong: that tool measures the
+   installation floppy, which these tests do not use.
 
 ## Risks
 
-- **A write path that bypasses `hfs_strategy`.** Mitigation: the plan audits
-  every route by which a buffer on the extents or catalog vnode reaches the
-  device, and T5-T8 exercise sync, async and delayed writes and unmount
-  flushes.
+- **A write path that bypasses `hfs_strategy`.** Every write of a buffer
+  belonging to an HFS vnode reaches the device through `VOP_STRATEGY` on that
+  vnode, which is `hfs_strategy`. The one other B-tree reader,
+  `BTreeScanner.c`'s `ReadMultipleNodes`, is Mac OS only and falls back to
+  `GetNode` on Rhapsody, so every read goes through `GetBTreeBlock`. T5-T8
+  exercise sync, async and delayed writes and unmount flushes.
 - **mac68k packing differs on i386.** Caught at compile time by component 2,
   before any image is touched.
 - **HFS standard has no Apple-made anchor.** Only the HFS+ reader paths are

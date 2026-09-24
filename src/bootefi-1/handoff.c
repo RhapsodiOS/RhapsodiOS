@@ -24,6 +24,7 @@ extern void efi_handoff(unsigned int entry);
  * what SeaBIOS/boot1 leave behind on the legacy path. Direct port/memory
  * I/O only -- safe to call after ExitBootServices. */
 extern void efi_vga_reset_text_mode(void);
+extern int efi_gfx_active(void);
 
 struct gdt_descriptor {
     unsigned short limit;
@@ -91,7 +92,11 @@ void efi_exit_and_start(unsigned int entry)
              * efi_handoff's own `cli` stays too, as a harmless no-op on
              * this path and the sole guard on any other. */
             __asm__ volatile("cli");
-            efi_vga_reset_text_mode();
+            /* With the screen in mode 0x12 the kernel's console carries
+             * on from it: its text window redraws itself there, and the
+             * Boot Graphics panel must survive untouched. */
+            if (!efi_gfx_active())
+                efi_vga_reset_text_mode();
             efi_handoff(entry);     /* never returns */
         }
         /* ExitBootServices rejected the key -- get a fresh map and retry. */

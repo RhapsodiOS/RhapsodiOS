@@ -16,6 +16,7 @@ extern int efi_disk_init(void);
 extern int efi_reserve_ranges(void);
 extern void efi_init_bootstruct(void);
 extern int efi_pci_init(void);
+extern void efi_gfx_init(void);
 
 /* Defined in sys.c; declared here rather than pulling in saio.h's full
  * BSD/UFS header chain for this translation unit, which needs none of it. */
@@ -88,7 +89,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
     gImageHandle = image;
     gST = systab;
     gBS = systab->BootServices;
-    gST->ConOut->ClearScreen(gST->ConOut);
+    efi_gfx_init();
 
     if (efi_reserve_ranges() != 0) {
         printf("fixed-address reservation failed\n");

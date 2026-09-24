@@ -8,14 +8,38 @@
  */
 #include <stdarg.h>
 #include "efi.h"
+#include "kernBootStruct.h"
+#include "io_inline.h"
+#include "efi_gfx.h"
 
 /* libsa/sprintf.c's va_list formatter into a bounded buffer. */
 extern int slvprintf(char *buffer, int len, const char *fmt, va_list arg);
+
+/* 16550 at COM1: wait (bounded) for the transmit holding register. */
+static void com1_putc(int c)
+{
+    int spin;
+
+    for (spin = 0; spin < 100000 && !(inb(0x3FD) & 0x20); spin++)
+        ;
+    outb(0x3F8, c);
+}
 
 void putchar(int c)
 {
     CHAR16 s[3];
     int i = 0;
+
+    if (efi_gfx_active()) {
+        /* The card is in VGA mode 0x12 now and ConOut would draw over it.
+         * OVMF mirrors ConOut to COM1, so keep the serial log going by
+         * writing COM1 directly. */
+        if (c == '\n')
+            com1_putc('\r');
+        com1_putc(c);
+        efi_win_putc(c);
+        return;
+    }
 
     if (c == '\n')
         s[i++] = L'\r';

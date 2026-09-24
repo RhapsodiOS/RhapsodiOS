@@ -16,7 +16,14 @@ typedef UINT64              EFI_VIRTUAL_ADDRESS;
 typedef UINT8               BOOLEAN;
 
 #define EFI_SUCCESS             0
-#define EFI_ERROR(s)            (((INT32)(s)) < 0 || (s) != EFI_SUCCESS)
+
+/* A function, not a macro, so the status expression is evaluated once: as a
+ * macro, EFI_ERROR(gBS->Call(...)) made every firmware call twice. */
+static __inline__ int EFI_ERROR(EFI_STATUS s)
+{
+    return ((INT32)s) < 0 || s != EFI_SUCCESS;
+}
+
 #define EFI_BUFFER_TOO_SMALL    ((EFI_STATUS)0x80000005)
 
 typedef struct { UINT32 d1; UINT16 d2, d3; UINT8 d4[8]; } EFI_GUID;

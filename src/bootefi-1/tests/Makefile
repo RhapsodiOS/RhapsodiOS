@@ -103,7 +103,13 @@ $(BUILD)/efi_bootargs_test: efi_bootargs_test.c ../efi_bootargs.c \
 test-bootargs: $(BUILD)/efi_bootargs_test
 	$(BUILD)/efi_bootargs_test
 
+$(BUILD)/efi_error_test: efi_error_test.c ../efi.h | $(BUILD)
+	$(CC) $(ACPI_TEST_CFLAGS) -o $@ efi_error_test.c
+
+test-efi-error: $(BUILD)/efi_error_test
+	$(BUILD)/efi_error_test
+
 clean:
 	rm -rf $(BUILD)
 
-.PHONY: all clean test-acpi test-disk-select test-bootargs
+.PHONY: all clean test-acpi test-disk-select test-bootargs test-efi-error

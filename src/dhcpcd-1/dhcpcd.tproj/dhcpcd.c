@@ -186,6 +186,7 @@ Usage: dhcpcd [-dkrDHRw] [-l leasetime] [-h hostname] [-t timeout]\n\
   if ( WaitFlag ) bootcompatPrint();
   if ( fork() ) exit(0); /* got into bound state. */
   setsid();
+  freopen("/dev/null","w",stdout);	/* config=$(dhcpcd -w ...) waits for EOF */
 #endif
   chdir("/");
   writePidFile();

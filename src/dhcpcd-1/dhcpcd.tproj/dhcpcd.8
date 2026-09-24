@@ -9,7 +9,7 @@ dhcpcd \- DHCP client daemon
 .in +.5i
 .ti -.5i
 dhcpcd
-\%[\-dkrDHR]
+\%[\-dkrDHRw]
 \%[\-t\ timeout]
 \%[\-c\ filename]
 \%[-h\ hostname]
@@ -103,6 +103,19 @@ Prevents
 from replacing existing
 .I /etc/resolv.conf
 file.
+.TP
+.BI \-w
+Prints the lease as
+.I key=value
+lines on standard output, the way
+.B bootpc
+does, just before
+.B dhcpcd
+forks into the background: ip_address, subnet_mask, router,
+host_name (only if it is a plain host name) and server_ip_address.
+.I /etc/startup/0800_Network
+reads them with
+.IR "config=$(dhcpcd \-w interface)" .
 .TP
 .BI \-t \ timeout
 Specifies (in seconds ) for how long

@@ -33,7 +33,7 @@
 extern char		*ProgramName;
 extern char		*IfName;
 extern int		DebugFlag;
-extern jmp_buf		env;
+extern sigjmp_buf	env;
 extern void		*(*currState)();
 /*****************************************************************************/
 void killPid()
@@ -93,7 +93,10 @@ int sig;
 	      if ( currState == &dhcpRebind )
 	        siglongjmp(env,3);  /* this timeout is dhcpIpLeaseTime */
 	      else
-	        syslog(LOG_ERR,"timed out waiting for a valid DHCP server response\n");
+		{
+		  syslog(LOG_ERR,"timed out waiting for a valid DHCP server response\n");
+		  deleteDhcpCache();
+		}
 	    }
         }
     }

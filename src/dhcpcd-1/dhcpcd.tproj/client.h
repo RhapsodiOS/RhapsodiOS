@@ -185,6 +185,7 @@ void *dhcpRebind();
 void *dhcpRelease();
 void *dhcpStop();
 void checkIfAlreadyRunning();
+void deleteDhcpCache();
 #ifdef ARPCHECK
 void *dhcpDecline();
 #endif

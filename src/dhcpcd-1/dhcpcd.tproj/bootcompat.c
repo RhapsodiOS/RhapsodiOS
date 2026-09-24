@@ -21,7 +21,7 @@ const char *name;
 {
   const char *p;
 
-  if ( *name == '\0' ) return 0;
+  if ( *name == '\0' || *name == '-' ) return 0;
   for ( p = name ; *p ; p++ )
     if ( !isalnum((unsigned char)*p) && *p != '-' && *p != '.' ) return 0;
   return 1;

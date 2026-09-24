@@ -42,6 +42,7 @@
 #include "pathnames.h"
 #include "rtsock.h"
 #include "bpfif.h"
+#include "bootcompat.h"
 
 extern	char		*ProgramName,**ProgramEnviron,*Cfilename;
 extern	char		*IfName;
@@ -74,7 +75,7 @@ dhcpInterface	DhcpIface;
 dhcpOptions	DhcpOptions;
 udpipMessage	UdpIpMsg;
 dhcpMessage	*DhcpMsgRecv;
-jmp_buf		env;
+sigjmp_buf	env;
 unsigned char	ClientHwAddr[ETHER_ADDR_LEN];
 
 const dhcpMessage *DhcpMsgSend = (dhcpMessage *)&UdpIpMsg.udpipmsg[sizeof(udpiphdr)];
@@ -340,6 +341,7 @@ void (*buildUdpIpMsg)(unsigned);
       do
     	{
       	  j+=j+100000;
+      	  if ( j > 64000000 ) j = 64000000;
 	  buildUdpIpMsg(xid);
       	  if ( bpfSendFrame(dhcpSocket,&UdpIpMsg,sizeof(struct ether_header)+
 		      sizeof(udpiphdr)+sizeof(dhcpMessage)) == -1 )
@@ -400,7 +402,8 @@ void (*buildUdpIpMsg)(unsigned);
 	  if ( DhcpMsgRecv->xid != xid ) continue;
 	  if ( DhcpMsgRecv->op != DHCP_BOOTREPLY ) continue;
 	  if ( parseDhcpMsgRecv() == msg ) return 0;
-	  if ( *(unsigned char *)DhcpOptions.val[dhcpMessageType] == DHCP_NAK )
+	  if ( DhcpOptions.val[dhcpMessageType]
+	       && *(unsigned char *)DhcpOptions.val[dhcpMessageType] == DHCP_NAK )
 	    {
 	      if ( DhcpOptions.val[dhcpMsg] )
 		syslog(LOG_ERR,
@@ -409,6 +412,7 @@ void (*buildUdpIpMsg)(unsigned);
 	      else
 		syslog(LOG_ERR,
 		"dhcpInit: DHCP_NAK server response received\n");
+	      return 1;
 	    }
     	}
       while ( bpfPeek(dhcpSocket,j/2) == 0 );
@@ -583,6 +587,7 @@ ntohl(*(unsigned int *)DhcpOptions.val[dhcpT2value]));
   if ( *(unsigned int *)DhcpOptions.val[dhcpIPaddrLeaseTime] == 0xffffffff )
     {
       syslog(LOG_INFO,"infinite IP address lease time. Exiting\n");
+      if ( WaitFlag ) bootcompatPrint();
       exit(0);
     }
   return 0;
@@ -859,7 +864,6 @@ void *dhcpStop()
 {
   int s;
   struct ifreq ifr;
-  struct sockaddr_in	*p = (struct sockaddr_in *)&(ifr.ifr_addr);
 
   releaseDhcpOptions();
   s = socket(AF_INET,SOCK_DGRAM,0);
@@ -872,12 +876,16 @@ void *dhcpStop()
     close(dhcpSocket);
   memset(&ifr,0,sizeof(struct ifreq));
   memcpy(ifr.ifr_name,IfName,IfName_len);
-  p->sin_family = AF_INET;
-  p->sin_addr.s_addr = 0;
-  if ( ioctl(s,SIOCSIFADDR,&ifr) == -1 )
-    syslog(LOG_ERR,"dhcpStop: ioctl SIOCSIFADDR: %m\n");
-  if ( ioctl(s,SIOCSIFFLAGS,&ifr) )
-    syslog(LOG_ERR,"dhcpStop: ioctl SIOCSIFFLAGS: %m\n");
+  if ( ioctl(s,SIOCDIFADDR,&ifr) == -1 && errno != EADDRNOTAVAIL )
+    syslog(LOG_ERR,"dhcpStop: ioctl SIOCDIFADDR: %m\n");
+  if ( ioctl(s,SIOCGIFFLAGS,&ifr) == -1 )
+    syslog(LOG_ERR,"dhcpStop: ioctl SIOCGIFFLAGS: %m\n");
+  else
+    {
+      ifr.ifr_flags &= ~IFF_UP;
+      if ( ioctl(s,SIOCSIFFLAGS,&ifr) )
+	syslog(LOG_ERR,"dhcpStop: ioctl SIOCSIFFLAGS: %m\n");
+    }
   close(s);
   if ( ReplResolvConf )
     rename(""RESOLV_CONF".sv",RESOLV_CONF);

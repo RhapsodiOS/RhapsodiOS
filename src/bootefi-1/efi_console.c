@@ -1,7 +1,9 @@
 /* Console/diagnostic backend for boot-2's reused libsaio/libsa sources.
  * disk.c and sys.c call printf/error/verbose/message/getc/putchar/
- * spinActivityIndicator/sleep; this file supplies all of them over the EFI
- * Simple Text I/O protocols. Two symbols in the brief's original list are
+ * spinActivityIndicator/sleep; this file supplies them over the EFI Simple
+ * Text I/O protocols, except message() and the activity indicator, which
+ * draw on the Boot Graphics panel and live in efi_splash.c. Two symbols in
+ * the brief's original list are
  * NOT supplied here because sys.c/disk.c already define them:
  * flushdev() (sys.c) and diskActivityHook() (disk.c, which just calls
  * spinActivityIndicator()).
@@ -11,6 +13,9 @@
 #include "kernBootStruct.h"
 #include "io_inline.h"
 #include "efi_gfx.h"
+
+/* efi_splash.c: the console window, or the buffer while the panel is up. */
+extern void efi_screen_putc(int c);
 
 /* libsa/sprintf.c's va_list formatter into a bounded buffer. */
 extern int slvprintf(char *buffer, int len, const char *fmt, va_list arg);
@@ -37,7 +42,7 @@ void putchar(int c)
         if (c == '\n')
             com1_putc('\r');
         com1_putc(c);
-        efi_win_putc(c);
+        efi_screen_putc(c);
         return;
     }
 
@@ -104,11 +109,6 @@ int verbose(const char *fmt, ...)
     return 0;
 }
 
-void message(char *str, int n)
-{
-    printf("%s\n", str);
-}
-
 int getc(void)
 {
     EFI_INPUT_KEY key;
@@ -122,9 +122,6 @@ int getc(void)
         gBS->Stall(1000);
     }
 }
-
-void spinActivityIndicator(void) { }
-void clearActivityIndicator(void) { }
 
 void sleep(int seconds)
 {
@@ -144,11 +141,6 @@ int gets(char *buf, int len)
         buf[0] = '\0';
     return 0;
 }
-
-/* stringTable.c's loadOtherConfigs() calls setMode() only on its "Query"
- * prompt, to put boot-2's graphics panel back into text mode.  This console
- * is always text, so there is nothing to switch. */
-void setMode(int mode) { (void)mode; }
 
 /* halt() is real-mode assembly in boot-2 (asm.s, not part of this build)
  * with no EFI equivalent; sys.c calls it on an unrecoverable device error.

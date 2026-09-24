@@ -21,10 +21,9 @@
 	((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
 
 static int
-rtsockSend(s,type,flags,dst,gateway,withmask)
-int s,type,flags;
-unsigned int dst,gateway;
-int withmask;
+rtsockSend(s,type,gateway)
+int s,type;
+unsigned int gateway;
 {
   static int seq;
   struct
@@ -37,25 +36,22 @@ int withmask;
 
   memset(&msg,0,sizeof(msg));
   msg.rtm.rtm_type = type;
-  msg.rtm.rtm_flags = flags;
+  msg.rtm.rtm_flags = RTF_UP|RTF_GATEWAY|RTF_STATIC;
   msg.rtm.rtm_version = RTM_VERSION;
   msg.rtm.rtm_seq = ++seq;
-  msg.rtm.rtm_addrs = RTA_DST|RTA_GATEWAY;
-  if ( withmask ) msg.rtm.rtm_addrs |= RTA_NETMASK;
+  msg.rtm.rtm_addrs = RTA_DST|RTA_GATEWAY|RTA_NETMASK;
 
   memset(&sin,0,sizeof(sin));
   sin.sin_len = sizeof(sin);
   sin.sin_family = AF_INET;
 
   cp = msg.space;
-  sin.sin_addr.s_addr = dst;
-  memcpy(cp,&sin,sizeof(sin));
+  memcpy(cp,&sin,sizeof(sin));		/* destination 0.0.0.0 */
   cp += ROUNDUP(sizeof(sin));
   sin.sin_addr.s_addr = gateway;
   memcpy(cp,&sin,sizeof(sin));
   cp += ROUNDUP(sizeof(sin));
-  if ( withmask )
-    cp += ROUNDUP(0);	/* zero-length netmask: the default route */
+  cp += ROUNDUP(0);	/* zero-length netmask: the default route */
 
   msg.rtm.rtm_msglen = cp - (char *)&msg;
   if ( write(s,(char *)&msg,msg.rtm.rtm_msglen) == -1 ) return -1;
@@ -63,8 +59,8 @@ int withmask;
 }
 
 int
-rtsockAddDefault(gateway,ifaddr)
-unsigned int gateway,ifaddr;
+rtsockAddDefault(gateway)
+unsigned int gateway;
 {
   int s,rc;
 
@@ -75,16 +71,9 @@ unsigned int gateway,ifaddr;
       return -1;
     }
 
-  rc = rtsockSend(s,RTM_ADD,RTF_UP|RTF_GATEWAY|RTF_STATIC,0,gateway,1);
-  if ( rc == -1 && errno == ENETUNREACH )
-    {
-      /* gateway is off our subnet: reach it through our own address first */
-      if ( rtsockSend(s,RTM_ADD,RTF_UP|RTF_HOST|RTF_STATIC,gateway,ifaddr,0) == 0
-	   || errno == EEXIST )
-	rc = rtsockSend(s,RTM_ADD,RTF_UP|RTF_GATEWAY|RTF_STATIC,0,gateway,1);
-    }
+  rc = rtsockSend(s,RTM_ADD,gateway);
   if ( rc == -1 && errno == EEXIST )
-    rc = rtsockSend(s,RTM_CHANGE,RTF_UP|RTF_GATEWAY|RTF_STATIC,0,gateway,1);
+    rc = rtsockSend(s,RTM_CHANGE,gateway);
   if ( rc == -1 )
     syslog(LOG_ERR,"rtsockAddDefault: default route: %m\n");
 

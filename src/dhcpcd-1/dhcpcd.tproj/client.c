@@ -426,7 +426,8 @@ int dhcpConfig()
   FILE *f;
   char	cache_file[48];
   struct ifreq		ifr;
-  struct sockaddr_in	*p = (struct sockaddr_in *)&(ifr.ifr_addr);
+  struct ifaliasreq	ifra;
+  struct sockaddr_in	*p;
 
   s = socket(AF_INET,SOCK_DGRAM,0);
   if ( s == -1 )
@@ -436,26 +437,29 @@ int dhcpConfig()
     }
   memset(&ifr,0,sizeof(struct ifreq));
   memcpy(ifr.ifr_name,IfName,IfName_len);
+  ioctl(s,SIOCDIFADDR,&ifr);	/* old address, if any: SIOCAIFADDR would add an alias */
+  memset(&ifra,0,sizeof(struct ifaliasreq));
+  memcpy(ifra.ifra_name,IfName,IfName_len);
+  p = (struct sockaddr_in *)&ifra.ifra_addr;
+  p->sin_len = sizeof(struct sockaddr_in);
   p->sin_family = AF_INET;
   p->sin_addr.s_addr = DhcpIface.client_iaddr;
-  if ( ioctl(s,SIOCSIFADDR,&ifr) == -1 )
-    {
-      syslog(LOG_ERR,"dhcpConfig: ioctl SIOCSIFADDR: %m\n");
-      close(s);
-      return -1;
-    }
+  p = (struct sockaddr_in *)&ifra.ifra_mask;
+  p->sin_len = sizeof(struct sockaddr_in);
+  p->sin_family = AF_INET;
   p->sin_addr.s_addr = *((unsigned int *)DhcpOptions.val[subnetMask]);
-  if ( ioctl(s,SIOCSIFNETMASK,&ifr) == -1 )
+  p = (struct sockaddr_in *)&ifra.ifra_broadaddr;
+  p->sin_len = sizeof(struct sockaddr_in);
+  p->sin_family = AF_INET;
+  p->sin_addr.s_addr = *((unsigned int *)DhcpOptions.val[broadcastAddr]);
+  if ( ioctl(s,SIOCAIFADDR,&ifra) == -1 )
     {
-      syslog(LOG_ERR,"dhcpConfig: ioctl SIOCSIFNETMASK: %m\n");
+      syslog(LOG_ERR,"dhcpConfig: ioctl SIOCAIFADDR: %m\n");
       close(s);
       return -1;
     }
-  p->sin_addr.s_addr = *((unsigned int *)DhcpOptions.val[broadcastAddr]);
-  if ( ioctl(s,SIOCSIFBRDADDR,&ifr) == -1 )
-    syslog(LOG_ERR,"dhcpConfig: ioctl SIOCSIFBRDADDR: %m\n");
 
-  rtsockAddDefault(DhcpIface.giaddr,DhcpIface.client_iaddr);
+  rtsockAddDefault(DhcpIface.giaddr);
 
   close(s);
   arpInform();
@@ -743,6 +747,7 @@ void (*buildDhcpMsg)(unsigned);
     ((unsigned char *)&DhcpIface.client_iaddr)[2],
     ((unsigned char *)&DhcpIface.client_iaddr)[3]);
 #endif
+  DhcpIface.giaddr = *(unsigned int *)DhcpOptions.val[routersOnSubnet];
   if ( dhcpConfig() )
     {
       dhcpStop();
@@ -818,6 +823,8 @@ void *dhcpRenew()
     ((unsigned char *)DhcpOptions.val[dhcpServerIdentifier])[1],
     ((unsigned char *)DhcpOptions.val[dhcpServerIdentifier])[2],
     ((unsigned char *)DhcpOptions.val[dhcpServerIdentifier])[3]);
+  DhcpIface.giaddr = *(unsigned int *)DhcpOptions.val[routersOnSubnet];
+  rtsockAddDefault(DhcpIface.giaddr);
   return &dhcpBound;
 }
 /*****************************************************************************/
@@ -845,6 +852,8 @@ void *dhcpRebind()
     ((unsigned char *)DhcpOptions.val[dhcpServerIdentifier])[1],
     ((unsigned char *)DhcpOptions.val[dhcpServerIdentifier])[2],
     ((unsigned char *)DhcpOptions.val[dhcpServerIdentifier])[3]);
+  DhcpIface.giaddr = *(unsigned int *)DhcpOptions.val[routersOnSubnet];
+  rtsockAddDefault(DhcpIface.giaddr);
   return &dhcpBound;
 }
 /*****************************************************************************/

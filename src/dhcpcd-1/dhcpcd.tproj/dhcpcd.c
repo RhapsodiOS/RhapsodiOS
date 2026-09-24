@@ -25,6 +25,7 @@
 #include <string.h>
 #include <syslog.h>
 #include <unistd.h>
+#include <sys/socket.h>
 #include <net/if.h>
 #include "dhcpcd.h"
 #include "client.h"

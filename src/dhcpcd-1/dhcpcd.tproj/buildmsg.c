@@ -21,6 +21,7 @@
  */
 
 #include <string.h>
+#include <sys/types.h>
 #include <netinet/in.h>
 #include <net/if_arp.h>
 #include "client.h"

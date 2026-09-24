@@ -271,6 +271,8 @@ enum {
 
 #define IsHexDigit(c)				( ((c) >= (UInt8) '0' && (c) <= (UInt8) '9') || ((c) >= (UInt8) 'A' && (c) <= (UInt8) 'F') )
 
+#define EXTENSIONCHAR(c)			( ((c) >= 'a' && (c) <= 'z') || ((c) >= 'A' && (c) <= 'Z') || ((c) >= '0' && (c) <= '9') )
+
 //
 // PToUTable and PToUEntry describe the 'p2u#' resource
 // This resource is used to map pascal to Unicode before
@@ -1974,6 +1976,109 @@ ConvertUnicodeToUTF8(ByteCount srcLen, ConstUniCharArrayPtr srcStr, ByteCount ma
 		return kTECOutputBufferFullStatus;
 	else if (result == sourceExhausted)
 		return kTECPartialCharErr;
+
+	return noErr;
+}
+
+
+//
+// A file ID as "#" and upper-case hex without leading zeros, for a mangled
+// name.  Returns its length.  (xnu-124's GetFileIDString also drops a 0 that
+// follows the leading digit, writing 0x103 as "#13"; this one does not.)
+//
+static ByteCount
+GetMangledFileIDString( HFSCatalogNodeID fileID, char *fileIDStr )
+{
+	static const char	*translate = "0123456789ABCDEF";
+	ByteCount			i;
+	SInt32				b;
+	char				c;
+
+	fileIDStr[0] = '#';
+	i = 1;
+
+	for ( b = 28; b >= 0; b -= 4 )
+	{
+		c = translate[(fileID >> b) & 0x0F];
+
+		if ( c != '0' || i > 1 || b == 0 )		// skip leading zeros only
+			fileIDStr[i++] = c;
+	}
+	fileIDStr[i] = '\0';
+
+	return i;
+}
+
+
+//
+// The extension of a Unicode name as a C string, for a mangled name: a dot and
+// 1 to kMaxFileExtensionChars ASCII letters or digits that end the name, or ""
+// if it has none.  Returns its length.  (As xnu-124's GetFilenameExtension.)
+//
+static ByteCount
+GetMangledNameExtension( ItemCount length, ConstUniCharArrayPtr unicodeStr, char *extStr )
+{
+	ItemCount	i;
+	ItemCount	extChars;
+	ItemCount	maxExtChars;
+	UniChar		c;
+
+	extStr[0] = '\0';				// assume there's no extension
+
+	if ( length < 3 )
+		return 0;					// "x.y" is the shortest name with an extension
+
+	if ( length < (kMaxFileExtensionChars + 2) )
+		maxExtChars = length - 2;	// leave room for a prefix character and the dot
+	else
+		maxExtChars = kMaxFileExtensionChars;
+
+	for ( extChars = 0; extChars <= maxExtChars; ++extChars )
+	{
+		c = unicodeStr[length - 1 - extChars];
+
+		if ( c == (UniChar) '.' )
+			break;
+		if ( !EXTENSIONCHAR(c) )
+			return 0;
+	}
+	if ( extChars == 0 || extChars > maxExtChars )
+		return 0;					// it ends in a dot, or no dot is near enough the end
+
+	for ( i = 0; i <= extChars; ++i )	// the dot, then the extension
+		extStr[i] = (char) unicodeStr[length - 1 - extChars + i];
+	extStr[i] = '\0';
+
+	return i;
+}
+
+
+/*
+	Make a name of at most maxDstLen - 1 bytes for a Unicode name too long to
+	convert whole: as much of the name as fits, "#" and its file ID in hex, then
+	its extension, as in "A long name#1A2B.txt".  GetEmbeddedFileID and
+	LocateCatalogNodeByMangledName find the node from it again.  As in xnu-124.
+*/
+OSErr
+ConvertUnicodeToUTF8Mangled(ByteCount srcLen, ConstUniCharArrayPtr srcStr, ByteCount maxDstLen,
+							ByteCount *actualDstLen, unsigned char* dstStr, HFSCatalogNodeID cnid)
+{
+	char		fileIDStr[15];
+	char		extStr[15];
+	ByteCount	fileIDLen;
+	ByteCount	extLen;
+	ByteCount	prefixLen;
+
+	fileIDLen = GetMangledFileIDString(cnid, fileIDStr);
+	extLen = GetMangledNameExtension(srcLen / sizeof(UniChar), srcStr, extStr);
+
+	// the name without its extension, cut on a whole character to leave room for the rest
+	(void) ConvertUnicodeToUTF8(srcLen - extLen * sizeof(UniChar), srcStr,
+								maxDstLen - fileIDLen - extLen, &prefixLen, dstStr);
+
+	BlockMoveData(fileIDStr, dstStr + prefixLen, fileIDLen);
+	BlockMoveData(extStr, dstStr + prefixLen + fileIDLen, extLen + 1);	// with its NUL
+	*actualDstLen = prefixLen + fileIDLen + extLen;
 
 	return noErr;
 }

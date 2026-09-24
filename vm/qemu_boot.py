@@ -15,10 +15,11 @@ kernel's serial console) and shot-<N>s.png screenshots.  QEMU quits after
 the last --at time.
 
 Every drive is opened with -snapshot, so no boot ever writes an image, and
-vm/golden.img and vm/rhapsody.vmdk are refused outright.  QEMU gets native
-paths straight from Python: Git Bash does not rewrite `-serial file:/d/...`
-for native programs, which is why this is not a shell script.  Standard
-library only.
+any path named golden.img or rhapsody.vmdk is refused outright, wherever it
+lives (so the main checkout's masters are refused from a worktree too).
+QEMU gets native paths straight from Python: Git Bash does not rewrite
+`-serial file:/d/...` for native programs, which is why this is not a shell
+script.  Standard library only.
 """
 import argparse
 import importlib.util
@@ -45,13 +46,19 @@ qemu_shot = _load_qemu_shot()
 
 
 def refuse_masters(path):
-    """Exit if path is one of the read-only master images."""
+    """Exit if path is one of the read-only master images, wherever it
+    lives: by same-file identity against this checkout's own copy, or by
+    basename against golden.img/rhapsody.vmdk anywhere (e.g. the main
+    checkout, when running from a worktree that has no copy of its own)."""
     for name in _MASTERS:
         master = os.path.join(_HERE, name)
         if (os.path.exists(master) and os.path.exists(path)
                 and os.path.samefile(path, master)):
             raise SystemExit("refusing to boot %s: it is a read-only master"
                              % path)
+    if os.path.basename(path).lower() in (n.lower() for n in _MASTERS):
+        raise SystemExit("refusing to boot %s: it is a read-only master"
+                         % path)
 
 
 def default_firmware_dir(qemu):
@@ -100,28 +107,30 @@ def run(mode, image, outdir, at_points, firmware_dir, esp=None):
         shutil.copyfile(os.path.join(firmware_dir, "edk2-i386-vars.fd"),
                         os.path.join(outdir, "edk2-i386-vars.fd"))
     port = qemu_shot.find_free_port()
+    stderr_path = os.path.join(outdir, "qemu-stderr.log")
+    stderr_f = open(stderr_path, "wb")
     proc = subprocess.Popen(
         build_args(mode, image, outdir, port, firmware_dir, esp=esp),
-        stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        stdout=subprocess.DEVNULL, stderr=stderr_f)
     start = time.monotonic()
     qmp = None
     try:
         try:
             qmp = qemu_shot.QMP("127.0.0.1", port)
-        except RuntimeError:
-            if proc.poll() is not None:
-                raise SystemExit("QEMU exited: %s"
-                                 % proc.stderr.read().decode(errors="replace"))
-            raise
+        except RuntimeError as e:
+            raise SystemExit(_qemu_failure_message(proc, stderr_path, e))
         for t in sorted(at_points):
             remaining = t - (time.monotonic() - start)
             if remaining > 0:
                 time.sleep(remaining)
             ppm = os.path.join(outdir, "_shot.ppm")
-            qmp.execute("screendump", filename=ppm)
-            with open(ppm, "rb") as f:
-                w, h, _, pixels = qemu_shot.parse_ppm(f.read())
-            os.remove(ppm)
+            try:
+                qmp.execute("screendump", filename=ppm)
+                with open(ppm, "rb") as f:
+                    w, h, _, pixels = qemu_shot.parse_ppm(f.read())
+                os.remove(ppm)
+            except (OSError, RuntimeError) as e:
+                raise SystemExit(_qemu_failure_message(proc, stderr_path, e))
             png = os.path.join(outdir,
                                "shot-%ss.png" % qemu_shot.fmt_seconds(t))
             qemu_shot.write_png(png, w, h, pixels)
@@ -138,8 +147,18 @@ def run(mode, image, outdir, at_points, firmware_dir, esp=None):
         except subprocess.TimeoutExpired:
             proc.kill()
             proc.wait(timeout=5)
+        stderr_f.close()
     print("console: %s" % os.path.join(outdir, "console.log"))
     print("kernel:  %s" % os.path.join(outdir, "kernel.log"))
+
+
+def _qemu_failure_message(proc, stderr_path, error):
+    status = proc.poll()
+    if status is not None:
+        return ("QEMU exited with status %s during the boot; its stderr "
+                "is in %s" % (status, stderr_path))
+    return ("lost the QMP connection (%s) while QEMU was still running; "
+            "its stderr is in %s" % (error, stderr_path))
 
 
 def main(argv):

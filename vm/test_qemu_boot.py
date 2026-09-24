@@ -42,11 +42,25 @@ class TestBuildArgs(unittest.TestCase):
 
 class TestSafety(unittest.TestCase):
     def test_golden_image_is_refused(self):
-        golden = os.path.join(qemu_boot._HERE, "golden.img")
-        if not os.path.exists(golden):
-            self.skipTest("no vm/golden.img in this checkout")
-        with self.assertRaises(SystemExit):
-            qemu_boot.refuse_masters(golden)
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "golden.img")
+            open(path, "w").close()
+            with self.assertRaises(SystemExit):
+                qemu_boot.refuse_masters(path)
+
+    def test_rhapsody_vmdk_is_refused(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "rhapsody.vmdk")
+            open(path, "w").close()
+            with self.assertRaises(SystemExit):
+                qemu_boot.refuse_masters(path)
+
+    def test_master_name_is_refused_case_insensitively(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "Golden.IMG")
+            open(path, "w").close()
+            with self.assertRaises(SystemExit):
+                qemu_boot.refuse_masters(path)
 
     def test_other_images_are_allowed(self):
         fd, path = tempfile.mkstemp()
@@ -63,6 +77,46 @@ class TestSafety(unittest.TestCase):
             self.assertEqual(
                 qemu_boot.default_firmware_dir("qemu-system-i386"),
                 os.path.join("C:/q", "share"))
+
+
+class TestRunReportsQemuFailures(unittest.TestCase):
+    def _fake_image(self, tmpdir):
+        path = os.path.join(tmpdir, "disk.img")
+        open(path, "w").close()
+        return path
+
+    def test_qmp_connect_failure_names_the_stderr_log(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            image = self._fake_image(tmp)
+            outdir = os.path.join(tmp, "out")
+            fake_proc = mock.Mock()
+            fake_proc.poll.return_value = 1
+            with mock.patch("qemu_boot.subprocess.Popen",
+                            return_value=fake_proc), \
+                 mock.patch("qemu_boot.qemu_shot.QMP",
+                            side_effect=RuntimeError("no connection")):
+                with self.assertRaises(SystemExit) as ctx:
+                    qemu_boot.run("bios", image, outdir, [1], "fw")
+            self.assertIn(os.path.join(outdir, "qemu-stderr.log"),
+                         str(ctx.exception))
+
+    def test_lost_qmp_connection_during_screenshot_names_the_stderr_log(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            image = self._fake_image(tmp)
+            outdir = os.path.join(tmp, "out")
+            fake_proc = mock.Mock()
+            fake_proc.poll.return_value = None
+            fake_qmp = mock.Mock()
+            fake_qmp.execute.side_effect = ConnectionResetError("reset")
+            with mock.patch("qemu_boot.subprocess.Popen",
+                            return_value=fake_proc), \
+                 mock.patch("qemu_boot.qemu_shot.QMP",
+                            return_value=fake_qmp), \
+                 mock.patch("qemu_boot.time.sleep", return_value=None):
+                with self.assertRaises(SystemExit) as ctx:
+                    qemu_boot.run("bios", image, outdir, [1], "fw")
+            self.assertIn(os.path.join(outdir, "qemu-stderr.log"),
+                         str(ctx.exception))
 
 
 if __name__ == "__main__":

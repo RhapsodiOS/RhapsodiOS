@@ -76,10 +76,14 @@ but its *contents* are absolute. The booters, the kernel and `disk` all agree:
 **UEFI loader**
 - **It only finds whole-disk labels.** `bootefi` picks its boot disk by probing
   for `dlV3` at LBA 15 of each whole disk (`src/bootefi-1/efi_disk.c`
-  `looks_like_rhapsody`), and takes the first match.
+  `looks_like_rhapsody`), and takes the first match. (Before phase 1; now it
+  boots from the disk the loader was read from and finds its label inside an
+  fdisk partition — commit `0f3be4d36`.)
 - **It ignores `Kernel Flags`.** It hard-codes `"rootdev=hd0a -v"`
   (`efi_memory.c` `BOOTEFI_BOOT_STRING`). Only boot2's `boot.c:199` reads the
-  `Kernel Flags` key, and `bootefi` excludes `boot.c`.
+  `Kernel Flags` key, and `bootefi` excludes `boot.c`. (Before phase 1; now
+  `bootefi` appends `Instance0.table`'s `Kernel Flags` after that compiled-in
+  string — commit `5bc2870ed`.)
 - **It rejects media with 2048-byte blocks** (`efi_disk.c`, `BlockSize != BPS`).
 - **It zeroes `diskInfo`** in `KERNBOOTSTRUCT`.
 
@@ -233,9 +237,17 @@ fdisk disks*.
   the loaded-from disk carries no label, fall back to the first labelled disk.
   The two-disk runner still depends on that fallback, because there the loader
   sits on an ESP-only disk.
-- **`bootefi` boot string:** built from `Instance0.table`'s `Kernel Flags` after
-  `loadSystemConfig()`, the way boot2's `boot.c` does it. The compiled-in string
-  is used only when the key is absent.
+- **`bootefi` boot string:** appends `Instance0.table`'s `Kernel Flags`, read
+  after `loadSystemConfig()`, to the compiled-in default `rootdev=hd0a -v`
+  (`efi_bootargs.c` `efi_append_boot_flags`). This is the opposite order from
+  boot2's `boot.c`, which *prepends* the config value ahead of whatever was
+  typed at the `boot:` prompt, so there a typed line's `rootdev=` wins;
+  `bootefi` has no `boot:` prompt, so appending after its own default means
+  the config's `rootdev=` wins instead, because the kernel's `getargs()`
+  (`src/kernel-7/machdep/i386/i386_init.c`) keeps the last `rootdev=` it sees.
+  Caveat: `getargs()` also overwrites `init_args` with each dash token in
+  turn, so a `Kernel Flags` value such as `-s` replaces the compiled-in `-v`
+  as init's argument rather than adding to it.
 
 **Phase 6**
 - **2048-byte media in `bootefi`:** `ebiosread` accepts BLOCK_IO media with
@@ -369,8 +381,9 @@ translation:
   cylinders the disk has
 - entries past cylinder 1023 are written as 1023/254/63
 
-The installer refuses disks under 1 GB, which guarantees the BIOS uses LBA
-translation.
+The installer refuses disks under 1 GB, but size alone doesn't guarantee the
+BIOS picks LBA translation for a given disk — see the CHS-translation risk
+under *Risks*.
 
 ### `rhapinstall`
 
@@ -470,10 +483,22 @@ Most serious first.
 4. **OpenSSL 0.9.5a and OpenSSH 2.3.0p1 have never been through rbuild.**
 5. **Real BIOSes that don't use LBA-assisted translation** will mis-read boot0's
    CHS values. Such machines can only boot the disk through UEFI.
-6. **Unknowns in the environment:** whether QEMU's slirp answers Rhapsody's
+6. **QEMU may not pick LBA translation for every target size** (unverified,
+   from reading QEMU's source, not from a failing boot). SeaBIOS's own choice
+   of CHS translation comes from `hd_geometry_guess()`, which infers it from
+   the disk's total LBA count *and* the end-CHS fields already written in the
+   MBR's boot partition entry, not from disk size alone. For a target roughly
+   1-8 GB whose `0xA7` partition doesn't end on a cylinder boundary, that
+   guess can land on LARGE or NONE translation instead of LBA, making boot0's
+   LBA-assisted CHS values wrong for that disk. The phase 1 8 GB disk was
+   safe because its partition's end CHS is 1023/254/63, which forces LBA.
+   Mitigations: always end the `0xA7` partition on a cylinder boundary, pass
+   `bios-chs-trans=lba` in the QEMU harness, and add a 1-4 GB target to the
+   phase 5 gate.
+7. **Unknowns in the environment:** whether QEMU's slirp answers Rhapsody's
    plain-BOOTP `bootpc`, and whether NetInfo, if `netinfod` brings up a local
    domain, takes precedence over `master.passwd` for logins.
-7. **CD capacity:** installed tree plus apks might exceed 650 MB. The fallback
+8. **CD capacity:** installed tree plus apks might exceed 650 MB. The fallback
    is a `live.list` subset.
 
 ## Out of scope

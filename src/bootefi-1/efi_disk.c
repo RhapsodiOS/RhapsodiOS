@@ -5,14 +5,11 @@
  * read_label all come from disk.c as-is.
  */
 #include "efi.h"
+#include "efi_disk_select.h"
 
 #define BPS             512
 #define MAX_DISKS       8
 #define FIRST_BIOSDEV   0x80
-
-/* Sector number of the NeXT disk label (matches disk.c's own DISKLABEL).
- * Mirrors src/boot-2/i386/libsaio/disk.c's DISKLABEL; keep in sync. */
-#define DISKLABEL       15
 
 static EFI_GUID gBlockIoGuid = EFI_BLOCK_IO_PROTOCOL_GUID;
 static EFI_BLOCK_IO_PROTOCOL *disks[MAX_DISKS];
@@ -21,44 +18,63 @@ static int ndisks;
 /* disk.c indexes this by (biosdev - 0x80) to choose the LBA path. */
 unsigned char uses_ebios[MAX_DISKS] = {1, 1, 1, 1, 1, 1, 1, 1};
 
-/* The two-disk layout puts the Rhapsody image and an ESP-only disk on
- * whole-disk EFI_BLOCK_IO handles, in an order EFI does not guarantee
- * matches qemu's -drive order.  disk.c's open("hd(0,a)/...") always means
- * biosdev 0x80, i.e. disks[0], so we must identify the Rhapsody disk
- * ourselves and place it there rather than trust enumeration order.
+/* disk.c's open("hd(0,a)/...") always means biosdev 0x80, i.e. disks[0],
+ * and EFI does not enumerate block devices in qemu's -drive order, so the
+ * loader picks the Rhapsody disk itself and puts it first.
  *
- * The probe reads the NeXT disk label sector (LBA 15) directly and checks
- * the raw on-disk bytes of dl_version for DL_V3 ("dlV3", big-endian
- * regardless of payload endianness: confirmed against golden.img in Task 4,
- * raw bytes 64 6c 56 33).  This mirrors disk.c's own read_label() just
- * enough to tell "a Rhapsody disk label is here" from "this is FAT32/ESP",
- * without touching disk.c and without pulling in the full disk_label_t
- * layout (whole-disk media here, so part_offset is always 0).
+ * A disk counts as Rhapsody if its first NeXT label copy carries DL_V3 --
+ * the raw bytes 64 6c 56 33 ("dlV3"), big-endian whatever the payload's
+ * byte order, which golden.img confirms.  efi_label_lba() finds that copy:
+ * 15 sectors into the first 0xA7 fdisk partition, or LBA 15 on a
+ * whole-disk label.
  */
 static int looks_like_rhapsody(EFI_BLOCK_IO_PROTOCOL *bio)
 {
-    unsigned char label[BPS];
+    unsigned char sector[BPS];
 
     if (bio->Media->BlockSize != BPS)
         return 0;
-    if (EFI_ERROR(bio->ReadBlocks(bio, bio->Media->MediaId, DISKLABEL,
-                                  sizeof(label), label)))
+    if (EFI_ERROR(bio->ReadBlocks(bio, bio->Media->MediaId, 0,
+                                  sizeof(sector), sector)))
         return 0;
-    /* DL_V3 ("dlV3"), raw big-endian bytes -- mirrors the pattern checked
-     * against dl_version in src/boot-2/i386/libsaio/disk.c; keep in sync. */
-    return label[0] == 0x64 && label[1] == 0x6c &&
-           label[2] == 0x56 && label[3] == 0x33;
+    if (EFI_ERROR(bio->ReadBlocks(bio, bio->Media->MediaId,
+                                  efi_label_lba(sector), sizeof(sector),
+                                  sector)))
+        return 0;
+    return sector[0] == 0x64 && sector[1] == 0x6c &&
+           sector[2] == 0x56 && sector[3] == 0x33;
+}
+
+static EFI_GUID gLoadedImageGuid = EFI_LOADED_IMAGE_PROTOCOL_GUID;
+static EFI_GUID gDevicePathGuid = EFI_DEVICE_PATH_PROTOCOL_GUID;
+
+/* Device path of the partition this loader was read from, or 0. */
+static const unsigned char *loaded_from_path(void)
+{
+    EFI_LOADED_IMAGE_PROTOCOL *li = 0;
+    void *dp = 0;
+
+    if (EFI_ERROR(gBS->HandleProtocol(gImageHandle, &gLoadedImageGuid,
+                                      (void **)&li)))
+        return 0;
+    if (EFI_ERROR(gBS->HandleProtocol(li->DeviceHandle, &gDevicePathGuid,
+                                      &dp)))
+        return 0;
+    return (const unsigned char *)dp;
 }
 
 /* Enumerate whole-disk BLOCK_IO handles, skipping partition handles, and
- * arrange disks[] so the Rhapsody disk (if identified) is disks[0]. */
+ * make the Rhapsody disk disks[0]: the disk this loader was read from if it
+ * is one, otherwise the first labelled disk.  The fallback is what the
+ * two-disk layout relies on, where the loader sits on an ESP-only disk. */
 int efi_disk_init(void)
 {
     EFI_HANDLE *handles = 0;
     UINTN size = 0, i;
     EFI_STATUS st;
     EFI_BLOCK_IO_PROTOCOL *cand[MAX_DISKS];
-    int ncand, rhapsody_idx = -1, nmatches = 0;
+    const unsigned char *boot_path = loaded_from_path();
+    int ncand, first_idx = -1, boot_idx = -1, rhapsody_idx, nmatches = 0;
 
     st = gBS->LocateHandle(ByProtocol, &gBlockIoGuid, 0, &size, 0);
     if (st != EFI_BUFFER_TOO_SMALL)
@@ -74,23 +90,34 @@ int efi_disk_init(void)
     ncand = 0;
     for (i = 0; i < size / sizeof(EFI_HANDLE) && ncand < MAX_DISKS; i++) {
         EFI_BLOCK_IO_PROTOCOL *bio = 0;
+        void *dp = 0;
+
         if (EFI_ERROR(gBS->HandleProtocol(handles[i], &gBlockIoGuid,
                                           (void **)&bio)))
             continue;
         if (!bio->Media->MediaPresent || bio->Media->LogicalPartition)
             continue;
         if (looks_like_rhapsody(bio)) {
-            if (rhapsody_idx < 0)
-                rhapsody_idx = ncand;
+            if (first_idx < 0)
+                first_idx = ncand;
+            if (boot_idx < 0 && boot_path != 0 &&
+                !EFI_ERROR(gBS->HandleProtocol(handles[i], &gDevicePathGuid,
+                                               &dp)) &&
+                efi_dp_is_parent((const unsigned char *)dp, boot_path))
+                boot_idx = ncand;
             nmatches++;
         }
         cand[ncand++] = bio;
     }
     gBS->FreePool(handles);
 
-    if (rhapsody_idx >= 0) {
-        printf("rhapsody disk: handle %d selected for biosdev 0x80\n",
-               rhapsody_idx);
+    rhapsody_idx = boot_idx >= 0 ? boot_idx : first_idx;
+    if (boot_idx >= 0) {
+        printf("rhapsody disk: handle %d selected for biosdev 0x80 "
+               "(the disk this loader was read from)\n", boot_idx);
+    } else if (first_idx >= 0) {
+        printf("rhapsody disk: handle %d selected for biosdev 0x80 "
+               "(first labelled disk)\n", first_idx);
         if (nmatches > 1)
             printf("warning: %d handles matched the Rhapsody disk label; "
                    "using the first\n", nmatches);

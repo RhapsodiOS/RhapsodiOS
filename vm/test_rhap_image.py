@@ -3,7 +3,9 @@ import io
 import os
 import struct
 import sys
+import tempfile
 import unittest
+import unittest.mock as mock
 
 import rhap_image
 
@@ -306,3 +308,27 @@ class TestMainCLI(unittest.TestCase):
             self.assertEqual(out, b"")
             codes.add(rc)
         self.assertEqual(len(codes), 1)
+
+
+class TestImageClosesOnFailure(unittest.TestCase):
+    def test_file_is_closed_when_there_is_no_label(self):
+        fd, path = tempfile.mkstemp(prefix="rhap-image-test-")
+        os.write(fd, b"\0" * 65536)
+        os.close(fd)
+        opened = []
+
+        def tracking_open(*args, **kwargs):
+            f = open(*args, **kwargs)
+            opened.append(f)
+            return f
+
+        try:
+            with mock.patch("rhap_image.open", tracking_open, create=True):
+                with self.assertRaises(ValueError):
+                    rhap_image.Image(path)
+            self.assertEqual(len(opened), 1)
+            self.assertTrue(opened[0].closed)
+        finally:
+            for f in opened:
+                f.close()
+            os.unlink(path)

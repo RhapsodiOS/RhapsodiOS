@@ -16,13 +16,33 @@ typedef UINT64              EFI_VIRTUAL_ADDRESS;
 typedef UINT8               BOOLEAN;
 
 #define EFI_SUCCESS             0
-#define EFI_ERROR(s)            (((INT32)(s)) < 0 || (s) != EFI_SUCCESS)
+
+/* A function, not a macro, so the status expression is evaluated once: as a
+ * macro, EFI_ERROR(gBS->Call(...)) made every firmware call twice. */
+static __inline__ int EFI_ERROR(EFI_STATUS s)
+{
+    return ((INT32)s) < 0 || s != EFI_SUCCESS;
+}
+
 #define EFI_BUFFER_TOO_SMALL    ((EFI_STATUS)0x80000005)
 
 typedef struct { UINT32 d1; UINT16 d2, d3; UINT8 d4[8]; } EFI_GUID;
 
 #define EFI_BLOCK_IO_PROTOCOL_GUID \
   {0x964e5b21,0x6459,0x11d2,{0x8e,0x39,0x00,0xa0,0xc9,0x69,0x72,0x3b}}
+
+#define EFI_LOADED_IMAGE_PROTOCOL_GUID \
+  {0x5b1b31a1,0x9562,0x11d2,{0x8e,0x3f,0x00,0xa0,0xc9,0x69,0x72,0x3b}}
+#define EFI_DEVICE_PATH_PROTOCOL_GUID \
+  {0x09576e91,0x6d3f,0x11d2,{0x8e,0x39,0x00,0xa0,0xc9,0x69,0x72,0x3b}}
+
+/* Loaded image: the leading fields only; the loader reads DeviceHandle. */
+typedef struct {
+    UINT32      Revision;
+    EFI_HANDLE  ParentHandle;
+    void       *SystemTable;
+    EFI_HANDLE  DeviceHandle;
+} EFI_LOADED_IMAGE_PROTOCOL;
 
 /* Memory types and allocation */
 typedef enum { AllocateAnyPages, AllocateMaxAddress, AllocateAddress }

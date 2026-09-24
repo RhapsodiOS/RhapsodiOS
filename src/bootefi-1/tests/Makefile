@@ -2,7 +2,12 @@ BUILD := BUILD
 BOOT2 := ../../boot-2/i386
 KERNEL7 := ../../kernel-7
 
-CC     ?= clang
+# GNU make predefines CC=cc (origin "default"), which ?= would leave in place;
+# this host has no cc.  An explicit CC=... on the command line or in the
+# environment still wins.
+ifeq ($(origin CC),default)
+CC := clang
+endif
 
 COMMON_FLAGS := -std=gnu89 -g -O0 -Wno-implicit-int \
           -Wno-implicit-function-declaration -Wno-return-type \
@@ -78,7 +83,33 @@ $(BUILD)/efi_pci_acpi_test: efi_pci_acpi_test.c ../efi_pci_acpi.c \
 test-acpi: $(BUILD)/efi_pci_acpi_test
 	$(BUILD)/efi_pci_acpi_test
 
+# The disk-selection and boot-string helpers are pure C as well, built the
+# same way as the ACPI parser.
+$(BUILD)/efi_disk_select_test: efi_disk_select_test.c ../efi_disk_select.c \
+		../efi_disk_select.h | $(BUILD)
+	$(CC) $(ACPI_TEST_CFLAGS) -o $@ efi_disk_select_test.c ../efi_disk_select.c
+
+test-disk-select: $(BUILD)/efi_disk_select_test
+	$(BUILD)/efi_disk_select_test
+
+# Unlike the two tests above, this one's harness calls strcpy(); clang's
+# resolution against the MSVC UCRT headers on this host marks that
+# deprecated, which -Werror above would then turn into a build failure.
+$(BUILD)/efi_bootargs_test: efi_bootargs_test.c ../efi_bootargs.c \
+		../efi_bootargs.h | $(BUILD)
+	$(CC) $(ACPI_TEST_CFLAGS) -D_CRT_SECURE_NO_WARNINGS -o $@ \
+		efi_bootargs_test.c ../efi_bootargs.c
+
+test-bootargs: $(BUILD)/efi_bootargs_test
+	$(BUILD)/efi_bootargs_test
+
+$(BUILD)/efi_error_test: efi_error_test.c ../efi.h | $(BUILD)
+	$(CC) $(ACPI_TEST_CFLAGS) -o $@ efi_error_test.c
+
+test-efi-error: $(BUILD)/efi_error_test
+	$(BUILD)/efi_error_test
+
 clean:
 	rm -rf $(BUILD)
 
-.PHONY: all clean test-acpi
+.PHONY: all clean test-acpi test-disk-select test-bootargs test-efi-error

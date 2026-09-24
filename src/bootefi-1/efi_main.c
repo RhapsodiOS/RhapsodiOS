@@ -4,6 +4,7 @@
 #include "load.h"
 #include <memory.h>	/* RLD_MEM_ADDR */
 #include "sarld.h"	/* sa_rld_t */
+#include "efi_bootargs.h"
 
 EFI_SYSTEM_TABLE  *gST;
 EFI_BOOT_SERVICES *gBS;
@@ -130,6 +131,20 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
      * unconfigured real boot. Without this call kernBootStruct->config
      * stays empty and loadOtherConfigs() finds nothing to load. */
     printf("loadSystemConfig: %d\n", loadSystemConfig(0, 0));
+
+    /* boot2 folds the config's "Kernel Flags" into the boot string
+     * (boot.c); this loader appends them after its compiled-in default so
+     * the kernel's getargs(), which keeps the last rootdev= it sees, takes
+     * the config's value. */
+    {
+        char *val;
+        int size;
+
+        if (getValueForKey("Kernel Flags", &val, &size))
+            efi_append_boot_flags(kernBootStruct->bootString,
+                                  BOOT_STRING_LEN, val, size);
+        printf("bootString '%s'\n", kernBootStruct->bootString);
+    }
 
     {
         char *linkerPath = newStringForKey("Linker");

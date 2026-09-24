@@ -649,12 +649,20 @@ void vm_object_pmap_remove(object, start, end)
 		return;
 
 	vm_object_lock(object);
-	p = (vm_page_t) queue_first(&object->memq);
-	while (!queue_end(&object->memq, (queue_entry_t) p)) {
-		if ((start <= p->offset) && (p->offset < end)) {
-			pmap_remove_all(VM_PAGE_TO_PHYS(p));
+	if (atop(end - start) < (unsigned int)object->resident_page_count/4) {
+		for (; start < end; start += PAGE_SIZE) {
+			p = vm_page_lookup(object, start);
+			if (p != VM_PAGE_NULL)
+				pmap_remove_all(VM_PAGE_TO_PHYS(p));
 		}
-		p = (vm_page_t) queue_next(&p->listq);
+	} else {
+		p = (vm_page_t) queue_first(&object->memq);
+		while (!queue_end(&object->memq, (queue_entry_t) p)) {
+			if ((start <= p->offset) && (p->offset < end)) {
+				pmap_remove_all(VM_PAGE_TO_PHYS(p));
+			}
+			p = (vm_page_t) queue_next(&p->listq);
+		}
 	}
 	vm_object_unlock(object);
 }
@@ -1381,16 +1389,34 @@ void vm_object_page_remove(object, start, end)
 	if (object == VM_OBJECT_NULL)
 		return;
 
-	p = (vm_page_t) queue_first(&object->memq);
-	while (!queue_end(&object->memq, (queue_entry_t) p)) {
-		next = (vm_page_t) queue_next(&p->listq);
-		if ((start <= p->offset) && (p->offset < end)) {
-			pmap_remove_all(VM_PAGE_TO_PHYS(p));
-			vm_page_lock_queues();
-			vm_page_free(p);
-			vm_page_unlock_queues();
+	/*
+	 *	One and two page removals are most popular.
+	 *	The factor of 4 here is somewhat arbitrary; FreeBSD and NetBSD
+	 *	used the same one before moving to per-object trees.
+	 *	It balances vm_page_lookup vs iteration.
+	 */
+	if (atop(end - start) < (unsigned int)object->resident_page_count/4) {
+		for (; start < end; start += PAGE_SIZE) {
+			p = vm_page_lookup(object, start);
+			if (p != VM_PAGE_NULL) {
+				pmap_remove_all(VM_PAGE_TO_PHYS(p));
+				vm_page_lock_queues();
+				vm_page_free(p);
+				vm_page_unlock_queues();
+			}
 		}
-		p = next;
+	} else {
+		p = (vm_page_t) queue_first(&object->memq);
+		while (!queue_end(&object->memq, (queue_entry_t) p)) {
+			next = (vm_page_t) queue_next(&p->listq);
+			if ((start <= p->offset) && (p->offset < end)) {
+				pmap_remove_all(VM_PAGE_TO_PHYS(p));
+				vm_page_lock_queues();
+				vm_page_free(p);
+				vm_page_unlock_queues();
+			}
+			p = next;
+		}
 	}
 }
 

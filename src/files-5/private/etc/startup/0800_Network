@@ -60,7 +60,8 @@ if [ -s /etc/iftab ]; then
 		ifconfig "${if}" 0.0.0.0 netmask 255.0.0.0 broadcast 255.255.255.255 > /dev/null
 		route add -net 255.255.255.255 -netmask 255.0.0.0 0.0.0.0 -iface     > /dev/null
 		echo -n "    Trying DHCP for interface ${if}:"
-		if config=$(dhcpcd -w "${if}"); then
+		if [ "${ROUTER:--AUTOMATIC-}" = "-AUTOMATIC-" ]; then dhcpflags=""; else dhcpflags="-G"; fi
+		if config=$(dhcpcd -w ${dhcpflags} "${if}"); then
 		    SetNetConfig "${if}" ${config}
 		    echo " got response from" $(GetNetConfig "${if}" server_ip_address)
 		else
@@ -249,7 +250,7 @@ if [ "${NETWORKUP}" = "-YES-" ]; then
 	# address must be specified in the /etc/hosts file.  
 	##
 	echo "    Using default router ${ROUTER}"
-	route add default ${ROUTER} > /dev/null
+	route add default ${ROUTER} > /dev/null 2>&1 || route change default ${ROUTER} > /dev/null
 	;;
 
     esac

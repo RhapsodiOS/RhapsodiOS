@@ -1322,7 +1322,7 @@ void vm_object_collapse(object)
 				 */
 
 				if (p->offset >= backing_offset &&
-				    new_offset <= size &&
+				    new_offset < size &&
 				    (pp = vm_page_lookup(object, new_offset))
 				      == VM_PAGE_NULL) {
 					/*

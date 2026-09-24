@@ -51,6 +51,7 @@ int		ReplResolvConf	=	1;
 int		SetDomainName	=	0;
 int		SetHostName	=	0;
 int		WaitFlag	=	0;
+int		SetDefaultRoute	=	1;
 /*****************************************************************************/
 int main(argn,argc,argv)
 int argn;
@@ -103,6 +104,10 @@ prgs: switch ( argc[i][s] )
 	  case 'w':
 	    s++;
 	    WaitFlag=1;
+	    goto prgs;
+	  case 'G':
+	    s++;
+	    SetDefaultRoute=0;
 	    goto prgs;
 	  case 'c':
 	    i++;
@@ -159,7 +164,7 @@ usage:	    fprintf(stderr,"\
 DHCP Client Daemon v."PROGRAM_VERSION"\n\
 Copyright (C) 1996 - 1997 Yoichi Hariguchi <yoichi@fore.com>\n\
 Copyright (C) January, 1998 Sergei Viznyuk <sv@phystech.com>\n\
-Usage: dhcpcd [-dkrDHRw] [-l leasetime] [-h hostname] [-t timeout]\n\
+Usage: dhcpcd [-dkrDHRwG] [-l leasetime] [-h hostname] [-t timeout]\n\
        [-i vendorClassID] [-I ClientID] [-c filename] [interface]\n");
 	    exit(1);
 	}

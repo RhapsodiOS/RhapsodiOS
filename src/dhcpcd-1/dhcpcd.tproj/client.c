@@ -58,6 +58,7 @@ extern	int		ReplResolvConf;
 extern	int		SetDomainName;
 extern	int		SetHostName;
 extern	int		WaitFlag;
+extern	int		SetDefaultRoute;
 extern	unsigned short	ip_id;
 
 #ifdef ARPCHECK
@@ -455,7 +456,7 @@ int dhcpConfig()
       return -1;
     }
 
-  rtsockAddDefault(DhcpIface.giaddr);
+  if ( SetDefaultRoute ) rtsockAddDefault(DhcpIface.giaddr);
 
   close(s);
   arpInform();
@@ -797,7 +798,7 @@ void *dhcpRenew()
     ((unsigned char *)DhcpOptions.val[dhcpServerIdentifier])[2],
     ((unsigned char *)DhcpOptions.val[dhcpServerIdentifier])[3]);
   DhcpIface.giaddr = *(unsigned int *)DhcpOptions.val[routersOnSubnet];
-  rtsockAddDefault(DhcpIface.giaddr);
+  if ( SetDefaultRoute ) rtsockAddDefault(DhcpIface.giaddr);
   return &dhcpBound;
 }
 /*****************************************************************************/
@@ -826,7 +827,7 @@ void *dhcpRebind()
     ((unsigned char *)DhcpOptions.val[dhcpServerIdentifier])[2],
     ((unsigned char *)DhcpOptions.val[dhcpServerIdentifier])[3]);
   DhcpIface.giaddr = *(unsigned int *)DhcpOptions.val[routersOnSubnet];
-  rtsockAddDefault(DhcpIface.giaddr);
+  if ( SetDefaultRoute ) rtsockAddDefault(DhcpIface.giaddr);
   return &dhcpBound;
 }
 /*****************************************************************************/

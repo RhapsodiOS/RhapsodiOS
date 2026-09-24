@@ -9,7 +9,7 @@ dhcpcd \- DHCP client daemon
 .in +.5i
 .ti -.5i
 dhcpcd
-\%[\-dkrDHRw]
+\%[\-dkrDHRwG]
 \%[\-t\ timeout]
 \%[\-c\ filename]
 \%[-h\ hostname]
@@ -116,6 +116,15 @@ host_name (only if it is a plain host name) and server_ip_address.
 .I /etc/startup/0800_Network
 reads them with
 .IR "config=$(dhcpcd \-w interface)" .
+.TP
+.BI \-G
+Prevents
+.B dhcpcd
+from installing or changing the default route.
+.I /etc/startup/0800_Network
+passes it unless ROUTER in
+.I /etc/hostconfig
+is -AUTOMATIC-.
 .TP
 .BI \-t \ timeout
 Specifies (in seconds ) for how long

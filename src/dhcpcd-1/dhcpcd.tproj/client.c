@@ -57,6 +57,7 @@ extern	int		LeaseTime;
 extern	int		ReplResolvConf;
 extern	int		SetDomainName;
 extern	int		SetHostName;
+extern	int		WaitFlag;
 extern	unsigned short	ip_id;
 
 #ifdef ARPCHECK
@@ -547,22 +548,25 @@ ntohl(*(unsigned int *)DhcpOptions.val[dhcpT2value]));
       else
 	syslog(LOG_ERR,"dhcpConfig: fopen: %m\n");
     }
-  fprintf(stdout,"dhcpcd: your IP address = %u.%u.%u.%u\n",
-    ((unsigned char *)&DhcpIface.client_iaddr)[0],
-    ((unsigned char *)&DhcpIface.client_iaddr)[1],
-    ((unsigned char *)&DhcpIface.client_iaddr)[2],
-    ((unsigned char *)&DhcpIface.client_iaddr)[3]);
+  if ( ! WaitFlag )
+    fprintf(stdout,"dhcpcd: your IP address = %u.%u.%u.%u\n",
+      ((unsigned char *)&DhcpIface.client_iaddr)[0],
+      ((unsigned char *)&DhcpIface.client_iaddr)[1],
+      ((unsigned char *)&DhcpIface.client_iaddr)[2],
+      ((unsigned char *)&DhcpIface.client_iaddr)[3]);
   if ( SetHostName && DhcpOptions.len[hostName] )
     {
        sethostname(DhcpOptions.val[hostName],DhcpOptions.len[hostName]);
-       fprintf(stdout,"dhcpcd: your hostname = %s\n",
-	       (char *)DhcpOptions.val[hostName]);
+       if ( ! WaitFlag )
+	 fprintf(stdout,"dhcpcd: your hostname = %s\n",
+		 (char *)DhcpOptions.val[hostName]);
     }
   if ( SetDomainName && DhcpOptions.len[domainName] )
     {
        setdomainname(DhcpOptions.val[domainName],DhcpOptions.len[domainName]);
-       fprintf(stdout,"dhcpcd: your domainname = %s\n",
-	       (char *)DhcpOptions.val[domainName]);
+       if ( ! WaitFlag )
+	 fprintf(stdout,"dhcpcd: your domainname = %s\n",
+		 (char *)DhcpOptions.val[domainName]);
     }
   if ( Cfilename )
     if ( fork() == 0 )

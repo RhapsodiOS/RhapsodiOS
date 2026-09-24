@@ -41,6 +41,7 @@
 #include "udpipgen.h"
 #include "pathnames.h"
 #include "rtsock.h"
+#include "bpfif.h"
 
 extern	char		*ProgramName,**ProgramEnviron,*Cfilename;
 extern	char		*IfName;
@@ -328,7 +329,6 @@ int dhcpSendAndRecv(xid,msg,buildUdpIpMsg)
 unsigned xid,msg;
 void (*buildUdpIpMsg)(unsigned);
 {
-  struct sockaddr addr;
   int i,len;
   int j=100000;
   struct ip *ip=(struct ip *)((struct udpiphdr *)UdpIpMsg.udpipmsg)->ip;
@@ -338,28 +338,23 @@ void (*buildUdpIpMsg)(unsigned);
       do
     	{
       	  j+=j+100000;
-      	  memset(&addr,0,sizeof(struct sockaddr));
-      	  memcpy(addr.sa_data,IfName,IfName_len);
 	  buildUdpIpMsg(xid);
-      	  if ( sendto(dhcpSocket,&UdpIpMsg,sizeof(struct ether_header)+
-		      sizeof(udpiphdr)+sizeof(dhcpMessage),0,
-		      &addr,sizeof(struct sockaddr)) == -1 )
+      	  if ( bpfSendFrame(dhcpSocket,&UdpIpMsg,sizeof(struct ether_header)+
+		      sizeof(udpiphdr)+sizeof(dhcpMessage)) == -1 )
 	    {
-	      syslog(LOG_ERR,"sendto: %m\n");
+	      syslog(LOG_ERR,"bpfSendFrame: %m\n");
 	      return -1;
 	    }
       	  i=random();
     	}
-      while ( peekfd(dhcpSocket,j+i%200000) );
+      while ( bpfPeek(dhcpSocket,j+i%200000) );
       do
 	{
 	  memset(&UdpIpMsg,0,sizeof(udpipMessage));
-      	  i=sizeof(struct sockaddr);
-      	  len=recvfrom(dhcpSocket,&UdpIpMsg,sizeof(udpipMessage),0,
-		     (struct sockaddr *)&addr,&i);
+      	  len=bpfRecvFrame(dhcpSocket,&UdpIpMsg,sizeof(udpipMessage));
 	  if ( len == -1 )
     	    {
-      	      syslog(LOG_ERR,"recvfrom: %m\n");
+      	      syslog(LOG_ERR,"bpfRecvFrame: %m\n");
       	      return -1;
     	    }
 	  if ( UdpIpMsg.ethhdr.ether_type != htons(ETHERTYPE_IP) )
@@ -414,7 +409,7 @@ void (*buildUdpIpMsg)(unsigned);
 		"dhcpInit: DHCP_NAK server response received\n");
 	    }
     	}
-      while ( peekfd(dhcpSocket,j/2) == 0 );
+      while ( bpfPeek(dhcpSocket,j/2) == 0 );
     }
   while ( 1 );
   return 1;
@@ -611,38 +606,12 @@ void deleteDhcpCache()
 /*****************************************************************************/
 void *dhcpStart()
 {
-  int o = 1;
-  struct ifreq	ifr;
-  memset(&ifr,0,sizeof(struct ifreq));
-  memcpy(ifr.ifr_name,IfName,IfName_len);
-  dhcpSocket = socket(AF_PACKET,SOCK_PACKET,htons(ETH_P_ALL));
+  dhcpSocket = bpfOpenForInterface(IfName,ClientHwAddr);
   if ( dhcpSocket == -1 )
     {
-      syslog(LOG_ERR,"dhcpStart: socket: %m\n");
+      syslog(LOG_ERR,"dhcpStart: bpfOpenForInterface: %m\n");
       exit(1);
     }
-  if ( ioctl(dhcpSocket,SIOCGIFHWADDR,&ifr) )
-    {
-      syslog(LOG_ERR,"dhcpStart: ioctl SIOCGIFHWADDR: %m\n");
-      exit(1);
-    }
-  if ( ifr.ifr_hwaddr.sa_family != ARPHRD_ETHER )
-    {
-      syslog(LOG_ERR,"dhcpStart: interface %s is not Ethernet\n",ifr.ifr_name);
-      exit(1);
-    }
-  if ( setsockopt(dhcpSocket,SOL_SOCKET,SO_BROADCAST,&o,sizeof(o)) == -1 )
-    {
-      syslog(LOG_ERR,"dhcpStart: setsockopt: %m\n");
-      exit(1);
-    }
-  ifr.ifr_flags = IFF_UP | IFF_BROADCAST | IFF_MULTICAST| IFF_NOTRAILERS | IFF_RUNNING;
-  if ( ioctl(dhcpSocket,SIOCSIFFLAGS,&ifr) )
-    {
-      syslog(LOG_ERR,"dhcpStart: ioctl SIOCSIFFLAGS: %m\n");
-      exit(1);
-    }
-  memcpy(ClientHwAddr,ifr.ifr_hwaddr.sa_data,ETHER_ADDR_LEN);
   return &dhcpInit;
 }
 /*****************************************************************************/
@@ -859,14 +828,11 @@ void *dhcpRebind()
 /*****************************************************************************/
 void *dhcpRelease()
 {
-  struct sockaddr addr;
   deleteDhcpCache();
   if ( DhcpIface.client_iaddr == 0 ) return &dhcpInit;
 
   buildDhcpRelease(random());
 
-  memset(&addr,0,sizeof(struct sockaddr));
-  memcpy(addr.sa_data,IfName,IfName_len);
   if ( DebugFlag )
     syslog(LOG_DEBUG,"sending DHCP_RELEASE for %u.%u.%u.%u to %u.%u.%u.%u\n",
 	   ((unsigned char *)&DhcpIface.client_iaddr)[0],
@@ -877,10 +843,9 @@ void *dhcpRelease()
 	   ((unsigned char *)&DhcpIface.server_iaddr)[1],
 	   ((unsigned char *)&DhcpIface.server_iaddr)[2],
 	   ((unsigned char *)&DhcpIface.server_iaddr)[3]);
-  if ( sendto(dhcpSocket,&UdpIpMsg,sizeof(struct ether_header)+
-	      sizeof(udpiphdr)+sizeof(dhcpMessage),0,
-	      &addr,sizeof(struct sockaddr)) == -1 )
-    syslog(LOG_ERR,"dhcpRelease: sendto: %m\n");
+  if ( bpfSendFrame(dhcpSocket,&UdpIpMsg,sizeof(struct ether_header)+
+	      sizeof(udpiphdr)+sizeof(dhcpMessage)) == -1 )
+    syslog(LOG_ERR,"dhcpRelease: bpfSendFrame: %m\n");
   arpRelease(); /* clear ARP cache entries for client IP addr */
   return &dhcpInit;
 }
@@ -917,7 +882,6 @@ void *dhcpStop()
 #ifdef ARPCHECK
 void *dhcpDecline()
 {
-  struct sockaddr addr;
   memset(&UdpIpMsg,0,sizeof(udpipMessage));
   memcpy(UdpIpMsg.ethhdr.ether_dhost,MAC_BCAST_ADDR,ETHER_ADDR_LEN);
   memcpy(UdpIpMsg.ethhdr.ether_shost,ClientHwAddr,ETHER_ADDR_LEN);
@@ -925,13 +889,10 @@ void *dhcpDecline()
   buildDhcpDecline(random());
   udpipgen((udpiphdr *)&UdpIpMsg.udpipmsg,0,INADDR_BROADCAST,
   htons(DHCP_CLIENT_PORT),htons(DHCP_SERVER_PORT),sizeof(dhcpMessage));
-  memset(&addr,0,sizeof(struct sockaddr));
-  memcpy(addr.sa_data,IfName,IfName_len);
   if ( DebugFlag ) syslog(LOG_DEBUG,"broadcasting DHCP_DECLINE\n");
-  if ( sendto(dhcpSocket,&UdpIpMsg,sizeof(struct ether_header)+
-	      sizeof(udpiphdr)+sizeof(dhcpMessage),0,
-	      &addr,sizeof(struct sockaddr)) == -1 )
-    syslog(LOG_ERR,"dhcpDecline: sendto: %m\n");
+  if ( bpfSendFrame(dhcpSocket,&UdpIpMsg,sizeof(struct ether_header)+
+	      sizeof(udpiphdr)+sizeof(dhcpMessage)) == -1 )
+    syslog(LOG_ERR,"dhcpDecline: bpfSendFrame: %m\n");
   return &dhcpInit;
 }
 #endif

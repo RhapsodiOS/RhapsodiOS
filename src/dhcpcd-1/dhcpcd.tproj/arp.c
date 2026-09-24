@@ -27,6 +27,7 @@
 #include <string.h>
 #include <syslog.h>
 #include "client.h"
+#include "bpfif.h"
 
 typedef struct arpMessage
 {
@@ -54,8 +55,7 @@ extern	unsigned char	ClientHwAddr[ETHER_ADDR_LEN];
 int arpCheck()
 {
   arpMessage ArpMsgSend,ArpMsgRecv;
-  struct sockaddr addr;
-  int j,i=0;
+  int i=0;
 
   memset(&ArpMsgSend,0,sizeof(arpMessage));
   memcpy(ArpMsgSend.ethhdr.ether_dhost,MAC_BCAST_ADDR,ETHER_ADDR_LEN);
@@ -79,24 +79,19 @@ int arpCheck()
       do
     	{
       	  if ( i++ > 4 ) return 0; /*  5 probes  */
-      	  memset(&addr,0,sizeof(struct sockaddr));
-      	  memcpy(addr.sa_data,IfName,IfName_len);
-      	  if ( sendto(dhcpSocket,&ArpMsgSend,sizeof(arpMessage),0,
-	   	&addr,sizeof(struct sockaddr)) == -1 )
+      	  if ( bpfSendFrame(dhcpSocket,&ArpMsgSend,sizeof(arpMessage)) == -1 )
 	    {
-	      syslog(LOG_ERR,"arpCheck: sendto: %m\n");
+	      syslog(LOG_ERR,"arpCheck: bpfSendFrame: %m\n");
 	      return -1;
 	    }
     	}
-      while ( peekfd(dhcpSocket,50000) ); /* 50 msec timeout */
+      while ( bpfPeek(dhcpSocket,50000) ); /* 50 msec timeout */
       do
     	{
       	  memset(&ArpMsgRecv,0,sizeof(arpMessage));
-      	  j=sizeof(struct sockaddr);
-      	  if ( recvfrom(dhcpSocket,&ArpMsgRecv,sizeof(arpMessage),0,
-		    (struct sockaddr *)&addr,&j) == -1 )
+      	  if ( bpfRecvFrame(dhcpSocket,&ArpMsgRecv,sizeof(arpMessage)) == -1 )
     	    {
-      	      syslog(LOG_ERR,"arpCheck: recvfrom: %m\n");
+      	      syslog(LOG_ERR,"arpCheck: bpfRecvFrame: %m\n");
       	      return -1;
     	    }
 	  if ( ArpMsgRecv.ethhdr.ether_type != htons(ETHERTYPE_ARP) )
@@ -138,7 +133,7 @@ int arpCheck()
 	    }
       	  return 1;
     	}
-      while ( peekfd(dhcpSocket,50000) == 0 );
+      while ( bpfPeek(dhcpSocket,50000) == 0 );
     }
   while ( 1 );
   return 0;
@@ -148,7 +143,6 @@ int arpCheck()
 int arpRelease()  /* sends UNARP message, cf. RFC1868 */
 {
   arpMessage ArpMsgSend;
-  struct sockaddr addr;
 
 /* build Ethernet header */
   memset(&ArpMsgSend,0,sizeof(arpMessage));
@@ -164,12 +158,9 @@ int arpRelease()  /* sends UNARP message, cf. RFC1868 */
   *(unsigned int *)ArpMsgSend.sInaddr=DhcpIface.client_iaddr;
   *(unsigned int *)ArpMsgSend.tInaddr=INADDR_BROADCAST;
  
-  memset(&addr,0,sizeof(struct sockaddr));
-  memcpy(addr.sa_data,IfName,IfName_len);
-  if ( sendto(dhcpSocket,&ArpMsgSend,sizeof(arpMessage),0,
-	      &addr,sizeof(struct sockaddr)) == -1 )
+  if ( bpfSendFrame(dhcpSocket,&ArpMsgSend,sizeof(arpMessage)) == -1 )
     {
-      syslog(LOG_ERR,"arpRelease: sendto: %m\n");
+      syslog(LOG_ERR,"arpRelease: bpfSendFrame: %m\n");
       return -1;
     }
   return 0;
@@ -178,7 +169,6 @@ int arpRelease()  /* sends UNARP message, cf. RFC1868 */
 int arpInform()
 {
   arpMessage ArpMsgSend;
-  struct sockaddr addr;
 
   memset(&ArpMsgSend,0,sizeof(arpMessage));
   memcpy(ArpMsgSend.ethhdr.ether_dhost,MAC_BCAST_ADDR,ETHER_ADDR_LEN);
@@ -195,12 +185,9 @@ int arpInform()
   *(unsigned int *)ArpMsgSend.sInaddr=DhcpIface.client_iaddr;
   *(unsigned int *)ArpMsgSend.tInaddr=INADDR_BROADCAST;
  
-  memset(&addr,0,sizeof(struct sockaddr));
-  memcpy(addr.sa_data,IfName,IfName_len);
-  if ( sendto(dhcpSocket,&ArpMsgSend,sizeof(arpMessage),0,
-	      &addr,sizeof(struct sockaddr)) == -1 )
+  if ( bpfSendFrame(dhcpSocket,&ArpMsgSend,sizeof(arpMessage)) == -1 )
     {
-      syslog(LOG_ERR,"arpInform: sendto: %m\n");
+      syslog(LOG_ERR,"arpInform: bpfSendFrame: %m\n");
       return -1;
     }
   return 0;

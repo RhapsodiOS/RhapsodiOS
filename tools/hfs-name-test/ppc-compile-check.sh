@@ -16,6 +16,7 @@ set -e
 base=$1
 here=$(cd "$(dirname "$0")" && pwd)
 root=$(git -C "$here" rev-parse --show-toplevel)
+git -C "$root" rev-parse --verify --quiet "$base^{commit}" >/dev/null || { echo "bad BASE-REV: $base" >&2; exit 2; }
 hfs=src/kernel-7/bsd/hfs
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT

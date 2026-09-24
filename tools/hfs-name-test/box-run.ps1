@@ -7,7 +7,7 @@ $ErrorActionPreference = 'Stop'
 if ($env:RHAP_VM_DIR) { $script:RhapVmDir = $env:RHAP_VM_DIR }
 . (Join-Path $PSScriptRoot '..\..\vm\rhap-remote.ps1')
 $cfg = Get-RhapVmConfig -DiePrefix 'hfs-name-test'
-$ssh = Resolve-RhapTool -Name $cfg.Ssh -Kind 'ssh'
+$ssh = Resolve-RhapTool -NameOrPath $cfg.Ssh -DiePrefix 'hfs-name-test'
 Invoke-RhapSshCapture -Cfg $cfg -Ssh $ssh -ScriptBody (Get-Content -LiteralPath $ScriptFile -Raw)
 $r = $script:RhapLastSshCapture
 [Console]::Out.Write($r.Stdout)

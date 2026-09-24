@@ -56,11 +56,11 @@ if [ -s /etc/iftab ]; then
 		    continue
 		fi
 
-		# Start by getting bootpc data
+		# Start by getting dhcpcd data
 		ifconfig "${if}" 0.0.0.0 netmask 255.0.0.0 broadcast 255.255.255.255 > /dev/null
 		route add -net 255.255.255.255 -netmask 255.0.0.0 0.0.0.0 -iface     > /dev/null
-		echo -n "    Trying BOOTP for interface ${if}:"
-		if config=$(bootpc "${if}"); then
+		echo -n "    Trying DHCP for interface ${if}:"
+		if config=$(dhcpcd -w "${if}"); then
 		    SetNetConfig "${if}" ${config}
 		    echo " got response from" $(GetNetConfig "${if}" server_ip_address)
 		else

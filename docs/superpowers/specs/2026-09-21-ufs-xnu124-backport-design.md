@@ -304,14 +304,18 @@ of range" on the 4 GB constant, which change 2's helper moved verbatim. This
 kernel differs from the first round's, and it carries the final message
 strings.
 
-**ppc: every changed file compiled without error**, in keep-going mode. The
-full ppc build does not complete on the box, for two reasons unrelated to this
-work:
-- `conf/Makefile.ppc:61` uses a GNU Make target-specific variable (from
-  `a5236b800`, the msdosfs work) that GNU Make 3.74 cannot parse;
-- the final link wants a `pexpertpowermac.o` that is not present.
+**ppc: every changed file compiled without error.** The build still does not
+produce a kernel, for reasons unrelated to this work:
+- The first ppc attempt stopped at `fdesc_vnops.o`. There, `conf/Makefile.ppc:61`
+  uses a GNU Make target-specific variable (from `a5236b800`, the msdosfs work)
+  that the box's GNU Make 3.74 cannot parse. Keep-going mode (`MAKEFLAGS=k`) got
+  past it.
+- By the rebuild, `fdesc_vnops.c` compiled on the shared box. The only failure
+  left was the final link, which wants a `pexpertpowermac.o` the box does not
+  have.
 
-Both are filed separately.
+The Makefile problem is filed separately. This branch syncs neither `conf/` nor
+the platform expert.
 
 ### Boot harness
 
@@ -393,4 +397,6 @@ recorded as follow-up work.
 - **The override needs reconciling at merge.** The harness depends on the
   `RHAP_TEST_IMAGE` override. master has since given `Guest` an `image=`
   parameter of its own (`4f3288045`), and the two need reconciling when this
-  branch merges.
+  branch merges. When they are, the `--persist` guard must check that `image`
+  argument rather than the module-level `IMAGE`. Otherwise
+  `Guest(persist=True, image=...)` would get past it.

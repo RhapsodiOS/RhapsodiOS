@@ -157,8 +157,8 @@ Setting the opt-in `RHAP_TEST_IMAGE` environment variable to an absolute path
 lets a session use its own working image: `check_target` then accepts that
 path too, but still refuses `golden.img` and `rhapsody.vmdk` even if the
 variable names them. `guest-console.py` boots the `RHAP_TEST_IMAGE` image
-instead of `work/test.img`; it does not call `check_target`, so never point the
-variable at `golden.img` or `rhapsody.vmdk`.
+instead of `work/test.img`. With `--persist` it calls `check_target` first;
+snapshot boots never write the image.
 
 ## reset-image.cmd
 

@@ -108,9 +108,12 @@ errors**: `hfs_vfsops.c`, `hfs_vnodeops.c`, `hfs_btreeio.c`, `BTreeNodeOps.c`,
   example, `cluster_close`'s implicit declaration is reported at
   `hfs_vnodeops.c:592`, exactly where B2 put it.
 
-No warning falls on a line this series introduced. The full ppc build still
-needs keep-going mode because of an unrelated `conf/Makefile.ppc` problem,
-which is filed separately.
+No warning falls on a line this series introduced, apart from `cluster_close`'s
+implicit declaration, which is old code that B2 moved verbatim. The full ppc
+build still does not link, for reasons unrelated to this work:
+- the final link wants a `pexpertpowermac.o` the box lacks;
+- the first attempt stopped even earlier, on a `conf/Makefile.ppc` line the
+  box's GNU Make cannot parse. That is filed separately.
 
 That compile is the gate this spec set. It is also the only hard check these
 fixes have had, because there is no ppc machine or emulator here to run them.

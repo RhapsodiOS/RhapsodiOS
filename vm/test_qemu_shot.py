@@ -128,6 +128,16 @@ class TestBuildQemuArgs(unittest.TestCase):
             "work/test.img", 1234, False, "out/serial.log", mem="4096")
         self.assertEqual(args[args.index("-m") + 1], "4096")
 
+    def test_cpu_defaults_to_pentium(self):
+        args = qemu_shot.build_qemu_args("work/test.img", 1234, False, "out/serial.log")
+        self.assertEqual(args[args.index("-cpu") + 1], "pentium")
+
+    def test_cpu_is_overridable(self):
+        args = qemu_shot.build_qemu_args(
+            "work/test.img", 1234, False, "out/serial.log", mem="4096", cpu="pentium2")
+        self.assertEqual(args[args.index("-cpu") + 1], "pentium2")
+        self.assertEqual(args[args.index("-m") + 1], "4096")
+
 
 class TestImageGuard(unittest.TestCase):
     """Finding 1: qemu-shot.py must refuse any image that is not

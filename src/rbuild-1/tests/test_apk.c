@@ -1300,6 +1300,52 @@ TEST(test_architecture_use) {
     { char command[256]; sprintf(command,"rm -rf %s",scratch); system(command); }
 }
 
+/* Vendored upstream tarballs are not APKs: an old-GNU header, which
+   apk_validate rejects (test_rejects_oldgnu_header_layout), must extract. */
+TEST(test_untar_extracts_oldgnu_upstream_archive) {
+    char scratch[128];
+    char archive[192];
+    char root[192];
+    char extracted[256];
+    Toolchain tc;
+    TarEntry entries[] = {
+        { "widget-1.0/hello.txt", '0', 0, "orig\n", ENTRY_OLDGNU }
+    };
+
+    make_scratch(scratch, sizeof(scratch), "untar");
+    sprintf(archive, "%s/widget-1.0.tar.gz", scratch);
+    sprintf(root, "%s/root", scratch);
+    sprintf(extracted, "%s/widget-1.0/hello.txt", root);
+    CHECK_INT(make_apk(archive, entries, 1), 0);
+    CHECK_INT(mkdir(root, 0700), 0);
+    init_toolchain(&tc);
+    CHECK_INT(apk_untar(archive, root, &tc), 0);
+    CHECK(access(extracted, F_OK) == 0);
+    CHECK_INT(exec_runv("/bin/rm", "-rf", scratch, (char *)0), 0);
+}
+
+TEST(test_untar_missing_archive_fails) {
+    Toolchain tc;
+    init_toolchain(&tc);
+    CHECK_INT(apk_untar("/tmp/rbuild-no-such-archive.tar.gz", "/tmp", &tc), 1);
+}
+
+TEST(test_untar_dry_run_touches_nothing) {
+    char scratch[128];
+    char root[192];
+    char archive[192];
+
+    make_scratch(scratch, sizeof(scratch), "untardry");
+    sprintf(root, "%s/root", scratch);
+    sprintf(archive, "%s/none.tar.gz", scratch);
+    exec_dry_run = 1;
+    /* root does not exist and the archive is missing: dry-run still only prints */
+    CHECK_INT(apk_untar(archive, root, 0), 0);
+    exec_dry_run = 0;
+    CHECK(access(root, F_OK) != 0);
+    CHECK_INT(exec_runv("/bin/rm", "-rf", scratch, (char *)0), 0);
+}
+
 static void run_all(void) {
     RUN(test_architecture_use);
     RUN(test_default_extractor_handles_forward_symlink);
@@ -1326,6 +1372,9 @@ static void run_all(void) {
     RUN(test_quarantine_immediate_publish_replacement_is_preserved);
     RUN(test_quarantine_crash_never_leaves_empty_destination);
     RUN(test_quarantine_symlink_preserves_target);
+    RUN(test_untar_extracts_oldgnu_upstream_archive);
+    RUN(test_untar_missing_archive_fails);
+    RUN(test_untar_dry_run_touches_nothing);
 }
 
 TEST_MAIN()

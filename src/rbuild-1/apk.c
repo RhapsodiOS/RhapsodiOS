@@ -1078,6 +1078,36 @@ int apk_extract(const char *path, const char *root, const Toolchain *tc) {
     return apk_extract_identity(path, root, tc, 0, 0, 0);
 }
 
+int apk_untar(const char *path, const char *root, const Toolchain *tc) {
+    Toolchain fallback;
+    int fd;
+    int rc;
+
+    if (exec_dry_run) {
+        printf("extract %s into %s\n", path, root);
+        fflush(stdout);
+        return 0;
+    }
+    if (!tc) {
+        toolchain_init(&fallback);
+        fallback.tar = FALLBACK_TAR; fallback.gzip = "gzip";
+        tc = &fallback;
+    }
+    if (!valid_tools(tc)) {
+        fprintf(stderr, "rbuild: missing configured tar/gzip\n");
+        return 1;
+    }
+    fd = open(path, O_RDONLY);
+    if (fd < 0) {
+        fprintf(stderr, "rbuild: unable to open %s\n", path);
+        return 1;
+    }
+    rc = tar_pipeline(fd, root, 0, tc);
+    close(fd);
+    if (rc) fprintf(stderr, "rbuild: unable to extract %s\n", path);
+    return rc;
+}
+
 static void remove_own_link(const char *path, const struct stat *source) {
     struct stat current;
     if (lstat(path, &current) == 0 && current.st_dev == source->st_dev &&

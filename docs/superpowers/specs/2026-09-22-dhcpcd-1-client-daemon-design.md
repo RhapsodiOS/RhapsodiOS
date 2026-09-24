@@ -94,14 +94,21 @@ of this work.
    aggregate wraps it the way `src/bootp-1/Makefile` wraps its tools, even
    though this project starts with a single tool.
 2. **Portability pass** over the vendored source, fixing only what's
-   Linux-specific: the `<net/ethernet.h>` include (→ `<net/etherdefs.h>`),
-   and the `SIOCADDRT`/`struct rtentry` route-add call in `dhcpConfig()`
-   (→ a `PF_ROUTE` routing-socket message, the BSD equivalent). Everything
+   Linux-specific: the `<net/ethernet.h>` include (→ `<netinet/if_ether.h>`
+   with the prerequisite headers userland code here includes before it, plus
+   a fallback `ETHER_ADDR_LEN`, which this tree doesn't define), the headers
+   `netinet/ip.h` needs in `udpipgen.h`, and the `SIOCADDRT`/`struct
+   rtentry` route-add call in `dhcpConfig()` (→ a `PF_ROUTE` routing-socket
+   message in a new `rtsock.c`, encoded the way `route(8)` encodes it, which
+   also updates the route on renewal if the router changes). Everything
    else the source touches (`SIOCSIFADDR`/`SIOCSIFNETMASK`/`SIOCSIFBRDADDR`/
    `SIOCSIFFLAGS`, `struct ether_header` field names, `ARPHRD_ETHER`,
    `IFF_UP`/`IFF_BROADCAST`/`IFF_MULTICAST`/`IFF_NOTRAILERS`/`IFF_RUNNING`)
    is already confirmed present and BSD-compatible in this tree's headers —
    no change needed. Self-contained — no dependency on `bootplib`.
+   Upstream's `/etc/resolv.conf` handling is kept as-is: dhcpcd saves the
+   existing file as `resolv.conf.sv`, writes one from the DHCP server's DNS
+   options, and restores the saved copy when it stops.
 3. **New BSD/BPF backend** (`bpfif.c`/`bpfif.h`, new files) replacing the
    Linux-only raw-packet layer: opening `/dev/bpf*` and binding it to an
    interface via `BIOCSETIF`/`BIOCIMMEDIATE`, reading the interface's MAC
@@ -132,8 +139,10 @@ of this work.
 2. `src/dhcpcd-1/{PB.project,Makefile,Makefile.preamble,Makefile.postamble}`
    plus `dhcpcd.tproj/{PB.project,Makefile,Makefile.preamble,
    Makefile.postamble}`, mirroring `bootpc.tproj`.
-3. Portability pass: `<net/ethernet.h>` → `<net/etherdefs.h>`, and the
-   `SIOCADDRT` route-add call → a `PF_ROUTE` routing-socket message.
+3. Portability pass: `<net/ethernet.h>` → `<netinet/if_ether.h>` plus
+   `ETHER_ADDR_LEN`, `netinet/ip.h`'s prerequisites in `udpipgen.h`, and the
+   `SIOCADDRT` route-add call → a `PF_ROUTE` routing-socket message
+   (`rtsock.c`).
 4. New `bpfif.c`/`bpfif.h` BSD/BPF backend, wired to `/dev/bpf*` and the
    `PostLoad` device-node convention, replacing the Linux `SOCK_PACKET`
    layer in `client.c` and `arp.c`.
@@ -163,6 +172,8 @@ of this work.
 
 - `src/dhcpcd-1/` — new project (vendored + adapted source, build files).
 - `src/files-5/private/etc/startup/0800_Network` — one-line change.
+- `src/files-5/private/etc/Makefile` — creates an empty `/etc/dhcpc`, where
+  dhcpcd keeps its lease cache and info file.
 - `bootpc`/`bootpd`/`bootplib` unchanged.
 
 ## Out of scope

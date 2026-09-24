@@ -4,7 +4,7 @@
 
 **Goal:** Port dhcpcd 1.3.17-pl2 into `src/dhcpcd-1`, with a new BSD/BPF raw-packet backend replacing its Linux `SOCK_PACKET` layer, so it can replace the one-shot `bootpc` call in `0800_Network` with a persistent, lease-renewing DHCP client.
 
-**Architecture:** Vendor dhcpcd's upstream C source largely unchanged (its DHCP state machine, option parsing, and UDP/IP header building are already portable). Replace only its Linux-specific raw-Ethernet I/O with a new `bpfif.c` module built on `/dev/bpf*`, following the same `AF_LINK`/`sockaddr_dl` idiom this tree's `bootplib/interfaces.c` already uses for reading a MAC address. Add a small `bootcompat.c` module so a new `-w` flag lets the boot script capture dhcpcd's first lease the same way it captures `bootpc`'s today.
+**Architecture:** Vendor dhcpcd's upstream C source largely unchanged (its DHCP state machine, option parsing, and UDP/IP header building are already portable). Replace only its Linux-specific raw-Ethernet I/O with a new `bpfif.c` module built on `/dev/bpf*`, following the same `AF_LINK`/`sockaddr_dl` idiom this tree's `bootplib/interfaces.c` already uses for reading a MAC address, and its Linux route ioctl with a new `rtsock.c` module that installs the default route through a `PF_ROUTE` socket the way `route(8)` does. Add a small `bootcompat.c` module so a new `-w` flag lets the boot script capture dhcpcd's first lease the same way it captures `bootpc`'s today.
 
 **Tech Stack:** Plain K&R-ish C, `pb_makefiles`/`tool.make` (NeXT/Apple Project Builder build system), 4.4BSD `ioctl`s, 4.4BSD BPF (`net/bpf.h`).
 
@@ -32,6 +32,15 @@
   Linux ELF binary `dhcpcd`, the trivial `dhcpcd-eth0.exe` hook script, and
   `dhcpcd-1.3.17.lsm` are not vendored — they're Linux-distro packaging
   artifacts irrelevant to this port.
+- Work happens in a git worktree. Every path in this plan is relative to the
+  worktree root (`git rev-parse --show-toplevel`); never write into the main
+  checkout. Shell state does not persist between separate commands, so set any
+  variable you need in the same command that uses it.
+- Scratch files go in the scratch directory the controller names as `SCRATCH`
+  in the dispatch, never `/tmp` and never inside the repository.
+- Commit messages are the single subject line shown in each task's commit
+  step: no body, no `Co-Authored-By` or other trailer (`CLAUDE.md`: one to two
+  lines, no metadata).
 
 ---
 
@@ -48,12 +57,14 @@
   = 1`, `routersOnSubnet = 3`, `hostName = 12`, `dhcpMessageType = 53`, …)
   exactly as upstream wrote them — later tasks rely on these names unchanged.
 
-- [ ] **Step 1: Download and verify the tarball**
+- [ ] **Step 1: Obtain and verify the tarball**
+
+If `$SCRATCH/dhcpcd_1.3.17pl2.orig.tar.gz` already exists, the download is
+skipped; either way the checksum is what decides.
 
 ```bash
-mkdir -p /tmp/dhcpcd-vendor
-cd /tmp/dhcpcd-vendor
-curl -sSL -o dhcpcd_1.3.17pl2.orig.tar.gz \
+cd "$SCRATCH"
+[ -f dhcpcd_1.3.17pl2.orig.tar.gz ] || curl -sSL -o dhcpcd_1.3.17pl2.orig.tar.gz \
   "https://snapshot.debian.org/file/418c0658b35ea3a2900ecb7812a3164bfe1f63e1"
 sha1sum dhcpcd_1.3.17pl2.orig.tar.gz
 ```
@@ -63,20 +74,21 @@ Stop and do not proceed if this doesn't match exactly.
 
 - [ ] **Step 2: Extract and copy only the top-level sources**
 
+Run from the worktree root. The tarball is re-extracted fresh so Step 4
+compares against a pristine copy.
+
 ```bash
-cd /tmp/dhcpcd-vendor
+WT=$(git rev-parse --show-toplevel)
+cd "$SCRATCH"
+rm -rf dhcpcd-1.3.17-pl2
 tar xzf dhcpcd_1.3.17pl2.orig.tar.gz
-mkdir -p /d/RhapsodiOS/src/dhcpcd-1/dhcpcd.tproj
+mkdir -p "$WT/src/dhcpcd-1/dhcpcd.tproj"
 cd dhcpcd-1.3.17-pl2
 cp arp.c buildmsg.c buildmsg.h client.c client.h dhcpcd.c dhcpcd.h \
    peekfd.c pathnames.h signals.c signals.h udpipgen.c udpipgen.h \
    dhcpcd.8 README Changes \
-   /d/RhapsodiOS/src/dhcpcd-1/dhcpcd.tproj/
+   "$WT/src/dhcpcd-1/dhcpcd.tproj/"
 ```
-
-(Adjust the `/d/RhapsodiOS` path prefix to match the actual working directory
-if it differs — this plan was written against `D:\RhapsodiOS` under Git
-Bash, where that maps to `/d/RhapsodiOS`.)
 
 - [ ] **Step 3: Write the provenance note**
 
@@ -101,9 +113,17 @@ the prebuilt Linux ELF binary `dhcpcd`, `dhcpcd-eth0.exe`, and
 carried over.
 
 Upstream's raw-packet layer (`arp.c`, and the socket/ioctl calls in
-`client.c`) targets Linux `SOCK_PACKET`/`AF_PACKET` — there is no BSD/BPF
-variant of this lineage to port instead. `bpfif.c`/`bpfif.h` (added in this
-project, not part of upstream) replace that layer with a BSD BPF backend.
+`client.c`) targets Linux `SOCK_PACKET`/`AF_PACKET`, and its default-route
+code uses Linux's `SIOCADDRT` ioctl — there is no BSD variant of this lineage
+to port instead. Three pairs of files in `dhcpcd.tproj/` are new to this
+project, not part of upstream:
+
+- `bpfif.c`/`bpfif.h` — BSD BPF raw-Ethernet backend replacing `SOCK_PACKET`.
+- `rtsock.c`/`rtsock.h` — `PF_ROUTE` routing-socket default route replacing
+  `SIOCADDRT`.
+- `bootcompat.c`/`bootcompat.h` — bootpc-compatible `key=value` output for
+  the `-w` flag.
+
 See `docs/superpowers/specs/2026-09-22-dhcpcd-1-client-daemon-design.md` for
 the full design.
 ```
@@ -111,10 +131,10 @@ the full design.
 - [ ] **Step 4: Verify the copy is complete and untouched**
 
 ```bash
-cd /d/RhapsodiOS
 for f in arp.c buildmsg.c buildmsg.h client.c client.h dhcpcd.c dhcpcd.h \
-         peekfd.c pathnames.h signals.c signals.h udpipgen.c udpipgen.h; do
-  diff -q "/tmp/dhcpcd-vendor/dhcpcd-1.3.17-pl2/$f" \
+         peekfd.c pathnames.h signals.c signals.h udpipgen.c udpipgen.h \
+         dhcpcd.8 README Changes; do
+  diff -q "$SCRATCH/dhcpcd-1.3.17-pl2/$f" \
           "src/dhcpcd-1/dhcpcd.tproj/$f" || echo "MISMATCH: $f"
 done
 ```
@@ -126,16 +146,7 @@ no "MISMATCH" lines).
 
 ```bash
 git add src/dhcpcd-1/
-git commit -m "$(cat <<'EOF'
-dhcpcd-1: vendor dhcpcd 1.3.17-pl2 (GPLv2)
-
-Unmodified upstream source, top-level files only. Its raw-packet
-layer is Linux-only; subsequent commits add a BSD/BPF backend and
-the RhapsodiOS project build files.
-
-Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
-EOF
-)"
+git commit -m "dhcpcd-1: vendor dhcpcd 1.3.17-pl2 (GPLv2)"
 ```
 
 ---
@@ -165,19 +176,32 @@ EOF
 - [ ] **Step 1: Copy the sibling boilerplate as a starting point**
 
 ```bash
-cd /d/RhapsodiOS
 cp src/bootp-1/Makefile.preamble src/dhcpcd-1/Makefile.preamble
 cp src/bootp-1/Makefile.postamble src/dhcpcd-1/Makefile.postamble
 cp src/bootp-1/bootpc.tproj/Makefile.preamble src/dhcpcd-1/dhcpcd.tproj/Makefile.preamble
 cp src/bootp-1/bootpc.tproj/Makefile.postamble src/dhcpcd-1/dhcpcd.tproj/Makefile.postamble
 ```
 
-`bootp-1`'s top `Makefile.preamble` and `bootpc.tproj`'s `Makefile.preamble`
-are identical boilerplate except for one line (`OTHER_LIBS=-lbootplib` /
-`AFTER_INSTALL=after_install` at the very end of the top-level one) — this
-project needs neither, since it doesn't share `bootplib` and has no
-NetInfo-cleanup postinstall step, so nothing further needs to change in
-either copied `Makefile.preamble`.
+`bootp-1`'s top-level `Makefile.preamble` is pure boilerplate and needs no
+change. `bootpc.tproj`'s `Makefile.preamble` ends with two bootpc-specific
+lines this project must not inherit:
+
+```makefile
+OTHER_LIBS=-lbootplib
+AFTER_INSTALL=after_install
+```
+
+dhcpcd doesn't link `bootplib` and has no postinstall hook. Delete exactly
+those two lines — the last two in the file — from
+`src/dhcpcd-1/dhcpcd.tproj/Makefile.preamble`. Leave everything else as
+copied, including the uncommented `OTHER_GENERATED_OFILES = $(VERS_OFILE)`
+line, which the sibling Tool project also has.
+
+```bash
+diff src/bootp-1/bootpc.tproj/Makefile.preamble src/dhcpcd-1/dhcpcd.tproj/Makefile.preamble
+```
+
+Expected: exactly those two lines reported as deleted, nothing else.
 
 - [ ] **Step 2: Write the top-level aggregate `Makefile`**
 
@@ -277,11 +301,11 @@ NAME = dhcpcd
 PROJECTVERSION = 2.8
 PROJECT_TYPE = Tool
 
-CFILES = arp.c bootcompat.c bpfif.c buildmsg.c client.c dhcpcd.c peekfd.c signals.c udpipgen.c
+CFILES = arp.c bootcompat.c bpfif.c buildmsg.c client.c dhcpcd.c peekfd.c rtsock.c signals.c udpipgen.c
 
 OTHERSRCS = Makefile.preamble Makefile Makefile.postamble \
 	bootcompat.h bpfif.h buildmsg.h client.h dhcpcd.h pathnames.h \
-	signals.h udpipgen.h dhcpcd.8 README Changes
+	rtsock.h signals.h udpipgen.h dhcpcd.8 README Changes
 
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
@@ -311,9 +335,10 @@ include $(MAKEFILEDIR)/$(MAKEFILE)
 -include Makefile.dependencies
 ```
 
-Note: `bootcompat.{c,h}` and `bpfif.{c,h}` are listed here even though Tasks
-4 and 6 create them — this file only needs to exist once, and the `CFILES`
-list is the complete, final list this Tool project builds.
+Note: `rtsock.{c,h}`, `bpfif.{c,h}` and `bootcompat.{c,h}` are listed here
+even though Tasks 3, 4 and 6 create them — this file only needs to exist
+once, and the `CFILES` list is the complete, final list this Tool project
+builds.
 
 - [ ] **Step 5: Write `dhcpcd.tproj/PB.project`**
 
@@ -327,8 +352,8 @@ Project Builder's file table matches the `Makefile`):
     FILESTABLE = {
         FRAMEWORKS = ();
         FRAMEWORKSEARCH = ();
-        OTHER_LINKED = (arp.c, bootcompat.c, bpfif.c, buildmsg.c, client.c, dhcpcd.c, peekfd.c, signals.c, udpipgen.c);
-        OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble, bootcompat.h, bpfif.h, buildmsg.h, client.h, dhcpcd.h, pathnames.h, signals.h, udpipgen.h, dhcpcd.8, README, Changes);
+        OTHER_LINKED = (arp.c, bootcompat.c, bpfif.c, buildmsg.c, client.c, dhcpcd.c, peekfd.c, rtsock.c, signals.c, udpipgen.c);
+        OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble, bootcompat.h, bpfif.h, buildmsg.h, client.h, dhcpcd.h, pathnames.h, rtsock.h, signals.h, udpipgen.h, dhcpcd.8, README, Changes);
     };
     LANGUAGE = English;
     LOCALIZABLE_FILES = {};
@@ -352,7 +377,6 @@ Project Builder's file table matches the `Makefile`):
 - [ ] **Step 6: Verify structure against the sibling project**
 
 ```bash
-cd /d/RhapsodiOS
 diff <(grep -oE '^[A-Z_]+' src/bootp-1/Makefile) <(grep -oE '^[A-Z_]+' src/dhcpcd-1/Makefile)
 diff <(grep -oE '^[A-Z_]+' src/bootp-1/bootpc.tproj/Makefile) <(grep -oE '^[A-Z_]+' src/dhcpcd-1/dhcpcd.tproj/Makefile)
 ```
@@ -370,16 +394,7 @@ git add src/dhcpcd-1/PB.project src/dhcpcd-1/Makefile \
         src/dhcpcd-1/Makefile.preamble src/dhcpcd-1/Makefile.postamble \
         src/dhcpcd-1/dhcpcd.tproj/PB.project src/dhcpcd-1/dhcpcd.tproj/Makefile \
         src/dhcpcd-1/dhcpcd.tproj/Makefile.preamble src/dhcpcd-1/dhcpcd.tproj/Makefile.postamble
-git commit -m "$(cat <<'EOF'
-dhcpcd-1: add RhapsodiOS project build files
-
-Aggregate + Tool project mirroring src/bootp-1's layout, installing
-to /usr/sbin. References bootcompat.c/bpfif.c which land in later
-commits.
-
-Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
-EOF
-)"
+git commit -m "dhcpcd-1: add RhapsodiOS project build files"
 ```
 
 ---
@@ -388,22 +403,38 @@ EOF
 
 **Files:**
 - Modify: `src/dhcpcd-1/dhcpcd.tproj/client.h`
+- Modify: `src/dhcpcd-1/dhcpcd.tproj/udpipgen.h`
 - Modify: `src/dhcpcd-1/dhcpcd.tproj/client.c`
+- Create: `src/dhcpcd-1/dhcpcd.tproj/rtsock.h`
+- Create: `src/dhcpcd-1/dhcpcd.tproj/rtsock.c`
+- Reference (read-only): `src/Commands/network_cmds/route.tproj/route.c`
 
 **Interfaces:**
-- Consumes: `struct ether_header` from `<net/etherdefs.h>` (this tree —
+- Consumes: `struct ether_header` from `<netinet/if_ether.h>` (this tree —
   confirmed fields `ether_dhost`/`ether_shost`/`ether_type`, identical names
   to what upstream already uses, in `src/kernel-7/bsd/netinet/if_ether.h:76-79`).
-- Produces: `client.c` with no remaining Linux-only route-management code:
-  `dhcpConfig()` keeps setting the interface's address/netmask/broadcast via
-  `SIOCSIFADDR`/`SIOCSIFNETMASK`/`SIOCSIFBRDADDR` (already portable, no
-  change), but no longer attempts to install a default route itself.
+- Consumes: `struct rt_msghdr`, `RTM_VERSION`, `RTM_ADD`, `RTM_CHANGE`,
+  `RTA_DST`/`RTA_GATEWAY`/`RTA_NETMASK`, `RTF_UP`/`RTF_GATEWAY`/`RTF_HOST`/
+  `RTF_STATIC` from `src/kernel-7/bsd/net/route.h` (lines 144-220), and
+  `sin_len` in `struct sockaddr_in` (`netinet/in.h:154`).
+- Produces: `int rtsockAddDefault(unsigned int gateway, unsigned int ifaddr);`
+  (`rtsock.h`) — both arguments are IPv4 addresses in network byte order, as
+  `DhcpIface` stores them. Installs a default route via `gateway`; if the
+  kernel answers `ENETUNREACH` (gateway off our subnet) it first adds a host
+  route to `gateway` through our own address `ifaddr`, as upstream does, then
+  retries; if a default route already exists (`EEXIST`, e.g. on renewal) it
+  sends `RTM_CHANGE` so the route follows a changed router. Returns 0 on
+  success, -1 after logging the failure. `dhcpConfig()` keeps setting the
+  interface's address/netmask/broadcast via `SIOCSIFADDR`/`SIOCSIFNETMASK`/
+  `SIOCSIFBRDADDR` (already portable, no change) and calls this in place of
+  its Linux route code.
 
-This is the smallest task in the plan — everything else this dhcpcd source
-touches (`SIOCSIFADDR`/`SIOCSIFNETMASK`/`SIOCSIFBRDADDR`/`SIOCSIFFLAGS`,
-`ARPHRD_ETHER`, `IFF_UP`/`IFF_BROADCAST`/`IFF_MULTICAST`/`IFF_NOTRAILERS`/
-`IFF_RUNNING`) is already confirmed present with matching names and values in
-`src/kernel-7/bsd/net/{if,if_arp}.h`.
+Beyond the header and `ETHER_ADDR_LEN` fixes below, everything else this
+dhcpcd source touches (`SIOCSIFADDR`/`SIOCSIFNETMASK`/`SIOCSIFBRDADDR`/
+`SIOCSIFFLAGS`, `ARPHRD_ETHER`, `ARPOP_REQUEST`/`ARPOP_REPLY`,
+`ETHERTYPE_IP`/`ETHERTYPE_ARP`, `IPVERSION`/`IPDEFTTL`, `INADDR_BROADCAST`,
+`IFF_UP`/`IFF_BROADCAST`/`IFF_MULTICAST`/`IFF_NOTRAILERS`/`IFF_RUNNING`) is
+confirmed present with matching names in `src/kernel-7/bsd/{net,netinet}/`.
 
 - [ ] **Step 1: Swap the ethernet header include**
 
@@ -416,30 +447,198 @@ Old:
 
 New:
 ```c
-#include <net/etherdefs.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <net/if.h>
+#include <netinet/in.h>
+#include <netinet/if_ether.h>
+
+#ifndef ETHER_ADDR_LEN
+#define ETHER_ADDR_LEN		6
+#endif
 ```
 
-There is no `net/ethernet.h` anywhere in this tree; `net/etherdefs.h` is
-where `struct ether_header` (via `<netinet/if_ether.h>`) is actually
-declared here, with the same field names upstream already uses.
+There is no `net/ethernet.h` in this tree. Userland code here reaches
+`struct ether_header` through `<netinet/if_ether.h>`, which has no include
+guard and no includes of its own: it needs `sys/types.h`, `sys/socket.h`,
+`net/if.h` (which pulls in `net/if_arp.h` for `struct arphdr`) and
+`netinet/in.h` first. That is the order `rarpd` uses
+(`src/Commands/network_cmds/rarpd.tproj/rarpd.c:68-78`); `client.h` has to
+supply it itself because `signals.c` includes `client.h` with no network
+headers before it. The four prerequisite headers are all include-guarded, so
+files that also include them directly are unaffected. `<net/etherdefs.h>` is
+not used: it includes `<bsd/netinet/if_ether.h>`, a kernel-style path.
 
-- [ ] **Step 2: Remove the Linux-specific default-route installation**
+`ETHER_ADDR_LEN` is a Linux `<net/ethernet.h>` constant with no definition
+anywhere in this tree (the tree's own name for it is `NUM_EN_ADDR_BYTES` in
+`net/etherdefs.h`). `client.h`, `client.c` and `arp.c` use it for 6-byte
+hardware addresses.
 
-In `client.c`, `dhcpConfig()` currently declares a `struct rtentry rtent;`
-local and, after setting the interface's address/netmask/broadcast, uses
-`SIOCADDRT` (a Linux-only route ioctl taking a `struct rtentry`) to install
-a default route via the DHCP-supplied gateway, with a fallback that first
-adds a host route to the gateway if the direct attempt fails with
-`ENETUNREACH`. That whole block — from the `memset(&rtent,...)` right after
-the `SIOCSIFBRDADDR` call, through the final `else syslog(...)` of the
-`ioctl(s,SIOCADDRT,&rtent)` error handling, ending just before `close(s);
-arpInform();` — is replaced with a single log line. Default-route
-installation for this port happens once at boot, in `0800_Network`, from
-this daemon's own `-w` output (Task 6); a route change mid-lease is not
-picked up until the next boot. Rewriting this as a BSD `PF_ROUTE` routing
-socket message is real, fiddly, unverifiable-without-a-compiler code for a
-feature this port doesn't rely on — see the plan's commit message and
-`PROVENANCE.md` for this documented limitation.
+- [ ] **Step 2: Give `udpipgen.h` the headers `netinet/ip.h` needs**
+
+In `udpipgen.h`:
+
+Old:
+```c
+#include <netinet/ip.h>
+```
+
+New:
+```c
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <netinet/in_systm.h>
+#include <netinet/ip.h>
+```
+
+This tree's `netinet/ip.h` has no includes of its own. It uses `n_long` from
+`netinet/in_systm.h` (`ip.h:163,166`), `struct in_addr` from `netinet/in.h`,
+and `BYTE_ORDER` from `sys/types.h` (which includes `machine/endian.h`) to
+lay out the `ip_hl`/`ip_v` bitfields (`ip.h:75-79`). Without `sys/types.h`,
+`BYTE_ORDER` is undefined, `#if BYTE_ORDER == LITTLE_ENDIAN` is true, and
+the header is silently wrong on ppc. `udpipgen.c` includes only
+`<string.h>` before `udpipgen.h`, so the header must carry these itself.
+`netinet/in_systm.h` and `netinet/ip.h` are unguarded, but nothing else in
+this project includes them, and `udpipgen.h` is guarded.
+
+- [ ] **Step 3: Write `rtsock.h`**
+
+```c
+/*
+ * rtsock.h - BSD routing-socket default route for dhcpcd-1
+ *
+ * Replaces upstream dhcpcd's Linux SIOCADDRT/struct rtentry code in
+ * dhcpConfig(). Addresses are in network byte order.
+ */
+
+#ifndef RTSOCK_H
+#define RTSOCK_H
+
+int rtsockAddDefault(unsigned int gateway, unsigned int ifaddr);
+
+#endif /* RTSOCK_H */
+```
+
+- [ ] **Step 4: Write `rtsock.c`**
+
+The message layout copies `route(8)` in
+`src/Commands/network_cmds/route.tproj/route.c`: the same `ROUNDUP` macro
+(`route.c:142-143`), sockaddrs appended in `RTA_*` bit order
+(`route.c:1013-1049`), and for the default route a netmask whose `sa_len`
+is 0, which `ROUNDUP` pads to `sizeof(long)` zero bytes — exactly what
+`route add default GW` sends (`route.c:807-817`). Failures come back as
+`write()`'s errno, which is also how `route(8)` sees `EEXIST` and
+`ENETUNREACH`. The host-route fallback is the routing-socket form of
+`route add -host GW MYIP -interface`: our own address as the gateway and no
+`RTF_GATEWAY` flag (`route.c:666-670`).
+
+```c
+/*
+ * rtsock.c - BSD routing-socket default route for dhcpcd-1
+ *
+ * See rtsock.h. Messages are laid out the way route(8) builds them in
+ * src/Commands/network_cmds/route.tproj/route.c.
+ */
+
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <net/if.h>
+#include <net/route.h>
+#include <netinet/in.h>
+#include <string.h>
+#include <unistd.h>
+#include <errno.h>
+#include <syslog.h>
+
+#include "rtsock.h"
+
+#define ROUNDUP(a) \
+	((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
+
+static int
+rtsockSend(s,type,flags,dst,gateway,withmask)
+int s,type,flags;
+unsigned int dst,gateway;
+int withmask;
+{
+  static int seq;
+  struct
+    {
+      struct rt_msghdr	rtm;
+      char		space[512];
+    } msg;
+  struct sockaddr_in sin;
+  char *cp;
+
+  memset(&msg,0,sizeof(msg));
+  msg.rtm.rtm_type = type;
+  msg.rtm.rtm_flags = flags;
+  msg.rtm.rtm_version = RTM_VERSION;
+  msg.rtm.rtm_seq = ++seq;
+  msg.rtm.rtm_addrs = RTA_DST|RTA_GATEWAY;
+  if ( withmask ) msg.rtm.rtm_addrs |= RTA_NETMASK;
+
+  memset(&sin,0,sizeof(sin));
+  sin.sin_len = sizeof(sin);
+  sin.sin_family = AF_INET;
+
+  cp = msg.space;
+  sin.sin_addr.s_addr = dst;
+  memcpy(cp,&sin,sizeof(sin));
+  cp += ROUNDUP(sizeof(sin));
+  sin.sin_addr.s_addr = gateway;
+  memcpy(cp,&sin,sizeof(sin));
+  cp += ROUNDUP(sizeof(sin));
+  if ( withmask )
+    cp += ROUNDUP(0);	/* zero-length netmask: the default route */
+
+  msg.rtm.rtm_msglen = cp - (char *)&msg;
+  if ( write(s,(char *)&msg,msg.rtm.rtm_msglen) == -1 ) return -1;
+  return 0;
+}
+
+int
+rtsockAddDefault(gateway,ifaddr)
+unsigned int gateway,ifaddr;
+{
+  int s,rc;
+
+  s = socket(PF_ROUTE,SOCK_RAW,0);
+  if ( s == -1 )
+    {
+      syslog(LOG_ERR,"rtsockAddDefault: socket: %m\n");
+      return -1;
+    }
+
+  rc = rtsockSend(s,RTM_ADD,RTF_UP|RTF_GATEWAY|RTF_STATIC,0,gateway,1);
+  if ( rc == -1 && errno == ENETUNREACH )
+    {
+      /* gateway is off our subnet: reach it through our own address first */
+      if ( rtsockSend(s,RTM_ADD,RTF_UP|RTF_HOST|RTF_STATIC,gateway,ifaddr,0) == 0
+	   || errno == EEXIST )
+	rc = rtsockSend(s,RTM_ADD,RTF_UP|RTF_GATEWAY|RTF_STATIC,0,gateway,1);
+    }
+  if ( rc == -1 && errno == EEXIST )
+    rc = rtsockSend(s,RTM_CHANGE,RTF_UP|RTF_GATEWAY|RTF_STATIC,0,gateway,1);
+  if ( rc == -1 )
+    syslog(LOG_ERR,"rtsockAddDefault: default route: %m\n");
+
+  close(s);
+  return rc;
+}
+```
+
+- [ ] **Step 5: Replace the Linux default-route code with a call**
+
+In `client.c`, `dhcpConfig()` uses `SIOCADDRT` (a Linux-only route ioctl
+taking a `struct rtentry`) to install a default route via
+`DhcpIface.giaddr`, with a fallback that first adds a host route to the
+gateway if the direct attempt fails with `ENETUNREACH`. `DhcpIface.giaddr`
+is always set: upstream falls back to the DHCP server's address when the
+server sends no router option (`client.c:228-241`). That whole block — from
+the `memset(&rtent,...)` right after the `SIOCSIFBRDADDR` call, through the
+final `else syslog(...)` of the `ioctl(s,SIOCADDRT,&rtent)` error handling,
+ending just before `close(s); arpInform();` — becomes one call.
 
 Old (the whole block, verified against the vendored source in Task 1):
 ```c
@@ -499,15 +698,10 @@ Old (the whole block, verified against the vendored source in Task 1):
 
 New:
 ```c
-  /* Upstream installs a default route here via Linux's SIOCADDRT/struct
-   * rtentry. That's Linux-specific; the BSD equivalent is a PF_ROUTE
-   * routing-socket message, not reimplemented in this port. 0800_Network
-   * installs the default route once at boot from this daemon's own -w
-   * output (see bootcompat.c) instead; a route change mid-lease is not
-   * picked up until the next boot. */
+  rtsockAddDefault(DhcpIface.giaddr,DhcpIface.client_iaddr);
 ```
 
-- [ ] **Step 3: Remove the now-orphaned `struct rtentry` local**
+- [ ] **Step 6: Remove what the old route code leaves orphaned, include `rtsock.h`**
 
 In `dhcpConfig()`'s declarations, at the top of the function:
 
@@ -530,42 +724,53 @@ New:
   struct sockaddr_in	*p = (struct sockaddr_in *)&(ifr.ifr_addr);
 ```
 
-(`rtent` was only ever referenced inside the block Step 2 removed; `p` stays
-— it's also used earlier in the function for `ifr.ifr_addr`.)
+(`rtent` was only ever referenced inside the block Step 5 replaced; `p`
+stays — it's also used earlier in the function for `ifr.ifr_addr`.)
 
-- [ ] **Step 4: Verify no Linux route symbols remain**
+`#include <net/route.h>` (`client.c:31`) was only there for `struct
+rtentry` and the `RTF_*` flags, so remove that line too; `rtsock.c` now owns
+routing. Add `#include "rtsock.h"` after `#include "pathnames.h"`, the last
+include in `client.c`.
+
+- [ ] **Step 7: Verify**
 
 ```bash
-cd /d/RhapsodiOS
-grep -n "SIOCADDRT\|struct rtentry\|rt_dev\|RTF_GATEWAY\|RTF_HOST" src/dhcpcd-1/dhcpcd.tproj/client.c
+grep -n "SIOCADDRT\|struct rtentry\|rt_dev\|RTF_GATEWAY\|RTF_HOST\|net/route.h" src/dhcpcd-1/dhcpcd.tproj/client.c
+grep -n "rtsock" src/dhcpcd-1/dhcpcd.tproj/client.c
 ```
 
-Expected: no output.
+Expected: the first prints nothing; the second prints exactly the
+`#include "rtsock.h"` line and the one `rtsockAddDefault(...)` call.
 
 ```bash
-grep -n "net/ethernet.h" src/dhcpcd-1/dhcpcd.tproj/client.h
-grep -n "net/etherdefs.h" src/dhcpcd-1/dhcpcd.tproj/client.h
+grep -n "struct rt_msghdr {\|RTM_VERSION\|RTM_ADD\|RTM_CHANGE\|RTA_DST\|RTA_GATEWAY\|RTA_NETMASK\|RTF_UP\|RTF_GATEWAY\|RTF_HOST\|RTF_STATIC" src/kernel-7/bsd/net/route.h
+grep -n "sin_len" src/kernel-7/bsd/netinet/in.h
+diff <(grep -A1 "define ROUNDUP" src/Commands/network_cmds/route.tproj/route.c) \
+     <(grep -A1 "define ROUNDUP" src/dhcpcd-1/dhcpcd.tproj/rtsock.c)
 ```
 
-Expected: the first prints nothing, the second prints the new `#include`
-line.
-
-- [ ] **Step 5: Commit**
+Expected: every routing symbol `rtsock.c` uses shows up in `net/route.h`,
+`sin_len` shows up in `netinet/in.h`, and the `diff` prints nothing (the
+`ROUNDUP` macro is byte-for-byte `route(8)`'s).
 
 ```bash
-git add src/dhcpcd-1/dhcpcd.tproj/client.c src/dhcpcd-1/dhcpcd.tproj/client.h
-git commit -m "$(cat <<'EOF'
-dhcpcd-1: portability pass - ethernet header, drop Linux route ioctl
+grep -n "net/ethernet.h\|net/etherdefs.h" src/dhcpcd-1/dhcpcd.tproj/client.h
+grep -n "netinet/if_ether.h\|ETHER_ADDR_LEN" src/dhcpcd-1/dhcpcd.tproj/client.h
+grep -n "^#include" src/dhcpcd-1/dhcpcd.tproj/udpipgen.h
+```
 
-net/ethernet.h doesn't exist in this tree; struct ether_header lives
-in net/etherdefs.h with identical field names. Linux's SIOCADDRT
-default-route installation has no BSD equivalent wired up here;
-0800_Network already installs the default route at boot from this
-daemon's -w output instead.
+Expected: the first prints nothing; the second prints the new
+`<netinet/if_ether.h>` include and the `#ifndef`/`#define ETHER_ADDR_LEN`
+lines; the third prints exactly `sys/types.h`, `netinet/in.h`,
+`netinet/in_systm.h`, `netinet/ip.h`, in that order.
 
-Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
-EOF
-)"
+- [ ] **Step 8: Commit**
+
+```bash
+git add src/dhcpcd-1/dhcpcd.tproj/client.c src/dhcpcd-1/dhcpcd.tproj/client.h \
+        src/dhcpcd-1/dhcpcd.tproj/udpipgen.h src/dhcpcd-1/dhcpcd.tproj/rtsock.c \
+        src/dhcpcd-1/dhcpcd.tproj/rtsock.h
+git commit -m "dhcpcd-1: use this tree's ethernet and IP headers, set the default route through a routing socket"
 ```
 
 ---
@@ -580,7 +785,8 @@ EOF
 - Consumes: `src/kernel-7/bsd/net/bpf.h` (`BIOCSETIF`, `BIOCIMMEDIATE`,
   `BIOCGBLEN`, `struct bpf_hdr` with `bh_caplen`/`bh_hdrlen`,
   `BPF_WORDALIGN`), `src/kernel-7/bsd/net/if_dl.h` (`struct sockaddr_dl`,
-  `LLADDR()`), `src/kernel-7/bsd/net/if.h` (`SIOCGIFCONF`, `SIOCSIFFLAGS`,
+  `LLADDR()`), `src/kernel-7/bsd/net/if_types.h` (`IFT_ETHER`),
+  `src/kernel-7/bsd/net/if.h` (`SIOCGIFCONF`, `SIOCSIFFLAGS`,
   `IFF_UP`/`IFF_BROADCAST`/`IFF_MULTICAST`/`IFF_NOTRAILERS`/`IFF_RUNNING`),
   and the `AF_LINK`/`IFT_ETHER` idiom already proven in
   `src/bootp-1/bootplib/interfaces.c:180,322-331`. `/dev/bpf0`..`/dev/bpfN`
@@ -644,6 +850,7 @@ int bpfRecvFrame(int bpf_fd, void *frame, int frame_max);
 #include <sys/socket.h>
 #include <net/if.h>
 #include <net/if_dl.h>
+#include <net/if_types.h>
 #include <net/bpf.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -849,15 +1056,15 @@ int frame_max;
 - [ ] **Step 3: Verify against the confirmed header facts**
 
 ```bash
-cd /d/RhapsodiOS
 grep -n "BIOCSETIF\|BIOCIMMEDIATE\|BIOCGBLEN\|bh_caplen\|bh_hdrlen\|BPF_WORDALIGN" src/kernel-7/bsd/net/bpf.h
 grep -n "struct sockaddr_dl\|LLADDR" src/kernel-7/bsd/net/if_dl.h
+grep -n "IFT_ETHER" src/kernel-7/bsd/net/if_types.h
 grep -n "sa_len" src/kernel-7/bsd/sys/socket.h
 ```
 
 Expected: every symbol `bpfif.c` uses (`BIOCSETIF`, `BIOCIMMEDIATE`,
 `BIOCGBLEN`, `bh_caplen`, `bh_hdrlen`, `BPF_WORDALIGN`, `struct sockaddr_dl`,
-`LLADDR`, `sa_len`) appears in the corresponding grep output — confirming
+`LLADDR`, `IFT_ETHER`, `sa_len`) appears in the corresponding grep output — confirming
 nothing in the new file references an undeclared symbol. (This is a
 structural check, not a compile — see Global Constraints.)
 
@@ -865,17 +1072,7 @@ structural check, not a compile — see Global Constraints.)
 
 ```bash
 git add src/dhcpcd-1/dhcpcd.tproj/bpfif.c src/dhcpcd-1/dhcpcd.tproj/bpfif.h
-git commit -m "$(cat <<'EOF'
-dhcpcd-1: add BSD/BPF raw-Ethernet backend
-
-New module replacing dhcpcd's Linux SOCK_PACKET layer: opens
-/dev/bpf*, binds it to an interface, and provides send/recv/hwaddr
-functions client.c and arp.c will be wired to next. Not yet called
-from anywhere.
-
-Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
-EOF
-)"
+git commit -m "dhcpcd-1: add BSD/BPF raw-Ethernet backend"
 ```
 
 ---
@@ -1242,12 +1439,14 @@ New:
 
 Each of `arpCheck()`, `arpRelease()`, and `arpInform()` declares its own
 `struct sockaddr addr;` local (not shared) — remove that declaration line
-from each function too, once its body no longer references `addr`.
+from each function too, once its body no longer references `addr`. In
+`arpCheck()`, `j` is orphaned as well: its only uses were
+`j=sizeof(struct sockaddr);` and the `&j` argument to the removed
+`recvfrom()`. Its declaration changes from `int j,i=0;` to `int i=0;`.
 
 - [ ] **Step 7: Verify no Linux raw-socket symbols remain**
 
 ```bash
-cd /d/RhapsodiOS
 grep -n "SOCK_PACKET\|AF_PACKET\|SIOCGIFHWADDR\|sendto(\|recvfrom(" \
   src/dhcpcd-1/dhcpcd.tproj/client.c src/dhcpcd-1/dhcpcd.tproj/arp.c
 ```
@@ -1278,16 +1477,7 @@ its only uses).
 
 ```bash
 git add src/dhcpcd-1/dhcpcd.tproj/client.c src/dhcpcd-1/dhcpcd.tproj/arp.c
-git commit -m "$(cat <<'EOF'
-dhcpcd-1: wire the BPF backend into client.c and arp.c
-
-Replaces every Linux SOCK_PACKET socket/sendto/recvfrom/SIOCGIFHWADDR
-call site with the bpfif.c functions. dhcpSocket stays a plain fd;
-peekfd()'s select()-based wait needed no change.
-
-Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
-EOF
-)"
+git commit -m "dhcpcd-1: wire the BPF backend into client.c and arp.c"
 ```
 
 ---
@@ -1479,7 +1669,6 @@ Usage: dhcpcd [-dkrDHRw] [-l leasetime] [-h hostname] [-t timeout]\n\
 - [ ] **Step 6: Verify the key set matches what `0800_Network` reads**
 
 ```bash
-cd /d/RhapsodiOS
 grep -n 'printf("[a-z_]*=' src/dhcpcd-1/dhcpcd.tproj/bootcompat.c
 grep -n "GetNetConfig" src/files-5/private/etc/startup/0800_Network
 ```
@@ -1504,31 +1693,26 @@ it, and the `if ( WaitFlag )` guard before `fork()`.
 ```bash
 git add src/dhcpcd-1/dhcpcd.tproj/bootcompat.c src/dhcpcd-1/dhcpcd.tproj/bootcompat.h \
         src/dhcpcd-1/dhcpcd.tproj/dhcpcd.c
-git commit -m "$(cat <<'EOF'
-dhcpcd-1: add -w boot-compat wait mode
-
-Prints the same key=value fields bootpc's stdout produces today
-(ip_address, subnet_mask, router, host_name, server_ip_address)
-right before backgrounding, so 0800_Network can capture dhcpcd's
-first lease the same way it captures bootpc's.
-
-Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
-EOF
-)"
+git commit -m "dhcpcd-1: add -w boot-compat wait mode"
 ```
 
 ---
 
-### Task 7: `0800_Network` one-line change
+### Task 7: Boot integration: `0800_Network` and `/etc/dhcpc`
 
 **Files:**
 - Modify: `src/files-5/private/etc/startup/0800_Network`
+- Modify: `src/files-5/private/etc/Makefile`
 
 **Interfaces:**
 - Consumes: `dhcpcd -w <ifname>` (Task 6), whose stdout is wire-compatible
   with `bootpc <ifname>`'s.
+- Consumes: dhcpcd's hardcoded lease paths, `DHCP_CACHE_FILE`
+  `/etc/dhcpc/dhcpcd-%s.cache` and `DHCP_HOSTINFO` `/etc/dhcpc/dhcpcd-%s.info`
+  (`pathnames.h:30-31`). No `/etc/dhcpc` exists in `files-5` today.
 - Produces: no change to any `SetNetConfig`/`GetNetConfig` consumer in this
-  script — this is the single line the whole plan has been building toward.
+  script — this is the single line the whole plan has been building toward —
+  and an empty `/etc/dhcpc` (root:wheel, 755) in the installed tree.
 
 - [ ] **Step 1: Make the change**
 
@@ -1555,10 +1739,59 @@ New:
 this is still a one-line-of-logic change, just with its neighboring text
 kept honest.)
 
-- [ ] **Step 2: Verify no other reference to `bootpc` remains in this script**
+- [ ] **Step 2: Create `/etc/dhcpc` at install time**
+
+`src/files-5/private/etc/Makefile` installs files and subdirectories with
+their own Makefiles, but has no way to create an empty directory. Add one,
+modelled on its existing empty-files loop.
+
+After the `EMPTYFILES`/`EMPTYMODE` definitions:
+
+Old:
+```makefile
+EMPTYFILES = find.codes hosts.equiv rmtab utmp xtab
+EMPTYMODE = 644
+```
+
+New:
+```makefile
+EMPTYFILES = find.codes hosts.equiv rmtab utmp xtab
+EMPTYMODE = 644
+
+#	Directories that are created empty
+EMPTYDIRS = dhcpc
+```
+
+In the `install:` recipe, right after the empty-files loop's closing
+`echo "."` and before `echo -n "    Empty group-writeable files:"`, insert:
+
+```makefile
+	echo -n "    Empty directories:"
+	for i in `echo ${EMPTYDIRS}` ; \
+	  do \
+		echo -n " $$i" ; \
+		mkdir -p -m ${DSTMODE} ${DSTDIR}/$$i ; \
+		chown ${OWNER}.${GROUP} ${DSTDIR}/$$i ; \
+	  done
+	echo "."
+```
+
+Whitespace matters here: every recipe line starts with one tab, the
+`do`/`done` lines are a tab plus two spaces, and the loop body lines are two
+tabs — the same layout as the empty-files loop directly above it.
 
 ```bash
-cd /d/RhapsodiOS
+s=$(grep -n 'Empty directories' src/files-5/private/etc/Makefile | cut -d: -f1)
+sed -n "${s},$((s+7))p" src/files-5/private/etc/Makefile | cat -A
+```
+
+Expected: eight lines, each beginning `^I` (the loop body lines `^I^I`, the
+`do`/`done` lines `^I  `), none containing a literal run of leading spaces
+where the neighbouring loop has a tab.
+
+- [ ] **Step 3: Verify no other reference to `bootpc` remains in this script**
+
+```bash
 grep -n "bootpc\|dhcpcd" src/files-5/private/etc/startup/0800_Network
 ```
 
@@ -1575,20 +1808,11 @@ and after Step 1 to confirm, or `git diff` the file and confirm the diff is
 exactly the four changed words: `bootpc data`→`dhcpcd data`,
 `BOOTP for`→`DHCP for`, `bootpc "${if}"`→`dhcpcd -w "${if}"`).
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
-git add src/files-5/private/etc/startup/0800_Network
-git commit -m "$(cat <<'EOF'
-boot: use dhcpcd instead of bootpc for automatic interfaces
-
-dhcpcd -w prints the same key=value fields bootpc did, so
-SetNetConfig/GetNetConfig downstream are unaffected. Unlike bootpc,
-dhcpcd keeps running afterward and renews the lease on its own.
-
-Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
-EOF
-)"
+git add src/files-5/private/etc/startup/0800_Network src/files-5/private/etc/Makefile
+git commit -m "boot: use dhcpcd for automatic interfaces and create /etc/dhcpc for its lease cache"
 ```
 
 ---

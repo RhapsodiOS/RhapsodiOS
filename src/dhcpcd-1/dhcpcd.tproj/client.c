@@ -873,6 +873,7 @@ void *dhcpStop()
   int s;
   struct ifreq ifr;
 
+  alarm(0);	/* a renew/rebind NAK gets here with the lease alarm armed */
   releaseDhcpOptions();
   s = socket(AF_INET,SOCK_DGRAM,0);
   if ( s == -1 )

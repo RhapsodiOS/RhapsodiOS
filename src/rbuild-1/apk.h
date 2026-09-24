@@ -16,4 +16,8 @@ int apk_use_arch(const char *path, const char *root, const Toolchain *tc,
                   const char *pkgname, const char *pkgver, unsigned required,
                   int object_collection, int allow_superset);
 int apk_quarantine(const char *path);
+/* Extracts a gzipped tar into an existing root with the toolchain's gzip and
+ * tar (NULL: pax and gzip from PATH). No APK validation: for vendored
+ * upstream tarballs. Dry-run prints and returns 0. */
+int apk_untar(const char *path, const char *root, const Toolchain *tc);
 #endif

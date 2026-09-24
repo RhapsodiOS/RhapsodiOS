@@ -1,0 +1,552 @@
+diff -urN --strip-trailing-cr zlib-1.1.3/ChangeLog zlib/ChangeLog
+--- zlib-1.1.3/ChangeLog	1998-07-09 12:04:19.000000000 -0400
++++ zlib/ChangeLog	2026-09-24 15:55:15.401941600 -0400
+@@ -215,7 +215,7 @@
+ - use _fdopen instead of fdopen for MSC >= 6.0 (Thomas Fanslau)
+ - added makelcc.bat for lcc-win32 (Tom St Denis)
+ - in Makefile.dj2, use copy and del instead of install and rm (Frank Donahoe)
+-- Avoid expanded $Id$. Use "rcs -kb" or "cvs admin -kb" to avoid Id expansion.
++- Avoid expanded $Id: ChangeLog,v 1.1.1.1 1999/04/23 02:07:07 wsanchez Exp $. Use "rcs -kb" or "cvs admin -kb" to avoid Id expansion.
+ - check for unistd.h in configure (for off_t)
+ - remove useless check parameter in inflate_blocks_free
+ - avoid useless assignment of s->check to itself in inflate_blocks_new
+diff -urN --strip-trailing-cr zlib-1.1.3/Makefile zlib/Makefile
+--- zlib-1.1.3/Makefile	1998-07-09 12:07:18.000000000 -0400
++++ zlib/Makefile	1969-12-31 19:00:00.000000000 -0500
+@@ -1,174 +0,0 @@
+-# Makefile for zlib
+-# Copyright (C) 1995-1998 Jean-loup Gailly.
+-# For conditions of distribution and use, see copyright notice in zlib.h 
+-
+-# To compile and test, type:
+-#   ./configure; make test
+-# The call of configure is optional if you don't have special requirements
+-# If you wish to build zlib as a shared library, use: ./configure -s
+-
+-# To install /usr/local/lib/libz.* and /usr/local/include/zlib.h, type:
+-#    make install
+-# To install in $HOME instead of /usr/local, use:
+-#    make install prefix=$HOME
+-
+-CC=cc
+-
+-CFLAGS=-O
+-#CFLAGS=-O -DMAX_WBITS=14 -DMAX_MEM_LEVEL=7
+-#CFLAGS=-g -DDEBUG
+-#CFLAGS=-O3 -Wall -Wwrite-strings -Wpointer-arith -Wconversion \
+-#           -Wstrict-prototypes -Wmissing-prototypes
+-
+-LDFLAGS=-L. -lz
+-LDSHARED=$(CC)
+-CPP=$(CC) -E
+-
+-VER=1.1.3
+-LIBS=libz.a
+-SHAREDLIB=libz.so
+-
+-AR=ar rc
+-RANLIB=ranlib
+-TAR=tar
+-SHELL=/bin/sh
+-
+-prefix = /usr/local
+-exec_prefix = ${prefix}
+-libdir = ${exec_prefix}/lib
+-includedir = ${prefix}/include
+-
+-OBJS = adler32.o compress.o crc32.o gzio.o uncompr.o deflate.o trees.o \
+-       zutil.o inflate.o infblock.o inftrees.o infcodes.o infutil.o inffast.o
+-
+-OBJA =
+-# to use the asm code: make OBJA=match.o
+-
+-TEST_OBJS = example.o minigzip.o
+-
+-DISTFILES = README FAQ INDEX ChangeLog configure Make*[a-z0-9] *.[ch] *.mms \
+-  algorithm.txt zlib.3 msdos/Make*[a-z0-9] msdos/zlib.def msdos/zlib.rc \
+-  nt/Make*[a-z0-9] nt/zlib.dnt amiga/Make*.??? os2/M*.os2 os2/zlib.def \
+-  contrib/RE*.contrib contrib/*.txt contrib/asm386/*.asm contrib/asm386/*.c \
+-  contrib/asm386/*.bat contrib/asm386/zlibvc.d?? contrib/asm[56]86/*.?86 \
+-  contrib/asm[56]86/*.S contrib/iostream/*.cpp \
+-  contrib/iostream/*.h  contrib/iostream2/*.h contrib/iostream2/*.cpp \
+-  contrib/untgz/Makefile contrib/untgz/*.c contrib/untgz/*.w32 \
+-  contrib/minizip/[CM]*[pe] contrib/minizip/*.[ch] contrib/minizip/*.[td]?? \
+-  contrib/delphi*/*.???
+-
+-all: example minigzip
+-
+-test: all
+-	@LD_LIBRARY_PATH=.:$(LD_LIBRARY_PATH) ; export LD_LIBRARY_PATH; \
+-	echo hello world | ./minigzip | ./minigzip -d || \
+-	  echo '		*** minigzip test FAILED ***' ; \
+-	if ./example; then \
+-	  echo '		*** zlib test OK ***'; \
+-	else \
+-	  echo '		*** zlib test FAILED ***'; \
+-	fi
+-
+-libz.a: $(OBJS) $(OBJA)
+-	$(AR) $@ $(OBJS) $(OBJA)
+-	-@ ($(RANLIB) $@ || true) >/dev/null 2>&1
+-
+-match.o: match.S
+-	$(CPP) match.S > _match.s
+-	$(CC) -c _match.s
+-	mv _match.o match.o
+-	rm -f _match.s
+-
+-$(SHAREDLIB).$(VER): $(OBJS)
+-	$(LDSHARED) -o $@ $(OBJS)
+-	rm -f $(SHAREDLIB) $(SHAREDLIB).1
+-	ln -s $@ $(SHAREDLIB)
+-	ln -s $@ $(SHAREDLIB).1
+-
+-example: example.o $(LIBS)
+-	$(CC) $(CFLAGS) -o $@ example.o $(LDFLAGS)
+-
+-minigzip: minigzip.o $(LIBS)
+-	$(CC) $(CFLAGS) -o $@ minigzip.o $(LDFLAGS)
+-
+-install: $(LIBS)
+-	-@if [ ! -d $(includedir)  ]; then mkdir $(includedir); fi
+-	-@if [ ! -d $(libdir) ]; then mkdir $(libdir); fi
+-	cp zlib.h zconf.h $(includedir)
+-	chmod 644 $(includedir)/zlib.h $(includedir)/zconf.h
+-	cp $(LIBS) $(libdir)
+-	cd $(libdir); chmod 755 $(LIBS)
+-	-@(cd $(libdir); $(RANLIB) libz.a || true) >/dev/null 2>&1
+-	cd $(libdir); if test -f $(SHAREDLIB).$(VER); then \
+-	  rm -f $(SHAREDLIB) $(SHAREDLIB).1; \
+-	  ln -s $(SHAREDLIB).$(VER) $(SHAREDLIB); \
+-	  ln -s $(SHAREDLIB).$(VER) $(SHAREDLIB).1; \
+-	  (ldconfig || true)  >/dev/null 2>&1; \
+-	fi
+-# The ranlib in install is needed on NeXTSTEP which checks file times
+-# ldconfig is for Linux
+-
+-uninstall:
+-	cd $(includedir); \
+-	v=$(VER); \
+-	if test -f zlib.h; then \
+-	  v=`sed -n '/VERSION "/s/.*"\(.*\)".*/\1/p' < zlib.h`; \
+-          rm -f zlib.h zconf.h; \
+-	fi; \
+-	cd $(libdir); rm -f libz.a; \
+-	if test -f $(SHAREDLIB).$$v; then \
+-	  rm -f $(SHAREDLIB).$$v $(SHAREDLIB) $(SHAREDLIB).1; \
+-	fi
+-
+-clean:
+-	rm -f *.o *~ example minigzip libz.a libz.so* foo.gz so_locations \
+-	   _match.s maketree
+-
+-distclean:	clean
+-
+-zip:
+-	mv Makefile Makefile~; cp -p Makefile.in Makefile
+-	rm -f test.c ztest*.c contrib/minizip/test.zip
+-	v=`sed -n -e 's/\.//g' -e '/VERSION "/s/.*"\(.*\)".*/\1/p' < zlib.h`;\
+-	zip -ul9 zlib$$v $(DISTFILES)
+-	mv Makefile~ Makefile
+-
+-dist:
+-	mv Makefile Makefile~; cp -p Makefile.in Makefile
+-	rm -f test.c ztest*.c contrib/minizip/test.zip
+-	d=zlib-`sed -n '/VERSION "/s/.*"\(.*\)".*/\1/p' < zlib.h`;\
+-	rm -f $$d.tar.gz; \
+-	if test ! -d ../$$d; then rm -f ../$$d; ln -s `pwd` ../$$d; fi; \
+-	files=""; \
+-	for f in $(DISTFILES); do files="$$files $$d/$$f"; done; \
+-	cd ..; \
+-	GZIP=-9 $(TAR) chofz $$d/$$d.tar.gz $$files; \
+-	if test ! -d $$d; then rm -f $$d; fi
+-	mv Makefile~ Makefile
+-
+-tags:	
+-	etags *.[ch]
+-
+-depend:
+-	makedepend -- $(CFLAGS) -- *.[ch]
+-
+-# DO NOT DELETE THIS LINE -- make depend depends on it.
+-
+-adler32.o: zlib.h zconf.h
+-compress.o: zlib.h zconf.h
+-crc32.o: zlib.h zconf.h
+-deflate.o: deflate.h zutil.h zlib.h zconf.h
+-example.o: zlib.h zconf.h
+-gzio.o: zutil.h zlib.h zconf.h
+-infblock.o: infblock.h inftrees.h infcodes.h infutil.h zutil.h zlib.h zconf.h
+-infcodes.o: zutil.h zlib.h zconf.h
+-infcodes.o: inftrees.h infblock.h infcodes.h infutil.h inffast.h
+-inffast.o: zutil.h zlib.h zconf.h inftrees.h
+-inffast.o: infblock.h infcodes.h infutil.h inffast.h
+-inflate.o: zutil.h zlib.h zconf.h infblock.h
+-inftrees.o: zutil.h zlib.h zconf.h inftrees.h
+-infutil.o: zutil.h zlib.h zconf.h infblock.h inftrees.h infcodes.h infutil.h
+-minigzip.o:  zlib.h zconf.h 
+-trees.o: deflate.h zutil.h zlib.h zconf.h trees.h
+-uncompr.o: zlib.h zconf.h
+-zutil.o: zutil.h zlib.h zconf.h  
+diff -urN --strip-trailing-cr zlib-1.1.3/Makefile.in zlib/Makefile.in
+--- zlib-1.1.3/Makefile.in	1998-07-09 12:07:18.000000000 -0400
++++ zlib/Makefile.in	2026-09-24 15:55:15.423529900 -0400
+@@ -20,13 +20,14 @@
+ #CFLAGS=-O3 -Wall -Wwrite-strings -Wpointer-arith -Wconversion \
+ #           -Wstrict-prototypes -Wmissing-prototypes
+ 
+-LDFLAGS=-L. -lz
++LDFLAGS=
+ LDSHARED=$(CC)
+ CPP=$(CC) -E
+ 
+ VER=1.1.3
+ LIBS=libz.a
+-SHAREDLIB=libz.so
++SHAREDLIB=libz
++SHAREDEXT=.so
+ 
+ AR=ar rc
+ RANLIB=ranlib
+@@ -70,6 +71,7 @@
+ 	fi
+ 
+ libz.a: $(OBJS) $(OBJA)
++	rm -f $@
+ 	$(AR) $@ $(OBJS) $(OBJA)
+ 	-@ ($(RANLIB) $@ || true) >/dev/null 2>&1
+ 
+@@ -79,30 +81,30 @@
+ 	mv _match.o match.o
+ 	rm -f _match.s
+ 
+-$(SHAREDLIB).$(VER): $(OBJS)
++$(SHAREDLIB).$(VER)$(SHAREDEXT): $(OBJS)
+ 	$(LDSHARED) -o $@ $(OBJS)
+-	rm -f $(SHAREDLIB) $(SHAREDLIB).1
+-	ln -s $@ $(SHAREDLIB)
+-	ln -s $@ $(SHAREDLIB).1
++	rm -f $(SHAREDLIB)$(SHAREDEXT) $(SHAREDLIB).1$(SHAREDEXT)
++	ln -s $@ $(SHAREDLIB)$(SHAREDEXT)
++	ln -s $@ $(SHAREDLIB).1$(SHAREDEXT)
+ 
+ example: example.o $(LIBS)
+-	$(CC) $(CFLAGS) -o $@ example.o $(LDFLAGS)
++	$(CC) $(CFLAGS) -o $@ example.o -L. -lz $(LDFLAGS)
+ 
+ minigzip: minigzip.o $(LIBS)
+-	$(CC) $(CFLAGS) -o $@ minigzip.o $(LDFLAGS)
++	$(CC) $(CFLAGS) -o $@ minigzip.o -L. -lz $(LDFLAGS)
+ 
+ install: $(LIBS)
+-	-@if [ ! -d $(includedir)  ]; then mkdir $(includedir); fi
+-	-@if [ ! -d $(libdir) ]; then mkdir $(libdir); fi
++	-@if [ ! -d $(includedir)  ]; then mkdir -p $(includedir); fi
++	-@if [ ! -d $(libdir) ]; then mkdir -p $(libdir); fi
+ 	cp zlib.h zconf.h $(includedir)
+ 	chmod 644 $(includedir)/zlib.h $(includedir)/zconf.h
+ 	cp $(LIBS) $(libdir)
+ 	cd $(libdir); chmod 755 $(LIBS)
+ 	-@(cd $(libdir); $(RANLIB) libz.a || true) >/dev/null 2>&1
+-	cd $(libdir); if test -f $(SHAREDLIB).$(VER); then \
+-	  rm -f $(SHAREDLIB) $(SHAREDLIB).1; \
+-	  ln -s $(SHAREDLIB).$(VER) $(SHAREDLIB); \
+-	  ln -s $(SHAREDLIB).$(VER) $(SHAREDLIB).1; \
++	cd $(libdir); if test -f $(SHAREDLIB).$(VER)$(SHAREDEXT); then \
++	  rm -f $(SHAREDLIB)$(SHAREDEXT) $(SHAREDLIB).1$(SHAREDEXT); \
++	  ln -s $(SHAREDLIB).$(VER)$(SHAREDEXT) $(SHAREDLIB)$(SHAREDEXT); \
++	  ln -s $(SHAREDLIB).$(VER)$(SHAREDEXT) $(SHAREDLIB).1$(SHAREDEXT); \
+ 	  (ldconfig || true)  >/dev/null 2>&1; \
+ 	fi
+ # The ranlib in install is needed on NeXTSTEP which checks file times
+@@ -116,8 +118,8 @@
+           rm -f zlib.h zconf.h; \
+ 	fi; \
+ 	cd $(libdir); rm -f libz.a; \
+-	if test -f $(SHAREDLIB).$$v; then \
+-	  rm -f $(SHAREDLIB).$$v $(SHAREDLIB) $(SHAREDLIB).1; \
++	if test -f $(SHAREDLIB).$$v$(SHAREDEXT); then \
++	  rm -f $(SHAREDLIB).$$v$(SHAREDEXT) $(SHAREDLIB)$(SHAREDEXT) $(SHAREDLIB).1$(SHAREDEXT); \
+ 	fi
+ 
+ clean:
+diff -urN --strip-trailing-cr zlib-1.1.3/adler32.c zlib/adler32.c
+--- zlib-1.1.3/adler32.c	1998-02-02 09:12:35.000000000 -0500
++++ zlib/adler32.c	2026-09-24 15:55:15.438239700 -0400
+@@ -3,7 +3,7 @@
+  * For conditions of distribution and use, see copyright notice in zlib.h 
+  */
+ 
+-/* @(#) $Id$ */
++/* @(#) $Id: adler32.c,v 1.1.1.1 1999/04/23 02:07:08 wsanchez Exp $ */
+ 
+ #include "zlib.h"
+ 
+diff -urN --strip-trailing-cr zlib-1.1.3/compress.c zlib/compress.c
+--- zlib-1.1.3/compress.c	1998-02-02 09:12:36.000000000 -0500
++++ zlib/compress.c	2026-09-24 15:55:15.461648400 -0400
+@@ -3,7 +3,7 @@
+  * For conditions of distribution and use, see copyright notice in zlib.h 
+  */
+ 
+-/* @(#) $Id$ */
++/* @(#) $Id: compress.c,v 1.1.1.1 1999/04/23 02:07:08 wsanchez Exp $ */
+ 
+ #include "zlib.h"
+ 
+diff -urN --strip-trailing-cr zlib-1.1.3/configure zlib/configure
+--- zlib-1.1.3/configure	1998-07-08 14:19:35.000000000 -0400
++++ zlib/configure	2026-09-24 15:55:15.461648400 -0400
+@@ -19,7 +19,8 @@
+ # an error.
+ 
+ LIBS=libz.a
+-SHAREDLIB=libz.so
++SHAREDLIB=libz
++SHAREDEXT='.so'
+ VER=`sed -n -e '/VERSION "/s/.*"\(.*\)".*/\1/p' < zlib.h`
+ AR=${AR-"ar rc"}
+ RANLIB=${RANLIB-"ranlib"}
+@@ -27,7 +28,6 @@
+ exec_prefix=${exec_prefix-'${prefix}'}
+ libdir=${libdir-'${exec_prefix}/lib'}
+ includedir=${includedir-'${prefix}/include'}
+-shared_ext='.so'
+ shared=0
+ gcc=0
+ old_cc="$CC"
+@@ -83,14 +83,13 @@
+ 	     CFLAGS=${CFLAGS-"-O"}
+ #	     LDSHARED=${LDSHARED-"ld -b +vnocompatwarnings"}
+ 	     LDSHARED=${LDSHARED-"ld -b"}
+-	     shared_ext='.sl'
+-	     SHAREDLIB='libz.sl';;
++	     SHAREDEXT='.sl';;
+   IRIX*)     SFLAGS=${CFLAGS-"-ansi -O2 -rpath ."}
+ 	     CFLAGS=${CFLAGS-"-ansi -O2"}
+ 	     LDSHARED=${LDSHARED-"cc -shared"};;
+   OSF1\ V4*) SFLAGS=${CFLAGS-"-O -std1"}
+ 	     CFLAGS=${CFLAGS-"-O -std1"}
+-	     LDSHARED=${LDSHARED-"cc -shared  -Wl,-soname,$SHAREDLIB -Wl,-msym -Wl,-rpath,$(libdir) -Wl,-set_version,${VER}:1.0"};;
++	     LDSHARED=${LDSHARED-"cc -shared  -Wl,-soname,${SHAREDLIB}${SHAREDEXT} -Wl,-msym -Wl,-rpath,$(libdir) -Wl,-set_version,${VER}:1.0"};;
+   OSF1*)     SFLAGS=${CFLAGS-"-O -std1"}
+ 	     CFLAGS=${CFLAGS-"-O -std1"}
+ 	     LDSHARED=${LDSHARED-"cc -shared"};;
+@@ -108,7 +107,7 @@
+   SunOS\ 4*) SFLAGS=${CFLAGS-"-O2 -PIC"}
+ 	     CFLAGS=${CFLAGS-"-O2"}
+ 	     LDSHARED=${LDSHARED-"ld"};;
+-  UNIX_System_V\ 4.2.0) 
++  UNIX_System_V\ 4.2.0)
+ 	     SFLAGS=${CFLAGS-"-KPIC -O"}
+ 	     CFLAGS=${CFLAGS-"-O"}
+ 	     LDSHARED=${LDSHARED-"cc -G"};;
+@@ -116,6 +115,16 @@
+ 	     SFLAGS=${CFLAGS-"-Kconform_pic -O"}
+ 	     CFLAGS=${CFLAGS-"-O"}
+ 	     LDSHARED=${LDSHARED-"cc -G"};;
++  Darwin*) SFLAGS=${CFLAGS-"-O3"}
++	     CFLAGS=${CFLAGS-"-O3"}
++	     SHAREDEXT='.dylib'
++	     LDSHARED=${LDSHARED-'$(CC) $(CFLAGS) -dynamiclib -install_name "$(libdir)/$(SHAREDLIB).$(VER)$(SHAREDEXT)" -current_version $(VER) -compatibility_version 1'}
++	     LDTEST=NO;;
++  Rhapsody*) SFLAGS=${CFLAGS-"-O3"}
++	     CFLAGS=${CFLAGS-"-O3"}
++	     SHAREDEXT='.dylib'
++	     LDSHARED=${LDSHARED-'$(CC) $(CFLAGS) -dynamiclib -install_name "$(libdir)/$(SHAREDLIB).$(VER)$(SHAREDEXT)" -current_version $(VER) -compatibility_version 1'}
++	     LDTEST=NO;;
+   # send working options for other systems to support@gzip.org
+   *)         SFLAGS=${CFLAGS-"-O"}
+ 	     CFLAGS=${CFLAGS-"-O"}
+@@ -127,15 +136,16 @@
+   echo Checking for shared library support...
+   # we must test in two steps (cc then ld), required at least on SunOS 4.x
+   if test "`($CC -c $SFLAGS $test.c) 2>&1`" = "" &&
+-     test "`($LDSHARED -o $test$shared_ext $test.o) 2>&1`" = ""; then
++     test "$LDTEST" = "NO" ||
++     test "`($LDSHARED -o $test$SHAREDEXT $test.o) 2>&1`" = ""; then
+     CFLAGS="$SFLAGS"
+-    LIBS="$SHAREDLIB.$VER"
+-    echo Building shared library $SHAREDLIB.$VER with $CC.
++    LIBS="${SHAREDLIB}.$VER${SHAREDEXT}"
++    echo Building shared library $SHAREDLIB.$VER$SHAREDEXT with $CC.
+   elif test -z "$old_cc" -a -z "$old_cflags"; then
+-    echo No shared library suppport.
++    echo No shared library support.
+     shared=0;
+   else
+-    echo 'No shared library suppport; try without defining CC and CFLAGS'
++    echo 'No shared library support; try without defining CC and CFLAGS'
+     shared=0;
+   fi
+ fi
+@@ -171,7 +181,7 @@
+ #include <sys/mman.h>
+ #include <sys/stat.h>
+ caddr_t hello() {
+-  return mmap((caddr_t)0, (off_t)0, PROT_READ, MAP_SHARED, 0, (off_t)0); 
++  return mmap((caddr_t)0, (off_t)0, PROT_READ, MAP_SHARED, 0, (off_t)0);
+ }
+ EOF
+ if test "`($CC -c $CFLAGS $test.c) 2>&1`" = ""; then
+@@ -192,7 +202,7 @@
+     fi;;
+ esac
+ 
+-rm -f $test.[co] $test$shared_ext
++rm -f $test.[co] $test$SHAREDEXT
+ 
+ # udpate Makefile
+ sed < Makefile.in "
+@@ -202,6 +212,7 @@
+ /^LDSHARED *=/s%=.*%=$LDSHARED%
+ /^LIBS *=/s%=.*%=$LIBS%
+ /^SHAREDLIB *=/s%=.*%=$SHAREDLIB%
++/^SHAREDEXT *=/s%=.*%=$SHAREDEXT%
+ /^AR *=/s%=.*%=$AR%
+ /^RANLIB *=/s%=.*%=$RANLIB%
+ /^VER *=/s%=.*%=$VER%
+diff -urN --strip-trailing-cr zlib-1.1.3/contrib/iostream2/zstream.h zlib/contrib/iostream2/zstream.h
+--- zlib-1.1.3/contrib/iostream2/zstream.h	1998-01-19 15:27:34.000000000 -0500
++++ zlib/contrib/iostream2/zstream.h	2026-09-24 15:55:15.612959700 -0400
+@@ -21,7 +21,7 @@
+ 
+ /*
+  * zstream.h - C++ interface to the 'zlib' general purpose compression library
+- * $Id: zstream.h 1.1 1997-06-25 12:00:56+02 tyge Exp tyge $
++ * $Id: zstream.h,v 1.1.1.1 1999/04/23 02:07:11 wsanchez Exp $
+  */
+ 
+ #include <strstream.h>
+diff -urN --strip-trailing-cr zlib-1.1.3/crc32.c zlib/crc32.c
+--- zlib-1.1.3/crc32.c	1998-02-02 09:12:36.000000000 -0500
++++ zlib/crc32.c	2026-09-24 15:55:15.712592500 -0400
+@@ -3,7 +3,7 @@
+  * For conditions of distribution and use, see copyright notice in zlib.h 
+  */
+ 
+-/* @(#) $Id$ */
++/* @(#) $Id: crc32.c,v 1.1.1.1 1999/04/23 02:07:08 wsanchez Exp $ */
+ 
+ #include "zlib.h"
+ 
+diff -urN --strip-trailing-cr zlib-1.1.3/deflate.c zlib/deflate.c
+--- zlib-1.1.3/deflate.c	1998-07-09 12:06:12.000000000 -0400
++++ zlib/deflate.c	2026-09-24 15:55:15.720533900 -0400
+@@ -47,7 +47,7 @@
+  *
+  */
+ 
+-/* @(#) $Id$ */
++/* @(#) $Id: deflate.c,v 1.1.1.1 1999/04/23 02:07:08 wsanchez Exp $ */
+ 
+ #include "deflate.h"
+ 
+diff -urN --strip-trailing-cr zlib-1.1.3/deflate.h zlib/deflate.h
+--- zlib-1.1.3/deflate.h	1998-07-08 12:30:19.000000000 -0400
++++ zlib/deflate.h	2026-09-24 15:55:15.728291900 -0400
+@@ -8,7 +8,7 @@
+    subject to change. Applications should only use zlib.h.
+  */
+ 
+-/* @(#) $Id$ */
++/* @(#) $Id: deflate.h,v 1.1.1.1 1999/04/23 02:07:08 wsanchez Exp $ */
+ 
+ #ifndef _DEFLATE_H
+ #define _DEFLATE_H
+diff -urN --strip-trailing-cr zlib-1.1.3/example.c zlib/example.c
+--- zlib-1.1.3/example.c	1998-05-12 05:47:35.000000000 -0400
++++ zlib/example.c	2026-09-24 15:55:15.742320500 -0400
+@@ -3,7 +3,7 @@
+  * For conditions of distribution and use, see copyright notice in zlib.h 
+  */
+ 
+-/* @(#) $Id$ */
++/* @(#) $Id: example.c,v 1.1.1.1 1999/04/23 02:07:08 wsanchez Exp $ */
+ 
+ #include <stdio.h>
+ #include "zlib.h"
+diff -urN --strip-trailing-cr zlib-1.1.3/gzio.c zlib/gzio.c
+--- zlib-1.1.3/gzio.c	1998-07-06 12:41:25.000000000 -0400
++++ zlib/gzio.c	2026-09-24 15:55:15.750123900 -0400
+@@ -5,7 +5,7 @@
+  * Compile this file with -DNO_DEFLATE to avoid the compression code.
+  */
+ 
+-/* @(#) $Id$ */
++/* @(#) $Id: gzio.c,v 1.1.1.1 1999/04/23 02:07:08 wsanchez Exp $ */
+ 
+ #include <stdio.h>
+ 
+diff -urN --strip-trailing-cr zlib-1.1.3/minigzip.c zlib/minigzip.c
+--- zlib-1.1.3/minigzip.c	1998-04-07 12:04:18.000000000 -0400
++++ zlib/minigzip.c	2026-09-24 15:55:15.835101300 -0400
+@@ -13,7 +13,7 @@
+  * or in pipe mode.
+  */
+ 
+-/* @(#) $Id$ */
++/* @(#) $Id: minigzip.c,v 1.1.1.1 1999/04/23 02:07:09 wsanchez Exp $ */
+ 
+ #include <stdio.h>
+ #include "zlib.h"
+diff -urN --strip-trailing-cr zlib-1.1.3/trees.c zlib/trees.c
+--- zlib-1.1.3/trees.c	1998-07-08 12:32:57.000000000 -0400
++++ zlib/trees.c	2026-09-24 15:55:15.908151700 -0400
+@@ -29,7 +29,7 @@
+  *          Addison-Wesley, 1983. ISBN 0-201-06672-6.
+  */
+ 
+-/* @(#) $Id$ */
++/* @(#) $Id: trees.c,v 1.1.1.1 1999/04/23 02:07:09 wsanchez Exp $ */
+ 
+ /* #define GEN_TREES_H */
+ 
+diff -urN --strip-trailing-cr zlib-1.1.3/uncompr.c zlib/uncompr.c
+--- zlib-1.1.3/uncompr.c	1998-02-02 09:12:37.000000000 -0500
++++ zlib/uncompr.c	2026-09-24 15:55:15.917055300 -0400
+@@ -3,7 +3,7 @@
+  * For conditions of distribution and use, see copyright notice in zlib.h 
+  */
+ 
+-/* @(#) $Id$ */
++/* @(#) $Id: uncompr.c,v 1.1.1.1 1999/04/23 02:07:09 wsanchez Exp $ */
+ 
+ #include "zlib.h"
+ 
+diff -urN --strip-trailing-cr zlib-1.1.3/zconf.h zlib/zconf.h
+--- zlib-1.1.3/zconf.h	1998-07-08 13:55:27.000000000 -0400
++++ zlib/zconf.h	2026-09-24 15:55:15.921095300 -0400
+@@ -3,7 +3,7 @@
+  * For conditions of distribution and use, see copyright notice in zlib.h 
+  */
+ 
+-/* @(#) $Id$ */
++/* @(#) $Id: zconf.h,v 1.1.1.1 1999/04/23 02:07:09 wsanchez Exp $ */
+ 
+ #ifndef _ZCONF_H
+ #define _ZCONF_H
+diff -urN --strip-trailing-cr zlib-1.1.3/zutil.c zlib/zutil.c
+--- zlib-1.1.3/zutil.c	1998-07-08 13:01:47.000000000 -0400
++++ zlib/zutil.c	2026-09-24 15:55:15.939958700 -0400
+@@ -3,7 +3,7 @@
+  * For conditions of distribution and use, see copyright notice in zlib.h 
+  */
+ 
+-/* @(#) $Id$ */
++/* @(#) $Id: zutil.c,v 1.1.1.1 1999/04/23 02:07:09 wsanchez Exp $ */
+ 
+ #include "zutil.h"
+ 
+diff -urN --strip-trailing-cr zlib-1.1.3/zutil.h zlib/zutil.h
+--- zlib-1.1.3/zutil.h	1998-07-08 13:01:48.000000000 -0400
++++ zlib/zutil.h	2026-09-24 15:55:15.941427500 -0400
+@@ -8,7 +8,7 @@
+    subject to change. Applications should only use zlib.h.
+  */
+ 
+-/* @(#) $Id$ */
++/* @(#) $Id: zutil.h,v 1.1.1.1 1999/04/23 02:07:09 wsanchez Exp $ */
+ 
+ #ifndef _Z_UTIL_H
+ #define _Z_UTIL_H

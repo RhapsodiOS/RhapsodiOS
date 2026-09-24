@@ -79,9 +79,37 @@ bounded native guest acceptance evidence.
   build includes that CPU (a universal build takes both), e.g. kernel-7's
   `makedepends_ppc = drvpexpert`.
 - Depends at runtime on `tar`, `gzip`, `apk`, `make`, `chroot`, `rsync`,
-  `mkdir`, `cp`, `rm` on `PATH`.
+  `mkdir`, `cp`, `rm` on `PATH`, and for vendored projects on `mv`, `rmdir`
+  and GNU `patch` 2.5 or later. Patching runs on the host, before any chroot.
 
 `make trace-test` is an rbuild `-n` dry-run against empty APK seeds: universal
 i386+ppc probes, thin `RC_*` policy, no build root, no live-host bootstrap
 seeds. Empty dependency archives are planning fixtures, not valid packages;
 actual payload validation and native builds are tested separately.
+
+## Vendored sources
+
+A project may ship a pristine upstream tarball and an ordered patch series
+instead of an expanded tree. `apk/vendor` uses `apk/pkginfo` syntax:
+
+    tarball = zlib-1.1.3.tar.gz
+    directory = zlib
+    patches = patches
+    patchlevel = 1
+
+`tarball` and `directory` are required; `patches` and `patchlevel` default as
+shown. After rsyncing the project into SRCROOT (without the tarball or the
+patch directory), rbuild extracts the tarball with the toolchain's `gzip` and
+`tar`, renames its single top-level entry to `directory`, and runs
+`patch -f -E --no-backup-if-mismatch -p<level>` for each `<patches>/*.patch`
+in filename order. The project's Makefile then builds normally. The tarball
+must hold exactly one top-level entry, and the project must not also
+carry the expanded tree. See `src/zlib-1`.
+
+Tarballs and patches are trusted inputs: rbuild extracts and patches them on
+the build host as root, before any chroot, without checking member paths. Take
+tarballs only from their upstream release, and record the upstream checksum in
+the commit that adds one. Extraction keeps upstream modification times while
+patched files get fresh ones, so when a patch touches a generator input such as
+`configure.in`, also patch the file generated from it, or make may try to
+regenerate it.

@@ -1752,6 +1752,82 @@ TEST(test_direct_packaging_missing_architecture_defaults_universal) {
     package_free(&pkg);params_free(&params);system("rm -rf /tmp/rb-default-package");
 }
 
+static void vendor_fixture_file(const char *path, const char *text) {
+    FILE *f = fopen(path, "w");
+    fputs(text, f);
+    fclose(f);
+}
+
+static void vendor_fixture_params(Params *p, const char *base) {
+    params_init(p);
+    p->OBJROOT = str_cats(base, "/obj", (char *)0);
+    p->SYMROOT = str_cats(base, "/sym", (char *)0);
+    p->DSTROOT = str_cats(base, "/dst", (char *)0);
+    p->HDRROOT = str_cats(base, "/hdr", (char *)0);
+    p->PACKAGEROOT = str_cats(base, "/pkg", (char *)0);
+    p->SRCROOT = str_cats(base, "/src", (char *)0);
+    p->SRCDIR = str_cats(base, "/srcdir", (char *)0);
+    p->LIBCOBJROOT = str_cats(base, "/cobj", (char *)0);
+    p->BUILDROOT = str_cats(base, "/br", (char *)0);
+}
+
+static int vendor_fixture_equals(const char *path, const char *want) {
+    FILE *f = fopen(path, "r");
+    char buf[256];
+    size_t n;
+    if (!f) return 0;
+    n = fread(buf, 1, sizeof(buf) - 1, f);
+    buf[n] = '\0';
+    fclose(f);
+    return strcmp(buf, want) == 0;
+}
+
+TEST(test_setupdirs_vendors) {
+    Package pkg;
+    Params p;
+    strlist repo;
+    BuildOptions opt;
+
+    CHECK_INT(system("rm -rf /tmp/rb_ven && "
+        "mkdir -p /tmp/rb_ven/srcdir/apk /tmp/rb_ven/srcdir/patches "
+        "/tmp/rb_ven/srcdir/sub/patches /tmp/rb_ven/stage/widget-1.0 && "
+        "echo orig > /tmp/rb_ven/stage/widget-1.0/hello.txt && "
+        "echo keep > /tmp/rb_ven/srcdir/sub/patches/keep.txt && "
+        "echo all: > /tmp/rb_ven/srcdir/Makefile && "
+        "cd /tmp/rb_ven/stage && /bin/pax -w -x ustar widget-1.0 | "
+        "/usr/bin/gzip -c > /tmp/rb_ven/srcdir/widget-1.0.tar.gz"), 0);
+    vendor_fixture_file("/tmp/rb_ven/srcdir/apk/vendor",
+        "tarball = widget-1.0.tar.gz\ndirectory = widget\n");
+    vendor_fixture_file("/tmp/rb_ven/srcdir/patches/0001-change.patch",
+        "--- widget-1.0/hello.txt\n+++ widget/hello.txt\n"
+        "@@ -1 +1 @@\n-orig\n+patched\n");
+
+    package_init(&pkg);
+    strlist_init(&repo);
+    build_options_init(&opt);
+    opt.bootstrap = 1;          /* no chroot: empty repository is fine */
+    vendor_fixture_params(&p, "/tmp/rb_ven");
+
+    CHECK_INT(builder_setupdirs(&pkg, &p, "widget", "dir", &repo, &opt), 0);
+    CHECK(access("/tmp/rb_ven/src/Makefile", F_OK) == 0);
+    CHECK(access("/tmp/rb_ven/src/widget/hello.txt", F_OK) == 0);
+    CHECK(vendor_fixture_equals("/tmp/rb_ven/src/widget/hello.txt", "patched\n"));
+    /* build inputs stay out of SRCROOT ... */
+    CHECK(access("/tmp/rb_ven/src/widget-1.0.tar.gz", F_OK) != 0);
+    CHECK(access("/tmp/rb_ven/src/patches", F_OK) != 0);
+    /* ... but the excludes are anchored: a nested patches/ still copies */
+    CHECK(access("/tmp/rb_ven/src/sub/patches/keep.txt", F_OK) == 0);
+
+    /* half-finished conversion: expanded tree still in the project */
+    CHECK_INT(system("mkdir -p /tmp/rb_ven/srcdir/widget"), 0);
+    CHECK_INT(builder_setupdirs(&pkg, &p, "widget", "dir", &repo, &opt), 1);
+
+    params_free(&p);
+    strlist_free(&repo);
+    package_free(&pkg);
+    system("rm -rf /tmp/rb_ven");
+}
+
 static void run_all(void) {
     RUN(test_fallback_preserves_explicit_architecture);
     RUN(test_direct_packaging_missing_architecture_defaults_universal);
@@ -1796,6 +1872,7 @@ static void run_all(void) {
     RUN(test_scan_dir);
     RUN(test_scan_dir_missing_pkgname_fails);
     RUN(test_relativize_absolute_symlinks_inside_dstroot);
+    RUN(test_setupdirs_vendors);
 }
 
 TEST_MAIN()

@@ -3,6 +3,7 @@
 #include "products.h"
 #include "macho.h"
 #include "apk.h"
+#include "vendor.h"
 #include <errno.h>
 #include "pkginfo.h"
 #include "exec.h"
@@ -1112,20 +1113,47 @@ int builder_setupdirs(const Package *pkg, const Params *params,
 
     if (strcmp(srctype, "dir") == 0) {
         char *source;
-        char *argv[9];
+        char *argv[11];
+        char *tar_exclude = 0;
+        char *patch_exclude = 0;
+        char *vpath;
         const char *rsync = "rsync";
+        Vendor v;
+        int have_vendor = 0;
+        int a;
         int rc;
-        if (exec_check(mkdirp(params->SRCROOT))) return 1;
+
+        vendor_init(&v);
+        vpath = vendor_path(params->SRCDIR);
+        if (vpath) {
+            rc = vendor_read(&v, vpath);
+            free(vpath);
+            if (rc) { vendor_free(&v); return 1; }
+            have_vendor = 1;
+        }
+        if (exec_check(mkdirp(params->SRCROOT))) { vendor_free(&v); return 1; }
         if (opt && opt->toolchain && opt->toolchain->rsync)
             rsync = opt->toolchain->rsync;
         source = str_cats(params->SRCDIR, "/", (char *)0);
         argv[0] = (char *)rsync; argv[1] = "-avr"; argv[2] = source;
         argv[3] = "--exclude=CVS/"; argv[4] = "--exclude=.svn/";
         argv[5] = "--exclude=.git/"; argv[6] = "--exclude=.hg/";
-        argv[7] = params->SRCROOT; argv[8] = 0;
+        a = 7;
+        if (have_vendor) {
+            /* Build inputs, not sources. Leading '/' anchors at SRCDIR/. */
+            tar_exclude = str_cats("--exclude=/", v.tarball, (char *)0);
+            patch_exclude = str_cats("--exclude=/", v.patches, "/", (char *)0);
+            argv[a++] = tar_exclude;
+            argv[a++] = patch_exclude;
+        }
+        argv[a++] = params->SRCROOT; argv[a] = 0;
         exec_printcmd(argv);
         rc = exec_run_checked(argv);
-        free(source);
+        free(source); free(tar_exclude); free(patch_exclude);
+        if (rc == 0 && have_vendor)
+            rc = vendor_apply(&v, params->SRCDIR, params->SRCROOT,
+                              opt ? opt->toolchain : 0);
+        vendor_free(&v);
         if (rc) return 1;
     } else {
         fprintf(stderr, "rbuild: unknown source type %s\n", srctype);

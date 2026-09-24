@@ -241,6 +241,12 @@ def main(argv):
     boot0 = None
     if "--boot0" in argv:
         i = argv.index("--boot0")
+        if i + 1 >= len(argv):
+            sys.stderr.write(
+                "usage: %s [--boot0 FILE] RHAPSODY_IMAGE EFI_APP OUT_PATH [ESP_MB]\n"
+                "       %s --esp-only EFI_APP OUT_PATH [ESP_MB]\n"
+                % (argv[0], argv[0]))
+            return 2
         with open(argv[i + 1], "rb") as f:
             boot0 = f.read()
         del argv[i:i + 2]

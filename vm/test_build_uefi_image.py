@@ -260,5 +260,13 @@ class TestBuildEspOnly(unittest.TestCase):
                                        self.out, esp_mb=64)
 
 
+class TestMainUsage(unittest.TestCase):
+    def test_bare_boot0_flag_prints_usage_and_returns_2(self):
+        self.assertEqual(
+            build_uefi_image.main(
+                ["build_uefi_image.py", "IMAGE", "EFI", "OUT", "--boot0"]),
+            2)
+
+
 if __name__ == "__main__":
     unittest.main()

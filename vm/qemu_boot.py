@@ -108,13 +108,17 @@ def run(mode, image, outdir, at_points, firmware_dir, esp=None):
                         os.path.join(outdir, "edk2-i386-vars.fd"))
     port = qemu_shot.find_free_port()
     stderr_path = os.path.join(outdir, "qemu-stderr.log")
-    stderr_f = open(stderr_path, "wb")
-    proc = subprocess.Popen(
-        build_args(mode, image, outdir, port, firmware_dir, esp=esp),
-        stdout=subprocess.DEVNULL, stderr=stderr_f)
-    start = time.monotonic()
+    proc = None
     qmp = None
     try:
+        stderr_f = open(stderr_path, "wb")
+        try:
+            proc = subprocess.Popen(
+                build_args(mode, image, outdir, port, firmware_dir, esp=esp),
+                stdout=subprocess.DEVNULL, stderr=stderr_f)
+        finally:
+            stderr_f.close()
+        start = time.monotonic()
         try:
             qmp = qemu_shot.QMP("127.0.0.1", port)
         except RuntimeError as e:
@@ -142,12 +146,12 @@ def run(mode, image, outdir, at_points, firmware_dir, esp=None):
             except Exception:
                 pass
             qmp.close()
-        try:
-            proc.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-            proc.wait(timeout=5)
-        stderr_f.close()
+        if proc is not None:
+            try:
+                proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait(timeout=5)
     print("console: %s" % os.path.join(outdir, "console.log"))
     print("kernel:  %s" % os.path.join(outdir, "kernel.log"))
 

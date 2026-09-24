@@ -118,6 +118,33 @@ class TestRunReportsQemuFailures(unittest.TestCase):
             self.assertIn(os.path.join(outdir, "qemu-stderr.log"),
                          str(ctx.exception))
 
+    def test_popen_failure_closes_the_stderr_log_and_propagates(self):
+        # No SystemExit wraps this one: only the QMP-connect and screenshot
+        # failures above are translated into a diagnostic SystemExit, because
+        # only those have a running QEMU process (and thus a stderr log
+        # worth pointing at) to report on. A Popen failure means QEMU never
+        # started, so the original error (FileNotFoundError, here standing
+        # in for "qemu-system-i386 is not on PATH") is left to propagate
+        # unchanged; the fix under test is only that it no longer leaks the
+        # open stderr log handle on the way out.
+        with tempfile.TemporaryDirectory() as tmp:
+            image = self._fake_image(tmp)
+            outdir = os.path.join(tmp, "out")
+            opened = []
+
+            def tracking_open(*args, **kwargs):
+                f = open(*args, **kwargs)
+                opened.append(f)
+                return f
+
+            with mock.patch("qemu_boot.subprocess.Popen",
+                            side_effect=FileNotFoundError("no qemu")), \
+                 mock.patch("qemu_boot.open", tracking_open, create=True):
+                with self.assertRaises(FileNotFoundError):
+                    qemu_boot.run("bios", image, outdir, [1], "fw")
+            self.assertEqual(len(opened), 1)
+            self.assertTrue(opened[0].closed)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,21 +1,48 @@
 /* Console/diagnostic backend for boot-2's reused libsaio/libsa sources.
  * disk.c and sys.c call printf/error/verbose/message/getc/putchar/
- * spinActivityIndicator/sleep; this file supplies all of them over the EFI
- * Simple Text I/O protocols. Two symbols in the brief's original list are
- * NOT supplied here because sys.c/disk.c already define them:
- * flushdev() (sys.c) and diskActivityHook() (disk.c, which just calls
- * spinActivityIndicator()).
+ * spinActivityIndicator/sleep; this file supplies them over the EFI Simple
+ * Text I/O protocols, except message() and the activity indicator, which
+ * draw on the Boot Graphics panel and live in efi_splash.c. Two symbols in
+ * the brief's original list are NOT supplied here because sys.c/disk.c
+ * already define them: flushdev() (sys.c) and diskActivityHook() (disk.c,
+ * which just calls spinActivityIndicator()).
  */
 #include <stdarg.h>
 #include "efi.h"
+#include "io_inline.h"
+#include "efi_gfx.h"
+
+/* efi_splash.c: the console window, or the buffer while the panel is up. */
+extern void efi_screen_putc(int c);
 
 /* libsa/sprintf.c's va_list formatter into a bounded buffer. */
 extern int slvprintf(char *buffer, int len, const char *fmt, va_list arg);
+
+/* 16550 at COM1: wait (bounded) for the transmit holding register. */
+static void com1_putc(int c)
+{
+    int spin;
+
+    for (spin = 0; spin < 100000 && !(inb(0x3FD) & 0x20); spin++)
+        ;
+    outb(0x3F8, c);
+}
 
 void putchar(int c)
 {
     CHAR16 s[3];
     int i = 0;
+
+    if (efi_gfx_active()) {
+        /* The card is in VGA mode 0x12 now and ConOut would draw over it.
+         * OVMF mirrors ConOut to COM1, so keep the serial log going by
+         * writing COM1 directly. */
+        if (c == '\n')
+            com1_putc('\r');
+        com1_putc(c);
+        efi_screen_putc(c);
+        return;
+    }
 
     if (c == '\n')
         s[i++] = L'\r';
@@ -80,11 +107,6 @@ int verbose(const char *fmt, ...)
     return 0;
 }
 
-void message(char *str, int n)
-{
-    printf("%s\n", str);
-}
-
 int getc(void)
 {
     EFI_INPUT_KEY key;
@@ -98,9 +120,6 @@ int getc(void)
         gBS->Stall(1000);
     }
 }
-
-void spinActivityIndicator(void) { }
-void clearActivityIndicator(void) { }
 
 void sleep(int seconds)
 {
@@ -120,11 +139,6 @@ int gets(char *buf, int len)
         buf[0] = '\0';
     return 0;
 }
-
-/* stringTable.c's loadOtherConfigs() calls setMode() only on its "Query"
- * prompt, to put boot-2's graphics panel back into text mode.  This console
- * is always text, so there is nothing to switch. */
-void setMode(int mode) { (void)mode; }
 
 /* halt() is real-mode assembly in boot-2 (asm.s, not part of this build)
  * with no EFI equivalent; sys.c calls it on an unrecoverable device error.

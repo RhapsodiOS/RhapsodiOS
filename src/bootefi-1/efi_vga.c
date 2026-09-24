@@ -286,3 +286,85 @@ void efi_vga_reset_text_mode(void)
     for (i = 0; i < 80 * 25; i++)
         text[i] = 0x0720; /* ' ' on a normal grey-on-black attribute */
 }
+
+/*
+ * Standard VGA mode 0x12 (640x480, planar) exactly as the kernel's console
+ * programs it: VGASetGraphicsMode() and paletteVals[] in
+ * src/kernel-7/bsd/dev/i386/BasicConsole.c. Only planes 0 and 1 are
+ * displayed (attribute register 0x12 = 0x03), and every DAC entry holds one
+ * of the four NeXT greys, so pixel values 0..3 are black, dark grey, light
+ * grey and white.
+ */
+static const unsigned char mode12_seq[5] = { 0x03, 0x21, 0x0f, 0x00, 0x06 };
+
+static const unsigned char mode12_crtc[25] = {
+    0x5f, 0x4f, 0x50, 0x82, 0x54, 0x80, 0x0b, 0x3e, 0x00, 0x40,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x59, 0xea, 0x8c, 0xdf, 0x28,
+    0x00, 0xe7, 0x04, 0xe3, 0xff
+};
+
+static const unsigned char mode12_ac[21] = {
+    0x00, 0x01, 0x02, 0x03, 0x00, 0x01, 0x02, 0x03,
+    0x00, 0x01, 0x02, 0x03, 0x00, 0x01, 0x02, 0x03,
+    0x01, 0x00, 0x03, 0x00, 0x00
+};
+
+static const unsigned char mode12_gc[9] = {
+    0x00, 0x0f, 0x00, 0x00, 0x00, 0x00, 0x05, 0x0f, 0xff
+};
+
+static const unsigned char mode12_grey[4] = { 0, 21, 42, 63 };
+
+void efi_vga_set_mode12(void)
+{
+    unsigned i;
+
+    outb(SEQ_ADDR, 0x01); outb(SEQ_DATA, mode12_seq[1]); /* screen off */
+    (void)inb(INPUT_STATUS1);
+    outb(AC_ADDR, 0x00);                /* palette to the CPU: video off */
+
+    outb(MISC_OUTPUT, 0xE3);
+    outb(INPUT_STATUS1, 0x00);          /* feature control (colour port) */
+
+    for (i = 0; i < 5; i++) {
+        outb(SEQ_ADDR, i);
+        outb(SEQ_DATA, mode12_seq[i]);
+    }
+    outb(SEQ_ADDR, 0x00); outb(SEQ_DATA, 0x03);
+
+    /* The same three Cirrus extension registers efi_vga_reset_text_mode()
+     * clears, for the same reason: OVMF's GOP mode leaves them set, and
+     * with them set the 0xA0000 aperture and the CRTC start address do
+     * not behave like standard VGA. */
+    outb(SEQ_ADDR, 0x07); outb(SEQ_DATA, 0x00);
+
+    outb(CRTC_ADDR, 0x11); outb(CRTC_DATA, 0x00); /* unlock CRTC 0-7 */
+    for (i = 0; i < 25; i++) {
+        outb(CRTC_ADDR, i);
+        outb(CRTC_DATA, mode12_crtc[i]);
+    }
+    outb(CRTC_ADDR, 0x1B); outb(CRTC_DATA, 0x00);
+    outb(CRTC_ADDR, 0x1D); outb(CRTC_DATA, 0x00);
+
+    (void)inb(INPUT_STATUS1);
+    for (i = 0; i < 21; i++) {
+        outb(AC_ADDR, i);
+        outb(AC_DATA, mode12_ac[i]);
+    }
+
+    for (i = 0; i < 9; i++) {
+        outb(GC_ADDR, i);
+        outb(GC_DATA, mode12_gc[i]);
+    }
+
+    for (i = 0; i < 16; i++) {
+        outb(0x3C8, i);
+        outb(0x3C9, mode12_grey[i % 4]);
+        outb(0x3C9, mode12_grey[i % 4]);
+        outb(0x3C9, mode12_grey[i % 4]);
+    }
+
+    (void)inb(INPUT_STATUS1);
+    outb(AC_ADDR, 0x20);                /* palette back to the VGA */
+    outb(SEQ_ADDR, 0x01); outb(SEQ_DATA, mode12_seq[1] & ~0x20); /* on */
+}

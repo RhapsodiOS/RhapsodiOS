@@ -5,6 +5,7 @@
 #include <memory.h>	/* RLD_MEM_ADDR */
 #include "sarld.h"	/* sa_rld_t */
 #include "efi_bootargs.h"
+#include "efi_splash_rule.h"
 
 EFI_SYSTEM_TABLE  *gST;
 EFI_BOOT_SERVICES *gBS;
@@ -16,6 +17,18 @@ extern int efi_disk_init(void);
 extern int efi_reserve_ranges(void);
 extern void efi_init_bootstruct(void);
 extern int efi_pci_init(void);
+extern void efi_gfx_init(void);
+
+/* efi_console.c; error() counts into it. */
+extern int errors;
+
+/* efi_splash.c: the Boot Graphics panel and the calls that draw on it. */
+extern void setMode(int mode);
+extern int currentMode(void);
+extern void message(char *str, int centered);
+extern void clearActivityIndicator(void);
+
+#define BOOT_TIMEOUT 10     /* src/boot-2/i386/boot2/boot.h */
 
 /* Defined in sys.c; declared here rather than pulling in saio.h's full
  * BSD/UFS header chain for this translation unit, which needs none of it. */
@@ -85,10 +98,12 @@ static int load_kernel(const char *spec)
 EFI_STATUS
 efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
 {
+    int wantSplash;
+
     gImageHandle = image;
     gST = systab;
     gBS = systab->BootServices;
-    gST->ConOut->ClearScreen(gST->ConOut);
+    efi_gfx_init();
 
     if (efi_reserve_ranges() != 0) {
         printf("fixed-address reservation failed\n");
@@ -146,6 +161,16 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
         printf("bootString '%s'\n", kernBootStruct->bootString);
     }
 
+    /* boot2/boot.c decides on the Boot Graphics panel once the config
+     * is loaded and puts it up straight away; see efi_splash_rule.c. */
+    wantSplash = efi_want_splash(kernBootStruct->bootString,
+                                 getBoolForKey("Boot Graphics"), errors);
+    if (wantSplash) {
+        setMode(GRAPHICS_MODE);
+        /* No panel to go back to if it would not load. */
+        wantSplash = currentMode() == GRAPHICS_MODE;
+    }
+
     {
         char *linkerPath = newStringForKey("Linker");
         if (linkerPath == 0)
@@ -175,8 +200,20 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
      * configEnd keeps it correct on every path. */
     kernBootStruct->first_addr0 = (int)kernBootStruct->configEnd + 1024;
 
+    /* boot2/boot.c: show what went wrong in text, then return to the
+     * panel for the handoff. */
+    if (errors) {
+        setMode(TEXT_MODE);
+        localPrintf("Errors encountered while starting up the computer.\n");
+        localPrintf("Pausing %d seconds...\n", BOOT_TIMEOUT);
+        sleep(BOOT_TIMEOUT);
+    }
+    if (wantSplash)
+        setMode(GRAPHICS_MODE);
+    message("Starting Rhapsody", 0);
+
     removeLinkEditSegment((struct mach_header *)kernBootStruct->kaddr);
-    printf("Starting Rhapsody\n");
+    clearActivityIndicator();
     efi_exit_and_start((unsigned int)kernelEntry);
     /* not reached */
     return EFI_SUCCESS;

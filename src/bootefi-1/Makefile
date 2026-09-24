@@ -82,7 +82,11 @@ BOOT2_SRCS := $(BOOT2)/libsaio/disk.c \
               $(BOOT2)/libsa/bsearch.c \
               $(BOOT2)/libsa/qsort.c \
               $(BOOT2)/libsa/strtol.c \
-              $(BOOT2)/libsaio/sys.c
+              $(BOOT2)/libsaio/sys.c \
+              $(BOOT2)/libsaio/bitmap.c \
+              $(BOOT2)/libsaio/unpackbits.c \
+              $(BOOT2)/libsaio/font.c \
+              $(BOOT2)/boot2/bitmaps.c
 # libsa/memset.c is NOT included: its unconditional `simple_char_set`
 # inline asm (invalid "&c" input constraint under clang) and lvalue-cast
 # assignments (`UNS(dst) += ...`) do not compile under any modern compiler
@@ -91,13 +95,13 @@ BOOT2_SRCS := $(BOOT2)/libsaio/disk.c \
 # is instead implemented directly in efi_memory.c.
 
 EFI_SRCS := efi_main.c efi_console.c efi_disk.c efi_disk_select.c \
-            efi_bootargs.c efi_memory.c efi_vga.c efi_pci.c handoff.c \
-            $(BOOT2_SRCS)
+            efi_bootargs.c efi_memory.c efi_vga.c efi_gfx.c efi_splash.c \
+            efi_splash_rule.c efi_pci.c handoff.c $(BOOT2_SRCS)
 
 EFI_OBJS := $(patsubst %.c,$(BUILD)/%.obj,$(notdir $(EFI_SRCS))) \
             $(BUILD)/handoff_tramp.obj
 
-VPATH := $(BOOT2)/libsaio:$(BOOT2)/libsa
+VPATH := $(BOOT2)/libsaio:$(BOOT2)/libsa:$(BOOT2)/boot2
 
 all: $(BUILD)/BOOTIA32.EFI
 

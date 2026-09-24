@@ -222,8 +222,8 @@ if [ -z "${HOSTNAME}" ] || [ -z "${ROUTER}" ]; then
 	fi
     fi
 
-    if ! HOSTNAME=$(GetNetConfig any host_name 1); then HOSTNAME=localhost; fi
-    if !   ROUTER=$(GetNetConfig any router    1); then   ROUTER=-NO-     ; fi
+    if [ -z "${HOSTNAME}" ] && ! HOSTNAME=$(GetNetConfig any host_name 1); then HOSTNAME=localhost; fi
+    if [ -z "${ROUTER}"   ] && !   ROUTER=$(GetNetConfig any router    1); then   ROUTER=-NO-     ; fi
 fi
 
 ##

@@ -65,14 +65,19 @@ mounting. Two gates:
   function before `MNT_ROOTFS` is set (`bsd/kern/init_main.c:579`), so only the
   `MNT_RDONLY` that `vfs_rootmountalloc` gives it tells the two apart. Without the
   exemption a dirty root would be refused at boot. xnu-124 has no such exemption.
-- The root read-write upgrade refuses with `EPERM` — but, as in xnu-124, only
-  when the machine was booted single-user. In multi-user it prints a warning and
-  proceeds, so a normal boot is never stranded read-only. `issingleuser()` does
-  not exist here; `boothowto & RB_SINGLE` is its equivalent. Written against
-  `kernel-7`'s `mnt_flag & MNT_WANTRDWR` (`bsd/sys/mount.h:182`), not xnu's
-  renamed `MNTK_` form.
+- A read-write upgrade of a dirty filesystem is refused with `EPERM`: always for
+  a non-root filesystem, and for root only when the machine was booted
+  single-user, as xnu-124 does. Root in multi-user prints
+  `ffs: / was unclean when mounted; mounting read-write anyway` and proceeds, so
+  a normal boot is never stranded read-only. Gating non-root upgrades closes a
+  bypass the read-only exemption would otherwise open: `mount -r` followed by
+  `mount -uw`. xnu-124 avoids that by refusing even the read-only mount.
+  Refusals name the live mount point (`mnt_stat.f_mntonname`), not the name
+  recorded on disk. `issingleuser()` does not exist here; `boothowto &
+  RB_SINGLE` is its equivalent. Written against `kernel-7`'s `mnt_flag &
+  MNT_WANTRDWR` (`bsd/sys/mount.h:182`), not xnu's renamed `MNTK_` form.
 
-The root gate cannot trust the in-memory `fs_clean`. Rhapsody's `fsck` marks the
+The upgrade gate cannot trust the in-memory `fs_clean`. Rhapsody's `fsck` marks the
 disk clean *without* reloading the root when that is its only repair —
 `src/Commands/diskdev_cmds/fsck.tproj/utilities.c:375-383` saves and restores
 `fsmodified` around the write, and `main.c:413` reloads only if `fsmodified` —
@@ -145,8 +150,8 @@ at `bsd/vfs/vfs_syscalls.c:417` and already honoured by `bsd/vfs/vfs_subr.c:202`
 **6. Return `EINVAL` for a negative read offset.**
 `READ` checks only the upper bound at `ufs_readwrite.c:145`, so a negative
 offset becomes an enormous unsigned value and is rejected as `EFBIG`. The right
-errno is `EINVAL`. `WRITE` already gets this right at `:301` — read is the only
-side that needs it.
+errno is `EINVAL`. `WRITE` also rejects a negative offset, at `:301`, though
+with `EFBIG` rather than `EINVAL`, as xnu-124 does. This change leaves it alone.
 
 **7. Return early from a zero-length write.**
 `WRITE` falls into the full allocation and locking path for a request that will
@@ -205,7 +210,7 @@ late — but there is no way to schedule the two threads against each other on
 demand.
 
 Change 2 lives in `ffs_reload`, which runs when `fsck` reloads a repaired
-read-only root and from the single-user root gate, and
+read-only root and from the upgrade gate, and
 triggering it needs the superblock read to fail on a filesystem that mounted
 successfully a moment earlier. A malformed disk cannot produce that, because a
 disk bad enough to fail the read is too bad to have mounted. Doing it properly
@@ -267,79 +272,125 @@ Implementation happens in a dedicated worktree, not the main checkout.
 
 ## Outcome
 
-Built and booted on 2026-09-23, from branch `xnu124-p0-integration` (these UFS
-changes plus the companion HFS backport, which touch disjoint files).
+Built and booted on 2026-09-23, from branch `xnu124-p0-integration`: these UFS
+changes plus the companion HFS backport, which touch disjoint files. There were
+two rounds. The first round's harness could not settle two of its claims. Then
+the final whole-branch review found that the first round's ppc build had
+compiled the wrong sources. So everything was rebuilt and the harness re-run.
 
 ### Builds
 
-**i386: clean.** The kernel compiled on the first attempt and was grafted into
-the branch's private image, `vm/work/ufs-backport.img`, leaving 592 bytes of
-headroom. The build logged 17 warnings in `bsd/ufs`, and all of them predate
-this work. One sits in code the series touched: `ffs_vfsops.c:321`, "integer
-constant out of range", which is the 4 GB `0x100000000` that change 2's helper
-moved verbatim out of `ffs_mountfs`. It cannot be truncating to 0, or every
-multi-call `read(2)` on this system would have failed with `EFBIG` for years.
+The build box's `/build/src` is shared with other sessions, and that nearly
+produced a false result.
 
-**ppc: compiled, but only in keep-going mode.** The full ppc build fails before
-it reaches UFS, and for reasons unrelated to this work. `conf/Makefile.ppc:61`
-uses a GNU Make target-specific variable (from `a5236b800`, the msdosfs work).
-The build box's GNU Make 3.74 cannot parse it and stops at `fdesc_vnops.o`. So
-master's ppc kernel does not build on that box at all, and that is filed
-separately. With `MAKEFLAGS=k`, every other object compiled, and both files
-this series changes built without errors. The ppc compiler raised exactly one
-warning on a new line: "suggest parentheses around assignment" on the root
-gate's `ffs_reload` call. That is fixed in `ad58db876`, which changes no
-generated code.
+**The first ppc build compiled master's unpatched sources.** Another session
+re-synced `kernel-7` between our i386 and ppc builds. The mismatched warning
+line numbers were explained away as compiler drift, until the final review
+compared them with HEAD.
+
+**The rebuild proved its inputs.**
+- A `cksum` of each of the nine changed files on the box matched HEAD at three
+  points: before the i386 build, between the two builds, and after the ppc
+  build.
+- Every warning the compilers reported names a line whose content at HEAD is
+  the construct warned about. For example, the 4 GB constant is reported at
+  `ffs_vfsops.c:330`, where the stale build had reported `:668`.
+- The rebuild caught a second trap on the way: `rbuild` silently reused a stale
+  cached i386 package, given away only by a 455-byte build log.
+
+**i386: clean.** No warning falls on a line this series changed. Seventeen
+pre-existing warnings remain in `bsd/ufs`. They include "integer constant out
+of range" on the 4 GB constant, which change 2's helper moved verbatim. This
+kernel differs from the first round's, and it carries the final message
+strings.
+
+**ppc: every changed file compiled without error**, in keep-going mode. The
+full ppc build does not complete on the box, for two reasons unrelated to this
+work:
+- `conf/Makefile.ppc:61` uses a GNU Make target-specific variable (from
+  `a5236b800`, the msdosfs work) that GNU Make 3.74 cannot parse;
+- the final link wants a `pexpertpowermac.o` that is not present.
+
+Both are filed separately.
 
 ### Boot harness
 
-All boots ran through `guest-console.py`'s `Guest`. Each used QMP port 4491,
-the private image named by `RHAP_TEST_IMAGE`, and QEMU's `-snapshot`. Kernel
-output was read from the serial log.
+Every boot ran through `guest-console.py`'s `Guest`:
+- on QMP port 4491;
+- against the private image named by `RHAP_TEST_IMAGE`;
+- under QEMU's `-snapshot`;
+- reading kernel output from the serial log.
 
-| Run | What it tests | Result |
-|---|---|---|
-| 1 | The evidence channel | **Pass.** `serial_dbg: i386 kernel console up` reached the log. The stock kernel in `golden.img` cannot produce that line, and an earlier attempt that booted it produced an empty log. No `ffs: ` lines on a clean image. |
-| 2 | A second disk mounts single-user | **Pass**, as `/dev/hd1a`. The stock kernel wedges in this configuration (`hc0: interrupt timeout, cmd: 0xc4`), and this tree's EIDE work evidently fixes that. |
-| 3 | Change 4, corrupt magic | **Pass.** Exactly one `ffs: superblock magic invalid, refusing` line, and the mount failed cleanly. |
-| 4 | Change 1, dirty non-root | **Pass.** The read-write mount was refused with exactly one line, and the read-only mount succeeded. |
-| 5 | Change 5, unmount then remount | **Pass.** No hang, and no `ffs: ` lines. |
-| 6 | A dirty root boots multi-user | **Could not be tested on this image.** See below. |
-| 6b | Change 1, root gate outside single-user | **Pass.** `mount -uw /` logged `ffs: / not cleanly unmounted; mounting read-write anyway` and proceeded; `mount` then showed root read-write. |
-| 7 | Change 1, root gate in single-user | **Pass.** The first `mount -uw /` was refused with exactly one line. After `fsck -y`, the second went through silently, which proves the targeted `ffs_reload` picks up the clean flag `fsck` writes without reloading. |
-| 8a | Clean boot regression | **Pass.** No `ffs: ` lines. |
-| 8b | `fsck -n` baseline | **Pass.** It matched the known graft artifacts exactly: the donor inode's `UNKNOWN FILE TYPE`/`BAD TYPE VALUE`, `LINK COUNT FILE I=1253202`, and the three Phase 5 complaints. Nothing else. |
+Round 2 used the rebuilt kernel.
 
-So both gates in change 1 are demonstrated — the non-root refusal and both
-branches of the root gate — along with change 4's pre-check. Changes 2, 5, 6
-and 7 remain argued rather than demonstrated, for the reasons in "The gap worth
-naming". Run 5 shows only that change 5 does not break unmounting.
+| Run | Round | What it tests | Result |
+|---|---|---|---|
+| 1 | 1, 2 | The evidence channel | **Pass.** `serial_dbg: i386 kernel console up` reached the log, and there were no `ffs: ` lines on a clean image. In round 2, answering `y` at a "Continue without network?" prompt took the boot through to the Setup Assistant. |
+| 2 | 1 | A second disk mounts single-user | **Pass**, as `/dev/hd1a`. The stock kernel wedges here (`hc0: interrupt timeout, cmd: 0xc4`). |
+| 3 | 1 | Change 4, corrupt magic | **Pass.** One `ffs: superblock magic invalid, refusing` line; the mount failed cleanly. |
+| 4 | 1 | Change 1, dirty non-root mount | **Pass.** Read-write refused with one line; read-only allowed. |
+| 5 | 1 | Change 5, unmount then remount | **Pass.** No hang. |
+| 6 | 1 | A dirty root boots multi-user, unattended | **Not testable on this image.** See below. |
+| 6b | 1, 2 | Change 1, root upgrade outside single-user | **Pass.** One warning line, no refusal, and root read-write. Round 2 shows the final wording: `ffs: / was unclean when mounted; mounting read-write anyway`. |
+| 7 | 1, 2 | Change 1, root upgrade in single-user | **Pass.** Exactly one `ffs: root not cleanly unmounted, refusing read-write upgrade; run fsck` line; after `fsck -y`, the upgrade went through. Byte-identical in both rounds. |
+| 9 | 2 | Change 1, dirty non-root upgrade, and the superblock reread | **Pass.** See below. |
+| 8b | 1, 2 | `fsck -n` baseline | **Pass.** Identical in both rounds: only the graft's own artifacts. Those are the donor inode's `UNKNOWN FILE TYPE`, `DUP/BAD` and `BAD TYPE VALUE`; `LINK COUNT FILE I=1253202`; and the three Phase 5 complaints. |
+
+So both gates of change 1 are demonstrated: the non-root mount refusal, and
+the upgrade gate in all three of its branches. So is change 4. Changes 2, 5, 6
+and 7 remain argued, for the reasons in "The gap worth naming"; Run 5 shows
+only that change 5 does not break unmounting.
+
+### What Run 7 does and does not show, and Run 9
+
+The first round's Outcome claimed that Run 7 proved the gate's superblock
+reread. It did not. `fsck -y` on the grafted root also repaired the graft's
+inconsistencies and printed `FILE SYSTEM WAS MODIFIED`. So `fsck` reloaded the
+root itself, and the second `mount -uw /` would have passed without the reread.
+Run 7 shows that root refuses in single-user and that `fsck` recovers it.
+
+Run 9 isolates the reread. A non-root image from `make_badfs` is dirty only in
+its flag, and `fsck` never reloads a non-root filesystem at all. The sequence
+was:
+1. Mounted read-only, `mount -uw /mnt` was refused with one
+   `ffs: /mnt not cleanly unmounted, refusing read-write upgrade; run fsck` line.
+2. `fsck -y` printed `FILE SYSTEM MARKED CLEAN`, and no `WAS MODIFIED`.
+3. A second `mount -uw /mnt` succeeded, leaving `/mnt` read-write.
+
+Only the kernel's reread can have let it through.
 
 ### What Run 6 found
 
-With the root marked unclean, the boot never reached the kernel's gate.
-`rc.boot` runs `fsck -p`, which skips a cleanly unmounted disk but examines a
-dirty one. On this image it finds the graft's donor-inode inconsistency — the
-same one `fsck -n` reports in Run 8b — which preen will not fix, and exits 8.
-`rc.boot` then prints "Reboot failed - serious errors" and drops to a shell
-with root still read-only. That happens in userland, before any
-`mount -uw /`, and any kernel would behave identically on a grafted image.
-Run 6b used that shell to demonstrate the kernel's part directly.
+With the root marked unclean, the boot never reached the gate:
+1. `rc.boot` runs `fsck -p`, which skips a cleanly unmounted disk but examines
+   a dirty one.
+2. It finds the graft's donor-inode inconsistency, the same one Run 8b reports,
+   refuses to preen it, and exits 8.
+3. `rc.boot` prints "Reboot failed - serious errors" and drops to a shell with
+   root still read-only.
 
-"A crashed machine comes up multi-user unattended" is therefore still
-unverified end to end. Showing it needs an image with the kernel installed as a
-proper file rather than grafted over a donor inode. `vm/ufs_alloc.py` can
-already do that, and it is the obvious next step.
+That all happens in userland, before any `mount -uw /`, and any kernel would do
+the same on a grafted image. Run 6b used that shell to show the kernel's part.
+
+So "a crashed machine comes up multi-user unattended" remains unverified end to
+end. It needs an image with the kernel installed as a proper file rather than
+grafted over a donor inode. `vm/ufs_alloc.py` can build one, and that is
+recorded as follow-up work.
 
 ### Other observations
 
-- Runs 1 and 8a stopped at a "Continue without network? (y/n)" prompt rather
-  than reaching a login. The prompt comes from a program started after
-  `/etc/startup/0100_LocalMounts`, where root is remounted read-write, so it
-  sits past everything this work touches. The stock kernel reached a login in
-  the same configuration. Most likely the tree kernel is not bringing up QEMU's
-  NE2000 NIC; that has not been investigated.
-- The harness depends on the `RHAP_TEST_IMAGE` override added to
-  `rhap_inject.py` and `guest-console.py` in this series. master has since
-  given `Guest` an `image=` parameter of its own (`4f3288045`), and the two
-  need reconciling when this merges.
+- **Tooling holes this series introduced, found in final review and fixed.**
+  - The `RHAP_TEST_IMAGE` override protected `golden.img` only at the tool's
+    own path. From a git worktree, where the real image lives in the main
+    checkout, it would have accepted the master image. `check_target` now also
+    refuses the protected images by name.
+  - `guest-console.py` never consulted `check_target`, so `--persist` could
+    have booted the master image read-write. It now refuses.
+  - Both fixes have tests that use temporary files only.
+- **An extra log line on non-UFS roots.** A boot from a non-UFS root now logs
+  `ffs: superblock magic invalid, refusing` once, because UFS is tried first and
+  the new pre-check reports its refusal. This is harmless.
+- **The override needs reconciling at merge.** The harness depends on the
+  `RHAP_TEST_IMAGE` override. master has since given `Guest` an `image=`
+  parameter of its own (`4f3288045`), and the two need reconciling when this
+  branch merges.

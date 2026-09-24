@@ -68,6 +68,21 @@ was originally planned.
   which lets the Task 7 gate drop its own `fs_ronly` restore. A reload failure at
   the gate now logs an `ffs: ` line.
 
+- **Task 7 — the upgrade gate also covers non-root filesystems.** The final
+  review found that `mount -r` followed by `mount -uw` bypassed the non-root
+  mount gate. A read-write upgrade of any dirty non-root filesystem is now
+  refused after the same reread. Root keeps its single-user-only refusal, with
+  its messages unchanged. The multi-user warning now reads `was unclean when
+  mounted`, and refusals name the live mount point.
+- **Tooling.** `check_target` now refuses the protected images by name as well,
+  which is what makes it hold from a worktree, and `guest-console.py --persist`
+  now calls it. `test_make_badfs.py` skips when the floppy template is absent,
+  and `vm/README.md` documents the override.
+- **Harness.** A second round rebuilt the kernel under checksum verification,
+  because the first ppc build had compiled the wrong sources. It also added
+  Run 9, which isolates the superblock reread, because Run 7 turned out not to.
+  See the spec's Outcome.
+
 ### Superblock field offsets
 
 Relative to `sb_off = image.part_start + rhap_image.SBOFF`, verified by reading `golden.img`:

@@ -4559,6 +4559,13 @@ static int InsertMatch( struct vnode *root_vp, struct uio *a_uio, CatalogRecord 
 										sizeof(catalogInfo.spec.name),
 										&actualDstLen,
 										catalogInfo.spec.name);
+			if ( err == kTECOutputBufferFullStatus )	/* too long for a BSD name: mangle it */
+				err = ConvertUnicodeToUTF8Mangled(	key->hfsPlus.nodeName.length * sizeof(UniChar),
+												key->hfsPlus.nodeName.unicode,
+												sizeof(catalogInfo.spec.name),
+												&actualDstLen,
+												catalogInfo.spec.name,
+												catalogInfo.nodeData.nodeID );
 		 } else {
 			err = ConvertMacRomanToUTF8( key->hfs.nodeName,
 										 sizeof(catalogInfo.spec.name),

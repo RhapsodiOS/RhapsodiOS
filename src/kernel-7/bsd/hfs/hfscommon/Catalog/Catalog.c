@@ -599,6 +599,9 @@ GetCatalogNode( ExtendedVCB *volume, HFSCatalogNodeID parentID, ConstUTF8Param n
         result = LocateCatalogNodeByMangledName(volume, parentID, name, key, record, newHint);
 	ReturnIfError(result);
 
+	//--- Fill out universal data record (first: a mangled name needs the node ID)
+	CopyCatalogNodeData(volume, record, nodeData);
+
 	//--- Fill out the FSSpec (output)
 	
 	nodeSpec->vRefNum = volume->vcbVRefNum;
@@ -620,15 +623,19 @@ GetCatalogNode( ExtendedVCB *volume, HFSCatalogNodeID parentID, ConstUTF8Param n
 										  NAME_MAX + 1,	/* 255 + termination byte */
 					 					  &actualDstLen,
 										  nodeSpec->name);
+			if (result == kTECOutputBufferFullStatus)	// too long for a BSD name: mangle it
+				result = ConvertUnicodeToUTF8Mangled(key->hfsPlus.nodeName.length * sizeof(UniChar),
+													 key->hfsPlus.nodeName.unicode,
+													 NAME_MAX + 1,
+													 &actualDstLen,
+													 nodeSpec->name,
+													 nodeData->nodeID);
 		}
 	}
 	else // classic HFS
 	{
 		result = ConvertMacRomanToUTF8(key->hfs.nodeName, NAME_MAX + 1, &actualDstLen, nodeSpec->name);
 	}
-
-	//--- Fill out universal data record...
-	CopyCatalogNodeData(volume, record, nodeData);
 
   #if DEBUG_BUILD
 	if ( nodeData->nodeType != '????' )
@@ -874,6 +881,9 @@ IterateCatalogNode( ExtendedVCB *volume, CatalogIterator *catalogIterator, UInt1
 
 	*hint = btreeIterator.hint.nodeNum;		// return an old-style hint
 
+	//--- Fill out universal data record (first: a mangled name needs the node ID)
+	CopyCatalogNodeData(volume, offspringData, nodeData);
+
 	//--- Fill out the FSSpec...
 
 	nodeSpec->vRefNum = volume->vcbVRefNum;
@@ -886,14 +896,18 @@ IterateCatalogNode( ExtendedVCB *volume, CatalogIterator *catalogIterator, UInt1
 									  NAME_MAX + 1,	/* 255 + termination byte */
 					 				  &actualDstLen,
 									  nodeSpec->name);
+		if (result == kTECOutputBufferFullStatus)	// too long for a BSD name: mangle it
+			result = ConvertUnicodeToUTF8Mangled(offspringName->ustr.length * sizeof(UniChar),
+												 offspringName->ustr.unicode,
+												 NAME_MAX + 1,
+												 &actualDstLen,
+												 nodeSpec->name,
+												 nodeData->nodeID);
 	}
 	else /* hfs name */
 	{
 		result = ConvertMacRomanToUTF8(offspringName->pstr, NAME_MAX + 1, &actualDstLen, nodeSpec->name);
 	}
-
-	//--- Fill out universal data record...
-	CopyCatalogNodeData(volume, offspringData, nodeData);
 
 
   #if DEBUG_BUILD

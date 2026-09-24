@@ -1827,6 +1827,12 @@ git commit -m "dhcpcd-1: add -w boot-compat wait mode"
   values come from `inet_ntoa()`.
 - `bootcompat.c` includes `<sys/types.h>` first, and `dhcpcd.8` documents
   `-w`.
+- **Nothing else on stdout under `-w`** (commit aa7bfce36). `dhcpConfig()`
+  prints `dhcpcd: your IP address = …` (and hostname/domainname lines) to
+  stdout during the pre-fork state call, ahead of `bootcompatPrint()`, which
+  would make `SetNetConfig`'s `eval` run `dhcpcd:` as a command. Those three
+  prints are skipped when `WaitFlag` is set (`extern int WaitFlag;` in
+  `client.c`).
 
 ---
 

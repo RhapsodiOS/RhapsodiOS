@@ -3,7 +3,12 @@
 A Rhapsody disk can share an MBR with other partitions, such as the ESP the
 UEFI loader needs. boot0, boot1, boot2 and the kernel all support this
 unchanged, provided the NeXT label inside the `0xA7` partition is written
-the way `disk -i -b` writes it.
+the way `disk -i -b` writes it. `vm/build_uefi_image.py`'s `rebase_labels()`
+keeps the copied image's own `secsize` (1024 for golden-derived images)
+rather than rewriting it to the 512 `disk -i -b` writes; both boot, because
+boot1, boot2 and the kernel all scale `p_base`/`d_boot0_blkno` by
+`d_secsize`, and phase 4's `label.py` writes 512 on an fdisk disk as
+`disk -i -b` does.
 
 ## The label convention
 
@@ -32,7 +37,8 @@ entry, so those fields follow the BIOS's LBA-assisted translation
 
 ## Test image
 
-The images above boot `vm/work/p1-eide.img`, not `test.img` directly.
+The boots in the evidence table below run `vm/work/p1-eide.img`, not
+`test.img` directly.
 `p1-eide.img` starts from `vm/work/test.img` (kernel SHA-256 prefix
 `9916e7c0bdac2d4e`, matching `vm/install/mach_kernel`) and replaces two
 files in place, via `ufs_alloc.grow_file`:
@@ -93,3 +99,8 @@ See "Found along the way" below.
 
 Each run directory also gets a `qemu-stderr.log`, so a boot that fails
 before or during a screenshot still leaves a diagnostic trail.
+
+For the two-disk layout (an ESP-only loader disk plus IMAGE attached whole):
+
+    python vm/build_uefi_image.py --esp-only src/bootefi-1/BUILD/BOOTIA32.EFI vm/work/esp.img
+    python vm/qemu_boot.py uefi IMAGE vm/logs/RUN --esp vm/work/esp.img --at 60,120,180,240

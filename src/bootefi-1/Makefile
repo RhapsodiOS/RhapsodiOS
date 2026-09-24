@@ -104,6 +104,9 @@ all: $(BUILD)/BOOTIA32.EFI
 $(BUILD):
 	mkdir -p $(BUILD)
 
+# These staging rules have only order-only prerequisites, so once a staged
+# copy exists make never re-copies it; edits to src/architecture-1,
+# src/driverkit-3/driverkit or src/objc-1 need `make clean` to be picked up.
 $(VENDOR_STAGE)/architecture: | $(BUILD)
 	mkdir -p $(VENDOR_STAGE)
 	cp -R ../architecture-1 $@

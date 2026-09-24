@@ -47,4 +47,10 @@ void str_split_chars(const char *s, const char *seps, strlist *out);
 char *str_cats(const char *first, ...);
 char *path_join(const char *a, const char *b);
 
+/* Splits one "key = value" line in place (apk .PKGINFO syntax). Returns 1
+   and points *key/*val into line on an entry; 0 for blank lines, '#'
+   comments, and lines with no '='. Only the first '=' separates; both
+   sides are trimmed; key case is preserved. Do not free *key or *val. */
+int str_parse_kv(char *line, char **key, char **val);
+
 #endif

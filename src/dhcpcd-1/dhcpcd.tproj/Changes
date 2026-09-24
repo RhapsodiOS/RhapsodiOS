@@ -1,3 +1,13 @@
+09/24/2026 - RhapsodiOS port (src/dhcpcd-1).
+	Ported to RhapsodiOS's 4.4BSD-derived kernel; see ../PROVENANCE.md.
+	Raw packets go through BPF (new bpfif.c/h) instead of SOCK_PACKET,
+	the default route through a routing socket (new rtsock.c/h)
+	instead of SIOCADDRT, and -w prints bootpc-style key=value lines
+	(new bootcompat.c/h). New flags -w and -G. Fixes: NAK handling,
+	lease cache left after a timeout, retransmit timer overflow,
+	sigjmp_buf, address removal in dhcpStop, resolv.conf only
+	replaced when the server sends DNS.
+
 01/15/99 - v.1.3.17-pl2.
 	Sergei Viznyuk <sv@phystech.com>
 	Changed the dhcpcd exec-bin directory from /usr/sbin to /sbin.

@@ -27,5 +27,11 @@ project, not part of upstream:
 - `bootcompat.c`/`bootcompat.h` — bootpc-compatible `key=value` output for
   the `-w` flag.
 
+Upstream files modified for this port (GPLv2 §2(a); see also the
+RhapsodiOS entry at the top of `dhcpcd.tproj/Changes`): `arp.c`,
+`buildmsg.c`, `client.c`, `client.h`, `dhcpcd.c`, `dhcpcd.8`,
+`signals.c`, `udpipgen.h`. The new files are distributed under the
+same GPLv2 terms as the rest of dhcpcd.
+
 See `docs/superpowers/specs/2026-09-22-dhcpcd-1-client-daemon-design.md` for
 the full design.

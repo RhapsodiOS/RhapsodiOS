@@ -17,15 +17,7 @@ FUNCTIONS = [
     "GetMangledNameExtension",
     "ConvertUnicodeToUTF8Mangled",
 ]
-MACROS = [
-    "kASCIIPiSymbol",
-    "kASCIIMicroSign",
-    "kASCIIGreekDelta",
-    "Is7BitASCII",
-    "IsSpecialASCIIChar",
-    "IsHexDigit",
-    "EXTENSIONCHAR",
-]
+MACROS = ["IsHexDigit", "EXTENSIONCHAR"]
 
 
 def main(path):

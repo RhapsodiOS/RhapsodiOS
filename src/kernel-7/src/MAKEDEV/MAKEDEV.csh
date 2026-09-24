@@ -73,7 +73,7 @@ std)
 	mknod mem	c 3 0	; chmod 640 mem ; chgrp kmem mem
 	mknod kmem	c 3 1	; chmod 640 kmem ; chgrp kmem kmem
 	mknod null	c 3 2	; chmod 666 null
-	mknod dsp	c 3 3	; chmod 666 dsp
+	mknod zero	c 3 3	; chmod 666 zero
 	mknod klog	c 6 0	; chmod 600 klog
 	mknod drum	c 7 0	; chmod 640 drum ; chgrp kmem drum
 	mknod dialup0	c 16 0  ; chmod 600 dialup0

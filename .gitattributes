@@ -57,3 +57,7 @@
 # The Python email test reads this fixture in binary mode and asserts on
 # CRLF (see Lib/email/test/test_email.py); keep its CRLF intact.
 src/python/python/Lib/email/test/data/msg_26.txt -text
+
+# Vendored patch series must be stored byte-for-byte: a hunk against an
+# upstream CRLF file carries CR bytes that eol=lf would strip.
+src/*/patches/*.patch -text

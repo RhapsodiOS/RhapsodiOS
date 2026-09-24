@@ -150,6 +150,12 @@ struct vm_map_entry {
 	unsigned short		user_wired_count; /* for vm_wire */
 };
 
+/*
+ *	wired_count is an unsigned short.  Refuse a wire that would
+ *	overflow it rather than wrapping the count or panicking.
+ */
+#define	MAX_WIRE_COUNT		65535
+
 typedef struct vm_map_entry	*vm_map_entry_t;
 
 #define VM_MAP_ENTRY_NULL	((vm_map_entry_t) 0)

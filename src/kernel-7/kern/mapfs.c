@@ -1872,14 +1872,14 @@ vmp_push_range(vmp, start, size)
 				pager_return_t	ret;
 
 				pmap_remove_all(VM_PAGE_TO_PHYS(m));
-				object->paging_in_progress++;
+				vm_object_paging_begin(object);
 				vm_object_unlock(object);
 				vm_page_unlock_queues();
 				/* should call pageout daemon code */
 				ret = vnode_pageout(m);
 				vm_page_lock_queues();
 				vm_object_lock(object);
-				object->paging_in_progress--;
+				vm_object_paging_end(object);
 				if (ret == PAGER_SUCCESS) {
 					/* vnode_pageout marks clean */
 #if PERFMODS
@@ -1993,14 +1993,14 @@ retry:
 				pager_return_t	ret;
 
 				pmap_remove_all(VM_PAGE_TO_PHYS(m));
-				object->paging_in_progress++;
+				vm_object_paging_begin(object);
 				vm_object_unlock(object);
 				vm_page_unlock_queues();
 				/* should call pageout daemon code */
 				ret = vnode_pageout(m);
 				vm_page_lock_queues();
 				vm_object_lock(object);
-				object->paging_in_progress--;
+				vm_object_paging_end(object);
 				if (ret == PAGER_SUCCESS) {
 					/* vnode_pageout marks clean */
 					m->laundry = FALSE;

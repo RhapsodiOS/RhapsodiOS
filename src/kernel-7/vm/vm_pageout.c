@@ -251,7 +251,7 @@ vm_pageout_scan()
 
 				vm_object_collapse(object);
 
-				object->paging_in_progress++;
+				vm_object_paging_begin(object);
 
 				vm_object_unlock(object);
 
@@ -312,8 +312,7 @@ vm_pageout_scan()
 					m->busy = FALSE;
 					PAGE_WAKEUP(m);
 
-					object->paging_in_progress--;
-					thread_wakeup(object);
+					vm_object_paging_end(object);
 				vm_object_unlock(object);
 				m = next;
 			}

@@ -810,10 +810,16 @@ void vm_page_wire(mem)
 			mem->inactive = FALSE;
 		}
 		if (mem->free) {
+			int	spl;
+
+			spl = splimp();
+			simple_lock(&vm_page_queue_free_lock);
 			queue_remove(&vm_page_queue_free, mem, vm_page_t,
 							pageq);
 			vm_page_free_count--;
 			mem->free = FALSE;
+			simple_unlock(&vm_page_queue_free_lock);
+			splx(spl);
 		}
 		vm_page_wire_count++;
 	}
@@ -930,10 +936,16 @@ void vm_page_activate(m)
 		m->inactive = FALSE;
 	}
 	if (m->free) {
+		int	spl;
+
+		spl = splimp();
+		simple_lock(&vm_page_queue_free_lock);
 		queue_remove(&vm_page_queue_free, m, vm_page_t,
 						pageq);
 		vm_page_free_count--;
 		m->free = FALSE;
+		simple_unlock(&vm_page_queue_free_lock);
+		splx(spl);
 	}
 	if (m->wire_count == 0) {
 		if (m->active)

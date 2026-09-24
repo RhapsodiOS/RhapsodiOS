@@ -21,6 +21,7 @@
 #include <errno.h>
 #include <syslog.h>
 
+#include "client.h"
 #include "bpfif.h"
 
 #define BPFIF_DEVMAX 16
@@ -90,6 +91,37 @@ unsigned char hwaddr[6];
   struct ifreq ifr;
   unsigned int enable = 1;
 
+  if ( bpfGetHwAddr(ifname,hwaddr) == -1 )
+    {
+      syslog(LOG_ERR,
+	"bpfOpenForInterface: could not read %s's hardware address\n",ifname);
+      return -1;
+    }
+
+  /* BIOCSETIF refuses an interface that is down, so bring it up first */
+  s = socket(AF_INET,SOCK_DGRAM,0);
+  if ( s == -1 )
+    {
+      syslog(LOG_ERR,"bpfOpenForInterface: socket: %m\n");
+      return -1;
+    }
+  memset(&ifr,0,sizeof(ifr));
+  strncpy(ifr.ifr_name,ifname,sizeof(ifr.ifr_name)-1);
+  if ( ioctl(s,SIOCGIFFLAGS,&ifr) == -1 )
+    {
+      syslog(LOG_ERR,"bpfOpenForInterface: SIOCGIFFLAGS %s: %m\n",ifname);
+      close(s);
+      return -1;
+    }
+  ifr.ifr_flags |= IFF_UP;
+  if ( ioctl(s,SIOCSIFFLAGS,&ifr) == -1 )
+    {
+      syslog(LOG_ERR,"bpfOpenForInterface: SIOCSIFFLAGS %s: %m\n",ifname);
+      close(s);
+      return -1;
+    }
+  close(s);
+
   fd = -1;
   for ( i = 0 ; i < BPFIF_DEVMAX ; i++ )
     {
@@ -126,41 +158,16 @@ unsigned char hwaddr[6];
       close(fd);
       return -1;
     }
+  free(bpf_buf);		/* from a previous open, after dhcpStop() */
+  bpf_next = NULL;
+  bpf_avail = 0;
   bpf_buf = malloc(bpf_buflen);
   if ( bpf_buf == NULL )
     {
+      syslog(LOG_ERR,"bpfOpenForInterface: malloc: %m\n");
       close(fd);
       return -1;
     }
-  bpf_next = NULL;
-  bpf_avail = 0;
-
-  if ( bpfGetHwAddr(ifname,hwaddr) == -1 )
-    {
-      syslog(LOG_ERR,
-	"bpfOpenForInterface: could not read %s's hardware address\n",ifname);
-      close(fd);
-      return -1;
-    }
-
-  s = socket(AF_INET,SOCK_DGRAM,0);
-  if ( s == -1 )
-    {
-      syslog(LOG_ERR,"bpfOpenForInterface: socket: %m\n");
-      close(fd);
-      return -1;
-    }
-  memset(&ifr,0,sizeof(ifr));
-  strncpy(ifr.ifr_name,ifname,sizeof(ifr.ifr_name)-1);
-  ifr.ifr_flags = IFF_UP|IFF_BROADCAST|IFF_MULTICAST|IFF_NOTRAILERS|IFF_RUNNING;
-  if ( ioctl(s,SIOCSIFFLAGS,&ifr) == -1 )
-    {
-      syslog(LOG_ERR,"bpfOpenForInterface: SIOCSIFFLAGS: %m\n");
-      close(s);
-      close(fd);
-      return -1;
-    }
-  close(s);
 
   return fd;
 }
@@ -211,4 +218,13 @@ int frame_max;
   if ( bpf_avail < 0 ) bpf_avail = 0;
 
   return n;
+}
+
+int
+bpfPeek(bpf_fd,tv_usec)
+int bpf_fd;
+int tv_usec;
+{
+  if ( bpf_avail > 0 ) return 0;	/* a frame is already buffered here */
+  return peekfd(bpf_fd,tv_usec);
 }

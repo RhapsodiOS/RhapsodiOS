@@ -140,8 +140,19 @@ of this work.
    from scratch reconfigures the interface in full through `dhcpConfig()`.
    Nothing else touches the interface after boot.
 5. **`0800_Network` change**: `if config=$(bootpc "${if}")` becomes
-   `if config=$(dhcpcd -w "${if}")`. That is the only line that changes;
-   every `SetNetConfig`/`GetNetConfig` consumer downstream is untouched.
+   `if config=$(dhcpcd -w ${dhcpflags} "${if}")`, and every
+   `SetNetConfig`/`GetNetConfig` consumer downstream is untouched. Because
+   dhcpcd installs the default route itself, before the script reads
+   `ROUTER` from `/etc/hostconfig`, a new `-G` flag makes dhcpcd leave the
+   default route alone. The script passes `-G` unless `ROUTER` is
+   `-AUTOMATIC-`, so an explicit router, `-NO-` and `-ROUTED-` behave as
+   they did with bootpc. The script's own `route add default` falls back to
+   `route change` quietly, since dhcpcd may already have installed that
+   route. With several `-AUTOMATIC-` interfaces and `ROUTER=-AUTOMATIC-`,
+   each daemon manages the default route and the last to renew wins (bootpc
+   took the first interface's router); that is a known limitation.
+   `src/dhcpcd-1` is registered with `rbuild` through an `apk/pkginfo` and a
+   line in `src/Manifest`.
 6. **Leave `bootpc`/`bootpd`/`bootplib` in place**, unreferenced by the
    automatic-interface path but not deleted.
 
@@ -160,7 +171,9 @@ of this work.
    `PostLoad` device-node convention, replacing the Linux `SOCK_PACKET`
    layer in `client.c` and `arp.c`.
 5. `-w` boot-compat wait mode with bootpc-compatible `key=value` output.
-6. One-line `0800_Network` change.
+6. `0800_Network` change (the dhcpcd call, `-G` unless `ROUTER` is
+   automatic, and a quiet `route add || route change`), `/etc/dhcpc`, and
+   the `rbuild` registration.
 
 ## Verification
 
@@ -183,8 +196,10 @@ of this work.
 
 ## Deliverables
 
-- `src/dhcpcd-1/` — new project (vendored + adapted source, build files).
-- `src/files-5/private/etc/startup/0800_Network` — one-line change.
+- `src/dhcpcd-1/` — new project (vendored + adapted source, build files,
+  `apk/pkginfo`), listed in `src/Manifest`.
+- `src/files-5/private/etc/startup/0800_Network` — the dhcpcd call and the
+  `ROUTER` handling around it.
 - `src/files-5/private/etc/Makefile` — creates an empty `/etc/dhcpc`, where
   dhcpcd keeps its lease cache and info file.
 - `bootpc`/`bootpd`/`bootplib` unchanged.

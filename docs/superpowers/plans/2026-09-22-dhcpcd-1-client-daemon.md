@@ -1953,6 +1953,24 @@ git add src/files-5/private/etc/startup/0800_Network src/files-5/private/etc/Mak
 git commit -m "boot: use dhcpcd for automatic interfaces and create /etc/dhcpc for its lease cache"
 ```
 
+#### Amendments after review
+
+- **Register with rbuild** (commit bf9270336). The plan never did this, so
+  nothing would have built the project. `src/dhcpcd-1/apk/pkginfo` follows
+  `grep-1`/`bootp-1`: pkgname dhcpcd, pkgver `1.3.17_p2`, license GPL, url
+  the verified tarball, makedepends build-base, no arch line. `src/Manifest`
+  gains `dir     dhcpcd-1              all` between `Commands/developer_cmds`
+  and `Commands/diskdev_cmds`.
+- **Respect `ROUTER`** (commits 2c4916bb2, 1180e7843; the user chose this).
+  dhcpcd installs the default route before the script reads `ROUTER`, which
+  silently overrode an explicit router, `-NO-` and `-ROUTED-`. dhcpcd gains
+  `-G`, which leaves the default route alone (`SetDefaultRoute`, guarding all
+  three `rtsockAddDefault()` calls). The script passes it unless
+  `${ROUTER:--AUTOMATIC-}` is `-AUTOMATIC-`. Its explicit-router branch now
+  runs `route add default … > /dev/null 2>&1 || route change default … >
+  /dev/null`, which also removes the `File exists` message every DHCP boot
+  printed.
+
 ---
 
 ### Task 8: Real build verification (checkpoint, not autonomous)

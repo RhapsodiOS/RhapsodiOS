@@ -781,6 +781,29 @@ git add src/dhcpcd-1/dhcpcd.tproj/client.c src/dhcpcd-1/dhcpcd.tproj/client.h \
 git commit -m "dhcpcd-1: use this tree's ethernet and IP headers, set the default route through a routing socket"
 ```
 
+#### Amendment after review (commit 8b806cccf)
+
+The first review of this task found four problems the steps above cause or
+miss. The user approved fixing all four, and the code now differs from the
+steps above as follows:
+
+- **No off-subnet fallback.** This kernel's route add looks up the
+  destination, not the gateway (`net/route.c` `ifa_ifwithroute`), so the
+  ENETUNREACH retry cannot succeed, and its host route black-holes the router.
+  `rtsockAddDefault(unsigned int gateway)` takes one argument and only sends
+  RTM_ADD, then RTM_CHANGE on EEXIST.
+- **One SIOCAIFADDR.** `dhcpConfig()` deletes the old address with
+  SIOCDIFADDR and sets address, netmask and broadcast with one SIOCAIFADDR
+  (`struct ifaliasreq`), as `ifconfig` does. SIOCSIFADDR followed by
+  SIOCSIFNETMASK leaves a classful subnet route on this kernel.
+- **Route refreshed on every ACK.** `dhcpRequest()` takes `DhcpIface.giaddr`
+  from the ACK's router option before `dhcpConfig()`, and `dhcpRenew()` and
+  `dhcpRebind()` refresh it and call `rtsockAddDefault()` on success.
+  Upstream never reconfigures on renew/rebind.
+- **Include order.** `arp.c` and `buildmsg.c` gain `<sys/types.h>` and
+  `dhcpcd.c` gains `<sys/socket.h>` ahead of their first system include that
+  needs it.
+
 ---
 
 ### Task 4: New BSD/BPF backend

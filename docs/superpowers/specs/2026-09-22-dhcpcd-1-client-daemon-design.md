@@ -99,13 +99,22 @@ of this work.
    a fallback `ETHER_ADDR_LEN`, which this tree doesn't define), the headers
    `netinet/ip.h` needs in `udpipgen.h`, and the `SIOCADDRT`/`struct
    rtentry` route-add call in `dhcpConfig()` (→ a `PF_ROUTE` routing-socket
-   message in a new `rtsock.c`, encoded the way `route(8)` encodes it, which
-   also updates the route on renewal if the router changes). Everything
-   else the source touches (`SIOCSIFADDR`/`SIOCSIFNETMASK`/`SIOCSIFBRDADDR`/
-   `SIOCSIFFLAGS`, `struct ether_header` field names, `ARPHRD_ETHER`,
-   `IFF_UP`/`IFF_BROADCAST`/`IFF_MULTICAST`/`IFF_NOTRAILERS`/`IFF_RUNNING`)
-   is already confirmed present and BSD-compatible in this tree's headers —
-   no change needed. Self-contained — no dependency on `bootplib`.
+   message in a new `rtsock.c`, encoded the way `route(8)` encodes it:
+   RTM_ADD, or RTM_CHANGE when a default route already exists). Upstream's
+   fallback for a router outside the leased subnet is dropped: this kernel's
+   route add looks up the destination rather than the gateway, so it cannot
+   work here, and such a router gets a logged ENETUNREACH. `dhcpConfig()`
+   also sets address, netmask and broadcast with one `SIOCAIFADDR` (after a
+   `SIOCDIFADDR` of the old address), as `ifconfig` does, because on this
+   kernel `SIOCSIFADDR` installs a classful subnet route that a later
+   `SIOCSIFNETMASK` never corrects. Some vendored files also need a
+   `<sys/types.h>` or `<sys/socket.h>` ahead of their first system include,
+   since this tree's headers aren't self-contained. Everything else the
+   source touches (`SIOCSIFFLAGS`, `struct ether_header` field names,
+   `ARPHRD_ETHER`, `IFF_UP`/`IFF_BROADCAST`/`IFF_MULTICAST`/
+   `IFF_NOTRAILERS`/`IFF_RUNNING`) is already confirmed present and
+   BSD-compatible in this tree's headers — no change needed.
+   Self-contained — no dependency on `bootplib`.
    Upstream's `/etc/resolv.conf` handling is kept as-is: dhcpcd saves the
    existing file as `resolv.conf.sv`, writes one from the DHCP server's DNS
    options, and restores the saved copy when it stops.
@@ -123,9 +132,11 @@ of this work.
    DHCPACK is processed and the interface is configured, prints the same
    `key=value` fields bootpc's stdout produces today (exact field list
    confirmed against `bootpc.m` during implementation), then forks to the
-   background and continues as the persistent renewal daemon — applying
-   `ifconfig` itself on every subsequent RENEWING/REBINDING transition, since
-   nothing else will touch the interface after boot.
+   background and continues as the persistent renewal daemon. The address
+   cannot change on a renewal (RFC 2131), so on each renew/rebind ACK the
+   daemon refreshes only the router and default route; a lease re-acquired
+   from scratch reconfigures the interface in full through `dhcpConfig()`.
+   Nothing else touches the interface after boot.
 5. **`0800_Network` change**: `if config=$(bootpc "${if}")` becomes
    `if config=$(dhcpcd -w "${if}")`. That is the only line that changes;
    every `SetNetConfig`/`GetNetConfig` consumer downstream is untouched.

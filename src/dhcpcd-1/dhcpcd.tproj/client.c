@@ -416,6 +416,7 @@ void (*buildUdpIpMsg)(unsigned);
 	      else
 		syslog(LOG_ERR,
 		"dhcpInit: DHCP_NAK server response received\n");
+	      sleep(1);		/* throttle a server that NAKs every REQUEST */
 	      return 1;
 	    }
     	}

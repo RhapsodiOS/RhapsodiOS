@@ -1813,6 +1813,21 @@ git add src/dhcpcd-1/dhcpcd.tproj/bootcompat.c src/dhcpcd-1/dhcpcd.tproj/bootcom
 git commit -m "dhcpcd-1: add -w boot-compat wait mode"
 ```
 
+#### Amendment after review (commit c50259725)
+
+- **Release stdout in the daemon.** After `fork()`, the background child kept
+  fd 1, the write end of the pipe behind `config=$(dhcpcd -w "${if}")`.
+  Command substitution waits for EOF, so the boot script would have hung for
+  the daemon's whole life. The child now points stdout at `/dev/null` right
+  after `setsid()`.
+- **Check the host name.** `0800_Network` passes these lines unquoted to
+  `rc.common`'s `SetNetConfig`, which `eval`s them as root. `host_name` comes
+  from the DHCP server, so `bootcompatPrint()` prints it only if it is
+  non-empty and contains nothing but alphanumerics, `-` and `.`. The other
+  values come from `inet_ntoa()`.
+- `bootcompat.c` includes `<sys/types.h>` first, and `dhcpcd.8` documents
+  `-w`.
+
 ---
 
 ### Task 7: Boot integration: `0800_Network` and `/etc/dhcpc`

@@ -4531,6 +4531,8 @@ static int InsertMatch( struct vnode *root_vp, struct uio *a_uio, CatalogRecord 
 										 &actualDstLen,
 										 catalogInfo.spec.name);
 		}
+		if ( err != noErr )
+			return( MacToVFSError(err) );	/* spec.name was not filled in or not terminated */
 	}
 
 	PackCatalogInfoAttributeBlock( returnAttrList,root_vp,  &catalogInfo, &rovingAttributesBuffer, &rovingVariableBuffer );

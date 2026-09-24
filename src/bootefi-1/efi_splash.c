@@ -37,7 +37,7 @@
 
 #define TEXTBUFSIZE 1536        /* libsaio/console.h */
 #define ROWBYTES    (GFX_SCREEN_W / 8)
-#define VGA_FB      ((unsigned char *)0xA0000)
+#define VGA_FB      ((volatile unsigned char *)0xA0000)
 
 extern char *Language;          /* libsaio/localize.c */
 extern int PackBitsDecode(TIFF *tif, unsigned char *op, int occ, int s);
@@ -69,7 +69,8 @@ static const unsigned char leftMaskArray[] =
  * source bytes into place and masking the partial bytes at either end. */
 static void blitRow(int x, int y, int w, unsigned char *rowData)
 {
-    unsigned char *src_p = rowData, *dst_p, *last_byte, prev_byte;
+    unsigned char *src_p = rowData, prev_byte;
+    volatile unsigned char *dst_p, *last_byte;
     unsigned char lmask, rmask;
     int lshift, rshift, last_w;
     volatile unsigned char xx;

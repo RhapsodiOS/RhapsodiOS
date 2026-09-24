@@ -1,5 +1,6 @@
 #include "efi.h"
 #include "load.h"	/* printf(), via libsaio.h */
+#include "kernBootStruct.h"	/* TEXT_MODE */
 
 /* boot2's GDT (src/boot-2/i386/libsaio/table.c), used verbatim: selector
  * 0x20 is flat data, 0x28 flat code.  table.c defines struct seg_desc
@@ -25,6 +26,7 @@ extern void efi_handoff(unsigned int entry);
  * I/O only -- safe to call after ExitBootServices. */
 extern void efi_vga_reset_text_mode(void);
 extern int efi_gfx_active(void);
+extern void setMode(int mode);
 
 struct gdt_descriptor {
     unsigned short limit;
@@ -60,6 +62,7 @@ void efi_exit_and_start(unsigned int entry)
      * to catch it later. */
     sizing_st = gBS->GetMemoryMap(&size, 0, &key, &dsize, &dver);
     if (sizing_st != EFI_BUFFER_TOO_SMALL) {
+        setMode(TEXT_MODE);
         printf("GetMemoryMap sizing call failed: %x\n", (unsigned)sizing_st);
         for (;;)
             ;
@@ -92,9 +95,11 @@ void efi_exit_and_start(unsigned int entry)
              * efi_handoff's own `cli` stays too, as a harmless no-op on
              * this path and the sole guard on any other. */
             __asm__ volatile("cli");
-            /* With the screen in mode 0x12 the kernel's console carries
-             * on from it: its text window redraws itself there, and the
-             * Boot Graphics panel must survive untouched. */
+            /* efi_gfx_init() runs first in efi_main, so the card is
+             * always in mode 0x12 by now; the kernel's console carries
+             * on from it, its text window redrawing itself, and the Boot
+             * Graphics panel must survive untouched. The reset below
+             * stays only as a fallback should that ever change. */
             if (!efi_gfx_active())
                 efi_vga_reset_text_mode();
             efi_handoff(entry);     /* never returns */
@@ -103,6 +108,7 @@ void efi_exit_and_start(unsigned int entry)
     }
 
     /* Only reached if ExitBootServices never succeeded. */
+    setMode(TEXT_MODE);
     printf("ExitBootServices failed\n");
     for (;;)
         ;

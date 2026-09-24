@@ -3,14 +3,12 @@
  * spinActivityIndicator/sleep; this file supplies them over the EFI Simple
  * Text I/O protocols, except message() and the activity indicator, which
  * draw on the Boot Graphics panel and live in efi_splash.c. Two symbols in
- * the brief's original list are
- * NOT supplied here because sys.c/disk.c already define them:
- * flushdev() (sys.c) and diskActivityHook() (disk.c, which just calls
- * spinActivityIndicator()).
+ * the brief's original list are NOT supplied here because sys.c/disk.c
+ * already define them: flushdev() (sys.c) and diskActivityHook() (disk.c,
+ * which just calls spinActivityIndicator()).
  */
 #include <stdarg.h>
 #include "efi.h"
-#include "kernBootStruct.h"
 #include "io_inline.h"
 #include "efi_gfx.h"
 

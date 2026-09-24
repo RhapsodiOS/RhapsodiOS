@@ -10,7 +10,6 @@
  * The kernel's block cursor is not drawn.
  */
 #include "efi.h"
-#include "kernBootStruct.h"
 #include "io_inline.h"
 #include "efi_gfx.h"
 
@@ -115,6 +114,8 @@ static void blt_char(int x, int y, int ch, int fg, int bg)
     int r;
 
     clearRect(x, y, CHAR_W, CHAR_H, bg);
+    /* ohlfs12 only covers 0x20..0x7f; skip higher bytes rather than read
+     * past the table. */
     if (ch < ' ' || ch > 0x7f)
         return;
     glyph = ohlfs12[ch - ' '];

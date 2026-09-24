@@ -83,7 +83,16 @@ $(BUILD)/efi_pci_acpi_test: efi_pci_acpi_test.c ../efi_pci_acpi.c \
 test-acpi: $(BUILD)/efi_pci_acpi_test
 	$(BUILD)/efi_pci_acpi_test
 
+# The disk-selection and boot-string helpers are pure C as well, built the
+# same way as the ACPI parser.
+$(BUILD)/efi_disk_select_test: efi_disk_select_test.c ../efi_disk_select.c \
+		../efi_disk_select.h | $(BUILD)
+	$(CC) $(ACPI_TEST_CFLAGS) -o $@ efi_disk_select_test.c ../efi_disk_select.c
+
+test-disk-select: $(BUILD)/efi_disk_select_test
+	$(BUILD)/efi_disk_select_test
+
 clean:
 	rm -rf $(BUILD)
 
-.PHONY: all clean test-acpi
+.PHONY: all clean test-acpi test-disk-select

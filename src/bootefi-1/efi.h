@@ -24,6 +24,19 @@ typedef struct { UINT32 d1; UINT16 d2, d3; UINT8 d4[8]; } EFI_GUID;
 #define EFI_BLOCK_IO_PROTOCOL_GUID \
   {0x964e5b21,0x6459,0x11d2,{0x8e,0x39,0x00,0xa0,0xc9,0x69,0x72,0x3b}}
 
+#define EFI_LOADED_IMAGE_PROTOCOL_GUID \
+  {0x5b1b31a1,0x9562,0x11d2,{0x8e,0x3f,0x00,0xa0,0xc9,0x69,0x72,0x3b}}
+#define EFI_DEVICE_PATH_PROTOCOL_GUID \
+  {0x09576e91,0x6d3f,0x11d2,{0x8e,0x39,0x00,0xa0,0xc9,0x69,0x72,0x3b}}
+
+/* Loaded image: the leading fields only; the loader reads DeviceHandle. */
+typedef struct {
+    UINT32      Revision;
+    EFI_HANDLE  ParentHandle;
+    void       *SystemTable;
+    EFI_HANDLE  DeviceHandle;
+} EFI_LOADED_IMAGE_PROTOCOL;
+
 /* Memory types and allocation */
 typedef enum { AllocateAnyPages, AllocateMaxAddress, AllocateAddress }
         EFI_ALLOCATE_TYPE;

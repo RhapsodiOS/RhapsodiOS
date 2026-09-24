@@ -42,7 +42,7 @@ location, `C:\Users\raynorpat\Downloads\test\Drivers\i386\VBE20DisplayDriver.con
 | File size | 37,984 bytes |
 | SHA-256 | `9FBC2CAFBDD0124CC63B902161C86BBFEC0EF48D591DDA681A325FF7B68DADED` |
 | `cpu_subtype` | 3 (`CPU_SUBTYPE_386`) |
-| `__text` | 2,324 bytes, 14–15 partition entries (§4) |
+| `__text` | 2,324 bytes, 15 partition entries (§4) |
 | `__cstring` | 1,111 bytes, 38 strings |
 | Symbols | 22 (5 defined, 17 undefined) |
 | Relocations | 262, of which 169 in `__text` |
@@ -114,9 +114,10 @@ kernel driver.
 ## 3. The booter-to-driver contract
 
 `parseVESAModes:size:` has the ObjC type encoding
-`v16@8:12^{?=SSSSSCCCCCCCC^v}16I20` — it takes a pointer to a 22-byte packed
-record and an unsigned count. That record is **not** Apple's 256-byte
-`VBEModeInfoBlock` from `libsaio/vbe.h`; it is a distilled form.
+`v16@8:12^{?=SSSSSCCCCCCCC^v}16I20` — it takes a pointer to a fourteen-field
+record and an unsigned count. That is 22 bytes of data and **24 bytes with
+padding**, which is the stride the disassembly confirms. It is **not** Apple's
+256-byte `VBEModeInfoBlock` from `libsaio/vbe.h`; it is a distilled form.
 
 The struct encoding gives five `unsigned short`, eight `unsigned char` and one
 pointer — fourteen fields. The driver's own debug string names fourteen, in
@@ -127,20 +128,84 @@ mode num, Attrib, BytesPerScanline, FrameBuffer, XRes, YRes, BitsPerPixel,
 MemoryModel, RGB Mask Sizes (3), RGB Field Pos (3)
 ```
 
-Aligning the two by type gives:
+**The struct does not follow the print order** — an earlier draft of this spec
+assumed it did and got two things wrong. Task 3 recovered the real layout from
+the disassembly:
 
-| Type | Fields |
+| Offset | Type | Field |
+| --- | --- | --- |
+| 0x00 | `unsigned short` | `modeNumber` |
+| 0x02 | `unsigned short` | `modeAttributes` |
+| 0x04 | `unsigned short` | `xResolution` |
+| 0x06 | `unsigned short` | `yResolution` |
+| 0x08 | `unsigned short` | `bytesPerScanline` |
+| 0x0A | `unsigned char` | `bitsPerPixel` |
+| 0x0B | `unsigned char` | `memoryModel` |
+| 0x0C–0x11 | 6 × `unsigned char` | red mask/position, green mask/position, blue mask/position — **interleaved**, not grouped |
+| 0x12–0x13 | — | padding, untouched by either side |
+| 0x14 | pointer | `frameBuffer` |
+
+`bytesPerScanline` is fifth, not third, and the colour bytes pair each mask
+size with its field position rather than listing three sizes then three
+positions.
+
+**D1 is answered (Task 2), and the mapping is confirmed.**
+`initFromDeviceDescription:` passes two *unrelocated* absolute literals,
+`0x12858` and `0x12870`, while every other `push` in that function carries a
+relocation into `__cstring`. `KERNSTRUCT_ADDR` is `0x11000`, so those are
+`kernBootStruct + 0x1858` and `+ 0x1870` — 24 bytes apart, the record stride.
+The mode array is a hard-coded `KERNBOOTSTRUCT` member that the booter fills,
+and the reconstruction must emit plain integer constants carrying no symbol.
+
+**This is the hinge for spec 3, and Task 4 measured the damage.** Those offsets
+are into *OPENSTEP 4.2*'s `KERNBOOTSTRUCT`. Rhapsody's struct, measured on the
+build guest with `offsetof` and `cc -arch i386 -S` against
+`src/boot-2/i386/libsa/kernBootStruct.h` — not by hand; an earlier hand layout
+in this spec was 12 bytes out — places:
+
+| Field | Range |
 | --- | --- |
-| 5 × `unsigned short` | mode number, ModeAttributes, BytesPerScanline, XResolution, YResolution |
-| 8 × `unsigned char` | BitsPerPixel, MemoryModel, R/G/B mask sizes, R/G/B field positions |
-| 1 × pointer | framebuffer physical address |
+| `_reserved[7500]` | 908 (`0x38C`) .. 8408 (`0x20D8`) |
+| `boot_video` | 8408 .. 8432 |
 
-This mapping is an inference from two independent sources that agree on the
-field count. Phase 1 confirms it against the disassembly before it is written
-down as fact anywhere else.
+Both `0x1858` (6232) and `0x1870` (6256) fall inside `_reserved`. Nothing under
+`src/` writes them, and this booter's only video hand-off is
+`kernBootStruct->video` at `boot2/graphics.c:204-208`.
+
+**The operational consequence:** booted on Rhapsody today, the driver reads
+`_reserved`, which `getKernBootStruct()` has `bzero`'d
+(`src/boot-2/i386/libsa/bootstruct.c:84`) — so it reads deterministic zeros,
+not garbage. `xResolution` is 0, the driver takes the "card not in VBE mode"
+path and exports an empty mode list. That is the expected result of gate 3, and
+it is now expected for *two* independent reasons: the booter never enters a VBE
+mode, and even if it did it would not write where the driver reads.
+
+One arithmetic coincidence worth flagging to spec 3: `0x1870 + 0x880` is 8432,
+exactly the end of `boot_video`. So the array the reference declares overlaps
+`video` in our layout. Whether `parseVESAModes:size:` would ever walk that far
+is unknown.
+
+**The kernel driver never reads its own config table.** Task 5 established
+this: the reference contains no `VBE Mode` string, no `configTable`, and no
+`valueForStringKey` — it has no config-table accessor at all. `VBEBooterMode`
+and `VBEMode` are present, but as `getCharValues:` parameter names, not table
+keys.
+
+So `"VBE Mode" = "257"` in `Default.table` is not consumed by this driver. The
+only remaining consumer is the **booter**, which loads Boot Drivers and their
+tables and which `Default.table` marks this driver as (`"Boot Driver" = "Yes"`).
+That closes the architecture: the Configure.app inspector writes the key, the
+booter reads it and enters that VBE mode, the booter fills the mode array, and
+the driver reads the array and describes the result to DriverKit. The driver is
+a pure consumer at both ends.
+
+Spec 3 therefore cannot simply adopt the 4.2 constants. It must either place
+the array where the driver already reads — inside `_reserved`, which fixes that
+offset as ABI — or add real members and accept that the reconstruction's
+hard-coded addresses become a recorded divergence.
 
 `boot_video` in `machdep/i386/kernBootStruct.h` has six `unsigned long` and no
-room for an array of these. Where the array comes from is discovery item D1.
+room for an array of these, which is why spec 3 has to find or make the space.
 
 ## 4. Function partition
 
@@ -162,16 +227,21 @@ entries.
 | 1932 | 244 | `-[VBE20DisplayDriver descriptionForDisplayInfo:]` |
 | 2176 | 100 | `-[VBE20DisplayDriver descriptionForVBEMode:]` |
 | 2276 | 12 | `-[VBE20DisplayDriver displayModeCount]` |
-| 2288 | 24 | `-[VBE20DisplayDriver displayModes]` |
-| 2312 | 12 | `+[VBE20DisplayDriver driverKitVersionForVBE20DisplayDriver]` |
+| 2288 | 12 | `-[VBE20DisplayDriver displayModes]` |
+| 2300 | 12 | `+[VBE20DisplayDriverKernelServerInstance kernelServerInstance]` |
+| 2312 | 12 | `+[VBE20DisplayDriverVersion driverKitVersionForVBE20DisplayDriver]` |
 
-Thirteen functions are hand-written. `driverKitVersionForVBE20DisplayDriver` is
-emitted by the Kernel Server project type and is correctly absent from source,
-as `docs/drivers/video-reconstruction.md` records for every driver in the tree.
-`+[VBE20DisplayDriverKernelServerInstance kernelServerInstance]` is the second
-build-generated symbol; it lives in a second `__cls_meth` method list that the
-survey parse did not resolve, so the committed partition may carry fifteen
-entries rather than fourteen. Phase 1 settles the count.
+**Fifteen entries, thirteen of them hand-written.** The two build-generated ones
+are emitted by the Kernel Server project type and are correctly absent from
+source, as `docs/drivers/video-reconstruction.md` records for every driver in
+the tree.
+
+The entry at 2300 was resolved in Task 1, not the survey: it sits in a second
+`__cls_meth` method list the survey parse did not read, and its body is
+`push %ebp; mov %esp,%ebp; mov $0x0,%eax; mov %ebp,%esp; pop %ebp; ret` with an
+external relocation on the immediate to `_VBE20DisplayDriver_instance` — the
+shape `+kernelServerInstance` takes in every Kernel Server driver. That
+correction also takes `displayModes` from 24 bytes to 12.
 
 Classes and metaclasses, from `__OBJC,__class` and `__OBJC,__meta_class`:
 
@@ -225,42 +295,57 @@ convention and record the divergence.
 The `Loaded Server` segment (`Server Name`, `Load Commands`, `Instance Var`,
 `Server Version`) is produced from `Load_Commands.sect`, as in Cirrus.
 
-## 6. Parity policy
+## 6. Parity policy — resolved
 
-The reference was compiled against OPENSTEP 4.2's `IOFrameBufferDisplay`. We
-compile against Rhapsody's.
+> Phase 0 ran in Task 1 and settled this section. The original concern is kept
+> below the result because the measurement it produced is evidence specs 2 and 3
+> will want.
 
-`__OBJC,__instance_vars` in the reference is **0 bytes**: `VBE20DisplayDriver`
-declares no ivars of its own. Its `instance_size` of 552 is therefore entirely
-inherited, and it is a direct measurement of 4.2's
-`Object` + `IODevice` + `IODisplay` + `IOFrameBufferDisplay` chain.
+**Target: byte-parity throughout.** No function needs a function-parity
+exemption.
 
-That bounds the exposure. The driver cannot suffer a shift in its *own* ivars
-because it has none. What it can suffer is a shift in the *inherited* ones it
-reads — `displayModes` and `displayModeCount` return `_displayModes` and
-`_displayModeCount`, both declared on Rhapsody's `IOFrameBufferDisplay`. If the
-chain's layout moved between releases, those two functions (24 and 12 bytes)
-encode different offsets and will not byte-match. Every other function in the
-partition is untouched by the question.
+The worry was that the reference is compiled against OPENSTEP 4.2's
+`IOFrameBufferDisplay` while we compile against Rhapsody's, so a change in the
+inherited ivar block would shift every inherited-ivar access. Two findings
+retired it.
 
-Every other reconstruction in this tree targets a same-release reference, so
-the question is new even though its blast radius is small.
+**The chain did not move.** `__OBJC,__instance_vars` in the reference is 0
+bytes — `VBE20DisplayDriver` declares no ivars of its own — so its
+`instance_size` of 552 measures 4.2's inherited chain exactly. Rhapsody's same
+chain measures **552**, a delta of zero:
 
-**Phase 0** computes Rhapsody's `Object` + `IODevice` + `IODisplay` +
-`IOFrameBufferDisplay` instance size and compares it against 552.
+| Class | Bytes |
+| --- | --- |
+| `Object` | 4 |
+| `IODevice` | 260 |
+| `IODirectDevice` | 32 |
+| `IODisplay` | 212 (of which `IODisplayInfo` is 136) |
+| `IOFrameBufferDisplay` | 44 |
+| **Total** | **552** |
 
-- **If they agree**, the chain did not move; target byte-parity throughout,
-  tracked in `ledger.json` exactly as Cirrus and ThinkPad are.
-- **If they differ**, `divergences.md` records the delta and its cause once, up
-  front, and the two ivar-reading functions target function-parity citing that
-  root cause. The other eleven still target byte-parity.
+The chain is `IOFrameBufferDisplay : IODisplay : IODirectDevice : IODevice :
+Object`. Earlier drafts of this spec omitted `IODirectDevice` and summed 520;
+that was a drafting error, not a measurement. Two independent checks in the
+reference corroborate 552: `VBE20DisplayDriverVersion : IODevice` has
+`instance_size` 264 = 4 + 260, and the category initialiser stores to
++0x210/+0x214/+0x218/+0x21c, which are `_currentDisplayMode`,
+`_pendingDisplayMode`, `_displayModeCount` and `_displayModes` in the 552
+layout.
 
-Either way the measurement is recorded, because a 552-byte match is itself
-evidence about how much of DriverKit survived the 4.2-to-Rhapsody transition,
-and specs 2 and 3 will want it.
+**The driver reads no inherited ivars anyway.** `displayModes` and
+`displayModeCount` do not return `_displayModes` and `_displayModeCount`, as
+this spec previously asserted. They read two file statics in `__DATA,__data`
+(8 bytes, exactly two 4-byte slots) that `parseVESAModes:size:` writes:
 
-Phase 0 is cheap — it reads two headers and one number out of the reference —
-and it is a gate: no reconstruction work starts until the target is fixed.
+```
+displayModeCount  55 89 e5  a1 04 20 00 00  89 ec 5d c3   mov __data+4,%eax
+displayModes      55 89 e5  a1 00 20 00 00  89 ec 5d c3   mov __data+0,%eax
+```
+
+Both carry a local relocation into `__DATA,__data`. The reconstruction must
+therefore declare them as file statics with explicit initialisers — an explicit
+initialiser is what places a static in `__data` rather than `__bss` under this
+compiler, the same finding `drvVGA` recorded for `IOVGADisplay.m`.
 
 ## 7. Discovery items
 
@@ -279,25 +364,98 @@ specs 2 or 3 until answered.
 
 | Gate | Check |
 | --- | --- |
-| 0 | Rhapsody `IOFrameBufferDisplay` instance size measured against the reference's 552; parity target fixed in writing |
+| 0 | **Passed in Task 1.** Rhapsody's inherited chain measures 552 against the reference's 552; target fixed at byte-parity throughout (§6) |
 | 1 | `VBE20DisplayDriver_reloc` compiles and links against `driverkit-3` on the Rhapsody build guest |
 | 2 | binrecon ledger complete: every partition entry reviewed with a status and a reason, `reference_sha256` and `rebuilt_sha256` both real |
-| 3 | Boots under QEMU per `docs/drivers/drvVGA-boot-gate.md` |
+| 3 | **Passed 2026-09-22**, once spec 2 landed. Boots under QEMU per `docs/drivers/drvVGA-boot-gate.md`; record in `docs/kernel/i386-vbe-console.md` |
 
-Gate 3 follows the established procedure: `graft-kernel.py`, then
-`rhap_inject.py set-key` for `Active Drivers`, then `put` for the driver, then
-hash-verify the injected copy in the image before booting. The bus retest's PCIC
-near-miss showed a refused injection still yields a plausible-looking boot of
-somebody else's driver, so the hash check is not optional.
+### Gate 3 was blocked on spec 2; it has now run and passed
 
-**Gate 3's reachable depth is limited until spec 3 lands.** The booter does not
-currently enter a VBE mode — `"Graphics Mode"` is never set in any config table,
-so `setMode()` falls through to text. The driver will therefore take its
-`%s: Skipping framebuffer initialization (card not in VBE mode).` path. That
-still proves load, initialisation, config-table read, mode-list export and
-registration as `VBEDisplay0`, and it is the honest gate for this spec. The
-`%s: using VBE mode %d` path becomes reachable only after spec 3, and is gated
-there.
+**Result, 2026-09-22.** Spec 2 (`docs/superpowers/specs/2026-09-21-i386-vbe-kernel-support-design.md`)
+added `_VBEModeInfo2IODisplayInfo` to the kernel. With that kernel, `sarld`
+links this driver and the kernel's log shows all three lines below, as
+`VBEDisplay0: ...`. The driver also printed `Driver loaded to export VBE mode
+list.` and `No VBE modes found.` No other boot driver lost its registration —
+a check that cannot by itself rule out a cascade, since this driver links
+last in `Boot Drivers`; that an undefined-symbol failure would not cascade at
+any position anyway is the inference noted below, not a measurement.
+**[REFUTED — spec 3 G5 (docs/kernel/i386-vbe-console.md, G5): linked first
+on a kernel without the symbol, the failure cascaded into all six other boot
+drivers and the kernel panicked `Missing EISA kernel bus class`.]**
+`Boot Drivers` alone was enough; `Active Drivers` did not need changing.
+
+The same bundle on a pre-spec-2 kernel fails with the undefined symbol this
+section predicted. The cascade and panic it also predicted were not seen, but
+that run could not have seen them: the driver links last in `Boot Drivers`, so
+nothing links after it, and `EISABus`, the driver whose loss the predicted
+panic names, links before it. The booter shows `rld(): Undefined symbols:
+_VBEModeInfo2IODisplayInfo`, and the kernel logs `configureDriver: driver
+class 'VBE20DisplayDriver' was not loaded`. That it would not cascade at other
+positions either is an inference, from
+`src/cctools-2/ld/symbols.c:3523`/`ld.c:2059` and
+`rld.c:402-405`/`1493`/`1674-1676`: an undefined-symbol failure is raised via
+`error()`, which unloads only the one driver, not via `fatal()`→`cleanup()`,
+which is what `docs/boot/sarld-driver-link-limit.md`'s cascade (a malloc
+fatal) depends on.
+**[REFUTED — spec 3 G5 (docs/kernel/i386-vbe-console.md, G5): the
+conclusion, not the reading of `error()`. Linked first on a kernel without
+the symbol, with the stock booter and `sarld`, the undefined-symbol error was
+followed by EIDE's link failing with `rld(): virtual memory exhausted (malloc
+failed)`, the malloc fatal named above. The latch refused the other five, and
+the kernel panicked `Missing EISA kernel bus class`. The same order on a kernel with the
+symbol lost nothing. The error itself returns through `rld.c:402-405` and
+does not longjmp (`ld.c:2046-2064`), as read here; how the failed link leads
+to the malloc fatal was not determined.]**
+
+The `_VBE20DisplayDriver_instance` difference did not stop the load.
+
+The booter that ran is Apple's stock v5.0.41.1, not `src/boot-2`. The
+procedure, hashes and limits are in `docs/kernel/i386-vbe-console.md`.
+
+The text below is the pre-run notice, kept as written — except that its
+cascade-and-panic prediction is contradicted by the `rld.c` inference above,
+not by the run. The run saw only the undefined-symbol failure and no panic,
+in a position where neither a cascade nor that panic could show.
+**[REFUTED — spec 3 G5 (docs/kernel/i386-vbe-console.md, G5): that
+inference is refuted at the first position, where the cascade and the panic
+were both measured. The prediction below held there.]**
+
+`Default.table` marks this a Boot Driver, so the booter links it against the
+kernel with `sarld`. `_VBEModeInfo2IODisplayInfo` is undefined in our `_reloc`,
+nothing in `src/kernel-7` defines it, and no shipped Rhapsody kernel exports it
+— so the link fails. Per `docs/boot/sarld-driver-link-limit.md` that failure
+**cascades into every driver linked afterwards** and surfaces as
+`panic: Missing EISA kernel bus class`, which names none of the cause.
+**[VINDICATED at the first position — spec 3 G5
+(docs/kernel/i386-vbe-console.md, G5): linked first on a kernel without the
+symbol, the failed link was followed by EIDE's `rld(): virtual memory
+exhausted (malloc failed)`, every later boot driver was refused, and the
+kernel panicked `Missing EISA kernel bus class`. Linked last, it took down
+nothing, since nothing links after it. The middle positions were not tried,
+and whether this is the node limit that document describes was not
+determined.]**
+
+**Spec 2 alone unblocks the gate as described below.** Spec 3 is required only
+for the deeper `%s: using VBE mode %d` path.
+
+The procedure lives in the plan's Task 9, not here. Note in particular that
+`rhap_inject.py` **cannot create the bundle**: it has only `set-key` and `put`,
+both of which repoint an *existing* directory entry, and
+`VBE20DisplayDriver.config` does not exist in `golden.img`. Use
+`vm/install-driver.py`, which allocates the bundle and registers it in
+`Boot Drivers`, matching this driver's `"Boot Driver" = "Yes"`. An earlier
+revision of this section prescribed the `rhap_inject.py` route; it cannot work.
+
+**What the gate will prove once unblocked.** The booter does not enter a VBE
+mode — `"Graphics Mode"` is never set in any config table, so `setMode()` falls
+through to text — and the 4.2 mode-array offsets land in `_reserved` regardless
+(section 3). The driver will therefore take its
+`%s: Skipping framebuffer initialization (card not in VBE mode).` path, proving
+load, initialisation, mode-list export and registration as `VBEDisplay0`.
+
+It does **not** prove a config-table read. Section 3 records that this driver
+has no config-table accessor at all — no `configTable`, no `valueForStringKey`.
+An earlier revision of this list claimed otherwise.
 
 Gate 3 looks for these two `__cstring` entries reaching the console, plus the
 DriverKit registration line:
@@ -315,8 +473,8 @@ prefix.
 
 ## 9. Risks
 
-**The inherited ivar-layout shift**, bounded by §6 to two functions totalling 36
-bytes, and measured before any code is written.
+~~**The inherited ivar-layout shift.**~~ Retired by Task 1: the chain measures
+552 on both sides and the driver reads no inherited ivars at all. See §6.
 
 **`initFromDeviceDescription:` at 548 bytes and
 `getCharValues:forParameter:count:` at 676** are over half the driver between

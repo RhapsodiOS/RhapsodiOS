@@ -278,7 +278,3 @@ LABEL(_pcpy)
 
 	ret
 #endif
-
-LABEL(__sp)
-	mov	%esp, %eax
-	ret

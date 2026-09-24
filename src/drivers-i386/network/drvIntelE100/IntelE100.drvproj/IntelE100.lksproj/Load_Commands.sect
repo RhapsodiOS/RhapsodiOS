@@ -1,0 +1,7 @@
+#
+# Load commands for the IntelE100 kernel server.
+#
+# WIRE only, like every driver in this tree that has been built. It is
+# loaded as a boot driver, and boot drivers are never unloaded.
+#
+WIRE

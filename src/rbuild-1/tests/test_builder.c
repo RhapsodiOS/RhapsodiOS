@@ -826,6 +826,66 @@ TEST(test_makeroot_dry_run_preserves_package_list) {
     system(command);
 }
 
+static void makeroot_trace(Package *pkg, const char *arch, char *trace,
+                           size_t capacity) {
+    strlist repo;
+    char root[128];
+    FILE *capture;
+    int saved;
+    size_t n;
+
+    trace[0] = '\0';
+    sprintf(root, "/tmp/rb-makeroot-arch-%ld", (long)getpid());
+    package_set(&pkg->architecture, arch);
+    strlist_init(&repo);
+    capture = tmpfile();
+    CHECK(capture != 0);
+    if (!capture) { strlist_free(&repo); return; }
+    fflush(stdout);
+    saved = dup(STDOUT_FILENO);
+    CHECK(saved >= 0);
+    if (saved < 0) { fclose(capture); strlist_free(&repo); return; }
+    CHECK(dup2(fileno(capture), STDOUT_FILENO) >= 0);
+    exec_dry_run = 1;
+    CHECK_INT(builder_makeroot(pkg, root, &repo, 0), 0);
+    exec_dry_run = 0;
+    fflush(stdout);
+    dup2(saved, STDOUT_FILENO);
+    close(saved);
+    rewind(capture);
+    n = fread(trace, 1, capacity - 1, capture);
+    trace[n] = '\0';
+    fclose(capture);
+    strlist_free(&repo);
+}
+
+TEST(test_makeroot_adds_arch_makedepends) {
+    Package pkg;
+    char trace[4096];
+
+    package_init(&pkg);
+    pkg.has_build_depends = 1;
+    strlist_push(&pkg.build_depends, "common");
+    strlist_push(&pkg.build_depends_i386, "i386only");
+    strlist_push(&pkg.build_depends_ppc, "ppconly");
+
+    makeroot_trace(&pkg, "ppc-apple-rhapsody", trace, sizeof(trace));
+    CHECK(strstr(trace, "dependency common for ppc-apple-rhapsody") != 0);
+    CHECK(strstr(trace, "dependency ppconly for ppc-apple-rhapsody") != 0);
+    CHECK(strstr(trace, "i386only") == 0);
+
+    makeroot_trace(&pkg, "i386-apple-rhapsody", trace, sizeof(trace));
+    CHECK(strstr(trace, "dependency common for i386-apple-rhapsody") != 0);
+    CHECK(strstr(trace, "dependency i386only for i386-apple-rhapsody") != 0);
+    CHECK(strstr(trace, "ppconly") == 0);
+
+    makeroot_trace(&pkg, "universal-apple-rhapsody", trace, sizeof(trace));
+    CHECK(strstr(trace, "dependency i386only for universal-apple-rhapsody") != 0);
+    CHECK(strstr(trace, "dependency ppconly for universal-apple-rhapsody") != 0);
+
+    package_free(&pkg);
+}
+
 TEST(test_scan_dir) {
     Package pkg;
     Params params;
@@ -1732,6 +1792,7 @@ static void run_all(void) {
     RUN(test_setupdirs_wipes_stale_product_trees);
     RUN(test_setupdirs_excludes_hg);
     RUN(test_makeroot_dry_run_preserves_package_list);
+    RUN(test_makeroot_adds_arch_makedepends);
     RUN(test_scan_dir);
     RUN(test_scan_dir_missing_pkgname_fails);
     RUN(test_relativize_absolute_symlinks_inside_dstroot);

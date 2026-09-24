@@ -35,6 +35,7 @@
 extern KERNBOOTSTRUCT *kernBootStruct;
 extern char *Language;
 extern char *LoadableFamilies;
+extern void setMode(int mode);
 
 static void eatThru(char val, char **table_p);
 
@@ -684,6 +685,19 @@ loadOtherConfigs(
 	sleep(1);
 #endif 1
 	while (string = newStringFromList(&val, &count)) {
+	    /* OPENSTEP 4.2 User Patch 4 (boot+18406..18480): "Query" asks
+	     * before each boot driver. */
+	    if (getBoolForKey("Query")) {
+		char buf[16];
+
+		setMode(TEXT_MODE);
+		localPrintf("Load driver: \"%s\" ([y]/n)? ", string);
+		do {
+		    gets(buf, sizeof(buf));
+		} while (buf[0] != '\0' && buf[0] != 'y' && buf[0] != 'n');
+		if (buf[0] == 'n')
+		    continue;	/* reference defect, reproduced: string leaks */
+	    }
 	    /* Check installation hints... */
 	    sprintf(path, "%s/System.config/" INSTALL_HINTS
 			  "/%s.table", usrDevices(), string);
@@ -712,7 +726,8 @@ loadOtherConfigs(
                         tableName, DRIVER_VERSION_MISMATCH);
 		} else {
 		    struct driver_load_data dl;
-		    
+		    int loaded = 0;
+
 		    dl.name = string;
 		    if ((openDriverReloc(&dl)) >= 0) {
 			verbose("Loading binary for %s device driver.\n",string);
@@ -721,12 +736,23 @@ loadOtherConfigs(
 #if 0
 		printf("Calling link driver for %s\n", string);
 #endif 1
-			if (linkDriver(&dl) < 0)
+			else if (linkDriver(&dl) < 0)
 			    error("Error linking %s device Driver.\n",string);
+			else
+			    loaded = 1;
 		    }
-		    loadConfigDir(string, useDefault, NULL, NO);
-		    driverWasLoaded(string, table, NULL);
+		    /*
+		     * OPENSTEP 4.2 User Patch 4 (boot+18813..18858): free the
+		     * malloc'ed table, then, for a driver that loaded and
+		     * linked, read the tables into kernBootStruct->config and
+		     * record that permanent copy, which execKernel's VBE Mode
+		     * lookup reads through loaded_drivers[].configTable.
+		     */
 		    free(table);
+		    if (loaded) {
+			loadConfigDir(string, useDefault, &table, NO);
+			driverWasLoaded(string, table, NULL);
+		    }
 		    free(string);
 		    free(installVersion); free(longName);
 		    free(tableName);

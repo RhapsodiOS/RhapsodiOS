@@ -1,0 +1,2779 @@
+# i386 VESA booter support: evidence record
+
+## Conventions
+
+**The reference** is the 4.2 booter, `./usr/standalone/i386/boot` from
+OPENSTEP 4.2 User Patch 4 (`OS42MachUserPatch4.tar`).
+- 44,848 bytes, SHA-256
+  `925D35B683644CDA6C090B223B00C115F1C83116D466F230B71231B7AB75CBCE`.
+- It is a headerless flat image. It prints itself as `OPENSTEP boot
+  v40.13.1.2`.
+
+**Offsets and addresses.**
+- `boot+N` is a **file offset** into that image. The image loads at
+  `0x3000`, so the address is `boot+N + 0x3000`.
+  - This holds for the text and for the data: all twelve VBE string operands
+    resolve at base `0x3000` and at no other base.
+    **[CORRECTED — Task 3b, review M6: "no other base" overstates. Only the
+    bases 0, `0x1000` and `0x2000` were tested, and the operands resolve at
+    none of them [measured].]**
+- A bare hex value such as `0xDA7C` is an **address**, not an offset.
+  - Its file offset is the address minus `0x3000`: `0xDA7C` is `boot+43644`.
+- `kbs+0xNNNN` is an offset into `KERNBOOTSTRUCT`, which is at `0x11000`.
+- Kernel addresses such as `0x0018F1B4` are virtual addresses in the i386
+  slice of 4.2's `mach_kernel`. That slice is `$KREF`, described in
+  `src/kernel-7/reconstruction/vbe/divergences.md`.
+
+**"Extent"** means a function's first byte up to the byte before the next
+function. It therefore includes the trailing alignment `nop`s, which occupy
+the image just as the code does.
+
+**Our build** is `src/boot-2` built with `rbuild` at this record's commit.
+Its function sizes are `nm -n` deltas in `boot.sys`, which is the same kind
+of extent.
+
+**Tags.** Claims are **[measured]** when read out of a binary, a file, a
+memory dump or a boot, and **[inference]** when reasoned from those. The tag
+is on the line that makes the claim. Text that is later retracted will be
+labelled in place, not deleted.
+
+## Staging
+
+The reference was extracted as follows; Task 2 staged it, and Task 3 re-hashed
+it:
+
+```
+$VENVPY vm/extract-os42-patch.py "$PATCH" <dest> ./usr/standalone/i386/boot
+925D35B683644CDA6C090B223B00C115F1C83116D466F230B71231B7AB75CBCE  44848  boot   [measured]
+```
+
+Other inputs, re-hashed on 2026-09-22 [measured]:
+
+| input | bytes | SHA-256 |
+| --- | --- | --- |
+| `$KREF`, the 4.2 kernel's i386 slice | 1,117,920 | `33469393C0843FC741942C3AE9D91D838467D72ABD647DCF2E5BF499A3F14890` |
+| `vm/golden.img` | 8,589,934,592 | `E1968E3EF57F3060AA01CEAB8B4D5C49C067E6ACC5F8626EBABEEFE0E663879F` |
+| stock booter on `golden.img` (`/usr/standalone/i386/boot`, v5.0.41.1) | 39,616 | `AA06C3C5BFE56C79573E36D20C662DA10CA67D0CEC5BE17F13A5B562F6B5F2C2` |
+
+The stock booter is byte-identical to both boot-area copies on
+`golden.img`, and each copy is followed by zeros [measured].
+
+---
+
+## Task 3: measurements
+
+### Our booter as it stands
+
+**The build.** It used `rbuild buildpackage --state /build/state --arch i386
+--dir --target all /build/src/boot-2 /build/repo <dest>`. The Makefile's
+check printed [measured]:
+
+```
+booter 44576 bytes of 45056, 480 to spare
+size boot.sys: __TEXT 43008  __DATA 4768
+```
+
+**Keeping `boot.sys`.** rbuild builds inside a chroot and `rm -rf`s it once
+the package is written (`src/rbuild-1/builder.c:1759-1761`, with
+`opt.clean = 1` at `runner.c:858`). So `boot.sys` does not survive a normal
+build [measured].
+- The copy measured here was taken from inside the chroot, by the same shell
+  that ran rbuild, before the cleanup.
+- The flat `boot` in that copy is byte-identical to the one in the built
+  package [measured].
+
+| file | bytes | BSD `sum` | `cksum` | SHA-256 |
+| --- | --- | --- | --- | --- |
+| `boot` | 44,576 | `50728 44` | `1719693408 44576` | `1647E453291F012F4505444E6BC7F1E2B1C0B5F0FFBB14379ED2EBB8002BC122` |
+| `boot.sys` | 1,095,680 | `27156 1070` | `4088755961 1095680` | `1C5B9C79155830484632A59E361E73F021518628ECE3EF4078F48333FADBF24A` |
+
+Both `sum` and `cksum` were printed on the guest and recomputed locally from
+the decoded bytes; they agree [measured].
+
+**Sections of `boot.sys` [measured].**
+
+| section | start | bytes |
+| --- | --- | --- |
+| `__text` | `0x3000` | 37,405 |
+| `__cstring` | `0xC21D` | 4,208 |
+| `__const` | `0xD290` | 1,384 |
+| `__TEXT` pad, to `0xD800` | | 8 |
+| `__data` | `0xD800` | 1,564 (file: 1,568) |
+| `__bss` | | 1,332 |
+| `__common` | | 1,864 |
+
+The flat file is exactly `__TEXT` (43,008) plus `__DATA`'s file part (1,568).
+So `-g` stabs never reach it [measured].
+
+**Flags [measured, from the build log].** `boot2/*.c` is compiled `-O2 -g`,
+and `libsaio/*.c` and `libsa/*.c` are compiled `-O -g`. All three also get
+`-arch i386 -Wmost -Wno-precomp -munaligned-text -static`.
+
+### Which booter ran: the proof later gates use [measured]
+
+The image was `golden.img` with our `boot` in both boot-area slots
+(`vm/install-booter.py`). It was booted on qemu-shot's default `cirrus`, with
+`mach_kernel -v` typed at 8 s. A same-session control used the stock booter.
+
+| line | ours | stock |
+| --- | --- | --- |
+| boot1 | `Rhapsody boot1 v5.0.41.1` | `Rhapsody boot1 v5.0.41.1` |
+| sizing | `Sizing memory... 130559K` | `Sizing memory... 131072K` |
+| **banner** | **`Rhapsody boot v5.0.2`** | **`Rhapsody boot v5.0.41.1`** |
+| memory | `639K conventional / 129535K total memory` | `639K conventional / 131072K total memory` |
+
+- **The banner is the proof of which booter ran.** It comes from
+  `boot2/prompt.c:31`.
+- **Both runs end on the same screen line.** The image's own kernel writes
+  nothing to COM2, so both serial logs are empty. The last screen line is
+  `hc0: Restore: error=0x0 secCnt=0x1 secNum=0x1 cyl=0x0 drhd=0xe0
+  status=0x50`, the drvEIDE deadlock of `docs/drivers/drvEIDE-issues.md`,
+  with either booter.
+- **Our booter reaches userland with a working kernel.** With spec 2's kernel
+  (`74B12FCD...25CFF4`) grafted in, our booter's boot reaches the rc scripts:
+  its serial log ends at `Continue without network? (y/n)`.
+
+---
+
+## The 4.2 VBE functions (item 1)
+
+The table below was read with capstone at base `0x3000` [measured unless
+tagged]. Function starts are the targets of direct calls. The names are ours,
+given by correspondence.
+
+| 4.2 function | extent | bytes | what it does | ours | 32-bit operands |
+| --- | --- | --- | --- | --- | --- |
+| `execKernel` | `boot+184..1287` | 1104 | the VBE lookup (`boot+949..1059`, 111 B); the VBE set (`boot+1224..1263`, 40 B) | `boot2/boot.c:158`, 932 | in window: `0xE470`, `0xE474`, `0xC6A8` |
+| `getBootString` | `boot+2244..3175` | 932 | the `VBE Check` listing (`boot+2556..2879`, 324 B) | `boot2/boot.c:563`, 616 | in window: strings, `0xDA7C`; compared: `0x1870`, `0x1876` |
+| `convert_vbe_mode` | `boot+4480..4595` | 116 | a name, or failing that a decimal, to a mode number | `boot2/graphics.c:252`, 84 | in window: `0xD7C8` |
+| `setMode` | `boot+4164..4459` | 296 | text, or the VGA mode `0x12` panel; no VBE path | `boot2/graphics.c:176`, 420 | not VBE code |
+| mode-attributes test | `boot+27424..27515` | 92 | usable(`ModeInfoBlock*`) | new | none |
+| usable and at least 640x480 | `boot+27516..27555` | 40 | the above, plus `YRes > 479 && XRes > 639` | new | none |
+| record writer | `boot+27556..27703` | 148 | `(VBEModeRec*, mode, MIB*)`, fourteen stores | new | none |
+| enumerator | `boot+27704..28031` | 328 | fills `kbs+0x1870` and caches the count | new | in window: `0xDA7C`, `0xDEAC`; compared: `0x1840`, `0x1870`, `0x897`, `0x308` |
+| mode setter | `boot+28032..28463` | 432 | validates, sets the mode, writes `kbs+0x1858`, sets the palette | `libsaio/vbe.c:55` `set_linear_video_mode`, 304 | in window: strings, globals, `0xDAAC`, and **`0xFFFF`** (a non-address; see below); compared: `0x14C`, `0x1858`, `0x104` |
+| `getVBEInfo`, `getVBEModeInfo`, `getVBEDACFormat`, `setVBEDACFormat`, `setVBEMode`, `setVBEPalette`, `getVBEPalette`, `getVBECurrentMode` | `boot+28464..29047` | 68, 80, 68, 60, 56, 96, 96, 60 | BIOS `INT 10h` `4F0x` wrappers | `libsaio/vbe.c:126-212` | **byte parity today**: `compare_flat` MATCH for all eight |
+
+**The masking window `[0x3000, 0x11000)`.** `tools/binrecon/compare_flat.py`
+masks a 32-bit operand only when it lies in this window.
+- **Addresses.** Every address operand above falls inside it.
+- **Other constants.** Every non-address constant falls outside it and is
+  compared exactly, with one exception: the mode setter's
+  `and eax, 0xFFFF` at `boot+28212`.
+  - `0xFFFF` lies inside the window.
+  - A rebuild that emitted any *other* in-window constant there would be
+    masked and mapped, not failed.
+  - That byte must be checked by hand [measured operand sweep; the risk is
+    arithmetic].
+
+**Also byte-identical to ours today** [measured]: `printf` (`boot+27392`),
+`reallyPrint` (`boot+30244`) and `currentMode` (`boot+4460`).
+
+**Data the VBE code uses [measured].**
+
+| address | bytes | what |
+| --- | --- | --- |
+| `0xD7C8` | 280 | mode-name table: 13 entries plus a terminator of `{char name[16]; int mode;}`, from `640x400x256` = 0x100 to `1280x1024x888` = 0x11B; no `x16` modes |
+| `0xDAAC` | 1,024 | 256-entry palette, `0x00RRGGBB` with 6-bit components |
+| `0xDEAC` | 4 | enumerator's cached count, initialised to -1 |
+| `0xE470`, `0xE474` | | `loaded_drivers`, `num_loaded` (bss) [names: inference, by correspondence with `libsaio/drivers.c:44-45` and the writer `addToLoadedDriverList`; added in Task 3b, review M6] |
+| `0xE498`, `0xE49C`, `0xEB7C`, `0xEB80`, `0xEB84` | | screen height, width, bits per pixel, frame buffer, `in_linear_mode` (bss) [names: inference, from `vbe.c:95-102`] |
+| `0xEB88` | 2 | bytes per scan line: a global with no counterpart in our tree |
+
+- **The palette is not our palette.** It is not `appleClut8 >> 2`: 254 of the
+  256 entries differ [measured]. So the reference carries its own colour
+  table as data, where our `setupPalette` converts `appleClut8` at run time.
+- **Four wrappers are dead in the reference too.** `getVBEDACFormat`,
+  `setVBEDACFormat`, `getVBEPalette` and `getVBECurrentMode` have no
+  reference in the 4.2 image: a raw scan for rel32 and abs32 found none
+  [measured].
+
+### Item 4: where `VBE Mode` is read [measured]
+
+The lookup is in `execKernel`, after the boot drivers are loaded:
+
+```
+boot+949   mode = 0
+boot+956   call enumerator                        ; unconditional
+boot+961   for i < num_loaded:                    ; [0xE474]
+             getValueForStringTableKey(loaded_drivers[i].configTable, "VBE Mode", &val, &len)
+             ; configTable is +0xC of a 28-byte record at [0xE470]; the first match wins
+boot+1020  no match: skip the VBE path entirely
+boot+1026  s = newStringForKey("VBE Mode")        ; getValueForKey: kbs+2 (boot line), then kbs+0x24FC (config)
+           convert_vbe_mode(s ? s : val, &mode)
+```
+
+- **A driver's table must carry the key, or nothing happens.** When one does,
+  a value on the boot line or in System.config overrides it.
+- **What a test image needs** [inference]: it must install the VBE driver,
+  whose `Default.table` sets `"VBE Mode" = "257"`. System.config needs
+  nothing.
+- **Our driver list is `static`.** `loaded_drivers` and `num_loaded` are
+  `static` in our `libsaio/drivers.c:44-45`. The reference reads them from
+  `execKernel`, so they must become visible to `boot.c` [inference].
+- **Possible reference defect: a mode name from the driver's table is never
+  matched.** The driver table's `val` is not NUL-terminated: it points at
+  `257";...`. `convert_vbe_mode` compares whole strings with `strcmp` before
+  it parses digits. So a mode name given only in a driver's table would never
+  match, while a number parses [inference, from the code; a candidate
+  reference defect].
+
+### Item 5: the VESA version test [measured]
+
+The test is in the enumerator, which the mode setter calls first.
+1. `VbeSignature` is preset to `"VBE2"` (`boot+27735..27756`).
+2. `getVBEInfo` is called.
+3. `cmp word [ebp-1FCh], 1FFh; ja` at `boot+27782` is an unsigned test.
+
+**4.2 accepts `VESAVersion >= 0x200`.** Any lower version, or a failed call,
+leaves zero modes.
+
+`VESA not available.\n` (`boot+28079`) is printed whenever the enumerator
+returns zero, which includes the case of a VBE 2 BIOS that offers no usable
+mode.
+
+Our `vbe.c:66` accepts only `== 0x200`. The reconstruction takes 4.2's `>=`,
+so **the version check is not a forced divergence**. QEMU reports 0x0300; see
+item 6.
+
+### Item 8: no terminator record [measured]
+
+- The enumerator stores records only through the writer, at `boot+27974`.
+  After its loop it stores nothing but the count, to `0xDEAC`, at
+  `boot+28006`.
+- **No zero record is written.** The array ends where the booter's `bzero`
+  left zeros.
+- The loop's bound, `edi - (kbs+0x1840) > 0x897` at `boot+27911`, admits
+  indices 0 to 89: 90 records.
+- At run time the record after the last was zero on both QEMU adapters (item
+  6).
+
+### Every store through the `KERNBOOTSTRUCT` pointer at `0xDA7C` [measured, coverage stated]
+
+**Method.** A linear, per-function register tracker covered all 43 loads of
+`[0xDA7C]`. It followed every register derived from the pointer through
+`mov`, `lea` and `add imm`.
+
+**[CORRECTED — Task 3b, review M3: the coverage statement was imprecise; the
+conclusion is unchanged.]** [measured, re-read in Task 3b]
+- **There are 45 references to `0xDA7C`, not 43.** The 43 are loads. The
+  other two are `sub eax,[0xDA7C]` at `boot+17344` and `boot+17487`: each
+  computes `configEnd - kbs` and compares it with `0xD000` before printing
+  `No room in memory for config files`. They derive no pointer.
+- **Indexed stores, which the tracker also found.** There are two, and both
+  are bounded:
+  - `boot+489`, one byte (`' '`) into `bootString` at `kbs+2`, at an index
+    bounded by the string's length;
+  - `boot+19171`, `diskInfo[0..3]` at `kbs+0x13C..0x148`, in a loop bounded
+    by `cmp byte [ebp-4],3; jbe`.
+- **The `+0` pointer below is not outside the VBE area.** It is the
+  whole-struct `bzero(kbs, 0xF4FC)` at `boot+19079`, which runs before any
+  VBE store.
+
+**What it found.**
+- **Direct stores.** None into `[0x38C, 0x20D8)`. The highest is
+  `kbs+0x388` (APM, `boot+8006`).
+- **The mode array.** The VBE-area stores are the record writer's, through
+  pointers passed as `kbs+0x1858` (`boot+28262`) and `kbs+0x1870`
+  (`boot+27973`).
+- **Other pointer arguments.** The remaining kbs-derived pointers handed to
+  callees are `+0`, `+2`, `+0xB8`, `+0x15C`, `+0x160`, `+0x164` and
+  `+0x24FC`. All of them are outside the VBE area.
+  **[CORRECTED — Task 3b, review M3: `+0` is the whole-struct `bzero`
+  above, so it covers the VBE area; the other six are outside it.]**
+
+**One more VBE store: `kbs+0x14C = 0`, that is `graphicsMode`,** at
+`boot+28273`. The mode setter makes it right after writing the current-mode
+record. The only other store to `+0x14C` is `setMode`'s (`boot+4207`).
+- The offset is the same in our struct.
+- Other 4.2 offsets agree with ours as well: `config` is at `+0x24FC` and
+  `eisaConfigFunctions` at `+0x20F8` [measured, against
+  `libsa/kernBootStruct.h`].
+
+**Not covered.** A pointer spilled to the stack, or copied through another
+global, is invisible to this method.
+- **One such copy exists** [measured, Task 3b, review M3]: `kbs+0x158`
+  (`configEnd`) receives the kbs-derived pointer `kbs+0x24FC` at
+  `boot+19217`, and later writes go through it. That is a copy into the
+  struct itself, of the kind this paragraph names.
+
+**What is covered, stated whole** [measured, Task 3b's re-reading agrees with
+the review's]: nothing stores into `[0x38C, 0x20D8)` except the record writer
+(through `kbs+0x1858` and `kbs+0x1870`) and the whole-struct `bzero`.
+
+### The rest of the VBE path, as the code reads [measured from the disassembly]
+
+- **The enumerator runs whether or not a mode is wanted.** `execKernel` calls
+  it at `boot+956` on every boot that gets that far, so a VBE 2 adapter fills
+  `kbs+0x1870..` even when no mode is ever set.
+- **The mode is set last.** The set block (`boot+1224..1263`) does not test
+  `-v` (`0xE480`). It runs after `Starting OPENSTEP` and after APM, right
+  before `startprog`:
+  1. `setMode(TEXT_MODE)`;
+  2. `modeSet(mode)`;
+  3. if that returns non-zero, `sleep(5)`.
+- **Success prints nothing.** The mode is set with bit `0x4000` (the linear
+  frame buffer), and the booter writes the record at `kbs+0x1858`,
+  `graphicsMode = 0`, the globals above, and the palette at `0xDAAC` if the
+  memory model is 4.
+- **When the requested mode fails.** "Fails" means `getVBEModeInfo`, or the
+  attribute test; the 640x480 minimum is *not* applied here. The booter
+  prints `VBE mode %d not supported.\n` and then:
+  - if `kbs+0x1874` is non-zero, it prints `Using VBE Mode %d.\n` naming
+    `modes[0]`, sleeps 5 s, and sets `modes[0]`;
+  - otherwise it prints `No usable VBE mode. Reverting to VGA.\n` and returns
+    1.
+- **A palette error returns 1, but the mode stays set.**
+
+**The attribute test** (`boot+27424`) accepts a mode when all of these hold:
+- the attributes have the supported, graphics and linear-frame-buffer bits;
+- if the memory model is 6 (direct colour), the red, green and blue mask
+  sizes are equal and are 5 or 8, and the depth is 15, 16 or 32.
+
+Packed-pixel modes pass on their attributes alone. 565 and 24-bit
+direct-colour modes are rejected.
+
+---
+
+## Item 6: the reference booter under QEMU [measured]
+
+**Setup.**
+- The image was `golden.img` with the spec 2 kernel (`74B12FCD...25CFF4`)
+  grafted in, spec 1's driver installed (`_reloc` `77399531...`), and the 4.2
+  booter written to both boot slots.
+- Every installed file was read back and hashed before booting.
+- The run typed `"VBE Check"=Yes` and Return at 7 s. The key has a space in
+  it, so it must be quoted: `getBootString` looks it up with
+  `getValueForBootKey` (`boot+2592`).
+- Memory was saved at 12 s: `0x11000..0x131FF` and `0x0..0xFFFF`.
+
+| | `-vga cirrus` | `-vga std` |
+| --- | --- | --- |
+| `VbeVersion` (the `VbeInfoBlock` was still on the stack at `0xFCF8`) | 0x0300 | 0x0300 |
+| video memory | 4 MB | 16 MB |
+| `VideoModePtr` | `0000:FD1A`, inside the caller's buffer | `0000:FD1A` |
+| BIOS mode list | 31 entries, 15 of them VBE | 93 entries, 77 of them VBE |
+| records 4.2 wrote | 8 | 30 |
+| record 0 | mode 257, 640x480, 640 B/line, 8 bpp, model 4, attr `0xBB`, fb `0xFC000000` | mode 257, the same, fb `0xFD000000` |
+| usable modes | 257, 272, 259, 275, 261, 278, 263, 281 | 257, 259, 261, 263, 272, 275, 278, 281, 284, 285, 322-325, 327, 328, 329, 332, 375, 378, 381, 384, 387, 390, 393, 396, 399, 402, 405, 408 |
+
+- **The segment is 0, so 4.2's pointer shortcut works here.** 4.2 uses
+  `VideoModePtr` as `(segment << 16) | offset`, and with a zero segment that
+  is the right address. Under a BIOS that returned a non-zero segment it
+  would read the wrong memory [inference].
+  **[UPDATED — final review I3: "the wrong memory" understated the worst
+  case, and ours no longer reproduces the defect.** The booter's data
+  segment is flat (`libsaio/table.c:81`), so a ROM list at `C000:xxxx` is
+  read at physical `0xC000xxxx` with no fault. The loop stops only at a
+  `0xFFFF` word or after 89 records. So unassigned MMIO, reading `0xFFFF`,
+  gives zero modes and silently no VBE; RAM or an aperture costs one
+  `int 10h/4F01` per word until a `0xFFFF` turns up [inference, from the
+  code]. Since Task 7b the enumerator runs on every boot. At the user's
+  request ours now forms `segment * 16 + offset`, a forced divergence from
+  this reference defect: see "Final review fixes" at the end.**]**
+- **The on-screen listing matches the records** (`Usable VBE modes:`, three
+  per line).
+- **The dumps.** `kbs+0x1854..0x186F` is zero. The array occupies
+  `0x1870..0x192F` on cirrus and `0x1870..0x1B3F` on std, and everything
+  after it up to `0x20D8` is zero. `boot_video` is zero. Neither adapter
+  comes near the 89-record cap.
+- **The 4.2 booter cannot boot this image.** After `-v`, or after the
+  countdown expires, it prints four `Bad superblock: error 2`, then `Config
+  file "/private/Drivers/i386/System.config/Default.table" not found` and
+  `System config file 'System' not found`, and returns to `boot:`. It
+  byte-swaps the little-endian superblock, which is the bug
+  `docs/boot/sarld-driver-link-limit.md` fixed in our `sys.c`. So
+  `execKernel` never runs, and items 7 and 10 below rest on the code
+  [measured].
+  **[CORRECTED — Task 3b, review M6: two claims in this bullet carried the
+  wrong tag.]**
+  - **Measured:** the messages above, and that the enumerator never ran: on
+    the plain runs `[0x1854, 0x20D8)` is all zero in the dumps.
+  - **Inference:** that it byte-swaps the superblock. That rests on the
+    message matching `docs/boot/sarld-driver-link-limit.md`, not on a
+    reading of 4.2's `sys` code.
+  - **Inference:** that `execKernel` never runs. With the config unread,
+    `boot()` loops back at `boot+1961..1968` before calling it. But
+    `execKernel` could also have been entered and have returned at
+    `boot+369..373`, before the enumerator, and the dumps cannot tell the
+    two apart.
+
+### Item 7: VBE mode on a `-v` boot [inference, from the code above]
+
+- **The mode is entered whether or not `-v` was given.**
+- **The booter draws nothing in the VBE mode.** It switches to text mode
+  first and sets `graphicsMode` to 0 after the mode set.
+- **G2 will see the kernel's scrolling console** on the frame-buffer
+  console, not a booter panel.
+
+### Item 10: after `Reverting to VGA` [inference, from the code above]
+
+- **No BIOS mode is set** and no record is written; `graphicsMode` is
+  untouched.
+- **The screen stays in VGA text mode 2.** `execKernel`'s `setMode(0)` call
+  (`boot+1232`) put it there: `setMode` sets video mode 2 at `boot+4361`, and
+  sets `graphicsMode` 0 if it changed the mode.
+  **[CORRECTED — Task 3b, review M1: that mechanism holds only when the
+  `Boot Graphics` panel is up. The corrected bullet follows.]**
+- **The screen is in VGA text, by one of two routes** [inference, from the
+  code]:
+  - `setMode` returns at once when `currentMode() == mode`
+    (`boot+4172..4179`), and only two calls set a video mode, both in
+    `setMode`: `set_video_mode(0x12)` at `boot+4256` and
+    `set_video_mode(2)` at `boot+4363` [measured].
+  - **When the panel is not up** (a typed boot line, or no `Boot
+    Graphics`), `graphicsMode` is still 0 at `boot+1232`. `setMode(0)` then
+    does nothing, and the screen stays in the text mode the BIOS left.
+  - **When the panel is up** (nothing typed, `Boot Graphics` = Yes, as on
+    `golden.img`; see Task 3b), `graphicsMode` is 1 at `boot+1232`.
+    `setMode(0)` then writes `graphicsMode` 0 (`boot+4207`), sets mode 2
+    (`boot+4363`) and replays the text it buffered.
+  - Either way the outcome is the same: a VGA text console, no record,
+    `graphicsMode` 0.
+- **Then a 5 s pause** (`boot+1254`), and the kernel starts.
+- **`VESA not available.` takes the same path.**
+
+## Item 9: which depths the frame-buffer console draws [measured, `src/kernel-7/bsd/dev/i386/FBConsole.c`]
+
+- **What `FBAllocateConsole` does (`:1354`).** It copies the display
+  information and checks no depth.
+- **What the drawing code handles.** Every drawing switch covers exactly
+  three pixel sizes and `panic`s on anything else:
+  - `IO_8BitsPerPixel`, 1 byte;
+  - `IO_12BitsPerPixel` and `IO_15BitsPerPixel`, 2 bytes;
+  - `IO_24BitsPerPixel`, 4 bytes.
+  The switches are at `:152`, `:175`, `:221`, `:310`, `:414`, `:466`, `:708`
+  and `:1036`.
+- **`IO_2BitsPerPixel` cannot be drawn.** It appears only in `BPPToPPW`
+  (`:142`), and drawing it would panic.
+- **How VBE depths map.** `VBEModeInfo2IODisplayInfo` maps 8 to IO_8, 15 and
+  16 to IO_15, and 24 and 32 to IO_24.
+
+**G2 uses mode 257 (640x480, 8 bpp) on `-vga cirrus`.**
+- Mode 257 is record 0 on both adapters, and IO_8 draws it.
+- `cirrus` is qemu-shot's default and the adapter every spec 2 capture
+  used.
+- `-vga std` is the alternative. It is the only one of the two with usable
+  32-bpp modes.
+
+---
+
+## Item 2: the byte budget
+
+**Byte parity means the reconstruction costs what the reference's functions
+cost.** Growth is the reference size minus our counterpart's, or the full
+reference size for a new function.
+
+| item | 4.2 | ours | growth |
+| --- | --- | --- | --- |
+| `execKernel` | 1104 | 932 | +172 (its VBE blocks alone: 151) |
+| `getBootString` | 932 | 616 | +324 (its VBE block; larger than the whole-function delta, 316) |
+| `convert_vbe_mode` | 116 | 84 | +32 |
+| `setMode` | 296 | 420 | -124 |
+| four new functions | 92 + 40 + 148 + 328 | none | +608 |
+| mode setter | 432 | 304 | +128 |
+| `setupPalette` | none | 84 | -84 |
+| eight BIOS wrappers | 584 | 584 | 0 |
+| palette, count, name table | 1024 + 4 + 280 | 340 | +968 |
+| `appleClut8`, `models[]` | none | 768 + 32 | -800 |
+| strings: 14 added, 13 removed | 331 | 215 | +116 |
+| **total** | | | **+1,340** |
+
+- **Where the sizes come from.** The 4.2 figures are extents and ours are
+  `nm` deltas [measured]. The growth column is arithmetic.
+- **Segment rounding can add up to 15 bytes**, since `__TEXT` is rounded to
+  16. **Budget: at most 1,355.**
+- **Spare today: 480** [measured]. **So trimming must find 875.**
+
+**[SUPERSEDED — Task 3b: after the user's decisions, the budget is 492, at
+most 537. The palette's +172 (the rows for the palette, `appleClut8` and
+`setupPalette`) leaves it, and the panel path adds -676. See "Task 3b".]**
+
+## Item 3: where our extra ~5 KB comes from
+
+Measured against the stock booter on `golden.img`:
+
+| | ours | stock | difference |
+| --- | --- | --- | --- |
+| `__text` | 37,405 | 34,708 | +2,697 |
+| rest of `__TEXT` | 5,603 | 4,268 | +1,335 |
+| `__DATA` in the file | 1,568 | 640 | +928 |
+| file | 44,576 | 39,616 | +4,960 |
+
+1. **VBE code: about 2,600 bytes, which the reconstruction replaces.** The
+   stock booter has none: no `4F0x` function code and no VBE string
+   [measured]. Ours has `vbe.o` (2,025), `convert_vbe_mode` and
+   `mode_table` (424), `setMode`'s VBE branch and `"Graphics Mode"`
+   [measured parts].
+2. **Dead code: 1,602 bytes**, listed below [measured].
+3. **A second 64-bit divide, `__divdi3` plus its own `__clz_tab`: 669
+   bytes.** It is called from `open()`, so it runs. Stock and 4.2 have one
+   divide routine each; ours has two [measured].
+4. **Wait-cursor data: 864 bytes in ours** [measured], against about 270 in
+   4.2 [inference, by inspection]. It runs in graphics mode.
+5. **Functions of ours with no stock match found:** `getMemoryMap`,
+   `getExtendedMemoryE801`, `ebiosread`, `get_diskinfo`. They run
+   [inference, from a fuzzy match].
+6. **Flags are not a source** [inference]. `-g` does not reach the file
+   [measured]. Eleven of our functions are byte-identical to 4.2's across
+   both `-O` and `-O2` objects [measured].
+
+### Trim candidates, ranked: input to Task 5, not a decision
+
+**Method.** "Unreachable" means no rel32, rel8 or abs32 reference to the
+function's start at *any* byte offset in the linked image, and no path from
+`boot2`, `__real_to_prot` or `do_int` [measured]. This over-approximates
+references, so an unreachable result is a strong claim.
+
+| rank | bytes | what | why nothing needs it |
+| --- | --- | --- | --- |
+| 1 | 600 | `blit_string`, `blit_bm`, `blit_clear`, `strheight` (`libsaio/font.c`) | unreachable. The callers are in `browser.c`, `button.c` and `questionbox.c`, which `boot2/Makefile:36-39` does not build, and in a comment at `graphics.c:74-80` [measured] |
+| 2 | 408 | `strtol` (`libsa/strtol.c:112`) | unreachable; no caller [measured]. `strtoul`, in the same object, is used. **[CORRECTED — Task 5: "no caller" holds for `boot` only. `libsa.a` is also linked into `sarld`, which the same package builds and ships, and `libsarld.a` has `U _strtol`. With `strtol` deleted, the `sarld` link failed with `Undefined symbols: _strtol` [measured]. Not removable from source; see "Task 5: the trim".]** |
+| 3 | 284 | `getVBEDACFormat`, `setVBEDACFormat`, `getVBEPalette`, `getVBECurrentMode` | unreachable here **and in 4.2** [measured]. They belong to the reference's `vbe.c`, so removing them is a departure. **Not counted** |
+| 4 | 116 | `loadModule` (`boot2/module.c:35`) | unreachable; its only caller is under `#if TEST` [measured] |
+| 5 | 76 | `swapBigIntsToHost`, `swapBigShortToHosts` (`libsaio/ufs_byteorder.c`) | unreachable; the callers are commented out [measured] |
+| 6 | 64 | `slvprintf` (`libsa/sprintf.c:66`) | unreachable [measured]. **[CORRECTED — Task 3b, review M7: its one caller, `tests/satest.c:44`, is a test program the booter does not build.]** **[CORRECTED — Task 5: it has a caller in the package. `sarld` links `libsa.a`, and `libsarld.a` has `U _slvprintf`, from `vprint` (`src/cctools-2/ld/rld.c:1787`, under `SA_RLD`) [measured]. Not removable from source.]** |
+| 7 | 48 | `realloc` (`libsa/zalloc.c:251`) | unreachable. The callers are in unbuilt `libsaio/old` and in `nasm` [measured]. **[CORRECTED — Task 3b, review M7: the host-side callers are `nasm` and `util/mkfont.c:321`; neither is part of the booter.]** **[CORRECTED — Task 5: `sarld`, built by the same package from the same `libsa.a`, calls it. `libsarld.a` has `U _realloc`, from `reallocate` (`src/cctools-2/ld/rld.c:1823`, under `SA_RLD`) [measured]. Not removable from source.]** |
+| 8 | 6 | `__sp` (`libsaio/asm.s:282`) | unreachable [measured] |
+
+**Ranks 1, 2 and 4 to 8 total 1,318 bytes.** Each size includes the function's
+alignment pad. So the saving per object can differ by a few bytes once the
+alignment shifts [inference].
+**[CORRECTED — Task 5: the method scanned the linked `boot` only. Ranks 2, 6
+and 7 live in `libsa.a`, which `sarld` links too, and `sarld` needs all three
+[measured]. Only ranks 4, 5 and 8 (198 bytes) could be removed, and they saved
+192 bytes of file [measured]. See "Task 5: the trim".]**
+
+### The stop gate
+
+Growth, at most 1,355, is less than spare plus the [measured] candidates:
+480 + 1,318 = 1,798.
+- **The gate passes, with 443 bytes to spare.**
+- It passes without rank 3 and without anything that runs.
+- Ranks 1, 2 and 4 alone give 1,124, which is more than the 875 needed.
+
+**[SUPERSEDED — Task 3b: re-evaluated after the panel decision. Rank 1
+becomes reachable through 4.2's `message`, so the pool is 718. The gate
+still passes: at most 537 against 480 + 718 = 1,198. See "Task 3b".]**
+**[CORRECTED — Task 5, labelled in the final review's fix pass: the pool is
+not 718. Ranks 2, 6 and 7 are needed by `sarld`, so the pool was ranks 4, 5
+and 8, and the measured spare after them was 672. The gate still passed,
+537 <= 672. See the corrected note in "Task 3b" and "Task 5: the trim".]**
+
+---
+
+## The frame-buffer mapping (kernel half, in short)
+
+The full record is in `src/kernel-7/reconstruction/vbe/divergences.md`,
+"Spec 3: the frame-buffer mapping".
+
+In brief: 4.2's `pmap_bootstrap` inlines `pmap_map` to map
+`[trunc_page(fb), end)` read-write, at the first free kernel virtual address
+after the physical-memory map and a 64 MB page-table reservation. It stores
+that address, plus `fb`'s page offset, at `0x12854`. It does all of this only
+when the booter's record at `0x12858` has a non-zero `xResolution`
+[measured].
+
+**This closes spec 2's D2 inference as correct.** The booter never writes
+`0x12854`. It writes `0x12858..` only.
+
+## Where the evidence contradicts the plan or the spec
+
+1. **G1.** The spec expects `kbs+0x1854` to `+0x20D8` all zero when no
+   `VBE Mode` key is set. 4.2 runs the enumerator on every boot that reaches
+   `execKernel`, so on a VBE 2 adapter `kbs+0x1870..` is filled with or
+   without the key. A byte-parity booter will fill it too.
+   **[CORRECTED — Task 3b, review M6: "every boot that reaches `execKernel`"
+   overstates. The call at `boot+956` is unconditional once the kernel has
+   loaded; `execKernel` returns earlier, at `boot+369..373`, when `loadprog`
+   fails. So it runs on every boot whose kernel load succeeds [measured].]**
+   - Only `kbs+0x1854..0x186F` stays zero.
+   - This was not observed at run time, because the 4.2 booter cannot read
+     `golden.img` [measured code; inference for the run].
+2. **G2.**
+   - **No panel.** "The booter's panel is drawn in the VBE mode" cannot
+     happen. 4.2 sets the mode last, after switching to text, and draws
+     nothing in it.
+   - **No `Using VBE Mode N` on success.** The success path prints nothing.
+     `Using VBE Mode %d.` is printed only when the booter falls back to
+     `modes[0]`.
+   - **Nothing on serial.** The booter prints to the screen, never to serial
+     [measured code].
+     **[Method added in Task 3b, review M6.]** [measured] The only `int`
+     instruction the linear decode finds in `__text` is the trampoline's
+     `int 0` at `boot+31015` (function `boot+30924`), whose operand is
+     patched at run time with the interrupt number the caller stored. Its 19
+     callers store only 0x10, 0x12, 0x13, 0x15, 0x16 and 0x1A; none stores
+     0x14, the serial BIOS.
+     `__text` (`boot+0..38175`) holds no `0x3F8`, `0x2F8` or `0x2E8`
+     immediate. Its only `0x3E8` is `push 0x3e8`, the `spin(1000)` count in
+     `set_video_mode`.
+3. **G3 case 1.** When a `VBE Mode` names a mode the BIOS does not offer,
+   4.2 does not revert to VGA if any usable mode exists. It prints `VBE mode
+   N not supported.` and `Using VBE Mode M.`, then sets `modes[0]` and writes
+   its record [measured code].
+4. **`setMode`.** 4.2's `setMode` has a VGA mode-`0x12` panel path. Ours
+   falls back to text whenever the `Graphics Mode` key is absent. Byte parity
+   for `setMode` would therefore bring the VGA panel back on `Boot Graphics`
+   boots, a visible change. The budget uses 4.2's size, -124. Deleting only
+   our VBE branch would save more [inference].
+   **[SUPERSEDED — decided by the user after Task 3: rebuild 4.2's `setMode`,
+   panel path included. Task 3b measures it.]**
+5. **The spec's §4.1 omits the `graphicsMode = 0` store.** It lists the
+   stores through `0xDA7C` as `+0x1858` and `+0x1870`. There is a third, in
+   the mode setter: `kbs+0x14C = 0` [measured].
+6. **The palette.** Byte parity needs 4.2's own 1,024-byte palette, whose
+   colours differ from `appleClut8`'s. That costs +172 net against
+   `setupPalette` plus `appleClut8` [measured].
+   **[SUPERSEDED — decided by the user after Task 3: keep our palette
+   (`setupPalette(appleClut8)`), a forced divergence in the mode setter. The
+   +172 leaves the budget; see Task 3b.]**
+
+---
+
+## Task 3b: setMode and the Boot Graphics panel
+
+After Task 3, the user chose to rebuild 4.2's `setMode` with its VGA
+mode-`0x12` panel, and to keep our palette (spec §1). This section measures
+what that costs and what a default boot then does.
+
+**Inputs, re-hashed on 2026-09-22 [measured]:**
+- `$BREF`, `925D35B6...CBCE`;
+- our Task 3 booter, `1647E453...BC122`;
+- the stock booter, `AA06C3C5...F6B5F2C2`.
+
+**Method.**
+- The listings are Task 3's capstone listings, at base `0x3000`.
+- The call graph follows direct calls and absolute function references.
+- Pairs of functions were compared with `compare_flat`, with the trailing
+  `nop` or `00` pad stripped on both sides.
+- Nothing was built or booted.
+
+### What 4.2's `setMode` does [measured]
+
+```
+setMode(mode)                                    ; boot+4164..4459, 296 B
+  if (currentMode() == mode) return;             ; boot+4172..4179
+  if (!initMode(mode)) return;                   ; boot+4186
+  kernBootStruct->graphicsMode = mode;           ; boot+4207: both branches, before the mode set
+  if (mode == GRAPHICS_MODE) {
+      textBuf = malloc(0x600); showText = 0; bufIndex = 0;
+      set_video_mode(0x12);                      ; boot+4256
+      clearRect(0, 0, SCREEN_W, SCREEN_H, 1);    ; boot+4283
+      copyImage(bitmapList[0].bitmap,            ; boot+4347, the panel, centred
+                (SCREEN_W - panel->width) / 2, (SCREEN_H - panel->height) / 2);
+  } else {
+      showText = 1;
+      set_video_mode(2);                         ; boot+4363
+      if (textBuf) { replay bufIndex bytes through putchar; free(textBuf); textBuf = 0; }
+  }
+  currentIndicator = 0;                          ; boot+4440
+```
+
+- **`boot+4256` is not a BIOS call** [measured].
+  - `set_video_mode` first sets `SCREEN_W` and `SCREEN_H` to 640 and 480
+    (`boot+30343..30352`).
+  - It sends modes 2 and 3 to the BIOS through `video_mode` (`INT 10h`).
+  - It programs mode `0x12` itself, from the register table `VGAMode12` at
+    `0xD65C`.
+  - It then loads all 256 DAC entries with the four greys of `colorData`,
+    `{0x00, 0x15, 0x2A, 0x3F}`. This is the panel's whole palette.
+    The user's palette decision does not touch it.
+- **How ours differs** (`boot2/graphics.c:176-221`):
+  - Ours has no panel branch. Its graphics branch needs a `Graphics Mode` key
+    (`:189-190`) and sets a linear VBE mode.
+  - Without that key, ours takes the text branch, which never writes
+    `graphicsMode`. Ours writes it only in the VBE branch (`:203`).
+- **The callers** [measured]:
+  - `setMode(1)`: `boot+2042` in `boot()`, and `boot+1119` in `execKernel`;
+  - `setMode(0)`: `boot+605`, `+739`, `+778`, `+1071`, `+1232`, `+1571`,
+    `+1777` and `+18425`;
+  - `initMode(1)`: `boot+3051` in `getBootString`.
+
+### The `Boot Graphics` handling [measured]
+
+| where | 4.2 | ours |
+| --- | --- | --- |
+| `getBootString`, `boot+3007..3059` | if nothing was typed (`line[0] == 0`), `errors == 0` and `Boot Graphics` is Yes: `wantBootGraphics = 1` (`0xE484`), then `initMode(1)` | the same statement, `boot.c:631-641` |
+| `boot()`, `boot+2031..2042` | outside Install Mode: `if (wantBootGraphics) setMode(1)` | the same, `boot.c:518-519` |
+| `boot()`, after the config is loaded | **no `Boot Graphics` test** | **`boot.c:503-506` sets `wantBootGraphics` whenever the key is Yes, typed line or not**: 24 bytes at `0x364E..0x3665` in our build |
+| `execKernel`, `boot+1108..1124` | after the `errors` pause: `if (wantBootGraphics) setMode(1)` | the same, `boot.c:320-321` |
+
+**`boot.c:503-506` must go with the rebuild** [inference, from the code].
+- 4.2's `boot()` has no such test [measured].
+- Suppose only `setMode` were rebuilt. A typed `mach_kernel -v` boot would
+  then:
+  - show the panel;
+  - buffer its text instead of printing it;
+  - hand the kernel `graphicsMode` 1.
+- 4.2 keeps that boot in text, so G1's verbose comparison would fail.
+- Today the test is harmless: our `setMode` falls back to text.
+
+### Inventory: the panel path
+
+**How the path was found** [measured, call graph].
+- In 4.2, five functions have code that depends on the panel: `setMode`,
+  `initMode`, `message`, `spinActivityIndicator` and
+  `clearActivityIndicator`.
+- With those five cut from the call graph, 18 more functions become
+  unreachable from the entry at `boot+0`.
+- A scan of every byte offset of the image, for `E8`/`E9` rel32 targets and
+  for abs32 values, confirms it: every reference to the 18 is a call from
+  inside the path, and none is an address held in data.
+- These 23 functions, 4,180 bytes, are the panel path.
+
+**What is left out.** `setMode`'s own transitive closure is 88 functions.
+- The other 74 are the file system, disk, BIOS, `malloc`, `printf` and
+  string layers, which `loadFont` and `loadBitmap` reach through `open` and
+  `read`.
+- The booter reaches all of them without the panel, so they are not listed.
+
+| 4.2 function | extent | bytes | role | ours | compare |
+| --- | --- | --- | --- | --- | --- |
+| `setMode` | `boot+4164..4459` | 296 | text, or the mode-`0x12` panel | `boot2/graphics.c:176`, 420 | same lineage; ours has a VBE branch where 4.2 has the panel |
+| `currentMode` | `boot+4460..4479` | 20 | `kbs->graphicsMode` | `graphics.c:223`, 20 | **MATCH** |
+| `initMode` | `boot+4068..4163` | 96 | loads the panel and the font, once | `graphics.c:150`, 96 | **MATCH** |
+| `loadAllBitmaps` | `boot+4940..5083` | 144 | reads `Panel.image` | `graphics.c:324`, 144 | **MATCH** |
+| `loadFont` | `boot+5084..5271` | 188 | reads `Default.font` | `graphics.c:348`, 188 | **MATCH** |
+| `loadBitmap` | `boot+30028..30243` | 216 | reads a 24-byte header, then two planes | `libsaio/bitmap.c:37`, 200 | same lineage; differs only through `struct bitmap` (`sizeof` `0x18` against `0x20`, `short` against `long` fields) |
+| `PackBitsDecode` | `boot+33512..33675` | 164 | unpacks one plane row | `libsaio/unpackbits.c:60`, 164 | **MATCH** |
+| `set_video_mode` | `boot+30332..30923` | 592 | modes 2 and 3 by BIOS; `0x12` by registers; the grey DAC | `libsaio/vga.c:216`, 592 | **MATCH**; `VGAMode12` (61 B) and `colorData` (4 B) are byte-equal too |
+| `spin` | `boot+30300..30331` | 32 | the DAC write delay | `vga.c:209`, 32 | **MATCH** |
+| `video_mode` | `boot+6664..6707` | 44 | BIOS `INT 10h`, `AH=0` | `libsaio/biosfn.c:204`, 44 | **MATCH** |
+| `clearRect` | `boot+20276..20547` | 272 | planar fill; returns at once if `in_linear_mode` | `libsaio/console.c:298`, 380 | same lineage; ours adds a linear branch (`:321-337`) |
+| `copyImage` | `boot+20024..20275` | 252 | planar blit; returns at once if `in_linear_mode` | `console.c:241`, 400 | same lineage; the planar part differs only through `struct bitmap`; ours adds a linear branch (`:270-290`) |
+| `blitRow` | `boot+19580..20023` | 444 | one planar row, through the GC bit mask | `console.c:178`, 444 | **MATCH** |
+| `message` | `boot+3764..4067` | 304 | in graphics mode, `blit_clear` and `blit_string` in the panel; otherwise it prints | `graphics.c:57`, 200 | same lineage; ours comments the graphics branch out (`:75-81`) and calls `strwidth("9")` instead |
+| `spinActivityIndicator` | `boot+4596..4827` | 232 | in graphics mode, `copyImage` of the wait cursors | `graphics.c:286`, 232 | differs in two `struct bitmap` offsets only (`+8`/`+0xA` against `+0xC`/`+0xE`) |
+| `clearActivityIndicator` | `boot+4828..4939` | 112 | in graphics mode, `clearRect(cursor, 16, 16, 2)` | `graphics.c:310`, 28 | same lineage; ours comments the `clearRect` out (`:319`) |
+| `getbm` | `boot+29256..29291` | 36 | glyph lookup | `libsaio/font.c:60`, 36 | **MATCH** |
+| `blit_bm` | `boot+29292..29451` | 160 | draws a glyph through `clearRect` | `font.c:80`, 160 | **MATCH** |
+| `strwidth_internal` | `boot+29452..29567` | 116 | | `font.c:100`, 116 | **MATCH** |
+| `strwidth` | `boot+29568..29587` | 20 | | `font.c:125`, 20 | **MATCH** |
+| `strheight` | `boot+29588..29663` | 76 | | `font.c:140`, 76 | **MATCH** |
+| `blit_clear` | `boot+29664..29783` | 120 | clears a text line | `font.c:155`, 120 | **MATCH** |
+| `blit_string` | `boot+29784..30027` | 244 | draws a string | `font.c:167`, 244 | **MATCH** |
+
+- **Every function on the path has a counterpart in our tree, and no new
+  function is needed.**
+  - 16 of the 23 are byte-identical to ours today.
+  - The other 7 are same-lineage variants of ours.
+- `putchar` (`boot+19396`, 112 B, `console.c:79`) replays the buffered text.
+  It is also **MATCH**, but it is shared, not panel-only.
+
+**Data on the path.**
+
+| item | 4.2 | ours |
+| --- | --- | --- |
+| `struct bitmap` | 24 B: six `short`s (`packed`, `bytes_per_plane`, `bytes_per_row`, `bits_per_pixel`, `width`, `height`), `short plane_len[2]`, two plane pointers [measured offsets; the names by correspondence] | `util/bitmap.h:39-47`: 32 B, with `long` `packed`, `bytes_per_plane` and `plane_len[2]`. The 24-byte layout is in our tree at `src/boot-2/ppc/ppcMac/util/bitmap.h:39-47` |
+| wait cursors | `0xD944..0xDA4B`, 264 B: three of (64 B of two planes plus a 24 B struct). The plane bytes equal `util/ns_wait{1,2,3}_bitmap.h` [measured] | `0xD804..0xDB63`, 864 B: three of (a 256 B 8-bpp image plus a 32 B struct), from `util/spin_cursor.h` |
+| `indicator_bitmap[4]` | `0xD8EC`, 16 B | `0xDCD8`, 16 B |
+| `VGAMode12`, `colorData` | `0xD65C`, 61 + 4 B | `0xD5B0`, `0xD5ED`: byte-equal |
+| `leftMaskArray` | `0xDA85`, 8 B | `0xDD55`: byte-equal |
+| strings | `Panel.image`, `Default.font`, the two path formats, `English.lproj`, the four error messages | all present in ours [measured]; none added or removed |
+
+**What `golden.img` holds, read from the image without writing to it
+[measured]:**
+- **`Panel.image`**: 6,785 bytes, SHA-256
+  `654B3AF2EA437AA24DDACE21570A0EAAAECB77CDA234BC0A9163F490754F070E`.
+  - Its header, read with 4.2's layout, is `{1, 11616, 44, 1, 352, 264,
+    {3537, 3224}}`, and 24 + 3,537 + 3,224 = 6,785 exactly.
+  - Our 32-byte layout reads it as width 3,537, height 3,224 and plane
+    lengths `{0, 0}`.
+  - Drawn that way, it would write far outside the 64 KB VGA window
+    [inference, arithmetic].
+  - **So the rebuild needs 4.2's `struct bitmap`.** It also changes
+    `util/bitmap.h`, which the host tool `util/dumptiff.m` includes; Task 6
+    or 7 should check whether anything in the booter build runs that tool
+    [inference].
+- **`English.lproj/Default.font`**: 1,387 bytes, `17F5AB21...C25D53`. It is
+  read by the byte-identical `loadFont`.
+- **`Default.table` and `Instance0.table`** both set `"Boot Graphics" =
+  "Yes"`, and neither has a `VBE Mode` or `Graphics Mode` key.
+
+**Colours and geometry, read from 4.2's call arguments [measured; the macro
+names are ours, by correspondence].** Tasks 6 and 7 need these values.
+
+| constant | 4.2 | ours (`boot2/graphics.h`) |
+| --- | --- | --- |
+| `SCREEN_BG` | 1 (`clearRect`, `boot+4279`) | `COLOR_PLATNUM` 0x80 (`:79`) |
+| `TEXT_BG` | 2 (`blit_clear`, `boot+3924`; `clearActivityIndicator`, `boot+4854`) | `COLOR_LT_GREY` 0xFA (`:77`) |
+| `TEXT_FG` | 0 (`blit_string`, `boot+3957`) | `COLOR_DK_GREY` 0xFE (`:78`) |
+| the message's x | `SCREEN_W / 2` | `BOX_C_X` = `SCREEN_W / 2 + 4` (`:42`) |
+| the message's y | `BOX_Y + BOX_H / 2` | `MESSAGE_Y` = `BOX_Y + 182` (`:64`) |
+| the width `blit_clear` clears | `BOX_W - 16` | `BOX_W - 48`, in the commented-out code |
+| the cursor | `BOX_Y + 148` and centred, as ours | `CURSOR_Y` (`:62`) |
+
+With `colorData`'s greys, 0 is black, 1 dark grey, 2 light grey and 3
+white [inference].
+
+**The stock booter has the same panel.**
+- **What was measured:**
+  - its `setMode` (`stock+3616..3903`) pushes `0x12`;
+  - it reads the bitmap at `+8` and `+0xA`;
+  - it uses the constants 640 and 480 where 4.2 reads `SCREEN_W` and
+    `SCREEN_H`;
+  - its `VGAMode12` is byte-identical, at `stock+38676`.
+- **What follows** [inference]: the panel that spec 2 captured on
+  `golden.img` (`shots-t5-dC1`, 15 s) is VGA mode `0x12`.
+  `docs/kernel/i386-vbe-console.md` had left that mode undetermined.
+
+### Is there planar or mode-`0x12` drawing code in our tree? Yes [measured]
+
+**Coverage.**
+- `git grep -E "VGA_BUF_ADDR|VGAMode12|blitRow|set_video_mode|in_linear_mode|VGA_SEQ_ADDR|VGA_GC_ADDR"`
+  over all 32,370 tracked files under `src/`, and a reading of every hit.
+- The file lists of `src/boot-2/i386/util` and `src/boot-2/ppc/ppcMac`.
+- The only hits outside the booter are the kernel's VGA console
+  (`src/kernel-7/bsd/dev/i386/VGAConsole.c`, `VGAConsPriv.h`,
+  `BasicConsole.c`).
+
+**In the i386 booter, and built today:**
+- `libsaio/vga.c:109-130` (`VGAMode12`) and `:215-323` (`set_video_mode`):
+  byte-identical to 4.2;
+- `libsaio/console.c:178-234`, `blitRow`: byte-identical;
+- `console.c:247-269` and `:308-320`, the `!in_linear_mode` branches of
+  `copyImage` and `clearRect`: the planar code. They differ from 4.2 only
+  through `struct bitmap`;
+- `libsaio/font.c`, whose glyph drawing goes through `clearRect`:
+  byte-identical.
+
+None of this code runs today. Our `setMode` never calls
+`set_video_mode(0x12)` (`graphics.c:176-221`) [measured source].
+
+**In the tree, but not built:**
+- `util/ns_wait{1,2,3}_bitmap.h`: 4.2's planar wait cursors, byte-equal.
+  `boot2/bitmaps.c:31-35` comments out their `#import`s.
+- `ppc/ppcMac/util/bitmap.h:39-47`: 4.2's 24-byte `struct bitmap`.
+- `ppc/ppcMac/libsaio/console.c:170-287`: `blitRow`, `copyImage` and
+  `clearRect` with no linear branch.
+- `util/Panel.image`: a planar panel in the 24-byte format (5,584 B; not
+  golden's). `util/Newpanel.image` is the 32-byte, 8-bpp one.
+
+### The budget delta [measured sizes; the sums are arithmetic]
+
+**Task 3's budget included 4.2's palette, and it now leaves.** [measured, in
+item 2's table]
+- The table counts:
+  - the 1,024-byte palette (+1,024, in the "palette, count, name table" row);
+  - the removal of `appleClut8` (-768);
+  - the removal of `setupPalette` (-84).
+- The net is +172. Keeping our palette removes all three: 1,340 - 172 =
+  **1,168**.
+- The mode setter then calls `setupPalette(appleClut8)` where 4.2 passes its
+  table. How that changes the mode setter's own size cannot be measured
+  without a build [inference: a few bytes].
+
+**What the panel path adds on top.**
+
+| item | 4.2 | ours | growth |
+| --- | --- | --- | --- |
+| `setMode` | 296 | 420 | -124, already in Task 3's budget and not added again |
+| `copyImage` | 252 | 400 | -148 |
+| `clearRect` | 272 | 380 | -108 |
+| `loadBitmap` | 216 | 200 | +16 |
+| `message` | 304 | 200 | +104 |
+| `clearActivityIndicator` | 112 | 28 | +84 |
+| `spinActivityIndicator` | 232 | 232 | 0 |
+| `boot()`: drop the second `Boot Graphics` test | none | 24 | -24 |
+| the other 16 functions on the path | | | 0 (byte-identical) |
+| **code** | | | **-76** |
+| wait cursors | 264 | 864 | -600 |
+| the other data and the strings | | | 0 |
+| **panel path** | | | **-676** |
+
+- **The new budget: 1,168 - 676 = 492.**
+- **Rounding.** It can add about 45 bytes: 15 for `__TEXT`, and about 30 more
+  for `__DATA`'s file part and `__const`'s alignment (review M4). **So the
+  budget is at most 537.**
+- **The rest of `boot()`.** Byte parity for the whole of `boot()` would give
+  -12, not -24.
+  - The other 12 bytes are a memory-size check that is larger in 4.2, and
+    that check is outside the panel path.
+  - Counting -12 instead gives 504, at most 549. The verdict below does not
+    change.
+
+### The stop gate, re-evaluated
+
+- **The trim pool shrinks.** 4.2's `message` calls `blit_clear` and
+  `blit_string` (`boot+3950`, `boot+3976`), and `blit_string` calls
+  `blit_bm` and `strheight` [measured]. So all of rank 1 (600 bytes) becomes
+  reachable once `message` is rebuilt, and it leaves the pool. The pool is
+  now 1,318 - 600 = **718**, all [measured].
+- **Available:** 480 spare + 718 = **1,198**.
+- **Growth:** 492, at most 537.
+- **The gate passes:** 537 <= 1,198, with 661 bytes to spare.
+  - Trimming must find only 12 bytes, or 57 at the rounding bound.
+  - Rank 2 (`strtol`, 408) covers that alone.
+
+  **[CORRECTED — Task 5: the pool is not 718. Ranks 2, 6 and 7 are needed
+  by `sarld`, so the pool is ranks 4, 5 and 8: 198 by `nm`, 192 in the file
+  [measured]. Measured spare after them: **672**. The gate still passes,
+  537 <= 672, with 135 to spare, but the 256-byte margin is not met. Rank 2
+  does not cover it. See "Task 5: the trim".]**
+- **A narrower reading gives the same verdict.** Suppose only `setMode`'s
+  closure is rebuilt, and `message` and `clearActivityIndicator` stay ours.
+  - The code delta is then -264 and the data delta -600.
+  - The budget is 304, at most 349, which is under the 480 spare with no
+    trimming at all.
+  - Rank 1 then stays a trim.
+
+### The default boot after the rebuild [inference, from the code, unless tagged]
+
+**Setup.** `golden.img`'s config has `Boot Graphics` = Yes and no `VBE Mode`
+[measured above]. Nothing is typed.
+
+1. **`getBootString`.** The countdown expires with an empty line and no
+   errors, so it sets `wantBootGraphics` and calls `initMode(1)`, which loads
+   `Panel.image` and `Default.font` (`boot+3007..3059`).
+2. **`boot()`.** Outside Install Mode it calls `setMode(1)` (`boot+2042`),
+   which:
+   - writes `graphicsMode` = 1 (`boot+4207`);
+   - buffers the booter's text (`showText` = 0);
+   - programs VGA mode `0x12` (`boot+4256`);
+   - clears the screen to colour 1;
+   - copies the 352x264 panel to (144, 108).
+3. **While the panel is up**:
+   - `message` draws `Loading OPENSTEP` and the later messages in the panel,
+     centred at (320, 240);
+   - the wait cursor spins at (312, 256) during disk reads;
+   - `clearActivityIndicator` erases it.
+4. **`execKernel`.**
+   - The enumerator fills `kbs+0x1870..` (C1).
+   - No loaded driver carries `VBE Mode`, so the lookup is skipped
+     (`boot+1020`).
+   - `setMode(1)` at `boot+1119` is a no-op.
+   - The VBE set block is skipped, because the mode is 0 (`boot+1224..1228`).
+   - `startprog` then starts the kernel.
+5. **The kernel receives `graphicsMode` = 1**, with the screen still in mode
+   `0x12` showing the panel. `kbs+0x1854..0x186F` and `boot_video` are zero.
+6. **Mode 2 is never set on this path.**
+   - Only `setMode(0)`, called while `graphicsMode` is 1, sets mode 2
+     (`boot+4363`).
+   - The default path calls `setMode(0)` only at `boot+1571` and
+     `boot+1777`, both before the panel exists.
+   - The other `setMode(0)` calls (above) run only on one of these:
+     - errors (`+1071`);
+     - `Prompt For Driver Disk` (`+605`);
+     - `Ask For Drivers` (`+739`);
+     - a missing driver (`+778`);
+     - `Query` (`+18425`);
+     - a VBE mode (`+1232`).
+7. **The kernel side** [inference, from our source]:
+   - `kminit` (`bsd/dev/i386/km.m:501-504`) starts the basic console in
+     `SCM_GRAPHIC`;
+   - `kmEnableAnimation` (`kmDevice.m:594-608`) animates the wait cursor, and
+     the `kmDevice` probe also opens in `SCM_GRAPHIC` (`kmDevice.m:119`).
+
+**What corroborates this [measured, spec 2].** Spec 2 booted `golden.img`
+with the stock booter, whose `setMode` has the same shape.
+- The default boot handed the kernel `graphicsMode` 1, and the verbose boot 0.
+- `boot_video` was zero on both.
+- The default boot settled on the kernel's panel.
+- See `src/kernel-7/reconstruction/vbe/divergences.md`, "What the booter
+  hands the kernel, measured in guest memory".
+
+**Our booter today, on the same boot** [inference, from the source].
+`setMode(GRAPHICS_MODE)` finds no `Graphics Mode` key and takes the text
+branch (`graphics.c:189-211`). That sets mode 2 through the BIOS and leaves
+`graphicsMode` 0.
+
+**A typed `mach_kernel -v` boot in 4.2** [measured code]. `getBootString`
+skips the `Boot Graphics` test when the line is not empty
+(`boot+3007..3014`). So there is no panel, and the kernel gets
+`graphicsMode` 0, as spec 2 measured for the stock booter. Our rebuilt booter
+matches this only if `boot.c:503-506` goes.
+
+**For G1:**
+- **Default boots:** the control hands the kernel 0 and the candidate 1.
+  That difference is by design. The candidate's booter-phase frames show the
+  panel.
+- **Verbose boots:** both hand the kernel 0, and the kernel-phase frames must
+  match. That needs `boot.c:503-506` removed.
+- **The boot that settles this:** a no-keys boot of Task 7's booter on
+  `golden.img`, dumping `0x11000..` at about 15 s. It should show
+  `graphicsMode` = 1 at `0x1114C`, and the 15 s frame should show the panel.
+  A typed `-v` boot should show 0.
+- **With a `VBE Mode` on a default boot**, `setMode(0)` at `boot+1232` leaves
+  the panel for mode 2 and replays the buffered text. Then the mode setter
+  sets the VBE mode and writes `graphicsMode` 0. G2 therefore needs no typed
+  line [inference].
+
+---
+
+## Task 5: the trim
+
+**Target.** Spare of at least 793 bytes: Task 3b's budget of at most 537,
+plus a 256-byte margin. Spare before Task 5: 480 [measured, Task 3].
+
+**Result: the target is not met, and the user accepted that.**
+- The candidates that can be removed give **672** spare [measured]. That
+  covers the budget, with 135 bytes to spare instead of 256.
+- 793 was not reached because ranks 2, 6 and 7 are still linked by `sarld`
+  (below).
+- **The user accepted 672 spare on 2026-09-22**: the 537 budget with a
+  135-byte margin. See "The decision".
+
+### How each candidate's evidence was re-checked
+
+- **Our source.** It is Task 4's commit, whose build is byte-identical to
+  Task 3's `1647E453...BC122` [measured, Task 4]. So Task 3's binary evidence
+  applies to it.
+- **References in `boot`.** The control booter was re-scanned at every byte
+  offset for an `E8`/`E9`/`0F 8x` rel32, an `EB`/`7x` rel8 or an abs32 value
+  landing on each candidate's start. Every candidate got 0 hits [measured].
+- **Callers in source.** `git grep` over `src/boot-2/i386` [measured].
+- **Other programs that link the same archive (new in Task 5).**
+  - `libsa.a` is linked into two programs of this package: `boot`
+    (`boot2/Makefile:27`) and `sarld` (`sarld/Makefile:10`, `:25-28`: `-lsarld
+    $(LIBSA)` with `-nostdlib`). The package ships `sarld` as
+    `/usr/standalone/i386/sarld` [measured, the Makefiles and the package].
+  - The build root's `/usr/local/lib/libsarld.a` (2,549,964 bytes) has
+    `U _realloc`, `U _slvprintf`, `U _strtol` and `U _strtoul` [measured,
+    `nm -o`].
+  - Its sources are `src/cctools-2/ld`, built with `-DRLD -DSA_RLD`. Under
+    `SA_RLD`, `rld.c:1787` (`vprint`) calls `slvprintf` and `rld.c:1823`
+    (`reallocate`) calls `realloc` [measured source]. `pass1.c` calls
+    `strtol`; which of its calls survive `-DRLD` was not determined.
+  - Task 4's `sarld.sys` defines all four [measured, `nm -n`].
+  - `libsaio.a` and the `boot2` objects are linked into `boot` only. The one
+    other Makefile that names `libsaio.a`, `testmodule`'s, is not in
+    `i386/Makefile`'s `SUBDIRS` [measured].
+    **[CORRECTED — final review I1: true of the archive, not of its
+    sources.** `testmodule/install/Makefile:27` names `libsaio.a` as well.
+    And `src/bootefi-1`, the host-built UEFI loader, compiles `libsaio`
+    sources itself (`src/bootefi-1/Makefile:50-66`): `disk.c`,
+    `ufs_byteorder.c`, `cache.c`, `load.c`, `table.c`, `drivers.c`,
+    `stringTable.c`, `choose.c`, `localize.c` and `sys.c` [measured]. The
+    swappers removed here have no caller there (Task 5's review). Task 7c's
+    `stringTable.c` did break its link; see "Task 7c", "`bootefi-1`".**]**
+- **4.2.** A fuzzy match of our functions against `$BREF` (Task 3's
+  `match.py`) found each counterpart, and a raw scan looked for references to
+  it.
+
+| rank | bytes (`nm`) | candidate | taken? | evidence, re-checked |
+| --- | --- | --- | --- | --- |
+| 1 | 600 | `blit_string`, `blit_bm`, `blit_clear`, `strheight` | no | on 4.2's panel path, which a later task rebuilds: 4.2's `message` reaches them (Task 3b) |
+| 2 | 408 | `strtol` | **skipped** | no reference in `boot` [measured]. But `sarld` needs it: the first Task 5 build, with `strtol` deleted, failed at the `sarld` link with `/usr/bin/ld: Undefined symbols: _strtol`, `rbuild: failed with status 2` [measured]. 4.2 has a counterpart at `boot+35436` (472 B, similarity 0.91) with 0 references [measured] |
+| 3 | 284 | 4 VBE wrappers | no | part of 4.2's `vbe.c`. Tasks 6 and 7 rebuild it; all eight wrappers are byte-identical today (Task 3). Not counted by Task 3 either |
+| 4 | 116 | `loadModule` | **taken** | 0 references in `boot` [measured]. Its one caller, `module.c:56`, is under `#if TEST`, and `TEST` is not defined for the booter: `boot2/Makefile:9-11` sets no `-DTEST`, and the control's `nm` has no `_testModules` [measured]. 4.2's counterpart, `boot+3648` (116 B, similarity 1.00), has 0 references [measured]. Not on the VBE or panel path |
+| 5 | 76 | `swapBigIntsToHost`, `swapBigShortToHosts` | **taken** | 0 references in `boot` [measured]. The only mentions are in comments (`ufs_byteorder.c:127`, `:159`, before the edit) [measured]. 4.2 does call both, from `boot+31192` [measured]. That function is not on the VBE or panel path, and ours has no live call |
+| 6 | 64 | `slvprintf` | **skipped** | no reference in `boot` [measured], but `sarld` needs it (`U _slvprintf`, `rld.c:1787`) [measured] |
+| 7 | 48 | `realloc` | **skipped** | no reference in `boot` [measured], but `sarld` needs it (`U _realloc`, `rld.c:1823`) [measured] |
+| 8 | 6 | `__sp` | **taken** | 0 references in `boot` [measured]. The only other mention is a comment at `libsa/zalloc.c:121` [measured]. 4.2 has the same three bytes, `89 E0 C3`, at `boot+6334`, with 0 references [measured] |
+
+### The edits, one per candidate
+
+| rank | file:line (before the edit) | change |
+| --- | --- | --- |
+| 4 | `i386/boot2/Makefile:36` | `module.o` leaves `OBJS`. `module.c` holds only `loadModule` (`:34-50`) and the `#if TEST` block, so nothing else leaves |
+| 5 | `i386/libsaio/ufs_byteorder.c:71-89` | both functions deleted |
+| 8 | `i386/libsaio/asm.s:281-284` | `LABEL(__sp)` and its two instructions deleted |
+
+The rank 2 edit (`strtol.c:105-197` and its `libsa.h:67-71` prototype) was
+reverted after its build failed.
+
+### The build [measured]
+
+`rbuild` as Task 3 Step 2, with a mid-build copy of the symbol tree:
+
+```
+RC=0
+booter 44384 bytes of 45056, 672 to spare
+size boot.sys: __TEXT 42816  __DATA 4768
+```
+
+| file | bytes | guest `sum` | guest `cksum` | SHA-256 |
+| --- | --- | --- | --- | --- |
+| `boot` | 44,384 | `283 44` | `952813041 44384` | `A75FCA09F27B28A46A5626289F4A36335FAB273F556341390E5461B9C556F31A` |
+| `boot.sys` | 1,075,408 | `63720 1051` | `2204390520 1075408` | `D5C58CDAA826C293CC9289E3686EBFC97948C4A87F8FBED74275C4E4B21D3D8C` |
+
+- The package's `boot` is `cmp`-identical to the copy.
+- The local decode reproduces both `sum`s and both `cksum`s.
+- `sarld` (`2333113453 148108`) and `sarld.sys` (`1163817294 1414240`) are
+  `cmp`-identical to Task 4's.
+
+**Where the 192 bytes came from.**
+- `__text` went from 37,405 to 37,209 bytes, 196 fewer:
+  - `module.o`: -116;
+  - `ufs_byteorder.o`: -76;
+  - `asm.o`: -4, not 6. `__sp`'s 6-byte extent was 3 bytes of code and 3 of
+    pad, and `_startprog` now carries 2 bytes of pad.
+- `__TEXT` is rounded to 16 bytes: 43,008 became 42,816, 192 fewer. The file
+  shrank by the same 192.
+
+### Nothing else changed [measured]
+
+Every function and every data section of the trimmed `boot` was compared
+with the control's (`t3-ours-boot`), using both `boot.sys` symbol tables.
+- **Symbols.** Exactly four symbols are gone: `_loadModule`, `__sp`,
+  `_swapBigIntsToHost` and `_swapBigShortToHosts`. The other 363 are in the
+  same order.
+- **Functions.** 225 functions are in both.
+  - 55 are byte-identical.
+  - 170 differ only in 1,094 abs32 addresses and 365 rel32 targets. Each maps
+    to where the same symbol, string or offset moved. No byte is left
+    unexplained.
+- **`__data`.** It has 33 differing addresses, all mapped, and nothing else
+  differs. One of them is the GDT base inside the GDTR at `0xDD2C`, which is
+  unaligned.
+- **`__const`.** Byte-identical.
+- **`__cstring`.** The same 196 strings. `/usr/standalone/i386/%s` used to be
+  placed by `module.o` and is now placed by `graphics.o` (`graphics.c:335`),
+  so it and the 7 strings between those two places moved differently from the
+  rest.
+
+### The boot comparison: A-B-A on the verbose path [measured]
+
+**Setup.**
+- Three boots in one session: A1 = the control, B = the trimmed booter, A2 =
+  the control again.
+- Before each boot, `test.img` was rebuilt from `$GOLDEN`: `$KSPEC2` was
+  grafted, then the booter installed. `/mach_kernel` and both boot slots were
+  read back and matched.
+- `qemu-shot.py --at 5,15,30,60,120 --keys $'mach_kernel -v\n' --keys-at 8`,
+  on cirrus.
+- Captures: `vm/shots-t5trim-{A1,B,A2}`.
+
+**Which booter ran.** All three 5 s frames show `Rhapsody boot v5.0.2`. They
+are pixel-identical: `276180227B36...`, which is also Task 3's 5 s hash.
+
+**Serial.**
+- Each log has 76 lines, 8 of them `intr: phantom IRQ 15, EOI to master`.
+- Line 4 is identical in all three, date included, because the kernel is the
+  same.
+- With the 8 phantom lines removed, the three logs are identical (69 lines,
+  `54292347...`).
+- The phantom lines sit in different places in each boot:
+  - A1 has 1 after `hc0: device detected` and 7 after `Registering: hd0`,
+    all inside the IDE-probe block;
+  - B has the first of those, and 7 after `Power management is enabled.`;
+  - A2 has all 8 after `Power management is enabled.`.
+- Rule 3 allows this.
+
+**Frames.** Masked as rule 4 says: the `HH:MM:SS` cells, spec 2's mask.
+
+| pair | 5 s | 15 s | 30, 60 and 120 s |
+| --- | --- | --- | --- |
+| A1 / B | 0 px | 10,870 px | 2,443 px, text rows 0-4 |
+| B / A2 | 0 px | 9,669 px | **0 px, raw** |
+| A1 / A2 (control against control) | 0 px | 15,017 px | 2,443 px, text rows 0-4 |
+
+- **Rule 4 fails for A1 / B** at 15 s and in the settled frames.
+- **Each difference is where the phantom lines landed on screen.**
+  - All three 15 s frames are at the same stage, just after `Power management
+    is enabled.`, and differ only in where the phantom lines are.
+  - A1's settled frame scrolled its phantom lines off the top. B's and A2's
+    show five of them in text rows 0-4.
+- **A1 differs from A2, the same booter, by exactly the same 2,443 px.**
+  - B's settled frame and A2's are one image, `125C4133...`.
+- This is the verbose-mode race spec 2 recorded (`docs/kernel/i386-vbe-console.md`,
+  "The comparison rules as applied"), where a same-kernel pair also failed
+  rule 4.
+
+**Verdict: pass.** The controller ruled on 2026-09-22; this was a question
+of method, not of behaviour.
+- **B equals A2 pixel for pixel, with no mask,** in the 30, 60 and 120 s
+  frames [measured].
+- **The A1 differences are the phantom-IRQ placement race.** The A1 / A2
+  control pair differs by the same 2,443 px [measured].
+- **The serial matches under rule 3** [measured].
+- Rule 4 as written did not allow for the race on screen. The plan's rule is
+  being amended to match rule 3.
+  **[UPDATED — final review: done, in `ea1231a7a`.]**
+- The static comparison above agrees: nothing changed beyond the removed
+  functions and the moved addresses.
+
+### A dead function Task 3's scan missed [measured]
+
+`setCursorPosition` (`libsaio/biosfn.c:362`, 60 bytes) has no reference in
+the trimmed `boot`.
+- In the control, its only raw hit is the rel32 of `call _free` at
+  `boot+14399` in `removeKeyFromTable`. The bytes `30 49 00 00` happen to
+  equal its address, `0x4930`: a false positive of the over-approximating
+  scan.
+- It is not in Task 3's list, so Task 5 did not remove it. It would add at
+  most 64 bytes, not the 121 still needed [arithmetic].
+
+### The decision
+
+The shortfall is 793 - 672 = 121 bytes [arithmetic].
+
+**On 2026-09-22 the user accepted 672 spare**, the 537 budget with a
+135-byte margin. The trim stays at ranks 4, 5 and 8.
+
+**A fallback, not taken:** split `strtoul` into its own object [inference].
+- `boot` would then link only `strtoul`, and `sarld` would still find
+  `strtol` in `libsa.a`.
+- That frees about 400 bytes for `boot`, if Tasks 6 and 7 run short.
+- `sarld` needs both symbols (`U _strtol`, `U _strtoul`), so it would link
+  two objects where it links one today. Whether its bytes change is not
+  measured.
+
+Two other options were raised and not taken:
+- separate objects for `slvprintf` and `realloc`, about 112 bytes
+  [inference];
+- removing `setCursorPosition`, up to 64 bytes, which is not on Task 3's
+  list.
+
+---
+
+## Task 6: 4.2's VBE functions in `libsaio/vbe.c`
+
+**What is rebuilt.** The five functions of the 4.2 image's
+`boot+0x6B00..0x6F30` region that our tree lacks or has only in part (item 1's
+table): the mode-attributes test, the 640x480 test, the record writer, the
+enumerator and the mode setter. `printf` (`boot+27392`) and the eight BIOS
+wrappers after the setter (`boot+28464..29047`) already match. They sit in
+4.2's order in `vbe.c`, ahead of `setupPalette` and the wrappers.
+
+**Method.**
+- Each build is `rbuild` as Task 3 Step 2, after `vm/sync-src.ps1 -Path
+  boot-2`, with a copy of `boot-64-2.sym/i386` taken from inside the chroot
+  before the cleanup. Each binary was checked by its guest `sum` and `cksum`,
+  recomputed locally from the decoded bytes.
+- Our function's extent is its `nm -n` delta in `boot.sys`, as in Task 3.
+- `compare_flat.py` compares it with the reference at base `0x3000` on both
+  sides.
+
+**Names.** Only the mode setter has a counterpart, `set_linear_video_mode`,
+and it keeps that name. The other four have none in our tree, so they are
+named here: `vbeModeIsUsable`, `vbeModeIsLargeEnough`, `recordVBEMode` and
+`enumerateVBEModes`. 4.2's own names are not in the image.
+
+### The record writer [measured]
+
+| | |
+| --- | --- |
+| reference | `boot+27556..27703`, 148 bytes (`0x9BA4`) |
+| ours | `_recordVBEMode`, `0x98D4`, 148 bytes (next: `_set_linear_video_mode` at `0x9968`) |
+| `compare_flat` | `MATCH: 50 instructions, 148 bytes compared, 0 masked, 0 addresses mapped` |
+| outcome | **byte parity** |
+
+- The signature is Task 3's, `(boot_vbe_mode *, unsigned short, VBEModeInfoBlock *)`,
+  with Task 4's type for the record.
+- The physical address goes through `vbe.h`'s `ADDRESS()` macro. It builds the
+  same byte-by-byte `shl`/`or` sequence as 4.2, including the spill to
+  `[ebp-4]`.
+- The build, `t6a`: `booter 44528 bytes of 45056, 528 to spare`; `boot`
+  `sum 10234 44`, `cksum 3300415786 44528`, SHA-256
+  `443A8AF8E4DDD6719E3A4961E8F76E5E2ED9E2139D6599A32FDEA730CABD6C06`;
+  `boot.sys` `cksum 198241776 1075932`. The package's `boot` is
+  `cmp`-identical to the copy. The file grew by 144 bytes over Task 5's
+  44,384.
+
+### The two mode tests [measured]
+
+| | the mode-attributes test | the 640x480 test |
+| --- | --- | --- |
+| reference | `boot+27424..27515`, 92 bytes (`0x9B20`) | `boot+27516..27555`, 40 bytes (`0x9B7C`) |
+| ours | `_vbeModeIsUsable`, `0x98D4`, 92 bytes | `_vbeModeIsLargeEnough`, `0x9930`, 40 bytes (next: `_recordVBEMode` at `0x9958`) |
+| `compare_flat` | `MATCH: 39 instructions, 82 bytes compared, 10 masked, 0 addresses mapped` | `MATCH: 17 instructions, 34 bytes compared, 6 masked, 1 addresses mapped` (`map 0x9b20 -> 0x98d4`) |
+| outcome | **byte parity** | **byte parity** |
+
+- The masked bytes are relative branches. The first function's 10 are its ten
+  short conditional jumps, which `compare_flat` checks as function-relative
+  offsets. The second's 6 are its `call` to the first and its two short
+  jumps.
+- Each attribute bit is its own `if`, in 4.2's order: supported, linear,
+  graphics. The compiler narrows each to a byte test, as 4.2's does.
+- `BitsPerPixel != 15 && != 16` compiles to 4.2's range test (`add al,0F1h;
+  cmp al,1; jbe`).
+- Measured in build `t6b`, which also carries the enumerator; its size line
+  and hashes are under the enumerator below.
+
+### The enumerator
+
+| | |
+| --- | --- |
+| reference | `boot+27704..28031`, 328 bytes (`0x9C38`) |
+| ours | `_enumerateVBEModes`, `0x99EC`, 328 bytes (next: `_set_linear_video_mode` at `0x9B34`) |
+| `compare_flat`, whole | `MISMATCH +207: byte 1 differs in cmp eax, 0x897 \| cmp eax, 0x880` |
+| `compare_flat`, `+0..+207` | `MATCH: 48 instructions, 171 bytes compared, 36 masked, 5 addresses mapped` |
+| `compare_flat`, `+212..+328` | `MATCH: 38 instructions, 96 bytes compared, 20 masked, 5 addresses mapped` |
+| outcome | **forced divergence, 1 byte**: the bound constant; every other byte matches |
+
+**[UPDATED — final review I3: this table is Task 6's build.** The final
+booter adds a second forced divergence, the `VideoModePtr` address, and the
+compiler's register choice moves with it. Its comparison is in "Final review
+fixes" at the end.**]**
+
+[measured]
+- **The one byte.** `compare_flat` stops at the first difference, so the
+  function was compared again on each side of the 5-byte `cmp` at `+207`
+  (`boot+27911`). That `cmp` is `3D 97 08 00 00` in 4.2 and
+  `3D 80 08 00 00` in ours: 1 byte differs.
+- **The branches that cross the split** are checked through the address
+  map. Each lands at the same offset on both sides:
+  - `0x9D60 -> 0x9B14`, `+296`;
+  - `0x9D72 -> 0x9B26`, `+314`;
+  - `0x9CF7 -> 0x9AAB`, `+191`.
+- **The other mapped addresses** name, by our `nm`, `_getVBEInfo`,
+  `_getVBEModeInfo`, `_kernBootStruct`, `_vbeModeCount`,
+  `_vbeModeIsLargeEnough` and `_recordVBEMode`.
+
+**The forced divergence: at most 89 records** [arithmetic, from the measured
+code].
+- 4.2 compares each record's start, `rec`, with the base
+  `kernBootStruct + 0x1840`. Record `i` starts at `0x1870 + 24i`, which is
+  `0x30 + 24i` past the base.
+- The base is where the `0x898` bytes that end at `video` begin:
+  `0x1840 + 0x898 = 0x20D8` = 8408.
+- **4.2**, `> 0x897`, which is `0x898 - 1`: a record may *start* anywhere in
+  those bytes.
+  - `0x30 + 24i <= 0x897` holds for `i <= 89`, so 90 records.
+  - Record 89 would be `kbs+0x20C8..0x20E0`, 8 bytes into `video`.
+- **Ours**, `> 0x880`, which is `0x898 - 0x18`: the whole record must *end*
+  inside those bytes.
+  - Index 88: `0x30 + 2112 = 0x870 <= 0x880`, so it is written, at
+    `kbs+0x20B0..0x20C8`.
+  - Index 89: `0x30 + 2136 = 0x888 > 0x880`, so the loop stops.
+  - At most 89 records, `BOOT_VBE_MAX_MODES`. Nothing is written at or
+    beyond 8408.
+- Any constant from `0x870` to `0x887` gives the same cap. `0x880` is the
+  one that states the rule.
+- The source labels it on the line. The base stays `kernBootStruct + 0x1840`,
+  so `add eax,1840h` still matches.
+
+**How the source reaches 4.2's code.**
+- **The base is its own statement**, `vbeArea = (char *)kernBootStruct +
+  0x1840`, so the sum is formed before the subtraction, as 4.2 forms it.
+  Written as one expression, the compiler may reassociate it [inference; not
+  tried].
+- **The bound is the first statement of the loop body, with `break`.** Only
+  the `0xFFFF` test is rotated to the bottom of the loop, as in 4.2.
+- **`VBEInfoBlock` grows to 512 bytes** (`vbe.h`, `Reserved[242]` to
+  `Reserved[492]`).
+  - 4.2's frame is `sub esp,308h`: `0x200` of info block at `[ebp-200h]`,
+    `0x100` of mode information at `[ebp-300h]`, and two spill slots
+    [measured].
+  - A VBE 2.0 BIOS fills 512 bytes once `VbeSignature` is preset to
+    `"VBE2"` [inference, from the VBE 2.0 definition of the block]. Our
+    262-byte struct would have overflowed.
+  - Outside `vbe.c`, nothing in the tree uses `VBEInfoBlock` [measured,
+    `git grep`]. Inside it, the old `set_linear_video_mode` has one on its
+    stack until the setter is rebuilt.
+- **The cache is `static int vbeModeCount = -1`**, 4 bytes of `__data`, as
+  4.2's at `0xDEAC`.
+
+**Reference defect, reproduced and labelled.** `VideoModePtr` is a real-mode
+segment and offset. It goes through `ADDRESS()`, which makes
+`(segment << 16) | offset`. That is the right address only when the segment is
+0, as it was on both QEMU adapters (item 6).
+**[SUPERSEDED — final review I3: fixed at the user's request.** The
+consequence was worse than recorded here (item 6's update: a ROM list is
+read at `0xC000xxxx`, giving zero modes or a long stall), and since Task 7b
+it would happen on every boot. Ours now forms `segment * 16 + offset`, a
+forced divergence from this reference defect. See "Final review fixes" at
+the end.**]**
+
+**The version test.** `cmp word [ebp-1FCh],1FFh; ja` is reproduced, so the
+enumerator accepts `VESAVersion >= 0x200` (item 5). It is not a divergence.
+
+**The build, `t6b`** [measured]:
+- `booter 44992 bytes of 45056, 64 to spare`.
+- `boot`: `sum 4419 44`, `cksum 2768620739 44992`, SHA-256
+  `E5420415B440B60DD68D023959C562ADC306A326D15446F3BB718F92E977CD74`.
+- `boot.sys`: `cksum 3226043044 1077680`.
+- The package's `boot` is `cmp`-identical to the copy.
+- Both tests and the enumerator were built and compared together in `t6b`.
+- The file grew by 464 bytes over `t6a`, and by 608 over Task 5's 44,384.
+
+### The mode setter
+
+**Measured, not yet landed.** The setter below was built and compared in
+Task 6. With it, the booter is 45,088 bytes, 32 over the limit (see "Size",
+below), so its source is not in the tree.
+- **It lands in Task 7**, after Task 7's size-reducing panel-path changes:
+  4.2's 264-byte wait cursors against our 864, and 4.2's smaller `copyImage`
+  and `clearRect`. The controller decided this order on 2026-09-23.
+- **The source is kept as a patch** at `vm/work/t6c-setter.patch`
+  (gitignored), SHA-256
+  `BC00C61C1B878F5F9117699A878ED3E6F342D2F19878BAA3D0E3A89A7C0B6758`.
+  - It changes `vbe.c`, and `saio_internal.h` (`set_linear_video_mode`
+    returns `int`).
+  - It applies to `d4193bb2c`. That commit already carries the 512-byte
+    `VBEInfoBlock` in `vbe.h` (the enumerator, above), so `vbe.h` needs
+    nothing more.
+  - Applied there, it gives `vbe.c` `cksum 2550206037 9925` and
+    `saio_internal.h` `cksum 1574063489 5961`: the sources `t6c` built
+    [measured].
+- Everything in this section describes that patch as `t6c` built it.
+
+**[UPDATED — Task 7a: landed.** The patch was applied unchanged in Task 7a's
+stage 2, after the panel-path trims, at commit `f262e39b7`. The build is
+`t7a2`: 44,432 bytes, 624 spare. Every comparison in this section reproduced
+exactly, with the palette block, the 5 frame bytes and the 1 pad byte as the
+only differences. See "Task 7a", stage 2 [measured]. Once 4.2's `setMode`
+landed, nothing called the setter, so the final 7a booter does not link
+`vbe.o`. 7b's wiring links it again.**]**
+
+| | |
+| --- | --- |
+| reference | `boot+28032..28463`, 432 bytes (`0x9D80`) |
+| ours | `_set_linear_video_mode`, `0x9B34`, 444 bytes (next: `_setupPalette` at `0x9CF0`), build `t6c` |
+| `compare_flat`, whole | `MISMATCH size 432 \| 444`; it then cannot decode past `+429`, because the extents differ |
+| `compare_flat`, `+26..+263` | `MATCH: 67 instructions, 146 bytes compared, 91 masked, 16 addresses mapped` |
+| `compare_flat`, reference `+290..+410` against ours `+303..+423` | `MATCH: 23 instructions, 88 bytes compared, 32 masked, 8 addresses mapped` |
+| outcome | **forced divergence: the palette.** The palette block is 13 bytes in 4.2 and 26 in ours, and the 1,024-byte palette on our stack changes 5 frame bytes. Every other byte matches |
+
+**The whole function, accounted byte by byte** [measured]. `compare_flat`
+stops at the first difference, so a scratch aligner (not committed) paired the
+two instruction streams. It applies `compare_flat`'s masking rule and checks
+every in-function branch against the pairing. Its result, with the palette
+block set aside:
+- **Paired instructions: 289 bytes equal, 124 masked, 5 differ.**
+- **The 5 bytes** are the second byte of the frame size or of a frame
+  displacement, `0x01` in 4.2 and `0x05` in ours:
+  **[CORRECTED — final review (a Task 6 minor): that holds for the frame size
+  alone, `sub esp,104h` against `504h` at `+3`. The four displacements are
+  negative, so their second byte is `0xFE` in 4.2 and `0xFA` in ours:
+  `FC FE FF FF` against `FC FA FF FF` at `+16`, `+280` | `+293` and `+410` |
+  `+423`, and `F0 FE FF FF` against `F0 FA FF FF` for the `lea` at `+416` |
+  `+429` [measured, `tfin1`, the same setter bytes as Task 6's].]**
+
+  | offset (4.2 / ours) | 4.2 | ours |
+  | --- | --- | --- |
+  | `+3` | `sub esp,104h` | `sub esp,504h` |
+  | `+16` | `mov [ebp-104h],0` | `mov [ebp-504h],0` |
+  | `+280` / `+293` | `mov [ebp-104h],1` | `mov [ebp-504h],1` |
+  | `+410` / `+423` | `mov eax,[ebp-104h]` | `mov eax,[ebp-504h]` |
+  | `+416` / `+429` | `lea esp,[ebp-110h]` | `lea esp,[ebp-510h]` |
+
+  - The reason is our `VBEPalette palette` (1,024 bytes) on the stack, for
+    `setupPalette`.
+  - The return value is a spilled register. It moves from `[ebp-104h]` to
+    `[ebp-504h]`, below the palette.
+  - The mode information stays at `[ebp-100h]`, so every access to it
+    matches.
+- **The palette block**, `+263`, after `cmp byte [ebp-0E5h],4; jne`:
+  - 4.2, 13 bytes: `push 0DAACh; call setVBEPalette; add esp,4`.
+  - Ours, 26 bytes: `push appleClut8; lea ebx,[ebp-500h]; push ebx; call
+    setupPalette; push ebx; call setVBEPalette; add esp,0Ch`.
+- **The pad** is 2 `nop`s in ours and 3 in 4.2: 1 reference-only byte.
+- **In total**, 444 - 432 = 12: +13 in the palette block, -1 in the pad.
+- **Every mapped address** names, by our `nm`, the expected symbol:
+  - the three functions above, and `getVBEModeInfo`, `setVBEMode`, `sleep`
+    and `reallyPrint`;
+  - `kernBootStruct`, `screen_height`, `screen_width`, `bits_per_pixel`,
+    `frame_buffer`, `in_linear_mode` and `bytes_per_scanline`.
+- **The six messages** are byte-identical to 4.2's, and in 4.2's order in
+  `__cstring`. That order shows `Using VBE Mode` before `No usable VBE mode`
+  in the source; see "How the source reaches 4.2's code".
+
+**The one constant `compare_flat` cannot guard, checked by eye** [measured].
+`and eax,0FFFFh` is `25 FF FF 00 00` at 4.2's `boot+28212`. It is
+`25 FF FF 00 00` in ours, at `0x9BE8` (setter `+180`), between `or ah,40h`
+and the `push` for `setVBEMode`. The aligner masked it as `0xffff -> 0xffff`,
+as `compare_flat` would; the eye check is what compares it.
+
+**The forced divergence: the palette** (spec §1, by the user's decision).
+- 4.2 loads its own 1,024-byte table at `0xDAAC`. Ours converts `appleClut8`
+  with `setupPalette(&palette, appleClut8)`.
+- The palette is loaded only for memory model 4, as 4.2 does. Ours used to
+  load it for every mode.
+- The two tables agree only at 0 and 255 (Task 3).
+- Labelled on the line in the source.
+
+**How the source reaches 4.2's code.**
+- **The first enumerated mode is `vmr[1]`**, where `vmr =
+  &kernBootStruct->vbeCurrentMode`.
+  - 4.2 reads it as `[edi+18h]` and `[edi+1Ch]` from the current-mode pointer
+    (`boot+28136`, `+28143`).
+  - `kernBootStruct->vbeModes[0]` would reload the global after the calls.
+    **[TAGGED — final review: inference, from how gcc treats a global across
+    calls; that spelling was not built.]**
+  - Task 4's assertions (`0x1858`, `0x1870`, 24-byte records) make `vmr[1]`
+    that element. The source says so on the line.
+  - So here 4.2's call structure overrides the rule of reaching the array
+    through `kernBootStruct->vbeModes`.
+- **The fallback is `if (vmr[1].xResolution) { Using ... } else { No usable
+  ...; return 1; }`**, in that order.
+  - The compiler puts the `else` arm first, as 4.2's code has it.
+  - The strings stay in source order, as 4.2's `__cstring` has them
+    [measured].
+- **`ret = 1` comes before the palette message**, as 4.2 stores it.
+- **The return type is `int`**, and the patch's `saio_internal.h` says so.
+  4.2 returns a status ("The rest of the VBE path"). Ours returned `void`, so
+  its caller could not tell a failure (spec §4.1).
+- **`bytes_per_scanline`** is a new global for 4.2's word at `0xEB88`. It is
+  stored here and read nowhere [measured: a raw scan of the 4.2 image finds
+  `88 EB 00 00` only at `boot+28438`, this store].
+- **`graphicsMode = TEXT_MODE`**, the third VBE store through the pointer.
+
+**What this changes from our old setter** [measured source].
+- It tests the version through the enumerator, `>= 0x200`, not `== 0x200`
+  (spec §4.3).
+- It falls back to the first enumerated mode, where ours returned.
+- It records the mode at `kbs+0x1858`.
+- **It no longer calls `getVBEInfo` itself**, so its `VBEInfoBlock` is gone.
+- **`models[]` is removed** (`vbe.c`: 32 bytes of `__data`, 67 of strings).
+  - It was never referenced: the compiler warned "`models' defined but not
+    used".
+  - 4.2's `vbe.c` has no such table.
+  - Task 3's budget counts its removal (item 2, the `appleClut8`, `models[]`
+    row).
+
+**The build, `t6c`** [measured].
+- `Booter executable is 45088 bytes; boot1 reads only 45056`. The Makefile
+  removed `boot`, and rbuild failed with status 2.
+- `boot.sys` was copied before the cleanup: `sum 23527 1053`, `cksum
+  1699282801 1077972`, both reproduced locally.
+- **The flat image was rebuilt from `boot.sys`** by a scratch copy of
+  `machOconv`'s rule: each segment in order, `__DATA` at its file size, the
+  others at their VM size.
+  - The same rebuild of `t6a`'s and `t6b`'s `boot.sys` is `cmp`-identical to
+    their shipped `boot`.
+  - The rebuilt `t6c` image is 45,088 bytes, the size the Makefile printed.
+    SHA-256 `56A3F2377AFCE180F9F746A0799F550AC12844569FEEF47ED82D7EA5A0EDA17C`.
+
+### Size [measured]
+
+| build | adds | `__text` | `__cstring` | `__data` | `boot` | spare |
+| --- | --- | --- | --- | --- | --- | --- |
+| Task 5 | | 37,209 | 4,208 | 1,564 | 44,384 | 672 |
+| `t6a` | the record writer | 37,357 (+148) | 4,208 | 1,564 | 44,528 | 528 |
+| `t6b` | the two tests and the enumerator | 37,817 (+460) | 4,208 | 1,568 (+4) | 44,992 | 64 |
+| `t6c` | the setter; `models[]` removed | 37,957 (+140) | 4,204 (-4) | 1,536 (-32) | **45,088** | **-32** |
+
+- **Task 6's growth is +704 bytes** of file.
+  - Task 3's item 2 predicts the same +704 for these rows [arithmetic]: 608
+    for the four new functions, +128 for the setter, +4 for the count, -32
+    for `models[]` and -4 of strings.
+  - Of that, 608 is in the tree (`t6b`, the committed state). The setter's
+    +96 lands in Task 7.
+- **The setter is 12 bytes over the row's 432**: the palette block, less one
+  pad `nop`. The file still grew by exactly 704.
+  - `__TEXT`'s 16-byte rounding slack fell from 15 bytes to 7.
+  - The 4-byte count filled `__data`'s file padding: 1,564 bytes in a
+    1,568-byte file part.
+- **The budget for Tasks 6 and 7 together is at most 537** (Task 3b). So
+  Task 7 must come out at -167 or less.
+  - Task 3's and Task 3b's rows for Task 7 give -212 [arithmetic]:
+    `execKernel` +172, `getBootString` +324, `convert_vbe_mode` +32, the
+    name table -60, `setMode` -124, strings +120, and the panel path -676.
+- **The overflow is one of order, not of total.** The setter needs 32 bytes
+  that only Task 7's trims free: the wait cursors (-600) and the panel code.
+  So it lands after them, in Task 7 (above).
+
+---
+
+## Task 7a: the `setMode` panel path, and the mode setter landed
+
+Task 7 was split. 7a rebuilds 4.2's `setMode` and its panel path (Task 3b's
+inventory), and lands Task 6's mode setter. 7b wires the VBE path into the
+boot flow.
+
+**Method.**
+- Each build is `rbuild` as Task 3 Step 2, after `vm/sync-src.ps1 -Path
+  boot-2`. A copy of `boot-64-2.sym/i386` is taken inside the chroot before
+  the cleanup.
+  - Every binary was checked by its guest `sum` and `cksum`, recomputed
+    locally from the decoded bytes.
+  - The package's `boot` is `cmp`-identical to the copy.
+- **The copy now waits for a `boot.sys` newer than the build's start.** The
+  first stage 1 build, `t7a1`, found a stale `boot.sys` left by Task 6's
+  failed `t6c` root, and copied nothing.
+  - Its package `boot` (`cksum 3835762470 44336`) is identical to the
+    rebuild's, `t7a1b` [measured].
+  - The symbols below are `t7a1b`'s. Both builds are called `t7a1` from here
+    on.
+- **`compare_flat.py`** was run as Task 3b ran it, with both images at base
+  `0x3000`.
+  - Our extent is the `nm -n` delta.
+  - The trailing `nop` or `00` pad is stripped on both sides. The pads were
+    then compared by eye.
+- **Each address map was read against our `nm`.** A mapped value that is not
+  an address is listed where it occurs.
+
+**The order.**
+1. **Stage 1, the panel path** (`t7a1`):
+   - 4.2's `struct bitmap` and its wait cursors;
+   - `copyImage`, `clearRect`, `message` and `clearActivityIndicator`.
+
+   `loadBitmap` and `spinActivityIndicator` change through the struct alone.
+2. **Stage 2** (`t7a2`): Task 6's setter patch.
+3. **`setMode`** and `boot.c:503-506` (`t7a3`, the final 7a booter).
+
+**Why `setMode` comes last: the link** [measured, `grep`; the consequence is
+checked in `t7a3` below].
+- The `Graphics Mode` branch calls `set_linear_video_mode`
+  (`graphics.c:198` at the start of 7a). That call is the only reference
+  from outside `vbe.c` into `vbe.o`.
+- Once 4.2's `setMode` replaces the branch, nothing in 7a calls into
+  `vbe.o`. So `ld` leaves that member of `libsaio.a` out.
+- The setter can therefore be compared, and its size measured, only while
+  the branch still links it.
+
+### Stage 1: the panel path [measured]
+
+| 4.2 function | extent | ours (`t7a1`) | `compare_flat` | outcome |
+| --- | --- | --- | --- | --- |
+| `loadBitmap` | `boot+30028..30243`, 216 | `_loadBitmap`, `0x9A90`, 216 | `MATCH: 84 instructions, 147 bytes compared, 69 masked, 8 addresses mapped` | **byte parity** |
+| `copyImage` | `boot+20024..20275`, 252 | `_copyImage`, `0x79C0`, 252 | `MATCH: 90 instructions, 205 bytes compared, 44 masked, 7 addresses mapped` | **byte parity** |
+| `clearRect` | `boot+20276..20547`, 272 | `_clearRect`, `0x7ABC`, 272 | `MATCH: 84 instructions, 207 bytes compared, 64 masked, 6 addresses mapped` | **byte parity** |
+| `message` | `boot+3764..4067`, 304 | `_message`, `0x3BB4`, 304 | `MATCH: 105 instructions, 220 bytes compared, 84 masked, 14 addresses mapped` | **byte parity** |
+| `spinActivityIndicator` | `boot+4596..4827`, 232 | `_spinActivityIndicator`, `0x3F4C`, 232 | `MATCH: 61 instructions, 132 bytes compared, 99 masked, 12 addresses mapped` | **byte parity** |
+| `clearActivityIndicator` | `boot+4828..4939`, 112 | `_clearActivityIndicator`, `0x4034`, 112 | `MATCH: 40 instructions, 83 bytes compared, 29 masked, 7 addresses mapped` | **byte parity** |
+
+- **The pads match.** In the table's order they are: none; `00`;
+  `90 90 90`; none; `90`; none. Both sides are the same.
+  **[CORRECTED — final review (a Task 7a minor): `copyImage`'s and
+  `clearRect`'s are swapped above. In the table's order: none; `90 90 90`;
+  `00`; none; `90`; none [measured, `pairs7c.py` on `tfin1`, the same
+  functions]. Both sides are still the same.]**
+- **Mapped values that are not addresses** are equal on both sides:
+  - `copyImage`'s `and eax,3FFCh`, which rounds the `rowbuf[NCOLS]` array;
+  - `and eax,0FFFFh`, in `copyImage` and in `message`.
+- **Every other mapped value** names, by our `nm`, the expected symbol:
+  - functions: `blitRow`, `PackBitsDecode`, `copyImage`, `clearRect`,
+    `blit_clear`, `blit_string`, and the library functions;
+  - screen and panel state: `screen_width`, `screen_height`, `panel`,
+    `in_linear_mode`;
+  - VGA state: `savedGCRegisters`, `savedSEQRegisters+2`, and the two
+    inline-I/O counters;
+  - booter state: `showText`, `kernBootStruct`, `LanguageConfig`;
+  - the indicator: `currentIndicator`, `indicator`, `indicator_bitmap`,
+    `lastTickTime`, `string`.
+- **The four string operands** hold the same bytes on both sides:
+  `Error %d reading bitmap from '%s'\n`, `" "`, `"%s\n"` and `" \b"`.
+
+**What changed in the source.**
+- **`util/bitmap.h` takes 4.2's 24-byte `struct bitmap`.** It has six
+  `short`s, `short plane_len[2]` and two plane pointers. This is the layout
+  of `ppc/ppcMac/util/bitmap.h:39-47`.
+  - `loadBitmap` needed nothing else. It now `malloc`s and reads `0x18`
+    bytes, and takes the plane lengths as `short`s, as 4.2's does.
+  - `spinActivityIndicator` needed nothing else. It now reads the width at
+    `+8` and the height at `+0xA`, as 4.2's does.
+- **The wait cursors.**
+  - `boot2/bitmaps.c` imports `util/ns_wait{1,2,3}_bitmap.h` again.
+  - `indicator_bitmap` points at `ns_wait{1,2,3}_bitmap`.
+  - `graphics.c` no longer imports `util/spin_cursor.h`.
+- **`copyImage` and `clearRect`** lose their linear-frame-buffer branches.
+  - Each keeps its `if (!in_linear_mode)` test. So each returns at once in a
+    linear mode, as 4.2's does.
+  - `clearRect`'s `j` went with its branch.
+- **`message`** draws in the panel.
+  - It calls `blit_clear(BOX_W - 16, BOX_C_X, y, ..., TEXT_BG)` and
+    `blit_string(str, BOX_C_X, y, TEXT_FG, ...)`, with `y = MESSAGE_Y`.
+  - The `strwidth("9")` link workaround is gone. `blit_string` now links
+    `font.o`.
+- **`clearActivityIndicator`** clears the cursor with `clearRect(CURSOR_X,
+  CURSOR_Y, CURSOR_W, CURSOR_H, TEXT_BG)`.
+- **`boot2/graphics.h` takes 4.2's values**, which Task 3b read from the
+  call arguments:
+  - `TEXT_BG` is 2, `TEXT_FG` 0 and `SCREEN_BG` 1;
+  - `BOX_C_X` is `SCREEN_W / 2`, and `MESSAGE_Y` is `BOX_Y + BOX_H / 2`.
+  - The `COLOR_*` names keep their 8-bit values. Only the unbuilt
+    `popupBox` and `scrollbar.h` use them [measured, `grep`].
+
+**The wait cursors in the image [measured].**
+- Ours are at `0xDB2C..0xDC33`, 264 bytes. For each cursor there is plane 0
+  (32 bytes), then plane 1 (32), then the 24-byte struct. That is 4.2's order
+  at `0xD944..0xDA4B`.
+- **Against 4.2's 264 bytes, only 12 differ.**
+  - They are the six plane pointers.
+  - Each points at the plane of its own cursor, moved by the same `0x1E8`.
+- **`indicator_bitmap`** (`0xDAD8`) holds `0xDB6C`, `0xDBC4`, `0xDC1C` and 0.
+  - Those are 4.2's `0xD984`, `0xD9DC`, `0xDA34` and 0, mapped the same way.
+
+**`util/dumptiff.m`: the build does not compile it [measured, the Makefile
+and the `t7a1` log].**
+- `util/Makefile` sets `PROGRAMS = machOconv`, with `dumptiff` commented
+  out (`:36-37`).
+- Its `all` target reaches only `$(PROGRAMS)` and `Panel.image`.
+- The log's `make install for util` section compiles `machOconv.c` and
+  nothing else.
+- `dumptiff`, `dumptiff.m`, `BooterBitmap.[hm]` and `tif_packbits.c` appear
+  only in the log's source listing.
+
+**So the host tool now uses the new layout** [measured source].
+- `BooterBitmap.m:252-283`, linked into `dumptiff`, *writes* an `.image`
+  header with `fwrite(&bd, sizeof(bd), ...)`.
+- Built again, it would write 4.2's 24-byte header. That is the format of
+  `golden.img`'s `Panel.image`, and of the package's own `util/Panel.image`.
+- `dumptiff.m` itself only includes the header.
+
+**The build, `t7a1`** [measured]:
+- `booter 44336 bytes of 45056, 720 to spare`.
+- `boot`: `sum 57292 44`, `cksum 3835762470 44336`, SHA-256
+  `4109C1738482E74BECC1CED721C41C8479F726791E217A198479652BD2ED959A`.
+- `boot.sys`: `sum 40700 1052`, `cksum 666419113 1077012`.
+- **Warnings:** none new in the touched files. The `setMode` warning about
+  `convert_vbe_mode`'s argument, and `vbe.c`'s `models`, are as before.
+
+| section | `t6b` | `t7a1` | delta |
+| --- | --- | --- | --- |
+| `__text` | 37,817 | 37,761 | -56 |
+| `__cstring` | 4,208 | 4,206 | -2: `"9"` |
+| `__const` | 1,384 | 1,384 | 0 |
+| `__data` | 1,568 | 968 | -600: the cursors, 864 to 264 |
+| `boot` | 44,992 | 44,336 | **-656** |
+
+- **The `__text` delta, by `nm` extent:**
+  - `copyImage` -148, `clearRect` -108, `message` +104,
+    `clearActivityIndicator` +84 and `loadBitmap` +16. That is -52, Task
+    3b's rows exactly.
+  - `setMode` lost 4 more. `SCREEN_BG` is now 1, and `push 1` is 3 bytes
+    shorter than `push 80h`. The pad takes the fourth.
+- **Against Task 3b's -676** [arithmetic]:
+  - That figure includes `boot()`'s -24, which lands with `setMode`.
+  - Without it, the rows give -652. The file shrank by 656; `__TEXT` and
+    `__DATA` rounding take the difference.
+- **So stage 2 fits**: 720 spare against the setter's +96 (Task 6's `t6c`).
+
+### Stage 2: the mode setter lands [measured]
+
+**The patch.**
+- `vm/work/t6c-setter.patch` has SHA-256
+  `BC00C61C1B878F5F9117699A878ED3E6F342D2F19878BAA3D0E3A89A7C0B6758`, as
+  Task 6 recorded.
+- `git apply --check` passed on stage 1's commit, and the patch was applied
+  unchanged.
+- It gives `vbe.c` `cksum 2550206037 9925` and `saio_internal.h`
+  `cksum 1574063489 5961`: the sources `t6c` built. The guest printed the
+  same `cksum`s before `t7a2` built.
+
+**The build, `t7a2`:**
+- `booter 44432 bytes of 45056, 624 to spare`.
+- `boot`: `sum 58196 44`, `cksum 1074659886 44432`, SHA-256
+  `824A68E321361599243C970785FA5C7ED6A4202D8C20206170A13524338D481A`.
+- `boot.sys`: `sum 42833 1053`, `cksum 3264219760 1077304`.
+- **Warnings:** `vbe.c`'s `` `models' defined but not used `` is gone, and
+  nothing new appears.
+
+| section | `t7a1` | `t7a2` | delta |
+| --- | --- | --- | --- |
+| `__text` | 37,761 | 37,901 | +140: `set_linear_video_mode`, 304 to 444 |
+| `__cstring` | 4,206 | 4,202 | -4 |
+| `__data` | 968 | 936 | -32: `models[]` |
+| `boot` | 44,336 | 44,432 | **+96** |
+
+These are Task 6's `t6c` deltas exactly: +140, -4 and -32 for +96 of file.
+
+**The setter, compared again.** `_set_linear_video_mode` is at `0x9E00`, 444
+bytes (next: `_setupPalette` at `0x9FBC`).
+
+| `compare_flat` | Task 6 (`t6c`) | Task 7a (`t7a2`) |
+| --- | --- | --- |
+| whole, 432 against `--ours-size 444` | `MISMATCH size 432 \| 444`; no decode past `+429` | the same |
+| `+26..+263` | `MATCH: 67 instructions, 146 bytes compared, 91 masked, 16 addresses mapped` | the same |
+| reference `+290..+410` against ours `+303..+423` | `MATCH: 23 instructions, 88 bytes compared, 32 masked, 8 addresses mapped` | the same |
+| Task 6's aligner (`aligncmp.py`), with the palette block set aside | 289 equal, 124 masked, 5 differ; 1 reference-only byte | the same |
+
+- **The 5 differing bytes** are Task 6's. Each is `0x104` becoming `0x504`,
+  at `+3`, `+16`, `+280`/`+293`, `+410`/`+423` and `+416`/`+429`.
+- **The 1 reference-only byte** is 4.2's third pad `nop`.
+- **The palette block** is 4.2's 13 bytes against our 26, at `+263`. Ours
+  pushes `0xD498`, which is `_appleClut8`.
+- **So the outcome is Task 6's: forced divergence, the palette only.**
+- **Every mapped address names the expected symbol** by our `nm`:
+  - functions: `vbeModeIsUsable`, `recordVBEMode`, `enumerateVBEModes`,
+    `getVBEModeInfo`, `setVBEMode`, `sleep`, `reallyPrint`;
+  - globals: `kernBootStruct`, `screen_height`, `screen_width`,
+    `bits_per_pixel`, `frame_buffer`, `in_linear_mode`,
+    `bytes_per_scanline`.
+- **The six messages** are byte-identical to 4.2's.
+- **The eye check.** `25 FF FF 00 00` (`and eax,0FFFFh`) is at setter
+  `+180`, after `or ah,40h`, as at 4.2's `boot+28212`.
+
+**Task 6's other functions, compared again in `t7a2`, as Task 6 compared
+them** (whole extents):
+- the mode-attributes test, the 640x480 test and the record writer:
+  `MATCH`, with Task 6's counts (82/10, 34/6 and 148/0 bytes compared/masked);
+- the enumerator: `+0..+207` and `+212..+328` `MATCH` with Task 6's counts.
+  The one differing byte is the 89-record cap, as recorded.
+
+**The panel path in `t7a2`.** All 22 of Task 3b's functions other than
+`setMode`, and `putchar`, still `MATCH`.
+
+**Step 2, the write order: reachable in this build, and it holds.**
+- **Why it applies here.** The `Graphics Mode` branch still calls the
+  setter. So in `t7a2` a store into `vbeCurrentMode` and `vbeModes` is
+  reachable in the call graph, even though no config sets the key.
+- **Every VBE-area address is formed in two places.** A scan of every
+  instruction in `__text` for a displacement or immediate in `0x1840..0x20D7`
+  finds VBE-area address formations only here:
+  - `enumerateVBEModes`: `add edi,1870h` (`0x9D52`) and `add eax,1840h`
+    (`0x9D7C`, the bound's base);
+  - `set_linear_video_mode`: `add edi,1858h` (`0x9E20`).
+  - The scan's other hits are unrelated constants: the `0x2000` buffers, the
+    memory-size test's `0x1BFF`, and `read_label`'s `0x1E5C`.
+- **The stores go through `recordVBEMode`.** It is called from
+  `enumerateVBEModes` (`0x9DC6`) and from the setter (`0x9EE7`). The
+  enumerator is called only from the setter (`0x9E26`).
+- **The setter is called only from `setMode`** (`0x3DC9`), inside the
+  `mode == GRAPHICS_MODE` branch.
+- **`setMode(1)` is called at two sites:**
+  - `boot()` at `0x36AA`;
+  - `execKernel` at `0x33DC`. `execKernel` is called only from `boot()`, at
+    `0x3727`.
+- **`boot()` calls `getKernBootStruct` at `0x34CC`**, on its straight-line
+  entry path (`boot.c:406-414`), before the loop that holds both calls.
+- **The one earlier call, `setMode(0)` at `0x34C7`** (`boot.c:411`), takes
+  the text branch. It cannot reach the setter.
+- **So every store into `vbeCurrentMode` or `vbeModes` runs after
+  `getKernBootStruct()`.** The call path is `boot` →
+  (`execKernel` →) `setMode(1)` → `set_linear_video_mode` →
+  `enumerateVBEModes` / `recordVBEMode`.
+
+### `setMode`, and `boot.c:503-506` removed [measured]
+
+**The source.**
+- **`setMode` is 4.2's.**
+  - The store `kernBootStruct->graphicsMode = mode` comes right after
+    `initMode`, on both branches (`boot+4207`).
+  - The graphics branch buffers the text, then calls `set_video_mode(0x12)`,
+    `clearRect(0, 0, SCREEN_W, SCREEN_H, SCREEN_BG)` and
+    `copyImage(bitmapList[PANEL_BITMAP].bitmap, BOX_X, BOX_Y)`.
+  - The text branch is unchanged.
+- **Gone with the old branch:**
+  - the `Graphics Mode` key test, `convert_vbe_mode`'s call, and the call to
+    `set_linear_video_mode`;
+  - the `kernBootStruct->graphicsMode` store inside that branch;
+  - the five `kernBootStruct->video` stores (spec §4.3).
+- **Left for 7b:** `convert_vbe_mode` and its `mode_table` stay in
+  `graphics.c`, now with no caller, and `G_MODE_KEY` stays in `boot.h`,
+  unused. 7b rebuilds `convert_vbe_mode` for the `VBE Mode` key (4.2's
+  `boot+4480`) and decides `G_MODE_KEY`.
+  **[UPDATED — Task 7b: `convert_vbe_mode` and `mode_table` are kept and
+  rebuilt, since 4.2's `execKernel` calls them; `G_MODE_KEY` is gone. See
+  "Task 7b".]**
+- **`boot.c:503-506`**, `boot()`'s second `Boot Graphics` test, is removed,
+  with the blank line after it.
+  - `getBootString`'s test (`boot.c:626-640` now) is the only one left, as
+    in 4.2.
+
+| 4.2 function | extent | ours (`t7a3`) | `compare_flat` | outcome |
+| --- | --- | --- | --- | --- |
+| `setMode` | `boot+4164..4459`, 296 | `_setMode`, `0x3D2C`, 296 | `MATCH: 81 instructions, 171 bytes compared, 124 masked, 17 addresses mapped` | **byte parity** |
+
+- The pad is one `nop` on both sides.
+- **Every mapped value names the expected symbol** by our `nm`. None is a
+  non-address.
+  - Functions: `initMode`, `currentMode`, `putchar`, `copyImage`,
+    `clearRect`, `set_video_mode`, `malloc`, `free`.
+  - Data: `bitmapList+4` (the panel's bitmap pointer), `currentIndicator`,
+    `kernBootStruct`, `showText`, `bufIndex`, `panel`, `screen_height`,
+    `screen_width`, `textBuf`.
+- **`boot()`** went from 712 to 688 bytes: the test was 24 bytes, as Task 3b
+  measured.
+  - 4.2's `boot()` is 700. The 12 left are the memory-size check that Task
+    3b found larger in 4.2, which is outside the panel path.
+
+**The build, `t7a3`, the final 7a booter:**
+- `booter 41600 bytes of 45056, 3456 to spare`.
+- `boot`: `sum 58230 41`, `cksum 3354394691 41600`, SHA-256
+  `4052B32941B6B66F060E8717A907B86F1D6400DB8E1021E79FA0F67D4EC798A1`.
+- `boot.sys`: `sum 63140 1012`, `cksum 1809611904 1036204`, SHA-256
+  `561D66AF4BEB366D9064B9C39E2202BF29C5CD78DE74D4F91697D61A25AE1FFA`.
+- Both are kept as `vm/work/t7a-boot` and `vm/work/t7a-boot.sys`.
+- **Warnings:** the `setMode` warning about `convert_vbe_mode`'s argument is
+  gone. Nothing new appears.
+
+**`vbe.o` is no longer linked, as predicted.**
+- `nm` has none of its symbols:
+  - the five 4.2 functions, `setupPalette` and the eight BIOS wrappers;
+  - `appleClut8`, `vbeModeCount` and `bytes_per_scanline`.
+- A caller scan finds no call from `__text` into any of them.
+
+| section | `t7a2` | `t7a3` | delta |
+| --- | --- | --- | --- |
+| `__text` | 37,901 | 36,037 | -1,864: `vbe.o` -1,720, `setMode` -120, `boot()` -24 |
+| `__cstring` | 4,202 | 3,991 | -211: the setter's six messages (197) and `Graphics Mode` (14) |
+| `__const` | 1,384 | 616 | -768: `appleClut8` |
+| `__data` | 936 | 932 | -4: `vbeModeCount` |
+| `boot` | 44,432 | 41,600 | **-2,832** |
+
+- **So the 3,456 spare is not 7b's room.** 7b's `execKernel` wiring calls
+  the enumerator and the setter, and that links `vbe.o` again.
+- **With `vbe.o` back, the booter would be about 44,288 bytes, 768 spare**
+  [arithmetic, from the rows above].
+  - That is `t7a3`'s sections plus `vbe.o`'s 1,720 of `__text`, 197 of
+    `__cstring`, 768 of `__const` and 4 of `__data`.
+  - `__const` is realigned to 4 bytes, and `__TEXT` rounded to 16.
+  - It is not measured.
+- **The same figure, from the budget** [arithmetic]:
+  - after Task 5, 672 spare;
+  - Task 6, +704;
+  - 7a: the panel path -680 (`t7a1`'s -656 and `boot()`'s -24), and
+    `setMode` -120.
+  - That leaves 768.
+  - Task 3's rows for 7b (`execKernel` +172, `getBootString` +324,
+    `convert_vbe_mode` +32, the name table -60, strings +120) add 588. That
+    would leave about 180.
+
+**The whole panel path in the final build.** All 23 of Task 3b's functions
+`MATCH`, and so does `putchar`.
+- The 16 that already matched still match, with the same counts as in
+  `t7a1`.
+- The 7 rebuilt are byte parity: `setMode`, `loadBitmap`, `copyImage`,
+  `clearRect`, `message`, `spinActivityIndicator` and
+  `clearActivityIndicator`.
+- Task 6's functions cannot be compared in `t7a3`, because they are not
+  linked. Their comparison in `t7a2` stands.
+
+**Step 2, the write order, in the final build.** No store into
+`vbeCurrentMode` or `vbeModes` is reachable, because nothing that makes one
+is linked. The check above, for `t7a2`, is the one that applied.
+
+### The behaviour check [measured]
+
+**Setup.**
+- Two boots, one QEMU at a time, on cirrus.
+- Before each boot, `vm/work/test.img` was rebuilt from `$GOLDEN`:
+  - `$GOLDEN` hashed `E1968E3E...0E663879F` and `$KSPEC2` hashed
+    `74B12FCD...25CFF4`;
+  - `$KSPEC2` was grafted, then `vm/work/t7a-boot` installed. No driver.
+  - `/mach_kernel` was read back (1,490,352 bytes, `74B12FCD...`, OK).
+  - Both boot slots read back as the booter followed by zeros.
+- Both images hashed `5DA27C7136463FAB50E5E32F088B3AB1C2ECAA188EDD89C41D1003570CD1541E`.
+
+**The default boot.**
+- The command: `qemu-shot.py vm/work/test.img vm/shots-t7a-default --at
+  5,15,30,60 --pmemsave 30:0x11000:0x2200`. No keys.
+- **5 s:** the countdown, with `Rhapsody boot v5.0.2`. The frame is
+  pixel-identical to Task 3's and Task 5's 5 s frames (`276180227B36...`).
+- **15 s: 4.2's panel, drawn by our booter.**
+  - The frame is 640x480, in four colours: `colorData`'s greys, (87,87,87),
+    (168,168,168), black and white.
+  - The background is colour 1, dark grey.
+  - Every non-background pixel lies in `(152..494, 108..370)`. That is inside
+    a 352x264 panel at (144, 108), centred as `BOX_X` and `BOX_Y` place it.
+  - `Starting Rhapsody`, `execKernel`'s message, is centred at y 240 on a
+    light-grey band from x 152 to 487. That is `blit_clear`'s `BOX_W - 16`
+    = 336 pixels, centred on 320.
+  - A 16x16 wait cursor is at (312, 256), `CURSOR_X` and `CURSOR_Y`.
+- **The band reaches 2 pixels past the panel's drawn border on each side**
+  (x 152..153 and 486..487). This is 4.2's arithmetic on this panel, not a
+  change of ours [inference].
+- **30 s and 60 s** are one image: the kernel's graphical console, with a
+  `Configuring Network` box and `Continue without network? (y/n)` over the
+  panel.
+- **The dump at 30 s** (`kbs` = `0x11000`):
+  - `graphicsMode` (`kbs+0x14C`) = **1**, as Task 3b predicted;
+  - `magicCookie` (`kbs+0xA4`) is `0xA7A7A7A7`, `numBootDrivers` is 6 and
+    `bootString` is empty, as spec 2 read for the stock booter;
+  - `kbs+0x1854..0x20D7` (the VBE area) and `video` (8408..8431) are all
+    zero.
+- **The serial** is 76 lines and ends at `Continue without network? (y/n)`.
+
+**The verbose boot.**
+- The command: `qemu-shot.py vm/work/test.img vm/shots-t7a-verbose --at
+  5,15,30,60,120 --keys $'mach_kernel -v\n' --keys-at 8 --pmemsave
+  30:0x11000:0x2200`.
+- **No panel.**
+  - The 5 s frame is the same `276180227B36...` banner frame.
+  - From 15 s on, the frames show the kernel's verbose text console.
+- **The dump at 30 s:** `graphicsMode` = **0** and `bootString` = `" -v"`.
+  - It differs from the default boot's dump in those two fields only:
+    offsets 2..4 and `0x14C`. Spec 2 found the same two fields for the stock
+    booter.
+- **The serial against Task 5's A-B-A** (`vm/shots-t5trim-{A1,B,A2}`):
+  - 76 lines, 8 of them phantom-IRQ lines.
+  - Line 4 is identical, date included: the same kernel.
+  - With line 4 and the phantom lines set aside, the log is identical to all
+    three of Task 5's, 68 lines each.
+  - The phantom lines sit at lines 37-44. That is a placement none of Task
+    5's three had, and rule 3 allows it.
+- **The frames against Task 5's, with the clock mask:**
+  - 5 s: 0 px against all three;
+  - 30, 60 and 120 s: 0 px against A1, and 2,443 px against B and A2. That is
+    the same race A1 and A2 show between themselves.
+  - 15 s: 3,913 px against A1 and 11,710 against A2. **303 px differ from
+    both controls and lie outside their own difference.**
+    - Those 303 px are one text row, y 162..171, x 16..292: 35 characters,
+      the width of `intr: phantom IRQ 15, EOI to master`.
+    - Ours prints all 8 phantom lines together (serial lines 37-44), where A1
+      had 1 and then 7.
+    - So it is the phantom-line race in a third placement, not a booter
+      difference [inference, from the serial]. By amended rule 4's letter it
+      is a finding at 15 s. The frames were not a pass criterion here.
+- **The default boot's serial** equals the verbose boot's, phantom lines
+  aside. The kernel's serial console does not show the difference.
+
+---
+
+## Task 7b: the VBE path in the boot flow
+
+7b adds 4.2's `VBE Mode` lookup and mode set to `execKernel`, the `VBE Check`
+listing and the adapter warning to `getBootString`, and rebuilds
+`convert_vbe_mode`. Stages 1 and 2 of Task 7 are 7a's.
+
+**Method.**
+- Each build is `rbuild` as in 7a, after `vm/sync-src.ps1 -Path boot-2`. The
+  copy of `boot-64-2.sym/i386` waits for a `boot.sys` newer than the build's
+  start.
+  - Every binary was checked by its guest `sum` and `cksum`, recomputed
+    locally from the decoded bytes.
+  - The package's `boot` is `cmp`-identical to the copy, and so is
+    `macho2flat` of the copied `boot.sys`.
+  - The guest printed each touched source's `cksum` before building. They
+    equal the local ones.
+- **Four builds.** `t7b1` wired the path. `t7b2` and `t7b3` changed only the
+  source shape of two loops, to reach 4.2's code. `t7b3` is the booter every
+  boot below ran. `t7b4` adds one comment and builds the same `boot`.
+- `compare_flat.py` ran with both images at base `0x3000`. The trailing pad
+  was stripped on both sides, and the pads were then compared by eye.
+- **Loop variants.** They were compiled standalone on the guest, with
+  `/usr/bin/cc` (`cc-783.1`, gcc 2.7.2.1) and the build's flags. The build
+  log's `graphics.c` line shows the same flags: `-O2 -arch i386 -g -Wmost
+  -Wno-precomp -munaligned-text -static`. The standalone compile of the
+  `t7b2` shape gives the `t7b2` build's code, so it stands for the build.
+
+### What changed in the source
+
+- **`execKernel`** (`boot.c`):
+  - 4.2's lookup (`boot+949..1059`) comes after the floppy check and before
+    the `errors` pause. It sets `vbeMode = 0` and calls `enumerateVBEModes()`
+    unconditionally.
+  - It then scans `loaded_drivers` for the first `configTable` that has
+    `VBE Mode`. When one does, it passes `newStringForKey("VBE Mode")`, or
+    failing that the driver's value, to `convert_vbe_mode`.
+  - 4.2's set block (`boot+1224..1263`) comes after APM, immediately before
+    `startprog`: `if (vbeMode) { setMode(TEXT_MODE); if
+    (set_linear_video_mode(vbeMode)) sleep(5); }`.
+- **`getBootString`** (`boot.c`): 4.2's `VBE Check` block (`boot+2556..2879`)
+  sits inside `!isKernel(cp)`, after the `printf("\n")` and before the
+  `config` lookup.
+  - `"VBE Check"=Yes` or `=yes` enumerates.
+  - If there are modes, it prints `Usable VBE modes:` and three per line, in
+    `localPrintf`'s `%d = %dx%dx%s     ` format. Otherwise it prints `The VBE
+    video driver can not be used with this display adapter.`
+  - Either way it prompts again (`goto top`).
+- **`convert_vbe_mode`** (`graphics.c`, `boot+4480..4595`):
+  - It returns `void` and stores `*mode = 0` first.
+  - It tries `mode_table`, then the leading decimal digits.
+  - `mode_table` loses its three `x16` entries. That gives 4.2's 13 entries
+    in 4.2's order (`0xD7C8`, item 1): 340 to 280 bytes.
+- **`libsaio/drivers.c`**: `loaded_drivers` and `num_loaded` lose `static`,
+  and `drivers.h` declares them.
+- **`boot.h`**: `G_MODE_KEY` (`"Graphics Mode"`) gives way to `VBE_MODE_KEY`
+  (`"VBE Mode"`). `graphics.h` gains `convert_vbe_mode`'s prototype, in place
+  of the local one in `graphics.c`.
+
+**[ADDED — final review M1: the driver's comments are now stale, and stay.]**
+`VBE20DisplayDriver.m:61-66` and `:74-77` say that nothing under `src/`
+writes `0x12858` or `0x12870`, and that the booter's only video hand-off is
+`graphics.c:204-208`. Spec 3 removed those lines, and from 7b the booter
+fills both addresses. The file is not edited: spec 1's evidence is the
+`_reloc` hash (`DRVSHA`), and a comment edit shifts its stabs line numbers.
+
+**The orphan rule, applied** [measured, `grep` and `nm`].
+- **`convert_vbe_mode` and `mode_table` are kept.** 4.2's `execKernel` calls
+  `convert_vbe_mode` (`boot+1052`), and that reads the table at `0xD7C8`.
+- **`G_MODE_KEY` is removed.** `grep -rn G_MODE_KEY src/boot-2` found no user
+  after 7a.
+- **`util/spin_cursor.h`**, left with no includer by 7a, is removed in its own
+  commit. `git grep spin_cursor` finds only this record.
+
+**`loaded_drivers` and `num_loaded` are commons in 4.2 too**
+[measured: addresses; inference: 4.2's linkage].
+- In `t7b3`, our `__common` holds, in alphabetical order:
+  - `driverMissing` at `0xE464`, `errors` `0xE468` and `gFilename` `0xE46C`;
+  - `loaded_drivers` `0xE470` and `num_loaded` `0xE474`;
+  - `sysConfigValid` `0xE478`, `useDefaultConfig` `0xE47C`, `verbose_mode`
+    `0xE480` and `wantBootGraphics` `0xE484`.
+- These are 4.2's addresses for the same names (item 1, and the address map
+  of `getBootString` below). 4.2's run is alphabetical as well, which is how
+  the linker lays out commons.
+
+### The comparisons, in `t7b3` [measured]
+
+| 4.2 function | extent | ours (`t7b3`) | `compare_flat` | outcome |
+| --- | --- | --- | --- | --- |
+| `convert_vbe_mode` | `boot+4480..4595`, 116 | `_convert_vbe_mode`, `0x403C`, 116 | `MATCH: 50 instructions, 95 bytes compared, 20 masked, 2 addresses mapped` | **byte parity** |
+| `getBootString` | `boot+2244..3175`, 932 | `_getBootString`, `0x37F4`, 932 | `MATCH: 255 instructions, 652 bytes compared, 277 masked, 35 addresses mapped` | **byte parity**, the whole function |
+| `execKernel`, the lookup | `boot+949..1059`, 111 | `0x33A1`, 111 | `MATCH: 37 instructions, 70 bytes compared, 41 masked, 8 addresses mapped` | **byte parity** |
+| `execKernel`, the set | `boot+1224..1263`, 40 | `0x34B4`, 40 | `MATCH: 13 instructions, 26 bytes compared, 14 masked, 4 addresses mapped` | **byte parity** |
+| `execKernel`, whole | `boot+184..1287`, 1104 | `_execKernel`, `0x30B8`, 1084 | aligner: 665 bytes equal, 409 masked, 0 differ | differs outside the VBE blocks only (below) |
+
+- **The pads match**: `90` for `convert_vbe_mode`, and `90 90 90` for
+  `getBootString`.
+- **Every mapped value names the expected symbol** by our `nm`. None is a
+  non-address.
+  - `convert_vbe_mode`: `strcmp` and `mode_table`.
+  - `execKernel`'s lookup: `enumerateVBEModes`, `getValueForStringTableKey`,
+    `newStringForKey`, `convert_vbe_mode`, `loaded_drivers`, `num_loaded`, the
+    `"VBE Mode"` string, and the block's exit.
+  - `execKernel`'s set: `setMode`, `set_linear_video_mode`, `sleep`, and the
+    block's exit.
+  - `getBootString`: 13 functions, `timeout`, `kernBootStruct`, five
+    commons, and 15 strings. The five commons are `errors`, `sysConfigValid`,
+    `useDefaultConfig`, `verbose_mode` and `wantBootGraphics`, at 4.2's own
+    addresses.
+  - **The 15 strings hold the same bytes on both sides.** Among them are
+    `VBE Check`, `Usable VBE modes:\n`, `888`, `555`, `256`, `%d = %dx%dx%s
+    `, `" "` and the adapter warning.
+- **`getBootString`'s other constants lie outside the masking window**, and
+  are compared: `lea edi,[ebx+1870h]`, `add ebx,1876h`, `cmp word
+  [ebx-2],3E7h` and `mov edi,3`.
+- **`execKernel` outside the VBE blocks.** The only unaligned code is 4.2's
+  standalone-linker retry loop (`boot+566..586`, 20 bytes): 4.2 prompts for a
+  linker floppy and retries, where ours prints an error and goes on. That
+  loop causes one register choice, `edi` against `edx` for `linkerPath` (10
+  bytes). This difference predates spec 3 and is not VBE code, so it is left
+  as it is.
+
+**How the source reaches 4.2's code.**
+- **The listing walks a pointer**: `for (i = 0; i < count; i++, vmr++)`, with
+  `vmr->` fields.
+  - `t7b1` indexed `vmr[i]`. That gave `[esi+ebx+disp]` addressing, and a
+    function 16 bytes shorter.
+  - 4.2 keeps `vmr` in `[ebp-0B4h]`, and a second register, `ebx`, at
+    `vmr + 6`.
+  - 4.2 increments `esi` (`i`), then `ebx`, then `[ebp-0B4h]`. That order is
+    a giv of the pointer biv, updated before the biv, after `i++` [inference,
+    from the order].
+  - With the pointer loop the whole function matches, including 4.2's use of
+    `edi` as scratch and its `sub esp,0B4h`.
+- **The decimal parse is an `if` and a `do`-`while` on a copy of
+  `mode_name`.**
+  - Nine `for` and `while` shapes all compile to a `jmp` into a test at the
+    bottom of the loop [measured, the standalone compiles]. They covered
+    loops on `mode_name` and on a copy, and several ways of writing the
+    arithmetic.
+  - Only the `if` and `do`-`while` form gives 4.2's test on `[edi]`, `ja`,
+    `mov ecx,edi`, `movsx eax,byte [ecx]` and `inc ecx`.
+  - Why the `for` and `while` shapes do not get 4.2's entry test was not
+    determined.
+- **The lookup's `found` flag** gives 4.2's `xor ecx,ecx; test ecx,ecx; je`
+  at `boot+1020` as written: a `found = 0` flag, set to 1 before `break`.
+- **`vbeVal` and `vbeLen` are their own locals**, at 4.2's `[ebp-14h]` and
+  `[ebp-18h]`, and `vbeMode` is at `[ebp-1Ch]`.
+
+**Reference defects, reproduced and labelled on the line.**
+- **`VBE Check` reads `count` when the key is absent.**
+  `getValueForBootKey` does not set `*len` on failure
+  (`libsaio/stringTable.c:321-347`), and 4.2 tests `count > 0` without
+  setting it first (`boot+2600`). On the first pass `count` is uninitialised,
+  and later it is stale. A positive value reads `*val` with `val` = 0 [measured
+  code; candidate defect, not observed].
+- **A mode name in a driver's table never matches** (item 4). The driver's
+  value is not NUL-terminated, so `strcmp` fails, and only digits parse
+  [inference, as item 4].
+
+### A divergence 7b exposes: the driver's table pointer [measured code; not fixed]
+
+**[UPDATED — Task 7c: fixed. RED reproduced the failure with the driver
+first; see "Task 7c: the `configTable` fix".]**
+
+**4.2's lookup reads `loaded_drivers[i].configTable`** (`boot+986..991`).
+- **4.2's `loadOtherConfigs` points that at persistent memory** [measured,
+  `boot+18808..18858`]:
+  1. after a driver loads and links, it frees the `malloc`ed table
+     (`boot+18817`);
+     **[CORRECTED — Task 7c, from 7b's review: 4.2 frees the table whether
+     or not the driver loads. `boot+18813..18817` is reached from all three
+     outcomes of the load attempt: `openDriverReloc` failing (`boot+18739`),
+     either error message (`boot+18806`), and success (`boot+18808`). Only
+     the reload and `driverWasLoaded` depend on the driver linking, through
+     the flag in `edi` (set at `boot+18808`, tested at `boot+18825`)
+     [measured].]**
+  2. it calls `loadConfigDir(name, useDefault, &table, NO)` (`boot+18841`),
+     which reads the tables into `kernBootStruct->config` and points `table`
+     there;
+  3. it passes that pointer to `driverWasLoaded` (`boot+18853`), and only for
+     a driver that linked.
+- **Ours passes the `malloc`ed table and then frees it**
+  (`libsaio/stringTable.c:727-729`). `addToLoadedDriverList` stores the
+  pointer (`libsaio/drivers.c:853`).
+  - So our lookup reads freed `zalloc` memory [measured source].
+  - `malloc` hands out the lowest free block first and zeroes it
+    (`libsa/zalloc.c:98-125`). A driver's table therefore stays readable only
+    until a later allocation reuses its block [inference].
+- **Before 7b nothing read `configTable` from `loaded_drivers`** [measured,
+  `grep`]. `drivers.c:152-156` reads `bundle`, `version` and `locationTag`.
+- **Why the boots below work** [inference].
+  - `install-driver.py` appends `VBE20DisplayDriver` to `Boot Drivers`, so
+    its table is the last one freed.
+  - Nothing allocates between that free and the lookup, unless
+    `loadBootDrivers` runs, which needs `Ask For Drivers` or a missing
+    driver.
+- **Where it would fail** [inference]:
+  - a driver installed first (`install-driver.py --first`, G5's negative
+    control);
+  - a boot that runs `loadBootDrivers`.
+  - In those cases the lookup may miss `VBE Mode`, or read another driver's
+    table.
+- **[ADDED — Task 7c, from 7b's review] 4.2 dangles too, on the
+  `loadBootDrivers` path: a reference defect** [measured code].
+  - 4.2's `pickDrivers` (`boot+20548`) passes `drivers[number].configTable`
+    to `addConfig` and then to `driverWasLoaded`, on both of its load paths:
+    the automatic one (`boot+20768..20788`) and the chosen one
+    (`boot+21219..21249`).
+  - 4.2's `freeDriverList` (`boot+23624`) frees each entry's `+0xC` field,
+    `configTable` (`boot+23677..23682`), and `loadBootDrivers` calls it
+    before returning.
+  - So a driver loaded from a driver disk leaves a dangling
+    `loaded_drivers[i].configTable` in 4.2 as well. Only a boot that reaches
+    `pickDrivers` is affected: a missing driver loaded from a floppy, or
+    install mode [measured source, `boot.c` and `drivers.c`].
+  - Ours has the same code: in `t7b3` both `pickDrivers` and `freeDriverList`
+    match 4.2's byte for byte (Task 7c's comparisons).
+- **This is not changed here.** It is in `loadOtherConfigs`, outside Task
+  7's functions. The source labels it at the lookup. The fix would be to
+  rebuild 4.2's `loadOtherConfigs` tail, which changes when
+  `driverWasLoaded` runs. That is the user's call.
+  - Ours is 612 bytes (`t7b3`), 4.2's 716.
+  - 4.2's also has a `Query` prompt that ours lacks.
+
+### Step 2: the write order, in `t7b3` [measured]
+
+- **Where VBE-area addresses are formed.** A scan of `__text` for a
+  displacement or immediate in `0x1840..0x20D7` finds them in:
+  - `enumerateVBEModes`: `add edi,1870h` (`0x6A7A`) and `add eax,1840h`
+    (`0x6AA4`, the bound's base);
+  - `set_linear_video_mode`: `add edi,1858h` (`0x6B48`);
+  - `getBootString`: `lea edi,[ebx+1870h]` (`0x3992`) and `add ebx,1876h`
+    (`0x39B9`). These are the listing's two pointers, and it only loads and
+    compares through them.
+  - The scan's other hits are Task 7a's unrelated constants: the `0x2000`
+    buffers, `0x1BFF` and `0x1E5C`.
+- **The stores go through `recordVBEMode`.** It is called from
+  `enumerateVBEModes` (`0x6AEE`) and from `set_linear_video_mode`
+  (`0x6C0F`).
+- **Who calls the two writers** (all direct calls):
+  - `enumerateVBEModes` is called from `execKernel` (`0x33A8`),
+    `getBootString` (`0x3979`) and `set_linear_video_mode` (`0x6B4E`);
+  - `set_linear_video_mode` is called only from `execKernel` (`0x34C6`).
+- **`execKernel` and `getBootString` are called only from `boot()`**, at
+  `0x37A7` and `0x367C`, inside its loop.
+- **`boot()` calls `getKernBootStruct` first.** It does so at `0x3564`, on its
+  straight-line entry, after `zeroBSS`, `setA20` and `setMode(0)` (`0x355F`).
+  `setMode` calls none of the VBE functions.
+- **So every store into `vbeCurrentMode` or `vbeModes` runs after
+  `getKernBootStruct()`.** The call paths are:
+  - `boot` → `execKernel` → `enumerateVBEModes` / `set_linear_video_mode` →
+    `recordVBEMode`;
+  - `boot` → `getBootString` → `enumerateVBEModes` → `recordVBEMode`.
+
+### Task 6's functions and the panel path, compared again in `t7b3` [measured]
+
+- **Task 6's functions** show Task 6's counts:
+  - the mode-attributes test, `82/10`, the 640x480 test, `34/6`, and the
+    record writer, `148/0` (whole extents);
+  - the enumerator, `+0..+207` and `+212..+328` `MATCH`. The whole compare
+    stops at `+207` on the 89-record cap.
+- **The setter** gives the same results as in 7a:
+  - whole, `MISMATCH size 432 | 444`;
+  - both splits `MATCH` with Task 6's counts;
+  - the aligner, the palette block set aside: 289 equal, 124 masked, 5 differ
+    (the `0x104` to `0x504` frame bytes); 1 reference-only pad byte.
+- **The palette block's push** is now `0xD674`, `_appleClut8`.
+- **The eye check.** `25 FF FF 00 00` is at setter `+180`.
+- **Every mapped address names its symbol**, as in 7a.
+- **All 23 of Task 3b's panel-path functions, and `putchar`, still
+  `MATCH`**, with 7a's counts.
+- `vbe.o` is linked again. It is 1,720 bytes, `0x68C8..0x6F80`.
+
+### Step 3: size [measured]
+
+**`t7b3`, the final 7b booter:**
+- **`booter 44848 bytes of 45056, 208 to spare`.**
+- `boot`: `sum 30758 44`, `cksum 3293856388 44848`, SHA-256
+  `155DEA4F6F04ABBD4FE3BCDECD5F190A7C33E586186A79AB7B04A6EE755E342F`.
+- `boot.sys`: `sum 52318 1053`, `cksum 3392918704 1078248`, SHA-256
+  `19CB212D441C805A6B6ACCBF572C0E91F5FCBF32C9D6F60E3E4770C6DCFD12C3`.
+- **`t7b4`, the commit's sources.** It adds only the comment that labels the
+  `configTable` divergence at the lookup (below).
+  - Its `boot` is `cmp`-identical to `t7b3`'s, and its `nm -n` is identical.
+  - Its `boot.sys` differs in the debug stabs only: `sum 16215 1053`, `cksum
+    3880992221 1078248`, SHA-256
+    `71873FB86199D0B86967BEB2ADF78E2663EACBFC550DA02FAE3BE94C96301289`.
+    `macho2flat` of it equals `boot`.
+- They are kept as `vm/work/t7b-boot` (`t7b3`, which equals `t7b4`) and
+  `vm/work/t7b-boot.sys` (`t7b4`).
+- **Warnings**: none new in the touched files.
+
+| section | `t7a3` | `t7b3` | delta |
+| --- | --- | --- | --- |
+| `__text` | 36,037 | 38,257 | +2,220 |
+| `__cstring` | 3,991 | 4,322 | +331: the setter's six messages (197) and 7b's strings (134) |
+| `__const` | 616 | 1,384 | +768: `appleClut8` |
+| `__data` | 932 | 876 | -56: `mode_table` -60, `vbeModeCount` +4 |
+| `boot` | 41,600 | 44,848 | **+3,248** |
+
+**The `__text` delta, by `nm` extent:**
+- `vbe.o` +1,720;
+- `getBootString` +316 (616 to 932);
+- `execKernel` +152 (932 to 1084): 4.2's two VBE blocks are 151;
+- `convert_vbe_mode` +32 (84 to 116).
+
+That is 2,220.
+
+**Against 7a's projection** [arithmetic]:
+- 7a projected about 176 spare. It counted the rows `execKernel` +172,
+  `getBootString` +324, `convert_vbe_mode` +32, the name table -60 and
+  strings +134.
+- The measured rows are +152 and +316. `execKernel`'s other 20 are 4.2's
+  linker loop, which is not rebuilt. `getBootString`'s 324 was the block
+  alone, against a whole-function delta of 316.
+- The difference, and `__TEXT`'s rounding, leave 208.
+
+### Step 4: the VBE boot with spec 2's kernel [measured]
+
+**Setup.**
+- `vm/work/test.img` was rebuilt from `$GOLDEN` before every boot:
+  - `$GOLDEN` hashed `E1968E3E...0E663879F`;
+  - `$KSPEC2` was grafted. It hashed `74B12FCD...25CFF4`, and it read back as
+    `/mach_kernel`, 1,490,352 bytes, with the same hash;
+  - `$DRV` was installed. Its `_reloc` read back as `77399531...A36A1`, which
+    is `DRVSHA`. `Default.table`, the binary and `Localizable.strings` read
+    back equal;
+  - then `install-booter.py` wrote `vm/work/t7b-boot`, and both slots read
+    back as the booter followed by zeros.
+- **The config.**
+  - `Boot Drivers` = `EIDE ISASerialPort Floppy PS2Keyboard PCIBus EISABus
+    VBE20DisplayDriver`.
+  - The installed `Instance0.table` has `"VBE Mode" = "257"`.
+  - System.config has no `VBE Mode`.
+- **The runs**, each on `--vga cirrus`, with `--pmemsave 30:0x11000:0x2200`:
+  - `vm/shots-t7-vbe`: no keys, `--at 5,15,30,60,95`;
+  - `vm/shots-t7-vbe-verbose`: `--keys $'mach_kernel -v\n' --keys-at 8`;
+  - `vm/shots-t7-vbe-fallback` (below).
+
+**The default boot, and the verbose one.**
+- **5 s**: `Rhapsody boot v5.0.2`. The frame is `276180227B36...`, the frame of
+  Tasks 3, 5 and 7a.
+- **The dump at 30 s**, the same in both boots except `bootString` (offsets
+  2..4):
+  - `vbeCurrentMode` (6232): mode 257, attributes `0xBB`, 640x480, 640 bytes
+    per line, 8 bpp, model 4, frame buffer `0xFC000000`;
+  - `vbeModes`: **8 records**, 257, 272, 259, 275, 261, 278, 263 and 281.
+    Each has frame buffer `0xFC000000`. Record 8's `xResolution` is zero, as
+    is everything from the ninth record up to `0x20D8`;
+  - `video` (8408..8431): all zero;
+  - `vbeFrameBuffer` (6228): zero;
+  - `graphicsMode` (`kbs+0x14C`): **0** in both boots. The default boot had
+    the panel up (7a), so this 0 is the setter's store.
+    **[CORRECTED — Task 7c, from 7b's review: the 0 cannot be attributed.
+    `execKernel`'s set block calls `setMode(TEXT_MODE)` first, and that
+    already stores 0 (`graphics.c:185`) before the setter's own store
+    (`vbe.c:223`). The dump cannot tell the two stores apart [measured
+    code].]**
+  - The default boot's whole 8,704-byte dump has SHA-256
+    `C7153541...9F5EC37B`.
+- **Serial**: 88 lines in each boot, ending at `Continue without network?
+  (y/n)`.
+  - They include `Display0: using VBE mode 257` and eight `Display0: VBE mode
+    N is width=...` lines, one per record, in record order.
+  - The two logs differ only by `Power management is enabled.` swapping
+    places with a phantom-IRQ line, the race of rule 3.
+  - Against 7a's default boot, the differences are:
+    - the driver's lines;
+    - `Display1` for the Cirrus driver, which now loads second;
+    - `Can't set memory range, using default.`;
+    - `vm_page_free_count` one page lower.
+- **The success path prints nothing.** The requested 257 is offered, so the
+  setter's success path ran, and that path has no print [measured code]. In
+  the fallback run below, the text screen holds only the setter's two
+  fallback lines.
+- **The screen from 15 s to 95 s** is one static 640x480 frame,
+  `F1BD9500...1CD8D1CD`, the same in both boots:
+  - rows 0-119 white;
+  - rows 120-204 black, with one white pixel in every 8;
+  - rows 205-479 black;
+  - 7 pixels of (87,87,87).
+  - As expected, this is not readable. Spec 2's kernel keeps the VGA text
+    console, and Task 8 makes the screen readable.
+
+**The fallback.**
+- `rhap_inject.py set-key` set the installed `Instance0.table`'s `VBE Mode` to
+  `999`, a mode the BIOS does not list. The run used `--at
+  5,9,...,20,22,25,30,60`, with no keys.
+- **11 s**: 4.2's panel, with `Reading Rhapsody configuration` and the wait
+  cursor.
+- **12-15 s**: text mode, showing `VBE mode 999 not supported.` and `Using
+  VBE Mode 257.` at the top. The frames alternate with the cursor blink.
+- **16 s**: black at 640x480, just after the mode set.
+- **17 s on**: the static frame above.
+- **The 30 s dump is byte-identical to the default boot's**, naming 257.
+- The serial again has `using VBE mode 257` and eight `is width` lines.
+
+### Step 5: `VBE Check` on both adapters [measured]
+
+**The runs.** The image was as in Step 4. `"VBE Check"=Yes` and Return were
+typed at 8 s, with the extended key map. The runs are
+`vm/shots-t7-vbecheck-cirrus` and `vm/shots-t7-vbecheck-std`, 16 s frame.
+
+| | listing | against 4.2's own booter, same adapter (Task 3's `shots-t3-ref-*-v`, 11 s) |
+| --- | --- | --- |
+| `cirrus` | 8 modes: 257 = 640x480x256, 272, 259, 275, 261, 278, 263 and 281 = 1280x1024x555 | text rows 18-23 (the typed line to the listing's last row) **pixel-identical** |
+| `std` | 30 modes, from 257 = 640x480x256 to 408 = 2560x1440x888, 10 rows of three | text rows 10-23 **pixel-identical** |
+
+- **The rows that differ** are the banner (`Rhapsody` against `OPENSTEP`),
+  the memory sizes and, on the last row, the cursor's 18 pixels.
+- **Both listings are Task 3's**, in the same order.
+- After the listing the booter prompts again, as 4.2 does.
+- **Not exercised here**:
+  - the adapter warning, since both adapters have VBE 3.0;
+  - `No usable VBE mode. Reverting to VGA.`
+
+## Task 7c: the `configTable` fix
+
+7b's `VBE Mode` lookup reads `loaded_drivers[i].configTable`, and ours left
+that pointing at freed memory (7b's "A divergence 7b exposes"). The user asked
+for the bug to be fixed. 7c rebuilds 4.2's `loadOtherConfigs`, which fixes the
+`Boot Drivers` path as 4.2 does. It then closes the `loadBootDrivers` path,
+which dangles in 4.2 too, with a labelled forced divergence.
+
+**Method.**
+- Builds are `rbuild` as in 7b, after `vm/sync-src.ps1 -Path boot-2`. The
+  guest printed each touched source's `cksum` before building; they equal
+  the local ones. Every binary was checked by its guest `sum` and `cksum`,
+  recomputed locally. The package's `boot` is `cmp`-identical to the copy,
+  and so is `macho2flat` of the copied `boot.sys`.
+- **Two builds, one per commit.** `t7c1` has the `loadOtherConfigs` rebuild
+  alone, and is the first commit's sources. `t7c2` adds the `pickDrivers`
+  change and the label at the lookup, and is the second commit's. `t7c2` is
+  kept as `vm/work/t7c-boot` and `vm/work/t7c-boot.sys`.
+- `compare_flat.py` ran with both images at base `0x3000`, over the functions
+  7b compared plus nine driver and config functions. The pads were compared
+  by eye.
+- **Every boot** used `$GOLDEN` (`E1968E3E...`) + `$KSPEC2` + `$DRV` + the
+  booter under test, rebuilt before each boot, on `--vga cirrus` with `--at
+  5,15,30,60,95 --pmemsave 30:0x11000:0x2200`.
+  - `/mach_kernel` read back as `74B12FCD...`. The driver's files read back
+    equal to `$DRV`'s, and `_reloc` as `DRVSHA`. Both boot slots held the
+    booter followed by zeros.
+  - "Driver first" means `install-driver.py --first`: `Boot Drivers` =
+    `VBE20DisplayDriver EIDE ISASerialPort Floppy PS2Keyboard PCIBus
+    EISABus`. "Driver last" is 7b's order.
+
+### RED: 7b's booter, driver first [measured]
+
+`vm/shots-t7c-red-first-b`, booter `t7b-boot` (`155DEA4F...`).
+- **The dump at 30 s**:
+  - **`vbeCurrentMode` (`kbs+0x1858`) is all zero**;
+  - `vbeModes` holds 7b's 8 records, because the enumerator runs
+    unconditionally;
+  - **`graphicsMode` is 1**: the panel was never taken down, because the
+    set block did not run.
+- **Serial**: there is no `using VBE mode`. The driver, now `VBEDisplay0`,
+  prints `Skipping framebuffer initialization (card not in VBE mode).` and
+  `Driver loaded to export VBE mode list.`.
+- **So the lookup missed `VBE Mode`, and `vbeMode` stayed 0.** 7b's
+  prediction holds. That the block was reused by later drivers' allocations
+  is [inference], from `zalloc`'s lowest-first, zeroing allocator.
+- A first attempt, `vm/shots-t7c-red-first`, lost the harness at the 15 s
+  screendump (a QMP socket timeout) before any dump. Its partial serial
+  shows the same `Skipping framebuffer initialization` line.
+
+### 4.2's `loadOtherConfigs`, rebuilt [measured]
+
+**What 4.2's differs in.** 4.2's is `boot+18288..19003` (716 bytes); ours in
+`t7b3` was 612. Read side by side, three things differ:
+1. **A `Query` prompt** at the top of the loop (`boot+18406..18480`). If
+   `Query` is set, 4.2 calls `setMode(TEXT_MODE)`, then prints
+   `localPrintf("Load driver: \"%s\" ([y]/n)? ", string)`. It reads
+   `gets(buf, 16)` until the reply is empty, `y` or `n`. On `n` it goes back
+   to the loop top.
+   - `buf` is at `[ebp-18h]`, allocated after `val` and `count`. So it is an
+     array local to the block.
+2. **The load is an `else if` chain.** A failed `loadDriver` skips
+   `linkDriver`, and the two error messages share one `call _error` (the
+   cross-jump at `boot+18798`). `edi` is set to 1 only after a successful
+   link (`boot+18808`).
+3. **The tail** (`boot+18813..18858`):
+   - it frees the table on every outcome of the load attempt;
+   - then, only if `edi` is set, it calls `loadConfigDir(string,
+     useDefault, &table, NO)` and `driverWasLoaded(string, table, NULL)`.
+- **The tail cannot match without the prompt.** `buf`'s 16 bytes, and one
+  more spill (`tableName`, `[ebp-44h]`), move every stack slot. **So the
+  whole function is rebuilt.**
+
+**The source** (`libsaio/stringTable.c`):
+- the `Query` block, with `char buf[16]` declared inside it;
+- `int loaded = 0;` in the load block, then `else if` and `else loaded =
+  1;`;
+- the tail: `free(table); if (loaded) { loadConfigDir(..., &table, NO);
+  driverWasLoaded(...); }`;
+- `setMode` declared `extern` in the file, as `disk.c` declares
+  `spinActivityIndicator`.
+- **A reference defect, reproduced and labelled on the line**: on `n`,
+  `string` is not freed.
+
+**The comparison, in `t7c1` and again in `t7c2`:**
+- **`loadOtherConfigs` is at byte parity with the first build**: `MATCH:
+  241 instructions, 456 bytes compared, 258 masked, 37 addresses mapped`,
+  716 against 716. The pad is `00 00` on both sides.
+- **Every mapped value names the expected symbol**:
+  - the functions `setMode`, `gets`, `localPrintf`, `verbose`, `error`,
+    `getBoolForKey`, `getValueForKey`, `newStringFromList`,
+    `newStringForStringTableKey`, `usrDevices`, `currentdev`, `switchdev`,
+    `loadConfigFile`, `loadConfigDir`, `driverIsMissing`, `driverWasLoaded`,
+    `openDriverReloc`, `loadDriver`, `linkDriver`, `malloc`, `free`,
+    `strcmp` and `sprintf`;
+  - `kernBootStruct` and `sysconfig_dev`;
+  - 12 strings, which hold the same bytes on both sides. Among them are
+    `Query` and `Load driver: "%s" ([y]/n)? `.
+
+**What changes in behaviour, as 4.2** [measured code; inference for effect]:
+- **A driver that fails to open, load or link now gets no entry.** Its
+  tables no longer go into `kernBootStruct->config`, and it is not added to
+  `loaded_drivers`. Before 7c both happened for every driver whose table
+  loaded.
+  - On `$GOLDEN` every `Boot Drivers` bundle has a `_reloc` [measured].
+  - The GREEN boots below register the same drivers as 7b's.
+- **The recorded table is now the last instance table read.**
+  `loadConfigFile` sets `*table` for each `Instance<n>.table` that
+  `loadConfigDir` reads, and the lookup sees only that one table. Before
+  7c, ours recorded the `malloc`ed `Instance0.table`. The VBE driver has one
+  instance.
+- **`Query` now asks before each boot driver.** It is inert unless the key is
+  set, and it was not exercised.
+- **A residual 4.2 defect, not fixed**: if the second `loadConfigDir` loads
+  nothing, `table` keeps the freed pointer. That happens only when the
+  config area is full (`No room in memory for config files`).
+  `driverWasLoaded` would then record freed memory [inference, from the
+  code].
+  **[ADDED — final review: the label at the lookup (`boot.c:318-321`) said
+  "configTable is valid here" without this exception. It now names it; see
+  "Final review fixes".]**
+
+### The `loadBootDrivers` path: a forced divergence [measured]
+
+**Ours dangles as 4.2 does.** In `t7b3`, `pickDrivers` (736 bytes) and
+`freeDriverList` (108) match 4.2's byte for byte (223 and 43 instructions).
+`pickDrivers` records `drivers[number].configTable`, and `freeDriverList`
+frees it before `loadBootDrivers` returns (`drivers.c:129-131`, `:182-190`,
+`:616` and `:760`, as of 7b).
+
+**The fix: record `addConfig`'s copy.** At both sites, the source now:
+1. reads `kernBootStruct->configEnd` into `table` before `addConfig`;
+2. passes `drivers[number].configTable` to `addConfig`, which copies it
+   there;
+3. passes `table` to `driverWasLoaded`.
+- So the recorded pointer is the permanent copy in `kernBootStruct->config`,
+  as `loadOtherConfigs` now records.
+- If `addConfig` has no room, it copies nothing, and `table` points at the
+  empty string at `configEnd`. That is not dangling [inference, from
+  `addConfig` and `loadConfigFile`].
+- **It is labelled in the source** as a forced divergence from a 4.2
+  reference defect, fixed at the user's request.
+
+**Why this and not "don't free a loaded driver's table"** [inference, from
+the code]:
+- `freeDriverList` cannot tell which entries were loaded.
+- Clearing `drivers[number].configTable` after each call needs the entry's
+  address formed again after two calls. That is about 19 bytes a site
+  (estimated, not built), against the 11 measured here.
+- Freeing no tables at all leaks every unchosen driver's table.
+
+**The cost, and what it moves:**
+- **`pickDrivers` grows from 735 to 757 bytes of code** (736 to 760 with
+  the pad). Each site adds `mov eax,[_kernBootStruct]; mov ebx,[eax+158h]`,
+  11 bytes. `ebx` holds `table` across `addConfig`, as before.
+- **The register choice changes throughout the function.** The aligner puts
+  412 bytes equal and 239 masked, with 0 differing. The unaligned bytes are
+  84 on 4.2's side and 106 on ours:
+  - the two 11-byte insertions;
+  - at each site, `mov eax,[ecx+eax+0Ch]; push eax` against 4.2's `mov
+    ebx,...; push ebx`;
+  - `esi` and `edi` swapped everywhere (`number` is `edi`, and the
+    `[ebp-94h]` pointer is `esi`). This is a knock-on of the allocator
+    [inference].
+  - The aligner reports six branch "problems". Each is a branch whose target
+    is one of those replaced instructions, and each lands on the same point
+    of the code in both streams (checked by eye: the `inc`, the `lea` of
+    `number`, the `cmp` with -2, the `dec`, and, for two of them, the start
+    of the second site).
+- `freeDriverList` is unchanged, and still `MATCH`es.
+
+**Not exercised under QEMU** [inference, from the code].
+- `pickDrivers` runs only for a missing driver the user loads from a floppy,
+  or in install mode.
+- Both paths read the drivers from `fd()`. `qemu-shot.py` attaches no
+  floppy, and there is no tool here to build a UFS floppy holding a driver.
+- The evidence for this path is therefore the source and the disassembly
+  above.
+
+### Size [measured]
+
+| build | contents | `__text` | `__cstring` | size line |
+| --- | --- | --- | --- | --- |
+| `t7b3` | 7b | 38,257 | 4,322 | `booter 44848 bytes of 45056, 208 to spare` |
+| `t7c1` | + `loadOtherConfigs` | 38,361 (+104) | 4,356 (+34) | `booter 44992 bytes of 45056, 64 to spare` |
+| `t7c2` | + `pickDrivers` | 38,385 (+24) | 4,356 | **`booter 45008 bytes of 45056, 48 to spare`** |
+
+- `t7c1`'s `+144` is the function's 104 bytes, the two new strings' 34 and
+  `__TEXT`'s rounding. 7b's record gave 612 against 716 for the function,
+  and did not count the strings.
+- `t7c2`'s `boot` has `sum 52083 44`, `cksum 2206134810 45008` and SHA-256
+  `8AA489F19C80875AE9149647C94C7AB526FD116338F1014B4AED464347547735`.
+- Its `boot.sys` has `sum 62341 1054`, `cksum 2757456854 1078660` and SHA-256
+  `AEA713646C83B94D46286F05945A42FD2C9AB5202E87353A03236358EFC82974`.
+- **Warnings**: nothing new. `stringTable.c` warns only about `strncat`, in
+  the unchanged `loadSystemConfig`. `drivers.c` has no warnings.
+
+### Nothing else moved [measured, `t7c2`]
+
+Every other function compared gives the result and counts it gave in
+`t7b3`, apart from addresses:
+- `execKernel`'s lookup (37/70/41/8) and set block (13/26/14/4);
+- `getBootString` (255/652/277/35) and `convert_vbe_mode`;
+- `setMode` and the other 22 panel-path functions, and `putchar`;
+- Task 6's five functions, including the enumerator's known stop at `+207`
+  and the setter's palette divergence;
+- `addConfig`, `loadConfigFile`, `loadConfigDir`, `driverIsMissing`,
+  `addToLoadedDriverList`, `isInteresting`, `driverWasLoaded` and
+  `freeDriverList`, which all `MATCH` 4.2.
+
+### GREEN [measured]
+
+**Driver first** (`vm/shots-t7c-green-first`, booter `t7c-boot`, the RED
+setup exactly):
+- **5 s**: `Rhapsody boot v5.0.2`, with the frame `276180227B36...`.
+- **The dump at 30 s**:
+  - **`vbeCurrentMode` = 257**: 640x480, 8 bpp, model 4, frame buffer
+    `0xFC000000`;
+  - **`vbeModes` holds 8 records from `0x1870`**, and the ninth is zero;
+  - `graphicsMode` is 0.
+  - The dump differs from 7b's driver-last dump only in `driverConfig[]`
+    (`kbs+0x16C..0x19D`, 29 bytes), because the load order changed.
+- **Serial**: **`Display0: using VBE mode 257`** and the eight mode lines.
+  The Cirrus driver becomes `Display1`.
+- **Frames 15-95 s**: `F1BD9500...`, 7b's static VBE frame.
+- `t7c1`, with the `loadOtherConfigs` rebuild alone
+  (`vm/shots-t7c1-first`), gives the same dump. Its serial differs only by a
+  phantom-IRQ line (rule 3). The `Boot Drivers` path is fixed by that
+  rebuild.
+
+**Driver last** (`vm/shots-t7c-green-last`, 7b's Step 4 setup):
+- **The dump is byte-identical to 7b's default boot** (`C7153541...`).
+- **Every frame is identical** to 7b's: `276180227B36...` at 5 s, then
+  `F1BD9500...`.
+- **The serial is identical once the phantom-IRQ lines are set aside**
+  (81 lines each). `Power management is enabled.` changes place among them,
+  the race of rule 3.
+- **Nothing regressed.** The same drivers register as in 7b: `hc0`, `hd0`,
+  `ISASerialPort0`, `fc0`, `PS2Controller`, `PCKeyboard0`, `PCI0`, `EISA0`,
+  `Display0` and `Display1`.
+
+### `bootefi-1` [ADDED — final review I1]
+
+`src/bootefi-1`, the host-built IA32 UEFI loader, compiles `stringTable.c`
+and `drivers.c` from source and calls `loadOtherConfigs(0)`
+(`src/bootefi-1/efi_main.c:144`). So it inherits both of 7c's behaviour
+changes: `Query` prompts, and a boot driver that fails to open, load or link
+is dropped. And 7c's `Query` block calls `setMode`, which no `bootefi-1`
+source defined, so its link failed [measured, final review, by compile].
+- **Fixed at the user's request** (`bootefi:` commit `56bd2ba79`): a no-op
+  `setMode` beside the `gets` and `localPrintf` stubs in
+  `src/bootefi-1/efi_console.c`. That console is always text.
+- **Evidence** [measured, LLVM 22.1.8, bootefi-1's own `Makefile`]:
+  `stringTable.obj` needs `_setMode` at `1c04c16ac` and not at `b82b711b3`;
+  after the stub, `efi_console.obj` defines it.
+- **A break on master that is not spec 3's** [measured]. `lld-link` still
+  reports `_NXSwapBigLongToHost` undefined, from `sys.c:363`, on master
+  (`56af1af09`), on this branch's base and after the stub alike. `sys.c`
+  gained that call in `658b10eff` (2026-09-21), and bootefi-1 compiles
+  `sys.c` with `-D__LITTLE_ENDIAN__=0`, under which `byte_order.h` defines
+  neither version. With a scratch definition of that one symbol, master
+  links, `1c04c16ac` fails on `_setMode` alone, and the stub links.
+
+## Final review fixes: `VideoModePtr` and three comments
+
+The final whole-branch review found the enumerator's `VideoModePtr` defect
+(item 6, "The enumerator") recorded without its worst case, and made worse
+by running on every boot (review I3). The user asked for it to be fixed, as a
+labelled forced divergence. Three source comments the review listed as
+"record now, source later" were corrected in the same build.
+
+**The source.**
+- **`libsaio/vbe.c`, the enumerator.** `modes` is now `((byte 3 << 8 | byte
+  2) << 4) + (byte 1 << 8 | byte 0)` of `VideoModePtr`: segment * 16 +
+  offset, the real-mode address. It is labelled on the line as a forced
+  divergence from a 4.2 reference defect, fixed at the user's request.
+  `ADDRESS()` stays, for `PhysBasePtr` in `recordVBEMode`.
+- **Comments only:**
+  - `libsaio/vbe.h:102` cited `boot+27707`, the frame's `sub esp,308h`. It
+    now cites `boot+27763`, the `lea eax,[ebp-200h]` that passes the
+    0x200-byte block to `getVBEInfo`.
+  - `libsa/kernBootStruct.h:164`: "90 records (0x880 bytes from 0x1870)"
+    is now "90 records (0x870 bytes from 0x1870; the driver scans 0x880
+    bytes from there)". 90 records of 24 bytes are `0x870`; `0x880` is the
+    driver's scan size. The kernel's copy (`machdep/i386/kernBootStruct.h`)
+    carries the same text, changed in the kernel's commit.
+  - `boot2/boot.c:318-321`: "configTable is valid here" now names its one
+    exception. With the config area full, `loadOtherConfigs`' second
+    `loadConfigDir` leaves `configTable` at the freed block, the 4.2
+    reference defect Task 7c kept.
+
+**The build, `tfin1`** [measured]:
+- `rbuild`, after `vm/sync-src.ps1 -Path boot-2`. The guest's `cksum`s equal
+  the local ones: `vbe.c` `1992008536 10243`, `vbe.h` `842440211 6671`,
+  `kernBootStruct.h` `3566834117 7885`, `boot.c` `1951567425 19438`.
+  `stringTable.c`, `drivers.c` and `graphics.c` are `t7c2`'s.
+- **`booter 45008 bytes of 45056, 48 to spare`**, as `t7c2`. `size` gives
+  the same `__TEXT` (44,128) and `__DATA` (4,080), and `nm -n` lists every
+  symbol at `t7c2`'s address.
+- `boot`: `sum 64283 44`, `cksum 3006998098 45008`, SHA-256
+  `8B06C0A3B1F3B2FB07353F83FA87025370FAAB05AEFD0035FB76CD2C1BB8F675`.
+- `boot.sys`: `sum 46472 1054`, `cksum 1500543729 1078648`, SHA-256
+  `2AFA0646205B54EE5BE16CDC0C697832AB426698EC752BE6FAA9E0A874C04C48`.
+- Guest and local sums agree; the package's `boot` is `cmp`-identical to the
+  copy, and so is `macho2flat` of `boot.sys`. Kept as `vm/work/tfin-boot`
+  and `vm/work/tfin-boot.sys`.
+- No new warnings. `boot.c`'s old ones moved two lines down.
+- **Against `t7c2`'s `boot`, 192 bytes differ, all inside the enumerator**
+  (`0x69FB..0x6B27`). The comment edits changed no byte of `boot`.
+
+**The enumerator against 4.2** [measured]:
+
+| | |
+| --- | --- |
+| reference | `boot+27704..28031`, 328 bytes (`0x9C38`) |
+| ours | `_enumerateVBEModes`, `0x69E0`, 328 bytes (next: `_set_linear_video_mode` at `0x6B28`) |
+| `compare_flat`, whole | `MISMATCH +26: branch to +314 \| +315`: the epilogue is one byte later |
+| `compare_flat`, `+0..+26` | `MATCH: 9 instructions, 17 bytes compared, 9 masked, 2 addresses mapped` |
+| `compare_flat`, `+31..+106` | `MATCH: 15 instructions, 61 bytes compared, 14 masked, 4 addresses mapped` |
+| Task 7c's aligner, the address block set aside | aligned: 181 bytes equal, 52 masked, **1 differs** (the cap); unaligned: 52 reference-only and 51 ours-only bytes |
+| outcome | **two forced divergences**, the cap and the address, plus the register choice that follows from the address |
+
+Every byte, accounted:
+- **The address block**, 4.2 `+106..+147` (42 bytes) against ours
+  `+106..+148` (43 bytes).
+  - 4.2: `mov bl,[ebp-1EFh]; shl ebx,18h`, then bytes 2, 1 and 0 shifted by
+    16, 8 and 0 and `or`ed in: `(segment << 16) | offset`.
+  - Ours: `movzx ebx,[ebp-1EFh]; shl ebx,8; movzx eax,[ebp-1F0h]; or
+    ebx,eax; shl ebx,4`, then `movzx eax,[ebp-1F1h]; shl eax,8; movzx
+    edx,[ebp-1F2h]; or eax,edx; add ebx,eax`: segment * 16 + offset, in
+    `ebx` as before.
+- **The cap**, 1 byte, `cmp eax,897h` against `cmp eax,880h` at `+207` |
+  `+208`: Task 6's.
+- **The register choice**, 51 bytes on each side in six groups. Where 4.2
+  uses `edx` as the loop's scratch register, ours uses `ecx`: the `lea` and
+  its spill (`+179` | `+180`), `mov`/`sub`/`mov` before the cap (`+201` |
+  `+202`), the three `mov r,[ebp-308h]; push r` (`+214`, `+238`, `+257` |
+  `+215`, `+239`, `+258`), and the tail's `mov r,[ebp-304h]; mov
+  [vbeModeCount],r` (`+296` | `+297`). The lengths are equal and only the
+  register fields differ [measured]. The address block now holds a value in
+  `edx`, so the allocator took `ecx` for the loop [inference].
+- **The pad.** 4.2 has one `nop` at `+327`; ours has none. The extent is
+  328 on both sides.
+- **The branches the aligner flags** land at corresponding points: the `ja`
+  at `+87` to the address block's first instruction (`+106` on both sides),
+  and the loop's two exits (`+177` | `+178`, `+212` | `+213`) to the tail's
+  first instruction (`+296` | `+297`), one of the register-swapped ones.
+  The two `jmp`s to the epilogue (`+26`, `+101`) land at `+314` | `+315`.
+- **The mapped addresses** name, by our `nm`, `_vbeModeIsLargeEnough`,
+  `_recordVBEMode`, `_getVBEInfo`, `_getVBEModeInfo`, `_kernBootStruct` and
+  `_vbeModeCount`.
+- **Calibration.** The same aligner on `t7c2`'s enumerator finds only the
+  cap: 271 bytes equal, 56 masked, 1 differs, nothing unaligned.
+
+**Behaviour** [inference, from the code]. With segment 0 both forms give the
+same address, so QEMU's adapters (`0000:FD1A`, item 6) see no change; the
+G2 boot re-run on the final artifacts shows it (`$GATE`, "After the gates:
+the final booter and kernel"). A non-zero segment is not exercised: there is no such adapter here,
+and no hardware.
+
+**Nothing else moved** [measured, `tfin1`]. Task 7c's comparisons
+(`pairs7c.py`: 42 functions and `execKernel`'s two VBE blocks) give `t7c2`'s results and counts, addresses aside, except the
+enumerator. `execKernel`'s lookup is `MATCH: 37 instructions, 70 bytes
+compared, 41 masked, 8 addresses mapped` and its set block `13/26/14/4`;
+`getBootString` is `MATCH: 255 instructions, 652 bytes compared, 277 masked,
+35 addresses mapped`.

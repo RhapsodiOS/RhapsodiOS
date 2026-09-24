@@ -38,7 +38,6 @@
 #import "graphics.h"
 #import "language.h"
 #import "bitmap_list.h"
-#import "spin_cursor.h"
 #import "vbe.h"
 #import "kernBootStruct.h"
 
@@ -51,7 +50,6 @@ const struct bitmap *panel;
 
 static BOOL loadAllBitmaps( void );
 static font_t *loadFont(char *fontname);
-int convert_vbe_mode(char *mode_name, int *mode);
 
 void
 message(
@@ -60,7 +58,7 @@ message(
 )
 {
 	register int x;
-	//register int y;
+	register int y;
 	BOOL tshow = showText;
 	char *val = 0;
 	
@@ -71,14 +69,10 @@ message(
 	}
 	x = (NCOLS - strlen(str)) >> 1;
  	if (kernBootStruct->graphicsMode == GRAPHICS_MODE) {
-	    strwidth ("9");  // stupid!! must have this or it won't link
-	    /*
-	     *  Do nothing for now since it messes up the image
-	     *
+	    /* In the panel, as 4.2 draws it (boot+3878..3981). */
 	    y = MESSAGE_Y;
-	    blit_clear(BOX_W - 48, BOX_C_X, y, CENTER_V | CENTER_H, TEXT_BG);
+	    blit_clear(BOX_W - 16, BOX_C_X, y, CENTER_V | CENTER_H, TEXT_BG);
 	    blit_string(str, BOX_C_X, y, TEXT_FG, CENTER_V | CENTER_H);
-	     */
 	} else {
 	    showText = 1;
 	    if (centered)
@@ -172,12 +166,14 @@ initMode(int mode)
     return YES;
 }
 
+/*
+ * OPENSTEP 4.2 User Patch 4's setMode (boot+4164..4459). Graphics mode is
+ * the Boot Graphics panel in VGA mode 0x12; text mode replays the text
+ * buffered while the panel was up.
+ */
 void
 setMode(int mode)
 {
-	unsigned short vmode;
-	char *vmode_name;
-
 	if (currentMode() == mode)
 	    return;
 
@@ -186,26 +182,15 @@ setMode(int mode)
 	    return;
 	}
 
-	if (mode == GRAPHICS_MODE &&
-		(vmode_name = newStringForKey(G_MODE_KEY)) != 0)
-	{
+	kernBootStruct->graphicsMode = mode;
+	if (mode == GRAPHICS_MODE) {
 	    textBuf = malloc(TEXTBUFSIZE);
 	    bufIndex = showText = 0;
 
-	    if (!convert_vbe_mode(vmode_name, &vmode))
-		vmode = mode1024x768x256;   /* default mode */
-
-	    set_linear_video_mode(vmode);
+	    set_video_mode(0x12);
 
 	    clearRect(0, 0, SCREEN_W, SCREEN_H, SCREEN_BG);
 	    copyImage(bitmapList[PANEL_BITMAP].bitmap, BOX_X, BOX_Y);
-
-	    kernBootStruct->graphicsMode = GRAPHICS_MODE;
-	    kernBootStruct->video.v_baseAddr    = (unsigned long)frame_buffer;
-	    kernBootStruct->video.v_width       = SCREEN_W;
-	    kernBootStruct->video.v_height      = SCREEN_H;
-	    kernBootStruct->video.v_depth       = bits_per_pixel;
-	    kernBootStruct->video.v_rowBytes    = (SCREEN_W * bits_per_pixel) >> BYTE_SHIFT;
 	} else {
 	    showText = 1;
 	    set_video_mode(2);
@@ -230,14 +215,12 @@ typedef struct {
     int  mode_val;
 } mode_table_t;
 
+/* 4.2's table (0xD7C8): no x16 modes */
 mode_table_t mode_table[] = {           
 { "640x400x256",   mode640x400x256 },
 { "640x480x256",   mode640x480x256 },
-{ "800x600x16",    mode800x600x16 },
 { "800x600x256",   mode800x600x256 },
-{ "1024x768x16",   mode1024x768x16 },
 { "1024x768x256",  mode1024x768x256 },
-{ "1280x1024x16",  mode1280x1024x16 },
 { "1280x1024x256", mode1280x1024x256 },
 { "640x480x555",   mode640x480x555 },
 { "640x480x888",   mode640x480x888 },
@@ -249,32 +232,43 @@ mode_table_t mode_table[] = {
 { "1280x1024x888", mode1280x1024x888 },
 { "", 0 }};
 
-int convert_vbe_mode(char *mode_name, int *mode)
+/*
+ * OPENSTEP 4.2 User Patch 4's convert_vbe_mode (boot+4480..4595): a name
+ * from mode_table or, failing that, the leading decimal digits. 0 if neither.
+ */
+void convert_vbe_mode(char *mode_name, int *mode)
 {
     mode_table_t *mtp = mode_table;
+    char *cp;
 
+    *mode = 0;
     if (mode_name == 0 || *mode_name == 0)
-	return 0;
+	return;
 
     while (*mtp->mode_name)
     {
 	if (strcmp(mtp->mode_name, mode_name) == 0)
 	{
 	    *mode =  mtp->mode_val;
-	    return 1;
+	    return;
 	}
 	mtp++;
     }
-    return 0;
-
+    /* if and do-while: a for or while loop does not give 4.2's boot+4550 */
+    if (*mode_name >= '0' && *mode_name <= '9') {
+	cp = mode_name;
+	do
+	    *mode = *mode * 10 + *cp++ - '0';
+	while (*cp >= '0' && *cp <= '9');
+    }
 }
 
 
 static char indicator[] = {'-', '\\', '|', '/', '-', '\\', '|', '/', '\0'};
 static const struct bitmap *indicator_bitmap[4] = {
-    &wait1_bitmap,
-    &wait2_bitmap,
-    &wait3_bitmap,
+    &ns_wait1_bitmap,
+    &ns_wait2_bitmap,
+    &ns_wait3_bitmap,
     0
 };
 
@@ -312,11 +306,8 @@ clearActivityIndicator( void )
     if (showText) {
 	reallyPrint(" \b");
     } else {
-	/*
-	 * Turn this off since it messes up the panel image. (the
-	 *  panel image is not necessarily TEXT_BG)
-	 */
-	//clearRect(CURSOR_X, CURSOR_Y, CURSOR_W, CURSOR_H, TEXT_BG);
+	/* 4.2 clears the cursor to the panel's light grey (boot+4854). */
+	clearRect(CURSOR_X, CURSOR_Y, CURSOR_W, CURSOR_H, TEXT_BG);
     }
 }
 

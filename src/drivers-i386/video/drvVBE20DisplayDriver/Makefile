@@ -7,27 +7,31 @@
 # and Makefile.postamble (both optional), and Makefile will include them.
 #
 
-NAME = Intel82557
+NAME = VBE20DisplayDriver
 
-PROJECTVERSION = 5.00
+PROJECTVERSION = 2.6
+PROJECT_TYPE = Aggregate
 LANGUAGE = English
 
-LOCAL_RESOURCES =
+LOCAL_RESOURCES = Localizable.strings
 
 GLOBAL_RESOURCES = Default.table
 
+TOOLS = VBE20DisplayDriver.drvproj
+
 OTHERSRCS = Makefile.preamble Makefile Makefile.postamble
 
-MAKEFILEDIR = /NextDeveloper/Makefiles/app
-MAKEFILE = bundle.make
-INSTALLDIR = /usr/Devices
-INSTALLFLAGS = -c -s -m 755
+MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
+CODE_GEN_STYLE = DYNAMIC
+MAKEFILE = aggregate.make
 SOURCEMODE = 444
 
-LIBS = -lIndexing_s
-PROF_LIBS = -lIndexing_s
+BUNDLE_EXTENSION = config
 
 
+
+
+include $(MAKEFILEDIR)/platform.make
 
 -include Makefile.preamble
 

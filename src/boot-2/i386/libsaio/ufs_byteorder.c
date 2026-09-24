@@ -69,25 +69,6 @@ byte_swap_shorts(short *array, int count)
 }
 
 void
-swapBigIntsToHost(int *array, int count)
-{
-	register int	i;
-
-	for (i = 0;  i < count;  i++)
-		swapBigLongToHost(array[i]);
-}
-
-
-void
-swapBigShortToHosts(short *array, int count)
-{
-	register int	i;
-
-	for (i = 0;  i < count;  i++)
-		swapBigShortToHost(array[i]);
-}
-
-void
 byte_swap_superblock(struct fs *sb)
 {
 	u_int16_t *usptr;

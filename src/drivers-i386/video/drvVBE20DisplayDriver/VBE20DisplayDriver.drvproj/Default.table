@@ -1,0 +1,18 @@
+"Title" = "VESA 2.0 Display Driver";
+"Family" = "Display";
+"Instance" = "0";
+"Version" = "1.00";
+"Driver Name" = "VBE20DisplayDriver";
+"DMA Channels" = "";
+"IRQ Levels" = "";
+"Bus Type" = "";
+"Auto Detect IDs" = "";
+"Boot Driver" = "Yes";
+"VBE Mode" = "257";
+
+"Memory Maps" = "";
+"I/O Ports" = "";
+"Location" = "";
+
+"Server Name" = "VBE20DisplayDriver";
+"Driver Version" = "PROGRAM:VBE20DisplayDriver PROJECT:drvVBE20DisplayDriver-1 DEVELOPER:cfriesen BUILT:NO DATE SET (-B used)";

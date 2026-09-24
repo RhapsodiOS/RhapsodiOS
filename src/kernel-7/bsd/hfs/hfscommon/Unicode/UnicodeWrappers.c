@@ -1766,6 +1766,11 @@ static OSErr MacRomanToUnicode (ConstStr255Param pascalString, ItemCount *unicod
 
 	*unicodeChars = pascalChars = *(p++);	// pick up length byte
 
+	if (pascalChars > kHFSMaxFileNameChars) {	// corrupt name: callers only have room for 2 * 31 UniChars
+		*unicodeChars = 0;
+		return cmBadNews;
+	}
+
 	while (pascalChars--) {
 		c = *(p++);
 

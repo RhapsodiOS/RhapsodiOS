@@ -33,7 +33,7 @@ VPATH = $(OBJROOT):$(SYMROOT)
 
 # The ordering is important;
 # boot2.o should be first.
-OBJS = boot2.o boot.o module.o \
+OBJS = boot2.o boot.o \
 	graphics.o prompt.o bitmaps.o \
 	sizememory.o
 # button.o browser.o scrollbar.o == NOTYET	

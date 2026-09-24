@@ -4,3 +4,4 @@ pkgdesc = Mach+BSD kernel
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
 license = APSL
 makedepends = build-base, architecture, driverkit, kernel-hdrs, libstreams-hdrs, machkit, objc, adv-cmds, gnudiff
+makedepends_ppc = drvpexpert

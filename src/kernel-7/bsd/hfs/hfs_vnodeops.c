@@ -2921,15 +2921,16 @@ struct vop_readdirattr_args /* {
     struct attrlist 	*alist = ap->a_alist;
     register struct uio *uio = ap->a_uio;
     struct hfsnode 		*hp = VTOH(ap->a_vp);
+	struct proc			*p = CURRENT_PROC;
     ExtendedVCB 		*vcb = HTOVCB(hp);
     off_t 				off = uio->uio_offset;
-    size_t 				count;
     struct hfsCatalogInfo catalogInfo;
     struct hfsCatalogInfo *catInfoPtr = NULL;
     UInt32 				dirID = H_FILEID(hp);
     UInt32				index = 0;
+    UInt32				entries = 0;
     OSErr				result = noErr;
-    UInt32				origOffset;
+    off_t				origOffset;
     Boolean				eofReached = FALSE;
     int					retval = 0;
     u_long 				fixedblocksize;
@@ -2971,16 +2972,16 @@ struct vop_readdirattr_args /* {
         return EINVAL;
     };
 
-    origOffset 	= uio->uio_offset;
-    count 		= uio->uio_resid;
-
-  /* Make sure we don't return partial entries.  */
-    count -= ((uio->uio_offset + count) % sizeof(hfsdirentry));
-    if (count <= 0) {
-        DBG_ERR(("%s: Not enough buffer to read in entries\n",funcname));
+    /* The offset counts entries (see below), so a negative one is meaningless;
+     * lseek allows one.  Partial entries are avoided by the resid check in the loop.
+     */
+    if (uio->uio_offset < 0 || uio->uio_resid <= 0) {
+        DBG_ERR(("%s: bad offset or no buffer\n",funcname));
         DBG_VOP_LOCKS_TEST(EINVAL);
         return (EINVAL);
     }
+
+    origOffset 	= uio->uio_offset;
 
     DBG_VOP(("%s: offset Ox%lX, bytes Ox%lX\n",funcname,
              (u_long)uio->uio_offset, (u_long)uio->uio_iov->iov_len));
@@ -3019,22 +3020,31 @@ struct vop_readdirattr_args /* {
     };
 #endif
 
-   /* Compute the starting index in the directory */
-    index = (uio->uio_offset - sizeof(struct hfsdirentry)) / sizeof(struct hfsdirentry);
+   /* Compute the starting index in the directory.  Attribute blocks vary in
+    * size, so the offset counts entries in hfsdirentry units rather than bytes
+    * (it is set that way after the loop).  Offspring are numbered from 1.
+    */
+    index = (uio->uio_offset / sizeof(struct hfsdirentry)) + 1;
 
+	/* lock catalog b-tree */
+	retval = hfs_metafilelocking(VTOHFS(ap->a_vp), kHFSCatalogFileID, LK_SHARED, p);
+    if (retval != E_NONE) {
+		goto Err_Exit;
+    };
+
+    /* HFS records don't carry every field the attributes are packed from */
+    bzero(&catalogInfo.nodeData, sizeof(catalogInfo.nodeData));
     catalogInfo.hint = kNoHint;
-    while (uio->uio_resid > sizeof(struct hfsdirentry))
+    while (uio->uio_resid > 0)
       {
 
-        result = GetCatalogOffspring(vcb, dirID, index, &catalogInfo.spec, &catalogInfo.nodeData, &catalogInfo.hint);
+        if (index > 0xFFFF)		/* GetCatalogOffspring's index is 16 bits: don't wrap onto the thread record */
+            result = cmNotFound;
+        else
+            result = GetCatalogOffspring(vcb, dirID, index, &catalogInfo.spec, &catalogInfo.nodeData, &catalogInfo.hint);
         if (result != noErr) {
             if (result == cmNotFound) {
                 eofReached = TRUE;
-                if (origOffset == uio->uio_offset) {		/* we were already past eof */
-                    uio->uio_offset = 0;
-                    retval = E_NONE;
-                    goto Err_Exit;
-                }
                 result = noErr;
             }
             retval = MacToVFSError(result);
@@ -3043,7 +3053,7 @@ struct vop_readdirattr_args /* {
         catInfoPtr = &catalogInfo;
 
         *((u_long *)attrptr)++ = 0;			/* Reserve space for length field */
-        PackAttributeBlock(alist, vp, catInfoPtr, &attrptr, &varptr);
+        PackCatalogInfoAttributeBlock(alist, vp, catInfoPtr, &attrptr, &varptr);
         currattrbufsize = *((u_long *)attrbufptr) = (varptr - attrbufptr);		/* Store length of fixed + var block */
 
         /* Make sure that there is enough room to copy to */
@@ -3053,7 +3063,6 @@ struct vop_readdirattr_args /* {
               {
                 DBG_ERR(("%s: Not enough buffer to read in entries\n",funcname));
                 retval = EINVAL;
-                goto Err_Exit;
               }
             break;
           }
@@ -3064,9 +3073,14 @@ struct vop_readdirattr_args /* {
             DBG_ERR(("%s: error %d on uiomove.\n",funcname, retval));
             break;
         };
-        attrptr = (void *)((u_long)attrptr + currattrbufsize);
+        attrptr = attrbufptr;						/* pack the next entry from the start of the buffer again */
+        varptr = attrbufptr + fixedblocksize;
         ++index;
+        ++entries;
       };
+
+	/* unlock catalog b-tree */
+	(void) hfs_metafilelocking(VTOHFS(ap->a_vp), kHFSCatalogFileID, LK_RELEASE, p);
 
    if (retval != E_NONE) {
         DBG_ERR(("%s: retval %d when trying to read directory %ld: %s\n",funcname, retval,
@@ -3108,6 +3122,9 @@ struct vop_readdirattr_args /* {
         *ap->a_ncookies = ncookies;
         *ap->a_cookies = cookies;
     }
+
+    /* Leave the offset counting entries, not bytes, so the next call resumes at index */
+    uio->uio_offset = origOffset + entries * sizeof(struct hfsdirentry);
 
 Err_Exit:;
 
@@ -4541,6 +4558,8 @@ static int InsertMatch( struct vnode *root_vp, struct uio *a_uio, CatalogRecord 
 										 &actualDstLen,
 										 catalogInfo.spec.name);
 		}
+		if ( err != noErr )
+			return( MacToVFSError(err) );	/* spec.name was not filled in or not terminated */
 	}
 
 	PackCatalogInfoAttributeBlock( returnAttrList,root_vp,  &catalogInfo, &rovingAttributesBuffer, &rovingVariableBuffer );

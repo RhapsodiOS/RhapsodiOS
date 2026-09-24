@@ -1973,6 +1973,31 @@ git commit -m "boot: use dhcpcd for automatic interfaces and create /etc/dhcpc f
 
 ---
 
+### Final-review fixes (commits af8b66be3..7ce11c047)
+
+The whole-branch review found defects in upstream code that this port makes
+reachable, now that dhcpcd runs for the whole uptime. The user decided the
+three behaviour questions: fall back to bootpc, rewrite resolv.conf only when
+DNS was sent, and `-t 30`.
+
+- `sigjmp_buf env` (i386 `jmp_buf` is one int too small for `sigsetjmp`).
+- A DHCP_NAK makes `dhcpSendAndRecv()` return 1, so a refused INIT-REBOOT
+  falls back to DISCOVER. The guard on option 53 also stops a BOOTP reply
+  from dereferencing NULL.
+- The lease cache is deleted when the pre-bound alarm times out, so a
+  silent server costs one boot, not all of them.
+- `dhcpStop()` disarms the alarm, removes the address with SIOCDIFADDR and
+  takes the interface down with read-modify-write.
+- The retransmit timer is capped at 64 s.
+- An infinite lease prints the `-w` lines before exiting.
+- A host name starting with `-` is rejected.
+- resolv.conf is rewritten only when the server sent DNS
+  (`DnsSynthesized`), and the original is saved to `.sv` once per run
+  (`ResolvSaved`).
+- `0800_Network` passes `-t 30` and falls back to bootpc when dhcpcd gets no
+  lease.
+- GPLv2 change notices: `dhcpcd.tproj/Changes` and `PROVENANCE.md`.
+
 ### Task 8: Real build verification (checkpoint, not autonomous)
 
 **Files:** none — this task is a checkpoint, not an edit.

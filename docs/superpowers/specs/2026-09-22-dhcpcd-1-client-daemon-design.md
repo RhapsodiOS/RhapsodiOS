@@ -1,7 +1,7 @@
 # dhcpcd-1 — persistent DHCP client daemon
 
 **Date:** 2026-09-22
-**Status:** Design approved, pending implementation plan
+**Status:** Implemented on branch `dhcpcd-1`; awaiting the guest build and boot test
 
 ## Summary
 
@@ -78,7 +78,7 @@ of this work.
 | Project location | `src/dhcpcd-1/` | Matches the tree's numbered-suffix convention for vendored projects (`bootp-1`, `apk-tools-1`) |
 | Relationship to `bootp-1` | Self-contained; `bootplib` untouched | This is a source port of dhcpcd's own upstream code, not a `bootplib` extension. `bootpc`/`bootpd`/`bootplib` stay exactly as they are — just no longer invoked from the automatic-interface path |
 | Boot integration | Replace the `bootpc` call in `0800_Network` | User's choice; dhcpcd owns the interface for its full lifetime afterward, so bootpc's one-shot role is fully superseded for `-AUTOMATIC-` interfaces |
-| `0800_Network` diff size | Single command-name swap | dhcpcd's boot-mode wait flag emits the same `key=value` stdout protocol `SetNetConfig` already consumes, so no downstream script logic changes |
+| `0800_Network` diff size | The dhcpcd call, its flags, and a bootpc fallback | dhcpcd's boot-mode wait flag emits the same `key=value` stdout protocol `SetNetConfig` already consumes, so no downstream script logic changes. `-G` keeps hostconfig's `ROUTER` authoritative; bootpc is still tried when dhcpcd gets no lease, for BOOTP-only servers such as this system's own bootpd |
 | Build verification | Manual cross-reference against this tree's actual headers now; real compile deferred | No local `cc`/`gcc`/WSL distro available in this environment, and the real `rbuild`/VM build looks actively in use by another session. Every fact this design and the plan rely on (struct fields, ioctl values, header paths) was confirmed by reading the actual installed headers, not assumed — but nothing here has been compiled. The maintainer runs the real build once the VM is free |
 
 ## Approach
@@ -152,7 +152,11 @@ of this work.
    each daemon manages the default route and the last to renew wins (bootpc
    took the first interface's router); that is a known limitation.
    `src/dhcpcd-1` is registered with `rbuild` through an `apk/pkginfo` and a
-   line in `src/Manifest`.
+   line in `src/Manifest`. The script passes `-t 30`, bootpc's give-up time,
+   and when dhcpcd gets no lease it restores the pre-DHCP interface state and
+   runs bootpc as before, since this system's bootpd answers BOOTP only.
+   dhcpcd rewrites `/etc/resolv.conf` only when the lease carries DNS
+   servers, and saves the admin's original once per run.
 6. **Leave `bootpc`/`bootpd`/`bootplib` in place**, unreferenced by the
    automatic-interface path but not deleted.
 
@@ -192,7 +196,8 @@ of this work.
   existing `SetNetConfig`/`GetNetConfig` flow behaves identically to the
   current bootpc path (hostname, router, default route all still resolve),
   and that a renewal cycle (forced with a short lease time from a test DHCP
-  server) re-applies the address without a reboot.
+  server) renews the lease and refreshes the default route without a
+  reboot.
 
 ## Deliverables
 

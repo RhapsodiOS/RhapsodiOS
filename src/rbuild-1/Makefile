@@ -79,10 +79,8 @@ tests/test_apk: tests/test_apk.c $(test_apk_OBJS)
 	$(CC) $(CFLAGS) -I. -o $@ tests/test_apk.c $(test_apk_OBJS)
 tests/test_kernel: tests/test_kernel.c $(test_kernel_OBJS)
 	$(CC) $(CFLAGS) -I. -o $@ tests/test_kernel.c $(test_kernel_OBJS)
-
 tests/test_vendor: tests/test_vendor.c $(test_vendor_OBJS)
 	$(CC) $(CFLAGS) -I. -o $@ tests/test_vendor.c $(test_vendor_OBJS)
-
 tests/test_runner: tests/test_runner.c $(test_runner_OBJS)
 	$(CC) $(CFLAGS) -DRBUILD_RUNNER_TESTING -I. -o $@ tests/test_runner.c $(test_runner_OBJS)
 

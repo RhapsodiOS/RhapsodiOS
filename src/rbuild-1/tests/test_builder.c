@@ -1771,6 +1771,17 @@ static void vendor_fixture_params(Params *p, const char *base) {
     p->BUILDROOT = str_cats(base, "/br", (char *)0);
 }
 
+static int vendor_fixture_equals(const char *path, const char *want) {
+    FILE *f = fopen(path, "r");
+    char buf[256];
+    size_t n;
+    if (!f) return 0;
+    n = fread(buf, 1, sizeof(buf) - 1, f);
+    buf[n] = '\0';
+    fclose(f);
+    return strcmp(buf, want) == 0;
+}
+
 TEST(test_setupdirs_vendors) {
     Package pkg;
     Params p;
@@ -1800,6 +1811,7 @@ TEST(test_setupdirs_vendors) {
     CHECK_INT(builder_setupdirs(&pkg, &p, "widget", "dir", &repo, &opt), 0);
     CHECK(access("/tmp/rb_ven/src/Makefile", F_OK) == 0);
     CHECK(access("/tmp/rb_ven/src/widget/hello.txt", F_OK) == 0);
+    CHECK(vendor_fixture_equals("/tmp/rb_ven/src/widget/hello.txt", "patched\n"));
     /* build inputs stay out of SRCROOT ... */
     CHECK(access("/tmp/rb_ven/src/widget-1.0.tar.gz", F_OK) != 0);
     CHECK(access("/tmp/rb_ven/src/patches", F_OK) != 0);

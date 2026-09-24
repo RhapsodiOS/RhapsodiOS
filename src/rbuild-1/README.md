@@ -82,6 +82,11 @@ bounded native guest acceptance evidence.
   `mkdir`, `cp`, `rm` on `PATH`, and for vendored projects on `mv`, `rmdir`
   and GNU `patch` 2.5 or later. Patching runs on the host, before any chroot.
 
+`make trace-test` is an rbuild `-n` dry-run against empty APK seeds: universal
+i386+ppc probes, thin `RC_*` policy, no build root, no live-host bootstrap
+seeds. Empty dependency archives are planning fixtures, not valid packages;
+actual payload validation and native builds are tested separately.
+
 ## Vendored sources
 
 A project may ship a pristine upstream tarball and an ordered patch series
@@ -101,7 +106,10 @@ in filename order. The project's Makefile then builds normally. The tarball
 must hold exactly one top-level entry, and the project must not also
 carry the expanded tree. See `src/zlib-1`.
 
-`make trace-test` is an rbuild `-n` dry-run against empty APK seeds: universal
-i386+ppc probes, thin `RC_*` policy, no build root, no live-host bootstrap
-seeds. Empty dependency archives are planning fixtures, not valid packages;
-actual payload validation and native builds are tested separately.
+Tarballs and patches are trusted inputs: rbuild extracts and patches them on
+the build host as root, before any chroot, without checking member paths. Take
+tarballs only from their upstream release, and record the upstream checksum in
+the commit that adds one. Extraction keeps upstream modification times while
+patched files get fresh ones, so when a patch touches a generator input such as
+`configure.in`, also patch the file generated from it, or make may try to
+regenerate it.

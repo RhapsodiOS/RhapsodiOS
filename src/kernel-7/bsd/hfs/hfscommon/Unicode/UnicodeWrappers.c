@@ -256,14 +256,7 @@ enum {
 	kMaxFileExtensionChars = 5		// does not include dot
 };
 
-#define kASCIIPiSymbol				0xB9
-#define kASCIIMicroSign				0xB5
-#define kASCIIGreekDelta			0xC6
-
-
 #define Is7BitASCII(c)				( (c) >= 0x20 && (c) <= 0x7F )
-
-#define	IsSpecialASCIIChar(c)		( (c) == (UInt8) kASCIIMicroSign || (c) == (UInt8) kASCIIPiSymbol || (c) == (UInt8) kASCIIGreekDelta )
 
 // Note:	'µ' has two Unicode representations 0x00B5 (micro sign) and 0x03BC (greek)
 //			'Æ' has two Unicode representations 0x2206 (increment) and 0x0394 (greek)

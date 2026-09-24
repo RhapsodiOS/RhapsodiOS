@@ -77,6 +77,8 @@ udpipMessage	UdpIpMsg;
 dhcpMessage	*DhcpMsgRecv;
 sigjmp_buf	env;
 unsigned char	ClientHwAddr[ETHER_ADDR_LEN];
+static int	DnsSynthesized;		/* dns option came from the fallback below */
+static int	ResolvSaved;		/* resolv.conf moved to .sv by this run */
 
 const dhcpMessage *DhcpMsgSend = (dhcpMessage *)&UdpIpMsg.udpipmsg[sizeof(udpiphdr)];
 /*****************************************************************************/
@@ -95,6 +97,7 @@ int parseDhcpMsgRecv()
        	default:
 	  if ( p[1] )
 	    {
+	      if ( *p == dns ) DnsSynthesized = 0;
 	      if ( DhcpOptions.len[*p] == p[1] )
 	        memcpy(DhcpOptions.val[*p],p+2,p[1]);
 	      else
@@ -193,6 +196,7 @@ UdpIpMsg.ethhdr.ether_shost[5]);
     }
   if ( ! DhcpOptions.val[dns] ) /* did not get DNS */
     {	/* make it the same as dhcpServerIdentifier */
+      DnsSynthesized = 1;
       DhcpOptions.val[dns] = malloc(sizeof(struct in_addr));
       *(unsigned int *)DhcpOptions.val[dns] = *(unsigned int *)DhcpOptions.val[dhcpServerIdentifier];
       DhcpOptions.len[dns] = sizeof(struct in_addr);
@@ -534,9 +538,13 @@ ntohl(*(unsigned int *)DhcpOptions.val[dhcpT2value]));
     }
   else
     syslog(LOG_ERR,"dhcpConfig: fopen: %m\n");
-  if ( ReplResolvConf )
+  if ( ReplResolvConf && ! DnsSynthesized )
     {
-      rename(RESOLV_CONF,""RESOLV_CONF".sv");
+      if ( ! ResolvSaved )
+	{
+	  rename(RESOLV_CONF,""RESOLV_CONF".sv");
+	  ResolvSaved = 1;
+	}
       f=fopen(RESOLV_CONF,"w");
       if ( f )
 	{
@@ -887,8 +895,11 @@ void *dhcpStop()
 	syslog(LOG_ERR,"dhcpStop: ioctl SIOCSIFFLAGS: %m\n");
     }
   close(s);
-  if ( ReplResolvConf )
-    rename(""RESOLV_CONF".sv",RESOLV_CONF);
+  if ( ResolvSaved )
+    {
+      rename(""RESOLV_CONF".sv",RESOLV_CONF);
+      ResolvSaved = 0;
+    }
   return &dhcpStart;
 }
 /*****************************************************************************/

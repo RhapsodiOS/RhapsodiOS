@@ -67,7 +67,7 @@ if [ -s /etc/iftab ]; then
 		else
 		    echo " no response"
 		    # This system's own bootpd answers BOOTP only, which dhcpcd doesn't speak
-		    route delete 255.255.255.255 > /dev/null 2>&1
+		    route delete 255.0.0.0 > /dev/null 2>&1
 		    ifconfig "${if}" 0.0.0.0 netmask 255.0.0.0 broadcast 255.255.255.255 > /dev/null
 		    route add -net 255.255.255.255 -netmask 255.0.0.0 0.0.0.0 -iface     > /dev/null
 		    echo -n "    Trying BOOTP for interface ${if}:"
@@ -78,7 +78,7 @@ if [ -s /etc/iftab ]; then
 			echo " no response"
 		    fi
 		fi
-		route delete 255.255.255.255 > /dev/null
+		route delete 255.255.255.255 > /dev/null 2>&1
 		route delete 255.0.0.0       > /dev/null
 		ifconfig "${if}" delete down > /dev/null
 

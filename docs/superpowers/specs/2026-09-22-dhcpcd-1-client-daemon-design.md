@@ -209,6 +209,24 @@ of this work.
   dhcpcd keeps its lease cache and info file.
 - `bootpc`/`bootpd`/`bootplib` unchanged.
 
+## Known limitations
+
+- Several `-AUTOMATIC-` interfaces with `ROUTER=-AUTOMATIC-`: each daemon
+  manages the default route, and the last to renew wins. bootpc took the
+  first interface's router.
+- resolv.conf's `.sv` copy is tracked per process. An unclean shutdown, an
+  infinite lease (the process exits holding dhcpcd's file), or two
+  `-AUTOMATIC-` interfaces can still lose the admin's original.
+- `-t 30` matches bootpc, but a switch port running classic 802.1D spanning
+  tree forwards only after about 30 s, which can use up the whole window.
+  The boot then falls back to bootpc, and the next boot does a full
+  DISCOVER.
+- A future `/etc/dhcpc/dhcpcd-<if>.exe` hook would run before the fork and
+  inherit the `-w` pipe. None ships, and such a hook must not write to
+  stdout or outlive dhcpcd's parent.
+- The man page is not installed. It also still describes `eth0` and
+  upstream's `-l`/`-t` details.
+
 ## Out of scope
 
 - `src/drvBPF` itself — owned by a concurrent session, not touched here.

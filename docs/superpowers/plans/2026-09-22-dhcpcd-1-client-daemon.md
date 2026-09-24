@@ -2012,6 +2012,51 @@ guest is free to use. If they say yes, proceed to Step 2. If they say no or
 don't know, stop here and leave this task unchecked — the plan's other seven
 tasks are already complete and committed independently of this one.
 
+#### Guest checklist (from the final review)
+
+Use a private build root and a temporary disk image throughout.
+
+1. Build `dhcpcd-1` and `files-5`. Expected: all 10 objects compile with no
+   "incompatible pointer type" warning for `sigsetjmp`, the link needs only
+   libSystem, and there are no undefined symbols.
+2. Install. Expected: `/usr/sbin/dhcpcd`, `/etc/dhcpc` (755 root:wheel), and
+   `/dev/bpf*` (on i386, `driverLoader a` must load BPF).
+3. By hand: `dhcpcd -d -w -t 30 en0; echo rc=$?`. Expected: key=value
+   lines, `rc=0`, and the prompt returns. `ps` shows the daemon, and its pid,
+   `.cache` and `.info` files exist. `ifconfig en0` shows the lease UP and
+   RUNNING, and `netstat -rn` shows the default route. BIOCSETIF ENXIO is
+   drvBPF's problem; a hang after sending means BPF select/read isn't waking.
+   syslogd starts at 0900, so use `-d` by hand to see messages.
+4. Full boot with `ROUTER=-AUTOMATIC-`, an explicit IP, and `-NO-`.
+   Expected: "got response from"; no "File exists" or "No such process"
+   lines; the default route is the lease's router, the explicit IP (and
+   `ps` shows `-G`), and absent, respectively.
+5. Second boot on the same network: an ACK for the same address.
+6. Cached lease on a new network (`-netdev user,net=10.0.3.0/24`): syslog
+   shows a DHCP_NAK, then DISCOVER and a 10.0.3.x lease within the same
+   boot.
+7. No server, with a cache present: about 30 s, "no response", the cache is
+   gone, then "Trying BOOTP ...: no response". `netstat -rn` has no odd
+   entries, and the next connected boot does a full DISCOVER.
+8. BOOTP-only server (this tree's bootpd, NetInfo host entry): no SIGSEGV.
+   dhcpcd times out, then "Trying BOOTP ... got response from".
+9. Renew, rebind and expiry (tap plus dnsmasq or ISC dhcpd, 120 s lease):
+   unicast renew at about 60 s; with the server stopped, rebind at about
+   105 s; at 120 s the address goes away and DISCOVER starts; a restarted
+   server gives a new lease. On i386, staying in RENEW past T2 means
+   SIGALRM is stuck (the `sigjmp_buf` fix).
+10. NAK during renew (dnsmasq `dhcp-authoritative`, range changed while the
+    client is bound): NAK, then a rebind NAK, then DISCOVER and a new lease.
+    The daemon is still alive after the old lease's expiry.
+11. Timer cap: stop the server during RENEW. A host-side tcpdump shows the
+    retransmit gaps growing, then holding at about 64 s.
+12. Infinite lease (dnsmasq `...,infinite`): key=value lines, a configured
+    interface, no dhcpcd left in `ps`.
+13. resolv.conf. A server without DNS leaves `/etc/resolv.conf` unchanged
+    with no `.sv`, and `.info` still has `DNS=`. A server with DNS creates
+    `.sv` once. After a lease loss and re-acquire, `.sv` still holds the
+    original. Shutdown restores it.
+
 - [ ] **Step 2: Run the real build, once confirmed free**
 
 Follow `README.md`'s documented `rbuild` flow (sync `dhcpcd-1` to the guest,

@@ -20,6 +20,7 @@ dir     CoreOSMakefiles-1     all
 dir     Csu-1                 all
 dir     cvs-1                 all
 dir     Commands/developer_cmds all
+dir     dhcpcd-1              all
 dir     Commands/diskdev_cmds all
 dir     Commands/doc_cmds     all
 dir     driverkit-3           all

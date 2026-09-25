@@ -174,7 +174,11 @@ files up by it again and passes it to `ReplaceBTreeRecord`.
 ## Behaviour
 
 - **Exact names win.** The fallback runs only when an exact lookup finds
-  nothing, so a real file named like a mangled name is found first.
+  nothing, so a real file named like a mangled name is found first. If
+  another system gives a file exactly a long file's mangled name in the same
+  directory, the long file cannot be reached by that name, and a vnode that
+  holds it reaches the other file instead. RhapsodiOS cannot create such a
+  name: open, mkdir and rename resolve it to the long file.
 - **Shorter typed forms still resolve.** `abc#1A2B` finds ID 0x1A2B if it is
   in this directory and its name starts with `abc`. That is how the matcher
   already behaves, and how Mac OS behaves.

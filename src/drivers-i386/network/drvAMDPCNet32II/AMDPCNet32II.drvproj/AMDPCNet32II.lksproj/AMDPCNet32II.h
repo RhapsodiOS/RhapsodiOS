@@ -1,4 +1,3 @@
-#import <bsd/net/etherdefs.h>
 #import <driverkit/IOEthernet.h>
 #import <driverkit/IONetwork.h>
 #import <driverkit/align.h>

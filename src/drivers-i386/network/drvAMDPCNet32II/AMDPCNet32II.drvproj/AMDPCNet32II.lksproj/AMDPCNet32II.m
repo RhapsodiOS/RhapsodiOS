@@ -17,7 +17,6 @@
 #import <driverkit/i386/ioPorts.h>
 #import <driverkit/kernelDriver.h>
 #import <kernserv/prototypes.h>
-#import <bsd/net/etherdefs.h>
 
 #import "AMDPCNet32II.h"
 #import "PCNetIO.h"

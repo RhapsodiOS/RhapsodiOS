@@ -10,7 +10,9 @@ if ($env:RHAP_VM_DIR) { $script:RhapVmDir = $env:RHAP_VM_DIR }
 . (Join-Path $PSScriptRoot '..\..\vm\rhap-remote.ps1')
 $cfg = Get-RhapVmConfig -DiePrefix 'hfs-name-test'
 if ($env:RHAP_SSH_HOST) { $cfg.Host = $env:RHAP_SSH_HOST }
-if ($env:RHAP_SSH_PORT) { $script:RhapLegacySshOptions += @('-o', "Port=$($env:RHAP_SSH_PORT)") }
+# Put the port first: ssh takes the first value it is given, and
+# Get-RhapVmConfig has already appended vm.conf's own Port= if it has one.
+if ($env:RHAP_SSH_PORT) { $script:RhapLegacySshOptions = @('-o', "Port=$($env:RHAP_SSH_PORT)") + $script:RhapLegacySshOptions }
 $ssh = Resolve-RhapTool -NameOrPath $cfg.Ssh -DiePrefix 'hfs-name-test'
 $null = Invoke-RhapSshCapture -Cfg $cfg -Ssh $ssh -ScriptBody (Get-Content -LiteralPath $ScriptFile -Raw)
 $r = $script:RhapLastSshCapture

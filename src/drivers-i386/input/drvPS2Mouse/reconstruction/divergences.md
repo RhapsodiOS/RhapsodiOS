@@ -1885,3 +1885,27 @@ and could not have.
 `drvBusMouse` and `drvPCParallel` carry the same postamble line. Checked
 drvBusMouse on 2026-09-21: its lksproj generates no `*_vers.o` at all, so its
 `kl_ld` line has no duplicate and the line is still inert there. Left alone.
+
+## Forced divergence: movement sums saturate at ±127
+
+2026-09-24. From a reference defect, fixed at the user's request.
+
+`_PS2MouseIntHandler` folds packets that arrive while an event is still being
+dispatched into `summedEvent`, then adds that total into the next event. The
+reference does these adds on raw bytes (`add byte ptr`), in six places. The
+consumer, `-[EventSrcPCPointer dispatchPointerEvent:]`, reads `dx` and `dy` as
+`int dx:8` / `int dy:8` bitfields of `PCPointerEvent`, so any total past +127
+or below -128 wraps and reverses direction: three packets of +60 arrive as -76,
+and the acceleration curve then scales the wrong value up. Apple's source in
+`kernel-7/bsd/dev/i386/PS2Mouse.m` has the same adds.
+
+On real hardware this rarely fires: a mouse reports at about 100 Hz with small
+deltas. QEMU's PS/2 mouse splits a large host movement into back-to-back
+packets of up to ±127, and the emulated I/O thread is slow, so packets queue
+behind the dispatch on almost every quick movement. The user saw very erratic
+movement under QEMU with both this driver and Apple's.
+
+Fix: a static `addDelta()` adds the two bytes as `signed char` and clamps to
+±127 (the range a single PS/2 packet can carry without the byte-0 sign bits,
+which this driver ignores). All six adds use it. This costs byte parity in
+`_PS2MouseIntHandler` and adds one function. Not yet built or tested.

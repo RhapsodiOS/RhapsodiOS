@@ -96,6 +96,26 @@ static PS2ControllerFunctions *controllerFunctions;
 /* Forward declarations */
 static void PS2MouseIntHandler(unsigned int param_1, unsigned int param_2);
 
+/*
+ * Add two movement deltas, clamping the sum to +/-127.
+ *
+ * Divergence from the reference, fixed at the user's request: Apple adds the
+ * raw bytes, and PCPointerEvent's dx/dy are 8-bit signed fields, so a sum past
+ * 127 wraps and the cursor jumps the other way.  QEMU's PS/2 mouse sends
+ * packets back to back, so they pile up behind the I/O thread and hit this
+ * on nearly every fast movement.  See reconstruction/divergences.md.
+ */
+static unsigned char addDelta(unsigned char a, unsigned char b)
+{
+    int sum = (signed char)a + (signed char)b;
+
+    if (sum > 127)
+        sum = 127;
+    else if (sum < -127)
+        sum = -127;
+    return (unsigned char)sum;
+}
+
 /**
  * PS2MouseIntHandler - Low-level interrupt handler for PS/2 mouse
  *
@@ -179,8 +199,8 @@ static void PS2MouseIntHandler(unsigned int param_1, unsigned int param_2)
             }
 
             /* Packet complete - fold in the accumulated movement deltas */
-            currentEvent.data.buf[1] += summedEvent.data.buf[1];
-            currentEvent.data.buf[2] += summedEvent.data.buf[2];
+            currentEvent.data.buf[1] = addDelta(currentEvent.data.buf[1], summedEvent.data.buf[1]);
+            currentEvent.data.buf[2] = addDelta(currentEvent.data.buf[2], summedEvent.data.buf[2]);
         } else {
             /* A new sequence was in progress while we were processing
              * Store byte in the pending event
@@ -195,8 +215,8 @@ static void PS2MouseIntHandler(unsigned int param_1, unsigned int param_2)
 
             /* Pending packet complete - copy to current, folding in the deltas */
             currentEvent.data.buf[0] = pendingEvent.data.buf[0];
-            currentEvent.data.buf[1] = summedEvent.data.buf[1] + pendingEvent.data.buf[1];
-            currentEvent.data.buf[2] = summedEvent.data.buf[2] + pendingEvent.data.buf[2];
+            currentEvent.data.buf[1] = addDelta(summedEvent.data.buf[1], pendingEvent.data.buf[1]);
+            currentEvent.data.buf[2] = addDelta(summedEvent.data.buf[2], pendingEvent.data.buf[2]);
         }
 
         /* Save timestamp and send interrupt to higher level */
@@ -226,8 +246,8 @@ static void PS2MouseIntHandler(unsigned int param_1, unsigned int param_2)
             /* Complete packet received while processing
              * Accumulate the deltas for when processing finishes
              */
-            summedEvent.data.buf[1] += pendingEvent.data.buf[1];
-            summedEvent.data.buf[2] += pendingEvent.data.buf[2];
+            summedEvent.data.buf[1] = addDelta(summedEvent.data.buf[1], pendingEvent.data.buf[1]);
+            summedEvent.data.buf[2] = addDelta(summedEvent.data.buf[2], pendingEvent.data.buf[2]);
 
             /* Reset for next packet */
             indexInSequence = 0;

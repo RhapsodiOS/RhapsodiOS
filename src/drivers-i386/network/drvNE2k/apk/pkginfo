@@ -1,5 +1,5 @@
 pkgname = ne2k
-pkgver = 0.91b
+pkgver = 0.92
 pkgdesc = NE2k device driver
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
 license = APSL

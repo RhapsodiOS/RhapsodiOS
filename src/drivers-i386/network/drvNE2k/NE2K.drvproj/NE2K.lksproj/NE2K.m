@@ -78,7 +78,7 @@ static inline int compareAddr(enet_addr_t *a1, enet_addr_t *a2);
 {
     NE2K	*driver = [self alloc];
     
-    IOLog("NE2000 Generic Driver v0.9.1b\n");
+    IOLog("NE2000 Generic Driver v0.9.2\n");
     IOLog("by Gabor Sebestyen\n\n");
 
     return [driver initFromDeviceDescription:devDesc] != nil;

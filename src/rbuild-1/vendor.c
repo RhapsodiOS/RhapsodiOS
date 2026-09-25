@@ -34,10 +34,51 @@ char *vendor_path(const char *source) {
     return 0;
 }
 
+/* Validates a "tarball"/"patches" value: non-empty, no leading '/', no ".."
+   component, no empty component (also catches a leading or trailing '/'). */
+static int vendor_valid_path(const char *val) {
+    const char *comp = val;
+    const char *p;
+
+    if (val[0] == '\0') return 0;
+    for (p = val; ; p++) {
+        if (*p == '/' || *p == '\0') {
+            size_t clen = (size_t) (p - comp);
+            if (clen == 0) return 0;
+            if (clen == 2 && comp[0] == '.' && comp[1] == '.') return 0;
+            if (*p == '\0') break;
+            comp = p + 1;
+        }
+    }
+    return 1;
+}
+
+/* Validates a "directory" value: non-empty, a single path component, not
+   "." or "..". */
+static int vendor_valid_dir(const char *val) {
+    if (val[0] == '\0') return 0;
+    if (strchr(val, '/') != 0) return 0;
+    if (strcmp(val, ".") == 0 || strcmp(val, "..") == 0) return 0;
+    return 1;
+}
+
+/* Validates a "patchlevel" value: one or more decimal digits, at most 99. */
+static int vendor_valid_patchlevel(const char *val) {
+    const char *p;
+
+    /* At most two digits, so atoi cannot overflow. */
+    if (val[0] == '\0' || strlen(val) > 2) return 0;
+    for (p = val; *p != '\0'; p++) {
+        if (*p < '0' || *p > '9') return 0;
+    }
+    return 1;
+}
+
 int vendor_read(Vendor *v, const char *path) {
     FILE *f = fopen(path, "r");
     char line[4096];
     char *key, *val;
+    char *patchlevel_text = 0;
 
     if (!f) {
         fprintf(stderr, "rbuild: unable to open %s\n", path);
@@ -53,7 +94,7 @@ int vendor_read(Vendor *v, const char *path) {
             free(v->patches); v->patches = xstrdup(val);
             v->patches_explicit = 1;
         } else if (strcmp(key, "patchlevel") == 0) {
-            v->patchlevel = atoi(val);
+            free(patchlevel_text); patchlevel_text = xstrdup(val);
         }
         /* unknown keys ignored, as in pkginfo_read */
     }
@@ -61,11 +102,37 @@ int vendor_read(Vendor *v, const char *path) {
 
     if (!v->tarball) {
         fprintf(stderr, "rbuild: %s: missing tarball\n", path);
+        free(patchlevel_text);
         return 1;
     }
     if (!v->directory) {
         fprintf(stderr, "rbuild: %s: missing directory\n", path);
+        free(patchlevel_text);
         return 1;
+    }
+    if (!vendor_valid_path(v->tarball)) {
+        fprintf(stderr, "rbuild: %s: invalid tarball '%s'\n", path, v->tarball);
+        free(patchlevel_text);
+        return 1;
+    }
+    if (!vendor_valid_dir(v->directory)) {
+        fprintf(stderr, "rbuild: %s: invalid directory '%s'\n", path, v->directory);
+        free(patchlevel_text);
+        return 1;
+    }
+    if (v->patches_explicit && !vendor_valid_path(v->patches)) {
+        fprintf(stderr, "rbuild: %s: invalid patches '%s'\n", path, v->patches);
+        free(patchlevel_text);
+        return 1;
+    }
+    if (patchlevel_text) {
+        if (!vendor_valid_patchlevel(patchlevel_text)) {
+            fprintf(stderr, "rbuild: %s: invalid patchlevel '%s'\n", path, patchlevel_text);
+            free(patchlevel_text);
+            return 1;
+        }
+        v->patchlevel = atoi(patchlevel_text);
+        free(patchlevel_text);
     }
     if (!v->patches) v->patches = xstrdup("patches");
     return 0;
@@ -156,6 +223,7 @@ int vendor_apply(const Vendor *v, const char *srcdir, const char *srcroot,
 
     printf("vendoring %s into %s\n", v->tarball, dest);
     fflush(stdout);
+    if (apk_untar_check(tarball, tc) != 0) goto done;
     if (exec_check(exec_runv("mkdir", tmp, (char *)0))) goto done;
     if (apk_untar(tarball, tmp, tc) != 0) goto done;
     if (exec_dry_run) {

@@ -36,6 +36,46 @@ static void make_widget_project(void) {
            "/usr/bin/gzip -c > /tmp/rbtest_va/src/widget-1.0.tar.gz");
 }
 
+/* pax will not archive a ".." name, so build a one-member ustar by hand:
+   regular file NAME holding TEXT (under 512 bytes), gzipped to GZPATH. */
+static void write_member_tgz(const char *gzpath, const char *name,
+                             const char *text) {
+    char header[512];
+    char tarpath[256];
+    char command[600];
+    unsigned long sum = 0;
+    size_t length = strlen(text);
+    size_t i;
+    FILE *f;
+
+    memset(header, 0, sizeof(header));
+    strcpy(header, name);
+    strcpy(header + 100, "0000644");
+    strcpy(header + 108, "0000000");
+    strcpy(header + 116, "0000000");
+    sprintf(header + 124, "%011lo", (unsigned long)length);
+    strcpy(header + 136, "00000000000");
+    memset(header + 148, ' ', 8);
+    header[156] = '0';
+    memcpy(header + 257, "ustar", 6);
+    memcpy(header + 263, "00", 2);
+    for (i = 0; i < sizeof(header); i++) sum += (unsigned char)header[i];
+    sprintf(header + 148, "%06lo", sum);
+
+    sprintf(tarpath, "%s.tar", gzpath);
+    f = fopen(tarpath, "wb");
+    fwrite(header, 1, sizeof(header), f);
+    fwrite(text, 1, length, f);
+    memset(header, 0, sizeof(header));
+    fwrite(header, 1, sizeof(header) - length, f);
+    fwrite(header, 1, sizeof(header), f);
+    fwrite(header, 1, sizeof(header), f);
+    fclose(f);
+    sprintf(command, "/usr/bin/gzip -c %s > %s && rm -f %s",
+            tarpath, gzpath, tarpath);
+    system(command);
+}
+
 static void widget_vendor(Vendor *v) {
     vendor_init(v);
     v->tarball = xstrdup("widget-1.0.tar.gz");
@@ -92,6 +132,91 @@ TEST(test_vendor_read_errors) {
     write_file("/tmp/rbtest_vd/apk/vendor", "tarball = z.tar.gz\n");
     vendor_init(&v);
     CHECK_INT(vendor_read(&v, "/tmp/rbtest_vd/apk/vendor"), 1);
+    vendor_free(&v);
+}
+
+TEST(test_vendor_read_invalid_tarball) {
+    static const char *bad[] = {
+        "", "/abs.tar.gz", "../x.tar.gz", "a/../x.tar.gz", "a//x.tar.gz", "x/"
+    };
+    Vendor v;
+    char buf[256];
+    size_t i;
+
+    for (i = 0; i < sizeof(bad) / sizeof(bad[0]); i++) {
+        sprintf(buf, "tarball = %s\ndirectory = zlib\n", bad[i]);
+        write_file("/tmp/rbtest_vd/apk/vendor", buf);
+        vendor_init(&v);
+        CHECK_INT(vendor_read(&v, "/tmp/rbtest_vd/apk/vendor"), 1);
+        vendor_free(&v);
+    }
+}
+
+TEST(test_vendor_read_invalid_directory) {
+    static const char *bad[] = { "", "a/b", ".", ".." };
+    Vendor v;
+    char buf[256];
+    size_t i;
+
+    for (i = 0; i < sizeof(bad) / sizeof(bad[0]); i++) {
+        sprintf(buf, "tarball = z.tar.gz\ndirectory = %s\n", bad[i]);
+        write_file("/tmp/rbtest_vd/apk/vendor", buf);
+        vendor_init(&v);
+        CHECK_INT(vendor_read(&v, "/tmp/rbtest_vd/apk/vendor"), 1);
+        vendor_free(&v);
+    }
+}
+
+TEST(test_vendor_read_invalid_patches) {
+    static const char *bad[] = { "", "/p", "p/../q", "p/" };
+    Vendor v;
+    char buf[256];
+    size_t i;
+
+    for (i = 0; i < sizeof(bad) / sizeof(bad[0]); i++) {
+        sprintf(buf, "tarball = z.tar.gz\ndirectory = zlib\npatches = %s\n", bad[i]);
+        write_file("/tmp/rbtest_vd/apk/vendor", buf);
+        vendor_init(&v);
+        CHECK_INT(vendor_read(&v, "/tmp/rbtest_vd/apk/vendor"), 1);
+        vendor_free(&v);
+    }
+}
+
+TEST(test_vendor_read_invalid_patchlevel) {
+    static const char *bad[] = { "", "-1", "1a", "100" };
+    Vendor v;
+    char buf[256];
+    size_t i;
+
+    for (i = 0; i < sizeof(bad) / sizeof(bad[0]); i++) {
+        sprintf(buf, "tarball = z.tar.gz\ndirectory = zlib\npatchlevel = %s\n", bad[i]);
+        write_file("/tmp/rbtest_vd/apk/vendor", buf);
+        vendor_init(&v);
+        CHECK_INT(vendor_read(&v, "/tmp/rbtest_vd/apk/vendor"), 1);
+        vendor_free(&v);
+    }
+}
+
+TEST(test_vendor_read_valid_edge_cases) {
+    Vendor v;
+
+    write_file("/tmp/rbtest_vd/apk/vendor",
+        "tarball = sub/dir/x.tar.gz\ndirectory = zlib\n");
+    vendor_init(&v);
+    CHECK_INT(vendor_read(&v, "/tmp/rbtest_vd/apk/vendor"), 0);
+    vendor_free(&v);
+
+    write_file("/tmp/rbtest_vd/apk/vendor",
+        "tarball = z.tar.gz\ndirectory = zlib\npatches = patches/series\n");
+    vendor_init(&v);
+    CHECK_INT(vendor_read(&v, "/tmp/rbtest_vd/apk/vendor"), 0);
+    vendor_free(&v);
+
+    write_file("/tmp/rbtest_vd/apk/vendor",
+        "tarball = z.tar.gz\ndirectory = zlib\npatchlevel = 0\n");
+    vendor_init(&v);
+    CHECK_INT(vendor_read(&v, "/tmp/rbtest_vd/apk/vendor"), 0);
+    CHECK_INT(v.patchlevel, 0);
     vendor_free(&v);
 }
 
@@ -240,10 +365,36 @@ TEST(test_vendor_apply_dry_run) {
     system("rm -rf /tmp/rbtest_va");
 }
 
+TEST(test_vendor_apply_refuses_unsafe_member) {
+    Vendor v;
+    struct stat st;
+
+    system("rm -rf /tmp/rbtest_vu && "
+           "mkdir -p /tmp/rbtest_vu/src /tmp/rbtest_vu/root");
+    write_member_tgz("/tmp/rbtest_vu/src/evil.tar.gz", "../evil.txt",
+                     "evil\n");
+    vendor_init(&v);
+    v.tarball = xstrdup("evil.tar.gz");
+    v.directory = xstrdup("evil");
+    v.patches = xstrdup("patches");
+    CHECK_INT(vendor_apply(&v, "/tmp/rbtest_vu/src", "/tmp/rbtest_vu/root", 0), 1);
+    CHECK(stat("/tmp/rbtest_vu/root/evil", &st) != 0);
+    CHECK(stat("/tmp/rbtest_vu/root/evil.txt", &st) != 0);
+    /* the scan refused before .vendor-tmp was even created */
+    CHECK(stat("/tmp/rbtest_vu/root/.vendor-tmp", &st) != 0);
+    vendor_free(&v);
+    system("rm -rf /tmp/rbtest_vu");
+}
+
 static void run_all(void) {
     RUN(test_vendor_read_full);
     RUN(test_vendor_read_defaults);
     RUN(test_vendor_read_errors);
+    RUN(test_vendor_read_invalid_tarball);
+    RUN(test_vendor_read_invalid_directory);
+    RUN(test_vendor_read_invalid_patches);
+    RUN(test_vendor_read_invalid_patchlevel);
+    RUN(test_vendor_read_valid_edge_cases);
     RUN(test_vendor_path);
     RUN(test_vendor_list_patches_sorted);
     RUN(test_vendor_list_patches_missing_dir);
@@ -253,6 +404,7 @@ static void run_all(void) {
     RUN(test_vendor_apply_rejects_tarbomb);
     RUN(test_vendor_apply_bad_patch_fails);
     RUN(test_vendor_apply_dry_run);
+    RUN(test_vendor_apply_refuses_unsafe_member);
 }
 
 TEST_MAIN()

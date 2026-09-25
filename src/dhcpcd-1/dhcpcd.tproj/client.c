@@ -628,7 +628,7 @@ void *dhcpStart()
   dhcpSocket = bpfOpenForInterface(IfName,ClientHwAddr);
   if ( dhcpSocket == -1 )
     {
-      syslog(LOG_ERR,"dhcpStart: bpfOpenForInterface: %m\n");
+      syslog(LOG_ERR,"dhcpStart: bpfOpenForInterface failed\n");	/* it logged why; errno is stale */
       exit(1);
     }
   return &dhcpInit;

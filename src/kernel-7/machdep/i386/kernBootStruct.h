@@ -207,6 +207,23 @@ typedef struct boot_vbe_mode boot_vbe_mode;
  */
 #define BOOT_VBE_MAX_MODES	89
 
+/*
+ * Physical memory ranges handed over by the booter, from the BIOS INT 0x15
+ * E820h map.  Clamped to 32 bits: the kernel cannot address memory above
+ * 4GB, so the booter drops ranges lying wholly above it and clips any range
+ * that crosses it.  "end" is exclusive.
+ */
+#define BOOT_MEMMAP_MAX	32
+#define BOOT_MEM_RAM	1		/* E820 type 1: usable RAM */
+
+struct boot_mem_range {
+	unsigned int	base;
+	unsigned int	end;		/* exclusive, <= 0xFFFFF000 */
+	unsigned int	type;		/* raw E820 type */
+};
+
+typedef struct boot_mem_range boot_mem_range_t;
+
 typedef struct {
     short   version;
     char    bootString[BOOT_STRING_LEN];// string we booted with
@@ -229,7 +246,9 @@ typedef struct {
     driver_config_t driverConfig[NDRIVERS];
     APM_config_t apm_config;
 
-    char   _reserved[5320];		// 908 .. 6228
+    int			memMapCount;		// 908: 0 == no map from the booter
+    boot_mem_range_t	memMap[BOOT_MEMMAP_MAX];	// 912 .. 1296
+    char   _reserved[5320 - 4 - (BOOT_MEMMAP_MAX * 12)];	// 1296 .. 6228
 
     /*
      * VBE hand-off, at OPENSTEP 4.2 User Patch 4's offsets. The driver and
@@ -260,6 +279,9 @@ typedef char __kbs_vbe_fb[(__KBS_OFF(vbeFrameBuffer) == 0x1854) ? 1 : -1];
 typedef char __kbs_vbe_current[(__KBS_OFF(vbeCurrentMode) == 0x1858) ? 1 : -1];
 typedef char __kbs_vbe_modes[(__KBS_OFF(vbeModes) == 0x1870) ? 1 : -1];
 typedef char __kbs_video[(__KBS_OFF(video) == 8408) ? 1 : -1];
+typedef char __kbs_mem_range_size[(sizeof (boot_mem_range_t) == 12) ? 1 : -1];
+typedef char __kbs_mem_map_count[(__KBS_OFF(memMapCount) == 908) ? 1 : -1];
+typedef char __kbs_mem_map[(__KBS_OFF(memMap) == 912) ? 1 : -1];
 
 #define KERNSTRUCT_ADDR   ((KERNBOOTSTRUCT *) 0x11000)
 #endif

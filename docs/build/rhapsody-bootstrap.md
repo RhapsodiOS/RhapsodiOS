@@ -31,6 +31,19 @@ After step 4, the rest of this document is the remote session.
 
 Pick a writable directory (for example `/tmp`) and work as root.
 
+On Rhapsody DR2, first create the kernel's CSPRNG device nodes; DR2's own
+`/dev/MAKEDEV` predates them. OpenSSL then seeds itself from `/dev/urandom`,
+and OpenSSH's `configure` reports "Random number source: OpenSSL internal
+ONLY". Without the nodes it falls back to `ssh-rand-helper`, which runs about
+forty commands (`ps`, `netstat`, `w`, `last`, ...) every time sshd accepts a
+connection.
+
+```sh
+cd /private/dev
+mknod random c 17 0; chmod 644 random
+mknod urandom c 17 1; chmod 644 urandom
+```
+
 ### zlib install
 
 Grab zlib 1.1.4 from http://zlib.net/fossils

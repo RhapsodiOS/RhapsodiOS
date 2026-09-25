@@ -57,6 +57,21 @@ static int matcherAccepts(const UniChar *name, ItemCount n, const unsigned char 
 }
 
 /*
+ * The call sites mangle only when the plain conversion into NAME_MAX + 1 bytes
+ * reports kTECOutputBufferFullStatus; check that it does so exactly when the
+ * name's UTF-8 is longer than NAME_MAX bytes.
+ */
+static void checkTrigger(const char *what, const UniChar *name, ItemCount n, OSErr wantErr)
+{
+	unsigned char	out[NAME_MAX + 1];
+	ByteCount		len;
+
+	if (ConvertUnicodeToUTF8(n * sizeof(UniChar), name, sizeof out, &len, out) != wantErr)
+		{ fail(what, "wrong result from the plain conversion"); return; }
+	printf("ok   %s\n", what);
+}
+
+/*
  * Mangle name[0..n) with cnid and check that the result is wantPrefix bytes
  * of the name followed by wantSuffix, then that it reads back.
  */
@@ -139,23 +154,43 @@ int main(void)
 	for (i = 0; i < 64; i++) { s[n++] = 0xD83D; s[n++] = 0xDE00; }
 	check("surrogate pair at the cut", s, n, 0x10, 250, "#10");
 
-	/* 300 'z' + ".abcde" (5 letters: the longest extension), ID 0xFFFFFFFF.
-	   "#FFFFFFFF" and ".abcde" leave 241: 240 fit, 240 + 15 = 255. */
+	/* 120 e-acute (2 bytes each) + 20 'z' + ".abcde" (5 letters: the longest
+	   extension) = 266 bytes in 146 UTF-16 units, ID 0xFFFFFFFF.  "#FFFFFFFF"
+	   and ".abcde" leave 241: the 120 e-acute (240) fit, and a 'z' would leave
+	   no room for the NUL.  240 + 15 = 255. */
 	n = 0;
-	for (i = 0; i < 300; i++) s[n++] = 'z';
+	for (i = 0; i < 120; i++) s[n++] = 0x00E9;
+	for (i = 0; i < 20; i++) s[n++] = 'z';
 	s[n++] = '.';
 	for (i = 0; i < 5; i++) s[n++] = 'a' + i;
-	check("ASCII name with 5-letter extension, ID 0xFFFFFFFF", s, n, 0xFFFFFFFF, 240, "#FFFFFFFF.abcde");
+	check("e-acute name with 5-letter extension, ID 0xFFFFFFFF", s, n, 0xFFFFFFFF, 240, "#FFFFFFFF.abcde");
 
-	/* 249 'x' + ".ab" + 20 'y' (no extension: 22 letters follow the dot), ID
-	   0x1A.  "#1A" leaves 253: the prefix is 249 'x' + ".ab" (252), so the name
-	   ends ".ab#1A".  A parser that counts any printable ASCII as an extension
-	   character takes "ab#1A" for one and never finds the file ID. */
+	/* 83 hiragana + ".ab" + 20 'y' (no extension: 22 letters follow the dot)
+	   = 272 bytes in 106 UTF-16 units, ID 0x1A.  "#1A" leaves 253: the prefix
+	   is the 83 hiragana + ".ab" (252), so the name ends ".ab#1A".  A parser
+	   that counts any printable ASCII as an extension character takes "ab#1A"
+	   for one and never finds the file ID. */
 	n = 0;
-	for (i = 0; i < 249; i++) s[n++] = 'x';
+	for (i = 0; i < 83; i++) s[n++] = 0x3042;
 	s[n++] = '.'; s[n++] = 'a'; s[n++] = 'b';
 	for (i = 0; i < 20; i++) s[n++] = 'y';
 	check("dot just before the file ID", s, n, 0x1A, 252, "#1A");
+
+	/* 100 hiragana + ".MP3" (capitals and digits are extension characters),
+	   ID 0x2F.  "#2F" and ".MP3" leave 249: 82 hiragana (246) fit.
+	   246 + 7 = 253. */
+	n = 0;
+	for (i = 0; i < 100; i++) s[n++] = 0x3042;
+	s[n++] = '.'; s[n++] = 'M'; s[n++] = 'P'; s[n++] = '3';
+	check("extension with capitals and a digit, ID 0x2F", s, n, 0x2F, 246, "#2F.MP3");
+
+	/* The trigger: 85 hiragana are exactly 255 bytes and convert whole; one
+	   more ASCII letter makes 256, which must be reported as too long. */
+	n = 0;
+	for (i = 0; i < 85; i++) s[n++] = 0x3042;
+	checkTrigger("255-byte name converts whole", s, n, noErr);
+	s[n++] = 'a';
+	checkTrigger("256-byte name is too long", s, n, kTECOutputBufferFullStatus);
 
 	printf("%d failure(s)\n", failures);
 	return failures != 0;

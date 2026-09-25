@@ -241,10 +241,15 @@ bpf_movein(uio, linktype, mp, sockp, datlen)
 	if ((unsigned)len > MCLBYTES)
 		return (EIO);
 
-	MGET(m, M_WAIT, MT_DATA);
+	/*
+	 * Divergence from the reference, fixed at the user's request: Apple
+	 * used MGET, so the frame had no packet header and IOEthernet's
+	 * output dropped every write.  See reconstruction/divergences.md.
+	 */
+	MGETHDR(m, M_WAIT, MT_DATA);
 	if (m == 0)
 		return (ENOBUFS);
-	if (len > MLEN) {
+	if (len > MHLEN) {
 #if BSD >= 199103
 		MCLGET(m, M_WAIT);
 		if ((m->m_flags & M_EXT) == 0) {
@@ -257,6 +262,8 @@ bpf_movein(uio, linktype, mp, sockp, datlen)
 		}
 	}
 	m->m_len = len;
+	m->m_pkthdr.len = len - hlen;
+	m->m_pkthdr.rcvif = 0;
 	*mp = m;
 	/*
 	 * Make room for link header.

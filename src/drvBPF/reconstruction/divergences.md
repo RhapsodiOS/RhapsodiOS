@@ -778,3 +778,20 @@ index, an instruction the reference does not have. The pointer is now the right
 declaration for kernel-7, so this belongs to this divergence rather than being a
 parity bug to fix, but those six ledger claims missed it. The ledger's
 transitions are forward-only (§8), so it is recorded here instead.
+
+## Forced divergence: written frames carry a packet header
+
+2026-09-25. From a reference defect, fixed at the user's request. This reverses
+Finding 5.
+
+Finding 5 matched the reference's `MGET` in `bpf_movein` and noted that
+`bpfwrite` would then hand `if_output` a frame without `M_PKTHDR`. On the guest
+that is fatal. The tree's IOEthernet output
+(`src/driverkit-3/libDriver/Kernel/IOEthernet.m:625`) logs
+`IOEthernet: M_PKTHDR flag not set (0001)` and frees every frame a BPF client
+writes, so dhcpcd's DISCOVER never left the machine.
+
+Fix, as in 4.4BSD and Darwin's later `bpf.c`: `MGETHDR`, the cluster threshold
+back to `MHLEN`, and after `m->m_len = len`, `m->m_pkthdr.len = len - hlen` and
+`m->m_pkthdr.rcvif = 0` (`MGETHDR` leaves `rcvif` unset). This costs parity in
+`_bpf_movein` (420), and the binary now imports `_m_retryhdr`.

@@ -1,126 +1,147 @@
 /*
+ * Copyright (c) 1999 Apple Computer, Inc. All rights reserved.
+ *
+ * @APPLE_LICENSE_HEADER_START@
+ *
+ * Portions Copyright (c) 1999 Apple Computer, Inc.  All Rights
+ * Reserved.  This file contains Original Code and/or Modifications of
+ * Original Code as defined in and that are subject to the Apple Public
+ * Source License Version 1.1 (the "License").  You may not use this file
+ * except in compliance with the License.  Please obtain a copy of the
+ * License at http://www.apple.com/publicsource and read it before using
+ * this file.
+ *
+ * The Original Code and all software distributed under the License are
+ * distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE OR NON- INFRINGEMENT.  Please see the
+ * License for the specific language governing rights and limitations
+ * under the License.
+ *
+ * @APPLE_LICENSE_HEADER_END@
+ */
+/* 	Copyright (c) 1993 NeXT Computer, Inc.  All rights reserved.
+ *
  * IODeviceMaster.m
- * Device Master Implementation
+ *
+ * Shaped like src/driverkit-3/libDriver/User/IODeviceMaster.m.
+ * Apple's pdservd defines these methods locally and also defines
+ * the MIG stubs (__IOGetCharValues and friends) in __TEXT,__text.
  */
 
 #import "IODeviceMaster.h"
-#import <stdio.h>
-#import <stdlib.h>
-#import <string.h>
-#import <syslog.h>
-#import <mach/mach.h>
+#import <driverkit/driverServer.h>
+#import <mach/port.h>
 
-// Singleton instance
-static id _thisTasksId = nil;
+static IODeviceMaster *thisTasksId = nil;
+
+IOReturn _IOCreateMachPort(port_t deviceMaster, IOObjectNumber objectNumber,
+	port_t *machPort);
 
 @implementation IODeviceMaster
 
 + new
 {
-    // Singleton pattern - only create one instance
-    if (_thisTasksId == nil) {
-        _thisTasksId = [super new];
-        if (_thisTasksId != nil) {
-            // Get the device master port from the kernel
-            mach_port_t masterPort = device_master_self();
-            ((IODeviceMaster *)_thisTasksId)->_privateData = (void *)(unsigned long)masterPort;
-        }
-    }
-    return _thisTasksId;
-}
-
-- (mach_port_t)createMachPort:(int)objectNumber
-{
-    mach_port_t port = MACH_PORT_NULL;
-    mach_port_t masterPort = (mach_port_t)(unsigned long)_privateData;
-
-    // Call IOCreateMachPort with the master port, object number, and port pointer
-    IOCreateMachPort(masterPort, objectNumber, &port);
-
-    return port;
+	if(thisTasksId == nil) {
+		thisTasksId = [self alloc];
+		thisTasksId->_deviceMasterPort = device_master_self();
+	}
+	return thisTasksId;
 }
 
 - free
 {
-    // Singleton - don't actually free, just return self
-    // The singleton instance persists for the lifetime of the daemon
-    return self;
+	return self;
 }
 
-- (int)getCharValues:(char *)values
-        forParameter:(const char *)parameter
-        objectNumber:(int)objectNumber
-               count:(int *)count
+- (IOReturn)lookUpByObjectNumber	: (IOObjectNumber)objectNumber
+			     deviceKind : (IOString *)deviceKind
+			     deviceName : (IOString *)deviceName
 {
-    mach_port_t masterPort = (mach_port_t)(unsigned long)_privateData;
-
-    // Call IOGetCharValues with: masterPort, objectNumber, parameter, *count (in), values, count (out)
-    IOGetCharValues(masterPort, objectNumber, parameter, *count, values, count);
-
-    return 0;
+	return _IOLookupByObjectNumber(_deviceMasterPort,
+		objectNumber,
+		deviceKind,
+		deviceName);
 }
 
-- (int)getIntValues:(int *)values
-       forParameter:(const char *)parameter
-       objectNumber:(int)objectNumber
-              count:(int *)count
+- (IOReturn)lookUpByDeviceName		: (IOString)deviceName
+			   objectNumber : (IOObjectNumber *)objectNumber
+			     deviceKind : (IOString *)deviceKind
 {
-    mach_port_t masterPort = (mach_port_t)(unsigned long)_privateData;
-
-    // Call IOGetIntValues with: masterPort, objectNumber, parameter, *count (in), values, count (out)
-    IOGetIntValues(masterPort, objectNumber, parameter, *count, values, count);
-
-    return 0;
+	return _IOLookupByDeviceName(_deviceMasterPort,
+		deviceName,
+		objectNumber,
+		deviceKind);
 }
 
-- (int)lookUpByDeviceName:(const char *)deviceName
-             objectNumber:(int *)objectNumber
-               deviceKind:(const char **)deviceKind
+- (IOReturn)getIntValues		: (unsigned *)parameterArray
+			   forParameter : (IOParameterName)parameterName
+			   objectNumber : (IOObjectNumber)objectNumber
+			          count : (unsigned *)count
 {
-    mach_port_t masterPort = (mach_port_t)(unsigned long)_privateData;
-
-    // Call IOLookupByDeviceName with: masterPort, deviceName, objectNumber, deviceKind
-    IOLookupByDeviceName(masterPort, deviceName, objectNumber, deviceKind);
-
-    return 0;
+	return _IOGetIntValues(_deviceMasterPort,
+		objectNumber,
+		parameterName,
+		*count,
+		parameterArray,
+		count);
 }
 
-- (int)lookUpByObjectNumber:(int)objectNumber
-                 deviceKind:(const char **)deviceKind
-                 deviceName:(const char **)deviceName
+- (IOReturn)getCharValues		: (unsigned char *)parameterArray
+			   forParameter : (IOParameterName)parameterName
+			   objectNumber : (IOObjectNumber)objectNumber
+			          count : (unsigned *)count
 {
-    mach_port_t masterPort = (mach_port_t)(unsigned long)_privateData;
-
-    // Call IOLookupByObjectNumber with: masterPort, objectNumber, deviceKind, deviceName
-    IOLookupByObjectNumber(masterPort, objectNumber, deviceKind, deviceName);
-
-    return 0;
+	return _IOGetCharValues(_deviceMasterPort,
+		objectNumber,
+		parameterName,
+		*count,
+		parameterArray,
+		count);
 }
 
-- (int)setCharValues:(const char *)values
-        forParameter:(const char *)parameter
-        objectNumber:(int)objectNumber
-               count:(int)count
+- (IOReturn)setIntValues		: (unsigned *)parameterArray
+			   forParameter : (IOParameterName)parameterName
+			   objectNumber : (IOObjectNumber)objectNumber
+			          count : (unsigned)count;
 {
-    mach_port_t masterPort = (mach_port_t)(unsigned long)_privateData;
-
-    // Call IOSetCharValues with: masterPort, objectNumber, parameter, values, count
-    IOSetCharValues(masterPort, objectNumber, parameter, values, count);
-
-    return 0;
+	return _IOSetIntValues(_deviceMasterPort,
+		objectNumber,
+		parameterName,
+		parameterArray,
+		count);
 }
 
-- (int)setIntValues:(const int *)values
-       forParameter:(const char *)parameter
-       objectNumber:(int)objectNumber
-              count:(int)count
+- (IOReturn)setCharValues		: (unsigned char *)parameterArray
+			   forParameter : (IOParameterName)parameterName
+			   objectNumber : (IOObjectNumber)objectNumber
+			          count : (unsigned)count;
 {
-    mach_port_t masterPort = (mach_port_t)(unsigned long)_privateData;
+	return _IOSetCharValues(_deviceMasterPort,
+		objectNumber,
+		parameterName,
+		parameterArray,
+		count);
+}
 
-    // Call IOSetIntValues with: masterPort, objectNumber, parameter, values, count
-    IOSetIntValues(masterPort, objectNumber, parameter, values, count);
-
-    return 0;
+- (IOReturn)createMachPort:(port_t *)machPort
+	      objectNumber:(IOObjectNumber)objectNumber
+{
+	return _IOCreateMachPort(_deviceMasterPort, objectNumber, machPort);
 }
 
 @end
+
+/*
+ * Apple's pdservd nlist names the mach-port MIG stub _IOCreateMachPort
+ * (three arguments). Darwin driverServer.defs renamed that routine to
+ * _IOServerConnect and added clientTask. Defined after @end so the class
+ * methods keep Apple's text order (_main, +new, getters, createMachPort,
+ * then this wrapper). Keep the Darwin stub; do not -lDriver.
+ */
+IOReturn
+_IOCreateMachPort(port_t deviceMaster, IOObjectNumber objectNumber, port_t *machPort)
+{
+	return _IOServerConnect(deviceMaster, objectNumber, task_self(), machPort);
+}

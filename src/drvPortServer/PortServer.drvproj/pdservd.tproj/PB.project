@@ -3,9 +3,9 @@
         C_FILES = ();
         HEADERSEARCH = (../PortServer.lksproj);
         H_FILES = (IODeviceMaster.h, pdservd.h);
-        M_FILES = (IODeviceMaster.m, pdservd.m);
+        M_FILES = (pdservd.m, IODeviceMaster.m);
         OTHER_LINKED = ();
-        OTHER_SOURCES = (Makefile, Makefile.preamble);
+        OTHER_SOURCES = (Makefile, Makefile.preamble, driverServer.defs);
     };
     GENERATEMAIN = YES;
     LANGUAGE = English;

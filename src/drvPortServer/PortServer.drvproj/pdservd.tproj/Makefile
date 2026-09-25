@@ -13,11 +13,11 @@ PROJECTVERSION = 1.0
 PROJECT_TYPE = Tool
 LANGUAGE = English
 
-MFILES = IODeviceMaster.m pdservd.m
+MFILES = pdservd.m IODeviceMaster.m
 
 HFILES = IODeviceMaster.h pdservd.h
 
-OTHERSRCS = Makefile Makefile.preamble
+OTHERSRCS = Makefile Makefile.preamble driverServer.defs
 
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles

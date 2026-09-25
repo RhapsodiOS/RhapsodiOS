@@ -643,8 +643,14 @@ static void EvPeriodicCallout( void *data )
 	// figure cursor movement
 	if ( dx || dy )
 	{
-	    pointerLoc.x += dx;
-	    pointerLoc.y += dy;
+	    // pointerLoc is a pair of shorts, and while _setCursorPosition
+	    // is deferred nothing pins it to the screen, so a burst of
+	    // accelerated deltas can wrap it to the far side.  Saturate.
+	    int x = pointerLoc.x + dx;
+	    int y = pointerLoc.y + dy;
+
+	    pointerLoc.x = (x < -32768) ? -32768 : ((x > 32767) ? 32767 : x);
+	    pointerLoc.y = (y < -32768) ? -32768 : ((y > 32767) ? 32767 : y);
 	    if ( needSetCursorPosition == NO )
 		[self _setCursorPosition:&pointerLoc atTime:tick];
 	}

@@ -2596,3 +2596,37 @@ In-branch `interfaceId = 3` / `handlerId = 0` is the matching source shape and i
   pop ebp                                 pop ebp
   retn                                    retn
 ```
+
+## Forced divergence: keyboard paths leave mouse bytes alone
+
+2026-09-25. From a reference defect, fixed at the user's request.
+
+The 8042 has one output buffer shared by the keyboard and the mouse. Status
+bit 5 (0x20) says the byte in it came from the mouse. The reference
+PS2Controller tests only bit 0 (output-buffer-full) on its keyboard paths, so
+a mouse byte passes as keyboard data:
+
+- `_keyboardDataPresent()` answers yes for a mouse byte, so
+  `-[PS2Keyboard interruptOccurred]`'s drain loop and
+  `_getKeyboardDataIfPresent()` (behind `NewStealKeyboardEvent()`) read it
+  through `_getKeyboardData()` as a scancode.
+- `reallyGetKeyboardData()` takes the first byte of any kind, so
+  `-[PS2Controller setLEDs:]` can take a mouse byte as the keyboard's ACK.
+- The IRQ 1 handler reads any byte when the buffer is full.
+
+Every byte taken this way is lost to PS2Mouse, and its packets go out of step,
+which the user saw under QEMU as random clicks and erratic movement. The
+keyboard side also sees stray scancodes.
+
+Fix, in `PS2Controller.m`, with a new `PS2_STATUS_AUX_DATA` (0x20):
+
+- `_keyboardDataPresent()` reports hardware data only when bit 0 is set and
+  bit 5 is clear.
+- The IRQ 1 handler reads only under the same condition, and leaves a mouse
+  byte for PS2Mouse's IRQ 12 handler.
+- `reallyGetKeyboardData()` reads and discards a mouse byte while it waits.
+  Its callers hold the controller lock at spl 6, so PS2Mouse's handler (ipl 3)
+  cannot take the byte, and waiting for it would hang. PS2Mouse's packet-start
+  check (see drvPS2Mouse divergences) resyncs after the lost byte.
+
+This costs byte parity in those three functions. Not yet built or tested.

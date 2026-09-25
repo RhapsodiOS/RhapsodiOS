@@ -56,17 +56,29 @@ if [ -s /etc/iftab ]; then
 		    continue
 		fi
 
-		# Start by getting bootpc data
+		# Start by getting dhcpcd data
 		ifconfig "${if}" 0.0.0.0 netmask 255.0.0.0 broadcast 255.255.255.255 > /dev/null
 		route add -net 255.255.255.255 -netmask 255.0.0.0 0.0.0.0 -iface     > /dev/null
-		echo -n "    Trying BOOTP for interface ${if}:"
-		if config=$(bootpc "${if}"); then
+		echo -n "    Trying DHCP for interface ${if}:"
+		if [ "${ROUTER:--AUTOMATIC-}" = "-AUTOMATIC-" ]; then dhcpflags=""; else dhcpflags="-G"; fi
+		if config=$(dhcpcd -w -t 30 ${dhcpflags} "${if}"); then
 		    SetNetConfig "${if}" ${config}
 		    echo " got response from" $(GetNetConfig "${if}" server_ip_address)
 		else
 		    echo " no response"
+		    # This system's own bootpd answers BOOTP only, which dhcpcd doesn't speak
+		    route delete 255.0.0.0 > /dev/null 2>&1
+		    ifconfig "${if}" 0.0.0.0 netmask 255.0.0.0 broadcast 255.255.255.255 > /dev/null
+		    route add -net 255.255.255.255 -netmask 255.0.0.0 0.0.0.0 -iface     > /dev/null
+		    echo -n "    Trying BOOTP for interface ${if}:"
+		    if config=$(bootpc "${if}"); then
+			SetNetConfig "${if}" ${config}
+			echo " got response from" $(GetNetConfig "${if}" server_ip_address)
+		    else
+			echo " no response"
+		    fi
 		fi
-		route delete 255.255.255.255 > /dev/null
+		route delete 255.255.255.255 > /dev/null 2>&1
 		route delete 255.0.0.0       > /dev/null
 		ifconfig "${if}" delete down > /dev/null
 
@@ -210,8 +222,8 @@ if [ -z "${HOSTNAME}" ] || [ -z "${ROUTER}" ]; then
 	fi
     fi
 
-    if ! HOSTNAME=$(GetNetConfig any host_name 1); then HOSTNAME=localhost; fi
-    if !   ROUTER=$(GetNetConfig any router    1); then   ROUTER=-NO-     ; fi
+    if [ -z "${HOSTNAME}" ] && ! HOSTNAME=$(GetNetConfig any host_name 1); then HOSTNAME=localhost; fi
+    if [ -z "${ROUTER}"   ] && !   ROUTER=$(GetNetConfig any router    1); then   ROUTER=-NO-     ; fi
 fi
 
 ##
@@ -249,7 +261,7 @@ if [ "${NETWORKUP}" = "-YES-" ]; then
 	# address must be specified in the /etc/hosts file.  
 	##
 	echo "    Using default router ${ROUTER}"
-	route add default ${ROUTER} > /dev/null
+	route add default ${ROUTER} > /dev/null 2>&1 || route change default ${ROUTER} > /dev/null
 	;;
 
     esac

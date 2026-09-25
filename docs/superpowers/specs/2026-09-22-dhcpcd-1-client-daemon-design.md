@@ -1,7 +1,7 @@
 # dhcpcd-1 — persistent DHCP client daemon
 
 **Date:** 2026-09-22
-**Status:** Design approved, pending implementation plan
+**Status:** Implemented on branch `dhcpcd-1`; awaiting the guest build and boot test
 
 ## Summary
 
@@ -78,7 +78,7 @@ of this work.
 | Project location | `src/dhcpcd-1/` | Matches the tree's numbered-suffix convention for vendored projects (`bootp-1`, `apk-tools-1`) |
 | Relationship to `bootp-1` | Self-contained; `bootplib` untouched | This is a source port of dhcpcd's own upstream code, not a `bootplib` extension. `bootpc`/`bootpd`/`bootplib` stay exactly as they are — just no longer invoked from the automatic-interface path |
 | Boot integration | Replace the `bootpc` call in `0800_Network` | User's choice; dhcpcd owns the interface for its full lifetime afterward, so bootpc's one-shot role is fully superseded for `-AUTOMATIC-` interfaces |
-| `0800_Network` diff size | Single command-name swap | dhcpcd's boot-mode wait flag emits the same `key=value` stdout protocol `SetNetConfig` already consumes, so no downstream script logic changes |
+| `0800_Network` diff size | The dhcpcd call, its flags, and a bootpc fallback | dhcpcd's boot-mode wait flag emits the same `key=value` stdout protocol `SetNetConfig` already consumes, so no downstream script logic changes. `-G` keeps hostconfig's `ROUTER` authoritative; bootpc is still tried when dhcpcd gets no lease, for BOOTP-only servers such as this system's own bootpd |
 | Build verification | Manual cross-reference against this tree's actual headers now; real compile deferred | No local `cc`/`gcc`/WSL distro available in this environment, and the real `rbuild`/VM build looks actively in use by another session. Every fact this design and the plan rely on (struct fields, ioctl values, header paths) was confirmed by reading the actual installed headers, not assumed — but nothing here has been compiled. The maintainer runs the real build once the VM is free |
 
 ## Approach
@@ -94,34 +94,69 @@ of this work.
    aggregate wraps it the way `src/bootp-1/Makefile` wraps its tools, even
    though this project starts with a single tool.
 2. **Portability pass** over the vendored source, fixing only what's
-   Linux-specific: the `<net/ethernet.h>` include (→ `<net/etherdefs.h>`),
-   and the `SIOCADDRT`/`struct rtentry` route-add call in `dhcpConfig()`
-   (→ a `PF_ROUTE` routing-socket message, the BSD equivalent). Everything
-   else the source touches (`SIOCSIFADDR`/`SIOCSIFNETMASK`/`SIOCSIFBRDADDR`/
-   `SIOCSIFFLAGS`, `struct ether_header` field names, `ARPHRD_ETHER`,
-   `IFF_UP`/`IFF_BROADCAST`/`IFF_MULTICAST`/`IFF_NOTRAILERS`/`IFF_RUNNING`)
-   is already confirmed present and BSD-compatible in this tree's headers —
-   no change needed. Self-contained — no dependency on `bootplib`.
+   Linux-specific: the `<net/ethernet.h>` include (→ `<netinet/if_ether.h>`
+   with the prerequisite headers userland code here includes before it, plus
+   a fallback `ETHER_ADDR_LEN`, which this tree doesn't define), the headers
+   `netinet/ip.h` needs in `udpipgen.h`, and the `SIOCADDRT`/`struct
+   rtentry` route-add call in `dhcpConfig()` (→ a `PF_ROUTE` routing-socket
+   message in a new `rtsock.c`, encoded the way `route(8)` encodes it:
+   RTM_ADD, or RTM_CHANGE when a default route already exists). Upstream's
+   fallback for a router outside the leased subnet is dropped: this kernel's
+   route add looks up the destination rather than the gateway, so it cannot
+   work here, and such a router gets a logged ENETUNREACH. `dhcpConfig()`
+   also sets address, netmask and broadcast with one `SIOCAIFADDR` (after a
+   `SIOCDIFADDR` of the old address), as `ifconfig` does, because on this
+   kernel `SIOCSIFADDR` installs a classful subnet route that a later
+   `SIOCSIFNETMASK` never corrects. Some vendored files also need a
+   `<sys/types.h>` or `<sys/socket.h>` ahead of their first system include,
+   since this tree's headers aren't self-contained. Everything else the
+   source touches (`SIOCSIFFLAGS`, `struct ether_header` field names,
+   `ARPHRD_ETHER`, `IFF_UP`/`IFF_BROADCAST`/`IFF_MULTICAST`/
+   `IFF_NOTRAILERS`/`IFF_RUNNING`) is already confirmed present and
+   BSD-compatible in this tree's headers — no change needed.
+   Self-contained — no dependency on `bootplib`.
+   Upstream's `/etc/resolv.conf` handling is kept as-is: dhcpcd saves the
+   existing file as `resolv.conf.sv`, writes one from the DHCP server's DNS
+   options, and restores the saved copy when it stops.
 3. **New BSD/BPF backend** (`bpfif.c`/`bpfif.h`, new files) replacing the
-   Linux-only raw-packet layer: opening `/dev/bpf*` and binding it to an
-   interface via `BIOCSETIF`/`BIOCIMMEDIATE`, reading the interface's MAC
-   address via the same `AF_LINK`/`struct sockaddr_dl`/`SIOCGIFCONF` idiom
+   Linux-only raw-packet layer: bringing the interface up (the BPF driver
+   refuses to bind a down interface), opening `/dev/bpf*` and binding it via
+   `BIOCSETIF`/`BIOCIMMEDIATE`, reading the interface's MAC address via the
+   same `AF_LINK`/`struct sockaddr_dl`/`SIOCGIFCONF` idiom
    `bootplib/interfaces.c` already uses, and send/receive functions that
-   replace the four `sendto`/`recvfrom` call sites in `client.c` and `arp.c`.
-   `dhcpSocket` stays a plain `int` fd throughout — BPF fds support ordinary
-   `read()`/`write()` plus `select()`, so `peekfd()` (already portable,
-   `select()`-based) and the rest of the send/receive call shape need no
-   change beyond swapping the four call sites themselves.
+   replace the `sendto`/`recvfrom` call sites in `client.c` and `arp.c`.
+   `dhcpSocket` stays a plain `int` fd throughout. One BPF `read()` can
+   return several frames, and `select()` cannot see the ones still buffered
+   in user space, so the four `peekfd()` waits on `dhcpSocket` go through a
+   `bpfPeek()` wrapper with the same return convention that also counts
+   buffered frames.
 4. **Boot-compat wait mode**: add a `-w` flag that blocks until the first
    DHCPACK is processed and the interface is configured, prints the same
    `key=value` fields bootpc's stdout produces today (exact field list
    confirmed against `bootpc.m` during implementation), then forks to the
-   background and continues as the persistent renewal daemon — applying
-   `ifconfig` itself on every subsequent RENEWING/REBINDING transition, since
-   nothing else will touch the interface after boot.
+   background and continues as the persistent renewal daemon. The address
+   cannot change on a renewal (RFC 2131), so on each renew/rebind ACK the
+   daemon refreshes only the router and default route; a lease re-acquired
+   from scratch reconfigures the interface in full through `dhcpConfig()`.
+   Nothing else touches the interface after boot.
 5. **`0800_Network` change**: `if config=$(bootpc "${if}")` becomes
-   `if config=$(dhcpcd -w "${if}")`. That is the only line that changes;
-   every `SetNetConfig`/`GetNetConfig` consumer downstream is untouched.
+   `if config=$(dhcpcd -w ${dhcpflags} "${if}")`, and every
+   `SetNetConfig`/`GetNetConfig` consumer downstream is untouched. Because
+   dhcpcd installs the default route itself, before the script reads
+   `ROUTER` from `/etc/hostconfig`, a new `-G` flag makes dhcpcd leave the
+   default route alone. The script passes `-G` unless `ROUTER` is
+   `-AUTOMATIC-`, so an explicit router, `-NO-` and `-ROUTED-` behave as
+   they did with bootpc. The script's own `route add default` falls back to
+   `route change` quietly, since dhcpcd may already have installed that
+   route. With several `-AUTOMATIC-` interfaces and `ROUTER=-AUTOMATIC-`,
+   each daemon manages the default route and the last to renew wins (bootpc
+   took the first interface's router); that is a known limitation.
+   `src/dhcpcd-1` is registered with `rbuild` through an `apk/pkginfo` and a
+   line in `src/Manifest`. The script passes `-t 30`, bootpc's give-up time,
+   and when dhcpcd gets no lease it restores the pre-DHCP interface state and
+   runs bootpc as before, since this system's bootpd answers BOOTP only.
+   dhcpcd rewrites `/etc/resolv.conf` only when the lease carries DNS
+   servers, and saves the admin's original once per run.
 6. **Leave `bootpc`/`bootpd`/`bootplib` in place**, unreferenced by the
    automatic-interface path but not deleted.
 
@@ -132,13 +167,17 @@ of this work.
 2. `src/dhcpcd-1/{PB.project,Makefile,Makefile.preamble,Makefile.postamble}`
    plus `dhcpcd.tproj/{PB.project,Makefile,Makefile.preamble,
    Makefile.postamble}`, mirroring `bootpc.tproj`.
-3. Portability pass: `<net/ethernet.h>` → `<net/etherdefs.h>`, and the
-   `SIOCADDRT` route-add call → a `PF_ROUTE` routing-socket message.
+3. Portability pass: `<net/ethernet.h>` → `<netinet/if_ether.h>` plus
+   `ETHER_ADDR_LEN`, `netinet/ip.h`'s prerequisites in `udpipgen.h`, and the
+   `SIOCADDRT` route-add call → a `PF_ROUTE` routing-socket message
+   (`rtsock.c`).
 4. New `bpfif.c`/`bpfif.h` BSD/BPF backend, wired to `/dev/bpf*` and the
    `PostLoad` device-node convention, replacing the Linux `SOCK_PACKET`
    layer in `client.c` and `arp.c`.
 5. `-w` boot-compat wait mode with bootpc-compatible `key=value` output.
-6. One-line `0800_Network` change.
+6. `0800_Network` change (the dhcpcd call, `-G` unless `ROUTER` is
+   automatic, and a quiet `route add || route change`), `/etc/dhcpc`, and
+   the `rbuild` registration.
 
 ## Verification
 
@@ -157,13 +196,36 @@ of this work.
   existing `SetNetConfig`/`GetNetConfig` flow behaves identically to the
   current bootpc path (hostname, router, default route all still resolve),
   and that a renewal cycle (forced with a short lease time from a test DHCP
-  server) re-applies the address without a reboot.
+  server) renews the lease and refreshes the default route without a
+  reboot.
 
 ## Deliverables
 
-- `src/dhcpcd-1/` — new project (vendored + adapted source, build files).
-- `src/files-5/private/etc/startup/0800_Network` — one-line change.
+- `src/dhcpcd-1/` — new project (vendored + adapted source, build files,
+  `apk/pkginfo`), listed in `src/Manifest`.
+- `src/files-5/private/etc/startup/0800_Network` — the dhcpcd call and the
+  `ROUTER` handling around it.
+- `src/files-5/private/etc/Makefile` — creates an empty `/etc/dhcpc`, where
+  dhcpcd keeps its lease cache and info file.
 - `bootpc`/`bootpd`/`bootplib` unchanged.
+
+## Known limitations
+
+- Several `-AUTOMATIC-` interfaces with `ROUTER=-AUTOMATIC-`: each daemon
+  manages the default route, and the last to renew wins. bootpc took the
+  first interface's router.
+- resolv.conf's `.sv` copy is tracked per process. An unclean shutdown, an
+  infinite lease (the process exits holding dhcpcd's file), or two
+  `-AUTOMATIC-` interfaces can still lose the admin's original.
+- `-t 30` matches bootpc, but a switch port running classic 802.1D spanning
+  tree forwards only after about 30 s, which can use up the whole window.
+  The boot then falls back to bootpc, and the next boot does a full
+  DISCOVER.
+- A future `/etc/dhcpc/dhcpcd-<if>.exe` hook would run before the fork and
+  inherit the `-w` pipe. None ships, and such a hook must not write to
+  stdout or outlive dhcpcd's parent.
+- The man page is not installed. It also still describes `eth0` and
+  upstream's `-l`/`-t` details.
 
 ## Out of scope
 

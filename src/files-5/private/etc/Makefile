@@ -76,6 +76,9 @@ RWMODE = 644
 EMPTYFILES = find.codes hosts.equiv rmtab utmp xtab
 EMPTYMODE = 644
 
+#	Directories that are created empty
+EMPTYDIRS = dhcpc
+
 #	Subdirectories with their own Makefiles
 SUBDIRS = netinfo startup
 
@@ -120,6 +123,14 @@ install: ${DSTDIR}
 		touch ${DSTDIR}/$$i ; \
 		chown ${OWNER}.${GROUP} ${DSTDIR}/$$i ; \
 		chmod ${EMPTYMODE} ${DSTDIR}/$$i ; \
+	  done
+	echo "."
+	echo -n "    Empty directories:"
+	for i in `echo ${EMPTYDIRS}` ; \
+	  do \
+		echo -n " $$i" ; \
+		mkdir -p -m ${DSTMODE} ${DSTDIR}/$$i ; \
+		chown ${OWNER}.${GROUP} ${DSTDIR}/$$i ; \
 	  done
 	echo "."
 	echo -n "    Empty group-writeable files:"

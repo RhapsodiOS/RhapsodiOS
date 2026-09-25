@@ -251,7 +251,9 @@ BISON_SIMPLE=/build/bootstrap-root/usr/share/bison.simple \
 
 Then repeat the identical command with `bootstrap-universal` in place of
 `bootstrap`. Both passes write their packages back into `/build/repo`, so the
-second pass sees the thin results of the first.
+second pass sees the thin results of the first. The universal pass deletes the
+thin `-i386`/`-ppc` APKs it supersedes, and a rerun of the thin pass accepts
+the universal APK instead of rebuilding.
 
 Per-project logs land in `/build/state/logs/<pkg>-<arch>-<target>.log`. The
 architecture in those filenames comes from the toolchain profile, which is

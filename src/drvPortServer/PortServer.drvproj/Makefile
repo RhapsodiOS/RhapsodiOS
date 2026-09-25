@@ -21,7 +21,7 @@ CLASSES =
 
 HFILES =
 
-TOOLS = PortServer.lksproj
+TOOLS = PortServer.lksproj pdservd.tproj
 
 OTHERSRCS = Makefile Makefile.preamble
 

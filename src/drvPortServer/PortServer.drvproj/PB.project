@@ -11,7 +11,7 @@
             Default.table
         );
         OTHER_SOURCES = (Makefile, Makefile.preamble);
-        SUBPROJECTS = (PortServer.lksproj);
+        SUBPROJECTS = (PortServer.lksproj, pdservd.tproj);
     };
     LANGUAGE = English;
     LOCALIZABLE_FILES = {

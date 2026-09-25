@@ -13,23 +13,23 @@ PROJECTVERSION = 1.0
 PROJECT_TYPE = Tool
 LANGUAGE = English
 
-MFILES = IODeviceMaster.m pdservd.m
+MFILES = pdservd.m IODeviceMaster.m
 
 HFILES = IODeviceMaster.h pdservd.h
 
-OTHERSRCS = Makefile Makefile.preamble
+OTHERSRCS = Makefile Makefile.preamble driverServer.defs
 
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC
 MAKEFILE = tool.make
-NEXTSTEP_INSTALLDIR = /usr/sbin
+NEXTSTEP_INSTALLDIR = $(NEXT_ROOT)/private/Drivers
 LIBS =
 DEBUG_LIBS = $(LIBS)
 PROF_LIBS = $(LIBS)
 
 
-HEADER_PATHS = -I../PortServer.drvproj/PortServer.lksproj
+HEADER_PATHS = -I../PortServer.lksproj
 NEXTSTEP_PB_CFLAGS = -DDRIVER_PRIVATE
 
 

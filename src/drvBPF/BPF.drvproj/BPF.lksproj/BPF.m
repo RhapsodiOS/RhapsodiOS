@@ -56,6 +56,9 @@ extern void bpf_mtap(caddr_t arg, struct mbuf *m);
 /* External BPF globals */
 extern int nbpfilter;
 
+/* Number of /dev/bpf descriptors, as in later Darwin */
+#define NBPFILTER	4
+
 /* External device entry points */
 extern int nulldev(void);
 extern int enodev(void);
@@ -93,6 +96,12 @@ extern int enodev(void);
 
 - initFromDeviceDescription:(IODeviceDescription *)deviceDescription
 {
+    /*
+     * kernel-7 leaves the descriptor table to the driver.  Divergence
+     * from the reference; see reconstruction/divergences.md.
+     */
+    bpfilterattach(NBPFILTER);
+
     /* Divert the kernel's tap calls into this driver. */
     bpfops.bpf_tap = bpf_tap;
     bpfops.bpf_mtap = bpf_mtap;

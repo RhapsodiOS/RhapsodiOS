@@ -735,3 +735,133 @@ network
 Once Task 4 applies Findings 1-8, it should read `reconstructed against the reference
 binary, fixes applied, not yet compiled or tested` — and no stronger claim than that,
 because this driver has never been built.
+
+## Forced divergence: the driver allocates the descriptor table
+
+2026-09-25. For kernel-7, at the user's request.
+
+Loaded on the i386 QEMU guest, which runs this tree's kernel-7
+(kernel-154.5.1-7), the driver answered every open with `ENXIO`. Nothing
+allocates the descriptors.
+
+The reference was built for a kernel that owned them. Apple's DR2 i386
+`mach_kernel` has `_bpf_dtab` as a 60-byte `__common` block (0x22829c, with the
+next symbol at 0x2282d8; `sizeof(struct bpf_d)` is 0x3c), so
+`struct bpf_d bpf_dtab[1]`, and `_nbpfilter` as an initialised 1 in `__data`.
+Its `_bpfattach` ends with the 4.4BSD loop that marks the descriptors free. The
+reference indexes that array directly. All six of its index sites are a `lea`
+with `_bpf_dtab` as the displacement, which is what `extern struct bpf_d
+bpf_dtab[]` compiles to: `_bpfopen` 1160 and 1166, `_bpfclose` 1223, `_bpfread`
+1292, `_bpfwrite` 1538, `_bpfioctl` 1761, `_bpf_select` 3045.
+
+kernel-7 is Darwin 0.3's source, unchanged here. `bsd/net/bpf.c:123-124`
+declares `struct bpf_d *bpf_dtab;` and
+`int nbpfilter = -1; /* Mark as uninitialized; BPF will init */`, and its
+`bpfattach` no longer marks anything free. Between DR2 and Darwin 0.3 Apple
+handed the table to the driver. The reference cannot work on kernel-7: it sees
+`nbpfilter` as -1, and it would index the 4-byte pointer variable as though it
+were the table. On the guest, Apple's binary got no working nodes either.
+
+Fix, in the driver and not the kernel, because kernel-7's own comment gives the
+job to the driver: `bpfilterattach(n)`, empty in the reference, now allocates n
+descriptors with `MALLOC`, zeroes them, marks each free and sets `nbpfilter`
+last. `-initFromDeviceDescription:` calls it with 4 before it installs
+`bpfops`. Four is xnu's `NBPFILTER`; PostLoad's `path[10]` holds names up to
+`/dev/bpf9`. This costs parity in `_bpfilterattach` (412) and
+`-[BPF initFromDeviceDescription:]` (156).
+
+**Correction to §5 and the ledger.** §5 called our
+`extern struct bpf_d *bpf_dtab;` "correct as written", and the ledger records
+the six functions above as `assembly-matched`. Neither is right. A pointer
+declaration compiles each index site to a load of the pointer and then the
+index, an instruction the reference does not have. The pointer is now the right
+declaration for kernel-7, so this belongs to this divergence rather than being a
+parity bug to fix, but those six ledger claims missed it. The ledger's
+transitions are forward-only (§8), so it is recorded here instead.
+
+## Forced divergence: written frames carry a packet header
+
+2026-09-25. From a reference defect, fixed at the user's request. This reverses
+Finding 5.
+
+Finding 5 matched the reference's `MGET` in `bpf_movein` and noted that
+`bpfwrite` would then hand `if_output` a frame without `M_PKTHDR`. On the guest
+that is fatal. The tree's IOEthernet output
+(`src/driverkit-3/libDriver/Kernel/IOEthernet.m:625`) logs
+`IOEthernet: M_PKTHDR flag not set (0001)` and frees every frame a BPF client
+writes, so dhcpcd's DISCOVER never left the machine.
+
+Fix, as in 4.4BSD and Darwin's later `bpf.c`: `MGETHDR`, the cluster threshold
+back to `MHLEN`, and after `m->m_len = len`, `m->m_pkthdr.len = len - hlen` and
+`m->m_pkthdr.rcvif = 0` (`MGETHDR` leaves `rcvif` unset). This costs parity in
+`_bpf_movein` (420), and the binary now imports `_m_retryhdr`.
+
+## PostLoad: the device-count loop is signed again
+
+2026-09-25. Not a divergence: a reconstruction error, put back to parity.
+`PostLoad.tproj` is outside the ledger (§2).
+
+`PostLoad.m` declared its loop counter `unsigned int`, so `i < bpfValues[1]`
+compared against the -1 of an unset `nbpfilter` as 0xFFFFFFFF. On the guest it
+made 7938 `/dev/bpf*` nodes before it was killed, overrunning `path[10]` from
+`/dev/bpf10` on. With BPF in Active Drivers it would hang boot in
+`0300_Devices`. The reference's `_main` compares signed, with `jle` at 0x3ceb
+before the loop and `jg` at 0x3dbf after the `inc esi`. `i` is an `int` again.
+
+## Default.table: "Server Name" came out twice
+
+2026-09-25. Not a divergence: Finding 8's outcome missed it.
+
+The driver build's `post_copy_tables` rule
+(`src/driverTools-1/DriverProjectType/driver.make:154-159`) appends
+`"Server Name" = "$(NAME)";` to every table. That is why the reference's
+shipped table has the line once, just before the build-stamped
+`"Driver Version"`. Our source table carried it as well, so the built table had
+it twice; Finding 8 compared the source table with the shipped one and did not
+allow for the append. The line is gone from the source, and the built table now
+matches the reference's except for the build stamp. Most other driver tables
+in the tree carry the same line and get the same duplicate; they are not
+changed here.
+
+## Build warnings
+
+2026-09-25. Neither change alters generated code.
+
+- `splimp`, `splnet` and `splx` were implicitly declared (first at the `MGET`
+  expansion in `bpf_movein` and in `bpfwrite`). The `#include <machine/spl.h>`
+  for `BPFDRV` builds had sat inside `#if 0` since the file was added. It is
+  live again; kernel-7 exports `bsd/machine/spl.h`, which pulls in
+  `kernserv/<arch>/spl.h`.
+- `catchpacket(d, pkt, pktlen, slen, bcopy)` passed `bcopy`, whose length is a
+  `size_t` (`unsigned long`), where the copy-function parameter said `u_int`.
+  That parameter and `bpf_mcopy`'s length are now `size_t`, as in later BSDs and
+  xnu. Both types are 32 bits on both targets.
+
+## Guest test
+
+2026-09-25, on a private `-snapshot` QEMU guest booted from
+`vm/work/rhap-i386-bootstrapped.img`, running kernel-7 (kernel-154.5.1-7
+RELEASE_I386). Built there with `rbuild buildpackage --toolchain
+/build/src/rbuild-1/toolchains/gcc-darwin-i386.conf --arch i386` into
+`bpf-3-i386.apk`. The spl and `catchpacket` warnings are gone. The warnings
+left are `_KERNEL` redefinitions, `struct ifnet`/`struct mbuf` scope notes from
+installed headers, `A`/`X` in `bpf_filter`, and PostLoad's `IODeviceMaster`
+stubs; this change touched none of those lines. The built `Default.table` has
+one `"Server Name"`, where the reference has it.
+
+- `driverLoader D=BPF` loaded it (`Registering: bpf`), and PostLoad made
+  `/dev/bpf0` to `/dev/bpf3` and no more.
+- A 60-byte ARP request for 10.10.0.1, written to `/dev/bpf0` bound to `en0`,
+  returned 60. It appears in a QEMU `filter-dump` capture of the NIC, and
+  slirp's reply was read back through the same descriptor. The console printed
+  no `M_PKTHDR` message.
+- With `/dev/bpf0` to `/dev/bpf2` held open, the same test got `EBUSY` on each
+  and ran on `/dev/bpf3`, so all four descriptors start free.
+- Control: Apple's `BPF_reloc` with the rebuilt PostLoad. PostLoad finished at
+  once and made no nodes.
+- With `BPF` added to `Instance0.table`'s Active Drivers, boot's
+  `driverLoader a` loaded it, boot reached the login window, `/dev/bpf0` to
+  `/dev/bpf3` were there, and the write test passed again.
+
+dhcpcd was not rerun against this build; the dhcpcd-1 session's lease tests
+used a guest-only driver carrying equivalent fixes.

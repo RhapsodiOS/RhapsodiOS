@@ -65,11 +65,9 @@
 #include <string.h>
 #include <sys/param.h>
 #include <sys/systm.h>
-#if 0
 #ifdef BPFDRV
 #include <machine/spl.h>
 #endif /* BPFDRV */
-#endif
 #include <sys/mbuf.h>
 #include <sys/buf.h>
 #include <sys/time.h>
@@ -140,14 +138,26 @@ int nbpfilter = NBPFILTER;
 #ifdef BPFDRV
 #if BSD >= 199207
 /*
- * bpfilterattach() is called at boot time in new systems.  We do
- * nothing here since old systems will not call this.
+ * Allocate the n descriptors.  BPF.m calls this when the driver loads.
+ *
+ * Divergence from the reference, for kernel-7: the DR2 kernel Apple's
+ * driver was built for owned bpf_dtab as a static array with nbpfilter
+ * set, and Apple's bpfilterattach() was empty.  kernel-7 (Darwin 0.3)
+ * declares bpf_dtab as a pointer and leaves nbpfilter at -1 for the
+ * driver to fill in.  See reconstruction/divergences.md.
  */
-/* ARGSUSED */
 void
 bpfilterattach(n)
 	int n;
 {
+	int i;
+
+	MALLOC(bpf_dtab, struct bpf_d *, n * sizeof(struct bpf_d),
+	    M_DEVBUF, M_WAITOK);
+	bzero((caddr_t)bpf_dtab, n * sizeof(struct bpf_d));
+	for (i = 0; i < n; i++)
+		D_MARKFREE(&bpf_dtab[i]);
+	nbpfilter = n;
 }
 #endif
 #endif /* BPFDRV */
@@ -158,7 +168,7 @@ static void	bpf_freed __P((struct bpf_d *));
 static void	bpf_freed __P((struct bpf_d *));
 static void	bpf_ifname __P((struct ifnet *, struct ifreq *));
 static void	bpf_ifname __P((struct ifnet *, struct ifreq *));
-static void	bpf_mcopy __P((const void *, void *, u_int));
+static void	bpf_mcopy __P((const void *, void *, size_t));
 static int	bpf_movein __P((struct uio *, int,
 		    struct mbuf **, struct sockaddr *, int *));
 static int	bpf_setif __P((struct bpf_d *, struct ifreq *));
@@ -166,7 +176,7 @@ static int	bpf_setif __P((struct bpf_d *, struct ifreq *));
 static __inline void
 		bpf_wakeup __P((struct bpf_d *));
 static void	catchpacket __P((struct bpf_d *, u_char *, u_int,
-		    u_int, void (*)(const void *, void *, u_int)));
+		    u_int, void (*)(const void *, void *, size_t)));
 static void	reset_d __P((struct bpf_d *));
 
 #ifdef BPFDRV
@@ -229,10 +239,15 @@ bpf_movein(uio, linktype, mp, sockp, datlen)
 	if ((unsigned)len > MCLBYTES)
 		return (EIO);
 
-	MGET(m, M_WAIT, MT_DATA);
+	/*
+	 * Divergence from the reference, fixed at the user's request: Apple
+	 * used MGET, so the frame had no packet header and IOEthernet's
+	 * output dropped every write.  See reconstruction/divergences.md.
+	 */
+	MGETHDR(m, M_WAIT, MT_DATA);
 	if (m == 0)
 		return (ENOBUFS);
-	if (len > MLEN) {
+	if (len > MHLEN) {
 #if BSD >= 199103
 		MCLGET(m, M_WAIT);
 		if ((m->m_flags & M_EXT) == 0) {
@@ -245,6 +260,8 @@ bpf_movein(uio, linktype, mp, sockp, datlen)
 		}
 	}
 	m->m_len = len;
+	m->m_pkthdr.len = len - hlen;
+	m->m_pkthdr.rcvif = 0;
 	*mp = m;
 	/*
 	 * Make room for link header.
@@ -1047,7 +1064,7 @@ static void
 bpf_mcopy(src_arg, dst_arg, len)
 	const void *src_arg;
 	void *dst_arg;
-	register u_int len;
+	register size_t len;
 {
 	register const struct mbuf *m;
 	register u_int count;
@@ -1108,7 +1125,7 @@ catchpacket(d, pkt, pktlen, snaplen, cpfn)
 	register struct bpf_d *d;
 	register u_char *pkt;
 	register u_int pktlen, snaplen;
-	register void (*cpfn) __P((const void *, void *, u_int));
+	register void (*cpfn) __P((const void *, void *, size_t));
 {
 	register struct bpf_hdr *hp;
 	register int totlen, curlen;

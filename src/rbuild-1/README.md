@@ -52,6 +52,15 @@ repository: it walks `BootstrapRuntimeManifest` (Csu through Libsystem) and
 then the caller's full manifest with `RB_ARCH_UNIVERSAL`. Thin `bootstrap`
 remains for unit tests and the first walk that stages the profile's thin CPU.
 
+Once `bootstrap-universal` confirms a valid universal APK, it deletes the thin
+(`-i386` / `-ppc`) APKs of that pkgname, at any version, from the output
+repository and prints `remove superseded <path>`. In dry-run it lists every
+thin APK the planned build could supersede and removes nothing. Base,
+`-hdrs`, and `-obj` are pruned independently, and seed repositories and
+`.invalid` files are never touched. When a thin APK is absent, thin
+`bootstrap` accepts the universal APK in its place, so it replays that APK
+instead of rebuilding the package.
+
 Before an `all` or `binary` project build, private compiler/linker probes must
 produce every requested CPU slice. Bootstrap may defer linking until its
 explicit `ld_flags_ready` marker exists. Products, cached APKs, and dependencies
@@ -63,6 +72,12 @@ Published APK filenames encode architecture as
 can coexist in the same repository when their tokens differ. Incompatible
 cached artifacts are quarantined as `.invalid` before rebuilding. `missing`
 only inspects them.
+
+Each published APK has a `<apk>.src` record holding a fingerprint of its
+source tree: every file's relative path, size, mtime and link target, with
+`CVS`, `.svn`, `.git` and `.hg` skipped. When the source no longer matches,
+the APK and its record are removed and the project is rebuilt. An APK with no
+record adopts the current fingerprint rather than forcing a rebuild.
 
 See [architecture policy and verification](../../docs/build/rbuild-universal.md)
 for object collections, dependency compatibility, state migration, and the
@@ -79,9 +94,45 @@ bounded native guest acceptance evidence.
   build includes that CPU (a universal build takes both), e.g. kernel-7's
   `makedepends_ppc = drvpexpert`.
 - Depends at runtime on `tar`, `gzip`, `apk`, `make`, `chroot`, `rsync`,
-  `mkdir`, `cp`, `rm` on `PATH`.
+  `mkdir`, `cp`, `rm` on `PATH`, and for vendored projects on `mv`, `rmdir`
+  and GNU `patch` 2.4 or later. Patching runs on the host, before any chroot.
 
 `make trace-test` is an rbuild `-n` dry-run against empty APK seeds: universal
 i386+ppc probes, thin `RC_*` policy, no build root, no live-host bootstrap
 seeds. Empty dependency archives are planning fixtures, not valid packages;
 actual payload validation and native builds are tested separately.
+
+## Vendored sources
+
+A project may ship a pristine upstream tarball and an ordered patch series
+instead of an expanded tree. `apk/vendor` uses `apk/pkginfo` syntax:
+
+    tarball = zlib-1.1.3.tar.gz
+    directory = zlib
+    patches = patches
+    patchlevel = 1
+
+`tarball` and `directory` are required; `patches` and `patchlevel` default as
+shown. `tarball` and `patches` are relative paths with no empty, `.` or `..`
+component and no trailing `/`; `directory` is a single component other than `.`
+or `..`; `patchlevel` is 0-99. After rsyncing the project into SRCROOT (without
+the tarball or the patch directory), rbuild extracts the tarball with the
+toolchain's `gzip` and `tar`, renames its single top-level entry to
+`directory`, and runs `patch -f -E --no-backup-if-mismatch -p<level>` for each
+`<patches>/*.patch` in filename order. The project's Makefile then builds
+normally. The tarball must hold exactly one top-level entry, and the project
+must not also carry the expanded tree. See `src/zlib-1`.
+
+Tarballs and patches are trusted inputs: rbuild extracts and patches them on
+the build host as root, before any chroot. Before extracting, it scans every
+tarball header the way `/bin/pax -r` reads it and refuses absolute or `..`
+paths, paths through a symlink, symlinks and hard links that escape the tree or
+pass through another symlink, GNU long-name and pax extended headers, headers
+pax would parse differently, archives that start with a zero block, unsupported
+member types, sizes on members that carry no data, a prefix without POSIX
+magic, and non-ASCII names. That guarantee assumes the profile's `tar` is pax
+(the shipped `pax-gnutar.sh`, or the pax fallback). Take tarballs only from
+their upstream release, and record the upstream checksum in the commit that
+adds one. Extraction keeps upstream modification times while patched files get
+fresh ones, so when a patch touches a generator input such as `configure.in`,
+also patch the file generated from it, or make may try to regenerate it.

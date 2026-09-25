@@ -1456,6 +1456,54 @@ TEST(test_cache_accepts_covering_architecture) {
     system("rm -rf /tmp/rb-cache-cover");
 }
 
+TEST(test_source_change_removes_apk) {
+    const char *apk = "/tmp/rb-srcfp/repo/x-1-i386.apk";
+    char *fp1, *fp2, *fp3;
+    char line[64];
+    FILE *f;
+    int exists;
+    CHECK_INT(system("rm -rf /tmp/rb-srcfp && mkdir -p /tmp/rb-srcfp/src/CVS /tmp/rb-srcfp/repo"),0);
+    CHECK_INT(system("echo one > /tmp/rb-srcfp/src/a.c && echo e > /tmp/rb-srcfp/src/CVS/Entries"),0);
+    fp1 = builder_source_fingerprint("/tmp/rb-srcfp/src");
+    CHECK(fp1 != 0 && strlen(fp1) == 8);
+    CHECK(builder_source_fingerprint("/tmp/rb-srcfp/missing") == 0);
+    CHECK_INT(system("echo changed >> /tmp/rb-srcfp/src/CVS/Entries"),0);
+    fp2 = builder_source_fingerprint("/tmp/rb-srcfp/src");
+    CHECK_STR(fp2, fp1);
+    free(fp2);
+
+    /* An APK without a record adopts the current source. */
+    CHECK_INT(system("touch /tmp/rb-srcfp/repo/x-1-i386.apk"),0);
+    exists = 1;
+    CHECK_INT(builder_source_status(apk, fp1, &exists), 0);
+    CHECK_INT(exists, 1);
+    f = fopen("/tmp/rb-srcfp/repo/x-1-i386.apk.src", "r"); CHECK(f != 0);
+    if (f) { CHECK(fgets(line, sizeof(line), f) != 0); fclose(f); CHECK_STR(str_chomp(line), fp1); }
+    CHECK_INT(builder_source_status(apk, fp1, &exists), 0);
+    CHECK_INT(exists, 1);
+    CHECK(access(apk, F_OK) == 0);
+
+    /* Missing APKs are left alone. */
+    exists = 0;
+    CHECK_INT(builder_source_status("/tmp/rb-srcfp/repo/none-1-i386.apk", fp1, &exists), 0);
+    CHECK(access("/tmp/rb-srcfp/repo/none-1-i386.apk.src", F_OK) != 0);
+
+    /* Edited and added files change the fingerprint; the stale APK goes. */
+    CHECK_INT(system("echo two >> /tmp/rb-srcfp/src/a.c"),0);
+    fp2 = builder_source_fingerprint("/tmp/rb-srcfp/src");
+    CHECK(fp2 != 0 && strcmp(fp2, fp1) != 0);
+    CHECK_INT(system("echo new > /tmp/rb-srcfp/src/b.c"),0);
+    fp3 = builder_source_fingerprint("/tmp/rb-srcfp/src");
+    CHECK(fp3 != 0 && strcmp(fp3, fp2) != 0);
+    exists = 1;
+    CHECK_INT(builder_source_status(apk, fp3, &exists), 0);
+    CHECK_INT(exists, 0);
+    CHECK(access(apk, F_OK) != 0);
+    CHECK(access("/tmp/rb-srcfp/repo/x-1-i386.apk.src", F_OK) != 0);
+    free(fp1); free(fp2); free(fp3);
+    system("rm -rf /tmp/rb-srcfp");
+}
+
 static void cache_fixture(const char *repo, const char *name, const char *version,
                           const char *arch, int cpu) {
     char command[1024], path[256];
@@ -1583,6 +1631,7 @@ static void probe_fixture(void) {
     f=fopen("/tmp/rb-probe-tools/bin/cc","w"); CHECK(f!=0); if(!f)return;
     fputs("#!/bin/sh\narch=none\nout=\nstage=link\n"
           "echo \"$*\" >> /tmp/rb-probe-tools/args\n"
+          "echo \"$PATH\" >> /tmp/rb-probe-tools/paths\n"
           "while test $# -gt 0; do\ncase \"$1\" in\n"
           "-arch) shift; arch=$1;;\n-o) shift; out=$1;;\n-c) stage=compile;;\nesac\nshift\ndone\n"
           "echo $arch-$stage >> /tmp/rb-probe-tools/calls\n"
@@ -1632,6 +1681,16 @@ TEST(test_toolchain_probes) {
     CHECK(probe_text_has("/tmp/rb-probe-tools/calls","i386-compile"));
     CHECK(probe_text_has("/tmp/rb-probe-tools/calls","ppc-link"));
     CHECK(probe_text_has("/tmp/rb-probe-tools/chroots","chroot"));
+    /* A chroot make also searches the build root's /usr/local/bin. */
+    CHECK(probe_text_has("/tmp/rb-probe-tools/paths",
+          "/tmp/rb-probe-tools/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin\n"));
+    /* A profile path that already has it is used as written. */
+    tc.path="/tmp/rb-probe-tools/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin";
+    unlink("/tmp/rb-probe-tools/paths");
+    CHECK_INT(builder_probe_toolchain(&p,&p,&opt),0);
+    CHECK(probe_text_has("/tmp/rb-probe-tools/paths",
+          "/tmp/rb-probe-tools/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin\n"));
+    tc.path="/tmp/rb-probe-tools/bin:/usr/bin:/bin:/usr/sbin:/sbin";
     for(i=0;modes[i];i++) {
         setenv("RB_PROBE_MODE",modes[i],1);
         CHECK_INT(builder_probe_toolchain(&p,&p,&opt),1);
@@ -1644,8 +1703,11 @@ TEST(test_toolchain_probes) {
     tc.ld_flags_ready="@SYSROOT@/ready";opt.sysroot="/tmp/rb-probe-tools";
     setenv("RB_PROBE_MODE","link",1);
     unlink("/tmp/rb-probe-tools/calls");
+    unlink("/tmp/rb-probe-tools/paths");
     CHECK_INT(builder_probe_toolchain(&p,&p,&opt),0);
     CHECK(!probe_text_has("/tmp/rb-probe-tools/calls","link"));
+    CHECK(probe_text_has("/tmp/rb-probe-tools/paths",
+          "/tmp/rb-probe-tools/bin:/usr/bin:/bin:/usr/sbin:/sbin\n"));
     f=fopen("/tmp/rb-probe-tools/ready","w");CHECK(f!=0);if(f)fclose(f);
     unlink("/tmp/rb-probe-tools/calls");
     CHECK_INT(builder_probe_toolchain(&p,&p,&opt),0);
@@ -1752,6 +1814,113 @@ TEST(test_direct_packaging_missing_architecture_defaults_universal) {
     package_free(&pkg);params_free(&params);system("rm -rf /tmp/rb-default-package");
 }
 
+static void vendor_fixture_file(const char *path, const char *text) {
+    FILE *f = fopen(path, "w");
+    fputs(text, f);
+    fclose(f);
+}
+
+static void vendor_fixture_params(Params *p, const char *base) {
+    params_init(p);
+    p->OBJROOT = str_cats(base, "/obj", (char *)0);
+    p->SYMROOT = str_cats(base, "/sym", (char *)0);
+    p->DSTROOT = str_cats(base, "/dst", (char *)0);
+    p->HDRROOT = str_cats(base, "/hdr", (char *)0);
+    p->PACKAGEROOT = str_cats(base, "/pkg", (char *)0);
+    p->SRCROOT = str_cats(base, "/src", (char *)0);
+    p->SRCDIR = str_cats(base, "/srcdir", (char *)0);
+    p->LIBCOBJROOT = str_cats(base, "/cobj", (char *)0);
+    p->BUILDROOT = str_cats(base, "/br", (char *)0);
+}
+
+static int vendor_fixture_equals(const char *path, const char *want) {
+    FILE *f = fopen(path, "r");
+    char buf[256];
+    size_t n;
+    if (!f) return 0;
+    n = fread(buf, 1, sizeof(buf) - 1, f);
+    buf[n] = '\0';
+    fclose(f);
+    return strcmp(buf, want) == 0;
+}
+
+TEST(test_setupdirs_vendors) {
+    Package pkg;
+    Params p;
+    strlist repo;
+    BuildOptions opt;
+
+    CHECK_INT(system("rm -rf /tmp/rb_ven && "
+        "mkdir -p /tmp/rb_ven/srcdir/apk /tmp/rb_ven/srcdir/patches "
+        "/tmp/rb_ven/srcdir/sub/patches /tmp/rb_ven/stage/widget-1.0 && "
+        "echo orig > /tmp/rb_ven/stage/widget-1.0/hello.txt && "
+        "echo keep > /tmp/rb_ven/srcdir/sub/patches/keep.txt && "
+        "echo all: > /tmp/rb_ven/srcdir/Makefile && "
+        "cd /tmp/rb_ven/stage && /bin/pax -w -x ustar widget-1.0 | "
+        "/usr/bin/gzip -c > /tmp/rb_ven/srcdir/widget-1.0.tar.gz"), 0);
+    vendor_fixture_file("/tmp/rb_ven/srcdir/apk/vendor",
+        "tarball = widget-1.0.tar.gz\ndirectory = widget\n");
+    vendor_fixture_file("/tmp/rb_ven/srcdir/patches/0001-change.patch",
+        "--- widget-1.0/hello.txt\n+++ widget/hello.txt\n"
+        "@@ -1 +1 @@\n-orig\n+patched\n");
+
+    package_init(&pkg);
+    strlist_init(&repo);
+    build_options_init(&opt);
+    opt.bootstrap = 1;          /* no chroot: empty repository is fine */
+    vendor_fixture_params(&p, "/tmp/rb_ven");
+
+    CHECK_INT(builder_setupdirs(&pkg, &p, "widget", "dir", &repo, &opt), 0);
+    CHECK(access("/tmp/rb_ven/src/Makefile", F_OK) == 0);
+    CHECK(access("/tmp/rb_ven/src/widget/hello.txt", F_OK) == 0);
+    CHECK(vendor_fixture_equals("/tmp/rb_ven/src/widget/hello.txt", "patched\n"));
+    /* build inputs stay out of SRCROOT ... */
+    CHECK(access("/tmp/rb_ven/src/widget-1.0.tar.gz", F_OK) != 0);
+    CHECK(access("/tmp/rb_ven/src/patches", F_OK) != 0);
+    /* ... but the excludes are anchored: a nested patches/ still copies */
+    CHECK(access("/tmp/rb_ven/src/sub/patches/keep.txt", F_OK) == 0);
+
+    /* half-finished conversion: expanded tree still in the project */
+    CHECK_INT(system("mkdir -p /tmp/rb_ven/srcdir/widget"), 0);
+    CHECK_INT(builder_setupdirs(&pkg, &p, "widget", "dir", &repo, &opt), 1);
+
+    params_free(&p);
+    strlist_free(&repo);
+    package_free(&pkg);
+    system("rm -rf /tmp/rb_ven");
+}
+
+/* rsync copies a symlinked directory as a link, so removing the copied
+   tarball must not follow it out of SRCROOT. */
+TEST(test_setupdirs_vendor_input_through_symlink) {
+    Package pkg;
+    Params p;
+    strlist repo;
+    BuildOptions opt;
+
+    CHECK_INT(system("rm -rf /tmp/rb_ven /tmp/rb_ven_out && "
+        "mkdir -p /tmp/rb_ven/srcdir/apk /tmp/rb_ven_out && "
+        "echo keep > /tmp/rb_ven_out/x.tar.gz && "
+        "echo all: > /tmp/rb_ven/srcdir/Makefile && "
+        "ln -s /tmp/rb_ven_out /tmp/rb_ven/srcdir/dist"), 0);
+    vendor_fixture_file("/tmp/rb_ven/srcdir/apk/vendor",
+        "tarball = dist/x.tar.gz\ndirectory = widget\n");
+
+    package_init(&pkg);
+    strlist_init(&repo);
+    build_options_init(&opt);
+    opt.bootstrap = 1;
+    vendor_fixture_params(&p, "/tmp/rb_ven");
+
+    CHECK_INT(builder_setupdirs(&pkg, &p, "widget", "dir", &repo, &opt), 1);
+    CHECK(access("/tmp/rb_ven_out/x.tar.gz", F_OK) == 0);
+
+    params_free(&p);
+    strlist_free(&repo);
+    package_free(&pkg);
+    system("rm -rf /tmp/rb_ven /tmp/rb_ven_out");
+}
+
 static void run_all(void) {
     RUN(test_fallback_preserves_explicit_architecture);
     RUN(test_direct_packaging_missing_architecture_defaults_universal);
@@ -1762,6 +1931,7 @@ static void run_all(void) {
     RUN(test_direct_publication_quarantines_collision);
     RUN(test_cache_checks_payload_architecture);
     RUN(test_cache_accepts_covering_architecture);
+    RUN(test_source_change_removes_apk);
     RUN(test_packaging_dry_run_keeps_command_trace);
     RUN(test_build_validates_all_roots_before_packaging);
     RUN(test_packaging_rejects_wrong_products);
@@ -1796,6 +1966,8 @@ static void run_all(void) {
     RUN(test_scan_dir);
     RUN(test_scan_dir_missing_pkgname_fails);
     RUN(test_relativize_absolute_symlinks_inside_dstroot);
+    RUN(test_setupdirs_vendors);
+    RUN(test_setupdirs_vendor_input_through_symlink);
 }
 
 TEST_MAIN()

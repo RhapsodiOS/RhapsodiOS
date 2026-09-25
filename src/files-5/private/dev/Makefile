@@ -37,6 +37,10 @@ install: ${DSTDIR}
 	echo "."
 	echo "    Creating devices"
 	cd ${DSTDIR}; /dev/MAKEDEV rhapsody
+#	The host's MAKEDEV may predate the kernel's CSPRNG (Rhapsody DR2's
+#	does), so add its nodes as kernel-7's MAKEDEV std makes them.
+	cd ${DSTDIR}; test -c random || { mknod random c 17 0; chmod 644 random; }
+	cd ${DSTDIR}; test -c urandom || { mknod urandom c 17 1; chmod 644 urandom; }
 
 ${DSTDIR}: DSTROOT ${DSTROOT}
 	echo "    Making ${DSTDIR}"

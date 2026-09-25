@@ -599,6 +599,9 @@ GetCatalogNode( ExtendedVCB *volume, HFSCatalogNodeID parentID, ConstUTF8Param n
         result = LocateCatalogNodeByMangledName(volume, parentID, name, key, record, newHint);
 	ReturnIfError(result);
 
+	//--- Fill out universal data record (first: a mangled name needs the node ID)
+	CopyCatalogNodeData(volume, record, nodeData);
+
 	//--- Fill out the FSSpec (output)
 	
 	nodeSpec->vRefNum = volume->vcbVRefNum;
@@ -620,15 +623,19 @@ GetCatalogNode( ExtendedVCB *volume, HFSCatalogNodeID parentID, ConstUTF8Param n
 										  NAME_MAX + 1,	/* 255 + termination byte */
 					 					  &actualDstLen,
 										  nodeSpec->name);
+			if (result == kTECOutputBufferFullStatus)	// too long for a BSD name: mangle it (xnu-124 keeps the whole name here)
+				result = ConvertUnicodeToUTF8Mangled(key->hfsPlus.nodeName.length * sizeof(UniChar),
+													 key->hfsPlus.nodeName.unicode,
+													 NAME_MAX + 1,
+													 &actualDstLen,
+													 nodeSpec->name,
+													 nodeData->nodeID);
 		}
 	}
 	else // classic HFS
 	{
 		result = ConvertMacRomanToUTF8(key->hfs.nodeName, NAME_MAX + 1, &actualDstLen, nodeSpec->name);
 	}
-
-	//--- Fill out universal data record...
-	CopyCatalogNodeData(volume, record, nodeData);
 
   #if DEBUG_BUILD
 	if ( nodeData->nodeType != '????' )
@@ -762,7 +769,7 @@ IterateCatalogNode( ExtendedVCB *volume, CatalogIterator *catalogIterator, UInt1
 	BTreeIterator		btreeIterator;
 	FSBufferDescriptor	btRecord;
 	FCB *				fcb;
-	SInt16				selectionIndex;
+	SInt32				selectionIndex;
 	UInt16				tempSize;
 	UInt16				operation;
 	OSErr				result;
@@ -805,7 +812,9 @@ IterateCatalogNode( ExtendedVCB *volume, CatalogIterator *catalogIterator, UInt1
 
 	//--- get offspring record (relative to catalogIterator's position)
 
-	selectionIndex = index - catalogIterator->currentIndex;
+	// currentIndex holds a UInt16 index in an SInt16: a 16-bit difference would turn a
+	// seek of more than 32767 entries into one the other way, so take it in 32 bits
+	selectionIndex = (SInt32) index - (UInt16) catalogIterator->currentIndex;
 
 	// now we have to map index into next/prev operations...
 	if (selectionIndex == 1)
@@ -872,6 +881,9 @@ IterateCatalogNode( ExtendedVCB *volume, CatalogIterator *catalogIterator, UInt1
 
 	*hint = btreeIterator.hint.nodeNum;		// return an old-style hint
 
+	//--- Fill out universal data record (first: a mangled name needs the node ID)
+	CopyCatalogNodeData(volume, offspringData, nodeData);
+
 	//--- Fill out the FSSpec...
 
 	nodeSpec->vRefNum = volume->vcbVRefNum;
@@ -884,14 +896,18 @@ IterateCatalogNode( ExtendedVCB *volume, CatalogIterator *catalogIterator, UInt1
 									  NAME_MAX + 1,	/* 255 + termination byte */
 					 				  &actualDstLen,
 									  nodeSpec->name);
+		if (result == kTECOutputBufferFullStatus)	// too long for a BSD name: mangle it
+			result = ConvertUnicodeToUTF8Mangled(offspringName->ustr.length * sizeof(UniChar),
+												 offspringName->ustr.unicode,
+												 NAME_MAX + 1,
+												 &actualDstLen,
+												 nodeSpec->name,
+												 nodeData->nodeID);
 	}
 	else /* hfs name */
 	{
 		result = ConvertMacRomanToUTF8(offspringName->pstr, NAME_MAX + 1, &actualDstLen, nodeSpec->name);
 	}
-
-	//--- Fill out universal data record...
-	CopyCatalogNodeData(volume, offspringData, nodeData);
 
 
   #if DEBUG_BUILD
@@ -978,7 +994,14 @@ MoveRenameCatalogNode(ExtendedVCB *volume, HFSCatalogNodeID srcParentID, ConstUT
 
 	// if we did not find it by name, then look for an embedded file ID in a mangled name
 	if ( (result == cmNotFound) && isHFSPlus )
+	{
 		result = LocateCatalogNodeByMangledName(volume, srcParentID, srcName, &srcKey, &srcRecord, &srcHint);
+		if ( (result == noErr) && !isNewName )	// a move keeps the real name, not the mangled one
+		{
+			dstKey = srcKey;
+			dstKey.hfsPlus.parentID = dstParentID;
+		}
+	}
 	ReturnIfError(result);
 
 	srcParentID = (isHFSPlus ? srcKey.hfsPlus.parentID : srcKey.hfs.parentID);

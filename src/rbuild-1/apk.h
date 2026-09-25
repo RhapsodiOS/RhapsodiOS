@@ -16,4 +16,15 @@ int apk_use_arch(const char *path, const char *root, const Toolchain *tc,
                   const char *pkgname, const char *pkgver, unsigned required,
                   int object_collection, int allow_superset);
 int apk_quarantine(const char *path);
+/* Extracts a gzipped tar into an existing root with the toolchain's gzip and
+ * tar (NULL: pax and gzip from PATH). No APK validation: for vendored
+ * upstream tarballs. Dry-run prints and returns 0. */
+int apk_untar(const char *path, const char *root, const Toolchain *tc);
+/* Scans a gzipped tar's headers as Rhapsody pax reads them, without
+ * extracting, and refuses members that would land outside the extraction
+ * root: absolute or ".." names, paths or link targets through a symlink,
+ * escaping symlinks, unsafe hard links, GNU long names, pax headers, and
+ * headers pax would read differently. Tools as for apk_untar. Dry-run
+ * prints and returns 0. */
+int apk_untar_check(const char *path, const Toolchain *tc);
 #endif

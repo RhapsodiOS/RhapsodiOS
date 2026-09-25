@@ -396,7 +396,7 @@ LocateCatalogNodeByMangledName( const ExtendedVCB *volume, HFSCatalogNodeID fold
 								CatalogRecord *dataPtr, UInt32 *hintPtr )
 {
 	HFSCatalogNodeID 	fileID;
-	unsigned char		nodeName[64];
+	unsigned char		nodeName[NAME_MAX + 1];	// all of a long mangled name's prefix is compared (xnu-124 stops at 58 bytes)
 	OSErr				result;
 	ByteCount			actualDstLen;
 	ByteCount			prefixlen;
@@ -421,7 +421,7 @@ LocateCatalogNodeByMangledName( const ExtendedVCB *volume, HFSCatalogNodeID fold
 
 	result =  ConvertUnicodeToUTF8( keyPtr->hfsPlus.nodeName.length * sizeof (UniChar),
 									keyPtr->hfsPlus.nodeName.unicode,
-									64,
+									sizeof(nodeName),
 									&actualDstLen,
 									nodeName);
 

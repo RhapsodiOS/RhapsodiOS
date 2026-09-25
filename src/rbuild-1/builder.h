@@ -15,6 +15,7 @@ typedef struct {
     int force;
     unsigned operation_arch; /* zero for ordinary builds */
     unsigned effective_arch; /* zero until the source is resolved */
+    const char *source_fingerprint; /* zero: builder_build computes it */
 } BuildOptions;
 
 void build_options_init(BuildOptions *opt);
@@ -23,6 +24,13 @@ void build_options_init(BuildOptions *opt);
 int builder_cache_status(const char *path, const Toolchain *tc,
                           const char *name, const char *version,
                           unsigned required, int objects, int *exists);
+/* Fingerprint of a source tree as 8 hex digits, or 0 if it is unreadable. */
+char *builder_source_fingerprint(const char *srcdir);
+/* An existing APK whose <path>.src records another fingerprint is removed
+ * and reported missing; one without a record adopts fingerprint. */
+int builder_source_status(const char *path, const char *fingerprint,
+                          int *exists);
+int builder_record_source(const char *path, const char *fingerprint);
 int builder_resolve_architecture(Package *pkg, BuildOptions *opt);
 
 typedef struct {

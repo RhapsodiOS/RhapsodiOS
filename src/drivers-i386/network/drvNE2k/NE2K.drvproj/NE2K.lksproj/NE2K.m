@@ -78,7 +78,7 @@ static inline int compareAddr(enet_addr_t *a1, enet_addr_t *a2);
 {
     NE2K	*driver = [self alloc];
     
-    IOLog("NE2000 Generic Driver v0.9.1b\n");
+    IOLog("NE2000 Generic Driver v0.9.2\n");
     IOLog("by Gabor Sebestyen\n\n");
 
     return [driver initFromDeviceDescription:devDesc] != nil;
@@ -160,9 +160,10 @@ static inline int compareAddr(enet_addr_t *a1, enet_addr_t *a2);
 
     IOGetTimestamp(&start_time);
     //rst
-    while (NICGetISR(base) & 0x80 == 0) {
+    while ((NICGetISR(base) & 0x80) == 0) {
         IOGetTimestamp(&current);
-        if (current - start_time > NS_TIMEOUT) {
+        // the clock can step backwards; only a forward gap times out
+        if (current > start_time && current - start_time > NS_TIMEOUT) {
             IOLog("Card failure (no reset ack)!..\n");
             [self free];
             return nil;
@@ -1102,9 +1103,10 @@ static inline int compareAddr(enet_addr_t *a1, enet_addr_t *a2);
     
     IOGetTimestamp(&start_time);
     //rdc
-    while (NICGetISR(base) & 0x40 == 0) {
+    while ((NICGetISR(base) & 0x40) == 0) {
         IOGetTimestamp(&current);
-        if (current - start_time > NS_TIMEOUT) {
+        // the clock can step backwards; only a forward gap times out
+        if (current > start_time && current - start_time > NS_TIMEOUT) {
             IOLog("NE2K: Timeout waiting for Tx RDC\n");
             [self _NS8390Reset];
             [self _NS8390Init: YES];
@@ -1140,9 +1142,10 @@ static inline int compareAddr(enet_addr_t *a1, enet_addr_t *a2);
 
     IOGetTimestamp(&start_time);
     //rst
-    while (NICGetISR(base) & 0x80 == 0) {
+    while ((NICGetISR(base) & 0x80) == 0) {
         IOGetTimestamp(&current);
-        if (current - start_time > NS_TIMEOUT) {
+        // the clock can step backwards; only a forward gap times out
+        if (current > start_time && current - start_time > NS_TIMEOUT) {
             IOLog("NE2K: Reset did not complete.\n");
             break;
         }

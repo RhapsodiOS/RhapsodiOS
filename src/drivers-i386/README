@@ -48,7 +48,7 @@ input
  * drvSerialPointingDevice - reconstructed against the reference binary, 10/16 hand-written functions byte-identical under relocation masking, remainder accepted as compiler-shaped. Needed three build fixes: a DriverInfo file it never had, removal of a Makefile.postamble that duplicated an ofile the default already held, and its help directory renamed from Help to DriverHelp so movehelp could produce the Help the reference ships. Boot-tested 2026-09-21 under QEMU with a Microsoft serial mouse on COM1 (-serial msmouse): it loads, acquires ISASerialPort0, reads its config and runs the reset handshake three times, but receives no identification bytes ("Listening ... {}") and reports no mouse. Apple's stock SerialPointingDevice_reloc prints byte-identical output on the same setup, so this is QEMU's msmouse not answering the RTS/DTR reset rather than a divergence - the driver matches the reference, and the detect path remains unproven either way. SerialPointingDevice_reloc is 40048 bytes against Apple's 39928. Not hardware-tested
 
 network
- * drvAMDPCNet32II - complete
+ * drvAMDPCNet32II - complete. First built 2026-09-25 with `rbuild buildpackage --arch i386` into drvamdpcnet32ii-1-i386.apk, after dropping its direct <bsd/net/etherdefs.h> imports, which came before the socket and if headers if_ether.h needs; <driverkit/IOEthernet.h> already pulls it in in the right order, as in drvNE2k. Not yet boot-tested
  * drvDEC21X4X - needs compiled and then tested
  * drvDEC21142 - needs compiled and then tested
  * drvDECchip21040 - needs compiled and then tested

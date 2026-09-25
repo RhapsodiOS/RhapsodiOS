@@ -2778,8 +2778,9 @@ struct vop_readdir_args /* {
 
     };
 
-    /* Compute the starting index in the directory */
-    index = (uio->uio_offset - sizeof(struct hfsdirentry)) / sizeof(struct hfsdirentry);
+    /* Compute the starting index in the directory, clamped so that a huge
+     * offset can't truncate back under the 16-bit limit checked below */
+    index = MIN((uio->uio_offset - sizeof(struct hfsdirentry)) / sizeof(struct hfsdirentry), 0x10000);
 
 	/* lock catalog b-tree */
 	retval = hfs_metafilelocking(VTOHFS(ap->a_vp), kHFSCatalogFileID, LK_SHARED, p);
@@ -2790,7 +2791,10 @@ struct vop_readdir_args /* {
     hint = kNoHint;
     while (uio->uio_resid > sizeof(struct hfsdirentry))
       {
-        result = GetCatalogOffspring(vcb, dirID, index, &fileSpec, &nodeData, &hint);
+        if (index > 0xFFFF)		/* GetCatalogOffspring's index is 16 bits: don't wrap onto the thread record */
+            result = cmNotFound;
+        else
+            result = GetCatalogOffspring(vcb, dirID, index, &fileSpec, &nodeData, &hint);
         if (result != noErr) {
             if (result == cmNotFound) {
                 eofReached = TRUE;
@@ -3023,8 +3027,10 @@ struct vop_readdirattr_args /* {
    /* Compute the starting index in the directory.  Attribute blocks vary in
     * size, so the offset counts entries in hfsdirentry units rather than bytes
     * (it is set that way after the loop).  Offspring are numbered from 1.
+    * Clamped so that a huge offset can't truncate back under the 16-bit
+    * limit checked in the loop.
     */
-    index = (uio->uio_offset / sizeof(struct hfsdirentry)) + 1;
+    index = MIN(uio->uio_offset / sizeof(struct hfsdirentry), 0xFFFF) + 1;
 
 	/* lock catalog b-tree */
 	retval = hfs_metafilelocking(VTOHFS(ap->a_vp), kHFSCatalogFileID, LK_SHARED, p);
@@ -4537,6 +4543,7 @@ static int InsertMatch( struct vnode *root_vp, struct uio *a_uio, CatalogRecord 
 	rovingAttributesBuffer	= attributesBuffer + sizeof(u_long);		//	Reserve space for length field
 	rovingVariableBuffer	= variableBuffer;
 
+	bzero( &catalogInfo, sizeof(catalogInfo) );		//	HFS records don't set every field that gets packed
 	CopyCatalogNodeData( vcb, catalogRecord, &catalogInfo.nodeData );
 
 	catalogInfo.spec.parID = isHFSPlus ? key->hfsPlus.parentID : key->hfs.parentID;
@@ -4552,6 +4559,13 @@ static int InsertMatch( struct vnode *root_vp, struct uio *a_uio, CatalogRecord 
 										sizeof(catalogInfo.spec.name),
 										&actualDstLen,
 										catalogInfo.spec.name);
+			if ( err == kTECOutputBufferFullStatus )	/* too long for a BSD name: mangle it (xnu-124 returns the whole name) */
+				err = ConvertUnicodeToUTF8Mangled(	key->hfsPlus.nodeName.length * sizeof(UniChar),
+												key->hfsPlus.nodeName.unicode,
+												sizeof(catalogInfo.spec.name),
+												&actualDstLen,
+												catalogInfo.spec.name,
+												catalogInfo.nodeData.nodeID );
 		 } else {
 			err = ConvertMacRomanToUTF8( key->hfs.nodeName,
 										 sizeof(catalogInfo.spec.name),

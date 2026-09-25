@@ -651,9 +651,17 @@ IOThreadFunc mainLoop(id driver)
                 pointerEvent.data.buf[1] = (char)xDelta;
                 pointerEvent.data.buf[2] = -(char)yDelta;
 
-                /* Dispatch only if the packet assembled in under 40ms */
+                /* Dispatch only if the packet assembled in under 40ms.
+                 *
+                 * Divergence from the reference, fixed at the user's request:
+                 * the system clock can step backwards within a packet, and the
+                 * unsigned difference then wraps to a huge gap and drops a
+                 * good packet.  A backwards step counts as no gap.  See
+                 * reconstruction/divergences.md.
+                 */
                 if (target != nil) {
-                    if (currentTimeStamp - lastTimeStamp < 40000000) {
+                    if (currentTimeStamp < lastTimeStamp ||
+                        currentTimeStamp - lastTimeStamp < 40000000) {
                         [target dispatchPointerEvent:&pointerEvent];
                     }
                 }
@@ -745,7 +753,9 @@ IOThreadFunc mainLoop(id driver)
                 pointerEvent.data.buf[2] = byte;
 
                 if (target != nil) {
-                    if (currentTimeStamp - lastTimeStamp < 40000000) {
+                    /* backwards clock step counts as no gap, as in MSProtocol */
+                    if (currentTimeStamp < lastTimeStamp ||
+                        currentTimeStamp - lastTimeStamp < 40000000) {
                         [target dispatchPointerEvent:&pointerEvent];
                     }
                 }
@@ -769,7 +779,9 @@ IOThreadFunc mainLoop(id driver)
                 pointerEvent.data.buf[2] = byte;
 
                 if (target != nil) {
-                    if (currentTimeStamp - lastTimeStamp < 40000000) {
+                    /* backwards clock step counts as no gap, as in MSProtocol */
+                    if (currentTimeStamp < lastTimeStamp ||
+                        currentTimeStamp - lastTimeStamp < 40000000) {
                         [target dispatchPointerEvent:&pointerEvent];
                     }
                 }

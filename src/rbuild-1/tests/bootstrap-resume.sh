@@ -307,7 +307,14 @@ chmod +x "$base/wrappers/pax" "$base/wrappers/gzip"
 mkdir -p "$base/world-source/apk"
 sed 's/universal-apple-rhapsody/ppc-apple-rhapsody/' "$src/apk/pkginfo" > "$base/world-source/apk/pkginfo"
 echo "dir $base/world-source all" > "$base/WorldManifest"
+# world-source is not the tree these APKs were built from. Dropping the source
+# records lets it adopt them, and dropping them again lets $src re-adopt them.
+forget_sources() {
+    rm -f "$1"/*.apk.src
+}
+forget_sources "$repo"
 PATH="$base/wrappers:$PATH" ./rbuild buildall "$base/WorldManifest" "$repo" "$repo"
+forget_sources "$repo"
 grep '^pax$' "$base/wrapper.log" > /dev/null
 grep '^gzip$' "$base/wrapper.log" > /dev/null
 
@@ -433,10 +440,12 @@ make_wrong_apk foo-obj 1.0 wrong-architecture "$repo/foo-obj-1.0-ppc.apk"
     --state "$state" "$base/Manifest" "$repo" "$repo"
 test -f "$repo/foo-obj-1.0-ppc.apk.invalid"
 
+forget_sources "$repo"
 ./rbuild buildpackage --state "$state" --dir --target all \
     "$base/world-source" "$repo" "$repo"
 test -f "$state/logs/foo-1.0-ppc-all.log"
 ./rbuild buildall --state "$state" "$base/WorldManifest" "$repo" "$repo"
+forget_sources "$repo"
 
 headers_base=$base/headers-case
 headers_repo=$headers_base/repo
@@ -477,7 +486,9 @@ test ! -f "$headers_repo/foo-1.0-ppc.apk.invalid"
 test "`cat "$headers_repo/foo-1.0-ppc.apk"`" = broken
 
 echo "dir $base/world-source headers" > "$headers_base/WorldManifest"
+forget_sources "$headers_repo"
 ./rbuild buildall "$headers_base/WorldManifest" "$headers_repo" "$headers_repo"
+forget_sources "$headers_repo"
 test "`cat "$headers_repo/foo-1.0-ppc.apk"`" = broken
 test ! -f "$headers_repo/foo-1.0-ppc.apk.invalid"
 
@@ -655,11 +666,76 @@ grep '^effective_architecture=ppc-apple-rhapsody$' \
     "$univ_state/projects/later-1.0-ppc-all.done" > /dev/null
 test -f "$univ_repo/later-1.0-ppc.apk"
 make_wrong_apk rt 1.0 universal-apple-rhapsody "$univ_repo/rt-1.0-universal.apk"
+# A universal APK supersedes the thin APKs of its pkgname at any version.
+# Another pkgname (rt-hdrs has no universal APK) and a quarantined file stay.
+make_wrong_apk rt 1.0 ppc-apple-rhapsody "$univ_repo/rt-1.0-ppc.apk"
+make_wrong_apk rt 0.9 i386-apple-rhapsody "$univ_repo/rt-0.9-i386.apk"
+make_wrong_apk rt-hdrs 1.0 ppc-apple-rhapsody "$univ_repo/rt-hdrs-1.0-ppc.apk"
+printf broken > "$univ_repo/rt-1.0-ppc.apk.invalid"
 
-./rbuild bootstrap-universal --sysroot "$univ_root" --toolchain "$univ_profile" \
+if ./rbuild bootstrap-universal --sysroot "$univ_root" --toolchain "$univ_profile" \
     --state "$univ_state" "$univ/Manifest" "$univ_repo" "$univ_repo" \
-    > "$univ/live.out" 2>&1 || :
+    > "$univ/live.out" 2>&1; then
+    :
+else
+    cat "$univ/live.out"
+    echo 'bootstrap-resume: bootstrap-universal failed'
+    exit 1
+fi
 grep 'must build later-1.0-universal.apk' "$univ/live.out" > /dev/null
+for pkg in later later-hdrs later-obj; do
+    test -e "$univ_repo/$pkg-1.0-universal.apk"
+    test ! -e "$univ_repo/$pkg-1.0-ppc.apk"
+    grep "remove superseded .*/$pkg-1.0-ppc.apk" "$univ/live.out" > /dev/null
+done
+test ! -e "$univ_repo/rt-1.0-ppc.apk"
+test ! -e "$univ_repo/rt-0.9-i386.apk"
+test -e "$univ_repo/rt-hdrs-1.0-ppc.apk"
+test -e "$univ_repo/rt-1.0-ppc.apk.invalid"
+
+# The thin walk takes the universal APKs in place of the pruned thin ones,
+# rewrites its record, and then treats the rewritten record as current.
+for run in covered recovered; do
+    ./rbuild bootstrap --sysroot "$univ_root" --toolchain "$univ_profile" \
+        --state "$univ_state" "$univ/Manifest" "$univ_repo" "$univ_repo" \
+        > "$univ/$run.out" 2>&1
+    if grep 'must build' "$univ/$run.out" > /dev/null; then
+        echo "bootstrap-resume: $run thin walk rebuilt"
+        exit 1
+    fi
+    grep 'already have .*/later-1.0-universal.apk' "$univ/$run.out" > /dev/null
+    grep '^package=.*/later-1.0-universal.apk$' \
+        "$univ_state/projects/later-1.0-ppc-all.done" > /dev/null
+    for pkg in later later-hdrs later-obj; do
+        test ! -e "$univ_repo/$pkg-1.0-ppc.apk"
+    done
+done
+
+# A second universal walk rebuilds and removes nothing, and never prunes a
+# separate seed repository.
+mkdir "$univ/seed"
+make_wrong_apk later 1.0 ppc-apple-rhapsody "$univ/seed/later-1.0-ppc.apk"
+./rbuild bootstrap-universal --sysroot "$univ_root" --toolchain "$univ_profile" \
+    --state "$univ_state" "$univ/Manifest" "$univ/seed" "$univ_repo" \
+    > "$univ/rerun.out" 2>&1
+if grep 'must build' "$univ/rerun.out" > /dev/null; then
+    echo 'bootstrap-resume: second universal walk rebuilt'
+    exit 1
+fi
+if grep 'remove superseded' "$univ/rerun.out" > /dev/null; then
+    echo 'bootstrap-resume: second universal walk removed an APK'
+    exit 1
+fi
+test -e "$univ/seed/later-1.0-ppc.apk"
+
+# Dry-run names the thin APK it would remove and leaves it in place.
+make_wrong_apk later 1.0 ppc-apple-rhapsody "$univ_repo/later-1.0-ppc.apk"
+./rbuild -n bootstrap-universal --sysroot "$univ_root" --toolchain "$univ_profile" \
+    --state "$univ_state" "$univ/Manifest" "$univ_repo" "$univ_repo" \
+    > "$univ/dry-prune.out" 2>&1
+grep 'remove superseded .*/later-1.0-ppc.apk' "$univ/dry-prune.out" > /dev/null
+test -e "$univ_repo/later-1.0-ppc.apk"
+test -e "$univ_repo/rt-hdrs-1.0-ppc.apk"
 
 write_profile '-nostdinc -DCHANGED -I@SYSROOT@/System/Headers'
 if ./rbuild bootstrap --sysroot "$root" --toolchain "$profile" \

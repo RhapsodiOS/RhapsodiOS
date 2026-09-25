@@ -147,6 +147,13 @@ extern OSErr ConvertUnicodeToUTF8 ( ByteCount srcLen,
 					 				ByteCount *actualDstLen,
 									unsigned char* dstStr );
 
+extern OSErr ConvertUnicodeToUTF8Mangled ( ByteCount srcLen,
+										   ConstUniCharArrayPtr srcStr,
+										   ByteCount maxDstLen,
+										   ByteCount *actualDstLen,
+										   unsigned char* dstStr,
+										   HFSCatalogNodeID cnid );
+
 extern OSErr ConvertUTF8ToMacRoman (ByteCount srcLen,
 									const unsigned char* srcStr,
 									Str31 dstStr);

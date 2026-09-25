@@ -84,6 +84,40 @@ TEST(test_str_cats_pathjoin) {
     free(x); free(y);
 }
 
+TEST(test_parse_kv) {
+    char l1[] = "pkgname = zlib\n";
+    char l2[] = "  Pkgver=1.1.3  ";
+    char l3[] = "# comment = x";
+    char l4[] = "\n";
+    char l5[] = "no equals here";
+    char l6[] = "pkgdesc = a = b";
+    char l7[] = "patches =";
+    char *k = 0, *v = 0;
+
+    CHECK_INT(str_parse_kv(l1, &k, &v), 1);
+    CHECK_STR(k, "pkgname");
+    CHECK_STR(v, "zlib");
+
+    /* both sides trimmed; key case preserved */
+    CHECK_INT(str_parse_kv(l2, &k, &v), 1);
+    CHECK_STR(k, "Pkgver");
+    CHECK_STR(v, "1.1.3");
+
+    CHECK_INT(str_parse_kv(l3, &k, &v), 0);
+    CHECK_INT(str_parse_kv(l4, &k, &v), 0);
+    CHECK_INT(str_parse_kv(l5, &k, &v), 0);
+
+    /* only the FIRST '=' separates */
+    CHECK_INT(str_parse_kv(l6, &k, &v), 1);
+    CHECK_STR(k, "pkgdesc");
+    CHECK_STR(v, "a = b");
+
+    /* an empty value is a real entry */
+    CHECK_INT(str_parse_kv(l7, &k, &v), 1);
+    CHECK_STR(k, "patches");
+    CHECK_STR(v, "");
+}
+
 static void run_all(void) {
     RUN(test_sbuf_appends);
     RUN(test_strlist_push);
@@ -91,6 +125,7 @@ static void run_all(void) {
     RUN(test_str_ops);
     RUN(test_str_split);
     RUN(test_str_cats_pathjoin);
+    RUN(test_parse_kv);
 }
 
 TEST_MAIN()

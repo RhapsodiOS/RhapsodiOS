@@ -73,3 +73,32 @@ def test_main_refuses_an_output_outside_vm_work():
         assert m.main(["ufs-e2e-image.py", "unread-golden.img",
                        "unread-kernel", out]) == 1
         assert not os.path.exists(out)
+
+
+def test_main_removes_a_partial_copy(monkeypatch):
+    m = _load()
+    os.makedirs(WORK, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=WORK) as d:
+        golden = os.path.join(d, "golden.img")
+        kernel = os.path.join(d, "kernel")
+        out = os.path.join(d, "out.img")
+        # Write minimal files so main can read them
+        with open(golden, "wb") as f:
+            f.write(b"golden" * 1000)
+        with open(kernel, "wb") as f:
+            f.write(b"kernel")
+
+        # Replace shutil.copyfile with one that fails partway
+        def failing_copyfile(src, dst):
+            with open(dst, "wb") as f:
+                f.write(b"partial")
+            raise OSError("disk full")
+
+        monkeypatch.setattr(m.shutil, "copyfile", failing_copyfile)
+
+        # main should raise the OSError
+        with pytest.raises(OSError, match="disk full"):
+            m.main(["ufs-e2e-image.py", golden, kernel, out])
+
+        # The partial file should be cleaned up
+        assert not os.path.exists(out)

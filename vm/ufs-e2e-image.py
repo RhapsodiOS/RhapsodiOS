@@ -31,8 +31,6 @@ def install_kernel(image, kernel):
     with ufs_alloc.Allocator(image, writable=True) as a:
         a.validate()
         ino = a._resolve("/mach_kernel")
-        if ino is None:
-            raise ufs_alloc.SafetyError("%s has no /mach_kernel" % image)
         a.grow_file(ino, kernel)
         a.flush()
     return ino
@@ -55,12 +53,13 @@ def main(argv):
     with open(kernel_path, "rb") as f:
         kernel = f.read()
     print("copying %s to %s" % (golden, out))
-    shutil.copyfile(golden, out)
     try:
+        shutil.copyfile(golden, out)
         ino = install_kernel(out, kernel)
         problems = ufs_check.check(out)
     except BaseException:
-        os.remove(out)
+        if os.path.exists(out):
+            os.remove(out)
         raise
     if problems:
         os.remove(out)

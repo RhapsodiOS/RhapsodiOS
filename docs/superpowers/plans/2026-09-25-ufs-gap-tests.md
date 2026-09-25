@@ -213,17 +213,13 @@ def build_good(out_path, pad=0):
 
 def corrupt(out_path, field, value):
     """Overwrite one superblock field in an existing image."""
-    if field not in FIELDS:
-        raise ValueError("unknown field %r; known: %s"
-                         % (field, ", ".join(sorted(FIELDS))))
+    _check_field(field)
     _poke(out_path, field, value)
 
 
 def field_offset(path, field):
     """Absolute byte offset of a superblock field in an image."""
-    if field not in FIELDS:
-        raise ValueError("unknown field %r; known: %s"
-                         % (field, ", ".join(sorted(FIELDS))))
+    _check_field(field)
     return _read_partition_start(path) + rhap_image.SBOFF + FIELDS[field][0]
 
 
@@ -250,6 +246,12 @@ def reload_sectors(path):
         "csum": base + g.csaddr * per_frag,
         "inode2": base + g.iblkno * per_frag,
     }
+
+
+def _check_field(field):
+    if field not in FIELDS:
+        raise ValueError("unknown field %r; known: %s"
+                         % (field, ", ".join(sorted(FIELDS))))
 
 
 def _poke(out_path, field, value):

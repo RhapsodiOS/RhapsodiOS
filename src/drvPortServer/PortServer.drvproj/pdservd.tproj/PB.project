@@ -1,7 +1,7 @@
 {
     FILESTABLE = {
         C_FILES = ();
-        HEADERSEARCH = (../PortServer.drvproj/PortServer.lksproj);
+        HEADERSEARCH = (../PortServer.lksproj);
         H_FILES = (IODeviceMaster.h, pdservd.h);
         M_FILES = (IODeviceMaster.m, pdservd.m);
         OTHER_LINKED = ();
@@ -12,7 +12,7 @@
     LOCALIZABLE_FILES = {};
     NEXTSTEP_BUILDTOOL = /bin/gnumake;
     NEXTSTEP_COMPILEROPTIONS = "-DDRIVER_PRIVATE";
-    NEXTSTEP_INSTALLDIR = /usr/sbin;
+    NEXTSTEP_INSTALLDIR = "$(NEXT_ROOT)/private/Drivers";
     PROJECTNAME = pdservd;
     PROJECTTYPE = Tool;
     PROJECTVERSION = 1.0;

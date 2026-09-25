@@ -23,13 +23,13 @@ OTHERSRCS = Makefile Makefile.preamble
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC
 MAKEFILE = tool.make
-NEXTSTEP_INSTALLDIR = /usr/sbin
+NEXTSTEP_INSTALLDIR = $(NEXT_ROOT)/private/Drivers
 LIBS =
 DEBUG_LIBS = $(LIBS)
 PROF_LIBS = $(LIBS)
 
 
-HEADER_PATHS = -I../PortServer.drvproj/PortServer.lksproj
+HEADER_PATHS = -I../PortServer.lksproj
 NEXTSTEP_PB_CFLAGS = -DDRIVER_PRIVATE
 
 

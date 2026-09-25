@@ -2041,4 +2041,4 @@ One ordering difference remains. The reference ends `"Server Name"`,
 carries `"Version"`, so the appended `"Server Name"` now follows it.
 
 `SB16PnP.table`, `SB16SingleDMAChannelPnP.table` and `SingleDMAChannel.table`
-carry the line too and still come out with it twice; they are not changed here.
+carried the same duplicate and are fixed the same way.

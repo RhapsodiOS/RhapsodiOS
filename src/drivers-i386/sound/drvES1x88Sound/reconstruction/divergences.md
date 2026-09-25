@@ -2016,5 +2016,4 @@ One ordering difference remains. The reference ends `"Server Name"`,
 carries `"Version"` and Apple's stamped `"Driver Version"`, so the appended
 `"Server Name"` now follows both.
 
-`ESPnP.table` carries the line too and still comes out with it twice; it is not
-changed here.
+`ESPnP.table` carried the same duplicate and is fixed the same way.

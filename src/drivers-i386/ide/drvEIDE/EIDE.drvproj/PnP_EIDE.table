@@ -23,7 +23,6 @@
 "Master" = "Auto";
 "Slave" = "Auto";
 "Debug" = "No";
-"Server Name" = "EIDE";
 "Post-Load" = "PostLoad";
 "Bus Type" = "PnP";
 "Auto Detect IDs" = "PNP0600";

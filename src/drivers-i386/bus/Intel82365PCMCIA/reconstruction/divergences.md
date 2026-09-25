@@ -2133,5 +2133,5 @@ carries `"Version"`, so the appended `"Server Name"` now follows it.
 
 Finding 17 called the value load-bearing. `IOConfigTable` returns the first
 `"Server Name"` in a table, so the kernel now reads the appended `"PCIC"`.
-`PCI.table` carries the line too and still comes out with it twice; it is not
-changed here.
+`PCI.table` carried the same duplicate and is fixed the same way, so the
+kernel now reads the appended `"PCIC"` there too.

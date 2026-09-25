@@ -4343,5 +4343,6 @@ table ended at `"Help File" = "VGA.rtfd";` with no newline, so the appended key
 landed on the same line. Our source table carried the line as well, so the built
 table had it twice. The line is gone from the source. Our table ends in a
 newline, so the build puts the key on a line of its own and the line-break
-difference stands. `SVGABIOS.table` carries the line too and is not changed
-here.
+difference stands. `SVGABIOS.table` carried the same joined line in Apple's
+copy and the same duplicate in ours, and is fixed the same way: the source
+line is gone, and the one-line-break difference stands there as well.

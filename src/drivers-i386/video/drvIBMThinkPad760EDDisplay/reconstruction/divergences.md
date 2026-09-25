@@ -3405,5 +3405,5 @@ One ordering difference remains. The reference ends `"Server Name"`,
 carries `"Version"` and Apple's stamped `"Driver Version"`, so the appended
 `"Server Name"` now follows both.
 
-`ThinkPad760.table` carries the line too and is not changed here, so in source
-the two tables now also differ in that line; the built copies both carry it.
+`ThinkPad760.table` carried the same duplicate and is fixed the same way, so the
+two tables still agree in source.

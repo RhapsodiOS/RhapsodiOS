@@ -732,6 +732,8 @@ OSErr ExchangeFileIDs( ExtendedVCB *vcb, ConstUTF8Param srcName, ConstUTF8Param 
 		
 		//--	locate the source file, test for extents in extent file, and copy the cat record for later
 		err = LocateCatalogNodeByKey( vcb, srcHint, &srcKey, &srcData, &srcHint );
+		if ( err == cmNotFound )		//	the vnode may hold a mangled name (xnu-124's hold the real one)
+			err = LocateCatalogNodeByMangledName( vcb, srcID, srcName, &srcKey, &srcData, &srcHint );
 		ReturnIfError( err );
 	
 		if ( srcData.recordType != kHFSPlusFileRecord )
@@ -745,6 +747,8 @@ OSErr ExchangeFileIDs( ExtendedVCB *vcb, ConstUTF8Param srcName, ConstUTF8Param 
 
 		//--	Check if there are any extents in the destination file
 		err = LocateCatalogNodeByKey( vcb, destHint, &destKey, &destData, &destHint );
+		if ( err == cmNotFound )		//	the vnode may hold a mangled name (xnu-124's hold the real one)
+			err = LocateCatalogNodeByMangledName( vcb, destID, destName, &destKey, &destData, &destHint );
 		ReturnIfError( err );
 	
 		if ( destData.recordType != kHFSPlusFileRecord )

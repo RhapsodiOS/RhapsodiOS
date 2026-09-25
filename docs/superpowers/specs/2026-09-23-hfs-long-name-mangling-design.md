@@ -140,9 +140,9 @@ calls `CopyCatalogNodeData` first.
 
 `CountFilenameExtensionChars`, which `GetEmbeddedFileID` uses to skip an
 extension, counts any printable ASCII character (`Is7BitASCII`), `#` included.
-When the prefix ends a dot plus a few characters before the `#`, as in
-`...x.ab#1A2B`, it takes `ab#1A2B`'s tail as an extension, removes `.ab#1A2B`,
-finds no `#`, and the name never parses. It changes to xnu-124's class, ASCII
+When the prefix ends in a dot and a few letters just before the `#`, as in
+`...x.ab#1A`, it takes `ab#1A` for an extension, removes `.ab#1A`, finds no
+`#`, and the name never parses. It changes to xnu-124's class, ASCII
 letters and digits only, which is also exactly what the producer copies.
 
 `GetEmbeddedFileID` has no other callers, and its only user is the fallback
@@ -178,9 +178,12 @@ files up by it again and passes it to `ReplaceBTreeRecord`.
 - **Shorter typed forms still resolve.** `abc#1A2B` finds ID 0x1A2B if it is
   in this directory and its name starts with `abc`. That is how the matcher
   already behaves, and how Mac OS behaves.
-- **Deleting, renaming, chmod, utimes and writes** go through the vnode's
-  stored name, which is the mangled one, and reach the catalog through the
-  fallback. Renaming a file to a new, short name gives it a real name again.
+- **Deleting, renaming, moving, chmod, utimes and writes** go through the
+  vnode's stored name, which is the mangled one, and reach the catalog
+  through the fallback. Renaming a file to a new, short name gives it a real
+  name again. Moving it to another directory under the same mangled name
+  keeps its real name: `MoveRenameCatalogNode` builds the destination key
+  from the real key the fallback found, not from the mangled string.
 - **No new errors.** The mangler returns `noErr`, so readdir, readdirattr,
   lookup and searchfs no longer fail on these names. searchfs still returns the
   error for a corrupt plain HFS name (728cf26e6).
@@ -190,15 +193,17 @@ files up by it again and passes it to `ReplaceBTreeRecord`.
 - **Creating over-long names.** `namei` rejects any component over `NAME_MAX`,
   so RhapsodiOS cannot make one. They come from other systems.
 - **The root folder's name.** A volume name can also be over-long. Its ID, 2,
-  is below `kHFSFirstUserCatalogNodeID`, so `GetEmbeddedFileID` would refuse to
-  parse it. The root is never looked up by name, so this does not matter.
+  is below `kHFSFirstUserCatalogNodeID`, so the fallback refuses the `#2`
+  name it would get. `UpdateCatalogNode` and volume renames take the root's
+  stored name, so a volume name over 255 bytes would break them; that is left
+  alone.
 - **The Mac OS-only code** (`TARGET_OS_MAC`, `#if 0`) and its unused `static`
   prototypes, which cause three existing warnings. They are left as they are.
 
 ## Testing
 
 A user-space harness on the build box, compiled natively with `cc`, links the
-real `ConvertUTF.c` and function bodies extracted with `sed` from the edited
+real `ConvertUTF.c` and function bodies that `extract.py` copies from the edited
 `UnicodeWrappers.c`: `ConvertUnicodeToUTF8`, `ConvertUnicodeToUTF8Mangled` and
 its helpers, `CountFilenameExtensionChars`, `GetEmbeddedFileID` and
 `HexStringToInteger`. The matcher cannot be extracted, because it needs the
@@ -214,7 +219,10 @@ the ID and prefix length are right and the matcher comparison passes.
 - a tail of 6 letters after the dot, too long to count as an extension
 - a name ending in `.`, which has no extension
 - a prefix whose last characters before the `#` include a dot, such as
-  `.ab#1A2B` (fails before the parser change)
+  `.ab#1A` (fails before the parser change)
+- an extension with capitals and a digit, such as `.MP3`
+- the trigger itself: a 255-byte name converts whole and a 256-byte one is
+  reported too long
 - IDs 0x10, 0x103 (fails with xnu-124's ID string), 0x1000 and 0xFFFFFFFF
 - a surrogate pair (4 UTF-8 bytes) right at the cut
 - names whose prefix exactly fills the space left
@@ -223,12 +231,12 @@ The five changed files (`UnicodeWrappers.c`, `Catalog.c`, `CatalogUtilities.c`,
 `FileIDsServices.c`, `hfs_vnodeops.c`) are compiled with the real ppc kernel
 flags against the last kernel build's chroot. Warnings must match the
 unmodified files'. `nm -u` may gain only `ConvertUnicodeToUTF8Mangled` where it
-is called, `LocateCatalogNodeByMangledName` in `FileIDsServices.o`, and string
-routines the kernel already has, such as `strcat` (`machdep/ppc/libc`).
+is called, `LocateCatalogNodeByMangledName` in `FileIDsServices.o`, and
+`BlockMoveData` in `UnicodeWrappers.o`, which the mangler copies with.
 
 `UnicodeWrappers.c`, `Catalog.c`, `CatalogUtilities.c` and `FileIDsServices.c`
 contain Mac Roman bytes. They are edited byte-for-byte with Python in latin-1,
-and reach the box as ASCII-only diffs applied with `patch`.
+and reach the box inside uuencoded tars.
 
 ## The gap worth naming
 
@@ -236,3 +244,23 @@ Nothing here has run against a real HFS Plus volume. The kernel side is checked
 by compiling and by reading, not by listing, opening and renaming a file with
 an over-long name. Doing that needs a ppc machine or emulator that boots this
 kernel, and a volume holding such a name, written by Mac OS 9 or Mac OS X.
+
+## Outcome (2026-09-25)
+
+The shared ppc box froze twice, so the checks ran on a private QEMU i386
+guest booted from `vm/work/rhap-i386-bootstrapped.img` with `-snapshot`. A
+ppc kernel built there supplied the chroot. It needed a copy of
+`gcc-darwin-i386.conf` with `/usr/local/bin` added to its `path=`, because
+the stock profiles leave out where the build root's `relpath` and `config`
+live. A successful build deletes its build root, so the root was kept by
+stopping rbuild once the HFS objects existed.
+
+- `run-tests.sh`: 10 cases passed, with no compiler warnings.
+- `ppc-compile-check.sh 0222b235b`: all five changed files compile with the
+  same warnings as before; `nm -u` gains exactly `_BlockMoveData`,
+  `_ConvertUnicodeToUTF8Mangled` (in two files) and
+  `_LocateCatalogNodeByMangledName`.
+- The whole-branch review found that a move to another directory under an
+  unchanged mangled name inserted the record under the mangled string, while
+  its thread kept the real name. `MoveRenameCatalogNode` now takes the
+  destination key from the real key the fallback found.

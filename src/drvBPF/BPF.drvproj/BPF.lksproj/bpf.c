@@ -140,14 +140,26 @@ int nbpfilter = NBPFILTER;
 #ifdef BPFDRV
 #if BSD >= 199207
 /*
- * bpfilterattach() is called at boot time in new systems.  We do
- * nothing here since old systems will not call this.
+ * Allocate the n descriptors.  BPF.m calls this when the driver loads.
+ *
+ * Divergence from the reference, for kernel-7: the DR2 kernel Apple's
+ * driver was built for owned bpf_dtab as a static array with nbpfilter
+ * set, and Apple's bpfilterattach() was empty.  kernel-7 (Darwin 0.3)
+ * declares bpf_dtab as a pointer and leaves nbpfilter at -1 for the
+ * driver to fill in.  See reconstruction/divergences.md.
  */
-/* ARGSUSED */
 void
 bpfilterattach(n)
 	int n;
 {
+	int i;
+
+	MALLOC(bpf_dtab, struct bpf_d *, n * sizeof(struct bpf_d),
+	    M_DEVBUF, M_WAITOK);
+	bzero((caddr_t)bpf_dtab, n * sizeof(struct bpf_d));
+	for (i = 0; i < n; i++)
+		D_MARKFREE(&bpf_dtab[i]);
+	nbpfilter = n;
 }
 #endif
 #endif /* BPFDRV */

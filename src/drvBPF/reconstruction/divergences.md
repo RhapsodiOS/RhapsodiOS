@@ -735,3 +735,46 @@ network
 Once Task 4 applies Findings 1-8, it should read `reconstructed against the reference
 binary, fixes applied, not yet compiled or tested` — and no stronger claim than that,
 because this driver has never been built.
+
+## Forced divergence: the driver allocates the descriptor table
+
+2026-09-25. For kernel-7, at the user's request.
+
+Loaded on the i386 QEMU guest, which runs this tree's kernel-7
+(kernel-154.5.1-7), the driver answered every open with `ENXIO`. Nothing
+allocates the descriptors.
+
+The reference was built for a kernel that owned them. Apple's DR2 i386
+`mach_kernel` has `_bpf_dtab` as a 60-byte `__common` block (0x22829c, with the
+next symbol at 0x2282d8; `sizeof(struct bpf_d)` is 0x3c), so
+`struct bpf_d bpf_dtab[1]`, and `_nbpfilter` as an initialised 1 in `__data`.
+Its `_bpfattach` ends with the 4.4BSD loop that marks the descriptors free. The
+reference indexes that array directly. All six of its index sites are a `lea`
+with `_bpf_dtab` as the displacement, which is what `extern struct bpf_d
+bpf_dtab[]` compiles to: `_bpfopen` 1160 and 1166, `_bpfclose` 1223, `_bpfread`
+1292, `_bpfwrite` 1538, `_bpfioctl` 1761, `_bpf_select` 3045.
+
+kernel-7 is Darwin 0.3's source, unchanged here. `bsd/net/bpf.c:123-124`
+declares `struct bpf_d *bpf_dtab;` and
+`int nbpfilter = -1; /* Mark as uninitialized; BPF will init */`, and its
+`bpfattach` no longer marks anything free. Between DR2 and Darwin 0.3 Apple
+handed the table to the driver. The reference cannot work on kernel-7: it sees
+`nbpfilter` as -1, and it would index the 4-byte pointer variable as though it
+were the table. On the guest, Apple's binary got no working nodes either.
+
+Fix, in the driver and not the kernel, because kernel-7's own comment gives the
+job to the driver: `bpfilterattach(n)`, empty in the reference, now allocates n
+descriptors with `MALLOC`, zeroes them, marks each free and sets `nbpfilter`
+last. `-initFromDeviceDescription:` calls it with 4 before it installs
+`bpfops`. Four is xnu's `NBPFILTER`; PostLoad's `path[10]` holds names up to
+`/dev/bpf9`. This costs parity in `_bpfilterattach` (412) and
+`-[BPF initFromDeviceDescription:]` (156).
+
+**Correction to §5 and the ledger.** §5 called our
+`extern struct bpf_d *bpf_dtab;` "correct as written", and the ledger records
+the six functions above as `assembly-matched`. Neither is right. A pointer
+declaration compiles each index site to a load of the pointer and then the
+index, an instruction the reference does not have. The pointer is now the right
+declaration for kernel-7, so this belongs to this divergence rather than being a
+parity bug to fix, but those six ledger claims missed it. The ledger's
+transitions are forward-only (§8), so it is recorded here instead.

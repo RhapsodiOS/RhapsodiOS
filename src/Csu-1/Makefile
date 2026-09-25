@@ -175,7 +175,7 @@ clean:
 	rm -f $(SYMROOT)/dylib1.o $(SYMROOT)/bundle1.o
 	rm -f $(OBJROOT)/dyld_stub.ppc.o $(OBJROOT)/dyld_stub.i386.o \
 	      $(OBJROOT)/dyld.stub.ppc $(OBJROOT)/dyld.stub.i386 \
-	      $(OBJROOT)/dyld.stub $(OBJROOT)/dyld.i386
+	      $(OBJROOT)/dyld.stub
 
 install: all $(DSTDIRS)
 	$(INSTALL) $(IFLAGS) $(SYMROOT)/crt1.o    $(DSTROOT)$(LIBDIR)/crt1.o
@@ -187,13 +187,25 @@ install: all $(DSTDIRS)
 	$(INSTALL) $(IFLAGS) $(SYMROOT)/pscrt0.o  $(DSTROOT)$(LOCLIBDIR)/pscrt0.o
 	$(INSTALL) $(IFLAGS) $(SYMROOT)/pscrt1.o  $(DSTROOT)$(LOCLIBDIR)/pscrt1.o
 	$(MKDIR) $(DSTROOT)/usr/lib
-ifneq "$(findstring i386,$(RC_ARCHS))" ""
-	$(CC) -arch i386 -dylinker -dylinker_install_name /usr/lib/dyld \
-		-nostdlib -o $(OBJROOT)/dyld.i386 $(OBJROOT)/dyld_stub.i386.o
-	$(LIPO) -create -o $(DSTROOT)/usr/lib/dyld /usr/lib/dyld $(OBJROOT)/dyld.i386
-else
-	$(INSTALL) -c -m 555 /usr/lib/dyld $(DSTROOT)/usr/lib/dyld
-endif
+# The host dyld, plus a stub for each requested CPU it lacks. A host that
+# already has the CPU must not get a stub too: two slices of one CPU type
+# make a malformed fat file (an i386 host's dyld is i486).
+	inputs=/usr/lib/dyld; \
+	info=`$(LIPO) -info /usr/lib/dyld`; \
+	for arch in $(RC_ARCHS); do \
+	    case $$arch in \
+	        i386) pat='i[3-6]86' ;; \
+	        ppc) pat='ppc' ;; \
+	        *) continue ;; \
+	    esac; \
+	    if echo "$$info" | /usr/bin/grep "$$pat" >/dev/null; then :; \
+	    else inputs="$$inputs $(OBJROOT)/dyld.stub.$$arch"; fi; \
+	done; \
+	if [ "$$inputs" = /usr/lib/dyld ]; then \
+	    $(INSTALL) -c -m 555 /usr/lib/dyld $(DSTROOT)/usr/lib/dyld; \
+	else \
+	    $(LIPO) -create -o $(DSTROOT)/usr/lib/dyld $$inputs; \
+	fi
 	$(CHMOD) 555 $(DSTROOT)/usr/lib/dyld
 
 installhdrs:

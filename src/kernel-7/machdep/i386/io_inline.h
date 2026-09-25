@@ -79,12 +79,12 @@ inw(
 static
 #endif
 inline
-unsigned short
+unsigned int
 inl(
     io_addr_t		port
 )
 {
-    unsigned short	data;
+    unsigned int	data;
     
     asm volatile(
     	"inl %1,%0"
@@ -142,7 +142,7 @@ inline
 void
 outl(
     io_addr_t		port,
-    unsigned short	data
+    unsigned int	data
 )
 {
     static int		xxx;

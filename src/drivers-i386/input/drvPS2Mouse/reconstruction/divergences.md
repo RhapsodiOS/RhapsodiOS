@@ -1885,3 +1885,69 @@ and could not have.
 `drvBusMouse` and `drvPCParallel` carry the same postamble line. Checked
 drvBusMouse on 2026-09-21: its lksproj generates no `*_vers.o` at all, so its
 `kl_ld` line has no duplicate and the line is still inert there. Left alone.
+
+## Forced divergence: movement sums saturate at ±127
+
+2026-09-24. From a reference defect, fixed at the user's request.
+
+`_PS2MouseIntHandler` folds packets that arrive while an event is still being
+dispatched into `summedEvent`, then adds that total into the next event. The
+reference does these adds on raw bytes (`add byte ptr`), in six places. The
+consumer, `-[EventSrcPCPointer dispatchPointerEvent:]`, reads `dx` and `dy` as
+`int dx:8` / `int dy:8` bitfields of `PCPointerEvent`, so any total past +127
+or below -128 wraps and reverses direction: three packets of +60 arrive as -76,
+and the acceleration curve then scales the wrong value up. Apple's source in
+`kernel-7/bsd/dev/i386/PS2Mouse.m` has the same adds.
+
+On real hardware this rarely fires: a mouse reports at about 100 Hz with small
+deltas. QEMU's PS/2 mouse splits a large host movement into back-to-back
+packets of up to ±127, and the emulated I/O thread is slow, so packets queue
+behind the dispatch on almost every quick movement. The user saw very erratic
+movement under QEMU with both this driver and Apple's.
+
+Fix: a static `addDelta()` adds the two bytes as `signed char` and clamps to
+±127 (the range a single PS/2 packet can carry without the byte-0 sign bits,
+which this driver ignores). All six adds use it. This costs byte parity in
+`_PS2MouseIntHandler` and adds one function. Not yet built or tested.
+
+## Forced divergence: packets must start with bit 3 set
+
+2026-09-24. From a reference defect, fixed at the user's request.
+
+Byte 0 of a PS/2 mouse packet always has bit 3 set. The reference never checks
+it: `_PS2MouseIntHandler` counts bytes blindly and only resyncs after 250 ms
+of silence. Once a byte is lost from the stream, every later packet is read
+one byte off, and deltas land in the button byte, until the mouse goes idle.
+Under QEMU the user saw random clicks along with the erratic movement.
+
+Bytes can be lost because the PS2Controller keyboard paths do not check the
+8042's auxiliary-data status bit (0x20). `keyboardDataPresent()` tests only
+output-buffer-full, so `-[PS2Keyboard interruptOccurred]`,
+`NewStealKeyboardEvent()` and `-[PS2Controller setLEDs:]` can each read a
+mouse byte as a scancode. That is a drvPS2Keyboard issue and is not changed
+here.
+
+Fix: after the resync-timeout check, a byte at `indexInSequence == 0` without
+bit 3 set is dropped. A misaligned stream then realigns within a packet or two.
+This is the check Linux's psmouse driver makes. It costs byte parity in
+`_PS2MouseIntHandler`. Not yet built or tested.
+
+## Forced divergence: resync only on a forward time gap
+
+2026-09-25. From a reference defect, fixed at the user's request.
+
+`_PS2MouseIntHandler` resets `indexInSequence` when more than 250 ms pass
+between two bytes of a packet, computing the gap as `newStamp - lastTimeStamp`
+on the unsigned 64-bit `ns_time_t`. `IOGetTimestamp()` is
+`clock_get_counter(System)`, and on i386 under QEMU it was seen to step
+backwards between two bytes of the same packet. The difference then wraps to
+an enormous value, the handler resyncs mid-packet, and framing restarts on a
+movement byte. A byte such as 0x08 passes the packet-start check, so the
+misframe persists and horizontal motion comes out vertical or sideways.
+
+A diagnostic build logged eight mid-packet resyncs over one set of sweeps.
+Seven had a backwards step and one had a real 731 ms host stall. A QEMU
+trace of the same run showed every byte read exactly once, in order.
+
+Fix: the timeout fires only when `newStamp > lastTimeStamp` and the forward gap
+exceeds 250 ms. This costs byte parity in `_PS2MouseIntHandler`.

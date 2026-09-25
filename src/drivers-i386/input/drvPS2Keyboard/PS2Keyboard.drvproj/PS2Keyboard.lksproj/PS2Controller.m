@@ -19,6 +19,7 @@
 /* Status register bits */
 #define PS2_STATUS_OUTPUT_FULL  0x01  /* Output buffer full */
 #define PS2_STATUS_INPUT_FULL   0x02  /* Input buffer full */
+#define PS2_STATUS_AUX_DATA     0x20  /* Output buffer holds mouse data */
 
 /*
  * Controller state.  None of this lives in the instance: the driver keeps a
@@ -256,6 +257,12 @@ static void unlock_controller(void)
 /*
  * Is there a byte for the keyboard to read?  The software queue is answered
  * first; only when it is empty does the hardware status register decide.
+ *
+ * Divergence from the reference, fixed at the user's request: Apple tests
+ * only output-buffer-full, so a mouse byte counts as keyboard data and the
+ * keyboard paths read it out from under PS2Mouse.  A byte with the
+ * auxiliary-data bit set is left for the mouse.  See
+ * reconstruction/divergences.md.
  */
 BOOL keyboardDataPresent(void)
 {
@@ -263,7 +270,9 @@ BOOL keyboardDataPresent(void)
         return 1;
     }
 
-    return (inb(PS2_STATUS_PORT) & 0x01);
+    return ((inb(PS2_STATUS_PORT) &
+             (PS2_STATUS_OUTPUT_FULL | PS2_STATUS_AUX_DATA)) ==
+            PS2_STATUS_OUTPUT_FULL);
 }
 
 /* Helper function: Read data directly from the keyboard without waiting */
@@ -274,6 +283,18 @@ static unsigned char reallyGetKeyboardData(void)
     /* Wait for keyboard data to be available in the output buffer */
     while (1) {
         status = inb(PS2_STATUS_PORT);
+
+        /* Divergence from the reference, fixed at the user's request: a
+         * mouse byte is not keyboard data.  Callers hold the controller lock
+         * at spl 6, so PS2Mouse's handler cannot drain it; discard it rather
+         * than return it as a scancode or spin forever.  PS2Mouse resyncs.
+         */
+        if ((status & (PS2_STATUS_OUTPUT_FULL | PS2_STATUS_AUX_DATA)) ==
+            (PS2_STATUS_OUTPUT_FULL | PS2_STATUS_AUX_DATA)) {
+            IODelay(7);
+            inb(PS2_DATA_PORT);
+            continue;
+        }
 
         if ((status & PS2_STATUS_OUTPUT_FULL) != 0) {
             break;
@@ -491,7 +512,11 @@ static void interruptHandler(void *identity, void *state, unsigned int arg)
     if (!manualDataHandling) {
         status = inb(PS2_STATUS_PORT);
 
-        if (status & PS2_STATUS_OUTPUT_FULL) {
+        /* Divergence from the reference, fixed at the user's request: leave
+         * a mouse byte for PS2Mouse's IRQ 12 handler.
+         */
+        if ((status & (PS2_STATUS_OUTPUT_FULL | PS2_STATUS_AUX_DATA)) ==
+            PS2_STATUS_OUTPUT_FULL) {
             lock_controller();
             data = reallyGetKeyboardData();
             unlock_controller();

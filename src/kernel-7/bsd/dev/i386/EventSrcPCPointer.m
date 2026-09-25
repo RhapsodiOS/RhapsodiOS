@@ -67,6 +67,12 @@
 // "Infinite" interval is 0xffff scaled ticks = 4.2 sec.
 #define MAX_EVENT_DELTA		0xffff
 
+// Shortest interval between events: 153 scaled ticks = 10 ms, one report
+// at the PS/2 default of 100 Hz.  Packets that queue up and arrive back
+// to back (QEMU does this all the time) are not moving that fast, and
+// would otherwise all get the top acceleration.
+#define MIN_EVENT_DELTA		153
+
 // Reference DPI (to match black hardware characteristics)
 #define REFERENCE_RESOLUTION 	72
 
@@ -300,6 +306,8 @@ static int velocityLogP, maxVelocity;
     longDelta = (((event->timeStamp) - lastTimestamp) >> 16);
     if (longDelta > MAX_EVENT_DELTA)
     	scaledDeltaT = MAX_EVENT_DELTA;
+    else if (longDelta < MIN_EVENT_DELTA)
+    	scaledDeltaT = MIN_EVENT_DELTA;
     else
     	scaledDeltaT = longDelta;
     

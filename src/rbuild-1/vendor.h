@@ -20,7 +20,8 @@ void vendor_free(Vendor *v);
 /* Malloc'd "<source>/apk/vendor" if that file exists, else NULL. */
 char *vendor_path(const char *source);
 
-/* 0 on success; 1 if unreadable or tarball/directory is missing. */
+/* 0 on success; 1 if unreadable, tarball/directory is missing, or a value
+   is invalid. */
 int vendor_read(Vendor *v, const char *path);
 
 /* Pushes every "*.patch" under "<srcdir>/<patches>" in ascending strcmp

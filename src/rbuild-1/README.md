@@ -107,18 +107,26 @@ instead of an expanded tree. `apk/vendor` uses `apk/pkginfo` syntax:
     patchlevel = 1
 
 `tarball` and `directory` are required; `patches` and `patchlevel` default as
-shown. After rsyncing the project into SRCROOT (without the tarball or the
-patch directory), rbuild extracts the tarball with the toolchain's `gzip` and
-`tar`, renames its single top-level entry to `directory`, and runs
-`patch -f -E --no-backup-if-mismatch -p<level>` for each `<patches>/*.patch`
-in filename order. The project's Makefile then builds normally. The tarball
-must hold exactly one top-level entry, and the project must not also
-carry the expanded tree. See `src/zlib-1`.
+shown. `tarball` and `patches` are relative paths with no empty, `.` or `..`
+component and no trailing `/`; `directory` is a single component other than `.`
+or `..`; `patchlevel` is 0-99. After rsyncing the project into SRCROOT (without
+the tarball or the patch directory), rbuild extracts the tarball with the
+toolchain's `gzip` and `tar`, renames its single top-level entry to
+`directory`, and runs `patch -f -E --no-backup-if-mismatch -p<level>` for each
+`<patches>/*.patch` in filename order. The project's Makefile then builds
+normally. The tarball must hold exactly one top-level entry, and the project
+must not also carry the expanded tree. See `src/zlib-1`.
 
 Tarballs and patches are trusted inputs: rbuild extracts and patches them on
-the build host as root, before any chroot, without checking member paths. Take
-tarballs only from their upstream release, and record the upstream checksum in
-the commit that adds one. Extraction keeps upstream modification times while
-patched files get fresh ones, so when a patch touches a generator input such as
-`configure.in`, also patch the file generated from it, or make may try to
-regenerate it.
+the build host as root, before any chroot. Before extracting, it scans every
+tarball header the way `/bin/pax -r` reads it and refuses absolute or `..`
+paths, paths through a symlink, symlinks and hard links that escape the tree or
+pass through another symlink, GNU long-name and pax extended headers, headers
+pax would parse differently, archives that start with a zero block, unsupported
+member types, sizes on members that carry no data, a prefix without POSIX
+magic, and non-ASCII names. That guarantee assumes the profile's `tar` is pax
+(the shipped `pax-gnutar.sh`, or the pax fallback). Take tarballs only from
+their upstream release, and record the upstream checksum in the commit that
+adds one. Extraction keeps upstream modification times while patched files get
+fresh ones, so when a patch touches a generator input such as `configure.in`,
+also patch the file generated from it, or make may try to regenerate it.

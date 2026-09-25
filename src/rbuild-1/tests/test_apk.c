@@ -1395,6 +1395,10 @@ TEST(test_untar_check_accepts_safe_archives) {
         { "widget-1.0/hello.txt", '\0', 0, "hi\n", ENTRY_V7 }
     };
 
+    TarEntry regular_slash_empty[] = {
+        { "widget-1.0/d/", '0', 0, "", 0 }
+    };
+
     make_scratch(scratch, sizeof(scratch), "untarcheck");
     sprintf(archive, "%s/widget-1.0.tar.gz", scratch);
     init_toolchain(&tc);
@@ -1403,6 +1407,7 @@ TEST(test_untar_check_accepts_safe_archives) {
     check_untar(archive, &tc, in_tree_symlink, 2, 0);
     check_untar(archive, &tc, symlink_to_symlink, 2, 0);
     check_untar(archive, &tc, v7, 2, 0);
+    check_untar(archive, &tc, regular_slash_empty, 1, 0);
     /* NULL toolchain: gzip from PATH */
     CHECK_INT(apk_untar_check(archive, 0), 0);
     exec_dry_run = 1;
@@ -1454,6 +1459,7 @@ TEST(test_untar_check_rejects_unsafe_members) {
     TarEntry ustar_prefix[] = {
         { "../up/evil", '0', 0, "x", ENTRY_PREFIX }
     };
+    /* now refused as a prefix without POSIX magic, before the '..' check */
     TarEntry oldgnu_prefix[] = {
         { "../up/evil", '0', 0, "x", ENTRY_OLDGNU | ENTRY_PREFIX }
     };
@@ -1489,9 +1495,48 @@ TEST(test_untar_check_rejects_unsafe_members) {
     TarEntry truncated[] = {
         { "widget-1.0/f", '0', 0, "short", ENTRY_TRUNCATED }
     };
+    /* on a case-folding filesystem pkg/l is the symlink pkg/L */
+    TarEntry case_folded_symlinks[] = {
+        { "pkg/L", '2', "..", "", 0 },
+        { "pkg/l/M", '2', "..", "", 0 },
+        { "pkg/l/m/N", '2', "..", "", 0 },
+        { "pkg/l/m/n/evil", '0', 0, "x", 0 }
+    };
+    TarEntry unsupported_type[] = {
+        { "widget-1.0/v", 'V', 0, "", 0 }
+    };
+    TarEntry oldgnu_safe_prefix[] = {
+        { "widget-1.0/f", '0', 0, "x", ENTRY_OLDGNU | ENTRY_PREFIX }
+    };
+    /* pax skips no data for a directory; GNU tar would skip the next block */
+    TarEntry directory_with_size[] = {
+        { "widget-1.0/", '5', 0, 0, 0, 512 }
+    };
+    /* ASCII case folding cannot match HFS+ Unicode folding */
+    TarEntry non_ascii_name[] = {
+        { "widget-1.0/caf\351", '0', 0, "x", 0 }
+    };
+    TarEntry regular_slash_with_data[] = {
+        { "widget-1.0/d/", '0', 0, "x", 0 }
+    };
+    TarEntry inner[] = {
+        { "widget-1.0/g", '0', 0, "", 0 }
+    };
+    char inner_header[512];
+    char inner_path[192];
+    FILE *fp;
 
     make_scratch(scratch, sizeof(scratch), "untarunsafe");
     sprintf(archive, "%s/evil.tar.gz", scratch);
+    sprintf(inner_path, "%s/inner.tar", scratch);
+    CHECK_INT(write_tar(inner_path, inner, 1), 0);
+    fp = fopen(inner_path, "rb");
+    CHECK(fp != 0);
+    if (fp == 0) return;
+    CHECK(fread(inner_header, 1, sizeof(inner_header), fp) ==
+          sizeof(inner_header));
+    fclose(fp);
+    directory_with_size[0].data = inner_header;
     init_toolchain(&tc);
     check_untar(archive, &tc, absolute, 1, 1);
     check_untar(archive, &tc, dotdot, 1, 1);
@@ -1515,6 +1560,12 @@ TEST(test_untar_check_rejects_unsafe_members) {
     check_untar(archive, &tc, leading_zeros, 1, 1);
     check_untar(archive, &tc, bad_checksum, 1, 1);
     check_untar(archive, &tc, truncated, 1, 1);
+    check_untar(archive, &tc, case_folded_symlinks, 4, 1);
+    check_untar(archive, &tc, unsupported_type, 1, 1);
+    check_untar(archive, &tc, oldgnu_safe_prefix, 1, 1);
+    check_untar(archive, &tc, directory_with_size, 1, 1);
+    check_untar(archive, &tc, regular_slash_with_data, 1, 1);
+    check_untar(archive, &tc, non_ascii_name, 1, 1);
     CHECK_INT(exec_runv("/bin/rm", "-rf", scratch, (char *)0), 0);
 }
 

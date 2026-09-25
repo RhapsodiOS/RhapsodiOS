@@ -1113,6 +1113,46 @@ int apk_untar(const char *path, const char *root, const Toolchain *tc) {
    longest member name it handles is a ustar prefix/name: 154 + 1 + 99. */
 #define TAR_CHECK_NAME_MAX 256
 
+/* The checker compares symlink names with ASCII case folded, so it stays
+   sound on a case-folding build filesystem such as HFS+. It refuses non-ASCII
+   names, whose Unicode folding ASCII folding cannot match. */
+static int has_non_ascii(const char *s) {
+    for (; *s != '\0'; s++)
+        if ((unsigned char)*s >= 0x80) return 1;
+    return 0;
+}
+
+static int fold_char(int c) {
+    return c >= 'A' && c <= 'Z' ? c - 'A' + 'a' : c;
+}
+
+/* strncmp with ASCII case folded; LENGTH bounds both strings. */
+static int fold_ncmp(const char *a, const char *b, size_t length) {
+    for (; length > 0; length--, a++, b++) {
+        int diff = fold_char((unsigned char)*a) - fold_char((unsigned char)*b);
+        if (diff != 0 || *a == '\0') return diff;
+    }
+    return 0;
+}
+
+static int fold_list_contains(const strlist *list, const char *value) {
+    size_t i;
+    for (i = 0; i < list->count; i++)
+        if (fold_ncmp(list->items[i], value, strlen(value) + 1) == 0) return 1;
+    return 0;
+}
+
+static int fold_descends_through_symlink(const char *name,
+                                         const strlist *symlinks) {
+    size_t i;
+    for (i = 0; i < symlinks->count; i++) {
+        size_t length = strlen(symlinks->items[i]);
+        if (fold_ncmp(name, symlinks->items[i], length) == 0 &&
+            name[length] == '/') return 1;
+    }
+    return 0;
+}
+
 /* Resolves link TARGET lexically from the directory of MEMBER (a symlink) or
    from the archive root (a hard link): "." stays, ".." pops, anything else
    pushes. Returns 0 when the target stays inside the root and does not pass
@@ -1150,8 +1190,8 @@ static const char *link_target_reason(const char *member, const char *target,
         used += length;
         path[used] = '\0';
         while (*p == '/') p++;
-        /* byte-exact: rbuild assumes a case-sensitive build filesystem */
-        if (*p != '\0' && string_list_contains(symlinks, path)) {
+        /* case folded, in case the build filesystem folds case */
+        if (*p != '\0' && fold_list_contains(symlinks, path)) {
             sprintf(buf, "link target passes through symlink '%s'", path);
             return buf;
         }
@@ -1257,6 +1297,10 @@ static int check_tar_stream(int fd, const char *path) {
             bad = "bad size field";
         else if (first_ustar >= 0 && ustar != first_ustar)
             bad = "format differs from the first header";
+        else if (ustar && memcmp(header + 257, "ustar\0", 6) != 0 &&
+                 header[345] != '\0')
+            /* pax joins the prefix; GNU tar ignores it without POSIX magic */
+            bad = "prefix field without POSIX ustar magic";
         if (bad != 0) {
             fprintf(stderr, "rbuild: %s: bad tar header (%s)\n", path, bad);
             break;
@@ -1266,7 +1310,9 @@ static int check_tar_stream(int fd, const char *path) {
         field_string(header, 100, raw_name);
         field_string(header + 157, 100, linkname);
         if (ustar && header[345] != '\0') {
-            /* joined as ustar_rd does, for POSIX and old-GNU magic alike */
+            /* joined as pax's ustar_rd and modern GNU tar do; Rhapsody's
+               gnutar 1.12 ignores the prefix, one reason the guarantee is
+               scoped to pax */
             char prefix[156];
             char base[101];
             field_string(header + 345, 155, prefix);
@@ -1280,11 +1326,23 @@ static int check_tar_stream(int fd, const char *path) {
             reason = "pax extended header unsupported";
         } else if (type == 'L' || type == 'K') {
             reason = "GNU long name unsupported";
+        } else if (type != '\0' && (type < '0' || type > '7')) {
+            reason = "member type unsupported";
+        } else if (!pax_has_data(type, ustar, raw_name) && size != 0) {
+            /* GNU tar would skip SIZE bytes that pax reads as headers */
+            reason = "size set on a member without data";
+        } else if ((type == '0' || type == '\0') && size != 0 &&
+                   raw_name[strlen(raw_name) - 1] == '/') {
+            /* pax reads data here; GNU tar makes a directory */
+            reason = "regular member named like a directory has data";
+        } else if (has_non_ascii(raw_name) ||
+                   ((type == '1' || type == '2') && has_non_ascii(linkname))) {
+            reason = "non-ASCII name unsupported";
         } else if (raw_name[0] == '/') {
             reason = "absolute path";
         } else if (normalize_name(raw_name, name, sizeof(name)) != 0) {
             reason = "contains a '..' component";
-        } else if (descends_through_symlink(name, &symlinks)) {
+        } else if (fold_descends_through_symlink(name, &symlinks)) {
             reason = "path through a symlink";
         } else if (type == '2' && linkname[0] == '/') {
             reason = "absolute symlink target";
@@ -1322,7 +1380,7 @@ static int check_tar_stream(int fd, const char *path) {
     for (i = 0; result == 0 && i < names.count; i++) {
         const char *link_info = links.items[i];
         const char *reason = 0;
-        if (descends_through_symlink(names.items[i], &symlinks))
+        if (fold_descends_through_symlink(names.items[i], &symlinks))
             reason = "path through a symlink";
         else if (link_info[0] != '\0')
             reason = link_target_reason(names.items[i], link_info + 1,

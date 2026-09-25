@@ -137,7 +137,8 @@ TEST(test_vendor_read_errors) {
 
 TEST(test_vendor_read_invalid_tarball) {
     static const char *bad[] = {
-        "", "/abs.tar.gz", "../x.tar.gz", "a/../x.tar.gz", "a//x.tar.gz", "x/"
+        "", "/abs.tar.gz", "../x.tar.gz", "a/../x.tar.gz", "a//x.tar.gz", "x/",
+        "a/./x.tar.gz"
     };
     Vendor v;
     char buf[256];
@@ -168,7 +169,7 @@ TEST(test_vendor_read_invalid_directory) {
 }
 
 TEST(test_vendor_read_invalid_patches) {
-    static const char *bad[] = { "", "/p", "p/../q", "p/" };
+    static const char *bad[] = { "", "/p", "p/../q", "p/", "." };
     Vendor v;
     char buf[256];
     size_t i;

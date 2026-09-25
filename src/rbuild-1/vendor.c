@@ -34,8 +34,9 @@ char *vendor_path(const char *source) {
     return 0;
 }
 
-/* Validates a "tarball"/"patches" value: non-empty, no leading '/', no ".."
-   component, no empty component (also catches a leading or trailing '/'). */
+/* Validates a "tarball"/"patches" value: non-empty, no leading '/', no "."
+   or ".." component, no empty component (also catches a leading or trailing
+   '/'). */
 static int vendor_valid_path(const char *val) {
     const char *comp = val;
     const char *p;
@@ -45,6 +46,7 @@ static int vendor_valid_path(const char *val) {
         if (*p == '/' || *p == '\0') {
             size_t clen = (size_t) (p - comp);
             if (clen == 0) return 0;
+            if (clen == 1 && comp[0] == '.') return 0;
             if (clen == 2 && comp[0] == '.' && comp[1] == '.') return 0;
             if (*p == '\0') break;
             comp = p + 1;

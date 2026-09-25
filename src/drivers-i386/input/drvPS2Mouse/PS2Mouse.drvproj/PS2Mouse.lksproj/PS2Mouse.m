@@ -166,8 +166,14 @@ static void PS2MouseIntHandler(unsigned int param_1, unsigned int param_2)
 
     /* If we are mid-sequence and more than 250ms elapsed since the previous
      * byte, the packet cannot be trusted - resync.
+     *
+     * Divergence from the reference, fixed at the user's request: the
+     * system clock can step backwards between two bytes, and the unsigned
+     * difference then wraps to a huge gap, resyncing mid-packet on a
+     * movement byte.  Only a forward gap counts.  See
+     * reconstruction/divergences.md.
      */
-    if ((indexInSequence != 0) &&
+    if ((indexInSequence != 0) && (newStamp > lastTimeStamp) &&
         ((newStamp - lastTimeStamp) > PACKET_TIMEOUT_NS)) {
         indexInSequence = 0;
 

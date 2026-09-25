@@ -1931,3 +1931,23 @@ Fix: after the resync-timeout check, a byte at `indexInSequence == 0` without
 bit 3 set is dropped. A misaligned stream then realigns within a packet or two.
 This is the check Linux's psmouse driver makes. It costs byte parity in
 `_PS2MouseIntHandler`. Not yet built or tested.
+
+## Forced divergence: resync only on a forward time gap
+
+2026-09-25. From a reference defect, fixed at the user's request.
+
+`_PS2MouseIntHandler` resets `indexInSequence` when more than 250 ms pass
+between two bytes of a packet, computing the gap as `newStamp - lastTimeStamp`
+on the unsigned 64-bit `ns_time_t`. `IOGetTimestamp()` is
+`clock_get_counter(System)`, and on i386 under QEMU it was seen to step
+backwards between two bytes of the same packet. The difference then wraps to
+an enormous value, the handler resyncs mid-packet, and framing restarts on a
+movement byte. A byte such as 0x08 passes the packet-start check, so the
+misframe persists and horizontal motion comes out vertical or sideways.
+
+A diagnostic build logged eight mid-packet resyncs over one set of sweeps.
+Seven had a backwards step and one had a real 731 ms host stall. A QEMU
+trace of the same run showed every byte read exactly once, in order.
+
+Fix: the timeout fires only when `newStamp > lastTimeStamp` and the forward gap
+exceeds 250 ms. This costs byte parity in `_PS2MouseIntHandler`.

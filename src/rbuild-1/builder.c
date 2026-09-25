@@ -1670,8 +1670,19 @@ static int run_make(strlist *cmd, const BuildOptions *opt) {
         const char *path = "/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin";
         const char *old_path = getenv("PATH");
         char *saved_path = old_path ? xstrdup(old_path) : 0;
-        if (opt && opt->toolchain && opt->toolchain->path)
+        char *chroot_path = 0;
+        if (opt && opt->toolchain && opt->toolchain->path) {
             path = opt->toolchain->path;
+            /* The profile path names host tools. A chroot make also needs
+             * the build root's /usr/local/bin (relpath, config). */
+            if (!opt->bootstrap) {
+                char *padded = str_cats(":", path, ":", (char *)0);
+                if (strstr(padded, ":/usr/local/bin:") == 0)
+                    path = chroot_path =
+                        str_cats(path, ":/usr/local/bin", (char *)0);
+                free(padded);
+            }
+        }
         setenv("PATH", path, 1);
         printf("UNAME_SYSNAME=Rhapsody PATH=%s ", path);
         exec_printcmd(argv);
@@ -1680,6 +1691,7 @@ static int run_make(strlist *cmd, const BuildOptions *opt) {
             setenv("PATH", saved_path, 1);
             free(saved_path);
         }
+        free(chroot_path);
     }
     free(argv);
     return rc;

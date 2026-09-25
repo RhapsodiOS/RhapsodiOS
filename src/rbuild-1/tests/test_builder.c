@@ -1631,6 +1631,7 @@ static void probe_fixture(void) {
     f=fopen("/tmp/rb-probe-tools/bin/cc","w"); CHECK(f!=0); if(!f)return;
     fputs("#!/bin/sh\narch=none\nout=\nstage=link\n"
           "echo \"$*\" >> /tmp/rb-probe-tools/args\n"
+          "echo \"$PATH\" >> /tmp/rb-probe-tools/paths\n"
           "while test $# -gt 0; do\ncase \"$1\" in\n"
           "-arch) shift; arch=$1;;\n-o) shift; out=$1;;\n-c) stage=compile;;\nesac\nshift\ndone\n"
           "echo $arch-$stage >> /tmp/rb-probe-tools/calls\n"
@@ -1680,6 +1681,16 @@ TEST(test_toolchain_probes) {
     CHECK(probe_text_has("/tmp/rb-probe-tools/calls","i386-compile"));
     CHECK(probe_text_has("/tmp/rb-probe-tools/calls","ppc-link"));
     CHECK(probe_text_has("/tmp/rb-probe-tools/chroots","chroot"));
+    /* A chroot make also searches the build root's /usr/local/bin. */
+    CHECK(probe_text_has("/tmp/rb-probe-tools/paths",
+          "/tmp/rb-probe-tools/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin\n"));
+    /* A profile path that already has it is used as written. */
+    tc.path="/tmp/rb-probe-tools/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin";
+    unlink("/tmp/rb-probe-tools/paths");
+    CHECK_INT(builder_probe_toolchain(&p,&p,&opt),0);
+    CHECK(probe_text_has("/tmp/rb-probe-tools/paths",
+          "/tmp/rb-probe-tools/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin\n"));
+    tc.path="/tmp/rb-probe-tools/bin:/usr/bin:/bin:/usr/sbin:/sbin";
     for(i=0;modes[i];i++) {
         setenv("RB_PROBE_MODE",modes[i],1);
         CHECK_INT(builder_probe_toolchain(&p,&p,&opt),1);
@@ -1692,8 +1703,11 @@ TEST(test_toolchain_probes) {
     tc.ld_flags_ready="@SYSROOT@/ready";opt.sysroot="/tmp/rb-probe-tools";
     setenv("RB_PROBE_MODE","link",1);
     unlink("/tmp/rb-probe-tools/calls");
+    unlink("/tmp/rb-probe-tools/paths");
     CHECK_INT(builder_probe_toolchain(&p,&p,&opt),0);
     CHECK(!probe_text_has("/tmp/rb-probe-tools/calls","link"));
+    CHECK(probe_text_has("/tmp/rb-probe-tools/paths",
+          "/tmp/rb-probe-tools/bin:/usr/bin:/bin:/usr/sbin:/sbin\n"));
     f=fopen("/tmp/rb-probe-tools/ready","w");CHECK(f!=0);if(f)fclose(f);
     unlink("/tmp/rb-probe-tools/calls");
     CHECK_INT(builder_probe_toolchain(&p,&p,&opt),0);

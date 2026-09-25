@@ -1113,9 +1113,7 @@ int builder_setupdirs(const Package *pkg, const Params *params,
 
     if (strcmp(srctype, "dir") == 0) {
         char *source;
-        char *argv[11];
-        char *tar_exclude = 0;
-        char *patch_exclude = 0;
+        char *argv[9];
         char *vpath;
         const char *rsync = "rsync";
         Vendor v;
@@ -1139,17 +1137,22 @@ int builder_setupdirs(const Package *pkg, const Params *params,
         argv[3] = "--exclude=CVS/"; argv[4] = "--exclude=.svn/";
         argv[5] = "--exclude=.git/"; argv[6] = "--exclude=.hg/";
         a = 7;
-        if (have_vendor) {
-            /* Build inputs, not sources. Leading '/' anchors at SRCDIR/. */
-            tar_exclude = str_cats("--exclude=/", v.tarball, (char *)0);
-            patch_exclude = str_cats("--exclude=/", v.patches, "/", (char *)0);
-            argv[a++] = tar_exclude;
-            argv[a++] = patch_exclude;
-        }
         argv[a++] = params->SRCROOT; argv[a] = 0;
         exec_printcmd(argv);
         rc = exec_run_checked(argv);
-        free(source); free(tar_exclude); free(patch_exclude);
+        free(source);
+        if (rc == 0 && have_vendor) {
+            /* The tarball and patch series are build inputs, not sources.
+             * Removed after the copy because rsync 1.6.8 matches excludes
+             * against the full source path, so a '/'-anchored exclude never
+             * matches; only the top-level entries go, so a nested patches/
+             * directory is still copied. */
+            char *tar_copy = str_cats(params->SRCROOT, "/", v.tarball, (char *)0);
+            char *patch_copy = str_cats(params->SRCROOT, "/", v.patches, (char *)0);
+            if (exec_runv("rm", "-rf", tar_copy, patch_copy, (char *)0) != 0)
+                rc = 1;
+            free(tar_copy); free(patch_copy);
+        }
         if (rc == 0 && have_vendor)
             rc = vendor_apply(&v, params->SRCDIR, params->SRCROOT,
                               opt ? opt->toolchain : 0);

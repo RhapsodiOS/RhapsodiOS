@@ -14,5 +14,4 @@
 "I/O Ports" = "";
 "Location" = "";
 
-"Server Name" = "VBE20DisplayDriver";
 "Driver Version" = "PROGRAM:VBE20DisplayDriver PROJECT:drvVBE20DisplayDriver-1 DEVELOPER:cfriesen BUILT:NO DATE SET (-B used)";

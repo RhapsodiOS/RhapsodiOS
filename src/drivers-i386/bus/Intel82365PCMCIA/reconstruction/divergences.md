@@ -2114,3 +2114,24 @@ which is what the evidence in this document supports and no more.
   least 1, because the decrement happens after the test, so the `jz` there can
   only be taken on the timeout path. Our `if (retries == 0)` reproduces the same
   shape exactly. Recorded as a shared quirk, not a divergence.
+
+## Default.table: "Server Name" came out twice
+
+2026-09-25. Not a divergence: the earlier comparisons of `Default.table` with
+the reference did not allow for the build's append.
+
+The driver build's `post_copy_tables` rule
+(`src/driverTools-1/DriverProjectType/driver.make:154-159`) appends
+`"Server Name" = "$(NAME)";` to every table. Our source table carried the line
+as well, so the built table had it twice. The line is gone from the source, and
+the built table now has it once, as the reference does.
+
+One ordering difference remains. The reference ends `"Server Name"`,
+`"Driver Version"`, `"Version"` because Apple's build appended all three:
+`veredit.sh` adds `"Version"` only when the source table lacks it. Our source
+carries `"Version"`, so the appended `"Server Name"` now follows it.
+
+Finding 17 called the value load-bearing. `IOConfigTable` returns the first
+`"Server Name"` in a table, so the kernel now reads the appended `"PCIC"`.
+`PCI.table` carries the line too and still comes out with it twice; it is not
+changed here.

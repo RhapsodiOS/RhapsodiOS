@@ -1998,3 +1998,23 @@ the two address spaces do not line up and a bare number is ambiguous.
 Entry 4388 stays `intentional-mismatch` on those grounds. It is not advanced past that: the
 status would need the full 1328 bytes read instruction by instruction against our 1252, and
 five passes of block-level work is not the same evidence.
+
+## Default.table: "Server Name" came out twice
+
+2026-09-25. Not a divergence: the earlier comparisons of `Default.table` with
+the reference did not allow for the build's append.
+
+The driver build's `post_copy_tables` rule
+(`src/driverTools-1/DriverProjectType/driver.make:154-159`) appends
+`"Server Name" = "$(NAME)";` to every table. Our source table carried the line
+as well, so the built table had it twice. The line is gone from the source, and
+the built table now has it once, as the reference does.
+
+One ordering difference remains. The reference ends `"Server Name"`,
+`"Driver Version"`, `"Version"` because Apple's build appended all three:
+`veredit.sh` adds `"Version"` only when the source table lacks it. Our source
+carries `"Version"` and Apple's stamped `"Driver Version"`, so the appended
+`"Server Name"` now follows both.
+
+`ESPnP.table` carries the line too and still comes out with it twice; it is not
+changed here.

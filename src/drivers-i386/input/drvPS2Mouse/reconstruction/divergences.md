@@ -1951,3 +1951,19 @@ trace of the same run showed every byte read exactly once, in order.
 
 Fix: the timeout fires only when `newStamp > lastTimeStamp` and the forward gap
 exceeds 250 ms. This costs byte parity in `_PS2MouseIntHandler`.
+
+## Default.table: "Server Name" came out twice
+
+2026-09-25. Not a divergence: the earlier comparisons of `Default.table` with
+the reference did not allow for the build's append.
+
+The driver build's `post_copy_tables` rule
+(`src/driverTools-1/DriverProjectType/driver.make:154-159`) appends
+`"Server Name" = "$(NAME)";` to every table. Our source table carried the line
+as well, so the built table had it twice. The line is gone from the source, and
+the built table now has it once, as the reference does.
+
+One ordering difference remains. The reference ends `"Server Name"`,
+`"Driver Version"`, `"Version"` because Apple's build appended all three:
+`veredit.sh` adds `"Version"` only when the source table lacks it. Our source
+carries `"Version"`, so the appended `"Server Name"` now follows it.

@@ -6,4 +6,3 @@
 "Instance" = "0";
 "Driver Name" = "SCSI Server";
 "Class Names" = "SCSIServer";
-"Server Name" = "SCSIServer";

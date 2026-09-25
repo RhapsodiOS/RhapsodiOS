@@ -4330,3 +4330,18 @@ all work end to end.
 **What is still unexercised**: `setIntValues:` traffic beyond registration, the
 unwind paths, and the reference defects reproduced verbatim, which by their
 nature only appear in situations these boots do not create.
+
+## Default.table: "Server Name" came out twice
+
+2026-09-25. Not a divergence.
+
+The driver build's `post_copy_tables` rule
+(`src/driverTools-1/DriverProjectType/driver.make:154-159`) appends
+`"Server Name" = "$(NAME)";` to every table. The joined line in Apple's copy,
+recorded earlier as the one line-break difference, is that append: their source
+table ended at `"Help File" = "VGA.rtfd";` with no newline, so the appended key
+landed on the same line. Our source table carried the line as well, so the built
+table had it twice. The line is gone from the source. Our table ends in a
+newline, so the build puts the key on a line of its own and the line-break
+difference stands. `SVGABIOS.table` carries the line too and is not changed
+here.

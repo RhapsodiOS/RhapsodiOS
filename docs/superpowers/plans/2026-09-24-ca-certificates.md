@@ -24,7 +24,7 @@
   - `/private/etc/ssl/cert.pem`, symlink to `/System/Library/OpenSSL/cert.pem`
   - `/usr/share/doc/ca-certificates/SOURCE`
 - The Makefile links the two `/etc/ssl` entries to absolute targets; rbuild's `builder_relativize_symlinks` rewrites them to relative ones in the apk (`../../../System/Library/OpenSSL/...`). The `ca-certificates.crt` alias is relative to begin with.
-- The vendored set must have unique subject DNs: in the in-tree OpenSSL 0.9.5a, `X509_STORE_add_cert` errors on a repeated subject and `X509_load_cert_file` treats that as fatal, so a bundle stops loading partway. File names must be unique ignoring case (the repo is checked out on Windows) and plain ASCII.
+- The vendored set must have unique subject DNs: in the in-tree OpenSSL 0.9.5a, `X509_STORE_add_cert` refuses a certificate whose subject is already in the store, and the PEM CAfile loader (`X509_load_cert_crl_file`) ignores that error, so the second certificate is silently dropped and the first wins; a renewed root that shares a subject would be shadowed. File names must be unique ignoring case (the repo is checked out on Windows) and plain ASCII.
 - Manifest line: `dir     ca-certificates-1     all`, directly after `dir     bsdmake-1             all`. `BootstrapManifest` is not touched.
 - The Makefile must run under GNU Make 3.74 on the guest: no target-specific variables. The guest's `install` moves its source unless given `-c`.
 - The guest's `/bin/ls` exits 0 for missing paths and unmatched globs stay literal: guest scripts test existence with `test -f` / `test -d`, never with `ls`.
@@ -447,8 +447,9 @@ def validate(certs, openssl):
         subject = subject_of(pem, label, openssl)
         if subject in by_subject:
             raise RefreshError(
-                "%r and %r have the same subject (%s); OpenSSL 0.9.5a stops loading a bundle "
-                "at the second one" % (by_subject[subject], label, subject))
+                "%r and %r have the same subject (%s); OpenSSL 0.9.5a keeps only the first "
+                "certificate per subject and silently drops the rest"
+                % (by_subject[subject], label, subject))
         by_subject[subject] = label
         plan.append((name, label, pem))
     return plan
@@ -608,7 +609,7 @@ cd "$W" && python src/ca-certificates-1/refresh.py --file "$S/cacert.pem" --sha2
 
 Expected: `wrote N certificates; set pkgver = YYYYMMDD in apk/pkginfo` and `exit=0`, with N around 140.
 
-If it exits 1 with `have the same subject`: **stop and report to the user.** Do not drop or rename either certificate on your own; which one to exclude, or whether to stop supporting 0.9.5a's bundle load, is their decision. If it exits 1 with a file-name collision, the two labels differ only in characters `pem_name` drops; report both labels and propose a disambiguation, do not pick silently.
+If it exits 1 with `have the same subject`: **stop and report to the user.** Do not drop or rename either certificate on your own; which one to exclude, or whether to accept that 0.9.5a would keep only the first of them, is their decision. If it exits 1 with a file-name collision, the two labels differ only in characters `pem_name` drops; report both labels and propose a disambiguation, do not pick silently.
 
 - [ ] **Step 4: Check the result against the upstream file**
 
@@ -1005,7 +1006,7 @@ Expected at the end:
 
 On failure, the log tail is printed; for more, put `tail -200 /tmp/cacert-rbuild.log` in a script and run it through `rx.ps1`. Fix the cause and re-run Steps 6 and 7. Failures to expect and their meaning:
 - `pkcs7 -print_certs read M certificates, expected N` with M < N: the in-tree 0.9.5a cannot parse one of the certs. Bisect by loading `certs/*.pem` one at a time with `openssl x509 -noout -subject -in`, and report the culprit to the user; do not drop it silently.
-- `openssl could not load cert.pem as a CAfile`: 0.9.5a's store rejected a cert, most likely a duplicate subject that Task 1's check missed (for example one that differs only in string encoding); report both certificates.
+- `openssl could not load cert.pem as a CAfile`: 0.9.5a's PEM loader gave up on the whole bundle (`PEM_X509_INFO_read_bio` is all-or-nothing), most likely because it cannot decode one certificate; a repeated subject would be dropped silently and does not produce this error. Bisect as above and report the culprit.
 
 - [ ] **Step 8: Correct the spec**
 

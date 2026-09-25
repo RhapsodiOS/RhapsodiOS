@@ -90,8 +90,9 @@ def validate(certs, openssl):
         subject = subject_of(pem, label, openssl)
         if subject in by_subject:
             raise RefreshError(
-                "%r and %r have the same subject (%s); OpenSSL 0.9.5a stops loading a bundle "
-                "at the second one" % (by_subject[subject], label, subject))
+                "%r and %r have the same subject (%s); OpenSSL 0.9.5a keeps only the first "
+                "certificate per subject and silently drops the rest"
+                % (by_subject[subject], label, subject))
         by_subject[subject] = label
         plan.append((name, label, pem))
     return plan

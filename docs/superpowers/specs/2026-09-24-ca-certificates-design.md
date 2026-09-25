@@ -92,11 +92,16 @@ Run on the host by a maintainer. It takes a URL (default curl.se's
 2. Split it into `certs/`, naming each file from the CA label.
 3. Validate before writing anything:
    - every PEM parses with the host `openssl x509`;
-   - **subject DNs are unique.** In 0.9.5a `X509_STORE_add_cert` returns an
-     error when a cert's subject equals one already in the store
-     (`x509_object_cmp` compares subject names only), and
-     `X509_load_cert_file` treats that as fatal, so a bundle with two certs of
-     one subject silently stops loading partway;
+   - **subject DNs are unique.** In the in-tree 0.9.5a `X509_STORE_add_cert`
+     (`crypto/x509/x509_vfy.c:609-642`) refuses a certificate whose subject
+     equals one already in the store (`x509_object_cmp` compares subject
+     names only, through `X509_subject_name_cmp`). Loading a PEM CAfile goes
+     through `X509_load_cert_crl_file` (`crypto/x509/by_file.c:263-294`), which
+     ignores that error (line 285), so the second certificate is silently
+     dropped and the first wins; only the DER path and hashed-directory
+     lookups (`X509_load_cert_file`, `by_file.c:165-166` and `181-182`, called
+     from `by_dir.c:313`) treat it as fatal. The check therefore keeps a renewed root that shares a subject from being
+     silently shadowed;
    - file names are unique ignoring case, because the repo is checked out on
      Windows;
    - the cert count equals the number of `BEGIN CERTIFICATE` lines upstream.
@@ -139,8 +144,9 @@ Run on an i386 build guest under a private `/build/<name>` root, with
 
 On the host, `refresh.py` is exercised against the real download and against
 crafted bad input: a duplicate subject, a duplicate name differing only in
-case, a truncated PEM, and a wrong checksum. Each must fail and leave `certs/`
-untouched.
+case, a corrupt PEM (bad base64 in the first line; a block missing its END
+line falls under the label-count check), and a wrong checksum. Each must fail
+and leave `certs/` untouched.
 
 ## Verified during implementation
 
@@ -172,7 +178,9 @@ On a private QEMU i386 guest booted from `rhap-i386-bootstrapped.img` with
 - The guest's `openssl` (0.9.8, built for sshd) reads all 121 certificates from
   `cert.pem` and `openssl verify -CAfile cert.pem` accepts a root against it.
 - OpenSSL 0.9.5a's install rules (`src/OpenSSL/openssl/Makefile.ssl` lines
-  344-347 and `src/OpenSSL/openssl/apps/Makefile.ssl` lines 98-105) make the
+  344-347, `src/OpenSSL/openssl/apps/Makefile.ssl` lines 98-105 and
+  `src/OpenSSL/openssl/tools/Makefile.ssl` lines 37-38, which install
+  `MISC_APPS` into `$(OPENSSLDIR)/misc`) make the
   directories `misc`, `certs`, `private` and `lib` under the openssldir and
   install only the `misc/*` scripts and `openssl.cnf` there, and no `cert.pem`
   or `certs/*.pem`, so the two packages share the `certs/` directory and no
@@ -183,6 +191,15 @@ Still open:
 - The load check with the in-tree OpenSSL 0.9.5a. The guest's `/usr/local/ssl`
   openssl is 0.9.8, and `/build/repo` has no openssl apk. The unique-subject
   rule rests on reading the 0.9.5a source, not on running it.
+- `PEM_X509_INFO_read_bio` is all-or-nothing
+  (`src/OpenSSL/openssl/crypto/pem/pem_info.c` lines 222-225, together with
+  `by_file.c` lines 276-281), so one certificate that 0.9.5a's decoder rejects
+  would make the whole bundle load nothing. The guest's 0.9.8 run covers the
+  PEM and base64 layer but is no evidence for 0.9.5a's older macro-based
+  `d2i_X509` decoders (0.9.7 replaced the ASN.1 decoders with templates).
+- The world path was never run: rbuild reading the new `src/Manifest` line
+  through `rbuild buildall` did not happen; only `rbuild buildpackage --dir`
+  on the project did.
 - `apk add` was never run on this package (no `apk` binary on the guest), so
   the shared-directory behaviour rests on reading apk-tools' source.
 - Whether the in-tree apk-tools accepts a version of the form `20260813-1` in

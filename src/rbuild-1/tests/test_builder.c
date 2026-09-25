@@ -1348,7 +1348,8 @@ TEST(test_packaging_dry_run_keeps_command_trace) {
     CHECK_INT(result, 0);
     CHECK(strstr(trace, "validate products in /tmp/rb-products-dry-missing") != 0);
     CHECK(strstr(trace, "mkdir -p /tmp/rb-products-dry-missing") != 0);
-    CHECK(strstr(trace, "tar -C /tmp/rb-products-dry-missing -cf - .") != 0);
+    CHECK(strstr(trace, "cd /tmp/rb-products-dry-missing \n"
+                        "pax -w -x ustar . \n") != 0);
     CHECK(strstr(trace, "gzip -9") != 0);
     CHECK(access(params.DSTROOT, F_OK) != 0);
     CHECK(access(params.PACKAGEDIR, F_OK) != 0);

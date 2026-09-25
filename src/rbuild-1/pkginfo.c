@@ -163,10 +163,15 @@ static int run_apk_pipeline(const char *out_apk, const char *gzip_program,
     pid_t gzip_pid;
     int result;
     if (exec_dry_run) {
+        char *cd_argv[3];
         char *gzip_argv[3];
+        cd_argv[0] = "cd";
+        cd_argv[1] = (char *)archive_cwd;
+        cd_argv[2] = 0;
         gzip_argv[0] = (char *)gzip_program;
         gzip_argv[1] = "-9";
         gzip_argv[2] = 0;
+        exec_printcmd(cd_argv);
         exec_printcmd(archive_argv);
         exec_printcmd(gzip_argv);
         return 0;
@@ -243,7 +248,6 @@ int pkginfo_build_apk(const char *root_dir, const char *out_apk,
     size_t i;
     int result;
     const char *archive_program;
-    const char *archive_cwd;
     const char *gzip_program;
 
     if (root_dir == 0 || out_apk == 0) return 1;
@@ -255,31 +259,25 @@ int pkginfo_build_apk(const char *root_dir, const char *out_apk,
                 "capability\n");
         return 1;
     }
-    archive_program = tc == 0 ? "tar" : tc->archive_create;
-    archive_cwd = tc == 0 ? 0 : root_dir;
+    /* Without a profile, write POSIX ustar as the profiles do. A bare tar may
+       be GNU tar, whose headers apk.c's validator refuses. */
+    archive_program = tc == 0 ? "pax" : tc->archive_create;
     gzip_program = tc == 0 ? "gzip" : tc->gzip;
     strlist_init(&archive_args);
     strlist_push(&archive_args, archive_program);
-    if (tc != 0)
-        toolchain_expand_words(tc->archive_create_flags, "", &archive_args);
-    if (tc != 0 && archive_args.count == 1) {
+    toolchain_expand_words(tc == 0 ? "-w -x ustar" : tc->archive_create_flags,
+                           "", &archive_args);
+    if (archive_args.count == 1) {
         fprintf(stderr, "rbuild: empty configured APK archive-create flags\n");
         strlist_free(&archive_args);
         return 1;
-    }
-    if (tc == 0) {
-        strlist_push(&archive_args, "-C");
-        strlist_push(&archive_args, root_dir);
-        strlist_push(&archive_args, "-cf");
-        strlist_push(&archive_args, "-");
     }
     strlist_push(&archive_args, ".");
     archive_argv = (char **)xmalloc((archive_args.count + 1) * sizeof(char *));
     for (i = 0; i < archive_args.count; i++)
         archive_argv[i] = archive_args.items[i];
     archive_argv[archive_args.count] = 0;
-    result = run_apk_pipeline(out_apk, gzip_program, archive_cwd,
-                              archive_argv);
+    result = run_apk_pipeline(out_apk, gzip_program, root_dir, archive_argv);
     free(archive_argv);
     strlist_free(&archive_args);
     return result;

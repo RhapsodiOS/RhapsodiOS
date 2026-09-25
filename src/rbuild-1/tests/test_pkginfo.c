@@ -269,47 +269,33 @@ TEST(test_build_apk_is_posix_ustar_and_extracts) {
     CHECK_INT(exec_runv("/bin/rm", "-rf", scratch, (char *)0), 0);
 }
 
-TEST(test_build_apk_without_toolchain_uses_legacy_generic_argv) {
+/* Without a toolchain the APK must still pass rbuild's own validator. A bare
+   tar may be GNU tar, as on the DR2 build guest, whose "ustar  " headers
+   apk_validate refuses, so it sits first on PATH here. */
+TEST(test_build_apk_without_toolchain_passes_validation) {
     char scratch[128];
     char root[160];
     char output[160];
     char tar_wrapper[160];
-    char gzip_wrapper[160];
-    char tar_log[160];
     char metadata[192];
-    char expected[512];
     char path_value[512];
     char *saved_path;
     FILE *fp;
-    struct stat st;
-    Toolchain configured;
+    Toolchain fallback;
 
     make_scratch(scratch, sizeof(scratch));
     sprintf(root, "%s/root", scratch);
     sprintf(output, "%s/legacy.apk", scratch);
     sprintf(tar_wrapper, "%s/tar", scratch);
-    sprintf(gzip_wrapper, "%s/gzip", scratch);
-    sprintf(tar_log, "%s/tar.log", scratch);
     sprintf(metadata, "%s/.PKGINFO", root);
     CHECK_INT(mkdir(root, 0700), 0);
-    toolchain_init(&configured);
-    CHECK_INT(toolchain_load(&configured, "toolchains/gcc-darwin-ppc.conf"), 0);
     fp = fopen(tar_wrapper, "w");
     CHECK(fp != 0);
     if (fp != 0) {
-        fprintf(fp, "#!/bin/sh\nfor arg in \"$@\"; do echo \"$arg\"; done >> %s\n",
-                tar_log);
-        fprintf(fp, "exec %s \"$@\"\n", configured.tar);
-        fclose(fp);
-    }
-    fp = fopen(gzip_wrapper, "w");
-    CHECK(fp != 0);
-    if (fp != 0) {
-        fprintf(fp, "#!/bin/sh\nexec %s \"$@\"\n", configured.gzip);
+        fputs("#!/bin/sh\nexec /usr/bin/gnutar \"$@\"\n", fp);
         fclose(fp);
     }
     CHECK_INT(chmod(tar_wrapper, 0755), 0);
-    CHECK_INT(chmod(gzip_wrapper, 0755), 0);
     fp = fopen(metadata, "w");
     CHECK(fp != 0);
     if (fp != 0) { fputs("pkgname = legacy\n", fp); fclose(fp); }
@@ -319,10 +305,11 @@ TEST(test_build_apk_without_toolchain_uses_legacy_generic_argv) {
     CHECK_INT(pkginfo_build_apk(root, output, 0), 0);
     CHECK_INT(setenv("PATH", saved_path, 1), 0);
     free(saved_path);
-    sprintf(expected, "-C\n%s\n-cf\n-\n.\n", root);
-    CHECK_STR(slurp(tar_log), expected);
-    CHECK(lstat(output, &st) == 0 && st.st_size > 0);
-    toolchain_free(&configured);
+    toolchain_init(&fallback);
+    fallback.tar = xstrdup("pax");
+    fallback.gzip = xstrdup("gzip");
+    CHECK_INT(apk_validate(output, &fallback), 0);
+    toolchain_free(&fallback);
     CHECK_INT(exec_runv("/bin/rm", "-rf", scratch, (char *)0), 0);
 }
 
@@ -433,7 +420,7 @@ static void run_all(void) {
     RUN(test_pkginfo_read_missing_pkgname);
     RUN(test_pkginfo_read_invalid_arch);
     RUN(test_build_apk_is_posix_ustar_and_extracts);
-    RUN(test_build_apk_without_toolchain_uses_legacy_generic_argv);
+    RUN(test_build_apk_without_toolchain_passes_validation);
 }
 
 TEST_MAIN()

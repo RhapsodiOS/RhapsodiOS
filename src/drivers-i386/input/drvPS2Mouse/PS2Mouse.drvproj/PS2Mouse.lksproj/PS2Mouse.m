@@ -183,6 +183,16 @@ static void PS2MouseIntHandler(unsigned int param_1, unsigned int param_2)
     /* Update timestamp for next iteration */
     lastTimeStamp = newStamp;
 
+    /* Divergence from the reference, fixed at the user's request: the first
+     * byte of every packet has bit 3 set.  Drop a byte that fails this at
+     * the start of a packet, so a byte lost from the stream resyncs within a
+     * packet or two instead of reading deltas as buttons until the mouse
+     * goes idle.  See reconstruction/divergences.md.
+     */
+    if ((indexInSequence == 0) && !(dataByte & 0x08)) {
+        return;
+    }
+
     /* Process the byte based on current state */
     if (seqBeingProcessed == 0) {
         /* Not currently processing a sequence */

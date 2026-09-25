@@ -1909,3 +1909,25 @@ Fix: a static `addDelta()` adds the two bytes as `signed char` and clamps to
 ±127 (the range a single PS/2 packet can carry without the byte-0 sign bits,
 which this driver ignores). All six adds use it. This costs byte parity in
 `_PS2MouseIntHandler` and adds one function. Not yet built or tested.
+
+## Forced divergence: packets must start with bit 3 set
+
+2026-09-24. From a reference defect, fixed at the user's request.
+
+Byte 0 of a PS/2 mouse packet always has bit 3 set. The reference never checks
+it: `_PS2MouseIntHandler` counts bytes blindly and only resyncs after 250 ms
+of silence. Once a byte is lost from the stream, every later packet is read
+one byte off, and deltas land in the button byte, until the mouse goes idle.
+Under QEMU the user saw random clicks along with the erratic movement.
+
+Bytes can be lost because the PS2Controller keyboard paths do not check the
+8042's auxiliary-data status bit (0x20). `keyboardDataPresent()` tests only
+output-buffer-full, so `-[PS2Keyboard interruptOccurred]`,
+`NewStealKeyboardEvent()` and `-[PS2Controller setLEDs:]` can each read a
+mouse byte as a scancode. That is a drvPS2Keyboard issue and is not changed
+here.
+
+Fix: after the resync-timeout check, a byte at `indexInSequence == 0` without
+bit 3 set is dropped. A misaligned stream then realigns within a packet or two.
+This is the check Linux's psmouse driver makes. It costs byte parity in
+`_PS2MouseIntHandler`. Not yet built or tested.

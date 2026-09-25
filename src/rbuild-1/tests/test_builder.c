@@ -1456,6 +1456,54 @@ TEST(test_cache_accepts_covering_architecture) {
     system("rm -rf /tmp/rb-cache-cover");
 }
 
+TEST(test_source_change_removes_apk) {
+    const char *apk = "/tmp/rb-srcfp/repo/x-1-i386.apk";
+    char *fp1, *fp2, *fp3;
+    char line[64];
+    FILE *f;
+    int exists;
+    CHECK_INT(system("rm -rf /tmp/rb-srcfp && mkdir -p /tmp/rb-srcfp/src/CVS /tmp/rb-srcfp/repo"),0);
+    CHECK_INT(system("echo one > /tmp/rb-srcfp/src/a.c && echo e > /tmp/rb-srcfp/src/CVS/Entries"),0);
+    fp1 = builder_source_fingerprint("/tmp/rb-srcfp/src");
+    CHECK(fp1 != 0 && strlen(fp1) == 8);
+    CHECK(builder_source_fingerprint("/tmp/rb-srcfp/missing") == 0);
+    CHECK_INT(system("echo changed >> /tmp/rb-srcfp/src/CVS/Entries"),0);
+    fp2 = builder_source_fingerprint("/tmp/rb-srcfp/src");
+    CHECK_STR(fp2, fp1);
+    free(fp2);
+
+    /* An APK without a record adopts the current source. */
+    CHECK_INT(system("touch /tmp/rb-srcfp/repo/x-1-i386.apk"),0);
+    exists = 1;
+    CHECK_INT(builder_source_status(apk, fp1, &exists), 0);
+    CHECK_INT(exists, 1);
+    f = fopen("/tmp/rb-srcfp/repo/x-1-i386.apk.src", "r"); CHECK(f != 0);
+    if (f) { CHECK(fgets(line, sizeof(line), f) != 0); fclose(f); CHECK_STR(str_chomp(line), fp1); }
+    CHECK_INT(builder_source_status(apk, fp1, &exists), 0);
+    CHECK_INT(exists, 1);
+    CHECK(access(apk, F_OK) == 0);
+
+    /* Missing APKs are left alone. */
+    exists = 0;
+    CHECK_INT(builder_source_status("/tmp/rb-srcfp/repo/none-1-i386.apk", fp1, &exists), 0);
+    CHECK(access("/tmp/rb-srcfp/repo/none-1-i386.apk.src", F_OK) != 0);
+
+    /* Edited and added files change the fingerprint; the stale APK goes. */
+    CHECK_INT(system("echo two >> /tmp/rb-srcfp/src/a.c"),0);
+    fp2 = builder_source_fingerprint("/tmp/rb-srcfp/src");
+    CHECK(fp2 != 0 && strcmp(fp2, fp1) != 0);
+    CHECK_INT(system("echo new > /tmp/rb-srcfp/src/b.c"),0);
+    fp3 = builder_source_fingerprint("/tmp/rb-srcfp/src");
+    CHECK(fp3 != 0 && strcmp(fp3, fp2) != 0);
+    exists = 1;
+    CHECK_INT(builder_source_status(apk, fp3, &exists), 0);
+    CHECK_INT(exists, 0);
+    CHECK(access(apk, F_OK) != 0);
+    CHECK(access("/tmp/rb-srcfp/repo/x-1-i386.apk.src", F_OK) != 0);
+    free(fp1); free(fp2); free(fp3);
+    system("rm -rf /tmp/rb-srcfp");
+}
+
 static void cache_fixture(const char *repo, const char *name, const char *version,
                           const char *arch, int cpu) {
     char command[1024], path[256];
@@ -1838,6 +1886,7 @@ static void run_all(void) {
     RUN(test_direct_publication_quarantines_collision);
     RUN(test_cache_checks_payload_architecture);
     RUN(test_cache_accepts_covering_architecture);
+    RUN(test_source_change_removes_apk);
     RUN(test_packaging_dry_run_keeps_command_trace);
     RUN(test_build_validates_all_roots_before_packaging);
     RUN(test_packaging_rejects_wrong_products);

@@ -159,6 +159,9 @@ TEST(test_replay_rejects_required_artifact_replaced_by_symlink) {
         sprintf(control, "%s/apk/pkginfo", source);
         f = fopen(control, "a"); CHECK(f != 0);
         if (f) { fputs("arch = ppc\n", f); fclose(f); }
+        /* Only architecture policy is under test: drop the source record so
+         * the pkginfo edit is adopted rather than forcing a rebuild. */
+        sprintf(command, "%s.src", replay_artifact); unlink(command);
         /* Default universal source and explicit ppc resolve to the same
          * canonical bootstrap architecture, so no rebuild is needed. */
         CHECK_INT(runner_manifest(manifest, repo, repo, &opt), 0);
@@ -173,6 +176,7 @@ TEST(test_replay_rejects_required_artifact_replaced_by_symlink) {
             fputs("pkgname = foo\npkgver = 1.0\narch = i386\n", f);
             fclose(f);
         }
+        sprintf(command, "%s.src", replay_artifact); unlink(command);
         CHECK(runner_manifest(manifest, repo, repo, &opt) != 0);
         CHECK(access(replay_artifact, F_OK) == 0);
         sprintf(control, "%s.invalid", replay_artifact);

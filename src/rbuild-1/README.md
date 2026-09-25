@@ -64,6 +64,12 @@ can coexist in the same repository when their tokens differ. Incompatible
 cached artifacts are quarantined as `.invalid` before rebuilding. `missing`
 only inspects them.
 
+Each published APK has a `<apk>.src` record holding a fingerprint of its
+source tree: every file's relative path, size, mtime and link target, with
+`CVS`, `.svn`, `.git` and `.hg` skipped. When the source no longer matches,
+the APK and its record are removed and the project is rebuilt. An APK with no
+record adopts the current fingerprint rather than forcing a rebuild.
+
 See [architecture policy and verification](../../docs/build/rbuild-universal.md)
 for object collections, dependency compatibility, state migration, and the
 bounded native guest acceptance evidence.

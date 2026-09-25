@@ -307,7 +307,14 @@ chmod +x "$base/wrappers/pax" "$base/wrappers/gzip"
 mkdir -p "$base/world-source/apk"
 sed 's/universal-apple-rhapsody/ppc-apple-rhapsody/' "$src/apk/pkginfo" > "$base/world-source/apk/pkginfo"
 echo "dir $base/world-source all" > "$base/WorldManifest"
+# world-source is not the tree these APKs were built from. Dropping the source
+# records lets it adopt them, and dropping them again lets $src re-adopt them.
+forget_sources() {
+    rm -f "$1"/*.apk.src
+}
+forget_sources "$repo"
 PATH="$base/wrappers:$PATH" ./rbuild buildall "$base/WorldManifest" "$repo" "$repo"
+forget_sources "$repo"
 grep '^pax$' "$base/wrapper.log" > /dev/null
 grep '^gzip$' "$base/wrapper.log" > /dev/null
 
@@ -433,10 +440,12 @@ make_wrong_apk foo-obj 1.0 wrong-architecture "$repo/foo-obj-1.0-ppc.apk"
     --state "$state" "$base/Manifest" "$repo" "$repo"
 test -f "$repo/foo-obj-1.0-ppc.apk.invalid"
 
+forget_sources "$repo"
 ./rbuild buildpackage --state "$state" --dir --target all \
     "$base/world-source" "$repo" "$repo"
 test -f "$state/logs/foo-1.0-ppc-all.log"
 ./rbuild buildall --state "$state" "$base/WorldManifest" "$repo" "$repo"
+forget_sources "$repo"
 
 headers_base=$base/headers-case
 headers_repo=$headers_base/repo
@@ -477,7 +486,9 @@ test ! -f "$headers_repo/foo-1.0-ppc.apk.invalid"
 test "`cat "$headers_repo/foo-1.0-ppc.apk"`" = broken
 
 echo "dir $base/world-source headers" > "$headers_base/WorldManifest"
+forget_sources "$headers_repo"
 ./rbuild buildall "$headers_base/WorldManifest" "$headers_repo" "$headers_repo"
+forget_sources "$headers_repo"
 test "`cat "$headers_repo/foo-1.0-ppc.apk"`" = broken
 test ! -f "$headers_repo/foo-1.0-ppc.apk.invalid"
 

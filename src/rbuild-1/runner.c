@@ -264,11 +264,14 @@ static int artifact_present(const char *path) {
 
 static int validate_or_quarantine(const char *path, const Toolchain *tc,
                                   const char *pkgname, const char *pkgver,
-                                  const char *architecture, int *exists) {
+                                  const char *architecture,
+                                  const char *fingerprint, int *exists) {
     unsigned required;
     if (architecture_parse(architecture, &required) != 0) return 1;
-    return builder_cache_status(path, tc, pkgname, pkgver, required,
-                                 str_has_suffix(pkgname, "-obj"), exists);
+    if (builder_cache_status(path, tc, pkgname, pkgver, required,
+                             str_has_suffix(pkgname, "-obj"), exists) != 0)
+        return 1;
+    return builder_source_status(path, fingerprint, exists);
 }
 
 static int parse_hex(const char *text, unsigned long *value) {
@@ -500,6 +503,7 @@ static int run_entry(const ManifestEntry *entry, const char *seeddir,
     char *version = 0;
     char *hdr_name = 0;
     char *obj_name = 0;
+    char *srcfp = 0;
     /* Null when no profile was given; apk_use_arch supplies default tools. */
     const Toolchain *validate_tc = opt->toolchain;
 
@@ -514,6 +518,11 @@ static int run_entry(const ManifestEntry *entry, const char *seeddir,
         fprintf(stderr, "rbuild: skipping \"%s\": scan failed\n", entry->source);
         goto done;
     }
+    srcfp = builder_source_fingerprint(entry->source);
+    if (srcfp == 0) {
+        fprintf(stderr, "rbuild: cannot fingerprint source %s\n", entry->source);
+        goto done;
+    }
     build_options_init(&build_opt);
     build_opt.clean = !opt->bootstrap;
     build_opt.bootstrap = opt->bootstrap;
@@ -521,6 +530,7 @@ static int run_entry(const ManifestEntry *entry, const char *seeddir,
     build_opt.state_dir = opt->state_dir;
     build_opt.toolchain = opt->toolchain;
     build_opt.operation_arch = opt->operation_arch;
+    build_opt.source_fingerprint = srcfp;
     if (builder_resolve_architecture(&pkg, &build_opt) != 0) {
         fprintf(stderr, "rbuild: architecture resolution failed for %s\n", entry->source);
         goto done;
@@ -566,22 +576,22 @@ static int run_entry(const ManifestEntry *entry, const char *seeddir,
     if (opt->bootstrap) {
         if (headers_only) {
             if (validate_or_quarantine(hdr_path, validate_tc, hdr_name,
-                                       version, pkg.architecture,
+                                       version, pkg.architecture, srcfp,
                                        &hdr_exists) != 0) goto done;
             must_build = !hdr_exists;
         } else {
             base_was = artifact_present(base_path);
             if (validate_or_quarantine(base_path, validate_tc, pkg.package,
-                                       version, pkg.architecture,
+                                       version, pkg.architecture, srcfp,
                                        &base_exists) != 0) goto done;
             if (all_target) {
                 hdr_was = artifact_present(hdr_path);
                 obj_was = artifact_present(obj_path);
                 if (validate_or_quarantine(hdr_path, validate_tc, hdr_name,
-                                           version, pkg.architecture,
+                                           version, pkg.architecture, srcfp,
                                            &hdr_exists) != 0 ||
                     validate_or_quarantine(obj_path, validate_tc, obj_name,
-                                           version, pkg.architecture,
+                                           version, pkg.architecture, srcfp,
                                            &obj_exists) != 0) goto done;
             }
             must_build = !base_exists;
@@ -597,7 +607,7 @@ static int run_entry(const ManifestEntry *entry, const char *seeddir,
     } else {
         if (headers_only) {
             if (validate_or_quarantine(hdr_path, validate_tc, hdr_name,
-                                       version, pkg.architecture,
+                                       version, pkg.architecture, srcfp,
                                        &hdr_exists) != 0) goto done;
             must_build = !hdr_exists;
         } else {
@@ -605,13 +615,13 @@ static int run_entry(const ManifestEntry *entry, const char *seeddir,
             hdr_was = artifact_present(hdr_path);
             obj_was = artifact_present(obj_path);
             if (validate_or_quarantine(base_path, validate_tc, pkg.package,
-                                       version, pkg.architecture,
+                                       version, pkg.architecture, srcfp,
                                        &base_exists) != 0 ||
                 validate_or_quarantine(hdr_path, validate_tc, hdr_name,
-                                       version, pkg.architecture,
+                                       version, pkg.architecture, srcfp,
                                        &hdr_exists) != 0 ||
                 validate_or_quarantine(obj_path, validate_tc, obj_name,
-                                       version, pkg.architecture,
+                                       version, pkg.architecture, srcfp,
                                        &obj_exists) != 0) goto done;
             must_build = !base_exists || (hdr_was && !hdr_exists) ||
                          (obj_was && !obj_exists);
@@ -639,20 +649,20 @@ static int run_entry(const ManifestEntry *entry, const char *seeddir,
     if (opt->bootstrap) {
         if (headers_only) {
             if (validate_or_quarantine(hdr_path, validate_tc, hdr_name,
-                                       version, pkg.architecture,
+                                       version, pkg.architecture, srcfp,
                                        &hdr_exists) != 0) goto done;
         } else {
             if (validate_or_quarantine(base_path, validate_tc, pkg.package,
-                                       version, pkg.architecture,
+                                       version, pkg.architecture, srcfp,
                                        &base_exists) != 0) goto done;
             if (all_target) {
                 post_hdr_was = artifact_present(hdr_path);
                 post_obj_was = artifact_present(obj_path);
                 if (validate_or_quarantine(hdr_path, validate_tc, hdr_name,
-                                           version, pkg.architecture,
+                                           version, pkg.architecture, srcfp,
                                            &hdr_exists) != 0 ||
                     validate_or_quarantine(obj_path, validate_tc, obj_name,
-                                           version, pkg.architecture,
+                                           version, pkg.architecture, srcfp,
                                            &obj_exists) != 0) goto done;
             }
         }
@@ -690,18 +700,18 @@ static int run_entry(const ManifestEntry *entry, const char *seeddir,
         }
     } else if (headers_only) {
         if (validate_or_quarantine(hdr_path, validate_tc, hdr_name, version,
-                                   pkg.architecture, &hdr_exists) != 0 ||
+                                   pkg.architecture, srcfp, &hdr_exists) != 0 ||
             !hdr_exists) goto done;
     } else {
         post_hdr_was = artifact_present(hdr_path);
         post_obj_was = artifact_present(obj_path);
         if (validate_or_quarantine(base_path, validate_tc, pkg.package,
-                                   version, pkg.architecture,
+                                   version, pkg.architecture, srcfp,
                                    &base_exists) != 0 ||
             validate_or_quarantine(hdr_path, validate_tc, hdr_name, version,
-                                   pkg.architecture, &hdr_exists) != 0 ||
+                                   pkg.architecture, srcfp, &hdr_exists) != 0 ||
             validate_or_quarantine(obj_path, validate_tc, obj_name, version,
-                                   pkg.architecture, &obj_exists) != 0 ||
+                                   pkg.architecture, srcfp, &obj_exists) != 0 ||
             !base_exists || (post_hdr_was && !hdr_exists) ||
             (post_obj_was && !obj_exists)) goto done;
     }
@@ -711,7 +721,7 @@ done:
     free(log_path); free(state_path);
     free(obj_path); free(hdr_path); free(base_path);
     free(obj_canon); free(hdr_canon); free(base_canon);
-    free(obj_name); free(hdr_name); free(version);
+    free(obj_name); free(hdr_name); free(version); free(srcfp);
     package_free(&pkg); params_free(&params);
     return rc;
 }

@@ -1219,6 +1219,119 @@ int builder_cache_status(const char *path, const Toolchain *tc,
     return apk_quarantine(path);
 }
 
+static unsigned long source_hash(unsigned long hash, const char *data,
+                                 size_t count) {
+    size_t i;
+    for (i = 0; i < count; i++) {
+        hash ^= (unsigned char)data[i];
+        hash *= 16777619UL;
+        hash &= 0xffffffffUL;
+    }
+    return hash;
+}
+
+static int compare_names(const void *a, const void *b) {
+    return strcmp(*(char * const *)a, *(char * const *)b);
+}
+
+/* Hashes each entry's relative path, type, size, mtime and link target in
+ * sorted order. Skips the version-control directories setupdirs' rsync does. */
+static int fingerprint_tree(const char *root, const char *rel,
+                            unsigned long *hash) {
+    char *dirpath = rel[0] == '\0' ? xstrdup(root) : path_join(root, rel);
+    DIR *d = opendir(dirpath);
+    struct dirent *de;
+    strlist names;
+    size_t i;
+    int rc = 0;
+    if (!d) { free(dirpath); return 1; }
+    strlist_init(&names);
+    while ((de = readdir(d)) != 0)
+        if (strcmp(de->d_name, ".") != 0 && strcmp(de->d_name, "..") != 0)
+            strlist_push(&names, de->d_name);
+    closedir(d);
+    if (names.count != 0)
+        qsort(names.items, names.count, sizeof(char *), compare_names);
+    for (i = 0; rc == 0 && i < names.count; i++) {
+        const char *name = names.items[i];
+        char *path = path_join(dirpath, name);
+        char *relname = rel[0] == '\0' ? xstrdup(name) : path_join(rel, name);
+        char meta[64];
+        struct stat st;
+        if (lstat(path, &st) != 0) rc = 1;
+        else if (S_ISDIR(st.st_mode)) {
+            if (strcmp(name, "CVS") != 0 && strcmp(name, ".svn") != 0 &&
+                strcmp(name, ".git") != 0 && strcmp(name, ".hg") != 0) {
+                *hash = source_hash(*hash, relname, strlen(relname) + 1);
+                *hash = source_hash(*hash, "d", 2);
+                rc = fingerprint_tree(root, relname, hash);
+            }
+        } else {
+            sprintf(meta, "%c %lu %ld", S_ISLNK(st.st_mode) ? 'l' : 'f',
+                    (unsigned long)st.st_size, (long)st.st_mtime);
+            *hash = source_hash(*hash, relname, strlen(relname) + 1);
+            *hash = source_hash(*hash, meta, strlen(meta) + 1);
+            if (S_ISLNK(st.st_mode)) {
+                char target[4096];
+                int n = readlink(path, target, sizeof(target));
+                if (n < 0) rc = 1;
+                else *hash = source_hash(*hash, target, (size_t)n);
+            }
+        }
+        free(path); free(relname);
+    }
+    strlist_free(&names);
+    free(dirpath);
+    return rc;
+}
+
+char *builder_source_fingerprint(const char *srcdir) {
+    unsigned long hash = 2166136261UL;
+    char text[16];
+    if (fingerprint_tree(srcdir, "", &hash) != 0) return 0;
+    sprintf(text, "%08lx", hash);
+    return xstrdup(text);
+}
+
+int builder_record_source(const char *path, const char *fingerprint) {
+    char *record = str_cats(path, ".src", (char *)0);
+    FILE *f = fopen(record, "w");
+    int rc = 1;
+    if (f) {
+        rc = fprintf(f, "%s\n", fingerprint) < 0;
+        if (fclose(f) != 0) rc = 1;
+    }
+    if (rc) fprintf(stderr, "rbuild: cannot write %s\n", record);
+    free(record);
+    return rc;
+}
+
+int builder_source_status(const char *path, const char *fingerprint,
+                          int *exists) {
+    char *record;
+    char line[64];
+    FILE *f;
+    int rc = 0;
+    if (exec_dry_run || !*exists) return 0;
+    record = str_cats(path, ".src", (char *)0);
+    f = fopen(record, "r");
+    if (f == 0) {
+        free(record);
+        return errno == ENOENT ? builder_record_source(path, fingerprint) : 1;
+    }
+    if (fgets(line, sizeof(line), f) == 0) line[0] = '\0';
+    fclose(f);
+    str_chomp(line);
+    if (strcmp(line, fingerprint) != 0) {
+        printf("source of %s changed; removing it\n", path);
+        fflush(stdout);
+        if (unlink(path) != 0 || unlink(record) != 0) rc = 1;
+        else *exists = 0;
+    }
+    free(record);
+    return rc;
+}
+
 /* Ancillary package files are products too: stage before architecture checks. */
 static int stage_ancillary_files(const Params *params) {
     static const char *names[] =
@@ -1364,6 +1477,8 @@ static int buildpackage(const Package *spkg, const Params *params,
                               strcmp(target, "objects") == 0, &existing);
     free(version);
     if (!rc) rc = pkginfo_build_apk(dstroot, apk_path, resolved_opt.toolchain);
+    if (!rc && !exec_dry_run && resolved_opt.source_fingerprint)
+        rc = builder_record_source(apk_path, resolved_opt.source_fingerprint);
     free(canon);
     free(apk_path);
 
@@ -1648,6 +1763,7 @@ int builder_build(const char *srctype, const char *srcname,
     Params bparams, params;
     char *hdrfilename, *filename;
     char *cwd;
+    char *srcfp = 0;
     int rc = 0;
     int do_hdr = (strcmp(target, "all") == 0 || strcmp(target, "headers") == 0);
     int do_bin = (strcmp(target, "all") == 0 || strcmp(target, "binary") == 0);
@@ -1666,6 +1782,15 @@ int builder_build(const char *srctype, const char *srcname,
         package_free(&pkg); params_free(&bparams);
         return 1;
     }
+    if (!resolved_opt.source_fingerprint) {
+        srcfp = builder_source_fingerprint(srcname);
+        if (!srcfp) {
+            fprintf(stderr, "rbuild: cannot fingerprint source %s\n", srcname);
+            package_free(&pkg); params_free(&bparams);
+            return 1;
+        }
+        resolved_opt.source_fingerprint = srcfp;
+    }
     opt = &resolved_opt;
 
     /* hdrpackage = clone(pkg); name += "-hdrs" */
@@ -1681,6 +1806,7 @@ int builder_build(const char *srctype, const char *srcname,
     filename = package_canon_name(&pkg);
     if (!hdrfilename || !filename) {
         rc = 1;
+        free(srcfp);
         free(hdrfilename);
         free(filename);
         package_free(&hdrpkg);
@@ -1707,7 +1833,8 @@ int builder_build(const char *srctype, const char *srcname,
                             (char *)0);
             was[i] = lstat(path, &st) == 0;
             if (builder_cache_status(path, opt->toolchain, names[i], version,
-                    opt->effective_arch, str_has_suffix(names[i], "-obj"), &exists[i]) != 0)
+                    opt->effective_arch, str_has_suffix(names[i], "-obj"), &exists[i]) != 0 ||
+                builder_source_status(path, opt->source_fingerprint, &exists[i]) != 0)
                 rc = 1;
             if (was[i] && !exists[i]) invalid = 1;
             free(path); free(names[i]);
@@ -1808,12 +1935,14 @@ int builder_build(const char *srctype, const char *srcname,
 
 done:
     params_free(&params);
+    free(srcfp);
     free(hdrfilename); free(filename);
     package_free(&pkg); package_free(&hdrpkg);
     params_free(&bparams);
     return rc;
 
 done_ok:
+    free(srcfp);
     free(hdrfilename); free(filename);
     package_free(&pkg); package_free(&hdrpkg);
     params_free(&bparams);

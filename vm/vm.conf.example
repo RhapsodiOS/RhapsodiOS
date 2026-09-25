@@ -1,6 +1,8 @@
 # Copy to vm.conf (gitignored). Local Rhapsody guest over hecnet/VMnet8.
 
 Host=10.10.0.241
+# SSH port; a QEMU user-network guest uses its host forward (e.g. 127.0.0.1, 2222).
+Port=22
 User=root
 Password=abc123
 RemoteRoot=/build

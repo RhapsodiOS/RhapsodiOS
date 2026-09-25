@@ -47,6 +47,7 @@ function Get-RhapVmConfig {
     }
     $cfg = @{
         Host       = ''
+        Port       = '22'
         User       = ''
         Password   = ''
         RemoteRoot = '/build'
@@ -91,6 +92,11 @@ function Get-RhapVmConfig {
     }
     $cfg.ToolchainProfile = ConvertTo-RhapNormalizedRemotePath -Path $cfg.ToolchainProfile -Name 'ToolchainProfile'
     if ([string]::IsNullOrWhiteSpace($cfg.Make)) { $cfg.Make = 'gnumake' }
+    if ($cfg.Port -notmatch '^[0-9]+$') { Write-RhapDie $DiePrefix "vm.conf Port is not a number: $($cfg.Port)" }
+    # A QEMU user-network guest is reached through a forwarded host port.
+    if ($cfg.Port -ne '22' -and $script:RhapLegacySshOptions -notcontains "Port=$($cfg.Port)") {
+        $script:RhapLegacySshOptions += @('-o', "Port=$($cfg.Port)")
+    }
     return $cfg
 }
 

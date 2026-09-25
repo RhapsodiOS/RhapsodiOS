@@ -13,6 +13,7 @@ dir     bison-1               all
 dir     boot-2                all
 dir     Commands/bootstrap_cmds all
 dir     bsdmake-1             all
+dir     ca-certificates-1     all
 dir     cc-1                  all
 dir     cctools-2             all
 dir     cdis-3                all

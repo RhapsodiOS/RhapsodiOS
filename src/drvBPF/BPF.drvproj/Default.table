@@ -5,4 +5,3 @@
 "Version" = "1.0";
 "Post-Load" = "PostLoad";
 "Help File" = "BPF.rtfd";
-"Server Name" = "BPF";

@@ -47,7 +47,7 @@ int main(int argc, char **argv)
     IODeviceMaster *devMaster;
     int bpfValues[2];  /* [0] = major number, [1] = number of devices */
     unsigned int count;
-    unsigned int i;
+    int i;
     int iRet;
     char path[10];
 

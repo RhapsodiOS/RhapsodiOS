@@ -65,11 +65,9 @@
 #include <string.h>
 #include <sys/param.h>
 #include <sys/systm.h>
-#if 0
 #ifdef BPFDRV
 #include <machine/spl.h>
 #endif /* BPFDRV */
-#endif
 #include <sys/mbuf.h>
 #include <sys/buf.h>
 #include <sys/time.h>
@@ -170,7 +168,7 @@ static void	bpf_freed __P((struct bpf_d *));
 static void	bpf_freed __P((struct bpf_d *));
 static void	bpf_ifname __P((struct ifnet *, struct ifreq *));
 static void	bpf_ifname __P((struct ifnet *, struct ifreq *));
-static void	bpf_mcopy __P((const void *, void *, u_int));
+static void	bpf_mcopy __P((const void *, void *, size_t));
 static int	bpf_movein __P((struct uio *, int,
 		    struct mbuf **, struct sockaddr *, int *));
 static int	bpf_setif __P((struct bpf_d *, struct ifreq *));
@@ -178,7 +176,7 @@ static int	bpf_setif __P((struct bpf_d *, struct ifreq *));
 static __inline void
 		bpf_wakeup __P((struct bpf_d *));
 static void	catchpacket __P((struct bpf_d *, u_char *, u_int,
-		    u_int, void (*)(const void *, void *, u_int)));
+		    u_int, void (*)(const void *, void *, size_t)));
 static void	reset_d __P((struct bpf_d *));
 
 #ifdef BPFDRV
@@ -1066,7 +1064,7 @@ static void
 bpf_mcopy(src_arg, dst_arg, len)
 	const void *src_arg;
 	void *dst_arg;
-	register u_int len;
+	register size_t len;
 {
 	register const struct mbuf *m;
 	register u_int count;
@@ -1127,7 +1125,7 @@ catchpacket(d, pkt, pktlen, snaplen, cpfn)
 	register struct bpf_d *d;
 	register u_char *pkt;
 	register u_int pktlen, snaplen;
-	register void (*cpfn) __P((const void *, void *, u_int));
+	register void (*cpfn) __P((const void *, void *, size_t));
 {
 	register struct bpf_hdr *hp;
 	register int totlen, curlen;

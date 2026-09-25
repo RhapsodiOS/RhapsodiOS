@@ -124,7 +124,7 @@ _vm_policy_apply(vm_object_t object, vm_page_t m, int when, boolean_t hint)
 
 	vm_page_lock_queues();
 
-	switch (when) {
+	switch (when & ~VM_DEACTIVATE_SHARED) {
 		/*
 		 *  Make this page as cold as possible.  That means that we
 		 *  try to free the page.

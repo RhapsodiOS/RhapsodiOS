@@ -413,7 +413,12 @@ system_time_stamp(void)
     last_timer_count = system_clock.last_timer_count;
     timer_latch(TIMER_CNT0_SEL);
     current_timer_count = timer_read(TIMER_CNT0_SEL);
-    system_clock.last_timer_count = current_timer_count;
+    // once a wrap is seen, store 0 (never read in NDIV mode) so that
+    // every later read counts the tick until the interrupt runs
+    if (current_timer_count > last_timer_count)
+	system_clock.last_timer_count = 0;
+    else
+	system_clock.last_timer_count = current_timer_count;
     splx(s);
 
     // check for tick overflow

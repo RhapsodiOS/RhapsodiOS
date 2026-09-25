@@ -1632,3 +1632,17 @@ sweep 1200/2400/4800/9600 sending `executeEvent:0x33` at
 
 Instruction-stream finish. Last kept `SerialPointingDevice_reloc` is 111660 bytes, SHA-256 `D6D751BA6A1015D93B65CD72CD18F61924A6517CC67279B1129E38EB1939D30F`. `--list` is 3 identical + 9 further masked = 12 `masked_equal`, 6 accepted compiler-shaped leftovers, 2 generated glue, 0 unpaired. `_SerialPointingDevice_VERS_STRING` / `_SerialPointingDevice_VERS_NUM` still MISSING (Task 4 accepted gap). Hardware untested.
 
+## Forced divergence: a backwards clock step does not drop a packet
+
+2026-09-25. From a reference defect, fixed at the user's request.
+
+Finding 10's gate dispatches a packet only when `currentTimeStamp - lastTimeStamp`
+is under 40 ms, as one unsigned 64-bit subtraction. `IOGetTimestamp()` is
+`clock_get_counter(System)`, and on i386 under QEMU it was seen to step back by
+one 10 ms tick (issue #26, the same defect that misframed drvPS2Mouse). The
+difference then wraps to an enormous value and a good packet is dropped.
+
+Fix: in all three gates (`MSProtocol` and both in `FiveBProtocol`), a packet
+also dispatches when `currentTimeStamp < lastTimeStamp`. A forward gap of 40 ms
+or more is still suppressed, as in the reference. This costs byte parity in
+`MSProtocol` and `FiveBProtocol`. Built but not tested with a serial mouse.

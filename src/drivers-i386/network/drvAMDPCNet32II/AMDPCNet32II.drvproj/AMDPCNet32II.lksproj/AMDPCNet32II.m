@@ -145,7 +145,8 @@ void initDE(char *des, int idx, unsigned int buf, int is_tx) {
   while (1) {
     IOGetTimestamp(&end);
     IOLog(".");
-    if ((end - start) > 10000)
+    // the clock can step backwards; only a forward gap ends the wait
+    if (end > start && (end - start) > 10000)
       break;
   }
   IOLog("\n");

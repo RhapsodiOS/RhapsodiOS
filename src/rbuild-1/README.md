@@ -52,6 +52,15 @@ repository: it walks `BootstrapRuntimeManifest` (Csu through Libsystem) and
 then the caller's full manifest with `RB_ARCH_UNIVERSAL`. Thin `bootstrap`
 remains for unit tests and the first walk that stages the profile's thin CPU.
 
+Once `bootstrap-universal` confirms a valid universal APK, it deletes the thin
+(`-i386` / `-ppc`) APKs of that pkgname, at any version, from the output
+repository and prints `remove superseded <path>`. In dry-run it lists every
+thin APK the planned build could supersede and removes nothing. Base,
+`-hdrs`, and `-obj` are pruned independently, and seed repositories and
+`.invalid` files are never touched. When a thin APK is absent, thin
+`bootstrap` accepts the universal APK in its place, so it replays that APK
+instead of rebuilding the package.
+
 Before an `all` or `binary` project build, private compiler/linker probes must
 produce every requested CPU slice. Bootstrap may defer linking until its
 explicit `ld_flags_ready` marker exists. Products, cached APKs, and dependencies
@@ -80,7 +89,7 @@ bounded native guest acceptance evidence.
   `makedepends_ppc = drvpexpert`.
 - Depends at runtime on `tar`, `gzip`, `apk`, `make`, `chroot`, `rsync`,
   `mkdir`, `cp`, `rm` on `PATH`, and for vendored projects on `mv`, `rmdir`
-  and GNU `patch` 2.5 or later. Patching runs on the host, before any chroot.
+  and GNU `patch` 2.4 or later. Patching runs on the host, before any chroot.
 
 `make trace-test` is an rbuild `-n` dry-run against empty APK seeds: universal
 i386+ppc probes, thin `RC_*` policy, no build root, no live-host bootstrap

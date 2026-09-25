@@ -189,3 +189,16 @@ char *str_cats(const char *first, ...) {
 char *path_join(const char *a, const char *b) {
     return str_cats(a, "/", b, (char *)0);
 }
+
+int str_parse_kv(char *line, char **key, char **val) {
+    char *k, *eq;
+
+    k = str_trim(line);
+    if (k[0] == '\0' || k[0] == '#') return 0;
+    eq = strchr(k, '=');
+    if (eq == 0) return 0;
+    *eq = '\0';
+    *key = str_trim(k);
+    *val = str_trim(eq + 1);
+    return 1;
+}

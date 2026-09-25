@@ -31,6 +31,19 @@ After step 4, the rest of this document is the remote session.
 
 Pick a writable directory (for example `/tmp`) and work as root.
 
+On Rhapsody DR2, first create the kernel's CSPRNG device nodes; DR2's own
+`/dev/MAKEDEV` predates them. OpenSSL then seeds itself from `/dev/urandom`,
+and OpenSSH's `configure` reports "Random number source: OpenSSL internal
+ONLY". Without the nodes it falls back to `ssh-rand-helper`, which runs about
+forty commands (`ps`, `netstat`, `w`, `last`, ...) every time sshd accepts a
+connection.
+
+```sh
+cd /private/dev
+mknod random c 17 0; chmod 644 random
+mknod urandom c 17 1; chmod 644 urandom
+```
+
 ### zlib install
 
 Grab zlib 1.1.4 from http://zlib.net/fossils
@@ -54,8 +67,14 @@ tar -xzvf openssl-0.9.8.tar.gz
 cd openssl-0.9.8
 ```
 
+If using Rhapsody DR2 on x86, run this perl command to add the correct rhapsody-i386-cc compiler flag
+
+```sh
+perl -pi -e 'print "\"rhapsody-i386-cc\",\"cc:-O3 -DL_ENDIAN::(unknown):MACOSX_RHAPSODY::BN_LLONG \${x86_gcc_des} \${x86_gcc_opts}:\${no_asm}::\",\n" if /^"rhapsody-ppc-cc"/' Configure
+```
+
 Disable hardware acceleration and SHA512, and set the compiler target to
-`rhapsody-ppc-cc` (or `rhapsody-intel-cc` on Intel).
+`rhapsody-ppc-cc` (or `rhapsody-i386-cc` on Intel).
 
 PowerPC:
 
@@ -64,11 +83,11 @@ PowerPC:
 make depend; make install
 ```
 
-Intel: same commands, but configure with `rhapsody-intel-cc` instead of
+Intel: same commands, but configure with `rhapsody-i386-cc` instead of
 `rhapsody-ppc-cc`:
 
 ```sh
-./Configure no-hw no-sha512 rhapsody-intel-cc
+./Configure no-hw no-sha512 rhapsody-i386-cc
 make depend; make install
 ```
 
@@ -100,18 +119,27 @@ end of it:
 if [ "${SSHSERVER:=-NO-}" = "-YES-" ]; then
     ConsoleMessage "Starting Secure Login Server"
 
-    if [ ! -f /etc/ssh_host_key ]; then
-        echo "Generating ssh host RSA key..."
-        ssh-keygen -f /etc/ssh_host_key -N "" -C "$(hostname)"
+    if [ ! -f /usr/local/etc/ssh_host_key ]; then
+        echo "Generating ssh host RSA1 key..."
+        /usr/local/bin/ssh-keygen -t rsa1 -f /usr/local/etc/ssh_host_key -N "" -C "$(hostname)"
     fi
-    if [ ! -f /etc/ssh_host_dsa_key ]; then
+    if [ ! -f /usr/local/etc/ssh_host_rsa_key ]; then
+        echo "Generating ssh host RSA key..."
+        /usr/local/bin/ssh-keygen -t rsa -f /usr/local/etc/ssh_host_rsa_key -N ""
+    fi
+    if [ ! -f /usr/local/etc/ssh_host_dsa_key ]; then
         echo "Generating ssh host DSA key..."
-        ssh-keygen -d -f /etc/ssh_host_dsa_key -N "" -C "$(hostname)"
+        /usr/local/bin/ssh-keygen -t dsa -f /usr/local/etc/ssh_host_dsa_key -N ""
     fi
 
     /usr/local/sbin/sshd &
 fi
 ```
+
+`make install` puts `sshd_config` and the host keys in `/usr/local/etc`,
+which is where this `sshd` looks for them, so the block checks that directory
+rather than `/etc`. It names `ssh-keygen` by full path because
+`/usr/local/bin` is not on the startup scripts' `PATH`.
 
 Modify `/private/etc/services` and add the following line after port 21 for
 ftp:
@@ -143,9 +171,9 @@ With SSH working, the box is ready to build RhapsodiOS. The three steps below
 run from a Windows workstation holding the repository; `vm.conf` supplies the
 host, credentials, and directory layout (copy `vm/vm.conf.example` first).
 
-Before the first bootstrap, `RepoDir` (default `/build/repo`) must already hold
-the seed APKs — `rbuild bootstrap` resumes against validated packages and
-cannot start from an empty repository.
+`RepoDir` (default `/build/repo`) can start empty: `rbuild bootstrap` builds
+every package from the synced source, and a rerun resumes against the
+validated packages it has already published.
 
 ### 1. Sync `src/` to the guest
 
@@ -158,6 +186,23 @@ a ustar archive over SSH — `scp` drops the connection against this guest. The
 script restores execute bits afterwards, which Windows `tar` drops and
 `./configure` needs. Re-sync one project later with
 `-Path <dir>` (for example `-Path rbuild-1`).
+
+### Rhapsody DR2 only: replace `/bin/pax`
+
+DR2's stock `/bin/pax` (April 1998) sets times through each symlink it
+extracts. When an archive stores a symlink ahead of its target — the
+`file_cmds` APK ships `usr/bin/cpio -> ../../bin/pax` — that fails with
+`Access/modification time set failed` and pax exits 1, although everything
+extracted. rbuild extracts APKs with pax, so its tests and the bootstrap fail.
+The tree's own pax returns before setting symlink times; build it on the guest
+after step 1 and install it over the stock one:
+
+```sh
+rm -rf /tmp/paxb && cp -R /build/src/Commands/file_cmds/pax /tmp/paxb
+cd /tmp/paxb && cc -O -o pax *.c
+test -f /bin/pax.dr2 || cp -p /bin/pax /bin/pax.dr2
+/usr/bin/install -c -o root -g wheel -m 555 pax /bin/pax
+```
 
 ### 2. Build and install `rbuild`
 
@@ -206,7 +251,9 @@ BISON_SIMPLE=/build/bootstrap-root/usr/share/bison.simple \
 
 Then repeat the identical command with `bootstrap-universal` in place of
 `bootstrap`. Both passes write their packages back into `/build/repo`, so the
-second pass sees the thin results of the first.
+second pass sees the thin results of the first. The universal pass deletes the
+thin `-i386`/`-ppc` APKs it supersedes, and a rerun of the thin pass accepts
+the universal APK instead of rebuilding.
 
 Per-project logs land in `/build/state/logs/<pkg>-<arch>-<target>.log`. The
 architecture in those filenames comes from the toolchain profile, which is

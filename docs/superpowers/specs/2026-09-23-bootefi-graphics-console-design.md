@@ -123,8 +123,9 @@ existing flags.
 ### `src/bootefi-1/handoff.c`
 
 After `ExitBootServices`, if graphics are active, skip
-`efi_vga_reset_text_mode()` and leave the card in mode 0x12. The reset stays
-for the path where graphics never started.
+`efi_vga_reset_text_mode()` and leave the card in mode 0x12. The reset call is
+kept as a fallback, though with `efi_gfx_init()` first in `efi_main` that path
+is not currently reached.
 
 ## Splash rule
 

@@ -281,7 +281,11 @@ python vm/instmedia/build.py --repo out/apks/i386 --efi BOOTIA32.EFI \
 | `rootfs.py` | Build a node tree from apk payloads: mode, uid/gid, mtime, symlinks, hard links, device nodes. Apply an overlay directory. Report every path claimed by two packages, since `apk add` would refuse them later. | none |
 | `live.py` | Compose the live root: every apk (`files` first), then the live overlay, then `/System/Installation/Packages/*.apk` and `/System/Installation/esp.img.gz`. With `--preinstalled`, it skips the overlay and applies the installed-system templates for `hd0` instead. | `rootfs` |
 | `ufs.py` | Phase 3 writer. Computes geometry the way `newfs` would (bsize 8192, fsize 1024 or 2048), handles several cylinder groups and single and double indirect blocks, and supports symlinks, hard links and device nodes. Little-endian by default, like DR2 media. | `ufs_cg.py` for cylinder-group tables |
-| `label.py` | NeXT `dlV3` label: three copies, checksum, boot-block locations. On an fdisk disk it writes what `disk -i -b` writes: `secsize` 512, absolute `p_base` and `d_boot0_blkno`, and `dl_label_blkno` = `relsect` + 15/30/45. On the CD: `secsize` 2048 with no fdisk table. | the label helpers in `ufs_build.py`, the rebase in `build_uefi_image.py` |
+| `label.py` | NeXT `dlV3` label: three copies, checksum, boot-block locations. On an fdisk disk it writes what `disk -i -b` writes: `secsize` 512, absolute `p_base` and `d_boot0_blkno`, and `dl_label_blkno` = `relsect` + 15/30/45. On the CD: `secsize` 2048 with no fdisk table. | `label_checksum` in `ufs_build.py` |
+| `ufs_geometry.py` | `newfs`'s geometry arithmetic from `mkfs.c`, matching three Apple-made filesystems field for field. | none |
+| `space.py` | Hands out a fresh filesystem's free space in the order `initcg()` leaves it. | none |
+| `readback.py` | Reads an image back and diffs it against its node tree: contents, modes, link counts, `di_blocks`. | `rhap_image.py` |
+| `sample.py` | Phase 3's two test images: an fdisk disk with label `secsize` 512 and a CD-style volume with `secsize` 2048. | none |
 | `hdimage.py` | Hard-disk form: MBR, ESP, `0xA7` partition interior. | `vm/fat32.py`; the MBR and CHS helpers in `build_uefi_image.py` |
 | `iso.py` | Phase 6: ISO 9660 and El Torito writer, plus the 2.88 MB floppy boot image. | `rcz.py` for `mach_kernel.rcz` |
 

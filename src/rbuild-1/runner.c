@@ -8,13 +8,14 @@
 #include "package.h"
 #include "strutil.h"
 
+#include <sys/types.h>
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 #ifdef RBUILD_RUNNER_TESTING
@@ -271,6 +272,62 @@ static int validate_or_quarantine(const char *path, const Toolchain *tc,
                                  str_has_suffix(pkgname, "-obj"), exists);
 }
 
+static char *repo_apk(const char *dstdir, const char *name,
+                      const char *version, unsigned mask) {
+    return str_cats(dstdir, "/", name, "-", version, "-",
+                    architecture_filename_token(mask), ".apk", (char *)0);
+}
+
+/* Thin bootstrap walk: bootstrap-universal deletes a thin APK it supersedes,
+ * so a universal APK covers the thin request when the thin one is absent. */
+static void cover_thin(char **path, const char *dstdir, const char *name,
+                       const char *version, unsigned mask) {
+    char *thin = repo_apk(dstdir, name, version, mask);
+    char *universal = repo_apk(dstdir, name, version, RB_ARCH_UNIVERSAL);
+    free(*path);
+    if (!artifact_present(thin) && artifact_present(universal)) {
+        *path = universal; free(thin);
+    } else {
+        *path = thin; free(universal);
+    }
+}
+
+/* Universal bootstrap walk: once a valid universal APK of name is in dstdir,
+ * delete its thin APKs at any version. seeddir and .invalid files are never
+ * touched; builder_match_pkgfile keeps foo from matching foo-hdrs. */
+static int prune_superseded(const char *dstdir, const char *name) {
+    DIR *d;
+    struct dirent *de;
+    strlist thin;
+    size_t i;
+    int rc = 0;
+    d = opendir(dstdir);
+    if (d == 0) {
+        if (errno == ENOENT && exec_dry_run) return 0;
+        fprintf(stderr, "rbuild: cannot read %s\n", dstdir);
+        return 1;
+    }
+    strlist_init(&thin);
+    while ((de = readdir(d)) != 0)
+        if (builder_match_pkgfile(de->d_name, name) &&
+            (architecture_path_has_token(de->d_name, RB_ARCH_I386) ||
+             architecture_path_has_token(de->d_name, RB_ARCH_PPC)))
+            strlist_push_owned(&thin, str_cats(dstdir, "/", de->d_name,
+                                               (char *)0));
+    closedir(d);
+    for (i = 0; rc == 0 && i < thin.count; i++) {
+        printf("remove superseded %s\n", thin.items[i]);
+        fflush(stdout);
+        if (exec_runv("rm", "-f", thin.items[i], (char *)0) != 0) {
+            fprintf(stderr, "rbuild: cannot remove superseded %s\n",
+                    thin.items[i]);
+            rc = 1;
+        }
+    }
+    strlist_free(&thin);
+    return rc;
+}
+
 static int parse_hex(const char *text, unsigned long *value) {
     char *end;
     unsigned long result;
@@ -295,14 +352,15 @@ typedef struct {
 static int check_state(const char *path, const RunnerOptions *opt,
                        unsigned long tool_hash, unsigned long entry_hash,
                        const ManifestEntry *entry, const char *target,
-                       const char *package_path, const char *architecture,
-                       StateInfo *info) {
+                       const char *package_path, const char *cover_path,
+                       const char *architecture, StateInfo *info) {
     FILE *f;
     char line[4096];
     char *expected_profile;
     char *expected_source;
     char *expected_target;
     char *expected_package;
+    char *expected_cover = 0;
     unsigned long stored_tool;
     unsigned long stored_entry;
     int line_no = 0, field = 0, format = 1;
@@ -325,6 +383,10 @@ static int check_state(const char *path, const RunnerOptions *opt,
     expected_source = str_cats("source=", entry->source, "\n", (char *)0);
     expected_target = str_cats("target=", target, "\n", (char *)0);
     expected_package = str_cats("package=", package_path, "\n", (char *)0);
+    /* The record stays current whether it names the thin APK or the
+     * universal APK that covers it; the next write_state names the one used. */
+    if (cover_path != 0)
+        expected_cover = str_cats("package=", cover_path, "\n", (char *)0);
     while (fgets(line, sizeof(line), f) != 0) {
         line_no++;
         if (strchr(line, '\n') == 0 || line_no > 10) goto corrupt;
@@ -373,7 +435,9 @@ static int check_state(const char *path, const RunnerOptions *opt,
         }
         if (field == 4 && strcmp(line, expected_source) != 0) goto corrupt;
         if (field == 5 && strcmp(line, expected_target) != 0) goto corrupt;
-        if (field == 6 && strcmp(line, expected_package) != 0) goto corrupt;
+        if (field == 6 && strcmp(line, expected_package) != 0 &&
+            (expected_cover == 0 || strcmp(line, expected_cover) != 0))
+            goto corrupt;
         if (field == 7) {
             if (strcmp(line, "companions=none\n") == 0) {
                 info->header = 0; info->object = 0;
@@ -397,17 +461,20 @@ static int check_state(const char *path, const RunnerOptions *opt,
         goto mismatch;
     info->exists = 1;
     fclose(f);
+    free(expected_cover);
     free(expected_package); free(expected_target); free(expected_source);
     free(expected_profile);
     return 0;
 mismatch:
     fclose(f);
+    free(expected_cover);
     free(expected_package); free(expected_target); free(expected_source);
     free(expected_profile);
     fprintf(stderr, "rbuild: toolchain state mismatch; use -Fresh\n");
     return -1;
 corrupt:
     fclose(f);
+    free(expected_cover);
     free(expected_package); free(expected_target); free(expected_source);
     free(expected_profile);
     fprintf(stderr, "rbuild: corrupt state record %s; use -Fresh\n", path);
@@ -500,6 +567,8 @@ static int run_entry(const ManifestEntry *entry, const char *seeddir,
     char *version = 0;
     char *hdr_name = 0;
     char *obj_name = 0;
+    char *cover_path = 0;
+    unsigned arch_mask = 0;
     /* Null when no profile was given; apk_use_arch supplies default tools. */
     const Toolchain *validate_tc = opt->toolchain;
 
@@ -556,12 +625,22 @@ static int run_entry(const ManifestEntry *entry, const char *seeddir,
     }
 
     entry_hash = entry_fingerprint(entry, target, pkg.architecture);
+    if (opt->bootstrap &&
+        architecture_parse(pkg.architecture, &arch_mask) == 0 &&
+        arch_mask != RB_ARCH_UNIVERSAL)
+        cover_path = repo_apk(dstdir, headers_only ? hdr_name : pkg.package,
+                              version, RB_ARCH_UNIVERSAL);
     if (opt->bootstrap && !exec_dry_run &&
         check_state(state_path, opt, tool_hash,
                                      entry_hash, entry, target,
                                      strcmp(target, "headers") == 0 ?
-                                     hdr_path : base_path,
+                                     hdr_path : base_path, cover_path,
                                      pkg.architecture, &state_info) != 0) goto done;
+    if (cover_path != 0) {
+        cover_thin(&base_path, dstdir, pkg.package, version, arch_mask);
+        cover_thin(&hdr_path, dstdir, hdr_name, version, arch_mask);
+        cover_thin(&obj_path, dstdir, obj_name, version, arch_mask);
+    }
 
     if (opt->bootstrap) {
         if (headers_only) {
@@ -634,7 +713,27 @@ static int run_entry(const ManifestEntry *entry, const char *seeddir,
     } else printf("already have %s\n", headers_only ? hdr_path : base_path);
     strlist_free(&repository);
 
-    if (exec_dry_run) { rc = 0; goto done; }
+    if (exec_dry_run) {
+        /* Dry-run plans every artifact as built, as "must build" does. */
+        if (opt->bootstrap && arch_mask == RB_ARCH_UNIVERSAL &&
+            (prune_superseded(dstdir, headers_only ? hdr_name :
+                                                     pkg.package) != 0 ||
+             (all_target && (prune_superseded(dstdir, hdr_name) != 0 ||
+                             prune_superseded(dstdir, obj_name) != 0))))
+            goto done;
+        rc = 0; goto done;
+    }
+
+    /* A thin build writes thin APKs only; never pair one with an older
+     * universal companion. */
+    if (cover_path != 0 && must_build) {
+        free(base_path);
+        base_path = repo_apk(dstdir, pkg.package, version, arch_mask);
+        free(hdr_path);
+        hdr_path = repo_apk(dstdir, hdr_name, version, arch_mask);
+        free(obj_path);
+        obj_path = repo_apk(dstdir, obj_name, version, arch_mask);
+    }
 
     if (opt->bootstrap) {
         if (headers_only) {
@@ -688,6 +787,13 @@ static int run_entry(const ManifestEntry *entry, const char *seeddir,
             fprintf(stderr, "rbuild: cannot write state record %s\n", state_path);
             goto done;
         }
+        if (arch_mask == RB_ARCH_UNIVERSAL &&
+            (prune_superseded(dstdir, headers_only ? hdr_name :
+                                                     pkg.package) != 0 ||
+             (all_target && hdr_exists &&
+              prune_superseded(dstdir, hdr_name) != 0) ||
+             (all_target && obj_exists &&
+              prune_superseded(dstdir, obj_name) != 0))) goto done;
     } else if (headers_only) {
         if (validate_or_quarantine(hdr_path, validate_tc, hdr_name, version,
                                    pkg.architecture, &hdr_exists) != 0 ||
@@ -709,6 +815,7 @@ static int run_entry(const ManifestEntry *entry, const char *seeddir,
 done:
     exec_clear_log();
     free(log_path); free(state_path);
+    free(cover_path);
     free(obj_path); free(hdr_path); free(base_path);
     free(obj_canon); free(hdr_canon); free(base_canon);
     free(obj_name); free(hdr_name); free(version);

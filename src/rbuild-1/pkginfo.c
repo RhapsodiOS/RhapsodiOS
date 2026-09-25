@@ -36,18 +36,11 @@ int pkginfo_read(Package *p, const char *path) {
     while (*cursor) {
         char *line = cursor;
         char *nl = strchr(cursor, '\n');
-        char *eq;
         char *key;
         char *val;
         if (nl) { *nl = '\0'; cursor = nl + 1; }
         else cursor += strlen(cursor);
-        line = str_trim(line);
-        if (line[0] == '\0' || line[0] == '#') continue;
-        eq = strchr(line, '=');
-        if (!eq) continue;
-        *eq = '\0';
-        key = str_trim(line);
-        val = str_trim(eq + 1);
+        if (!str_parse_kv(line, &key, &val)) continue;
         if (strcmp(key, "pkgname") == 0) package_set(&p->package, val);
         else if (strcmp(key, "pkgver") == 0) package_set(&p->version, val);
         else if (strcmp(key, "arch") == 0) package_set(&p->architecture, val);

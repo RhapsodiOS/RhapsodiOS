@@ -2,17 +2,20 @@
 """Boot a disk image under QEMU and capture its consoles and screen.
 
     python vm/qemu_boot.py {bios,uefi} IMAGE OUTDIR [--esp ESP_IMAGE]
+                           [--hd1 IMAGE] [--type SECONDS:TEXT ...]
                            [--at SECONDS[,SECONDS...]] [--firmware-dir DIR]
 
 bios boots QEMU's own SeaBIOS.  uefi boots the IA32 edk2 firmware QEMU ships
 as share/edk2-i386-code.fd, so no OVMF build is needed.  IMAGE is the first
 IDE disk (i440FX/PIIX3, the controller the EIDE boot driver probes); --esp
 adds a virtio disk for the two-disk layout, whose loader sits on an
-ESP-only disk.
+ESP-only disk.  --hd1 adds a second IDE disk, the primary slave, which the
+guest sees as hd1.  Each --type types TEXT and presses Enter at SECONDS,
+for a boot prompt or a single-user shell.
 
 OUTDIR gets console.log (COM1: firmware and loader), kernel.log (COM2: the
 kernel's serial console) and shot-<N>s.png screenshots.  QEMU quits after
-the last --at time.
+the last --at or --type time.
 
 Every drive is opened with -snapshot, so no boot ever writes an image, and
 any path named golden.img or rhapsody.vmdk is refused outright, wherever it
@@ -43,6 +46,8 @@ def _load_qemu_shot():
 
 
 qemu_shot = _load_qemu_shot()
+# What --type can send: qemu-shot's boot-prompt keys plus a path's.
+KEYS = dict(qemu_shot.KEY_MAP, **{"/": ["slash"], ".": ["dot"]})
 
 
 def refuse_masters(path):
@@ -68,8 +73,19 @@ def default_firmware_dir(qemu):
     return os.path.join(os.path.dirname(os.path.realpath(found)), "share")
 
 
+def parse_typed(spec):
+    """"SECONDS:TEXT" -> (seconds, text), refusing keys KEYS cannot send."""
+    seconds, sep, text = spec.partition(":")
+    if not sep:
+        raise ValueError("--type wants SECONDS:TEXT, not %r" % spec)
+    for ch in text:
+        if ch not in KEYS:
+            raise ValueError("--type cannot send %r" % ch)
+    return float(seconds), text
+
+
 def build_args(mode, image, outdir, qmp_port, firmware_dir, esp=None,
-               qemu="qemu-system-i386"):
+               hd1=None, qemu="qemu-system-i386"):
     args = [qemu, "-M", "pc", "-m", "256", "-nodefaults", "-vga", "cirrus",
             "-display", "none", "-snapshot",
             "-drive", "file=%s,format=raw,if=ide,index=0,media=disk" % image,
@@ -93,11 +109,15 @@ def build_args(mode, image, outdir, qmp_port, firmware_dir, esp=None,
     if esp is not None:
         args += ["-drive", "id=esp,file=%s,format=raw,if=none" % esp,
                  "-device", "virtio-blk-pci,drive=esp"]
+    if hd1 is not None:
+        args += ["-drive",
+                 "file=%s,format=raw,if=ide,index=1,media=disk" % hd1]
     return args
 
 
-def run(mode, image, outdir, at_points, firmware_dir, esp=None):
-    for path in (image, esp):
+def run(mode, image, outdir, at_points, firmware_dir, esp=None, hd1=None,
+        typed=()):
+    for path in (image, esp, hd1):
         if path is not None:
             if not os.path.exists(path):
                 raise SystemExit("no such image: %s" % path)
@@ -114,7 +134,8 @@ def run(mode, image, outdir, at_points, firmware_dir, esp=None):
         stderr_f = open(stderr_path, "wb")
         try:
             proc = subprocess.Popen(
-                build_args(mode, image, outdir, port, firmware_dir, esp=esp),
+                build_args(mode, image, outdir, port, firmware_dir, esp=esp,
+                           hd1=hd1),
                 stdout=subprocess.DEVNULL, stderr=stderr_f)
         finally:
             stderr_f.close()
@@ -123,12 +144,18 @@ def run(mode, image, outdir, at_points, firmware_dir, esp=None):
             qmp = qemu_shot.QMP("127.0.0.1", port)
         except RuntimeError as e:
             raise SystemExit(_qemu_failure_message(proc, stderr_path, e))
-        for t in sorted(at_points):
+        events = sorted([(t, None) for t in at_points] + list(typed),
+                        key=lambda e: e[0])
+        for t, text in events:
             remaining = t - (time.monotonic() - start)
             if remaining > 0:
                 time.sleep(remaining)
-            ppm = os.path.join(outdir, "_shot.ppm")
             try:
+                if text is not None:
+                    _type(qmp, text)
+                    print("typed %r at %ss" % (text, qemu_shot.fmt_seconds(t)))
+                    continue
+                ppm = os.path.join(outdir, "_shot.ppm")
                 qmp.execute("screendump", filename=ppm)
                 with open(ppm, "rb") as f:
                     w, h, _, pixels = qemu_shot.parse_ppm(f.read())
@@ -156,6 +183,13 @@ def run(mode, image, outdir, at_points, firmware_dir, esp=None):
     print("kernel:  %s" % os.path.join(outdir, "kernel.log"))
 
 
+def _type(qmp, text):
+    for ch in text + "\n":
+        qmp.execute("send-key", keys=[{"type": "qcode", "data": code}
+                                      for code in KEYS[ch]])
+        time.sleep(0.05)
+
+
 def _qemu_failure_message(proc, stderr_path, error):
     status = proc.poll()
     if status is not None:
@@ -172,13 +206,17 @@ def main(argv):
     p.add_argument("image")
     p.add_argument("outdir")
     p.add_argument("--esp", default=None)
+    p.add_argument("--hd1", default=None)
+    p.add_argument("--type", dest="typed", action="append", default=[],
+                   type=parse_typed, metavar="SECONDS:TEXT")
     p.add_argument("--at", default=DEFAULT_AT,
                    help="comma-separated screenshot times in seconds")
     p.add_argument("--firmware-dir", default=None)
     a = p.parse_args(argv[1:])
     at_points = [float(x) for x in a.at.split(",") if x]
     firmware_dir = a.firmware_dir or default_firmware_dir("qemu-system-i386")
-    run(a.mode, a.image, a.outdir, at_points, firmware_dir, esp=a.esp)
+    run(a.mode, a.image, a.outdir, at_points, firmware_dir, esp=a.esp,
+        hd1=a.hd1, typed=a.typed)
     return 0
 
 

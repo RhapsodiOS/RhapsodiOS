@@ -3,6 +3,7 @@
 #include "products.h"
 #include "macho.h"
 #include "apk.h"
+#include "vendor.h"
 #include <errno.h>
 #include "pkginfo.h"
 #include "exec.h"
@@ -1054,6 +1055,32 @@ int builder_relativize_symlinks(const char *root) {
     return relativize_walk(root, root);
 }
 
+/* Nonzero, with a message, if a component of REL before its last, walked
+   from SRCROOT, exists but is not a real directory. rsync copies a symlink
+   as a link and rm -rf would follow one there out of SRCROOT; a symlink as
+   the last component is removed itself. */
+static int vendor_input_through_nondir(const char *srcroot, const char *rel) {
+    char *path = str_cats(srcroot, "/", rel, (char *)0);
+    char *p;
+    struct stat st;
+    int bad = 0;
+
+    for (p = strchr(path + strlen(srcroot) + 1, '/'); p != 0;
+         p = strchr(p + 1, '/')) {
+        int missing;
+        *p = '\0';
+        missing = lstat(path, &st) != 0;
+        if (missing ? errno != ENOENT : !S_ISDIR(st.st_mode)) bad = 1;
+        *p = '/';
+        if (bad || missing) break;
+    }
+    if (bad)
+        fprintf(stderr, "rbuild: %s: vendored input path passes through "
+                "a non-directory\n", path);
+    free(path);
+    return bad;
+}
+
 int builder_setupdirs(const Package *pkg, const Params *params,
                       const char *srcname, const char *srctype,
                       const strlist *repository, const BuildOptions *opt) {
@@ -1113,19 +1140,54 @@ int builder_setupdirs(const Package *pkg, const Params *params,
     if (strcmp(srctype, "dir") == 0) {
         char *source;
         char *argv[9];
+        char *vpath;
         const char *rsync = "rsync";
+        Vendor v;
+        int have_vendor = 0;
+        int a;
         int rc;
-        if (exec_check(mkdirp(params->SRCROOT))) return 1;
+
+        vendor_init(&v);
+        vpath = vendor_path(params->SRCDIR);
+        if (vpath) {
+            rc = vendor_read(&v, vpath);
+            free(vpath);
+            if (rc) { vendor_free(&v); return 1; }
+            have_vendor = 1;
+        }
+        if (exec_check(mkdirp(params->SRCROOT))) { vendor_free(&v); return 1; }
         if (opt && opt->toolchain && opt->toolchain->rsync)
             rsync = opt->toolchain->rsync;
         source = str_cats(params->SRCDIR, "/", (char *)0);
         argv[0] = (char *)rsync; argv[1] = "-avr"; argv[2] = source;
         argv[3] = "--exclude=CVS/"; argv[4] = "--exclude=.svn/";
         argv[5] = "--exclude=.git/"; argv[6] = "--exclude=.hg/";
-        argv[7] = params->SRCROOT; argv[8] = 0;
+        a = 7;
+        argv[a++] = params->SRCROOT; argv[a] = 0;
         exec_printcmd(argv);
         rc = exec_run_checked(argv);
         free(source);
+        if (rc == 0 && have_vendor) {
+            /* The tarball and patch series are build inputs, not sources.
+             * Removed after the copy because rsync 1.6.8 matches excludes
+             * against the full source path, so a '/'-anchored exclude never
+             * matches; only the top-level entries go, so a nested patches/
+             * directory is still copied. */
+            char *tar_copy = str_cats(params->SRCROOT, "/", v.tarball, (char *)0);
+            char *patch_copy = str_cats(params->SRCROOT, "/", v.patches, (char *)0);
+            if (!exec_dry_run &&
+                (vendor_input_through_nondir(params->SRCROOT, v.tarball) ||
+                 vendor_input_through_nondir(params->SRCROOT, v.patches)))
+                rc = 1;
+            else if (exec_runv("rm", "-rf", tar_copy, patch_copy,
+                               (char *)0) != 0)
+                rc = 1;
+            free(tar_copy); free(patch_copy);
+        }
+        if (rc == 0 && have_vendor)
+            rc = vendor_apply(&v, params->SRCDIR, params->SRCROOT,
+                              opt ? opt->toolchain : 0);
+        vendor_free(&v);
         if (rc) return 1;
     } else {
         fprintf(stderr, "rbuild: unknown source type %s\n", srctype);

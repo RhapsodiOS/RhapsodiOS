@@ -45,7 +45,8 @@ BOOT2_OBJS := $(BUILD)/ufs_host_test.o \
         $(BUILD)/ufs_byteorder.o \
         $(BUILD)/cache.o
 
-all: $(BUILD)/ufs_host_test $(BUILD)/efi_pci_acpi_test
+all: $(BUILD)/ufs_host_test $(BUILD)/efi_pci_acpi_test \
+     $(BUILD)/efi_splash_rule_test
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -83,6 +84,14 @@ $(BUILD)/efi_pci_acpi_test: efi_pci_acpi_test.c ../efi_pci_acpi.c \
 test-acpi: $(BUILD)/efi_pci_acpi_test
 	$(BUILD)/efi_pci_acpi_test
 
+# The Boot Graphics rule is pure C too; same strict flags.
+$(BUILD)/efi_splash_rule_test: efi_splash_rule_test.c ../efi_splash_rule.c \
+		../efi_splash_rule.h | $(BUILD)
+	$(CC) $(ACPI_TEST_CFLAGS) -o $@ efi_splash_rule_test.c ../efi_splash_rule.c
+
+test-splash: $(BUILD)/efi_splash_rule_test
+	$(BUILD)/efi_splash_rule_test
+
 # The disk-selection and boot-string helpers are pure C as well, built the
 # same way as the ACPI parser.
 $(BUILD)/efi_disk_select_test: efi_disk_select_test.c ../efi_disk_select.c \
@@ -112,4 +121,4 @@ test-efi-error: $(BUILD)/efi_error_test
 clean:
 	rm -rf $(BUILD)
 
-.PHONY: all clean test-acpi test-disk-select test-bootargs test-efi-error
+.PHONY: all clean test-acpi test-splash test-disk-select test-bootargs test-efi-error

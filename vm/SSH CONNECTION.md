@@ -72,6 +72,5 @@ More detail: `README.md` sections “Syncing src/ to the guest” and “Guest b
 - **OpenSSH `scp`** (even `scp -O`) — often ends in `lost connection` after
   auth; use `sync-src.ps1` (`tar | ssh`) instead.
 
-After each sync, `sync-src.ps1` restores `+x` on `configure` / autotools
-helpers / `*.sh` / `*.pl` under the synced tree (Windows tar drops execute
-bits, which breaks bootstrap).
+After each sync, `sync-src.ps1` sets exactly the execute bits git records on
+the synced tree (Windows tar drops execute bits, which breaks bootstrap).

@@ -181,7 +181,7 @@ Usage: dhcpcd [-dkrDHRwG] [-l leasetime] [-h hostname] [-t timeout]\n\
   ProgramEnviron=argv;
   if ( killFlag ) killPid();
   checkIfAlreadyRunning();
-  openlog(PROGRAM_NAME,LOG_PID,LOG_LOCAL0);
+  openlog(PROGRAM_NAME,LOG_PID|LOG_CONS,LOG_LOCAL0);	/* 0800_Network runs before syslogd */
   signalSetup();
   alarm(TimeOut);
   currState=(void *(*)())currState();

@@ -1,3 +1,7 @@
+09/25/2026 - RhapsodiOS.
+	Log with LOG_CONS, so messages reach the console while syslogd
+	isn't running yet: 0800_Network starts dhcpcd before 0900_SystemLog.
+
 09/24/2026 - RhapsodiOS port (src/dhcpcd-1).
 	Ported to RhapsodiOS's 4.4BSD-derived kernel; see ../PROVENANCE.md.
 	Raw packets go through BPF (new bpfif.c/h) instead of SOCK_PACKET,

@@ -21,7 +21,6 @@
 "Use Disk Geometry" = "Yes";
 "IOCHRDY Support" = "No";
 "Debug" = "No";
-"Server Name" = "EIDE";
 "Post-Load" = "PostLoad";
 "Master" = "Auto";
 "Slave" = "Auto";

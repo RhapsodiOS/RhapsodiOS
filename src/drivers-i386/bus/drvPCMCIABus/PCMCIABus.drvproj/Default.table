@@ -3,4 +3,3 @@
 "Class Names" = "PCMCIAResourceDriver";
 "Boot Driver" = "Yes";
 "Bus Class" = "PCMCIAKernBus";
-"Server Name" = "PCMCIABus";

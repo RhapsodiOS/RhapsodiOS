@@ -9,6 +9,5 @@
 "Memory Maps" = "";
 "Class Names" = "ADBServer";
 "Maximum Sessions" = "32";
-"Server Name" = "IOADBDevice";
 "Driver Version" = "PROGRAM:IOADBDevice  PROJECT:drvIOADBDevice-4  DEVELOPER:root  BUILT:Tue Nov 23 19:12:24 PST 1999";
 "Version" = "5.00";

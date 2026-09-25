@@ -15,5 +15,4 @@
 "24-bit Configuration" = "Default";
 "Frame Buffer Mapping" = "Default";
 "RAMDAC Style" = "Default";
-"Server Name" = "ATIMach64DisplayDriver";
 "Driver Version" = "PROGRAM:ATIMach64DisplayDriver PROJECT:drvATIMach64-18 DEVELOPER:root BUILT:NO DATE SET (-B used)";

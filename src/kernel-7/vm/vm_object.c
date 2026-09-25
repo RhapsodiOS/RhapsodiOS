@@ -501,35 +501,6 @@ void vm_object_destroy(pager)
 }
 
 /*
- *	_vm_object_deactivate_pages
- *
- *	Internal routine to deactivate pages in the specified object.
- *	(Keep its pages in memory even though it is no longer referenced.)
- *
- *	The object must be locked.
- */
-static void _vm_object_deactivate_pages(object, age)
-	register vm_object_t	object;
-	register boolean_t	age;
-{
-	register vm_page_t	p, next;
-
-	vm_page_lock_queues();
-	p = (vm_page_t) queue_first(&object->memq);
-	while (!queue_end(&object->memq, (queue_entry_t) p)) {
-		next = (vm_page_t) queue_next(&p->listq);
-		if (!p->inactive) {
-			if (age)
-				vm_page_deactivate_first(p);
-			else
-				vm_page_deactivate(p);
-		}
-		p = next;
-	}
-	vm_page_unlock_queues();
-}
-
-/*
  *	vm_object_deactivate_pages
  *
  *	Deactivate pages in the specified object.
@@ -540,21 +511,17 @@ static void _vm_object_deactivate_pages(object, age)
 void vm_object_deactivate_pages(object)
 	register vm_object_t	object;
 {
-	_vm_object_deactivate_pages(object, FALSE);
-}
+	register vm_page_t	p, next;
 
-/*
- *	vm_object_deactivate_pages_first
- *
- *	Deactivate pages in the specified object. Age them.
- *	(Keep its pages in memory even though it is no longer referenced.)
- *
- *	The object must be locked.
- */
-void vm_object_deactivate_pages_first(object)
-	register vm_object_t	object;
-{
-	_vm_object_deactivate_pages(object, TRUE);
+	vm_page_lock_queues();
+	p = (vm_page_t) queue_first(&object->memq);
+	while (!queue_end(&object->memq, (queue_entry_t) p)) {
+		next = (vm_page_t) queue_next(&p->listq);
+		if (!p->inactive)
+			vm_page_deactivate(p);
+		p = next;
+	}
+	vm_page_unlock_queues();
 }
 
 /*

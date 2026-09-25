@@ -21,10 +21,15 @@ The tests run on the fixed kernel only. A negative-control kernel with change
 
 **An image with the kernel installed as a real file.** `golden.img` passes
 `ufs_check` with zero problems (checked read-only, 2026-09-25). A copy of it
-can take a rebuilt `/mach_kernel` through `ufs_alloc`: `unlink` the stock
-kernel, then `create_file` the new one, with bitmaps, cylinder-group summaries
-and `fs_cstotal` maintained. Unlike `graft-kernel.py`, this leaves no donor
-inode for `fsck -p` to stop on.
+can take a rebuilt `/mach_kernel` through `ufs_alloc`'s `grow_file`, which
+rewrites the kernel's inode in place, allocating and freeing fragments, with
+bitmaps, cylinder-group summaries and `fs_cstotal` maintained. Unlike
+`graft-kernel.py`, this leaves no donor inode for `fsck -p` to stop on.
+
+`golden.img`'s `/mach_kernel` is inode 1253202 with two links; the other is
+`/private/tftpboot/mach_kernel`. `grow_file` keeps the inode, its mode and its
+link count, so both names stay valid. `ufs_alloc.unlink` would not do: it
+frees the inode whatever its link count.
 
 **Injected read errors at exactly the right moment.** QEMU's `blkdebug`
 driver, probed with `qemu-io` on 2026-09-25, supports a small state machine:
@@ -63,7 +68,7 @@ messages reach `serial.log`.
 kernel installed through `ufs_alloc`. It must pass two checks before any dirty
 test runs:
 - `ufs_check` reports zero problems;
-- the guest's own `fsck -n /dev/rhd0a`, from a single-user snapshot boot,
+- the guest's own `fsck -n /dev/hd0a`, from a single-user snapshot boot,
   reports nothing.
 
 Nothing writes the base after that.
@@ -95,21 +100,21 @@ A dirty boot passes if it reaches the same screen as the clean control with
   `serial_dbg: i386 kernel console up` banner, no `ffs: ` lines, and the Setup
   Assistant.
 - **E2, flag-only dirty root.** An overlay with `fs_clean = 0` and nothing
-  else wrong, booted persistently. Expect:
+  else wrong. A single-user snapshot boot first runs `fsck -n`, which must
+  report no damage beyond the unclean state: the run's premise. Then a
+  snapshot boot, unattended as in E1. Expect:
   - `fsck -p` checks root, finds nothing, and marks it clean without a reload;
   - exactly one `ffs: / was unclean when mounted; mounting read-write anyway`,
     and no refusal line;
   - the same end screen as E1.
-
-  A follow-up single-user snapshot boot of the same overlay runs `fsck -n`,
-  which must report nothing.
 - **E3, real power-off, three runs.** Each run uses a fresh overlay:
   1. Boot single-user, persistently, and run `mount -uw /`.
-  2. Start `cp -R /usr/lib /private/tmp/crashN &`.
+  2. Start `cp -R /usr/lib /private/tmp/<run>` in the foreground; the console
+     keymap has no `&`, and the host kills QEMU on its own schedule anyway.
   3. Kill QEMU with QMP `quit`: after 15 seconds in the first run, 30 in the
      second and 60 in the third, to land at different points in the syncer's
      30-second cycle.
-  4. Boot unattended as in E1.
+  4. Boot unattended as in E1, as a snapshot of the crashed overlay.
 
   Expect `fsck -p` to preen the real damage, printing each repair prefixed
   with the device name. Preen mode does not print `FILE SYSTEM WAS MODIFIED`.
@@ -121,8 +126,15 @@ A dirty boot passes if it reaches the same screen as the clean control with
     warning appears instead.
 
   Either way, the boot must reach the E1 end screen. Record what `fsck`
-  repaired, from the screenshots. A follow-up single-user
-  snapshot boot runs `fsck -n`, which must report nothing.
+  repaired, from the screenshots. A follow-up single-user snapshot boot of
+  the same crashed overlay runs `fsck -p`, whose output is then readable in
+  full, and then `fsck -n`, which must report nothing.
+
+**Only the crash boots write their overlay.** Every other boot is a snapshot.
+A persistent boot that reaches the Setup Assistant has no shell to shut it
+down cleanly, and killing it would dirty root again, confounding any
+follow-up `fsck`. As snapshots, the unattended boot and its follow-up start
+from the same state.
 
 **When a boot stops, its cause decides the verdict.** A kernel refusal, panic
 or hang is a **failure**. `fsck -p` declining to preen genuine damage (exit 8,
@@ -177,7 +189,7 @@ reached, and the run fails.
 R5 cannot tell fixed from unfixed. Then:
 1. `mount -r /dev/hd1a /mnt`.
 2. `mount -uw /mnt`, which is refused.
-3. `fsck -y /dev/rhd1a`.
+3. `fsck -y /dev/hd1a`.
 4. `mount -uw /mnt`, which succeeds. The in-memory `fs_clean` was still 0, so
    the gate reloaded first, and that reload re-applied the clamp.
 5. `dd if=/dev/zero of=/mnt/below bs=2 count=1 seek=2147483647` must succeed,
@@ -203,7 +215,9 @@ Implementation happens in `.worktrees/ufs-gap-tests`.
 - `vm/ufs-e2e-image.py` (new): copies `golden.img` to `vm/work/ufs-e2e.img`
   (refusing if the target exists), replaces `/mach_kernel` through `ufs_alloc`,
   and requires `ufs_check` to report zero problems.
-- `vm/ufs-e2e-boot.py` (new): runs E1–E3 and the `fsck -n` follow-up boots. It
+- `vm/ufs_gap_lib.py` (new): what both run scripts share: paths, overlays,
+  waiting on the serial log, and each run's `result.txt`.
+- `vm/ufs-e2e-boot.py` (new): runs E1–E3 and the `fsck` follow-up boots. It
   covers overlay creation, dirtying an overlay's root with `qemu-io`, the
   keystroke sequences, and the QMP kills.
 - `vm/ufs-reload-inject.py` (new): runs R1–R5. It covers building the test

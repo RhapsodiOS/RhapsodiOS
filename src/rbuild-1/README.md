@@ -93,7 +93,7 @@ bounded native guest acceptance evidence.
 - `makedepends_i386` / `makedepends_ppc` add build dependencies only when the
   build includes that CPU (a universal build takes both), e.g. kernel-7's
   `makedepends_ppc = drvpexpert`.
-- Depends at runtime on `tar`, `gzip`, `apk`, `make`, `chroot`, `rsync`,
+- Depends at runtime on `pax`, `gzip`, `apk`, `make`, `chroot`, `rsync`,
   `mkdir`, `cp`, `rm` on `PATH`, and for vendored projects on `mv`, `rmdir`
   and GNU `patch` 2.4 or later. Patching runs on the host, before any chroot.
 

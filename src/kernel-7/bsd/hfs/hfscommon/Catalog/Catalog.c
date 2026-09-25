@@ -994,7 +994,14 @@ MoveRenameCatalogNode(ExtendedVCB *volume, HFSCatalogNodeID srcParentID, ConstUT
 
 	// if we did not find it by name, then look for an embedded file ID in a mangled name
 	if ( (result == cmNotFound) && isHFSPlus )
+	{
 		result = LocateCatalogNodeByMangledName(volume, srcParentID, srcName, &srcKey, &srcRecord, &srcHint);
+		if ( (result == noErr) && !isNewName )	// a move keeps the real name, not the mangled one
+		{
+			dstKey = srcKey;
+			dstKey.hfsPlus.parentID = dstParentID;
+		}
+	}
 	ReturnIfError(result);
 
 	srcParentID = (isHFSPlus ? srcKey.hfsPlus.parentID : srcKey.hfs.parentID);

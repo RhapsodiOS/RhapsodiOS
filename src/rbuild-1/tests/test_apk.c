@@ -22,6 +22,10 @@
 #define ENTRY_OLDGNU 8
 #define ENTRY_BAD_DEVICE 16
 #define ENTRY_MODE_0750 32
+#define ENTRY_PREFIX 64     /* name before its last '/' goes in ustar prefix */
+#define ENTRY_V7 128        /* no magic or version: old v7 tar header */
+#define ENTRY_NUL_SIZE 256  /* size field starts with a NUL */
+#define ENTRY_LEADING_ZEROS 512 /* 1024 zero bytes before this header */
 
 typedef struct {
     const char *name;
@@ -111,6 +115,13 @@ static int write_tar(const char *path, const TarEntry *entries,
         if (entries[i].flags & ENTRY_TRUNCATED) stored_size += 17;
         memset(header, 0, sizeof(header));
         strncpy(header, entries[i].name, 100);
+        if (entries[i].flags & ENTRY_PREFIX) {
+            const char *slash = strrchr(entries[i].name, '/');
+            memset(header, 0, 100);
+            strncpy(header, slash + 1, 100);
+            memcpy(header + 345, entries[i].name,
+                   (size_t)(slash - entries[i].name));
+        }
         put_octal(header + 100, 8,
                   (entries[i].flags & ENTRY_MODE_0750) ? 0750 : 0644);
         put_octal(header + 108, 8, 0);
@@ -133,12 +144,15 @@ static int write_tar(const char *path, const TarEntry *entries,
             header[263] = ' ';
             header[264] = '\0';
         }
+        if (entries[i].flags & ENTRY_V7) memset(header + 257, 0, 8);
         if (entries[i].flags & ENTRY_BAD_SIZE) header[124] = 'x';
+        if (entries[i].flags & ENTRY_NUL_SIZE) header[124] = '\0';
         for (j = 0; j < sizeof(header); j++)
             checksum += (unsigned char)header[j];
         put_octal(header + 148, 7, checksum);
         header[155] = ' ';
         if (entries[i].flags & ENTRY_BAD_CHECKSUM) header[0] ^= 1;
+        if (entries[i].flags & ENTRY_LEADING_ZEROS) write_zeros(fp, 1024);
         if (fwrite(header, 1, sizeof(header), fp) != sizeof(header)) {
             fclose(fp);
             return 1;
@@ -1346,6 +1360,215 @@ TEST(test_untar_dry_run_touches_nothing) {
     CHECK_INT(exec_runv("/bin/rm", "-rf", scratch, (char *)0), 0);
 }
 
+static void check_untar(const char *path, Toolchain *tc, TarEntry *entries,
+                        size_t count, int want) {
+    CHECK_INT(make_apk(path, entries, count), 0);
+    CHECK_INT(apk_untar_check(path, tc), want);
+}
+
+#define LONG_MEMBER "widget-1.0/" \
+    "0123456789012345678901234567890123456789" \
+    "0123456789012345678901234567890123456789" \
+    "0123456789012345678901234567890123456789/file.txt"
+
+TEST(test_untar_check_accepts_safe_archives) {
+    char scratch[128];
+    char archive[192];
+    Toolchain tc;
+    TarEntry normal[] = {
+        { "widget-1.0/", '5', 0, "", 0 },
+        { "widget-1.0/hello.txt", '0', 0, "hi\n", 0 }
+    };
+    TarEntry oldgnu[] = {
+        { "./widget-1.0/hello.txt", '0', 0, "hi\n", ENTRY_OLDGNU }
+    };
+    TarEntry in_tree_symlink[] = {
+        { "widget-1.0/include/b", '0', 0, "b\n", 0 },
+        { "widget-1.0/lib/a", '2', "../include/b", "", 0 }
+    };
+    TarEntry symlink_to_symlink[] = {
+        { "lib/cur", '2', "v1", "", 0 },
+        { "lib/alias", '2', "cur", "", 0 }
+    };
+    TarEntry v7[] = {
+        { "widget-1.0/", '\0', 0, "", ENTRY_V7 },
+        { "widget-1.0/hello.txt", '\0', 0, "hi\n", ENTRY_V7 }
+    };
+
+    TarEntry regular_slash_empty[] = {
+        { "widget-1.0/d/", '0', 0, "", 0 }
+    };
+
+    make_scratch(scratch, sizeof(scratch), "untarcheck");
+    sprintf(archive, "%s/widget-1.0.tar.gz", scratch);
+    init_toolchain(&tc);
+    check_untar(archive, &tc, normal, 2, 0);
+    check_untar(archive, &tc, oldgnu, 1, 0);
+    check_untar(archive, &tc, in_tree_symlink, 2, 0);
+    check_untar(archive, &tc, symlink_to_symlink, 2, 0);
+    check_untar(archive, &tc, v7, 2, 0);
+    check_untar(archive, &tc, regular_slash_empty, 1, 0);
+    /* NULL toolchain: gzip from PATH */
+    CHECK_INT(apk_untar_check(archive, 0), 0);
+    exec_dry_run = 1;
+    CHECK_INT(apk_untar_check("/tmp/rbuild-no-such-archive.tar.gz", &tc), 0);
+    exec_dry_run = 0;
+    CHECK_INT(exec_runv("/bin/rm", "-rf", scratch, (char *)0), 0);
+}
+
+TEST(test_untar_check_rejects_unsafe_members) {
+    char scratch[128];
+    char archive[192];
+    Toolchain tc;
+    TarEntry absolute[] = {
+        { "/etc/evil", '0', 0, "evil", 0 }
+    };
+    TarEntry dotdot[] = {
+        { "widget-1.0/../../evil", '0', 0, "evil", 0 }
+    };
+    TarEntry through_symlink[] = {
+        { "widget-1.0/link", '2', "sub", "", 0 },
+        { "widget-1.0/./link/evil", '0', 0, "evil", 0 }
+    };
+    TarEntry escaping_symlink[] = {
+        { "a", '2', "../../x", "", 0 }
+    };
+    TarEntry absolute_hardlink[] = {
+        { "widget-1.0/h", '1', "/etc/passwd", "", 0 }
+    };
+    TarEntry chained_symlink[] = {
+        { "a/b/s", '2', "../..", "", 0 },
+        { "a/b/l", '2', "s/..", "", 0 }
+    };
+    TarEntry hardlink_through_symlink[] = {
+        { "s", '2', "x", "", 0 },
+        { "h", '1', "s/y", "", 0 }
+    };
+    TarEntry pax_header[] = {
+        { "PaxHeaders/widget-1.0", 'x', 0, "20 path=widget-1.0\n", 0 },
+        { "widget-1.0", '0', 0, "x", 0 }
+    };
+    TarEntry gnu_long_name[] = {
+        { "././@LongLink", 'L', 0, "widget-1.0/long", ENTRY_OLDGNU },
+        { "widget-1.0/long", '0', 0, "x", ENTRY_OLDGNU }
+    };
+    TarEntry gnu_long_link[] = {
+        { "././@LongLink", 'K', 0, "long-target", ENTRY_OLDGNU },
+        { "widget-1.0/l", '2', "t", "", ENTRY_OLDGNU }
+    };
+    TarEntry ustar_prefix[] = {
+        { "../up/evil", '0', 0, "x", ENTRY_PREFIX }
+    };
+    /* now refused as a prefix without POSIX magic, before the '..' check */
+    TarEntry oldgnu_prefix[] = {
+        { "../up/evil", '0', 0, "x", ENTRY_OLDGNU | ENTRY_PREFIX }
+    };
+    TarEntry empty_name[] = {
+        { "", '0', 0, "x", 0 }
+    };
+    TarEntry mixed_format[] = {
+        { "widget-1.0/a", '0', 0, "a", 0 },
+        { "widget-1.0/b", '0', 0, "b", ENTRY_V7 }
+    };
+    TarEntry nul_size[] = {
+        { "widget-1.0/f", '0', 0, "x", ENTRY_NUL_SIZE }
+    };
+    TarEntry unterminated_name[] = {
+        { LONG_MEMBER, '0', 0, "x", 0 }
+    };
+    TarEntry unterminated_link[] = {
+        { "widget-1.0/l", '2', LONG_MEMBER, "", 0 }
+    };
+    TarEntry symlink_with_data[] = {
+        { "widget-1.0/l", '2', "x", "abc", 0 }
+    };
+    TarEntry later_symlink[] = {
+        { "a/l", '2', "b/..", "", 0 },
+        { "a/b", '2', "..", "", 0 }
+    };
+    TarEntry leading_zeros[] = {
+        { "widget-1.0/f", '0', 0, "x", ENTRY_LEADING_ZEROS }
+    };
+    TarEntry bad_checksum[] = {
+        { "widget-1.0/f", '0', 0, "x", ENTRY_BAD_CHECKSUM }
+    };
+    TarEntry truncated[] = {
+        { "widget-1.0/f", '0', 0, "short", ENTRY_TRUNCATED }
+    };
+    /* on a case-folding filesystem pkg/l is the symlink pkg/L */
+    TarEntry case_folded_symlinks[] = {
+        { "pkg/L", '2', "..", "", 0 },
+        { "pkg/l/M", '2', "..", "", 0 },
+        { "pkg/l/m/N", '2', "..", "", 0 },
+        { "pkg/l/m/n/evil", '0', 0, "x", 0 }
+    };
+    TarEntry unsupported_type[] = {
+        { "widget-1.0/v", 'V', 0, "", 0 }
+    };
+    TarEntry oldgnu_safe_prefix[] = {
+        { "widget-1.0/f", '0', 0, "x", ENTRY_OLDGNU | ENTRY_PREFIX }
+    };
+    /* pax skips no data for a directory; GNU tar would skip the next block */
+    TarEntry directory_with_size[] = {
+        { "widget-1.0/", '5', 0, 0, 0, 512 }
+    };
+    /* ASCII case folding cannot match HFS+ Unicode folding */
+    TarEntry non_ascii_name[] = {
+        { "widget-1.0/caf\351", '0', 0, "x", 0 }
+    };
+    TarEntry regular_slash_with_data[] = {
+        { "widget-1.0/d/", '0', 0, "x", 0 }
+    };
+    TarEntry inner[] = {
+        { "widget-1.0/g", '0', 0, "", 0 }
+    };
+    char inner_header[512];
+    char inner_path[192];
+    FILE *fp;
+
+    make_scratch(scratch, sizeof(scratch), "untarunsafe");
+    sprintf(archive, "%s/evil.tar.gz", scratch);
+    sprintf(inner_path, "%s/inner.tar", scratch);
+    CHECK_INT(write_tar(inner_path, inner, 1), 0);
+    fp = fopen(inner_path, "rb");
+    CHECK(fp != 0);
+    if (fp == 0) return;
+    CHECK(fread(inner_header, 1, sizeof(inner_header), fp) ==
+          sizeof(inner_header));
+    fclose(fp);
+    directory_with_size[0].data = inner_header;
+    init_toolchain(&tc);
+    check_untar(archive, &tc, absolute, 1, 1);
+    check_untar(archive, &tc, dotdot, 1, 1);
+    check_untar(archive, &tc, through_symlink, 2, 1);
+    check_untar(archive, &tc, escaping_symlink, 1, 1);
+    check_untar(archive, &tc, absolute_hardlink, 1, 1);
+    check_untar(archive, &tc, chained_symlink, 2, 1);
+    check_untar(archive, &tc, hardlink_through_symlink, 2, 1);
+    check_untar(archive, &tc, pax_header, 2, 1);
+    check_untar(archive, &tc, gnu_long_name, 2, 1);
+    check_untar(archive, &tc, gnu_long_link, 2, 1);
+    check_untar(archive, &tc, ustar_prefix, 1, 1);
+    check_untar(archive, &tc, oldgnu_prefix, 1, 1);
+    check_untar(archive, &tc, empty_name, 1, 1);
+    check_untar(archive, &tc, mixed_format, 2, 1);
+    check_untar(archive, &tc, nul_size, 1, 1);
+    check_untar(archive, &tc, unterminated_name, 1, 1);
+    check_untar(archive, &tc, unterminated_link, 1, 1);
+    check_untar(archive, &tc, symlink_with_data, 1, 1);
+    check_untar(archive, &tc, later_symlink, 2, 1);
+    check_untar(archive, &tc, leading_zeros, 1, 1);
+    check_untar(archive, &tc, bad_checksum, 1, 1);
+    check_untar(archive, &tc, truncated, 1, 1);
+    check_untar(archive, &tc, case_folded_symlinks, 4, 1);
+    check_untar(archive, &tc, unsupported_type, 1, 1);
+    check_untar(archive, &tc, oldgnu_safe_prefix, 1, 1);
+    check_untar(archive, &tc, directory_with_size, 1, 1);
+    check_untar(archive, &tc, regular_slash_with_data, 1, 1);
+    check_untar(archive, &tc, non_ascii_name, 1, 1);
+    CHECK_INT(exec_runv("/bin/rm", "-rf", scratch, (char *)0), 0);
+}
+
 static void run_all(void) {
     RUN(test_architecture_use);
     RUN(test_default_extractor_handles_forward_symlink);
@@ -1375,6 +1598,8 @@ static void run_all(void) {
     RUN(test_untar_extracts_oldgnu_upstream_archive);
     RUN(test_untar_missing_archive_fails);
     RUN(test_untar_dry_run_touches_nothing);
+    RUN(test_untar_check_accepts_safe_archives);
+    RUN(test_untar_check_rejects_unsafe_members);
 }
 
 TEST_MAIN()

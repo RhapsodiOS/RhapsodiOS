@@ -1,4 +1,5 @@
 #include "runner.h"
+#include "architecture.h"
 #include "exec.h"
 #include "test.h"
 
@@ -193,6 +194,136 @@ TEST(test_replay_rejects_required_artifact_replaced_by_symlink) {
     system(command);
 }
 
+static int write_data_apk(const char *content, const char *name,
+                          const char *arch, const char *output) {
+    char path[256];
+    char command[1024];
+    FILE *f;
+    sprintf(path, "%s/.PKGINFO", content);
+    f = fopen(path, "w");
+    if (f == 0) return 1;
+    fprintf(f, "pkgname = %s\npkgver = 1.0\narch = %s\n", name, arch);
+    fclose(f);
+    sprintf(command, "(cd %s && /usr/bin/gnutar --posix -cf - .) | "
+            "/usr/bin/gzip -9 > %s", content, output);
+    return system(command) != 0;
+}
+
+TEST(test_bootstrap_universal_supersedes_thin) {
+    char scratch[160];
+    char source[192];
+    char content[192];
+    char repo[192];
+    char seed[192];
+    char root[192];
+    char state[192];
+    char manifest[224];
+    char profile[224];
+    char path[256];
+    char thin[256];
+    char universal[256];
+    char record[256];
+    char text[2048];
+    char command[1024];
+    size_t n;
+    FILE *f;
+    Toolchain tc;
+    RunnerOptions opt;
+
+    sprintf(scratch, "/tmp/rbuild-runner-supersede-%ld", (long)getpid());
+    sprintf(source, "%s/foo", scratch);
+    sprintf(content, "%s/content", scratch);
+    sprintf(repo, "%s/repo", scratch);
+    sprintf(seed, "%s/seed", scratch);
+    sprintf(root, "%s/root", scratch);
+    sprintf(state, "%s/state", scratch);
+    sprintf(manifest, "%s/Manifest", scratch);
+    sprintf(profile, "%s/toolchain.conf", scratch);
+    sprintf(thin, "%s/foo-hdrs-1.0-ppc.apk", repo);
+    sprintf(universal, "%s/foo-hdrs-1.0-universal.apk", repo);
+    sprintf(record, "%s/projects/foo-1.0-ppc-headers.done", state);
+    sprintf(command, "rm -rf %s && mkdir -p %s/apk %s %s %s", scratch,
+            source, content, repo, seed);
+    CHECK_INT(system(command), 0);
+    sprintf(path, "%s/apk/pkginfo", source);
+    f = fopen(path, "w");
+    CHECK(f != 0);
+    if (f != 0) {
+        fputs("pkgname = foo\npkgver = 1.0\n"
+              "pkgdesc = supersede\nlicense = unknown\n", f);
+        fclose(f);
+    }
+    f = fopen(manifest, "w");
+    CHECK(f != 0);
+    if (f != 0) { fprintf(f, "dir %s headers\n", source); fclose(f); }
+    f = fopen(profile, "w");
+    CHECK(f != 0);
+    if (f != 0) { fputs("profile fixture\n", f); fclose(f); }
+
+    toolchain_init(&tc);
+    tc.profile = xstrdup("runner-test");
+    tc.target_arch = xstrdup("ppc");
+    tc.tar = xstrdup("/usr/bin/gnutar");
+    tc.gzip = xstrdup("/usr/bin/gzip");
+    memset(&opt, 0, sizeof(opt));
+    opt.bootstrap = 1;
+    opt.sysroot = root;
+    opt.state_dir = state;
+    opt.toolchain = &tc;
+    opt.toolchain_file = profile;
+
+    /* The thin walk records the thin APK. The fixture has no Makefile, so
+     * every successful walk below also proves nothing was rebuilt. */
+    CHECK_INT(write_data_apk(content, "foo-hdrs", "ppc-apple-rhapsody", thin), 0);
+    CHECK_INT(runner_manifest(manifest, repo, repo, &opt), 0);
+
+    /* The universal walk deletes thin APKs of the confirmed pkgname at any
+     * version, in dstdir only. */
+    CHECK_INT(write_data_apk(content, "foo-hdrs", "universal-apple-rhapsody",
+                             universal), 0);
+    sprintf(path, "%s/foo-hdrs-0.9-i386.apk", repo);
+    CHECK_INT(write_data_apk(content, "foo-hdrs", "i386-apple-rhapsody", path), 0);
+    sprintf(path, "%s/foo-1.0-ppc.apk", repo);
+    CHECK_INT(write_data_apk(content, "foo", "ppc-apple-rhapsody", path), 0);
+    sprintf(path, "%s/foo-hdrs-1.0-ppc.apk", seed);
+    CHECK_INT(write_data_apk(content, "foo-hdrs", "ppc-apple-rhapsody", path), 0);
+    sprintf(path, "%s/foo-hdrs-1.0-ppc.apk.invalid", repo);
+    f = fopen(path, "w");
+    CHECK(f != 0);
+    if (f != 0) { fputs("quarantined", f); fclose(f); }
+    opt.operation_arch = RB_ARCH_UNIVERSAL;
+    CHECK_INT(runner_manifest(manifest, seed, repo, &opt), 0);
+    CHECK(access(thin, F_OK) != 0);
+    sprintf(path, "%s/foo-hdrs-0.9-i386.apk", repo);
+    CHECK(access(path, F_OK) != 0);
+    CHECK(access(universal, F_OK) == 0);
+    sprintf(path, "%s/foo-1.0-ppc.apk", repo);
+    CHECK(access(path, F_OK) == 0);
+    sprintf(path, "%s/foo-hdrs-1.0-ppc.apk", seed);
+    CHECK(access(path, F_OK) == 0);
+    sprintf(path, "%s/foo-hdrs-1.0-ppc.apk.invalid", repo);
+    CHECK(access(path, F_OK) == 0);
+
+    /* The thin walk accepts its thin record, uses the covering universal
+     * APK, and rewrites the record; the rewritten record is current too. */
+    opt.operation_arch = 0;
+    CHECK_INT(runner_manifest(manifest, repo, repo, &opt), 0);
+    CHECK(access(thin, F_OK) != 0);
+    f = fopen(record, "r");
+    CHECK(f != 0);
+    if (f != 0) {
+        n = fread(text, 1, sizeof(text) - 1, f);
+        text[n] = '\0'; fclose(f);
+        CHECK(strstr(text, "/foo-hdrs-1.0-universal.apk\n") != 0);
+        CHECK(strstr(text, "effective_architecture=ppc-apple-rhapsody\n") != 0);
+    }
+    CHECK_INT(runner_manifest(manifest, repo, repo, &opt), 0);
+    CHECK(access(thin, F_OK) != 0);
+    toolchain_free(&tc);
+    sprintf(command, "rm -rf %s", scratch);
+    system(command);
+}
+
 TEST(test_kernel_architecture_controls_build_commands) {
     static const char *projects[] = {
         "driverkit-3", "driverTools-1", "kernload-1",
@@ -297,6 +428,7 @@ static void run_all(void) {
     RUN(test_kernel_skips_missing_core_source);
     RUN(test_buildpackage_scan_failure_clears_log);
     RUN(test_replay_rejects_required_artifact_replaced_by_symlink);
+    RUN(test_bootstrap_universal_supersedes_thin);
 }
 
 TEST_MAIN()

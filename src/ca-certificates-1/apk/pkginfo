@@ -1,0 +1,7 @@
+pkgname = ca-certificates
+pkgver = 20260813
+pkgdesc = Common CA certificates from Mozilla
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = MPL-2.0
+url = https://curl.se/docs/caextract.html
+makedepends = build-base

@@ -1,0 +1,31 @@
+Upstream:     https://curl.se/ca/cacert.pem
+Mozilla data: as of 2026-08-13
+pkgver:       20260813
+SHA-256:      f66dff1bdf8f96060b8177976f8b7d9254bc89bc4db933d769f7384d28480bc9
+Certificates: 121
+
+The certificate data is from Mozilla and is subject to the terms of the
+Mozilla Public License, v. 2.0: http://mozilla.org/MPL/2.0/
+
+Header of the upstream file, verbatim:
+
+##
+## Bundle of CA Root Certificates
+##
+## Certificate data from Mozilla as of: Thu Aug 13 03:12:01 2026 GMT
+##
+## Find updated versions here: https://curl.se/docs/caextract.html
+##
+## This is a bundle of X.509 certificates of public Certificate Authorities
+## (CA). These were automatically extracted from Mozilla's root certificates
+## file (certdata.txt).  This file can be found in the mozilla source tree:
+## https://raw.githubusercontent.com/mozilla-firefox/firefox/refs/heads/release/security/nss/lib/ckfw/builtins/certdata.txt
+##
+## It contains the certificates in PEM format and therefore
+## can be directly used with curl / libcurl / php_curl, or with
+## an Apache+mod_ssl webserver for SSL client authentication.
+## Configure this file as the SSLCACertificateFile.
+##
+## Conversion done with mk-ca-bundle.pl version 1.33.
+## SHA256: 81b7f2576333a2e360e673f912d7b0b7a765d836c731003e348a46cac5d37198
+##

@@ -1055,6 +1055,32 @@ int builder_relativize_symlinks(const char *root) {
     return relativize_walk(root, root);
 }
 
+/* Nonzero, with a message, if a component of REL before its last, walked
+   from SRCROOT, exists but is not a real directory. rsync copies a symlink
+   as a link and rm -rf would follow one there out of SRCROOT; a symlink as
+   the last component is removed itself. */
+static int vendor_input_through_nondir(const char *srcroot, const char *rel) {
+    char *path = str_cats(srcroot, "/", rel, (char *)0);
+    char *p;
+    struct stat st;
+    int bad = 0;
+
+    for (p = strchr(path + strlen(srcroot) + 1, '/'); p != 0;
+         p = strchr(p + 1, '/')) {
+        int missing;
+        *p = '\0';
+        missing = lstat(path, &st) != 0;
+        if (missing ? errno != ENOENT : !S_ISDIR(st.st_mode)) bad = 1;
+        *p = '/';
+        if (bad || missing) break;
+    }
+    if (bad)
+        fprintf(stderr, "rbuild: %s: vendored input path passes through "
+                "a non-directory\n", path);
+    free(path);
+    return bad;
+}
+
 int builder_setupdirs(const Package *pkg, const Params *params,
                       const char *srcname, const char *srctype,
                       const strlist *repository, const BuildOptions *opt) {
@@ -1149,7 +1175,12 @@ int builder_setupdirs(const Package *pkg, const Params *params,
              * directory is still copied. */
             char *tar_copy = str_cats(params->SRCROOT, "/", v.tarball, (char *)0);
             char *patch_copy = str_cats(params->SRCROOT, "/", v.patches, (char *)0);
-            if (exec_runv("rm", "-rf", tar_copy, patch_copy, (char *)0) != 0)
+            if (!exec_dry_run &&
+                (vendor_input_through_nondir(params->SRCROOT, v.tarball) ||
+                 vendor_input_through_nondir(params->SRCROOT, v.patches)))
+                rc = 1;
+            else if (exec_runv("rm", "-rf", tar_copy, patch_copy,
+                               (char *)0) != 0)
                 rc = 1;
             free(tar_copy); free(patch_copy);
         }

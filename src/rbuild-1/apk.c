@@ -1108,6 +1108,340 @@ int apk_untar(const char *path, const char *root, const Toolchain *tc) {
     return rc;
 }
 
+/* apk_untar_check models the extractor rbuild runs, Rhapsody /bin/pax -r
+   (src/Commands/file_cmds/pax, tar.c tar_id/tar_rd/ustar_id/ustar_rd). The
+   longest member name it handles is a ustar prefix/name: 154 + 1 + 99. */
+#define TAR_CHECK_NAME_MAX 256
+
+/* The checker compares symlink names with ASCII case folded, so it stays
+   sound on a case-folding build filesystem such as HFS+. It refuses non-ASCII
+   names, whose Unicode folding ASCII folding cannot match. */
+static int has_non_ascii(const char *s) {
+    for (; *s != '\0'; s++)
+        if ((unsigned char)*s >= 0x80) return 1;
+    return 0;
+}
+
+static int fold_char(int c) {
+    return c >= 'A' && c <= 'Z' ? c - 'A' + 'a' : c;
+}
+
+/* strncmp with ASCII case folded; LENGTH bounds both strings. */
+static int fold_ncmp(const char *a, const char *b, size_t length) {
+    for (; length > 0; length--, a++, b++) {
+        int diff = fold_char((unsigned char)*a) - fold_char((unsigned char)*b);
+        if (diff != 0 || *a == '\0') return diff;
+    }
+    return 0;
+}
+
+static int fold_list_contains(const strlist *list, const char *value) {
+    size_t i;
+    for (i = 0; i < list->count; i++)
+        if (fold_ncmp(list->items[i], value, strlen(value) + 1) == 0) return 1;
+    return 0;
+}
+
+static int fold_descends_through_symlink(const char *name,
+                                         const strlist *symlinks) {
+    size_t i;
+    for (i = 0; i < symlinks->count; i++) {
+        size_t length = strlen(symlinks->items[i]);
+        if (fold_ncmp(name, symlinks->items[i], length) == 0 &&
+            name[length] == '/') return 1;
+    }
+    return 0;
+}
+
+/* Resolves link TARGET lexically from the directory of MEMBER (a symlink) or
+   from the archive root (a hard link): "." stays, ".." pops, anything else
+   pushes. Returns 0 when the target stays inside the root and does not pass
+   through a symlink member before its final component; otherwise a reason,
+   which may be formatted into BUF. */
+static const char *link_target_reason(const char *member, const char *target,
+                                      int hardlink, const strlist *symlinks,
+                                      char *buf) {
+    char path[2 * TAR_CHECK_NAME_MAX + 2];
+    const char *slash = strrchr(member, '/');
+    const char *p = target;
+    size_t used = 0;
+
+    if (!hardlink && slash != 0) {
+        used = (size_t)(slash - member);
+        memcpy(path, member, used);
+    }
+    while (*p != '\0') {
+        const char *start;
+        size_t length;
+        while (*p == '/') p++;
+        if (*p == '\0') break;
+        start = p;
+        while (*p != '\0' && *p != '/') p++;
+        length = (size_t)(p - start);
+        if (length == 1 && start[0] == '.') continue;
+        if (length == 2 && start[0] == '.' && start[1] == '.') {
+            if (used == 0) return "symlink target escapes the archive root";
+            while (used > 0 && path[used - 1] != '/') used--;
+            if (used > 0) used--;
+            continue;
+        }
+        if (used != 0) path[used++] = '/';
+        memcpy(path + used, start, length);
+        used += length;
+        path[used] = '\0';
+        while (*p == '/') p++;
+        /* case folded, in case the build filesystem folds case */
+        if (*p != '\0' && fold_list_contains(symlinks, path)) {
+            sprintf(buf, "link target passes through symlink '%s'", path);
+            return buf;
+        }
+    }
+    return 0;
+}
+
+/* pax's asc_ul skips leading spaces and '0's and stops at any other
+   non-digit, so a NUL there reads as 0 where parse_octal would skip it. */
+static int nul_led_field(const char *field, size_t width) {
+    size_t i = 0;
+    while (i < width && field[i] == ' ') i++;
+    return i < width && field[i] == '\0';
+}
+
+/* Whether pax skips member data after the header: ustar_rd gives links,
+   directories, devices and FIFOs none, and tar_rd gives links, directories
+   and names ending in '/' none, whatever the size field says. */
+static int pax_has_data(char type, int ustar, const char *name_field) {
+    if (type == '1' || type == '2' || type == '5') return 0;
+    if (ustar) return type != '3' && type != '4' && type != '6';
+    return name_field[strlen(name_field) - 1] != '/';
+}
+
+static int check_tar_stream(int fd, const char *path) {
+    char header[TAR_BLOCK_SIZE];
+    char raw_name[TAR_CHECK_NAME_MAX + 1];
+    char name[TAR_CHECK_NAME_MAX + 1];
+    char linkname[101];
+    char target[101];
+    char link_entry[102];
+    char reason_buf[TAR_CHECK_NAME_MAX + 64];
+    strlist symlinks;
+    strlist raw_names;  /* every member, as in its header */
+    strlist names;      /* every member, normalized */
+    strlist links;      /* per member: "" or its link type, then target */
+    int zero_blocks = 0;
+    int first_ustar = -1;
+    int result = 1;
+    size_t i;
+
+    strlist_init(&symlinks);
+    strlist_init(&raw_names);
+    strlist_init(&names);
+    strlist_init(&links);
+    for (;;) {
+        int got = read_exact(fd, header, sizeof(header));
+        unsigned long size;
+        unsigned long padding;
+        const char *bad = 0;
+        const char *reason = 0;
+        char type;
+        int ustar;
+
+        if (got == 0 && zero_blocks == 1) {
+            result = 0;
+            break;
+        }
+        if (got != 1) {
+            fprintf(stderr, "rbuild: %s: truncated tar archive\n", path);
+            break;
+        }
+        if (block_is_zero(header)) {
+            if (first_ustar < 0) {
+                /* pax's get_arc would search past it byte by byte */
+                fprintf(stderr, "rbuild: %s: bad tar header (archive starts "
+                        "with a zero block)\n", path);
+                break;
+            }
+            if (++zero_blocks == 2) {
+                /* Drain what follows the end marker so gzip exits cleanly. */
+                char trailing[TAR_BLOCK_SIZE];
+                ssize_t n;
+                while ((n = read(fd, trailing, sizeof(trailing))) != 0) {
+                    if (n < 0 && errno != EINTR) break;
+                }
+                if (n == 0) result = 0;
+                else fprintf(stderr, "rbuild: %s: read error\n", path);
+                break;
+            }
+            continue;
+        }
+        zero_blocks = 0;
+        type = header[156];
+        ustar = memcmp(header + 257, "ustar", 5) == 0;
+
+        /* Accept only headers pax identifies and reads the same way, so it
+           never resyncs into member data. pax copies a name up to 3072
+           bytes, not the field width, so an unterminated field runs on. */
+        if (memchr(header, '\0', 100) == 0 ||
+            (ustar && memchr(header + 345, '\0', 155) == 0) ||
+            ((type == '1' || type == '2') &&
+             memchr(header + 157, '\0', 100) == 0))
+            bad = "name field not NUL-terminated";
+        else if (header[0] == '\0')
+            bad = "empty name field";
+        else if (nul_led_field(header + 124, 12) ||
+                 nul_led_field(header + 148, 8))
+            bad = "NUL before the size or checksum digits";
+        else if (!valid_checksum(header))
+            bad = "checksum mismatch";
+        else if (parse_octal(header + 124, 12, &size) != 0)
+            bad = "bad size field";
+        else if (first_ustar >= 0 && ustar != first_ustar)
+            bad = "format differs from the first header";
+        else if (ustar && memcmp(header + 257, "ustar\0", 6) != 0 &&
+                 header[345] != '\0')
+            /* pax joins the prefix; GNU tar ignores it without POSIX magic */
+            bad = "prefix field without POSIX ustar magic";
+        if (bad != 0) {
+            fprintf(stderr, "rbuild: %s: bad tar header (%s)\n", path, bad);
+            break;
+        }
+        first_ustar = ustar;
+        padding = (TAR_BLOCK_SIZE - (size % TAR_BLOCK_SIZE)) % TAR_BLOCK_SIZE;
+        field_string(header, 100, raw_name);
+        field_string(header + 157, 100, linkname);
+        if (ustar && header[345] != '\0') {
+            /* joined as pax's ustar_rd and modern GNU tar do; Rhapsody's
+               gnutar 1.12 ignores the prefix, one reason the guarantee is
+               scoped to pax */
+            char prefix[156];
+            char base[101];
+            field_string(header + 345, 155, prefix);
+            field_string(header, 100, base);
+            sprintf(raw_name, "%s/%s", prefix, base);
+        }
+
+        /* normalize_name drops "./", "." and empty components and a trailing
+           '/', and fails on an absolute name or a ".." component. */
+        if (type == 'x' || type == 'g') {
+            reason = "pax extended header unsupported";
+        } else if (type == 'L' || type == 'K') {
+            reason = "GNU long name unsupported";
+        } else if (type != '\0' && (type < '0' || type > '7')) {
+            reason = "member type unsupported";
+        } else if (!pax_has_data(type, ustar, raw_name) && size != 0) {
+            /* GNU tar would skip SIZE bytes that pax reads as headers */
+            reason = "size set on a member without data";
+        } else if ((type == '0' || type == '\0') && size != 0 &&
+                   raw_name[strlen(raw_name) - 1] == '/') {
+            /* pax reads data here; GNU tar makes a directory */
+            reason = "regular member named like a directory has data";
+        } else if (has_non_ascii(raw_name) ||
+                   ((type == '1' || type == '2') && has_non_ascii(linkname))) {
+            reason = "non-ASCII name unsupported";
+        } else if (raw_name[0] == '/') {
+            reason = "absolute path";
+        } else if (normalize_name(raw_name, name, sizeof(name)) != 0) {
+            reason = "contains a '..' component";
+        } else if (fold_descends_through_symlink(name, &symlinks)) {
+            reason = "path through a symlink";
+        } else if (type == '2' && linkname[0] == '/') {
+            reason = "absolute symlink target";
+        } else if (type == '1' && linkname[0] == '/') {
+            reason = "absolute hard link target";
+        } else if (type == '1' &&
+                   normalize_name(linkname, target, sizeof(target)) != 0) {
+            reason = "hard link target contains a '..' component";
+        }
+        if (reason != 0) {
+            fprintf(stderr, "rbuild: %s: unsafe member '%s' (%s)\n",
+                    path, raw_name, reason);
+            break;
+        }
+
+        link_entry[0] = '\0';
+        if (type == '1' || type == '2') {
+            link_entry[0] = type;
+            strcpy(link_entry + 1, linkname);
+        }
+        strlist_push(&raw_names, raw_name);
+        strlist_push(&names, name);
+        strlist_push(&links, link_entry);
+        if (type == '2' && name[0] != '\0') strlist_push(&symlinks, name);
+
+        if (pax_has_data(type, ustar, raw_name) &&
+            (skip_exact(fd, size) != 0 || skip_exact(fd, padding) != 0)) {
+            fprintf(stderr, "rbuild: %s: truncated tar archive\n", path);
+            break;
+        }
+    }
+
+    /* Names and link targets against every symlink in the archive, so
+       member order does not matter. */
+    for (i = 0; result == 0 && i < names.count; i++) {
+        const char *link_info = links.items[i];
+        const char *reason = 0;
+        if (fold_descends_through_symlink(names.items[i], &symlinks))
+            reason = "path through a symlink";
+        else if (link_info[0] != '\0')
+            reason = link_target_reason(names.items[i], link_info + 1,
+                                        link_info[0] == '1', &symlinks,
+                                        reason_buf);
+        if (reason != 0) {
+            fprintf(stderr, "rbuild: %s: unsafe member '%s' (%s)\n",
+                    path, raw_names.items[i], reason);
+            result = 1;
+        }
+    }
+    strlist_free(&symlinks);
+    strlist_free(&raw_names);
+    strlist_free(&names);
+    strlist_free(&links);
+    return result;
+}
+
+int apk_untar_check(const char *path, const Toolchain *tc) {
+    Toolchain fallback;
+    int fd;
+    int stream_fd;
+    pid_t gzip_pid;
+    int rc;
+
+    if (exec_dry_run) {
+        printf("check members of %s\n", path);
+        fflush(stdout);
+        return 0;
+    }
+    if (!tc) {
+        toolchain_init(&fallback);
+        fallback.tar = FALLBACK_TAR; fallback.gzip = "gzip";
+        tc = &fallback;
+    }
+    if (!valid_tools(tc)) {
+        fprintf(stderr, "rbuild: missing configured tar/gzip\n");
+        return 1;
+    }
+    fd = open(path, O_RDONLY);
+    if (fd < 0) {
+        fprintf(stderr, "rbuild: unable to open %s\n", path);
+        return 1;
+    }
+    if (start_gzip(fd, tc, &stream_fd, &gzip_pid) != 0) {
+        close(fd);
+        fprintf(stderr, "rbuild: unable to decompress %s\n", path);
+        return 1;
+    }
+    close(fd);
+    rc = check_tar_stream(stream_fd, path);
+    close(stream_fd);
+    /* After a rejection gzip may die of SIGPIPE; only its status on a
+       fully read stream matters. */
+    if (wait_child(gzip_pid) != 0 && rc == 0) {
+        fprintf(stderr, "rbuild: unable to decompress %s\n", path);
+        rc = 1;
+    }
+    return rc;
+}
+
 static void remove_own_link(const char *path, const struct stat *source) {
     struct stat current;
     if (lstat(path, &current) == 0 && current.st_dev == source->st_dev &&

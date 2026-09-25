@@ -1876,6 +1876,37 @@ TEST(test_setupdirs_vendors) {
     system("rm -rf /tmp/rb_ven");
 }
 
+/* rsync copies a symlinked directory as a link, so removing the copied
+   tarball must not follow it out of SRCROOT. */
+TEST(test_setupdirs_vendor_input_through_symlink) {
+    Package pkg;
+    Params p;
+    strlist repo;
+    BuildOptions opt;
+
+    CHECK_INT(system("rm -rf /tmp/rb_ven /tmp/rb_ven_out && "
+        "mkdir -p /tmp/rb_ven/srcdir/apk /tmp/rb_ven_out && "
+        "echo keep > /tmp/rb_ven_out/x.tar.gz && "
+        "echo all: > /tmp/rb_ven/srcdir/Makefile && "
+        "ln -s /tmp/rb_ven_out /tmp/rb_ven/srcdir/dist"), 0);
+    vendor_fixture_file("/tmp/rb_ven/srcdir/apk/vendor",
+        "tarball = dist/x.tar.gz\ndirectory = widget\n");
+
+    package_init(&pkg);
+    strlist_init(&repo);
+    build_options_init(&opt);
+    opt.bootstrap = 1;
+    vendor_fixture_params(&p, "/tmp/rb_ven");
+
+    CHECK_INT(builder_setupdirs(&pkg, &p, "widget", "dir", &repo, &opt), 1);
+    CHECK(access("/tmp/rb_ven_out/x.tar.gz", F_OK) == 0);
+
+    params_free(&p);
+    strlist_free(&repo);
+    package_free(&pkg);
+    system("rm -rf /tmp/rb_ven /tmp/rb_ven_out");
+}
+
 static void run_all(void) {
     RUN(test_fallback_preserves_explicit_architecture);
     RUN(test_direct_packaging_missing_architecture_defaults_universal);
@@ -1922,6 +1953,7 @@ static void run_all(void) {
     RUN(test_scan_dir_missing_pkgname_fails);
     RUN(test_relativize_absolute_symlinks_inside_dstroot);
     RUN(test_setupdirs_vendors);
+    RUN(test_setupdirs_vendor_input_through_symlink);
 }
 
 TEST_MAIN()

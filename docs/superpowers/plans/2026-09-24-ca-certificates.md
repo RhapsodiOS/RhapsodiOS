@@ -23,8 +23,8 @@
   - `/private/etc/ssl/certs`, symlink to `/System/Library/OpenSSL/certs`
   - `/private/etc/ssl/cert.pem`, symlink to `/System/Library/OpenSSL/cert.pem`
   - `/usr/share/doc/ca-certificates/SOURCE`
-- Symlink targets are absolute except the `ca-certificates.crt` alias.
-- The vendored set must have unique subject DNs: in the in-tree OpenSSL 0.9.5a, `X509_STORE_add_cert` errors on a repeated subject and `X509_load_cert_file` treats that as fatal, so a bundle stops loading partway. File names must be unique ignoring case (the repo is checked out on Windows) and plain ASCII.
+- The Makefile links the two `/etc/ssl` entries to absolute targets; rbuild's `builder_relativize_symlinks` rewrites them to relative ones in the apk (`../../../System/Library/OpenSSL/...`). The `ca-certificates.crt` alias is relative to begin with.
+- The vendored set must have unique subject DNs: in the in-tree OpenSSL 0.9.5a, `X509_STORE_add_cert` refuses a certificate whose subject is already in the store, and the PEM CAfile loader (`X509_load_cert_crl_file`) ignores that error, so the second certificate is silently dropped and the first wins; a renewed root that shares a subject would be shadowed. File names must be unique ignoring case (the repo is checked out on Windows) and plain ASCII.
 - Manifest line: `dir     ca-certificates-1     all`, directly after `dir     bsdmake-1             all`. `BootstrapManifest` is not touched.
 - The Makefile must run under GNU Make 3.74 on the guest: no target-specific variables. The guest's `install` moves its source unless given `-c`.
 - The guest's `/bin/ls` exits 0 for missing paths and unmatched globs stay literal: guest scripts test existence with `test -f` / `test -d`, never with `ls`.
@@ -447,8 +447,9 @@ def validate(certs, openssl):
         subject = subject_of(pem, label, openssl)
         if subject in by_subject:
             raise RefreshError(
-                "%r and %r have the same subject (%s); OpenSSL 0.9.5a stops loading a bundle "
-                "at the second one" % (by_subject[subject], label, subject))
+                "%r and %r have the same subject (%s); OpenSSL 0.9.5a keeps only the first "
+                "certificate per subject and silently drops the rest"
+                % (by_subject[subject], label, subject))
         by_subject[subject] = label
         plan.append((name, label, pem))
     return plan
@@ -608,7 +609,7 @@ cd "$W" && python src/ca-certificates-1/refresh.py --file "$S/cacert.pem" --sha2
 
 Expected: `wrote N certificates; set pkgver = YYYYMMDD in apk/pkginfo` and `exit=0`, with N around 140.
 
-If it exits 1 with `have the same subject`: **stop and report to the user.** Do not drop or rename either certificate on your own; which one to exclude, or whether to stop supporting 0.9.5a's bundle load, is their decision. If it exits 1 with a file-name collision, the two labels differ only in characters `pem_name` drops; report both labels and propose a disambiguation, do not pick silently.
+If it exits 1 with `have the same subject`: **stop and report to the user.** Do not drop or rename either certificate on your own; which one to exclude, or whether to accept that 0.9.5a would keep only the first of them, is their decision. If it exits 1 with a file-name collision, the two labels differ only in characters `pem_name` drops; report both labels and propose a disambiguation, do not pick silently.
 
 - [ ] **Step 4: Check the result against the upstream file**
 
@@ -1005,7 +1006,7 @@ Expected at the end:
 
 On failure, the log tail is printed; for more, put `tail -200 /tmp/cacert-rbuild.log` in a script and run it through `rx.ps1`. Fix the cause and re-run Steps 6 and 7. Failures to expect and their meaning:
 - `pkcs7 -print_certs read M certificates, expected N` with M < N: the in-tree 0.9.5a cannot parse one of the certs. Bisect by loading `certs/*.pem` one at a time with `openssl x509 -noout -subject -in`, and report the culprit to the user; do not drop it silently.
-- `openssl could not load cert.pem as a CAfile`: 0.9.5a's store rejected a cert, most likely a duplicate subject that Task 1's check missed (for example one that differs only in string encoding); report both certificates.
+- `openssl could not load cert.pem as a CAfile`: 0.9.5a's PEM loader gave up on the whole bundle (`PEM_X509_INFO_read_bio` is all-or-nothing), most likely because it cannot decode one certificate; a repeated subject would be dropped silently and does not produce this error. Bisect as above and report the culprit.
 
 - [ ] **Step 8: Correct the spec**
 
@@ -1049,4 +1050,19 @@ Expected: the apk listing and `exit=0`. The apk in `/build/cacert/out`, `/tmp/ca
 
 ## After all tasks
 
-Use superpowers:finishing-a-development-branch to decide how `ca-certificates` goes back to `master`. Before merging, `git diff master --stat` should show only: `src/ca-certificates-1/**`, one added line in `src/Manifest`, and the spec correction.
+Use superpowers:finishing-a-development-branch to decide how `ca-certificates` goes back to `master`. Before merging, `git diff master --stat` should show only: `src/ca-certificates-1/**`, one added line in `src/Manifest`, and the spec and plan corrections.
+
+---
+
+## Run note (2026-09-25)
+
+Task 3 ran on a private QEMU i386 guest, not the ppc box the plan names. That box (10.10.0.241) is down, and the shared i386 guest at 127.0.0.1:2222 was left alone. The private guest booted `vm/work/rhap-i386-bootstrapped.img` with `-snapshot` (so the image was never written), with ssh forwarded to 127.0.0.1:2221 (telnet 2321, QMP 4461). Where this run departed from the text above, the run wins:
+
+- `rbuild buildpackage` needs `--toolchain /build/src/rbuild-1/toolchains/gcc-darwin-i386.conf` on that guest; `pkg-start.sh` was run with it, in the foreground of one ssh session.
+- This branch predates master's `Port=` support in `vm/rhap-remote.ps1`, so master's `rhap-remote`, `build-src-lib`, `sync-src`, `sync-src-lib` and `guest-remote` scripts ran from a scratchpad copy with a `vm.conf` of `Port=2221`, `RemoteRoot=/build/cacert` and `LocalRoot=` the worktree. Master's `sync-src.ps1` does not create `/build/cacert`, so `mkdir -p /build/cacert/src` came first.
+- The guest's `sh` has no `type` builtin, so `preflight.sh` prints `type: not found` for its tool list. Its other checks worked.
+- The guest's openssl is `/usr/local/ssl/bin/openssl`, version 0.9.8, and `/build/repo` has no openssl apk. `pkg-check.sh` used that binary, and its file-conflict step was answered by reading 0.9.5a's install rules instead.
+- rbuild rewrites absolute symlinks to relative, so the first `pkg-check.sh` run failed only on its absolute-target expectation. The check now expects `../../../System/Library/OpenSSL/certs` and `.../cert.pem` and also follows the links inside the extracted root.
+- Step 3's expected-failure run was skipped: the Makefile and `pkginfo` had already been written when the guest became available.
+
+Result: `RBUILD_RC=0`, `ca-certificates-20260813-1-universal.apk`, `PACKAGE_TEST_OK (conflict check skipped)`. The load check with the tree's own 0.9.5a `openssl` is still open; see the spec's "Verified during implementation".

@@ -2004,7 +2004,7 @@ DNS was sent, and `-t 30`.
 
 **Interfaces:** none.
 
-- [ ] **Step 1: Ask the user whether the VM/`rbuild` flow is free**
+- [x] **Step 1: Ask the user whether the VM/`rbuild` flow is free**
 
 Do not run or poll the VM/`rbuild` build automatically. Ask the user
 directly whether the concurrent session's work in `vm/` has finished and the
@@ -2057,7 +2057,7 @@ Use a private build root and a temporary disk image throughout.
     `.sv` once. After a lease loss and re-acquire, `.sv` still holds the
     original. Shutdown restores it.
 
-- [ ] **Step 2: Run the real build, once confirmed free**
+- [x] **Step 2: Run the real build, once confirmed free**
 
 Follow `README.md`'s documented `rbuild` flow (sync `dhcpcd-1` to the guest,
 build it there) — the exact commands depend on the state the user reports
@@ -2075,9 +2075,101 @@ without a reboot. This step also requires `drvBPF` (owned by another
 session) to actually build and boot — check that separately before
 expecting this to succeed.
 
-- [ ] **Step 4: Report results**
+- [x] **Step 4: Report results**
 
 Whatever the outcome, report it plainly — including partial failures (e.g.
 "compiles but drvBPF isn't ready yet, so the DHCP exchange itself is
 untested"). Do not mark this task's checkbox complete unless both Step 2 and
 Step 3 actually succeeded.
+
+#### Results (2026-09-25)
+
+Step 2 succeeded. Step 3 succeeded only with a test-patched drvBPF, and
+renewal is untested, so Step 3 and this task stay unchecked.
+
+**Setup.** Builds ran on the ppc box and on a private i386 QEMU guest: a
+qcow2 overlay of `vm/work/rhap-i386-bootstrapped.img`, QEMU user networking
+with `dhcpstart=10.10.0.240`, and a private root at `/build/dhcpcd-1`. The
+guest runs the tree's kernel-7 over Apple's DR2 userland. For the boot tests,
+the tree's `0800_Network` and `rc.common` went into the guest's
+`0400_Network` slot, and the guest's `0800_Routing` was moved aside. The
+wrapper logged the script's output to a file, which is where the
+`tset: standard error: Inappropriate ioctl for device` line comes from.
+Anything that is a makedepends must be built with rbuild's
+`--toolchain .../gcc-darwin-i386.conf --arch i386`. Without it, the apk is
+GNU tar and rbuild silently rejects it as a dependency.
+
+**drvBPF as-is does not work on kernel-7.** A follow-up task in a separate
+session covers these three defects:
+
+- Nothing allocates the descriptors. The kernel leaves `nbpfilter = -1` and
+  `bpf_dtab` NULL, and the driver never sets them. Apple's 1998 binary
+  doesn't either. Every open fails with ENXIO, so dhcpcd exits 1 at once and
+  leaves nothing behind.
+- PostLoad compares an unsigned counter with that -1. It created 7938
+  `/dev/bpf*` nodes before it was killed, and with BPF in Active Drivers it
+  would hang boot.
+- `bpf_movein` uses `MGET`, so written frames have no `M_PKTHDR`. IOEthernet
+  logs "M_PKTHDR flag not set" and drops every one.
+
+Everything below used a guest-only copy of drvBPF with test fixes for all
+three (never committed). With it, PostLoad made `/dev/bpf0`–`3`, and
+`driverLoader a` loaded BPF at boot.
+
+**Checklist.**
+
+1. Pass on both machines. There are 7 warnings, all in untouched upstream
+   lines (`client.c:537` `%u` vs `unsigned long`; implicit `setdomainname`
+   and `bzero`), and none for `sigsetjmp`. `files-5` builds, and its package
+   has `private/etc/dhcpc` (755 root:wheel).
+2. Pass: `/usr/sbin/dhcpcd`, `/etc/dhcpc`, and `/dev/bpf*` (test driver).
+3. Pass. DISCOVER→OFFER→REQUEST→ACK took under a second, with `rc=0` and
+   the key=value lines. The daemon, pid file, `.cache` (0600) and `.info`
+   all appeared. The default route is 10.10.0.1, and resolv.conf is written.
+   SSH survived the SIOCDIFADDR/SIOCAIFADDR of the same address.
+4. Pass. `-AUTOMATIC-`: "got response from 10.10.0.1", and the route is the
+   lease's router. Explicit 10.10.0.1, and a different explicit 10.10.0.2:
+   `ps` shows `-G`, and the route is the explicit address. `-NO-`: `-G` and
+   no default route. None of these boots printed "File exists" or
+   "No such process".
+5. The same address came from the cache. The ACK itself can't be seen,
+   because syslogd starts after the network script
+   (https://github.com/RhapsodiOS/RhapsodiOS/issues/27).
+6. Pass. On 10.0.3.0/24 with the 10.10.0.240 cache, the same boot got
+   10.0.3.240 via 10.0.3.2. A by-hand `-d` run with a stale cache logged the
+   REQUEST for the old address, "DHCP_NAK ... requested address not
+   available", a 1 s pause, then DISCOVER→ACK.
+7. Mostly a pass. The boot printed "no response" and left no daemon, the
+   cache was gone, and no stray routes were left. The fallback printed
+   "Trying BOOTP for interface en0:bootpc: not found", because `bootp-1` is
+   not in `src/Manifest` (follow-up task running). The 30 s timing wasn't
+   measured. "The next connected boot does a full DISCOVER" was not
+   checked: that boot panicked on the base image's filesystem corruption
+   (below). The `-AUTOMATIC-` boot in item 4 started with no cache and got
+   a lease.
+8. Not run: QEMU's DHCP server has no BOOTP-only mode, and bootpc isn't
+   built.
+9. Not run: QEMU's leases are fixed at 24 h. This needs tap plus dnsmasq or
+   ISC dhcpd.
+10. Not run, for the same reason.
+11. Not run, for the same reason.
+12. Not run, for the same reason.
+13. Partial. `.sv` survived lease re-acquires across boots. With no
+    original resolv.conf, the first run still sets `ResolvSaved` (its rename
+    fails), so shutdown leaves dhcpcd's file in place. The next run then
+    saves that file as `.sv`. dhcpcd also writes an empty `domain` line when
+    the server sends no domain; the resolver ignores it.
+
+**Other observations.**
+
+- On a pre-bound timeout, `dhcpStop` removes the address and downs the
+  interface, as upstream does. That's harmless at boot, but a failed run by
+  hand on a statically configured interface cuts the network.
+- `rhap-i386-bootstrapped.img`'s root filesystem is already corrupt: DUP
+  blocks, and `/mach_kernel` shares blocks with
+  `/build/ssh/openssh-3.2.3p1.tar.gz`. `fsck -y` deletes the kernel. Any
+  unclean stop of an overlay drops to single-user, and continuing with the
+  dirty root later panicked with "ffs_valloc: dup alloc". Shut down with
+  `reboot`, not `halt`.
+- A non-verbose boot sometimes hung right after "serial_dbg: i386 kernel
+  console up"; booting with `-v` got past it.

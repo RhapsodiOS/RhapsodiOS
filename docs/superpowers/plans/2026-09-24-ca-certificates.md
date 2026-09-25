@@ -23,7 +23,7 @@
   - `/private/etc/ssl/certs`, symlink to `/System/Library/OpenSSL/certs`
   - `/private/etc/ssl/cert.pem`, symlink to `/System/Library/OpenSSL/cert.pem`
   - `/usr/share/doc/ca-certificates/SOURCE`
-- Symlink targets are absolute except the `ca-certificates.crt` alias.
+- The Makefile links the two `/etc/ssl` entries to absolute targets; rbuild's `builder_relativize_symlinks` rewrites them to relative ones in the apk (`../../../System/Library/OpenSSL/...`). The `ca-certificates.crt` alias is relative to begin with.
 - The vendored set must have unique subject DNs: in the in-tree OpenSSL 0.9.5a, `X509_STORE_add_cert` errors on a repeated subject and `X509_load_cert_file` treats that as fatal, so a bundle stops loading partway. File names must be unique ignoring case (the repo is checked out on Windows) and plain ASCII.
 - Manifest line: `dir     ca-certificates-1     all`, directly after `dir     bsdmake-1             all`. `BootstrapManifest` is not touched.
 - The Makefile must run under GNU Make 3.74 on the guest: no target-specific variables. The guest's `install` moves its source unless given `-c`.
@@ -1050,3 +1050,18 @@ Expected: the apk listing and `exit=0`. The apk in `/build/cacert/out`, `/tmp/ca
 ## After all tasks
 
 Use superpowers:finishing-a-development-branch to decide how `ca-certificates` goes back to `master`. Before merging, `git diff master --stat` should show only: `src/ca-certificates-1/**`, one added line in `src/Manifest`, and the spec correction.
+
+---
+
+## Run note (2026-09-25)
+
+Task 3 ran on a private QEMU i386 guest, not the ppc box the plan names. That box (10.10.0.241) is down, and the shared i386 guest at 127.0.0.1:2222 was left alone. The private guest booted `vm/work/rhap-i386-bootstrapped.img` with `-snapshot` (so the image was never written), with ssh forwarded to 127.0.0.1:2221 (telnet 2321, QMP 4461). Where this run departed from the text above, the run wins:
+
+- `rbuild buildpackage` needs `--toolchain /build/src/rbuild-1/toolchains/gcc-darwin-i386.conf` on that guest; `pkg-start.sh` was run with it, in the foreground of one ssh session.
+- This branch predates master's `Port=` support in `vm/rhap-remote.ps1`, so master's `rhap-remote`, `build-src-lib`, `sync-src`, `sync-src-lib` and `guest-remote` scripts ran from a scratchpad copy with a `vm.conf` of `Port=2221`, `RemoteRoot=/build/cacert` and `LocalRoot=` the worktree. Master's `sync-src.ps1` does not create `/build/cacert`, so `mkdir -p /build/cacert/src` came first.
+- The guest's `sh` has no `type` builtin, so `preflight.sh` prints `type: not found` for its tool list. Its other checks worked.
+- The guest's openssl is `/usr/local/ssl/bin/openssl`, version 0.9.8, and `/build/repo` has no openssl apk. `pkg-check.sh` used that binary, and its file-conflict step was answered by reading 0.9.5a's install rules instead.
+- rbuild rewrites absolute symlinks to relative, so the first `pkg-check.sh` run failed only on its absolute-target expectation. The check now expects `../../../System/Library/OpenSSL/certs` and `.../cert.pem` and also follows the links inside the extracted root.
+- Step 3's expected-failure run was skipped: the Makefile and `pkginfo` had already been written when the guest became available.
+
+Result: `RBUILD_RC=0`, `ca-certificates-20260813-1-universal.apk`, `PACKAGE_TEST_OK (conflict check skipped)`. The load check with the tree's own 0.9.5a `openssl` is still open; see the spec's "Verified during implementation".

@@ -42,16 +42,26 @@ extern int  memsize(int i);
 
 /* Memory map entry structure for the modern INT 0x15, E820h BIOS call.
  * The compiler that builds the booter does not accept __attribute__((packed)),
- * and does not need to: 8 + 8 + 4 + 4 lays out with no padding on i386, so the
- * struct already matches the 24 bytes the BIOS returns.
+ * and does not need to: six 32-bit words lay out with no padding on i386, so
+ * the struct already matches the 24 bytes the BIOS returns.  The 64-bit base
+ * and length are split into halves because the booter keeps only ranges below
+ * 4GB, and long long arithmetic costs boot2 bytes it does not have.
  */
 typedef struct {
-    unsigned long long base;
-    unsigned long long length;
+    unsigned long base_lo, base_hi;
+    unsigned long length_lo, length_hi;
     unsigned long type;
     unsigned long acpi_extended;
 } e820_entry_t;
-extern unsigned long getMemoryMap(e820_entry_t *map, int maxEntries, int *numEntries);
+/*
+ * Fills "map" with up to maxEntries E820 ranges clamped to 32 bits and
+ * returns the top of the contiguous RAM run starting at 1MB, or 1MB itself
+ * if the BIOS has no E820 map.  See biosfn.c.  struct boot_mem_range lives in
+ * kernBootStruct.h, which has no include guard, so it is only named here.
+ */
+struct boot_mem_range;
+extern unsigned long getMemoryMap(struct boot_mem_range *map, int maxEntries,
+				  int *numEntries);
 extern unsigned long getExtendedMemoryE801(void);
 
 extern void  video_mode(int mode);

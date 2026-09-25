@@ -703,15 +703,11 @@ intr_handler(
     if (irq == INTR_MASTER_PHANTOM_IRQ &&
 		(get_master_isr() & INTR_PHANTOM_IRQ_MASK) == 0) {
 	 intr_cnt.phantom++;
-	 if (intr_cnt.phantom <= 8)
-	     printf("intr: phantom IRQ %d\n", irq);
 	 return;
     }
     if (irq == INTR_SLAVE_PHANTOM_IRQ &&
 		(get_slave_isr() & INTR_PHANTOM_IRQ_MASK) == 0) {
 	 intr_cnt.phantom++;
-	 if (intr_cnt.phantom <= 8)
-	     printf("intr: phantom IRQ %d, EOI to master\n", irq);
 	 send_master_eoi_command(specific_eoi(INTR_SLAVE_IRQ));
 	 return;
     }

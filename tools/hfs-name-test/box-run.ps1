@@ -12,7 +12,7 @@ $cfg = Get-RhapVmConfig -DiePrefix 'hfs-name-test'
 if ($env:RHAP_SSH_HOST) { $cfg.Host = $env:RHAP_SSH_HOST }
 if ($env:RHAP_SSH_PORT) { $script:RhapLegacySshOptions += @('-o', "Port=$($env:RHAP_SSH_PORT)") }
 $ssh = Resolve-RhapTool -NameOrPath $cfg.Ssh -DiePrefix 'hfs-name-test'
-Invoke-RhapSshCapture -Cfg $cfg -Ssh $ssh -ScriptBody (Get-Content -LiteralPath $ScriptFile -Raw)
+$null = Invoke-RhapSshCapture -Cfg $cfg -Ssh $ssh -ScriptBody (Get-Content -LiteralPath $ScriptFile -Raw)
 $r = $script:RhapLastSshCapture
 [Console]::Out.Write($r.Stdout)
 if ($r.Stderr) { [Console]::Error.Write($r.Stderr) }

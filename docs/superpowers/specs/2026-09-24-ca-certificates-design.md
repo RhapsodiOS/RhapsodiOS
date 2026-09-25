@@ -12,8 +12,9 @@ directory name), and it is listed in `src/Manifest`.
 
 - Making the certificates usable by the in-tree OpenSSL 0.9.5a for modern
   chains. That release predates SHA-256 and elliptic-curve signatures, so it
-  loads these roots but cannot verify most current server chains. Fixing that
-  is an OpenSSL upgrade, not this package.
+  is expected to load these roots (read from its source, not run) but cannot
+  verify most current server chains. Fixing that is an OpenSSL upgrade, not
+  this package.
 - Hashed `<hash>.0` links in `certs/`. `cert.pem` is what libssl's default
   paths load, so `certs/` is storage only and cannot serve as a CApath. The
   links can be added later, either with `c_rehash` at build time or from a
@@ -116,18 +117,22 @@ probes still run for it.
 
 ## Verification
 
-Done on an i386 build guest under a private `/build/<name>` root, with
+Run on an i386 build guest under a private `/build/<name>` root, with
 `rbuild buildpackage --toolchain <gcc-darwin-i386.conf>` (the guest needs it):
 
 1. `rbuild buildpackage` produces the apk. Inspect its file list, symlink
    targets and modes against the table above.
 2. No file in the ca-certificates apk is also in the openssl apk. Directories
-   such as `certs/` are shared, which apk allows; a shared file would be the
-   real conflict. Checked by comparing the two apks' member lists, or, where no
-   openssl apk exists, by reading the OpenSSL project's install rules.
+   such as `certs/` are shared, which apk allows according to apk-tools'
+   source (database.c reports a conflict only for a file owned by another
+   package); a shared file would be the real conflict. Checked by comparing the
+   two apks' member lists, or, where no openssl apk exists, by reading the
+   OpenSSL project's install rules.
 3. The in-tree 0.9.5a `openssl` reads all N certs from `cert.pem`
    (`crl2pkcs7 -nocrl -certfile` piped to `pkcs7 -print_certs`, counting
-   subjects) and N equals the cert count in `SOURCE`.
+   subjects) and N equals the cert count in `SOURCE`. Item 3 could only be run
+   with the guest's 0.9.8 openssl; the 0.9.5a run is still open (see "Verified
+   during implementation", "Still open").
 4. The same bundle resolves through `/etc/ssl/cert.pem`,
    `/etc/ssl/certs/ca-certificates.crt` and `/etc/ssl/certs/<Name>.pem`,
    checked by following the links inside the extracted package root.
@@ -139,8 +144,7 @@ untouched.
 
 ## Verified during implementation
 
-On a private QEMU i386 guest booted from `rhap-i386-bootstrapped.img` with
-`-snapshot`, 2026-09-25:
+From the host-side import (Task 2):
 
 - curl.se publishes `cacert.pem.sha256` as `<64 hex>  cacert.pem`. The header's
   fourth line is `## Certificate data from Mozilla as of: Thu Aug 13 03:12:01
@@ -149,25 +153,38 @@ On a private QEMU i386 guest booted from `rhap-i386-bootstrapped.img` with
   certificates, no duplicate subjects and no file-name collisions. One label
   (NetLock's "Arany (Class Gold)" root) has accented letters, so its file name
   is transliterated to `NetLock_Arany_Class_Gold_Fotanusitvany.pem`.
+
+On a private QEMU i386 guest booted from `rhap-i386-bootstrapped.img` with
+`-snapshot`, 2026-09-25:
+
 - The guest's `install` moves its source without `-c` and keeps it with `-c`;
   `ln -fs` makes the expected links.
 - rbuild passed the all-digit `pkgver` through: the apk is
   `ca-certificates-20260813-1-universal.apk` and `.PKGINFO` says
   `pkgver = 20260813-1`. Both i386 and ppc compiler and linker probes passed.
-- The apk's members are exactly the five paths outside `certs/*.pem` plus the
-  121 PEMs, all mode 0444. Following the links inside the extracted root
-  reaches all 121 PEMs and the bundle through `/etc/ssl`, byte-equal to
-  `cert.pem`; `cert.pem` is the sorted concatenation of `certs/*.pem`.
+- The check script asserted the apk's contents: `certs/` holds the 121 PEMs,
+  all mode 0444; `cert.pem` is a regular 0444 file equal to the sorted
+  concatenation of `certs/*.pem`; following the links inside the extracted root
+  reaches the 121 PEMs and the bundle through `/etc/ssl`. The script prints
+  PACKAGE_TEST_OK only after every assertion passes. The `SOURCE` file was
+  installed with mode 0444 by the Makefile's `INSTALL_FILE` line (seen in the
+  build log), but its mode was not separately asserted.
 - The guest's `openssl` (0.9.8, built for sshd) reads all 121 certificates from
   `cert.pem` and `openssl verify -CAfile cert.pem` accepts a root against it.
-- OpenSSL 0.9.5a's `install` target creates only directories under the
-  openssldir (`misc`, `certs`, `private`, `lib`) and installs no `cert.pem` or
-  `certs/*.pem`, so the two packages share the `certs/` directory and no file.
+- OpenSSL 0.9.5a's install rules (`src/OpenSSL/openssl/Makefile.ssl` lines
+  344-347 and `src/OpenSSL/openssl/apps/Makefile.ssl` lines 98-105) make the
+  directories `misc`, `certs`, `private` and `lib` under the openssldir and
+  install only the `misc/*` scripts and `openssl.cnf` there, and no `cert.pem`
+  or `certs/*.pem`, so the two packages share the `certs/` directory and no
+  file.
 
 Still open:
 
 - The load check with the in-tree OpenSSL 0.9.5a. The guest's `/usr/local/ssl`
   openssl is 0.9.8, and `/build/repo` has no openssl apk. The unique-subject
   rule rests on reading the 0.9.5a source, not on running it.
-- Whether the in-tree apk-tools accepts the all-digit `pkgver` in `apk add`.
-  The guest has no `apk` binary, so only rbuild's packaging was exercised.
+- `apk add` was never run on this package (no `apk` binary on the guest), so
+  the shared-directory behaviour rests on reading apk-tools' source.
+- Whether the in-tree apk-tools accepts a version of the form `20260813-1` in
+  `apk add`, the same shape as every other package's version. The guest had no
+  `apk` binary, so only rbuild's packaging was exercised.

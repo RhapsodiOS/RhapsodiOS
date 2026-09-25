@@ -1049,7 +1049,7 @@ Expected: the apk listing and `exit=0`. The apk in `/build/cacert/out`, `/tmp/ca
 
 ## After all tasks
 
-Use superpowers:finishing-a-development-branch to decide how `ca-certificates` goes back to `master`. Before merging, `git diff master --stat` should show only: `src/ca-certificates-1/**`, one added line in `src/Manifest`, and the spec correction.
+Use superpowers:finishing-a-development-branch to decide how `ca-certificates` goes back to `master`. Before merging, `git diff master --stat` should show only: `src/ca-certificates-1/**`, one added line in `src/Manifest`, and the spec and plan corrections.
 
 ---
 

@@ -623,7 +623,7 @@ GetCatalogNode( ExtendedVCB *volume, HFSCatalogNodeID parentID, ConstUTF8Param n
 										  NAME_MAX + 1,	/* 255 + termination byte */
 					 					  &actualDstLen,
 										  nodeSpec->name);
-			if (result == kTECOutputBufferFullStatus)	// too long for a BSD name: mangle it
+			if (result == kTECOutputBufferFullStatus)	// too long for a BSD name: mangle it (xnu-124 keeps the whole name here)
 				result = ConvertUnicodeToUTF8Mangled(key->hfsPlus.nodeName.length * sizeof(UniChar),
 													 key->hfsPlus.nodeName.unicode,
 													 NAME_MAX + 1,

@@ -2051,6 +2051,8 @@ GetMangledNameExtension( ItemCount length, ConstUniCharArrayPtr unicodeStr, char
 	convert whole: as much of the name as fits, "#" and its file ID in hex, then
 	its extension, as in "A long name#1A2B.txt".  GetEmbeddedFileID and
 	LocateCatalogNodeByMangledName find the node from it again.  As in xnu-124.
+	maxDstLen must be more than 15, the most the file ID and extension take;
+	callers pass NAME_MAX + 1.
 */
 OSErr
 ConvertUnicodeToUTF8Mangled(ByteCount srcLen, ConstUniCharArrayPtr srcStr, ByteCount maxDstLen,

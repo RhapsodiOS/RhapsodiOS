@@ -524,9 +524,15 @@
 	#endif
 #endif
 
+#if defined(__i386__)
+#define TARGET_CPU_PPC  		0
+#define TARGET_CPU_68K  		0
+#define TARGET_CPU_X86  		1
+#else
 #define TARGET_CPU_PPC  		1
 #define TARGET_CPU_68K  		0
 #define TARGET_CPU_X86  		0
+#endif
 #define TARGET_CPU_MIPS 		0
 #define TARGET_CPU_SPARC		0	
 #define TARGET_CPU_ALPHA		0
@@ -544,8 +550,13 @@
     #define DEBUG_BUILD 0
 #endif	/* DIAGNOSTIC */
 
+	#if defined(__i386__)
+	#define TARGET_RT_LITTLE_ENDIAN		1
+	#define TARGET_RT_BIG_ENDIAN		0
+#else
 	#define TARGET_RT_LITTLE_ENDIAN		0
 	#define TARGET_RT_BIG_ENDIAN		1
+#endif
 	#define PRAGMA_IMPORT				0
 	#define PRAGMA_STRUCT_ALIGN			1
 	#define PRAGMA_ONCE					0

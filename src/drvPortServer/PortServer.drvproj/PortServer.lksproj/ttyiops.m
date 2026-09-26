@@ -1083,7 +1083,7 @@ void ttyiops_txload(struct tty *tp, unsigned int *mask)
         
         /* Enqueue data to IOPortSession transmit buffer */
         result = (int)objc_msgSend(portSession, 
-                                   @selector(enqueueData:bufferSize:transferCount:minCount:),
+                                   @selector(enqueueData:bufferSize:transferCount:sleep:),
                                    buffer, bytes_transferred, &outq_size, 0);
         
         if (result == 0) {

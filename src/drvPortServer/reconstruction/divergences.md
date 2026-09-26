@@ -5172,3 +5172,32 @@ but the body was never read), and §18's length table showed it as
 **Fix.** `unsigned int response`, testing `0x8`, `0x400`, `0x10`, `0x4` and
 `0x20`. The rebuilt function is instruction-identical to the reference. Ledger
 10352 advanced `unexamined` → `assembly-matched`.
+
+### Finding 91 — `ttyiops_txload` sends a selector IOPortSession does not implement
+
+With Finding 90 fixed, the first write panicked instead:
+`objc error: IOPortSession does not recognize selector
+-enqueueData:bufferSize:transferCount:minCount:`, then `panic: objc: fatal
+error`. That selector crosses `enqueueData:bufferSize:transferCount:sleep:` with
+`dequeueData:bufferSize:transferCount:minCount:`. The reference's `txload` sends
+the first, with the same four arguments ours pushes: the buffer, the count from
+`q_to_b`, the address of the `outq_size` slot at `[ebp-0x1a8]`, and 0 for
+`sleep`. It was the only selector our binary sent that the reference does not:
+ours had 65 against the reference's 64.
+
+The ledger recorded `_ttyiops_txload` (14952) as `assembly-matched`. The read
+compared the instructions but not the selector string, the same gap as drvBPF's
+Finding 9. **Fix:** the selector. Ledger 14952 keeps `assembly-matched`, with a
+corrective reason. The rebuilt function differs from the reference only in
+Finding 88's hoisting of `portSession`.
+
+### Result
+
+With both fixes, on the guest, driverLoader loads the driver and runs our
+`pdservd`, which makes `/dev/ttyda`, `ttyida`, `cuaa`, `cuiaa`, `pdservd` and
+`rpski01`–`16`. A program that opens the port, sets raw 9600 8N1 with CLOCAL,
+writes a line and reads the reply got its bytes to the host and the host's
+reply back three times in a row: through `/dev/cuaa`, through `/dev/ttyda`, and
+through `/dev/cuaa` again after close and reopen. The guest stayed up and the
+console showed nothing but the three `Registering:` lines. In the built binary,
+45 of 113 functions are now instruction-identical to the reference, up from 44.

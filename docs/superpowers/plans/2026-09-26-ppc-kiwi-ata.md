@@ -13,7 +13,7 @@ under `-std=c89 -pedantic -Wall -Wextra -Werror`.
 **Files:** create `src/kernel-7/bsd/dev/ppc/drvPPCATA/KiwiATA.h`,
 `KiwiATA.c`, `tests/kiwi_ata_test.c`; modify `tests/Makefile.host`.
 
-- [ ] Write the tests first:
+- [x] Write the tests first:
   - every listed Promise part maps to Ultra DMA 6 or 5; other devices and
     other vendors map to 0; a 40-wire cable caps either at 2;
   - `kiwi-root` is found anywhere in a `compatible` list, but not as a
@@ -30,8 +30,8 @@ under `-std=c89 -pedantic -Wall -Wextra -Werror`.
     invalid modes fail;
   - the boot-path rule skips a matching channel component, refuses the other
     channel's, and leaves a lone disk component alone.
-- [ ] Implement `KiwiATA.c`; run the tests; host syntax check for PowerPC.
-- [ ] Commit: `drvPPCATA: add Kiwi PLL, timing and probe helpers`.
+- [x] Implement `KiwiATA.c`; run the tests; host syntax check for PowerPC.
+- [x] Commit: `drvPPCATA: add Kiwi PLL, timing and probe helpers`.
 
 ### Task 2: Drive the Kiwi controller
 

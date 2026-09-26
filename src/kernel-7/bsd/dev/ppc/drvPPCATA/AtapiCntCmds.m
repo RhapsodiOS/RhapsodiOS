@@ -738,7 +738,11 @@
     unsigned long	cfgReg;
 
     [self setupDMA:(vm_offset_t) buffer client:(vm_task_t) client length:(int)atapiIoReq->maxTransfer fRead:(BOOL)atapiIoReq->read]; 
-    if ( _controllerType != kControllerTypeCmd646X )
+    if ( _controllerType == kControllerTypeKiwi )
+    {
+        [self kiwiStartDMA: atapiIoReq->read];
+    }
+    else if ( _controllerType != kControllerTypeCmd646X )
     {
         IODBDMAContinue( _ideDMARegs );        
     }
@@ -774,7 +778,14 @@
         status    = inb(_ideRegsAddrs.status);
     }
 
-    if ( _controllerType != kControllerTypeCmd646X )
+    if ( _controllerType == kControllerTypeKiwi )
+    {
+        /* A bus-master error fails the command. */
+        if ( [self kiwiStopDMA] == NO )
+            status |= ERROR;
+        atapiIoReq->bytesTransferred = atapiIoReq->maxTransfer;
+    }
+    else if ( _controllerType != kControllerTypeCmd646X )
     {
         atapiIoReq->bytesTransferred = [self stopDBDMA];
     }
@@ -810,7 +821,8 @@
         return NO;
     }
     
-    if ( (_controllerType == kControllerTypeCmd646X) && ((u_int)buffer & 1) )
+    if ( ((_controllerType == kControllerTypeCmd646X) || (_controllerType == kControllerTypeKiwi))
+         && ((u_int)buffer & 1) )
     {
         return NO;
     }

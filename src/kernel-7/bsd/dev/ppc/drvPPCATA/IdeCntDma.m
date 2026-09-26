@@ -173,7 +173,11 @@ static 	uint			bitBucketPhysAddr;
     [self enableInterrupts];
     outb(rp->command, (read ? IDE_READ_DMA : IDE_WRITE_DMA));
 
-    if ( _controllerType != kControllerTypeCmd646X )
+    if ( _controllerType == kControllerTypeKiwi )
+    {
+        [self kiwiStartDMA: read];
+    }
+    else if ( _controllerType != kControllerTypeCmd646X )
     {
         IODBDMAContinue( _ideDMARegs );        
     }
@@ -197,7 +201,15 @@ static 	uint			bitBucketPhysAddr;
   }
 #endif
 
-    if ( _controllerType != kControllerTypeCmd646X )
+    if ( _controllerType == kControllerTypeKiwi )
+    {
+        if ( [self kiwiStopDMA] == NO && rtn == IDER_SUCCESS )
+        {
+            IOLog("%s: Kiwi bus-master error\n", [self name]);
+            rtn = IDER_CMD_ERROR;
+        }
+    }
+    else if ( _controllerType != kControllerTypeCmd646X )
     {
         IODBDMAStop( _ideDMARegs );
     }
@@ -234,7 +246,8 @@ static 	uint			bitBucketPhysAddr;
     else 
     {
 	[self getIdeRegisters:ideRegs Print:NULL];
-	IODBDMAReset( _ideDMARegs );
+	if ( _controllerType != kControllerTypeKiwi )
+	    IODBDMAReset( _ideDMARegs );
 	return IDER_CMD_ERROR;
     }
 
@@ -249,7 +262,7 @@ static 	uint			bitBucketPhysAddr;
 {
     ide_return_t		rc;
 
-    if ( _controllerType == kControllerTypeCmd646X )
+    if ( (_controllerType == kControllerTypeCmd646X) || (_controllerType == kControllerTypeKiwi) )
     {
         rc = [self setupDMAList: startAddr client:client length:length fRead:fRead];
     }
@@ -401,7 +414,14 @@ static 	uint			bitBucketPhysAddr;
 
     ideDMAList[i-1].length |= EndianSwap32( 0x80000000 );
 
-    [[self deviceDescription] configWriteLong:0x74 value: _ideDMACommandsPhys];
+    if ( _controllerType == kControllerTypeKiwi )
+    {
+        [self kiwiLoadPRDTable: fRead];
+    }
+    else
+    {
+        [[self deviceDescription] configWriteLong:0x74 value: _ideDMACommandsPhys];
+    }
        
     return IDER_SUCCESS;
 }           
@@ -532,6 +552,41 @@ static 	uint			bitBucketPhysAddr;
     }
 }
      
+/*
+ * Kiwi's bus-master block: load the descriptor table and direction before the
+ * ATA command, start after it, and stop after its interrupt.
+ */
+- (void) kiwiLoadPRDTable:(BOOL)fRead
+{
+    u_int8_t	status;
+
+    outb( _kiwiBusMaster + KIWI_BM_COMMAND, 0 );
+    *(volatile u_int32_t *)(_kiwiBusMaster + KIWI_BM_PRD) = EndianSwap32( _ideDMACommandsPhys );
+    eieio();
+    status = inb( _kiwiBusMaster + KIWI_BM_STATUS );
+    outb( _kiwiBusMaster + KIWI_BM_STATUS, (status & KIWI_BM_STATUS_DRIVES)
+          | KIWI_BM_STATUS_INTERRUPT | KIWI_BM_STATUS_ERROR );
+    outb( _kiwiBusMaster + KIWI_BM_COMMAND, fRead ? KIWI_BM_COMMAND_READ : 0 );
+}
+
+- (void) kiwiStartDMA:(BOOL)fRead
+{
+    outb( _kiwiBusMaster + KIWI_BM_COMMAND,
+          (fRead ? KIWI_BM_COMMAND_READ : 0) | KIWI_BM_COMMAND_START );
+}
+
+/* Returns NO if the bus master reported an error. */
+- (BOOL) kiwiStopDMA
+{
+    u_int8_t	status;
+
+    outb( _kiwiBusMaster + KIWI_BM_COMMAND, 0 );
+    status = inb( _kiwiBusMaster + KIWI_BM_STATUS );
+    outb( _kiwiBusMaster + KIWI_BM_STATUS, (status & KIWI_BM_STATUS_DRIVES)
+          | KIWI_BM_STATUS_INTERRUPT | KIWI_BM_STATUS_ERROR );
+    return ( (status & KIWI_BM_STATUS_ERROR) == 0 );
+}
+
 /*
  * Calculate the actual transfer count by reading back the DMA descriptors.
  */

@@ -35,6 +35,9 @@ Boot from a temporary or dedicated disk, never a shared image.
 - On Intrepid machines, the `ata-6` (`kauai-ata`) node's `assigned-addresses`,
   `cable-type` and interrupts, the `hc` probe line, and the kernel's
   `Kauai timing` lines for each drive.
+- On the Xserve G4, each `kiwi-root` node and its children in full, its
+  `assigned-addresses` and `AAPL,interrupts`, the `hc` probe lines, the
+  `Kiwi PLL input` line (about 16900 kHz is expected), and the chosen modes.
 
 ## Results
 

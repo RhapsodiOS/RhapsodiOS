@@ -71,6 +71,10 @@
 - (void) fixOHareDMACorruption_1;
 - (void) fixOHareDMACorruption_2;
 
+- (void) kiwiLoadPRDTable:(BOOL)fRead;
+- (void) kiwiStartDMA:(BOOL)fRead;
+- (BOOL) kiwiStopDMA;
+
 @end
 
 #endif DRIVER_PRIVATE

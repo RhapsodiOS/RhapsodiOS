@@ -138,3 +138,7 @@ bays, for a follow-up:
   the measured PLL input (about 16.9 MHz), the selected modes, sustained
   read/write on both Kiwi functions, and a clean reboot. Record results in
   `docs/boot/ppc-macrisc-validation.md`.
+- Hardware: confirm the two Kiwi functions have different `AAPL,interrupts`
+  sources. DriverKit's shared dispatch suspends every driver on a line until
+  each one re-enables, so an idle function sharing a source with a busy one
+  would stall it.

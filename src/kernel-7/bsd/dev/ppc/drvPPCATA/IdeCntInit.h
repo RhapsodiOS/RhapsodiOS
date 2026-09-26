@@ -78,6 +78,9 @@
 -(void) calcIdeTimingsCmd646X:(int) unit;
 -(void) calcIdeTimingsDBDMA:(int) unit;
 -(void) calcIdeTimingsKauai:(int) unit;
+-(void) setKiwiTiming:(int) unit;
+- (void) kiwiInitChip: (IOTreeDevice *) deviceDescription busMaster: (u_int32_t) busMaster;
+- (void) kiwiSetClock: (u_int32_t) busMaster;
 
 - (ide_return_t)setATADriveCapabilities:(unsigned int)unit;	
 

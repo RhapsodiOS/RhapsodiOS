@@ -40,22 +40,27 @@ under `-std=c89 -pedantic -Wall -Wextra -Werror`.
 `AtapiCntCmds.m`, `drvATADisk/ATADiskInternal.m`,
 `driverkit/ppc/autoconf_ppc.m`, `src/kernel-7/conf/files.ppc`.
 
-- [ ] Add `kControllerTypeKiwi`; match `kiwi-root` in the EIDE entry.
-- [ ] Probe: select Kiwi from `compatible`; check one interrupt, the part,
+- [x] Add `kControllerTypeKiwi`; match `kiwi-root` in the EIDE entry.
+- [x] Probe: select Kiwi from `compatible`; check one interrupt, the part,
       and the BAR layout; set the Ultra DMA cap from the part and the cable.
-- [ ] `assignRegisterAddresses:` maps the primary channel and BAR4, and runs
+- [x] `assignRegisterAddresses:` maps the primary channel and BAR4, and runs
       the chip setup (Apple configuration bit, PCI command, PLL, secondary
       channel quiet).
-- [ ] Ultra DMA selection covers Kiwi; extend the mode table to mode 6.
-- [ ] Timing writes after SET FEATURES; nothing for Kiwi in
+- [x] Ultra DMA selection covers Kiwi; extend the mode table to mode 6.
+- [x] Timing writes after SET FEATURES; nothing for Kiwi in
       `calcIdeConfig:` or `setTransferRate:`.
-- [ ] PRD table address, DMA start and stop for ATA and ATAPI; skip the DBDMA
+- [x] PRD table address, DMA start and stop for ATA and ATAPI; skip the DBDMA
       reset on the error path; odd buffers use PIO.
-- [ ] Clear the bus-master interrupt latch and re-enable the interrupt in
+- [x] Clear the bus-master interrupt latch and re-enable the interrupt in
       `ideWaitForInterrupt:`.
-- [ ] Boot-path channel component in `matchDevicePath:`.
-- [ ] Add `KiwiATA.c` to `files.ppc`; host tests pass.
-- [ ] Commit: `drvPPCATA: drive the primary channel of Kiwi ATA controllers`.
+- [x] Boot-path channel component in `matchDevicePath:`.
+- [x] Add `KiwiATA.c` to `files.ppc`; host tests pass.
+- [x] Commit: `drvPPCATA: drive the primary channel of Kiwi ATA controllers`.
+
+The Objective-C changes were checked with a host clang syntax pass for
+PowerPC using stub headers for the MIG-generated and missing system headers;
+they parse, and add no warnings over the previous tree. The PPC kernel build
+in Task 3 is the first real compile.
 
 ### Task 3: Validate on hardware
 
@@ -64,5 +69,6 @@ under `-std=c89 -pedantic -Wall -Wextra -Werror`.
 - [ ] Record the probe lines, the measured PLL input, chosen modes, sustained
       disk I/O on both Kiwi functions and reboot in
       `docs/boot/ppc-macrisc-validation.md`.
+- [ ] Check that the two Kiwi functions have different interrupt sources.
 - [ ] Capture the Xserve device tree under each `kiwi-root` node to settle
       the secondary-channel decision in the design.

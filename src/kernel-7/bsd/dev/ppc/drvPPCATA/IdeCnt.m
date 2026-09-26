@@ -50,6 +50,7 @@
 
 #import "Cmd646xRegs.h"
 #import "KauaiATA.h"
+#import "KiwiATA.h"
 
 static  int	hcUnitNum = 0;
 
@@ -96,6 +97,9 @@ static  int	hcUnitNum = 0;
 	&&  (skip = strchr( tail + 1, '/')) )
 	    tail = skip;
     }
+    /* a Kiwi path names the channel before the disk */
+    if( tail && (_controllerType == kControllerTypeKiwi))
+        tail = (char *) KiwiSkipChannel( tail, _busNum );
     return( tail);
 }
 
@@ -112,6 +116,7 @@ void call_kdp(void);
     int			numInts, numRange;
     int			maxInts, maxRange;
     char *		compatible;
+    ByteCount		compatibleLength;
     char *		model;
     char *		cableType;
     ByteCount		cableLength;
@@ -128,7 +133,7 @@ void call_kdp(void);
 
     // Check "compatible" property for controller type detection
     if ([propTable getProperty:"compatible" flags:kReferenceProperty
-                         value:&compatible length:NULL] == IO_R_SUCCESS)
+                         value:&compatible length:&compatibleLength] == IO_R_SUCCESS)
     {
         if (strcmp(compatible, "keylargo-ata") == 0)
         {
@@ -155,6 +160,11 @@ void call_kdp(void);
         {
             // Kauai UltraATA/100 on UniNorth 2's internal PCI bus
             idec->_controllerType = kControllerTypeKauai;
+        }
+        else if (KiwiIsCompatible(compatible, compatibleLength))
+        {
+            // Kiwi, the Promise PDC2027x on the Xserve's PCI bus
+            idec->_controllerType = kControllerTypeKiwi;
         }
     }
 
@@ -187,6 +197,39 @@ void call_kdp(void);
              [deviceDescription memoryRangeList][0].size < KAUAI_REGISTER_SPAN )
         {
             IOLog("Disk(ata): Invalid Kauai register range.\n");
+            [idec free];
+            return NO;
+        }
+        maxRange  = numRange;
+        maxInts   = 1;
+    }
+    else if ( idec->_controllerType == kControllerTypeKiwi )
+    {
+        unsigned int *		assigned;
+        ByteCount		assignedLength;
+        unsigned int		entry[KIWI_BAR_COUNT];
+        UInt32			pciID;
+        int			i;
+
+        // Every assigned BAR must have become a range, so entry i is range i.
+        if ( [propTable getProperty:"assigned-addresses" flags:kReferenceProperty
+                              value:(void **)&assigned
+                             length:&assignedLength] != IO_R_SUCCESS
+             || assignedLength != numRange * KIWI_ADDRESS_CELLS * sizeof(unsigned int)
+             || !KiwiFindBARs( assigned, numRange, entry ) )
+        {
+            IOLog("Disk(ata): Invalid Kiwi register ranges.\n");
+            [idec free];
+            return NO;
+        }
+        for ( i = 0; i < KIWI_BAR_COUNT; i++ )
+            idec->_kiwiRange[i] = entry[i];
+
+        [(IOPCIDevice *)deviceDescription configReadLong:0x00 value:&pciID];
+        idec->_kiwiUltraLimit = KiwiUltraLimit( pciID );
+        if ( idec->_kiwiUltraLimit == 0 )
+        {
+            IOLog("Disk(ata): Unsupported Kiwi part %08x.\n", (unsigned int)pciID);
             [idec free];
             return NO;
         }
@@ -283,6 +326,16 @@ void call_kdp(void);
                    *(volatile u_int32_t *)0x80800024, *(volatile u_int32_t *)0x8080002c,
 		   *(volatile u_int32_t *)0x80800020, cfgByte );
 #endif
+        }
+        else if ( _controllerType == kControllerTypeKiwi )
+        {
+            u_int8_t		bmStatus;
+
+            /* Clear the latch; the DMA stop still needs the error bit. */
+            bmStatus = inb(_kiwiBusMaster + KIWI_BM_STATUS);
+            outb(_kiwiBusMaster + KIWI_BM_STATUS,
+                 (bmStatus & KIWI_BM_STATUS_DRIVES) | KIWI_BM_STATUS_INTERRUPT);
+            [self enableInterrupt:0];
         }
 
 	return IDER_SUCCESS;
@@ -655,6 +708,11 @@ void call_kdp(void);
         }
         return;
     }
+    else if ( _controllerType == kControllerTypeKiwi )
+    {
+        /* Kiwi keeps per-drive timing, written by setTransferMode:. */
+        return;
+    }
     else if ( _controllerType == kControllerTypeKauai )
     {
         *(volatile uint *)_ideRegsAddrs.channelConfig =
@@ -701,6 +759,12 @@ void call_kdp(void);
                 break;
         }
         [self ideSetDriveFeature:FEATURE_SET_TRANSFER_MODE value: value];
+    }
+
+    /* Kiwi's timing must follow SET FEATURES, which the chip snoops. */
+    if ( _controllerType == kControllerTypeKiwi )
+    {
+        [self setKiwiTiming: unit];
     }
 }
 

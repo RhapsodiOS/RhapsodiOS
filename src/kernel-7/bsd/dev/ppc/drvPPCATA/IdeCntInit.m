@@ -51,6 +51,7 @@
 #import "IdeCntDma.h"
 #import "AtapiCntCmds.h"
 #import "KauaiATA.h"
+#import "KiwiATA.h"
 
 
 #define IDE_SYSCLK_NS	30
@@ -95,7 +96,8 @@ static ideModes_t ultraModes[] =
     {   0,     55 },	/*      2 */
     {   0,     45 },	/*      3 */
     {   0,     30 },	/*      4 */
-    {   0,     20 }	/*      5 */
+    {   0,     20 },	/*      5 */
+    {   0,     15 }	/*      6 */
 };
 
 #define MAX_ULTRA_MODES  (sizeof(ultraModes) / sizeof(ideModes_t))
@@ -130,6 +132,37 @@ static int rnddiv( int x, int y )
       return 0;
     else
       return ( (x / y) + (( x % y ) ? 1 : 0) );
+}
+
+/*
+ * Read Kiwi's 30-bit clock counter, a byte at a time from both channels,
+ * until two reads agree.
+ */
+static unsigned long kiwiReadCounter( u_int32_t busMaster )
+{
+    u_int32_t		secondary = busMaster + KIWI_BM_CHANNEL_STRIDE;
+    unsigned long	previous, current;
+    unsigned int	primaryLow, primaryHigh, secondaryLow, secondaryHigh;
+    int			tries;
+
+    current = 0;
+    for ( tries = 0; tries < 4; tries++ )
+    {
+        previous = current;
+        outb( busMaster + KIWI_BM_INDEX, KIWI_INDEX_COUNTER_LOW );
+        primaryLow = inb( busMaster + KIWI_BM_DATA );
+        outb( busMaster + KIWI_BM_INDEX, KIWI_INDEX_COUNTER_HIGH );
+        primaryHigh = inb( busMaster + KIWI_BM_DATA );
+        outb( secondary + KIWI_BM_INDEX, KIWI_INDEX_COUNTER_LOW );
+        secondaryLow = inb( secondary + KIWI_BM_DATA );
+        outb( secondary + KIWI_BM_INDEX, KIWI_INDEX_COUNTER_HIGH );
+        secondaryHigh = inb( secondary + KIWI_BM_DATA );
+
+        current = KiwiCounter( primaryLow, primaryHigh, secondaryLow, secondaryHigh );
+        if ( tries > 0 && KiwiCounterSettled( previous, current ) )
+            break;
+    }
+    return current;
 }
 
 @implementation IdeController(Initialize)
@@ -649,7 +682,8 @@ static int rnddiv( int x, int y )
      *  Ultra DMA timing.....
      *
      */                                                                
-    if ( ((_controllerType == kControllerTypeCmd646X) || (_controllerType == kControllerTypeKauai))
+    if ( ((_controllerType == kControllerTypeCmd646X) || (_controllerType == kControllerTypeKauai)
+          || (_controllerType == kControllerTypeKiwi))
          && (infoPtr->fieldValidity & IDE_WORD_88_SUPPORTED) )
     {
         n = infoPtr->ultraDma & IDE_ULTRA_DMA_SUPPORTED;
@@ -786,6 +820,10 @@ getCycleTimes_exit: ;
     {
         [self calcIdeTimingsKauai:unit];
     }
+    else if ( _controllerType == kControllerTypeKiwi )
+    {
+        /* Kiwi's timing registers are written by setKiwiTiming:. */
+    }
     else
     {
         [self calcIdeTimingsDBDMA:unit];
@@ -826,6 +864,55 @@ getCycleTimes_exit: ;
     /* The timing registers are little-endian. */
     _cycleTimes[unit].ideConfig.kauaiConfig.pioConfig   = EndianSwap32( pioConfig );
     _cycleTimes[unit].ideConfig.kauaiConfig.ultraConfig = EndianSwap32( ultraConfig );
+}
+
+/*
+ * Kiwi times each drive itself from SET FEATURES for a 100 MHz clock; a part
+ * run at 133 MHz needs Promise's table written afterwards.  Single-word DMA,
+ * which the table lacks, is timed as multiword DMA 0, as on Kauai.
+ */
+-(void) setKiwiTiming:(int) unit
+{
+    KiwiRegisterWrite	writes[KIWI_MAX_TIMING_WRITES];
+    KiwiDMAType		dmaType;
+    int			dmaMode;
+    int			count, i;
+    u_int8_t		value;
+
+    dmaMode = _cycleTimes[unit].dmaMode;
+    switch ( _cycleTimes[unit].dmaType )
+    {
+        case IDE_DMA_SINGLEWORD:
+            dmaType = kKiwiDMAMultiword;
+            dmaMode = 0;
+            break;
+        case IDE_DMA_MULTIWORD:
+            dmaType = kKiwiDMAMultiword;
+            break;
+        case IDE_DMA_ULTRA:
+            dmaType = kKiwiDMAUltra;
+            break;
+        default:
+            dmaType = kKiwiDMANone;
+            break;
+    }
+
+    count = KiwiTimingWrites( _kiwiUltraLimit, unit, _cycleTimes[unit].pioMode,
+                              dmaType, dmaMode, writes );
+    if ( count < 0 )
+    {
+        IOLog("%s: no Kiwi timing for unit %d\n", [self name], unit);
+        return;
+    }
+
+    for ( i = 0; i < count; i++ )
+    {
+        outb( _kiwiBusMaster + KIWI_BM_INDEX, writes[i].index );
+        value = writes[i].set;
+        if ( writes[i].clear != 0xff )
+            value |= inb( _kiwiBusMaster + KIWI_BM_DATA ) & ~writes[i].clear;
+        outb( _kiwiBusMaster + KIWI_BM_DATA, value );
+    }
 }
 
 -(void) calcIdeTimingsCmd646X:(int) unit
@@ -1186,6 +1273,89 @@ calcConfigWordDone: ;
     endianSwap16Bit(&pID->MinPIOTransferCycleTimeWithIORDY);
 } 
 
+/*
+ * One-time Kiwi setup from the primary channel: PCI I/O and bus mastering,
+ * Apple's configuration bit, the PLL, and a quiet secondary channel so it
+ * cannot hold the shared interrupt line.
+ */
+- (void) kiwiInitChip: (IOTreeDevice *) deviceDescription busMaster: (u_int32_t) busMaster
+{
+    UInt32		value;
+    vm_address_t	command, control;
+    unsigned int	other;
+
+    [(IOPCIDevice *)deviceDescription configReadLong:0x04 value:&value];
+    [(IOPCIDevice *)deviceDescription configWriteLong:0x04 value:(value & 0xffff) | 0x05];
+
+    [(IOPCIDevice *)deviceDescription configReadLong:0x08 value:&value];
+    if ( (value & 0xff) >= KIWI_CONFIG_APPLE_REVISION )
+    {
+        [(IOPCIDevice *)deviceDescription configReadLong:KIWI_CONFIG_APPLE value:&value];
+        [(IOPCIDevice *)deviceDescription configWriteLong:KIWI_CONFIG_APPLE
+                                                    value:value | KIWI_CONFIG_APPLE_ENABLE];
+    }
+
+    [self kiwiSetClock: busMaster];
+
+    other = _busNum ^ 1;
+    if ( [self mapMemoryRange: _kiwiRange[2 * other] to:&command
+                    findSpace:YES cache:IO_CacheOff] == IO_R_SUCCESS )
+    {
+        if ( [self mapMemoryRange: _kiwiRange[2 * other + 1] to:&control
+                        findSpace:YES cache:IO_CacheOff] == IO_R_SUCCESS )
+        {
+            outb( control + KIWI_CONTROL_OFFSET, DISK_INTERRUPT_DISABLE );
+            inb( command + 0x7 );	/* status read drops a pending INTRQ */
+            [self unmapMemoryRange: _kiwiRange[2 * other + 1] from: control];
+        }
+        [self unmapMemoryRange: _kiwiRange[2 * other] from: command];
+    }
+}
+
+/*
+ * Measure the PLL input with the counter in test mode, then program the PLL
+ * for the part's 100 or 133 MHz clock.  An implausible input leaves the
+ * firmware's setting alone.
+ */
+- (void) kiwiSetClock: (u_int32_t) busMaster
+{
+    u_int32_t		secondary = busMaster + KIWI_BM_CHANNEL_STRIDE;
+    ns_time_t		startTime, endTime;
+    unsigned long	start, end, input;
+    unsigned int	f, r;
+    u_int8_t		mode;
+
+    outb( busMaster + KIWI_BM_INDEX, KIWI_INDEX_TEST_MODE );
+    mode = inb( busMaster + KIWI_BM_DATA );
+    outb( busMaster + KIWI_BM_DATA, mode | KIWI_TEST_MODE_ENABLE );
+
+    start = kiwiReadCounter( busMaster );
+    IOGetTimestamp( &startTime );
+    IOSleep( 10 );
+    end = kiwiReadCounter( busMaster );
+    IOGetTimestamp( &endTime );
+
+    outb( busMaster + KIWI_BM_INDEX, KIWI_INDEX_TEST_MODE );
+    mode = inb( busMaster + KIWI_BM_DATA );
+    outb( busMaster + KIWI_BM_DATA, mode & ~KIWI_TEST_MODE_ENABLE );
+
+    input = KiwiPLLInput( start, end, (unsigned long)((endTime - startTime) / 1000) );
+    if ( KiwiPLLControl( input, _kiwiUltraLimit, &f, &r ) == 0 )
+    {
+        IOLog("%s: Kiwi PLL input %lu kHz out of range, clock left alone\n",
+              [self name], input / 1000);
+        return;
+    }
+
+    outb( secondary + KIWI_BM_INDEX, KIWI_INDEX_PLL_F );
+    outb( secondary + KIWI_BM_DATA, f );
+    outb( secondary + KIWI_BM_INDEX, KIWI_INDEX_PLL_R );
+    outb( secondary + KIWI_BM_DATA, r );
+    IOSleep( KIWI_PLL_SETTLE_MS );
+
+    IOLog("%s: Kiwi PLL input %lu kHz, F %u R %u\n", [self name], input / 1000, f, r);
+}
+
 -(BOOL) assignRegisterAddresses: (IOTreeDevice *) deviceDescription
 {
   
@@ -1224,6 +1394,52 @@ calcConfigWordDone: ;
         eieio();
         [(IOPCIDevice *)deviceDescription configReadLong:0x04 value:&command];
         [(IOPCIDevice *)deviceDescription configWriteLong:0x04 value:(command & 0xffff) | 0x06];
+    }
+    else if ( _controllerType == kControllerTypeKiwi )
+    {
+        vm_address_t		command, control, busMaster;
+        u_int8_t		status, cable;
+
+        if ( [self mapMemoryRange: _kiwiRange[2 * _busNum] to:&command
+                        findSpace:YES cache:IO_CacheOff] != IO_R_SUCCESS
+             || [self mapMemoryRange: _kiwiRange[2 * _busNum + 1] to:&control
+                        findSpace:YES cache:IO_CacheOff] != IO_R_SUCCESS
+             || [self mapMemoryRange: _kiwiRange[KIWI_BUS_MASTER_BAR] to:&busMaster
+                        findSpace:YES cache:IO_CacheOff] != IO_R_SUCCESS )
+        {
+            return NO;
+        }
+
+        _ideRegsAddrs.data      = command;
+        _ideRegsAddrs.error 	= command + 0x1;
+        _ideRegsAddrs.features 	= command + 0x1;
+        _ideRegsAddrs.sectCnt 	= command + 0x2;
+        _ideRegsAddrs.sectNum 	= command + 0x3;
+        _ideRegsAddrs.cylLow 	= command + 0x4;
+        _ideRegsAddrs.cylHigh 	= command + 0x5;
+        _ideRegsAddrs.drHead 	= command + 0x6;
+        _ideRegsAddrs.status 	= command + 0x7;
+        _ideRegsAddrs.command 	= command + 0x7;
+
+        _ideRegsAddrs.deviceControl = control + KIWI_CONTROL_OFFSET;
+        _ideRegsAddrs.altStatus     = control + KIWI_CONTROL_OFFSET;
+
+        _kiwiBusMaster = busMaster + _busNum * KIWI_BM_CHANNEL_STRIDE;
+
+        if ( _busNum == 0 )
+        {
+            [self kiwiInitChip: deviceDescription busMaster: busMaster];
+        }
+
+        /* Leave the bus master idle with no stale status. */
+        outb( _kiwiBusMaster + KIWI_BM_COMMAND, 0 );
+        status = inb( _kiwiBusMaster + KIWI_BM_STATUS );
+        outb( _kiwiBusMaster + KIWI_BM_STATUS, (status & KIWI_BM_STATUS_DRIVES)
+              | KIWI_BM_STATUS_INTERRUPT | KIWI_BM_STATUS_ERROR );
+
+        outb( _kiwiBusMaster + KIWI_BM_INDEX, KIWI_INDEX_CABLE );
+        cable = inb( _kiwiBusMaster + KIWI_BM_DATA );
+        _maxUltraDMAMode = KiwiMaxUltraMode( _kiwiUltraLimit, cable );
     }
     else if ( _controllerType == kControllerTypeCmd646X )
     {

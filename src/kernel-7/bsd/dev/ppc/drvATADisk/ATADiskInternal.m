@@ -644,7 +644,8 @@ void *ideThreadPtr;
 
     IOGetTimestamp(&start_time);
 
-    if ( (_ideControllerType == kControllerTypeCmd646X) && ((u_int)currentBuf & 1) )
+    if ( ((_ideControllerType == kControllerTypeCmd646X) || (_ideControllerType == kControllerTypeKiwi))
+         && ((u_int)currentBuf & 1) )
     {   
 	ioCommand = readFlag ? _ideReadCommandPIO : _ideWriteCommandPIO;
     }

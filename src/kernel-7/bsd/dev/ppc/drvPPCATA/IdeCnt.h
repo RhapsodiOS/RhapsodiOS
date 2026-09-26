@@ -51,6 +51,7 @@
 #import <sys/types.h>
 #import "IdeCntPublic.h"
 #import "AtapiCntPublic.h"
+#import "KiwiATA.h"
 #import <driverkit/IOPower.h>
 
 
@@ -151,6 +152,15 @@ typedef struct
     
     unsigned char	_controllerType;
     unsigned char	_maxUltraDMAMode;		/* highest mode we set */
+
+    /*
+     * Kiwi (Promise): the range index of each BAR, this channel's bus-master
+     * block, and the part's Ultra DMA limit.
+     */
+    unsigned char	_kiwiRange[KIWI_BAR_COUNT];
+    unsigned char	_kiwiUltraLimit;
+    u_int32_t		_kiwiBusMaster;
+
    /*
     * Information from IDE_IDENTIFY_DRIVE commnad. 
     */

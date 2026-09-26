@@ -125,7 +125,7 @@ INT_SCSI_LOAD_PRI_PROP
 "\0"
 "\"Family\" = \"Disk\";"
 "\"Driver Name\" = \"EIDE\";"
-"\"Matching\" = \"ide ata ATA pci1095,646\";"
+"\"Matching\" = \"ide ata ATA pci1095,646 kiwi-root\";"
 "\"Class Names\" = \"IdeController AtapiController\";"
 "\"Block Major\" = \"3\";"
 "\"Character Major\" = \"15\";"

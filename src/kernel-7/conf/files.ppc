@@ -132,6 +132,7 @@ bsd/dev/ppc/drvPPCATA/AtapiCntCmds.m			optional mk_hasdrivers
 bsd/dev/ppc/drvPPCATA/IdeCntCmds.m			optional mk_hasdrivers
 bsd/dev/ppc/drvPPCATA/IdeCntInit.m			optional mk_hasdrivers
 bsd/dev/ppc/drvPPCATA/KauaiATA.c			optional mk_hasdrivers
+bsd/dev/ppc/drvPPCATA/KiwiATA.c			optional mk_hasdrivers
 
 bsd/dev/ppc/drvSymbios8xx/Sym8xxInit.m 			optional mk_hasdrivers
 bsd/dev/ppc/drvSymbios8xx/Sym8xxClient.m 		optional mk_hasdrivers

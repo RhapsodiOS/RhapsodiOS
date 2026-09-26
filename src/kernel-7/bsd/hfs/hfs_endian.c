@@ -582,12 +582,20 @@ hfs_swap_BTNode(BlockDescriptor *block, int isHFSPlus, UInt32 fileID, int toHost
 	return err;
 }
 
+/* A B-tree node size: a power of two from 512 to 32768 bytes (TN1150). */
+static int
+valid_node_size(UInt16 n)
+{
+	return n >= kMinNodeSize && n <= 32768 && (n & (n - 1)) == 0;
+}
+
 /*
  * A node just obtained through GetBTreeBlock: put it in host order unless it
  * already is.  BTOpenPath first reads the header node at kMinNodeSize, before
  * it knows the real node size, uses only the header record and then trashes
  * the buffer; that short read has no offset table to go by, so only its
- * header record is swapped.
+ * header record is swapped.  It is recognised by a node size that is valid
+ * only in disk order, so a second call finds it in host order and leaves it.
  */
 int
 hfs_btnode_to_host(BlockDescriptor *block, int isHFSPlus, UInt32 fileID)
@@ -596,9 +604,11 @@ hfs_btnode_to_host(BlockDescriptor *block, int isHFSPlus, UInt32 fileID)
 	HeaderRec *header = (HeaderRec *)block->buffer;
 	UInt16 last = *(UInt16 *)((UInt8 *)block->buffer + block->blockSize - sizeof(UInt16));
 
-	if (desc->type == kHeaderNode && block->blockSize >= sizeof(HeaderRec) &&
+	if (desc->type == kHeaderNode && block->blockSize == kMinNodeSize &&
 	    header->nodeSize != block->blockSize &&
-	    SWAP_BE16(header->nodeSize) != block->blockSize) {
+	    SWAP_BE16(header->nodeSize) != block->blockSize &&
+	    !valid_node_size(header->nodeSize) &&
+	    valid_node_size(SWAP_BE16(header->nodeSize))) {
 		swap_header(header);
 		return 0;
 	}

@@ -49,6 +49,7 @@
 #include "hfscommon/headers/system/MacOSTypes.h"
 #include "hfscommon/headers/FileMgrInternal.h"
 #include "hfscommon/headers/BTreesInternal.h"
+#include "hfs_endian.h"
 
 #define FORCESYNCBTREEWRITES 0
 
@@ -103,7 +104,25 @@ OSStatus GetBTreeBlock(FileReference vp, UInt32 blockNum, GetBlockOptions option
     if (retval == E_NONE) {
         block->blockHeader = bp;
         block->buffer = bp->b_data + IOBYTEOFFSETFORBLK(bp->b_blkno, VTOHFS(vp)->hfs_phys_block_size);
-        block->blockReadFromDisk = (bp->b_flags & B_CACHE) == 0;	/* not found in cache ==> came from disk */
+                block->blockReadFromDisk = (bp->b_flags & B_CACHE) == 0;	/* not found in cache ==> came from disk */
+#if BYTE_ORDER == LITTLE_ENDIAN
+        /*
+         * B-tree nodes are big-endian on disk and in host order while they
+         * sit in the buffer cache: swap this one unless that already happened.
+         * A node that is not a valid node is thrown away, never swapped.
+         */
+        if (!(options & kGetEmptyBlock) &&
+            hfs_btnode_to_host(block, VTOVCB(vp)->vcbSigWord == kHFSPlusSigWord,
+                               H_FILEID(VTOH(vp))) != 0) {
+            printf("hfs: B-tree %lu node %lu is not a valid node\n",
+                   (u_long)H_FILEID(VTOH(vp)), (u_long)blockNum);
+            bp->b_flags |= B_INVAL;
+            brelse(bp);
+            block->blockHeader = NULL;
+            block->buffer = NULL;
+            retval = EIO;
+        }
+#endif
     } else {
     	if (bp)
    			brelse(bp);

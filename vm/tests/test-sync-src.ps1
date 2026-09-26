@@ -125,6 +125,9 @@ Assert-Match $syncScriptText 'New-RhapSyncRemoteCommand' 'sync uses the stage-an
 Assert-Match $syncScriptText 'New-RhapArchiveSshCommand' 'production sync explicitly wraps transaction with sh'
 Assert-Match $syncScriptText 'Invoke-RhapCpioTransfer' 'production sync uses the tested producer-consumer transaction'
 Assert-Match $syncScriptText 'Invoke-RhapArchiveConsumerProcess' 'production sync uses diagnostic-preserving consumer process'
+Assert-Equal ($syncScriptText.IndexOf('Get-RhapSyncExecutablePaths') -ge 0 -and
+    $syncScriptText.IndexOf('Get-RhapSyncExecutablePaths') -lt $syncScriptText.IndexOf('Invoke-RhapCpioTransfer -LocalParent')) $true 'git executable list is read before the upload starts'
+Assert-Match $syncScriptText 'Invoke-RhapSshScript -Cfg \$Cfg -Ssh \$Ssh -ScriptBody \$fixExec' 'chmod pass travels over stdin, not the csh argument list'
 Assert-Match $targetCshHeaderText '#define\s+BUFSIZ\s+1024' 'target csh limits words to 1024-byte buffer'
 Assert-Match $targetCshManualText 'limits argument lists to 10240 characters' 'target csh documents 10240-character argument list'
 Assert-Match $targetCshLexText 'dolflg = c == ''"'' \? DOALL : DOEXCL' 'target csh single quotes retain history processing'
@@ -135,6 +138,8 @@ Assert-Equal ($null -ne (Get-Command Start-TestRemoteCommand -ErrorAction Silent
 Assert-Equal ($null -ne (Get-Command Invoke-RhapCpioTransfer -ErrorAction SilentlyContinue)) $true 'sync exposes a testable producer-consumer transaction'
 Assert-Equal ($null -ne (Get-Command ConvertTo-RhapSyncRelativePath -ErrorAction SilentlyContinue)) $true 'sync exposes relative path validation'
 Assert-Equal ($null -ne (Get-Command New-RhapFixExecBitsCommand -ErrorAction SilentlyContinue)) $true 'sync exposes quoted chmod command construction'
+Assert-Equal ($null -ne (Get-Command ConvertFrom-RhapGitLsFiles -ErrorAction SilentlyContinue)) $true 'sync exposes git listing parser'
+Assert-Equal ($null -ne (Get-Command Get-RhapSyncExecutablePaths -ErrorAction SilentlyContinue)) $true 'sync exposes git executable path discovery'
 Assert-Equal ($null -ne (Get-Command New-RhapArchiveSshCommand -ErrorAction SilentlyContinue)) $true 'sync exposes explicit sh command wrapping'
 Assert-Equal ($null -ne (Get-Command Invoke-RhapArchiveConsumerProcess -ErrorAction SilentlyContinue)) $true 'sync exposes testable archive consumer process'
 
@@ -149,10 +154,39 @@ Assert-Throws { New-RhapSyncRemoteCommand -RemoteRoot '/build' -RemoteParent '/b
 Assert-Throws { New-RhapSyncRemoteCommand -RemoteRoot '/build' -RemoteParent '/build/src' -LeafName "single'leaf" -Token $safeToken } 'remote command rejects single-quoted leaf'
 Assert-Throws { New-RhapSyncRemoteCommand -RemoteRoot '/build' -RemoteParent '/build/src' -LeafName "line`nleaf" -Token $safeToken } 'remote command rejects control characters in leaf'
 Assert-Throws { New-RhapSyncRemoteCommand -RemoteRoot '/build!' -RemoteParent '/build!/src' -LeafName 'leaf' -Token $safeToken } 'remote command rejects path history expansion'
-$quotedFixExec = New-RhapFixExecBitsCommand -RemoteTree '/build/src/project;touch_pwn'
+$quotedFixExec = New-RhapFixExecBitsCommand -RemoteSrc '/build/src' -RemoteTree '/build/src/project;touch_pwn' -ExecutablePaths @('project;touch_pwn/it''s', 'project;touch_pwn/-flag')
 Assert-Match $quotedFixExec ([regex]::Escape("find '/build/src/project;touch_pwn' -type f")) 'chmod pass shell-quotes metacharacter path'
 Assert-NotMatch $quotedFixExec 'find /build/src/project;touch_pwn' 'chmod pass never interpolates raw metacharacter path'
-Assert-Match $quotedFixExec '-name texi2html' 'chmod pass restores extensionless texi2html script'
+Assert-Match $quotedFixExec ([regex]::Escape("'./project;touch_pwn/it'\''s'")) 'chmod pass quotes embedded single quote'
+Assert-Match $quotedFixExec ([regex]::Escape("'./project;touch_pwn/-flag'")) 'chmod pass keeps a leading-hyphen name from reading as an option'
+Assert-Match $quotedFixExec ([regex]::Escape('-perm -100 -o -perm -010 -o -perm -001')) 'chmod pass finds files with any execute bit'
+Assert-Equal ($quotedFixExec.IndexOf('chmod a-x') -lt $quotedFixExec.IndexOf('chmod a+x')) $true 'chmod pass clears archive execute bits before applying git bits'
+Assert-Match $quotedFixExec ([regex]::Escape("cd '/build/src' || exit")) 'chmod pass resolves git paths against remote src'
+Assert-Match $quotedFixExec 'exit \$status\s*$' 'chmod pass reports failure status'
+Assert-Throws { New-RhapFixExecBitsCommand -RemoteSrc '/build/src' -RemoteTree '/build/src/p' -ExecutablePaths @("p/line`nbreak") } 'chmod pass rejects control characters in paths'
+$emptyFixExec = New-RhapFixExecBitsCommand -RemoteSrc '/build/src' -RemoteTree '/build/src/zlib-1' -ExecutablePaths @()
+Assert-NotMatch $emptyFixExec 'chmod a\+x' 'chmod pass with no git executables only clears bits'
+$manyPaths = @(1..400 | ForEach-Object { 'perl-1/perl/lib/' + ('d' * 60) + "/script$_.pl" })
+$batchedFixExec = New-RhapFixExecBitsCommand -RemoteSrc '/build/src' -RemoteTree '/build/src/perl-1' -ExecutablePaths $manyPaths
+$chmodLines = @($batchedFixExec -split "`n" | Where-Object { $_.StartsWith('chmod a+x ') })
+Assert-Equal ($chmodLines.Count -gt 1) $true 'chmod pass splits long lists'
+Assert-Equal (@($chmodLines | Where-Object { [Text.Encoding]::UTF8.GetByteCount($_) -gt 8192 }).Count) 0 'every chmod invocation stays far below target ARG_MAX'
+$batchedWords = @($chmodLines | ForEach-Object { [regex]::Matches($_, "'\./[^']*'") } | ForEach-Object { $_.Value })
+Assert-Equal $batchedWords.Count 400 'batched chmod pass names every path exactly once'
+
+$stagedListing = (@(
+    "100755 b60450e38aa251fea55d928e51c06b196941efbd 0`topenssl/config",
+    "100644 b60450e38aa251fea55d928e51c06b196941efbd 0`topenssl/Configure",
+    "100644 b60450e38aa251fea55d928e51c06b196941efbd 0`tutil/mk.sh",
+    "120000 b60450e38aa251fea55d928e51c06b196941efbd 0`tlink",
+    "160000 b60450e38aa251fea55d928e51c06b196941efbd 0`tsubmodule",
+    "100755 b60450e38aa251fea55d928e51c06b196941efbd 0`tDLL Files/it's run"
+) -join "`0") + "`0"
+$untrackedListing = (@('new/configure', 'new/gen.sh', 'new/gen.shx', 'new/notes.txt', 'new/Makefile', 'new/texi2html') -join "`0") + "`0"
+$parsed = @(ConvertFrom-RhapGitLsFiles -Staged $stagedListing -Untracked $untrackedListing)
+Assert-Equal ($parsed -join '|') "DLL Files/it's run|new/configure|new/gen.sh|new/texi2html|openssl/config" 'git parser keeps 100755 and name-list untracked files only'
+Assert-Equal (@(ConvertFrom-RhapGitLsFiles -Staged '' -Untracked '').Count) 0 'git parser accepts empty listings'
+Assert-Throws { ConvertFrom-RhapGitLsFiles -Staged "garbage`0" -Untracked '' } 'git parser rejects malformed staged entries'
 $physicalCommand = New-RhapSyncRemoteCommand -RemoteRoot '/build' -RemoteParent '/build/src/project' -LeafName 'leaf' -Token $safeToken
 $spacedCommand = New-RhapSyncRemoteCommand -RemoteRoot '/build' -RemoteParent '/build/src' -LeafName 'DLL Files.fgl' -Token $safeToken
 Assert-NotMatch $spacedCommand "'" 'transaction body is outer-single-quote-safe for spaced leaf'
@@ -510,6 +544,56 @@ exit 0
     Assert-Equal ([IO.File]::ReadAllText((Join-Path $rollbackTarget 'prior'))) 'prior-content' 'promotion failure restores prior target'
     Assert-Equal (@(Get-ChildItem $remoteBase -Filter '.rhap-sync-[0-9a-f]*').Count) 0 'rollback cleans stage path'
     Assert-Equal (@(Get-ChildItem $remoteBase -Filter '.rhap-old-*').Count) 0 'rollback cleans old path'
+
+    $gitExe = (Get-Command git.exe).Source
+    $gitFixture = Join-Path $transactionRoot 'git-fixture'
+    $gitSrc = Join-Path $gitFixture 'src'
+    $trackedFixtures = @('proj/config', 'proj/Configure', 'proj/sub/run it.sh', 'proj/gone', 'p[1]/x', 'p1/y', 'other/tool')
+    foreach ($relative in $trackedFixtures) {
+        $file = Join-Path $gitSrc $relative
+        New-Item -ItemType Directory -Path (Split-Path -Parent $file) -Force | Out-Null
+        [IO.File]::WriteAllText($file, 'fixture')
+    }
+    & $gitExe -C $gitFixture init -q
+    & $gitExe -C $gitFixture add -A
+    & $gitExe -C $gitFixture update-index --chmod=+x -- src/proj/config 'src/proj/sub/run it.sh' src/proj/gone 'src/p[1]/x' src/p1/y src/other/tool
+    Assert-Equal $LASTEXITCODE 0 'git fixture records executable modes'
+    Remove-Item -LiteralPath (Join-Path $gitSrc 'proj/gone')
+    [IO.File]::WriteAllText((Join-Path $gitSrc 'proj/new.sh'), 'untracked script')
+    [IO.File]::WriteAllText((Join-Path $gitSrc 'proj/notes.txt'), 'untracked text')
+    $projExec = @(Get-RhapSyncExecutablePaths -Git $gitExe -LocalSrc $gitSrc -Pathspec 'proj')
+    Assert-Equal ($projExec -join '|') 'proj/config|proj/new.sh|proj/sub/run it.sh' 'git executables follow the index, skip deleted files, and name-match untracked files'
+    Assert-Equal (@(Get-RhapSyncExecutablePaths -Git $gitExe -LocalSrc $gitSrc -Pathspec 'p[1]') -join '|') 'p[1]/x' 'sync path is a literal pathspec'
+    $allExec = @(Get-RhapSyncExecutablePaths -Git $gitExe -LocalSrc $gitSrc -Pathspec '.')
+    Assert-Equal ($allExec -join '|') 'other/tool|p1/y|p[1]/x|proj/config|proj/new.sh|proj/sub/run it.sh' 'whole-src sync lists every git executable'
+    Assert-Throws { Get-RhapSyncExecutablePaths -Git $gitExe -LocalSrc (Join-Path $transactionRoot 'no-such-src') -Pathspec '.' } 'git failure stops the sync'
+
+    $opensslExec = @(Get-RhapSyncExecutablePaths -Git $gitExe -LocalSrc (Join-Path $repoRoot 'src') -Pathspec 'OpenSSL')
+    Assert-Equal ($opensslExec -contains 'OpenSSL/openssl/config') $true 'OpenSSL sync marks openssl/config executable'
+    $opensslFixExec = New-RhapFixExecBitsCommand -RemoteSrc '/build/src' -RemoteTree '/build/src/OpenSSL' -ExecutablePaths $opensslExec
+    Assert-Match $opensslFixExec ([regex]::Escape("'./OpenSSL/openssl/config'")) 'OpenSSL chmod pass names openssl/config'
+
+    $execRemoteSrc = Join-Path $transactionRoot 'exec-remote\src'
+    foreach ($relative in @('proj/config', 'proj/sub/run it.sh', "proj/it's", 'proj/-flag', 'proj/tool.bat')) {
+        $file = Join-Path $execRemoteSrc $relative
+        New-Item -ItemType Directory -Path (Split-Path -Parent $file) -Force | Out-Null
+        [IO.File]::WriteAllText($file, 'fixture')
+    }
+    $execLog = ConvertTo-TestPosixPath (Join-Path $transactionRoot 'exec.log')
+    $fakeExecBin = Join-Path $transactionRoot 'fake-exec-bin'
+    New-Item -ItemType Directory -Path $fakeExecBin | Out-Null
+    [IO.File]::WriteAllText((Join-Path $fakeExecBin 'find'), "#!/bin/sh`necho `"find `$*`" >> '$execLog'`n", (New-Object Text.UTF8Encoding($false)))
+    [IO.File]::WriteAllText((Join-Path $fakeExecBin 'chmod'), "#!/bin/sh`nmode=`$1`nshift`nfor f do`n    test -f `"`$f`" || { echo `"missing `$f`" >> '$execLog'; exit 1; }`n    echo `"`$mode `$f`" >> '$execLog'`ndone`n", (New-Object Text.UTF8Encoding($false)))
+    $execPath = "PATH='$(ConvertTo-TestPosixPath $fakeExecBin)':`$PATH; export PATH`n"
+    $execTree = ConvertTo-TestPosixPath (Join-Path $execRemoteSrc 'proj')
+    $execScript = New-RhapFixExecBitsCommand -RemoteSrc (ConvertTo-TestPosixPath $execRemoteSrc) -RemoteTree $execTree `
+        -ExecutablePaths @('proj/config', 'proj/sub/run it.sh', "proj/it's", 'proj/-flag')
+    Assert-Equal (Invoke-TestRemoteCommand $bash ($execPath + $execScript) $emptyArchive $transactionRoot) 0 'chmod pass runs through sh'
+    $execLines = @([IO.File]::ReadAllLines((Join-Path $transactionRoot 'exec.log')))
+    Assert-Equal $execLines[0] "find $execTree -type f ( -perm -100 -o -perm -010 -o -perm -001 ) -exec chmod a-x {} ;" 'chmod pass clears execute bits across the synced tree'
+    Assert-Equal (($execLines | Select-Object -Skip 1) -join '|') "a+x ./proj/config|a+x ./proj/sub/run it.sh|a+x ./proj/it's|a+x ./proj/-flag" 'chmod pass sets exactly the git executables relative to remote src'
+    $missingScript = New-RhapFixExecBitsCommand -RemoteSrc (ConvertTo-TestPosixPath $execRemoteSrc) -RemoteTree $execTree -ExecutablePaths @('proj/absent')
+    Assert-Equal ((Invoke-TestRemoteCommand $bash ($execPath + $missingScript) $emptyArchive $transactionRoot) -ne 0) $true 'chmod failure is reported'
 } finally {
     Remove-Item -LiteralPath $transactionRoot -Recurse -Force -ErrorAction SilentlyContinue
 }

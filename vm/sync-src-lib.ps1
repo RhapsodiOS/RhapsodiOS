@@ -37,11 +37,113 @@ function Invoke-RhapCpioTransfer {
     }
 }
 
-function New-RhapFixExecBitsCommand {
-    param([Parameter(Mandatory = $true)][string]$RemoteTree)
+# Git has no mode for untracked files; these names get +x when untracked.
+$script:RhapUntrackedExecutableNames = @(
+    'configure', 'Configure', 'config.guess', 'config.sub', 'config.rpath', 'install-sh',
+    'mkinstalldirs', 'missing', 'ltmain.sh', 'compile', 'depcomp', 'autogen.sh', 'build_gcc',
+    'move-if-change', 'ylwrap', 'genmultilib', 'texi2html', '*.sh', '*.pl'
+)
 
-    $tree = ConvertTo-RhapShellLiteral $RemoteTree
-    return "find $tree -type f \( -name configure -o -name Configure -o -name config.guess -o -name config.sub -o -name config.rpath -o -name install-sh -o -name mkinstalldirs -o -name missing -o -name ltmain.sh -o -name compile -o -name depcomp -o -name autogen.sh -o -name build_gcc -o -name move-if-change -o -name ylwrap -o -name genmultilib -o -name texi2html -o -name '*.sh' -o -name '*.pl' \) -exec chmod a+x {} \;"
+function ConvertFrom-RhapGitLsFiles {
+    param(
+        [Parameter(Mandatory = $true)][AllowEmptyString()][string]$Staged,
+        [Parameter(Mandatory = $true)][AllowEmptyString()][string]$Untracked
+    )
+
+    # $Staged is `git ls-files -s -z` output, $Untracked is `git ls-files -o -z`.
+    $paths = New-Object 'System.Collections.Generic.SortedSet[string]' ([System.StringComparer]::Ordinal)
+    foreach ($entry in $Staged.Split([char]0)) {
+        if ($entry -eq '') { continue }
+        if ($entry -notmatch '(?s)^([0-7]{6}) [0-9a-f]+ [0-3]\t(.+)$') { throw "malformed git ls-files entry: $entry" }
+        if ($matches[1] -eq '100755') { [void]$paths.Add($matches[2]) }
+    }
+    foreach ($path in $Untracked.Split([char]0)) {
+        if ($path -eq '') { continue }
+        $name = $path.Substring($path.LastIndexOf('/') + 1)
+        if (@($script:RhapUntrackedExecutableNames | Where-Object { $name -clike $_ }).Count -gt 0) {
+            [void]$paths.Add($path)
+        }
+    }
+    return @($paths)
+}
+
+function Invoke-RhapGitListing {
+    param(
+        [Parameter(Mandatory = $true)][string]$Git,
+        [Parameter(Mandatory = $true)][string]$Directory,
+        [Parameter(Mandatory = $true)][string[]]$Arguments
+    )
+
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = $Git
+    $startInfo.Arguments = ((@('--literal-pathspecs', '-C', $Directory) + $Arguments | ForEach-Object { ConvertTo-RhapProcessArgument $_ }) -join ' ')
+    $startInfo.UseShellExecute = $false
+    $startInfo.CreateNoWindow = $true
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    $startInfo.StandardOutputEncoding = New-Object System.Text.UTF8Encoding($false)
+    $process = [System.Diagnostics.Process]::Start($startInfo)
+    try {
+        $stderrTask = $process.StandardError.ReadToEndAsync()
+        $stdout = $process.StandardOutput.ReadToEnd()
+        $process.WaitForExit()
+        if ($process.ExitCode -ne 0) {
+            throw "git $($Arguments -join ' ') failed (exit $($process.ExitCode)): $($stderrTask.Result.Trim())"
+        }
+        return $stdout
+    } finally {
+        $process.Dispose()
+    }
+}
+
+function Get-RhapSyncExecutablePaths {
+    param(
+        [Parameter(Mandatory = $true)][string]$Git,
+        [Parameter(Mandatory = $true)][string]$LocalSrc,
+        [Parameter(Mandatory = $true)][string]$Pathspec
+    )
+
+    # Paths come back relative to $LocalSrc, matching RemoteRoot/src on the guest.
+    $staged = Invoke-RhapGitListing -Git $Git -Directory $LocalSrc -Arguments @('ls-files', '-s', '-z', '--', $Pathspec)
+    $untracked = Invoke-RhapGitListing -Git $Git -Directory $LocalSrc -Arguments @('ls-files', '-o', '-z', '--', $Pathspec)
+    $paths = @(ConvertFrom-RhapGitLsFiles -Staged $staged -Untracked $untracked)
+    # Index entries deleted from the working tree never reach the archive.
+    return @($paths | Where-Object { Test-Path -LiteralPath (Join-Path $LocalSrc $_) -PathType Leaf })
+}
+
+function ConvertTo-RhapShQuoted {
+    param([Parameter(Mandatory = $true)][string]$Value)
+
+    if ($Value -match '[\x00-\x1f\x7f]') { throw 'shell value contains control characters' }
+    return "'" + $Value.Replace("'", "'\''") + "'"
+}
+
+function New-RhapFixExecBitsCommand {
+    param(
+        [Parameter(Mandatory = $true)][string]$RemoteSrc,
+        [Parameter(Mandatory = $true)][string]$RemoteTree,
+        [AllowEmptyCollection()][string[]]$ExecutablePaths = @()
+    )
+
+    # Windows tar gives every file a mode of its own (.bat/.cmd/.exe come out
+    # 0755), so clear all execute bits, then set exactly git's. The script
+    # goes to /bin/sh on stdin; batches stay far below the guest's 64K ARG_MAX.
+    $lines = New-Object 'System.Collections.Generic.List[string]'
+    $lines.Add('status=0')
+    $lines.Add("find $(ConvertTo-RhapShQuoted $RemoteTree) -type f \( -perm -100 -o -perm -010 -o -perm -001 \) -exec chmod a-x {} \; || status=1")
+    $lines.Add("cd $(ConvertTo-RhapShQuoted $RemoteSrc) || exit 1")
+    $batch = New-Object System.Text.StringBuilder
+    foreach ($path in $ExecutablePaths) {
+        $word = ConvertTo-RhapShQuoted "./$path"
+        if ($batch.Length -gt 0 -and [Text.Encoding]::UTF8.GetByteCount($batch.ToString() + $word) -gt 8000) {
+            $lines.Add("chmod a+x$batch || status=1")
+            [void]$batch.Clear()
+        }
+        [void]$batch.Append(" $word")
+    }
+    if ($batch.Length -gt 0) { $lines.Add("chmod a+x$batch || status=1") }
+    $lines.Add('exit $status')
+    return ($lines -join "`n") + "`n"
 }
 
 function ConvertTo-RhapShellDoubleQuotedAssignmentValue {

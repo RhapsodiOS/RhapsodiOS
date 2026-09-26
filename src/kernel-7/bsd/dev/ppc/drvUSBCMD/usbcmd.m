@@ -117,8 +117,30 @@ void WriteConfigVal(UInt32 ctl, UInt32 val)
 + (Boolean) probe : deviceDescription
 {
   id dev;
+  UInt32 classCode, pciID;
 //kdp_flag=2;
 kprintf("usb probe\n");
+
+    /*
+     * The stack drives one OHCI controller: the UIM's state, its descriptor
+     * pool and the USB bus are all global.  MacRISC machines have several
+     * USB controllers, and USB 2.0 ones add an EHCI function also named
+     * "usb".  Take the first OHCI controller and leave the rest alone.  The
+     * CMD670 can sit in UHCI-style test mode until the UIM turns it off.
+     */
+    [(IOPCIDevice *)deviceDescription configReadLong:0x08 value:&classCode];
+    [(IOPCIDevice *)deviceDescription configReadLong:0x00 value:&pciID];
+    if ( ((classCode >> 8) != 0x0c0310) && (pciID != 0x06701095) )
+    {
+        IOLog("USB: %s is not an OHCI controller; not used\n", [deviceDescription nodeName]);
+        return NO;
+    }
+    if ( usb_UIM_object != nil )
+    {
+        IOLog("USB: only one controller is supported; %s not used\n", [deviceDescription nodeName]);
+        return NO;
+    }
+
     usb_propTable = [deviceDescription propertyTable]; /* For use with RegistryPropertyGet */
 
 	if ( (dev = [ self alloc ]) == nil ) {

@@ -7,37 +7,38 @@
 # and Makefile.postamble (both optional), and Makefile will include them.
 #
 
-NAME = PExpert
+NAME = pci
 
 PROJECTVERSION = 2.7
-PROJECT_TYPE = Driver
-LANGUAGE = English
+PROJECT_TYPE = Component
 
-LOCAL_RESOURCES = Localizable.strings DriverHelp
+CLASSES = PCIKernBus.m PCIKernBusPrivate.m PCIResourceDriver.m
 
-GLOBAL_RESOURCES = Default.table
+CFILES = pci.c
 
-CLASSES =
-
-HFILES =
-
-TOOLS = PExpert.lksproj PnPDump.tproj
+HFILES = PCIKernBus.h PCIKernBusPrivate.h PCIResourceDriver.h pci.h
 
 OTHERSRCS = Makefile Makefile.preamble
 
+
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC
-MAKEFILE = driver.make
-NEXTSTEP_INSTALLDIR = $(NEXT_ROOT)/private/Drivers
+MAKEFILE = subproj.make
 LIBS =
 DEBUG_LIBS = $(LIBS)
 PROF_LIBS = $(LIBS)
-BUNDLE_EXTENSION = config
 
 
-FRAMEWORK_PATHS = -F$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks
-FRAMEWORKS =
+HEADER_PATHS = -I..
+NEXTSTEP_PB_CFLAGS = -Wno-format -DDRIVER_PRIVATE -static -DKERNEL -D_KERNEL
 
+
+NEXTSTEP_OBJCPLUS_COMPILER = /usr/bin/cc
+WINDOWS_OBJCPLUS_COMPILER = $(DEVDIR)/gcc
+PDO_UNIX_OBJCPLUS_COMPILER = $(NEXTDEV_BIN)/gcc
+NEXTSTEP_JAVA_COMPILER = /usr/bin/javac
+WINDOWS_JAVA_COMPILER = $(JDKBINDIR)/javac.exe
+PDO_UNIX_JAVA_COMPILER = $(NEXTDEV_BIN)/javac
 
 include $(MAKEFILEDIR)/platform.make
 

@@ -7,24 +7,30 @@
 # and Makefile.postamble (both optional), and Makefile will include them.
 #
 
-NAME = PExpert
+NAME = pcmcia
 
 PROJECTVERSION = 2.7
-PROJECT_TYPE = Aggregate
-LANGUAGE = English
+PROJECT_TYPE = Component
 
-TOOLS = i386 PnPDump.tproj
+CLASSES = PCMCIAKernBus.m PCMCIAKernBusPrivate.m PCMCIAKernBusParsing.m PCMCIAPool.m PCMCIAPoolElement.m PCMCIATuple.m PCMCIATupleTypes.m PCMCIAConfigEntry.m PCMCIAResourceDriver.m PCMCIAid.m
 
-OTHERSRCS = Makefile Makefile.preamble README
+CFILES = 
+
+HFILES = PCMCIAKernBus.h PCMCIAKernBusPrivate.h PCMCIAKernBusParsing.h PCMCIAPool.h PCMCIAPoolElement.h PCMCIATuple.h PCMCIATupleTypes.h PCMCIAConfigEntry.h PCMCIAResourceDriver.h PCMCIAid.h
+
+OTHERSRCS = Makefile Makefile.preamble
+
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC
-MAKEFILE = aggregate.make
+MAKEFILE = subproj.make
 LIBS =
 DEBUG_LIBS = $(LIBS)
 PROF_LIBS = $(LIBS)
 
 
+HEADER_PATHS = -I..
+NEXTSTEP_PB_CFLAGS = -Wno-format -DDRIVER_PRIVATE -static -DKERNEL -D_KERNEL
 
 
 NEXTSTEP_OBJCPLUS_COMPILER = /usr/bin/cc

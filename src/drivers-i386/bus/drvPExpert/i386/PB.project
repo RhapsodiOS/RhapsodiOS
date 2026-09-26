@@ -1,0 +1,29 @@
+{
+    DYNAMIC_CODE_GEN = NO;
+    FILESTABLE = {
+        CLASSES = (PExpert.m);
+        HEADERSEARCH = ("$(KERNEL_HEADERS)/machdep");
+        H_FILES = (PExpert.h);
+        OTHER_LINKED = ();
+        OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble, Load_Commands.sect);
+        PRECOMPILED_HEADERS = ();
+        PROJECT_HEADERS = ();
+        PUBLIC_HEADERS = ();
+        SUBPROJECTS = (eisa, pci, pcmcia);
+    };
+    LANGUAGE = English;
+    LOCALIZABLE_FILES = {};
+    MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles";
+    NEXTSTEP_BUILDTOOL = /bin/gnumake;
+    NEXTSTEP_COMPILEROPTIONS = "-Wno-format -DDRIVER_PRIVATE";
+    NEXTSTEP_INSTALLDIR = /usr/local/lib;
+    NEXTSTEP_JAVA_COMPILER = /usr/bin/javac;
+    NEXTSTEP_OBJCPLUS_COMPILER = /usr/bin/cc;
+    PDO_UNIX_JAVA_COMPILER = "$(NEXTDEV_BIN)/javac";
+    PDO_UNIX_OBJCPLUS_COMPILER = "$(NEXTDEV_BIN)/gcc";
+    PROJECTNAME = i386;
+    PROJECTTYPE = "Kernel Server";
+    PROJECTVERSION = 2.7;
+    WINDOWS_JAVA_COMPILER = "$(JDKBINDIR)/javac.exe";
+    WINDOWS_OBJCPLUS_COMPILER = "$(DEVDIR)/gcc";
+}

@@ -1,6 +1,0 @@
-"Title" = "PExpert";
-"Family" = "Bus";
-"Bus Class" = "PExpert";
-"Class Names" = "EISAResourceDriver PCIResourceDriver PCMCIAResourceDriver";
-"Boot Driver" = "Yes";
-"Version" = "5.01";

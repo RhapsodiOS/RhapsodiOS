@@ -25,7 +25,7 @@
 /*
  * PExpert.h
  * i386 platform expert: the one "Bus Class" behind which the EISA, PCI
- * and PCMCIA bus drivers live, and the table they read their settings from.
+ * and PCMCIA buses live, and the table they read their settings from.
  */
 
 #ifndef _PEXPERT_H_
@@ -34,11 +34,12 @@
 #import <objc/Object.h>
 
 /*
- * The "Server Name" the build stamps on this driver's config table.  The
- * buses read their own settings ("PnP", "PnP Read Port", "Verbose",
- * "PCMCIA Memory Base", ...) out of that table.
+ * The "Bus Class" of the config table the kernel links in for the
+ * platform expert (driverkit/i386/autoconf_i386.m).  The buses read their
+ * settings ("PnP", "PnP Read Port", "Verbose", "PCMCIA Memory Base", ...)
+ * out of that table.
  */
-#define PEXPERT_SERVER_NAME	"PExpert"
+#define PEXPERT_BUS_CLASS	"PExpert"
 
 /*
  * The kernel sends probeBus: to the class named by the "Bus Class" key of
@@ -57,6 +58,6 @@
  * the caller frees with IOFree(p, strlen(p) + 1); NULL when the table
  * or the key is absent.
  */
-char *PExpertServerAttribute(int instance, const char *key);
+char *PExpertAttribute(int instance, const char *key);
 
 #endif /* _PEXPERT_H_ */

@@ -265,7 +265,7 @@ static int isolateCardsWithReadPort(unsigned short readPort)
     maxPnPCard = 0;
 
     /* Try to get PnP read port from config table */
-    configPort = PExpertServerAttribute(0, "PnP Read Port");
+    configPort = PExpertAttribute(0, "PnP Read Port");
     if (configPort == NULL) {
         /*
          * No config attribute - auto-scan for read port.
@@ -392,7 +392,7 @@ static int isolateCardsWithReadPort(unsigned short readPort)
     };
 
     /* Check if PnP is disabled in config table */
-    pnpConfig = PExpertServerAttribute(0, "PnP");
+    pnpConfig = PExpertAttribute(0, "PnP");
     if (pnpConfig != NULL) {
         pnpEnabled = *pnpConfig;
 

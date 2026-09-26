@@ -250,7 +250,7 @@ static void findBIOSMemoryRange(void *bitmap)
         busInstance = [_busInstances objectAt:i];
 
         /* Look up "Verbose" configuration */
-        configValue = PExpertServerAttribute(i, "Verbose");
+        configValue = PExpertAttribute(i, "Verbose");
         [busInstance setVerbose:NO];
 
         if (configValue != NULL) {
@@ -271,7 +271,7 @@ static void findBIOSMemoryRange(void *bitmap)
         }
 
         /* Look up "PCMCIA Memory Base" configuration */
-        configValue = PExpertServerAttribute(i, "PCMCIA Memory Base");
+        configValue = PExpertAttribute(i, "PCMCIA Memory Base");
 
         if (configValue != NULL) {
             memoryBase = strtol(configValue, NULL, 0);
@@ -296,7 +296,7 @@ static void findBIOSMemoryRange(void *bitmap)
         }
 
         /* Look up "PCMCIA Memory Length" configuration */
-        configValue = PExpertServerAttribute(i, "PCMCIA Memory Length");
+        configValue = PExpertAttribute(i, "PCMCIA Memory Length");
 
         if (configValue != NULL) {
             memoryLength = strtol(configValue, NULL, 0);

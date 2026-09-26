@@ -1,6 +1,6 @@
 pkgname = drvpexpert
 pkgver = 1
-pkgdesc = i386 platform expert with the EISA, PCI and PCMCIA bus drivers
+pkgdesc = i386 Platform Expert
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
 license = APSL
-makedepends = build-base, drivertools, driverkit, machkit, kernload, libstreams
+makedepends = build-base, drivertools, kernload

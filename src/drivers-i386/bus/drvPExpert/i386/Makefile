@@ -7,24 +7,32 @@
 # and Makefile.postamble (both optional), and Makefile will include them.
 #
 
-NAME = PExpert
+NAME = i386
 
 PROJECTVERSION = 2.7
-PROJECT_TYPE = Aggregate
+PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
-TOOLS = i386 PnPDump.tproj
+CLASSES = PExpert.m
 
-OTHERSRCS = Makefile Makefile.preamble README
+HFILES = PExpert.h
+
+SUBPROJECTS = eisa pci pcmcia
+
+OTHERSRCS = Makefile.preamble Makefile Makefile.postamble\
+            Load_Commands.sect
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC
-MAKEFILE = aggregate.make
+MAKEFILE = kernelserver.make
+NEXTSTEP_INSTALLDIR = /usr/local/lib
 LIBS =
 DEBUG_LIBS = $(LIBS)
 PROF_LIBS = $(LIBS)
 
 
+HEADER_PATHS = -I$(KERNEL_HEADERS)/machdep
+NEXTSTEP_PB_CFLAGS = -Wno-format -DDRIVER_PRIVATE
 
 
 NEXTSTEP_OBJCPLUS_COMPILER = /usr/bin/cc

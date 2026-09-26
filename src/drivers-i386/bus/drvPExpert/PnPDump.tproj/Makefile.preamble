@@ -1,6 +1,6 @@
 INCLUDED_ARCHS = i386
 
-OTHER_CFLAGS = -Wno-format -I../PExpert.lksproj/eisa -DDRIVER_PRIVATE
+OTHER_CFLAGS = -Wno-format -I../i386/eisa -DDRIVER_PRIVATE
 
 OTHER_INCLUDES =
 
@@ -14,5 +14,5 @@ LOCAL_LDFLAGS = -L/build/bootstrap-root/lib -L/build/bootstrap-root/usr/lib -F/b
 
 # pb_makefiles strips directories from MFILES when forming
 # ARCH_SPECIFIC_OFILES, then compiles via `%.i386.o: %.m`. Point
-# make at the shared lksproj sources without copying them.
-vpath %.m ../PExpert.lksproj/eisa
+# make at the eisa subproject's sources without copying them.
+vpath %.m ../i386/eisa

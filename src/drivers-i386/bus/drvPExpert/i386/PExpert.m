@@ -26,11 +26,13 @@
  * PExpert.m
  * i386 platform expert.
  *
- * One loadable, PExpert_reloc, carries every i386 bus driver.  The kernel
- * probes one "Bus Class" per config table, so this class stands in front
- * of the buses: probeBus: brings each of them up in turn, and the
- * "Class Names" of the same table register the EISA0, PCI0 and PCMCIA0
- * resource devices that Configure.app and driverLoader talk to.
+ * Linked into the kernel as pexperti386.o, the way pexpertpowermac.o is on
+ * ppc, and carrying every i386 bus.  The kernel probes one "Bus Class" per
+ * config table, so this class stands in front of the buses: probeBus:
+ * brings each of them up in turn, and the "Class Names" of the same table
+ * (linked in beside the booter's, see autoconf_i386.m) register the EISA0,
+ * PCI0 and PCMCIA0 resource devices that Configure.app and driverLoader
+ * talk to.
  */
 
 #import "PExpert.h"
@@ -44,7 +46,7 @@
 #import <string.h>
 #import <stdlib.h>
 
-/* Kernel-private IOConfigTable constructor and the booter's table list */
+/* Kernel-private IOConfigTable constructor and the kernel's table list */
 @interface IOConfigTable (UndocumentedMethods)
 + newForConfigData:(const char *)configData;
 @end
@@ -118,9 +120,9 @@ static const Range motherboardPorts[] = {
  * resource allocation to it, so EISA comes up first and the motherboard's
  * resources are claimed before any other bus or driver can ask for them.
  *
- * To add a bus: give it a directory beside eisa/, pci/ and pcmcia/, list
- * its sources in the Makefile, add its resource driver to "Class Names"
- * in Default.table, and add a line here.
+ * To add a bus: give it a subproject beside eisa/, pci/ and pcmcia/, list
+ * it in the Makefile, add its resource driver to the "Class Names" of the
+ * PExpert table in autoconf_i386.m, and add a line here.
  */
 + (BOOL)probeBus:configTable
 {
@@ -141,15 +143,15 @@ static const Range motherboardPorts[] = {
 @end
 
 /*
- * Walk the booter's config tables for the one whose "Server Name" is ours
- * and whose "Instance" is `instance`, and copy out `key`.
+ * Walk the config tables for the one whose "Bus Class" is ours and whose
+ * "Instance" is `instance`, and copy out `key`.
  */
-char *PExpertServerAttribute(int instance, const char *key)
+char *PExpertAttribute(int instance, const char *key)
 {
     int index;
     const char *configData;
     id configTable;
-    const char *serverName, *instanceString, *value;
+    const char *busClass, *instanceString, *value;
     char *result = NULL;
     BOOL found = NO;
 
@@ -159,11 +161,11 @@ char *PExpertServerAttribute(int instance, const char *key)
 	    break;
 
 	configTable = [IOConfigTable newForConfigData:configData];
-	serverName = [configTable valueForStringKey:"Server Name"];
+	busClass = [configTable valueForStringKey:"Bus Class"];
 	instanceString = [configTable valueForStringKey:"Instance"];
 
-	if (serverName != NULL
-	    && strcmp(serverName, PEXPERT_SERVER_NAME) == 0
+	if (busClass != NULL
+	    && strcmp(busClass, PEXPERT_BUS_CLASS) == 0
 	    && (instanceString != NULL ? strtol(instanceString, NULL, 0) : 0) == instance) {
 	    found = YES;
 	    value = [configTable valueForStringKey:key];
@@ -175,8 +177,8 @@ char *PExpertServerAttribute(int instance, const char *key)
 	    }
 	}
 
-	if (serverName != NULL)
-	    [configTable freeString:serverName];
+	if (busClass != NULL)
+	    [configTable freeString:busClass];
 	if (instanceString != NULL)
 	    [configTable freeString:instanceString];
 	[configTable free];

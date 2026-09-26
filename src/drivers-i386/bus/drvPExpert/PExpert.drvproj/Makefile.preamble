@@ -1,8 +1,0 @@
-INCLUDED_ARCHS = i386
-OTHER_CFLAGS = -I./PExpert.lksproj
-
-# There is no Apple bundle to match: PExpert is new to this tree.  The stamp
-# still gives the .config the version bundle Apple's drivers carry, and it is
-# what makes the inner bundle link at all (see driver.make).  Keep the
-# revision in step with pkgver in apk/pkginfo.
-SGS_PROJECT_VERSION = drvPExpert-1

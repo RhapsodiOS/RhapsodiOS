@@ -82,6 +82,7 @@ makeoptions	CCONFIGFLAGS = "-g -O3 -fno-omit-frame-pointer"	# <gdb>
 makeoptions	CCONFIGFLAGS = "-O3"				# <!gdb>
 makeoptions	RELOC = "00100000"				# <intel>
 makeoptions	SYMADDR = "00780000"				# <intel>
+makeoptions	LIBPEXPERT = "pexperti386.o"			# <intel>
 
 options		GDB		# GNU kernel debugger		# <gdb>
 options		DEBUG		# general debugging code	# <debug>

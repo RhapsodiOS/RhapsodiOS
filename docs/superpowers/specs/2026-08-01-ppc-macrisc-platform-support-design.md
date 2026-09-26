@@ -205,7 +205,8 @@ platform exposes them. Chipset defaults are used only for documented
 KeyLargo-family cases. Cascade state includes the MPIC source, number of VIA
 children, and PMU/CUDA topology; it is not enabled from a fixed Sawtooth
 constant. The cascade source is the VIA node's own firmware interrupt (25 on
-`via-cuda` desktops, 47 on `via-pmu` machines). The OpenPIC pass-through
+KeyLargo-family machines); the PMU's second line is the `extint-gpio1`
+source (47). The OpenPIC pass-through
 disable bit that the legacy code calls `MPIC_CASCADE` is unrelated and stays
 set on every Mac.
 

@@ -41,9 +41,10 @@ carries an **Audit** note where it applies.
   the VIA cascade. It stays set on every Mac; the VIA cascade source comes
   from the VIA node (Tasks 7, 8).
 - The PMU driver contract is two interrupts: entry 0 is the VIA cascade child
-  identity, entry 1 is the raw VIA MPIC source (47 on via-pmu machines). The
-  earlier draft reduced this to one entry, which would disable the PMU. The
-  MacRISC path publishes both through `PEEditDTEntry` (Task 9).
+  identity, entry 1 is the PMU's own GPIO line (`extint-gpio1`, source 47 on
+  KeyLargo). The VIA itself is source 25 on every KeyLargo-family machine.
+  The earlier draft reduced this to one entry, which would disable the PMU.
+  The MacRISC path publishes both through `PEEditDTEntry` (Task 9).
 - `PEEditDTEntry`'s Sawtooth-only AGP bridge and USB filtering quirks are
   UniNorth/Core99 behaviour and move to `IsCore99()` (Task 9).
 - `powermac_io_info` also needs `via_base_phys`, `floppy_base_phys` and
@@ -56,6 +57,79 @@ carries an **Audit** note where it applies.
   record moves to `docs/boot/` beside `boot-ppc.md` (Tasks 11, 12).
 - The worktree instruction that referenced another session's checkout was
   removed.
+
+## Implementation status (2026-09-26)
+
+Tasks 1-10 are implemented, one commit each, with host tests passing under
+clang and under gcc with `-O2 -fsanitize=address,undefined`. Task 12 Step 1
+(the evidence record) is done. Tasks 11 and 12 Steps 2-6 need the PPC build
+host and the three Macs and have not run. The kernel-side C files
+(`identify_machine.c`, `macrisc_*.c`, `families/macrisc.c`, `mpic.c`) pass a
+host `clang --target=powerpc` syntax check; `serial_io.c`, `PowerSurgeMB.m`
+and both `pmu.m` copies could not be parsed here because generated kernel
+headers are missing, so the first PPC build is their first compile.
+
+The host suite needs `HOST_CC=clang`: `pe_keylargo_test` already passes a
+clang-only warning flag, so the default `cc` (gcc) fails before any MacRISC
+target runs.
+
+Decisions made while implementing, beyond the text of the tasks below:
+
+- **Identity.** The model is the first member of the root `compatible`, the
+  same string `get_machine_id()` routes on. The host bridge is the PCI host
+  bridge that parents `mac-io` (`pci@f2000000`, `compatible = "uni-north"`);
+  the `uni-n` node itself is not consulted. Mac-IO `compatible` may say
+  `Keylargo`, `Pangea`, `Intrepid` or `K2-Keylargo` (Linux's `probe_macios`
+  accepts each); the family always comes from `device-id`, which is required.
+- **Address translation.** Mac-IO descendants' `reg` values are offsets into
+  the Mac-IO window, as AppleMacIO and the legacy getters read them, and
+  `AAPL,address` wins when present. `PEReadRange32` therefore had no caller
+  and was dropped from Task 1.
+- **Kernel transport.** `DTCreateEntryIterator()` and `DTEnterEntry()` call
+  `kalloc`, which is not usable from `identify_machine1()`, so the adapter
+  walks the flattened tree directly. The seam gained `childCount`.
+- **Required resources.** Besides Mac-IO, MPIC and CPU, the descriptor
+  requires the VIA (`via-pmu` or `via-cuda` with an interrupt), the SCC
+  (`escc-legacy`) and the root `nvram` node with `compatible =
+  "nvram,flash"`. `mpic_interrupt_initialize()`, `serial_io.c` and the Core99
+  NVRAM code dereference those bases unconditionally; publishing 0 would
+  write near physical address 0. The NVRAM length is not checked beyond the
+  16 KB the Core99 code reads, as Linux does. A machine that lacks one of
+  these fails with a named diagnostic rather than booting.
+- **Descriptor fields.** One `nvram` resource replaces the address/data pair
+  (flash NVRAM has no data port). `hasPMUInterrupt`/`pmuInterruptSource`
+  replace the `pmuInterrupts[]` pair. `sourceRole[64]` and `sourceSense[64]`
+  carry per-source roles and firmware sense cells, read from every Mac-IO
+  descendant's two-cell `interrupts`. `hostSupported` feeds diagnostics.
+- **Clocks.** Firmware CPU, bus and timebase values are used as they are.
+  `derive_from_of()` was not reused because it replaces the firmware
+  timebase with bus/4.
+- **MPIC policy** declarations live in the host-safe `interrupts.h` beside
+  the existing `PEMPIC*` helpers; `PEMPICSetConfiguration` returns 0 for an
+  invalid configuration.
+- **Bisectability.** The `gestaltMacRISC` case in `identify_machine1()`
+  arrives with the family in Task 8. Between Tasks 5 and 8 a MacRISC machine
+  hits the existing `Bad gestalt number` panic rather than a null
+  `powermac_init_p`.
+- **Serial.** `serial_io.c` skips its OHare feature-control write on
+  MacRISC. On KeyLargo, offset `0x38` is FCR0, where those bits control USB
+  and IrDA.
+- **Diagnostics.** The accepted line is printed from `configure_macrisc()`,
+  after the console is up. A rejection prints from `get_machine_id()`, before
+  the console exists, exactly where the old `Unsupported machine` panic
+  fired; it may not be visible on screen.
+
+Known gaps for Task 12 to watch:
+
+- DriverKit's `resolveInterrupts` reads only `AAPL,interrupts` unless
+  `IsYosemite()`. The MacRISC path publishes it only for `via-pmu`. Every
+  other Mac-IO device, including ATA, gets interrupts only if firmware
+  provides `AAPL,interrupts`. If root-disk interrupts never arrive, this is
+  the first thing to check; the fix belongs in `PEEditDTEntry` (publish the
+  first cell of each two-cell `interrupts` pair) and is a separate change.
+- `via-cuda` machines get no `AAPL,interrupts` edit, for the same reason.
+- `SyncCore99NVRAM()` copies bytes into flash with plain stores. That is
+  unchanged Sawtooth behaviour, now also reached on MacRISC.
 
 ## File structure
 
@@ -90,7 +164,7 @@ changes, so every commit below stays bisectable.
 - Create: `src/drivers-ppc/bus/drvPExpert/tests/macrisc_discovery_test.c`
 - Modify: `src/drivers-ppc/bus/drvPExpert/tests/Makefile.host`
 
-- [ ] **Step 1: Establish the baseline**
+- [x] **Step 1: Establish the baseline**
 
 Run:
 
@@ -101,7 +175,7 @@ make -C src/drivers-ppc/bus/drvPExpert/tests -f Makefile.host test
 
 Expected: the existing four host programs build and exit 0. If the Windows host lacks the toolchain, run the same commands inside the configured build guest.
 
-- [ ] **Step 2: Write the failing decoder test**
+- [x] **Step 2: Write the failing decoder test**
 
 Create `macrisc_discovery_test.c` with this harness and cases:
 
@@ -167,11 +241,11 @@ macrisc_discovery_test: macrisc_discovery_test.c \
 	    -o $@ macrisc_discovery_test.c ../powermac/macrisc_discovery.c
 ```
 
-- [ ] **Step 3: Verify the red state**
+- [x] **Step 3: Verify the red state**
 
 Run the new make target. Expected: compilation fails because the new header and functions are absent.
 
-- [ ] **Step 4: Implement the decoder API**
+- [x] **Step 4: Implement the decoder API**
 
 Use this public header section:
 
@@ -186,9 +260,6 @@ int PEReadCell32(PEProperty property, unsigned int index,
     unsigned int *value);
 int PEReadAddress32(PEProperty property, unsigned int cells,
     unsigned int *value);
-int PEReadRange32(PEProperty property, unsigned int childCells,
-    unsigned int parentCells, unsigned int sizeCells, unsigned int entry,
-    unsigned int *child, unsigned int *parent, unsigned int *length);
 ```
 
 Implement byte-wise big-endian reads. Accept one or two address cells, require a zero high cell for 32-bit output, reject null outputs, truncated entries, zero range lengths, unsupported cell counts, and `parent + length` overflow. Compare string-list members only within `property.size` and require a terminating NUL.
@@ -200,11 +271,11 @@ Implement byte-wise big-endian reads. Accept one or two address cells, require a
 > than including that header (its unused statics would fail `-Werror`). Keep
 > the two layouts identical and do not add a third copy.
 
-- [ ] **Step 5: Add range/error cases and verify green**
+- [x] **Step 5: Add range/error cases and verify green**
 
 Add one-cell and two-cell range tests plus truncation, nonzero high-cell, zero-length, and overflow failures. Run the full host suite. Expected: all five programs pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
 git add src/drivers-ppc/bus/drvPExpert/powermac/macrisc_discovery.h src/drivers-ppc/bus/drvPExpert/powermac/macrisc_discovery.c src/drivers-ppc/bus/drvPExpert/tests/macrisc_discovery_test.c src/drivers-ppc/bus/drvPExpert/tests/Makefile.host
@@ -218,7 +289,7 @@ git commit -m "drvPExpert: add bounded MacRISC property decoding"
 - Modify: `src/drivers-ppc/bus/drvPExpert/powermac/macrisc_discovery.c`
 - Modify: `src/drivers-ppc/bus/drvPExpert/tests/macrisc_discovery_test.c`
 
-- [ ] **Step 1: Add a failing table-driven classifier test**
+- [x] **Step 1: Add a failing table-driven classifier test**
 
 > **Audit:** KeyLargo, Pangea and Intrepid all present `compatible =
 > "Keylargo"` (lower-case `l`) on the `mac-io` node; Apple's AppleKeyLargo
@@ -253,7 +324,7 @@ static const ModelCase cases[] = {
 `kPEMacRISCCompatibleUnlisted`, and that a root whose `compatible` lists
 `MacRISC4` is rejected even with an acceptable PVR.
 
-- [ ] **Step 2: Verify compilation fails, then define types**
+- [x] **Step 2: Verify compilation fails, then define types**
 
 Add:
 
@@ -283,7 +354,7 @@ PEMacRISCStatus PEMacRISCClassify(const PEMacRISCIdentityInput *input,
     char model[PE_MACRISC_MODEL_MAX]);
 ```
 
-- [ ] **Step 3: Implement capability-first classification**
+- [x] **Step 3: Implement capability-first classification**
 
 Match PVR families by their high 16 bits, from this table and nothing else:
 
@@ -308,7 +379,7 @@ does, but is not in the catalog, is `kPEMacRISCCompatibleUnlisted` once every
 capability check passes. Copy at most 63 model bytes after finding its
 terminator.
 
-- [ ] **Step 4: Run all tests and commit**
+- [x] **Step 4: Run all tests and commit**
 
 Expected: all host tests pass; exact Sawtooth model behavior is unchanged.
 
@@ -324,7 +395,7 @@ git commit -m "drvPExpert: classify later MacRISC platforms"
 - Modify: `src/drivers-ppc/bus/drvPExpert/powermac/macrisc_discovery.c`
 - Modify: `src/drivers-ppc/bus/drvPExpert/tests/macrisc_discovery_test.c`
 
-- [ ] **Step 1: Add failing descriptor tests**
+- [x] **Step 1: Add failing descriptor tests**
 
 Create KeyLargo, Pangea, and Intrepid fixtures (same `Keylargo` compatible,
 `device-id` 0x22/0x25/0x3e). Assert Mac-IO `0x80000000/0x80000`, MPIC
@@ -342,7 +413,7 @@ present, source count 0 or 65, zero clocks, range overflow, and cascade width 8.
 > so every published base must be an absolute physical address under the
 > identity mapping.
 
-- [ ] **Step 2: Define the descriptor contract**
+- [x] **Step 2: Define the descriptor contract**
 
 Add:
 
@@ -384,7 +455,7 @@ int PEMacRISCSetDBDMA(PEDBDMAChannels *channels, const char *role,
     unsigned int channel);
 ```
 
-- [ ] **Step 3: Implement validation and setters**
+- [x] **Step 3: Implement validation and setters**
 
 Initialize every DBDMA field to `-1`. Require valid Mac-IO/MPIC ranges, the
 MPIC range inside the Mac-IO range, a VIA range whenever `hasPMU` or
@@ -401,7 +472,7 @@ absolute base of the `nvram,flash` node (two 8 KB banks; the Core99 helpers
 in `PowerSurgeMB.m` add `0x2000` for the second bank) and `nvramData` is
 absent on flash-NVRAM machines.
 
-- [ ] **Step 4: Run all host tests and commit**
+- [x] **Step 4: Run all host tests and commit**
 
 ```powershell
 make -C src/drivers-ppc/bus/drvPExpert/tests -f Makefile.host test
@@ -419,7 +490,7 @@ git commit -m "drvPExpert: validate MacRISC platform descriptors"
 - Modify: `src/drivers-ppc/bus/drvPExpert/powermac/Makefile`
 - Modify: `src/drivers-ppc/bus/drvPExpert/powermac/PB.project`
 
-- [ ] **Step 1: Write a failing fake-tree capture test**
+- [x] **Step 1: Write a failing fake-tree capture test**
 
 Define this shared traversal seam in `macrisc_dt.h`:
 
@@ -446,11 +517,11 @@ OpenPIC, PMU, ATA0, serial, and DBDMA children. Assert capture recognizes
 `RackMac1,1`, counts two CPUs, resolves child registers, and leaves a saved
 copy of every property byte unchanged.
 
-- [ ] **Step 2: Run and verify the link failure**
+- [x] **Step 2: Run and verify the link failure**
 
 Add a `macrisc_platform_test` target using `-DMACRISC_HOST_TEST` and both new C files. Expected: the test fails to link `PEMacRISCCapture`.
 
-- [ ] **Step 3: Implement bounded depth-first capture**
+- [x] **Step 3: Implement bounded depth-first capture**
 
 Use a 16-entry traversal stack. Inspect only `name`, `device_type`, `model`,
 `compatible`, `device-id`, `reg`, `assigned-addresses`, `AAPL,address`,
@@ -467,7 +538,7 @@ Return `kPEMacRISCMalformed` on depth overflow, truncated data, conflicting
 duplicate resources, or validation failure. Never cast property bytes to an
 integer pointer.
 
-- [ ] **Step 4: Add the kernel DeviceTree transport**
+- [x] **Step 4: Add the kernel DeviceTree transport**
 
 Under `#ifndef MACRISC_HOST_TEST`, adapt `DTLookupEntry(0, "/", ...)`,
 `DTCreateEntryIterator`/`DTIterateEntries`/`DTEnterEntry`/`DTExitEntry`/
@@ -476,7 +547,7 @@ Under `#ifndef MACRISC_HOST_TEST`, adapt `DTLookupEntry(0, "/", ...)`,
 descriptor; `PEMacRISCGetPlatform` returns null until capture succeeds
 completely.
 
-- [ ] **Step 5: Update project metadata and verify**
+- [x] **Step 5: Update project metadata and verify**
 
 Append `macrisc_discovery.c macrisc_dt.c` to powermac `CFILES`, their headers
 to `HFILES`, and both to `PB.project` (`OTHER_LINKED` and `H_FILES`; the
@@ -484,7 +555,7 @@ existing `H_FILES` list is missing the comma after `proc_reg.h`, so add it
 when inserting). Run the full host suite. Expected: fake-tree, mutation,
 depth, range, and malformed-property cases pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
 git add src/drivers-ppc/bus/drvPExpert/powermac/macrisc_dt.h src/drivers-ppc/bus/drvPExpert/powermac/macrisc_dt.c src/drivers-ppc/bus/drvPExpert/powermac/Makefile src/drivers-ppc/bus/drvPExpert/powermac/PB.project src/drivers-ppc/bus/drvPExpert/tests/macrisc_platform_test.c src/drivers-ppc/bus/drvPExpert/tests/Makefile.host
@@ -501,7 +572,7 @@ git commit -m "drvPExpert: capture MacRISC device tree state"
 - Modify: `src/drivers-ppc/bus/drvPExpert/powermac/identify_machine.c`
 - Modify: `src/drivers-ppc/bus/drvPExpert/tests/macrisc_platform_test.c`
 
-- [ ] **Step 1: Add failing route-selection tests**
+- [x] **Step 1: Add failing route-selection tests**
 
 Add:
 
@@ -516,13 +587,13 @@ Assert the five preserved identifiers select Sawtooth, supported later
 fixtures select MacRISC, classic identifiers select legacy, and G5/malformed
 later fixtures select unsupported.
 
-- [ ] **Step 2: Implement exact route policy**
+- [x] **Step 2: Implement exact route policy**
 
 Use exact equality for the five preserved identifiers. Return MacRISC only
 for `kPEMacRISCSupported` or `kPEMacRISCCompatibleUnlisted`. Do not accept a
 `PowerMac`, `PowerBook`, or `RackMac` prefix by itself.
 
-- [ ] **Step 3: Add shared class and gestalt values**
+- [x] **Step 3: Add shared class and gestalt values**
 
 Add to both copies of `powermac.h`:
 
@@ -535,7 +606,7 @@ Add to both copies of `powermac.h`:
 Add `gestaltMacRISC = 1001` beside `gestaltSawtooth = 1000` in both gestalt
 headers.
 
-- [ ] **Step 4: Integrate discovery into machine identification**
+- [x] **Step 4: Integrate discovery into machine identification**
 
 `get_machine_id()` compares the first root `compatible` member against the
 legacy, Yosemite (`iMac`, `PowerMac1,1`, `PowerMac1,2`, `PowerMac2,1`,
@@ -556,11 +627,12 @@ Add the new `identify_machine1` switch case (class, `io_size` from the
 descriptor, `powermac_init_p`). Copy `cpu_model` from the validated
 descriptor's bounded model. Today `get_machine_id()` rewrites `/` and space
 to `-` inside the firmware `compatible` bytes and then `strcpy`s them into
-`cpu_model[65]`; remove the in-place rewrite and bound the copy. No listed
-identifier contains either character, so only the displayed name of an
-unknown machine changes.
+`cpu_model[65]`. Keep the substitution, because the legacy table compares
+`AAPL,3400-2400` and `AAPL,PowerMac-G3`, which firmware spells with `/` and a
+space, but apply it to a bounded local copy so the firmware bytes stay
+untouched.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 ```powershell
 make -C src/drivers-ppc/bus/drvPExpert/tests -f Makefile.host test
@@ -577,7 +649,7 @@ git commit -m "drvPExpert: select validated MacRISC machines"
 - Modify: `src/drivers-ppc/bus/drvPExpert/powermac/powermac_init.c`
 - Modify: `src/drivers-ppc/bus/drvPExpert/tests/macrisc_platform_test.c`
 
-- [ ] **Step 1: Add failing publication and timebase tests**
+- [x] **Step 1: Add failing publication and timebase tests**
 
 Define:
 
@@ -603,7 +675,7 @@ a 25,000,000 Hz timebase yields `numerator == 4000`, `denominator == 100`,
 and `period824 == 0x28000000` (40 ns); a 33,333,333 Hz timebase yields a
 nonzero fractional part; zero frequency and an 8.24 whole-part overflow fail.
 
-- [ ] **Step 2: Implement pure publication and clock conversion**
+- [x] **Step 2: Implement pure publication and clock conversion**
 
 Copy absolute bases only when `present` is true. Keep the legacy scale of the
 nanosecond pair (`identify_machine2` publishes `4000` over the bus frequency
@@ -636,7 +708,7 @@ for (bit = 0; bit < 24; bit++) {      /* long division, no long long */
 > (`-Wlong-long`). The kernel copy of this math in `identify_machine2` may
 > keep its `long long` under the 1999 compiler; the shared helper may not.
 
-- [ ] **Step 3: Use the descriptor in `identify_machine1/2`**
+- [x] **Step 3: Use the descriptor in `identify_machine1/2`**
 
 For MacRISC, set I/O size from the descriptor. In `identify_machine2`, fill
 every `powermac_io_info` field from `PEMacRISCPublish` (including
@@ -660,7 +732,7 @@ legacy calls unchanged for other classes.
 > `powermac_machine_info` expects. Either route `DetermineClockSpeeds()` to
 > it for MacRISC or reproduce its rounding; do not add a third convention.
 
-- [ ] **Step 4: Advertise only CPU 0**
+- [x] **Step 4: Advertise only CPU 0**
 
 > **Audit:** `configure_platform()` in `powermac_init.c` already sets only
 > `machine_slot[0]` and `machine_info.avail_cpus = 1`, and the PPC kernel is
@@ -674,7 +746,7 @@ keep `cpuCount` for the boot log and to build every MPIC destination as CPU 0
 (Task 8). Assert in the host test that a two-CPU descriptor still yields a
 destination mask of 1 for every source.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 ```powershell
 make -C src/drivers-ppc/bus/drvPExpert/tests -f Makefile.host test
@@ -689,7 +761,7 @@ git commit -m "drvPExpert: publish MacRISC firmware resources"
 - Modify: `src/drivers-ppc/bus/drvPExpert/powermac/chips/mpic.c`
 - Modify: `src/drivers-ppc/bus/drvPExpert/tests/mpic_direct_test.c`
 
-- [ ] **Step 1: Add failing policy tests**
+- [x] **Step 1: Add failing policy tests**
 
 Define:
 
@@ -718,13 +790,15 @@ policy functions must live in the pure section of `mpic.c` that
 > cascade and must stay set on every Mac. The earlier `enableCascadeMode`
 > name and its coupling to `hasCascade` in Task 8 were wrong.
 
-- [ ] **Step 2: Implement policy with legacy defaults**
+- [x] **Step 2: Implement policy with legacy defaults**
 
-Initialize private state to `{ 1, 1, 1, 64 }`. In initialization, touch
-`FM_MPIC_CTRL` only when requested, set `MPIC_CASCADE` when
-`disablePassThrough` is set, validate `sourceCount == nmpic_interrupts`, and
-check that every table destination equals the configured mask (the mask is
-baked into the mapping table by Task 8, not rewritten here).
+Initialize private state to `{ 1, 1, 1, 64 }` and remember whether a family
+has set a configuration. In initialization, touch `FM_MPIC_CTRL` only when
+requested and set `MPIC_CASCADE` when `disablePassThrough` is set. Only for a
+configured family, validate `sourceCount == nmpic_interrupts` and check that
+every table destination equals the configured mask (the mask is baked into
+the mapping table by Task 8, not rewritten here). PowerExpress drives the
+same code with 38 sources, so unconfigured families must skip the checks.
 
 > **Audit:** `FM_MPIC_CTRL` is `POWERMAC_IO(mem_cntlr_base_phys + 0x160)`.
 > On Sawtooth `get_mem_cntlr_base_addr()` finds neither `hammerhead` nor
@@ -735,7 +809,7 @@ baked into the mapping table by Task 8, not rewritten here).
 > confirm whether `configure_sawtooth` can pass `useFeatureControl = 0` as a
 > separate, hardware-verified commit.
 
-- [ ] **Step 3: Bound interrupt acknowledge**
+- [x] **Step 3: Bound interrupt acknowledge**
 
 `mpic_enable_irq()` and `mpic_disable_irq()` already reject sources outside
 `nmpic_interrupts`; only the acknowledge loop in `mpic_interrupt()` indexes
@@ -746,7 +820,7 @@ ordering for valid sources. Leave the spurious vector at `0x31` (source 49);
 with the bound in place a spurious acknowledge on a 64-source table falls
 through the `ACTIVE` test as it does today.
 
-- [ ] **Step 4: Verify and commit**
+- [x] **Step 4: Verify and commit**
 
 ```powershell
 make -C src/drivers-ppc/bus/drvPExpert/tests -f Makefile.host test
@@ -764,7 +838,7 @@ git commit -m "drvPExpert: make MPIC platform policy explicit"
 - Modify: `src/drivers-ppc/bus/drvPExpert/powermac/identify_machine.c`
 - Modify: `src/drivers-ppc/bus/drvPExpert/tests/macrisc_platform_test.c`
 
-- [ ] **Step 1: Write failing MPIC-table and DBDMA tests**
+- [x] **Step 1: Write failing MPIC-table and DBDMA tests**
 
 Expose these host-safe builders:
 
@@ -791,7 +865,7 @@ decoded the way Darwin's AppleMPIC and Linux `mpic_host_xlate` do:
 Sources without a device keep direct logical identities
 (`PMAC_DEV_MPIC_DIRECT_BASE + source`), and absent DBDMA roles remain `-1`.
 
-- [ ] **Step 2: Add the family entry points**
+- [x] **Step 2: Add the family entry points**
 
 Define:
 
@@ -814,7 +888,7 @@ primary interrupts, 7 cascade children (same layout as
 argument fields; initialize all logical device fields to `-1` before applying
 discovered roles.
 
-- [ ] **Step 3: Configure runtime state from the validated descriptor**
+- [x] **Step 3: Configure runtime state from the validated descriptor**
 
 Revalidate the global descriptor, build both tables, assign the existing
 MPIC globals and counts, and set:
@@ -828,8 +902,7 @@ PEMPICSetConfiguration(&configuration);
 ```
 
 The VIA cascade is the VIA's own MPIC source taken from the `via-cuda` or
-`via-pmu` node (25 on Cuda desktops, 47 on PMU machines), never the fixed
-`0x19`: set `mpic_via_cascade` from `platform->cascadeSource` and install
+`via-pmu` node (25 on KeyLargo-family machines), never the fixed `0x19`: set `mpic_via_cascade` from `platform->cascadeSource` and install
 `mpic_via1_interrupt` on that slot only when `hasCascade` is set.
 `powermac_info.viaIRQ` follows the formula the other families use,
 `(platform->mpicSources + 2) ^ 0x18` (Sawtooth's literal `0x5a` is
@@ -839,7 +912,7 @@ form). Initialize KeyLargo services only on compatible Mac-IO
 matches `device_type = mac-io` and compares the published base and size);
 its audio I2C failure must not block boot.
 
-- [ ] **Step 4: Map discovered early-I/O segments**
+- [x] **Step 4: Map discovered early-I/O segments**
 
 Map the 256 MB segment containing Mac-IO (the MPIC is inside it). Do not
 copy Sawtooth's unconditional segment pair: `initialize_bats()` has already
@@ -850,13 +923,13 @@ the last one available. `PEMapSegment` returns the address when the segment
 is already resident and 0 only on failure, so a zero result is fatal; there
 is no separate `PEResidentAddress` check to make.
 
-- [ ] **Step 5: Add build metadata and connect `macrisc_init`**
+- [x] **Step 5: Add build metadata and connect `macrisc_init`**
 
 Add both family files to `families/Makefile` and `families/PB.project`.
 Include `families/macrisc.h` in `identify_machine.c` and assign the initializer
 in the `gestaltMacRISC` case.
 
-- [ ] **Step 6: Verify and commit**
+- [x] **Step 6: Verify and commit**
 
 ```powershell
 make -C src/drivers-ppc/bus/drvPExpert/tests -f Makefile.host test
@@ -873,7 +946,7 @@ git commit -m "drvPExpert: add the MacRISC platform family"
 - Modify: `src/kernel-7/bsd/dev/ppc/drvPMU/pmu.m`
 - Modify: `src/drivers-ppc/bus/drvPExpert/tests/macrisc_platform_test.c`
 
-- [ ] **Step 1: Add failing PMU-list policy tests**
+- [x] **Step 1: Add failing PMU-list policy tests**
 
 Add:
 
@@ -882,20 +955,21 @@ unsigned int PEMacRISCPMUInterruptList(const PEMacRISCPlatform *platform,
     unsigned int output[2]);
 ```
 
-Assert a platform with a PMU or CUDA node returns exactly two entries in
-DriverKit's XOR form: `output[0]` is the VIA cascade child
-(`(mpicSources + 2) ^ 0x18`) and `output[1]` is the VIA's firmware MPIC
-source `^ 0x18`; a platform without either returns zero; a VIA source above
-63 returns zero; no source is invented.
+Assert a PMU platform returns exactly two raw `AAPL,interrupts` cells, which
+DriverKit XORs with `0x18`: `output[0]` is the VIA cascade child
+(`mpicSources + 2`, seen by `pmu.m` as `0x5a`) and `output[1]` is the
+`extint-gpio1` source; a CUDA platform, a PMU without the GPIO node, and a
+source above 63 return zero; no source is invented.
 
 > **Audit:** both `pmu.m` copies (byte-identical) build a two-entry list:
 > entry 0 is whatever `identify_via_irq()` wrote into the node (the cascade
-> child), entry 1 is the raw VIA line, hard-coded as `47 ^ 0x18` on Sawtooth.
+> child), entry 1 is the PMU GPIO line, hard-coded as `47 ^ 0x18` on
+> Sawtooth.
 > The earlier draft passed the firmware list through unchanged, which after
 > `identify_via_irq()` is one entry and would leave the PMU without its
 > interrupt.
 
-- [ ] **Step 2: Preserve MacRISC firmware lists in both PMU source copies**
+- [x] **Step 2: Preserve MacRISC firmware lists in both PMU source copies**
 
 In `PEEditDTEntry`, for the `via-pmu` and `via-cuda` node names on a MacRISC
 machine, publish `AAPL,interrupts` as the two-entry list from
@@ -923,7 +997,7 @@ if (IsMacRISC()) {
 Never use fixed source 47 for MacRISC. `identify_via_irq()` may still
 rewrite the node in place; the `PEEditDTEntry` list is what DriverKit reads.
 
-- [ ] **Step 3: Apply Core99 NVRAM rules**
+- [x] **Step 3: Apply Core99 NVRAM rules**
 
 Change only Core99 conditionals in `InitNVRAMPartitions` (`identify_machine.c`)
 and `cuda_restart`, `ReadNVRAM`, and `WriteNVRAM` (`PowerSurgeMB.m`) from
@@ -939,7 +1013,7 @@ the top of `PEEditDTEntry` to `IsCore99()`: the AGP bridge class-code rewrite
 UniNorth AGP bridge, and the USB filter keeps DriverKit to the first HID
 device. Both are UniNorth properties, not Sawtooth ones.
 
-- [ ] **Step 4: Verify and commit**
+- [x] **Step 4: Verify and commit**
 
 ```powershell
 make -C src/drivers-ppc/bus/drvPExpert/tests -f Makefile.host test
@@ -955,7 +1029,7 @@ git commit -m "drivers-ppc: preserve MacRISC Core99 services"
 - Modify: `src/drivers-ppc/bus/drvPExpert/tests/macrisc_discovery_test.c`
 - Modify: `src/drivers-ppc/bus/drvPExpert/tests/macrisc_platform_test.c`
 
-- [ ] **Step 1: Add the known-model matrix**
+- [x] **Step 1: Add the known-model matrix**
 
 Exercise these identifiers with matching G3/G4 and chipset fixtures:
 
@@ -966,7 +1040,7 @@ static const char *knownLaterModels[] = {
     "PowerMac4,2", "PowerMac4,4", "PowerMac4,5",
     "PowerMac6,1", "PowerMac6,3", "PowerMac6,4",
     "PowerMac10,1", "PowerMac10,2",
-    "PowerBook2,2", "PowerBook2,3",
+    "PowerBook2,2",
     "PowerBook3,1", "PowerBook3,2", "PowerBook3,3",
     "PowerBook3,4", "PowerBook3,5",
     "PowerBook4,1", "PowerBook4,2", "PowerBook4,3",
@@ -974,7 +1048,7 @@ static const char *knownLaterModels[] = {
     "PowerBook5,4", "PowerBook5,5", "PowerBook5,6",
     "PowerBook5,7", "PowerBook5,8", "PowerBook5,9",
     "PowerBook6,1", "PowerBook6,2", "PowerBook6,3",
-    "PowerBook6,4", "PowerBook6,5", "PowerBook6,6",
+    "PowerBook6,4", "PowerBook6,5",
     "PowerBook6,7", "PowerBook6,8",
     "RackMac1,1", "RackMac1,2"
 };
@@ -984,29 +1058,29 @@ Add negative 970/U3 fixtures for `PowerMac7,2`, `PowerMac7,3`, `PowerMac8,1`,
 `PowerMac8,2`, `PowerMac9,1`, `PowerMac11,2`, and `RackMac3,1`. Their rejection
 must come from CPU/host capability checks. Pair each positive row with the
 Mac-IO `device-id` its generation ships (0x22 KeyLargo, 0x25 Pangea, 0x3e
-Intrepid) and a PVR from the Task 2 table. Check `PowerBook2,3` and
-`PowerBook6,6` against Apple's identifier list before keeping them; a wrong
-catalog entry only mislabels the boot log, because unlisted compatible
-machines are accepted anyway.
+Intrepid) and a PVR from the Task 2 table. `PowerBook2,3` and
+`PowerBook6,6` were dropped because no source lists them; a missing catalog
+entry only relabels the boot log, because unlisted compatible machines are
+accepted anyway.
 
-- [ ] **Step 2: Demonstrate red then green catalog behavior**
+- [x] **Step 2: Demonstrate red then green catalog behavior**
 
 Run the discovery test before extending the catalog and record at least one
 expected failure. Expand only the table, not per-model branches, then rerun.
 
-- [ ] **Step 3: Add bounded diagnostics**
+- [x] **Step 3: Add bounded diagnostics**
 
 Print one line containing bounded model, status, CPU, Mac-IO (named from the
 `device-id` mapping), and validation error. Constant lookup functions use
 `unknown` fallbacks. Required forms:
 
 ```text
-MacRISC: PowerMac7,2 rejected: cpu=970 host=unsupported mac-io=unknown
+MacRISC: PowerMac7,2 rejected: cpu=970 host=unsupported mac-io=K2
 MacRISC: PowerBook3,4 rejected: malformed MPIC range
 MacRISC: PowerBook9,9 accepted as unlisted compatible: cpu=745x mac-io=Intrepid
 ```
 
-- [ ] **Step 4: Verify and commit**
+- [x] **Step 4: Verify and commit**
 
 ```powershell
 make -C src/drivers-ppc/bus/drvPExpert/tests -f Makefile.host clean
@@ -1077,7 +1151,7 @@ needed no correction, do not create an empty commit.
 > Cube control boot is where a Sawtooth `useFeatureControl = 0` build gets
 > its evidence.
 
-- [ ] **Step 1: Create the evidence record**
+- [x] **Step 1: Create the evidence record**
 
 ```markdown
 # PPC MacRISC Hardware Validation
@@ -1155,22 +1229,19 @@ cd $ROOT/src/kernel-7 && gnumake clean kernels
 
 Expected: zero host warnings/failures and both remote builds exit 0.
 
-- [ ] **Step 2: Audit unsafe assumptions**
+- [x] **Step 2: Audit unsafe assumptions**
 
 ```powershell
 rg -n "PowerMac7|PROCESSOR_VERSION_970|K2-Keylargo|\bu3\b" src/drivers-ppc/bus/drvPExpert
-rg -n "\"Pangea\"|\"Intrepid\"|\"KeyLargo\"" src/drivers-ppc/bus/drvPExpert/powermac
 rg -n "0x5a|0x19|tmpIRQ = 47|HEATHROW_SIZE|enableCascadeMode" src/drivers-ppc/bus/drvPExpert/powermac src/drivers-ppc/input/drvPPCPMU src/kernel-7/bsd/dev/ppc
 rg -n "\(unsigned int \*\).*bytes|bytes.*\(unsigned int \*\)" src/drivers-ppc/bus/drvPExpert/powermac/macrisc_discovery.c src/drivers-ppc/bus/drvPExpert/powermac/macrisc_dt.c
 ```
 
-Expected: G5 strings occur only in rejection/tests, no code compares a
-Mac-IO `compatible` against `Pangea`, `Intrepid` or `KeyLargo` (the
-classifier keys on `device-id` and the firmware spelling `Keylargo`), fixed
-Sawtooth constants occur only in the Sawtooth family and the legacy `pmu.m`
+Expected: G5 strings occur only in rejection/tests, the Mac-IO family comes
+from `device-id` alone, fixed Sawtooth constants occur only in the Sawtooth family and the legacy `pmu.m`
 branch, and property decoders contain no unaligned integer casts.
 
-- [ ] **Step 3: Audit diff and repository state**
+- [x] **Step 3: Audit diff and repository state**
 
 ```powershell
 git diff --check

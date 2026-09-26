@@ -72,6 +72,9 @@ in Task 3 is the first real compile.
       latch, acknowledges at interrupt level, and always re-enables; attach it
       after the registers are mapped.
 - [x] Drop a firmware-pending interrupt at mapping; a per-channel device path.
+- [x] From Apple's source: clear each channel's pins-off and interrupt mask
+      bits; parts below revision 3 (no PCI inline) run the primary channel
+      only.
 - [x] Host tests pass; Objective-C syntax check.
 - [x] Commit: `drvPPCATA: drive both Kiwi channels through per-channel descriptions`.
 
@@ -84,6 +87,6 @@ in Task 3 is the first real compile.
       `docs/boot/ppc-macrisc-validation.md`.
 - [ ] Check that the two Kiwi functions have different interrupt sources.
 - [ ] Identify drives on both channels (PIO interrupts) without timeouts or a
-      hang; if PIO interrupts are not latched, add Promise's per-channel
-      status bit to the handler.
+      hang, then run DMA on both channels at once.
+- [ ] Note each Kiwi's revision; below 3 only the primary channel runs.
 - [ ] Capture the Xserve device tree under each `kiwi-root` node.

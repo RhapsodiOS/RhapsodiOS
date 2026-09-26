@@ -3,9 +3,11 @@
  * ("kiwi-root") on the Xserve G4.  Pure C, no kernel headers, so the host
  * tests build it.
  *
- * Registers are SFF-8038i style in PCI I/O space.  Values follow Linux
- * drivers/ide/pdc202xx_new.c and drivers/ata/pata_pdc2027x.c, used as
- * hardware references.
+ * Registers are SFF-8038i style in PCI I/O space.  Values follow Apple's
+ * AppleKiwiRoot and AppleKiwiATA and Linux drivers/ide/pdc202xx_new.c and
+ * drivers/ata/pata_pdc2027x.c, used as hardware references.  The indexed
+ * registers mirror BAR5's per-channel block at 0x1100 and 0x1200, which
+ * Apple's driver uses.
  */
 
 #ifndef _BSD_DEV_PPC_KIWIATA_H_
@@ -43,15 +45,23 @@
 #define KIWI_TEST_MODE_ENABLE		0x40
 #define KIWI_INDEX_PLL_F		0x02	/* secondary channel */
 #define KIWI_INDEX_PLL_R		0x03	/* secondary channel */
+#define KIWI_INDEX_CONTROL		0x0a
+#define KIWI_CONTROL_PINS_OFF		0x08	/* channel's bus pins floated */
+#define KIWI_CONTROL_INTERRUPT_MASK(channel)	((channel) ? 0x04 : 0x02)
 #define KIWI_INDEX_CABLE		0x0b
 #define KIWI_CABLE_40_WIRE		0x04
 #define KIWI_INDEX_COUNTER_LOW		0x20
 #define KIWI_INDEX_COUNTER_HIGH		0x21
 
-/* Apple's setup: set bit 0 of configuration byte 0x40 on revision 3 on. */
-#define KIWI_CONFIG_APPLE		0x40
-#define KIWI_CONFIG_APPLE_ENABLE	0x01
-#define KIWI_CONFIG_APPLE_REVISION	3
+/*
+ * Revision 3 on has "PCI inline", turned on by bit 0 of configuration byte
+ * 0x40, and lets both channels run at once.  Apple serialises every register
+ * access across the channels of an older part.
+ */
+#define KIWI_CONFIG_INLINE		0x40
+#define KIWI_CONFIG_INLINE_ENABLE	0x01
+#define KIWI_INLINE_REVISION		3
+#define KIWI_PINS_SETTLE_MS		50
 
 #define KIWI_PLL_SETTLE_MS		30
 #define KIWI_ULTRA_40_WIRE		2

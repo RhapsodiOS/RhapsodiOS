@@ -32,9 +32,12 @@ Xserve runs the bays at ATA/100; the slot-load model runs them at ATA/133.
 
 ## Hardware facts
 
-From Linux `drivers/ide/pdc202xx_new.c` (v5.10) and
-`drivers/ata/pata_pdc2027x.c`, used as hardware references only. Promise's
-documentation is under NDA.
+From Apple's AppleKiwiRoot and AppleKiwiATA
+(github.com/apple-oss-distributions), Linux `drivers/ide/pdc202xx_new.c`
+(v5.10) and `drivers/ata/pata_pdc2027x.c`, and the FreeBSD, OpenBSD and
+NetBSD Promise drivers, used as hardware references only. Promise's
+documentation is under NDA. Indexed register N mirrors byte N of BAR5's
+per-channel block at 0x1100 or 0x1200, which Apple's driver uses instead.
 
 | Item | Value |
 |---|---|
@@ -45,20 +48,28 @@ documentation is under NDA.
 | Secondary task file, control | BAR2, BAR3 + 2 (I/O space) |
 | Bus-master block | BAR4, 8 bytes per channel (SFF-8038i) |
 | Indexed registers | index at bus-master + 1, data at bus-master + 3 |
-| Cable | index 0x0b, bit 0x04 set means a 40-wire cable |
+| Channel control | index 0x0a: bit 0x08 floats the bus pins; bit 0x02 (channel 0) or 0x04 (channel 1) masks the interrupt |
+| Channel status | index 0x0b: bit 0x04 means a 40-wire cable; bit 0x20 interrupt pending |
 | Timing, master | index 0x0c-0x13 (slave + 8) |
 | Test mode | primary index 0x01, bit 0x40 |
 | Clock counter | index 0x20, 0x21 on both channels; 30 bits, counts down |
 | PLL control | secondary index 0x02 (F), 0x03 (R) |
-| Apple setup | revision >= 3: set bit 0 of configuration byte 0x40 |
+| PCI inline | revision >= 3: set bit 0 of configuration byte 0x40; older parts need the channels serialised |
 
 PLL: the chip derives its ATA clock from a PLL fed at half the PCI clock
-(about 16.9 MHz on a 33 MHz bus). The driver measures the input over about
+(about 16.9 MHz on a 33 MHz bus). Apple writes fixed values (0x0d2b, F 43
+R 13, for 100 MHz; 0x0826, F 38 R 8, for 133 MHz), three and four times the
+input, so the Xserve's Kiwis see about 33 MHz, half a 66 MHz bus. The driver measures the input over about
 10 ms with the counter in test mode, then programs
 `output = input * (F + 2) / (R + 2)` for 133 MHz (Ultra DMA 133 parts) or
 100 MHz. R is 13, 8, 6 or 0 as the ratio passes 8.6, 12.9 and 16.1; inputs
 outside 5-70 MHz, ratios of 64 or more, and F outside 0-127 are refused and
 leave the firmware's setting alone. The PLL then needs 30 ms to settle.
+
+Device tree: the PCI node is named `AppleKiwi` with `compatible` of
+`kiwi-root` and an empty `interrupt-controller` property. Its children are
+`ata-6@0` and `ata-6@1`, `compatible` of `kiwi-ata`, one per channel. Mac OS X
+gives each child the parent's whole BAR list and picks registers by channel.
 
 Timing: at 100 MHz the chip sets its own timing registers when it sees SET
 FEATURES; the driver only clears the tHOLD bit (index 0x10 bit 7) for Ultra
@@ -83,13 +94,14 @@ DMA 0-6 into 0x10-0x12.
   `createDevice:ref:`: a copy of the node's properties plus
   `rhapsodios,kiwi-channel`. Each copy gets its own `KernDevice` and
   interrupt port, shares the node's registers and interrupt, and is probed as
-  its own controller with one interrupt required. The firmware's channel child
-  nodes are not used; their properties are unknown.
-- `assignRegisterAddresses:` maps the channel's two BARs and BAR4, reads the
-  channel's status to drop an interrupt firmware left pending, and clears the
-  bus master. Channel 0 runs the one-time chip setup first: the Apple
-  configuration bit, PCI I/O space and bus mastering, the PLL, and a quiet
-  channel 1 (nIEN set) until channel 1's controller attaches.
+  its own controller with one interrupt required. The `ata-6` child nodes are
+  not used: their interrupts presumably name the Kiwi node, an interrupt
+  controller DriverKit cannot resolve, and nothing publishes them.
+- `assignRegisterAddresses:` maps the channel's two BARs and BAR4, drives
+  the channel's pins and unmasks its interrupt, reads the channel's status to
+  drop an interrupt firmware left pending, and clears the bus master. Channel 0 runs the one-time chip setup first: PCI inline,
+  PCI I/O space and bus mastering, the PLL, and a quiet channel 1 (nIEN set)
+  until channel 1's controller attaches.
 - Each channel installs its own interrupt handler (`getHandler:...`), attached
   after the registers are mapped. It claims an interrupt only when its
   channel's bus-master interrupt latch is set: it reads the ATA status so the
@@ -125,13 +137,19 @@ calling its handler. With the default handler an idle channel would keep the
 line suspended until its next command, stalling the other channel; the
 per-channel handler above avoids that.
 
-The handler trusts the SFF-8038i bus-master interrupt bit, which is set on
-the rising edge of the channel's INTRQ. That is certain for DMA commands. If
-these parts do not latch it for PIO commands, a PIO interrupt would go
-unclaimed and re-fire; hardware validation must confirm PIO interrupts on
-both channels. The fallback would be a Promise per-channel interrupt status
-bit (believed to be index 0x0b, bit 0x20, as FreeBSD's driver reads it; not
-yet confirmed here), which the handler could add.
+The handler trusts the SFF-8038i bus-master interrupt bit. OpenBSD and
+NetBSD note that these parts set it "even for non-DMA ops", and NetBSD relies
+on it alone; OpenBSD also requires the pending bit (index 0x0b, bit 0x20),
+which it finds asserted spuriously on some parts. Apple tests only the pending
+bit, but in thread context under its own locking; reading it here would need
+the indexed port at interrupt level, which races the channel's own timing
+writes.
+
+As Apple's driver does, each channel clears its pins-off bit and its
+interrupt mask before its handler attaches, then waits 50 ms. A part older
+than revision 3 lacks PCI inline, and Apple serialises every register access
+across its channels. The interrupt handlers here read registers without such
+a lock, so those parts run their primary channel only.
 
 ## Out of scope
 

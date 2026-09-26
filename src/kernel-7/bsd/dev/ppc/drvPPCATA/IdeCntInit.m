@@ -1282,8 +1282,8 @@ calcConfigWordDone: ;
 
 /*
  * One-time Kiwi setup from the primary channel: PCI I/O and bus mastering,
- * Apple's configuration bit, the PLL, and a quiet secondary channel so it
- * cannot hold the shared interrupt line.
+ * PCI inline, the PLL, and a quiet secondary channel so it cannot hold the
+ * shared interrupt line before its own controller attaches.
  */
 - (void) kiwiInitChip: (IOTreeDevice *) deviceDescription busMaster: (u_int32_t) busMaster
 {
@@ -1295,11 +1295,11 @@ calcConfigWordDone: ;
     [(IOPCIDevice *)deviceDescription configWriteLong:0x04 value:(value & 0xffff) | 0x05];
 
     [(IOPCIDevice *)deviceDescription configReadLong:0x08 value:&value];
-    if ( (value & 0xff) >= KIWI_CONFIG_APPLE_REVISION )
+    if ( (value & 0xff) >= KIWI_INLINE_REVISION )
     {
-        [(IOPCIDevice *)deviceDescription configReadLong:KIWI_CONFIG_APPLE value:&value];
-        [(IOPCIDevice *)deviceDescription configWriteLong:KIWI_CONFIG_APPLE
-                                                    value:value | KIWI_CONFIG_APPLE_ENABLE];
+        [(IOPCIDevice *)deviceDescription configReadLong:KIWI_CONFIG_INLINE value:&value];
+        [(IOPCIDevice *)deviceDescription configWriteLong:KIWI_CONFIG_INLINE
+                                                    value:value | KIWI_CONFIG_INLINE_ENABLE];
     }
 
     [self kiwiSetClock: busMaster];
@@ -1405,7 +1405,7 @@ calcConfigWordDone: ;
     else if ( _controllerType == kControllerTypeKiwi )
     {
         vm_address_t		command, control, busMaster;
-        u_int8_t		status, cable;
+        u_int8_t		pins, status, cable;
 
         if ( [self mapMemoryRange: _kiwiRange[2 * _busNum] to:&command
                         findSpace:YES cache:IO_CacheOff] != IO_R_SUCCESS
@@ -1437,6 +1437,13 @@ calcConfigWordDone: ;
         {
             [self kiwiInitChip: deviceDescription busMaster: busMaster];
         }
+
+        /* As Apple does: drive the channel's pins and pass its interrupt on. */
+        outb( _kiwiBusMaster + KIWI_BM_INDEX, KIWI_INDEX_CONTROL );
+        pins = inb( _kiwiBusMaster + KIWI_BM_DATA );
+        outb( _kiwiBusMaster + KIWI_BM_DATA, pins
+              & ~(KIWI_CONTROL_PINS_OFF | KIWI_CONTROL_INTERRUPT_MASK( _busNum )) );
+        IOSleep( KIWI_PINS_SETTLE_MS );
 
         /* Drop any interrupt firmware left pending; leave the bus master idle. */
         inb( _ideRegsAddrs.status );

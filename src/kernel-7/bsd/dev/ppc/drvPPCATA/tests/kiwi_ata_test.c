@@ -35,6 +35,10 @@ test_parts(void)
     CHECK(KiwiUltraLimit((KIWI_VENDOR_PROMISE << 16) | 0x4d69) == 0);
     CHECK(KiwiUltraLimit(0xffffffffU) == 0);
 
+    /* Each channel's interrupt mask is its own bit, as Apple's driver has it. */
+    CHECK(KIWI_CONTROL_INTERRUPT_MASK(0) == 0x02);
+    CHECK(KIWI_CONTROL_INTERRUPT_MASK(1) == 0x04);
+
     CHECK(KiwiMaxUltraMode(6, 0x00) == 6);
     CHECK(KiwiMaxUltraMode(5, 0xfb) == 5);
     CHECK(KiwiMaxUltraMode(6, KIWI_CABLE_40_WIRE) == 2);

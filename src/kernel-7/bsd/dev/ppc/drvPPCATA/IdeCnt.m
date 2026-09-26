@@ -143,7 +143,9 @@ kiwiInterruptHandler( void *identity, void *state, unsigned int arg )
  * Kiwi has two channels behind one PCI function, and DriverKit gives a device
  * description one interrupt port.  Publish a copy of the node's description
  * for each channel, as Mac OS X's AppleKiwiRoot publishes a nub per channel.
- * The copies share the node's registers and interrupt.
+ * The copies share the node's registers and interrupt.  A part without PCI
+ * inline needs every register access serialised across its channels, which
+ * the interrupt handlers cannot do, so it runs its primary channel only.
  */
 + (BOOL)kiwiPublishChannels:(IOTreeDevice *)deviceDescription
 {
@@ -153,10 +155,20 @@ kiwiInterruptHandler( void *identity, void *state, unsigned int arg )
     void *		value;
     ByteCount		length;
     UInt32		index;
-    unsigned int	channel;
+    UInt32		revision;
+    unsigned int	channel, channels;
     BOOL		published = NO;
 
-    for ( channel = 0; channel < KIWI_CHANNELS; channel++ )
+    channels = KIWI_CHANNELS;
+    [(IOPCIDevice *)deviceDescription configReadLong:0x08 value:&revision];
+    if ( (revision & 0xff) < KIWI_INLINE_REVISION )
+    {
+        IOLog("Disk(ata): Kiwi revision %u lacks PCI inline; primary channel only.\n",
+              (unsigned int)(revision & 0xff));
+        channels = 1;
+    }
+
+    for ( channel = 0; channel < channels; channel++ )
     {
         table = [[IOPropertyTable alloc] init];
         for ( index = 0; [source getPropertyWithIndex:index name:name] == noErr; index++ )

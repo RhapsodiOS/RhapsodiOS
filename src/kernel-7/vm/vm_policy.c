@@ -358,7 +358,7 @@ vm_deactivate(vm_map_t map, vm_address_t addr, vm_size_t size, int temperature)
 	if (addr == 0)
 		addr = map->min_offset;
 
-	deactivate_range(map, addr, size, temperature);
+	deactivate_range(map, addr, addr + size, temperature);
 	return KERN_SUCCESS;
 }
 

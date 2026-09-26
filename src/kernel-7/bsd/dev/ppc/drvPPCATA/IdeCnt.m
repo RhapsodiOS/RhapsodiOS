@@ -49,6 +49,7 @@
 #import "IdeCntInline.h"
 
 #import "Cmd646xRegs.h"
+#import "KauaiATA.h"
 
 static  int	hcUnitNum = 0;
 
@@ -112,6 +113,8 @@ void call_kdp(void);
     int			maxInts, maxRange;
     char *		compatible;
     char *		model;
+    char *		cableType;
+    ByteCount		cableLength;
     IOPropertyTable *	propTable;
 
 //    call_kdp();
@@ -148,6 +151,25 @@ void call_kdp(void);
             // CMD646 PCI ATA controller
             idec->_controllerType = kControllerTypeCmd646X;
         }
+        else if (strcmp(compatible, "kauai-ata") == 0)
+        {
+            // Kauai UltraATA/100 on UniNorth 2's internal PCI bus
+            idec->_controllerType = kControllerTypeKauai;
+        }
+    }
+
+    // Highest Ultra DMA mode; the CMD646 has always stopped at mode 2.
+    idec->_maxUltraDMAMode = 2;
+    if ( idec->_controllerType == kControllerTypeKauai )
+    {
+        if ([propTable getProperty:"cable-type" flags:kReferenceProperty
+                             value:(void **)&cableType
+                            length:&cableLength] != IO_R_SUCCESS)
+        {
+            cableType   = NULL;
+            cableLength = 0;
+        }
+        idec->_maxUltraDMAMode = KauaiMaxUltraMode(cableType, cableLength);
     }
 
     numRange = [deviceDescription numMemoryRanges];
@@ -156,6 +178,19 @@ void call_kdp(void);
     if ( idec->_controllerType == kControllerTypeCmd646X )
     {
         maxRange  = 5;
+        maxInts   = 1;
+    }
+    else if ( idec->_controllerType == kControllerTypeKauai )
+    {
+        // One BAR holds every register; it must reach the timing registers.
+        if ( numRange < 1 ||
+             [deviceDescription memoryRangeList][0].size < KAUAI_REGISTER_SPAN )
+        {
+            IOLog("Disk(ata): Invalid Kauai register range.\n");
+            [idec free];
+            return NO;
+        }
+        maxRange  = numRange;
         maxInts   = 1;
     }
     else
@@ -619,6 +654,16 @@ void call_kdp(void);
 
         }
         return;
+    }
+    else if ( _controllerType == kControllerTypeKauai )
+    {
+        *(volatile uint *)_ideRegsAddrs.channelConfig =
+            _cycleTimes[unit].ideConfig.kauaiConfig.pioConfig;
+        *(volatile uint *)(_ideRegsAddrs.channelConfig
+                           + KAUAI_ULTRA_CONFIG_OFFSET - KAUAI_PIO_CONFIG_OFFSET) =
+            _cycleTimes[unit].ideConfig.kauaiConfig.ultraConfig;
+        eieio();
+        _cycleTimes[unit ^ 1].fChanged = YES;
     }
     else
     {

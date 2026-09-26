@@ -13,30 +13,35 @@ under `-std=c89 -pedantic -Wall -Wextra -Werror`.
 **Files:** create `src/kernel-7/bsd/dev/ppc/drvPPCATA/KauaiATA.h`,
 `KauaiATA.c`, `tests/kauai_ata_test.c`, `tests/Makefile.host`.
 
-- [ ] Write the test first: PIO 0-4, multiword 0-2 and Ultra 0-5 words;
+- [x] Write the test first: PIO 0-4, multiword 0-2 and Ultra 0-5 words;
       PIO 0 with no DMA equals Linux's default `0x08618a92` / `0`; invalid
       modes and null outputs fail; `cable-type` `80-conductor` allows Ultra 5,
       anything else (including absent or unterminated) allows 2.
-- [ ] Implement `KauaiTimingWords()` and `KauaiMaxUltraMode()`; run the tests.
-- [ ] Commit: `drvPPCATA: add Kauai timing tables`.
+- [x] Implement `KauaiTimingWords()` and `KauaiMaxUltraMode()`; run the tests.
+- [x] Commit: `drvPPCATA: add Kauai timing tables`.
 
 ### Task 2: Drive the Kauai controller
 
 **Files:** `ata_extern.h`, `IdeCnt.h`, `IdeCnt.m`, `IdeCntInit.h`,
 `IdeCntInit.m`, `src/kernel-7/conf/files.ppc`.
 
-- [ ] Add `kControllerTypeKauai`, the Kauai timing words to the
+- [x] Add `kControllerTypeKauai`, the Kauai timing words to the
       `ideConfig` union, and a per-controller Ultra DMA cap.
-- [ ] Probe: select Kauai, check one interrupt and a large enough range 0,
+- [x] Probe: select Kauai, check one interrupt and a large enough range 0,
       read `cable-type`; CMD646 keeps cap 2.
-- [ ] `assignRegisterAddresses:` returns `BOOL`; map BAR0, enable the cell
+- [x] `assignRegisterAddresses:` returns `BOOL`; map BAR0, enable the cell
       and PCI bus mastering for Kauai.
-- [ ] Ultra DMA selection covers Kauai; extend the mode table to mode 5.
-- [ ] `calcIdeTimingsKauai:` and the two-register write in
+- [x] Ultra DMA selection covers Kauai; extend the mode table to mode 5.
+- [x] `calcIdeTimingsKauai:` and the two-register write in
       `setTransferRate:`.
-- [ ] Add `KauaiATA.c` to `files.ppc`; host tests pass; host syntax check of
+- [x] Add `KauaiATA.c` to `files.ppc`; host tests pass; host syntax check of
       `KauaiATA.c`.
-- [ ] Commit: `drvPPCATA: drive the Kauai UltraATA/100 controller`.
+- [x] Commit: `drvPPCATA: drive the Kauai UltraATA/100 controller`.
+
+The Objective-C changes could not be compiled here: the driver needs
+MIG-generated and architecture-selected kernel headers that are not in the
+tree. `KauaiATA.c` passes the host tests and a PowerPC syntax check; the PPC
+kernel build in Task 3 is the first compile of the glue.
 
 ### Task 3: Validate on hardware
 

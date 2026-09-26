@@ -30,6 +30,9 @@ Boot from a temporary or dedicated disk, never a shared image.
   nodes, `extint-gpio1`, and the root `nvram` node.
 - Whether the ATA nodes carry `AAPL,interrupts`. Without it, DriverKit gives
   them no interrupts on this path; see the plan's known gaps.
+- On Intrepid machines, the `ata-6` (`kauai-ata`) node's `assigned-addresses`,
+  `cable-type` and interrupts, the `hc` probe line, and the kernel's
+  `Kauai timing` lines for each drive.
 
 ## Results
 

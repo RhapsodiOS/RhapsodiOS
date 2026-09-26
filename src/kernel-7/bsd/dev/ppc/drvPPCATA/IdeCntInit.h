@@ -77,6 +77,7 @@
 -(void) calcIdeConfig:(int)unit;
 -(void) calcIdeTimingsCmd646X:(int) unit;
 -(void) calcIdeTimingsDBDMA:(int) unit;
+-(void) calcIdeTimingsKauai:(int) unit;
 
 - (ide_return_t)setATADriveCapabilities:(unsigned int)unit;	
 
@@ -88,7 +89,7 @@
 
 -(void)endianSwapIdentifyData:(ideIdentifyInfo_t *)pId;
 
--(void) assignRegisterAddresses: (IOTreeDevice *) deviceDescription;
+-(BOOL) assignRegisterAddresses: (IOTreeDevice *) deviceDescription;
 
 @end
 

@@ -108,6 +108,11 @@ typedef struct
     {
         u_int32_t	dbdmaConfig;
         Cmd646xRegs_t	cmd646XConfig;
+        struct
+        {
+            u_int32_t	pioConfig;	/* byte-swapped, like dbdmaConfig */
+            u_int32_t	ultraConfig;
+        } kauaiConfig;
     } ideConfig;
 } ideCycleTimes_t;
 
@@ -145,6 +150,7 @@ typedef struct
     unsigned char	_controllerNum;			/* our number */
     
     unsigned char	_controllerType;
+    unsigned char	_maxUltraDMAMode;		/* highest mode we set */
    /*
     * Information from IDE_IDENTIFY_DRIVE commnad. 
     */

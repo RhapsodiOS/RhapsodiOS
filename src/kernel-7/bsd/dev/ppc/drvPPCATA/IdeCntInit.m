@@ -50,6 +50,7 @@
 #import "IdeCntCmds.h"
 #import "IdeCntDma.h"
 #import "AtapiCntCmds.h"
+#import "KauaiATA.h"
 
 
 #define IDE_SYSCLK_NS	30
@@ -91,7 +92,10 @@ static ideModes_t ultraModes[] =
 {
     {   0,    114 },	/* Mode 0 */
     {   0,     75 },	/*      1 */
-    {   0,     55 }	/*      2 */
+    {   0,     55 },	/*      2 */
+    {   0,     45 },	/*      3 */
+    {   0,     30 },	/*      4 */
+    {   0,     20 }	/*      5 */
 };
 
 #define MAX_ULTRA_MODES  (sizeof(ultraModes) / sizeof(ideModes_t))
@@ -263,7 +267,11 @@ static int rnddiv( int x, int y )
     /*
      * Initialize the register address values.
      */
-    [self assignRegisterAddresses: deviceDescription];
+    if ([self assignRegisterAddresses: deviceDescription] == NO) {
+		IOLog("ideControllerInit: failed to map controller registers\n");
+	[self ideCntrlrUnLock];
+	return NO;
+    }
         
     for (unit = 0; unit < MAX_IDE_DRIVES; unit++) {
 	_atapiDevice[unit] = NO;
@@ -641,7 +649,8 @@ static int rnddiv( int x, int y )
      *  Ultra DMA timing.....
      *
      */                                                                
-    if ( (_controllerType == kControllerTypeCmd646X) && (infoPtr->fieldValidity & IDE_WORD_88_SUPPORTED) ) 
+    if ( ((_controllerType == kControllerTypeCmd646X) || (_controllerType == kControllerTypeKauai))
+         && (infoPtr->fieldValidity & IDE_WORD_88_SUPPORTED) )
     {
         n = infoPtr->ultraDma & IDE_ULTRA_DMA_SUPPORTED;
         if ( n )
@@ -651,9 +660,9 @@ static int rnddiv( int x, int y )
               ;
 
             dmaMode = i - 1;
-            if ( dmaMode > MAX_ULTRA_MODES-1 )
+            if ( dmaMode > _maxUltraDMAMode )
             {
-                dmaMode = MAX_ULTRA_MODES-1;
+                dmaMode = _maxUltraDMAMode;
             }
             dmaCycleTime = ultraModes[dmaMode].cycleTime;
 
@@ -773,10 +782,50 @@ getCycleTimes_exit: ;
     {
         [self calcIdeTimingsCmd646X:unit];
     }
+    else if ( _controllerType == kControllerTypeKauai )
+    {
+        [self calcIdeTimingsKauai:unit];
+    }
     else
     {
         [self calcIdeTimingsDBDMA:unit];
     }
+}
+
+/*
+ * Kauai takes its timing words from a table rather than a formula.  A drive
+ * limited to single-word DMA is timed as multiword DMA 0, as Linux does.
+ */
+-(void) calcIdeTimingsKauai:(int) unit
+{
+    KauaiDMAType	dmaType;
+    unsigned int	pioConfig, ultraConfig;
+
+    switch ( _cycleTimes[unit].dmaType )
+    {
+        case IDE_DMA_MULTIWORD:
+            dmaType = kKauaiDMAMultiword;
+            break;
+        case IDE_DMA_ULTRA:
+            dmaType = kKauaiDMAUltra;
+            break;
+        default:
+            dmaType = kKauaiDMANone;
+            break;
+    }
+
+    if ( !KauaiTimingWords( _cycleTimes[unit].pioMode, dmaType,
+                            _cycleTimes[unit].dmaMode, &pioConfig, &ultraConfig ) )
+    {
+        KauaiTimingWords( 0, kKauaiDMANone, 0, &pioConfig, &ultraConfig );
+    }
+
+    kprintf("Disk(ata): Unit %1d: Kauai timing %08x %08x\n\r",
+            unit, pioConfig, ultraConfig);
+
+    /* The timing registers are little-endian. */
+    _cycleTimes[unit].ideConfig.kauaiConfig.pioConfig   = EndianSwap32( pioConfig );
+    _cycleTimes[unit].ideConfig.kauaiConfig.ultraConfig = EndianSwap32( ultraConfig );
 }
 
 -(void) calcIdeTimingsCmd646X:(int) unit
@@ -1137,10 +1186,46 @@ calcConfigWordDone: ;
     endianSwap16Bit(&pID->MinPIOTransferCycleTimeWithIORDY);
 } 
 
--(void) assignRegisterAddresses: (IOTreeDevice *) deviceDescription
+-(BOOL) assignRegisterAddresses: (IOTreeDevice *) deviceDescription
 {
   
-    if ( _controllerType == kControllerTypeCmd646X )
+    if ( _controllerType == kControllerTypeKauai )
+    {
+        vm_address_t		base;
+        u_int32_t		taskFile;
+        UInt32			command;
+
+        if ( [self mapMemoryRange: 0 to:&base findSpace:YES cache:IO_CacheOff] != IO_R_SUCCESS )
+        {
+            return NO;
+        }
+        taskFile = base + KAUAI_TASKFILE_OFFSET;
+
+        _ideRegsAddrs.data 	= taskFile;
+        _ideRegsAddrs.error 	= taskFile + 0x10;
+        _ideRegsAddrs.features 	= taskFile + 0x10;
+        _ideRegsAddrs.sectCnt 	= taskFile + 0x20;
+        _ideRegsAddrs.sectNum 	= taskFile + 0x30;
+        _ideRegsAddrs.cylLow 	= taskFile + 0x40;
+        _ideRegsAddrs.cylHigh 	= taskFile + 0x50;
+        _ideRegsAddrs.drHead 	= taskFile + 0x60;
+        _ideRegsAddrs.status 	= taskFile + 0x70;
+        _ideRegsAddrs.command 	= taskFile + 0x70;
+
+        _ideRegsAddrs.deviceControl = taskFile + 0x160;
+        _ideRegsAddrs.altStatus     = taskFile + 0x160;
+
+        _ideRegsAddrs.channelConfig = taskFile + KAUAI_PIO_CONFIG_OFFSET;
+
+        _ideDMARegs = (IODBDMAChannelRegisters *)(base + KAUAI_DBDMA_OFFSET);
+
+        /* Take the cell out of reset, then let it answer and master the bus. */
+        *(volatile u_int32_t *)(base + KAUAI_FCR_OFFSET) = EndianSwap32( KAUAI_FCR_ENABLE );
+        eieio();
+        [(IOPCIDevice *)deviceDescription configReadLong:0x04 value:&command];
+        [(IOPCIDevice *)deviceDescription configWriteLong:0x04 value:(command & 0xffff) | 0x06];
+    }
+    else if ( _controllerType == kControllerTypeCmd646X )
     {
         u_int32_t		pciRange1, pciRange2;
 
@@ -1188,6 +1273,7 @@ calcConfigWordDone: ;
 
         _ideDMARegs		    = (IODBDMAChannelRegisters *)IORanges[1].start;
     }
+    return YES;
 }
 
 

@@ -402,6 +402,7 @@ enum ControllerType
     kControllerTypeKeyLargo = 0x02,    // KeyLargo ATA
     kControllerTypeATA4     = 0x03,    // KeyLargo ATA-4
     kControllerTypeCmd646X  = 0x04,    // CMD646 PCI ATA
+    kControllerTypeKauai    = 0x05,    // Kauai UltraATA/100 (UniNorth 2 PCI)
 };
 
 typedef struct _ideDMAList

@@ -3,7 +3,7 @@
 ## Purpose
 
 Let the in-kernel PPC ATA driver (`src/kernel-7/bsd/dev/ppc/drvPPCATA`) drive
-Kiwi, the Promise PDC2027x ATA controller that Apple fitted to the Xserve G4
+both channels of Kiwi, the Promise PDC2027x ATA controller that Apple fitted to the Xserve G4
 (`RackMac1,1` and `RackMac1,2`) for its drive bays. The optical drive stays on
 KeyLargo's ATA cell, which the driver already handles.
 
@@ -75,13 +75,27 @@ DMA 0-6 into 0x10-0x12.
 - `kControllerTypeKiwi` joins the controller types in both `ata_extern.h`
   copies, and `kiwi-root` joins the EIDE matching keys.
 - `+probe:` selects Kiwi when any `compatible` entry is `kiwi-root`. It
-  requires one interrupt, a supported Promise part in configuration word 0,
-  and BAR0-BAR4 as I/O entries in `assigned-addresses` with every entry
-  translated, so a range index is the entry's position.
-- `assignRegisterAddresses:` maps the channel's two BARs and BAR4. It runs the
-  one-time chip setup: the Apple configuration bit, PCI I/O space and bus
-  mastering, the PLL, and silencing the other channel (nIEN set and its status
-  read) so it cannot hold the shared interrupt line.
+  requires a supported Promise part in configuration word 0 and BAR0-BAR4 as
+  I/O entries in `assigned-addresses` with every entry translated, so a range
+  index is the entry's position.
+- The PCI node stands for both channels, as Mac OS X's AppleKiwiRoot does.
+  Its probe publishes one description per channel through the PCI bridge's
+  `createDevice:ref:`: a copy of the node's properties plus
+  `rhapsodios,kiwi-channel`. Each copy gets its own `KernDevice` and
+  interrupt port, shares the node's registers and interrupt, and is probed as
+  its own controller with one interrupt required. The firmware's channel child
+  nodes are not used; their properties are unknown.
+- `assignRegisterAddresses:` maps the channel's two BARs and BAR4, reads the
+  channel's status to drop an interrupt firmware left pending, and clears the
+  bus master. Channel 0 runs the one-time chip setup first: the Apple
+  configuration bit, PCI I/O space and bus mastering, the PLL, and a quiet
+  channel 1 (nIEN set) until channel 1's controller attaches.
+- Each channel installs its own interrupt handler (`getHandler:...`), attached
+  after the registers are mapped. It claims an interrupt only when its
+  channel's bus-master interrupt latch is set: it reads the ATA status so the
+  line drops, clears the latch, and sends the interrupt message. Claimed or
+  not, it re-enables the interrupt at once, so an idle channel never holds the
+  shared line off.
 - The highest Ultra DMA mode is the part's limit, or 2 on a 40-wire cable.
   The Ultra DMA table grows a mode 6 entry (15 ns).
 - `setTransferMode:` writes the Kiwi timing registers for the drive after its
@@ -93,34 +107,34 @@ DMA 0-6 into 0x10-0x12.
   sets the start bit after the ATA command, and clears it after the interrupt.
   A bus-master error fails the transfer. The error path skips the DBDMA reset,
   which Kiwi has no channel for. ATAPI DMA gets the same start and stop.
-- `ideWaitForInterrupt:` clears the channel's bus-master interrupt latch and
-  re-enables the device interrupt, as the CMD646 path does.
 - Buffers at odd addresses fall back to PIO, as on the CMD646, since region
   descriptors need even addresses. This covers `atapiDmaAllowed:` and
   `drvATADisk`.
 - `matchDevicePath:` skips a firmware path component naming the channel, so a
-  root path through the channel node still reaches the disk.
+  root path through the channel node still reaches that channel's disk.
+  `getDevicePath:` adds `/@<channel>`, so the two channels' disks differ.
 
-## Open decision: the secondary channel
+## Channels
 
 DriverKit gives each device description one `KernDevice`, and a
-`KernDevice` accepts one interrupt port. A second `IdeController` on the same
-Kiwi description cannot attach its port, so `ideControllerInit:` fails. This
-design drives the primary channel of each Kiwi function, two of the Xserve's
-four bays, and holds the secondary channel quiet. Ways to reach the other two
-bays, for a follow-up:
+`KernDevice` accepts one interrupt port, so two controllers cannot share the
+PCI node's description. Publishing a description per channel gives each
+channel its own port. Both still sit on one level-triggered PCI interrupt,
+and the shared dispatcher suspends every attached device's interrupt before
+calling its handler. With the default handler an idle channel would keep the
+line suspended until its next command, stalling the other channel; the
+per-channel handler above avoids that.
 
-1. Publish the channel child nodes under `kiwi-root` as their own device
-   descriptions, as Mac OS X's AppleKiwiRoot publishes nubs. This needs the
-   Xserve device tree to confirm the child nodes and their properties.
-2. Drive the secondary channel by polling with nIEN set. PIO polling is
-   standard; polled DMA completion depends on the bus-master active bit.
-3. One `IdeController` per Kiwi function that owns both channels. This
-   reaches deep into the single-channel driver.
+The handler trusts the SFF-8038i bus-master interrupt bit, which is set on
+the rising edge of the channel's INTRQ. That is certain for DMA commands. If
+these parts do not latch it for PIO commands, a PIO interrupt would go
+unclaimed and re-fire; hardware validation must confirm PIO interrupts on
+both channels. The fallback would be a Promise per-channel interrupt status
+bit (believed to be index 0x0b, bit 0x20, as FreeBSD's driver reads it; not
+yet confirmed here), which the handler could add.
 
 ## Out of scope
 
-- The secondary channel, above.
 - DriverKit gives a device interrupts only from `AAPL,interrupts` on these
   machines. The PExpert's MacRISC discovery publishes it when the node's
   inherited `interrupt-parent` is the OpenPIC; that lives in `drvPExpert`.
@@ -138,6 +152,8 @@ bays, for a follow-up:
   the measured PLL input (about 16.9 MHz), the selected modes, sustained
   read/write on both Kiwi functions, and a clean reboot. Record results in
   `docs/boot/ppc-macrisc-validation.md`.
+- Hardware: identify a drive on each channel (PIO commands) without interrupt
+  timeouts or a hang, then run DMA on both channels at once.
 - Hardware: confirm the two Kiwi functions have different `AAPL,interrupts`
   sources. DriverKit's shared dispatch suspends every driver on a line until
   each one re-enables, so an idle function sharing a source with a busy one

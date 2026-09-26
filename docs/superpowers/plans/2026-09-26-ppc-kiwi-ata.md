@@ -1,7 +1,7 @@
 # PPC Kiwi ATA Implementation Plan
 
-**Goal:** The in-kernel PPC ATA driver probes and drives the primary channel
-of each Kiwi (Promise PDC2027x) function on the Xserve G4. Design:
+**Goal:** The in-kernel PPC ATA driver probes and drives both channels of
+each Kiwi (Promise PDC2027x) function on the Xserve G4. Design:
 `docs/superpowers/specs/2026-09-26-ppc-kiwi-ata-design.md`.
 
 **Ground rules:** C89 for the pure module; 1999 Objective-C for the glue;
@@ -62,7 +62,20 @@ PowerPC using stub headers for the MIG-generated and missing system headers;
 they parse, and add no warnings over the previous tree. The PPC kernel build
 in Task 3 is the first real compile.
 
-### Task 3: Validate on hardware
+### Task 3: Drive the secondary channel
+
+**Files:** `KiwiATA.h`, `IdeCnt.h`, `IdeCnt.m`, `IdeCntInit.m`.
+
+- [x] The PCI node's probe publishes a description per channel through the
+      bridge's `createDevice:ref:`; each is probed as a controller.
+- [x] Per-channel interrupt handler that claims on the channel's bus-master
+      latch, acknowledges at interrupt level, and always re-enables; attach it
+      after the registers are mapped.
+- [x] Drop a firmware-pending interrupt at mapping; a per-channel device path.
+- [x] Host tests pass; Objective-C syntax check.
+- [x] Commit: `drvPPCATA: drive both Kiwi channels through per-channel descriptions`.
+
+### Task 4: Validate on hardware
 
 - [ ] Build the PPC kernel. Boot an Xserve G4 (`RackMac1,1` or `RackMac1,2`)
       from a temporary disk.
@@ -70,5 +83,7 @@ in Task 3 is the first real compile.
       disk I/O on both Kiwi functions and reboot in
       `docs/boot/ppc-macrisc-validation.md`.
 - [ ] Check that the two Kiwi functions have different interrupt sources.
-- [ ] Capture the Xserve device tree under each `kiwi-root` node to settle
-      the secondary-channel decision in the design.
+- [ ] Identify drives on both channels (PIO interrupts) without timeouts or a
+      hang; if PIO interrupts are not latched, add Promise's per-channel
+      status bit to the handler.
+- [ ] Capture the Xserve device tree under each `kiwi-root` node.

@@ -13,6 +13,11 @@
 
 #define KIWI_VENDOR_PROMISE		0x105a
 
+#define KIWI_CHANNELS			2
+
+/* Marks a description published for one channel; holds the channel number. */
+#define KIWI_CHANNEL_PROPERTY		"rhapsodios,kiwi-channel"
+
 /* BARs 0-3 are task file and control for each channel; BAR4 is bus master. */
 #define KIWI_BAR_COUNT			5
 #define KIWI_BUS_MASTER_BAR		4

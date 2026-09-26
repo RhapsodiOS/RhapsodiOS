@@ -94,6 +94,16 @@ typedef struct _Cmd646xRegs
 } Cmd646xRegs_t;       
 
 
+/*
+ * What Kiwi's interrupt handler reads, set when the channel's registers are
+ * mapped and before the handler attaches.
+ */
+typedef struct
+{
+    volatile u_int32_t	busMaster;	/* this channel's bus-master block */
+    volatile u_int32_t	status;		/* ATA status register */
+} kiwiInterrupt_t;
+
 typedef struct
 {
     BOOL		fChanged;
@@ -154,12 +164,14 @@ typedef struct
     unsigned char	_maxUltraDMAMode;		/* highest mode we set */
 
     /*
-     * Kiwi (Promise): the range index of each BAR, this channel's bus-master
-     * block, and the part's Ultra DMA limit.
+     * Kiwi (Promise): the range index of each BAR, the part's Ultra DMA
+     * limit, this channel's bus-master block, and its interrupt handler's
+     * registers.
      */
     unsigned char	_kiwiRange[KIWI_BAR_COUNT];
     unsigned char	_kiwiUltraLimit;
     u_int32_t		_kiwiBusMaster;
+    kiwiInterrupt_t	_kiwiInterrupt;
 
    /*
     * Information from IDE_IDENTIFY_DRIVE commnad. 

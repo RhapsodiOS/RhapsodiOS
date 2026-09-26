@@ -280,7 +280,8 @@ static unsigned long kiwiReadCounter( u_int32_t busMaster )
     int     		drivesPresent = 0;
     ns_time_t		time, startTime;
 
-    if ([self enableInterrupt:0]) {
+    /* Kiwi's interrupt handler reads its registers, so it attaches once they are mapped. */
+    if ((_controllerType != kControllerTypeKiwi) && [self enableInterrupt:0]) {
 		IOLog("ideControllerInit: failed enableAllInterrupts\n");
 		return NO;
     }
@@ -302,6 +303,12 @@ static unsigned long kiwiReadCounter( u_int32_t busMaster )
      */
     if ([self assignRegisterAddresses: deviceDescription] == NO) {
 		IOLog("ideControllerInit: failed to map controller registers\n");
+	[self ideCntrlrUnLock];
+	return NO;
+    }
+
+    if ((_controllerType == kControllerTypeKiwi) && [self enableInterrupt:0]) {
+		IOLog("ideControllerInit: failed enableAllInterrupts\n");
 	[self ideCntrlrUnLock];
 	return NO;
     }
@@ -1431,7 +1438,8 @@ calcConfigWordDone: ;
             [self kiwiInitChip: deviceDescription busMaster: busMaster];
         }
 
-        /* Leave the bus master idle with no stale status. */
+        /* Drop any interrupt firmware left pending; leave the bus master idle. */
+        inb( _ideRegsAddrs.status );
         outb( _kiwiBusMaster + KIWI_BM_COMMAND, 0 );
         status = inb( _kiwiBusMaster + KIWI_BM_STATUS );
         outb( _kiwiBusMaster + KIWI_BM_STATUS, (status & KIWI_BM_STATUS_DRIVES)
@@ -1440,6 +1448,10 @@ calcConfigWordDone: ;
         outb( _kiwiBusMaster + KIWI_BM_INDEX, KIWI_INDEX_CABLE );
         cable = inb( _kiwiBusMaster + KIWI_BM_DATA );
         _maxUltraDMAMode = KiwiMaxUltraMode( _kiwiUltraLimit, cable );
+
+        /* What the interrupt handler reads once ideControllerInit attaches it. */
+        _kiwiInterrupt.status    = _ideRegsAddrs.status;
+        _kiwiInterrupt.busMaster = _kiwiBusMaster;
     }
     else if ( _controllerType == kControllerTypeCmd646X )
     {

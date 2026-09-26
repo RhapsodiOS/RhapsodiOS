@@ -36,6 +36,8 @@
 #import <mach/mach_interface.h>
 #import <driverkit/IODevice.h>
 #import <driverkit/ppc/IOTreeDevice.h>
+#import <driverkit/ppc/IODeviceTreeBus.h>
+#import <machdep/ppc/machspl.h>
 #import <driverkit/align.h>
 #import <machkit/NXLock.h>
 #import "io_inline.h" 
@@ -53,6 +55,30 @@
 #import "KiwiATA.h"
 
 static  int	hcUnitNum = 0;
+
+/*
+ * Kiwi's channels share one PCI interrupt, and each channel's controller sees
+ * every interrupt on it.  Claim one only when this channel raised it: read
+ * the ATA status so the line drops, clear the latch, and pass it on.  Leave
+ * the rest to the other channel.  Either way the interrupt stays enabled, so
+ * an idle channel never holds the line off.
+ */
+static void
+kiwiInterruptHandler( void *identity, void *state, unsigned int arg )
+{
+    kiwiInterrupt_t *	kiwi = (kiwiInterrupt_t *) arg;
+    u_int8_t		bmStatus;
+
+    bmStatus = inb( kiwi->busMaster + KIWI_BM_STATUS );
+    if ( bmStatus & KIWI_BM_STATUS_INTERRUPT )
+    {
+        inb( kiwi->status );
+        outb( kiwi->busMaster + KIWI_BM_STATUS,
+              (bmStatus & KIWI_BM_STATUS_DRIVES) | KIWI_BM_STATUS_INTERRUPT );
+        IOSendInterrupt( identity, state, IO_DEVICE_INTERRUPT_MSG );
+    }
+    IOEnableInterrupt( identity );
+}
 
 
 @implementation IdeController
@@ -79,6 +105,16 @@ static  int	hcUnitNum = 0;
             if( doAlias)
                 IOAliasPath( path);
 	}
+	/* both Kiwi channels sit on one node; name the channel */
+	else if( _controllerType == kControllerTypeKiwi) {
+
+	    char	unitStr[ 12 ];
+
+	    sprintf( unitStr, "/@%x", _busNum);
+	    if( (int) (strlen( path ) + strlen( unitStr )) >= maxLen)
+		return( nil);
+	    strcat( path, unitStr );
+	}
         return( self);
     }
     return( nil);
@@ -101,6 +137,44 @@ static  int	hcUnitNum = 0;
     if( tail && (_controllerType == kControllerTypeKiwi))
         tail = (char *) KiwiSkipChannel( tail, _busNum );
     return( tail);
+}
+
+/*
+ * Kiwi has two channels behind one PCI function, and DriverKit gives a device
+ * description one interrupt port.  Publish a copy of the node's description
+ * for each channel, as Mac OS X's AppleKiwiRoot publishes a nub per channel.
+ * The copies share the node's registers and interrupt.
+ */
++ (BOOL)kiwiPublishChannels:(IOTreeDevice *)deviceDescription
+{
+    IOPropertyTable *	source = [deviceDescription propertyTable];
+    IOPropertyTable *	table;
+    char		name[ 96 ];
+    void *		value;
+    ByteCount		length;
+    UInt32		index;
+    unsigned int	channel;
+    BOOL		published = NO;
+
+    for ( channel = 0; channel < KIWI_CHANNELS; channel++ )
+    {
+        table = [[IOPropertyTable alloc] init];
+        for ( index = 0; [source getPropertyWithIndex:index name:name] == noErr; index++ )
+        {
+            if ( [source getProperty:name flags:kReferenceProperty
+                               value:&value length:&length] == noErr )
+                [table createProperty:name flags:kReferenceProperty value:value length:length];
+        }
+        [table createProperty:KIWI_CHANNEL_PROPERTY flags:0
+                        value:&channel length:sizeof(channel)];
+
+        if ( [[deviceDescription parent] createDevice:table
+                                                  ref:[deviceDescription getRef]] == nil )
+            [table free];
+        else
+            published = YES;
+    }
+    return published;
 }
 
 /*
@@ -209,6 +283,8 @@ void call_kdp(void);
         ByteCount		assignedLength;
         unsigned int		entry[KIWI_BAR_COUNT];
         UInt32			pciID;
+        unsigned int *		channel;
+        ByteCount		channelLength;
         int			i;
 
         // Every assigned BAR must have become a range, so entry i is range i.
@@ -233,6 +309,18 @@ void call_kdp(void);
             [idec free];
             return NO;
         }
+
+        // The PCI node stands for both channels: publish a description per
+        // channel, each probed as its own controller.
+        if ( [propTable getProperty:KIWI_CHANNEL_PROPERTY flags:kReferenceProperty
+                              value:(void **)&channel
+                             length:&channelLength] != IO_R_SUCCESS )
+        {
+            [idec free];
+            return [self kiwiPublishChannels:deviceDescription];
+        }
+        idec->_busNum = *channel;
+
         maxRange  = numRange;
         maxInts   = 1;
     }
@@ -290,6 +378,24 @@ void call_kdp(void);
 }
 
 /*
+ * Kiwi filters its shared interrupt per channel; everything else takes the
+ * default handler.
+ */
+- (BOOL) getHandler:(IOInterruptHandler *)handler
+              level:(unsigned int *)ipl
+           argument:(unsigned int *)arg
+       forInterrupt:(unsigned int)localInterrupt
+{
+    if ( _controllerType != kControllerTypeKiwi )
+        return NO;
+
+    *handler = kiwiInterruptHandler;
+    *ipl     = IPLDEVICE;
+    *arg     = (unsigned int) &_kiwiInterrupt;
+    return YES;
+}
+
+/*
  * Wait for interrupt or timeout. Returns IDER_SUCCESS or IDER_TIMEOUT. 
  */
 - (ide_return_t)ideWaitForInterrupt:(unsigned int)command
@@ -326,16 +432,6 @@ void call_kdp(void);
                    *(volatile u_int32_t *)0x80800024, *(volatile u_int32_t *)0x8080002c,
 		   *(volatile u_int32_t *)0x80800020, cfgByte );
 #endif
-        }
-        else if ( _controllerType == kControllerTypeKiwi )
-        {
-            u_int8_t		bmStatus;
-
-            /* Clear the latch; the DMA stop still needs the error bit. */
-            bmStatus = inb(_kiwiBusMaster + KIWI_BM_STATUS);
-            outb(_kiwiBusMaster + KIWI_BM_STATUS,
-                 (bmStatus & KIWI_BM_STATUS_DRIVES) | KIWI_BM_STATUS_INTERRUPT);
-            [self enableInterrupt:0];
         }
 
 	return IDER_SUCCESS;

@@ -213,7 +213,7 @@ struct cdevsw	cdevsw[] =
     NO_CDEVICE,								/*16*/
     {
 	random_open,	random_close,	random_read,	random_write,	/*17*/
-	random_ioctl,	nulldev,	nulldev,	0,		eno_select,
+	eno_ioctl,	nulldev,	nulldev,	0,		eno_select,
 	eno_mmap,	eno_strat,	eno_getc,	eno_putc,	0
     },
     NO_CDEVICE,								/*18*/

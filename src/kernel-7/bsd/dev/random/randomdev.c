@@ -48,10 +48,6 @@
 /* Model B: only harvest every Nth hardclock tick, to keep it cheap. */
 #define RANDOM_HARVEST_DIV   32
 
-/* Conservative entropy estimate reported via RANDOM_GETENTROPY. */
-#define RANDOM_BITS_PER_SAMPLE  2
-#define RANDOM_MAX_BITS         256
-
 static int       gRandomReady = 0;
 static int       gRandomWarm = 0;      /* boot pool has enough samples */
 static unsigned  gHarvestSamples = 0;
@@ -199,28 +195,6 @@ random_write(dev_t dev, struct uio *uio, int ioflag)
     }
     CSPRNG_UNLOCK();
     return (retCode);
-}
-
-/*
- * Report an estimate of the accumulated entropy.
- */
-int
-random_ioctl(dev_t dev, u_long cmd, caddr_t data, int fflag, struct proc *p)
-{
-    unsigned bits;
-
-    switch (cmd) {
-    case RANDOM_GETENTROPY:
-        CSPRNG_LOCK();
-        bits = gHarvestSamples * RANDOM_BITS_PER_SAMPLE;
-        CSPRNG_UNLOCK();
-        if (bits > RANDOM_MAX_BITS)
-            bits = RANDOM_MAX_BITS;
-        *(int *)data = (int)bits;
-        return (0);
-    default:
-        return (ENOTTY);
-    }
 }
 
 /*

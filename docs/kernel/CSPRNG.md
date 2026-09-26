@@ -21,7 +21,7 @@ backs `/dev/random`, `/dev/urandom`, the in-kernel `read_random()` /
 
 | Consumer | Path |
 |----------|------|
-| `/dev/random`, `/dev/urandom` (major 17, minors 0/1) | `random_read` = squeeze (blocks on minor 0 until warm), `random_write` = reseed, `random_ioctl` = `RANDOM_GETENTROPY` |
+| `/dev/random`, `/dev/urandom` (major 17, minors 0/1) | `random_read` = squeeze (blocks on minor 0 until warm), `random_write` = reseed |
 | `read_random()` / `RandomULong()` | squeeze |
 | libkern `random()` | `RandomULong() & 0x7fffffff` |
 
@@ -63,12 +63,9 @@ The generator does not consider its jitter pool "warm" until
 `gRandomWarm` tracks this and gates the blocking behavior of
 `/dev/random` (see below).
 
-### Per-open reseed, ioctl, and blocking semantics
+### Per-open reseed and blocking semantics
 
 - **Per-open reseed:** see model A above (`random_open`).
-- **ioctl:** `RANDOM_GETENTROPY` (`_IOR('R', 1, int)`) returns a
-  conservative entropy estimate in bits: `min(harvested_samples *
-  RANDOM_BITS_PER_SAMPLE, RANDOM_MAX_BITS)`.
 - **Blocking `/dev/random`:** reads from minor `RANDOM_MINOR_RANDOM` (0,
   i.e. `/dev/random`) block in `tsleep()` until `gRandomWarm` is set,
   re-checking once a second and honoring signals (`PCATCH`).

@@ -23,21 +23,14 @@
 #ifndef __DEV_RANDOMDEV_H__
 #define __DEV_RANDOMDEV_H__
 
-#include <sys/ioccom.h>
-
 /* cdevsw minor numbers (see src/MAKEDEV/MAKEDEV.csh) */
 #define RANDOM_MINOR_RANDOM   0   /* /dev/random: blocks until warmed up */
 #define RANDOM_MINOR_URANDOM  1   /* /dev/urandom: never blocks */
-
-/* Report an estimate of the accumulated entropy, in bits (int *arg). */
-#define RANDOM_GETENTROPY	_IOR('R', 1, int)
 
 int random_open(dev_t dev, int flags, int devtype, struct proc *pp);
 int random_close(dev_t dev, int flags, int mode, struct proc *pp);
 int random_read(dev_t dev, struct uio *uio, int ioflag);
 int random_write(dev_t dev, struct uio *uio, int ioflag);
-int random_ioctl(dev_t dev, u_long cmd, caddr_t data, int fflag,
-    struct proc *pp);
 
 void random_init(void);
 u_long RandomULong();

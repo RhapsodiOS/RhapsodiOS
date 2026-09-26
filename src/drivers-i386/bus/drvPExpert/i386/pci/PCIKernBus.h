@@ -93,6 +93,20 @@
 
 - (BOOL)testIDs:(const char *)ids dev:(unsigned char)dev fun:(unsigned char)func bus:(unsigned char)bus;
 
+/*
+ * Message signalled interrupts.  Returns the irq the function raises
+ * once enabled, or -1 when the machine is not in APIC mode or the
+ * function has neither MSI nor MSI-X.  A driver puts that irq in its
+ * interrupt list in place of the one from the Interrupt Line register.
+ */
+- (int)enableMSIForDevice:(unsigned char)devNum
+                 function:(unsigned char)funNum
+                      bus:(unsigned char)busNum;
+
+- (int)disableMSIForDevice:(unsigned char)devNum
+                  function:(unsigned char)funNum
+                       bus:(unsigned char)busNum;
+
 @end
 
 #endif /* _PCIKERNBUS_H_ */

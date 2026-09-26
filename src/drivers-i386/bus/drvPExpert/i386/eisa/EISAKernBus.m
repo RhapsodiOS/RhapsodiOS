@@ -40,6 +40,7 @@
 #import <driverkit/IODeviceDescription.h>
 #import <driverkit/generalFuncs.h>
 #import <machdep/i386/intr_exported.h>
+#import "pexpert_i386.h"
 #import <machdep/i386/io_inline.h>
 #import <objc/objc.h>
 #import <string.h>
@@ -127,9 +128,15 @@ static const char *resourceNameStrings[] = {
      * A direct reference is resolved by the loader instead.
      */
 
-    /* Register IRQ resource - 16 IRQ lines */
+    /*
+     * Register IRQ resource.  Every irq the kernel can dispatch, not just
+     * the 8259s' 16: in APIC mode the I/O APIC inputs and the message
+     * signalled interrupts sit above 15, and PCI devices reserve them
+     * through this bus.  intr_register_irq refuses what the controller
+     * in charge cannot deliver.
+     */
     resource = [[KernBusItemResource alloc]
-                 initWithItemCount:16
+                 initWithItemCount:PEXPERT_NIRQ
                           itemKind:[EISAKernBusInterrupt class]
                              owner:self];
     [self _insertResource:resource withKey:IRQ_LEVELS_KEY];

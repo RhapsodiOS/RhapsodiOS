@@ -59,6 +59,13 @@ extern int ncl;
 static unsigned int maxmem;
 static int subtype = 0;
 
+/*
+ * apic=1 asks the platform expert for APIC interrupt delivery; rsdp=0x...
+ * is where the booter found the ACPI tables (a UEFI booter has to say).
+ */
+int	pexpert_apic;
+int	pexpert_rsdp;
+
 struct kernargs {
 	char *name;
 	int *i_ptr;
@@ -70,6 +77,8 @@ struct kernargs {
 	"srv", &srv,
 	"ncl", &ncl,
 	"serial", &serial_dbg_port,
+	"apic", &pexpert_apic,
+	"rsdp", &pexpert_rsdp,
 	0,0,
 };
 

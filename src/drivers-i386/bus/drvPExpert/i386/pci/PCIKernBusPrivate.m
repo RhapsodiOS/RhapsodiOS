@@ -31,6 +31,7 @@
 #import "pci.h"
 
 #import <driverkit/i386/ioPorts.h>
+#import "pexpert_i386.h"
 
 /* PCI I/O Ports (Intel architecture) */
 #define PCI_CONFIG_ADDRESS      0x0CF8
@@ -138,7 +139,10 @@
 
 /*
  * PCI Configuration Mechanism #1 - Access method
- * Uses I/O ports 0xCF8 (CONFIG_ADDRESS) and 0xCFC (CONFIG_DATA)
+ *
+ * The 0xCF8/0xCFC cycle itself lives in the platform expert
+ * (chips/pcicfg.c), which also serves the MSI code and the memory-mapped
+ * space of PCI Express machines; this keeps the one copy.
  */
 - (unsigned long)Method1:(unsigned char)address
                   device:(unsigned char)device
@@ -147,37 +151,11 @@
                     data:(unsigned long)data
                    write:(char)write
 {
-    unsigned int configAddress;
-    unsigned int readValue;
-    unsigned int verifyAddress;
+    unsigned int readValue = 0xFFFFFFFF;
 
-    /* Build PCI configuration address for mechanism #1 */
-    configAddress = 0x80000000 |
-                    ((unsigned int)(address & 0xFC)) |
-                    ((unsigned int)(device & 0x1F) << 11) |
-                    ((unsigned int)(function & 0x07) << 8) |
-                    ((unsigned int)bus << 16);
-
-    /* Write the configuration address to CONFIG_ADDRESS port (0xCF8) */
-    outl(PCI_CONFIG_ADDRESS, configAddress);
-
-    /* Verify the address was written correctly */
-    verifyAddress = inl(PCI_CONFIG_ADDRESS);
-
-    if (verifyAddress == configAddress) {
-        if (write) {
-            /* Write data to CONFIG_DATA port (0xCFC) */
-            outl(PCI_CONFIG_DATA, data);
-        }
-        /* Read data from CONFIG_DATA port (0xCFC) */
-        readValue = inl(PCI_CONFIG_DATA);
-    } else {
-        /* Address verification failed */
-        readValue = 0xFFFFFFFF;
-    }
-
-    /* Clear CONFIG_ADDRESS */
-    outl(PCI_CONFIG_ADDRESS, 0);
+    if (write)
+        (void) pexpert_pci_config_write(bus, device, function, address & 0xFC, 4, data);
+    (void) pexpert_pci_config_read(bus, device, function, address & 0xFC, 4, &readValue);
 
     return readValue;
 }

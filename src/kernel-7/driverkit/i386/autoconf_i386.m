@@ -63,6 +63,7 @@
 
 #import <bsd/dev/ata_hd_registry.h>
 #import <machdep/i386/kernBootStruct.h>
+#import <pexpert/pexpert_i386.h>
 
 boolean_t eisa_id(int slot, unsigned int *_id);
 
@@ -178,6 +179,12 @@ probeNativeDevices(void)
 
 	if (!ata_hd_registry_init())
 		panic("ATA hd registry initialization failed");
+
+	//
+	// Let the platform expert read the firmware tables and, if asked,
+	// switch to the APICs, before any driver registers an interrupt.
+
+	pexpert_init();
 
 	//
 	// Initialize drivers and modules loaded by booter.

@@ -19,6 +19,11 @@ Layout
     drvPExpert/
       apk/pkginfo             drvpexpert, a kernel core package (rbuild kernel)
       i386/                   Kernel Server -> pexperti386.o
+        pexpert_i386.h        the contract, installed as <pexpert/pexpert_i386.h>
+        pexpert.c             pexpert_init(): discovery, the APIC switch
+        acpi.c, mptable.c     ACPI static tables, MP table
+        apic_intr.c, msi.c    the APIC interrupt controller, MSI/MSI-X
+        chips/                lapic, ioapic, pcicfg              (Component)
         PExpert.h, PExpert.m  the "Bus Class" and the settings lookup
         eisa/                 EISAKernBus, EISAResourceDriver, PnP  (Component)
         pci/                  PCIKernBus, PCIResourceDriver        (Component)
@@ -66,6 +71,50 @@ Two things moved out of the original drivers:
        "PCMCIA Memory Base"   = "0xD0000"
        "PCMCIA Memory Length" = "0x2000"
 
+ACPI, APIC and message signalled interrupts
+-------------------------------------------
+
+pexpert_init(), which the kernel calls from probeNativeDevices() before any
+driver is probed, reads the firmware's static tables and publishes what it
+found in i386_firmware_info (pexpert_i386.h):
+
+ * ACPI (acpi.c): the RSDP, from the EBDA and BIOS ROM scan or from the
+   rsdp=0x... boot argument the UEFI booter passes, then the RSDT or XSDT,
+   and from it the MADT (local APIC address, processor count, I/O APICs,
+   ISA interrupt source overrides), FADT, HPET and MCFG.  No AML, ever.
+ * The MP table (mptable.c): the only static source of which I/O APIC input
+   a PCI slot's INTA-INTD reaches, and whether the board has an IMCR.
+ * MCFG's memory-mapped configuration space is mapped and handed to the PCI
+   configuration accessors (chips/pcicfg.c), which PCIKernBus's mechanism
+   #1 cycles and the MSI code share.
+
+With apic=1 on the boot line the expert then moves interrupt delivery from
+the 8259s to the APICs (apic_intr.c, chips/lapic.c, chips/ioapic.c).  The
+kernel's intr.c keeps its dispatch table, ipl masks and deferral and drives
+the hardware through an intr_controller_t; the 8259 pair is the controller
+it starts with and the expert swaps in the APIC one.  Interrupts are
+numbered 0-63 on IDT vectors 0x40-0x7F, which the kernel's IDT already
+carried: 0-15 are the ISA lines through the MADT's overrides, 16-47 the
+other I/O APIC inputs by global system interrupt number, 48-62 message
+signalled interrupts, 63 the local APIC's spurious vector.
+
+In APIC mode a PCI function's Interrupt Line register, as read through
+PCIKernBus, and the "IRQ Levels" a driver's table carries are both replaced
+by the I/O APIC input the MP table routes the function's pin to, so drivers
+need no change.  A driver that wants a message signalled interrupt instead
+asks the PCI bus: [pciBus enableMSIForDevice:dev function:fn bus:bus]
+returns the irq to put in its interrupt list (MSI-X when the function has
+it, else MSI, one vector, to the boot processor).
+
+APIC mode is opt-in until it has been boot-tested, since the 8259 path is
+the one every driver has run on.  It is refused, with a console line saying
+why, when there is no MADT with an I/O APIC or the processor has no local
+APIC.  Without an MP table PCI INTx routing is unknown and such drivers get
+no interrupts; on such a machine use MSI or stay on the 8259s.
+
+Not done: the local APIC timer (the 8254 stays the clock), SMP, ACPI power
+management, and PCI bridge enumeration.
+
 Adding a bus
 ------------
 
@@ -97,7 +146,10 @@ the ppc chips/ and families/ subprojects do.
 Status
 ------
 
-Not yet built or boot-tested.  The System.config "Boot Drivers" line no
+Not yet built or boot-tested, neither the buses nor the APIC path.  The
+kernel now builds against <pexpert/pexpert_i386.h>, so drvpexpert-hdrs must
+be installed before kernel-7 (kernel-7/apk/pkginfo says so).  The
+System.config "Boot Drivers" line no
 longer lists EISABus and PCIBus (src/system_config-1/i386/Default.table),
 so a kernel without this object linked in has no bus drivers at all.  Not
 carried over from drvEISABus: EISABusInspector.nib and the reconstruction

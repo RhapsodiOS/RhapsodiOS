@@ -34,9 +34,10 @@
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
 #import <driverkit/KernBusMemory.h>
+#import <driverkit/KernDeviceDescription.h>
 #import <driverkit/IODeviceDescription.h>
 #import <driverkit/IOConfigTable.h>
-#import <machdep/i386/intr_internal.h>
+#import "pexpert_i386.h"
 #import <machdep/i386/kernBootStruct.h>
 
 #import <string.h>
@@ -50,6 +51,7 @@
 #define PCI_CONFIG_STATUS       0x06
 #define PCI_CONFIG_CLASS_CODE   0x08
 #define PCI_CONFIG_HEADER_TYPE  0x0E
+#define PCI_CONFIG_INTERRUPT    0x3C    /* line in bits 7:0, pin in bits 15:8 */
 
 /* PCI I/O Ports (Intel architecture) */
 #define PCI_CONFIG_ADDRESS      0x0CF8
@@ -327,16 +329,30 @@
     if (_configMech1) {
         /* Use Configuration Mechanism #1 */
         result = [self Method1:address device:devNum function:funNum bus:busNum data:0 write:0];
-        *data = result;
-        return IO_R_SUCCESS;
     } else if (_configMech2) {
         /* Use Configuration Mechanism #2 */
         result = [self Method2:address device:devNum function:funNum bus:busNum data:0 write:0];
-        *data = result;
-        return IO_R_SUCCESS;
+    } else {
+        return IO_R_NO_DEVICE;
     }
 
-    return IO_R_NO_DEVICE;
+    /*
+     * In APIC mode the Interrupt Line register still holds the 8259 irq
+     * the firmware routed the function's pin to, which no longer reaches
+     * the processor.  Every driver learns its irq from this byte, so
+     * report the I/O APIC input the pin is wired to instead, when the
+     * platform expert knows it.
+     */
+    if (address == PCI_CONFIG_INTERRUPT && pexpert_apic_mode()) {
+        int pin = (result >> 8) & 0xFF;
+        int irq = pexpert_pci_intx_irq(busNum, devNum, pin);
+
+        if (irq >= 0)
+            result = (result & ~0xFFUL) | irq;
+    }
+
+    *data = result;
+    return IO_R_SUCCESS;
 }
 
 - (IOReturn)setRegister:(unsigned char)address device:(unsigned char)devNum
@@ -459,10 +475,44 @@
  * Resource allocation for device
  */
 
+/*
+ * A driver's table carries the 8259 irq the booter read from the
+ * Interrupt Line register.  In APIC mode replace it with the I/O APIC
+ * input the function's pin reaches, so the EISA bus registers the right
+ * one.  A table without an irq, or a function the routing tables do not
+ * cover, is left alone.
+ */
+- (void)routeInterruptForDeviceDescription:descr
+{
+    unsigned char dev, func, bus;
+    unsigned long reg;
+    const char *irqString;
+    int irq;
+    char buf[8];
+
+    if (!pexpert_apic_mode())
+        return;
+    irqString = [descr stringForKey:IRQ_LEVELS_KEY];
+    if (irqString == NULL || *irqString == '\0')
+        return;
+    if ([self configAddress:descr device:&dev function:&func bus:&bus] != IO_R_SUCCESS)
+        return;
+    if ([self getRegister:PCI_CONFIG_INTERRUPT device:dev function:func bus:bus
+                     data:&reg] != IO_R_SUCCESS)
+        return;
+    irq = pexpert_pci_intx_irq(bus, dev, (reg >> 8) & 0xFF);
+    if (irq < 0)
+        return;
+    sprintf(buf, "%d", irq);
+    [descr setString:buf forKey:IRQ_LEVELS_KEY];
+}
+
 - allocateResourcesForDeviceDescription:descr
 {
     id eisaBus;
     id result;
+
+    [self routeInterruptForDeviceDescription:descr];
 
     /* Lookup EISA bus instance */
     eisaBus = [KernBus lookupBusInstanceWithName:"EISA" busId:0];
@@ -474,6 +524,28 @@
     result = [eisaBus allocateResourcesForDeviceDescription:descr];
 
     return result;
+}
+
+/*
+ * Message signalled interrupts, through the platform expert.
+ */
+
+- (int)enableMSIForDevice:(unsigned char)devNum
+                 function:(unsigned char)funNum
+                      bus:(unsigned char)busNum
+{
+    if (_maxBusNum < busNum || _maxDevNum < devNum || funNum > 7)
+        return -1;
+    return pexpert_msi_enable(busNum, devNum, funNum);
+}
+
+- (int)disableMSIForDevice:(unsigned char)devNum
+                  function:(unsigned char)funNum
+                       bus:(unsigned char)busNum
+{
+    if (_maxBusNum < busNum || _maxDevNum < devNum || funNum > 7)
+        return -1;
+    return pexpert_msi_disable(busNum, devNum, funNum);
 }
 
 @end

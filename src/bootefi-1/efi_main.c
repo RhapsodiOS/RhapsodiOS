@@ -17,6 +17,7 @@ extern int efi_disk_init(void);
 extern int efi_reserve_ranges(void);
 extern void efi_init_bootstruct(void);
 extern int efi_pci_init(void);
+extern unsigned int efi_acpi_rsdp(void);
 extern void efi_gfx_init(void);
 
 /* efi_console.c; error() counts into it. */
@@ -158,6 +159,21 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
         if (getValueForKey("Kernel Flags", &val, &size))
             efi_append_boot_flags(kernBootStruct->bootString,
                                   BOOT_STRING_LEN, val, size);
+
+        /* Under UEFI the RSDP need not sit in the EBDA or the BIOS ROM
+         * area the kernel's platform expert scans; the firmware hands it
+         * over in the system table, so pass it on the boot line. */
+        {
+            unsigned int rsdp = efi_acpi_rsdp();
+
+            if (rsdp != 0) {
+                char arg[24];
+
+                sprintf(arg, "rsdp=0x%x", rsdp);
+                efi_append_boot_flags(kernBootStruct->bootString,
+                                      BOOT_STRING_LEN, arg, strlen(arg));
+            }
+        }
         printf("bootString '%s'\n", kernBootStruct->bootString);
     }
 

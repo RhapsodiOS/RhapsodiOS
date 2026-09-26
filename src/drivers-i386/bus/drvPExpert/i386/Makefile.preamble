@@ -2,3 +2,11 @@ INCLUDED_ARCHS = i386
 PRODUCT = $(PRODUCT_DIR)/pexpert$(NAME).o
 USE_OBJC_KSINSTANCE = NO
 STRIP_ON_INSTALL = NO
+
+# pexpert_i386.h is the contract the kernel's intr.c and the bus drivers
+# build against; it installs beside driverkit's headers, as
+# <pexpert/pexpert_i386.h>.
+VERSION_DIR = Versions/B
+SYSTEM_VERS_FRAMEWORK = $(SYSTEM_FRAMEWORK)/$(VERSION_DIR)
+SYSTEM_VERS_HEADERS = $(SYSTEM_VERS_FRAMEWORK)/Headers
+PUBLIC_HDR_INSTALLDIR = $(SYSTEM_VERS_HEADERS)/pexpert

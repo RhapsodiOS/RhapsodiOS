@@ -3,13 +3,14 @@
     FILESTABLE = {
         CLASSES = (PExpert.m);
         HEADERSEARCH = ("$(KERNEL_HEADERS)/machdep");
-        H_FILES = (PExpert.h);
-        OTHER_LINKED = ();
+        H_FILES = (PExpert.h, acpi.h, mptable.h, msi.h);
+        OTHER_LINKED = (pexpert.c, acpi.c, mptable.c, msi.c, apic_intr.c);
+        PUBLIC_HEADERS = (pexpert_i386.h);
         OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble, Load_Commands.sect);
         PRECOMPILED_HEADERS = ();
         PROJECT_HEADERS = ();
         PUBLIC_HEADERS = ();
-        SUBPROJECTS = (eisa, pci, pcmcia);
+        SUBPROJECTS = (chips, eisa, pci, pcmcia);
     };
     LANGUAGE = English;
     LOCALIZABLE_FILES = {};

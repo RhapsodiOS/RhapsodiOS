@@ -7,35 +7,30 @@
 # and Makefile.postamble (both optional), and Makefile will include them.
 #
 
-NAME = i386
+NAME = chips
 
 PROJECTVERSION = 2.7
-PROJECT_TYPE = Kernel Server
-LANGUAGE = English
+PROJECT_TYPE = Component
 
-CLASSES = PExpert.m
+CLASSES =
 
-CFILES = pexpert.c acpi.c mptable.c msi.c apic_intr.c
+CFILES = lapic.c ioapic.c pcicfg.c
 
-HFILES = PExpert.h pexpert_i386.h acpi.h mptable.h msi.h
+HFILES = lapic.h ioapic.h pcicfg.h
 
-SUBPROJECTS = chips eisa pci pcmcia
+OTHERSRCS = Makefile Makefile.preamble
 
-OTHERSRCS = Makefile.preamble Makefile Makefile.postamble\
-            Load_Commands.sect
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC
-MAKEFILE = kernelserver.make
-NEXTSTEP_INSTALLDIR = /usr/local/lib
+MAKEFILE = subproj.make
 LIBS =
 DEBUG_LIBS = $(LIBS)
 PROF_LIBS = $(LIBS)
 
 
-HEADER_PATHS = -I$(KERNEL_HEADERS)/machdep
-NEXTSTEP_PB_CFLAGS = -Wno-format -DDRIVER_PRIVATE
-PUBLIC_HEADERS = pexpert_i386.h
+HEADER_PATHS = -I..
+NEXTSTEP_PB_CFLAGS = -Wno-format -DDRIVER_PRIVATE -static -DKERNEL -D_KERNEL
 
 
 NEXTSTEP_OBJCPLUS_COMPILER = /usr/bin/cc

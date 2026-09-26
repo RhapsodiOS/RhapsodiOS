@@ -110,6 +110,20 @@ typedef enum {
 /* sourceSense holds the OpenPIC "interrupts" sense cell (0..3). */
 #define PE_MACRISC_SENSE_UNKNOWN 0xff
 
+/*
+ * AAPL,interrupts lists derived for DriverKit, which reads nothing else on
+ * these machines.  node is an opaque firmware node compared by identity;
+ * the lists live in interruptCells.
+ */
+#define PE_MACRISC_MAX_INTERRUPT_NODES 64
+#define PE_MACRISC_MAX_INTERRUPT_CELLS 160
+#define PE_MACRISC_MAX_NODE_INTERRUPTS 8
+
+typedef struct {
+    const void *node;
+    unsigned short first, count;
+} PEInterruptNode;
+
 typedef struct {
     char model[PE_MACRISC_MODEL_MAX];
     int listedModel;
@@ -130,6 +144,10 @@ typedef struct {
     unsigned int pmuInterruptSource;
     unsigned char sourceRole[PE_MACRISC_MAX_SOURCES];
     unsigned char sourceSense[PE_MACRISC_MAX_SOURCES];
+    PEInterruptNode interruptNodes[PE_MACRISC_MAX_INTERRUPT_NODES];
+    unsigned int interruptNodeCount, interruptCellCount;
+    unsigned int interruptNodesDropped;
+    unsigned int interruptCells[PE_MACRISC_MAX_INTERRUPT_CELLS];
 } PEMacRISCPlatform;
 
 /* Absolute physical bases for powermac_io_info; absent devices are 0. */
@@ -154,6 +172,23 @@ int PEMacRISCPublish(const PEMacRISCPlatform *platform,
  */
 unsigned int PEMacRISCPMUInterruptList(const PEMacRISCPlatform *platform,
     unsigned int output[2]);
+
+/*
+ * Source numbers from a two-cell OpenPIC "interrupts" property.  Every
+ * source must be below sourceCount and every sense cell 0..3.  Returns the
+ * count, or 0 for anything else.
+ */
+unsigned int PEMacRISCDecodeInterrupts(PEProperty interrupts,
+    unsigned int sourceCount,
+    unsigned int output[PE_MACRISC_MAX_NODE_INTERRUPTS]);
+
+/* Record a node's list; returns 0 when the tables are full. */
+int PEMacRISCAddNodeInterrupts(PEMacRISCPlatform *platform, const void *node,
+    const unsigned int *cells, unsigned int count);
+
+/* The list recorded for node, if any. */
+int PEMacRISCNodeInterrupts(const PEMacRISCPlatform *platform,
+    const void *node, const unsigned int **cells, unsigned int *count);
 
 int PEMacRISCComputeClockConversion(const PEMacRISCPlatform *platform,
     unsigned int *numerator, unsigned int *denominator,

@@ -28,8 +28,10 @@ Boot from a temporary or dedicated disk, never a shared image.
   the `mac-io` node (`compatible`, `device-id`, `assigned-addresses`), its
   `interrupt-controller`, `via-pmu` or `via-cuda`, `escc-legacy`, the ATA
   nodes, `extint-gpio1`, and the root `nvram` node.
-- Whether the ATA nodes carry `AAPL,interrupts`. Without it, DriverKit gives
-  them no interrupts on this path; see the plan's known gaps.
+- Whether the ATA nodes carry firmware `AAPL,interrupts`, and each node's
+  `interrupt-parent`. Discovery derives the list for nodes parented to the
+  OpenPIC; a device that still gets no interrupts points at a specifier it
+  does not recognise.
 - On Intrepid machines, the `ata-6` (`kauai-ata`) node's `assigned-addresses`,
   `cable-type` and interrupts, the `hc` probe line, and the kernel's
   `Kauai timing` lines for each drive.

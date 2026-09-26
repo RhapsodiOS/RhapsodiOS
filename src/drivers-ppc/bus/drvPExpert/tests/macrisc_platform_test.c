@@ -17,7 +17,7 @@ static int failures;
 } while (0)
 
 /* A tiny in-memory device tree behind the PEMacRISCFirmware seam. */
-#define MAX_NODES 48
+#define MAX_NODES 128
 #define MAX_PROPS 16
 
 typedef struct {
@@ -35,7 +35,7 @@ typedef struct FakeNode {
     unsigned int childCount;
 } FakeNode;
 
-static unsigned char arena[16384];
+static unsigned char arena[32768];
 static unsigned int arenaUsed;
 static FakeNode nodes[MAX_NODES];
 static unsigned int nodeCount;
@@ -256,6 +256,7 @@ build_rackmac(Tree *t)
     add_string(t->mpic, "device_type", "open-pic");
     add_cells(t->mpic, "reg", 2, 0x40000U, 0x40000U);
     add_cells(t->mpic, "#interrupt-cells", 1, 2U);
+    add_cells(t->mpic, "AAPL,phandle", 1, 0xff9a0000U);
 
     t->via = add_node(t->macIO, "via-pmu");
     add_cells(t->via, "reg", 2, 0x16000U, 0x2000U);
@@ -776,10 +777,131 @@ test_diagnostics(void)
         kPEPlatformValid) == 0);
 }
 
+static void
+check_list(const PEMacRISCPlatform *p, FakeNode *node, unsigned int count,
+    unsigned int first, unsigned int second, unsigned int third)
+{
+    const unsigned int *cells;
+    unsigned int found;
+
+    if (!PEMacRISCNodeInterrupts(p, node, &cells, &found) ||
+        found != count || cells[0] != first ||
+        (count > 1 && cells[1] != second) ||
+        (count > 2 && cells[2] != third)) {
+        printf("FAIL interrupt list for node %d\n", (int)(node - nodes));
+        failures++;
+    }
+}
+
+static int
+has_list(const PEMacRISCPlatform *p, FakeNode *node)
+{
+    const unsigned int *cells;
+    unsigned int count;
+
+    return PEMacRISCNodeInterrupts(p, node, &cells, &count);
+}
+
+static void
+test_driverkit_interrupts(void)
+{
+    static PEMacRISCPlatform p;
+    PEPlatformError error;
+    FakeNode *internal;
+    FakeNode *kauai;
+    FakeNode *card;
+    FakeNode *given;
+    FakeNode *foreign;
+    FakeNode *stranger;
+    unsigned int i;
+    Tree t;
+
+    build_rackmac(&t);
+    internal = add_node(t.root, "pci");
+    add_string(internal, "compatible", "uni-north");
+    add_cells(internal, "interrupt-parent", 1, 0xff9a0000U);
+    kauai = add_node(internal, "ata-6");
+    add_string(kauai, "compatible", "kauai-ata");
+    add_string(kauai, "device_type", "ata");
+    add_cells(kauai, "interrupts", 2, 0x27U, 1U);
+    card = add_node(internal, "pci-card");
+    add_cells(card, "interrupts", 1, 1U);           /* PCI INTA, one cell */
+    given = add_node(internal, "firewire");
+    add_cells(given, "interrupts", 2, 0x28U, 1U);
+    add_cells(given, "AAPL,interrupts", 1, 0x28U);  /* firmware's own */
+    foreign = add_node(t.root, "other-controller-child");
+    add_cells(foreign, "interrupt-parent", 1, 0x1234U);
+    add_cells(foreign, "interrupts", 2, 0x29U, 1U);
+    stranger = add_node(t.macIO, "cascaded");
+    add_cells(stranger, "interrupt-parent", 1, 0x1234U);
+    add_cells(stranger, "interrupts", 2, 0x2aU, 1U);
+
+    CHECK(capture(&p, &error) == kPEMacRISCSupported);
+    CHECK(p.interruptNodesDropped == 0);
+    /* Mac-IO devices, in DriverKit's raw source form. */
+    check_list(&p, t.ata4, 2, 0x13, 0x0b, 0);
+    check_list(&p, t.ata3, 2, 0x14, 0x0a, 0);
+    check_list(&p, t.chA, 3, 0x16, 0x04, 0x05);
+    check_list(&p, t.i2sA, 3, 0x1e, 0x01, 0x02);
+    check_list(&p, t.gpio1, 1, 0x2f, 0, 0);
+    /* The PMU gets the VIA cascade child and its GPIO line. */
+    check_list(&p, t.via, 2, 66, 47, 0);
+    /* Kauai inherits the OpenPIC as its interrupt parent from its bus. */
+    check_list(&p, kauai, 1, 0x27, 0, 0);
+    CHECK(!has_list(&p, card));
+    CHECK(!has_list(&p, given));
+    CHECK(!has_list(&p, foreign));
+    CHECK(!has_list(&p, stranger));
+    CHECK(!has_list(&p, t.mpic));
+    CHECK(!has_list(&p, t.macIO));
+
+    /* Without an OpenPIC phandle only Mac-IO devices qualify. */
+    remove_prop(t.mpic, "AAPL,phandle");
+    CHECK(capture(&p, &error) == kPEMacRISCSupported);
+    check_list(&p, t.ata4, 2, 0x13, 0x0b, 0);
+    CHECK(!has_list(&p, kauai));
+    check_list(&p, stranger, 1, 0x2a, 0, 0);
+
+    /* A CUDA machine's VIA gets just the cascade child. */
+    build_rackmac(&t);
+    t.via->props[0].name = "removed";
+    add_string(t.via, "name", "via-cuda");
+    CHECK(capture(&p, &error) == kPEMacRISCSupported);
+    check_list(&p, t.via, 1, 66, 0, 0);
+
+    /* One-cell OpenPIC specifiers publish nothing but the VIA list. */
+    build_rackmac(&t);
+    remove_prop(t.mpic, "#interrupt-cells");
+    add_cells(t.mpic, "#interrupt-cells", 1, 1U);
+    remove_prop(t.via, "interrupts");
+    add_cells(t.via, "interrupts", 1, 0x19U);
+    remove_prop(t.gpio1, "interrupts");
+    add_cells(t.gpio1, "interrupts", 1, 0x2fU);
+    remove_prop(t.ata4, "interrupts");
+    remove_prop(t.ata3, "interrupts");
+    remove_prop(t.chA, "interrupts");
+    remove_prop(t.chB, "interrupts");
+    remove_prop(t.i2sA, "interrupts");
+    CHECK(capture(&p, &error) == kPEMacRISCSupported);
+    check_list(&p, t.via, 2, 66, 47, 0);
+    CHECK(!has_list(&p, t.gpio1));
+
+    /* More devices than the table holds: count the rest, still boot. */
+    build_rackmac(&t);
+    for (i = 0; i < 70; i++) {
+        stranger = add_node(t.macIO, "extra");
+        add_cells(stranger, "interrupts", 2, 0x30U, 1U);
+    }
+    CHECK(capture(&p, &error) == kPEMacRISCSupported);
+    CHECK(p.interruptNodeCount == PE_MACRISC_MAX_INTERRUPT_NODES);
+    CHECK(p.interruptNodesDropped > 0);
+}
+
 int
 main(void)
 {
     test_routes();
+    test_driverkit_interrupts();
     test_diagnostics();
     test_pmu_interrupts();
     test_mpic_table();

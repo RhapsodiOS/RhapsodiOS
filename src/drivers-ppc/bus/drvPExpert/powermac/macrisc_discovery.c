@@ -653,3 +653,67 @@ PEMacRISCFormatDiagnostic(char *buffer, unsigned int size,
     return macrisc_append(buffer, size, used,
         macrisc_macio_name(platform->macIOFamily));
 }
+
+unsigned int
+PEMacRISCDecodeInterrupts(PEProperty interrupts, unsigned int sourceCount,
+    unsigned int output[PE_MACRISC_MAX_NODE_INTERRUPTS])
+{
+    unsigned int count;
+    unsigned int entry;
+    unsigned int source;
+    unsigned int sense;
+
+    if (output == 0 || interrupts.size == 0 || interrupts.size % 8 != 0)
+        return 0;
+    count = interrupts.size / 8;
+    if (count > PE_MACRISC_MAX_NODE_INTERRUPTS)
+        return 0;
+    for (entry = 0; entry < count; entry++) {
+        if (!PEReadCell32(interrupts, entry * 2, &source) ||
+            !PEReadCell32(interrupts, entry * 2 + 1, &sense) ||
+            source >= sourceCount || sense > 3)
+            return 0;
+        output[entry] = source;
+    }
+    return count;
+}
+
+int
+PEMacRISCAddNodeInterrupts(PEMacRISCPlatform *platform, const void *node,
+    const unsigned int *cells, unsigned int count)
+{
+    PEInterruptNode *entry;
+    unsigned int i;
+
+    if (platform == 0 || node == 0 || cells == 0 || count == 0 ||
+        count > PE_MACRISC_MAX_NODE_INTERRUPTS ||
+        platform->interruptNodeCount == PE_MACRISC_MAX_INTERRUPT_NODES ||
+        count > PE_MACRISC_MAX_INTERRUPT_CELLS - platform->interruptCellCount)
+        return 0;
+    entry = &platform->interruptNodes[platform->interruptNodeCount++];
+    entry->node = node;
+    entry->first = (unsigned short)platform->interruptCellCount;
+    entry->count = (unsigned short)count;
+    for (i = 0; i < count; i++)
+        platform->interruptCells[platform->interruptCellCount++] = cells[i];
+    return 1;
+}
+
+int
+PEMacRISCNodeInterrupts(const PEMacRISCPlatform *platform, const void *node,
+    const unsigned int **cells, unsigned int *count)
+{
+    unsigned int i;
+
+    if (platform == 0 || node == 0 || cells == 0 || count == 0)
+        return 0;
+    for (i = 0; i < platform->interruptNodeCount; i++) {
+        if (platform->interruptNodes[i].node == node) {
+            *cells = &platform->interruptCells[
+                platform->interruptNodes[i].first];
+            *count = platform->interruptNodes[i].count;
+            return 1;
+        }
+    }
+    return 0;
+}

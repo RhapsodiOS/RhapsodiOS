@@ -485,6 +485,63 @@ test_setters(void)
     CHECK(channels.audioIn == 9 && channels.audioOut == -1);
 }
 
+static void
+test_interrupt_lists(void)
+{
+    static const unsigned char two[] = { 0, 0, 0, 0x13, 0, 0, 0, 1,
+        0, 0, 0, 0x0b, 0, 0, 0, 0 };
+    static const unsigned char odd[] = { 0, 0, 0, 0x13, 0, 0, 0, 1,
+        0, 0, 0, 0x0b };
+    static const unsigned char high[] = { 0, 0, 0, 0x40, 0, 0, 0, 1 };
+    static const unsigned char sense[] = { 0, 0, 0, 0x13, 0, 0, 0, 4 };
+    static unsigned char many[80];
+    static PEMacRISCPlatform p;
+    unsigned int out[PE_MACRISC_MAX_NODE_INTERRUPTS];
+    unsigned int cells[3];
+    const unsigned int *found;
+    unsigned int count;
+    unsigned int i;
+    int nodes[PE_MACRISC_MAX_INTERRUPT_NODES + 1];
+
+    CHECK(PEMacRISCDecodeInterrupts(prop(two, sizeof(two)), 64, out) == 2);
+    CHECK(out[0] == 0x13 && out[1] == 0x0b);
+    CHECK(PEMacRISCDecodeInterrupts(prop(odd, sizeof(odd)), 64, out) == 0);
+    CHECK(PEMacRISCDecodeInterrupts(prop(high, sizeof(high)), 64, out) == 0);
+    CHECK(PEMacRISCDecodeInterrupts(prop(high, sizeof(high)), 65, out) == 1);
+    CHECK(PEMacRISCDecodeInterrupts(prop(sense, sizeof(sense)), 64, out) ==
+        0);
+    CHECK(PEMacRISCDecodeInterrupts(prop(0, 0), 64, out) == 0);
+    CHECK(PEMacRISCDecodeInterrupts(prop(many, 72), 64, out) == 0);
+    CHECK(PEMacRISCDecodeInterrupts(prop(many, 64), 64, out) == 8);
+
+    PEMacRISCPlatformInit(&p);
+    cells[0] = 1;
+    cells[1] = 2;
+    cells[2] = 3;
+    CHECK(PEMacRISCAddNodeInterrupts(&p, &nodes[0], cells, 3));
+    CHECK(PEMacRISCAddNodeInterrupts(&p, &nodes[1], cells + 2, 1));
+    CHECK(PEMacRISCNodeInterrupts(&p, &nodes[0], &found, &count));
+    CHECK(count == 3 && found[0] == 1 && found[2] == 3);
+    CHECK(PEMacRISCNodeInterrupts(&p, &nodes[1], &found, &count));
+    CHECK(count == 1 && found[0] == 3);
+    CHECK(!PEMacRISCNodeInterrupts(&p, &nodes[2], &found, &count));
+    CHECK(!PEMacRISCNodeInterrupts(0, &nodes[0], &found, &count));
+    CHECK(!PEMacRISCAddNodeInterrupts(&p, &nodes[2], cells, 0));
+    CHECK(!PEMacRISCAddNodeInterrupts(&p, 0, cells, 1));
+
+    /* Node and cell tables both stop cleanly when full. */
+    PEMacRISCPlatformInit(&p);
+    for (i = 0; i < PE_MACRISC_MAX_INTERRUPT_NODES; i++)
+        CHECK(PEMacRISCAddNodeInterrupts(&p, &nodes[i], cells, 1));
+    CHECK(!PEMacRISCAddNodeInterrupts(&p,
+        &nodes[PE_MACRISC_MAX_INTERRUPT_NODES], cells, 1));
+    PEMacRISCPlatformInit(&p);
+    for (i = 0; i < PE_MACRISC_MAX_INTERRUPT_CELLS / 8; i++)
+        CHECK(PEMacRISCAddNodeInterrupts(&p, &nodes[i], out, 8));
+    CHECK(!PEMacRISCAddNodeInterrupts(&p, &nodes[i], out, 1));
+    CHECK(p.interruptCellCount == PE_MACRISC_MAX_INTERRUPT_CELLS);
+}
+
 int
 main(void)
 {
@@ -496,6 +553,7 @@ main(void)
     test_descriptor();
     test_descriptor_failures();
     test_setters();
+    test_interrupt_lists();
     if (failures)
         return 1;
     printf("MacRISC discovery tests passed\n");

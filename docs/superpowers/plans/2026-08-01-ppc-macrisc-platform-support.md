@@ -122,12 +122,13 @@ Decisions made while implementing, beyond the text of the tasks below:
 Known gaps for Task 12 to watch:
 
 - DriverKit's `resolveInterrupts` reads only `AAPL,interrupts` unless
-  `IsYosemite()`. The MacRISC path publishes it only for `via-pmu`. Every
-  other Mac-IO device, including ATA, gets interrupts only if firmware
-  provides `AAPL,interrupts`. If root-disk interrupts never arrive, this is
-  the first thing to check; the fix belongs in `PEEditDTEntry` (publish the
-  first cell of each two-cell `interrupts` pair) and is a separate change.
-- `via-cuda` machines get no `AAPL,interrupts` edit, for the same reason.
+  `IsYosemite()`. Discovery now derives that list for every node that lacks
+  one: Mac-IO devices, and any node whose inherited `interrupt-parent` is the
+  OpenPIC's `AAPL,phandle` (Kauai ATA, for example). The VIA gets its cascade
+  child (plus the PMU GPIO on PMU machines). `PEEditDTEntry` publishes the
+  list first for each node. At most 64 nodes and 160 sources are recorded;
+  `interruptNodesDropped` counts the rest. Watch for a device that still
+  reports no interrupts: its specifier may not be two-cell OpenPIC.
 - `SyncCore99NVRAM()` copies bytes into flash with plain stores. That is
   unchanged Sawtooth behaviour, now also reached on MacRISC.
 

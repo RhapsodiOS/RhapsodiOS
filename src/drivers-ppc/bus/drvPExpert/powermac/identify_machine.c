@@ -818,6 +818,27 @@ int PEEditDTEntry( DTEntry dtEntry, char * nodeName, int index,
     int         size;
     static int  usbDeviceFound = 0;
 
+    /*
+     * MacRISC: DriverKit reads only AAPL,interrupts.  Discovery derived it
+     * from firmware's OpenPIC specifiers; publish it first and shift this
+     * node's other edits back by one.
+     */
+    if( IsMacRISC()) {
+        const unsigned int	*interruptCells;
+        unsigned int		interruptCount;
+
+        if( PEMacRISCNodeInterrupts( PEMacRISCGetPlatform(), dtEntry,
+                                     &interruptCells, &interruptCount)) {
+            if( index == 0) {
+                *propName = "AAPL,interrupts";
+                *propData = (void *) interruptCells;
+                *propSize = interruptCount * sizeof( unsigned int);
+                return 0;
+            }
+            index--;
+        }
+    }
+
     /* Core99 (UniNorth): Handle PCI bridge class code for AGP */
     if( IsCore99()) {
         if( 0 == strcmp( nodeName, "pci") && index == 0) {
@@ -854,18 +875,6 @@ int PEEditDTEntry( DTEntry dtEntry, char * nodeName, int index,
             *propSize = 0;
             return 0;
         }
-    }
-
-    /* MacRISC: hand the PMU its VIA cascade child and GPIO interrupt. */
-    if( IsMacRISC() && 0 == strcmp( nodeName, "via-pmu") && index == 0) {
-        static unsigned int pmuInterrupts[2];
-
-        if( 2 != PEMacRISCPMUInterruptList( PEMacRISCGetPlatform(), pmuInterrupts))
-            return -1;
-        *propName = "AAPL,interrupts";
-        *propData = pmuInterrupts;
-        *propSize = sizeof( pmuInterrupts);
-        return 0;
     }
 
     /* Handle ATY,LTProParent (Rage LTPro graphics) */

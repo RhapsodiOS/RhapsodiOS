@@ -31,7 +31,16 @@ typedef struct {
     PEFirmwareNode next;
     unsigned int remaining;
     int inMacIO;
+    unsigned int interruptParent;       /* inherited phandle, 0 if none */
 } MacRISCFrame;
+
+/* A node whose "interrupts" may become an AAPL,interrupts list. */
+typedef struct {
+    PEFirmwareNode node;
+    PEProperty interrupts;
+    unsigned int interruptParent;
+    int inMacIO;
+} MacRISCCandidate;
 
 typedef struct {
     const PEMacRISCFirmware *fw;
@@ -44,6 +53,11 @@ typedef struct {
     MacRISCInterrupts irq[kSlotCount];
     MacRISCATA ata[2];
     unsigned int ataCount;
+    MacRISCCandidate candidates[PE_MACRISC_MAX_INTERRUPT_NODES];
+    unsigned int candidateCount;
+    int mpicPhandleKnown;
+    unsigned int mpicPhandle;
+    PEFirmwareNode viaNode;
 } MacRISCCapture;
 
 static PEProperty
@@ -305,6 +319,8 @@ macrisc_visit_macio_child(MacRISCCapture *c, PEFirmwareNode node,
     if (macrisc_is(c, node, "device_type", "open-pic")) {
         macrisc_child_resource(c, node, &p->mpic);
         p->mpicSources = MACRISC_MPIC_SOURCES;
+        c->mpicPhandleKnown = PEReadAddress32(
+            macrisc_prop(c, node, "AAPL,phandle"), 1, &c->mpicPhandle);
         interruptCells = macrisc_prop(c, node, "#interrupt-cells");
         if (macrisc_present(interruptCells) &&
             (!PEReadAddress32(interruptCells, 1, &c->interruptCells) ||
@@ -316,6 +332,7 @@ macrisc_visit_macio_child(MacRISCCapture *c, PEFirmwareNode node,
             p->hasPMU = 1;
         else
             p->hasCUDA = 1;
+        c->viaNode = node;
         macrisc_child_resource(c, node, &p->via);
         macrisc_stash(c, &c->irq[kSlotVIA], node, kPERoleVIA, kPERoleNone,
             kPERoleNone);
@@ -361,9 +378,38 @@ macrisc_visit_macio_child(MacRISCCapture *c, PEFirmwareNode node,
     }
 }
 
+/*
+ * Remember nodes with "interrupts" but no AAPL,interrupts.  Whether each
+ * one qualifies is settled once the OpenPIC's phandle is known.  The VIA
+ * gets its own list.
+ */
+static void
+macrisc_note_interrupts(MacRISCCapture *c, PEFirmwareNode node,
+    unsigned int interruptParent, int inMacIO)
+{
+    MacRISCCandidate *candidate;
+    PEProperty interrupts;
+
+    interrupts = macrisc_prop(c, node, "interrupts");
+    if (!macrisc_present(interrupts) ||
+        macrisc_present(macrisc_prop(c, node, "AAPL,interrupts")) ||
+        macrisc_is(c, node, "name", "via-pmu") ||
+        macrisc_is(c, node, "name", "via-cuda"))
+        return;
+    if (c->candidateCount == PE_MACRISC_MAX_INTERRUPT_NODES) {
+        c->platform->interruptNodesDropped++;
+        return;
+    }
+    candidate = &c->candidates[c->candidateCount++];
+    candidate->node = node;
+    candidate->interrupts = interrupts;
+    candidate->interruptParent = interruptParent;
+    candidate->inMacIO = inMacIO;
+}
+
 static void
 macrisc_visit(MacRISCCapture *c, PEFirmwareNode node, PEFirmwareNode parent,
-    int parentIsRoot, int inMacIO)
+    int parentIsRoot, int inMacIO, unsigned int interruptParent)
 {
     PEMacRISCPlatform *p;
     unsigned int offset;
@@ -371,6 +417,7 @@ macrisc_visit(MacRISCCapture *c, PEFirmwareNode node, PEFirmwareNode parent,
     PEProperty reg;
 
     p = c->platform;
+    macrisc_note_interrupts(c, node, interruptParent, inMacIO);
     if (inMacIO) {
         macrisc_visit_macio_child(c, node, parent);
     } else if (macrisc_is(c, node, "device_type", "cpu")) {
@@ -395,6 +442,19 @@ macrisc_visit(MacRISCCapture *c, PEFirmwareNode node, PEFirmwareNode parent,
     }
 }
 
+/* A node's own "interrupt-parent", else the one it inherits. */
+static unsigned int
+macrisc_interrupt_parent(MacRISCCapture *c, PEFirmwareNode node,
+    unsigned int inherited)
+{
+    unsigned int handle;
+
+    if (PEReadAddress32(macrisc_prop(c, node, "interrupt-parent"), 1,
+        &handle))
+        return handle;
+    return inherited;
+}
+
 /* Depth-first walk with a fixed stack; returns 0 if the tree is too deep. */
 static int
 macrisc_walk(MacRISCCapture *c)
@@ -405,6 +465,7 @@ macrisc_walk(MacRISCCapture *c)
     PEFirmwareNode root;
     PEFirmwareNode child;
     unsigned int depth;
+    unsigned int interruptParent;
     int inMacIO;
 
     fw = c->fw;
@@ -418,6 +479,7 @@ macrisc_walk(MacRISCCapture *c)
     stack[0].next = stack[0].remaining ? fw->firstChild(fw->context, root) :
         0;
     stack[0].inMacIO = 0;
+    stack[0].interruptParent = macrisc_interrupt_parent(c, root, 0);
     depth = 1;
     while (depth != 0) {
         top = &stack[depth - 1];
@@ -430,7 +492,10 @@ macrisc_walk(MacRISCCapture *c)
         top->next = top->remaining ?
             fw->nextSibling(fw->context, child) : 0;
         inMacIO = top->inMacIO;
-        macrisc_visit(c, child, top->node, depth == 1, inMacIO);
+        interruptParent = macrisc_interrupt_parent(c, child,
+            top->interruptParent);
+        macrisc_visit(c, child, top->node, depth == 1, inMacIO,
+            interruptParent);
         if (fw->childCount(fw->context, child) == 0)
             continue;
         if (depth == MACRISC_DEPTH)
@@ -441,6 +506,7 @@ macrisc_walk(MacRISCCapture *c)
         stack[depth].inMacIO = inMacIO || macrisc_is(c, child,
             "device_type", "mac-io") || macrisc_is(c, child, "name",
             "mac-io");
+        stack[depth].interruptParent = interruptParent;
         depth++;
     }
     return 1;
@@ -530,6 +596,53 @@ macrisc_finish_ata(MacRISCCapture *c)
     macrisc_assign(c, &second->irq);
 }
 
+/*
+ * DriverKit reads only AAPL,interrupts on these machines.  Give it the
+ * OpenPIC sources of every Mac-IO device, and of any other node whose
+ * interrupt parent is the OpenPIC (Kauai ATA on UniNorth's internal PCI
+ * bus, for example).  The VIA's drivers want its cascade child instead.
+ */
+static void
+macrisc_publish_interrupts(MacRISCCapture *c)
+{
+    PEMacRISCPlatform *p;
+    MacRISCCandidate *candidate;
+    unsigned int cells[PE_MACRISC_MAX_NODE_INTERRUPTS];
+    unsigned int count;
+    unsigned int i;
+    int accept;
+
+    p = c->platform;
+    if (c->viaNode != 0) {
+        if (p->hasPMU) {
+            count = PEMacRISCPMUInterruptList(p, cells);
+        } else {
+            cells[0] = p->mpicSources + 2;      /* VIA1 child PMAC_DEV_VIA1 */
+            count = 1;
+        }
+        if (count != 0 &&
+            !PEMacRISCAddNodeInterrupts(p, c->viaNode, cells, count))
+            p->interruptNodesDropped++;
+    }
+    if (c->interruptCells != 2)
+        return;
+    for (i = 0; i < c->candidateCount; i++) {
+        candidate = &c->candidates[i];
+        /* A known interrupt parent must be the OpenPIC; else only Mac-IO. */
+        if (c->mpicPhandleKnown && candidate->interruptParent != 0)
+            accept = candidate->interruptParent == c->mpicPhandle;
+        else
+            accept = candidate->inMacIO;
+        if (!accept)
+            continue;
+        count = PEMacRISCDecodeInterrupts(candidate->interrupts,
+            p->mpicSources, cells);
+        if (count != 0 &&
+            !PEMacRISCAddNodeInterrupts(p, candidate->node, cells, count))
+            p->interruptNodesDropped++;
+    }
+}
+
 PEMacRISCStatus
 PEMacRISCCapture(const PEMacRISCFirmware *firmware,
     PEMacRISCPlatform *platform, PEPlatformError *error)
@@ -572,7 +685,10 @@ PEMacRISCCapture(const PEMacRISCFirmware *firmware,
     if (c.malformed)
         return kPEMacRISCMalformed;
     *error = PEMacRISCValidate(platform);
-    return *error == kPEPlatformValid ? status : kPEMacRISCMalformed;
+    if (*error != kPEPlatformValid)
+        return kPEMacRISCMalformed;
+    macrisc_publish_interrupts(&c);
+    return status;
 }
 
 #ifndef MACRISC_HOST_TEST

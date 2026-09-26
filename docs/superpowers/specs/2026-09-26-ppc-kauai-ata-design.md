@@ -72,8 +72,9 @@ the "interrupt before the FIFO drains" case Linux handles.
 ## Out of scope
 
 - DriverKit gives a device interrupts only from `AAPL,interrupts` on these
-  machines. Kauai, like the Mac-IO devices, depends on the PExpert publishing
-  that property; that is a separate change.
+  machines. The PExpert's MacRISC discovery publishes it for Kauai when the
+  node's inherited `interrupt-parent` is the OpenPIC; that lives in
+  `drvPExpert`, not here.
 - K2 and Shasta (G5) cells, sleep and wake, and the UniNorth clock gate for
   the cell, which firmware leaves on when it boots from the disk.
 

@@ -128,8 +128,10 @@ Classification is based on capabilities rather than a whitelist alone:
 
 1. A supported 32-bit PowerPC G3/G4 CPU node must be present.
 2. A supported UniNorth-compatible host bridge must be present.
-3. A KeyLargo-, Pangea-, or Intrepid-compatible Mac-IO node must expose a
-   valid register range.
+3. A `mac-io` node compatible with `Keylargo` whose `device-id` is 0x22
+   (KeyLargo), 0x25 (Pangea), or 0x3e (Intrepid) must expose a valid register
+   range. Pangea and Intrepid do not carry their own `compatible` strings;
+   K2 (0x41) and Shasta (0x4f) are rejected.
 4. An OpenPIC-compatible interrupt controller must expose a valid register
    range and supported source count.
 5. The root model must belong to a New World desktop, portable, all-in-one,
@@ -184,6 +186,10 @@ assuming every Mac-IO generation contains every channel.
 
 ## Interrupt Handling
 
+The OpenPIC is the `interrupt-controller@40000` child of Mac-IO on every
+KeyLargo-family chip; its base is published as an absolute physical address
+because the existing MPIC register macros use it as one.
+
 The MacRISC family owns fixed-capacity early-boot arrays for 64 primary MPIC
 sources plus the validated VIA/PMU cascade children. Discovery rejects a
 primary source count larger than 64 or a cascade width larger than the
@@ -198,11 +204,15 @@ Sense and polarity are obtained from validated firmware data where the
 platform exposes them. Chipset defaults are used only for documented
 KeyLargo-family cases. Cascade state includes the MPIC source, number of VIA
 children, and PMU/CUDA topology; it is not enabled from a fixed Sawtooth
-constant.
+constant. The cascade source is the VIA node's own firmware interrupt (25 on
+`via-cuda` desktops, 47 on `via-pmu` machines). The OpenPIC pass-through
+disable bit that the legacy code calls `MPIC_CASCADE` is unrelated and stays
+set on every Mac.
 
 The boot CPU is the only MPIC destination in this milestone. The second CPU
 on a dual-processor `RackMac1,1` remains parked and is not advertised as
-available to the scheduler.
+available to the scheduler; the existing `configure_platform()` already
+advertises a single processor, so the scheduler view does not change.
 
 ## CPU, Cache, Clock, and BAT Handling
 

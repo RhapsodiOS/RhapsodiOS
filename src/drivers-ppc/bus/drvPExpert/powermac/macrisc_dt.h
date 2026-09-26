@@ -26,5 +26,6 @@ PEMacRISCStatus PEMacRISCCapture(const PEMacRISCFirmware *firmware,
 PEMacRISCStatus PEMacRISCDiscoverDeviceTree(PEPlatformError *error);
 const PEMacRISCPlatform *PEMacRISCGetPlatform(void);
 void PEMacRISCPrintFailure(PEMacRISCStatus status, PEPlatformError error);
+void PEMacRISCPrintAccepted(void);
 
 #endif /* _PEXPERT_MACRISC_DT_H_ */

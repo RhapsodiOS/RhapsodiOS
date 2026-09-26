@@ -166,6 +166,7 @@ void configure_macrisc(void)
   PEMPICConfiguration configuration;
   kern_return_t result;
 
+  PEMacRISCPrintAccepted();
   platform = PEMacRISCGetPlatform();
   if (platform == 0 ||
       !PEMacRISCBuildMPIC(platform, macrisc_interrupts,

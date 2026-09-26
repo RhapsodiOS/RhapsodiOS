@@ -65,10 +65,25 @@ PEReadAddress32(PEProperty property, unsigned int cells, unsigned int *value)
     return 1;
 }
 
-/* Machines this platform path has been written against. */
+/*
+ * Later G3/G4 machines by firmware identifier.  This labels the boot log;
+ * acceptance comes from the capability checks, so an unlisted compatible
+ * machine still boots.
+ */
 static const char *const macrisc_catalog[] = {
-    "PowerMac2,2", "PowerMac4,2", "PowerMac6,3", "PowerMac10,1",
-    "PowerBook3,4", "PowerBook4,3", "RackMac1,1"
+    "PowerMac2,2", "PowerMac3,4", "PowerMac3,5", "PowerMac3,6",
+    "PowerMac4,1", "PowerMac4,2", "PowerMac4,4", "PowerMac4,5",
+    "PowerMac6,1", "PowerMac6,3", "PowerMac6,4",
+    "PowerMac10,1", "PowerMac10,2",
+    "PowerBook2,2", "PowerBook3,1", "PowerBook3,2", "PowerBook3,3",
+    "PowerBook3,4", "PowerBook3,5",
+    "PowerBook4,1", "PowerBook4,2", "PowerBook4,3",
+    "PowerBook5,1", "PowerBook5,2", "PowerBook5,3", "PowerBook5,4",
+    "PowerBook5,5", "PowerBook5,6", "PowerBook5,7", "PowerBook5,8",
+    "PowerBook5,9",
+    "PowerBook6,1", "PowerBook6,2", "PowerBook6,3", "PowerBook6,4",
+    "PowerBook6,5", "PowerBook6,7", "PowerBook6,8",
+    "RackMac1,1", "RackMac1,2"
 };
 
 static int
@@ -235,6 +250,12 @@ PEMacRISCSelectRoute(const char *model, PEMacRISCStatus status)
     return kPERouteUnsupported;
 }
 
+int
+PEMacRISCHostSupported(PEProperty hostCompatible)
+{
+    return PEPropertyHasString(hostCompatible, "uni-north");
+}
+
 PEMacRISCStatus
 PEMacRISCClassify(const PEMacRISCIdentityInput *input, PECPUFamily *cpu,
     PEMacIOFamily *macIO, char model[PE_MACRISC_MODEL_MAX])
@@ -253,7 +274,7 @@ PEMacRISCClassify(const PEMacRISCIdentityInput *input, PECPUFamily *cpu,
         return kPEMacRISCMalformed;
     if (*cpu == kPECPUUnknown || *cpu == kPECPU970)
         return kPEMacRISCUnsupportedCPU;
-    if (!PEPropertyHasString(input->hostCompatible, "uni-north"))
+    if (!PEMacRISCHostSupported(input->hostCompatible))
         return kPEMacRISCUnsupportedHost;
     if (PEPropertyHasString(input->rootCompatible, "MacRISC4") ||
         (!PEPropertyHasString(input->rootCompatible, "MacRISC") &&
@@ -536,4 +557,99 @@ PEMacRISCPMUInterruptList(const PEMacRISCPlatform *platform,
     output[0] = platform->mpicSources + 2;      /* VIA1 child PMAC_DEV_VIA1 */
     output[1] = platform->pmuInterruptSource;
     return 2;
+}
+
+static const char *
+macrisc_cpu_name(PECPUFamily cpu)
+{
+    switch (cpu) {
+    case kPECPU750:     return "750";
+    case kPECPU7400:    return "7400";
+    case kPECPU7410:    return "7410";
+    case kPECPU745x:    return "745x";
+    case kPECPU970:     return "970";
+    default:            break;
+    }
+    return "unknown";
+}
+
+static const char *
+macrisc_macio_name(PEMacIOFamily macIO)
+{
+    switch (macIO) {
+    case kPEMacIOKeyLargo:  return "KeyLargo";
+    case kPEMacIOPangea:    return "Pangea";
+    case kPEMacIOIntrepid:  return "Intrepid";
+    case kPEMacIOK2:        return "K2";
+    default:                break;
+    }
+    return "unknown";
+}
+
+static const char *
+macrisc_error_name(PEPlatformError error)
+{
+    switch (error) {
+    case kPEPlatformMissingMacIO:   return "missing Mac-IO";
+    case kPEPlatformBadMacIORange:  return "malformed Mac-IO range";
+    case kPEPlatformMissingMPIC:    return "missing MPIC";
+    case kPEPlatformBadMPICRange:   return "malformed MPIC range";
+    case kPEPlatformBadMPICCount:   return "bad MPIC source count";
+    case kPEPlatformMissingCPU:     return "missing CPU";
+    case kPEPlatformBadCPUCount:    return "too many CPUs";
+    case kPEPlatformBadClock:       return "bad firmware clocks";
+    case kPEPlatformBadCascade:     return "bad VIA cascade";
+    case kPEPlatformMissingVIA:     return "missing VIA";
+    case kPEPlatformMissingSerial:  return "missing SCC";
+    case kPEPlatformMissingNVRAM:   return "missing flash NVRAM";
+    case kPEPlatformBadRange:       return "malformed resource range";
+    default:                        break;
+    }
+    return "malformed device tree";
+}
+
+static unsigned int
+macrisc_append(char *buffer, unsigned int size, unsigned int used,
+    const char *text)
+{
+    while (*text != 0 && used + 1 < size)
+        buffer[used++] = *text++;
+    if (used < size)
+        buffer[used] = 0;
+    return used;
+}
+
+unsigned int
+PEMacRISCFormatDiagnostic(char *buffer, unsigned int size,
+    const PEMacRISCPlatform *platform, PEMacRISCStatus status,
+    PEPlatformError error)
+{
+    unsigned int used;
+
+    if (buffer == 0 || size == 0 || platform == 0)
+        return 0;
+    used = macrisc_append(buffer, size, 0, "MacRISC: ");
+    used = macrisc_append(buffer, size, used,
+        platform->model[0] != 0 ? platform->model : "unknown");
+    if (status == kPEMacRISCSupported)
+        used = macrisc_append(buffer, size, used, " accepted: cpu=");
+    else if (status == kPEMacRISCCompatibleUnlisted)
+        used = macrisc_append(buffer, size, used,
+            " accepted as unlisted compatible: cpu=");
+    else if (status == kPEMacRISCMalformed)
+        return macrisc_append(buffer, size,
+            macrisc_append(buffer, size, used, " rejected: "),
+            macrisc_error_name(error));
+    else
+        used = macrisc_append(buffer, size, used, " rejected: cpu=");
+    used = macrisc_append(buffer, size, used,
+        macrisc_cpu_name(platform->cpuFamily));
+    if (status != kPEMacRISCSupported &&
+        status != kPEMacRISCCompatibleUnlisted)
+        used = macrisc_append(buffer, size, used,
+            platform->hostSupported ? " host=uni-north" :
+            " host=unsupported");
+    used = macrisc_append(buffer, size, used, " mac-io=");
+    return macrisc_append(buffer, size, used,
+        macrisc_macio_name(platform->macIOFamily));
 }

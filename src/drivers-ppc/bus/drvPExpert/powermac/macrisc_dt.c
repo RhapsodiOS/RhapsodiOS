@@ -555,6 +555,8 @@ PEMacRISCCapture(const PEMacRISCFirmware *firmware,
 
     status = PEMacRISCClassify(&c.identity, &platform->cpuFamily,
         &platform->macIOFamily, platform->model);
+    platform->hostSupported = PEMacRISCHostSupported(
+        c.identity.hostCompatible);
     platform->listedModel = status == kPEMacRISCSupported;
     if (status != kPEMacRISCSupported &&
         status != kPEMacRISCCompatibleUnlisted)
@@ -660,6 +662,7 @@ macrisc_dt_property(void *context, PEFirmwareNode node, const char *name)
 
 static PEMacRISCPlatform macrisc_platform;
 static int macrisc_platform_valid;
+static PEMacRISCStatus macrisc_status;
 
 PEMacRISCStatus
 PEMacRISCDiscoverDeviceTree(PEPlatformError *error)
@@ -675,6 +678,7 @@ PEMacRISCDiscoverDeviceTree(PEPlatformError *error)
     firmware.property = macrisc_dt_property;
     macrisc_platform_valid = 0;
     status = PEMacRISCCapture(&firmware, &macrisc_platform, error);
+    macrisc_status = status;
     macrisc_platform_valid = status == kPEMacRISCSupported ||
         status == kPEMacRISCCompatibleUnlisted;
     return status;
@@ -689,9 +693,19 @@ PEMacRISCGetPlatform(void)
 void
 PEMacRISCPrintFailure(PEMacRISCStatus status, PEPlatformError error)
 {
-    printf("MacRISC: %s rejected: status %d error %d\n",
-        macrisc_platform.model[0] ? macrisc_platform.model : "unknown",
-        (int)status, (int)error);
+    char line[160];
+
+    PEMacRISCFormatDiagnostic(line, sizeof(line), &macrisc_platform, status,
+        error);
+    printf("%s\n", line);
+}
+
+/* Called once the console is up, so the accepted line is visible. */
+void
+PEMacRISCPrintAccepted(void)
+{
+    if (macrisc_platform_valid)
+        PEMacRISCPrintFailure(macrisc_status, kPEPlatformValid);
 }
 
 #endif /* !MACRISC_HOST_TEST */

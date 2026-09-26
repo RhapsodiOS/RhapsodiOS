@@ -178,6 +178,74 @@ test_classify_rows(void)
     }
 }
 
+typedef struct {
+    const char *model;
+    unsigned int pvr;
+    unsigned int deviceID;
+} CatalogCase;
+
+/* Later G3/G4 machines, each with a CPU and Mac-IO its generation ships. */
+static const CatalogCase knownLaterModels[] = {
+    { "PowerMac2,2", 0x00080000U, 0x22 }, { "PowerMac4,1", 0x00080000U, 0x25 },
+    { "PowerMac3,4", 0x800c0000U, 0x22 }, { "PowerMac3,5", 0x80000000U, 0x22 },
+    { "PowerMac3,6", 0x80010000U, 0x22 }, { "PowerMac4,2", 0x80000000U, 0x25 },
+    { "PowerMac4,4", 0x80010000U, 0x25 }, { "PowerMac4,5", 0x80010000U, 0x25 },
+    { "PowerMac6,1", 0x80020000U, 0x3e }, { "PowerMac6,3", 0x80020000U, 0x3e },
+    { "PowerMac6,4", 0x80020000U, 0x3e }, { "PowerMac10,1", 0x80030000U, 0x3e },
+    { "PowerMac10,2", 0x80030000U, 0x3e }, { "PowerBook2,2", 0x00080000U, 0x22 },
+    { "PowerBook3,1", 0x00080000U, 0x22 }, { "PowerBook3,2", 0x800c0000U, 0x22 },
+    { "PowerBook3,3", 0x800c0000U, 0x22 }, { "PowerBook3,4", 0x80010000U, 0x22 },
+    { "PowerBook3,5", 0x80010000U, 0x22 }, { "PowerBook4,1", 0x00080000U, 0x25 },
+    { "PowerBook4,2", 0x00080000U, 0x25 }, { "PowerBook4,3", 0x70000000U, 0x25 },
+    { "PowerBook5,1", 0x80010000U, 0x3e }, { "PowerBook5,2", 0x80010000U, 0x3e },
+    { "PowerBook5,3", 0x80020000U, 0x3e }, { "PowerBook5,4", 0x80020000U, 0x3e },
+    { "PowerBook5,5", 0x80020000U, 0x3e }, { "PowerBook5,6", 0x80030000U, 0x3e },
+    { "PowerBook5,7", 0x80030000U, 0x3e }, { "PowerBook5,8", 0x80030000U, 0x3e },
+    { "PowerBook5,9", 0x80030000U, 0x3e }, { "PowerBook6,1", 0x80010000U, 0x3e },
+    { "PowerBook6,2", 0x80010000U, 0x3e }, { "PowerBook6,3", 0x80010000U, 0x3e },
+    { "PowerBook6,4", 0x80020000U, 0x3e }, { "PowerBook6,5", 0x80020000U, 0x3e },
+    { "PowerBook6,7", 0x80030000U, 0x3e }, { "PowerBook6,8", 0x80030000U, 0x3e },
+    { "RackMac1,1", 0x80010000U, 0x22 }, { "RackMac1,2", 0x80010000U, 0x22 }
+};
+
+/* G5 machines: rejected by CPU and host checks, never by name. */
+static const char *const g5Models[] = {
+    "PowerMac7,2", "PowerMac7,3", "PowerMac8,1", "PowerMac8,2",
+    "PowerMac9,1", "PowerMac11,2", "RackMac3,1"
+};
+
+static void
+test_catalog(void)
+{
+    IdentityFixture f;
+    PECPUFamily cpu;
+    PEMacIOFamily macIO;
+    char model[PE_MACRISC_MODEL_MAX];
+    unsigned int i;
+
+    for (i = 0; i < sizeof(knownLaterModels) / sizeof(knownLaterModels[0]);
+        i++) {
+        identity(&f, knownLaterModels[i].model, "MacRISC2",
+            knownLaterModels[i].pvr, "uni-north", "Keylargo",
+            knownLaterModels[i].deviceID);
+        if (PEMacRISCClassify(&f.input, &cpu, &macIO, model) !=
+            kPEMacRISCSupported) {
+            printf("FAIL catalog %s\n", knownLaterModels[i].model);
+            failures++;
+        }
+    }
+    for (i = 0; i < sizeof(g5Models) / sizeof(g5Models[0]); i++) {
+        identity(&f, g5Models[i], "MacRISC4", 0x003c0000U, "u3-ht",
+            "K2-Keylargo", 0x41);
+        CHECK(PEMacRISCClassify(&f.input, &cpu, &macIO, model) ==
+            kPEMacRISCUnsupportedCPU);
+        /* A G4 on U3 still fails on the host bridge. */
+        f.input.pvr = 0x80020000U;
+        CHECK(PEMacRISCClassify(&f.input, &cpu, &macIO, model) ==
+            kPEMacRISCUnsupportedHost);
+    }
+}
+
 static void
 test_classify_details(void)
 {
@@ -200,7 +268,7 @@ test_classify_details(void)
     CHECK(PEMacRISCClassify(&f.input, &cpu, &macIO, model) ==
         kPEMacRISCNotMatched);
 
-    identity(&f, "PowerMac4,4", "MacRISC2", 0x800c0000U, "uni-north",
+    identity(&f, "PowerMac4,9", "MacRISC2", 0x800c0000U, "uni-north",
         "Pangea", 0x25);
     CHECK(PEMacRISCClassify(&f.input, &cpu, &macIO, model) ==
         kPEMacRISCCompatibleUnlisted);
@@ -424,6 +492,7 @@ main(void)
     test_cells();
     test_classify_rows();
     test_classify_details();
+    test_catalog();
     test_descriptor();
     test_descriptor_failures();
     test_setters();

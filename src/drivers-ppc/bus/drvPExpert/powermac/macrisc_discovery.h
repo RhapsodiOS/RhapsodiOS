@@ -58,6 +58,7 @@ typedef struct {
 PEMacRISCStatus PEMacRISCClassify(const PEMacRISCIdentityInput *input,
     PECPUFamily *cpu, PEMacIOFamily *macIO,
     char model[PE_MACRISC_MODEL_MAX]);
+int PEMacRISCHostSupported(PEProperty hostCompatible);
 
 typedef enum {
     kPERouteLegacy, kPERouteSawtooth, kPERouteMacRISC, kPERouteUnsupported
@@ -114,6 +115,7 @@ typedef struct {
     int listedModel;
     PECPUFamily cpuFamily;
     PEMacIOFamily macIOFamily;
+    int hostSupported;
     unsigned int cpuCount, bootCPU, pvr;
     unsigned int cpuClockHz, busClockHz, timebaseHz;
     unsigned int dcacheSize, dcacheBlockSize, icacheSize, l2CacheSize;
@@ -156,6 +158,14 @@ unsigned int PEMacRISCPMUInterruptList(const PEMacRISCPlatform *platform,
 int PEMacRISCComputeClockConversion(const PEMacRISCPlatform *platform,
     unsigned int *numerator, unsigned int *denominator,
     unsigned int *period824);
+
+/*
+ * One bounded boot-log line naming the model, CPU and Mac-IO families and
+ * the failing capability.  Returns the length written.
+ */
+unsigned int PEMacRISCFormatDiagnostic(char *buffer, unsigned int size,
+    const PEMacRISCPlatform *platform, PEMacRISCStatus status,
+    PEPlatformError error);
 
 void PEMacRISCPlatformInit(PEMacRISCPlatform *platform);
 PEPlatformError PEMacRISCValidate(const PEMacRISCPlatform *platform);

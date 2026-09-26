@@ -700,10 +700,87 @@ test_pmu_interrupts(void)
     CHECK(PEMacRISCPMUInterruptList(&p, 0) == 0);
 }
 
+static void
+check_line(const PEMacRISCPlatform *p, PEMacRISCStatus status,
+    PEPlatformError error, const char *expected)
+{
+    char line[160];
+
+    PEMacRISCFormatDiagnostic(line, sizeof(line), p, status, error);
+    if (strcmp(line, expected) != 0) {
+        printf("FAIL diagnostic:\n  got  %s\n  want %s\n", line, expected);
+        failures++;
+    }
+}
+
+static void
+test_diagnostics(void)
+{
+    PEMacRISCPlatform p;
+    PEPlatformError error;
+    char tiny[12];
+    Tree t;
+
+    build_rackmac(&t);
+    remove_prop(t.root, "compatible");
+    add_bytes(t.root, "compatible", "PowerMac7,2\0MacRISC4", 21);
+    remove_prop(t.cpu0, "cpu-version");
+    add_cells(t.cpu0, "cpu-version", 1, 0x00390200U);
+    remove_prop(t.host, "compatible");
+    add_string(t.host, "compatible", "u3-ht");
+    remove_prop(t.macIO, "device-id");
+    add_cells(t.macIO, "device-id", 1, 0x41U);
+    remove_prop(t.macIO, "compatible");
+    add_string(t.macIO, "compatible", "K2-Keylargo");
+    CHECK(capture(&p, &error) == kPEMacRISCUnsupportedCPU);
+    check_line(&p, kPEMacRISCUnsupportedCPU, error,
+        "MacRISC: PowerMac7,2 rejected: cpu=970 host=unsupported mac-io=K2");
+
+    build_rackmac(&t);
+    remove_prop(t.root, "compatible");
+    add_bytes(t.root, "compatible", "PowerBook3,4\0MacRISC2", 22);
+    remove_prop(t.mpic, "reg");
+    add_cells(t.mpic, "reg", 2, 0x70000U, 0x40000U);
+    CHECK(capture(&p, &error) == kPEMacRISCMalformed);
+    check_line(&p, kPEMacRISCMalformed, error,
+        "MacRISC: PowerBook3,4 rejected: malformed MPIC range");
+
+    build_rackmac(&t);
+    remove_prop(t.root, "compatible");
+    add_bytes(t.root, "compatible", "PowerBook9,9\0MacRISC2", 22);
+    remove_prop(t.macIO, "device-id");
+    add_cells(t.macIO, "device-id", 1, 0x3eU);
+    remove_prop(t.cpu0, "cpu-version");
+    add_cells(t.cpu0, "cpu-version", 1, 0x80020101U);
+    CHECK(capture(&p, &error) == kPEMacRISCCompatibleUnlisted);
+    check_line(&p, kPEMacRISCCompatibleUnlisted, error,
+        "MacRISC: PowerBook9,9 accepted as unlisted compatible: "
+        "cpu=745x mac-io=Intrepid");
+
+    build_rackmac(&t);
+    CHECK(capture(&p, &error) == kPEMacRISCSupported);
+    check_line(&p, kPEMacRISCSupported, error,
+        "MacRISC: RackMac1,1 accepted: cpu=745x mac-io=KeyLargo");
+    check_line(&p, kPEMacRISCMalformed, kPEPlatformValid,
+        "MacRISC: RackMac1,1 rejected: malformed device tree");
+    p.model[0] = 0;
+    p.hostSupported = 1;
+    p.cpuFamily = (PECPUFamily)99;
+    check_line(&p, kPEMacRISCNotMatched, kPEPlatformValid,
+        "MacRISC: unknown rejected: cpu=unknown host=uni-north "
+        "mac-io=KeyLargo");
+    CHECK(PEMacRISCFormatDiagnostic(tiny, sizeof(tiny), &p,
+        kPEMacRISCSupported, kPEPlatformValid) == sizeof(tiny) - 1);
+    CHECK(strcmp(tiny, "MacRISC: un") == 0);
+    CHECK(PEMacRISCFormatDiagnostic(tiny, 0, &p, kPEMacRISCSupported,
+        kPEPlatformValid) == 0);
+}
+
 int
 main(void)
 {
     test_routes();
+    test_diagnostics();
     test_pmu_interrupts();
     test_mpic_table();
     test_dbdma_table();

@@ -5130,3 +5130,45 @@ carried the line as well, so the built table had it twice. The line is gone from
 the source, and the built table now matches the reference's except for the build
 stamp and the `"Help File"` key, which stays out until its help document is
 recovered.
+
+## 23. Guest testing: two defects the passes missed
+
+2026-09-25. The driver was built and loaded on a private i386 QEMU guest running
+kernel-7, with COM1 on a host socket and Apple's DR2 ISASerialPort underneath.
+Apple's `PortServer_reloc` on the same guest carries bytes both ways through
+`/dev/cuaa`. Ours registered and made the same nodes, but the first use of a data
+tty took the whole kernel down, differently on each run: EIP 0 with zeroed
+registers, `panic: thread_dispatch`, `illegal handoff thread state 0x86`,
+`assert_wait: already asserted`, and a double fault in `ttyiops_ioctl`
+(GitHub issue #30).
+
+Both defects below were found with QEMU's gdbstub (a hardware breakpoint at the
+return of every call in `ttyiops_ioctl`, comparing EBP with its value on entry)
+and then confirmed against a relocation-resolved instruction diff of our rebuilt
+`PortServer_reloc` against the reference.
+
+### Finding 90 — `ttyiops_convertFlowCtrl` passes a 2-byte buffer for a 4-byte result
+
+**Reference.** `lea eax, [ebp-4]` / `push eax` / `push 0x53` into
+`requestEvent:data:`, then `test byte ptr [ebp-4]` and `test byte ptr [ebp-3]`:
+a 4-byte slot whose bytes 0 and 1 are tested.
+
+**Our source** declared `unsigned char response[2]`, which the compiler placed at
+`[ebp-2]`. `requestEvent:data:` stores a full 32-bit value, so the store's upper
+two bytes landed on the low half of the saved EBP at `[ebp]`. With a flow-control
+mask whose upper half is 0, the saved `0x27d63e04` came back as `0x27d60000`,
+and `ttyiops_ioctl` carried on with a frame pointer 16 KB below its stack. What
+happened next depended on the path, which is why every run crashed differently:
+an epilogue returning through zeroed memory to EIP 0, or writes through
+`[ebp-n]` into another thread's kernel stack and scheduler state. The gdbstub run
+caught `ttyiops_convertFlowCtrl` returning with EBP changed from `0x27d63e04` to
+`0x27d60000`. Every `tcsetattr` on a PortServer tty goes through it
+(`TIOCSETA`, `TIOCSETAW`, `TIOCSETAF`), and so does every `TIOCGETA`.
+
+The ledger had this function as `unexamined` (Finding 79 removed its NULL guard,
+but the body was never read), and §18's length table showed it as
+`ref 32 / ours 32`: equal lengths hide a `[ebp-2]` against `[ebp-4]`.
+
+**Fix.** `unsigned int response`, testing `0x8`, `0x400`, `0x10`, `0x4` and
+`0x20`. The rebuilt function is instruction-identical to the reference. Ledger
+10352 advanced `unexamined` → `assembly-matched`.

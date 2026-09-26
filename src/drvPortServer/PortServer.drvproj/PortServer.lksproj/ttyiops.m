@@ -700,34 +700,35 @@ int ttyiops_control_ioctl(struct tty *tp, unsigned int dev, unsigned int cmd,
  */
 void ttyiops_convertFlowCtrl(id portSession, unsigned int *flags)
 {
-    unsigned char response[2];  /* local_8 and local_7 */
+    unsigned int response;
 
-    /* Request flow control event (0x53) from port session */
-    /* Response contains flow control status in two bytes */
-    objc_msgSend(portSession, @selector(requestEvent:data:), 0x53, response);
+    /* Request the flow control mask (event 0x53).  requestEvent:data:
+     * stores a full 32-bit value, so the buffer must be an int: the
+     * reference passes a 4-byte slot at [ebp-4]. */
+    objc_msgSend(portSession, @selector(requestEvent:data:), 0x53, &response);
 
-    /* Check bit 0x8 (bit 3) in first byte - RX XON/XOFF flow control */
-    if ((response[0] & 0x8) != 0) {
+    /* Bit 0x8 - RX XON/XOFF flow control */
+    if ((response & 0x8) != 0) {
         flags[0] |= 0x200;  /* Set IXON flag */
     }
 
-    /* Check bit 0x4 (bit 2) in second byte - output flow control */
-    if ((response[1] & 0x4) != 0) {
+    /* Bit 0x400 - output flow control */
+    if ((response & 0x400) != 0) {
         flags[0] |= 0x800;  /* Set additional output flow control flag */
     }
 
-    /* Check bit 0x10 (bit 4) in first byte - TX XON/XOFF flow control */
-    if ((response[0] & 0x10) != 0) {
+    /* Bit 0x10 - TX XON/XOFF flow control */
+    if ((response & 0x10) != 0) {
         flags[0] |= 0x400;  /* Set IXOFF flag */
     }
 
-    /* Check bit 0x4 (bit 2) in first byte - RTS flow control */
-    if ((response[0] & 0x4) != 0) {
+    /* Bit 0x4 - RTS flow control */
+    if ((response & 0x4) != 0) {
         flags[2] |= 0x20000;  /* Set CRTS_IFLOW flag */
     }
 
-    /* Check bit 0x20 (bit 5) in first byte - CTS flow control */
-    if ((response[0] & 0x20) != 0) {
+    /* Bit 0x20 - CTS flow control */
+    if ((response & 0x20) != 0) {
         flags[2] |= 0x10000;  /* Set CCTS_OFLOW flag */
     }
 }

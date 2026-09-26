@@ -4,7 +4,6 @@
 "Instance" = "0";
 "Version" = "1.5";
 "Driver Name" = "VMXNet";
-"Server Name" = "VMXNet";
 "Auto Detect IDs" = "0x072015ad 0x20001022";
 "Bus Type" = "PCI";
 "Share IRQ Levels" = "NO";

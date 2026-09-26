@@ -15,5 +15,4 @@
 "Valid DMA Channels" = "0 1 3";
 "Valid IRQ Levels" = "3 5 7 10";
 "Help File" = "SB8.rtfd";
-"Server Name" = "SoundBlaster8";
 "Version" = "5.01";

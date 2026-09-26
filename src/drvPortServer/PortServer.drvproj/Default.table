@@ -17,4 +17,3 @@
  * not there.  Rather than ship invented help text, the key is left out until
  * the document itself is recovered; restore it in the same breath as the file.
  */
-"Server Name" = "PortServer";

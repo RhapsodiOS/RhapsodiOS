@@ -4,4 +4,3 @@
 "Boot Driver" = "Yes";
 "Version" = "5.01";
 "Bus Class" = "PCIKernBus";
-"Server Name" = "BUS";

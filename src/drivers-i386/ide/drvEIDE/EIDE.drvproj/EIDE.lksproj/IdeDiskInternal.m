@@ -769,7 +769,7 @@ done:
 	ns_time_t delta;
 
 	IOGetTimestamp(&end_time);
-	delta = end_time - start_time;
+	delta = (end_time > start_time) ? end_time - start_time : 0;
 	if (readFlag) {
 
 	    [self addToBytesRead:ideBuf->bytesXfr

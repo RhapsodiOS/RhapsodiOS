@@ -470,7 +470,7 @@ static msg_header_t timeoutMsgTemplate = {
 	}   	/*  switch status */
 
 	IOGetTimestamp(&currentTime);
-	scsiReq->totalTime = currentTime - ccb->startTime;
+	scsiReq->totalTime = (currentTime > ccb->startTime) ? currentTime - ccb->startTime : 0;
 	cmdBuf->result = scsiReq->driverStatus;
 	
 	/*

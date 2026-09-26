@@ -165,7 +165,7 @@ eata_out_addr(unsigned short port, unsigned int phys, unsigned char cmd)
 
 	IOGetTimestamp(&now);
 	memcpy(&start, ccb->startTime, sizeof(start));
-	scsiReq->totalTime = now - start;
+	scsiReq->totalTime = (now > start) ? now - start : 0;
 	IOUnscheduleFunc(eataTimeout, ccb);
 	[self freeCcb:ccb];
 

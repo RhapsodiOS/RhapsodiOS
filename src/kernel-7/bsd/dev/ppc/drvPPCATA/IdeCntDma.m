@@ -246,7 +246,8 @@ static 	uint			bitBucketPhysAddr;
     else 
     {
 	[self getIdeRegisters:ideRegs Print:NULL];
-	if ( _controllerType != kControllerTypeKiwi )
+	/* The PCI bus masters were stopped above; they have no DBDMA channel. */
+	if ( (_controllerType != kControllerTypeCmd646X) && (_controllerType != kControllerTypeKiwi) )
 	    IODBDMAReset( _ideDMARegs );
 	return IDER_CMD_ERROR;
     }

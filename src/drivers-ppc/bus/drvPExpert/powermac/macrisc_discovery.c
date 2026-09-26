@@ -559,6 +559,28 @@ PEMacRISCPMUInterruptList(const PEMacRISCPlatform *platform,
     return 2;
 }
 
+unsigned int
+PEMacRISCAAPLInterrupts(const PEMacRISCPlatform *platform,
+    PEProperty interrupts, unsigned int *output, unsigned int max)
+{
+    unsigned int count;
+    unsigned int i;
+    unsigned int sense;
+
+    if (platform == 0 || output == 0 || platform->interruptCells != 2 ||
+        interrupts.size == 0 || interrupts.size % 8 != 0)
+        return 0;
+    count = interrupts.size / 8;
+    if (count > max)
+        return 0;
+    for (i = 0; i < count; i++)
+        if (!PEReadCell32(interrupts, i * 2, &output[i]) ||
+            !PEReadCell32(interrupts, i * 2 + 1, &sense) ||
+            output[i] >= platform->mpicSources || sense > 3)
+            return 0;
+    return count;
+}
+
 static const char *
 macrisc_cpu_name(PECPUFamily cpu)
 {

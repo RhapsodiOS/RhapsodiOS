@@ -562,6 +562,7 @@ PEMacRISCCapture(const PEMacRISCFirmware *firmware,
         status != kPEMacRISCCompatibleUnlisted)
         return status;
 
+    platform->interruptCells = c.interruptCells;
     if (c.interruptCells != 2)
         for (i = 0; i < PE_MACRISC_MAX_SOURCES; i++)
             platform->sourceSense[i] = PE_MACRISC_SENSE_UNKNOWN;

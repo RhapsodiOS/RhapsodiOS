@@ -124,6 +124,7 @@ typedef struct {
     PEResource nvram, ata0, ata1;
     PEDBDMAChannels dbdma;
     unsigned int mpicSources;
+    unsigned int interruptCells;        /* MPIC #interrupt-cells: 1 or 2 */
     int hasPMU, hasCUDA, hasCascade;
     unsigned int cascadeSource, cascadeWidth;
     int hasPMUInterrupt;
@@ -154,6 +155,16 @@ int PEMacRISCPublish(const PEMacRISCPlatform *platform,
  */
 unsigned int PEMacRISCPMUInterruptList(const PEMacRISCPlatform *platform,
     unsigned int output[2]);
+
+/*
+ * AAPL,interrupts cells for a node whose firmware gives only the two-cell
+ * OpenPIC form (source, sense): the source of each pair, raw as DriverKit
+ * expects.  Returns the count, or 0 unless the MPIC uses two cells and the
+ * property is whole pairs, at most max of them, each with a sense of 0..3
+ * and a source below the MPIC source count.
+ */
+unsigned int PEMacRISCAAPLInterrupts(const PEMacRISCPlatform *platform,
+    PEProperty interrupts, unsigned int *output, unsigned int max);
 
 int PEMacRISCComputeClockConversion(const PEMacRISCPlatform *platform,
     unsigned int *numerator, unsigned int *denominator,

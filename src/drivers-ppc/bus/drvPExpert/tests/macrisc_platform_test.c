@@ -373,6 +373,7 @@ test_capture_variants(void)
     CHECK(capture(&p, &error) == kPEMacRISCSupported);
     CHECK(p.ata0.base == 0x8001f000U && !p.ata1.present);
     CHECK(p.dbdma.ata1 == -1 && !p.audio.present && p.dbdma.audioOut == -1);
+    CHECK(p.interruptCells == 2);
 
     /* AAPL,interrupts wins over the two-cell form. */
     build_rackmac(&t);
@@ -398,6 +399,7 @@ test_capture_variants(void)
     remove_prop(t.i2sA, "interrupts");
     CHECK(capture(&p, &error) == kPEMacRISCSupported);
     CHECK(p.cascadeSource == 0x19 && p.sourceRole[0x0b] == kPERoleATA0DMA);
+    CHECK(p.interruptCells == 1);
     CHECK(p.sourceRole[0x05] == kPERoleSCCARx);
     CHECK(p.sourceRole[0x17] == kPERoleNone);
     CHECK(p.sourceSense[0x13] == PE_MACRISC_SENSE_UNKNOWN);

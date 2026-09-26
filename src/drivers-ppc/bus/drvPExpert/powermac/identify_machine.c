@@ -801,6 +801,54 @@ int set_ethernet_irq(int newIRQ)
   return hasOHare2;
 }
 
+/*
+ * MacRISC: AAPL,interrupts for a node that has only two-cell OpenPIC
+ * interrupts.  DriverKit keeps the cells by reference for the device's
+ * lifetime, so every converted node owns a static slot.  A KeyLargo tree
+ * has about two dozen such nodes (Mac-IO children, SCC channels, i2s,
+ * PCI devices); none has more than three pairs.  A node seen again gets
+ * its old slot.  Returns the cell count, or 0 to leave the node alone.
+ */
+#define MACRISC_AAPL_NODES	64
+#define MACRISC_AAPL_CELLS	8
+
+static unsigned int
+macrisc_aapl_interrupts( DTEntry dtEntry, int create, unsigned int ** cells)
+{
+    static DTEntry	nodes[ MACRISC_AAPL_NODES ];
+    static unsigned int	lists[ MACRISC_AAPL_NODES ][ MACRISC_AAPL_CELLS ];
+    static unsigned int	counts[ MACRISC_AAPL_NODES ];
+    static unsigned int	used;
+    PEProperty		interrupts;
+    void		*prop;
+    int			size;
+    unsigned int	i;
+
+    for( i = 0; i < used; i++) {
+        if( nodes[ i ] == dtEntry) {
+            *cells = lists[ i ];
+            return counts[ i ];
+        }
+    }
+    if( !create
+     || kSuccess == DTGetProperty( dtEntry, "AAPL,interrupts", &prop, &size)
+     || kSuccess != DTGetProperty( dtEntry, "interrupts", &prop, &size))
+        return 0;
+    if( used == MACRISC_AAPL_NODES) {
+        printf("MacRISC: no AAPL,interrupts slot left\n");
+        return 0;
+    }
+    interrupts.bytes = prop;
+    interrupts.size = size;
+    counts[ used ] = PEMacRISCAAPLInterrupts( PEMacRISCGetPlatform(),
+                        interrupts, lists[ used ], MACRISC_AAPL_CELLS);
+    if( counts[ used ] == 0)
+        return 0;
+    nodes[ used ] = dtEntry;
+    *cells = lists[ used ];
+    return counts[ used++ ];
+}
+
 /* DriverKit calls this for PExpert to change DT entries
  * before they are used by DK
  *
@@ -866,6 +914,25 @@ int PEEditDTEntry( DTEntry dtEntry, char * nodeName, int index,
         *propData = pmuInterrupts;
         *propSize = sizeof( pmuInterrupts);
         return 0;
+    }
+
+    /*
+     * MacRISC: publish AAPL,interrupts for nodes that lack it.  Those nodes
+     * take index 0; the edits below see the remaining indices unchanged.
+     */
+    if( IsMacRISC()) {
+        unsigned int	*cells;
+        unsigned int	count;
+
+        count = macrisc_aapl_interrupts( dtEntry, index == 0, &cells);
+        if( count && index == 0) {
+            *propName = "AAPL,interrupts";
+            *propData = cells;
+            *propSize = count * 4;
+            return 0;
+        }
+        if( count)
+            index--;
     }
 
     /* Handle ATY,LTProParent (Rage LTPro graphics) */

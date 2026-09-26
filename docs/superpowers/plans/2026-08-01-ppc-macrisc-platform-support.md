@@ -122,12 +122,19 @@ Decisions made while implementing, beyond the text of the tasks below:
 Known gaps for Task 12 to watch:
 
 - DriverKit's `resolveInterrupts` reads only `AAPL,interrupts` unless
-  `IsYosemite()`. The MacRISC path publishes it only for `via-pmu`. Every
-  other Mac-IO device, including ATA, gets interrupts only if firmware
-  provides `AAPL,interrupts`. If root-disk interrupts never arrive, this is
-  the first thing to check; the fix belongs in `PEEditDTEntry` (publish the
-  first cell of each two-cell `interrupts` pair) and is a separate change.
-- `via-cuda` machines get no `AAPL,interrupts` edit, for the same reason.
+  `IsYosemite()`. `PEEditDTEntry` now fills that in on MacRISC: a node with
+  no `AAPL,interrupts` whose `interrupts` property is whole two-cell OpenPIC
+  pairs (MPIC `#interrupt-cells` is 2, each sense 0..3, each source below
+  the 64 MPIC sources, at most 8 pairs) gets `AAPL,interrupts` holding the
+  raw source of each pair (`PEMacRISCAAPLInterrupts`, host-tested in
+  `tests/macrisc_interrupts_test.c`). The cells live in 64 static per-node
+  slots, since DriverKit keeps them by reference; a KeyLargo tree needs
+  about two dozen. The edit takes property index 0 and shifts the node's
+  other edits by one. This covers ATA, SCC, i2s and `via-cuda`; `via-pmu`
+  keeps its own list, and Sawtooth and legacy trees are untouched. Not yet
+  confirmed on hardware; see `docs/boot/ppc-macrisc-validation.md`. If a
+  device still gets no interrupts, check its `interrupts` against these
+  rules first.
 - `SyncCore99NVRAM()` copies bytes into flash with plain stores. That is
   unchanged Sawtooth behaviour, now also reached on MacRISC.
 

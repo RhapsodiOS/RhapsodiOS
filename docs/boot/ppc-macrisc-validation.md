@@ -28,8 +28,11 @@ Boot from a temporary or dedicated disk, never a shared image.
   the `mac-io` node (`compatible`, `device-id`, `assigned-addresses`), its
   `interrupt-controller`, `via-pmu` or `via-cuda`, `escc-legacy`, the ATA
   nodes, `extint-gpio1`, and the root `nvram` node.
-- Whether the ATA nodes carry `AAPL,interrupts`. Without it, DriverKit gives
-  them no interrupts on this path; see the plan's known gaps.
+- Whether the ATA, SCC, i2s and `via-cuda` nodes carry firmware
+  `AAPL,interrupts` or only two-cell `interrupts`. For the latter,
+  `PEEditDTEntry` publishes the sources (see the plan's known gaps); confirm
+  that root-disk I/O completes and that no `MacRISC: no AAPL,interrupts slot
+  left` or `couldn't get interrupts` line appears.
 
 ## Results
 

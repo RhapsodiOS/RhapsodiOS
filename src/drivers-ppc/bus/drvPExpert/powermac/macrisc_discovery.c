@@ -458,3 +458,69 @@ PEMacRISCValidate(const PEMacRISCPlatform *platform)
         return kPEPlatformBadRange;
     return kPEPlatformValid;
 }
+
+static unsigned int
+macrisc_base(const PEResource *resource)
+{
+    return resource->present ? resource->base : 0;
+}
+
+int
+PEMacRISCPublish(const PEMacRISCPlatform *platform,
+    PEMacRISCPublishedIO *published)
+{
+    if (published == 0 || PEMacRISCValidate(platform) != kPEPlatformValid)
+        return 0;
+    published->ioBase = platform->macIO.base;
+    published->ioSize = platform->macIO.length;
+    published->interruptBase = platform->mpic.base;
+    /* KeyLargo-family DBDMA channel 0 sits at Mac-IO offset 0x8000. */
+    published->dmaBase = platform->macIO.base + 0x8000U;
+    published->viaBase = platform->via.base;
+    published->serialBase = platform->serial.base;
+    published->meshBase = macrisc_base(&platform->mesh);
+    published->floppyBase = macrisc_base(&platform->floppy);
+    published->audioBase = macrisc_base(&platform->audio);
+    published->ethernetBase = macrisc_base(&platform->ethernet);
+    published->nvramAddress = platform->nvram.base;
+    published->nvramData = 0;           /* flash NVRAM has no data port */
+    published->ata0Base = macrisc_base(&platform->ata0);
+    published->ata1Base = macrisc_base(&platform->ata1);
+    return 1;
+}
+
+int
+PEMacRISCComputeClockConversion(const PEMacRISCPlatform *platform,
+    unsigned int *numerator, unsigned int *denominator,
+    unsigned int *period824)
+{
+    unsigned int timebase;
+    unsigned int whole;
+    unsigned int remainder;
+    unsigned int fraction;
+    unsigned int bit;
+
+    if (platform == 0 || numerator == 0 || denominator == 0 ||
+        period824 == 0 || platform->busClockHz < 1000000U ||
+        platform->timebaseHz == 0 || platform->timebaseHz > 0x7fffffffU)
+        return 0;
+    timebase = platform->timebaseHz;
+    whole = 1000000000U / timebase;
+    if (whole > 255U)
+        return 0;
+    /* Long division for the 24 fraction bits; C89 has no long long. */
+    remainder = 1000000000U % timebase;
+    fraction = 0;
+    for (bit = 0; bit < 24; bit++) {
+        remainder <<= 1;
+        fraction <<= 1;
+        if (remainder >= timebase) {
+            remainder -= timebase;
+            fraction |= 1U;
+        }
+    }
+    *numerator = 4000U;
+    *denominator = platform->busClockHz / 1000000U;
+    *period824 = (whole << 24) | fraction;
+    return 1;
+}

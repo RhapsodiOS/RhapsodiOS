@@ -155,6 +155,68 @@ void identify_machine1()
 	powermac_dbdma_channels = powermac_init_p->powermac_dbdma_channels;
 }
 
+/* identify_macrisc:
+ *
+ *   identify_machine2 for MacRISC: everything comes from the validated
+ *   firmware descriptor.  The VIA clock test and the 750 L2 probe are
+ *   skipped; firmware has already measured the clocks and set up L2/L3.
+ */
+static void identify_macrisc(void)
+{
+	const PEMacRISCPlatform	*platform;
+	PEMacRISCPublishedIO	io;
+	unsigned int		numerator, denominator, period;
+
+	platform = PEMacRISCGetPlatform();
+	if (platform == 0 || !PEMacRISCPublish(platform, &io) ||
+	    !PEMacRISCComputeClockConversion(platform, &numerator,
+					     &denominator, &period))
+		panic("MacRISC: no validated platform descriptor\n");
+
+	powermac_io_info.io_base_phys           = io.ioBase;
+	powermac_io_info.io_base_virt           = io.ioBase;  // starts off as 1-1
+	powermac_io_info.io_size                = io.ioSize;
+	powermac_io_info.io_base2               = 0;
+	powermac_io_info.mem_cntlr_base_phys    = 0;
+	powermac_io_info.int_cntlr_base_phys    = io.interruptBase;
+	powermac_io_info.dma_base_phys          = io.dmaBase;
+	powermac_io_info.serial_base_phys       = io.serialBase;
+	powermac_io_info.scsi_int_base_phys     = io.meshBase;
+	powermac_io_info.scsi_int_dma_base_phys = 0;
+	powermac_io_info.scsi_ext_base_phys     = 0;
+	powermac_io_info.audio_base_phys        = io.audioBase;
+	powermac_io_info.floppy_base_phys       = io.floppyBase;
+	powermac_io_info.ethernet_base_phys     = io.ethernetBase;
+	powermac_io_info.via_base_phys          = io.viaBase;
+	powermac_io_info.nvram_addr_reg_phys    = io.nvramAddress;
+	powermac_io_info.nvram_data_reg_phys    = io.nvramData;
+	powermac_io_info.ide0_base_phys         = io.ata0Base;
+	powermac_io_info.ide1_base_phys         = io.ata1Base;
+	powermac_info.hasPMU                    = platform->hasPMU;
+
+	bzero((void *)&powermac_machine_info, sizeof(powermac_machine_info_t));
+	powermac_machine_info.dcache_block_size = platform->dcacheBlockSize;
+	powermac_machine_info.dcache_size       = platform->dcacheSize;
+	powermac_machine_info.icache_size       = platform->icacheSize;
+	powermac_machine_info.caches_unified    = platform->cachesUnified;
+	powermac_machine_info.processor_version = platform->pvr;
+	powermac_machine_info.cpu_clock_rate_hz = platform->cpuClockHz;
+	powermac_machine_info.dec_clock_rate_hz = platform->timebaseHz;
+	powermac_machine_info.bus_clock_rate_hz = platform->busClockHz;
+	powermac_machine_info.bus_clock_rate_hz_num = platform->busClockHz;
+	powermac_machine_info.bus_clock_rate_hz_den = 1;
+	powermac_machine_info.cpu_pll =
+	    platform->cpuClockHz / (platform->busClockHz / 2);
+	powermac_machine_info.l2_cache_size     = platform->l2CacheSize;
+	powermac_machine_info.l2_cache_type     =
+	    platform->l2CacheSize ? L2_CACHE_BACKSIDE : L2_CACHE_NONE;
+
+	powermac_info.bus_clock_rate_hz              = platform->busClockHz;
+	powermac_info.proc_clock_to_nsec_numerator   = numerator;
+	powermac_info.proc_clock_to_nsec_denominator = denominator;
+	powermac_info.dec_clock_period               = period;
+}
+
 /* identify_machine2:
  *
  *   Sets up platform parameters.
@@ -169,6 +231,11 @@ void identify_machine2()
 	  unsigned long fixed;
 	  unsigned char top;
 	} tmp_fixed;
+
+	if (IsMacRISC()) {
+	  identify_macrisc();
+	  return;
+	}
 
 	/*
 	 *  Look up as much of the I/O address from the Device Tree

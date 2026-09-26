@@ -527,10 +527,74 @@ test_routes(void)
         kPERouteUnsupported);
 }
 
+static void
+test_publish(void)
+{
+    PEMacRISCPlatform p;
+    PEMacRISCPublishedIO io;
+    PEPlatformError error;
+    Tree t;
+
+    build_rackmac(&t);
+    CHECK(capture(&p, &error) == kPEMacRISCSupported);
+    CHECK(PEMacRISCPublish(&p, &io));
+    CHECK(io.ioBase == 0x80000000U && io.ioSize == 0x80000U);
+    CHECK(io.interruptBase == 0x80040000U);
+    CHECK(io.dmaBase == 0x80008000U && io.viaBase == 0x80016000U);
+    CHECK(io.serialBase == 0x80012000U && io.audioBase == 0x80010000U);
+    CHECK(io.nvramAddress == 0xfff80000U && io.nvramData == 0);
+    CHECK(io.ata0Base == 0x8001f000U && io.ata1Base == 0x80020000U);
+    /* Absent devices publish 0, never a Mac-IO base alias. */
+    CHECK(io.meshBase == 0 && io.floppyBase == 0 && io.ethernetBase == 0);
+
+    p.mpic.present = 0;
+    CHECK(!PEMacRISCPublish(&p, &io));
+    CHECK(!PEMacRISCPublish(&p, 0));
+}
+
+static void
+test_clock_conversion(void)
+{
+    PEMacRISCPlatform p;
+    unsigned int numerator;
+    unsigned int denominator;
+    unsigned int period;
+
+    PEMacRISCPlatformInit(&p);
+    p.busClockHz = 100000000U;
+    p.timebaseHz = 25000000U;
+    CHECK(PEMacRISCComputeClockConversion(&p, &numerator, &denominator,
+        &period));
+    CHECK(numerator == 4000U && denominator == 100U);
+    CHECK(period == 0x28000000U);
+
+    p.busClockHz = 133333333U;
+    p.timebaseHz = 33333333U;
+    CHECK(PEMacRISCComputeClockConversion(&p, &numerator, &denominator,
+        &period));
+    CHECK(denominator == 133U && (period >> 24) == 30U);
+    CHECK((period & 0xffffffU) == 5U);  /* 10 ns remainder * 2^24 / tb */
+
+    p.timebaseHz = 0;
+    CHECK(!PEMacRISCComputeClockConversion(&p, &numerator, &denominator,
+        &period));
+    p.timebaseHz = 3000000U;            /* 333 ns does not fit in 8 bits */
+    CHECK(!PEMacRISCComputeClockConversion(&p, &numerator, &denominator,
+        &period));
+    p.timebaseHz = 25000000U;
+    p.busClockHz = 999999U;
+    CHECK(!PEMacRISCComputeClockConversion(&p, &numerator, &denominator,
+        &period));
+    CHECK(!PEMacRISCComputeClockConversion(0, &numerator, &denominator,
+        &period));
+}
+
 int
 main(void)
 {
     test_routes();
+    test_publish();
+    test_clock_conversion();
     test_capture_rackmac();
     test_capture_variants();
     test_capture_failures();

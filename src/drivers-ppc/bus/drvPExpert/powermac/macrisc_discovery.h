@@ -130,6 +130,24 @@ typedef struct {
     unsigned char sourceSense[PE_MACRISC_MAX_SOURCES];
 } PEMacRISCPlatform;
 
+/* Absolute physical bases for powermac_io_info; absent devices are 0. */
+typedef struct {
+    unsigned int ioBase, ioSize, interruptBase, dmaBase, viaBase;
+    unsigned int serialBase, meshBase, floppyBase, audioBase, ethernetBase;
+    unsigned int nvramAddress, nvramData, ata0Base, ata1Base;
+} PEMacRISCPublishedIO;
+
+int PEMacRISCPublish(const PEMacRISCPlatform *platform,
+    PEMacRISCPublishedIO *published);
+
+/*
+ * The nanosecond pair keeps the legacy scale (4000 over the bus clock in
+ * MHz); the 8.24 decrementer period comes from the firmware timebase.
+ */
+int PEMacRISCComputeClockConversion(const PEMacRISCPlatform *platform,
+    unsigned int *numerator, unsigned int *denominator,
+    unsigned int *period824);
+
 void PEMacRISCPlatformInit(PEMacRISCPlatform *platform);
 PEPlatformError PEMacRISCValidate(const PEMacRISCPlatform *platform);
 int PEMacRISCSetResource(PEResource *resource, unsigned int base,

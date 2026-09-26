@@ -184,7 +184,9 @@ initialize_serial()
 		return;
 
 	// If this machine has PMU then turn on the serial ports.
-	if (HasPMU()) {
+	// This is the OHare sequence; on KeyLargo 0x38 is FCR0, where these
+	// bits control USB and IrDA instead.
+	if (HasPMU() && !IsMacRISC()) {
 	  volatile unsigned long *ohareFeatureCntl;
 	  
 	  ohareFeatureCntl = powermac_io_info.io_base_phys + 0x38;

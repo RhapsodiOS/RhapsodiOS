@@ -1175,7 +1175,7 @@ struct vop_strategy_args /* {
 		DBG_ASSERT(bp->b_dirtyoff == 0);
 	};
 	
-    #if BYTE_ORDER == LITTLE_ENDIAN
+#if BYTE_ORDER == LITTLE_ENDIAN
     /*
      * Put B-tree nodes back in disk order on their way out.  Every write of
      * a B-tree buffer comes through here, whether bwrite, bawrite, a delayed

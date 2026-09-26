@@ -550,7 +550,7 @@
     #define DEBUG_BUILD 0
 #endif	/* DIAGNOSTIC */
 
-	#if defined(__i386__)
+#if defined(__i386__)
 	#define TARGET_RT_LITTLE_ENDIAN		1
 	#define TARGET_RT_BIG_ENDIAN		0
 #else

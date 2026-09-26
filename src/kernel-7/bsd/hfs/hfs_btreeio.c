@@ -104,7 +104,7 @@ OSStatus GetBTreeBlock(FileReference vp, UInt32 blockNum, GetBlockOptions option
     if (retval == E_NONE) {
         block->blockHeader = bp;
         block->buffer = bp->b_data + IOBYTEOFFSETFORBLK(bp->b_blkno, VTOHFS(vp)->hfs_phys_block_size);
-                block->blockReadFromDisk = (bp->b_flags & B_CACHE) == 0;	/* not found in cache ==> came from disk */
+        block->blockReadFromDisk = (bp->b_flags & B_CACHE) == 0;	/* not found in cache ==> came from disk */
 #if BYTE_ORDER == LITTLE_ENDIAN
         /*
          * B-tree nodes are big-endian on disk and in host order while they

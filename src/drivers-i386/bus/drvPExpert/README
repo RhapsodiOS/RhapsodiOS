@@ -1,0 +1,103 @@
+drvPExpert - i386 platform expert
+=================================
+
+One loadable driver bundle, PExpert.config, that carries every i386 bus
+driver: the EISA / ISA Plug and Play bus (formerly drvEISABus), the PCI bus
+(formerly drvPCIBus) and the PCMCIA bus (formerly drvPCMCIABus).  It is the
+i386 counterpart of drivers-ppc/bus/drvPExpert in role, not in mechanism:
+the ppc one is linked into the kernel, this one is loaded by the booter like
+any other boot driver.  The kernel-linked half described in
+docs/superpowers/specs/2026-07-24-i386-platform-expert-design.md (chips/,
+families/, discovery) can land beside it later as a second tool of the same
+aggregate; the bus sources would then compile into that object unchanged.
+
+Layout
+------
+
+    drvPExpert/
+      apk/pkginfo                     drvpexpert, a kernel core package
+      PExpert.drvproj/                the PExpert.config bundle
+        Default.table                 one table for the whole bundle
+        PExpert.lksproj/              PExpert_reloc
+          PExpert.h, PExpert.m        the "Bus Class" and the settings lookup
+          eisa/                       EISAKernBus, EISAResourceDriver, PnP
+          pci/                        PCIKernBus, PCIResourceDriver
+          pcmcia/                     PCMCIAKernBus, PCMCIAResourceDriver
+        PnPDump.tproj/                the PnP dump tool EISABus.config shipped
+
+The bus sources are copies of the three original projects with only the
+changes the merge needed (below).  The originals stay in the tree until this
+bundle has been boot-tested in their place; then they can go.
+
+How it comes up
+---------------
+
+The booter loads PExpert_reloc for the "PExpert" entry in the System.config
+"Boot Drivers" list and hands the kernel this bundle's table.  The kernel
+sends probeBus: to the class named by "Bus Class", PExpert, which brings the
+buses up in a fixed order - EISA first, because it is the kernel's default
+bus and PCI delegates resource allocation to it, then PCI, then PCMCIA - and
+claims the motherboard's own ports and the 8259 cascade IRQ on the EISA bus.
+The kernel then probes each class in "Class Names", which registers the
+EISA0, PCI0 and PCMCIA0 resource devices that Configure.app and driverLoader
+use to auto-detect cards.
+
+Two things moved out of the original drivers:
+
+ * The motherboard resources.  Apple's EISABus table reserved
+   "I/O Ports" = "0x00-0x0f 0x20-0x21 0x40-0x4b 0x70-0x71 0x81-0x8F 0x92-0x92
+   0xc0-0xcf" and "IRQ Levels" = "2" through its EISA0 device.  With one
+   table shared by three resource drivers the second driver's allocation
+   would fail and the kernel would free a table the first still holds, so
+   PExpert reserves them in code (reserveMotherboardResources) and the table
+   carries no resource keys.
+ * The per-bus settings.  Each driver used to look up its own table by
+   "Server Name".  Both copies of that walk are replaced by
+   PExpertServerAttribute(), which reads this bundle's table, so the keys now
+   go in PExpert.config's Instance0.table:
+
+       "PnP"                  = "No"  disables ISA Plug and Play
+       "PnP Read Port"        = "0x203" fixes the PnP read port
+       "Verbose"              = "Yes" PCMCIA bus logging
+       "PCMCIA Memory Base"   = "0xD0000"
+       "PCMCIA Memory Length" = "0x2000"
+
+Adding a bus
+------------
+
+ 1. Create a directory beside eisa/, pci/ and pcmcia/ holding a KernBus
+    subclass whose +initialize registers it (registerBusClass:name:) and an
+    IODirectDevice resource driver that registers "<Bus>0", in the pattern
+    of pci/.
+ 2. Add the directory to BUS_DIRS in PExpert.lksproj/Makefile.preamble and
+    the sources to CLASSES / CFILES / HFILES in PExpert.lksproj/Makefile.
+ 3. Add the resource driver to "Class Names" in Default.table.
+ 4. Add a bringUp:named:withTable: line to +probeBus: in PExpert.m, after
+    the buses it depends on.
+
+Drivers on the new bus name it with "Bus Type" in their tables; the kernel
+turns that into the class name "<Bus Type>KernBus" and the device
+description class "IO<Bus Type>DeviceDescription", so the KernBus subclass
+must follow that naming and the description class must exist (the PCI and
+PCMCIA ones live in driverkit-3).
+
+Enabling it
+-----------
+
+Replace EISABus and PCIBus with PExpert in the "Boot Drivers" line of
+/private/Drivers/i386/System.config (src/system_config-1/i386/Default.table):
+
+    "Boot Drivers" = "PExpert PS2Keyboard Floppy ISASerialPort";
+
+Never list PExpert together with EISABus, PCIBus or PCMCIABus: each bus
+class registers itself under the same name and the second registration
+replaces the first.
+
+Status
+------
+
+Not yet built or boot-tested.  rbuild kernel --arch i386 builds this
+project as a kernel core package (see rbuild-1/kernel.c), so an i386 profile
+run is where it gets its first compile.  Not carried over from drvEISABus:
+EISABusInspector.nib (a binary nib whose class is named for the old bundle)
+and the reconstruction ledgers, which describe the original projects.

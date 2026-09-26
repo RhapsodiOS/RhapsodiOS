@@ -191,3 +191,16 @@ or verify its behaviour against real or emulated AHA-1542B hardware. The task's 
 (34 of 36 functions already mapped, our source defines nothing the reference lacks) held up
 under this pass -- no fix pass is warranted, since no divergence with any observable behavioural
 effect was found.
+
+## Intentional divergence: clamp `currentTime - ccb->startTime` in `commandCompleted:reason:` (issue #28)
+
+2026-09-26. `AHAThread.m`'s `commandCompleted:reason:` computes
+`scsiReq->totalTime = currentTime - ccb->startTime` on the unsigned 64-bit
+`ns_time_t` from `IOGetTimestamp()`. A backward clock step between the CCB's
+`startTime` stamp and this read (see issue #26 -- rare, not fully closed
+under heavy load) wraps that subtraction to roughly `1.8e19` ns instead of a
+small delta. `totalTime` is now clamped to 0 when `currentTime <=
+ccb->startTime`. Not a reconstruction fidelity finding against the reference
+binary -- the disassembly for this site was not re-examined for this
+behavior; recorded here because it changes behavior at a function this
+document otherwise lists as `assembly-matched` against the reference.

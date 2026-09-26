@@ -1695,3 +1695,18 @@ just before the build-stamped `"Driver Version"`, comes from. Our source table
 carried the line as well, so the built table had it twice. The line is gone from
 the source, and the built table now matches the reference's except for the build
 stamp.
+
+## Intentional divergence: clamp `endTime - startTime` in `fdRwCommon:...` (issue #28)
+
+2026-09-26. `FloppyDriveInt2.m`'s transfer-completion path computes
+`elapsedTime = endTime - startTime` on the unsigned 64-bit `ns_time_t` from
+`IOGetTimestamp()` and passes it as `totalTime:` to `addToBytesRead:`/
+`addToBytesWritten:`. If a backward clock step happens between the two reads
+(see issue #26's `IOGetTimestamp()` fix — rare but not fully closed under
+heavy load), the subtraction wraps to roughly `1.8e19` ns instead of
+producing a small or negative delta. `elapsedTime` is now clamped to 0 when
+`endTime <= startTime`, matching the equivalent guard added elsewhere for
+this same class of bug. Not a reconstruction fidelity finding — the
+reference binary was not re-examined for this behavior — but recorded here
+because it changes behavior at a site this document otherwise treats as
+already reconciled with the reference.

@@ -214,7 +214,7 @@ static msg_header_t timeoutMsgTemplate = {
 	#if	DDM_DEBUG
 	if(IODDMMasks[AMD_DDM_INDEX] & DDM_INTR) {
 		IOGetTimestamp(&endTime);
-		elapsedNs = endTime - startTime;
+		elapsedNs = (endTime > startTime) ? endTime - startTime : 0;
 		elapsedUs = (unsigned)((elapsedNs + 999ULL) / 1000ULL);
 	}
 	ddm_intr("interruptOccurred: DONE; elapsed time %d us\n", 
@@ -995,8 +995,9 @@ int 	testQueueFull;
 			 * Bill this operation for latency time.
 			 */
 			IOGetTimestamp(&currentTime);
-			scsiReq->latentTime += 
-				(currentTime - activeCmd->disconnectTime);
+			scsiReq->latentTime +=
+				(currentTime > activeCmd->disconnectTime) ?
+				(currentTime - activeCmd->disconnectTime) : 0;
 			return(YES);
 		}
 		/*

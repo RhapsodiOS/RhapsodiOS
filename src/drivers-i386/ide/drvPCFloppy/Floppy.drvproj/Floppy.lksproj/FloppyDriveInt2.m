@@ -303,7 +303,7 @@ static void vFloppyCopy(vm_address_t srcAddr, vm_map_t srcMap,
 	BOOL isContiguous;
 	int contiguousBlocks;
 	int eisaPresent;
-	unsigned long long startTime, endTime;
+	unsigned long long startTime, endTime, elapsedTime;
 	const char *statsMethod;
 
 	// Get sector size from offset 0x19c
@@ -502,16 +502,17 @@ transfer_done:
 	if (fdcStatus == 0) {
 		// Success - record timing and byte counts
 		IOGetTimestamp(&endTime);
+		elapsedTime = (endTime > startTime) ? endTime - startTime : 0;
 
 		if (isRead) {
 			[self addToBytesRead:*actualLength
-				   totalTime:(endTime - startTime)
+				   totalTime:elapsedTime
 				  latentTime:0
 				 extraParam1:0
 				 extraParam2:0];
 		} else {
 			[self addToBytesWritten:*actualLength
-				      totalTime:(endTime - startTime)
+				      totalTime:elapsedTime
 				     latentTime:0
 				    extraParam1:0
 				    extraParam2:0];

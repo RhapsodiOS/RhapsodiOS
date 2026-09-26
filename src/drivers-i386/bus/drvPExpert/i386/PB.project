@@ -3,8 +3,8 @@
     FILESTABLE = {
         CLASSES = (PExpert.m);
         HEADERSEARCH = ("$(KERNEL_HEADERS)/machdep");
-        H_FILES = (PExpert.h, acpi.h, mptable.h, msi.h);
-        OTHER_LINKED = (pexpert.c, acpi.c, mptable.c, msi.c, apic_intr.c);
+        H_FILES = (PExpert.h, acpi.h, acpi_pm.h, mptable.h, msi.h, smp.h);
+        OTHER_LINKED = (pexpert.c, acpi.c, acpi_pm.c, mptable.c, msi.c, apic_intr.c, clock.c, smp.c, smp_tramp.s);
         PUBLIC_HEADERS = (pexpert_i386.h);
         OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble, Load_Commands.sect);
         PRECOMPILED_HEADERS = ();

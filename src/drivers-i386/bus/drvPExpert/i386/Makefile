@@ -15,14 +15,19 @@ LANGUAGE = English
 
 CLASSES = PExpert.m
 
-CFILES = pexpert.c acpi.c mptable.c msi.c apic_intr.c
+OTHERLINKED = smp_tramp.s
 
-HFILES = PExpert.h pexpert_i386.h acpi.h mptable.h msi.h
+CFILES = pexpert.c acpi.c acpi_pm.c mptable.c msi.c apic_intr.c clock.c\
+         smp.c
+
+HFILES = PExpert.h pexpert_i386.h acpi.h acpi_pm.h mptable.h msi.h smp.h
 
 SUBPROJECTS = chips eisa pci pcmcia
 
 OTHERSRCS = Makefile.preamble Makefile Makefile.postamble\
             Load_Commands.sect
+
+OTHERLINKEDOFILES = smp_tramp.o
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC

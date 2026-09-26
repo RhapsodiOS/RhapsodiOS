@@ -60,11 +60,16 @@ static unsigned int maxmem;
 static int subtype = 0;
 
 /*
- * apic=1 asks the platform expert for APIC interrupt delivery; rsdp=0x...
- * is where the booter found the ACPI tables (a UEFI booter has to say).
+ * The platform expert's switches: apic=1 APIC interrupt delivery,
+ * lapictimer=1 the local APIC timer as the clock, smp=1 start the other
+ * processors, acpi=1 ACPI mode; rsdp=0x... is where the booter found the
+ * ACPI tables (a UEFI booter has to say).
  */
 int	pexpert_apic;
 int	pexpert_rsdp;
+int	pexpert_lapictimer;
+int	pexpert_smp;
+int	pexpert_acpi;
 
 struct kernargs {
 	char *name;
@@ -79,6 +84,9 @@ struct kernargs {
 	"serial", &serial_dbg_port,
 	"apic", &pexpert_apic,
 	"rsdp", &pexpert_rsdp,
+	"lapictimer", &pexpert_lapictimer,
+	"smp", &pexpert_smp,
+	"acpi", &pexpert_acpi,
 	0,0,
 };
 

@@ -38,16 +38,17 @@
  * Interrupt numbering.  The kernel dispatches on 64 irqs, one per IDT
  * vector 0x40-0x7F.  Under the 8259s only 0-15 exist.  Under the APICs
  * irq 0-15 are the ISA lines (through the MADT's overrides), 16-47 are
- * the remaining I/O APIC inputs by global system interrupt number, 48-62
- * are message signalled interrupts, and 63 is the local APIC's spurious
- * vector.
+ * the remaining I/O APIC inputs by global system interrupt number, 48-61
+ * are message signalled interrupts, 62 is the local APIC timer and 63
+ * the local APIC's spurious vector.
  */
 #define PEXPERT_NIRQ		64
 #define PEXPERT_VECTOR_BASE	0x40
 #define PEXPERT_VECTOR(irq)	(PEXPERT_VECTOR_BASE + (irq))
 #define PEXPERT_GSI_IRQS	48
 #define PEXPERT_MSI_IRQ_BASE	48
-#define PEXPERT_MSI_IRQS	15
+#define PEXPERT_MSI_IRQS	14
+#define PEXPERT_TIMER_IRQ	62	/* the local APIC timer */
 #define PEXPERT_SPURIOUS_IRQ	63
 
 typedef unsigned long long pexpert_irq_mask_t;
@@ -82,6 +83,7 @@ void intr_set_controller(const intr_controller_t *controller);
  */
 #define PEXPERT_MAX_IOAPICS		4
 #define PEXPERT_MAX_ISA_OVERRIDES	16
+#define PEXPERT_MAX_CPUS		16
 
 typedef struct {
     unsigned char	id;
@@ -103,6 +105,7 @@ typedef struct i386_firmware_info {
     unsigned int	lapic_address;
     unsigned int	madt_flags;	/* bit 0: PC-AT compatible 8259s */
     int			cpu_count;
+    unsigned char	lapic_ids[PEXPERT_MAX_CPUS];	/* enabled processors */
     int			ioapic_count;
     pexpert_ioapic_t	ioapics[PEXPERT_MAX_IOAPICS];
     int			iso_count;
@@ -112,17 +115,59 @@ typedef struct i386_firmware_info {
     int			imcr_present;
     unsigned int	ecam_base;	/* MCFG segment 0 */
     int			ecam_start_bus, ecam_end_bus;
+    /* From the FADT */
+    unsigned int	dsdt;
+    unsigned int	fadt_flags;
+    unsigned short	sci_int;
+    unsigned int	smi_cmd;
+    unsigned char	acpi_enable, acpi_disable;
+    unsigned int	pm1a_evt, pm1b_evt, pm1a_cnt, pm1b_cnt;
+    unsigned char	pm1_evt_len, pm1_cnt_len;
+    unsigned char	reset_reg_space;	/* 0 memory, 1 I/O, 2 PCI config */
+    unsigned int	reset_reg_address;	/* low 32 bits */
+    unsigned int	reset_reg_address_hi;
+    unsigned char	reset_value;
+    int			reset_reg_present;
 } i386_firmware_info_t;
 
 extern i386_firmware_info_t	i386_firmware_info;
 
 /*
  * Called by the kernel once, after the kernel map is usable and before
- * any driver is probed.  Runs discovery and, when asked to (apic=1 on
- * the boot line) and able to, moves interrupt delivery to the APICs.
+ * any driver is probed.  Runs discovery and then, as the boot line asks:
+ *   apic=1	   moves interrupt delivery to the APICs
+ *   lapictimer=1  makes the local APIC timer the system tick (needs apic)
+ *   smp=1	   starts the other processors and parks them (needs apic)
+ *   acpi=1	   puts the chipset in ACPI mode: power button, power off,
+ *		   reset through the FADT
  */
 void pexpert_init(void);
 int pexpert_apic_mode(void);
+
+/*
+ * Processors: how many the MADT lists, and how many the platform expert
+ * has running (the boot processor plus every one smp=1 started).  The
+ * kernel is built for one processor and schedules on it alone; the
+ * others sit halted with interrupts off until it can use them.
+ */
+int pexpert_cpu_count(void);
+int pexpert_cpus_online(void);
+
+/*
+ * ACPI power management, live once acpi=1 has enabled it.  Both return
+ * only when the machine did not do what was asked.
+ */
+void pexpert_acpi_poweroff(void);
+void pexpert_acpi_reset(void);
+
+/*
+ * In the kernel (machdep/i386/machine_clock.c): make `read_count` the
+ * source of the sub-tick fraction.  It returns a count running at
+ * `counts_per_second` from the value this returns down to zero between
+ * tick interrupts; the caller programs its timer to reload at that value.
+ */
+unsigned int clock_set_tick_source(unsigned int (*read_count)(void),
+				   unsigned int counts_per_second);
 
 /*
  * A permanent, uncached kernel mapping of len bytes at physical pa, or

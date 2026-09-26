@@ -23,6 +23,9 @@ Layout
         pexpert.c             pexpert_init(): discovery, the APIC switch
         acpi.c, mptable.c     ACPI static tables, MP table
         apic_intr.c, msi.c    the APIC interrupt controller, MSI/MSI-X
+        clock.c               the local APIC timer as the system tick
+        smp.c, smp_tramp.s    starting and parking the other processors
+        acpi_pm.c             ACPI mode, power button, power off, reset
         chips/                lapic, ioapic, pcicfg              (Component)
         PExpert.h, PExpert.m  the "Bus Class" and the settings lookup
         eisa/                 EISAKernBus, EISAResourceDriver, PnP  (Component)
@@ -112,8 +115,44 @@ why, when there is no MADT with an I/O APIC or the processor has no local
 APIC.  Without an MP table PCI INTx routing is unknown and such drivers get
 no interrupts; on such a machine use MSI or stay on the 8259s.
 
-Not done: the local APIC timer (the 8254 stays the clock), SMP, ACPI power
-management, and PCI bridge enumeration.
+Local APIC timer, other processors, power management, bridges
+--------------------------------------------------------------
+
+Three more switches on the boot line, each opt-in for the same reason as
+apic=1, and one change that is always on:
+
+ * lapictimer=1 (needs apic=1; clock.c) makes the local APIC timer the
+   system tick.  The kernel's machine_clock.c drives the tick from one
+   interrupt line and reads one countdown for the fraction of a tick, so
+   clock_set_tick_source() hands it the timer's countdown and the same
+   tick handler is registered on irq 62 in place of IRQ 0.  The timer is
+   calibrated against IODelay, which the 8254 calibrated; the 8254 keeps
+   counting with its interrupt masked.
+ * smp=1 (needs apic=1; smp.c, smp_tramp.s) starts every processor the
+   MADT lists: INIT and start-up IPIs to a page of conventional memory
+   holding a real-mode trampoline that brings the processor to protected
+   mode on the kernel's page directory, GDT and IDT and calls
+   smp_ap_main() on its own stack.  There it enables its local APIC,
+   reports in and halts with interrupts off.  That is all: the kernel is
+   built for one processor and takes no locks around its scheduler or
+   interrupt paths, so running them on a second processor is the kernel's
+   project, not this one.  pexpert_cpu_count() and pexpert_cpus_online()
+   say what is there.
+ * acpi=1 (acpi_pm.c) puts the chipset in ACPI mode through the FADT's
+   SMI command port, takes the SCI on the irq the FADT names, and arms the
+   power button, which asks the kernel for an orderly halt with power
+   down (reboot_mach, the way the NMI monitor's 'h' does).  halt_cpu()
+   then powers the machine off through PM1a_CNT with the S5 sleep type,
+   which is read out of the DSDT's Name(_S5_, Package(...)) by shape,
+   the one piece of AML touched anywhere.  md_do_shutdown() tries the
+   FADT's reset register before the keyboard controller.  No sleep states:
+   there is no resume path.
+ * PCI bridge enumeration (pci/PCIKernBus.m, scanBus:) is always on.  The
+   bus walk follows PCI-to-PCI bridges into the buses behind them, numbers
+   a bridge the firmware left unnumbered, and takes the highest bus it
+   found as the bus count instead of the firmware's hint.  Only bus
+   numbers are assigned; a device behind a bridge the firmware did not
+   configure also has no BARs or windows, and those are not assigned.
 
 Adding a bus
 ------------

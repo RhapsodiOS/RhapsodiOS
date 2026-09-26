@@ -157,7 +157,7 @@ apic_irq_valid(int irq)
 {
     if (irq < 0 || irq >= PEXPERT_SPURIOUS_IRQ)
 	return (0);
-    return (pins[irq].ioapic >= 0 || msi_irq_active(irq));
+    return (pins[irq].ioapic >= 0 || irq == PEXPERT_TIMER_IRQ || msi_irq_active(irq));
 }
 
 static void
@@ -174,6 +174,8 @@ apic_set_mask(pexpert_irq_mask_t masked)
 	on = (masked >> irq) & 1;
 	if (pins[irq].ioapic >= 0)
 	    ioapic_set_masked(&ioapics[pins[irq].ioapic], pins[irq].pin, on);
+	else if (irq == PEXPERT_TIMER_IRQ)
+	    lapic_timer_set_masked(on);
 	else if (irq >= PEXPERT_MSI_IRQ_BASE)
 	    msi_set_masked(irq, on);
     }
@@ -219,6 +221,12 @@ static const intr_controller_t	apic_controller = {
     apic_is_spurious,
     apic_set_trigger
 };
+
+unsigned char
+apic_boot_id(void)
+{
+    return (boot_apic_id);
+}
 
 int
 pexpert_pci_intx_irq(int bus, int dev, int pin)

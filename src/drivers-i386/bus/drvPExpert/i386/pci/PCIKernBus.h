@@ -50,6 +50,8 @@
     void *_reserved;
     int _pciVersionMajor;
     int _pciVersionMinor;
+    int _lastBusNum;                /* highest bus the enumeration found */
+    unsigned char _busScanned[256]; /* buses already walked */
 }
 
 /*
@@ -70,6 +72,12 @@
 - (int)maxDevNum;
 
 - allocateResourcesForDeviceDescription:descr;
+
+/*
+ * Bus enumeration, following PCI-to-PCI bridges and numbering the ones
+ * the firmware did not.
+ */
+- (void)scanBus:(unsigned char)bus;
 
 /*
  * PCI configuration space access (KernBus interface)

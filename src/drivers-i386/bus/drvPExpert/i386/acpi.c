@@ -135,13 +135,22 @@ parse_madt(acpi_header_t *madt, i386_firmware_info_t *info)
 
 	switch (type) {
 	case MADT_LAPIC:
-	    if (p[4] & 1)		/* enabled */
+	    if (p[4] & 1) {		/* enabled */
+		if (info->cpu_count < PEXPERT_MAX_CPUS)
+		    info->lapic_ids[info->cpu_count] = p[3];
 		info->cpu_count++;
+	    }
 	    break;
 
 	case MADT_LOCAL_X2APIC:
-	    if (*(const unsigned int *)(p + 8) & 1)
+	    /* Only ids that fit an xAPIC destination are reachable here. */
+	    if (*(const unsigned int *)(p + 8) & 1) {
+		unsigned int	id = *(const unsigned int *)(p + 4);
+
+		if (info->cpu_count < PEXPERT_MAX_CPUS && id < 256)
+		    info->lapic_ids[info->cpu_count] = id;
 		info->cpu_count++;
+	    }
 	    break;
 
 	case MADT_IOAPIC:
@@ -176,6 +185,40 @@ parse_madt(acpi_header_t *madt, i386_firmware_info_t *info)
 	}
 	p += length;
     }
+}
+
+/* Fixed ACPI Description Table (5.2.9); offsets are the spec's. */
+static void
+parse_fadt(acpi_header_t *fadt, i386_firmware_info_t *info)
+{
+    const unsigned char	*p = (const unsigned char *)fadt;
+
+    if (fadt->length < 116)
+	return;
+    info->dsdt = *(const unsigned int *)(p + 40);
+    info->sci_int = *(const unsigned short *)(p + 46);
+    info->smi_cmd = *(const unsigned int *)(p + 48);
+    info->acpi_enable = p[52];
+    info->acpi_disable = p[53];
+    info->pm1a_evt = *(const unsigned int *)(p + 56);
+    info->pm1b_evt = *(const unsigned int *)(p + 60);
+    info->pm1a_cnt = *(const unsigned int *)(p + 64);
+    info->pm1b_cnt = *(const unsigned int *)(p + 68);
+    info->pm1_evt_len = p[88];
+    info->pm1_cnt_len = p[89];
+    info->fadt_flags = *(const unsigned int *)(p + 112);
+
+    /* ACPI 2.0: the reset register, and a 64-bit DSDT address. */
+    if (fadt->length >= 129 && (info->fadt_flags & (1 << 10))) {
+	info->reset_reg_space = p[116];
+	info->reset_reg_address = *(const unsigned int *)(p + 120);
+	info->reset_reg_address_hi = *(const unsigned int *)(p + 124);
+	info->reset_value = p[128];
+	info->reset_reg_present = 1;
+    }
+    if (fadt->length >= 148 && *(const unsigned int *)(p + 144) == 0 &&
+	*(const unsigned int *)(p + 140) != 0)
+	info->dsdt = *(const unsigned int *)(p + 140);
 }
 
 static void
@@ -267,9 +310,10 @@ acpi_discover(unsigned int rsdp_hint, i386_firmware_info_t *info)
 	if (memcmp(table->signature, "APIC", 4) == 0) {
 	    info->madt = pa;
 	    parse_madt(table, info);
-	} else if (memcmp(table->signature, "FACP", 4) == 0)
+	} else if (memcmp(table->signature, "FACP", 4) == 0) {
 	    info->fadt = pa;
-	else if (memcmp(table->signature, "HPET", 4) == 0)
+	    parse_fadt(table, info);
+	} else if (memcmp(table->signature, "HPET", 4) == 0)
 	    info->hpet = pa;
 	else if (memcmp(table->signature, "MCFG", 4) == 0) {
 	    info->mcfg = pa;

@@ -79,11 +79,99 @@
     return self;
 }
 
-- init
+/*
+ * Walk one bus, logging every function and descending through bridges.
+ * A PCI-to-PCI bridge (header type 1) whose secondary bus number is
+ * unset or wrong is given the next free number and a subordinate of
+ * 0xFF while its subtree is walked, then the subordinate is trimmed to
+ * the highest bus found.  Bridges the firmware configured are walked as
+ * they are.  Only bus numbers are assigned: a device behind a bridge the
+ * firmware left unconfigured also has no BARs or windows, and those are
+ * not assigned here.
+ */
+- (void)scanBus:(unsigned char)bus
 {
     unsigned int pciConfigData;
     unsigned int subsystemId;
-    unsigned char bus, dev, func;
+    unsigned int headerType;
+    unsigned int busRegister;
+    unsigned char dev, func, secondary, subordinate;
+
+    if (_busScanned[bus])
+        return;
+    _busScanned[bus] = 1;
+    if ((int)bus > _lastBusNum)
+        _lastBusNum = bus;
+
+    for (dev = 0; dev <= _maxDevNum; dev++) {
+        for (func = 0; func < 8; func++) {
+            /* Read vendor/device ID */
+            if ([self getRegister:0 device:dev function:func bus:bus
+                          data:(unsigned long *)&pciConfigData] != IO_R_SUCCESS) {
+                continue;
+            }
+
+            /* Check if device exists */
+            if ((short)pciConfigData == -1 || (short)pciConfigData == 0) {
+                if (func == 0)
+                    break;
+                continue;
+            }
+
+            /* Read subsystem ID at offset 0x2C */
+            [self getRegister:0x2C device:dev function:func bus:bus
+                      data:(unsigned long *)&subsystemId];
+
+            if (subsystemId == 0) {
+                IOLog("Found PCI 2.0 device: ID=0x%08x at Dev=%d Func=%d Bus=%d\n",
+                      pciConfigData, dev, func, bus);
+            } else {
+                IOLog("Found PCI 2.1 device: ID=0x%08x/0x%08x at Dev=%d Func=%d Bus=%d\n",
+                      pciConfigData, subsystemId, dev, func, bus);
+            }
+
+            /* Header type: bit 23 multi-function, bits 22:16 the layout */
+            [self getRegister:0x0C device:dev function:func bus:bus
+                      data:(unsigned long *)&headerType];
+
+            if (((headerType >> 16) & 0x7F) == 1) {
+                [self getRegister:0x18 device:dev function:func bus:bus
+                          data:(unsigned long *)&busRegister];
+                secondary = (busRegister >> 8) & 0xFF;
+                subordinate = (busRegister >> 16) & 0xFF;
+
+                if (secondary == 0 || secondary <= bus || _busScanned[secondary]) {
+                    if (_lastBusNum >= 0xFE) {
+                        IOLog("PCI: no bus number left for the bridge at Dev=%d Func=%d Bus=%d\n",
+                              dev, func, bus);
+                        continue;
+                    }
+                    secondary = _lastBusNum + 1;
+                    IOLog("PCI: bridge at Dev=%d Func=%d Bus=%d gets bus %d\n",
+                          dev, func, bus, secondary);
+                    busRegister = (busRegister & 0xFF000000) | (0xFFUL << 16) |
+                                  ((unsigned int)secondary << 8) | bus;
+                    [self setRegister:0x18 device:dev function:func bus:bus data:busRegister];
+                    [self scanBus:secondary];
+                    busRegister = (busRegister & 0xFF00FFFF) | ((unsigned int)_lastBusNum << 16);
+                    [self setRegister:0x18 device:dev function:func bus:bus data:busRegister];
+                } else {
+                    [self scanBus:secondary];
+                    if ((int)subordinate > _lastBusNum)
+                        _lastBusNum = subordinate;
+                }
+            }
+
+            /* If not multi-function (bit 23 clear), don't check other functions */
+            if ((headerType & 0x800000) == 0) {
+                break;
+            }
+        }
+    }
+}
+
+- init
+{
     const char *bios16Str, *bios32Str, *cm1Str, *cm2Str, *sc1Str, *sc2Str;
     KERNBOOTSTRUCT *kernbootstruct = KERNSTRUCT_ADDR;
 
@@ -134,44 +222,17 @@
           _pciVersionMajor, _pciVersionMinor, _maxBusNum + 1,
           bios16Str, bios32Str, cm1Str, cm2Str, sc1Str, sc2Str);
 
-    /* Scan all PCI devices */
-    for (bus = 0; bus <= _maxBusNum; bus++) {
-        for (dev = 0; dev <= _maxDevNum; dev++) {
-            for (func = 0; func < 8; func++) {
-                /* Read vendor/device ID */
-                if ([self getRegister:0 device:dev function:func bus:bus
-                              data:(unsigned long *)&pciConfigData] != IO_R_SUCCESS) {
-                    continue;
-                }
-
-                /* Check if device exists */
-                if ((short)pciConfigData == -1 || (short)pciConfigData == 0) {
-                    continue;
-                }
-
-                /* Read subsystem ID at offset 0x2C */
-                [self getRegister:0x2C device:dev function:func bus:bus
-                          data:(unsigned long *)&subsystemId];
-
-                if (subsystemId == 0) {
-                    IOLog("Found PCI 2.0 device: ID=0x%08x at Dev=%d Func=%d Bus=%d\n",
-                          pciConfigData, dev, func, bus);
-                } else {
-                    IOLog("Found PCI 2.1 device: ID=0x%08x/0x%08x at Dev=%d Func=%d Bus=%d\n",
-                          pciConfigData, subsystemId, dev, func, bus);
-                }
-
-                /* Check header type to see if this is a multi-function device */
-                [self getRegister:0x0C device:dev function:func bus:bus
-                          data:(unsigned long *)&pciConfigData];
-
-                /* If not multi-function (bit 23 clear), don't check other functions */
-                if ((pciConfigData & 0x800000) == 0) {
-                    break;
-                }
-            }
-        }
-    }
+    /*
+     * Enumerate.  The firmware's bus count is only a hint: bridges are
+     * followed to the buses behind them, a bridge the firmware left
+     * unnumbered gets the next free number, and the count is what the
+     * walk found.
+     */
+    _maxBusNum = 0xFF;
+    _lastBusNum = -1;
+    bzero(_busScanned, sizeof(_busScanned));
+    [self scanBus:0];
+    _maxBusNum = _lastBusNum < 0 ? 0 : _lastBusNum;
 
     /* Register with the bus system */
     [self setBusId:0];

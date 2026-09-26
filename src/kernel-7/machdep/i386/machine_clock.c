@@ -66,6 +66,42 @@ static struct _system_clock {
 
 static tvalspec_t	system_time_stamp(void);
 
+/*
+ * Where the fraction of a tick comes from: a countdown that reloads at
+ * timer_const on every tick interrupt.  The 8254's counter 0 by default;
+ * the platform expert can offer the local APIC timer instead.
+ */
+static unsigned int
+timer_read_count(void)
+{
+    timer_latch(TIMER_CNT0_SEL);
+    return (timer_read(TIMER_CNT0_SEL));
+}
+
+static unsigned int	(*tick_source_read)(void) = timer_read_count;
+
+unsigned int
+clock_set_tick_source(
+    unsigned int	(*read_count)(void),
+    unsigned int	counts_per_second
+)
+{
+    unsigned int	count_per_tick;
+    int			s;
+
+    count_per_tick = counts_per_second / TICKS_PER_SEC;
+    if ((counts_per_second % TICKS_PER_SEC) >= (TICKS_PER_SEC / 2))
+    	count_per_tick++;
+
+    s = splclock();
+    tick_source_read = read_count;
+    system_clock.timer_const = count_per_tick;
+    system_clock.last_timer_count = count_per_tick;
+    splx(s);
+
+    return (count_per_tick);
+}
+
 static struct _system_timer {
     boolean_t		is_set;
     tvalspec_t		expire_time;
@@ -411,8 +447,7 @@ system_time_stamp(void)
     // take a snapshot of the whole counter state
     result = system_clock.counter;
     last_timer_count = system_clock.last_timer_count;
-    timer_latch(TIMER_CNT0_SEL);
-    current_timer_count = timer_read(TIMER_CNT0_SEL);
+    current_timer_count = (*tick_source_read)();
     // once a wrap is seen, store 0 (never read in NDIV mode) so that
     // every later read counts the tick until the interrupt runs
     if (current_timer_count > last_timer_count)
@@ -427,9 +462,10 @@ system_time_stamp(void)
 	ADD_TVALSPEC_NSEC(&result, NSEC_PER_TICK);
     }
 
-    // convert fraction to ns
+    // convert fraction to ns; the source's count per tick spans one tick
     fraction = (system_clock.timer_const - current_timer_count);
-    fraction = fraction * (NSEC_PER_SEC / TIMER_CONSTANT);
+    fraction = ((unsigned long long)fraction * NSEC_PER_TICK) /
+    		system_clock.timer_const;
 
     ADD_TVALSPEC_NSEC(&result, fraction);
 

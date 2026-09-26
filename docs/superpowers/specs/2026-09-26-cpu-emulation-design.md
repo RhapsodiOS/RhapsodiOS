@@ -422,7 +422,7 @@ cthreads creates threads with `thread_create` on the task port and then
 
 Two tiers, both automated.
 
-**Host tier** (Linux/macOS/Windows, CMake, `src/archemu-1/tests/`), runs on
+**Host tier** (Linux/macOS/Windows, plain Makefile, `src/archemu-1/tests/`), runs on
 every change:
 
 - Instruction known-answer tests: tables of `{initial registers, instruction
@@ -477,13 +477,13 @@ their layouts swapped too. None of this changes the process model above.
 | Set-id foreign binaries | Run unprivileged in the first version; explicit decision to change. |
 | `map_fd`/`mmap` corner cases for guest mappings of files (`MAP_ANON` unsupported) | Loader uses `vm_allocate` for anonymous memory; fixture tests on the guest. |
 
-Decisions that need the maintainer's confirmation before Task 1 (also listed
-at the top of the plan):
+Decisions confirmed by the maintainer on 2026-09-26 (also listed at the top
+of the plan):
 
-1. Kernel hook (recommended) versus libc-only retry.
-2. Order: ppc-on-i386 first (recommended), i386-on-ppc second.
-3. Set-id foreign binaries run unprivileged (recommended).
+1. Kernel hook in `execve`; the libc-only retry stays a fallback idea.
+2. Order: ppc-on-i386 first, i386-on-ppc second.
+3. Set-id foreign binaries run unprivileged.
 4. Names: project `archemu-1`, products `/usr/libexec/archemu/{ppc,i386}`.
 5. Interpreter first; JIT as a separate later spec.
-6. Host tests built with CMake (matches the maintainer's tooling; the rest
-   of the tree's host tests use plain Makefiles).
+6. Host tests are built with plain Makefiles, like the rest of the tree's
+   host tests (`src/drivers-i386/ide/drvAHCI/tests/Makefile` is the model).

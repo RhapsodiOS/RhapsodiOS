@@ -16,17 +16,18 @@ because every guest/host pair here is cross-endian.
 
 **Tech stack:** C89 + `long long`, host assembly only in `host/`; target build
 with the in-tree `cc` (gcc 2.7.2.1) via a plain Makefile driven by `rbuild`;
-host unit tests with CMake on Linux/macOS/Windows; guest tests through the
-existing `vm/` QEMU and SSH loop.
+host unit tests with a plain Makefile on Linux/macOS/Windows; guest tests
+through the existing `vm/` QEMU and SSH loop.
 
-## Decisions to confirm before Task 1
+## Decisions (confirmed 2026-09-26)
 
-1. Kernel hook in `execve` (recommended) vs. a libc `execve` retry wrapper.
+1. Kernel hook in `execve`; the libc `execve` retry wrapper is not built.
 2. ppc-on-i386 first (Phases 1-5), i386-on-ppc second (Phase 6).
 3. Set-id foreign binaries run with the caller's credentials.
 4. Names: `src/archemu-1`, `/usr/libexec/archemu/{ppc,i386}`.
 5. Interpreter with a decode cache first; any JIT is a separate later spec.
-6. CMake for the host tests.
+6. Plain Makefiles for the host tests, following
+   `src/drivers-i386/ide/drvAHCI/tests/Makefile`.
 
 ## Ground rules
 
@@ -84,7 +85,7 @@ src/archemu-1/
     layoutprobe.c                             prints sizeof/offsetof of boundary structs
     vecgen_ppc.c, vecgen_i386.c               native instruction vector generators
   tests/
-    CMakeLists.txt, host unit tests, vectors/*.txt, layouts/{i386,ppc}.txt
+    Makefile, host unit tests, vectors/*.txt, layouts/{i386,ppc}.txt
     guest/                                    guest-tier test programs and expected transcripts
 ```
 
@@ -94,7 +95,7 @@ src/archemu-1/
 
 Files: `src/archemu-1/Makefile`, `Makefile.preamble`, `apk/pkginfo`,
 `README.md`, `host/host_i386.s`, `host/host_ppc.s`, `host/host_syscall.h`,
-`harness/main.c`, `tests/CMakeLists.txt`.
+`harness/main.c`, `tests/Makefile`.
 
 - [ ] Makefile modelled on `src/rbuild-1/Makefile`: for `RC_ARCHS` containing
       `i386` build `archemu-ppc` (guest ppc), for `ppc` build `archemu-i386`;
@@ -105,8 +106,9 @@ Files: `src/archemu-1/Makefile`, `Makefile.preamble`, `apk/pkginfo`,
       (`lcall $0x2b,$0` / `sc` with the negative-number Mach trap form), `bswap`
       helpers, atomic compare-and-swap.
 - [ ] `main.c` for now: print its argv with the raw `write`, exit 0.
-- [ ] CMake host build of the harness sources that are host-portable (none
-      yet beyond `log.c` stubs) with a smoke test.
+- [ ] `tests/Makefile` (`CC = cc`, `-Wall -Werror`, one target per test,
+      `check` runs them all) building the host-portable harness sources
+      (none yet beyond `log.c` stubs) with a smoke test.
 - Verify: on the i386 QEMU image, `rbuild buildpackage` of `archemu-1`
   produces `/usr/libexec/archemu/ppc`; `otool -hv` shows no
   `LC_LOAD_DYLINKER`, `__TEXT` at `0xB0000000`; running it prints its argv.

@@ -670,10 +670,41 @@ test_dbdma_table(void)
     CHECK(!PEMacRISCBuildDBDMA(0, &channels));
 }
 
+static void
+test_pmu_interrupts(void)
+{
+    PEMacRISCPlatform p;
+    PEPlatformError error;
+    unsigned int list[2];
+    Tree t;
+
+    build_rackmac(&t);
+    CHECK(capture(&p, &error) == kPEMacRISCSupported);
+    CHECK(PEMacRISCPMUInterruptList(&p, list) == 2);
+    CHECK(list[0] == 66 && list[1] == 47);
+    /* What pmu.m sees after DriverKit's XOR: Sawtooth's 0x5a and 47. */
+    CHECK((list[0] ^ 0x18) == 0x5a && (list[1] ^ 0x18) == (47 ^ 0x18));
+    CHECK(PEMPICsourceForInterrupt(0, 64, 64 + 7, list[1] ^ 0x18) == 47);
+
+    p.hasPMUInterrupt = 0;              /* no extint-gpio1: invent nothing */
+    CHECK(PEMacRISCPMUInterruptList(&p, list) == 0);
+    p.hasPMUInterrupt = 1;
+    p.hasPMU = 0;
+    p.hasCUDA = 1;                      /* CUDA machines have no PMU */
+    CHECK(PEMacRISCPMUInterruptList(&p, list) == 0);
+    p.hasPMU = 1;
+    p.hasCUDA = 0;
+    p.pmuInterruptSource = 64;
+    CHECK(PEMacRISCPMUInterruptList(&p, list) == 0);
+    CHECK(PEMacRISCPMUInterruptList(0, list) == 0);
+    CHECK(PEMacRISCPMUInterruptList(&p, 0) == 0);
+}
+
 int
 main(void)
 {
     test_routes();
+    test_pmu_interrupts();
     test_mpic_table();
     test_dbdma_table();
     test_publish();

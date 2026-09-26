@@ -138,7 +138,14 @@ kprintf("PMU probe\n");
   // This is a still sleazy hack...
   oldIRQs = [deviceDescription interruptList];
 
-  if (IsSawtooth()) {
+  if (IsMacRISC()) {
+    // PExpert published both: the VIA cascade child and the GPIO.
+    if ([deviceDescription numInterrupts] != 2) {
+      [self free];
+      return nil;
+    }
+    tmpIRQ = oldIRQs[1];
+  } else if (IsSawtooth()) {
     // On Sawtooth it is ExtInt1...
     tmpIRQ = 47 ^ 0x18;
   } else {

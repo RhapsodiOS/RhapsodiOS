@@ -144,6 +144,15 @@ int PEMacRISCPublish(const PEMacRISCPlatform *platform,
  * The nanosecond pair keeps the legacy scale (4000 over the bus clock in
  * MHz); the 8.24 decrementer period comes from the firmware timebase.
  */
+/*
+ * The two interrupts both PMU drivers expect, as raw AAPL,interrupts cells
+ * (DriverKit XORs each with 0x18): the VIA1 cascade child, which
+ * identify_via_irq() also writes, and the PMU GPIO (extint-gpio1) source.
+ * Returns 2, or 0 when the machine has no complete PMU topology.
+ */
+unsigned int PEMacRISCPMUInterruptList(const PEMacRISCPlatform *platform,
+    unsigned int output[2]);
+
 int PEMacRISCComputeClockConversion(const PEMacRISCPlatform *platform,
     unsigned int *numerator, unsigned int *denominator,
     unsigned int *period824);

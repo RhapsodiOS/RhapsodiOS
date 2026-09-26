@@ -818,8 +818,8 @@ int PEEditDTEntry( DTEntry dtEntry, char * nodeName, int index,
     int         size;
     static int  usbDeviceFound = 0;
 
-    /* Sawtooth-specific: Handle PCI bridge class code for AGP */
-    if( powermac_info.class == POWERMAC_CLASS_SAWTOOTH) {
+    /* Core99 (UniNorth): Handle PCI bridge class code for AGP */
+    if( IsCore99()) {
         if( 0 == strcmp( nodeName, "pci") && index == 0) {
             if( kSuccess == DTGetProperty(dtEntry, "class-code", (void **)&classCode, &size)) {
                 if( *classCode == 0x060400) {  /* PCI-to-PCI bridge */
@@ -832,7 +832,7 @@ int PEEditDTEntry( DTEntry dtEntry, char * nodeName, int index,
             return -1;
         }
 
-        /* Sawtooth-specific: Filter out USB devices except first keyboard/mouse */
+        /* Core99: Filter out USB devices except first keyboard/mouse */
         if( 0 == strcmp( nodeName, "usb") && index == 0) {
             /* Check if this USB node has keyboard or mouse children */
             if( (kSuccess == DTLookupEntry(dtEntry, "keyboard", &entry)) ||
@@ -854,6 +854,18 @@ int PEEditDTEntry( DTEntry dtEntry, char * nodeName, int index,
             *propSize = 0;
             return 0;
         }
+    }
+
+    /* MacRISC: hand the PMU its VIA cascade child and GPIO interrupt. */
+    if( IsMacRISC() && 0 == strcmp( nodeName, "via-pmu") && index == 0) {
+        static unsigned int pmuInterrupts[2];
+
+        if( 2 != PEMacRISCPMUInterruptList( PEMacRISCGetPlatform(), pmuInterrupts))
+            return -1;
+        *propName = "AAPL,interrupts";
+        *propData = pmuInterrupts;
+        *propSize = sizeof( pmuInterrupts);
+        return 0;
     }
 
     /* Handle ATY,LTProParent (Rage LTPro graphics) */
@@ -1013,7 +1025,7 @@ void InitNVRAMPartitions(void)
   long curOffset = 0;
   char buf[17];
 
-  if (IsYosemite() || IsSawtooth()) {
+  if (IsYosemite() || IsCore99()) {
     // Look at the NVRAM partitions and find the right ones.
 
     buf[16] = '\0';

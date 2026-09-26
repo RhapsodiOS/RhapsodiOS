@@ -524,3 +524,16 @@ PEMacRISCComputeClockConversion(const PEMacRISCPlatform *platform,
     *period824 = (whole << 24) | fraction;
     return 1;
 }
+
+unsigned int
+PEMacRISCPMUInterruptList(const PEMacRISCPlatform *platform,
+    unsigned int output[2])
+{
+    if (output == 0 || PEMacRISCValidate(platform) != kPEPlatformValid ||
+        !platform->hasPMU || !platform->hasCascade ||
+        !platform->hasPMUInterrupt)
+        return 0;
+    output[0] = platform->mpicSources + 2;      /* VIA1 child PMAC_DEV_VIA1 */
+    output[1] = platform->pmuInterruptSource;
+    return 2;
+}

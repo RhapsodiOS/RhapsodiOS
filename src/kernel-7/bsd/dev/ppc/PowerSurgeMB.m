@@ -93,8 +93,8 @@ cuda_restart(int powerOff)
 
     kprintf("cuda_restart\n");
 
-    /* Sync NVRAM on Sawtooth before shutdown/restart */
-    if (IsSawtooth()) {
+    /* Sync Core99 NVRAM before shutdown/restart */
+    if (IsCore99()) {
       SyncCore99NVRAM();
     }
 
@@ -325,7 +325,7 @@ int	i;
     if( offset + length > 0x2000 )
 	return( IO_R_UNSUPPORTED);
 
-    if (IsSawtooth()) {
+    if (IsCore99()) {
       if (!Core99NVRAMInited) {
         if (InitCore99NVRAM() != 0) return -1;
       }
@@ -373,7 +373,7 @@ int	i;
     if( offset + length > 0x2000 )
 	return( IO_R_UNSUPPORTED);
 
-    if (IsSawtooth()) {
+    if (IsCore99()) {
       if (!Core99NVRAMInited) {
         if (InitCore99NVRAM() != 0) return -1;
       }

@@ -59,4 +59,56 @@ PEMacRISCStatus PEMacRISCClassify(const PEMacRISCIdentityInput *input,
     PECPUFamily *cpu, PEMacIOFamily *macIO,
     char model[PE_MACRISC_MODEL_MAX]);
 
+typedef struct {
+    int present;
+    unsigned int base, length;      /* absolute physical address */
+} PEResource;
+
+/* Same field order as powermac_dbdma_channels_t; -1 means absent. */
+typedef struct {
+    int curio, mesh, floppy, ethernetTx, ethernetRx;
+    int sccATx, sccARx, sccBTx, sccBRx;
+    int audioOut, audioIn, ata0, ata1;
+} PEDBDMAChannels;
+
+typedef enum {
+    kPEPlatformValid, kPEPlatformMissingMacIO, kPEPlatformBadMacIORange,
+    kPEPlatformMissingMPIC, kPEPlatformBadMPICRange, kPEPlatformBadMPICCount,
+    kPEPlatformMissingCPU, kPEPlatformBadCPUCount, kPEPlatformBadClock,
+    kPEPlatformBadCascade, kPEPlatformMissingVIA, kPEPlatformMissingSerial,
+    kPEPlatformMissingNVRAM, kPEPlatformBadRange
+} PEPlatformError;
+
+/*
+ * Everything early boot needs from firmware, copied out of the device tree
+ * so that nothing points into unchecked property storage.  Mac-IO, MPIC,
+ * VIA, SCC and NVRAM are required because existing code dereferences their
+ * bases unconditionally; the other resources are optional.
+ */
+typedef struct {
+    char model[PE_MACRISC_MODEL_MAX];
+    int listedModel;
+    PECPUFamily cpuFamily;
+    PEMacIOFamily macIOFamily;
+    unsigned int cpuCount, bootCPU, pvr;
+    unsigned int cpuClockHz, busClockHz, timebaseHz;
+    unsigned int dcacheSize, dcacheBlockSize, icacheSize, l2CacheSize;
+    int cachesUnified;
+    PEResource macIO, mpic, via, serial, mesh, floppy, audio, ethernet;
+    PEResource nvram, ata0, ata1;
+    PEDBDMAChannels dbdma;
+    unsigned int mpicSources;
+    int hasPMU, hasCUDA, hasCascade;
+    unsigned int cascadeSource, cascadeWidth;
+    int hasPMUInterrupt;
+    unsigned int pmuInterruptSource;
+} PEMacRISCPlatform;
+
+void PEMacRISCPlatformInit(PEMacRISCPlatform *platform);
+PEPlatformError PEMacRISCValidate(const PEMacRISCPlatform *platform);
+int PEMacRISCSetResource(PEResource *resource, unsigned int base,
+    unsigned int length);
+int PEMacRISCSetDBDMA(PEDBDMAChannels *channels, const char *role,
+    unsigned int channel);
+
 #endif /* _PEXPERT_MACRISC_DISCOVERY_H_ */

@@ -231,3 +231,189 @@ PEMacRISCClassify(const PEMacRISCIdentityInput *input, PECPUFamily *cpu,
     return macrisc_model_listed(model) ? kPEMacRISCSupported :
         kPEMacRISCCompatibleUnlisted;
 }
+
+void
+PEMacRISCPlatformInit(PEMacRISCPlatform *platform)
+{
+    unsigned char *bytes;
+    unsigned int i;
+
+    bytes = (unsigned char *)platform;
+    for (i = 0; i < sizeof(*platform); i++)
+        bytes[i] = 0;
+    platform->dbdma.curio = -1;
+    platform->dbdma.mesh = -1;
+    platform->dbdma.floppy = -1;
+    platform->dbdma.ethernetTx = -1;
+    platform->dbdma.ethernetRx = -1;
+    platform->dbdma.sccATx = -1;
+    platform->dbdma.sccARx = -1;
+    platform->dbdma.sccBTx = -1;
+    platform->dbdma.sccBRx = -1;
+    platform->dbdma.audioOut = -1;
+    platform->dbdma.audioIn = -1;
+    platform->dbdma.ata0 = -1;
+    platform->dbdma.ata1 = -1;
+}
+
+static int
+macrisc_range_valid(unsigned int base, unsigned int length)
+{
+    return length != 0 && length - 1 <= ~0U - base;
+}
+
+int
+PEMacRISCSetResource(PEResource *resource, unsigned int base,
+    unsigned int length)
+{
+    if (resource == 0 || !macrisc_range_valid(base, length))
+        return 0;
+    resource->present = 1;
+    resource->base = base;
+    resource->length = length;
+    return 1;
+}
+
+static int *
+macrisc_dbdma_field(PEDBDMAChannels *channels, const char *role)
+{
+    if (macrisc_string_equal(role, "curio"))
+        return &channels->curio;
+    if (macrisc_string_equal(role, "mesh"))
+        return &channels->mesh;
+    if (macrisc_string_equal(role, "floppy"))
+        return &channels->floppy;
+    if (macrisc_string_equal(role, "ethernet-tx"))
+        return &channels->ethernetTx;
+    if (macrisc_string_equal(role, "ethernet-rx"))
+        return &channels->ethernetRx;
+    if (macrisc_string_equal(role, "scc-a-tx"))
+        return &channels->sccATx;
+    if (macrisc_string_equal(role, "scc-a-rx"))
+        return &channels->sccARx;
+    if (macrisc_string_equal(role, "scc-b-tx"))
+        return &channels->sccBTx;
+    if (macrisc_string_equal(role, "scc-b-rx"))
+        return &channels->sccBRx;
+    if (macrisc_string_equal(role, "audio-out"))
+        return &channels->audioOut;
+    if (macrisc_string_equal(role, "audio-in"))
+        return &channels->audioIn;
+    if (macrisc_string_equal(role, "ata0"))
+        return &channels->ata0;
+    if (macrisc_string_equal(role, "ata1"))
+        return &channels->ata1;
+    return 0;
+}
+
+int
+PEMacRISCSetDBDMA(PEDBDMAChannels *channels, const char *role,
+    unsigned int channel)
+{
+    int *field;
+
+    if (channels == 0 || role == 0 || channel > 31)
+        return 0;
+    field = macrisc_dbdma_field(channels, role);
+    if (field == 0 || (*field != -1 && *field != (int)channel))
+        return 0;
+    *field = (int)channel;
+    return 1;
+}
+
+static int
+macrisc_inside(const PEResource *outer, const PEResource *inner)
+{
+    return inner->base >= outer->base &&
+        inner->length <= outer->length &&
+        inner->base - outer->base <= outer->length - inner->length;
+}
+
+static int
+macrisc_optional_valid(const PEMacRISCPlatform *platform,
+    const PEResource *resource)
+{
+    return !resource->present ||
+        (macrisc_range_valid(resource->base, resource->length) &&
+        macrisc_inside(&platform->macIO, resource));
+}
+
+static int
+macrisc_channel_valid(int channel)
+{
+    return channel >= -1 && channel <= 31;
+}
+
+static int
+macrisc_dbdma_valid(const PEDBDMAChannels *c)
+{
+    return macrisc_channel_valid(c->curio) &&
+        macrisc_channel_valid(c->mesh) &&
+        macrisc_channel_valid(c->floppy) &&
+        macrisc_channel_valid(c->ethernetTx) &&
+        macrisc_channel_valid(c->ethernetRx) &&
+        macrisc_channel_valid(c->sccATx) &&
+        macrisc_channel_valid(c->sccARx) &&
+        macrisc_channel_valid(c->sccBTx) &&
+        macrisc_channel_valid(c->sccBRx) &&
+        macrisc_channel_valid(c->audioOut) &&
+        macrisc_channel_valid(c->audioIn) &&
+        macrisc_channel_valid(c->ata0) &&
+        macrisc_channel_valid(c->ata1);
+}
+
+static int
+macrisc_required_valid(const PEMacRISCPlatform *platform,
+    const PEResource *resource)
+{
+    return resource->present && macrisc_optional_valid(platform, resource);
+}
+
+PEPlatformError
+PEMacRISCValidate(const PEMacRISCPlatform *platform)
+{
+    if (platform == 0 || !platform->macIO.present)
+        return kPEPlatformMissingMacIO;
+    if (!macrisc_range_valid(platform->macIO.base, platform->macIO.length))
+        return kPEPlatformBadMacIORange;
+    if (!platform->mpic.present)
+        return kPEPlatformMissingMPIC;
+    if (!macrisc_required_valid(platform, &platform->mpic))
+        return kPEPlatformBadMPICRange;
+    if (platform->mpicSources == 0 ||
+        platform->mpicSources > PE_MACRISC_MAX_SOURCES)
+        return kPEPlatformBadMPICCount;
+    if (platform->cpuCount == 0)
+        return kPEPlatformMissingCPU;
+    if (platform->cpuCount > PE_MACRISC_MAX_CPUS)
+        return kPEPlatformBadCPUCount;
+    if (platform->cpuClockHz == 0 || platform->busClockHz < 1000000U ||
+        platform->timebaseHz == 0 || platform->timebaseHz > 0x7fffffffU)
+        return kPEPlatformBadClock;
+    if (!macrisc_required_valid(platform, &platform->via) ||
+        (!platform->hasPMU && !platform->hasCUDA))
+        return kPEPlatformMissingVIA;
+    if (!platform->hasCascade ||
+        platform->cascadeSource >= platform->mpicSources ||
+        platform->cascadeWidth == 0 ||
+        platform->cascadeWidth > PE_MACRISC_MAX_CASCADE ||
+        (platform->hasPMUInterrupt &&
+        (platform->pmuInterruptSource >= platform->mpicSources ||
+        platform->pmuInterruptSource == platform->cascadeSource)))
+        return kPEPlatformBadCascade;
+    if (!macrisc_required_valid(platform, &platform->serial))
+        return kPEPlatformMissingSerial;
+    /* Core99 flash NVRAM is two 8 KB banks outside Mac-IO. */
+    if (!platform->nvram.present || platform->nvram.length < 0x4000 ||
+        !macrisc_range_valid(platform->nvram.base, platform->nvram.length))
+        return kPEPlatformMissingNVRAM;
+    if (!macrisc_optional_valid(platform, &platform->mesh) ||
+        !macrisc_optional_valid(platform, &platform->floppy) ||
+        !macrisc_optional_valid(platform, &platform->audio) ||
+        !macrisc_optional_valid(platform, &platform->ethernet) ||
+        !macrisc_optional_valid(platform, &platform->ata0) ||
+        !macrisc_optional_valid(platform, &platform->ata1) ||
+        !macrisc_dbdma_valid(&platform->dbdma))
+        return kPEPlatformBadRange;
+    return kPEPlatformValid;
+}

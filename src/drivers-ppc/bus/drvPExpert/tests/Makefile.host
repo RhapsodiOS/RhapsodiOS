@@ -18,13 +18,19 @@ interrupt_depth_test: interrupt_depth_test.c
 keylargo_discovery_test: keylargo_discovery_test.c
 	$(HOST_CC) $(HOST_CFLAGS) -o $@ keylargo_discovery_test.c
 
+macrisc_discovery_test: macrisc_discovery_test.c \
+    ../powermac/macrisc_discovery.c ../powermac/macrisc_discovery.h
+	$(HOST_CC) $(HOST_CFLAGS) -DMACRISC_HOST_TEST -I../powermac \
+	    -o $@ macrisc_discovery_test.c ../powermac/macrisc_discovery.c
+
 test: mpic_direct_test pe_keylargo_test interrupt_depth_test \
-    keylargo_discovery_test
+    keylargo_discovery_test macrisc_discovery_test
 	./mpic_direct_test
 	./pe_keylargo_test
 	./interrupt_depth_test
 	./keylargo_discovery_test
+	./macrisc_discovery_test
 
 clean:
 	rm -f mpic_direct_test pe_keylargo_test interrupt_depth_test \
-	    keylargo_discovery_test
+	    keylargo_discovery_test macrisc_discovery_test

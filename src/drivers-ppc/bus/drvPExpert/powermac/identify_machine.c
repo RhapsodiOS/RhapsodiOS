@@ -34,6 +34,7 @@
 #include <families/powerstar.h>
 #include <families/yosemite.h>
 #include <families/sawtooth.h>
+#include <families/macrisc.h>
 #include <chips/keylargo.h>
 #include <chips/keylargo_model.h>
 #include "IOProperties.h"
@@ -144,6 +145,12 @@ void identify_machine1()
 		else
 			powermac_io_info.io_size = 0;
 		powermac_init_p = &sawtooth_init;
+		break;
+
+	case gestaltMacRISC:
+		powermac_info.class		= POWERMAC_CLASS_MACRISC;
+		powermac_io_info.io_size	= PEMacRISCGetPlatform()->macIO.length;
+		powermac_init_p = &macrisc_init;
 		break;
 
 	default:

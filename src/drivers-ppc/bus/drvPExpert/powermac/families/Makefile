@@ -12,9 +12,11 @@ NAME = families
 PROJECTVERSION = 2.8
 PROJECT_TYPE = Component
 
-HFILES = gossamer.h powerexpress.h powersurge.h powerstar.h sawtooth.h yosemite.h
+HFILES = gossamer.h powerexpress.h powersurge.h powerstar.h sawtooth.h yosemite.h\
+         macrisc.h
 
-CFILES = gossamer.c powerexpress.c powerstar.c powersurge.c sawtooth.c yosemite.c
+CFILES = gossamer.c powerexpress.c powerstar.c powersurge.c sawtooth.c yosemite.c\
+         macrisc.c
 
 OTHERSRCS = Makefile Makefile.preamble
 

@@ -2,8 +2,8 @@
     DYNAMIC_CODE_GEN = YES; 
     FILESTABLE = {
         HEADERSEARCH = (..); 
-        H_FILES = (gossamer.h, powerexpress.h, powersurge.h, powerstar.h, yosemite.h); 
-        OTHER_LINKED = (gossamer.c, powerexpress.c, powerstar.c, powersurge.c, yosemite.c); 
+        H_FILES = (gossamer.h, powerexpress.h, powersurge.h, powerstar.h, yosemite.h, macrisc.h);
+        OTHER_LINKED = (gossamer.c, powerexpress.c, powerstar.c, powersurge.c, yosemite.c, macrisc.c);
         OTHER_SOURCES = (Makefile, Makefile.preamble); 
     }; 
     LANGUAGE = English; 

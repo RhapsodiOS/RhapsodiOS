@@ -3,6 +3,9 @@
 #include <string.h>
 
 #include "../powermac/macrisc_dt.h"
+#include "../powermac/families/macrisc.h"
+#include <interrupts.h>
+#include <machdep/ppc/dbdma.h>
 
 static int failures;
 
@@ -589,10 +592,90 @@ test_clock_conversion(void)
         &period));
 }
 
+static void
+test_mpic_table(void)
+{
+    struct powermac_interrupt interrupts[PE_MACRISC_MAX_SOURCES];
+    unsigned long mapping[PE_MACRISC_MAX_SOURCES * 2];
+    PEMacRISCPlatform p;
+    PEPlatformError error;
+    unsigned int s;
+    Tree t;
+
+    build_rackmac(&t);
+    CHECK(capture(&p, &error) == kPEMacRISCSupported);
+    CHECK(p.cpuCount == 2);
+    p.sourceSense[0x31] = 2;
+    p.sourceSense[0x32] = 3;
+    CHECK(PEMacRISCBuildMPIC(&p, interrupts, mapping));
+    for (s = 0; s < PE_MACRISC_MAX_SOURCES; s++) {
+        CHECK((mapping[s * 2] & 0xffUL) == s);
+        CHECK((mapping[s * 2] & 0x80000000UL) != 0);    /* masked */
+        CHECK(mapping[s * 2 + 1] == 1);                 /* CPU 0 only */
+        CHECK(interrupts[s].i_handler == 0);
+    }
+    /* Sense cell 1: level, active low; device priority 2. */
+    CHECK(mapping[0x13 * 2] == 0x80420013UL);
+    CHECK(interrupts[0x13].i_device == PMAC_DEV_IDE0);
+    /* Sense cell 0: edge, active high; DMA priority 4. */
+    CHECK(mapping[0x0b * 2] == 0x80840000UL + 0x0b);
+    CHECK(interrupts[0x0b].i_device == PMAC_DMA_IDE0);
+    CHECK(interrupts[0x14].i_device == PMAC_DEV_IDE1);
+    CHECK(interrupts[0x0a].i_device == PMAC_DMA_IDE1);
+    CHECK(interrupts[0x16].i_device == PMAC_DEV_SCC_A);
+    CHECK(interrupts[0x04].i_device == PMAC_DMA_SCC_A_TX);
+    CHECK(interrupts[0x17].i_device == PMAC_DEV_SCC_B);
+    CHECK(interrupts[0x08].i_device == -1);
+    CHECK(interrupts[0x01].i_device == PMAC_DMA_AUDIO_OUT);
+    /* VIA cascade: priority 1, handler installed by configure_macrisc. */
+    CHECK(mapping[0x19 * 2] == 0x80410019UL);
+    CHECK(interrupts[0x19].i_device == -1);
+    /* PMU GPIO and unknown sources keep direct identities. */
+    CHECK(interrupts[0x2f].i_device == -1);
+    CHECK(PEMPIClogicalForSource(interrupts, 64, 0x2f) ==
+        PMAC_DEV_MPIC_DIRECT_BASE + 0x2f);
+    CHECK(mapping[0x30 * 2] == 0x80420030UL);
+    CHECK(mapping[0x31 * 2] == 0x80c20031UL);           /* level, high */
+    CHECK(mapping[0x32 * 2] == 0x80020032UL);           /* edge, low */
+    CHECK(PEMPICsourceForDevice(interrupts, 64, PMAC_DEV_IDE0) == 0x13);
+
+    p.mpic.present = 0;
+    CHECK(!PEMacRISCBuildMPIC(&p, interrupts, mapping));
+}
+
+static void
+test_dbdma_table(void)
+{
+    powermac_dbdma_channels_t channels;
+    PEMacRISCPlatform p;
+    PEPlatformError error;
+    Tree t;
+
+    build_rackmac(&t);
+    CHECK(capture(&p, &error) == kPEMacRISCSupported);
+    CHECK(PEMacRISCBuildDBDMA(&p.dbdma, &channels));
+    CHECK(channels.dbdma_channel_ide0 == 0x0b);
+    CHECK(channels.dbdma_channel_ide1 == 0x0a);
+    CHECK(channels.dbdma_channel_scc_xmit_a == 4);
+    CHECK(channels.dbdma_channel_scc_recv_a == 5);
+    CHECK(channels.dbdma_channel_scc_xmit_b == 6);
+    CHECK(channels.dbdma_channel_scc_recv_b == 7);
+    CHECK(channels.dbdma_channel_audio_out == 8);
+    CHECK(channels.dbdma_channel_audio_in == 9);
+    CHECK(channels.dbdma_channel_curio == -1);
+    CHECK(channels.dbdma_channel_mesh == -1);
+    CHECK(channels.dbdma_channel_floppy == -1);
+    CHECK(channels.dbdma_channel_ethernet_tx == -1);
+    CHECK(channels.dbdma_channel_ethernet_rx == -1);
+    CHECK(!PEMacRISCBuildDBDMA(0, &channels));
+}
+
 int
 main(void)
 {
     test_routes();
+    test_mpic_table();
+    test_dbdma_table();
     test_publish();
     test_clock_conversion();
     test_capture_rackmac();

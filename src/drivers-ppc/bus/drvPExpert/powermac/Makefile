@@ -14,13 +14,14 @@ PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
 HFILES = boot.h interrupt_depth.h interrupts.h powermac_exceptions.h powermac_gestalt.h\
-         powermac.h proc_reg.h IOProperties.h
+         powermac.h proc_reg.h IOProperties.h macrisc_discovery.h macrisc_dt.h
 
 OTHERLINKED = clock_speed_asm.s
 
 CFILES = backsideL2.c bat_init.c bootargs.c debug_misc.c\
          identify_machine.c interrupt.c powermac_init.c\
-         powermac_vm_init.c rtclock.c clock_speed.c
+         powermac_vm_init.c rtclock.c clock_speed.c\
+         macrisc_discovery.c macrisc_dt.c
 
 SUBPROJECTS = chips families
 

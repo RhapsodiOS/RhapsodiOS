@@ -85,6 +85,19 @@ typedef enum {
  * VIA, SCC and NVRAM are required because existing code dereferences their
  * bases unconditionally; the other resources are optional.
  */
+/* What a primary MPIC source is known to belong to. */
+typedef enum {
+    kPERoleNone, kPERoleVIA, kPERolePMU, kPERoleNMI,
+    kPERoleSCCA, kPERoleSCCATx, kPERoleSCCARx,
+    kPERoleSCCB, kPERoleSCCBTx, kPERoleSCCBRx,
+    kPERoleMESH, kPERoleMESHDMA, kPERoleFloppy, kPERoleFloppyDMA,
+    kPERoleATA0, kPERoleATA0DMA, kPERoleATA1, kPERoleATA1DMA,
+    kPERoleAudio, kPERoleAudioOut, kPERoleAudioIn
+} PEInterruptRole;
+
+/* sourceSense holds the OpenPIC "interrupts" sense cell (0..3). */
+#define PE_MACRISC_SENSE_UNKNOWN 0xff
+
 typedef struct {
     char model[PE_MACRISC_MODEL_MAX];
     int listedModel;
@@ -102,6 +115,8 @@ typedef struct {
     unsigned int cascadeSource, cascadeWidth;
     int hasPMUInterrupt;
     unsigned int pmuInterruptSource;
+    unsigned char sourceRole[PE_MACRISC_MAX_SOURCES];
+    unsigned char sourceSense[PE_MACRISC_MAX_SOURCES];
 } PEMacRISCPlatform;
 
 void PEMacRISCPlatformInit(PEMacRISCPlatform *platform);

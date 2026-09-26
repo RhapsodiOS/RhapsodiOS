@@ -9,8 +9,10 @@
             powermac_exceptions.h, 
             powermac_gestalt.h, 
             powermac.h, 
-            proc_reg.h
-            IOProperties.h
+            proc_reg.h,
+            IOProperties.h,
+            macrisc_discovery.h,
+            macrisc_dt.h
         ); 
         OTHER_LINKED = (
             backsideL2.c, 
@@ -23,7 +25,9 @@
             powermac_vm_init.c, 
             rtclock.c, 
             clock_speed.c, 
-            clock_speed_asm.s
+            clock_speed_asm.s,
+            macrisc_discovery.c,
+            macrisc_dt.c
         ); 
         OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble, Load_Commands.sect, README); 
         PRECOMPILED_HEADERS = (); 

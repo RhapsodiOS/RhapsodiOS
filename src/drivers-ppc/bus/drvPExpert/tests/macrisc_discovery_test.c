@@ -374,6 +374,10 @@ test_descriptor_failures(void)
     p.serial.present = 0;
     CHECK(PEMacRISCValidate(&p) == kPEPlatformMissingSerial);
     platform_fixture(&p, kPEMacIOKeyLargo);
+    p.nvram.present = 0;
+    CHECK(PEMacRISCValidate(&p) == kPEPlatformMissingNVRAM);
+    platform_fixture(&p, kPEMacIOKeyLargo);
+    p.nvram.base = 0xffffe000U;
     p.nvram.length = 0x2000;
     CHECK(PEMacRISCValidate(&p) == kPEPlatformMissingNVRAM);
     platform_fixture(&p, kPEMacIOKeyLargo);

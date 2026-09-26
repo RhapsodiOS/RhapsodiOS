@@ -254,6 +254,8 @@ PEMacRISCPlatformInit(PEMacRISCPlatform *platform)
     platform->dbdma.audioIn = -1;
     platform->dbdma.ata0 = -1;
     platform->dbdma.ata1 = -1;
+    for (i = 0; i < PE_MACRISC_MAX_SOURCES; i++)
+        platform->sourceSense[i] = PE_MACRISC_SENSE_UNKNOWN;
 }
 
 static int
@@ -403,9 +405,9 @@ PEMacRISCValidate(const PEMacRISCPlatform *platform)
         return kPEPlatformBadCascade;
     if (!macrisc_required_valid(platform, &platform->serial))
         return kPEPlatformMissingSerial;
-    /* Core99 flash NVRAM is two 8 KB banks outside Mac-IO. */
-    if (!platform->nvram.present || platform->nvram.length < 0x4000 ||
-        !macrisc_range_valid(platform->nvram.base, platform->nvram.length))
+    /* The Core99 flash code reads two 8 KB banks from the NVRAM base. */
+    if (!platform->nvram.present ||
+        !macrisc_range_valid(platform->nvram.base, 0x4000))
         return kPEPlatformMissingNVRAM;
     if (!macrisc_optional_valid(platform, &platform->mesh) ||
         !macrisc_optional_valid(platform, &platform->floppy) ||

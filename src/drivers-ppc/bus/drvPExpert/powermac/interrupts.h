@@ -128,6 +128,24 @@ extern int PEMPICsourceForInterrupt(struct powermac_interrupt *map,
 extern int PEMPICsourceForDevice(struct powermac_interrupt *map,
 				int count, int device);
 
+/*
+ * MPIC platform policy.  Families that never set a configuration keep the
+ * legacy sequence exactly: Fat Man feature control on, 8259 pass-through
+ * off, and no checks against the mapping table.
+ */
+typedef struct {
+	int		useFeatureControl;	/* touch FM_MPIC_CTRL (Fat Man) */
+	int		disablePassThrough;	/* OpenPIC global config P bit */
+	unsigned int	destinationMask;	/* CPUs every source targets */
+	unsigned int	sourceCount;		/* primary sources in the table */
+} PEMPICConfiguration;
+
+extern int PEMPICValidateConfiguration(
+				const PEMPICConfiguration *configuration);
+extern int PEMPICSetConfiguration(const PEMPICConfiguration *configuration);
+extern const PEMPICConfiguration *PEMPICGetConfiguration(int *configured);
+extern int PEMPICSourceInRange(unsigned int source, unsigned int count);
+
 extern unsigned int (*pmac_int_to_number)(int index);
 
 extern void	(*pmac_register_int)(int interrupt, spl_t level,

@@ -13,6 +13,72 @@ expect_equal(const char *name, int actual, int expected)
 	}
 }
 
+static PEMPICConfiguration
+configuration(int featureControl, int passThrough, unsigned int mask,
+    unsigned int count)
+{
+	PEMPICConfiguration value;
+
+	value.useFeatureControl = featureControl;
+	value.disablePassThrough = passThrough;
+	value.destinationMask = mask;
+	value.sourceCount = count;
+	return value;
+}
+
+static void
+test_policy(void)
+{
+	PEMPICConfiguration value;
+	const PEMPICConfiguration *current;
+	int configured;
+
+	/* Unconfigured families keep the legacy sequence. */
+	current = PEMPICGetConfiguration(&configured);
+	expect_equal("legacy unconfigured", configured, 0);
+	expect_equal("legacy feature control", current->useFeatureControl, 1);
+	expect_equal("legacy pass-through", current->disablePassThrough, 1);
+
+	value = configuration(0, 1, 1, 1);
+	expect_equal("one source", PEMPICValidateConfiguration(&value), 1);
+	value = configuration(0, 1, 1, 64);
+	expect_equal("64 sources", PEMPICValidateConfiguration(&value), 1);
+	value = configuration(0, 1, 1, 0);
+	expect_equal("no sources", PEMPICValidateConfiguration(&value), 0);
+	value = configuration(0, 1, 1, 65);
+	expect_equal("65 sources", PEMPICValidateConfiguration(&value), 0);
+	value = configuration(0, 1, 0, 64);
+	expect_equal("no destination", PEMPICValidateConfiguration(&value), 0);
+	value = configuration(0, 1, 0x10, 64);
+	expect_equal("fifth CPU", PEMPICValidateConfiguration(&value), 0);
+	value = configuration(0, 1, 0xf, 64);
+	expect_equal("four CPUs", PEMPICValidateConfiguration(&value), 1);
+	expect_equal("null configuration", PEMPICValidateConfiguration(0), 0);
+
+	value = configuration(0, 1, 0, 64);
+	expect_equal("reject invalid", PEMPICSetConfiguration(&value), 0);
+	current = PEMPICGetConfiguration(&configured);
+	expect_equal("still unconfigured", configured, 0);
+
+	value = configuration(0, 1, 1, 64);
+	expect_equal("accept valid", PEMPICSetConfiguration(&value), 1);
+	current = PEMPICGetConfiguration(&configured);
+	expect_equal("configured", configured, 1);
+	expect_equal("feature control off", current->useFeatureControl, 0);
+	expect_equal("pass-through independent",
+	    current->disablePassThrough, 1);
+	expect_equal("CPU 0 only", (int)current->destinationMask, 1);
+	value = configuration(1, 0, 1, 38);
+	expect_equal("flags independent", PEMPICSetConfiguration(&value), 1);
+	current = PEMPICGetConfiguration(0);
+	expect_equal("feature control on", current->useFeatureControl, 1);
+	expect_equal("pass-through left", current->disablePassThrough, 0);
+
+	expect_equal("source 63", PEMPICSourceInRange(63, 64), 1);
+	expect_equal("source 64", PEMPICSourceInRange(64, 64), 0);
+	expect_equal("spurious 0xff", PEMPICSourceInRange(0xff, 64), 0);
+}
+
 int
 main(void)
 {
@@ -80,5 +146,6 @@ main(void)
 	    PEMPICsourceForInterrupt(map, 64, 64,
 	    PMAC_DEV_MPIC_DIRECT_BASE + 9), -1);
 
+	test_policy();
 	return EXIT_SUCCESS;
 }

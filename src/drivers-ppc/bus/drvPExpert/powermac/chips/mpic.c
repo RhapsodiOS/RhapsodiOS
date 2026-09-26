@@ -132,6 +132,43 @@ PEMPICsourceForDevice(struct powermac_interrupt *map, int count, int device)
 	return -1;
 }
 
+static PEMPICConfiguration mpic_configuration = { 1, 1, 1, 64 };
+static int mpic_configured;
+
+int
+PEMPICValidateConfiguration(const PEMPICConfiguration *configuration)
+{
+	return configuration != 0 &&
+	    configuration->sourceCount != 0 &&
+	    configuration->sourceCount <= 64 &&
+	    configuration->destinationMask != 0 &&
+	    (configuration->destinationMask & ~0xfU) == 0;
+}
+
+int
+PEMPICSetConfiguration(const PEMPICConfiguration *configuration)
+{
+	if (!PEMPICValidateConfiguration(configuration))
+		return 0;
+	mpic_configuration = *configuration;
+	mpic_configured = 1;
+	return 1;
+}
+
+const PEMPICConfiguration *
+PEMPICGetConfiguration(int *configured)
+{
+	if (configured != 0)
+		*configured = mpic_configured;
+	return &mpic_configuration;
+}
+
+int
+PEMPICSourceInRange(unsigned int source, unsigned int count)
+{
+	return source < count;
+}
+
 #ifndef MPIC_DIRECT_HOST_TEST
 
 /* Prototypes */
@@ -176,6 +213,8 @@ mpic_interrupt_initialize(void)
 {
         int    cnt, cnt2;
 	u_long tmp;
+	const PEMPICConfiguration *config;
+	int configured;
 
 //kprintf("mpic_interrupt_initialize: Entering.\n");
 
@@ -186,8 +225,21 @@ mpic_interrupt_initialize(void)
 	pmac_disable_irq        = mpic_disable_irq;
 	pmac_interrupt          = mpic_interrupt;
 
-	*FM_MPIC_CTRL |= FM_MPIC_ENABLE;   /* Allow access to MPIC regs */
-	eieio();
+	config = PEMPICGetConfiguration(&configured);
+	if (configured) {
+	  if (config->sourceCount != (unsigned int)nmpic_interrupts)
+	    panic("mpic: %d sources configured, table has %d\n",
+		  config->sourceCount, nmpic_interrupts);
+	  for (cnt = 0; cnt < nmpic_interrupts; cnt++)
+	    if (mpic_int_mapping_tbl[cnt * 2 + 1] != config->destinationMask)
+	      panic("mpic: source %d targets 0x%x, not 0x%x\n", cnt,
+		    mpic_int_mapping_tbl[cnt * 2 + 1], config->destinationMask);
+	}
+
+	if (config->useFeatureControl) {
+	  *FM_MPIC_CTRL |= FM_MPIC_ENABLE;   /* Allow access to MPIC regs */
+	  eieio();
+	}
 
 
 //tmp = lwbrx(0xf2041000);
@@ -196,8 +248,11 @@ mpic_interrupt_initialize(void)
   tmp = lwbrx(0xf2041080);
 //kprintf("mpic_interrupt_initialize: Features: 0x%x.\n", tmp);
 
-	*MPIC_GLOBAL_CFG |= MPIC_CASCADE;  /* Turn on 8259 Cascade mode. */
-	eieio();
+	/* MPIC_CASCADE is the 8259 pass-through disable bit, not the VIA. */
+	if (config->disablePassThrough) {
+	  *MPIC_GLOBAL_CFG |= MPIC_CASCADE;  /* Turn on 8259 Cascade mode. */
+	  eieio();
+	}
 
 	/* Mask all MPIC Interrupts */
 	stwbrx(0xf, MPIC_P0_CUR_TSK_PRI);
@@ -242,8 +297,10 @@ mpic_interrupt_initialize(void)
 
 //kprintf("mpic_interrupt_initialize: Setting Int Priv addr: 0x%x, data: %d.\n", MPIC_P0_CUR_TSK_PRI, 0x0);
 
-	*FM_MPIC_CTRL |= FM_MPIC_INT_SEL;   /* Turn on Interrupts from MPIC */
-	eieio();
+	if (config->useFeatureControl) {
+	  *FM_MPIC_CTRL |= FM_MPIC_INT_SEL;   /* Turn on Interrupts from MPIC */
+	  eieio();
+	}
 
 	/* Clear Interrupts on MPIC */
 	for (cnt = 0; cnt < nmpic_interrupts; cnt++) {
@@ -480,6 +537,10 @@ mpic_interrupt(int type, struct ppc_saved_state *ssp,
 	while (1) {
 	  /* Get the vector/irq number */
 	  irq = lwbrx(MPIC_P0_INT_ACK);
+
+	  /* 0xff (spurious) or anything past the table: nothing pending. */
+	  if (!PEMPICSourceInRange(irq, nmpic_interrupts))
+	    break;
 
 	  /* Is this vector/irq really active? */
 	  if (lwbrx(MPIC_INT_CFG + irq * 0x20) & ACTIVE) {

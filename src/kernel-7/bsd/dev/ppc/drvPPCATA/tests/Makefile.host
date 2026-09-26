@@ -1,0 +1,11 @@
+HOST_CC ?= cc
+HOST_CFLAGS ?= -std=c89 -pedantic -Wall -Wextra -Werror
+
+kauai_ata_test: kauai_ata_test.c ../KauaiATA.c ../KauaiATA.h
+	$(HOST_CC) $(HOST_CFLAGS) -o $@ kauai_ata_test.c ../KauaiATA.c
+
+test: kauai_ata_test
+	./kauai_ata_test
+
+clean:
+	rm -f kauai_ata_test

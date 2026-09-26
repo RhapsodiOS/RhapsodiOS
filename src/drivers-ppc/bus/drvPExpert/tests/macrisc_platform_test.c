@@ -489,9 +489,48 @@ test_capture_failures(void)
     CHECK(PEMacRISCCapture(0, &p, &error) == kPEMacRISCMalformed);
 }
 
+static void
+test_routes(void)
+{
+    static const char *const sawtooth[] = {
+        "PowerMac3,1", "PowerMac3,2", "PowerMac3,3", "PowerMac5,1",
+        "PowerBook2,1"
+    };
+    static const char *const legacy[] = {
+        "AAPL,9500", "AAPL,3400-2400", "AAPL,PowerMac-G3", "iMac",
+        "PowerMac1,1", "PowerMac1,2", "PowerMac2,1", "PowerBook1,1"
+    };
+    unsigned int i;
+
+    for (i = 0; i < sizeof(sawtooth) / sizeof(sawtooth[0]); i++) {
+        CHECK(PEMacRISCSelectRoute(sawtooth[i], kPEMacRISCSupported) ==
+            kPERouteSawtooth);
+        CHECK(PEMacRISCSelectRoute(sawtooth[i], kPEMacRISCMalformed) ==
+            kPERouteSawtooth);
+    }
+    for (i = 0; i < sizeof(legacy) / sizeof(legacy[0]); i++)
+        CHECK(PEMacRISCSelectRoute(legacy[i], kPEMacRISCSupported) ==
+            kPERouteLegacy);
+    CHECK(PEMacRISCSelectRoute("RackMac1,1", kPEMacRISCSupported) ==
+        kPERouteMacRISC);
+    CHECK(PEMacRISCSelectRoute("PowerBook9,9",
+        kPEMacRISCCompatibleUnlisted) == kPERouteMacRISC);
+    CHECK(PEMacRISCSelectRoute("PowerMac7,2", kPEMacRISCUnsupportedCPU) ==
+        kPERouteUnsupported);
+    CHECK(PEMacRISCSelectRoute("PowerBook3,4", kPEMacRISCMalformed) ==
+        kPERouteUnsupported);
+    CHECK(PEMacRISCSelectRoute("PowerMac3,10", kPEMacRISCNotMatched) ==
+        kPERouteUnsupported);
+    CHECK(PEMacRISCSelectRoute("PowerMac3,1x", kPEMacRISCSupported) ==
+        kPERouteMacRISC);
+    CHECK(PEMacRISCSelectRoute(0, kPEMacRISCSupported) ==
+        kPERouteUnsupported);
+}
+
 int
 main(void)
 {
+    test_routes();
     test_capture_rackmac();
     test_capture_variants();
     test_capture_failures();

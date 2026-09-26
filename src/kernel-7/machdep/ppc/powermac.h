@@ -43,6 +43,7 @@
 #define	POWERMAC_CLASS_POWERSTAR 	7	/* PowerBook 2400/3400/G3 */
 #define	POWERMAC_CLASS_YOSEMITE 	8	/* 1st Gen New World */
 #define	POWERMAC_CLASS_SAWTOOTH 	9	/* Core99 */
+#define	POWERMAC_CLASS_MACRISC 	10	/* Later New World G3/G4 */
 
 /* Some macros for easy machine identification */
 #define IsPowerSurge()	(powermac_info.class == POWERMAC_CLASS_POWERSURGE)
@@ -58,6 +59,11 @@
 #define IsYosemite()	(powermac_info.class == POWERMAC_CLASS_YOSEMITE)
 
 #define IsSawtooth()	(powermac_info.class == POWERMAC_CLASS_SAWTOOTH)
+
+#define IsMacRISC()	(powermac_info.class == POWERMAC_CLASS_MACRISC)
+
+/* Core99: UniNorth, KeyLargo-family Mac-IO and flash NVRAM */
+#define IsCore99()	(IsSawtooth() || IsMacRISC())
 
 // This is not safe until the PMU or Cuda driver have been set up.
 #define HasPMU()        (powermac_info.hasPMU)

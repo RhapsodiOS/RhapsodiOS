@@ -37,6 +37,7 @@
 #include <chips/keylargo.h>
 #include <chips/keylargo_model.h>
 #include "IOProperties.h"
+#include "macrisc_dt.h"
 
 /* Local declarations */
 vm_offset_t	get_io_base_addr(void);
@@ -598,18 +599,26 @@ init_powermac_machine_info(void)
 int get_machine_id(void)
 {
 	DTEntry entry;
-	char 	*family;
+	char 	*compatible;
+	char	family[65];
 	int	size, cnt;
+	PEMacRISCStatus status;
+	PEPlatformError platformError;
 
 	if (DTLookupEntry(0, "/", &entry) == kSuccess)
 	{
-	    DTGetProperty(entry, "compatible", (void **)&family, &size);
+	    if (DTGetProperty(entry, "compatible", (void **)&compatible, &size) != kSuccess)
+	      size = 0;
 
-	    // Convert all "/"'s in family to "-"'s
-	    for (cnt = 0; family[cnt] != '\0'; cnt++) {
+	    // Copy the first member, converting "/"'s and spaces to "-"'s in
+	    // the copy; the firmware's bytes stay untouched.
+	    for (cnt = 0; cnt < size && cnt < (int)sizeof(family) - 1 &&
+		 compatible[cnt] != '\0'; cnt++) {
+	      family[cnt] = compatible[cnt];
 	      if (family[cnt] == '/') family[cnt] = '-';
 	      if (family[cnt] == ' ') family[cnt] = '-';
 	    }
+	    family[cnt] = '\0';
 
 	    // these are globals currently needed by the kernel
 
@@ -649,8 +658,18 @@ int get_machine_id(void)
 	    else if (strcmp( family, "PowerMac3,3") == 0)	return(gestaltSawtooth);
 	    else if (strcmp( family, "PowerMac5,1") == 0)	return(gestaltSawtooth);
 	    else if (strcmp( family, "PowerBook2,1") == 0)	return(gestaltSawtooth);
-	    else
-		panic("Unsupported machine\n");
+	    else {
+		status = PEMacRISCDiscoverDeviceTree(&platformError);
+		switch (PEMacRISCSelectRoute(family, status)) {
+		case kPERouteMacRISC:
+		    return(gestaltMacRISC);
+		case kPERouteUnsupported:
+		    PEMacRISCPrintFailure(status, platformError);
+		    panic("Unsupported MacRISC platform\n");
+		default:
+		    panic("Unsupported machine\n");
+		}
+	    }
 	}
 
 	panic("Uhmmm.. I can't get this machine's id\n");

@@ -149,6 +149,7 @@ enum {
 
 // Fake gestalt numbers for NewWorld machines
 	gestaltSawtooth                 = 1000,
+	gestaltMacRISC                  = 1001,
 };
 
 #endif /* !defined _POWERMAC_GESTALT_H_ */

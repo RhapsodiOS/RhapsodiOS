@@ -59,6 +59,17 @@ PEMacRISCStatus PEMacRISCClassify(const PEMacRISCIdentityInput *input,
     PECPUFamily *cpu, PEMacIOFamily *macIO,
     char model[PE_MACRISC_MODEL_MAX]);
 
+typedef enum {
+    kPERouteLegacy, kPERouteSawtooth, kPERouteMacRISC, kPERouteUnsupported
+} PEPlatformRoute;
+
+/*
+ * model is get_machine_id()'s identifier.  The existing Yosemite and
+ * Sawtooth identifiers keep their routes whatever discovery says.
+ */
+PEPlatformRoute PEMacRISCSelectRoute(const char *model,
+    PEMacRISCStatus status);
+
 typedef struct {
     int present;
     unsigned int base, length;      /* absolute physical address */

@@ -196,6 +196,45 @@ macrisc_model_listed(const char *model)
     return 0;
 }
 
+static const char *const macrisc_sawtooth_models[] = {
+    "PowerMac3,1", "PowerMac3,2", "PowerMac3,3", "PowerMac5,1",
+    "PowerBook2,1"
+};
+
+static const char *const macrisc_yosemite_models[] = {
+    "iMac", "PowerMac1,1", "PowerMac1,2", "PowerMac2,1", "PowerBook1,1"
+};
+
+static int
+macrisc_in_list(const char *model, const char *const *list,
+    unsigned int count)
+{
+    unsigned int i;
+
+    for (i = 0; i < count; i++)
+        if (macrisc_string_equal(model, list[i]))
+            return 1;
+    return 0;
+}
+
+PEPlatformRoute
+PEMacRISCSelectRoute(const char *model, PEMacRISCStatus status)
+{
+    if (model == 0)
+        return kPERouteUnsupported;
+    if (macrisc_in_list(model, macrisc_sawtooth_models,
+        sizeof(macrisc_sawtooth_models) / sizeof(macrisc_sawtooth_models[0])))
+        return kPERouteSawtooth;
+    if (macrisc_prefix(model, "AAPL,") ||
+        macrisc_in_list(model, macrisc_yosemite_models,
+        sizeof(macrisc_yosemite_models) / sizeof(macrisc_yosemite_models[0])))
+        return kPERouteLegacy;
+    if (status == kPEMacRISCSupported ||
+        status == kPEMacRISCCompatibleUnlisted)
+        return kPERouteMacRISC;
+    return kPERouteUnsupported;
+}
+
 PEMacRISCStatus
 PEMacRISCClassify(const PEMacRISCIdentityInput *input, PECPUFamily *cpu,
     PEMacIOFamily *macIO, char model[PE_MACRISC_MODEL_MAX])

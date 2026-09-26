@@ -64,3 +64,170 @@ PEReadAddress32(PEProperty property, unsigned int cells, unsigned int *value)
     *value = low;
     return 1;
 }
+
+/* Machines this platform path has been written against. */
+static const char *const macrisc_catalog[] = {
+    "PowerMac2,2", "PowerMac4,2", "PowerMac6,3", "PowerMac10,1",
+    "PowerBook3,4", "PowerBook4,3", "RackMac1,1"
+};
+
+static int
+macrisc_string_equal(const char *left, const char *right)
+{
+    while (*left != 0 && *left == *right) {
+        left++;
+        right++;
+    }
+    return *left == *right;
+}
+
+static int
+macrisc_prefix(const char *string, const char *prefix)
+{
+    while (*prefix != 0 && *string == *prefix) {
+        string++;
+        prefix++;
+    }
+    return *prefix == 0;
+}
+
+static PECPUFamily
+macrisc_cpu_family(unsigned int pvr)
+{
+    switch (pvr >> 16) {
+    case 0x0008:            /* 750, 750CX/CXe/L */
+    case 0x7000:            /* 750FX */
+    case 0x7002:            /* 750GX */
+        return kPECPU750;
+    case 0x000c:
+        return kPECPU7400;
+    case 0x800c:
+        return kPECPU7410;
+    case 0x8000:            /* 7450 */
+    case 0x8001:            /* 7455, 7445 */
+    case 0x8002:            /* 7457, 7447 */
+    case 0x8003:            /* 7447A */
+    case 0x8004:            /* 7448 */
+        return kPECPU745x;
+    case 0x0039:            /* 970 */
+    case 0x003c:            /* 970FX */
+    case 0x0044:            /* 970MP */
+        return kPECPU970;
+    }
+    return kPECPUUnknown;
+}
+
+/*
+ * KeyLargo, Pangea and Intrepid usually all say "Keylargo"; the PCI
+ * device-id is what tells them apart, so it is required.
+ */
+static PEMacIOFamily
+macrisc_macio_family(PEProperty compatible, PEProperty deviceID,
+    int *malformed)
+{
+    unsigned int id;
+
+    *malformed = 0;
+    if (!PEPropertyHasString(compatible, "Keylargo") &&
+        !PEPropertyHasString(compatible, "Pangea") &&
+        !PEPropertyHasString(compatible, "Intrepid") &&
+        !PEPropertyHasString(compatible, "K2-Keylargo"))
+        return kPEMacIOUnknown;
+    if (!PEReadAddress32(deviceID, 1, &id)) {
+        *malformed = 1;
+        return kPEMacIOUnknown;
+    }
+    switch (id) {
+    case 0x22:
+        return kPEMacIOKeyLargo;
+    case 0x25:
+        return kPEMacIOPangea;
+    case 0x3e:
+        return kPEMacIOIntrepid;
+    case 0x41:
+        return kPEMacIOK2;
+    }
+    return kPEMacIOUnknown;
+}
+
+/* Copy the first member of a string list; it must fit with its NUL. */
+static int
+macrisc_copy_model(PEProperty property, char model[PE_MACRISC_MODEL_MAX])
+{
+    unsigned int i;
+
+    model[0] = 0;
+    if (property.bytes == 0)
+        return 0;
+    for (i = 0; i < property.size && i < PE_MACRISC_MODEL_MAX; i++) {
+        model[i] = (char)property.bytes[i];
+        if (model[i] == 0)
+            return i != 0;
+    }
+    model[0] = 0;
+    return 0;
+}
+
+static int
+macrisc_model_series(const char *model)
+{
+    const char *digits;
+
+    if (macrisc_prefix(model, "PowerMac"))
+        digits = model + 8;
+    else if (macrisc_prefix(model, "PowerBook"))
+        digits = model + 9;
+    else if (macrisc_prefix(model, "RackMac"))
+        digits = model + 7;
+    else
+        return 0;
+    return *digits >= '0' && *digits <= '9';
+}
+
+static int
+macrisc_model_listed(const char *model)
+{
+    unsigned int i;
+
+    for (i = 0; i < sizeof(macrisc_catalog) / sizeof(macrisc_catalog[0]);
+        i++)
+        if (macrisc_string_equal(model, macrisc_catalog[i]))
+            return 1;
+    return 0;
+}
+
+PEMacRISCStatus
+PEMacRISCClassify(const PEMacRISCIdentityInput *input, PECPUFamily *cpu,
+    PEMacIOFamily *macIO, char model[PE_MACRISC_MODEL_MAX])
+{
+    int macIOMalformed;
+    int modelValid;
+
+    if (input == 0 || cpu == 0 || macIO == 0 || model == 0)
+        return kPEMacRISCMalformed;
+    modelValid = macrisc_copy_model(input->model, model);
+    *cpu = macrisc_cpu_family(input->pvr);
+    *macIO = macrisc_macio_family(input->macIOCompatible,
+        input->macIODeviceID, &macIOMalformed);
+
+    if (!modelValid)
+        return kPEMacRISCMalformed;
+    if (*cpu == kPECPUUnknown || *cpu == kPECPU970)
+        return kPEMacRISCUnsupportedCPU;
+    if (!PEPropertyHasString(input->hostCompatible, "uni-north"))
+        return kPEMacRISCUnsupportedHost;
+    if (PEPropertyHasString(input->rootCompatible, "MacRISC4") ||
+        (!PEPropertyHasString(input->rootCompatible, "MacRISC") &&
+        !PEPropertyHasString(input->rootCompatible, "MacRISC2") &&
+        !PEPropertyHasString(input->rootCompatible, "MacRISC3")))
+        return kPEMacRISCNotMatched;
+    if (macIOMalformed)
+        return kPEMacRISCMalformed;
+    if (*macIO != kPEMacIOKeyLargo && *macIO != kPEMacIOPangea &&
+        *macIO != kPEMacIOIntrepid)
+        return kPEMacRISCUnsupportedMacIO;
+    if (!macrisc_model_series(model))
+        return kPEMacRISCNotMatched;
+    return macrisc_model_listed(model) ? kPEMacRISCSupported :
+        kPEMacRISCCompatibleUnlisted;
+}

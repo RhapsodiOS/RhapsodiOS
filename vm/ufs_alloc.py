@@ -867,14 +867,27 @@ class Allocator(object):
         only that one block.  Once a block is full, growth starts a
         brand-new block and every earlier block is left untouched.
 
+        Refuses (before allocating or writing anything) to grow a
+        directory past its NDADDR (12) direct blocks: this method only
+        ever grows the tail block one fragment at a time or starts a new
+        block with a single fragment, but FFS's blksize rule
+        (src/kernel-7/bsd/ufs/ffs/fs.h:498) requires a block to be a full,
+        block-aligned fs_frag-fragment block once its logical number is
+        >= NDADDR, which this fragment-at-a-time growth cannot produce.
+        No caller grows a directory that far today.
+
         Returns (db, ib); the caller is responsible for writing the new
         size (`size + len(chunk)`) via write_inode.
         """
         bsize = self.g.bsize
         fsize = self.g.fsize
+        block_idx = size // bsize
+        if block_idx >= rhap_image.NDADDR:
+            raise SafetyError(
+                "growing a directory past the direct blocks is not "
+                "supported")
         db = list(db)
         ib = list(ib)
-        block_idx = size // bsize
         off_in_block = size % bsize
 
         if off_in_block != 0:

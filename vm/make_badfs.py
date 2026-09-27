@@ -21,11 +21,14 @@ FIELDS = {
 }
 
 
-def build_good(out_path, pad=0):
+def build_good(out_path, pad=0, nfiles=0):
     """Write a minimal single-cylinder-group UFS image with a clean
     superblock.  pad appends that many zero bytes past the filesystem: room
-    a host can write without touching it."""
+    a host can write without touching it.  nfiles adds that many empty
+    regular files /f00, /f01, ... to the root directory."""
     nodes = [ufs_extract.Node("/", "dir", 0o040755, 0, 0, 0, None)]
+    nodes += [ufs_extract.Node("/f%02d" % i, "reg", 0o100644, 0, 0, 0, b"")
+             for i in range(nfiles)]
     data = ufs_build.build(TEMPLATE, nodes)
     with open(out_path, "wb") as f:
         f.write(data)
@@ -53,6 +56,14 @@ def read_field(path, field):
         return struct.unpack(fmt, f.read(struct.calcsize(fmt)))[0]
 
 
+def inode_block_sector(path, ino):
+    """First 512-byte sector, counted from the start of the image, of the
+    inode block holding inode ino; the unit blkdebug's sector= takes."""
+    with rhap_image.Image(path) as img:
+        frag, _ = rhap_image._inode_location(img, ino)
+        return img.frag_offset(frag) // 512
+
+
 def reload_sectors(path):
     """First 512-byte sector, counted from the start of the image, of each
     disk read ffs_reload makes: the superblock (its Step 2), the
@@ -61,12 +72,10 @@ def reload_sectors(path):
     g = ufs_cg.read_geometry(path)
     base = _read_partition_start(path) // 512
     per_frag = g.fsize // 512
-    # ino_to_fsba(fs, 2) is cgimin(fs, 0) + (2 % ipg) / inopb blocks;
-    # cgstart(fs, 0) is 0 and inopb exceeds 2, so that is fs_iblkno
     return {
         "superblock": base + rhap_image.SBOFF // 512,
         "csum": base + g.csaddr * per_frag,
-        "inode2": base + g.iblkno * per_frag,
+        "inode2": inode_block_sector(path, 2),
     }
 
 

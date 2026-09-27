@@ -99,6 +99,18 @@ def test_make_test_disk_is_dirty_and_padded():
         assert make_badfs.read_field(p, "fs_magic") == 0x00011954
 
 
+@pytest.mark.skipif(not os.path.exists(make_badfs.TEMPLATE),
+                    reason="install floppy template not present")
+def test_make_r3_disk_targets_an_open_files_inode_block():
+    m = _load()
+    with tempfile.TemporaryDirectory() as d:
+        p = os.path.join(d, "test.img")
+        pad_start, sector, ino = m.make_r3_disk(p)
+        assert pad_start == 1474560
+        assert sector != make_badfs.inode_block_sector(p, 2)
+        assert make_badfs.read_field(p, "fs_clean") == 0
+
+
 @pytest.mark.skipif(not shutil.which("qemu-system-i386"),
                     reason="needs qemu-system-i386")
 def test_injection_fires_under_the_guest_command_line():

@@ -1,6 +1,6 @@
 import os, struct, tempfile
 import pytest
-import make_badfs, rhap_image
+import make_badfs, rhap_image, ufs_check
 
 pytestmark = pytest.mark.skipif(not os.path.exists(make_badfs.TEMPLATE),
                                 reason="install floppy template not present")
@@ -110,3 +110,36 @@ def test_reload_sectors_point_at_what_ffs_reload_reads():
             # directory
             mode = struct.unpack_from("<H", sector(s["inode2"], 8192), 2 * 128)[0]
             assert mode & 0o170000 == 0o040000
+
+def test_build_good_with_nfiles_gives_a_valid_image_with_files():
+    with tempfile.TemporaryDirectory() as d:
+        out = os.path.join(d, "files.img")
+        make_badfs.build_good(out, nfiles=70)
+        assert ufs_check.check(out) == []
+        with rhap_image.Image(out) as img:
+            assert img.resolve("/f00") is not None
+            assert img.resolve("/f69") is not None
+
+def test_inode_block_sector_matches_reload_sectors_inode2():
+    with tempfile.TemporaryDirectory() as d:
+        out = os.path.join(d, "good.img")
+        make_badfs.build_good(out)
+        assert (make_badfs.inode_block_sector(out, 2)
+                == make_badfs.reload_sectors(out)["inode2"])
+
+def test_inode_block_sector_for_f69_differs_and_is_a_regular_file():
+    with tempfile.TemporaryDirectory() as d:
+        out = os.path.join(d, "files.img")
+        make_badfs.build_good(out, nfiles=70)
+        with rhap_image.Image(out) as img:
+            ino = img.resolve("/f69")
+            _, byte_off = rhap_image._inode_location(img, ino)
+        sector2 = make_badfs.inode_block_sector(out, 2)
+        sector69 = make_badfs.inode_block_sector(out, ino)
+        assert sector69 != sector2
+        # Read the raw bytes directly, independently of the code under test.
+        with open(out, "rb") as f:
+            f.seek(sector69 * 512)
+            blk = f.read(8192)
+        mode = struct.unpack_from("<H", blk, byte_off)[0]
+        assert mode & 0o170000 == 0o100000

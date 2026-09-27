@@ -4,11 +4,14 @@ See docs/superpowers/specs/2026-09-25-ufs-gap-tests-design.md.
 usage: python ufs-reload-inject.py RUN [--base IMG] [--port N]
 
   r1 r2 r3   a read error in ffs_reload's superblock (r1), cylinder-summary
-             (r2) or root-inode-block (r3) read; the stock IDE driver retries
-             a failing read three times, each try 90-100s, before giving up,
-             so the runner waits out the retries for the error to reach
-             ffs_reload; each must be released so later mounts and the
-             unmount still return
+             (r2), or the inode block of a file held open in the guest shell
+             (r3, /f69: the root inode's block is what the lookup of /mnt
+             reads before ffs_reload even runs, so the error has to sit on a
+             block only Step 6's re-read of an active vnode touches) read;
+             the stock IDE driver retries a failing read three times, each
+             try 90-100s, before giving up, so the runner waits out the
+             retries for the error to reach ffs_reload; each must be
+             released so later mounts and the unmount still return
   r4         fs_ronly: a refused upgrade, umount, then a read-write mount,
              which must still be refused
   r5         the 4 GB clamp after a reload: a write ending at 4 GiB works,
@@ -26,11 +29,12 @@ import sys
 import time
 
 import make_badfs
+import rhap_image
 import ufs_gap_lib as lib
 
 PAD = 65536
 DRIVE_ID = "t1"
-SITES = {"r1": "superblock", "r2": "csum", "r3": "inode2"}
+SITES = {"r1": "superblock", "r2": "csum"}
 # the stock IDE driver's 3 retries at 90-100s each can take ~300s before
 # ffs_reload sees the error; give it double that before calling it stuck
 INJECT_WAIT = 600
@@ -91,12 +95,31 @@ def hmp_write(offset):
     return 'qemu-io %s "write -P 0 %d 512"' % (DRIVE_ID, offset)
 
 
-def make_test_disk(path):
+def make_test_disk(path, nfiles=0):
     """A dirty make_badfs image with PAD zero bytes past the filesystem.
     Returns the byte offset where the padding starts."""
-    make_badfs.build_good(path, pad=PAD)
+    make_badfs.build_good(path, pad=PAD, nfiles=nfiles)
     make_badfs.corrupt(path, "fs_clean", 0)
     return os.path.getsize(path) - PAD
+
+
+def make_r3_disk(path):
+    """r3's test disk: nfiles=70 so /f69's inode falls in the second inode
+    block, the one only ffs_reload's Step 6 re-reads (the lookup of /mnt
+    only reads inode 2's block).  Returns (pad_start, sector, ino) for the
+    file to hold open in the guest shell; raises SystemExit if /f69's inode
+    shares inode 2's block, which would let the lookup of /mnt hit the error
+    first."""
+    pad_start = make_test_disk(path, nfiles=70)
+    with rhap_image.Image(path) as img:
+        ino = img.resolve("/f69")
+    ino2_sector = make_badfs.inode_block_sector(path, 2)
+    sector = make_badfs.inode_block_sector(path, ino)
+    if sector == ino2_sector:
+        raise SystemExit("/f69 (inode %d) is in inode 2's block; the lookup "
+                         "of /mnt would hit the error before ffs_reload runs"
+                         % ino)
+    return pad_start, sector, ino
 
 
 def run(name, base, port):
@@ -111,7 +134,10 @@ def run(name, base, port):
         lib.make_overlay(base, root)
     os.makedirs(outdir)
     disk = os.path.join(outdir, "test.img")
-    pad_start = make_test_disk(disk)
+    if name == "r3":
+        pad_start, sector, ino = make_r3_disk(disk)
+    else:
+        pad_start = make_test_disk(disk)
     notes = []
     if name == "r5":
         maxfs = make_badfs.read_field(disk, "fs_maxfilesize")
@@ -122,11 +148,15 @@ def run(name, base, port):
     conf = None
     if name in SITES:
         sector = make_badfs.reload_sectors(disk)[SITES[name]]
+        site = SITES[name]
+    elif name == "r3":
+        site = "/f69, inode %d" % ino
+    if name in SITES or name == "r3":
         conf = os.path.join(outdir, "blkdebug.conf")
         with open(conf, "w") as f:
             f.write(blkdebug_config(sector, pad_start // 512))
         notes.append("EIO on sector %d (%s); arm at byte %d, disarm at %d"
-                     % (sector, SITES[name], pad_start, pad_start + 512))
+                     % (sector, site, pad_start, pad_start + 512))
 
     gc = lib.load_guest_console()
     g = gc.Guest(outdir, port=port, image=os.path.abspath(root),
@@ -168,6 +198,33 @@ def run(name, base, port):
             hmp(pad_start + 512, "disarmed after it")
             step("ls /mnt; mount", 5, "3-still-ro")
             step("mount -uw /mnt", 10, "4-second-upgrade")
+            step("umount /mnt", 8, "5-umount")
+            step("mount", 5, "6-mount")
+        elif name == "r3":
+            step("exec 3< /mnt/f69", 3, "1b-open")
+            hmp(pad_start, "armed before the first mount -uw")
+            g.line("mount -uw /mnt")
+            start = time.time()
+            ticks = 0
+
+            def on_tick():
+                nonlocal ticks
+                ticks += 30
+                g.shot("2-armed-%03d" % ticks)
+
+            found = lib.wait_for(g.serial, "ffs: /mnt", INJECT_WAIT, tick=30,
+                                 on_tick=on_tick)
+            if found:
+                notes.append("%s (%ds after arming)"
+                             % (lib.ffs_lines(g.serial)[0],
+                                int(time.time() - start)))
+            else:
+                notes.append("no ffs: /mnt line within %ds" % INJECT_WAIT)
+            g.shot("2-upgrade-refused")
+            hmp(pad_start + 512, "disarmed after it")
+            step("mount", 5, "3-still-ro")
+            step("mount -uw /mnt", 10, "4-second-upgrade")
+            step("exec 3</dev/null", 3, "4b-close")
             step("umount /mnt", 8, "5-umount")
             step("mount", 5, "6-mount")
         elif name == "r4":

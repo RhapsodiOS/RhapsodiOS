@@ -16,6 +16,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef __NeXT__
+/* Rhapsody's libc predates <stdint.h>. */
+typedef long intptr_t;
+#endif
+
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 #define BIT(x) (1 << (x))
 
@@ -89,7 +94,7 @@ typedef void (*apk_progress_cb)(void *cb_ctx, size_t);
 #define APK_ARRAY(array_type_name, elem_type_name)			\
 	struct array_type_name {					\
 		int num;						\
-		elem_type_name item[];					\
+		elem_type_name item[0];					\
 	};								\
 	static inline struct array_type_name *				\
 	array_type_name##_resize(struct array_type_name *a, int size)	\

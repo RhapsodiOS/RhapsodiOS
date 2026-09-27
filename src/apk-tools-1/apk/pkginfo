@@ -4,4 +4,4 @@ pkgdesc = APK Tools
 maintainer = Alpine Linux maintainers
 license = GPL
 url = https://github.com/alpinelinux/apk-tools
-makedepends = build-base
+makedepends = build-base, zlib

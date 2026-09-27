@@ -48,6 +48,51 @@ struct tar_header {
 
 #define GET_OCTAL(s) apk_blob_uint(APK_BLOB_PTR_LEN(s, sizeof(s)), 8)
 
+static size_t field_len(const char *s, size_t max)
+{
+	size_t n = 0;
+
+	while (n < max && s[n] != '\0')
+		n++;
+	return n;
+}
+
+/* rbuild packs APKs with pax: POSIX ustar splits a long path between the
+ * prefix and name fields, and neither field need be NUL-terminated.  Old GNU
+ * tar headers keep other data where the prefix goes, so only a POSIX magic
+ * says the prefix is a path. */
+static char *tar_member_name(const struct tar_header *h)
+{
+	size_t plen = 0, nlen = field_len(h->name, sizeof(h->name));
+	char *full, *p;
+
+	if (memcmp(h->magic, "ustar", 6) == 0)
+		plen = field_len(h->prefix, sizeof(h->prefix));
+	full = malloc(plen + 1 + nlen + 1);
+	if (full == NULL)
+		return NULL;
+	p = full;
+	if (plen != 0) {
+		memcpy(p, h->prefix, plen);
+		p += plen;
+		*p++ = '/';
+	}
+	memcpy(p, h->name, nlen);
+	p[nlen] = '\0';
+	return full;
+}
+
+/* pax also stores every member under "./"; apk wants ".PKGINFO", "usr/...". */
+static void strip_dot_slash(char *name)
+{
+	char *p = name;
+
+	while (p[0] == '.' && p[1] == '/')
+		p += 2;
+	if (p != name)
+		memmove(name, p, strlen(p) + 1);
+}
+
 struct apk_tar_entry_istream {
 	struct apk_istream is;
 	struct apk_istream *tar_is;
@@ -78,9 +123,9 @@ int apk_parse_tar(struct apk_istream *is, apk_archive_entry_parser parser,
 {
 	struct apk_file_info entry;
 	struct apk_tar_entry_istream teis = {
-		.is.read = tar_entry_read,
-		.tar_is = is,
-		.csum = entry.csum,
+		is: { read: tar_entry_read },
+		tar_is: is,
+		csum: entry.csum,
 	};
 	struct tar_header buf;
 	unsigned long offset = 0;
@@ -100,15 +145,15 @@ int apk_parse_tar(struct apk_istream *is, apk_archive_entry_parser parser,
 		}
 
 		entry = (struct apk_file_info){
-			.size  = GET_OCTAL(buf.size),
-			.uid   = GET_OCTAL(buf.uid),
-			.gid   = GET_OCTAL(buf.gid),
-			.mode  = GET_OCTAL(buf.mode) & 07777,
-			.mtime = GET_OCTAL(buf.mtime),
-			.name  = entry.name,
-			.uname = buf.uname,
-			.gname = buf.gname,
-			.device = makedev(GET_OCTAL(buf.devmajor),
+			size: GET_OCTAL(buf.size),
+			uid: GET_OCTAL(buf.uid),
+			gid: GET_OCTAL(buf.gid),
+			mode: GET_OCTAL(buf.mode) & 07777,
+			mtime: GET_OCTAL(buf.mtime),
+			name: entry.name,
+			uname: buf.uname,
+			gname: buf.gname,
+			device: makedev(GET_OCTAL(buf.devmajor),
 					  GET_OCTAL(buf.devminor)),
 		};
 
@@ -150,11 +195,18 @@ int apk_parse_tar(struct apk_istream *is, apk_archive_entry_parser parser,
 		teis.bytes_left = entry.size;
 		if (entry.mode & S_IFMT) {
 			if (entry.name == NULL)
-				entry.name = strdup(buf.name);
+				entry.name = tar_member_name(&buf);
+			if (entry.name == NULL)
+				return -1;
+			strip_dot_slash(entry.name);
 
-			/* callback parser function */
-			csum_init(&teis.csum_ctx);
-			r = parser(ctx, &entry, &teis.is);
+			/* pax's "." entry for the archive root is not a member */
+			r = 0;
+			if (entry.name[0] != '\0' && strcmp(entry.name, ".") != 0) {
+				/* callback parser function */
+				csum_init(&teis.csum_ctx);
+				r = parser(ctx, &entry, &teis.is);
+			}
 			free(entry.name);
 			if (r != 0)
 				return r;
@@ -186,6 +238,8 @@ int apk_parse_tar_gz(struct apk_bstream *bs, apk_archive_entry_parser parser,
 	int rc;
 
 	is = apk_bstream_gunzip(bs, FALSE);
+	if (is == NULL)
+		return -1;
 	rc = apk_parse_tar(is, parser, ctx);
 	is->close(is);
 
@@ -234,14 +288,22 @@ int apk_archive_entry_extract(const struct apk_file_info *ae,
 	case S_IFBLK:
 	case S_IFCHR:
 	case S_IFIFO:
-		r = mknod(fn, ae->mode & 07777, ae->device);
+		/* mknod needs the type bits; Linux quietly makes a plain
+		 * file without them, Rhapsody refuses. */
+		r = mknod(fn, ae->mode & (S_IFMT | 07777), ae->device);
 		break;
 	}
 	if (r == 0) {
 		if (!S_ISLNK(ae->mode))
 			r = chown(fn, ae->uid, ae->gid);
 		else
+#ifdef __NeXT__
+			/* Rhapsody has no lchown; a new symlink already
+			   belongs to the user extracting it. */
+			r = 0;
+#else
 			r = lchown(fn, ae->uid, ae->gid);
+#endif
 		if (r < 0) {
 			apk_error("Failed to set ownership on %s: %s",
 				  fn, strerror(errno));

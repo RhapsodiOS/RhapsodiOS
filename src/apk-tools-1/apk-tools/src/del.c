@@ -39,8 +39,8 @@ static int del_main(void *ctx, int argc, char **argv)
 
 		name = apk_db_get_name(&db, APK_BLOB_STR(argv[i]));
 		dep = (struct apk_dependency) {
-			.name = name,
-			.result_mask = APK_DEPMASK_CONFLICT,
+			name: name,
+			result_mask: APK_DEPMASK_CONFLICT,
 		};
 
 		r = apk_state_lock_dependency(state, &dep);
@@ -59,8 +59,8 @@ out:
 }
 
 struct apk_applet apk_del = {
-	.name = "del",
-	.usage = "apkname...",
-	.main = del_main,
+	name: "del",
+	usage: "apkname...",
+	main: del_main,
 };
 

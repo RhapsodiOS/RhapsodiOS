@@ -119,8 +119,8 @@ static int fetch_main(void *ctx, int argc, char **argv)
 
 	for (i = 0; i < argc; i++) {
 		struct apk_dependency dep = (struct apk_dependency) {
-			.name = apk_db_get_name(&db, APK_BLOB_STR(argv[i])),
-			.result_mask = APK_DEPMASK_REQUIRE,
+			name: apk_db_get_name(&db, APK_BLOB_STR(argv[i])),
+			result_mask: APK_DEPMASK_REQUIRE,
 		};
 
 		if (fctx->flags & FETCH_RECURSIVE) {
@@ -175,12 +175,12 @@ static struct option fetch_options[] = {
 };
 
 struct apk_applet apk_fetch = {
-	.name = "fetch",
-	.usage = "[-R|--recursive|--stdout] [-o dir] apkname...",
-	.context_size = sizeof(struct fetch_ctx),
-	.num_options = ARRAY_SIZE(fetch_options),
-	.options = fetch_options,
-	.parse = fetch_parse,
-	.main = fetch_main,
+	name: "fetch",
+	usage: "[-R|--recursive|--stdout] [-o dir] apkname...",
+	context_size: sizeof(struct fetch_ctx),
+	num_options: ARRAY_SIZE(fetch_options),
+	options: fetch_options,
+	parse: fetch_parse,
+	main: fetch_main,
 };
 

@@ -84,6 +84,8 @@
 
 extern int loadpt;
 
+static char zero_page[PPC_PGBYTES];	/* source for /dev/zero reads; BSS-zeroed */
+
 mmread(dev, uio)
 	dev_t dev;
 	struct uio *uio;
@@ -170,6 +172,16 @@ mmrw(dev, uio, rw)
 				return (0);
 			c = iov->iov_len;
 			break;
+
+/* minor device 3 is /dev/zero: reads return zeroed bytes, writes are discarded */
+		case 3:
+			if (rw == UIO_WRITE) {
+				c = iov->iov_len;
+				break;
+			}
+			c = min((u_int)iov->iov_len, PPC_PGBYTES);
+			error = uiomove((caddr_t) zero_page, c, uio);
+			continue;
 		default:
 			goto fault;
 			break;

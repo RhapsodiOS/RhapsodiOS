@@ -128,6 +128,8 @@ TEST(test_pkginfo_write) {
     strlist_push(&p.build_depends, "cc");
     strlist_push(&p.build_depends, "gnumake");
     p.has_build_depends = 1;
+    strlist_push(&p.depends, "libsystem");
+    strlist_push(&p.depends, "csu");
     package_set(&p.license, "unknown");
     package_set(&p.url, "http://example.com/make");
     CHECK_INT(pkginfo_write(&p, "/tmp/rbtest.PKGINFO"), 0);
@@ -137,6 +139,8 @@ TEST(test_pkginfo_write) {
     CHECK(strstr(out, "pkgver = 3.79\n") != 0);
     CHECK(strstr(out, "arch = universal-apple-rhapsody\n") != 0);
     CHECK(strstr(out, "makedepends = cc gnumake\n") != 0);
+    /* apk installs runtime dependencies first; its key is "depend". */
+    CHECK(strstr(out, "\ndepend = libsystem csu\n") != 0);
     CHECK(strstr(out, "license = unknown\n") != 0);
     CHECK(strstr(out, "url = http://example.com/make\n") != 0);
     CHECK(strstr(out, "builddepends =") == 0);
@@ -387,10 +391,14 @@ TEST(test_pkginfo_read_arch_makedepends) {
         "pkgver = 1\n"
         "makedepends = build-base, driverkit\n"
         "makedepends_ppc = drvpexpert\n"
-        "makedepends_i386 = foo, bar\n");
+        "makedepends_i386 = foo, bar\n"
+        "depend = basic-cmds, csu libsystem\n");
     package_init(&p);
     CHECK_INT(pkginfo_read(&p, "/tmp/rb-pkginfo-read/archdeps"), 0);
     CHECK_INT(p.build_depends.count, 2);
+    CHECK_INT(p.depends.count, 3);
+    if (p.depends.count == 3)
+        CHECK_STR(p.depends.items[2], "libsystem");
     CHECK_INT(p.build_depends_ppc.count, 1);
     if (p.build_depends_ppc.count == 1)
         CHECK_STR(p.build_depends_ppc.items[0], "drvpexpert");

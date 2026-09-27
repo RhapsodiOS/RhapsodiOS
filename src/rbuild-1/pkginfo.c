@@ -53,15 +53,17 @@ int pkginfo_read(Package *p, const char *path) {
         else if (strcmp(key, "origin") == 0) package_set(&p->source, val);
         else if (strcmp(key, "provides") == 0) package_set(&p->provides, val);
         else if (strcmp(key, "replaces") == 0) package_set(&p->replaces, val);
-        else if (strcmp(key, "makedepends") == 0 ||
-                 strcmp(key, "depend") == 0) {
-            if (strcmp(key, "makedepends") == 0) {
-                strlist_free(&p->build_depends);
-                strlist_init(&p->build_depends);
-                str_split_chars(val, " ,", &p->build_depends);
-                p->has_build_depends = 1;
-            }
-            /* depend: accept (do not error); do not treat as makedepends */
+        else if (strcmp(key, "makedepends") == 0) {
+            strlist_free(&p->build_depends);
+            strlist_init(&p->build_depends);
+            str_split_chars(val, " ,", &p->build_depends);
+            p->has_build_depends = 1;
+        }
+        else if (strcmp(key, "depend") == 0) {
+            /* Runtime dependencies: apk installs them first. */
+            strlist_free(&p->depends);
+            strlist_init(&p->depends);
+            str_split_chars(val, " ,", &p->depends);
         }
         else if (strcmp(key, "makedepends_i386") == 0) {
             strlist_free(&p->build_depends_i386);
@@ -135,6 +137,8 @@ int pkginfo_write(const Package *p, const char *path) {
         emit_list(f, "makedepends_i386", &p->build_depends_i386);
     if (p->build_depends_ppc.count)
         emit_list(f, "makedepends_ppc", &p->build_depends_ppc);
+    if (p->depends.count)
+        emit_list(f, "depend", &p->depends);
     free(ver);
     fclose(f);
     return 0;

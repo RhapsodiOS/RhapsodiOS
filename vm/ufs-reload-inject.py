@@ -70,11 +70,13 @@ def drive_args(disk, conf=None):
     """QEMU arguments attaching disk as hd1, through blkdebug if conf."""
     disk = os.path.abspath(disk).replace("\\", "/")
     if conf is None:
-        return ["-drive", "file=%s,format=raw,if=ide,index=1,media=disk" % disk]
+        return ["-drive",
+                "file=%s,format=raw,if=ide,index=1,media=disk,snapshot=off"
+                % disk]
     conf = os.path.abspath(conf).replace("\\", "/")
     return ["-drive",
             "file.driver=blkdebug,file.config=%s,file.image.filename=%s,"
-            "format=raw,if=ide,index=1,media=disk,id=%s"
+            "format=raw,if=ide,index=1,media=disk,id=%s,snapshot=off"
             % (conf, disk, DRIVE_ID)]
 
 

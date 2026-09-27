@@ -81,13 +81,13 @@ clean:
 
 # DO NOT DELETE THIS LINE -- make depend depends on it.
 
-i_cbc.o: ../../include/openssl/idea.h ../../include/openssl/opensslconf.h
+i_cbc.o: ../../include/openssl/opensslconf.h
 i_cbc.o: idea_lcl.h
-i_cfb64.o: ../../include/openssl/idea.h ../../include/openssl/opensslconf.h
+i_cfb64.o: ../../include/openssl/opensslconf.h
 i_cfb64.o: idea_lcl.h
-i_ecb.o: ../../include/openssl/idea.h ../../include/openssl/opensslconf.h
+i_ecb.o: ../../include/openssl/opensslconf.h
 i_ecb.o: ../../include/openssl/opensslv.h idea_lcl.h
-i_ofb64.o: ../../include/openssl/idea.h ../../include/openssl/opensslconf.h
+i_ofb64.o: ../../include/openssl/opensslconf.h
 i_ofb64.o: idea_lcl.h
-i_skey.o: ../../include/openssl/idea.h ../../include/openssl/opensslconf.h
+i_skey.o: ../../include/openssl/opensslconf.h
 i_skey.o: idea_lcl.h

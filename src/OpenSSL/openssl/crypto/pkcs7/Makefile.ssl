@@ -106,7 +106,7 @@ pk7_attr.o: ../../include/openssl/cast.h ../../include/openssl/crypto.h
 pk7_attr.o: ../../include/openssl/des.h ../../include/openssl/dh.h
 pk7_attr.o: ../../include/openssl/dsa.h ../../include/openssl/e_os2.h
 pk7_attr.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-pk7_attr.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+pk7_attr.o: ../../include/openssl/md2.h
 pk7_attr.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 pk7_attr.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 pk7_attr.o: ../../include/openssl/opensslv.h ../../include/openssl/pem.h
@@ -123,7 +123,7 @@ pk7_doit.o: ../../include/openssl/conf.h ../../include/openssl/crypto.h
 pk7_doit.o: ../../include/openssl/des.h ../../include/openssl/dh.h
 pk7_doit.o: ../../include/openssl/dsa.h ../../include/openssl/e_os.h
 pk7_doit.o: ../../include/openssl/e_os2.h ../../include/openssl/err.h
-pk7_doit.o: ../../include/openssl/evp.h ../../include/openssl/idea.h
+pk7_doit.o: ../../include/openssl/evp.h
 pk7_doit.o: ../../include/openssl/lhash.h ../../include/openssl/md2.h
 pk7_doit.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 pk7_doit.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
@@ -142,7 +142,7 @@ pk7_lib.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 pk7_lib.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 pk7_lib.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 pk7_lib.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-pk7_lib.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+pk7_lib.o: ../../include/openssl/md2.h
 pk7_lib.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 pk7_lib.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 pk7_lib.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs7.h
@@ -159,7 +159,7 @@ pk7_mime.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 pk7_mime.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 pk7_mime.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 pk7_mime.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-pk7_mime.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+pk7_mime.o: ../../include/openssl/md2.h
 pk7_mime.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 pk7_mime.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 pk7_mime.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs7.h
@@ -176,7 +176,7 @@ pk7_smime.o: ../../include/openssl/conf.h ../../include/openssl/crypto.h
 pk7_smime.o: ../../include/openssl/des.h ../../include/openssl/dh.h
 pk7_smime.o: ../../include/openssl/dsa.h ../../include/openssl/e_os.h
 pk7_smime.o: ../../include/openssl/e_os2.h ../../include/openssl/err.h
-pk7_smime.o: ../../include/openssl/evp.h ../../include/openssl/idea.h
+pk7_smime.o: ../../include/openssl/evp.h
 pk7_smime.o: ../../include/openssl/lhash.h ../../include/openssl/md2.h
 pk7_smime.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 pk7_smime.o: ../../include/openssl/objects.h
@@ -194,7 +194,7 @@ pkcs7err.o: ../../include/openssl/cast.h ../../include/openssl/crypto.h
 pkcs7err.o: ../../include/openssl/des.h ../../include/openssl/dh.h
 pkcs7err.o: ../../include/openssl/dsa.h ../../include/openssl/e_os2.h
 pkcs7err.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-pkcs7err.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+pkcs7err.o: ../../include/openssl/md2.h
 pkcs7err.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 pkcs7err.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 pkcs7err.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs7.h

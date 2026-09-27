@@ -117,7 +117,7 @@ bio_b64.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 bio_b64.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 bio_b64.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 bio_b64.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-bio_b64.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+bio_b64.o: ../../include/openssl/md2.h
 bio_b64.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 bio_b64.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 bio_b64.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -132,7 +132,7 @@ bio_enc.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 bio_enc.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 bio_enc.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 bio_enc.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-bio_enc.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+bio_enc.o: ../../include/openssl/md2.h
 bio_enc.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 bio_enc.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 bio_enc.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -147,7 +147,7 @@ bio_md.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 bio_md.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 bio_md.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 bio_md.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-bio_md.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+bio_md.o: ../../include/openssl/md2.h
 bio_md.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 bio_md.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 bio_md.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -162,7 +162,7 @@ bio_ok.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 bio_ok.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 bio_ok.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 bio_ok.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-bio_ok.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+bio_ok.o: ../../include/openssl/md2.h
 bio_ok.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 bio_ok.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 bio_ok.o: ../../include/openssl/opensslv.h ../../include/openssl/rand.h
@@ -178,7 +178,7 @@ c_all.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 c_all.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 c_all.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 c_all.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-c_all.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+c_all.o: ../../include/openssl/md2.h
 c_all.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 c_all.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 c_all.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -193,7 +193,7 @@ c_allc.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 c_allc.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 c_allc.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 c_allc.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-c_allc.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+c_allc.o: ../../include/openssl/md2.h
 c_allc.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 c_allc.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 c_allc.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs12.h
@@ -210,7 +210,7 @@ c_alld.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 c_alld.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 c_alld.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 c_alld.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-c_alld.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+c_alld.o: ../../include/openssl/md2.h
 c_alld.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 c_alld.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 c_alld.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs12.h
@@ -227,7 +227,7 @@ digest.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 digest.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 digest.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 digest.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-digest.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+digest.o: ../../include/openssl/md2.h
 digest.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 digest.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 digest.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -242,7 +242,7 @@ e_cbc_3d.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 e_cbc_3d.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 e_cbc_3d.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 e_cbc_3d.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-e_cbc_3d.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+e_cbc_3d.o: ../../include/openssl/md2.h
 e_cbc_3d.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 e_cbc_3d.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 e_cbc_3d.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -257,7 +257,7 @@ e_cbc_bf.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 e_cbc_bf.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 e_cbc_bf.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 e_cbc_bf.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-e_cbc_bf.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+e_cbc_bf.o: ../../include/openssl/md2.h
 e_cbc_bf.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 e_cbc_bf.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 e_cbc_bf.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -272,7 +272,7 @@ e_cbc_c.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 e_cbc_c.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 e_cbc_c.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 e_cbc_c.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-e_cbc_c.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+e_cbc_c.o: ../../include/openssl/md2.h
 e_cbc_c.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 e_cbc_c.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 e_cbc_c.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -287,7 +287,7 @@ e_cbc_d.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 e_cbc_d.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 e_cbc_d.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 e_cbc_d.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-e_cbc_d.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+e_cbc_d.o: ../../include/openssl/md2.h
 e_cbc_d.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 e_cbc_d.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 e_cbc_d.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -302,7 +302,7 @@ e_cbc_i.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 e_cbc_i.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 e_cbc_i.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 e_cbc_i.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-e_cbc_i.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+e_cbc_i.o: ../../include/openssl/md2.h
 e_cbc_i.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 e_cbc_i.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 e_cbc_i.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -317,7 +317,7 @@ e_cbc_r2.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 e_cbc_r2.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 e_cbc_r2.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 e_cbc_r2.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-e_cbc_r2.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+e_cbc_r2.o: ../../include/openssl/md2.h
 e_cbc_r2.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 e_cbc_r2.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 e_cbc_r2.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -332,7 +332,7 @@ e_cbc_r5.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 e_cbc_r5.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 e_cbc_r5.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 e_cbc_r5.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-e_cbc_r5.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+e_cbc_r5.o: ../../include/openssl/md2.h
 e_cbc_r5.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 e_cbc_r5.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 e_cbc_r5.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -347,7 +347,7 @@ e_cfb_3d.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 e_cfb_3d.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 e_cfb_3d.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 e_cfb_3d.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-e_cfb_3d.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+e_cfb_3d.o: ../../include/openssl/md2.h
 e_cfb_3d.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 e_cfb_3d.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 e_cfb_3d.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -362,7 +362,7 @@ e_cfb_bf.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 e_cfb_bf.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 e_cfb_bf.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 e_cfb_bf.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-e_cfb_bf.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+e_cfb_bf.o: ../../include/openssl/md2.h
 e_cfb_bf.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 e_cfb_bf.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 e_cfb_bf.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -377,7 +377,7 @@ e_cfb_c.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 e_cfb_c.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 e_cfb_c.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 e_cfb_c.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-e_cfb_c.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+e_cfb_c.o: ../../include/openssl/md2.h
 e_cfb_c.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 e_cfb_c.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 e_cfb_c.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -392,7 +392,7 @@ e_cfb_d.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 e_cfb_d.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 e_cfb_d.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 e_cfb_d.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-e_cfb_d.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+e_cfb_d.o: ../../include/openssl/md2.h
 e_cfb_d.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 e_cfb_d.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 e_cfb_d.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -407,7 +407,7 @@ e_cfb_i.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 e_cfb_i.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 e_cfb_i.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 e_cfb_i.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-e_cfb_i.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+e_cfb_i.o: ../../include/openssl/md2.h
 e_cfb_i.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 e_cfb_i.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 e_cfb_i.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -422,7 +422,7 @@ e_cfb_r2.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 e_cfb_r2.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 e_cfb_r2.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 e_cfb_r2.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-e_cfb_r2.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+e_cfb_r2.o: ../../include/openssl/md2.h
 e_cfb_r2.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 e_cfb_r2.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 e_cfb_r2.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -437,7 +437,7 @@ e_cfb_r5.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 e_cfb_r5.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 e_cfb_r5.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 e_cfb_r5.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-e_cfb_r5.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+e_cfb_r5.o: ../../include/openssl/md2.h
 e_cfb_r5.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 e_cfb_r5.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 e_cfb_r5.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -452,7 +452,7 @@ e_ecb_3d.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 e_ecb_3d.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 e_ecb_3d.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 e_ecb_3d.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-e_ecb_3d.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+e_ecb_3d.o: ../../include/openssl/md2.h
 e_ecb_3d.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 e_ecb_3d.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 e_ecb_3d.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -467,7 +467,7 @@ e_ecb_bf.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 e_ecb_bf.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 e_ecb_bf.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 e_ecb_bf.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-e_ecb_bf.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+e_ecb_bf.o: ../../include/openssl/md2.h
 e_ecb_bf.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 e_ecb_bf.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 e_ecb_bf.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -482,7 +482,7 @@ e_ecb_c.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 e_ecb_c.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 e_ecb_c.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 e_ecb_c.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-e_ecb_c.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+e_ecb_c.o: ../../include/openssl/md2.h
 e_ecb_c.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 e_ecb_c.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 e_ecb_c.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -497,7 +497,7 @@ e_ecb_d.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 e_ecb_d.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 e_ecb_d.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 e_ecb_d.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-e_ecb_d.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+e_ecb_d.o: ../../include/openssl/md2.h
 e_ecb_d.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 e_ecb_d.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 e_ecb_d.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -512,7 +512,7 @@ e_ecb_i.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 e_ecb_i.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 e_ecb_i.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 e_ecb_i.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-e_ecb_i.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+e_ecb_i.o: ../../include/openssl/md2.h
 e_ecb_i.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 e_ecb_i.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 e_ecb_i.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -527,7 +527,7 @@ e_ecb_r2.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 e_ecb_r2.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 e_ecb_r2.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 e_ecb_r2.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-e_ecb_r2.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+e_ecb_r2.o: ../../include/openssl/md2.h
 e_ecb_r2.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 e_ecb_r2.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 e_ecb_r2.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -542,7 +542,7 @@ e_ecb_r5.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 e_ecb_r5.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 e_ecb_r5.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 e_ecb_r5.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-e_ecb_r5.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+e_ecb_r5.o: ../../include/openssl/md2.h
 e_ecb_r5.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 e_ecb_r5.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 e_ecb_r5.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -557,7 +557,7 @@ e_null.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 e_null.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 e_null.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 e_null.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-e_null.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+e_null.o: ../../include/openssl/md2.h
 e_null.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 e_null.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 e_null.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -572,7 +572,7 @@ e_ofb_3d.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 e_ofb_3d.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 e_ofb_3d.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 e_ofb_3d.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-e_ofb_3d.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+e_ofb_3d.o: ../../include/openssl/md2.h
 e_ofb_3d.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 e_ofb_3d.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 e_ofb_3d.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -587,7 +587,7 @@ e_ofb_bf.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 e_ofb_bf.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 e_ofb_bf.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 e_ofb_bf.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-e_ofb_bf.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+e_ofb_bf.o: ../../include/openssl/md2.h
 e_ofb_bf.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 e_ofb_bf.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 e_ofb_bf.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -602,7 +602,7 @@ e_ofb_c.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 e_ofb_c.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 e_ofb_c.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 e_ofb_c.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-e_ofb_c.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+e_ofb_c.o: ../../include/openssl/md2.h
 e_ofb_c.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 e_ofb_c.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 e_ofb_c.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -617,7 +617,7 @@ e_ofb_d.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 e_ofb_d.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 e_ofb_d.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 e_ofb_d.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-e_ofb_d.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+e_ofb_d.o: ../../include/openssl/md2.h
 e_ofb_d.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 e_ofb_d.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 e_ofb_d.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -632,7 +632,7 @@ e_ofb_i.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 e_ofb_i.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 e_ofb_i.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 e_ofb_i.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-e_ofb_i.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+e_ofb_i.o: ../../include/openssl/md2.h
 e_ofb_i.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 e_ofb_i.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 e_ofb_i.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -647,7 +647,7 @@ e_ofb_r2.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 e_ofb_r2.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 e_ofb_r2.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 e_ofb_r2.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-e_ofb_r2.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+e_ofb_r2.o: ../../include/openssl/md2.h
 e_ofb_r2.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 e_ofb_r2.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 e_ofb_r2.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -662,7 +662,7 @@ e_ofb_r5.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 e_ofb_r5.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 e_ofb_r5.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 e_ofb_r5.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-e_ofb_r5.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+e_ofb_r5.o: ../../include/openssl/md2.h
 e_ofb_r5.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 e_ofb_r5.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 e_ofb_r5.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -677,7 +677,7 @@ e_rc4.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 e_rc4.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 e_rc4.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 e_rc4.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-e_rc4.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+e_rc4.o: ../../include/openssl/md2.h
 e_rc4.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 e_rc4.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 e_rc4.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -692,7 +692,7 @@ e_xcbc_d.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 e_xcbc_d.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 e_xcbc_d.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 e_xcbc_d.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-e_xcbc_d.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+e_xcbc_d.o: ../../include/openssl/md2.h
 e_xcbc_d.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 e_xcbc_d.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 e_xcbc_d.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -707,7 +707,7 @@ encode.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 encode.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 encode.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 encode.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-encode.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+encode.o: ../../include/openssl/md2.h
 encode.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 encode.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 encode.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -722,7 +722,7 @@ evp_enc.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 evp_enc.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 evp_enc.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 evp_enc.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-evp_enc.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+evp_enc.o: ../../include/openssl/md2.h
 evp_enc.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 evp_enc.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 evp_enc.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -736,7 +736,7 @@ evp_err.o: ../../include/openssl/cast.h ../../include/openssl/crypto.h
 evp_err.o: ../../include/openssl/des.h ../../include/openssl/dh.h
 evp_err.o: ../../include/openssl/dsa.h ../../include/openssl/e_os2.h
 evp_err.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-evp_err.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+evp_err.o: ../../include/openssl/md2.h
 evp_err.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 evp_err.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 evp_err.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -751,7 +751,7 @@ evp_key.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 evp_key.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 evp_key.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 evp_key.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-evp_key.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+evp_key.o: ../../include/openssl/md2.h
 evp_key.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 evp_key.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 evp_key.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs7.h
@@ -768,7 +768,7 @@ evp_lib.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 evp_lib.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 evp_lib.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 evp_lib.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-evp_lib.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+evp_lib.o: ../../include/openssl/md2.h
 evp_lib.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 evp_lib.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 evp_lib.o: ../../include/openssl/opensslv.h ../../include/openssl/rc2.h
@@ -783,7 +783,7 @@ evp_pbe.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 evp_pbe.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 evp_pbe.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 evp_pbe.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-evp_pbe.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+evp_pbe.o: ../../include/openssl/md2.h
 evp_pbe.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 evp_pbe.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 evp_pbe.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs7.h
@@ -800,7 +800,7 @@ evp_pkey.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 evp_pkey.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 evp_pkey.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 evp_pkey.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-evp_pkey.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+evp_pkey.o: ../../include/openssl/md2.h
 evp_pkey.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 evp_pkey.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 evp_pkey.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs7.h
@@ -817,7 +817,7 @@ m_dss.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 m_dss.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 m_dss.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 m_dss.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-m_dss.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+m_dss.o: ../../include/openssl/md2.h
 m_dss.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 m_dss.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 m_dss.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs7.h
@@ -834,7 +834,7 @@ m_dss1.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 m_dss1.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 m_dss1.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 m_dss1.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-m_dss1.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+m_dss1.o: ../../include/openssl/md2.h
 m_dss1.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 m_dss1.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 m_dss1.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs7.h
@@ -851,7 +851,7 @@ m_md2.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 m_md2.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 m_md2.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 m_md2.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-m_md2.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+m_md2.o: ../../include/openssl/md2.h
 m_md2.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 m_md2.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 m_md2.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs7.h
@@ -868,7 +868,7 @@ m_md5.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 m_md5.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 m_md5.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 m_md5.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-m_md5.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+m_md5.o: ../../include/openssl/md2.h
 m_md5.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 m_md5.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 m_md5.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs7.h
@@ -885,7 +885,7 @@ m_mdc2.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 m_mdc2.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 m_mdc2.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 m_mdc2.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-m_mdc2.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+m_mdc2.o: ../../include/openssl/md2.h
 m_mdc2.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 m_mdc2.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 m_mdc2.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs7.h
@@ -902,7 +902,7 @@ m_null.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 m_null.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 m_null.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 m_null.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-m_null.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+m_null.o: ../../include/openssl/md2.h
 m_null.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 m_null.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 m_null.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs7.h
@@ -919,7 +919,7 @@ m_ripemd.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 m_ripemd.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 m_ripemd.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 m_ripemd.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-m_ripemd.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+m_ripemd.o: ../../include/openssl/md2.h
 m_ripemd.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 m_ripemd.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 m_ripemd.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs7.h
@@ -936,7 +936,7 @@ m_sha.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 m_sha.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 m_sha.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 m_sha.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-m_sha.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+m_sha.o: ../../include/openssl/md2.h
 m_sha.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 m_sha.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 m_sha.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs7.h
@@ -953,7 +953,7 @@ m_sha1.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 m_sha1.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 m_sha1.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 m_sha1.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-m_sha1.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+m_sha1.o: ../../include/openssl/md2.h
 m_sha1.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 m_sha1.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 m_sha1.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs7.h
@@ -970,7 +970,7 @@ names.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 names.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 names.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 names.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-names.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+names.o: ../../include/openssl/md2.h
 names.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 names.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 names.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs7.h
@@ -987,7 +987,7 @@ p5_crpt.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 p5_crpt.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 p5_crpt.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 p5_crpt.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-p5_crpt.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+p5_crpt.o: ../../include/openssl/md2.h
 p5_crpt.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 p5_crpt.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 p5_crpt.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs7.h
@@ -1004,7 +1004,7 @@ p5_crpt2.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 p5_crpt2.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 p5_crpt2.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 p5_crpt2.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-p5_crpt2.o: ../../include/openssl/hmac.h ../../include/openssl/idea.h
+p5_crpt2.o: ../../include/openssl/hmac.h
 p5_crpt2.o: ../../include/openssl/md2.h ../../include/openssl/md5.h
 p5_crpt2.o: ../../include/openssl/mdc2.h ../../include/openssl/objects.h
 p5_crpt2.o: ../../include/openssl/opensslconf.h
@@ -1022,7 +1022,7 @@ p_dec.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 p_dec.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 p_dec.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 p_dec.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-p_dec.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+p_dec.o: ../../include/openssl/md2.h
 p_dec.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 p_dec.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 p_dec.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs7.h
@@ -1039,7 +1039,7 @@ p_enc.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 p_enc.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 p_enc.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 p_enc.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-p_enc.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+p_enc.o: ../../include/openssl/md2.h
 p_enc.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 p_enc.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 p_enc.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs7.h
@@ -1056,7 +1056,7 @@ p_lib.o: ../../include/openssl/cast.h ../../include/openssl/crypto.h
 p_lib.o: ../../include/openssl/des.h ../../include/openssl/dh.h
 p_lib.o: ../../include/openssl/dsa.h ../../include/openssl/e_os.h
 p_lib.o: ../../include/openssl/e_os2.h ../../include/openssl/err.h
-p_lib.o: ../../include/openssl/evp.h ../../include/openssl/idea.h
+p_lib.o: ../../include/openssl/evp.h
 p_lib.o: ../../include/openssl/md2.h ../../include/openssl/md5.h
 p_lib.o: ../../include/openssl/mdc2.h ../../include/openssl/objects.h
 p_lib.o: ../../include/openssl/opensslconf.h ../../include/openssl/opensslv.h
@@ -1073,7 +1073,7 @@ p_open.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 p_open.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 p_open.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 p_open.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-p_open.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+p_open.o: ../../include/openssl/md2.h
 p_open.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 p_open.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 p_open.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs7.h
@@ -1090,7 +1090,7 @@ p_seal.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 p_seal.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 p_seal.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 p_seal.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-p_seal.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+p_seal.o: ../../include/openssl/md2.h
 p_seal.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 p_seal.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 p_seal.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs7.h
@@ -1107,7 +1107,7 @@ p_sign.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 p_sign.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 p_sign.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 p_sign.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-p_sign.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+p_sign.o: ../../include/openssl/md2.h
 p_sign.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 p_sign.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 p_sign.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs7.h
@@ -1124,7 +1124,7 @@ p_verify.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 p_verify.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 p_verify.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 p_verify.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-p_verify.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+p_verify.o: ../../include/openssl/md2.h
 p_verify.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 p_verify.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 p_verify.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs7.h

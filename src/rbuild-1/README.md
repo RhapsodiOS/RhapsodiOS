@@ -90,6 +90,10 @@ bounded native guest acceptance evidence.
   `-hdrs`/`-obj` companions; `.PKGINFO` `arch` remains `*-apple-rhapsody`.
 - Source metadata is `apk/pkginfo`. Packaged `.PKGINFO` uses the same keys
   (`makedepends`, `license`, `url`, …). apk ignores unknown keys.
+- An APK archive holds `.PKGINFO` first, then any `.pre-install`,
+  `.post-install`, `.pre-deinstall` and `.post-deinstall` scripts, then the
+  rest of the root in sorted order, with member names that carry no `./`,
+  which is the layout apk-tools 2.0 reads.
 - `makedepends_i386` / `makedepends_ppc` add build dependencies only when the
   build includes that CPU (a universal build takes both), e.g. kernel-7's
   `makedepends_ppc = drvpexpert`.

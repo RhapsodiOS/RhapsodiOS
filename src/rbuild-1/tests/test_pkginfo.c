@@ -160,6 +160,8 @@ TEST(test_build_apk_is_posix_ustar_and_extracts) {
     char wrapper[160];
     char log[160];
     char metadata[192];
+    char script[192];
+    char first_name[101];
     char payload[192];
     char extracted_payload[192];
     char extracted_long_payload[560];
@@ -184,6 +186,7 @@ TEST(test_build_apk_is_posix_ustar_and_extracts) {
     sprintf(wrapper, "%s/gnutar", scratch);
     sprintf(log, "%s/tar.log", scratch);
     sprintf(metadata, "%s/.PKGINFO", root);
+    sprintf(script, "%s/.post-install", root);
     sprintf(payload, "%s/payload", root);
     sprintf(extracted_payload, "%s/payload", extracted);
     sprintf(closed_stdin_output, "%s/closed-stdin.apk", scratch);
@@ -206,6 +209,9 @@ TEST(test_build_apk_is_posix_ustar_and_extracts) {
     fp = fopen(metadata, "w");
     CHECK(fp != 0);
     if (fp != 0) { fputs("pkgname = integration\n", fp); fclose(fp); }
+    fp = fopen(script, "w");
+    CHECK(fp != 0);
+    if (fp != 0) { fputs("#!/bin/sh\nexit 0\n", fp); fclose(fp); }
     fp = fopen(payload, "w");
     CHECK(fp != 0);
     if (fp != 0) { fputs("payload", fp); fclose(fp); }
@@ -224,12 +230,23 @@ TEST(test_build_apk_is_posix_ustar_and_extracts) {
     CHECK_INT(pkginfo_build_apk(root_alias, output, &tc), 0);
     CHECK_INT(physical_directory(root_alias, physical_root,
                                  sizeof(physical_root)), 0);
-    sprintf(expected, "%s\n-w\n-x\nustar\n.\n", physical_root);
+    /* apk-tools reads .PKGINFO and the scripts first, and names members
+       without "./". */
+    sprintf(expected, "%s\n-w\n-x\nustar\n.PKGINFO\n.post-install\npayload\nusr\n",
+            physical_root);
     CHECK_STR(slurp(log), expected);
     free(tc.archive_create);
     tc.archive_create = xstrdup(real_archive_create);
     CHECK_INT(gzip_decompress(tc.gzip, output, raw_archive), 0);
     CHECK_INT(strict_ustar_types(raw_archive), 0);
+    fp = fopen(raw_archive, "r");
+    CHECK(fp != 0);
+    if (fp != 0) {
+        CHECK_INT((int)fread(first_name, 1, 100, fp), 100);
+        first_name[100] = '\0';
+        fclose(fp);
+        CHECK_STR(first_name, ".PKGINFO");
+    }
     CHECK_INT(apk_validate(output, &tc), 0);
     CHECK_INT(apk_extract(output, extracted, &tc), 0);
     CHECK_STR(slurp(extracted_payload), "payload");
@@ -319,7 +336,7 @@ TEST(test_build_apk_without_toolchain_uses_legacy_generic_argv) {
     CHECK_INT(pkginfo_build_apk(root, output, 0), 0);
     CHECK_INT(setenv("PATH", saved_path, 1), 0);
     free(saved_path);
-    sprintf(expected, "-C\n%s\n-cf\n-\n.\n", root);
+    sprintf(expected, "-C\n%s\n-cf\n-\n.PKGINFO\n", root);
     CHECK_STR(slurp(tar_log), expected);
     CHECK(lstat(output, &st) == 0 && st.st_size > 0);
     toolchain_free(&configured);

@@ -7,7 +7,9 @@
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <dirent.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -236,6 +238,63 @@ static int run_apk_pipeline(const char *out_apk, const char *gzip_program,
     return result;
 }
 
+/* apk-tools 2.0 reads .PKGINFO and the install scripts before the files, and
+   names members without "./". So the archive gets these first, then the
+   root's other entries in sorted order, instead of ".". */
+static const char *apk_control_names[] = {
+    ".PKGINFO", ".pre-install", ".post-install", ".pre-deinstall",
+    ".post-deinstall", 0
+};
+
+static int is_apk_control_name(const char *name) {
+    int i;
+    for (i = 0; apk_control_names[i]; i++)
+        if (strcmp(name, apk_control_names[i]) == 0) return 1;
+    return 0;
+}
+
+static int compare_names(const void *a, const void *b) {
+    return strcmp(*(char *const *)a, *(char *const *)b);
+}
+
+static int push_apk_members(const char *root_dir, strlist *args) {
+    DIR *dir;
+    struct dirent *entry;
+    struct stat st;
+    strlist rest;
+    size_t before = args->count;
+    size_t i;
+
+    for (i = 0; apk_control_names[i]; i++) {
+        char *path = str_cats(root_dir, "/", apk_control_names[i], (char *)0);
+        if (lstat(path, &st) == 0) strlist_push(args, apk_control_names[i]);
+        free(path);
+    }
+    dir = opendir(root_dir);
+    if (dir == 0) {
+        /* A dry run lists commands for a root it has not built. */
+        if (exec_dry_run && args->count == before) {
+            strlist_push(args, ".");
+            return 0;
+        }
+        return 1;
+    }
+    strlist_init(&rest);
+    while ((entry = readdir(dir)) != 0) {
+        if (strcmp(entry->d_name, ".") == 0 ||
+            strcmp(entry->d_name, "..") == 0 ||
+            is_apk_control_name(entry->d_name)) continue;
+        strlist_push(&rest, entry->d_name);
+    }
+    closedir(dir);
+    qsort(rest.items, rest.count, sizeof(char *), compare_names);
+    for (i = 0; i < rest.count; i++) strlist_push(args, rest.items[i]);
+    strlist_free(&rest);
+    /* Without operands pax would read member names from stdin. */
+    if (args->count == before) strlist_push(args, ".");
+    return 0;
+}
+
 int pkginfo_build_apk(const char *root_dir, const char *out_apk,
                       const Toolchain *tc) {
     strlist archive_args;
@@ -273,7 +332,12 @@ int pkginfo_build_apk(const char *root_dir, const char *out_apk,
         strlist_push(&archive_args, "-cf");
         strlist_push(&archive_args, "-");
     }
-    strlist_push(&archive_args, ".");
+    if (push_apk_members(root_dir, &archive_args) != 0) {
+        fprintf(stderr, "rbuild: cannot list APK root %s: %s\n", root_dir,
+                strerror(errno));
+        strlist_free(&archive_args);
+        return 1;
+    }
     archive_argv = (char **)xmalloc((archive_args.count + 1) * sizeof(char *));
     for (i = 0; i < archive_args.count; i++)
         archive_argv[i] = archive_args.items[i];

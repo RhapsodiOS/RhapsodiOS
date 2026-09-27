@@ -104,6 +104,9 @@ Found by running apk on the guest (2026-09-25 to 27):
   `.PKGINFO` has been seen, so it need not be the first member.
 - Rhapsody's printf has no `%zu`: the index and installed-database writer
   prints sizes as `%lu`.
+- GNU tar (1.12 on Rhapsody) pads numeric header fields with spaces, which
+  `apk_blob_uint` read as 0, so `.PKGINFO` came out empty. The tar reader
+  parses those fields as tar readers do.
 - `mknod` is given the file-type bits; without them Rhapsody refuses a device
   node (Linux quietly makes a plain file).
 - Rhapsody's root layout, under `__NeXT__`:
@@ -135,8 +138,9 @@ lays down the root as files ships it.
       slices (the ppc slice has not been run).
 - [x] `make install DSTROOT=<root>` installs `apk` to `<root>/sbin` via the
       project Makefile, in rbuild's chroot.
-- [ ] `sh apk-tools/tests/smoke.sh` passes natively; in particular confirm the
-      `apk index` CLI form for pre12 (the host script WARNs if unrecognized).
+- [x] `sh apk-tools/tests/smoke.sh` passes natively, with the guest's GNU
+      tar 1.12 building its package. pre12's form is `apk index <apks>` to
+      stdout, and the script now fails unless the index names the package.
 - [x] The explicit applet table (`apk_applets[]` in `apk.c`) links with
       Rhapsody's cctools ld for both slices (`lipo`: `ppc i386`), and the i386
       slice runs: `apk` prints its applet list.

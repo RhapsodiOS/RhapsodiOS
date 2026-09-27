@@ -46,7 +46,22 @@ struct tar_header {
 	char padding[12];   /* 500-512 */
 };
 
-#define GET_OCTAL(s) apk_blob_uint(APK_BLOB_PTR_LEN(s, sizeof(s)), 8)
+/* GNU tar pads numeric fields with spaces where POSIX ustar uses zeros, and
+ * apk_blob_uint gives 0 for either.  Skip leading spaces and stop at the
+ * first space or NUL, as tar readers do. */
+static unsigned tar_octal(const char *s, size_t len)
+{
+	unsigned val = 0;
+	size_t i = 0;
+
+	while (i < len && s[i] == ' ')
+		i++;
+	for (; i < len && s[i] >= '0' && s[i] <= '7'; i++)
+		val = val * 8 + (s[i] - '0');
+	return val;
+}
+
+#define GET_OCTAL(s) tar_octal(s, sizeof(s))
 
 static size_t field_len(const char *s, size_t max)
 {

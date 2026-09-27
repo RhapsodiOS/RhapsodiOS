@@ -28,13 +28,16 @@ echo hello > "$work/pkgroot/usr/bin/smoke-hello"
 ( cd "$work/pkgroot" && tar -cf - . | gzip -9 > "$work/repo/smoke-1.0.apk" )
 echo "ok: built smoke-1.0.apk"
 
-# 3. apk index over the repo (writes an APKINDEX). Tolerate CLI variance
-#    between pre12 and later by trying the common forms.
-if "$APK" index -o "$work/repo/APKINDEX.tar.gz" "$work/repo"/*.apk >/dev/null 2>&1 \
-   || "$APK" index "$work/repo"/*.apk > "$work/repo/APKINDEX" 2>/dev/null; then
+# 3. apk index over the repo. pre12 writes the index to stdout (confirmed on
+#    Rhapsody); later apk takes -o. The index must name the package: pre12
+#    exits 0 even when it could read none of them.
+if "$APK" index -o "$work/repo/APKINDEX.tar.gz" "$work/repo"/*.apk >/dev/null 2>&1; then
   echo "ok: apk index produced an index"
+elif "$APK" index "$work/repo"/*.apk > "$work/repo/APKINDEX" 2>/dev/null &&
+     grep -q '^P:smoke$' "$work/repo/APKINDEX"; then
+  echo "ok: apk index names smoke"
 else
-  echo "WARN: apk index form not recognized on host; note for target validation"
+  echo "FAIL: apk index did not index smoke-1.0.apk"; exit 1
 fi
 
 # 4. Extraction round-trip via the same gzip|tar path rbuild uses, then

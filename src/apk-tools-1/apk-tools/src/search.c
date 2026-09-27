@@ -136,12 +136,12 @@ static struct option search_options[] = {
 };
 
 struct apk_applet apk_search = {
-	.name = "search",
-	.usage = "[--description|-d] [search_pattern]",
-	.context_size = sizeof(struct search_ctx),
-	.num_options = ARRAY_SIZE(search_options),
-	.options = search_options,
-	.parse = search_parse,
-	.main = search_main,
+	name: "search",
+	usage: "[--description|-d] [search_pattern]",
+	context_size: sizeof(struct search_ctx),
+	num_options: ARRAY_SIZE(search_options),
+	options: search_options,
+	parse: search_parse,
+	main: search_main,
 };
 

@@ -4,3 +4,4 @@ pkgdesc = Miscellaneous system files
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
 license = APSL
 makedepends = build-base, adv-cmds
+depend = basic-cmds, csu, libsystem

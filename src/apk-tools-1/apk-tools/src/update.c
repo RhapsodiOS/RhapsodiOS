@@ -32,8 +32,8 @@ static int update_main(void *ctx, int argc, char **argv)
 }
 
 struct apk_applet apk_update = {
-	.name = "update",
-	.usage = "",
-	.main = update_main,
+	name: "update",
+	usage: "",
+	main: update_main,
 };
 

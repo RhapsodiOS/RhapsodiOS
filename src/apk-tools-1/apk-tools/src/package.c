@@ -169,9 +169,9 @@ static int parse_depend(void *ctx, apk_blob_t blob)
 		return -1;
 
 	*dep = (struct apk_dependency){
-		.name = name,
-		.version = APK_BLOB_IS_NULL(bver) ? NULL : apk_blob_cstr(bver),
-		.result_mask = mask,
+		name: name,
+		version: APK_BLOB_IS_NULL(bver) ? NULL : apk_blob_cstr(bver),
+		result_mask: mask,
 	};
 
 	return 0;
@@ -404,8 +404,10 @@ static int read_info_entry(void *ctx, const struct apk_file_info *ae,
 		if (apk_script_type(slash+1) == APK_SCRIPT_POST_INSTALL ||
 		    apk_script_type(slash+1) == APK_SCRIPT_PRE_INSTALL)
 			ri->has_install = 1;
-	} else if (ri->version == 2) {
-		/* All metdata of version 2.x package handled */
+	} else if (ri->version == 2 && pkg->name != NULL) {
+		/* All metdata of version 2.x package handled.  rbuild's pax
+		 * archives may put .PKGINFO after the files, so only stop
+		 * once it has been read. */
 		return 1;
 	} else {
 		/* Version 1.x packages do not contain installed size
@@ -434,6 +436,7 @@ struct apk_package *apk_pkg_read(struct apk_database *db, const char *file)
 		goto err;
 
 	ctx.db = db;
+	ctx.version = 0;
 	ctx.has_install = 0;
 	if (apk_parse_tar_gz(bs, read_info_entry, &ctx) < 0) {
 		apk_error("File %s is not an APK archive", file);
@@ -450,7 +453,7 @@ struct apk_package *apk_pkg_read(struct apk_database *db, const char *file)
 	/* Add implicit busybox dependency if there is scripts */
 	if (ctx.has_install) {
 		struct apk_dependency dep = {
-			.name = apk_db_get_name(db, APK_BLOB_STR("busybox")),
+			name: apk_db_get_name(db, APK_BLOB_STR("busybox")),
 		};
 		apk_deps_add(&ctx.pkg->depends, &dep);
 	}
@@ -631,13 +634,15 @@ int apk_pkg_write_index_entry(struct apk_package *info,
 	n = snprintf(buf, sizeof(buf),
 		     "P:%s\n"
 		     "V:%s\n"
-		     "S:%zu\n"
-		     "I:%zu\n"
+		     "S:%lu\n"
+		     "I:%lu\n"
 		     "T:%s\n"
 		     "U:%s\n"
 		     "L:%s\n",
 		     info->name->name, info->version,
-		     info->size, info->installed_size,
+		     /* Rhapsody's printf predates C99's %zu. */
+		     (unsigned long) info->size,
+		     (unsigned long) info->installed_size,
 		     info->description, info->url, info->license);
 	if (os->write(os, buf, n) != n)
 		return -1;

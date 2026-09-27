@@ -1610,7 +1610,9 @@ int runops_debug _((void));
 #define THREADSV_NAMES "_123456789&`'+/.,\\\";^-%=|~:\001\005!@"
 
 /* VMS doesn't use environ array and NeXT has problems with crt0.o globals */
-#if defined(__NeXT__) && defined(__DYNAMIC__)
+/* Rhapsody's cc defines __NeXT__ too, but its crt1.o exports no __environ
+   for dyld to bind; it takes the _NSGetEnviron() branch below. */
+#if defined(__NeXT__) && defined(__DYNAMIC__) && !defined(__APPLE__)
 #include <mach-o/dyld.h>
 EXT char *** environ_pointer;
 #define environ (*environ_pointer)

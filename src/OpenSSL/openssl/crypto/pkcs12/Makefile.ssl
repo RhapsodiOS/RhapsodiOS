@@ -94,7 +94,7 @@ p12_add.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 p12_add.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 p12_add.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 p12_add.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-p12_add.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+p12_add.o: ../../include/openssl/md2.h
 p12_add.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 p12_add.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 p12_add.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs12.h
@@ -111,7 +111,7 @@ p12_attr.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 p12_attr.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 p12_attr.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 p12_attr.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-p12_attr.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+p12_attr.o: ../../include/openssl/md2.h
 p12_attr.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 p12_attr.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 p12_attr.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs12.h
@@ -128,7 +128,7 @@ p12_bags.o: ../../include/openssl/cast.h ../../include/openssl/crypto.h
 p12_bags.o: ../../include/openssl/des.h ../../include/openssl/dh.h
 p12_bags.o: ../../include/openssl/dsa.h ../../include/openssl/e_os.h
 p12_bags.o: ../../include/openssl/e_os2.h ../../include/openssl/err.h
-p12_bags.o: ../../include/openssl/evp.h ../../include/openssl/idea.h
+p12_bags.o: ../../include/openssl/evp.h
 p12_bags.o: ../../include/openssl/md2.h ../../include/openssl/md5.h
 p12_bags.o: ../../include/openssl/mdc2.h ../../include/openssl/objects.h
 p12_bags.o: ../../include/openssl/opensslconf.h
@@ -146,7 +146,7 @@ p12_crpt.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 p12_crpt.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 p12_crpt.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 p12_crpt.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-p12_crpt.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+p12_crpt.o: ../../include/openssl/md2.h
 p12_crpt.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 p12_crpt.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 p12_crpt.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs12.h
@@ -163,7 +163,7 @@ p12_crt.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 p12_crt.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 p12_crt.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 p12_crt.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-p12_crt.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+p12_crt.o: ../../include/openssl/md2.h
 p12_crt.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 p12_crt.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 p12_crt.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs12.h
@@ -180,7 +180,7 @@ p12_decr.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 p12_decr.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 p12_decr.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 p12_decr.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-p12_decr.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+p12_decr.o: ../../include/openssl/md2.h
 p12_decr.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 p12_decr.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 p12_decr.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs12.h
@@ -197,7 +197,7 @@ p12_init.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 p12_init.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 p12_init.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 p12_init.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-p12_init.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+p12_init.o: ../../include/openssl/md2.h
 p12_init.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 p12_init.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 p12_init.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs12.h
@@ -214,7 +214,7 @@ p12_key.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 p12_key.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 p12_key.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 p12_key.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-p12_key.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+p12_key.o: ../../include/openssl/md2.h
 p12_key.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 p12_key.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 p12_key.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs12.h
@@ -231,7 +231,7 @@ p12_kiss.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 p12_kiss.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 p12_kiss.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 p12_kiss.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-p12_kiss.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+p12_kiss.o: ../../include/openssl/md2.h
 p12_kiss.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 p12_kiss.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 p12_kiss.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs12.h
@@ -248,7 +248,7 @@ p12_lib.o: ../../include/openssl/cast.h ../../include/openssl/crypto.h
 p12_lib.o: ../../include/openssl/des.h ../../include/openssl/dh.h
 p12_lib.o: ../../include/openssl/dsa.h ../../include/openssl/e_os.h
 p12_lib.o: ../../include/openssl/e_os2.h ../../include/openssl/err.h
-p12_lib.o: ../../include/openssl/evp.h ../../include/openssl/idea.h
+p12_lib.o: ../../include/openssl/evp.h
 p12_lib.o: ../../include/openssl/md2.h ../../include/openssl/md5.h
 p12_lib.o: ../../include/openssl/mdc2.h ../../include/openssl/objects.h
 p12_lib.o: ../../include/openssl/opensslconf.h ../../include/openssl/opensslv.h
@@ -266,7 +266,7 @@ p12_mac.o: ../../include/openssl/cast.h ../../include/openssl/crypto.h
 p12_mac.o: ../../include/openssl/des.h ../../include/openssl/dh.h
 p12_mac.o: ../../include/openssl/dsa.h ../../include/openssl/e_os.h
 p12_mac.o: ../../include/openssl/e_os2.h ../../include/openssl/err.h
-p12_mac.o: ../../include/openssl/evp.h ../../include/openssl/idea.h
+p12_mac.o: ../../include/openssl/evp.h
 p12_mac.o: ../../include/openssl/md2.h ../../include/openssl/md5.h
 p12_mac.o: ../../include/openssl/mdc2.h ../../include/openssl/objects.h
 p12_mac.o: ../../include/openssl/opensslconf.h ../../include/openssl/opensslv.h
@@ -284,7 +284,7 @@ p12_mutl.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 p12_mutl.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 p12_mutl.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 p12_mutl.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-p12_mutl.o: ../../include/openssl/hmac.h ../../include/openssl/idea.h
+p12_mutl.o: ../../include/openssl/hmac.h
 p12_mutl.o: ../../include/openssl/md2.h ../../include/openssl/md5.h
 p12_mutl.o: ../../include/openssl/mdc2.h ../../include/openssl/objects.h
 p12_mutl.o: ../../include/openssl/opensslconf.h
@@ -302,7 +302,7 @@ p12_npas.o: ../../include/openssl/cast.h ../../include/openssl/crypto.h
 p12_npas.o: ../../include/openssl/des.h ../../include/openssl/dh.h
 p12_npas.o: ../../include/openssl/dsa.h ../../include/openssl/e_os2.h
 p12_npas.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-p12_npas.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+p12_npas.o: ../../include/openssl/md2.h
 p12_npas.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 p12_npas.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 p12_npas.o: ../../include/openssl/opensslv.h ../../include/openssl/pem.h
@@ -320,7 +320,7 @@ p12_sbag.o: ../../include/openssl/cast.h ../../include/openssl/crypto.h
 p12_sbag.o: ../../include/openssl/des.h ../../include/openssl/dh.h
 p12_sbag.o: ../../include/openssl/dsa.h ../../include/openssl/e_os.h
 p12_sbag.o: ../../include/openssl/e_os2.h ../../include/openssl/err.h
-p12_sbag.o: ../../include/openssl/evp.h ../../include/openssl/idea.h
+p12_sbag.o: ../../include/openssl/evp.h
 p12_sbag.o: ../../include/openssl/md2.h ../../include/openssl/md5.h
 p12_sbag.o: ../../include/openssl/mdc2.h ../../include/openssl/objects.h
 p12_sbag.o: ../../include/openssl/opensslconf.h
@@ -338,7 +338,7 @@ p12_utl.o: ../../include/openssl/crypto.h ../../include/openssl/des.h
 p12_utl.o: ../../include/openssl/dh.h ../../include/openssl/dsa.h
 p12_utl.o: ../../include/openssl/e_os.h ../../include/openssl/e_os2.h
 p12_utl.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-p12_utl.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+p12_utl.o: ../../include/openssl/md2.h
 p12_utl.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 p12_utl.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 p12_utl.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs12.h
@@ -354,7 +354,7 @@ pk12err.o: ../../include/openssl/cast.h ../../include/openssl/crypto.h
 pk12err.o: ../../include/openssl/des.h ../../include/openssl/dh.h
 pk12err.o: ../../include/openssl/dsa.h ../../include/openssl/e_os2.h
 pk12err.o: ../../include/openssl/err.h ../../include/openssl/evp.h
-pk12err.o: ../../include/openssl/idea.h ../../include/openssl/md2.h
+pk12err.o: ../../include/openssl/md2.h
 pk12err.o: ../../include/openssl/md5.h ../../include/openssl/mdc2.h
 pk12err.o: ../../include/openssl/objects.h ../../include/openssl/opensslconf.h
 pk12err.o: ../../include/openssl/opensslv.h ../../include/openssl/pkcs12.h

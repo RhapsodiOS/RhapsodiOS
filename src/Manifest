@@ -2,6 +2,7 @@
 #------ --------------------- -------
 dir     Commands/adv_cmds     all
 dir     apache-1              all
+dir     apk-tools-1           all
 dir     architecture-1        all
 dir     Commands/at_cmds      all
 dir     autoconf-1            all
@@ -69,6 +70,8 @@ dir     nmserver-1            all
 dir     ntp-1                 all
 dir     objc-1                all
 dir     objc4-1               all
+dir     OpenSSH               all
+dir     OpenSSL               all
 dir     patch-1               all
 dir     pb_makefiles-1        all
 dir     perl-1                all

@@ -15,7 +15,9 @@ GnuAfterInstall = shlibs strip
 include $(MAKEFILEPATH)/CoreOS/ReleaseControl/GNUSource.make
 
 # config is not really like configure
-Configure_Flags = --prefix="$(Install_Prefix)"								\
+# The IDEA sources in this tree are empty files (the cipher was patented),
+# so build without it.
+Configure_Flags = no-idea --prefix="$(Install_Prefix)"								\
 		  --openssldir="$(NSLIBRARYDIR)/$(ProjectName)"						\
 		  --install_prefix="$(DSTROOT)"
 
@@ -53,11 +55,12 @@ shlibs:
 		"$(DSTROOT)$(USRLIBDIR)/libcrypto.$(FileVersion).dylib"					\
 		-install_name "$(USRLIBDIR)/libssl.$(FileVersion).dylib"				\
 		-o "$(DSTROOT)$(USRLIBDIR)/libssl.$(FileVersion).dylib"
-	$(_v) foreach lib in crypto ssl; do								\
+	$(_v) for lib in crypto ssl; do								\
 		$(LN) -fs "lib$${lib}.$(FileVersion).dylib" "$(DSTROOT)$(USRLIBDIR)/lib$${lib}.dylib";	\
 		$(RM) "$(DSTROOT)$(USRLIBDIR)/lib$${lib}.a";						\
 	      done
 
+# c_rehash in USRBINDIR is a script; openssl is the one executable to strip.
 strip:
-	$(_v) $(STRIP)    $(shell $(FIND) $(DSTROOT)$(USRBINDIR) -type f)
+	$(_v) $(STRIP)    $(DSTROOT)$(USRBINDIR)/openssl
 	$(_v) $(STRIP) -S $(shell $(FIND) $(DSTROOT)$(USRLIBDIR) -type f)

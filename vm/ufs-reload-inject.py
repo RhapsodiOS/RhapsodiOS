@@ -4,8 +4,11 @@ See docs/superpowers/specs/2026-09-25-ufs-gap-tests-design.md.
 usage: python ufs-reload-inject.py RUN [--base IMG] [--port N]
 
   r1 r2 r3   a read error in ffs_reload's superblock (r1), cylinder-summary
-             (r2) or root-inode-block (r3) read; each must be released so
-             later mounts and the unmount still return
+             (r2) or root-inode-block (r3) read; the stock IDE driver retries
+             a failing read three times, each try 90-100s, before giving up,
+             so the runner waits out the retries for the error to reach
+             ffs_reload; each must be released so later mounts and the
+             unmount still return
   r4         fs_ronly: a refused upgrade, umount, then a read-write mount,
              which must still be refused
   r5         the 4 GB clamp after a reload: a write ending at 4 GiB works,
@@ -28,6 +31,9 @@ import ufs_gap_lib as lib
 PAD = 65536
 DRIVE_ID = "t1"
 SITES = {"r1": "superblock", "r2": "csum", "r3": "inode2"}
+# the stock IDE driver's 3 retries at 90-100s each can take ~300s before
+# ffs_reload sees the error; give it double that before calling it stuck
+INJECT_WAIT = 600
 
 BLKDEBUG = """\
 [set-state]
@@ -141,7 +147,24 @@ def run(name, base, port):
         step("mount -r /dev/hd1a /mnt", 5, "1-ro")
         if name in SITES:
             hmp(pad_start, "armed before the first mount -uw")
-            step("mount -uw /mnt", 10, "2-upgrade-refused")
+            g.line("mount -uw /mnt")
+            start = time.time()
+            ticks = 0
+
+            def on_tick():
+                nonlocal ticks
+                ticks += 30
+                g.shot("2-armed-%03d" % ticks)
+
+            found = lib.wait_for(g.serial, "ffs: /mnt", INJECT_WAIT, tick=30,
+                                 on_tick=on_tick)
+            if found:
+                notes.append("%s (%ds after arming)"
+                             % (lib.ffs_lines(g.serial)[0],
+                                int(time.time() - start)))
+            else:
+                notes.append("no ffs: /mnt line within %ds" % INJECT_WAIT)
+            g.shot("2-upgrade-refused")
             hmp(pad_start + 512, "disarmed after it")
             step("ls /mnt; mount", 5, "3-still-ro")
             step("mount -uw /mnt", 10, "4-second-upgrade")
@@ -157,10 +180,10 @@ def run(name, base, port):
             step("fsck -y /dev/hd1a", 60, "3-fsck")
             step("mount -uw /mnt", 10, "4-upgrade")
             step("mount", 5, "5-mount")
-            step("dd if=/dev/zero of=/mnt/below bs=2 count=1 seek=2147483647",
+            step("dd if=/mach_kernel of=/mnt/below bs=2 count=1 seek=2147483647",
                  15, "6-dd-below")
             step("ls -l /mnt/below", 5, "7-ls-below")
-            step("dd if=/dev/zero of=/mnt/above bs=2 count=1 seek=2147483648",
+            step("dd if=/mach_kernel of=/mnt/above bs=2 count=1 seek=2147483648",
                  15, "8-dd-above")
             step("ls -l /mnt", 5, "9-ls")
     finally:

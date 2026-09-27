@@ -60,11 +60,17 @@ minor 2 case:
   `break` into the existing shared tail that advances `iov`/`uio` without
   copying any data. Writes succeed and are discarded.
 - **`UIO_READ`**: copy zeroed bytes to the caller via `uiomove()`, sourced
-  from a static, file-scope, BSS-zeroed buffer of `PAGE_SIZE` bytes (BSS is
-  zero-initialized, so no explicit zeroing code is needed). Loop like minors
-  0/1 do — copy `min(iov->iov_len, PAGE_SIZE)` bytes per `uiomove()` call,
-  then `continue` back to the top of the `while (uio->uio_resid > 0 ...)`
-  loop — so reads of any size are correctly served in page-sized chunks.
+  from a static, file-scope, BSS-zeroed buffer of `I386_PGBYTES`/
+  `PPC_PGBYTES` bytes — the platform's real compile-time page-size constant
+  (BSS is zero-initialized, so no explicit zeroing code is needed). `PAGE_SIZE`
+  itself can't be used for a static array's size: on this platform it's
+  `#define PAGE_SIZE page_size`, an `extern` runtime variable, not a
+  compile-time constant, so `zero_page[PAGE_SIZE]` would fail to compile
+  (found during implementation). Loop like minors 0/1 do — copy
+  `min(iov->iov_len, I386_PGBYTES)` (or `PPC_PGBYTES`) bytes per `uiomove()`
+  call, then `continue` back to the top of the
+  `while (uio->uio_resid > 0 ...)` loop — so reads of any size are correctly
+  served in page-sized chunks.
 
 `ppc/mem.c` has a `default: goto fault;` after its switch cases; the new
 `case 3:` is inserted before that default, alongside the existing cases.
@@ -88,7 +94,7 @@ mknod zero	c 3 3	; chmod 666 zero
 `read(fd)` on `/dev/zero` → VFS → `spec_read` → `cdevsw[3].d_read`
 (`mmread`) → `mmrw(dev, uio, UIO_READ)` → new `case 3` → `uiomove()` copies
 zeros from the static zero buffer into the caller's buffer, chunked at
-`PAGE_SIZE`, looping until the request is satisfied.
+`I386_PGBYTES`/`PPC_PGBYTES`, looping until the request is satisfied.
 
 `write(fd, ...)` on `/dev/zero` → same path → `mmwrite` → new `case 3` write
 branch discards input, returns success with all bytes "written," identical

@@ -576,10 +576,31 @@ class Allocator(object):
         allocated.extend(got)
         return got[0]
 
+    def _last_block_frags(self, nblocks, size):
+        """Fragments a file's last logical block (nblocks - 1) occupies,
+        per FFS's blksize rule (src/kernel-7/bsd/ufs/ffs/fs.h:498, the
+        blksize macro): a block whose logical number is >= NDADDR (i.e.
+        indirect-mapped) is always a full fs_frag-fragment block; only a
+        last block still among the direct pointers may be a shorter run
+        covering just the remainder.  `_alloc_and_write_blocks`,
+        `_old_file_frags` and `_block_layout` all size their last block
+        through this helper, so allocation, freeing and layout can never
+        disagree.
+        """
+        if nblocks - 1 >= rhap_image.NDADDR:
+            return self.g.frag
+        tail_bytes = size - (nblocks - 1) * self.g.bsize
+        return (tail_bytes + self.g.fsize - 1) // self.g.fsize
+
     def _alloc_and_write_blocks(self, data):
         """Allocate whole blocks for all but the tail, write `data` into
         them, and allocate/fill a single indirect block once the file
-        needs more than NDADDR blocks.  Returns (db, ib, total_frags),
+        needs more than NDADDR blocks.  The last block may only be a
+        short run of fragments while it is still a direct (< NDADDR)
+        pointer; FFS's blksize rule (src/kernel-7/bsd/ufs/ffs/fs.h:498)
+        requires a whole fs_frag-fragment block once the file has grown
+        into the indirect pointers, so that block is allocated the same
+        way as every other whole block.  Returns (db, ib, total_frags),
         where total_frags is every fragment allocated (content plus the
         indirect block itself) for di_blocks accounting.
         """
@@ -591,12 +612,15 @@ class Allocator(object):
             if size > 0:
                 nblocks = (size + bsize - 1) // bsize
                 nfull = nblocks - 1
-                tail_bytes = size - nfull * bsize
                 fsize = self.g.fsize
-                tail_frags = (tail_bytes + fsize - 1) // fsize
+                tail_frags = self._last_block_frags(nblocks, size)
                 if nfull > 0:
                     block_starts += self._alloc_whole_blocks(nfull, allocated)
-                block_starts.append(self._alloc_tail_block(tail_frags, allocated))
+                if tail_frags == self.g.frag:
+                    block_starts += self._alloc_whole_blocks(1, allocated)
+                else:
+                    block_starts.append(
+                        self._alloc_tail_block(tail_frags, allocated))
 
             for idx, start in enumerate(block_starts):
                 offset = idx * bsize
@@ -643,9 +667,11 @@ class Allocator(object):
 
     def _old_file_frags(self, size, db, ib):
         """Every fragment (content blocks plus the indirect block, if any)
-        belonging to a file previously written by this module, based on
-        our own layout: every block but the last is a full fs_frag-sized
-        block, the last is sized to just cover the remainder.
+        belonging to a file previously written by this module or by the
+        kernel, per FFS's blksize rule (src/kernel-7/bsd/ufs/ffs/fs.h:498):
+        every block but the last is a full fs_frag-sized block, and the
+        last is too unless it is still a direct (< NDADDR) pointer, in
+        which case it may be sized to just cover the remainder.
 
         A block pointer of 0 means a hole (a sparse block) and occupies no
         space on disk -- it must never be handed to free_frags, or fragment
@@ -659,7 +685,6 @@ class Allocator(object):
                 "%d-byte direct-plus-single-indirect limit; this module "
                 "cannot enumerate its fragments" % self.max_file_bytes())
         bsize = self.g.bsize
-        fsize = self.g.fsize
         frag = self.g.frag
         ndaddr = rhap_image.NDADDR
         nblocks = (size + bsize - 1) // bsize
@@ -670,8 +695,7 @@ class Allocator(object):
                 ind = self.img.read_frag(ib[0], bsize)
             ptrs = struct.unpack_from("<%di" % self.g.nindir, ind, 0)
             block_starts += list(ptrs[:nblocks - ndaddr])
-        tail_bytes = size - (nblocks - 1) * bsize
-        tail_frags = (tail_bytes + fsize - 1) // fsize
+        tail_frags = self._last_block_frags(nblocks, size)
         out = []
         for idx, start in enumerate(block_starts):
             if start == 0:
@@ -735,9 +759,11 @@ class Allocator(object):
 
     def _block_layout(self, size, db, ib):
         """[(block_start, byte_offset, length)] covering an inode's content,
-        using this module's own tail-block convention (every block but the
-        last is a full fs_frag-sized block; the last is sized to just cover
-        the remainder -- the same convention _old_file_frags documents).
+        following FFS's blksize rule (src/kernel-7/bsd/ufs/ffs/fs.h:498):
+        every block but the last is a full fs_frag-sized block, and the
+        last is too unless it is still a direct (< NDADDR) pointer, in
+        which case it may be sized to just cover the remainder -- the same
+        rule _old_file_frags follows.
         """
         if size == 0:
             return []
@@ -756,8 +782,7 @@ class Allocator(object):
         for idx, start in enumerate(block_starts):
             off = idx * bsize
             if idx == len(block_starts) - 1:
-                tail_bytes = size - off
-                tail_frags = (tail_bytes + fsize - 1) // fsize
+                tail_frags = self._last_block_frags(nblocks, size)
                 length = tail_frags * fsize
             else:
                 length = bsize

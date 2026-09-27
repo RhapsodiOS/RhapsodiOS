@@ -12,11 +12,14 @@ import unittest
 
 import rhap_image
 import ufs_alloc
+import ufs_build
 import ufs_cg
 import ufs_check
+import ufs_extract
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 GOLDEN = os.path.join(HERE, "golden.img")
+FLOPPY = os.path.join(HERE, "install", "rhapsody_dr2_x86_InstallationFloppy.img")
 
 
 def _present(*paths):
@@ -551,6 +554,152 @@ class TestDiBlocksAccounting(unittest.TestCase):
             self.assertGreater(
                 (len(payload) + a.g.bsize - 1) // a.g.bsize, rhap_image.NDADDR)
         self._check_blocks(payload)
+
+
+class TestLastBlockFollowsBlksize(unittest.TestCase):
+    """FFS's blksize rule (src/kernel-7/bsd/ufs/ffs/fs.h:498): a block is a
+    full fs_bsize block once its logical block number is >= NDADDR or the
+    file extends past it; only a last block among the direct pointers may
+    be a shorter run of fragments.  ufs_alloc used to size every file's
+    last block to just cover the remainder regardless of its logical block
+    number, which under-allocated (and, on freeing, under-freed) a block
+    once the file passed NDADDR direct blocks -- see task-6b-brief.md.
+
+    These build a fresh, minimal image from the installation floppy's own
+    geometry (ufs_build.build), rather than cloning golden.img, which is
+    not present in this worktree.
+    """
+
+    # 14 blocks: the last one is at logical block 13 (>= NDADDR == 12,
+    # i.e. indirect-mapped), holding a 100-byte tail -- exactly the shape
+    # golden.img's old kernel had.
+    BIG_SIZE = 13 * 8192 + 100
+
+    def setUp(self):
+        if not _present(FLOPPY):
+            self.skipTest("install media not present")
+        self.tmp = tempfile.mkdtemp(prefix="ufsalloc-", dir=os.path.join(HERE, "work"))
+        self.addCleanup(shutil.rmtree, self.tmp)
+        self.img = os.path.join(self.tmp, "test.img")
+
+    def _build(self, nodes):
+        with open(self.img, "wb") as f:
+            f.write(ufs_build.build(FLOPPY, nodes))
+
+    def _free_total(self, a):
+        _ndir, nbfree, _nifree, nffree = a.fs_cstotal()
+        return nbfree * a.g.frag + nffree
+
+    def test_freeing_a_kernel_style_file_releases_its_whole_last_block(self):
+        nodes = [
+            ufs_extract.Node("/", "dir", 0o040755, 0, 0, 0, None),
+            ufs_extract.Node("/big", "reg", 0o100644, 0, 0, 0,
+                              b"K" * self.BIG_SIZE),
+        ]
+        self._build(nodes)
+        self.assertEqual(ufs_check.check(self.img), [])
+
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            frag = a.g.frag
+            free_before = self._free_total(a)
+            ino = a._resolve("/big")
+            _mode, _nlink, _size, _db, ib = a._read_dinode(ino)
+            # The last content block's start fragment, read straight off
+            # the indirect table -- independent of _old_file_frags, which
+            # is one of the methods under test.
+            ind = a.img.read_frag(ib[0], a.g.bsize)
+            last_block_start = struct.unpack_from(
+                "<i", ind, (13 - rhap_image.NDADDR) * 4)[0]
+            self.assertNotEqual(last_block_start, 0)
+            a.unlink("/big")
+            a.flush()
+        self.assertEqual(ufs_check.check(self.img), [])
+
+        with ufs_alloc.Allocator(self.img) as a:
+            free_after = self._free_total(a)
+            for k in range(frag):
+                self.assertTrue(
+                    a.frag_is_free(last_block_start + k),
+                    "fragment %d of the old last block still marked used"
+                    % (last_block_start + k))
+        # 14 data blocks + 1 indirect block, all now free.
+        self.assertEqual(free_after - free_before, (14 + 1) * frag)
+
+    def test_grow_file_replacing_a_kernel_style_files_contents_releases_its_whole_last_block(self):
+        nodes = [
+            ufs_extract.Node("/", "dir", 0o040755, 0, 0, 0, None),
+            ufs_extract.Node("/big", "reg", 0o100644, 0, 0, 0,
+                              b"K" * self.BIG_SIZE),
+        ]
+        self._build(nodes)
+        self.assertEqual(ufs_check.check(self.img), [])
+
+        small = b"tiny"
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            frag = a.g.frag
+            free_before = self._free_total(a)
+            ino = a._resolve("/big")
+            a.grow_file(ino, small)
+            a.flush()
+        self.assertEqual(ufs_check.check(self.img), [])
+
+        with ufs_alloc.Allocator(self.img) as a:
+            free_after = self._free_total(a)
+        old_alloc = (14 + 1) * frag    # 14 data blocks + 1 indirect block
+        new_alloc = 1                  # "tiny" fits a single fragment
+        self.assertEqual(free_after - free_before, old_alloc - new_alloc)
+        with rhap_image.Image(self.img) as img:
+            self.assertEqual(img.read_file(ino), small)
+
+    def test_writing_such_a_file_allocates_a_full_last_block(self):
+        nodes = [ufs_extract.Node("/", "dir", 0o040755, 0, 0, 0, None)]
+        self._build(nodes)
+        self.assertEqual(ufs_check.check(self.img), [])
+
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            frag = a.g.frag
+            nspf = a.g.nspf
+            ino = a.create_file("/big", b"K" * self.BIG_SIZE)
+            a.flush()
+        self.assertEqual(ufs_check.check(self.img), [])
+
+        with ufs_alloc.Allocator(self.img) as a:
+            _mode, _nlink, size, _db, ib = a._read_dinode(ino)
+            self.assertEqual(size, self.BIG_SIZE)
+            ind = a.img.read_frag(ib[0], a.g.bsize)
+            last_block_start = struct.unpack_from(
+                "<i", ind, (13 - rhap_image.NDADDR) * 4)[0]
+            self.assertNotEqual(last_block_start, 0)
+            for k in range(frag):
+                self.assertFalse(
+                    a.frag_is_free(last_block_start + k),
+                    "fragment %d of the new file's last block is free"
+                    % (last_block_start + k))
+        with rhap_image.Image(self.img) as img:
+            n = img.inode(ino)
+            self.assertEqual(n.blocks, 15 * frag * nspf)
+
+    def test_small_file_tail_is_unchanged(self):
+        # 3 blocks, last at logical block 2 (a direct pointer, < NDADDR)
+        # with a 100-byte remainder: still gets a 1-fragment tail.
+        nodes = [ufs_extract.Node("/", "dir", 0o040755, 0, 0, 0, None)]
+        self._build(nodes)
+        size = 2 * 8192 + 100
+
+        with ufs_alloc.Allocator(self.img, writable=True) as a:
+            ino = a.create_file("/small", b"S" * size)
+            a.flush()
+        self.assertEqual(ufs_check.check(self.img), [])
+
+        with ufs_alloc.Allocator(self.img) as a:
+            _mode, _nlink, _size, db, _ib = a._read_dinode(ino)
+            last_start = db[2]
+            self.assertFalse(a.frag_is_free(last_start),
+                             "first fragment of the tail block is not allocated")
+            self.assertTrue(
+                a.frag_is_free(last_start + 1),
+                "tail block allocated more than 1 fragment for a 100-byte "
+                "remainder")
 
 
 DIRBLKSIZ = ufs_alloc.DIRBLKSIZ

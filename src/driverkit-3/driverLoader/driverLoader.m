@@ -377,12 +377,12 @@ getInstanceFile(const char *driverName, char *path, int unit,
 static loadResult
 configDriver(const char *driverName, int unit, BOOL probe, BOOL runPreLoad)
 {
-	struct stat statBuf;
 	char path[1024];
+	struct stat statBuf;
 	char question[100];
 	vm_offset_t data;
 	int fd;
-	loadResult rtn, pp;
+	loadResult rtn;
 	IOReturn ioRtn;
 
 	rtn = getInstanceFile(driverName, path, unit, &statBuf);
@@ -392,12 +392,13 @@ configDriver(const char *driverName, int unit, BOOL probe, BOOL runPreLoad)
 	if (!inquire(question))
 		return 0;
 	if (runPreLoad) {
-		pp = prePostExec(driverName, unit, NO);
-		switch (pp) {
-		    case PP_OK:
-			break;
+		switch (prePostExec(driverName, unit, NO)) {
+		    case PP_FAILED:
+			return 1;
 		    case PP_REFUSED:
 			return PP_REFUSED;
+		    case PP_OK:
+			break;
 		    default:
 			return 1;
 		}
@@ -426,8 +427,17 @@ configDriver(const char *driverName, int unit, BOOL probe, BOOL runPreLoad)
 		vm_deallocate(task_self(), data, statBuf.st_size);
 	}
 	close(fd);
-	if (rtn == 0 && prePostExec(driverName, unit, YES) == PP_REFUSED)
-		return PP_REFUSED;
+	if (rtn == PP_OK) {
+		switch (prePostExec(driverName, unit, YES)) {
+		    case PP_OK:
+			break;
+		    case PP_FAILED:
+			break;
+		    case PP_REFUSED:
+			rtn = PP_REFUSED;
+			break;
+		}
+	}
 	return rtn;
 }
 

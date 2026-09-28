@@ -72,24 +72,24 @@ main(int argc, char **argv)
 	progName = argv[0];
 	for (i = 1; i < argc; i++) {
 		switch (argv[i][0]) {
+		    case 'i':
+			interactive = 1;
+			break;
 		    case 'D':
 		    case 'd':
-			/* both references compare the letter with 'u' here;
-			 * check the jump table in the dumps for a 'u' case */
+			/* Both references test for 'u' here, though no 'u'
+			 * case reaches this code: load is always YES. */
 			driverName = argv[i] + 2;
 			interactive = (argv[i][0] == 'd');
 			load = (argv[i][0] != 'u');
-			break;
-		    case 'a':
-			continue;
-		    case 'i':
-			interactive = 1;
 			break;
 		    case 'v':
 			verbose = 1;
 			break;
 		    default:
 			usage(argv);
+		    case 'a':
+			continue;
 		}
 	}
 	if (driverName != NULL)

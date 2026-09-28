@@ -7,6 +7,8 @@
 #import <Foundation/NSString.h>
 #import <Foundation/NSZone.h>
 #import <objc/objc-runtime.h>
+#include <stdio.h>
+#include <stdarg.h>
 #include <string.h>
 
 /*	Stage 2b has no NSString: NSString.m is stage 3.  What it does have is
@@ -241,10 +243,124 @@ _NSGetSizeAndAlignment(const char *typePtr, unsigned int *sizep, unsigned int *a
     return NSGetSizeAndAlignment(typePtr, sizep, alignp);
 }
 
-void NSLog(NSString *format, ...) {
-    // TODO: Implement this function
+/*	The one place this module writes a finished log line.  The reference
+	exports this symbol and routes its logging through it; keeping that
+	shape means the later stages that add timestamping or a syslog route
+	have one function to change rather than two.  */
+void
+_NSBasicStdErrLog(const char *message)
+{
+    if (message == NULL)
+        return;
+    fputs(message, stderr);
+    fputc('\n', stderr);
+    fflush(stderr);
 }
 
-void NSLogv(NSString *format, va_list args) {
-    // TODO: Implement this function
+/*	Formats `format` over `args` and hands the result to
+	_NSBasicStdErrLog.  Stage 2b has no NSString, so this walks the
+	format's own bytes and rebuilds a C format string as it goes,
+	substituting %@ (whose argument is another NXConstantString-shaped
+	record in this stage, see the helpers at the top of this file) with
+	that record's bytes.  Every other specifier is handed to vsnprintf
+	unchanged.
+
+	PROVISIONAL: this covers the specifiers this stage's own callers use
+	(%@, %s, %d, %u, %x, %c, %%) and no more.  Stage 3 replaces it with
+	real NSString formatting.  Recorded in divergences.md.  */
+
+#define NSLogMessageMax 1024
+
+void
+NSLogv(NSString *format, va_list args)
+{
+    const char *bytes;
+    char message[NSLogMessageMax];
+    unsigned out;
+    unsigned i;
+
+    bytes = _NSObjCRuntimeStringBytes(format);
+    if (bytes == NULL)
+        return;
+
+    out = 0;
+    i = 0;
+    while (bytes[i] != '\0' && out < NSLogMessageMax - 1) {
+        if (bytes[i] != '%') {
+            message[out++] = bytes[i++];
+            continue;
+        }
+
+        if (bytes[i + 1] == '%') {
+            message[out++] = '%';
+            i += 2;
+            continue;
+        }
+
+        if (bytes[i + 1] == '@') {
+            id object = va_arg(args, id);
+            const char *text = _NSObjCRuntimeStringBytes((NSString *)object);
+
+            if (text == NULL)
+                text = "(null)";
+            while (*text != '\0' && out < NSLogMessageMax - 1)
+                message[out++] = *text++;
+            i += 2;
+            continue;
+        }
+
+        {
+            /*  Copy this one specifier out and let vsprintf do it, so
+                the platform's own conversions apply rather than a
+                hand-rolled imitation of them.  */
+            char specifier[16];
+            char converted[NSLogMessageMax];
+            unsigned length = 0;
+
+            specifier[length++] = bytes[i++];
+            while (bytes[i] != '\0' && length < sizeof(specifier) - 1) {
+                specifier[length++] = bytes[i];
+                if (strchr("diouxXeEfgGcsp", bytes[i]) != NULL) {
+                    i++;
+                    break;
+                }
+                i++;
+            }
+            specifier[length] = '\0';
+
+            converted[0] = '\0';
+            vsprintf(converted, specifier, args);
+            /*  vsprintf consumed exactly one argument for this
+                specifier; step args past it by re-reading the same
+                width the specifier implies.  */
+            if (strchr(specifier, 's') != NULL)
+                (void)va_arg(args, char *);
+            else if (strchr(specifier, 'f') != NULL ||
+                     strchr(specifier, 'e') != NULL ||
+                     strchr(specifier, 'g') != NULL)
+                (void)va_arg(args, double);
+            else
+                (void)va_arg(args, int);
+
+            {
+                unsigned k = 0;
+
+                while (converted[k] != '\0' && out < NSLogMessageMax - 1)
+                    message[out++] = converted[k++];
+            }
+        }
+    }
+    message[out] = '\0';
+
+    _NSBasicStdErrLog(message);
+}
+
+void
+NSLog(NSString *format, ...)
+{
+    va_list args;
+
+    va_start(args, format);
+    NSLogv(format, args);
+    va_end(args);
 }

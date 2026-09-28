@@ -3,7 +3,9 @@
 #
 # Built after libDriver: each CPU slice links the libDriver.A.dylib that
 # libDriver's lipoize step has just made, plus libkernload, and the slices
-# are lipo'd together.  Apple's copies are not stripped, so neither is this.
+# are lipo'd together.  Apple compiled with -g (ppc leaf functions keep a
+# frame only under -g) and then removed the stabs but kept every other
+# symbol, which is what strip -S does to each slice here.
 #
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 include $(MAKEFILEDIR)/platform.make
@@ -37,7 +39,7 @@ ARCHFULL_RC_CFLAGS = $(foreach X, $(RC_ARCHS),$(addprefix -arch , $(X)))
 ARCHLESS_RC_CFLAGS = $(filter-out $(ARCHFULL_RC_CFLAGS), $(RC_CFLAGS))
 
 CC= cc
-CFLAGS= -g -O2 $(ARCHLESS_RC_CFLAGS) -Wformat -Wno-precomp -I.. \
+CFLAGS= -g -O $(ARCHLESS_RC_CFLAGS) -Wformat -Wno-precomp -I.. \
 	-I$(SYSTEM_FW)/PrivateHeaders -I$(SYSTEM_FW)/Headers \
 	-I$(SYSTEM_FW)/PrivateHeaders/bsd -I$(SYSTEM_FW)/Headers/bsd
 LIBS= $(LIBDRIVER) -lkernload
@@ -61,6 +63,8 @@ $(SYMROOT)/$(PROGRAM): ALWAYS
 	    $(CC) -arch $$m -o $(OBJROOT)/$$m/$(PROGRAM) \
 		$(OBJROOT)/$$m/driverLoader.o $(OBJROOT)/$$m/kl_com.o \
 		$(LIBS) || exit 1; \
+	    echo strip -S $(OBJROOT)/$$m/$(PROGRAM); \
+	    strip -S $(OBJROOT)/$$m/$(PROGRAM) || exit 1; \
 	    slices="$$slices $(OBJROOT)/$$m/$(PROGRAM)"; \
 	done; \
 	echo lipo -create -o $@ $$slices; \

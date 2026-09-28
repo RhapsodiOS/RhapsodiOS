@@ -47,7 +47,7 @@ static int configDriver(const char *driverName, int unit, BOOL probe,
 	BOOL runPreLoad);
 static BOOL securityCheck(const char *driverName);
 static BOOL securityCheckDir(char *dir);
-static int prePostExec(const char *driverName, int unit, BOOL post);
+static int prePostExec(const char *driverName, int unit, int post);
 
 int
 main(int argc, char **argv)
@@ -483,7 +483,7 @@ out:
 }
 
 static int
-prePostExec(const char *driverName, int unit, BOOL post)
+prePostExec(const char *driverName, int unit, int post)
 {
 	id table;
 	const char *file;

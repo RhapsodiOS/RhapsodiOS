@@ -265,7 +265,7 @@ kl_com_add(char *path_name, char *server_name) {
 	   /* bogus - covers kern_loader bug #7190 */
 	   (r != KERN_LOADER_SERVER_WONT_LOAD)) {
 		kl_com_error("kern_loader_add_server", r);
-		rtn = 1;
+		rtn = r;
 	}
 	return(rtn);
 }
@@ -283,7 +283,7 @@ kl_com_delete(char *server_name) {
 	r = kern_loader_delete_server(kl_port, kernel_task, server_name);
 	if(r) {
 		kl_com_error("kern_loader_delete_server", r);
-		rtn = 1;
+		rtn = r;
 	}
 	return(rtn);
 }
@@ -307,7 +307,7 @@ kl_com_load(char *server_name) {
 	r = kern_loader_load_server(kl_port, server_name);
 	if(r) {
 		kl_com_error("kern_loader_load_server", r);
-		rtn = 1;
+		rtn = r;
 	}
 	return(rtn);
 }
@@ -326,7 +326,7 @@ kl_com_unload(char *server_name) {
 	r = kern_loader_unload_server(kl_port, kernel_task, server_name);
 	if(r) {
 		kl_com_error("kern_loader_unload_server", r);
-		rtn = 1;
+		rtn = r;
 	}
 	return(rtn);
 }

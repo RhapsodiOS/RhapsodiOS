@@ -46,6 +46,7 @@ TOAST = os.path.join(ASSETS, "devtools.toast")
 TOAST_PART = (968, 1324080)         # Apple_HFS partition: first sector, sectors
 HFS_DEV = "/dev/hd1a"
 RESULTS_DEV = "/dev/hd2a"
+HD_MAJOR = 3        # block major of the hd disks
 VOLUME_SIZE = 40 * 1024 * 1024
 TOAST_SAMPLE_MAX = 2 * 1024 * 1024
 
@@ -152,6 +153,12 @@ def boot(outdir, hfs_img, results_img, timeout):
         time.sleep(6)
         g.line("-s")
         time.sleep(135)
+        # golden.img's /dev has nodes for hd0 and hd1 only; the results
+        # disk is the third IDE disk, so make its node (8 minors per unit)
+        g.line("mount -uw /")
+        time.sleep(5)
+        g.line("mknod %s b %d %d" % (RESULTS_DEV, HD_MAJOR, 2 * 8))
+        time.sleep(3)
         g.line("mount %s /mnt" % RESULTS_DEV)
         time.sleep(5)
         g.line("sh /mnt/run.sh")

@@ -585,6 +585,7 @@ class TestLastBlockFollowsBlksize(unittest.TestCase):
     def setUp(self):
         if not _present(FLOPPY):
             self.skipTest("install media not present")
+        os.makedirs(os.path.join(HERE, "work"), exist_ok=True)
         self.tmp = tempfile.mkdtemp(prefix="ufsalloc-", dir=os.path.join(HERE, "work"))
         self.addCleanup(shutil.rmtree, self.tmp)
         self.img = os.path.join(self.tmp, "test.img")
@@ -791,6 +792,7 @@ class TestAppendDirChunkRefusesPastDirectBlocks(unittest.TestCase):
     def setUp(self):
         if not _present(FLOPPY):
             self.skipTest("install media not present")
+        os.makedirs(os.path.join(HERE, "work"), exist_ok=True)
         self.tmp = tempfile.mkdtemp(prefix="ufsalloc-", dir=os.path.join(HERE, "work"))
         self.addCleanup(shutil.rmtree, self.tmp)
         self.img = os.path.join(self.tmp, "test.img")

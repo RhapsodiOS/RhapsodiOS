@@ -3,15 +3,16 @@ See docs/superpowers/specs/2026-09-25-ufs-gap-tests-design.md.
 
 usage: python ufs-reload-inject.py RUN [--base IMG] [--port N]
 
-  r1 r2 r3   a read error in ffs_reload's superblock (r1), cylinder-summary
-             (r2), or the inode block of a file held open in the guest shell
-             (r3, /f69: the root inode's block is what the lookup of /mnt
-             reads before ffs_reload even runs, so the error has to sit on a
-             block only Step 6's re-read of an active vnode touches) read;
-             the stock IDE driver retries a failing read three times, each
-             try 90-100s, before giving up, so the runner waits out the
-             retries for the error to reach ffs_reload; each must be
-             released so later mounts and the unmount still return
+  r1 r2 r3   each injects a read error into one of ffs_reload's reads: the
+             superblock (r1), the cylinder-summary (r2), or the inode block
+             of a file held open in the guest shell (r3). r3 targets /f69's
+             inode block because the root inode's block is what the lookup
+             of /mnt reads before ffs_reload even runs, so the error has to
+             sit on a block only Step 6's re-read of an active vnode
+             touches. The stock IDE driver retries a failing read three
+             times, each try 90-100s, before giving up, so the runner waits
+             out the retries for the error to reach ffs_reload; each must
+             be released so later mounts and the unmount still return
   r4         fs_ronly: a refused upgrade, umount, then a read-write mount,
              which must still be refused
   r5         the 4 GB clamp after a reload: a write ending at 4 GiB works,
@@ -78,6 +79,9 @@ def blkdebug_config(target_sector, dummy_sector):
 
 def drive_args(disk, conf=None):
     """QEMU arguments attaching disk as hd1, through blkdebug if conf."""
+    # guest-writable (snapshot=off) but not run through rhap_inject.check_target:
+    # run() just created this run dir's own test.img, so it can never be a
+    # protected image, and check_target admits only one image per session.
     disk = os.path.abspath(disk).replace("\\", "/")
     if conf is None:
         return ["-drive",

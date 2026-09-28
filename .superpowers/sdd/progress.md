@@ -613,3 +613,55 @@ KNOWN TENSION to settle in 2b's spec, not discover in a task: NSString is stage 
 NSStringFromClass return NSString * while NSLog takes one. Compiler-emitted
 NXConstantString plus _NSConstantStringClassReference is the likely route (it is what
 link_stubs.m already does), but the spec must decide it explicitly.
+
+SPEC + PLAN DONE. Spec: docs/superpowers/specs/2026-09-20-foundation-stage2b-exceptions-
+runtime-design.md (approved). Plan: docs/superpowers/plans/2026-09-20-foundation-stage2b-
+exceptions-runtime.md (12 tasks, approved, self-review fixed 4 placeholder violations +
+3 wrong CLI-flag invocations for compare/source-map, discovered while writing the plan --
+those commands need --reference-analysis/--rebuilt-analysis directly and a "rebuilt"
+artifact added to a SCRATCH COPY of the profile before `analyze`, not the --profile/
+--symbols/--ownership shape an earlier draft guessed at). Commits: 268f7399 (spec),
+5c334e73 (plan), 40ce0c5c (plan fixes). Pre-flight scan found the plan deliberately
+duplicates ~90 lines of NXConstantString-record + %@-format-walking logic between
+NSObjCRuntime.m and NSException.m; user chose KEEP AS DESIGNED (each module stays
+independently linkable/deletable when stage 3 removes both) -- if a task reviewer flags
+this, it is accepted-by-design, not a defect to fix.
+
+EXECUTION STARTED, BLOCKED IMMEDIATELY on Task 1 (the setjmp/longjmp hosting probe --
+stage 2b's go/no-go gate, must run before any reconstruction). Dispatched implementer
+subagent; it reported BLOCKED: guest at 10.10.0.241 unreachable -- not the earlier
+"gateway answers, host silent" pattern, but the GATEWAY ITSELF (10.10.1.35) returning
+"Destination host unreachable" for every ping, and plink hanging with no SSH handshake at
+all. Verified independently from the controller session, same result. This is worse than
+stage 2a's guest-down episode (network fabric to the guest's subnet may itself be down,
+not just the guest host) and blocks EVERY task in this plan -- all twelve need the guest
+at some point. No file was touched, no commit made; nothing to roll back.
+
+## >>> RESUME HERE <<<
+Branch foundation-recon, HEAD 40ce0c5c.
+Stage 2b spec and plan are done and committed. Execution has not produced any code yet --
+BLOCKED on Task 1, the guest is unreachable at the network layer (gateway 10.10.1.35
+reports "Destination host unreachable" for 10.10.0.241, not just silence from the host).
+TO RESUME: confirm the guest VM is powered on AND attached to its network (this looks like
+more than "VM off" -- check the network adapter/bridge too), re-verify with
+`ping -n 3 10.10.0.241` from a plain shell, then re-dispatch Task 1's implementer exactly
+as before (task brief already written at .superpowers/sdd/task-1-brief.md). Nothing else
+in stage 2b can start until Task 1 passes or is recorded as a documented "not hosted"
+verdict -- do not skip ahead to Task 2 to make progress; the plan's own ordering exists so
+a setjmp failure narrows the stage before reconstruction work is wasted.
+
+## >>> RESUME HERE (updated after stage 2b completion) <<<
+Branch foundation-recon, HEAD 4ab10bd1f.
+STAGE 2B COMPLETE. All 12 plan tasks executed and committed (12 Foundation/binrecon
+commits d986a3c10..4ab10bd1f, 71/71 plan checkboxes ticked). The original blocker
+(ppc guest 10.10.0.241 unreachable) was resolved by substitution, recorded in
+divergences.md: all guest work ran on the i386 QEMU "hfsle" guest at 127.0.0.1:2121
+(plink -hostkey SHA256:lzYc0DWDJ74Aeqsc/OKTqwJ0454lmeF/XpoApab7rjg -P 2121 root;
+user-mode net, guest 10.10.0.240, NOT reachable directly) with sources at /tmp/f2b
+(guest /tmp cleaned at stage end). Key facts for later stages: guest is natively
+i386 so test binaries and abi objects are one architecture; Gate 1 abi-check ten
+modules ABI matches; Gate 2 seven suites PASSED 0 failures; binrecon suite
+804 passed 4 skipped; unclaimed exports 345 -> 321; IDA 9.4 used (9.2 absent,
+recorded in profile + divergences). NSException ivar ownership is ASSIGNMENT not
+retain (zeroed _NSConstantStringClassReference faults on message send) -- stage 3
+must restore retain/release. Next stage: 2c per programme spec (NSCoder + NSFault).

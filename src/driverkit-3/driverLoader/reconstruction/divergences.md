@@ -875,4 +875,7 @@ Results:
   boot, which holds.
 
 The side-by-side behaviour check (`vm/driverloader-behaviour.sh`) passes
-7/7 on the final build, with its one stated difference (`expect nodriver 0 1`).
+7/7, with its one stated difference (`expect nodriver 0 1`), on the last
+iteration build; its `__text` is byte-identical to the final build's (the
+two files differ only in the libDriver.A.dylib timestamp in the load
+command).

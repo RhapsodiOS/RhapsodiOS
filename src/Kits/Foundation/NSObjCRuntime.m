@@ -364,3 +364,79 @@ NSLog(NSString *format, ...)
     NSLogv(format, args);
     va_end(args);
 }
+
+/*	Introspection helpers the reference exports but no header declares.
+	NSObject.m and NSProxy.m both call them directly (extern declarations
+	in each), which is why they live here rather than in either: this
+	module is the runtime's general-utility home, and both callers link
+	against it.  Claimed by name in reconstruction/symbols.json.  */
+
+extern id _objc_msgForward(id self, SEL op, ...);
+
+/*	The implementation aClass would run for aSelector, or the runtime's
+	forwarding trampoline when it has none -- the sentinel
+	-[NSObject implementsSelector:] compares against, rather than a null
+	a caller might mistake for an error.  */
+IMP
+_NSIMPForSelector(Class aClass, SEL aSelector)
+{
+    struct objc_method *method;
+
+    if (aClass == Nil || aSelector == NULL)
+        return (IMP)_objc_msgForward;
+
+    method = class_getInstanceMethod(aClass, aSelector);
+    if (method == NULL)
+        return (IMP)_objc_msgForward;
+
+    return method->method_imp;
+}
+
+/*	The selector and type encoding of aClass's implementation, or NULL
+	when it has none.  struct objc_method's first two fields are
+	layout-compatible with struct objc_method_description (objc-class.h
+	against objc/Protocol.h), which is how the runtime itself hands one
+	out as the other.  */
+struct objc_method_description *
+_NSMethodDescriptionForSelector(Class aClass, SEL aSelector)
+{
+    struct objc_method *method;
+
+    if (aClass == Nil || aSelector == NULL)
+        return NULL;
+
+    method = class_getInstanceMethod(aClass, aSelector);
+    if (method == NULL)
+        return NULL;
+
+    return (struct objc_method_description *)method;
+}
+
+/*	Whether aClass, or anything it inherits from, adopts aProtocol.
+	This runtime has no class_conformsTo entry point, so the walk up
+	super_class is done directly over each class's protocols list --
+	conformance is inherited, and a caller asking "does this class
+	conform" means the whole chain.  */
+BOOL
+_NSClassConformsToProtocol(Class aClass, Protocol *aProtocol)
+{
+    Class candidate;
+
+    if (aClass == Nil || aProtocol == nil)
+        return NO;
+
+    for (candidate = aClass; candidate != Nil; candidate = candidate->super_class) {
+        struct objc_protocol_list *protocols;
+
+        for (protocols = candidate->protocols; protocols != 0; protocols = protocols->next) {
+            int index;
+
+            for (index = 0; index < protocols->count; index++) {
+                if (protocols->list[index] == aProtocol)
+                    return YES;
+            }
+        }
+    }
+
+    return NO;
+}

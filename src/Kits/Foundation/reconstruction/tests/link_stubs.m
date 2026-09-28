@@ -116,26 +116,11 @@ void NSRecordAllocationEvent(int eventType, ...)
     abort()-ing NSException stub is set up to catch before it's used.  */
 id NSInternalInconsistencyException = 0;
 
-/*  Foundation-private helpers NSObject.m's reference calls but that no
-    stage-2a task has reconstructed yet (NSPrivate/NSAutoreleasePool
-    territory).  */
-IMP _NSIMPForSelector(Class aClass, SEL aSelector)
-{
-    unimplemented("_NSIMPForSelector");
-    return NULL;
-}
-
-struct objc_method_description *_NSMethodDescriptionForSelector(Class aClass, SEL aSelector)
-{
-    unimplemented("_NSMethodDescriptionForSelector");
-    return NULL;
-}
-
-BOOL _NSClassConformsToProtocol(Class aClass, Protocol *aProtocol)
-{
-    unimplemented("_NSClassConformsToProtocol");
-    return NO;
-}
+/*  Foundation-private helpers NSObject.m's reference calls.  The three
+    introspection helpers below it (_NSIMPForSelector,
+    _NSMethodDescriptionForSelector, _NSClassConformsToProtocol) moved to
+    NSObjCRuntime.m in stage 2b and are no longer stubbed here.
+    _NSMethodExceptionProem follows in stage 2b's Task 10.  */
 
 id _NSMethodExceptionProem(id object, SEL aSelector)
 {

@@ -4,6 +4,7 @@
 #import <Foundation/NSObject.h>
 #import <Foundation/NSString.h>
 #import <objc/objc-runtime.h>
+#import <objc/Protocol.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -252,6 +253,65 @@ static void test_NSLog_of_nil_does_not_crash(void)
     CaptureStdErr(emit_nil_format, buffer, sizeof(buffer));
 }
 
+extern IMP _NSIMPForSelector(Class aClass, SEL aSelector);
+extern struct objc_method_description *_NSMethodDescriptionForSelector(Class aClass, SEL aSelector);
+extern BOOL _NSClassConformsToProtocol(Class aClass, Protocol *aProtocol);
+extern id _objc_msgForward(id self, SEL op, ...);
+
+static void test_IMPForSelector_finds_an_implemented_method(void)
+{
+    IMP implementation = _NSIMPForSelector([NSObject class], @selector(hash));
+
+    CHECK(implementation != NULL);
+    CHECK(implementation != (IMP)_objc_msgForward);
+}
+
+static void test_IMPForSelector_reports_forwarding_for_an_unknown_selector(void)
+{
+    IMP implementation = _NSIMPForSelector([NSObject class],
+                                           @selector(aSelectorNoOneImplements));
+
+    CHECK(implementation == (IMP)_objc_msgForward);
+}
+
+static void test_MethodDescriptionForSelector_gives_name_and_types(void)
+{
+    struct objc_method_description *description =
+        _NSMethodDescriptionForSelector([NSObject class], @selector(hash));
+
+    CHECK(description != NULL);
+    if (description != NULL) {
+        CHECK(description->name == @selector(hash));
+        CHECK(description->types != NULL);
+    }
+}
+
+static void test_MethodDescriptionForSelector_of_an_unknown_selector_is_NULL(void)
+{
+    CHECK(_NSMethodDescriptionForSelector([NSObject class],
+              @selector(aSelectorNoOneImplements)) == NULL);
+}
+
+@protocol TestRuntimeProtocol
+- (void)aTestProtocolMethod;
+@end
+
+@interface TestRuntimeConformer : NSObject <TestRuntimeProtocol>
+@end
+
+@implementation TestRuntimeConformer
++ (void)initialize {}
+- (void)aTestProtocolMethod {}
+@end
+
+static void test_ClassConformsToProtocol(void)
+{
+    CHECK(_NSClassConformsToProtocol([TestRuntimeConformer class],
+                                     @protocol(TestRuntimeProtocol)));
+    CHECK(!_NSClassConformsToProtocol([NSObject class],
+                                      @protocol(TestRuntimeProtocol)));
+}
+
 int main(void)
 {
     test_NSStringFromClass_gives_the_class_name();
@@ -272,6 +332,11 @@ int main(void)
     test_NSLog_substitutes_an_object_with_percent_at();
     test_NSLog_passes_a_literal_percent_through();
     test_NSLog_of_nil_does_not_crash();
+    test_IMPForSelector_finds_an_implemented_method();
+    test_IMPForSelector_reports_forwarding_for_an_unknown_selector();
+    test_MethodDescriptionForSelector_gives_name_and_types();
+    test_MethodDescriptionForSelector_of_an_unknown_selector_is_NULL();
+    test_ClassConformsToProtocol();
 
     printf("%s: %d failure(s)\n", failures ? "FAILED" : "PASSED", failures);
     return failures != 0;

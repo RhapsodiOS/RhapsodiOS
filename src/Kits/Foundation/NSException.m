@@ -489,6 +489,11 @@ _NSMethodExceptionProem(id object, SEL aSelector)
     [super dealloc];
 }
 
+- (id)init
+{
+    return [self initWithName:nil reason:nil userInfo:nil];
+}
+
 - (NSString *)name      { return name; }
 - (NSString *)reason    { return reason; }
 - (NSDictionary *)userInfo { return userInfo; }
@@ -527,6 +532,29 @@ _NSMethodExceptionProem(id object, SEL aSelector)
 + (void)_enableLogging:(BOOL)flag
 {
     NSExceptionLogging = flag;
+}
+
+/*	The raising conveniences.  NSException.h declares them in an
+	NSExceptionRaisingConveniences category, but Gate 1's abi-check reads
+	the reference's __OBJC metadata, and this image carries them in the
+	main class's method list with no such category -- so they are
+	implemented here, inside the main @implementation.  Recorded in
+	divergences.md.  */
+
++ (void)raise:(NSString *)name format:(NSString *)format, ...
+{
+    va_list arguments;
+
+    va_start(arguments, format);
+    [self raise:name format:format arguments:arguments];
+    va_end(arguments);
+}
+
++ (void)raise:(NSString *)name format:(NSString *)format arguments:(va_list)argList
+{
+    _NSRaiseError([self exceptionWithName:name
+                                   reason:_NSExceptionReasonFromFormat(format, argList)
+                                 userInfo:nil]);
 }
 
 /*	NSCoding and NSCopying.  Written against the declared APIs; NOT
@@ -568,26 +596,6 @@ _NSMethodExceptionProem(id object, SEL aSelector)
 - (id)replacementObjectForPortCoder:(NSCoder *)aCoder
 {
     return self;
-}
-
-@end
-
-@implementation NSException (NSExceptionRaisingConveniences)
-
-+ (void)raise:(NSString *)name format:(NSString *)format, ...
-{
-    va_list arguments;
-
-    va_start(arguments, format);
-    [self raise:name format:format arguments:arguments];
-    va_end(arguments);
-}
-
-+ (void)raise:(NSString *)name format:(NSString *)format arguments:(va_list)argList
-{
-    _NSRaiseError([self exceptionWithName:name
-                                   reason:_NSExceptionReasonFromFormat(format, argList)
-                                 userInfo:nil]);
 }
 
 @end

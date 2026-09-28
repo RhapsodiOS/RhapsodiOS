@@ -114,22 +114,31 @@ def diff_abi(expected, actual):
     module = expected["module"]
 
     for label, key in (("class", "classes"), ("category", "categories")):
-        wanted = {item["name"]: item for item in expected[key]}
-        found = {item["name"]: item for item in actual[key]}
+        #  A category's __OBJC metadata identifies it by host class as well
+        #  as name -- two legal same-named categories on different classes
+        #  (the reference carries NSDetailedDescription on both Protocol and
+        #  NSObject) are distinct entries, so the key must be the pair.
+        if key == "categories":
+            wanted = {(item["name"], item["class"]): item for item in expected[key]}
+            found = {(item["name"], item["class"]): item for item in actual[key]}
+        else:
+            wanted = {item["name"]: item for item in expected[key]}
+            found = {item["name"]: item for item in actual[key]}
         for name in sorted(set(wanted) - set(found)):
-            findings.append(f"{module}: missing {label} {name}")
+            if isinstance(name, tuple):
+                findings.append(f"{module}: missing {label} {name[0]} on {name[1]}")
+            else:
+                findings.append(f"{module}: missing {label} {name}")
         for name in sorted(set(found) - set(wanted)):
-            findings.append(f"{module}: unexpected {label} {name}")
+            if isinstance(name, tuple):
+                findings.append(f"{module}: unexpected {label} {name[0]} on {name[1]}")
+            else:
+                findings.append(f"{module}: unexpected {label} {name}")
         for name in sorted(set(wanted) & set(found)):
             if key == "classes":
                 _diff_class(findings, wanted[name], found[name])
             else:
-                if wanted[name]["class"] != found[name]["class"]:
-                    findings.append(
-                        f"{module}: category {name} expected on "
-                        f"{wanted[name]['class']}, actual {found[name]['class']}"
-                    )
-                owner = f"{found[name]['class']}({name})"
+                owner = f"{found[name]['class']}({name[0]})"
                 _diff_methods(findings, owner, wanted[name]["instance_methods"],
                               found[name]["instance_methods"], "-")
                 _diff_methods(findings, owner, wanted[name]["class_methods"],

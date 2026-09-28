@@ -31,5 +31,26 @@
  ],
  "NSAutoreleasePool.m": [
   "_NSAutoreleaseObject", "_NSPushAutoreleasePool", "_NSPopAutoreleasePool"
+ ],
+ "NSObjCRuntime.m": [
+  "_NSStringFromSelector", "_NSSelectorFromString", "_NSClassFromString",
+  "_NSStringFromClass", "_NSGetSizeAndAlignment", "__NSGetSizeAndAlignment",
+  "_NSLog", "_NSLogv", "__NSBasicStdErrLog",
+  "__NSIMPForSelector", "__NSMethodDescriptionForSelector",
+  "__NSClassConformsToProtocol"
+ ],
+ "NSException.m": [
+  "__NSAddHandler2", "__NSRemoveHandler2", "__NSExceptionObjectFromHandler2",
+  "__NSExceptionObjectFromHandler", "__NSAddAltHandler2", "__NSRemoveAltHandler2",
+  "__NSClearExceptionStack", "__NSExceptionHandlerCount", "__NSRaiseError",
+  "__NSMethodExceptionProem",
+  "_NSGetUncaughtExceptionHandler", "_NSSetUncaughtExceptionHandler",
+  "_NSHangOnUncaughtException",
+  "_NSGenericException", "_NSRangeException", "_NSInvalidArgumentException",
+  "_NSInternalInconsistencyException", "_NSMallocException",
+  "_NSObjectInaccessibleException", "_NSObjectNotAvailableException",
+  "_NSDestinationInvalidException", "_NSPortTimeoutException",
+  "_NSInvalidSendPortException", "_NSInvalidReceivePortException",
+  "_NSPortSendException", "_NSPortReceiveException", "_NSOldStyleException"
  ]
 }

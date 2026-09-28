@@ -1,0 +1,167 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "currentHandler",
+     "types": "@8@8:12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "handleFailureInFunction:file:lineNumber:description:",
+     "types": "v24@8:12@16@20i24@28"
+    },
+    {
+     "selector": "handleFailureInMethod:object:file:lineNumber:description:",
+     "types": "v28@8:12:16@20@24i28@32"
+    }
+   ],
+   "instance_size": 8,
+   "ivars": [
+    {
+     "name": "_reserved",
+     "offset": 4,
+     "type": "^v"
+    }
+   ],
+   "name": "NSAssertionHandler",
+   "superclass": "NSObject"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "raise:format:arguments:",
+     "types": "v20@8:12@16@20^v24"
+    },
+    {
+     "selector": "raise:format:",
+     "types": "v16@8:12@16@20"
+    },
+    {
+     "selector": "exceptionWithName:reason:userInfo:",
+     "types": "@20@8:12@16@20@24"
+    },
+    {
+     "selector": "_enableLogging:",
+     "types": "v9@8:12c16"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "description",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "initWithCoder:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "replacementObjectForPortCoder:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "isEqual:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "initWithName:reason:userInfo:",
+     "types": "@20@8:12@16@20@24"
+    },
+    {
+     "selector": "init",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "raise",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "userInfo",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "reason",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "name",
+     "types": "@8@8:12"
+    }
+   ],
+   "instance_size": 20,
+   "ivars": [
+    {
+     "name": "name",
+     "offset": 4,
+     "type": "@\"NSString\""
+    },
+    {
+     "name": "reason",
+     "offset": 8,
+     "type": "@\"NSString\""
+    },
+    {
+     "name": "userInfo",
+     "offset": 12,
+     "type": "@\"NSDictionary\""
+    },
+    {
+     "name": "reserved",
+     "offset": 16,
+     "type": "^v"
+    }
+   ],
+   "name": "NSException",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [
+  "_NSDestinationInvalidException",
+  "_NSGenericException",
+  "_NSHangOnUncaughtException",
+  "_NSInternalInconsistencyException",
+  "_NSInvalidArgumentException",
+  "_NSInvalidReceivePortException",
+  "_NSInvalidSendPortException",
+  "_NSMallocException",
+  "_NSObjectInaccessibleException",
+  "_NSObjectNotAvailableException",
+  "_NSOldStyleException",
+  "_NSPortReceiveException",
+  "_NSPortSendException",
+  "_NSPortTimeoutException",
+  "_NSRangeException"
+ ],
+ "module": "NSException.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "_NSGetUncaughtExceptionHandler",
+  "_NSSetUncaughtExceptionHandler",
+  "__NSAddAltHandler2",
+  "__NSAddHandler2",
+  "__NSClearExceptionStack",
+  "__NSExceptionHandlerCount",
+  "__NSExceptionObjectFromHandler",
+  "__NSExceptionObjectFromHandler2",
+  "__NSMethodExceptionProem",
+  "__NSRaiseError",
+  "__NSRemoveAltHandler2",
+  "__NSRemoveHandler2"
+ ]
+}

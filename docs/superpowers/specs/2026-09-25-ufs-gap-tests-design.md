@@ -271,7 +271,9 @@ At the end, Pat decides whether to keep the 8 GB base image.
 Run on 2026-09-25 and 2026-09-27, from branch `ufs-gap-tests`. The kernel was an
 i386 build of `kernel-7` as it stands on master at `b7cb931e0`; this branch
 changes no kernel source. Every boot ran on a qcow2 overlay of the base image,
-and the evidence for each run is in `vm/work/ufs-gap/<run>/`.
+and the evidence for each run was copied, without the qcow2 overlays, to
+`D:/RhapsodiOS/vm/work/ufs-gap/<run>/` (gitignored there). The per-run overlays
+were not kept, since they only work with this worktree's base image.
 
 ### Verdicts
 
@@ -280,7 +282,7 @@ and the evidence for each run is in `vm/work/ufs-gap/<run>/`.
 | Gate | The base image is clean | **Pass**, on the second attempt. The first failed `fsck -n` Phase 5 because of a `ufs_alloc` bug, below. |
 | E1 | Clean control | **Pass.** No `ffs: ` lines; network prompt at 39 s; Setup Assistant. |
 | E2 | Flag-only dirty root | **Pass.** `fsck -p` checked root and found nothing. Exactly one `ffs: / was unclean when mounted; mounting read-write anyway`. Same end screen as E1, with no extra keystrokes. |
-| E3 ×3 | Real power-off | **Pass** for all three. `fsck -p` preened genuine damage unattended and reloaded root, so no `ffs: ` line appeared, and the boot reached the Setup Assistant. The follow-up `fsck -p` then `fsck -n` was clean. But the three runs were not independent; see below. |
+| E3 ×3 | Real power-off | **Pass** for all three, though the plan wanted `before-quit.png` to show the copy still running, and in all three runs it had finished. `fsck -p` preened genuine damage unattended and reloaded root, so no `ffs: ` line appeared, and the boot reached the Setup Assistant. The follow-up `fsck -p` repaired the same damage, and the `fsck -n` after it was clean. But the three runs were not independent; see below. |
 | R1 | Superblock read fails in `ffs_reload` | **Pass.** |
 | R2 | Cylinder-summary read fails | **Pass.** |
 | R3 | Step 6 inode-block read fails | **Pass**, once retargeted; see below. |
@@ -318,10 +320,11 @@ The errno is **45**, not the EIO (5) blkdebug injects. The IDE driver reports it
   - Fixed on this branch: one helper now drives allocation, freeing and layout.
   - A directory can no longer grow past its direct blocks, because that path still assumed the old rule.
   - With the fix, the rebuilt base frees exactly the old kernel's 1,440 fragments. Its gate `fsck -n` is clean.
+  - Images written by the old `ufs_alloc` may hold a file past 12 blocks with a short last block; do not edit them with the new code, since its free path would release all 8 fragments of that block, which may since belong to another file - rebuild such images from golden.
 - **QEMU's `-snapshot` covers every drive.** `Guest`'s global `-snapshot` also wrapped the injected test disk, so the host's arm and disarm writes landed in QEMU's temporary overlay, and blkdebug never fired. The test disk now carries `snapshot=off`. A paused-QEMU test proves the injection fires on the exact command line a run uses.
 - **The stock DR2 IDE driver retries a failed read three times** before the kernel sees the error.
   - Each attempt takes about 90–100 s and prints `hc0: ATA command c4 failed. Retrying...` then `hc0: Resetting drives...`. The error reached `ffs_reload` 315 s after arming.
-  - The plan disarmed after 10 s, so the retry succeeded and nothing was tested. The runner now waits for the reload's outcome, for up to 10 minutes.
+  - The plan's 10 s window ended long before the first retry, and a 66 s window let the retry succeed. The runner now waits for the reload's outcome, for up to 10 minutes.
 - **The lookup of `/mnt` re-reads the root inode's block before the mount code runs.**
   - R3's first target was that block. The lookup hit the error first, and `mount -uw` failed with "Operation not supported" without calling `ffs_reload`, so no `ffs: ` line appeared.
   - R3 now holds a file open (`exec 3< /mnt/f69`), so its vnode is active, and it aims at that file's inode block, which only Step 6 reads.
@@ -330,6 +333,7 @@ The errno is **45**, not the EIO (5) blkdebug injects. The IDE driver reports it
 - **The three E3 crashes reached the same state.**
   - The copy of `/usr/lib` finished before every kill. A single-user system also runs no `update` daemon, so nothing was flushed in between.
   - All three `fsck -p` passes repaired the same 13 `INCORRECT BLOCK COUNT` inodes, plus `FREE BLK COUNT(S) WRONG`, `BLK(S) MISSING IN BIT MAPS` and `SUMMARY INFORMATION BAD`.
+  - Every repair read `INCORRECT BLOCK COUNT ... SHOULD BE 104` - 12 direct blocks plus the indirect block - so those 13 copied files lost their data past 96 KiB, because the indirect block's pointers were never written. This is ordinary FFS behaviour after a crash, not a kernel bug.
   - The spread of 15, 30 and 60 s did not vary the crash point as the design intended. Varying it needs `update` started first and a larger tree copied, so that kills land mid-copy.
 - **The kernel apk's member name varies.** This build had `./private/tftpboot/mach_kernel`, with a leading `./`.
 
@@ -337,4 +341,4 @@ The errno is **45**, not the EIO (5) blkdebug injects. The IDE driver reports it
 
 - Changes 5, 6 and 7 remain argued, as the UFS spec explains.
 - An E3 variant whose kills land mid-copy and at different syncer phases.
-- The 42 `test_ufs_alloc.py` tests that clone `golden.img` with `cp -c` (APFS clonefile) cannot run on this Windows host.
+- 41 `test_ufs_alloc.py` tests are golden-gated: 38 clone `golden.img` with `cp -c` (APFS clonefile), and 3 read it directly. None can run on this Windows host.

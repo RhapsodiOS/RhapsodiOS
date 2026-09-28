@@ -10,8 +10,8 @@ only:
     /private/etc/rc.cdrom        rc.cdrom.hidden, made live; rc and rc.boot
                                  run it when /System/Installation is there
     .../System.config/Instance0.table
-                                 CDIS's template for hd1, the disk the
-                                 media is in the QEMU harness
+                                 CDIS's i386 template for hd1, the disk
+                                 the media is in the QEMU harness
     /System/Installation/Packages/*.apk  every apk the root was made from
     /System/Installation/esp.img.gz      the ESP the installer writes
 
@@ -29,7 +29,10 @@ from instmedia import rootfs
 INSTALLATION = "/System/Installation"
 CDIS = INSTALLATION + "/CDIS"
 TEMPLATES = CDIS + "/templates"
-SYSTEM_TABLE = "/private/Drivers/i386/System.config/Instance0.table"
+# The media are i386; CDIS carries an Instance0 template per architecture.
+ARCH = "i386"
+INSTANCE0_TEMPLATE = "Instance0-%s.table" % ARCH
+SYSTEM_TABLE = "/private/Drivers/%s/System.config/Instance0.table" % ARCH
 FSTAB = "/private/etc/fstab"
 HOSTCONFIG = "/private/etc/hostconfig"
 MASTER_PASSWD = "/private/etc/master.passwd"
@@ -90,14 +93,15 @@ def compose(apks, esp, preinstalled=False, password_hash=None):
             raise ComposeError("a pre-installed image needs a password hash")
         put_file(FSTAB, render(template("fstab"), INSTALLED_DISK))
         put_file(SYSTEM_TABLE,
-                 render(template("Instance0.table"), INSTALLED_DISK))
+                 render(template(INSTANCE0_TEMPLATE), INSTALLED_DISK))
         put_file(HOSTCONFIG, template("hostconfig"))
         put_file(MASTER_PASSWD,
                  set_root_password(tree.data(MASTER_PASSWD), password_hash),
                  0o600)
     else:
         put_file(RC_CDROM, tree.data(RC_CDROM_INERT), 0o755)
-        put_file(SYSTEM_TABLE, render(template("Instance0.table"), MEDIA_DISK))
+        put_file(SYSTEM_TABLE,
+                 render(template(INSTANCE0_TEMPLATE), MEDIA_DISK))
         tree.put(Node(INSTALLATION + "/Packages", "dir", 0o755, 0, 0, now,
                       None))
         for apk in order:

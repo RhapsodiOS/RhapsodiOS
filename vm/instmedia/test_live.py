@@ -11,6 +11,8 @@ TABLE = (b'"Boot Drivers" = "EISABus PCIBus PS2Keyboard EIDE AHCI NE2K";\n'
          b'"Active Drivers" = "VGA";\n'
          b'"Kernel Flags" = "rootdev=@DISK@a";\n')
 FSTAB = b"/dev/@DISK@a\t/\tufs\trw\t1 1\n"
+# The ppc table must never reach an i386 root.
+PPC_TABLE = b'"Boot Drivers" = "";\n"Kernel Flags" = "";\n'
 HOSTCONFIG = b"APPLETALK=-NO-\nSSHSERVER=-YES-\n"
 RC_CDROM = b"#!/usr/bin/perl -w\nprint 'installer';\n"
 
@@ -31,7 +33,8 @@ def make_repo(directory):
         ta.f(cdis + "pickdisk", b"pickdisk", 0o555),
         ta.d(cdis + "templates"),
         ta.f(cdis + "templates/fstab", FSTAB, 0o444),
-        ta.f(cdis + "templates/Instance0.table", TABLE, 0o444),
+        ta.f(cdis + "templates/Instance0-i386.table", TABLE, 0o444),
+        ta.f(cdis + "templates/Instance0-ppc.table", PPC_TABLE, 0o444),
         ta.f(cdis + "templates/hostconfig", HOSTCONFIG, 0o444),
         ta.f("private/etc/rc.cdrom.hidden", RC_CDROM, 0o555),
         ta.f("private/etc/rc.cdrom.x86", b"1;\n", 0o444),

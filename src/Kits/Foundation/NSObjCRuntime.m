@@ -95,9 +95,150 @@ NSStringFromClass(Class aClass)
     return _NSObjCRuntimeStringWithCString(aClass->name);
 }
 
-const char *NSGetSizeAndAlignment(const char *typePtr, unsigned int *sizep, unsigned int *alignp) {
-    // TODO: Implement this function
-    return NULL;
+/*	Walks one type encoding and reports its size and alignment, returning
+	a pointer just past the encoding it consumed -- so a caller can step
+	through a whole method signature by feeding the return value back in.
+	Sizes are this architecture's, taken from the compiler rather than
+	assumed: gcc 2.7.2.1 on i386 gives int/long/pointer 4, short 2,
+	char 1, float 4, double 8, long long 8.
+
+	A struct's size is its members laid out in order, each padded up to
+	its own alignment, with the whole padded up to the widest member's
+	alignment; a union's is its widest member.  Qualifier prefixes
+	(const, in, out, inout, bycopy, byref, oneway) carry no size and are
+	skipped.  */
+static const char *
+NSSizeAndAlignmentOfType(const char *typePtr, unsigned *sizep, unsigned *alignp)
+{
+    unsigned size;
+    unsigned align;
+
+    while (*typePtr == 'r' || *typePtr == 'n' || *typePtr == 'N' ||
+           *typePtr == 'o' || *typePtr == 'O' || *typePtr == 'R' ||
+           *typePtr == 'V')
+        typePtr++;
+
+    size = 0;
+    align = 1;
+
+    switch (*typePtr) {
+    case 'c': case 'C':
+        size = sizeof(char); align = size; typePtr++; break;
+    case 's': case 'S':
+        size = sizeof(short); align = size; typePtr++; break;
+    case 'i': case 'I': case 'l': case 'L':
+        size = sizeof(int); align = size; typePtr++; break;
+    case 'q': case 'Q':
+        size = 8; align = sizeof(int); typePtr++; break;
+    case 'f':
+        size = sizeof(float); align = size; typePtr++; break;
+    case 'd':
+        size = sizeof(double); align = sizeof(int); typePtr++; break;
+    case 'B':
+        size = sizeof(char); align = size; typePtr++; break;
+    case 'v':
+        size = 0; align = 1; typePtr++; break;
+    case '*': case '@': case '#': case ':':
+        size = sizeof(void *); align = size; typePtr++; break;
+    case '?':
+        size = sizeof(void *); align = size; typePtr++; break;
+    case '^':
+        /*  A pointer is pointer-sized whatever it points at, but the
+            pointee's encoding still has to be stepped over.  */
+        typePtr = NSSizeAndAlignmentOfType(typePtr + 1, 0, 0);
+        size = sizeof(void *); align = size;
+        break;
+    case '[': {
+        unsigned count;
+        unsigned elementSize;
+        unsigned elementAlign;
+
+        typePtr++;
+        count = 0;
+        while (*typePtr >= '0' && *typePtr <= '9')
+            count = (count * 10) + (unsigned)(*typePtr++ - '0');
+        typePtr = NSSizeAndAlignmentOfType(typePtr, &elementSize, &elementAlign);
+        if (*typePtr == ']')
+            typePtr++;
+        size = count * elementSize;
+        align = elementAlign;
+        break;
+    }
+    case '{': case '(': {
+        char closing = (*typePtr == '{') ? '}' : ')';
+        BOOL isUnion = (closing == ')');
+        unsigned memberSize;
+        unsigned memberAlign;
+
+        typePtr++;
+        while (*typePtr != '\0' && *typePtr != '=' && *typePtr != closing)
+            typePtr++;
+        if (*typePtr == '=')
+            typePtr++;
+
+        while (*typePtr != '\0' && *typePtr != closing) {
+            typePtr = NSSizeAndAlignmentOfType(typePtr, &memberSize, &memberAlign);
+            if (memberAlign > align)
+                align = memberAlign;
+            if (isUnion) {
+                if (memberSize > size)
+                    size = memberSize;
+            } else {
+                if (memberAlign != 0 && (size % memberAlign) != 0)
+                    size += memberAlign - (size % memberAlign);
+                size += memberSize;
+            }
+        }
+        if (*typePtr == closing)
+            typePtr++;
+        if (align != 0 && (size % align) != 0)
+            size += align - (size % align);
+        break;
+    }
+    case 'b': {
+        /*  A bitfield: bN, N bits.  Reported as the bits it occupies,
+            which is what the runtime's own walkers do with it.  */
+        unsigned bits = 0;
+
+        typePtr++;
+        while (*typePtr >= '0' && *typePtr <= '9')
+            bits = (bits * 10) + (unsigned)(*typePtr++ - '0');
+        size = (bits + 7) / 8;
+        align = 1;
+        break;
+    }
+    default:
+        if (*typePtr != '\0')
+            typePtr++;
+        break;
+    }
+
+    if (sizep != 0)
+        *sizep = size;
+    if (alignp != 0)
+        *alignp = align;
+
+    return typePtr;
+}
+
+const char *
+NSGetSizeAndAlignment(const char *typePtr, unsigned int *sizep, unsigned int *alignp)
+{
+    if (typePtr == NULL)
+        return NULL;
+    return NSSizeAndAlignmentOfType(typePtr, sizep, alignp);
+}
+
+/*	The reference exports a second, private entry point alongside the
+	public one (__NSGetSizeAndAlignment beside _NSGetSizeAndAlignment).
+	No header declares it and no caller in this stage's modules reaches
+	it; both walk the same encodings, so this shares the implementation
+	rather than guessing at a difference the disassembly does not show.
+	Recorded in divergences.md.  */
+const char *
+_NSGetSizeAndAlignment(const char *typePtr, unsigned int *sizep, unsigned int *alignp)
+{
+    return NSGetSizeAndAlignment(typePtr, sizep, alignp);
 }
 
 void NSLog(NSString *format, ...) {

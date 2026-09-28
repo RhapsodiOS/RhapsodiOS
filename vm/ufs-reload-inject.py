@@ -172,56 +172,40 @@ def run(name, base, port):
         notes.append(what)
         time.sleep(1)
 
+    def arm_wait_disarm():
+        hmp(pad_start, "armed before the first mount -uw")
+        g.line("mount -uw /mnt")
+        start = time.time()
+        ticks = 0
+
+        def on_tick():
+            nonlocal ticks
+            ticks += 30
+            g.shot("2-armed-%03d" % ticks)
+
+        found = lib.wait_for(g.serial, "ffs: /mnt", INJECT_WAIT, tick=30,
+                             on_tick=on_tick)
+        if found:
+            notes.append("%s (%ds after arming)"
+                         % (lib.ffs_lines(g.serial)[0],
+                            int(time.time() - start)))
+        else:
+            notes.append("no ffs: /mnt line within %ds" % INJECT_WAIT)
+        g.shot("2-upgrade-refused")
+        hmp(pad_start + 512, "disarmed after it")
+
     try:
         lib.single_user(g)
         step("mount -r /dev/hd1a /mnt", 5, "1-ro")
         if name in SITES:
-            hmp(pad_start, "armed before the first mount -uw")
-            g.line("mount -uw /mnt")
-            start = time.time()
-            ticks = 0
-
-            def on_tick():
-                nonlocal ticks
-                ticks += 30
-                g.shot("2-armed-%03d" % ticks)
-
-            found = lib.wait_for(g.serial, "ffs: /mnt", INJECT_WAIT, tick=30,
-                                 on_tick=on_tick)
-            if found:
-                notes.append("%s (%ds after arming)"
-                             % (lib.ffs_lines(g.serial)[0],
-                                int(time.time() - start)))
-            else:
-                notes.append("no ffs: /mnt line within %ds" % INJECT_WAIT)
-            g.shot("2-upgrade-refused")
-            hmp(pad_start + 512, "disarmed after it")
+            arm_wait_disarm()
             step("ls /mnt; mount", 5, "3-still-ro")
             step("mount -uw /mnt", 10, "4-second-upgrade")
             step("umount /mnt", 8, "5-umount")
             step("mount", 5, "6-mount")
         elif name == "r3":
             step("exec 3< /mnt/f69", 3, "1b-open")
-            hmp(pad_start, "armed before the first mount -uw")
-            g.line("mount -uw /mnt")
-            start = time.time()
-            ticks = 0
-
-            def on_tick():
-                nonlocal ticks
-                ticks += 30
-                g.shot("2-armed-%03d" % ticks)
-
-            found = lib.wait_for(g.serial, "ffs: /mnt", INJECT_WAIT, tick=30,
-                                 on_tick=on_tick)
-            if found:
-                notes.append("%s (%ds after arming)"
-                             % (lib.ffs_lines(g.serial)[0],
-                                int(time.time() - start)))
-            else:
-                notes.append("no ffs: /mnt line within %ds" % INJECT_WAIT)
-            g.shot("2-upgrade-refused")
-            hmp(pad_start + 512, "disarmed after it")
+            arm_wait_disarm()
             step("mount", 5, "3-still-ro")
             step("mount -uw /mnt", 10, "4-second-upgrade")
             step("exec 3</dev/null", 3, "4b-close")

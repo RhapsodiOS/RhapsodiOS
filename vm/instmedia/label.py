@@ -63,16 +63,18 @@ def label(secsize, ntracks, nsectors, ncylinders, rpm, front, p_base, p_size,
     return bytes(buf)
 
 
-def for_filesystem(g, front, p_base, ncylinders, name, d_type):
+def for_filesystem(g, front, p_base, ncylinders, name, d_type,
+                   boot0=(-1, -1)):
     """The label for a filesystem of ufs_geometry g, as disk -i would write
     it after newfs: partition a covers g.fssize sectors from p_base, and
     carries g's block, fragment and cylinder-group sizes, newfs's default
-    density and g's minfree.  No boot blocks."""
+    density and g's minfree.  boot0 is d_boot0_blkno, as for label()."""
     return label(secsize=g.secsize, ntracks=g.ntrak, nsectors=g.nsect,
                  ncylinders=ncylinders, rpm=g.rpm, front=front,
                  p_base=p_base, p_size=g.fssize, bsize=g.bsize,
                  fsize=g.fsize, cpg=g.cpg, density=4 * g.fsize,
-                 minfree=g.minfree, name=name, d_name=name, d_type=d_type)
+                 minfree=g.minfree, name=name, d_name=name, d_type=d_type,
+                 boot0=boot0)
 
 
 def place(f, lbl, copies, relsect=0):

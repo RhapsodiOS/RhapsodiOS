@@ -42,17 +42,13 @@ missing_strings (57):
 - `IOBlockMajor`
 - `IOCharacterMajor`
 - `IOClassName`
-- `IOConfigTable: _IOGetDriverConfig: %s
-`
-- `IOConfigTable: _IOGetSystemConfig: %s
-`
-- `IOConfigTable: readFromStream returned nil
-`
+- `IOConfigTable: _IOGetDriverConfig: %s\n`
+- `IOConfigTable: _IOGetSystemConfig: %s\n`
+- `IOConfigTable: readFromStream returned nil\n`
 - `IODevice`
 - `IODeviceKind`
 - `IODeviceName`
-- `IOInitGeneralFunc: port_allocate error
-`
+- `IOInitGeneralFunc: port_allocate error\n`
 - `IOUnit`
 - `Internal Driver error`
 - `Invalid Argument`
@@ -66,23 +62,18 @@ missing_strings (57):
 - `No Such Device`
 - `Not Ready`
 - `Privilege Violation`
-- `Registering: %s
-`
-- `Registering: %s at %s
-`
+- `Registering: %s\n`
+- `Registering: %s at %s\n`
 - `Resource Shortage`
 - `Success`
-- `Unregistering Device: %s
-`
+- `Unregistering Device: %s\n`
 - `Unsupported Function`
 - `Version`
 - `Virtual Memory error`
 - `driverKitVersionFor`
-- `installedDrivers: no drivers found
-`
+- `installedDrivers: no drivers found\n`
 - `rld failure`
-- `tablesForInstalledDrivers: no system config file found
-`
+- `tablesForInstalledDrivers: no system config file found\n`
 - `waiting for debugger connection...`
 
 missing_symbols (126):
@@ -689,6 +680,170 @@ toolchain. The universal kernload apk in the bootstrapped image's
 `/build/repo` was built by an older compiler (ppc PIC base in `r30` via
 `bl`, where Apple and this toolchain use `r31` via `bcl 20,31`); rebuilding
 kernload-1 from unchanged source fixes it, so nothing in kernload-1 changes.
+
+### Runtime glue (not driverLoader source)
+
+#### i386 import stubs only DR2's libDriver needed
+
+DR2's i386 binary has `__picsymbol_stub` entries for functions only its
+static libDriver called (`_NXOpenMemory`, `_NXSeek`, `_bcopy`, `_malloc`,
+`_strcmp`, `_strcpy`, `_strcat`, `_strncmp`, `_syslog`, `_vsprintf`,
+`_sel_getUid`, `_objc_getClass`, `_objc_msgSendSuper`, `_cond_broadcast`,
+`_cond_signal`, `_condition_wait`, `_mutex_try_lock`, `_mutex_wait_lock`,
+`_spin_lock`, `_cthread_exit`, `_thread_resume`, `_thread_suspend`,
+`_kern_timestamp`). Linking libDriver.A.dylib drops them. Every other stub
+is `pic_equal` on both slices.
+
+#### i386 `__dyld_init_check`
+
+crt glue; differs only by the absolute address of its error string.
+
+```text
+__dyld_init_check
+  status=different raw_equal=False masked_equal=False
+  reason: function range bytes differ
+  reason: instruction semantics differ
+
+  reference                               rebuilt                               
+  cmp ds:dyld_lazy_symbol_binding_entry_point, 0  cmp ds:dyld_lazy_symbol_binding_entry_point, 0
+* jz loc_3962                             jz loc_45B6
+  retn                                    retn
+  push 4Eh                                push 4Eh
+* push 0A97Ah                             push 7142h
+  push 2                                  push 2
+  push 0                                  push 0
+  mov eax, 4                              mov eax, 4
+  call far ptr 2Bh:0                      call far ptr 2Bh:0
+  add esp, 10h                            add esp, 10h
+  push 3Bh                                push 3Bh
+  push 0                                  push 0
+  mov eax, 1                              mov eax, 1
+  call far ptr 2Bh:0                      call far ptr 2Bh:0
+```
+
+#### ppc `__start` and `__call_mod_init_funcs`
+
+`crt1.o` comes from the csu apk in the bootstrapped image's `/build/repo`,
+built by the older bootstrap compiler (PIC base in `r30` via `bl`), the
+same stale-toolchain signature the old kernload apk had. Not driverLoader
+source; a world-built csu is expected to close it.
+
+```text
+__start
+  status=different raw_equal=False masked_equal=False
+  reason: function range bytes differ
+  reason: instruction semantics differ
+
+  reference                               rebuilt                               
+  mflr r0, lr                             mflr r0, lr
+  stmw r28, var_10(r1)                    stmw r28, var_10(r1)
+  stw r0, sender_lr(r1)                   stw r0, sender_lr(r1)
+  stwu r1, sender_sp(r1)                  stwu r1, sender_sp(r1)
+* bcl 20, 4*cr7+so, loc_2B14              bl loc_2B10
+* mflr r31, lr                            mflr r30, lr
+  mr r29, r3                              mr r29, r3
+* mr r30, r4                              mr r31, r4
+  mr r28, r5                              mr r28, r5
+  bl __dyld_init_check                    bl __dyld_init_check
+* addis r9, r31, (_NXArgc - loc_2B14)@ha  addis r9, r30, (_NXArgc - loc_2B10)@ha
+* addi r9, r9, (_NXArgc - loc_2B14)@l     addi r9, r9, (_NXArgc - loc_2B10)@l
+  stw r29, (_NXArgc - 0x7000)(r9)         stw r29, (_NXArgc - 0x7000)(r9)
+* addis r9, r31, (_NXArgv - loc_2B14)@ha  addis r9, r30, (_NXArgv - loc_2B10)@ha
+* addi r9, r9, (_NXArgv - loc_2B14)@l     addi r9, r9, (_NXArgv - loc_2B10)@l
+* stw r30, (_NXArgv - 0x7004)(r9)         stw r31, (_NXArgv - 0x7004)(r9)
+* addis r9, r31, (_environ - loc_2B14)@ha  addis r9, r30, (_environ - loc_2B10)@ha
+* addi r9, r9, (_environ - loc_2B14)@l    addi r9, r9, (_environ - loc_2B10)@l
+  stw r28, (_environ - 0x7008)(r9)        stw r28, (_environ - 0x7008)(r9)
+* addis r9, r31, (off_7014 - loc_2B14)@ha  addis r9, r30, (off_7014 - loc_2B10)@ha
+* lwz r9, (off_7014 - loc_2B14)@l(r9)     lwz r9, (off_7014 - loc_2B10)@l(r9)
+* lwz r9, (_mach_init_routine - 0x8288)(r9)  lwz r9, (_mach_init_routine - 0x8228)(r9)
+  cmpwi cr1, r9, 0                        cmpwi cr1, r9, 0
+* beq cr1, loc_2B6C                       beq cr1, loc_2B68
+  mtlr lr, r9                             mtlr lr, r9
+  mflr r12, lr                            mflr r12, lr
+  blrl lr                                 blrl lr
+* addis r9, r31, (off_7010 - loc_2B14)@ha  addis r9, r30, (off_7010 - loc_2B10)@ha
+* lwz r9, (off_7010 - loc_2B14)@l(r9)     lwz r9, (off_7010 - loc_2B10)@l(r9)
+* lwz r9, (__cthread_init_routine - 0x8240)(r9)  lwz r9, (__cthread_init_routine - 0x81E0)(r9)
+  cmpwi cr1, r9, 0                        cmpwi cr1, r9, 0
+* beq cr1, loc_2B8C                       beq cr1, loc_2B88
+  mtlr lr, r9                             mtlr lr, r9
+  mflr r12, lr                            mflr r12, lr
+  blrl lr                                 blrl lr
+* addis r9, r31, (__objcInit_ptr_0 - loc_2B14)@ha  addis r9, r30, (__objcInit_ptr_0 - loc_2B10)@ha
+* lwz r9, (__objcInit_ptr_0 - loc_2B14)@l(r9)  lwz r9, (__objcInit_ptr_0 - loc_2B10)@l(r9)
+* lwz r0, (__imp___objcInit - 0x8244)(r9)  lwz r0, (__imp___objcInit - 0x81E4)(r9)
+  cmpwi cr1, r0, 0                        cmpwi cr1, r0, 0
+* beq cr1, loc_2BA4                       beq cr1, loc_2BA0
+  bl __objcInit                           bl __objcInit
+  bl __call_mod_init_funcs                bl __call_mod_init_funcs
+* addis r9, r31, (_errno_ptr - loc_2B14)@ha  addis r9, r30, (_errno_ptr - loc_2B10)@ha
+* lwz r9, (_errno_ptr - loc_2B14)@l(r9)   lwz r9, (_errno_ptr - loc_2B10)@l(r9)
+  li r0, 0                                li r0, 0
+* stw r0, (_errno - 0x8270)(r9)           stw r0, (_errno - 0x8210)(r9)
+* lwz r9, 0(r30)                          lwz r9, 0(r31)
+  mr r10, r9                              mr r10, r9
+  cmpwi cr1, r9, 0                        cmpwi cr1, r9, 0
+* beq cr1, loc_2C2C                       beq cr1, loc_2C28
+  li r8, 0                                li r8, 0
+  li r11, 0                               li r11, 0
+  lbz r0, 0(r9)                           lbz r0, 0(r9)
+  cmpwi cr1, r0, 0                        cmpwi cr1, r0, 0
+* beq cr1, loc_2C04                       beq cr1, loc_2C00
+  mr r9, r10                              mr r9, r10
+  lbzx r0, r9, r11                        lbzx r0, r9, r11
+  cmpwi cr1, r0, 0x2F                     cmpwi cr1, r0, 0x2F
+* bne cr1, loc_2BF0                       bne cr1, loc_2BEC
+  add r8, r9, r11                         add r8, r9, r11
+  addi r11, r11, 1                        addi r11, r11, 1
+* lwz r10, 0(r30)                         lwz r10, 0(r31)
+  lbzx r0, r10, r11                       lbzx r0, r10, r11
+  cmpwi cr1, r0, 0                        cmpwi cr1, r0, 0
+* bne- cr1, loc_2BDC                      bne- cr1, loc_2BD8
+  cmpwi cr1, r8, 0                        cmpwi cr1, r8, 0
+* beq cr1, loc_2C1C                       beq cr1, loc_2C18
+  addi r0, r8, 1                          addi r0, r8, 1
+* addis r9, r31, (___progname - loc_2B14)@ha  addis r9, r30, (___progname - loc_2B10)@ha
+* addi r9, r9, (___progname - loc_2B14)@l  addi r9, r9, (___progname - loc_2B10)@l
+* b loc_2C28                              b loc_2C24
+* addis r9, r31, (___progname - loc_2B14)@ha  addis r9, r30, (___progname - loc_2B10)@ha
+* addi r9, r9, (___progname - loc_2B14)@l  addi r9, r9, (___progname - loc_2B10)@l
+* lwz r0, 0(r30)                          lwz r0, 0(r31)
+  stw r0, (___progname - 0x700C)(r9)      stw r0, (___progname - 0x700C)(r9)
+  mr r3, r29                              mr r3, r29
+* mr r4, r30                              mr r4, r31
+  mr r5, r28                              mr r5, r28
+  bl _main                                bl _main
+  bl _exit                                bl _exit
+```
+
+```text
+__call_mod_init_funcs
+  status=different raw_equal=False masked_equal=False
+  reason: function range bytes differ
+  reason: instruction semantics differ
+
+  reference                               rebuilt                               
+  mflr r0, lr                             mflr r0, lr
+* stw r31, var_4(r1)                      stmw r30, var_8(r1)
+  stw r0, sender_lr(r1)                   stw r0, sender_lr(r1)
+  stwu r1, sender_sp(r1)                  stwu r1, sender_sp(r1)
+* bcl 20, 4*cr7+so, loc_2C54              bl loc_2C50
+* mflr r31, lr                            mflr r30, lr
+* addis r3, r31, (aDyldMakeDelaye - loc_2C54)@ha  addis r3, r30, (aDyldMakeDelaye - loc_2C50)@ha
+* addi r3, r3, (aDyldMakeDelaye - loc_2C54)@l  addi r3, r3, (aDyldMakeDelaye - loc_2C50)@l
+  addi r4, r1, 0x50+var_18                addi r4, r1, 0x50+var_18
+  bl __dyld_func_lookup                   bl __dyld_func_lookup
+  lwz r0, 0x50+var_18(r1)                 lwz r0, 0x50+var_18(r1)
+  mtlr lr, r0                             mtlr lr, r0
+  mflr r12, lr                            mflr r12, lr
+  blrl lr                                 blrl lr
+  addi r1, r1, 0x50                       addi r1, r1, 0x50
+  lwz r0, sender_lr(r1)                   lwz r0, sender_lr(r1)
+  mtlr lr, r0                             mtlr lr, r0
+* lwz r31, var_4(r1)                      lmw r30, var_8(r1)
+  blr lr                                  blr lr
+```
 
 ## Fixed Apple bugs
 

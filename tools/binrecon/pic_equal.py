@@ -34,7 +34,8 @@ _SIZE = re.compile(r"\b(?:byte|word|dword|qword) ptr ")
 # and `off_XXXX` on the other), and raw PIC displacements (at least three
 # hex digits inside brackets).
 _ADDRESS = re.compile(r"\b(?:off|dword|word|byte|unk|stru|qword|asc|jpt)_[0-9A-F]+\b"
-                      r"|\bpa[A-Z]\w*|[+-][0-9A-F]{3,}h(?=\])|- 0x[0-9A-F]{3,}(?=\))")
+                      r"|\bpa[A-Z]\w*|[+-][0-9A-F]{3,}h(?=\])|- 0x[0-9A-F]{3,}(?=\))"
+                      r"|(?<=^add e[a-d]x, )[0-9A-F]{4,}h$")
 
 
 def _normalize(text, start):

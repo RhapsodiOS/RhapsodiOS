@@ -455,10 +455,10 @@ securityCheck(const char *driverName)
 static BOOL
 securityCheckDir(char *dir)
 {
-	char cwd[MAXPATHLEN];
-	struct direct **names = NULL;
-	struct stat statBuf;
 	char subdir[1024];
+	char cwd[MAXPATHLEN];
+	struct stat statBuf;
+	struct direct **names = NULL;
 	char *name;
 	int count, i;
 	BOOL rtn;

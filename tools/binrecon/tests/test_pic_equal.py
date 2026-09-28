@@ -67,3 +67,11 @@ def test_ppc_symbol_minus_absolute_address_pairs_consistently():
     assert pic_equal.compare(ref, new) is None
     other = _fn(0x200, [("02", "lwz", "r3, (_reply_port - 0x71C0)(r9)")])
     assert pic_equal.compare(ref, other) is not None
+
+
+def test_i386_pic_add_immediate_pairs_consistently():
+    ref = _fn(0x100, [("01", "add", "eax, 6843h")])
+    new = _fn(0x200, [("02", "add", "eax, 239Fh")])
+    assert pic_equal.compare(ref, new) is None
+    small = _fn(0x200, [("02", "add", "eax, 10h")])
+    assert pic_equal.compare(_fn(0x100, [("01", "add", "eax, 14h")]), small) is not None

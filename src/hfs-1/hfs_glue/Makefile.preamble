@@ -126,3 +126,6 @@ OTHER_PRIVATE_HEADERS = vol.h
 
 # This definition will suppress stripping of debug symbols when an executable
 # is installed.  By default it is YES.
+
+# Built for ppc only; hfs_mount alone also builds for i386.
+INCLUDED_ARCHS = ppc

@@ -123,3 +123,6 @@ OTHER_LIBS += -lkernload
 # This definition will suppress stripping of debug symbols when an executable
 # is installed.  By default it is YES.
 # STRIP_ON_INSTALL = NO
+
+# Built for ppc only; hfs_mount alone also builds for i386.
+INCLUDED_ARCHS = ppc

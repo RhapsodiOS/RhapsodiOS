@@ -2,7 +2,8 @@
 """Boot a disk image under QEMU and capture its consoles and screen.
 
     python vm/qemu_boot.py {bios,uefi} IMAGE OUTDIR [--esp ESP_IMAGE]
-                           [--hd1 IMAGE] [--type SECONDS:TEXT ...]
+                           [--hd1 IMAGE [--boot-hd1]] [--nic MODEL]
+                           [--ssh-port PORT] [--type SECONDS:TEXT ...]
                            [--at SECONDS[,SECONDS...]] [--firmware-dir DIR]
 
 bios boots QEMU's own SeaBIOS.  uefi boots the IA32 edk2 firmware QEMU ships
@@ -10,8 +11,12 @@ as share/edk2-i386-code.fd, so no OVMF build is needed.  IMAGE is the first
 IDE disk (i440FX/PIIX3, the controller the EIDE boot driver probes); --esp
 adds a virtio disk for the two-disk layout, whose loader sits on an
 ESP-only disk.  --hd1 adds a second IDE disk, the primary slave, which the
-guest sees as hd1.  Each --type types TEXT and presses Enter at SECONDS,
-for a boot prompt or a single-user shell.
+guest sees as hd1; --boot-hd1 makes it the boot disk, as the install
+media is in the design's harness, with IMAGE, the blank target, still hd0.
+--nic adds a network card of that QEMU model on QEMU's user network, and
+--ssh-port forwards that 127.0.0.1 port to the guest's ssh.  Each --type
+types TEXT and presses Enter at SECONDS, for a boot prompt or a single-user
+shell.
 
 OUTDIR gets console.log (COM1: firmware and loader), kernel.log (COM2: the
 kernel's serial console) and shot-<N>s.png screenshots.  QEMU quits after
@@ -85,10 +90,24 @@ def parse_typed(spec):
 
 
 def build_args(mode, image, outdir, qmp_port, firmware_dir, esp=None,
-               hd1=None, qemu="qemu-system-i386"):
+               hd1=None, qemu="qemu-system-i386", boot_hd1=False, nic=None,
+               ssh_port=None):
+    if boot_hd1 and hd1 is None:
+        raise ValueError("boot_hd1 needs an hd1 image")
+    if ssh_port is not None and nic is None:
+        raise ValueError("ssh_port needs a nic")
+    if boot_hd1:
+        # bootindex puts hd1 first in both firmwares' boot order; SeaBIOS
+        # then gives it drive 0x80, the drive boot0 reads.
+        disks = ["-drive", "id=hd0,file=%s,format=raw,if=none" % image,
+                 "-device", "ide-hd,drive=hd0,bus=ide.0,unit=0,bootindex=1",
+                 "-drive", "id=hd1,file=%s,format=raw,if=none" % hd1,
+                 "-device", "ide-hd,drive=hd1,bus=ide.0,unit=1,bootindex=0"]
+    else:
+        disks = ["-drive",
+                 "file=%s,format=raw,if=ide,index=0,media=disk" % image]
     args = [qemu, "-M", "pc", "-m", "256", "-nodefaults", "-vga", "cirrus",
-            "-display", "none", "-snapshot",
-            "-drive", "file=%s,format=raw,if=ide,index=0,media=disk" % image,
+            "-display", "none", "-snapshot"] + disks + [
             "-serial", "file:%s" % os.path.join(outdir, "console.log"),
             "-serial", "file:%s" % os.path.join(outdir, "kernel.log"),
             "-rtc", "base=%s" % qemu_shot.RTC_BASE,
@@ -103,20 +122,28 @@ def build_args(mode, image, outdir, qmp_port, firmware_dir, esp=None,
                  "-drive", "if=pflash,format=raw,unit=1,file=%s"
                  % os.path.join(outdir, "edk2-i386-vars.fd")]
     elif mode == "bios":
-        args += ["-cpu", "pentium", "-boot", "order=c"]
+        args += ["-cpu", "pentium"]
+        if not boot_hd1:
+            args += ["-boot", "order=c"]
     else:
         raise ValueError("mode must be bios or uefi, not %r" % mode)
     if esp is not None:
         args += ["-drive", "id=esp,file=%s,format=raw,if=none" % esp,
                  "-device", "virtio-blk-pci,drive=esp"]
-    if hd1 is not None:
+    if hd1 is not None and not boot_hd1:
         args += ["-drive",
                  "file=%s,format=raw,if=ide,index=1,media=disk" % hd1]
+    if nic is not None:
+        netdev = "user,id=n0"
+        if ssh_port is not None:
+            netdev += ",hostfwd=tcp:127.0.0.1:%d-:22" % ssh_port
+        args += ["-netdev", netdev,
+                 "-device", "%s,netdev=n0,addr=03.0" % nic]
     return args
 
 
 def run(mode, image, outdir, at_points, firmware_dir, esp=None, hd1=None,
-        typed=()):
+        typed=(), boot_hd1=False, nic=None, ssh_port=None):
     for path in (image, esp, hd1):
         if path is not None:
             if not os.path.exists(path):
@@ -135,7 +162,8 @@ def run(mode, image, outdir, at_points, firmware_dir, esp=None, hd1=None,
         try:
             proc = subprocess.Popen(
                 build_args(mode, image, outdir, port, firmware_dir, esp=esp,
-                           hd1=hd1),
+                           hd1=hd1, boot_hd1=boot_hd1, nic=nic,
+                           ssh_port=ssh_port),
                 stdout=subprocess.DEVNULL, stderr=stderr_f)
         finally:
             stderr_f.close()
@@ -207,6 +235,9 @@ def main(argv):
     p.add_argument("outdir")
     p.add_argument("--esp", default=None)
     p.add_argument("--hd1", default=None)
+    p.add_argument("--boot-hd1", action="store_true")
+    p.add_argument("--nic", default=None, metavar="MODEL")
+    p.add_argument("--ssh-port", type=int, default=None)
     p.add_argument("--type", dest="typed", action="append", default=[],
                    type=parse_typed, metavar="SECONDS:TEXT")
     p.add_argument("--at", default=DEFAULT_AT,
@@ -216,7 +247,8 @@ def main(argv):
     at_points = [float(x) for x in a.at.split(",") if x]
     firmware_dir = a.firmware_dir or default_firmware_dir("qemu-system-i386")
     run(a.mode, a.image, a.outdir, at_points, firmware_dir, esp=a.esp,
-        hd1=a.hd1, typed=a.typed)
+        hd1=a.hd1, typed=a.typed, boot_hd1=a.boot_hd1, nic=a.nic,
+        ssh_port=a.ssh_port)
     return 0
 
 

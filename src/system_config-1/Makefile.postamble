@@ -112,6 +112,5 @@ after_install::
 		(cd $$from_dir && $(TAR) cf - .) | (cd $$to_dir && $(TAR) xf - ); \
 		$(CHOWN) -R root $$to_dir; \
 		$(CHGRP) -R wheel $$to_dir; \
-		ln -fs Drivers/$$arch $(DSTROOT)/private/Devices; \
 	    fi					  	\
 	done

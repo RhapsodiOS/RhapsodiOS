@@ -65,37 +65,13 @@ BOOL NSKeepAllocationStatistics = 0;
 
 /*  NSException and NSInvalidArgumentException back NSZone.m's memory-page
     error paths (vm_allocate/vm_deallocate/vm_copy failing), which the
-    tests never provoke.  NSException here is a minimal root class (not a
-    subclass of the not-yet-reconstructed NSObject) that exists only to
-    supply the linker symbol and abort if a test ever does reach it.  */
+    tests never provoke.  The stub NSException class that used to live
+    here moved out in stage 2b: NSException.m now supplies the real class,
+    and two definitions of the same class collide at link time.  The
+    exception-name globals stay until stage 2b's Task 9 defines the real
+    constants in NSException.m; NSZone.m, NSObject.m and NSProxy.m still
+    reference them.  */
 id NSInvalidArgumentException = 0;
-
-@interface NSException : Object
-+ (void)raise:(id)name format:(id)format, ...;
-+ (id)exceptionWithName:(id)name reason:(id)reason userInfo:(id)userInfo;
-- (void)raise;
-@end
-
-@implementation NSException
-+ (void)raise:(id)name format:(id)format, ...
-{
-    if (NSTestExpectingRaise) {
-        NSTestCaptureRaiseMessage(format);
-        NSTestExpectingRaise = 0;
-        longjmp(NSTestRaiseEnv, 1);
-    }
-    unimplemented("[NSException raise:format:]");
-}
-+ (id)exceptionWithName:(id)name reason:(id)reason userInfo:(id)userInfo
-{
-    unimplemented("[NSException exceptionWithName:reason:userInfo:]");
-    return nil;
-}
-- (void)raise
-{
-    unimplemented("[NSException raise]");
-}
-@end
 
 /*  NXConstantString's class reference backs every @"..." literal in a
     compiled translation unit, including NSZoneName's `return @"";` --

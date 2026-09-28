@@ -237,13 +237,16 @@ stdout, stderr and exit status. It uses only cases that load nothing into the
 kernel:
 
 - no arguments, and an unknown operation (usage)
-- `D=` of a driver with no config
-- a scratch config whose `_reloc` is not owned by root, and one whose
-  `_reloc` is group-writable (the security refusals)
+- `D=` of a driver with no config, verbose
 - a scratch config whose Pre-Load exits non-zero (Pre-Load abort)
+- a scratch config whose Pre-Load is an absolute path (silently refused)
 - `d=BPF` with every prompt answered `n` on stdin (interactive path)
+- `i` with every prompt answered `n` (interactive system configuration)
 
-Every case must match.
+Every case must match. `securityCheck` and `securityCheckDir` have no callers
+in either reference (dead code Apple shipped), so no test can reach the
+"not owned by root" or "is writable" refusals. They are reconstructed for
+parity only.
 
 ### Boot
 

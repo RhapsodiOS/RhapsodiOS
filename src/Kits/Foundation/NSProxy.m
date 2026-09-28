@@ -23,7 +23,19 @@
     differing only in which helper they call).  */
 
 extern BOOL class_respondsToMethod(Class aClass, SEL aSelector);
-extern void _NSProxyRaiseNullSelectorException(id object, SEL aSelector);
+extern id _NSMethodExceptionProem(id object, SEL aSelector);
+
+/*	Raises for a NULL selector handed to the performSelector: family.
+	Static: the reference keeps this local to NSProxy.m, separately named
+	from NSObject.m's counterpart rather than sharing it -- confirmed
+	from the reference's symbol table, where both are `local`.  Stage 2a
+	declared it extern and stubbed it; corrected here.  */
+static void
+_NSProxyRaiseNullSelectorException(id object, SEL aSelector)
+{
+    [NSException raise:NSInvalidArgumentException
+                format:@"%@: null selector", _NSMethodExceptionProem(object, aSelector)];
+}
 
 /*  Backs both +load and +initialize, same as NSObject.m's Task 8 addition
     (the reference gives both root classes' +load identical one-call

@@ -26,8 +26,20 @@ extern IMP _NSIMPForSelector(Class aClass, SEL aSelector);
 extern struct objc_method_description *_NSMethodDescriptionForSelector(Class aClass, SEL aSelector);
 extern BOOL _NSClassConformsToProtocol(Class aClass, Protocol *aProtocol);
 extern id _NSMethodExceptionProem(id object, SEL aSelector);
-extern void _NSObjectRaiseNullSelectorException(id object, SEL aSelector);
 extern void NSAutoreleaseObject(id anObject);
+
+/*	Raises for a NULL selector handed to the performSelector: family.
+	Static: the reference keeps this local to NSObject.m, and NSProxy.m
+	has its own separately named counterpart rather than sharing this one
+	-- confirmed from the reference's symbol table, where both are
+	`local`.  Stage 2a declared both extern and stubbed them; corrected
+	here.  */
+static void
+_NSObjectRaiseNullSelectorException(id object, SEL aSelector)
+{
+    [NSException raise:NSInvalidArgumentException
+                format:@"%@: null selector", _NSMethodExceptionProem(object, aSelector)];
+}
 
 /*  Task 8 additions.  _NSInitializePlatform backs both +load and
     +initialize (the reference gives them identical bodies).

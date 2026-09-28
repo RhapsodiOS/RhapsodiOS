@@ -1,9 +1,24 @@
-/*  Link stubs for stage 2a's test binaries.
+/*  Link stubs for the Foundation reconstruction's test binaries.
 
-    Foundation symbols the reconstructed modules reference but that this stage
-    does not implement.  Every stub aborts: a test that reaches one is depending
-    on unreconstructed behaviour and must fail loudly rather than quietly
-    observing a plausible-looking default.  */
+    Foundation symbols the reconstructed modules reference but that no
+    reconstructed module yet supplies.  Every stub aborts: a test that
+    reaches one is depending on unreconstructed behaviour and must fail
+    loudly rather than quietly observing a plausible-looking default.
+
+    What remains here after stage 2b, and who owns each symbol's real
+    reconstruction:
+    - unimplemented (this file's own reporting helper)
+    - NSKeepAllocationStatistics, NSRecordAllocationEvent, NSZombieEnabled,
+      NSDeallocateZombies -- NSZone.m's allocation-statistics and zombie
+      gates; the tests never set them
+    - _NSConstantStringClassReference -- stage 3 (real NSString)
+    - NSMethodSignature -- stage 3 territory
+    - NSString stub class -- stage 3; no test reaches it any more
+    - _NSInitializePlatform -- backs +load/+initialize, silent no-op
+    - NSStringFromStack -- NSDebug.h stack text, stage 3 territory
+    Stage 2b retired: the stub NSException class and its raise-capture
+    machinery, the three exception-name placeholder globals, the three
+    introspection helpers, NSLog, and _NSMethodExceptionProem.  */
 
 #import <objc/objc.h>
 #import <objc/Object.h>
@@ -19,44 +34,11 @@ static void unimplemented(const char *name)
     abort();
 }
 
-/*  Task 9 (NSProxy) addition: a way for a test to observe that a raise was
-    actually reached, without a real NSException to catch it with.  Every
-    "refuse to run" method this stage's NSProxy/NSObject reconstruction
-    supplies (-forward::, -forwardInvocation:, -methodSignatureForSelector:,
-    and, via -forwardInvocation:, -isKindOfClass:/-isMemberOfClass:/
-    -conformsToProtocol:/-respondsToSelector:) ends in
-    [NSException raise:format:], which aborts by default below -- a test
-    reaching one unexpectedly must still fail loudly, the same as any other
-    stub hit.  A test that specifically wants to prove one of those raise
-    paths was taken arms NSTestExpectingRaise and calls
-    setjmp(NSTestRaiseEnv) around the call; while armed, +raise:format:
-    below captures format's text into NSTestRaiseMessage and longjmp()s back
-    instead of aborting.  The arm auto-clears on first use, so this only
-    ever changes behaviour for a call a test explicitly set up -- an
-    unexpected raise (NSTestExpectingRaise still 0, its default and every
-    other stub's only mode) aborts exactly as before.  */
-jmp_buf NSTestRaiseEnv;
-int NSTestExpectingRaise = 0;
-char NSTestRaiseMessage[256];
-
-/*  format is always a `@"..."` literal on the paths this backs.  This
-    project's Objective-C frontend (src/cc-1/cc/objc/NXConstStr.h) lays such
-    a literal out as { Class isa; char *c_string; unsigned int len; };
-    NXConstantString itself is not reconstructed here (see
-    _NSConstantStringClassReference, below), so reading c_string directly --
-    without dispatching a message no class actually implements in this
-    stage -- is the only way to recover the raised text.  */
-static void NSTestCaptureRaiseMessage(id format)
-{
-    struct { Class isa; char *c_string; unsigned int len; } *literal = (void *)format;
-
-    if (format != nil && literal->c_string != NULL) {
-        strncpy(NSTestRaiseMessage, literal->c_string, sizeof(NSTestRaiseMessage) - 1);
-        NSTestRaiseMessage[sizeof(NSTestRaiseMessage) - 1] = '\0';
-    } else {
-        NSTestRaiseMessage[0] = '\0';
-    }
-}
+/*  The stage 2a raise-capture machinery (NSTestRaiseEnv,
+    NSTestExpectingRaise, NSTestRaiseMessage and NSTestCaptureRaiseMessage)
+    was retired in stage 2b: with the real NSException class and handler
+    stack reconstructed, the suites catch raises the way any caller does --
+    NS_DURING/NS_HANDLER -- instead of arming a stub.  */
 
 /*  NSKeepAllocationStatistics gates every allocation-statistics call site
     in NSZone.m; every test in this stage leaves it at its real default

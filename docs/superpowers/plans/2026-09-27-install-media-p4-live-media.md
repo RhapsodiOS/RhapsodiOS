@@ -3,28 +3,37 @@
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build, on the Windows host and only from our own apks, a hard-disk
-install medium that boots to the installer menu under SeaBIOS and IA32 UEFI,
-and a pre-installed disk that boots multi-user to `login:` and accepts an SSH
-password login.
+install medium that boots to the installer's menu under SeaBIOS and IA32
+UEFI, and a pre-installed disk that boots multi-user to `login:` and accepts
+an SSH password login.
 
-**Architecture:** First the missing apks: a private QEMU guest builds the
-*boot closure* (kernel, boot drivers, booters, `diskdev_cmds`,
-`network_cmds` and their dependencies, plus a new `installer-1` project that
-carries `rc.cdrom` and the installed-system templates). Then five host
-modules in `vm/instmedia/`. `collect.py` gathers the apks into one
-directory, and `apkrepo.py` indexes it. `rootfs.py` lays the payloads out
-as a node tree the way `apk add` would. `live.py` adds the live overlay,
-or the installed-system files for `--preinstalled`. `hdimage.py` writes
-the MBR, ESP and `0xA7` partition as `disk -i -b` does, and `build.py`
-checks the tree, writes the image and reads it back. `vm/qemu_boot.py`
-learns to boot the media from `hd1` and to give the guest a network card.
+**Architecture:**
+- **The missing apks first.** A private QEMU guest builds the *boot
+  closure*: the kernel, the boot drivers, the booters, `diskdev_cmds` and
+  `network_cmds` with their dependencies, and `cdis-3`, Apple's CD
+  installation system.
+- **The installer is `cdis-3`.** Its package parks the installer script
+  inert as `/private/etc/rc.cdrom.hidden`, and the media's builder makes it
+  live, which is the pattern the design already uses. It gains the
+  installed-system templates.
+- **Five host modules in `vm/instmedia/`:**
+  - `collect.py` gathers the apks into one directory, and `apkrepo.py`
+    indexes it.
+  - `rootfs.py` lays the payloads out as a node tree the way `apk add`
+    would.
+  - `live.py` adds the live overlay, or the installed-system files for
+    `--preinstalled`.
+  - `hdimage.py` writes the MBR, the ESP and the `0xA7` partition as
+    `disk -i -b` does.
+  - `build.py` checks the tree, writes the image and reads it back.
+- **`vm/qemu_boot.py`** learns to boot the media from `hd1` and to give the
+  guest a network card.
 
 **Tech Stack:**
-- Python 3.13, standard library only, `unittest`
-- QEMU 11.1 (SeaBIOS and the bundled `edk2-i386-code.fd`)
+- Python 3.13, standard library only, with `unittest`
+- QEMU 11.1: SeaBIOS and the bundled `edk2-i386-code.fd`
 - rbuild on an i386 Rhapsody DR2 guest booted from
   `vm/work/rhap-i386-bootstrapped.img` with `-snapshot`
-- Git Bash `sh` for the `rc.cdrom` host tests
 
 **Spec:** `docs/superpowers/specs/2026-09-22-install-media-design.md`, phase
 4, with *Host builder*, *Live environment*, *Installed-system
@@ -32,70 +41,93 @@ configuration* and *Testing*.
 
 ## Already verified
 
-Every host file in this plan was prototyped in a scratch copy of `vm/` and
-`src/installer-1/` before the plan was written. The executor still runs
-everything again. These are the expected results:
+Every host file in this plan was prototyped before the plan was written, in
+a scratch copy of `vm/` and of the two `src/` projects it changes. The
+executor still runs everything again. These are the expected results:
 
-- **Host tests:** 91 `vm` tests pass, with none skipped when
-  `RHAPSODY_MEDIA_DIR` and `RHAPSODY_BOOTSTRAP_IMAGE` are set: `hdimage` 8,
-  `apkrepo` 10, `rootfs` 17, `live` 9, `build` 10, `collect` 5, `label` 8
-  (one new) and `qemu_boot` 24. All 10 `installer-1` tests pass under Git
-  Bash's `sh`.
+- **Host tests:** 94 `vm` tests pass, none skipped when
+  `RHAPSODY_MEDIA_DIR` and `RHAPSODY_BOOTSTRAP_IMAGE` are set. They are
+  `hdimage` 8, `apkrepo` 10, `rootfs` 17, `live` 9, `build` 13, `collect`
+  5, `label` 8 (one new) and `qemu_boot` 24. All 5 `cdis-3` template tests
+  pass.
 - **Real apks:** `collect` read all 68 universal apks off the bootstrapped
-  image and decompressed each one without error. Laid down with the phase 2
-  apks, `rootfs` produced 44 packages, 362 directories and 3649 other
-  entries, with no conflicts. Those are exactly the counts phase 2's real
-  `apk add --root --initdb` printed: `OK: 44 packages, 362 dirs, 3649
-  files`.
-- **QEMU:** the new `qemu_boot` arguments (`--boot-hd1`, `--nic ne2k_pci`,
-  `--ssh-port`) start QEMU under both firmwares.
-- **Not verified yet:** anything that runs on the guest (Tasks 1 and 3) and
-  the boots of the finished images (Task 11).
+  image and decompressed each one without error. With the phase 2 apks,
+  `rootfs` laid down 44 packages, 362 directories and 3649 other entries,
+  and no conflicts. Phase 2's real `apk add --root --initdb` printed exactly
+  those counts: `OK: 44 packages, 362 dirs, 3649 files`.
+- **QEMU:** the new `qemu_boot` arguments (`--boot-hd1`, `--nic ne2k_pci`
+  and `--ssh-port`) start QEMU under both firmwares.
+- **Not verified yet:**
+  - anything that runs on the guest (Tasks 1 and 3)
+  - the two Makefile changes, which only rbuild can check (Task 3)
+  - the boots of the finished images (Task 11)
 
 ## Where this plan departs from the spec
 
 1. **Boot closure first, not every world apk** (Pat, 2026-09-27). The
    world's other ~40 projects come later. The live root is every apk that
    exists.
-2. **The network card is NE2K, loaded as a boot driver.** No project in
-   the tree builds `driverLoader`, a DR2 binary; `files`'
-   `startup/0700_Devices` runs `driverLoader a` to load the Active Drivers.
-   So a pure-apk system loads no Active Drivers at all, and the NIC must be
-   a Boot Driver, which boot2 links with `sarld`.
-   - The spec's `Intel1000` installs as `Pro1000.config`. Its shipped
-     `Instance0.table` describes one real machine, an 82547EI at
-     `Dev:1 Func:0 Bus:2`, IRQ 3, and its README says the IRQ key is needed
-     on every path.
+2. **The installer is `cdis-3`, Apple's DR2 CD installer** (Pat), not a new
+   project.
+   - `cdis-3` installs its Perl `rc.cdrom` inert, as
+     `/private/etc/rc.cdrom.hidden`, along with `rc.cdrom.x86` and
+     `rc.cdrom.PPC`. Its tools go in `/System/Installation/CDIS`
+     (`pickdisk`, `findroot`, `gc`, `popconsole` and others), and its
+     target mount point is `/private/var/tmp/mnta`.
+   - The live overlay makes `rc.cdrom.hidden` live as
+     `/private/etc/rc.cdrom`. So the spec's `/Installation/Target` gives
+     way to CDIS's `mnta`.
+   - The installed-system templates go in `cdis-3`, installed at
+     `/System/Installation/CDIS/templates`.
+   - Phase 4's gate is CDIS's first menu. With no `sysconfig` tool, which
+     `cdis-3` doesn't build, `rc.cdrom` asks for a language. Typing `1`
+     must bring up its Intel warning, and that proves the keyboard too.
+   - Phase 5 keeps CDIS's UI and `pickdisk`. It replaces the `fdisk` and
+     tarball steps with `mbrinst`, `disk -i -b` and `apk add`.
+3. **`/System/Installation` exists on every root**, because the `cdis`
+   apk installs it. So the check on the installed system is that
+   `/etc/rc.cdrom` is absent. `rc` and `rc.boot` start the installer only
+   when both exist.
+4. **The network card is NE2K, an Active Driver.**
+   - `driverLoader` is being reconstructed elsewhere and ships in the
+     `driverkit` apk at `/usr/sbin/driverLoader`, DR2's path (Pat,
+     2026-09-27). `files`' `startup/0700_Devices` runs `driverLoader a`,
+     which loads the Active Drivers.
+   - The spec's `Intel1000` is not used. It installs as `Pro1000.config`,
+     and its shipped `Instance0.table` describes one real machine: an
+     82547EI with `Auto Detect IDs` `0x10198086` only, at
+     `Dev:1 Func:0 Bus:2`, IRQ 3. QEMU's e1000 (`8086:100E`) doesn't match
+     it.
    - NE2K's `Default.table` auto-detects (`"Location" = ""`), and the build
-     guests already use it with QEMU's `ne2k_pci`.
-   - Task 1 shows that a NIC works as a boot driver before anything depends
-     on it.
-   - The consequences:
-     - The `Instance0.table` template's Boot Drivers are
-       `EISABus PCIBus PS2Keyboard EIDE AHCI NE2K`.
-     - Active Drivers stay `Default.table`'s list, inert without
-       `driverLoader`.
-     - The harness uses `ne2k_pci` instead of `e1000`.
-3. **`src/installer-1` starts now** with only `rc.cdrom` and the templates
-   (Pat). Its menu says `rhapinstall` isn't installed yet. Phase 5 adds
-   `mbrinst` and `rhapinstall`.
-4. **`-hdrs` and `-obj` companions are left out** of every root. They
+     guests already use it with QEMU's `ne2k_pci`. Task 1 checks that, with
+     only its `Default.table`, it loads as an Active Driver under DR2's
+     `driverLoader`, the reference the reconstruction follows.
+   - The `Instance0.table` template's Active Drivers are therefore
+     `Default.table`'s list plus `NE2K`. Its Boot Drivers are the spec's:
+     `EISABus PCIBus PS2Keyboard EIDE AHCI`.
+5. **`/private/Devices` was missing.** `files` links `/usr/Devices` and
+   `/System/Library/Devices` to `../private/Devices`, but nothing in the
+   tree makes `/private/Devices`, which on DR2 is a link to `Drivers/i386`.
+   `driverLoader` reads through `/usr/Devices`, so `system_config-1`, which
+   installs the i386 `System.config`, now makes that link too.
+6. **`-hdrs` and `-obj` companions are left out** of every root. They
    repeat files their base package ships, and apk refuses them (phase 2).
-5. **`collect.py` instead of `vm/fetch-apks.ps1`.**
-   - The bootstrap apks are read off the image on the host, read-only and
-     checked in full. Only the universal ones are used, as in phase 2's
-     proven root.
-   - Apks built in Task 3 are fetched one at a time as each finishes.
-6. **The pre-installed image has no apk database, and `pwd_mkdb` is not
+7. **`collect.py` instead of `vm/fetch-apks.ps1`.**
+   - The bootstrap apks are read off the image on the host, without writing
+     it, and checked in full. Only the universal builds are used, as in
+     phase 2's proven root.
+   - The Task 3 apks are fetched one at a time as each is built.
+8. **The pre-installed image has no apk database, and `pwd_mkdb` is not
    run.** The builder doesn't run apk.
    - Without `lookupd`, libc's `getpwnam` reads `/etc/master.passwd`
      directly (`src/Libinfo-1/lookup.subproj/lu_user.c:315-317`,
      `gen.subproj/getpwent.c:287`).
-   - `lookupd` comes from `netinfo-1`, which is in neither the closure nor
-     `src/Manifest`. So the hash in `master.passwd` is what logins check.
-7. **The SSH gate forwards host port 2549**, because 2222 is the shared
-   build box.
-8. **No `--form` flag yet:** the disk form only. Phase 6 adds the CD.
+   - `lookupd` would come from `netinfo-1`, which is in neither the closure
+     nor `src/Manifest`. So the hash in `master.passwd` is what logins
+     check.
+9. **The SSH gate forwards host port 2549**, since 2222 is the shared build
+   box.
+10. **No `--form` flag yet:** the disk form only. Phase 6 adds the CD.
 
 ## Global Constraints
 
@@ -105,50 +137,56 @@ everything again. These are the expected results:
   `git stash`.
 - **No Apple bits:** every byte on the media comes from our apks or our own
   builds. No DR2 media and no `golden.img`, not even as templates.
+  (`cdis-3`'s source is in the tree and built by rbuild, so it qualifies.)
 - **Builder rules:** stage in memory, never on NTFS. Standard library only.
   Deterministic output: sorted walks, apk mtimes preserved, no host
   timestamps.
 - **Hard-disk layout, exactly:**
-  - LBA 0 is `boot0` plus the fdisk table. Entry 1 is type `0xEF` at LBA
+  - LBA 0 holds `boot0` and the fdisk table. Entry 1 is type `0xEF` at LBA
     2048 for 131072 sectors (64 MB). Entry 2 is type `0xA7`, active, from
     LBA 133120 to the last sector.
-  - The ESP is FAT32 and holds only `/EFI/BOOT/BOOTIA32.EFI`.
-  - The `0xA7` interior is what `disk -i -b` writes: `boot1` at LBA 133120,
-    and label copies at +15/30/45 with `secsize` 512 and absolute `p_base`
-    and `d_boot0_blkno`. Two `boot2` copies go at those `d_boot0_blkno`
-    locations, and the UFS starts at `(dl_front + p_base) × 512`.
-- **The live overlay holds only:** `/private/etc/rc.cdrom`,
-  `/Installation/Target` and
-  `/private/Drivers/i386/System.config/Instance0.table` with `Kernel Flags`
-  = `rootdev=hd1a`. Beside them go `/System/Installation/Packages/*.apk` and
-  `/System/Installation/esp.img.gz`.
-- **The installed-system files** are `fstab`, `Instance0.table` (with
-  `Kernel Flags` = `rootdev=hdNa` and `Boot Graphics` = `No`), `hostconfig`
-  (with `APPLETALK`, `AUTOMOUNT` and `TIMESYNC` = `-NO-`) and root's
-  `master.passwd` hash. `/etc/rc.cdrom` and `/System/Installation` must be
-  absent on the target.
-- **Read-only root rules for `rc.cdrom`:** no here-documents, no temp files,
-  nothing written outside `/Installation/Target`.
+  - The ESP is FAT32 holding only `/EFI/BOOT/BOOTIA32.EFI`.
+  - The `0xA7` interior is what `disk -i -b` writes: `boot1` at LBA
+    133120, and label copies at +15/30/45 with `secsize` 512 and absolute
+    `p_base` and `d_boot0_blkno`. Two `boot2` copies sit at those
+    `d_boot0_blkno` locations, and the UFS starts at
+    `(dl_front + p_base) × 512`.
+- **The live overlay holds only:**
+  - `/private/etc/rc.cdrom`, made from `cdis`'s `rc.cdrom.hidden`
+  - `/private/Drivers/i386/System.config/Instance0.table`, with
+    `Kernel Flags` = `rootdev=hd1a`
+  - `/System/Installation/Packages/*.apk`
+  - `/System/Installation/esp.img.gz`
+- **The installed-system files:**
+  - `fstab`
+  - `Instance0.table`, with `Kernel Flags` = `rootdev=hdNa` and
+    `Boot Graphics` = `No`
+  - `hostconfig`, with `APPLETALK`, `AUTOMOUNT` and `TIMESYNC` = `-NO-`
+  - root's hash in `master.passwd`
+
+  `/etc/rc.cdrom` must be absent on the installed system.
 - **Pre-installed password:** a fixed test password, stored as a
   precomputed DES crypt hash in the builder's test configuration.
 - **Tests:** run from the worktree's `vm/` as
   `python -m unittest instmedia.<module> -v`. `label`'s reference-image
   tests need `RHAPSODY_MEDIA_DIR=D:/RhapsodiOS/vm`.
 - **Guests (CLAUDE.md §6):**
-  - Boot only `-snapshot` copies of `vm/work/rhap-i386-bootstrapped.img`,
-    and never write, move or delete that shared base image.
+  - Boot only `-snapshot` copies of `vm/work/rhap-i386-bootstrapped.img`.
+    Never write, move or delete that shared base image.
   - Never boot `vm/golden.img`, `vm/rhapsody.vmdk` or `vm/work/test.img`.
     `qemu_boot.py` opens every disk with `-snapshot`.
-  - Quit guests with QMP `quit` only, never by killing processes by name.
-  - One ssh session at a time, and no polling loops.
+  - Quit guests with QMP `quit` only.
+  - Use one ssh session at a time, with no polling loops.
   - Fetch each apk to the host as soon as it is built.
-  - Delete the scratch `vm.conf` files, which hold the guest password, when
-    done.
+  - Delete the scratch `vm.conf` files, which hold the guest password,
+    when done.
   - The guest on 2222 belongs to other sessions.
-- **Commits:** `<subsystem>: <what it does>`, one or two lines, no metadata
-  and no trailers.
+- **Commits:** `<subsystem>: <what it does>`, one or two lines, with no
+  metadata and no trailers.
 - **Legacy sources may hold Mac-Roman bytes.** Before editing a file under
-  `src/` with the Edit tool, check it with `LC_ALL=C grep -c $'[\x80-\xff]'`.
+  `src/` with the Edit tool, check it with
+  `LC_ALL=C grep -c $'[\x80-\xff]'`. `cdis-3/README.mkinstallcd.md` has
+  some; the files this plan edits have none.
 
 ## Review Focus
 
@@ -160,26 +198,27 @@ its test in the owning task.
    `test_a_symlinked_parent_is_followed` and
    `test_a_claim_through_a_symlink_is_reported_at_the_real_path`.
 2. **A member under a symlink to nowhere** should be refused with a
-   message, because `apk add` fails there too. Task 6:
+   message, as `apk add` would fail. Task 6:
    `test_extracting_through_a_dangling_symlink_is_refused`. Task 9:
    `test_main_reports_a_package_it_cannot_lay_down`.
 3. **The image's repository and a rebuild carrying the same package
    (`files`):** the rebuild should win, and the old builds go. Task 7:
    `test_a_later_source_replaces_every_build_of_a_package`.
-4. **A damaged apk on the image** (its filesystem has DUP blocks) should be
+4. **`/usr/Devices` not reaching `Instance0.table`** would leave
+   `driverLoader` without its table and the disk without a network, with
+   no error anywhere. Task 9:
+   `test_preinstalled_needs_usr_devices_to_reach_the_table`.
+5. **A damaged apk on the image** (its filesystem has DUP blocks) should be
    refused, never copied. Task 7: `test_damaged_apks_are_refused`.
-5. **A CR byte in an installer file** would break `rc.cdrom`'s `#!` line on
-   the guest. Task 2: `test_no_carriage_returns`.
 
 ## File structure
 
 | File | Job |
 |---|---|
-| `src/installer-1/rc.cdrom` | The media's startup: runs `rhapinstall` if present, then a reboot/shell/halt menu |
-| `src/installer-1/templates/{fstab,hostconfig,Instance0.table}` | Installed-system templates; `@DISK@` is the disk name |
-| `src/installer-1/Makefile`, `apk/pkginfo` | Installs them inert under `/usr/share/installer` |
-| `src/installer-1/tests/test_rc_cdrom.py`, `test_templates.py` | Host tests |
-| `src/Manifest` | Gains `dir installer-1 all` |
+| `src/cdis-3/templates/{fstab,hostconfig,Instance0.table}` | Installed-system templates; `@DISK@` is the disk name |
+| `src/cdis-3/Makefile.postamble` | Also installs the templates in `/System/Installation/CDIS/templates` |
+| `src/cdis-3/tests/test_templates.py` | Host tests: each template against the file it derives from |
+| `src/system_config-1/Makefile.postamble` | Also links `/private/Devices` to `Drivers/i386` |
 | `vm/instmedia/label.py` | `for_filesystem` passes `boot0` through |
 | `vm/instmedia/hdimage.py` | MBR, ESP, `0xA7` interior, cylinder-aligned size |
 | `vm/instmedia/testapks.py` | Synthetic apks for tests |
@@ -198,10 +237,11 @@ takes hours, so start it as soon as Task 2 is committed, and do Tasks 4 to
 
 ---
 
-### Task 1: Show that a NIC works as a boot driver (guest spike, no code)
+### Task 1: Show NE2K loads as an Active Driver with only its Default.table (guest spike, no code)
 
-Decision 2 rests on this. If it fails, stop and report to Pat before any
-other task.
+Decision 4 rests on this. The reconstructed `driverLoader` follows DR2's,
+so DR2's behaviour here is the reference. If this fails, stop and report
+to Pat before any other task.
 
 **Files:** none in the repo. Scratch: `<scratch>/p4guest/`.
 
@@ -251,135 +291,63 @@ sed -e 's/^Port=.*/Port=2547/' -e 's|^RemoteRoot=.*|RemoteRoot=/build/p4|' \
     D:/RhapsodiOS/vm/vm.conf > $P/vm/vm.conf
 ```
 
-- [ ] **Step 3: Boot it.** Run `python $P/launch.py`. Wait about 3 minutes;
-  sshd comes up late, and an earlier attempt gets "Connection aborted".
+- [ ] **Step 3: Boot it.** Run `python $P/launch.py`. Wait about 3
+  minutes; sshd comes up late, and an earlier attempt gets "Connection
+  aborted".
 
-- [ ] **Step 4: Move NE2K from Active to Boot Drivers, and hide its
-  Configure-written Instance0.table, so boot2 has only `Default.table`,
-  which is all our apk will ship.** Write `$P/spike.sh`:
+- [ ] **Step 4: Hide NE2K's Configure-written Instance0.table, so
+  `driverLoader` has only `Default.table`, which is all our apk ships.
+  Leave NE2K in Active Drivers.** Write `$P/spike.sh`:
 
 ```sh
-T=/private/Drivers/i386/System.config/Instance0.table
-cp $T /tmp/Instance0.table.orig
-sed -e 's/^"Boot Drivers" = "\(.*\)";/"Boot Drivers" = "\1 NE2K";/' \
-    -e 's/^"Active Drivers" = "\(.*\) NE2K\(.*\)";/"Active Drivers" = "\1\2";/' \
-    /tmp/Instance0.table.orig > $T
-grep -n 'Drivers' $T
+grep -n 'Drivers' /private/Drivers/i386/System.config/Instance0.table
 mv /private/Drivers/i386/NE2K.config/Instance0.table /tmp/NE2K-Instance0.table
 ls /private/Drivers/i386/NE2K.config
 /sbin/reboot
 ```
 
   Run it: `powershell -NoProfile -File $P/vm/guest-remote.ps1 -Run $P/spike.sh`.
-  The `grep` must show NE2K in Boot Drivers and not in Active Drivers. The
-  connection drops at the reboot.
+  The `grep` must show NE2K in Active Drivers. The connection drops at the
+  reboot.
 
 - [ ] **Step 5: Judge it.** Wait about 5 minutes, then run a script that
-  prints `ifconfig en0` and `grep Drivers /private/Drivers/i386/System.config/Instance0.table`.
+  prints `ifconfig en0` and `ls /private/Drivers/i386/NE2K.config`.
   - **Pass:** ssh answers, `en0` has `inet 10.10.0.240`, and
-    `$P/com2.log` shows NE2K registering during the boot-driver probe
-    (before `/etc/rc` starts).
-  - **Fail:** ssh never answers after 10 minutes, or `en0` is absent.
-    First, `system_reset` over QMP and type `-v` at `boot:`, because
-    non-verbose boots sometimes hang after "console up". If it still
-    fails, stop and report to Pat with `com2.log`.
+    `NE2K.config` holds no `Instance0.table`.
+  - **If it fails:** first `system_reset` over QMP and type `-v` at
+    `boot:`, because non-verbose boots sometimes hang after "console up".
+    If it still fails, stop and report to Pat with `com2.log`.
+    - The likely fallback is a harness `Instance0.table` for NE2K, with
+      `"Location" = "Dev:3 Func:0 Bus:0"` to match `addr=03.0`. That is a
+      design change, so it's Pat's call.
 
 - [ ] **Step 6:** Leave the guest running for Task 3, which reboots it
-  clean. Record the result: one line for the plan's ledger and the
-  `com2.log` excerpt for Task 12's doc.
+  clean. Record the result, with the `com2.log` excerpt, for Task 12.
 
-### Task 2: The installer project
+### Task 2: Templates in cdis-3, and the /private/Devices link
 
 **Files:**
-- Create: `src/installer-1/rc.cdrom`, `src/installer-1/templates/fstab`,
-  `src/installer-1/templates/hostconfig`,
-  `src/installer-1/templates/Instance0.table`, `src/installer-1/Makefile`,
-  `src/installer-1/apk/pkginfo`, `src/installer-1/tests/test_rc_cdrom.py`,
-  `src/installer-1/tests/test_templates.py`
-- Modify: `src/Manifest` (after `dir     hfs-1                 all`)
+- Create: `src/cdis-3/templates/fstab`, `src/cdis-3/templates/hostconfig`,
+  `src/cdis-3/templates/Instance0.table`,
+  `src/cdis-3/tests/test_templates.py`
+- Modify: `src/cdis-3/Makefile.postamble` (end of `after_install`) and
+  `src/system_config-1/Makefile.postamble` (the `after_install` loop)
 
 **Interfaces:**
-- Produces: an apk named `installer` whose payload is
-  `/usr/share/installer/rc.cdrom` and
-  `/usr/share/installer/templates/{fstab,hostconfig,Instance0.table}`.
-  Every `@DISK@` in a template is the disk name (`hd0`, `hd1`, ...). Task 8
-  reads these paths.
+- Produces:
+  - The `cdis` apk gains `/System/Installation/CDIS/templates/{fstab,hostconfig,Instance0.table}`.
+    Every `@DISK@` is the disk name. It keeps `/private/etc/rc.cdrom.hidden`,
+    `rc.cdrom.x86`, `rc.cdrom.PPC`, `/System/Installation/CDIS/*` and
+    `/private/var/tmp/mnta`. Task 8 reads these paths.
+  - The `system-config` apk gains the symlink
+    `/private/Devices -> Drivers/i386`.
 
-- [ ] **Step 1: Write the tests.** `src/installer-1/tests/test_rc_cdrom.py`:
-
-```python
-"""rc.cdrom under the host's sh, with a stub reboot on PATH.
-
-    cd src/installer-1 && python -m unittest discover -s tests -v
-"""
-import os
-import shutil
-import subprocess
-import tempfile
-import unittest
-
-HERE = os.path.dirname(os.path.abspath(__file__))
-RC_CDROM = os.path.join(os.path.dirname(HERE), "rc.cdrom").replace("\\", "/")
-SH = shutil.which("sh")
-
-
-@unittest.skipUnless(SH, "needs a POSIX sh on PATH")
-class TestRcCdrom(unittest.TestCase):
-    def run_rc(self, answers):
-        """(exit status, stdout) of rc.cdrom given answers on stdin."""
-        with tempfile.TemporaryDirectory() as stubs:
-            with open(os.path.join(stubs, "reboot"), "w", newline="\n") as f:
-                f.write("#!/bin/sh\necho REBOOT CALLED\n")
-            os.chmod(os.path.join(stubs, "reboot"), 0o755)
-            env = dict(os.environ,
-                       PATH=stubs + os.pathsep + os.environ["PATH"])
-            # Bytes: text mode would turn each newline into CR LF on Windows.
-            r = subprocess.run([SH, RC_CDROM], input=answers.encode(),
-                               env=env, capture_output=True, timeout=30)
-        return r.returncode, r.stdout.decode()
-
-    def test_says_rhapinstall_is_missing_then_offers_the_menu(self):
-        status, out = self.run_rc("3\n")
-        self.assertEqual(status, 0)
-        self.assertIn("rhapinstall is not installed on this medium.", out)
-        for line in ("1) Reboot", "2) Shell", "3) Halt", "Choice: "):
-            self.assertIn(line, out)
-
-    def test_reboot_runs_reboot_and_comes_back_to_the_menu(self):
-        status, out = self.run_rc("1\n3\n")
-        self.assertEqual(status, 0)
-        self.assertIn("REBOOT CALLED", out)
-        self.assertEqual(out.count("RhapsodiOS installer"), 2)
-
-    def test_shell_returns_to_the_menu(self):
-        status, out = self.run_rc("2\necho IN THE SHELL\nexit\n3\n")
-        self.assertEqual(status, 0)
-        self.assertIn("IN THE SHELL", out)
-        self.assertEqual(out.count("RhapsodiOS installer"), 2)
-
-    def test_other_answers_ask_again(self):
-        status, out = self.run_rc("9\n\n3\n")
-        self.assertEqual(status, 0)
-        self.assertEqual(out.count("RhapsodiOS installer"), 3)
-
-    def test_end_of_input_halts(self):
-        self.assertEqual(self.run_rc("")[0], 0)
-
-    def test_writes_no_here_documents(self):
-        with open(RC_CDROM) as f:
-            self.assertNotIn("<<", f.read())
-
-
-if __name__ == "__main__":
-    unittest.main()
-```
-
-`src/installer-1/tests/test_templates.py`:
+- [ ] **Step 1: Write the tests.** `src/cdis-3/tests/test_templates.py`:
 
 ```python
 """The installed-system templates against the files they derive from.
 
-    cd src/installer-1 && python -m unittest discover -s tests -v
+    cd src/cdis-3 && python -m unittest discover -s tests -v
 """
 import os
 import re
@@ -389,6 +357,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 PROJECT = os.path.dirname(HERE)
 SRC = os.path.dirname(PROJECT)
 TEMPLATES = os.path.join(PROJECT, "templates")
+NAMES = ("fstab", "hostconfig", "Instance0.table")
 
 
 def read(*parts):
@@ -429,19 +398,24 @@ class TestTemplates(unittest.TestCase):
         default = read(SRC, "system_config-1", "i386", "Default.table")
         self.assertEqual(table_keys(ours), table_keys(default))
         self.assertEqual(table_value(ours, b"Boot Drivers"),
-                         b"EISABus PCIBus PS2Keyboard EIDE AHCI NE2K")
+                         b"EISABus PCIBus PS2Keyboard EIDE AHCI")
+        self.assertEqual(table_value(ours, b"Active Drivers"),
+                         table_value(default, b"Active Drivers") + b" NE2K")
         self.assertEqual(table_value(ours, b"Kernel Flags"),
                          b"rootdev=@DISK@a")
         self.assertEqual(table_value(ours, b"Boot Graphics"), b"No")
-        for key in (b"Version", b"Active Drivers", b"Kernel",
-                    b"Install Mode", b"APM"):
+        for key in (b"Version", b"Kernel", b"Install Mode", b"APM"):
             self.assertEqual(table_value(ours, key),
                              table_value(default, key))
 
+    def test_the_postamble_installs_every_template(self):
+        postamble = read(PROJECT, "Makefile.postamble")
+        for name in NAMES:
+            self.assertIn(b"templates/" + name.encode(), postamble)
+
     def test_no_carriage_returns(self):
-        for name in ("rc.cdrom", "templates/fstab", "templates/hostconfig",
-                     "templates/Instance0.table"):
-            self.assertNotIn(b"\r", read(PROJECT, name), name)
+        for name in NAMES:
+            self.assertNotIn(b"\r", read(TEMPLATES, name), name)
 
 
 if __name__ == "__main__":
@@ -449,43 +423,10 @@ if __name__ == "__main__":
 ```
 
 - [ ] **Step 2: Run them to see them fail.**
-  `cd src/installer-1 && python -m unittest discover -s tests -v`.
-  Expected: errors, because `rc.cdrom` and `templates/` don't exist.
+  `cd src/cdis-3 && python -m unittest discover -s tests -v`. Expected:
+  errors, because `templates/` doesn't exist.
 
-- [ ] **Step 3: Write the project.** `src/installer-1/rc.cdrom`:
-
-```sh
-#!/bin/sh
-##
-# The install media's startup: rc runs this instead of /etc/startup when
-# /System/Installation and /etc/rc.cdrom both exist, and halts when it
-# returns.  The root is read-only, so nothing here writes a file: no
-# here-documents (sh keeps those in /tmp) and no temp files.
-##
-
-if [ -x /usr/sbin/rhapinstall ]; then
-    /usr/sbin/rhapinstall
-else
-    echo "rhapinstall is not installed on this medium."
-fi
-
-while :; do
-    echo ""
-    echo "RhapsodiOS installer"
-    echo "  1) Reboot"
-    echo "  2) Shell"
-    echo "  3) Halt"
-    echo -n "Choice: "
-    read choice || exit 0
-    case "${choice}" in
-        1) reboot ;;
-        2) sh ;;
-        3) exit 0 ;;
-    esac
-done
-```
-
-`src/installer-1/templates/Instance0.table`:
+- [ ] **Step 3: Write the templates.** `src/cdis-3/templates/Instance0.table`:
 
 ```text
 /*
@@ -494,22 +435,22 @@ done
  * disk's name (hd0, sd0, ...).
  *
  * Default.table's keys (src/system_config-1), except:
- *   Boot Drivers  the IDE and AHCI controllers and the NE2K network card
- *                 instead of Floppy and ISASerialPort.  The network card is
- *                 a boot driver because nothing in the tree builds
- *                 driverLoader, which loads Active Drivers at startup.
- *   Kernel Flags  the root is partition a of @DISK@.
- *   Boot Graphics off, for a text console.
+ *   Boot Drivers    the IDE and AHCI controllers instead of Floppy and
+ *                   ISASerialPort.
+ *   Active Drivers  adds NE2K, the network card; driverLoader loads it at
+ *                   startup (/etc/startup/0700_Devices).
+ *   Kernel Flags    the root is partition a of @DISK@.
+ *   Boot Graphics   off, for a text console.
  */
 
 /* Version of this File */
 "Version" = "5.00";
 
 /* Drivers to probe at boot time */
-"Boot Drivers" = "EISABus PCIBus PS2Keyboard EIDE AHCI NE2K";
+"Boot Drivers" = "EISABus PCIBus PS2Keyboard EIDE AHCI";
 
 /* Bundles to load/probe later */
-"Active Drivers" = "PS2Mouse BusMouse SerialPointingDevice ParallelPort VGA";
+"Active Drivers" = "PS2Mouse BusMouse SerialPointingDevice ParallelPort VGA NE2K";
 
 /* Which kernel to load */
 "Kernel" = "mach_kernel";
@@ -521,103 +462,90 @@ done
 "APM" = "Yes";
 ```
 
-`src/installer-1/templates/fstab` is one line, with tabs exactly as in
+`src/cdis-3/templates/fstab` is one line, with tabs exactly as in
 `files-5/private/etc/fstab.hd`:
 
 ```bash
-printf '/dev/@DISK@a\t/\tufs\trw\t\t1  1\n' > src/installer-1/templates/fstab
+printf '/dev/@DISK@a\t/\tufs\trw\t\t1  1\n' > src/cdis-3/templates/fstab
 ```
 
-`src/installer-1/templates/hostconfig` is `files`' copy with three services
-off:
+`src/cdis-3/templates/hostconfig` is `files`' copy with three services off:
 
 ```bash
 sed -e 's/^APPLETALK=-YES-$/APPLETALK=-NO-/' -e 's/^AUTOMOUNT=-YES-$/AUTOMOUNT=-NO-/' \
     -e 's/^TIMESYNC=-YES-$/TIMESYNC=-NO-/' src/files-5/private/etc/hostconfig \
-    > src/installer-1/templates/hostconfig
+    > src/cdis-3/templates/hostconfig
 ```
 
-`src/installer-1/Makefile` (recipe lines start with a tab):
+In `src/cdis-3/Makefile.postamble`, append two lines at the end of
+`after_install`, after `$(MKDIRS) $(DSTROOT)/private/var/tmp/mntb`. The
+lines start with a tab. rbuild copies the whole project directory, so the
+relative `templates/` paths resolve, as `$(SCRIPT1)` does:
 
 ```make
-##
-# Makefile for installer
-#
-# Everything goes to inert paths under /usr/share/installer.  The install
-# media's builder copies rc.cdrom into place on the live root only, and
-# renders the templates for the installed system; phase 5 adds mbrinst
-# and rhapinstall.
-##
-
-# Project info
-Project  = installer
-UserType = Administration
-ToolType = Commands
-
-include $(MAKEFILEPATH)/CoreOS/ReleaseControl/Common.make
-
-INSTALLERDIR = $(SHAREDIR)/installer
-TEMPLATES    = fstab hostconfig Instance0.table
-
-install::
-	$(INSTALL_DIRECTORY) $(DSTROOT)$(INSTALLERDIR)/templates
-	$(INSTALL_FILE) -c $(Sources)/rc.cdrom $(DSTROOT)$(INSTALLERDIR)
-	$(_v) for t in $(TEMPLATES); do \
-	        $(INSTALL_FILE) -c $(Sources)/templates/$$t $(DSTROOT)$(INSTALLERDIR)/templates || exit 1; \
-	      done
+	$(MKDIRS) $(DSTROOT)$(INSTALLDIR)/$(NAME)/templates
+	$(INSTALL) -c -o root -g wheel -m 444 templates/fstab templates/hostconfig templates/Instance0.table $(DSTROOT)$(INSTALLDIR)/$(NAME)/templates
 ```
 
-`src/installer-1/apk/pkginfo`:
-
-```text
-pkgname = installer
-pkgver = 1
-pkgdesc = RhapsodiOS installer: the install media's startup script and the installed-system templates
-maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
-license = APSL
-makedepends = build-base
-```
-
-In `src/Manifest`, add `dir     installer-1           all` on the line
-after `hfs-1`, keeping the file's column alignment.
-
-- [ ] **Step 4: Run the tests.** All 10 pass.
+- [ ] **Step 4: Run the tests.** All 5 pass.
 
 - [ ] **Step 5: Commit.**
 
 ```bash
-git add src/installer-1 src/Manifest
-git commit -m "installer: start the installer project with the install media's rc.cdrom and the installed-system templates"
+git add src/cdis-3/templates src/cdis-3/tests src/cdis-3/Makefile.postamble
+git commit -m "cdis: carry the installed-system fstab, hostconfig and Instance0.table templates"
+```
+
+- [ ] **Step 6: The Devices link.** In `src/system_config-1/Makefile.postamble`'s
+  `after_install` loop, add this line after
+  `$(CHGRP) -R wheel $$to_dir; \`, with two leading tabs like its
+  neighbours:
+
+```make
+		ln -fs Drivers/$$arch $(DSTROOT)/private/Devices; \
+```
+
+  The loop installs only architectures that have a `SRCROOT/<arch>`
+  directory, and only `i386/` exists, so the link names the architecture
+  whose `System.config` this is. Task 3 checks the built apk.
+
+- [ ] **Step 7: Commit.**
+
+```bash
+git add src/system_config-1/Makefile.postamble
+git commit -m "system_config: link /private/Devices to Drivers/i386, which /usr/Devices leads through"
 ```
 
 ### Task 3: Build the boot closure on the guest (controller; runs in the background)
 
-**Files:** none planned. Fixes found while building each go in their own
+**Files:** none planned. Each fix found while building goes in its own
 commit, as `<project>: <fix>`, like phase 2's zlib and OpenSSL fixes.
-Output: `D:/RhapsodiOS/vm/work/p4-apks/`, one apk (or more) per project
+Output: `D:/RhapsodiOS/vm/work/p4-apks/`, with one apk or more per project
 below.
 
-The closure, in order, with the profile each project needs (U =
-`gcc-darwin-universal.conf`, I = `gcc-darwin-i386.conf --arch i386`):
+The closure, in order, with the profile each project needs. U is
+`gcc-darwin-universal.conf`; I is `gcc-darwin-i386.conf --arch i386`.
 
 | Chain | Projects | Why |
 |---|---|---|
-| A | rbuild itself; `driverTools-1` (U); `rbuild kernel` (I) | drivers and boot-2 need `drivertools`; the kernel builds `driverkit-3`, `kernload-1` and `kernel-7` |
-| B | `drivers-i386/bus/drvEISABus`, `bus/drvPCIBus`, `input/drvPS2Keyboard`, `ide/drvEIDE`, `ide/drvAHCI`, `network/drvNE2k` (all I) | the Boot Drivers; `drvEIDE` also gives `drveide-hdrs`, which `diskdev_cmds` needs |
-| C | `yacc-1`, `flex-1`, `LibcAT-1`, `Libtelnet-1`, `gawk-1` (U) | `network_cmds` and `boot-2` build dependencies |
-| D | `Commands/network_cmds`, `Commands/diskdev_cmds`, `dhcpcd-1`, `gnuzip-1`, `system_config-1`, `installer-1` (U) | mount, fsck, newfs, disk, ifconfig, syslogd, inetd; DHCP; gzip; `System.config`; the installer |
+| A | rbuild itself; `driverTools-1` (U); `rbuild kernel` (I) | the drivers and boot-2 need `drivertools`; the kernel run builds `driverkit-3` (which carries `driverLoader`), `kernload-1` and `kernel-7` |
+| B | `drivers-i386/bus/drvEISABus`, `bus/drvPCIBus`, `input/drvPS2Keyboard`, `ide/drvEIDE`, `ide/drvAHCI` and `network/drvNE2k` (all I) | the Boot Drivers and the network card; `drvEIDE` also makes `drveide-hdrs`, which `diskdev_cmds` and `cdis-3` need |
+| C | `yacc-1`, `flex-1`, `LibcAT-1`, `Libtelnet-1`, `gawk-1` (U) | build dependencies of `network_cmds` and `boot-2` |
+| D | `Commands/network_cmds`, `Commands/diskdev_cmds`, `dhcpcd-1`, `gnuzip-1`, `system_config-1`, `cdis-3` (U) | mount, fsck, newfs, disk, ifconfig, syslogd and inetd; DHCP; gzip; `System.config` and `/private/Devices`; the installer |
 | E | `boot-2` (I) | boot0, boot1, boot2 and `sarld` |
 
 The phase 2 apks in `vm/work/p2-apks` (files, zlib, apk-tools, perl,
-OpenSSL, OpenSSH) are uploaded rather than rebuilt.
+OpenSSL and OpenSSH) are uploaded rather than rebuilt. perl is what CDIS's
+`rc.cdrom` runs on.
 
 - [ ] **Step 1: Reboot the Task 1 guest clean.** Its snapshot holds the
-  spike's edits. `/sbin/reboot` it, and quit QEMU with QMP `quit` as soon as
-  `com2.log` shows a new "i386 kernel console up". Relaunch with `python
-  $P/launch.py`. With `-snapshot` the new boot starts from the untouched
-  image.
+  spike's edit. `/sbin/reboot` it, and quit QEMU with QMP `quit` as soon
+  as `com2.log` shows a new "i386 kernel console up". Relaunch with
+  `python $P/launch.py`. With `-snapshot`, the new boot starts from the
+  untouched image.
 
-- [ ] **Step 2: Make the build root and upload the phase 2 apks.**
+- [ ] **Step 2: Make the build root, and upload the phase 2 apks and the
+  sources.**
 
 ```bash
 printf 'mkdir -p /build/p4/src /build/p4/repo /build/p4/out /build/p4/state /build/p4/bin && echo made\n' > $P/mk.sh
@@ -627,7 +555,7 @@ cp $P/vm/*.ps1 $P/vmup/ && sed "s|^LocalRoot=.*|LocalRoot=$P/up|" $P/vm/vm.conf 
 powershell -NoProfile -File $P/vmup/sync-src.ps1 -Path p4-upload
 for p in rbuild-1 driverTools-1 driverkit-3 kernload-1 kernel-7 drivers-i386 yacc-1 flex-1 LibcAT-1 \
          Libtelnet-1 gawk-1 Commands/network_cmds Commands/diskdev_cmds dhcpcd-1 gnuzip-1 \
-         system_config-1 installer-1 boot-2; do
+         system_config-1 cdis-3 boot-2; do
     powershell -NoProfile -File $P/vm/sync-src.ps1 -Path $p || break
 done
 ```
@@ -635,8 +563,9 @@ done
   `sync-src` gives the guest exactly the execute bits git records
   (cf9660879).
 
-- [ ] **Step 3: Write the chain runner.** `$P/chain.sh.in`. Replace the
-  `@JOBS@` line per chain; each job is `<srcdir>:<U|I>`, or `kernel:I`.
+- [ ] **Step 3: Write the chain runner,** `$P/chain.sh.in`. Replace the
+  `@JOBS@` line for each chain. Each job is `<srcdir>:<U|I>`, or
+  `kernel:I`.
 
 ```sh
 cat > /build/p4/chain.sh <<'CHAINEOF'
@@ -670,9 +599,9 @@ wait $!
 sed -n '/RBUILD_RC\|== out/,$p' /build/p4/chain.log | tail -60
 ```
 
-- [ ] **Step 4: Chain A.** Put this before the chain in `$P/chainA.sh`.
-  Then generate the rest from `chain.sh.in` with
-  `@JOBS@` = `driverTools-1:U kernel:I`.
+- [ ] **Step 4: Chain A.** Put this before the chain in `$P/chainA.sh`,
+  then generate the rest from `chain.sh.in`, with
+  `@JOBS@` = `driverTools-1:U kernel:I`:
 
 ```sh
 cd /build/p4/src/rbuild-1 && /bin/make CC=/usr/bin/cc all > /build/p4/state/rbuild-all.out 2>&1 \
@@ -686,7 +615,7 @@ perl -e 'print crypt("rhapsodi","rh"),"\n"'
 
   - The `perl` line must print `rhME8brSxdukA`, the hash in Task 8's
     `testconfig.py`. If it prints something else, Rhapsody's `crypt()`
-    wins: use its string in Task 8.
+    wins, and Task 8 uses its string.
   - Run it in the background:
     `powershell -NoProfile -File $P/vm/guest-remote.ps1 -Run $P/chainA.sh`.
     It takes about 45 minutes. Wait for the notification.
@@ -702,14 +631,14 @@ for f in $(powershell -NoProfile -File $P/vm/guest-remote.ps1 -Run $P/ls.sh 2>/d
 done
 ```
 
-  The uploaded phase 2 apks come back too. That's harmless: `collect` lets
-  the last added directory win.
+  The uploaded phase 2 apks come back too. That's harmless, because
+  `collect` lets the last added directory win.
 
 - [ ] **Step 6: Chains B, C, D and E,** in that order, each followed by
   Step 5. Expect about 60, 60, 90 and 20 minutes.
   - B: `drivers-i386/bus/drvEISABus:I drivers-i386/bus/drvPCIBus:I drivers-i386/input/drvPS2Keyboard:I drivers-i386/ide/drvEIDE:I drivers-i386/ide/drvAHCI:I drivers-i386/network/drvNE2k:I`
   - C: `yacc-1:U flex-1:U LibcAT-1:U Libtelnet-1:U gawk-1:U`
-  - D: `Commands/network_cmds:U Commands/diskdev_cmds:U dhcpcd-1:U gnuzip-1:U system_config-1:U installer-1:U`
+  - D: `Commands/network_cmds:U Commands/diskdev_cmds:U dhcpcd-1:U gnuzip-1:U system_config-1:U cdis-3:U`
   - E: `boot-2:I`
 
 - [ ] **Step 7: When a build fails.**
@@ -719,15 +648,33 @@ done
      pass.
   3. Fix the source in the worktree, re-sync that project, and rerun the
      chain from the failed job.
-  4. Commit each fix alone (`<project>: <what it fixes>`).
+  4. Commit each fix alone, as `<project>: <what it fixes>`.
   5. A dependency missing from the repo means a project is missing from
      the closure. Add it to the chain, and note it for Task 12.
 
-- [ ] **Step 8: Done when** `vm/work/p4-apks` holds, besides the phase 2
-  apks, at least one apk from every project in chains A–E, and each one
-  opens with `python -c "import tarfile,sys; tarfile.open(sys.argv[1],'r:gz').getmembers()" <apk>`.
+- [ ] **Step 8: Check the three packages this phase changed or depends on.**
+
+```bash
+cd D:/RhapsodiOS/vm/work/p4-apks
+python -c "import tarfile,glob; [print(f, [(m.name, m.linkname) for m in tarfile.open(f,'r:gz') if m.name.lstrip('./') == 'private/Devices']) for f in glob.glob('system-config-*.apk')]"
+python -c "import tarfile,glob; [print(f, sorted(m.name.lstrip('./') for m in tarfile.open(f,'r:gz') if 'templates/' in m.name or 'rc.cdrom' in m.name)) for f in glob.glob('cdis-*.apk')]"
+python -c "import tarfile,glob; [print(f, [m.name for m in tarfile.open(f,'r:gz') if m.name.endswith('sbin/driverLoader')]) for f in glob.glob('driverkit-*.apk')]"
+```
+
+  - `system-config` must show `('private/Devices', 'Drivers/i386')`.
+  - `cdis` must list the three templates, `private/etc/rc.cdrom.hidden`,
+    `rc.cdrom.x86` and `rc.cdrom.PPC`.
+  - `driverkit` must list `usr/sbin/driverLoader`. If it doesn't, the
+    reconstruction hasn't reached this branch yet. Once it's on master,
+    merge master into `install-media-p4`, re-sync `driverkit-3`, rerun
+    `kernel:I`, and fetch again. Gates 1 and 2 don't need it; gates 3 and
+    4 wait for it, and `build.py` refuses a pre-installed image without it.
+
+- [ ] **Step 9: Done when** `vm/work/p4-apks` holds, besides the phase 2
+  apks, at least one apk from every project in chains A–E, each opening
+  with `python -c "import tarfile,sys; tarfile.open(sys.argv[1],'r:gz').getmembers()" <apk>`.
   Leave the guest up until Task 11's builds pass, in case an apk has to be
-  rebuilt. Then quit it with QMP `quit` on 4547 and delete `$P/vm/vm.conf`
+  rebuilt. Then quit it with QMP `quit` on 4547, and delete `$P/vm/vm.conf`
   and `$P/vmup/vm.conf`.
 
 ### Task 4: The hard-disk image writer
@@ -1498,11 +1445,11 @@ class TestPutAndNodes(unittest.TestCase):
     def test_put_replaces_and_makes_parents(self):
         tree = tree_of(("files", FILES, True))
         tree.put(Node("/etc/motd", "reg", 0o600, 0, 0, T + 5, b"new\n"))
-        tree.put(Node("/Installation/Target", "dir", 0o755, 0, 0, T, None))
+        tree.put(Node("/Local/Library/Receipts", "dir", 0o755, 0, 0, T, None))
         self.assertEqual(tree.get("/private/etc/motd"),
                          Node("/private/etc/motd", "reg", 0o600, 0, 0,
                               T + 5, b"new\n"))
-        self.assertEqual(tree.get("/Installation").kind, "dir")
+        self.assertEqual(tree.get("/Local/Library").kind, "dir")
         self.assertEqual(tree.conflicts, [])
 
     def test_put_refuses_a_file_over_a_directory(self):
@@ -1902,17 +1849,21 @@ git commit -m "instmedia: collect the bootstrap image's apks and newer builds in
   `vm/instmedia/test_live.py`
 
 **Interfaces:**
-- Consumes: `rootfs.Tree`, `rootfs.add_apk`; the installer apk's paths from
-  Task 2; `apkrepo.index`'s result.
+- Consumes:
+  - `rootfs.Tree` and `rootfs.add_apk`
+  - `apkrepo.index`'s result
+  - the `cdis` apk's paths from Task 2: `/private/etc/rc.cdrom.hidden` and
+    `/System/Installation/CDIS/templates/{fstab,hostconfig,Instance0.table}`
 - Produces:
-  - `live.compose(apks, esp, preinstalled=False, password_hash=None) -> (nodes, conflicts)`.
-  - `live.install_order(apks) -> [Apk]`, with `files` first.
+  - `live.compose(apks, esp, preinstalled=False, password_hash=None) -> (nodes, conflicts)`
+  - `live.install_order(apks) -> [Apk]`, with `files` first
   - `live.render(template, disk)` and
-    `live.set_root_password(passwd, crypted)`.
-  - The constants `live.SYSTEM_TABLE`, `FSTAB`, `HOSTCONFIG`,
-    `MASTER_PASSWD`, `RC_CDROM` and `INSTALLATION`.
-  - `live.ComposeError`.
-  - `testconfig.TEST_PASSWORD` and `TEST_PASSWORD_HASH`.
+    `live.set_root_password(passwd, crypted)`
+  - the constants `live.INSTALLATION`, `CDIS`, `TEMPLATES`,
+    `SYSTEM_TABLE`, `FSTAB`, `HOSTCONFIG`, `MASTER_PASSWD`, `RC_CDROM` and
+    `RC_CDROM_INERT`
+  - `live.ComposeError`
+  - `testconfig.TEST_PASSWORD` and `TEST_PASSWORD_HASH`
 
 - [ ] **Step 1: Write the failing tests.** `vm/instmedia/test_live.py`:
 
@@ -1926,29 +1877,36 @@ from instmedia import apkrepo, live, testapks as ta
 
 PASSWD = (b"##\n# comment\n##\nnobody:*:-2:-2::0:0:Unprivileged:/:/dev/null\n"
           b"root:*:0:0::0:0:System Administrator:/:/bin/tcsh\n")
-TABLE = (b'"Boot Drivers" = "EISABus PCIBus PS2Keyboard EIDE AHCI NE2K";\n'
+TABLE = (b'"Boot Drivers" = "EISABus PCIBus PS2Keyboard EIDE AHCI";\n'
+         b'"Active Drivers" = "VGA NE2K";\n'
          b'"Kernel Flags" = "rootdev=@DISK@a";\n')
 FSTAB = b"/dev/@DISK@a\t/\tufs\trw\t1 1\n"
 HOSTCONFIG = b"APPLETALK=-NO-\nSSHSERVER=-YES-\n"
-RC_CDROM = b"#!/bin/sh\necho installer\n"
+RC_CDROM = b"#!/usr/bin/perl -w\nprint 'installer';\n"
 
 
 def make_repo(directory):
+    """files, cdis and one package that installs through etc/."""
     ta.make(directory, "files-1-universal.apk", ta.pkginfo("files"), [
         ta.d("private"), ta.d("private/etc"), ta.ln("etc", "private/etc"),
+        ta.d("usr"), ta.ln("usr/Devices", "../private/Devices"),
         ta.f("private/etc/master.passwd", PASSWD, 0o600),
         ta.f("private/etc/hostconfig", b"APPLETALK=-YES-\n"),
         ta.d("System"), ta.d("private/Drivers"),
         ta.d("private/Drivers/i386"),
         ta.d("private/Drivers/i386/System.config")])
-    ta.make(directory, "installer-1-universal.apk", ta.pkginfo("installer"), [
-        ta.d("usr"), ta.d("usr/share"), ta.d("usr/share/installer"),
-        ta.f("usr/share/installer/rc.cdrom", RC_CDROM, 0o444),
-        ta.d("usr/share/installer/templates"),
-        ta.f("usr/share/installer/templates/fstab", FSTAB, 0o444),
-        ta.f("usr/share/installer/templates/Instance0.table", TABLE, 0o444),
-        ta.f("usr/share/installer/templates/hostconfig", HOSTCONFIG, 0o444)],
-        dot_slash=False)
+    cdis = "System/Installation/CDIS/"
+    ta.make(directory, "cdis-156.1-universal.apk", ta.pkginfo("cdis"), [
+        ta.d("System/Installation"), ta.d("System/Installation/CDIS"),
+        ta.f(cdis + "pickdisk", b"pickdisk", 0o555),
+        ta.d(cdis + "templates"),
+        ta.f(cdis + "templates/fstab", FSTAB, 0o444),
+        ta.f(cdis + "templates/Instance0.table", TABLE, 0o444),
+        ta.f(cdis + "templates/hostconfig", HOSTCONFIG, 0o444),
+        ta.f("private/etc/rc.cdrom.hidden", RC_CDROM, 0o555),
+        ta.f("private/etc/rc.cdrom.x86", b"1;\n", 0o444),
+        ta.d("private/var"), ta.d("private/var/tmp"),
+        ta.d("private/var/tmp/mnta")], dot_slash=False)
     ta.make(directory, "aaa-1-universal.apk", ta.pkginfo("aaa"),
             [ta.f("etc/aaa.conf", b"a")], dot_slash=False)
 
@@ -1974,7 +1932,6 @@ class TestCompose(unittest.TestCase):
         cls.esp = b"E" * 4096
         nodes, cls.conflicts = live.compose(cls.apks, cls.esp)
         cls.live = {n.path: n for n in nodes}
-        cls.live_order = [n.path for n in nodes]
         nodes, _ = live.compose(cls.apks, cls.esp, preinstalled=True,
                                 password_hash="rhME8brSxdukA")
         cls.pre = {n.path: n for n in nodes}
@@ -1988,13 +1945,13 @@ class TestCompose(unittest.TestCase):
         self.assertEqual(self.live["/private/etc/aaa.conf"].data, b"a")
         self.assertEqual(self.conflicts, [])
 
-    def test_live_overlay(self):
-        rc = self.live["/private/etc/rc.cdrom"]
+    def test_live_overlay_makes_cdis_live(self):
+        rc = self.live[live.RC_CDROM]
         self.assertEqual((rc.kind, rc.mode, rc.data), ("reg", 0o755, RC_CDROM))
-        self.assertEqual(self.live["/Installation/Target"].kind, "dir")
+        self.assertEqual(self.live[live.RC_CDROM_INERT].data, RC_CDROM)
         self.assertEqual(self.live[live.SYSTEM_TABLE].data,
                          live.render(TABLE, "hd1"))
-        self.assertEqual(self.live["/System/Installation"].kind, "dir")
+        self.assertEqual(self.live["/private/var/tmp/mnta"].kind, "dir")
 
     def test_live_carries_every_apk_and_the_esp(self):
         for fn in os.listdir(self.tmp.name):
@@ -2015,9 +1972,10 @@ class TestCompose(unittest.TestCase):
         self.assertEqual(passwd.mode, 0o600)
         self.assertIn(b"\nroot:rhME8brSxdukA:", passwd.data)
 
-    def test_preinstalled_has_no_installer_hook(self):
-        for path in (live.RC_CDROM, "/System/Installation", "/Installation"):
-            self.assertNotIn(path, self.pre)
+    def test_preinstalled_does_not_start_the_installer(self):
+        self.assertNotIn(live.RC_CDROM, self.pre)
+        self.assertNotIn("/System/Installation/Packages", self.pre)
+        self.assertNotIn("/System/Installation/esp.img.gz", self.pre)
         self.assertNotIn(live.FSTAB, self.live)
 
     def test_every_node_takes_a_time_from_the_apks(self):
@@ -2040,8 +1998,8 @@ if __name__ == "__main__":
 
 - [ ] **Step 2: Run them to see them fail** (`ModuleNotFoundError`).
 
-- [ ] **Step 3: Implement.** `vm/instmedia/testconfig.py`, using Task 3
-  Step 4's hash if the guest printed a different one:
+- [ ] **Step 3: Implement.** Write `vm/instmedia/testconfig.py`. If the
+  guest printed a different hash in Task 3 Step 4, use that one:
 
 ```python
 """The pre-installed image's fixed test password.
@@ -2061,23 +2019,24 @@ TEST_PASSWORD_HASH = "rhME8brSxdukA"
 """Compose the install media's root: every apk, then the live overlay.
 
 The apks go in the order the installer installs them, files first so the
-etc, var and tmp links exist, then the rest by package name.  The live
-overlay adds only:
+etc, var and tmp links exist, then the rest by package name.  The cdis apk
+brings the installer: /System/Installation/CDIS and its tools, the
+installer script parked inert as /private/etc/rc.cdrom.hidden, and
+/private/var/tmp/mnta, where it mounts the target.  The live overlay adds
+only:
 
-    /private/etc/rc.cdrom        the installer apk's inert
-                                 /usr/share/installer/rc.cdrom, made
-                                 executable; rc and rc.boot see it with
-                                 /System/Installation and run it
-    /Installation/Target         where the installer mounts the target
+    /private/etc/rc.cdrom        rc.cdrom.hidden, made live; rc and rc.boot
+                                 run it when /System/Installation is there
     .../System.config/Instance0.table
-                                 the installer's template for hd1, the
-                                 disk the media is in the QEMU harness
+                                 CDIS's template for hd1, the disk the
+                                 media is in the QEMU harness
     /System/Installation/Packages/*.apk  every apk the root was made from
     /System/Installation/esp.img.gz      the ESP the installer writes
 
 With preinstalled set there is no overlay.  Instead the installed-system
 templates are rendered for hd0, and root gets the test password, so the
-image boots as an installed disk.
+image boots as an installed disk.  /System/Installation is there too, from
+the cdis apk, but without /private/etc/rc.cdrom rc starts the system.
 """
 import gzip
 import os
@@ -2085,14 +2044,15 @@ import os
 from ufs_extract import Node
 from instmedia import rootfs
 
-INSTALLER = "/usr/share/installer"
-TEMPLATES = INSTALLER + "/templates"
+INSTALLATION = "/System/Installation"
+CDIS = INSTALLATION + "/CDIS"
+TEMPLATES = CDIS + "/templates"
 SYSTEM_TABLE = "/private/Drivers/i386/System.config/Instance0.table"
 FSTAB = "/private/etc/fstab"
 HOSTCONFIG = "/private/etc/hostconfig"
 MASTER_PASSWD = "/private/etc/master.passwd"
 RC_CDROM = "/private/etc/rc.cdrom"
-INSTALLATION = "/System/Installation"
+RC_CDROM_INERT = RC_CDROM + ".hidden"
 MEDIA_DISK = "hd1"
 INSTALLED_DISK = "hd0"
 
@@ -2143,9 +2103,6 @@ def compose(apks, esp, preinstalled=False, password_hash=None):
     def put_file(path, data, mode=0o644):
         tree.put(Node(path, "reg", mode, 0, 0, now, data))
 
-    def put_dir(path):
-        tree.put(Node(path, "dir", 0o755, 0, 0, now, None))
-
     if preinstalled:
         if password_hash is None:
             raise ComposeError("a pre-installed image needs a password hash")
@@ -2157,12 +2114,10 @@ def compose(apks, esp, preinstalled=False, password_hash=None):
                  set_root_password(tree.data(MASTER_PASSWD), password_hash),
                  0o600)
     else:
-        put_file(RC_CDROM, tree.data(INSTALLER + "/rc.cdrom"), 0o755)
-        put_dir("/Installation")
-        put_dir("/Installation/Target")
+        put_file(RC_CDROM, tree.data(RC_CDROM_INERT), 0o755)
         put_file(SYSTEM_TABLE, render(template("Instance0.table"), MEDIA_DISK))
-        put_dir(INSTALLATION)
-        put_dir(INSTALLATION + "/Packages")
+        tree.put(Node(INSTALLATION + "/Packages", "dir", 0o755, 0, 0, now,
+                      None))
         for apk in order:
             with open(apk.path, "rb") as f:
                 put_file("%s/Packages/%s" % (INSTALLATION,
@@ -2179,7 +2134,7 @@ def compose(apks, esp, preinstalled=False, password_hash=None):
 
 ```bash
 git add vm/instmedia/testconfig.py vm/instmedia/live.py vm/instmedia/test_live.py
-git commit -m "instmedia: compose the live root and the pre-installed root"
+git commit -m "instmedia: compose the live root, with CDIS made live, and the pre-installed root"
 ```
 
 ### Task 9: The builder CLI
@@ -2188,13 +2143,14 @@ git commit -m "instmedia: compose the live root and the pre-installed root"
 - Create: `vm/instmedia/build.py`, `vm/instmedia/test_build.py`
 
 **Interfaces:**
-- Consumes: everything from Tasks 4 to 8; `readback.diff`,
+- Consumes: everything from Tasks 4 to 8, plus `readback.diff`,
   `ufs_check.check` and `space.NoSpace`.
 - Produces:
-  - The CLI `python -m instmedia.build --repo DIR --efi FILE --out IMAGE [--preinstalled] [--fs-mb N]`.
-  - `build.build(repo, efi_path, out, preinstalled=False, fs_mb=None) -> (napks, nnodes, geometry, total_sectors)`.
+  - the CLI `python -m instmedia.build --repo DIR --efi FILE --out IMAGE [--preinstalled] [--fs-mb N]`
+  - `build.build(repo, efi_path, out, preinstalled=False, fs_mb=None) -> (napks, nnodes, geometry, total_sectors)`
   - `build.check_tree`, `check_dev`, `boot_drivers`, `fs_sectors` and
-    `BuildError`.
+    `BuildError`
+  - the constants `DEVICES_TABLE`, `NETWORK_DRIVER` and `CDIS_NEEDS`
 
 - [ ] **Step 1: Write the failing tests.** `vm/instmedia/test_build.py`:
 
@@ -2209,11 +2165,13 @@ import rhap_image
 from ufs_extract import Node
 from instmedia import build, live, testapks as ta, test_live
 
-DRIVER_NAMES = ("EISABus", "PCIBus", "PS2Keyboard", "EIDE", "AHCI", "NE2K")
+BOOT_DRIVERS = ("EISABus", "PCIBus", "PS2Keyboard", "EIDE", "AHCI")
+CDIS = "System/Installation/CDIS/"
 
 
-def make_bootable_repo(directory, drivers=DRIVER_NAMES, extra=()):
-    """test_live's repo plus the files a bootable root must have."""
+def make_bootable_repo(directory, drivers=BOOT_DRIVERS + ("NE2K",),
+                       driver_loader=True, devices_link=True, extra=()):
+    """test_live's repo plus what a bootable root must have."""
     test_live.make_repo(directory)
     ta.make(directory, "boot-64-i386.apk",
             ta.pkginfo("boot", "64", "i386-apple-rhapsody"), [
@@ -2232,13 +2190,23 @@ def make_bootable_repo(directory, drivers=DRIVER_NAMES, extra=()):
                 ta.pkginfo("drv" + name.lower(), "1", "i386-apple-rhapsody"),
                 [ta.f("private/Drivers/i386/%s.config/%s_reloc"
                       % (name, name), name.encode() * 100)], dot_slash=False)
-    ta.make(directory, "base-cmds-1-universal.apk", ta.pkginfo("base-cmds"), [
-        ta.f("usr/sbin/sshd", b"sshd"), ta.f("sbin/mount", b"mount"),
-        ta.f("usr/libexec/getty", b"getty"),
-        ta.dev("private/dev/hd0a", "blk", 3, 0),
-        ta.dev("private/dev/rhd0a", "chr", 15, 0),
-        ta.dev("private/dev/null", "chr", 3, 2)] + list(extra),
-        dot_slash=False)
+    if devices_link:
+        ta.make(directory, "system-config-46-universal.apk",
+                ta.pkginfo("system-config", "46"),
+                [ta.ln("private/Devices", "Drivers/i386")], dot_slash=False)
+    base = [ta.f("usr/sbin/sshd", b"sshd"), ta.f("sbin/mount", b"mount"),
+            ta.f("usr/libexec/getty", b"getty"), ta.f("usr/bin/perl", b"pl"),
+            ta.f("private/etc/rc.cdrom.PPC", b"1;\n"),
+            ta.f(CDIS + "English.lproj/Localizable.strings", b"\"A\" = \"a\";"),
+            ta.f(CDIS + "findroot", b"f"), ta.f(CDIS + "gc", b"g"),
+            ta.f(CDIS + "popconsole", b"p"),
+            ta.dev("private/dev/hd0a", "blk", 3, 0),
+            ta.dev("private/dev/rhd0a", "chr", 15, 0),
+            ta.dev("private/dev/null", "chr", 3, 2)]
+    if driver_loader:
+        base.append(ta.f("usr/sbin/driverLoader", b"dl"))
+    ta.make(directory, "base-cmds-1-universal.apk", ta.pkginfo("base-cmds"),
+            base + list(extra), dot_slash=False)
 
 
 class TestBuild(unittest.TestCase):
@@ -2257,7 +2225,7 @@ class TestBuild(unittest.TestCase):
     def test_live_media_builds_and_reads_back(self):
         make_bootable_repo(self.repo)
         napks, nnodes, g, total = build.build(self.repo, self.efi, self.out)
-        self.assertEqual(napks, 3 + 2 + len(DRIVER_NAMES) + 1)
+        self.assertEqual(napks, 3 + 2 + len(BOOT_DRIVERS) + 1 + 1 + 1)
         with rhap_image.Image(self.out) as img:
             self.assertIsNotNone(img.resolve("/private/etc/rc.cdrom"))
             self.assertIsNotNone(
@@ -2273,10 +2241,32 @@ class TestBuild(unittest.TestCase):
         self.assertEqual(fstab, b"/dev/hd0a\t/\tufs\trw\t1 1\n")
 
     def test_a_missing_boot_driver_is_named(self):
-        make_bootable_repo(self.repo, drivers=DRIVER_NAMES[:-1])
-        with self.assertRaisesRegex(build.BuildError, "NE2K_reloc"):
+        make_bootable_repo(self.repo, drivers=("EISABus", "PCIBus",
+                                               "PS2Keyboard", "EIDE", "NE2K"))
+        with self.assertRaisesRegex(build.BuildError, "AHCI_reloc"):
             build.build(self.repo, self.efi, self.out)
         self.assertFalse(os.path.exists(self.out))
+
+    def test_preinstalled_needs_driverloader_and_the_network_card(self):
+        make_bootable_repo(self.repo, drivers=BOOT_DRIVERS,
+                           driver_loader=False)
+        with self.assertRaises(build.BuildError) as cm:
+            build.build(self.repo, self.efi, self.out, preinstalled=True)
+        self.assertIn("missing /usr/sbin/driverLoader", str(cm.exception))
+        self.assertIn("missing /private/Drivers/i386/NE2K.config/NE2K_reloc",
+                      str(cm.exception))
+
+    def test_the_media_does_not_need_driverloader(self):
+        make_bootable_repo(self.repo, drivers=BOOT_DRIVERS,
+                           driver_loader=False)
+        build.build(self.repo, self.efi, self.out)
+
+    def test_preinstalled_needs_usr_devices_to_reach_the_table(self):
+        make_bootable_repo(self.repo, devices_link=False)
+        with self.assertRaisesRegex(build.BuildError,
+                                    "/usr/Devices/System.config/"
+                                    "Instance0.table does not lead"):
+            build.build(self.repo, self.efi, self.out, preinstalled=True)
 
     def test_conflicts_are_refused(self):
         make_bootable_repo(self.repo)
@@ -2331,8 +2321,8 @@ class TestChecks(unittest.TestCase):
 
     def test_boot_drivers(self):
         self.assertEqual(build.boot_drivers(
-            b'"Kernel" = "mach_kernel";\n"Boot Drivers" = "EIDE  NE2K";\n'),
-            ["EIDE", "NE2K"])
+            b'"Kernel" = "mach_kernel";\n"Boot Drivers" = "EIDE  AHCI";\n'),
+            ["EIDE", "AHCI"])
         with self.assertRaises(build.BuildError):
             build.boot_drivers(b'"Kernel" = "mach_kernel";\n')
 
@@ -2358,11 +2348,11 @@ if __name__ == "__main__":
                               [--preinstalled] [--fs-mb N]
 
 DIR is a flat directory of apks (instmedia.collect makes one).  The image
-is written in memory-staged form and read back before it is kept:
-readback.diff against the node tree and ufs_check.check on the allocation
-accounting must both be clean.  Refused, with every problem listed: paths
-two packages both claim, a root missing a file the booters or rc need, and
-/dev nodes whose majors disagree with the kernel's.
+is staged in memory and read back before it is kept: readback.diff against
+the node tree and ufs_check.check on the allocation accounting must both be
+clean.  Refused, with every problem listed: paths two packages both claim,
+a root missing a file its boot needs, and /dev nodes whose majors disagree
+with the kernel's.
 """
 import argparse
 import os
@@ -2375,6 +2365,18 @@ from instmedia import (apkrepo, hdimage, live, readback, rootfs, space,
 
 BOOTERS = "/usr/standalone/i386"
 DRIVERS = "/private/Drivers/i386"
+# driverLoader reads the system table through /usr/Devices, which files
+# links to ../private/Devices.
+DEVICES_TABLE = "/usr/Devices/System.config/Instance0.table"
+# The card the pre-installed image's SSH gate uses (QEMU's ne2k_pci), an
+# Active Driver that driverLoader loads at startup.
+NETWORK_DRIVER = "NE2K"
+# What CDIS's rc.cdrom runs before its first menus.
+CDIS_NEEDS = ["/usr/bin/perl", live.RC_CDROM, "/private/etc/rc.cdrom.x86",
+              "/private/etc/rc.cdrom.PPC",
+              live.CDIS + "/English.lproj/Localizable.strings",
+              live.CDIS + "/findroot", live.CDIS + "/gc",
+              live.CDIS + "/popconsole", live.CDIS + "/pickdisk"]
 # The majors /dev must use: sd from the kernel's own tables
 # (src/kernel-7/bsd/dev/i386/conf.c: bdevsw 6, cdevsw 14), hd and fd from
 # the "Block Major"/"Character Major" the EIDE and Floppy drivers register
@@ -2401,17 +2403,35 @@ def boot_drivers(table):
 
 
 def check_tree(nodes, preinstalled):
-    """Paths the booters, the kernel and rc need that the root lacks."""
-    have = {n.path for n in nodes}
-    table = next(n.data for n in nodes if n.path == live.SYSTEM_TABLE)
+    """What the booters, the kernel and the image's startup need that the
+    root lacks: CDIS's pieces on the media; sshd, driverLoader, the network
+    card and the /usr/Devices path on the pre-installed disk."""
+    by_path = {n.path: n for n in nodes}
+    table = by_path[live.SYSTEM_TABLE].data
     need = ["/mach_kernel", BOOTERS + "/boot0", BOOTERS + "/boot1",
-            BOOTERS + "/boot", BOOTERS + "/sarld", "/usr/sbin/sshd",
-            "/sbin/mount", "/usr/libexec/getty"]
+            BOOTERS + "/boot", BOOTERS + "/sarld"]
     need += ["%s/%s.config/%s_reloc" % (DRIVERS, name, name)
              for name in boot_drivers(table)]
-    if not preinstalled:
-        need += [live.RC_CDROM, "/Installation/Target"]
-    return ["missing %s" % p for p in need if p not in have]
+    if preinstalled:
+        need += ["/usr/sbin/sshd", "/sbin/mount", "/usr/libexec/getty",
+                 "/usr/sbin/driverLoader",
+                 "%s/%s.config/%s_reloc" % (DRIVERS, NETWORK_DRIVER,
+                                            NETWORK_DRIVER)]
+    else:
+        need += CDIS_NEEDS
+    problems = ["missing %s" % p for p in need if p not in by_path]
+    if preinstalled:
+        tree = rootfs.Tree()
+        for n in nodes[1:]:
+            tree.put(n)
+        try:
+            real = tree.resolve(DEVICES_TABLE)
+        except rootfs.TreeError as e:
+            real = str(e)
+        if real != live.SYSTEM_TABLE:
+            problems.append("%s does not lead to %s (%s)"
+                            % (DEVICES_TABLE, live.SYSTEM_TABLE, real))
+    return problems
 
 
 def check_dev(nodes):
@@ -2496,10 +2516,11 @@ if __name__ == "__main__":
     sys.exit(main(sys.argv))
 ```
 
-- [ ] **Step 4: Run the tests, then every instmedia test.**
+- [ ] **Step 4: Run these tests, then every instmedia test.** All 13 of
+  these pass. Then run:
   `cd vm && RHAPSODY_MEDIA_DIR=D:/RhapsodiOS/vm python -m unittest instmedia.test_build instmedia.test_hdimage instmedia.test_apkrepo instmedia.test_rootfs instmedia.test_live instmedia.test_collect instmedia.test_label instmedia.test_ufs instmedia.test_ufs_geometry instmedia.test_space instmedia.test_sample -v`.
-  Everything passes; the one expected skip is `TestImage` without
-  `RHAPSODY_BOOTSTRAP_IMAGE`.
+  Everything passes. The one expected skip is `TestImage`, which runs only
+  when `RHAPSODY_BOOTSTRAP_IMAGE` is set.
 
 - [ ] **Step 5: Commit.**
 
@@ -3064,11 +3085,11 @@ git commit -m "vm: boot the install media from hd1 and give the guest a network 
 
 ### Task 11: Build the images and run the four gates (controller)
 
-**Files:** none in the repo. Output goes in `vm/work/p4-repo/`,
+**Files:** none in the repo. Output goes to `vm/work/p4-repo/`,
 `vm/work/p4-gate/` and `vm/logs/p4-gate/`, all gitignored.
 
 - [ ] **Step 1: Build `BOOTIA32.EFI` in the worktree.** It's gitignored, so
-  the worktree has none.
+  the worktree has none:
 
 ```bash
 cd src/bootefi-1 && PATH="/c/Program Files/LLVM/bin:$PATH" make
@@ -3089,36 +3110,56 @@ python -m instmedia.build --repo work/p4-repo --efi ../src/bootefi-1/BUILD/BOOTI
 ```
 
   Each build prints its apk, node and size counts and exits 0.
-  - A conflict or missing path means a packaging bug. Fix the package,
-    rebuild it on the Task 3 guest, fetch it, and rerun from `collect`,
-    which refuses a non-empty `work/p4-repo`, so remove it first.
+  - A conflict or missing path is a packaging bug. Fix the package, rebuild
+    it on the Task 3 guest, fetch it, remove `work/p4-repo` (`collect`
+    refuses a non-empty one) and rerun from `collect`.
+  - Until the `driverkit` apk carries `driverLoader`, the pre-installed
+    build stops with `missing /usr/sbin/driverLoader`. Build and gate the
+    media meanwhile.
   - Record the counts and every fix for Task 12.
 
-- [ ] **Step 3: Gate 1 and 2, the media under both firmwares.**
+- [ ] **Step 3: Gates 1 and 2, the media under both firmwares.** First find
+  when CDIS's language menu appears:
 
 ```bash
 python -c "open('work/p4-gate/blank.img','wb').truncate(2<<30)"
 python qemu_boot.py bios work/p4-gate/blank.img logs/p4-gate/media-bios --hd1 work/p4-gate/media.img --boot-hd1 --at 60,120,180,240,300,360
-python qemu_boot.py uefi work/p4-gate/blank.img logs/p4-gate/media-uefi --hd1 work/p4-gate/media.img --boot-hd1 --at 60,120,180,240,300,360
 ```
 
-  - **Pass:** a screenshot shows `rhapinstall is not installed on this
-    medium.` and the reboot/shell/halt menu.
-  - `kernel.log` shows the root on `hd1a` (`rootdev 308`: major 3, minor
-    8), and `console.log` (UEFI) shows the loader choosing the disk it was
-    read from.
-  - If the menu isn't reached, compare against the shots and logs and fix
-    the root cause. `fbshow`, `fbalert` and `popconsole` noise is expected.
+  The menu's text starts `Type 1 to use the English language and USA
+  keyboard while installing Darwin OS.` Call the first screenshot time that
+  shows it T. Then answer it:
+
+```bash
+python qemu_boot.py bios work/p4-gate/blank.img logs/p4-gate/media-bios-typed --hd1 work/p4-gate/media.img --boot-hd1 --type "<T+10>:1" --type "<T+60>:1" --at <T+5>,<T+40>,<T+90>,<T+120>
+```
+
+  Repeat both runs with `uefi` in place of `bios`, into
+  `logs/p4-gate/media-uefi*`.
+  - **Pass:**
+    - The language menu shows.
+    - After `1`, the Intel warning shows, starting `You are about to
+      configure a disk to install Darwin OS 1.0 for Intel.`
+    - `kernel.log` shows the root on `hd1a`: `rootdev 308`, meaning major
+      3, minor 8.
+    - Under UEFI, `console.log` shows the loader choosing the disk it was
+      read from.
+  - **Record, don't judge,** what follows the second `1`: `pickdisk`'s
+    disk list (`BOOT_DISK` / `WHICH_DISK`), or its failure. Phase 5 builds
+    on it.
+  - If the language menu never comes, read the shots and logs and fix the
+    root cause. Perl errors land on the console.
 
 - [ ] **Step 4: Gates 3 and 4, the pre-installed disk under both firmwares,
-  with SSH.** Make the gate login config:
+  with SSH.** These need the `driverLoader` apk (Task 3 Step 8). Make the
+  gate login config:
 
 ```bash
 G=<scratch>/p4gate; mkdir -p $G/vm && cp vm/{rhap-remote,build-src-lib,sync-src,sync-src-lib,guest-remote}.ps1 $G/vm/
 sed -e 's/^Port=.*/Port=2549/' -e 's/^Password=.*/Password=rhapsodi/' D:/RhapsodiOS/vm/vm.conf > $G/vm/vm.conf
 printf '%s\n' 'echo logged in to the pre-installed disk' 'uname -a' 'mount' 'ifconfig en0' \
   'test -f /etc/rc.cdrom && echo rc.cdrom PRESENT || echo no rc.cdrom' \
-  'test -d /System/Installation && echo Installation PRESENT || echo no Installation' > $G/login.sh
+  'ls -l /usr/Devices/System.config/Instance0.table' > $G/login.sh
 ```
 
   Then, for each of `bios` and `uefi`, start the boot in the background:
@@ -3127,7 +3168,7 @@ printf '%s\n' 'echo logged in to the pre-installed disk' 'uname -a' 'mount' 'ifc
 python qemu_boot.py bios work/p4-gate/preinstalled.img logs/p4-gate/pre-bios --nic ne2k_pci --ssh-port 2549 --at 120,240,360,480,600,720,840
 ```
 
-  About 8 minutes in (first boot makes the host keys), make one login
+  About 8 minutes in (the first boot makes the host keys), make one login
   attempt:
   `powershell -NoProfile -File $G/vm/guest-remote.ps1 -Run $G/login.sh`.
   If it's refused because sshd isn't up yet, try once more at about 12
@@ -3135,56 +3176,57 @@ python qemu_boot.py bios work/p4-gate/preinstalled.img logs/p4-gate/pre-bios --n
   - **Pass:**
     - The login succeeds with the password `rhapsodi`.
     - `mount` shows `/dev/hd0a on /` read-write, and `en0` has an address
-      from QEMU's DHCP (10.0.2.x).
-    - Both `no rc.cdrom` and `no Installation` print.
+      from QEMU's DHCP (10.0.2.x), which means `driverLoader` loaded NE2K.
+    - `no rc.cdrom` prints, and the table resolves through `/usr/Devices`.
     - A screenshot shows the console `login:`.
   - Before the second firmware's run, remove the `[127.0.0.1]:2549` line
     from `C:/Users/RAYNOR~2/AppData/Local/Temp/rhap-known_hosts`. Every
-    first boot makes new host keys, and `-snapshot` discards them, so ssh
-    would refuse the changed key.
+    first boot makes new host keys, and `-snapshot` discards them.
 
-- [ ] **Step 5:** Copy the passing shots' paths and the key log lines into
-  the ledger for Task 12, and delete `$G/vm/vm.conf`.
+- [ ] **Step 5:** Record the passing shots' paths and the key log lines for
+  Task 12, then delete `$G/vm/vm.conf`.
 
 ### Task 12: Record it
 
 **Files:**
 - Create: `docs/build/instmedia-live.md`
-- Modify: `docs/superpowers/specs/2026-09-22-install-media-design.md`,
-  `docs/reverse-engineering-docket.md`
+- Modify: `docs/superpowers/specs/2026-09-22-install-media-design.md`
 
-- [ ] **Step 1: `docs/build/instmedia-live.md`**, in the style of
-  `docs/build/instmedia-ufs.md`:
+- [ ] **Step 1: Write `docs/build/instmedia-live.md`,** in the style of
+  `docs/build/instmedia-ufs.md`. It holds:
   - a module table (`collect`, `apkrepo`, `rootfs`, `live`, `hdimage`,
     `build`)
-  - the boot closure, with every project added during Task 3 and why
+  - the boot closure, with every project Task 3 added and why
   - the exact commands from Task 11
-  - a results table for the four gates, with dates, image sizes and
-    apk/node counts
-  - *Worth knowing*: NE2K as a boot driver and Task 1's evidence; the
-    missing `driverLoader`; `getpwnam` reading `master.passwd` without
-    `lookupd`; the companion rule; every packaging fix Tasks 3 and 11
-    needed
+  - a results table for the four gates, with dates, image sizes, apk and
+    node counts, and what `pickdisk` did
+  - *Worth knowing*:
+    - CDIS as the installer: the inert `rc.cdrom.hidden`, the missing
+      `sysconfig` and the language menu
+    - NE2K as an Active Driver, with Task 1's evidence
+    - the `/private/Devices` link
+    - `getpwnam` reading `master.passwd` without `lookupd`
+    - the companion rule
+    - every packaging fix Tasks 3 and 11 needed
 
-- [ ] **Step 2: The spec.** Edit these, recording each change as "(Before
-  phase 4; now ...)" in the same style phase 1 and 2 used:
-  - The *Installed-system configuration* `Instance0.table` row: Boot
-    Drivers add NE2K, Active Drivers don't add `Intel1000`, and why.
+- [ ] **Step 2: Update the spec,** noting each change as "(Before phase 4;
+  now ...)" in the style phases 1 and 2 used:
+  - *Installer*: phases 4 and 5 build on `cdis-3`. Its `rc.cdrom` is made
+    live from `rc.cdrom.hidden`, the templates live in
+    `/System/Installation/CDIS/templates`, and the target mounts at CDIS's
+    `/private/var/tmp/mnta`, not `/Installation/Target`.
+  - *Live environment*: the overlay list. The "checked absent on target"
+    rule becomes `/etc/rc.cdrom` only, because `cdis` installs
+    `/System/Installation` everywhere.
+  - *Installed-system configuration*, the `Instance0.table` row: Active
+    Drivers add `NE2K`, not `Intel1000`, and why.
   - *Testing*'s runner line: `-device ne2k_pci` and host port 2549, not
     `e1000` and 2222.
-  - Risk 1: note what phase 4 showed.
-  - Risk 7: note the `getpwnam` finding.
+  - Risk 1: what phase 4 showed. Risk 7: the `getpwnam` finding.
 
-- [ ] **Step 3: The docket.** Add a row to
-  `docs/reverse-engineering-docket.md`'s table:
-  `| driverLoader | files' startup/0700_Devices (driverLoader a) | loading Active Drivers at startup |`.
-  Add a short `## driverLoader` section: DR2's `/usr/sbin/driverLoader`
-  has no source in the tree, and phase 4 works around it by making the NIC
-  a boot driver.
-
-- [ ] **Step 4: Commit.**
+- [ ] **Step 3: Commit.**
 
 ```bash
-git add docs/build/instmedia-live.md docs/superpowers/specs/2026-09-22-install-media-design.md docs/reverse-engineering-docket.md
-git commit -m "docs: record phase 4's pure-apk media, the NE2K boot driver and the missing driverLoader"
+git add docs/build/instmedia-live.md docs/superpowers/specs/2026-09-22-install-media-design.md
+git commit -m "docs: record phase 4's pure-apk media, CDIS as the installer and NE2K under driverLoader"
 ```

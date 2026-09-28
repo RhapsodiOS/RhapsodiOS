@@ -81,3 +81,23 @@ def test_i386_pic_add_immediate_on_esi_edi_pairs():
     ref = _fn(0x100, [("01", "add", "edi, 6882h")])
     new = _fn(0x200, [("02", "add", "edi, 23DEh")])
     assert pic_equal.compare(ref, new) is None
+
+
+def test_swapped_raw_displacement_targets_are_different():
+    # Two string references exchanged between call sites: still a bijection,
+    # but the order of the targets is reversed.
+    ref = _fn(0x100, [("01", "lea", "edx, [edx+0A71Eh]"), ("02", "lea", "edx, [edx+0A722h]")])
+    new = _fn(0x200, [("03", "lea", "edx, [edx+5A06h]"), ("04", "lea", "edx, [edx+5A02h]")])
+    assert pic_equal.compare(ref, new) is not None
+
+
+def test_frame_offsets_are_not_addresses():
+    ref = _fn(0x100, [("01", "lea", "eax, [ebp-808h]")])
+    new = _fn(0x200, [("02", "lea", "eax, [ebp-408h]")])
+    assert pic_equal.compare(ref, new) is not None
+
+
+def test_one_address_in_two_textual_forms_is_equal():
+    ref = _fn(0x100, [("01", "addis", "r9, r31, (dword_6F38)@ha"), ("02", "lwz", "r3, (dword_6F38 - 0x6F38)(r9)")])
+    new = _fn(0x200, [("01", "addis", "r9, r31, (dword_6F38)@ha"), ("02", "lwz", "r3, (dword_6F38 - 0x6F38)(r9)")])
+    assert pic_equal.compare(ref, new) is None

@@ -247,9 +247,9 @@ processDriver(const char *driverName, BOOL isBoot, BOOL load)
 static int
 loadDriver(const char *driverName)
 {
-	char question[100];
-	struct stat statBuf;
 	char path[1024];
+	struct stat statBuf;
+	char question[100];
 	id table;
 	const char *serverName;
 

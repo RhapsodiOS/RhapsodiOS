@@ -105,6 +105,11 @@ class TestCompose(unittest.TestCase):
         self.assertEqual(passwd.mode, 0o600)
         self.assertIn(b"\nroot:rhME8brSxdukA:", passwd.data)
 
+    def test_preinstalled_links_private_devices_as_the_installer_does(self):
+        link = self.pre[live.DEVICES]
+        self.assertEqual((link.kind, link.data), ("lnk", "Drivers/i386"))
+        self.assertNotIn(live.DEVICES, self.live)
+
     def test_preinstalled_does_not_start_the_installer(self):
         self.assertNotIn(live.RC_CDROM, self.pre)
         self.assertNotIn("/System/Installation/Packages", self.pre)

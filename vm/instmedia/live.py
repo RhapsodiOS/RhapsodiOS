@@ -16,8 +16,9 @@ only:
     /System/Installation/esp.img.gz      the ESP the installer writes
 
 With preinstalled set there is no overlay.  Instead the installed-system
-templates are rendered for hd0, and root gets the test password, so the
-image boots as an installed disk.  /System/Installation is there too, from
+templates are rendered for hd0, /private/Devices is linked to Drivers/i386
+as CDIS's installer links it on its target, and root gets the test
+password, so the image boots as an installed disk.  /System/Installation is there too, from
 the cdis apk, but without /private/etc/rc.cdrom rc starts the system.
 """
 import gzip
@@ -33,6 +34,9 @@ TEMPLATES = CDIS + "/templates"
 ARCH = "i386"
 INSTANCE0_TEMPLATE = "Instance0-%s.table" % ARCH
 SYSTEM_TABLE = "/private/Drivers/%s/System.config/Instance0.table" % ARCH
+# files links /usr/Devices to ../private/Devices; the installer links
+# /private/Devices on to the architecture's drivers (rc.cdrom).
+DEVICES = "/private/Devices"
 FSTAB = "/private/etc/fstab"
 HOSTCONFIG = "/private/etc/hostconfig"
 MASTER_PASSWD = "/private/etc/master.passwd"
@@ -95,6 +99,7 @@ def compose(apks, esp, preinstalled=False, password_hash=None):
         put_file(SYSTEM_TABLE,
                  render(template(INSTANCE0_TEMPLATE), INSTALLED_DISK))
         put_file(HOSTCONFIG, template("hostconfig"))
+        tree.put(Node(DEVICES, "lnk", 0o755, 0, 0, now, "Drivers/" + ARCH))
         put_file(MASTER_PASSWD,
                  set_root_password(tree.data(MASTER_PASSWD), password_hash),
                  0o600)

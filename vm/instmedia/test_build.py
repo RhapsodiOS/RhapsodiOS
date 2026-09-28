@@ -6,14 +6,14 @@ import unittest
 
 import rhap_image
 from ufs_extract import Node
-from instmedia import build, live, testapks as ta, test_live
+from instmedia import apkrepo, build, live, testapks as ta, test_live
 
 BOOT_DRIVERS = ("EISABus", "PCIBus", "PS2Keyboard", "EIDE", "AHCI", "NE2K")
 CDIS = "System/Installation/CDIS/"
 
 
 def make_bootable_repo(directory, drivers=BOOT_DRIVERS + ("BPF",),
-                       driver_loader=True, devices_link=True, extra=()):
+                       driver_loader=True, extra=()):
     """test_live's repo plus what a bootable root must have: the boot
     drivers, and BPF, the Active Driver dhcpcd needs."""
     test_live.make_repo(directory)
@@ -34,10 +34,6 @@ def make_bootable_repo(directory, drivers=BOOT_DRIVERS + ("BPF",),
                 ta.pkginfo("drv" + name.lower(), "1", "i386-apple-rhapsody"),
                 [ta.f("private/Drivers/i386/%s.config/%s_reloc"
                       % (name, name), name.encode() * 100)], dot_slash=False)
-    if devices_link:
-        ta.make(directory, "system-config-46-universal.apk",
-                ta.pkginfo("system-config", "46"),
-                [ta.ln("private/Devices", "Drivers/i386")], dot_slash=False)
     base = [ta.f("usr/sbin/sshd", b"sshd"), ta.f("sbin/mount", b"mount"),
             ta.f("usr/libexec/getty", b"getty"), ta.f("usr/bin/perl", b"pl"),
             ta.f("private/etc/rc.cdrom.PPC", b"1;\n"),
@@ -69,7 +65,7 @@ class TestBuild(unittest.TestCase):
     def test_live_media_builds_and_reads_back(self):
         make_bootable_repo(self.repo)
         napks, nnodes, g, total = build.build(self.repo, self.efi, self.out)
-        self.assertEqual(napks, 3 + 2 + len(BOOT_DRIVERS) + 1 + 1 + 1)
+        self.assertEqual(napks, 3 + 2 + len(BOOT_DRIVERS) + 1 + 1)
         with rhap_image.Image(self.out) as img:
             self.assertIsNotNone(img.resolve("/private/etc/rc.cdrom"))
             self.assertIsNotNone(
@@ -113,11 +109,13 @@ class TestBuild(unittest.TestCase):
         build.build(self.repo, self.efi, self.out)
 
     def test_preinstalled_needs_usr_devices_to_reach_the_table(self):
-        make_bootable_repo(self.repo, devices_link=False)
-        with self.assertRaisesRegex(build.BuildError,
-                                    "/usr/Devices/System.config/"
-                                    "Instance0.table does not lead"):
-            build.build(self.repo, self.efi, self.out, preinstalled=True)
+        make_bootable_repo(self.repo)
+        nodes, _ = live.compose(apkrepo.index(self.repo), b"E",
+                                preinstalled=True, password_hash="x")
+        nodes = [n._replace(data="../private/Nowhere")
+                 if n.path == "/usr/Devices" else n for n in nodes]
+        self.assertIn("/usr/Devices/System.config/Instance0.table does not "
+                      "lead", "\n".join(build.check_tree(nodes, True)))
 
     def test_conflicts_are_refused(self):
         make_bootable_repo(self.repo)

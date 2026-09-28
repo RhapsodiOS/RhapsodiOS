@@ -1175,6 +1175,7 @@ vm_offset_t zget_space(freespace, size, canblock)
 	vm_size_t	space_to_add;
 	struct zone_free_space_entry
 			*cur, **last;
+	spl_t		s;
 
 	if (freespace == 0)
 		freespace = zone_default_space;
@@ -1188,6 +1189,7 @@ vm_offset_t zget_space(freespace, size, canblock)
 	else
 		size = ZONE_MIN_ALLOC;
 
+	s = splhigh();
 	simple_lock(simple_lock_addr(zget_space_lock));
 	for (;;) {
 		if ((cur = zone_free_space_lookup(freespace, size)) != 0) {
@@ -1267,6 +1269,7 @@ vm_offset_t zget_space(freespace, size, canblock)
 			 */
 
 			simple_unlock(simple_lock_addr(zget_space_lock));
+			splx(s);
 			{
 				kern_return_t	kr;
 
@@ -1281,6 +1284,7 @@ vm_offset_t zget_space(freespace, size, canblock)
 				}
 			}
 
+			s = splhigh();
 			simple_lock(simple_lock_addr(zget_space_lock));
 			continue;
 		}
@@ -1299,6 +1303,7 @@ vm_offset_t zget_space(freespace, size, canblock)
 		}
 	}
 	simple_unlock(simple_lock_addr(zget_space_lock));
+	splx(s);
 
 	if (new_space != 0)
 		kmem_free(zone_map, new_space, space_to_add);
@@ -1809,6 +1814,7 @@ kern_return_t host_zone_free_space_info(
 	mach_msg_type_number_t		*chunksCnt;
 {
 	kern_return_t	kr;
+	spl_t		s;
 	vm_size_t	size1, size2;
 	vm_offset_t	addr1, addr2;
 	vm_offset_t	memory1, memory2;
@@ -1834,6 +1840,7 @@ kern_return_t host_zone_free_space_info(
 
 		size1_needed = size2_needed = 0;
 
+		s = splhigh();
 		simple_lock(simple_lock_addr(zget_space_lock));
 
 		actual1 = actual2 = 0;
@@ -1854,6 +1861,7 @@ kern_return_t host_zone_free_space_info(
 			break;
 
 		simple_unlock(simple_lock_addr(zget_space_lock));
+		splx(s);
 
 		if (size1 < size1_needed) {
 			if (size1 != 0)
@@ -1935,6 +1943,7 @@ kern_return_t host_zone_free_space_info(
 	}
 
 	simple_unlock(simple_lock_addr(zget_space_lock));
+	splx(s);
 
 	if (actual1 != 0 && size1 != 0) {
 		vm_size_t	size_used;
@@ -2042,6 +2051,7 @@ kern_return_t host_zone_collect(
 			*cur, *pages = 0;
 	zone_t		z;
 	int		max_zones, i;
+	spl_t		s;
 
 	if (host == HOST_NULL)
 		return KERN_INVALID_HOST;
@@ -2049,6 +2059,7 @@ kern_return_t host_zone_collect(
 	if (!collect_zones)
 	    return KERN_SUCCESS;
 	
+	s = splhigh();
 	simple_lock(simple_lock_addr(zget_space_lock));
 
 	simple_lock(simple_lock_addr(all_zones_lock));
@@ -2075,6 +2086,7 @@ kern_return_t host_zone_collect(
 		pages = zone_free_space_reclaim();
 	
 	simple_unlock(simple_lock_addr(zget_space_lock));
+	splx(s);
 
 	/*
 	 * Return any reclaimed pages to

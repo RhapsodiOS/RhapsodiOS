@@ -295,12 +295,11 @@ static int
 unloadDriver(const char *driverName)
 {
 	char path[1024];
-	struct stat statBuf;
 	char question[100];
+	struct stat statBuf;
 	vm_offset_t data;
 	int fd;
-	IOReturn rtn;
-	int krtn;
+	int rtn;
 
 	if (verbose)
 		printf("Unloading driver %s\n", driverName);
@@ -335,16 +334,16 @@ unloadDriver(const char *driverName)
 			progName, rtn, driverName);
 		return 1;
 	}
-	krtn = kl_com_unload((char *)driverName);
-	if (krtn) {
+	rtn = kl_com_unload((char *)driverName);
+	if (rtn) {
 		fprintf(stderr, "%s: kl_com_unload() failed with code %d on %s\n",
-			progName, krtn, driverName);
+			progName, rtn, driverName);
 		return 1;
 	}
-	krtn = kl_com_delete((char *)driverName);
-	if (krtn) {
+	rtn = kl_com_delete((char *)driverName);
+	if (rtn) {
 		fprintf(stderr, "%s: kl_com_delete() failed with code %d on %s\n",
-			progName, krtn, driverName);
+			progName, rtn, driverName);
 		return 1;
 	}
 	return 0;

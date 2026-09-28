@@ -1,4 +1,5 @@
 import os
+import random
 import unittest
 
 from instmedia import collect, testapks as ta
@@ -32,6 +33,22 @@ class TestMerge(unittest.TestCase):
         name, data = apk("grep-1-universal.apk", "grep", body=b"y" * 5000)
         with self.assertRaisesRegex(collect.CollectError, "damaged"):
             collect.merge([(name, data[:len(data) // 2])])
+
+    def test_a_block_from_another_file_is_refused_wherever_it_lands(self):
+        # A DUP block on the image puts another file's data in an apk.
+        r = random.Random(4)
+
+        def many(pkgname):
+            return ta.tar_bytes(ta.pkginfo(pkgname), [
+                ta.f("usr/share/%s/%d" % (pkgname, i),
+                     bytes(r.randrange(256) for _ in range(3000)))
+                for i in range(20)])
+        data, other = many("grep"), many("sed")
+        for off in range(0, len(data) - 1024, 1024):
+            bad = data[:off] + other[off:off + 1024] + data[off + 1024:]
+            with self.subTest(off=off), self.assertRaisesRegex(
+                    collect.CollectError, "damaged"):
+                collect.verify("grep-1-universal.apk", bad)
 
     def test_the_same_filename_twice_in_one_source_is_refused(self):
         with self.assertRaises(collect.CollectError):

@@ -13,6 +13,7 @@ Every apk is decompressed in full on the way in, so a damaged one is
 refused rather than copied: the image's filesystem has known DUP blocks.
 """
 import argparse
+import gzip
 import os
 import sys
 import tarfile
@@ -29,8 +30,11 @@ class CollectError(Exception):
 
 
 def verify(name, data):
-    """The apk's pkgname, after reading every member of it."""
+    """The apk's pkgname, after decompressing all of it, which checks the
+    gzip CRC, and reading every member of it.  tarfile alone stops quietly
+    at a damaged header and never reaches the CRC."""
     try:
+        gzip.decompress(data)
         with apkrepo.open_apk(data) as tar:
             for m in tar:
                 if m.isreg():

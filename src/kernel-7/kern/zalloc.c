@@ -770,21 +770,23 @@ vm_offset_t zone_free_space_add(freespace, size, new_space, space_to_add)
 			((vm_offset_t)cur + cur->length) != new_space)
 		last = &cur->next;
 			
-	if (cur == 0 || ((vm_offset_t)cur + cur->length) < new_space) {
+	if (cur == 0 || (vm_offset_t)cur > new_space) {
 		/*
 		 * No entry was found to combine with.
 		 * Take the new element from the front
 		 * of the new region, and insert the
-		 * remainder as a new entry.
+		 * remainder as a new entry, ahead of
+		 * cur so the list stays sorted.
+		 *
+		 * RhapsodiOS: NeXT tested cur + cur->length
+		 * < new_space here, which the search loop
+		 * above can never leave true, so a region
+		 * landing below an existing entry lost its
+		 * remainder: zdata is carved from the top
+		 * down at boot, and zone_gc() leaves holes
+		 * in zone_map.
 		 */
 		if ((space_to_add - size) >= ZONE_MIN_ALLOC) {
-			/*
-			 * If we are not at the end of
-			 * the free list, then insert the
-			 * new entry after the current entry.
-			 */
-			if (cur != 0)
-				last = &cur->next;
 			(vm_offset_t)cur = new_space + size;
 			cur->length = space_to_add - size;
 			if (cur->next = *last)

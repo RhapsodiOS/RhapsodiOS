@@ -52,11 +52,12 @@ class TestTemplates(unittest.TestCase):
         self.assertEqual(table_keys(ours), table_keys(default))
         self.assertEqual(table_value(ours, b"Boot Drivers"),
                          b"EISABus PCIBus PS2Keyboard EIDE AHCI NE2K")
+        self.assertEqual(table_value(ours, b"Active Drivers"),
+                         table_value(default, b"Active Drivers") + b" BPF")
         self.assertEqual(table_value(ours, b"Kernel Flags"),
                          b"rootdev=@DISK@a")
         self.assertEqual(table_value(ours, b"Boot Graphics"), b"No")
-        for key in (b"Version", b"Active Drivers", b"Kernel",
-                    b"Install Mode", b"APM"):
+        for key in (b"Version", b"Kernel", b"Install Mode", b"APM"):
             self.assertEqual(table_value(ours, key),
                              table_value(default, key))
 

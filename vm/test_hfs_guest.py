@@ -72,3 +72,32 @@ def test_verify_rejects_wrong_output(hfsplus, tmp_path):
     assert any("'END'" in p for p in hg.verify("read", str(tmp_path), hfsplus, no_end))
     (tmp_path / "serial.log").write_text("panic: hfs_swap\n")
     assert any("serial" in p for p in hg.verify("read", str(tmp_path), hfsplus, good))
+
+
+def _poke_sector(path, off):
+    with open(path, "r+b") as f:
+        f.seek(off + 64)
+        b = f.read(1)
+        f.seek(off + 64)
+        f.write(bytes([b[0] ^ 0xff]))
+
+
+def test_verify_ignores_a_plain_volumes_own_header(hfsplus, tmp_path):
+    before = str(tmp_path / "before.img")
+    with open(hfsplus, "rb") as a, open(before, "wb") as b:
+        b.write(a.read())
+    # the kernel rewrites a plain volume's header; check() covers it, not the wrapper test
+    good = _simulated_guest(hfsplus)
+    _poke_sector(hfsplus, hg.label_front() + 1024)
+    assert not any("wrapper" in p for p in hg.verify("read", str(tmp_path), hfsplus, good, before))
+
+
+def test_verify_rejects_a_changed_wrapper(tmp_path):
+    wrapped = str(tmp_path / "wrapped.img")
+    hg.build_image("wrapped", wrapped)
+    before = str(tmp_path / "before.img")
+    with open(wrapped, "rb") as a, open(before, "wb") as b:
+        b.write(a.read())
+    good = _simulated_guest(wrapped)
+    _poke_sector(wrapped, hg.label_front() + 1024)
+    assert "wrapper MDB changed" in hg.verify("read", str(tmp_path), wrapped, good, before)

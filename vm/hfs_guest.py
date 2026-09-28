@@ -249,7 +249,10 @@ def verify(mode, outdir, hfs_img, results, before=None):
             if not e.is_dir and p in expected and \
                     v.read_file(e) != content.data(name_of(p), e.data.logical_size):
                 problems.append("image contents of %s are wrong" % p)
-    if before is not None:
+        wrapped = v.wrapper is not None
+    # a plain volume's own MDB or header sits where a wrapper's would; the
+    # kernel rewrites it, and check() above covers it
+    if before is not None and wrapped:
         problems += compare_wrapper(before, hfs_img)
     return problems
 

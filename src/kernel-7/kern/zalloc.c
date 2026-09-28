@@ -1647,6 +1647,76 @@ void zchange(zone, pageable, sleepable, exhaustible, collectable)
 	lock_zone_init(zone);
 }
 
+/*
+ *	zone_gc:
+ *
+ *	Return the free elements of every collectable, non-pageable zone
+ *	to the zone's free space pool, then, if reclaim_pages, give the
+ *	pools' whole free pages back to zone_map.  Each zone is collected
+ *	in its own splhigh window, so interrupts wait for at most one
+ *	zone's free list rather than the whole pass.
+ */
+void zone_gc(boolean_t reclaim_pages)
+{
+	struct zone_free_space_entry	*cur, *pages = 0;
+	zone_t		z;
+	int		max_zones, i;
+	spl_t		s;
+
+	simple_lock(simple_lock_addr(all_zones_lock));
+	max_zones = num_zones;
+	z = first_zone;
+	simple_unlock(simple_lock_addr(all_zones_lock));
+
+	for (i = 0; i < max_zones; i++) {
+		assert(z != ZONE_NULL);
+		if (!z->pageable && zone_collectable(z)) {
+			s = splhigh();
+			simple_lock(simple_lock_addr(zget_space_lock));
+			lock_zone(z);
+			zone_collect(z);
+			unlock_zone(z);
+			simple_unlock(simple_lock_addr(zget_space_lock));
+			splx(s);
+		}
+		simple_lock(simple_lock_addr(all_zones_lock));
+		z = z->next_zone;
+		simple_unlock(simple_lock_addr(all_zones_lock));
+	}
+
+	if (reclaim_pages) {
+		s = splhigh();
+		simple_lock(simple_lock_addr(zget_space_lock));
+		pages = zone_free_space_reclaim();
+		simple_unlock(simple_lock_addr(zget_space_lock));
+		splx(s);
+	}
+
+	/*
+	 * Return any reclaimed pages to the system.
+	 */
+	while ((cur = pages) != 0) {
+		pages = cur->next;
+		kmem_free(zone_map, (vm_offset_t)cur, cur->length);
+	}
+}
+
+unsigned	zone_gc_last_tick = 0;
+unsigned	zone_gc_max_rate = 2;	/* in sched_ticks, one a second */
+
+/*
+ *	consider_zone_gc:
+ *
+ *	Called by the pageout daemon when free pages run short.
+ */
+void consider_zone_gc(void)
+{
+	if (sched_tick > zone_gc_last_tick + zone_gc_max_rate) {
+		zone_gc_last_tick = sched_tick;
+		zone_gc(TRUE);
+	}
+}
+
 #if	MACH_DEBUG
 kern_return_t host_zone_info(host, namesp, namesCntp, infop, infoCntp)
 	host_t		host;
@@ -2047,55 +2117,11 @@ kern_return_t host_zone_collect(
 	boolean_t	collect_zones,
 	boolean_t	reclaim_pages)
 {
-    	struct zone_free_space_entry
-			*cur, *pages = 0;
-	zone_t		z;
-	int		max_zones, i;
-	spl_t		s;
-
 	if (host == HOST_NULL)
 		return KERN_INVALID_HOST;
 
-	if (!collect_zones)
-	    return KERN_SUCCESS;
-	
-	s = splhigh();
-	simple_lock(simple_lock_addr(zget_space_lock));
-
-	simple_lock(simple_lock_addr(all_zones_lock));
-	max_zones = num_zones;
-	z = first_zone;
-	simple_unlock(simple_lock_addr(all_zones_lock));
-
-	for (i = 0; i < max_zones; i++) {
-		assert(z != ZONE_NULL);
-	/* run this at splhigh so that interupt routines that use zones
-	   can not interupt while their zone is locked */
-		lock_zone(z);
-
-		if (!z->pageable && zone_collectable(z))
-		    zone_collect(z);
-
-		unlock_zone(z);		
-		simple_lock(simple_lock_addr(all_zones_lock));
-		z = z->next_zone;
-		simple_unlock(simple_lock_addr(all_zones_lock));
-	}
-
-	if (reclaim_pages)
-		pages = zone_free_space_reclaim();
-	
-	simple_unlock(simple_lock_addr(zget_space_lock));
-	splx(s);
-
-	/*
-	 * Return any reclaimed pages to
-	 * the system.
-	 */
-	while ((cur = pages) != 0) {
-		pages = cur->next;
-		kmem_free(zone_map, (vm_offset_t)cur, cur->length);
-	}
+	if (collect_zones)
+		zone_gc(reclaim_pages);
 
 	return KERN_SUCCESS;
 }

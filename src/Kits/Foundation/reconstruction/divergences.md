@@ -804,3 +804,183 @@ this report). Every later stage's test binaries must build **native
 ppc, linked**; only the `abi-check` objects are `-arch i386`, compiled
 and never linked. This split is load-bearing for every remaining stage
 of the whole ten-stage programme, not just 2a.
+
+---
+
+## Stage 2b: exceptions and the Objective-C runtime helpers
+
+### The three substitutions (spec §3.2)
+
+1. **No `NSString` (stage 3).** Every string this stage produces or consumes is the
+   `NXConstantString`-shaped record the compiler emits for `@"..."` literals
+   (`{ Class isa; char *c_string; unsigned int len; }`, per
+   `src/cc-1/cc/objc/NXConstStr.h`). `NSObjCRuntime.m` carries file-static
+   `_NSObjCRuntimeStringBytes`/`_NSObjCRuntimeStringWithCString`, `NSException.m`
+   its own `_NSExceptionStringBytes`/`_NSExceptionStringWithCString`/`_NSExceptionReasonFromFormat`
+   — duplicated by design (accepted pre-flight decision: each module stays
+   independently linkable/deletable when stage 3 removes both). Stage 3 replaces
+   all of this with real `NSString` instances; no exported ABI moves.
+2. **No per-thread state (NSThread.m is stage 7).** The exception handler stack,
+   the alternate-handler table and `+[NSAssertionHandler currentHandler]`'s
+   handler are process globals here, the same substitution stage 2a made for the
+   pool stack and `_NSRefCountLock`. Every test in this stage runs unthreaded.
+3. **No `NSDictionary` (stage 4).** `-[NSException initWithName:reason:userInfo:]`
+   takes ownership of its ivars by assignment and `-dealloc` does not release
+   them: stage 2b's strings are literals or zone-allocated records that are never
+   freed, and messaging one (a `retain` would dispatch through the still-zeroed
+   `_NSConstantStringClassReference`) faults the process. The plan's
+   retain/release form was written, measured on the guest (bus error in
+   `objc_msgSend` from `[aName retain]`), and replaced with the assignment form.
+   Stage 3/4 restore retain/release. Recorded here so the change is not silently
+   inherited.
+
+### The box substitution
+
+The plan was written against the native ppc Rhapsody 5.6 guest at `10.10.0.241`,
+which stayed unreachable all stage (network-layer unreachable, not VM-off). All
+guest work ran instead on the project's i386 QEMU guest ("hfsle", Rhapsody 5.3
+i386 kernel built 2026-09-18, gcc 2.7.2.1 / cc-771.4), reached via its SSH
+forward. Consequences:
+
+- Test binaries and `abi-check` objects are both **i386** — the plan's
+  native-ppc-vs-i386 build split collapses into one architecture, which removes
+  the cross-architecture doubt from every behavioural test.
+- The Task 1 hosting probe verdict (`## RESULT: hosted`, recorded in
+  `docs/superpowers/plans/notes/2026-09-20-setjmp-hosting-probe.md`) is an i386
+  verdict. `_NSSETJMP` still resolves to `_setjmp` on this platform, so
+  `_longjmp` remains mandatory in every raise path.
+
+### NSLog's formatter is provisional (spec §5.4)
+
+`NSLogv` walks the format's own bytes, substitutes `%@` from the record layout,
+and hands every other specifier to `vsprintf`. It covers `%@ %s %d %u %x %c %%`
+and no more, formats at C level (no locale, no `%@` beyond the record's bytes),
+and writes through `_NSBasicStdErrLog` only. **Stages 3–9 must not build on it.**
+The `vsprintf`-plus-manual-`va_arg` re-read was measured working on this
+platform (all formatter tests pass without the plan's fallback switch).
+
+### The nine out-of-stage exception constants (spec acceptance criterion 10)
+
+The reference exports 23 `NSString * const` exception-name globals; the 14
+`NSException.h` declares are defined in `NSException.m`. The other 9 belong to
+later stages under the attribute-by-declaring-header rule:
+
+| Constant | Declared in | Stage |
+|---|---|---|
+| `NSCharacterConversionException` | `NSString.h` | 3 |
+| `NSParseErrorException` | `NSString.h` | 3 |
+| `NSTimeOutException` | `NSString.h` | 3 |
+| `NSDecimalNumberExactnessException` | `NSDecimalNumber.h` | 4 |
+| `NSDecimalNumberOverflowException` | `NSDecimalNumber.h` | 4 |
+| `NSDecimalNumberUnderflowException` | `NSDecimalNumber.h` | 4 |
+| `NSDecimalNumberDivideByZeroException` | `NSDecimalNumber.h` | 4 |
+| `NSFileHandleOperationException` | `NSFileHandle.h` | 5 |
+| `NSInconsistentArchiveException` | `NSArchiver.h` | 6 |
+| (`NSFailedUnarchivingException` | `NSArchiver.h` | 6) |
+| (`NSPortMessageException`-family leftovers | `NSConnection.h` | 8) |
+
+Listed so none is lost; the final count per stage is settled when each stage
+claims what its header declares.
+
+### Stage 2a's extern-versus-local correction (spec §2.2)
+
+`_NSObjectRaiseNullSelectorException` and `_NSProxyRaiseNullSelectorException`
+are `local` in the reference's symbol table (verified: both `local
+__TEXT,__text`, alongside a third, `__NSFaultRaiseNullSelectorException`, which
+belongs to NSFault in stage 2c). Stage 2a declared both `extern` and stubbed
+them; Task 11 moved each into its own module as a `static` definition raising
+with `_NSMethodExceptionProem`. **`abi-check` does not catch this class of
+error**: it compares defined external symbols only, so an extern-declared-but-
+stubbed local helper is invisible to Gate 1. The lesson is recorded for later
+stages: extern stubs in test harnesses are ABI claims, and each one needs its
+reference symbol-table check.
+
+### `_NSGetSizeAndAlignment` public/private pair
+
+The reference exports both `_NSGetSizeAndAlignment` (public, mangled) and
+`__NSGetSizeAndAlignment` (private). No header declares the private one and no
+caller in this stage's modules reaches it; both walk the same encodings, so the
+reconstruction shares one implementation (`NSSizeAndAlignmentOfType`) between
+the two entry points rather than guessing at a difference the disassembly does
+not show. Gate 1 confirms both symbols with matching encodings.
+
+### `NSDetailedDescription`'s unconfirmed output text
+
+`-[Protocol detailedDescription]` and `+[NSObject detailedDescriptionForClass:]`
+are reconstructed to the observable shape — the name, returned as this stage's
+string record. The reference's exact formatting (whether it lists methods,
+ivars, conformances) is outside this stage's published analysis scope and is
+**not** confirmed. Both categories are declared and implemented only in
+`NSObjCRuntime.m` (no header in this tree declares them) and are claimed by name
+in `symbols.json`'s method lists through the generated ABI baseline. Gate 1 also
+showed the reference carries two same-named `NSDetailedDescription` categories
+(one on `Protocol`, one on `NSObject`) — binrecon's abi-check keyed categories
+by name alone and collapsed them; fixed to key on (name, host class).
+
+### The raising conveniences live in the main class
+
+`NSException.h` declares `+raise:format:`/`+raise:format:arguments:` inside an
+`NSExceptionRaisingConveniences` category, and the plan implemented them there;
+Gate 1's abi-check refused it — the reference's `__OBJC` metadata carries both
+methods (plus an undeclared `-init`) **in the main class's method list, with no
+such category in this image**. The implementation was moved into the main
+`@implementation` to match. This is a header-vs-image divergence, of the same
+family as the underscore rule: the metadata arbitrates.
+
+### Untested table (stage 2b additions)
+
+| Symbol/method | Module | Why untested | Unblocked by |
+|---|---|---|---|
+| `-encodeWithCoder:` / `-initWithCoder:` | `NSException.m` | `NSCoder` is stage 2c; written against `NSCoder.h`'s declared selectors only | Stage 2c |
+| `-replacementObjectForPortCoder:` | `NSException.m` | `NSPortCoder` is stage 8; selector undeclared by any header in this tree (Gate-1 claim only) | Stage 8 |
+| `-copyWithZone:` | `NSException.m` | Copying `userInfo` needs NSDictionary (stage 4); the name/reason path is exercised only via the `isEqual:` test | Stage 4 |
+| `_NSAddAltHandler2` / `_NSRemoveAltHandler2` | `NSException.m` | Semantics out of scope; reconstructed from disassembly (per-thread table + growable identifier array, process-global here); callers do not exist until Distributed Objects | Stage 8 |
+| `_NSExceptionObjectFromHandler` | `NSException.m` | The legacy `NSHandler` is opaque in the shipped header, so nothing can construct one; structurally reconstructed (reads the same field as the 2b accessor), never behaviourally executed | Never, probably; carried as an ABI claim |
+| `_NSClearExceptionStack` | `NSException.m` | Exercised only directly by tests (stack-clearing assertion), no production caller until threads | Stage 7 |
+| `NSHangOnUncaughtException`'s hang path | `NSException.m` | The infinite loop is untestable in a suite; the flag is verified only as readable/writable data | Final review pass |
+| `+[NSException _enableLogging:]` | `NSException.m` | Toggles a file-static flag; no observable behaviour in this stage (logging of raises not reconstructed) | Final review pass |
+
+### Gate 3 ledger disposition and tooling corrections
+
+The ledger holds 46 reference-side entries, all dispositioned
+`intentional-mismatch` with the same structural reason stage 2a recorded:
+`compare`'s normalized-functions matcher keys on (section, occurrence, byte
+start/end) position, and a two-module relocatable object cannot coincide with
+an 80-module linked image's offsets. Gate 1 (abi-check, ten modules, ABI
+matches) and Gate 2 (seven suites, `PASSED: 0 failure(s)` each) carry the
+correctness verdict; `source-map.json` (46/46 mapped, 0 unmapped) confirms
+every reference function has a source counterpart.
+
+Three binrecon corrections were needed to produce that evidence (all
+behaviour-preserving for stage 2a's artifacts):
+
+1. `abi_check.diff_abi` keyed categories by name alone; the reference legally
+   carries two same-named `NSDetailedDescription` categories on different host
+   classes, which collapsed into one dict entry and produced phantom
+   divergences. Now keyed on (name, host class).
+2. `ida._mapping_manifest` applied the profile's reference-absolute
+   `analysis_scope` to the rebuilt artifact too, whose functions live at
+   object-file addresses — the scope matched no functions and IDA aborted. The
+   scope is a reference-image selection; a rebuilt artifact (which contains by
+   construction exactly the stage's modules) is analyzed whole.
+3. `cli compare` dereferenced `profile.rebuilt` unconditionally; a committed
+   stage profile carries no `rebuilt` artifact (its path is local and
+   uncommitted), so the compare step ran against a scratch profile copy that
+   carries the local `rebuilt` block while the committed profile stays clean.
+
+### Unclaimed-export count
+
+`symbol-audit` after stage 2b: **321** unclaimed exported C functions, down
+from the programme baseline **345** — the 24 symbols this stage claimed (12
+`NSObjCRuntime.m` C entry points plus 12 `NSException.m` machine-level symbols,
+the 14 name constants among them). The tail remains concentrated in stages 3
+and 6 as the programme spec sizes it.
+
+### Environment deviation (recorded, not actionable this stage)
+
+The profiled IDA path (`C:/Program Files/IDA Professional 9.2/idat.exe`) does
+not exist on this machine — the 9.2 directory holds only a licence file;
+**IDA Professional 9.4** is installed and produced both published analyses
+(`version: 9.4` recorded in the committed 2b profile). Re-exporting with 9.2
+when available is a re-run, not a re-write: the documents are version-stamped
+and the pipeline revalidates identity on every run.

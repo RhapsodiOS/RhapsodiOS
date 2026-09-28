@@ -58,7 +58,7 @@ Spec §2.4 and §3.4 step 1 — the stage's go/no-go gate. It decides whether an
 - Consumes: nothing.
 - Produces: a recorded verdict, plus the exact compile-and-link line Tasks 7–10 reuse verbatim.
 
-- [ ] **Step 1: Understand what is actually at risk**
+- [x] **Step 1: Understand what is actually at risk**
 
 `NSException.h` defines the handler macros in terms of `_NSSETJMP`:
 
@@ -70,7 +70,7 @@ Rhapsody is not `__svr4__`, `__WIN32__` or `__hpux__`, so this platform gets **`
 
 The second risk is `NS_DURING`'s structure. The macro declares `NSHandler2 _localHandler;` as an automatic in the enclosing block and hands `&_localHandler` to `_NSAddHandler2`. If the compiler reuses that stack slot, or if `_longjmp` unwinds past it, the handler the stack points at is dead memory.
 
-- [ ] **Step 2: Write the probe**
+- [x] **Step 2: Write the probe**
 
 Create these in your isolated guest directory (throwaway — not in the repo).
 
@@ -193,7 +193,7 @@ int main(void)
 }
 ```
 
-- [ ] **Step 3: Build and run it on the guest**
+- [x] **Step 3: Build and run it on the guest**
 
 Write `/tmp/probe.sh` and `pscp` it over:
 
@@ -209,13 +209,13 @@ echo "run status=$?"
 Run: `plink ... 'sh /tmp/probe.sh'`
 Expected: `PASSED: 0 failure(s)` and `run status=0`.
 
-- [ ] **Step 4: Record the verdict**
+- [x] **Step 4: Record the verdict**
 
 Create `docs/superpowers/plans/notes/2026-09-20-setjmp-hosting-probe.md`. It must state, in this order: the verdict (`## RESULT: hosted` or `## RESULT: not hosted`); the guest's `uname -a` and `cc -v`; that `_NSSETJMP` resolves to `_setjmp` on this platform and therefore **`_longjmp` is mandatory**; the exact build line used; and the probe source inline so the result is reproducible from the tree.
 
 If the probe **fails**, stop and report. Do not continue to Task 2. The stage narrows to ABI-only and the spec's §5.1 fallback applies.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add docs/superpowers/plans/notes/2026-09-20-setjmp-hosting-probe.md
@@ -240,7 +240,7 @@ git commit -m "Foundation: record whether the guest hosts the exception handler 
   - `const char *_NSObjCRuntimeStringBytes(NSString *string)` — **file-static**, not exported. Later tasks in this module reuse it.
   - `NSString *_NSObjCRuntimeStringWithCString(const char *bytes)` — **file-static**, not exported.
 
-- [ ] **Step 1: Understand the substitution these four need**
+- [x] **Step 1: Understand the substitution these four need**
 
 All four cross the `NSString` boundary, and `NSString` is stage 3. Spec §3.2 settles the approach: this stage uses the `NXConstantString` layout the compiler already emits for `@"..."` literals.
 
@@ -252,7 +252,7 @@ struct { Class isa; char *c_string; unsigned int len; };
 
 Reading a string therefore means casting to that shape. Building one means allocating that shape and pointing `isa` at `_NSConstantStringClassReference`, the same symbol the compiler references. That produces an object layout-compatible with a real literal, which is exactly what stage 3 will replace with genuine `NSString` instances. `link_stubs.m` already reads literals this way (`NSTestCaptureRaiseMessage`), so the technique is established in the tree.
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 Create `src/Kits/Foundation/reconstruction/tests/test_objcruntime.m`:
 
@@ -360,7 +360,7 @@ int main(void)
 }
 ```
 
-- [ ] **Step 3: Run it and watch it fail**
+- [x] **Step 3: Run it and watch it fail**
 
 Sync and build on the guest:
 
@@ -375,7 +375,7 @@ cc -x objective-c -I.. -I/System/Library/Frameworks/System.framework/Headers \
 
 Expected: `FAILED` with several failures — the stubs return `nil`/`NULL`/`Nil`.
 
-- [ ] **Step 4: Implement**
+- [x] **Step 4: Implement**
 
 Replace the four TODO stubs in `src/Kits/Foundation/NSObjCRuntime.m`. Keep the existing file header and `#import`s; add `#import <objc/objc-runtime.h>` and `#include <string.h>`, and `#import <Foundation/NSZone.h>` for `NSZoneMalloc`.
 
@@ -464,14 +464,14 @@ NSStringFromClass(Class aClass)
 }
 ```
 
-- [ ] **Step 5: Run the test and make it pass**
+- [x] **Step 5: Run the test and make it pass**
 
 Rebuild and run exactly as in Step 3.
 Expected: `PASSED: 0 failure(s)`.
 
 If `sel_getName` is unavailable, this runtime spells it `sel_getName` in `<objc/objc-runtime.h>`; selectors are interned C strings here, so `(const char *)aSelector` is the fallback — confirm against the header before using it and note the choice in the commit.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/Kits/Foundation/NSObjCRuntime.m src/Kits/Foundation/reconstruction/tests/test_objcruntime.m
@@ -492,7 +492,7 @@ git commit -m "Foundation: reconstruct class and selector name conversion"
   - `const char *NSGetSizeAndAlignment(const char *typePtr, unsigned int *sizep, unsigned int *alignp)`
   - `const char *_NSGetSizeAndAlignment(const char *typePtr, unsigned int *sizep, unsigned int *alignp)` — a **separate exported** function. The reference exports both `_NSGetSizeAndAlignment` (the public one, mangled) and `__NSGetSizeAndAlignment` (a private one). Per the underscore rule the private one's C identifier is `_NSGetSizeAndAlignment`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `test_objcruntime.m` and call each from `main`:
 
@@ -589,12 +589,12 @@ Add at the top of the file, below the imports, so the private variant is visible
 extern const char *_NSGetSizeAndAlignment(const char *typePtr, unsigned int *sizep, unsigned int *alignp);
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Rebuild as in Task 2 Step 3.
 Expected: link error `_NSGetSizeAndAlignment` undefined, plus failures from the `NSGetSizeAndAlignment` stub returning `NULL`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Replace the `NSGetSizeAndAlignment` stub:
 
@@ -746,12 +746,12 @@ _NSGetSizeAndAlignment(const char *typePtr, unsigned int *sizep, unsigned int *a
 }
 ```
 
-- [ ] **Step 4: Run the test and make it pass**
+- [x] **Step 4: Run the test and make it pass**
 
 Rebuild and run.
 Expected: `PASSED: 0 failure(s)`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/Kits/Foundation/NSObjCRuntime.m src/Kits/Foundation/reconstruction/tests/test_objcruntime.m
@@ -773,13 +773,13 @@ git commit -m "Foundation: walk Objective-C type encodings for size and alignmen
   - `void NSLogv(NSString *format, va_list args)`
   - `void _NSBasicStdErrLog(const char *message)` — exported; the single write point.
 
-- [ ] **Step 1: Understand the scope of the substitution**
+- [x] **Step 1: Understand the scope of the substitution**
 
 Spec §5.4: this formats at C level over the literal's bytes, covering only what this stage's callers need. It is provisional and stage 3 replaces it. The one thing it must get right is `%@`, because 2a's reconstructed strings use it (`@"%@: selector not recognized"`) — and in this stage a `%@` argument is another `NXConstantString`-shaped record, so it prints that record's bytes.
 
 `_NSBasicStdErrLog` exists in the reference as an external `__TEXT,__text` symbol; routing all output through it matches the reference's structure.
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 Append to `test_objcruntime.m` and call from `main`. The test captures stderr by reopening it onto a temporary file and reading it back.
 
@@ -872,7 +872,7 @@ static void emit_nil_format(void) { NSLog(nil); }
 
 Add `#include <unistd.h>` to the test's includes for `dup`/`dup2`/`close`.
 
-- [ ] **Step 3: Run it and watch it fail**
+- [x] **Step 3: Run it and watch it fail**
 
 Rebuild as in Task 2 Step 3, but **drop `reconstruction/tests/link_stubs.m`'s `NSLog`** — it is still present and will collide once `NSObjCRuntime.m` defines a real one. Delete the stub now rather than at Task 11:
 
@@ -887,7 +887,7 @@ void NSLog(id format, ...)
 
 Expected after removing it: the test fails its assertions because the real `NSLog` is not yet written (link succeeds only after Step 4).
 
-- [ ] **Step 4: Implement**
+- [x] **Step 4: Implement**
 
 Append to `src/Kits/Foundation/NSObjCRuntime.m`. Add `#include <stdio.h>` and `#include <stdarg.h>` to its includes.
 
@@ -1015,14 +1015,14 @@ NSLog(NSString *format, ...)
 }
 ```
 
-- [ ] **Step 5: Run the test and make it pass**
+- [x] **Step 5: Run the test and make it pass**
 
 Rebuild and run.
 Expected: `PASSED: 0 failure(s)`.
 
 **If the `vsprintf`-plus-manual-`va_arg` approach misbehaves** (it relies on `vsprintf` not advancing the caller's `va_list`, which is true on some ABIs and not others), replace that block with an explicit per-specifier switch that reads the argument itself and formats with `sprintf`. Take the measurement, do not guess: write a two-line probe on the guest that calls a varargs function, passes its `va_list` to `vsprintf`, and then reads the next argument. Record which behaviour this platform has in `divergences.md`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/Kits/Foundation/NSObjCRuntime.m src/Kits/Foundation/reconstruction/tests/test_objcruntime.m src/Kits/Foundation/reconstruction/tests/link_stubs.m
@@ -1049,7 +1049,7 @@ git commit -m "Foundation: reconstruct NSLog over the platform's stderr logging"
 
   Signatures must match the `extern` declarations already in `src/Kits/Foundation/NSObject.m` lines 25–27 exactly.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `test_objcruntime.m` and call from `main`:
 
@@ -1118,14 +1118,14 @@ static void test_ClassConformsToProtocol(void)
 }
 ```
 
-- [ ] **Step 2: Remove the three stubs and run the test**
+- [x] **Step 2: Remove the three stubs and run the test**
 
 Delete `_NSIMPForSelector`, `_NSMethodDescriptionForSelector` and `_NSClassConformsToProtocol` from `link_stubs.m` (lines 122–138 in the current file), leaving the surrounding comment block's remaining stubs intact.
 
 Rebuild as in Task 2 Step 3.
 Expected: link error — the three symbols are undefined.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Append to `src/Kits/Foundation/NSObjCRuntime.m`. Add `#import <objc/Protocol.h>`.
 
@@ -1197,20 +1197,20 @@ _NSClassConformsToProtocol(Class aClass, Protocol *aProtocol)
 }
 ```
 
-- [ ] **Step 4: Run the test and make it pass**
+- [x] **Step 4: Run the test and make it pass**
 
 Rebuild and run.
 Expected: `PASSED: 0 failure(s)`.
 
 If `class_conformsTo` is not declared in this runtime's headers, check `<objc/Protocol.h>` for the spelling it does use (`[aProtocol conformsTo:]` is the message form) and adjust, noting the choice in the commit.
 
-- [ ] **Step 5: Re-run all five stage 2a suites**
+- [x] **Step 5: Re-run all five stage 2a suites**
 
 These three symbols are what 2a's `-methodForSelector:` family calls. Build and run each 2a suite with the current link line (Global Constraints), plus `NSObjCRuntime.m`.
 
 Expected: all five `PASSED: 0 failure(s)`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/Kits/Foundation/NSObjCRuntime.m src/Kits/Foundation/reconstruction/tests/test_objcruntime.m src/Kits/Foundation/reconstruction/tests/link_stubs.m
@@ -1229,13 +1229,13 @@ git commit -m "Foundation: reconstruct the runtime introspection helpers NSObjec
 - Consumes: `_NSObjCRuntimeStringWithCString` (Task 2).
 - Produces: `-[Protocol detailedDescription]`, `+[NSObject detailedDescriptionForClass:]`.
 
-- [ ] **Step 1: Understand why these need a local declaration**
+- [x] **Step 1: Understand why these need a local declaration**
 
 Spec §2.3: both methods are in the reference's `__OBJC` metadata and in **no header in this tree**. Adding a header is forbidden. So both categories are declared in `NSObjCRuntime.m` itself, immediately above their `@implementation`, and both selectors are claimed by name in `symbols.json` (Task 12).
 
 Their exact output text is not recoverable from this stage's analysis scope. Reconstruct the observable shape — a class or protocol's name plus its method list — and record in `divergences.md` that the exact formatting is unconfirmed.
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 Append to `test_objcruntime.m` and call from `main`:
 
@@ -1258,12 +1258,12 @@ static void test_detailedDescriptionForClass_of_Nil_is_nil(void)
 }
 ```
 
-- [ ] **Step 3: Run it and watch it fail**
+- [x] **Step 3: Run it and watch it fail**
 
 Rebuild as in Task 2 Step 3.
 Expected: runtime failure — `NSObject` does not recognise `detailedDescriptionForClass:`.
 
-- [ ] **Step 4: Implement**
+- [x] **Step 4: Implement**
 
 Append to `src/Kits/Foundation/NSObjCRuntime.m`:
 
@@ -1311,12 +1311,12 @@ Append to `src/Kits/Foundation/NSObjCRuntime.m`:
 @end
 ```
 
-- [ ] **Step 5: Run the test and make it pass**
+- [x] **Step 5: Run the test and make it pass**
 
 Rebuild and run.
 Expected: `PASSED: 0 failure(s)`.
 
-- [ ] **Step 6: Run the full binrecon suite and commit**
+- [x] **Step 6: Run the full binrecon suite and commit**
 
 ```bash
 PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m pytest tools/binrecon/tests -q
@@ -1346,7 +1346,7 @@ git commit -m "Foundation: reconstruct the NSDetailedDescription diagnostic cate
   - `void _NSClearExceptionStack(void)`
   - `void _NSRaiseError(NSException *exception)` — pops the top handler, stores the exception on it, `_longjmp`s. Task 9 supplies the uncaught path.
 
-- [ ] **Step 1: Understand the contract the macros impose**
+- [x] **Step 1: Understand the contract the macros impose**
 
 Read `NSException.h`'s macros carefully — they dictate the implementation:
 
@@ -1366,7 +1366,7 @@ Three consequences:
 
 `NSHandler2`'s `_others` field is the chain link.
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 Create `src/Kits/Foundation/reconstruction/tests/test_exception.m`:
 
@@ -1460,7 +1460,7 @@ int main(void)
 }
 ```
 
-- [ ] **Step 3: Run it and watch it fail**
+- [x] **Step 3: Run it and watch it fail**
 
 The real `NSException` class collides with `link_stubs.m`'s stub. Remove the stub `@interface`/`@implementation NSException` block and the three `id NS*Exception = 0;` globals from `link_stubs.m` now — Task 9 supplies the real constants; until then this test does not reference them.
 
@@ -1474,7 +1474,7 @@ cc -x objective-c -I.. -I/System/Library/Frameworks/System.framework/Headers \
 
 Expected: link errors for `_NSAddHandler2`, `_NSRemoveHandler2`, `_NSExceptionObjectFromHandler2`, `_NSExceptionHandlerCount`, `_NSClearExceptionStack`.
 
-- [ ] **Step 4: Implement**
+- [x] **Step 4: Implement**
 
 Replace the top of `src/Kits/Foundation/NSException.m` (keep the copyright header; keep the `@implementation` blocks for now — Task 9 rewrites them):
 
@@ -1583,12 +1583,12 @@ _NSClearExceptionStack(void)
 }
 ```
 
-- [ ] **Step 5: Run the test and make it pass**
+- [x] **Step 5: Run the test and make it pass**
 
 Rebuild and run as in Step 3.
 Expected: `PASSED: 0 failure(s)`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/Kits/Foundation/NSException.m src/Kits/Foundation/reconstruction/tests/test_exception.m src/Kits/Foundation/reconstruction/tests/link_stubs.m
@@ -1607,7 +1607,7 @@ git commit -m "Foundation: reconstruct the exception handler stack the NS_DURING
 - Consumes: Task 7's `NSExceptionHandlerStack`.
 - Produces: `void _NSAddAltHandler2(NSHandler2 *handler)`, `void _NSRemoveAltHandler2(NSHandler2 *handler)`.
 
-- [ ] **Step 1: Understand what is and is not known**
+- [x] **Step 1: Understand what is and is not known**
 
 Spec §5.3: these two are exported, undeclared, undocumented, and have no caller in this stage's modules — the likely callers are Distributed Objects (stage 8). Their bodies come from the disassembly alone.
 
@@ -1624,7 +1624,7 @@ PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m bin
 
 then locate their addresses in the reference's symbol table and read the published analysis for the 2b scope (Task 12 generates it; for this task, read the addresses directly from the image with an ad hoc script, the same way stage 2a Task 8 recovered `logMessageAndRaise` at `0x42575890`).
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 Append to `test_exception.m` and call from `main`. This test asserts only what is safe to assert without knowing the semantics — that the pair balances and does not corrupt the main chain:
 
@@ -1650,12 +1650,12 @@ static void test_alt_handlers_do_not_disturb_the_main_chain(void)
 }
 ```
 
-- [ ] **Step 3: Run it and watch it fail**
+- [x] **Step 3: Run it and watch it fail**
 
 Rebuild as in Task 7 Step 3.
 Expected: link errors for `_NSAddAltHandler2` and `_NSRemoveAltHandler2`.
 
-- [ ] **Step 4: Read the reference, then implement what it shows**
+- [x] **Step 4: Read the reference, then implement what it shows**
 
 Get both functions' addresses and bytes:
 
@@ -1692,12 +1692,12 @@ from the disassembly and which remain unconfirmed, and both functions go in
 `divergences.md`'s untested table with the note that their callers do not
 exist until stage 8.
 
-- [ ] **Step 5: Run the test and make it pass**
+- [x] **Step 5: Run the test and make it pass**
 
 Rebuild and run.
 Expected: `PASSED: 0 failure(s)`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/Kits/Foundation/NSException.m src/Kits/Foundation/reconstruction/tests/test_exception.m
@@ -1716,7 +1716,7 @@ git commit -m "Foundation: reconstruct the alternate exception handler entry poi
 - Consumes: Task 7's handler stack, Task 2's string helpers, Task 4's `NSLogv`.
 - Produces: the 14 exception-name constants; `NSHangOnUncaughtException`; `NSGetUncaughtExceptionHandler`; `NSSetUncaughtExceptionHandler`; `_NSRaiseError`; the full `NSException` class.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `test_exception.m` and call each from `main`:
 
@@ -1876,12 +1876,12 @@ static const char *TestStringBytes(id string)
 }
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Rebuild as in Task 7 Step 3.
 Expected: link errors for the exception-name constants and the uncaught-handler pair, plus failures from the TODO-stub `NSException` methods returning `nil`.
 
-- [ ] **Step 3: Implement the constants and the uncaught path**
+- [x] **Step 3: Implement the constants and the uncaught path**
 
 Append to `NSException.m`. Start with this file's own copies of the string
 helpers — `NSObjCRuntime.m`'s are file-static there and deliberately not
@@ -2132,7 +2132,7 @@ _NSRaiseError(NSException *exception)
 }
 ```
 
-- [ ] **Step 4: Implement the class**
+- [x] **Step 4: Implement the class**
 
 Replace the two `@implementation` blocks' TODO bodies in `NSException.m`:
 
@@ -2240,12 +2240,12 @@ Every helper this block uses — `NSExceptionStringsEqual`,
 Step 3. Do not send `-isEqual:` to a string anywhere in this file; nothing
 implements it in this stage.
 
-- [ ] **Step 5: Run the test and make it pass**
+- [x] **Step 5: Run the test and make it pass**
 
 Rebuild and run.
 Expected: `PASSED: 0 failure(s)`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/Kits/Foundation/NSException.m src/Kits/Foundation/reconstruction/tests/test_exception.m
@@ -2264,13 +2264,13 @@ git commit -m "Foundation: reconstruct NSException and the raise path"
 - Consumes: Tasks 2, 7, 9.
 - Produces: `id _NSMethodExceptionProem(id object, SEL aSelector)`; the `NSAssertionHandler` class; `NSException`'s four coder/copy methods.
 
-- [ ] **Step 1: Understand what `_NSMethodExceptionProem` must return**
+- [x] **Step 1: Understand what `_NSMethodExceptionProem` must return**
 
 Stage 2a established this from the reference's own format strings: `NSObject.m` and `NSProxy.m` both build their diagnostics as `@"%@: selector not recognized"`, and the `%@` proves the proem is an **object**, not a `const char *`. Its text is `-[Class selector]` or `+[Class selector]` depending on whether the receiver is a class object.
 
 Stage 2a's `extern` declaration in `NSObject.m` line 28 is `extern id _NSMethodExceptionProem(id object, SEL aSelector);` — match it exactly.
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 Append to `test_exception.m` and call from `main`:
 
@@ -2379,12 +2379,12 @@ Place the `#define` immediately above the two assert tests and `#undef NSString`
 
 Delete `link_stubs.m`'s stub `NSString` class once this compiles — its `+stringWithCString:length:` stub is what the real `NSAssert` path would otherwise abort in.
 
-- [ ] **Step 3: Run it and watch it fail**
+- [x] **Step 3: Run it and watch it fail**
 
 Rebuild as in Task 7 Step 3.
 Expected: link error for `_NSMethodExceptionProem` (its stub is still in `link_stubs.m` — remove it in this step) and failures from the `NSAssertionHandler` TODO stubs.
 
-- [ ] **Step 4: Implement**
+- [x] **Step 4: Implement**
 
 ```objc
 /*	"-[NSObject hash]" or "+[NSObject alloc]": the prefix every method
@@ -2473,7 +2473,7 @@ static NSAssertionHandler *NSCurrentAssertionHandler = nil;
 
 Add `#import <objc/objc-runtime.h>` and `#import <objc/objc-class.h>` to `NSException.m` for `CLS_META` and `sel_getName`; confirm the header that actually defines `CLS_META` in this tree before importing.
 
-- [ ] **Step 5: Add the four untestable methods**
+- [x] **Step 5: Add the four untestable methods**
 
 Gate 1 requires their selectors with exact type encodings. Write them against the real declared APIs — `NSCoder.h`, `NSObject.h`'s `NSCopying` — and mark each in `divergences.md`'s untested table:
 
@@ -2516,12 +2516,12 @@ Gate 1 requires their selectors with exact type encodings. Write them against th
 
 Add `#import <Foundation/NSCoder.h>` — check the exact selector spellings in that header before writing, and correct the calls above to match what it actually declares.
 
-- [ ] **Step 6: Run the test and make it pass**
+- [x] **Step 6: Run the test and make it pass**
 
 Rebuild and run `test_exception`.
 Expected: `PASSED: 0 failure(s)`.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/Kits/Foundation/NSException.m src/Kits/Foundation/reconstruction/tests/test_exception.m src/Kits/Foundation/reconstruction/tests/link_stubs.m
@@ -2544,7 +2544,7 @@ Spec §3.4 step 5 and §5.2. **This is the task most likely to look like it is b
 - Consumes: every symbol Tasks 2–10 made real.
 - Produces: a `link_stubs.m` holding only symbols no reconstructed module supplies.
 
-- [ ] **Step 1: Move the two null-selector helpers into their own modules**
+- [x] **Step 1: Move the two null-selector helpers into their own modules**
 
 Spec §2.2: `_NSObjectRaiseNullSelectorException` and `_NSProxyRaiseNullSelectorException` are **`local`** in the reference, not external. Stage 2a wrongly declared both `extern`. Verify first:
 
@@ -2580,7 +2580,7 @@ Add `extern id _NSMethodExceptionProem(id object, SEL aSelector);` if it is not 
 
 Do the same in `src/Kits/Foundation/NSProxy.m` for `_NSProxyRaiseNullSelectorException`, deleting its line 26 `extern` declaration.
 
-- [ ] **Step 2: Delete each remaining retired stub, one at a time**
+- [x] **Step 2: Delete each remaining retired stub, one at a time**
 
 For each symbol below, in this order: delete it from `link_stubs.m`, rebuild and run **all five** 2a suites plus both 2b suites, and only then move to the next. Retiring them one at a time is what makes a failure name its own cause.
 
@@ -2591,17 +2591,17 @@ For each symbol below, in this order: delete it from `link_stubs.m`, rebuild and
 
 **Expect assertions to change.** The stubs `abort()`; the real implementations raise. Any 2a test that armed `NSTestExpectingRaise` and `setjmp`ed around a call is rewritten to wrap the call in `NS_DURING`/`NS_HANDLER` and assert on `localException`'s name — which is strictly stronger, and is the point of the stage. A 2a test that fails for any *other* reason is a real regression: stop and report it.
 
-- [ ] **Step 3: Confirm what remains**
+- [x] **Step 3: Confirm what remains**
 
 `link_stubs.m` should still hold, and only hold: `unimplemented`, `NSKeepAllocationStatistics`, `_NSConstantStringClassReference`, `NSRecordAllocationEvent`, `NSMethodSignature`, `NSZombieEnabled`, `NSDeallocateZombies`, `_NSInitializePlatform`, `NSStringFromStack`. Update its header comment to say which stage owns each remaining symbol.
 
-- [ ] **Step 4: Run every suite**
+- [x] **Step 4: Run every suite**
 
 Build and run all seven: `test_zone`, `test_refcount`, `test_object`, `test_proxy`, `test_pool`, `test_objcruntime`, `test_exception`, each with `NSException.m NSObjCRuntime.m` added to its link line.
 
 Expected: seven times `PASSED: 0 failure(s)`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/Kits/Foundation/NSObject.m src/Kits/Foundation/NSProxy.m src/Kits/Foundation/reconstruction/tests/link_stubs.m src/Kits/Foundation/reconstruction/tests/test_object.m src/Kits/Foundation/reconstruction/tests/test_proxy.m src/Kits/Foundation/reconstruction/tests/test_autoreleasepool.m src/Kits/Foundation/reconstruction/tests/test_zone.c src/Kits/Foundation/reconstruction/tests/test_refcount.c
@@ -2622,7 +2622,7 @@ git commit -m "Foundation: retire the exception link stubs and localise the null
 - Consumes: everything.
 - Produces: the stage's committed evidence.
 
-- [ ] **Step 1: Claim every C symbol in `symbols.json`**
+- [x] **Step 1: Claim every C symbol in `symbols.json`**
 
 Add two keys. Use the **symbol** spelling (mangled), not the C identifier:
 
@@ -2652,7 +2652,7 @@ Add two keys. Use the **symbol** spelling (mangled), not the C identifier:
 
 Drop `__NSIMPForSelector`, `__NSMethodDescriptionForSelector` and `__NSClassConformsToProtocol` if Task 5 was skipped.
 
-- [ ] **Step 2: Generate the ABI baselines**
+- [x] **Step 2: Generate the ABI baselines**
 
 ```bash
 BINRECON_REFERENCE=C:/Users/raynorpat/Downloads/test/Foundation-i386 \
@@ -2667,7 +2667,7 @@ PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m bin
 
 Expected: `wrote .../NSException.json` and `wrote .../NSObjCRuntime.json`, plus `not emitting` lines for the modules this invocation is not producing.
 
-- [ ] **Step 3: Build i386 objects and run Gate 1**
+- [x] **Step 3: Build i386 objects and run Gate 1**
 
 Compile all ten modules i386 (the eight from stage 2a plus `NSException.m` and `NSObjCRuntime.m`) and check the whole committed `abi/` directory at once. On the guest, write and run `/tmp/build-abi-2b.sh`:
 
@@ -2713,7 +2713,7 @@ Expected: `abi-check: ABI matches`, exit 0.
 
 **If it reports an unexpected exported symbol, claim it in `symbols.json` and regenerate — do not make it `static`.** If it reports a missing symbol, check the underscore rule first (Global Constraints): the usual cause is a C identifier spelled with one underscore too many or too few.
 
-- [ ] **Step 4: Run the analysis and produce Gate 3's evidence**
+- [x] **Step 4: Run the analysis and produce Gate 3's evidence**
 
 **Sub-step 4a — the scoped profile.** Create `tools/binrecon/profiles/foundation-i386-exceptions-runtime.json` by copying `foundation-i386-object-core.json`. Keep every field except `analysis_scope` and `output_dir`: set `output_dir` to `../out/foundation-i386-exceptions-runtime`, and replace `analysis_scope` with the ranges this emits:
 
@@ -2781,7 +2781,7 @@ PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m bin
 
 `ledger` is driven one entry at a time by `binrecon ledger` transitions against `$R/exceptions-runtime/ledger.json`, exactly as stage 2a's Task 11 did for `object-core/ledger.json`; run `binrecon ledger --help` for the transition flags. Gate 3 is evidence only — instruction divergence between a relocatable-object excerpt and the reference's linked, profile-guided layout is expected and does not block the stage; review every entry and disposition it. **Budget ~1 s per ledger entry** — that figure was measured in stage 2a (189 s for 193 entries) and is the basis for this stage's estimate.
 
-- [ ] **Step 5: Write `divergences.md`'s 2b section**
+- [x] **Step 5: Write `divergences.md`'s 2b section**
 
 It must record, at minimum:
 
@@ -2793,7 +2793,7 @@ It must record, at minimum:
 - `NSDetailedDescription`'s unconfirmed output text.
 - The untested table: the four coder/copy methods, the two Alt handlers, `_NSExceptionObjectFromHandler`, and anything else no test reaches.
 
-- [ ] **Step 6: Final verification**
+- [x] **Step 6: Final verification**
 
 Run, and record each result:
 
@@ -2804,7 +2804,7 @@ Run, and record each result:
 5. `git diff --name-only <stage-2b-base>..HEAD -- 'src/Kits/Foundation/*.h'` → **empty**
 6. `symbol-audit` → the unclaimed count has fallen by the number of functions this stage claimed; record the new figure in the ledger
 
-- [ ] **Step 7: Clean up the guest and commit**
+- [x] **Step 7: Clean up the guest and commit**
 
 ```bash
 # on the guest

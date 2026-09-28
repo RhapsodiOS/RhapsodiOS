@@ -202,8 +202,13 @@ def main(argv=None) -> int:
         try:
             profile = load_profile(Path(args.profile), os.environ)
             analysis_paths = [Path(args.reference_analysis), Path(args.rebuilt_analysis)]
-            protected = [profile.source_path, profile.reference.path, profile.rebuilt.path,
-                         *analysis_paths]
+            #  A committed stage profile carries no "rebuilt" artifact -- the
+            #  rebuilt object is a local, uncommitted path -- so the protected
+            #  input list simply omits it when absent.
+            protected = [profile.source_path, profile.reference.path]
+            if profile.rebuilt is not None:
+                protected.append(profile.rebuilt.path)
+            protected.extend(analysis_paths)
             output = None if args.output == "-" else Path(args.output)
             text_output = (None if args.text_output in (None, "-") else Path(args.text_output))
             if args.output == "-" and args.text_output == "-":

@@ -174,19 +174,19 @@ processDriverList(const char *list, BOOL isBoot, BOOL load)
 	p = name;
 	inName = NO;
 	for (;;) {
-		if (*list == ' ' || *list == '\0') {
-			if (inName) {
-				*p = '\0';
-				processDriver(name, isBoot, load);
-				p = name;
-				inName = NO;
-			}
-			else if (*list == '\0')
-				return 0;
-		}
-		else {
+		if (*list != ' ' && *list != '\0') {
 			inName = YES;
 			*p++ = *list;
+		}
+		else if (!inName) {
+			if (*list == '\0')
+				break;
+		}
+		else {
+			*p = '\0';
+			processDriver(name, isBoot, load);
+			p = name;
+			inName = NO;
 		}
 		if (*list == '\0')
 			break;

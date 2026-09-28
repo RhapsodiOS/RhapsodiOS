@@ -1,0 +1,201 @@
+import importlib.util
+import json
+import os
+import shutil
+import socket
+import subprocess
+import tempfile
+import time
+
+import pytest
+
+import make_badfs
+import ufs_gap_lib
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+def _load():
+    spec = importlib.util.spec_from_file_location(
+        "ufs_reload_inject", os.path.join(HERE, "ufs-reload-inject.py"))
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
+
+
+def test_blkdebug_config_names_both_sectors():
+    c = _load().blkdebug_config(208, 2880)
+    assert 'sector = "208"' in c
+    assert 'sector = "2880"' in c
+    assert c.count("[set-state]") == 2
+    assert c.count("[inject-error]") == 2
+
+
+@pytest.mark.skipif(not shutil.which("qemu-io"), reason="needs qemu-io")
+def test_blkdebug_config_arms_and_disarms_under_qemu_io():
+    m = _load()
+    with tempfile.TemporaryDirectory() as d:
+        disk = os.path.join(d, "disk.raw")
+        with open(disk, "wb") as f:
+            f.write(bytes(1 << 20))
+        conf = os.path.join(d, "blkdebug.conf")
+        with open(conf, "w") as f:
+            # error on sector 16; the dummy is sector 128, the one the host
+            # writes to arm and disarm
+            f.write(m.blkdebug_config(16, 128))
+        opts = ("driver=raw,file.driver=blkdebug,file.config=%s,"
+                "file.image.filename=%s"
+                % (conf.replace("\\", "/"), disk.replace("\\", "/")))
+        out = subprocess.run(
+            ["qemu-io", "--image-opts",
+             "-c", "read 8192 8192",     # before arming: fine
+             "-c", "write 65536 512",    # arm
+             "-c", "read 0 512",         # another sector: fine
+             "-c", "read 8192 8192",     # covers sector 16: fails
+             "-c", "read 8192 8192",     # a retry fails too
+             "-c", "write 65536 512",    # disarm
+             "-c", "read 8192 8192",     # fine again
+             opts],
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True).stdout
+        results = [l for l in out.splitlines()
+                   if l.startswith(("read ", "wrote "))]
+        assert results == [
+            "read 8192/8192 bytes at offset 8192",
+            "wrote 512/512 bytes at offset 65536",
+            "read 512/512 bytes at offset 0",
+            "read failed: Input/output error",
+            "read failed: Input/output error",
+            "wrote 512/512 bytes at offset 65536",
+            "read 8192/8192 bytes at offset 8192"]
+
+
+def test_drive_args_plain_and_through_blkdebug():
+    m = _load()
+    disk = os.path.abspath("t.img").replace("\\", "/")
+    conf = os.path.abspath("b.conf").replace("\\", "/")
+    assert m.drive_args("t.img") == [
+        "-drive",
+        "file=%s,format=raw,if=ide,index=1,media=disk,snapshot=off" % disk]
+    assert m.drive_args("t.img", "b.conf") == [
+        "-drive",
+        "file.driver=blkdebug,file.config=%s,file.image.filename=%s,"
+        "format=raw,if=ide,index=1,media=disk,id=t1,snapshot=off"
+        % (conf, disk)]
+
+
+def test_hmp_write_writes_one_sector_through_the_drive():
+    assert _load().hmp_write(1474560) == 'qemu-io t1 "write -P 0 1474560 512"'
+
+
+@pytest.mark.skipif(not os.path.exists(make_badfs.TEMPLATE),
+                    reason="install floppy template not present")
+def test_make_test_disk_is_dirty_and_padded():
+    m = _load()
+    with tempfile.TemporaryDirectory() as d:
+        p = os.path.join(d, "test.img")
+        assert m.make_test_disk(p) == 1474560
+        assert os.path.getsize(p) == 1474560 + m.PAD
+        assert make_badfs.read_field(p, "fs_clean") == 0
+        assert make_badfs.read_field(p, "fs_magic") == 0x00011954
+
+
+@pytest.mark.skipif(not os.path.exists(make_badfs.TEMPLATE),
+                    reason="install floppy template not present")
+def test_make_r3_disk_targets_an_open_files_inode_block():
+    m = _load()
+    with tempfile.TemporaryDirectory() as d:
+        p = os.path.join(d, "test.img")
+        pad_start, sector, ino = m.make_r3_disk(p)
+        assert pad_start == 1474560
+        assert sector != make_badfs.inode_block_sector(p, 2)
+        assert make_badfs.read_field(p, "fs_clean") == 0
+
+
+@pytest.mark.skipif(not shutil.which("qemu-system-i386"),
+                    reason="needs qemu-system-i386")
+def test_injection_fires_under_the_guest_command_line():
+    """Proves the injection works on the real command line run() uses: the
+    hd1 test disk must stay out of the -snapshot that persist=False puts on
+    the root disk, or the host's arm/disarm writes never reach blkdebug."""
+    m = _load()
+    gc = ufs_gap_lib.load_guest_console()
+    with tempfile.TemporaryDirectory() as d:
+        disk = os.path.join(d, "disk.raw")
+        with open(disk, "wb") as f:
+            f.write(bytes(1 << 20))
+        root = os.path.join(d, "root.raw")
+        with open(root, "wb") as f:
+            f.write(bytes(1 << 20))
+        conf = os.path.join(d, "blkdebug.conf")
+        with open(conf, "w") as f:
+            # error on sector 16; the dummy is sector 128, byte offset 65536,
+            # the arm/disarm write target
+            f.write(m.blkdebug_config(16, 128))
+        serial = os.path.join(d, "serial.log")
+
+        s = socket.socket()
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+        s.close()
+
+        extra = m.drive_args(disk, conf) + ["-S"]
+        args = gc.qemu_args(root, False, port, "null", "ne2k_pci", extra,
+                            serial)
+
+        proc = subprocess.Popen(args, stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT, text=True)
+        try:
+            sock = None
+            deadline = time.time() + 10
+            while time.time() < deadline:
+                try:
+                    sock = socket.create_connection(("127.0.0.1", port),
+                                                     timeout=1)
+                    break
+                except OSError:
+                    time.sleep(0.5)
+            assert sock is not None, "no QMP connection"
+            f = sock.makefile("rw")
+            f.readline()  # greeting
+
+            def qmp(execute, **kwargs):
+                msg = {"execute": execute}
+                if kwargs:
+                    msg["arguments"] = kwargs
+                f.write(json.dumps(msg) + "\n")
+                f.flush()
+                while True:
+                    line = f.readline()
+                    if not line:
+                        return None
+                    r = json.loads(line)
+                    if "event" not in r:
+                        return r
+
+            def hmp(command_line):
+                qmp("human-monitor-command",
+                    **{"command-line": command_line})
+
+            qmp("qmp_capabilities")
+            hmp(m.hmp_write(65536))                  # arm
+            hmp('qemu-io t1 "read 8192 8192"')        # covers sector 16: fails
+            hmp(m.hmp_write(65536))                  # disarm
+            hmp('qemu-io t1 "read 8192 8192"')        # fine again
+            qmp("quit")
+
+            out, _ = proc.communicate(timeout=10)
+        finally:
+            if proc.poll() is None:
+                proc.terminate()
+                try:
+                    proc.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+
+        results = [l for l in out.splitlines()
+                   if l.startswith(("read ", "wrote "))]
+        assert results == [
+            "wrote 512/512 bytes at offset 65536",
+            "read failed: Input/output error",
+            "wrote 512/512 bytes at offset 65536",
+            "read 8192/8192 bytes at offset 8192"]

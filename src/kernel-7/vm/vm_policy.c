@@ -91,9 +91,13 @@ vm_page_free_head(mem)
 /*
  *  Do something with a particular page.  This function is the locus for all
  *  policy decisions.
+ *
+ *  hint is TRUE for an explicit vm_deactivate() request.  Only such a hint
+ *  ages a page to the head of the inactive queue; the automatic sequential
+ *  policy deactivates to the tail, as FreeBSD does for drop-behind.
  */
-void
-vm_policy_apply(vm_object_t object, vm_page_t m, int when)
+static void
+_vm_policy_apply(vm_object_t object, vm_page_t m, int when, boolean_t hint)
 {
 	boolean_t	shared = FALSE;
 	
@@ -120,7 +124,7 @@ vm_policy_apply(vm_object_t object, vm_page_t m, int when)
 
 	vm_page_lock_queues();
 
-	switch (when) {
+	switch (when & ~VM_DEACTIVATE_SHARED) {
 		/*
 		 *  Make this page as cold as possible.  That means that we
 		 *  try to free the page.
@@ -139,14 +143,24 @@ vm_policy_apply(vm_object_t object, vm_page_t m, int when)
 		 *  a little warmer.
 		 */
 		case VM_DEACTIVATE_SOON:
-			if (m->active)
-				vm_page_deactivate(m);
+			if (m->active) {
+				if (hint)
+					vm_page_deactivate_first(m);
+				else
+					vm_page_deactivate(m);
+			}
 			break;
 		default:
 			break;
 	}
 
 	vm_page_unlock_queues();
+}
+
+void
+vm_policy_apply(vm_object_t object, vm_page_t m, int when)
+{
+	_vm_policy_apply(object, m, when, FALSE);
 }
 
 
@@ -183,7 +197,7 @@ deactivate_object(vm_object_t object, vm_offset_t start, vm_offset_t end, int te
 		if (page->offset < start || page->offset >= end)
 			continue;
 		
-		vm_policy_apply(object, page, temperature);
+		_vm_policy_apply(object, page, temperature, TRUE);
 	}
 
 	/*
@@ -344,7 +358,7 @@ vm_deactivate(vm_map_t map, vm_address_t addr, vm_size_t size, int temperature)
 	if (addr == 0)
 		addr = map->min_offset;
 
-	deactivate_range(map, addr, size, temperature);
+	deactivate_range(map, addr, addr + size, temperature);
 	return KERN_SUCCESS;
 }
 

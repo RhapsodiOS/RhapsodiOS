@@ -367,6 +367,7 @@ def test_ppc_profile_inventory():
         "burgundy-bundle-ppc.json", "burgundy-ppc.json",
         "cuda-bundle-ppc.json", "cuda-ppc.json",
         "dec21040-bundle-ppc.json", "dec21040-ppc.json",
+        "driverloader-ppc.json",
         "floppy-bundle-ppc.json", "floppy-ppc.json",
         "gem-bundle-ppc.json", "gem-ppc.json",
         "gnic-bundle-ppc.json", "gnic-ppc.json",
@@ -386,6 +387,10 @@ def test_ppc_profile_inventory():
     ]
 
 
+# driverLoader builds a ppc slice, so its profile compares a rebuilt artifact.
+PPC_PROFILES_WITH_REBUILT = {"driverloader-ppc.json"}
+
+
 @pytest.mark.parametrize("path", PPC_PROFILES, ids=lambda path: path.name)
 def test_ppc_profiles_are_reference_only_ida_runs(path):
     document = json.loads(path.read_text(encoding="utf-8"))
@@ -394,7 +399,10 @@ def test_ppc_profiles_are_reference_only_ida_runs(path):
     assert document["architecture"] == "ppc"
     assert document["endianness"] == "big"
     assert document["reference"] == {"path": "${BINRECON_REFERENCE}"}
-    assert "rebuilt" not in document
+    if path.name in PPC_PROFILES_WITH_REBUILT:
+        assert document["rebuilt"] == {"path": "${BINRECON_REBUILT}"}
+    else:
+        assert "rebuilt" not in document
     assert document["analyzers"]["ida"]["enabled"] is True
     assert document["analyzers"]["ghidra"]["enabled"] is False
     assert document["analyzers"]["angr"]["enabled"] is False

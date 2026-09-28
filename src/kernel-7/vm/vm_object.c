@@ -501,35 +501,6 @@ void vm_object_destroy(pager)
 }
 
 /*
- *	_vm_object_deactivate_pages
- *
- *	Internal routine to deactivate pages in the specified object.
- *	(Keep its pages in memory even though it is no longer referenced.)
- *
- *	The object must be locked.
- */
-static void _vm_object_deactivate_pages(object, age)
-	register vm_object_t	object;
-	register boolean_t	age;
-{
-	register vm_page_t	p, next;
-
-	vm_page_lock_queues();
-	p = (vm_page_t) queue_first(&object->memq);
-	while (!queue_end(&object->memq, (queue_entry_t) p)) {
-		next = (vm_page_t) queue_next(&p->listq);
-		if (!p->inactive) {
-			if (age)
-				vm_page_deactivate_first(p);
-			else
-				vm_page_deactivate(p);
-		}
-		p = next;
-	}
-	vm_page_unlock_queues();
-}
-
-/*
  *	vm_object_deactivate_pages
  *
  *	Deactivate pages in the specified object.
@@ -540,21 +511,17 @@ static void _vm_object_deactivate_pages(object, age)
 void vm_object_deactivate_pages(object)
 	register vm_object_t	object;
 {
-	_vm_object_deactivate_pages(object, FALSE);
-}
+	register vm_page_t	p, next;
 
-/*
- *	vm_object_deactivate_pages_first
- *
- *	Deactivate pages in the specified object. Age them.
- *	(Keep its pages in memory even though it is no longer referenced.)
- *
- *	The object must be locked.
- */
-void vm_object_deactivate_pages_first(object)
-	register vm_object_t	object;
-{
-	_vm_object_deactivate_pages(object, TRUE);
+	vm_page_lock_queues();
+	p = (vm_page_t) queue_first(&object->memq);
+	while (!queue_end(&object->memq, (queue_entry_t) p)) {
+		next = (vm_page_t) queue_next(&p->listq);
+		if (!p->inactive)
+			vm_page_deactivate(p);
+		p = next;
+	}
+	vm_page_unlock_queues();
 }
 
 /*
@@ -682,12 +649,20 @@ void vm_object_pmap_remove(object, start, end)
 		return;
 
 	vm_object_lock(object);
-	p = (vm_page_t) queue_first(&object->memq);
-	while (!queue_end(&object->memq, (queue_entry_t) p)) {
-		if ((start <= p->offset) && (p->offset < end)) {
-			pmap_remove_all(VM_PAGE_TO_PHYS(p));
+	if (atop(end - start) < (unsigned int)object->resident_page_count/4) {
+		for (; start < end; start += PAGE_SIZE) {
+			p = vm_page_lookup(object, start);
+			if (p != VM_PAGE_NULL)
+				pmap_remove_all(VM_PAGE_TO_PHYS(p));
 		}
-		p = (vm_page_t) queue_next(&p->listq);
+	} else {
+		p = (vm_page_t) queue_first(&object->memq);
+		while (!queue_end(&object->memq, (queue_entry_t) p)) {
+			if ((start <= p->offset) && (p->offset < end)) {
+				pmap_remove_all(VM_PAGE_TO_PHYS(p));
+			}
+			p = (vm_page_t) queue_next(&p->listq);
+		}
 	}
 	vm_object_unlock(object);
 }
@@ -1355,7 +1330,7 @@ void vm_object_collapse(object)
 				 */
 
 				if (p->offset >= backing_offset &&
-				    new_offset <= size &&
+				    new_offset < size &&
 				    (pp = vm_page_lookup(object, new_offset))
 				      == VM_PAGE_NULL) {
 					/*
@@ -1414,16 +1389,34 @@ void vm_object_page_remove(object, start, end)
 	if (object == VM_OBJECT_NULL)
 		return;
 
-	p = (vm_page_t) queue_first(&object->memq);
-	while (!queue_end(&object->memq, (queue_entry_t) p)) {
-		next = (vm_page_t) queue_next(&p->listq);
-		if ((start <= p->offset) && (p->offset < end)) {
-			pmap_remove_all(VM_PAGE_TO_PHYS(p));
-			vm_page_lock_queues();
-			vm_page_free(p);
-			vm_page_unlock_queues();
+	/*
+	 *	One and two page removals are most popular.
+	 *	The factor of 4 here is somewhat arbitrary; FreeBSD and NetBSD
+	 *	used the same one before moving to per-object trees.
+	 *	It balances vm_page_lookup vs iteration.
+	 */
+	if (atop(end - start) < (unsigned int)object->resident_page_count/4) {
+		for (; start < end; start += PAGE_SIZE) {
+			p = vm_page_lookup(object, start);
+			if (p != VM_PAGE_NULL) {
+				pmap_remove_all(VM_PAGE_TO_PHYS(p));
+				vm_page_lock_queues();
+				vm_page_free(p);
+				vm_page_unlock_queues();
+			}
 		}
-		p = next;
+	} else {
+		p = (vm_page_t) queue_first(&object->memq);
+		while (!queue_end(&object->memq, (queue_entry_t) p)) {
+			next = (vm_page_t) queue_next(&p->listq);
+			if ((start <= p->offset) && (p->offset < end)) {
+				pmap_remove_all(VM_PAGE_TO_PHYS(p));
+				vm_page_lock_queues();
+				vm_page_free(p);
+				vm_page_unlock_queues();
+			}
+			p = next;
+		}
 	}
 }
 

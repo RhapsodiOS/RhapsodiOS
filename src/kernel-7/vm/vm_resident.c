@@ -912,7 +912,7 @@ void vm_page_deactivate(m)
 void vm_page_deactivate_first(m)
 	register vm_page_t	m;
 {
-	_vm_page_deactivate(m, FALSE);
+	_vm_page_deactivate(m, TRUE);
 }
 
 /*

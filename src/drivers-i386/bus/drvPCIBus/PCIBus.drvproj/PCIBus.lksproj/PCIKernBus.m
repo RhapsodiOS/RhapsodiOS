@@ -81,7 +81,10 @@
 {
     unsigned int pciConfigData;
     unsigned int subsystemId;
-    unsigned char bus, dev, func;
+    /* bus is an int: with 256 buses (maxBusNum 255, which bootefi reports
+     * under UEFI) a char counter wraps and the scan below never ends. */
+    unsigned int bus;
+    unsigned char dev, func;
     const char *bios16Str, *bios32Str, *cm1Str, *cm2Str, *sc1Str, *sc2Str;
     KERNBOOTSTRUCT *kernbootstruct = KERNSTRUCT_ADDR;
 

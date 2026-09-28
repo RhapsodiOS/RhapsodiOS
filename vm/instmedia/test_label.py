@@ -95,6 +95,16 @@ class TestForFilesystem(unittest.TestCase):
             label.label(**dict(GOLDEN, minfree=5, d_name="Disk",
                                boot0=(-1, -1), tag=0)))
 
+    def test_passes_boot_blocks_through(self):
+        g = ufs_geometry.geometry(fssize=8217087, secsize=1024, nsect=63,
+                                  ntrak=16, rpm=3600)
+        self.assertEqual(
+            label.for_filesystem(g, front=160, p_base=0, ncylinders=16383,
+                                 name="Disk", d_type="fixed_rw_ide",
+                                 boot0=(32, 96)),
+            label.label(**dict(GOLDEN, minfree=5, d_name="Disk",
+                               boot0=(32, 96), tag=0)))
+
 
 class TestRefusals(unittest.TestCase):
     def test_name_too_long(self):

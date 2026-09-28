@@ -189,7 +189,61 @@ class TestSecondDiskAndTyping(unittest.TestCase):
                             "--at", "90", "--firmware-dir", "fw"])
         run.assert_called_once_with(
             "bios", "a.img", "out", [90.0], "fw", esp=None, hd1="b.img",
-            typed=[(6.0, "-s"), (70.0, "fsck -n /dev/rhd1a")])
+            typed=[(6.0, "-s"), (70.0, "fsck -n /dev/rhd1a")],
+            boot_hd1=False, nic=None, ssh_port=None)
+
+
+class TestInstallMediaHarness(unittest.TestCase):
+    def test_boot_hd1_puts_the_media_first_and_keeps_hd0(self):
+        args = qemu_boot.build_args("bios", "target.img", "o", 1, "fw",
+                                    hd1="media.img", boot_hd1=True)
+        self.assertIn("id=hd0,file=target.img,format=raw,if=none", args)
+        self.assertIn("ide-hd,drive=hd0,bus=ide.0,unit=0,bootindex=1", args)
+        self.assertIn("id=hd1,file=media.img,format=raw,if=none", args)
+        self.assertIn("ide-hd,drive=hd1,bus=ide.0,unit=1,bootindex=0", args)
+        self.assertNotIn("order=c", args)
+        self.assertNotIn("file=media.img,format=raw,if=ide,index=1,"
+                         "media=disk", args)
+        self.assertIn("-snapshot", args)
+
+    def test_boot_hd1_under_uefi(self):
+        args = qemu_boot.build_args("uefi", "target.img", "o", 1, "fw",
+                                    hd1="media.img", boot_hd1=True)
+        self.assertIn("ide-hd,drive=hd1,bus=ide.0,unit=1,bootindex=0", args)
+        self.assertIn("Nehalem", args)
+
+    def test_boot_hd1_needs_hd1(self):
+        with self.assertRaises(ValueError):
+            qemu_boot.build_args("bios", "a.img", "o", 1, "fw",
+                                 boot_hd1=True)
+
+    def test_nic_with_an_ssh_forward(self):
+        args = qemu_boot.build_args("bios", "a.img", "o", 1, "fw",
+                                    nic="ne2k_pci", ssh_port=2549)
+        self.assertIn("user,id=n0,hostfwd=tcp:127.0.0.1:2549-:22", args)
+        self.assertIn("ne2k_pci,netdev=n0,addr=03.0", args)
+
+    def test_nic_without_a_forward_and_none_by_default(self):
+        args = qemu_boot.build_args("bios", "a.img", "o", 1, "fw",
+                                    nic="ne2k_pci")
+        self.assertIn("user,id=n0", args)
+        self.assertNotIn("-netdev", qemu_boot.build_args(
+            "bios", "a.img", "o", 1, "fw"))
+
+    def test_ssh_port_needs_a_nic(self):
+        with self.assertRaises(ValueError):
+            qemu_boot.build_args("bios", "a.img", "o", 1, "fw",
+                                 ssh_port=2549)
+
+    def test_main_passes_the_harness_options(self):
+        with mock.patch("qemu_boot.run") as run:
+            qemu_boot.main(["qemu_boot.py", "uefi", "t.img", "out",
+                            "--hd1", "m.img", "--boot-hd1", "--nic",
+                            "ne2k_pci", "--ssh-port", "2549", "--at", "600",
+                            "--firmware-dir", "fw"])
+        run.assert_called_once_with(
+            "uefi", "t.img", "out", [600.0], "fw", esp=None, hd1="m.img",
+            typed=[], boot_hd1=True, nic="ne2k_pci", ssh_port=2549)
 
 
 if __name__ == "__main__":

@@ -54,7 +54,7 @@ named-xfer:	$(XFER_OFILES)
 	else \
 		dyflag=-static; \
 	fi; \
-	$(CC) $$dyflag $(ALL_CFLAGS) $(OBJCFLAG) \
+	$(CC) $$dyflag $(ARCHITECTURE_FLAGS) $(ALL_CFLAGS) $(OBJCFLAG) \
 		$(ALL_LDFLAGS) -o $(SYMROOT)/$@ $(XFER_OFILES) $(LIBS) $(OTHER_LIBS)
 
 $(DSTROOT)$(XFERDIR):

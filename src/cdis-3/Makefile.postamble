@@ -132,3 +132,5 @@ after_install::
 	$(RM) -rf $(DSTROOT)$(INSTALLDIR)/$(NAME)/install_tools
 	$(MKDIRS) $(DSTROOT)/private/var/tmp/mnta
 	$(MKDIRS) $(DSTROOT)/private/var/tmp/mntb
+	$(MKDIRS) $(DSTROOT)$(INSTALLDIR)/$(NAME)/templates
+	$(INSTALL) -c -o root -g wheel -m 444 templates/fstab templates/hostconfig templates/Instance0-i386.table templates/Instance0-ppc.table $(DSTROOT)$(INSTALLDIR)/$(NAME)/templates

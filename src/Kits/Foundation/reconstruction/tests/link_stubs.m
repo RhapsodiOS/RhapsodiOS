@@ -148,10 +148,11 @@ void _NSObjectRaiseNullSelectorException(id object, SEL aSelector)
     unimplemented("_NSObjectRaiseNullSelectorException");
 }
 
-void NSLog(id format, ...)
-{
-    unimplemented("NSLog");
-}
+/*  NSLog is defined by NSObjCRuntime.m (stage 2b), which now links into
+    every suite that links this file; this file's abort()-ing stub was
+    removed when NSObjCRuntime.m joined the link line, because the two
+    definitions collided.  Its TODO body still does nothing until Task 4
+    reconstructs the real formatter.  */
 
 /*  NSMethodSignature and NSString are not reconstructed until later
     (NSMethodSignature.m is task-8-plus territory; NSString.m is stage 3).

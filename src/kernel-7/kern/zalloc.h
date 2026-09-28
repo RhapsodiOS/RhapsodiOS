@@ -140,6 +140,15 @@ extern void		zchange(zone_t		zone,
 			 * and cannot later be changed back to collectable */
 extern void		zcollectable(zone_t	zone);
 
+			/* return free elements of collectable zones to
+			 * their pools; optionally give whole free pages
+			 * back to zone_map */
+extern void		zone_gc(boolean_t	reclaim_pages);
+
+			/* called by the pageout daemon when free pages
+			 * run short; collects at most every two seconds */
+extern void		consider_zone_gc(void);
+
 			/* exported to vm_resident module
 			 * to acquire space for bootstrapping */
 extern vm_offset_t	zdata;

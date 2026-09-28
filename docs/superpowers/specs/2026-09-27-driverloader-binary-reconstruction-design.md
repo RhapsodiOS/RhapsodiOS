@@ -142,7 +142,7 @@ tools/binrecon/profiles/driverloader-ppc.json   # ppc
 
 ### How the sources are written
 
-- Start from IDA 9.2 decompiles of the owned functions. Where the i386 and
+- Start from IDA decompiles of the owned functions. Where the i386 and
   ppc decompiles disagree about behaviour, stop and resolve it from both
   disassemblies before writing the line.
 - `kl_com.m` and `kl_com.h` start as copies of
@@ -195,10 +195,10 @@ dumps go into the accept.
 
 ### Tooling
 
-- `tools/binrecon/profiles/driverloader.json`: i386, IDA 9.2 and angr
+- `tools/binrecon/profiles/driverloader.json`: i386, IDA 9.4 and angr
   enabled, Ghidra disabled, acceptance `normalized-functions`, output under
   `out/driverloader`.
-- `tools/binrecon/profiles/driverloader-ppc.json`: ppc, big-endian, IDA 9.2
+- `tools/binrecon/profiles/driverloader-ppc.json`: ppc, big-endian, IDA 9.4
   only (binrecon's Ghidra and angr adapters reject ppc), output under
   `out/driverloader-ppc`, and it gains a `rebuilt` path.
 - Both take their inputs from `BINRECON_REFERENCE` / `BINRECON_REBUILT`.
@@ -243,7 +243,8 @@ kernel:
 - `d=BPF` with every prompt answered `n` on stdin (interactive path)
 - `i` with every prompt answered `n` (interactive system configuration)
 
-Every case must match. `securityCheck` and `securityCheckDir` have no callers
+Every case must match, except that `D=` with nothing configured exits 1
+where DR2 exits 0 (see As built). `securityCheck` and `securityCheckDir` have no callers
 in either reference (dead code Apple shipped), so no test can reach the
 "not owned by root" or "is writable" refusals. They are reconstructed for
 parity only.
@@ -266,11 +267,25 @@ Capture for each boot:
 **Pass:**
 
 - the same drivers register in both boots (`Registering:` lines)
-- `/dev/bpf*` exists
-- PortServer's Post-Load `pdservd` runs and `/dev/ttyda` exists
+- PortServer's Post-Load creates `/dev/ttyda`
+- `/dev/bpf*` and a `pdservd` process match the baseline (Apple's own
+  binary produces neither on this guest)
 - the rebuilt boot shows no new error lines
 
 Any difference is either fixed or recorded in `divergences.md`.
+
+## As built (2026-09-28)
+
+- IDA 9.2 is no longer installed; both profiles use IDA 9.4.
+- binrecon's `masked_equal` does not normalize PIC code, so
+  `tools/binrecon/pic_equal.py` is the equality bar alongside it.
+- CFLAGS are `-g -O`, and each slice gets `strip -S`: Apple compiled with `-g`
+  and shipped without stabs but with every local symbol.
+- `processDriver` differs between the references; this build follows 1.2,
+  so `driverLoader D=<name>` with nothing configured exits 1 (DR2: 0).
+- `/build/repo`'s kernload and csu apks were built by an older bootstrap
+  compiler; driverLoader links a freshly built kernload from a private repo.
+- See `src/driverkit-3/driverLoader/reconstruction/` for every accept.
 
 ## 7. Out of scope
 

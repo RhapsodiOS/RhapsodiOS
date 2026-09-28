@@ -135,3 +135,6 @@
 # standard locations.  NEXT_ROOT defaults to "C:/Apple" on Windows systems
 # and "" on other systems.
 DSTROOT = $(HOME)
+
+# Built for ppc only; hfs_mount alone also builds for i386.
+INCLUDED_ARCHS = ppc

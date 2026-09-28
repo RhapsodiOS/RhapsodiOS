@@ -508,12 +508,11 @@ out:
 static loadResult
 prePostExec(const char *driverName, int unit, int post)
 {
+	char dir[1024];
+	char command[2048];
+	char question[100];
 	id table;
 	const char *file;
-	const char *which;
-	char question[100];
-	char command[2048];
-	char dir[1024];
 	loadResult rtn;
 
 	table = [IOConfigTable newForDriver:driverName unit:unit];
@@ -524,15 +523,15 @@ prePostExec(const char *driverName, int unit, int post)
 		if (table == nil)
 			return PP_OK;
 	}
-	file = [table valueForStringKey:post ? "Post-Load" : "Pre-Load"];
+	file = [table valueForStringKey:post == 0 ? "Pre-Load" : "Post-Load"];
 	if (file == NULL)
 		return PP_OK;
 	if (*file == '/' || strstr(file, "..") != NULL) {
 		rtn = PP_REFUSED;
 	}
 	else {
-		which = post ? "Post-Load" : "Pre-Load";
-		sprintf(question, "Execute %s file (%s)", which, file);
+		sprintf(question, "Execute %s file (%s)",
+			post == 0 ? "Pre-Load" : "Post-Load", file);
 		if (!inquire(question))
 			return PP_OK;
 		sprintf(dir, "%s%s%s", DEVICE_DIR, driverName, CONFIG_EXT);
@@ -545,9 +544,7 @@ prePostExec(const char *driverName, int unit, int post)
 			printf("prePostExec: execString %s\n", command);
 			printf("   cwd %s\n", dir);
 		}
-		rtn = PP_OK;
-		if (system(command))
-			rtn = PP_FAILED;
+		rtn = system(command) ? PP_FAILED : PP_OK;
 	}
 	[table free];
 	return rtn;

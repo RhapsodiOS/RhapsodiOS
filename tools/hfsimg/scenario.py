@@ -119,7 +119,7 @@ def _report_lines(sample=None):
     if sample is None:
         sums = "find . -type f -print | sort | while read f; do cksum \"$f\"; done > /mnt/sums.txt"
     else:
-        sums = "(" + "; ".join("cksum './%s'" % p for p in sample) + ") > /mnt/sums.txt"
+        sums = "(" + "; ".join("cksum './%s'" % p.replace("'", "'\\''") for p in sample) + ") > /mnt/sums.txt"
     return [
         "find . -print | sort > /mnt/list.txt",
         sums,

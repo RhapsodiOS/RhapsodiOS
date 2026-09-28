@@ -25,6 +25,8 @@ def test_read_script_options():
     assert "/mnt/mount_hfs -o ro /dev/hd1a" in scenario.read_script("/dev/hd1a", read_only=True)
     s = scenario.read_script("/dev/hd1a", sample=["a b", "c"])
     assert "cksum './a b'; cksum './c'" in s
+    # the Apple volume has "What's New.pdf"
+    assert "cksum './What'\\''s New.pdf'" in scenario.read_script("/dev/hd1a", sample=["What's New.pdf"])
 
 
 def test_parsers():

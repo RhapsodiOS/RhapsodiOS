@@ -359,16 +359,18 @@ getInstanceFile(const char *driverName, char *path, int unit,
 		if (verbose)
 			printf("No Instance file for %s instance %d\n",
 				driverName, unit);
-		if (unit)
-			return 1;
-		sprintf(path, "%s%s%s/%s", DEVICE_DIR, driverName, CONFIG_EXT,
-			DEFAULT_TABLE);
-		if (stat(path, statBuf)) {
+		if (unit == 0) {
+			sprintf(path, "%s%s%s/%s", DEVICE_DIR, driverName,
+				CONFIG_EXT, DEFAULT_TABLE);
+			if (stat(path, statBuf) == 0) {
+				fprintf(stderr, "Using Default table for %s\n",
+					driverName);
+				return 0;
+			}
 			if (verbose)
 				printf("No Default table for %s\n", driverName);
-			return 1;
 		}
-		fprintf(stderr, "Using Default table for %s\n", driverName);
+		return 1;
 	}
 	return 0;
 }

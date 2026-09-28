@@ -7,11 +7,15 @@ B=/build/dlr
 PATH=/build/tools/bin:/usr/bin:/bin:/usr/sbin:/sbin; export PATH
 TC=/build/src/rbuild-1/toolchains/gcc-darwin-universal.conf
 
+# A private repo holds a freshly built kernload when the shared one is stale.
+REPO=/build/repo
+if [ -d $B/repo ]; then REPO=$B/repo; fi
+
 rm -rf $B/out $B/x $B/driverLoader.i386 $B/driverLoader.ppc
 mkdir -p $B/out $B/state $B/x
-echo "======== rbuild buildpackage driverkit-3 (universal) ========"
+echo "======== rbuild buildpackage driverkit-3 (universal, repo $REPO) ========"
 rbuild buildpackage --state $B/state --toolchain $TC \
-	$B/src/driverkit-3 /build/repo $B/out > $B/rbuild.log 2>&1
+	$B/src/driverkit-3 $REPO $B/out > $B/rbuild.log 2>&1
 rc=$?
 tail -40 $B/rbuild.log
 echo "RBUILD_RC=$rc"

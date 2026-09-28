@@ -681,6 +681,15 @@ _processDriver
   retn                                    retn
 ```
 
+### libkernload (both slices)
+
+No divergence. All 16 `kern_loader_*` functions are `pic_equal` on both
+slices when `libkernload.a` comes from a kernload apk built by this tree's
+toolchain. The universal kernload apk in the bootstrapped image's
+`/build/repo` was built by an older compiler (ppc PIC base in `r30` via
+`bl`, where Apple and this toolchain use `r31` via `bcl 20,31`); rebuilding
+kernload-1 from unchanged source fixes it, so nothing in kernload-1 changes.
+
 ## Fixed Apple bugs
 
 (none yet)

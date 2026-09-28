@@ -2699,7 +2699,7 @@ unsigned long BestBlockSizeFit(unsigned long allocationBlockSize,
        from being handled as two 6K logical blocks instead of 3 4K logical blocks.
        Even though the former (the result of the loop below) is the larger allocation
        block size, the latter is more efficient: */
-    if (allocationBlockSize % PAGE_SIZE == 0) return PAGE_SIZE;
+    if (allocationBlockSize % MAXLOGBLOCKSIZE == 0) return MAXLOGBLOCKSIZE;	/* PAGE_SIZE, but 4K on i386: see hfs.h */
 
     /* No clear winner exists: pick the largest even fraction <= MAXBSIZE: */
     baseBlockCount = allocationBlockSize / baseMultiple;				/* Now guaranteed to be an even multiple */

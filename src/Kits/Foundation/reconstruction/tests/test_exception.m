@@ -73,6 +73,26 @@ static void test_NS_DURING_normal_path_skips_the_handler(void)
     CHECK(_NSExceptionHandlerCount() == 0);
 }
 
+extern void _NSAddAltHandler2(NSHandler2 *handler);
+extern void _NSRemoveAltHandler2(NSHandler2 *handler);
+
+static void test_alt_handlers_do_not_disturb_the_main_chain(void)
+{
+    NSHandler2 main;
+    NSHandler2 alternate;
+    unsigned before;
+
+    _NSAddHandler2(&main);
+    before = _NSExceptionHandlerCount();
+
+    _NSAddAltHandler2(&alternate);
+    _NSRemoveAltHandler2(&alternate);
+
+    CHECK(_NSExceptionHandlerCount() == before);
+    _NSRemoveHandler2(&main);
+    CHECK(_NSExceptionHandlerCount() == 0);
+}
+
 int main(void)
 {
     test_handler_stack_starts_empty();
@@ -80,6 +100,7 @@ int main(void)
     test_handlers_nest();
     test_a_handler_with_no_exception_reports_nil();
     test_NS_DURING_normal_path_skips_the_handler();
+    test_alt_handlers_do_not_disturb_the_main_chain();
 
     printf("%s: %d failure(s)\n", failures ? "FAILED" : "PASSED", failures);
     return failures != 0;

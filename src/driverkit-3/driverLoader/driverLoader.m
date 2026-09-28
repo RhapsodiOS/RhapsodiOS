@@ -25,10 +25,16 @@
 #define TABLE_EXT	".table"
 #define DEFAULT_TABLE	"Default.table"
 
-/* prePostExec's return codes, as main/processDriver/configDriver test them */
-#define PP_OK		0
-#define PP_FAILED	2	/* the Pre-/Post-Load file returned non-zero */
-#define PP_REFUSED	3	/* absolute or ".." path: never run */
+/*
+ * configDriver's and prePostExec's results.  Both references compare them
+ * unsigned, as gcc does for an enum with no negative members.
+ */
+typedef enum {
+	PP_OK = 0,
+	PP_NONE = 1,		/* no Instance table for this unit */
+	PP_FAILED = 2,		/* a Pre-/Post-Load file or the probe failed */
+	PP_REFUSED = 3		/* absolute or ".." path: never run */
+} loadResult;
 
 int verbose = 0;		/* check width: byte or long accesses in the dumps */
 int interactive = 0;
@@ -43,11 +49,11 @@ static int loadDriver(const char *driverName);
 static int unloadDriver(const char *driverName);
 static int getInstanceFile(const char *driverName, char *path, int unit,
 	struct stat *statBuf);
-static int configDriver(const char *driverName, int unit, BOOL probe,
+static loadResult configDriver(const char *driverName, int unit, BOOL probe,
 	BOOL runPreLoad);
 static BOOL securityCheck(const char *driverName);
 static BOOL securityCheckDir(char *dir);
-static int prePostExec(const char *driverName, int unit, int post);
+static loadResult prePostExec(const char *driverName, int unit, int post);
 
 int
 main(int argc, char **argv)
@@ -192,35 +198,50 @@ processDriverList(const char *list, BOOL isBoot, BOOL load)
 static int
 processDriver(const char *driverName, BOOL isBoot, BOOL load)
 {
-	int rtn, unit;
+	int configured = 0;
+	int unit;
+	loadResult rtn;
 
 	if (!load)
 		return unloadDriver(driverName);
-	rtn = prePostExec(driverName, 0, NO);
-	if (rtn == PP_FAILED) {
+	switch (prePostExec(driverName, 0, NO)) {
+	    case PP_FAILED:
 		fprintf(stderr, "driverLoader: driver %s Pre-Load file returned "
 			"non-zero status; aborting\n", driverName);
+		/* fall through */
+	    case PP_REFUSED:
+		return 1;
+	    case PP_OK:
+		break;
+	    default:
 		return 1;
 	}
-	if (rtn)
-		return 1;
 	if (!isBoot) {
 		rtn = loadDriver(driverName);
 		if (rtn)
 			return rtn;
 	}
+	/*
+	 * Mac OS X Server 1.2 counts the units it configured and fails when
+	 * there were none; DR2 returned 0 regardless.  This follows 1.2.
+	 */
 	unit = 0;
 	do {
 		rtn = configDriver(driverName, unit, !isBoot, unit > 0);
 		switch (rtn) {
+		    case 0:
+			configured++;
+			break;
+		    case 1:
+			break;
+		    case 2:
+			break;
 		    case PP_REFUSED:
 			return 1;
-		    default:
-			break;
 		}
 		unit++;
 	} while (rtn != 1);
-	return 0;
+	return (rtn != 1 || configured <= 0);
 }
 
 static int
@@ -335,31 +356,33 @@ getInstanceFile(const char *driverName, char *path, int unit,
 {
 	sprintf(path, "%s%s%s/Instance%d%s", DEVICE_DIR, driverName, CONFIG_EXT,
 		unit, TABLE_EXT);
-	if (stat(path, statBuf) == 0)
-		return 0;
-	if (verbose)
-		printf("No Instance file for %s instance %d\n", driverName, unit);
-	if (unit)
-		return 1;
-	sprintf(path, "%s%s%s/%s", DEVICE_DIR, driverName, CONFIG_EXT,
-		DEFAULT_TABLE);
 	if (stat(path, statBuf)) {
 		if (verbose)
-			printf("No Default table for %s\n", driverName);
-		return 1;
+			printf("No Instance file for %s instance %d\n",
+				driverName, unit);
+		if (unit)
+			return 1;
+		sprintf(path, "%s%s%s/%s", DEVICE_DIR, driverName, CONFIG_EXT,
+			DEFAULT_TABLE);
+		if (stat(path, statBuf)) {
+			if (verbose)
+				printf("No Default table for %s\n", driverName);
+			return 1;
+		}
+		fprintf(stderr, "Using Default table for %s\n", driverName);
 	}
-	fprintf(stderr, "Using Default table for %s\n", driverName);
 	return 0;
 }
 
-static int
+static loadResult
 configDriver(const char *driverName, int unit, BOOL probe, BOOL runPreLoad)
 {
 	struct stat statBuf;
 	char path[1024];
 	char question[100];
 	vm_offset_t data;
-	int fd, rtn, pp;
+	int fd;
+	loadResult rtn, pp;
 	IOReturn ioRtn;
 
 	rtn = getInstanceFile(driverName, path, unit, &statBuf);
@@ -482,7 +505,7 @@ out:
 	return rtn;
 }
 
-static int
+static loadResult
 prePostExec(const char *driverName, int unit, int post)
 {
 	id table;
@@ -491,7 +514,7 @@ prePostExec(const char *driverName, int unit, int post)
 	char question[100];
 	char command[2048];
 	char dir[1024];
-	int rtn;
+	loadResult rtn;
 
 	table = [IOConfigTable newForDriver:driverName unit:unit];
 	if (table == nil) {

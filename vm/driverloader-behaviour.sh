@@ -48,8 +48,8 @@ mkcfg DLTestFail fail.sh 'exit 1'
 mkcfg DLTestAbs /bin/false
 
 fails=0
-# run CASE STDIN ARGS...
-run() {
+# both CASE STDIN ARGS...: run the reference and the candidate.
+both() {
 	c=$1
 	in=$2
 	shift
@@ -58,18 +58,44 @@ run() {
 		(cd $W/$s && printf "$in" | ./driverLoader "$@" > $W/out/$c.$s 2>&1
 		 echo "exit=$?" >> $W/out/$c.$s)
 	done
-	if cmp -s $W/out/$c.ref $W/out/$c.can; then
-		echo "PASS $c"
+}
+# verdict CASE: compare the two outputs, exit lines included.
+verdict() {
+	if cmp -s $W/out/$1.ref $W/out/$1.can; then
+		echo "PASS $1"
 	else
-		echo "FAIL $c"
-		diff $W/out/$c.ref $W/out/$c.can
+		echo "FAIL $1"
+		diff $W/out/$1.ref $W/out/$1.can
 		fails=`expr $fails + 1`
 	fi
+}
+# run CASE STDIN ARGS...
+run() {
+	both "$@"
+	verdict $1
+}
+# expect CASE REFEXIT CANEXIT STDIN ARGS...: the one known difference.
+# DR2's `D=` returns 0 when no unit was configured; Mac OS X Server 1.2,
+# which this build follows, returns 1.  The output must still match.
+expect() {
+	c=$1
+	re=$2
+	ce=$3
+	shift
+	shift
+	shift
+	both $c "$@"
+	if grep "^exit=$re\$" $W/out/$c.ref > /dev/null &&
+	   grep "^exit=$ce\$" $W/out/$c.can > /dev/null; then
+		sed "s/^exit=$ce\$/exit=$re/" $W/out/$c.can > $W/out/$c.can2
+		mv $W/out/$c.can2 $W/out/$c.can
+	fi
+	verdict $c
 }
 
 run noargs ''
 run badop '' x
-run nodriver '' D=DLTestNone v
+expect nodriver 0 1 '' D=DLTestNone v
 run preload-fail '' D=DLTestFail v
 run preload-abs '' D=DLTestAbs v
 run interactive-d 'n\nn\nn\nn\nn\n' d=BPF

@@ -309,6 +309,18 @@ OSErr hfs_MountHFSPlusVolume( register struct hfsmount *hfsmp, HFSPlusVolumeHead
     retval = ValidVolumeHeader(vhp);	/*	make sure this is an HFS Plus disk */
     if (retval)
     	return MacToVFSError(retval);
+
+#if BYTE_ORDER == LITTLE_ENDIAN
+	/*
+	 * hfs_endian.c knows the catalog and extents record formats only;
+	 * refuse a volume that has an attributes B-tree rather than read its
+	 * nodes in the wrong byte order.  Nothing is set up yet to release.
+	 */
+	if (vhp->attributesFile.logicalSize.hi != 0 || vhp->attributesFile.logicalSize.lo != 0) {
+		printf("hfs: can't mount an HFS Plus volume that has an attributes B-tree on this CPU\n");
+		return (EINVAL);
+	}
+#endif
     
     /*
      * The VolumeHeader seems OK: transfer info from it into VCB
@@ -407,19 +419,6 @@ OSErr hfs_MountHFSPlusVolume( register struct hfsmount *hfsmp, HFSPlusVolumeHead
 								kHFSAllocationFileID, NULL);
 	if (retval) goto ErrorExit;
  
-#if BYTE_ORDER == LITTLE_ENDIAN
-	/*
-	 * hfs_endian.c knows the catalog and extents record formats only;
-	 * refuse a volume that has an attributes B-tree rather than read its
-	 * nodes in the wrong byte order.
-	 */
-	if (vhp->attributesFile.logicalSize.hi != 0 || vhp->attributesFile.logicalSize.lo != 0) {
-		printf("hfs: can't mount an HFS Plus volume that has an attributes B-tree on this CPU\n");
-		retval = EINVAL;
-		goto ErrorExit;
-	}
-#endif
-
 	/*
 	 * Set up Attribute B-tree vnode (optional)...
 	 */

@@ -50,7 +50,9 @@ Both are unstripped: i386 has 349 symbol table entries, ppc 117.
 | `_ping_lock` | `0xc344` local | `0x71c8` local | __DATA,__bss |
 | `_strings.N` | `0xc298` local | `0x711c` local | __DATA,__const |
 
-`_strings.N` is the function-local static table of server state names in `kl_com_get_state`; gcc numbered it differently on each slice.
+`_strings.N` is the static array inside `server_state_string()`, a `static inline` in
+`kernserv/kern_loader_types.h`. gcc emits it in the one owned file that includes that
+header (`kl_com.m`) and numbered it differently on each slice.
 
 ## libkernload code (both slices)
 

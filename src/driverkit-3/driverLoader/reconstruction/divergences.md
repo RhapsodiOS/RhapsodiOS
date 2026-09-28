@@ -848,3 +848,31 @@ __call_mod_init_funcs
 ## Fixed Apple bugs
 
 (none yet)
+
+## Boot test (i386)
+
+Date: 2026-09-28. Two boots of `vm/work/rhap-i386-bootstrapped.img` under
+`-snapshot`, with `BPF PortServer` appended to `"Active Drivers"` so DR2's
+`0300_Devices` (`driverLoader a`) loads them (`vm/driverloader-boot.sh`):
+
+1. baseline: Apple's DR2 `/usr/sbin/driverLoader`;
+2. rebuilt: this build's fat `driverLoader` (i386 slice
+   `CFA1627DD7F44AF835D699FD50368B1885DAFDD9F2FCD5A71B508C36BF4B7C25`) with its
+   `libDriver.A.dylib`.
+
+Results:
+
+- Both boots print the same 17 `Registering:` lines, in the same order:
+  `hc0`, `hd0`, `ISASerialPort0`, `fc0`, `PS2Controller`, `PCKeyboard0`, `PCI0`, `EISA0`, `event0`, `kmDevice0`, `Display0`, `PS2Mouse`, `en0`, `bpf`, `PDPseudo`, `ttyda`, `pdservd`.
+- `vm/driverloader-boot-check.sh` output is identical apart from the
+  `/dev/ttyda` modification time: PortServer's Post-Load creates `/dev/ttyda`
+  in both.
+- Error and failure lines in the kernel log are identical, and neither boot
+  prints `No display driver added`.
+- In **both** boots there is no `/dev/bpf*` node and no running `pdservd`
+  process; both register `bpf` and `pdservd`. The spec's expectation of those
+  two was wrong for this guest, so the bar applied is identity with Apple's
+  boot, which holds.
+
+The side-by-side behaviour check (`vm/driverloader-behaviour.sh`) passes
+7/7 on the final build, with its one stated difference (`expect nodriver 0 1`).

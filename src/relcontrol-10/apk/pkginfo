@@ -1,0 +1,6 @@
+pkgname = relcontrol
+pkgver = 10
+pkgdesc = Release control: the software_version file naming this release
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = APSL
+makedepends = build-base

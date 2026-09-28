@@ -78,6 +78,7 @@ dir     perl-1                all
 dir     Commands/pico-1       all
 dir     project_makefiles-1   all
 dir     rcs-1                 all
+dir     relcontrol-10         all
 dir     rsync-1               all
 dir     sendmail-1            all
 dir     Commands/shell_cmds   all

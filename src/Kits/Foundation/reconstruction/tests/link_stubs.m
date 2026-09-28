@@ -88,16 +88,10 @@ void NSRecordAllocationEvent(int eventType, ...)
     with the other real exception-name constants in stage 2b Task 9.
 
     Foundation-private helpers NSObject.m's reference calls.  The three
-    introspection helpers below it (_NSIMPForSelector,
+    introspection helpers (_NSIMPForSelector,
     _NSMethodDescriptionForSelector, _NSClassConformsToProtocol) moved to
-    NSObjCRuntime.m in stage 2b and are no longer stubbed here.
-    _NSMethodExceptionProem follows in stage 2b's Task 10.  */
-
-id _NSMethodExceptionProem(id object, SEL aSelector)
-{
-    unimplemented("_NSMethodExceptionProem");
-    return nil;
-}
+    NSObjCRuntime.m, and _NSMethodExceptionProem to NSException.m, in
+    stage 2b; none is stubbed here any more.  */
 
 void _NSObjectRaiseNullSelectorException(id object, SEL aSelector)
 {

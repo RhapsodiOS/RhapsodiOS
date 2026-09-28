@@ -7,6 +7,7 @@
 #import <Foundation/NSString.h>
 #include <setjmp.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 static int failures = 0;
@@ -245,6 +246,120 @@ static void test_an_uncaught_raise_reaches_the_uncaught_handler(void)
     NSSetUncaughtExceptionHandler(previous);
 }
 
+extern id _NSMethodExceptionProem(id object, SEL aSelector);
+
+static void test_method_exception_proem_names_an_instance_method(void)
+{
+    id object = [[NSObject alloc] init];
+    id proem = _NSMethodExceptionProem(object, @selector(hash));
+
+    CHECK(proem != nil);
+    CHECK(strcmp(TestStringBytes(proem), "-[NSObject hash]") == 0);
+    [object release];
+}
+
+static void test_method_exception_proem_names_a_class_method(void)
+{
+    id proem = _NSMethodExceptionProem([NSObject class], @selector(alloc));
+
+    CHECK(proem != nil);
+    CHECK(strcmp(TestStringBytes(proem), "+[NSObject alloc]") == 0);
+}
+
+/*  NSAssert's expansion calls +[NSString stringWithCString:] for __FILE__.
+    Stage 2b has no NSString; this gives the macro something that works
+    over the same NXConstantString-shaped records the rest of the stage
+    uses, so the assert path is testable here.  Stage 3 removes it.  */
+
+@interface TestAssertString : NSObject
++ (id)stringWithCString:(const char *)bytes;
+@end
+
+@implementation TestAssertString
+
++ (void)initialize {}
+
++ (id)stringWithCString:(const char *)bytes
+{
+    struct { Class isa; char *c_string; unsigned int len; } *record;
+    unsigned length;
+
+    if (bytes == NULL)
+        return nil;
+
+    length = strlen(bytes);
+    record = malloc(sizeof(*record) + length + 1);
+    record->isa = (Class)&_NSConstantStringClassReference;
+    record->c_string = (char *)(record + 1);
+    record->len = length;
+    memcpy(record->c_string, bytes, length + 1);
+
+    return (id)record;
+}
+
+@end
+
+/*  NSAssert names NSString literally, so point that name at the class
+    above for the duration of the assert tests only -- the expansion also
+    sends _cmd and self, so the asserts must run inside a method body;
+    this runner supplies one.  */
+#define NSString TestAssertString
+
+@interface TestAssertRunner : NSObject
+- (void)runFailingAssert;
+- (void)runPassingAssert;
+@end
+
+@implementation TestAssertRunner
+
++ (void)initialize {}
+
+- (void)runFailingAssert { NSAssert(1 == 2, @"one is not two"); }
+- (void)runPassingAssert { NSAssert(1 == 1, @"one is one"); }
+
+@end
+
+#undef NSString
+
+static void test_assertion_handler_is_a_shared_instance(void)
+{
+    id first = [NSAssertionHandler currentHandler];
+    id second = [NSAssertionHandler currentHandler];
+
+    CHECK(first != nil);
+    CHECK(first == second);
+}
+
+static void test_a_failing_NSAssert_raises(void)
+{
+    int caught = 0;
+    id runner = [[TestAssertRunner alloc] init];
+
+    NS_DURING
+        [runner runFailingAssert];
+    NS_HANDLER
+        caught = 1;
+    NS_ENDHANDLER
+
+    [runner release];
+    CHECK(caught == 1);
+}
+
+static void test_a_passing_NSAssert_does_not_raise(void)
+{
+    int caught = 0;
+    id runner = [[TestAssertRunner alloc] init];
+
+    NS_DURING
+        [runner runPassingAssert];
+    NS_HANDLER
+        caught = 1;
+    NS_ENDHANDLER
+
+    [runner release];
+    CHECK(caught == 0);
+}
+
 int main(void)
 {
     test_handler_stack_starts_empty();
@@ -261,6 +376,11 @@ int main(void)
     test_a_raise_from_a_nested_call_unwinds();
     test_isEqual_compares_name_and_reason();
     test_an_uncaught_raise_reaches_the_uncaught_handler();
+    test_method_exception_proem_names_an_instance_method();
+    test_method_exception_proem_names_a_class_method();
+    test_assertion_handler_is_a_shared_instance();
+    test_a_failing_NSAssert_raises();
+    test_a_passing_NSAssert_does_not_raise();
 
     printf("%s: %d failure(s)\n", failures ? "FAILED" : "PASSED", failures);
     return failures != 0;

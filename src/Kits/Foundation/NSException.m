@@ -6,6 +6,8 @@
 #import <Foundation/NSObjCRuntime.h>
 #import <Foundation/NSString.h>
 #import <Foundation/NSZone.h>
+#import <Foundation/NSCoder.h>
+#import <objc/objc-class.h>
 #include <setjmp.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -423,6 +425,37 @@ _NSRaiseError(NSException *exception)
     _longjmp(handler->_state, 1);
 }
 
+/*	"-[NSObject hash]" or "+[NSObject alloc]": the prefix every method
+	diagnostic in this framework opens with.  Returns an object, not a
+	C string -- NSObject.m and NSProxy.m both substitute it with %@,
+	which is what pins the return type.
+
+	A class object is its own isa's instance, so a receiver whose isa is
+	a metaclass is a class and takes the + form.  CLS_META is the
+	metaclass bit in struct objc_class's info field (objc-class.h).  */
+id
+_NSMethodExceptionProem(id object, SEL aSelector)
+{
+    char buffer[256];
+    const char *className;
+    BOOL isClassMethod;
+
+    if (object == nil)
+        return _NSExceptionStringWithCString("-[nil (null)]");
+
+    isClassMethod = ((((Class)object)->isa->info & CLS_META) != 0);
+    className = ((Class)object)->isa->name;
+    if (isClassMethod)
+        className = ((Class)object)->name;
+
+    sprintf(buffer, "%c[%s %s]",
+            isClassMethod ? '+' : '-',
+            className,
+            (aSelector == NULL) ? "(null)" : sel_getName(aSelector));
+
+    return _NSExceptionStringWithCString(buffer);
+}
+
 @implementation NSException
 
 + (NSException *)exceptionWithName:(NSString *)name reason:(NSString *)reason userInfo:(NSDictionary *)userInfo
@@ -496,6 +529,47 @@ _NSRaiseError(NSException *exception)
     NSExceptionLogging = flag;
 }
 
+/*	NSCoding and NSCopying.  Written against the declared APIs; NOT
+	exercised by any test in this stage, because NSCoder is stage 2c,
+	NSPortCoder is stage 8, and copying userInfo needs NSDictionary from
+	stage 4.  Listed in divergences.md's untested table with the stage
+	that unblocks each.  */
+
+- (void)encodeWithCoder:(NSCoder *)aCoder
+{
+    [aCoder encodeObject:name];
+    [aCoder encodeObject:reason];
+    [aCoder encodeObject:userInfo];
+}
+
+- (id)initWithCoder:(NSCoder *)aDecoder
+{
+    self = [super init];
+    name = [aDecoder decodeObject];
+    reason = [aDecoder decodeObject];
+    userInfo = [aDecoder decodeObject];
+    reserved = 0;
+    return self;
+}
+
+- (id)copyWithZone:(NSZone *)zone
+{
+    return [[NSException allocWithZone:zone] initWithName:name
+                                                   reason:reason
+                                                 userInfo:userInfo];
+}
+
+/*	No header in this tree declares this selector (NSObject.h declares
+	-replacementObjectForCoder:; the PortCoder form is undeclared here),
+	but Gate 1 requires it with its exact type encoding: the reference
+	carries it in NSException's method list.  A self return is the
+	documented default for objects with no special cross-thread
+	behaviour.  Claimed by name in symbols.json.  */
+- (id)replacementObjectForPortCoder:(NSCoder *)aCoder
+{
+    return self;
+}
+
 @end
 
 @implementation NSException (NSExceptionRaisingConveniences)
@@ -520,17 +594,52 @@ _NSRaiseError(NSException *exception)
 
 @implementation NSAssertionHandler
 
-+ (NSAssertionHandler *)currentHandler {
-    // TODO: Implement this method
-    return nil;
+/*	One shared handler for the whole process.  The reference keeps the
+	current handler in the calling thread's -threadDictionary (NSThread.m
+	and NSDictionary.m, neither reconstructed here), substituted with a
+	process-global for the same reason this file's handler stack is.
+	The class's single ivar is _reserved, so there is no per-instance
+	state to keep either way.  Recorded in divergences.md.  */
+static NSAssertionHandler *NSCurrentAssertionHandler = nil;
+
++ (NSAssertionHandler *)currentHandler
+{
+    if (NSCurrentAssertionHandler == nil)
+        NSCurrentAssertionHandler = [[self allocWithZone:NULL] init];
+    return NSCurrentAssertionHandler;
 }
 
-- (void)handleFailureInMethod:(SEL)selector object:(id)object file:(NSString *)fileName lineNumber:(int)line description:(NSString *)format,... {
-    // TODO: Implement this method
+- (void)handleFailureInMethod:(SEL)selector object:(id)object file:(NSString *)fileName lineNumber:(int)line description:(NSString *)format, ...
+{
+    va_list arguments;
+    NSString *reason;
+
+    va_start(arguments, format);
+    reason = _NSExceptionReasonFromFormat(format, arguments);
+    va_end(arguments);
+
+    NSLog(@"*** Assertion failure in %@, %@:%d",
+          _NSMethodExceptionProem(object, selector), fileName, line);
+
+    _NSRaiseError([NSException exceptionWithName:NSInternalInconsistencyException
+                                          reason:reason
+                                        userInfo:nil]);
 }
 
-- (void)handleFailureInFunction:(NSString *)functionName file:(NSString *)fileName lineNumber:(int)line description:(NSString *)format,... {
-    // TODO: Implement this method
+- (void)handleFailureInFunction:(NSString *)functionName file:(NSString *)fileName lineNumber:(int)line description:(NSString *)format, ...
+{
+    va_list arguments;
+    NSString *reason;
+
+    va_start(arguments, format);
+    reason = _NSExceptionReasonFromFormat(format, arguments);
+    va_end(arguments);
+
+    NSLog(@"*** Assertion failure in %@, %@:%d", functionName, fileName, line);
+
+    _NSRaiseError([NSException exceptionWithName:NSInternalInconsistencyException
+                                          reason:reason
+                                        userInfo:nil]);
 }
 
 @end

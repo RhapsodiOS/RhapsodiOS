@@ -203,7 +203,6 @@ int vmp_push_range __P((struct vm_info *,vm_offset_t, vm_size_t));
 void vmp_push_all __P((struct vm_info *));
 /* Missing from headers so provided the prototypes */
 void vm_object_deactivate_pages __P((vm_object_t));
-void vm_object_deactivate_pages_first __P((vm_object_t));
 void vm_page_deactivate __P((vm_page_t));
 void vm_page_activate __P((vm_page_t));
 kern_return_t vm_allocate_with_pager __P((vm_map_t, vm_offset_t *, vm_size_t, boolean_t, vm_pager_t,vm_offset_t));
@@ -1030,7 +1029,7 @@ mapfs_map_remove(vmp, start, end, flush)
 	object = vmp->object;
 	if (object != VM_OBJECT_NULL) {
 		vm_object_lock(object);
-		vm_object_deactivate_pages_first(object);
+		vm_object_deactivate_pages(object);
 		vm_object_unlock(object);
 	}
 

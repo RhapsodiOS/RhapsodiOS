@@ -460,7 +460,7 @@ securityCheckDir(char *dir)
 	struct stat statBuf;
 	struct direct **names = NULL;
 	char *name;
-	int count, i;
+	int i, count;
 	BOOL rtn;
 
 	if (getwd(cwd) == NULL) {

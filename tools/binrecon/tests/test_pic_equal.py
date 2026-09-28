@@ -75,3 +75,9 @@ def test_i386_pic_add_immediate_pairs_consistently():
     assert pic_equal.compare(ref, new) is None
     small = _fn(0x200, [("02", "add", "eax, 10h")])
     assert pic_equal.compare(_fn(0x100, [("01", "add", "eax, 14h")]), small) is not None
+
+
+def test_i386_pic_add_immediate_on_esi_edi_pairs():
+    ref = _fn(0x100, [("01", "add", "edi, 6882h")])
+    new = _fn(0x200, [("02", "add", "edi, 23DEh")])
+    assert pic_equal.compare(ref, new) is None

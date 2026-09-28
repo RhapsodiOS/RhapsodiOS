@@ -15,7 +15,7 @@ def nfc(s):
     return unicodedata.normalize("NFC", s)
 
 
-@pytest.fixture(params=["hfsplus", "hfs", "wrapped"])
+@pytest.fixture(params=["hfsplus", "hfs", "wrapped", "hfsplus8k"])
 def built(request, tmp_path):
     path = tmp_path / ("%s.img" % request.param)
     path.write_bytes(builder.BUILDERS[request.param](scenario.base_manifest(), SIZE))
@@ -45,6 +45,14 @@ def test_built_volume_exercises_the_interesting_paths(built):
     assert v.total_blocks > 4096                # more than one bitmap I/O block
     assert (v.wrapper is not None) == (flavour == "wrapped")
     assert v.plus == (flavour != "hfs")
+
+
+def test_hfsplus8k_uses_8k_allocation_blocks(tmp_path):
+    # i386 maps 8K-block volumes through BestBlockSizeFit, not the extent table
+    path = tmp_path / "hfsplus8k.img"
+    path.write_bytes(builder.BUILDERS["hfsplus8k"](scenario.base_manifest(), SIZE))
+    with volume.Volume(str(path)) as v:
+        assert v.block_size == 8192 and v.extents.leaf_records >= 1
 
 
 def test_hfs_plus_names_are_stored_decomposed(tmp_path):

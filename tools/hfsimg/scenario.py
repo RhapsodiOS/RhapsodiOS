@@ -39,6 +39,13 @@ def tree(manifest):
 NEW_FILES = 150
 NEW_DIRS = 20
 BIG_SIZE = 20 * 1024 * 1024
+# w/ga and w/gb grow in turn, APPEND_CHUNK bytes at a time, so each ends up
+# in more extents than its catalog record holds and the kernel has to insert
+# extents-overflow records.  APPEND_CHUNK is a multiple of both names' content
+# unit (the name and a newline, 5 bytes), so the appended bytes equal
+# content.data(name, total).
+APPEND_ROUNDS = 40
+APPEND_CHUNK = 4095
 
 
 def new_file_size(i):
@@ -62,6 +69,7 @@ def expected_after_write(manifest):
     del t["w/d19"]
     t["w/big"] = BIG_SIZE
     t["top.txt"] = 5000
+    t["w/ga"] = t["w/gb"] = APPEND_ROUNDS * APPEND_CHUNK
     del t["frag.bin"]
     return t
 
@@ -97,6 +105,10 @@ def write_script(device):
         "rmdir w/d19",
         "P w/big %d" % BIG_SIZE,
         "P top.txt 5000",
+        "A() { %s \"$1\" $2 >> \"$1\"; }" % _PERL,
+        "i=0",
+        "while [ $i -lt %d ]; do A w/ga %d; A w/gb %d; i=`expr $i + 1`; done"
+        % (APPEND_ROUNDS, APPEND_CHUNK, APPEND_CHUNK),
         "rm frag.bin",
         "echo \"ops done\" >> $O",
     ] + _report_lines() + _finish_lines()

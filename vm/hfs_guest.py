@@ -217,7 +217,7 @@ def verify(mode, outdir, hfs_img, results, before=None):
         with open(serial_log, "rb") as f:
             serial = f.read().decode("latin-1")
         for line in serial.splitlines():
-            if "panic" in line or line.startswith("hfs: "):
+            if "panic" in line or "hfs: " in line:
                 problems.append("serial: " + line)
     listed = set(nfc(p) for p in scenario.parse_list(results["list.txt"] or ""))
     listed = set(p for p in listed if "HFS+ Private Data" not in p)

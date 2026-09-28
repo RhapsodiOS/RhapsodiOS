@@ -1,3 +1,4 @@
+import content
 import scenario
 
 
@@ -10,6 +11,17 @@ def test_write_model():
     assert t["w/d05/x"] == 100 and t["w/d05"] is None
     assert scenario.content_name("w/r010") == "w/f010"
     assert scenario.content_name("top.txt") == "top.txt"
+    # two files grown in turn, so the kernel inserts extents-overflow records
+    size = scenario.APPEND_ROUNDS * scenario.APPEND_CHUNK
+    assert t["w/ga"] == size and t["w/gb"] == size
+
+
+def test_appends_keep_generated_contents():
+    for name in ("w/ga", "w/gb"):
+        unit = len(name) + 1                    # content.data repeats name + "\n"
+        chunk = content.data(name, scenario.APPEND_CHUNK)
+        assert chunk * 3 == content.data(name, 3 * scenario.APPEND_CHUNK)
+        assert scenario.APPEND_CHUNK % unit == 0
 
 
 def test_write_script_mirrors_the_model():
@@ -18,6 +30,7 @@ def test_write_script_mirrors_the_model():
     assert "expr $i \\* 1499 % 30000" in s
     assert "mv w/f010 w/r010" in s and "rm frag.bin" in s
     assert "P w/big %d" % scenario.BIG_SIZE in s
+    assert "A w/ga %d; A w/gb %d" % (scenario.APPEND_CHUNK, scenario.APPEND_CHUNK) in s
     assert s.rstrip().endswith("sync")
 
 

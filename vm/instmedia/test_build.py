@@ -162,7 +162,16 @@ class TestChecks(unittest.TestCase):
                  Node("/private/dev/tty", "chr", 0o666, 0, 0, 0, (2, 0))]
         self.assertEqual(build.check_dev(nodes), [
             "/private/dev/sd0a is blk 7, the kernel wants blk 6",
-            "/private/dev/rhd0a is blk 15, the kernel wants chr 15"])
+            "/private/dev/rhd0a is blk 15, the kernel wants blk 3"])
+
+    def test_controller_character_nodes_take_the_character_major(self):
+        # files' MAKEDEV makes fdc0 and sdc0 as character devices of the
+        # floppy and SCSI drivers.
+        nodes = [Node("/private/dev/fdc0", "chr", 0o644, 0, 0, 0, (41, 64)),
+                 Node("/private/dev/sdc0", "chr", 0o644, 0, 0, 0, (14, 0)),
+                 Node("/private/dev/hd0_hfs_a", "blk", 0o640, 0, 5, 0,
+                      (3, 128))]
+        self.assertEqual(build.check_dev(nodes), [])
 
     def test_boot_drivers(self):
         self.assertEqual(build.boot_drivers(

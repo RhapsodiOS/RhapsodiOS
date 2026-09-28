@@ -30,13 +30,15 @@ CDIS_NEEDS = ["/usr/bin/perl", live.RC_CDROM, "/private/etc/rc.cdrom.x86",
               live.CDIS + "/English.lproj/Localizable.strings",
               live.CDIS + "/findroot", live.CDIS + "/gc",
               live.CDIS + "/popconsole", live.CDIS + "/pickdisk"]
-# The majors /dev must use: sd from the kernel's own tables
-# (src/kernel-7/bsd/dev/i386/conf.c: bdevsw 6, cdevsw 14), hd and fd from
-# the "Block Major"/"Character Major" the EIDE and Floppy drivers register
-# (drvEIDE and drvPCFloppy Default.table), console/null/zero/random from
-# conf.c.  Checked by name prefix, longest first.
-DEV_MAJORS = (("rhd", "chr", 15), ("rsd", "chr", 14), ("rfd", "chr", 41),
-              ("hd", "blk", 3), ("sd", "blk", 6), ("fd", "blk", 1))
+# The majors /dev must use for each disk family: sd from the kernel's own
+# tables (src/kernel-7/bsd/dev/i386/conf.c: bdevsw 6, cdevsw 14), hd and fd
+# from the "Block Major"/"Character Major" the EIDE and Floppy drivers
+# register (drvEIDE and drvPCFloppy Default.table).  A node's family is its
+# name without the raw device's leading "r" (hd0a, rhd0a, and controllers
+# such as fdc0), and its kind picks the major.  console/null/zero/random
+# come from conf.c.
+DEV_MAJORS = {"hd": {"blk": 3, "chr": 15}, "sd": {"blk": 6, "chr": 14},
+              "fd": {"blk": 1, "chr": 41}}
 DEV_EXACT = {"console": ("chr", 0), "null": ("chr", 3), "zero": ("chr", 3),
              "random": ("chr", 17), "urandom": ("chr", 17)}
 LIVE_HEADROOM = 32 * 1024 * 1024
@@ -96,8 +98,9 @@ def check_dev(nodes):
         name = n.path.rsplit("/", 1)[1]
         want = DEV_EXACT.get(name)
         if want is None:
-            want = next(((k, m) for p, k, m in DEV_MAJORS
-                         if name.startswith(p)), None)
+            family = DEV_MAJORS.get(
+                (name[1:] if name.startswith("r") else name)[:2])
+            want = (n.kind, family[n.kind]) if family else None
         if want is not None and (n.kind, n.data[0]) != want:
             problems.append("%s is %s %d, the kernel wants %s %d"
                             % ((n.path, n.kind, n.data[0]) + want))

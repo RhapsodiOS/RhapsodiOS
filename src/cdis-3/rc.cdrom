@@ -57,8 +57,8 @@ system($tool{'fbshow'}, '-B', '-I', 'Starting Installation', '-z', '0');
 FindLanguage();
 SetupLocalization();
 SetupEnviornment();
-ConsoleMessage("Darwin OS Release: $info{'releasename'}"
-	. ($info{'version'} ? " ($info{'version'})" : ""));
+ConsoleMessage("Darwin OS Release: " . ($info{'version'}
+	? "$info{'version'} ($info{'releasename'})" : $info{'releasename'}));
 
 if ($info{'arch'} eq 'ppc') {
 	FindInstallTarget_PPC();

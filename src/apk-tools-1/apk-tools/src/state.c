@@ -18,7 +18,7 @@
 
 struct apk_name_choices {
 	unsigned short refs, num;
-	struct apk_package *pkgs[];
+	struct apk_package *pkgs[0];
 };
 
 #if 0
@@ -373,8 +373,8 @@ static int reinstall_broken_package(struct apk_state *state,
 
 {
 	struct apk_dependency dep = {
-		.name = pkg->name,
-		.result_mask = APK_DEPMASK_REQUIRE,
+		name: pkg->name,
+		result_mask: APK_DEPMASK_REQUIRE,
 	};
 	return apk_state_lock_dependency(state, &dep);
 }

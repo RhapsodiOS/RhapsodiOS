@@ -5,4 +5,3 @@
 "Driver Name" = "PPCAwacs";
 "Matching"    = "awacs davbus";
 "Class Names" = "PPCAwacs";
-"Server Name" = "PPCAwacs";

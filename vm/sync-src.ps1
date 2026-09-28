@@ -12,7 +12,8 @@
   Modern OpenSSH scp loses the connection against this guest even with -O, so
   transfers use a temporary cpio archive sent to ssh as a binary stream.
 
-  After extract, restores +x on configure/scripts (Windows tar drops Unix mode bits).
+  After extract, sets exactly the execute bits git records (Windows tar drops
+  Unix mode bits); untracked configure/scripts get +x by name.
 #>
 param(
     [switch]$All,
@@ -43,7 +44,7 @@ Usage:
 
 Config: vm\vm.conf (Host, User, Password, RemoteRoot, LocalRoot, Ssh, Tar)
 Uses OpenSSH with legacy KEX/hostkey/cipher/MAC options (see vm\SSH CONNECTION.md).
-Transfers via cpio over SSH (not scp). Post-sync restores +x on configure/scripts.
+Transfers via cpio over SSH (not scp). Post-sync sets the execute bits git records.
 Exactly one of -All or -Path is required.
 "@
 }
@@ -52,15 +53,16 @@ function Invoke-FixExecBits {
     param(
         [hashtable]$Cfg,
         [string]$Ssh,
-        [string]$RemoteTree
+        [string]$RemoteTree,
+        [string[]]$ExecutablePaths
     )
-    # Windows ustar extract typically yields 0644. Named helpers only — a
-    # full-tree shebang walk over Darwin sources is too slow on the guest.
-    Write-Host "sync-src: restoring +x under $RemoteTree"
-    $named = New-RhapFixExecBitsCommand -RemoteTree $RemoteTree
-    $ec = Invoke-RhapRemote -Cfg $Cfg -Ssh $Ssh -RemoteCommand $named
+    # Windows tar drops Unix mode bits; set the ones git records. The path
+    # list outgrows the guest csh's 10240-byte limit, so it goes over stdin.
+    Write-Host "sync-src: setting git execute bits under $RemoteTree ($($ExecutablePaths.Count) executable)"
+    $fixExec = New-RhapFixExecBitsCommand -RemoteSrc "$($Cfg.RemoteRoot)/src" -RemoteTree $RemoteTree -ExecutablePaths $ExecutablePaths
+    $ec = Invoke-RhapSshScript -Cfg $Cfg -Ssh $Ssh -ScriptBody $fixExec
     if ($ec -ne 0) {
-        Write-Host "sync-src: warning: chmod pass exited $ec (continuing)"
+        Write-Die "chmod pass exited $ec"
     }
 }
 
@@ -69,14 +71,22 @@ function Invoke-CpioUpload {
         [hashtable]$Cfg,
         [string]$Ssh,
         [string]$Tar,
+        [string]$Git,
         [string]$LocalParent,
         [string]$LeafName,
         [string]$RemoteParent,
-        [string]$Label
+        [string]$Label,
+        [string]$Pathspec
     )
 
     if (-not (Test-Path -LiteralPath (Join-Path $LocalParent $LeafName))) {
         Write-Die "path missing locally: $(Join-Path $LocalParent $LeafName)"
+    }
+
+    try {
+        $executables = @(Get-RhapSyncExecutablePaths -Git $Git -LocalSrc (Join-Path $Cfg.LocalRoot 'src') -Pathspec $Pathspec)
+    } catch {
+        Write-Die "$($_.Exception.Message) for $Label"
     }
 
     $remote = "$($Cfg.User)@$($Cfg.Host)"
@@ -106,7 +116,7 @@ function Invoke-CpioUpload {
     }
 
     $remoteTree = "$RemoteParent/$LeafName"
-    Invoke-FixExecBits -Cfg $Cfg -Ssh $Ssh -RemoteTree $remoteTree
+    Invoke-FixExecBits -Cfg $Cfg -Ssh $Ssh -RemoteTree $remoteTree -ExecutablePaths $executables
 }
 
 if ($All -and -not [string]::IsNullOrWhiteSpace($Path)) {
@@ -121,15 +131,16 @@ if (-not $All -and [string]::IsNullOrWhiteSpace($Path)) {
 $cfg = Get-RhapVmConfig -DiePrefix 'sync-src'
 $ssh = Resolve-RhapTool -NameOrPath $cfg.Ssh -DiePrefix 'sync-src'
 $tar = Resolve-RhapTool -NameOrPath $cfg.Tar -DiePrefix 'sync-src'
+$git = Resolve-RhapTool -NameOrPath 'git.exe' -DiePrefix 'sync-src'
 $localSrc = Join-Path $cfg.LocalRoot 'src'
 if (-not (Test-Path -LiteralPath $localSrc)) {
     Write-Die "local src missing: $localSrc"
 }
 
 if ($All) {
-    Invoke-CpioUpload -Cfg $cfg -Ssh $ssh -Tar $tar `
+    Invoke-CpioUpload -Cfg $cfg -Ssh $ssh -Tar $tar -Git $git `
         -LocalParent $cfg.LocalRoot -LeafName 'src' `
-        -RemoteParent $cfg.RemoteRoot -Label 'src'
+        -RemoteParent $cfg.RemoteRoot -Label 'src' -Pathspec '.'
 } else {
     $rel = ConvertTo-RhapSyncRelativePath -Path $Path
     $local = Join-Path $localSrc ($rel -replace '/', [IO.Path]::DirectorySeparatorChar)
@@ -147,9 +158,9 @@ if ($All) {
         $remoteParent = "$($cfg.RemoteRoot)/src/$($parentRel.Replace('\', '/'))"
     }
 
-    Invoke-CpioUpload -Cfg $cfg -Ssh $ssh -Tar $tar `
+    Invoke-CpioUpload -Cfg $cfg -Ssh $ssh -Tar $tar -Git $git `
         -LocalParent $localParent -LeafName $leaf `
-        -RemoteParent $remoteParent -Label "src/$rel"
+        -RemoteParent $remoteParent -Label "src/$rel" -Pathspec $rel
 }
 
 Write-Host 'sync-src: complete'

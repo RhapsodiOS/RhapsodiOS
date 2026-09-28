@@ -11,7 +11,7 @@
             Default.table
         );
         OTHER_SOURCES = (Makefile, Makefile.preamble);
-        SUBPROJECTS = (SCSITape.lksproj);
+        SUBPROJECTS = (SCSITape.lksproj, PostLoad.tproj, PreLoad.tproj);
     };
     LANGUAGE = English;
     LOCALIZABLE_FILES = {

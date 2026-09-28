@@ -11,6 +11,7 @@
 
 #include <errno.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <zlib.h>
 #include "apk_applet.h"
 #include "apk_database.h"
@@ -123,9 +124,9 @@ static int add_main(void *ctx, int argc, char **argv)
 		virtpkg->version = strdup("0");
 		virtpkg->description = strdup("virtual meta package");
 		virtdep = (struct apk_dependency) {
-			.name = virtpkg->name,
-			.version = virtpkg->version,
-			.result_mask = APK_VERSION_EQUAL,
+			name: virtpkg->name,
+			version: virtpkg->version,
+			result_mask: APK_VERSION_EQUAL,
 		};
 		virtdep.name->flags |= APK_NAME_TOPLEVEL | APK_NAME_VIRTUAL;
 		virtpkg = apk_db_pkg_add(&db, virtpkg);
@@ -144,14 +145,14 @@ static int add_main(void *ctx, int argc, char **argv)
 			}
 
 			dep = (struct apk_dependency) {
-				.name = apk_db_get_name(&db, APK_BLOB_STR(pkg->name->name)),
-				.version = pkg->version,
-				.result_mask = APK_VERSION_EQUAL,
+				name: apk_db_get_name(&db, APK_BLOB_STR(pkg->name->name)),
+				version: pkg->version,
+				result_mask: APK_VERSION_EQUAL,
 			};
 		} else {
 			dep = (struct apk_dependency) {
-				.name = apk_db_get_name(&db, APK_BLOB_STR(argv[i])),
-				.result_mask = APK_DEPMASK_REQUIRE,
+				name: apk_db_get_name(&db, APK_BLOB_STR(argv[i])),
+				result_mask: APK_DEPMASK_REQUIRE,
 			};
 		}
 		if (virtpkg) {
@@ -192,12 +193,12 @@ static struct option add_options[] = {
 };
 
 struct apk_applet apk_add = {
-	.name = "add",
-	.usage = "[--initdb] [--upgrade|-u] [--virtual metaname] apkname...",
-	.context_size = sizeof(struct add_ctx),
-	.num_options = ARRAY_SIZE(add_options),
-	.options = add_options,
-	.parse = add_parse,
-	.main = add_main,
+	name: "add",
+	usage: "[--initdb] [--upgrade|-u] [--virtual metaname] apkname...",
+	context_size: sizeof(struct add_ctx),
+	num_options: ARRAY_SIZE(add_options),
+	options: add_options,
+	parse: add_parse,
+	main: add_main,
 };
 

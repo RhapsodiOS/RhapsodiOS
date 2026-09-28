@@ -10,6 +10,10 @@
 
 #import <errno.h>
 #import <libc.h>
+/* scsiTypes.h, reached through SCSITapeTypes.h, names IOMemoryDescriptor in a
+ * method signature without anything declaring it; a pointer parameter only
+ * needs the class to be known.  PostLoad.m has the same declaration. */
+@class IOMemoryDescriptor;
 #import "SCSITapeTypes.h"
 
 #define PATH_NAME_SIZE 10

@@ -698,7 +698,8 @@ static void testIplBug() {
 			IODelay(IPL_TEST_TIME);
 		}
 		IOGetTimestamp(&curTime);
-		usTime = (unsigned)((curTime - lastTime) / 1000ULL);
+		usTime = (curTime > lastTime) ?
+			(unsigned)((curTime - lastTime) / 1000ULL) : 0;
 		if(usTime > 1000) {
 			ddm_intr("usTime %d loopNum %d curTime 0x%x lastTime "
 				"0x%x\n",

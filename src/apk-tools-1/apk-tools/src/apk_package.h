@@ -35,7 +35,7 @@ struct apk_script {
 	struct hlist_node script_list;
 	unsigned int type;
 	unsigned int size;
-	char script[];
+	char script[0];
 };
 
 #define APK_DEPMASK_REQUIRE	(APK_VERSION_EQUAL|APK_VERSION_LESS|\

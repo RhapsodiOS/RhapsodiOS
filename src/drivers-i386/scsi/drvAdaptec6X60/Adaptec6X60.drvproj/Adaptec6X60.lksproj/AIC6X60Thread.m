@@ -232,7 +232,7 @@ extern void himTimeout(struct _SCB *scb);
 	}
 
 	IOGetTimestamp(&currentTime);
-	scsiReq->totalTime = currentTime - scb->startTime;
+	scsiReq->totalTime = (currentTime > scb->startTime) ? currentTime - scb->startTime : 0;
 	cmdBuf->result = scsiReq->driverStatus;
 
 	[cmdBuf->cmdLock lock];

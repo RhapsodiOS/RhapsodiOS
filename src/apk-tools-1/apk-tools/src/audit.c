@@ -133,12 +133,12 @@ static struct option audit_options[] = {
 };
 
 struct apk_applet apk_audit = {
-	.name = "audit",
-	.usage = "--backup",
-	.context_size = sizeof(struct audit_ctx),
-	.num_options = ARRAY_SIZE(audit_options),
-	.options = audit_options,
-	.parse = audit_parse,
-	.main = audit_main,
+	name: "audit",
+	usage: "--backup",
+	context_size: sizeof(struct audit_ctx),
+	num_options: ARRAY_SIZE(audit_options),
+	options: audit_options,
+	parse: audit_parse,
+	main: audit_main,
 };
 

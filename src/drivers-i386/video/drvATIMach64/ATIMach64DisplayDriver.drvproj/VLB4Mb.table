@@ -16,5 +16,4 @@
 "RAMDAC Style" = "Default";
 "Bus Type" = "EISA";
 
-"Server Name" = "ATIMach64DisplayDriver";
 "Driver Version" = "PROGRAM:ATIMach64DisplayDriver PROJECT:drvATIMach64-18 DEVELOPER:root BUILT:NO DATE SET (-B used)";

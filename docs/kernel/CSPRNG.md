@@ -21,17 +21,57 @@ backs `/dev/random`, `/dev/urandom`, the in-kernel `read_random()` /
 
 | Consumer | Path |
 |----------|------|
-| `/dev/random`, `/dev/urandom` (major 17, minors 0/1) | `random_read` = squeeze, `random_write` = reseed |
+| `/dev/random`, `/dev/urandom` (major 17, minors 0/1) | `random_read` = squeeze (blocks on minor 0 until warm), `random_write` = reseed |
 | `read_random()` / `RandomULong()` | squeeze |
 | libkern `random()` | `RandomULong() & 0x7fffffff` |
 
-## Entropy model (current: "A")
+## Entropy model
 
-Seeded once at boot from `microtime()` (`csprng_seed`), reseeded by writes
-to `/dev/random` (the historical "security server sends entropy" path).
-This is weak boot entropy: on 1999-era ppc/i386 there is no hardware RNG,
-so early output is only as unpredictable as the boot-time clock. Writes
-after boot strengthen the state.
+Seeded once at boot from `microtime()` (`csprng_seed`), then continuously
+strengthened by three complementary paths. This is still weak boot
+entropy in the classical sense: on 1999-era ppc/i386 there is no hardware
+RNG, so the earliest output is only as unpredictable as the boot-time
+clock and the timing jitter described below.
+
+### Model A — explicit reseed
+
+Writes to `/dev/random` (the historical "security server sends entropy"
+path) are absorbed directly via `xoodyak_absorb` in `random_write`.
+Per-open reseed also falls in this category: every `open()` of
+`/dev/random` or `/dev/urandom` (`random_open`) folds in a fresh
+`microtime()` sample, so distinct opens never draw from identical state.
+
+### Model B — opportunistic harvesting
+
+`random_harvest_jitter()` in `randomdev.c` folds cheap timing jitter into
+the state via `xoodyak_absorb`, on paths already taken:
+
+- a hook in `hardclock()` (`bsd/kern/kern_clock.c`), passing the
+  interrupted PC and PSL — sampled roughly every `RANDOM_HARVEST_DIV`
+  (32) ticks, and mixed with the current `microtime()` microsecond
+  field.
+
+Because this can run from interrupt context while process-context code
+(`random_read`/`random_write`/`read_random`) holds `gRandomLock`, it uses
+`simple_lock_try` and simply skips the harvest if the lock is busy,
+rather than risking a spin against itself.
+
+### Model C — boot-time pool
+
+The generator does not consider its jitter pool "warm" until
+`RANDOM_BOOT_SAMPLES` (8) harvest samples have been folded in by model B.
+`gRandomWarm` tracks this and gates the blocking behavior of
+`/dev/random` (see below).
+
+### Per-open reseed and blocking semantics
+
+- **Per-open reseed:** see model A above (`random_open`).
+- **Blocking `/dev/random`:** reads from minor `RANDOM_MINOR_RANDOM` (0,
+  i.e. `/dev/random`) block in `tsleep()` until `gRandomWarm` is set,
+  re-checking once a second and honoring signals (`PCATCH`).
+  `/dev/urandom` (minor `RANDOM_MINOR_URANDOM`, 1) never blocks and
+  always returns output from current state, matching the historical
+  `/dev/random` vs. `/dev/urandom` distinction.
 
 ### Seed size refinement (16 → 8 bytes)
 
@@ -61,14 +101,3 @@ part of the kernel build). Build and run:
     /tmp/xoodyak_kat
 
 All vectors must print `PASS`.
-
-## Future hooks (not yet implemented)
-
-- **Entropy model B — opportunistic harvesting:** fold cheap timing jitter
-  (interrupt timestamps, `microtime` low bits) into the state via
-  `xoodyak_absorb` on paths already taken (device reads, `random()`,
-  a hook in the timer/interrupt code).
-- **Entropy model C — boot-time pool:** gather several early-boot timing
-  samples before declaring the generator ready.
-- **Per-open reseed**, an **ioctl** to report/estimate entropy, and
-  optional **blocking `/dev/random`** semantics distinct from `/dev/urandom`.

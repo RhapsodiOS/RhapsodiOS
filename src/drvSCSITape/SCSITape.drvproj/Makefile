@@ -21,7 +21,7 @@ CLASSES =
 
 HFILES =
 
-TOOLS = SCSITape.lksproj
+TOOLS = SCSITape.lksproj PostLoad.tproj PreLoad.tproj
 
 OTHERSRCS = Makefile Makefile.preamble
 

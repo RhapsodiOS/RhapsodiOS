@@ -25,7 +25,7 @@ struct apk_change {
 struct apk_state {
 	unsigned int refs, num_names;
 	struct list_head change_list_head;
-	apk_name_state_t name[];
+	apk_name_state_t name[0];
 };
 
 struct apk_state *apk_state_new(struct apk_database *db);

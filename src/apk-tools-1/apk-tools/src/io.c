@@ -20,6 +20,11 @@
 #include "apk_defines.h"
 #include "apk_io.h"
 
+#ifndef MAP_FAILED
+/* Rhapsody's <sys/mman.h> predates MAP_FAILED. */
+#define MAP_FAILED ((void *) -1)
+#endif
+
 struct apk_fd_istream {
 	struct apk_istream is;
 	int fd;
@@ -70,9 +75,8 @@ struct apk_istream *apk_istream_from_fd(int fd)
 		return NULL;
 
 	*fis = (struct apk_fd_istream) {
-		.is.read = fdi_read,
-		.is.close = fdi_close,
-		.fd = fd,
+		is: { read: fdi_read, close: fdi_close },
+		fd: fd,
 	};
 
 	return &fis->is;
@@ -208,8 +212,8 @@ struct apk_bstream *apk_bstream_from_istream(struct apk_istream *istream)
 		return NULL;
 
 	isbs->bs = (struct apk_bstream) {
-		.read = is_bs_read,
-		.close = is_bs_close,
+		read: is_bs_read,
+		close: is_bs_close,
 	};
 	isbs->is = istream;
 	csum_init(&isbs->csum_ctx);
@@ -282,8 +286,8 @@ static struct apk_bstream *apk_mmap_bstream_from_fd(int fd)
 	}
 
 	mbs->bs = (struct apk_bstream) {
-		.read = mmap_read,
-		.close = mmap_close,
+		read: mmap_read,
+		close: mmap_close,
 	};
 	mbs->fd = fd;
 	mbs->size = st.st_size;
@@ -378,12 +382,12 @@ int apk_file_get_info(const char *filename, struct apk_file_info *fi)
 		return -1;
 
 	*fi = (struct apk_file_info) {
-		.size = st.st_size,
-		.uid = st.st_uid,
-		.gid = st.st_gid,
-		.mode = st.st_mode,
-		.mtime = st.st_mtime,
-		.device = st.st_dev,
+		size: st.st_size,
+		uid: st.st_uid,
+		gid: st.st_gid,
+		mode: st.st_mode,
+		mtime: st.st_mtime,
+		device: st.st_dev,
 	};
 
 	bs = apk_bstream_from_file(filename);
@@ -473,9 +477,8 @@ struct apk_ostream *apk_ostream_to_fd(int fd)
 		return NULL;
 
 	*fos = (struct apk_fd_ostream) {
-		.os.write = fdo_write,
-		.os.close = fdo_close,
-		.fd = fd,
+		os: { write: fdo_write, close: fdo_close },
+		fd: fd,
 	};
 
 	return &fos->os;

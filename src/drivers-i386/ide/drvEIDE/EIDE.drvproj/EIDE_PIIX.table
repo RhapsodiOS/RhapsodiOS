@@ -19,7 +19,6 @@
 "Use Disk Geometry" = "Yes";
 "IOCHRDY Support" = "Yes";
 "Debug" = "No";
-"Server Name" = "EIDE";
 "Bus Type" = "PCI";
 "Post-Load" = "PostLoad";
 "Master" = "Auto";

@@ -9,7 +9,7 @@
       ],
       "size": 592,
       "source_line": 34,
-      "source_path": "src/drvSCSITape/PostLoad.tproj/PostLoad.m"
+      "source_path": "src/drvSCSITape/SCSITape.drvproj/PostLoad.tproj/PostLoad.m"
     }
   ],
   "reference_sha256": "A6025294E3E1AB96270BBE3AFAD73A3885C7C5F44644241E44DD553632699F87",

@@ -2195,3 +2195,21 @@ Also not reconstructed, and deliberately so:
 
 *Per-function findings above are the sole input to Tasks 3 and 4. Findings are
 keyed by reference address so the rewrite can cite them.*
+
+## Default.table and five other tables: "Server Name" came out twice
+
+2026-09-25. Missed by the earlier table comparisons in this document, which did
+not allow for the build's append; not a divergence.
+
+The driver build's `post_copy_tables` rule
+(`src/driverTools-1/DriverProjectType/driver.make:154-159`) appends
+`"Server Name" = "$(NAME)";` to every table. `Default.table`, `TwoMeg.table`,
+`PCIOneMB.table`, `PCITwoMB.table`, `GD5446_PCIOneMB.table` and
+`GD5446_PCITwoMB.table` all carried the line in source as well, so each built
+table had it twice. The line is gone from all six, and each built table now has
+it once, as the reference does.
+
+One ordering difference remains in all six. The reference ends `"Server Name"`,
+`"Driver Version"`, `"Version"` because Apple's build appended all three:
+`veredit.sh` adds `"Version"` only when the source table lacks it. Our source
+carries `"Version"`, so the appended `"Server Name"` now follows it.

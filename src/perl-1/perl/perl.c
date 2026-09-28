@@ -646,7 +646,7 @@ setuid perl scripts securely.\n");
 	return 255;
 #endif
 
-#if defined(__NeXT__) && defined(__DYNAMIC__)
+#if defined(__NeXT__) && defined(__DYNAMIC__) && !defined(__APPLE__)
     _dyld_lookup_and_bind
 	("__environ", (unsigned long *) &environ_pointer, NULL);
 #endif /* environ */

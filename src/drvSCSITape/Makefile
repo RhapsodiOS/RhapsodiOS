@@ -15,7 +15,7 @@ LANGUAGE = English
 
 BUNDLES = SCSITape.drvproj
 
-TOOLS = PostLoad.tproj PreLoad.tproj stblocksize.tproj
+TOOLS = stblocksize.tproj
 
 OTHERSRCS = Makefile Makefile.preamble
 

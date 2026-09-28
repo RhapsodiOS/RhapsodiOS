@@ -5116,3 +5116,88 @@ trustworthy signal. The "first-order diffs" column counts positionally-aligned m
 so when the two lengths differ it moves for reasons that have nothing to do with getting
 closer — `enqueueEvent:` improved from 28 to 24 on that column while simultaneously moving
 four instructions further away in length. Do not optimise against it.
+
+## Default.table: "Server Name" came out twice
+
+2026-09-25. Not a divergence: the earlier comparisons of `Default.table` with
+the reference did not allow for the build's append.
+
+The driver build's `post_copy_tables` rule
+(`src/driverTools-1/DriverProjectType/driver.make:154-159`) appends
+`"Server Name" = "$(NAME)";` to every table. That is where the reference's line,
+just before the build-stamped `"Driver Version"`, comes from. Our source table
+carried the line as well, so the built table had it twice. The line is gone from
+the source, and the built table now matches the reference's except for the build
+stamp and the `"Help File"` key, which stays out until its help document is
+recovered.
+
+## 23. Guest testing: two defects the passes missed
+
+2026-09-25. The driver was built and loaded on a private i386 QEMU guest running
+kernel-7, with COM1 on a host socket and Apple's DR2 ISASerialPort underneath.
+Apple's `PortServer_reloc` on the same guest carries bytes both ways through
+`/dev/cuaa`. Ours registered and made the same nodes, but the first use of a data
+tty took the whole kernel down, differently on each run: EIP 0 with zeroed
+registers, `panic: thread_dispatch`, `illegal handoff thread state 0x86`,
+`assert_wait: already asserted`, and a double fault in `ttyiops_ioctl`
+(GitHub issue #30).
+
+Both defects below were found with QEMU's gdbstub (a hardware breakpoint at the
+return of every call in `ttyiops_ioctl`, comparing EBP with its value on entry)
+and then confirmed against a relocation-resolved instruction diff of our rebuilt
+`PortServer_reloc` against the reference.
+
+### Finding 90 — `ttyiops_convertFlowCtrl` passes a 2-byte buffer for a 4-byte result
+
+**Reference.** `lea eax, [ebp-4]` / `push eax` / `push 0x53` into
+`requestEvent:data:`, then `test byte ptr [ebp-4]` and `test byte ptr [ebp-3]`:
+a 4-byte slot whose bytes 0 and 1 are tested.
+
+**Our source** declared `unsigned char response[2]`, which the compiler placed at
+`[ebp-2]`. `requestEvent:data:` stores a full 32-bit value, so the store's upper
+two bytes landed on the low half of the saved EBP at `[ebp]`. With a flow-control
+mask whose upper half is 0, the saved `0x27d63e04` came back as `0x27d60000`,
+and `ttyiops_ioctl` carried on with a frame pointer 16 KB below its stack. What
+happened next depended on the path, which is why every run crashed differently:
+an epilogue returning through zeroed memory to EIP 0, or writes through
+`[ebp-n]` into another thread's kernel stack and scheduler state. The gdbstub run
+caught `ttyiops_convertFlowCtrl` returning with EBP changed from `0x27d63e04` to
+`0x27d60000`. Every `tcsetattr` on a PortServer tty goes through it
+(`TIOCSETA`, `TIOCSETAW`, `TIOCSETAF`), and so does every `TIOCGETA`.
+
+The ledger had this function as `unexamined` (Finding 79 removed its NULL guard,
+but the body was never read), and §18's length table showed it as
+`ref 32 / ours 32`: equal lengths hide a `[ebp-2]` against `[ebp-4]`.
+
+**Fix.** `unsigned int response`, testing `0x8`, `0x400`, `0x10`, `0x4` and
+`0x20`. The rebuilt function is instruction-identical to the reference. Ledger
+10352 advanced `unexamined` → `assembly-matched`.
+
+### Finding 91 — `ttyiops_txload` sends a selector IOPortSession does not implement
+
+With Finding 90 fixed, the first write panicked instead:
+`objc error: IOPortSession does not recognize selector
+-enqueueData:bufferSize:transferCount:minCount:`, then `panic: objc: fatal
+error`. That selector crosses `enqueueData:bufferSize:transferCount:sleep:` with
+`dequeueData:bufferSize:transferCount:minCount:`. The reference's `txload` sends
+the first, with the same four arguments ours pushes: the buffer, the count from
+`q_to_b`, the address of the `outq_size` slot at `[ebp-0x1a8]`, and 0 for
+`sleep`. It was the only selector our binary sent that the reference does not:
+ours had 65 against the reference's 64.
+
+The ledger recorded `_ttyiops_txload` (14952) as `assembly-matched`. The read
+compared the instructions but not the selector string, the same gap as drvBPF's
+Finding 9. **Fix:** the selector. Ledger 14952 keeps `assembly-matched`, with a
+corrective reason. The rebuilt function differs from the reference only in
+Finding 88's hoisting of `portSession`.
+
+### Result
+
+With both fixes, on the guest, driverLoader loads the driver and runs our
+`pdservd`, which makes `/dev/ttyda`, `ttyida`, `cuaa`, `cuiaa`, `pdservd` and
+`rpski01`–`16`. A program that opens the port, sets raw 9600 8N1 with CLOCAL,
+writes a line and reads the reply got its bytes to the host and the host's
+reply back three times in a row: through `/dev/cuaa`, through `/dev/ttyda`, and
+through `/dev/cuaa` again after close and reopen. The guest stayed up and the
+console showed nothing but the three `Registering:` lines. In the built binary,
+45 of 113 functions are now instruction-identical to the reference, up from 44.

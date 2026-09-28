@@ -13,5 +13,4 @@
 "SVGA VESA BIOS Mode" = "0x6a";
 "PostScript Driver" = "VGA_psdrvr";
 "Help File" = "VGA.rtfd";
-"Server Name" = "VGA";
 "Driver Version" = "PROGRAM:VGA  PROJECT:vga-18  DEVELOPER:root  BUILT:Sat May 4 04:34:54 PST 1996";

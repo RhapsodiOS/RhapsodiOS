@@ -52,10 +52,12 @@ powershell -File vm\sync-src.ps1 -Path drivers-i386/bus/drvPCMCIABus
 Exactly one of `-All` or `-Path` is required. `-Path` creates the remote parent
 directory first, then extracts the leaf under `RemoteRoot/src/<rel>`.
 
-After extract, the script restores execute bits on `configure`,
-`config.guess`/`config.sub`, common autotools helpers, `build_gcc`, and `*.sh` /
-`*.pl` under the synced tree (Windows tar drops Unix `+x`, which breaks
-bootstrap `./configure`).
+After extract, the script gives the synced tree exactly the execute bits git
+records (Windows tar drops Unix `+x`, which breaks `./configure`): it clears
+`+x` everywhere, then sets it on every file the index lists as `100755`.
+Untracked files named `configure`, `config.guess`/`config.sub`, common
+autotools helpers, `build_gcc`, `*.sh` or `*.pl` also get `+x`. A tracked
+script that must run needs `git update-index --chmod=+x`.
 
 This script only syncs `src/`. Broader uploads (e.g. whatever `SyncPaths` lists
 in `vm.conf`) still go through `rhap-vm.ps1 sync` (PuTTY-based; same crypto

@@ -316,7 +316,7 @@ bntest.o: ../include/openssl/cast.h ../include/openssl/crypto.h
 bntest.o: ../include/openssl/des.h ../include/openssl/dh.h
 bntest.o: ../include/openssl/dsa.h ../include/openssl/e_os.h
 bntest.o: ../include/openssl/e_os2.h ../include/openssl/err.h
-bntest.o: ../include/openssl/evp.h ../include/openssl/idea.h
+bntest.o: ../include/openssl/evp.h
 bntest.o: ../include/openssl/md2.h ../include/openssl/md5.h
 bntest.o: ../include/openssl/mdc2.h ../include/openssl/objects.h
 bntest.o: ../include/openssl/opensslconf.h ../include/openssl/opensslv.h
@@ -351,7 +351,7 @@ hmactest.o: ../include/openssl/cast.h ../include/openssl/crypto.h
 hmactest.o: ../include/openssl/des.h ../include/openssl/dh.h
 hmactest.o: ../include/openssl/dsa.h ../include/openssl/e_os2.h
 hmactest.o: ../include/openssl/evp.h ../include/openssl/hmac.h
-hmactest.o: ../include/openssl/idea.h ../include/openssl/md2.h
+hmactest.o: ../include/openssl/md2.h
 hmactest.o: ../include/openssl/md5.h ../include/openssl/mdc2.h
 hmactest.o: ../include/openssl/objects.h ../include/openssl/opensslconf.h
 hmactest.o: ../include/openssl/opensslv.h ../include/openssl/rc2.h
@@ -359,7 +359,7 @@ hmactest.o: ../include/openssl/rc4.h ../include/openssl/rc5.h
 hmactest.o: ../include/openssl/ripemd.h ../include/openssl/rsa.h
 hmactest.o: ../include/openssl/safestack.h ../include/openssl/sha.h
 hmactest.o: ../include/openssl/stack.h
-ideatest.o: ../include/openssl/idea.h ../include/openssl/opensslconf.h
+ideatest.o: ../include/openssl/opensslconf.h
 md2test.o: ../include/openssl/md2.h ../include/openssl/opensslconf.h
 md5test.o: ../include/openssl/md5.h
 mdc2test.o: ../include/openssl/des.h ../include/openssl/e_os2.h
@@ -384,7 +384,7 @@ ssltest.o: ../include/openssl/crypto.h ../include/openssl/des.h
 ssltest.o: ../include/openssl/dh.h ../include/openssl/dsa.h
 ssltest.o: ../include/openssl/e_os.h ../include/openssl/e_os2.h
 ssltest.o: ../include/openssl/err.h ../include/openssl/evp.h
-ssltest.o: ../include/openssl/idea.h ../include/openssl/lhash.h
+ssltest.o: ../include/openssl/lhash.h
 ssltest.o: ../include/openssl/md2.h ../include/openssl/md5.h
 ssltest.o: ../include/openssl/mdc2.h ../include/openssl/objects.h
 ssltest.o: ../include/openssl/opensslconf.h ../include/openssl/opensslv.h

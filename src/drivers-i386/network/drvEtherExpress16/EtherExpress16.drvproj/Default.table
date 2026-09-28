@@ -9,4 +9,3 @@
 "Memory Maps" = "";
 "Connector" = "default";
 "Valid IRQ Levels" = "3 4 5 9 10 11";
-"Server Name" = "EtherExpress16";

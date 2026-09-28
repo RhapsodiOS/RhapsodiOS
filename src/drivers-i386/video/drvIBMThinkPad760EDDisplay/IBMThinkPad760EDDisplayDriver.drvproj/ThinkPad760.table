@@ -12,6 +12,5 @@
 "Display Mode" = "Height:600 Width:800 Refresh:60Hz ColorSpace:RGB:555/16";
 "Location" = "";
 "Help File" = "ThinkPad760.rtfd";
-"Server Name" = "IBMThinkPad760EDDisplayDriver";
 "Driver Version" = "PROGRAM:IBMThinkPad760EDDisplayDriver  PROJECT:drvIBMThinkPad760EDDisplay-7  DEVELOPER:root  BUILT:Sat Mar 28 21:52:38 PST 1998";
 "Version" = "5.01";

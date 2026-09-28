@@ -9,6 +9,7 @@ void package_init(Package *p) {
     p->has_build_depends = 0;
     strlist_init(&p->build_depends_i386);
     strlist_init(&p->build_depends_ppc);
+    strlist_init(&p->depends);
 }
 
 void package_free(Package *p) {
@@ -20,6 +21,7 @@ void package_free(Package *p) {
     strlist_free(&p->build_depends);
     strlist_free(&p->build_depends_i386);
     strlist_free(&p->build_depends_ppc);
+    strlist_free(&p->depends);
     memset(p, 0, sizeof(*p));
 }
 
@@ -52,6 +54,8 @@ int package_copy(Package *dst, const Package *src) {
         strlist_push(&dst->build_depends_i386, src->build_depends_i386.items[i]);
     for (i = 0; i < src->build_depends_ppc.count; i++)
         strlist_push(&dst->build_depends_ppc, src->build_depends_ppc.items[i]);
+    for (i = 0; i < src->depends.count; i++)
+        strlist_push(&dst->depends, src->depends.items[i]);
     return 0;
 }
 

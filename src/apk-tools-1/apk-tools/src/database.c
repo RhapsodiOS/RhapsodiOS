@@ -55,11 +55,11 @@ static void pkg_name_free(struct apk_name *name)
 }
 
 static const struct apk_hash_ops pkg_name_hash_ops = {
-	.node_offset = offsetof(struct apk_name, hash_node),
-	.get_key = pkg_name_get_key,
-	.hash_key = apk_blob_hash,
-	.compare = apk_blob_compare,
-	.delete_item = (apk_hash_delete_f) pkg_name_free,
+	node_offset: offsetof(struct apk_name, hash_node),
+	get_key: pkg_name_get_key,
+	hash_key: apk_blob_hash,
+	compare: apk_blob_compare,
+	delete_item: (apk_hash_delete_f) pkg_name_free,
 };
 
 static apk_blob_t pkg_info_get_key(apk_hash_item item)
@@ -75,11 +75,11 @@ static unsigned long csum_hash(apk_blob_t csum)
 }
 
 static const struct apk_hash_ops pkg_info_hash_ops = {
-	.node_offset = offsetof(struct apk_package, hash_node),
-	.get_key = pkg_info_get_key,
-	.hash_key = csum_hash,
-	.compare = apk_blob_compare,
-	.delete_item = (apk_hash_delete_f) apk_pkg_free,
+	node_offset: offsetof(struct apk_package, hash_node),
+	get_key: pkg_info_get_key,
+	hash_key: csum_hash,
+	compare: apk_blob_compare,
+	delete_item: (apk_hash_delete_f) apk_pkg_free,
 };
 
 static apk_blob_t apk_db_dir_get_key(apk_hash_item item)
@@ -88,11 +88,11 @@ static apk_blob_t apk_db_dir_get_key(apk_hash_item item)
 }
 
 static const struct apk_hash_ops dir_hash_ops = {
-	.node_offset = offsetof(struct apk_db_dir, hash_node),
-	.get_key = apk_db_dir_get_key,
-	.hash_key = apk_blob_hash,
-	.compare = apk_blob_compare,
-	.delete_item = (apk_hash_delete_f) free,
+	node_offset: offsetof(struct apk_db_dir, hash_node),
+	get_key: apk_db_dir_get_key,
+	hash_key: apk_blob_hash,
+	compare: apk_blob_compare,
+	delete_item: (apk_hash_delete_f) free,
 };
 
 struct apk_db_file_hash_key {
@@ -130,11 +130,11 @@ static int apk_db_file_compare_item(apk_hash_item item, apk_blob_t _key)
 }
 
 static const struct apk_hash_ops file_hash_ops = {
-	.node_offset = offsetof(struct apk_db_file, hash_node),
-	.hash_key = apk_db_file_hash_key,
-	.hash_item = apk_db_file_hash_item,
-	.compare_item = apk_db_file_compare_item,
-	.delete_item = (apk_hash_delete_f) free,
+	node_offset: offsetof(struct apk_db_file, hash_node),
+	hash_key: apk_db_file_hash_key,
+	hash_item: apk_db_file_hash_item,
+	compare_item: apk_db_file_compare_item,
+	delete_item: (apk_hash_delete_f) free,
 };
 
 struct apk_name *apk_db_query_name(struct apk_database *db, apk_blob_t name)
@@ -280,8 +280,8 @@ struct apk_db_file *apk_db_file_query(struct apk_database *db,
 	struct apk_db_file_hash_key key;
 
 	key = (struct apk_db_file_hash_key) {
-		.dirname = dir,
-		.filename = name,
+		dirname: dir,
+		filename: name,
 	};
 
 	return (struct apk_db_file *) apk_hash_get(&db->installed.files,
@@ -297,8 +297,8 @@ static struct apk_db_file *apk_db_file_get(struct apk_database *db,
 	struct apk_db_file_hash_key key;
 
 	key = (struct apk_db_file_hash_key) {
-		.dirname = APK_BLOB_STR(diri->dir->dirname),
-		.filename = name,
+		dirname: APK_BLOB_STR(diri->dir->dirname),
+		filename: name,
 	};
 
 	file = (struct apk_db_file *) apk_hash_get(&db->installed.files,
@@ -595,7 +595,8 @@ static int apk_db_read_state(struct apk_database *db)
 	apk_deps_parse(db, &db->world, blob);
 	free(blob.ptr);
 
-	for (i = 0; i < db->world->num; i++)
+	/* An empty world (Rhapsody's --initdb writes one) parses to NULL. */
+	for (i = 0; db->world != NULL && i < db->world->num; i++)
 		db->world->item[i].name->flags |= APK_NAME_TOPLEVEL;
 
 	is = apk_istream_from_file("var/lib/apk/installed");
@@ -621,6 +622,30 @@ static int add_protected_path(void *ctx, apk_blob_t blob)
 	return 0;
 }
 
+#ifdef __NeXT__
+/* Rhapsody's tmp, dev and var are symlinks into private/, which the files
+ * package ships.  Create the same links, so the database lands in
+ * private/var and files can replace the links with its own.  /dev/null takes
+ * the running system's device number, and the world starts empty. */
+static int apk_db_create(struct apk_database *db)
+{
+	apk_blob_t deps = APK_BLOB_STR("");
+	struct stat st;
+	int fd;
+
+	fchdir(db->root_fd);
+	mkdir("private", 0755);
+	mkdir("private/tmp", 01777);
+	mkdir("private/dev", 0755);
+	if (stat("/dev/null", &st) == 0)
+		mknod("private/dev/null", S_IFCHR | 0666, st.st_rdev);
+	mkdir("private/var", 0755);
+	mkdir("private/var/lib", 0755);
+	mkdir("private/var/lib/apk", 0755);
+	symlink("private/tmp", "tmp");
+	symlink("private/dev", "dev");
+	symlink("private/var", "var");
+#else
 static int apk_db_create(struct apk_database *db)
 {
 	apk_blob_t deps = APK_BLOB_STR("busybox alpine-baselayout "
@@ -634,6 +659,7 @@ static int apk_db_create(struct apk_database *db)
 	mkdir("var", 0755);
 	mkdir("var/lib", 0755);
 	mkdir("var/lib/apk", 0755);
+#endif
 
 	fd = creat("var/lib/apk/world", 0644);
 	if (fd < 0)
@@ -693,7 +719,12 @@ int apk_db_open(struct apk_database *db, const char *root, unsigned int flags)
 		}
 	}
 
+#ifdef __NeXT__
+	/* Packages install configuration through Rhapsody's real path. */
+	blob = APK_BLOB_STR("private/etc");
+#else
 	blob = APK_BLOB_STR("etc:-etc/init.d");
+#endif
 	apk_blob_for_each_segment(blob, ":", add_protected_path, db);
 
 	if (root != NULL) {
@@ -976,8 +1007,8 @@ int apk_db_add_repository(apk_database_t _db, apk_blob_t repository)
 
 	r = db->num_repos++;
 	db->repos[r] = (struct apk_repository) {
-		.url = apk_blob_cstr(repository),
-		.cache = NULL,
+		url: apk_blob_cstr(repository),
+		cache: NULL,
 	};
 
 	if (apk_url_local_file(db->repos[r].url) == NULL) {
@@ -1052,8 +1083,16 @@ static int apk_db_install_archive_entry(void *_ctx,
 		else
 			type = apk_script_type(&ae->name[1]);
 
+#ifdef __NeXT__
+		/* Rhapsody keeps data in dot files at the root, such as
+		 * files' /.hidden: only .PKGINFO and scripts are metadata. */
+		if (type == APK_SCRIPT_INVALID &&
+		    strcmp(ae->name, ".PKGINFO") == 0)
+			return 0;
+#else
 		if (type == APK_SCRIPT_INVALID)
 			return 0;
+#endif
 	} else if (strncmp(ae->name, "var/db/apk/", 11) == 0) {
 		/* APK 1.0 format */
 		p = &ae->name[11];
@@ -1095,8 +1134,15 @@ static int apk_db_install_archive_entry(void *_ctx,
 	/* Installable entry */
 	ctx->current_file_size = apk_calc_installed_size(ae->size);
 	if (!S_ISDIR(ae->mode)) {
-		if (!apk_blob_rsplit(name, '/', &bdir, &bfile))
+		if (!apk_blob_rsplit(name, '/', &bdir, &bfile)) {
+#ifdef __NeXT__
+			/* A file at the root, like files' etc -> private/etc */
+			bdir = APK_BLOB_STR("");
+			bfile = name;
+#else
 			return 0;
+#endif
+		}
 
 		if (bfile.len > 6 && memcmp(bfile.ptr, ".keep_", 6) == 0)
 			return 0;
@@ -1112,6 +1158,16 @@ static int apk_db_install_archive_entry(void *_ctx,
 				    diri->dir->dirname[bdir.len] == 0)
 					break;
 			}
+#ifdef __NeXT__
+			/* No archive has an entry for the root itself. */
+			if (diri == NULL && bdir.len == 0) {
+				if (ctx->diri_node == NULL)
+					ctx->diri_node = hlist_tail_ptr(&pkg->owned_dirs);
+				diri = apk_db_diri_new(db, pkg, bdir,
+						       &ctx->diri_node);
+				apk_db_diri_set(diri, 0755, 0, 0);
+			}
+#endif
 			if (diri == NULL) {
 				apk_error("%s: File '%*s' entry without directory entry.\n",
 					  pkg->name->name, name.len, name.ptr);
@@ -1207,8 +1263,8 @@ static void apk_db_purge_pkg(struct apk_database *db,
 				 file->filename);
 
 			key = (struct apk_db_file_hash_key) {
-				.dirname = APK_BLOB_STR(diri->dir->dirname),
-				.filename = APK_BLOB_STR(file->filename),
+				dirname: APK_BLOB_STR(diri->dir->dirname),
+				filename: APK_BLOB_STR(file->filename),
 			};
 			unlink(name);
 			if (apk_verbosity > 1)
@@ -1260,12 +1316,12 @@ static int apk_db_unpack_pkg(struct apk_database *db,
 	}
 
 	ctx = (struct install_ctx) {
-		.db = db,
-		.pkg = newpkg,
-		.script = upgrade ? 
+		db: db,
+		pkg: newpkg,
+		script: upgrade ? 
 			APK_SCRIPT_PRE_UPGRADE : APK_SCRIPT_PRE_INSTALL,
-		.cb = cb,
-		.cb_ctx = cb_ctx,
+		cb: cb,
+		cb_ctx: cb_ctx,
 	};
 	if (apk_parse_tar_gz(bs, apk_db_install_archive_entry, &ctx) != 0)
 		goto err_close;

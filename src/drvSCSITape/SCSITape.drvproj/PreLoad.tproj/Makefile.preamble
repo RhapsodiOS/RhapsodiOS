@@ -16,9 +16,20 @@
 ## (e.g. change -O to -O2), see Makefile.postamble.
 
 # Flags passed to compiler (in addition to -g, -O, etc)
-OTHER_CFLAGS = -I../SCSITape.drvproj/SCSITape.lksproj
+OTHER_CFLAGS = -I../SCSITape.lksproj
 # Flags passed to ld (in addition to -ObjC, etc.)
 OTHER_LDFLAGS =
+BUNDLELDFLAGS =            # use iff project is a bundle
+PALETTELDFLAGS =           # use iff project is a palette
+
+## Specify which headers in this project should be published to the outside
+## world in a flat header directory given in PUBLIC_HEADER_DIR (which will be
+## prepended by DSTROOT, below.  Any subset of these public headers can be
+## precompiled automatically after installation, with extra user-defined flags.
+PUBLIC_HEADER_DIR =
+PUBLIC_HEADERS =
+PUBLIC_PRECOMPILED_HEADERS =
+PUBLIC_PRECOMPILED_HEADERS_CFLAGS =
 
 ## Configure what is linked in at each level here.  Libraries are only used in
 ## the final 'app' linking step.  Final 'app' linking is only done via the
@@ -41,6 +52,12 @@ OTHER_JAPANESE_DEBUG_LIBS =
 # More 'profile' libs when $(JAPANESE) = "YES"
 OTHER_JAPANESE_PROF_LIBS =
 
+# If this is a bundle, and you *know* the enclosing application will not
+# be linking with a library which you require in your bundle code, then
+# mention it here so that it gets linked into the bundle.  Note that this
+# is wasteful but sometimes necessary.
+BUNDLE_LIBS =
+
 ## Configure how things get built here.  Additional dependencies, sourcefiles,
 ## derived files, and build order should be specified here.
 
@@ -55,13 +72,16 @@ OTHER_GARBAGE =
 # Precompiled headers to be built before any compilation occurs (e.g., draw.p)
 PRECOMPS =
 
-# Targets to be built before subprojects & bundles
-OTHER_INITIAL_TARGETS =
+# Targets to be built before installation
+OTHER_INSTALL_DEPENDS =
 
 # A virtual root directory (other than /) to be prepended to the $(INSTALLDIR)
 # passed from ProjectBuilder.
 DSTROOT =
 
+# Set the following to "YES" if you want the old behavior of recursively
+# cleaning all nested subprojects during 'make clean'.
+CLEAN_ALL_SUBPROJECTS =
 
 ## Add more obscure source files here to cause them to be automatically
 ## processed by the appropriate tool.  Note that these files should also be

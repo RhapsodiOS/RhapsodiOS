@@ -15,7 +15,6 @@ LANGUAGE = English
 
 BUNDLES = PortServer.drvproj
 
-TOOLS = pdservd.tproj
 
 OTHERSRCS = Makefile Makefile.preamble
 

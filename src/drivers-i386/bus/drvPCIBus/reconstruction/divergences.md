@@ -452,3 +452,25 @@ testIDs:dev:fun:bus:]`, `-[PCIKernBus configAddress:device:function:bus:]`,
 last of these was checked only by grep for its `IO_R_INVALID_ARG`/`IO_R_NO_DEVICE`
 literals plus the IDA/Ghidra block-and-call-count summary, not read line by line —
 flagged here so the depth of review is honest about it).
+
+## Default.table: `"Server Name"` held the wrong value
+
+2026-09-25.
+
+The driver build's `post_copy_tables` rule
+(`src/driverTools-1/DriverProjectType/driver.make:154-159`) appends
+`"Server Name" = "$(NAME)";` to every table, so the reference's `Default.table`
+ends with `"Server Name" = "PCIBus";` even though Apple's source table has no
+such line at all.
+
+Our source table carried `"Server Name" = "BUS";` of its own, so the built table
+read `"Server Name" = "BUS";` first — `IOConfigTable` returns the first match —
+with the appended `"Server Name" = "PCIBus";` sitting after it, unread. `"BUS"`
+appears nowhere else as a string literal in `drivers-i386`, so no consumer in
+this tree is known to depend on it.
+
+**Disposition:** fix, at the user's request, for parity with the reference.
+
+**Outcome:** the source line is deleted. The built table now has
+`"Server Name" = "PCIBus";` once, from the append, matching the reference
+exactly.

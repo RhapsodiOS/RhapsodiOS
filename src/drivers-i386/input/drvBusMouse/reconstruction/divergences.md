@@ -1885,3 +1885,15 @@ Last kept rebuilt `BusMouse_reloc` is 100372 bytes, SHA-256
 `_BusMouseVersionNumber`; SGS `_BusMouse_VERS_*` names are absent
 (documented leftover, same as Cirrus). Not yet tested on hardware.
 
+## Default.table: "Server Name" came out twice
+
+2026-09-25. Not a divergence: the earlier comparisons of `Default.table` with
+the reference did not allow for the build's append.
+
+The driver build's `post_copy_tables` rule
+(`src/driverTools-1/DriverProjectType/driver.make:154-159`) appends
+`"Server Name" = "$(NAME)";` to every table. That is where the reference's line,
+just before the build-stamped `"Driver Version"`, comes from. Our source table
+carried the line as well, so the built table had it twice. The line is gone from
+the source, and the built table now matches the reference's except for the build
+stamp.

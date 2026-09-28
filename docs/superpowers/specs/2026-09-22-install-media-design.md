@@ -113,13 +113,17 @@ but its *contents* are absolute. The booters, the kernel and `disk` all agree:
   (`src/files-5/apk/.pre-install`, `.post-install`) unmounts and remounts
   `/dev`. No other apk carries scripts.
 - **rbuild writes no runtime `depend`,** only `makedepends`
-  (`src/rbuild-1/pkginfo.c`).
+  (`src/rbuild-1/pkginfo.c`). (Before phase 2; now it carries a
+  `pkginfo`'s `depend` into `.PKGINFO`, and `files` depends on
+  `basic-cmds`, `csu` and `libsystem`, which its scripts run with.)
 - **apk 2.0_pre12 takes file paths.** `apk add` accepts `.apk` paths
   (`apk_db_pkg_add_file`), and `--initdb` creates
   `var/lib/apk/{world,installed,scripts}` under `--root`
   (`src/apk-tools-1/apk-tools/src/add.c`, `database.c`).
 - **apk-tools, OpenSSL and OpenSSH are in no manifest.** OpenSSL 0.9.5a has
-  `openssl passwd -crypt` (`apps/passwd.c`).
+  `openssl passwd -crypt` (`apps/passwd.c`). (Before phase 2; now all three
+  are in `src/Manifest` and build universal. `docs/build/apk-root-install.md`
+  records what each needed.)
 
 **Kernel**
 - **UFS mounts in either byte order,** because the i386 config enables `revfs`.
@@ -483,8 +487,13 @@ Most serious first.
    phase 6 depends on it.
 3. **apk 2.0_pre12 has never run on Rhapsody.** File-overlap refusals are
    possible. `files` must be installed first so that `var -> private/var`
-   exists before apk creates `var/lib/apk`.
+   exists before apk creates `var/lib/apk`. (Retired by phase 2: `--initdb`
+   now creates `private/var/lib/apk` and the `var` link itself, and 44 base
+   apks install together. The `-hdrs` and `-obj` companions do overlap their
+   base packages, so they are left out.)
 4. **OpenSSL 0.9.5a and OpenSSH 2.3.0p1 have never been through rbuild.**
+   (Retired by phase 2: both build universal, and the packaged `sshd`
+   accepts a password login.)
 5. **Real BIOSes that don't use LBA-assisted translation** will mis-read boot0's
    CHS values. Such machines can only boot the disk through UEFI.
 6. **QEMU may not pick LBA translation for every target size** (unverified,

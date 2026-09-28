@@ -914,3 +914,23 @@ replaceable by "complete" — the fixes are applied but uncompiled and unverifie
   inference in places — particularly Finding 8's claim about which value the
   success path returns, which is certain at the machine level and only probable at
   the source level.
+
+## Default.table: "Server Name" came out three times
+
+2026-09-25. One copy removed as a fix, one as a labelled divergence.
+
+The driver build's `post_copy_tables` rule
+(`src/driverTools-1/DriverProjectType/driver.make:154-159`) appends
+`"Server Name" = "$(NAME)";` to every table. The reference's table has the line
+twice: at line 6, from Apple's source, and again from the append, just before
+the build-stamped `"Driver Version"`. Our source carried both, so the built
+table had three. The earlier comparisons of `Default.table` with the reference
+did not allow for the append.
+
+- The trailing copy is removed. That alone made the built table match the
+  reference's except for the build stamp.
+- The line-6 copy is removed as well, **diverging from the reference at the
+  user's request** so that the key appears once. Apple's duplicate was harmless:
+  both copies hold `Intel824X0`, and `IOConfigTable` returns the first match.
+  The built table now differs from the reference's only by that line and the
+  build stamp.

@@ -664,3 +664,15 @@ No `binrecon compare` of the guest `_reloc` against the reference. No hardware
 test. Mapped bodies not listed above stay `unexamined` rather than guessed.
 HACB `(?)` union widths that IDA did not pin are left as the Task 7 layout
 rather than invented. Linux `aic6x60` was not used as a template.
+
+## Intentional divergence: clamp `currentTime - scb->startTime` in `commandCompleted:reason:` (issue #28)
+
+2026-09-26. `AIC6X60Thread.m`'s `commandCompleted:reason:` computes
+`scsiReq->totalTime = currentTime - scb->startTime` on the unsigned 64-bit
+`ns_time_t` from `IOGetTimestamp()`. A backward clock step between the SCB's
+`startTime` stamp and this read (see issue #26 — rare, not fully closed
+under heavy load) wraps that subtraction to roughly `1.8e19` ns instead of a
+small delta. `totalTime` is now clamped to 0 when `currentTime <=
+scb->startTime`. Not a reconstruction fidelity finding against the reference
+binary; recorded here per this document's own convention of noting behavior
+changes at sites otherwise treated as reconciled.

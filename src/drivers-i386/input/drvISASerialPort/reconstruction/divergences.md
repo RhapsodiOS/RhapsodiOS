@@ -1795,3 +1795,15 @@ symbol names** — `__udivdi3`/`__umoddi3` — so both the linkage and the name 
 `static` would close half of it in one token but would land a change inside code Task 6 owns,
 so it is deferred alongside the other underscore renames.
 
+## Default.table: "Server Name" came out twice
+
+2026-09-25. Not a divergence: the earlier comparisons of `Default.table` with
+the reference did not allow for the build's append.
+
+The driver build's `post_copy_tables` rule
+(`src/driverTools-1/DriverProjectType/driver.make:154-159`) appends
+`"Server Name" = "$(NAME)";` to every table. That is where the reference's line,
+just before the build-stamped `"Driver Version"`, comes from. Our source table
+carried the line as well, so the built table had it twice. The line is gone from
+the source, and the built table now matches the reference's except for the build
+stamp.

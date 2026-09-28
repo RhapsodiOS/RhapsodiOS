@@ -96,7 +96,7 @@ logintest: logintest.o libopenbsd-compat.a libssh.a log-client.o loginrec.o
 	$(LD) -o $@ logintest.o $(LDFLAGS) loginrec.o -lopenbsd-compat -lssh log-client.o $(LIBS)
 
 $(MANPAGES) $(CONFIGFILES)::
-	$(FIXPATHSCMD) $(srcdir)/$@
+	$(FIXPATHSCMD) $(srcdir)/$(@F)
 
 clean:
 	rm -f *.o *.a $(TARGETS) logintest config.cache config.log 

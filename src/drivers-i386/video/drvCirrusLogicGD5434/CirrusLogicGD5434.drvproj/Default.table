@@ -10,6 +10,5 @@
 "I/O Ports" = "0x3b0-0x3df 0x102-0x102 0x46e8-0x46e8";
 "Display Mode" = "Height:600 Width:800 Refresh:60Hz ColorSpace:RGB:256/8";
 "Help File" = "CL_GD5434.rtfd";
-"Server Name" = "CirrusLogicGD5434DisplayDriver";
 "Driver Version" = "PROGRAM:CirrusLogicGD5434DisplayDriver  PROJECT:drvCirrusLogicGD5434-19  DEVELOPER:root  BUILT:Sat Mar 28 22:19:42 PST 1998";
 "Version" = "5.00";

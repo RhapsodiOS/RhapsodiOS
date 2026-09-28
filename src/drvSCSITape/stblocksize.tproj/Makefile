@@ -21,6 +21,7 @@ OTHERSRCS = Makefile.preamble Makefile Makefile.postamble
 
 MAKEFILEDIR = /NextDeveloper/Makefiles/app
 MAKEFILE = tool.make
+INSTALLDIR = /usr/sbin
 SOURCEMODE = 444
 
 

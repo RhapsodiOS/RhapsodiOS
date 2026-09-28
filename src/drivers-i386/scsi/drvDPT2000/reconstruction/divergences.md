@@ -402,3 +402,15 @@ Accepted, same as the equivalent pair in drvAdaptec1542B.
 No instruction-by-instruction `assembly-matched` pass. No binrecon compare
 against the guest ppc reloc. No host `out/i386` extract. No QEMU or hardware
 run. The `movehelp` stub is left in place.
+
+## Intentional divergence: clamp `now - start` in `commandCompleted:reason:` (issue #28)
+
+2026-09-26. `EATAControllerThread.m`'s `commandCompleted:reason:` computes
+`scsiReq->totalTime = now - start` on the unsigned 64-bit `ns_time_t` from
+`IOGetTimestamp()`, where `start` is copied from the CCB's stored start time.
+A backward clock step between that stamp and this read (see issue #26 —
+rare, not fully closed under heavy load) wraps the subtraction to roughly
+`1.8e19` ns instead of a small delta. `totalTime` is now clamped to 0 when
+`now <= start`. Not a reconstruction fidelity finding against the reference
+binary; recorded here per this document's own convention of noting behavior
+changes at sites otherwise treated as reconciled.

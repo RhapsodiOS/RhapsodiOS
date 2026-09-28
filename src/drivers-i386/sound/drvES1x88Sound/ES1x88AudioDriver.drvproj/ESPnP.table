@@ -18,6 +18,5 @@
 "Bus Type" = "PnP";
 "Auto Detect IDs" = "ESS1868 ES1869 ES1878 ES1879";
 "Help File" = "ES1x88_3_30.rtfd";
-"Server Name" = "ES1x88AudioDriver";
 "Driver Version" = "PROGRAM:ES1x88AudioDriver  PROJECT:drvES1x88Sound-10  DEVELOPER:root  BUILT:Sat Mar 28 22:07:29 PST 1998";
 "Version" = "5.00";

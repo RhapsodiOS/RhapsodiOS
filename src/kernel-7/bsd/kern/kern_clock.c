@@ -82,6 +82,7 @@
 #endif
 
 #include <bsd/machine/cpu.h>
+#include <dev/random/randomdev.h>
 
 #include <kern/thread.h>
 #include <mach/machine.h>
@@ -151,6 +152,13 @@ hardclock(pc, ps)
 	register thread_t	thread;
 
 	thread = current_thread();
+
+	/*
+	 * Entropy model B: fold cheap interrupt-timing jitter into the
+	 * kernel CSPRNG.  Rate-limited and lock-free from this side (see
+	 * random_harvest_jitter()), so it's safe to call on every tick.
+	 */
+	random_harvest_jitter((u_int32_t)pc ^ (u_int32_t)ps);
 
 #if	SIMPLE_CLOCK
 	/*

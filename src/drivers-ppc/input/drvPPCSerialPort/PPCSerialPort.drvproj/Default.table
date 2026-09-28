@@ -5,5 +5,4 @@
 "Boot Driver" = "No";
 "Instance" = "0";
 "Matching" = "ch-a ch-b";
-"Server Name" = "PPCSerialPort";
 "Driver Version" = "PROGRAM:PPCSerialPort  PROJECT:drvPPCSerialPort-5  DEVELOPER:root  BUILT:Tue Nov 23 19:18:03 PST 1999";

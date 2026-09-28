@@ -113,12 +113,12 @@ static struct option ver_options[] = {
 };
 
 struct apk_applet apk_ver = {
-	.name = "version",
-	.usage = "[-t version1 version2]",
-	.context_size = sizeof(struct ver_ctx),
-	.num_options = ARRAY_SIZE(ver_options),
-	.options = ver_options,
-	.parse = ver_parse,
-	.main = ver_main,
+	name: "version",
+	usage: "[-t version1 version2]",
+	context_size: sizeof(struct ver_ctx),
+	num_options: ARRAY_SIZE(ver_options),
+	options: ver_options,
+	parse: ver_parse,
+	main: ver_main,
 };
 

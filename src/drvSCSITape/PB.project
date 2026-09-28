@@ -3,7 +3,7 @@
     FILESTABLE = {
         BUNDLES = (SCSITape.drvproj);
         OTHER_SOURCES = (Makefile, Makefile.preamble);
-        SUBPROJECTS = (PostLoad.tproj, PreLoad.tproj, stblocksize.tproj);
+        SUBPROJECTS = (stblocksize.tproj);
     };
     LANGUAGE = English;
     LOCALIZABLE_FILES = {};

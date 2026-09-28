@@ -1646,3 +1646,23 @@ Fix: in all three gates (`MSProtocol` and both in `FiveBProtocol`), a packet
 also dispatches when `currentTimeStamp < lastTimeStamp`. A forward gap of 40 ms
 or more is still suppressed, as in the reference. This costs byte parity in
 `MSProtocol` and `FiveBProtocol`. Built but not tested with a serial mouse.
+
+## Default.table: "Server Name" came out three times
+
+2026-09-25. One copy removed as a fix, one as a labelled divergence.
+
+The driver build's `post_copy_tables` rule
+(`src/driverTools-1/DriverProjectType/driver.make:154-159`) appends
+`"Server Name" = "$(NAME)";` to every table. The reference's table has the line
+twice: at line 7, from Apple's source, and again from the append, just before
+the build-stamped `"Driver Version"`. Our source carried both, so the built
+table had three. The earlier comparisons of `Default.table` with the reference
+did not allow for the append.
+
+- The trailing copy is removed. That alone made the built table match the
+  reference's except for the build stamp.
+- The line-7 copy is removed as well, **diverging from the reference at the
+  user's request** so that the key appears once. Apple's duplicate was harmless:
+  both copies hold `SerialPointingDevice`, and `IOConfigTable` returns the first
+  match. The built table now differs from the reference's only by that line and
+  the build stamp.

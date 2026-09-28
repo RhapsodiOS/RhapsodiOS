@@ -1,5 +1,5 @@
 /*
- * The system configuration table of an installed RhapsodiOS disk.  The
+ * The system configuration table of an installed RhapsodiOS i386 disk.  The
  * installer, and the install-media builder, replace every @DISK@ with the
  * disk's name (hd0, sd0, ...).
  *

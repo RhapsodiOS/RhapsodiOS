@@ -10,7 +10,16 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 PROJECT = os.path.dirname(HERE)
 SRC = os.path.dirname(PROJECT)
 TEMPLATES = os.path.join(PROJECT, "templates")
-NAMES = ("fstab", "hostconfig", "Instance0.table")
+NAMES = ("fstab", "hostconfig", "Instance0-i386.table", "Instance0-ppc.table")
+# Mac OS X Server 1.2.1's /private/Drivers/ppc/System.config/Default.table,
+# key by key.  On ppc the booter picks the boot drivers, 0700_Devices names
+# the drivers it loads, and the kernel takes its root from Open Firmware,
+# so the installed system needs none of the i386 template's overrides.
+PPC_TABLE = [(b"Version", b"5.20"),
+             (b"Active Drivers",
+              b"PPCAwacs Floppy BPF SwitchEthernet PPCSerialPort PortServer"),
+             (b"Kernel Flags", b""), (b"Boot Drivers", b""),
+             (b"Language", b"English")]
 
 
 def read(*parts):
@@ -46,8 +55,8 @@ class TestTemplates(unittest.TestCase):
             (b"TIMESYNC=-YES-", b"TIMESYNC=-NO-")])
         self.assertIn(b"SSHSERVER=-YES-", ours)
 
-    def test_instance0_has_default_tables_keys_and_the_overrides(self):
-        ours = read(TEMPLATES, "Instance0.table")
+    def test_i386_instance0_has_default_tables_keys_and_the_overrides(self):
+        ours = read(TEMPLATES, "Instance0-i386.table")
         default = read(SRC, "system_config-1", "i386", "Default.table")
         self.assertEqual(table_keys(ours), table_keys(default))
         self.assertEqual(table_value(ours, b"Boot Drivers"),
@@ -60,6 +69,12 @@ class TestTemplates(unittest.TestCase):
         for key in (b"Version", b"Kernel", b"Install Mode", b"APM"):
             self.assertEqual(table_value(ours, key),
                              table_value(default, key))
+
+    def test_ppc_instance0_is_mac_os_x_servers_table(self):
+        ours = read(TEMPLATES, "Instance0-ppc.table")
+        self.assertEqual(
+            re.findall(rb'^"([^"]+)"\s*=\s*"([^"]*)";', ours, re.M),
+            PPC_TABLE)
 
     def test_the_postamble_installs_every_template(self):
         postamble = read(PROJECT, "Makefile.postamble")

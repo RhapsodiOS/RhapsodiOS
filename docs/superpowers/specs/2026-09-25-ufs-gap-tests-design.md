@@ -265,3 +265,76 @@ pointer to them.
   evidence, and fixing it becomes a separate change for Pat to decide on.
 
 At the end, Pat decides whether to keep the 8 GB base image.
+
+## Outcome
+
+Run on 2026-09-25 and 2026-09-27, from branch `ufs-gap-tests`. The kernel was an
+i386 build of `kernel-7` as it stands on master at `b7cb931e0`; this branch
+changes no kernel source. Every boot ran on a qcow2 overlay of the base image,
+and the evidence for each run is in `vm/work/ufs-gap/<run>/`.
+
+### Verdicts
+
+| Run | What it tests | Result |
+|---|---|---|
+| Gate | The base image is clean | **Pass**, on the second attempt. The first failed `fsck -n` Phase 5 because of a `ufs_alloc` bug, below. |
+| E1 | Clean control | **Pass.** No `ffs: ` lines; network prompt at 39 s; Setup Assistant. |
+| E2 | Flag-only dirty root | **Pass.** `fsck -p` checked root and found nothing. Exactly one `ffs: / was unclean when mounted; mounting read-write anyway`. Same end screen as E1, with no extra keystrokes. |
+| E3 ×3 | Real power-off | **Pass** for all three. `fsck -p` preened genuine damage unattended and reloaded root, so no `ffs: ` line appeared, and the boot reached the Setup Assistant. The follow-up `fsck -p` then `fsck -n` was clean. But the three runs were not independent; see below. |
+| R1 | Superblock read fails in `ffs_reload` | **Pass.** |
+| R2 | Cylinder-summary read fails | **Pass.** |
+| R3 | Step 6 inode-block read fails | **Pass**, once retargeted; see below. |
+| R4 | `fs_ronly` after a refused upgrade | **Pass.** |
+| R5 | The 4 GB clamp after a reload | **Pass.** |
+
+So both claims are now demonstrated rather than argued:
+- A crashed machine comes up multi-user unattended. That holds both for a root that is dirty only in its flag, and for a root with real damage from a power-off.
+- Change 2 works:
+  - all three `bread` failure sites release their buffer;
+  - `fs_ronly` stays 1, so an unmount does not write a dirty filesystem back as clean;
+  - the 4 GB clamp survives a reload.
+
+### Change 2 in detail
+
+**R1–R3.** In each, the injected read reached `ffs_reload`, and the kernel printed `ffs: /mnt superblock reload failed (45), refusing read-write upgrade`. The gate prints that wording for any reload error. After the disarm:
+- `/mnt` was still mounted read-only;
+- the second `mount -uw` returned `ffs: /mnt not cleanly unmounted, refusing read-write upgrade; run fsck`;
+- `umount` returned.
+
+A buffer left busy by the failed read would have made that second reload's `vinvalbuf(devvp)` sleep forever.
+
+The errno is **45**, not the EIO (5) blkdebug injects. The IDE driver reports its own code, which is `EOPNOTSUPP`, "Operation not supported", in this errno table.
+
+**R4.** The sequence was: read-only mount, refused upgrade, unmount, then a direct read-write mount. That mount was refused with `ffs: filesystem not cleanly unmounted, refusing; run fsck`. So the unmount did not mark the dirty filesystem clean.
+
+**R5.** After `fsck -y` and an upgrade through a reload:
+- `dd ... bs=2 count=1 seek=2147483647` wrote 2 bytes, and `ls -l` showed 4294967296 bytes;
+- `seek=2147483648` failed with `File too large`.
+
+### What the runs found
+
+- **`ufs_alloc` ignored FFS's `blksize` rule** (`fs.h`): a block past the 12 direct blocks is always a full block. `grow_file` therefore leaked 6 fragments of golden's old `/mach_kernel`, whose last block is full. That caused all three Phase 5 complaints at the first gate. `ufs_check` cannot see such a leak.
+  - The allocation side had the same flaw. The new kernel escaped only because its tail needed all 8 fragments.
+  - Fixed on this branch: one helper now drives allocation, freeing and layout.
+  - A directory can no longer grow past its direct blocks, because that path still assumed the old rule.
+  - With the fix, the rebuilt base frees exactly the old kernel's 1,440 fragments. Its gate `fsck -n` is clean.
+- **QEMU's `-snapshot` covers every drive.** `Guest`'s global `-snapshot` also wrapped the injected test disk, so the host's arm and disarm writes landed in QEMU's temporary overlay, and blkdebug never fired. The test disk now carries `snapshot=off`. A paused-QEMU test proves the injection fires on the exact command line a run uses.
+- **The stock DR2 IDE driver retries a failed read three times** before the kernel sees the error.
+  - Each attempt takes about 90–100 s and prints `hc0: ATA command c4 failed. Retrying...` then `hc0: Resetting drives...`. The error reached `ffs_reload` 315 s after arming.
+  - The plan disarmed after 10 s, so the retry succeeded and nothing was tested. The runner now waits for the reload's outcome, for up to 10 minutes.
+- **The lookup of `/mnt` re-reads the root inode's block before the mount code runs.**
+  - R3's first target was that block. The lookup hit the error first, and `mount -uw` failed with "Operation not supported" without calling `ffs_reload`, so no `ffs: ` line appeared.
+  - R3 now holds a file open (`exec 3< /mnt/f69`), so its vnode is active, and it aims at that file's inode block, which only Step 6 reads.
+  - Along the way this showed that a failed inode read during lookup also returns cleanly.
+- **DR2 has no `/dev/zero`.** R5's `dd` reads its two bytes from `/mach_kernel`.
+- **The three E3 crashes reached the same state.**
+  - The copy of `/usr/lib` finished before every kill. A single-user system also runs no `update` daemon, so nothing was flushed in between.
+  - All three `fsck -p` passes repaired the same 13 `INCORRECT BLOCK COUNT` inodes, plus `FREE BLK COUNT(S) WRONG`, `BLK(S) MISSING IN BIT MAPS` and `SUMMARY INFORMATION BAD`.
+  - The spread of 15, 30 and 60 s did not vary the crash point as the design intended. Varying it needs `update` started first and a larger tree copied, so that kills land mid-copy.
+- **The kernel apk's member name varies.** This build had `./private/tftpboot/mach_kernel`, with a leading `./`.
+
+### Still open
+
+- Changes 5, 6 and 7 remain argued, as the UFS spec explains.
+- An E3 variant whose kills land mid-copy and at different syncer phases.
+- The 42 `test_ufs_alloc.py` tests that clone `golden.img` with `cp -c` (APFS clonefile) cannot run on this Windows host.

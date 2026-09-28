@@ -24,6 +24,9 @@ DRIVERS = "/private/Drivers/i386"
 # driverLoader, which loads the Active Drivers at startup, reads the system
 # table through /usr/Devices, which files links to ../private/Devices.
 DEVICES_TABLE = "/usr/Devices/System.config/Instance0.table"
+# The Active Driver dhcpcd's /dev/bpf* come from; without it the network
+# never comes up, and nothing says why.
+BPF_DRIVER = "/private/Drivers/i386/BPF.config/BPF_reloc"
 # What CDIS's rc.cdrom runs before its first menus.
 CDIS_NEEDS = ["/usr/bin/perl", live.RC_CDROM, "/private/etc/rc.cdrom.x86",
               "/private/etc/rc.cdrom.PPC",
@@ -70,7 +73,7 @@ def check_tree(nodes, preinstalled):
              for name in boot_drivers(table)]
     if preinstalled:
         need += ["/usr/sbin/sshd", "/sbin/mount", "/usr/libexec/getty",
-                 "/usr/sbin/driverLoader"]
+                 "/usr/sbin/driverLoader", BPF_DRIVER]
     else:
         need += CDIS_NEEDS
     problems = ["missing %s" % p for p in need if p not in by_path]

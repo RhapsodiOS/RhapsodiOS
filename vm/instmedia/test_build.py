@@ -12,9 +12,10 @@ BOOT_DRIVERS = ("EISABus", "PCIBus", "PS2Keyboard", "EIDE", "AHCI", "NE2K")
 CDIS = "System/Installation/CDIS/"
 
 
-def make_bootable_repo(directory, drivers=BOOT_DRIVERS,
+def make_bootable_repo(directory, drivers=BOOT_DRIVERS + ("BPF",),
                        driver_loader=True, devices_link=True, extra=()):
-    """test_live's repo plus what a bootable root must have."""
+    """test_live's repo plus what a bootable root must have: the boot
+    drivers, and BPF, the Active Driver dhcpcd needs."""
     test_live.make_repo(directory)
     ta.make(directory, "boot-64-i386.apk",
             ta.pkginfo("boot", "64", "i386-apple-rhapsody"), [
@@ -68,7 +69,7 @@ class TestBuild(unittest.TestCase):
     def test_live_media_builds_and_reads_back(self):
         make_bootable_repo(self.repo)
         napks, nnodes, g, total = build.build(self.repo, self.efi, self.out)
-        self.assertEqual(napks, 3 + 2 + len(BOOT_DRIVERS) + 1 + 1)
+        self.assertEqual(napks, 3 + 2 + len(BOOT_DRIVERS) + 1 + 1 + 1)
         with rhap_image.Image(self.out) as img:
             self.assertIsNotNone(img.resolve("/private/etc/rc.cdrom"))
             self.assertIsNotNone(
@@ -100,6 +101,11 @@ class TestBuild(unittest.TestCase):
     def test_the_network_card_is_checked_as_a_boot_driver(self):
         make_bootable_repo(self.repo, drivers=BOOT_DRIVERS[:-1])
         with self.assertRaisesRegex(build.BuildError, "NE2K_reloc"):
+            build.build(self.repo, self.efi, self.out, preinstalled=True)
+
+    def test_preinstalled_needs_the_bpf_driver(self):
+        make_bootable_repo(self.repo, drivers=BOOT_DRIVERS)
+        with self.assertRaisesRegex(build.BuildError, "BPF.config/BPF_reloc"):
             build.build(self.repo, self.efi, self.out, preinstalled=True)
 
     def test_the_media_does_not_need_driverloader(self):

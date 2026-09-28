@@ -312,6 +312,23 @@ static void test_ClassConformsToProtocol(void)
                                       @protocol(TestRuntimeProtocol)));
 }
 
+@interface NSObject (NSDetailedDescriptionTest)
++ (id)detailedDescriptionForClass:(Class)aClass;
+@end
+
+static void test_detailedDescriptionForClass_names_the_class(void)
+{
+    id description = [NSObject detailedDescriptionForClass:[NSObject class]];
+
+    CHECK(description != nil);
+    CHECK(strstr(TestStringBytes(description), "NSObject") != NULL);
+}
+
+static void test_detailedDescriptionForClass_of_Nil_is_nil(void)
+{
+    CHECK([NSObject detailedDescriptionForClass:Nil] == nil);
+}
+
 int main(void)
 {
     test_NSStringFromClass_gives_the_class_name();
@@ -337,6 +354,8 @@ int main(void)
     test_MethodDescriptionForSelector_gives_name_and_types();
     test_MethodDescriptionForSelector_of_an_unknown_selector_is_NULL();
     test_ClassConformsToProtocol();
+    test_detailedDescriptionForClass_names_the_class();
+    test_detailedDescriptionForClass_of_Nil_is_nil();
 
     printf("%s: %d failure(s)\n", failures ? "FAILED" : "PASSED", failures);
     return failures != 0;

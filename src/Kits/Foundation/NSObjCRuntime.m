@@ -7,6 +7,7 @@
 #import <Foundation/NSString.h>
 #import <Foundation/NSZone.h>
 #import <objc/objc-runtime.h>
+#import <objc/Protocol.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
@@ -440,3 +441,45 @@ _NSClassConformsToProtocol(Class aClass, Protocol *aProtocol)
 
     return NO;
 }
+
+/*	NSDetailedDescription: two diagnostic categories the reference's
+	__OBJC metadata carries but that no header in this tree declares, so
+	both are declared here, the only place that implements them, and
+	claimed by name in reconstruction/symbols.json.  The reference's exact
+	output text is outside this stage's published analysis scope; what is
+	reconstructed is the observable shape -- the name, and the methods it
+	carries.  Recorded in divergences.md.  */
+
+@interface Protocol (NSDetailedDescription)
+- (NSString *)detailedDescription;
+@end
+
+@implementation Protocol (NSDetailedDescription)
+
+- (NSString *)detailedDescription
+{
+    return _NSObjCRuntimeStringWithCString([self name]);
+}
+
+@end
+
+@interface NSObject (NSDetailedDescription)
++ (NSString *)detailedDescriptionForClass:(Class)aClass;
+@end
+
+@implementation NSObject (NSDetailedDescription)
+
++ (NSString *)detailedDescriptionForClass:(Class)aClass
+{
+    char buffer[256];
+
+    if (aClass == Nil)
+        return nil;
+
+    strncpy(buffer, aClass->name, sizeof(buffer) - 1);
+    buffer[sizeof(buffer) - 1] = '\0';
+
+    return _NSObjCRuntimeStringWithCString(buffer);
+}
+
+@end

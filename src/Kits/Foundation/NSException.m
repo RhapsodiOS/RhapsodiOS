@@ -184,43 +184,336 @@ _NSRemoveAltHandler2(NSHandler2 *handler)
     }
 }
 
+/*	Stage 2b has no NSString (stage 3).  A `@"..."` literal is laid out by
+	this project's Objective-C frontend (src/cc-1/cc/objc/NXConstStr.h) as
+	{ Class isa; char *c_string; unsigned int len; }, so these three read
+	and build that shape -- enough for this file to carry an exception's
+	name and reason and to compare them.  NSObjCRuntime.m has the same
+	helpers, file-static there for the same reason they are file-static
+	here: neither is part of any module's exported surface, and stage 3
+	deletes both when real NSString arrives.  */
+
+typedef struct {
+    Class	isa;
+    char	*c_string;
+    unsigned	len;
+} NSExceptionStringRecord;
+
+/*	NSString.h declares this symbol `extern void *`; that header is this
+	file's declaration of record for it, so the record builder below casts
+	its address rather than re-declaring it with a struct type that would
+	conflict.  */
+
+static const char *
+_NSExceptionStringBytes(NSString *string)
+{
+    if (string == nil)
+        return NULL;
+    return ((NSExceptionStringRecord *)string)->c_string;
+}
+
+static NSString *
+_NSExceptionStringWithCString(const char *bytes)
+{
+    NSExceptionStringRecord *record;
+    unsigned length;
+
+    if (bytes == NULL)
+        return nil;
+
+    length = strlen(bytes);
+    record = (NSExceptionStringRecord *)
+        NSZoneMalloc(0, sizeof(NSExceptionStringRecord) + length + 1);
+    record->isa = (Class)&_NSConstantStringClassReference;
+    record->c_string = (char *)(record + 1);
+    record->len = length;
+    memcpy(record->c_string, bytes, length + 1);
+
+    return (NSString *)record;
+}
+
+/*	Compares two of this stage's strings by their bytes.  Sending
+	-isEqual: would dispatch to a class stage 2b does not implement;
+	stage 3 replaces this with the real message.  */
+static BOOL
+NSExceptionStringsEqual(NSString *lhs, NSString *rhs)
+{
+    const char *left;
+    const char *right;
+
+    if (lhs == rhs)
+        return YES;
+
+    left = _NSExceptionStringBytes(lhs);
+    right = _NSExceptionStringBytes(rhs);
+    if (left == NULL || right == NULL)
+        return NO;
+
+    return strcmp(left, right) == 0;
+}
+
+/*	Builds an exception's reason by formatting `format` over `argList`.
+	Shares NSLogv's specifier handling by going through it is not
+	possible -- NSLogv writes rather than returns -- so this repeats the
+	same walk into a buffer.  Both are provisional and both go away in
+	stage 3; see divergences.md.  */
+
+#define NSExceptionReasonMax 1024
+
+static NSString *
+_NSExceptionReasonFromFormat(NSString *format, va_list argList)
+{
+    const char *bytes;
+    char reason[NSExceptionReasonMax];
+    unsigned out;
+    unsigned i;
+
+    bytes = _NSExceptionStringBytes(format);
+    if (bytes == NULL)
+        return nil;
+
+    out = 0;
+    i = 0;
+    while (bytes[i] != '\0' && out < NSExceptionReasonMax - 1) {
+        if (bytes[i] != '%') {
+            reason[out++] = bytes[i++];
+            continue;
+        }
+        if (bytes[i + 1] == '%') {
+            reason[out++] = '%';
+            i += 2;
+            continue;
+        }
+        if (bytes[i + 1] == '@') {
+            id object = va_arg(argList, id);
+            const char *text = _NSExceptionStringBytes((NSString *)object);
+
+            if (text == NULL)
+                text = "(null)";
+            while (*text != '\0' && out < NSExceptionReasonMax - 1)
+                reason[out++] = *text++;
+            i += 2;
+            continue;
+        }
+        {
+            char specifier[16];
+            char converted[NSExceptionReasonMax];
+            unsigned length = 0;
+            unsigned k = 0;
+
+            specifier[length++] = bytes[i++];
+            while (bytes[i] != '\0' && length < sizeof(specifier) - 1) {
+                specifier[length++] = bytes[i];
+                if (strchr("diouxXeEfgGcsp", bytes[i]) != NULL) {
+                    i++;
+                    break;
+                }
+                i++;
+            }
+            specifier[length] = '\0';
+
+            converted[0] = '\0';
+            if (strchr(specifier, 's') != NULL)
+                sprintf(converted, specifier, va_arg(argList, char *));
+            else if (strchr(specifier, 'f') != NULL ||
+                     strchr(specifier, 'e') != NULL ||
+                     strchr(specifier, 'g') != NULL)
+                sprintf(converted, specifier, va_arg(argList, double));
+            else
+                sprintf(converted, specifier, va_arg(argList, int));
+
+            while (converted[k] != '\0' && out < NSExceptionReasonMax - 1)
+                reason[out++] = converted[k++];
+        }
+    }
+    reason[out] = '\0';
+
+    return _NSExceptionStringWithCString(reason);
+}
+
+/*	The exception names.  Each is a compiler-emitted NXConstantString
+	literal: stage 2b has no NSString (stage 3), and a literal is exactly
+	what a `NSString * const` global holds in the reference.  Callers
+	compare these by pointer, which works because each name is one shared
+	instance.
+
+	The reference exports 23 such constants; the 14 here are the ones
+	NSException.h declares.  The other 9 are declared in other stages'
+	headers -- NSString.h, NSDecimalNumber.h, NSFileHandle.h,
+	NSArchiver.h, NSConnection.h -- and belong to those stages under the
+	project's attribute-by-declaring-header rule.  Listed in
+	divergences.md so none is lost.  */
+
+NSString * const NSGenericException = @"NSGenericException";
+NSString * const NSRangeException = @"NSRangeException";
+NSString * const NSInvalidArgumentException = @"NSInvalidArgumentException";
+NSString * const NSInternalInconsistencyException = @"NSInternalInconsistencyException";
+NSString * const NSMallocException = @"NSMallocException";
+NSString * const NSObjectInaccessibleException = @"NSObjectInaccessibleException";
+NSString * const NSObjectNotAvailableException = @"NSObjectNotAvailableException";
+NSString * const NSDestinationInvalidException = @"NSDestinationInvalidException";
+NSString * const NSPortTimeoutException = @"NSPortTimeoutException";
+NSString * const NSInvalidSendPortException = @"NSInvalidSendPortException";
+NSString * const NSInvalidReceivePortException = @"NSInvalidReceivePortException";
+NSString * const NSPortSendException = @"NSPortSendException";
+NSString * const NSPortReceiveException = @"NSPortReceiveException";
+NSString * const NSOldStyleException = @"NSOldStyleException";
+
+/*	Set by a process that would rather stop in the debugger than exit
+	when an exception goes uncaught.  Exported by the reference in
+	__DATA,__data; read below.  */
+BOOL NSHangOnUncaughtException = NO;
+
+static NSUncaughtExceptionHandler *NSUncaughtHandler = 0;
+static BOOL NSExceptionLogging = NO;
+
+NSUncaughtExceptionHandler *
+NSGetUncaughtExceptionHandler(void)
+{
+    return NSUncaughtHandler;
+}
+
+void
+NSSetUncaughtExceptionHandler(NSUncaughtExceptionHandler *handler)
+{
+    NSUncaughtHandler = handler;
+}
+
+/*	Transfers `exception` to the innermost active handler.  The handler is
+	popped here, not by NS_HANDLER: the macro only calls
+	_NSRemoveHandler2 on the path where the body completed normally, so
+	the raise path has to unlink it before transferring or the dead frame
+	stays on the chain.
+
+	_NSSETJMP resolves to _setjmp on this platform (NSException.h), so the
+	transfer must be _longjmp -- pairing it with longjmp is undefined.
+	See the hosting probe note for stage 2b.
+
+	With no handler active the exception is uncaught: the installed
+	handler gets it if there is one, and otherwise the process reports and
+	stops, hanging instead of exiting when NSHangOnUncaughtException asks
+	it to.  */
+void
+_NSRaiseError(NSException *exception)
+{
+    NSHandler2 *handler;
+
+    if (exception == nil)
+        return;
+
+    handler = NSExceptionHandlerStack;
+
+    if (handler == 0) {
+        if (NSUncaughtHandler != 0) {
+            (*NSUncaughtHandler)(exception);
+            /*  A handler that returns has declined to stop the process;
+                fall through to the default treatment below.  */
+        }
+        NSLog(@"*** Uncaught exception: %@ -- %@",
+              [exception name], [exception reason]);
+        if (NSHangOnUncaughtException) {
+            for (;;)
+                ;
+        }
+        abort();
+    }
+
+    NSExceptionHandlerStack = (NSHandler2 *)handler->_others;
+    handler->_exception = exception;
+    _longjmp(handler->_state, 1);
+}
+
 @implementation NSException
 
-+ (NSException *)exceptionWithName:(NSString *)name reason:(NSString *)reason userInfo:(NSDictionary *)userInfo {
-    // TODO: Implement this method
-    return nil;
++ (NSException *)exceptionWithName:(NSString *)name reason:(NSString *)reason userInfo:(NSDictionary *)userInfo
+{
+    return [[[self allocWithZone:NULL] initWithName:name
+                                             reason:reason
+                                           userInfo:userInfo] autorelease];
 }
 
-- (id)initWithName:(NSString *)aName reason:(NSString *)aReason userInfo:(NSDictionary *)aUserInfo {
-    // TODO: Implement this method
-    return nil;
+/*	The name, reason and userInfo ivars are assigned, not retained.
+	Stage 2b's strings are NXConstantString-shaped records whose class
+	reference is still the zeroed test placeholder (stage 3 replaces it
+	with real NSString), so a retain sent to one would dispatch through
+	a class with no method list.  The records themselves are either
+	compiler literals or NSZoneMalloc'd and never freed, so nothing is
+	leaked that would not outlive the process anyway; the exception
+	object itself takes the normal retain/autorelease path.  Stage 3
+	switches these to retain/release.  Recorded in divergences.md.  */
+- (id)initWithName:(NSString *)aName reason:(NSString *)aReason userInfo:(NSDictionary *)aUserInfo
+{
+    self = [super init];
+    name = aName;
+    reason = aReason;
+    userInfo = aUserInfo;
+    reserved = 0;
+    return self;
 }
 
-- (NSString *)name {
-    // TODO: Implement this method
-    return nil;
+- (void)dealloc
+{
+    [super dealloc];
 }
 
-- (NSString *)reason {
-    // TODO: Implement this method
-    return nil;
+- (NSString *)name      { return name; }
+- (NSString *)reason    { return reason; }
+- (NSDictionary *)userInfo { return userInfo; }
+
+- (void)raise
+{
+    _NSRaiseError(self);
 }
 
-- (NSDictionary *)userInfo {
-    // TODO: Implement this method
-    return nil;
+/*	Compares by name and reason rather than by identity.  Both are this
+	stage's NXConstantString-shaped records, which implement no
+	-isEqual:, so the comparison goes through NSExceptionStringsEqual
+	above.  */
+- (BOOL)isEqual:(id)object
+{
+    NSException *other;
+
+    if (self == object)
+        return YES;
+    if (object == nil || ((NSException *)object)->isa != isa)
+        return NO;
+
+    other = (NSException *)object;
+    return NSExceptionStringsEqual(name, other->name) &&
+           NSExceptionStringsEqual(reason, other->reason);
 }
 
-- (void)raise {
-    // TODO: Implement this method
+- (NSString *)description
+{
+    return reason;
 }
 
-+ (void)raise:(NSString *)name format:(NSString *)format, ... {
-    // TODO: Implement this method
+/*	Turns logging of every raise on or off.  No header declares this; the
+	reference carries it in NSException's class method list and keeps the
+	flag in __DATA,__data.  Claimed by name in symbols.json.  */
++ (void)_enableLogging:(BOOL)flag
+{
+    NSExceptionLogging = flag;
 }
 
-+ (void)raise:(NSString *)name format:(NSString *)format arguments:(va_list)argList {
-    // TODO: Implement this method
+@end
+
+@implementation NSException (NSExceptionRaisingConveniences)
+
++ (void)raise:(NSString *)name format:(NSString *)format, ...
+{
+    va_list arguments;
+
+    va_start(arguments, format);
+    [self raise:name format:format arguments:arguments];
+    va_end(arguments);
+}
+
++ (void)raise:(NSString *)name format:(NSString *)format arguments:(va_list)argList
+{
+    _NSRaiseError([self exceptionWithName:name
+                                   reason:_NSExceptionReasonFromFormat(format, argList)
+                                 userInfo:nil]);
 }
 
 @end

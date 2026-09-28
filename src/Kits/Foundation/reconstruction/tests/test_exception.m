@@ -4,6 +4,8 @@
 
 #import <Foundation/NSException.h>
 #import <Foundation/NSObject.h>
+#import <Foundation/NSString.h>
+#include <setjmp.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -93,6 +95,156 @@ static void test_alt_handlers_do_not_disturb_the_main_chain(void)
     CHECK(_NSExceptionHandlerCount() == 0);
 }
 
+static void raise_from_depth(int depth)
+{
+    if (depth > 0) {
+        raise_from_depth(depth - 1);
+        return;
+    }
+    [NSException raise:NSGenericException format:@"from depth"];
+}
+
+static const char *TestStringBytes(id string)
+{
+    struct { Class isa; char *c_string; unsigned int len; } *record = (void *)string;
+
+    return (string == nil) ? NULL : record->c_string;
+}
+
+static void test_raise_transfers_to_the_enclosing_handler(void)
+{
+    int reachedHandler = 0;
+    id caught = nil;
+
+    NS_DURING
+        [NSException raise:NSInvalidArgumentException format:@"boom"];
+        CHECK(0);  /* unreachable: raise does not return */
+    NS_HANDLER
+        reachedHandler = 1;
+        caught = localException;
+    NS_ENDHANDLER
+
+    CHECK(reachedHandler == 1);
+    CHECK(caught != nil);
+    CHECK([caught name] == NSInvalidArgumentException);
+    CHECK(_NSExceptionHandlerCount() == 0);
+}
+
+static void test_the_exception_carries_its_reason(void)
+{
+    id caught = nil;
+
+    NS_DURING
+        [NSException raise:NSGenericException format:@"a specific reason"];
+    NS_HANDLER
+        caught = localException;
+    NS_ENDHANDLER
+
+    CHECK(caught != nil);
+    CHECK(strstr(TestStringBytes([caught reason]), "a specific reason") != NULL);
+}
+
+static void test_exceptionWithName_populates_all_three_accessors(void)
+{
+    id exception = [NSException exceptionWithName:NSRangeException
+                                           reason:@"out of range"
+                                         userInfo:nil];
+
+    CHECK(exception != nil);
+    CHECK([exception name] == NSRangeException);
+    CHECK(strstr(TestStringBytes([exception reason]), "out of range") != NULL);
+    CHECK([exception userInfo] == nil);
+}
+
+static void test_raising_an_exception_object_directly(void)
+{
+    id made = [NSException exceptionWithName:NSMallocException
+                                      reason:@"no memory"
+                                    userInfo:nil];
+    id caught = nil;
+
+    NS_DURING
+        [made raise];
+    NS_HANDLER
+        caught = localException;
+    NS_ENDHANDLER
+
+    CHECK(caught == made);
+}
+
+static void test_an_inner_handler_catches_before_the_outer_one(void)
+{
+    int innerCaught = 0;
+    int outerCaught = 0;
+
+    NS_DURING
+        NS_DURING
+            [NSException raise:NSGenericException format:@"inner"];
+        NS_HANDLER
+            innerCaught = 1;
+        NS_ENDHANDLER
+    NS_HANDLER
+        outerCaught = 1;
+    NS_ENDHANDLER
+
+    CHECK(innerCaught == 1);
+    CHECK(outerCaught == 0);
+    CHECK(_NSExceptionHandlerCount() == 0);
+}
+
+static void test_a_raise_from_a_nested_call_unwinds(void)
+{
+    int caught = 0;
+
+    NS_DURING
+        raise_from_depth(6);
+    NS_HANDLER
+        caught = 1;
+    NS_ENDHANDLER
+
+    CHECK(caught == 1);
+}
+
+static void test_isEqual_compares_name_and_reason(void)
+{
+    id a = [NSException exceptionWithName:NSGenericException reason:@"same" userInfo:nil];
+    id b = [NSException exceptionWithName:NSGenericException reason:@"same" userInfo:nil];
+    id c = [NSException exceptionWithName:NSRangeException reason:@"same" userInfo:nil];
+
+    CHECK([a isEqual:b]);
+    CHECK(![a isEqual:c]);
+}
+
+/*  The uncaught path, observed without dying: the suite installs its own
+    handler, which records the exception and jumps back here.  */
+static jmp_buf uncaughtReturn;
+static id uncaughtException = nil;
+
+static void TestUncaughtHandler(NSException *exception)
+{
+    uncaughtException = exception;
+    _longjmp(uncaughtReturn, 1);
+}
+
+static void test_an_uncaught_raise_reaches_the_uncaught_handler(void)
+{
+    NSUncaughtExceptionHandler *previous = NSGetUncaughtExceptionHandler();
+
+    NSSetUncaughtExceptionHandler(TestUncaughtHandler);
+    CHECK(NSGetUncaughtExceptionHandler() == TestUncaughtHandler);
+
+    uncaughtException = nil;
+    if (!_setjmp(uncaughtReturn)) {
+        [NSException raise:NSGenericException format:@"nobody is catching"];
+        CHECK(0);  /* unreachable */
+    }
+
+    CHECK(uncaughtException != nil);
+    CHECK([uncaughtException name] == NSGenericException);
+
+    NSSetUncaughtExceptionHandler(previous);
+}
+
 int main(void)
 {
     test_handler_stack_starts_empty();
@@ -101,6 +253,14 @@ int main(void)
     test_a_handler_with_no_exception_reports_nil();
     test_NS_DURING_normal_path_skips_the_handler();
     test_alt_handlers_do_not_disturb_the_main_chain();
+    test_raise_transfers_to_the_enclosing_handler();
+    test_the_exception_carries_its_reason();
+    test_exceptionWithName_populates_all_three_accessors();
+    test_raising_an_exception_object_directly();
+    test_an_inner_handler_catches_before_the_outer_one();
+    test_a_raise_from_a_nested_call_unwinds();
+    test_isEqual_compares_name_and_reason();
+    test_an_uncaught_raise_reaches_the_uncaught_handler();
 
     printf("%s: %d failure(s)\n", failures ? "FAILED" : "PASSED", failures);
     return failures != 0;

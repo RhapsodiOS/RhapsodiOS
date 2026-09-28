@@ -3,8 +3,8 @@
 
 #import <Foundation/NSProxy.h>
 #import <Foundation/NSObject.h>
+#import <Foundation/NSException.h>
 #import <objc/objc-runtime.h>
-#include <setjmp.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -18,35 +18,43 @@ static int failures = 0;
         } \
     } while (0)
 
-/*  link_stubs.m's raise-capture mechanism (see its own comment): a test
-    arms NSTestExpectingRaise and calls setjmp(NSTestRaiseEnv) around a call
-    expected to end in [NSException raise:format:]; when armed, the stub
-    longjmp()s back with the raised format string copied into
-    NSTestRaiseMessage instead of aborting the whole binary.  Declared
-    extern here rather than in a header per this task's header freeze --
-    link_stubs.m supplies the storage.  */
-extern jmp_buf NSTestRaiseEnv;
-extern int NSTestExpectingRaise;
-extern char NSTestRaiseMessage[256];
-
-/*  raiseWasCaught() is the reusable half of that pattern: call it with a
+/*  Stage 2b replaced link_stubs.m's abort()-ing NSException stub with the
+    real class, so a raise is now caught the way any caller catches one --
+    with NS_DURING/NS_HANDLER (NSException.h) -- instead of the stub's
+    setjmp arm (NSTestExpectingRaise/NSTestRaiseEnv, now retired).
+    raiseWasCaught() keeps its old shape and contract: call it with a
     no-argument function that performs the message send under test (the
     receiver and any arguments are passed via the file-scope statics below,
-    since C89 has no closures).  Returns 1 if action() ended in a captured
-    raise, 0 if it returned normally -- the latter is itself a failure for
-    every call site below, all of which expect an unconditional raise.  */
+    since C89 has no closures).  Returns 1 if action() raised, 0 if it
+    returned normally -- the latter is itself a failure for every call
+    site below, all of which expect an unconditional raise.  The raised
+    reason's text is captured for the message assertions that used to read
+    NSTestRaiseMessage: stage 2b strings are NXConstantString-shaped
+    records (see NSObjCRuntime.m), so the reason is read from the record's
+    c_string without dispatching a message no string class implements in
+    this stage.  */
+static char capturedRaiseMessage[256];
+
 static int raiseWasCaught(void (*action)(void))
 {
-    int caught;
+    int caught = 0;
 
-    NSTestExpectingRaise = 1;
-    if (setjmp(NSTestRaiseEnv) == 0) {
+    NS_DURING
         action();
-        caught = 0;
-    } else {
+    NS_HANDLER
+        struct { Class isa; char *c_string; unsigned int len; } *reason =
+            (void *)[localException reason];
+
         caught = 1;
-    }
-    NSTestExpectingRaise = 0;
+        if (reason != 0 && reason->c_string != NULL) {
+            strncpy(capturedRaiseMessage, reason->c_string,
+                    sizeof(capturedRaiseMessage) - 1);
+            capturedRaiseMessage[sizeof(capturedRaiseMessage) - 1] = '\0';
+        } else {
+            capturedRaiseMessage[0] = '\0';
+        }
+    NS_ENDHANDLER
+
     return caught;
 }
 
@@ -167,7 +175,7 @@ static void test_forwardInvocation_raises_unconditionally(void)
 
     sProxyUnderTest = proxy;
     CHECK(raiseWasCaught(invoke_forwardInvocation_with_garbage));
-    CHECK(strcmp(NSTestRaiseMessage, "*** -[NSProxy forwardInvocation:] called!") == 0);
+    CHECK(strcmp(capturedRaiseMessage, "*** -[NSProxy forwardInvocation:] called!") == 0);
     [proxy dealloc];
 }
 
@@ -177,7 +185,7 @@ static void test_methodSignatureForSelector_raises_unconditionally(void)
 
     sProxyUnderTest = proxy;
     CHECK(raiseWasCaught(invoke_methodSignatureForSelector_with_garbage));
-    CHECK(strcmp(NSTestRaiseMessage, "*** -[NSProxy methodSignatureForSelector:] called!") == 0);
+    CHECK(strcmp(capturedRaiseMessage, "*** -[NSProxy methodSignatureForSelector:] called!") == 0);
     [proxy dealloc];
 }
 
@@ -202,7 +210,7 @@ static void test_forward_colon_colon_runs_nsobjects_patched_body(void)
     sProxyUnderTest = proxy;
 
     CHECK(raiseWasCaught(invoke_forward_with_garbage));
-    CHECK(strcmp(NSTestRaiseMessage, "*** forward:: implementation not overridden") == 0);
+    CHECK(strcmp(capturedRaiseMessage, "*** forward:: implementation not overridden") == 0);
 
     [proxy dealloc];
 }
@@ -220,7 +228,7 @@ static void test_isKindOfClass_routes_through_forwarding(void)
 
     sProxyUnderTest = proxy;
     CHECK(raiseWasCaught(invoke_isKindOfClass));
-    CHECK(strcmp(NSTestRaiseMessage, "*** -[NSProxy forwardInvocation:] called!") == 0);
+    CHECK(strcmp(capturedRaiseMessage, "*** -[NSProxy forwardInvocation:] called!") == 0);
     [proxy dealloc];
 }
 
@@ -230,7 +238,7 @@ static void test_isMemberOfClass_routes_through_forwarding(void)
 
     sProxyUnderTest = proxy;
     CHECK(raiseWasCaught(invoke_isMemberOfClass));
-    CHECK(strcmp(NSTestRaiseMessage, "*** -[NSProxy forwardInvocation:] called!") == 0);
+    CHECK(strcmp(capturedRaiseMessage, "*** -[NSProxy forwardInvocation:] called!") == 0);
     [proxy dealloc];
 }
 
@@ -240,7 +248,7 @@ static void test_conformsToProtocol_routes_through_forwarding(void)
 
     sProxyUnderTest = proxy;
     CHECK(raiseWasCaught(invoke_conformsToProtocol));
-    CHECK(strcmp(NSTestRaiseMessage, "*** -[NSProxy forwardInvocation:] called!") == 0);
+    CHECK(strcmp(capturedRaiseMessage, "*** -[NSProxy forwardInvocation:] called!") == 0);
     [proxy dealloc];
 }
 
@@ -250,7 +258,7 @@ static void test_respondsToSelector_routes_through_forwarding(void)
 
     sProxyUnderTest = proxy;
     CHECK(raiseWasCaught(invoke_respondsToSelector));
-    CHECK(strcmp(NSTestRaiseMessage, "*** -[NSProxy forwardInvocation:] called!") == 0);
+    CHECK(strcmp(capturedRaiseMessage, "*** -[NSProxy forwardInvocation:] called!") == 0);
     [proxy dealloc];
 }
 

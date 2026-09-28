@@ -63,15 +63,13 @@ static void NSTestCaptureRaiseMessage(id format)
     (NO), so the calls it guards are never actually reached.  */
 BOOL NSKeepAllocationStatistics = 0;
 
-/*  NSException and NSInvalidArgumentException back NSZone.m's memory-page
-    error paths (vm_allocate/vm_deallocate/vm_copy failing), which the
-    tests never provoke.  The stub NSException class that used to live
-    here moved out in stage 2b: NSException.m now supplies the real class,
-    and two definitions of the same class collide at link time.  The
-    exception-name globals stay until stage 2b's Task 9 defines the real
-    constants in NSException.m; NSZone.m, NSObject.m and NSProxy.m still
-    reference them.  */
-id NSInvalidArgumentException = 0;
+/*  The exception-name constants NSZone.m, NSObject.m and NSProxy.m
+    reference back their memory-page and diagnostic error paths, which
+    the tests never provoke.  The zeroed placeholder globals that used
+    to stand in for them were removed when NSException.m defined the
+    real NXConstantString constants (stage 2b Task 9); the placeholders
+    collided with them at link time, and the real constants satisfy the
+    same references.  */
 
 /*  NXConstantString's class reference backs every @"..." literal in a
     compiled translation unit, including NSZoneName's `return @"";` --
@@ -86,13 +84,10 @@ void NSRecordAllocationEvent(int eventType, ...)
     unimplemented("NSRecordAllocationEvent");
 }
 
-/*  Task 7 (NSObject's instance methods) additions.  NSInternalInconsistencyException
-    is another exception-name constant, inert for the same reason
-    NSInvalidArgumentException above is: only read by code paths the
-    abort()-ing NSException stub is set up to catch before it's used.  */
-id NSInternalInconsistencyException = 0;
+/*  NSInternalInconsistencyException (Task 7 note) moved to NSException.m
+    with the other real exception-name constants in stage 2b Task 9.
 
-/*  Foundation-private helpers NSObject.m's reference calls.  The three
+    Foundation-private helpers NSObject.m's reference calls.  The three
     introspection helpers below it (_NSIMPForSelector,
     _NSMethodDescriptionForSelector, _NSClassConformsToProtocol) moved to
     NSObjCRuntime.m in stage 2b and are no longer stubbed here.
@@ -152,11 +147,6 @@ void _NSObjectRaiseNullSelectorException(id object, SEL aSelector)
 @end
 
 /*  Task 8 (NSObject's class methods and _NSZombie) additions.  */
-
-/*  NSGenericException backs _NSZombie's diagnostic raise, which none of
-    this stage's tests provoke -- inert for the same reason
-    NSInvalidArgumentException above is.  */
-id NSGenericException = 0;
 
 /*  NSZombieEnabled/NSDeallocateZombies gate NSZone.m's zombie path in
     NSDeallocateObject; every test in this stage leaves them at their real

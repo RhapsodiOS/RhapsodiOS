@@ -47,3 +47,10 @@ followed by port, integer, and port descriptor/value pairs, returning the
 master port, IO object number, and device port. The wrapper is at
 `0x47A0B75C`; both PPC and i386 independently
 confirm request/reply IDs `7217`/`7317` and the same output order.
+
+The i386 bodies independently confirm the asynchronous `FlushRect`,
+`AddDirtyRect`, and `FlushDirtyRects` packets at IDs `7212`, `7213`, and
+`7214`. The rectangle messages contain one window-number descriptor and one
+four-integer descriptor in a 52-byte message; flushing pending dirty regions
+sends only a window number in a 32-byte message. The reconstructed source and
+transport test cover these descriptors and payloads for both architectures.

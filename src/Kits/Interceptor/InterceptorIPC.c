@@ -322,6 +322,92 @@ int InterceptorShowCursor(InterceptorClientContext *context)
     return 0;
 }
 
+static int InterceptorSendRectNotification(port_t contextPort, int messageID,
+                                           int windowNumber, int x, int y,
+                                           int width, int height)
+{
+    InterceptorRPCMessage message;
+    int *words = message.words;
+    int result;
+
+    bzero((char *)&message, sizeof(message));
+    message.header.msg_simple = 1;
+    message.header.msg_size = 52;
+    message.header.msg_type = 0;
+    message.header.msg_remote_port = contextPort;
+    message.header.msg_local_port = PORT_NULL;
+    message.header.msg_id = messageID;
+    words[0] = InterceptorTypeDescriptor(2, 32, 1);
+    words[1] = windowNumber;
+    words[2] = InterceptorTypeDescriptor(2, 32, 4);
+    words[3] = x;
+    words[4] = y;
+    words[5] = width;
+    words[6] = height;
+
+    result = InterceptorMsgSend(&message.header, 0, 0);
+    if (result != 0)
+        Interceptor_mig_error(result);
+    return result;
+}
+
+int _InterceptorFlushRect(port_t contextPort, int windowNumber,
+                          int x, int y, int width, int height)
+{
+    return InterceptorSendRectNotification(contextPort, 7212, windowNumber,
+                                           x, y, width, height);
+}
+
+int InterceptorFlushRect(InterceptorClientContext *context, int windowNumber,
+                         int x, int y, int width, int height)
+{
+    return _InterceptorFlushRect(context->contextPort, windowNumber,
+                                 x, y, width, height);
+}
+
+int _InterceptorAddDirtyRect(port_t contextPort, int windowNumber,
+                             int x, int y, int width, int height)
+{
+    return InterceptorSendRectNotification(contextPort, 7213, windowNumber,
+                                           x, y, width, height);
+}
+
+int InterceptorAddDirtyRect(InterceptorClientContext *context,
+                            int windowNumber, int x, int y,
+                            int width, int height)
+{
+    return _InterceptorAddDirtyRect(context->contextPort, windowNumber,
+                                    x, y, width, height);
+}
+
+int _InterceptorFlushDirtyRects(port_t contextPort, int windowNumber)
+{
+    InterceptorRPCMessage message;
+    int *words = message.words;
+    int result;
+
+    bzero((char *)&message, sizeof(message));
+    message.header.msg_simple = 1;
+    message.header.msg_size = 32;
+    message.header.msg_type = 0;
+    message.header.msg_remote_port = contextPort;
+    message.header.msg_local_port = PORT_NULL;
+    message.header.msg_id = 7214;
+    words[0] = InterceptorTypeDescriptor(2, 32, 1);
+    words[1] = windowNumber;
+
+    result = InterceptorMsgSend(&message.header, 0, 0);
+    if (result != 0)
+        Interceptor_mig_error(result);
+    return result;
+}
+
+int InterceptorFlushDirtyRects(InterceptorClientContext *context,
+                               int windowNumber)
+{
+    return _InterceptorFlushDirtyRects(context->contextPort, windowNumber);
+}
+
 int _InterceptorRepairPalette(port_t contextPort)
 {
     msg_header_t message;

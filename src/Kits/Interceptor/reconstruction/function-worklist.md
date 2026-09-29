@@ -265,7 +265,7 @@ IDA function records: 392; symbol records: 540.
 | `0x47A0E2F4` | 164 | `_InterceptorCreateRemoteContext` | static-reviewed; runtime pending; `InterceptorContext.c` |
 | `0x47A0E398` | 40 | `_InterceptorCreateContext` | static-reviewed; runtime pending; `InterceptorContext.c` |
 | `0x47A0E3C0` | 136 | `_InterceptorDestroyContext` | static-reviewed; runtime pending; `InterceptorContext.c` |
-| `0x47A0E448` | 92 | `_Interceptor_mig_error` | unexamined |
+| `0x47A0E448` | 92 | `_Interceptor_mig_error` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0E4A4` | 84 | `_InterceptorMapFrameBuffer` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0E4F8` | 84 | `_InterceptorUnmapFrameBuffer` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0E54C` | 16 | `_InterceptorGetBM34ToBM35Table` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
@@ -277,11 +277,11 @@ IDA function records: 392; symbol records: 540.
 | `0x47A0E684` | 140 | `_InterceptorFrameBufferInfo` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0E710` | 44 | `_InterceptorHideCursor` | PPC static-reviewed; source authored; runtime pending |
 | `0x47A0E73C` | 40 | `_InterceptorShowCursor` | PPC static-reviewed; source authored; runtime pending |
-| `0x47A0E764` | 52 | `_InterceptorFlushRect` | unexamined |
-| `0x47A0E798` | 52 | `_InterceptorAddDirtyRect` | unexamined |
-| `0x47A0E7CC` | 36 | `_InterceptorFlushDirtyRects` | unexamined |
-| `0x47A0E7F0` | 36 | `_InterceptorRepairPalette` | unexamined |
-| `0x47A0E814` | 36 | `_InterceptorDamagedPalette` | unexamined |
+| `0x47A0E764` | 52 | `_InterceptorFlushRect` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
+| `0x47A0E798` | 52 | `_InterceptorAddDirtyRect` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
+| `0x47A0E7CC` | 36 | `_InterceptorFlushDirtyRects` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
+| `0x47A0E7F0` | 36 | `_InterceptorRepairPalette` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
+| `0x47A0E814` | 36 | `_InterceptorDamagedPalette` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0E838` | 72 | `_InterceptorGetDeviceAccessTokens` | PPC static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0E880` | 332 | `__InterceptorEnableFrameBufferMapping` | unexamined |
 | `0x47A0E9CC` | 332 | `__InterceptorDisableFrameBufferMapping` | unexamined |
@@ -299,11 +299,11 @@ IDA function records: 392; symbol records: 540.
 | `0x47A0FB38` | 268 | `__InterceptorShowCursor` | PPC static-reviewed; source authored; runtime pending |
 | `0x47A0FC44` | 304 | `__InterceptorGetBM256ToBM38Table` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0FD74` | 304 | `__InterceptorGetBM38ToBM256Table` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
-| `0x47A0FEA4` | 172 | `__InterceptorFlushRect` | unexamined |
-| `0x47A0FF50` | 172 | `__InterceptorAddDirtyRect` | unexamined |
-| `0x47A0FFFC` | 128 | `__InterceptorFlushDirtyRects` | unexamined |
-| `0x47A1007C` | 96 | `__InterceptorRepairPalette` | unexamined |
-| `0x47A100DC` | 96 | `__InterceptorDamagedPalette` | unexamined |
+| `0x47A0FEA4` | 172 | `__InterceptorFlushRect` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
+| `0x47A0FF50` | 172 | `__InterceptorAddDirtyRect` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
+| `0x47A0FFFC` | 128 | `__InterceptorFlushDirtyRects` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
+| `0x47A1007C` | 96 | `__InterceptorRepairPalette` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
+| `0x47A100DC` | 96 | `__InterceptorDamagedPalette` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A1013C` | 384 | `__InterceptorGetDeviceAccessTokens` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A102BC` | 96 | `__InterceptorShowCursorAsync` | PPC/i386 static-reviewed; source authored; runtime pending |
 | `0x47A1031C` | 316 | `__InterceptorUnmapFrameBuffer` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
@@ -901,23 +901,23 @@ IDA function records: 419; symbol records: 629.
 | `0x47A0B3DC` | 117 | `_InterceptorCreateRemoteContext` | static-reviewed; runtime pending; `InterceptorContext.c` |
 | `0x47A0B454` | 16 | `_InterceptorCreateContext` | static-reviewed; runtime pending; `InterceptorIPC.c` |
 | `0x47A0B464` | 90 | `_InterceptorDestroyContext` | static-reviewed; runtime pending; `InterceptorIPC.c` |
-| `0x47A0B4C0` | 60 | `_Interceptor_mig_error` | unexamined |
+| `0x47A0B4C0` | 60 | `_Interceptor_mig_error` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0B4FC` | 45 | `_InterceptorMapFrameBuffer` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0B52C` | 45 | `_InterceptorUnmapFrameBuffer` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0B55C` | 26 | `_InterceptorGetBM34ToBM35Table` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0B578` | 26 | `_InterceptorGetBM35ToBM34Table` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0B594` | 26 | `_InterceptorGetBM256ToBM38Table` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0B5B0` | 26 | `_InterceptorGetBM38ToBM256Table` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
-| `0x47A0B5CC` | 22 | `_InterceptorScreenCount` | unexamined |
+| `0x47A0B5CC` | 22 | `_InterceptorScreenCount` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0B5E4` | 70 | `_InterceptorCompositeBits` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0B62C` | 66 | `_InterceptorFrameBufferInfo` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
-| `0x47A0B670` | 22 | `_InterceptorHideCursor` | unexamined |
-| `0x47A0B688` | 20 | `_InterceptorShowCursor` | unexamined |
-| `0x47A0B69C` | 62 | `_InterceptorFlushRect` | unexamined |
-| `0x47A0B6DC` | 62 | `_InterceptorAddDirtyRect` | unexamined |
-| `0x47A0B71C` | 22 | `_InterceptorFlushDirtyRects` | unexamined |
-| `0x47A0B734` | 18 | `_InterceptorRepairPalette` | unexamined |
-| `0x47A0B748` | 18 | `_InterceptorDamagedPalette` | unexamined |
+| `0x47A0B670` | 22 | `_InterceptorHideCursor` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
+| `0x47A0B688` | 20 | `_InterceptorShowCursor` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
+| `0x47A0B69C` | 62 | `_InterceptorFlushRect` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
+| `0x47A0B6DC` | 62 | `_InterceptorAddDirtyRect` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
+| `0x47A0B71C` | 22 | `_InterceptorFlushDirtyRects` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
+| `0x47A0B734` | 18 | `_InterceptorRepairPalette` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
+| `0x47A0B748` | 18 | `_InterceptorDamagedPalette` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0B75C` | 38 | `_InterceptorGetDeviceAccessTokens` | i386 static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0B784` | 11 | `_ev_lock` | unexamined |
 | `0x47A0B78F` | 15 | `_spin` | unexamined |
@@ -934,18 +934,18 @@ IDA function records: 419; symbol records: 629.
 | `0x47A0C1E8` | 213 | `__InterceptorRemoveRect` | static-reviewed; `InterceptorIPC.c`; runtime pending |
 | `0x47A0C2C0` | 229 | `__InterceptorSetNotifyPort` | static-reviewed; `InterceptorIPC.c`; runtime pending |
 | `0x47A0C3A8` | 298 | `__InterceptorGetBM35ToBM34Table` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
-| `0x47A0C4D4` | 197 | `__InterceptorScreenCount` | unexamined |
-| `0x47A0C59C` | 197 | `__InterceptorHideCursor` | unexamined |
-| `0x47A0C664` | 197 | `__InterceptorShowCursor` | unexamined |
+| `0x47A0C4D4` | 197 | `__InterceptorScreenCount` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
+| `0x47A0C59C` | 197 | `__InterceptorHideCursor` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
+| `0x47A0C664` | 197 | `__InterceptorShowCursor` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0C72C` | 219 | `__InterceptorGetBM256ToBM38Table` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0C808` | 219 | `__InterceptorGetBM38ToBM256Table` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
-| `0x47A0C8E4` | 130 | `__InterceptorFlushRect` | unexamined |
-| `0x47A0C968` | 130 | `__InterceptorAddDirtyRect` | unexamined |
-| `0x47A0C9EC` | 95 | `__InterceptorFlushDirtyRects` | unexamined |
-| `0x47A0CA4C` | 74 | `__InterceptorRepairPalette` | unexamined |
-| `0x47A0CA98` | 74 | `__InterceptorDamagedPalette` | unexamined |
+| `0x47A0C8E4` | 130 | `__InterceptorFlushRect` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
+| `0x47A0C968` | 130 | `__InterceptorAddDirtyRect` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
+| `0x47A0C9EC` | 95 | `__InterceptorFlushDirtyRects` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
+| `0x47A0CA4C` | 74 | `__InterceptorRepairPalette` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
+| `0x47A0CA98` | 74 | `__InterceptorDamagedPalette` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0CAE4` | 275 | `__InterceptorGetDeviceAccessTokens` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
-| `0x47A0CBF8` | 74 | `__InterceptorShowCursorAsync` | unexamined |
+| `0x47A0CBF8` | 74 | `__InterceptorShowCursorAsync` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0CC44` | 249 | `__InterceptorUnmapFrameBuffer` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0CD40` | 362 | `__IOLookupByObjectNumber` | unexamined |
 | `0x47A0CEAC` | 298 | `__IOLookupByDeviceName` | unexamined |

@@ -95,3 +95,11 @@ historical toolchain is available.
 Runtime capture of outgoing messages, malformed replies, and transport
 failures remains pending because the compatible Mach guest/toolchain is not
 available on this host.
+
+The binary also contains asynchronous `FlushRect`, `AddDirtyRect`, and
+`FlushDirtyRects` notifications. IDs `7212`, `7213`, and `7214` carry a window
+number followed by four rectangle integers, a window number and four rectangle
+integers, and only a window number, respectively. The first two messages are
+52 bytes with integer descriptors for one and four values; the last is 32
+bytes with one integer descriptor. The source implements these packets in
+`InterceptorIPC.c` and includes transport assertions in `tests/ipc.c`.

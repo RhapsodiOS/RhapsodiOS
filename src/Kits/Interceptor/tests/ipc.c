@@ -9,6 +9,7 @@
 
 enum { TestAddRect, TestRemoveRect, TestSetNotifyPort,
        TestScreenCount, TestHideCursor, TestShowCursor,
+       TestFlushRect, TestAddDirtyRect, TestFlushDirtyRects,
        TestRepairPalette, TestDamagedPalette,
        TestMapFrameBuffer, TestUnmapFrameBuffer, TestFrameBufferInfo,
        TestAccessTokens,
@@ -39,6 +40,7 @@ static int expectedFrameBufferFields[8];
 static unsigned short expectedTableWords[4] = { 1, 2, 3, 4 };
 static unsigned char expectedCompositeBits[64];
 static int expectedCompositeFields[10];
+static int expectedDirtyRectFields[5];
 
 #if defined(__ppc__) || defined(__POWERPC__)
 #define EXPECTED_BM256_TO_BM38_TYPE 0x02201000
@@ -51,10 +53,12 @@ static int expectedCompositeFields[10];
 #if defined(__ppc__) || defined(__POWERPC__)
 #define EXPECTED_INTEGER_TYPE 0x02200018
 #define EXPECTED_RECT_TYPE    0x02200088
+#define EXPECTED_FOUR_INTS_TYPE 0x02200048
 #define EXPECTED_PORT_TYPE    0x06200018
 #elif defined(__i386__)
 #define EXPECTED_INTEGER_TYPE 0x10012002
 #define EXPECTED_RECT_TYPE    0x10082002
+#define EXPECTED_FOUR_INTS_TYPE 0x10042002
 #define EXPECTED_PORT_TYPE    0x10012006
 #else
 #error "IPC transport checks require 32-bit PowerPC or i386"
@@ -314,14 +318,44 @@ int InterceptorTestMsgRPC(msg_header_t *header, int option, int sendSize,
 
 int InterceptorTestMsgSend(msg_header_t *header, int option, int timeout)
 {
-    int expectedID = expectedOperation == TestShowCursor ? 7218 :
-                     expectedOperation == TestRepairPalette ? 7215 : 7216;
-    TestCheck(option == 0 && timeout == 0 && header->msg_simple == 1 &&
-              header->msg_size == sizeof(msg_header_t) &&
-              header->msg_type == 0 &&
-              header->msg_remote_port == expectedContextPort &&
-              header->msg_local_port == PORT_NULL && header->msg_id == expectedID,
-              "asynchronous screen notification header and destination");
+    if (expectedOperation == TestFlushRect ||
+        expectedOperation == TestAddDirtyRect) {
+        int *words = (int *)((char *)header + sizeof(*header));
+        int expectedID = expectedOperation == TestFlushRect ? 7212 : 7213;
+        TestCheck(option == 0 && timeout == 0 && header->msg_simple == 1 &&
+                  header->msg_size == 52 && header->msg_type == 0 &&
+                  header->msg_remote_port == expectedContextPort &&
+                  header->msg_local_port == PORT_NULL &&
+                  header->msg_id == expectedID,
+                  "rectangle notification header and destination");
+        TestCheck(words[0] == EXPECTED_INTEGER_TYPE &&
+                  words[1] == expectedDirtyRectFields[0] &&
+                  words[2] == EXPECTED_FOUR_INTS_TYPE &&
+                  words[3] == expectedDirtyRectFields[1] &&
+                  words[4] == expectedDirtyRectFields[2] &&
+                  words[5] == expectedDirtyRectFields[3] &&
+                  words[6] == expectedDirtyRectFields[4],
+                  "rectangle notification descriptors and five integer fields");
+    } else if (expectedOperation == TestFlushDirtyRects) {
+        int *words = (int *)((char *)header + sizeof(*header));
+        TestCheck(option == 0 && timeout == 0 && header->msg_simple == 1 &&
+                  header->msg_size == 32 && header->msg_type == 0 &&
+                  header->msg_remote_port == expectedContextPort &&
+                  header->msg_local_port == PORT_NULL && header->msg_id == 7214,
+                  "flush-dirty-rectangles notification header and destination");
+        TestCheck(words[0] == EXPECTED_INTEGER_TYPE &&
+                  words[1] == expectedDirtyRectFields[0],
+                  "flush-dirty-rectangles descriptor and window number");
+    } else {
+        int expectedID = expectedOperation == TestShowCursor ? 7218 :
+                         expectedOperation == TestRepairPalette ? 7215 : 7216;
+        TestCheck(option == 0 && timeout == 0 && header->msg_simple == 1 &&
+                  header->msg_size == sizeof(msg_header_t) &&
+                  header->msg_type == 0 &&
+                  header->msg_remote_port == expectedContextPort &&
+                  header->msg_local_port == PORT_NULL && header->msg_id == expectedID,
+                  "asynchronous screen notification header and destination");
+    }
     return expectedReply == TestSendFailure ? expectedSendResult : 0;
 }
 
@@ -380,6 +414,11 @@ static void PrepareCall(int operation, int reply)
     expectedCompositeFields[6] = 2;
     expectedCompositeFields[8] = 3;
     expectedCompositeFields[9] = 16;
+    expectedDirtyRectFields[0] = 60;
+    expectedDirtyRectFields[1] = 11;
+    expectedDirtyRectFields[2] = 12;
+    expectedDirtyRectFields[3] = 13;
+    expectedDirtyRectFields[4] = 14;
 }
 
 int main(void)
@@ -422,6 +461,10 @@ int main(void)
                   dlsym(handle, "_InterceptorHideCursor") != 0 &&
                   dlsym(handle, "_InterceptorShowCursor") != 0,
                   "selected framework exports screen-count and cursor RPCs");
+        TestCheck(dlsym(handle, "_InterceptorFlushRect") != 0 &&
+                  dlsym(handle, "_InterceptorAddDirtyRect") != 0 &&
+                  dlsym(handle, "_InterceptorFlushDirtyRects") != 0,
+                  "selected framework exports rectangle notification RPCs");
         TestCheck(dlsym(handle, "_InterceptorRepairPalette") != 0 &&
                   dlsym(handle, "_InterceptorDamagedPalette") != 0,
                   "selected framework exports palette notification RPCs");
@@ -482,6 +525,48 @@ int main(void)
     context.notifyPort = PORT_NULL;
     TestCheck(InterceptorShowCursor(&context) == 0,
               "ShowCursor wrapper queues an asynchronous request");
+
+    PrepareCall(TestFlushRect, TestSuccessReply);
+    TestCheck(_InterceptorFlushRect(expectedContextPort,
+                                    expectedDirtyRectFields[0],
+                                    expectedDirtyRectFields[1],
+                                    expectedDirtyRectFields[2],
+                                    expectedDirtyRectFields[3],
+                                    expectedDirtyRectFields[4]) == 0,
+              "FlushRect sends the observed notification packet");
+    PrepareCall(TestAddDirtyRect, TestSuccessReply);
+    TestCheck(_InterceptorAddDirtyRect(expectedContextPort,
+                                       expectedDirtyRectFields[0],
+                                       expectedDirtyRectFields[1],
+                                       expectedDirtyRectFields[2],
+                                       expectedDirtyRectFields[3],
+                                       expectedDirtyRectFields[4]) == 0,
+              "AddDirtyRect sends the observed notification packet");
+    PrepareCall(TestFlushDirtyRects, TestSuccessReply);
+    TestCheck(_InterceptorFlushDirtyRects(expectedContextPort,
+                                          expectedDirtyRectFields[0]) == 0,
+              "FlushDirtyRects sends the observed notification packet");
+    PrepareCall(TestFlushRect, TestSuccessReply);
+    context.contextPort = expectedContextPort;
+    TestCheck(InterceptorFlushRect(&context, expectedDirtyRectFields[0],
+                                   expectedDirtyRectFields[1],
+                                   expectedDirtyRectFields[2],
+                                   expectedDirtyRectFields[3],
+                                   expectedDirtyRectFields[4]) == 0,
+              "FlushRect wrapper forwards its context port and rectangle");
+    PrepareCall(TestAddDirtyRect, TestSuccessReply);
+    context.contextPort = expectedContextPort;
+    TestCheck(InterceptorAddDirtyRect(&context, expectedDirtyRectFields[0],
+                                      expectedDirtyRectFields[1],
+                                      expectedDirtyRectFields[2],
+                                      expectedDirtyRectFields[3],
+                                      expectedDirtyRectFields[4]) == 0,
+              "AddDirtyRect wrapper forwards its context port and rectangle");
+    PrepareCall(TestFlushDirtyRects, TestSuccessReply);
+    context.contextPort = expectedContextPort;
+    TestCheck(InterceptorFlushDirtyRects(&context,
+                                         expectedDirtyRectFields[0]) == 0,
+              "FlushDirtyRects wrapper forwards its context port");
 
     PrepareCall(TestRepairPalette, TestSuccessReply);
     TestCheck(_InterceptorRepairPalette(expectedContextPort) == 0,

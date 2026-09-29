@@ -23,6 +23,18 @@ int _InterceptorShowCursorAsync(port_t contextPort);
 int InterceptorScreenCount(InterceptorClientContext *context);
 int InterceptorHideCursor(InterceptorClientContext *context);
 int InterceptorShowCursor(InterceptorClientContext *context);
+int _InterceptorFlushRect(port_t contextPort, int windowNumber,
+                          int x, int y, int width, int height);
+int InterceptorFlushRect(InterceptorClientContext *context, int windowNumber,
+                         int x, int y, int width, int height);
+int _InterceptorAddDirtyRect(port_t contextPort, int windowNumber,
+                             int x, int y, int width, int height);
+int InterceptorAddDirtyRect(InterceptorClientContext *context,
+                            int windowNumber, int x, int y,
+                            int width, int height);
+int _InterceptorFlushDirtyRects(port_t contextPort, int windowNumber);
+int InterceptorFlushDirtyRects(InterceptorClientContext *context,
+                               int windowNumber);
 int _InterceptorRepairPalette(port_t contextPort);
 int _InterceptorDamagedPalette(port_t contextPort);
 int InterceptorRepairPalette(InterceptorClientContext *context);

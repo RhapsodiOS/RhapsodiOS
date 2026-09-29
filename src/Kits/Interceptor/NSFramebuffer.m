@@ -23,6 +23,20 @@
     return self->deviceSlot;
 }
 
+- (NSString *)pixelEncoding
+{
+    if (self->publicPixelEncoding == nil)
+        self->publicPixelEncoding = [NSString stringWithCString:self->pixelEncoding];
+    return self->publicPixelEncoding;
+}
+
+- (NSString *)driver
+{
+    if (self->publicDriver == nil)
+        self->publicDriver = [NSString stringWithCString:self->driver];
+    return self->publicDriver;
+}
+
 - (void *)addressForPoint:(NSPoint)location
 {
     if (!self->isMapped)

@@ -12,6 +12,7 @@ output. Runtime observations remain pending.
 | `-[NSFramebuffer unmapScreen]` | `0x47A0A9E0` | If plane zero is non-null, asks the client to unmap that screen/address, then clears plane zero. |
 | `-[NSFramebuffer remapScreen]` | `0x47A0AA3C` | Unmaps the old address, refreshes framebuffer metadata, remaps only when previously mapped, and updates bitmap dimensions, sample count, color space, color-space token, and row bytes. |
 | `-[NSFramebuffer isMappable]` | `0x47A0AC5C` | Returns `isMapped`. |
+| `-[NSFramebuffer pixelEncoding]`, `driver` | `0x47A0AF58`, `0x47A0AFBC` | Lazily wrap the fixed C strings in `NSString` using `stringWithCString:` and cache the resulting object. |
 | `-[NSFramebuffer addressForPoint:]` | `0x47A0AEC8` | Returns null when unmapped; otherwise offsets plane zero by `bytesPerRow * (int)y + (int)x * bitsPerPixel / 8`. Coordinates are truncated to integers. |
 | `-[NSFramebuffer retain]`, `release`, `retainCount`, `dealloc` | `0x47A0B040`–`0x47A0B068` | Framebuffer instances are immortal cached objects: retain returns self, release and dealloc do nothing, and retain count is `-1`. |
 | `-[NSFramebuffer canLockWithMode:]`, `lockWithMode:`, `unlock` | `0x47A0B074`–`0x47A0B090` | The predicate always returns true; lock and unlock are no-ops. |

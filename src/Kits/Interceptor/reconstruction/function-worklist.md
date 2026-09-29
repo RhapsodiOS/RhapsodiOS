@@ -174,8 +174,8 @@ IDA function records: 392; symbol records: 540.
 | `0x47A0AD58` | 184 | `-[NSFramebuffer conversionTable]` | unexamined |
 | `0x47A0AE10` | 184 | `-[NSFramebuffer inverseConversionTable]` | unexamined |
 | `0x47A0AEC8` | 144 | `-[NSFramebuffer addressForPoint:]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
-| `0x47A0AF58` | 100 | `-[NSFramebuffer pixelEncoding]` | unexamined |
-| `0x47A0AFBC` | 100 | `-[NSFramebuffer driver]` | unexamined |
+| `0x47A0AF58` | 100 | `-[NSFramebuffer pixelEncoding]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
+| `0x47A0AFBC` | 100 | `-[NSFramebuffer driver]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A0B020` | 16 | `-[NSFramebuffer deviceUnit]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A0B030` | 16 | `-[NSFramebuffer deviceSlot]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A0B040` | 12 | `-[NSFramebuffer retain]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
@@ -563,8 +563,8 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A0AD58` | `-[NSFramebuffer conversionTable]` | `NSFramebuffer.m` | unexamined |
 | `0x47A0AE10` | `-[NSFramebuffer inverseConversionTable]` | `NSFramebuffer.m` | unexamined |
 | `0x47A0AEC8` | `-[NSFramebuffer addressForPoint:]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
-| `0x47A0AF58` | `-[NSFramebuffer pixelEncoding]` | `NSFramebuffer.m` | unexamined |
-| `0x47A0AFBC` | `-[NSFramebuffer driver]` | `NSFramebuffer.m` | unexamined |
+| `0x47A0AF58` | `-[NSFramebuffer pixelEncoding]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
+| `0x47A0AFBC` | `-[NSFramebuffer driver]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
 | `0x47A0B020` | `-[NSFramebuffer deviceUnit]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
 | `0x47A0B030` | `-[NSFramebuffer deviceSlot]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
 | `0x47A0B040` | `-[NSFramebuffer retain]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
@@ -810,8 +810,8 @@ IDA function records: 419; symbol records: 629.
 | `0x47A087D8` | 164 | `-[NSFramebuffer conversionTable]` | unexamined |
 | `0x47A0887C` | 164 | `-[NSFramebuffer inverseConversionTable]` | unexamined |
 | `0x47A08920` | 116 | `-[NSFramebuffer addressForPoint:]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
-| `0x47A08994` | 87 | `-[NSFramebuffer pixelEncoding]` | unexamined |
-| `0x47A089EC` | 87 | `-[NSFramebuffer driver]` | unexamined |
+| `0x47A08994` | 87 | `-[NSFramebuffer pixelEncoding]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
+| `0x47A089EC` | 87 | `-[NSFramebuffer driver]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A08A44` | 16 | `-[NSFramebuffer deviceUnit]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A08A54` | 16 | `-[NSFramebuffer deviceSlot]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A08A64` | 10 | `-[NSFramebuffer retain]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
@@ -1226,8 +1226,8 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A087D8` | `-[NSFramebuffer conversionTable]` | `NSFramebuffer.m` | unexamined |
 | `0x47A0887C` | `-[NSFramebuffer inverseConversionTable]` | `NSFramebuffer.m` | unexamined |
 | `0x47A08920` | `-[NSFramebuffer addressForPoint:]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
-| `0x47A08994` | `-[NSFramebuffer pixelEncoding]` | `NSFramebuffer.m` | unexamined |
-| `0x47A089EC` | `-[NSFramebuffer driver]` | `NSFramebuffer.m` | unexamined |
+| `0x47A08994` | `-[NSFramebuffer pixelEncoding]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
+| `0x47A089EC` | `-[NSFramebuffer driver]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
 | `0x47A08A44` | `-[NSFramebuffer deviceUnit]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
 | `0x47A08A54` | `-[NSFramebuffer deviceSlot]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
 | `0x47A08A64` | `-[NSFramebuffer retain]` | `NSFramebuffer.m` | static-reviewed; runtime pending |

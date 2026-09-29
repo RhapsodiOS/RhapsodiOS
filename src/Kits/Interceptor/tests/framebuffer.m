@@ -20,6 +20,9 @@ int main(void)
                   "new framebuffer begins with zero device identifiers");
         TestCheck([framebuffer addressForPoint:NSMakePoint(2, 3)] == 0,
                   "unmapped framebuffer has no pixel address");
+        TestCheck([[framebuffer pixelEncoding] length] == 0 &&
+                  [[framebuffer driver] length] == 0,
+                  "pixel encoding and driver are lazily exposed as strings");
         TestCheck([framebuffer canLockWithMode:NSFramebufferReadWrite] &&
                   [framebuffer canLockWithMode:NSFramebufferWriteOnly] &&
                   [framebuffer canLockWithMode:NSFramebufferReadOnly],

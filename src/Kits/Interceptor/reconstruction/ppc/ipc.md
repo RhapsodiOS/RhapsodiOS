@@ -1,6 +1,6 @@
 # PowerPC Mach IPC evidence
 
-The primary binary contains six synchronous client RPC stubs, an asynchronous
+The primary binary contains synchronous client RPC stubs, an asynchronous
 ShowCursor request, and the context/port lifecycle functions. DR2 i386 has the
 same rectangle RPC IDs, sizes, reply IDs, and context acquisition arguments;
 see `../i386/ipc.md`.
@@ -13,10 +13,9 @@ see `../i386/ipc.md`.
 | `_InterceptorScreenCount` | `7207` | 24 bytes | `7307` | 32 bytes |
 | `_InterceptorHideCursor` | `7208` | 24 bytes | `7308` | 32 bytes |
 | `_InterceptorShowCursor` | `7209` | 24 bytes | `7309` | 32 bytes |
-| `_InterceptorMapFrameBuffer` | `7198` | 48 bytes | `7298` | 32 bytes |
-| `_InterceptorUnmapFrameBuffer` | `7219` | 40 bytes | `7319` | 32 bytes |
-| `_InterceptorMapFrameBuffer` | `7198` | 48 bytes | `7298` | 32 bytes |
-| `_InterceptorUnmapFrameBuffer` | `7219` | 40 bytes | `7319` | 32 bytes |
+| `_InterceptorMapFrameBuffer` | `7198` | 48 bytes | `7298` | 32-byte error / 48-byte success |
+| `_InterceptorUnmapFrameBuffer` | `7219` | 40 bytes | `7319` | 32-byte error / 40-byte success |
+| `_InterceptorFrameBufferInfo` | `7201` | 272 bytes | `7301` | 32-byte error / 272-byte success |
 
 Each call uses `msg_rpc(request, 0, requestSize, 0, 0)`. The context's
 `contextPort` is sent as `msg_remote_port`; `replyPort` is `msg_local_port`.
@@ -25,6 +24,15 @@ The message header is the historical 24-byte `msg_header_t`; messages set
 the reply ID and either the fixed 32-byte error reply or the operation-specific
 success reply. A malformed ID/descriptor returns the raw MIG error values
 `-301` or `-300`; transport errors pass through `Interceptor_mig_error`.
+
+The request-size column records the `msg_rpc` send-buffer size. Map sends 48
+bytes with `msg_size` set to 40; unmap sends 40 bytes with `msg_size` set to
+48. FrameBufferInfo sends a 272-byte receive buffer with `msg_size` set to 32
+and contains the screen integer descriptor and screen number. Its successful
+272-byte reply carries an 80-byte driver string, seven integer metadata pairs,
+a 64-byte pixel encoding, and one additional integer. The source validates the
+long-form string descriptors and each integer descriptor before copying their
+corresponding outputs.
 
 `_InterceptorAddRect` serializes all eight integer fields of
 `InterceptedRectangle` and copies all eight returned fields back on success.
@@ -55,8 +63,9 @@ including the typed descriptors (`0x02200088` for the rectangle,
 `0x02200018` for integers, and `0x06200018` for ports in the PPC word view),
 success/error reply shapes, and the observed `-300`/`-301` validation errors.
 Descriptor fields are assigned individually so the compiler emits the proper
-architecture-specific bitfield order. A test transport now captures all six
-synchronous requests and the asynchronous ShowCursor request and supplies
+architecture-specific bitfield order. A test transport captures the synchronous
+requests, including framebuffer map/unmap/metadata, and the asynchronous
+ShowCursor request; it supplies
 successful, server-error, wrong-ID, and send-failure outcomes. Its execution
 remains pending until the compatible
 historical toolchain is available.

@@ -165,7 +165,7 @@ IDA function records: 392; symbol records: 540.
 | `0x47A0A5BC` | 108 | `_instanceForScreen` | static-reviewed; source authored; runtime pending; `NSFramebuffer.m` |
 | `0x47A0A628` | 56 | `-[NSFramebuffer initWithScreen:]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A0A660` | 204 | `-[NSFramebuffer initWithScreen:andMapIfPossible:]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
-| `0x47A0A72C` | 692 | `-[NSFramebuffer initFromScreen:andMapIfPossible:]` | unexamined |
+| `0x47A0A72C` | 692 | `-[NSFramebuffer initFromScreen:andMapIfPossible:]` | static-reviewed; source authored; runtime pending; `NSFramebuffer.m` |
 | `0x47A0A9E0` | 92 | `-[NSFramebuffer unmapScreen]` | static-reviewed; source authored; runtime pending; `NSFramebuffer.m` |
 | `0x47A0AA3C` | 544 | `-[NSFramebuffer remapScreen]` | unexamined |
 | `0x47A0AC5C` | 20 | `-[NSFramebuffer isMappable]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
@@ -274,7 +274,7 @@ IDA function records: 392; symbol records: 540.
 | `0x47A0E59C` | 48 | `_InterceptorGetBM38ToBM256Table` | unexamined |
 | `0x47A0E5CC` | 44 | `_InterceptorScreenCount` | PPC static-reviewed; source authored; runtime pending |
 | `0x47A0E5F8` | 140 | `_InterceptorCompositeBits` | unexamined |
-| `0x47A0E684` | 140 | `_InterceptorFrameBufferInfo` | unexamined |
+| `0x47A0E684` | 140 | `_InterceptorFrameBufferInfo` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0E710` | 44 | `_InterceptorHideCursor` | PPC static-reviewed; source authored; runtime pending |
 | `0x47A0E73C` | 40 | `_InterceptorShowCursor` | PPC static-reviewed; source authored; runtime pending |
 | `0x47A0E764` | 52 | `_InterceptorFlushRect` | unexamined |
@@ -288,7 +288,7 @@ IDA function records: 392; symbol records: 540.
 | `0x47A0EB18` | 336 | `__InterceptorMapFrameBuffer` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0EC68` | 384 | `__InterceptorGetBM34ToBM35Table` | unexamined |
 | `0x47A0EDE8` | 472 | `__InterceptorCompositeBits` | unexamined |
-| `0x47A0EFC0` | 704 | `__InterceptorFrameBufferInfo` | unexamined |
+| `0x47A0EFC0` | 704 | `__InterceptorFrameBufferInfo` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0F280` | 284 | `__OldInterceptorSetNotifyPort` | unexamined |
 | `0x47A0F39C` | 436 | `__InterceptorAddRect` | static-reviewed; `InterceptorIPC.c`; runtime pending |
 | `0x47A0F550` | 284 | `__InterceptorRemoveRect` | static-reviewed; `InterceptorIPC.c`; runtime pending |
@@ -554,7 +554,7 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A0A4D8` | `-[NSDirectScreen(Obsolete) data]` | `NSDirectScreen.m` | unexamined |
 | `0x47A0A628` | `-[NSFramebuffer initWithScreen:]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
 | `0x47A0A660` | `-[NSFramebuffer initWithScreen:andMapIfPossible:]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
-| `0x47A0A72C` | `-[NSFramebuffer initFromScreen:andMapIfPossible:]` | `NSFramebuffer.m` | unexamined |
+| `0x47A0A72C` | `-[NSFramebuffer initFromScreen:andMapIfPossible:]` | `NSFramebuffer.m` | static-reviewed; source authored; runtime pending |
 | `0x47A0A9E0` | `-[NSFramebuffer unmapScreen]` | `NSFramebuffer.m` | static-reviewed; source authored; runtime pending |
 | `0x47A0AA3C` | `-[NSFramebuffer remapScreen]` | `NSFramebuffer.m` | unexamined |
 | `0x47A0AC5C` | `-[NSFramebuffer isMappable]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
@@ -801,7 +801,7 @@ IDA function records: 419; symbol records: 629.
 | `0x47A08040` | 53 | `_instanceForScreen` | static-reviewed; source authored; runtime pending; `NSFramebuffer.m` |
 | `0x47A08078` | 35 | `-[NSFramebuffer initWithScreen:]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A0809C` | 185 | `-[NSFramebuffer initWithScreen:andMapIfPossible:]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
-| `0x47A08158` | 784 | `-[NSFramebuffer initFromScreen:andMapIfPossible:]` | unexamined |
+| `0x47A08158` | 784 | `-[NSFramebuffer initFromScreen:andMapIfPossible:]` | static-reviewed; source authored; runtime pending; `NSFramebuffer.m` |
 | `0x47A08468` | 66 | `-[NSFramebuffer unmapScreen]` | static-reviewed; source authored; runtime pending; `NSFramebuffer.m` |
 | `0x47A084AC` | 656 | `-[NSFramebuffer remapScreen]` | unexamined |
 | `0x47A0873C` | 17 | `-[NSFramebuffer isMappable]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
@@ -910,7 +910,7 @@ IDA function records: 419; symbol records: 629.
 | `0x47A0B5B0` | 26 | `_InterceptorGetBM38ToBM256Table` | unexamined |
 | `0x47A0B5CC` | 22 | `_InterceptorScreenCount` | unexamined |
 | `0x47A0B5E4` | 70 | `_InterceptorCompositeBits` | unexamined |
-| `0x47A0B62C` | 66 | `_InterceptorFrameBufferInfo` | unexamined |
+| `0x47A0B62C` | 66 | `_InterceptorFrameBufferInfo` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0B670` | 22 | `_InterceptorHideCursor` | unexamined |
 | `0x47A0B688` | 20 | `_InterceptorShowCursor` | unexamined |
 | `0x47A0B69C` | 62 | `_InterceptorFlushRect` | unexamined |
@@ -928,7 +928,7 @@ IDA function records: 419; symbol records: 629.
 | `0x47A0B9B8` | 255 | `__InterceptorMapFrameBuffer` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0BAB8` | 298 | `__InterceptorGetBM34ToBM35Table` | unexamined |
 | `0x47A0BBE4` | 389 | `__InterceptorCompositeBits` | unexamined |
-| `0x47A0BD6C` | 662 | `__InterceptorFrameBufferInfo` | unexamined |
+| `0x47A0BD6C` | 662 | `__InterceptorFrameBufferInfo` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0C004` | 213 | `__OldInterceptorSetNotifyPort` | unexamined |
 | `0x47A0C0DC` | 267 | `__InterceptorAddRect` | static-reviewed; `InterceptorIPC.c`; runtime pending |
 | `0x47A0C1E8` | 213 | `__InterceptorRemoveRect` | static-reviewed; `InterceptorIPC.c`; runtime pending |
@@ -1217,7 +1217,7 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A07FA0` | `-[NSDirectScreen(Obsolete) data]` | `NSDirectScreen.m` | unexamined |
 | `0x47A08078` | `-[NSFramebuffer initWithScreen:]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
 | `0x47A0809C` | `-[NSFramebuffer initWithScreen:andMapIfPossible:]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
-| `0x47A08158` | `-[NSFramebuffer initFromScreen:andMapIfPossible:]` | `NSFramebuffer.m` | unexamined |
+| `0x47A08158` | `-[NSFramebuffer initFromScreen:andMapIfPossible:]` | `NSFramebuffer.m` | static-reviewed; source authored; runtime pending |
 | `0x47A08468` | `-[NSFramebuffer unmapScreen]` | `NSFramebuffer.m` | static-reviewed; source authored; runtime pending |
 | `0x47A084AC` | `-[NSFramebuffer remapScreen]` | `NSFramebuffer.m` | unexamined |
 | `0x47A0873C` | `-[NSFramebuffer isMappable]` | `NSFramebuffer.m` | static-reviewed; runtime pending |

@@ -19,9 +19,9 @@ output. Runtime observations remain pending.
 | `-[NSFramebuffer retain]`, `release`, `retainCount`, `dealloc` | `0x47A0B040`–`0x47A0B068` | Framebuffer instances are immortal cached objects: retain returns self, release and dealloc do nothing, and retain count is `-1`. |
 | `-[NSFramebuffer canLockWithMode:]`, `lockWithMode:`, `unlock` | `0x47A0B074`–`0x47A0B090` | The predicate always returns true; lock and unlock are no-ops. |
 
-`NSFramebuffer.m` now implements the recovered simple accessors, pixel-address
-calculation, immortal-cache ownership methods, per-screen cache helpers, unmap,
-and lock methods. Map/unmap RPCs are implemented in `InterceptorIPC.c`; metadata
-query, remapping, and conversion-table behavior remain to be reconstructed.
-These source methods have not been compiled or run on a compatible Rhapsody
-toolchain.
+`NSFramebuffer.m` now implements both convenience initializers, the per-screen
+cache, metadata-based bitmap setup, unmap, accessors, pixel-address calculation,
+ownership methods, and lock methods. Framebuffer metadata and map/unmap RPCs are
+implemented in `InterceptorIPC.c`; remapping and conversion-table behavior
+remain to be reconstructed. Source/runtime verification on a compatible
+Rhapsody toolchain remains pending.

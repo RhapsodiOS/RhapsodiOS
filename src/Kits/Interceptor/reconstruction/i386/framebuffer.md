@@ -5,6 +5,7 @@ framebuffer methods implemented in the shared source:
 
 | Function | i386 address | Confirmed behavior |
 |---|---:|---|
+| `-[NSFramebuffer initFromScreen:andMapIfPossible:]` | `0x47A08158` | Reuses cached instances, acquires metadata, optionally maps the display, validates color space and pixel depth, and initializes the inherited bitmap fields. |
 | `-[NSFramebuffer isMappable]` | `0x47A0873C` | Returns the `isMapped` byte. |
 | `-[NSFramebuffer screenBounds]` | `0x47A08750` | Returns pixel width and height with origin `(0,0)`. |
 | `-[NSFramebuffer pixelEncoding]`, `driver` | `0x47A08994`, `0x47A089EC` | Lazily convert the fixed C strings with `NSString stringWithCString:` and cache the objects, matching PPC. |
@@ -14,13 +15,12 @@ framebuffer methods implemented in the shared source:
 | `-[NSFramebuffer _interceptorClient]` | `0x47A08AA8` | Returns the stored client. |
 | `_setInstanceForScreen`, `_instanceForScreen` | `0x47A07FC0`, `0x47A08040` | Lazily allocate a screen-count-sized pointer array using the client's screen-count RPC, zero it, and store or retrieve a framebuffer by valid screen index, matching PPC. |
 | `-[NSFramebuffer unmapScreen]` | `0x47A08468` | Unmaps plane zero when present through the client's context, then clears plane zero, matching PPC. |
-| `-[NSFramebuffer unmapScreen]` | `0x47A08468` | Unmaps plane zero when present through the client's context, then clears plane zero, matching PPC. |
 
-The initializer independently confirms per-screen instance reuse, creation of
-an interceptor client, optional mapping, and initialization of the inherited
-bitmap fields. Its supported depths are 2, 8, 12, 15, 16, 24, and 32 bits; the
-15-bit path uses five samples in a 16-bit pixel, while 12/16-bit paths use four
-samples and 16-bit pixels. Runtime behavior and screen-bound calculations have
-not yet been compared. The convenience initializer also checks the argument's
-class and extracts `NSScreenNumber` from the device description, matching the
-PPC implementation.
+The shared source implements the cache-backed initializer, mapping decision,
+color-space selection, and bitmap metadata setup. Supported pixel depths are
+2, 8, 12, 15, 16, 24, and 32 bits. It maps 12/16-bit modes to four bits per
+sample in 16-bit pixels, 15-bit modes to five bits per sample in 16-bit pixels,
+and 24/32-bit modes to eight bits per sample in 32-bit pixels. Samples per
+pixel come from the reported color-space code. The convenience initializer also
+checks the argument's class and extracts `NSScreenNumber` from the device
+description, matching PPC.

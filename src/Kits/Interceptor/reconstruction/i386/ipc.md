@@ -15,10 +15,9 @@ contract:
 | `_InterceptorHideCursor` | `0x47A0C59C` | `7208` | 24 | `7308` | 32 |
 | `_InterceptorShowCursor` | `0x47A0C664` | `7209` | 24 | `7309` | 32 |
 | `_InterceptorShowCursorAsync` | `0x47A0CBF8` | `7218` | 24 | — | — |
-| `_InterceptorMapFrameBuffer` | `0x47A0B9B8` | `7198` | 48 | `7298` | 32 |
-| `_InterceptorUnmapFrameBuffer` | `0x47A0CC44` | `7219` | 40 | `7319` | 32 |
-| `_InterceptorMapFrameBuffer` | `0x47A0B9B8` | `7198` | 48 | `7298` | 32 |
-| `_InterceptorUnmapFrameBuffer` | `0x47A0CC44` | `7219` | 40 | `7319` | 32 |
+| `_InterceptorMapFrameBuffer` | `0x47A0B9B8` | `7198` | 48 | `7298` | 32-error / 48-success |
+| `_InterceptorUnmapFrameBuffer` | `0x47A0CC44` | `7219` | 40 | `7319` | 32-error / 40-success |
+| `_InterceptorFrameBufferInfo` | `0x47A0BD6C` | `7201` | 272 | `7301` | 32-byte error / 272-byte success |
 
 All synchronous RPCs call `msg_rpc` with the same request and reply maximum
 sizes as the PPC bodies. Context setup calls `_port_allocate` and `_getPSPort`

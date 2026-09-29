@@ -56,6 +56,102 @@ static NSFramebuffer *NSFramebufferInstanceForScreen(int screenNumber)
     return nil;
 }
 
+- initFromScreen:(int)screenNumber andMapIfPossible:(BOOL)map
+{
+    NSFramebuffer *cachedFramebuffer;
+    unsigned char *planes[1];
+    void *mappedAddress = 0;
+    int pixelsWide, pixelsHigh, bitsPerPixel, bytesPerRow;
+    int colorSpaceCode, reserved;
+    int bitsPerSample, samplesPerPixel;
+    NSString *colorSpaceName;
+
+    cachedFramebuffer = NSFramebufferInstanceForScreen(screenNumber);
+    if (cachedFramebuffer != nil) {
+        [self release];
+        return cachedFramebuffer;
+    }
+
+    self->interceptorClient = [[NSInterceptorClient alloc] init];
+    if (self->interceptorClient == nil)
+        goto failure;
+
+    self->screenNumber = screenNumber;
+    if (InterceptorFrameBufferInfo(
+            [self->interceptorClient _context], screenNumber, self->driver,
+            &self->deviceSlot, &self->deviceUnit, &pixelsWide, &pixelsHigh,
+            &bitsPerPixel, &bytesPerRow, &colorSpaceCode,
+            self->pixelEncoding, &reserved) != 0)
+        goto failure;
+
+    self->isMapped = NO;
+    if (map == YES && InterceptorMapFrameBuffer(
+                   [self->interceptorClient _context], screenNumber,
+                   &mappedAddress) == 0)
+        self->isMapped = YES;
+
+    if (colorSpaceCode == 0) {
+        colorSpaceName = NSDeviceBlackColorSpace;
+        samplesPerPixel = 1;
+    } else if (colorSpaceCode == 1) {
+        colorSpaceName = NSDeviceWhiteColorSpace;
+        samplesPerPixel = 1;
+    } else if (colorSpaceCode == 2) {
+        colorSpaceName = NSDeviceRGBColorSpace;
+        samplesPerPixel = 3;
+    } else {
+        NSLog(@"NSFramebuffer received unsupported color-space code %d",
+              colorSpaceCode);
+        goto failure;
+    }
+
+    switch (bitsPerPixel) {
+    case 2:
+        bitsPerSample = 2;
+        break;
+    case 8:
+        bitsPerSample = 8;
+        break;
+    case 12:
+    case 16:
+        bitsPerSample = 4;
+        bitsPerPixel = 16;
+        break;
+    case 15:
+        bitsPerSample = 5;
+        bitsPerPixel = 16;
+        break;
+    case 24:
+    case 32:
+        bitsPerSample = 8;
+        bitsPerPixel = 32;
+        break;
+    default:
+        NSLog(@"NSFramebuffer received unsupported pixel depth %d",
+              bitsPerPixel);
+        goto failure;
+    }
+
+    planes[0] = (unsigned char *)mappedAddress;
+    (void)[self initWithBitmapDataPlanes:planes
+                              pixelsWide:pixelsWide
+                              pixelsHigh:pixelsHigh
+                            bitsPerSample:bitsPerSample
+                          samplesPerPixel:samplesPerPixel
+                                hasAlpha:NO
+                                isPlanar:NO
+                           colorSpaceName:colorSpaceName
+                              bytesPerRow:bytesPerRow
+                             bitsPerPixel:bitsPerPixel];
+    NSFramebufferSetInstanceForScreen(self, screenNumber,
+                                      self->interceptorClient);
+    return self;
+
+failure:
+    [self release];
+    return nil;
+}
+
 - (BOOL)isMappable
 {
     return self->isMapped;

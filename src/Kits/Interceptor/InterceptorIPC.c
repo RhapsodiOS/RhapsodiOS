@@ -19,6 +19,11 @@ typedef struct {
     int words[13];
 } InterceptorRPCMessage;
 
+typedef struct {
+    msg_header_t header;
+    int words[62];
+} InterceptorFrameBufferInfoMessage;
+
 static int InterceptorTypeDescriptor(int name, int size, int count)
 {
     msg_type_t descriptor;
@@ -30,6 +35,18 @@ static int InterceptorTypeDescriptor(int name, int size, int count)
     descriptor.msg_type_inline = 1;
     memcpy(&word, &descriptor, sizeof(word));
     return word;
+}
+
+static int InterceptorCheckLongType(int *words, int name, int size,
+                                    unsigned int count)
+{
+    msg_type_long_t descriptor;
+    memcpy(&descriptor, words, sizeof(descriptor));
+    return descriptor.msg_type_header.msg_type_inline == 1 &&
+           descriptor.msg_type_header.msg_type_longform == 1 &&
+           descriptor.msg_type_long_name == name &&
+           descriptor.msg_type_long_size == size &&
+           descriptor.msg_type_long_number == count;
 }
 
 static void InterceptorSetRPCHeader(InterceptorRPCMessage *message,
@@ -321,4 +338,107 @@ int InterceptorUnmapFrameBuffer(InterceptorClientContext *context,
                                         context->replyPort, screenNumber,
                                         task_self(),
                                         (unsigned int)(unsigned long)address);
+}
+
+int _InterceptorFrameBufferInfo(port_t contextPort, port_t replyPort,
+                                int screenNumber, char *driver,
+                                int *deviceSlot, int *deviceUnit,
+                                int *pixelsWide, int *pixelsHigh,
+                                int *bitsPerPixel, int *bytesPerRow,
+                                int *colorSpaceCode, char *pixelEncoding,
+                                int *reserved)
+{
+    InterceptorFrameBufferInfoMessage message;
+    int *words = message.words;
+    int *outputs[7];
+    int field;
+    int result;
+
+    bzero((char *)&message, sizeof(message));
+    message.header.msg_simple = 1;
+    message.header.msg_size = 32;
+    message.header.msg_type = 0x100;
+    message.header.msg_local_port = replyPort;
+    message.header.msg_remote_port = contextPort;
+    message.header.msg_id = 7201;
+    words[0] = InterceptorTypeDescriptor(2, 32, 1);
+    words[1] = screenNumber;
+
+    result = InterceptorMsgRPC(&message.header, 0, 272, 0, 0);
+    if (result != 0) {
+        Interceptor_mig_error(result);
+        return words[3];
+    }
+    if (message.header.msg_id != 7301) {
+        Interceptor_mig_error(-301);
+        return words[3];
+    }
+    if (message.header.msg_simple != 1 ||
+        words[0] != InterceptorTypeDescriptor(2, 32, 1)) {
+        Interceptor_mig_error(-300);
+        return words[3];
+    }
+    if (message.header.msg_size == 32 && words[1] != 0) {
+        Interceptor_mig_error(words[1]);
+        return words[3];
+    }
+    if (message.header.msg_size != 272) {
+        Interceptor_mig_error(-300);
+        return words[3];
+    }
+    if (words[1] != 0) {
+        Interceptor_mig_error(words[1]);
+        return words[3];
+    }
+    if (words[2] != InterceptorTypeDescriptor(2, 32, 1) ||
+        !InterceptorCheckLongType(&words[4], 12, 640, 1)) {
+        Interceptor_mig_error(-300);
+        return words[3];
+    }
+
+    strncpy(driver, (const char *)&words[7], 80);
+    driver[79] = 0;
+    outputs[0] = deviceSlot;
+    outputs[1] = deviceUnit;
+    outputs[2] = pixelsWide;
+    outputs[3] = pixelsHigh;
+    outputs[4] = bitsPerPixel;
+    outputs[5] = bytesPerRow;
+    outputs[6] = colorSpaceCode;
+    for (field = 0; field < 7; field++) {
+        int descriptorIndex = 27 + field * 2;
+        if (words[descriptorIndex] != InterceptorTypeDescriptor(2, 32, 1)) {
+            Interceptor_mig_error(-300);
+            return words[3];
+        }
+        *outputs[field] = words[descriptorIndex + 1];
+    }
+    if (!InterceptorCheckLongType(&words[41], 12, 512, 1)) {
+        Interceptor_mig_error(-300);
+        return words[3];
+    }
+    strncpy(pixelEncoding, (const char *)&words[44], 64);
+    pixelEncoding[63] = 0;
+    if (words[60] != InterceptorTypeDescriptor(2, 32, 1)) {
+        Interceptor_mig_error(-300);
+        return words[3];
+    }
+    *reserved = words[61];
+    return words[3];
+}
+
+int InterceptorFrameBufferInfo(InterceptorClientContext *context,
+                               int screenNumber, char *driver,
+                               int *deviceSlot, int *deviceUnit,
+                               int *pixelsWide, int *pixelsHigh,
+                               int *bitsPerPixel, int *bytesPerRow,
+                               int *colorSpaceCode, char *pixelEncoding,
+                               int *reserved)
+{
+    return _InterceptorFrameBufferInfo(context->contextPort,
+                                       context->replyPort, screenNumber,
+                                       driver, deviceSlot, deviceUnit,
+                                       pixelsWide, pixelsHigh, bitsPerPixel,
+                                       bytesPerRow, colorSpaceCode,
+                                       pixelEncoding, reserved);
 }

@@ -33,5 +33,19 @@ int InterceptorMapFrameBuffer(InterceptorClientContext *context,
                               int screenNumber, void **address);
 int InterceptorUnmapFrameBuffer(InterceptorClientContext *context,
                                 int screenNumber, void *address);
+int _InterceptorFrameBufferInfo(port_t contextPort, port_t replyPort,
+                                int screenNumber, char *driver,
+                                int *deviceSlot, int *deviceUnit,
+                                int *pixelsWide, int *pixelsHigh,
+                                int *bitsPerPixel, int *bytesPerRow,
+                                int *colorSpaceCode, char *pixelEncoding,
+                                int *reserved);
+int InterceptorFrameBufferInfo(InterceptorClientContext *context,
+                               int screenNumber, char *driver,
+                               int *deviceSlot, int *deviceUnit,
+                               int *pixelsWide, int *pixelsHigh,
+                               int *bitsPerPixel, int *bytesPerRow,
+                               int *colorSpaceCode, char *pixelEncoding,
+                               int *reserved);
 
 #endif

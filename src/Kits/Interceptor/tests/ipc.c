@@ -9,7 +9,7 @@
 
 enum { TestAddRect, TestRemoveRect, TestSetNotifyPort,
        TestScreenCount, TestHideCursor, TestShowCursor,
-       TestMapFrameBuffer, TestUnmapFrameBuffer };
+       TestMapFrameBuffer, TestUnmapFrameBuffer, TestFrameBufferInfo };
 enum { TestSuccessReply, TestErrorReply, TestWrongReplyID, TestShortReply, TestSendFailure };
 
 static int expectedOperation;
@@ -26,6 +26,9 @@ static int expectedOperationResult;
 static int expectedScreenNumber;
 static port_t expectedTaskPort;
 static unsigned int expectedAddress;
+static char expectedDriver[80];
+static char expectedPixelEncoding[64];
+static int expectedFrameBufferFields[8];
 
 #if defined(__ppc__) || defined(__POWERPC__)
 #define EXPECTED_INTEGER_TYPE 0x02200018
@@ -38,6 +41,18 @@ static unsigned int expectedAddress;
 #else
 #error "IPC transport checks require 32-bit PowerPC or i386"
 #endif
+
+static void TestSetLongType(int *words, int size)
+{
+    msg_type_long_t descriptor;
+    memset(&descriptor, 0, sizeof(descriptor));
+    descriptor.msg_type_header.msg_type_inline = 1;
+    descriptor.msg_type_header.msg_type_longform = 1;
+    descriptor.msg_type_long_name = 12;
+    descriptor.msg_type_long_size = size;
+    descriptor.msg_type_long_number = 1;
+    memcpy(words, &descriptor, sizeof(descriptor));
+}
 
 int InterceptorTestMsgRPC(msg_header_t *header, int option, int sendSize,
                           int receiveSize, int timeout)
@@ -106,6 +121,15 @@ int InterceptorTestMsgRPC(msg_header_t *header, int option, int sendSize,
                   "UnmapFrameBuffer sends screen, task port, and address");
         replyID = 7319;
         successSize = 40;
+    } else if (expectedOperation == TestFrameBufferInfo) {
+        TestCheck(sendSize == 272 && header->msg_size == 32 &&
+                  header->msg_simple == 1 && header->msg_id == 7201,
+                  "FrameBufferInfo request ID and buffer sizes");
+        TestCheck(words[0] == EXPECTED_INTEGER_TYPE &&
+                  words[1] == expectedScreenNumber,
+                  "FrameBufferInfo sends the screen number");
+        replyID = 7301;
+        successSize = 272;
     } else {
         int requestID = expectedOperation == TestScreenCount ? 7207 :
                         expectedOperation == TestHideCursor ? 7208 : 7209;
@@ -148,6 +172,21 @@ int InterceptorTestMsgRPC(msg_header_t *header, int option, int sendSize,
         words[3] = expectedOperationResult;
         words[4] = EXPECTED_INTEGER_TYPE;
         words[5] = (int)expectedAddress;
+    } else if (expectedOperation == TestFrameBufferInfo) {
+        int field;
+        words[2] = EXPECTED_INTEGER_TYPE;
+        words[3] = expectedOperationResult;
+        TestSetLongType(&words[4], 640);
+        memcpy(&words[7], expectedDriver, sizeof(expectedDriver));
+        for (field = 0; field < 7; field++) {
+            words[27 + field * 2] = EXPECTED_INTEGER_TYPE;
+            words[28 + field * 2] = expectedFrameBufferFields[field];
+        }
+        TestSetLongType(&words[41], 512);
+        memcpy(&words[44], expectedPixelEncoding,
+               sizeof(expectedPixelEncoding));
+        words[60] = EXPECTED_INTEGER_TYPE;
+        words[61] = expectedFrameBufferFields[7];
     }
     return 0;
 }
@@ -193,6 +232,18 @@ static void PrepareCall(int operation, int reply)
     expectedScreenNumber = 2;
     expectedTaskPort = task_self();
     expectedAddress = 0x12340000;
+    memset(expectedDriver, 0, sizeof(expectedDriver));
+    strcpy(expectedDriver, "TestFramebufferDriver");
+    memset(expectedPixelEncoding, 0, sizeof(expectedPixelEncoding));
+    strcpy(expectedPixelEncoding, "RRRRRRRRGGGGGGGGBBBBBBBB--------");
+    expectedFrameBufferFields[0] = 3;
+    expectedFrameBufferFields[1] = 4;
+    expectedFrameBufferFields[2] = 1024;
+    expectedFrameBufferFields[3] = 768;
+    expectedFrameBufferFields[4] = 32;
+    expectedFrameBufferFields[5] = 4096;
+    expectedFrameBufferFields[6] = 2;
+    expectedFrameBufferFields[7] = 0;
 }
 
 int main(void)
@@ -201,6 +252,8 @@ int main(void)
     InterceptorClientContext context;
     InterceptedRectangle rectangle;
     TestCheck(handle != 0, "loads explicitly selected framework");
+    TestCheck(sizeof(msg_header_t) == 24 && sizeof(msg_type_long_t) == 12,
+              "Mach header and long-form descriptor match the wire layout");
     TestCheck(sizeof(InterceptorClientContext) == 12,
               "client context has three 32-bit port fields");
     TestCheck(offsetof(InterceptorClientContext, contextPort) == 0 &&
@@ -236,6 +289,8 @@ int main(void)
         TestCheck(dlsym(handle, "_InterceptorMapFrameBuffer") != 0 &&
                   dlsym(handle, "_InterceptorUnmapFrameBuffer") != 0,
                   "selected framework exports framebuffer mapping RPCs");
+        TestCheck(dlsym(handle, "_InterceptorFrameBufferInfo") != 0,
+                  "selected framework exports framebuffer metadata RPC");
         TestCheck(dlsym(handle, "InterceptorCreateContext") != 0,
                   "selected framework exports context creation");
         TestCheck(dlsym(handle, "InterceptorDestroyContext") != 0,
@@ -327,6 +382,81 @@ int main(void)
                                           (void *)(unsigned long)expectedAddress) ==
               expectedOperationResult,
               "UnmapFrameBuffer accepts a valid success reply");
+
+    PrepareCall(TestFrameBufferInfo, TestSuccessReply);
+    {
+        char driver[80];
+        char pixelEncoding[64];
+        int fields[8] = { 0 };
+        memset(driver, 0, sizeof(driver));
+        memset(pixelEncoding, 0, sizeof(pixelEncoding));
+        TestCheck(InterceptorFrameBufferInfo(
+                      &context, expectedScreenNumber, driver,
+                      &fields[0], &fields[1], &fields[2], &fields[3],
+                      &fields[4], &fields[5], &fields[6], pixelEncoding,
+                      &fields[7]) == expectedOperationResult,
+                  "FrameBufferInfo accepts the recovered success reply");
+        TestCheck(memcmp(driver, expectedDriver, sizeof(driver)) == 0 &&
+                  memcmp(pixelEncoding, expectedPixelEncoding,
+                         sizeof(pixelEncoding)) == 0,
+                  "FrameBufferInfo returns driver and pixel encoding strings");
+        TestCheck(memcmp(fields, expectedFrameBufferFields, sizeof(fields)) == 0,
+                  "FrameBufferInfo returns all metadata fields in order");
+    }
+
+    PrepareCall(TestFrameBufferInfo, TestWrongReplyID);
+    {
+        char driver[80];
+        char pixelEncoding[64];
+        int fields[8];
+        memset(driver, 0x5A, sizeof(driver));
+        memset(pixelEncoding, 0x5A, sizeof(pixelEncoding));
+        memset(fields, 0x5A, sizeof(fields));
+        (void)_InterceptorFrameBufferInfo(
+            expectedContextPort, expectedReplyPort, expectedScreenNumber,
+            driver, &fields[0], &fields[1], &fields[2], &fields[3],
+            &fields[4], &fields[5], &fields[6], pixelEncoding, &fields[7]);
+        TestCheck((unsigned char)driver[0] == 0x5A &&
+                  (unsigned char)pixelEncoding[0] == 0x5A &&
+                  (unsigned char)fields[0] == 0x5A,
+                  "FrameBufferInfo leaves outputs untouched for a wrong reply ID");
+    }
+
+    PrepareCall(TestFrameBufferInfo, TestErrorReply);
+    {
+        char driver[80];
+        char pixelEncoding[64];
+        int fields[8];
+        memset(driver, 0x5A, sizeof(driver));
+        memset(pixelEncoding, 0x5A, sizeof(pixelEncoding));
+        memset(fields, 0x5A, sizeof(fields));
+        (void)_InterceptorFrameBufferInfo(
+            expectedContextPort, expectedReplyPort, expectedScreenNumber,
+            driver, &fields[0], &fields[1], &fields[2], &fields[3],
+            &fields[4], &fields[5], &fields[6], pixelEncoding, &fields[7]);
+        TestCheck((unsigned char)driver[0] == 0x5A &&
+                  (unsigned char)pixelEncoding[0] == 0x5A &&
+                  (unsigned char)fields[0] == 0x5A,
+                  "FrameBufferInfo leaves outputs untouched for a server error");
+    }
+
+    PrepareCall(TestFrameBufferInfo, TestShortReply);
+    {
+        char driver[80];
+        char pixelEncoding[64];
+        int fields[8];
+        memset(driver, 0x5A, sizeof(driver));
+        memset(pixelEncoding, 0x5A, sizeof(pixelEncoding));
+        memset(fields, 0x5A, sizeof(fields));
+        (void)_InterceptorFrameBufferInfo(
+            expectedContextPort, expectedReplyPort, expectedScreenNumber,
+            driver, &fields[0], &fields[1], &fields[2], &fields[3],
+            &fields[4], &fields[5], &fields[6], pixelEncoding, &fields[7]);
+        TestCheck((unsigned char)driver[0] == 0x5A &&
+                  (unsigned char)pixelEncoding[0] == 0x5A &&
+                  (unsigned char)fields[0] == 0x5A,
+                  "FrameBufferInfo leaves outputs untouched for a short reply");
+    }
 
     PrepareCall(TestAddRect, TestErrorReply);
     rectangle = expectedRectangle;

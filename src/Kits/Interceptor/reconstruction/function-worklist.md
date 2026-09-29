@@ -239,7 +239,7 @@ IDA function records: 392; symbol records: 540.
 | `0x47A0D924` | 84 | `-[NSShape offsetShape:]` | static-reviewed; runtime pending |
 | `0x47A0D978` | 96 | `-[NSShape rectEnumerator]` | static-reviewed; runtime pending |
 | `0x47A0D9D8` | 88 | `-[NSShape dealloc]` | static-reviewed; runtime pending |
-| `0x47A0DA30` | 348 | `-[NSShape description]` | unexamined |
+| `0x47A0DA30` | 348 | `-[NSShape description]` | PPC static-reviewed; source authored; runtime pending |
 | `0x47A0DB8C` | 92 | `-[_NSShapeEnumerator initForShapeImpl:]` | static-reviewed; runtime pending |
 | `0x47A0DBE8` | 364 | `-[_NSShapeEnumerator nextRect]` | static-reviewed; runtime pending |
 | `0x47A0DD54` | 316 | `-[NSSimpleBitmap initWithBitmapDataPlanes:pixelsWide:pixelsHigh:bitsPerSample:samplesPerPixel:hasAlpha:isPlanar:colorSpaceName:bytesPerRow:bitsPerPixel:]` | static-reviewed; runtime pending |
@@ -619,7 +619,7 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A0D924` | `-[NSShape offsetShape:]` | `NSShape.m` | static-reviewed; runtime pending |
 | `0x47A0D978` | `-[NSShape rectEnumerator]` | `NSShape.m` | static-reviewed; runtime pending |
 | `0x47A0D9D8` | `-[NSShape dealloc]` | `NSShape.m` | static-reviewed; runtime pending |
-| `0x47A0DA30` | `-[NSShape description]` | `not reconstructed` | unexamined |
+| `0x47A0DA30` | `-[NSShape description]` | `NSShape.m` | source authored; runtime pending |
 | `0x47A0DB8C` | `-[_NSShapeEnumerator initForShapeImpl:]` | `NSShape.m` | static-reviewed; runtime pending |
 | `0x47A0DBE8` | `-[_NSShapeEnumerator nextRect]` | `NSShape.m` | static-reviewed; runtime pending |
 | `0x47A0DD54` | `-[NSSimpleBitmap initWithBitmapDataPlanes:pixelsWide:pixelsHigh:bitsPerSample:samplesPerPixel:hasAlpha:isPlanar:colorSpaceName:bytesPerRow:bitsPerPixel:]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |

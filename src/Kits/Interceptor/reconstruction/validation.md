@@ -18,7 +18,7 @@
 | IPC ABI and transport test execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |
 | Intercepted rectangle core | PPC static review and source authored; test command parses, execution pending | shared source intended for both; build/runtime comparison pending |
 | Client/rectangle notification dispatch | PPC static review and source authored; test command parses, execution pending | shared source intended for both; build/runtime comparison pending |
-| NSShape scanline and operation review | static implementation; description remains incomplete | static cross-check supports shared format; runtime pending |
+| NSShape scanline, operation, and description review | PPC static implementation; source authored; runtime pending | shared format/source intended for both; runtime pending |
 | Shape behavior test execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |
 
 A reference-only analysis is an evidence-generation result when its summary says `complete: true` and contains the IDA record. The command exits 1 because comparison acceptance is not met without a rebuilt artifact; this is not a parity result.

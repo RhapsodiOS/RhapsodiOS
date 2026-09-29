@@ -1,6 +1,7 @@
 #import "NSShape.h"
 #import "Private/InterceptorPrivate.h"
 #import <Foundation/NSZone.h>
+#import <Foundation/NSString.h>
 #import <stdlib.h>
 #import <string.h>
 
@@ -368,6 +369,21 @@ static short *difference_shape(NSZone *zone, const short *a, const short *b)
 - (id<NSShapeEnumerator>)rectEnumerator
 {
     return [[[_NSShapeEnumerator alloc] initForShapeImpl:(id)_impl] autorelease];
+}
+
+- (NSString *)description
+{
+    NSMutableString *result = [[NSMutableString allocWithZone:zone]
+        initWithFormat:@"<%@: 0x%x> = (\n", [self class], (unsigned int)self];
+    id<NSShapeEnumerator> enumerator = [self rectEnumerator];
+    NSRect *rect;
+
+    while ((rect = [enumerator nextRect]) != nil)
+        [result appendFormat:@"\t{ x = %f; y = %f; width = %f; height = %f; },\n",
+            rect->origin.x, rect->origin.y,
+            rect->size.width, rect->size.height];
+    [result appendString:@");\n"];
+    return [result autorelease];
 }
 
 - (void)dealloc

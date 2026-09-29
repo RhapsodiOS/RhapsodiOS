@@ -29,6 +29,7 @@ int main(void)
     NSShape *b;
     NSShape *copy;
     id<NSShapeEnumerator> e;
+    NSString *description;
 
     TestCheck(TestLoadSelectedFramework() != 0, "loads selected framework for shape checks");
 
@@ -38,6 +39,10 @@ int main(void)
     ExpectEnd(e);
 
     a = [[NSShape alloc] initFromRect:NSMakeRect(0, 0, 4, 4)];
+    description = [a description];
+    TestCheck(strstr([description cString], "x = 0.000000") != 0 &&
+              strstr([description cString], "height = 4.000000") != 0,
+              "shape description formats enumerated rectangle bounds");
     e = [a rectEnumerator];
     ExpectRect(e, 0, 0, 4, 4);
     ExpectEnd(e);

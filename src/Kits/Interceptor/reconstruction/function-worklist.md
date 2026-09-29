@@ -161,8 +161,8 @@ IDA function records: 392; symbol records: 540.
 | `0x47A0A2AC` | 504 | `_CopySrcToDst` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A0A4A4` | 52 | `-[NSDirectScreen(Obsolete) colorSpace]` | unexamined |
 | `0x47A0A4D8` | 52 | `-[NSDirectScreen(Obsolete) data]` | unexamined |
-| `0x47A0A50C` | 176 | `_setInstanceForScreen` | unexamined |
-| `0x47A0A5BC` | 108 | `_instanceForScreen` | unexamined |
+| `0x47A0A50C` | 176 | `_setInstanceForScreen` | static-reviewed; source authored; runtime pending; `NSFramebuffer.m` |
+| `0x47A0A5BC` | 108 | `_instanceForScreen` | static-reviewed; source authored; runtime pending; `NSFramebuffer.m` |
 | `0x47A0A628` | 56 | `-[NSFramebuffer initWithScreen:]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A0A660` | 204 | `-[NSFramebuffer initWithScreen:andMapIfPossible:]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A0A72C` | 692 | `-[NSFramebuffer initFromScreen:andMapIfPossible:]` | unexamined |
@@ -797,8 +797,8 @@ IDA function records: 419; symbol records: 629.
 | `0x47A07E78` | 261 | `_CopySrcToDst` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A07F80` | 29 | `-[NSDirectScreen(Obsolete) colorSpace]` | unexamined |
 | `0x47A07FA0` | 29 | `-[NSDirectScreen(Obsolete) data]` | unexamined |
-| `0x47A07FC0` | 125 | `_setInstanceForScreen` | unexamined |
-| `0x47A08040` | 53 | `_instanceForScreen` | unexamined |
+| `0x47A07FC0` | 125 | `_setInstanceForScreen` | static-reviewed; source authored; runtime pending; `NSFramebuffer.m` |
+| `0x47A08040` | 53 | `_instanceForScreen` | static-reviewed; source authored; runtime pending; `NSFramebuffer.m` |
 | `0x47A08078` | 35 | `-[NSFramebuffer initWithScreen:]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A0809C` | 185 | `-[NSFramebuffer initWithScreen:andMapIfPossible:]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A08158` | 784 | `-[NSFramebuffer initFromScreen:andMapIfPossible:]` | unexamined |

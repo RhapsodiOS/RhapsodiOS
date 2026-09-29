@@ -1,5 +1,37 @@
 #import "Private/InterceptorCopy.h"
+#import "Private/InterceptorIPC.h"
+#import "Private/NSInterceptorClient.h"
 #import "NSFramebuffer.h"
+#include <stdlib.h>
+#include <strings.h>
+
+static NSFramebuffer **NSFramebufferInstances;
+static int NSFramebufferScreenCount;
+
+static void NSFramebufferSetInstanceForScreen(NSFramebuffer *framebuffer,
+                                               int screenNumber,
+                                               NSInterceptorClient *client)
+{
+    if (NSFramebufferInstances == 0) {
+        NSFramebufferScreenCount =
+            InterceptorScreenCount([client _context]);
+        NSFramebufferInstances = (NSFramebuffer **)malloc(
+            sizeof(NSFramebuffer *) * NSFramebufferScreenCount);
+        bzero((char *)NSFramebufferInstances,
+              sizeof(NSFramebuffer *) * NSFramebufferScreenCount);
+    }
+
+    if (screenNumber >= 0 && screenNumber < NSFramebufferScreenCount)
+        NSFramebufferInstances[screenNumber] = framebuffer;
+}
+
+static NSFramebuffer *NSFramebufferInstanceForScreen(int screenNumber)
+{
+    if (NSFramebufferInstances != 0 && screenNumber >= 0 &&
+        screenNumber < NSFramebufferScreenCount)
+        return NSFramebufferInstances[screenNumber];
+    return nil;
+}
 
 @implementation NSFramebuffer
 

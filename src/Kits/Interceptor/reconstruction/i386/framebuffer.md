@@ -12,6 +12,7 @@ framebuffer methods implemented in the shared source:
 | `-[NSFramebuffer retain]`, `release`, `retainCount`, `dealloc` | `0x47A08A64`–`0x47A08A84` | Immortal cached object semantics match the PPC methods. |
 | `-[NSFramebuffer canLockWithMode:]`, `lockWithMode:`, `unlock` | `0x47A08A8C`–`0x47A08AA0` | Always lockable; lock and unlock are no-ops. |
 | `-[NSFramebuffer _interceptorClient]` | `0x47A08AA8` | Returns the stored client. |
+| `_setInstanceForScreen`, `_instanceForScreen` | `0x47A07FC0`, `0x47A08040` | Lazily allocate a screen-count-sized pointer array using the client's screen-count RPC, zero it, and store or retrieve a framebuffer by valid screen index, matching PPC. |
 
 The initializer independently confirms per-screen instance reuse, creation of
 an interceptor client, optional mapping, and initialization of the inherited

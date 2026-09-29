@@ -593,6 +593,176 @@ static void test_the_handler_slot_round_trips_through_zero(void)
     [handler release];
 }
 
+/*  ---------- Task 12: the fault-firing sequence ----------
+
+    Confirmed against -[NSFault forwardInvocation:] (0x42525ca0, 88
+    bytes): if ([_handler shouldPerformInvocation: inv]) {
+    [_handler completeInitializationOfObject: self]; [inv
+    invokeWithTarget: self]; } -- the third send's selector cell
+    0x42608b28 is 'invokeWithTarget:' and its receiver is SELF, the
+    fault, NOT a resolved target: a fault always forwards, never
+    becomes.  faultWillFire: is NOT in this path (it is only ever sent
+    from +clearFault:); the plan's S2.6 sketch is wrong on both points
+    and the tests below pin the bytes, not the sketch.
+
+    The base handler's completeInitializationOfObject: is the abstract
+    NSRequestConcreteImplementation raise, so the machinery is usable
+    only through a CONCRETE handler subclass -- the reference's own
+    _NSLazyDeserializationFaultHandler pattern.  The completion below
+    makes the faulted object usable the only way the decode allows
+    (restore isa + the +4 word -- what +clearFault: does, minus the
+    slot work), after which the sequence's [inv invokeWithTarget: self]
+    re-dispatch lands on the REAL class and the message completes.  */
+
+static int sequenceCounter = 0;
+static int shouldOrder = 0;
+static int completionOrder = 0;
+static int answerOrder = 0;
+static int answerRan = 0;
+static int answerValue = 0;
+static int completionCount = 0;
+static id completedObject = nil;
+static int shouldAnswer = 1;
+
+@interface FaultAnswerTarget : NSObject
+{
+@public
+    id slot;
+}
+- (int)answer;
+- (void)noteAnswer;
+@end
+
+@implementation FaultAnswerTarget
+- (int)answer
+{
+    answerOrder = ++sequenceCounter;
+    answerRan++;
+    answerValue = 42;
+    return 42;
+}
+- (void)noteAnswer
+{
+    answerOrder = ++sequenceCounter;
+    answerRan++;
+}
+@end
+
+/*  The concrete handler: counts the gate, restores the object (the
+    completion), and counts faultWillFire: deliveries -- which the
+    firing sequence must NOT produce.  */
+@interface CompletingHandler : NSFaultHandler
+@end
+
+@implementation CompletingHandler
+- (BOOL)shouldPerformInvocation:(NSInvocation *)anInvocation
+{
+    shouldOrder = ++sequenceCounter;
+    return YES;
+}
+- (void)faultWillFire:(id)anObject
+{
+    faultWillFireCount++;
+}
+- (void)completeInitializationOfObject:(id)anObject
+{
+    completionOrder = ++sequenceCounter;
+    completionCount++;
+    completedObject = anObject;
+    anObject->isa = [self targetClass];
+    ((id *)anObject)[1] = [self extraData];
+    /*  Balance the make-time [handler retain] stored at +4: the
+        completion replaces that word with _extraData, so the handler
+        reference it held goes away here, exactly as +clearFault:'s own
+        restoration is followed by its [handler release].  */
+    [self release];
+}
+@end
+
+static void test_a_fired_fault_completes_and_re_dispatches_to_self(void)
+{
+    FaultAnswerTarget *target = [[FaultAnswerTarget alloc] init];
+    CompletingHandler *handler = [[CompletingHandler alloc] init];
+
+    [handler setTargetClass:[FaultAnswerTarget class] extraData:nil];
+    [NSFault makeObjectIntoFault:target withHandler:handler];
+
+    sequenceCounter = 0;
+    shouldOrder = completionOrder = answerOrder = 0;
+    answerRan = 0;
+    answerValue = 0;
+    completionCount = 0;
+    completedObject = nil;
+    faultWillFireCount = 0;
+
+    [target answer];   /* the fault fires here */
+
+    CHECK(answerValue == 42);
+    CHECK(answerRan == 1);
+    CHECK(completionCount == 1);
+    CHECK(completedObject == target);
+
+    /*  Order: gate first, completion second, the re-dispatched answer
+        last -- the gate/completion pair runs BEFORE [inv
+        invokeWithTarget: self] reaches the completed class.  */
+    CHECK(shouldOrder != 0);
+    CHECK(completionOrder != 0);
+    CHECK(answerOrder != 0);
+    CHECK(shouldOrder < completionOrder);
+    CHECK(completionOrder < answerOrder);
+
+    /*  The concrete completion made the fault the real object.  */
+    CHECK(![target isFault]);
+    CHECK([target class] == [FaultAnswerTarget class]);
+
+    /*  faultWillFire: is NOT part of the firing sequence (the recorder
+        override counts every delivery; none arrived).  */
+    CHECK(faultWillFireCount == 0);
+
+    [target release];
+    [handler release];
+}
+
+/*  A declining handler: only the gate is overridden; completion (the
+    abstract base) must never be reached.  */
+@interface GateHandler : NSFaultHandler
+@end
+
+@implementation GateHandler
+- (BOOL)shouldPerformInvocation:(NSInvocation *)anInvocation
+{
+    shouldOrder = ++sequenceCounter;
+    return shouldAnswer;
+}
+@end
+
+static void test_a_declining_handler_skips_the_whole_fire(void)
+{
+    FaultAnswerTarget *target = [[FaultAnswerTarget alloc] init];
+    GateHandler *handler = [[GateHandler alloc] init];
+
+    [handler setTargetClass:[FaultAnswerTarget class] extraData:nil];
+    [NSFault makeObjectIntoFault:target withHandler:handler];
+
+    sequenceCounter = 0;
+    shouldOrder = completionOrder = answerOrder = 0;
+    answerRan = 0;
+    completionCount = 0;
+    shouldAnswer = 0;
+
+    [target noteAnswer];   /* gated: forwardInvocation returns silently */
+
+    CHECK(shouldOrder != 0);       /* the gate ran */
+    CHECK(answerRan == 0);         /* the message never executed */
+    CHECK(completionCount == 0);   /* completion never ran */
+    CHECK([target isFault]);       /* nothing about the object changed */
+
+    shouldAnswer = 1;
+
+    [target release];   /* un-faults through the dealloc path */
+    [handler release];
+}
+
 int main(void)
 {
     setvbuf(stdout, NULL, _IONBF, 0);
@@ -612,6 +782,8 @@ int main(void)
     test_performSelector_family_dispatches_through_the_fault();
     test_an_unknown_selector_falls_through_forwarding();
     test_the_handler_slot_round_trips_through_zero();
+    test_a_fired_fault_completes_and_re_dispatches_to_self();
+    test_a_declining_handler_skips_the_whole_fire();
 
     printf("%s: %d failure(s)\n", failures ? "FAILED" : "PASSED", failures);
     return failures != 0;

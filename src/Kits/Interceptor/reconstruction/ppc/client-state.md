@@ -4,9 +4,9 @@ The PPC reference's Objective-C bodies establish these ownership and dispatch
 orders. `NSInterceptedRect.m` now implements construction, geometry/state
 accessors, condition-lock behavior, notification dispatch, and reply framing.
 `NSInterceptorClient.m` implements initialization, notification-port setup,
-rectangle registration, lookup, teardown, and a receive loop. Cross-client
-notifier ownership and runtime behavior remain to be compared. The flush
-notification's selector-probe behavior is documented below.
+rectangle registration, lookup, teardown, and the shared port-set receive
+loop. Runtime behavior remains to be compared. The flush notification's
+selector-probe behavior is documented below.
 
 `NSInterceptorClient` creates a 12-byte Mach context, a condition lock, a
 regular lock, and its intercepted-rectangle collection. Class initialization
@@ -17,6 +17,11 @@ thread special port 3, falls back to task special port 3, then sends the
 notification and exception ports through `_InterceptorSetNotifyPort`. On RPC
 failure it deallocates the new receive port and returns zero; on success it
 stores that port in the context and creates an `NSPort` wrapper.
+
+The PPC rectangle constructor registers without first locking the rectangle.
+Its public `unlockRect` resets the condition lock to state zero; notification
+handling separately preserves state one while a move or buffering callback is
+in progress.
 
 `_addInterceptedRect:returnedScreenRect:returnedFlags:` adds the rectangle to
 the collection while holding the list lock before issuing `_InterceptorAddRect`.
@@ -55,8 +60,9 @@ and offsets the cached screen shape. Move and buffering messages update the
 move-in-progress state around their callbacks.
 
 During teardown, the client holds the port lock, removes the notification port
-from its receive set, removes its Window Server death observer, releases the
-`NSPort` wrapper, deallocates and clears the notification port, then releases
+from its receive set, removes its notification-port key from the shared client
+table, releases the `NSPort` wrapper, deallocates and clears the notification
+port, then releases
 the rectangle array and both locks before destroying the Mach context. The
 notifier is shared and created only once by `startHandlingThread`.
 

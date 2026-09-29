@@ -88,7 +88,13 @@ int main(void)
                   output.size.width == 13 && output.size.height == 14,
                   "rectangle accessor preserves original geometry");
         TestCheck([rect uniqueID] != 0, "assigns a nonzero unique identifier");
+#if defined(__i386__)
+        TestCheck([rect isLocked],
+                  "DR2 rectangles start locked during server registration");
+        [rect unlockRect];
+#else
         TestCheck(![rect isLocked], "new rectangle starts unlocked");
+#endif
         [rect lockRect];
         TestCheck([rect isLocked], "lockRect marks rectangle locked");
         [rect unlockRect];

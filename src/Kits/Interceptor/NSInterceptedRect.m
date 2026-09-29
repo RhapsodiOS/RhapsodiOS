@@ -50,6 +50,9 @@ static unsigned int NSInterceptedRectNextUniqueID = 1;
     rectLock = [[NSConditionLock alloc] initWithCondition:0];
     tmpBitmap = [[NSSimpleBitmap allocWithZone:[self zone]] init];
     interceptorClient = aClient;
+#if defined(__i386__)
+    [self lockRect];
+#endif
     [aClient _addInterceptedRect:self
         returnedScreenRect:&screenRect returnedFlags:&returnedFlags];
     screenRectShape = [[NSShape allocWithZone:[self zone]]
@@ -68,7 +71,7 @@ static unsigned int NSInterceptedRectNextUniqueID = 1;
 - (void)unlockRect
 {
     isLocked = NO;
-    [rectLock unlockWithCondition:moveInProgress ? 1 : 0];
+    [rectLock unlockWithCondition:0];
 }
 
 - (BOOL)isLocked { return isLocked || moveInProgress; }

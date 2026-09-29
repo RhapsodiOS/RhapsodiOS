@@ -12,6 +12,9 @@
 - (void)areaDidMove:(id)rect by:(NSPoint)delta;
 - (void)areaWasOrderedIn:(id)rect;
 - (void)areaWasOrderedOut:(id)rect;
+- (NXInterceptorFlushReturn)areaWillFlush:(id)rect
+                                 inRect:(NSRect)bounds
+                                 theBits:(id)bits;
 - (void)areaChangedScreen:(id)rect from:(int)oldScreen to:(int)newScreen;
 - (void)areaWindowFreed:(id)rect;
 - (int)areaWillChangeBuffering:(id)rect fromType:(int)type;
@@ -119,9 +122,10 @@ static unsigned int NSInterceptedRectNextUniqueID = 1;
             [target areaDidReveal:self inRect:bounds];
         break;
     case INTERCEPT_WILL_OBSCURE:
-        if ([target respondsToSelector:@selector(areaWillObscure:inRect:)])
+        if ([target respondsToSelector:@selector(areaWillObscure:inRect:)]) {
             [target areaWillObscure:self inRect:bounds];
-        isTotallyVisible = NO;
+            isTotallyVisible = NO;
+        }
         break;
     case INTERCEPT_INVALID:
         if ([target respondsToSelector:@selector(areaIsInvalid:)])
@@ -149,7 +153,9 @@ static unsigned int NSInterceptedRectNextUniqueID = 1;
             [target areaWasOrderedOut:self];
         break;
     case INTERCEPT_FLUSH:
-        /* The reference checks this callback but leaves bit delivery TODO. */
+        if (target != nil)
+            (void)[target respondsToSelector:
+                @selector(areaWillFlush:inRect:theBits:)];
         break;
     case INTERCEPT_NEW_SCREEN:
         if (screen && [screen respondsToSelector:@selector(screenNumber)]) {

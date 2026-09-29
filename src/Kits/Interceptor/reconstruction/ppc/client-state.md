@@ -52,3 +52,13 @@ notifier is shared and created only once by `startHandlingThread`.
 Runtime ordering and callback arguments still need comparison against the
 reference in a compatible guest before these findings can count as behavioral
 parity.
+
+For `INTERCEPT_FLUSH`, the PPC jump-table case and the DR2 i386 switch both
+check whether the target responds to `areaWillFlush:inRect:theBits:`. Neither
+binary invokes that selector or sets a nonzero reply code on this path. The
+source and rectangle regression case preserve this observed behavior; they do
+not invent the missing bits delivery.
+
+For `INTERCEPT_WILL_OBSCURE`, both implementations clear the totally-visible
+state only after the target reports support for and receives the obscure
+callback. The source keeps that state update inside the selector guard.

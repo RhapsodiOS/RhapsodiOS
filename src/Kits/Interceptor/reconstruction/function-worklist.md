@@ -842,7 +842,7 @@ IDA function records: 419; symbol records: 629.
 | `0x47A08E7C` | 14 | `-[NSInterceptedRect isTotallyObscured]` | unexamined |
 | `0x47A08E8C` | 13 | `-[NSInterceptedRect _flags]` | unexamined |
 | `0x47A08E9C` | 13 | `-[NSInterceptedRect framebuffer]` | unexamined |
-| `0x47A08EAC` | 1433 | `-[NSInterceptedRect _handleMsg:withReply:]` | unexamined |
+| `0x47A08EAC` | 1433 | `-[NSInterceptedRect _handleMsg:withReply:]` | static-reviewed; source authored; runtime pending; `ppc/client-state.md` |
 | `0x47A09448` | 165 | `+[NSInterceptorClient initialize]` | unexamined |
 | `0x47A094F0` | 273 | `-[NSInterceptorClient init]` | unexamined |
 | `0x47A09604` | 418 | `-[NSInterceptorClient dealloc]` | unexamined |
@@ -1257,7 +1257,7 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A08E7C` | `-[NSInterceptedRect isTotallyObscured]` | `NSInterceptedRect.m` | unexamined |
 | `0x47A08E8C` | `-[NSInterceptedRect _flags]` | `NSInterceptedRect.m` | unexamined |
 | `0x47A08E9C` | `-[NSInterceptedRect framebuffer]` | `NSInterceptedRect.m` | unexamined |
-| `0x47A08EAC` | `-[NSInterceptedRect _handleMsg:withReply:]` | `NSInterceptedRect.m` | unexamined |
+| `0x47A08EAC` | `-[NSInterceptedRect _handleMsg:withReply:]` | `NSInterceptedRect.m` | static-reviewed; source authored; runtime pending |
 | `0x47A09448` | `+[NSInterceptorClient initialize]` | `NSInterceptorClient.m` | unexamined |
 | `0x47A094F0` | `-[NSInterceptorClient init]` | `NSInterceptorClient.m` | unexamined |
 | `0x47A09604` | `-[NSInterceptorClient dealloc]` | `NSInterceptorClient.m` | unexamined |

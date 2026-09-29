@@ -11,10 +11,19 @@
     int revealCount;
     int willMoveCount;
     int didMoveCount;
+    int flushProbeCount;
+    int flushCallbackCount;
+    int obscureProbeCount;
+    int obscureCallbackCount;
+    BOOL supportObscureCallback;
 }
 - (void)areaDidReveal:(id)rect inRect:(NSRect)bounds;
 - (void)areaWillMove:(id)rect by:(NSPoint)delta;
 - (void)areaDidMove:(id)rect by:(NSPoint)delta;
+- (void)areaWillObscure:(id)rect inRect:(NSRect)bounds;
+- (NXInterceptorFlushReturn)areaWillFlush:(id)rect
+                                      inRect:(NSRect)bounds
+                                     theBits:(id)bits;
 @end
 
 @implementation RectTarget
@@ -29,6 +38,29 @@
 - (void)areaDidMove:(id)rect by:(NSPoint)delta
 {
     didMoveCount++;
+}
+- (BOOL)respondsToSelector:(SEL)selector
+{
+    if (selector == @selector(areaWillFlush:inRect:theBits:)) {
+        flushProbeCount++;
+        return YES;
+    }
+    if (selector == @selector(areaWillObscure:inRect:)) {
+        obscureProbeCount++;
+        return supportObscureCallback;
+    }
+    return [super respondsToSelector:selector];
+}
+- (void)areaWillObscure:(id)rect inRect:(NSRect)bounds
+{
+    obscureCallbackCount++;
+}
+- (NXInterceptorFlushReturn)areaWillFlush:(id)rect
+                                  inRect:(NSRect)bounds
+                                 theBits:(id)bits
+{
+    flushCallbackCount++;
+    return NXInterceptorFlushDone;
 }
 @end
 
@@ -77,6 +109,27 @@ int main(void)
         TestCheck(reply.h.msg_id == INTERCEPT_REPLY_MSGID &&
                   reply.sequenceNumber == 19 && reply.h.msg_size == sizeof(reply),
                   "builds notification reply with matching sequence");
+
+        message.type = INTERCEPT_FLUSH;
+        message.args[0] = 21;
+        message.args[1] = 22;
+        message.args[2] = 23;
+        message.args[3] = 24;
+        [rect _handleMsg:&message withReply:&reply];
+        TestCheck(target->flushProbeCount == 1 &&
+                  target->flushCallbackCount == 0 && reply.replyCode == 0,
+                  "flush notification probes the target but does not dispatch bits");
+
+        message.type = INTERCEPT_WILL_OBSCURE;
+        message.flags = INTERCEPT_TOTALLY_VISIBLE;
+        [rect _handleMsg:&message withReply:&reply];
+        TestCheck([rect isTotallyVisible],
+                  "preserves reported visibility when target has no obscure callback");
+        target->supportObscureCallback = YES;
+        [rect _handleMsg:&message withReply:&reply];
+        TestCheck(target->obscureProbeCount == 2 &&
+                  target->obscureCallbackCount == 1 && ![rect isTotallyVisible],
+                  "clears visibility after an implemented obscure callback");
 
         message.type = INTERCEPT_WILL_MOVE;
         message.args[0] = 5;

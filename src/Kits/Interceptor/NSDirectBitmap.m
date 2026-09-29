@@ -13,6 +13,7 @@
 #import <Foundation/NSMutableArray.h>
 #import <Foundation/NSNumber.h>
 #import <Foundation/NSZone.h>
+#include <stdio.h>
 #import <strings.h>
 
 @interface NSDirectBitmap (ReconstructionPrivate)
@@ -26,6 +27,7 @@
               onScreen:(int)screenNumber;
 - (id)_flushInShape:(NSShape *)shape;
 - (id)_updateBuffer;
+- (void)setBuffered:(BOOL)buffered;
 - (void)updateState;
 @end
 
@@ -477,6 +479,94 @@ typedef void (*NSBitmapCopyFunction)(const void *, int, void *, int, int, int);
         [(NSFramebuffer *)self->framebuffer unlock];
     }
     return self;
+}
+
+- (void)flushIn:(NSRect)rect
+{
+    unsigned char *buffer;
+    NSRect targetRect;
+
+    if (self->isLocked == NO ||
+        (self->isBuffered == NO && self->drawToBuffer == NO))
+        return;
+
+    buffer = [self _dataBuffer];
+    if (self->isDirectMapped == YES) {
+        NSRect screenRect = [self->interceptRect currentScreenRect];
+        NSShape *shape = [[NSShape allocWithZone:[self zone]]
+            initFromRect:NSOffsetRect(rect, screenRect.origin.x,
+                                      screenRect.origin.y)];
+
+        [shape intersectWithShape:self->_dbm_private];
+        if (self->_viewClip != nil)
+            [shape intersectWithShape:self->_viewClip];
+        [self _flushInShape:shape];
+        [shape release];
+        return;
+    }
+
+    targetRect = rect;
+    targetRect.origin.y = self->rect.size.height -
+        (targetRect.origin.y + targetRect.size.height);
+    targetRect = NSOffsetRect(targetRect, self->rect.origin.x,
+                              self->rect.origin.y);
+    targetRect = NSIntersectionRect(self->rect, targetRect);
+    if (NSIsEmptyRect(targetRect))
+        return;
+
+    {
+        int depth = self->bitsPerSample * self->samplesPerPixel;
+        int status;
+
+        if (self->bitsPerPixel == 8 &&
+            [self->colorSpace isEqual:NSDeviceRGBColorSpace])
+            depth = 8;
+        status = InterceptorCompositeBits(
+            [self->interceptClient _context], self->gWinNum,
+            (int)targetRect.origin.x, (int)targetRect.origin.y, 1,
+            buffer + (int)rect.origin.y * self->bytesPerRow +
+                ((int)rect.origin.x * self->bitsPerPixel + 7) / 8,
+            (int)targetRect.size.width, (int)targetRect.size.height, depth,
+            self->bytesPerRow, self->colorSpaceCode);
+        if (status != 0)
+            printf("InterceptorCompositeBits() returns %d\n", status);
+    }
+}
+
+- (void)flush
+{
+    [self flushIn:NSMakeRect(0, 0, self->pixelsWide, self->pixelsHigh)];
+}
+
+- (void)hideCursor
+{
+    InterceptorHideCursor([self->interceptClient _context]);
+}
+
+- (void)showCursor
+{
+    InterceptorShowCursor([self->interceptClient _context]);
+}
+
+- (void)setBuffered:(BOOL)buffered
+{
+    if (buffered == YES && self->isBuffered == NO) {
+        [self hideCursor];
+        [self lockBitmap];
+        if (self->drawToBuffer == NO)
+            [self _updateBuffer];
+        [self unlockBitmap];
+        [self showCursor];
+    } else if (buffered == NO && self->isBuffered == YES) {
+        [self lockBitmap];
+        [self flush];
+        [self unlockBitmap];
+    }
+
+    if (self->fbMode == NSFramebufferReadWrite && self->isDirectMapped == YES)
+        self->isBuffered = buffered;
+    else
+        self->isBuffered = YES;
 }
 
 - (id)initForRect:(NSRect)rect inWindow:(id)window

@@ -22,6 +22,15 @@ int _InterceptorShowCursorAsync(port_t contextPort);
 int InterceptorScreenCount(InterceptorClientContext *context);
 int InterceptorHideCursor(InterceptorClientContext *context);
 int InterceptorShowCursor(InterceptorClientContext *context);
+int _InterceptorCompositeBits(port_t contextPort, port_t replyPort,
+                              int windowNumber, int x, int y,
+                              int operation, const void *bits,
+                              int width, int height, int depth,
+                              int bytesPerRow, int colorSpaceCode);
+int InterceptorCompositeBits(InterceptorClientContext *context,
+                             int windowNumber, int x, int y, int operation,
+                             const void *bits, int width, int height,
+                             int depth, int bytesPerRow, int colorSpaceCode);
 
 int _InterceptorMapFrameBuffer(port_t contextPort, port_t replyPort,
                                int screenNumber, port_t taskPort,

@@ -10,7 +10,8 @@
 enum { TestAddRect, TestRemoveRect, TestSetNotifyPort,
        TestScreenCount, TestHideCursor, TestShowCursor,
        TestMapFrameBuffer, TestUnmapFrameBuffer, TestFrameBufferInfo,
-       TestBM34ToBM35, TestBM35ToBM34, TestBM256ToBM38, TestBM38ToBM256 };
+       TestBM34ToBM35, TestBM35ToBM34, TestBM256ToBM38, TestBM38ToBM256,
+       TestCompositeBits };
 enum { TestSuccessReply, TestErrorReply, TestWrongReplyID, TestShortReply, TestSendFailure };
 
 static int expectedOperation;
@@ -31,6 +32,8 @@ static char expectedDriver[80];
 static char expectedPixelEncoding[64];
 static int expectedFrameBufferFields[8];
 static unsigned short expectedTableWords[4] = { 1, 2, 3, 4 };
+static unsigned char expectedCompositeBits[64];
+static int expectedCompositeFields[10];
 
 #if defined(__ppc__) || defined(__POWERPC__)
 #define EXPECTED_BM256_TO_BM38_TYPE 0x02201000
@@ -152,6 +155,44 @@ int InterceptorTestMsgRPC(msg_header_t *header, int option, int sendSize,
                   "FrameBufferInfo sends the screen number");
         replyID = 7301;
         successSize = 272;
+    } else if (expectedOperation == TestCompositeBits) {
+        msg_type_long_t descriptor;
+        int expectedByteCount = expectedCompositeFields[5] *
+                                expectedCompositeFields[9];
+        TestCheck(sendSize == 40 && header->msg_size == 112 &&
+                  header->msg_simple == 0 && header->msg_id == 7200,
+                  "CompositeBits request ID and message sizes");
+        TestCheck(words[0] == EXPECTED_INTEGER_TYPE &&
+                  words[1] == expectedCompositeFields[0] &&
+                  words[2] == EXPECTED_INTEGER_TYPE &&
+                  words[3] == expectedCompositeFields[1] &&
+                  words[4] == EXPECTED_INTEGER_TYPE &&
+                  words[5] == expectedCompositeFields[2] &&
+                  words[6] == EXPECTED_INTEGER_TYPE &&
+                  words[7] == expectedCompositeFields[3],
+                  "CompositeBits sends window, origin, and operation fields");
+        memcpy(&descriptor, &words[8], sizeof(descriptor));
+        TestCheck(descriptor.msg_type_header.msg_type_inline == 0 &&
+                  descriptor.msg_type_header.msg_type_longform == 1 &&
+                  descriptor.msg_type_long_name == 8 &&
+                  descriptor.msg_type_long_size == 8 &&
+                  descriptor.msg_type_long_number == (unsigned int)expectedByteCount &&
+                  (unsigned int)words[11] ==
+                      (unsigned int)(unsigned long)expectedCompositeBits,
+                  "CompositeBits describes its out-of-line pixel payload");
+        TestCheck(words[12] == EXPECTED_INTEGER_TYPE &&
+                  words[13] == expectedCompositeFields[4] &&
+                  words[14] == EXPECTED_INTEGER_TYPE &&
+                  words[15] == expectedCompositeFields[5] &&
+                  words[16] == EXPECTED_INTEGER_TYPE &&
+                  words[17] == expectedCompositeFields[6] &&
+                  words[18] == EXPECTED_INTEGER_TYPE &&
+                  words[19] == expectedCompositeFields[9] &&
+                  words[20] == EXPECTED_INTEGER_TYPE &&
+                  words[21] == expectedCompositeFields[8],
+                  "CompositeBits sends dimensions, depth, stride, and color space");
+        replyID = 7300;
+        successSize = 40;
     } else if (expectedOperation == TestBM34ToBM35 ||
                expectedOperation == TestBM35ToBM34) {
         int requestID = expectedOperation == TestBM34ToBM35 ? 7199 : 7206;
@@ -298,6 +339,16 @@ static void PrepareCall(int operation, int reply)
     expectedFrameBufferFields[5] = 4096;
     expectedFrameBufferFields[6] = 2;
     expectedFrameBufferFields[7] = 0;
+    memset(expectedCompositeBits, 0xA5, sizeof(expectedCompositeBits));
+    expectedCompositeFields[0] = 60;
+    expectedCompositeFields[1] = 11;
+    expectedCompositeFields[2] = 12;
+    expectedCompositeFields[3] = 1;
+    expectedCompositeFields[4] = 8;
+    expectedCompositeFields[5] = 4;
+    expectedCompositeFields[6] = 2;
+    expectedCompositeFields[8] = 3;
+    expectedCompositeFields[9] = 16;
 }
 
 int main(void)
@@ -345,6 +396,8 @@ int main(void)
                   "selected framework exports framebuffer mapping RPCs");
         TestCheck(dlsym(handle, "_InterceptorFrameBufferInfo") != 0,
                   "selected framework exports framebuffer metadata RPC");
+        TestCheck(dlsym(handle, "_InterceptorCompositeBits") != 0,
+                  "selected framework exports the CompositeBits RPC");
         TestCheck(dlsym(handle, "_InterceptorGetBM34ToBM35Table") != 0 &&
                   dlsym(handle, "_InterceptorGetBM35ToBM34Table") != 0 &&
                   dlsym(handle, "_InterceptorGetBM256ToBM38Table") != 0 &&
@@ -462,6 +515,18 @@ int main(void)
         TestCheck(memcmp(fields, expectedFrameBufferFields, sizeof(fields)) == 0,
                   "FrameBufferInfo returns all metadata fields in order");
     }
+
+    PrepareCall(TestCompositeBits, TestSuccessReply);
+    context.contextPort = expectedContextPort;
+    context.replyPort = expectedReplyPort;
+    TestCheck(InterceptorCompositeBits(
+                  &context, expectedCompositeFields[0],
+                  expectedCompositeFields[1], expectedCompositeFields[2],
+                  expectedCompositeFields[3], expectedCompositeBits,
+                  expectedCompositeFields[4], expectedCompositeFields[5],
+                  expectedCompositeFields[6], expectedCompositeFields[9],
+                  expectedCompositeFields[8]) == 0,
+              "CompositeBits accepts the recovered success reply");
 
     PrepareCall(TestFrameBufferInfo, TestWrongReplyID);
     {

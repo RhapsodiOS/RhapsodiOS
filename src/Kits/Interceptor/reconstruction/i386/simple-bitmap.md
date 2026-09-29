@@ -62,3 +62,11 @@ span for each row. The typed copy routines take extra row-padding bytes after
 the copied elements, rather than total row widths; the PPC body confirms the
 same contract. These bodies are implemented in the shared source units;
 their tests are authored but await a compatible i386 runtime.
+
+The i386 `flushIn:` and `flush` paths match the PPC reconstruction: they require
+a lock and buffered drawing or draw-to-buffer, clip direct-mapped copies to the
+screen shape/view clip, and route buffered rectangles through `CompositeBits`.
+`setBuffered:` snapshots before enabling buffering and flushes before switching
+back to direct drawing. The 7200 request is 112 bytes and contains the four
+integer fields, an out-of-line pixel payload (`height * bytesPerRow` bytes),
+and five dimension/format fields in the same descriptor order as PPC.

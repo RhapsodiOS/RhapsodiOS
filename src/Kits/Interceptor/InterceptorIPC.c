@@ -21,6 +21,11 @@ typedef struct {
 
 typedef struct {
     msg_header_t header;
+    int words[22];
+} InterceptorCompositeBitsMessage;
+
+typedef struct {
+    msg_header_t header;
     int words[62];
 } InterceptorFrameBufferInfoMessage;
 
@@ -256,6 +261,93 @@ int InterceptorShowCursor(InterceptorClientContext *context)
 {
     (void)_InterceptorShowCursorAsync(context->contextPort);
     return 0;
+}
+
+int _InterceptorCompositeBits(port_t contextPort, port_t replyPort,
+                              int windowNumber, int x, int y,
+                              int operation, const void *bits,
+                              int width, int height, int depth,
+                              int bytesPerRow, int colorSpaceCode)
+{
+    InterceptorCompositeBitsMessage message;
+    msg_type_long_t dataDescriptor;
+    int *words = message.words;
+    int result;
+
+    bzero((char *)&message, sizeof(message));
+    message.header.msg_simple = 0;
+    message.header.msg_size = 112;
+    message.header.msg_type = 0x100;
+    message.header.msg_local_port = replyPort;
+    message.header.msg_remote_port = contextPort;
+    message.header.msg_id = 7200;
+
+    words[0] = InterceptorTypeDescriptor(2, 32, 1);
+    words[1] = windowNumber;
+    words[2] = InterceptorTypeDescriptor(2, 32, 1);
+    words[3] = x;
+    words[4] = InterceptorTypeDescriptor(2, 32, 1);
+    words[5] = y;
+    words[6] = InterceptorTypeDescriptor(2, 32, 1);
+    words[7] = operation;
+
+    bzero((char *)&dataDescriptor, sizeof(dataDescriptor));
+    dataDescriptor.msg_type_header.msg_type_inline = 0;
+    dataDescriptor.msg_type_header.msg_type_longform = 1;
+    dataDescriptor.msg_type_long_name = 8;
+    dataDescriptor.msg_type_long_size = 8;
+    dataDescriptor.msg_type_long_number =
+        (unsigned int)(height * bytesPerRow);
+    memcpy(&words[8], &dataDescriptor, sizeof(dataDescriptor));
+    words[11] = (int)(unsigned long)bits;
+
+    words[12] = InterceptorTypeDescriptor(2, 32, 1);
+    words[13] = width;
+    words[14] = InterceptorTypeDescriptor(2, 32, 1);
+    words[15] = height;
+    words[16] = InterceptorTypeDescriptor(2, 32, 1);
+    words[17] = depth;
+    words[18] = InterceptorTypeDescriptor(2, 32, 1);
+    words[19] = bytesPerRow;
+    words[20] = InterceptorTypeDescriptor(2, 32, 1);
+    words[21] = colorSpaceCode;
+
+    result = InterceptorMsgRPC(&message.header, 0, 40, 0, 0);
+    if (result != 0) {
+        Interceptor_mig_error(result);
+        return words[3];
+    }
+    if (message.header.msg_id != 7300) {
+        Interceptor_mig_error(-301);
+        return words[3];
+    }
+    if (message.header.msg_simple != 1 ||
+        words[0] != InterceptorTypeDescriptor(2, 32, 1)) {
+        Interceptor_mig_error(-300);
+        return words[3];
+    }
+    if ((message.header.msg_size == 40 ||
+         message.header.msg_size == 32) && words[1] != 0) {
+        Interceptor_mig_error(words[1]);
+        return words[3];
+    }
+    if (message.header.msg_size != 40 ||
+        words[2] != InterceptorTypeDescriptor(2, 32, 1)) {
+        Interceptor_mig_error(-300);
+        return words[3];
+    }
+    return words[3];
+}
+
+int InterceptorCompositeBits(InterceptorClientContext *context,
+                             int windowNumber, int x, int y, int operation,
+                             const void *bits, int width, int height,
+                             int depth, int bytesPerRow, int colorSpaceCode)
+{
+    return _InterceptorCompositeBits(context->contextPort,
+                                     context->replyPort, windowNumber,
+                                     x, y, operation, bits, width, height,
+                                     depth, bytesPerRow, colorSpaceCode);
 }
 
 int _InterceptorMapFrameBuffer(port_t contextPort, port_t replyPort,

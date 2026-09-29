@@ -24,8 +24,8 @@ IDA function records: 392; symbol records: 540.
 | `0x47A02A74` | 140 | `-[NSDirectBitmap _dataBuffer]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A02B00` | 160 | `-[NSDirectBitmap bitmapData]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A02BA0` | 460 | `-[NSDirectBitmap _flushInShape:]` | static-reviewed; source authored; runtime pending |
-| `0x47A02D6C` | 168 | `-[NSDirectBitmap flush]` | unexamined |
-| `0x47A02E14` | 856 | `-[NSDirectBitmap flushIn:]` | unexamined |
+| `0x47A02D6C` | 168 | `-[NSDirectBitmap flush]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
+| `0x47A02E14` | 856 | `-[NSDirectBitmap flushIn:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A0316C` | 200 | `-[NSDirectBitmap dealloc]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A03234` | 272 | `-[NSDirectBitmap getBitmapDataPlanes:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A03344` | 132 | `-[NSDirectBitmap pixelEncodings]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
@@ -44,7 +44,7 @@ IDA function records: 392; symbol records: 540.
 | `0x47A03CDC` | 16 | `-[NSDirectBitmap pixelsHigh]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A03CEC` | 260 | `-[NSDirectBitmap _updateBuffer]` | static-reviewed; source authored; runtime pending |
 | `0x47A03DF0` | 16 | `-[NSDirectBitmap samplesPerPixel]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
-| `0x47A03E00` | 280 | `-[NSDirectBitmap setBuffered:]` | unexamined |
+| `0x47A03E00` | 280 | `-[NSDirectBitmap setBuffered:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A03F18` | 208 | `-[NSDirectBitmap _canUseDirectMapping]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A03FE8` | 252 | `-[NSDirectBitmap setDirectMapped:]` | static-reviewed; source authored; runtime pending |
 | `0x47A040E4` | 84 | `-[NSDirectBitmap tryLockBitmap]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
@@ -273,7 +273,7 @@ IDA function records: 392; symbol records: 540.
 | `0x47A0E56C` | 48 | `_InterceptorGetBM256ToBM38Table` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0E59C` | 48 | `_InterceptorGetBM38ToBM256Table` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0E5CC` | 44 | `_InterceptorScreenCount` | PPC static-reviewed; source authored; runtime pending |
-| `0x47A0E5F8` | 140 | `_InterceptorCompositeBits` | unexamined |
+| `0x47A0E5F8` | 140 | `InterceptorCompositeBits` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0E684` | 140 | `_InterceptorFrameBufferInfo` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0E710` | 44 | `_InterceptorHideCursor` | PPC static-reviewed; source authored; runtime pending |
 | `0x47A0E73C` | 40 | `_InterceptorShowCursor` | PPC static-reviewed; source authored; runtime pending |
@@ -287,7 +287,7 @@ IDA function records: 392; symbol records: 540.
 | `0x47A0E9CC` | 332 | `__InterceptorDisableFrameBufferMapping` | unexamined |
 | `0x47A0EB18` | 336 | `__InterceptorMapFrameBuffer` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0EC68` | 384 | `__InterceptorGetBM34ToBM35Table` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
-| `0x47A0EDE8` | 472 | `__InterceptorCompositeBits` | unexamined |
+| `0x47A0EDE8` | 472 | `__InterceptorCompositeBits` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0EFC0` | 704 | `__InterceptorFrameBufferInfo` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0F280` | 284 | `__OldInterceptorSetNotifyPort` | unexamined |
 | `0x47A0F39C` | 436 | `__InterceptorAddRect` | static-reviewed; `InterceptorIPC.c`; runtime pending |
@@ -416,8 +416,8 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A02A74` | `-[NSDirectBitmap _dataBuffer]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A02B00` | `-[NSDirectBitmap bitmapData]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A02BA0` | `-[NSDirectBitmap _flushInShape:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
-| `0x47A02D6C` | `-[NSDirectBitmap flush]` | `NSDirectBitmap.m` | unexamined |
-| `0x47A02E14` | `-[NSDirectBitmap flushIn:]` | `NSDirectBitmap.m` | unexamined |
+| `0x47A02D6C` | `-[NSDirectBitmap flush]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
+| `0x47A02E14` | `-[NSDirectBitmap flushIn:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A0316C` | `-[NSDirectBitmap dealloc]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A03234` | `-[NSDirectBitmap getBitmapDataPlanes:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A03344` | `-[NSDirectBitmap pixelEncodings]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
@@ -436,7 +436,7 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A03CDC` | `-[NSDirectBitmap pixelsHigh]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A03CEC` | `-[NSDirectBitmap _updateBuffer]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A03DF0` | `-[NSDirectBitmap samplesPerPixel]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
-| `0x47A03E00` | `-[NSDirectBitmap setBuffered:]` | `NSDirectBitmap.m` | unexamined |
+| `0x47A03E00` | `-[NSDirectBitmap setBuffered:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A03F18` | `-[NSDirectBitmap _canUseDirectMapping]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A03FE8` | `-[NSDirectBitmap setDirectMapped:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A040E4` | `-[NSDirectBitmap tryLockBitmap]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
@@ -663,7 +663,7 @@ IDA function records: 419; symbol records: 629.
 | `0x47A01350` | 118 | `-[NSDirectBitmap bitmapData]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A013C8` | 560 | `-[NSDirectBitmap _flushInShape:]` | static-reviewed; source authored; runtime pending |
 | `0x47A015F8` | 80 | `-[NSDirectBitmap flush]` | unexamined |
-| `0x47A01648` | 873 | `-[NSDirectBitmap flushIn:]` | unexamined |
+| `0x47A01648` | 873 | `-[NSDirectBitmap flushIn:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A019B4` | 197 | `-[NSDirectBitmap dealloc]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A01A7C` | 214 | `-[NSDirectBitmap getBitmapDataPlanes:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A01B54` | 112 | `-[NSDirectBitmap pixelEncodings]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
@@ -682,7 +682,7 @@ IDA function records: 419; symbol records: 629.
 | `0x47A023B4` | 13 | `-[NSDirectBitmap pixelsHigh]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A023C4` | 246 | `-[NSDirectBitmap _updateBuffer]` | static-reviewed; source authored; runtime pending |
 | `0x47A024BC` | 13 | `-[NSDirectBitmap samplesPerPixel]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
-| `0x47A024CC` | 239 | `-[NSDirectBitmap setBuffered:]` | unexamined |
+| `0x47A024CC` | 239 | `-[NSDirectBitmap setBuffered:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A025BC` | 167 | `-[NSDirectBitmap _canUseDirectMapping]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A02664` | 206 | `-[NSDirectBitmap setDirectMapped:]` | static-reviewed; source authored; runtime pending |
 | `0x47A02734` | 49 | `-[NSDirectBitmap tryLockBitmap]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
@@ -909,7 +909,7 @@ IDA function records: 419; symbol records: 629.
 | `0x47A0B594` | 26 | `_InterceptorGetBM256ToBM38Table` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0B5B0` | 26 | `_InterceptorGetBM38ToBM256Table` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0B5CC` | 22 | `_InterceptorScreenCount` | unexamined |
-| `0x47A0B5E4` | 70 | `_InterceptorCompositeBits` | unexamined |
+| `0x47A0B5E4` | 70 | `_InterceptorCompositeBits` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0B62C` | 66 | `_InterceptorFrameBufferInfo` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0B670` | 22 | `_InterceptorHideCursor` | unexamined |
 | `0x47A0B688` | 20 | `_InterceptorShowCursor` | unexamined |
@@ -927,7 +927,7 @@ IDA function records: 419; symbol records: 629.
 | `0x47A0B8C0` | 246 | `__InterceptorDisableFrameBufferMapping` | unexamined |
 | `0x47A0B9B8` | 255 | `__InterceptorMapFrameBuffer` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0BAB8` | 298 | `__InterceptorGetBM34ToBM35Table` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
-| `0x47A0BBE4` | 389 | `__InterceptorCompositeBits` | unexamined |
+| `0x47A0BBE4` | 389 | `__InterceptorCompositeBits` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0BD6C` | 662 | `__InterceptorFrameBufferInfo` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0C004` | 213 | `__OldInterceptorSetNotifyPort` | unexamined |
 | `0x47A0C0DC` | 267 | `__InterceptorAddRect` | static-reviewed; `InterceptorIPC.c`; runtime pending |
@@ -1081,8 +1081,8 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A012FC` | `-[NSDirectBitmap _dataBuffer]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A01350` | `-[NSDirectBitmap bitmapData]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A013C8` | `-[NSDirectBitmap _flushInShape:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
-| `0x47A015F8` | `-[NSDirectBitmap flush]` | `NSDirectBitmap.m` | unexamined |
-| `0x47A01648` | `-[NSDirectBitmap flushIn:]` | `NSDirectBitmap.m` | unexamined |
+| `0x47A015F8` | `-[NSDirectBitmap flush]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
+| `0x47A01648` | `-[NSDirectBitmap flushIn:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A019B4` | `-[NSDirectBitmap dealloc]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A01A7C` | `-[NSDirectBitmap getBitmapDataPlanes:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A01B54` | `-[NSDirectBitmap pixelEncodings]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
@@ -1101,7 +1101,7 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A023B4` | `-[NSDirectBitmap pixelsHigh]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A023C4` | `-[NSDirectBitmap _updateBuffer]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A024BC` | `-[NSDirectBitmap samplesPerPixel]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
-| `0x47A024CC` | `-[NSDirectBitmap setBuffered:]` | `NSDirectBitmap.m` | unexamined |
+| `0x47A024CC` | `-[NSDirectBitmap setBuffered:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A025BC` | `-[NSDirectBitmap _canUseDirectMapping]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A02664` | `-[NSDirectBitmap setDirectMapped:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A02734` | `-[NSDirectBitmap tryLockBitmap]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |

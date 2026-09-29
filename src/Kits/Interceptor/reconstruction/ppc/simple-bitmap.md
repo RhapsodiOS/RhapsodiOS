@@ -109,3 +109,15 @@ row spans for each row; its two callers are in `NSDirectScreen` and
 implementation, so it is implemented in `NSFramebuffer.m`. This is a static
 source-ownership inference. Test coverage checks row padding, but runtime
 execution remains pending.
+
+`flushIn:` runs while the bitmap is locked and buffered drawing or draw-to-buffer
+is selected. Direct-mapped flushes translate the local rectangle to screen
+coordinates, intersect it with the intercepted shape and optional view clip,
+then copy visible pieces through `_flushInShape:`. Buffered flushes flip the
+local vertical coordinate, translate to the global window rectangle, clip to
+the bitmap frame, and send the pixels through the 7200 `CompositeBits` RPC.
+`flush` requests the full bitmap. `setBuffered:` snapshots the framebuffer under
+the cursor before enabling buffering and flushes before returning to direct
+drawing. The request is 112 bytes: four integer fields, an out-of-line payload
+sized as `height * bytesPerRow`, then five integer dimension and format fields.
+The i386 binary confirms the PPC descriptor order and reply IDs.

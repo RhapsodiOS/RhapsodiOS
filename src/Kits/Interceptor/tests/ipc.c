@@ -7,7 +7,8 @@
 #include "Private/InterceptorIPC.h"
 #include "test_support.h"
 
-enum { TestAddRect, TestRemoveRect, TestSetNotifyPort };
+enum { TestAddRect, TestRemoveRect, TestSetNotifyPort,
+       TestScreenCount, TestHideCursor, TestShowCursor };
 enum { TestSuccessReply, TestErrorReply, TestWrongReplyID, TestShortReply, TestSendFailure };
 
 static int expectedOperation;
@@ -66,7 +67,7 @@ int InterceptorTestMsgRPC(msg_header_t *header, int option, int sendSize,
                   "RemoveRect integer descriptor and unique ID");
         replyID = 0x1C88;
         successSize = 40;
-    } else {
+    } else if (expectedOperation == TestSetNotifyPort) {
         TestCheck(sendSize == 40 && header->msg_size == 40 &&
                   header->msg_simple == 0 && header->msg_id == 0x1C25,
                   "SetNotifyPort request ID and send/header sizes");
@@ -77,6 +78,14 @@ int InterceptorTestMsgRPC(msg_header_t *header, int option, int sendSize,
                   "SetNotifyPort port descriptors and payload");
         replyID = 0x1C89;
         successSize = 40;
+    } else {
+        int requestID = expectedOperation == TestScreenCount ? 7207 :
+                        expectedOperation == TestHideCursor ? 7208 : 7209;
+        replyID = requestID + 100;
+        successSize = 40;
+        TestCheck(sendSize == 40 && header->msg_size == sizeof(msg_header_t) &&
+                  header->msg_simple == 1 && header->msg_id == requestID,
+                  "simple Window Server RPC request ID and header sizes");
     }
 
     if (expectedReply == TestSendFailure)
@@ -108,6 +117,17 @@ int InterceptorTestMsgRPC(msg_header_t *header, int option, int sendSize,
         memcpy(&words[5], &replyRectangle, sizeof(replyRectangle));
     }
     return 0;
+}
+
+int InterceptorTestMsgSend(msg_header_t *header, int option, int timeout)
+{
+    TestCheck(option == 0 && timeout == 0 && header->msg_simple == 1 &&
+              header->msg_size == sizeof(msg_header_t) &&
+              header->msg_type == 0 &&
+              header->msg_remote_port == expectedContextPort &&
+              header->msg_local_port == PORT_NULL && header->msg_id == 7218,
+              "asynchronous ShowCursor request header and destination");
+    return expectedReply == TestSendFailure ? expectedSendResult : 0;
 }
 
 static void PrepareCall(int operation, int reply)
@@ -142,6 +162,7 @@ static void PrepareCall(int operation, int reply)
 int main(void)
 {
     void *handle = TestLoadSelectedFramework();
+    InterceptorClientContext context;
     InterceptedRectangle rectangle;
     TestCheck(handle != 0, "loads explicitly selected framework");
     TestCheck(sizeof(InterceptorClientContext) == 12,
@@ -172,6 +193,10 @@ int main(void)
                   "selected framework exports the RemoveRect RPC");
         TestCheck(dlsym(handle, "_InterceptorSetNotifyPort") != 0,
                   "selected framework exports the SetNotifyPort RPC");
+        TestCheck(dlsym(handle, "_InterceptorScreenCount") != 0 &&
+                  dlsym(handle, "_InterceptorHideCursor") != 0 &&
+                  dlsym(handle, "_InterceptorShowCursor") != 0,
+                  "selected framework exports screen-count and cursor RPCs");
         TestCheck(dlsym(handle, "InterceptorCreateContext") != 0,
                   "selected framework exports context creation");
         TestCheck(dlsym(handle, "InterceptorDestroyContext") != 0,
@@ -196,6 +221,23 @@ int main(void)
                                         expectedNotifyPort,
                                         expectedExceptionPort) == expectedOperationResult,
               "SetNotifyPort accepts a valid success reply");
+
+    PrepareCall(TestScreenCount, TestSuccessReply);
+    expectedOperationResult = 3;
+    TestCheck(_InterceptorScreenCount(expectedContextPort, expectedReplyPort) == 3,
+              "ScreenCount returns the server's screen count");
+    PrepareCall(TestHideCursor, TestSuccessReply);
+    TestCheck(_InterceptorHideCursor(expectedContextPort, expectedReplyPort) == 0,
+              "HideCursor accepts a valid success reply");
+    PrepareCall(TestShowCursor, TestSuccessReply);
+    TestCheck(_InterceptorShowCursor(expectedContextPort, expectedReplyPort) == 0,
+              "ShowCursor accepts a valid success reply");
+    PrepareCall(TestShowCursor, TestSuccessReply);
+    context.contextPort = expectedContextPort;
+    context.replyPort = expectedReplyPort;
+    context.notifyPort = PORT_NULL;
+    TestCheck(InterceptorShowCursor(&context) == 0,
+              "ShowCursor wrapper queues an asynchronous request");
 
     PrepareCall(TestAddRect, TestErrorReply);
     rectangle = expectedRectangle;

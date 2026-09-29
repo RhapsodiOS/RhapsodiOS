@@ -272,11 +272,11 @@ IDA function records: 392; symbol records: 540.
 | `0x47A0E55C` | 16 | `_InterceptorGetBM35ToBM34Table` | unexamined |
 | `0x47A0E56C` | 48 | `_InterceptorGetBM256ToBM38Table` | unexamined |
 | `0x47A0E59C` | 48 | `_InterceptorGetBM38ToBM256Table` | unexamined |
-| `0x47A0E5CC` | 44 | `_InterceptorScreenCount` | unexamined |
+| `0x47A0E5CC` | 44 | `_InterceptorScreenCount` | PPC static-reviewed; source authored; runtime pending |
 | `0x47A0E5F8` | 140 | `_InterceptorCompositeBits` | unexamined |
 | `0x47A0E684` | 140 | `_InterceptorFrameBufferInfo` | unexamined |
-| `0x47A0E710` | 44 | `_InterceptorHideCursor` | unexamined |
-| `0x47A0E73C` | 40 | `_InterceptorShowCursor` | unexamined |
+| `0x47A0E710` | 44 | `_InterceptorHideCursor` | PPC static-reviewed; source authored; runtime pending |
+| `0x47A0E73C` | 40 | `_InterceptorShowCursor` | PPC static-reviewed; source authored; runtime pending |
 | `0x47A0E764` | 52 | `_InterceptorFlushRect` | unexamined |
 | `0x47A0E798` | 52 | `_InterceptorAddDirtyRect` | unexamined |
 | `0x47A0E7CC` | 36 | `_InterceptorFlushDirtyRects` | unexamined |
@@ -294,9 +294,9 @@ IDA function records: 392; symbol records: 540.
 | `0x47A0F550` | 284 | `__InterceptorRemoveRect` | static-reviewed; `InterceptorIPC.c`; runtime pending |
 | `0x47A0F66C` | 300 | `__InterceptorSetNotifyPort` | static-reviewed; `InterceptorIPC.c`; runtime pending |
 | `0x47A0F798` | 392 | `__InterceptorGetBM35ToBM34Table` | unexamined |
-| `0x47A0F920` | 268 | `__InterceptorScreenCount` | unexamined |
-| `0x47A0FA2C` | 268 | `__InterceptorHideCursor` | unexamined |
-| `0x47A0FB38` | 268 | `__InterceptorShowCursor` | unexamined |
+| `0x47A0F920` | 268 | `__InterceptorScreenCount` | PPC static-reviewed; source authored; runtime pending |
+| `0x47A0FA2C` | 268 | `__InterceptorHideCursor` | PPC static-reviewed; source authored; runtime pending |
+| `0x47A0FB38` | 268 | `__InterceptorShowCursor` | PPC static-reviewed; source authored; runtime pending |
 | `0x47A0FC44` | 304 | `__InterceptorGetBM256ToBM38Table` | unexamined |
 | `0x47A0FD74` | 304 | `__InterceptorGetBM38ToBM256Table` | unexamined |
 | `0x47A0FEA4` | 172 | `__InterceptorFlushRect` | unexamined |
@@ -305,7 +305,7 @@ IDA function records: 392; symbol records: 540.
 | `0x47A1007C` | 96 | `__InterceptorRepairPalette` | unexamined |
 | `0x47A100DC` | 96 | `__InterceptorDamagedPalette` | unexamined |
 | `0x47A1013C` | 384 | `__InterceptorGetDeviceAccessTokens` | unexamined |
-| `0x47A102BC` | 96 | `__InterceptorShowCursorAsync` | unexamined |
+| `0x47A102BC` | 96 | `__InterceptorShowCursorAsync` | PPC/i386 static-reviewed; source authored; runtime pending |
 | `0x47A1031C` | 316 | `__InterceptorUnmapFrameBuffer` | unexamined |
 | `0x47A112EC` | 36 | `_NSEqualSizes` | unexamined |
 | `0x47A11310` | 36 | `_NSEqualRects` | unexamined |

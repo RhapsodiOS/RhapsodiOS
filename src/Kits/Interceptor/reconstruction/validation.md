@@ -14,7 +14,7 @@
 | Bitmap behavior test execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |
 | Copy helper static implementation | pass; body review confirms element widths, row pitches and min-span behavior | pass; i386 stack args and loop bodies confirm shared contract |
 | Copy helper test execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |
-| Mach IPC layouts and RPC contracts | static implementation matches PPC request/reply bodies; transport test authored, execution pending | static cross-check matches IDs/sizes/descriptors/context; transport test execution pending |
+| Mach IPC layouts and RPC contracts | screen/cursor request/reply bodies statically matched; test transport authored, execution pending | IDs and async cursor request independently confirmed; shared native descriptors/test harness, execution pending |
 | IPC ABI and transport test execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |
 | Intercepted rectangle core | PPC static review and source authored; test command parses, execution pending | shared source intended for both; build/runtime comparison pending |
 | Client/rectangle notification dispatch | PPC static review and source authored; test command parses, execution pending | shared source intended for both; build/runtime comparison pending |

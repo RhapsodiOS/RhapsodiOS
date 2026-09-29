@@ -6,9 +6,12 @@
 
 #ifdef INTERCEPTOR_IPC_TEST_TRANSPORT
 extern int InterceptorTestMsgRPC(msg_header_t *, int, int, int, int);
+extern int InterceptorTestMsgSend(msg_header_t *, int, int);
 #define InterceptorMsgRPC InterceptorTestMsgRPC
+#define InterceptorMsgSend InterceptorTestMsgSend
 #else
 #define InterceptorMsgRPC msg_rpc
+#define InterceptorMsgSend msg_send
 #endif
 
 typedef struct {
@@ -156,4 +159,79 @@ int _InterceptorSetNotifyPort(port_t contextPort, port_t replyPort,
         return words[3];
     }
     return words[3];
+}
+
+static int InterceptorSimpleReplyRPC(port_t contextPort, port_t replyPort,
+                                     int requestID, int replyID)
+{
+    InterceptorRPCMessage message;
+    int *words;
+    int result;
+
+    InterceptorSetRPCHeader(&message, contextPort, replyPort,
+                            requestID, sizeof(msg_header_t), 1);
+    result = InterceptorMsgRPC(&message.header, 0, sizeof(message.header) +
+                               4 * sizeof(int), 0, 0);
+    words = message.words;
+    if (result != 0) {
+        Interceptor_mig_error(result);
+        return words[3];
+    }
+    result = InterceptorCheckRPCReply(&message, replyID, 40, 32);
+    if (result != 0)
+        return words[3];
+    if (words[2] != InterceptorTypeDescriptor(2, 32, 1)) {
+        Interceptor_mig_error(-300);
+        return words[3];
+    }
+    return words[3];
+}
+
+int _InterceptorScreenCount(port_t contextPort, port_t replyPort)
+{
+    return InterceptorSimpleReplyRPC(contextPort, replyPort, 7207, 7307);
+}
+
+int _InterceptorHideCursor(port_t contextPort, port_t replyPort)
+{
+    return InterceptorSimpleReplyRPC(contextPort, replyPort, 7208, 7308);
+}
+
+int _InterceptorShowCursor(port_t contextPort, port_t replyPort)
+{
+    return InterceptorSimpleReplyRPC(contextPort, replyPort, 7209, 7309);
+}
+
+int _InterceptorShowCursorAsync(port_t contextPort)
+{
+    msg_header_t message;
+    int result;
+
+    bzero((char *)&message, sizeof(message));
+    message.msg_simple = 1;
+    message.msg_size = sizeof(message);
+    message.msg_type = 0;
+    message.msg_remote_port = contextPort;
+    message.msg_local_port = PORT_NULL;
+    message.msg_id = 7218;
+    result = InterceptorMsgSend(&message, 0, 0);
+    if (result != 0)
+        Interceptor_mig_error(result);
+    return result;
+}
+
+int InterceptorScreenCount(InterceptorClientContext *context)
+{
+    return _InterceptorScreenCount(context->contextPort, context->replyPort);
+}
+
+int InterceptorHideCursor(InterceptorClientContext *context)
+{
+    return _InterceptorHideCursor(context->contextPort, context->replyPort);
+}
+
+int InterceptorShowCursor(InterceptorClientContext *context)
+{
+    (void)_InterceptorShowCursorAsync(context->contextPort);
+    return 0;
 }

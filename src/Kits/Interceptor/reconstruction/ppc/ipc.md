@@ -1,14 +1,18 @@
 # PowerPC Mach IPC evidence
 
-The primary binary contains three synchronous client RPC stubs and the
-context/port lifecycle functions. DR2 i386 has the same message IDs, sizes,
-reply IDs, and context acquisition arguments; see `../i386/ipc.md`.
+The primary binary contains six synchronous client RPC stubs, an asynchronous
+ShowCursor request, and the context/port lifecycle functions. DR2 i386 has the
+same rectangle RPC IDs, sizes, reply IDs, and context acquisition arguments;
+see `../i386/ipc.md`.
 
 | Routine | Request ID | Request size | Reply ID | Reply size |
 |---|---:|---:|---:|---:|
 | `_InterceptorAddRect` | `0x1C23` | 76 bytes | `0x1C87` | 32 bytes |
 | `_InterceptorRemoveRect` | `0x1C24` | 40 bytes | `0x1C88` | 32 bytes |
 | `_InterceptorSetNotifyPort` | `0x1C25` | 40 bytes | `0x1C89` | 32 bytes |
+| `_InterceptorScreenCount` | `7207` | 24 bytes | `7307` | 32 bytes |
+| `_InterceptorHideCursor` | `7208` | 24 bytes | `7308` | 32 bytes |
+| `_InterceptorShowCursor` | `7209` | 24 bytes | `7309` | 32 bytes |
 
 Each call uses `msg_rpc(request, 0, requestSize, 0, 0)`. The context's
 `contextPort` is sent as `msg_remote_port`; `replyPort` is `msg_local_port`.
@@ -34,15 +38,23 @@ context port, deallocates the notify port only when nonzero, zeroes all 12
 bytes, and frees the context. This sequence is binary-observed and retained
 even where cleanup appears asymmetric.
 
+The simple screen/cursor RPCs send only the 24-byte message header, with the
+context and reply ports in the same header fields. Successful replies contain
+the MIG status descriptor/value followed by one integer result; error replies
+contain only the MIG status. `_InterceptorShowCursorAsync` sends request `7218`
+to the context port without waiting for a reply, and the high-level
+`InterceptorShowCursor` wrapper returns zero after queuing it.
+
 `InterceptorContext.c` implements the context lifecycle and `InterceptorIPC.c`
-implements all three RPC stubs,
+implements these RPC stubs,
 including the typed descriptors (`0x02200088` for the rectangle,
 `0x02200018` for integers, and `0x06200018` for ports in the PPC word view),
 success/error reply shapes, and the observed `-300`/`-301` validation errors.
 Descriptor fields are assigned individually so the compiler emits the proper
-architecture-specific bitfield order. A test transport now captures all
-three outgoing requests and supplies successful, server-error, wrong-ID, and
-send-failure outcomes. Its execution remains pending until the compatible
+architecture-specific bitfield order. A test transport now captures all six
+synchronous requests and the asynchronous ShowCursor request and supplies
+successful, server-error, wrong-ID, and send-failure outcomes. Its execution
+remains pending until the compatible
 historical toolchain is available.
 
 Runtime capture of outgoing messages, malformed replies, and transport

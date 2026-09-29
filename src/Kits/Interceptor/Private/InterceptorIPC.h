@@ -15,4 +15,12 @@ int _InterceptorRemoveRect(port_t contextPort, port_t replyPort,
 int _InterceptorSetNotifyPort(port_t contextPort, port_t replyPort,
                               port_t notifyPort, port_t exceptionPort);
 
+int _InterceptorScreenCount(port_t contextPort, port_t replyPort);
+int _InterceptorHideCursor(port_t contextPort, port_t replyPort);
+int _InterceptorShowCursor(port_t contextPort, port_t replyPort);
+int _InterceptorShowCursorAsync(port_t contextPort);
+int InterceptorScreenCount(InterceptorClientContext *context);
+int InterceptorHideCursor(InterceptorClientContext *context);
+int InterceptorShowCursor(InterceptorClientContext *context);
+
 #endif

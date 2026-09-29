@@ -37,6 +37,15 @@
     return self->publicDriver;
 }
 
+- (NSRect)screenBounds
+{
+#if defined(__ppc__) || defined(__POWERPC__)
+    return NSMakeRect(1.0, 1.0, self->pixelsWide, self->pixelsHigh);
+#else
+    return NSMakeRect(0.0, 0.0, self->pixelsWide, self->pixelsHigh);
+#endif
+}
+
 - (void *)addressForPoint:(NSPoint)location
 {
     if (!self->isMapped)

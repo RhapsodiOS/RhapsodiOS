@@ -169,7 +169,7 @@ IDA function records: 392; symbol records: 540.
 | `0x47A0A9E0` | 92 | `-[NSFramebuffer unmapScreen]` | unexamined |
 | `0x47A0AA3C` | 544 | `-[NSFramebuffer remapScreen]` | unexamined |
 | `0x47A0AC5C` | 20 | `-[NSFramebuffer isMappable]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
-| `0x47A0AC70` | 216 | `-[NSFramebuffer screenBounds]` | unexamined |
+| `0x47A0AC70` | 216 | `-[NSFramebuffer screenBounds]` | static-reviewed; runtime pending; architecture difference recorded |
 | `0x47A0AD48` | 16 | `-[NSFramebuffer screenNumber]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A0AD58` | 184 | `-[NSFramebuffer conversionTable]` | unexamined |
 | `0x47A0AE10` | 184 | `-[NSFramebuffer inverseConversionTable]` | unexamined |
@@ -558,7 +558,7 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A0A9E0` | `-[NSFramebuffer unmapScreen]` | `NSFramebuffer.m` | unexamined |
 | `0x47A0AA3C` | `-[NSFramebuffer remapScreen]` | `NSFramebuffer.m` | unexamined |
 | `0x47A0AC5C` | `-[NSFramebuffer isMappable]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
-| `0x47A0AC70` | `-[NSFramebuffer screenBounds]` | `NSFramebuffer.m` | unexamined |
+| `0x47A0AC70` | `-[NSFramebuffer screenBounds]` | `NSFramebuffer.m` | static-reviewed; runtime pending; architecture difference recorded |
 | `0x47A0AD48` | `-[NSFramebuffer screenNumber]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
 | `0x47A0AD58` | `-[NSFramebuffer conversionTable]` | `NSFramebuffer.m` | unexamined |
 | `0x47A0AE10` | `-[NSFramebuffer inverseConversionTable]` | `NSFramebuffer.m` | unexamined |
@@ -805,7 +805,7 @@ IDA function records: 419; symbol records: 629.
 | `0x47A08468` | 66 | `-[NSFramebuffer unmapScreen]` | unexamined |
 | `0x47A084AC` | 656 | `-[NSFramebuffer remapScreen]` | unexamined |
 | `0x47A0873C` | 17 | `-[NSFramebuffer isMappable]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
-| `0x47A08750` | 119 | `-[NSFramebuffer screenBounds]` | unexamined |
+| `0x47A08750` | 119 | `-[NSFramebuffer screenBounds]` | static-reviewed; runtime pending; architecture difference recorded |
 | `0x47A087C8` | 13 | `-[NSFramebuffer screenNumber]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A087D8` | 164 | `-[NSFramebuffer conversionTable]` | unexamined |
 | `0x47A0887C` | 164 | `-[NSFramebuffer inverseConversionTable]` | unexamined |
@@ -1221,7 +1221,7 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A08468` | `-[NSFramebuffer unmapScreen]` | `NSFramebuffer.m` | unexamined |
 | `0x47A084AC` | `-[NSFramebuffer remapScreen]` | `NSFramebuffer.m` | unexamined |
 | `0x47A0873C` | `-[NSFramebuffer isMappable]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
-| `0x47A08750` | `-[NSFramebuffer screenBounds]` | `NSFramebuffer.m` | unexamined |
+| `0x47A08750` | `-[NSFramebuffer screenBounds]` | `NSFramebuffer.m` | static-reviewed; runtime pending; architecture difference recorded |
 | `0x47A087C8` | `-[NSFramebuffer screenNumber]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
 | `0x47A087D8` | `-[NSFramebuffer conversionTable]` | `NSFramebuffer.m` | unexamined |
 | `0x47A0887C` | `-[NSFramebuffer inverseConversionTable]` | `NSFramebuffer.m` | unexamined |

@@ -20,7 +20,7 @@
 | Client/rectangle notification dispatch | PPC static review and source authored; test command parses, execution pending | shared source intended for both; build/runtime comparison pending |
 | NSShape scanline, operation, and description review | PPC static implementation; source authored; runtime pending | shared format/source intended for both; runtime pending |
 | Shape behavior test execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |
-| Framebuffer accessors, address calculation, cache ownership, and lock stubs | PPC static review and source authored; mapped framebuffer paths remain incomplete | DR2 i386 bodies independently confirm the implemented shared contracts; mapped paths remain incomplete |
+| Framebuffer accessors, address calculation, cache ownership, lock stubs, and bounds | PPC static review and source authored; mapped framebuffer paths remain incomplete | DR2 i386 confirms shared contracts and the zero-origin bounds difference; mapped paths remain incomplete |
 | Framebuffer test target | authored; PPC dry-run parses | authored; i386 dry-run parses |
 | Framebuffer test execution | blocked: host has no Objective-C compiler, Rhapsody SDK, or configured guest | blocked: host has no Objective-C compiler, Rhapsody SDK, or configured guest |
 

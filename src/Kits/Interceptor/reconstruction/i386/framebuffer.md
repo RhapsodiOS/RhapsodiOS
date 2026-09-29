@@ -6,6 +6,7 @@ framebuffer methods implemented in the shared source:
 | Function | i386 address | Confirmed behavior |
 |---|---:|---|
 | `-[NSFramebuffer isMappable]` | `0x47A0873C` | Returns the `isMapped` byte. |
+| `-[NSFramebuffer screenBounds]` | `0x47A08750` | Returns pixel width and height with origin `(0,0)`. |
 | `-[NSFramebuffer pixelEncoding]`, `driver` | `0x47A08994`, `0x47A089EC` | Lazily convert the fixed C strings with `NSString stringWithCString:` and cache the objects, matching PPC. |
 | `-[NSFramebuffer addressForPoint:]` | `0x47A08920` | Null if unmapped; otherwise uses row bytes and integer-truncated coordinates with `bitsPerPixel / 8`. |
 | `-[NSFramebuffer retain]`, `release`, `retainCount`, `dealloc` | `0x47A08A64`–`0x47A08A84` | Immortal cached object semantics match the PPC methods. |

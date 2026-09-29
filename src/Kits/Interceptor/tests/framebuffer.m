@@ -7,6 +7,7 @@ int main(void)
 {
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
     NSFramebuffer *framebuffer;
+    NSRect bounds;
 
     TestCheck(TestLoadSelectedFramework() != 0,
               "loads selected framework for framebuffer checks");
@@ -23,6 +24,16 @@ int main(void)
         TestCheck([[framebuffer pixelEncoding] length] == 0 &&
                   [[framebuffer driver] length] == 0,
                   "pixel encoding and driver are lazily exposed as strings");
+        bounds = [framebuffer screenBounds];
+#if defined(__ppc__) || defined(__POWERPC__)
+        TestCheck(bounds.origin.x == 1 && bounds.origin.y == 1 &&
+                  bounds.size.width == 0 && bounds.size.height == 0,
+                  "PPC framebuffer bounds preserve the one-point origin");
+#elif defined(__i386__)
+        TestCheck(bounds.origin.x == 0 && bounds.origin.y == 0 &&
+                  bounds.size.width == 0 && bounds.size.height == 0,
+                  "i386 framebuffer bounds use a zero origin");
+#endif
         TestCheck([framebuffer canLockWithMode:NSFramebufferReadWrite] &&
                   [framebuffer canLockWithMode:NSFramebufferWriteOnly] &&
                   [framebuffer canLockWithMode:NSFramebufferReadOnly],

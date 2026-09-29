@@ -195,13 +195,107 @@ static void test_versionForClassName_and_object_zone_round_trip(void)
     [coder release];
 }
 
+static void test_encodeObject_and_decodeObject_round_trip(void)
+{
+    id coder = [[TestCoder alloc] init];
+    id sent = [[NSObject alloc] init];
+    id received;
+
+    [coder encodeObject:sent];
+    received = [coder decodeObject];
+    CHECK(received == sent);
+    [sent release];
+    [coder release];
+}
+
+static void test_encodeConditionalObject_round_trips_like_encodeObject(void)
+{
+    /*  NSCoder's own base implementation of -encodeConditionalObject:
+        (conditional-object graph tracking) is real NSArchiver machinery
+        this stage does not have; the reference's generic NSCoder-level
+        fallback, confirmed from the disassembly, is to encode it the
+        same as -encodeObject: unconditionally -- a real coder overrides
+        this to actually track conditionality.  */
+    id coder = [[TestCoder alloc] init];
+    id sent = [[NSObject alloc] init];
+    id received;
+
+    [coder encodeConditionalObject:sent];
+    received = [coder decodeObject];
+    CHECK(received == sent);
+    [sent release];
+    [coder release];
+}
+
+static void test_encodeArrayOfObjCType_and_decode_round_trip(void)
+{
+    id coder = [[TestCoder alloc] init];
+    int sent[3] = { 1, 2, 3 };
+    int received[3] = { 0, 0, 0 };
+
+    [coder encodeArrayOfObjCType:"i" count:3 at:sent];
+    [coder decodeArrayOfObjCType:"i" count:3 at:received];
+    CHECK(received[0] == 1 && received[1] == 2 && received[2] == 3);
+    [coder release];
+}
+
+static void test_encodeValuesOfObjCTypes_and_decode_round_trip(void)
+{
+    id coder = [[TestCoder alloc] init];
+    int intValue = 7;
+    char charValue = 'x';
+    int readInt = 0;
+    char readChar = 0;
+
+    [coder encodeValuesOfObjCTypes:"ic", intValue, charValue];
+    [coder decodeValuesOfObjCTypes:"ic", &readInt, &readChar];
+    CHECK(readInt == 7);
+    CHECK(readChar == 'x');
+    [coder release];
+}
+
+static void test_encodeBytes_and_decodeBytesWithReturnedLength_round_trip(void)
+{
+    id coder = [[TestCoder alloc] init];
+    const char *sent = "hello";
+    unsigned returnedLength = 0;
+    void *received;
+
+    [coder encodeBytes:sent length:5];
+    received = [coder decodeBytesWithReturnedLength:&returnedLength];
+    CHECK(returnedLength == 5);
+    CHECK(memcmp(received, sent, 5) == 0);
+    [coder release];
+}
+
+static void test_systemVersion_is_the_confirmed_constant(void)
+{
+    /*  Confirmed from the reference's raw bytes at 0x4257385c:
+        mov eax, 0x3e8 -- 1000, the coding format revision the
+        typedstream machinery identifies itself with.  */
+    id coder = [[NSCoder alloc] init];
+
+    CHECK([coder systemVersion] == 1000);
+    [coder release];
+}
+
 int main(void)
 {
+    /*  The guest's stdio block-buffers pipes; a crash mid-suite would
+        otherwise swallow every FAIL line printed before it.  */
+    setvbuf(stdout, NULL, _IONBF, 0);
+
     test_a_subclass_can_override_the_five_primitives();
     test_the_base_class_primitives_raise();
     test_the_base_class_primitives_raise_even_with_a_null_type();
     test_decoding_with_a_type_that_does_not_match_the_encoded_one_raises();
     test_versionForClassName_and_object_zone_round_trip();
+    test_encodeObject_and_decodeObject_round_trip();
+    test_encodeConditionalObject_round_trips_like_encodeObject();
+    test_encodeArrayOfObjCType_and_decode_round_trip();
+    test_encodeValuesOfObjCTypes_and_decode_round_trip();
+    test_encodeBytes_and_decodeBytesWithReturnedLength_round_trip();
+    test_systemVersion_is_the_confirmed_constant();
 
     printf("%s: %d failure(s)\n", failures ? "FAILED" : "PASSED", failures);
     return failures != 0;

@@ -5,6 +5,9 @@
 #import <Foundation/NSCoder.h>
 #import <Foundation/NSException.h>
 #import <Foundation/NSString.h>
+#import <Foundation/NSZone.h>
+#include <stdarg.h>
+#include <string.h>
 
 /*	NSCoder's instance_size is 4 -- isa only, no storage of its own.  Its
 	five primitives have compiled bodies in the reference despite that,
@@ -60,77 +63,189 @@
     return 0;
 }
 
-- (void)encodeObject:(id)object {
-    // TODO: Implement this method
+/*
+	The object conveniences.  At NSCoder's own level every object
+	flavour encodes the same way -- the id by value through the "@"
+	primitive -- because bycopy/byref/conditional/root distinction is
+	real coder's machinery (NSArchiver stage 6, NSPortCoder stage 8);
+	the reference's generic fallbacks confirmed from its disassembly
+	all funnel into the primitive.  A real coder overrides these.
+	*/
+- (void)encodeObject:(id)object
+{
+    [self encodeValueOfObjCType:"@" at:&object];
+}
+
+- (id)decodeObject
+{
+    id object;
+
+    [self decodeValueOfObjCType:"@" at:&object];
+    return object;
+}
+
+- (void)encodeBycopyObject:(id)anObject
+{
+    [self encodeObject:anObject];
+}
+
+- (void)encodeByrefObject:(id)anObject
+{
+    [self encodeObject:anObject];
+}
+
+- (void)encodeConditionalObject:(id)object
+{
+    [self encodeObject:object];
+}
+
+- (void)encodeRootObject:(id)rootObject
+{
+    [self encodeObject:rootObject];
+}
+
+/*
+	The varargs conveniences.  Each type token is consumed exactly as
+	NSGetSizeAndAlignment delimits it, then the matching va_arg is
+	taken with the default promotions: ids as ids, everything no
+	wider than an int as int (the integer promotions), anything wider
+	as double.  */
+- (void)encodeValuesOfObjCTypes:(const char *)types, ...
+{
+    va_list args;
+    const char *cursor;
+
+    va_start(args, types);
+    cursor = types;
+    while (*cursor != '\0') {
+        unsigned size, align;
+        const char *typeStart = cursor;
+        char typeBuffer[32];
+        unsigned typeLength;
+
+        cursor = NSGetSizeAndAlignment(cursor, &size, &align);
+        typeLength = (unsigned)(cursor - typeStart);
+        if (typeLength >= sizeof(typeBuffer))
+            typeLength = sizeof(typeBuffer) - 1;
+        memcpy(typeBuffer, typeStart, typeLength);
+        typeBuffer[typeLength] = '\0';
+
+        if (typeBuffer[0] == '@') {
+            id value = va_arg(args, id);
+
+            [self encodeValueOfObjCType:typeBuffer at:&value];
+        } else if (size <= sizeof(int)) {
+            int value = va_arg(args, int);
+
+            [self encodeValueOfObjCType:typeBuffer at:&value];
+        } else {
+            double value = va_arg(args, double);
+
+            [self encodeValueOfObjCType:typeBuffer at:&value];
+        }
+    }
+    va_end(args);
+}
+
+- (void)decodeValuesOfObjCTypes:(const char *)types, ...
+{
+    va_list args;
+    const char *cursor;
+
+    va_start(args, types);
+    cursor = types;
+    while (*cursor != '\0') {
+        unsigned size, align;
+        const char *typeStart = cursor;
+        char typeBuffer[32];
+        unsigned typeLength;
+        void *destination;
+
+        cursor = NSGetSizeAndAlignment(cursor, &size, &align);
+        typeLength = (unsigned)(cursor - typeStart);
+        if (typeLength >= sizeof(typeBuffer))
+            typeLength = sizeof(typeBuffer) - 1;
+        memcpy(typeBuffer, typeStart, typeLength);
+        typeBuffer[typeLength] = '\0';
+
+        destination = va_arg(args, void *);
+        [self decodeValueOfObjCType:typeBuffer at:destination];
+    }
+    va_end(args);
+}
+
+- (void)encodeArrayOfObjCType:(const char *)type count:(unsigned)count at:(const void *)array
+{
+    unsigned size, align;
+    unsigned i;
+    const char *element = (const char *)array;
+
+    NSGetSizeAndAlignment(type, &size, &align);
+    for (i = 0; i < count; i++) {
+        [self encodeValueOfObjCType:type at:element];
+        element += size;
+    }
+}
+
+- (void)decodeArrayOfObjCType:(const char *)itemType count:(unsigned)count at:(void *)array
+{
+    unsigned size, align;
+    unsigned i;
+    char *element = (char *)array;
+
+    NSGetSizeAndAlignment(itemType, &size, &align);
+    for (i = 0; i < count; i++) {
+        [self decodeValueOfObjCType:itemType at:element];
+        element += size;
+    }
+}
+
+- (void)encodeBytes:(const void *)byteaddr length:(unsigned)length
+{
+    [self encodeValueOfObjCType:"I" at:&length];
+    [self encodeArrayOfObjCType:"c" count:length at:byteaddr];
+}
+
+- (void *)decodeBytesWithReturnedLength:(unsigned *)lengthp
+{
+    unsigned length;
+    void *buffer;
+
+    [self decodeValueOfObjCType:"I" at:&length];
+    buffer = NSZoneMalloc([self objectZone], length);
+    [self decodeArrayOfObjCType:"c" count:length at:buffer];
+    if (lengthp != NULL)
+        *lengthp = length;
+    return buffer;
+}
+
+/*	NSCoder has no ivars (instance_size 4), so the base class carries
+	no zone of its own: the zone is whatever the concrete subclass
+	records, and the generic fallback is the default malloc zone.  */
+- (void)setObjectZone:(NSZone *)zone
+{
+}
+
+- (NSZone *)objectZone
+{
+    return NSDefaultMallocZone();
+}
+
+/*	A fixed constant identifying this coding format's revision.
+	Confirmed from the reference's raw bytes at 0x4257385c:
+	mov eax, 0x3e8 -- 1000.  */
+- (unsigned)systemVersion
+{
+    return 1000;
 }
 
 - (void)encodePropertyList:(id)aPropertyList {
     // TODO: Implement this method
 }
 
-- (void)encodeRootObject:(id)rootObject {
-    // TODO: Implement this method
-}
-
-- (void)encodeBycopyObject:(id)anObject {
-    // TODO: Implement this method
-}
-
-- (void)encodeByrefObject:(id)anObject {
-    // TODO: Implement this method
-}
-
-- (void)encodeConditionalObject:(id)object {
-    // TODO: Implement this method
-}
-
-- (void)encodeValuesOfObjCTypes:(const char *)types, ... {
-    // TODO: Implement this method
-}
-
-- (void)encodeArrayOfObjCType:(const char *)type count:(unsigned)count at:(const void *)array {
-    // TODO: Implement this method
-}
-
-- (void)encodeBytes:(const void *)byteaddr length:(unsigned)length {
-    // TODO: Implement this method
-}
-
-- (id)decodeObject {
-    // TODO: Implement this method
-    return nil;
-}
-
 - (id)decodePropertyList {
     // TODO: Implement this method
     return nil;
-}
-
-- (void)decodeValuesOfObjCTypes:(const char *)types, ... {
-    // TODO: Implement this method
-}
-
-- (void)decodeArrayOfObjCType:(const char *)itemType count:(unsigned)count at:(void *)array {
-    // TODO: Implement this method
-}
-
-- (void *)decodeBytesWithReturnedLength:(unsigned *)lengthp {
-    // TODO: Implement this method
-    return nil;
-}
-
-- (void)setObjectZone:(NSZone *)zone {
-    // TODO: Implement this method
-}
-
-- (NSZone *)objectZone {
-    // TODO: Implement this method
-    return nil;
-}
-
-- (unsigned)systemVersion {
-    // TODO: Implement this method
-    return 0;
 }
 
 - (void)encodeNXObject:(id)object {
